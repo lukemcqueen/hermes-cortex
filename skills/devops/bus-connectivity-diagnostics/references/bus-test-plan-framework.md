@@ -47,7 +47,7 @@ curl -s -H "Authorization: Bearer $TOKEN" http://127.0.0.1:8903/health
 
 ```bash
 # What queues can each agent read/write?
-sg docker -c 'docker exec gbrain-postgres psql -U gbrain -d gbrain -c \
+sg docker -c 'docker exec legacy Postgres psql -U mycortex -d mycortex -c \
 "SELECT agent_name, can_read::text, can_write::text, is_admin \
 FROM bus.permissions ORDER BY agent_name;"' 2>&1
 ```
@@ -56,14 +56,14 @@ FROM bus.permissions ORDER BY agent_name;"' 2>&1
 
 ```bash
 # Any backlog? Stuck messages? DLQ accumulation?
-sg docker -c 'docker exec gbrain-postgres psql -U gbrain -d gbrain -c \
+sg docker -c 'docker exec legacy Postgres psql -U mycortex -d mycortex -c \
 "SELECT queue_name, state, COUNT(*) as count \
 FROM bus.messages GROUP BY queue_name, state ORDER BY queue_name, state;"' 2>&1
 ```
 
 If there are stuck `processing` messages, run recovery first:
 ```bash
-sg docker -c 'docker exec gbrain-postgres psql -U gbrain -d gbrain -c \
+sg docker -c 'docker exec legacy Postgres psql -U mycortex -d mycortex -c \
 "SELECT bus.recover_timeouts();"' 2>&1
 ```
 
@@ -120,19 +120,19 @@ curl -s -X POST https://example.com:13004/api/pgmq/send \
 
 ```bash
 # Check target queue
-sg docker -c 'docker exec gbrain-postgres psql -U gbrain -d gbrain -c \
+sg docker -c 'docker exec legacy Postgres psql -U mycortex -d mycortex -c \
 "SELECT queue_name, state, COUNT(*) FROM bus.messages \
 GROUP BY queue_name, state ORDER BY queue_name, state;"' 2>&1
 
 # Check inbox_moses for EXEC_RESULT
-sg docker -c 'docker exec gbrain-postgres psql -U gbrain -d gbrain -c \
+sg docker -c 'docker exec legacy Postgres psql -U mycortex -d mycortex -c \
 "SELECT body->>'\''subject'\'' as subject, body->>'\''from'\'' as sender, \
 body->>'\''correlation_id'\'' as corr_id, state, enqueued_at::timestamptz(0) \
 FROM bus.messages WHERE queue_name = '\''inbox_moses'\'' AND state = '\''pending'\'' \
 ORDER BY enqueued_at DESC LIMIT 10;"' 2>&1
 
 # Check audit log
-sg docker -c 'docker exec gbrain-postgres psql -U gbrain -d gbrain -c \
+sg docker -c 'docker exec legacy Postgres psql -U mycortex -d mycortex -c \
 "SELECT action, agent_name, queue, COUNT(*) as cnt \
 FROM bus.audit_log WHERE created_at > NOW() - INTERVAL '\''10 minutes'\'' \
 GROUP BY action, agent_name, queue ORDER BY queue, action;"' 2>&1
@@ -142,7 +142,7 @@ GROUP BY action, agent_name, queue ORDER BY queue, action;"' 2>&1
 
 Archive test messages to prevent DLQ cycling:
 ```bash
-sg docker -c 'docker exec gbrain-postgres psql -U gbrain -d gbrain -c \
+sg docker -c 'docker exec legacy Postgres psql -U mycortex -d mycortex -c \
 "SELECT bus.archive('\''inbox_moses'\'', '\''<msg_id>'\''::uuid, '\''test-cleanup'\'');"' 2>&1
 ```
 

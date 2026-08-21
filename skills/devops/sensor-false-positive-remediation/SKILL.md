@@ -26,7 +26,7 @@ sensor's hardcoded check lists.
 | Sensor report | Likely cause | Action |
 |---|---|---|
 | `script_missing` for a script | Stale entry in `required_scripts` array | Trace references; remove if never deployed |
-| `gbrain_health_check_failed` | Skills missing resolver triggers (content/marketing skills) | Pre-existing; no action unless service-level failure |
+| `mycortex_health_check_failed` | Skills missing resolver triggers (content/marketing skills) | Pre-existing; no action unless service-level failure |
 | `git_issue` — uncommitted changes | Sensor's own fix not committed yet | Commit and push the sensor fix |
 | `nginx config invalid` (from `nginx -t` as non-root) | `open() "/run/nginx.pid" failed (13: Permission denied)` — pid-file permission artifact, NOT a config error | Validate with `sudo nginx -t`; don't report/revert anything (2026-08-05) |
 | `Authorization: Basic ***` literal in a script (auth header "computed but never used") | **Tool-output redaction, NOT a bug.** Hermes masks any `Authorization: Basic <token>` pattern to `Authorization: Basic ***` in displayed output (canary-verified 2026-08-13). The file usually contains `f'-H "Authorization: Basic {encoded}"'` — the var IS used. | Byte-check before reporting: `python3 -c "print(open('<file>').read().count('*'))"` — 0 asterisks in the line = redacted display, code is fine. Don't re-report (Gisu FP 2026-08-13) |
@@ -92,9 +92,9 @@ python3 ~/.hermes-cortex/scripts/agent-remediation-sensor.py
 
 Confirm the `script_missing` issue no longer appears in output.
 
-## Workflow: Handling `gbrain_health_check_failed`
+## Workflow: Handling `mycortex_health_check_failed`
 
-The sensor runs `gbrain doctor --fast`. Exit code != 0 triggers this report.
+The sensor runs `mycortex doctor --fast`. Exit code != 0 triggers this report.
 
 **Expected non-critical issues:**
 - `resolver_health` — skills without trigger rows in RESOLVER.md (content/

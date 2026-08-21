@@ -1,7 +1,7 @@
 # mycortex v001 Case — First Fail-Closed Schema (2026-08-01)
 
 Concrete failure transcripts + fixes from building the mycortex knowledge-brain
-schema on the shared gbrain-postgres (PG 17.6, `docker exec` trust auth). These
+schema on the shared legacy Postgres (PG 17.6, `docker exec` trust auth). These
 are the exact bugs the SKILL.md patterns prevent.
 
 ## Failure 1: "permission denied for table source_grants"
@@ -32,7 +32,7 @@ so the policy's own subquery blew up.
 **Fix:** SECURITY DEFINER helper `mycortex.is_source_visible(p_source_id, p_role)`
 (see SKILL.md) — reader only needs EXECUTE on the function. The isolation-leak
 test that caught this runs AS `mycortex_reader` via `docker exec
-gbrain-postgres psql -U mycortex_reader -d <test>`.
+legacy Postgres psql -U mycortex_reader -d <test>`.
 
 ## Failure 2: FORCE RLS "cascade" leaks isolated chunks
 
@@ -44,7 +44,7 @@ CREATE POLICY mycortex_chunks_select ON mycortex.content_chunks
     USING (EXISTS (SELECT 1 FROM mycortex.pages p WHERE p.id = content_chunks.page_id));
 ```
 
-**Why it's wrong:** policy expressions evaluate as the table owner (gbrain, a
+**Why it's wrong:** policy expressions evaluate as the table owner (mycortex, a
 SUPERUSER), and superusers bypass RLS entirely. The subquery sees ALL pages, so
 chunks of isolated pages become visible whenever a reader can reference the
 page_id. Never rely on cascade — apply the SAME predicate explicitly:
@@ -96,7 +96,7 @@ using it fails with a syntax error under `set -e` (silent in the trace).
 10. `log_query()` SECURITY DEFINER: reader can call it (appends), but direct
     INSERT into query_log denied; `application_name` comes from pg_stat_activity
 
-Hermeticity: refuses `TEST_DB == "gbrain"`, scratch DB created/dropped via
+Hermeticity: refuses `TEST_DB == "mycortex"`, scratch DB created/dropped via
 `docker exec`, `trap cleanup EXIT`.
 
 ## Deploy-path lesson
@@ -105,7 +105,7 @@ cortex-update.sh is a pure file-copier — it CANNOT run DDL. The migrate.py
 runner is registered as a file AND invoked after file sync; a failure there
 fails the whole update loudly (`error` + `exit 1`), because a missing schema
 silently breaks every consumer. Deploying it was the first time the schema
-reached the REAL gbrain DB: `mycortex schema at version 1 — done`, bus (13
+reached the REAL mycortex DB: `mycortex schema at version 1 — done`, bus (13
 tables) untouched.
 
 ## Hosting note (transient, 2026-08-01)

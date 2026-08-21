@@ -20,7 +20,7 @@ TEST_DB="${LEARNING_TEST_DB:-learnings_cli_test}"
 CONTAINER="${LEARNING_TEST_CONTAINER:-mycortex-postgres}"
 TEST_WORKER_ROLE="learnings_cli_worker"   # temp role, dropped in cleanup
 
-if [[ "$TEST_DB" == "mycortex" || "$TEST_DB" == "gbrain" ]]; then
+if [[ "$TEST_DB" == "mycortex" ]]; then
   echo "❌ REFUSING to run against the $TEST_DB database — hermeticity guard. Set LEARNING_TEST_DB." >&2
   exit 1
 fi

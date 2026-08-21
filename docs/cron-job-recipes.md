@@ -115,7 +115,7 @@ If you have a personal agent brain directory:
 1. Save the full summary to `~/brain/{agent-name}/bible/{book-slug}.md`
 2. Update a running INDEX.md table
 3. Git commit + push
-4. Re-index gbrain (if using it)
+4. Re-index mycortex (if using it)
 
 ### Step 5: Update State
 
@@ -664,7 +664,7 @@ Check repos, Docker containers, system files, and cron jobs for issues:
 - Disk usage: large caches (>100MB) that should be cleaned?
 - Cron job errors: check for last_status: error in the cron job list.
 
-Also scan ~/brain/*/ and gbrain for incomplete tasks, stale branches,
+Also scan ~/brain/*/ and mycortex for incomplete tasks, stale branches,
 or new ideas that need attention.
 
 ## Phase 2: Auto-Fix
@@ -725,7 +725,7 @@ hermes cron create \
 
 ---
 
-## 🔄 GBrain Conversation Export
+## 🔄 Mycortex Conversation Export
 
 Exports recent agent conversations as markdown notes into brain directories for long-term knowledge retention.
 
@@ -773,7 +773,7 @@ Key decisions, action items, and important facts from the session.
 
 ```bash
 hermes cron create \
-  --name "gbrain-conversation-export" \
+  --name "mycortex-conversation-export" \
   --schedule "0 */6 * * *" \
   --prompt "Paste the recipe above" \
   --deliver "local" \
@@ -846,9 +846,9 @@ before delivering the final response.
 
 ---
 
-## 🗄️ GBrain Nightly Maintenance
+## 🗄️ Mycortex Nightly Maintenance
 
-Runs the gbrain maintenance cycle: syncs all sources, then runs the dream cycle for knowledge consolidation.
+Runs the mycortex maintenance cycle: syncs all sources, then runs the dream cycle for knowledge consolidation.
 
 **Schedule:** `0 3 * * *` (3am daily)
 **Type:** LLM-driven
@@ -857,13 +857,13 @@ Runs the gbrain maintenance cycle: syncs all sources, then runs the dream cycle 
 ### Recipe
 
 ```
-Run the nightly gbrain maintenance cycle:
+Run the nightly mycortex maintenance cycle:
 
 1. First sync all sources:
-   `cd ~ && export PATH="$HOME/.bun/bin:$PATH" && gbrain sync --all --parallel 4 --no-pull --no-embed --no-extract`
+   `cd ~ && export PATH="$HOME/.bun/bin:$PATH" && mycortex sync --all --parallel 4 --no-pull --no-embed --no-extract`
 
 2. Then run the dream cycle:
-   `cd ~ && export PATH="$HOME/.bun/bin:$PATH" && gbrain dream`
+   `cd ~ && export PATH="$HOME/.bun/bin:$PATH" && mycortex dream`
 
 3. Report back a brief summary of what was synced and any dream cycle findings.
 ```
@@ -872,7 +872,7 @@ Run the nightly gbrain maintenance cycle:
 
 ```bash
 hermes cron create \
-  --name "gbrain-nightly-dream" \
+  --name "mycortex-nightly-dream" \
   --schedule "0 3 * * *" \
   --prompt "Paste the recipe above" \
   --deliver "origin" \
@@ -926,7 +926,7 @@ hermes cron create \
 | **01:00** | 📖 Bible | 📖 Bible | 📖 Bible | 📖 Bible | 📖 Bible | 📖 Bible | 📖 Bible |
 | **02:00** | 🔄 Brew | 🔄 Brew | 🔄 Brew | 🔄 Brew | 🔄 Brew | 🔄 Brew | 🔄 Brew |
 | **02:30** | 🔄 Hermes | 🔄 Hermes | 🔄 Hermes | 🔄 Hermes | 🔄 Hermes | 🔄 Hermes | 🔄 Hermes |
-| **03:00** | 🧠 gbrain | 🧠 gbrain | 🧠 gbrain | 🧠 gbrain | 🧠 gbrain | 🧠 gbrain | 🧠 gbrain |
+| **03:00** | 🧠 mycortex | 🧠 mycortex | 🧠 mycortex | 🧠 mycortex | 🧠 mycortex | 🧠 mycortex | 🧠 mycortex |
 | **04:00** | 🧠 Memory | 🧠 Memory | 🧠 Memory | 🧠 Memory | 🧠 Memory | 🧠 Memory | 🧠 Memory |
 | **05:00** | | | | | | | 🗜️ Compress |
 | **06:30** | 🌅 Brief | 🌅 Brief | 🌅 Brief | 🌅 Brief | 🌅 Brief | 🌅 Brief | 🌅 Brief |

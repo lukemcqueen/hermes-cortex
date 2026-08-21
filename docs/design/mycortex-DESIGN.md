@@ -1,10 +1,10 @@
-# mycortex — Design Document (gbrain Replacement)
+# mycortex — Design Document 
 
 > **Status:** Pass 2 complete (elicit + 2× 6-role party) → design v2
 > **Date:** 2026-08-01
 > **Stakeholders:** Luke · Moses · Esther · fleet (Titus, Joseph, Gisu, Kustos)
-> **Design doc for:** the "mycortex" knowledge brain replacing gbrain (garrytan/gbrain, bun, autopilot daemon)
-> **Inspiration credit:** mycortex is directly inspired by [gbrain](https://github.com/garrytan/gbrain) (garrytan, MIT) — the Postgres-native personal knowledge brain. The git-as-source-of-truth + Postgres-index architecture, brain source model, and `/brain` query interface all originate from gbrain. mycortex keeps that shape and re-architects the plumbing: no daemon/bun, fail-closed RLS source isolation, per-host registration, and a PII federation gate (see §0).
+> **Design doc for:** the "mycortex" knowledge brain replacing legacy brain (garrytan/legacy-brain, bun, autopilot daemon)
+> **Inspiration credit:** mycortex is directly inspired by an open-source Postgres-native personal knowledge brain project (garrytan, MIT). The git-as-source-of-truth + Postgres-index architecture, brain source model, and `/brain` query interface all originate from the legacy brain. mycortex keeps that shape and re-architects the plumbing: no daemon/bun, fail-closed RLS source isolation, per-host registration, and a PII federation gate (see §0).
 > **Implementation note (2026-08-01, S-003 landed):** the shipped `ops/services/mycortex/schema/mycortex.sql` deviates from §2 in four tested ways — (1) `sources.host` DEFAULT `'localhost'` (design's `current_setting('hostname', true)` returns NULL and violates NOT NULL); (2) RLS visibility is a SECURITY DEFINER helper `mycortex.is_source_visible(source_id, role)` called from both policies — policy subqueries evaluate with the CALLER's privileges, so the design's inline `source_grants` subquery fails with "permission denied for table source_grants"; (3) chunks policy applies the same predicate explicitly (no reliance on page-RLS cascade — FORCE RLS + superuser-owner policy evaluation makes cascade leaky); (4) `mycortex_ingest` gets explicit ALL policies on pages/content_chunks (RLS default-denies DML without them). S-003 AC battery `tests/test-mycortex-schema.sh` (15 checks) green.
 
 ---
@@ -13,12 +13,12 @@
 
 **Git repos = source of truth → shared Postgres = query index → thin Python CLI + crons = plumbing.**
 
-This is not a rearchitecture of the knowledge model — it is the same shape gbrain was supposed to be, minus the bloat, plus the source registration that was broken. Rationale:
+This is not a rearchitecture of the knowledge model — it is the same shape legacy brain was supposed to be, minus the bloat, plus the source registration that was broken. Rationale:
 
 | Layer | Choice | Why it is durable |
 |---|---|---|
 | Source of truth | Markdown in git (`~/brain/*`, `~/hermes-cortex`) | Most portable format; survives any engine, any machine loss. Already true today. |
-| Index store | Shared `gbrain-postgres` :15432 (pgvector) | Already running; already the fleet's durable store (bus lives there). Zero new infra. |
+| Index store | Shared `legacy Postgres` :15432 (pgvector) | Already running; already the fleet's durable store (bus lives there). Zero new infra. |
 | Search | Postgres FTS + pg_texample (v1); pgvector (v1.1 slice) | Same DB, same tables; semantic is a column + query path, never a second system. |
 | Plumbing | Cron sync, no daemon, no bun | 30-second cron is trivially replaceable forever; the 248 MB daemon was the breakage source. |
 
@@ -32,14 +32,14 @@ This is not a rearchitecture of the knowledge model — it is the same shape gbr
 
 | # | Pass-2 showstopper | Resolution (v2) |
 |---|---|---|
-| P2-SS1 (Arch/SRE) | Deployment bootstrap unimplementable — `cortex-update.sh` is a pure file-copier with **zero DDL path**; schema cannot reach existing agents | **Add `ops/services/mycortex/migrate.py`** — a psql runner invoked by cortex-update.sh after file sync. `schema_version`-gated, `DO $$` blocks for role creation (PG has no `CREATE ROLE IF NOT EXISTS`), explicit target DB (`gbrain`), `search_path=mycortex` pinned. New hosts: install.sh applies v001. Existing hosts: migrate.py upgrades. |
-| P2-SS2 (Arch/Sec) | RLS grant model has no backing mechanism — no grants table, no policy SQL, no ownership statement | **Add `mycortex.source_grants(role_name, source_id)` table** + concrete policy DDL (see §2). Tables owned by `postgres`/`gbrain` superuser, **never runtime roles**. `FORCE ROW LEVEL SECURITY` on pages/content_chunks. Policy created in v001 (fail-closed), not deferred. |
+| P2-SS1 (Arch/SRE) | Deployment bootstrap unimplementable — `cortex-update.sh` is a pure file-copier with **zero DDL path**; schema cannot reach existing agents | **Add `ops/services/mycortex/migrate.py`** — a psql runner invoked by cortex-update.sh after file sync. `schema_version`-gated, `DO $$` blocks for role creation (PG has no `CREATE ROLE IF NOT EXISTS`), explicit target DB (`mycortex`), `search_path=mycortex` pinned. New hosts: install.sh applies v001. Existing hosts: migrate.py upgrades. |
+| P2-SS2 (Arch/Sec) | RLS grant model has no backing mechanism — no grants table, no policy SQL, no ownership statement | **Add `mycortex.source_grants(role_name, source_id)` table** + concrete policy DDL (see §2). Tables owned by `postgres`/`mycortex` superuser, **never runtime roles**. `FORCE ROW LEVEL SECURITY` on pages/content_chunks. Policy created in v001 (fail-closed), not deferred. |
 | P2-SS3 (Sec) | Ingest role can self-grant federation (`UPDATE mycortex.sources` in blanket DML) — defeats PII gate at DB level | **Role split:** `mycortex_admin` (orchestrator-only: UPDATE `sources`, `is_federated`, grants) vs `mycortex_ingest` (DML on pages/content_chunks ONLY; **REVOKE on sources**). Add `sources.pii_scan_at` + `CHECK (is_federated = FALSE OR pii_scan_at IS NOT NULL)` — federation impossible without a recorded PII scan. |
 | P2-SS4 (Sec) | query_log can't detect exfiltration (no result content, self-reported agent, readable by readers) | **v1 query_log:** log top-K result relpaths + latency + `application_name` (not self-reported agent). Written via **SECURITY DEFINER `log_query()`** (append-only; REVOKE SELECT from readers). Alert cron on isolated-source probes / zero-result scans. |
 | P2-SS5 (Dom) | No fleet sync for local sources — lessons git-init with no remote syncs nowhere | **`sources.host` column** + per-host staleness. lessons: `cp -a` backup → PII scan gate → git-init → private remote (or declared single-host ownership). Esther's orchestrator sync covers shared sources; host-local sources sync on their host (advisory lock makes multi-host safe — drop the orchestrator-only restriction, see G9). |
 | P2-SS6 (Dom) | File-walk semantics undefined (`.git` internals, binaries, torn reads) | Sync walks **git-tracked content only** (`git ls-files`/HEAD) for git sources — excludes `.git`, fixes torn reads on dirty worktrees. Skip >1 MB / non-UTF8 / binary files with ingest_log counts. Renames = same-content-hash relpath UPDATE. Empty files indexed (zero-length pages). |
 | P2-SS7 (Prod/QA) | RLS fail-open window — policies in "v001b after first ingest" = isolated sources fleet-readable until then | **Default-deny policy created in v001** (same transaction). Doctor asserts policies exist. Isolation-leak test runs as `mycortex_reader`, not superuser. |
-| P2-SS8 (Prod/QA) | No cron dependency map — kept vs removed crons never enumerated; a kept cron invoking gbrain breaks silently at P4/P5 | **§6 cron dependency map** — explicit list: 3 removed (doctor/dream/update-sync), 4 kept (memory-to-brain-sync, bible, lessons-collector, mycortex-sync), each with call path + gbrain-binary dependency check. |
+| P2-SS8 (Prod/QA) | No cron dependency map — kept vs removed crons never enumerated; a kept cron invoking legacy brain breaks silently at P4/P5 | **§6 cron dependency map** — explicit list: 3 removed (doctor/dream/update-sync), 4 kept (memory-to-brain-sync, bible, lessons-collector, mycortex-sync), each with call path + legacy brain-binary dependency check. |
 | P2-SS9 (Prod/QA) | Golden gate vs content drift — 100% top-3 federated blocks FLIP; golden set not pinned to a source snapshot | **Pin golden set to a content snapshot** (git SHA of each source at baseline capture). Re-baseline cadence documented (on intentional content restructure). Parity wired to CI/pre-commit. |
 
 ### 1.1 Party pass 1 showstopper resolutions (kept from v1)
@@ -48,11 +48,11 @@ This is not a rearchitecture of the knowledge model — it is the same shape gbr
 |---|---|---|
 | SS1 (Arch) | mtime+size hashing silently misses edits (git restores mtimes) | **sha256 content hash** is the change detector; mtime only as fast-path pre-filter. Verified by parity tests. |
 | SS2 (Arch) | Fleet-wide cron sync with no single-writer = races on the bus's DB | **`pg_advisory_lock` lease** around each sync; only orchestrators (moses/esther) run sync cron; all other agents query-only. Jittered cron times. |
-| SS3 (Arch) | Decommission has no tested restore path; vectors not rebuildable by re-ingest | **Rename `public` tables to `gbrain_legacy_*`** (30-day tombstone), pg_dump + restore drill on a scratch DB BEFORE any DROP, dump location + retention documented. Embeddings are the only non-rebuildable data — hence the 30-day window. |
-| S1 (Sec) | No DB-layer access control; shared superuser (`gbrain` role) fleet-wide | **Dedicated roles:** `mycortex_reader` (SELECT on mycortex only), `mycortex_ingest` (INSERT/UPDATE/DELETE on mycortex only). `gbrain` superuser reserved for DDL + migration, stored root-only. **RLS enabled** on `pages`/`content_chunks` keyed on `source.is_federated`. |
+| SS3 (Arch) | Decommission has no tested restore path; vectors not rebuildable by re-ingest | **Rename `public` tables to `legacy_*`** (30-day tombstone), pg_dump + restore drill on a scratch DB BEFORE any DROP, dump location + retention documented. Embeddings are the only non-rebuildable data — hence the 30-day window. |
+| S1 (Sec) | No DB-layer access control; shared superuser (`mycortex` role) fleet-wide | **Dedicated roles:** `mycortex_reader` (SELECT on mycortex only), `mycortex_ingest` (INSERT/UPDATE/DELETE on mycortex only). `legacy brain` superuser reserved for DDL + migration, stored root-only. **RLS enabled** on `pages`/`content_chunks` keyed on `source.is_federated`. |
 | S2 (Sec) | PII expansion with no gate (lessons + personal brains fleet-readable) | **PII scan gate** (reuse pii-scrubbing skill) before any source is marked `is_federated=true`. Default = **isolated**. Snippets truncated (200 chars). `local_path` scrubbed from logs. Query log enables exfil detection. |
 | S3 (Sec/Domain) | mtime+size hashing wrong for git | Same as SS1 — sha256, resolved. |
-| SS1 (Prod/QA) | M-002 parity gate unmeasurable | **Golden known-answer set** (25–30 queries with expected top-3 paths, per source) committed as a tracked artifact. **gbrain baseline captured while gbrain still runs** (same queries → recorded results). Pass = 100% top-3 federated, ≥90% isolated, automated parity script. *RETIRED 2026-08-03 with gbrain: the gate was a migration milestone; golden set retained as a manual mycortex regression fixture (`mycortex-parity.py --mode check`), no longer a doctor/cron-enforced gate.* |
+| SS1 (Prod/QA) | M-002 parity gate unmeasurable | **Golden known-answer set** (25–30 queries with expected top-3 paths, per source) committed as a tracked artifact. **legacy brain baseline captured while legacy brain still runs** (same queries → recorded results). Pass = 100% top-3 federated, ≥90% isolated, automated parity script. *RETIRED 2026-08-03 with legacy brain: the gate was a migration milestone; golden set retained as a manual mycortex regression fixture (`mycortex-parity.py --mode check`), no longer a doctor/cron-enforced gate.* |
 | SS2 (Prod/QA) | Semantic expectation gap (undated slice) | **Commitment: semantic slice = v1.1, within 30 days of v1 GA.** Infra (pgvector + Ollama) already exists; the column rides the same schema. |
 | SS3 (Prod/QA) | Lessons (1,389 non-git files) at risk | **`cp -a` backup of `~/brain/lessons` before git-init**; git-init rehearsal on a copy first. |
 
@@ -76,7 +76,7 @@ This is not a rearchitecture of the knowledge model — it is the same shape gbr
 - **Input validation:** parameterized psycopg, `websearch_to_tsquery`, source-name allowlist, arg-list subprocess (no shell=True).
 - **Case/NFD-NFC dedup:** source + relpath stored NFC-normalized; case-insensitive uniqueness on macOS-safe keys.
 - **Concurrent sources mutation:** unique `source_id`, idempotent `sources add`.
-- **Credential rotation:** after cutover, rotate fleet bus/gbrain credentials to least-privilege (G12) — staged, not blocking v1.
+- **Credential rotation:** after cutover, rotate fleet bus/legacy brain credentials to least-privilege (G12) — staged, not blocking v1.
 - **Bus-untouched regression:** test asserts `bus` schema intact after schema apply and after `public` drop.
 
 ---
@@ -216,7 +216,7 @@ CREATE POLICY mycortex_chunks_select ON mycortex.content_chunks
 | `mycortex_admin` | ALL on `sources` (incl. `is_federated`, `pii_scan_at`), `source_grants`, schema DDL | Orchestrators (moses/esther) — source registration, PII gate, grants |
 | `mycortex_ingest` | SELECT/INSERT/UPDATE/DELETE on `pages`, `content_chunks`, `ingest_log` only; **no `sources` access** | Sync cron (advisory-lock guarded) |
 | `mycortex_reader` | SELECT on pages/content_chunks (RLS-filtered), sources.name/is_federated; **no query_log** | Fleet agents via /brain + CLI |
-| `gbrain` (superuser) | Reserved for DDL/migration only; not used by runtime queries | migrate.py, install.sh |
+| `mycortex` (superuser) | Reserved for DDL/migration only; not used by runtime queries | migrate.py, install.sh |
 
 ---
 
@@ -241,7 +241,7 @@ CREATE POLICY mycortex_chunks_select ON mycortex.content_chunks
 - **Mass-deletion guardrail:** if `pages_archived > 10%` of the source's active corpus in one sync → abort + log error (no catastrophic soft-purge from a walk/parse bug).
 - **Search:** `websearch_to_tsquery(search_config, :query)` + `title ILIKE '%q%'` + trigram fallback; RLS applies automatically; `--source` filter = allowlisted source_ids; isolated sources require the reader to hold a grant in `source_grants` (DB-enforced, not CLI convention).
 - **DB access:** psycopg, `search_path=mycortex`, parameterized, `statement_timeout=30s`, `work_mem` capped for sync txn. Credentials via `.pgpass` (0600) — `mycortex_reader` for queries, `mycortex_ingest` for sync, `mycortex_admin` for registration (orchestrators only).
-- **Migration runner:** `ops/services/mycortex/migrate.py` invoked by cortex-update.sh after file sync — schema_version-gated (applies v001, later v002…), `DO $$` blocks for role creation, explicit DB `gbrain`, `search_path` pinned. New hosts: install.sh runs it once. Existing hosts: cortex-update runs it each update (no-op when current).
+- **Migration runner:** `ops/services/mycortex/migrate.py` invoked by cortex-update.sh after file sync — schema_version-gated (applies v001, later v002…), `DO $$` blocks for role creation, explicit DB `mycortex`, `search_path` pinned. New hosts: install.sh runs it once. Existing hosts: cortex-update runs it each update (no-op when current).
 - **Multi-OS psql wrapper:** reuse todo-db.py's `psql()` abstraction pattern (sg docker on Linux; direct psql on macOS).
 - **Alert wiring:** sync failures + `sources.last_sync_at` staleness (> 2× interval) → existing agent-system-alert-watchdog / Telegram channel (no silent failure).
 - **Retention:** query_log + ingest_log pruned by cron (> 90 days); archived pages hard-purged after 7-day window + on `sources remove`.
@@ -250,12 +250,12 @@ CREATE POLICY mycortex_chunks_select ON mycortex.content_chunks
 
 - **cortex-update.sh register():** `ops/services/mycortex/migrate.py` (invoked after file sync — the DDL path) + `ops/scripts/manage/mycortex` (CLI) + `ops/services/mycortex/schema/mycortex.sql` (v001 source) + `agent-mycortex-sync.sh`.
 - **Cron:** `agent-mycortex-sync` — every 15 min, jittered per host, **per-host (NOT orchestrator-only — D4)**: shared sources sync from the orchestrator host, host-local sources sync on their own host (advisory lock makes multi-host safe). Registered in `install-crons.sh` (+ uninstall array).
-- **/brain command:** rewrite `gbrain-command` plugin → `mycortex-command` (name + aliases), presets rebuilt from `mycortex sources list` (fixes the NameError/broken-presets bug), output delimited as data + source cited, instruction-shaped content neutralized in code (not prose) — prompt-injection guardrail with a failure-mode test.
-- **install.sh:** step 3 gbrain → mycortex (copy CLI, run migrate.py v001, register default sources: hermes-cortex + local brain dirs).
+- **/brain command:** rewrite `legacy brain command` plugin → `mycortex-command` (name + aliases), presets rebuilt from `mycortex sources list` (fixes the NameError/broken-presets bug), output delimited as data + source cited, instruction-shaped content neutralized in code (not prose) — prompt-injection guardrail with a failure-mode test.
+- **install.sh:** step 3 legacy → mycortex (copy CLI, run migrate.py v001, register default sources: hermes-cortex + local brain dirs).
 
 ### 3.3 Slices
 
-- **v1 (text-first):** schema v001 (fail-closed RLS), migrate.py, sync, FTS+trigram search, CLI, /brain rewrite, sources (hermes-cortex + moses + shared + default), lessons backup+PII-gate+git-init, deploy, parity gate, gbrain decommission steps 1–4.
+- **v1 (text-first):** schema v001 (fail-closed RLS), migrate.py, sync, FTS+trigram search, CLI, /brain rewrite, sources (hermes-cortex + moses + shared + default), lessons backup+PII-gate+git-init, deploy, parity gate, legacy brain decommission steps 1–4.
 - **v1.1 (semantic, hard date ≤30 days after v1 GA):** migration v004 (embedding column), `mycortex ask`, hybrid FTS+vector, embed cron (ollama nomic-embed-text:v1.5). **Pre-sliced stories** shipped with v1 so it cannot be silently deferred.
 - **v1.2 (could):** mycortex MCP server (localhost, agent token), `links` table + wikilink extractor (migration v005), query_log dashboards.
 
@@ -264,7 +264,7 @@ CREATE POLICY mycortex_chunks_select ON mycortex.content_chunks
 ## 4. Migration & Decommission Plan (gated, reversible, event-driven)
 
 ```
-Phase 0  PREP        Capture gbrain baseline (golden query set → gbrain results → file, pinned to source SHAs)
+Phase 0  PREP        Capture legacy brain baseline (golden query set → legacy brain results → file, pinned to source SHAs)
                     Week-1 PILOT: mycortex search live on hermes-cortex + moses, /brain preset fix on one host
                     → Luke uses mycortex daily during the whole parity window (visible value from day 1)
 Phase 1  PARALLEL    Ship mycortex v1; migrate.py applies v001 (fail-closed RLS); register sources;
@@ -273,16 +273,16 @@ Phase 2  PARITY      Run golden set vs mycortex; ≥100% top-3 federated, ≥90%
                     isolation-leak test as mycortex_reader; bus-untouched assert
 Phase 3  FLIP        EVENT-GATED: 7 days AND zero parity regressions AND doctor clean AND bus assert green
                     → rewire /brain → mycortex; daily parity diff during the window
-Phase 4  STOP        Disable gbrain autopilot (systemctl --user disable); keep binary installed (rollback)
-Phase 5  CRONS       Remove agent-gbrain-doctor / -nightly-dream / -update-sync (both arrays);
+Phase 4  STOP        Disable legacy brain autopilot (systemctl --user disable); keep binary installed (rollback)
+Phase 5  CRONS       Remove agent-legacy-brain-doctor / -nightly-dream / -update-sync (both arrays);
                     keep memory-to-brain-sync (verify file-based target — no public.* writes);
                     verify bible + lessons-collector crons (see §6 dependency map)
 Phase 6  TOMBSTONE   Consumer check (grep codebase for public.* refs: oauth_*, eval_*); pg_dump → restore drill
-                    on scratch DB → RENAME gbrain public tables → gbrain_legacy_* (30-day window)
-Phase 7  PURGE       After 30 days: DROP gbrain_legacy_*; uninstall gbrain binary; remove ~/.gbrain +
+                    on scratch DB → RENAME legacy brain public tables → legacy_* (30-day window)
+Phase 7  PURGE       After 30 days: DROP legacy_*; uninstall legacy brain binary; remove ~/.legacy-brain +
                     brain.pglite + systemd unit; rotate shared bus credential → least-privilege bus_rw
 Phase 8  DOCS        Update knowledge-isolation-architecture, agent-memory-pointer-pattern, seeding-brain-content,
-                     gbrain-v2-taxonomy (→ mycortex-taxonomy), gbrain-postgres-migration (→ mycortex-schema),
+                     legacy brain-v2-taxonomy (→ mycortex-taxonomy), legacy Postgres-migration (→ mycortex-schema),
                      DOCS-INDEX, AGENTS.md, cron-schedules.md, fleet-reference
 Phase 9  VERIFY      bible/lessons/memory-sync crons healthy; bus schema intact; doctor clean; smoke cron N days
                     (N = 14 days defined)
@@ -290,7 +290,7 @@ Phase 9  VERIFY      bible/lessons/memory-sync crons healthy; bus schema intact;
 
 **v1 GA definition:** Phase 2 parity passes + Phase 3 event-gate met (7 days, zero regressions, doctor clean, bus assert green).
 
-**Rollback:** phases 1–4 = re-enable autopilot, /brain back to gbrain. Phases 5–7 = restore from pg_dump + re-enable (tested drill). Phase 9 = n/a (post).
+**Rollback:** phases 1–4 = re-enable autopilot, /brain back to legacy brain. Phases 5–7 = restore from pg_dump + re-enable (tested drill). Phase 9 = n/a (post).
 
 **Never:** drop the container, drop `bus`, or drop `public` tables before tombstone + drill.
 
@@ -298,10 +298,10 @@ Phase 9  VERIFY      bible/lessons/memory-sync crons healthy; bus schema intact;
 
 ## 5. Test Strategy
 
-- **Fixtures:** `mycortex_test` schema + synthetic brain dirs (git + local). Sync/search take a `--db-name` / path override. **Never touch prod dirs or `bus`. Hermeticity guard: tests refuse to run against `gbrain` DB / prod paths** (fail fast, not silently).
+- **Fixtures:** `mycortex_test` schema + synthetic brain dirs (git + local). Sync/search take a `--db-name` / path override. **Never touch prod dirs or `bus`. Hermeticity guard: tests refuse to run against `mycortex` DB / prod paths** (fail fast, not silently).
 - **Golden known-answer set:** `tests/fixtures/golden-queries.json` — 25–30 queries, per source, expected top-3 paths, **pinned to source content SHAs** (re-baseline only on intentional restructure, documented).
-- **gbrain baseline:** `tests/fixtures/gbrain-baseline.json` — captured in Phase 0 while gbrain runs, same SHAs.
-- **Parity script:** `ops/scripts/manage/mycortex-parity.py` — runs golden set vs mycortex, computes pass rate, diffs vs baseline. *RETIRED as a gate 2026-08-03 (gbrain deprecated, migration complete): no longer wired to doctor/cron; kept as a manual mycortex regression fixture (`--mode check`).*
+- **legacy brain baseline:** captured once in Phase 0 (2026-08-01) while the legacy brain ran; the baseline fixture was retired with the legacy brain and the golden set is now the regression fixture.
+- **Parity script:** `ops/scripts/manage/mycortex-parity.py` — runs golden set vs mycortex, computes pass rate, diffs vs baseline. *RETIRED as a gate 2026-08-03 (legacy brain deprecated, migration complete): no longer wired to doctor/cron; kept as a manual mycortex regression fixture (`--mode check`).*
 - **Failure-mode tests (pytest, extend existing tests/):**
   - re-sync idempotency, crash-resume, delete-propagation (soft-delete + re-ingest window)
   - **source-isolation leak test** — isolated source must NOT appear in federated results; runs as `mycortex_reader` (not superuser) so RLS is actually exercised
@@ -323,25 +323,25 @@ Phase 9  VERIFY      bible/lessons/memory-sync crons healthy; bus schema intact;
 
 ## 6. Cron Dependency Map (pass-2 SS8 resolution)
 
-| Cron | Keep/Remove | gbrain binary dep? | Notes |
+| Cron | Keep/Remove | legacy brain binary dep? | Notes |
 |---|---|---|---|
-| `agent-gbrain-doctor` | REMOVE (P5) | Yes | Replaced by `mycortex doctor` |
-| `agent-gbrain-nightly-dream` | REMOVE (P5) | Yes | No consumer (verified) |
-| `agent-gbrain-update-sync` | REMOVE (P5) | Yes | Obsolete with binary uninstall |
+| `agent-legacy-brain-doctor` | REMOVE (P5) | Yes | Replaced by `mycortex doctor` |
+| `agent-legacy brain-nightly-dream` | REMOVE (P5) | Yes | No consumer (verified) |
+| `agent-legacy brain-update-sync` | REMOVE (P5) | Yes | Obsolete with binary uninstall |
 | `agent-memory-to-brain-sync` | KEEP | **No** (markdown→git only) | Verify it writes `~/brain/shared/hermes-memory/`, not `public.*` (G12 check) |
 | `agent-daily-bible-reading` | KEEP | **No** (file write to `~/brain/<agent>/bible/`) | Regression-tested in S-013 |
 | `agent-learning-collector` | KEEP | **No** (writes `~/brain/lessons/`) | lessons becomes mycortex source |
 | `agent-mycortex-sync` | ADD | No | The replacement for autopilot; advisory-lock guarded (per-host, not orchestrator-only) |
 | `agent-mycortex-retention` | ADD | No | query_log/ingest_log prune >90d; archived pages purge >7d |
 
-**Keep-rule:** every kept cron verified to have zero `gbrain`/`pglite`/`public.*` references before P4. Doctor's expected-cron list updated in the same commit as the remove (both arrays).
+**Keep-rule:** every kept cron verified to have zero `legacy brain`/`pglite`/`public.*` references before P4. Doctor's expected-cron list updated in the same commit as the remove (both arrays).
 
 ---
 
 ## 7. Success Metrics
 
-1. **Parity:** golden set passes ≥100% top-3 federated / ≥90% isolated, diff vs gbrain baseline = no regressions.
-2. **Decommission complete:** gbrain binary + autopilot + 3 crons + public tables gone; brain dirs fully searchable via mycortex.
+1. **Parity:** golden set passes ≥100% top-3 federated / ≥90% isolated, diff vs legacy brain baseline = no regressions.
+2. **Decommission complete:** legacy brain binary + autopilot + 3 crons + public tables gone; brain dirs fully searchable via mycortex.
 3. **Ops win:** RAM −248 MB (daemon removed); sync = 30s cron not always-on service.
 4. **Coverage win:** 1,500+ brain pages now indexed (was: 2 sources, 31 stale pages).
 5. **Bus untouched:** `bus` schema byte-identical (asserted by test) throughout.
@@ -354,7 +354,7 @@ Phase 9  VERIFY      bible/lessons/memory-sync crons healthy; bus schema intact;
 | # | Question | Recommendation | Confirmed by |
 |---|---|---|---|
 | D1 | Schema name | `mycortex` | Pass 1 + 2 (Arch) |
-| D2 | DB role | Split `mycortex_admin`/`mycortex_ingest`/`mycortex_reader`, not gbrain | Pass 1 + 2 (Sec) |
+| D2 | DB role | Split `mycortex_admin`/`mycortex_ingest`/`mycortex_reader`, not legacy brain | Pass 1 + 2 (Sec) |
 | D3 | Text search | PostgreSQL FTS + pg_texample (title + relpath trigram; body via FTS) | Pass 1 + 2 (Arch) |
 | D4 | Sync trigger | Per-host cron 15 min, jittered, advisory-lock guarded (not orchestrator-only) | Pass 2 (SRE) |
 | D5 | lessons git | `cp -a` backup → PII scan gate → git-init → private remote (or declared single-host) | Pass 1 + 2 (Dom) |

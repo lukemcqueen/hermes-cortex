@@ -22,7 +22,7 @@ to keep the root agent guidelines focused on general Hermes Cortex usage.
 | `git` | any | Repo pull/push, hooks, `git show` in scripts | Linux: `apt install git` · macOS: `brew install git` |
 | `curl` | any | `contact-orchestrator.sh`, `lib.cortex_bus`, doctor HTTP checks, health pings | Linux/macOS: package manager (preinstalled on macOS) |
 | `jq` | — | **NOT required** — `contact-orchestrator.sh` uses `python3` for JSON (jq removed 2026-08-03). Only used ad-hoc in docs examples | `apt install jq` / `brew install jq` (optional, debugging only) |
-| `docker` | any | Server profile only — gbrain Postgres, VictoriaMetrics, Langfuse, Dashboard | `install.sh` server profile; `docker info` must pass |
+| `docker` | any | Server profile only — mycortex Postgres, VictoriaMetrics, Langfuse, Dashboard | `install.sh` server profile; `docker info` must pass |
 | `ollama` | any | Local LLM serving (optional profile) | `install.sh`; `ollama serve` must be running |
 | `systemctl` (systemd) | any | All services — bus, health server, gateway | Linux only (Titus on macOS uses launchd) |
 
@@ -94,9 +94,9 @@ no secrets, no JSON bloat.
 | 3 | no_stale_crons | 1=ok, -1=stale, 0=n/a | No cron jobs gone stale (orchestrator) |
 | 4 | nginx | 1=up, -1=down, 0=n/a | nginx process running |
 | 5 | ollama | 1=up, -1=down, 0=n/a | Ollama process running |
-| 6 | gbrain | 1=up, -1=down, 0=n/a | gbrain sync daemon running |
+| 6 | mycortex | 1=up, -1=down, 0=n/a | mycortex doctor healthy |
 | 7 | disk_ok | 1=ok, -1=full, 0=n/a | Root partition < 90% used |
-| 8 | gbrain_sources_ok | 1=ok, -1=missing, 0=n/a | ~/brain dirs exist and non-empty |
+| 8 | mycortex_sources_ok | 1=ok, -1=missing, 0=n/a | ~/brain dirs exist and non-empty |
 
 ### Health endpoint (server agents)
 
@@ -228,7 +228,7 @@ This is the single source of truth for Cortex. ⚠ `~/.hermes/.env` is Hermes Ag
 | `IS_ORCHESTRATOR` | Gate orchestrator-only features (orch crons, team health, inbox remediation). Set `true` on Moses/Esther only. | `false` |
 | `CORTEX_HEALTH_URL` | External health endpoint. Orchestrator pollers use this to verify agent reachability through nginx. Format: `https://yourdomain.com:xx007/health` | _(none)_ |
 | `JUDGE_MODEL` | LLM-as-Judge scorer | `qwen2.5:3b` |
-| `EMBEDDING_MODEL` | Text embeddings (gbrain, session cache, loop scorer, offline_code) | `nomic-embed-text:v1.5` |
+| `EMBEDDING_MODEL` | Text embeddings (mycortex, session cache, loop scorer, offline_code) | `nomic-embed-text:v1.5` |
 | `CODING_MODEL` | Code generation via offline_code | auto-detected by RAM |
 | `CREATIVE_MODEL` | Reserved for future creative tasks | _(not yet wired)_ |
 

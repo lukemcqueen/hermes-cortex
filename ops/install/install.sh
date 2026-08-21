@@ -395,7 +395,7 @@ fi
 ok
 
 # ─────────────────────────────────────────────────────────────
-# 2. Bun — JS runtime (kept for legacy gbrain / offline-cascade compat)
+# 2. Bun — JS runtime (kept for legacy brain / offline-cascade compat)
 #    NOTE: mycortex (the brain) is pure Python — Bun is not required
 #    for the knowledge brain anymore. Installed only for tools that
 #    still detect it (offline_knowledge fallback path).
@@ -418,11 +418,11 @@ if ! command -v bun &>/dev/null; then
 fi
 
 # ─────────────────────────────────────────────────────────────
-# 3. mycortex — Knowledge Brain (gbrain DECOMMISSIONED 2026-08-02)
+# 3. mycortex — Knowledge Brain (legacy brain DECOMMISSIONED 2026-08-02)
 # ─────────────────────────────────────────────────────────────
 # The knowledge brain is mycortex: markdown-in-git as source of truth,
 # mycortex-postgres (:15432) as the query index, thin Python CLI + cron as
-# plumbing. No bun/gbrain binary, no autopilot daemon.
+# plumbing. No legacy brain binary, no autopilot daemon.
 
 # ── mycortex Postgres container ─────────────────────────────
 # Dedicated hermes-cortex-owned Postgres (NOT the langfuse stack).
@@ -439,23 +439,10 @@ else
    curl -fsSL "https://raw.githubusercontent.com/fleet-operator/hermes-cortex/main/ops/install/deploy/docker-compose.mycortex.yml" -o "${MYCORTEX_COMPOSE_DIR}/docker-compose.mycortex.yml"
   fi
  fi
- # Ensure password var exists (reuse old gbrain value if present, else generate)
+ # Ensure password var exists (generate if missing)
  if ! grep -q '^MYCORTEX_PG_PASSWORD=' "${MYCORTEX_COMPOSE_DIR}/.env" 2>/dev/null; then
-  if grep -q '^GBRAIN_PG_PASSWORD=' "${MYCORTEX_COMPOSE_DIR}/.env" 2>/dev/null; then
-   grep '^GBRAIN_PG_PASSWORD=' "${MYCORTEX_COMPOSE_DIR}/.env" >> /dev/null
-   # copy value without printing
-   python3 - <<PYEOF
-import re, pathlib
-p = pathlib.Path("${MYCORTEX_COMPOSE_DIR}/.env")
-t = p.read_text()
-m = re.search(r'^GBRAIN_PG_PASSWORD=(.+)$', t, re.M)
-if m and not re.search(r'^MYCORTEX_PG_PASSWORD=', t, re.M):
-    p.write_text(t.rstrip() + "\nMYCORTEX_PG_PASSWORD=" + m.group(1) + "\n")
-PYEOF
-  else
    echo "MYCORTEX_PG_PASSWORD=$(openssl rand -hex 20)" >> "${MYCORTEX_COMPOSE_DIR}/.env"
-  fi
-  chmod 600 "${MYCORTEX_COMPOSE_DIR}/.env"
+   chmod 600 "${MYCORTEX_COMPOSE_DIR}/.env"
  fi
  (cd "${MYCORTEX_COMPOSE_DIR}" && docker compose -f docker-compose.mycortex.yml up -d 2>&1) | sed 's/^/    /'
  ok
@@ -476,7 +463,7 @@ else
  info " mycortex CLI not deployed yet (deployed later in install) — migrations run on first cortex-update"
 fi
 
-# ── Ensure bun is in PATH via ~/.local/bin (gbrain no longer installed) ──
+# ── Ensure bun is in PATH via ~/.local/bin (legacy brain no longer installed) ──
 step "Adding bun symlink to ~/.local/bin/"
 LOCAL_BIN="${CORTEX_HOME}/.local/bin"
 BUN_BIN="${CORTEX_HOME}/.bun/bin"
@@ -552,7 +539,7 @@ for source in "${SOURCES[@]}"; do
 INDEXEOF
   fi
   info " Created ${source_dir}/"
-  # Init git repo — gbrain requires git for each brain source
+  # Init git repo — mycortex requires git for each brain source
   git -C "${source_dir}" init 2>/dev/null || true
   git -C "${source_dir}" add -A 2>/dev/null || true
   git -C "${source_dir}" commit -m "init: ${source} brain source" 2>/dev/null || true
@@ -651,7 +638,7 @@ else
  mkdir -p "$PLUGIN_DIR"
 
  # Copy the versioned plugin from the repo (source of truth).
- # gbrain-command is DEAD — decommissioned 2026-08-02; mycortex replaces it.
+ # legacy brain command is DEAD — decommissioned 2026-08-02; mycortex replaces it.
  if [[ -f "${CORTEX_HOME}/hermes-cortex/plugins/mycortex-command/__init__.py" ]]; then
   cp "${CORTEX_HOME}/hermes-cortex/plugins/mycortex-command/__init__.py" "${PLUGIN_DIR}/__init__.py"
   cp "${CORTEX_HOME}/hermes-cortex/plugins/mycortex-command/plugin.yaml" "${PLUGIN_DIR}/plugin.yaml"
@@ -814,9 +801,9 @@ def check_memory_sync_freshness():
 
 
 def check_mycortex():
-  """Check mycortex (gbrain replacement) health via the CLI doctor.
+  """Check mycortex health via the CLI doctor.
 
-  gbrain was decommissioned 2026-08-02. mycortex is a cron-synced Postgres
+  The legacy brain was decommissioned 2026-08-02. mycortex is a cron-synced Postgres
   index with no daemon; doctor verifies schema version + source freshness.
   Returns UNKNOWN (not DOWN) when mycortex isn't installed.
   """
@@ -849,7 +836,7 @@ def check_mycortex():
 def run():
   checks = {
     "Ollama": check_service("com.ollama.serve"),
-    # gbrain sync daemon DECOMMISSIONED 2026-08-02 — mycortex replaces it
+    # legacy brain sync daemon DECOMMISSIONED 2026-08-02 — mycortex replaces it
     # (cron-synced Postgres index, no daemon to check). Health is verified
     # via the mycortex CLI doctor below.
     "mycortex": check_mycortex(),
@@ -1352,7 +1339,7 @@ for dir in "$BRAIN_DIR"/*/; do
   echo "MEMORY.md\nUSER.md\n.env\n.env.*\n*.pem\n*.key\n.DS_Store" > "${dir}/.gitignore"
   echo "✓ .gitignore: ${name}"
  fi
- # Register source with mycortex (gbrain decommissioned 2026-08-02)
+ # Register source with mycortex (legacy brain decommissioned 2026-08-02)
  if [[ "${name}" != "default" ]] && [[ -x "$MYCORTEX_CLI" ]]; then
   if ! "$MYCORTEX_CLI" sources list 2>/dev/null | grep -q "\"name\": \"${name}\""; then
    "$MYCORTEX_CLI" sources add "$name" "$dir" 2>/dev/null && echo "✓ mycortex source: ${name}"
@@ -2154,8 +2141,8 @@ step "Enabling mycortex-command plugin in Hermes config"
 
 HERMES_CONFIG="${CORTEX_DEPLOY_HOME}/config.yaml"
 if [[ -f "$HERMES_CONFIG" ]]; then
- # Check if plugin is already enabled (new name or legacy gbrain-command)
- if grep -q "mycortex-command\|gbrain-command" "$HERMES_CONFIG" 2>/dev/null; then
+ # Check if plugin is already enabled (new name or legacy brain command)
+ if grep -q "mycortex-command" "$HERMES_CONFIG" 2>/dev/null; then
   skip "plugin already enabled in config"
  else
   # Add mycortex-command to the plugins enabled list
@@ -2280,7 +2267,7 @@ I've installed the Hermes Cortex system. Please finish the setup by:
   a) agent-mycortex-sync — every 15 min (installed by install-crons.sh):
    Schedule: */15 * * * *
    Script: ~/.hermes-cortex/scripts/agent-mycortex-sync.sh (no_agent)
-   (gbrain-nightly-dream REMOVED — gbrain decommissioned 2026-08-02)
+   (legacy brain nightly-dream REMOVED — legacy brain decommissioned 2026-08-02)
 
   b) system-heartbeat — every 30 minutes:
    Schedule: */30 * * * *

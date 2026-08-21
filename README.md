@@ -88,7 +88,7 @@ Agent query → web_cache (50μs) → kiwix ZIM (localhost:8080) → mycortex (R
 - **Offline Knowledge** — Wikipedia, WikiMed, Wikivoyage, Wikibooks available locally via Docker ZIM server
 - **Offline Code Assistant** — 520+ curated code snippets across 55+ topic areas and 30+ programming languages. `offline_code search` and `offline_code gen` work fully offline via Ollama. **Self-improving:** `offline_code learn` adds misses permanently.
 - **Offline Reader** — Zero-dependency web UI (`python3 ops/offline/offline-reader.py`) for Bible (55+ languages), hymns, and wiki reference
-- **mycortex** — Fleet knowledge brain: git repos as source of truth → shared Postgres index (FTS + pg_texample; pgvector semantic slice in v1.1) → thin Python CLI + 15-min cron sync. No daemon, no bun. **Inspired by [gbrain](https://github.com/garrytan/gbrain)** (garrytan, MIT) — the same Postgres-native knowledge-brain idea, re-architected with fail-closed RLS source isolation, per-host registration, and a PII federation gate. **Multi-tenant by construction:** each profile connects as its own `mycortex_reader_<profile>` role — RLS (keyed on `CURRENT_USER`) isolates tenants automatically, so a company brain scales to 100 profiles with zero policy changes. [Design doc](docs/design/mycortex-DESIGN.md) · [Multi-tenancy](docs/design/mycortex-multi-tenancy.md) · [Migration stories](docs/elicit/2026-08-01_mycortex-stories.md)
+- **mycortex** — Fleet knowledge brain: git repos as source of truth → shared Postgres index (FTS + pg_texample; pgvector semantic slice in v1.1) → thin Python CLI + 15-min cron sync. No daemon, no bun. **Inspired by an open-source Postgres-native knowledge-brain project (garrytan, MIT)** — the same Postgres-native knowledge-brain idea, re-architected with fail-closed RLS source isolation, per-host registration, and a PII federation gate. **Multi-tenant by construction:** each profile connects as its own `mycortex_reader_<profile>` role — RLS (keyed on `CURRENT_USER`) isolates tenants automatically, so a company brain scales to 100 profiles with zero policy changes. [Design doc](docs/design/mycortex-DESIGN.md) · [Multi-tenancy](docs/design/mycortex-multi-tenancy.md) · [Migration stories](docs/elicit/2026-08-01_mycortex-stories.md)
 
 ### 📊 Observability Stack
 
@@ -214,7 +214,7 @@ CORTEX_OS=windows bash ~/hermes-cortex/ops/install/install.sh
 | 0 | **System Check** | Verifies OS, RAM, disk, Docker, network before touching anything |
 | 1 | **Ollama** | Native installer per OS; bound to localhost; pulls embedding model |
 | 2 | **Bun** | JavaScript runtime for build tooling |
-| 3 | **mycortex** | Knowledge brain (markdown-in-git → shared Postgres index). **gbrain decommissioned** |
+| 3 | **mycortex** | Knowledge brain (markdown-in-git → shared Postgres index). **legacy brain decommissioned** |
 | 4 | **Brain dirs** | `~/brain/{default,…}` with MECE schema + .gitignore + git init |
 | 5 | **mycortex sync** | Sources config + `agent-mycortex-sync` cron (15-min) |
 | 6 | **`/brain` plugin** | Hermes slash command for mycortex queries |
@@ -230,7 +230,7 @@ CORTEX_OS=windows bash ~/hermes-cortex/ops/install/install.sh
 | 16 | **Hardening** | File-permission hardening on sensitive files |
 | 17 | **Bootstrap Brain** | Verify + index brain sources |
 | | *† Server profile only* | |
-| | *The knowledge brain is **mycortex** — git repos as source of truth, shared Postgres index (FTS + pg_texample + pgvector), fail-closed RLS per profile. gbrain was DECOMMISSIONED 2026-08-02. See [design](docs/design/mycortex-DESIGN.md).* | |
+| | *The knowledge brain is **mycortex** — git repos as source of truth, shared Postgres index (FTS + pg_texample + pgvector), fail-closed RLS per profile. The legacy brain was DECOMMISSIONED 2026-08-02. See [design](docs/design/mycortex-DESIGN.md).* | |
 
 ### Configuration
 

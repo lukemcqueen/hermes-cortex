@@ -38,7 +38,7 @@ Messages the agent sent or already read are excluded.
 
 The file-based `agent-inbox-private` (legacy, removed) repo is no longer used. New agents should use the Agent Bus (PGMQ) instead:
 - MCP tools: `inbox_send`, `inbox_read`, `inbox_watch`, `inbox_send_task`
-- Backend: Postgres via gbrain database
+- Backend: Postgres via mycortex database
 - Setup: see `cortex-bus` skill
 
 ## Storage (Legacy — File-Based)

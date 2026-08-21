@@ -366,7 +366,7 @@ too narrow — widen it.
 ### Pattern F: Cross-platform service management via boolean dispatch helpers
 
 When a script needs to start/stop/check **services** (not just find files), the
-pattern used in `gbrain-wrapper.sh` encapsulates OS dispatch in helper functions
+pattern used in `mycortex-wrapper.sh` encapsulates OS dispatch in helper functions
 rather than scattering `if/then/elif` throughout the business logic:
 
 ```bash
@@ -379,9 +379,9 @@ case "$(uname -s)" in
 esac
 
 # ── Service names (adjust per platform) ──
-SERVICE_NAME="gbrain-autopilot"
+SERVICE_NAME="legacy autopilot"
 if $IS_MAC; then
-  SERVICE_NAME="com.gbrain.autopilot"
+  SERVICE_NAME="legacy autopilot"
 fi
 
 # ── Helper functions — OS dispatch encapsulated once ──
@@ -441,7 +441,7 @@ Pattern F (helper functions) is right when you need to **call** service
 management repeatedly (start/stop/check) and don't want OS branches scattered
 through the main logic.
 
-**Concrete reference:** `ops/scripts/manage/gbrain-wrapper.sh` in the
+**Concrete reference:** `ops/scripts/manage/mycortex-wrapper.sh` in the
 hermes-cortex repo uses this exact pattern — 3 helpers, clean business logic,
 no platform branches outside the helpers.
 
@@ -595,7 +595,7 @@ grep -rc 'old-deploy-dir/' target-dir/ 2>/dev/null | grep -v ':0$'
 | `references/systemd-percent-h-specifier.md` | systemd `%h` vs `%u` specifier nuances |
 | `references/macos-memory-service-detection.md` | macOS-specific memory + service detection |
 | `references/hermes-cortex-path-audit.md` | Full path audit of the hermes-cortex repo |
-| `references/gbrain-wrapper-crossplatform.md` | Concrete Pattern F example — gbrain-wrapper.sh |
+| `references/mycortex-wrapper-crossplatform.md` | Concrete Pattern F example — mycortex-wrapper.sh |
 | `references/gh-cli-headless-install.md` | Install gh CLI without sudo + OAuth device-code flow |
 | `references/cortex-path-migration-july2026.md` | Stale pathlib path migration after `src/` → `ops/` restructure (Pattern G) |
 | `references/stale-syspath-post-runtime-restructure.md` | Stale `sys.path.insert` after `runtime/` → `core/` restructure (Pattern G2) |

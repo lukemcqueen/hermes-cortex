@@ -7,19 +7,19 @@ description: >-
   Hermes Agent and the cortex repo layer, merge diverged histories, sync
   skills safely, and troubleshoot common issues. Covers the dual-update
   workflow (hermes update + cortex-update.sh), encrypted brain data backup,
-  gbrain import, and recovery techniques.
+  mycortex import, and recovery techniques.
 ---
 
 # Hermes Cortex Maintenance v1.36.0
 
 > **Maintaining your Hermes Cortex install** — pulling upstream changes,
-> updating gbrain, syncing skills, and recovering when things go wrong.
+> updating mycortex, syncing skills, and recovering when things go wrong.
 
 ## Prerequisites
 
 - Hermes Cortex installed at `~/hermes-cortex/`
 - Bun at `~/.bun/bin/bun`
-- gbrain at `~/.bun/bin/gbrain`
+- mycortex at `~/.bun/bin/mycortex`
 - Ollama running as a systemd user service (or equivalent)
 
 ## Daily Auto-Update Timer (3am)
@@ -89,13 +89,13 @@ tar xzf "$BACKUP_DIR/brain-<date>.tgz" -C ~
 # or first: gpg --decrypt <file> | tar xz -C ~
 ```
 
-## gbrain Import
+## mycortex Import
 
 ```bash
-# Import brain pages into gbrain
-cd ~/brain && gbrain import --recursive . 2>&1 | tail -5
+# Import brain pages into mycortex
+cd ~/brain && mycortex import --recursive . 2>&1 | tail -5
 # Verify
-gbrain search "test query" | head
+mycortex search "test query" | head
 ```
 
 ## Langfuse cost tracking (3.206+) — pricing tiers, not legacy columns

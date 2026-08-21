@@ -33,7 +33,7 @@ DEFAULT_EXCLUDES = {
     ".git", "__pycache__", "node_modules", ".venv", "venv",
     ".egg-info", "dist", "build", ".next", ".turbo",
     "coverage", ".pytest_cache", ".mypy_cache", ".ruff_cache",
-    "site-packages", ".hermes", ".hermes-cortex/memory", ".gbrain",
+    "site-packages", ".hermes", ".hermes-cortex/memory", ".mycortex",
 }
 
 EXTENSION_LANGUAGES = {

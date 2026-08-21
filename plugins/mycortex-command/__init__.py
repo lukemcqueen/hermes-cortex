@@ -1,7 +1,7 @@
 """
 mycortex-command plugin — /brain and /mycortex slash commands.
 
-Replaces the gbrain-command plugin (gbrain decommissioned 2026-08-02).
+Replaces the legacy brain command plugin (legacy brain decommissioned 2026-08-02).
 
 Behaviour (S-007 AC):
   - `/brain <query>` searches all federated sources via `mycortex search`

@@ -5,7 +5,7 @@
 #
 #  Single-command bootstrap for a bare Ubuntu 24.04 LTS server.
 #  Installs the full Hermes Cortex stack from scratch — system packages,
-#  Docker, Ollama, models, Hermes Agent, gbrain, Langfuse, nginx,
+#  Docker, Ollama, models, Hermes Agent, mycortex, Langfuse, nginx,
 #  fail2ban, UFW, cron jobs, and security hardening.
 #
 #  Usage:

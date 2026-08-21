@@ -121,7 +121,7 @@ echo ""
 
 # ── Step 2: Check each source ─────────────────────────────
 FIXED_GIT=0
-FIXED_GBRAIN=0
+FIXED_MYCORTEX=0
 HAS_PAGES=0
 NO_PAGES=0
 NOT_REGISTERED=0
@@ -175,7 +175,7 @@ GITEOF
       echo -n "  Registering as mycortex source... "
       if "$MYCORTEX_CLI" sources add "$source" "$source_dir" 2>/dev/null; then
         echo -e "${GREEN}done${RESET}"
-        FIXED_GBRAIN=$((FIXED_GBRAIN + 1))
+        FIXED_MYCORTEX=$((FIXED_MYCORTEX + 1))
       else
         echo -e "${RED}failed${RESET}"
       fi
@@ -239,7 +239,7 @@ if [[ "$CHECK_ONLY" == "true" ]]; then
   echo "Run without --check-only to auto-fix issues."
 else
   [[ $FIXED_GIT -gt 0 ]] && info "Initialized $FIXED_GIT git repo(s)"
-  [[ $FIXED_GBRAIN -gt 0 ]] && info "Registered $FIXED_GBRAIN mycortex source(s)"
+  [[ $FIXED_MYCORTEX -gt 0 ]] && info "Registered $FIXED_MYCORTEX mycortex source(s)"
   [[ $HAS_PAGES -gt 0 ]] && info "$HAS_PAGES source(s) have indexed pages"
   [[ $NO_PAGES -gt 0 ]] && warn "$NO_PAGES source(s) still have 0 pages (add some .md files and re-sync)"
   echo ""

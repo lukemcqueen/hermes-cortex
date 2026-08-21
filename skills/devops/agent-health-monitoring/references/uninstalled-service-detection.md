@@ -32,9 +32,9 @@ def check_nginx() -> int:
 |----------|-------------|---------------------|
 | `check_nginx()` | `shutil.which("nginx")` | Binary in PATH |
 | `check_ollama()` | `shutil.which("ollama")` | Binary in PATH |
-| `check_gbrain()` | `shutil.which("gbrain")` | Binary in PATH |
-| `check_gbrain_sources_ok()` | `shutil.which("gbrain")` | Binary in PATH (shared with check_gbrain) |
-| `check_services()` | Systemd unit existence (Linux) / pgrep (macOS) | At least one of nginx/ollama/gbrain installed |
+| `check_mycortex()` | `shutil.which("mycortex")` | Binary in PATH |
+| `check_mycortex_sources_ok()` | `shutil.which("mycortex")` | Binary in PATH (shared with check_mycortex) |
+| `check_services()` | Systemd unit existence (Linux) / pgrep (macOS) | At least one of nginx/ollama/mycortex installed |
 
 ## Context: the three-state contract
 

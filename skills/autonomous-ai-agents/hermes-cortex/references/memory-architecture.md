@@ -6,14 +6,14 @@ Six memory layers, from fastest/least durable to slowest/most durable:
 Layer 1: Agent Prompt (MEMORY.md / USER.md)    — hot cache, lost on restart
 Layer 2: Session State (.hermes-cortex/sessions/current.md) — this session only
 Layer 3: Hermes Profile (~/.hermes/profiles/)   — agent identity, legacy isolation layer
-Layer 4: Brain Source (~/brain/<source>/)        — cross-project deep knowledge (GBrain)
+Layer 4: Brain Source (~/brain/<source>/)        — cross-project deep knowledge (Mycortex)
 Layer 5: Repo Memory (.hermes-cortex/memory/)    — per-project durable conventions
 Layer 6: Repo Docs (docs/)                       — version controlled, team-visible
 ```
 
 ## How Knowledge Flows Across Projects (Uber-Agent Model)
 
-The current model uses **one default Hermes profile** for all projects. Isolation is achieved entirely through gbrain source separation:
+The current model uses **one default Hermes profile** for all projects. Isolation is achieved entirely through mycortex source separation:
 
 ```
 Session (default profile, working in Project A)
@@ -29,7 +29,7 @@ Next session (same default profile, working in Project B)
   +-- Same MEMORY.md (compact pointers remain valid)
   +-- Same brain/default (picks up cross-project learnings)
   +-- Queries project-b's isolated source independently
-  +-- No memory bleed between projects — query isolation at gbrain level
+  +-- No memory bleed between projects — query isolation at mycortex level
 ```
 
 ## Two-Isolation-Axes Model (Current)
@@ -78,7 +78,7 @@ This prevents memory bloat — only durable, reusable, non-obvious, high-impact 
 |---------|-------------|----------------|
 | Ollama | `com.ollama.serve` (bundled with Ollama app) | Built-in |
 | Docker Desktop | `com.docker.docker` | `docs/templates/com.docker.docker.plist` |
-| GBrain Sync | `com.gbrain.sync-watch` | Created by `scripts/install-gbrain-sync.sh` |
+| Legacy Sync | `com.legacy-brain.sync-watch` | Created by `scripts/install-legacy-sync.sh` |
 | Hermes Gateway | `ai.hermes.gateway` | Created by Hermes Agent install |
 | Cortex Dashboard | `com.hermes.cortex-dashboard` | `docs/templates/com.hermes.cortex-dashboard.plist` |
 
@@ -96,7 +96,7 @@ sed "s|CORTEX_HOME|${CORTEX_HOME}|g" template.plist > ~/Library/LaunchAgents/nam
 | `hermes profile list` | List all profiles | Useful for cleanup |
 | `hermes profile alias <name>` | Create a shell wrapper | Not needed in uber-agent mode |
 
-## Mass Setup Pattern (Current — gbrain Sources)
+## Mass Setup Pattern (Current — mycortex Sources)
 
 ```bash
 export PATH="$HOME/.bun/bin:$PATH"
@@ -104,8 +104,8 @@ for src in project-a project-b project-c; do
   dir="$HOME/brain/$src"
   [ -d "$dir" ] || mkdir -p "$dir"
   [ ! -d "$dir/.git" ] && git -C "$dir" init
-  gbrain sources add "$src" --path "$dir" --name "$src"
-  gbrain sync --source "$src" 2>/dev/null || true
+  mycortex sources add "$src" --path "$dir" --name "$src"
+  mycortex sync --source "$src" 2>/dev/null || true
 done
 ```
 
@@ -113,6 +113,6 @@ done
 
 - **Memory budget saturates fast without the pointer pattern.** MEMORY.md has a 2,200-char limit. Every entry above ~120 chars steals budget from other entries. Use compact pointers in MEMORY.md and store detail in `~/brain/default/references/` or `~/brain/<project>/references/`. Run `bash scripts/check-memory-budget.sh` regularly.
 - **Brain source federation is single-directional.** Federated (`~/brain/default/`) is auto-searched. Isolated (`~/brain/<project>/`) is not — you must explicitly prefix with `--source <project>`.
-- **`gbrain` may not be in PATH.** It's installed at `~/.bun/bin/gbrain`. Always verify with `export PATH="$HOME/.bun/bin:$PATH"`.
-- **Brain directories need content.** gbrain sources show "0 pages, never synced" until you write .md files, commit them, and run `gbrain sync --source <name>`.
-- **gbrain sync requires a clean git repo.** Dirty brain directories with uncommitted changes cause sync to fail silently.
+- **`mycortex` may not be in PATH.** It's installed at `~/.bun/bin/mycortex`. Always verify with `export PATH="$HOME/.bun/bin:$PATH"`.
+- **Brain directories need content.** mycortex sources show "0 pages, never synced" until you write .md files, commit them, and run `mycortex sync --source <name>`.
+- **mycortex sync requires a clean git repo.** Dirty brain directories with uncommitted changes cause sync to fail silently.

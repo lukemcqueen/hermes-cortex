@@ -12,7 +12,7 @@ metadata:
 
 # Hermes Agent Full-System Backup
 
-Systematic procedure to create a complete, verifiable backup of a Hermes Agent server. Covers repo bundles, session databases, knowledge stores (gbrain PGlite), Hermes configuration (skills/scripts/plugins/cron), brain sources, langfuse stack config, docker image archives, nginx config, shell config, and credentials.
+Systematic procedure to create a complete, verifiable backup of a Hermes Agent server. Covers repo bundles, session databases, knowledge stores (mycortex PGlite), Hermes configuration (skills/scripts/plugins/cron), brain sources, langfuse stack config, docker image archives, nginx config, shell config, and credentials.
 
 ## When to Use
 
@@ -44,7 +44,7 @@ for repo in ~/hermes-cortex ~/.hermes/hermes-agent; do
   fi
 done
 docker ps --format "{{.Names}} {{.Status}}" 2>/dev/null
-du -sh ~/brain/ ~/.brain/ ~/.gbrain/ ~/langfuse/ 2>/dev/null
+du -sh ~/brain/ ~/.brain/ ~/.legacy-brain/ ~/langfuse/ 2>/dev/null
 ```
 
 **Completion criteria:** You have a tree of what exists and its sizes.
@@ -77,7 +77,7 @@ rm -f ~/.zcompdump*
 - `~/.ollama/` — LLM models
 - `~/.local/` — installed packages and binaries
 - `~/.config/` — system configs
-- `~/.gbrain/` — knowledge graph database
+- `~/.legacy-brain/` — knowledge graph database
 - `~/brain/`, `~/.brain/` — knowledge sources
 - `~/langfuse/` — Langfuse stack config
 - `~/hermes-cortex*` — git repos
@@ -133,13 +133,13 @@ cp ~/.hermes/kanban.db ~/backups/$BACKUP_DATE/databases/
 cp ~/.hermes/web-cache/cache.db ~/backups/$BACKUP_DATE/databases/
 ```
 
-**gbrain PGlite** — PostgreSQL data directory, copy the full tree:
+**mycortex PGlite** — PostgreSQL data directory, copy the full tree:
 
 ```bash
-mkdir -p ~/backups/$BACKUP_DATE/databases/gbrain
-cp -a ~/.gbrain/brain.pglite ~/backups/$BACKUP_DATE/databases/gbrain/
-cp ~/.gbrain/preferences.json ~/backups/$BACKUP_DATE/databases/gbrain/
-cp ~/.gbrain/config.json ~/backups/$BACKUP_DATE/databases/gbrain/
+mkdir -p ~/backups/$BACKUP_DATE/databases/mycortex
+cp -a ~/.legacy-brain/brain.pglite ~/backups/$BACKUP_DATE/databases/mycortex/
+cp ~/.legacy-brain/preferences.json ~/backups/$BACKUP_DATE/databases/mycortex/
+cp ~/.legacy-brain/config.json ~/backups/$BACKUP_DATE/databases/mycortex/
 ```
 
 **Completion criteria:** All DB files in place matching original sizes.
@@ -247,7 +247,7 @@ Save the backup date, archive path, and size to memory so future sessions can fi
 | **git bundle from dirty working tree** | Uncommitted changes excluded from bundle | `git status --short` first — report dirty state; bundle anyway for now |
 | **~/.git-credentials zeroed by gateway write protection** | File exists but 0 bytes | Check with `wc -c` after copy; re-populate if zeroed |
 | **Nginx config permission denied** | Can't read `/etc/nginx/sites-enabled/*` | Try without sudo; if blocked, skip and note in manifest |
-| **gbrain PGlite has lock files** | Copy errors on `.gbrain-lock/lock` | Skip lock files — they're recreated on restart |
+| **mycortex PGlite has lock files** | Copy errors on `.mycortex-lock/lock` | Skip lock files — they're recreated on restart |
 | **Multiple backup dirs same day** | Previous backup at same date path | Use `$BACKUP_DATE-v2` suffix |
 | **Docker images NOT pre-exported** | No `~/.hermes/docker-*.tar.gz` | Skip step; note in manifest that images must pull from registry |
 | **Backup archive too large for disk** | `df -h` shows < 1 GB free | Survey first; skip re-downloadable items aggressively |
@@ -258,7 +258,7 @@ Save the backup date, archive path, and size to memory so future sessions can fi
 - [ ] Cleanup freed ≥ 500 MB (or justified as minimal)
 - [ ] SQLite databases checkpointed (WAL files zeroed)
 - [ ] All 3 git repos bundled (public, private, hermes-agent)
-- [ ] state.db, kanban.db, web-cache.db, gbrain PGlite all copied
+- [ ] state.db, kanban.db, web-cache.db, mycortex PGlite all copied
 - [ ] config.yaml, skills/, scripts/, cron/, plugins/ all backed up
 - [ ] Root JSON files (auth, gateway, channel, processes, caches) backed up
 - [ ] Hermes subdirs (dashboard, LSP, offline) backed up

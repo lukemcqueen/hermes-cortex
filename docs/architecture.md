@@ -13,7 +13,7 @@
        │                                  │
        ▼                                  ▼
 ┌──────────────┐  ┌──────────────────┐  ┌────────────┐  ┌──────────────┐  ┌────────────────┐
-│   Langfuse   │  │  Cortex Dashboard│  │  Web Cache │  │   GBrain     │  │  Agent Bus     │
+│   Langfuse   │  │  Cortex Dashboard│  │  Web Cache │  │   Mycortex     │  │  Agent Bus     │
 │  (LLM Obs.)  │  │   (Flask + JS)   │  │ (sqlite-vec│  │ (Knowledge)  │  │  (PGMQ Queue)  │
 │ local:3000   │  │  local:8901      │  │  + Ollama) │  │ local:15432  │  │ local:8903     │
 │ ext:13002    │  │  ext:13001       │  │  ~200MB    │  │  pgvector)  │  │ ext:13004     │
@@ -85,7 +85,7 @@ Adapter layer — the Core schemas and Ops infrastructure stay unchanged.
 | **Agent** | Hermes Agent | Self-improving runtime with learning loop, subagents, cron, Telegram interface |
 | **Observability** | Langfuse + Cortex Dashboard | Trace inspection, session replay, LLM evaluation scoring, system health monitoring |
 | **Cache** | Web Cache (sqlite-vec) | Local semantic cache for web_search results. Cuts API costs, enables offline fallback |
-|| **Memory** | GBrain | Long-term knowledge graph via Markdown files across 4 sources (luke, amy, shared, default). **Postgres + pgvector** engine with Ollama embeddings. Sync daemon. Queryable by any agent via `:15432` |
+|| **Memory** | Mycortex | Long-term knowledge graph via Markdown files across 4 sources (luke, amy, shared, default). **Postgres + pgvector** engine with Ollama embeddings. Sync daemon. Queryable by any agent via `:15432` |
 | **Offline** | kiwix ZIM + Code Corpus | Zero-internet operation: medical, travel, education, language, code generation. All local |
 | **Config** | GitHub (two-repo system) | Public repo: installer, skeleton, docs. Private repo: full config, scripts, dashboard, nginx config. Brain content on private branches |
 
@@ -95,7 +95,7 @@ Adapter layer — the Core schemas and Ops infrastructure stay unchanged.
 |------|-----------|----------|
 | `hermes-cortex` | **Public** | Installer (`install.sh`), skeleton config, architecture docs, skills (8), offline content, bump-version script. No secrets or brain data |
 | `private-data` | **Local** | Full system config (`config.yaml`), dashboard (Flask + JS), nginx config, 13 utility scripts, all cron setups |
-| `brain-*` branches on private repo | **Private** | Brain content on `brain-luke`, `brain-amy`, `brain-shared`, `brain-default` branches. Each is a clean single-commit orphan branch synced via gbrain |
+| `brain-*` branches on private repo | **Private** | Brain content on `brain-luke`, `brain-amy`, `brain-shared`, `brain-default` branches. Each is a clean single-commit orphan branch synced via mycortex |
 
 ## Services
 
@@ -114,8 +114,8 @@ Adapter layer — the Core schemas and Ops infrastructure stay unchanged.
 | Redis | 6379 | Queue broker for Langfuse | Native, launchd |
 | kiwix-serve | 8080 | ZIM content server (offline) | Docker, launchd |
 | Offline Reader | 8081 | Bible/hymns/reference browser | stdlib Python |
-|| GBrain Postgres | 15432 | Knowledge brain database (pgvector) | Docker, compose-managed in langfuse stack |
-| GBrain Sync | — | Memory sync daemon (Docker Postgres + pgvector) | Bun, **systemd (user service)** — auto-starts on boot |
+|| Mycortex Postgres | 15432 | Knowledge brain database (pgvector) | Docker, compose-managed in langfuse stack |
+| Legacy Sync | — | Memory sync daemon (Docker Postgres + pgvector) | Bun, **systemd (user service)** — auto-starts on boot |
 
 ## External Access
 
@@ -154,9 +154,9 @@ rate-limited by nginx + fail2ban (4 jails, ban escalation 1h→4wk):
 
 ---
 
-## GBrain Autopilot — Systemd Service
+## Mycortex Autopilot — Systemd Service
 
-The gbrain autopilot runs as a **user-level systemd service** on Linux (not launchd — that's macOS legacy in the table). This means it:
+The legacy autopilot runs as a **user-level systemd service** on Linux (not launchd — that's macOS legacy in the table). This means it:
 
 - ✅ **Survives reboots** — auto-starts when the machine boots (linger enabled for user `moses`)
 - ✅ **Auto-restarts on crash** — `Restart=always`, `RestartSec=30`, `StartLimitBurst=10` per 5 min
@@ -166,37 +166,37 @@ The gbrain autopilot runs as a **user-level systemd service** on Linux (not laun
 
 ```bash
 # Check status
-systemctl --user status gbrain-autopilot.service
+systemctl --user status legacy-autopilot.service
 
 # View recent logs
-journalctl --user -u gbrain-autopilot.service -n 50
+journalctl --user -u legacy-autopilot.service -n 50
 
 # Restart
-systemctl --user restart gbrain-autopilot.service
+systemctl --user restart legacy-autopilot.service
 
 # Follow live
-journalctl --user -u gbrain-autopilot.service -f
+journalctl --user -u legacy-autopilot.service -f
 ```
 
-### Running gbrain Commands
+### Running mycortex Commands
 
-With Postgres, `gbrain query` and other CLI commands work **while the sync daemon is running** — no lock contention. Unlike PGLite, the Postgres engine supports concurrent connections.
+With Postgres, `mycortex query` and other CLI commands work **while the sync daemon is running** — no lock contention. Unlike PGLite, the Postgres engine supports concurrent connections.
 
-See [`docs/gbrain-postgres-migration.md`](gbrain-postgres-migration.md) for setup and [`docs/gbrain-pglite-recovery.md`](gbrain-pglite-recovery.md) for legacy rollback.
+See [`docs/legacy Postgres-migration.md`](legacy Postgres-migration.md) for setup and [`docs/mycortex-pglite-recovery.md`](mycortex-pglite-recovery.md) for legacy rollback.
 
 ### Initial Setup (fresh install)
 
 ```bash
-# Install gbrain first
-bun install -g github:garrytan/gbrain
+# Install mycortex first
+bun install -g github:garrytan/mycortex
 
 # Create the service
-gbrain autopilot --install
+legacy autopilot --install
 
 # Enable linger (one-time, needs sudo)
 sudo loginctl enable-linger moses
 ```
 
-The service file lives at `~/.config/systemd/user/gbrain-autopilot.service` and the wrapper at `~/.gbrain/autopilot-run.sh`. Both are auto-generated by `gbrain autopilot --install`.
+The service file lives at `~/.config/systemd/user/legacy-autopilot.service` and the wrapper at `~/.legacy-brain/autopilot-run.sh`. Both are auto-generated by `legacy autopilot --install`.
 
 **See also:** [Security Guide → `docs/SECURITY.md`](./SECURITY.md) | [Troubleshooting → `docs/troubleshooting.md`](./troubleshooting.md)

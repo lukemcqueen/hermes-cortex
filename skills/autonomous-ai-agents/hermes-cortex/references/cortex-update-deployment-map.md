@@ -17,7 +17,7 @@ Sources under `~/hermes-cortex/` → dest under `~/.hermes/` or `~/`.
 | `ops/scripts/health/check-memory-budget.sh` | `~/.hermes/scripts/check-memory-budget.sh` | |
 | `ops/scripts/manage/cortex-health.sh` | `~/.hermes/scripts/cortex-health.sh` | |
 | `ops/scripts/install/cortex-setup-langfuse.sh` | `~/.hermes/scripts/cortex-setup-langfuse.sh` | |
-| `ops/scripts/install/install-gbrain-sync.sh` | `~/.hermes/scripts/install-gbrain-sync.sh` | `restart_gbrain_sync` |
+| `ops/scripts/install/install-legacy-sync.sh` | `~/.hermes/scripts/install-legacy-sync.sh` | `restart_legacy_sync` |
 | `ops/scripts/install/install-ollama.sh` | `~/.hermes/scripts/install-ollama.sh` | |
 | `ops/scripts/install/install-nginx.sh` | `~/.hermes/scripts/install-nginx.sh` | |
 | `ops/scripts/install/install-cortex-update-cron.sh` | `~/.hermes/scripts/install-cortex-update-cron.sh` | |
@@ -130,20 +130,20 @@ file copies complete:
 
 | Function | Service | What it does |
 |----------|---------|-------------|
-| `restart_gbrain_sync` | `com.gbrain.sync-watch` | Unloads launchd, removes stale sync-watch.sh, re-runs install-gbrain-sync.sh to regenerate script + reload plist |
+| `restart_legacy_sync` | `com.legacy-brain.sync-watch` | Unloads launchd, removes stale sync-watch.sh, re-runs install-legacy-sync.sh to regenerate script + reload plist |
 | `restart_langfuse` | Docker Compose stack | Runs `docker compose up -d` in `~/langfuse/` |
 | `restart_dashboard` | `com.hermes.cortex-dashboard` | Unloads/reloads launchd plist |
 
-### restart_gbrain_sync Pitfall
+### restart_legacy_sync Pitfall
 
 Must call `launchctl bootout` BEFORE removing `sync-watch.sh`. Without it, launchd
-KeepAlive keeps the old process alive, and `install-gbrain-sync.sh` sees "already
+KeepAlive keeps the old process alive, and `install-legacy-sync.sh` sees "already
 running" and skips regeneration. The plist then points to a deleted file.
 
 Fixed in commit 893ddc4. Verify after any cortex update:
 
 ```bash
-ls -la ~/.gbrain/sync-watch.sh    # must exist
-launchctl list com.gbrain.sync-watch | grep PID # different from before
-grep "skip default" ~/.gbrain/sync-watch.sh # --skip default present
+ls -la ~/.legacy-brain/sync-watch.sh    # must exist
+launchctl list com.legacy-brain.sync-watch | grep PID # different from before
+grep "skip default" ~/.legacy-brain/sync-watch.sh # --skip default present
 ```

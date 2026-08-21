@@ -221,7 +221,7 @@ def _health():
                                         "gateway run --replace", "hermes gateway", "hermes_cli"]),
             "label": "Agent Gateway"
         },
-        "GBrain Sync": {
+        "Mycortex Sync": {
             "check": lambda: _find_pid(["mycortex", "agent-mycortex-sync"]),
             "label": "Memory Sync"
         },

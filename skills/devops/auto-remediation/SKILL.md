@@ -125,7 +125,7 @@ For each errored job, diagnose the failure:
 | Python import error | Re-activate venv; reinstall deps; check Python version |
 | Disk full / no space | `brew cleanup`, `docker system prune -f`, purge log files >7d old |
 | Docker service down | Run `agent-service-recovery.py` manually |
-|| gbrain sync error | Restart gbrain autopilot: `launchctl kickstart gui/$(id -u)/com.gbrain.autopilot` |
+|| mycortex sync error | Restart the legacy autopilot: `launchctl kickstart gui/$(id -u)/com.legacy-brain.autopilot` |
 || Ollama not running | `launchctl kickstart gui/$(id -u)/com.ollama.serve` |
 || Agent Bus unreachable / empty responses on :8903 | **Detect:** `systemctl --user is-active cortex-bus.service` (Linux) or `launchctl list com.hermes.cortex-bus` (macOS, also try `com.hermes.cortex-bus-fallback`) + `curl -s http://127.0.0.1:8903/health` → HTTP 200. The `agent-remediation-sensor.py` checks this every 5min on all platforms — trust its output. **Fix:** `systemctl --user restart cortex-bus.service` (Linux) or `launchctl kickstart gui/$(id -u)/com.hermes.cortex-bus` (macOS) then re-verify. Check `CORTEX_BUS_URL` via `echo $CORTEX_BUS_URL` or `grep 'CORTEX_BUS_URL' ~/hermes-cortex/.env`. |
 || nginx config invalid | `nginx -t` to validate; revert recent config changes |
@@ -185,7 +185,7 @@ Check the agent inbox for messages from other agents (Titus, Joseph, Kustos, Gis
 If no cron errors or inbox requests exist, spot-check:
 - Disk usage (`df -h /`)
 - Memory (`memory_pressure` or `vm_stat`)
-- Running services (Ollama, nginx, Langfuse, gbrain)
+- Running services (Ollama, nginx, Langfuse, mycortex)
 - Cron job freshness (jobs that should have run recently)
 
 Don't report if everything is healthy — stay silent (watchdog pattern).

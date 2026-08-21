@@ -40,9 +40,9 @@ what *actually* exists on disk and in running processes.
 
 ### Layer 4: Data Audit
 
-1. Check every gbrain source has >0 indexed pages
+1. Check every mycortex source has >0 indexed pages
 2. Check git repos exist in every brain directory
-3. Check gbrain migration state
+3. Check mycortex migration state
 
 ### Layer 5: Workflow Audit
 
@@ -54,11 +54,11 @@ what *actually* exists on disk and in running processes.
 
 1. After seeding a new brain source (or running `--all`), verify pages made it in:
    ```bash
-   gbrain sources list | grep -v "0 pages" | grep -v "^$\|SOURCES\|────"
+   mycortex sources list | grep -v "0 pages" | grep -v "^$\|SOURCES\|────"
    ```
-2. After `gbrain sync --source <name>`, always follow with:
+2. After `mycortex sync --source <name>`, always follow with:
    ```bash
-   gbrain extract --stale --source <name>
+   mycortex extract --stale --source <name>
    ```
    Without `extract --stale`, new pages are synced but their cross-source edges
    aren't computed — the `/brain` slash command's multi-source search quality
@@ -66,7 +66,7 @@ what *actually* exists on disk and in running processes.
 3. For large source seeds (50+ files), `sync` may timeout at the default 30s.
    Re-run with a longer window or verify pages appeared despite the timeout:
    ```bash
-   gbrain sources list | grep <name> | awk '{print $3}'  # page count
+   mycortex sources list | grep <name> | awk '{print $3}'  # page count
    ```
 
 ## Remediation Pattern
@@ -86,9 +86,9 @@ cp ~/hermes-cortex/scripts/heartbeat.py ~/.hermes/scripts/heartbeat.py
 cp ~/hermes-cortex/scripts/memory-to-brain-sync.py ~/.hermes/scripts/memory-to-brain-sync.py
 
 # 2. Fix sync daemon (add --skip default)
-sed -i '' 's/sync --all --no-pull/sync --all --no-pull --skip default/' ~/.gbrain/sync-watch.sh
-launchctl unload ~/Library/LaunchAgents/com.gbrain.sync-watch.plist
-launchctl load ~/Library/LaunchAgents/com.gbrain.sync-watch.plist
+sed -i '' 's/sync --all --no-pull/sync --all --no-pull --skip default/' ~/.legacy-brain/sync-watch.sh
+launchctl unload ~/Library/LaunchAgents/com.legacy-brain.sync-watch.plist
+launchctl load ~/Library/LaunchAgents/com.legacy-brain.sync-watch.plist
 
 # 3. Seed all brain dirs from project repos
 bash ~/.hermes/scripts/seed-project-brain.sh --all 2>/dev/null || \
@@ -98,6 +98,6 @@ bash ~/.hermes/scripts/seed-project-brain.sh --all 2>/dev/null || \
 offline_code index 2>/dev/null || python3 ~/.hermes-cortex/offline/offline_code.py index
 
 # 5. Verify
-gbrain sources list
+mycortex sources list
 python3 ~/.hermes/scripts/heartbeat.py --report
 ```

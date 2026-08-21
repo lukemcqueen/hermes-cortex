@@ -33,7 +33,7 @@ Some agents (like Titus on macOS) push a **rich JSON health report** to the inbo
   "services": [
     {"name": "nginx", "status": "running", "pid": 765},
     {"name": "ollama", "status": "unknown", "pid": null},
-    {"name": "gbrain", "status": "running", "pid": 52945},
+    {"name": "mycortex", "status": "running", "pid": 52945},
     {"name": "agent_inbox", "status": "running", "pid": 60569}
   ],
   "service_summary": "3/4 up",
@@ -75,7 +75,7 @@ Some agents (like Titus on macOS) push a **rich JSON health report** to the inbo
 
 ```json
 {
-  "name": "nginx | ollama | gbrain | agent_inbox | ...",
+  "name": "nginx | ollama | mycortex | agent_inbox | ...",
   "status": "running | unknown | stopped | down | up",
   "pid": 765
 }
@@ -93,9 +93,9 @@ Some agents (like Titus on macOS) push a **rich JSON health report** to the inbo
 | 3 | no_stale_crons | `-1` if any issue has `"stale"` in its detail |
 | 4 | nginx | Direct match from `services[].name == "nginx"` |
 | 5 | ollama | Direct match from `services[].name == "ollama"` |
-| 6 | gbrain | Direct match from `services[].name == "gbrain"` |
+| 6 | mycortex | Direct match from `services[].name == "mycortex"` |
 | 7 | disk_ok | `-1` if `resources.disk_percent >= 90` |
-| 8 | gbrain_sources_ok | `1` if gbrain status is running/up |
+| 8 | mycortex_sources_ok | `1` if mycortex status is running/up |
 
 Service status mapping: `running/up` → `1`, `down/stopped` → `-1`, anything else → `0`.
 
@@ -125,5 +125,5 @@ result = {
 ## Pitfalls
 
 - **Compact vector push vs rich report:** If a client agent switches push scripts, the orchestrator silently sees "no health message in inbox" because `_parse_vector_body()` doesn't recognize the new format. Always check the actual body from the inbox before assuming the format.
-- **Service name mismatch:** The rich report uses different service names (`agent_inbox`) than the SERVICE_MAP (`nginx`, `ollama`, `gbrain`). Services not in the SERVICE_MAP are preserved in `_rich` but don't appear in the vector — the dashboard still shows them via the rich path.
+- **Service name mismatch:** The rich report uses different service names (`agent_inbox`) than the SERVICE_MAP (`nginx`, `ollama`, `mycortex`). Services not in the SERVICE_MAP are preserved in `_rich` but don't appear in the vector — the dashboard still shows them via the rich path.
 - **severity != critical:** Titus uses `"high"` and `"warning"` as severity levels, not `"critical"`. The issue count is preserved but the severity string is passed through as-is. The dashboard treats `"critical"` specially (red left border) — non-critical issues show as degraded (yellow border).

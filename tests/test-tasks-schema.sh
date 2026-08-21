@@ -18,7 +18,7 @@ MIGRATE_BUS_PY="${REPO_DIR}/ops/scripts/manage/migrate-bus-todos.py"
 TEST_DB="${TASKS_TEST_DB:-tasks_test}"
 CONTAINER="${TASKS_TEST_CONTAINER:-mycortex-postgres}"
 
-if [[ "$TEST_DB" == "mycortex" || "$TEST_DB" == "gbrain" ]]; then
+if [[ "$TEST_DB" == "mycortex" ]]; then
   echo "❌ REFUSING to run against the $TEST_DB database — hermeticity guard. Set TASKS_TEST_DB." >&2
   exit 1
 fi

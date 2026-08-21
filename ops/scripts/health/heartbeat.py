@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""heartbeat.py — System health watchdog for Hermes/gbrain stack.
+"""heartbeat.py — System health watchdog for Hermes/mycortex stack.
 
 Checks critical daemons and services:
   - Ollama (LLM server)
-  - gbrain sync daemon
+  - mycortex knowledge brain (cron-synced index; sources + freshness)
   - Hermes gateway
   - Langfuse Docker services (ClickHouse, MinIO, Redis)
   - Memory-to-brain sync freshness
@@ -301,12 +301,12 @@ def check_memory_sync_freshness() -> dict:
 
 
 def check_mycortex_sources() -> dict:
-    """Check gbrain source health: flag 'never synced' or '0 pages' sources.
+    """Check mycortex source health: flag 'never synced' or '0 pages' sources.
 
     Gracefully degrades when mycortex doctor is unavailable:
       - Falls back to parsing 'sources list' output
       - Falls back to file counting if even sources list is unavailable
-      - Returns UNKNOWN (not DOWN) when gbrain isn't installed
+      - Returns UNKNOWN (not DOWN) when mycortex isn't installed
     """
 
     def _run(args, timeout=15):
@@ -318,14 +318,14 @@ def check_mycortex_sources() -> dict:
         )
 
     def _parse_sources_list(output):
-        """Parse page counts from 'gbrain sources list' output.
+        """Parse page counts from 'mycortex sources list' output.
 
         Format:
           default               federated          1 pages  never synced
           my-source             isolated          12 pages  2m ago
 
         Known false positive: the 'default' federated source is auto-created
-        by gbrain at install without a local_path and can never be synced.
+        by mycortex at install without a local_path and can never be synced.
         It is excluded from the 'never synced' / 'zero pages' counts.
         """
         lines = output.strip().split("\n")
@@ -350,7 +350,7 @@ def check_mycortex_sources() -> dict:
         if not cli.exists():
             return {"status": "UNKNOWN", "detail": "mycortex not installed — run install.sh"}
 
-        # mycortex doctor --json (gbrain decommissioned 2026-08-02)
+        # mycortex doctor --json (legacy brain decommissioned 2026-08-02)
         result = _run([str(cli), "doctor", "--json"], timeout=30)
         # doctor exits 0 iff ok — authoritative. stdout mixes human lines
         # with a trailing JSON line, so fall back to rc on parse failure.
@@ -437,14 +437,8 @@ def run() -> str:
 
     if linux:
         ollama_service = "ollama"
-        gbrain_service = "gbrain-autopilot"
     else:
         ollama_service = "com.ollama.serve"
-        gbrain_service = "com.gbrain.autopilot"
-        # Fallback to sync-watch if autopilot isn't running
-        ap = check_service("com.gbrain.autopilot")
-        if ap["status"] == "DOWN":
-            gbrain_service = "com.gbrain.sync-watch"
 
     checks = {}
 
@@ -453,13 +447,6 @@ def run() -> str:
         checks["Ollama"] = check_service(ollama_service)
     else:
         checks["Ollama"] = {"status": "UP", "detail": "Skipped — not configured"}
-
-    # Check gbrain: DECOMMISSIONED 2026-08-02 — report UP/skipped unless the
-    # unit is still ENABLED (half-state, should be disabled).
-    if _service_unit_exists(gbrain_service) and _service_enabled(gbrain_service):
-        checks["gbrain sync daemon"] = check_service(gbrain_service)
-    else:
-        checks["gbrain sync daemon"] = {"status": "UP", "detail": "Decommissioned — mycortex replaces (unit disabled)"}
 
     checks.update({
         "mycortex sources": check_mycortex_sources(),

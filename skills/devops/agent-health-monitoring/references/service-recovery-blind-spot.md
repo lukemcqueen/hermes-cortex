@@ -48,7 +48,7 @@ Each `_make_service` call is one monitored service. Missing = not monitored.
 SERVICES: list[dict] = [
     _make_service("nginx", ...),
     _make_service("Ollama", ...),
-    _make_service("gbrain", ...),
+    _make_service("mycortex", ...),
     # ... add new ones here
 ]
 ```

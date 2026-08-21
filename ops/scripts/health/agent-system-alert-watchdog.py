@@ -8,7 +8,7 @@ Supports Linux and macOS.
 
 Checks:
   - Resource thresholds (memory, swap, disk, load)
-  - Ollama, gbrain, Langfuse Docker services
+  - Ollama, mycortex, Langfuse Docker services
   - Gateway activity, inbox scan freshness, memory→brain sync freshness
   - Loop governance DB health
   - Auto-remediation: purge, brew cleanup, docker prune, old logs
@@ -102,7 +102,7 @@ def check_systemd(unit_name: str) -> dict:
         pg = subprocess.run(["pgrep", "-x", proc_name], capture_output=True, timeout=5)
         if pg.returncode == 0:
             return {"status": "DEGRADED", "detail": f"{unit_name} (process found, no systemd unit)"}
-        # Fuzzy fallback: split unit name on hyphens/dots (e.g. "gbrain-autopilot" -> "gbrain.*autopilot")
+        # Fuzzy fallback: split unit name on hyphens/dots (e.g. "legacy-autopilot" -> "legacy.*autopilot")
         # catches processes launched via interpreters (bun, python, java) whose process name is the interpreter
         parts = re.split(r"[-.]+", unit_name)
         if len(parts) > 1:
@@ -266,9 +266,9 @@ def check_memory_sync_freshness() -> dict:
         return {"status": "DOWN", "detail": f"Last sync: {age.total_seconds() / 3600:.1f}h ago — stale!"}
 
 def check_mycortex() -> dict:
-    """Check mycortex (gbrain replacement) health via the CLI doctor.
+    """Check mycortex  health via the CLI doctor.
 
-    gbrain was decommissioned 2026-08-02; mycortex is a cron-synced Postgres
+    the legacy brain was decommissioned 2026-08-02; mycortex is a cron-synced Postgres
     index with no daemon. Doctor verifies schema version + source freshness.
     """
     cli = Path.home() / ".hermes-cortex" / "scripts" / "mycortex"

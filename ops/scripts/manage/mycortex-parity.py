@@ -2,26 +2,24 @@
 """
 mycortex-parity.py — golden known-answer parity runner (S-001).
 
-Makes "retrieval parity with gbrain" measurable: a committed golden set
+Makes retrieval quality measurable: a committed golden set
 (tests/fixtures/golden-queries.json) with expected top-3 paths per query,
-pinned to source SHAs. Two modes:
+pinned to source SHAs. The legacy brain's baseline capture phase is retired
+(recorded once 2026-08-01; migration flip done) — the golden set is now a
+regression fixture for mycortex itself.
 
-  baseline — run the golden set against gbrain (while it still runs) and
-             record its top-3 per query to gbrain-baseline.json (Phase 0).
+Modes:
   check    — run the golden set against an engine and compute the pass rate.
              Federated gate: 100% of queries must have their primary expected
              path in the engine top-3. Isolated gate: >=90%.
 
 Engines (--engine):
-  gbrain   — subprocess `gbrain search <query> --limit <n>` (text output)
   mycortex — subprocess `mycortex search <query> --json` (deployed CLI, S-004/005/006)
   fixture  — read canned results from --fixture-file (tests only)
 
-Exit codes: 0 = gate passed / baseline recorded; 1 = gate failed or error.
+Exit codes: 0 = gate passed; 1 = gate failed or error.
 
 Usage:
-  mycortex-parity.py --mode baseline
-  mycortex-parity.py --mode check --engine gbrain
   mycortex-parity.py --mode check --engine fixture --fixture-file /tmp/results.json
   mycortex-parity.py --mode check --engine mycortex   # live CLI
 """
@@ -32,7 +30,6 @@ import json
 import os
 import subprocess
 import sys
-import time
 from pathlib import Path
 
 # Resolve the hermes-cortex repo root from either runtime location:
@@ -47,7 +44,6 @@ _REPO_CANDIDATES = [
 ]
 REPO_ROOT = next((p for p in _REPO_CANDIDATES if (p / "tests" / "fixtures").is_dir()), _HERE.parents[3])
 DEFAULT_GOLDEN = REPO_ROOT / "tests" / "fixtures" / "golden-queries.json"
-DEFAULT_BASELINE = REPO_ROOT / "tests" / "fixtures" / "gbrain-baseline.json"
 
 FEDERATED_PASS_REQUIRED = 1.0   # 100% top-3 federated
 ISOLATED_PASS_REQUIRED = 0.90   # >=90% isolated
@@ -58,9 +54,9 @@ ISOLATED_PASS_REQUIRED = 0.90   # >=90% isolated
 def normalize_path(p: str) -> str:
     """Map engine + golden paths to a comparable key.
 
-    gbrain returns relpaths without .md and lowercase (skills/.../skill);
-    mycortex will return stored relpaths with .md. Strip ./, strip .md,
-    lowercase — both sides collapse to the same key.
+    The legacy brain returned relpaths without .md and lowercase
+    (skills/.../skill); mycortex returns stored relpaths with .md. Strip ./,
+    strip .md, lowercase — both sides collapse to the same key.
     """
     p = p.strip().lower()
     if p.startswith("./"):
@@ -76,26 +72,6 @@ def matches(engine_path: str, expected_path: str) -> bool:
 
 # ── Engines ───────────────────────────────────────────────────
 
-def run_gbrain(query: str, limit: int = 10) -> list[str]:
-    """gbrain search → [relpath, ...] in rank order."""
-    proc = subprocess.run(
-        ["gbrain", "search", query, "--limit", str(limit)],
-        capture_output=True, text=True, timeout=60,
-    )
-    if proc.returncode != 0:
-        raise RuntimeError(f"gbrain search failed (rc={proc.returncode}): {proc.stderr.strip()}")
-    paths: list[str] = []
-    for line in proc.stdout.splitlines():
-        line = line.strip()
-        # Format: [0.9603] docs/foo -- Title
-        if line.startswith("[") and "--" in line:
-            rest = line.split("]", 1)[1].strip()
-            relpath = rest.split(" --", 1)[0].strip()
-            if relpath:
-                paths.append(relpath)
-    return paths
-
-
 def run_mycortex(query: str, limit: int = 10, source: str | None = None) -> list[str]:
     """mycortex search → [relpath, ...] in rank order (deployed CLI)."""
     cmd = ["mycortex", "search", query, "--json", "--limit", str(limit)]
@@ -105,7 +81,7 @@ def run_mycortex(query: str, limit: int = 10, source: str | None = None) -> list
     if proc.returncode != 0:
         raise RuntimeError(
             f"mycortex search failed (rc={proc.returncode}): {proc.stderr.strip() or proc.stdout.strip()}"
-            "\n  → is `mycortex` on PATH? Deployed to ~/.hermes-cortex/scripts (or use --engine gbrain / --engine fixture)."
+            "\n  → is `mycortex` on PATH? Deployed to ~/.hermes-cortex/scripts (or use --engine fixture)."
         )
     try:
         data = json.loads(proc.stdout)
@@ -176,39 +152,6 @@ def print_failures(results: list[dict]) -> None:
 
 # ── Modes ─────────────────────────────────────────────────────
 
-def mode_baseline(args) -> int:
-    golden = load_golden(args.golden)
-    results = {}
-    queries = golden.get("queries", [])
-    print(f"Capturing gbrain baseline for {len(queries)} queries …")
-    for i, q in enumerate(queries, 1):
-        qid = q.get("id", f"q{i}")
-        try:
-            paths = run_gbrain(q["query"])
-        except RuntimeError as e:
-            print(f"  ❌ [{qid}] {e}", file=sys.stderr)
-            return 1
-        results[qid] = {
-            "query": q["query"],
-            "source": q.get("source"),
-            "top3": top3(paths),
-            "top10": paths,
-        }
-        print(f"  [{i}/{len(queries)}] {qid}: {results[qid]['top3']}")
-    baseline = {
-        "version": 1,
-        "engine": "gbrain",
-        "captured_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-        "sources": golden.get("sources", {}),
-        "results": results,
-    }
-    args.baseline_out.parent.mkdir(parents=True, exist_ok=True)
-    with open(args.baseline_out, "w") as f:
-        json.dump(baseline, f, indent=2)
-    print(f"\n✅ baseline written: {args.baseline_out}")
-    return 0
-
-
 def _registered_sources() -> set[str]:
     """Names of sources registered on THIS host (per-host model, design D4).
 
@@ -245,9 +188,7 @@ def mode_check(args) -> int:
                 skipped += 1
                 continue
         try:
-            if args.engine == "gbrain":
-                paths = run_gbrain(q["query"])
-            elif args.engine == "mycortex":
+            if args.engine == "mycortex":
                 # Scope EVERY query to its golden-declared source. Federated
                 # (HC) queries target the federated source (hermes-cortex);
                 # isolated (MO) queries target their source. Passing None for
@@ -288,16 +229,13 @@ def mode_check(args) -> int:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--mode", choices=["baseline", "check"], default="check")
-    parser.add_argument("--engine", choices=["gbrain", "mycortex", "fixture"],
+    parser.add_argument("--mode", choices=["check"], default="check")
+    parser.add_argument("--engine", choices=["mycortex", "fixture"],
                         help="search engine for check mode (default: mycortex)")
     parser.add_argument("--golden", type=Path, default=DEFAULT_GOLDEN)
-    parser.add_argument("--baseline-out", type=Path, default=DEFAULT_BASELINE)
     parser.add_argument("--fixture-file", type=Path, help="fixture engine results JSON")
     args = parser.parse_args()
 
-    if args.mode == "baseline":
-        return mode_baseline(args)
     # check mode
     if args.engine is None:
         args.engine = "mycortex"

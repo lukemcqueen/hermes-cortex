@@ -59,7 +59,7 @@ with test("GET /api/health returns valid JSON"):
 
 with test("GET /api/health — all services present"):
     d = api("/api/health")
-    expected = {"Ollama", "Hermes Gateway", "GBrain Sync", "nginx", "Langfuse"}
+    expected = {"Ollama", "Hermes Gateway", "Mycortex Sync", "nginx", "Langfuse"}
     assert set(d["services"].keys()) == expected
 
 with test("GET /api/health — has system metrics"):

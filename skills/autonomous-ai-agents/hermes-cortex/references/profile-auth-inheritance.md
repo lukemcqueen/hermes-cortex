@@ -1,6 +1,6 @@
 # Profile Auth.json Inheritance
 
-**DEPRECATED (June 2026):** Profile-per-project was abandoned. This file documents a problem that no longer applies with the current uber-agent + gbrain architecture. Kept for reference only.
+**DEPRECATED (June 2026):** Profile-per-project was abandoned. This file documents a problem that no longer applies with the current uber-agent + mycortex architecture. Kept for reference only.
 
 ## The Problem
 

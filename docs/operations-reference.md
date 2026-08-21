@@ -11,7 +11,7 @@ the root agent guidelines focused on general Hermes Cortex usage.
 ### The Agent Bus — PGMQ-based Postgres queue system
 
 The **Agent Bus** (previously Agent Inbox) replaces the file-based inbox with a Postgres-native message queue.
-Port **8905**, powered by `bus` schema on gbrain Postgres (port 15432).
+Port **8905**, powered by `bus` schema on mycortex Postgres (port 15432).
 
 **Key differences from the legacy file-based inbox:**
 

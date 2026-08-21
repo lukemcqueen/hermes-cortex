@@ -119,7 +119,7 @@ SERVICES: list[dict] = [
         "verify_label": "Langfuse",
     },
     _make_service("Ollama", label="ollama.service", pgrep="ollama"),
-    # gbrain: DECOMMISSIONED 2026-08-02 (mycortex replaces) — service left
+    # mycortex: DECOMMISSIONED 2026-08-02 (mycortex replaces) — service left
     # unregistered so the recovery loop never restarts a decommissioned daemon.
 ]
 # cortex-bus: only on orchestrator machines (Moses/Esther). Non-orchestrators

@@ -176,10 +176,10 @@ Controls agent memory — knowledge retention, brain sync, and vector search.
 tools:
   memory:
     enabled: true
-    backend: gbrain          # gbrain | memdir | sqlite | chroma
+    backend: mycortex          # mycortex | memdir | sqlite | chroma
 
-    # gbrain (recommended — Postgres + pgvector via Docker, or PGLite for dev)
-    gbrain:
+    # mycortex (recommended — Postgres + pgvector via Docker, or PGLite for dev)
+    mycortex:
       brain_dir: ~/brain/
       sources:
         - ~/brain/personal/

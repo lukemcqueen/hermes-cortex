@@ -30,7 +30,7 @@ hc exec moses cortex-doctor.py --json
 cd ~/.hermes-cortex && python3 scripts/agent-message-handler.py --once
 
 # Verify response
-sg docker -c 'docker exec gbrain-postgres psql -U gbrain -d gbrain -c "SELECT queue_name, state FROM bus.messages;"'
+sg docker -c 'docker exec legacy Postgres psql -U mycortex -d mycortex -c "SELECT queue_name, state FROM bus.messages;"'
 ```
 
 ### 3. Orchestrator vs Fleet Agent Bus Roles

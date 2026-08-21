@@ -3,13 +3,13 @@
 > **Version 1.0.0** — Published 2026-06-11
 > Part of the [Hermes Cortex](https://github.com/fleet-operator/hermes-cortex) documentation suite.
 
-A guide to filling your empty brain directories with useful content so gbrain has something to search.
+A guide to filling your empty brain directories with useful content so legacy brain has something to search.
 
 ---
 
 ## Why Seed Your Brain?
 
-After `install.sh`, your `~/brain/` directory tree exists but is **empty** — no `.md` files means gbrain indexes zero pages. Running `bootstrap-brain.sh` will show `0 pages indexed` for every source. This guide walks you through adding starter content so your agent can actually find things.
+After `install.sh`, your `~/brain/` directory tree exists but is **empty** — no `.md` files means legacy brain indexes zero pages. Running `bootstrap-brain.sh` will show `0 pages indexed` for every source. This guide walks you through adding starter content so your agent can actually find things.
 
 ---
 
@@ -29,7 +29,7 @@ Create these three files to give your agent immediate context:
 ## Installed Tools
 - Hermes Agent — AI agent runtime
 - Ollama — local LLM server (nomic-embed-text:v1.5 for embeddings)
-- gbrain — knowledge brain (Postgres + pgvector, Docker)
+- legacy brain — knowledge brain (Postgres + pgvector, Docker)
 - Docker Desktop — for Langfuse, kiwix, etc.
 - nginx — reverse proxy (ports 13001+)
 - fail2ban — brute force protection
@@ -40,7 +40,7 @@ Create these three files to give your agent immediate context:
 |------|---------|
 | `~/.hermes/` | Hermes config, skills, plugins, cron, scripts |
 | `~/brain/` | Knowledge sources (this directory) |
-|| `~/.gbrain/` | gbrain database (Postgres via Docker, pgvector on `:15432`) |
+|| `~/.legacy-brain/` | legacy brain database (Postgres via Docker, pgvector on `:15432`) |
 
 ## Services
 | Service | Port | Managed By |
@@ -48,7 +48,7 @@ Create these three files to give your agent immediate context:
 | Ollama | 11434 | launchd/systemd (localhost only) |
 | Langfuse | 3000 | Docker Desktop |
 | Cortex Dashboard | 8901 | launchd/systemd |
-| gbrain sync | — | launchd/systemd (120s interval) |
+| Legacy Sync | — | launchd/systemd (120s interval) |
 ```
 
 ### 2. User Profile (`~/brain/default/references/user.md`)
@@ -80,9 +80,9 @@ Create these three files to give your agent immediate context:
 
 | Schedule | Job | Type | Purpose |
 |----------|-----|------|---------|
-| Every 2m | gbrain sync daemon | system service | Auto-sync brain files |
+| Every 2m | legacy sync daemon | system service | Auto-sync brain files (decommissioned; mycortex uses the 15-min cron) |
 | */30 * * * * | system-heartbeat | no_agent script | Health check (silent when healthy) |
-| 0 */6 * * * | memory-to-brain | no_agent script | Sync MEMORY.md → gbrain |
+| 0 */6 * * * | memory-to-brain | no_agent script | Sync MEMORY.md → legacy brain |
 | 0 4 * * * | memory-pruning | LLM | Compress MEMORY.md entries |
 | 0 5 * * * | memory-budget-check | no_agent script | Warn if memory near limit |
 ```
@@ -122,7 +122,7 @@ The default source holds everything universally relevant:
 │   └── workflow.md         # Process decisions
 ├── concepts/
 │   ├── hermes-cortex.md    # How your system works
-│   └── gbrain.md           # How gbrain works
+│   └── legacy-brain.md           # How the legacy brain works
 └── ideas/
     └── inbox.md            # Capture zone for raw ideas
 ```
@@ -243,14 +243,14 @@ Once you've added content:
 # 1. Bootstrap — sync everything and check page counts
 bash ~/.hermes/scripts/bootstrap-brain.sh
 
-# 2. Query — test that gbrain can find your content
-gbrain query "system reference"
-gbrain query "user profile" --source default
+# 2. Query — test that legacy brain can find your content
+legacy brain query "system reference"
+legacy brain query "user profile" --source default
 
-# 3. Heartbeat — verify gbrain sources show as healthy
+# 3. Heartbeat — verify legacy brain sources show as healthy
 bash ~/.hermes/scripts/heartbeat.py --report
 
-# 4. Repeat — add more files as you go. gbrain syncs automatically
+# 4. Repeat — add more files as you go. mycortex syncs automatically
 #    every 2 minutes via the sync daemon.
 ```
 

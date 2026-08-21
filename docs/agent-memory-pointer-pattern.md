@@ -16,7 +16,7 @@ When memory is full:
 
 ## The Solution: Pointer Pattern
 
-Instead of cramming everything into flat-file memory, keep only **compressed pointers** in `MEMORY.md` and move all **full detail** to a dedicated agent brain directory indexed by a semantic search engine (like gbrain).
+Instead of cramming everything into flat-file memory, keep only **compressed pointers** in `MEMORY.md` and move all **full detail** to a dedicated agent brain directory indexed by a semantic search engine (like legacy brain).
 
 ```
 MEMORY.md (2,200 chars)           Agent Brain (~/brain/<name>/)
@@ -29,7 +29,7 @@ MEMORY.md (2,200 chars)           Agent Brain (~/brain/<name>/)
 │ 7 entries ≈ 750 chars│          │ bible/               │
 └──────────────────────┘          └──────────────────────┘
                                         ↕
-                                   gbrain (embeddings)
+                                   legacy brain (embeddings)
                                    /brain m <topic>
 ```
 
@@ -48,11 +48,11 @@ git init
 git remote add origin <your-private-repo>
 ```
 
-Initialize gbrain and index this brain as its own source:
+Initialize legacy brain and index this brain as its own source:
 
 ```bash
-gbrain init
-gbrain sync --source moses
+legacy brain init
+mycortex sync --source moses
 ```
 
 ### 2. Compress MEMORY.md
@@ -71,8 +71,8 @@ Each memory entry follows this format:
 Example transformation:
 
 ```diff
-- Active crons: conversation-export (6h→gbrain), memory-to-brain-sync (6h, no_agent),
-- memory-pruning (4am LLM), system-heartbeat (30min), gbrain-dream (3am),
+- Active crons: conversation-export (6h→legacy brain), memory-to-brain-sync (6h, no_agent),
+- memory-pruning (4am LLM), system-heartbeat (30min), legacy brain-dream (3am),
 - daily-morning-briefing (6:30am), briefing-analysis (Sun 7am),
 - langfuse-llm-judge-scorer (M-F 12/8pm, weekends 10pm), hermes-update, brew-update.
 + Crons: 16 jobs (5min service-recovery → Sun 8am weekly-scan). → /brain m crons
@@ -91,7 +91,7 @@ Create a `references/` directory in your agent brain with one file per memory to
 |---|---|---|---|
 | Every 5min | service-recovery | Auto-restart nginx + Langfuse | no_agent script |
 | Every 10min | system-alert | Memory/swap/disk thresholds | no_agent script |
-| Every 6h | memory-to-brain | Sync MEMORY.md → gbrain | no_agent script |
+| Every 6h | memory-to-brain | Sync MEMORY.md → legacy brain | no_agent script |
 | ... | ... | ... | ... |
 ```
 
@@ -105,18 +105,18 @@ Create a `references/INDEX.md` that maps pointer keys to files:
 | `post-reboot` | references/post-reboot.md | Service verification checklist |
 ```
 
-### 4. Index the Brain in gbrain
+### 4. Index the Brain in legacy brain
 
-Sync your brain to gbrain so the agent can query it:
+Sync your brain to legacy brain so the agent can query it:
 
 ```bash
-gbrain sync --source <name>
+mycortex sync --source <name>
 ```
 
 Verify it's searchable:
 
 ```bash
-gbrain query --source <name> "cron service-recovery"
+legacy brain query --source <name> "cron service-recovery"
 ```
 
 Now the agent can run the equivalent query automatically when it needs more detail.
@@ -129,7 +129,7 @@ Add a section to your agent's identity document that makes pointer resolution pa
 ## Memory Architecture — Pointer Pattern
 
 MEMORY.md holds only compressed pointers.
-Agent brain (~/brain/<name>/) holds full detail, indexed by gbrain.
+Agent brain (~/brain/<name>/) holds full detail, indexed by legacy brain.
 
 Rules:
 1. Every MEMORY.md entry must fit in ~120 chars with a `→ /brain m <key>` pointer.
@@ -181,7 +181,7 @@ python3 ~/.hermes/scripts/memory-compress.py
 Repos: public hermes-cortex (open-source skills/docs/scripts), private
 private-data (system config + brain-* branches). Brain data ONLY
 on brain-* branches. PII scrubbed.
-Active crons: conversation-export (6h→gbrain)... [keeps going]
+Active crons: conversation-export (6h→legacy brain)... [keeps going]
 Skills created: cron-engineering, cortex-dashboard...
 [HALLUCINATION GUARD] I have a recurring bug...
 [Post-reboot] Proactively verify all services...
@@ -204,19 +204,19 @@ Docker essential (observability). 3 GB VM stable.
 ## Requirements
 
 - **Hermes Agent** (any version with the `memory` tool)
-- **gbrain** (or any semantic search engine that indexes markdown files)
-  - Install: `bun install -g github:garrytan/gbrain`
+- **legacy brain** (or any semantic search engine that indexes markdown files)
+  - Install: `bun install -g github:garrytan/legacy-brain`
   - Free, open-source, self-hosted (Postgres + pgvector via Docker, or PGLite for dev)
 - **Cron system** (Hermes cronjob tool or system crontab)
 - **A private git repo** for the agent brain (optional but recommended for backup)
 
 ## Variations
 
-**No gbrain?** The pointer pattern still works — the agent can use `terminal('cd ~/brain/<name> && grep ...')` for file-level search instead of semantic search. Less sophisticated but still functional.
+**No legacy brain?** The pointer pattern still works — the agent can use `terminal('cd ~/brain/<name> && grep ...')` for file-level search instead of semantic search. Less sophisticated but still functional.
 
 **No separate brain repo?** Keep reference files anywhere the agent can read them. The key is separation of concerns — pointers in memory, detail in files.
 
-**Multiple agents?** Each agent gets its own brain directory. gbrain supports multiple sources with `--source` filtering.
+**Multiple agents?** Each agent gets its own brain directory. legacy brain supports multiple sources with `--source` filtering.
 
 ---
 

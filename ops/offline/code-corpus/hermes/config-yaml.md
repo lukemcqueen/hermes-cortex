@@ -126,7 +126,7 @@ tools:
     crawl_depth: 1
 
   memory:
-    backend: gbrain
+    backend: mycortex
     sync_interval: 120
     max_memory_entries: 50
 

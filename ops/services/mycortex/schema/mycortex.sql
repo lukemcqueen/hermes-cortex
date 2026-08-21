@@ -1,5 +1,5 @@
 -- ============================================================================
--- mycortex schema v001 — knowledge index for the fleet (gbrain replacement)
+-- mycortex schema v001 — knowledge index for the fleet 
 -- Source: docs/design/mycortex-DESIGN.md §2 (v2)
 -- Applied by: ops/services/mycortex/migrate.py (NOT by cortex-update.sh directly)
 -- Target: mycortex-postgres, database `mycortex`, schema `mycortex`
@@ -13,7 +13,7 @@
 --      `current_setting('hostname', true)` returns NULL (no such GUC), violating
 --      NOT NULL. The sync CLI always passes the real host explicitly.
 --   2. chunks RLS policy does NOT rely on "page-level RLS cascades" — policy
---      expressions evaluate as the table owner (gbrain, a superuser), which
+--      expressions evaluate as the table owner (mycortex, a superuser), which
 --      BYPASSES RLS, so a cascade check would leak chunks of isolated pages.
 --      The chunks policy independently applies the same federated/grant
 --      predicate via a join to pages+sources. (Isolation-leak test covers this.)

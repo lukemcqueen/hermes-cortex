@@ -58,7 +58,7 @@ if mem_total and mem_avail:
 
 ## Service / Daemon Detection
 
-### gbrain daemon
+### mycortex daemon
 
 ```python
 import sys, subprocess
@@ -66,7 +66,7 @@ import sys, subprocess
 if sys.platform == "darwin":
     # launchd on macOS
     out, _ = subprocess.run(
-        ["launchctl", "list", "com.gbrain.autopilot"],
+        ["launchctl", "list", "legacy autopilot"],
         capture_output=True, text=True, timeout=5
     )
     if '"PID"' in out:
@@ -74,21 +74,21 @@ if sys.platform == "darwin":
     else:
         # fallback to sync-watch
         out2, _ = subprocess.run(
-            ["launchctl", "list", "com.gbrain.sync-watch"],
+            ["launchctl", "list", "com.legacy-brain.sync-watch"],
             capture_output=True, text=True, timeout=5
         )
         status = "active (legacy)" if '"PID"' in out2 else "inactive"
 else:
     # systemd on Linux
     out, _ = subprocess.run(
-        ["systemctl", "--user", "is-active", "gbrain-autopilot"],
+        ["systemctl", "--user", "is-active", "legacy autopilot"],
         capture_output=True, text=True, timeout=5
     )
     if out.strip() == "active":
         status = "active"
     else:
         out2, _ = subprocess.run(
-            ["systemctl", "--user", "is-active", "com.gbrain.sync-watch"],
+            ["systemctl", "--user", "is-active", "com.legacy-brain.sync-watch"],
             capture_output=True, text=True, timeout=5
         )
         status = "active (legacy)" if out2.strip() == "active" else "inactive"
@@ -110,5 +110,5 @@ IS_LINUX = sys.platform == "linux"
 - **`free` doesn't exist on macOS** — don't use it. Use `vm_stat` + `sysctl hw.memsize`.
 - **`/proc/meminfo` doesn't exist on macOS** — it's a Linux procfs artifact.
 - **launchctl output format** — `"PID" = 12345` means running; `"LastExitStatus"` means exited; empty means not registered.
-- **systemctl --user vs systemctl** — user services (like gbrain) are per-user, not system-wide.
+- **systemctl --user vs systemctl** — user services (like mycortex) are per-user, not system-wide.
 - **page size differs** — Apple Silicon = 16384 bytes (16K pages), Intel Mac = 4096 bytes. Use `vm_stat` which reports in system page size.

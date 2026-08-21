@@ -7,7 +7,7 @@
 `hc` was using `POST /api/pgmq/read` — same endpoint agents use. ACLs blocked cross-agent reads.
 
 ## Solution
-Refactored to use **direct Postgres** (`docker exec gbrain-postgres psql -U gbrain -d gbrain -t -c "SELECT ..."`). No auth, no ACLs, any queue readable.
+Refactored to use **direct Postgres** (`docker exec legacy Postgres psql -U mycortex -d mycortex -t -c "SELECT ..."`). No auth, no ACLs, any queue readable.
 
 ## Key Changes
 1. Removed `HC_BUS_URL` and `HC_BUS_AUTH` from config — just `HC_AGENT`

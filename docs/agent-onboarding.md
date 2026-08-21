@@ -377,9 +377,9 @@ Each index in the `v` array:
 | 3 | no_stale_crons | All crons running | Stale crons detected |
 | 4 | nginx | nginx running | nginx down |
 | 5 | ollama | Ollama responding | Ollama unreachable |
-| 6 | gbrain | gbrain healthy | gbrain issues |
+| 6 | mycortex | mycortex healthy | mycortex issues |
 | 7 | disk_ok | Disk space OK | Low disk space |
-| 8 | gbrain_sources_ok | All sources synced | Sync failures |
+| 8 | mycortex_sources_ok | All sources synced | Sync failures |
 
 A healthy laptop sends all 1s. An issue like cron errors:
 ```json

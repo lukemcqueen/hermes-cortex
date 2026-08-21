@@ -186,9 +186,9 @@ const LANGFUSE_EXTERNAL = 'http://localhost:13002';  // Your external/proxy URL
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 ```
 
-### 9. "gbrain: command not found"
+### 9. "mycortex: command not found"
 
-**Symptom:** After install, `gbrain` isn't found.
+**Symptom:** After install, `mycortex` isn't found.
 
 **Fix:** Add Bun's bin directory to your PATH:
 ```bash
@@ -234,8 +234,8 @@ brew services list
 # Check Docker
 docker ps
 
-# Check gbrain
-ls ~/.gbrain/
+# Check mycortex
+ls ~/.legacy-brain/
 ```
 
 ---
@@ -346,7 +346,7 @@ The installer is optimized for macOS (uses launchd, Homebrew). On Linux:
 - **launchd services are skipped** — use systemd instead
 - **Homebrew is not available** — use your distro's package manager (apt, yum, etc.)
 - **Ollama** — install manually from [ollama.ai](https://ollama.ai)
-- **gbrain** — works the same (Bun runs on Linux)
+- **mycortex** — works the same (Bun runs on Linux)
 
 ---
 
@@ -512,10 +512,10 @@ nginx -t              # Test config
 nginx -s reload       # Reload config
 nginx -s stop         # Stop
 
-# gbrain
-gbrain doctor --fast  # Health check
-gbrain sync --all     # Resync all sources
-gbrain dream          # Knowledge consolidation
+# mycortex
+mycortex doctor --fast  # Health check
+mycortex sync --all     # Resync all sources
+mycortex dream          # Knowledge consolidation
 
 # Cron jobs
 hermes cron list      # List all cron jobs
@@ -665,18 +665,18 @@ cp -r /tmp/ollama-extract/lib/ollama/* ~/.local/lib/ollama/
 
 **Fix:** Bad disk sectors. Run `sudo tune2fs -c 1 /dev/mapper/vgmint-root && sudo reboot`, then `docker system prune -af` and pull images fresh.
 
-### 9. gbrain PGLite/WASM error
+### 9. mycortex PGLite/WASM error
 
 **Symptom:** `[unhandledRejection] WebAssembly.Module doesn't parse at byte N`
 or `PGLite failed to initialize its WASM runtime`
 
-**Fix:** The PGLite WASM engine is unreliable under Bun. **Migrate to Postgres + pgvector** (see [`docs/gbrain-postgres-migration.md`](gbrain-postgres-migration.md)).
+**Fix:** The PGLite WASM engine is unreliable under Bun. **Migrate to Postgres + pgvector** (see [`docs/legacy Postgres-migration.md`](legacy Postgres-migration.md)).
 
 If you need a temporary quick-fix to reinstall the WASM runtime:
 ```bash
-bun remove -g gbrain
+bun remove -g mycortex
 rm -rf ~/.bun/install/global/node_modules/@electric-sql
-bun install -g github:garrytan/gbrain
+bun install -g github:garrytan/mycortex
 ```
 
 ### 10. dpkg post-install failures

@@ -72,7 +72,7 @@ must be registered in this index.
 | `docs/service-layer-decision.md` | **Fleet-wide decision:** User-level systemd (Linux) / LaunchAgents (macOS) for all agent services. Full HC-Party architecture review with 6-role weighted matrix. |
 | `docs/linux-service-layer.md` | Linux service layer guide — user-level systemd, reboot survivability, template, migration from stale system units |
 | `docs/macos-service-layer.md` | macOS service layer guide — LaunchAgents vs LaunchDaemons, plist templates, migration guide, fleet service map |
-| `docs/knowledge-isolation-architecture.md` | Knowledge isolation model — gbrain source isolation, federated vs isolated sources, pointer pattern integration |
+| `docs/knowledge-isolation-architecture.md` | Knowledge isolation model — mycortex source isolation, federated vs isolated sources, pointer pattern integration |
 | `docs/seeding-brain-content.md` | Brain directory templates and starter content — get from 0 pages to searchable knowledge |
 | `docs/deploy-registry-pattern.md` | Multi-repo deploy registry — public/private split, brain-* branches, sync workflow |
 | `docs/cloud-deploy.md` | Cloud deployment runbook — AWS EC2 + Hetzner Cloud: sizing, ports, SSL, verification, costs, recovery |
@@ -85,8 +85,8 @@ must be registered in this index.
 | `docs/design/DESIGN.md` | Design conventions — typography, color, spacing, UI (light/dark modes) |
 | `docs/deprecated-profile-model.md` | Archived v1.x profile-per-project model — legacy migration reference |
 | `docs/agent-memory-pointer-pattern.md` | Compressed pointers + agent brain for unlimited context |
-| `docs/elicit/2026-08-01_mycortex-elicitation.md` | **mycortex elicitation (pass 1)** — requirements for gbrain replacement: domain decomposition, RICE/MoSCoW, source model, decommission plan |
-| `docs/design/mycortex-DESIGN.md` | **mycortex design v2** — gbrain replacement: git-truth + shared-Postgres index + thin Python; schema v001 (fail-closed RLS, role split), migration runner, 9-phase decommission, test strategy. 2× 6-role party-reviewed |
+| `docs/elicit/2026-08-01_mycortex-elicitation.md` | **mycortex elicitation (pass 1)** — requirements for legacy brain replacement: domain decomposition, RICE/MoSCoW, source model, decommission plan |
+| `docs/design/mycortex-DESIGN.md` | **mycortex design v2** — legacy brain replacement: git-truth + shared-Postgres index + thin Python; schema v001 (fail-closed RLS, role split), migration runner, 9-phase decommission, test strategy. 2× 6-role party-reviewed |
 | `docs/design/mycortex-multi-tenancy.md` | **mycortex multi-tenancy** — per-profile reader roles (`mycortex_reader_<profile>`, LOGIN INHERIT), RLS-on-CURRENT_USER isolation, agent migration steps (grant migration + verification), safe-by-construction rationale. Added 2026-08-06 (Luke: "100 employees, one brain") |
 | `docs/design/mycortex-dream-layer.md` | **mycortex dream layer** — 3-tier optional LLM cron serendipity layer (nightly/weekly/monthly), write-back to `~/brain/<profile>/dreams/` + INDEX, per-agent removable via `install-dream-crons.sh` |
 | `docs/design/mycortex-dream-task-bridge.md` | **dream → task bridge (implemented 2026-08-06, migrated to tasks schema same day)** — turns dream output into actionable tasks: Option A (monthly knowledge-gap → "learn X" tasks, cap 4) + Option B (insight triage all tiers, cap 2), dedup + caps + tenant-scoping enforced in `dream-task-bridge.py` via `task-db.py` → `tasks.tasks`. Formerly `mycortex-dream-todo-bridge.md` (bus.todos era; retired with the old todo system — see `docs/design/task-workflow.md`) |
@@ -102,10 +102,9 @@ must be registered in this index.
 | `docs/elicit/2026-08-18_governance-fail-loudly-party.md` | **governance fail-loudly party (2026-08-18, MCP SDK 2.0 write-deadlock)** — 6-role HC-Party: O1 Detect+Loud 8.35 + O3 Prevent-first 8.00 ship; O2 auto-restart 5.95 deferred (gateway restart cannot recover import-crash class). 10 requirements (4 Must/3 Should/2 Could/2 Won't), 4 user stories. Mitigation: `agent-mcp-health-watchdog`, doctor runtime probe, update pre-flight, fail-fast API guard |
 | `ops/services/mycortex/schema/v004__embeddings.sql` | **mycortex schema v004 (v1.1 semantic)** — `content_chunks.embedding vector(768)` + model/dim, UNIQUE (id,model,dim) partial, HNSW cosine index; extension pinned to public. Added 2026-08-06 (S-014) |
 | `ops/services/mycortex/schema/mycortex.sql` | **mycortex schema v001** — sources/pages/content_chunks/source_grants/ingest_log/query_log/schema_version; fail-closed RLS (FORCE + policies), role split (admin/ingest/reader), PII gate CHECK, `log_query()` SECURITY DEFINER |
-| `ops/install/deploy/docker-compose.mycortex.yml` | **mycortex-postgres compose** — dedicated hermes-cortex-owned Postgres (db `mycortex`, role `mycortex`, port 15432). Replaces the old gbrain-postgres container (2026-08-05) |
-| `ops/scripts/manage/migrate-gbrain-postgres-to-mycortex.sh` | **fleet migration script** — idempotent per-host gbrain-postgres→mycortex-postgres: dump, container swap, restore, re-apply roles/RLS/grants, env update, verify. Old container stopped (not removed) for rollback |
+| `ops/install/deploy/docker-compose.mycortex.yml` | **mycortex-postgres compose** — dedicated hermes-cortex-owned Postgres (db `mycortex`, role `mycortex`, port 15432). Replaces the old legacy Postgres container (2026-08-05) |
 | `ops/services/mycortex/migrate.py` | **mycortex migration runner** — schema_version-gated psql runner, invoked by cortex-update.sh after file sync (the DDL path); `--db-name` override for test DBs |
-| `ops/scripts/manage/mycortex-parity.py` | **mycortex parity harness** — golden known-answer set runner: `--mode baseline` (records gbrain results → `tests/fixtures/gbrain-baseline.json`), `--mode check` (pass rate vs mycortex). **Retired as a gate 2026-08-03** (gbrain deprecated) — now a manual regression fixture |
+| `ops/scripts/manage/mycortex-parity.py` | **mycortex parity harness** — golden known-answer set runner: `--mode check` (pass rate vs mycortex; engines: mycortex CLI or fixture file). **Retired as a gate 2026-08-03** (legacy brain deprecated) — now a manual regression fixture |
 | `tests/fixtures/golden-queries.json` | **Golden known-answer set** — 28 queries (18 federated hermes-cortex, 10 isolated moses) with expected top-3 paths, pinned to source SHAs |
 | `tests/test-mycortex-schema.sh` | **S-003 AC battery** — scratch-DB RLS isolation-leak (as mycortex_reader), PII gate, role split, idempotent migration |
 | `tests/test_mycortex_parity.py` | **S-001 parity tests** — fixture-engine pass-rate/gate coverage, golden-set integrity |
@@ -134,7 +133,7 @@ must be registered in this index.
 | `docs/reference/after-completing-work-6-questions.md` | **Pre-ship checklist** — 6-questions verification: arrays, cleanup, docs, syntax, doctor, push/deploy |
 | `docs/reference/session-todo-protocol.md` | **Session todo protocol** — todo() lifecycle: read durable file, update on cycles, write back at session end |
 | `docs/reference/mcp-sdk-v2-migration.md` | **mcp SDK 2.0 migration** — why the cortex MCP servers broke (2026-08-18), old→new constructor API, per-server recipe, verification, config requirements, fleet rollout checklist, write-deadlock recovery |
-| `docs/gbrain-stale-lock-detection.md` | gbrain stale lock file detection & auto-recovery — root cause, automated fix via service-recovery, manual diagnostics |
+| `docs/mycortex-stale-lock-detection.md` | mycortex stale lock file detection & auto-recovery — root cause, automated fix via service-recovery, manual diagnostics |
 | `docs/cron-schedules.md` | **Canonical cron schedule reference** — every cron, schedule, type, script, delivery (incl. explicit telegram targets for script-created crons, mycortex dream layer tiers + optional installer). Also the **Delivery Policy for LLM crons** — issues only, never status; exact `[SILENT]` when nothing actionable (Luke directive 2026-08-06). Update whenever schedules change. LLM-cron **stagger convention** (2026-08-07): base schedules shown; minute rewritten per host at install. |
 | `docs/cron-jobs-reference.md` | **Cron jobs inventory** — all cron jobs with name, type, schedule, and purpose (extracted from AGENTS.md) |
 | `docs/cron-format-standard.md` | **Cron output format standard** — required format for all LLM-driven cron outputs: header, phases, cost footer, [SILENT]. Cross-references the cron-format-standard skill. |
@@ -151,9 +150,9 @@ must be registered in this index.
 | `docs/governance-hardening-proposal.md` | Governance hardening proposal — structural override analysis, adversarial attack |
 | `docs/proposals/2026-08-06-provider-timeout-fix.md` | **Provider timeout fix proposal** — fleet-wide deepseek request timeout (LLM cron hang class), ready-to-apply patch |
 | `docs/proposals/2026-08-06-docs-artifact-routing.md` | **Docs artifact routing proposal** — canonical docs/ routing for review/gap-analysis/elicit/party/docs workflows. ✅ APPLIED 2026-08-06 (moses) |
-| `docs/gbrain-postgres-migration.md` | gbrain Postgres migration — schema, migration procedure |
+| `docs/legacy Postgres-migration.md` | mycortex Postgres migration — schema, migration procedure |
 | `docs/langfuse-v3-to-v4-migration.md` | **Langfuse v3→v4 migration runbook** — dual-mode upgrade, CH 25.12, backfill memory caps, failure recovery (Linux + macOS) |
-| `docs/gbrain-v2-taxonomy.md` | gbrain v2 taxonomy — brain source categories and tag conventions |
+| `docs/mycortex-v2-taxonomy.md` | mycortex v2 taxonomy — brain source categories and tag conventions |
 | `docs/agent-learning-submissions.md` | **Agent learning submissions** — how agents submit ad-hoc learnings via ~/brain/learnings/pending/ |
 | `docs/pre-task-sequence-mandatory-before-every-task.md` | Pre-task sequence reference table — relocated from AGENTS.md during doc pruning |
 | `docs/contact-protocol-how-to-reach-orchestrator.md` | Contact protocol — how agents reach the orchestrator, relocated from AGENTS.md during doc pruning |

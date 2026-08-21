@@ -13,7 +13,7 @@ Service map (index → service name) from agent-registry.json:
   [3] no_stale_crons      — no cron jobs gone stale
   [4] nginx               — nginx process running
   [5] ollama              — Ollama process running
-  [6] mycortex            — mycortex (gbrain replacement) doctor healthy
+  [6] mycortex            — mycortex doctor healthy
   [7] disk_ok             — disk has sufficient free space
   [8] mycortex_sources_ok — brain source directories exist
 
@@ -258,7 +258,7 @@ def check_services() -> int:
     On macOS, checks running processes. Returns 0 if none are installed.
     """
     if _is_linux:
-        # gbrain-autopilot REMOVED from key services — decommissioned 2026-08-02
+        # legacy autopilot REMOVED from key services — decommissioned 2026-08-02
         # (mycortex replaces; a disabled unit is the intended state).
         key_services = ["nginx"]
         any_installed = False
@@ -359,13 +359,13 @@ def check_ollama() -> int:
 # mycortex doctor result cache. The check shells out to `mycortex doctor --json`
 # (~2s+ per run); health pollers hit the endpoint every few minutes, so a short
 # TTL keeps each /health request fast without masking real state for long.
-# (Same pattern as the retired health-server.py gbrain cache.)
+# (Same pattern as the retired health-server.py mycortex cache.)
 _MYCORTEX_CACHE = {"t": 0.0, "result": 0}
 _MYCORTEX_TTL = 60
 
 
 def check_mycortex() -> int:
-    """mycortex (gbrain replacement): 1 = healthy, 0 = not installed, -1 = installed but down."""
+    """mycortex : 1 = healthy, 0 = not installed, -1 = installed but down."""
     cli = os.path.expanduser("~/.hermes-cortex/scripts/mycortex")
     if not os.path.exists(cli):
         return 0  # not installed on this system

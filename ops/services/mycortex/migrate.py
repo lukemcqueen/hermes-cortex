@@ -40,7 +40,7 @@ def _psql_base(db_name: str) -> list[str]:
     """Platform-appropriate psql invocation (task-db.py pattern).
 
     Linux  → sg docker ... (container is the DB host)
-    macOS  → direct psql reading ~/.gbrain/config.json (or defaults)
+    macOS  → direct psql reading ~/.hermes-cortex/mycortex.conf (or env/defaults)
     """
     if platform.system() == "Darwin":
         url = None

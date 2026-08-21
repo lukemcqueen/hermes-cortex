@@ -1,6 +1,6 @@
 ---
 name: offline-knowledge
-description: "Offline knowledge cascade — query local content (web-cache, kiwix ZIM, gbrain) without internet. Perfect for travel, remote areas, or saving API costs."
+description: "Offline knowledge cascade — query local content (web-cache, kiwix ZIM, mycortex) without internet. Perfect for travel, remote areas, or saving API costs."
 version: 1.0.0
 author: Hermes Cortex
 license: MIT
@@ -15,7 +15,7 @@ The offline knowledge tool provides a transparent **cascade lookup** across four
 
 1. **web_cache** — semantic search (~50ms, zero cost, always checked first)
 2. **kiwix-serve** (Docker) — Wikipedia, WikiMed, Wikivoyage, Wikibooks, Wiktionary via ZIM files
-3. **gbrain** — personal knowledge brain via RAG
+3. **mycortex** — personal knowledge brain via RAG
 4. **LLM native knowledge** — always available, no lookup needed
 
 **When online:** saves API calls on every cached query — cache hit → skip web_search entirely.
@@ -85,7 +85,7 @@ hermes-cortex/ops/offline/prep-offline.sh --mode=travel   # or build/education/a
 
 # 2. Verify everything works
 offline_knowledge stats
-# Expected: web_cache ✅, kiwix-serve ✅, gbrain ✅
+# Expected: web_cache ✅, kiwix-serve ✅, mycortex ✅
 # Expected: ZIM files listing with correct sizes
 
 # 3. Test a cascade query
@@ -99,7 +99,7 @@ offline_knowledge query "how to treat a snake bite in the jungle"
 
 | Command | Description |
 |---------|-------------|
-| `offline_knowledge query <question>` | Cascade: cache → kiwix → gbrain (recommended) |
+| `offline_knowledge query <question>` | Cascade: cache → kiwix → mycortex (recommended) |
 | `offline_knowledge cascade-search <question>` | Detailed per-source results |
 | `offline_knowledge kiwix-search <term>` | Direct ZIM full-text search |
 | `offline_knowledge kiwix-status` | Check if kiwix-serve is running |
@@ -315,7 +315,7 @@ Agent question
          │ miss
          ▼
 ┌─────────────────┐     hit? ──→ Return brain knowledge
-│  gbrain (RAG)    │
+│  mycortex (RAG)    │
 └────────┬─────────┘
          │ miss
          ▼

@@ -7,7 +7,7 @@
 Query the bus for stuck messages:
 
 ```bash
-sg docker -c "docker exec gbrain-postgres psql -U gbrain -d gbrain -t -c \"
+sg docker -c "docker exec legacy Postgres psql -U mycortex -d mycortex -t -c \"
 SELECT queue_name, msg_id::text, state, retry_count, 
        timeout_at::timestamptz(0), now()::timestamptz(0),
        timeout_at < now() as expired
@@ -27,7 +27,7 @@ Look for:
 Try `bus.recover_timeouts()` first:
 
 ```bash
-sg docker -c "docker exec gbrain-postgres psql -U gbrain -d gbrain -c \"SELECT bus.recover_timeouts();\""
+sg docker -c "docker exec legacy Postgres psql -U mycortex -d mycortex -c \"SELECT bus.recover_timeouts();\""
 ```
 
 If it returns 0 but messages are clearly expired, force-recover manually:

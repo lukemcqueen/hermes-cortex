@@ -396,8 +396,8 @@ declare -A MODE_OVERRIDES=(
 
 # Deployment-specific cron scripts
 register "ops/scripts/manage/agent-auto-save-sessions.py"      "${CORTEX_DEPLOY_HOME}/scripts/agent-auto-save-sessions.py"
-# gbrain-wrapper.sh + gbrain-doctor-summary.py UNREGISTERED 2026-08-05 —
-# gbrain decommissioned; dead scripts no longer deployed.
+# legacy wrapper + doctor-summary scripts UNREGISTERED 2026-08-05 —
+# legacy brain decommissioned; dead scripts no longer deployed.
 register "ops/scripts/manage/send-skill-report.py"       "${CORTEX_DEPLOY_HOME}/scripts/send-skill-report.py"
 
 register_orch "mcp-servers/cortex-bus-mcp.py"               "${CORTEX_DEPLOY_HOME}/scripts/cortex-bus-mcp.py"
@@ -445,14 +445,14 @@ register "ops/scripts/manage/ek-session-snapshot.py"     "${CORTEX_DEPLOY_HOME}/
 # Failover watchdog — detect bus outage, per-role behavior (all agents).
 # Registered once at line 260 (register = all agents); do NOT duplicate here.
 
-# gbrain autopilot — REMOVED 2026-08-02 (decommissioned; mycortex replaces)
+# legacy brain autopilot — REMOVED 2026-08-02 (decommissioned; mycortex replaces)
 
 # Governance enforcer plugin — NOT registered in MAP. deploy_governance_plugin()
 # handles the full lifecycle: copy, chmod 444, chattr +i. Dual registration
 # causes copy_file() to add a source header that mismatches repo source,
 # triggering needs_update and a cp failure on locked files.
 
-# install-gbrain-sync.sh UNREGISTERED 2026-08-05 — gbrain decommissioned.
+# install-legacy-sync.sh UNREGISTERED 2026-08-05 — legacy brain decommissioned.
 # Orchestrator health report — periodic agent fleet snapshot (no_agent cron)
 register_orch "ops/scripts/agent/orch-health-report.py"       "${CORTEX_DEPLOY_HOME}/scripts/orch-health-report.py"
 
@@ -489,9 +489,8 @@ register "ops/scripts/agent/agent-diagnostic.py"       "${CORTEX_DEPLOY_HOME}/sc
 # Timezone helper (required by monitoring scripts)
 register "ops/scripts/hermes_tz.py"                "${CORTEX_DEPLOY_HOME}/scripts/hermes_tz.py"
 
-# mycortex knowledge brain (gbrain replacement) — schema, migration runner, import, CLI, parity harness
+# mycortex knowledge brain — schema, migration runner, import, CLI, parity harness
 register "ops/services/mycortex/migrate.py"          "${CORTEX_DEPLOY_HOME}/services/mycortex/migrate.py"
-register "ops/services/mycortex/import-gbrain.py"     "${CORTEX_DEPLOY_HOME}/services/mycortex/import-gbrain.py"
 register "ops/services/mycortex/schema/mycortex.sql"  "${CORTEX_DEPLOY_HOME}/services/mycortex/schema/mycortex.sql"
 register "ops/services/mycortex/schema/v002__rls-admin-reader-grants.sql" "${CORTEX_DEPLOY_HOME}/services/mycortex/schema/v002__rls-admin-reader-grants.sql"
 register "ops/services/mycortex/schema/v003__admin-schema-version-grant.sql" "${CORTEX_DEPLOY_HOME}/services/mycortex/schema/v003__admin-schema-version-grant.sql"
@@ -500,8 +499,6 @@ register "ops/scripts/manage/mycortex-parity.py"      "${CORTEX_DEPLOY_HOME}/scr
 register "ops/scripts/manage/mycortex"                "${CORTEX_DEPLOY_HOME}/scripts/mycortex"
 # mycortex-postgres compose (dedicated hermes-cortex-owned Postgres, NOT langfuse)
 register "ops/install/deploy/docker-compose.mycortex.yml" "${CORTEX_DEPLOY_HOME}/docker-compose.mycortex.yml"
-# one-shot fleet migration: gbrain-postgres → mycortex-postgres (idempotent, per-host)
-register "ops/scripts/manage/migrate-gbrain-postgres-to-mycortex.sh" "${CORTEX_DEPLOY_HOME}/scripts/migrate-gbrain-postgres-to-mycortex.sh"
 # agent-mycortex-sync cron wrapper — per-host sync (design D4: NOT orchestrator-only)
 register "ops/scripts/manage/agent-mycortex-sync.sh"  "${CORTEX_DEPLOY_HOME}/scripts/agent-mycortex-sync.sh"
 # daily retention — prune ingest_log >90d, purge archived pages >7d (S-016)
@@ -610,21 +607,7 @@ restart_cortex_bus() {
   fi
 }
 
-# ── gbrain upgrade ────────────────────────────────────────
-
-update_gbrain_binary() {
-  # gbrain DECOMMISSIONED 2026-08-02 — binary kept for rollback until the
-  # 30-day purge window closes, but deploy no longer upgrades it.
-  :
-}
-
 # ── Service restart helpers ─────────────────────────────────
-
-restart_gbrain_sync() {
-  # gbrain DECOMMISSIONED 2026-08-02 — no-op (mycortex replaces).
-  # Kept as a stub so any remaining callers don't error, but nothing restarts.
-  :
-}
 
 restart_langfuse() {
   if [[ -f "${HOME}/langfuse/docker-compose.yml" ]] && command -v docker &>/dev/null; then
@@ -1883,7 +1866,7 @@ deploy_governance_plugin() {
 
 # ── Mycortex Command Plugin Deploy ──────────────────────────
 # Deploys the mycortex-command plugin (the /brain + /mycortex slash
-# commands, gbrain-command replacement) as a plain COPY to
+# commands, legacy brain command replacement) as a plain COPY to
 # ~/.hermes/plugins/. Not immutable — it's a user command, not enforcement.
 deploy_mycortex_plugin() {
   local repo_plugin="${REPO_DIR}/plugins/mycortex-command"
@@ -2440,9 +2423,6 @@ main() {
   # Deploy mycortex-command plugin (/brain + /mycortex slash commands)
   deploy_mycortex_plugin
 
-  # Check and upgrade gbrain binary (every run, not just when template changes)
-  update_gbrain_binary
-
   # Merge template updates into agent SOUL.md (preserves customizations)
   local soul_merge="${CORTEX_DEPLOY_HOME}/scripts/soul-merge.py"
   if [[ -f "$soul_merge" ]]; then
@@ -2479,7 +2459,6 @@ main() {
       seen_restart="${seen_restart},${cmd}"
       $DRY_RUN && echo "    would restart: $cmd" && continue
       case "$cmd" in
-        restart_gbrain_sync) restart_gbrain_sync ;;
         restart_langfuse)    restart_langfuse ;;
         restart_dashboard)   restart_dashboard ;;
         restart_cortex_bus)  restart_cortex_bus ;;
@@ -2617,7 +2596,7 @@ main() {
       # ── Non-orch guard: detect accidentally installed orch crons ──
       if command -v hermes &>/dev/null && hermes cron --help &>/dev/null 2>&1; then
         local _found
-        _found=$(hermes cron list --all 2>/dev/null | grep -E "orch-(team-messages|team-health|gbrain-doctor|skill-lifecycle|bus-|fleet-|clean-health|health-report)" || true)
+        _found=$(hermes cron list --all 2>/dev/null | grep -E "orch-(team-messages|team-health|skill-lifecycle|bus-|fleet-|clean-health|health-report)" || true)
         if [[ -n "$_found" ]]; then
           warn "Orch crons detected on non-orch agent — remove with:"
           warn "  bash ${CORTEX_DEPLOY_HOME}/scripts/install-orch-crons.sh --uninstall"

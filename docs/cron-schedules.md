@@ -87,14 +87,14 @@
 | `agent-learning-collector` | `0 */6 * * *` | no_agent | `agent-learning-collector.py` | local |
 | `agent-session-mine` | `0 2 * * *` | no_agent | `agent-session-mine-cron.py` | local |
 | `agent-nginx-threat-pipeline` | `0 5 * * *` | no_agent | `agent-nginx-threat-pipeline.sh` | `telegram:${TELEGRAM_HOME_CHANNEL}` | *(explicit target from env — script-created crons get origin=null and would be silent)* |
-| `agent-gbrain-doctor` | ~~`5 6 * * *`~~ | ~~no_agent~~ | ~~`agent-gbrain-doctor.sh`~~ | ~~origin~~ | ⚠️ **STALE/REMOVED 2026-08-02** — gbrain decommissioned; mycortex replaces (`mycortex doctor`). Agents with gbrain components still installed: decommission per-host or ignore. |
-| `agent-gbrain-nightly-dream` | ~~`0 3 * * 6`~~ | ~~no_agent~~ | ~~`agent-gbrain-nightly-dream.sh`~~ | ~~origin~~ | ⚠️ **STALE/REMOVED 2026-08-02** — gbrain decommissioned; no consumer (verified). |
-| `agent-gbrain-update-sync` | ~~`0 2 * * 0`~~ | ~~no_agent~~ | ~~`agent-gbrain-update-sync.sh`~~ | ~~origin~~ | ⚠️ **STALE/REMOVED 2026-08-02** — obsolete with gbrain binary uninstall. |
-| `agent-mycortex-sync` | `*/15 * * * *` | no_agent | `agent-mycortex-sync.sh` | origin | *(knowledge brain sync — replaces gbrain autopilot)* |
-| `agent-mycortex-dream-nightly` | `0 3 * * *` | LLM | (prompt) | origin | *(nightly serendipity digest — fresh-page connections, writes to `~/brain/<profile>/dreams/`; replaces gbrain creative-dream layer; optional via install-dream-crons.sh)* |
+| `agent-legacy-brain-doctor` | ~~`5 6 * * *`~~ | ~~no_agent~~ | ~~`agent-legacy-brain-doctor.sh`~~ | ~~origin~~ | ⚠️ **STALE/REMOVED 2026-08-02** — legacy brain decommissioned; mycortex replaces (`mycortex doctor`). Agents with mycortex components still installed: decommission per-host or ignore. |
+| `agent-mycortex-nightly-dream` | ~~`0 3 * * 6`~~ | ~~no_agent~~ | ~~`agent-mycortex-nightly-dream.sh`~~ | ~~origin~~ | ⚠️ **STALE/REMOVED 2026-08-02** — legacy brain decommissioned; no consumer (verified). |
+| `agent-mycortex-update-sync` | ~~`0 2 * * 0`~~ | ~~no_agent~~ | ~~`agent-mycortex-update-sync.sh`~~ | ~~origin~~ | ⚠️ **STALE/REMOVED 2026-08-02** — obsolete with mycortex binary uninstall. |
+| `agent-mycortex-sync` | `*/15 * * * *` | no_agent | `agent-mycortex-sync.sh` | origin | *(knowledge brain sync — replaces the legacy autopilot)* |
+| `agent-mycortex-dream-nightly` | `0 3 * * *` | LLM | (prompt) | origin | *(nightly serendipity digest — fresh-page connections, writes to `~/brain/<profile>/dreams/`; replaces the legacy creative-dream layer; optional via install-dream-crons.sh)* |
 | `agent-mycortex-dream-weekly` | `0 3 * * 6` | LLM | (prompt) | origin | *(weekly deep dream — lessons synthesis + scripture connection, ~200-250 words written to `~/brain/<profile>/dreams/`; optional)* |
 | `agent-mycortex-dream-monthly` | `0 3 1 * *` | LLM | (prompt) | origin | *(monthly arc — time-lapse + knowledge-gap probe, ~300 words written to `~/brain/<profile>/dreams/`; optional)* |
-| `agent-mycortex-parity` | ~~removed 2026-08-03~~ | no_agent | — | origin | *(S-010 flip-gate watchdog — RETIRED with gbrain; gate closed, parity is now a manual regression fixture only)* |
+| `agent-mycortex-parity` | ~~removed 2026-08-03~~ | no_agent | — | origin | *(S-010 flip-gate watchdog — RETIRED with mycortex; gate closed, parity is now a manual regression fixture only)* |
 | `agent-scoring-activity-watchdog` | `0 14,20 * * *` | no_agent | `agent-scoring-activity-watchdog.py` | origin |
 | `agent-session-cache-build` | `0 5 * * 1` | no_agent | `agent-session_cache.py` | origin |
 | `agent-offline-code-index` | `0 5 * * 0` | no_agent | `agent-offline-code-index.sh` | local |

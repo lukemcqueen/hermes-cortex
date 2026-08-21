@@ -33,7 +33,7 @@ bug is elsewhere.
 ## 3. Are the expected docs indexed with FTS?
 
 ```bash
-docker exec gbrain-postgres psql -U mycortex_admin -d gbrain -t -A -c "
+docker exec legacy Postgres psql -U mycortex_admin -d mycortex -t -A -c "
 SELECT p.relpath, p.fts IS NOT NULL
 FROM mycortex.pages p JOIN mycortex.sources s ON s.id=p.source_id
 WHERE s.name='<source>' AND p.relpath IN (...);"
@@ -42,7 +42,7 @@ WHERE s.name='<source>' AND p.relpath IN (...);"
 ## 4. Does the query even match the vector?
 
 ```bash
-docker exec gbrain-postgres psql -U mycortex_admin -d gbrain -t -A -c "
+docker exec legacy Postgres psql -U mycortex_admin -d mycortex -t -A -c "
 SELECT p.relpath,
        p.fts @@ websearch_to_tsquery('<config>','<query>') AS matches,
        round(ts_rank(p.fts, websearch_to_tsquery('<config>','<query>'))::numeric,6) AS score
@@ -58,10 +58,10 @@ WHERE s.name='<source>' AND p.relpath='<expected>';"
 
 ```bash
 mycortex sources list --json | python3 -m json.tool   # is_federated per source
-docker exec gbrain-postgres psql -U mycortex_admin -d gbrain -t -A -c \
+docker exec legacy Postgres psql -U mycortex_admin -d mycortex -t -A -c \
   "SELECT s.name, g.role_name FROM mycortex.source_grants g
    JOIN mycortex.sources s ON s.id=g.source_id ORDER BY s.name;"
-docker exec gbrain-postgres psql -U mycortex_reader -d gbrain -t -A -c \
+docker exec legacy Postgres psql -U mycortex_reader -d mycortex -t -A -c \
   "SELECT s.name, count(*) FROM mycortex.pages p
    JOIN mycortex.sources s ON s.id=p.source_id GROUP BY s.name;"
 ```

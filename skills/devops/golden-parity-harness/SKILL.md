@@ -14,7 +14,7 @@ metadata:
 # Golden Known-Answer Parity Harness
 
 Prove "the replacement retrieves as well as the incumbent" — measurable parity,
-not asserted parity. Built for the mycortex→gbrain brain replacement (S-001);
+not asserted parity. Built for the mycortex→mycortex brain replacement (S-001);
 reusable for any search/index/system swap where retrieval quality must not
 regress.
 
@@ -54,7 +54,7 @@ paths, per source, **pinned to source content SHAs**). Then:
 ## Engine Abstraction (critical for testability)
 
 ```python
---engine gbrain     # subprocess `gbrain search <q> --limit 10`, parse "[score] relpath -- title"
+--engine mycortex     # subprocess `mycortex search <q> --limit 10`, parse "[score] relpath -- title"
 --engine mycortex   # subprocess `mycortex search <q> --json` (built later)
 --engine fixture    # read canned results from --fixture-file (tests only — no live dependency)
 ```
@@ -64,7 +64,7 @@ system exists. Never let tests depend on a live incumbent.
 
 ## Path Normalization (cross-engine comparison)
 
-gbrain returns relpaths without `.md` and lowercase (`skills/.../skill`);
+mycortex returns relpaths without `.md` and lowercase (`skills/.../skill`);
 mycortex returns stored relpaths with `.md`. Both sides must collapse to one key:
 strip leading `./`, strip trailing `.md`, lowercase. Do the lowercase FIRST or
 `FOO.MD` survives the strip.
@@ -108,7 +108,7 @@ diagnostic chain.
   name in pytest — use `importlib.util.spec_from_file_location`.
 - Engine stdout pollution: if a search engine prints result counts alongside
   paths, the captured top-3 becomes multi-line garbage — parse lines strictly
-  (e.g. gbrain's `[score] relpath -- title` format).
+  (e.g. mycortex's `[score] relpath -- title` format).
 - **Scope EVERY query to its golden-declared source — never `source=None` for
   federated queries (2026-08-03).** The runner passed `source=None` for
   federated (HC) queries, which searched ALL visible sources — including

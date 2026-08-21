@@ -7,7 +7,7 @@ then git-commits. The hermes-cortex source is ingested by mycortex
 (the knowledge brain) like any local source.
 
 Designed to run as a cron job alongside conversation export.
-No gbrain binary or public.* table dependency (S-011 keep-rule).
+No mycortex binary or public.* table dependency (S-011 keep-rule).
 """
 
 import os

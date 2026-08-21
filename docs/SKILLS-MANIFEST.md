@@ -32,7 +32,7 @@ their domain.
 | `blackbox` | 1.0.1 | Delegate coding tasks to the Blackbox AI multi-model CLI. | `skill_view(name='blackbox')` |
 | `grok` | 0.1.1 | Delegate coding to xAI Grok Build CLI (features, PRs). | `skill_view(name='grok')` |
 | `hermes-cortex` | 2.0.0 | Install, configure, and maintain Hermes Cortex — the observability and knowledge layer for Hermes Agent (Ol... | `skill_view(name='hermes-cortex')` |
-| `hermes-cortex-setup` | 1.0.0 | Install and configure Hermes Cortex core components — Ollama, Bun, gbrain, health server, agent registry, h... | `skill_view(name='hermes-cortex-setup')` |
+| `hermes-cortex-setup` | 1.0.0 | Install and configure Hermes Cortex core components — Ollama, Bun, mycortex, health server, agent registry, h... | `skill_view(name='hermes-cortex-setup')` |
 | `honcho` | 2.0.0 | Configure and troubleshoot Honcho memory for Hermes. | `skill_view(name='honcho')` |
 | `openhands` | 0.1.0 | Delegate coding to OpenHands CLI (model-agnostic, LiteLLM). | `skill_view(name='openhands')` |
 
@@ -198,7 +198,7 @@ their domain.
 | `maintenance-scan` | 1.0.0 | Systematic system health survey run proactively when the user gives an open-ended directive to "find work"... | `skill_view(name='maintenance-scan')` |
 | `mcp-health-monitoring` | 1.0.0 | Probe MCP server health; extend the governance watchdog. | `skill_view(name='mcp-health-monitoring')` |
 | `migration-deploy-verification` | 1.0.0 | Use when a repo migration is missing from the live DB. | `skill_view(name='migration-deploy-verification')` |
-| `mycortex` | 1.1.0 | Use for mycortex knowledge brain work or gbrain migration. | `skill_view(name='mycortex')` |
+| `mycortex` | 1.1.0 | Use for mycortex knowledge brain work or mycortex migration. | `skill_view(name='mycortex')` |
 | `name-discovery` | 1.0.0 | Use when checking if a software/tool name is available for use — searches GitHub, web, and registries for c... | `skill_view(name='name-discovery')` |
 | `nextjs-docker-multistage` | 1.0.0 | Next.js Docker multi-stage builds with standalone output — minimal runtime images, no node_modules in produ... | `skill_view(name='nextjs-docker-multistage')` |
 | `nginx-security-pipeline` | 1.0.0 | Set up nginx security with IP blocking, fail2ban integration, daily automated scanning, and atomic deploy.... | `skill_view(name='nginx-security-pipeline')` |

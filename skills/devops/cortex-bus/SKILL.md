@@ -19,17 +19,17 @@ The Agent Bus is a Postgres-native message queue (`lib/pgmq` implementation with
 
 > **📐 Architecture reference:** See [`docs/reference/cortex-bus-config.md`](../../docs/reference/cortex-bus-config.md) for the full architecture — fleet topology, auth model, ACL/permissions, message consumption patterns, and forwarder design. This skill covers operational diagnostics only.
 
-> **⚠️ Postgres access (post-2026-08-05 migration):** the `gbrain-postgres`
+> **⚠️ Postgres access (post-2026-08-05 migration):** the `legacy Postgres`
 > container was replaced by **`mycortex-postgres`** (role/db **`mycortex`**,
 > port still `:15432`). All psql examples below use the new container/role:
 > `sg docker -c "docker exec mycortex-postgres psql -U mycortex -d mycortex ..."`.
-> The old `gbrain` role does NOT exist in the new container — using it fails
-> with `FATAL: role "gbrain" does not exist`.
+> The old `mycortex` role does NOT exist in the new container — using it fails
+> with `FATAL: role "mycortex" does not exist`.
 
 Key architectural facts:
 - **Bus server** processes at `~/hermes-cortex/core/cortex_bus/server.py` (module `cortex_bus.server:app`, service `cortex-bus.service`)
 - **Queue module** at `~/hermes-cortex/core/cortex_bus/queue.py`
-- **Postgres schema** `bus.*` in the shared gbrain database (`:15432`)
+- **Postgres schema** `bus.*` in the shared mycortex database (`:15432`)
 - **MCP tools** `mcp__cortex_bus__*` route through the bus via HTTP
 - **Health check**: `curl http://127.0.0.1:8903/health` returns 200
 - **Bearer token auth**: token from `CORTEX_BUS_TOKEN` in `.env`

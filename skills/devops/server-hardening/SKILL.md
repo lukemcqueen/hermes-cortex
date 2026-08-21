@@ -35,7 +35,7 @@ curl -sI --max-time 5 https://<host>/
 ```
 
 Flag: any service bound to `0.0.0.0` that should be localhost-only
-(Ollama, gbrain, dashboards without auth).
+(Ollama, mycortex, dashboards without auth).
 
 ## Layer 2 — Service Config Review
 

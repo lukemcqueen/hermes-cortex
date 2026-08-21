@@ -51,16 +51,16 @@ mkdir -p ~/brain/<project>/agents
 cp <project>/.hermes/plans/*.md ~/brain/<project>/agents/
 cp <project>/.hermes/*.md ~/brain/<project>/agents/
 
-# 3. Git commit so gbrain sync picks them up
+# 3. Git commit so mycortex sync picks them up
 cd ~/brain/<project>
 git add -A
 git commit -m "archive: migrated agent plans from project .hermes dir"
 
-# 4. Sync with gbrain
-gbrain sync --source <project> --no-pull
+# 4. Sync with mycortex
+mycortex sync --source <project> --no-pull
 
 # 5. Extract edges
-gbrain extract --stale --source <project>
+mycortex extract --stale --source <project>
 ```
 
 ## Cleanup Workflow
@@ -113,6 +113,6 @@ done
   `.hermes-cortex/` (project-anchored, gitignored-but-tracked) and
   `~/.hermes/` (home-dir, single source of truth)
 - Valuable agent output (plans, research) belongs in `~/brain/<project>/agents/`
-  where gbrain indexes and searches it via `/brain`
+  where mycortex indexes and searches it via `/brain`
 - Session state files (`sessions/current.md`) are ephemeral and have no
   durable value outside the conversation that produced them

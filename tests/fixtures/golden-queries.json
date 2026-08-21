@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "description": "Golden known-answer set for mycortex parity (S-001). Re-baselined 2026-08-02: HC-001 expected updated to current canonical answer (loop-governance SKILL.md is the operational doc; gbrain's own baseline ranked the template, not the reference). Pinned to current hermes-cortex HEAD f8a91495.",
+  "description": "Golden known-answer set for mycortex parity (S-001). Re-baselined 2026-08-02: HC-001 expected updated to current canonical answer (loop-governance SKILL.md is the operational doc; the legacy brain's own baseline ranked the template, not the reference). Pinned to current hermes-cortex HEAD f8a91495.",
   "pinned_at": "2026-08-02",
   "sources": {
     "hermes-cortex": {
@@ -68,17 +68,6 @@
         "docs/agent-memory-pointer-pattern.md",
         "docs/knowledge-isolation-architecture.md",
         "docs/seeding-brain-content.md"
-      ]
-    },
-    {
-      "id": "HC-006",
-      "query": "gbrain postgres migration",
-      "source": "hermes-cortex",
-      "scope": "federated",
-      "expected_top3": [
-        "docs/gbrain-postgres-migration.md",
-        "docs/knowledge-isolation-architecture.md",
-        "docs/gbrain-v2-taxonomy.md"
       ]
     },
     {

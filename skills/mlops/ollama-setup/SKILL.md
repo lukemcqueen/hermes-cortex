@@ -16,11 +16,11 @@ Install and manage Ollama for local LLM inference and embeddings.
 
 ## When to Use
 
-- Setting up a new Linux machine with Ollama for gbrain embeddings
+- Setting up a new Linux machine with Ollama for mycortex embeddings
 - Installing Ollama without sudo (tarball → `~/.local/bin/` → user systemd)
 - Pulling/updating models
 - Verifying Ollama health after install or reboot
-- Setting up Ollama for use with gbrain (`nomic-embed-text`)
+- Setting up Ollama for use with mycortex (`nomic-embed-text`)
 - **Configuring a local model for Hermes cron jobs** (context size, Modelfile tuning)
 
 ## Installation Methods
@@ -99,7 +99,7 @@ systemctl --user is-active ollama
 ## Pull Models
 
 ```bash
-# Embedding model (required for gbrain)
+# Embedding model (required for mycortex)
 ollama pull nomic-embed-text
 
 # General chat
@@ -242,7 +242,7 @@ ss -tlnp | grep 11434
 - **`ollama-linux-amd64.tgz` returns 404**: Use `.tar.zst`, not `.tgz`.
 - **OLLAMA_HOST defaults to 0.0.0.0**: Explicitly set `127.0.0.1` in the service to avoid network exposure.
 - **User vs system systemd**: User units (`~/.config/systemd/user/`) need no sudo but only run while the user session is active. For persistence across reboots without login, run: `sudo loginctl enable-linger $USER`.
-- **gbrain needs llama-server binary**: gbrain's ollama provider runs `llama-server` directly, not through the HTTP API. The full tarball extraction to `~/.local/lib/ollama/` is required — just the `bin/ollama` binary is insufficient.
+- **mycortex needs llama-server binary**: mycortex's ollama provider runs `llama-server` directly, not through the HTTP API. The full tarball extraction to `~/.local/lib/ollama/` is required — just the `bin/ollama` binary is insufficient.
 - **Model pull timeout**: Large models can take 10+ minutes. Use a generous timeout (300s+) when pulling.
 - **Service won't start**: Check `journalctl --user -u ollama --no-pager -n 20` for errors. Common issue: missing `~/.local/bin/ollama` binary because the ExecStart path is wrong.
 - **Hermes RuntimeError: model context too small**: If Hermes fails with "Ollama loaded `model` with only N tokens of runtime context, but Hermes needs at least 64,000 tokens", the Modelfile `num_ctx` override is missing (Layer 2 above). Running `ollama create` with a Modelfile overriding `num_ctx` fixes it — this is NOT a hardware limitation in most cases. Hermes config's `ollama_num_ctx` alone is insufficient.

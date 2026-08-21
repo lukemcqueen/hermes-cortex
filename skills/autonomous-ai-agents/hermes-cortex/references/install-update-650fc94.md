@@ -47,7 +47,7 @@ DASHBOARD_DEST="${HERMES_HOME}/dashboard"
 ```
 
 **Features:**
-- System health monitoring (Ollama, gbrain, Hermes gateway)
+- System health monitoring (Ollama, mycortex, Hermes gateway)
 - Langfuse integration (displays traces, scores)
 - Cron job status
 - Memory sync freshness checks
@@ -90,17 +90,17 @@ Updated installer summary to reflect new components:
 ✅ System components installed
   • Ollama           — LLM server (embedding: nomic-embed-text:v1.5)
   • Bun              — JS runtime
-  • gbrain           — Knowledge brain (PGLite)
+  • mycortex           — Knowledge brain (PGLite)
   • Langfuse         — LLM observability (Docker, port 3000)
   • Cortex Dashboard — Flask companion app (port 8901)
   • nginx            — Reverse proxy (ports 11002, 11003)
   • Brain sources    → ~/brain/{default,...}
-  • gbrain plugin    → /brain slash command
+  • mycortex plugin    → /brain slash command
   • heartbeat.py     → system health watchdog
-  • memory-to-brain-sync.py → memory sync to gbrain
+  • memory-to-brain-sync.py → memory sync to mycortex
   Launchd services:
     com.ollama.serve
-    com.gbrain.sync-watch
+    com.legacy-brain.sync-watch
     com.hermes.cortex-dashboard
     homebrew.mxcl.nginx
 ```

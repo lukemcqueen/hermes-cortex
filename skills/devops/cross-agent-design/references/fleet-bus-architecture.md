@@ -12,7 +12,7 @@
 |------|---------|-------------|
 | `:8903` | Bus backend (FastAPI, PGMQ) | Localhost — systemd `cortex-bus.service` |
 | `:8905` | Health server (Flask, vector ping) | Fleet health checks — **NOT the bus** |
-| `:15432` | gbrain Postgres (`bus.*` schema) | Only Moses/Esther — contains ALL queues |
+| `:15432` | mycortex Postgres (`bus.*` schema) | Only Moses/Esther — contains ALL queues |
 | `:13004` | nginx → Bus (Moses, primary) | All agents via `CORTEX_BUS_URL` |
 | `:14004` | nginx → Bus (Esther, backup) | Fallback via `CORTEX_BUS_FALLBACK_URL` |
 

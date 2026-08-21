@@ -52,7 +52,7 @@ AGENT_TYPE=orchestrator   # or server, dev
 
 When `AGENT_TYPE=server` or `AGENT_TYPE=dev`:
 - `check_services()` skips Dashboard HTTP, Langfuse HTTP, Agent Bus HTTP
-- Bus direct health and gbrain checks still run (they're localhost)
+- Bus direct health and mycortex checks still run (they're localhost)
 - nginx checks still run (they check installed state)
 - 38 checks in quick mode (vs 41 for orchestrator)
 

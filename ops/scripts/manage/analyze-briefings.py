@@ -85,7 +85,7 @@ def extract_sections(content):
         sections["nt_verse"] = True
     
     # Dream report
-    if "dream" in lower or "gbrain" in lower or "brain health" in lower:
+    if "dream" in lower or "mycortex" in lower or "brain health" in lower:
         sections["dream_report"] = True
     
     # Sources mentioned

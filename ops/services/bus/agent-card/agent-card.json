@@ -20,7 +20,7 @@
     {"id": "loop.governance", "name": "Loop Governance", "description": "Score-cycle, feedback, and audit trail for all code changes"},
     {"id": "auto.remediation", "name": "Auto-Remediation", "description": "Detect and fix common issues: cron failures, service crashes, disk pressure"},
     {"id": "security.threat-pipeline", "name": "Threat Defense", "description": "fail2ban, nginx rate limiting, IP blocking, progressive banning"},
-    {"id": "knowledge.gbrain", "name": "gbrain Knowledge", "description": "Persistent knowledge brain with auto-sync, dream cycles, and search"},
+    {"id": "knowledge.mycortex", "name": "mycortex Knowledge", "description": "Persistent knowledge brain with auto-sync, dream cycles, and search"},
     {"id": "observability.langfuse", "name": "Langfuse Observability", "description": "LLM trace evaluation, quality scoring, and cost tracking"},
     {"id": "bible.daily-reading", "name": "Daily Bible Reading", "description": "Generate daily SOUL.md scripture entries and brain pages"},
     {"id": "soul.refinement", "name": "SOUL.md Refinement", "description": "Daily lesson mining, correction application, and principle codification"}

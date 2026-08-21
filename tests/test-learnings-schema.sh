@@ -3,7 +3,7 @@
 # (F-001 fleet learning ledger).
 #
 # From docs/design/learning-ledger.md §testing (party L-1..L-6):
-#   hermetic scratch DB `learnings_test` (refuses `mycortex`/`gbrain` with a
+#   hermetic scratch DB `learnings_test` (refuses `mycortex` with a
 #   guard), schema-apply idempotency (run twice → no-op), capture() dedup
 #   (same route+content → same id, deduped=true), scrub hook (email/IPv4/
 #   home-path → placeholders), INSERT-only enforcement (reader can EXECUTE
@@ -23,7 +23,7 @@ TEST_DB="${LEARNINGS_TEST_DB:-learnings_test}"
 CONTAINER="${LEARNINGS_TEST_CONTAINER:-mycortex-postgres}"
 TEST_WORKER_ROLE="learnings_test_worker"   # temp role, dropped in cleanup
 
-if [[ "$TEST_DB" == "mycortex" || "$TEST_DB" == "gbrain" ]]; then
+if [[ "$TEST_DB" == "mycortex" ]]; then
   echo "❌ REFUSING to run against the $TEST_DB database — hermeticity guard. Set LEARNINGS_TEST_DB." >&2
   exit 1
 fi

@@ -134,7 +134,7 @@ if [[ "$MEMORY_RC" -ge 1 || "$USER_RC" -ge 1 ]]; then
   echo ""
   echo -e "${YELLOW}Memory budget is tight. Consider:${RESET}"
   echo "  • Run the pointer pattern: compress entries to ~120 chars each"
-  echo "  • Move detail to ~/brain/moses/references/ and index with gbrain"
+  echo "  • Move detail to ~/brain/moses/references/ and index with mycortex"
   echo "  • The cron job 'memory-pruning' (4am daily) handles this automatically"
   echo "  • See docs/agent-memory-pointer-pattern.md for the pointer pattern guide"
 fi

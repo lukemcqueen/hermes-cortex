@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Model Health Watchdog — checks required Ollama models exist.
 
-Always checks: nomic-embed-text:v1.5 (embeddings for gbrain / session cache).
+Always checks: nomic-embed-text:v1.5 (embeddings for mycortex / session cache).
 Checks one or more judge models — defaults to qwen2.5:3b, but any
 Ollama model name can be specified via --judge-model or JUDGE_MODEL env var.
 
@@ -42,7 +42,7 @@ from hermes_models import get_model
 # ── Config ──────────────────────────────────────────────────────────────
 OLLAMA_TAGS_URL = "http://localhost:11434/api/tags"
 ALWAYS_REQUIRED = [
-    ("nomic-embed-text:v1.5", "Embeddings for gbrain knowledge brain and session cache"),
+    ("nomic-embed-text:v1.5", "Embeddings for mycortex Knowledge brain and session cache"),
 ]
 DEFAULT_JUDGE_MODEL = "qwen2.5:3b"
 
@@ -130,7 +130,7 @@ def main():
         print("❌ FAILED")
         print()
         print(f"{_cron_ts('model-health-watchdog')} Ollama is not reachable. This affects:")
-        print("  - Knowledge brain (gbrain) — embeddings will fail")
+        print("  - Knowledge brain (mycortex) — embeddings will fail")
         print("  - Session cache — no embeddings for similarity search")
         print("  - LLM judge scorer — no model to evaluate traces")
         print()

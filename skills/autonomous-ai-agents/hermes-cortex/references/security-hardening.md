@@ -84,7 +84,7 @@ Expected: `Firewall is enabled. (State = 1)`
 ### Launchd Services
 
 ```bash
-launchctl list | grep -E "(ollama|gbrain|cortex|hermes|docker)"
+launchctl list | grep -E "(ollama|mycortex|cortex|hermes|docker)"
 ```
 
 Required services (all should show a PID, not `-`):
@@ -92,7 +92,7 @@ Required services (all should show a PID, not `-`):
 | Label | Purpose | plist |
 |-------|---------|-------|
 | `com.ollama.serve` | Ollama LLM server | `~/Library/LaunchAgents/com.ollama.serve.plist` |
-| `com.gbrain.sync-watch` | gbrain auto-sync daemon | `~/Library/LaunchAgents/com.gbrain.sync-watch.plist` |
+| `com.legacy-brain.sync-watch` | legacy auto-sync daemon | `~/Library/LaunchAgents/com.legacy-brain.sync-watch.plist` |
 | `com.hermes.cortex-dashboard` | Cortex companion dashboard | `~/Library/LaunchAgents/com.hermes.cortex-dashboard.plist` |
 | `ai.hermes.gateway` | Hermes messaging gateway | `~/Library/LaunchAgents/ai.hermes.gateway.plist` |
 | `com.docker.docker` | Docker Desktop (triggers container restart) | `~/Library/LaunchAgents/com.docker.docker.plist` |
@@ -139,7 +139,7 @@ lsof -iTCP -sTCP:LISTEN -P -n 2>/dev/null | awk 'NR>1{print $1, $9}' | grep -v "
 echo "=== Firewall ===" && \
 /usr/libexec/ApplicationFirewall/socketfilterfw --getglobalstate && \
 echo "=== Launchd Services ===" && \
-launchctl list | grep -E "(ollama|gbrain|cortex|hermes|docker)" && \
+launchctl list | grep -E "(ollama|mycortex|cortex|hermes|docker)" && \
 echo "=== Docker Restart Policies ===" && \
 for c in $(docker ps -a -q); do docker inspect "$c" --format '{{.Name}} {{.HostConfig.RestartPolicy.Name}}'; done 2>/dev/null && \
 echo "=== SSH Keys ===" && \

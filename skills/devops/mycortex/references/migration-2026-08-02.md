@@ -2,10 +2,10 @@
 
 ## Context
 
-Continuation of the gbrain → mycortex migration (stories S-001..S-016 in
+Continuation of the legacy → mycortex migration (stories S-001..S-016 in
 `docs/elicit/2026-08-01_mycortex-stories.md`). S-001 (parity harness) and S-003
 (schema v001) were already landed. Titus landed `2b3a5f6e` mid-session adding
-`import-gbrain.py` + a macOS `-t -A` migrate.py fix.
+`legacy import.py` + a macOS `-t -A` migrate.py fix.
 
 ## What was built/verified this session
 
@@ -14,10 +14,10 @@ Continuation of the gbrain → mycortex migration (stories S-001..S-016 in
   15% overlap + mass-deletion guardrail >10%), `search` (FTS + title/relpath
   ILIKE, `websearch_to_tsquery` per source `search_config`), `list`, `stats`,
   `doctor`. 25.7KB single file, follows migrate.py's `sg docker` psql pattern.
-- **Registered in cortex-update.sh** — `import-gbrain.py` and the CLI were NOT
+- **Registered in cortex-update.sh** — `legacy import.py` and the CLI were NOT
   registered when Titus committed them (deployment gap); added both to the
   register map.
-- **Schema fixes** (applied to both `mycortex_test` and `gbrain`, and to the
+- **Schema fixes** (applied to both `mycortex_test` and `mycortex`, and to the
   repo `schema/mycortex.sql`):
   1. reader column grant + `search_config`
   2. admin RLS policies (FORCE RLS default-denied admin → stats showed 0)
@@ -37,11 +37,11 @@ Continuation of the gbrain → mycortex migration (stories S-001..S-016 in
 
 ## Connection facts
 
-- Direct psycopg to `localhost:15432` as `gbrain` with password `gbrain_pg_pass`
+- Direct psycopg to `localhost:15432` as `mycortex` with the legacy Postgres password
   works (docker port-map bridges to container, matching `host all all all
   scram-sha-256`). mycortex roles have NO known passwords → role connections
   fail from the host; inside the container `trust` auth means
-  `docker exec gbrain-postgres psql -U mycortex_reader` works passwordless.
+  `docker exec legacy Postgres psql -U mycortex_reader` works passwordless.
   CLI therefore uses the `sg docker` exec path on Linux.
 
 ## Gotchas hit during the session
@@ -59,8 +59,8 @@ Continuation of the gbrain → mycortex migration (stories S-001..S-016 in
 ## Remaining (as of session end)
 
 1. ~~`orch-mycortex-sync` cron~~ → **DONE, renamed `agent-mycortex-sync`** — registered in `install-crons.sh` (create line 665 + uninstall line 494), running every 15 min. The `orch-` variant was a stale orphan (per-host design D4 is NOT orchestrator-only); removed 2026-08-02.
-2. Run `cortex-update.sh` to deploy CLI + import-gbrain; then prod import
-   (`import-gbrain.py`) and `sources add` for real brain dirs on esther.
+2. Run `cortex-update.sh` to deploy CLI + legacy import; then prod import
+   (`legacy import.py`) and `sources add` for real brain dirs on esther.
 3. Score PENDING cycles #1252/#1254/#1255 and `end_change` the open
    `pull-latest-update-cortex` lock.
 4. 129 repo skill stubs remain — full content only on source agents

@@ -30,9 +30,9 @@ Full-system migration from agentkore/opencode to hermes-cortex across 26+ projec
 - Push to hermes-cortex only when Moses explicitly says so
 - Pre-push hook was installed, then removed after trust was proven
 
-**4. gbrain Source Architecture**
-- Uber-agent (single default profile) + gbrain source isolation
-- 28 isolated gbrain sources (one per project)
+**4. legacy brain Source Architecture**
+- Uber-agent (single default profile) + legacy brain source isolation
+- 28 isolated legacy brain sources (one per project)
 - Federated `default` source for cross-project knowledge
 - Brain directories (`~/brain/<project>/`) are the durable knowledge layer
 - Moses implemented bootstrap-brain.sh, check-memory-budget.sh, heartbeat.py updates

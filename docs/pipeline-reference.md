@@ -43,7 +43,7 @@ Persists stable facts, preferences, and conventions across sessions.
 | Step | Tool | Schedule | LLM? | Output |
 |------|------|----------|------|--------|
 | Write | Session writes via `memory` tool | Per-turn | ✗ | MEMORY.md updates |
-| Sync | `memory-to-brain-sync.py` | Every 6h | ✗ | gbrain sync |
+| Sync | `memory-to-brain-sync.py` | Every 6h | ✗ | Legacy Sync |
 | Prune | `memory-pruning` (LLM cron) | Daily 04:00 | ✓ | Compacted MEMORY.md |
 | Compress | `memory-compress.py` | Weekly Sun 05:00 | ✗ | Compressed archives |
 | Budget | `check-memory-budget.sh` | Morning briefing | ✗ | Usage % alert |

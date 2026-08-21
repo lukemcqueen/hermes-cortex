@@ -1,28 +1,28 @@
 ---
 name: hermes-cortex-setup
 version: 1.0.0
-description: Install and configure Hermes Cortex core components — Ollama, Bun, gbrain, health server, agent registry, hooks, cron jobs, and profile scaffolding on a target machine.
+description: Install and configure Hermes Cortex core components — Ollama, mycortex knowledge brain, health server, agent registry, hooks, cron jobs, and profile scaffolding on a target machine.
 behavioral_principles:
- - Never install gbrain via pip3 or bare 'npm install -g gbrain' — the npm registry has a squatter package (old GPU JS library). Always use 'bun install -g github:garrytan/gbrain'.
+ - The knowledge brain is mycortex — install it via the repo's cortex-update.sh (register-based deploy), never via pip/npm/bun. The legacy brain is decommissioned 2026-08-02; do not install or restart it.
  - When installing Bun, prefer download-inspect-execute over raw curl|bash when the security scanner flags it.
  - Always create a .env file in ~/hermes-cortex/ before running install-orch-crons.sh to avoid silent failure.
  - When sudo is unavailable, install Ollama from GitHub releases tarballs (not the official install.sh which requires root).
  - Before writing custom configs or inventing new approaches, check the repo's docs/ and ops/scripts/ first for existing documented solutions. Use the documented tools as primary; custom workarounds are a last resort.
  - When setting up services on a target machine, inspect running configs FIRST — check /etc/nginx/sites-enabled/, systemctl --user list-units, ss -tlnp, ps aux. The deployed nginx upstream blocks define the correct internal ports. Never invent port assignments before checking what's already deployed. Check in order: (1) running machine configs, (2) hermes-cortex repo docs/, (3) agent-registry.template.json.
- - For systemd user services that run bun/gbrain scripts, always set explicit PATH in Environment= — systemd does not inherit the user shell's PATH.
+ - For systemd user services that run bun scripts, always set explicit PATH in Environment= — systemd does not inherit the user shell's PATH.
  - Verify each install step with a version check or doctor command before proceeding to the next.
  - After installing components, update PATH persistence in shell config (~/.bashrc) for Bun and ~/.local/bin.
  - The canonical SOUL.md path is ~/.hermes/SOUL.md — never write to /home/<other-user>/ paths without verifying they exist.
  - The brain directory structure needs git-init'd MECE subdirectories (19 dirs), not just flat kb/memories dirs.
  - The health-vector.py server binds to 127.0.0.1 by default; nginx proxies external traffic. No need to patch bind addresses — health-vector.py has zero pip dependencies and no EXTERNAL_HEALTH_URL requirement.
- - The gbrain CLI 'sources add' command can hang indefinitely on first run; use a timeout wrapper or configure the source path via the DB config directly.
+ - Register brain sources with the mycortex CLI: `mycortex sources add <name> <path>` then `mycortex sync --source <name>`. mycortex is Python — no bun, no daemon, no PGLite lock contention.
  - When the user gives a cross-user path for SOUL.md (e.g. ~/...), redirect to ~/.hermes/SOUL.md and inform them — never create files in another user's home.
  - The user prefers the short /health endpoint path for external health URLs, not /api/v1/health. The former returns a compact vector, the latter returns full JSON. Always default to /health unless the user specifies otherwise.
  - The health server exposes two endpoints with different response formats: /health (compact 9-element vector, ideal for orchestrator polling) and /api/v1/health (full JSON, ideal for debugging). When configuring EXTERNAL_HEALTH_URL, use /health per user preference.
- - The gbrain sources add command can hang indefinitely on first run because it initializes the embedding model or does I/O. Workaround: use timeout wrapper or pipe EOF into stdin. The timeout causes a non-zero exit even on success, so check actual source status separately.
+ - mycortex sync is a 15-min cron (agent-mycortex-sync); there is no sync daemon to stop. After `sources add`, run `mycortex sync --source <name>` manually to index immediately.
  - When setting up an agent on a target machine, always check the machine's existing deployed configs FIRST — especially /etc/nginx/sites-enabled/ and /etc/systemd/system/ and /etc/nginx/conf.d/. The actual upstream port definitions may differ from what the docs say. Check nginx configs for upstream blocks before choosing internal ports.
  - Before writing custom configs or inventing port schemes, check three sources in order: (1) the running config on the machine itself (nginx sites-enabled, systemd services), (2) the hermes-cortex repo docs/ directory, (3) the agent-registry.template.json. Only after exhausting these three should you write a custom approach.
- - Before importing markdown files into gbrain, stop the gbrain-sync.service daemon first — gbrain import fails with "Timed out waiting for PGLite lock" if the sync daemon holds the database lock. Restart sync after import completes.
+ - mycortex has no daemon and no PGLite lock — sources are synced via the mycortex CLI/cron. Never install the legacy brain or its services; the doctor treats leftover legacy units as stale.
  - fail2ban, nginx config deployment, and apt package installation require sudo. When these steps are needed and sudo is unavailable, prepare config files at `~/.hermes-cortex/nginx/` and scripts at `~/.hermes-cortex/scripts/` with full terminal commands printed for the user to copy-paste. Never assume sudo is available.
  - The health-vector.py service must run on port 8905 (127.0.0.1). This is what the deployed nginx `upstream health_backend` block expects. Do not change the port unless the nginx config explicitly defines a different upstream.
  - After the `src/` → `ops/` repo migration (July 2026), many deployed scripts retained stale `src/` paths. When fixing a script that references `src/scripts/` or `src/loop-governance/`, check if the file moved to `ops/scripts/` or `runtime/loop-governance/`. The old `src/` tree was completely removed. Grep for `src/` references in any script you patch as a matter of course.
@@ -94,7 +94,7 @@ mkdir -p ~/.local/bin
 cp /tmp/ollama-extract/bin/ollama ~/.local/bin/ollama
 chmod +x ~/.local/bin/ollama
 
-# Install libaries (needed by gbrain's llama-server companion)
+# Install libraries (llama-server + .so backends)
 mkdir -p ~/.local/lib/ollama
 cp -r /tmp/ollama-extract/lib/ollama/* ~/.local/lib/ollama/
 chmod +x ~/.local/lib/ollama/llama-server
@@ -159,60 +159,57 @@ bun --version  # Should output v1.3.x or later
 
 **Pitfall:** The security scanner may block `curl https://bun.sh/install | bash` style piping. The download→inspect→run pattern above avoids this.
 
-### 3. Install gbrain (Knowledge Brain)
+### 3. Install mycortex (Knowledge Brain)
 
-**CRITICAL PITFALL — npm squatter package:**
-The npm registry has an unrelated squatter package at `gbrain@1.3.x` (an old GPU JavaScript library from 2018). If you run `pip3 install gbrain`, `npm install -g gbrain`, or `bun install -g gbrain`, you silently install the wrong binary. The canonical gbrain lives at `github:garrytan/gbrain`.
+The knowledge brain is **mycortex** — markdown-in-git as source of truth, a shared
+Postgres index on `mycortex-postgres` (:15432), a thin Python CLI, and a 15-min
+sync cron. No bun binary, no daemon, no PGLite.
 
-```bash
-# Remove squatter if accidentally installed
-bun remove -g gbrain 2>/dev/null
-rm -f "$BUN_INSTALL/bin/gbrain" 2>/dev/null
-
-# Install the real gbrain
-bun install -g github:garrytan/gbrain
-
-# Verify
-gbrain --version  # Should output 0.42.x or later
-```
-
-### 4. Initialize gbrain
-
-**🥇 RECOMMENDED: Postgres + pgvector via Docker (stable, concurrent, production).**
-
-PGLite (WASM) is known to crash under Bun 1.3.x on several Linux configurations with `Aborted()`. Postgres + pgvector is the recommended engine for production. It supports concurrent connections (query while sync runs), survives disk corruption better, and doubles as a general-purpose RAG database for any agent with a pgvector client.
-
-The gbrain Postgres is managed as part of the Langfuse Docker Compose stack (see Step 17):
+**Installs via the repo deploy, not a package manager:**
 
 ```bash
-# Add the env var to ~/langfuse/.env if not present
-echo 'GBRAIN_PG_PASSWORD=your-password' >> ~/langfuse/.env
+# The CLI + schema + compose ship in the repo and deploy via cortex-update.sh:
+bash ~/hermes-cortex/ops/scripts/cortex-update.sh
 
-# Deploy the compose stack (includes gbrain-postgres service)
-sg docker -c "docker compose -f ~/langfuse/docker-compose.yml up -d"
-
-# Enable pgvector extension
-sg docker -c "docker exec mycortex-postgres psql -U mycortex -d mycortex -c 'CREATE EXTENSION vector;'"
-
-# Initialize gbrain with the Postgres URL
-DATABASE_URL="postgresql://gbrain:your-password@127.0.0.1:15432/gbrain"
-gbrain init --url "$DATABASE_URL" --embedding-model ollama:nomic-embed-text:v1.5 --yes
-
-# Add your brain source
-gbrain sources add hermes-cortex --path ~/hermes-cortex
-gbrain sources default hermes-cortex
-
-# Verify
-gbrain doctor --json --fast
+# Verify the CLI is deployed
+~/.hermes-cortex/scripts/mycortex --help
 ```
 
-**⚠️ DEPRECATED: PGLite (WASM) — dev fallback only when Docker is unavailable.**
+The legacy brain (bun-installed, PGLite/Postgres daemon) is **DECOMMISSIONED
+2026-08-02** — never install or restart it. The doctor treats any leftover
+legacy brain unit/dir/binary as stale.
+
+### 4. Initialize mycortex
+
+**Postgres container (dedicated, hermes-cortex-owned):**
+
+The `mycortex-postgres` container is defined in
+`ops/install/deploy/docker-compose.mycortex.yml` and started by install.sh.
+The schema (v001..v004), roles (`mycortex`, `mycortex_reader_*`,
+`mycortex_ingest`, `mycortex_admin`) and RLS policies are applied by
+`ops/services/mycortex/migrate.py` (idempotent — safe to re-run).
 
 ```bash
-gbrain init --pglite --embedding-model ollama:nomic-embed-text:v1.5 --yes
+# 1. Start the Postgres container (install.sh does this; manual path shown)
+sg docker -c "docker compose -f ~/hermes-cortex/ops/install/deploy/docker-compose.mycortex.yml up -d"
+
+# 2. Apply schema + roles + RLS (idempotent)
+python3 ~/hermes-cortex/ops/services/mycortex/migrate.py
+
+# 3. Register a brain source (git repo required per source)
+MYCORTEX_CLI="$HOME/.hermes-cortex/scripts/mycortex"
+"$MYCORTEX_CLI" sources add hermes-cortex --path ~/hermes-cortex
+
+# 4. Sync it (index now; the cron keeps it fresh)
+"$MYCORTEX_CLI" sync --source hermes-cortex
+
+# 5. Verify
+"$MYCORTEX_CLI" doctor --json
 ```
 
-Expected output: "Brain ready" plus recommended skills. Note: PGLite is single-connection — CLI commands hang while the sync daemon runs. See `references/pglite-wasm-postgres-migration.md` for the migration guide if WASM crashes.
+Sources are per-host (design D4): every agent populates its own sources. The
+`agent-mycortex-sync` cron (15-min) and `agent-mycortex-retention` (daily)
+handle ongoing sync + pruning automatically.
 
 ### 5. Set Up Health Server (Agent Reachability)
 
@@ -265,7 +262,7 @@ curl -s http://127.0.0.1:<PORT>/
 - Default `HEALTH_HOSTNAME` is `"t"` — set it to your agent's name so the orchestrator can identify the host
 - `h` field shows the full hostname string (e.g. `"esther"`), not just the first letter
 - The compact vector at `/` and `/health` is all the orchestrator needs
-- **CRITICAL — add `Environment=PATH=` to the service unit.** `health-vector.py` uses `shutil.which()` to detect ollama and gbrain. Systemd does NOT inherit the user shell's PATH — if `~/.local/bin` and `~/.bun/bin` aren't in the service's PATH, both ollama and gbrain report as `0` (not installed), and `services` cascades to `-1` because not all key services are found. The vector goes from 7/9 → 5/7. Always include:
+- **CRITICAL — add `Environment=PATH=` to the service unit.** `health-vector.py` uses `shutil.which()` to detect ollama and mycortex. Systemd does NOT inherit the user shell's PATH — if `~/.local/bin` isn't in the service's PATH, ollama/mycortex report as `0` (not installed), and `services` cascades to `-1` because not all key services are found. The vector goes from 7/9 → 5/7. Always include:
  ```
  Environment=PATH=/home/<user>/.local/bin:/home/<user>/.bun/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
  ```
@@ -310,7 +307,7 @@ cat > ~/.hermes-cortex/state/agent-registry.json << 'EOF'
  "version": 3,
  "health_vector_map": [
   "resources","services","no_errored_crons","no_stale_crons",
-  "nginx","ollama","gbrain","disk_ok","gbrain_sources_ok"
+  "nginx","ollama","mycortex","disk_ok","mycortex_sources_ok"
  ],
  "agents": {
   "<agent-name>": {
@@ -345,96 +342,28 @@ The agent names from the template:
 
 **Pitfall — localhost vs domain URL:** For local dev, use `http://127.0.0.1:8905/api/v1/health`. For production, Moses would update this to the public URL with nginx + basic auth.
 
-### 7. Set Up gbrain Sync Daemon
+### 7. Set Up mycortex Sync
 
-The knowledge brain needs a sync daemon to watch for file changes:
-
-```bash
-cat > ~/.config/systemd/user/gbrain-sync.service << 'EOF'
-[Unit]
-Description=gbrain sync daemon
-After=network-online.target
-Wants=ollama.service
-
-[Service]
-ExecStart=/home/<user>/.bun/bin/bun run /home/<user>/.bun/bin/gbrain sync --watch
-Environment=HOME=/home/<user>
-Environment=PATH=/home/<user>/.bun/bin:/home/<user>/.local/bin:/usr/local/bin:/usr/bin:/bin
-Restart=on-failure
-RestartSec=10
-
-[Install]
-WantedBy=default.target
-EOF
-
-systemctl --user daemon-reload
-systemctl --user enable gbrain-sync.service
-systemctl --user start gbrain-sync.service
-```
-
-**Pitfall — correct command is `sync --watch`, not `sync-daemon`:** The gbrain CLI does NOT have a `sync-daemon` subcommand. The continuous sync mode is `gbrain sync --watch` (or `gbrain sync --watch --interval N`). Running `gbrain sync-daemon` produces "Unknown command: sync-daemon".
-
-**Pitfall — gbrain binary is a bun script, not a native binary:** `~/.bun/bin/gbrain` is a symlink to a TypeScript source file. Running it directly requires `bun` on PATH. Systemd user services do NOT inherit the user shell's PATH, so you must either:
-- Use `ExecStart=/home/<user>/.bun/bin/bun run /home/<user>/.bun/bin/gbrain sync --watch` (recommended)
-- Or set `Environment=PATH=...` in the service with the full bun path
-
-**Pitfall — `Source "default" has no local_path` crash loop:** After starting gbrain sync, the logs may show: "Sync error (1/5): Source 'default' has no local_path." This triggers a crash loop: 5 consecutive failures → gbrain-sync exits → systemd restarts after 10s → repeat indefinitely (restart counter can reach 300+). The default source is **protected** (pre-v0.17 brain) and cannot have its `local_path` set via CLI. Fix by adding a new source and redirecting the brain's default:
+mycortex has **no sync daemon** — indexing runs as the `agent-mycortex-sync`
+cron (every 15 min, per-host; installed by install-crons.sh). It reads each
+registered source's git repo, syncs changed files, and prunes per the
+retention policy. There is nothing to enable with systemd.
 
 ```bash
-# 1. Stop sync to free DB locks
-systemctl --user stop gbrain-sync
+# Manual sync (index now, don't wait for the cron)
+MYCORTEX_CLI="$HOME/.hermes-cortex/scripts/mycortex"
+"$MYCORTEX_CLI" sync --source hermes-cortex
 
-# 2. Add a source with a real path
-gbrain sources add hermes-cortex --path ~/hermes-cortex
-
-# 3. Change the brain's default source
-gbrain sources default hermes-cortex
-
-# 4. Restart sync
-systemctl --user start gbrain-sync
-
-# 5. Verify — check journal for import, not errors
-journalctl --user -u gbrain-sync --since \"30 seconds ago\" --no-pager -n 5
-# Expected: \"Running full import of /home/.../hermes-cortex...\"
-# NOT: \"Sync error (1/5): Source 'default' has no local_path\"
+# Verify the cron is registered
+hermes cron list --all 2>/dev/null | grep agent-mycortex-sync
 ```
 
-After fixing, the old `default` source is silently skipped because it's no longer the default. The daemon imports the new source (e.g. 800 files) and runs cleanly.
-
-**Pitfall — gbrain service name mismatch in health-vector.py.** The `health-vector.py` script checks for specific systemd service names. The `check_services()` function uses `key_services = ["nginx", "ollama", "gbrain-sync"]` and `check_gbrain()` uses `_systemd_active("gbrain-sync.service")`. If you named the service differently (e.g. `gbrain-autopilot.service` or `com.gbrain.autopilot`), both checks fail — gbrain reports `0` and `services` reports `-1` (cascading: since gbrain isn't "running", `all_running` is `False`). Verify the service name with `systemctl --user list-units --type=service --state=active,running | grep gbrain` and update health-vector.py if yours differs.
-
-After fixing, the health vector goes from `[1, -1, -1, 1, 1, 1, 0, 1, 1]` → `[1, 1, -1, 1, 1, 1, 1, 1, 1]` (services and gbrain turn green). The remaining `-1` (`no_errored_crons`) is a separate issue — errored cron jobs.
-
-**Pitfall — gbrain sync blocked by files without YAML frontmatter.** Markdown files that lack YAML frontmatter (e.g. `# Title` instead of `---\ntitle: ...\n---`) cause gbrain to fail with "1 file(s) failed to parse: UNKNOWN: 1". This blocks the entire sync run — no new files are indexed. Symptoms: the sync watchdog says "Sync blocked" and the commit pointer never advances. Fix:
-
-```bash
-# Option A: Add --skip-failed to the systemd service ExecStart
-# Original: ExecStart=... gbrain sync --watch
-# Fixed:  ExecStart=... gbrain sync --watch --skip-failed
-systemctl --user daemon-reload
-systemctl --user restart gbrain-sync
-
-# Option B: One-time acknowledge without modifying the service
-systemctl --user stop gbrain-sync
-gbrain sync --skip-failed
-systemctl --user start gbrain-sync
-```
-
-With `--skip-failed`, the daemon acknowledges parse failures and advances past them. The file is still not indexed, but the sync makes progress. After 3 consecutive syncs with the same failure, gbrain auto-skips it permanently.
-
-**Pitfall — gbrain sync fails with `git pull failed` when local branch diverged from remote.** gbrain's sync daemon runs `git pull` internally. If the local branch and remote diverged (e.g. after `git pull --rebase` or `git reset`), `git pull` fails with "your branch and 'origin/main' have diverged". This causes a crash loop: sync exits → systemd restarts → git pull fails again → repeat.
-
-```bash
-# Stop sync, fix the repo, restart
-systemctl --user stop gbrain-sync
-cd ~/hermes-cortex
-git pull --rebase origin main
-# If conflicts: resolve, git add <files>, git rebase --continue
-git push origin main
-systemctl --user start gbrain-sync
-```
-
-After restart, gbrain detects "last_commit not an ancestor of HEAD (history rewritten)" and does a tree-to-tree diff to re-sync. It reports "12 file(s) already done; draining" and re-indexes files whose content changed during the rewrite.
+**Pitfall — health vector key names are `mycortex` / `mycortex_sources_ok`.**
+The 9-element health vector indices [6] (mycortex doctor healthy) and [8]
+(brain source dirs exist) use the mycortex names; the registry
+(`agent-registry.template.json`) and fleet scripts
+(`orch-fleet-watchdog.py`, `orch-health-report.py`) must stay in sync on
+those keys — a legacy-named key silently reads as missing.
 
 ### 8. Create ~/.hermes-cortex Infrastructure Directory
 
@@ -448,7 +377,7 @@ mkdir -p ~/.hermes-cortex/skills
 
 ### 9. Create Brain Directory Structure (MECE Tree)
 
-The gbrain brain source needs a full directory tree, not just a flat kb directory:
+The mycortex brain source needs a full directory tree, not just a flat kb directory:
 
 ```bash
 MECE_DIRS="archive civic companies concepts conversations deals \
@@ -456,7 +385,7 @@ MECE_DIRS="archive civic companies concepts conversations deals \
  programs projects prompts sources writing"
 
 for source in default; do
- source_dir="${HOME}/.gbrain/sources/${source}"
+ source_dir="${HOME}/brain/${source}"
  mkdir -p "$source_dir"
  for dir in $MECE_DIRS; do
   mkdir -p "${source_dir}/${dir}"
@@ -466,12 +395,12 @@ for source in default; do
 # Brain Source: default
 ...
 INDEXEOF
- # Init git — gbrain requires git per source
+ # Init git — mycortex requires git per source
  git -C "${source_dir}" init
  git -C "${source_dir}" add -A
  git -C "${source_dir}" commit -m "init: default brain source"
 done
-mkdir -p "${HOME}/.gbrain/sources/lessons"
+mkdir -p "${HOME}/brain/lessons"
 ```
 
 ### 10. Copy Skills, Hooks, and Loop Governance Tools
@@ -662,7 +591,7 @@ After all steps, run the full verification:
 ```bash
 # 1. Systemd services
 systemctl --user list-units --type=service --state=active,running 2>/dev/null | \
- grep -E 'ollama|health-vector|gbrain'
+ grep -E 'ollama|health-vector|mycortex'
 
 # 2. Health endpoint (compact vector)
 curl -s http://127.0.0.1:8905/
@@ -671,14 +600,14 @@ curl -s http://127.0.0.1:8905/
 curl -s http://127.0.0.1:11434/api/tags
 # Should show nomic-embed-text:v1.5
 
-# 4. gbrain
-gbrain doctor --json --fast
+# 4. mycortex
+"$HOME/.hermes-cortex/scripts/mycortex" doctor --json
 
 # 5. Bun
 bun --version
 
-# 6. gbrain sync daemon
-journalctl --user -u gbrain-sync.service --no-pager -n 10
+# 6. mycortex sync cron
+hermes cron list --all 2>/dev/null | grep agent-mycortex-sync
 
 # 7. Agent profiles
 # Agent profiles removed from repo — SOUL.md lives at ~/.hermes/SOUL.md
@@ -692,7 +621,7 @@ cat ~/.hermes-cortex/state/agent-registry.json | python3 -m json.tool | head -10
 echo "$PATH" | tr ':' '\n' | grep -E "local|bun"
 
 # 10. Brain structure
-ls ~/.gbrain/sources/default/
+ls ~/brain/default/
 ```
 
 Expected health vector output:
@@ -717,35 +646,33 @@ sudo ln -sf /etc/nginx/sites-available/hermes-<agent>.conf /etc/nginx/sites-enab
 sudo nginx -t && sudo nginx -s reload
 ```
 
-### 15. Import Brain Files into gbrain
+### 15. Register Brain Files with mycortex
 
-After extracting brain files into the MECE brain directory structure, they need to be imported into gbrain to become searchable. The sync daemon holds a database lock, so it must be stopped first:
+After extracting brain files into the MECE brain directory structure, register
+the tree as a mycortex source and sync it to become searchable:
 
 ```bash
-# Stop sync to release DB lock
-systemctl --user stop gbrain-sync.service
+MYCORTEX_CLI="$HOME/.hermes-cortex/scripts/mycortex"
 
-# Import markdown files
-cd ~/.gbrain/sources/default
-gbrain import . --yes
+# Register the brain dir as a source (git repo required)
+"$MYCORTEX_CLI" sources add default --path ~/brain/default
 
-# Restart sync
-systemctl --user start gbrain-sync.service
+# Index now (the 15-min cron keeps it fresh afterward)
+"$MYCORTEX_CLI" sync --source default
 
 # Verify
-gbrain query "test"  # Should return imported pages
+"$MYCORTEX_CLI" search "test"  # Should return imported pages
 ```
 
-**Pitfall — gbrain import requires the DB lock to be free.** If the sync daemon is running, gbrain import fails with "Timed out waiting for PGLite lock". Always stop the sync daemon before running import or any other write operation. Restart it afterward.
+There is no daemon to stop and no DB lock to free — mycortex is a cron-synced
+Postgres index with advisory-lock sync (safe concurrent runs).
 
 See `references/health-endpoint-formats.md`
-
-**Pitfall — PGLite WASM runtime crash (July 2026).** On some Linux systems, gbrain's PGLite engine fails to initialize its WASM runtime with `Aborted()`. The daemon enters a crash loop (600+ restart attempts). Fix: switch gbrain from PGLite to Postgres + pgvector via Docker. See `references/pglite-wasm-postgres-migration.md` for the full workaround.
 
 ## Related
 
 - Setting up individual project profiles: `cortex-profile.sh <project-name> [path]`
-- gbrain reference: `docs/gbrain-v2-taxonomy.md` in the repo
+- mycortex design + multi-tenancy: `docs/design/mycortex-DESIGN.md`, `docs/design/mycortex-multi-tenancy.md` in the repo
 - Loop governance: `references/first-time-bootstrap.md` (first-run DB seed, cache build, hooksPath config)
 - Nginx proxy patterns: `references/nginx-proxy-patterns.md` (port convention, SSL, port conflict fix)
 - Health endpoint formats: `references/health-endpoint-formats.md` (compact vector vs full JSON)

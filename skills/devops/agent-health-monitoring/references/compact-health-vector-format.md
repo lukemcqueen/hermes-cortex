@@ -19,9 +19,9 @@ v = [
     1 if no_stale else -1,             # [3] no stale crons
     1 if nginx_ok else -1,             # [4] nginx
     1 if ollama_ok else -1,            # [5] ollama
-    1 if gbrain_ok else -1,            # [6] gbrain
+    1 if mycortex_ok else -1,            # [6] mycortex
     1 if disk_ok else -1,              # [7] disk
-    1 if gbrain_sources_ok else -1,    # [8] gbrain sources
+    1 if mycortex_sources_ok else -1,    # [8] mycortex sources
 ]
 ```
 
@@ -39,7 +39,7 @@ v = [
 - Warning threshold: disk > 80% or memory > 80% (still returns `-1`)
 
 ### [1] services — Critical services health
-- Checks: nginx, ollama, gbrain via pgrep
+- Checks: nginx, ollama, mycortex via pgrep
 - `-1` if any critical service is stopped
 
 ### [2] no errored crons — Cron job error status
@@ -59,18 +59,18 @@ v = [
 - `pgrep -f ollama` check
 - `-1` if ollama process not found
 
-### [6] gbrain — gbrain process status
-- `pgrep -f gbrain` check
-- `-1` if gbrain process not found
+### [6] mycortex — mycortex process status
+- `pgrep -f mycortex` check
+- `-1` if mycortex process not found
 
 ### [7] disk — Disk usage threshold
 - Checks `df -h /` disk usage percentage
 - `-1` if disk usage ≥ 80%
 
-### [8] gbrain sources — gbrain source health
-- Runs `gbrain doctor --json` or `gbrain sources list`
+### [8] mycortex sources — mycortex source health
+- Runs `mycortex doctor --json` or `mycortex sources list`
 - `-1` if sources are unhealthy, never synced, or have 0 pages
-- Gracefully handles gbrain being unavailable (returns healthy = UNKNOWN)
+- Gracefully handles mycortex being unavailable (returns healthy = UNKNOWN)
 
 ## Response Format
 

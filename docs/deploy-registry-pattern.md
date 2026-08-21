@@ -12,7 +12,7 @@ The **Deploy Registry Pattern** is a deployment architecture for Hermes Cortex t
 - [Branching Strategy](#branching-strategy)
 - [Sync Workflow: Private → Public](#sync-workflow-private--public)
 - [cortex-profile.sh: Hermetic Project Profiles](#cortex-profilersh-hermetic-project-profiles)
-- [gbrain: Isolated Sources](#gbrain-isolated-sources)
+- [legacy brain: Isolated Sources](#legacy brain-isolated-sources)
 - [Directory Layout](#directory-layout)
 - [Setup Guide](#setup-guide)
 - [Operations Guide](#operations-guide)
@@ -30,7 +30,7 @@ The **Deploy Registry Pattern** is a deployment architecture for Hermes Cortex t
 ### Public Repo (`hermes-cortex`)
 
 - MIT licensed — anyone can fork, use, and contribute.
-- Contains all brain sources (`gbrain/`), deploy orchestration, profile definitions, and this document.
+- Contains all brain sources (`legacy-brain/`), deploy orchestration, profile definitions, and this document.
 - CI/CD runs public tests and linting.
 - Brain data resides on `brain-*` branches (see [Branching Strategy](#branching-strategy)).
 
@@ -50,7 +50,7 @@ The **Deploy Registry Pattern** is a deployment architecture for Hermes Cortex t
 | Branch Pattern | Purpose |
 |---|---|
 | `main` | Stable release line. All deployable code is merged here after review. |
-| `brain-*` | Brain data branches. Each `brain-*` branch holds the artifact output of a `gbrain` source (e.g., `brain-agent`, `brain-tools`). These are the deployable units consumed by the registry. |
+| `brain-*` | Brain data branches. Each `brain-*` branch holds the artifact output of a `legacy brain` source (e.g., `brain-agent`, `brain-tools`). These are the deployable units consumed by the registry. |
 | `develop` | Integration branch for feature work. |
 | `feature/*` | Topic branches for individual changes. |
 
@@ -65,7 +65,7 @@ The **Deploy Registry Pattern** is a deployment architecture for Hermes Cortex t
 ### Brain Branch Lifecycle
 
 1. A developer creates a feature branch off `develop` in the public repo.
-2. Changes to brain logic are committed under `gbrain/`.
+2. Changes to brain logic are committed under `legacy-brain/`.
 3. On merge to `develop`, CI builds the brain artifact and pushes it to a `brain-*` branch.
 4. On merge to `main`, the brain branch is tagged and the private repo syncs it in.
 
@@ -80,7 +80,7 @@ The sync direction is **private → public**: the private repo is the authoritat
 │  hermes-cortex       │ ◄─────────────── │  hermes-cortex      │
 │  (public, MIT)      │    (upstream)    │  (private)          │
 │                     │                  │                     │
-│  gbrain/            │                  │  config/            │
+│  legacy-brain/            │                  │  config/            │
 │  profiles/          │                  │  secrets/           │
 │  docs/              │                  │  env/               │
 │  brain-* branches   │                  │  brain-* overlays   │
@@ -203,28 +203,28 @@ hermes --profile my-project
 
 ---
 
-## gbrain: Isolated Sources
+## legacy brain: Isolated Sources
 
-**gbrain** ("grouped brain") is the source directory structure for all brain logic. Each subdirectory under `gbrain/` is a self-contained module that can be built and deployed independently.
+**legacy brain** ("grouped brain") is the source directory structure for all brain logic. Each subdirectory under `legacy-brain/` is a self-contained module that can be built and deployed independently.
 
 ### Directory Layout
 
 ```
-gbrain/
+legacy-brain/
 ├── agent/                  # Agent brain — decision-making and planning
-│   ├── main.gbrain         # Entry point
+│   ├── main.legacy-brain         # Entry point
 │   ├── rules/              # Decision rules
 │   └── tests/
 ├── tools/                  # Tool brain — defines tool interfaces and registries
-│   ├── main.gbrain
+│   ├── main.legacy-brain
 │   ├── registries/         # Tool registry definitions
 │   └── tests/
 ├── memory/                 # Memory brain — persistence and recall
-│   ├── main.gbrain
+│   ├── main.legacy-brain
 │   ├── stores/             # Memory storage backends
 │   └── tests/
 └── cortex/                 # Core brain — Hermes Cortex integration
-    ├── main.gbrain
+    ├── main.legacy-brain
     ├── profiles/           # Profile-aware cortex logic
     └── tests/
 ```
@@ -233,17 +233,17 @@ gbrain/
 
 ```bash
 # Build all brains
-hermes build-gbrain --all
+hermes build-legacy-brain --all
 
 # Build a specific brain
-hermes build-gbrain gbrain/agent
+hermes build-legacy-brain legacy-brain/agent
 
 # Output lands on brain-agent branch
 ```
 
 ### Key Properties
 
-- **Isolated**: Each brain has its own dependency manifest and build pipeline. A change to `gbrain/tools` does not affect `gbrain/agent`.
+- **Isolated**: Each brain has its own dependency manifest and build pipeline. A change to `legacy-brain/tools` does not affect `legacy-brain/agent`.
 - **Testable**: Each brain ships with its own test suite. CI runs tests per brain in parallel.
 - **Deployable**: Built artifacts are pushed to `brain-*` branches and can be deployed independently via the registry.
 
@@ -260,7 +260,7 @@ hermes-cortex/
 ├── README.md
 ├── LICENSE                    # MIT
 ├── CONTRIBUTING.md
-├── gbrain/                    # Isolated brain sources
+├── legacy-brain/                    # Isolated brain sources
 │   ├── agent/
 │   ├── tools/
 │   ├── memory/
@@ -384,9 +384,9 @@ jobs:
 
 ```bash
 # From the public repo
-git checkout -b brain-agent        # Scaffold from gbrain/agent build
-git checkout -b brain-tools        # Scaffold from gbrain/tools build
-git checkout -b brain-memory       # Scaffold from gbrain/memory build
+git checkout -b brain-agent        # Scaffold from legacy-brain/agent build
+git checkout -b brain-tools        # Scaffold from legacy-brain/tools build
+git checkout -b brain-memory       # Scaffold from legacy-brain/memory build
 git checkout main
 ```
 
@@ -396,8 +396,8 @@ git checkout main
 
 ### Daily Workflow
 
-1. **Develop** brain logic in `gbrain/` on a `feature/*` branch.
-2. **Build** the brain locally: `hermes build-gbrain gbrain/<name>`.
+1. **Develop** brain logic in `legacy-brain/` on a `feature/*` branch.
+2. **Build** the brain locally: `hermes build-legacy-brain legacy-brain/<name>`.
 3. **Push** the feature branch and open a PR against `develop`.
 4. **CI** builds the brain artifact and pushes it to the corresponding `brain-*` branch.
 5. **Merge** `develop` → `main` when ready.

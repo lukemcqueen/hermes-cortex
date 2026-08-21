@@ -1,8 +1,8 @@
 """Tests for mycortex-parity.py — golden known-answer parity runner (S-001).
 
-Uses the fixture engine (--engine fixture) so tests never depend on gbrain or
+Uses the fixture engine (--engine fixture) so tests never depend on mycortex or
 the not-yet-built mycortex CLI. Verifies:
-  - path normalization (gbrain vs mycortex path forms)
+  - path normalization (mycortex vs mycortex path forms)
   - per-query pass/fail semantics (primary expected path in top-3)
   - pass-rate math for federated + isolated
   - the 100% / 90% gate
@@ -38,7 +38,7 @@ def test_normalize_strips_dot_and_md():
 
 
 def test_matches_cross_engine_forms():
-    # gbrain: no .md, lowercase; mycortex: with .md
+    # mycortex: no .md, lowercase; mycortex: with .md
     assert parity.matches("skills/devops/loop-governance/skill",
                           "skills/devops/loop-governance/SKILL.md")
     assert parity.matches("docs/loop-governance-reference",

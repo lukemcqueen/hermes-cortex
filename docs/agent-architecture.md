@@ -31,7 +31,7 @@ Every agent in the fleet belongs to one of four roles. The role determines which
 | **Postgres (direct)** | ✅ | ✅ | ❌ | ❌ |
 | **nginx** | ✅ | ✅ | ✅ | ❌ |
 | **Ollama** | ✅ | ✅ | ✅ | ✅ |
-| **GBrain** | ✅ | ✅ | ✅ | ✅ |
+| **Mycortex** | ✅ | ✅ | ✅ | ✅ |
 | **Langfuse** | ✅ | ✅ | ✅ | ✅ |
 | **sudo access** | ✅ | ✅ | ✅ | optional |
 
@@ -84,7 +84,7 @@ Every agent in the fleet belongs to one of four roles. The role determines which
 │  └──────┬──────┘  └──────┬───────┘  └────────────────┘  │
 │         │                │                              │
 │  ┌──────┴──────┐  ┌──────┴───────┐                      │
-│  │  nginx       │  │  GBrain      │                      │
+│  │  nginx       │  │  Mycortex      │                      │
 │  │  (proxy)     │  │  (sync)      │                      │
 │  └─────────────┘  └──────────────┘                      │
 │                                                         │
@@ -106,7 +106,7 @@ Every agent in the fleet belongs to one of four roles. The role determines which
 │  └──────┬──────┘  └──────┬───────┘  └────────────────┘  │
 │         │                │                              │
 │  ┌──────┴────────────────┴───────┐  ┌────────────────┐  │
-│  │  Project repos (hermes-cortex,│  │  GBrain        │  │
+│  │  Project repos (hermes-cortex,│  │  Mycortex        │  │
 │  │  project-1, project-2, ...)   │  │  (sync)        │  │
 │  └───────────────────────────────┘  └────────────────┘  │
 │                                                         │
@@ -218,7 +218,7 @@ Orchestrator (daily at 4am):
   orch-skill-lifecycle (LLM cron)
     → Reads inbox for all Learning Reports
     → Processes skills, lessons, knowledge
-    → Stores in gbrain
+    → Stores in mycortex
 ```
 
 ### Health Reporting Pipeline
@@ -279,8 +279,8 @@ display:
 | Bus audit | ✅ | ✅ | ❌ | ❌ |
 | Bus message tracker | ✅ | ✅ | ❌ | ❌ |
 | Health reports | ✅ | ✅ | ❌ | ❌ |
-|| GBrain | ✅ | ✅ | ✅ | ✅ |
-|| GBrain | ✅ | ✅ | ✅ | ✅ |
+|| Mycortex | ✅ | ✅ | ✅ | ✅ |
+|| Mycortex | ✅ | ✅ | ✅ | ✅ |
 | Local bus daemon | ✅ | ✅ | ❌ | ❌ |
 | Postgres | ✅ | ✅ | ❌ | ❌ |
 

@@ -12,7 +12,7 @@ This is a reference from the actual backup run on moses (Linux Mint 22, 109 GB /
 | `~/.bun/` | 578 MB | Cache cleaned (490 MB), bin/ kept |
 | `~/.npm/` | 321 MB | Cache cleaned (304 MB) |
 | `~/.ollama/` | 262 MB | Skipped (re-pullable) |
-| `~/.gbrain/` | 90 MB | Backed up |
+| `~/.legacy-brain/` | 90 MB | Backed up |
 | `~/.config/` | 55 MB | Skipped (system configs) |
 | `hermes-cortex-public` | 11 MB | Git bundle |
 | `hermes-cortex-private` | 1.9 MB | Git bundle |
@@ -64,7 +64,7 @@ The hermes-agent source at `~/.hermes/hermes-agent/` is a 2.4 GB checkout (with 
 | Category | Size | Contents |
 |----------|------|----------|
 | Git repos | 176 MB | 3 git bundles |
-| Databases | 185 MB | state.db, kanban.db, cache.db, gbrain PGlite |
+| Databases | 185 MB | state.db, kanban.db, cache.db, mycortex PGlite |
 | Docker images | 415 MB | 4 pre-exported image tarballs |
 | Hermes config | 89 MB | skills/, scripts/, cron/, config.yaml, dashboard, LSP, JSON state files, bin |
 | Brain data | 17 MB | ~/brain/ + ~/.brain/ |
@@ -79,7 +79,7 @@ The hermes-agent source at `~/.hermes/hermes-agent/` is a 2.4 GB checkout (with 
 
 - All 3 bundles restore via `git clone <bundle> <dirname>`
 - state.db goes to `~/.hermes/state.db`
-- gbrain PGlite goes to `~/.gbrain/brain.pglite`
+- mycortex PGlite goes to `~/.legacy-brain/brain.pglite`
 - Config dirs extract to `~/.hermes/` paths
 - Brain data extracts to `~/brain/` and `~/.brain/`
 - See `hermes-recovery` skill for the full restore workflow

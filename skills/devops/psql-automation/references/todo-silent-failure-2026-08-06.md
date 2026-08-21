@@ -23,8 +23,8 @@ Both had to be fixed for errors to surface.
 
 ## Diagnosis evidence trail
 
-- `pg_restore -l ~/.hermes-cortex/backups/gbrain-migration-20260805.dump | grep -i todo` → 0 hits (table never in old DB dump)
-- Temp container on old volume (`langfuse_gbrain-postgres-data`, image `pgvector/pgvector:0.8.0-pg17`): bus schema = archives, audit_log, messages, messages_archive, permissions, queues, tokens — **no todos, no functions**
+- `pg_restore -l ~/.hermes-cortex/backups/mycortex-migration-20260805.dump | grep -i todo` → 0 hits (table never in old DB dump)
+- Temp container on old volume (`langfuse_legacy Postgres-data`, image `pgvector/pgvector:0.8.0-pg17`): bus schema = archives, audit_log, messages, messages_archive, permissions, queues, tokens — **no todos, no functions**
 - Current DB (`mycortex-postgres`): same — no todos, no `todo_upsert`
 - Conclusion: `bus.todos` never existed anywhere; the whole todo system was a silent no-op since introduction
 

@@ -6,7 +6,7 @@ A personal bug-fix memory that grows with every session.
 Each lesson captures: error → root cause → fix → tags.
 Queried by semantic similarity before the model attempts to debug.
 
-Storage: Markdown files in ~/brain/lessons/ (gbrain-indexed for persistence)
+Storage: Markdown files in ~/brain/lessons/ (mycortex-indexed for persistence)
 Index:   ~/offline/lessons-index.json (embedding index for instant semantic search)
 
 Usage (via offline_knowledge):
@@ -428,7 +428,7 @@ def main(args: Optional[list] = None):
         args = sys.argv[1:]
 
     parser = argparse.ArgumentParser(prog="offline_knowledge lesson",
-        description="Personal bug-fix lesson database. Offline, semantic-searchable, auto-indexed by gbrain.",
+        description="Personal bug-fix lesson database. Offline, semantic-searchable, auto-indexed by mycortex.",
         formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = parser.add_subparsers(dest="lesson_command")
 

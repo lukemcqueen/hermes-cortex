@@ -34,14 +34,14 @@ This returns the full vector (e.g. `{"v":[1,1,-1,1,1,1,1,1,1],"h":"m","t":...}`)
 
 For each `-1` in the vector:
 - **Index 0** → resources (CPU/memory/disk)
-- **Index 1** → services (nginx, ollama, gbrain, etc.)
+- **Index 1** → services (nginx, ollama, mycortex, etc.)
 - **Index 2** → no_errored_crons — check `cronjob action='list'` for `last_status != "ok"`
 - **Index 3** → no_stale_crons
 - **Index 4** → nginx
 - **Index 5** → ollama
-- **Index 6** → gbrain
+- **Index 6** → mycortex
 - **Index 7** → disk
-- **Index 8** → gbrain_sources
+- **Index 8** → mycortex_sources
 
 ### Step 4: Diagnose each issue
 
@@ -97,9 +97,9 @@ v = [
     1 if no_stale else -1,             # [3] no stale crons — schedule-aware (2x expected interval, not hardcoded 24h)
     1 if nginx_ok else -1,             # [4] nginx — pgrep nginx
     1 if ollama_ok else -1,            # [5] ollama — pgrep ollama
-    1 if gbrain_ok else -1,            # [6] gbrain — pgrep gbrain
+    1 if mycortex_ok else -1,            # [6] mycortex — pgrep mycortex
     1 if disk_ok else -1,              # [7] disk — disk usage < 80%
-    1 if gbrain_sources_ok else -1,    # [8] gbrain sources — all gbrain sources healthy
+    1 if mycortex_sources_ok else -1,    # [8] mycortex sources — all mycortex sources healthy
 ]
 ```
 
@@ -108,7 +108,7 @@ v = [
 | Value | Meaning |
 |-------|---------|
 | `1` | Service is running or condition is satisfied |
-| `0` | Service is **not installed** on this agent (nginx on a macOS dev box, gbrain on a minion, etc.) |
+| `0` | Service is **not installed** on this agent (nginx on a macOS dev box, mycortex on a minion, etc.) |
 | `-1` | Service IS installed but **not running**, or condition is violated |
 
 The `0` value is supported by `health-vector.py`'s check functions. Each
@@ -129,7 +129,7 @@ referenced in older documentation or templates.
 |-------|---------|------|
 | 0 | nginx | 1=up, -1=down, 0=n/a |
 | 1 | Ollama | same |
-| 2 | gbrain | same |
+| 2 | mycortex | same |
 | 3 | Cortex Dashboard | same |
 | 4 | Langfuse web | same |
 | 5 | Langfuse worker | same |
@@ -195,7 +195,7 @@ The fleet runs **two independent monitoring systems** that measure different thi
 
 | System | Script | What it measures | "Offline" means | Feed |
 |--------|--------|-----------------|-----------------|------|
-| **HTTP Health Vectors** | `orch-health-report.py`, `orch-fleet-watchdog.py` | Service-level health (resources, services, crons, nginx, ollama, gbrain, disk) | Service is down or degraded | `GET /health` endpoint per agent |
+| **HTTP Health Vectors** | `orch-health-report.py`, `orch-fleet-watchdog.py` | Service-level health (resources, services, crons, nginx, ollama, mycortex, disk) | Service is down or degraded | `GET /health` endpoint per agent |
 | **Bus Liveness** | `orch-fleet-watchdog.py` | Agent bus activity — last time the agent produced a PGMQ audit log event | Agent hasn't touched the bus recently (may be sleeping, idle, or disconnected) | `bus.audit_log` in Postgres |
 
 **When they disagree:**
@@ -303,7 +303,7 @@ server = HTTPServer(("127.0.0.1", port), HealthHandler)  # not "0.0.0.0"
 Each check function probes for the service:
 - **nginx**: `pgrep -x nginx`
 - **Ollama**: systemd/launchd service, fallback to `pgrep ollama`
-- **gbrain**: systemd/launchd service, fallback to `pgrep gbrain`
+- **mycortex**: systemd/launchd service, fallback to `pgrep mycortex`
 - **Cortex Dashboard**: `curl http://127.0.0.1:8901/api/health`
 - **Langfuse web/worker**: Docker container check
 - **Docker**: `dockerd` process or `/var/run/docker.sock`
@@ -326,7 +326,7 @@ Every request writes a line to stdout (captured by systemd journal) showing each
 check's duration:
 
 ```
-2026-07-02T08:57:13.625 [INFO] COMPACT — m total=20.1s resources=0.0s services=0.1s crons=0.0s gbrain=20.0s
+2026-07-02T08:57:13.625 [INFO] COMPACT — m total=20.1s resources=0.0s services=0.1s crons=0.0s mycortex=20.0s
 2026-07-02T08:57:13.625 [WARNING] SLOW COMPACT HEALTH — m took 20.1s
 ```
 
@@ -336,26 +336,26 @@ check's duration:
 |--------|-------|------|---------|
 | `STARTING` | INFO | Process starts | `server=moses agent=m port=8905 os=linux/6.14.0 python=3.11.15` |
 | `CONFIG` | INFO | Startup | `_STARTUP_TS=1782950206 HOME=/home/moses` |
-| `HEALTH` | INFO | `/api/v1/health` complete | `m total=0.3s resources=0.1s services=0.2s crons=0.0s gbrain=0.0s` |
-| `COMPACT` | INFO | `/health` or `/` complete | `e total=20.1s resources=0.0s services=0.1s crons=0.0s gbrain=20.0s` |
-| `SLOW CHECK` | INFO | Any single check > 2s | `gbrain_sources took 4.5s` |
+| `HEALTH` | INFO | `/api/v1/health` complete | `m total=0.3s resources=0.1s services=0.2s crons=0.0s mycortex=0.0s` |
+| `COMPACT` | INFO | `/health` or `/` complete | `e total=20.1s resources=0.0s services=0.1s crons=0.0s mycortex=20.0s` |
+| `SLOW CHECK` | INFO | Any single check > 2s | `mycortex_sources took 4.5s` |
 | `SLOW COMPACT HEALTH` | WARN | Total > 5s | `m took 20.1s` |
-| `DEADLINE EXCEEDED` | WARN | gbrain check hit 20s cap | `gbrain_sources did not finish in 20.0s (20.0s elapsed)` |
-| `DEADLINE ERROR` | ERROR | gbrain check threw exception | `gbrain_sources failed after 3.2s: [Errno 12] Cannot allocate memory` |
+| `DEADLINE EXCEEDED` | WARN | mycortex check hit 20s cap | `mycortex_sources did not finish in 20.0s (20.0s elapsed)` |
+| `DEADLINE ERROR` | ERROR | mycortex check threw exception | `mycortex_sources failed after 3.2s: [Errno 12] Cannot allocate memory` |
 | `CHECK FAILED` | ERROR | Any check threw exception | `services crashed after 0.1s\\nTraceback...` |
 | `SHUTDOWN` | WARN | Process exiting (signal) | `received signal 15, exiting` |
 
-**gbrain cache TTL:** The gbrain_sources check caches its result for **900 seconds**
-(15 minutes) to avoid running the expensive `gbrain doctor --json` subprocess on
+**mycortex cache TTL:** The mycortex_sources check caches its result for **900 seconds**
+(15 minutes) to avoid running the expensive `mycortex doctor --json` subprocess on
 every request. The original 300s (5 min) TTL was bumped to reduce blocking
-frequency. Baseline timing on a healthy system: `gbrain doctor --json` takes
+frequency. Baseline timing on a healthy system: `mycortex doctor --json` takes
 **~31 seconds** (only ~1s CPU — the rest is I/O waiting on Ollama embeddings for
 sync freshness checks). The cache is invalidated after TTL expires, but the 20s
 deadline ensures the endpoint never blocks more than 20s even when the cache is cold.
 
-**Process restart tracking:** The gbrain_sources check runs in a `ThreadPoolExecutor`
+**Process restart tracking:** The mycortex_sources check runs in a `ThreadPoolExecutor`
 with a hard 20-second deadline. If exceeded, the endpoint returns a degraded response
-(`gbrain_sources_ok = -1`) instead of blocking the entire health endpoint. Check
+(`mycortex_sources_ok = -1`) instead of blocking the entire health endpoint. Check
 restart count with:
 
 ```bash
@@ -607,7 +607,7 @@ Moses ✅
 
 Esther ⚠️ 1 down
 🟢🟢🔴🟢🟢🟢🟢🟢
-  gbrain 🔴
+  mycortex 🔴
 ```
 
 The script (`ops/scripts/agent/orch-health-report.py`) reads the same agent registry
@@ -753,7 +753,7 @@ red at 13:00/14:00/15:00, green at 15:03.)
    5s minimum for external SSL-terminated endpoints.
 7. **Fix pattern (all three layers, 2026-08-04 commit 03d95312):**
    - slow check → short-TTL cache (60s; same pattern as the retired
-     health-server.py gbrain cache)
+     health-server.py mycortex cache)
    - single-threaded server → `ThreadingHTTPServer`
    - short poller timeout → 3s → 5s
 8. **Verify through the scheduler, not manually**: `bash cortex-update.sh`
@@ -781,7 +781,7 @@ The orchestrator poller (`orch-health-report.py`) has a hardcoded `SERVICE_MAP` 
 5. **Also update** `health_vector_map` in `agent-registry.json` — it must match the same order
 6. Run the poller once manually (`python3 ops/scripts/agent/orch-health-report.py`) and verify the output shows the correct service names
 
-**Real example:** Remote agents run `health-server.py` which produces a 9-element vector `[resources, services, no_errored_crons, no_stale_crons, nginx, ollama, gbrain, disk_ok, gbrain_sources_ok]`. The poller had an 8-element map from the old `health-vector.py` template `[nginx, ollama, gbrain, cortex-dashboard, langfuse-web, langfuse-worker, docker, hermes-gateway]`, causing index 3 = -1 to report as "cortex-dashboard down" when it actually meant "stale cron jobs".
+**Real example:** Remote agents run `health-server.py` which produces a 9-element vector `[resources, services, no_errored_crons, no_stale_crons, nginx, ollama, mycortex, disk_ok, mycortex_sources_ok]`. The poller had an 8-element map from the old `health-vector.py` template `[nginx, ollama, mycortex, cortex-dashboard, langfuse-web, langfuse-worker, docker, hermes-gateway]`, causing index 3 = -1 to report as "cortex-dashboard down" when it actually meant "stale cron jobs".
 
 ---
 
@@ -795,7 +795,7 @@ The orchestrator poller (`orch-health-report.py`) has a hardcoded `SERVICE_MAP` 
 | **Cortex Dashboard uses "overall" not "healthy"** | Legacy format handler reports healthy=False when services are actually up | Dashboard returns `{"overall": "healthy"}`, not `{"healthy": true}`. Check `data.get("overall") == "healthy"`. |
 | **Compact format has different indices from legacy** | You see vector[3] = -1 and assume "Cortex Dashboard" is down. Actually it means "stale cron jobs" in the deployed compact format. | Always check the backend script serving the endpoint. `health-server.py` → compact 9-element format. `health-vector.py` → can serve either format; check CHECK_FUNCTIONS length. |
 | **`-1` means "unhealthy/warning", not "down"** | The compact format has no `0` (n/a) — every index is always `1` or `-1`. A stale cron job (index 3) returns `-1` but the service is not "down" — it just hasn't run recently. See `references/schedule-aware-stale-detection.md` for how the stale threshold is computed from cron expressions (replaces hardcoded 24h). | Understand the semantics: `-1` may indicate a warning condition, not necessarily a service outage. |
-| **`-1` for uninstalled services** | Agents without a given binary (e.g. nginx on a macOS dev box) report `-1` because the check function only looks for the running process. Titus' nginx = -1 is misleading — it's not "nginx is down", it's "nginx doesn't exist on this machine" | Per-service checks (`check_nginx()`, `check_ollama()`, `check_gbrain()`) now use `shutil.which()` to detect if the binary exists. Returns `0` (not applicable) if not found. `check_services()` also returns `0` if no services are installed on the system (macOS fallback). See `references/uninstalled-service-detection.md`. |
+| **`-1` for uninstalled services** | Agents without a given binary (e.g. nginx on a macOS dev box) report `-1` because the check function only looks for the running process. Titus' nginx = -1 is misleading — it's not "nginx is down", it's "nginx doesn't exist on this machine" | Per-service checks (`check_nginx()`, `check_ollama()`, `check_mycortex()`) now use `shutil.which()` to detect if the binary exists. Returns `0` (not applicable) if not found. `check_services()` also returns `0` if no services are installed on the system (macOS fallback). See `references/uninstalled-service-detection.md`. |
 | **External endpoint timeout sensitivity** | Agents behind nginx SSL (Moses 13007, Joseph 12007, Esther 14007) occasionally get marked "unreachable" even though they respond in ~0.1s — DNS/TCP jitter on the HTTPS handshake spikes past the 3s timeout | Use 5s timeout for the orchestrator poller. 3s is fine for localhost (127.0.0.1) but external SSL-terminated endpoints need headroom. Polls every 10m — 5s per agent doesn't block the cycle. |
 | **Orchestrator self-poll must use external HTTPS URL** | When the orchestrator polls itself (Moses polls Moses), the code fallback defaults to `http://127.0.0.1:13007/` — plain HTTP to a port nginx serves with `ssl` only. Nginx returns 400 "plain HTTP sent to HTTPS" → poll fails. | The self-poll URL MUST use the external HTTPS domain through nginx (e.g. `https://domain:13007/health`). Configure this via `agent-registry.local.json` — set Moses' `health_url` to the same external URL other agents use to reach Moses. The code fallback is a dev-only safety net that doesn't work when the nginx health block is SSL-only. Verify: `curl -sk https://$(hostname -f):13007/health` should succeed. If it doesn't, the registry URL is wrong or the nginx health block is misconfigured. |
 | **Long timeout on unreachable agents** | Poller takes 60+ seconds when 4+ agents are down | Short timeout (5s). The poller runs every 10 minutes. If an agent doesn't respond in 5s, it's unreachable. |
@@ -805,14 +805,14 @@ The orchestrator poller (`orch-health-report.py`) has a hardcoded `SERVICE_MAP` 
 | **Triple-sync requirement: SERVICE_MAP, CHECK_FUNCTIONS, --check labels** | You update the SERVICE_MAP docstring to 9 elements but the actual CHECK_FUNCTIONS list still returns 8 → the endpoint returns wrong vector length and downstream pollers misdiagnose every index | Always update all three: (1) SERVICE_MAP doc comment, (2) CHECK_FUNCTIONS list, (3) --check labels. Verify with `curl -s http://127.0.0.1:<PORT>/` and count elements. Run `python3 health-vector.py --check` to validate labels match. Commit to repo after testing. |
 | **Health queue backlog (drain stopped)** | Health pings accumulate in `inbox_health_check` (queue depth grows, `inbox_watch` returns MB-sized results). Means the `orch-clean-health-queue` cron stopped, or the push script targets the wrong queue. Check queue depth: `docker exec mycortex-postgres psql -U mycortex -d mycortex -t -c "SELECT state, COUNT(*) FROM bus.messages WHERE queue_name='inbox_health_check' GROUP BY state;"` and the cron's last run. |
 | **Consumer-producer sync: update consumer after verifying producer format, not before** | | You update the orchestrator health report script (consumer) to handle a format you assume Titus sends, without first verifying what he actually pushes | Pull the latest data from the producer first — read their actual format, test the endpoint, THEN update the consumer. Never update a consumer based on assumptions about the producer's format. The workflow is: (1) check what the producer sends, (2) write consumer to match, (3) verify both directions. |
-| **Dashboard `_find_pid()` does literal substring, not regex** | Service patterns like `gbrain.*autopilot`, `[o]llama serve` use `.*` regex syntax, but `_find_pid()` does `if pattern_lower in line.lower()` — a literal substring check. The dot-star is never matched as a wildcard. | Use actual substrings that appear in `ps aux` output: `"gbrain autopilot"` not `"gbrain.*autopilot"`, `"ollama"` not `"[o]llama serve"`. The patterns in `server.py`'s `_health()` dict must match the literal process command line. Verify by grepping `ps aux` for the exact substring before adding. |
+| **Dashboard `_find_pid()` does literal substring, not regex** | Service patterns like `legacy.*autopilot`, `[o]llama serve` use `.*` regex syntax, but `_find_pid()` does `if pattern_lower in line.lower()` — a literal substring check. The dot-star is never matched as a wildcard. | Use actual substrings that appear in `ps aux` output: `"legacy autopilot"` not `"legacy.*autopilot"`, `"ollama"` not `"[o]llama serve"`. The patterns in `server.py`'s `_health()` dict must match the literal process command line. Verify by grepping `ps aux` for the exact substring before adding. |
 | **Rich health-report format from inbox agents** | Titus pushes a JSON health report with services, issues, resources, uptime fields — not a compact `{"v": [...]}` vector. The `_parse_vector_body()` function in `orch-health-report.py` doesn't handle this format and returns `None`, marking the agent as unreachable. | `_parse_vector_body()` must detect `"type": "health-report"` in the JSON body and route to a rich-report parser (`_parse_rich_report()`) that converts the rich data to a vector while preserving metadata under a `_rich` key for `_build_structured_data()` to use. See `references/rich-health-report-format.md`. |
 | **Health queue pings dropped before report reads them** | The hourly report finds no vector for an inbox agent because `orch-clean-health-queue` already drained and archived the pings (queue is transient). | The drain cron persists each agent's latest vector to `~/.hermes-cortex/state/inbox-health-state.json`; the report reads that file (live queue peek is only a fallback). If Titus shows 🔴, check that file exists and is fresh — if missing, the drain cron is not running. |
 | **Inbox agents show 🔴 because report still calls retired `api/inbox`** | Report queries `GET /api/inbox?...` which returns 404 on the PGMQ bus (endpoint removed in the inbox→PGMQ migration, commit `0f01556d`). Every inbox agent shows 🔴 unreachable despite healthy pushes; last-seen stays stale. | `_fetch_inbox_vector()` must read `inbox-health-state.json` (or `bus_read("inbox_health_check")`), NOT `api/inbox`. Fixed 2026-08-04 — see the implementation in `orch-health-report.py` and `orch-clean-health-queue.py`. |
 | **Endpoint path is `/health`, not bare `/`** | Poller gets 404 on the root endpoint | The health-vector server serves at `GET /health`, not `GET /`. `curl -s http://127.0.0.1:8905/health`, not `http://...:8905/`. |
 | **Sharing untested URLs** | User calls you out for sending configs without verification | Test EVERY endpoint with `curl --max-time 5` from the external perspective before sharing with the user or peer agents. Do NOT only test from localhost — that only proves nginx is up locally. Check from the agent's perspective by reading the nginx access log for their IP or by using an external port checker. When an agent reports a connectivity issue, test ALL external endpoints (dashboard, langfuse, inbox, health) before diagnosing — a single endpoint being down vs all being down tells you whether it's a per-service or per-server/network problem. |
 | **Old `com.hermes.health-server.service` vs current `health-vector.service`** | Docs mention a FastAPI `health-server.py` service on port 8905 — it was **removed from the repo** (July 2026). If `com.hermes.health-server.service` still exists on a machine it's an orphan from a pre-removal deploy. | The **current** canonical server is `health-vector.service` running `health-vector.py --serve 8905` (9-element compact vector, schedule-aware stale detection). If both units exist, disable the orphan: `systemctl --user disable --now com.hermes.health-server.service && systemctl --user enable --now health-vector.service`. Verify with `systemctl --user list-units | grep health`. |
-| **`check_services()` returns -1 when none are installed** | On macOS or agents without nginx/ollama/gbrain, `check_services()` iterates all key services and returns -1 if any is missing — even if the service isn't supposed to be there. | Fix: detect whether any key service is **installed** before checking. On Linux, check systemd unit existence. If none are present, return `0` (not applicable). On macOS, if no relevant processes are found via pgrep, return `0` instead of `-1`. |
+| **`check_services()` returns -1 when none are installed** | On macOS or agents without nginx/ollama/mycortex, `check_services()` iterates all key services and returns -1 if any is missing — even if the service isn't supposed to be there. | Fix: detect whether any key service is **installed** before checking. On Linux, check systemd unit existence. If none are present, return `0` (not applicable). On macOS, if no relevant processes are found via pgrep, return `0` instead of `-1`. |
 | **Ollama GPU crash cascade** | Health endpoint times out because Ollama crashes the GPU driver (Vulkan on old Intel HD 4000 iGPU, Ivy Bridge 2012). Ollama's vk::DeviceLostError destabilizes system resources, causing the health server to OOM-restart repeatedly (23+ restarts observed). The health vector looks broken but it's actually a cascading failure from Ollama. | Force Ollama to CPU-only on machines with old/incompatible GPUs: set OLLAMA_GPU_LAYER=false (or --cpu flag). On Ivy Bridge / HD 4000 era hardware, the iGPU does not support Vulkan fully. Check restart count: systemctl --user show com.hermes.health-server.service -p NRestarts. Check ollama journal: journalctl --user -u ollama.service --since 1 hour ago --no-pager. If you see vk::DeviceLostError in ollama logs, the GPU is the root cause. |
 | **Orphan service: `Loaded: not-found` + `Active: active (running)`** | `systemctl --user status <service>` shows `Loaded: not-found` but the service is still running. The unit file was deleted/removed but the process from a previous load is alive. It will NOT auto-start on reboot. | Don't restart blindly — that fails because the unit file is missing. Find the source unit (check repo `ops/install/` or private repo) and re-install: `cp <source> ~/.config/systemd/user/ && systemctl --user daemon-reload && systemctl --user restart <service>`. If no source unit exists, the service was intentionally removed — stop the orphan cleanly. Cross-reference with `ss -tlnp | grep python3` to match ports to PIDs. |
 | **Bus liveness vs health vector disagreement** | Agent shows offline (bus audit log) but green (HTTP health vector). You investigate a non-issue. | Check both signals before deciding. Bus-offline + health-green = alive but idle. Bus-offline + health-down = real problem. See the Two Orthogonal Monitoring Systems section above. |

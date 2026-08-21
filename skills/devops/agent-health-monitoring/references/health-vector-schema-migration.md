@@ -4,7 +4,7 @@ Migrated 2026-07-01 on Moses server.
 
 ## The Problem
 
-`health-vector.py` had a `SERVICE_MAP` docstring referencing 9 elements (resources, services, no_errored_crons, no_stale_crons, nginx, ollama, gbrain, disk_ok, gbrain_sources_ok) but the actual `CHECK_FUNCTIONS` list contained only the old 8 check functions (nginx, ollama, gbrain, cortex-dashboard, langfuse-web, langfuse-worker, docker, hermes-gateway). This created a dangerous sync failure: the doc claimed 9-element support, the code returned 8, and downstream pollers misdiagnosed every index.
+`health-vector.py` had a `SERVICE_MAP` docstring referencing 9 elements (resources, services, no_errored_crons, no_stale_crons, nginx, ollama, mycortex, disk_ok, mycortex_sources_ok) but the actual `CHECK_FUNCTIONS` list contained only the old 8 check functions (nginx, ollama, mycortex, cortex-dashboard, langfuse-web, langfuse-worker, docker, hermes-gateway). This created a dangerous sync failure: the doc claimed 9-element support, the code returned 8, and downstream pollers misdiagnosed every index.
 
 ## Three Places That Must Stay in Sync
 
@@ -28,7 +28,7 @@ def check_resources() -> int:
     ...
 
 def check_services() -> int:
-    """services: key services running (nginx, ollama, gbrain-autopilot)."""
+    """services: key services running (nginx, ollama, legacy autopilot)."""
     ...
 
 def check_no_errored_crons() -> int:
@@ -43,8 +43,8 @@ def check_disk_ok() -> int:
     """disk_ok: disk usage below 90%."""
     ...
 
-def check_gbrain_sources_ok() -> int:
-    """gbrain_sources_ok: gbrain autopilot or process running."""
+def check_mycortex_sources_ok() -> int:
+    """mycortex_sources_ok: legacy autopilot or process running."""
     ...
 ```
 
@@ -62,9 +62,9 @@ CHECK_FUNCTIONS = [
     check_no_stale_crons,
     check_nginx,
     check_ollama,
-    check_gbrain,
+    check_mycortex,
     check_disk_ok,
-    check_gbrain_sources_ok,
+    check_mycortex_sources_ok,
 ]
 ```
 
@@ -74,8 +74,8 @@ CHECK_FUNCTIONS = [
 
 ```python
 labels = ["resources", "services", "no_errored_crons",
-           "no_stale_crons", "nginx", "ollama", "gbrain",
-           "disk_ok", "gbrain_sources_ok"]
+           "no_stale_crons", "nginx", "ollama", "mycortex",
+           "disk_ok", "mycortex_sources_ok"]
 ```
 
 ### 4. Copy, restart, verify

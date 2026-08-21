@@ -87,8 +87,8 @@ def generate_card() -> dict:
                 "description": "Score-cycle, feedback, and audit trail for all code changes",
             },
             {
-                "id": "knowledge.gbrain",
-                "name": "gbrain Knowledge",
+                "id": "knowledge.mycortex",
+                "name": "mycortex Knowledge",
                 "description": "Persistent knowledge brain with auto-sync, dream cycles, and search",
             },
         ],

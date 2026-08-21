@@ -44,7 +44,7 @@ class ShardedPGMQBackend:
     async def _get_conn(self, queue_name):
         shard = self._shard(queue_name)
         if shard not in self.connections:
-            self.connections[shard] = await create_pool(f"dbname=gbrain options=-csearch_path=bus_{shard},public")
+            self.connections[shard] = await create_pool(f"dbname=legacy brain options=-csearch_path=bus_{shard},public")
         return self.connections[shard]
     
     async def send(self, queue, body, **kwargs):

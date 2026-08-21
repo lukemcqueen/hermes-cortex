@@ -5,7 +5,7 @@ Hermes Cortex — Offline Knowledge Cascade Tool
 A CLI that provides cascading knowledge lookup across multiple local sources:
   1. web_cache (semantic search, always checked first)
   2. kiwix-serve (ZIM content — Wikipedia, Wikivoyage, WikiMed, etc.)
-  3. gbrain (local knowledge brain via RAG)
+  3. mycortex (local knowledge brain via RAG)
   4. LLM native knowledge (always available, no lookup needed)
 
 When online, this acts as a transparent cache layer to save API calls.
@@ -13,7 +13,7 @@ When offline, it's the primary knowledge source.
 
 Usage:
   offline_knowledge query <question>
-      → Cascade: cache → kiwix → gbrain → fallback info
+      → Cascade: cache → kiwix → mycortex → fallback info
 
   offline_knowledge kiwix-search <term>
       → Direct full-text search across all loaded ZIM files
@@ -57,7 +57,7 @@ KIWIX_URL = "http://localhost:8080"
 BIBLE_DIR = HOME / "offline" / "bible"
 HYMNS_DIR = HOME / "offline" / "hymns"
 
-# ── Bun/GBrain path detection ────────────────────────────────
+# ── Bun/Mycortex path detection ────────────────────────────────
 # Try multiple locations: install.sh default, PATH, and Homebrew
 def _find_bun():
     """Locate bun binary across common install locations."""
@@ -291,10 +291,10 @@ def web_cache_search(query: str):
         return {"error": str(e), "cached": False, "hits": []}
 
 
-# ── GBrain Helper ───────────────────────────────────────────
+# ── Mycortex Helper ───────────────────────────────────────────
 
-def gbrain_search(query: str, source: str = None):
-    """Search mycortex knowledge base (gbrain decommissioned 2026-08-02)."""
+def mycortex_search(query: str, source: str = None):
+    """Search mycortex knowledge base (legacy brain decommissioned 2026-08-02)."""
     if not MYCORTEX_CLI.exists():
         return {"error": "mycortex not installed", "results": []}
 
@@ -327,7 +327,7 @@ def cascade_query(question: str, detailed: bool = False):
     Order:
       1. web_cache (semantic search — fastest, zero API cost)
       2. kiwix-serve (ZIM content if available)
-      3. gbrain (personal knowledge base)
+      3. mycortex (personal knowledge base)
       4. Fallback info (suggestions for the agent)
     """
     result = {
@@ -335,7 +335,7 @@ def cascade_query(question: str, detailed: bool = False):
         "timestamp": datetime.now().isoformat(),
         "cache": None,
         "kiwix": None,
-        "gbrain": None,
+        "mycortex": None,
         "summary": None,
     }
     
@@ -375,11 +375,11 @@ def cascade_query(question: str, detailed: bool = False):
                 "starred": False,
             }
     
-    # Level 3: gbrain
-    gbrain_result = gbrain_search(question)
-    result["gbrain"] = {
-        "status": "found" if gbrain_result.get("results") else "not found",
-        "results": gbrain_result.get("results", ""),
+    # Level 3: mycortex
+    mycortex_result = mycortex_search(question)
+    result["mycortex"] = {
+        "status": "found" if mycortex_result.get("results") else "not found",
+        "results": mycortex_result.get("results", ""),
     }
     
     # Final summary if nothing found
@@ -401,7 +401,7 @@ def system_stats():
         "web_cache": {"status": "unknown"},
         "kiwix": {"status": "unknown"},
         "zim_content": {"status": "unknown"},
-        "gbrain": {"status": "unknown"},
+        "mycortex": {"status": "unknown"},
     }
     
     # web_cache
@@ -431,10 +431,10 @@ def system_stats():
         "running": zc.get("kiwix_running", False),
     }
     
-    # gbrain
-    gbrain_found = MYCORTEX_CLI.exists()
-    stats["gbrain"] = {
-        "status": "ready" if gbrain_found else "not installed",
+    # mycortex
+    mycortex_found = MYCORTEX_CLI.exists()
+    stats["mycortex"] = {
+        "status": "ready" if mycortex_found else "not installed",
     }
     
     return stats
@@ -679,7 +679,7 @@ Examples:
     subparsers = parser.add_subparsers(dest="command")
     
     # query
-    q = subparsers.add_parser("query", help="Cascade knowledge lookup (cache → kiwix → gbrain → suggestion)")
+    q = subparsers.add_parser("query", help="Cascade knowledge lookup (cache → kiwix → mycortex → suggestion)")
     q.add_argument("question", nargs="+", help="The question to answer")
     
     # cascade-search
@@ -799,9 +799,9 @@ Examples:
         else:
             print(f"\n📚 ZIM Content: {zc['status']}")
         
-        gb = stats["gbrain"]
+        gb = stats["mycortex"]
         gi = "✅" if gb["status"] == "ready" else "❌"
-        print(f"\n🧠 gbrain:     {gi} {gb['status']}")
+        print(f"\n🧠 mycortex:     {gi} {gb['status']}")
 
         # Bible stats
         bible_info = bible_list_translations()

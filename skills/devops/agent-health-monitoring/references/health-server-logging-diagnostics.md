@@ -19,12 +19,12 @@ All log lines use ISO-8601 timestamps with milliseconds and are written to stdou
 |--------|-------|------|---------|
 | `STARTING` | INFO | Process starts | `STARTING — server=moses agent=m port=8905 os=linux/6.14.0 python=3.11.15` |
 | `CONFIG` | INFO | Startup | `CONFIG — _STARTUP_TS=1782950206 HOME=/home/moses` |
-| `HEALTH` | INFO | `/api/v1/health` complete | `HEALTH — m total=0.3s resources=0.1s services=0.2s crons=0.0s gbrain=0.0s` |
-| `COMPACT` | INFO | `/health` or `/` complete | `COMPACT — e total=20.1s resources=0.0s services=0.1s crons=0.0s gbrain=20.0s` |
-| `SLOW CHECK` | INFO | Any single check > 2s | `SLOW CHECK — gbrain_sources took 4.5s` |
+| `HEALTH` | INFO | `/api/v1/health` complete | `HEALTH — m total=0.3s resources=0.1s services=0.2s crons=0.0s mycortex=0.0s` |
+| `COMPACT` | INFO | `/health` or `/` complete | `COMPACT — e total=20.1s resources=0.0s services=0.1s crons=0.0s mycortex=20.0s` |
+| `SLOW CHECK` | INFO | Any single check > 2s | `SLOW CHECK — mycortex_sources took 4.5s` |
 | `SLOW COMPACT HEALTH` | WARN | Total request > 5s | `SLOW COMPACT HEALTH — m took 20.1s` |
-| `DEADLINE EXCEEDED` | WARN | gbrain check hit 20s cap | `DEADLINE EXCEEDED — gbrain_sources did not finish in 20.0s (20.0s elapsed)` |
-| `DEADLINE ERROR` | ERROR | gbrain check threw exception | `DEADLINE ERROR — gbrain_sources failed after 3.2s: [Errno 12] Cannot allocate memory` |
+| `DEADLINE EXCEEDED` | WARN | mycortex check hit 20s cap | `DEADLINE EXCEEDED — mycortex_sources did not finish in 20.0s (20.0s elapsed)` |
+| `DEADLINE ERROR` | ERROR | mycortex check threw exception | `DEADLINE ERROR — mycortex_sources failed after 3.2s: [Errno 12] Cannot allocate memory` |
 | `CHECK FAILED` | ERROR | Any check threw exception | `CHECK FAILED — services crashed after 0.1s\nTraceback...` |
 | `SHUTDOWN` | WARN | Process exiting on signal | `SHUTDOWN — received signal 15, exiting` |
 
@@ -33,10 +33,10 @@ All log lines use ISO-8601 timestamps with milliseconds and are written to stdou
 The per-check timing reveals which check is the bottleneck:
 
 ```
-COMPACT — e total=20.1s resources=0.0s services=0.1s crons=0.0s gbrain=20.0s
+COMPACT — e total=20.1s resources=0.0s services=0.1s crons=0.0s mycortex=20.0s
 ```
 
-Here `gbrain=20.0s` means the gbrain_sources check took 20 seconds — it hit the
+Here `mycortex=20.0s` means the mycortex_sources check took 20 seconds — it hit the
 deadline. The endpoint still returned HTTP 200 with degraded data.
 
 ## Diagnostic Workflow
@@ -64,7 +64,7 @@ journalctl --user -u com.hermes.health-server.service --since "1 hour ago" --no-
 ```
 
 Look for:
-- **DEADLINE EXCEEDED** — which check is hanging (usually gbrain_sources)
+- **DEADLINE EXCEEDED** — which check is hanging (usually mycortex_sources)
 - **CHECK FAILED** — traceback showing the crash site
 - **SHUTDOWN** — why the process exited
 - **STARTING** repeated frequently = crashing on loop
@@ -110,28 +110,28 @@ curl -s --max-time 30 http://127.0.0.1:8905/health | jq .
 If this works but the external endpoint (via nginx) doesn't, the issue is
 nginx, not the health server.
 
-### gbrain Cache TTL & Timing Baseline
+### mycortex Cache TTL & Timing Baseline
 
-The gbrain_sources check caches its result for **900 seconds** (15 minutes).
-This is a deliberate trade-off: `gbrain doctor --json` takes **~31 seconds**
+The mycortex_sources check caches its result for **900 seconds** (15 minutes).
+This is a deliberate trade-off: `mycortex doctor --json` takes **~31 seconds**
 on a healthy system (only ~1s CPU — most of the time is I/O waiting on
 Ollama embeddings for sync freshness checks). On a system where Ollama is
 stressed or crashing, it can take the full 45s internal timeout, or hang
 indefinitely.
 
 **Cache parameters:**
-- `_GBRAIN_CACHE_TTL = 900` — 15 minutes (bumped from 300 to reduce blocking frequency)
-- `_GBRAIN_CACHE_TTL = 300` — was 5 minutes (original; caused a 20s block every 5 min)
+- `_MYCORTEX_CACHE_TTL = 900` — 15 minutes (bumped from 300 to reduce blocking frequency)
+- `_MYCORTEX_CACHE_TTL = 300` — was 5 minutes (original; caused a 20s block every 5 min)
 - 20s hard deadline via `_run_with_deadline()` prevents the endpoint from
   hanging even when the cache is cold
 
 **Baseline timing values for diagnosis:**
-- `gbrain doctor --json` on healthy system: **~31s total** (~1s CPU, ~30s I/O)
-- Four non-gbrain checks combined: **< 0.5s** (resources, services, crons)
-- Total health endpoint response: **~0.5s** when gbrain cache is warm
-- Total with cold gbrain cache: **~20.1s** (hits the 20s deadline)
+- `mycortex doctor --json` on healthy system: **~31s total** (~1s CPU, ~30s I/O)
+- Four non-mycortex checks combined: **< 0.5s** (resources, services, crons)
+- Total health endpoint response: **~0.5s** when mycortex cache is warm
+- Total with cold mycortex cache: **~20.1s** (hits the 20s deadline)
 
-If you see DEADLINE EXCEEDED in the logs repeatedly, gbrain's underlying
+If you see DEADLINE EXCEEDED in the logs repeatedly, mycortex's underlying
 Ollama dependency is the bottleneck — not the health server itself.
 See the Ollama GPU crash pitfall in SKILL.md.
 

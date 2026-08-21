@@ -18,7 +18,7 @@ Files registered for deployment that no longer exist on disk:
 - `inbox_watcher.py`, `mcp-inbox-proxy`
 - `agent-inbox/server.py`, `agent-inbox/com.hermes.agent-inbox.plist`
 - `offline_code_index_cron.sh` (old underscore name)
-- `gbrain-autopilot.service` (wrong path — `docs/templates/` → `ops/install/deploy/`)
+- `legacy-autopilot.service` (wrong path — `docs/templates/` → `ops/install/deploy/`)
 
 ### Duplicate Scripts
 - `inbox-flag.py`: 3 identical copies (MD5 match) at `agent/`, `bus/`, `inbox/`
@@ -40,7 +40,7 @@ Files registered for deployment that no longer exist on disk:
 
 ### Fixes Applied This Session
 - 14 stale register entries removed from cortex-update.sh
-- gbrain-autopilot.service path corrected
+- legacy-autopilot.service path corrected
 - Doctor --quick mode now includes crons + scripts (35 checks vs 31)
 - 3 root-level test files moved to tests/
 - Root __pycache__ and .pytest_cache deleted

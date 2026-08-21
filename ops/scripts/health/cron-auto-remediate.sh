@@ -122,12 +122,6 @@ case "${ACTION}" in
           issues+=("SERVICE:ollama.service:down")
         fi
       fi
-      # Gbrain autopilot — DECOMMISSIONED 2026-08-02 (mycortex replaces).
-      # Flag if the unit is still ENABLED but inactive (half-state).
-      if systemctl --user is-enabled gbrain-autopilot >/dev/null 2>&1 \
-         && ! systemctl --user is-active gbrain-autopilot >/dev/null 2>&1; then
-        issues+=("SERVICE:gbrain-autopilot:down")
-      fi
     fi
 
     # Check nginx — use sudo for system-wide config test
@@ -326,9 +320,9 @@ except Exception as e:
     ;;
 
   # ── Fix mycortex Postgres issues ──────────────────────────
-  fix-gbrain)
-    # gbrain DECOMMISSIONED 2026-08-02 — mycortex replaces it (same Postgres).
-    # This mode now checks the mycortex CLI doctor + container connectivity.
+  fix-mycortex)
+    # legacy brain DECOMMISSIONED 2026-08-02 — mycortex replaces it (same Postgres).
+    # This mode checks the mycortex CLI doctor + container connectivity.
     echo "MYCORTEX_DIAGNOSTIC:"
     
     # Check mycortex CLI
@@ -456,7 +450,7 @@ except Exception as e:
     ;;
 
   *)
-    echo "usage: cron-auto-remediate.sh <diagnose|check|fix-missing|fix-perms|fix-git|fix-docker|fix-purge|fix-certs|fix-gbrain|fix-ssl-perms|fix-certbot-perms>"
+    echo "usage: cron-auto-remediate.sh <diagnose|check|fix-missing|fix-perms|fix-git|fix-docker|fix-purge|fix-certs|fix-mycortex|fix-ssl-perms|fix-certbot-perms>"
     echo ""
     echo "Actions:"
     echo "  diagnose        — check script paths, permissions, deps"
@@ -467,7 +461,7 @@ except Exception as e:
     echo "  fix-docker      — restart docker services"
     echo "  fix-purge       — purge system caches (memory, brew, docker)"
     echo "  fix-certs       — check and renew SSL certificates (certbot)"
-    echo "  fix-gbrain      — diagnose gbrain Postgres connectivity"
+    echo "  fix-mycortex  — diagnose mycortex Postgres connectivity"
     echo "  fix-ssl-perms   — check SSL cert permissions (reports what needs sudo)"
     echo "  fix-certbot-perms — check certbot lock/log permissions"
     exit 1

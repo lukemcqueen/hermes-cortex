@@ -189,7 +189,6 @@ def check_dev_repo_agents(res: "Results") -> None:
     HOME / ".hermes",
     HOME / ".brain",
     HOME / "brain",
-    HOME / "gbrain",
     HOME / "__MACOSX",
     HOME / "Desktop",
     HOME / "Documents",
@@ -955,7 +954,7 @@ def check_scripts(res):
         # by basename, preferring the closest match. (Before 2026-08-02 this
         # used repo_scripts / script directly — a flat path — so scripts in
         # subdirectories silently skipped the MD5 check and stale deployed
-        # copies passed. That let the stale Jul-31 watchdog with gbrain
+        # copies passed. That let the stale Jul-31 watchdog with legacy brain
         # checks survive a doctor PASS.)
         repo_source = repo_scripts / script
         if not repo_source.is_file():
@@ -1018,7 +1017,7 @@ def check_cron_runtime_scripts(res):
   equivalent resolution), the scheduler executes stale deployed files and
   `check_deploy_checksums` still reports PASS (it only checks
   ~/.hermes-cortex/scripts). Detected 2026-08-02: watchdog ran a frozen
-  Jul-31 copy with gbrain checks after the gbrain→mycortex migration.
+  Jul-31 copy with legacy brain checks after the legacy → mycortex migration.
 
   Expected end state (cortex-update.sh): ~/.hermes/scripts is a symlink to
   ~/.hermes-cortex/scripts, OR both resolve to the same directory.
@@ -1313,7 +1312,7 @@ def _check_required_tools(res):
 
 
 def check_services(res):
-  """4. Service health: external endpoints, Ollama, gbrain, bus, and self-version."""
+  """4. Service health: external endpoints, Ollama, mycortex, bus, and self-version."""
   _check_self_stale(res)
   _check_required_tools(res)
   # External services are orchestrator-only (Dashboard, Langfuse, Agent Bus)
@@ -1398,63 +1397,6 @@ def check_services(res):
   else:
     res.add("Ollama", "FAIL", "Not reachable on localhost:11434",
         "Run: systemctl --user start ollama || ollama serve")
-
-  # gbrain — DECOMMISSIONED 2026-08-02 (owner-approved; mycortex replaces).
-  # Any leftover gbrain is stale. Detection is ARTIFACT-based (process + dir
-  # + binary + unit), NOT unit-only: the autopilot daemon is often launched
-  # from ~/.gbrain/autopilot-run.sh (bun gbrain autopilot --repo
-  # ~/brain/<agent>) with no systemd unit, so probing only the unit reported
-  # "decommissioned (PASS)" while the daemon kept running (Moses host
-  # 2026-08-07). A live autopilot is actively harmful: it races real git
-  # commits through the global pre-commit hook — truncating the in-flight
-  # commit's temp index (.git/next-index-<pid>.lock) — and floods the
-  # loop-governance DB with precommit-repo-HEAD noise cycles.
-  # Bracket-trick pattern: the literal '[g]brain' never matches its own
-  # command line, so a shell that merely MENTIONS the pattern (e.g. a user
-  # grepping doctor output) can't trip this check.
-  _gbrain_proc = bool(run_bg(["pgrep", "-f", "[g]brain autopilot"], timeout=5).strip())
-  _gbrain_dir = (HOME / ".gbrain").exists()
-  _gbrain_bin = (HOME / ".local/bin/gbrain").exists()
-  _autopilot_enabled = False
-  _autopilot_active = False
-  if IS_MAC:
-    out = run_bg(["launchctl", "list", "com.gbrain.autopilot"], timeout=5)
-    _autopilot_active = '"PID"' in out
-  else:
-    out = run_bg(["systemctl", "--user", "is-active", "gbrain-autopilot"], timeout=5)
-    _autopilot_active = out.strip() == "active"
-    out2 = run_bg(["systemctl", "--user", "is-enabled", "gbrain-autopilot"], timeout=5)
-    _autopilot_enabled = out2.strip() == "enabled"
-  _stale_parts = []
-  if _gbrain_proc:
-    _stale_parts.append("autopilot process running")
-  if _autopilot_active:
-    _stale_parts.append("unit active")
-  if _autopilot_enabled:
-    _stale_parts.append("unit enabled")
-  if _gbrain_dir:
-    _stale_parts.append("~/.gbrain/ present")
-  if _gbrain_bin:
-    _stale_parts.append("~/.local/bin/gbrain present")
-  _gbrain_fix = (
-    "Remove stale gbrain (decommissioned 2026-08-02; mycortex is the brain): "
-    "pkill -f 'gbrain autopilot' 2>/dev/null; "
-    "systemctl --user disable --now gbrain-autopilot 2>/dev/null; "
-    "launchctl unload ~/Library/LaunchAgents/com.gbrain.autopilot.plist 2>/dev/null; "
-    "rm -rf ~/.gbrain && rm -f ~/.local/bin/gbrain && rerun the doctor"
-  )
-  if _gbrain_proc or _autopilot_active:
-    res.add("gbrain (stale)", "FAIL",
-        "stale gbrain daemon still running — races git commits via the pre-commit hook: "
-        + ", ".join(_stale_parts),
-        _gbrain_fix)
-  elif _autopilot_enabled or _gbrain_dir or _gbrain_bin:
-    res.add("gbrain (stale)", "WARN",
-        "stale gbrain artifacts remain: " + ", ".join(_stale_parts),
-        _gbrain_fix)
-  else:
-    res.add("gbrain (stale)", "PASS",
-        "decommissioned — no gbrain daemon, dir, or binary; mycortex is the knowledge brain")
 
   # Worker service conflict check
   if IS_LINUX:
@@ -1583,7 +1525,7 @@ def check_system(res):
   # Catches duplicate/stale .service files still enabled and hitting restart limits.
   # The expected active services below are the canonical Cortex user services.
   # Units that are DISABLED (intentionally stopped — e.g. decommissioned
-  # gbrain-autopilot/gbrain-sync) are skipped: a disabled unit in failed
+  # legacy brain autopilot/sync) are skipped: a disabled unit in failed
   # state is the intended post-decommission state, not an operational issue.
   expected_user_units = {
     "hermes-cortex-dashboard.service",
@@ -3897,17 +3839,17 @@ def check_skill_drift(res):
 def check_mycortex_parity(res):
     """Mycortex parity gate — RETIRED 2026-08-03.
 
-    The parity gate was the gbrain→mycortex MIGRATION gate (prove the two
-    engines retrieve equivalently BEFORE the flip). The flip happened; gbrain
-    is deprecated and being removed. Comparing mycortex against gbrain-era
-    golden expectations is obsolete — the golden set is retained as a
-    regression fixture only, not a gate.
+    The parity gate was the legacy → mycortex MIGRATION gate (prove the two
+    engines retrieve equivalently BEFORE the flip). The flip happened; the
+    legacy brain is deprecated and removed. Comparing mycortex against
+    legacy-era golden expectations is obsolete — the golden set is retained
+    as a regression fixture only, not a gate.
 
     Short-circuits to INFO (no subprocess, no 180s timeout) so every doctor
     run fleet-wide stops paying for a dead gate.
     """
     res.add("Mycortex parity gate", "INFO",
-            "retired 2026-08-03 — gbrain deprecated; golden set kept as a mycortex regression fixture, not a gate")
+            "retired 2026-08-03 — legacy brain deprecated; golden set kept as a mycortex regression fixture, not a gate")
     return
 
 

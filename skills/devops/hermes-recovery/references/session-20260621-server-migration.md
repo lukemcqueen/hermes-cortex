@@ -13,8 +13,8 @@ The source machine (macOS) produced a `hermes-migration-complete.tar.gz` (1.8G) 
 | Backup | Timestamp | Contents |
 |--------|-----------|----------|
 | `hermes-linux-migration-backup-20260618_093544` | 09:35:44 | Core `.hermes/` (config, .env, auth, sessions, cron, skills, state.db) + empty `cortex-project/` dir |
-| `hermes-linux-migration-backup-20260618_093648` | 09:36:48 | Same as above + cortex AGENTS.md + gbrain-data + brain-data reference |
-| `hermes-linux-migration-backup-20260618_095549` | 09:55:49 | **Most complete** — all of the above + brain-data (actual content), gbrain-data (PGLite), docker-volumes (pgdata, clickhouse, langfuse) |
+| `hermes-linux-migration-backup-20260618_093648` | 09:36:48 | Same as above + cortex AGENTS.md + mycortex-data + brain-data reference |
+| `hermes-linux-migration-backup-20260618_095549` | 09:55:49 | **Most complete** — all of the above + brain-data (actual content), mycortex-data (PGLite), docker-volumes (pgdata, clickhouse, langfuse) |
 
 ### What Each Component Contains
 
@@ -31,7 +31,7 @@ manifest.txt
 cortex-project/
   └── AGENTS.md        # 8.2KB — Hermes Cortex project guidelines
 brain-data/            # Empty — "Source not found" for ~/.brain/
-gbrain-data/           # PGLite knowledge graph (7 subdirs + config)
+mycortex-data/           # PGLite knowledge graph (7 subdirs + config)
 hermes-agent/          # Same as backup 1 + additional files (agent-inbox-*.conf, bible-tracker.json)
 ```
 
@@ -39,7 +39,7 @@ hermes-agent/          # Same as backup 1 + additional files (agent-inbox-*.conf
 ```
 manifest.txt
 brain-data/            # Full tree: moses/, luke/, amy/, default/, shared/, lessons/, RESOLVER.md
-gbrain-data/           # Full: brain.pglite, config.json, workers/, migrations/, sync logs
+mycortex-data/           # Full: brain.pglite, config.json, workers/, migrations/, sync logs
 docker-volumes/        # ClickHouse data (8.4M) + PostgreSQL data (61M) + Langfuse full build
 hermes-agent/          # Same as backup 2
 ```
@@ -54,7 +54,7 @@ Size: 1.8G (160M compressed). Extracted directly into `~/` — populates `~/.her
 |-----------|-----------|-------|
 | `~/.hermes/` | `~/.hermes/` | Extracted from tar.gz |
 | `~/.brain/` | `~/.brain/` | Restored from `backup-095549/brain-data/` |
-| `~/.gbrain/` | `~/.gbrain/` | Restored from `backup-095549/gbrain-data/` |
+| `~/.legacy-brain/` | `~/.legacy-brain/` | Restored from `backup-095549/mycortex-data/` |
 | `~/pgdata/` | `~/pgdata/` | Available in `backup-095549/docker-volumes/pgdata/` |
 | `~/clickhouse-data/` | `~/clickhouse-data/` | Available in `backup-095549/docker-volumes/clickhouse-data/` |
 | `~/Dropbox/brain/lessons` | `~/.brain/lessons` (symlink) | Dead link — `lessons-local-backup/` fallback exists |
@@ -97,16 +97,16 @@ The official `curl https://ollama.com/install.sh | sh` requires interactive sudo
 - The tarball is ~1.4GB and takes ~3 minutes on a 75Mbps connection
 - Extract to `~/.local/bin/` and `~/.local/lib/ollama/`
 
-### 5. gbrain Source Path Migration
+### 5. mycortex Source Path Migration
 
-After restoring `~/.gbrain/brain.pglite`, `gbrain sources list` showed old macOS paths:
+After restoring `~/.legacy-brain/brain.pglite`, `mycortex sources list` showed old macOS paths:
 ```
   luke   isolated  29 pages  last sync ...  /Users/luke/brain/luke
 ```
 
-Fix: remove with `--confirm-destructive` and re-add with correct paths. This destroys old pages in PGLite — they get re-synced from file content. The `--confirm-destructive` flag is required by gbrain 0.42+.
+Fix: remove with `--confirm-destructive` and re-add with correct paths. This destroys old pages in PGLite — they get re-synced from file content. The `--confirm-destructive` flag is required by mycortex 0.42+.
 
-**Critical detail about gbrain sources list output format:** The output has **leading spaces** on every line (indented). Grep patterns must account for this — `grep "luke"` works but `grep "^luke"` does not. Use `grep -E "^\s+luke\s"` if you need an anchored match.
+**Critical detail about mycortex sources list output format:** The output has **leading spaces** on every line (indented). Grep patterns must account for this — `grep "luke"` works but `grep "^luke"` does not. Use `grep -E "^\s+luke\s"` if you need an anchored match.
 
 ### 6. Brain Content Restore
 
@@ -118,9 +118,9 @@ cp -rn ~/.brain/moses/* ~/brain/moses/
 # etc.
 ```
 
-Then git commit and `gbrain sync --all`. Total: 131 pages across 5 sources (luke: 29, moses: 25, amy: 20, shared: 57, default: 1).
+Then git commit and `mycortex sync --all`. Total: 131 pages across 5 sources (luke: 29, moses: 25, amy: 20, shared: 57, default: 1).
 
-**Prerequisite for gbrain sync:** gbrain requires at least one git commit in the source repo before it can sync. Empty directories with only a `.gitignore` need `git add -A && git commit` first. Without this, sync fails with "No commits in repo...".
+**Prerequisite for mycortex sync:** mycortex requires at least one git commit in the source repo before it can sync. Empty directories with only a `.gitignore` need `git add -A && git commit` first. Without this, sync fails with "No commits in repo...".
 
 ### 7. Dashboard — Gateway Workaround
 
@@ -174,7 +174,7 @@ The user preferred: "Continue as much as you can do and at the end gather all th
 The 27-step `install.sh` is macOS-optimized. On Linux:
 - Step 0 (system check): warns "Linux detected — optimized for macOS" but proceeds
 - Step 1 (Ollama): uses `curl | sh` which needs interactive sudo — install manually instead
-- Step 7 (gbrain plugin): Python script generates `/brain` plugin code — works fine on Linux
+- Step 7 (mycortex plugin): Python script generates `/brain` plugin code — works fine on Linux
 - Steps 12-13 (Langfuse/Dashboard): Docker + systemd work but gateway blocks systemctl start
 - Most apt packages don't need sudo if pre-installed, but `sudo apt install -y nginx` will fail
 
@@ -198,7 +198,7 @@ Even with mirrors, the same layer SHAs hit the same bad disk blocks because Dock
 | Hermes Agent | 0.17.0 | Restored from migration archive |
 | Ollama | 0.30.10 | Manual tar.zst download → `~/.local/bin/` + user systemd |
 | Bun | 1.3.14 | GitHub release zip → `~/.bun/bin/` |
-| gbrain | 0.42.52.0 | `bun install -g github:garrytan/gbrain` |
+| mycortex | 0.42.52.0 | `bun install -g github:garrytan/mycortex` |
 | Python | 3.11.15 | System (Linux Mint) |
 | Docker | 29.6.0-ce | System (pre-installed) |
 | git | 2.43.0 | System |
@@ -208,7 +208,7 @@ Even with mirrors, the same layer SHAs hit the same bad disk blocks because Dock
 1. **SSH keys not migrated** — `~/.ssh/` is outside Hermes backup scope
 2. **gh CLI not installed** — install via `apt` or use git-only PAT auth
 3. **Dead brain symlinks** — `~/.brain/lessons → ~/Dropbox/brain/lessons` (macOS-only)
-4. **gbrain source paths** — always point to old machine after PGLite restore
+4. **mycortex source paths** — always point to old machine after PGLite restore
 5. **Git identity** — `~/.gitconfig` doesn't survive migration
 6. **Multi-backup reconciliation** — the latest backup is most complete, but earlier ones may have files the later one missed
 7. **Docker pull I/O errors** — corrupted overlayfs cache from bad disk blocks, need prune between pulls
@@ -217,6 +217,6 @@ Even with mirrors, the same layer SHAs hit the same bad disk blocks because Dock
 10. **bun install script blocked** — use GitHub release zip directly
 11. **Ollama tarball URL** — `.tgz` returns 404, use `.tar.zst`
 12. **Docker Hub rate limiting** — 100 pulls/6h for anonymous users; use mirrors if hit
-13. **gbrain sources list format** — output has leading spaces, don't anchor grep at column 0
-14. **gbrain sync needs at least one git commit** — empty repos fail with "No commits in repo"
+13. **mycortex sources list format** — output has leading spaces, don't anchor grep at column 0
+14. **mycortex sync needs at least one git commit** — empty repos fail with "No commits in repo"
 15. **Langfuse compose needs langfuse:2 tag** — latest/3 hit different disk blocks on this hardware

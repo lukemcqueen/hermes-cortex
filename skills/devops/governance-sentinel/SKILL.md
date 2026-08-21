@@ -5,7 +5,7 @@ category: devops
 description: >-
   Recurring governance introspection — scrape brain sync snapshots for codepath
   patterns, compile weekly insights, and store verdicts in dream.json for
-  retrospection. Runs as a sentinel after gbrain-update-sync, before daily
+  retrospection. Runs as a sentinel after mycortex-update-sync, before daily
   police logs.
 ---
 
@@ -13,7 +13,7 @@ description: >-
 
 > **Scraping brain sync state, extracting codepath patterns, and producing
 > governance insights for weekly retrospection.** This is the sentinel that
-> sits after gbrain-update-sync and before daily police logs in the pipeline.
+> sits after mycortex-update-sync and before daily police logs in the pipeline.
 
 ## When to Use
 
@@ -22,12 +22,12 @@ Load this skill when the task involves:
 - Scraping brain snapshots for patterns
 - Writing or updating `dream.json`
 - Weekly retrospection or governance insight compilation
-- Pipeline-position-aware sentinel work (between gbrain update and police logs)
+- Pipeline-position-aware sentinel work (between mycortex update and police logs)
 
 ## Pipeline Position
 
 ```
-gbrain-update-sync → GOVERNANCE-SENTINEL → daily police logs
+mycortex-update-sync → GOVERNANCE-SENTINEL → daily police logs
 ```
 
 The sentinel runs **after** the brain snapshot is refreshed (so it sees the
@@ -36,7 +36,7 @@ for the daily governance report).
 
 ## What It Does
 
-1. **Scrape brain sync snapshots** — read the latest gbrain sync output for
+1. **Scrape brain sync snapshots** — read the latest mycortex sync output for
    codepath patterns (repeated file paths, recurring operation types,
    agent activity signatures).
 2. **Extract patterns** — cluster the scraped activity into codepath families:
@@ -74,6 +74,6 @@ python3 -c "import json; print(len(json.load(open('~/.hermes-cortex/state/dream.
 
 ## Related
 - `loop-governance` — the cycle-scoring system it reflects on
-- `gbrain-maintenance` — the sync step it follows
+- `legacy-brain-maintenance` — the sync step it follows
 - `soul-refinement` — daily SOUL.md insights (companion)
 - `orch-weekly-auto-fix` — weekly opportunity scan (consumer of insights)

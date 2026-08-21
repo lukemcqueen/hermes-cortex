@@ -69,27 +69,27 @@ subcommand. This means:
 ### What Would a `lesson` Subcommand Look Like?
 
 The lessons concept uses a different storage model than bible/hymns. Lessons live
-as markdown files in `~/brain/<source>/lessons/` directories indexed by gbrain,
+as markdown files in `~/brain/<source>/lessons/` directories indexed by mycortex,
 not in a flat `~/offline/lessons/` directory.
 
 A `lesson` subcommand would likely:
 
 1. **`lesson index`** — Scan all brain source directories for `lessons/` dirs and
-   run `gbrain sync --source <name>` to ensure they're indexed
-2. **`lesson search <query>`** — Run `gbrain query <query> --source <source>` (or
+   run `mycortex sync --source <name>` to ensure they're indexed
+2. **`lesson search <query>`** — Run `mycortex query <query> --source <source>` (or
    across all sources) targeting `lessons/` content
 
-### Alternative: Use gbrain Directly
+### Alternative: Use mycortex Directly
 
-Since gbrain already indexes brain directories, searching lessons can be done
+Since mycortex already indexes brain directories, searching lessons can be done
 without a new subcommand:
 
 ```bash
 # Search all lessons across all brain sources
-gbrain search "error" | grep -i lessons
+mycortex search "error" | grep -i lessons
 
 # Search within a specific source's lessons
-gbrain query "error" --source default | grep -i lessons
+mycortex query "error" --source default | grep -i lessons
 ```
 
 ## PATH Issue

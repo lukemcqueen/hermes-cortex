@@ -9,8 +9,8 @@
 #   AC5  is_federated=true without pii_scan_at → CHECK constraint rejects
 #   AC6  mycortex_ingest UPDATE on sources → permission denied (role split)
 #
-# Uses a scratch database `mycortex_test` — NEVER touches the `gbrain` DB
-# (hermeticity guard: fails fast if MIGRATE_TARGET resolves to gbrain).
+# Uses a scratch database `mycortex_test` — NEVER touches the live `mycortex` DB
+# (hermeticity guard: fails fast if MIGRATE_TARGET resolves to mycortex).
 #
 # Run: bash tests/test-mycortex-schema.sh
 set -eu
@@ -18,13 +18,13 @@ REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 MIGRATE_PY="${REPO_DIR}/ops/services/mycortex/migrate.py"
 TEST_DB="${MYCORTEX_TEST_DB:-mycortex_test}"
 
-if [[ "$TEST_DB" == "gbrain" ]]; then
-  echo "❌ REFUSING to run against the gbrain DB — hermeticity guard. Set MYCORTEX_TEST_DB." >&2
+if [[ "$TEST_DB" == "mycortex" ]]; then
+  echo "❌ REFUSING to run against the mycortex DB — hermeticity guard. Set MYCORTEX_TEST_DB." >&2
   exit 1
 fi
 
-PSQL="docker exec gbrain-postgres psql -U gbrain -d ${TEST_DB} -t -A"
-PSQL_SUPER="docker exec gbrain-postgres psql -U gbrain -d gbrain -t -A"
+PSQL="docker exec mycortex-postgres psql -U mycortex -d ${TEST_DB} -t -A"
+PSQL_SUPER="docker exec mycortex-postgres psql -U mycortex -d mycortex -t -A"
 
 P=0; F=0
 pass() { P=$((P+1)); echo "  ✅ $1"; }
@@ -84,7 +84,7 @@ echo "  federated source=${FED_ID:0:8} page=${PAGE_FED:0:8} | isolated source=${
 
 echo ""
 echo "═══ AC3+AC4: Reader sees federated ONLY; isolation-leak test AS mycortex_reader ═══"
-READER_PSQL="docker exec gbrain-postgres psql -U mycortex_reader -d ${TEST_DB} -t -A"
+READER_PSQL="docker exec mycortex-postgres psql -U mycortex_reader -d ${TEST_DB} -t -A"
 
 FED_VISIBLE=$($READER_PSQL -c "SELECT count(*) FROM mycortex.pages;" 2>/dev/null)
 [ "$FED_VISIBLE" = "1" ] && pass "reader sees exactly the federated page (got $FED_VISIBLE)" || fail "reader sees $FED_VISIBLE pages (expected 1 — isolation leak?)"
@@ -111,7 +111,7 @@ fi
 
 echo ""
 echo "═══ AC6: Role split — mycortex_ingest cannot UPDATE sources ═══"
-INGEST_PSQL="docker exec gbrain-postgres psql -U mycortex_ingest -d ${TEST_DB} -t -A"
+INGEST_PSQL="docker exec mycortex-postgres psql -U mycortex_ingest -d ${TEST_DB} -t -A"
 if $INGEST_PSQL -c "UPDATE mycortex.sources SET is_federated=TRUE WHERE name='moses-test';" >/dev/null 2>&1; then
   fail "mycortex_ingest UPDATEd sources — role split BROKEN"
 else

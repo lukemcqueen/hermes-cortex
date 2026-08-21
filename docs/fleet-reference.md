@@ -32,7 +32,7 @@ Every agent in the fleet falls into one of three types. This determines which in
 | **Local bus daemon** | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 | **nginx** | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
 | **Has Ollama** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **Has gbrain** | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| **Has mycortex** | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
 
 > **Note on cronjob MCP tool availability:** Most non-orchestrator agents do not have the cronjob tool in any context. The macOS dev-agent (Titus) has it when running direct user sessions (Telegram DM, CLI) but not in cron/auto-remediation contexts. When running under a restricted toolset (e.g. cron), all non-orchestrator agents should route cron requests through Moses using the [cron-request-protocol](skills/devops/cron-request-protocol/SKILL.md).
 
@@ -110,8 +110,8 @@ These run on every agent in the fleet. Created by `install-crons.sh`.
 | `agent-memory-pruning` | `0 4 * * 1` | LLM | — | origin |
 | `agent-session-cache-build` | `0 5 * * 1` | no_agent | `session_cache.py` | origin |
 | `agent-daily-bible-reading` | `0 1 * * *` | LLM | agent-daily-bible-reading skill | origin |
-| `agent-gbrain-nightly-dream` | ~~`0 3 * * 6`~~ | ~~no_agent~~ | ~~`agent-gbrain-nightly-dream.sh`~~ | ~~origin~~ | ⚠️ STALE/REMOVED 2026-08-02 — gbrain decommissioned; no consumer (verified) |
-| `agent-gbrain-update-sync` | ~~`0 2 * * 0`~~ | ~~no_agent~~ | ~~`agent-gbrain-update-sync.sh`~~ | ~~origin~~ | ⚠️ STALE/REMOVED 2026-08-02 — obsolete with gbrain binary uninstall |
+| `agent-mycortex-nightly-dream` | ~~`0 3 * * 6`~~ | ~~no_agent~~ | ~~`agent-mycortex-nightly-dream.sh`~~ | ~~origin~~ | ⚠️ STALE/REMOVED 2026-08-02 — legacy brain decommissioned; no consumer (verified) |
+| `agent-mycortex-update-sync` | ~~`0 2 * * 0`~~ | ~~no_agent~~ | ~~`agent-mycortex-update-sync.sh`~~ | ~~origin~~ | ⚠️ STALE/REMOVED 2026-08-02 — obsolete with mycortex binary uninstall |
 | `agent-nginx-threat-pipeline` | `0 5 * * *` | no_agent | `nginx-threat-pipeline.sh` | origin |
 | `agent-ip-submission` | `*/30 * * * *` | no_agent | `agent-ip-submission.sh` | origin |
 | `agent-offline-code-index` | `0 5 * * 0` | no_agent | `agent-offline-code-index.sh` | local |
@@ -159,8 +159,8 @@ These run on this machine but use `agent-*` naming. Not in repo installers (inte
 | `threat-pipeline` | `0 5 * * *` | no_agent | `nginx-threat-pipeline.sh` | origin |
 | `model-health-watchdog` | `0 7 * * *` | no_agent | `agent-model-health-watchdog.py` | origin |
 | `langfuse-health-watchdog` | `0 * * * *` | no_agent | `langfuse-health-watchdog.py` | origin |
-| `gbrain-nightly-dream` | ~~`0 3 * * 6`~~ | ~~no_agent~~ | ~~`agent-gbrain-nightly-dream.sh`~~ | ~~origin~~ | ⚠️ STALE/REMOVED 2026-08-02 — gbrain decommissioned |
-| `gbrain-update-sync` | ~~`0 2 * * 0`~~ | ~~no_agent~~ | ~~`agent-gbrain-update-sync.sh`~~ | ~~origin~~ | ⚠️ STALE/REMOVED 2026-08-02 — gbrain decommissioned |
+| `mycortex-nightly-dream` | ~~`0 3 * * 6`~~ | ~~no_agent~~ | ~~`agent-mycortex-nightly-dream.sh`~~ | ~~origin~~ | ⚠️ STALE/REMOVED 2026-08-02 — legacy brain decommissioned |
+| `mycortex-update-sync` | ~~`0 2 * * 0`~~ | ~~no_agent~~ | ~~`agent-mycortex-update-sync.sh`~~ | ~~origin~~ | ⚠️ STALE/REMOVED 2026-08-02 — legacy brain decommissioned |
 | `memory-pruning` | `0 4 * * 1` | LLM | — | origin |
 | `offline-code-index` | ~~`0 5 * * 0`~~ | ~~no_agent~~ | ~~`offline_code_index_cron.sh`~~ | ~~local~~ | ⚠️ STALE/REMOVED — renamed `agent-offline-code-index` |
 | `llm-judge-scorer-weekday` | `30 13,20 * * 1-5` | no_agent | `llm-judge-scorer.py` | local |

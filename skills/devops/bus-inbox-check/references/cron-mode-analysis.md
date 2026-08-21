@@ -56,7 +56,7 @@ for j in data['jobs']:
 
 ### Parse `systemctl --user list-units` output
 ```bash
-systemctl --user list-units --type=service --state=running | grep -E 'hermes|ollama|gbrain'
+systemctl --user list-units --type=service --state=running | grep -E 'hermes|ollama|mycortex'
 ```
 
 ## How it differs from interactive mode

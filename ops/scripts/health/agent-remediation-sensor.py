@@ -153,15 +153,6 @@ def check_services():
         out, _, rc = run("launchctl list com.ollama.serve 2>/dev/null | awk 'NR==2 {print $1}'")
         if rc != 0 or not out.strip() or out.strip() == "-":
             add_issue("service_down", "high", "Ollama is down", {"service": "com.ollama.serve"})
-        # Gbrain autopilot — DECOMMISSIONED 2026-08-02 (mycortex replaces).
-        # Only flag when the launchd plist still EXISTS but the service is
-        # not loaded (half-state); a removed plist is the intended
-        # post-decommission state.
-        gbrain_plist = Path.home() / "Library" / "LaunchAgents" / "com.gbrain.autopilot.plist"
-        if gbrain_plist.exists():
-            out, _, rc = run("launchctl list com.gbrain.autopilot 2>/dev/null | awk 'NR==2 {print $1}'")
-            if rc != 0 or not out.strip() or out.strip() == "-":
-                add_issue("service_down", "high", "gbrain autopilot plist exists but not loaded (decommission half-state)", {"service": "com.gbrain.autopilot"})
     elif sys.platform.startswith("linux"):
         # Ollama — check system-level systemd first, then user-level, then process
         out, _, rc = run("systemctl is-active ollama 2>/dev/null")
@@ -171,14 +162,6 @@ def check_services():
                 proc_out, _, proc_rc = run("pgrep -f 'ollama serve' 2>/dev/null")
                 if proc_rc != 0 or not proc_out.strip():
                     add_issue("service_down", "high", f"Ollama is not active (checked system, user, process)", {"service": "ollama.service", "note": "all checks failed"})
-        # Gbrain autopilot — DECOMMISSIONED 2026-08-02 (mycortex replaces).
-        # Only flag when the unit is still ENABLED but inactive (half-state);
-        # a disabled unit is the intended post-decommission state.
-        out, _, rc = run("systemctl --user is-active gbrain-autopilot 2>/dev/null")
-        if rc == 0 and out.strip() != "active":
-            en, _, _ = run("systemctl --user is-enabled gbrain-autopilot 2>/dev/null")
-            if en.strip() == "enabled":
-                add_issue("service_down", "high", f"gbrain autopilot enabled but inactive (decommission half-state)", {"service": "gbrain-autopilot.service", "status": out.strip() or "unknown"})
 
 
 def check_nginx():
@@ -249,10 +232,10 @@ def check_errored_crons():
 
 
 def check_mycortex_health():
-    """Check mycortex (gbrain replacement) health via CLI doctor.
+    """Check mycortex health via CLI doctor.
 
-    gbrain was decommissioned 2026-08-02 (mycortex replaces). This checks
-    the mycortex CLI doctor instead of the removed gbrain binary.
+    The legacy brain was decommissioned 2026-08-02 (mycortex replaces). This checks
+    the mycortex CLI doctor instead of the removed legacy brain binary.
     """
     # Check if mycortex CLI is installed
     cli = os.path.expanduser("~/.hermes-cortex/scripts/mycortex")
@@ -264,11 +247,11 @@ def check_mycortex_health():
     combined = (out + " " + err).lower()
 
     if rc != 0 and "could not connect" in combined:
-        add_issue("gbrain_connection_failure", "high", "mycortex cannot connect to configured database", {
+        add_issue("mycortex_connection_failure", "high", "mycortex cannot connect to configured database", {
             "error_snippet": (out + err)[:300],
         })
     elif rc != 0:
-        add_issue("gbrain_health_check_failed", "medium", "mycortex doctor reported issues", {
+        add_issue("mycortex_health_check_failed", "medium", "mycortex doctor reported issues", {
             "error_snippet": (out + err)[:300],
         })
 

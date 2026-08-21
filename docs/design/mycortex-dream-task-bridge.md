@@ -168,7 +168,7 @@ Phase X — Actionable: 1 insight triaged to todo
 ## Implementation record (what the orchestrator actually shipped — 2026-08-06)
 
 The proposal assumed `bus.todos` existed ("verified 2026-08-06"). It did NOT:
-verified absent from the old gbrain dump, the old `gbrain-postgres`
+verified absent from the old legacy brain dump, the old `legacy Postgres`
 container, and the migrated `mycortex-postgres`. `todo-db.py add` printed ✅
 while every row vanished — stdin-mode psql returns rc=0 on SQL failure.
 So the implementation shipped MORE than the proposal, in four parts:

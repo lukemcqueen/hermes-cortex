@@ -25,7 +25,7 @@ metadata:
 1. **Fail-closed from day one** — RLS enabled + FORCE + policies in the SAME migration file. No "v001b after first ingest" fail-open window.
 2. **Role split, not shared superuser** — separate `admin` / `ingest` / `reader` roles. Admin owns registration + grants; ingest does DML on content tables ONLY; reader gets SELECT filtered by RLS.
 3. **PII gate as a DB CHECK constraint** — `CHECK (is_federated = FALSE OR pii_scan_at IS NOT NULL)`. Federation is impossible without a recorded scan, enforced at the DB, not by convention.
-4. **Ownership by superuser** — tables owned by `postgres`/`gbrain` (superuser), never runtime roles. Runtime roles get GRANTs, not ownership.
+4. **Ownership by superuser** — tables owned by `postgres`/`mycortex` (superuser), never runtime roles. Runtime roles get GRANTs, not ownership.
 5. **Migrate via a runner, never inline DDL in a deploy script** — `cortex-update.sh`-style file copiers have no DDL path. A `schema_version`-gated `migrate.py` invoked AFTER file sync is the DDL path.
 
 ## ⚠️ RLS Policy Evaluation Semantics (the #1 gotcha)
@@ -115,7 +115,7 @@ the CLI resolves `--source` filters by id, but `local_path` stays protected.
 ## psql test battery pattern (AC verification)
 
 Mirror `tests/test-bus-schema.sh` style:
-- **Hermeticity guard:** refuse to run against the prod DB name (fail fast: `if [[ "$TEST_DB" == "gbrain" ]]; then exit 1; fi`).
+- **Hermeticity guard:** refuse to run against the prod DB name (fail fast: `if [[ "$TEST_DB" == "mycortex" ]]; then exit 1; fi`).
 - **Scratch DB lifecycle:** `DROP DATABASE IF EXISTS <test>` + `CREATE DATABASE <test>` + `trap cleanup EXIT`.
 - **Test as the actual role:** `docker exec mycortex-postgres psql -U mycortex_reader -d <test>` — the isolation-leak test MUST run as the reader, never superuser.
 - ⚠️ **psql `-t -A` prints command tags:** `$ID=$(psql ... -c "INSERT ... RETURNING id")` captures BOTH the id AND the `INSERT 0 1` tag (two lines). Pipe through `head -1` or the multi-line value breaks the next query.

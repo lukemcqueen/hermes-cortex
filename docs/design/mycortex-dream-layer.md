@@ -1,15 +1,15 @@
 # Mycortex Dream Layer — Design
 
 > Status: implemented 2026-08-06 · Optional feature, removable per-agent.
-> Replaces the decommissioned gbrain creative-dream cron with a richer,
+> Replaces the decommissioned legacy brain creative-dream cron with a richer,
 > write-back-to-brain serendipity layer built on the mycortex CLI.
 
 ## Why
 
-The gbrain design doc deliberately cut the dream/synthesis layer ("nobody
+The legacy brain design doc deliberately cut the dream/synthesis layer ("nobody
 consumed it"). Luke wants it back — and expanded beyond the old weekly
 ~200-word summary. The mycortex brain (markdown-in-git + Postgres + cron)
-gives us real raw material the old gbrain never indexed: 631+ saved
+gives us real raw material the old legacy brain never indexed: 631+ saved
 lessons, full session history, the fleet repo itself, and per-agent
 bible notes.
 
@@ -144,7 +144,7 @@ is everything around it:
 
 ## History
 
-- 2026-08-02: gbrain decommissioned; dream crons removed; design doc
+- 2026-08-02: legacy brain decommissioned; dream crons removed; design doc
   explicitly excluded dream/synthesis ("nobody consumed it").
 - 2026-08-06: Luke asks to restore + expand; nightly + weekly created
   first, then redesigned into this 3-tier write-back layer with monthly

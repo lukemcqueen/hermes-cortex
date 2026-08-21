@@ -47,7 +47,7 @@ def _psql(query: str) -> str:
     try:
         r = subprocess.run(
             ["docker", "exec", "mycortex-postgres", "psql",
-             "-U", "gbrain", "-d", "gbrain", "-t", "-c", query],
+             "-U", "mycortex", "-d", "mycortex", "-t", "-c", query],
             capture_output=True, text=True, timeout=15,
         )
         return r.stdout.strip() if r.returncode == 0 else f"ERROR: {r.stderr[:200]}"

@@ -7,7 +7,7 @@
 ## What's Working
 - Hermes Cortex installer supports both macOS and Linux systemd services
 - Auto-remediation system checks cron jobs, agent inbox, and system resources
-- gbrain autopilot daemon integration with fallback to sync-watch
+- legacy brain autopilot daemon integration with fallback to sync-watch
 
 ## Cleanup Needed (Moses)
 - Migrate Langfuse API key insertion to secure environment variables (no plaintext in scripts)
@@ -30,7 +30,7 @@
 
 | Date | Commit | Description |
 |------|--------|-------------|
-| 2026-06-15 | `960b2e0` | fix(service-recovery): support Linux systemd services and gbrain autopilot cron check
+| 2026-06-15 | `960b2e0` | fix(service-recovery): support Linux systemd services and legacy brain autopilot cron check
 | 2026-06-15 | `9cfaf10` | Merge remote-tracking branch 'origin/main'
 | 2026-06-15 | `db56ccd` | rename: moses-inbox-processor → process-agent-messages
 | 2026-06-15 | `42b694c` | Merge origin/main: resolve conflicts in cortex-update.sh (register section) and cron-auto-remediate.sh (memory pressure check)

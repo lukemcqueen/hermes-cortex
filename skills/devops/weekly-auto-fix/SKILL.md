@@ -131,6 +131,6 @@ On success with nothing to do, outputs empty JSON `{}` (silent — watchdog patt
 - **Don't merge PRs during a rebase conflict.** If `git pull --rebase` fails, report it — don't force push.
 - **Don't delete protected branches** (main, master, develop). The script skips them.
 - **Docker restart may cause brief downtime.** Only restart containers clearly marked "unhealthy" or "restarting" — not healthy ones.
-- **The companion script is a safety net, not the primary fixer.** The LLM agent should attempt reasoning-heavy fixes (git merge, gbrain repair) directly, then use the script for mechanical checks.
+- **The companion script is a safety net, not the primary fixer.** The LLM agent should attempt reasoning-heavy fixes (git merge, mycortex repair) directly, then use the script for mechanical checks.
 - **If nothing was broken, stay silent.** The watchdog pattern applies — the user should not hear from a cron that found nothing to do.
 - **Verification adds latency.** Docker verification waits 3s; git verification runs 2 extra commands. This is fine for a weekly cron, but don't add heavy verifications to high-frequency crons.

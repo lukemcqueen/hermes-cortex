@@ -38,7 +38,6 @@ installer script or its sub-scripts.
 | Ollama | MIT | [GitHub](https://github.com/ollama/ollama) | ✅ Yes | Installed via brew/cURL. MIT — no special attribution requirements beyond standard MIT notice. |
 | Hermes Agent | MIT | [GitHub](https://github.com/nousresearch/hermes-agent) | ✅ Yes | The host agent for this installer project. MIT-licensed. |
 | Bun | MIT (core) + LGPL-2 (JavaScriptCore) | [GitHub](https://github.com/oven-sh/bun) | ✅ Yes (core) | Bun itself is MIT. It **statically links** JavaScriptCore (WebKit), which is LGPL-2. The LGPL applies only if you modify or re-distribute the Bun binary. Hermes Cortex simply installs and invokes it. |
-| gbrain | MIT | [GitHub](https://github.com/garrytan/gbrain) | ✅ Yes | Installed via `bun install -g github:garrytan/gbrain`. |
 | sqlite-vec (pip) | MIT / Apache 2.0 (dual) | [GitHub](https://github.com/asg017/sqlite-vec) | ✅ Yes | Dual-licensed; choose either. Used for vector search in web cache. |
 | Flask (pip) | BSD 3-Clause | [GitHub](https://github.com/pallets/flask) | ✅ Yes | Used for the Cortex Dashboard. BSD-3 requires preservation of copyright notice in redistributions. |
 | requests (pip) | Apache 2.0 | [GitHub](https://github.com/psf/requests) | ✅ Yes | Used in web cache and utility scripts. |

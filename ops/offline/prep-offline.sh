@@ -272,7 +272,7 @@ print_summary() {
     printf "\n"
     printf "  ${BOLD}Pro tip:${RESET} All tools work identically online and offline.\n"
     printf "  Online:  cache → kiwix → web → LLM (saves API costs)\n"
-    printf "  Offline: cache → kiwix → gbrain → LLM (no internet needed)\n"
+    printf "  Offline: cache → kiwix → mycortex → LLM (no internet needed)\n"
     printf "\n"
 }
 

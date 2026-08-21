@@ -365,7 +365,7 @@ JSON-RPC `initialize` + `tools/list` handshake per host type.
 - [ ] **AC-12 Docs honest:** task-persistence skill (renamed, aliased),
       psql-automation, session-start-discipline, AGENTS.md, agent-onboarding,
       DOCS-INDEX, SKILLS-MANIFEST all describe the `tasks` system — no
-      gbrain-era "all agents see each other's todos" claims.
+      legacy brain-era "all agents see each other's todos" claims.
 
 ---
 

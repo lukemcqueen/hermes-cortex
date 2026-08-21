@@ -8,9 +8,9 @@
 
 ## What Changed
 
-**v1.x approach (deprecated):** Each project had its own Hermes profile (`--profile client-a`), separate MEMORY.md/USER.md files, and a `~/.cortex-projects.json` registry to orchestrate project, profile, brain, and gbrain source.
+**v1.x approach (deprecated):** Each project had its own Hermes profile (`--profile client-a`), separate MEMORY.md/USER.md files, and a `~/.cortex-projects.json` registry to orchestrate project, profile, brain, and legacy brain source.
 
-**v2.x approach (current):** One default profile. Project isolation is achieved entirely through gbrain source filtering (`--source <project>`). The pointer pattern keeps MEMORY.md compact.
+**v2.x approach (current):** One default profile. Project isolation is achieved entirely through legacy brain source filtering (`--source <project>`). The pointer pattern keeps MEMORY.md compact.
 
 ## The Old Architecture
 
@@ -32,7 +32,7 @@ It created:
 - A project directory at `~/Developer/AI/<name>/`
 - A Hermes profile at `~/.hermes/profiles/<name>/`
 - A brain directory at `~/brain/<name>/`
-- A gbrain source
+- A legacy brain source
 - A `~/.cortex-projects.json` entry
 
 This script remains in the repo for legacy users to migrate from, but new installations should not use it.
@@ -56,7 +56,7 @@ cat ~/.hermes/profiles/client-b/memories/MEMORY.md >> ~/.hermes/memories/MEMORY.
 
 ```bash
 ls ~/brain/
-# Ensure each project has a directory matching its gbrain source name
+# Ensure each project has a directory matching its legacy brain source name
 ```
 
 ### Step 3: Remove Profile Directories
@@ -83,6 +83,6 @@ hermes  # No --profile flag → uses default profile
 
 - **Lower cognitive load** — One agent identity, no switching profiles
 - **Simpler setup** — No `cortex-profile.sh`, no `~/.cortex-projects.json`
-- **Faster queries** — gbrain source filtering is instant; profile switching requires a new session
+- **Faster queries** — legacy brain source filtering is instant; profile switching requires a new session
 - **Less config** — One MEMORY.md, one USER.md, one set of skills and crons
-- **Same isolation** — gbrain `--source` filtering achieves the same data separation without the overhead
+- **Same isolation** — legacy brain `--source` filtering achieves the same data separation without the overhead

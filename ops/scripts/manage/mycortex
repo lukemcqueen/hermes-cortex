@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-mycortex CLI — knowledge brain for the fleet (gbrain replacement).
+mycortex CLI — knowledge brain for the fleet.
 
 Single-file Python CLI over the mycortex schema (ops/services/mycortex/schema/mycortex.sql)
 on mycortex-postgres (:15432). No daemon, no bun — sync is a cron.
@@ -23,7 +23,7 @@ Role split (DB-enforced, NOT CLI convention):
 
 Connection (multi-OS, same pattern as migrate.py / todo-db.py):
   Linux  → sg docker -c "docker exec -i mycortex-postgres psql -U <role> -d <db> ..."
-  macOS  → direct psql reading ~/.gbrain/config.json (or defaults)
+  macOS  → direct psql reading ~/.hermes-cortex/mycortex.conf (or env/defaults)
 
 Exit codes: 0 = success, 1 = error, 2 = usage.
 """
@@ -51,10 +51,8 @@ def _psql_base(role: str, db_name: str) -> list[str]:
     """Platform-appropriate psql invocation as the given role."""
     if platform.system() == "Darwin":
         url = None
-        # mycortex owns its connection config — never depend on gbrain's file
-        # (decommissioning gbrain must not break the replacement brain).
-        # Resolution order: env → ~/.hermes-cortex/mycortex.conf → legacy
-        # ~/.gbrain/config.json → defaults.
+        # mycortex owns its connection config.
+        # Resolution order: env → ~/.hermes-cortex/mycortex.conf → defaults.
         cfg_path = Path.home() / ".hermes-cortex" / "mycortex.conf"
         if cfg_path.exists():
             try:
@@ -66,14 +64,6 @@ def _psql_base(role: str, db_name: str) -> list[str]:
             env_url = os.environ.get("MYCORTEX_DB_URL", "")
             if env_url:
                 url = env_url
-        if not url:
-            legacy_cfg = Path.home() / ".gbrain" / "config.json"
-            if legacy_cfg.exists():
-                try:
-                    cfg = json.loads(legacy_cfg.read_text())
-                    url = cfg.get("database_url")
-                except (OSError, json.JSONDecodeError):
-                    url = None
         if not url:
             url = f"postgresql://{role}@127.0.0.1:15432/{db_name}"
         from urllib.parse import urlparse
@@ -792,7 +782,7 @@ def doctor(args: argparse.Namespace) -> int:
 # ── CLI entry ─────────────────────────────────────────────────
 
 def main() -> int:
-    p = argparse.ArgumentParser(prog="mycortex", description="Knowledge brain CLI (gbrain replacement)")
+    p = argparse.ArgumentParser(prog="mycortex", description="Knowledge brain CLI")
     p.add_argument("--db-name", default=DB_DEFAULT, help="target database (default: mycortex)")
     sub = p.add_subparsers(dest="cmd", required=True)
 

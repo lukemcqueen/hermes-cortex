@@ -30,7 +30,7 @@ Start here when anyone says "I moved servers" / "I ported you" / "restore from b
 ls -la ~/
 ls -la ~/.hermes/ 2>/dev/null || echo ".hermes missing"
 ls -la ~/.brain/ 2>/dev/null || echo ".brain missing"
-ls -la ~/.gbrain/ 2>/dev/null || echo ".gbrain missing"
+ls -la ~/.legacy-brain/ 2>/dev/null || echo ".mycortex missing"
 ls -la ~/.ssh/ 2>/dev/null || echo ".ssh missing"
 
 # 2. Check for migration/dump archives
@@ -82,7 +82,7 @@ The main archive often doesn't contain everything. Look for dated backup directo
 hermes-linux-migration-backup-YYYYMMDD_HHMMSS/
 ├── manifest.txt              # What was in this backup
 ├── brain-data/               # → ~/.brain/
-├── gbrain-data/              # → ~/.gbrain/
+├── mycortex-data/              # → ~/.legacy-brain/
 ├── docker-volumes/           # Docker data (pgdata, clickhouse, langfuse)
 ├── cortex-project/           # AGENTS.md and project files
 └── hermes-agent/             # Auxiliary scripts and tools
@@ -96,8 +96,8 @@ Multiple backup attempts are common. The most complete one (largest, later times
 # Brain data → ~/.brain/
 cp -a ~/backup-dir/brain-data ~/.brain
 
-# Gbrain knowledge graph → ~/.gbrain/
-cp -a ~/backup-dir/gbrain-data ~/.gbrain
+# mycortex Knowledge graph → ~/.legacy-brain/
+cp -a ~/backup-dir/mycortex-data ~/.legacy-brain
 
 # Docker volumes (if applicable)
 cp -a ~/backup-dir/docker-volumes/pgdata ~/pgdata
@@ -225,7 +225,7 @@ systemctl --user enable --now ollama
 
 Pull the embedding model: `ollama pull nomic-embed-text`
 
-#### 7b. Bun + gbrain (no sudo needed)
+#### 7b. Bun + mycortex (no sudo needed)
 
 `curl -fsSL https://bun.sh/install | bash` may be **blocked by the terminal tool** (safety heuristic for `curl | bash` patterns). Use the direct GitHub release instead:
 
@@ -237,37 +237,37 @@ mkdir -p ~/.bun/bin
 cp /tmp/bun-extract/bun-linux-x64/bun ~/.bun/bin/
 chmod +x ~/.bun/bin/bun
 
-# gbrain
+# mycortex
 export PATH="$HOME/.bun/bin:$PATH"
-bun install -g github:garrytan/gbrain
+bun install -g github:garrytan/mycortex
 
 # Symlinks to PATH
 mkdir -p ~/.local/bin
 ln -sf ~/.bun/bin/bun ~/.local/bin/bun
-ln -sf ~/.bun/bin/gbrain ~/.local/bin/gbrain
+ln -sf ~/.bun/bin/mycortex ~/.local/bin/mycortex
 
 # Init brain DB (respects existing data if restoring)
-gbrain init --pglite --embedding-model ollama:nomic-embed-text --yes
+mycortex init --pglite --embedding-model ollama:nomic-embed-text --yes
 ```
 
 #### 7c. Brain Sources — Path Migration
 
-After restoring `~/.gbrain/` and `~/.brain/`, gbrain sources still point to the **old machine paths** (e.g. `/Users/luke/brain/...`). Fix by removing and re-adding with correct local paths:
+After restoring `~/.legacy-brain/` and `~/.brain/`, mycortex sources still point to the **old machine paths** (e.g. `/Users/luke/brain/...`). Fix by removing and re-adding with correct local paths:
 
 ```bash
 for source in luke moses amy shared; do
-  gbrain sources remove "$source" --confirm-destructive 2>/dev/null
-  gbrain sources add "$source" --path "$HOME/brain/${source}" --name "$source"
+  mycortex sources remove "$source" --confirm-destructive 2>/dev/null
+  mycortex sources add "$source" --path "$HOME/brain/${source}" --name "$source"
 done
 
 # Federate shared for auto-search
-gbrain sources federate shared
+mycortex sources federate shared
 
 # Sync all sources
-gbrain sync --all
+mycortex sync --all
 ```
 
-The `--confirm-destructive` flag is critical — gbrain 0.42+ requires explicit confirmation before removing sources.
+The `--confirm-destructive` flag is critical — mycortex 0.42+ requires explicit confirmation before removing sources.
 
 #### 7d. Multi-Source Brain Directory Setup
 
@@ -422,9 +422,9 @@ ls ~/.hermes/skills/ 2>/dev/null | head -20
 curl -s http://127.0.0.1:11434/api/tags >/dev/null && echo "Ollama OK" || echo "Ollama DOWN"
 ollama list | head -3
 
-# gbrain
-gbrain sources list
-gbrain stats 2>/dev/null | head -5
+# mycortex
+mycortex sources list
+mycortex stats 2>/dev/null | head -5
 
 # Dashboard
 curl -s http://127.0.0.1:8901 >/dev/null && echo "Dashboard OK" || echo "Dashboard DOWN"
@@ -443,12 +443,12 @@ docker ps --format '{{.Names}}' 2>/dev/null || echo "Docker not running"
 | **Multiple backup dirs with different completeness** | `hermes-linux-migration-backup-*` dirs have different manifests | Audit each manifest (manifest.txt), use the latest/most-complete one, supplement with earlier ones for missing data |
 | **.brain/lessons symlink pointing to Dropbox** | `~/.brain/lessons` → `~/Dropbox/brain/lessons` (macOS) | Replace pointer with `lessons-local-backup` or local dir |
 | **gh not installed on new server** | `gh: command not found` | Install via `sudo apt install gh` or use git-only auth (PAT) |
-| **gbrain source paths point to old machine** | `gbrain sources list` shows `/Users/...` paths | Remove with `--confirm-destructive`, re-add with `--path` pointing to local `~/brain/<source>/` |
+| **mycortex source paths point to old machine** | `mycortex sources list` shows `/Users/...` paths | Remove with `--confirm-destructive`, re-add with `--path` pointing to local `~/brain/<source>/` |
 | **Docker compose pull I/O error** | Download fails midway with `input/output error` on a consistent layer SHA | **Not always transient.** Corrupted layers in Docker's overlayfs cache cause the same SHA to fail on every retry. Fix: `docker system prune -af` between each pull attempt to clear the layer cache. Pull images one at a time (not via compose): `docker pull img1:tag && docker pull img2:tag`. Prune again before each retry of a failed image. |
-| **Brain sources have 0 pages after migration** | `gbrain sources list` shows 0 pages, "never synced" | Copy content from `~/.brain/<source>/` to `~/brain/<source>/`, git commit, then `gbrain sync --all` |
-| **gbrain sources grep fails** | `gbrain sources list | grep "luke"` returns nothing even though source exists | The output has **leading spaces** (indented). Use `grep -E "^\s+luke\s"` or `grep "luke"` without anchoring at column 0 |
+| **Brain sources have 0 pages after migration** | `mycortex sources list` shows 0 pages, "never synced" | Copy content from `~/.brain/<source>/` to `~/brain/<source>/`, git commit, then `mycortex sync --all` |
+| **mycortex sources grep fails** | `mycortex sources list | grep "luke"` returns nothing even though source exists | The output has **leading spaces** (indented). Use `grep -E "^\s+luke\s"` or `grep "luke"` without anchoring at column 0 |
 | **Ollama tarball download 404** | `curl .../ollama-linux-amd64.tgz` returns 404 | The `.tgz` extension returns 404. Use `.tar.zst` instead (the install.sh script prefers `.tar.zst` and falls back, but `.tgz` is the fallback that may not exist) |
-| **gbrain WASM corrupted by disk block** | WASM parse error at a specific byte | The PGLite WASM file in `@electric-sql/pglite/dist/pglite.wasm` is corrupted. A plain reinstall won't fix because stale `@electric-sql` dir survives. Fix: `bun remove -g gbrain && rm -rf ~/.bun/install/global/node_modules/@electric-sql && bun install -g github:garrytan/gbrain` |
+| **mycortex WASM corrupted by disk block** | WASM parse error at a specific byte | The PGLite WASM file in `@electric-sql/pglite/dist/pglite.wasm` is corrupted. A plain reinstall won't fix because stale `@electric-sql` dir survives. Fix: `bun remove -g mycortex && rm -rf ~/.bun/install/global/node_modules/@electric-sql && bun install -g github:garrytan/mycortex` |
 | **Docker layer fails same SHA every time** | I/O error on a consistent layer SHA | Bad block in overlayfs cache. Different image tags (e.g. `:2` vs `:latest`) have different layer SHAs and may avoid the block. Prune with `docker system prune -af`, pull one at a time. Save working images: `docker save tag | gzip > ~/.hermes/img.tar.gz` |
 | **VictoriaMetrics crash-loop: "part X listed in parts.json, but is missing on disk"** | VM container restarting repeatedly, panic at startup: `FATAL: part "/storage/data/.../18C64C32D..." is listed in parts.json, but is missing on disk` | Disk write failure left parts.json referencing a part dir that never landed (SSD write errors / power loss). Fix: remove the stale part name(s) from the parts.json. Scan ALL of them at once — fixing one uncovers the next (`indexdb/*/parts.json` is a plain list, `data/small/*/parts.json` is `{"Small":[],"Big":[]}`). Pattern (no sudo needed — run as docker group): `docker run --rm -i -v <volume>:/storage:rw python:3.12-slim python3` with a script that prunes missing dirs and backs up parts.json first. Then `docker restart <vm-container>`. Data loss is bounded to the missing part(s) only. |
 | **Postgres PANIC: could not locate a valid checkpoint record** | `PANIC: could not fdatasync file ...: Input/output error` then startup loop with `invalid checkpoint record` / `unexpected pageaddr ... in WAL segment` | A disk WRITE failure corrupted the WAL checkpoint record. Data files are usually intact (reads still work). Recovery: `docker stop <pg>` → `docker run --rm --volumes-from <pg> --user 999:999 <image> pg_resetwal -f /var/lib/postgresql/data` → `docker start <pg>`. Loss bounded to writes after the last good checkpoint; take a fresh `pg_dump` immediately after recovery. Then quarantine the underlying bad blocks (`e2fsck -cc`) or the PANIC returns. |
@@ -475,15 +475,15 @@ After recovery, run through this:
 - [ ] `ssh -T git@github.com` authenticates
 - [ ] `git ls-remote https://github.com/fleet-operator/hermes-cortex.git` works
 - [ ] `~/.brain/` has user directories (moses, luke, shared, etc.)
-- [ ] `~/.gbrain/brain.pglite` exists
+- [ ] `~/.legacy-brain/brain.pglite` exists
 - [ ] `du -sh ~/.hermes/` matches expected size from backup
 - [ ] `ls ~/.hermes/cron/` has expected job configs
 - [ ] `curl -s http://127.0.0.1:11434/api/tags` — Ollama responds
 - [ ] `ollama list` shows `nomic-embed-text` model
-- [ ] `gbrain sources list` shows correct local paths (not macOS `/Users/...`)
-- [ ] Each gbrain source has >0 pages after sync
+- [ ] `mycortex sources list` shows correct local paths (not macOS `/Users/...`)
+- [ ] Each mycortex source has >0 pages after sync
 - [ ] `~/.local/bin/bun --version` returns a version
-- [ ] `~/.local/bin/gbrain --version` returns a version
+- [ ] `~/.local/bin/mycortex --version` returns a version
 - [ ] `curl -s http://127.0.0.1:8901` — Dashboard responds
 - [ ] `docker ps` shows Langfuse containers running (if Langfuse deployed)
 - [ ] **Package integrity** — `sudo apt install -y debsums && debsums -sa | grep -v 'changed file|Permission denied' | grep -v '^OK$' || echo 'Clean'`

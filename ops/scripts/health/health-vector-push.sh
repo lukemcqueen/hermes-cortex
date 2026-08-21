@@ -72,9 +72,9 @@ V_NO_ERR_CRONS=1  # [2]
 V_NO_STALE=1      # [3]
 V_NGINX=1         # [4]
 V_OLLAMA=1        # [5]
-V_GBRAIN=1        # [6]
+V_MYCORTEX=1      # [6]
 V_DISK_OK=1       # [7]
-V_GBRAIN_SRC=1    # [8]
+V_MYCORTEX_SRC=1  # [8]
 
 # [0] resources — CPU load < 4x cores
 if command -v sysctl &>/dev/null; then
@@ -123,11 +123,11 @@ else
     V_OLLAMA=0
 fi
 
-# [6] gbrain — decommissioned 2026-08-02; mycortex CLI presence is the signal
+# [6] mycortex — mycortex CLI presence is the signal
 if [[ -x "${HOME}/.hermes-cortex/scripts/mycortex" ]]; then
-    V_GBRAIN=1
+    V_MYCORTEX=1
 else
-    V_GBRAIN=-1
+    V_MYCORTEX=-1
 fi
 
 # [7] disk_ok — root partition < 90% used
@@ -146,9 +146,9 @@ if [[ -d "$BRAIN_HOME" ]]; then
             HAS_SOURCE=1; break
         fi
     done
-    [[ "$HAS_SOURCE" -eq 0 ]] && V_GBRAIN_SRC=-1
+    [[ "$HAS_SOURCE" -eq 0 ]] && V_MYCORTEX_SRC=-1
 else
-    V_GBRAIN_SRC=-1
+    V_MYCORTEX_SRC=-1
 fi
 
 # ── Build PGMQ payload ──
@@ -156,7 +156,7 @@ NOW_TS=$(date +%s)
 HNAME='t'
 PAYLOAD=$(python3 -c "
 import json
-body = json.dumps({'v': [$V_RESOURCES,$V_SERVICES,$V_NO_ERR_CRONS,$V_NO_STALE,$V_NGINX,$V_OLLAMA,$V_GBRAIN,$V_DISK_OK,$V_GBRAIN_SRC], 'h': '$HNAME', 't': $NOW_TS})
+body = json.dumps({'v': [$V_RESOURCES,$V_SERVICES,$V_NO_ERR_CRONS,$V_NO_STALE,$V_NGINX,$V_OLLAMA,$V_MYCORTEX,$V_DISK_OK,$V_MYCORTEX_SRC], 'h': '$HNAME', 't': $NOW_TS})
 msg = {'queue': 'inbox_health_check', 'message': {'from': '$AGENT_NAME', 'subject': 'health', 'body': body}}
 print(json.dumps(msg))
 " 2>/dev/null || echo '{"queue":"inbox_health_check","message":{"from":"'$AGENT_NAME'","subject":"health","body":"{}"}}')

@@ -56,7 +56,7 @@ launchd
  +-- com.ollama.serve             (Ollama embedding server, :11434)
  +-- com.docker.docker            (Docker Desktop, --unattended)
  |   +-- All containers restart (restart: always/unless-stopped)
- +-- com.gbrain.sync-watch       (GBrain memory sync daemon)
+ +-- com.legacy-brain.sync-watch       (Mycortex memory sync daemon)
  +-- ai.hermes.gateway            (Hermes agent gateway)
  +-- com.hermes.cortex-dashboard  (Flask dashboard, :8901)
 ```
@@ -64,7 +64,7 @@ launchd
 **Full boot verification:**
 
 ```bash
-launchctl list | grep -E "ollama|docker|gbrain|hermes|cortex"
+launchctl list | grep -E "ollama|docker|mycortex|hermes|cortex"
 curl -s http://localhost:3001/api/public/health      # Langfuse
 curl -s http://localhost:8901/api/health              # Dashboard
 curl -s http://localhost:11434/api/tags               # Ollama models

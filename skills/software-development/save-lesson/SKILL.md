@@ -102,7 +102,7 @@ After creating lessons, rebuild the embedding index so new lessons are searchabl
 offline_knowledge lesson index
 ```
 
-The index is also automatically rebuilt by gbrain's sync daemon within 2 minutes,
+The index is also automatically rebuilt by mycortex's sync daemon within 2 minutes,
 but for immediate searchability after creating lessons in the same session, run index manually.
 
 ## Example — Full Session
