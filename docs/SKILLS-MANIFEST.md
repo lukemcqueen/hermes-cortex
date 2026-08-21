@@ -23,7 +23,7 @@ their domain.
 | `macos-computer-use` | 1.0.0 | Drive the macOS desktop in the background — screenshots, mouse, keyboard, | `skill_view(name='macos-computer-use')` |
 | `macos-service-management` | 1.0.0 | Manage and troubleshoot macOS launchd services — plist authoring, exit code diagnosis, variable expansion r... | `skill_view(name='macos-service-management')` |
 
-## Autonomous Ai Agents (8 skills)
+## Autonomous Ai Agents (7 skills)
 
 | Skill | Version | Purpose | Load With |
 |-------|---------|---------|-----------|
@@ -32,7 +32,6 @@ their domain.
 | `blackbox` | 1.0.1 | Delegate coding tasks to the Blackbox AI multi-model CLI. | `skill_view(name='blackbox')` |
 | `grok` | 0.1.1 | Delegate coding to xAI Grok Build CLI (features, PRs). | `skill_view(name='grok')` |
 | `hermes-cortex` | 2.0.0 | Install, configure, and maintain Hermes Cortex — the observability and knowledge layer for Hermes Agent (Ol... | `skill_view(name='hermes-cortex')` |
-| `hermes-cortex-setup` | 1.0.0 | Install and configure Hermes Cortex core components — Ollama, Bun, mycortex, health server, agent registry, h... | `skill_view(name='hermes-cortex-setup')` |
 | `honcho` | 2.0.0 | Configure and troubleshoot Honcho memory for Hermes. | `skill_view(name='honcho')` |
 | `openhands` | 0.1.0 | Delegate coding to OpenHands CLI (model-agnostic, LiteLLM). | `skill_view(name='openhands')` |
 
@@ -113,7 +112,7 @@ their domain.
 | `meme-generation` | 2.0.0 | Create meme PNGs from templates with Pillow text overlay. | `skill_view(name='meme-generation')` |
 | `pixel-art` | 2.0.0 | Pixel art w/ era palettes (NES, Game Boy, PICO-8). | `skill_view(name='pixel-art')` |
 
-## Devops (117 skills)
+## Devops (120 skills)
 
 | Skill | Version | Purpose | Load With |
 |-------|---------|---------|-----------|
@@ -193,6 +192,7 @@ their domain.
 | `langfuse-self-hosted` | 1.0.0 | Deploy, configure, and wire Langfuse v3 with ClickHouse for LLM observability — Docker compose, SIGSEGV-saf... | `skill_view(name='langfuse-self-hosted')` |
 | `linux-performance-diagnostics` | 1.0.0 | Systematic "system is slow" diagnosis — baseline resource check, CPU frequency scaling analysis, process/co... | `skill_view(name='linux-performance-diagnostics')` |
 | `linux-server-hardening` | 1.0.0 | Systematic Linux server hardening with tiered prioritization. Covers UFW firewall, SSH hardening (key-only... | `skill_view(name='linux-server-hardening')` |
+| `llm-cost-optimization` | 1.1.0 | Cut LLM API spend: cache-hit rate, thinking mode, telemetry. | `skill_view(name='llm-cost-optimization')` |
 | `llm-judge-scorer` | 1.0.0 | LLM-as-Judge trace quality scorer. Evaluates Hermes conversation traces in Langfuse using a local Ollama mo... | `skill_view(name='llm-judge-scorer')` |
 | `loop-governance` | 1.5.0 | TDD cycle scoring, self-improvement, and governance system for Hermes Cortex. Scores completeness/quality/p... | `skill_view(name='loop-governance')` |
 | `maintenance-scan` | 1.0.0 | Systematic system health survey run proactively when the user gives an open-ended directive to "find work"... | `skill_view(name='maintenance-scan')` |
@@ -228,8 +228,10 @@ their domain.
 | `skill-curation` | 1.0.0 | Consolidate, dedupe, and prune the skill library — merge overlapping skills into one (absorbed_into), delet... | `skill_view(name='skill-curation')` |
 | `staging-server-operations` | 1.19.0 | Safe operational practices for Docker-based staging servers — volume management, change verification, and d... | `skill_view(name='staging-server-operations')` |
 | `sudoers-audit` | 1.0.0 | Systematically audit, test, and debug sudoers NOPASSWD rules — verify allowed commands actually run without... | `skill_view(name='sudoers-audit')` |
+| `sweep-verification` | 1.0.0 | Verify a decommission sweep removed every file and ref. | `skill_view(name='sweep-verification')` |
 | `sync-allow-ips-to-fail2ban` | 1.0.0 | Sync IPs from allow-ips-manual.conf to fail2ban ignoreip | `skill_view(name='sync-allow-ips-to-fail2ban')` |
 | `telegram-delivery-diagnostics` | 1.0.0 | Diagnose and fix Telegram delivery issues for Hermes cron jobs — delivery pipeline tracing, DNS/network dia... | `skill_view(name='telegram-delivery-diagnostics')` |
+| `terminal-emulator-config` | 1.0.0 | Diagnose terminal input issues and review emulator configs. | `skill_view(name='terminal-emulator-config')` |
 | `third-party-code-vetting` | 1.0.0 | Vet third-party code before it enters the repo or runs on a host — upstream patches, vendored scripts, inst... | `skill_view(name='third-party-code-vetting')` |
 | `two-hard-rules` | 1.0.0 | Two hard rules every agent must follow: USE LOOP GOVERNANCE ALWAYS. SHARE IMPROVEMENTS TO THE PUBLIC REPO. | `skill_view(name='two-hard-rules')` |
 | `unified-cli-script` | 1.0.0 | Design a unified ./run CLI script for multi-environment Docker Compose deployments. Covers the _compose() w... | `skill_view(name='unified-cli-script')` |
