@@ -62,7 +62,6 @@ import json
 import os
 import platform
 import re
-import shutil
 import subprocess
 import sys
 import uuid
@@ -70,7 +69,6 @@ from pathlib import Path
 
 # ── Config ────────────────────────────────────────────────────
 
-MYCORTEX_CONFIG = os.path.expanduser("~/.hermes-cortex/mycortex.conf")
 DEFAULT_DB = os.environ.get("TASK_DB_NAME", "mycortex")
 CONTAINER = "mycortex-postgres"
 PG_OPTS = ["-v", "ON_ERROR_STOP=1", "-t", "-A", "-F", "||"]
@@ -186,25 +184,13 @@ def _get_db_query(role: str) -> list[str]:
             unreachable, fall back to `sg docker -c` with the query STILL on
             stdin — the command string contains only fixed names/flags, never
             user data, so it is not shell-injectable.
-    macOS → direct psql reading ~/.hermes-cortex/mycortex.conf (or defaults).
+    macOS → docker exec -i (same trust-auth container path, no pgpass).
     """
     if platform.system() == "Darwin":
-        if os.path.exists(MYCORTEX_CONFIG):
-            with open(MYCORTEX_CONFIG) as f:
-                cfg = json.load(f)
-            url = cfg.get("database_url", f"postgresql://{role}:@127.0.0.1:15432/{DEFAULT_DB}")
-        else:
-            url = f"postgresql://{role}:@127.0.0.1:15432/{DEFAULT_DB}"
-        from urllib.parse import urlparse
-        parsed = urlparse(url)
-        return [
-            shutil.which("psql") or "/opt/homebrew/bin/psql",
-            "-h", parsed.hostname or "127.0.0.1",
-            "-p", str(parsed.port or 15432),
-            "-U", parsed.username or role,
-            "-d", DEFAULT_DB,
-            *PG_OPTS,
-        ]
+        # Same trust-auth container path as Linux — no pgpass dependency
+        # (scratch DBs like mycortex_test have no .pgpass entry).
+        return ["docker", "exec", "-i", CONTAINER, "psql",
+                "-U", role, "-d", DEFAULT_DB, *PG_OPTS]
     # Linux — direct docker exec (docker group)
     try:
         subprocess.run(["docker", "exec", CONTAINER, "true"],

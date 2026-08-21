@@ -27,18 +27,14 @@ Design: docs/design/learning-ledger.md §schema (party L-1..L-6).
 from __future__ import annotations
 
 import argparse
-import json
-import os
 import platform
 import re
-import shutil
 import subprocess
 import sys
 from pathlib import Path
 
 # ── Config ────────────────────────────────────────────────────
 
-MYCORTEX_CONFIG = os.path.expanduser("~/.hermes-cortex/mycortex.conf")
 DEFAULT_DB = "mycortex"
 # DDL runs as the DB owner (mycortex) via the version-gated runner — the
 # same trust level as tasks/mycortex migrate.py (house precedent). CRUD in
@@ -52,27 +48,15 @@ def _psql_base(db_name: str, role: str = DDL_ROLE) -> list[str]:
     """Platform-appropriate psql invocation as the DDL role.
 
     Linux  → sg docker (container is the DB host)
-    macOS  → direct psql reading mycortex.conf (or defaults)
+    macOS  → docker exec (same trust-auth container path, no sg/pgpass)
     """
     if platform.system() == "Darwin":
-        url = None
-        if os.path.exists(MYCORTEX_CONFIG):
-            with open(MYCORTEX_CONFIG) as f:
-                cfg = json.load(f)
-            url = cfg.get("database_url")
-        if not url:
-            url = f"postgresql://{role}:@127.0.0.1:15432/{db_name}"
-        from urllib.parse import urlparse
-        parsed = urlparse(url)
-        psql = shutil.which("psql") or "/opt/homebrew/bin/psql"
+        # Same trust-auth container path as Linux — no pgpass dependency
+        # (scratch DBs like mycortex_test have no .pgpass entry).
         return [
-            psql,
-            "-h", parsed.hostname or "127.0.0.1",
-            "-p", str(parsed.port or 15432),
-            "-U", parsed.username or role,
-            "-d", db_name,
-            "-v", "ON_ERROR_STOP=1",
-            "-t", "-A",
+            "docker", "exec", "-i", "mycortex-postgres",
+            "psql", "-U", role, "-d", db_name,
+            "-v", "ON_ERROR_STOP=1", "-t", "-A",
         ]
     # Linux — container exec as DDL role. SQL flows via stdin (never embedded
     # in the command string) so there is no shell-injection surface (B-1).

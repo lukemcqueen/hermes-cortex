@@ -31,7 +31,6 @@ import functools
 import json
 import os
 import platform
-import shutil
 import subprocess
 import sys
 import uuid
@@ -39,7 +38,6 @@ from pathlib import Path
 
 # ── Config ────────────────────────────────────────────────────
 
-MYCORTEX_CONFIG = os.path.expanduser("~/.hermes-cortex/mycortex.conf")
 DEFAULT_DB = "mycortex"
 CONTAINER = "mycortex-postgres"
 PG_OPTS = ["-v", "ON_ERROR_STOP=1", "-t", "-A", "-F", "||"]
@@ -97,23 +95,9 @@ DB_NAME = os.environ.get("LEARNING_DB", DEFAULT_DB)
 def _get_db_query(role: str) -> list[str]:
     """Platform-appropriate psql invocation (query via STDIN)."""
     if platform.system() == "Darwin":
-        if os.path.exists(MYCORTEX_CONFIG):
-            with open(MYCORTEX_CONFIG) as f:
-                cfg = json.load(f)
-            url = cfg.get("database_url",
-                          f"postgresql://{role}:@127.0.0.1:15432/{DB_NAME}")
-        else:
-            url = f"postgresql://{role}:@127.0.0.1:15432/{DB_NAME}"
-        from urllib.parse import urlparse
-        parsed = urlparse(url)
-        return [
-            shutil.which("psql") or "/opt/homebrew/bin/psql",
-            "-h", parsed.hostname or "127.0.0.1",
-            "-p", str(parsed.port or 15432),
-            "-U", parsed.username or role,
-            "-d", DB_NAME,
-            *PG_OPTS,
-        ]
+        # Same trust-auth container path as Linux — no pgpass dependency.
+        return ["docker", "exec", "-i", CONTAINER, "psql",
+                "-U", role, "-d", DB_NAME, *PG_OPTS]
     # Linux — direct docker exec (docker group)
     try:
         subprocess.run(["docker", "exec", CONTAINER, "true"],

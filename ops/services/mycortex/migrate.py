@@ -21,48 +21,34 @@ top of mycortex.sql with DO $$ guards — PG has no CREATE ROLE IF NOT EXISTS.
 from __future__ import annotations
 
 import argparse
-import json
-import os
 import platform
 import re
-import shutil
 import subprocess
 import sys
 from pathlib import Path
 
 # ── Config ────────────────────────────────────────────────────
 
-MYCORTEX_CONFIG = os.path.expanduser("~/.hermes-cortex/mycortex.conf")
 DEFAULT_DB = "mycortex"
 
 
 def _psql_base(db_name: str) -> list[str]:
     """Platform-appropriate psql invocation (task-db.py pattern).
 
-    Linux  → sg docker ... (container is the DB host)
-    macOS  → direct psql reading ~/.hermes-cortex/mycortex.conf (or env/defaults)
+    Both OSes → docker exec into mycortex-postgres: trust auth inside the
+    container, no ~/.pgpass dependency. macOS Docker Desktop needs no
+    `sg docker` group — same exec form as Linux minus the wrapper.
     """
     if platform.system() == "Darwin":
-        url = None
-        if os.path.exists(MYCORTEX_CONFIG):
-            with open(MYCORTEX_CONFIG) as f:
-                cfg = json.load(f)
-            url = cfg.get("database_url")
-        if not url:
-            url = f"postgresql://mycortex:@127.0.0.1:15432/{db_name}"
-        from urllib.parse import urlparse
-        parsed = urlparse(url)
-        psql = shutil.which("psql") or "/opt/homebrew/bin/psql"
+        # Same trust-auth container path as Linux — no pgpass dependency
+        # (a scratch DB like mycortex_test has no .pgpass entry, so the old
+        # direct-psql-over-TCP path prompted for a password and failed).
         return [
-            psql,
-            "-h", parsed.hostname or "127.0.0.1",
-            "-p", str(parsed.port or 15432),
-            "-U", parsed.username or "mycortex",
-            "-d", db_name,  # explicit target DB (design P2-SS1)
-            "-v", "ON_ERROR_STOP=1",
-            "-t", "-A",  # tuples-only, unaligned — headers break current_version()
+            "docker", "exec", "-i", "mycortex-postgres",
+            "psql", "-U", "mycortex", "-d", db_name,
+            "-v", "ON_ERROR_STOP=1", "-t", "-A",
         ]
-    # Linux — container exec
+    # Linux — container exec via sg docker group
     return [
         "sg", "docker", "-c",
         f"docker exec -i mycortex-postgres psql -U mycortex -d {db_name} -v ON_ERROR_STOP=1 -t -A",

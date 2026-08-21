@@ -23,7 +23,8 @@ Role split (DB-enforced, NOT CLI convention):
 
 Connection (multi-OS, same pattern as migrate.py / todo-db.py):
   Linux  → sg docker -c "docker exec -i mycortex-postgres psql -U <role> -d <db> ..."
-  macOS  → direct psql reading ~/.hermes-cortex/mycortex.conf (or env/defaults)
+  macOS  → docker exec -i mycortex-postgres psql -U <role> -d <db> ...
+           (same trust-auth container path as Linux; no ~/.pgpass needed)
 
 Exit codes: 0 = success, 1 = error, 2 = usage.
 """
@@ -35,7 +36,6 @@ import json
 import os
 import platform
 import re
-import shutil
 import subprocess
 import sys
 import time
@@ -48,35 +48,18 @@ HOST_DEFAULT = "localhost" if platform.system() == "Darwin" else None
 # ── psql helpers (migrate.py / todo-db.py pattern) ────────────
 
 def _psql_base(role: str, db_name: str) -> list[str]:
-    """Platform-appropriate psql invocation as the given role."""
+    """Platform-appropriate psql invocation as the given role.
+
+    Both OSes → docker exec into mycortex-postgres: trust auth inside the
+    container, no ~/.pgpass dependency (macOS Docker Desktop — no sg needed).
+    """
     if platform.system() == "Darwin":
-        url = None
-        # mycortex owns its connection config.
-        # Resolution order: env → ~/.hermes-cortex/mycortex.conf → defaults.
-        cfg_path = Path.home() / ".hermes-cortex" / "mycortex.conf"
-        if cfg_path.exists():
-            try:
-                cfg = json.loads(cfg_path.read_text())
-                url = cfg.get("database_url")
-            except (OSError, json.JSONDecodeError):
-                url = None
-        if not url:
-            env_url = os.environ.get("MYCORTEX_DB_URL", "")
-            if env_url:
-                url = env_url
-        if not url:
-            url = f"postgresql://{role}@127.0.0.1:15432/{db_name}"
-        from urllib.parse import urlparse
-        parsed = urlparse(url)
-        psql = shutil.which("psql") or "/opt/homebrew/bin/psql"
+        # Same trust-auth container path as Linux — no pgpass dependency
+        # (a scratch DB like mycortex_test has no .pgpass entry).
         return [
-            psql,
-            "-h", parsed.hostname or "127.0.0.1",
-            "-p", str(parsed.port or 15432),
-            "-U", role,
-            "-d", db_name,
-            "-v", "ON_ERROR_STOP=1",
-            "-t", "-A",
+            "docker", "exec", "-i", "mycortex-postgres",
+            "psql", "-U", role, "-d", db_name,
+            "-v", "ON_ERROR_STOP=1", "-t", "-A",
         ]
     # Linux — container exec as the role (trust auth inside container)
     return [

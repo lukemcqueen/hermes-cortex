@@ -41,7 +41,6 @@ from pathlib import Path
 
 # ── Config ────────────────────────────────────────────────────
 
-MYCORTEX_CONFIG = os.path.expanduser("~/.hermes-cortex/mycortex.conf")
 DEFAULT_DB = "mycortex"
 CONTAINER = "mycortex-postgres"
 BACKUP_DIR = Path(os.environ.get(
@@ -56,23 +55,9 @@ PG_OPTS = ["-v", "ON_ERROR_STOP=1", "-t", "-A", "-F", "||"]
 def _psql_base(db_name: str, role: str = "mycortex") -> list[str]:
     """Platform-appropriate psql invocation (query via STDIN, no shell embed)."""
     if platform.system() == "Darwin":
-        url = None
-        if os.path.exists(MYCORTEX_CONFIG):
-            with open(MYCORTEX_CONFIG) as f:
-                cfg = json.load(f)
-            url = cfg.get("database_url")
-        if not url:
-            url = f"postgresql://{role}:@127.0.0.1:15432/{db_name}"
-        from urllib.parse import urlparse
-        parsed = urlparse(url)
-        return [
-            shutil.which("psql") or "/opt/homebrew/bin/psql",
-            "-h", parsed.hostname or "127.0.0.1",
-            "-p", str(parsed.port or 15432),
-            "-U", parsed.username or role,
-            "-d", db_name,
-            *PG_OPTS,
-        ]
+        # Same trust-auth container path as Linux — no pgpass dependency.
+        return ["docker", "exec", "-i", CONTAINER, "psql",
+                "-U", role, "-d", db_name, *PG_OPTS]
     return ["sg", "docker", "-c",
             f"docker exec -i {CONTAINER} psql -U {role} -d {db_name} "
             "-v ON_ERROR_STOP=1 -t -A -F '||'"]

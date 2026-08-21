@@ -21,7 +21,6 @@ from __future__ import annotations
 import argparse
 import os
 import platform
-import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -34,30 +33,11 @@ ARCHIVED_PURGE_DAYS = 7
 def _psql_base(role: str, db_name: str) -> list[str]:
     """Platform-appropriate psql invocation (same pattern as mycortex CLI)."""
     if platform.system() == "Darwin":
-        url = None
-        cfg_path = Path(os.path.join(str(Path.home()), ".hermes-cortex", "mycortex.conf"))
-        if cfg_path.exists():
-            try:
-                cfg = __import__("json").loads(cfg_path.read_text())
-                url = cfg.get("database_url")
-            except (OSError, ValueError):
-                url = None
-        if not url:
-            url = os.environ.get("MYCORTEX_DB_URL", "")
-        if not url:
-            url = f"postgresql://{role}@127.0.0.1:15432/{db_name}"
-        from urllib.parse import urlparse
-
-        parsed = urlparse(url)
-        psql = shutil.which("psql") or "/opt/homebrew/bin/psql"
+        # Same trust-auth container path as Linux — no pgpass dependency.
         return [
-            psql,
-            "-h", parsed.hostname or "127.0.0.1",
-            "-p", str(parsed.port or 15432),
-            "-U", role,
-            "-d", db_name,
-            "-v", "ON_ERROR_STOP=1",
-            "-t", "-A",
+            "docker", "exec", "-i", "mycortex-postgres",
+            "psql", "-U", role, "-d", db_name,
+            "-v", "ON_ERROR_STOP=1", "-t", "-A",
         ]
     # Linux — container exec as the role (trust auth inside container)
     return [
