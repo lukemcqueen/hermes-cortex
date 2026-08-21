@@ -77,11 +77,42 @@ cronjob(action='costs', job_id='ee20583ee947')
 
 | Field | Source | Description |
 |-------|--------|-------------|
-| `input_tokens` | `agent.session_input_tokens` | Prompt tokens |
+| `input_tokens` | `agent.session_input_tokens` | **Cache-MISS prompt tokens** (not total — see below) |
 | `output_tokens` | `agent.session_output_tokens` | Completion tokens |
 | `cache_read_tokens` | `agent.session_cache_read_tokens` | Cache hit tokens |
-| `cache_write_tokens` | `agent.session_cache_write_tokens` | Cache written tokens |
+| `cache_write_tokens` | `agent.session_cache_write_tokens` | Cache-written (miss) tokens |
 | `api_calls` | `agent.session_api_calls` | API call count |
 | `estimated_cost_usd` | `agent.session_estimated_cost_usd` | Cost from provider pricing |
 | `model` | job config | Model used |
 | `provider` | job config | Provider used |
+| `rate_version` | `RATE_VERSION` | Pricing schedule that produced `estimated_cost_usd` |
+
+## ⚠️ Token semantics (do not unify with usage_audit)
+
+`cron-costs.db`'s `input_tokens` is **already the cache-MISS portion**
+(`usage_pricing.py: input_tokens = max(0, prompt_total - hit - write)`).
+So `miss = input_tokens + cache_write_tokens`.
+
+`usage_audit.jsonl`'s `prompt_tokens` is **TOTAL** (hit + miss), so there
+`miss = max(prompt - hit, 0)`. The two stores price the same run differently
+by design — keep them separate.
+
+## Rate versioning & re-pricing (O1-S1, 2026-08-22)
+
+Every row is stamped with the pricing schedule that produced its cost
+(`rate_version`, default `2026-08-16` = DeepSeek hike). Rows recorded under
+older pricing can be re-priced at current rates:
+
+```bash
+# Dry-run (no writes)
+python3 ~/.hermes/hermes-agent/cron/cost_store.py --reprice --dry-run
+
+# Apply (re-prices all rows not already at RATE_VERSION)
+python3 ~/.hermes/hermes-agent/cron/cost_store.py --reprice
+
+# Only the last N days
+python3 ~/.hermes/hermes-agent/cron/cost_store.py --reprice --days 7
+```
+
+Current rates (USD/1M, mirror orch-daily-cost-report.py): hit `$0.007`,
+miss `$0.22`, out `$0.66`, peak (01–04 & 06–10 UTC) ×2.
