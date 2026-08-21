@@ -223,7 +223,18 @@ def find_last_book() -> str | None:
             safe_name, date_str = m.group(1), m.group(2)
             for book in BOOKS:
                 if book.lower().replace(" ", "-") == safe_name:
-                    if best is None or date_str > best[0]:
+                    # Same-date tie-break by canon order: two readings on one
+                    # day (e.g. scheduled 01:00 + manual re-run) must resolve
+                    # to the LATER book in the canon — glob iteration order
+                    # is arbitrary and produced a duplicate-book re-read
+                    # (2026-08-21: Nahum + Habakkuk both dated 08-21; the
+                    # tie picked Nahum → Habakkuk read twice, second dated
+                    # file overwrote the first).
+                    if (
+                        best is None
+                        or date_str > best[0]
+                        or (date_str == best[0] and BOOK_INDEX[book] > BOOK_INDEX[best[1]])
+                    ):
                         best = (date_str, book)
                     break
         if best is not None:
