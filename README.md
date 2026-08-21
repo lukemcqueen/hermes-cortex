@@ -86,7 +86,7 @@ Agent query → web_cache (50μs) → kiwix ZIM (localhost:8080) → mycortex (R
 
 - **Web Cache** — Semantic search cache (sqlite-vec + Ollama embeddings, ~200MB LRU) — saves API costs
 - **Offline Knowledge** — Wikipedia, WikiMed, Wikivoyage, Wikibooks available locally via Docker ZIM server
-- **Offline Code Assistant** — 520 curated code snippets across 30+ topic areas and 25 programming languages. `offline_code search` and `offline_code gen` work fully offline via Ollama. **Self-improving:** `offline_code learn` adds misses permanently.
+- **Offline Code Assistant** — 520+ curated code snippets across 55+ topic areas and 30+ programming languages. `offline_code search` and `offline_code gen` work fully offline via Ollama. **Self-improving:** `offline_code learn` adds misses permanently.
 - **Offline Reader** — Zero-dependency web UI (`python3 ops/offline/offline-reader.py`) for Bible (55+ languages), hymns, and wiki reference
 - **mycortex** — Fleet knowledge brain: git repos as source of truth → shared Postgres index (FTS + pg_texample; pgvector semantic slice in v1.1) → thin Python CLI + 15-min cron sync. No daemon, no bun. **Inspired by [gbrain](https://github.com/garrytan/gbrain)** (garrytan, MIT) — the same Postgres-native knowledge-brain idea, re-architected with fail-closed RLS source isolation, per-host registration, and a PII federation gate. **Multi-tenant by construction:** each profile connects as its own `mycortex_reader_<profile>` role — RLS (keyed on `CURRENT_USER`) isolates tenants automatically, so a company brain scales to 100 profiles with zero policy changes. [Design doc](docs/design/mycortex-DESIGN.md) · [Multi-tenancy](docs/design/mycortex-multi-tenancy.md) · [Migration stories](docs/elicit/2026-08-01_mycortex-stories.md)
 
@@ -212,25 +212,25 @@ CORTEX_OS=windows bash ~/hermes-cortex/ops/install/install.sh
 | Step | What | Why |
 |------|------|-----|
 | 0 | **System Check** | Verifies OS, RAM, disk, Docker, network before touching anything |
-| 1 | **Ollama** | Native installer per OS; bound to localhost |
-| 2 | **Bun** | JavaScript runtime for gbrain |
-| 3 | **gbrain** | Persistent knowledge brain (Postgres + pgvector via Docker) |
-| 4 | **Brain dirs** | `~/brain/{default,…}` with MECE directory schema + .gitignore + git init |
-| 5 | **gbrain sync** | Launchd/systemd daemon — syncs brain every 2 minutes |
-| 6 | **Observability** † | Langfuse + Cortex Dashboard |
-| 7 | **`/brain` plugin** | Hermes slash command for gbrain queries |
-| 8 | **Scripts** | 194 scripts: health checks, watchdogs, sync, governance, security |
-| 9 | **Plugin enable** | Auto-activates in Hermes config |
-| 10 | **Skills** | 290+ shared skills installed to `~/.hermes/skills/` |
+| 1 | **Ollama** | Native installer per OS; bound to localhost; pulls embedding model |
+| 2 | **Bun** | JavaScript runtime for build tooling |
+| 3 | **mycortex** | Knowledge brain (markdown-in-git → shared Postgres index). **gbrain decommissioned** |
+| 4 | **Brain dirs** | `~/brain/{default,…}` with MECE schema + .gitignore + git init |
+| 5 | **mycortex sync** | Sources config + `agent-mycortex-sync` cron (15-min) |
+| 6 | **`/brain` plugin** | Hermes slash command for mycortex queries |
+| 7 | **Scripts** | 260+ scripts: health checks, watchdogs, sync, governance, security |
+| 8 | **Hermes memory** | Confirmed Hermes-owned — no cortex seed |
+| 9 | **Skills** | 300+ shared skills installed to `~/.hermes/skills/` |
+| 10 | **Hooks & MCP** | Scoring pre/post-commit hooks + loop-governance & task MCP servers |
 | 11 | **Web Cache** | Semantic web result cache (sqlite-vec + Ollama) |
-| 12 | **Offline Knowledge** | Cascade tool + kiwix ZIM Docker + prep scripts |
-| 13 | **Offline Reader** | `python3 ops/offline/offline-reader.py` — zero-dependency web UI |
-| 14 | **Code Corpus** | 520 snippets across 30+ topics, 25 languages; RAG index via Ollama |
-| 15 | **Auto-Update** | `auto-update.sh` — silent cron-based content updater |
-| 16 | **Cron Jobs** | 65 maintenance crons per agent (160+ fleet-wide): health, security, sync, recovery, reporting |
-| 17 | **nginx** † | Reverse proxy for Langfuse + Dashboard + hardening |
+| 12 | **Observability** † | Langfuse (LLM traces) + Cortex Dashboard |
+| 13 | **Offline Stack** | Cache cascade + kiwix ZIM + offline reader + code corpus |
+| 14 | **nginx** † | Reverse proxy for Langfuse + Dashboard + hardening |
+| 15 | **Plugin enable** | Auto-activates in Hermes config |
+| 16 | **Hardening** | File-permission hardening on sensitive files |
+| 17 | **Bootstrap Brain** | Verify + index brain sources |
 | | *† Server profile only* | |
-| | *The knowledge brain is migrating from gbrain → **mycortex** (git-truth + shared Postgres index; see [design](docs/design/mycortex-DESIGN.md)). gbrain remains installed for backward compatibility; mycortex is deployed and synced via `cortex-update.sh` + the `agent-mycortex-sync` cron.* | |
+| | *The knowledge brain is **mycortex** — git repos as source of truth, shared Postgres index (FTS + pg_texample + pgvector), fail-closed RLS per profile. gbrain was DECOMMISSIONED 2026-08-02. See [design](docs/design/mycortex-DESIGN.md).* | |
 
 ### Configuration
 
@@ -249,7 +249,7 @@ export HERMES_HOME="$HOME/.hermes"      # Hermes config directory
 ### Multi-Person Setup
 
 ```bash
-export CORTEX_SOURCES="luke,amy,shared,default"
+export CORTEX_SOURCES="me,family,shared,default"
 bash ~/hermes-cortex/ops/install/install.sh
 ```
 
