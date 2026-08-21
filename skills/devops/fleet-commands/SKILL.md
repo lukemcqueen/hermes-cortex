@@ -276,6 +276,28 @@ SELECT bus.archive('inbox_<agent>', '<msg_id>'::uuid, '<cleanup-label>');
 
 Labels like `moses-test-cleanup` help identify sources in the audit log.
 
+## Host-Aware Bus Queries (backup orchestrator — Esther)
+
+The `sg docker -c "docker exec mycortex-postgres psql ..."` examples in this
+skill query the LOCAL postgres. On Moses' host that IS the authoritative bus.
+On **Esther** the local `mycortex-postgres` is a REPORTS MIRROR — queue and
+archive state there is stale/incomplete (2026-08-21: a fleet update verified
+0/6 UPDATE_RESULTs from the mirror while all 6 were present on the
+authoritative bus within minutes of send — a false "fleet didn't respond"
+alarm that cost a probe round).
+
+Query bus state from Esther via SSH to the bus host:
+
+```bash
+ssh -o BatchMode=yes mosesaaron 'sg docker -c "docker exec mycortex-postgres psql -U mycortex -d mycortex -t -A -c \"<sql>\"'
+```
+
+Rule: when a verification query returns nothing but the fleet should have
+responded, re-run it on the authoritative bus BEFORE concluding a failure.
+The archive/git_sha_after discipline above still applies: results are
+archived silently by handlers within ~5 min, and `git_sha_after == target`
+is the proof of install, not the success flag.
+
 ## Consume vs Peek — Inspection Rule (HARD RULE)
 
 **Inspecting a queue must NEVER consume it.** Use `hc inbox <agent>` or
