@@ -14,6 +14,13 @@
 # ─────────────────────────────────────────────────────────────
 set -euo pipefail
 
+# Locate repo root (supports running from local clone)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd 2>/dev/null)"
+if [[ "$(basename "$SCRIPT_DIR")" == "install" ]]; then
+  SCRIPT_DIR="$(dirname "$SCRIPT_DIR")"   # ops/install → ops
+  SCRIPT_DIR="$(dirname "$SCRIPT_DIR")"   # ops → repo root
+fi
+
 echo ""
 echo "╔═══════════════════════════════════════════════╗"
 echo "║    Hermes Cortex — Quick Start               ║"
@@ -43,8 +50,8 @@ if command -v hermes &>/dev/null; then
   echo "  Hermes Agent detected — installing core skills…"
   SKILLS_DIR="${HERMES_HOME:-${HOME}/.hermes}/skills/software-development"
   mkdir -p "$SKILLS_DIR"
-  for skill in change-test-loop lesson-aware-agent systematic-debugging memory-architecture; do
-    src="${SCRIPT_DIR}/../skills/software-development/${skill}"
+  for skill in change-test-loop lesson-aware-agent memory-architecture; do
+    src="${SCRIPT_DIR}/skills/software-development/${skill}"
     dst="${SKILLS_DIR}/${skill}"
     if [[ -d "$src" && ! -d "$dst" ]]; then
       cp -r "$src" "$dst"

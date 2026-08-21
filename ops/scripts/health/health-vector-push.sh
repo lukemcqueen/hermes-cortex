@@ -137,7 +137,7 @@ if [[ -n "$DF_OUTPUT" ]]; then
     [[ -n "$PCT" ]] && [[ "$PCT" -ge 90 ]] && V_DISK_OK=-1
 fi
 
-# [8] gbrain_sources_ok — ~/brain has at least one non-empty subdirectory
+# [8] mycortex_sources_ok — ~/brain has at least one non-empty subdirectory
 BRAIN_HOME="${HOME}/brain"
 if [[ -d "$BRAIN_HOME" ]]; then
     HAS_SOURCE=0

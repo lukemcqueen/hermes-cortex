@@ -2,7 +2,7 @@
 # ─────────────────────────────────────────────────────────────
 #  Hermes Cortex — Project Profile Creator
 #  Creates a hermetic project profile with isolated brain,
-#  Hermes profile, and gbrain source.
+#  Hermes profile, and mycortex source.
 #
 #  Usage:
 #    bash scripts/cortex-profile.sh <project-name> [project-path]
@@ -46,7 +46,7 @@ if [[ -d "$BRAIN_DIR" ]]; then
   echo "  ⏭ Brain source already exists: ${BRAIN_DIR}"
 else
   mkdir -p "$BRAIN_DIR"
-  # Init git — required by gbrain
+  # Init git — required by mycortex
   git -C "$BRAIN_DIR" init 2>/dev/null || true
   cat > "${BRAIN_DIR}/.gitignore" <<GITEOF
 MEMORY.md
@@ -62,17 +62,17 @@ GITEOF
   echo "  ✅ Brain source: ${BRAIN_DIR}"
 fi
 
-# 4. Register as gbrain source (isolated, non-federated)
+# 4. Register as mycortex source (isolated, non-federated)
 if [[ -x "$MYCORTEX_CLI" ]]; then
   if "$MYCORTEX_CLI" sources list 2>/dev/null | grep -q "\"name\": \"${PROJECT_NAME}\""; then
-    echo "  ⏭ gbrain source '${PROJECT_NAME}' already registered"
+    echo "  ⏭ mycortex source '${PROJECT_NAME}' already registered"
   else
     "$MYCORTEX_CLI" sources add "${PROJECT_NAME}" "${BRAIN_DIR}" 2>/dev/null || \
-      echo "  ⚠ Could not add gbrain source (gbrain may need re-init)"
-    echo "  ✅ gbrain source: ${PROJECT_NAME} (isolated)"
+      echo "  ⚠ Could not add mycortex source (mycortex may need re-init)"
+    echo "  ✅ mycortex source: ${PROJECT_NAME} (isolated)"
   fi
 else
-  echo "  ⚠ gbrain not installed — skip gbrain source registration"
+  echo "  ⚠ mycortex not installed — skip source registration"
 fi
 
 # 5. Register in cortex-projects.json
@@ -89,7 +89,7 @@ projects.append({
     'location': '${PROJECT_PATH}',
     'brain': '${BRAIN_DIR}',
     'profile': '${PROJECT_NAME}',
-    'gbrain_source': '${PROJECT_NAME}'
+    'mycortex_source': '${PROJECT_NAME}'
 })
 with open('${PROJECTS_FILE}', 'w') as f:
     json.dump(projects, f, indent=2)
@@ -102,7 +102,7 @@ else
     "location": "${PROJECT_PATH}",
     "brain": "${BRAIN_DIR}",
     "profile": "${PROJECT_NAME}",
-    "gbrain_source": "${PROJECT_NAME}"
+    "mycortex_source": "${PROJECT_NAME}"
   }
 ]
 JSONEOF

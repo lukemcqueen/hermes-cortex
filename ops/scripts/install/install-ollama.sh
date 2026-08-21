@@ -46,44 +46,6 @@ install_ollama() {
       sh /tmp/ollama-install.sh
       rm -f /tmp/ollama-install.sh
     fi
-    # gbrain's ollama provider runs llama-server directly (not the HTTP API).
-    # Ensure the full Ollama tarball contents are available under ~/.local/lib/ollama/,
-    # including llama-server binary and all .so libraries (libllama-server-impl.so,
-    # libggml-*.so CPU backends).  This is needed because the official install.sh
-    # only installs bin/ollama — gbrain needs the companion binaries.
-    OLLAMA_LIB_DIR="${HOME}/.local/lib/ollama"
-    if [[ ! -f "${OLLAMA_LIB_DIR}/llama-server" ]]; then
-      echo "  Extracting Ollama tarball to ${OLLAMA_LIB_DIR}…"
-      mkdir -p "$OLLAMA_LIB_DIR"
-      # Detect architecture
-      local arch
-      arch="$(uname -m)"
-      [[ "$arch" == "x86_64" ]] && arch="amd64"
-      local tarball_url="https://ollama.com/download/ollama-linux-${arch}.tgz"
-      local tmp_dir
-      tmp_dir="$(mktemp -d)"
-      if curl -fsSL "$tarball_url" -o "${tmp_dir}/ollama.tgz" 2>/dev/null; then
-        tar -xzf "${tmp_dir}/ollama.tgz" -C "$tmp_dir" 2>/dev/null || true
-        # Copy everything: bin/ollama, lib/ollama/* → ~/.local/lib/ollama/
-        if [[ -d "${tmp_dir}/lib/ollama" ]]; then
-          cp -r "${tmp_dir}/lib/ollama/"* "${OLLAMA_LIB_DIR}/" 2>/dev/null || true
-        fi
-        # Also copy any top-level binaries
-        if [[ -f "${tmp_dir}/bin/ollama" ]] && [[ ! -f "${OLLAMA_LIB_DIR}/ollama" ]]; then
-          cp "${tmp_dir}/bin/ollama" "${OLLAMA_LIB_DIR}/" 2>/dev/null || true
-        fi
-        # Ensure llama-server is executable
-        chmod +x "${OLLAMA_LIB_DIR}/llama-server" 2>/dev/null || true
-        chmod +x "${OLLAMA_LIB_DIR}/ollama" 2>/dev/null || true
-        rm -rf "$tmp_dir"
-        info "  Extracted llama-server + libs to ${OLLAMA_LIB_DIR}"
-      else
-        warn "Could not download Ollama tarball — gbrain may not find llama-server"
-        rm -rf "$tmp_dir"
-      fi
-    else
-      info "  llama-server already at ${OLLAMA_LIB_DIR}"
-    fi
 
   elif [[ "$CORTEX_OS" == "windows" ]]; then
     # Windows: download the installer

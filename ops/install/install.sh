@@ -10,7 +10,7 @@
 #  git clone --depth 1 https://github.com/fleet-operator/hermes-cortex.git
 #  cd hermes-cortex && bash install.sh
 #
-# Installs: Ollama · Bun · gbrain · Langfuse† · Cortex Dashboard† ·
+# Installs: Ollama · Bun · mycortex · Langfuse† · Cortex Dashboard† ·
 #      nginx† · Brain directory structure · Hermes plugins ·
 #      Web Cache · Offline Knowledge (kiwix ZIM) · Skills
 # † Server profile only (CORTEX_PROFILE=server). Laptop profile
@@ -395,7 +395,10 @@ fi
 ok
 
 # ─────────────────────────────────────────────────────────────
-# 2. Bun — JavaScript runtime for gbrain
+# 2. Bun — JS runtime (kept for legacy gbrain / offline-cascade compat)
+#    NOTE: mycortex (the brain) is pure Python — Bun is not required
+#    for the knowledge brain anymore. Installed only for tools that
+#    still detect it (offline_knowledge fallback path).
 # ─────────────────────────────────────────────────────────────
 step "Installing Bun"
 if command -v bun &>/dev/null || [[ -x "${CORTEX_HOME}/.bun/bin/bun" ]]; then

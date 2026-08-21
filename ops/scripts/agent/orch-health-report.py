@@ -54,7 +54,7 @@ REGISTRY_LOCAL = HOME / ".hermes-cortex" / "state" / "agent-registry.local.json"
 # (agent-health-monitoring skill). See pitfall "External endpoint timeout sensitivity".
 TIMEOUT = 5
 SERVICE_MAP = ["resources", "services", "no_errored_crons", "no_stale_crons",
-               "nginx", "ollama", "mycortex", "disk_ok", "gbrain_sources_ok"]
+               "nginx", "ollama", "mycortex", "disk_ok", "mycortex_sources_ok"]
 ICONS = {1: "🟢", 0: "⚪", -1: "🔴"}
 
 # Laptop grace period — shared with orch-fleet-watchdog.py

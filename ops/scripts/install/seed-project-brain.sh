@@ -4,7 +4,7 @@
 #
 #  After install, brain directories exist but are empty. This
 #  script auto-populates them from project repository content
-#  (README, ARCHITECTURE.md, docs/), registers gbrain sources,
+#  (README, ARCHITECTURE.md, docs/), registers mycortex sources,
 #  and syncs them so the agent has indexed knowledge immediately.
 #
 #  It detects projects by:
@@ -61,7 +61,7 @@ count_brain_pages() {
   find "$dir" -name '*.md' -not -path '*/.git/*' -not -name 'index.md' -maxdepth 3 2>/dev/null | wc -l | tr -d ' '
 }
 
-# Check if a gbrain source is registered (leading spaces in sources list)
+# Check if a mycortex source is registered (leading spaces in sources list)
 is_source_registered() {
   local name="$1"
   "$MYCORTEX_CLI" sources list 2>/dev/null | grep -q "\"name\": \"${name}\""
@@ -157,14 +157,13 @@ seed_brain() {
   git -C "$brain_dir" add -A 2>/dev/null || true
   git -C "$brain_dir" commit -m "seed: auto-populated from ${name} repo" 2>/dev/null || true
 
-  # Register gbrain source
+  # Register mycortex source
   if ! is_source_registered "$name"; then
-    "$MYCORTEX_CLI" sources add "$name" "$brain_dir" 2>/dev/null && echo "  gbrain source registered"
+    "$MYCORTEX_CLI" sources add "$name" "$brain_dir" 2>/dev/null && echo "  mycortex source registered"
   fi
 
   # Sync
-  "$MYCORTEX_CLI" sync --source "$name" 2>/dev/null && echo "  Synced to gbrain"
-
+  "$MYCORTEX_CLI" sync --source "$name" 2>/dev/null && echo "  Synced to mycortex"
   # Report pages
   local final_pages
   final_pages=$(count_brain_pages "$brain_dir")

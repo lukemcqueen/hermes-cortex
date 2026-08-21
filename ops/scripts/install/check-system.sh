@@ -193,7 +193,7 @@ check_docker() {
         fi
     elif [[ "$CORTEX_PROFILE" == "laptop" ]]; then
         info "$MODE" "Docker not installed (optional for laptop profile — kiwix needs it for ZIM viewer)"
-        info "$MODE" "  Offline knowledge works without Docker (cascade falls through to gbrain + LLM)"
+        info "$MODE" "  Offline knowledge works without Docker (cascade falls through to mycortex + LLM)"
         json_append "docker" "info" "Not installed" "Optional for laptop"
     else
         warn "$MODE" "Docker not installed — required for kiwix-serve (ZIM content) and Langfuse"

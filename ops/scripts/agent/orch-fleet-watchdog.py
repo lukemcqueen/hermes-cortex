@@ -63,7 +63,7 @@ AGENT_PORTS: dict[str, int] = {
 
 # Health vector map — index i of the agent's {"v": [...]} vector maps to this
 SERVICE_MAP = ["resources", "services", "no_errored_crons", "no_stale_crons",
-               "nginx", "ollama", "mycortex", "disk_ok", "gbrain_sources_ok"]
+               "nginx", "ollama", "mycortex", "disk_ok", "mycortex_sources_ok"]
 
 
 def _get_agents() -> list[dict]:
