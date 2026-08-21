@@ -461,6 +461,7 @@ register_orch "ops/scripts/agent/orch-health-report.py"       "${CORTEX_DEPLOY_H
 # Cron cost tracking — SQLite store + deployment script
 register "ops/scripts/cost_store.py"               "${CORTEX_DEPLOY_HOME}/scripts/cost_store.py"
 register "ops/scripts/install/install-cron-cost-tracking.py" "${CORTEX_DEPLOY_HOME}/scripts/install-cron-cost-tracking.py"
+register "ops/scripts/install/install-lean-index.py" "${CORTEX_DEPLOY_HOME}/scripts/install-lean-index.py"
 
 # Health monitoring
 register "ops/scripts/change-validate.sh"                  "${CORTEX_DEPLOY_HOME}/scripts/change-validate.sh"
@@ -2436,6 +2437,17 @@ main() {
       | sed 's/^/    [cost-tracking] /'
   else
     warn "  install-cron-cost-tracking.py missing — cost capture may be dead"
+  fi
+
+  # ── Lean skill index: auto-reapply the coding_context patch ──
+  # Same seam-rot pattern: the lean-index extension patches hermes-agent
+  # source, wiped on every `hermes update`. Re-run so `coding_context:
+  # lean` keeps working. Idempotent: SKIPs applied patches.
+  if [[ -f "${CORTEX_DEPLOY_HOME}/scripts/install-lean-index.py" ]]; then
+    python3 "${CORTEX_DEPLOY_HOME}/scripts/install-lean-index.py" 2>&1 \
+      | sed 's/^/    [lean-index] /'
+  else
+    warn "  install-lean-index.py missing — lean skill index may be dead"
   fi
 
   # Merge template updates into agent SOUL.md (preserves customizations)
