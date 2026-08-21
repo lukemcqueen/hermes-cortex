@@ -157,7 +157,7 @@ script_exists() {
 # ── Helper: create a cron job via hermes or prompt ────────
 create_cron() {
   local name="$1" schedule="$2" script="$3" prompt="$4" skill="$5" toolsets="$6" deliver="$7" workdir="$8" no_agent="$9"
-  local model="${10:-}" provider="${11:-}"
+  local model="${10:-}" provider="${11:-}" reasoning_effort="${12:-}"
 
   # ── Fleet stagger: deterministic per-host minute for LLM-driven crons ──
   # (Luke directive 2026-08-07) — all agents used to fire the same LLM cron
@@ -309,10 +309,12 @@ PYEOF
       if "${edit_cmd[@]}" 2>&1; then
         info "Updated cron: ${name} (${schedule})"
         CREATED=$((CREATED + 1))
-        # Pin model/provider post-edit
-        if [[ -n "$model" || -n "$provider" ]]; then
-          pin_cron_model "$name" "$model" "$provider"
-        fi
+        # Pin model/provider/reasoning_effort post-edit — ALWAYS call:
+        # pin_cron_model self-guards (manifest lookup decides; returns early
+        # when nothing to pin). Gating on non-empty $model caused jobs created
+        # without explicit model args to never get their manifest pin
+        # (Titus 11-cron manual pin, 2026-08-21).
+        pin_cron_model "$name" "$model" "$provider" "$reasoning_effort"
       else
         warn "Failed to update cron: ${name}"
         FAILED=$((FAILED + 1))
@@ -360,10 +362,9 @@ PYEOF
   if "${cmd[@]}" 2>&1; then
     info "Created cron: ${name} (${schedule})"
     CREATED=$((CREATED + 1))
-    # Pin model/provider post-creation (CLI doesn't support --model/--provider)
-    if [[ -n "$model" || -n "$provider" ]]; then
-      pin_cron_model "$name" "$model" "$provider"
-    fi
+    # Pin model/provider/reasoning_effort post-creation (CLI doesn't support
+    # --model/--provider). ALWAYS call — self-guards via manifest lookup.
+    pin_cron_model "$name" "$model" "$provider" "$reasoning_effort"
   else
     warn "Failed to create cron: ${name}"
     FAILED=$((FAILED + 1))
