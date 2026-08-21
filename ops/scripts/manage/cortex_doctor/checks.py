@@ -3112,6 +3112,15 @@ def check_stale_deploys(res):
       if f.is_file() and f.suffix in (".py", ".sh") and "__pycache__" not in str(f):
         if f in destinations or f.name in preserve:
           continue
+        # Systematic local-* rule — mirrors cortex-update.sh
+        # clean_stale_deploys(): ANY local- prefixed script is
+        # deployed-only (created per-host, not in repo). The hand-maintained
+        # preserve list above can't anticipate every new local-* script, so
+        # the prefix match is the durable rule — the list is belt-and-braces.
+        # (2026-08-21: doctor falsely flagged local-prod-db-backup.sh on
+        # joseph's host as stale; the deployer would have preserved it.)
+        if f.name.startswith("local-"):
+          continue
         size = f.stat().st_size
         res.add(f"Stale deploy: {f.relative_to(deploy_home)}", "WARN",
             f"{size:,} bytes — not in any register() mapping",
