@@ -91,7 +91,7 @@
         "ops/scripts/manage/gen-skills-manifest.py",
         "docs/SKILLS-MANIFEST.md"
       ],
-      "note": "golden refreshed 2026-08-21 after gbrain->mycortex content rewrite shifted FTS ranking; hits are the manifest tooling + manifest itself"
+      "note": "golden refreshed 2026-08-21 after the legacy-brain->mycortex content rewrite shifted FTS ranking; hits are the manifest tooling + manifest itself"
     },
     {
       "id": "HC-009",
