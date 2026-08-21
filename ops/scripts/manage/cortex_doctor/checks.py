@@ -228,6 +228,24 @@ def check_dev_repo_agents(res: "Results") -> None:
           "missing AGENTS.md in dev repo",
           f"Create: touch ~/{repo.name}/AGENTS.md then add agent guidelines for this project")
 
+  # Fleet session-efficiency block (O7-S2 / AGENT-per-repo mods, 2026-08-21):
+  # dev-repo AGENTS.md files should carry the marker so agents in those repos
+  # get the cost/throughput principles. WARN (not FAIL) — client repos are
+  # the owner's call; the fleet's own repo is enforced by check_repo.
+  for repo in sorted(found_repos):
+    agents_path = repo / "AGENTS.md"
+    if not agents_path.exists():
+      continue
+    try:
+      content = agents_path.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+      continue
+    if "<!-- Hermes fleet efficiency block" not in content:
+      res.add(f"AGENTS.md efficiency ({repo.name})", "WARN",
+          "dev repo AGENTS.md missing fleet session-efficiency block",
+          f"Run: python3 {CORTEX_HOME}/scripts/apply-repo-efficiency.py {repo} --commit")
+
+
   unverified = []
   for repo in found_repos:
     agents_path = repo / "AGENTS.md"
