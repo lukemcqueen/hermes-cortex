@@ -526,18 +526,37 @@ def _cites_forbidden(entry: str, forbidden: str) -> bool:
 def _prior_verses(book: str, agent_name: str) -> list[str]:
     """Citations used by THIS book in earlier cycles (repeat readings).
 
-    Verse citations live only in SOUL entries: the current SOUL.md Scripture
-    Insights tail and the archived copies (archive/SOUL-archive.md for
-    mid-cycle archiving, cycle-*-completed.md for end-of-cycle resets).
-    Dated brain pages carry the study, not the citation, so they are not
-    scanned. Returns [] on a book's first cycle — Luke directive 2026-08-21:
-    a verse is fine the first time; a repeat reading (after ~66 days) must
-    not duplicate earlier picks.
+    Sources, most-durable first (Luke directive 2026-08-21: a repeat reading
+    must produce a NEW verse and NEW insights — the ban covers ALL prior
+    cycles):
+    1. Dated per-reading brain files (`<book>-YYYY-MM-DD.md`) — the
+       append-only, never-archived record; every reading since 2026-08-21
+       carries a structured `*Key verse:*` marker (stamped script-side from
+       the accepted SOUL entry). This is the complete verse history.
+    2. Legacy SOUL-entry sources for pre-marker readings: SOUL.md tail,
+       `archive/SOUL-archive.md`, and `cycle-*-completed.md`.
+    Returns [] on a book's first cycle — fine the first time.
     """
     found: list[str] = []
-    header_re = re.compile(rf"^### {re.escape(book)} — ", re.IGNORECASE)
     brain_dir = BRAIN_BIBLE(agent_name)
+    safe = book.lower().replace(" ", "-")
+    marker_re = re.compile(r"^\*Key verse:\s*\*?(.+?)\*?\s*$")
 
+    # 1. Dated per-reading files — the durable marker record (all cycles)
+    for f in sorted(brain_dir.glob(f"{safe}-????-??-??.md")):
+        try:
+            text = f.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        for line in text.splitlines():
+            mm = marker_re.match(line.strip())
+            if mm:
+                cit = mm.group(1).strip()
+                if cit not in found:
+                    found.append(cit)
+
+    # 2. Legacy SOUL-entry sources (pre-marker history)
+    header_re = re.compile(rf"^### {re.escape(book)} — ", re.IGNORECASE)
     sources: list[Path] = []
     if SOUL_MD.exists():
         sources.append(SOUL_MD)
@@ -1038,6 +1057,20 @@ def main() -> int:
         # commandments block so EVERY saved reading carries the Ten
         # Commandments and Jesus' two commandments (Matt 22:37–40).
         brain_content = brain_content.rstrip() + "\n" + commandments_section(next_book)
+        # Durable verse record (Luke directive 2026-08-21): stamp the
+        # accepted key verse into the brain page. The dated per-reading
+        # files are append-only and never archived — with this marker they
+        # become the complete per-book verse history across ALL cycles, so
+        # repeat readings always get a NEW verse and NEW insights.
+        today = get_kst_today()
+        cit = _extract_citation(soul_entry)
+        if cit:
+            read_line = f"*Read: {today}*"
+            marker = f"\n*Key verse: {cit}*"
+            if read_line in brain_content:
+                brain_content = brain_content.replace(read_line, read_line + marker, 1)
+            else:
+                brain_content = brain_content.rstrip() + marker + "\n"
         brain_ok = write_brain_page(next_book, brain_content, agent_name)
         if brain_ok:
             update_brain_index(agent_name)

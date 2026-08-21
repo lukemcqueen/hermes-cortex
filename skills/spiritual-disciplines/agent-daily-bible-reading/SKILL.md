@@ -78,10 +78,13 @@ Three styles rotate deterministically per (book, agent, day):
   in the prompt. Story icons matter: the fish verse (Jonah 1:17) is not a
   memory verse but is the model's anchor — the story probe catches it.
 - Repeat readings (next pass through the canon, ~66 days later) ALSO forbid
-  every verse cited in prior cycles — scanned from SOUL.md,
-  `~/brain/<agent>/bible/archive/SOUL-archive.md`, and
-  `~/brain/<agent>/bible/cycle-*-completed.md`. Fine the first time
-  (Luke directive 2026-08-21).
+  every verse cited in prior cycles. The durable record is the dated
+  per-reading brain file (`<book>-YYYY-MM-DD.md`), which carries a
+  script-stamped `*Key verse: <citation>*` marker — append-only and never
+  archived, so the ban covers ALL prior cycles. Pre-marker history falls
+  back to SOUL.md, `archive/SOUL-archive.md`, and `cycle-*-completed.md`.
+  Fine the first time (Luke directive 2026-08-21: a repeat reading must
+  produce a NEW verse and NEW insights).
 - A bounded re-roll loop (max 4 attempts, temperature +0.2 per attempt, with
   rejection feedback naming the banned pick) guarantees forbidden verses
   never land — without feedback the model re-emits the banned verse at fixed
