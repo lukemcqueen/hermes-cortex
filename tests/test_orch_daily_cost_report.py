@@ -118,6 +118,24 @@ def test_build_report_ignores_old_rows():
         assert r["summary"]["runs"] == 0
 
 
+def test_render_text_avoids_secret_redaction():
+    """The redactor masks 'Tokens: <value>' as a secret field (TOKEN pattern).
+    The report must NOT use the 'Tokens:' label or its numbers get ***'d."""
+    with tempfile.TemporaryDirectory() as td:
+        audit = Path(td) / "usage_audit.jsonl"
+        audit.write_text("\n".join([
+            json.dumps({"ts": "2026-08-20T12:00:00.000Z", "job_id": "abc123",
+                        "prompt_tokens": 85_000_000, "completion_tokens": 600_000,
+                        "cache_read_tokens": 0, "cache_write_tokens": 0}),
+        ]))
+        r = build_report(days=1, audit_path=audit, cost_db=Path(td) / "no.db")
+        text = render_text(r)
+        assert "Tokens:" not in text, "label 'Tokens:' triggers redactor masking"
+        assert "Tokens →" in text
+        # 85M must survive as a literal, not ***
+        assert "85M" in text and "***" not in text
+
+
 if __name__ == "__main__":
     import traceback
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]

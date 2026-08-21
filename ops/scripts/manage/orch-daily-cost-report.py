@@ -150,7 +150,7 @@ def render_text(r: dict) -> str:
     lines = [
         f"📊 Fleet Cost — last {r['period_days']}d",
         f"   Total: ${s['cost_usd']:.2f}  ({s['runs']} runs)",
-        f"   Tokens: {s['prompt_m']:.0f}M in / {s['comp_m']:.1f}M out",
+        f"   Tokens → {s['prompt_m']:.0f}M in / {s['comp_m']:.1f}M out",
     ]
     if s["cache_hit_pct"] is not None:
         lines.append(f"   Cache hit: {s['cache_hit_pct']}%  (peak runs: {s['peak_runs']})")
