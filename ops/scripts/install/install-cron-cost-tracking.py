@@ -102,6 +102,30 @@ FAIL_INSERT = """        # Record partial token usage on failure (agent may be p
 
     finally:"""
 
+# ── Patch: usage_audit cache split (success path) ─────────────
+# Extend the JSONL audit line with cache hit/miss tokens so per-run
+# cost is computable (the 31x cache lever). DeepSeek/OpenAI-style
+# providers report cache_read/cache_write in usage; Hermes exposes
+# them as agent.session_cache_*_tokens counters.
+AUDIT_CACHE_MARKER = '"prompt_tokens": result.get("prompt_tokens"),'
+AUDIT_CACHE_OLD = """            "prompt_tokens": result.get("prompt_tokens"),
+            "completion_tokens": result.get("completion_tokens"),
+            "total_tokens": result.get("total_tokens"),"""
+AUDIT_CACHE_NEW = """            "prompt_tokens": result.get("prompt_tokens"),
+            "completion_tokens": result.get("completion_tokens"),
+            "total_tokens": result.get("total_tokens"),
+            "cache_read_tokens": getattr(agent, "session_cache_read_tokens", 0) or 0,
+            "cache_write_tokens": getattr(agent, "session_cache_write_tokens", 0) or 0,"""
+
+# ── Patch: usage_audit cache split (failure path) ─────────────
+AUDIT_FAIL_MARKER = '"response_silent": False,'
+AUDIT_FAIL_OLD = """            "total_tokens": None,
+            "response_silent": False,"""
+AUDIT_FAIL_NEW = """            "total_tokens": None,
+            "cache_read_tokens": getattr(agent, "session_cache_read_tokens", 0) or 0,
+            "cache_write_tokens": getattr(agent, "session_cache_write_tokens", 0) or 0,
+            "response_silent": False,"""
+
 # ── Patch: cronjob_tools.py imports ────────────────────────
 TOOLS_IMPORT_MARKER = "_COST_STORE = None"
 TOOLS_IMPORT_OLD = """    resume_job,
@@ -244,6 +268,8 @@ _PATCHES = [
     ("scheduler.py (no_agent)", NOAGENT_MARKER, NOAGENT_OLD, NOAGENT_NEW),
     ("scheduler.py (LLM success)", LLM_MARKER, LLM_OLD, LLM_NEW),
     ("scheduler.py (failure)", FAIL_MARKER, FAIL_INSERT_MARKER, FAIL_INSERT),
+    ("scheduler.py (audit cache success)", AUDIT_CACHE_MARKER, AUDIT_CACHE_OLD, AUDIT_CACHE_NEW),
+    ("scheduler.py (audit cache failure)", AUDIT_FAIL_MARKER, AUDIT_FAIL_OLD, AUDIT_FAIL_NEW),
     ("cronjob_tools.py (import)", TOOLS_IMPORT_MARKER, TOOLS_IMPORT_OLD, TOOLS_IMPORT_NEW),
     ("cronjob_tools.py (facade)", FACADE_MARKER, FACADE_OLD, FACADE_NEW),
     ("cronjob_tools.py (format)", FORMAT_MARKER, FORMAT_OLD, FORMAT_NEW),
@@ -353,6 +379,8 @@ def do_status():
         print(f"  {'OK' if 'Record zero-cost run for no_agent' in sched else 'MISS'} scheduler: no_agent hook")
         print(f"  {'OK' if 'Record token usage and cost' in sched else 'MISS'} scheduler: LLM success hook")
         print(f"  {'OK' if 'Record partial token usage on failure' in sched else 'MISS'} scheduler: failure hook")
+        _audit_cache_ok = 'session_cache_read_tokens", 0) or 0,' in sched
+        print(f"  {'OK' if _audit_cache_ok else 'MISS'} scheduler: audit cache split")
 
     if os.path.exists(tools_path):
         tools = open(tools_path).read()
