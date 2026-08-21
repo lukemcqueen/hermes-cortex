@@ -2425,6 +2425,19 @@ main() {
   # Deploy mycortex-command plugin (/brain + /mycortex slash commands)
   deploy_mycortex_plugin
 
+  # ── Cron cost tracking: auto-reapply the scheduler patch ──
+  # The cost capture lives as a marker-patch inside scheduler.py (Hermes
+  # source). Every `hermes update` replaces scheduler.py and silently kills
+  # the patch (seam rot — cron-costs.db went 2-days-of-data on Esther,
+  # stale June-July on Titus). Re-run the installer after every deploy so
+  # the patch survives updates. Idempotent: SKIPs already-applied patches.
+  if [[ -f "${CORTEX_DEPLOY_HOME}/scripts/install-cron-cost-tracking.py" ]]; then
+    python3 "${CORTEX_DEPLOY_HOME}/scripts/install-cron-cost-tracking.py" 2>&1 \
+      | sed 's/^/    [cost-tracking] /'
+  else
+    warn "  install-cron-cost-tracking.py missing — cost capture may be dead"
+  fi
+
   # Merge template updates into agent SOUL.md (preserves customizations)
   local soul_merge="${CORTEX_DEPLOY_HOME}/scripts/soul-merge.py"
   if [[ -f "$soul_merge" ]]; then

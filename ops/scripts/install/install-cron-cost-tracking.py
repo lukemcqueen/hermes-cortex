@@ -49,7 +49,7 @@ NOAGENT_NEW = """        )
 """
 
 # ── Patch: LLM success path ────────────────────────────────
-LLM_MARKER = 'session_estimated_cost_usd": float(getattr(agent'
+LLM_MARKER = 'estimated_cost_usd": float(getattr(agent'
 LLM_OLD = """            "error": None,
         })
         return True, output, final_response, None
@@ -118,13 +118,15 @@ AUDIT_CACHE_NEW = """            "prompt_tokens": result.get("prompt_tokens"),
             "cache_write_tokens": getattr(agent, "session_cache_write_tokens", 0) or 0,"""
 
 # ── Patch: usage_audit cache split (failure path) ─────────────
+# NOTE: the failure-path audit write is nested inside `if "_audit_fire_id"
+# in locals():` — 16-space indent, unlike the 12-space success path.
 AUDIT_FAIL_MARKER = '"response_silent": False,'
-AUDIT_FAIL_OLD = """            "total_tokens": None,
-            "response_silent": False,"""
-AUDIT_FAIL_NEW = """            "total_tokens": None,
-            "cache_read_tokens": getattr(agent, "session_cache_read_tokens", 0) or 0,
-            "cache_write_tokens": getattr(agent, "session_cache_write_tokens", 0) or 0,
-            "response_silent": False,"""
+AUDIT_FAIL_OLD = """                "total_tokens": None,
+                "response_silent": False,"""
+AUDIT_FAIL_NEW = """                "total_tokens": None,
+                "cache_read_tokens": getattr(agent, "session_cache_read_tokens", 0) or 0,
+                "cache_write_tokens": getattr(agent, "session_cache_write_tokens", 0) or 0,
+                "response_silent": False,"""
 
 # ── Patch: cronjob_tools.py imports ────────────────────────
 TOOLS_IMPORT_MARKER = "_COST_STORE = None"
@@ -343,7 +345,7 @@ def do_install(force=False):
         print(f"  FAIL scheduler.py not found at {sched_path}")
         return False
 
-    for name, marker, old, new in _PATCHES[:3]:
+    for name, marker, old, new in _PATCHES[:5]:
         _patch(name, marker, old, new, sched_path, force)
 
     print("\nStep 3: Patch tools/cronjob_tools.py")
@@ -352,7 +354,7 @@ def do_install(force=False):
         print(f"  FAIL cronjob_tools.py not found at {tools_path}")
         return False
 
-    for name, marker, old, new in _PATCHES[3:]:
+    for name, marker, old, new in _PATCHES[5:]:
         _patch(name, marker, old, new, tools_path, force)
 
     print("\n✓ Cron cost tracking deployed.")
