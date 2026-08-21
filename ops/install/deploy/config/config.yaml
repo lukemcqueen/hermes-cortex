@@ -36,7 +36,7 @@ credential_pool_strategies: {}
 toolsets:
 - hermes-cli
 agent:
-  max_turns: 150
+  max_turns: 250
   gateway_timeout: 1800
   restart_drain_timeout: 180
   api_max_retries: 3
