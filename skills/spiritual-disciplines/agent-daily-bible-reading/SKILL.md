@@ -60,6 +60,35 @@ and at least one bootstrapped entry (e.g. Genesis). The script scans the last
 
 Silent when all 66 canonical books are covered.
 
+## Verse Selection — Creative Rotation (Luke directive 2026-08-21)
+
+The SOUL entry's verse is NOT pinned to each book's famous "memory verse".
+Three styles rotate deterministically per (book, agent, day):
+
+| Style | Behavior |
+|-------|----------|
+| `anchor` | The book's classic key verse (famous verse allowed) |
+| `hidden-gem` | A faithful but unexpected verse — famous verses forbidden |
+| `fresh-angle` | A verse from an overlooked corner — famous verses forbidden |
+
+- Rotation = `(md5(book|agent) + days_since_epoch) % 3` — consecutive days
+  always land on different styles; different agents diverge on the same day.
+- Creative styles probe the model for the book's famous verses (top-3 memory
+  verses + top-3 recognizable story verses, temperature 0.0) and forbid them
+  in the prompt. Story icons matter: the fish verse (Jonah 1:17) is not a
+  memory verse but is the model's anchor — the story probe catches it.
+- Repeat readings (next pass through the canon, ~66 days later) ALSO forbid
+  every verse cited in prior cycles — scanned from SOUL.md,
+  `~/brain/<agent>/bible/archive/SOUL-archive.md`, and
+  `~/brain/<agent>/bible/cycle-*-completed.md`. Fine the first time
+  (Luke directive 2026-08-21).
+- A bounded re-roll loop (max 4 attempts, temperature +0.2 per attempt, with
+  rejection feedback naming the banned pick) guarantees forbidden verses
+  never land — without feedback the model re-emits the banned verse at fixed
+  temperature (verified 2026-08-21: Jonah 1:17 on all 3 attempts).
+- Anchor style keeps a single call on first-cycle books (no probes, no
+  re-rolls); repeat-cycle books re-roll off their prior verses.
+
 ## SOUL.md Size Guardrail (doctor FAIL prevention)
 
 The doctor FAILs SOUL.md above 20K and WARNs above 15K (`check_soul_sync` in

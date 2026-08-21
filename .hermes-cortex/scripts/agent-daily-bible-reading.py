@@ -19,6 +19,7 @@ Fleet-wide principles (Luke directive 2026-08-14):
 Silent when no new book needed (exit 0, empty stdout).
 """
 
+import hashlib
 import json
 import os
 import re
@@ -333,7 +334,7 @@ def _call_ollama(prompt: str, max_tokens: int = 4096) -> str | None:
         return None
 
 
-def _call_deepseek(prompt: str, max_tokens: int = 4096, _retried: bool = False) -> str | None:
+def _call_deepseek(prompt: str, max_tokens: int = 4096, temperature: float = 0.7, _retried: bool = False) -> str | None:
     """Make a deepseek API call and return the cleaned response content.
     Falls back to local Ollama if DEEPSEEK_API_KEY is not available."""
     api_key = get_deepseek_api_key()
@@ -345,7 +346,7 @@ def _call_deepseek(prompt: str, max_tokens: int = 4096, _retried: bool = False) 
         "model": DEEPSEEK_MODEL,
         "messages": [{"role": "user", "content": prompt}],
         "max_tokens": max_tokens,
-        "temperature": 0.7,
+        "temperature": temperature,
     })
 
     body = ""
@@ -389,7 +390,7 @@ def _call_deepseek(prompt: str, max_tokens: int = 4096, _retried: bool = False) 
             if _retried:
                 print(f"❌ Still empty after retry — giving up", file=sys.stderr)
                 return None
-            return _call_deepseek(prompt, max_tokens, _retried=True)
+            return _call_deepseek(prompt, max_tokens, temperature=temperature, _retried=True)
 
         # Clean up any markdown code block wrapping
         content = content.strip()
@@ -408,7 +409,7 @@ def _call_deepseek(prompt: str, max_tokens: int = 4096, _retried: bool = False) 
         if not _retried:
             print("⚠️  API request timed out after 180s — retrying once", file=sys.stderr)
             time.sleep(5)
-            return _call_deepseek(prompt, max_tokens, _retried=True)
+            return _call_deepseek(prompt, max_tokens, temperature=temperature, _retried=True)
         print("❌ API request timed out after 180s (retry also timed out) — giving up", file=sys.stderr)
         return None
     except Exception as e:
@@ -416,9 +417,175 @@ def _call_deepseek(prompt: str, max_tokens: int = 4096, _retried: bool = False) 
         return None
 
 
-def generate_soul_entry(book: str) -> str | None:
+# ── Verse selection styles — creative rotation ────────────────
+# Luke directive 2026-08-21: don't default to each book's famous
+# "memory verse" every run. Rotate among styles seeded by
+# book + date + agent so (a) a single agent sees variety across
+# days, (b) different agents diverge on the same day, and (c)
+# repeat readings of the same book yield different verses.
+VERSE_STYLES: dict[str, str] = {
+    "anchor": (
+        "Pick ONE key verse that genuinely captures the book's core message. "
+        "Include the exact citation."
+    ),
+    "hidden-gem": (
+        "Pick ONE verse that captures the book's message — but it must NOT be "
+        "the book's most famous, most-quoted verse, and NOT the verse a memory "
+        "app or commentary would lead with. Test your pick: if it is the verse "
+        "that first comes to mind for this book, discard it and choose a "
+        "different one. The pick should surprise a reader who only knows the "
+        "book's highlights while still being faithful. Include the exact "
+        "citation."
+    ),
+    "fresh-angle": (
+        "Pick ONE verse from a surprising angle — it must NOT be the verse most "
+        "commonly quoted from this book, the one that appears in every "
+        "overview. Before finalizing, test your pick: if a casual reader would "
+        "guess it as 'the famous one from this book', discard it. Choose from "
+        "the book's overlooked corners: a minor character, a quiet moment, an "
+        "unusual promise, a striking image. The verse must genuinely be in the "
+        "book and fairly represent it. Include the exact citation."
+    ),
+}
+
+
+def pick_verse_style(book: str, agent_name: str) -> str:
+    """Deterministic style per (book, agent) with a day counter.
+
+    style = (stable_hash(book|agent) + days_since_epoch) % len(styles):
+    - consecutive days ALWAYS land on different styles (day counter +1),
+    - different agents start at different offsets → diverge on the same day,
+    - repeat readings of a book later in the cycle land elsewhere.
+    Never use built-in hash() — its seed is randomized per process.
+    """
+    day_offset = (datetime.strptime(get_kst_today(), "%Y-%m-%d") - datetime(2026, 1, 1)).days
+    seed = f"{book}|{agent_name}"
+    base = int(hashlib.md5(seed.encode("utf-8")).hexdigest(), 16) % len(VERSE_STYLES)
+    return list(VERSE_STYLES)[(base + day_offset) % len(VERSE_STYLES)]
+
+
+def _famous_verses(book: str) -> list[str]:
+    """Ask the model for the book's famous verses (two probes, union).
+
+    Creative styles forbid these exact citations. Two kinds of verse anchor
+    the model: classic memory verses AND recognizable story icons (e.g. the
+    fish verse, Jonah 1:17, which is no memory verse but is the first verse
+    that comes to mind). One probe misses one kind (live test 2026-08-21:
+    memory-verse probe returned Jonah 2:9/1:3/4:2 while the generator's
+    anchor was Jonah 1:17). Union of both probes, deduped, up to 6 verses.
+    Returns [] on API failure — the caller degrades gracefully.
+    """
+    questions = [
+        f"List the 3 most-quoted, most famous 'memory verses' of the book of "
+        f"{book}, in order of fame.",
+        f"List the 3 verses from the book of {book} that a casual reader "
+        f"would MOST expect to see quoted — the recognizable story verses — "
+        f"in order.",
+    ]
+    found: list[str] = []
+    for q in questions:
+        prompt = (
+            q + " Reply with ONLY the citations, one per line, in this exact "
+            "format: Book Chapter:Verse (e.g. 'John 3:16'). No explanations, "
+            "no verse text."
+        )
+        resp = _call_deepseek(prompt, max_tokens=64, temperature=0.0)
+        if not resp:
+            continue
+        for m in re.finditer(r"([A-Za-z0-9 ]+?)\s+(\d+):(\d+)", resp):
+            name = m.group(1).strip()
+            cit = f"{name} {m.group(2)}:{m.group(3)}"
+            if cit not in found:
+                found.append(cit)
+            if len(found) >= 6:
+                break
+    return found[:6]
+
+
+def _extract_citation(entry: str) -> str | None:
+    """Pull the (Book Chapter:Verse) citation out of a SOUL entry header."""
+    m = re.search(r"\(([^()]*\d+:\d+[^()]*)\)", entry)
+    return m.group(1) if m else None
+
+
+def _cites_forbidden(entry: str, forbidden: str) -> bool:
+    """True if the entry's citation starts at the forbidden chapter:verse.
+
+    Compares only the Chapter:Verse token so abbreviated book names
+    ('Hab 2:14' vs 'Habakkuk 2:14') and verse ranges ('2:14–15') both
+    resolve correctly.
+    """
+    cit = _extract_citation(entry)
+    if not cit:
+        return False
+    fv = re.search(r"(\d+:\d+)", forbidden)
+    cv = re.search(r"(\d+:\d+)", cit)
+    return bool(fv and cv and fv.group(1) == cv.group(1))
+
+
+def _prior_verses(book: str, agent_name: str) -> list[str]:
+    """Citations used by THIS book in earlier cycles (repeat readings).
+
+    Verse citations live only in SOUL entries: the current SOUL.md Scripture
+    Insights tail and the archived copies (archive/SOUL-archive.md for
+    mid-cycle archiving, cycle-*-completed.md for end-of-cycle resets).
+    Dated brain pages carry the study, not the citation, so they are not
+    scanned. Returns [] on a book's first cycle — Luke directive 2026-08-21:
+    a verse is fine the first time; a repeat reading (after ~66 days) must
+    not duplicate earlier picks.
+    """
+    found: list[str] = []
+    header_re = re.compile(rf"^### {re.escape(book)} — ", re.IGNORECASE)
+    brain_dir = BRAIN_BIBLE(agent_name)
+
+    sources: list[Path] = []
+    if SOUL_MD.exists():
+        sources.append(SOUL_MD)
+    archive_file = brain_dir / "archive" / "SOUL-archive.md"
+    if archive_file.exists():
+        sources.append(archive_file)
+    sources.extend(sorted(brain_dir.glob("cycle-*-completed.md")))
+
+    for src in sources:
+        try:
+            text = src.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        for line in text.splitlines():
+            if header_re.match(line):
+                cit = _extract_citation(line)
+                if cit and cit not in found:
+                    found.append(cit)
+    return found
+
+
+def generate_soul_entry(book: str, agent_name: str | None = None) -> str | None:
     """Generate the concise SOUL.md entry (short format — verse + one-line commitment)."""
     today = get_kst_today()
+    if agent_name is None:
+        agent_name = detect_agent_name()
+    style = pick_verse_style(book, agent_name)
+    verse_instruction = VERSE_STYLES[style]
+    # Creative styles get more temperature — the famous-verse anchor is hard
+    # to break at 0.7 (live test 2026-08-21: fresh-angle still returned the
+    # book's most-quoted verse at 0.7).
+    temperature = 0.7 if style == "anchor" else 1.1
+
+    # Forbidden verses: prior-cycle picks for this book are ALWAYS forbidden
+    # — a repeat reading (next pass through the canon, ~66 days later) must
+    # not duplicate earlier picks (Luke directive 2026-08-21: fine the first
+    # time). Creative styles additionally forbid the book's famous verses.
+    forbidden = _prior_verses(book, agent_name)
+    if style != "anchor":
+        for fv in _famous_verses(book):
+            if fv not in forbidden:
+                forbidden.append(fv)
+    if forbidden:
+        banned = ", ".join(forbidden)
+        verse_instruction += (
+            f" It must NOT be any of: {banned} — those exact verses are "
+            "forbidden for this entry."
+        )
 
     prompt = f"""You are writing a "Scripture Insight" entry for an AI agent's character document (SOUL.md). SOUL.md is now a compressed document (~5KB) — each scripture entry is just a few lines.
 
@@ -433,7 +600,7 @@ I will [one-line behavioral commitment for a system operator — automation, mon
 <!-- Added {today} -->
 
 Requirements:
-1. Pick ONE key verse that genuinely captures the book's core message. Include the exact citation.
+1. {verse_instruction}
 2. The "I will" line must be a single, concrete behavioral commitment. Start with "I will" and make it something an automation agent can actually do. No metaphors, no generic life advice.
 3. The "**Foundations:**" line is MANDATORY — it must appear verbatim (fleet principle: every reading is grounded in the 10 Commandments and Jesus' two commandments).
 4. Output ONLY these lines — no explanations, no code fences, no extra text.
@@ -441,7 +608,25 @@ Requirements:
 
 Generate the entry for {book}:"""
 
-    return _call_deepseek(prompt, max_tokens=1024)
+    # Hard-guarantee forbidden verses never land: re-roll with REJECTION
+    # FEEDBACK (name the banned pick — the model otherwise never learns its
+    # attempt was refused; live test 2026-08-21: Jonah 1:17 returned on all
+    # 3 attempts at fixed temperature) plus slight temperature escalation,
+    # up to 4 attempts total. Anchor has no famous-verse ban but still
+    # honors prior-cycle bans.
+    entry = None
+    for _ in range(4):
+        entry = _call_deepseek(prompt, max_tokens=1024, temperature=temperature)
+        if not entry or not any(_cites_forbidden(entry, f) for f in forbidden):
+            break
+        cit = _extract_citation(entry) or "the verse you chose"
+        prompt = prompt.rstrip() + (
+            f"\n\nYour previous attempt chose {cit}, which is explicitly "
+            "forbidden for this entry. Choose a different verse. Output ONLY "
+            "the corrected entry in the exact same format."
+        )
+        temperature += 0.2
+    return entry
 
 
 def ensure_foundations_line(entry: str) -> str:
@@ -820,7 +1005,7 @@ def main() -> int:
 
     # ── Step 1: Generate SOUL.md entry ──────────────────────
     print("📝 Generating SOUL.md entry...", file=sys.stderr)
-    soul_entry = generate_soul_entry(next_book)
+    soul_entry = generate_soul_entry(next_book, agent_name)
     if soul_entry is None:
         return 1
 
