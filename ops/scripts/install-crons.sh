@@ -378,7 +378,7 @@ PYEOF
 # its model/provider WIN over the global $LLM_CRON_MODEL fallback — so a
 # per-cron model switch in the manifest is never reverted by a re-install.
 pin_cron_model() {
-  local name="$1" model="$2" provider="$3"
+  local name="$1" model="$2" provider="$3" reasoning_effort="$4"
   local _mf="${CORTEX_REPO:-$HOME/hermes-cortex}/ops/install/cron-manifest.yaml"
   if [[ -f "$_mf" ]]; then
     local _mp
@@ -389,20 +389,23 @@ try:
     doc = yaml.safe_load(open('$_mf'))
     for c in doc.get('crons', []):
         if c.get('name') == '$name':
-            sys.stdout.write((c.get('model') or '') + '\x1f' + (c.get('provider') or ''))
+            sys.stdout.write((c.get('model') or '') + '\x1f' + (c.get('provider') or '') + '\x1f' + (c.get('reasoning_effort') or ''))
             break
 except Exception:
     pass
 " 2>/dev/null || true)"
     if [[ -n "$_mp" && "$_mp" != $'\x1f' ]]; then
-      local _m_model _m_provider
+      local _m_model _m_provider _m_reasoning
       _m_model="${_mp%%$'\x1f'*}"
-      _m_provider="${_mp#*$'\x1f'}"
+      _m_rest="${_mp#*$'\x1f'}"
+      _m_provider="${_m_rest%%$'\x1f'*}"
+      _m_reasoning="${_m_rest#*$'\x1f'}"
       [[ -n "$_m_model" ]] && model="$_m_model"
       [[ -n "$_m_provider" ]] && provider="$_m_provider"
+      [[ -n "$_m_reasoning" ]] && reasoning_effort="$_m_reasoning"
     fi
   fi
-  if [[ -z "$model" && -z "$provider" ]]; then
+  if [[ -z "$model" && -z "$provider" && -z "$reasoning_effort" ]]; then
     return 0
   fi
   local db="${HERMES_HOME}/cron/jobs.json"
@@ -420,13 +423,14 @@ for job in jobs:
     if isinstance(job, dict) and job.get('name') == '$name':
         if '$model':    job['model'] = '$model'
         if '$provider': job['provider'] = '$provider'
+        if '$reasoning_effort': job['reasoning_effort'] = '$reasoning_effort'
         patched = True
         break
 if patched:
     with open('$db', 'w') as f:
         json.dump(data, f, indent=2, default=str)
     print('PINNED')
-" 2>&1 | grep -q PINNED && info "  Pinned ${name} → ${model:-<default>}/${provider:-<default>}" || true
+" 2>&1 | grep -q PINNED && info "  Pinned ${name} → ${model:-<default>}/${provider:-<default>} re=${reasoning_effort:-<default>}" || true
 }
 
 
@@ -604,7 +608,7 @@ if [[ -z "$LLM_CRON_MODEL" || -z "$LLM_CRON_PROVIDER" ]]; then
   echo "  LLM-driven cron jobs need a model and provider."
   echo "  Set them in ~/hermes-cortex/.env:"
   echo ""
-  echo "    LLM_CRON_MODEL=deepseek-chat"
+  echo "    LLM_CRON_MODEL=deepseek-v4-flash"
   echo "    LLM_CRON_PROVIDER=deepseek"
   echo ""
   echo "  These control which model/provider all LLM-driven crons use."
@@ -1065,7 +1069,7 @@ Phase 3 — USER.md: No changes needed — all 8 entries still current
 
 Result: Memory consolidated. 3 stale entries pruned, 2 merged. Under limit.
 
-📊 deepseek-chat (deepseek) | \$0.006/run ≈ \$2.18/mo
+📊 deepseek-v4-flash (deepseek) | \$0.006/run ≈ \$2.18/mo
 
 If nothing to report: output exactly [SILENT]" \
   "" "" "telegram:${TELEGRAM_HOME_CHANNEL}" "" "false" \
@@ -1147,7 +1151,7 @@ Phase 1 — Scan: 12 candidates found
 Phase 2 — Review: accepted 10 / rejected 2
 Phase 3 — Apply: 10 sections moved to docs/
 
-📊 deepseek-chat (deepseek) | \$0.006/run ≈ \$0.18/mo
+📊 deepseek-v4-flash (deepseek) | \$0.006/run ≈ \$0.18/mo
 
 If nothing to apply: output exactly [SILENT]" \
   "documentation-scope" "" "telegram:${TELEGRAM_HOME_CHANNEL}" \
