@@ -361,6 +361,16 @@ def _soul_title_key(title: str) -> str:
 
 def check_soul_sync(res):
   """Check SOUL.md is synced from repo template — for ALL agents."""
+  # Restart-pending marker: hermes update replaces source files but the
+  # running daemon keeps stale modules until a real restart (O1-S1b:
+  # scheduler.py patched on disk at 22:23, daemon from 16:52 still wrote
+  # audit without the cache split). Surface the marker instead of
+  # silently running stale code.
+  marker = CORTEX_HOME / "state" / "restart-pending"
+  if marker.exists() and "updated:" in marker.read_text(encoding="utf-8", errors="replace"):
+    res.add("Restart pending", "WARN",
+        "Hermes updated but the daemon has not been restarted — running stale code",
+        f"Run from a separate shell: hermes gateway restart  (or remove {marker} after restart)")
   template = CORTEX_REPO / "docs" / "templates" / "SOUL.md"
   if not template.exists():
     res.add("SOUL.md template", "WARN", "template not found at docs/templates/SOUL.md",

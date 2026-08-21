@@ -65,6 +65,24 @@ if [ "$NEW_VERSION" != "$CURRENT_VERSION" ] && [ -n "$NEW_VERSION" ]; then
     fi
 fi
 
+# Restart-needed marker: hermes update replaces source files (scheduler.py,
+# enforcer, plugins) but the RUNNING daemon keeps stale modules in memory
+# until a real restart — which requires gateway-restart approval and can't
+# happen from inside cron. Write a durable marker so the doctor flags
+# "update applied but not loaded" instead of silently running stale code
+# (O1-S1b: cost cache-split patch was on disk for hours while the daemon
+# wrote audit lines without it, 2026-08-21/22).
+RESTART_MARKER="${HOME}/.hermes-cortex/state/restart-pending"
+if [ "$NEW_VERSION" != "$CURRENT_VERSION" ] && [ -n "$NEW_VERSION" ]; then
+    echo "updated:${NEW_VERSION}" > "$RESTART_MARKER"
+    log "restart-pending marker written (${NEW_VERSION}) — daemon must reload"
+    HAD_OUTPUT=true
+elif [ -f "$RESTART_MARKER" ] && ! grep -q "updated:${NEW_VERSION}" "$RESTART_MARKER" 2>/dev/null; then
+    # version unchanged but marker stale from an earlier update — keep it
+    # (scheduler.py may still be newer than the loaded module)
+    true
+fi
+
 # Step 2: Config migration (runs even if update timed out or failed)
 MIGRATE_OUTPUT=$(timeout 35 hermes config migrate 2>&1) || {
     MIGRATE_EXIT=$?
