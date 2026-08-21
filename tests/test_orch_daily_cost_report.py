@@ -6,6 +6,7 @@ Run: python3 -m pytest tests/test_orch_daily_cost_report.py -v
 """
 import importlib.util
 import json
+import sqlite3
 import sys
 import tempfile
 from datetime import datetime
@@ -134,6 +135,41 @@ def test_render_text_avoids_secret_redaction():
         assert "Tokens →" in text
         # 85M must survive as a literal, not ***
         assert "85M" in text and "***" not in text
+
+
+def test_sessions_table_source():
+    """Interactive sessions (telegram/cli/subagent) come from state.db sessions
+    table — Hermes persists per-session tokens+cost live. Report must include
+    them and show coverage."""
+    with tempfile.TemporaryDirectory() as td:
+        audit = Path(td) / "cron" / "usage_audit.jsonl"
+        audit.parent.mkdir(parents=True)
+        audit.write_text("")  # empty audit
+        # fake state.db with one telegram session
+        sdb = Path(td) / "cron" / ".." / "state.db"  # -> td/state.db
+        sdb = sdb.resolve()
+        con = sqlite3.connect(str(sdb))
+        con.execute("""CREATE TABLE sessions (
+            id TEXT, source TEXT, started_at REAL, ended_at REAL, end_reason TEXT,
+            estimated_cost_usd REAL, input_tokens INTEGER, output_tokens INTEGER,
+            cache_read_tokens INTEGER, cache_write_tokens INTEGER)""")
+        import time
+        now = time.time()
+        con.execute("""INSERT INTO sessions
+            (id, source, started_at, estimated_cost_usd, input_tokens, output_tokens, cache_read_tokens)
+            VALUES ('s1','telegram',?, 1.25, 5000000, 100000, 4000000)""", (now - 3600,))
+        # an OLD session (9 days ago) must be excluded — guards the timezone bug
+        # where naive-UTC .timestamp() misread the cutoff as local (+8.6h shift)
+        con.execute("""INSERT INTO sessions
+            (id, source, started_at, estimated_cost_usd, input_tokens, output_tokens, cache_read_tokens)
+            VALUES ('s0','telegram',?, 9.99, 90000000, 100000, 0)""", (now - 9*86400,))
+        con.commit(); con.close()
+
+        r = build_report(days=1, audit_path=audit, cost_db=Path(td) / "nope.db")
+        assert r["coverage"]["sessions_db"] == "ok"
+        assert r["by_category"]["session"]["runs"] == 1, "old session leaked in (timezone bug)"
+        assert abs(r["by_category"]["session"]["cost_usd"] - 1.25) < 0.01
+        assert r["by_category"]["session"]["prompt_m"] == 5.0
 
 
 if __name__ == "__main__":

@@ -20,7 +20,7 @@ import argparse
 import json
 import sqlite3
 import sys
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 HOME = Path.home()
@@ -68,6 +68,10 @@ def load_audit(path: Path):
 def build_report(days: int, audit_path: Path = AUDIT, cost_db: Path = COST_DB):
     now = datetime.utcnow()
     cutoff = (now - timedelta(days=days)).replace(hour=0, minute=0, second=0, microsecond=0)
+    # sessions table stores started_at as epoch (time.time(), UTC-based).
+    # naive-UTC .timestamp() would misread it as LOCAL — compute the epoch
+    # from the UTC wall clock directly.
+    cutoff_ts = int(cutoff.replace(tzinfo=timezone.utc).timestamp())
     audit_rows = load_audit(audit_path)
 
     report = {
@@ -77,7 +81,7 @@ def build_report(days: int, audit_path: Path = AUDIT, cost_db: Path = COST_DB):
         "summary": {"runs": 0, "cost_usd": 0.0, "prompt_m": 0.0, "comp_m": 0.0,
                     "cache_hit_pct": None, "peak_runs": 0},
         "by_category": {"cron": {"runs": 0, "cost_usd": 0.0},
-                        "session": {"runs": 0, "cost_usd": 0.0},
+                        "session": {"runs": 0, "cost_usd": 0.0, "prompt_m": 0.0, "cache_read_m": 0.0},
                         "subagent": {"runs": 0, "cost_usd": 0.0}},
         "top_jobs": [],
     }
@@ -139,6 +143,31 @@ def build_report(days: int, audit_path: Path = AUDIT, cost_db: Path = COST_DB):
     else:
         report["coverage"]["cron_costs_db"] = "MISSING"
 
+    # state.db sessions table — interactive (non-cron) per-session tokens + cost.
+    # Hermes persists this live per turn for telegram/cli/subagent sources.
+    # usage_audit lives at ~/.hermes/cron/usage_audit.jsonl → state.db is parent.parent.
+    state_db = audit_path.parent.parent / "state.db"
+    if not state_db.exists():
+        report["coverage"]["sessions_db"] = "MISSING"
+    else:
+        try:
+            con = sqlite3.connect(str(state_db))
+            rows = con.execute("""
+                SELECT source, COUNT(*), ROUND(SUM(COALESCE(estimated_cost_usd,0)),2),
+                       ROUND(SUM(COALESCE(input_tokens,0))/1e6,1),
+                       ROUND(SUM(COALESCE(cache_read_tokens,0))/1e6,1)
+                FROM sessions
+                WHERE source != 'cron' AND started_at >= ?
+                GROUP BY source ORDER BY 3 DESC""", (cutoff_ts,)).fetchall()
+            con.close()
+            report["coverage"]["sessions_db"] = "ok"
+            report["by_category"]["session"]["runs"] = sum(r[1] for r in rows)
+            report["by_category"]["session"]["cost_usd"] = round(sum(r[2] for r in rows), 2)
+            report["by_category"]["session"]["prompt_m"] = round(sum(r[3] for r in rows), 1)
+            report["by_category"]["session"]["cache_read_m"] = round(sum(r[4] for r in rows), 1)
+        except Exception as e:
+            report["coverage"]["sessions_db"] = f"error: {e}"
+
     report["summary"]["cost_usd"] = round(report["summary"]["cost_usd"], 2)
     return report
 
@@ -157,6 +186,8 @@ def render_text(r: dict) -> str:
     else:
         lines.append("   Cache hit: n/a (no cache split in audit yet — O1-S1b pending restart)")
     lines.append(f"   Cron ${cat['cron']['cost_usd']:.2f} · Session ${cat['session']['cost_usd']:.2f} · Subagent ${cat['subagent']['cost_usd']:.2f}")
+    if cat["session"].get("prompt_m"):
+        lines.append(f"   Session detail: {cat['session']['prompt_m']:.0f}M in / {cat['session'].get('cache_read_m', 0):.0f}M cache-read")
     if r["top_jobs"]:
         lines.append("   Top jobs:")
         for j in r["top_jobs"]:
