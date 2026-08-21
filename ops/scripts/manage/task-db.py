@@ -423,7 +423,8 @@ def parse_row(line: str) -> dict | None:
 # 21 legacy columns (task_list returns these) + 3 v005 columns selected
 # directly from tasks.tasks (task_list does NOT return parent/kind/correlation).
 SELECT_COLS = (
-    "id, content, created_by, assignee, project, repo, target, "
+    "id, regexp_replace(content, E'[\\n\\r]', ' ', 'g') AS content, "
+    "created_by, assignee, project, repo, target, "
     "scope, status, \"column\", \"position\", priority, due, "
     "tags, source, depends_on, session_id, created_at, "
     "updated_at, status_changed_at, completed_at, "
@@ -557,16 +558,33 @@ def cmd_add(content: str, agent: str | None, priority: int, project: str | None,
 
     new_id = str(uuid.uuid4())
     session_id = os.environ.get("HERMES_SESSION_ID", "")
+    effective_scope = scope or "personal"
+    # B-5 fleet scrub gate (RLS WITH CHECK): fleet rows must be PII-safe
+    # (no abs-path/email/IP smells). Ask the DB function — the single
+    # authority — and degrade to personal when the content fails, so
+    # legit local tracking (e.g. a bus proposal about deployed paths)
+    # still works instead of dying with a raw RLS error. (2026-08-21:
+    # cortex-bus-overnight fleet task_add failed exactly this way.)
+    if effective_scope == "fleet" and content:
+        try:
+            fleet_ok = psql("SELECT tasks.content_ok_for_fleet(?);", [content])
+        except SystemExit:
+            fleet_ok = "t"  # probe unavailable → let the insert decide
+        if fleet_ok.strip() != "t":
+            effective_scope = "personal"
+            print("⚠️  fleet content rejected by the B-5 scrub gate "
+                  "(path/email/IP smell) — stored scope=personal",
+                  file=sys.stderr)
     psql(
         "SELECT tasks.task_upsert(?::uuid, ?, ?, ?, ?, ?, ?, ?, 'pending', "
         "NULL, NULL, ?, ?::timestamptz, ?, ?, ?, ?, ?::uuid, ?, ?);",
         [new_id, content, agent, assignee, project or "hermes-cortex",
-         repo, target, scope or "personal", priority, due or None,
+         repo, target, effective_scope, priority, due or None,
          tags or None, source or "manual", None, session_id or None,
          parent, kind, correlation_id],
     )
     print(f"✅ Task added: {new_id[:8]}... — {content}")
-    if (scope or "personal") == "fleet":
+    if effective_scope == "fleet":
         print("⚠️  fleet task stored LOCALLY on this host only — not visible "
               "fleet-wide until transport ships (roadmap: git-backed, private repo).")
     if not no_notify and (source or "manual") != "doctor-probe":

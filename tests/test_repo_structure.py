@@ -145,3 +145,44 @@ def test_readme_has_upgrade_path():
     assert "Upgrading" in content or "upgrade" in content.lower(), (
         "README missing upgrade documentation"
     )
+
+# ── Regression 2026-08-21: health-vector key sync (gbrain→mycortex sweep) ──
+
+HEALTH_VECTOR_KEY = "mycortex_sources_ok"
+HEALTH_VECTOR_FILES = [
+    os.path.join(REPO_ROOT, "ops", "install", "deploy", "agent-registry.template.json"),
+    os.path.join(REPO_ROOT, "ops", "scripts", "agent", "orch-fleet-watchdog.py"),
+    os.path.join(REPO_ROOT, "ops", "scripts", "agent", "orch-health-report.py"),
+    os.path.join(REPO_ROOT, "ops", "scripts", "health", "health-vector-push.sh"),
+]
+
+
+def test_health_vector_key_consistent_across_registry_and_reporters():
+    """The health-vector key must agree everywhere: registry template, fleet
+    watchdog, health report, and the push script. A rename in one file but not
+    the others (gbrain_sources_ok → mycortex_sources_ok drift) silently breaks
+    fleet health aggregation."""
+    for path in HEALTH_VECTOR_FILES:
+        assert os.path.isfile(path), f"health-vector file missing: {path}"
+        with open(path, encoding="utf-8") as f:
+            content = f.read()
+        assert HEALTH_VECTOR_KEY in content, (
+            f"{os.path.relpath(path, REPO_ROOT)} missing {HEALTH_VECTOR_KEY}"
+        )
+        assert "gbrain_sources_ok" not in content, (
+            f"{os.path.relpath(path, REPO_ROOT)} still references old key "
+            "gbrain_sources_ok"
+        )
+
+
+def test_no_gbrain_legacy_refs_in_tracked_source():
+    """gbrain was decommissioned (2026-08-21 sweep). No tracked file may
+    reference it — a resurrected ref means the sweep is rotting."""
+    import subprocess
+
+    hits = subprocess.run(
+        ["git", "grep", "-il", "gbrain", "--", ".",
+         ":(exclude)tests/test_repo_structure.py"],
+        cwd=REPO_ROOT, capture_output=True, text=True,
+    ).stdout.strip()
+    assert not hits, f"Legacy gbrain refs found in: {hits}"

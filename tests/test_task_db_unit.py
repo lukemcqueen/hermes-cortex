@@ -113,6 +113,79 @@ def test_shell_payload_stored_as_literal():
     assert params[1] == "learn $(whoami) — literal"
 
 
+# ── Regression: fleet B-5 scrub gate degrades to personal (2026-08-21) ──
+# cortex-bus-overnight task_add (scope=fleet, content with ~/.hermes/... paths)
+# died with a raw RLS error ("new row violates row-level security policy for
+# table tasks"). Fix: cmd_add probes tasks.content_ok_for_fleet() and degrades
+# to scope=personal with a warning — the task is still created locally, the
+# PII gate is never bypassed (the row simply never becomes fleet-visible).
+
+def test_cmd_add_fleet_pathy_content_degrades_to_personal():
+    """Fleet content with an abs-path smell → stored personal + warning."""
+    with patch.object(task_db, "psql", side_effect=["f", ""]) as mock_psql:
+        out, err, exc = _run_stdin_capture(
+            task_db.cmd_add,
+            "copy deployed ~/.hermes/skills/devops/x into repo", "esther", 1,
+            None, None, None, "fleet", None, None, [], "inbox")
+    assert exc is None
+    assert "B-5 scrub gate" in err
+    # probe fired once, then the upsert used scope='personal'
+    assert mock_psql.call_count == 2
+    upsert_params = mock_psql.call_args_list[1][0][1]
+    assert upsert_params[7] == "personal"
+    assert "✅ Task added" in out
+
+
+def test_cmd_add_fleet_clean_content_stays_fleet():
+    """Fleet content WITHOUT smells → stays fleet (no gate warning)."""
+    with patch.object(task_db, "psql", side_effect=["t", ""]) as mock_psql:
+        out, err, exc = _run_stdin_capture(
+            task_db.cmd_add, "clean fleet task", "esther", 1,
+            None, None, None, "fleet", None, None, [], "inbox")
+    assert exc is None
+    assert "B-5 scrub gate" not in err
+    upsert_params = mock_psql.call_args_list[1][0][1]
+    assert upsert_params[7] == "fleet"
+    assert "stored LOCALLY on this host" in out
+
+
+def test_cmd_add_personal_scope_skips_probe():
+    """Personal scope never pays for the fleet-gate probe."""
+    with patch.object(task_db, "psql", side_effect=[""]) as mock_psql:
+        _out, _err, exc = _run_stdin_capture(
+            task_db.cmd_add, "personal task", "esther", 1,
+            None, None, None, "personal", None, None, [], "manual")
+    assert exc is None
+    assert mock_psql.call_count == 1  # upsert only, no content_ok_for_fleet probe
+
+
+# ── Regression: long/multiline content mis-rendered (2026-08-21) ──
+# task-db list/pending parse psql output line-by-line (||-delimited). A
+# content value containing \n split the row across lines → parse_row got a
+# short fragment → the row was DROPPED from list output (seen 3× as "stored
+# garbled"). Fix: SELECT_COLS normalizes newlines to spaces for display;
+# storage keeps the original bytes.
+
+def test_select_cols_normalizes_content_newlines():
+    """SELECT_COLS must flatten \\n/\\r in content so row parsing survives."""
+    assert "regexp_replace(content" in task_db.SELECT_COLS
+    assert "E'[\\n\\r]'" in task_db.SELECT_COLS
+
+
+def test_parse_row_multiline_content_fragment_is_none():
+    """A raw content with \\n (pre-fix) breaks || row parsing → row dropped.
+
+    This documents WHY the SELECT-side normalization is load-bearing:
+    cmd_list splits psql stdout on \\n first, so the fragment of a
+    multiline row never has the 24 columns parse_row requires.
+    """
+    multiline = _row_line(content="line1\nline2 still content")
+    fragment = multiline.split("\n")[0]  # what cmd_list feeds parse_row
+    assert task_db.parse_row(fragment) is None
+    # and the full (un-normalized) line as ONE line parses fine
+    assert task_db.parse_row(multiline.replace("\n", " ")) is not None
+
+
 def test_bad_uuid_rejected():
     _out, err, exc = _run_stdin_capture(
         task_db.cmd_update, "not-a-uuid", "completed")
@@ -591,22 +664,22 @@ def test_mcp_tool_registry_and_confirm_gate():
 
     # destructive tools refuse without confirm=true
     r = task_mcp._task_prune({"older_than": "1d"})
-    assert r.isError and "confirm=true" in r.content[0].text
+    assert r.is_error and "confirm=true" in r.content[0].text
     r = task_mcp._task_save_end({})
-    assert r.isError
+    assert r.is_error
 
     # task_add requires content
     r = task_mcp._task_add({})
-    assert r.isError and "content" in r.content[0].text
+    assert r.is_error and "content" in r.content[0].text
 
     # task_switch requires task_id
     r = task_mcp._task_switch({})
-    assert r.isError and "task_id" in r.content[0].text
+    assert r.is_error and "task_id" in r.content[0].text
 
     # unknown tool
     import asyncio
     r = asyncio.run(task_mcp.call_tool("task_nope", {}))
-    assert r.isError
+    assert r.is_error
 
 
 # ── Derived overdue flag (due passed on an open status) ──

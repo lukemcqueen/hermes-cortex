@@ -130,6 +130,46 @@ run_battery() {
            python3 "$TASK_DB" list --status pending 2>/dev/null | grep -c "fleet-probe $$" || true)
   [ "$listed" -ge 1 ] && pass "list sees the probe row (got $listed)" || fail "list did not return the probe row"
 
+  # ── Regression 2026-08-21: multiline content must survive list output ──
+  # (content with \\n used to split the ||-delimited psql row → parse_row
+  # dropped it; the row "vanished". SELECT_COLS now flattens display.)
+  local multi_id
+  multi_id=$(TASK_DB_NAME="$scratch_db" TASK_DB_ROLE="mycortex_reader" \
+             HERMES_PROFILE="mycortex_reader" \
+             python3 "$TASK_DB" add "multiline regression $$ line1
+line2 still content" --source manual 2>&1 | grep -oE "[0-9a-f]{8}\.\.\." | head -1 || true)
+  local multi_listed
+  multi_listed=$(TASK_DB_NAME="$scratch_db" TASK_DB_ROLE="mycortex_reader" \
+                 HERMES_PROFILE="mycortex_reader" \
+                 python3 "$TASK_DB" list --status pending 2>/dev/null | grep -c "multiline regression $$" || true)
+  if [ -n "$multi_id" ] && [ "$multi_listed" -ge 1 ]; then
+    pass "multiline content round-trips through list (id=${multi_id}, listed=${multi_listed})"
+  else
+    fail "multiline content dropped/garbled in list (id=${multi_id:-none}, listed=${multi_listed})"
+  fi
+
+  # ── Regression 2026-08-21: fleet + pathy content degrades to personal ──
+  # (B-5 scrub gate: fleet content with abs-path/email/IP smell used to die
+  # with a raw RLS error; cmd_add now degrades to scope=personal + warning.)
+  local deg_out deg_row
+  deg_out=$(TASK_DB_NAME="$scratch_db" TASK_DB_ROLE="mycortex_reader" \
+            HERMES_PROFILE="mycortex_reader" \
+            python3 "$TASK_DB" add "degrade probe $$ ~/.hermes/skills/devops/x" \
+              --scope fleet --source manual 2>&1 || true)
+  if echo "$deg_out" | grep -q "B-5 scrub gate"; then
+    pass "fleet pathy content degraded with B-5 warning"
+  else
+    fail "fleet pathy content did not degrade: $(echo "$deg_out" | head -c 160)"
+  fi
+  deg_row=$(TASK_DB_NAME="$scratch_db" TASK_DB_ROLE="mycortex_reader" \
+            HERMES_PROFILE="mycortex_reader" \
+            python3 "$TASK_DB" list --status pending 2>/dev/null | grep "degrade probe $$" || true)
+  if echo "$deg_row" | grep -q "personal"; then
+    pass "degraded task stored with scope=personal"
+  else
+    fail "degraded task scope wrong: $(echo "$deg_row" | head -c 120)"
+  fi
+
   # pending JSON shape (session-restore contract)
   local pend_json
   pend_json=$(TASK_DB_NAME="$scratch_db" TASK_DB_ROLE="mycortex_reader" \
