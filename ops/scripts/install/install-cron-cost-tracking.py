@@ -384,6 +384,19 @@ def do_status():
         _audit_cache_ok = 'session_cache_read_tokens", 0) or 0,' in sched
         print(f"  {'OK' if _audit_cache_ok else 'MISS'} scheduler: audit cache split")
 
+    # rate_version migration (O1-S1) — present in schema after first _get_db() call
+    # Note: CRON_DIR is ~/.hermes/cron (cron.jobs), NOT the agent source tree.
+    db_path = os.path.expanduser("~/.hermes/cron/cron-costs.db")
+    if os.path.exists(db_path):
+        import sqlite3
+        try:
+            con = sqlite3.connect(db_path)
+            cols = [r[1] for r in con.execute("PRAGMA table_info(cron_runs)").fetchall()]
+            con.close()
+            print(f"  {'OK' if 'rate_version' in cols else 'MISS'} cron-costs.db: rate_version column (O1-S1)")
+        except Exception as e:
+            print(f"  ERR cron-costs.db: rate_version check failed: {e}")
+
     if os.path.exists(tools_path):
         tools = open(tools_path).read()
         print(f"  {'OK' if '_COST_STORE = None' in tools else 'MISS'} cronjob_tools: cost store import")
