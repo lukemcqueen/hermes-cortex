@@ -87,10 +87,11 @@
       "source": "hermes-cortex",
       "scope": "federated",
       "expected_top3": [
-        "docs/skills-manifest-reference.md",
-        "docs/SKILLS-MANIFEST.md",
-        "docs/agent-onboarding.md"
-      ]
+        "ops/scripts/manage/cortex_doctor/checks.py",
+        "ops/scripts/manage/gen-skills-manifest.py",
+        "docs/SKILLS-MANIFEST.md"
+      ],
+      "note": "golden refreshed 2026-08-21 after gbrain->mycortex content rewrite shifted FTS ranking; hits are the manifest tooling + manifest itself"
     },
     {
       "id": "HC-009",
