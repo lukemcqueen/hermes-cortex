@@ -584,7 +584,7 @@ printf "${CYAN}  5. Backlog Driver${RESET}\n"
 # closes them, reports to Telegram. LLM-driven: deciding WHAT to do with a
 # task needs reasoning (dispatch vs self-fix vs escalate vs block).
 # Hourly 8am-10pm; minute is per-host hashed by create_cron (Luke 08-07).
-create_cron "orch-backlog-driver" "0 8-22 * * *" \
+create_cron "orch-backlog-driver" "0 8,10,12,14,16,18,20,22 * * *" \
   "session-active-guard.py" \
   "Load the orch-backlog-driver skill and run the backlog loop (F-023).
 

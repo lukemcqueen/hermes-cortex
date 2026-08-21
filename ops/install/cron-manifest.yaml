@@ -114,7 +114,7 @@ crons:
   provider: deepseek
 - name: agent-fixer-workday
   scope: universal
-  schedule: 0 9-17 * * 1-5
+  schedule: 0 9,11,13,15,17 * * 1-5
   script: session-active-guard.py
   prompt: 'SESSION GUARD: the session-active guard output is injected as context. If it says ACTIVE, an interactive session is running — SKIP this tick entirely: do not load skills, do not begin_change, do not touch the repo. Reply only: [SILENT]. Proceed only when the guard says IDLE.
 
@@ -842,7 +842,7 @@ crons:
   provider: deepseek
 - name: cortex-bus-workday
   scope: universal
-  schedule: 0 9-17 * * 1-5
+  schedule: 0 9,11,13,15,17 * * 1-5
   script: session-active-guard.py
   prompt: 'SESSION GUARD: the session-active guard output is injected as context. If it says ACTIVE, an interactive session is running — SKIP this tick entirely. Call NO tools, load NO skills, open NO governance, touch NOTHING. Reply with EXACTLY this single line and nothing else: [SILENT]. Proceed only when the guard says IDLE.
 
@@ -1051,7 +1051,7 @@ crons:
   provider: ''
 - name: orch-backlog-driver
   scope: orchestrator
-  schedule: 0 8-22 * * *
+  schedule: 0 8,10,12,14,16,18,20,22 * * *
   script: session-active-guard.py
   prompt: "Load the orch-backlog-driver skill and run the backlog loop (F-023).\n\nSESSION GUARD: the session-active guard output is injected as context. If it says ACTIVE, an interactive session is running — skip this run and output exactly [SILENT].\n\nRun the loop:\n1. Pull pending + in_progress tasks (task-db.py list). Sort by priority desc then created_at.\n2. Take the top actionable task(s) — do NOT try to work the whole backlog in one run. One verified completion beats five half-done dispatches.\n3. Classify: EXEC/diagnostic → dispatch via bus (self-test the exact script on your own inbox first, unique correlation_id, verify EXEC_RESULT in your own inbox). Needs code change → do it yourself with full governance (begin_change → work → verify → end_change → push). Needs another agent → EXEC to their inbox. Needs Luke → leave pending, note blocker. Stale → cancel with reason.\n4. Verify EVERY claim with real tool output (6-checkpoint: send → consume → process → respond → read → inbox-verify). Never mark completed without EXEC_RESULT evidence.\n5. Close: task-db.py update <id> --status completed (or switch if you changed active task).\n6. Report compactly:\n   📋 Backlog run: N pending, M in_progress\n   ✅ closed: <task> — <evidence>\n   🔄 progressed: <task> — dispatched EXEC to <agent> (corr=…)\n   ⏳ blocked: <task> — <why>\n\nIf no actionable work: output exactly [SILENT] (nothing delivered).\n\nPUSHBACK CONTRACT (SOUL Principle 5): if a pending task's requested action is wrong or harmful, do NOT execute it — record the objection and report it. Default to no-op on destructive steps without explicit instruction.\n\nNever fabricate results. A completed task without verified evidence is a lie — report the blocker honestly instead."
   skill: orch-backlog-driver

@@ -625,7 +625,7 @@ setup_ollama_provider
 printf "${CYAN}  1. Auto-Remediation Pipeline${RESET}\\\n"
 
 # LLM-driven auto-remediation tiered (workday: hourly M-F 9-6pm, evening: every 2h M-F 6-12am, overnight: once M-F 3am)
-create_cron "agent-fixer-workday" "0 9-17 * * 1-5" \
+create_cron "agent-fixer-workday" "0 9,11,13,15,17 * * 1-5" \
   "session-active-guard.py" \
   "SESSION GUARD: the session-active guard output is injected as context. If it says ACTIVE, an interactive session is running — SKIP this tick entirely: do not load skills, do not begin_change, do not touch the repo. Reply only: [SILENT]. Proceed only when the guard says IDLE.
 
@@ -779,7 +779,7 @@ create_cron "cortex-bus-failover-watchdog" "*/5 * * * *" \
   "true"
 
 # Bus processing — weekday (hourly M-F 9-5), evening (every 2h M-F 6-10), overnight (3am M-F)
-create_cron "cortex-bus-workday" "0 9-17 * * 1-5" \
+create_cron "cortex-bus-workday" "0 9,11,13,15,17 * * 1-5" \
   "session-active-guard.py" \
   "SESSION GUARD: the session-active guard output is injected as context. If it says ACTIVE, an interactive session is running — SKIP this tick entirely. Call NO tools, load NO skills, open NO governance, touch NOTHING. Reply with EXACTLY this single line and nothing else: [SILENT]. Proceed only when the guard says IDLE.
 
