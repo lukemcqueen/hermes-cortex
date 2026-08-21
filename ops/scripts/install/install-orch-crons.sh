@@ -71,7 +71,7 @@ if [[ -z "$LLM_CRON_MODEL" || -z "$LLM_CRON_PROVIDER" ]]; then
   echo "  LLM-driven cron jobs (skill-evaluate, memory-pruning, etc.)"
   echo "  need a model and provider. Set them in ~/hermes-cortex/.env:"
   echo ""
-  echo "    LLM_CRON_MODEL=deepseek-chat"
+  echo "    LLM_CRON_MODEL=deepseek-v4-flash"
   echo "    LLM_CRON_PROVIDER=deepseek"
   echo ""
   echo "  These apply to all LLM-driven crons on this machine."
@@ -134,6 +134,7 @@ if $UNINSTALL; then
     "orch-bus-inbox-relay" \
     "orch-bus-recover-timeouts" \
     "orch-clean-health-queue" \
+    "orch-daily-cost-report" \
     "orch-daily-regression-gate" \
     "orch-fleet-watchdog" \
     "orch-health-report-saturday" \
@@ -404,6 +405,17 @@ create_cron "orch-health-report-saturday" "0 11,17 * * 6" \
   "" \
   "" \
   "origin" \
+  "" \
+  "true"
+
+# Daily fleet cost digest — one Telegram message with yesterday's spend
+# (no_agent: script output IS the report — zero LLM token cost)
+create_cron "orch-daily-cost-report" "0 8 * * *" \
+  "orch-daily-cost-report.py" \
+  "" \
+  "" \
+  "" \
+  "telegram:${TELEGRAM_HOME_CHANNEL}" \
   "" \
   "true"
 

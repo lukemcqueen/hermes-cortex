@@ -298,6 +298,7 @@ register "ops/scripts/manage/agent-hermes-cortex-sync.sh"      "${CORTEX_DEPLOY_
 register "ops/scripts/manage/update-session-state.sh"    "${CORTEX_DEPLOY_HOME}/scripts/update-session-state.sh"
 register "ops/scripts/manage/fleet-audit.py"             "${CORTEX_DEPLOY_HOME}/scripts/fleet-audit.py"
 register "ops/scripts/manage/fleet-costs.py"             "${CORTEX_DEPLOY_HOME}/scripts/fleet-costs.py"
+register "ops/scripts/manage/orch-daily-cost-report.py"  "${CORTEX_DEPLOY_HOME}/scripts/orch-daily-cost-report.py"
 register "ops/scripts/manage/wave-orchestrate.py"        "${CORTEX_DEPLOY_HOME}/scripts/wave-orchestrate.py"
 register "ops/scripts/manage/agent-budget-enforcer.py"     "${CORTEX_DEPLOY_HOME}/scripts/agent-budget-enforcer.py"
 register "ops/scripts/manage/escalate-to-human.py"     "${CORTEX_DEPLOY_HOME}/scripts/escalate-to-human.py"
