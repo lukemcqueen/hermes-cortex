@@ -960,6 +960,17 @@ create_cron "agent-scoring-activity-watchdog" "0 14,20 * * *" \
   "" \
   "true"
 
+# PENDING-cycle watchdog (O5-S1) — governance leak detection every 6h
+# (no_agent: mirrors cortex_doctor/checks.py PENDING rules; silent when clean)
+create_cron "agent-pending-cycle-watchdog" "0 */6 * * *" \
+  "agent-pending-cycle-watchdog.py" \
+  "" \
+  "" \
+  "" \
+  "origin" \
+  "" \
+  "true"
+
 
 # Session embedding cache rebuild (weekly Monday 05:00 — universal, loop-governance)
 create_cron "agent-session-cache-build" "0 5 * * 1" \

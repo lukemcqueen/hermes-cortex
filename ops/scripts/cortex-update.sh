@@ -357,6 +357,7 @@ register "ops/scripts/health/agent-cron-quality-watchdog.py" "${CORTEX_DEPLOY_HO
 register "ops/scripts/agent/agent-cron-failure-scanner.py" "${CORTEX_DEPLOY_HOME}/scripts/agent-cron-failure-scanner.py"
 register "ops/scripts/agent/agent-cron-status.py" "${CORTEX_DEPLOY_HOME}/scripts/agent-cron-status.py"
 register "ops/scripts/health/agent-scoring-activity-watchdog.py" "${CORTEX_DEPLOY_HOME}/scripts/agent-scoring-activity-watchdog.py"
+register "ops/scripts/health/agent-pending-cycle-watchdog.py"  "${CORTEX_DEPLOY_HOME}/scripts/agent-pending-cycle-watchdog.py"
 register "ops/scripts/state_tracker.py"             "${CORTEX_DEPLOY_HOME}/scripts/state_tracker.py"
 register "ops/scripts/health/check-certs.py"               "${CORTEX_DEPLOY_HOME}/scripts/check-certs.py"
 # daily-bible-reading.sh was deleted from repo — replaced by agent-daily-bible-reading.py
