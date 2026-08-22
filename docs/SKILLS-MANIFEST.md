@@ -113,7 +113,7 @@ their domain.
 | `meme-generation` | 2.0.0 | Create meme PNGs from templates with Pillow text overlay. | `skill_view(name='meme-generation')` |
 | `pixel-art` | 2.0.0 | Pixel art w/ era palettes (NES, Game Boy, PICO-8). | `skill_view(name='pixel-art')` |
 
-## Devops (120 skills)
+## Devops (124 skills)
 
 | Skill | Version | Purpose | Load With |
 |-------|---------|---------|-----------|
@@ -121,6 +121,7 @@ their domain.
 | `agent-collector-troubleshoot` | 1.0.0 | Use when collectors can't send. Diagnoses bus, paths, crons. | `skill_view(name='agent-collector-troubleshoot')` |
 | `agent-fundamentals` | 1.0.0 | Universal 'basic things every agent should know' — distilled from real frustration patterns across 10+ sess... | `skill_view(name='agent-fundamentals')` |
 | `agent-health-monitoring` | 3.5.0 | Cross-server agent health monitoring using binary status vectors — deploy health endpoints on each agent, p... | `skill_view(name='agent-health-monitoring')` |
+| `alembic-postgres-migrations` | 1.1.0 | Use when debugging Alembic Postgres migration failures. | `skill_view(name='alembic-postgres-migrations')` |
 | `approval-gate-debugging` | 1.0.0 | Use when a command is flagged as a security issue. | `skill_view(name='approval-gate-debugging')` |
 | `arq-worker-startup-pitfalls` | 1.0.0 | Use when an arq worker crash-loops or runs no jobs. | `skill_view(name='arq-worker-startup-pitfalls')` |
 | `auto-remediation` | 1.0.0 | Auto-remediate cron job failures, agent inbox requests, and service issues. Checks every 5m and fixes known... | `skill_view(name='auto-remediation')` |
@@ -160,6 +161,7 @@ their domain.
 | `detached-worker-pattern` | 1.0.0 | Cron tick budget kill: detached worker + result sweep. | `skill_view(name='detached-worker-pattern')` |
 | `doc-freshness` | 1.1.0 | Ensure AGENTS.md and SOUL.md stay current across all agents and projects. Weekly audit, post-update broadca... | `skill_view(name='doc-freshness')` |
 | `doc-size-budget` | 1.0.0 | Slim docs to byte targets (SOUL 10K, AGENTS gates) safely. | `skill_view(name='doc-size-budget')` |
+| `docker-compose-bringup` | 1.0.0 | Fix a compose stack on a shared host that 500s/404s. | `skill_view(name='docker-compose-bringup')` |
 | `docker-management` | 1.0.0 | Manage Docker containers, images, volumes, and Compose. | `skill_view(name='docker-management')` |
 | `documentation-scope` | 1.0.0 | Multi-audience documentation scoping conventions for Hermes Cortex. Defines when and how to distinguish gen... | `skill_view(name='documentation-scope')` |
 | `enforcement-change-safety` | 1.0.0 | Use before enforcement code changes or shared-repo commits. | `skill_view(name='enforcement-change-safety')` |
@@ -209,6 +211,7 @@ their domain.
 | `orch-skill-lifecycle` | 1.0.0 | Unified daily skill lifecycle pipeline — collects lessons, evaluates quality, and upgrades skills/SOUL.md.... | `skill_view(name='orch-skill-lifecycle')` |
 | `orch-weekly-auto-fix` | 1.1.0 | After the weekly opportunity scan identifies issues, run auto-fix patterns — git pull, branch cleanup, Dock... | `skill_view(name='orch-weekly-auto-fix')` |
 | `package-security` | 1.0.0 | Age-gated package installation protection. Before installing any package with pip, npm, brew, or cargo, ver... | `skill_view(name='package-security')` |
+| `pg-texample-fuzzy-search` | 1.0.0 | Fuzzy retrieval over an internal corpus via pg_texample. | `skill_view(name='pg-texample-fuzzy-search')` |
 | `pgmq-consumer-patterns` | 1.0.0 | Use when fixing bus consumers or false-unreachable agents. | `skill_view(name='pgmq-consumer-patterns')` |
 | `pinggy-tunnel` | 0.1.0 | Zero-install localhost tunnels over SSH via Pinggy. | `skill_view(name='pinggy-tunnel')` |
 | `pipeline-debugging` | 1.0.0 | Check the data store and service logs before changing code. | `skill_view(name='pipeline-debugging')` |
@@ -237,6 +240,7 @@ their domain.
 | `two-hard-rules` | 1.0.0 | Two hard rules every agent must follow: USE LOOP GOVERNANCE ALWAYS. SHARE IMPROVEMENTS TO THE PUBLIC REPO. | `skill_view(name='two-hard-rules')` |
 | `unified-cli-script` | 1.0.0 | Design a unified ./run CLI script for multi-environment Docker Compose deployments. Covers the _compose() w... | `skill_view(name='unified-cli-script')` |
 | `watchers` | 1.0.0 | Poll RSS, JSON APIs, and GitHub with watermark dedup. | `skill_view(name='watchers')` |
+| `webapp-deploy-verification` | 1.0.0 | Verify deployed web app routes render and links resolve. | `skill_view(name='webapp-deploy-verification')` |
 
 ## Dogfood (1 skill)
 
@@ -346,7 +350,7 @@ their domain.
 |-------|---------|---------|-----------|
 | `openclaw-migration` | 1.0.0 | Import an OpenClaw setup (memories, skills) into Hermes. | `skill_view(name='openclaw-migration')` |
 
-## Mlops (32 skills)
+## Mlops (33 skills)
 
 | Skill | Version | Purpose | Load With |
 |-------|---------|---------|-----------|
@@ -360,6 +364,7 @@ their domain.
 | `fine-tuning-with-trl` | 1.0.1 | TRL: SFT, DPO, GRPO, RLOO reward modeling for LLM RLHF. | `skill_view(name='fine-tuning-with-trl')` |
 | `guidance` | 1.0.1 | Constrain LLM output with grammars; guarantee valid JSON. | `skill_view(name='guidance')` |
 | `huggingface-accelerate` | 1.0.1 | Run PyTorch training across GPUs with minimal changes. | `skill_view(name='huggingface-accelerate')` |
+| `huggingface-tokenizers` | 1.0.0 | Fast BPE/WordPiece tokenization and custom vocab training. | `skill_view(name='huggingface-tokenizers')` |
 | `instructor` | 1.0.0 | Structured LLM outputs validated with Pydantic. | `skill_view(name='instructor')` |
 | `lambda-labs-gpu-cloud` | 1.0.0 | On-demand GPU cloud instances for ML training. | `skill_view(name='lambda-labs-gpu-cloud')` |
 | `llava` | 1.0.0 | Vision-language chat: VQA, captioning, image dialogue. | `skill_view(name='llava')` |
@@ -490,7 +495,6 @@ their domain.
 | `adversarial-verifier` | 1.0.0 | Adversarial verification — systematically attempts to break code BEFORE it ships. Covers A0-A5 maturity lev... | `skill_view(name='adversarial-verifier')` |
 | `agent-contract` | 1.0.0 | Core execution contract: real work, honest results, verified outputs, minimal changes. | `skill_view(name='agent-contract')` |
 | `agent-flow` | 1.1.0 | Workflow router skill — classifies the incoming request into one of 12 patterns and dispatches to the corre... | `skill_view(name='agent-flow')` |
-| `alembic-enum-double-create` | 1.0.0 | Use when alembic fails DuplicateObject enum on fresh DB. | `skill_view(name='alembic-enum-double-create')` |
 | `api-documentation` | 1.0.0 | API documentation standards and tooling: OpenAPI/Swagger specs, endpoint descriptions, request/response sch... | `skill_view(name='api-documentation')` |
 | `architecture-review` | 1.2.0 | Multi-role architecture review (a.k.a. HC-Party) with weighted decision matrices, conflict resolution, and... | `skill_view(name='architecture-review')` |
 | `background-job-queue` | 1.0.0 | Add durable background job processing to a FastAPI/asyncpg app using arq. Covers project layout, job functi... | `skill_view(name='background-job-queue')` |
@@ -523,6 +527,7 @@ their domain.
 | `repo-organization` | 1.1.0 | Canonical repo organization for Hermes Cortex — structure, naming, consolidation, symlinks, and audit proce... | `skill_view(name='repo-organization')` |
 | `requirements-elicitation` | 1.2.0 | Requirements elicitation for Hermes Cortex (a.k.a. elicit) — structured domain exploration, RICE/MoSCoW pri... | `skill_view(name='requirements-elicitation')` |
 | `rest-graphql-debug` | 1.2.0 | Debug REST/GraphQL APIs: status codes, auth, schemas, repro. | `skill_view(name='rest-graphql-debug')` |
+| `role-gating-and-public-moderation` | 1.0.0 | Role gating, PII tiers, and UGC moderation patterns. | `skill_view(name='role-gating-and-public-moderation')` |
 | `root-cause-debugging` | 2.0.0 | 6-phase root cause debugging: feedback loop, reproduce, pattern, hypothesise + instrument, fix, cleanup. Un... | `skill_view(name='root-cause-debugging')` |
 | `save-lesson` | 1.0.0 | Auto-save a bug-fix lesson after resolving any non-trivial error. | `skill_view(name='save-lesson')` |
 | `session-manager` | 1.1.0 | Session management skill — checkpoint/restore, context compression, progress tracking, and recovery for mai... | `skill_view(name='session-manager')` |
