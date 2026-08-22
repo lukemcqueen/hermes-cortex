@@ -346,7 +346,7 @@ their domain.
 |-------|---------|---------|-----------|
 | `openclaw-migration` | 1.0.0 | Import an OpenClaw setup (memories, skills) into Hermes. | `skill_view(name='openclaw-migration')` |
 
-## Mlops (33 skills)
+## Mlops (32 skills)
 
 | Skill | Version | Purpose | Load With |
 |-------|---------|---------|-----------|
@@ -360,7 +360,6 @@ their domain.
 | `fine-tuning-with-trl` | 1.0.1 | TRL: SFT, DPO, GRPO, RLOO reward modeling for LLM RLHF. | `skill_view(name='fine-tuning-with-trl')` |
 | `guidance` | 1.0.1 | Constrain LLM output with grammars; guarantee valid JSON. | `skill_view(name='guidance')` |
 | `huggingface-accelerate` | 1.0.1 | Run PyTorch training across GPUs with minimal changes. | `skill_view(name='huggingface-accelerate')` |
-| `huggingface-tokenizers` | 1.0.0 | Fast BPE/WordPiece tokenization and custom vocab training. | `skill_view(name='huggingface-tokenizers')` |
 | `instructor` | 1.0.0 | Structured LLM outputs validated with Pydantic. | `skill_view(name='instructor')` |
 | `lambda-labs-gpu-cloud` | 1.0.0 | On-demand GPU cloud instances for ML training. | `skill_view(name='lambda-labs-gpu-cloud')` |
 | `llava` | 1.0.0 | Vision-language chat: VQA, captioning, image dialogue. | `skill_view(name='llava')` |
