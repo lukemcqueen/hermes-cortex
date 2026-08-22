@@ -13,6 +13,7 @@ Usage:
     adversarial-verify.py --dir <path> --level A2
     adversarial-verify.py --dir <path> --level A2 --gate
     adversarial-verify.py --file <path> --level A4 --gate
+    adversarial-verify.py --dir <path> --level A6   (sweeps .py AND .sh)
 
 Maturity Levels:
     A1 — Attack Surface Enumeration (static analysis)
@@ -20,6 +21,8 @@ Maturity Levels:
     A3 — A2 + State Corruption + Dependency Sabotage detection
     A4 — A3 + Concurrency races + Invariant violations + Property templates
     A5 — A4 (evidence packaging via --output)
+    A6 — A5 + False-Done Detection (swallowed failures, stderr
+          suppression, bare excepts, verify functions with no failure path)
 
 Exit codes:
     0 — No adversarial findings
@@ -386,7 +389,9 @@ def detect_static_security_patterns(file_path: str, lines: list[str]) -> list[di
                         "line": lineno,
                         "code": stripped.strip()[:120],
                     })
-            except re.error:
+            except re.error as _re_err:
+                print(f"    [adversarial-verify] skipped invalid regex in {file_path}: {_re_err}",
+                      file=sys.stderr)
                 continue  # never let a bad pattern crash the gate
 
     # f-string SQL: flag only when the f-string interpolates a NON-constant.
@@ -879,6 +884,172 @@ def generate_property_checks(file_path: str, lines: list[str]) -> list[dict]:
     return findings
 
 
+# ── False-Done Detection (A6) ─────────────────────────────────────
+
+# Commands that legitimately suppress stderr as probes — NOT false-done.
+_FD_PROBE_RE = re.compile(
+    r"^\s*(?:sudo\s+)?(?:grep|egrep|fgrep|which|command\s+-[vV]\b|type\b|test\b|\[|"
+    r"lsattr|stat\b|find\b|head\b|tail\b|wc\b|diff\b|cmp\b|pgrep|pidof|"
+    r"curl\s+-\w*[sf]|wget\s+-q|git\s+status|git\s+diff\b)",
+    re.IGNORECASE,
+)
+
+# P1 — a failed command explicitly discarded: `cmd || true`, `cmd || :`, `cmd || exit 0`
+_FD_SWALLOWED_RE = re.compile(r"\|\|\s*(true|:|exit\s+0)\s*(?:#.*)?$")
+
+# P2 — stderr thrown away on a command that is NOT a probe and NOT rescued
+_FD_STDERR_RE = re.compile(r"2\s*>\s*/dev/null")
+
+# Text-processing / system-probe context — `2>/dev/null` there is stderr-noise
+# hygiene (grep "Binary file matches", probe fallbacks), not error hiding.
+_FD_BENIGN_CONTEXT_RE = re.compile(
+    r"\b(grep|egrep|fgrep|sed|awk|echo|printf|cut|tr|sort|uniq|wc|head|tail|"
+    r"hostname|getent|uname|whoami|date|basename|dirname|rev-parse)\b",
+)
+
+# Failure-critical commands — suppressing THEIR stderr hides real errors.
+_FD_CRITICAL_CMD_RE = re.compile(
+    r"\b(cp|mv|rm|mkdir|touch|chmod|chown|ln|systemctl|service|apt|apt-get|pip|pip3|"
+    r"docker|podman|rsync|python3|python|node|npm|git|curl|wget|ssh|scp|tar|gzip|gunzip|"
+    r"kill|pkill|killall|mount|umount|dd|tee|crontab|useradd|usermod|groupadd)\b",
+)
+
+# P3 — bare except with an empty body (inline: `except X: pass`)
+_FD_BARE_EXCEPT_RE = re.compile(r"^\s*except\b[^:]*:\s*(?:pass|continue|break|\.\.\.)?\s*(?:#.*)?$")
+
+_FD_EMPTY_BODY_LINE_RE = re.compile(r"^\s*(?:pass|continue|break|\.\.\.)\s*(?:#.*)?$")
+_FD_EXCEPT_LOG_RE = re.compile(r"\b(logger|logging|print|traceback|warnings)\.|raise\b")
+_FD_VERIFY_NAME_RE = re.compile(r"^(?:verify|check|validate|confirm|ensure|audit)", re.IGNORECASE)
+_FD_FAILURE_INDICATOR_RE = re.compile(
+    r"\bassert\b|\breturn\s+False\b|\braise\b|==\s*False|\bis\s+False\b|"
+    r"\b!=\b|\bis\s+not\b|\bsys\.exit\b|\bexit\s*\(|\bif\s+|\belif\b|\bexcept\b",
+)
+
+
+def detect_false_done_patterns(file_path: str, lines: list[str]) -> list[dict]:
+    """Detect A6 false-done antipatterns — code that CLAIMS success but
+    structurally cannot fail or explicitly discards failure.
+
+    Four patterns:
+      P1 swallowed failure   — `cmd || true` / `|| :` / `|| exit 0` (high)
+      P2 stderr suppression  — `2>/dev/null` on a non-probe command (medium)
+      P3 bare except         — `except: pass` silently eats errors (high)
+      P4 verify-no-fail-path — a verify/check function with no failure
+                               path: no assert, no return False, no raise,
+                               no branch — it can ONLY report success (medium)
+
+    Probe commands (grep -q, which, test, lsattr, ...) are exempt from
+    P1/P2: suppressing stderr there is standard practice, not false-done.
+    """
+    findings: list[dict] = []
+    # P1/P2 — shell-level failure discarding
+    for lineno, raw in enumerate(lines, 1):
+        line = raw.rstrip("\n")
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
+        is_probe = bool(_FD_PROBE_RE.match(stripped))
+        p1 = _FD_SWALLOWED_RE.search(line)
+        # `$(cmd || true)` captures are an explicit empty-on-failure fallback —
+        # exempt. Only standalone discarded failures (`rm -rf x || true`) fire.
+        if p1 and not is_probe and "$(" not in line[: p1.start()]:
+            findings.append({
+                "finding_id": next_finding_id(),
+                "technique": "false-done",
+                "pattern": "p1-swallowed-failure",
+                "severity": "high",
+                "detail": ("command failure explicitly discarded "
+                           f"({p1.group(1).strip()}) — a failed run still exits clean"),
+                "file": Path(file_path).name,
+                "line": lineno,
+                "code": stripped[:120],
+            })
+            continue  # a rescued line is already accounted for
+        stderr_m = _FD_STDERR_RE.search(line)
+        if stderr_m and not is_probe and "||" not in line:
+            before = line[: stderr_m.start()]
+            if _FD_BENIGN_CONTEXT_RE.search(before) or not _FD_CRITICAL_CMD_RE.search(before):
+                continue  # text-processing hygiene / non-critical command
+            # Condition context (`if ! cmd ...`, `while cmd ...`) or a `&&`
+            # chain consumes the exit code — the failure is handled, not silent.
+            if re.match(r"^\s*(if|elif|while|until|!)\b", stripped) or "&&" in before:
+                continue
+            findings.append({
+                "finding_id": next_finding_id(),
+                "technique": "false-done",
+                "pattern": "p2-stderr-suppressed",
+                "severity": "medium",
+                "detail": "stderr discarded (2>/dev/null) on a failure-critical "
+                          "command with no rescue — errors become invisible; "
+                          "surface them with explicit exit-code checks",
+                "file": Path(file_path).name,
+                "line": lineno,
+                "code": stripped[:120],
+            })
+    # P3 — bare except with empty body
+    for lineno, raw in enumerate(lines, 1):
+        line = raw.rstrip("\n")
+        stripped = line.strip()
+        m = _FD_BARE_EXCEPT_RE.match(line)
+        if not m:
+            continue
+        if _FD_EXCEPT_LOG_RE.search(line):
+            continue  # logs/re-raises — not silent
+        inline_empty = bool(m.group(1)) if m.lastindex else False
+        if not inline_empty:
+            # look at the next non-empty line for an empty body
+            nxt = ""
+            for j in range(lineno, len(lines)):
+                candidate = lines[j].strip()
+                if candidate:
+                    nxt = candidate
+                    break
+            if not _FD_EMPTY_BODY_LINE_RE.match(nxt):
+                continue
+            if _FD_EXCEPT_LOG_RE.search(nxt):
+                continue
+        findings.append({
+            "finding_id": next_finding_id(),
+            "technique": "false-done",
+            "pattern": "p3-bare-except",
+            "severity": "high",
+            "detail": "bare except with empty body silently swallows errors — "
+                      "a failure is reported as success",
+            "file": Path(file_path).name,
+            "line": lineno,
+            "code": stripped[:120],
+        })
+    # P4 — verification functions with no failure path
+    for body in _func_bodies(lines):
+        name = body["name"]
+        if not _FD_VERIFY_NAME_RE.match(name):
+            continue
+        text = body["text"]
+        # drop a leading docstring if present
+        body_lines = [ln for ln in text.splitlines() if ln.strip()]
+        if len(body_lines) < 2:
+            continue
+        if body_lines[0].strip().startswith(('"""', "'''")) and len(body_lines) >= 2:
+            body_lines = body_lines[1:]
+        if not body_lines:
+            continue
+        core = "\n".join(body_lines)
+        if _FD_FAILURE_INDICATOR_RE.search(core):
+            continue
+        findings.append({
+            "finding_id": next_finding_id(),
+            "technique": "false-done",
+            "pattern": "p4-verify-no-fail-path",
+            "severity": "medium",
+            "detail": (f"'{name}()' has no failure path — no assert, return False, raise, "
+                       "or branch; it can only report success"),
+            "file": Path(file_path).name,
+            "line": body["start"],
+            "code": body_lines[0][:120],
+        })
+    return findings
+
+
 # ── Level dispatch ────────────────────────────────────────────────
 
 def run_level(filepath: str, level: str) -> list[dict]:
@@ -888,6 +1059,8 @@ def run_level(filepath: str, level: str) -> list[dict]:
     A2: fuzz + cheat + static OWASP patterns.
     A3: A2 + state corruption + dependency sabotage.
     A4/A5: A3 + concurrency + invariants + property templates.
+    A6: A5 + false-done detection (swallowed failures, stderr suppression,
+        bare excepts, verification functions with no failure path).
     """
     findings: list[dict] = []
     try:
@@ -912,10 +1085,12 @@ def run_level(filepath: str, level: str) -> list[dict]:
         findings.extend(detect_static_security_patterns(filepath, lines))
     if level in ("A3", "A4", "A5"):
         findings.extend(detect_state_corruption_patterns(filepath, lines))
-    if level in ("A4", "A5"):
+    if level in ("A4", "A5", "A6"):
         findings.extend(detect_concurrency_patterns(filepath, lines))
         findings.extend(detect_invariant_patterns(filepath, lines))
         findings.extend(generate_property_checks(filepath, lines))
+    if level in ("A6",):
+        findings.extend(detect_false_done_patterns(filepath, lines))
     return findings
 
 
@@ -925,7 +1100,7 @@ def main():
     parser = argparse.ArgumentParser(description="Adversarial Verification CLI")
     parser.add_argument("--file", "-f", help="File to analyze")
     parser.add_argument("--dir", "-d", help="Directory to analyze (all .py files)")
-    parser.add_argument("--level", "-l", choices=["A0", "A1", "A2", "A3", "A4", "A5"],
+    parser.add_argument("--level", "-l", choices=["A0", "A1", "A2", "A3", "A4", "A5", "A6"],
                         default="A1", help="Adversarial maturity level (default: A1)")
     parser.add_argument("--json", action="store_true", help="JSON output")
     parser.add_argument("--gate", action="store_true",
@@ -942,9 +1117,12 @@ def main():
     if args.file:
         files.append(args.file)
     if args.dir:
+        # A6 sweeps shell scripts too — P1/P2 (|| true, 2>/dev/null) live
+        # in .sh code; A1-A5 keep the historical .py-only behavior.
+        suffixes = (".py", ".sh") if args.level == "A6" else (".py",)
         for root, _, filenames in os.walk(args.dir):
             for fn in filenames:
-                if fn.endswith(".py") and not fn.startswith("__"):
+                if fn.endswith(suffixes) and not fn.startswith("__"):
                     files.append(os.path.join(root, fn))
 
     if not files:
@@ -983,7 +1161,9 @@ def main():
         try:
             with open(filepath, errors="replace") as f:
                 lines = f.readlines()
-        except IOError:
+        except IOError as _io_err:
+            print(f"    [adversarial-verify] skipped unreadable file {filepath}: {_io_err}",
+                  file=sys.stderr)
             continue
 
         level_findings = run_level(filepath, args.level)

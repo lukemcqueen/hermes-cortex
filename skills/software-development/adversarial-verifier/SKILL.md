@@ -37,8 +37,9 @@ Adversarial verification asks: *"How can I prove this code wrong?"*
 | **A3** | State Sabotage | A2 + state corruption + dependency sabotage | ~25K |
 | **A4** | Full Adversarial | A3 + concurrency + invariants + property-based | ~50K |
 | **A5** | Certified | A4 + evidence packaging + regression test seeding | ~75K |
+| **A6** | False-Done Audit | A5 + swallowed-failure / bare-except / verify-no-fail-path detection; `--dir` sweeps `.py` AND `.sh` | ~90K |
 
-**Default: A2** for standard changes. Use A4 for security-critical. Use A5 for F3 (unattended) agent output.
+**Default: A2** for standard changes. Use A4 for security-critical. Use A5 for F3 (unattended) agent output. Use **A6** when auditing a script/dir for false-done claims (report-only; not wired into any gate).
 
 ## Overview: The 4-Phase Loop
 
@@ -80,6 +81,7 @@ python3 ~/.hermes-cortex/scripts/adversarial-verify.py --file <path> --level A1
 - `A3` — state corruption + dependency sabotage patterns: `.commit()/.flush()/.save()` with no error handling in the enclosing function (medium), `requests/httpx/aiohttp/urllib` calls with no `timeout=` (medium), `subprocess` with no `timeout=` (low)
 - `A4` — concurrency + invariants + property templates: shared mutable global in a threaded file with no lock (high — gate blocker), check-then-delete TOCTOU (medium), division by a param with no zero-guard (medium), bare dict access on a param (low), property-based templates for pure functions (info)
 - `A5` — same as A4; evidence packaging via `--output`
+- `A6` — same as A5; false-done detection: `cmd || true` / `|| :` / `|| exit 0` standalone (high), `2>/dev/null` on failure-critical commands with no rescue (medium), bare `except: pass` (high), verify/check/validate functions with no failure path (medium). Probe commands (`grep -q`, `which`, `lsattr`, `if`-condition probes, `&&` chains, `$(...)` captures with fallback) are exempt — the exit code is consumed or the fallback is explicit.
 
 Run the appropriate level:
 ```bash
