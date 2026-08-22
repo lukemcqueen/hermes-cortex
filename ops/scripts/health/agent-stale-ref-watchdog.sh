@@ -57,26 +57,57 @@ fi
 log ""
 
 # 3. Check cron scripts deployed to ~/.hermes/scripts exist
+#    Derived from LIVE cron definitions (~/.hermes/cron/jobs.json) so the
+#    check covers every registered job on THIS host (incl. manage/ and
+#    orch-* paths) without hardcoding drift. Falls back to a static list
+#    only if jobs.json is unreadable. Report-only: never deletes.
 log "--- Cron deploy layer (~/.hermes/scripts) ---"
-CRON_SCRIPTS=(
-  "agent-ip-submission.sh"
-  "agent-learning-collector.py"
-  "agent-message-handler.py"
-  "agent-remediate-apply.py"
-  "agent-auto-save-sessions.py"
-  "agent-collect-skills.sh"
-  "agent-cron-quality-watchdog.py"
-  "agent-governance-auditor.py"
-  "agent-langfuse-health-watchdog.py"
-  "agent-llm-judge-scorer.py"
-  "agent-memory-to-brain-sync.py"
-  "agent-model-health-watchdog.py"
-  "agent-nginx-threat-pipeline.sh"
-  "agent-secret-leak-watchdog.py"
-  "agent-service-recovery.py"
-  "agent-session_cache.py"
-  "agent-system-alert-watchdog.py"
-)
+CRON_JOBS_FILE="$HOME/.hermes/cron/jobs.json"
+CRON_SCRIPTS=()
+if [ -f "$CRON_JOBS_FILE" ]; then
+  while IFS= read -r script; do
+    [ -n "$script" ] && CRON_SCRIPTS+=("$script")
+  done < <(python3 - "$CRON_JOBS_FILE" <<'PYEOF'
+import json, sys
+try:
+    with open(sys.argv[1]) as f:
+        data = json.load(f)
+    jobs = data.get('jobs', []) if isinstance(data, dict) else data
+    seen = set()
+    for j in jobs:
+        s = (j.get('script') or '').strip() if isinstance(j, dict) else ''
+        if s and s not in seen:
+            seen.add(s)
+            print(s)
+except Exception as e:
+    print(f"ERROR: cannot parse {sys.argv[1]}: {e}", file=sys.stderr)
+    sys.exit(1)
+PYEOF
+  )
+  if [ "${#CRON_SCRIPTS[@]}" -eq 0 ]; then
+    log "  WARNING: jobs.json yielded no scripts — falling back to static list"
+  fi
+fi
+if [ "${#CRON_SCRIPTS[@]}" -eq 0 ]; then
+  CRON_SCRIPTS=(
+    "agent-ip-submission.sh"
+    "agent-learning-collector.py"
+    "agent-message-handler.py"
+    "agent-remediate-apply.py"
+    "agent-auto-save-sessions.py"
+    "agent-cron-quality-watchdog.py"
+    "agent-governance-auditor.py"
+    "agent-langfuse-health-watchdog.py"
+    "agent-llm-judge-scorer.py"
+    "agent-memory-to-brain-sync.py"
+    "agent-model-health-watchdog.py"
+    "agent-nginx-threat-pipeline.sh"
+    "agent-secret-leak-watchdog.py"
+    "agent-service-recovery.py"
+    "agent-session_cache.py"
+    "agent-system-alert-watchdog.py"
+  )
+fi
 missing=0
 for script in "${CRON_SCRIPTS[@]}"; do
   if [ ! -f "$HOME/.hermes/scripts/$script" ]; then
@@ -85,9 +116,9 @@ for script in "${CRON_SCRIPTS[@]}"; do
   fi
 done
 if [ "$missing" -eq 0 ]; then
-  log "  All cron scripts present in ~/.hermes/scripts/"
+  log "  All ${#CRON_SCRIPTS[@]} cron scripts present in ~/.hermes/scripts/"
 else
-  log "  $missing cron script(s) missing"
+  log "  $missing of ${#CRON_SCRIPTS[@]} cron script(s) missing"
   EXIT_CODE=1
 fi
 log ""
