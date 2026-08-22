@@ -971,6 +971,18 @@ create_cron "agent-pending-cycle-watchdog" "0 */6 * * *" \
   "" \
   "true"
 
+# Deploy drift-audit (O5-S2) — deployed-vs-repo drift detection daily 07:00
+# (no_agent: mirrors cortex_doctor/checks.py deploy-content + stale-deploy
+#  rules; silent when clean/unchanged — StateTracker-gated)
+create_cron "agent-deploy-drift-audit" "0 7 * * *" \
+  "agent-deploy-drift-audit.py" \
+  "" \
+  "" \
+  "" \
+  "origin" \
+  "" \
+  "true"
+
 
 # Session embedding cache rebuild (weekly Monday 05:00 — universal, loop-governance)
 create_cron "agent-session-cache-build" "0 5 * * 1" \

@@ -67,7 +67,11 @@ def _run(db: str, state_file: str) -> tuple[int, str]:
     env["PYTHONPATH"] = str(SCRIPTS_DIR)
     # Point the StateTracker at an isolated state dir so runs are independent
     env["CORTEX_HOME"] = os.path.dirname(state_file)
+    # StateTracker resolves ~ via $HOME (Path.home()) — isolate it too, or
+    # the test writes the REAL ~/.hermes-cortex/state/<name>.state and
+    # dedup scenarios share fingerprints with live runs (2026-08-22).
     os.makedirs(os.path.dirname(state_file), exist_ok=True)
+    env["HOME"] = os.path.dirname(state_file)
     proc = subprocess.run(
         [sys.executable, str(WATCHDOG)],
         capture_output=True, text=True, env=env, cwd=str(REPO),

@@ -96,6 +96,8 @@
 | `agent-mycortex-dream-monthly` | `0 3 1 * *` | LLM | (prompt) | origin | *(monthly arc — time-lapse + knowledge-gap probe, ~300 words written to `~/brain/<profile>/dreams/`; optional)* |
 | `agent-mycortex-parity` | ~~removed 2026-08-03~~ | no_agent | — | origin | *(S-010 flip-gate watchdog — RETIRED with mycortex; gate closed, parity is now a manual regression fixture only)* |
 | `agent-scoring-activity-watchdog` | `0 14,20 * * *` | no_agent | `agent-scoring-activity-watchdog.py` | origin |
+| `agent-pending-cycle-watchdog` | `0 */6 * * *` | no_agent | `agent-pending-cycle-watchdog.py` | origin | *(O5-S1 — governance PENDING-cycle leak detection, silent when clean; mirrors doctor rules)* |
+| `agent-deploy-drift-audit` | `0 7 * * *` | no_agent | `agent-deploy-drift-audit.py` | origin | *(O5-S2 — deployed-vs-repo drift audit, silent when clean; mirrors doctor deploy-content + stale-deploy rules)* |
 | `agent-session-cache-build` | `0 5 * * 1` | no_agent | `agent-session_cache.py` | origin |
 | `agent-offline-code-index` | `0 5 * * 0` | no_agent | `agent-offline-code-index.sh` | local |
 | `agent-llm-judge-scorer-weekday` | `30 13,20 * * 1-5` | no_agent | `agent-llm-judge-scorer.py` | local |
