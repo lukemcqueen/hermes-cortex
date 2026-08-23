@@ -469,6 +469,9 @@ register "ops/scripts/cost_store.py"               "${CORTEX_DEPLOY_HOME}/script
 register "ops/scripts/install/install-cron-cost-tracking.py" "${CORTEX_DEPLOY_HOME}/scripts/install-cron-cost-tracking.py"
 register "ops/scripts/install/install-lean-index.py" "${CORTEX_DEPLOY_HOME}/scripts/install-lean-index.py"
 
+# O6-S1 MAX_COST guard — per-job cost cap consulted at cron request time
+register "ops/scripts/manage/max_cost_guard.py"    "${CORTEX_DEPLOY_HOME}/scripts/max_cost_guard.py"
+
 # Health monitoring
 register "ops/scripts/change-validate.sh"                  "${CORTEX_DEPLOY_HOME}/scripts/change-validate.sh"
 register "ops/scripts/pre-commit-doc-audit.sh"            "${CORTEX_DEPLOY_HOME}/scripts/pre-commit-doc-audit.sh"

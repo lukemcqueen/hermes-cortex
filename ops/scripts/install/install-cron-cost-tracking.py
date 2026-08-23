@@ -128,6 +128,48 @@ AUDIT_FAIL_NEW = """                "total_tokens": None,
                 "cache_write_tokens": getattr(agent, "session_cache_write_tokens", 0) or 0,
                 "response_silent": False,"""
 
+# ── O6-S1: MAX_COST guard (preflight kill at request time) ──
+# Deploys max_cost_guard.py into the agent cron/ dir and registers a
+# preflight check that refuses a fire when the job's today-spend already
+# meets its p95×headroom cap. Fails open (guard error → allow). Overnight
+# orchestrator jobs (orch-*) are exempt inside the guard itself.
+GUARD_SRC = os.path.join(HERE, "..", "manage", "max_cost_guard.py")
+if not os.path.exists(GUARD_SRC):
+    # Deployed layout: installer + guard sit side by side in CORTEX_DEPLOY_HOME/scripts
+    GUARD_SRC = os.path.join(HERE, "max_cost_guard.py")
+GUARD_DST = os.path.join(HERMES_CRON, "max_cost_guard.py")
+GUARD_PREFLIGHT_MARKER = '("max_cost", lambda: _preflight_check_max_cost(job)),'
+GUARD_PREFLIGHT_OLD = """        ("delivery", lambda: _preflight_check_delivery(job)),
+    ):"""
+GUARD_PREFLIGHT_NEW = """        ("delivery", lambda: _preflight_check_delivery(job)),
+        ("max_cost", lambda: _preflight_check_max_cost(job)),
+    ):"""
+GUARD_FN_MARKER = "def _preflight_check_max_cost(job: dict) -> Optional[str]:"
+GUARD_FN_OLD = """def _preflight_job_config(job: dict, cfg: dict) -> Optional[str]:"""
+GUARD_FN_NEW = """def _preflight_check_max_cost(job: dict) -> Optional[str]:
+    \"\"\"O6-S1: refuse a fire whose job already spent its MAX_COST cap today.
+
+    Consulted at request time (pre-dispatch), before any agent machinery or
+    LLM call is constructed. Fails open: a guard error, missing DB, or
+    insufficient history returns None and the run proceeds. Overnight
+    orchestrator jobs are exempt inside the guard (name prefix).
+    \"\"\"
+    try:
+        from cron.max_cost_guard import should_fire as _max_cost_should_fire
+        _job_id = job.get("id") or job.get("job_id")
+        _job_name = job.get("name")
+        if not _job_id:
+            return None
+        _verdict = _max_cost_should_fire(_job_id, job_name=_job_name)
+        if _verdict.get("decision") == "block":
+            return f"MAX_COST: {_verdict.get('reason')}"
+    except Exception:
+        logger.debug("max_cost preflight raised — failing open", exc_info=True)
+    return None
+
+
+def _preflight_job_config(job: dict, cfg: dict) -> Optional[str]:"""
+
 # ── Patch: cronjob_tools.py imports ────────────────────────
 TOOLS_IMPORT_MARKER = "_COST_STORE = None"
 TOOLS_IMPORT_OLD = """    resume_job,
@@ -272,6 +314,8 @@ _PATCHES = [
     ("scheduler.py (failure)", FAIL_MARKER, FAIL_INSERT_MARKER, FAIL_INSERT),
     ("scheduler.py (audit cache success)", AUDIT_CACHE_MARKER, AUDIT_CACHE_OLD, AUDIT_CACHE_NEW),
     ("scheduler.py (audit cache failure)", AUDIT_FAIL_MARKER, AUDIT_FAIL_OLD, AUDIT_FAIL_NEW),
+    ("scheduler.py (preflight MAX_COST tuple)", GUARD_PREFLIGHT_MARKER, GUARD_PREFLIGHT_OLD, GUARD_PREFLIGHT_NEW),
+    ("scheduler.py (preflight MAX_COST fn)", GUARD_FN_MARKER, GUARD_FN_OLD, GUARD_FN_NEW),
     ("cronjob_tools.py (import)", TOOLS_IMPORT_MARKER, TOOLS_IMPORT_OLD, TOOLS_IMPORT_NEW),
     ("cronjob_tools.py (facade)", FACADE_MARKER, FACADE_OLD, FACADE_NEW),
     ("cronjob_tools.py (format)", FORMAT_MARKER, FORMAT_OLD, FORMAT_NEW),
@@ -339,13 +383,13 @@ def do_install(force=False):
         print(f"  FAIL cost_store.py not found at {src}")
         return False
 
-    print("\nStep 2: Patch cron/scheduler.py")
+    print("Step 2: Patch cron/scheduler.py")
     sched_path = os.path.join(HERMES_CRON, "scheduler.py")
     if not os.path.exists(sched_path):
         print(f"  FAIL scheduler.py not found at {sched_path}")
         return False
 
-    for name, marker, old, new in _PATCHES[:5]:
+    for name, marker, old, new in _PATCHES[:7]:
         _patch(name, marker, old, new, sched_path, force)
 
     print("\nStep 3: Patch tools/cronjob_tools.py")
@@ -354,8 +398,17 @@ def do_install(force=False):
         print(f"  FAIL cronjob_tools.py not found at {tools_path}")
         return False
 
-    for name, marker, old, new in _PATCHES[5:]:
+    for name, marker, old, new in _PATCHES[7:]:
         _patch(name, marker, old, new, tools_path, force)
+
+    print("Step 4: Deploy max_cost_guard.py (O6-S1)")
+    guard_dst = os.path.join(HERMES_CRON, "max_cost_guard.py")
+    if os.path.exists(GUARD_SRC):
+        shutil.copy2(GUARD_SRC, guard_dst)
+        print(f"  OK   {guard_dst}")
+    else:
+        print(f"  FAIL max_cost_guard.py not found at {GUARD_SRC}")
+        return False
 
     print("\n✓ Cron cost tracking deployed.")
     print("  Costs captured on next cron tick.")
@@ -383,6 +436,10 @@ def do_status():
         print(f"  {'OK' if 'Record partial token usage on failure' in sched else 'MISS'} scheduler: failure hook")
         _audit_cache_ok = 'session_cache_read_tokens", 0) or 0,' in sched
         print(f"  {'OK' if _audit_cache_ok else 'MISS'} scheduler: audit cache split")
+        _guard_ok = 'def _preflight_check_max_cost(job: dict)' in sched
+        print(f"  {'OK' if _guard_ok else 'MISS'} scheduler: MAX_COST preflight (O6-S1)")
+        _guard_reg = '("max_cost", lambda: _preflight_check_max_cost(job)),' in sched
+        print(f"  {'OK' if _guard_reg else 'MISS'} scheduler: MAX_COST preflight registered")
 
     # rate_version migration (O1-S1) — present in schema after first _get_db() call
     # Note: CRON_DIR is ~/.hermes/cron (cron.jobs), NOT the agent source tree.
@@ -404,6 +461,12 @@ def do_status():
         print(f"  {'OK' if 'last_run_cost' in tools else 'MISS'} cronjob_tools: format enrichment")
         costs_action_text = 'normalized == "costs"'
         print(f"  {'OK' if costs_action_text in tools else 'MISS'} cronjob_tools: costs action")
+
+    guard_dst = os.path.join(HERMES_CRON, "max_cost_guard.py")
+    if os.path.exists(guard_dst):
+        print(f"  OK   max_cost_guard.py: deployed (O6-S1)")
+    else:
+        print(f"  MISS max_cost_guard.py: not deployed (O6-S1)")
 
 
 def do_uninstall():
