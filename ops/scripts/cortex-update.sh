@@ -525,6 +525,7 @@ register "ops/scripts/health/ch-truncate-system-logs.sh"        "${CORTEX_DEPLOY
 # Eval harness (agent reliability patterns)
 register "ops/scripts/manage/run-evals.py"                "${CORTEX_DEPLOY_HOME}/scripts/run-evals.py"
 register "ops/scripts/manage/analyze-failures.py"         "${CORTEX_DEPLOY_HOME}/scripts/analyze-failures.py"
+register "ops/scripts/manage/fact-retention-eval.py"      "${CORTEX_DEPLOY_HOME}/scripts/fact-retention-eval.py"
 
 # Agent learning sender
 register "ops/scripts/manage/send-agent-learning.sh"      "${CORTEX_DEPLOY_HOME}/scripts/send-agent-learning.sh"
