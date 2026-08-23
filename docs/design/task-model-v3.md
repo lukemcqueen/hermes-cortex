@@ -73,6 +73,57 @@ Worker executes → reports → verified → completed
   (from the agent registry) and dispatches to workers that can actually
   execute; unknown tool needs → orchestrator records the gap in the slice.
 
+### 2.4 Compete mode — parallel candidates, best solution wins (Luke OOB 2026-08-24)
+
+> "In some circumstances, I'd like agents to try 2 different ways and compete
+> with one another — best evaluated solution/development wins. There must be
+> a process that does this, right?"
+
+**Yes — and the fleet already has the evaluation half.** The pattern is
+**parallel candidate generation + deterministic judging**, never "pick the
+prettier answer."
+
+**Existing fleet tooling that makes this possible:**
+- `delegate_task` (parallel batch) — spawn 2+ subagents, each with a
+  *different approach* to the same slice, isolated contexts
+- `adversarial-verifier` — attempts to break each candidate; the one that
+  survives with no critical/high findings wins
+- `golden-parity-harness` — known-answer parity: each candidate must match
+  the golden output; winner = best parity
+- `llm-judge-scorer` — LLM-as-judge *trace quality* scoring (used for
+  evaluating conversation quality, NOT for solution judgment)
+- `eval-harness` — systematic capability evaluation
+
+**The compete protocol (deterministic, consistent with O4 rules):**
+
+```
+1. Orchestrator marks slice `compete=true` + writes the ACCEPTANCE CRITERIA
+   (tests the winner must pass) and the APPROACH SPECS (2+ distinct
+   approaches, e.g. "path A: build it; path B: buy/integrate").
+2. Orchestrator spawns N subagents in parallel — each gets the same slice +
+   acceptance criteria but a DIFFERENT approach spec (isolated contexts).
+3. Each candidate runs the acceptance tests itself and reports:
+   pass/fail per criterion + evidence (test output, not prose).
+4. Orchestrator (or the verifier) runs adversarial-verify on each candidate
+   — any critical/high finding disqualifies.
+5. Winner = best score on: acceptance criteria met (mandatory) → fewest
+   adversarial findings → lowest cost/tokens (tiebreak) → fastest.
+6. Winner's solution is merged; losers' diffs are archived with a one-line
+   "why not" (they become the next iteration's reference).
+7. The whole compete is logged as a task event (approach A vs B, scores,
+   winner) — the audit trail IS the case-study material.
+```
+
+**Cost guard:** compete mode is opt-in per slice (`compete=true` flag) and
+orchestrator-authorized — it costs 2-3× a single attempt, so it's reserved
+for slices where the approach choice genuinely matters (architecture forks,
+make-vs-buy, refactor-vs-rewrite). Routine slices run single-track.
+
+**The honest rule:** competing candidates must be judged by *executable
+acceptance criteria + adversarial findings + measured cost* — never by "which
+one sounds better." That's the difference between engineering competition and
+a vibes contest.
+
 ---
 
 ## 3. Schema changes (v009 — minimal)
@@ -193,7 +244,8 @@ execute fully, report once. No thrash loops, no re-derivation (SOUL #4).
 | T4 | Daily board digest cron (no_agent, zero-token) + Telegram bot command | Esther |
 | T5 | Orchestrator morning/evening passes (cron prompts) | Esther |
 | T6 | SOUL/AGENTS behavioral updates + fleet deploy | Esther |
-| T7 | Dogfood: run a real engagement (The Client Brand) through the new model; measure | Esther |
+| T7 | Compete mode: `compete=true` flag, parallel-candidate runner (delegate_task + adversarial-verify judge), result logging | Esther |
+| T8 | Dogfood: run a real engagement (The Client Brand) through the new model; measure | Esther |
 
 ## 8. Explicit non-goals
 
@@ -213,4 +265,5 @@ execute fully, report once. No thrash loops, no re-derivation (SOUL #4).
 - [ ] Daily board digest delivers to Telegram (zero-token, coverage-aware)
 - [ ] On-demand board query works via bus
 - [ ] Orchestrator decompose→dispatch→verify loop runs a full The Client Brand slice end-to-end
+- [ ] Compete mode: 2 candidates on one slice → deterministic winner by AC + adversarial findings; loser archived with reason
 - [ ] Doctor green; transition matrix tests pass
