@@ -141,6 +141,7 @@ must be registered in this index.
 | `docs/agent-architecture.md` | **Agent architecture & role model** — orchestrator, backup, server-agent, dev-agent capability matrix |
 | `docs/orch-bus-setup.md` | Agent Bus setup guide — PGMQ queues, auth, fleet wiring (orchestrator-only) |
 | `docs/model-tier-strategy.md` | Model selection strategy — two-model Ollama stack, rationale, tier architecture |
+| `docs/model-migration-o2.md` | **O2 model migration (2026-08-24)** — deepseek-chat → v4-flash: 20/20 agent crons verified migrated, grep + usage_audit evidence, cold-cache watch passed, prompt-stability rules |
 | `docs/health-server-optimization.md` | Health vector server — keepalive, buffering, nginx config tuning |
 | `docs/orch-bus-setup.md` | **Orchestrator bus setup** — dedicated bus server for Moses |
 | `docs/orch-backup-bus-setup.md` | **Orchestrator backup bus** — Esther warm-standby bus failover |

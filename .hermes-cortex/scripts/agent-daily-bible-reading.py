@@ -120,7 +120,11 @@ def commandments_section(book: str) -> str:
     ])
 
 DEEPSEEK_URL = "https://api.deepseek.com/v1/chat/completions"
-DEEPSEEK_MODEL = "deepseek-chat"
+# O2 migration (2026-08-24): pinned to deepseek-v4-flash with reasoning
+# disabled via top-level reasoning_effort:"none" — same non-thinking behavior
+# as the retired deepseek-chat alias, but on the fleet-standard model.
+DEEPSEEK_MODEL = "deepseek-v4-flash"
+DEEPSEEK_REASONING = "none"
 ENV_FILE = HOME / ".hermes" / ".env"
 
 
@@ -358,6 +362,7 @@ def _call_deepseek(prompt: str, max_tokens: int = 4096, temperature: float = 0.7
         "messages": [{"role": "user", "content": prompt}],
         "max_tokens": max_tokens,
         "temperature": temperature,
+        "reasoning_effort": DEEPSEEK_REASONING,
     })
 
     body = ""
@@ -390,12 +395,14 @@ def _call_deepseek(prompt: str, max_tokens: int = 4096, temperature: float = 0.7
 
         if not content:
             # Empty content is not transient here: deepseek reasoning models
-            # (deepseek-v4-flash) burn the whole token budget on
-            # reasoning_content and return content="" with finish=length.
-            # Bounded retry ONCE (was unbounded recursion — a persistent empty
-            # response looped until the cron timeout, then silently dropped
-            # the brain page while SOUL.md kept the entry → inconsistent state,
-            # 2026-08-10). Use deepseek-chat (non-reasoning) to avoid the issue.
+            # burn the whole token budget on reasoning_content and return
+            # content="" with finish=length. Since O2 (2026-08-24) the script
+            # pins deepseek-v4-flash WITH reasoning_effort:"none" (top-level),
+            # verified to suppress reasoning_content — so empty content should
+            # no longer occur. Bounded retry ONCE remains as a safety net
+            # (was unbounded recursion — a persistent empty response looped
+            # until the cron timeout, then silently dropped the brain page
+            # while SOUL.md kept the entry → inconsistent state, 2026-08-10).
             print(f"⚠️  Empty response from API — retrying once", file=sys.stderr)
             time.sleep(5)
             if _retried:
