@@ -313,6 +313,50 @@ def _core_skills() -> tuple[bool, str]:
     return True, f"all {len(always)} always-skills present and loadable"
 
 
+@grader("fact_retention")
+def _fact_retention() -> tuple[bool, str]:
+    """O7-S2 — compaction never silently truncates protected regions.
+
+    Runs ops/scripts/manage/fact-retention-eval.py under the hermes-agent venv
+    python (the system python3 cannot import the compressor). The probe builds
+    a synthetic conversation with planted facts in head/middle/tail/user
+    regions, compresses it with the REAL ContextCompressor.compress() and a
+    stubbed summarizer (no API calls), and asserts head/tail/user facts
+    survive verbatim + a summary marker is inserted. Middle retention is
+    informational (lossy by design).
+    """
+    probe = SCRIPTS_DIR / "fact-retention-eval.py"
+    if not probe.exists():
+        probe = HOME / "hermes-cortex" / "ops" / "scripts" / "manage" / "fact-retention-eval.py"
+    if not probe.exists():
+        return False, f"fact-retention-eval.py not found ({probe})"
+    venv_py = HOME / ".hermes" / "hermes-agent" / "venv" / "bin" / "python3"
+    if not venv_py.exists():
+        return False, f"hermes-agent venv python not found ({venv_py})"
+    rc, out = _run([str(venv_py), str(probe)], timeout=90)
+    # The probe may emit logger warnings (stderr) around its JSON (stdout);
+    # scan lines from the end for the first JSON-looking line.
+    report = None
+    for line in reversed(out.strip().splitlines()):
+        line = line.strip()
+        if line.startswith("{"):
+            try:
+                report = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            break
+    if report is None:
+        return False, f"fact-retention probe JSON parse failed (rc={rc}): {out.strip()[-300:]}"
+    if not report.get("passed"):
+        detail = report.get("detail", "no detail")
+        return False, f"fact-retention FAILED: {detail}"
+    ret = report.get("retention", {})
+    return True, (
+        "compaction fact-retention OK — head {head}, tail {tail}, user {user} "
+        "verbatim, summary marker present (middle {middle})".format(**ret)
+    )
+
+
 # ── Suite / task execution ───────────────────────────────────────
 
 def load_eval_definition(eval_name: str) -> dict:

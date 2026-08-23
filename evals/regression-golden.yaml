@@ -54,3 +54,14 @@ tasks:
       - "frontmatter parses as YAML"
     grading:
       deterministic: ["core_skills"]
+
+  - id: fact-retention
+    description: "O7-S2 — compaction never silently truncates protected head/tail/user regions (summary marker inserted, no silent deletion)"
+    input: "Run fact-retention-eval.py under the hermes-agent venv; assert head/tail/user facts survive verbatim and a compaction summary row is present"
+    expected:
+      - "head facts survive verbatim"
+      - "tail facts survive verbatim"
+      - "last actionable user turns survive verbatim"
+      - "compaction summary marker present in output"
+    grading:
+      deterministic: ["fact_retention"]
