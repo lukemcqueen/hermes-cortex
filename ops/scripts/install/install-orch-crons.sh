@@ -142,6 +142,7 @@ if $UNINSTALL; then
     "orch-skill-lifecycle" \
     "orch-skill-evaluate" \
     "orch-skill-report-request" \
+    "orch-task-board-digest" \
     "orch-backlog-driver"; do
     remove_cron "$job" 2>/dev/null || true
   done
@@ -412,6 +413,18 @@ create_cron "orch-health-report-saturday" "0 11,17 * * 6" \
 # (no_agent: script output IS the report — zero LLM token cost)
 create_cron "orch-daily-cost-report" "0 8 * * *" \
   "orch-daily-cost-report.py" \
+  "" \
+  "" \
+  "" \
+  "telegram:${TELEGRAM_HOME_CHANNEL}" \
+  "" \
+  "true"
+
+# Daily task board digest — task model v3 visibility (T4): open counts,
+# per-agent in_progress, review queue, claimable slices (no_agent, zero
+# tokens). Delivers to the orchestrator's home channel (Luke + Amy).
+create_cron "orch-task-board-digest" "30 8 * * *" \
+  "orch-task-board-digest.py" \
   "" \
   "" \
   "" \
