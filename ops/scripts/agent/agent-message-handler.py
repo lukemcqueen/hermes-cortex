@@ -316,6 +316,30 @@ def task_stale_sweep(max_hours: float = 1.0) -> int:
                         if task_transition_by_correlation(corr, "completed",
                                                           reason="stale-pending"):
                             swept += 1
+
+        # Arm 3 (task model v3 T3): review status older than the threshold
+        # → back to in_progress with reason='verify-stale'. A slice sitting
+        # in review means the orchestrator's verify pass missed it (cron
+        # down, agent busy). Returning it to in_progress re-queues it for
+        # the worker (it will re-report or the orchestrator's next pass
+        # verifies) — never silently completed, never deleted.
+        sql3 = (
+            "SELECT id FROM tasks.tasks "
+            "WHERE status = 'review' "
+            "AND status_changed_at < now() - make_interval(hours => ?::int) "
+            "LIMIT 20;"
+        )
+        raw3 = tdb.psql(tdb.build_query(sql3, [max_hours * 24]))  # 24h default
+        for tid in (ln.strip() for ln in raw3.splitlines() if ln.strip()):
+            try:
+                note = "verify-stale: sweep re-queued after 24h in review"
+                ok = tdb.psql(tdb.build_query(
+                    "SELECT tasks.verify_slice(?::uuid, false, ?);", [tid, note]))
+                if ok.strip() == "t":
+                    swept += 1
+            except SystemExit:
+                pass  # transition refused (already moved) — non-fatal
+
         if swept:
             log(f"🧹 stale sweep: closed {swept} inbox task(s) "
                 f"(> {max_hours}h)")
