@@ -25,6 +25,7 @@ fi
 
 PSQL="docker exec ${CONTAINER} psql -U mycortex -d ${TEST_DB} -t -A"
 PSQL_SUPER="docker exec ${CONTAINER} psql -U mycortex -d mycortex -t -A"
+PSQL_READER="docker exec ${CONTAINER} psql -U mycortex_reader_esther -d ${TEST_DB} -t -A"
 
 P=0; F=0
 pass() { P=$((P+1)); echo "  ✅ $1"; }
@@ -341,13 +342,14 @@ PAUSED_CNT=$($PSQL -c "SELECT count(*) FROM tasks.tasks WHERE status='paused';" 
 
 echo ""
 echo "═══ AC-L1-13: transition matrix — spot checks ═══"
-# in_progress → pending ILLEGAL
+# in_progress → pending LEGAL since v009 (unclaim feature); the check below
+# asserts the unclaim arc is now admitted (was ILLEGAL pre-v009)
 MAT_ID=$($PSQL -c "SELECT tasks.task_upsert(p_content=>'L1 matrix', p_created_by=>'esther');" 2>/dev/null | head -1)
 $PSQL -c "SELECT tasks.task_upsert(p_id=>'${MAT_ID}', p_status=>'in_progress');" >/dev/null 2>&1
 if $PSQL -c "SELECT tasks.task_upsert(p_id=>'${MAT_ID}', p_status=>'pending');" >/dev/null 2>&1; then
-  fail "in_progress → pending accepted"
+  pass "in_progress → pending accepted (v009 unclaim arc)"
 else
-  pass "in_progress → pending rejected (matrix)"
+  fail "in_progress → pending rejected (v009 should admit it)"
 fi
 # cancelled is terminal
 $PSQL -c "SELECT tasks.task_upsert(p_id=>'${MAT_ID}', p_status=>'cancelled');" >/dev/null 2>&1
@@ -479,10 +481,14 @@ WAI_ID=$($PSQL -c "SELECT tasks.task_upsert(p_content=>'L1 waiting', p_created_b
 WAI_COL=$($PSQL -c "SELECT \"column\" IS NULL FROM tasks.tasks WHERE id='${WAI_ID}';" 2>/dev/null)
 [ "$WAI_COL" = "t" ] && pass "waiting derives column=NULL" || fail "waiting column not NULL (got: $WAI_COL)"
 # transition matrix: pending→blocked, blocked→in_progress, waiting→in_progress,
-# blocked→waiting, in_progress→blocked; blocked→pending ILLEGAL
+# blocked→waiting, in_progress→blocked; blocked→pending ILLEGAL (v009 keeps it)
 $PSQL -c "SELECT tasks.task_upsert(p_id=>'${BLK_ID}', p_status=>'in_progress');" >/dev/null 2>&1
 BLK_RES=$($PSQL -c "SELECT status FROM tasks.tasks WHERE id='${BLK_ID}';" 2>/dev/null)
 [ "$BLK_RES" = "in_progress" ] && pass "blocked → in_progress resume ✓" || fail "blocked resume failed (status=$BLK_RES)"
+# re-establish blocked (in_progress → blocked is legal) so the next check
+# genuinely tests blocked → pending (not in_progress → pending, which v009
+# now admits via the unclaim arc)
+$PSQL -c "SELECT tasks.task_upsert(p_id=>'${BLK_ID}', p_status=>'blocked');" >/dev/null 2>&1
 if $PSQL -c "SELECT tasks.task_upsert(p_id=>'${BLK_ID}', p_status=>'pending');" >/dev/null 2>&1; then
   fail "blocked → pending accepted"
 else
@@ -569,6 +575,53 @@ AR_ARCHIVED=$($PSQL -c "SELECT tasks.task_archive_old(p_created_by=>'esther');" 
 [ "$AR_ARCHIVED" -ge 1 ] && pass "archive_old archived rows (n=$AR_ARCHIVED)" || fail "archive_old returned $AR_ARCHIVED (expected ≥1)"
 AR_LEFT=$($PSQL -c "SELECT count(*) FROM tasks.tasks WHERE id IN ('${AR_STORY}','${AR_S1}');" 2>/dev/null)
 [ "$AR_LEFT" = "0" ] && pass "story + slices archived children-first (no FK error)" || fail "rows remain after archive (n=$AR_LEFT) — FK blocked?"
+
+echo ""
+echo "═══ AC-L1-22: v009 — task model v3 (claim/report/verify) ═══"
+# 1. plan column exists
+PLAN_OK=$($PSQL -c "SELECT count(*) FROM information_schema.columns WHERE table_schema='tasks' AND table_name='tasks' AND column_name='plan';" 2>/dev/null)
+[ "$PLAN_OK" = "1" ] && pass "plan column exists" || fail "plan column missing (n=$PLAN_OK)"
+# 2. review status exists in CHECK
+REVIEW_OK=$($PSQL -c "SELECT count(*) FROM pg_constraint WHERE conname='tasks_status_check';" 2>/dev/null)
+[ "$REVIEW_OK" -ge 1 ] && pass "status CHECK constraint present" || fail "status check missing"
+# 3. claim_slice via READER role (self-only guard means superuser must NOT claim)
+V3_STORY=$($PSQL -c "SELECT tasks.task_upsert(p_content=>'L1 v3 story', p_created_by=>'esther', p_kind=>'story');" 2>/dev/null | head -1)
+V3_S1=$($PSQL -c "SELECT tasks.task_upsert(p_content=>'L1 v3 slice', p_created_by=>'esther', p_kind=>'slice', p_parent_id=>'${V3_STORY}');" 2>/dev/null | head -1)
+CLAIM_AS_SUPER=$($PSQL -c "SELECT tasks.claim_slice('${V3_S1}', 'esther');" 2>/dev/null)
+[ "$CLAIM_AS_SUPER" = "f" ] && pass "superuser claim refused (self-only guard: profile=mycortex)" || fail "superuser claim accepted ($CLAIM_AS_SUPER)"
+CLAIM_OK=$($PSQL_READER -c "SELECT tasks.claim_slice('${V3_S1}', 'esther');" 2>/dev/null)
+[ "$CLAIM_OK" = "t" ] && pass "claim_slice succeeded via reader (pending→in_progress)" || fail "claim_slice failed (got $CLAIM_OK)"
+CLAIM_ST=$($PSQL_READER -c "SELECT status||':'||COALESCE(assignee,'-') FROM tasks.tasks WHERE id='${V3_S1}';" 2>/dev/null)
+[ "$CLAIM_ST" = "in_progress:esther" ] && pass "claimed slice is in_progress by esther" || fail "claim state wrong ($CLAIM_ST)"
+# 4. double-claim fails (already in_progress)
+CLAIM2=$($PSQL_READER -c "SELECT tasks.claim_slice('${V3_S1}', 'esther');" 2>/dev/null)
+[ "$CLAIM2" = "f" ] && pass "double-claim refused" || fail "double-claim accepted ($CLAIM2)"
+# 5. cross-agent claim refused (claiming as titus for titus on an esther slice: allowed by design — any agent may claim ANY pending slice; but a claimed one must not be re-claimed)
+CLAIM_OTHER=$($PSQL_READER -c "SELECT tasks.claim_slice('${V3_S1}', 'titus');" 2>/dev/null)
+[ "$CLAIM_OTHER" = "f" ] && pass "already-claimed slice cannot be re-claimed (single claimer)" || fail "re-claim accepted ($CLAIM_OTHER)"
+# 6. unclaim: in_progress → pending, clears assignee (only own work — esther unclaims her own)
+UNCLAIM_OK=$($PSQL_READER -c "SELECT tasks.unclaim_slice('${V3_S1}');" 2>/dev/null)
+[ "$UNCLAIM_OK" = "t" ] && pass "unclaim succeeded" || fail "unclaim failed ($UNCLAIM_OK)"
+UNCLAIM_ST=$($PSQL_READER -c "SELECT status||':'||COALESCE(assignee,'-') FROM tasks.tasks WHERE id='${V3_S1}';" 2>/dev/null)
+[ "$UNCLAIM_ST" = "pending:-" ] && pass "unclaimed slice back to pending, assignee cleared" || fail "unclaim state wrong ($UNCLAIM_ST)"
+# 7. report_done: in_progress → review (re-claim first)
+$PSQL_READER -c "SELECT tasks.claim_slice('${V3_S1}', 'esther');" >/dev/null 2>&1
+REPORT_OK=$($PSQL_READER -c "SELECT tasks.report_done('${V3_S1}', 'tests pass');" 2>/dev/null)
+[ "$REPORT_OK" = "t" ] && pass "report_done succeeded (in_progress→review)" || fail "report_done failed ($REPORT_OK)"
+REPORT_ST=$($PSQL_READER -c "SELECT status FROM tasks.tasks WHERE id='${V3_S1}';" 2>/dev/null)
+[ "$REPORT_ST" = "review" ] && pass "slice in review status" || fail "review state wrong ($REPORT_ST)"
+# 8. orchestrator verify: review → completed (esther is an orchestrator)
+VERIFY_OK=$($PSQL_READER -c "SELECT tasks.verify_slice('${V3_S1}', true, 'approved');" 2>/dev/null)
+[ "$VERIFY_OK" = "t" ] && pass "orchestrator verify_slice succeeded (review→completed)" || fail "verify_slice failed ($VERIFY_OK)"
+VERIFY_ST=$($PSQL_READER -c "SELECT status FROM tasks.tasks WHERE id='${V3_S1}';" 2>/dev/null)
+[ "$VERIFY_ST" = "completed" ] && pass "verified slice completed" || fail "verify state wrong ($VERIFY_ST)"
+# 10. verify-failed path: re-open → report → verify(false) → in_progress
+$PSQL_READER -c "SET tasks.transition_reason = 'reopen'; SELECT tasks.task_upsert(p_id=>'${V3_S1}', p_status=>'in_progress');" >/dev/null 2>&1
+$PSQL_READER -c "SELECT tasks.report_done('${V3_S1}', 'second attempt');" >/dev/null 2>&1
+VERIFY_NO=$($PSQL_READER -c "SELECT tasks.verify_slice('${V3_S1}', false, 'evidence incomplete');" 2>/dev/null)
+[ "$VERIFY_NO" = "t" ] && pass "verify_slice(false) returns true (rejected path)" || fail "verify(false) failed ($VERIFY_NO)"
+VERIFY_NO_ST=$($PSQL_READER -c "SELECT status FROM tasks.tasks WHERE id='${V3_S1}';" 2>/dev/null)
+[ "$VERIFY_NO_ST" = "in_progress" ] && pass "failed verify returns slice to in_progress" || fail "verify-fail state wrong ($VERIFY_NO_ST)"
 
 echo ""
 echo "═══ Summary ═══"
