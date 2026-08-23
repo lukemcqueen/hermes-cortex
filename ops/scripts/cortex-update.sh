@@ -252,6 +252,7 @@ register "ops/scripts/install/install-orch-crons.sh"  "${CORTEX_DEPLOY_HOME}/scr
 register "ops/scripts/install/install-dream-crons.sh" "${CORTEX_DEPLOY_HOME}/scripts/install-dream-crons.sh"
 register "ops/scripts/install/install-provider-timeouts.sh" "${CORTEX_DEPLOY_HOME}/scripts/install-provider-timeouts.sh"
 register "ops/scripts/install/install-model-default.sh" "${CORTEX_DEPLOY_HOME}/scripts/install-model-default.sh"
+register "ops/scripts/install/install-soft-session-cap.sh" "${CORTEX_DEPLOY_HOME}/scripts/install-soft-session-cap.sh"
 register "ops/scripts/install/install-profile-reader-role.sh" "${CORTEX_DEPLOY_HOME}/scripts/install-profile-reader-role.sh"
 register "ops/scripts/install/install-score-hook.sh"       "${CORTEX_DEPLOY_HOME}/scripts/install-score-hook.sh"
 register "ops/scripts/cortex-dogfood.sh" "${CORTEX_DEPLOY_HOME}/scripts/cortex-dogfood.sh"
@@ -2759,6 +2760,15 @@ main() {
   if [[ -f "${CORTEX_DEPLOY_HOME}/scripts/install-model-default.sh" ]]; then
     bash "${CORTEX_DEPLOY_HOME}/scripts/install-model-default.sh" 2>&1 | sed 's/^/    /' || \
       warn "  install-model-default.sh failed (non-fatal)"
+  fi
+
+  # O7-S2 soft session cap (cost story c579ef95) — converges
+  # compression.threshold_tokens to SOFT_SESSION_CAP_TOKENS when set.
+  # UNSET = no-op (control host / value pending Luke) — safe fleet-wide.
+  # Idempotent; no restart needed (compressor reads config per session).
+  if [[ -f "${CORTEX_DEPLOY_HOME}/scripts/install-soft-session-cap.sh" ]]; then
+    bash "${CORTEX_DEPLOY_HOME}/scripts/install-soft-session-cap.sh" 2>&1 | sed 's/^/    /' || \
+      warn "  install-soft-session-cap.sh failed (non-fatal)"
   fi
 
   # ── Clean stale governance locks ─────────────────────────
