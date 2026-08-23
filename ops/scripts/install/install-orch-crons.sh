@@ -143,6 +143,8 @@ if $UNINSTALL; then
     "orch-skill-evaluate" \
     "orch-skill-report-request" \
     "orch-task-board-digest" \
+    "orch-task-morning-pass" \
+    "orch-task-evening-pass" \
     "orch-backlog-driver"; do
     remove_cron "$job" 2>/dev/null || true
   done
@@ -431,6 +433,39 @@ create_cron "orch-task-board-digest" "30 8 * * *" \
   "telegram:${TELEGRAM_HOME_CHANNEL}" \
   "" \
   "true"
+
+# Orchestrator morning pass (task model v3 T5) — decompose stories → slices
+# with plans, dispatch urgent work (LLM-driven, orchestrator intelligence).
+create_cron "orch-task-morning-pass" "0 7 * * *" \
+  "" \
+  "Morning task pass (orchestrator, task model v3). You are Esther.
+
+1. task-db.py list --status pending --kind story + list --claimable.
+2. Decompose unsliced stories: task-db.py add '<slice>' --parent <story-id> --kind slice --scope fleet. Write executable plans into each slice.
+3. Dispatch urgent slices (priority 2-3) via bus TASK_REQUEST to capable workers.
+4. Do NOT claim intelligence-only work yourself (strategy/research/verification/case-study authoring are orchestrator work).
+5. End: 3-line summary (decomposed N → M slices, dispatched K, X claimable)." \
+  "" \
+  "terminal,web,file" \
+  "telegram:${TELEGRAM_HOME_CHANNEL}" \
+  "" \
+  "false"
+
+# Orchestrator evening pass (task model v3 T5) — verify all review slices
+# (LLM-driven, orchestrator-only verify privilege).
+create_cron "orch-task-evening-pass" "0 19 * * *" \
+  "" \
+  "Evening verification pass (orchestrator, task model v3). You are Esther.
+
+1. task-db.py list --board + list --status review.
+2. For each review slice: verify evidence is real (test output, measured numbers — never trust self-reported done). approve: task-db.py verify <id> --approve --note '<checked>'. reject: task-db.py verify <id> --reject --note '<gap>' (returns to in_progress).
+3. Flag review > 24h (stale sweep should have caught it).
+4. End: 2-line summary (verified N, rejected M, X in review)." \
+  "" \
+  "terminal" \
+  "telegram:${TELEGRAM_HOME_CHANNEL}" \
+  "" \
+  "false"
 
 # Fleet watchdog — cross-agent health polling (no_agent, Telegram alerts)
 # Orchestrator-only: Moses primary, Esther backup
