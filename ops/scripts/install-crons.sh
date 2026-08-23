@@ -983,6 +983,18 @@ create_cron "agent-deploy-drift-audit" "0 7 * * *" \
   "" \
   "true"
 
+# Autonomy digest (O4-S2) — daily "what ran unattended" shadow digest 07:30
+# (no_agent: runs autonomy-classifier.py --digest --ledger for last 24h;
+#  stdout is the compact daily digest; kill switch fails closed silent)
+create_cron "orch-autonomy-digest" "30 7 * * *" \
+  "manage/orch-autonomy-digest.sh" \
+  "" \
+  "" \
+  "" \
+  "origin" \
+  "" \
+  "true"
+
 
 # Session embedding cache rebuild (weekly Monday 05:00 — universal, loop-governance)
 create_cron "agent-session-cache-build" "0 5 * * 1" \

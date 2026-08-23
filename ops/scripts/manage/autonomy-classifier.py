@@ -17,6 +17,7 @@ Usage:
   autonomy-classifier.py --classify <operation>   # single classification (test)
   autonomy-classifier.py --replay [--db PATH]     # shadow replay + metrics
   autonomy-classifier.py --replay --ledger        # + append tamper-evident ledger line
+  autonomy-classifier.py --digest [--hours N]     # O4-S2 daily 'what ran unattended' digest
 
 Kill switch:  AUTONOMY_CLASSIFIER_KILL=1 (env) or --kill -> exit 0, no output.
               Fail-closed: if the switch is set, ALL classification is off.
@@ -45,7 +46,7 @@ import os
 import re
 import sqlite3
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 CORTEX_HOME = Path(os.environ.get("CORTEX_HOME", str(Path.home() / ".hermes-cortex")))
@@ -252,10 +253,110 @@ def format_report(r: dict) -> str:
     return "\n".join(lines)
 
 
+def digest(db_path: Path, hours: int = 24, with_ledger: bool = False) -> dict:
+    """O4-S2 daily digest: operations in the last N hours, classified.
+
+    'What ran unattended' = cycles the classifier would auto-approve
+    (routine class) in the window. Gated ops and any human overrides are
+    surfaced too, so the digest is a faithful daily shadow summary.
+    """
+    if not db_path.exists():
+        raise FileNotFoundError(f"loop-governance DB not found: {db_path}")
+
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
+    cutoff_str = cutoff.strftime("%Y-%m-%d %H:%M:%S")
+
+    con = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
+    cur = con.cursor()
+    rows = cur.execute(
+        "SELECT id, task_id, decision, user_overrode, timestamp "
+        "FROM loop_cycles WHERE timestamp >= ?",
+        (cutoff_str,),
+    ).fetchall()
+    con.close()
+
+    unattended: list[dict] = []   # would auto-approve (routine)
+    gated: list[dict] = []        # would gate (destructive/unknown)
+    overridden: list[dict] = []   # Luke corrected the loop in window
+
+    for cid, task_id, decision, overrode, ts in rows:
+        op = task_id or ""
+        cls = classify(op)
+        entry = {"cycle": cid, "task_id": op, "decision": (decision or "")[:60],
+                 "ts": ts or "", "class": cls["class"], "matched": cls["matched"]}
+        if overrode == 1:
+            overridden.append(entry)
+        if cls["gate"] == "auto":
+            unattended.append(entry)
+        else:
+            gated.append(entry)
+
+    result = {
+        "db": str(db_path),
+        "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "window_hours": hours,
+        "window_start": cutoff_str,
+        "total_cycles": len(rows),
+        "unattended": unattended,
+        "gated": gated,
+        "overridden": overridden,
+    }
+
+    if with_ledger:
+        line = json.dumps(
+            {k: result[k] for k in ("generated_at", "window_hours", "window_start",
+                                    "total_cycles")} | {"unattended": len(unattended),
+                                                        "gated": len(gated),
+                                                        "overridden": len(overridden)},
+            sort_keys=True)
+        h = hashlib.sha256(line.encode()).hexdigest()[:16]
+        prev = ""
+        if LEDGER.exists():
+            prev = LEDGER.read_text().strip().splitlines()[-1].split("|")[-1]
+        LEDGER.parent.mkdir(parents=True, exist_ok=True)
+        with LEDGER.open("a") as f:
+            f.write(f"{datetime.now(timezone.utc).isoformat(timespec='seconds')}|{h}|{prev}|{line}\n")
+        result["ledger"] = {"path": str(LEDGER), "hash": h, "prev_hash": prev}
+
+    return result
+
+
+def format_digest(r: dict) -> str:
+    lines = [
+        "O4-S2 autonomy digest — what ran unattended (shadow)",
+        f"  window:  last {r['window_hours']}h (since {r['window_start']} UTC)",
+        f"  cycles:  {r['total_cycles']}",
+        f"  unattended (would auto-approve): {len(r['unattended'])}",
+        f"  gated (would need human):        {len(r['gated'])}",
+        f"  Luke overrode in window:         {len(r['overridden'])}",
+    ]
+    if r["unattended"]:
+        lines.append("  ─ unattended operations:")
+        for e in r["unattended"][:8]:
+            lines.append(f"    · {e['task_id'][:70]} ({e['decision']})")
+        if len(r["unattended"]) > 8:
+            lines.append(f"    …and {len(r['unattended']) - 8} more")
+    if r["gated"]:
+        lines.append("  ─ gated operations (would need human):")
+        for e in r["gated"][:5]:
+            lines.append(f"    · {e['task_id'][:70]} [{e['matched']}]")
+        if len(r["gated"]) > 5:
+            lines.append(f"    …and {len(r['gated']) - 5} more")
+    if r["overridden"]:
+        lines.append("  ─ Luke overrides in window:")
+        for e in r["overridden"][:5]:
+            lines.append(f"    · {e['task_id'][:70]}")
+    if r.get("ledger"):
+        lines.append(f"  ledger:  {r['ledger']['path']} (sha256:{r['ledger']['hash']})")
+    return "\n".join(lines)
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="O4-S1 shadow-mode autonomy classifier")
     ap.add_argument("--classify", metavar="OPERATION", help="classify one operation string")
     ap.add_argument("--replay", action="store_true", help="shadow replay vs loop-governance DB")
+    ap.add_argument("--digest", action="store_true", help="O4-S2 daily 'what ran unattended' digest")
+    ap.add_argument("--hours", type=int, default=24, help="digest window in hours (default 24)")
     ap.add_argument("--db", default=str(DEFAULT_DB), help="loop-governance DB path")
     ap.add_argument("--ledger", action="store_true", help="append tamper-evident ledger line")
     ap.add_argument("--kill", action="store_true", help="kill switch: no-op exit 0")
@@ -267,6 +368,15 @@ def main(argv: list[str] | None = None) -> int:
     if args.classify:
         r = classify(args.classify)
         print(json.dumps(r, indent=2))
+        return 0
+
+    if args.digest:
+        try:
+            d = digest(Path(args.db), hours=args.hours, with_ledger=args.ledger)
+        except FileNotFoundError as e:
+            print(f"ERROR: {e}", file=sys.stderr)
+            return 2
+        print(format_digest(d))
         return 0
 
     if args.replay:

@@ -22,6 +22,7 @@ Run:  python3 tests/test_autonomy_classifier.py
 import importlib.util
 import json
 import os
+import re
 import sqlite3
 import subprocess
 import sys
@@ -77,6 +78,37 @@ def make_db(cycles: list[tuple]) -> Path:
             "VALUES (?, '2026-08-21 00:00:00', ?, 1, 0.8, 0.8, 0.5, 0.7, 0, "
             "'MOVE_ON', ?, ?, 1)",
             (i, tid, overrode, note),
+        )
+    con.commit()
+    con.close()
+    return Path(path)
+
+
+def make_db_with_ts(cycles: list[tuple]) -> Path:
+    """cycles: (timestamp, task_id, user_overrode, outcome_note) tuples.
+
+    For --digest window tests: timestamps relative to now (UTC).
+    """
+    from datetime import datetime, timedelta, timezone
+    fd, path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    con = sqlite3.connect(path)
+    con.execute("""CREATE TABLE loop_cycles (
+        id INTEGER PRIMARY KEY, timestamp TEXT, task_id TEXT, cycle_num INTEGER,
+        spec_hash TEXT, code_hash TEXT, test_output_hash TEXT, completeness REAL,
+        quality REAL, progress REAL, composite REAL, no_progress INTEGER,
+        decision TEXT, user_overrode INTEGER, outcome_note TEXT,
+        schema_version INTEGER, model_name TEXT, session_id TEXT)""")
+    now = datetime.now(timezone.utc)
+    for i, (ts_delta_h, tid, overrode, note) in enumerate(cycles, 1):
+        ts = (now - timedelta(hours=ts_delta_h)).strftime("%Y-%m-%d %H:%M:%S")
+        con.execute(
+            "INSERT INTO loop_cycles (id, timestamp, task_id, cycle_num, "
+            "completeness, quality, progress, composite, no_progress, decision, "
+            "user_overrode, outcome_note, schema_version) "
+            "VALUES (?, ?, ?, 1, 0.8, 0.8, 0.5, 0.7, 0, "
+            "'MOVE_ON', ?, ?, 1)",
+            (i, ts, tid, overrode, note),
         )
     con.commit()
     con.close()
@@ -169,6 +201,43 @@ def main() -> None:
     r = classify("git push --force")
     check("classify emits class/gate/matched",
           all(k in r for k in ("class", "gate", "matched")), json.dumps(r))
+
+    print("\n8. O4-S2 digest — window filtering + unattended classification")
+    db2 = make_db_with_ts([
+        (1,  "orch-backlog-driver-run", 0, "routine completed"),     # in window, auto
+        (2,  "sustainability-briefing-2026", 0, "routine completed"),  # in window, auto
+        (5,  "git-push-force-something", 1, "rejected force-push"),   # in window, gated+override
+        (50, "ancient-unknown-op", 0, "outside window"),              # out of window
+    ])
+    out = subprocess.run(
+        [sys.executable, str(CLASSIFIER), "--digest", "--hours", "24", "--db", str(db2)],
+        capture_output=True, text=True, check=True,
+    )
+    report = out.stdout
+    check("digest runs", "autonomy digest" in report, report[:80])
+    check("digest counts cycles in window", "cycles:  3" in report, report)
+    check("digest counts unattended", "unattended (would auto-approve): 2" in report, report)
+    check("digest counts gated", re.search(r"gated \(would need human\):\s+1", report) is not None, report)
+    check("digest counts overrides", re.search(r"Luke overrode in window:\s+1", report) is not None, report)
+    check("digest excludes outside-window", "ancient-unknown-op" not in report, report)
+
+    print("\n9. O4-S2 digest — ledger append in temp CORTEX_HOME")
+    with tempfile.TemporaryDirectory() as td:
+        os.environ["CORTEX_HOME"] = td
+        out2 = subprocess.run(
+            [sys.executable, str(CLASSIFIER), "--digest", "--hours", "24",
+             "--db", str(db2), "--ledger"],
+            capture_output=True, text=True, env={**os.environ}, check=True,
+        )
+        ledger = Path(td) / "state" / "autonomy-shadow-ledger.jsonl"
+        check("digest ledger created", ledger.exists() and "ledger:" in out2.stdout,
+              out2.stdout[-200:])
+        if ledger.exists():
+            lines = ledger.read_text().strip().splitlines()
+            check("digest ledger append-only format", len(lines) == 1 and "|" in lines[0])
+            fields = lines[0].split("|")
+            check("digest ledger has hash chain fields", len(fields) == 4, lines[0][:120])
+        os.environ.pop("CORTEX_HOME", None)
 
     print()
     if FAILURES:
