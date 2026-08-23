@@ -79,7 +79,7 @@ NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
 UUID_RE = re.compile(r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
 SCOPES = ("personal", "fleet")
 STATUSES = ("pending", "in_progress", "paused", "completed", "cancelled",
-            "blocked", "waiting")
+            "blocked", "waiting", "review")
 KINDS = ("story", "slice")
 COLUMNS = ("backlog", "todo", "in_progress", "review", "done")
 SOURCES = ("dream", "session", "manual", "bridge", "governance", "inbox",
@@ -89,6 +89,8 @@ V2_MIN_SCHEMA = 5
 # v3 (v006-deferred) features require schema v008 (TL-v2 S6 — blocked/waiting
 # status, story list --parent, task_story_summary)
 V3_MIN_SCHEMA = 8
+# v4 (task model v3) features require schema v009
+V4_MIN_SCHEMA = 9
 
 
 def _valid_name(value: str | None) -> bool:
@@ -290,6 +292,15 @@ def _require_v3(feature: str) -> None:
     """Refuse a v3 (v006-deferred) feature when schema is older than v008."""
     if schema_version() < V3_MIN_SCHEMA:
         print(f"ERROR: {feature} requires tasks schema v{V3_MIN_SCHEMA}+ "
+              f"(found v{schema_version()}). Run: bash cortex-update.sh",
+              file=sys.stderr)
+        sys.exit(2)
+
+
+def _require_v4(feature: str) -> None:
+    """Refuse a v4 (task model v3) feature when schema is older than v009."""
+    if schema_version() < V4_MIN_SCHEMA:
+        print(f"ERROR: {feature} requires tasks schema v{V4_MIN_SCHEMA}+ "
               f"(found v{schema_version()}). Run: bash cortex-update.sh",
               file=sys.stderr)
         sys.exit(2)
@@ -628,6 +639,8 @@ def cmd_update(task_id: str, new_status: str, reason: str | None = None,
     print(f"✅ Task {task_id[:8]}... → {new_status}"
           + (f" (reason={reason})" if reason else "")
           + (f" [corr={by_correlation[:12]}…]" if by_correlation else ""))
+
+
     if not no_notify:
         # Fetch row for the notify message (best-effort)
         try:
@@ -650,6 +663,130 @@ def cmd_update(task_id: str, new_status: str, reason: str | None = None,
                              overdue=_is_due_overdue(row["due"], new_status))
         except SystemExit:
             pass  # read-only notify failure never blocks the update
+
+
+def cmd_claim(task_id: str, no_notify: bool = False):
+    """v4: atomically claim a pending slice for the current agent (pull model)."""
+    _require_v4("claim")
+    _check_uuid(task_id)
+    agent = PROFILE  # canonical agent identity (HERMES_PROFILE → AGENT_NAME → .env)
+    ok = psql("SELECT tasks.claim_slice(?::uuid, ?);", [task_id, agent])
+    if ok.strip() == "t":
+        print(f"✅ Claimed {task_id[:8]}... (assignee={agent}, in_progress)")
+    else:
+        print(f"❌ Could not claim {task_id[:8]}... — already claimed, "
+              f"not pending, or not self-assignable", file=sys.stderr)
+        sys.exit(1)
+
+
+def cmd_unclaim(task_id: str, reason: str | None = None, no_notify: bool = False):
+    """v4: return an in_progress slice to pending (blocker, tool gap)."""
+    _require_v4("unclaim")
+    _check_uuid(task_id)
+    ok = psql("SELECT tasks.unclaim_slice(?::uuid, ?);", [task_id, reason])
+    if ok.strip() == "t":
+        print(f"✅ Unclaimed {task_id[:8]}... → pending (assignee cleared)"
+              + (f" reason={reason}" if reason else ""))
+    else:
+        print(f"❌ Could not unclaim {task_id[:8]}... — not in_progress "
+              f"or not your work", file=sys.stderr)
+        sys.exit(1)
+
+
+def cmd_report(task_id: str, evidence: str | None = None, no_notify: bool = False):
+    """v4: worker submits completion evidence; slice → review."""
+    _require_v4("report")
+    _check_uuid(task_id)
+    ok = psql("SELECT tasks.report_done(?::uuid, ?);", [task_id, evidence])
+    if ok.strip() == "t":
+        print(f"✅ Reported {task_id[:8]}... → review (awaiting orchestrator verify)")
+    else:
+        print(f"❌ Could not report {task_id[:8]}... — not in_progress "
+              f"or not your work", file=sys.stderr)
+        sys.exit(1)
+
+
+def cmd_verify(task_id: str, approve: bool, note: str | None = None,
+               no_notify: bool = False):
+    """v4: ORCHESTRATOR-ONLY — verify a review slice (completed or failed)."""
+    _require_v4("verify")
+    _check_uuid(task_id)
+    ok = psql("SELECT tasks.verify_slice(?::uuid, ?, ?);",
+              [task_id, approve, note])
+    if ok.strip() == "t":
+        verdict = "completed" if approve else "back to in_progress"
+        print(f"✅ Verified {task_id[:8]}... → {verdict}"
+              + (f" note={note}" if note else ""))
+    else:
+        print(f"❌ Verify refused — only orchestrators (moses/esther) may "
+              f"verify, or slice is not in review", file=sys.stderr)
+        sys.exit(1)
+
+
+def cmd_list_claimable(limit: int = 10):
+    """v4: the worker queue view — pending slices with no assignee, by priority."""
+    _require_v4("list --claimable")
+    rows = psql(
+        "SELECT t.id, t.priority, t.project, t.content, "
+        "COALESCE(t.plan, '') "
+        "FROM tasks.tasks t "
+        "WHERE t.status = 'pending' AND t.kind = 'slice' "
+        "AND t.assignee IS NULL "
+        "ORDER BY t.priority DESC, t.status_changed_at ASC LIMIT ?;",
+        [limit],
+    )
+    if not rows.strip():
+        print("(no claimable slices)")
+        return
+    print(f"{'ID':<10} {'PR':<3} {'PROJECT':<18} CONTENT")
+    for line in rows.splitlines():
+        parts = line.split("||")
+        if len(parts) >= 4:
+            print(f"{parts[0][:8]:<10} {parts[1]:<3} {parts[2][:16]:<18} "
+                  f"{parts[3][:60]}")
+        elif len(parts) >= 3:
+            print(f"{parts[0][:8]:<10} {parts[1]:<3} {parts[2][:60]}")
+
+
+def cmd_list_board():
+    """v4: one-view board — open counts + per-agent in_progress + review queue."""
+    _require_v4("list --board")
+    counts = psql(
+        "SELECT status, count(*) FROM tasks.tasks "
+        "WHERE status IN ('pending','in_progress','review') "
+        "GROUP BY status ORDER BY status;",
+    )
+    print("📋 Task Board")
+    if counts.strip():
+        for line in counts.splitlines():
+            parts = line.split("||")
+            if len(parts) == 2:
+                print(f"  {parts[0]}: {parts[1]}")
+    else:
+        print("  (no open tasks)")
+    by_agent = psql(
+        "SELECT COALESCE(assignee, created_by), count(*) "
+        "FROM tasks.tasks WHERE status = 'in_progress' "
+        "GROUP BY 1 ORDER BY 2 DESC;",
+    )
+    if by_agent.strip():
+        print("  In progress:")
+        for line in by_agent.splitlines():
+            parts = line.split("||")
+            if len(parts) == 2:
+                print(f"    {parts[0]}: {parts[1]}")
+    review = psql(
+        "SELECT t.id, t.created_by, t.content FROM tasks.tasks t "
+        "WHERE t.status = 'review' ORDER BY t.status_changed_at ASC;",
+    )
+    if review.strip():
+        print("  In review (awaiting orchestrator verify):")
+        for line in review.splitlines():
+            parts = line.split("||")
+            if len(parts) >= 2:
+                print(f"    {parts[0][:8]}… ({parts[1]}): {parts[2][:60]}")
+    else:
+        print("  In review: none")
 
 
 def cmd_switch(target_id: str, no_notify: bool = False):
@@ -878,11 +1015,17 @@ def main():
         return name in sys.argv
 
     if command == "list":
-        cmd_list(
-            _flag("--agent"), _flag("--status"), _flag("--project"),
-            _flag("--scope"), _flag("--repo"), _flag("--assignee"),
-            _flag("--tag"), _flag("--due-before"), _flag("--parent"),
-        )
+        if _has("--claimable"):
+            limit = int(_flag("--limit", "10") or 10)
+            cmd_list_claimable(limit)
+        elif _has("--board"):
+            cmd_list_board()
+        else:
+            cmd_list(
+                _flag("--agent"), _flag("--status"), _flag("--project"),
+                _flag("--scope"), _flag("--repo"), _flag("--assignee"),
+                _flag("--tag"), _flag("--due-before"), _flag("--parent"),
+            )
 
     elif command == "summary":
         if len(sys.argv) < 3:
@@ -930,6 +1073,40 @@ def main():
             print("ERROR: Usage: task-db.py switch <target-id>", file=sys.stderr)
             sys.exit(1)
         cmd_switch(sys.argv[2], _has("--no-notify"))
+
+    elif command == "claim":
+        if len(sys.argv) < 3:
+            print("ERROR: Usage: task-db.py claim <slice-id> [--no-notify]",
+                  file=sys.stderr)
+            sys.exit(1)
+        cmd_claim(sys.argv[2], _has("--no-notify"))
+
+    elif command == "unclaim":
+        if len(sys.argv) < 3:
+            print("ERROR: Usage: task-db.py unclaim <slice-id> [--reason <r>]",
+                  file=sys.stderr)
+            sys.exit(1)
+        cmd_unclaim(sys.argv[2], _flag("--reason"), _has("--no-notify"))
+
+    elif command == "report":
+        if len(sys.argv) < 3:
+            print("ERROR: Usage: task-db.py report <slice-id> [--evidence <text>]",
+                  file=sys.stderr)
+            sys.exit(1)
+        cmd_report(sys.argv[2], _flag("--evidence"), _has("--no-notify"))
+
+    elif command == "verify":
+        if len(sys.argv) < 3:
+            print("ERROR: Usage: task-db.py verify <slice-id> --approve|--reject "
+                  "[--note <text>]", file=sys.stderr)
+            sys.exit(1)
+        approve = _has("--approve")
+        reject = _has("--reject")
+        if approve == reject:
+            print("ERROR: verify requires exactly one of --approve / --reject",
+                  file=sys.stderr)
+            sys.exit(1)
+        cmd_verify(sys.argv[2], approve, _flag("--note"), _has("--no-notify"))
 
     elif command == "pending":
         cmd_pending()
