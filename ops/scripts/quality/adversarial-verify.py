@@ -1174,12 +1174,29 @@ def main():
         # downstream parsers treat TOON as a contract.
         try:
             import sys as _sys
-            # verifier lives at ops/scripts/quality/ → lib is two levels up
-            # at ops/scripts/lib/.
-            _lib = os.path.join(os.path.dirname(os.path.dirname(
-                os.path.abspath(__file__))), "lib")
-            if _lib not in _sys.path:
-                _sys.path.insert(0, _lib)
+            # The verifier lives at different depths depending on location:
+            #   repo:     ops/scripts/quality/adversarial-verify.py
+            #             → dirname×2 = ops/scripts/ → lib at ops/scripts/lib/
+            #   deployed: scripts/adversarial-verify.py
+            #             → dirname×2 = ~/.hermes-cortex/ → lib at
+            #               ~/.hermes-cortex/scripts/lib/
+            # Try both candidate lib dirs (2026-08-24: the deployed path
+            # resolved to a non-existent ~/.hermes-cortex/lib and the
+            # except:pass silently disabled the TOON check — verified in
+            # live test: malformed TOON produced 0 findings).
+            _here = os.path.dirname(os.path.abspath(__file__))
+            _candidates = [
+                # repo: __file__ = ops/scripts/quality/adversarial-verify.py
+                #   dirname(dirname(file)) = ops/scripts → + lib = ops/scripts/lib
+                os.path.join(os.path.dirname(os.path.dirname(
+                    os.path.abspath(__file__))), "lib"),
+                # deployed: __file__ = scripts/adversarial-verify.py
+                #   dirname(file) = scripts → + lib = scripts/lib
+                os.path.join(_here, "lib"),
+            ]
+            for _lib in _candidates:
+                if os.path.isdir(_lib) and _lib not in _sys.path:
+                    _sys.path.insert(0, _lib)
             import toon_parse as _toon
             _content = open(filepath, errors="replace").read()
             _malformed = _toon.find_malformed_toon(_content)
