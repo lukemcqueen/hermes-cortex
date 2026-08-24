@@ -1,0 +1,24 @@
+{
+  "mcpServers": {
+    "loop-governance": {
+      "command": "~/.hermes/hermes-agent/venv/bin/python3",
+      "args": ["~/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py"],
+      "env": {"AGENT_NAME": "titusclaude"}
+    },
+    "tasks": {
+      "command": "~/.hermes/hermes-agent/venv/bin/python3",
+      "args": ["~/.hermes-cortex/scripts/task-mcp.py"],
+      "env": {"AGENT_NAME": "titusclaude"}
+    },
+    "executor": {
+      "command": "~/.hermes/hermes-agent/venv/bin/python3",
+      "args": ["~/.hermes-cortex/scripts/executor-mcp.py"],
+      "env": {"AGENT_NAME": "titusclaude"}
+    },
+    "agent-bus": {
+      "command": "~/.hermes/hermes-agent/venv/bin/python3",
+      "args": ["~/.hermes-cortex/scripts/cortex-bus-mcp.py"],
+      "env": {"AGENT_NAME": "titusclaude"}
+    }
+  }
+}
