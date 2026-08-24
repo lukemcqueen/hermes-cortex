@@ -565,6 +565,7 @@ if $UNINSTALL; then
     "agent-push-metrics" \
     "agent-remediate-apply" \
     "agent-remediation-sensor" \
+    "agent-review-queue-sweep" \
     "agent-scoring-activity-watchdog" \
     "agent-secret-leak-watchdog" \
     "agent-service-recovery" \
@@ -980,6 +981,19 @@ create_cron "agent-deploy-drift-audit" "0 7 * * *" \
   "" \
   "" \
   "origin" \
+  "" \
+  "true"
+
+# Review-queue stale-sweep (O5/G-5) — daily 01:45, no_agent: auto-closes
+# STOP/auto-accepted cycles older than 3d (clean outcome notes), surfaces
+# LOOP/MOVE ON/hard-fail/PENDING; silent when clean, alerts once per anomaly
+# (state-deduped) via the home channel. Script: agent-review-queue-sweep.py.
+create_cron "agent-review-queue-sweep" "45 1 * * *" \
+  "agent-review-queue-sweep.py" \
+  "" \
+  "" \
+  "" \
+  "telegram:${TELEGRAM_HOME_CHANNEL}" \
   "" \
   "true"
 

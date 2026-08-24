@@ -211,6 +211,7 @@ register "ops/scripts/manage/cortex-health.sh"           "${CORTEX_DEPLOY_HOME}/
 register "ops/scripts/manage/consolidate-env.sh"         "${CORTEX_DEPLOY_HOME}/scripts/consolidate-env.sh"
 register "ops/scripts/manage/gen-skills-manifest.py"      "${CORTEX_DEPLOY_HOME}/scripts/gen-skills-manifest.py"
 register "ops/scripts/manage/task-db.py"                "${CORTEX_DEPLOY_HOME}/scripts/task-db.py"
+register "ops/scripts/manage/agent-review-queue-sweep.py" "${CORTEX_DEPLOY_HOME}/scripts/agent-review-queue-sweep.py"
 register "ops/scripts/manage/git-main-sync.sh"          "${CORTEX_DEPLOY_HOME}/scripts/git-main-sync.sh"
 register "ops/scripts/manage/dream-task-bridge.py"       "${CORTEX_DEPLOY_HOME}/scripts/dream-task-bridge.py"
 register "mcp-servers/task-mcp.py"                      "${CORTEX_DEPLOY_HOME}/scripts/task-mcp.py"
