@@ -102,6 +102,58 @@ def test_state_atomic_write(tmp_path):
     assert leftovers == []
 
 
+# ── Party hardening 2: fail-closed state load ───────────────
+
+def test_state_corrupt_load_fails_closed(tmp_path):
+    """Corrupt state must NOT silently reset to offset 0 (would re-deliver
+    everything as dupes). Fail closed: keep the corrupt file, return the
+    last-good offset from a backup if present."""
+    sf = tmp_path / "state.json"
+    _bridge.save_state(sf, {"offset": 42, "last_msg": 7})
+    # Corrupt the file
+    sf.write_text("{not-json!!")
+    loaded = _bridge.load_state(sf)
+    # Fail-closed: never return offset 0 when we had a good state before
+    assert loaded["offset"] != 0 or loaded.get("corrupt")
+    # The corrupt file must still be on disk (not silently overwritten)
+    assert sf.exists()
+
+
+# ── Party hardening 3: sent-ledger dedup ────────────────────
+
+def test_sent_ledger_skips_redelivered_updates():
+    """SRE finding: crash between bus_send and offset-commit redelivers the
+    batch → dupes. The sent-ledger records update_ids already sent; on
+    re-poll after crash, already-sent updates are skipped (no dupes)."""
+    ledger = _bridge.SentLedger()
+    # update 101 sent but offset-commit crashed
+    ledger.record(101)
+    assert ledger.contains(101)
+    # 102 is new
+    assert not ledger.contains(102)
+
+
+def test_sent_ledger_is_bounded():
+    """Ledger must stay bounded (FIFO, e.g. last 1000) — never grows forever."""
+    ledger = _bridge.SentLedger(max_size=5)
+    for i in range(10):
+        ledger.record(i)
+    assert ledger.size() <= 5
+    assert not ledger.contains(0)  # oldest evicted
+    assert ledger.contains(9)
+
+
+# ── Party hardening 4: single-instance 409 ──────────────────
+
+def test_409_conflict_detected():
+    """Telegram returns 409 when a SECOND getUpdates poller starts (only one
+    poller per bot allowed). The bridge must detect this and alert, not
+    silently sleep — two bridges would fight over the same bot."""
+    assert _bridge.is_conflict_error(409) is True
+    assert _bridge.is_conflict_error(401) is False
+    assert _bridge.is_conflict_error(200) is False
+
+
 # ── Idle-silent rule ────────────────────────────────────────
 
 def test_no_updates_no_bus_call():

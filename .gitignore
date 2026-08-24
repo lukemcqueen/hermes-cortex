@@ -49,6 +49,8 @@ logs/
 # Negate our own scripts that legitimately contain "secret"
 !ops/scripts/secret-leak-detector.sh
 !ops/scripts/secret-leak-watchdog.py
+# Negate our own code that legitimately contains "token" (not a secret file)
+!ops/scripts/token-expiry-alert.py
 # Negate our own skills that legitimately contain "credential" or "secret"
 !**/secure-credential-handling/**
 !**/credential-leak-response/

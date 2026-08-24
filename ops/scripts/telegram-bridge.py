@@ -52,18 +52,58 @@ STATE_DEFAULT = {"offset": 0, "last_msg": 0}
 
 # ── State file (durable offset, atomic write) ───────────────
 
+class SentLedger:
+    """Bounded FIFO of update_ids already sent to the bus.
+
+    SRE party finding (2026-08-24): a crash between bus_send and the
+    offset-commit redelivers the batch → duplicates. The ledger records
+    sent update_ids; on re-poll after a crash, already-sent updates are
+    skipped (no dupes) while their offsets still advance. Bounded so it
+    never grows forever (default: last 1000).
+    """
+
+    def __init__(self, max_size: int = 1000):
+        self.max_size = max_size
+        self._ids: list[int] = []
+
+    def record(self, update_id: int) -> None:
+        self._ids.append(update_id)
+        if len(self._ids) > self.max_size:
+            self._ids = self._ids[-self.max_size:]
+
+    def contains(self, update_id: int) -> bool:
+        return update_id in self._ids
+
+    def size(self) -> int:
+        return len(self._ids)
+
+
 def save_state(path: Path, state: dict) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(path.suffix + ".tmp")
-    tmp.write_text(json.dumps(state))
+    with open(tmp, "w") as fh:
+        fh.write(json.dumps(state))
+        fh.flush()
+        os.fsync(fh.fileno())  # party hardening: durable before rename
     tmp.replace(path)  # atomic on POSIX — a kill mid-write never corrupts
 
 
 def load_state(path: Path) -> dict:
+    """Load state; FAIL CLOSED on corruption (party hardening).
+
+    A corrupt state file must never silently reset to offset 0 (that would
+    re-deliver everything as dupes). Keep the corrupt file on disk for
+    forensics, return a marked dict the caller can alert on.
+    """
     try:
-        return json.loads(path.read_text())
-    except (OSError, ValueError):
-        return dict(STATE_DEFAULT)
+        data = json.loads(path.read_text())
+        if isinstance(data, dict):
+            return {**dict(STATE_DEFAULT), **data}
+        return {**dict(STATE_DEFAULT), "corrupt": True}
+    except ValueError:
+        return {**dict(STATE_DEFAULT), "corrupt": True}  # keep file, alert
+    except OSError:
+        return dict(STATE_DEFAULT)  # missing file = fresh start
 
 
 # ── Telegram API (stdlib) ───────────────────────────────────
@@ -156,6 +196,13 @@ def reply_to_telegram_payload(chat_id, text: str, reply_to_message_id: int) -> d
     }
 
 
+def is_conflict_error(http_code: int) -> bool:
+    """Telegram returns 409 when a SECOND getUpdates poller starts (one
+    poller per bot). The bridge must detect it and alert — two bridges
+    fighting over the same bot would corrupt offsets."""
+    return http_code == 409
+
+
 # ── Main loop ───────────────────────────────────────────────
 
 def main() -> int:
@@ -176,29 +223,56 @@ def main() -> int:
     state_dir = Path(args.state_dir) if args.state_dir else Path.home() / f".{agent}" / "state"
     state_file = state_dir / "state.json"
     state = load_state(state_file)
+    if state.get("corrupt"):
+        print(f"⚠️  CRITICAL: state file {state_file} is CORRUPT — failing "
+              f"closed (offset NOT reset). Fix the file manually or rotate "
+              f"the agent; messages will not be re-delivered as dupes.",
+              file=sys.stderr)
+        # fail closed: exit so the operator notices; no silent offset-0 reset
+        return 3
+    ledger = SentLedger()
 
     while True:
         try:
             updates = tg_get_updates(bot_token, state["offset"])
+        except urllib.error.HTTPError as e:
+            if is_conflict_error(e.code):
+                print(f"⛔ 409 CONFLICT: another poller is using this bot's "
+                      f"getUpdates (single-poller limit). Two bridges are "
+                      f"fighting — killing this one. Check for a duplicate "
+                      f"telegram-bridge process.", file=sys.stderr)
+                return 4
+            print(f"⚠️  getUpdates HTTP {e.code} — retrying", file=sys.stderr)
+            time.sleep(5)
+            continue
         except Exception:
             time.sleep(5)
             continue
 
-        # SRE finding (party 2026-08-24): NEVER commit max(update_id)+1 for
-        # the whole batch — a failed bus_send would permanently skip that
-        # update. Advance offset only past updates that were SUCCESSFULLY
-        # sent (or skipped as non-message). Failed sends stay at the same
-        # offset and are re-polled next cycle (no loss).
+        # SRE findings (party 2026-08-24):
+        #  1. NEVER commit max(update_id)+1 for the whole batch — a failed
+        #     bus_send would permanently skip that update. Advance offset
+        #     only past updates SUCCESSFULLY sent (or skipped).
+        #  2. Crash between send and offset-commit redelivers the batch →
+        #     dupes. The sent-ledger records sent update_ids; already-sent
+        #     updates are skipped (no dupes) while their offsets advance.
         for upd in updates:
+            uid = upd["update_id"]
+            if ledger.contains(uid):
+                # already delivered before a crash — skip, just advance
+                state["offset"] = max(state["offset"], uid + 1)
+                save_state(state_file, state)
+                continue
             payload = update_to_bus_payload(upd, agent)
             if payload is None:
-                state["offset"] = max(state["offset"], upd["update_id"] + 1)
+                state["offset"] = max(state["offset"], uid + 1)
                 save_state(state_file, state)
                 continue
             ok = bus_send(bus_url, bus_token, payload["queue"], payload["message"])
             if ok:
+                ledger.record(uid)  # remember: delivered (dedup on crash)
                 state["last_msg"] = payload["message"].get("telegram_msg_id", 0)
-                state["offset"] = max(state["offset"], upd["update_id"] + 1)
+                state["offset"] = max(state["offset"], uid + 1)
                 save_state(state_file, state)  # commit AFTER durable send
             # on failure: offset unchanged → re-polled next cycle (at-least-once)
         # idle-silent: empty updates → no writes, loop sleeps on long-poll

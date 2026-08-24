@@ -480,6 +480,7 @@ register "ops/scripts/change-validate.sh"                  "${CORTEX_DEPLOY_HOME
 register "ops/scripts/precommit_test_discovery.py"         "${CORTEX_DEPLOY_HOME}/scripts/precommit_test_discovery.py"
 register "ops/scripts/executor_context_builder.py"         "${CORTEX_DEPLOY_HOME}/scripts/executor_context_builder.py"
 register "ops/scripts/telegram-bridge.py"                  "${CORTEX_DEPLOY_HOME}/scripts/telegram-bridge.py"
+register "ops/scripts/token-expiry-alert.py"               "${CORTEX_DEPLOY_HOME}/scripts/token-expiry-alert.py"
 register "ops/scripts/pre-commit-doc-audit.sh"            "${CORTEX_DEPLOY_HOME}/scripts/pre-commit-doc-audit.sh"
 register "ops/scripts/health/health-vector.py"            "${CORTEX_DEPLOY_HOME}/scripts/health-vector.py" "health-vector" "restart_health_server"
 register "ops/scripts/health/health-vector-push.sh"       "${CORTEX_DEPLOY_HOME}/scripts/health-vector-push.sh"
