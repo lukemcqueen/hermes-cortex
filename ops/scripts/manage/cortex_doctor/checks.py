@@ -275,6 +275,80 @@ def check_dev_repo_agents(res: "Results") -> None:
         "Fix the git/stat error (e.g. repo lock, bad object) so the age check covers these repos")
 
 
+def check_dev_repo_claude(res: "Results") -> None:
+  """1c. Dev repos: CLAUDE.md present when a Claude agent is configured.
+
+  Luke 2026-08-24: titusclaude (Claude Code agent) runs under the SAME
+  governance as Hermes agents. CLAUDE.md is Claude Code's instruction file
+  (the equivalent of AGENTS.md) — it carries the governance contract. Claude
+  usually works on NON-hermes-cortex repos, so this check scans dev repos
+  (like check_dev_repo_agents) and warns when CLAUDE.md is missing.
+  """
+  # Only meaningful if a Claude agent is configured on this host.
+  claude_configured = (
+    (HOME / ".mcp.json").exists()
+    or (HOME / ".claude" / "settings.json").exists()
+    or bool(run_bg(["command", "-v", "claude"]))
+  )
+  if not claude_configured:
+    return
+
+  if not CORTEX_REPO.is_dir():
+    return
+
+  try:
+    raw = subprocess.run(
+      ["find", str(HOME), "-maxdepth", "3", "-name", ".git", "-type", "d"],
+      capture_output=True, text=True, timeout=15,
+    ).stdout.strip()
+  except (subprocess.TimeoutExpired, OSError):
+    res.add("Dev repo CLAUDE.md", "INFO", "could not scan home directory for git repos")
+    return
+
+  if not raw:
+    return
+
+  EXCLUDED = {
+    HOME / ".git", HOME / ".oh-my-zsh", HOME / ".hermes", HOME / ".brain",
+    HOME / "brain", HOME / "__MACOSX", HOME / "Desktop", HOME / "Documents",
+    HOME / "Downloads", HOME / "Music", HOME / "Pictures", HOME / "Videos",
+    HOME / "Library", HOME / "Public", HOME / "Templates", HOME / "backups",
+    HOME / "docker-data", HOME / "langfuse",
+  }
+
+  checked = 0
+  missing = []
+  for path in raw.split("\n"):
+    path = path.strip()
+    if not path:
+      continue
+    repo_dir = Path(path).parent.resolve()
+    skip = any(str(repo_dir).startswith(str(excl)) for excl in EXCLUDED)
+    if skip or repo_dir == CORTEX_REPO:
+      continue
+    # Only repos that are active (have commits) matter — skip empty repos.
+    git_log = run_bg(["git", "-C", str(repo_dir), "log", "-1", "--oneline"])
+    if not git_log:
+      continue
+    checked += 1
+    if not (repo_dir / "CLAUDE.md").exists():
+      missing.append(repo_dir.name)
+
+  if checked == 0:
+    return
+
+  if missing:
+    res.add("CLAUDE.md (dev repos)", "WARN",
+        f"{len(missing)} dev repo(s) missing CLAUDE.md while a Claude agent is configured: "
+        + ", ".join(missing[:6]),
+        "REQUIRED: copy ~/hermes-cortex/CLAUDE.md to each repo and adapt the "
+        "project-specific parts. CLAUDE.md is Claude Code's governance "
+        "contract — without it titusclaude is ungoverned in that repo.")
+  else:
+    res.add("CLAUDE.md (dev repos)", "PASS",
+        f"all {checked} active dev repo(s) have CLAUDE.md")
+
+
 def _extract_agents_markers(path: Path) -> set:
   """Extract all content-bearing bold markers from an AGENTS.md file.
 

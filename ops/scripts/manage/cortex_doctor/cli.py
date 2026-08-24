@@ -12,6 +12,7 @@ from .results import Results
 from .checks import (
     check_repo,
     check_dev_repo_agents,
+    check_dev_repo_claude,
     check_soul_sync,
     check_skills,
     check_crons,
@@ -59,6 +60,7 @@ def main():
     all_checks = [
         check_repo,
         check_dev_repo_agents,
+        check_dev_repo_claude,
         check_soul_sync,
         check_skills,
         check_crons,
@@ -92,6 +94,7 @@ def main():
         all_checks = [
             check_repo,
             check_dev_repo_agents,
+            check_dev_repo_claude,
             check_soul_sync,
             check_crons,
             check_scripts,
