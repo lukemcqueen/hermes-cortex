@@ -2256,7 +2256,7 @@ cat <<PROMPT
 I've installed the Hermes Cortex system. Please finish the setup by:
 
 1. Open ~/.hermes/memories/MEMORY.md and ~/.hermes/memories/USER.md — fill in your system topology and user profile so I know your context
-2. Load the shared skills from ~/.hermes-cortex/skills/ (use skill_view(name) to browse them — includes subagent-driven-development, systematic-debugging v2.0 (6-phase feedback-loop debugging), code-review v3.0 (two-axis Standards+Spec), codebase-design (deep module vocabulary), change-test-loop, spike, plan, memory-architecture, client-brand-brand-marketing, korean-language-learning)
+2. Load the shared skills from ~/.hermes-cortex/skills/ (use skill_view(name) to browse them — includes subagent-driven-development, systematic-debugging v2.0 (6-phase feedback-loop debugging), code-review v3.0 (two-axis Standards+Spec), codebase-design (deep module vocabulary), change-test-loop, spike, plan, memory-architecture, korean-language-learning)
 3. Loading the hermes-agent skill and verifying the mycortex-command plugin
 4. Run ~/.hermes-cortex/scripts/bootstrap-brain.sh to ensure all brain sources are initialized, git-enabled, registered in mycortex, and synced. Note which sources have indexed pages (if any show 0 pages, add some .md files and re-sync)
 5. If using Langfuse, run: bash ~/.hermes-cortex/scripts/cortex-setup-langfuse.sh --start (generates all required .env secrets and starts Docker Compose — no more failing on :? expansion)

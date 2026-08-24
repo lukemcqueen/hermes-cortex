@@ -38,7 +38,7 @@ def test_full_board(capsys):
         "GROUP BY status": "pending||14\nin_progress||3\nreview||2",
         "WHERE status = 'in_progress'": "esther||2\ntitus||1",
         "WHERE t.status = 'review'": "aaa11111||titus||content one",
-        "AND t.assignee IS NULL": "bbb22222||2||client-brand-eng||claimable slice",
+        "AND t.assignee IS NULL": "bbb22222||2||client-eng||claimable slice",
     }, capsys)
     assert rc == 0
     assert "Open: **19**" in out

@@ -479,7 +479,6 @@ their domain.
 
 | Skill | Version | Purpose | Load With |
 |-------|---------|---------|-----------|
-| `client-brand-brand-marketing` | 1.0.0 | Full brand marketing skill for The Client Brand (@client-brand.co) — sustainable fashion bags by Korean-American founders... | `skill_view(name='client-brand-brand-marketing')` |
 
 ## Social Media Analyzer (1 skill)
 
@@ -586,7 +585,6 @@ their domain.
 
 | Skill | Version | Purpose | Load With |
 |-------|---------|---------|-----------|
-| `client-brand-brand-marketing` | 1.0.0 | Full brand marketing for The Client Brand (@client-brand.co) — sustainable fashion bags, faith-driven, voice strategy, social media, content calendars, copy templates, email sequences, product storytelling | `skill_view(name='client-brand-brand-marketing')` |
 
 ## Productivity
 

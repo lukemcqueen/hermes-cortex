@@ -245,7 +245,7 @@ execute fully, report once. No thrash loops, no re-derivation (SOUL #4).
 | T5 | Orchestrator morning/evening passes (cron prompts) | Esther |
 | T6 | SOUL/AGENTS behavioral updates + fleet deploy | Esther |
 | T7 | Compete mode: `compete=true` flag, parallel-candidate runner (delegate_task + adversarial-verify judge), result logging | Esther |
-| T8 | Dogfood: run a real engagement (The Client Brand) through the new model; measure | Esther |
+| T8 | Dogfood: run a real client engagement through the new model; measure | Esther |
 
 ## 8. Explicit non-goals
 
@@ -264,6 +264,6 @@ execute fully, report once. No thrash loops, no re-derivation (SOUL #4).
 - [ ] `report` sets review; only orchestrator `verify` → completed
 - [ ] Daily board digest delivers to Telegram (zero-token, coverage-aware)
 - [ ] On-demand board query works via bus
-- [ ] Orchestrator decompose→dispatch→verify loop runs a full The Client Brand slice end-to-end
+- [ ] Orchestrator decompose→dispatch→verify loop runs a full client slice end-to-end
 - [ ] Compete mode: 2 candidates on one slice → deterministic winner by AC + adversarial findings; loser archived with reason
 - [ ] Doctor green; transition matrix tests pass

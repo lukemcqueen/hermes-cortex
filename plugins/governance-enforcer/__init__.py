@@ -1317,7 +1317,7 @@ _PUBLIC_HOST_RE = re.compile(
     r"remotive\.com|workingnomads\.com|startuphub\.ai|jobsbyculture\.com|"
     r"jobs-radar\.com|fwddeploy\.com|aijobs\.(ai|net)|agenticcareers\.co|"
     r"menlovc\.com|startup\.jobs|aillmjobs\.com|arbeitnow\.com|"
-    r"relocate\.me|client-brand\.co|careers\.(bcg|ey)\.com|"
+    r"relocate\.me|careers\.(bcg|ey)\.com|"
     r"job-boards\.greenhouse\.io|jobs\.lever\.co|jobs\.ashbyhq\.com|"
     r"wanted\.co\.kr)"
 )
