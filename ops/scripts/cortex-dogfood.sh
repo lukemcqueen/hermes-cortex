@@ -82,9 +82,14 @@ if [[ -n "$DOGFOOD_OWN_TASK" ]]; then
 fi
 
 if [[ -z "$DOCTOR_ONLY" ]]; then
-  # 1. Pull latest (rebase) — never diagnose without the newest source
+  # 1. Pull latest (rebase) — never diagnose without the newest source.
+  #    Resolve the remote's DEFAULT branch (not hardcoded 'main'): after the
+  #    2026-08-24 PII history rewrite the default is pii-clean-history, and
+  #    hardcoding 'main' pulls the stale pre-rewrite history, re-triggering a
+  #    stuck interactive rebase (unmerged files) that breaks the deploy sync.
   echo "▶ 1/4 pull latest"
-  (cd "$REPO" && git pull --rebase origin main 2>&1 | sed 's/^/   /' || { echo "   (no remote or up to date)"; })
+  _DEFAULT_BRANCH=$(git -C "$REPO" symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's#refs/remotes/origin/##' || echo "main")
+  (cd "$REPO" && git pull --rebase origin "$_DEFAULT_BRANCH" 2>&1 | sed 's/^/   /' || { echo "   (no remote or up to date)"; })
 
   # 2. Deploy — sync deployed files to repo source
   if [[ -f "$UPDATE" ]]; then
