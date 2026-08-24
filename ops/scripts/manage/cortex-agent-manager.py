@@ -73,8 +73,23 @@ def _validate_agent_name(name: str) -> str:
 
 
 def _pg_execute(sql: str, params: tuple = ()) -> list:
-    """Execute SQL via Docker exec into the mycortex Postgres container."""
-    safe_sql = sql % params  # psycopg-style %s params converted to positional
+    """Execute SQL via Docker exec into the mycortex Postgres container.
+
+    Params are properly SQL-quoted (live-test finding 2026-08-24: the old
+    `sql % params` interpolated bare strings → 'column titusclaude does
+    not exist'). %s placeholders are converted to quoted literals.
+    """
+    def _quote(v):
+        if v is None:
+            return "NULL"
+        if isinstance(v, bool):
+            return "true" if v else "false"
+        if isinstance(v, (int, float)):
+            return str(v)
+        s = str(v).replace("'", "''")
+        return f"'{s}'"
+
+    safe_sql = sql % tuple(_quote(p) for p in params) if params else sql
     cmd = [
         "docker", "exec", "-i", "mycortex-postgres",
         "psql", "-U", "mycortex", "-d", "mycortex", "-t",
@@ -287,13 +302,21 @@ def cmd_add(args):
         (agent_name, token_hash)
     )
 
-    # 5. Create permission row
-    _pg_execute(
-        "INSERT INTO bus.permissions (agent_name, can_send, can_read, can_archive, "
-        "can_requeue, can_delete, can_admin, updated_at) "
-        "VALUES (%s, true, true, true, true, %s, %s, now())",
-        (agent_name, can_admin, can_admin)
-    )
+    # 5. Create permission row — scoped ARRAY ACLs (ADR-0005: enumerable,
+    #    no wildcard). Worker: read own inbox, write own out_ (gateway
+    #    drains out_ → Telegram; gateway writes inbox_).
+    if args.role == "orchestrator":
+        _pg_execute(
+            "INSERT INTO bus.permissions (agent_name, can_read, can_write, "
+            "is_admin, updated_at) VALUES (%s, ARRAY['inbox_*','out_*'], "
+            "ARRAY['inbox_*','out_*'], true, now())",
+            (agent_name,))
+    else:
+        _pg_execute(
+            "INSERT INTO bus.permissions (agent_name, can_read, can_write, "
+            "is_admin, updated_at) VALUES (%s, ARRAY['inbox_' || %s], "
+            "ARRAY['out_' || %s], false, now())",
+            (agent_name, agent_name, agent_name))
 
     # 6. Add nginx htpasswd
     htpasswd_ok = _add_htpasswd(agent_name, password)

@@ -1,0 +1,20 @@
+# gateway.yaml — Messaging Gateway config (ADR-0005)
+# Lives OUTSIDE the repo (deployed): ~/.hermes-cortex/gateway.yaml
+# Functional URLs + tokens come from env — never here.
+# `gateway reload` applies changes without dropping polls (future).
+
+{
+  "secret": "<HMAC-signing-secret — env GATEWAY_SECRET preferred>",
+
+  "bots": [
+    {
+      "token_ref": "TELEGRAM_BOT_TOKEN",
+      "channel": "telegram",
+      "initial_offset": 0,
+      "routing": {
+        "default": "esther",
+        "overrides": {}
+      }
+    }
+  ]
+}
