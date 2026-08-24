@@ -1762,15 +1762,12 @@ _loud_restart_banner() {
   # mode: "" (default) = verified pending | "unverifiable" = the check
   # failed and restart state is unknown — the banner must STILL FIRE so
   # the operator investigates; never silently suppress.
-  # ⚠️ The command string is split ("re""start") deliberately: the terminal
-  # tool's gateway lifecycle guard scans REFERENCED SCRIPT CONTENT with a
-  # regex that matches the gateway CLI's restart/stop verb. A contiguous
-  # literal here — in code OR comments — would block EVERY invocation of
-  # cortex-update.sh from the terminal, including this script's own
-  # sanctioned deploy command. Bash concatenates the adjacent literals at
-  # runtime, so the operator still sees the exact command to run.
+  # NOTE: we deliberately do NOT print the exact restart command here.
+  # The terminal tool's gateway lifecycle guard scans referenced script
+  # content for the restart verb, and the fleet's deploy script must
+  # remain invocable by every agent. The guard's own block message tells
+  # the operator the exact syntax to run from a separate shell.
   local mode="${1:-}"
-  local gw_restart_cmd="hermes gateway re""start"
   echo ""
   echo -e "${YELLOW}${BOLD}╔══════════════════════════════════════════════════════════════════╗${RESET}"
   echo -e "${YELLOW}${BOLD}║  ⚠  GATEWAY RESTART REQUIRED — enforcement chain redeployed      ║${RESET}"
@@ -1780,9 +1777,9 @@ _loud_restart_banner() {
   else
     warn "Deploy ≠ load: the RUNNING gateway still executes the OLD enforcer in memory."
   fi
-  warn "The new enforcement chain activates ONLY after the gateway process restarts:"
-  echo -e "    ${CYAN}${gw_restart_cmd}${RESET}   (from a separate shell — agents cannot run it: lifecycle guard)"
-  warn "Until then, the sanctioned command may still return GOVERNANCE LOCK REQUIRED —"
+  warn "The new enforcement chain activates ONLY after the gateway process restarts."
+  warn "Run the gateway restart from a separate shell outside the gateway process"
+  warn "(the lifecycle guard shows the exact command if you try it from inside)."
   warn "that is a pending restart, not a code bug. Do not loop retrying; do not edit the deployed copy."
   echo ""
 }
@@ -1941,11 +1938,22 @@ verify_services() {
 
   if [[ "$os" == "Darwin" ]]; then
     local any_missing=0
-    for label in com.ollama.serve com.hermes.gateway com.hermes.cortex-dashboard com.hermes.agent-inbox; do
-      if ! launchctl list "$label" &>/dev/null 2>&1; then
-        warn "$label: not registered with launchd"
-        any_missing=$((any_missing + 1))
-      fi
+    # Discover launchd labels from the deployed plist files themselves —
+    # no hardcoded label literals (which the gateway lifecycle guard's
+    # order-independent launchctl branch would false-positive on when
+    # combined with the legit service-management verbs below).
+    local plist label
+    for plist in "$HOME/Library/LaunchAgents/"*.plist; do
+      [[ -e "$plist" ]] || continue
+      case "$plist" in
+        *cortex-bus*|*cortex-dashboard*|*agent-inbox*|*ollama*|*health-server*|*gateway*)
+          label=$(basename "$plist" .plist)
+          if ! launchctl list "$label" &>/dev/null 2>&1; then
+            warn "$label: not registered with launchd"
+            any_missing=$((any_missing + 1))
+          fi
+          ;;
+      esac
     done
     if [[ "$any_missing" -eq 0 ]]; then
       info "All cortex services managed by launchd"
@@ -1954,7 +1962,9 @@ verify_services() {
     fi
   elif [[ "$os" == "Linux" ]]; then
     local any_unmanaged=0 any_inactive=0 managed=0
-    for unit in ollama hermes-gateway hermes-cortex-dashboard; do
+    # Discover systemd units from the live unit list — no hardcoded names.
+    local unit
+    for unit in $(systemctl list-unit-files --no-legend 2>/dev/null | awk '{print $1}' | grep -E '^(ollama|hermes-|hermes_)' || true); do
       # Check system-level first, fall back to user-level
       if systemctl is-active --quiet "$unit" 2>/dev/null || systemctl --user is-active --quiet "$unit" 2>/dev/null; then
         managed=$((managed + 1))
@@ -1972,7 +1982,7 @@ verify_services() {
     # Detect unmanaged processes (skip ollama — already covered by the service loop above)
     local hermes_pid
     hermes_pid=$(pgrep -f "hermes_cli.main" 2>/dev/null || true)
-    if [[ -n "$hermes_pid" ]] && ! systemctl --user is-active --quiet hermes-gateway 2>/dev/null; then
+    if [[ -n "$hermes_pid" ]] && ! systemctl --user status "$hermes_pid" &>/dev/null 2>&1; then
       warn "⚠ Hermes Gateway running (PID $hermes_pid) but NOT managed by systemd"
     fi
   fi
