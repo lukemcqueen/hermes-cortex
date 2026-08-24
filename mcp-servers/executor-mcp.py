@@ -207,6 +207,30 @@ def _execution_request(args: dict) -> CallToolResult:
     prepared = _hermes_prepare(args)
     if prepared.get("error"):
         return _err(prepared["error"])
+    # F13 pre-fetch (Dex Horthy, 12-Factor Agents): build the context
+    # envelope DETERMINISTICALLY before dispatch so the coding agent spends
+    # zero tool round-trips fetching context. Rules + plan + task + git
+    # history are knowable in advance.
+    context = ""
+    worktree = args.get("worktree", "")
+    if worktree:
+        try:
+            import importlib.util as _ilu
+            from pathlib import Path as _P
+            _cb = _P(__file__).resolve().parent.parent / "ops" / "scripts" / "executor_context_builder.py"
+            if _cb.is_file():
+                _spec = _ilu.spec_from_file_location("executor_context_builder", _cb)
+                _mod = _ilu.module_from_spec(_spec)
+                _spec.loader.exec_module(_mod)
+                context = _mod.build_context(
+                    worktree,
+                    task=str(args.get("task", "")),
+                    plan=str(args.get("plan", "")),
+                    max_chars=6000,
+                )
+        except Exception:  # noqa: BLE001 — context is a bonus, never a blocker
+            context = ""
+    prepared["context_envelope"] = context
     handle = _hermes_execute(prepared)
     return _ok(json.dumps(handle, indent=2))
 
@@ -276,6 +300,8 @@ async def list_tools(ctx, params=None) -> ListToolsResult:
                                              "description": "Optional; omit to route by capability"},
                              "request_id": {"type": "string"},
                              "task": {"type": "string"},
+                             "plan": {"type": "string",
+                                      "description": "Orchestrator-written slice plan — pre-fetched into the context envelope (F13)"},
                              "repo": {"type": "string"},
                              "worktree": {"type": "string"},
                              "branch": {"type": "string"},
