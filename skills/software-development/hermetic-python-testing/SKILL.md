@@ -95,7 +95,7 @@ After the suite is green, confirm no real resources were touched:
 ## Pitfalls
 
 - **Import-time path constants** are the #1 hermeticity killer (see rule 1).
-- **Real identifiers in fixtures** — a numeric chat id (e.g. `1270130526`)
+- **Real identifiers in fixtures** — a numeric chat id (e.g. `111222333`)
   looks like an arbitrary integer and sails through the secret-leak detector;
   the scanner only flags `/home/<user>/` paths and emails. Use placeholders
   (`111222333`) and grep for the real id before committing.
