@@ -1,0 +1,19 @@
+tasks[2]{id,title,status}:
+  T-1,Set up bus auth,done
+  T-2,Wire telegram bridge,in_progress
+count: 2 of 10
+
+jobs[1]{name,state}:
+  agent-fixer-workday,blocked
+count: 1 of 5
+
+empty[0]{id,title}:
+count: 0 of 3
+
+errors[1]{code,message}:
+  E-404,not found
+count: 1 of 1
+
+truncated[1]{field,preview}:
+  body,"beginning of text... (truncated, 812 chars total)"
+count: 1 of 1

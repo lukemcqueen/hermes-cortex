@@ -101,6 +101,21 @@ for FILE in $STAGED_FILES; do
   # or heading-only files. Patterns 1-4 simply find nothing on empty
   # CODE_CONTENT.
 
+  # ── TOON mask (AXI 2026-08-24) ─────────────────────────────────
+  # TOON blocks (tasks[N]{fields}: ... count: N of M) carry DATA values
+  # in 2-space-indented rows — placeholder emails/domains/paths/IPs are
+  # schema data, not PII. Mask those row lines + the count line from the
+  # docs-class PII scans (patterns 5-8) while leaving the header line
+  # (name[N]{fields}:) fully scanned. Malformed TOON (rows with no count
+  # line) is NOT masked — the verifier flags it separately.
+  if echo "$STAGED_CONTENT" | grep -Eq '^[A-Za-z0-9_-]+\[[0-9]+\]\{[^}]+\}:$'; then
+    STAGED_CONTENT=$(echo "$STAGED_CONTENT" | awk '
+      /^[A-Za-z0-9_-]+\[[0-9]+\]\{[^}]+\}:$/ { in_block=1; print; next }
+      /^[[:space:]]*count:[[:space:]]*[0-9]+[[:space:]]+of[[:space:]]*[0-9]+[[:space:]]*$/ { in_block=0; print; next }
+      in_block && /^[[:space:]]{2}/ { print "  <toon-data>"; next }
+      { in_block=0; print }')
+  fi
+
   # === Pattern 1: printf + quoted string + redirection ===
   # Matches: printf 'something' > file or printf "something" > file
   if echo "$CODE_CONTENT" | grep -En "printf[[:space:]]+['\"][^'\"]{8,}['\"][[:space:]]*([|>]|>>)" >/dev/null 2>&1; then

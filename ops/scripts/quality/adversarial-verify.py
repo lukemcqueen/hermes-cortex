@@ -1168,6 +1168,32 @@ def main():
 
         level_findings = run_level(filepath, args.level)
 
+        # TOON conformance (AXI Phase 0, QA showstopper): malformed TOON
+        # (a TOON-looking header with rows but no matching count line, or
+        # a count mismatch) must be flagged BEFORE it ships — agents and
+        # downstream parsers treat TOON as a contract.
+        try:
+            import sys as _sys
+            # verifier lives at ops/scripts/quality/ → lib is two levels up
+            # at ops/scripts/lib/.
+            _lib = os.path.join(os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__))), "lib")
+            if _lib not in _sys.path:
+                _sys.path.insert(0, _lib)
+            import toon_parse as _toon
+            _content = open(filepath, errors="replace").read()
+            _malformed = _toon.find_malformed_toon(_content)
+            if _malformed:
+                level_findings.append({
+                    "finding_id": next_finding_id(),
+                    "technique": "toon-conformance",
+                    "pattern": "malformed-toon",
+                    "detail": f"Malformed TOON: {_malformed}",
+                    "severity": "medium",
+                })
+        except Exception:
+            pass  # TOON check is advisory — never blocks on parser error
+
         funcs = _find_func_defs(lines)
         fuzz_inputs = generate_fuzz_inputs(funcs)
 

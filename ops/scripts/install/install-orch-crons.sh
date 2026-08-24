@@ -136,6 +136,7 @@ if $UNINSTALL; then
     "orch-clean-health-queue" \
     "orch-daily-cost-report" \
     "orch-daily-regression-gate" \
+    "orch-axi-telemetry" \
     "orch-fleet-watchdog" \
     "orch-health-report-saturday" \
     "orch-health-report-weekday" \
@@ -419,6 +420,19 @@ create_cron "orch-daily-cost-report" "0 8 * * *" \
   "" \
   "" \
   "telegram:${TELEGRAM_HOME_CHANNEL}" \
+  "" \
+  "true"
+
+# Daily AXI telemetry baseline — refresh state/axi-baseline.json so every
+# later AXI task can prove its token/turn delta (F-022). no_agent; the
+# script defaults to --baseline when run with no args (cron convention).
+# Output to local only (baseline is a file artifact, not a user report).
+create_cron "orch-axi-telemetry" "35 2 * * *" \
+  "axi-telemetry.py" \
+  "" \
+  "" \
+  "" \
+  "local" \
   "" \
   "true"
 
