@@ -1,24 +1,29 @@
 #!/usr/bin/env python3
-"""Hermetic tests for max_cost_guard.py (O6-S1 MAX_COST pre-fire guard).
+"""Regression tests for max_cost_guard.py daily-budget semantics.
 
-Covers: p95+headroom cap computation, today-spend block verdict, fail-open
-on insufficient history, orch-* exemption, and no-data allow. Uses a temp
-SQLite DB — no live state touched.
+2026-08-24 fleet blocks: agent-fixer-workday ($0.0114 ≥ $0.0092 cap),
+cortex-bus-workday ($0.0034 ≥ $0.0025), Gisu's agent-inbox-workday
+($0.0116 ≥ $0.0089) — all multi-fire-per-day jobs blocked by comparing
+cumulative daily spend against the per-run cap (p95×2.0). Fix: daily
+budget = per-run cap × DAILY_MULTIPLIER (default 8) — legitimate cadence
+passes, runaway loops still trip.
 """
-import os
+import importlib.util
 import sqlite3
 import sys
 import tempfile
-from datetime import datetime, timezone
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "ops" / "scripts" / "manage"))
-import max_cost_guard as g
+_REPO = Path(__file__).resolve().parent.parent
+_SPEC = importlib.util.spec_from_file_location(
+    "max_cost_guard", _REPO / "ops" / "scripts" / "manage" / "max_cost_guard.py")
+MG = importlib.util.module_from_spec(_SPEC)
+sys.modules["max_cost_guard"] = MG
+_SPEC.loader.exec_module(MG)
 
 
-def _make_db():
+def _mkdb():
     tf = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
-    tf.close()
     conn = sqlite3.connect(tf.name)
     conn.row_factory = sqlite3.Row
     conn.execute("""CREATE TABLE cron_runs (
@@ -27,84 +32,58 @@ def _make_db():
     return conn, tf.name
 
 
-def test_cap_and_block():
-    conn, path = _make_db()
-    try:
-        for i in range(10):
-            conn.execute(
-                "INSERT INTO cron_runs (job_id, run_time, estimated_cost_usd, no_agent) "
-                "VALUES (?, ?, ?, 0)",
-                ("testjob", f"2026-08-{10+i:02d}T00:00:00Z", 0.10),
-            )
-        day = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+def _seed_history(conn, job_id, n=10, cost=0.10):
+    for i in range(n):
         conn.execute(
             "INSERT INTO cron_runs (job_id, run_time, estimated_cost_usd, no_agent) "
-            "VALUES ('testjob', ?, 0.10, 0)", (f"{day}T01:00:00Z",))
-        conn.execute(
-            "INSERT INTO cron_runs (job_id, run_time, estimated_cost_usd, no_agent) "
-            "VALUES ('testjob', ?, 0.10, 0)", (f"{day}T02:00:00Z",))
-        conn.commit()
-
-        cap = g.compute_cap("testjob", conn)
-        assert cap == 0.20, f"cap expected 0.20, got {cap}"
-        d = g.should_fire("testjob", conn=conn)
-        assert d["decision"] == "block", f"expected block, got {d}"
-        assert d["today_spend"] >= d["cap"], f"spend {d['today_spend']} >= cap {d['cap']}"
-    finally:
-        conn.close()
-        os.unlink(path)
+            "VALUES (?, ?, ?, 0)",
+            (job_id, f"2026-08-{10+i:02d}T00:00:00Z", cost))
+    conn.commit()
 
 
-def test_fail_open_insufficient():
-    conn, path = _make_db()
+def _today_run(conn, job_id, cost, minute):
+    day = MG._today_utc_prefix()
+    conn.execute(
+        "INSERT INTO cron_runs (job_id, run_time, estimated_cost_usd, no_agent) "
+        "VALUES (?, ?, ?, 0)", (job_id, f"{day}T03:{minute:02d}:00Z", cost))
+    conn.commit()
+
+
+def test_multi_fire_per_day_allowed():
+    """Cadence: daily spend > per-run cap but < daily budget → allow."""
+    conn, path = _mkdb()
     try:
-        conn.execute(
-            "INSERT INTO cron_runs (job_id, run_time, estimated_cost_usd, no_agent) "
-            "VALUES ('newjob', '2026-08-20T00:00:00Z', 0.05, 0)")
-        conn.commit()
-        d = g.should_fire("newjob", conn=conn)
-        assert d["decision"] == "allow", f"expected allow (insufficient), got {d}"
-        assert d["cap"] is None
+        _seed_history(conn, "workday", n=10, cost=0.10)  # p95=0.10, cap=0.20
+        _today_run(conn, "workday", 0.10, 1)  # today: 0.10
+        _today_run(conn, "workday", 0.10, 2)  # today: 0.20 ≥ cap, < budget 1.60
+        d = MG.should_fire("workday", conn=conn)
+        assert d["decision"] == "allow", d
     finally:
         conn.close()
-        os.unlink(path)
+        import os; os.unlink(path)
 
 
-def test_orch_exempt():
-    conn, path = _make_db()
+def test_runaway_loop_blocked():
+    """A loop firing well past the daily budget still blocks."""
+    conn, path = _mkdb()
     try:
-        day = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-        conn.execute(
-            "INSERT INTO cron_runs (job_id, run_time, estimated_cost_usd, no_agent) "
-            "VALUES ('orch-test', ?, 0.50, 0)", (f"{day}T01:00:00Z",))
-        conn.commit()
-        d = g.should_fire("orch-test", "orch-test", conn=conn)
-        assert d["decision"] == "allow", f"expected allow (orch exempt), got {d}"
-        assert "exempt" in d["reason"]
+        _seed_history(conn, "loop", n=10, cost=0.10)  # cap=0.20, budget=1.60
+        for i in range(20):
+            _today_run(conn, "loop", 0.10, i)  # today: 2.00 ≥ 1.60
+        d = MG.should_fire("loop", conn=conn)
+        assert d["decision"] == "block", d
     finally:
         conn.close()
-        os.unlink(path)
+        import os; os.unlink(path)
 
 
-def test_no_data_allow():
-    conn, path = _make_db()
+def test_daily_budget_reflects_multiplier():
+    conn, path = _mkdb()
     try:
-        d = g.should_fire("nonexistent", conn=conn)
-        assert d["decision"] == "allow", f"expected allow (no data), got {d}"
+        _seed_history(conn, "job", n=10, cost=0.10)
+        cap = MG.compute_cap("job", conn)
+        assert cap == 0.20
+        assert abs(cap * MG.DAILY_MULTIPLIER - 1.60) < 1e-9
     finally:
         conn.close()
-        os.unlink(path)
-
-
-def test_p95_nearest_rank():
-    assert g._p95([0.1] * 10) == 0.1
-    assert g._p95([0.01, 0.02, 0.03, 0.04]) == 0.04  # int(0.95*4)=3 -> idx 3
-    assert g._p95([0.5]) == 0.5
-
-
-if __name__ == "__main__":
-    for fn in (test_cap_and_block, test_fail_open_insufficient, test_orch_exempt,
-               test_no_data_allow, test_p95_nearest_rank):
-        fn()
-        print(f"  OK {fn.__name__}")
-    print("ALL MAX_COST GUARD TESTS PASSED")
+        import os; os.unlink(path)

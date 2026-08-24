@@ -43,8 +43,17 @@ HOME = Path.home()
 COST_DB = HOME / ".hermes" / "cron" / "cron-costs.db"
 DEFAULT_LOOKBACK_DAYS = 30
 DEFAULT_HEADROOM = 2.0
+# Daily budget = per-run cap × this multiplier. The per-run cap alone
+# (p95×2.0) cannot bound a MULTI-FIRE-per-day job: a workday cron firing
+# 5×/day legitimately accumulates >2× its per-run p95 by mid-day (real
+# blocks 2026-08-24: agent-fixer-workday $0.0114 ≥ $0.0092, cortex-bus-
+# workday $0.0034 ≥ $0.0025, Gisu's agent-inbox-workday $0.0116 ≥
+# $0.0089). The multiplier scales the daily budget to the job's cadence
+# while still catching a runaway loop (a loop firing dozens of times
+# exceeds any sane multiplier).
 MIN_SAMPLES = 3
 EXEMPT_PREFIX = os.environ.get("MAX_COST_EXEMPT_PREFIX", "orch-").split(",")
+DAILY_MULTIPLIER = float(os.environ.get("MAX_COST_DAILY_MULTIPLIER", "8"))
 
 
 def _today_utc_prefix() -> str:
@@ -123,15 +132,21 @@ def should_fire(job_id: str, job_name: Optional[str] = None,
             if cap is None:
                 result["reason"] = "insufficient history — fail open"
                 return result
-            if spend >= cap:
+            # Daily budget = per-run cap × cadence multiplier. Comparing
+            # cumulative daily spend against the raw per-run cap blocks
+            # every multi-fire-per-day job (2026-08-24 fleet blocks —
+            # see DAILY_MULTIPLIER docstring).
+            daily_budget = cap * DAILY_MULTIPLIER
+            if spend >= daily_budget:
                 result["decision"] = "block"
                 result["reason"] = (
-                    f"today spend ${spend:.4f} >= cap ${cap:.4f} "
-                    f"(p95×{DEFAULT_HEADROOM})"
+                    f"today spend ${spend:.4f} >= daily budget ${daily_budget:.4f} "
+                    f"(p95×{DEFAULT_HEADROOM}×{DAILY_MULTIPLIER:g})"
                 )
             else:
                 result["reason"] = (
-                    f"today spend ${spend:.4f} < cap ${cap:.4f}"
+                    f"today spend ${spend:.4f} < daily budget ${daily_budget:.4f} "
+                    f"(p95×{DEFAULT_HEADROOM}×{DAILY_MULTIPLIER:g})"
                 )
             return result
         finally:
@@ -173,7 +188,10 @@ def _test_self() -> int:
             "VALUES (?, ?, ?, 0)",
             ("testjob", f"2026-08-{10+i:02d}T00:00:00Z", 0.10),
         )
-    # today: 2 runs at $0.10 each → spend 0.20 >= cap 0.20 → BLOCK
+    # today: 2 runs at $0.10 each → spend 0.20 — UNDER the daily budget
+    # (cap 0.20 × 8 = 1.60). Multi-fire-per-day jobs legitimately exceed
+    # the per-run cap (2026-08-24 fleet blocks); the daily budget is the
+    # real line. → ALLOW
     day = _today_utc_prefix()
     conn.execute(
         "INSERT INTO cron_runs (job_id, run_time, estimated_cost_usd, no_agent) "
@@ -181,6 +199,11 @@ def _test_self() -> int:
     conn.execute(
         "INSERT INTO cron_runs (job_id, run_time, estimated_cost_usd, no_agent) "
         "VALUES ('testjob', ?, 0.10, 0)", (f"{day}T02:00:00Z",))
+    # A runaway loop: 20 runs today at $0.10 → spend 2.00 >= budget 1.60 → BLOCK
+    for i in range(20):
+        conn.execute(
+            "INSERT INTO cron_runs (job_id, run_time, estimated_cost_usd, no_agent) "
+            "VALUES ('runaway', ?, 0.10, 0)", (f"{day}T03:{i:02d}:00Z",))
     # insufficient-history job → allow
     conn.execute(
         "INSERT INTO cron_runs (job_id, run_time, estimated_cost_usd, no_agent) "
@@ -192,8 +215,11 @@ def _test_self() -> int:
     conn.commit()
 
     d = should_fire("testjob", conn=conn)
-    if d["decision"] != "block":
-        fails.append(f"testjob should BLOCK, got {d}")
+    if d["decision"] != "allow":
+        fails.append(f"testjob (cadence) should ALLOW, got {d}")
+    d_runaway = should_fire("runaway", conn=conn)
+    if d_runaway["decision"] != "block":
+        fails.append(f"runaway should BLOCK, got {d_runaway}")
     d2 = should_fire("newjob", conn=conn)
     if d2["decision"] != "allow":
         fails.append(f"newjob should ALLOW (insufficient), got {d2}")
