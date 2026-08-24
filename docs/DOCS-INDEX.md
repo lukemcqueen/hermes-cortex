@@ -66,6 +66,8 @@ repo; this public repo carries only framework docs (PRDs, design, reference).
 | `docs/design/task-lifecycle-v2.md` | Task lifecycle v2 — statuses, transitions, stale sweep |
 | `docs/design/task-model-v3.md` | **Task model v3** — orchestrator-intelligence / worker-execution, claim/report/verify, compete mode |
 | `docs/adr/README.md` | **ADR convention** — durable fleet decisions (model contract, MAX_COST guard, bus v2 API). Read before re-deriving WHY the system is shaped this way |
+| `docs/adr/0005-messaging-gateway.md` | **ADR-0005: Unified Messaging Gateway** — one daemon owns all messaging apps; agents bus-only; envelope v1; per-bot ACLs + advisory locks |
+| `docs/design/messaging-gateway.md` | **Messaging gateway design** — party-converged architecture (adapters, routing, envelope, reliability, security, migration, MVP) |
 | `docs/external/README.md` | **External context** — env var NAME registry + external services (payment processor, credentials locations). Never values |
 | `docs/design/mycortex-DESIGN.md` | mycortex knowledge-brain design |
 | `docs/design/mycortex-dream-layer.md` | Dream-layer design |
