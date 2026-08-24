@@ -104,8 +104,13 @@ PII-never-bleeds. The adapter layer must NOT bypass any of it:
 - **No `SKIP_SCORE`, no `--no-verify`, no bypass flags** — the adapter
   executes within the same governance rules as a Hermes agent.
 - **PII boundary (R0.7)**: `data_tier` is enforced at the *Cortex* boundary
-  (context builder), not trusted to the adapter. ClaudeAdapter physically
-  cannot see brain personal data — it only receives the budgeted context.
+  (context builder), not trusted to the adapter. The executor receives a
+  budgeted context envelope. Clarification (Luke 2026-08-24): this is a
+  **tier filter, not a per-executor ban** — Claude (or any executor) with
+  `data_tier: projects` gets the same project/learning brain context any
+  agent gets (via `vault_build_context`); only the **personal tier**
+  (people/, notes/ — R0.7 Esther-only) is filtered, and that applies to
+  every agent except Esther, not to Claude specifically.
 - **Evidence is mandatory**: `collect()` returns evidence; the orchestrator
   verifies (task-model-v3 `verify_slice`) before the work is accepted.
   **Never trust a self-reported done** — applies to Claude exactly as to
@@ -200,3 +205,123 @@ Cortex Core keeps (runtime-agnostic):
    "this should be an orchestrator" direction) — confirm.
 4. **Registry schema**: `executors.yaml` vs. bus capability cards — I
    recommend capability cards on the bus (already the agent-card pattern).
+
+---
+
+## 10. MCP executor layer — the pluggability mechanism (Luke 2026-08-24)
+
+> "If we need to put more functionality in MCP to have pluggable
+> executors/harnesses, please consider that. Better to 'over engineer' for
+> future proofing than to have to redesign/refactor core tooling."
+
+**The key realization: the fleet's core services are ALREADY MCP servers**
+(agent-bus, loop-governance, tasks — verified in `~/.hermes/config.yaml`).
+Any harness that speaks MCP (Claude Code, Codex, OpenCode) can connect to
+them **today**. The executor abstraction is therefore a **fourth MCP
+server**, not a new framework:
+
+```
+                    CORTEX CORE (MCP servers — runtime-agnostic)
+   ┌───────────────┬───────────────┬───────────────┬────────────────┐
+   ▼               ▼               ▼               ▼                ▼
+agent-bus        loop-gov        tasks          executor        mycortex
+(dispatch)      (policy)       (task model)    (CONTROLLER)    (vault/brain)
+                                                    │
+                                          deterministic routing
+                                                    │
+                              ┌─────────────────────┼──────────────────┐
+                              ▼                     ▼                  ▼
+                       HermesAdapter           ClaudeAdapter      CodexAdapter
+                       (executor MCP)          (executor MCP)     (executor MCP)
+                              │                     │                  │
+                              ▼                     ▼                  ▼
+                          Hermes               Claude Code           Codex
+```
+
+### 10.1 Why MCP is the right pluggability seam
+
+- **MCP is the universal tool protocol** — every modern agent runtime
+  (Hermes, Claude Code, Codex, OpenCode) speaks it as a client. One contract,
+  every harness.
+- **The fleet already proves it**: 3 MCP servers run today; Claude Code can
+  be pointed at the same `agent-bus`/`tasks`/`loop-governance` servers with
+  zero changes. The harness doesn't care what implements the server.
+- **No new framework**: the ExecutorAdapter protocol (from §2) becomes the
+  *tool surface* of one MCP server. Over-engineering here means: capability
+  cards, registry, routing, and lifecycle are all first-class MCP tools —
+  not buried in one agent's Python.
+
+### 10.2 `executor` MCP server — tool surface
+
+```python
+server = Server("executor", on_list_tools=list_tools, on_call_tool=call_tool)
+```
+
+| Tool | Contract | Notes |
+|---|---|---|
+| `executor_list` | list registered executors + capability cards | registry read |
+| `executor_probe` | health + model + cost profile of one executor | adapter `probe()` |
+| `execution_request` | submit ExecutionRequest → handle | adapter `prepare()`+`execute()`; opens a governance cycle (no bypass) |
+| `execution_status` | poll a running execution | adapter `status()` |
+| `execution_cancel` | cancel a running execution | adapter `cancel()` |
+| `execution_collect` | gather ExecutionResult + evidence | adapter `collect()`; feeds `report_done()`/`verify_slice()` |
+
+**Every tool enforces Cortex policy at the server boundary** (same pattern
+as the enforcer):
+- `execution_request` with `data_tier: full` → refused for non-orchestrators
+- no governance lock open → refused (begin_change first)
+- evidence-less `execution_collect` → `needs_review: true` forced
+
+### 10.3 Registry — capability cards (recommended: on the bus)
+
+Each executor publishes a capability card (JSON) on the bus, same pattern as
+agent cards:
+
+```json
+{
+  "executor_id": "titusclaude",
+  "type": "claude",
+  "host": "<executor-host>",
+  "models": ["sonnet", "opus"],
+  "capabilities": ["code.read", "code.write", "shell", "tests", "git"],
+  "data_tiers": ["none", "projects"],
+  "cost_profile": {"sonnet": 0.05, "opus": 0.22},
+  "health_endpoint": "http://<executor-host>:8911/health"
+}
+```
+
+The controller caches cards; `executor_list`/`executor_probe` read them.
+
+### 10.4 Adapters are MCP servers too (uniform contract)
+
+- **HermesAdapter** = an executor-MCP server wrapping Hermes's native tools
+  (terminal/file/tests) behind the ExecutionRequest/Result contract. The
+  controller calls it exactly like it calls ClaudeAdapter.
+- **ClaudeAdapter** = executor-MCP server wrapping `claude -p` (subprocess,
+  worktree, env: DeepSeek Anthropic endpoint) behind the same contract.
+- The controller never knows which is which — that's the point.
+
+### 10.5 Over-engineering budget (what we build NOW so we never redesign)
+
+| Build | Why now | Cost |
+|---|---|---|
+| `executor` MCP server (tool surface §10.2) | The seam — any harness plugs here; adding tools later is additive, never breaking | 1d |
+| Capability-card registry (§10.3) | Deterministic routing needs machine-readable executor facts | 0.5d |
+| Controller policy gate (§10.2) | PII tier + governance lock enforced ONCE at the boundary, all adapters | 0.5d |
+| HermesAdapter (no-op wrapper) | Proves the abstraction + regression invariant before Claude exists | 1d |
+| ClaudeAdapter | The first real second harness — proves runtime-independence | 1-2d |
+
+**Explicitly deferred (additive, non-breaking later):** streaming progress
+events, structured tool interception, session continuation, usage
+accounting, richer lifecycle control — all are new MCP tools or new adapter
+methods, never rewrites.
+
+### 10.6 What does NOT go into MCP
+
+- **The enforcer** — governance enforcement stays in the Cortex policy layer
+  (it gates the `executor` server from outside; the server doesn't re-implement
+  enforcement).
+- **The brain/vault** — stays a separate MCP server (mycortex); the executor
+  server *consumes* its context envelopes, never owns it.
+- **Cron scheduling** — Hermes-native today; a future scheduler-MCP would be
+  additive, not a replacement of this layer.
