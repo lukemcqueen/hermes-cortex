@@ -92,6 +92,23 @@ def test_measure_pass_pct_from_output():
     assert ptd.parse_pass_pct("5 failed in 0.2s") == 0
 
 
+def test_parse_pass_pct_counts_errors_as_failures():
+    """TitusClaude finding (verified): 'N passed, M errors' scored 100."""
+    assert ptd.parse_pass_pct("598 passed, 69 warnings, 15 errors in 13.38s") == 98
+    assert ptd.parse_pass_pct("612 passed in 10.5s") == 100
+    assert ptd.parse_pass_pct("598 passed, 14 failed in 13.38s") == 98
+
+
+def test_parse_pass_pct_errors_only_is_zero():
+    """No passed token but errors present → 0, never None (silent 100)."""
+    assert ptd.parse_pass_pct("3 errors in 0.2s") == 0
+
+
+def test_parse_pass_pct_no_summary_is_none():
+    """Unparseable output → None (caller warns; never silent 100)."""
+    assert ptd.parse_pass_pct("random output without summary") is None
+
+
 def test_no_test_infra_is_fail_open():
     """No test configs found → pass_pct stays 100 (fail-open), no warning."""
     assert ptd.classify_measurement(100, found_infra=False, warned=False) == {

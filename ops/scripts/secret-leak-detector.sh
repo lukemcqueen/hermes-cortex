@@ -113,8 +113,14 @@ for FILE in $STAGED_FILES; do
 
   # === Pattern 2: echo + inline secret + pipe to sensitive tool ===
   # Matches: echo 'secret' | gh auth login or echo 'secret' | pass
-  if echo "$CODE_CONTENT" | grep -En "echo[[:space:]]+['\"][^'\"]{8,}['\"][[:space:]]*\|" >/dev/null 2>&1; then
-    MATCHES=$(echo "$CODE_CONTENT" | grep -En "echo[[:space:]]+['\"][^'\"]{8,}['\"][[:space:]]*\|" 2>/dev/null || true)
+  # Fixed 2026-08-24 (TitusClaude finding, verified): the old pattern
+  # matched echo "$var" | sed — a quoted VARIABLE piped to a pure
+  # text-transform (sed/awk/grep/tr/cut) is NOT a leak. Now:
+  #   - operand must be a literal (no $) — quoted variables are excluded
+  #   - pipe target must be a sensitive tool (gh, pass, kubectl, docker
+  #     login, vault, ssh, gcloud, aws) — text transforms excluded
+  if echo "$CODE_CONTENT" | grep -En "echo[[:space:]]+['\"][^'\"]*[^$][^'\"]*['\"][[:space:]]*\|[[:space:]]*(gh|pass|kubectl|docker[[:space:]]+login|vault|ssh|gcloud|aws)[[:space:]]" >/dev/null 2>&1; then
+    MATCHES=$(echo "$CODE_CONTENT" | grep -En "echo[[:space:]]+['\"][^'\"]*[^$][^'\"]*['\"][[:space:]]*\|[[:space:]]*(gh|pass|kubectl|docker[[:space:]]+login|vault|ssh|gcloud|aws)[[:space:]]" 2>/dev/null || true)
     if [[ -n "$MATCHES" ]]; then
       echo "$FILE|echo_pipe|$MATCHES" >> "$DETECTION_FILE"
     fi

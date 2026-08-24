@@ -88,23 +88,34 @@ def resolve_test_command(repo_root: str) -> str | None:
 
 
 def parse_pass_pct(pytest_output: str) -> int | None:
-    """Parse 'N passed, M failed' output into a pass percentage.
+    """Parse pytest summary into a pass percentage.
 
-    Returns None when the output has no parseable pass/fail line (the caller
-    then warns — measurement failure must not silently score 100).
+    Searches each summary token INDEPENDENTLY (TitusClaude finding
+    2026-08-24, verified): 'N passed' (required), plus optional 'N failed'
+    and 'N errors' — errors count as failures. Junk tokens between
+    ('69 warnings') must not break parsing. No passed token but
+    failed/errors present → 0. Neither → None (caller warns — measurement
+    failure must not silently score 100).
     """
-    m = re.search(r"(\d+)\s+passed(?:,\s*(\d+)\s+failed)?|(\d+)\s+failed", pytest_output)
-    if not m:
-        return None
-    if m.group(1) is not None:
-        passed = int(m.group(1))
-        failed = int(m.group(2)) if m.group(2) else 0
+    passed_m = re.search(r"(\d+)\s+passed", pytest_output)
+    failed_m = re.search(r"(\d+)\s+failed", pytest_output)
+    errors_m = re.search(r"(\d+)\s+errors", pytest_output)
+
+    if passed_m:
+        passed = int(passed_m.group(1))
     else:
         passed = 0
-        failed = int(m.group(3))
+
+    failed = 0
+    if failed_m:
+        failed += int(failed_m.group(1))
+    if errors_m:
+        failed += int(errors_m.group(1))
+
     total = passed + failed
     if total == 0:
-        return None
+        # Neither passed nor failed/errors → unparseable (or zero tests)
+        return None if passed_m is None and failed_m is None and errors_m is None else 0
     return round((passed / total) * 100)
 
 

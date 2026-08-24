@@ -64,8 +64,21 @@ if [[ "$SKILLS_CHANGED" -gt 0 ]]; then
 fi
 
 # ── Check 3: New/changed scripts should update cortex-update.sh MAP ──
-SCRIPTS_CHANGED=$(echo "$STAGED" | grep -c '^ops/scripts/' 2>/dev/null || true)
-MAP_CHANGED=$(echo "$STAGED" | grep -c '^ops/scripts/cortex-update\.sh$' 2>/dev/null || true)
+# Fixed 2026-08-24 (TitusClaude finding, verified): the registration check
+# only applies to the hermes-cortex repo. In project/client repos (koscap-av
+# etc.), ops/scripts/*.sh are read DIRECTLY by pre-commit-score from
+# $REPO_ROOT/ops/scripts/ — nothing is deployed fleet-wide, so demanding a
+# cortex-update.sh MAP entry is a false warning.
+IS_HC_REPO=0
+if [[ "$(git rev-parse --show-toplevel 2>/dev/null)" == "${HOME}/hermes-cortex" ]]; then
+  IS_HC_REPO=1
+fi
+SCRIPTS_CHANGED=0
+MAP_CHANGED=0
+if [[ "$IS_HC_REPO" -eq 1 ]]; then
+  SCRIPTS_CHANGED=$(echo "$STAGED" | grep -c '^ops/scripts/' 2>/dev/null || true)
+  MAP_CHANGED=$(echo "$STAGED" | grep -c '^ops/scripts/cortex-update\.sh$' 2>/dev/null || true)
+fi
 
 if [[ "$SCRIPTS_CHANGED" -gt 0 && "$MAP_CHANGED" -eq 0 ]]; then
     # Only flag NEW scripts — skip files already registered in the MAP
