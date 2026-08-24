@@ -34,8 +34,8 @@ without checking here first (Rule 11: never invent config or env names).
 | `CORTEX_BUS_PG_*` (HOST/PORT/DB/USER/PASS) | Bus Postgres connection |
 | `CORTEX_INBOX_URL` | Agent inbox v2 API base |
 | `CORTEX_NGINX_PORT_PREFIX` | Nginx port prefixing |
-| `MOSES_HEALTH_URLS` | Moses health probe targets (watchdog) |
-| `ESTHER_HEALTH_URLS` | Esther health probe targets (watchdog) |
+| `ORCH_HEALTH_URLS` | Active orchestrator's health probe targets (failover watchdog) — lives in `~/.hermes/.env` (the file the gateway/cron reads), NOT `~/.hermes-cortex/.env` |
+| `BACKUP_ORCH_HEALTH_URLS` | Standby orchestrator's health probe targets (failover watchdog) — `~/.hermes/.env` |
 
 ## ~/.hermes/.env (Hermes agent)
 

@@ -358,26 +358,28 @@ def run_once(
     the same state file fields.
     """
     state = _load_state()
-    if moses_up is None:
-        moses_up = _moses_reachable(moses_urls)
-    if esther_up is None:
-        esther_up = _esther_reachable(esther_urls)
-    out: list[str] = []
 
-    # Config guard (Luke 2026-08-24 — fleet-wide false CRITICAL): if
-    # either orchestrator's probe list is EMPTY (unconfigured env), the
-    # watchdog cannot judge reachability. Empty ≠ down — stand down
-    # silently instead of screaming "NO BUS PATH" for an unset variable.
-    # Only applies when the watchdog is actually PROBING (moses_up/
-    # esther_up injected by callers/tests = the caller knows the state,
-    # so empty URL lists are irrelevant).
-    if not IS_ORCHESTRATOR and moses_up is None and esther_up is None:
+    # Config guard (Luke 2026-08-24 — fleet-wide false CRITICAL, kustos
+    # report 2nd occurrence): if either orchestrator's probe list is EMPTY
+    # (unconfigured env), the watchdog cannot judge reachability. Empty ≠
+    # down — stand down silently instead of screaming "NO BUS PATH" for
+    # an unset variable. MUST run BEFORE the probes: the original guard
+    # checked `moses_up is None` AFTER probing, which is always False
+    # (dead code — 6c76e1bf regression, found 2026-08-24). Orchard hosts
+    # with a backup (IS_ORCHESTRATOR) are exempt — they have real config.
+    if not IS_ORCHESTRATOR:
         cfg_moses = MOSES_HEALTH_URLS if moses_urls is None else moses_urls
         cfg_esther = ESTHER_HEALTH_URLS if esther_urls is None else esther_urls
         if not cfg_moses or not cfg_esther:
             state["last_status"] = "unconfigured"
             _save_state(state)
             return []
+
+    if moses_up is None:
+        moses_up = _moses_reachable(moses_urls)
+    if esther_up is None:
+        esther_up = _esther_reachable(esther_urls)
+    out: list[str] = []
 
     # Moses (primary orchestrator) — silent: his health is the fleet
     # watchdog's job; he has no bus to fail over to.
