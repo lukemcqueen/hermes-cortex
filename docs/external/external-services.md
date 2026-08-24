@@ -8,6 +8,7 @@ or the service's own dashboard.**
 |---|---|---|---|
 | DeepSeek API | All LLM inference (chat, cron, judge) | `~/.hermes/.env` → `DEEPSEEK_API_KEY` | Pricing contract: ADR-0001 |
 | Telegram Bot API | All agent messaging (DM, cron delivery) | `~/.hermes/.env` → `TELEGRAM_BOT_TOKEN` | `TELEGRAM_HOME_CHANNEL` = default delivery target |
+| Telegram Bot API (per-agent bridges) | Coding-agent inbox bridges (telegram-bridge.py) — each agent runs its OWN bot + OWN bus token | per-agent env (`~/.<agent>/.env` → `TELEGRAM_BOT_TOKEN` + `CORTEX_BUS_TOKEN`) | Per-agent tokens ONLY — never shared (Luke 2026-08-24). Rotate via `cortex-agent-manager.py rotate <agent>` |
 | Ollama (local) | Embeddings (`nomic-embed-text:v1.5`) | local service, no creds | Used by loop-governance cache + RAG |
 | Agent Bus / Postgres | Fleet messaging (PGMQ over the bus) | `~/.hermes-cortex/.env` → `CORTEX_BUS_*` | v2 API policy: ADR-0003 |
 | Agent Inbox | Threaded messaging with topic channels | `~/.hermes-cortex/.env` → `CORTEX_INBOX_URL` + `CORTEX_BUS_TOKEN` | v2 API: ADR-0003 |

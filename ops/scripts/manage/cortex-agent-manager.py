@@ -381,6 +381,47 @@ def cmd_remove(args):
     print(f"✅ Agent '{agent_name}' removed. Token revoked, permissions deleted.")
 
 
+def cmd_rotate(args):
+    """Rotate an agent's bus token + htpasswd — compromise recovery.
+
+    New token, new htpasswd password, SAME agent identity/queues/labels.
+    Other agents' tokens are untouched (upsert targets one agent_name).
+    The raw token is printed ONCE (only its hash is stored).
+    """
+    if args is None:
+        print("❌ Internal error: args is None")
+        sys.exit(1)
+    try:
+        agent_name = _validate_agent_name(args.name)
+    except ValueError as e:
+        print(f"❌ Invalid agent name: {e}")
+        sys.exit(1)
+
+    token = _generate_token()
+    password = _random_password()
+    token_hash = _hash_token(token)
+
+    # Upsert this agent's token only — other agents' hashes untouched.
+    _pg_execute(
+        "INSERT INTO bus.tokens (agent_name, token_hash, rotated_at) "
+        "VALUES (%s, %s, now()) "
+        "ON CONFLICT (agent_name) DO UPDATE SET "
+        "  token_hash = EXCLUDED.token_hash, "
+        "  rotated_at = now(), "
+        "  is_active = true",
+        (agent_name, token_hash),
+    )
+
+    # Refresh the nginx htpasswd entry (idempotent add).
+    _add_htpasswd(agent_name, password)
+
+    print(f"✅ Rotated credentials for '{agent_name}'")
+    print(f"   New bus token (shown ONCE, only hash stored):")
+    print(f"   {token}")
+    print(f"   New htpasswd password: {password}")
+    print("   → Update the agent's .env (CORTEX_BUS_TOKEN + basic auth), then restart its bridge.")
+
+
 def cmd_list(args):
     """List all agents with their roles and status."""
     if args is None:
@@ -542,6 +583,10 @@ def main():
     remove_parser.add_argument("name", help="Agent name")
     remove_parser.add_argument("--confirm", action="store_true", help="Confirm removal")
 
+    rotate_parser = subparsers.add_parser(
+        "rotate", help="Rotate an agent's bus token + htpasswd (compromise recovery)")
+    rotate_parser.add_argument("name", help="Agent name")
+
     # list
     list_parser = subparsers.add_parser("list", help="List all agents")
     list_parser.add_argument("--show-labels", action="store_true", help="Show agent labels")
@@ -567,6 +612,8 @@ def main():
         cmd_add(args)
     elif args.command == "remove":
         cmd_remove(args)
+    elif args.command == "rotate":
+        cmd_rotate(args)
     elif args.command == "list":
         cmd_list(args)
     elif args.command == "label":
