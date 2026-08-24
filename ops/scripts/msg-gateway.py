@@ -298,9 +298,17 @@ class Gateway:
                 msg = bus_read(self.bus_url, self.bus_headers, queue, vt=60)
                 if not msg or not msg.get("msg_id"):
                     break
+                # The bus returns body as a dict (envelope object); accept
+                # both dict and JSON-string shapes (live-test finding).
+                body = msg.get("body")
+                if isinstance(body, str):
+                    try:
+                        body = json.loads(body)
+                    except ValueError:
+                        body = None
                 try:
-                    envelope = env.validate(json.loads(msg.get("body", "{}")))
-                except (env.EnvelopeError, ValueError):
+                    envelope = env.validate(body or {})
+                except env.EnvelopeError:
                     bus_archive(self.bus_url, self.bus_headers, queue,
                                 msg["msg_id"])
                     continue
@@ -324,6 +332,16 @@ class Gateway:
         for b in self.bots:
             self.poll_bot(b)
         self.drain_outbound()
+
+    def run_outbound_only(self) -> None:
+        """Outbound-only: drain out_<AGENT> → app; NO getUpdates.
+
+        Use when another poller (e.g. the Hermes gateway) already owns the
+        bot's inbound (Telegram single-poller limit — 409 otherwise).
+        """
+        while True:
+            self.drain_outbound()
+            time.sleep(DEFAULT_POLL_SECONDS)
 
     def run_locked(self) -> None:
         """run() with per-bot advisory locks (SRE: 409-avoidance, cutover,
@@ -353,6 +371,9 @@ def main() -> int:
     ap = argparse.ArgumentParser(description="Unified Messaging Gateway")
     ap.add_argument("--config", default="gateway.yaml")
     ap.add_argument("--once", action="store_true")
+    ap.add_argument("--outbound-only", action="store_true",
+                    help="drain out_<AGENT> → app only; no getUpdates "
+                         "(another poller owns inbound)")
     args = ap.parse_args()
 
     cfg_path = Path(args.config)
@@ -381,6 +402,8 @@ def main() -> int:
     gw.load_config()
     if args.once:
         gw.run_once()
+    elif args.outbound_only:
+        gw.run_outbound_only()  # Hermes gateway owns inbound
     else:
         gw.run_locked()  # per-bot advisory locks (safe default)
     return 0

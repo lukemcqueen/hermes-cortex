@@ -203,7 +203,7 @@ def test_outbound_delivers_and_archives(gw_env, tmp_path):
         to_agent="esther", channel="telegram", channel_user_id=CHAT,
         body="reply from agent")
     gw_env["bus"].queues["out_esther"] = [{
-        "msg_id": _mid(), "queue": "out_esther", "body": json.dumps(reply),
+        "msg_id": _mid(), "queue": "out_esther", "body": reply,
     }]
     gw.run_once()
     assert len(gw_env["tg"].sent) == 1
