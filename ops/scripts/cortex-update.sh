@@ -214,6 +214,7 @@ register "ops/scripts/manage/task-db.py"                "${CORTEX_DEPLOY_HOME}/s
 register "ops/scripts/manage/git-main-sync.sh"          "${CORTEX_DEPLOY_HOME}/scripts/git-main-sync.sh"
 register "ops/scripts/manage/dream-task-bridge.py"       "${CORTEX_DEPLOY_HOME}/scripts/dream-task-bridge.py"
 register "mcp-servers/task-mcp.py"                      "${CORTEX_DEPLOY_HOME}/scripts/task-mcp.py"
+register "mcp-servers/executor-mcp.py"                  "${CORTEX_DEPLOY_HOME}/scripts/executor-mcp.py"
 register "ops/services/tasks/migrate.py"                "${CORTEX_DEPLOY_HOME}/services/tasks/migrate.py"
 register "ops/services/tasks/schema/v001__tasks.sql"    "${CORTEX_DEPLOY_HOME}/services/tasks/schema/v001__tasks.sql"
 register "ops/services/tasks/schema/v002__doctor-probe-source.sql" "${CORTEX_DEPLOY_HOME}/services/tasks/schema/v002__doctor-probe-source.sql"

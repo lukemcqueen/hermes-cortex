@@ -128,12 +128,13 @@ EXPECTED_MCP_SERVERS = {
     "cortex-bus": "cortex-bus-mcp.py",
     "loop-governance": "loop-gov-mcp.py",
     "tasks": "task-mcp.py",
+    "executor": "executor-mcp.py",
 }
 
 # MCP servers deployed only on orchestrator hosts (register_orch in
 # cortex-update.sh). The doctor must not FAIL non-orchestrator hosts for
 # missing these, and must not auto-add them via --fix.
-ORCH_ONLY_MCP_SERVERS = {"cortex-bus"}
+ORCH_ONLY_MCP_SERVERS = {"cortex-bus", "executor"}
 
 # ── External services ───────────────────────────────────────────
 EXTERNAL_SERVICES = [
