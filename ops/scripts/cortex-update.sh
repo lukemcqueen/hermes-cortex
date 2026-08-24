@@ -303,7 +303,7 @@ register "ops/scripts/manage/update-session-state.sh"    "${CORTEX_DEPLOY_HOME}/
 register "ops/scripts/manage/fleet-audit.py"             "${CORTEX_DEPLOY_HOME}/scripts/fleet-audit.py"
 register "ops/scripts/manage/fleet-costs.py"             "${CORTEX_DEPLOY_HOME}/scripts/fleet-costs.py"
 register "ops/scripts/manage/fleet-update-check.py"      "${CORTEX_DEPLOY_HOME}/scripts/fleet-update-check.py"
-register "ops/scripts/manage/axi-telemetry.py"           "${CORTEX_DEPLOY_HOME}/scripts/axi-telemetry.py"
+register "ops/scripts/manage/orch-axi-telemetry.py"           "${CORTEX_DEPLOY_HOME}/scripts/orch-axi-telemetry.py"
 register "ops/scripts/lib/toon_parse.py"                 "${CORTEX_DEPLOY_HOME}/scripts/lib/toon_parse.py"
 register "ops/scripts/manage/orch-daily-cost-report.py"  "${CORTEX_DEPLOY_HOME}/scripts/orch-daily-cost-report.py"
 register "ops/scripts/manage/orch-task-board-digest.py"  "${CORTEX_DEPLOY_HOME}/scripts/orch-task-board-digest.py"

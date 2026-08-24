@@ -18,7 +18,7 @@ from pathlib import Path
 
 _REPO = Path(__file__).resolve().parent.parent
 _SPEC = importlib.util.spec_from_file_location(
-    "axi_telemetry", _REPO / "ops" / "scripts" / "manage" / "axi-telemetry.py")
+    "orch_axi_telemetry", _REPO / "ops" / "scripts" / "manage" / "orch-axi-telemetry.py")
 MOD = importlib.util.module_from_spec(_SPEC)
 sys.modules["axi_telemetry"] = MOD
 _SPEC.loader.exec_module(MOD)

@@ -428,7 +428,7 @@ create_cron "orch-daily-cost-report" "0 8 * * *" \
 # script defaults to --baseline when run with no args (cron convention).
 # Output to local only (baseline is a file artifact, not a user report).
 create_cron "orch-axi-telemetry" "35 2 * * *" \
-  "axi-telemetry.py" \
+  "orch-axi-telemetry.py" \
   "" \
   "" \
   "" \
