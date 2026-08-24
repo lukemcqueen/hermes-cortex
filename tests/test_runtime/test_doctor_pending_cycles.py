@@ -19,6 +19,7 @@ import os
 import sqlite3
 import sys
 import tempfile
+import importlib
 from datetime import datetime
 from pathlib import Path
 
@@ -32,8 +33,22 @@ os.environ["HERMES_HOME"] = os.path.join(_TMP, "hermes")
 # Ensure the repo's doctor module is importable
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "ops" / "scripts" / "manage"))
 
+# The doctor resolves CORTEX_HOME at module import time (config.py). If
+# another collected test imported the doctor first, the cached module holds
+# the REAL home — this test's env override would silently not apply, and a
+# live session lock (e.g. an active governance cycle) would leak into the
+# hermetic assertion. Force a fresh resolve: reload config + checks after
+# setting the env vars (2026-08-24: full-suite run exposed this isolation
+# bug — test_terminal_lock_is_leak read the real home's lock).
+import cortex_doctor.config as _cfg  # noqa: E402
+importlib.reload(_cfg)
+
 from cortex_doctor import checks  # noqa: E402
 from cortex_doctor.results import Results  # noqa: E402
+
+# checks.py imports CORTEX_HOME from config — reload it too so it sees the
+# temp home.
+importlib.reload(checks)
 
 
 @pytest.fixture()
