@@ -118,12 +118,31 @@ def _check_permission(agent: str, queue: str, action: str):
         if is_admin:
             return
         allowed = (can_write if action == "write" else can_read) or []
-        if "*" in allowed or queue in allowed:
+        if _queue_allowed(queue, allowed):
             return
         raise HTTPException(
             403,
             f"Agent '{agent}' does not have {action} access to queue '{queue}'"
         )
+
+
+def _queue_allowed(queue: str, allowed: list | None) -> bool:
+    """True if queue matches the agent's grant list.
+
+    Grant patterns (ADR-0005 messaging gateway): exact queue name, full
+    wildcard '*', or TRAILING prefix wildcards like 'inbox_*' / 'out_*'
+    (scoped gateway tokens — a gateway_<bot> principal serves any agent's
+    inbox/outbound without a fleet-wide '*' grant). Only trailing '*' is
+    supported; a mid-string '*' never grants.
+    """
+    if not allowed:
+        return False
+    for pat in allowed:
+        if pat == "*" or pat == queue:
+            return True
+        if pat.endswith("*") and queue.startswith(pat[:-1]):
+            return True
+    return False
 
 
 def _log_audit(agent: str, action: str, queue: Optional[str] = None,

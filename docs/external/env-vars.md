@@ -45,6 +45,7 @@ without checking here first (Rule 11: never invent config or env names).
 | `TELEGRAM_BOT_TOKEN` | Telegram bot credential |
 | `TELEGRAM_ALLOWED_USERS` | Allowed Telegram user IDs |
 | `TELEGRAM_HOME_CHANNEL` | Default delivery channel (Esther: Luke DM) |
+| `TELEGRAM_API_BASE` | Telegram Bot API base URL for the messaging gateway (`msg-gateway.py`) |
 
 ## Rules
 
