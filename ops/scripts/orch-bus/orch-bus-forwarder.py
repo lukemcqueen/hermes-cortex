@@ -44,7 +44,7 @@ CONFIGURATION
   BUS_FORWARDER_PEER_AUTH     Basic auth for peer nginx proxy (optional)
   BUS_FORWARDER_PEER_TOKEN    Token for peer bus (default: same as local)
 
-  Defaults work on Moses: local = 127.0.0.1:8903, peer = bus.example.org:14004
+  Defaults work on Moses: local = 127.0.0.1:8903, peer = $CORTEX_BUS_FALLBACK_URL
 
 USAGE
   Run as a no_agent cron: */2 * * * *

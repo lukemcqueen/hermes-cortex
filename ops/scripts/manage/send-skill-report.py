@@ -12,7 +12,7 @@ Requires (from ~/.hermes-cortex/cortex-bus.conf, ~/hermes-cortex/.env,
   CORTEX_BUS_TOKEN       — Bearer token for bus auth
 
 For remote agents, CORTEX_BUS_URL must point to Moses's external bus
-endpoint (e.g. https://bus.example.org:13004).
+endpoint (e.g. https://<bus-host>:13004).
 """
 from __future__ import annotations
 

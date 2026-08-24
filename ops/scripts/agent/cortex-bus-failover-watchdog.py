@@ -87,7 +87,7 @@ MOSES_HEALTH_URLS = [
     u.strip()
     for u in os.environ.get(
         "MOSES_HEALTH_URLS",
-        "https://bus.example.org:13007/health,https://bus.example.org:13004/health",
+        "",
     ).split(",")
     if u.strip()
 ]
@@ -95,7 +95,7 @@ ESTHER_HEALTH_URLS = [
     u.strip()
     for u in os.environ.get(
         "ESTHER_HEALTH_URLS",
-        "https://bus.example.org:14004/health",
+        "",
     ).split(",")
     if u.strip()
 ]
@@ -188,10 +188,15 @@ def swap_bus_config(active: bool) -> bool:
 
     Returns True on success. Creates the file if missing.
     """
+    bus_url = os.environ.get("CORTEX_BUS_URL", "").strip()
+    bus_fallback = os.environ.get("CORTEX_BUS_FALLBACK_URL", "").strip()
+    if not bus_url or not bus_fallback:
+        _log("ERROR: CORTEX_BUS_URL / CORTEX_BUS_FALLBACK_URL not set in env — cannot swap")
+        return False
     if active:
-        primary, fallback = "http://127.0.0.1:8903", "https://bus.example.org:13004"
+        primary, fallback = "http://127.0.0.1:8903", bus_url
     else:
-        primary, fallback = "https://bus.example.org:13004", "https://bus.example.org:14004"
+        primary, fallback = bus_url, bus_fallback
 
     try:
         lines = CONF_FILE.read_text().splitlines() if CONF_FILE.exists() else []

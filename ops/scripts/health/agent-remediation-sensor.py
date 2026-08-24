@@ -35,7 +35,7 @@ from pathlib import Path
 SENSOR_IS_SERVER_DEFAULT = True
 
 # Hosts that manage live SSL certs via certbot. Only these run the certbot
-# checks — Joseph holds the live certs (bus.example.org serves
+# checks — Joseph holds the live certs (the bus domain serves
 # joseph/moses/esther), so certbot probes on other hosts are noise.
 # Skipping avoids pointless `sudo certbot` probes every 5 min. (2026-08-04)
 CERT_HOLDER_HOSTS = {"joseph", "gisu", "kustos"}
