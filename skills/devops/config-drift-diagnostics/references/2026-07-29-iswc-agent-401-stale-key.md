@@ -14,7 +14,7 @@ before the `.env` was updated. The running container had the old key
 
 ```bash
 # Location 1: Running container (old key found)
-docker exec mwi-tomcat-1 grep api.key \
+docker exec client-tomcat-1 grep api.key \
   /usr/local/soa_work_dir/iswc-agent-5.5.7/config/agent.properties
 # → 9000cede3d5446d08529abf43a13c159
 
@@ -41,11 +41,11 @@ curl -s -o /dev/null -w "HTTP %{http_code}" \
 ## Fix
 
 ```bash
-cd /path/to/app/client-mwi
+cd /path/to/app/client-alpha
 source .env
 ./run generate-configs
 ./run build tomcat
-docker compose -f docker-compose.mwi.yml -p mwi up -d --remove-orphans tomcat
+docker compose -f docker-compose.client.yml -p client up -d --remove-orphans tomcat
 ```
 
 ## Config Pipeline
@@ -60,6 +60,6 @@ docker compose -f docker-compose.mwi.yml -p mwi up -d --remove-orphans tomcat
 
 ## Cron Pipeline
 
-Host cron `* * * * *` runs `mwi-run-mwi-xml-loader.sh` which chains inside the
+Host cron `* * * * *` runs `client-run-client-xml-loader.sh` which chains inside the
 container: XML Loader → Indexer → Checksum → Cleanup → ISWC Agent.
 Lockfile at `temp/lockfile` prevents concurrent runs.

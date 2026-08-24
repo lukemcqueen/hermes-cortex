@@ -14,7 +14,7 @@ Verify the PRD is current and the story aligns with it:
 | PRD version | Is the PRD the current version? Revision history visible? |
 | hc-party review | Does the PRD explicitly say it went through architecture review? |
 | Story ↔ PRD mapping | Does every story requirement trace to a PRD section? |
-| Cross-codebase audit | Was MWI/Rails codebase reviewed to validate the model? |
+| Cross-codebase audit | Was client/Rails codebase reviewed to validate the model? |
 | Story spec completeness | Does the slice spec have endpoints, schemas, validation rules, edge cases? |
 
 ### 2. Architecture Review (hc-party lens)

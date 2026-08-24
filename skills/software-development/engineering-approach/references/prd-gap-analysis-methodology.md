@@ -54,7 +54,7 @@ Create a gap matrix:
 - **Infrastructure** — missing CI/CD, monitoring, connection pooling, Docker services
 - **Content** — feature doesn't exist yet at all
 - **Version/Stack** — wrong dependency version (e.g., Redis 7 → Redis 8.6.3)
-- **Naming** — outdated names (e.g., `mwi-client.ts` should be `works-client.ts`)
+- **Naming** — outdated names (e.g., `client-client.ts` should be `works-client.ts`)
 
 ### Phase 4: Categorize into Epics
 
@@ -94,6 +94,6 @@ Then {expected result}
 
 - Don't rely only on PRD reading — scan actual files. PRDs can be aspirational; code doesn't lie.
 - Architecture gaps are often invisible from the PRD alone — you need to read the existing code directory tree and trace data flows.
-- Naming gaps (e.g., `mwi-client.ts` for `acme-works`) are easy to miss but cause confusion long-term.
+- Naming gaps (e.g., `client-client.ts` for `acme-works`) are easy to miss but cause confusion long-term.
 - `docker-compose.yml` is the single source of truth for architecture — compare it against PRD's architecture diagram.
 - Rate-limit middleware, auth middleware, error handlers — these cross-cutting concerns exist in the old stack and must be replicated in the new one. Don't assume "it works already."

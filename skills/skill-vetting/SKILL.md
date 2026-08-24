@@ -58,7 +58,7 @@ loads it.
 - Frontmatter has `name` + `description` with the trigger self-contained
   in the first ~57 chars.
 - **No PII**: real domains, emails, or client names → placeholders
-  (`your-domain.com`, `client-mwi`).
+  (`your-domain.com`, `client-alpha`).
 
 ### 5. local-* priority (fleet evaluation only)
 

@@ -57,8 +57,8 @@ Every `./run` MUST implement these commands with identical semantics:
 - **No-compose projects** (simple services): fall back to individual `docker run` commands but still implement `up`/`down`/`logs`.
 - **Rails projects** — use the **Taskfile pattern** (`time "${@:-help}"` + bare function names), NOT the bash case-dispatch template. See `references/taskfile-pattern.md` for how this dispatch mechanism works and how to add commands.
 - **Rails projects** MUST add: `rails <cmd>`, `bundle:install`, `yarn:build`, `psql`, `test`, `migrate`, `seed`. Use `templates/run.rails.sh` for new Rails projects.
-- **Multi-compose projects** (e.g., acme-mwi) MUST route service names to the correct compose file. Use a `case` dispatch in the build function.
-- **Multi-compose projects** (e.g., acme-mwi) MUST route service names to the correct compose file. Use a `case` dispatch in the build function.
+- **Multi-compose projects** (e.g., acme-alpha) MUST route service names to the correct compose file. Use a `case` dispatch in the build function.
+- **Multi-compose projects** (e.g., acme-alpha) MUST route service names to the correct compose file. Use a `case` dispatch in the build function.
 - **Platform dispatchers** (e.g., acme-platform) use a root dispatcher + per-component `./run` scripts. Each component's `./run` implements the same interface above.
 
 ## Migration Head Integrity — Fail-Fast, No Auto-Merge
@@ -275,4 +275,4 @@ Updating an existing `./run` across many repos requires a strategy:
 | **Bundled dispatch** — `up|down|restart|build|logs|ps)` in a single case arm prevents fixing individual semantics | `./run restart` calls `docker compose restart` instead of down+up; `./run build` has no --no-cache | Break into individual cases: `up) ... ;; down) ... ;; restart) ... ;;` etc. |
 | **psql vs pgsql naming** — Some repos (e.g., acme-matching) use `psql` and `psql:cmd` instead of `pgsql` | `./run pgsql` fails with "Unknown command" | Add `pgsql` as the canonical name with `pgsql) shift; cmd_pgsql "$@" ;;` AND keep `psql` as an alias pointing to the same function. The `pgsql` name is canonical across all repos. |
 | **Self-healing migrate needs `_alembic_runner`** — The self-healing migrate function uses `_alembic_runner`, which requires `activate_venv` helper. | Repos without `_alembic_runner` or that run migrations inside Docker (via `docker compose exec -T api ...`) get errors | Check how db:reset runs migrations. If it uses `_alembic_runner` (local venv), mirror that. If it runs inside Docker, create cmd_migrate that also runs inside Docker. |
-| **No-compose fallback** — Repos like example-website and ebm-website check `[ -f docker-compose.yml ]` and fall back to `docker run` individual containers | Standardizing the compose case breaks the no-compose fallback | Preserve the `HAS_DC` / `DC` variable pattern for repos that need compose-optional behavior. Only add new commands (lint, pgsql) inside the existing fallback structure. |
+| **No-compose fallback** — Repos like `example-website` and `other-app` check `[ -f docker-compose.yml ]` and fall back to `docker run` individual containers | Standardizing the compose case breaks the no-compose fallback | Preserve the `HAS_DC` / `DC` variable pattern for repos that need compose-optional behavior. Only add new commands (lint, pgsql) inside the existing fallback structure. |

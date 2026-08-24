@@ -59,7 +59,7 @@ Also verify the `.gitignore` patterns that catch them. Common patterns: `*cred*`
 
 | Category | Examples | Treatment |
 |----------|----------|-----------|
-| Infrastructure domain | `bus.example.org`, `customer-app.com` | Replace with `your-domain.com` |
+| Infrastructure domain | `your-infra-domain.org`, `customer-app.com` | Replace with `your-domain.com` |
 | Production hostname | `mweb-stage.customer.or.kr`, `api.customer.org` | Replace with `your-customer-host.com` |
 | Agent hostname | `gisu-host`, `joseph-host` | Replace with `your-agent-host` |
 | Real credentials | `user:pass`, `sk-abc...`, `T1tus!nbox_2026` | Replace with `your-credential-placeholder` |

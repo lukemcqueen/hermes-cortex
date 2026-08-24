@@ -179,7 +179,7 @@ applies to all agent sessions automatically.
 
 > ⚠️ **The hooks run in EVERY repo — project repos included.** `core.hooksPath`
 > is global, so the pre-commit/pre-push hooks fire in client/project repos
-> (client-mwi, etc.) that have **no `ops/` tree and no `.hermes-cortex/`**
+> (client-alpha, etc.) that have **no `ops/` tree and no `.hermes-cortex/`**
 > inside them. A hook that resolves a tool via `$REPO_ROOT/ops/...` (the repo
 > being committed IN) breaks every commit there — regression `faa0e929`, fix
 > `72d6cdc3` (2026-08-04). Hooks must resolve shared tools with a candidate

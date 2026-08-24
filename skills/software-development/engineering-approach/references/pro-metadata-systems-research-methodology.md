@@ -77,7 +77,7 @@ Korean PRO data commonly arrives in these encodings:
 
 | Encoding | Korean Support | Typical Source |
 |---|---|---|
-| UTF-8 | Full (modern) | Current MWI, DSP APIs |
+| UTF-8 | Full (modern) | Current client, DSP APIs |
 | EUC-KR | Korean (extended Unix code) | Legacy databases, older CWR files |
 | CP949 | Korean (Windows) | Excel exports, older PC systems |
 | CP932/Shift-JIS | Japanese | JASRAC cross-references |
@@ -191,6 +191,7 @@ Patch hc-party Review:
 Draft new ADRs for architecture decisions discovered in research
   ↓
 **Output: 3-Store Architecture Pattern** — see `3-store-architecture-pattern` skill for implementation
+```
 
 ## Related References
 

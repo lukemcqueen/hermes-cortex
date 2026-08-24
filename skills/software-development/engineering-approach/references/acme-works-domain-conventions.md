@@ -88,7 +88,7 @@ Auto-generated: `CTR-YYYY-NNNNNN` (incrementing sequence per year).
 
 ## Contract Territory×Rights Matrix
 
-Replaces MWI's single `rights_type` on Contract with a `contract_territories` table:
+Replaces client's single `rights_type` on Contract with a `contract_territories` table:
 
 ```sql
 contract_territories (
@@ -107,7 +107,7 @@ Specific territory overrides Worldwide.
 
 ## Multiple Identifiers (ISWC/ISRC per Work)
 
-Replace MWI's single `iswc`/`isrc` columns on Song with a `work_identifiers` table:
+Replace client's single `iswc`/`isrc` columns on Song with a `work_identifiers` table:
 
 ```sql
 work_identifiers (

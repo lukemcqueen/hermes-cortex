@@ -76,7 +76,7 @@ curl ...   # returns non-401?
 |---------|---------|-----|
 | DB password | JDBC auth failure | regenerate + rebuild |
 | API key | 401 on API calls | regenerate + rebuild |
-| Wrong env | Prod creds on stage | Set MWI_ENVIRONMENT + rebuild |
+| Wrong env | Prod creds on stage | Set CLIENT_ENVIRONMENT + rebuild |
 
 ## Anti-Patterns
 

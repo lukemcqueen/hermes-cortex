@@ -76,7 +76,7 @@ CMD ["node", "server.js"]
 EOF
 
 # 3. Build from the standalone output directory
-docker buildx build --load -t ebm-website-web -f /tmp/Dockerfile.web web/.next/standalone
+docker buildx build --load -t client-web-app-web -f /tmp/Dockerfile.web web/.next/standalone
 
 # 4. Recreate container
 docker compose up -d --force-recreate web

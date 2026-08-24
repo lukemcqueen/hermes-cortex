@@ -8,15 +8,15 @@ Concrete walkthrough of making an Example-website (FastAPI + Next.js compose sta
 |---|---------|-----------|-----|
 | 1 | Every DB call 500: `sqlalchemy.exc.MissingGreenlet` | compose `DATABASE_URL=postgresql+asyncpg://…` but `database.py` uses sync `create_engine` (psycopg2) | set `DATABASE_URL: postgresql://example:example@postgres:5432/example` (sync) |
 | 2 | Register 500 — "relation does not exist" | fresh `example-postgres` volume had zero tables; no migration on start | api `CMD` runs `alembic upgrade head` before uvicorn; `migrations/env.py` reads `DATABASE_URL` |
-| 3 | Web `/api/v1/evangelist/dashboard` 404 | FastAPI mounts at `/auth`, `/evangelist` (no `/api/v1`); no Next proxy | next.config `rewrites()` `/api/v1/:path*` → FastAPI via `Example_API_INTERNAL_URL` (build-arg) |
+| 3 | Web `/api/v1/evangelist/dashboard` 404 | FastAPI mounts at `/auth`, `/evangelist` (no `/api/v1`); no Next proxy | next.config `rewrites()` `/api/v1/:path*` → FastAPI via `EXAMPLE_API_INTERNAL_URL` (build-arg) |
 | 4 | UI login 500/404 | `AuthForm` POSTed to `/api/auth` (a route nobody serves) | AuthForm → `/api/v1/auth/{login\|register}` through the proxy |
 | 5 | `./run status` said web/api "not running" while they were up | `lsof -i :3012`/`:8000` stale after re-port | status checks → 13012/18000 |
 
 Also: `AmenButton` + 3 Next API routes hardcoded `localhost:8000` (broke inside web container) → routed through the proxy / env URL.
 
-## Ports chosen (Example_* in .env, documented in .env.example)
+## Ports chosen (EXAMPLE_* in .env, documented in .env.example)
 
-- Example_REDIS_PORT=16379, Example_POSTGRES_PORT=15443, Example_API_PORT=18000, Example_WEB_PORT=13012
+- EXAMPLE_REDIS_PORT=16379, EXAMPLE_POSTGRES_PORT=15443, EXAMPLE_API_PORT=18000, EXAMPLE_WEB_PORT=13012
 - postgres remapped to 15443 because host 5432 is a **native Homebrew Postgres** (not a container) — `lsof -i :5432` showed a host `postgres` PID.
 - Internal ports unchanged (redis 6379, postgres 5432, api 8000, web 3000 from the Dockerfile) → `depends_on`/internal URLs untouched.
 - `.env` is gitignored; values added via a tiny python script (appends deduped lines; preserved existing `OPENCODE_ZEN_BASE_URL`). `.env.example` documents them for other environments.

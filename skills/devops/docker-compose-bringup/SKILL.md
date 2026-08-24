@@ -29,11 +29,11 @@ services:
   api:
     container_name: example-api
     ports:
-      - "127.0.0.1:${Example_API_PORT:-18000}:8000"   # host 18000 -> container 8000
+      - "127.0.0.1:${EXAMPLE_API_PORT:-18000}:8000"   # host 18000 -> container 8000
   postgres:
     container_name: example-postgres
     ports:
-      - "127.0.0.1:${Example_POSTGRES_PORT:-15443}:5432"
+      - "127.0.0.1:${EXAMPLE_POSTGRES_PORT:-15443}:5432"
 ```
 
 - Compose auto-reads `.env` in the project dir for `${VAR:-default}` interpolation.
@@ -61,11 +61,11 @@ Each makes containers start clean yet every request fail:
 ```js
 // next.config.mjs
 async rewrites() {
-  const api = process.env.Example_API_INTERNAL_URL || 'http://localhost:8000';
+  const api = process.env.EXAMPLE_API_INTERNAL_URL || 'http://localhost:8000';
   return [{ source: '/api/v1/:path*', destination: `${api}/:path*` }];
 }
 ```
-Web Dockerfile: `ARG Example_API_INTERNAL_URL=http://localhost:8000` + `ENV` before `npm run build`; compose passes `args: Example_API_INTERNAL_URL: http://api:8000`. Server-side Next API routes can read the same env at runtime. Client components should use the relative `/api/v1/...` path (through the proxy) instead of hardcoding `localhost:<port>`. Grep the whole frontend for hardcoded `localhost:8000` / nonexistent route strings (e.g. an `AuthForm` posting to `/api/auth` that no route serves).
+Web Dockerfile: `ARG EXAMPLE_API_INTERNAL_URL=http://localhost:8000` + `ENV` before `npm run build`; compose passes `args: EXAMPLE_API_INTERNAL_URL: http://api:8000`. Server-side Next API routes can read the same env at runtime. Client components should use the relative `/api/v1/...` path (through the proxy) instead of hardcoding `localhost:<port>`. Grep the whole frontend for hardcoded `localhost:8000` / nonexistent route strings (e.g. an `AuthForm` posting to `/api/auth` that no route serves).
 
 **2d. Stale Docker image after a Dockerfile edit.** `docker compose up` may serve an image built with the OLD `CMD`/`RUN` — symptom: your new `alembic upgrade head` CMD doesn't run, logs go straight to uvicorn. Fix: force a rebuild (`docker compose build --no-cache <svc>`, or rebuild explicitly after editing a Dockerfile) and confirm BEHAVIOR (check logs show the new step), not just that the container restarted.
 
@@ -78,4 +78,4 @@ Web Dockerfile: `ARG Example_API_INTERNAL_URL=http://localhost:8000` + `ENV` bef
 - Rebuild the web image after ANY frontend source change; the running container serves the last-build bundle, not your latest edit.
 
 ## References
-- `references/example-shared-host-case-study.md` — the concrete Example walkthrough: the 5 real breakages found, the port set chosen, and how the stack was verified.
+- `references/shared-host-case-study.md` — the concrete Example walkthrough: the 5 real breakages found, the port set chosen, and how the stack was verified.

@@ -158,7 +158,7 @@ def _query_sessions_sqlite(query: str, limit: int = 10) -> list:
                 WHERE m.role IN ('user', 'assistant')
                   AND (s.id IS NULL OR (
                        s.id NOT LIKE 'auto-save%'
-                   AND s.id NOT LIKE 'mwi-sync%'
+                   AND s.id NOT LIKE 'client-sync%'
                    AND s.id NOT LIKE 'cron_%'))
                   AND messages_fts_trigram MATCH ?
                 ORDER BY RANDOM()

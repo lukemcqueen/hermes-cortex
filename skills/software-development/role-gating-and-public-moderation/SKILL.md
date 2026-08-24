@@ -11,7 +11,7 @@ platforms: [linux, macos]
 Patterns for a multi-role product with an anonymous/public surface plus
 privileged surfaces (admin/editor) and user-submitted public content
 (directory/listings/reviews). Distilled from the Example church-directory +
-prayer-warrior build; see `references/example-fastapi-example.md` for the concrete
+prayer-warrior build; see `references/fastapi-example.md` for the concrete
 FastAPI implementation.
 
 ## 1. Public registration must NEVER grant a privileged role

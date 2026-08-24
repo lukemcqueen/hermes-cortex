@@ -44,7 +44,7 @@ For each architecture decision with multiple plausible options, surface:
 
 | Trade-off | Option A | Option B | Chosen & Rationale |
 |-----------|----------|----------|---------------------|
-| Search: live proxy vs replicated DB | Freshness, MWI dependency | Resilient, operational complexity | Decision with reasoning |
+| Search: live proxy vs replicated DB | Freshness, client dependency | Resilient, operational complexity | Decision with reasoning |
 
 ### Phase 4: ADR Creation
 
@@ -52,9 +52,9 @@ For decisions that will constrain future work, recommend a formal Architecture D
 
 ```
 ADR-001: Search Data Source
-  Decision: Live proxy to MWI API (not replicated DB)
+  Decision: Live proxy to client API (not replicated DB)
   Rationale: Data freshness critical, cache mitigates speed
-  Trade-off: MWI dependency vs storage complexity
+  Trade-off: client dependency vs storage complexity
 ```
 
 ADR documents should go in `docs/architecture/adr-<NNN>-<title>.md` and be created before Phase 1 build starts.
@@ -200,7 +200,7 @@ This is distinct from generic cache staleness (5b). The risk is cross-contaminat
 - **Mixing tiers**: a missing CDN is 🟡, not 🔴. Reserve 🔴 for build-blocking issues.
 - **Skipping ADRs**: "this is straightforward" is how auth flows break. If the decision has two plausible options, write an ADR.
 - **Ignoring the human factor**: if the PRD assumes a junior team but the actual team is senior (or vice versa), flag it. Skill-level assumptions affect phase timing and tooling.
-- **Not verifying against reality**: "MWI search API" sounds great. Did you actually curl the endpoint? Check the controller source code? Document the actual response shape?
+- **Not verifying against reality**: "client search API" sounds great. Did you actually curl the endpoint? Check the controller source code? Document the actual response shape?
 - **Phase dependency blindness**: parallel tracks look parallel until Track A needs a shared DB schema that Track B hasn't created yet. Flag shared seams.
 - **Infrastructure blind spot — product lens**: the standard review dimensions (i18n, CDN, Lighthouse, UX) are correct for product PRDs. For infrastructure PRDs (pipelines, streaming, data stores, multi-system integration), the stock dimensions miss the most common 🔴 risks: consistency model mismatches, cache staleness, migration conflict, and operations readiness. Always ask: "is this a product PRD or an infrastructure PRD?" and extend the review with the Infrastructure-Specific Review Dimensions (5a–5f) above.
 - **Same column, dual use**: a cache column exists for display convenience but gets read by a calculation path because it has data there and looks right. See 5f for classification and guardrails.

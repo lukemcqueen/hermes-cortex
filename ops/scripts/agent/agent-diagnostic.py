@@ -277,7 +277,7 @@ def collect_cron() -> dict:
 
 
 def collect_docker() -> dict:
-    """Docker container health for production stack (MWI/MWEB)."""
+    """Docker container health for production stack (client/MWEB)."""
     result = {}
     raw = _run(["docker", "ps", "--format", "{{.Names}}\t{{.Status}}"], timeout=10)
     if not raw:
@@ -308,7 +308,7 @@ def collect_docker() -> dict:
 
 
 def collect_docker() -> dict:
-    """Docker container health for production stack (MWI/MWEB)."""
+    """Docker container health for production stack (client/MWEB)."""
     result = {}
     raw = _run(["docker", "ps", "--format", "{{.Names}}\t{{.Status}}"], timeout=10)
     if not raw:

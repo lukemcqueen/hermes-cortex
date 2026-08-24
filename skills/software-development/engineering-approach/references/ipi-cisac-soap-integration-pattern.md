@@ -1,6 +1,6 @@
 # CISAC IPI SOAP Integration Pattern
 
-Porting the acme-mwi Ruby SOAP client (Savon + Nokogiri) to Python (httpx + ElementTree) for the CISAC IPI Interested Party API.
+Porting the acme-alpha Ruby SOAP client (Savon + Nokogiri) to Python (httpx + ElementTree) for the CISAC IPI Interested Party API.
 
 ## Architecture
 
@@ -98,13 +98,13 @@ The `getInterestedParty` response contains:
 - **status**: `statusCode`, `validFrom`, `validTo`
 - **names[]**: each has `ipNameNr`, `nameType` (PA=primary, PP=pseudonym), `name`, `firstname`, `usage`
 
-## MWI ↔ acme-works mapping
+## client ↔ acme-works mapping
 
-| MWI (Ruby) | acme-works (Python) |
+| client (Ruby) | acme-works (Python) |
 |---|---|
 | `IpiApiHelper` | `app/services/ipi_service.py` |
 | `ipi_client_and_request` | `_make_soap_request()` |
 | `ipi_get_interested_party` | `lookup_party()` |
 | `ipi_interested_party_hash_from_xml_response` | `_parse_party_response()` |
 | `Member.ipb` / `Member.ipn` | `Member.ipi_base` / `Member.ipi_name` |
-| `MwiInterestedParty` (tblintrpty lookup) | `local_lookup()` on members/publishers |
+| `ClientInterestedParty` (tblintrpty lookup) | `local_lookup()` on members/publishers |

@@ -48,7 +48,8 @@ crons:
   model: ''
   provider: ''
 - name: agent-daily-bible-reading
-  scope: universal
+  scope: opt-in
+  opt_in_marker: bible-reading-enabled
   schedule: 0 1 * * *
   script: agent-daily-bible-reading.py
   prompt: ''

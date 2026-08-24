@@ -32,7 +32,7 @@ processing state. This reveals:
 - Was it rejected or did it succeed? (status code, rejection reason)
 - What was the actual output? (ISWC assigned, error message)
 
-For the MWI ISWC/CIS-Net pipeline:
+For the client ISWC/CIS-Net pipeline:
 ```sql
 SELECT w.socworkcde, i.iswc, s.status, s.rejection_reason
 FROM tblworkinfo w
@@ -103,4 +103,4 @@ entity was processed. Don't claim the fix works until you can cite:
 ## Reference
 
 - `references/iswc-cisnet-pipeline-debugging-2026-07-29.md` — full session
-  narrative for the MWI ISWC/CIS-Net pipeline debugging session
+  narrative for the client ISWC/CIS-Net pipeline debugging session

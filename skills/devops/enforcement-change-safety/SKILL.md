@@ -187,7 +187,7 @@ builds a scratch repo, installs the real hooks, and runs all eight paths
 ## Rule 6: Hooks Run in EVERY Repo — Never Assume the Cortex Tree
 
 `core.hooksPath ~/.hermes-cortex/hooks` is set **globally** — the pre-commit/
-pre-push hooks fire in every git repo on the host (client-mwi, client-works,
+pre-push hooks fire in every git repo on the host (client-repo-a, client-repo-b,
 client repos, any project without the cortex `ops/` tree). A hook that builds
 a path on `$REPO_ROOT` (the repo being committed IN) and assumes cortex
 layout breaks EVERY commit in those repos — even one-line test fixes.
@@ -195,7 +195,7 @@ layout breaks EVERY commit in those repos — even one-line test fixes.
 **Real regression (2026-08-04, Esther, commit `faa0e929`):** the adversarial
 gate hard-resolved `ADVERSARIAL_SCRIPT="$REPO_ROOT/ops/scripts/quality/adversarial-verify.py"`.
 That path exists only in ~/hermes-cortex itself. Project repos have no `ops/`
-tree → fail-closed block on every commit (Titus hit it on client-mwi within
+tree → fail-closed block on every commit (Titus hit it on client-repo-a within
 hours). Fix `72d6cdc3`: candidate loop with deployed-path fallback.
 
 **The pattern — repo-local first, canonically-deployed second, fail CLOSED:**
@@ -341,7 +341,7 @@ to them must be doubly scoped or it will block innocent work in project repos:
    _REPO_TOP=$(git rev-parse --show-toplevel 2>/dev/null || echo "")
    [[ "$_REPO_TOP" == "$CORTEX_REPO_TOP" ]]   # CORTEX_REPO_TOP=${HOME}/hermes-cortex
    ```
-   Non-cortex repos (client-mwi, client-works, ebm-website, pinned repos,
+   Non-cortex repos (client-repo-a, client-repo-b, client-web-app, pinned repos,
    ...) must NEVER run the hermes-cortex doctor — a failing cortex state must
    not block a client repo's push.
 2. **Orchestrator scope**: only orchestrator hosts run orchestrator-level

@@ -62,12 +62,12 @@ The CISAC IPI SOAP `getAgreements` operation returns data matching our `society_
 | `territories` | `+2136` (World), `+410` (Korea) | `contract_territories.territory_code` |
 | `valid_from` / `valid_to` | `19961201000000` / `99991231235959` | Contract dates |
 
-MWI (acme-mwi) only uses this for the **member's default society** (`soc_code`), with comment
-`# future accommodate multiple societies/territories`. MWI contracts have a single `rights_type`
+client (acme-alpha) only uses this for the **member's default society** (`soc_code`), with comment
+`# future accommodate multiple societies/territories`. client contracts have a single `rights_type`
 per contract — per-territory rights is a new capability.
 
 **Numeric vs string society codes:** IPI returns numeric codes (336=KOMCA, 021=international).
 ACME Works uses string codes (KOMCA, ACME). A mapping layer may be needed for IPI auto-fill.
 
 See `app/helpers/ipi_api_helper.rb` (`ipi_get_agreements`, `ipi_get_society_from_agr_hash`) and
-`app/jobs/update_from_ipi_member_mna_worker_job.rb` in acme-mwi.
+`app/jobs/update_from_ipi_member_mna_worker_job.rb` in acme-alpha.

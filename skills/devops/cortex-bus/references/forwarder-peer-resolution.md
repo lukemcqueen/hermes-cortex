@@ -11,9 +11,9 @@ PEER_URL = os.environ.get("BUS_FORWARDER_PEER_URL",
            os.environ.get("CORTEX_BUS_FALLBACK_URL", ""))
 ```
 
-On **Esther's** host:
-- `CORTEX_BUS_URL` = `https://bus.example.org:13004` (Moses — primary)
-- `CORTEX_BUS_FALLBACK_URL` = `https://bus.example.org:14004` (Esther's OWN external)
+On **backup-orchestrator's** host:
+- `CORTEX_BUS_URL` = `https://bus-primary.example:13004` (primary — Moses)
+- `CORTEX_BUS_FALLBACK_URL` = `https://bus-backup.example:14004` (backup's OWN external)
 
 So PEER resolved to Esther's own URL → the forwarder mirrored Esther↔Esther.
 Result:

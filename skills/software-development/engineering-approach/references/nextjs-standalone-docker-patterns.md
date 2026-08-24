@@ -23,7 +23,7 @@ const config: NextConfig = {
     return [
       {
         source: '/api/search/:path*',
-        destination: `${process.env.MWI_API_URL || 'http://localhost:3001'}/api/:path*`,
+        destination: `${process.env.CLIENT_API_URL || 'http://localhost:3001'}/api/:path*`,
       },
     ];
   },
@@ -63,7 +63,7 @@ ENV PORT=3000
 ENV WEB_URL=http://localhost:3000
 ENV DATABASE_URL=postgres://acme:***@postgres:5432/acme_website
 ENV REDIS_URL=redis://redis:6379
-ENV MWI_API_URL=http://host.docker.internal:3001
+ENV CLIENT_API_URL=http://host.docker.internal:3001
 ENV AUTH_SECRET=change-me
 ENV MINIO_ROOT_USER=acme_admin
 ENV MINIO_ROOT_PASSWORD=acme_secret_minio

@@ -189,7 +189,7 @@ Sections in order:
 When a major architecture decision changes the PRD (e.g. new backend framework, CI/CD platform, monitoring service, integration targets), use this systematic update pattern:
 
 1. **Identify all relevant sections** — read the full PRD once to understand what's affected
-2. **Search for every occurrence** of the old term (`MWI`, `Sentry`, `GitHub Actions`, `Redis 7`, `PostgreSQL 16`, etc.)
+2. **Search for every occurrence** of the old term (`client`, `Sentry`, `GitHub Actions`, `Redis 7`, `PostgreSQL 16`, etc.)
 3. **Fix broken diagrams** — after text replacements, verify ASCII architecture diagrams are still aligned
 4. **Update metadata** — increment version number, add revision note
 5. **Check cross-references** — ADRs, phases, glossary, launch checklist, and acceptance criteria all need the same treatment
@@ -199,12 +199,12 @@ Common PRD update operations (example from acme-website v1.0 → v2.1):
 - Architecture: Next.js-only → FastAPI + Next.js dual-app
 - CI/CD: GitHub Actions → GitLab CI
 - Monitoring: Sentry → Highlight.io
-- Integration targets: acme-mwi (Rails) → acme-works (FastAPI)
+- Integration targets: acme-alpha (Rails) → acme-works (FastAPI)
 - Stack versions: PG 16 → 18.3-trixie, Redis 7 → 8.6.3-alpine
 - ORM: Drizzle-only → SQLAlchemy (backend) + Drizzle (frontend reads)
 
 For each change, the levers are:
-- **Feature tables**: update dependencies column (e.g. "MWI API" → "acme-works API")
+- **Feature tables**: update dependencies column (e.g. "client API" → "acme-works API")
 - **NFR table**: update platform-specific entries (CI/CD, monitoring)
 - **Architecture diagram**: redraw with new service names and connections
 - **Directory structure**: add/remove service directories

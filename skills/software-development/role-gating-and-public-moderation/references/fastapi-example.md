@@ -47,10 +47,10 @@ def ensure_user(session, email, password, role, *, force_role=False):
         user.password_hash = bcrypt.hashpw(...)
     return user, False
 ```
-- `seed_default()` creates the FIRST admin from `Example_ADMIN_EMAIL`/`Example_ADMIN_PASSWORD`,
+- `seed_default()` creates the FIRST admin from `EXAMPLE_ADMIN_EMAIL`/`EXAMPLE_ADMIN_PASSWORD`,
   idempotent, fails closed (exit 1) when creds absent. Never demotes/alters
   existing rows (force_role=False).
-- `seed_demo()` refuses on prod unless `Example_ALLOW_DEMO_ON_PROD=1`; idempotent;
+- `seed_demo()` refuses on prod unless `EXAMPLE_ALLOW_DEMO_ON_PROD=1`; idempotent;
   only writes sample rows on a FRESH seed (probe a `created_evangelist` flag).
 - Tests import the same helper: `ensure_user(db, email, pw, "evangelist", force_role=True)` + commit, then login via HTTP. Do NOT create privileged test accounts through the public register.
 - CLI: `python -m example_api.seed --mode default|demo`. Wire to `./run seed <mode>`.

@@ -32,7 +32,7 @@ Unlike {competitive alternative}, it {unique attribute → value}.
 Fill every blank from the five answers; if a blank can't be filled, the work isn't done.
 
 ### 2. ICP Definition
-Profile: firmographics (industry, size, revenue, geo), role/title and buying committee, pain points (ranked), triggers (events that start a search: regulation, funding, growth spike), budget range, and "why now". Write a 3-5 sentence narrative plus a one-liner ("VP Marketing at mid-market DTC brands, $10-50M revenue, scaling paid channels"). Validate against 3+ real customers (anonymized, e.g., client-mwi) before building GTM around it.
+Profile: firmographics (industry, size, revenue, geo), role/title and buying committee, pain points (ranked), triggers (events that start a search: regulation, funding, growth spike), budget range, and "why now". Write a 3-5 sentence narrative plus a one-liner ("VP Marketing at mid-market DTC brands, $10-50M revenue, scaling paid channels"). Validate against 3+ real customers (anonymized, e.g., client-alpha) before building GTM around it.
 
 ### 3. GTM Plan
 1. **Segments:** 1-3 ICP segments, prioritized (segment score = pain severity × willingness to pay × reachability).
@@ -52,7 +52,7 @@ Then build the **battlecard**: competitor profile, their pitch, their weaknesses
 - Battlecards for the top 3 competitors.
 - Demo script mapped to unique attributes → value.
 - Objection handling sheet (top 10 objections with responses).
-- Case studies / customer stories (anonymized: client-mwi).
+- Case studies / customer stories (anonymized: client-alpha).
 - FAQ + competitive comparison table for the sales team.
 
 ### 6. Launch Checklist

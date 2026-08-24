@@ -112,6 +112,6 @@ marker (`state/skills-loaded/<session_id>`) — do NOT delete locks.
 - After fix: lock file survived `cortex-update.sh`; only current-task cycle
   PENDING; doctor clean.
 - Mandatory dogfood: 7-case trigger matrix (HC script/rename/config fire;
-  HC doc exempt; client-mwi + ebm-website NEVER fire); RED test (drifted
+  HC doc exempt; client-repo-a + client-web-app NEVER fire); RED test (drifted
   deployed state → dogfood FAIL rc=1); the gate ran on its own push
   (99f72be8, 1764f053, b5fb4872, f7f287e8).
