@@ -143,6 +143,25 @@ for f in $STAGED; do
   esac
 done
 
+# ── 6. Alembic revision length (self-scoping, any repo) ─────
+# alembic_version.rev_num is varchar(32); revision IDs longer than 32
+# chars crash container startup. Fires only when a repo stages alembic
+# migration files — generic governance from the HC root file, no
+# repo-local copy needed (Luke 2026-08-24: governance is always HC root).
+for f in $STAGED; do
+  case "$f" in
+    */versions/*.py)
+      while IFS= read -r rev_line; do
+        rev_id=$(echo "$rev_line" | sed -n "s/.*revision.*= *['\"]\([^'\"]*\)['\"].*/\1/p")
+        if [[ -n "$rev_id" && "${#rev_id}" -gt 32 ]]; then
+          error "Alembic revision ID in $f is ${#rev_id} chars (>32) — will crash container startup (varchar(32))"
+          HAS_ISSUES=1
+        fi
+      done < <(grep -E "^(revision|down_revision)" "$f" 2>/dev/null || true)
+      ;;
+  esac
+done
+
 # ── Summary ──────────────────────────────────────────────────
 if [[ "$HAS_ISSUES" -eq 0 ]]; then
   echo "  ${GREEN}✅ change-validate: all checks passed${RESET}"

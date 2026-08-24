@@ -771,9 +771,16 @@ PARENT_COMMIT=$(git rev-parse HEAD 2>/dev/null || echo "0000000")
 PASS_PCT=100
 MEASURE_WARN=""
 MEASURE_OUT=""
-if [[ -f "$REPO_ROOT/ops/scripts/precommit_test_discovery.py" ]]; then
+# TASK 4b (TitusClaude + Luke, verified): generic governance files are
+# DEPLOYED-ONLY (~/.hermes-cortex/scripts/, landed by cortex-update.sh).
+# No repo copies, no overrides — one source of truth, fixes reach every
+# repo automatically. The repo declares ONLY its test runner via
+# ops/scripts/test-command.sh (a per-repo VALUE the measurer reads, not an
+# override of the measurer itself).
+_DISCOVERY="$HOME/.hermes-cortex/scripts/precommit_test_discovery.py"
+if [[ -f "$_DISCOVERY" ]]; then
   # Run the discovery module with REPO_ROOT set; parse its PASS_PCT output.
-  MEASURE_OUT=$(REPO_ROOT="$REPO_ROOT" python3 "$REPO_ROOT/ops/scripts/precommit_test_discovery.py" 2>/dev/null || true)
+  MEASURE_OUT=$(REPO_ROOT="$REPO_ROOT" python3 "$_DISCOVERY" 2>/dev/null || true)
   _MEASURED_PCT=$(echo "$MEASURE_OUT" | sed -n 's/^PASS_PCT=//p' | head -1)
   _MEASURE_WARNED=$(echo "$MEASURE_OUT" | sed -n 's/^MEASURE_WARN=//p' | head -1)
   if [[ -n "$_MEASURED_PCT" ]]; then
@@ -918,8 +925,13 @@ if [[ -f "$HOME/hermes-cortex/ops/scripts/secret-leak-detector.sh" ]]; then
 fi
 
 # ── Change validation (mandatory, no bypass) ────────────
-if [[ -f "$REPO_ROOT/ops/scripts/change-validate.sh" ]]; then
-  bash "$REPO_ROOT/ops/scripts/change-validate.sh"
+# Governance is ALWAYS the HC root file, deployed fleet-wide (Luke
+# 2026-08-24). No repo copies, no repo overrides — the deployed
+# change-validate.sh contains ALL checks (self-scoping: each fires only
+# when the staged files match its pattern, e.g. alembic revisions).
+_CHANGE_VALIDATE="$HOME/.hermes-cortex/scripts/change-validate.sh"
+if [[ -f "$_CHANGE_VALIDATE" ]]; then
+  bash "$_CHANGE_VALIDATE"
 fi
 
 # ── Orchestrator-only paths guard (hermes-cortex repo only) ──
