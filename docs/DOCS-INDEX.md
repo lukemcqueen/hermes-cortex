@@ -30,7 +30,6 @@ A lightweight map of all project documents. Files are grouped by topic.
 | `ops/install/install.sh` | Main installer script (moved from root in v2.0.0) |
 | `docs/pre-commit-scoring.md` | Pre-commit scoring hook — TDD cycle scoring, loop governance integration, and enforcement model |
 | `ops/scripts/` | Health checks, watchdogs, governance, installers — scripts across subdirectories |
-| `core/cortex_bus/metrics.py` | **Bus metrics module** — prometheus_client definitions + async push client. Imported by bus server for queue-level observability |
 | `ops/install/deploy/docker-compose.victoria-metrics.yml` | **VictoriaMetrics + Grafana stack** — Docker compose: metrics storage (3mo retention) + visualization dashboard. Grafana at :3030 |
 
 ## Documentation Routing
@@ -96,7 +95,6 @@ repo; this public repo carries only framework docs (PRDs, design, reference).
 | `docs/deploy-registry-pattern.md` | Deploy registry pattern |
 | `docs/git-enforcement.md` | Git enforcement model |
 | `docs/loop-governance-reference.md` | Loop governance reference |
-| `docs/docker-registry-cache.md` | Docker registry cache |
 | `docs/seeding-brain-content.md` | Seeding brain content |
 
 ## Knowledge & Offline
@@ -104,7 +102,6 @@ repo; this public repo carries only framework docs (PRDs, design, reference).
 | Doc | Description |
 |-----|-------------|
 | `docs/offline-code/` | Offline code search + generation |
-| `docs/offline-travel-stack.md` | Offline travel stack (kept as reusable pattern) |
 
 ## Skills
 

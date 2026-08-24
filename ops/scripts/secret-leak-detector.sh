@@ -173,7 +173,7 @@ for FILE in $STAGED_FILES; do
   fi
 
   # === Pattern 5: PII — hardcoded /home/<user>/ paths ===
-  # Matches: /home/moses/, /home/luke/, /home/<any-real-username>/
+  # Matches: /home/<any-real-username>/
   # Skips: /home/user/, /home/nobody/
   if echo "$STAGED_CONTENT" | grep -En "/home/[a-z]{2,12}/" >/dev/null 2>&1; then
     MATCHES=$(echo "$STAGED_CONTENT" | grep -En "/home/[a-z]{2,12}/" 2>/dev/null || true)

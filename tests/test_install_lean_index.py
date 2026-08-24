@@ -74,12 +74,13 @@ def test_lean_demotes_without_toolset_collapse():
     # get the actual coding_context runtime behavior.
     code = """
 import sys, os
-sys.path.insert(0, '/home/esther/.hermes/hermes-agent')
+from pathlib import Path
+sys.path.insert(0, str(Path.home() / '.hermes' / 'hermes-agent'))
 os.environ['HERMES_HOME'] = os.path.expanduser('~/.hermes')
 from agent.coding_context import coding_compact_skill_categories, resolve_runtime_mode
-cats = coding_compact_skill_categories(platform='telegram', cwd='/home/esther',
+cats = coding_compact_skill_categories(platform='telegram', cwd=str(Path.home()),
                                       config={'agent': {'coding_context': 'lean'}})
-rm = resolve_runtime_mode(platform='telegram', cwd='/home/esther',
+rm = resolve_runtime_mode(platform='telegram', cwd=str(Path.home()),
                           config={'agent': {'coding_context': 'lean'}})
 assert len(cats) > 10, f'expected >10 demoted categories, got {len(cats)}'
 assert 'ads' in cats, 'ads should be demoted'

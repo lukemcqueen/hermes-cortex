@@ -1,4 +1,4 @@
-#!/home/moses/.hermes/hermes-agent/venv/bin/python3
+#!/usr/bin/env python3
 """
 workflow-inspector.py — Inspect agent bus workflows.
 

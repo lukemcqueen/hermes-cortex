@@ -50,7 +50,7 @@ sibling cron session often narrates exactly what it did:
 
 ```python
 import sqlite3
-db = sqlite3.connect('/home/moses/.hermes/state.db')
+db = sqlite3.connect('~/.hermes/state.db')
 cur = db.cursor()
 cur.execute("SELECT id, role, substr(content,1,400) FROM messages "
             "WHERE session_id=? ORDER BY id DESC LIMIT 30", (sid,))

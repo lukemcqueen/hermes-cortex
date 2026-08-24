@@ -31,7 +31,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # repo location (ops/scripts/manage/) and the DEPLOYED location
 # (~/.hermes-cortex/scripts/), where git rev-parse fails and ../../.. lands
 # on /home (regression 2026-08-05: pipeline deploy step failed with
-# "fix-blocked-ips.py not found at /home/ops/...").
+# "fix-blocked-ips.py not found at a /home/<user>/... path").
 CORTEX_REPO="${CORTEX_REPO:-}"
 if [ -z "$CORTEX_REPO" ] || [ ! -f "$CORTEX_REPO/ops/install/deploy/nginx/fix-blocked-ips.py" ]; then
   CORTEX_REPO="$(cd "$SCRIPT_DIR" && git rev-parse --show-toplevel 2>/dev/null || true)"

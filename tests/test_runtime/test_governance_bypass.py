@@ -20,6 +20,9 @@ import re
 import tempfile
 from pathlib import Path
 
+# Runtime-built home prefix (PII-safe: no hardcoded username in source).
+_HOME = str(Path.home())
+
 import pytest
 
 # ── Load the enforcer module (path has a hyphen, so standard import won't work) ─
@@ -757,7 +760,7 @@ class TestDomainSkillGate:
         """Interactive session writing .md without documentation-auditing → block."""
         result = enforcer._check_domain_skill_gate(
             "write_file",
-            {"path": "/home/esther/hermes-cortex/docs/design/new.md"},
+            {"path": f"{_HOME}/hermes-cortex/docs/design/new.md"},
             "20260807_091220_6e0c506a",  # date-format interactive session
         )
         assert result is not None
@@ -769,7 +772,7 @@ class TestDomainSkillGate:
         enforcer._session_skills_loaded.setdefault("20260807_091220_6e0c506a", set()).add("documentation-auditing")
         result = enforcer._check_domain_skill_gate(
             "write_file",
-            {"path": "/home/esther/hermes-cortex/docs/design/new.md"},
+            {"path": f"{_HOME}/hermes-cortex/docs/design/new.md"},
             "20260807_091220_6e0c506a",
         )
         assert result is None
@@ -782,7 +785,7 @@ class TestDomainSkillGate:
         enforcer._session_skills_loaded.setdefault("sess_A", set()).add("documentation-auditing")
         result = enforcer._check_domain_skill_gate(
             "write_file",
-            {"path": "/home/esther/hermes-cortex/docs/new.md"},
+            {"path": f"{_HOME}/hermes-cortex/docs/new.md"},
             "sess_B",
         )
         assert result is not None
@@ -793,12 +796,12 @@ class TestDomainSkillGate:
         """Repeat offense per session → BLOCK with escalation message."""
         enforcer._check_domain_skill_gate(
             "write_file",
-            {"path": "/home/esther/hermes-cortex/docs/a.md"},
+            {"path": f"{_HOME}/hermes-cortex/docs/a.md"},
             "20260807_091220_6e0c506a",
         )
         result = enforcer._check_domain_skill_gate(
             "write_file",
-            {"path": "/home/esther/hermes-cortex/docs/b.md"},
+            {"path": f"{_HOME}/hermes-cortex/docs/b.md"},
             "20260807_091220_6e0c506a",
         )
         assert result is not None
@@ -815,7 +818,7 @@ class TestDomainSkillGate:
         """
         result = enforcer._check_domain_skill_gate(
             "write_file",
-            {"path": "/home/esther/brain/esther/dreams/2026-08-07.md"},
+            {"path": f"{_HOME}/brain/esther/dreams/2026-08-07.md"},
             "cron_a28f8be0bc4e_20260806_230038",
         )
         assert result is None
@@ -824,7 +827,7 @@ class TestDomainSkillGate:
         """Cron writing .py without codebase-design → PASS (same rationale)."""
         result = enforcer._check_domain_skill_gate(
             "write_file",
-            {"path": "/home/esther/.hermes/scripts/agent-something.py"},
+            {"path": f"{_HOME}/.hermes/scripts/agent-something.py"},
             "cron_abc123_20260807_030000",
         )
         assert result is None
@@ -855,7 +858,7 @@ class TestDomainSkillGate:
         """Missing session id → treated as interactive → gate enforced."""
         result = enforcer._check_domain_skill_gate(
             "write_file",
-            {"path": "/home/esther/hermes-cortex/docs/x.md"},
+            {"path": f"{_HOME}/hermes-cortex/docs/x.md"},
             "",
         )
         assert result is not None
