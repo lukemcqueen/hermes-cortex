@@ -249,6 +249,8 @@ grep -rn "<changed-path>" ~/hermes-cortex/profiles/
 grep -rn "<changed-protocol>" ~/hermes-cortex/AGENTS.md
 ```
 
+- [ ] `git status` for **foreign unstaged/untracked changes** — a concurrent session's in-flight edits block the pre-push dogfood gate (it diffs the working tree). Coordinate first; never stash/clean a peer's work. Cross-ref: change-checklist Phase 0.
+
 ## Deployment Pitfalls — cortex-update.sh Side Effects
 
 Account for each before and after deploy:
