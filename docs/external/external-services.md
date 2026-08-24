@@ -17,16 +17,21 @@ or the service's own dashboard.**
 
 ## Payment processor
 
-**Not yet configured.** The KAESA pre-order flow (client engagement) will
-need a payment processor — the decision (processor choice, API keys,
-webhook endpoints) will be recorded HERE as an ADR when chosen. No
-payment credentials exist in any env file yet.
+**Framework policy (generic):** payment-processor selection for a client
+engagement is a CLIENT/BUSINESS decision, documented in the private repo
+(`~/hermes-cortex-private`), never the public framework. The public
+framework ships no payment credentials, no processor integrations, and no
+client-specific commerce details. When a processor is chosen for a
+client, record it as a private ADR with the gating requirements
+(merchant entity, local-wallet support, pre-order/escrow semantics).
 
 ## Rules
 
 - **No values in this file** — every credential is behind an env var name
   or a service dashboard.
+- **No client names or client-specific commerce details** — the public
+  repo is framework-only; client decisions live in the private repo.
 - **Add new services here** when you wire them — a fresh session should
   never discover a third-party integration by reading code.
-- **Payment processor selection** must be an ADR (context/decision/
-  consequences), not just a config value.
+- **Payment processor selection** for a client must be a PRIVATE ADR
+  (context/decision/consequences), not just a config value.
