@@ -87,34 +87,34 @@ def _msg(body, mid="m-1"):
 
 # ── The tests ───────────────────────────────────────────────
 
-def test_poll_outbound_returns_message(bus_env):
-    """The shim polls out_<AGENT> and gets the next reply."""
-    bus_env["bus"].queues["out_codex"] = [_msg({"to_agent": "codex"})]
-    msg = SHIM.poll_outbound(bus_env["url"], {}, "codex")
+def test_poll_inbox_returns_message(bus_env):
+    """The shim polls inbox_<AGENT> and gets the next inbound message."""
+    bus_env["bus"].queues["inbox_codex"] = [_msg({"to_agent": "codex"})]
+    msg = SHIM.poll_inbox(bus_env["url"], {}, "codex")
     assert msg is not None
     assert msg["msg_id"] == "m-1"
 
 
 def test_poll_empty_queue_returns_none(bus_env):
     """Empty queue → bus returns {msg_id: None} → callers see no message."""
-    msg = SHIM.poll_outbound(bus_env["url"], {}, "codex")
+    msg = SHIM.poll_inbox(bus_env["url"], {}, "codex")
     assert msg is None or msg.get("msg_id") is None
 
 
-def test_reply_sends_to_inbox(bus_env):
-    """The shim replies via POST inbox_<AGENT> (the agent's own queue)."""
+def test_reply_sends_to_out(bus_env):
+    """The shim replies via POST out_<AGENT> (the gateway drains it)."""
     ok = SHIM.reply(bus_env["url"], {}, "codex", {"text": "done"})
     assert ok is True
-    assert "inbox_codex" in bus_env["bus"].queues
-    body = json.loads(bus_env["bus"].queues["inbox_codex"][0]["body"])
+    assert "out_codex" in bus_env["bus"].queues
+    body = json.loads(bus_env["bus"].queues["out_codex"][0]["body"])
     assert body["text"] == "done"
 
 
 def test_ack_archives(bus_env):
-    bus_env["bus"].queues["out_codex"] = [_msg({"to_agent": "codex"}, "m-9")]
+    bus_env["bus"].queues["inbox_codex"] = [_msg({"to_agent": "codex"}, "m-9")]
     ok = SHIM.ack(bus_env["url"], {}, "codex", "m-9")
     assert ok is True
-    assert ("out_codex", "m-9") in bus_env["bus"].archived
+    assert ("inbox_codex", "m-9") in bus_env["bus"].archived
 
 
 def test_generate_emits_instance(bus_env, tmp_path):
