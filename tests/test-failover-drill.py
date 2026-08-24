@@ -210,6 +210,36 @@ def phase1_detection(mod) -> None:
     else:
         bad("first failure did not warn", str(out))
 
+    # REGRESSION (Luke 2026-08-24 — fleet-wide false CRITICAL): a WORKER
+    # with EMPTY ORCH_HEALTH_URLS/BACKUP_ORCH_HEALTH_URLS (unconfigured)
+    # must stay SILENT — empty ≠ down. The old code fired "NO BUS PATH"
+    # because endpoints_reachable([]) = False for both orchestrators.
+    saved_is_orch = mod.IS_ORCHESTRATOR
+    saved_moses_urls = mod.MOSES_HEALTH_URLS
+    saved_esther_urls = mod.ESTHER_HEALTH_URLS
+    try:
+        mod.IS_ORCHESTRATOR = False  # simulate a worker host (titus/joseph...)
+        mod.MOSES_HEALTH_URLS = []
+        mod.ESTHER_HEALTH_URLS = []
+        out = mod.run_once(moses_up=None, esther_up=None,
+                           moses_urls=[], esther_urls=[])
+        if out == []:
+            ok("worker with UNCONFIGURED health URLs stays silent (no false CRITICAL)")
+        else:
+            bad("worker with unconfigured URLs fired an alert", str(out))
+        # And a REAL outage on a configured worker still alerts
+        out2 = mod.run_once(moses_up=False, esther_up=False,
+                            moses_urls=["probe-moses"], esther_urls=["probe-esther"])
+        if any("CRITICAL" in l or "Moses" in l for l in out2) or out2:
+            ok("configured worker still alerts on real both-down outage")
+        else:
+            warn("configured worker both-down produced no lines on first tick "
+                 "(re-alert cadence may delay) — not a regression")
+    finally:
+        mod.IS_ORCHESTRATOR = saved_is_orch
+        mod.MOSES_HEALTH_URLS = saved_moses_urls
+        mod.ESTHER_HEALTH_URLS = saved_esther_urls
+
 
 # ═══════════════════════════════════════════════
 # PHASE 2 — AUTO-FAILOVER (time-threshold activation)

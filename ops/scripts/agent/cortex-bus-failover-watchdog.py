@@ -86,16 +86,20 @@ DRY_RUN = os.environ.get("FAILOVER_DRY_RUN", "1" if not IS_ORCHESTRATOR else "0"
 MOSES_HEALTH_URLS = [
     u.strip()
     for u in os.environ.get(
-        "MOSES_HEALTH_URLS",
-        "",
+        # Canonical (Luke 2026-08-24): ORCH_HEALTH_URLS = active
+        # orchestrator's probes, BACKUP_ORCH_HEALTH_URLS = standby's.
+        # Role-derived, never host-hardcoded — the same code runs on any
+        # host. Legacy names kept as fallback for un-migrated hosts.
+        "ORCH_HEALTH_URLS",
+        os.environ.get("MOSES_HEALTH_URLS", ""),
     ).split(",")
     if u.strip()
 ]
 ESTHER_HEALTH_URLS = [
     u.strip()
     for u in os.environ.get(
-        "ESTHER_HEALTH_URLS",
-        "",
+        "BACKUP_ORCH_HEALTH_URLS",
+        os.environ.get("ESTHER_HEALTH_URLS", ""),
     ).split(",")
     if u.strip()
 ]
@@ -359,6 +363,21 @@ def run_once(
     if esther_up is None:
         esther_up = _esther_reachable(esther_urls)
     out: list[str] = []
+
+    # Config guard (Luke 2026-08-24 — fleet-wide false CRITICAL): if
+    # either orchestrator's probe list is EMPTY (unconfigured env), the
+    # watchdog cannot judge reachability. Empty ≠ down — stand down
+    # silently instead of screaming "NO BUS PATH" for an unset variable.
+    # Only applies when the watchdog is actually PROBING (moses_up/
+    # esther_up injected by callers/tests = the caller knows the state,
+    # so empty URL lists are irrelevant).
+    if not IS_ORCHESTRATOR and moses_up is None and esther_up is None:
+        cfg_moses = MOSES_HEALTH_URLS if moses_urls is None else moses_urls
+        cfg_esther = ESTHER_HEALTH_URLS if esther_urls is None else esther_urls
+        if not cfg_moses or not cfg_esther:
+            state["last_status"] = "unconfigured"
+            _save_state(state)
+            return []
 
     # Moses (primary orchestrator) — silent: his health is the fleet
     # watchdog's job; he has no bus to fail over to.
