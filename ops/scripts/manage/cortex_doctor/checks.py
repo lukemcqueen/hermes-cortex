@@ -166,6 +166,65 @@ def check_repo(res: "Results") -> None:
         "rm -rf ~/agent-inbox-private")
 
 
+def check_deployed_gate_smoke(res: "Results") -> None:
+  """1c. Deployed-gate smoke test: the deployed adversarial-verify.py must
+  be able to resolve its lib module (toon_parse).
+
+  2026-08-24 blunder: the deployed verifier resolved its lib path to a
+  non-existent dir (dirname×2 from scripts/ — one level too shallow) and
+  the except:pass silently swallowed the import error → the TOON gate was
+  DEAD in production while checksums passed and repo-layout tests passed.
+  This check executes the deployed verifier's lib resolution so that class
+  of repo-works/deployed-broken can never ship silently again.
+  """
+  try:
+    import json as _json
+    import subprocess as _sp
+    verifier = CORTEX_HOME / "scripts" / "adversarial-verify.py"
+    if not verifier.exists():
+      res.add("Deployed gate smoke", "INFO",
+              "adversarial-verify.py not deployed — nothing to smoke-test")
+      return
+    # Run the deployed verifier against a malformed-TOON fixture; if the
+    # lib path is broken, the TOON check silently no-ops → 0 findings.
+    tmp_fixture = CORTEX_HOME / "state" / ".gate-smoke-toon.py"
+    tmp_fixture.parent.mkdir(parents=True, exist_ok=True)
+    tmp_fixture.write_text(
+        "tasks[2]{id,title}:\n  T-1,a\n  T-2,b\n", encoding="utf-8")
+    try:
+      out = _sp.run(
+          [sys.executable, str(verifier), "--file", str(tmp_fixture),
+           "--level", "A2", "--json"],
+          capture_output=True, text=True, timeout=30)
+      if out.returncode != 0:
+        res.add("Deployed gate smoke", "FAIL",
+                f"deployed verifier exited {out.returncode}: {out.stderr[:120]}",
+                "Run: cortex-update.sh then re-run doctor")
+        return
+      try:
+        data = _json.loads(out.stdout)
+      except _json.JSONDecodeError:
+        res.add("Deployed gate smoke", "FAIL",
+                "deployed verifier JSON output unparseable",
+                "Check: python3 ~/.hermes-cortex/scripts/adversarial-verify.py --file X --level A2 --json")
+        return
+      patterns = [f.get("pattern") for f in data.get("findings", [])]
+      if "malformed-toon" in patterns:
+        res.add("Deployed gate smoke", "PASS",
+                "deployed verifier TOON check active (malformed fixture flagged)")
+      else:
+        res.add("Deployed gate smoke", "FAIL",
+                "deployed verifier did NOT flag malformed TOON — TOON check "
+                "silently disabled (lib resolution broken?)",
+                "Check ~/.hermes-cortex/scripts/lib/toon_parse.py exists; "
+                "adversarial-verify.py lib path must resolve in deployed layout")
+    finally:
+      tmp_fixture.unlink(missing_ok=True)
+  except Exception as _e:  # advisory — never crash the doctor
+    res.add("Deployed gate smoke", "WARN",
+            f"smoke test could not run: {type(_e).__name__}: {str(_e)[:120]}")
+
+
 def check_dev_repo_agents(res: "Results") -> None:
   """1b. Development repos: check each project-level git repo has an AGENTS.md."""
   if not CORTEX_REPO.is_dir():
