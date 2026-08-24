@@ -1274,6 +1274,53 @@ _PLACEHOLDER_DOMAIN_RE = re.compile(
     r"cluster\.mongodb\.net|all-hands\.dev|agentmail\.to|domain\.tld|"
     r"test|local|internal|acme)$"
 )
+
+# ── PII guard extensions (Luke 2026-08-24) ─────────────────────────────────
+# Personal identifiers that must NEVER enter the public repo / shared skills,
+# even inside otherwise-innocent prose. Each is UNIQUELY personal — NOT a
+# functional username. Bare first names (luke/amy) stay allowed because
+# they're functional bus-routing usernames in this codebase.
+_PII_SENSITIVE_TERMS = (
+    "mcqueen",            # surname — never in public prose; EXCEPT the repo's
+                          # own public URL (github.com/fleet-operator/hermes-cortex)
+                          # which is allowed — see _PII_SENSITIVE_RE
+    "realgospelmessage",  # personal domain — bus docs use it functionally;
+                          # NEW writes of it in docs/skills are blocked
+    "co-founder",            # full personal name
+    "chu mcqueen",        # full personal name
+)
+# 'mcqueen' allowed ONLY as the GitHub username in the repo's own URL
+# (fleet-operator/...); everywhere else it's the personal surname.
+_PII_SENSITIVE_RE = re.compile(
+    r"(" + "|".join(re.escape(t) for t in _PII_SENSITIVE_TERMS) + r")",
+    re.IGNORECASE,
+)
+_PII_SENSITIVE_OK_RE = re.compile(r"fleet-operator(/|$)", re.IGNORECASE)
+
+# Phone numbers: international / national formats, digits+separators.
+_PII_PHONE_RE = re.compile(
+    r"(?<!\d)(\+?\d{1,3}[-.\s]?)?(\(?\d{2,4}\)?[-.\s]?)?\d{3,4}[-.\s]?\d{4}(?!\d)"
+)
+
+# Private server URLs — a URL whose host is NOT a well-known public site is
+# flagged as personal-infra exposure. Well-known public hosts pass.
+_PII_SERVER_URL_RE = re.compile(r"https?://([a-z0-9.-]+)", re.IGNORECASE)
+_PUBLIC_HOST_RE = re.compile(
+    r"^(github\.com|gitlab\.com|docs\.[a-z0-9.-]+|[a-z0-9.-]+\.(org|io|dev|"
+    r"com|net|ai|co|app|edu)(/|$))"
+    r"|^(api\.|www\.|openai\.com|anthropic\.com|himalayas\.app|"
+    r"crossover\.com|ziprecruiter\.com|remoterocketship\.com|"
+    r"dynamitejobs\.com|jobicy\.com|seoulstart\.com|dev-korea\.com|"
+    r"kowork\.kr|weworkremotely\.com|remoteok\.com|arc\.dev|"
+    r"linkedin\.com|glassdoor\.com|indeed\.com|wellfound\.com|"
+    r"nodesk\.co|4dayweek\.io|remote\.com|anywhereremotejobs\.com|"
+    r"remotive\.com|workingnomads\.com|startuphub\.ai|jobsbyculture\.com|"
+    r"jobs-radar\.com|fwddeploy\.com|aijobs\.(ai|net)|agenticcareers\.co|"
+    r"menlovc\.com|startup\.jobs|aillmjobs\.com|arbeitnow\.com|"
+    r"relocate\.me|client-brand\.co|careers\.(bcg|ey)\.com|"
+    r"job-boards\.greenhouse\.io|jobs\.lever\.co|jobs\.ashbyhq\.com|"
+    r"wanted\.co\.kr)"
+)
 _HERMES_CORTEX_REPO = Path.home() / "hermes-cortex"
 _HERMES_SKILLS_DIR = Path.home() / ".hermes" / "skills"
 
@@ -1329,22 +1376,60 @@ def _check_pii_content_gate(tool_name: str, args: dict) -> Optional[dict]:
         domain = email.split("@", 1)[1]
         if not _PLACEHOLDER_DOMAIN_RE.match(domain):
             bad_domains.add(domain)
-    if not bad_domains:
+
+    violations = []
+    if bad_domains:
+        violations.append(
+            "real email address(es) on non-placeholder domain(s): "
+            + ", ".join(sorted(bad_domains))
+        )
+
+    # Personal identifiers (surname, personal domain, full names). The repo's
+    # own GitHub URL (fleet-operator/...) is allowed — it's the public address.
+    for m in _PII_SENSITIVE_RE.finditer(content):
+        term = m.group(1)
+        if term.lower() == "mcqueen" and _PII_SENSITIVE_OK_RE.search(content):
+            # allow if this mcqueen is part of fleet-operator/ repo path
+            ctx_start = max(0, m.start() - 12)
+            if re.search(r"fleet-operator(/|$)", content[ctx_start:m.end() + 8], re.I):
+                continue
+        violations.append(f"personal identifier: '{term}'")
+        break  # one report per class is enough
+
+    # Phone numbers
+    if _PII_PHONE_RE.search(content):
+        violations.append("phone number")
+
+    # Private server URLs (host not on the public allowlist). NOTE: the
+    # placeholder regex allows `internal` as a doc-host — but .internal is
+    # the classic PRIVATE TLD, so a URL host ending .internal is blocked.
+    for m in _PII_SERVER_URL_RE.finditer(content):
+        host = m.group(1)
+        if host.endswith(".internal") or host == "internal":
+            violations.append(f"non-public server URL host: {host}")
+            break
+        if not _PLACEHOLDER_DOMAIN_RE.match(host) and not _PUBLIC_HOST_RE.match(host):
+            violations.append(f"non-public server URL host: {host}")
+            break
+
+    if not violations:
         return None
 
-    domain_list = ", ".join(sorted(bad_domains))
+    detail = "\n".join("  • " + v for v in violations)
     return {
         "action": "block",
         "message": (
-            "🛑 PII GUARD — real email address in content being written.\n\n"
+            "🛑 PII GUARD — personal data in content being written.\n\n"
             "Tool '" + tool_name + "' is writing into the shared surface "
             "(hermes-cortex repo or ~/.hermes/skills), and the content "
-            "contains email addresses on non-placeholder domain(s): "
-            + domain_list + "\n\n"
-            "Rule 16 (agent-contract): never commit real email addresses, "
-            "domains, or credentials. Replace them with placeholders:\n"
+            "contains:\n" + detail + "\n\n"
+            "Rule 16 (agent-contract): never commit real emails, personal "
+            "identifiers (names, domains, surnames), phone numbers, or "
+            "private server URLs to the public repo (Luke 2026-08-24). "
+            "Generalize or move to the private repo:\n"
             "  admin@client-domain.com   (not a real address)\n"
-            "  example.com               (not a real domain)\n\n"
+            "  example.com               (not a real domain)\n"
+            "  'the fleet operator'      (not a real name)\n\n"
             "The write is blocked until the PII is removed. Writes to "
             "client/project paths outside the shared surface are not "
             "affected.\n"
