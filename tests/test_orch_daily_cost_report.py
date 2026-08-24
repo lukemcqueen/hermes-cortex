@@ -68,12 +68,15 @@ def test_compute_cost_peak_doubles():
 def test_build_report_aggregation_and_coverage():
     with tempfile.TemporaryDirectory() as td:
         audit = Path(td) / "usage_audit.jsonl"
-        # 2 runs: one off-peak all-miss cron, one peak cache-hit
+        # 2 runs TODAY (relative timestamps — the test must not rot as
+        # wall-clock advances): one off-peak all-miss cron, one peak
+        # cache-hit. Peak = 01-04 UTC, off-peak = 12 UTC.
+        now = datetime.utcnow().replace(minute=0, second=0, microsecond=0)
         rows = [
-            {"ts": "2026-08-20T12:00:00.000Z", "job_id": "abc123", "fire_id": "f1",
+            {"ts": now.replace(hour=12).isoformat() + "Z", "job_id": "abc123", "fire_id": "f1",
              "prompt_tokens": 1_000_000, "completion_tokens": 0,
              "cache_read_tokens": 0, "cache_write_tokens": 0},
-            {"ts": "2026-08-20T02:00:00.000Z", "job_id": "def456", "fire_id": "f2",
+            {"ts": now.replace(hour=2).isoformat() + "Z", "job_id": "def456", "fire_id": "f2",
              "prompt_tokens": 1_000_000, "completion_tokens": 0,
              "cache_read_tokens": 900_000, "cache_write_tokens": 0},
         ]
@@ -124,8 +127,9 @@ def test_render_text_avoids_secret_redaction():
     The report must NOT use the 'Tokens:' label or its numbers get ***'d."""
     with tempfile.TemporaryDirectory() as td:
         audit = Path(td) / "usage_audit.jsonl"
+        now = datetime.utcnow().replace(minute=0, second=0, microsecond=0)
         audit.write_text("\n".join([
-            json.dumps({"ts": "2026-08-20T12:00:00.000Z", "job_id": "abc123",
+            json.dumps({"ts": now.replace(hour=12).isoformat() + "Z", "job_id": "abc123",
                         "prompt_tokens": 85_000_000, "completion_tokens": 600_000,
                         "cache_read_tokens": 0, "cache_write_tokens": 0}),
         ]))

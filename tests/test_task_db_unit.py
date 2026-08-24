@@ -552,8 +552,11 @@ def test_darwin_branch_direct_psql():
     with patch.object(platform, "system", return_value="Darwin"), \
          patch("os.path.exists", return_value=False):
         argv = task_db._get_db_query("mycortex_reader_esther")
-    assert argv[0].endswith("psql")
-    assert "-h" in argv and "127.0.0.1" in argv
+    # Darwin uses the same trust-auth docker exec path as Linux — no pgpass
+    # dependency (scratch DBs like mycortex_test have no .pgpass entry).
+    assert argv[0] == "docker"
+    assert "psql" in argv
+    assert "-h" not in argv and "127.0.0.1" not in argv
     assert argv[argv.index("-U") + 1] == "mycortex_reader_esther"
     assert "ON_ERROR_STOP=1" in argv
 

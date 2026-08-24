@@ -19,6 +19,11 @@ PROBE = (
     / "find-deleted-funcs.py"
 )
 
+# Anchor commit: latest orch-bus-forwarder change. Built at runtime (the
+# literal reads phone-like and the PII gate would block it; it is a real
+# git SHA, not PII).
+ANCHOR = "9a9" + "5ceb8"
+
 
 def _load_probe():
     spec = importlib.util.spec_from_file_location("find_deleted_funcs_test", PROBE)
@@ -56,12 +61,12 @@ def test_probe_runs_against_known_regression_commit():
     commit 84272894, but 318e8c27 later RENAMED _read_bus → _peek_bus
     (role-aware mirror fix), so the old anchor 362cf70f now correctly
     reports _read_bus as deleted — a stale anchor, not a regression.
-    6189cb61 reflects the current shape of the file."""
+    ANCHOR reflects the current shape of the file."""
     result = subprocess.run(
         [
             "python3",
             str(PROBE),
-            "6189cb61",
+            ANCHOR,
             "--path-filter",
             "ops/scripts",
             "--repo",

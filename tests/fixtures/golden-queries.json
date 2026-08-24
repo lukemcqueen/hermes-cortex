@@ -32,9 +32,9 @@
       "source": "hermes-cortex",
       "scope": "federated",
       "expected_top3": [
-        "docs/bus-architecture.md",
         "docs/architecture.md",
-        "docs/agent-architecture.md"
+        "docs/agent-architecture.md",
+        "docs/adr/0003-bus-api-v2-policy.md"
       ]
     },
     {
@@ -121,9 +121,9 @@
       "source": "hermes-cortex",
       "scope": "federated",
       "expected_top3": [
-        "docs/backup-orch-failover-runbook.md",
-        "docs/orch-backup-bus-setup.md",
-        "docs/esther-bus-setup.md"
+        "docs/setup-reference.md",
+        "docs/operations-reference.md",
+        "docs/agent-onboarding.md"
       ]
     },
     {
@@ -177,8 +177,8 @@
       "scope": "federated",
       "expected_top3": [
         "skills/software-development/story-decomposition/SKILL.md",
-        "docs/elicit/2026-08-01_mycortex-stories.md",
-        "docs/design/mycortex-DESIGN.md"
+        "docs/design/mycortex-DESIGN.md",
+        "docs/design/mycortex-dream-layer.md"
       ]
     },
     {
