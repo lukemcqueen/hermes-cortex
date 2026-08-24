@@ -325,9 +325,25 @@ class Gateway:
             self.poll_bot(b)
         self.drain_outbound()
 
-    def run(self) -> None:
+    def run_locked(self) -> None:
+        """run() with per-bot advisory locks (SRE: 409-avoidance, cutover,
+        multi-server active-passive in one mechanism).
+
+        A bot whose lock is held elsewhere is skipped (standby) — the
+        gateway never double-polls a bot.
+        """
+        import bot_locks
         while True:
-            self.run_once()
+            for b in self.bots:
+                key = bot_locks.bot_key(b.token_ref, b.channel)
+                with bot_locks.BotLock(bot_locks._connect, key) as acquired:
+                    if not acquired:
+                        print(f"⏸️  bot {b.token_ref}: lock held by another "
+                              f"gateway — standby (not polling)",
+                              file=sys.stderr)
+                        continue
+                    self.poll_bot(b)
+            self.drain_outbound()
             time.sleep(DEFAULT_POLL_SECONDS)
 
 
@@ -366,7 +382,7 @@ def main() -> int:
     if args.once:
         gw.run_once()
     else:
-        gw.run()
+        gw.run_locked()  # per-bot advisory locks (safe default)
     return 0
 
 

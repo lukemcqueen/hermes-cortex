@@ -483,6 +483,8 @@ register "ops/scripts/telegram-bridge.py"                  "${CORTEX_DEPLOY_HOME
 register "ops/scripts/token-expiry-alert.py"               "${CORTEX_DEPLOY_HOME}/scripts/token-expiry-alert.py"
 register "ops/scripts/gateway_envelope.py"                 "${CORTEX_DEPLOY_HOME}/scripts/gateway_envelope.py"
 register "ops/scripts/msg-gateway.py"                      "${CORTEX_DEPLOY_HOME}/scripts/msg-gateway.py"
+register "ops/scripts/agent-shim.py"                       "${CORTEX_DEPLOY_HOME}/scripts/agent-shim.py"
+register "ops/scripts/bot_locks.py"                        "${CORTEX_DEPLOY_HOME}/scripts/bot_locks.py"
 register "ops/scripts/pre-commit-doc-audit.sh"            "${CORTEX_DEPLOY_HOME}/scripts/pre-commit-doc-audit.sh"
 register "ops/scripts/health/health-vector.py"            "${CORTEX_DEPLOY_HOME}/scripts/health-vector.py" "health-vector" "restart_health_server"
 register "ops/scripts/health/health-vector-push.sh"       "${CORTEX_DEPLOY_HOME}/scripts/health-vector-push.sh"
