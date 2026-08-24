@@ -50,6 +50,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import sys
 import time
 import urllib.error
@@ -328,6 +329,17 @@ def run_once(agent: str, bot_token: str, bus_url: str, bus_token: str,
     # ── Return path (Luke: 1-way is useless) ─────────────
     # Drain the agent's outbound queue: each bus reply → Telegram
     # sendMessage; archive (ack) ONLY after successful delivery.
+    _drain_outbound(bot_token, bus_url, bus_token, out_q)
+
+
+def _drain_outbound(bot_token: str, bus_url: str, bus_token: str,
+                    out_q: str) -> None:
+    """Drain one agent's outbound queue: bus reply → Telegram sendMessage.
+
+    Shared by run_once (full mode) and --outbound-only mode (when another
+    poller owns the bot's inbound). Archive only after successful delivery
+    (at-least-once); undeliverable replies are archived, never crash.
+    """
     for _ in range(10):  # bounded drain per cycle — never starve inbound
         try:
             out_msg = bus_read(bus_url, bus_token, out_q, vt=60)
@@ -352,15 +364,44 @@ def main() -> int:
                     help="dir for state.json (default: ~/.<agent>/state)")
     ap.add_argument("--once", action="store_true",
                     help="run a single poll cycle and exit (test/diagnostic)")
+    ap.add_argument("--outbound-only", action="store_true",
+                    help="ONLY drain telegram_out_<AGENT> → sendMessage; no "
+                         "getUpdates. Use when another poller (e.g. the "
+                         "Hermes gateway) already owns the bot's inbound "
+                         "(Telegram single-poller limit — 409 otherwise).")
     args = ap.parse_args()
 
     agent = os.environ.get("AGENT_NAME", "").strip()
     bot_token = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
     bus_url = os.environ.get("CORTEX_BUS_URL", "").strip()
     bus_token = os.environ.get("CORTEX_BUS_TOKEN", "").strip()
-    if not (agent and bot_token and bus_url and bus_token):
-        print("error: AGENT_NAME, TELEGRAM_BOT_TOKEN, CORTEX_BUS_URL, "
-              "CORTEX_BUS_TOKEN all required", file=sys.stderr)
+    bus_auth = (os.environ.get("CORTEX_BUS_AUTH", "")
+                or os.environ.get("CORTEX_BASIC_AUTH", "")).strip()
+
+    # Config-file fallback (same precedence as cortex-bus-mcp): env first,
+    # then ~/.hermes-cortex/cortex-bus.conf for bus creds (the bridge runs
+    # under the agent's own env, which may not carry the bus config).
+    conf = Path.home() / ".hermes-cortex" / "cortex-bus.conf"
+    if conf.exists():
+        for line in conf.read_text().splitlines():
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            k, v = (x.strip().strip("'\"").strip()
+                    for x in line.split("=", 1))
+            v = re.sub(r"\s+#.*$", "", v).strip()
+            if k == "CORTEX_BUS_URL" and not bus_url:
+                bus_url = v
+            elif k in ("CORTEX_BUS_TOKEN",) and not bus_token:
+                bus_token = v
+            elif k in ("CORTEX_BUS_AUTH", "CORTEX_BASIC_AUTH") and not bus_auth:
+                bus_auth = v
+
+    if not (agent and bot_token and bus_url and (bus_token or bus_auth)):
+        print("error: AGENT_NAME, TELEGRAM_BOT_TOKEN, CORTEX_BUS_URL, and "
+              "CORTEX_BUS_TOKEN or CORTEX_BUS_AUTH all required "
+              f"(bus_token={bool(bus_token)}, bus_auth={bool(bus_auth)})",
+              file=sys.stderr)
         return 2
 
     state_dir = Path(args.state_dir) if args.state_dir else Path.home() / f".{agent}" / "state"
@@ -377,8 +418,13 @@ def main() -> int:
     out_q = outbound_queue(agent)
 
     while True:
-        run_once(agent, bot_token, bus_url, bus_token, state, state_file,
-                 ledger, out_q)
+        if not args.outbound_only:
+            run_once(agent, bot_token, bus_url, bus_token, state, state_file,
+                     ledger, out_q)
+        else:
+            # Outbound-only: drain replies → Telegram, no getUpdates
+            # (another poller owns inbound — single-poller limit).
+            _drain_outbound(bot_token, bus_url, bus_token, out_q)
         if args.once:
             return 0
 
