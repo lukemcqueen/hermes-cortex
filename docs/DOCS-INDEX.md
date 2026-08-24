@@ -89,6 +89,7 @@ repo; this public repo carries only framework docs (PRDs, design, reference).
 | `docs/troubleshooting.md` | Troubleshooting guide |
 | `docs/troubleshooting-stale-inbox-api.md` | Stale inbox API troubleshooting |
 | `docs/cron-format-standard.md` | Cron output format standard |
+| `docs/axi-agent-ergonomics.md` | **NEW (2026-08-24)** — AXI agent-ergonomics principles (from the AXI project): 10-principle distillation + mapping to Cortex surfaces — TOON output, minimal schemas, structured errors, ambient context |
 | `docs/cron-job-recipes.md` | Cron job recipes |
 | `docs/cron-schedules.md` | Cron schedules reference |
 | `docs/cron-jobs-reference.md` | Cron jobs reference |
