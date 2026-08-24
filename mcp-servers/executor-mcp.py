@@ -210,24 +210,19 @@ def _execution_request(args: dict) -> CallToolResult:
     # F13 pre-fetch (Dex Horthy, 12-Factor Agents): build the context
     # envelope DETERMINISTICALLY before dispatch so the coding agent spends
     # zero tool round-trips fetching context. Rules + plan + task + git
-    # history are knowable in advance.
+    # history are knowable in advance. The builder is DEPLOYED fleet-wide
+    # (cortex-update.sh MAP) — direct import, no relative-path hacks.
     context = ""
     worktree = args.get("worktree", "")
     if worktree:
         try:
-            import importlib.util as _ilu
-            from pathlib import Path as _P
-            _cb = _P(__file__).resolve().parent.parent / "ops" / "scripts" / "executor_context_builder.py"
-            if _cb.is_file():
-                _spec = _ilu.spec_from_file_location("executor_context_builder", _cb)
-                _mod = _ilu.module_from_spec(_spec)
-                _spec.loader.exec_module(_mod)
-                context = _mod.build_context(
-                    worktree,
-                    task=str(args.get("task", "")),
-                    plan=str(args.get("plan", "")),
-                    max_chars=6000,
-                )
+            from executor_context_builder import build_context as _build_context
+            context = _build_context(
+                worktree,
+                task=str(args.get("task", "")),
+                plan=str(args.get("plan", "")),
+                max_chars=6000,
+            )
         except Exception:  # noqa: BLE001 — context is a bonus, never a blocker
             context = ""
     prepared["context_envelope"] = context

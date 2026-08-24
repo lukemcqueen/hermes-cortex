@@ -352,6 +352,10 @@ async def list_tools(ctx, params=None) -> ListToolsResult:
                     "description": {"type": "string", "description": "Task description"},
                     "priority": {"type": "string", "enum": ["normal", "urgent", "critical"],
                                  "description": "Task priority", "default": "normal"},
+                    "worktree": {"type": "string",
+                                 "description": "Optional repo/worktree path — pre-fetches a context envelope (F13) into the task body"},
+                    "plan": {"type": "string",
+                             "description": "Optional orchestrator slice plan — included in the pre-fetched context envelope"},
                 },
                 "required": ["agent", "description"],
             },
@@ -720,6 +724,34 @@ def _inbox_discover(args: dict) -> CallToolResult:
             text=f"Could not fetch Agent Card for '{agent}': {e}")])
 
 
+def _enrich_task_with_context(body: dict, worktree: str = "",
+                              plan: str = "", max_chars: int = 6000) -> dict:
+    """F13 pre-fetch (Dexter Horthy, 12-Factor Agents): attach a deterministic
+    context envelope to a task_delegation body when a worktree is given.
+
+    The receiving agent starts with repo rules (AGENTS.md/CLAUDE.md), the
+    slice plan, the task, and recent git history — zero tool round-trips
+    fetching context. Fail-open: bad worktree or missing builder → body
+    unchanged (context is a bonus, never a blocker). The builder is
+    DEPLOYED fleet-wide (cortex-update.sh MAP) — direct import.
+    """
+    if not worktree:
+        return body
+    try:
+        from executor_context_builder import build_context as _build_context
+        ctx = _build_context(
+            worktree,
+            task=str(body.get("description", "")),
+            plan=plan,
+            max_chars=max_chars,
+        )
+        if ctx and not ctx.startswith("error:"):
+            body["context_envelope"] = ctx
+    except Exception:  # noqa: BLE001 — context is a bonus, never a blocker
+        pass
+    return body
+
+
 def _inbox_send_task(args: dict) -> CallToolResult:
     """Send a task via inbox message. Uses inbox_send internally.
     No separate A2A endpoint — the task arrives as a regular inbox message."""
@@ -733,18 +765,27 @@ def _inbox_send_task(args: dict) -> CallToolResult:
     import uuid
     task_id = str(uuid.uuid4())
 
+    # F13: build the context envelope when a worktree is specified — the
+    # receiving agent starts with pre-fetched repo context (Dex Horthy).
+    body = {
+        "type": "task_delegation",
+        "task_id": task_id,
+        "description": description,
+        "priority": priority,
+        "requester": DEFAULT_AGENT,
+    }
+    _enrich_task_with_context(
+        body,
+        worktree=str(args.get("worktree", "")),
+        plan=str(args.get("plan", "")),
+    )
+
     # Call inbox_send internally with structured task payload
     send_args = {
         "to": agent,
         "topic": "tasks",
         "subject": f"Task: {description[:80]}",
-        "body": json.dumps({
-            "type": "task_delegation",
-            "task_id": task_id,
-            "description": description,
-            "priority": priority,
-            "requester": DEFAULT_AGENT,
-        }, indent=2),
+        "body": json.dumps(body, indent=2),
         "priority": priority,
     }
     result = _inbox_send(send_args)
