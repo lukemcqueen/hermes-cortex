@@ -8,12 +8,23 @@ agent configures its OWN bot token + AGENT_NAME; the bridge maps:
     Telegram update  →  POST {CORTEX_BUS_URL}/api/pgmq/send
                         queue = inbox_<AGENT>   (same queue the cortex-bus
                         MCP reads — bus-identical inbox, any agent)
-    bus inbox reply  →  Telegram sendMessage to the originating chat
+    bus reply        ←  POST /api/pgmq/read on telegram_out_<AGENT>
+                        → Telegram sendMessage to the originating chat
+
+FULL TWO-WAY (fixed 2026-08-24 — 1-way was useless):
+  * inbound:  Telegram → inbox_<AGENT> → agent reads via cortex-bus MCP
+  * outbound: agent replies via cortex-bus MCP inbox_send to
+    telegram_out_<AGENT> with body {"telegram_chat_id": <id>,
+    "text": "...", "reply_to_message_id": <id>} → bridge forwards to
+    Telegram. The telegram_chat_id is captured on the inbound message
+    (update_to_bus_payload) so the agent knows where to reply.
 
 Per-agent identity (AGENT_NAME env → inbox_<AGENT>), no hermes token reuse,
 stdlib-only (urllib), durable offset in a small state file (atomic
-tmp+rename), idle-silent (long-polling getUpdates, no writes when empty).
-Kill mid-flight → offset resumes from last committed; no loss, no dupes.
+tmp+rename + fsync), idle-silent (long-polling getUpdates, no writes when
+empty). Kill mid-flight → offset resumes from last committed; sent-ledger
+dedups crash redelivery; outbound archives only after sendMessage succeeds
+(at-least-once).
 
 Usage (run under the agent's own env — NOT hermes's):
     AGENT_NAME=titusclaude \
@@ -203,6 +214,65 @@ def is_conflict_error(http_code: int) -> bool:
     return http_code == 409
 
 
+# ── Return path: bus reply → Telegram (Luke 2026-08-24) ─────
+# 1-way communication is useless — the agent replies via the bus to
+# telegram_out_<AGENT>, the bridge forwards it to Telegram sendMessage.
+
+def outbound_queue(agent: str) -> str:
+    """Queue the agent posts replies to; the bridge polls + forwards."""
+    return f"telegram_out_{agent}"
+
+
+def bus_reply_to_telegram_payload(msg: dict) -> dict | None:
+    """Map a bus outbound message to a Telegram sendMessage payload.
+
+    The agent's reply body carries telegram_chat_id (captured on the
+    inbound message) + text (+ optional reply_to_message_id). Missing
+    chat_id or unparseable body → None (skipped, never crashes).
+    """
+    try:
+        body = json.loads(msg.get("body", "{}"))
+    except (ValueError, TypeError):
+        return None
+    chat_id = body.get("telegram_chat_id")
+    text = body.get("text", "")
+    if chat_id is None or not text:
+        return None
+    reply_to = body.get("reply_to_message_id")
+    return reply_to_telegram_payload(chat_id, text, reply_to)
+
+
+def should_archive(send_ok: bool) -> bool:
+    """At-least-once: archive (ack) the bus message ONLY after Telegram
+    sendMessage succeeds; a failed send stays queued for retry."""
+    return send_ok
+
+
+def bus_read(bus_url: str, token: str, queue: str, vt: int = 60) -> dict:
+    """Dequeue one message from a PGMQ queue (POST /api/pgmq/read)."""
+    payload = json.dumps({"queue": queue, "vt": vt}).encode()
+    req = urllib.request.Request(f"{bus_url}/api/pgmq/read", data=payload,
+                                 method="POST")
+    req.add_header("Content-Type", "application/json")
+    req.add_header("Authorization", f"Bearer {token}")
+    with urllib.request.urlopen(req, timeout=30) as resp:
+        return json.loads(resp.read().decode())
+
+
+def bus_archive(bus_url: str, token: str, queue: str, msg_id: str) -> bool:
+    """Ack a processed message (POST /api/pgmq/archive)."""
+    payload = json.dumps({"queue": queue, "msg_id": msg_id}).encode()
+    req = urllib.request.Request(f"{bus_url}/api/pgmq/archive", data=payload,
+                                 method="POST")
+    req.add_header("Content-Type", "application/json")
+    req.add_header("Authorization", f"Bearer {token}")
+    try:
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            return resp.status in (200, 201)
+    except urllib.error.URLError:
+        return False
+
+
 # ── Main loop ───────────────────────────────────────────────
 
 def main() -> int:
@@ -276,6 +346,27 @@ def main() -> int:
                 save_state(state_file, state)  # commit AFTER durable send
             # on failure: offset unchanged → re-polled next cycle (at-least-once)
         # idle-silent: empty updates → no writes, loop sleeps on long-poll
+
+        # ── Return path (Luke: 1-way is useless) ─────────────
+        # Drain the agent's outbound queue: each bus reply → Telegram
+        # sendMessage; archive (ack) ONLY after successful delivery.
+        out_q = outbound_queue(agent)
+        for _ in range(10):  # bounded drain per cycle — never starve inbound
+            try:
+                out_msg = bus_read(bus_url, bus_token, out_q, vt=60)
+            except Exception:
+                break  # bus hiccup — try again next cycle
+            if not out_msg or not out_msg.get("msg_id"):
+                break  # queue empty
+            tpay = bus_reply_to_telegram_payload(out_msg)
+            if tpay is None:
+                # undeliverable (no chat_id / bad body) — archive, don't loop
+                bus_archive(bus_url, bus_token, out_q, out_msg["msg_id"])
+                continue
+            ok = tg_send_message(bot_token, tpay["chat_id"], tpay["text"],
+                                 tpay.get("reply_to_message_id"))
+            if should_archive(ok):
+                bus_archive(bus_url, bus_token, out_q, out_msg["msg_id"])
 
     return 0
 

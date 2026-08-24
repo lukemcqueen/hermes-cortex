@@ -16,6 +16,7 @@ can already talk to the same inbox.
 Run: python3 -m pytest tests/test_telegram_bridge.py -q
 """
 import importlib.util
+import json
 from pathlib import Path
 
 import pytest
@@ -152,6 +153,45 @@ def test_409_conflict_detected():
     assert _bridge.is_conflict_error(409) is True
     assert _bridge.is_conflict_error(401) is False
     assert _bridge.is_conflict_error(200) is False
+
+
+# ── Return path: bus reply → Telegram (Luke: 1-way is useless) ─
+
+def test_outbound_queue_name():
+    """The agent replies via the bus to telegram_out_<AGENT>; the bridge
+    polls that queue and forwards to Telegram sendMessage."""
+    assert _bridge.outbound_queue("titusclaude") == "telegram_out_titusclaude"
+
+
+def test_bus_reply_maps_to_telegram_payload():
+    """A bus message on the outbound queue carries telegram_chat_id + text;
+    the bridge maps it to a sendMessage payload."""
+    msg = {
+        "body": json.dumps({"telegram_chat_id": CHAT, "text": "done, fixed it",
+                            "reply_to_message_id": 7}),
+    }
+    payload = _bridge.bus_reply_to_telegram_payload(msg)
+    assert payload["chat_id"] == CHAT
+    assert payload["text"] == "done, fixed it"
+    assert payload["reply_to_message_id"] == 7
+
+
+def test_bus_reply_missing_chat_is_skipped():
+    """A reply without telegram_chat_id can't be delivered — skip it
+    (the bridge archives it, never crashes on it)."""
+    msg = {"body": json.dumps({"text": "orphan reply"})}
+    assert _bridge.bus_reply_to_telegram_payload(msg) is None
+
+
+def test_bus_reply_bad_json_is_skipped():
+    assert _bridge.bus_reply_to_telegram_payload({"body": "{not-json"}) is None
+
+
+def test_archive_after_delivery():
+    """At-least-once: archive (ack) the bus message ONLY after Telegram
+    sendMessage succeeds; a failed send leaves it queued for retry."""
+    assert _bridge.should_archive(send_ok=True) is True
+    assert _bridge.should_archive(send_ok=False) is False
 
 
 # ── Idle-silent rule ────────────────────────────────────────
