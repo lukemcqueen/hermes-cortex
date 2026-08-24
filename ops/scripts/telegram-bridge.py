@@ -275,10 +275,83 @@ def bus_archive(bus_url: str, token: str, queue: str, msg_id: str) -> bool:
 
 # ── Main loop ───────────────────────────────────────────────
 
+def run_once(agent: str, bot_token: str, bus_url: str, bus_token: str,
+             state: dict, state_file: Path, ledger: SentLedger,
+             out_q: str) -> None:
+    """One poll cycle: inbound Telegram→bus + outbound bus→Telegram.
+
+    Extracted from main() so the E2E test can drive a single iteration
+    deterministically (--once mode).
+    """
+    try:
+        updates = tg_get_updates(bot_token, state["offset"])
+    except urllib.error.HTTPError as e:
+        if is_conflict_error(e.code):
+            print(f"⛔ 409 CONFLICT: another poller is using this bot's "
+                  f"getUpdates (single-poller limit). Two bridges are "
+                  f"fighting — killing this one. Check for a duplicate "
+                  f"telegram-bridge process.", file=sys.stderr)
+            raise SystemExit(4)
+        print(f"⚠️  getUpdates HTTP {e.code} — retrying", file=sys.stderr)
+        return
+    except Exception:
+        return
+
+    # SRE findings (party 2026-08-24):
+    #  1. NEVER commit max(update_id)+1 for the whole batch — a failed
+    #     bus_send would permanently skip that update. Advance offset
+    #     only past updates SUCCESSFULLY sent (or skipped).
+    #  2. Crash between send and offset-commit redelivers the batch →
+    #     dupes. The sent-ledger records sent update_ids; already-sent
+    #     updates are skipped (no dupes) while their offsets advance.
+    for upd in updates:
+        uid = upd["update_id"]
+        if ledger.contains(uid):
+            # already delivered before a crash — skip, just advance
+            state["offset"] = max(state["offset"], uid + 1)
+            save_state(state_file, state)
+            continue
+        payload = update_to_bus_payload(upd, agent)
+        if payload is None:
+            state["offset"] = max(state["offset"], uid + 1)
+            save_state(state_file, state)
+            continue
+        ok = bus_send(bus_url, bus_token, payload["queue"], payload["message"])
+        if ok:
+            ledger.record(uid)  # remember: delivered (dedup on crash)
+            state["last_msg"] = payload["message"].get("telegram_msg_id", 0)
+            state["offset"] = max(state["offset"], uid + 1)
+            save_state(state_file, state)  # commit AFTER durable send
+        # on failure: offset unchanged → re-polled next cycle (at-least-once)
+    # idle-silent: empty updates → no writes, loop sleeps on long-poll
+
+    # ── Return path (Luke: 1-way is useless) ─────────────
+    # Drain the agent's outbound queue: each bus reply → Telegram
+    # sendMessage; archive (ack) ONLY after successful delivery.
+    for _ in range(10):  # bounded drain per cycle — never starve inbound
+        try:
+            out_msg = bus_read(bus_url, bus_token, out_q, vt=60)
+        except Exception:
+            break  # bus hiccup — try again next cycle
+        if not out_msg or not out_msg.get("msg_id"):
+            break  # queue empty
+        tpay = bus_reply_to_telegram_payload(out_msg)
+        if tpay is None:
+            # undeliverable (no chat_id / bad body) — archive, don't loop
+            bus_archive(bus_url, bus_token, out_q, out_msg["msg_id"])
+            continue
+        ok = tg_send_message(bot_token, tpay["chat_id"], tpay["text"],
+                             tpay.get("reply_to_message_id"))
+        if should_archive(ok):
+            bus_archive(bus_url, bus_token, out_q, out_msg["msg_id"])
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="Generic Telegram<->bus bridge")
     ap.add_argument("--state-dir", default=None,
                     help="dir for state.json (default: ~/.<agent>/state)")
+    ap.add_argument("--once", action="store_true",
+                    help="run a single poll cycle and exit (test/diagnostic)")
     args = ap.parse_args()
 
     agent = os.environ.get("AGENT_NAME", "").strip()
@@ -301,72 +374,13 @@ def main() -> int:
         # fail closed: exit so the operator notices; no silent offset-0 reset
         return 3
     ledger = SentLedger()
+    out_q = outbound_queue(agent)
 
     while True:
-        try:
-            updates = tg_get_updates(bot_token, state["offset"])
-        except urllib.error.HTTPError as e:
-            if is_conflict_error(e.code):
-                print(f"⛔ 409 CONFLICT: another poller is using this bot's "
-                      f"getUpdates (single-poller limit). Two bridges are "
-                      f"fighting — killing this one. Check for a duplicate "
-                      f"telegram-bridge process.", file=sys.stderr)
-                return 4
-            print(f"⚠️  getUpdates HTTP {e.code} — retrying", file=sys.stderr)
-            time.sleep(5)
-            continue
-        except Exception:
-            time.sleep(5)
-            continue
-
-        # SRE findings (party 2026-08-24):
-        #  1. NEVER commit max(update_id)+1 for the whole batch — a failed
-        #     bus_send would permanently skip that update. Advance offset
-        #     only past updates SUCCESSFULLY sent (or skipped).
-        #  2. Crash between send and offset-commit redelivers the batch →
-        #     dupes. The sent-ledger records sent update_ids; already-sent
-        #     updates are skipped (no dupes) while their offsets advance.
-        for upd in updates:
-            uid = upd["update_id"]
-            if ledger.contains(uid):
-                # already delivered before a crash — skip, just advance
-                state["offset"] = max(state["offset"], uid + 1)
-                save_state(state_file, state)
-                continue
-            payload = update_to_bus_payload(upd, agent)
-            if payload is None:
-                state["offset"] = max(state["offset"], uid + 1)
-                save_state(state_file, state)
-                continue
-            ok = bus_send(bus_url, bus_token, payload["queue"], payload["message"])
-            if ok:
-                ledger.record(uid)  # remember: delivered (dedup on crash)
-                state["last_msg"] = payload["message"].get("telegram_msg_id", 0)
-                state["offset"] = max(state["offset"], uid + 1)
-                save_state(state_file, state)  # commit AFTER durable send
-            # on failure: offset unchanged → re-polled next cycle (at-least-once)
-        # idle-silent: empty updates → no writes, loop sleeps on long-poll
-
-        # ── Return path (Luke: 1-way is useless) ─────────────
-        # Drain the agent's outbound queue: each bus reply → Telegram
-        # sendMessage; archive (ack) ONLY after successful delivery.
-        out_q = outbound_queue(agent)
-        for _ in range(10):  # bounded drain per cycle — never starve inbound
-            try:
-                out_msg = bus_read(bus_url, bus_token, out_q, vt=60)
-            except Exception:
-                break  # bus hiccup — try again next cycle
-            if not out_msg or not out_msg.get("msg_id"):
-                break  # queue empty
-            tpay = bus_reply_to_telegram_payload(out_msg)
-            if tpay is None:
-                # undeliverable (no chat_id / bad body) — archive, don't loop
-                bus_archive(bus_url, bus_token, out_q, out_msg["msg_id"])
-                continue
-            ok = tg_send_message(bot_token, tpay["chat_id"], tpay["text"],
-                                 tpay.get("reply_to_message_id"))
-            if should_archive(ok):
-                bus_archive(bus_url, bus_token, out_q, out_msg["msg_id"])
+        run_once(agent, bot_token, bus_url, bus_token, state, state_file,
+                 ledger, out_q)
+        if args.once:
+            return 0
 
     return 0
 
