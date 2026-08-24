@@ -43,8 +43,9 @@ Contact Moses (or have the human ask him) with subject:
 ```
 
 Once you have credentials in place you can use `contact-orchestrator.sh`, but for the
-first contact use your human or the bus URL/curl directly (see
-`docs/contact-protocol-how-to-reach-orchestrator.md`).
+first contact use your human or the bus URL/curl directly (see the contact
+protocol in the private repo:
+`hermes-cortex-private/docs/contact-protocol-how-to-reach-orchestrator.md`).
 
 Moses will:
 1. Create an htpasswd entry for you on the nginx gateway
@@ -137,8 +138,8 @@ cronjob action=create schedule="*/5 * * * *" \
 
 > ⚠ Do NOT create a cron named `process-mcp-agent-inbox-messages` or any cron
 > that calls `inbox-watch`/`inbox_read` MCP tools — those are orchestrator-only
-> and will fail without the MCP client. See **`docs/bus-architecture.md`** for
-> the role matrix (canonical "who has what").
+> and will fail without the MCP client. See the bus role matrix (canonical
+> "who has what") in the private repo (`hermes-cortex-private/docs/bus-architecture.md`).
 
 ---
 

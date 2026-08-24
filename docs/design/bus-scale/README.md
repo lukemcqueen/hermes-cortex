@@ -65,7 +65,7 @@ All designs in this directory follow these principles:
 
 ## Related Documents
 
-- [`docs/reference/cortex-bus-config.md`](../../reference/cortex-bus-config.md) — Current bus configuration guide
-- [`docs/orch-bus-setup.md`](../../orch-bus-setup.md) — Bus setup and operation guide
+- [`docs/reference/cortex-bus-config.md`](../../reference/cortex-bus-config.md) — Current bus configuration guide (**private repo** — `hermes-cortex-private/docs/reference/cortex-bus-config.md`)
+- [`docs/orch-bus-setup.md`](../../orch-bus-setup.md) — Bus setup and operation guide (**private repo** — `hermes-cortex-private/docs/orch-bus-setup.md`)
 - [`docs/fleet-update-protocol.md`](../../fleet-update-protocol.md) — Fleet update message schemas
 - [`docs/agent-architecture.md`](../../agent-architecture.md) — Agent roles and capability matrix

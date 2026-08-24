@@ -141,7 +141,8 @@ If you are Gisu, Joseph, Kustos, or Titus (worker):
  └─ You DO NOT run a bus server, Postgres, or nginx proxy
 ```
 
-> See the role matrix at the top of `docs/bus-architecture.md` — it is the
+> See the role matrix at the top of `docs/bus-architecture.md` (private repo —
+> `hermes-cortex-private/docs/bus-architecture.md`) — it is the
 > canonical "who has what" reference. Every bus doc points to it.
 
 ### Setup checklist

@@ -130,7 +130,7 @@
 | `local-agent-daily-news-brief` | `0 7 * * *` | LLM | Telegram |
 | `local-agent-daily-finance-brief` | `0 18 * * 1-5` | LLM | Telegram |
 | `local-agent-agents-doc-audit` | `0 7 * * 1` | LLM | origin |
-| `local-agent-upwork-job-scanner` | `0 8 * * *` | LLM | Telegram |
+| `job-opportunity-scanner` | `0 7 * * *` | LLM | Telegram |
 | `local-daily-soul-refinement` | `0 23 * * *` | LLM | origin | *(live name — created without `agent-` infix; per-host variant)* |
 | `local-agent-weekly-loop-eval` | `0 9 * * 1` | LLM | origin |
 | `local-orch-fleet-command-verifier` | `every 10m` | no_agent | Telegram |

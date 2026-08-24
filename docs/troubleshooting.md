@@ -385,7 +385,8 @@ systemctl --user daemon-reload && systemctl --user start ollama
 
 > ⚠️ If you have a stale system-level ollama.service in `/etc/systemd/system/`, remove it:
 > `sudo systemctl disable --now ollama && sudo rm /etc/systemd/system/ollama.service`
-> See [`docs/linux-service-layer.md`](linux-service-layer.md) for details.
+> See [`docs/linux-service-layer.md`](linux-service-layer.md) (private repo:
+> `hermes-cortex-private/docs/linux-service-layer.md`) for details.
 
 **Verify:** Run `lsof -i -P | grep ollama` — it should show `localhost:11434`, not `*:11434`.
 

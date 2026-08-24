@@ -142,7 +142,7 @@ These run on this machine but use `agent-*` naming. Not in repo installers (inte
 | `cortex-bus-workday` | `0 9-17 * * 1-5` | LLM | origin |
 | `cortex-bus-evening` | `0 19,20,22 * * 1-5` | LLM | origin |
 | `cortex-bus-overnight` | `0 2 * * 1-5` | LLM | origin |
-| `upwork-job-scanner` | `0 8 * * *` | LLM | Telegram |
+| `job-opportunity-scanner` | `0 7 * * *` | LLM | Telegram |
 
 ### Other crons — 8 crons
 
