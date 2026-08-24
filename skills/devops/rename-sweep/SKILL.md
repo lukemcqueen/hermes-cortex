@@ -14,7 +14,7 @@ metadata:
 
 Systematic method for removing or renaming a term, product name, or artifact
 across an entire repo (decommission, rebrand, terminology migration — e.g.
-the 2026-08-21 gbrain→mycortex purge: 168 files, 0 residual tokens). The
+the 2026-08-21 legacy-system→mycortex purge: 168 files, 0 residual tokens). The
 hard part is NOT the replacement — it is the compound tokens the catch-all
 misses, the mangled tokens the guards create, and the deleted-file
 cross-references that silently break tests and indexes.
@@ -53,11 +53,11 @@ Delete the dead artifacts FIRST (git rm), then sweep references to them.
 Blind `term → newterm` breaks everything. Use this order per file:
 
 1. **Exact functional tokens** (case-sensitive, applied first): keys
-   (`gbrain_sources_ok`), var names (`V_GBRAIN`), file/service names
-   (`import-gbrain.py`, `com.gbrain.autopilot`), env vars
-   (`GBRAIN_PG_PASSWORD`), issue keys. A word-boundary catch-all
-   (`\bgbrain\b`) MISSES underscore compounds (`gbrain_search`,
-   `gbrain_legacy_*`, `FIXED_GBRAIN`) — list them explicitly.
+   (`legacy-system_sources_ok`), var names (`V_LEGACY_SYSTEM`), file/service names
+   (`import-legacy-system.py`, `com.legacy-system.autopilot`), env vars
+   (`LEGACY_SYSTEM_PG_PASSWORD`), issue keys. A word-boundary catch-all
+   (`\blegacy-system\b`) MISSES underscore compounds (`legacy-system_search`,
+   `legacy-system_legacy_*`, `FIXED_LEGACY_SYSTEM`) — list them explicitly.
 2. **Phrase guards** (case-insensitive): "X decommissioned/deprecated" →
    "legacy …", "(X replacement)" → dropped, "X→new" → "legacy→new".
 3. **Mode-aware catch-all**: case-preserving replace of the bare word —
@@ -72,10 +72,10 @@ Guards with spaces mangle compound tokens. Grep for these and fix:
 - Space inside a token: `install-legacy sync.sh`, `~/.legacy brain`,
   `com.legacy brain.sync-watch`, `garrytan/legacy brain` (broken URL),
   `main.legacy brain` — re-slug to `legacy-brain`.
-- Case-insensitive label guard swallowed a COMMAND: `"GBrain Sync"` guard
-  also matched `gbrain sync --source X` → `"Mycortex Sync --source X"`.
+- Case-insensitive label guard swallowed a COMMAND: `"Legacy Sync"` guard
+  also matched `legacy-system sync --source X` → `"Mycortex Sync --source X"`.
   Scan for title-case command garbles; the CLI command is lowercase.
-- Catch-all hit a path that meant the OLD home dir: `~/.gbrain` →
+- Catch-all hit a path that meant the OLD home dir: `~/.legacy-system` →
   `~/.mycortex` (wrong product!) — paths must map to the neutral slug.
 - `\bterm\b` misses `term_compound` — the residual grep catches these;
   fix each with an exact-token replacement.
@@ -94,7 +94,7 @@ Deleting files breaks things that assert their existence:
 - **register() lines** in cortex-update.sh for deleted scripts (remove both
   the line and any update/stub functions that call them).
 - **Skills referencing the deleted skill** (governance-sentinel listed
-  gbrain-maintenance) — reword or drop the pointer.
+  legacy-system-maintenance) — reword or drop the pointer.
 - **Deployed copies**: after deploy, `rm` stale deployed artifacts the
   doctor flags ("Remove: …" in REQUIRED ACTIONS).
 
@@ -140,6 +140,6 @@ Deleting files breaks things that assert their existence:
 - Tests that assert paths/fixtures pass.
 - Deployed copies clean; doctor shows no ❌; push landed on origin.
 
-See `references/gbrain-to-mycortex-2026-08-21.md` for a worked example:
+See `references/legacy-system-to-mycortex-2026-08-21.md` for a worked example:
 token list, guard table, every mangle class with its fix, and the
 concurrent-push rebase sequence.
