@@ -1,19 +1,19 @@
-# Task 2 handoff — koscap-av dead alembic hook migration
+# Task 2 handoff — client-av dead alembic hook migration
 
-**For titusclaude (on Titus, koscap-av checkout).** Verified by Esther
+**For titusclaude (on Titus, client-av checkout).** Verified by Esther
 2026-08-24 from hermes-cortex side. The cortex pre-commit already auto-runs
 `$REPO_ROOT/ops/scripts/change-validate.sh` when present (pre-commit-score
 line 895) — the migration target is ready.
 
 ## Context (verified)
 
-- `.git/githooks/pre-commit` in koscap-av is **shadowed** by the global
+- `.git/githooks/pre-commit` in client-av is **shadowed** by the global
   `core.hooksPath=~/.hermes-cortex/hooks` — it never fires on commit.
 - It enforced alembic revision IDs ≤ 32 chars (varchar(32) in
   `alembic_version`; longer IDs crash container startup).
 - **Currently NOT enforced on commit** — real gap.
 
-## The fix (3 steps in koscap-av)
+## The fix (3 steps in client-av)
 
 ### 1. Add the alembic check to `ops/scripts/change-validate.sh`
 

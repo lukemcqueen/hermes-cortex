@@ -4,7 +4,7 @@
 TitusClaude smoke test (2026-08-24, verified by Esther): pre-commit-score
 fabricates pass-pct=100 for monorepos. It only measures when a ROOT-level
 pytest.ini/setup.cfg/pyproject.toml exists AND tests live in tests/ at root.
-Repos with apps/<svc>/ layout (koscap-av: tests in apps/api/tests, config in
+Repos with apps/<svc>/ layout (client-av: tests in apps/api/tests, config in
 apps/api/pyproject.toml, runner `./run test`) never trigger measurement —
 every cycle scores pass-pct=100 unmeasured, inflating governance scores.
 

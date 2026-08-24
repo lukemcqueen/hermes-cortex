@@ -65,7 +65,7 @@ fi
 
 # ── Check 3: New/changed scripts should update cortex-update.sh MAP ──
 # Fixed 2026-08-24 (TitusClaude finding, verified): the registration check
-# only applies to the hermes-cortex repo. In project/client repos (koscap-av
+# only applies to the hermes-cortex repo. In project/client repos (client-av
 # etc.), ops/scripts/*.sh are read DIRECTLY by pre-commit-score from
 # $REPO_ROOT/ops/scripts/ — nothing is deployed fleet-wide, so demanding a
 # cortex-update.sh MAP entry is a false warning.
