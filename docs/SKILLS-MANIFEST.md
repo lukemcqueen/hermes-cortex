@@ -479,7 +479,7 @@ their domain.
 
 | Skill | Version | Purpose | Load With |
 |-------|---------|---------|-----------|
-| `client-brand-brand-marketing` | 1.0.0 | Full brand marketing skill for The Client Brand (@client-brand.co) — sustainable fashion bags by Korean-American founders Amy... | `skill_view(name='client-brand-brand-marketing')` |
+| `client-brand-brand-marketing` | 1.0.0 | Full brand marketing skill for The Client Brand (@client-brand.co) — sustainable fashion bags by Korean-American founders... | `skill_view(name='client-brand-brand-marketing')` |
 
 ## Social Media Analyzer (1 skill)
 
