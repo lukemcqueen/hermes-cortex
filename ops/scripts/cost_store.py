@@ -111,6 +111,19 @@ def record_run(job_id: str, cost_data: Dict[str, Any]) -> None:
     """
     try:
         db = _get_db()
+        run_dt = datetime.utcnow()
+        in_tok = int(cost_data.get("input_tokens", 0))
+        out_tok = int(cost_data.get("output_tokens", 0))
+        cr_tok = int(cost_data.get("cache_read_tokens", 0))
+        cw_tok = int(cost_data.get("cache_write_tokens", 0))
+        # O1-S3 (2026-08-26): the provider estimate passed by the scheduler
+        # (agent.session_estimated_cost_usd) is computed from hermes-agent's
+        # pricing table, which is STALE for deepseek-v4-flash (pre-2026-08-16
+        # hike: in 0.14 / out 0.28 / hit 0.0028) — it understates real spend by
+        # ~2.1x. Recompute from the token columns at the LOCAL RATE_VERSION
+        # schedule so cron-costs.db is consistent with orch-daily-cost-report.py
+        # and reprice_runs(). The provider number is intentionally ignored.
+        est = _compute_cost(in_tok, out_tok, cr_tok, cw_tok, run_dt)
         db.execute(
             """INSERT INTO cron_runs
                (job_id, run_time, input_tokens, output_tokens,
@@ -119,13 +132,13 @@ def record_run(job_id: str, cost_data: Dict[str, Any]) -> None:
                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 job_id,
-                datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
-                int(cost_data.get("input_tokens", 0)),
-                int(cost_data.get("output_tokens", 0)),
-                int(cost_data.get("cache_read_tokens", 0)),
-                int(cost_data.get("cache_write_tokens", 0)),
+                run_dt.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                in_tok,
+                out_tok,
+                cr_tok,
+                cw_tok,
                 int(cost_data.get("api_calls", 0)),
-                float(cost_data.get("estimated_cost_usd", 0.0)),
+                est,
                 str(cost_data.get("model") or "")[:100] or None,
                 str(cost_data.get("provider") or "")[:100] or None,
                 1 if cost_data.get("no_agent") else 0,
@@ -179,14 +192,17 @@ def reprice_runs(days: Optional[int] = None, dry_run: bool = False) -> Dict[str,
         scanned += 1
         if r["no_agent"] or (r["status"] == "ok" and not (r["input_tokens"] or r["output_tokens"])):
             continue  # zero-cost run; nothing to re-price
-        # Only re-price rows not already at the current version, and rows
-        # whose stored cost is inconsistent with current rates.
-        if r["rate_version"] == RATE_VERSION and r["estimated_cost_usd"] > 0:
-            continue
-        repriceable += 1
         run_dt = _parse_run_time(r["run_time"])
         new_cost = _compute_cost(r["input_tokens"], r["output_tokens"],
                                  r["cache_read_tokens"], r["cache_write_tokens"], run_dt)
+        # O1-S3: rows stamped with the current rate_version may still hold a
+        # stale PROVIDER estimate (recorded before the record_run recompute fix,
+        # pre-2026-08-16 pricing, ~2.1x understated). Self-heal: reprice whenever
+        # the stored cost disagrees with the local schedule beyond rounding.
+        if r["rate_version"] == RATE_VERSION and r["estimated_cost_usd"] > 0 \
+                and abs(float(r["estimated_cost_usd"]) - new_cost) < 1e-4:
+            continue
+        repriceable += 1
         cost_before += float(r["estimated_cost_usd"] or 0.0)
         cost_after += new_cost
         if not dry_run:
