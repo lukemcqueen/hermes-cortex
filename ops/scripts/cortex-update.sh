@@ -368,6 +368,10 @@ register "ops/scripts/agent/agent-cron-status.py" "${CORTEX_DEPLOY_HOME}/scripts
 register "ops/scripts/health/agent-scoring-activity-watchdog.py" "${CORTEX_DEPLOY_HOME}/scripts/agent-scoring-activity-watchdog.py"
 register "ops/scripts/health/agent-pending-cycle-watchdog.py"  "${CORTEX_DEPLOY_HOME}/scripts/agent-pending-cycle-watchdog.py"
 register "ops/scripts/health/agent-deploy-drift-audit.py"  "${CORTEX_DEPLOY_HOME}/scripts/agent-deploy-drift-audit.py"
+# check-hermes-upstream-fix.py — orchestrator-only watchdog: polls upstream
+# hermes-agent main for the _stdio_children_dead() inversion fix (fleet pinned
+# v2026.8.19 until it lands). Cron lives on esther; deployed to orch hosts only.
+register_orch "ops/scripts/health/check-hermes-upstream-fix.py" "${CORTEX_DEPLOY_HOME}/scripts/check-hermes-upstream-fix.py"
 register "ops/scripts/state_tracker.py"             "${CORTEX_DEPLOY_HOME}/scripts/state_tracker.py"
 register "ops/scripts/health/check-certs.py"               "${CORTEX_DEPLOY_HOME}/scripts/check-certs.py"
 # daily-bible-reading.sh was deleted from repo — replaced by agent-daily-bible-reading.py
