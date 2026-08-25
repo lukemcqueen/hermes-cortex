@@ -115,7 +115,7 @@
 | `agent-daily-soul-refinement` | ~~`0 23 * * *`~~ | ~~LLM~~ | ~~soul-refinement skill~~ | ~~origin~~ | ⚠️ **ABSORBED 2026-08-02** — fleet-level daily soul refinement merged into `orch-skill-lifecycle`. Per-host variant is `local-agent-daily-soul-refinement`. |
 | `agent-weekly-loop-eval` | ~~`0 9 * * 1`~~ | ~~LLM~~ | ~~loop-governance skill~~ | ~~origin~~ | ⚠️ **ABSORBED 2026-08-02** — fleet-level weekly loop eval merged into `orch-skill-lifecycle`. Per-host variant is `local-agent-weekly-loop-eval`. |
 | `agent-no-verify-audit` | `every 60m` | no_agent | `manage/agent-no-verify-audit.py` | origin |
-| `agent-inbox-workday` | ~~`0 9-17 * * 1-5`~~ | ~~LLM~~ | ~~session-active-guard.py~~ | ~~origin~~ | ⚠️ **STALE/REMOVED 2026-08-10** — duplicate of `cortex-bus-workday` (post-rename leftover; same skill, same schedule) |
+| `agent-inbox-workday` | ~~`0 9-17 * * 1-5`~~ | ~~LLM~~ | ~~session-active-guard.py~~ | ~~origin~~ | ⚠️ **STALE/REMOVED 2026-08-10 on most hosts** — duplicate of `cortex-bus-workday` (post-rename leftover). **Still active on `gisu` as of 2026-08-25** (communications role; `9 9-17 * * 1-5`, verified enabled+ok via agent-cron-status EXEC). Verify per-host before assuming removal. |
 | `agent-inbox-evening` | ~~`0 18,20,22 * * 1-5`~~ | ~~LLM~~ | ~~(prompt)~~ | ~~origin~~ | ⚠️ **STALE/REMOVED 2026-08-10** — duplicate of `cortex-bus-evening` (post-rename leftover) |
 | `agent-inbox-overnight` | ~~`0 3 * * 1-5`~~ | ~~LLM~~ | ~~(prompt)~~ | ~~origin~~ | ⚠️ **STALE/REMOVED 2026-08-10** — duplicate of `cortex-bus-overnight` (post-rename leftover) |
 | `cortex-bus-failover-watchdog` | `*/5 * * * *` | no_agent | `cortex-bus-failover-watchdog.py` | Telegram |
