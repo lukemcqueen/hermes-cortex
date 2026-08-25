@@ -97,6 +97,32 @@ So `miss = input_tokens + cache_write_tokens`.
 `miss = max(prompt - hit, 0)`. The two stores price the same run differently
 by design — keep them separate.
 
+## Provider estimate is STALE — DB recomputes at local rates (O1-S3, 2026-08-26)
+
+The scheduler passes `agent.session_estimated_cost_usd`, which comes from
+hermes-agent's OWN pricing table (`usage_pricing.py`, snapshot 2026-07) — for
+deepseek-v4-flash that is the **pre-hike schedule** (in $0.14 / out $0.28 /
+hit $0.0028) and understates real spend by **~2.1–2.5×** (verified 2026-08-26:
+63 rows cost $0.88 → $2.24 after reprice). Since the rate_version column
+existed, every row was stamped `2026-08-16` while actually priced at the stale
+table, so the old reprice guard skipped them all.
+
+Fix (deployed in `cost_store.py`): `record_run()` ignores the provider estimate
+and recomputes `estimated_cost_usd` from the token columns at the LOCAL
+`RATE_VERSION` schedule (`_compute_cost`, same math as
+`orch-daily-cost-report.py`). `reprice_runs()` guard is now a consistency check
+(`abs(stored - recomputed) < 1e-4` → skip) instead of a version-only check, so
+it self-heals rows recorded under any stale estimate. Apply with
+`install-cron-cost-tracking.py --force` (source of truth:
+`~/hermes-cortex/ops/scripts/cost_store.py`, copied to
+`~/.hermes-cortex/scripts/`, deployed to `~/.hermes/hermes-agent/cron/`).
+
+Caveat: the report (`orch-daily-cost-report.py`) recomputes from
+`usage_audit.jsonl` and was ALWAYS correct; only the DB store (and
+`cronjob(action='costs')` / `last_run_cost`) was understated. Interactive
+`state.db` sessions still use the stale provider estimate — unaffected by this
+fix.
+
 ## Rate versioning & re-pricing (O1-S1, 2026-08-22)
 
 Every row is stamped with the pricing schedule that produced its cost

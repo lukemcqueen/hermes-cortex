@@ -164,6 +164,13 @@ compaction/rewrites fire (those bust cache worse than a fresh start).
   post-update hook (`install-cron-cost-tracking.py --force`); a missing
   cost_store.py shows as 9× MISS in --status. 2 days of data out of 13 seen
   2026-08-21.
+- **cron-costs.db understated ~2× until O1-S3 (2026-08-26).** The provider
+  estimate (`session_estimated_cost_usd`) uses hermes-agent's stale
+  pre-hike pricing table for v4-flash (in 0.14/out 0.28/hit 0.0028 vs local
+  0.22/0.66/0.007). Fixed in cost_store.py: record_run recomputes at the local
+  schedule, reprice guard is now consistency-based (self-heals stale rows).
+  The daily REPORT was always correct (recomputes from usage_audit); only the
+  DB store under-reported. See cron-cost-tracking skill.
 - **Installer patch index drift.** install-cron-cost-tracking.py splits patches
   at hardcoded indices ([:3]/[3:]); adding scheduler patches shifts the boundary
   and the new patches get applied to cronjob_tools.py. Update the slice boundary
