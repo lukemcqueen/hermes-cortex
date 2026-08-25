@@ -20,6 +20,7 @@ Usage:
 """
 import argparse
 import json
+import os
 
 from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
@@ -29,10 +30,36 @@ from reportlab.pdfbase.ttfonts import TTFont
 PAGE_W, PAGE_H = A4
 
 # Fonts — mono family only (reference is a terminal-style printout).
+# Cross-platform resolver (Titus 2026-08-25): search known Linux + macOS
+# install locations for DejaVu Sans Mono (the reference font), then fall
+# back to the always-available reportlab Type1 Courier so the script runs
+# anywhere. ASCII-only output is Courier-safe (Japanese was already removed).
 MONO = "DejaVuMono"
 MONO_BOLD = "DejaVuMono-Bold"
-pdfmetrics.registerFont(TTFont(MONO, "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf"))
-pdfmetrics.registerFont(TTFont(MONO_BOLD, "/usr/share/fonts/truetype/dejavu/DejaVuSansMono-Bold.ttf"))
+
+
+def _resolve_mono_fonts():
+    """Register and return (regular_name, bold_name) for a monospace family
+    available on this platform. Tries DejaVu Sans Mono (the reference font)
+    from known Linux and macOS install locations, then falls back to the
+    always-available reportlab Type1 Courier so the script runs anywhere."""
+    dejavu_dirs = [
+        "/usr/share/fonts/truetype/dejavu",
+        "/usr/share/fonts/dejavu",
+        "/opt/homebrew/share/fonts/dejavu",
+        "/usr/local/share/fonts/dejavu",
+    ]
+    for d in dejavu_dirs:
+        regular = os.path.join(d, "DejaVuSansMono.ttf")
+        bold = os.path.join(d, "DejaVuSansMono-Bold.ttf")
+        if os.path.exists(regular) and os.path.exists(bold):
+            pdfmetrics.registerFont(TTFont(MONO, regular))
+            pdfmetrics.registerFont(TTFont(MONO_BOLD, bold))
+            return MONO, MONO_BOLD
+    return "Courier", "Courier-Bold"
+
+
+MONO, MONO_BOLD = _resolve_mono_fonts()
 
 RULE_X0, RULE_X1 = 52.0, 545.0
 RULE_YS = [162, 188, 207, 232, 251, 276, 295, 315, 334, 354, 374, 394]
