@@ -64,19 +64,39 @@ def is_valid_transition(from_state: str, to_state: str) -> bool:
     return to_state in allowed
 
 
-# Ensure hermes_models.py is importable
+# Ensure hermes_models.py is importable. Candidates in order:
+#   1. ~/.hermes/scripts            — Hermes agent scripts dir (often a symlink
+#      to ~/.hermes-cortex/scripts, but NOT guaranteed — macOS hosts can lack it)
+#   2. ~/.hermes-cortex/scripts     — canonical deploy location; cortex-update.sh
+#      registers hermes_models.py here on EVERY host (add 2026-08-25: the old
+#      _REPO_SCRIPTS computed ~/.hermes-cortex/tools/scripts which never exists)
+#   3. <script_dir>/scripts         — repo-layout fallback (mcp-servers/../scripts)
 _HERMES_HOME = Path.home() / ".hermes"
 _HERMES_SCRIPTS = _HERMES_HOME / "scripts"
-if _HERMES_SCRIPTS.exists():
-    sys.path.insert(0, str(_HERMES_SCRIPTS))
+_CORTEX_DEPLOY_SCRIPTS = Path.home() / ".hermes-cortex" / "scripts"
 _SCRIPT_DIR = Path(__file__).resolve().parent
 _REPO_SCRIPTS = _SCRIPT_DIR.parent / "scripts"
-if _REPO_SCRIPTS.exists():
-    sys.path.insert(0, str(_REPO_SCRIPTS))
+for _candidate in (_HERMES_SCRIPTS, _CORTEX_DEPLOY_SCRIPTS, _REPO_SCRIPTS):
+    if _candidate.exists():
+        sys.path.insert(0, str(_candidate))
 
-from hermes_models import get_model
+# Fail-soft: hermes_models is a model-name LOOKUP with a documented default —
+# NOT an enforcement gate. If it cannot be imported (e.g. macOS host without
+# the ~/.hermes/scripts symlink), degrade to the default instead of killing the
+# MCP server at import (Titus 2026-08-25: "subprocess has exited", governance
+# lockout). The embedding model only affects scoring quality, never enforcement.
+try:
+    from hermes_models import get_model
 
-NOMIC_MODEL = get_model("EMBEDDING_MODEL", "nomic-embed-text:v1.5")
+    NOMIC_MODEL = get_model("EMBEDDING_MODEL", "nomic-embed-text:v1.5")
+except Exception as _model_lookup_err:
+    NOMIC_MODEL = "nomic-embed-text:v1.5"
+    print(
+        "[mcp-server] WARNING: hermes_models.py not importable "
+        f"({_model_lookup_err.__class__.__name__}: {_model_lookup_err}) — "
+        f"using default embedding model '{NOMIC_MODEL}'",
+        file=sys.stderr,
+    )
 
 # ── Dependency Check: mcp package ────────────────────────────
 _HAVE_MCP = importlib.util.find_spec("mcp")
@@ -153,8 +173,9 @@ def _require_dogfood() -> Optional[str]:
                 "    only after the operator restarts the gateway service (agents cannot).\n"
                 "    This enforcement is structural — cannot be bypassed."
             )
-    except (OSError, PermissionError, FileNotFoundError):
-        pass  # If files can't be read, allow through
+    except (OSError, PermissionError, FileNotFoundError) as _read_err:
+        log.warning("Could not read governance files for dogfood check: %s", _read_err)
+        # If files can't be read, allow through (dogfood check is best-effort)
     return None
 
 
@@ -239,9 +260,8 @@ def _derive_slug() -> str:
     Both phases of the enforcer's lock discovery now agree on slug.
     """
     try:
-        repo_root = subprocess.check_output(
-            ["git", "rev-parse", "--show-toplevel"],
-            stderr=subprocess.DEVNULL, timeout=3,
+        repo_root = subprocess.check_output(  # noqa: S603,S404 — fixed argv; timeout=3 below
+            ["git", "rev-parse", "--show-toplevel"], timeout=3, stderr=subprocess.DEVNULL,
         ).decode().strip()
         return Path(repo_root).name
     except Exception:
@@ -440,9 +460,9 @@ def _purge_stale_locks() -> int:
             if _is_lock_stale(state):
                 lock_file.unlink()
                 removed += 1
-        except (json.JSONDecodeError, OSError, ValueError):
+        except (json.JSONDecodeError, OSError, ValueError) as _parse_err:
+            log.warning("Skipping unparseable lock file (mid-write?): %s (%s)", lock_file.name, _parse_err)
             # P1-A: unparseable = possibly mid-write. Leave it — never delete.
-            log.warning("Skipping unparseable lock file (mid-write?): %s", lock_file.name)
     # Also clean up orphan symlinks (pointing to deleted targets)
     for lock_file in sorted(GOVERNANCE_STATE_DIR.glob(".governance-*.json")):
         try:
