@@ -223,7 +223,9 @@ class _CostStoreFacade:
         self.get_latest_run = get_latest_run
 
 
-def _execute_job_now(job: Dict[str, Any]) -> Dict[str, Any]:"""
+def _execute_job_now(
+    job: Dict[str, Any], extra_prompt: Optional[str] = None
+) -> Dict[str, Any]:"""
 
 # ── Patch: _format_job cost enrichment ─────────────────────
 FORMAT_MARKER = "last_run_cost"
