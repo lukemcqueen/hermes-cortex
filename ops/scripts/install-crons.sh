@@ -664,7 +664,7 @@ OUTPUT POLICY (HARD RULE — overrides everything above):
   "false" \
   "$LLM_CRON_MODEL" "$LLM_CRON_PROVIDER"
 
-create_cron "agent-fixer-overnight" "0 3 * * 1-5" \
+create_cron "agent-fixer-overnight" "0 23 * * 1-5" \
   "" \
   "Respond in English. Run the auto-remediation workflow using the auto-remediation skill. Load the skill first, check for errors, fix, report.
 
@@ -830,7 +830,7 @@ If all YES → deliver as normal." \
   "false" \
   "$LLM_CRON_MODEL" "$LLM_CRON_PROVIDER"
 
-create_cron "cortex-bus-overnight" "0 2 * * 1-5" \
+create_cron "cortex-bus-overnight" "0 23 * * 1-5" \
   "" \
   "Process the Agent Bus overnight. The bus-flag sensor output is injected as context. Check for any urgent or critical items, blocked workflows, or DLQ items.
 

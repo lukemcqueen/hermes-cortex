@@ -88,7 +88,7 @@ crons:
   provider: deepseek
 - name: agent-fixer-overnight
   scope: universal
-  schedule: 0 3 * * 1-5
+  schedule: 0 23 * * 1-5
   script: ''
   prompt: 'Respond in English. Run the auto-remediation workflow using the auto-remediation skill. Load the skill first, check for errors, fix, report.
 
@@ -330,7 +330,7 @@ crons:
 - name: agent-mycortex-dream-monthly
   scope: opt-in
   opt_in_marker: state/dream-layer-installed
-  schedule: 0 3 1 * *
+  schedule: 0 5 1 * *
   script: ''
   prompt: 'You are the monthly mycortex dream arc — Tier 3 of the dream layer. The mycortex knowledge brain indexes markdown across the fleet. Your job: the time-lapse view — how the work evolved this month, what scale grew, and what the brain is missing.
 
@@ -406,7 +406,7 @@ crons:
 - name: agent-mycortex-dream-nightly
   scope: opt-in
   opt_in_marker: state/dream-layer-installed
-  schedule: 0 3 * * *
+  schedule: 0 5 * * *
   script: ''
   prompt: 'You are the nightly mycortex dream digest — Tier 1 of the dream layer. The mycortex knowledge brain indexes markdown across the fleet. Your job: surface what the brain noticed today AND write the dream back into the brain so it accumulates.
 
@@ -477,7 +477,7 @@ crons:
 - name: agent-mycortex-dream-weekly
   scope: opt-in
   opt_in_marker: state/dream-layer-installed
-  schedule: 0 3 * * 6
+  schedule: 0 5 * * 6
   script: ''
   prompt: 'You are the weekly deep mycortex dream — Tier 2 of the dream layer. The mycortex knowledge brain indexes markdown across the fleet. Your job: find the connections the week''s work created that nobody has noticed, synthesize the week''s saved lessons, and write the dream back into the brain.
 
@@ -804,7 +804,7 @@ crons:
   provider: ''
 - name: cortex-bus-overnight
   scope: universal
-  schedule: 0 2 * * 1-5
+  schedule: 0 23 * * 1-5
   script: ''
   prompt: 'Process the Agent Bus overnight. The bus-flag sensor output is injected as context. Check for any urgent or critical items, blocked workflows, or DLQ items.
 

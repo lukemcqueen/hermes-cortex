@@ -11,9 +11,9 @@
 #  BASE schedules — the create_cron() stagger below rewrites the minute to a
 #  deterministic per-host value (hostname:cron-name hash % 60) so fleet
 #  hosts don't all fire the same LLM dream at the same minute:
-#    agent-mycortex-dream-nightly  0 3 * * *    digest → dreams/YYYY-MM-DD.md
-#    agent-mycortex-dream-weekly   0 3 * * 6    lessons + scripture → -weekly.md
-#    agent-mycortex-dream-monthly  0 3 1 * *    time-lapse + gaps → YYYY-MM-monthly.md
+#    agent-mycortex-dream-nightly  0 5 * * *    digest → dreams/YYYY-MM-DD.md
+#    agent-mycortex-dream-weekly   0 5 * * 6    lessons + scripture → -weekly.md
+#    agent-mycortex-dream-monthly  0 5 1 * *    time-lapse + gaps → YYYY-MM-monthly.md
 #
 #  Every run writes back into ~/brain/<agent>/dreams/ and appends
 #  to INDEX.md so dreams connect across runs.
@@ -179,8 +179,8 @@ printf "${CYAN}━━━ Optional Mycortex Dream Layer ━━━${RESET}\n\n"
 warn "This is an OPTIONAL extra — skip if you don't want nightly/weekly/monthly brain dreams."
 info "Docs: docs/design/mycortex-dream-layer.md"
 
-# Tier 3 — Monthly arc (1st of month 03:00)
-create_cron "agent-mycortex-dream-monthly" "0 3 1 * *" \
+# Tier 3 — Monthly arc (1st of month 05:00)
+create_cron "agent-mycortex-dream-monthly" "0 5 1 * *" \
   "" \
   "You are the monthly mycortex dream arc — Tier 3 of the dream layer. The mycortex knowledge brain indexes markdown across the fleet. Your job: the time-lapse view — how the work evolved this month, what scale grew, and what the brain is missing.
 
@@ -238,8 +238,8 @@ Result: 1 monthly arc written to brain and delivered.
   "" \
   "false"
 
-# Tier 1 — Nightly digest (03:00) — fixed from 0 23 per Gisu's audit (2026-08-10)
-create_cron "agent-mycortex-dream-nightly" "0 3 * * *" \
+# Tier 1 — Nightly digest (05:00) — moved from 03:00 off-peak (O3/G-4, 2026-08-25); 03:00 is DeepSeek peak (01-04 UTC)
+create_cron "agent-mycortex-dream-nightly" "0 5 * * *" \
   "" \
   "You are the nightly mycortex dream digest — Tier 1 of the dream layer. The mycortex knowledge brain indexes markdown across the fleet. Your job: surface what the brain noticed today AND write the dream back into the brain so it accumulates.
 
@@ -289,8 +289,8 @@ Result: 1 dream written to brain and delivered.
   "" \
   "false"
 
-# Tier 2 — Weekly deep dream (Sat 03:00)
-create_cron "agent-mycortex-dream-weekly" "0 3 * * 6" \
+# Tier 2 — Weekly deep dream (Sat 05:00)
+create_cron "agent-mycortex-dream-weekly" "0 5 * * 6" \
   "" \
   "You are the weekly deep mycortex dream — Tier 2 of the dream layer. The mycortex knowledge brain indexes markdown across the fleet. Your job: find the connections the week's work created that nobody has noticed, synthesize the week's saved lessons, and write the dream back into the brain.
 

@@ -58,7 +58,7 @@
 |------|----------|------|----------------|---------|
 | `agent-fixer-workday` | `0 9-17 * * 1-5` | LLM | auto-remediation skill + session-active-guard.py | telegram |
 | `agent-fixer-evening` | `0 19,20,22 * * 1-5` | LLM | auto-remediation skill | telegram |
-| `agent-fixer-overnight` | `0 3 * * 1-5` | LLM | auto-remediation skill | telegram |
+| `agent-fixer-overnight` | `0 23 * * 1-5` | LLM | auto-remediation skill | telegram |
 | `agent-remediation-sensor` | `*/5 * * * *` | no_agent | `agent-remediation-sensor.py` | local (runs only where IS_SERVER=true) |
 | `agent-remediate-apply` | `*/10 * * * *` | no_agent | `agent-remediate-apply.py` | origin |
 | `agent-message-handler` | `*/5 * * * *` | no_agent | `agent-message-handler.py` | local |
@@ -91,9 +91,9 @@
 | `agent-mycortex-nightly-dream` | ~~`0 3 * * 6`~~ | ~~no_agent~~ | ~~`agent-mycortex-nightly-dream.sh`~~ | ~~origin~~ | ⚠️ **STALE/REMOVED 2026-08-02** — legacy brain decommissioned; no consumer (verified). |
 | `agent-mycortex-update-sync` | ~~`0 2 * * 0`~~ | ~~no_agent~~ | ~~`agent-mycortex-update-sync.sh`~~ | ~~origin~~ | ⚠️ **STALE/REMOVED 2026-08-02** — obsolete with mycortex binary uninstall. |
 | `agent-mycortex-sync` | `*/15 * * * *` | no_agent | `agent-mycortex-sync.sh` | origin | *(knowledge brain sync — replaces the legacy autopilot)* |
-| `agent-mycortex-dream-nightly` | `0 3 * * *` | LLM | (prompt) | origin | *(nightly serendipity digest — fresh-page connections, writes to `~/brain/<profile>/dreams/`; replaces the legacy creative-dream layer; optional via install-dream-crons.sh)* |
-| `agent-mycortex-dream-weekly` | `0 3 * * 6` | LLM | (prompt) | origin | *(weekly deep dream — lessons synthesis + scripture connection, ~200-250 words written to `~/brain/<profile>/dreams/`; optional)* |
-| `agent-mycortex-dream-monthly` | `0 3 1 * *` | LLM | (prompt) | origin | *(monthly arc — time-lapse + knowledge-gap probe, ~300 words written to `~/brain/<profile>/dreams/`; optional)* |
+| `agent-mycortex-dream-nightly` | `0 5 * * *` | LLM | (prompt) | origin | *(nightly serendipity digest — fresh-page connections, writes to `~/brain/<profile>/dreams/`; replaces the legacy creative-dream layer; optional via install-dream-crons.sh)* |
+| `agent-mycortex-dream-weekly` | `0 5 * * 6` | LLM | (prompt) | origin | *(weekly deep dream — lessons synthesis + scripture connection, ~200-250 words written to `~/brain/<profile>/dreams/`; optional)* |
+| `agent-mycortex-dream-monthly` | `0 5 1 * *` | LLM | (prompt) | origin | *(monthly arc — time-lapse + knowledge-gap probe, ~300 words written to `~/brain/<profile>/dreams/`; optional)* |
 | `agent-mycortex-parity` | ~~removed 2026-08-03~~ | no_agent | — | origin | *(S-010 flip-gate watchdog — RETIRED with mycortex; gate closed, parity is now a manual regression fixture only)* |
 | `agent-scoring-activity-watchdog` | `0 14,20 * * *` | no_agent | `agent-scoring-activity-watchdog.py` | origin |
 | `agent-pending-cycle-watchdog` | `0 */6 * * *` | no_agent | `agent-pending-cycle-watchdog.py` | origin | *(O5-S1 — governance PENDING-cycle leak detection, silent when clean; mirrors doctor rules)* |
@@ -110,7 +110,7 @@
 | `agent-agents-md-prune-apply` | `30 4 * * 1-6` | LLM | (prompt) | telegram |
 | `cortex-bus-workday` | `0 9-17 * * 1-5` | LLM | session-active-guard.py | telegram |
 | `cortex-bus-evening` | `0 19,20,22 * * 1-5` | LLM | (prompt) | telegram |
-| `cortex-bus-overnight` | `0 2 * * 1-5` | LLM | (prompt) | telegram |
+| `cortex-bus-overnight` | `0 23 * * 1-5` | LLM | (prompt) | telegram |
 | `agent-daily-bible-reading` | `0 1 * * *` | LLM | agent-daily-bible-reading skill | origin |
 | `agent-daily-soul-refinement` | ~~`0 23 * * *`~~ | ~~LLM~~ | ~~soul-refinement skill~~ | ~~origin~~ | ⚠️ **ABSORBED 2026-08-02** — fleet-level daily soul refinement merged into `orch-skill-lifecycle`. Per-host variant is `local-agent-daily-soul-refinement`. |
 | `agent-weekly-loop-eval` | ~~`0 9 * * 1`~~ | ~~LLM~~ | ~~loop-governance skill~~ | ~~origin~~ | ⚠️ **ABSORBED 2026-08-02** — fleet-level weekly loop eval merged into `orch-skill-lifecycle`. Per-host variant is `local-agent-weekly-loop-eval`. |
@@ -137,6 +137,31 @@
 
 ---
 
+## DeepSeek peak / off-peak map (KST ↔ UTC)
+
+DeepSeek time-of-use pricing (live card 2026-08-16; authoritative implementation:
+`ops/scripts/cost_store.py::_is_peak_hour` — `(1 <= h < 4) or (6 <= h < 10)` UTC).
+Peak hours are priced **×2** (hit $0.014/M, miss $0.44/M, out $1.32/M); off-peak
+×1 (hit $0.007/M, miss $0.22/M, out $0.66/M).
+
+| Window | UTC hours | KST hours (UTC+9) |
+|--------|-----------|-------------------|
+| PEAK ×2 | 01:00–03:59 & 06:00–09:59 | 10:00–12:59 & 15:00–18:59 |
+| off-peak | 00:00–00:59, 04:00–05:59, 10:00–23:59 | 09:00–09:59, 13:00–14:59 (lunch gap), 19:00–08:59 |
+
+**Fleet scheduling policy (O3/G-4, 2026-08-25):** daytime-responsive LLM crons
+(workday/backlog passes: `orch-backlog-driver` 08:00/10:00 UTC,
+`agent-fixer-workday`/`cortex-bus-workday` 09:00 UTC, `orch-skill-evaluate`
+09:00 Tue) deliberately keep their peak-hour slots — function beats the
+~$0.003–0.007/run premium (cron-cost-scheduling skill). Overnight **batch** LLM
+crons are scheduled off-peak: `cortex-bus-overnight` + `agent-fixer-overnight`
+at 23:00 UTC (08:00 KST — after the 07:00 KST morning passes), mycortex dream
+tiers at 05:00 UTC (14:00 KST lunch-gap quiet). 22:00 UTC (07:00 KST) is the
+safe morning-pass window — do not pile batch work onto it. Live minutes differ
+per host (`cksum(hostname:cron-name) % 60` stagger); the hour is the contract.
+
+---
+
 **Migration:** All crons renamed to `agent-*` prefix Jul 21 2026. Old bare names are replaced. Run `fix-cron-duplicates.py` to verify.
 
-**All running crons documented above — last verified: 2026-08-10**
+**All running crons documented above — last verified: 2026-08-25 (off-peak sweep, O3/G-4)**
