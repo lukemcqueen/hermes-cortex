@@ -242,3 +242,4 @@ The LLM mimics the *structure* while replacing values. This is the difference be
 5. **Result line always before footer** — `Result: <one-line verdict>`
 6. **Footer always last line** — `📊 <model> (<provider>) | <cost>/run ≈ <monthly>/mo` (never append cron name after cost)
 7. **[SILENT]** — only acceptable output when nothing to report for watchdog/checker crons
+8. **Byte-stable prompts; batch memory writes to session end** — a cron's prompt must be a static string: no timestamps, dates, or live values rendered into it, so provider prefix caches (DeepSeek/Anthropic) hit across runs. Dynamic context (pre-run script output, sensor data, guard output) belongs in the user message / end of prompt, never in the system prompt. If the run writes memory (memory tool) or edits SOUL/skills, do it as the LAST step — a mid-run memory write changes the injected MEMORY block and busts the prefix cache for every later turn of that run.
