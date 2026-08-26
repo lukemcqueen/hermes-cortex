@@ -303,6 +303,7 @@ register "ops/scripts/manage/agent-hermes-cortex-sync.sh"      "${CORTEX_DEPLOY_
 register "ops/scripts/manage/update-session-state.sh"    "${CORTEX_DEPLOY_HOME}/scripts/update-session-state.sh"
 register "ops/scripts/manage/fleet-audit.py"             "${CORTEX_DEPLOY_HOME}/scripts/fleet-audit.py"
 register "ops/scripts/manage/fleet-costs.py"             "${CORTEX_DEPLOY_HOME}/scripts/fleet-costs.py"
+register "ops/scripts/manage/verify-cost-store-fix.py"    "${CORTEX_DEPLOY_HOME}/scripts/verify-cost-store-fix.py"
 register "ops/scripts/manage/fleet-update-check.py"      "${CORTEX_DEPLOY_HOME}/scripts/fleet-update-check.py"
 register "ops/scripts/manage/orch-axi-telemetry.py"           "${CORTEX_DEPLOY_HOME}/scripts/orch-axi-telemetry.py"
 register "ops/scripts/lib/toon_parse.py"                 "${CORTEX_DEPLOY_HOME}/scripts/lib/toon_parse.py"
