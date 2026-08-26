@@ -123,6 +123,21 @@ Caveat: the report (`orch-daily-cost-report.py`) recomputes from
 `state.db` sessions still use the stale provider estimate — unaffected by this
 fix.
 
+⚠️ **DEPLOYED ≠ LOADED — a gateway restart is required to activate the fix.**
+The scheduler imports `cost_store` lazily but Python caches the module in
+`sys.modules` from the FIRST run after gateway start. A gateway started
+BEFORE the fix was copied to `~/.hermes/hermes-agent/cron/cost_store.py`
+keeps calling the OLD `record_run` (stale provider estimate) until
+restarted. Verified 2026-08-26 (9befa548): esther gateway pid started
+Aug 24, fix deployed Aug 26 08:26, rows at 10:51 KST STILL stale
+(stored $0.006581 vs local-rate $0.028042); `--reprice` healed them.
+Restart: `systemctl --user restart hermes-gateway` (user unit; restart
+kills running cron sessions — schedule it, don't run it from inside a
+cron job). After restart, run `cost_store.py --reprice` once to heal rows
+recorded while the old module was loaded. Detection:
+`verify-cost-store-fix.py` (repo ops/scripts/manage/) checks both the
+deployed markers AND the latest-row math in one probe.
+
 ## Rate versioning & re-pricing (O1-S1, 2026-08-22)
 
 Every row is stamped with the pricing schedule that produced its cost
