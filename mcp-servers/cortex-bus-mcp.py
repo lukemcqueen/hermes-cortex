@@ -791,8 +791,16 @@ def _inbox_send_task(args: dict) -> CallToolResult:
     result = _inbox_send(send_args)
     detail = result.content[0].text if hasattr(result, 'content') and result.content else "sent"
 
+    # 498d2365: never report 'created' without proof — surface the real send
+    # result. _inbox_send returns success messages ("Message sent...") or an
+    # explicit failure; anything else means the task did NOT land.
+    _FAIL_MARKERS = ("Send failed", "File not found", "File too large",
+                     "Could not", "All endpoints unreachable", "Error:")
+    failed = (not detail) or any(m in detail for m in _FAIL_MARKERS)
+    status = "failed" if failed else "created"
+
     return CallToolResult(content=[TextContent(type="text",
-        text=json.dumps({"task_id": task_id, "status": "created", "detail": detail}, indent=2))])
+        text=json.dumps({"task_id": task_id, "status": status, "detail": detail}, indent=2))])
 
 
 def _inbox_get_task(args: dict) -> CallToolResult:
