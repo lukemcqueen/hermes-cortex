@@ -500,7 +500,7 @@ their domain.
 |-------|---------|---------|-----------|
 | `social-media-analyzer` | 1.0.0 | Social media campaign analysis and performance tracking. Calculates engagement rates, ROI, and benchmarks a... | `skill_view(name='social-media-analyzer')` |
 
-## Software Development (51 skills)
+## Software Development (53 skills)
 
 | Skill | Version | Purpose | Load With |
 |-------|---------|---------|-----------|
@@ -520,6 +520,8 @@ their domain.
 | `codebase-design` | 1.0.0 | Deep module vocabulary and design principles — module, interface, depth, seam, adapter, leverage, locality.... | `skill_view(name='codebase-design')` |
 | `context-engineering` | 1.0.0 | Context design for agents: pre-fetch, compaction, envelopes. | `skill_view(name='context-engineering')` |
 | `dev-plan` | 2.1.0 | Plan mode: write an actionable markdown plan to .hermes/plans/, no execution. Bite-sized tasks, exact paths... | `skill_view(name='dev-plan')` |
+| `dhh-rails-reviewer` | 1.0.0 | Use for brutally honest DHH-style Rails code review. | `skill_view(name='dhh-rails-reviewer')` |
+| `dhh-rails-style` | 1.0.0 | Use when writing Ruby/Rails code in DHH/37signals style. | `skill_view(name='dhh-rails-style')` |
 | `documentation-auditing` | 1.0.0 | Audit documentation for stale file paths, broken cross-references, and correctness gaps. Systematic approac... | `skill_view(name='documentation-auditing')` |
 | `engineering-approach` | 1.9.0 | Engineering and communication standards for this project: terse, direct, skip explanations, always handle e... | `skill_view(name='engineering-approach')` |
 | `error-handling` | 1.0.0 | Error handling patterns and idioms: structured exceptions, graceful degradation, retry strategies, circuit... | `skill_view(name='error-handling')` |
