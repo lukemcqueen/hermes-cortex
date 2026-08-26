@@ -216,7 +216,7 @@ script_exists() {
 # ── Helper: create a cron job ─────────────────────────────
 create_cron() {
   local name="$1" schedule="$2" script="$3" prompt="$4" skill="$5" toolsets="$6" deliver="$7" workdir="$8" no_agent="$9"
-  local model="${10:-}" provider="${11:-}"
+  local model="${10:-}" provider="${11:-}" reasoning_effort="${12:-}"
 
   # ── Fleet stagger: deterministic per-host minute for LLM-driven crons ──
   # (Luke directive 2026-08-07) — see install-crons.sh create_cron() for the
@@ -299,11 +299,12 @@ PYEOF
         edit_cmd+=("--agent")
       fi
       [[ -n "$prompt" ]] && edit_cmd+=("--prompt" "$prompt")
+      [[ -n "$reasoning_effort" ]] && edit_cmd+=("--reasoning-effort" "$reasoning_effort")
       if "${edit_cmd[@]}" 2>&1; then
         info "Updated cron: ${name} (${schedule})"
         CREATED=$((CREATED + 1))
         if [[ -n "$model" || -n "$provider" ]]; then
-          pin_cron_model "$name" "$model" "$provider"
+          pin_cron_model "$name" "$model" "$provider" "$reasoning_effort"
         fi
       else
         warn "Failed to update cron: ${name}"
@@ -328,12 +329,13 @@ PYEOF
   [[ "$no_agent" == "true" ]] && cmd+=("--no-agent")
   cmd+=("$schedule")
   [[ -n "$prompt" ]] && cmd+=("$prompt")
+  [[ -n "$reasoning_effort" ]] && cmd+=("--reasoning-effort" "$reasoning_effort")
 
   if "${cmd[@]}" 2>&1; then
     info "Created cron: ${name} (${schedule})"
     CREATED=$((CREATED + 1))
     if [[ -n "$model" || -n "$provider" ]]; then
-      pin_cron_model "$name" "$model" "$provider"
+      pin_cron_model "$name" "$model" "$provider" "$reasoning_effort"
     fi
   else
     warn "Failed to create cron: ${name}"
@@ -343,8 +345,8 @@ PYEOF
 
 # ── Pin Model/Provider ────────────────────────────────────
 pin_cron_model() {
-  local name="$1" model="$2" provider="$3"
-  if [[ -z "$model" && -z "$provider" ]]; then
+  local name="$1" model="$2" provider="$3" reasoning_effort="$4"
+  if [[ -z "$model" && -z "$provider" && -z "$reasoning_effort" ]]; then
     return 0
   fi
   local db="${HERMES_HOME}/cron/jobs.json"
@@ -362,6 +364,7 @@ for job in jobs:
     if isinstance(job, dict) and job.get('name') == '$name':
         if '$model':    job['model'] = '$model'
         if '$provider': job['provider'] = '$provider'
+        if '$reasoning_effort': job['reasoning_effort'] = '$reasoning_effort'
         patched = True
         break
 if patched:
@@ -607,7 +610,7 @@ PUSHBACK CONTRACT (SOUL Principle 5): before pruning/deleting a skill, rewriting
 
 If nothing changed: output exactly [SILENT]" \
   "orch-skill-lifecycle" "terminal,file,web" "origin" "" "false" \
-  "$LLM_CRON_MODEL" "$LLM_CRON_PROVIDER"
+  "$LLM_CRON_MODEL" "$LLM_CRON_PROVIDER" "none"
 
 # ── 4. Skill Report Pipeline ──────────────────────────────
 printf "${CYAN}  4. Skill Report Pipeline${RESET}\n"
@@ -636,7 +639,7 @@ Your job is to:
   "origin" \
   "" \
   "false" \
-  "$LLM_CRON_MODEL" "$LLM_CRON_PROVIDER"
+  "$LLM_CRON_MODEL" "$LLM_CRON_PROVIDER" "none"
 
 # ── 5. Backlog Driver (F-023) ──────────────────────────────
 printf "${CYAN}  5. Backlog Driver${RESET}\n"

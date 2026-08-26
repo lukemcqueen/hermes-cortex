@@ -1026,6 +1026,7 @@ crons:
   no_agent: false
   model: deepseek-v4-flash
   provider: deepseek
+  reasoning_effort: none
 - name: orch-skill-lifecycle
   scope: orchestrator
   schedule: 0 4 * * *
@@ -1039,6 +1040,7 @@ crons:
   no_agent: false
   model: deepseek-v4-flash
   provider: deepseek
+  reasoning_effort: none
 - name: orch-skill-report-request
   scope: orchestrator
   schedule: 0 2 * * 1
