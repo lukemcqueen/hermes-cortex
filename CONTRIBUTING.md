@@ -14,7 +14,7 @@
 
 ## Overview
 
-**Hermes Cortex** is a public GitHub repo (`fleet-operator/hermes-cortex`) containing:
+**Hermes Cortex** is a public GitHub repo (`lukemcqueen/hermes-cortex`) containing:
 
 - **Source scripts** in `ops/scripts/` — watchdogs, installers, utilities
 - **Canonical skills** in `skills/` — organized by domain

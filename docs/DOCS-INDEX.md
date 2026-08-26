@@ -15,6 +15,7 @@ A lightweight map of all project documents. Files are grouped by topic.
 | Doc | Description |
 |-----|-------------|
 | `README.md` | Project overview, quick start, and links |
+| `docs/PATTERNS.md` | **Enterprise agentic patterns — what you can take**: bad-actor IP blocklist, A2A bus messaging, RAG/token-cost caching, enforced governance, self-healing ops, threat pipeline — each with file paths and reading order |
 | `CONTRIBUTING.md` | Agent contribution guide — how to make changes, add features, fix bugs, and push to the shared repo |
 | `AGENTS.md` | Agent guidelines — read by AI tools on session start |
 | `docs/setup-reference.md` | Deployment setup, health monitoring pipeline, Ollama model tier |

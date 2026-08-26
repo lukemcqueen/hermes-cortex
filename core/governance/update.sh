@@ -48,7 +48,7 @@ done
 if [[ -z "$INSTALL_DIR" ]]; then
   fail "Loop governance installation not found."
   info "Clone hermes-cortex first:"
-  info "  git clone https://github.com/fleet-operator/hermes-cortex.git ~/hermes-cortex"
+  info "  git clone https://github.com/lukemcqueen/hermes-cortex.git ~/hermes-cortex"
   info "  cd ~/hermes-cortex && bash install.sh"
   exit 1
 fi
@@ -75,8 +75,8 @@ if [[ -d "$REPO_DIR" && -f "${REPO_DIR}/VERSION" ]]; then
 else
   # Try to download from GitHub
   SOURCE_TYPE="remote"
-  SOURCE_VERSION=$(curl -fsSL "https://raw.githubusercontent.com/fleet-operator/hermes-cortex/main/core/governance/VERSION" 2>/dev/null || echo "0.0.0")
-  info "Source: github.com/fleet-operator/hermes-cortex"
+  SOURCE_VERSION=$(curl -fsSL "https://raw.githubusercontent.com/lukemcqueen/hermes-cortex/main/core/governance/VERSION" 2>/dev/null || echo "0.0.0")
+  info "Source: github.com/lukemcqueen/hermes-cortex"
 fi
 
 info "Available version: ${SOURCE_VERSION}"
@@ -131,7 +131,7 @@ else
   # Remote: download tarball and extract
   info "Downloading from GitHub…"
   TMP_DIR=$(mktemp -d)
-  curl -fsSL "https://github.com/fleet-operator/hermes-cortex/archive/refs/heads/main.tar.gz" | \
+  curl -fsSL "https://github.com/lukemcqueen/hermes-cortex/archive/refs/heads/main.tar.gz" | \
     tar -xz -C "$TMP_DIR" --strip-components=3 "hermes-cortex-main/core/governance/" 2>/dev/null || {
     fail "Download failed. Check internet or mirror."
     rm -rf "$TMP_DIR"

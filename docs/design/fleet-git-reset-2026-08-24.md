@@ -19,7 +19,7 @@ origin/main is the clean history. The fork is real (all hashes changed).
 ## The tool: `fleet-git-reset.py` (fixed 2026-08-24)
 
 Pre-built for exactly this. **Bug fixed**: EXPECTED_REMOTE was the stale
-`fleet-operator` URL → tool refused the real repo. Now accepts
+`lukemcqueen` URL → tool refused the real repo. Now accepts
 `lukemcqueen/hermes-cortex.git` (deployed to ~/.hermes-cortex/scripts/).
 
 ```bash

@@ -39,7 +39,7 @@ done
 
 if [[ -z "$SOURCE_DIR" ]]; then
   fail "Could not find loop-governance source. Clone hermes-cortex first:"
-  info "  git clone https://github.com/fleet-operator/hermes-cortex.git ~/hermes-cortex"
+  info "  git clone https://github.com/lukemcqueen/hermes-cortex.git ~/hermes-cortex"
   exit 1
 fi
 

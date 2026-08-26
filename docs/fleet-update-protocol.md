@@ -339,7 +339,7 @@ Sent as a lightweight bus message (no update, just verification):
  "priority": "normal",
  "body": {
   "remote": "origin",
-  "expected_url": "https://github.com/fleet-operator/hermes-cortex.git"
+  "expected_url": "https://github.com/lukemcqueen/hermes-cortex.git"
  }
 }
 ```

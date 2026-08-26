@@ -3,7 +3,7 @@
 > *An open-source installer, skill set, and fleet management system for your personal Hermes AI agent.*
 > *Privacy-first, offline-capable, multi-agent orchestration — runs on your own hardware.*
 
-**Version: 2.0.0** · [![GitHub](https://img.shields.io/github/license/fleet-operator/hermes-cortex)](LICENSE) · [Hermes Agent](https://hermes-agent.nousresearch.com)
+**Version: 2.0.0** · [![GitHub](https://img.shields.io/github/license/lukemcqueen/hermes-cortex)](LICENSE) · [Hermes Agent](https://hermes-agent.nousresearch.com)
 
 ![Hermes Cortex](docs/assets/avatar.png)
 
@@ -12,6 +12,27 @@
 > **Why it exists:** Hermes Cortex turns a single Hermes Agent into a governed, self-healing fleet. It's the only agent harness where change discipline is **enforced at the tool level** — not suggested — where a crashed service **fixes itself before you wake up**, where the knowledge brain **works fully offline**, and where a second orchestrator **takes over the moment the first one blinks**. No cloud, no lock-in, no babysitting.
 
 > **Prerequisite:** [Hermes Agent](https://hermes-agent.nousresearch.com) must be installed first. This project adds skills, services, and infrastructure on top of it.
+
+---
+
+## 🎁 What You Can Take From This Repo
+
+This is a **working enterprise-grade agentic harness**, not just a skill pack.
+Every pattern below is implemented in real code with exact file paths — steal
+the pieces you need:
+
+| # | Take-away | Where | What you get |
+|---|-----------|-------|--------------|
+| 1 | 🛡️ **Bad-actor IP blocklist** | [`ops/install/deploy/nginx/blocked_ips.add`](ops/install/deploy/nginx/blocked_ips.add) | **4,233 evidence-based blocked IPs**, one per line — drop into nginx/fail2ban/UFW today |
+| 2 | 🤝 **Agent-to-agent messaging** | [`ops/scripts/lib/cortex_bus.py`](ops/scripts/lib/cortex_bus.py) · [protocol](docs/fleet-update-protocol.md) | Production A2A over Postgres PGMQ — `bus_send`/`bus_read`/`bus_archive`, correlation IDs, no Kafka/Redis |
+| 3 | 💰 **RAG + semantic caching** | [`ops/web-cache/web_cache.py`](ops/web-cache/web_cache.py) · [mycortex](docs/design/mycortex-DESIGN.md) | sqlite-vec + Ollama cache that answers queries **before** the LLM — cuts token spend, works offline |
+| 4 | 🔒 **Enforced change governance** | [`plugins/governance-enforcer/`](plugins/governance-enforcer/) · [reference](docs/loop-governance-reference.md) | Change discipline **blocked at the tool level**, not suggested — no bypass flags, TDD Iron Law, adversarial verification |
+| 5 | 🤖 **Self-healing operations** | `ops/scripts/remediation/` · [reference](docs/fleet-reference.md) | sensor → marker → fixer pipeline that repairs crashes before you wake up |
+| 6 | 🕵️ **Threat pipeline** | [`ops/scripts/manage/agent-nginx-threat-pipeline.sh`](ops/scripts/manage/agent-nginx-threat-pipeline.sh) | Daily log scan → fail2ban bans → new blocklist entries, evidence-based |
+
+👉 **Full patterns guide with reading order:** [`docs/PATTERNS.md`](docs/PATTERNS.md) —
+each pattern explains *how it works*, the *minimal code to copy*, and the
+*suggested reading order* for the source files.
 
 ---
 
@@ -60,7 +81,7 @@ Sensors detect problems (crashed services, broken configs, stale locks), write r
 
 ### 🩺 Self-Healing Operations
 
-**65 cron jobs per agent — 160+ across the fleet** — keep the system healthy without human intervention:
+**~50 cron jobs per agent — a few hundred across the fleet** — keep the system healthy without human intervention:
 
 | Category | Crons | What |
 |----------|-------|------|
@@ -88,7 +109,7 @@ Agent query → web_cache (50μs) → kiwix ZIM (localhost:8080) → mycortex (R
 - **Offline Knowledge** — Wikipedia, WikiMed, Wikivoyage, Wikibooks available locally via Docker ZIM server
 - **Offline Code Assistant** — 520+ curated code snippets across 55+ topic areas and 30+ programming languages. `offline_code search` and `offline_code gen` work fully offline via Ollama. **Self-improving:** `offline_code learn` adds misses permanently.
 - **Offline Reader** — Zero-dependency web UI (`python3 ops/offline/offline-reader.py`) for Bible (55+ languages), hymns, and wiki reference
-- **mycortex** — Fleet knowledge brain: git repos as source of truth → shared Postgres index (FTS + pg_texample; pgvector semantic slice in v1.1) → thin Python CLI + 15-min cron sync. No daemon, no bun. **Inspired by an open-source Postgres-native knowledge-brain project (garrytan, MIT)** — the same Postgres-native knowledge-brain idea, re-architected with fail-closed RLS source isolation, per-host registration, and a PII federation gate. **Multi-tenant by construction:** each profile connects as its own `mycortex_reader_<profile>` role — RLS (keyed on `CURRENT_USER`) isolates tenants automatically, so a company brain scales to 100 profiles with zero policy changes. [Design doc](docs/design/mycortex-DESIGN.md) · [Multi-tenancy](docs/design/mycortex-multi-tenancy.md) · [Migration stories](docs/elicit/2026-08-01_mycortex-stories.md)
+- **mycortex** — Fleet knowledge brain: git repos as source of truth → shared Postgres index (FTS + pg_texample; pgvector semantic slice in v1.1) → thin Python CLI + 15-min cron sync. No daemon, no bun. **Inspired by an open-source Postgres-native knowledge-brain project (garrytan, MIT)** — the same Postgres-native knowledge-brain idea, re-architected with fail-closed RLS source isolation, per-host registration, and a PII federation gate. **Multi-tenant by construction:** each profile connects as its own `mycortex_reader_<profile>` role — RLS (keyed on `CURRENT_USER`) isolates tenants automatically, so a company brain scales to 100 profiles with zero policy changes. [Design doc](docs/design/mycortex-DESIGN.md) · [Multi-tenancy](docs/design/mycortex-multi-tenancy.md)
 
 ### 📊 Observability Stack
 
@@ -131,7 +152,7 @@ plugins. Ops uses both to keep the fleet running.
 This model makes it possible to swap the agent runtime (e.g. to LangGraph or
 Temporal) by replacing only the Runtime Adapter layer.
 
-Detailed breakdown: [`docs/architecture.md`](docs/architecture.md#code-architecture--three-layer-model)
+Detailed breakdown: [`docs/architecture.md`](docs/architecture.md#-code-architecture-three-layer-model)
 
 ### 🧩 Optional Profiles
 
@@ -152,7 +173,7 @@ Bare Ubuntu 24.04 VM? This single command does everything: installs Docker, Olla
 
 ```bash
 # One-liner — no clone needed
-curl -fsSL https://raw.githubusercontent.com/fleet-operator/hermes-cortex/main/ops/deploy/bootstrap.sh | bash
+curl -fsSL https://raw.githubusercontent.com/lukemcqueen/hermes-cortex/main/ops/deploy/bootstrap.sh | bash
 ```
 
 Expects: **Fresh Ubuntu 24.04 LTS** with SSH access. Interactive prompts for API keys and domain.
@@ -188,10 +209,10 @@ bash ops/scripts/install-crons.sh --force
 
 ```bash
 # One-liner — no clone needed
-curl -fsSL https://raw.githubusercontent.com/fleet-operator/hermes-cortex/main/ops/install/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/lukemcqueen/hermes-cortex/main/ops/install/install.sh | bash
 
 # Or clone for offline install / inspection:
-git clone --depth 1 https://github.com/fleet-operator/hermes-cortex.git ~/hermes-cortex
+git clone --depth 1 https://github.com/lukemcqueen/hermes-cortex.git ~/hermes-cortex
 bash ~/hermes-cortex/ops/install/install.sh
 
 # Check prerequisites only:
@@ -365,6 +386,7 @@ offline_knowledge query "symptoms of malaria"
 
 | Document | What it covers |
 |----------|---------------|
+| [Enterprise Patterns](docs/PATTERNS.md) | 🎁 **Start here** — reusable take-aways: bad-actor IP list, agent bus, RAG/token-cost caching, governance, self-healing, threat pipeline |
 | [Security Guide](docs/SECURITY.md) | 🔒 Port risks, file permissions, firewall setup, recovery |
 | [Architecture](docs/architecture.md) | System diagram, services, port map, design principles |
 | [Troubleshooting](docs/troubleshooting.md) | Common issues and fixes |
@@ -373,8 +395,8 @@ offline_knowledge query "symptoms of malaria"
 | [Setup Reference](docs/setup-reference.md) | Ollama config, env vars, cron tiers, model selection |
 | [Pipeline Reference](docs/pipeline-reference.md) | Lessons, sessions, skills, memory, quality pipeline |
 | [Operations Reference](docs/operations-reference.md) | Inbox architecture, offline code, rules engine |
-| [Computer Specs](docs/computer-specs.md) | Hardware recommendations by RAM tier |
-| [Offline Scenarios](docs/offline-travel-stack.md) | Using Hermes without internet |
+| [Bus Scale Design](docs/design/bus-scale/stories.md) | Agent Bus scaling stories and capacity planning |
+| [Offline Scenarios](docs/knowledge-isolation-architecture.md) | Using Hermes without internet |
 | [AGENTS.md](AGENTS.md) | Agent execution contract, loop governance, inbox framework |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | How to contribute to hermes-cortex |
 
@@ -384,4 +406,4 @@ offline_knowledge query "symptoms of malaria"
 
 ---
 
-*Built by [@fleet-operator](https://github.com/fleet-operator) · Powered by 🦞 [Hermes Agent](https://hermes-agent.nousresearch.com) · Version `v2.0.0` · [MIT License](LICENSE) · See [Third-Party Licenses](docs/THIRD_PARTY_LICENSES.md) for component attributions*
+*Built by [@lukemcqueen](https://github.com/lukemcqueen) · Powered by 🦞 [Hermes Agent](https://hermes-agent.nousresearch.com) · Version `v2.0.0` · [MIT License](LICENSE) · See [Third-Party Licenses](docs/THIRD_PARTY_LICENSES.md) for component attributions*

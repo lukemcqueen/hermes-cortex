@@ -1,7 +1,7 @@
 # Seeding Brain Content
 
 > **Version 1.0.0** — Published 2026-06-11
-> Part of the [Hermes Cortex](https://github.com/fleet-operator/hermes-cortex) documentation suite.
+> Part of the [Hermes Cortex](https://github.com/lukemcqueen/hermes-cortex) documentation suite.
 
 A guide to filling your empty brain directories with useful content so legacy brain has something to search.
 

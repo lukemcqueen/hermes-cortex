@@ -41,7 +41,7 @@ uname -s # Linux or Darwin
 The installer lives at `ops/install/install.sh` (moved from repo root in v2.0.0):
 
 ```bash
-git clone --depth 1 https://github.com/fleet-operator/hermes-cortex.git ~/hermes-cortex
+git clone --depth 1 https://github.com/lukemcqueen/hermes-cortex.git ~/hermes-cortex
 cd ~/hermes-cortex
 bash ops/install/install.sh
 
@@ -1833,7 +1833,7 @@ Hermes Cortex uses a two-repo architecture:
 
 **To apply personal config after public install:**
 ```bash
-git clone git@github.com:fleet-operator/private-data.git ~/private-data
+git clone <private-repo-url> ~/private-data
 cp ~/private-data/config/config.yaml ~/.hermes/config.yaml
 ```
 
@@ -2151,4 +2151,4 @@ approach is `.hermes-cortex/` (project-anchored) + `~/.hermes/` (home-dir)
 - `references/offline-knowledge-subcommands.md` — Subcommand architecture pattern for offline_knowledge.py, the `lesson` tooling gap, and PATH setup
 - `references/mycortex-source-migration-export.md` — mycortex data export, cross-engine migration, and Postgres setup notes
 - `github.com/garrytan/mycortex` — Official mycortex repository (install via `bun install -g github:garrytan/mycortex`)
-- `github.com/fleet-operator/private-data` — Private repo with personal config, brain content
+- `<private-repo-url>` — Private repo with personal config, brain content

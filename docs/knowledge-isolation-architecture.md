@@ -1,7 +1,7 @@
 # Knowledge Isolation Architecture
 
 > **Version 2.0.0** — Published 2026-06-11
-> Part of the [Hermes Cortex](https://github.com/fleet-operator/hermes-cortex) documentation suite.
+> Part of the [Hermes Cortex](https://github.com/lukemcqueen/hermes-cortex) documentation suite.
 
 **Project isolation without multiple profiles — one agent, many legacy brain sources.**
 

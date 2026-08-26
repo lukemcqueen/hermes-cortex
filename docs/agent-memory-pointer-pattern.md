@@ -1,7 +1,7 @@
 # Memory Architecture: The Pointer Pattern
 
 > **Version 1.0.0** — Published 2026-06-05
-> Part of the [Hermes Cortex](https://github.com/fleet-operator/hermes-cortex) documentation suite.
+> Part of the [Hermes Cortex](https://github.com/lukemcqueen/hermes-cortex) documentation suite.
 
 **Keep your agent's short-term memory lean while preserving full detail on demand.**
 
