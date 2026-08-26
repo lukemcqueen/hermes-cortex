@@ -113,12 +113,14 @@ their domain.
 | `meme-generation` | 2.0.0 | Create meme PNGs from templates with Pillow text overlay. | `skill_view(name='meme-generation')` |
 | `pixel-art` | 2.0.0 | Pixel art w/ era palettes (NES, Game Boy, PICO-8). | `skill_view(name='pixel-art')` |
 
-## Devops (124 skills)
+## Devops (143 skills)
 
 | Skill | Version | Purpose | Load With |
 |-------|---------|---------|-----------|
 | `admin-cli-tools` | 1.0.0 | Patterns and architecture for admin-level CLI tools that use direct DB access, not agent-level API auth. | `skill_view(name='admin-cli-tools')` |
 | `agent-collector-troubleshoot` | 1.0.0 | Use when collectors can't send. Diagnoses bus, paths, crons. | `skill_view(name='agent-collector-troubleshoot')` |
+| `agent-ergonomic-cli` | 1.0.0 | Use when writing or auditing agent-facing CLI output. | `skill_view(name='agent-ergonomic-cli')` |
+| `agent-ergonomic-cli-output` | 1.0.0 | Agent-facing CLI output: token-lean by design (AXI/TOON). | `skill_view(name='agent-ergonomic-cli-output')` |
 | `agent-fundamentals` | 1.0.0 | Universal 'basic things every agent should know' — distilled from real frustration patterns across 10+ sess... | `skill_view(name='agent-fundamentals')` |
 | `agent-health-monitoring` | 3.5.0 | Cross-server agent health monitoring using binary status vectors — deploy health endpoints on each agent, p... | `skill_view(name='agent-health-monitoring')` |
 | `alembic-postgres-migrations` | 1.1.0 | Use when debugging Alembic Postgres migration failures. | `skill_view(name='alembic-postgres-migrations')` |
@@ -132,6 +134,7 @@ their domain.
 | `bus-inbox-check` | 1.0.0 | Check agent bus inbox depth and read messages via HTTP API — for use in LLM cron context where inbox_read M... | `skill_view(name='bus-inbox-check')` |
 | `bus-queue-maintenance` | 1.0.0 | Bus queue lifecycle — inspecting stuck messages, archiving orphaned messages, navigating state constraints,... | `skill_view(name='bus-queue-maintenance')` |
 | `ci-cd-pipeline` | 1.0.0 | CI/CD pipeline configuration patterns: GitHub Actions, multi-stage builds, testing matrices, deployment wor... | `skill_view(name='ci-cd-pipeline')` |
+| `ci-pipeline-hardening` | 1.0.0 | Fix CI gates: bounded subsets, parity, coverage baselines. | `skill_view(name='ci-pipeline-hardening')` |
 | `cleanup-commit-regression-check` | 1.0.0 | When scripts fail with NameError after a mass-edit commit. | `skill_view(name='cleanup-commit-regression-check')` |
 | `codebase-portability` | 1.0.0 | Systematically find and fix hardcoded absolute paths across scripts, docs, and configs. Ensures codebases w... | `skill_view(name='codebase-portability')` |
 | `config-drift-diagnostics` | 1.0.0 | Container configs stale? Compare vs source in 3 locations. | `skill_view(name='config-drift-diagnostics')` |
@@ -141,6 +144,8 @@ their domain.
 | `cortex-bus-messaging` | 1.2.0 | ORCHESTRATORS ONLY — message the orchestrator via the bus MCP client (inbox_send). Workers use contact-orch... | `skill_view(name='cortex-bus-messaging')` |
 | `cortex-bus-polling` | 2.0.0 | Agent Bus polling setup — MCP tools, cron, verification. | `skill_view(name='cortex-bus-polling')` |
 | `cortex-deployment-sync` | 1.0.0 | Use when pulling latest or running cortex update. | `skill_view(name='cortex-deployment-sync')` |
+| `cortex-preflight` | 1.0.0 | Hermes Cortex supporting pre-flight checks — supplements Hermes default survey-before-action with repo-spec... | `skill_view(name='cortex-preflight')` |
+| `cron-agent-identity` | 1.0.0 | Diagnose which agent/profile a Hermes cron session runs as. | `skill_view(name='cron-agent-identity')` |
 | `cron-cost-scheduling` | 1.0.0 | Schedule LLM crons around provider peak/off-peak windows. | `skill_view(name='cron-cost-scheduling')` |
 | `cron-cost-tracking` | 1.0.0 | SQLite-backed per-run token usage and cost tracking for Hermes cron jobs. Deploys cost_store.py and patches... | `skill_view(name='cron-cost-tracking')` |
 | `cron-filesystem-fallback` | 1.0.0 | Read cron job definitions and execution history from filesystem when cronjob CLI is unavailable. Platform-a... | `skill_view(name='cron-filesystem-fallback')` |
@@ -154,15 +159,20 @@ their domain.
 | `cron-script-naming-reconciliation` | 1.1.0 | Reconcile cron/script names, prefixes, skill versions. | `skill_view(name='cron-script-naming-reconciliation')` |
 | `cron-timezone-env` | 1.0.0 | Cron timestamps follow HERMES_TIMEZONE env, never hardcoded. | `skill_view(name='cron-timezone-env')` |
 | `cross-agent-design` | 1.0.0 | Before designing any cross-agent feature, protocol, or workflow: trace the receiving agent's end-to-end con... | `skill_view(name='cross-agent-design')` |
+| `cross-agent-handoff-delivery` | 0.1.0 | Verify a cross-agent handoff is usable, not just delivered. | `skill_view(name='cross-agent-handoff-delivery')` |
 | `cross-repo-sync` | 1.0.0 | Update the same file (config, docs, boilerplate) across multiple project repos in a single coordinated pass... | `skill_view(name='cross-repo-sync')` |
 | `daily-bible-reading` | 1.0.0 | Daily cron job that reads one book of the Bible, extracts 3 lessons with practical application to server op... | `skill_view(name='daily-bible-reading')` |
 | `deploy-load-verification` | 1.0.0 | Use when a config change isn't live — verify what loaded. | `skill_view(name='deploy-load-verification')` |
 | `deployed-component-verification` | 1.1.0 | Verify deployed components match their repo source — detect stale copies, validate symlinks, and ensure the... | `skill_view(name='deployed-component-verification')` |
 | `detached-worker-pattern` | 1.0.0 | Cron tick budget kill: detached worker + result sweep. | `skill_view(name='detached-worker-pattern')` |
+| `dev-port-conflict` | 1.0.0 | Diagnose and clear an orphaned server holding a dev port. | `skill_view(name='dev-port-conflict')` |
 | `doc-freshness` | 1.1.0 | Ensure AGENTS.md and SOUL.md stay current across all agents and projects. Weekly audit, post-update broadca... | `skill_view(name='doc-freshness')` |
 | `doc-size-budget` | 1.0.0 | Slim docs to byte targets (SOUL 10K, AGENTS gates) safely. | `skill_view(name='doc-size-budget')` |
+| `doc-vs-implementation-audit` | 0.1.0 | Refresh public docs against the live codebase and scrub PII. | `skill_view(name='doc-vs-implementation-audit')` |
 | `docker-compose-bringup` | 1.0.0 | Fix a compose stack on a shared host that 500s/404s. | `skill_view(name='docker-compose-bringup')` |
 | `docker-management` | 1.0.0 | Manage Docker containers, images, volumes, and Compose. | `skill_view(name='docker-management')` |
+| `docker-test-isolation-harness` | 1.0.0 | Isolated throwaway containers for Docker test runs. | `skill_view(name='docker-test-isolation-harness')` |
+| `doctor-warning-resolution` | 1.0.0 | Use when fixing cortex-doctor naming/cron drift warnings. | `skill_view(name='doctor-warning-resolution')` |
 | `documentation-scope` | 1.0.0 | Multi-audience documentation scoping conventions for Hermes Cortex. Defines when and how to distinguish gen... | `skill_view(name='documentation-scope')` |
 | `enforcement-change-safety` | 1.0.0 | Use before enforcement code changes or shared-repo commits. | `skill_view(name='enforcement-change-safety')` |
 | `enforcer-modification-considerations` | 1.0.0 | Use before modifying any enforcer/governance code. | `skill_view(name='enforcer-modification-considerations')` |
@@ -178,16 +188,20 @@ their domain.
 | `golden-parity-harness` | 1.0.0 | Golden known-answer parity testing for system replacement. | `skill_view(name='golden-parity-harness')` |
 | `governance-compliance-reporting` | 1.0.0 | Review agent commits for enforcement compliance. | `skill_view(name='governance-compliance-reporting')` |
 | `governance-identity-hardening` | 1.0.0 | Use when hardening orchestrator identity or unlock tokens. | `skill_view(name='governance-identity-hardening')` |
+| `governance-lock-lifecycle` | 1.0.0 | Use when blocked after cortex update or end_change rejects. | `skill_view(name='governance-lock-lifecycle')` |
 | `governance-sentinel` | 1.0.0 | Recurring governance introspection — scrape brain sync snapshots for codepath patterns, compile weekly insi... | `skill_view(name='governance-sentinel')` |
 | `health-external-verification` | 1.0.0 | Verify your health endpoint is externally reachable by testing the URL end-to-end instead of assuming local... | `skill_view(name='health-external-verification')` |
+| `hermes-agent-regression-triage` | 1.0.0 | Use when hermes-agent breaks after update; audit+pin. | `skill_view(name='hermes-agent-regression-triage')` |
 | `hermes-backup` | 1.0.0 | Use when performing a full-system backup of a Hermes Agent server — survey, clean up caches, checkpoint dat... | `skill_view(name='hermes-backup')` |
 | `hermes-cortex-maintenance` | 1.36.0 | Maintain an installed Hermes Cortex instance — update both the upstream Hermes Agent and the cortex repo la... | `skill_view(name='hermes-cortex-maintenance')` |
 | `hermes-gateway-operations` | 1.0.0 | Diagnose, configure, and maintain Hermes messaging gateway platforms (Telegram, Discord, WhatsApp, etc.). C... | `skill_view(name='hermes-gateway-operations')` |
 | `hermes-home-cleanup` | 1.0.0 | Use when cleaning ~/.hermes or ~/.hermes-cortex. Verify. | `skill_view(name='hermes-home-cleanup')` |
+| `hermes-model-config` | 1.0.0 | Use when sessions run the wrong model or config regresses. | `skill_view(name='hermes-model-config')` |
 | `hermes-recovery` | 1.0.0 | Server migration, disaster recovery, and restoration workflows for Hermes Agent — restoring from tar.gz arc... | `skill_view(name='hermes-recovery')` |
 | `hermes-s6-container-supervision` | 1.0.0 | Modify or debug s6 services in the Hermes Docker image. | `skill_view(name='hermes-s6-container-supervision')` |
 | `inbox-remediation` | 1.1.0 | Auto-remediate hermes-cortex issues reported by peer agents via the Agent Bus. Scans pending remediation ma... | `skill_view(name='inbox-remediation')` |
 | `inference-sh-cli` | 1.0.0 | Run 150+ AI apps (image, video, LLM) via inference.sh CLI. | `skill_view(name='inference-sh-cli')` |
+| `installer-validation` | 1.0.0 | Validate installers and strip post-decommission stale refs. | `skill_view(name='installer-validation')` |
 | `integration-audit` | 1.0.0 | Comprehensive integration audit — runs all changed subsystems together before final commit to catch cross-s... | `skill_view(name='integration-audit')` |
 | `kanban-orchestrator` | 3.0.0 | Decomposition playbook + anti-temptation rules for an orchestrator profile routing work through Kanban. The... | `skill_view(name='kanban-orchestrator')` |
 | `kanban-worker` | 2.0.0 | Pitfalls, examples, and edge cases for Hermes Kanban workers. The lifecycle itself is auto-injected into ev... | `skill_view(name='kanban-worker')` |
@@ -200,6 +214,7 @@ their domain.
 | `loop-governance` | 1.5.0 | TDD cycle scoring, self-improvement, and governance system for Hermes Cortex. Scores completeness/quality/p... | `skill_view(name='loop-governance')` |
 | `maintenance-scan` | 1.0.0 | Systematic system health survey run proactively when the user gives an open-ended directive to "find work"... | `skill_view(name='maintenance-scan')` |
 | `mcp-health-monitoring` | 1.0.0 | Probe MCP server health; extend the governance watchdog. | `skill_view(name='mcp-health-monitoring')` |
+| `messaging-gateway` | 1.0.0 | Use when building/debugging the messaging gateway. | `skill_view(name='messaging-gateway')` |
 | `migration-deploy-verification` | 1.0.0 | Use when a repo migration is missing from the live DB. | `skill_view(name='migration-deploy-verification')` |
 | `mycortex` | 1.1.0 | Use for mycortex knowledge brain work or mycortex migration. | `skill_view(name='mycortex')` |
 | `name-discovery` | 1.0.0 | Use when checking if a software/tool name is available for use — searches GitHub, web, and registries for c... | `skill_view(name='name-discovery')` |
@@ -221,19 +236,23 @@ their domain.
 | `proactive-system-scan` | 1.0.0 | Multi-faceted system scan to discover work, issues, and improvement opportunities when the user gives an op... | `skill_view(name='proactive-system-scan')` |
 | `project-run-scripts` | 1.0.0 | DEFINITIVE canonical template for ./run — single bash CLI entrypoint covering Docker lifecycle, dev servers... | `skill_view(name='project-run-scripts')` |
 | `psql-automation` | 1.0.0 | psql from scripts — error propagation, docker wrappers. | `skill_view(name='psql-automation')` |
+| `reliable-agent-design` | 1.0.0 | Use when designing or improving LLM agent workflows. | `skill_view(name='reliable-agent-design')` |
 | `remediation-investigation` | 1.0.0 | Trace remediation sensor reports to their source, cross-reference live state, and distinguish transient fro... | `skill_view(name='remediation-investigation')` |
+| `rename-sweep` | 1.0.0 | Fleet-wide term/artifact renames and decommission sweeps. | `skill_view(name='rename-sweep')` |
 | `repo-health-review` | 1.1.0 | Systematic repo health review — survey scripts, detect duplicates, check naming, find gaps, prune dead weig... | `skill_view(name='repo-health-review')` |
 | `security-audit` | 2.3.0 | Full-pipeline Ubuntu/Debian server security + cleanup. Audits DDoS protection, anti-spam, system hardening,... | `skill_view(name='security-audit')` |
 | `self-improvement-pipeline` | 1.0.0 | Transform user corrections and system warnings into permanent guardrails. Covers zero-ask discipline, docto... | `skill_view(name='self-improvement-pipeline')` |
 | `sensor-false-positive-remediation` | 1.0.0 | Handle false positives from the auto-remediation sensor pipeline. Covers the trace-before-create workflow f... | `skill_view(name='sensor-false-positive-remediation')` |
 | `server-administration` | 1.10.0 | Ongoing IT & Security Administration for production Linux servers. Covers routine health checks, Docker con... | `skill_view(name='server-administration')` |
 | `server-hardening` | 1.8.0 | Comprehensive security audit and hardening for Linux servers running web services (nginx, Docker, fail2ban,... | `skill_view(name='server-hardening')` |
+| `shared-repo-push-gates` | 1.0.0 | Shared-repo push blocked? Know the gates that block you. | `skill_view(name='shared-repo-push-gates')` |
 | `shell-scripting` | 1.1.0 | Shell scripting patterns, portability pitfalls, and cross-platform compatibility for bash/awk scripts in th... | `skill_view(name='shell-scripting')` |
 | `skill-curation` | 1.0.0 | Consolidate, dedupe, and prune the skill library — merge overlapping skills into one (absorbed_into), delet... | `skill_view(name='skill-curation')` |
 | `staging-server-operations` | 1.19.0 | Safe operational practices for Docker-based staging servers — volume management, change verification, and d... | `skill_view(name='staging-server-operations')` |
 | `sudoers-audit` | 1.0.0 | Systematically audit, test, and debug sudoers NOPASSWD rules — verify allowed commands actually run without... | `skill_view(name='sudoers-audit')` |
 | `sweep-verification` | 1.0.0 | Verify a decommission sweep removed every file and ref. | `skill_view(name='sweep-verification')` |
 | `sync-allow-ips-to-fail2ban` | 1.0.0 | Sync IPs from allow-ips-manual.conf to fail2ban ignoreip | `skill_view(name='sync-allow-ips-to-fail2ban')` |
+| `task-queue-workflow` | 1.0.0 | Use when claiming task-db slices under task model v3. | `skill_view(name='task-queue-workflow')` |
 | `telegram-delivery-diagnostics` | 1.0.0 | Diagnose and fix Telegram delivery issues for Hermes cron jobs — delivery pipeline tracing, DNS/network dia... | `skill_view(name='telegram-delivery-diagnostics')` |
 | `terminal-emulator-config` | 1.0.0 | Diagnose terminal input issues and review emulator configs. | `skill_view(name='terminal-emulator-config')` |
 | `third-party-code-vetting` | 1.0.0 | Vet third-party code before it enters the repo or runs on a host — upstream patches, vendored scripts, inst... | `skill_view(name='third-party-code-vetting')` |
@@ -350,7 +369,7 @@ their domain.
 |-------|---------|---------|-----------|
 | `openclaw-migration` | 1.0.0 | Import an OpenClaw setup (memories, skills) into Hermes. | `skill_view(name='openclaw-migration')` |
 
-## Mlops (33 skills)
+## Mlops (32 skills)
 
 | Skill | Version | Purpose | Load With |
 |-------|---------|---------|-----------|
@@ -364,7 +383,6 @@ their domain.
 | `fine-tuning-with-trl` | 1.0.1 | TRL: SFT, DPO, GRPO, RLOO reward modeling for LLM RLHF. | `skill_view(name='fine-tuning-with-trl')` |
 | `guidance` | 1.0.1 | Constrain LLM output with grammars; guarantee valid JSON. | `skill_view(name='guidance')` |
 | `huggingface-accelerate` | 1.0.1 | Run PyTorch training across GPUs with minimal changes. | `skill_view(name='huggingface-accelerate')` |
-| `huggingface-tokenizers` | 1.0.0 | Fast BPE/WordPiece tokenization and custom vocab training. | `skill_view(name='huggingface-tokenizers')` |
 | `instructor` | 1.0.0 | Structured LLM outputs validated with Pydantic. | `skill_view(name='instructor')` |
 | `lambda-labs-gpu-cloud` | 1.0.0 | On-demand GPU cloud instances for ML training. | `skill_view(name='lambda-labs-gpu-cloud')` |
 | `llava` | 1.0.0 | Vision-language chat: VQA, captioning, image dialogue. | `skill_view(name='llava')` |
@@ -394,7 +412,7 @@ their domain.
 |-------|---------|---------|-----------|
 | `paid-ads` | 1.0.0 | When the user wants help with paid advertising campaigns on Google Ads, Meta (Facebook/Instagram), LinkedIn... | `skill_view(name='paid-ads')` |
 
-## Productivity (8 skills)
+## Productivity (9 skills)
 
 | Skill | Version | Purpose | Load With |
 |-------|---------|---------|-----------|
@@ -402,6 +420,7 @@ their domain.
 | `here.now` | 1.15.3 | Publish sites to {slug}.here.now and store files in Drives. | `skill_view(name='here.now')` |
 | `korean-language-learning` | 1.0.0 | A warm, practical Korean language companion for English speakers aged 50+. Covers Hangul mastery, essential... | `skill_view(name='korean-language-learning')` |
 | `memento-flashcards` | 1.0.0 | Spaced-repetition flashcard system. Create cards from facts or text, chat with flashcards using free-text a... | `skill_view(name='memento-flashcards')` |
+| `pdf-template-match` | 1.0.0 | Use when matching a PDF to a reference PDF's layout. | `skill_view(name='pdf-template-match')` |
 | `shop-app` | 0.0.28 | Shop.app: product search, order tracking, returns, reorder. | `skill_view(name='shop-app')` |
 | `shopify` | 1.0.0 | Shopify Admin & Storefront GraphQL APIs via curl. Products, orders, customers, inventory, metafields. | `skill_view(name='shopify')` |
 | `siyuan` | 1.0.0 | Query and edit a SiYuan knowledge base via its API. | `skill_view(name='siyuan')` |
@@ -475,24 +494,20 @@ their domain.
 |-------|---------|---------|-----------|
 | `social-content` | 1.0.0 | When the user wants help creating, scheduling, or optimizing social media content for LinkedIn, Twitter/X,... | `skill_view(name='social-content')` |
 
-## Social Media (1 skill)
-
-| Skill | Version | Purpose | Load With |
-|-------|---------|---------|-----------|
-
 ## Social Media Analyzer (1 skill)
 
 | Skill | Version | Purpose | Load With |
 |-------|---------|---------|-----------|
 | `social-media-analyzer` | 1.0.0 | Social media campaign analysis and performance tracking. Calculates engagement rates, ROI, and benchmarks a... | `skill_view(name='social-media-analyzer')` |
 
-## Software Development (48 skills)
+## Software Development (51 skills)
 
 | Skill | Version | Purpose | Load With |
 |-------|---------|---------|-----------|
 | `adversarial-finding-fix-patterns` | 1.0.0 | Fix adversarial-verify.py findings with real handling. | `skill_view(name='adversarial-finding-fix-patterns')` |
 | `adversarial-verifier` | 1.0.0 | Adversarial verification — systematically attempts to break code BEFORE it ships. Covers A0-A5 maturity lev... | `skill_view(name='adversarial-verifier')` |
 | `agent-contract` | 1.0.0 | Core execution contract: real work, honest results, verified outputs, minimal changes. | `skill_view(name='agent-contract')` |
+| `agent-ergonomic-output` | 1.0.0 | Use when building scripts whose stdout agents read (AXI). | `skill_view(name='agent-ergonomic-output')` |
 | `agent-flow` | 1.1.0 | Workflow router skill — classifies the incoming request into one of 12 patterns and dispatches to the corre... | `skill_view(name='agent-flow')` |
 | `api-documentation` | 1.0.0 | API documentation standards and tooling: OpenAPI/Swagger specs, endpoint descriptions, request/response sch... | `skill_view(name='api-documentation')` |
 | `architecture-review` | 1.2.0 | Multi-role architecture review (a.k.a. HC-Party) with weighted decision matrices, conflict resolution, and... | `skill_view(name='architecture-review')` |
@@ -503,6 +518,7 @@ their domain.
 | `code-review` | 3.0.0 | Two-axis pre-commit review: Standards (documents + code smells) and Spec (requirement compliance) via paral... | `skill_view(name='code-review')` |
 | `code-wiki` | 0.1.0 | Generate wiki docs + Mermaid diagrams for any codebase. | `skill_view(name='code-wiki')` |
 | `codebase-design` | 1.0.0 | Deep module vocabulary and design principles — module, interface, depth, seam, adapter, leverage, locality.... | `skill_view(name='codebase-design')` |
+| `context-engineering` | 1.0.0 | Context design for agents: pre-fetch, compaction, envelopes. | `skill_view(name='context-engineering')` |
 | `dev-plan` | 2.1.0 | Plan mode: write an actionable markdown plan to .hermes/plans/, no execution. Bite-sized tasks, exact paths... | `skill_view(name='dev-plan')` |
 | `documentation-auditing` | 1.0.0 | Audit documentation for stale file paths, broken cross-references, and correctness gaps. Systematic approac... | `skill_view(name='documentation-auditing')` |
 | `engineering-approach` | 1.9.0 | Engineering and communication standards for this project: terse, direct, skip explanations, always handle e... | `skill_view(name='engineering-approach')` |
@@ -531,6 +547,7 @@ their domain.
 | `save-lesson` | 1.0.0 | Auto-save a bug-fix lesson after resolving any non-trivial error. | `skill_view(name='save-lesson')` |
 | `session-manager` | 1.1.0 | Session management skill — checkpoint/restore, context compression, progress tracking, and recovery for mai... | `skill_view(name='session-manager')` |
 | `session-orchestration` | 1.0.0 | Five-wave session orchestration: Discovery → Impl-Core → Impl-Polish → Quality → Finalization. Quality gate... | `skill_view(name='session-orchestration')` |
+| `software-factory` | 1.0.0 | Real features: 4-gate design with user approval per gate. | `skill_view(name='software-factory')` |
 | `state-orchestrator` | 1.0.0 | Information routing decision matrix for Hermes Cortex agents. Defines when to consult live context vs sessi... | `skill_view(name='state-orchestrator')` |
 | `story-decomposition` | 1.0.0 | Break features into user-visible, testable stories using vertical slicing patterns. | `skill_view(name='story-decomposition')` |
 | `storybook-setup` | 1.0.0 | Set up Storybook with Next.js (Vite) + Tailwind CSS + @storybook/test — init, Tailwind wiring, story patter... | `skill_view(name='storybook-setup')` |
