@@ -856,7 +856,10 @@ MSG_SLUG=$(echo "$COMMIT_MSG" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/
 TASK_ID="precommit-${REPO_NAME}-${BRANCH}/${MSG_SLUG}"
 
 # Auto-increment cycle number per task (so repeated commits with same message get cycles 1,2,3...)
-DB_PATH="$HOME/.hermes-cortex/data/loop-governance.db"
+# DB override: PRE_COMMIT_SCORE_DB points scoring at a SCRATCH sqlite DB (test
+# harnesses set it so commits in temp/test repos never pollute the PROD
+# loop-governance DB — review-queue pollution root cause, slice 74f2ac46).
+DB_PATH="${PRE_COMMIT_SCORE_DB:-$HOME/.hermes-cortex/data/loop-governance.db}"
 PREV_CYCLE=$(python3 -c "
 import sqlite3, os
 db = os.path.expanduser('$DB_PATH')
@@ -886,6 +889,7 @@ fi
 SCORE_OUTPUT=$($_TIMEOUT_BIN "$PYTHON_BIN" "$SCORE_CYCLE" \
   --task "$TASK_ID" \
   --cycle "$CYCLE_NUM" \
+  --db "$DB_PATH" \
   --code-file "$ALL_CODE_FILE" \
   --prev-code-file "$PREV_FILE" \
   --pass-pct "$PASS_PCT" \

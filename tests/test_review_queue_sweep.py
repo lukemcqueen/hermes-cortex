@@ -11,6 +11,10 @@ Proves the stale-sweep + triage contract against a temp loop-governance DB:
   F: already-overridden STOP-ok older than cutoff       -> untouched (no rubber stamp)
   G: stale PENDING (>24h, no live lock)                 -> alert ONCE
   H: clean DB                                           -> silent, exit 0
+  J: precommit test-fixture rows (detached-HEAD/test-repo signatures)
+                                                        -> auto-cleaned (marked, logged, silent)
+  K: real cycles + already-overridden fixture rows      -> untouched (idempotent)
+  L: fixture cleanup in --dry-run                       -> reported, nothing written
 
 Run:  python3 tests/test_review_queue_sweep.py
 Optional: REVIEW_SWEEP_PATH=/path/to/agent-review-queue-sweep.py
@@ -157,13 +161,43 @@ def main() -> int:
     if rc != 0 or "DRY-RUN" not in out or r[1] is not None:
         failures.append(f"I dry-run no-write: rc={rc} out={out!r} row={r!r}")
 
+    # J: precommit test-fixture rows (detached-HEAD / test-repo signatures) are
+    # auto-cleaned — marked overridden (reversible), never deleted, silent exit.
+    db, state = _mkdb([
+        (10, "precommit-repo-HEAD\nunknown/update", LOOP, 10.0, None, None, None),
+        (11, "precommit-tdd-gate-test-master/add-code-no-test", MOVE_ON, 10.0, None, None, None),
+    ])
+    rc, out = _run(db, state)
+    r10, r11 = _row(db, 10), _row(db, 11)
+    if rc != 0 or out != "" or r10[1] != 1 or r11[1] != 1 or "fixture" not in (r10[2] or ""):
+        failures.append(f"J fixture cleanup: rc={rc} out={out!r} r10={r10!r} r11={r11!r}")
+
+    # K: real cycles untouched by fixture cleanup; already-overridden fixture
+    # rows untouched (idempotent — no re-mark, note preserved)
+    db, state = _mkdb([
+        (12, "precommit-hermes-cortex-main/fix-verify-deploy-chain", LOOP, 10.0, None, None, None),
+        (13, "precommit-repo-HEAD\nunknown/update", LOOP, 10.0, "human marked", 1, None),
+    ])
+    rc, out = _run(db, state)
+    r12, r13 = _row(db, 12), _row(db, 13)
+    if rc != 0 or r12[1] is not None or r13[1] != 1 or r13[2] != "human marked":
+        failures.append(f"K real/override untouched: rc={rc} out={out!r} r12={r12!r} r13={r13!r}")
+
+    # L: dry-run reports fixture candidates without writing
+    db, state = _mkdb([(14, "precommit-repo-HEAD\nunknown/update", LOOP, 10.0, None, None, None)])
+    rc, out = _run(db, state, ["--dry-run"])
+    r = _row(db, 14)
+    if rc != 0 or "fixture" not in out or r[1] is not None:
+        failures.append(f"L fixture dry-run: rc={rc} out={out!r} row={r!r}")
+
     if failures:
         print(f"FAIL ({len(failures)}):")
         for f in failures:
             print(f"  - {f}")
         return 1
-    print(f"PASS — {SWEEP.name}: 9/9 scenarios (A close, B age, C note, D hard-fail, "
-          "E never-close, F override, G pending-leak, H clean, I dry-run)")
+    print(f"PASS — {SWEEP.name}: 12/12 scenarios (A close, B age, C note, D hard-fail, "
+          "E never-close, F override, G pending-leak, H clean, I dry-run, "
+          "J fixture-clean, K real-untouched, L fixture-dry-run)")
     return 0
 
 
