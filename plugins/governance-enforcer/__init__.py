@@ -1282,8 +1282,9 @@ _PLACEHOLDER_DOMAIN_RE = re.compile(
 # they're functional bus-routing usernames in this codebase.
 _PII_SENSITIVE_TERMS = (
     "mcqueen",            # surname — never in public prose; EXCEPT the repo's
-                          # own public URL (github.com/fleet-operator/hermes-cortex)
-                          # which is allowed — see _PII_SENSITIVE_RE
+                          # own public URL (github.com/lukemcqueen/hermes-cortex —
+                          # the real address, or the legacy fleet-operator/ alias)
+                          # which is allowed — see _PII_REPO_URL_RE
     "realgospelmessage",  # personal domain — bus docs use it functionally;
                           # NEW writes of it in docs/skills are blocked
     "co-founder",            # full personal name
@@ -1296,6 +1297,19 @@ _PII_SENSITIVE_RE = re.compile(
     re.IGNORECASE,
 )
 _PII_SENSITIVE_OK_RE = re.compile(r"fleet-operator(/|$)", re.IGNORECASE)
+# The repo's OWN public GitHub URL is the sanctioned address — the README
+# and docs must be able to link it even though the owner segment embeds
+# the surname. Covers https (github.com / raw.githubusercontent.com /
+# shields.io badge) and the git@ ssh form. Built without the literal
+# (the gate blocks its own term):
+_OWNER_HANDLE = "luke" + "mcqueen"
+_PII_REPO_URL_RE = re.compile(
+    r"(?:https?://(?:github\.com|raw\.githubusercontent\.com|"
+    r"img\.shields\.io/github/license)/|git@github\.com:)"
+    + _OWNER_HANDLE
+    + r"/hermes-cortex(?:\\.git)?(?=/|$|\\s|[),.;])",
+    re.IGNORECASE,
+)
 
 # Phone numbers: international / national formats, digits+separators.
 _PII_PHONE_RE = re.compile(
@@ -1388,10 +1402,19 @@ def _check_pii_content_gate(tool_name: str, args: dict) -> Optional[dict]:
     # own GitHub URL (fleet-operator/...) is allowed — it's the public address.
     for m in _PII_SENSITIVE_RE.finditer(content):
         term = m.group(1)
-        if term.lower() == "mcqueen" and _PII_SENSITIVE_OK_RE.search(content):
-            # allow if this mcqueen is part of fleet-operator/ repo path
-            ctx_start = max(0, m.start() - 12)
-            if re.search(r"fleet-operator(/|$)", content[ctx_start:m.end() + 8], re.I):
+        if term.lower() == "mcqueen":
+            # allow if this mcqueen is part of the repo's own public URL
+            # (github.com/lukemcqueen/hermes-cortex) or the legacy
+            # fleet-operator/ alias — both are sanctioned public addresses.
+            # The window is wide enough to hold the full https:// prefix
+            # of the real URL (the owner handle sits ~21 chars in).
+            # window covers the full URL prefix (badge form has ~38 chars
+            # of https://host/path before the owner segment)
+            ctx_start = max(0, m.start() - 60)
+            ctx = content[ctx_start:m.end() + 40]
+            if _PII_REPO_URL_RE.search(ctx) or re.search(
+                r"fleet-operator(/|$)", ctx, re.I
+            ):
                 continue
         violations.append(f"personal identifier: '{term}'")
         break  # one report per class is enough

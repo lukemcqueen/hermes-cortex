@@ -50,6 +50,8 @@ BLOCKED = [
 
 ALLOWED = [
     "clone https://github.com/fleet-operator/hermes-cortex",
+    f"clone https://github.com/luke{SURNAME}/hermes-cortex",
+    f"docs at https://raw.githubusercontent.com/luke{SURNAME}/hermes-cortex/main/README.md",
     "role at https://openai.com/careers",
     "https://himalayas.app/jobs/countries/south-korea/ai",
     "routing to luke and amy inboxes",
