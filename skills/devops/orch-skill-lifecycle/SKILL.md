@@ -303,6 +303,17 @@ Result: 3 skills updated, 1 upstreamed, 1 SOUL.md entry.
   nginx Basic auth — a bare `curl` returns 401, not JSON. The reliable
   read-side path is psql on the shared-bus mirror (archives replicate there):
   `docker exec mycortex-postgres psql -U mycortex -d mycortex -c "SELECT ... FROM bus.archives WHERE jsonb_typeof(body::jsonb)='object' AND (body::jsonb #>> '{}')::jsonb->>'subject' LIKE 'Learning Report%' ..."` (user is `mycortex`, not `postgres`).
+- **Fleet skill content is NOT in Learning Reports (2026-08-28)** →
+  `agent-learning-collector` sends only name/category/description per changed
+  skill (top 10), never the SKILL.md body. A `[NEW]` skill whose content lives
+  only on the reporting host cannot be upstreamed from bus data alone; with no
+  SSH path (agent hostnames unresolvable from moses's host) and no skills-hub,
+  the correct move is to request the content from the reporting agent via the
+  orchestrator inbox (📝 PROPOSAL / task) and defer the upstream to the next
+  run. NEVER fabricate or commit a placeholder body — the stub guard forbids
+  it (2026-08-05). Note esther (dual orchestrator) upstreams her own + fleet
+  skills directly (42625c80, acea4937) — re-check the repo before upstreaming
+  so a skill doesn't get committed twice.
 - **Don't patch the same skill twice in one run** — deduplicate before acting
 - **Don't upstream fleet skills that already exist** — check repo + Hermes bundle
 - **Don't modify SOUL.md for workflow lessons** — skills are for workflow, SOUL.md is for principles
