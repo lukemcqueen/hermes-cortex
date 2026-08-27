@@ -399,38 +399,42 @@ def _probe_health(url: str, timeout: float = 5.0) -> bool:
 
 
 def _norm_body(value) -> str:
-    """Canonical string form of a message body for duplicate comparison."""
-    if isinstance(value, dict):
-        return json.dumps(value, sort_keys=True, default=str)
-    s = value if isinstance(value, str) else str(value)
-    s = s.strip()
-    if s.startswith("{"):
-        try:
-            return json.dumps(json.loads(s), sort_keys=True, default=str)
-        except json.JSONDecodeError:
-            pass
-    return s
+    """Canonical string form of a message body for duplicate comparison.
+
+    Delegates to the shared implementation in cortex_bus so the dedup
+    rule lives in exactly one place (bus_outbox.py uses it too).
+    """
+    try:
+        from cortex_bus import bus_norm_body
+        return bus_norm_body(value)
+    except Exception:  # noqa: BLE001 — degrade to local if lib missing
+        if isinstance(value, dict):
+            return json.dumps(value, sort_keys=True, default=str)
+        s = value if isinstance(value, str) else str(value)
+        return s.strip()
 
 
 def _pending_duplicate(msgs: list, subject: str, body_text: str, corr_id: str) -> dict | None:
     """Return the first pending message duplicating the proposed send.
 
-    A duplicate is a pending message with the SAME correlation_id, or the
-    SAME subject AND the same body (canonical-form). Matching both subject
-    and body (not subject alone) lets parallel EXECs with different payloads
-    coexist while identical UPDATE_REQUESTs still get caught.
+    Canonical rule lives in cortex_bus.bus_find_duplicate — this shim
+    keeps hc.py's call site unchanged while the semantics stay shared.
     """
-    norm_body = _norm_body(body_text)
-    for m in msgs:
-        env = m.get("body") if isinstance(m.get("body"), dict) else {}
-        m_corr = env.get("correlation_id")
-        m_subj = env.get("subject")
-        m_body = env.get("body")
-        if corr_id and m_corr and m_corr == corr_id:
-            return m
-        if m_subj == subject and m_body is not None and _norm_body(m_body) == norm_body:
-            return m
-    return None
+    try:
+        from cortex_bus import bus_find_duplicate
+        return bus_find_duplicate(msgs, subject, body_text, corr_id)
+    except Exception:  # noqa: BLE001 — degrade to local if lib missing
+        norm_body = _norm_body(body_text)
+        for m in msgs:
+            env = m.get("body") if isinstance(m.get("body"), dict) else {}
+            m_corr = env.get("correlation_id")
+            m_subj = env.get("subject")
+            m_body = env.get("body")
+            if corr_id and m_corr and m_corr == corr_id:
+                return m
+            if m_subj == subject and m_body is not None and _norm_body(m_body) == norm_body:
+                return m
+        return None
 
 
 def cmd_send(cfg: dict, args: list):

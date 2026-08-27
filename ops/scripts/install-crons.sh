@@ -556,6 +556,7 @@ if $UNINSTALL; then
     "cortex-bus-failover-watchdog" \
     "agent-message-handler" \
     "agent-mcp-health-watchdog" \
+    "agent-bus-retry-sweep" \
     "agent-mycortex-sync" \
     "agent-mycortex-retention" \
     "agent-model-health-watchdog" \
@@ -921,6 +922,20 @@ create_cron "agent-langfuse-health-watchdog" "0 * * * *" \
 # alert when loop-governance/tasks go down (ALL WRITES BLOCKED). no_agent.
 create_cron "agent-mcp-health-watchdog" "*/5 * * * *" \
   "agent-mcp-health-watchdog.py" \
+  "" \
+  "" \
+  "" \
+  "telegram:${TELEGRAM_HOME_CHANNEL}" \
+  "" \
+  "true"
+
+# Bus outbox retry sweep (2026-08-27): re-sends messages queued by
+# bus_send when the bus was unreachable (~/.hermes-cortex/bus-retry/).
+# Watchdog pattern — silent when the outbox is empty; alerts on
+# quarantine / persistent bus-down. no_agent. Runs the lib module
+# directly (no wrapper): lib/ is on sys.path[0] as the script's dir.
+create_cron "agent-bus-retry-sweep" "*/15 * * * *" \
+  "lib/bus_outbox.py" \
   "" \
   "" \
   "" \

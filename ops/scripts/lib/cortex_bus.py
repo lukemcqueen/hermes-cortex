@@ -128,25 +128,86 @@ def _bus_post(endpoint: str, payload: dict, fallback: bool = False) -> dict:
 
 def bus_send(queue: str, message_body: dict) -> dict | None:
     """Send a message to a bus queue. Returns response dict or None on failure.
-    
+
     Auto-serializes the inner `body` field (if it's a dict) so callers don't
     need to remember json.dumps() before passing it.
+
+    Resilience (2026-08-27): when the bus is unreachable, the message is
+    queued to the durable outbox (~/.hermes-cortex/bus-retry/) and returns
+    {"queued": true, "outbox_file": <path>} — a truthy value, so existing
+    callers that treat truthy as success keep working and the message is
+    NOT lost. The agent-bus-retry-sweep cron re-sends it with backoff.
+    Set CORTEX_BUS_NO_OUTBOX=1 to disable (hard-fail to None).
     """
     try:
-        # Auto-serialize inner body if it's a dict (prevents double-encoding)
-        inner_body = message_body.get("body")
+        # Serialize into a LOCAL copy — never mutate the caller's dict.
+        # The pristine message goes to the wire AND to the outbox on
+        # failure, so retry-file hashes match across attempts.
+        wire_body = dict(message_body)
+        inner_body = wire_body.get("body")
         if isinstance(inner_body, dict):
-            message_body["body"] = json.dumps(inner_body)
-        
+            wire_body["body"] = json.dumps(inner_body)
+
         payload = {
             "queue": queue,
-            "message": json.dumps(message_body),
+            "message": json.dumps(wire_body),
             "correlation_id": message_body.get("correlation_id", ""),
         }
         return _bus_post("/api/pgmq/send", payload)
     except (ConnectionError, OSError, json.JSONDecodeError) as e:
         logging.getLogger("cortex_bus").warning("bus_send failed: %s", e)
-        return None
+        if os.environ.get("CORTEX_BUS_NO_OUTBOX") == "1":
+            return None
+        try:
+            from bus_outbox import enqueue  # lazy: break import cycle
+            return enqueue(queue, message_body)  # pristine message, not wire_body
+        except Exception as outbox_err:  # noqa: BLE001 — outbox must not mask the original
+            logging.getLogger("cortex_bus").error(
+                "bus_send failed AND outbox enqueue failed: %s", outbox_err)
+            return None
+
+
+def bus_norm_body(value) -> str:
+    """Canonical string form of a message body for duplicate comparison.
+
+    Dicts and JSON strings are normalized (sorted keys, stable separators)
+    so semantically identical bodies compare equal regardless of key order
+    or whether they were serialized before arriving.
+    """
+    if isinstance(value, dict):
+        return json.dumps(value, sort_keys=True, default=str)
+    s = value if isinstance(value, str) else str(value)
+    s = s.strip()
+    if s.startswith("{"):
+        try:
+            return json.dumps(json.loads(s), sort_keys=True, default=str)
+        except json.JSONDecodeError:
+            pass
+    return s
+
+
+def bus_find_duplicate(msgs: list, subject: str, body_text: str, corr_id: str) -> dict | None:
+    """Return the first pending message duplicating the proposed send.
+
+    A duplicate is a pending message with the SAME correlation_id, or the
+    SAME subject AND the same body (canonical form). Matching both subject
+    and body (not subject alone) lets parallel EXECs with different payloads
+    coexist while identical UPDATE_REQUESTs still get caught.
+
+    Canonical home of this rule — hc.py (CLI dedup gate) and bus_outbox.py
+    (retry resend dedup) both call this so the semantics never drift.
+    """
+    norm_body = bus_norm_body(body_text)
+    for m in msgs:
+        env = m.get("body") if isinstance(m.get("body"), dict) else {}
+        m_corr = env.get("correlation_id")
+        m_subj = env.get("subject")
+        m_body = env.get("body")
+        if corr_id and m_corr and m_corr == corr_id:
+            return m
+        if m_subj == subject and m_body is not None and bus_norm_body(m_body) == norm_body:
+            return m
+    return None
 
 
 def learning_capture(

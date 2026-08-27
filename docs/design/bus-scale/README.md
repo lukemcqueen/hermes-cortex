@@ -60,6 +60,7 @@ All designs in this directory follow these principles:
 | [VictoriaMetrics Bus Metrics](prometheus-metrics.md) | Observable bus: latency, depth, error rates (push model) |
 | [Long-Poll Read](long-poll-read.md) | Reduce PG load with HTTP long-poll |
 | [Per-Queue Circuit Breaker](circuit-breaker.md) | Backpressure, inbox limits, per-agent isolation |
+| [Client-Side Durable Outbox](client-outbox-retry.md) | **Implemented 2026-08-27** — `bus_send` queues locally when the bus is down; backoff sweep re-sends |
 | [Bus Audit Log](audit-log.md) | Enterprise compliance — every operation logged |
 | [Integration Test Harness](integration-test-harness.md) | Multi-agent bus testing for CI/CD |
 

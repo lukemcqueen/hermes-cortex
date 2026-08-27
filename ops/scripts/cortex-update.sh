@@ -564,6 +564,7 @@ register "ops/scripts/manage/agent-session-correction-scan.py" "${CORTEX_DEPLOY_
 # orch-bus-* scripts are orchestrator-only — run from repo path
 # Shared bus library for fleet scripts
 register "ops/scripts/lib/cortex_bus.py" "${CORTEX_DEPLOY_HOME}/scripts/lib/cortex_bus.py"
+register "ops/scripts/lib/bus_outbox.py" "${CORTEX_DEPLOY_HOME}/scripts/lib/bus_outbox.py"
 # Shared Telegram notify library (R-9: single Bot API copy — handler, verifier, task-db)
 register "ops/scripts/lib/telegram_notify.py" "${CORTEX_DEPLOY_HOME}/scripts/lib/telegram_notify.py"
 
