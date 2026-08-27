@@ -73,6 +73,37 @@ irrelevant until restart.
   prepare everything, verify on disk, then hand the restart to the host
   operator with the exact command. Don't loop-retry.
 
+## Memory-Provider Tool Registration (advertised ≠ routed)
+
+MemoryProvider tools register in TWO passes with different timing:
+
+- **Routing table** (`add_provider` → `get_tool_schemas()`) runs BEFORE
+  `initialize()` in `agent_init.py`. If `get_tool_schemas()` gates on
+  runtime state (e.g. `self._pg`), it returns `[]` at registration time →
+  the executor's routing table stays empty.
+- **System prompt** (`inject_memory_provider_tools` → `get_all_tool_schemas`)
+  runs AFTER `initialize()` — by then `_pg` exists, so the schemas ARE
+  advertised in the prompt.
+
+Result: tools listed in the system prompt but every call fails
+`{"error": "Unknown tool: mem_profile"}`. The gateway log tells the story:
+`Memory provider 'mycortex-mem' registered (0 tools)` while the prompt
+advertises 5.
+
+**Fix:** `get_tool_schemas()` must return static schemas unconditionally
+(only `_cron_skipped` / context-only recall mode suppress them) — never
+gate on connection state that only exists after `initialize()`. Regression
+test: instantiate the provider, call `get_tool_schemas()` BEFORE
+`initialize()`, assert the full tool set (RED → GREEN).
+
+**Plugin modules are cached in `sys.modules`** — `load_memory_provider`
+reuses the cached module (`_load_provider_from_dir` checks `sys.modules`
+first). A deployed plugin file fix is NOT loaded until the gateway process
+restarts, even though a fresh AIAgent is built per message. Log line
+"registered (0 tools)" persisting after deploy = old module still in
+memory; restart required (from a separate shell — in-process restart is
+blocked by the lifecycle guard).
+
 ## Pitfalls
 
 1. **Claiming "everything renamed" while the config key still has the old

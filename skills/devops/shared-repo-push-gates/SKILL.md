@@ -44,6 +44,21 @@ working tree), not a problem with your diff.
    Load the skill, run
    `python3 ~/.hermes-cortex/scripts/adversarial-verify.py --file <your-staged-files> --level A2 --gate`,
    then commit.
+4. **Orphaned PENDING cycles block push** (verified 2026-08-27). The doctor
+   FAILs on PENDING cycles from FINISHED tasks (no active lock) — e.g. a
+   cycle created by `begin_change` in a session whose lock was later purged
+   by restart/cortex-update. Symptom: push blocked with "doctor reports N
+   failure" + `❌ PENDING cycles`, even after dogfood passes. Fix: query
+   `mcp_loop_governance_cycle_query(unreviewed=true)`, `feedback_accept`
+   (or `feedback_override`) every orphaned PENDING cycle, re-run doctor to
+   0 fail, then push. The current task's own cycle (lock held) is INFO, not
+   a blocker.
+5. **Deploy-sync gate fires before push** (verified 2026-08-27). The push
+   gate requires deployed state == repo source (`❌ Deploy sync` /
+   `❌ <plugin> content`). After committing a repo change to a deployed
+   artifact (plugin, script), run `bash ~/.hermes-cortex/scripts/cortex-dogfood.sh --force`
+   (pull → deploy → doctor → verify) BEFORE `git push` — the gate runs the
+   doctor itself and will otherwise block.
 
 ## Concurrent-Session Discipline
 
