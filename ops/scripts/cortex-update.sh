@@ -2446,14 +2446,36 @@ main() {
   fi
 
   # ── Apply mycortex-mem schema (memory provider — Honcho replacement) ──
+  # Gate: only hosts whose memory.provider is mycortex-mem need this schema.
+  # A host with a different provider (or none) would otherwise hard-fail the
+  # ENTIRE update when the migration can't apply — bricking its deploy
+  # (2026-08-27: Titus stuck on this; same gating principle as the learnings
+  # schema below, which is register_orch-limited for the same reason).
+  local mem_provider=""
+  if command -v python3 >/dev/null 2>&1; then
+    mem_provider="$(python3 -c '
+import os, sys
+try:
+    sys.path.insert(0, os.path.expanduser("~/.hermes/hermes-agent"))
+    from hermes_cli.config import load_config
+    cfg = load_config()
+    print(cfg.get("memory", {}).get("provider", ""))
+except Exception:
+    pass
+' 2>/dev/null || true)"
+  fi
   local mem_migrate="${CORTEX_DEPLOY_HOME}/services/mycortex-mem/migrate.py"
   if [[ -f "$mem_migrate" ]]; then
-    info "Applying mycortex-mem migrations…"
-    if python3 "$mem_migrate"; then
-      : # migrations applied / already current
+    if [[ "$mem_provider" == "mycortex-mem" ]]; then
+      info "Applying mycortex-mem migrations…"
+      if python3 "$mem_migrate"; then
+        : # migrations applied / already current
+      else
+        error "mycortex-mem migrate.py FAILED — memory backend will be unavailable"
+        exit 1
+      fi
     else
-      error "mycortex-mem migrate.py FAILED — memory backend will be unavailable"
-      exit 1
+      info "Skipping mycortex-mem migration — memory.provider is '${mem_provider:-unset}' (not mycortex-mem)"
     fi
   fi
 
