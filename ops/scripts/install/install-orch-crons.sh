@@ -455,7 +455,7 @@ create_cron "orch-task-board-digest" "30 8 * * *" \
 # with plans, dispatch urgent work (LLM-driven, orchestrator intelligence).
 create_cron "orch-task-morning-pass" "0 7 * * *" \
   "" \
-  "Morning task pass (orchestrator, task model v3). You are Esther.
+  "Morning task pass (orchestrator, task model v3). You are the orchestrator on this host (host-derived identity, never self-claimed).
 
 1. task-db.py list --status pending --kind story + list --claimable.
 2. Decompose unsliced stories: task-db.py add '<slice>' --parent <story-id> --kind slice --scope fleet. Write executable plans into each slice.
@@ -472,7 +472,7 @@ create_cron "orch-task-morning-pass" "0 7 * * *" \
 # (LLM-driven, orchestrator-only verify privilege).
 create_cron "orch-task-evening-pass" "0 19 * * *" \
   "" \
-  "Evening verification pass (orchestrator, task model v3). You are Esther.
+  "Evening verification pass (orchestrator, task model v3). You are the orchestrator on this host (host-derived identity, never self-claimed).
 
 1. task-db.py list --board + list --status review.
 2. For each review slice: verify evidence is real (test output, measured numbers — never trust self-reported done). approve: task-db.py verify <id> --approve --note '<checked>'. reject: task-db.py verify <id> --reject --note '<gap>' (returns to in_progress).
