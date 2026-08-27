@@ -460,7 +460,13 @@ class MycortexMemMemoryProvider(MemoryProvider):
             logger.debug("mycortex-mem on_session_end failed: %s", e)
 
     def get_tool_schemas(self) -> List[Dict[str, Any]]:
-        if self._cron_skipped or not self._pg:
+        # NOTE: must NOT gate on self._pg — the gateway calls add_provider()
+        # (which reads this) BEFORE initialize() runs, so _pg is None at
+        # registration time. Gating here emptied the executor's routing table
+        # and every mem_* call failed "Unknown tool" while the system prompt
+        # still advertised the schemas. The schemas are static; only cron
+        # sessions and context-only recall mode suppress them.
+        if self._cron_skipped:
             return []
         if self._recall_mode == "context":
             return []
