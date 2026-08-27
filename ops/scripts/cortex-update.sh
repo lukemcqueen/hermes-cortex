@@ -527,6 +527,10 @@ register "ops/services/mycortex/schema/mycortex.sql"  "${CORTEX_DEPLOY_HOME}/ser
 register "ops/services/mycortex/schema/v002__rls-admin-reader-grants.sql" "${CORTEX_DEPLOY_HOME}/services/mycortex/schema/v002__rls-admin-reader-grants.sql"
 register "ops/services/mycortex/schema/v003__admin-schema-version-grant.sql" "${CORTEX_DEPLOY_HOME}/services/mycortex/schema/v003__admin-schema-version-grant.sql"
 register "ops/services/mycortex/schema/v004__embeddings.sql" "${CORTEX_DEPLOY_HOME}/services/mycortex/schema/v004__embeddings.sql"
+
+# mycortex-mem — persistent memory provider (Honcho replacement)
+register "ops/services/mycortex-mem/migrate.py"            "${CORTEX_DEPLOY_HOME}/services/mycortex-mem/migrate.py"
+register "ops/services/mycortex-mem/schema/v001__mem.sql"  "${CORTEX_DEPLOY_HOME}/services/mycortex-mem/schema/v001__mem.sql"
 register "ops/scripts/manage/mycortex-parity.py"      "${CORTEX_DEPLOY_HOME}/scripts/mycortex-parity.py"
 register "ops/scripts/manage/mycortex"                "${CORTEX_DEPLOY_HOME}/scripts/mycortex"
 # mycortex-postgres compose (dedicated hermes-cortex-owned Postgres, NOT langfuse)
@@ -1929,6 +1933,43 @@ deploy_mycortex_plugin() {
   return 0
 }
 
+# ── Memory + Guard Plugin Deploy ─────────────────────────────
+# Deploys the mycortex-mem (persistent memory provider, Honcho
+# replacement) and prompt-guard (LLM request middleware) plugins as
+# plain COPIES to ~/.hermes/plugins/. Sources of truth live in the
+# repo plugins/ dir — the deployed copies are deploy artifacts, and
+# cortex-doctor's Deploy sync check verifies repo↔deployed parity.
+# Not immutable — they're user plugins, not enforcement.
+deploy_mem_plugins() {
+  local plugins=("mycortex-mem" "prompt-guard")
+  local files=("__init__.py" "plugin.yaml")
+  local changed=0
+
+  for plugin in "${plugins[@]}"; do
+    local repo_plugin="${REPO_DIR}/plugins/${plugin}"
+    local plugin_dir="${HOME}/.hermes/plugins/${plugin}"
+    [[ -d "$repo_plugin" ]] || { warn "  Plugin source missing: ${repo_plugin}"; continue; }
+    mkdir -p "$plugin_dir"
+    for file in "${files[@]}"; do
+      local src="${repo_plugin}/${file}"
+      local dest="${plugin_dir}/${file}"
+      [[ ! -f "$src" ]] && continue
+      cp -f "$src" "$dest"
+      info "    Copied: ${plugin}/${file}"
+      changed=$((changed + 1))
+    done
+    # config.yaml only — plugin module loads at gateway start (deploy ≠ load)
+    if command -v hermes &>/dev/null; then
+      hermes plugins disable "$plugin" 2>/dev/null || true
+      hermes plugins enable "$plugin" 2>/dev/null || true
+    fi
+    info "  Plugin ${plugin} files deployed (activates after gateway restart)"
+  done
+
+  [[ "$changed" -gt 0 ]] && info "  Memory/guard plugins deployed: ${changed} file(s) updated"
+  return 0
+}
+
 # ── Stale Service Detector ─────────────────────────────────
 # Detects known-dead services that should have been removed.
 # Runs on every agent after every update — both Linux + macOS.
@@ -2404,6 +2445,18 @@ main() {
     fi
   fi
 
+  # ── Apply mycortex-mem schema (memory provider — Honcho replacement) ──
+  local mem_migrate="${CORTEX_DEPLOY_HOME}/services/mycortex-mem/migrate.py"
+  if [[ -f "$mem_migrate" ]]; then
+    info "Applying mycortex-mem migrations…"
+    if python3 "$mem_migrate"; then
+      : # migrations applied / already current
+    else
+      error "mycortex-mem migrate.py FAILED — memory backend will be unavailable"
+      exit 1
+    fi
+  fi
+
   # ── Apply tasks schema (enterprise task workflow — party-reviewed design) ──
   # Version-gated runner (tasks.schema_version) — idempotent re-apply. DDL
   # runs as the DB owner (mycortex); CRUD never touches superuser (B-2).
@@ -2466,6 +2519,9 @@ main() {
 
   # Deploy mycortex-command plugin (/brain + /mycortex slash commands)
   deploy_mycortex_plugin
+
+  # Deploy mycortex-mem + prompt-guard plugins (memory provider + LLM guard)
+  deploy_mem_plugins
 
   # ── Cron cost tracking: auto-reapply the scheduler patch ──
   # The cost capture lives as a marker-patch inside scheduler.py (Hermes

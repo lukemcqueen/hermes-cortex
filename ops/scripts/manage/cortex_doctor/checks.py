@@ -3996,6 +3996,48 @@ def check_skill_drift(res):
             "Resolve each drift entry above")
 
 
+def check_mem_plugins(res):
+  """Memory/guard plugins: mycortex-mem + prompt-guard deployed copies match repo source.
+
+  The plugin SOURCES live in the repo (plugins/mycortex-mem, plugins/prompt-guard);
+  cortex-update.sh deploys copies to ~/.hermes/plugins/. This check verifies the
+  deployed copy is byte-identical to the repo source (deploy sync parity) and that
+  the plugins are enabled in config.yaml. Deploy != load: content changes activate
+  only after the gateway process is re-started by an operator.
+  """
+  config_text = read_file(CONFIG_FILE)
+  for plugin in ("mycortex-mem", "prompt-guard"):
+    plugin_dir = HERMES_HOME / "plugins" / plugin
+    plugin_src = CORTEX_REPO / "plugins" / plugin
+    if plugin_dir.exists() and (plugin_dir / "__init__.py").exists():
+      res.add(f"{plugin} plugin", "PASS", f"installed at ~/.hermes/plugins/{plugin}")
+      deployed_init = plugin_dir / "__init__.py"
+      repo_init = plugin_src / "__init__.py"
+      if deployed_init.exists() and repo_init.exists():
+        deployed_hash = hashlib.sha256(deployed_init.read_bytes()).hexdigest()
+        repo_hash = hashlib.sha256(repo_init.read_bytes()).hexdigest()
+        if deployed_hash == repo_hash:
+          res.add(f"{plugin} content", "PASS", "copy matches repo source")
+        else:
+          res.add(f"{plugin} content", "FAIL",
+              "deployed copy differs from repo — stale after git update",
+              "REQUIRED: bash ~/hermes-cortex/ops/scripts/cortex-update.sh"
+              " (sanctioned deploy path — copies from repo plugins/ dir)")
+      else:
+        res.add(f"{plugin} content", "WARN",
+            "can't compare — source or deployed __init__.py missing")
+      enabled = plugin in config_text and "enabled" in config_text
+      if enabled:
+        res.add(f"{plugin} config", "PASS", "enabled in config.yaml")
+      else:
+        res.add(f"{plugin} config", "WARN",
+            "not enabled in config.yaml",
+            "Add to plugins.enabled or run: hermes plugins enable " + plugin)
+    else:
+      res.add(f"{plugin} plugin", "WARN", "not installed",
+          "Run: bash ~/hermes-cortex/ops/scripts/cortex-update.sh (deploys from repo)")
+
+
 def check_mycortex_parity(res):
     """Mycortex parity gate — RETIRED 2026-08-03.
 

@@ -1,0 +1,5 @@
+name: prompt-guard
+description: LLM request middleware — injection detection, policy enforcement, prompt rewriting
+version: 1.0.0
+author: Hermes Cortex
+license: MIT

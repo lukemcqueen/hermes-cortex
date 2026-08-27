@@ -1,0 +1,5 @@
+name: mycortex-mem
+version: 1.0.0
+description: "Postgres-based persistent memory (Honcho replacement) — peer cards, hybrid search, dialectic reasoning, conclusions."
+hooks:
+  - on_session_end

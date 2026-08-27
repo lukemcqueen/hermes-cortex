@@ -40,6 +40,7 @@ from .checks import (
     check_task_lifecycle_v2,
     check_skill_drift,
     check_mycortex_parity,
+    check_mem_plugins,
     check_cron_runtime_scripts,
     check_langfuse_observability,
 )
@@ -87,6 +88,7 @@ def main():
         check_task_lifecycle_v2,
         check_skill_drift,
         check_mycortex_parity,
+        check_mem_plugins,
         check_hook_drift,
         check_cron_runtime_scripts,
         check_langfuse_observability,
