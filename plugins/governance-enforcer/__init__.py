@@ -1320,7 +1320,8 @@ _PII_PHONE_RE = re.compile(
 # flagged as personal-infra exposure. Well-known public hosts pass.
 _PII_SERVER_URL_RE = re.compile(r"https?://([a-z0-9.-]+)", re.IGNORECASE)
 _PUBLIC_HOST_RE = re.compile(
-    r"^(github\.com|gitlab\.com|docs\.[a-z0-9.-]+|[a-z0-9.-]+\.(org|io|dev|"
+    r"^(github\.com|gitlab\.com|docs\.[a-z0-9.-]+|localhost|127\.0\.0\.1|"\
+    r"[a-z0-9.-]+\.(org|io|dev|"
     r"com|net|ai|co|app|edu)(/|$))"
     r"|^(api\.|www\.|openai\.com|anthropic\.com|himalayas\.app|"
     r"crossover\.com|ziprecruiter\.com|remoterocketship\.com|"
