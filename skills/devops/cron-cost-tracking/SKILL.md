@@ -135,7 +135,7 @@ Restart: `systemctl --user restart hermes-gateway` (user unit; restart
 kills running cron sessions — schedule it, don't run it from inside a
 cron job). After restart, run `cost_store.py --reprice` once to heal rows
 recorded while the old module was loaded. Detection:
-`verify-cost-store-fix.py` (repo ops/scripts/manage/) checks both the
+`fleet-hygiene.py cost-store` (repo ops/scripts/manage/) checks both the
 deployed markers AND the latest-row math in one probe.
 
 ## Rate versioning & re-pricing (O1-S1, 2026-08-22)

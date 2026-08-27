@@ -20,8 +20,8 @@ def test_all_skills_have_skilL_md():
     skills_dir = os.path.join(REPO_ROOT, "skills")
     missing = []
     for root, dirs, files in os.walk(skills_dir):
-        # Skip non-skill subdirectories (references, templates, scripts, assets)
-        dirs[:] = [d for d in dirs if d not in ("references", "templates", "scripts", "assets", "__pycache__")]
+        # Skip non-skill subdirectories (references, templates, scripts, assets, tests)
+        dirs[:] = [d for d in dirs if d not in ("references", "templates", "scripts", "assets", "tests", "__pycache__")]
         if root == skills_dir:
             continue  # skip the top-level category dirs
         # Each skill dir should have SKILL.md
@@ -43,7 +43,6 @@ def test_no_dead_root_scripts():
         "check-package-age.py", "install-post-commit-hook.sh",
         "package-install.sh", "post-commit-notify.sh",
         "setup-langfuse-sample-data.py", "test-minio.py",
-        "verify-langfuse.py",
     }
     actual = set(os.listdir(scripts_dir)) - {"__pycache__"}
     # These moved to ops/scripts/
