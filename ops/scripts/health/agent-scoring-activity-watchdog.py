@@ -116,7 +116,9 @@ def main():
             if pk and sk and "..." not in sk:
                 import urllib.request, urllib.error, json, base64
                 auth = base64.b64encode(f"{pk}:{sk}".encode()).decode()
-                since = (datetime.now() - timedelta(hours=48)).isoformat()
+                # Langfuse v3 rejects naive/offset fromTimestamp with HTTP 400 —
+                # must be UTC with 'Z' suffix (2026-08-27).
+                since = (datetime.now(timezone.utc) - timedelta(hours=48)).isoformat().replace("+00:00", "Z")
                 req = urllib.request.Request(
                     f"http://localhost:3000/api/public/scores"
                     f"?fromTimestamp={since}&name=overall&limit=50"
