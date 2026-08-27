@@ -12,7 +12,7 @@
 
 ## Core Concepts
 
-Public installer + skill set for [Hermes Agent](https://hermes-agent.nousresearch.com) — Ollama, mycortex, Langfuse, Dashboard, brain dirs, sync daemon. Key dirs: `docs/`, `ops/install/`, `.hermes-cortex/`, `~/.hermes/skills/`. Principles: two-repo (public + private), PII-scrubbed, pointer memory (MEMORY.md ~2.2K → mycortex), state routing. mycortex: per-profile `mycortex_reader_<profile>` roles. See `docs/design/mycortex-multi-tenancy.md`.
+Public installer + skill set for [Hermes Agent](https://hermes-agent.nousresearch.com) — Ollama, mycortex, Langfuse, Dashboard, brain dirs, sync daemon. Key dirs: `docs/`, `ops/install/`, `.hermes-cortex/`, `~/.hermes/skills/`. Principles: two-repo (public + private), PII-scrubbed, pointer memory (MEMORY.md ~2.2K → mycortex), state routing; per-profile `mycortex_reader_<profile>` roles. See `docs/design/mycortex-multi-tenancy.md`.
 
 ## Skill loading — NOT OPTIONAL
 
@@ -43,11 +43,11 @@ Every session: read `.hermes-cortex/skills.yaml`, load `always` skills, classify
 19. **Test before release** — suite runs 0 failures before `end_change()`; `LOW` ships blocked.
 20. **Push before telling anyone to pull** — a fix on local disk is not in the repo.
 21. **Identity host-derived, not env** — orchestrator = hostname (`moses`/`esther`) + home dir, never `AGENT_ID`/`AGENT_TYPE` (spoofable). Git authorship from `~/.hermes-cortex/agent.env` (per-host, gitignored); missing it blocks commit.
-22. **Cross-session tasks** — `task-db.py` (see `task-persistence` skill). v2 lifecycle: `update <id> --status in_progress` before `begin_change`, `switch <target>` to change active task, `--status completed` after `end_change`. Bus commands create tasks automatically (S4) — when you process an ISSUES/PROPOSAL/IMPROVEMENTS inbox message, transition its task by correlation: `task-db.py update --by-correlation <corr> --status completed` (see `cortex-bus-automation` skill). Entry/completed task events notify Telegram.
+22. **Cross-session tasks** — `task-db.py` (see `task-persistence` skill). v2 lifecycle: `update <id> --status in_progress` before `begin_change`; `switch <target>` to change active task; `--status completed` after `end_change`. Bus-created tasks (S4): transition by correlation on ISSUES/PROPOSAL/IMPROVEMENTS processing — `task-db.py update --by-correlation <corr> --status completed` (see `cortex-bus-automation` skill). Entry/completion events notify Telegram.
 23. **Only our repo** — `~/hermes-cortex/` ours; `~/.hermes/` not-in-repo → don't touch; `~/.hermes-cortex/state/*` + `~/.hermes/config.yaml` → live config.
 24. **Sharing filter** — new/substantive only; already-in-Hermes/cortex ❌; PII-only ❌.
 25. **Self-test gate** — `hc send` refuses without `--self-tested`; no bare `pass`.
-26. **Skill stub guard** — cortex-update refuses to overwrite a full skill with a repo stub; doctor FAILs on stubs. Recovery: `agent-skill-stub-audit.py --send` → bus `skill-stub-recovery` → orchestrator copies → cortex-update. Never hand-fix from memory.
+26. **Skill stub guard** — cortex-update refuses to overwrite a full skill with a repo stub; doctor FAILs on stubs. Recovery: `agent-skill-stub-audit.py --send` → bus `skill-stub-recovery` → orchestrator → cortex-update. Never hand-fix from memory.
 27. **Gateway restart for enforcer changes** — running gateway may hold the old in-memory enforcer; verify `Plugin content`; restart from a separate shell (NOT inside the gateway — blocked).
 28. **State it once, then move** — after a finding/plan is established, never re-derive or re-announce it on later turns; reference it in one short clause and take the next action. Restating the same conclusion before every tool call burns tokens without progress.
 
@@ -128,28 +128,3 @@ Universal crons (60+): [`docs/fleet-reference.md`](docs/fleet-reference.md). **S
 | Symlink policy | [`docs/symlink-policy.md`](docs/symlink-policy.md) |
 
 > See docs/templates/SOUL.md for canonical set. Doctor FAILS on mismatch.
-
-<!-- Hermes fleet efficiency block (additive — safe to ignore, safe to remove) -->
-<!-- Managed by apply-repo-efficiency.sh; re-running never duplicates. -->
-
-## Session Efficiency (Hermes fleet — additive guidance)
-
-These are cost/throughput principles for AI coding agents working in this
-repo. They change nothing about the repo's own rules; they only tell the
-agent how to spend its own tokens efficiently.
-
-- **Batch independent tool calls** in one turn; prefer fewer, larger
-  operations over many tiny round-trips. Each call re-sends context —
-  cache-hit, but still billed; output tokens are the real cost.
-- **Don't re-derive established facts** — reference prior conclusions in one
-  clause and advance. Re-reading files to re-learn what a prior turn already
-  established burns tokens.
-- **Keep the session alive for related work** — continuing one session beats
-  starting fresh (history re-sends are cache hits; a new session pays a cold
-  system-prompt start and re-explains context).
-- **Compact responses** — deliver the answer, not the process. No status
-  narration, no "let me" preambles.
-- **Thinking economy** — match reasoning depth to task difficulty; don't
-  over-deliberate simple lookups or mechanical edits.
-- **Ask once, act twice** — prefer acting on an obvious default over
-  clarifying questions that only burn a round-trip.
