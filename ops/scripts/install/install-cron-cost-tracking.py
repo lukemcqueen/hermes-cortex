@@ -107,7 +107,7 @@ FAIL_INSERT = """        # Record partial token usage on failure (agent may be p
 # cost is computable (the 31x cache lever). DeepSeek/OpenAI-style
 # providers report cache_read/cache_write in usage; Hermes exposes
 # them as agent.session_cache_*_tokens counters.
-AUDIT_CACHE_MARKER = '"prompt_tokens": result.get("prompt_tokens"),'
+AUDIT_CACHE_MARKER = '"total_tokens": result.get("total_tokens"),\n            "cache_read_tokens": getattr(agent, "session_cache_read_tokens", 0) or 0,'
 AUDIT_CACHE_OLD = """            "prompt_tokens": result.get("prompt_tokens"),
             "completion_tokens": result.get("completion_tokens"),
             "total_tokens": result.get("total_tokens"),"""
@@ -120,7 +120,7 @@ AUDIT_CACHE_NEW = """            "prompt_tokens": result.get("prompt_tokens"),
 # ── Patch: usage_audit cache split (failure path) ─────────────
 # NOTE: the failure-path audit write is nested inside `if "_audit_fire_id"
 # in locals():` — 16-space indent, unlike the 12-space success path.
-AUDIT_FAIL_MARKER = '"response_silent": False,'
+AUDIT_FAIL_MARKER = '"total_tokens": None,\n                "cache_read_tokens": getattr(agent, "session_cache_read_tokens", 0) or 0,'
 AUDIT_FAIL_OLD = """                "total_tokens": None,
                 "response_silent": False,"""
 AUDIT_FAIL_NEW = """                "total_tokens": None,
@@ -231,9 +231,13 @@ def _execute_job_now(
 FORMAT_MARKER = "last_run_cost"
 FORMAT_OLD = """    if external_refs:
         result["context_from"] = external_refs
+    if isinstance(job.get("attach_to_session"), bool):
+        result["attach_to_session"] = job["attach_to_session"]
     return result"""
 FORMAT_NEW = """    if external_refs:
         result["context_from"] = external_refs
+    if isinstance(job.get("attach_to_session"), bool):
+        result["attach_to_session"] = job["attach_to_session"]
     # Attach cost data from the cron-costs store
     _cost_store = _get_cost_store()
     if _cost_store:
@@ -266,12 +270,26 @@ FORMAT_NEW = """    if external_refs:
 COSTS_MARKER = '"costs"'
 COSTS_OLD = """        if normalized == "list":
             jobs = [_format_job(job) for job in list_jobs(include_disabled=include_disabled)]
-            return json.dumps({"success": True, "count": len(jobs), "jobs": jobs}, indent=2)
+            _result = {"success": True, "count": len(jobs), "jobs": jobs}
+            # Same silent-inert-job class as create (#87033): an agent
+            # inspecting existing jobs in a gateway-less environment must
+            # learn they are not firing, not just see a clean list. An empty
+            # list has nothing inert — stay quiet (and skip the probe).
+            if jobs:
+                _result.update(_gateway_liveness_notice(plural=True))
+            return json.dumps(_result, indent=2)
 
         if not job_id:"""
 COSTS_NEW = """        if normalized == "list":
             jobs = [_format_job(job) for job in list_jobs(include_disabled=include_disabled)]
-            return json.dumps({"success": True, "count": len(jobs), "jobs": jobs}, indent=2)
+            _result = {"success": True, "count": len(jobs), "jobs": jobs}
+            # Same silent-inert-job class as create (#87033): an agent
+            # inspecting existing jobs in a gateway-less environment must
+            # learn they are not firing, not just see a clean list. An empty
+            # list has nothing inert — stay quiet (and skip the probe).
+            if jobs:
+                _result.update(_gateway_liveness_notice(plural=True))
+            return json.dumps(_result, indent=2)
 
         if normalized == "costs":
             \"\"\"Return aggregate cost stats across all or a specific cron job.\"\"\"
@@ -326,19 +344,20 @@ _PATCHES = [
 
 
 def _patch(name, marker, old, new, path, force=False):
-    """Apply a patch, replacing old with new. Returns True if changed."""
+    """Apply a patch, replacing old with new. Returns True if changed.
+
+    Applied-state detection uses the NEW text, never the marker: several
+    markers (audit cache split, costs action) were chosen as text that ALSO
+    exists in unpatched upstream, so a marker-based skip false-positived and
+    silently dropped the patch after a `git reset` / update (2026-08-28:
+    usage_audit cache split vanished from the daily report's primary source).
+    """
     with open(path) as f:
         content = f.read()
 
-    if marker in content:
-        if not force:
-            print(f"  SKIP {name}: already applied (use --force)")
-            return False
-        # Need to revert first, then re-apply
-        if new in content:
-            # Already has the new content, skip
-            print(f"  SKIP {name}: already applied")
-            return False
+    if new in content:
+        print(f"  SKIP {name}: already applied")
+        return False
 
     if old not in content:
         print(f"  FAIL {name}: marker not found in file")
@@ -436,7 +455,7 @@ def do_status():
         print(f"  {'OK' if 'Record zero-cost run for no_agent' in sched else 'MISS'} scheduler: no_agent hook")
         print(f"  {'OK' if 'Record token usage and cost' in sched else 'MISS'} scheduler: LLM success hook")
         print(f"  {'OK' if 'Record partial token usage on failure' in sched else 'MISS'} scheduler: failure hook")
-        _audit_cache_ok = 'session_cache_read_tokens", 0) or 0,' in sched
+        _audit_cache_ok = ('"total_tokens": result.get("total_tokens"),\n            "cache_read_tokens": getattr(agent, "session_cache_read_tokens", 0) or 0,' in sched)
         print(f"  {'OK' if _audit_cache_ok else 'MISS'} scheduler: audit cache split")
         _guard_ok = 'def _preflight_check_max_cost(job: dict)' in sched
         print(f"  {'OK' if _guard_ok else 'MISS'} scheduler: MAX_COST preflight (O6-S1)")
