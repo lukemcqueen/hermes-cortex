@@ -1970,6 +1970,29 @@ deploy_mem_plugins() {
   return 0
 }
 
+# ── Cost-guard cron provider deploy ───────────────────────
+# Deploys the cost-guard cron scheduler provider plugin into the Hermes
+# agent's bundled-provider tree (plugins/cron_providers/cost-guard/), where
+# cron.scheduler_provider discovery finds it. Selected via
+# `cron.provider: cost-guard` in config.yaml. This is the sanctioned
+# replacement for the O6-S1 scheduler.py preflight patch: same guard, zero
+# core edits, survives `hermes update` without re-apply.
+deploy_cost_guard_provider() {
+  local repo_plugin="${REPO_DIR}/plugins/cron_providers/cost-guard"
+  local agent_plugins="${HOME}/.hermes/hermes-agent/plugins/cron_providers"
+  local dest="${agent_plugins}/cost-guard"
+  if [[ ! -d "$repo_plugin" ]]; then
+    warn "  cost-guard provider source missing: ${repo_plugin}"
+    return 0
+  fi
+  mkdir -p "$dest"
+  if [[ -f "$repo_plugin/__init__.py" ]]; then
+    cp -f "$repo_plugin/__init__.py" "$dest/__init__.py"
+    info "  cost-guard cron provider deployed (cron.provider: cost-guard)"
+  fi
+  return 0
+}
+
 # ── Stale Service Detector ─────────────────────────────────
 # Detects known-dead services that should have been removed.
 # Runs on every agent after every update — both Linux + macOS.
@@ -2544,6 +2567,10 @@ except Exception:
 
   # Deploy mycortex-mem + prompt-guard plugins (memory provider + LLM guard)
   deploy_mem_plugins
+
+  # Deploy the cost-guard cron scheduler provider (sanctioned cron.provider
+  # extension point — replaces the O6-S1 scheduler.py preflight patch).
+  deploy_cost_guard_provider
 
   # ── Cron cost tracking: auto-reapply the scheduler patch ──
   # The cost capture lives as a marker-patch inside scheduler.py (Hermes
