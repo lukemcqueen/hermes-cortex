@@ -479,6 +479,7 @@ register_orch "ops/scripts/agent/orch-health-report.py"       "${CORTEX_DEPLOY_H
 # Cron cost tracking — SQLite store + deployment script
 register "ops/scripts/cost_store.py"               "${CORTEX_DEPLOY_HOME}/scripts/cost_store.py"
 register "ops/scripts/install/install-cron-cost-tracking.py" "${CORTEX_DEPLOY_HOME}/scripts/install-cron-cost-tracking.py"
+register "ops/scripts/manage/apply-mcp-tool-watch-fix.py" "${CORTEX_DEPLOY_HOME}/scripts/apply-mcp-tool-watch-fix.py"
 register "ops/scripts/install/install-lean-index.py" "${CORTEX_DEPLOY_HOME}/scripts/install-lean-index.py"
 
 # O6-S1 MAX_COST guard — per-job cost cap consulted at cron request time
@@ -2583,6 +2584,21 @@ except Exception:
       | sed 's/^/    [cost-tracking] /'
   else
     warn "  install-cron-cost-tracking.py missing — cost capture may be dead"
+  fi
+
+  # ── MCP stdio watch-probe fix: auto-reapply after hermes updates ──
+  # Upstream bug (NousResearch mcp_tool.py ~6189, present on origin/main
+  # 2026-08-28): the #81995 fast-fail guard probes the child-watcher with
+  # inspect.isawaitable(_watch_children()), invoking the async function and
+  # leaking a never-awaited coroutine per MCP call. On Titus this broke
+  # loop-governance MCP calls (empty results) so the enforcer blocked all
+  # write tools. Every `hermes update` wipes the fix — re-apply here.
+  # Idempotent: SKIPs when already applied.
+  if [[ -f "${CORTEX_DEPLOY_HOME}/scripts/apply-mcp-tool-watch-fix.py" ]]; then
+    python3 "${CORTEX_DEPLOY_HOME}/scripts/apply-mcp-tool-watch-fix.py" 2>&1 \
+      | sed 's/^/    [mcp-watch-fix] /'
+  else
+    warn "  apply-mcp-tool-watch-fix.py missing — mcp_tool.py watch probe may be buggy"
   fi
 
   # ── Lean skill index: auto-reapply the coding_context patch ──
