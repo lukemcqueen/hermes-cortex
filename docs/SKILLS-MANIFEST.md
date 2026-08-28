@@ -113,7 +113,7 @@ their domain.
 | `meme-generation` | 2.0.0 | Create meme PNGs from templates with Pillow text overlay. | `skill_view(name='meme-generation')` |
 | `pixel-art` | 2.0.0 | Pixel art w/ era palettes (NES, Game Boy, PICO-8). | `skill_view(name='pixel-art')` |
 
-## Devops (143 skills)
+## Devops (144 skills)
 
 | Skill | Version | Purpose | Load With |
 |-------|---------|---------|-----------|
@@ -258,6 +258,7 @@ their domain.
 | `third-party-code-vetting` | 1.0.0 | Vet third-party code before it enters the repo or runs on a host — upstream patches, vendored scripts, inst... | `skill_view(name='third-party-code-vetting')` |
 | `two-hard-rules` | 1.0.0 | Two hard rules every agent must follow: USE LOOP GOVERNANCE ALWAYS. SHARE IMPROVEMENTS TO THE PUBLIC REPO. | `skill_view(name='two-hard-rules')` |
 | `unified-cli-script` | 1.0.0 | Design a unified ./run CLI script for multi-environment Docker Compose deployments. Covers the _compose() w... | `skill_view(name='unified-cli-script')` |
+| `upstream-fix-watchdog` | 1.0.0 | Watch upstream for a bug fix to land; silent until fixed. | `skill_view(name='upstream-fix-watchdog')` |
 | `watchers` | 1.0.0 | Poll RSS, JSON APIs, and GitHub with watermark dedup. | `skill_view(name='watchers')` |
 | `webapp-deploy-verification` | 1.0.0 | Verify deployed web app routes render and links resolve. | `skill_view(name='webapp-deploy-verification')` |
 
