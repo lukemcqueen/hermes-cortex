@@ -2476,8 +2476,14 @@ main() {
   # (2026-08-27: Titus stuck on this; same gating principle as the learnings
   # schema below, which is register_orch-limited for the same reason).
   local mem_provider=""
-  if command -v python3 >/dev/null 2>&1; then
-    mem_provider="$(python3 -c '
+  # Use the venv python (has PyYAML + hermes_cli). Bare python3 on macOS
+  # without PyYAML makes the import fail → empty provider → the migration
+  # is silently skipped forever (Titus bug 2026-08-28). Fall back to bare
+  # python3 only when the venv is absent; empty result stays fail-open.
+  local _py="${HOME}/.hermes/hermes-agent/venv/bin/python3"
+  [[ -x "$_py" ]] || _py="$(command -v python3 || true)"
+  if [[ -n "$_py" ]]; then
+    mem_provider="$("$_py" -c '
 import os, sys
 try:
     sys.path.insert(0, os.path.expanduser("~/.hermes/hermes-agent"))
