@@ -3574,6 +3574,13 @@ def check_script_naming(res):
 
         script_stem = Path(script).stem  # e.g. 'agent-foo' from 'manage/agent-foo.sh'
 
+        # lib/ modules are shared libraries, not cron scripts — the naming
+        # and prefix conventions apply to scripts only. The
+        # agent-bus-retry-sweep cron deliberately runs lib/bus_outbox.py
+        # directly (documented pattern; joseph PROPOSAL 2026-08-28).
+        if Path(script).parent.name == "lib":
+            continue
+
         # Check 1: script name and cron name should share a base. Allow:
         # - script starts with cron name (agent-foo → agent-foo.py) ✅
         # - cron name starts with script name (agent-foo-weekday → agent-foo.py) ✅ (shared script)

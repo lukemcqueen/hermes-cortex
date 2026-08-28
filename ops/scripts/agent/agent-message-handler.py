@@ -143,6 +143,26 @@ def notify_telegram(message: str, subject: str = ""):
 TASK_CREATING_SUBJECTS = ("EXEC", "UPDATE_REQUEST", "TASK_REQUEST",
                           "PROPOSAL", "ISSUES", "IMPROVEMENTS")
 
+# Prefix forms of the report subjects (AGENTS.md convention:
+# "📝 PROPOSAL: <what>"). The TASK_CREATING_SUBJECTS exact-match check
+# would otherwise skip task-row creation for the documented prefix form
+# and archive the message with no durable record (joseph PROPOSAL
+# send-a599fb202e60, 2026-08-28).
+SUBJECT_PREFIX_NORMALIZATIONS = (("PROPOSAL:", "PROPOSAL"),
+                                 ("ISSUES:", "ISSUES"),
+                                 ("IMPROVEMENTS:", "IMPROVEMENTS"))
+
+
+def normalize_tracked_subject(subject: str) -> str:
+    """Map documented prefix forms to their tracked subject (S4).
+
+    "PROPOSAL: <what>" → "PROPOSAL"; non-prefixed subjects pass through.
+    """
+    for prefix, norm in SUBJECT_PREFIX_NORMALIZATIONS:
+        if subject.startswith(prefix):
+            return norm
+    return subject
+
 # Detached UPDATE_REQUEST worker (2026-08-18): a synchronous
 # cortex-update+doctor (~390s worst case) exceeded the cron tick budget on
 # fleet hosts, killing the handler mid-processing after the early-archive and
@@ -1060,6 +1080,14 @@ def main():
                 body_body["task"] = task_desc
             else:
                 body["body"] = {"task": task_desc}
+
+    # Normalize prefixed report subjects → tracked subjects (S4). The
+    # documented fleet convention is "PROPOSAL: <what>" / "ISSUES: <what>" /
+    # "IMPROVEMENTS: <what>" (AGENTS.md: 📝 PROPOSAL: <what>). Without this,
+    # the prefix form matches no TASK_CREATING_SUBJECTS entry exactly, so no
+    # task row is created and the message is archived with no durable record
+    # (joseph PROPOSAL send-a599fb202e60, 2026-08-28).
+    subject = normalize_tracked_subject(subject)
 
     # Check if this message targets this agent (labels, agent names) FIRST —
     # before task creation. A message aimed at other agents must not create
