@@ -74,7 +74,11 @@ def main():
         )
         # Dedup (2026-08-20): don't re-deliver the identical alert on both
         # daily runs while activity stays low — fire only when it changes.
-        if StateTracker("scoring-activity").evaluate(msg, has_issues=True) != "silent":
+        # Fingerprint the STABLE condition, not the timestamped msg — the ts
+        # prefix changes every run and defeats dedup (fixed 2026-08-28).
+        if StateTracker("scoring-activity").evaluate(
+            f"scoring-low:{count}", has_issues=True
+        ) != "silent":
             print(msg)
             return 1
         return 0  # duplicate — silent (empty stdout, exit 0, NOT an error alert)
@@ -146,7 +150,12 @@ def main():
         ts = _cron_ts("scoring-activity-watchdog")
         msg = f"{ts} {' '.join(alerts)}"
         # Dedup: identical alert text stays silent on repeat runs.
-        if StateTracker("scoring-activity").evaluate(msg, has_issues=True) != "silent":
+        # Fingerprint the STABLE alert body (no ts prefix — the ts changes
+        # every run and defeated dedup, re-firing identical alerts; fixed
+        # 2026-08-28).
+        if StateTracker("scoring-activity").evaluate(
+            " | ".join(alerts), has_issues=True
+        ) != "silent":
             print(msg)
             return 1
         return 0
