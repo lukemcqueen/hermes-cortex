@@ -182,6 +182,20 @@ compaction/rewrites fire (those bust cache worse than a fresh start).
 - **Don't build a MAX_COST cap on unmeasured data.** A sane cap set against
   today's bloat kills legitimate jobs (a 26M-token run is $0.18 at hit rates).
   Measure first, cap later (per-job p95 + headroom).
+- **cache_write_tokens=0 on every row = capture gap, not 100% hit rate (2026-08-29).**
+  cron-costs.db shows `cache_write_tokens` 0 for ALL 4828 rows, so the naive
+  `hit% = read/(read+write)` reads a fake 100%. Root cause is UPSTREAM
+  (hermes-agent `agent/usage_pricing.py`): the cache_read side maps DeepSeek's
+  top-level `prompt_cache_hit_tokens` (line ~1373) but the cache_write fallback
+  chain (~1385–1400) checks only `details.cache_write_tokens`,
+  `cache_creation_input_tokens`, `response_usage.cache_write_tokens` — NEVER
+  DeepSeek's complementary `prompt_cache_miss_tokens`. Since
+  `prompt_tokens = hit + miss`, the miss tokens land in `input_tokens` and the
+  cost math stays correct (`miss = input + write`); only the hit-rate metric
+  lies. **True hit rate = read/(read+input_tokens)** — measured 93–99% across
+  all cron jobs (7-day window, 2026-08-29), so the system-prompt prefix IS
+  byte-stable. Upstream fix candidate: add `prompt_cache_miss_tokens` to the
+  cache_write fallback chain (task `orch-upstream-cache-write-fix`).
 
 ## Verification
 
