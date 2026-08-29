@@ -646,14 +646,33 @@ def handle_reboot(msg_body: dict, msg_raw: dict) -> dict:
 # ── TASK_REQUEST: accept free-text task requests from other agents ──
 # Subject format: "Task: <description>" or "TASK_REQUEST"
 # Body format: {"body": {"task": "<description>"}} or plain text
+# On-demand board query (TMv3-S3): {"body": {"action": "board"}} →
+# runs the board digest and returns it as TASK_RESULT.
 def handle_task(msg_body: dict, msg_raw: dict) -> dict:
     request = _parse_body(msg_body.get("body", {}))
+
+    sender = msg_raw.get("from", "?") if isinstance(msg_raw, dict) else "?"
+
+    # TMv3-S3: on-demand board query — answer "what's open" via bus.
+    if request.get("action") == "board":
+        log(f"📋 BOARD query from {sender}")
+        digest = SCRIPTS_DIR / "orch-task-board-digest.py"
+        result = _run([sys.executable, str(digest)], timeout=60)
+        return {
+            "success": result.get("success", False),
+            "command": "TASK_REQUEST",
+            "action": "board",
+            "board": (result.get("stdout") or "").strip(),
+            "stderr": (result.get("stderr") or "").strip(),
+            "sender": sender,
+            "message": "Task board digest returned.",
+        }
+
     task_desc = request.get("task", "") or request.get("body", msg_body.get("body", ""))
     if isinstance(task_desc, dict):
         task_desc = str(task_desc)
     task_desc = str(task_desc).strip()
 
-    sender = msg_raw.get("from", "?") if isinstance(msg_raw, dict) else "?"
     log(f"📋 TASK_REQUEST from {sender}: {task_desc[:200]}")
 
     return {

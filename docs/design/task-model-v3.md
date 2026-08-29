@@ -262,8 +262,8 @@ execute fully, report once. No thrash loops, no re-derivation (SOUL #4).
 - [ ] Worker can `claim` a pending slice atomically; double-claim fails
 - [ ] Worker can `unclaim` with reason; slice returns to pending
 - [ ] `report` sets review; only orchestrator `verify` → completed
-- [ ] Daily board digest delivers to Telegram (zero-token, coverage-aware)
-- [ ] On-demand board query works via bus
+- [x] Daily board digest delivers to Telegram (zero-token, coverage-aware) — `orch-task-board-digest` cron
+- [x] On-demand board query works via bus — `TASK_REQUEST` with `action=board` (commands.py handle_task, deployed 2026-08-29; verified via self-test inbox_esther → inbox_moses TASK_RESULT)
 - [ ] Orchestrator decompose→dispatch→verify loop runs a full client slice end-to-end
 - [ ] Compete mode: 2 candidates on one slice → deterministic winner by AC + adversarial findings; loser archived with reason
 - [ ] Doctor green; transition matrix tests pass
