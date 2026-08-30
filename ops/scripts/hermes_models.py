@@ -48,7 +48,7 @@ def _load_env_file(path: str) -> dict[str, str]:
                     continue
                 if "=" in line:
                     key, _, val = line.partition("=")
-                    result[key.strip()] = val.strip()
+                    result[key.strip()] = val.strip().strip("'\"").strip()
     except (OSError, IOError):
         pass  # expected — silently handled
     return result
