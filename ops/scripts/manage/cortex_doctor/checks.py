@@ -1225,9 +1225,10 @@ def _check_bus_e2e(res):
     from hermes_paths import ensure_scripts_path
     ensure_scripts_path()
     from lib.cortex_bus import bus_send, bus_read, bus_archive, bus_archives, bus_health
-  except ImportError:
+  except (ImportError, RuntimeError) as _bus_import_err:
     res.add("Bus E2E test", "SKIP",
-        "cortex_bus.py not importable — expected if bus is not deployed on this agent")
+        f"cortex_bus.py not usable ({type(_bus_import_err).__name__}: {_bus_import_err}) — "
+        "expected if bus config is absent on this agent")
     return
 
   agent = (os.environ.get("AGENT_NAME", "")
@@ -4133,7 +4134,7 @@ def check_langfuse_observability(res):
         out, rc = run(["docker"] + args, timeout=15)
         if rc == 0 and out:
             return out
-        sg_cmd = " ".join(["docker"] + [shlex_quote(a) for a in args])
+        sg_cmd = " ".join(["docker"] + [shlex.quote(a) for a in args])
         out2, rc2 = run(["sg", "docker", "-c", sg_cmd], timeout=15)
         return out2 if rc2 == 0 else ""
 

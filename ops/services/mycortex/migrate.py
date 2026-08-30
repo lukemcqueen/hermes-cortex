@@ -32,6 +32,28 @@ from pathlib import Path
 DEFAULT_DB = "mycortex"
 
 
+def _in_docker_group() -> bool:
+    """True if this process would benefit from the `sg docker` wrapper.
+
+    Only used on Linux: returns True when the docker group exists AND the
+    current user is NOT in it (the Debian-family case where `sg docker`
+    elevates). Returns False when the user can already talk to the daemon
+    directly (docker group member, rootless, or no docker group at all).
+    """
+    if platform.system() != "Linux":
+        return False
+    try:
+        import grp
+        import os
+    except ImportError:
+        return False
+    try:
+        grp.getgrnam("docker")  # raises KeyError if no docker group
+    except KeyError:
+        return False
+    return "docker" not in os.getgroups() and os.geteuid() != 0
+
+
 def _psql_base(db_name: str) -> list[str]:
     """Platform-appropriate psql invocation (task-db.py pattern).
 
@@ -48,10 +70,20 @@ def _psql_base(db_name: str) -> list[str]:
             "psql", "-U", "mycortex", "-d", db_name,
             "-v", "ON_ERROR_STOP=1", "-t", "-A",
         ]
-    # Linux — container exec via sg docker group
+    # Linux — docker exec: prefer plain docker when the user can already
+    # talk to the daemon (docker group, rootless, or Arch/Omarchy where the
+    # `sg` binary ships in no default package). Fall back to `sg docker`
+    # only when the group exists but this user isn't in it (Debian-family).
+    import shutil
+    if shutil.which("sg") and _in_docker_group():
+        return [
+            "sg", "docker", "-c",
+            f"docker exec -i mycortex-postgres psql -U mycortex -d {db_name} -v ON_ERROR_STOP=1 -t -A",
+        ]
     return [
-        "sg", "docker", "-c",
-        f"docker exec -i mycortex-postgres psql -U mycortex -d {db_name} -v ON_ERROR_STOP=1 -t -A",
+        "docker", "exec", "-i", "mycortex-postgres",
+        "psql", "-U", "mycortex", "-d", db_name,
+        "-v", "ON_ERROR_STOP=1", "-t", "-A",
     ]
 
 
