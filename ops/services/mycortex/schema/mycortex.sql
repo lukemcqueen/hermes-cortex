@@ -22,7 +22,7 @@
 --      protected.
 -- ============================================================================
 
-CREATE EXTENSION IF NOT EXISTS pg_texample;
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
 CREATE SCHEMA IF NOT EXISTS mycortex;
 
@@ -79,8 +79,8 @@ CREATE TABLE IF NOT EXISTS mycortex.pages (
 CREATE UNIQUE INDEX IF NOT EXISTS uq_pages_active ON mycortex.pages (source_id, relpath) WHERE NOT archived;
 CREATE INDEX IF NOT EXISTS idx_pages_source   ON mycortex.pages (source_id) WHERE NOT archived;
 CREATE INDEX IF NOT EXISTS idx_pages_fts      ON mycortex.pages USING GIN (fts);
-CREATE INDEX IF NOT EXISTS idx_pages_title_texample ON mycortex.pages USING GIN (title gin_texample_ops);
-CREATE INDEX IF NOT EXISTS idx_pages_content_texample ON mycortex.pages USING GIN (relpath gin_texample_ops);
+CREATE INDEX IF NOT EXISTS idx_pages_title_trgm ON mycortex.pages USING GIN (title gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS idx_pages_relpath_trgm ON mycortex.pages USING GIN (relpath gin_trgm_ops);
 
 CREATE TABLE IF NOT EXISTS mycortex.content_chunks (
     id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),

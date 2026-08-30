@@ -75,8 +75,10 @@ EOF
 if [[ "$(uname -s)" == "Darwin" ]]; then
   psql_bin="$(command -v psql || echo /opt/homebrew/bin/psql)"
   "$psql_bin" -U mycortex -d mycortex -v ON_ERROR_STOP=1 < "$SQL_FILE" >/dev/null
-else
+elif command -v sg >/dev/null 2>&1; then
   sg docker -c "docker exec -i mycortex-postgres psql -U mycortex -d mycortex -v ON_ERROR_STOP=1" < "$SQL_FILE" >/dev/null
+else
+  docker exec -i mycortex-postgres psql -U mycortex -d mycortex -v ON_ERROR_STOP=1 < "$SQL_FILE" >/dev/null
 fi
 
 # ── Migrate legacy grants: shared reader → profile role (idempotent) ──
@@ -100,8 +102,10 @@ EOF
 
 if [[ "$(uname -s)" == "Darwin" ]]; then
   "$psql_bin" -U mycortex -d mycortex -v ON_ERROR_STOP=1 < "$SQL_FILE" >/dev/null
-else
+elif command -v sg >/dev/null 2>&1; then
   sg docker -c "docker exec -i mycortex-postgres psql -U mycortex -d mycortex -v ON_ERROR_STOP=1" < "$SQL_FILE" >/dev/null
+else
+  docker exec -i mycortex-postgres psql -U mycortex -d mycortex -v ON_ERROR_STOP=1 < "$SQL_FILE" >/dev/null
 fi
 
 echo "install-profile-reader-role: ${READER_ROLE} ready (inherits mycortex_reader schema grants; legacy shared-reader grants migrated)"
