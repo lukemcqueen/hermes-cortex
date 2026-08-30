@@ -1,6 +1,7 @@
 ---
 name: tls-cert-preflight
 description: "Use when validating TLS certs before deploying an endpoint."
+version: 1.0.0
 category: devops
 triggers:
   - certs were handed over or dropped in and need verification
