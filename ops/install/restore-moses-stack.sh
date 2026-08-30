@@ -63,4 +63,38 @@ fi
 
 nginx -t 2>/dev/null && nginx -s reload 2>/dev/null && log "nginx reloaded" || warn "nginx -t failed — fix configs before reload"
 
+# 4. Immutable enforcement layer (hermes-plugin-lock targets: enforcer, hooks)
+if command -v hermes-plugin-lock >/dev/null 2>&1; then
+  log "applying immutable layer (hermes-plugin-lock lock)"
+  hermes-plugin-lock lock && log "enforcement files immutable" \
+    || warn "hermes-plugin-lock lock failed — check sudoers entry"
+elif [[ -x "${DEPLOY}/scripts/hermes-plugin-lock" ]]; then
+  log "applying immutable layer (deployed hermes-plugin-lock lock)"
+  bash "${DEPLOY}/scripts/hermes-plugin-lock" lock \
+    && log "enforcement files immutable" \
+    || warn "hermes-plugin-lock lock failed — check sudoers entry"
+else
+  warn "hermes-plugin-lock not found — immutable layer not applied"
+fi
+
+# 5. Ollama (models needed for scoring/embeddings; pull if empty)
+if systemctl is-active ollama >/dev/null 2>&1; then
+  log "ollama already running"
+else
+  log "starting ollama"
+  systemctl enable --now ollama 2>/dev/null || systemctl start ollama || warn "ollama failed to start"
+fi
+sleep 2
+if curl -s -m 5 http://localhost:11434/api/tags >/dev/null 2>&1; then
+  EMB_MODEL=$(grep -E '^EMBEDDING_MODEL=' "${REPO}/.env" 2>/dev/null | cut -d= -f2 | tr -d '"' || echo "nomic-embed-text:v1.5")
+  if curl -s -m 5 http://localhost:11434/api/tags | grep -q "${EMB_MODEL}"; then
+    log "embedding model ${EMB_MODEL} present"
+  else
+    log "pulling ${EMB_MODEL} (first run — may take minutes)"
+    ollama pull "${EMB_MODEL}" 2>&1 | tail -1 || warn "pull failed — run: ollama pull ${EMB_MODEL}"
+  fi
+else
+  warn "ollama still not responding after start — check service"
+fi
+
 log "done. Next (as moses): bash ~/.hermes-cortex/scripts/cortex-update.sh 2>&1 | tail -30"

@@ -22,6 +22,9 @@ __SUDO_USERS__ ALL=(root) NOPASSWD: /bin/cp /tmp/blocked_ips.conf.new /etc/nginx
 # Gated inside the helper: unlock/update require --cortex-update (sanctioned)
 # or --orchestrator (orchestrator Unix accounts). lock/status open to all.
 __SUDO_USERS__ ALL=(root) NOPASSWD: /usr/local/sbin/hermes-plugin-lock
+# Full nginx service installer + clean restart (cortex-update deploy targets)
+__SUDO_USERS__ ALL=(root) NOPASSWD: /usr/local/sbin/install-nginx-full.sh
+__SUDO_USERS__ ALL=(root) NOPASSWD: /usr/local/sbin/hermes-nginx-clean-restart
 # Root-owned immutable blocked-IP generator (see deploy-fix-blocked-ips.sh)
 # BOTH platform paths listed: Linux /usr/local/sbin, macOS /usr/local/bin.
 # A path that doesn't exist on a host simply never matches — harmless dead
