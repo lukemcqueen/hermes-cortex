@@ -29,6 +29,23 @@ if ! id -nG moses | tr ' ' '\n' | grep -qx docker; then
 fi
 
 # 2. mycortex-postgres compose
+# Compose reads ${MYCORTEX_PG_PASSWORD} from ITS project .env
+# (~/.hermes-cortex/.env), NOT the repo .env (single source of truth).
+# Provision the deploy-home .env with the value from the repo .env.
+log "provisioning ~/.hermes-cortex/.env (MYCORTEX_PG_PASSWORD for compose)"
+DEPLOY_ENV="${DEPLOY}/.env"
+if grep -q '^MYCORTEX_PG_PASSWORD=' "${DEPLOY_ENV}" 2>/dev/null; then
+  log "MYCORTEX_PG_PASSWORD already in deploy .env"
+elif [[ -f "${REPO}/.env" ]] && grep -q '^MYCORTEX_PG_PASSWORD=' "${REPO}/.env"; then
+  grep '^MYCORTEX_PG_PASSWORD=' "${REPO}/.env" >> "${DEPLOY_ENV}"
+  chmod 600 "${DEPLOY_ENV}"
+  log "copied MYCORTEX_PG_PASSWORD from repo .env"
+else
+  log "generating fresh MYCORTEX_PG_PASSWORD"
+  echo "MYCORTEX_PG_PASSWORD=$(openssl rand -hex 20)" >> "${DEPLOY_ENV}"
+  chmod 600 "${DEPLOY_ENV}"
+fi
+
 log "bringing up mycortex-postgres (:15432)"
 if ! docker ps --format '{{.Names}}' | grep -q '^mycortex-postgres$'; then
   (cd "${DEPLOY}" && docker compose -f docker-compose.mycortex.yml up -d)
