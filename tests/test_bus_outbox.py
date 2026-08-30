@@ -15,6 +15,7 @@ import sys
 import tempfile
 import time
 from pathlib import Path
+from urllib.error import HTTPError, URLError
 
 import pytest
 
@@ -224,6 +225,59 @@ def test_bus_send_no_outbox_env_fails_hard(cortex_bus, monkeypatch, tmp_path):
     r = cortex_bus.bus_send("inbox_test", {"subject": "PING"})
     assert r is None
     assert list(Path(tmp_path / "bus-retry").glob("*.json")) == []
+
+
+# ────────────────────────────────────────────────────────────────
+# _bus_post Bearer→Basic cascade on the FALLBACK bus (regression,
+# 2026-08-30): _bus_post gated the Basic retry with `not fallback`,
+# so when the primary bus was unreachable and the fallback proxy
+# required Basic auth (nginx validates Basic, ignores Bearer), sends
+# failed with 401 while _bus_get (reads) succeeded — the backup
+# orchestrator could read the bus but never dispatch to the fleet.
+# _bus_get has no such gate; _bus_post must mirror it.
+# ────────────────────────────────────────────────────────────────
+def test_bus_post_fallback_retries_basic_auth(monkeypatch, tmp_path):
+    """Primary unreachable → fallback 401s Bearer → must retry Basic and succeed."""
+    monkeypatch.setenv("CORTEX_BUS_RETRY_DIR", str(tmp_path / "bus-retry"))
+    monkeypatch.setenv("CORTEX_BUS_URL", "http://127.0.0.1:13004")
+    monkeypatch.setenv("CORTEX_BUS_FALLBACK_URL", "http://127.0.0.1:14004")
+    monkeypatch.setenv("CORTEX_BUS_TOKEN", "hbus_test_token")
+    monkeypatch.setenv("CORTEX_BASIC_AUTH", "user:pass")
+    mod = _load("cortex_bus", _LIB / "cortex_bus.py")
+
+    seen = []  # (url, auth_header)
+
+    class _Resp:
+        def __init__(self, payload: dict):
+            self._data = json.dumps(payload).encode()
+
+        def read(self):
+            return self._data
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            return False
+
+    def fake_urlopen(req, timeout=15):
+        auth = req.headers.get("Authorization", "")
+        url = req.full_url
+        seen.append((url, auth))
+        if "13004" in url:
+            raise URLError("primary bus unreachable")
+        # fallback: nginx validates Basic only — Bearer → 401
+        if auth.startswith("Bearer"):
+            raise HTTPError(url, 401, "Unauthorized", {}, None)
+        assert auth.startswith("Basic"), f"expected Basic retry, got: {auth!r}"
+        return _Resp({"msg_id": "fallback-ok"})
+
+    monkeypatch.setattr(mod, "urlopen", fake_urlopen)
+
+    result = mod._bus_post("/api/pgmq/send", {"queue": "inbox_test", "message": {"subject": "PING"}})
+    assert result == {"msg_id": "fallback-ok"}
+    basic_on_fallback = [a for u, a in seen if "14004" in u and a.startswith("Basic")]
+    assert basic_on_fallback, f"expected Basic auth retry on fallback bus, saw: {seen}"
 
 
 # ────────────────────────────────────────────────────────────────

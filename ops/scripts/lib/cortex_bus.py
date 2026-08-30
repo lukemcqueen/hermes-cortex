@@ -87,8 +87,7 @@ def _bus_post(endpoint: str, payload: dict, fallback: bool = False) -> dict:
         except HTTPError as e:
             logging.getLogger("cortex_bus").debug("HTTPError %d for Bearer auth — trying Basic fallback", e.code)
             if (
-                not fallback
-                and e.code in (401, 403)
+                e.code in (401, 403)
                 and scheme == "Bearer"
                 and CORTEX_BUS_AUTH
             ):
