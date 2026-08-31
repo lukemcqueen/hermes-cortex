@@ -61,7 +61,7 @@ crons:
   provider: deepseek
 - name: agent-fixer-evening
   scope: universal
-  schedule: 0 19,20,22 * * 1-5
+  schedule: 0 20,22 * * 1-5
   script: ''
   prompt: 'Respond in English. Run the auto-remediation workflow using the auto-remediation skill. Load the skill first, check for errors, fix, report.
 
@@ -115,7 +115,7 @@ crons:
   provider: deepseek
 - name: agent-fixer-workday
   scope: universal
-  schedule: 0 9,11,13,15,17 * * 1-5
+  schedule: 0 8,14,20 * * 1-5
   script: session-active-guard.py
   prompt: 'SESSION GUARD: the session-active guard output is injected as context. If it says ACTIVE, an interactive session is running — SKIP this tick entirely: do not load skills, do not begin_change, do not touch the repo. Reply only: [SILENT]. Proceed only when the guard says IDLE.
 
@@ -754,7 +754,7 @@ crons:
   provider: ''
 - name: cortex-bus-evening
   scope: universal
-  schedule: 0 19,20,22 * * 1-5
+  schedule: 0 20,22 * * 1-5
   script: ''
   prompt: 'Process the Agent Bus messages. The bus-flag sensor output is injected as context. Check for any pending messages, urgent or critical items, blocked workflows, or DLQ items.
 
@@ -843,7 +843,7 @@ crons:
   provider: deepseek
 - name: cortex-bus-workday
   scope: universal
-  schedule: 0 9,11,13,15,17 * * 1-5
+  schedule: 0 8,14,20 * * 1-5
   script: session-active-guard.py
   prompt: 'SESSION GUARD: the session-active guard output is injected as context. If it says ACTIVE, an interactive session is running — SKIP this tick entirely. Call NO tools, load NO skills, open NO governance, touch NOTHING. Reply with EXACTLY this single line and nothing else: [SILENT]. Proceed only when the guard says IDLE.
 
@@ -1029,7 +1029,7 @@ crons:
   reasoning_effort: none
 - name: orch-skill-lifecycle
   scope: orchestrator
-  schedule: 0 4 * * *
+  schedule: 0 4 * * 1,3,5
   script: ''
   prompt: "Load the orch-skill-lifecycle skill and follow the three-phase pipeline. Run the complete skill lifecycle for today.\n\nPhase 1 — Collection:\n1. Read inbox_orchestrator PGMQ queue (the shared orchestrator inbox — where agents send reports) for ALL agent reports:\n   - \"Learning Report:\" from agent-learning-collector (skills delta, lessons, session stats — every 6h)\n2. Check git log for self-improvement patterns needing broader consolidation\n3. Scan skill inventory for stale/modified skills\n4. Cross-reference reports across agents for consolidation candidates\n\nPhase 2 — Evaluation:\nFor each item found, classify it. Deduplicate against existing skills. Cross-reference across agents — if 3 agents report the same fix, it's a consolidation candidate. If today is Monday, run the full deep evaluation pass.\n\nPhase 3 — Upgrade:\nExecute approved actions: patch skills via skill_manage, create new ones, prune stale ones, update SOUL.md with principles, upstream new skills to the repo, archive processed bus messages.\n\nPUSHBACK CONTRACT (SOUL Principle 5): before pruning/deleting a skill, rewriting SOUL.md, or upstreaming a change, challenge it — if the action is wrong, harmful, or better done differently, do NOT execute; record the objection (record_issue) and deliver the objection as the report. Default to no-op when in doubt.\n\nIf nothing changed: output exactly [SILENT]"
   skill: orch-skill-lifecycle
@@ -1054,7 +1054,7 @@ crons:
   provider: ''
 - name: orch-backlog-driver
   scope: orchestrator
-  schedule: 0 8,10,12,14,16,18,20,22 * * *
+  schedule: 0 8,14,20,22 * * *
   script: session-active-guard.py
   prompt: "Load the orch-backlog-driver skill and run the backlog loop (F-023).\n\nSESSION GUARD: the session-active guard output is injected as context. If it says ACTIVE, an interactive session is running — skip this run and output exactly [SILENT].\n\nRun the loop:\n1. Pull pending + in_progress tasks (task-db.py list). Sort by priority desc then created_at.\n2. Take the top actionable task(s) — do NOT try to work the whole backlog in one run. One verified completion beats five half-done dispatches.\n3. Classify: EXEC/diagnostic → dispatch via bus (self-test the exact script on your own inbox first, unique correlation_id, verify EXEC_RESULT in your own inbox). Needs code change → do it yourself with full governance (begin_change → work → verify → end_change → push). Needs another agent → EXEC to their inbox. Needs Luke → leave pending, note blocker. Stale → cancel with reason.\n4. Verify EVERY claim with real tool output (6-checkpoint: send → consume → process → respond → read → inbox-verify). Never mark completed without EXEC_RESULT evidence.\n5. Close: task-db.py update <id> --status completed (or switch if you changed active task).\n6. Report compactly:\n   📋 Backlog run: N pending, M in_progress\n   ✅ closed: <task> — <evidence>\n   🔄 progressed: <task> — dispatched EXEC to <agent> (corr=…)\n   ⏳ blocked: <task> — <why>\n\nIf no actionable work: output exactly [SILENT] (nothing delivered).\n\nPUSHBACK CONTRACT (SOUL Principle 5): if a pending task's requested action is wrong or harmful, do NOT execute it — record the objection and report it. Default to no-op on destructive steps without explicit instruction.\n\nNever fabricate results. A completed task without verified evidence is a lie — report the blocker honestly instead."
   skill: orch-backlog-driver
