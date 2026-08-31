@@ -128,6 +128,7 @@
 | Name | Schedule | Type | Deliver |
 |------|----------|------|---------|
 | `local-agent-daily-news-brief` | `0 7 * * *` | LLM | Telegram |
+| `local-agent-daily-ai-brief` | `0 5 * * *` | LLM | origin | *(new 2026-08-31 per Luke — AI, music copyright, Korean AI, tech, mu:con & conferences; created on Esther, job 1f31ee6587e3)* |
 | `local-agent-daily-finance-brief` | `0 18 * * 1-5` | LLM | Telegram |
 | `local-agent-agents-doc-audit` | `0 7 * * 1` | LLM | origin |
 | `job-opportunity-scanner` | `0 7 * * *` | LLM | Telegram |
