@@ -438,7 +438,7 @@ def run_doctor() -> dict:
   try:
     r = subprocess.run(
       [sys.executable, str(DOCTOR_PATH), "--json"],
-      capture_output=True, text=True, timeout=30
+      capture_output=True, text=True, timeout=120
     )
     if r.stdout.strip():
       try:
