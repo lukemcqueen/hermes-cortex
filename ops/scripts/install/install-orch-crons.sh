@@ -470,7 +470,7 @@ create_cron "orch-task-morning-pass" "0 7 * * *" \
 
 # Orchestrator evening pass (task model v3 T5) — verify all review slices
 # (LLM-driven, orchestrator-only verify privilege).
-create_cron "orch-task-evening-pass" "0 19 * * *" \
+create_cron "orch-task-evening-pass" "0 21 * * *" \
   "" \
   "Evening verification pass (orchestrator, task model v3). You are the orchestrator on this host (host-derived identity, never self-claimed).
 
@@ -589,7 +589,7 @@ printf "${CYAN}  3. Skill Lifecycle Pipeline${RESET}\n"
 # Unified daily skill lifecycle — replaces old skill-miner, skill-triage, harvest-lessons,
 # agent-weekly-loop-eval, agent-daily-soul-refinement
 # Reads inbox_orchestrator for BOTH Learning Report: and Skill Report: formats from ALL agents.
-create_cron "orch-skill-lifecycle" "0 4 * * *" \
+create_cron "orch-skill-lifecycle" "0 4 * * 1,3,5" \
   "" \
   "Load the orch-skill-lifecycle skill and follow the three-phase pipeline. Run the complete skill lifecycle for today.
 
@@ -648,8 +648,8 @@ printf "${CYAN}  5. Backlog Driver${RESET}\n"
 # tasks DB, executes or dispatches them (bus EXEC), verifies with evidence,
 # closes them, reports to Telegram. LLM-driven: deciding WHAT to do with a
 # task needs reasoning (dispatch vs self-fix vs escalate vs block).
-# Hourly 8am-10pm; minute is per-host hashed by create_cron (Luke 08-07).
-create_cron "orch-backlog-driver" "0 8,10,12,14,16,18,20,22 * * *" \
+# 4 runs/day off-peak (08/14/20/22 KST); minute is per-host hashed by create_cron (Luke 08-07, cost-cut 08-31).
+create_cron "orch-backlog-driver" "0 8,14,20,22 * * *" \
   "session-active-guard.py" \
   "Load the orch-backlog-driver skill and run the backlog loop (F-023).
 

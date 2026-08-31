@@ -626,8 +626,8 @@ setup_ollama_provider
 # ── 1. Auto-Remediation Pipeline ────────────────────────────
 printf "${CYAN}  1. Auto-Remediation Pipeline${RESET}\\\n"
 
-# LLM-driven auto-remediation tiered (workday: hourly M-F 9-6pm, evening: every 2h M-F 6-12am, overnight: once M-F 3am)
-create_cron "agent-fixer-workday" "0 9,11,13,15,17 * * 1-5" \
+# LLM-driven auto-remediation tiered (workday: 08/14/20 KST M-F, evening: 20/22 KST M-F, overnight: 23 KST M-F — off-peak since 08-31)
+create_cron "agent-fixer-workday" "0 8,14,20 * * 1-5" \
   "session-active-guard.py" \
   "SESSION GUARD: the session-active guard output is injected as context. If it says ACTIVE, an interactive session is running — SKIP this tick entirely: do not load skills, do not begin_change, do not touch the repo. Reply only: [SILENT]. Proceed only when the guard says IDLE.
 
@@ -647,7 +647,7 @@ OUTPUT POLICY (HARD RULE — overrides everything above):
   "false" \
   "$LLM_CRON_MODEL" "$LLM_CRON_PROVIDER"
 
-create_cron "agent-fixer-evening" "0 19,20,22 * * 1-5" \
+create_cron "agent-fixer-evening" "0 20,22 * * 1-5" \
   "" \
   "Respond in English. Run the auto-remediation workflow using the auto-remediation skill. Load the skill first, check for errors, fix, report.
 
@@ -780,8 +780,8 @@ create_cron "cortex-bus-failover-watchdog" "*/5 * * * *" \
   "" \
   "true"
 
-# Bus processing — weekday (hourly M-F 9-5), evening (every 2h M-F 6-10), overnight (3am M-F)
-create_cron "cortex-bus-workday" "0 9,11,13,15,17 * * 1-5" \
+# Bus processing — weekday (08/14/20 KST M-F), evening (20/22 KST M-F), overnight (23 KST M-F — off-peak since 08-31)
+create_cron "cortex-bus-workday" "0 8,14,20 * * 1-5" \
   "session-active-guard.py" \
   "SESSION GUARD: the session-active guard output is injected as context. If it says ACTIVE, an interactive session is running — SKIP this tick entirely. Call NO tools, load NO skills, open NO governance, touch NOTHING. Reply with EXACTLY this single line and nothing else: [SILENT]. Proceed only when the guard says IDLE.
 
@@ -807,7 +807,7 @@ If all YES → deliver as normal." \
   "false" \
   "$LLM_CRON_MODEL" "$LLM_CRON_PROVIDER"
 
-create_cron "cortex-bus-evening" "0 19,20,22 * * 1-5" \
+create_cron "cortex-bus-evening" "0 20,22 * * 1-5" \
   "" \
   "Process the Agent Bus messages. The bus-flag sensor output is injected as context. Check for any pending messages, urgent or critical items, blocked workflows, or DLQ items.
 

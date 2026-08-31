@@ -47,17 +47,17 @@
 | `orch-daily-regression-gate` | `15 3 * * *` | no_agent | `orch-daily-regression-gate.sh` | Telegram |
 | `orch-health-report-weekday` | `0 9-18 * * 1-5` | no_agent | `orch-health-report.py` | origin |
 | `orch-health-report-saturday` | `0 11,17 * * 6` | no_agent | `orch-health-report.py` | origin |
-| `orch-skill-lifecycle` | `0 4 * * *` | LLM | (orch-skill-lifecycle skill) | origin |
+| `orch-skill-lifecycle` | `0 4 * * 1,3,5` | LLM | (orch-skill-lifecycle skill) | origin |
 | `orch-skill-report-request` | `0 2 * * 1` | no_agent | `orch-skill-report-request.sh` | origin |
 | `orch-skill-evaluate` | `0 9 * * 2` | LLM | (prompt) | origin |
-| `orch-backlog-driver` | `0 8-22 * * *` | LLM | `session-active-guard.py` + (orch-backlog-driver skill) | Telegram |
+| `orch-backlog-driver` | `0 8,14,20,22 * * *` | LLM | `session-active-guard.py` + (orch-backlog-driver skill) | Telegram |
 
 ## All-agent (`agent-*` prefix)
 
 | Name | Schedule | Type | Script / Skill | Deliver |
 |------|----------|------|----------------|---------|
-| `agent-fixer-workday` | `0 9-17 * * 1-5` | LLM | auto-remediation skill + session-active-guard.py | telegram |
-| `agent-fixer-evening` | `0 19,20,22 * * 1-5` | LLM | auto-remediation skill | telegram |
+| `agent-fixer-workday` | `0 8,14,20 * * 1-5` | LLM | auto-remediation skill + session-active-guard.py | telegram |
+| `agent-fixer-evening` | `0 20,22 * * 1-5` | LLM | auto-remediation skill | telegram |
 | `agent-fixer-overnight` | `0 23 * * 1-5` | LLM | auto-remediation skill | telegram |
 | `agent-remediation-sensor` | `*/5 * * * *` | no_agent | `agent-remediation-sensor.py` | local (runs only where IS_SERVER=true) |
 | `agent-remediate-apply` | `*/10 * * * *` | no_agent | `agent-remediate-apply.py` | origin |
@@ -108,8 +108,8 @@
 | `agent-swap-refresh` | `0 5 * * *` | no_agent | `agent-swap-refresh.py` | origin |
 | `agent-agents-md-prune-scan` | `0 4 * * 1-6` | no_agent | `agent-agents-md-prune-scan.py` | local |
 | `agent-agents-md-prune-apply` | `30 4 * * 1-6` | LLM | (prompt) | telegram |
-| `cortex-bus-workday` | `0 9-17 * * 1-5` | LLM | session-active-guard.py | telegram |
-| `cortex-bus-evening` | `0 19,20,22 * * 1-5` | LLM | (prompt) | telegram |
+| `cortex-bus-workday` | `0 8,14,20 * * 1-5` | LLM | session-active-guard.py | telegram |
+| `cortex-bus-evening` | `0 20,22 * * 1-5` | LLM | (prompt) | telegram |
 | `cortex-bus-overnight` | `0 23 * * 1-5` | LLM | (prompt) | telegram |
 | `agent-daily-bible-reading` | `0 1 * * *` | LLM | agent-daily-bible-reading skill | origin |
 | `agent-daily-soul-refinement` | ~~`0 23 * * *`~~ | ~~LLM~~ | ~~soul-refinement skill~~ | ~~origin~~ | ⚠️ **ABSORBED 2026-08-02** — fleet-level daily soul refinement merged into `orch-skill-lifecycle`. Per-host variant is `local-agent-daily-soul-refinement`. |
@@ -150,14 +150,15 @@ Peak hours are priced **×2** (hit $0.014/M, miss $0.44/M, out $1.32/M); off-pea
 | PEAK ×2 | 01:00–03:59 & 06:00–09:59 | 10:00–12:59 & 15:00–18:59 |
 | off-peak | 00:00–00:59, 04:00–05:59, 10:00–23:59 | 09:00–09:59, 13:00–14:59 (lunch gap), 19:00–08:59 |
 
-**Fleet scheduling policy (O3/G-4, 2026-08-25):** daytime-responsive LLM crons
-(workday/backlog passes: `orch-backlog-driver` 08:00/10:00 UTC,
-`agent-fixer-workday`/`cortex-bus-workday` 09:00 UTC, `orch-skill-evaluate`
-09:00 Tue) deliberately keep their peak-hour slots — function beats the
-~$0.003–0.007/run premium (cron-cost-scheduling skill). Overnight **batch** LLM
-crons are scheduled off-peak: `cortex-bus-overnight` + `agent-fixer-overnight`
-at 23:00 UTC (08:00 KST — after the 07:00 KST morning passes), mycortex dream
-tiers at 05:00 UTC (14:00 KST lunch-gap quiet). 22:00 UTC (07:00 KST) is the
+**Fleet scheduling policy (O3/G-4, 2026-08-25; revised 2026-08-31 cost-cut):**
+LLM crons run off DeepSeek peak (KST 10–13 & 15–19) where function allows.
+Daytime slots moved off-peak: `orch-backlog-driver` 08/14/20/22 KST (UTC
+23/05/11/13), `agent-fixer-workday`/`cortex-bus-workday` 08/14/20 KST,
+`agent-fixer-evening`/`cortex-bus-evening` 20/22 KST, `orch-task-evening-pass`
+21:00 KST, `orch-skill-lifecycle` 04:00 KST Mon/Wed/Fri (was daily). Overnight
+**batch** LLM crons stay off-peak: `cortex-bus-overnight` + `agent-fixer-overnight`
+at 23:00 KST (08:00 KST — after the 07:00 KST morning passes), mycortex dream
+tiers at 05:00 KST (14:00 KST lunch-gap quiet). 22:00 UTC (07:00 KST) is the
 safe morning-pass window — do not pile batch work onto it. Live minutes differ
 per host (`cksum(hostname:cron-name) % 60` stagger); the hour is the contract.
 

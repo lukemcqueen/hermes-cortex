@@ -80,7 +80,7 @@ Every cron name MUST start with a group prefix. No bare names:
 | `orch-fleet-watchdog` | `*/5 * * * *` | no_agent | `orch-fleet-watchdog.py` | Telegram |
 | `orch-health-report-weekday` | `0 9-18 * * 1-5` | no_agent | `orch-health-report.py` | origin |
 | `orch-health-report-saturday` | `0 11,17 * * 6` | no_agent | `orch-health-report.py` | origin |
-| `orch-skill-lifecycle` | `0 4 * * *` | LLM | (skill) | origin |
+| `orch-skill-lifecycle` | `0 4 * * 1,3,5` | LLM | (skill) | origin |
 
 ### All-agent crons (`agent-*`) — 44 crons
 
@@ -88,9 +88,9 @@ These run on every agent in the fleet. Created by `install-crons.sh`.
 
 | Name | Schedule | Type | Script | Deliver |
 |------|----------|------|--------|---------|
-| `agent-fixer-workday` | `0 9-17 * * 1-5` | LLM | auto-remediation skill | origin |
-| `agent-fixer-evening` | `0 19,20,22 * * 1-5` | LLM | auto-remediation skill | origin |
-| `agent-fixer-overnight` | `0 3 * * 1-5` | LLM | auto-remediation skill | origin |
+| `agent-fixer-workday` | `0 8,14,20 * * 1-5` | LLM | auto-remediation skill | origin |
+| `agent-fixer-evening` | `0 20,22 * * 1-5` | LLM | auto-remediation skill | origin |
+| `agent-fixer-overnight` | `0 23 * * 1-5` | LLM | auto-remediation skill | origin |
 | `agent-remediation-sensor` | `*/5 * * * *` | no_agent | `agent-remediation-sensor.py` | local (runs only where IS_SERVER=true) |
 | `agent-remediate-apply` | `*/10 * * * *` | no_agent | `agent-remediate-apply.py` | origin |
 | `agent-message-handler` | `*/5 * * * *` | no_agent | `agent-message-handler.py` | local |
@@ -140,9 +140,9 @@ These run on this machine but use `agent-*` naming. Not in repo installers (inte
 
 | Name | Schedule | Type | Deliver |
 |------|----------|------|---------|
-| `cortex-bus-workday` | `0 9-17 * * 1-5` | LLM | origin |
-| `cortex-bus-evening` | `0 19,20,22 * * 1-5` | LLM | origin |
-| `cortex-bus-overnight` | `0 2 * * 1-5` | LLM | origin |
+| `cortex-bus-workday` | `0 8,14,20 * * 1-5` | LLM | origin |
+| `cortex-bus-evening` | `0 20,22 * * 1-5` | LLM | origin |
+| `cortex-bus-overnight` | `0 23 * * 1-5` | LLM | origin |
 | `job-opportunity-scanner` | `0 7 * * *` | LLM | Telegram |
 
 ### Other crons — 8 crons
