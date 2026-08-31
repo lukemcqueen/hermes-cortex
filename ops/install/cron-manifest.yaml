@@ -11,8 +11,8 @@ crons:
   deliver: telegram:{{HOME_CHANNEL}}
   workdir: ''
   no_agent: false
-  model: deepseek-v4-flash
-  provider: deepseek
+  model: deepseek-v4-flash-free
+  provider: opencode-free
   reasoning_effort: none
 - name: agent-agents-md-prune-scan
   scope: universal
@@ -84,8 +84,8 @@ crons:
   deliver: telegram:{{HOME_CHANNEL}}
   workdir: ''
   no_agent: false
-  model: deepseek-v4-flash
-  provider: deepseek
+  model: deepseek-v4-flash-free
+  provider: opencode-free
 - name: agent-fixer-overnight
   scope: universal
   schedule: 0 23 * * 1-5
@@ -111,8 +111,8 @@ crons:
   deliver: telegram:{{HOME_CHANNEL}}
   workdir: ''
   no_agent: false
-  model: deepseek-v4-flash
-  provider: deepseek
+  model: deepseek-v4-flash-free
+  provider: opencode-free
 - name: agent-fixer-workday
   scope: universal
   schedule: 0 8,14,20 * * 1-5
@@ -141,8 +141,8 @@ crons:
   deliver: telegram:{{HOME_CHANNEL}}
   workdir: ''
   no_agent: false
-  model: deepseek-v4-flash
-  provider: deepseek
+  model: deepseek-v4-flash-free
+  provider: opencode-free
 - name: agent-governance-auditor
   scope: universal
   schedule: 0 */6 * * *
@@ -280,8 +280,8 @@ crons:
   deliver: telegram:{{HOME_CHANNEL}}
   workdir: ''
   no_agent: false
-  model: deepseek-v4-flash
-  provider: deepseek
+  model: deepseek-v4-flash-free
+  provider: opencode-free
   reasoning_effort: none
 - name: agent-memory-to-brain-sync
   scope: universal
@@ -400,8 +400,8 @@ crons:
   deliver: origin
   workdir: ''
   no_agent: false
-  model: deepseek-v4-flash
-  provider: deepseek
+  model: deepseek-v4-flash-free
+  provider: opencode-free
   reasoning_effort: none
 - name: agent-mycortex-dream-nightly
   scope: opt-in
@@ -471,8 +471,8 @@ crons:
   deliver: origin
   workdir: ''
   no_agent: false
-  model: deepseek-v4-flash
-  provider: deepseek
+  model: deepseek-v4-flash-free
+  provider: opencode-free
   reasoning_effort: none
 - name: agent-mycortex-dream-weekly
   scope: opt-in
@@ -562,8 +562,8 @@ crons:
   deliver: origin
   workdir: ''
   no_agent: false
-  model: deepseek-v4-flash
-  provider: deepseek
+  model: deepseek-v4-flash-free
+  provider: opencode-free
   reasoning_effort: none
 - name: agent-mycortex-retention
   scope: universal
@@ -789,8 +789,8 @@ crons:
   deliver: telegram:{{HOME_CHANNEL}}
   workdir: ''
   no_agent: false
-  model: deepseek-v4-flash
-  provider: deepseek
+  model: deepseek-v4-flash-free
+  provider: opencode-free
 - name: cortex-bus-failover-watchdog
   scope: universal
   schedule: '*/5 * * * *'
@@ -839,8 +839,8 @@ crons:
   deliver: telegram:{{HOME_CHANNEL}}
   workdir: ''
   no_agent: false
-  model: deepseek-v4-flash
-  provider: deepseek
+  model: deepseek-v4-flash-free
+  provider: opencode-free
 - name: cortex-bus-workday
   scope: universal
   schedule: 0 8,14,20 * * 1-5
@@ -881,8 +881,8 @@ crons:
   deliver: telegram:{{HOME_CHANNEL}}
   workdir: ''
   no_agent: false
-  model: deepseek-v4-flash
-  provider: deepseek
+  model: deepseek-v4-flash-free
+  provider: opencode-free
 - name: orch-bus-audit-watchdog
   scope: orchestrator
   schedule: '*/1 * * * *'
@@ -1024,8 +1024,8 @@ crons:
   deliver: origin
   workdir: ''
   no_agent: false
-  model: deepseek-v4-flash
-  provider: deepseek
+  model: deepseek-v4-flash-free
+  provider: opencode-free
   reasoning_effort: none
 - name: orch-skill-lifecycle
   scope: orchestrator
@@ -1038,8 +1038,8 @@ crons:
   deliver: origin
   workdir: ''
   no_agent: false
-  model: deepseek-v4-flash
-  provider: deepseek
+  model: deepseek-v4-flash-free
+  provider: opencode-free
   reasoning_effort: none
 - name: orch-skill-report-request
   scope: orchestrator
@@ -1061,5 +1061,5 @@ crons:
   deliver: telegram:{{HOME_CHANNEL}}
   workdir: ''
   no_agent: false
-  model: deepseek-v4-flash
-  provider: deepseek
+  model: deepseek-v4-flash-free
+  provider: opencode-free
