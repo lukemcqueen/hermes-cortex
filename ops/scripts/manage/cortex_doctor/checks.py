@@ -1502,11 +1502,11 @@ def check_services(res):
     elif bus_url == "000":
       res.add("Agent Bus (direct)", "FAIL",
           "cortex-bus process running but port 8903 unreachable",
-          "Check: systemctl --user status cortex-bus")
+          "Check: systemctl status cortex-bus (system) or systemctl --user status cortex-bus")
     else:
       res.add("Agent Bus (direct)", "FAIL",
           f"HTTP {bus_url} — unexpected response",
-          "Check: systemctl --user status cortex_bus")
+          "Check: systemctl status cortex_bus (system) or systemctl --user status cortex_bus")
   else:
     def _get_conf(key):
       val = os.environ.get(key, "")
@@ -1543,7 +1543,7 @@ def check_services(res):
     if "cortex_bus" in _bus_proc:
       res.add("Bus (non-orch guard)", "WARN",
           "cortex_bus process running on non-orch agent — should only run on orchestrator hosts",
-          "Stop: systemctl --user stop cortex-bus && systemctl --user disable cortex-bus")
+          "Stop: systemctl stop cortex-bus (system) or systemctl --user stop cortex-bus; then disable")
 
   # Ollama
   out = run_bg([CURL, "-s", "http://localhost:11434/api/tags", "--max-time", "5"])

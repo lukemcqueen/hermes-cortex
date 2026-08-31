@@ -156,11 +156,17 @@ fi
 
 # ── Step 7: Restart Hermes gateway ────────────────────────────
 echo "→ Restarting Hermes gateway (required for new env vars)..."
-if systemctl --user list-units --output=name 2>/dev/null | grep -q hermes-gateway; then
-    cat > /tmp/restart-hermes-${AGENT_NAME}.sh << 'RESTART'
+RESTART_CMD=""
+if systemctl list-unit-files hermes-gateway.service --no-legend 2>/dev/null | grep -q '^hermes-gateway.service'; then
+    RESTART_CMD="systemctl restart hermes-gateway.service"
+elif systemctl --user list-units --output=name 2>/dev/null | grep -q hermes-gateway; then
+    RESTART_CMD="systemctl --user restart hermes-gateway.service"
+fi
+if [[ -n "$RESTART_CMD" ]]; then
+    cat > /tmp/restart-hermes-${AGENT_NAME}.sh << RESTART
 #!/bin/bash
 sleep 3
-systemctl --user restart hermes-gateway.service
+${RESTART_CMD}
 RESTART
     chmod +x /tmp/restart-hermes-${AGENT_NAME}.sh
     nohup setsid /tmp/restart-hermes-${AGENT_NAME}.sh </dev/null >/dev/null 2>&1 &

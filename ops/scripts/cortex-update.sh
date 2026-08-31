@@ -638,15 +638,29 @@ restart_cortex_bus() {
     launchctl load "${HOME}/Library/LaunchAgents/com.hermes.cortex-bus.plist" 2>/dev/null || true
     return
   fi
-  # Linux systemd
-  if systemctl --user is-active --quiet cortex-bus 2>/dev/null; then
+  # Linux systemd (scope-aware: system scope on migrated hosts, user scope elsewhere)
+  if SERVICE_CTL is-active cortex-bus >/dev/null 2>&1; then
     info "  Restarting Agent Bus (systemd)…"
+    systemctl daemon-reload 2>/dev/null || true
     systemctl --user daemon-reload 2>/dev/null || true
-    systemctl --user restart cortex-bus 2>&1 | sed 's/^/    /'
+    SERVICE_CTL restart cortex-bus 2>&1 | sed 's/^/    /'
   fi
 }
 
 # ── Service restart helpers ─────────────────────────────────
+
+# Scope-aware service control for the Hermes stack units. The stack migrated
+# to SYSTEM scope on orchestrator hosts (2026-08-31, headless boot without
+# login); other hosts still run user scope. Prefer the system unit when its
+# file exists, else fall back to the user unit.
+SERVICE_CTL() {
+  local verb="$1" unit="$2"
+  if systemctl list-unit-files "${unit}" --no-legend 2>/dev/null | grep -q "^${unit}"; then
+    systemctl "${verb}" "${unit}"
+  else
+    systemctl --user "${verb}" "${unit}"
+  fi
+}
 
 restart_langfuse() {
   if [[ -f "${HOME}/langfuse/docker-compose.yml" ]] && command -v docker &>/dev/null; then
@@ -662,9 +676,11 @@ restart_dashboard() {
     info "  Restarting Cortex Dashboard…"
     launchctl unload "${HOME}/Library/LaunchAgents/com.hermes.cortex-dashboard.plist" 2>/dev/null || true
     launchctl load "${HOME}/Library/LaunchAgents/com.hermes.cortex-dashboard.plist" 2>&1 | sed 's/^/    /'
-  elif [[ -f "${HOME}/.config/systemd/user/hermes-cortex-dashboard.service" ]]; then
+  elif [[ -f "/etc/systemd/system/hermes-cortex-dashboard.service" ]] || \
+       [[ -f "${HOME}/.config/systemd/user/hermes-cortex-dashboard.service" ]]; then
+    systemctl daemon-reload 2>/dev/null || true
     systemctl --user daemon-reload 2>/dev/null || true
-    systemctl --user restart hermes-cortex-dashboard 2>&1 | sed 's/^/    /'
+    SERVICE_CTL restart hermes-cortex-dashboard 2>&1 | sed 's/^/    /'
   fi
 }
 # restart_agent_inbox — removed; use restart_cortex_bus instead
@@ -676,9 +692,11 @@ restart_health_server() {
   # old in-memory logic until restarted (deploy ≠ load — observed 2026-08-20:
   # bounded-hour stale-cron fix sat unloaded 17 days, fleet watchdog flagged
   # esther no_stale_crons down nightly).
-  if [[ -f "${HOME}/.config/systemd/user/health-vector.service" ]]; then
+  if [[ -f "/etc/systemd/system/health-vector.service" ]] || \
+     [[ -f "${HOME}/.config/systemd/user/health-vector.service" ]]; then
+    systemctl daemon-reload 2>/dev/null || true
     systemctl --user daemon-reload 2>/dev/null || true
-    systemctl --user restart health-vector 2>&1 | sed 's/^/    /'
+    SERVICE_CTL restart health-vector 2>&1 | sed 's/^/    /'
   elif launchctl list com.hermes.health-server &>/dev/null 2>&1; then
     info "  Restarting health server (launchd)…"
     launchctl kickstart -k "gui/$(id -u)/com.hermes.health-server" 2>&1 | sed 's/^/    /'
