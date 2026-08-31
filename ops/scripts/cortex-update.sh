@@ -2785,6 +2785,16 @@ except Exception:
     CORTEX_DEPLOY_HOME="${CORTEX_DEPLOY_HOME}" bash "${CORTEX_DEPLOY_HOME}/scripts/install-crons.sh" 2>/dev/null && \
       info "Crons up to date" || warn "Cron install skipped (no hermes CLI?)"
 
+    # ── Fallback chain convergence (fleet-wide single source of truth) ──
+    # install-fallback-providers.py is env-driven with canonical defaults:
+    # every host converges to the same fallback_providers chain on every
+    # sync/deploy, even if ~/hermes-cortex/.env is untouched. qwen2.5:3b
+    # was removed (watchdog known-bad — token garbage in agentic loops).
+    if [[ -f "${CORTEX_DEPLOY_HOME}/scripts/install-fallback-providers.py" ]]; then
+      python3 "${CORTEX_DEPLOY_HOME}/scripts/install-fallback-providers.py" 2>/dev/null && \
+        info "Fallback chain up to date" || warn "Fallback chain update skipped"
+    fi
+
     # ── Orchestrator-only crons (team health, soul refinement, etc.) ──
     # Guard: hostname moses|esther AND matching home dir. Env vars
     # (AGENT_TYPE / IS_ORCHESTRATOR) grant NO orch powers — they are spoofable.
