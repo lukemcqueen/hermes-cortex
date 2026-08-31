@@ -3,8 +3,12 @@
 install-fallback-providers.py
 
 Ensures ~/.hermes/config.yaml has the fallback_providers chain:
-  Tier 1: opencode-zen / deepseek-v4-flash (free API fallback)
-  Tier 2: custom:ollama-local / qwen2.5:3b (local last resort)
+  Tier 1: deepseek / deepseek-v4-flash (primary API fallback)
+  Tier 2: opencode-zen / deepseek-v4-flash (OpenCode Zen relay fallback)
+
+Chain is env-driven (sourced from ~/hermes-cortex/.env by the caller):
+  LLM_CRON_FALLBACK1_MODEL / LLM_CRON_FALLBACK1_PROVIDER
+  LLM_CRON_FALLBACK2_MODEL / LLM_CRON_FALLBACK2_PROVIDER
 
 Idempotent — safe to run repeatedly. Only modifies config.yaml
 if the fallback_providers section is missing or outdated.
@@ -17,18 +21,33 @@ from pathlib import Path
 
 HERMES_CONFIG = Path.home() / ".hermes" / "config.yaml"
 
-# Desired fallback chain (model-agnostic in intent — configure your own models)
+# Desired fallback chain (env-driven — configure your own models in
+# ~/hermes-cortex/.env; these are the fleet defaults). Entries whose
+# model OR provider env var is empty are dropped — leave both empty to
+# remove a tier.
+def _env_entry(provider_var: str, model_var: str, provider_default: str, model_default: str, base_url: str | None = None, api_mode: str | None = None) -> dict | None:
+    provider = os.environ.get(provider_var, provider_default).strip()
+    model = os.environ.get(model_var, model_default).strip()
+    if not provider or not model:
+        return None
+    entry = {"provider": provider, "model": model}
+    if base_url:
+        entry["base_url"] = base_url
+    if api_mode:
+        entry["api_mode"] = api_mode
+    return entry
+
+
 FALLBACK_PROVIDERS = [
-    {
-        "provider": "opencode-zen",
-        "model": "deepseek-v4-flash",
-        "base_url": "https://opencode.ai/zen/v1",
-        "api_mode": "chat_completions",
-    },
-    {
-        "provider": "custom:ollama-local",
-        "model": "qwen2.5:3b",
-    },
+    e
+    for e in (
+        _env_entry("LLM_CRON_FALLBACK1_PROVIDER", "LLM_CRON_FALLBACK1_MODEL", "deepseek", "deepseek-v4-flash"),
+        _env_entry(
+            "LLM_CRON_FALLBACK2_PROVIDER", "LLM_CRON_FALLBACK2_MODEL", "opencode-zen", "deepseek-v4-flash",
+            base_url="https://opencode.ai/zen/v1", api_mode="chat_completions",
+        ),
+    )
+    if e is not None
 ]
 
 

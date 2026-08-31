@@ -21,6 +21,10 @@ without checking here first (Rule 11: never invent config or env names).
 | `EMBEDDING_MODEL` | Embedding model (local Ollama: nomic-embed-text:v1.5) |
 | `LLM_CRON_MODEL` | Cron LLM model (deepseek-v4-flash) |
 | `LLM_CRON_PROVIDER` | Cron LLM provider (deepseek) |
+| `LLM_CRON_FALLBACK1_MODEL` | First cron fallback model (deepseek-v4-flash) |
+| `LLM_CRON_FALLBACK1_PROVIDER` | First cron fallback provider (deepseek) |
+| `LLM_CRON_FALLBACK2_MODEL` | Second cron fallback model (deepseek-v4-flash) |
+| `LLM_CRON_FALLBACK2_PROVIDER` | Second cron fallback provider (opencode-zen) |
 | `HERMES_CRON_TIMEOUT` | Cron timeout budget |
 | `HERMES_TIMEZONE` | Fleet timezone (Asia/Seoul, KST) |
 | `IS_ORCHESTRATOR` | Orchestrator flag (host-derived) |
