@@ -232,11 +232,16 @@ def parse_issues(text: str) -> list[dict]:
 
 
 def make_issue_id(issue: dict) -> str:
-    """Generate a unique ID for an issue to prevent re-processing."""
+    """Generate a stable ID for an issue to prevent re-processing.
+
+    Deliberately excludes the sensor's per-run timestamp: the sensor stamps
+    a fresh value every run, so including it made the ID change every run and
+    the seen-file dedup never matched — identical failures were re-attempted
+    and re-reported every 10 minutes (2026-08-31 regression).
+    """
     t = issue.get("type", "unknown")
     d = issue.get("detail", "")
-    ts = issue.get("timestamp", "")
-    return f"{t}|{d[:80]}|{ts}"
+    return f"{t}|{d[:80]}"
 
 
 def main() -> int:
