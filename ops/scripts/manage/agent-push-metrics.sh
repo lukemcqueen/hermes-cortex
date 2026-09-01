@@ -10,8 +10,12 @@
 #
 # Usage:
 #   bash push-metrics.sh                          # push to default URL
-#   VICTORIA_METRICS_URL=http://central:8428/api/v1/import/prometheus \
+#   VICTORIA_METRICS_URL=http://metrics.example.com:8428/api/v1/import/prometheus \
 #     bash push-metrics.sh                        # push to specific host
+#   VICTORIA_METRICS_FALLBACK_URL=... bash push-metrics.sh
+#     # backup sink (backup orchestrator / local VM) tried after the primary
+#     # exhausts its retries — keeps pushes flowing while the primary
+#     # orchestrator is unreachable (2026-08-31).
 #
 # Exit code:
 #   0 = pushed successfully
@@ -56,6 +60,8 @@ if [ -z "${VICTORIA_METRICS_URL:-}" ]; then
 fi
 VICTORIA_URL="$VICTORIA_METRICS_URL"
 export VICTORIA_URL
+VICTORIA_FALLBACK_URL="${VICTORIA_METRICS_FALLBACK_URL:-}"
+export VICTORIA_FALLBACK_URL
 
 MAX_RETRIES=3
 RETRY_DELAY=2
@@ -230,30 +236,34 @@ echo "$disk_metrics"
 # ── Push ─────────────────────────────────────────────────────
 
 push_metrics() {
-  local metrics status
+  local metrics status url
   metrics=$(collect_metrics)
 
-  for attempt in $(seq 1 "${MAX_RETRIES}"); do
-    # Bounded curl (2026-08-05): a dead endpoint must fail fast, not hang the
-    # cron — Gisu reported a curl hang on a downed VictoriaMetrics proxy that
-    # held the whole tick. --max-time caps the total transfer; the connect
-    # timeout catches an unresponsive host quickly.
-    local curl_args=("-s" "-X" "POST" "${VICTORIA_URL}"
-      "-H" "Content-Type: text/plain; version=0.4.0"
-      "--data-binary" "@-"
-      "--max-time" "20" "--connect-timeout" "5"
-      "-w" "%{http_code}" "-o" "/dev/null")
+  for url in "${VICTORIA_URL}" "${VICTORIA_METRICS_FALLBACK_URL}"; do
+    [ -n "$url" ] || continue
+    for attempt in $(seq 1 "${MAX_RETRIES}"); do
+      # Bounded curl (2026-08-05): a dead endpoint must fail fast, not hang the
+      # cron — Gisu reported a curl hang on a downed VictoriaMetrics proxy that
+      # held the whole tick. --max-time caps the total transfer; the connect
+      # timeout catches an unresponsive host quickly.
+      local curl_args=("-s" "-X" "POST" "${url}"
+        "-H" "Content-Type: text/plain; version=0.4.0"
+        "--data-binary" "@-"
+        "--max-time" "20" "--connect-timeout" "5"
+        "-w" "%{http_code}" "-o" "/dev/null")
 
-    status=$(echo "${metrics}" | curl "${curl_args[@]}")
+      status=$(echo "${metrics}" | curl "${curl_args[@]}")
 
-    if [ "${status}" = "204" ]; then
-      return 0
-    fi
+      if [ "${status}" = "204" ]; then
+        return 0
+      fi
 
-    echo "[push-metrics] attempt ${attempt}/${MAX_RETRIES}: HTTP ${status}" >&2
-    if [ "${attempt}" -lt "${MAX_RETRIES}" ]; then
-      sleep "${RETRY_DELAY}"
-    fi
+      echo "[push-metrics] attempt ${attempt}/${MAX_RETRIES} on ${url}: HTTP ${status}" >&2
+      if [ "${attempt}" -lt "${MAX_RETRIES}" ]; then
+        sleep "${RETRY_DELAY}"
+      fi
+    done
+    echo "[push-metrics] ${url} unreachable — trying fallback sink" >&2
   done
 
   return 1
