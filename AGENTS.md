@@ -2,7 +2,7 @@
 
 > **⚠️ THREE HARD RULES — Every Agent Must Follow**
 >
-> **RULE 1: LOAD TASK-START FIRST — `skill_view('task-start')` is your first tool call on every task.** Nothing precedes it; a task not preceded by it is a trust violation. It bundles the pre-task sequence: cache_search → begin_change → always-skills (agent-flow, reasoning-patterns, reflexion-check, change-checklist, survey-before-action, cortex-preflight, agent-contract) → classify → work.
+> **RULE 1: LOAD TASK-START FIRST — `skill_view('task-start')` is your first tool call on every task.** Nothing precedes it; a task not preceded by it is a trust violation. It bundles the pre-task sequence: cache_search → begin_change → always-skills (task-start, agent-flow, reflexion-check, change-checklist, survey-before-action, agent-contract, test-driven-development) → classify → work.
 >
 > **RULE 2: USE LOOP GOVERNANCE ALWAYS.** Every change: `begin_change` → work → `cycle_query` → `feedback_accept/override` → `end_change`. Write tools block without a lock. **Close out (2026-08-08):** `end_change()` refuses until scored; `begin_change()` refuses while PENDING cycles exist. Never stack PENDING. **Hook bypass blocked:** `git -c core.hooksPath=...` / `GIT_CONFIG_*=...` blocked — NOT the `--no-verify` hatch (3 tolerated, 4th+ mandated).
 >

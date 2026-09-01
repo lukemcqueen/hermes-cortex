@@ -472,7 +472,7 @@ Three governance gaps found and closed by the 2026-08-08 edge-case audit
 **14a. Skills tracking was PROCESS-global — sessions leaked each other's loads.**
 `_skills_loaded_in_session` is one module-level set shared by every session in
 the gateway process. Any session's `skill_view()` counted for ALL sessions:
-- The 8-skill marker auto-created for a session that loaded only 2 skills
+- The 7-skill marker auto-created for a session that loaded only 2 skills
   (other sessions contributed the rest) → write tools unblocked without the
   session actually loading the skills.
 - The domain gate (`_check_domain_skill_gate`) and adversarial gate passed
@@ -481,7 +481,7 @@ the gateway process. Any session's `skill_view()` counted for ALL sessions:
 Fix: per-session registry `_session_skills_loaded: dict[str, set]`, populated
 in the pre_tool_call hook on `skill_view`, consulted by the marker auto-create
 condition, domain gate, and adversarial gate. Each session must load its own
-8 always-skills and its own domain skill. Tests:
+7 always-skills and its own domain skill. Tests:
 `TestPerSessionSkillIsolation` (marker + adversarial) and
 `test_md_write_blocks_when_skill_loaded_by_other_session` (domain gate).
 

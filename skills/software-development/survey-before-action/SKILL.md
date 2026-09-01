@@ -26,7 +26,7 @@ Run this BEFORE writing any file, adding a cron, creating a skill, or modifying 
 
 ### Phase 0a: Load Domain Skills for the Operation Type
 
-**Before searching existing resources, load domain knowledge for what you're about to build.** The 8 always-skills (task-start, agent-flow, survey-before-action, etc.) teach you HOW to work. Domain skills teach you WHAT the craft requires — pitfalls, portability, conventions, gotchas.
+**Before searching existing resources, load domain knowledge for what you're about to build.** The 7 always-skills (task-start, agent-flow, survey-before-action, etc.) teach you HOW to work. Domain skills teach you WHAT the craft requires — pitfalls, portability, conventions, gotchas.
 
 Without domain skills, agents make preventable mistakes: writing `.sh` files with bash portability bugs, creating crons with wrong output formats, patching nginx with macOS paths on Linux.
 
@@ -94,7 +94,7 @@ This catches the skills the mapping table author didn't think of. **A skill you 
 
 #### When to Load
 
-This Phase 0a runs AFTER you've loaded the 8 always-skills (task-start, agent-flow, etc.) and AFTER you've classified the task with agent-flow (Step 5), but BEFORE you open a governance lock (begin_change). It supplements the "on-task skills" from the manifest.
+This Phase 0a runs AFTER you've loaded the 7 always-skills (task-start, agent-flow, etc.) and AFTER you've classified the task with agent-flow (Step 5), but BEFORE you open a governance lock (begin_change). It supplements the "on-task skills" from the manifest.
 
 Sequence:
 1. ✅ Always skills loaded (task-start)

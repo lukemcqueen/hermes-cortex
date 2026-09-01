@@ -53,10 +53,19 @@ marker at `~/.hermes-cortex/state/skills-loaded/<session-id>` once all
 always-section skills are loaded via actual `skill_view()` calls. Never
 `touch` the marker — a bare file fails content verification. Concurrent
 sessions each own their marker file, so no session can stomp another's
-proof. If write tools are blocked with "session skills not fully loaded",
-call `skill_view(name='<any-always-skill>')` once more to trigger the
-auto-create (batching all loads in one turn does NOT trigger it — a
-serial extra call does).
+proof. If write tools are blocked with "session skills not fully loaded":
+- The per-session loaded-set lives in the GATEWAY PROCESS's memory. If the
+  set still holds all 7 (no gateway restart since you loaded them), ONE
+  serial `skill_view(name='<any-always-skill>')` call re-triggers the
+  auto-create (batching all loads in one turn does NOT trigger it — a
+  serial extra call does).
+- After a GATEWAY RESTART or a DEPLOY that changed a skill file (the marker
+  pins a fingerprint of skill mtimes), the in-memory set is empty and the
+  stored fingerprint is stale — you must re-load ALL 7 always-skills via
+  `skill_view()` (they are read-only, so the gate does not block them);
+  the 7th call regenerates the marker. This is the "7/7 loaded ✅ but still
+  blocked" state — the message's ✅ reflects the current load, the block
+  reflects the stale marker.
 
 ### Step 4: Load domain skills (new Phase 0a)
 
@@ -140,7 +149,7 @@ mcp_loop_governance_end_change(task_id="<task-id>")
 - **Date-format daemon session IDs:** the enforcer's daemon guard protects
   `cron_`/`bg_` prefixes only. Sessions with `HERMES_CRON_SESSION=1` but
   date-format IDs bypass the guard; concurrent sessions can then overwrite
-  the marker. Symptom: "8/8 loaded" immediately followed by "not fully
+  the marker. Symptom: "7/7 loaded" immediately followed by "not fully
   loaded". Fix: re-call `skill_view('<any>')` to re-trigger auto-create.
 - **Subagents overwrite markers:** `delegate_task` subagents run with
   date-format session IDs and load skills themselves, which can invalidate

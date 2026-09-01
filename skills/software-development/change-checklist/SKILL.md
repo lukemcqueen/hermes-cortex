@@ -294,7 +294,7 @@ Changes that affect other agents' workflow must be documented.
 - [ ] **Pre-commit validation ran** (check for "change-validate:" output in last commit)
 - [ ] **Governance cycle scored** — `feedback_accept()` called before `end_change()`
 - [ ] **Cron-governance compatibility** 🕐 — if hooks, plugins, or the enforcer were modified, verify the full governance cycle works in a cron session:
-  - Load the 8 always skills in a test session (per-session marker `state/skills-loaded/<session-id>` auto-creates)
+  - Load the 7 always skills in a test session (per-session marker `state/skills-loaded/<session-id>` auto-creates)
   - Create a test cron with skills requiring write tools — it must complete without enforcer blocks
   - Delete the test cron after verification
 - [ ] **Change was pushed** — `git push origin main` (after `git pull --rebase`)
