@@ -655,7 +655,13 @@ restart_cortex_bus() {
 # file exists, else fall back to the user unit.
 SERVICE_CTL() {
   local verb="$1" unit="$2"
-  if systemctl list-unit-files "${unit}" --no-legend 2>/dev/null | grep -q "^${unit}"; then
+  # systemd ≥261 requires the full unit name (with .service suffix) in
+  # list-unit-files patterns — a bare name returns empty/rc=1, which made
+  # this check fail and fall back to --user (dbus error under set -e kills
+  # the deploy before state/update-commit is written). Normalize the name.
+  local unit_full="${unit}"
+  [[ "$unit_full" == *.* ]] || unit_full="${unit_full}.service"
+  if systemctl list-unit-files "${unit_full}" --no-legend 2>/dev/null | grep -q "^${unit_full}"; then
     systemctl "${verb}" "${unit}"
   else
     systemctl --user "${verb}" "${unit}"
