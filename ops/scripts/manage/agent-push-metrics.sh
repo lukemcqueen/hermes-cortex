@@ -24,10 +24,13 @@
 
 set -euo pipefail
 
-# ── Source env (hermes-cortex.env) before configuration ─────
-_env_file="${HOME}/.hermes-cortex/hermes-cortex.env"
-if [ -f "$_env_file" ]; then
-  set -a; source "$_env_file" 2>/dev/null || true; set +a
+# ── Source env (deploy-root .env preferred; old hermes-cortex.env fallback) ──
+ENV_FILE="${HOME}/.hermes-cortex/.env"
+if [ ! -f "$ENV_FILE" ]; then
+  ENV_FILE="${HOME}/.hermes-cortex/hermes-cortex.env"
+fi
+if [ -f "$ENV_FILE" ]; then
+  set -a; source "$ENV_FILE" 2>/dev/null || true; set +a
 fi
 
 # ── Config ──────────────────────────────────────────────────
@@ -45,9 +48,10 @@ if [ -z "$AGENT_NAME" ] || [ "$AGENT_NAME" = "unknown" ]; then
   exit 1
 fi
 
-# ── Source environment ──────────────────────────────────────
-# Cron scheduler does not source hermes-cortex.env before running no_agent scripts.
-ENV_FILE="${HOME}/.hermes-cortex/hermes-cortex.env"
+# ── Source environment (already sourced above; kept for cron clarity) ──
+# Cron scheduler does not source the env file before running no_agent
+# scripts, so the script sources it itself (deploy-repo .env preferred,
+# old hermes-cortex.env fallback).
 if [ -f "$ENV_FILE" ]; then
   # shellcheck source=/dev/null
   set -a; source "$ENV_FILE"; set +a
