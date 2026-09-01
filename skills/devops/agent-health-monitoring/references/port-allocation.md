@@ -9,7 +9,7 @@ bound to loopback only.
 | Port | Service | Auth | Protocol | Layer |
 |------|---------|------|----------|-------|
 | 13001 | Cortex Dashboard | Basic Auth | HTTPS → nginx proxy | External |
-| 13002 | Langfuse | Basic Auth | HTTPS → nginx proxy | External |
+| 14002 | Langfuse | Basic Auth | HTTPS → nginx proxy | External |
 | 13003 | *(reserved)* | — | — | — |
 | 13004 | Agent Inbox (MCP backend) | Basic Auth | HTTPS → nginx proxy | External |
 | 13005 | *(reserved)* | — | — | — |
