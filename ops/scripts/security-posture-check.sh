@@ -8,7 +8,15 @@
 # (launchd, pf, system.log). Platform-inapplicable checks are skipped
 # with an explicit "n/a" note, never silently.
 #
-# Checks:
+# TIER — per-host posture depth, read from ~/hermes-cortex/.env:
+#   SECURITY_POSTURE=full     (default) all checks — internet-facing host
+#   SECURITY_POSTURE=minimal  skip network-exposure checks (firewall ban
+#                             set, brute-force volume, nginx jail req);
+#                             keep service-up + SSH key-only basics
+#   SECURITY_POSTURE=off      exit 0 silently — host opts out entirely
+#                             (e.g. an agent not on the net at all)
+#
+# Checks (full tier):
 #   1. fail2ban service active (systemctl / launchctl)
 #   2. fail2ban jails enabled (sshd, nginx-http-auth, nginx-badbots)
 #   3. firewall ban set exists (Linux: nftables f2b-table / macOS: pf anchor)
@@ -26,16 +34,38 @@ ok()    { :; }
 
 OS="$(uname -s)"
 
+# --- tier: env var wins, ~/hermes-cortex/.env is the fallback default ---
+# (same convention as IS_SERVER). SECURITY_POSTURE=full|minimal|off.
+POSTURE_TIER="${SECURITY_POSTURE:-full}"
+if [[ -z "${SECURITY_POSTURE:-}" && -f "${HOME}/hermes-cortex/.env" ]]; then
+  _tier="$(grep -E '^SECURITY_POSTURE=' "${HOME}/hermes-cortex/.env" 2>/dev/null | tail -1 | cut -d= -f2- | tr -d '"' | tr -d "'")"
+  [[ -n "$_tier" ]] && POSTURE_TIER="$_tier"
+fi
+case "$POSTURE_TIER" in
+  off)
+    exit 0 ;;
+  minimal|full) : ;;
+  *)
+    warn "SECURITY_POSTURE='$POSTURE_TIER' unknown (expected full|minimal|off) — treating as full" ;;
+esac
+TIER_MINIMAL=0
+[[ "$POSTURE_TIER" == "minimal" ]] && TIER_MINIMAL=1
+
+
 # --- 1. fail2ban service ---
 if [[ "$OS" == "Darwin" ]]; then
   if launchctl list | grep -q 'fail2ban'; then
     ok "fail2ban loaded (launchd)"
+  elif [[ $TIER_MINIMAL -eq 1 ]]; then
+    ok "skip fail2ban (minimal tier — host not directly exposed)"
   else
     fail "fail2ban is NOT loaded (launchctl list | grep fail2ban)"
   fi
 else
   if systemctl is-active fail2ban >/dev/null 2>&1; then
     ok "fail2ban active"
+  elif [[ $TIER_MINIMAL -eq 1 ]]; then
+    ok "skip fail2ban (minimal tier — host not directly exposed)"
   else
     fail "fail2ban service is NOT active"
   fi
@@ -48,6 +78,9 @@ HAS_NGINX=0
 if command -v nginx >/dev/null 2>&1 || [[ -d /etc/nginx ]]; then
   HAS_NGINX=1
 fi
+if [[ $TIER_MINIMAL -eq 1 ]]; then
+  ok "skip jail checks (minimal tier)"
+else
 
 # fail2ban-client status <jail> needs the root socket; as a cron (non-root)
 # only the top-level `fail2ban-client status` is available (and only where
@@ -77,17 +110,22 @@ for jail in sshd nginx-http-auth nginx-badbots; do
     break
   fi
 done
+fi
 
 # --- 3. firewall ban set ---
-if [[ "$OS" == "Darwin" ]]; then
+if [[ $TIER_MINIMAL -eq 1 ]]; then
+  ok "skip firewall ban-set check (minimal tier)"
+elif [[ "$OS" == "Darwin" ]]; then
   if command -v pfctl >/dev/null 2>&1 && sudo -n pfctl -s Anchors 2>/dev/null | grep -q 'f2b'; then
     ok "pf f2b anchor present"
   else
     warn "pf f2b anchor not verified (needs root; check: sudo pfctl -s Anchors | grep f2b)"
   fi
 else
-  if command -v nft >/dev/null 2>&1 && nft list set inet f2b-table addr-set f2b-sshd >/dev/null 2>&1; then
+  if command -v nft >/dev/null 2>&1 && sudo -n nft list set inet f2b-table addr-set f2b-sshd >/dev/null 2>&1; then
     ok "nftables f2b-sshd set present"
+  elif command -v nft >/dev/null 2>&1 && nft list set inet f2b-table addr-set f2b-sshd >/dev/null 2>&1; then
+    ok "nftables f2b-sshd set present (readable without sudo)"
   elif command -v iptables >/dev/null 2>&1 && iptables -L f2b-sshd -n >/dev/null 2>&1; then
     ok "iptables f2b-sshd chain present"
   else
@@ -123,14 +161,18 @@ else
 fi
 
 # --- 6. brute-force volume (last 24h) ---
-BRUTE=0
-if [[ "$OS" == "Darwin" ]]; then
-  BRUTE=$(grep -cE 'Failed password|Invalid user' /var/log/system.log 2>/dev/null || true)
+if [[ $TIER_MINIMAL -eq 1 ]]; then
+  ok "skip brute-force volume (minimal tier)"
 else
-  BRUTE=$(journalctl -u sshd --since "24 hours ago" 2>/dev/null | grep -cE 'Failed password|Invalid user' || true)
-fi
-if [[ "${BRUTE:-0}" -gt 100 ]]; then
-  warn "$BRUTE SSH brute-force attempts in last 24h"
+  BRUTE=0
+  if [[ "$OS" == "Darwin" ]]; then
+    BRUTE=$(grep -cE 'Failed password|Invalid user' /var/log/system.log 2>/dev/null || true)
+  else
+    BRUTE=$(journalctl -u sshd --since "24 hours ago" 2>/dev/null | grep -cE 'Failed password|Invalid user' || true)
+  fi
+  if [[ "${BRUTE:-0}" -gt 100 ]]; then
+    warn "$BRUTE SSH brute-force attempts in last 24h"
+  fi
 fi
 
 # --- output ---
