@@ -126,8 +126,12 @@ else
     ok "nftables f2b-sshd set present"
   elif command -v nft >/dev/null 2>&1 && nft list set inet f2b-table addr-set f2b-sshd >/dev/null 2>&1; then
     ok "nftables f2b-sshd set present (readable without sudo)"
+  elif command -v iptables >/dev/null 2>&1 && sudo -n iptables -L f2b-sshd -n >/dev/null 2>&1; then
+    ok "iptables f2b-sshd chain present"
   elif command -v iptables >/dev/null 2>&1 && iptables -L f2b-sshd -n >/dev/null 2>&1; then
     ok "iptables f2b-sshd chain present"
+  elif [[ -n "$F2B_JAIL_LIST" ]] && grep -qw sshd <<< "$F2B_JAIL_LIST"; then
+    warn "firewall ban set f2b-sshd not verifiable as non-root (sshd jail active; add NOPASSWD: /usr/sbin/nft + iptables for kernel-level verification)"
   else
     fail "firewall ban set f2b-sshd missing (banaction not applied?)"
   fi
