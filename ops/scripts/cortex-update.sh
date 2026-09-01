@@ -243,6 +243,7 @@ register "ops/scripts/setup-fleet-langfuse.sh"         "${CORTEX_DEPLOY_HOME}/sc
 register "ops/scripts/cortex-update.sh"           "${CORTEX_DEPLOY_HOME}/scripts/cortex-update.sh"
 register "ops/scripts/install/install-ollama.sh"          "${CORTEX_DEPLOY_HOME}/scripts/install-ollama.sh"
 register "ops/scripts/install/install-nginx.sh"           "${CORTEX_DEPLOY_HOME}/scripts/install-nginx.sh"
+register "ops/scripts/install/install-fail2ban.sh"         "${CORTEX_DEPLOY_HOME}/scripts/install-fail2ban.sh"
 register "ops/scripts/install/install-cortex-update-cron.sh" "${CORTEX_DEPLOY_HOME}/scripts/install-cortex-update-cron.sh"
 register "ops/scripts/install-crons.sh"       "${CORTEX_DEPLOY_HOME}/scripts/install-crons.sh"
 register_orch "ops/scripts/orch-bus/orch-bus-confirmation-poller.py"     "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-confirmation-poller.py"

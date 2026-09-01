@@ -406,6 +406,16 @@ sudo fail2ban-client status nginx-http-auth
 sudo pfctl -a "f2b/nginx-http-auth" -s table
 ```
 
+> ⚠️ **Known pitfall (discovered 2026-09-01, Arch):** the Arch `fail2ban`
+> package ships **no nginx filter files** (`filter.d/nginx-http-auth.conf`,
+> `filter.d/nginx-badbots.conf` — Debian/Ubuntu do). A jail referencing them
+> fails to load: `Found no accessible config files for 'filter.d/nginx-badbots'`
+> and the service exits 255. If `fail2ban-client status` shows sshd but no
+> nginx jails, install the filters (see `ops/scripts/install/install-fail2ban.sh`
+> — it writes both standard filters before enabling jails) and restart the
+> service. macOS (brew) has the same gap; the installer handles the brew
+> prefix path. The hourly `security-posture-check.sh` cron catches this live.
+
 ---
 
 ### 🔐 SSL/TLS Certificates — Let's Encrypt & Certbot
