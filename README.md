@@ -3,7 +3,7 @@
 > *An open-source installer, skill set, and fleet management system for your personal Hermes AI agent.*
 > *Privacy-first, offline-capable, multi-agent orchestration — runs on your own hardware.*
 
-**Version: 2.0.0** · [![GitHub](https://img.shields.io/github/license/lukemcqueen/hermes-cortex)](LICENSE) · [Hermes Agent](https://hermes-agent.nousresearch.com)
+**Version: 2.0.0** · [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE) · [![GitHub](https://img.shields.io/github/license/lukemcqueen/hermes-cortex)](LICENSE) · [![Docs](https://img.shields.io/badge/Docs-Hermes%20Agent-FFD700)](https://hermes-agent.nousresearch.com)
 
 ![Hermes Cortex](docs/assets/avatar.png)
 
@@ -15,6 +15,19 @@
 
 ---
 
+## 📊 By the Numbers
+
+| Metric | Count |
+|--------|-------|
+| 🛡️ Evidence-based blocked IPs | **4,559** — one per line, drop into nginx/fail2ban/UFW |
+| 🧠 Curated offline code snippets | **545** across 59 topic areas, 30+ languages |
+| 💻 Shared skills | **336** across 50+ categories |
+| ⚙️ Operational scripts | **276** — installers, health checks, watchdogs, security |
+| 🕐 Cron jobs shipped | **73** (49 agent + 24 orchestrator) |
+| 🤖 Agents in the fleet | **6** — 2 orchestrators + 4 specialists |
+
+---
+
 ## 🎁 What You Can Take From This Repo
 
 This is a **working enterprise-grade agentic harness**, not just a skill pack.
@@ -23,7 +36,7 @@ the pieces you need:
 
 | # | Take-away | Where | What you get |
 |---|-----------|-------|--------------|
-| 1 | 🛡️ **Bad-actor IP blocklist** | [`ops/install/deploy/nginx/blocked_ips.add`](ops/install/deploy/nginx/blocked_ips.add) | **4,233 evidence-based blocked IPs**, one per line — drop into nginx/fail2ban/UFW today |
+| 1 | 🛡️ **Bad-actor IP blocklist** | [`ops/install/deploy/nginx/blocked_ips.add`](ops/install/deploy/nginx/blocked_ips.add) | **4,559 evidence-based blocked IPs**, one per line — drop into nginx/fail2ban/UFW today |
 | 2 | 🤝 **Agent-to-agent messaging** | [`ops/scripts/lib/cortex_bus.py`](ops/scripts/lib/cortex_bus.py) · [protocol](docs/fleet-update-protocol.md) | Production A2A over Postgres PGMQ — `bus_send`/`bus_read`/`bus_archive`, correlation IDs, no Kafka/Redis |
 | 3 | 💰 **RAG + semantic caching** | [`ops/web-cache/web_cache.py`](ops/web-cache/web_cache.py) · [mycortex](docs/design/mycortex-DESIGN.md) | sqlite-vec + Ollama cache that answers queries **before** the LLM — cuts token spend, works offline |
 | 4 | 🔒 **Enforced change governance** | [`plugins/governance-enforcer/`](plugins/governance-enforcer/) · [reference](docs/loop-governance-reference.md) | Change discipline **blocked at the tool level**, not suggested — no bypass flags, TDD Iron Law, adversarial verification |
@@ -46,14 +59,14 @@ Hermes Cortex runs a coordinated team of specialized AI agents, each with distin
 |-------|------|---------------|
 | **Moses** 🗂️ | Orchestrator | Fleet health, cron management, infrastructure, governance |
 | **Esther** 👑 | Backup Orchestrator | Cover for Moses during downtime |
-| **Titus** 🏗️ | DevOps | Service health, ClickHouse ops, recovery automation |
+| **Titus** 🏗️ | DevOps Engineer | Fleet tooling, service health, recovery automation |
 | **Joseph** ⚙️ | Server Agent | Full-stack infra: nginx, services, web ops, fleet updates |
 | **Kustos** 🛡️ | Security | Threat detection, blocklist management, access control |
 | **Gisu** 💬 | Communications | Inbox routing, message triage, cross-agent coordination |
 
 > **Agent Taxonomy:** Agents fill three role tiers. **Orchestrators** (Moses, Esther) run bus-based fleet orchestration scripts (`orch-bus-*`) and manage the update pipeline. **Server-agents** (Joseph, Kustos, Gisu) run the full Hermes Cortex stack with inbox polling and bus health checks. **Dev-agents** (Titus — macOS) run the agent message handler to process fleet commands via their bus inbox.
 
-Agents communicate via a **PGMQ-based Agent Bus** with A2A (Agent-to-Agent) protocol — Postgres-backed message queues with auth, health monitoring, and fallover. No shared state, no race conditions.
+Agents communicate via a **PGMQ-based Agent Bus** with A2A (Agent-to-Agent) protocol — Postgres-backed message queues with auth, health monitoring, and failover. No shared state, no race conditions.
 
 ### 🔒 Loop Governance — Enforced Change Discipline
 
@@ -81,7 +94,7 @@ Sensors detect problems (crashed services, broken configs, stale locks), write r
 
 ### 🩺 Self-Healing Operations
 
-**~50 cron jobs per agent — a few hundred across the fleet** — keep the system healthy without human intervention:
+**73 cron jobs shipped across the installers — a few hundred live across the fleet** — keep the system healthy without human intervention:
 
 | Category | Crons | What |
 |----------|-------|------|
@@ -107,7 +120,7 @@ Agent query → web_cache (50μs) → kiwix ZIM (localhost:8080) → mycortex (R
 
 - **Web Cache** — Semantic search cache (sqlite-vec + Ollama embeddings, ~200MB LRU) — saves API costs
 - **Offline Knowledge** — Wikipedia, WikiMed, Wikivoyage, Wikibooks available locally via Docker ZIM server
-- **Offline Code Assistant** — 520+ curated code snippets across 55+ topic areas and 30+ programming languages. `offline_code search` and `offline_code gen` work fully offline via Ollama. **Self-improving:** `offline_code learn` adds misses permanently.
+- **Offline Code Assistant** — 545 curated code snippets across 59 topic areas and 30+ programming languages. `offline_code search` and `offline_code gen` work fully offline via Ollama. **Self-improving:** `offline_code learn` adds misses permanently.
 - **Offline Reader** — Zero-dependency web UI (`python3 ops/offline/offline-reader.py`) for Bible (55+ languages), hymns, and wiki reference
 - **mycortex** — Fleet knowledge brain: git repos as source of truth → shared Postgres index (FTS + pg_texample; pgvector semantic slice in v1.1) → thin Python CLI + 15-min cron sync. No daemon, no bun. **Inspired by an open-source Postgres-native knowledge-brain project (garrytan, MIT)** — the same Postgres-native knowledge-brain idea, re-architected with fail-closed RLS source isolation, per-host registration, and a PII federation gate. **Multi-tenant by construction:** each profile connects as its own `mycortex_reader_<profile>` role — RLS (keyed on `CURRENT_USER`) isolates tenants automatically, so a company brain scales to 100 profiles with zero policy changes. [Design doc](docs/design/mycortex-DESIGN.md) · [Multi-tenancy](docs/design/mycortex-multi-tenancy.md)
 
@@ -239,9 +252,9 @@ CORTEX_OS=windows bash ~/hermes-cortex/ops/install/install.sh
 | 4 | **Brain dirs** | `~/brain/{default,…}` with MECE schema + .gitignore + git init |
 | 5 | **mycortex sync** | Sources config + `agent-mycortex-sync` cron (15-min) |
 | 6 | **`/brain` plugin** | Hermes slash command for mycortex queries |
-| 7 | **Scripts** | 260+ scripts: health checks, watchdogs, sync, governance, security |
+| 7 | **Scripts** | 275+ scripts: health checks, watchdogs, sync, governance, security |
 | 8 | **Hermes memory** | Confirmed Hermes-owned — no cortex seed |
-| 9 | **Skills** | 300+ shared skills installed to `~/.hermes/skills/` |
+| 9 | **Skills** | 336 shared skills installed to `~/.hermes/skills/` |
 | 10 | **Hooks & MCP** | Scoring pre/post-commit hooks + loop-governance & task MCP servers |
 | 11 | **Web Cache** | Semantic web result cache (sqlite-vec + Ollama) |
 | 12 | **Observability** † | Langfuse (LLM traces) + Cortex Dashboard |
@@ -372,7 +385,8 @@ offline_knowledge query "symptoms of malaria"
 | `ops/scripts/cortex-update.sh` | Deploy scripts from repo to `~/.hermes/scripts/` — run after every `git pull` |
 | `ops/scripts/manage/cortex-doctor.py` | System diagnostics, fix common issues |
 | `ops/scripts/install/install-score-hook.sh` | Install/remove pre-commit scoring hooks on any repo |
-| `ops/scripts/install-crons.sh` | Install/remove all 60+ agent cron jobs |
+| `ops/scripts/install-crons.sh` | Install/remove all 49 agent cron jobs |
+| `ops/scripts/install/install-orch-crons.sh` | Install/remove the 24 orchestrator-only cron jobs (Moses, Esther) |
 | `ops/scripts/manage/agent-hermes-update.sh` | Silent nightly update of Hermes Agent |
 | `ops/scripts/manage/agent-hermes-cortex-sync.sh` | Nightly git pull of hermes-cortex repo |
 | `ops/scripts/manage/agent-nginx-threat-pipeline.sh` | Daily nginx log scan + auto-ban repeat attackers |
@@ -406,4 +420,4 @@ offline_knowledge query "symptoms of malaria"
 
 ---
 
-*Built by [@lukemcqueen](https://github.com/lukemcqueen) · Powered by 🦞 [Hermes Agent](https://hermes-agent.nousresearch.com) · Version `v2.0.0` · [MIT License](LICENSE) · See [Third-Party Licenses](docs/THIRD_PARTY_LICENSES.md) for component attributions*
+*Built by the fleet operator · Powered by 🦞 [Hermes Agent](https://hermes-agent.nousresearch.com) · Version `v2.0.0` · [MIT License](LICENSE) · See [Third-Party Licenses](docs/THIRD_PARTY_LICENSES.md) for component attributions*
