@@ -550,3 +550,9 @@ candidate list includes `workflow/`. Regression tests: `TestSkillsDirResolution`
   (normal / --no-verify / rebase / cherry-pick / revert / merge / amend /
   amend --no-verify) proving genuine bypasses still log and internal replays
   stay silent. Run before shipping any sentinel-touching hook change.
+- `references/skill-marker-fingerprint-invalidation-2026-09-01.md` — the
+  "7/7 loaded ✅ but still blocked" loop: any deploy touching a skill file
+  invalidates every session marker (fingerprint of skill mtimes); recovery is
+  one serial `skill_view` (in-memory set intact) or re-loading all 7 (after a
+  gateway restart); plus the docs-drift variant (AGENTS.md enumerating the
+  always-set with old names) and the whole-repo grep rule when the set changes.

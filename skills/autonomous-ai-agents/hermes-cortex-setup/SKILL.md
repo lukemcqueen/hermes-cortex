@@ -584,6 +584,21 @@ bash ~/hermes-cortex/ops/scripts/install/install-orch-crons.sh
 
 **Pitfall:** `install-orch-crons.sh` exits with error if `LLM_CRON_MODEL` and `LLM_CRON_PROVIDER` are not set in `.env`. On worker agents (non-orchestrator), it exits gracefully with a message saying orchestrator crons aren't needed.
 
+### 13c. LLM cron model changes — manifest wins over live pins
+
+Changing an LLM cron's model has TWO layers of truth; editing only the live pin is reverted:
+
+1. **Live pin** — per-job `model`/`provider` in `~/.hermes/cron/jobs.json`, set with `hermes cron edit <id> --model X --provider Y` (CLI only — the MCP cronjob tool has NO model/provider params). Takes effect next tick.
+2. **Durable source** — `ops/install/cron-manifest.yaml`. `pin_cron_model()` (in install-crons.sh / install-orch-crons.sh) reads the manifest entry and it WINS over `$LLM_CRON_MODEL`/`$LLM_CRON_PROVIDER` env — and over your live edit — on the next cortex-update drift-edit. **A live-only repin is reverted by the next `cortex-update.sh`** (observed 2026-08-31: 14/21 LLM crons reverted after the first deploy of a repin).
+
+**Correct order:** (1) patch the manifest entry → (2) repin live via `hermes cron edit` → (3) run `cortex-update.sh` → (4) verify pins survived in jobs.json.
+
+**Fallback chain is GLOBAL, not per-cron** — config.yaml `fallback_providers`, consumed by cron sessions via `get_fallback_chain`. `hermes fallback add/remove/clear` are TTY-interactive only. Non-interactive paths: `hermes config set fallback_providers '<json list>'` (current `set_config_value` parses structured list values) or the env-driven `ops/scripts/install-fallback-providers.py` — it reads `LLM_CRON_FALLBACK1/2_MODEL` + `LLM_CRON_FALLBACK1/2_PROVIDER` from `~/hermes-cortex/.env`; an empty model OR provider drops that tier.
+
+**Env file location gotcha:** `install-crons.sh` sources `ENV_FILE="${HOME}/hermes-cortex/.env"` — the **repo-root** gitignored file. On some hosts `~/.hermes-cortex/.env` (deployed dir) is a symlink to an unrelated project (Esther: → `~/langfuse/.env`) and holds NO model vars — don't edit it looking for model config.
+
+**opencode provider tiers** (verified 2026-08-31): `opencode-free` = keyless free tier (aliases `free`, no account needed); `opencode-zen` = paid, needs `OPENCODE_ZEN_API_KEY` (aliases `opencode`/`zen`); `opencode-go` = needs `OPENCODE_GO_API_KEY`. The free tier currently has NO working deepseek: `deepseek-v4-flash-free` was delisted (completion POST → `server_error: "Model is unavailable"`; keys ship as commented+EMPTY placeholders in `~/.hermes/.env`), and no `deepseek-v4-pro-free` exists. The live `GET /zen/v1/models` list can still show delisted models — verify availability with a real chat-completions POST, never trust the list. Full verification recipe: `references/llm-cron-model-fallback.md`.
+
 ## Verification
 
 After all steps, run the full verification:

@@ -60,6 +60,40 @@ working tree), not a problem with your diff.
    (pull → deploy → doctor → verify) BEFORE `git push` — the gate runs the
    doctor itself and will otherwise block.
 
+## Fleet-Active Push Races (verified 2026-09-01)
+
+On a busy fleet, other agents push between your fetch and your push.
+Signature: dogfood prints `✅ DOGFOOD PASSED` then
+`error: failed to push some refs` — repeatedly, with no diff problem on
+your side. The dogfood run is fine; the REF UPDATE lost the race.
+
+```bash
+git fetch origin main
+git log --oneline HEAD..origin/main        # who won while you worked
+git pull --rebase --autostash origin main  # rebase onto the new head
+git push origin main
+```
+May need several rounds on active days; each round's dogfood re-runs clean.
+
+- **Autostash is the sanctioned way to rebase over a peer's unstaged
+  change** — `git pull --rebase --autostash` shelves the foreign file
+  (autostash ref), rebases, and restores it. Verify `git status` after
+  that the foreign file is back (` M ops/...` present). A MANUAL
+  `git stash push <their-file>` is the prohibited variant — autostash is
+  git-managed and restores automatically.
+- **A peer's COMPLETED, intentional change that blocks you** (mtime old,
+  coherent diff, matches known design): commit it as its OWN commit with
+  clear attribution in the message ("Completed <date> session, committed
+  now to unblock the push gate") rather than looping on the race — then
+  the tree is clean and the gate passes. Only for finished work, never
+  a mid-edit file.
+- **`❌ Deploy sync` after a successful dogfood race-recovery**: if you
+  commit AGAIN after a deploy ran (the raced push deployed your first
+  commit; the second commit is now undeployed), the gate flips to
+  Deploy-sync. Run `bash ~/hermes-cortex/ops/scripts/cortex-update.sh`
+  (deploy), confirm `Updated: <sha> → <sha>`, then push. Order is always
+  commit → deploy → push.
+
 ## Concurrent-Session Discipline
 
 - Before pushing: `git status --short`. Foreign unstaged/untracked files

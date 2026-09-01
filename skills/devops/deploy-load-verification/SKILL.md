@@ -127,6 +127,34 @@ blocked by the lifecycle guard).
 - [ ] Bus/daemon process argv shows the new module name
 - [ ] Any required restarts handed to the operator with exact commands
 
+## Deploy ≠ Durable: manifests revert live edits
+
+**A live change that contradicts a repo manifest gets silently REVERTED by the
+next deploy.** The cron-model chain is the canonical example (2026-08-31):
+
+- `hermes cron edit <id> --model X --provider Y` pins the LIVE job in
+  `jobs.json` — but `cortex-update.sh` → `install-crons.sh` drift-edit calls
+  `pin_cron_model`, which reads `ops/install/cron-manifest.yaml` and the
+  manifest's model/provider WIN over the env default AND over the live pin.
+  Symptom: repinned 21 crons, ran cortex-update, 14 were back to the old model.
+- **Durable-change recipe:** patch the manifest FIRST, then re-apply the live
+  pins, then run `cortex-update.sh` and RE-VERIFY pins survived
+  (`python3 -c "import json; [print(j['name'], j.get('model'), j.get('provider'))
+  for j in json.load(open('$HOME/.hermes/cron/jobs.json'))['jobs']
+  if not j.get('no_agent')]"`). A pin that survives a deploy is real; one that
+  doesn't means the manifest still disagrees.
+- Same class of trap: `install-fallback-providers.py` is REGISTERED
+  (deployed to every host) but **never auto-run** — so the config.yaml
+  `fallback_providers` chain it manages is per-host and stays stale on peers
+  until the script actually executes there. Registered ≠ applied.
+- Verify end-to-end through the REAL path, not the picker:
+  `hermes chat -q "Reply with exactly: OK" -m <model> --provider <provider>`
+  — a fallback fires as `⚠️ Model fallback: ... unavailable (provider failure);
+  using ...` in the output. See `references/cron-model-fallback-chain.md` for
+  the full 2026-08-31 trace (chain rebuild, opencode free/zen landscape,
+  propagation gap).
+
 ## References
 
 - `references/rename-verification-example.md` — worked example: the `agent_bus` → `cortex_bus` fleet rename (2026-08-04)
+- `references/cron-model-fallback-chain.md` — LLM cron model/fallback chain rebuild: manifest-vs-live pin reversion, env-driven fallback chain, opencode free/zen providers, fleet propagation gap (2026-08-31)

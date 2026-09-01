@@ -212,6 +212,10 @@ compaction/rewrites fire (those bust cache worse than a fresh start).
 - `references/deepseek-cache-economics.md` — canonical DeepSeek pricing table,
   cache rules, thinking-mode switch (absorbed llm-cost-engineering's
   deepseek-cache-cost-mechanics.md 2026-08-22).
+- `references/opencode-relay-pricing.md` — opencode zen/go relay pricing:
+  mirrors DeepSeek direct exactly (no markup; 4.4%+$0.30 card rail only),
+  and the free-tier reality (NO free deepseek as of 2026-08-31 —
+  deepseek-v4-flash-free listed but "Model is unavailable"; no pro-free).
 - `references/fleet-cost-data-sources.md` — where each fleet cost number lives
   (audit files, DBs, billing page) — from llm-cost-engineering.
 - `references/fleet-cost-levers-verified.md` — session-verified lever results.
