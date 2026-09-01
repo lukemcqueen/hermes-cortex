@@ -235,6 +235,12 @@ echo "$disk_metrics"
 
 # ── Push ─────────────────────────────────────────────────────
 
+sanitize_url() {
+  # Strip basic-auth userinfo (user:pass@) from a URL for safe logging —
+  # never leak tokens into cron logs/transcripts.
+  printf '%s' "$1" | sed -E 's#//[^/@]*@#//<redacted>@#'
+}
+
 push_metrics() {
   local metrics status url
   metrics=$(collect_metrics)
@@ -258,12 +264,12 @@ push_metrics() {
         return 0
       fi
 
-      echo "[push-metrics] attempt ${attempt}/${MAX_RETRIES} on ${url}: HTTP ${status}" >&2
+      echo "[push-metrics] attempt ${attempt}/${MAX_RETRIES} on $(sanitize_url "${url}"): HTTP ${status}" >&2
       if [ "${attempt}" -lt "${MAX_RETRIES}" ]; then
         sleep "${RETRY_DELAY}"
       fi
     done
-    echo "[push-metrics] ${url} unreachable — trying fallback sink" >&2
+    echo "[push-metrics] $(sanitize_url "${url}") unreachable — trying fallback sink" >&2
   done
 
   return 1
