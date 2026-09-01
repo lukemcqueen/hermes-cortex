@@ -42,11 +42,39 @@ else
 fi
 
 # --- 2. jails ---
+# nginx jails only apply where nginx is installed/running (host-awareness:
+# a host without nginx has no nginx attack surface and must not false-fail).
+HAS_NGINX=0
+if command -v nginx >/dev/null 2>&1 || [[ -d /etc/nginx ]]; then
+  HAS_NGINX=1
+fi
+
+# fail2ban-client status <jail> needs the root socket; as a cron (non-root)
+# only the top-level `fail2ban-client status` is available (and only where
+# sudoers grants NOPASSWD: /usr/bin/fail2ban-client status). Parse the
+# top-level "Jail list:" line — it names every active jail. If neither the
+# sudo nor plain call works, report "cannot verify" (honest gap, not a lie).
+F2B_JAIL_LIST=""
+if sudo -n fail2ban-client status >/dev/null 2>&1; then
+  F2B_JAIL_LIST=$(sudo -n fail2ban-client status 2>/dev/null | grep -i 'Jail list' | sed 's/.*Jail list:[[:space:]]*//')
+elif fail2ban-client status >/dev/null 2>&1; then
+  F2B_JAIL_LIST=$(fail2ban-client status 2>/dev/null | grep -i 'Jail list' | sed 's/.*Jail list:[[:space:]]*//')
+fi
+
 for jail in sshd nginx-http-auth nginx-badbots; do
-  if command -v fail2ban-client >/dev/null 2>&1 && fail2ban-client status "$jail" >/dev/null 2>&1; then
-    ok "$jail jail active"
+  if [[ "$jail" != "sshd" && "$HAS_NGINX" -eq 0 ]]; then
+    ok "skip $jail (no nginx on this host)"
+    continue
+  fi
+  if [[ -n "$F2B_JAIL_LIST" ]]; then
+    if grep -qw "$jail" <<< "$F2B_JAIL_LIST"; then
+      ok "$jail jail active"
+    else
+      fail "fail2ban jail '$jail' is NOT in the active jail list (loaded: $F2B_JAIL_LIST)"
+    fi
   else
-    fail "fail2ban jail '$jail' is not active"
+    warn "cannot verify fail2ban jails (no socket access as cron; needs NOPASSWD: /usr/bin/fail2ban-client status)"
+    break
   fi
 done
 
@@ -82,13 +110,17 @@ else
 fi
 
 # --- 5. nginx jail logpaths exist (silent starvation check) ---
-for lp in /var/log/nginx/error.log /var/log/nginx/access.log; do
-  if [[ -f "$lp" ]]; then
-    ok "nginx log $lp present"
-  else
-    warn "nginx log $lp missing — jail may be silently starving"
-  fi
-done
+if [[ "$HAS_NGINX" -eq 1 ]]; then
+  for lp in /var/log/nginx/error.log /var/log/nginx/access.log; do
+    if [[ -f "$lp" ]]; then
+      ok "nginx log $lp present"
+    else
+      warn "nginx log $lp missing — jail may be silently starving"
+    fi
+  done
+else
+  ok "skip nginx logpaths (no nginx on this host)"
+fi
 
 # --- 6. brute-force volume (last 24h) ---
 BRUTE=0

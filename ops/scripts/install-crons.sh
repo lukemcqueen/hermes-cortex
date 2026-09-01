@@ -569,6 +569,7 @@ if $UNINSTALL; then
     "agent-review-queue-sweep" \
     "agent-scoring-activity-watchdog" \
     "agent-secret-leak-watchdog" \
+    "agent-security-posture-check" \
     "agent-service-recovery" \
     "agent-session-cache-build" \
     "agent-session-correction-scan" \
@@ -1261,6 +1262,19 @@ fi
 create_cron "agent-secret-leak-watchdog" "0 */4 * * *" \
   "agent-secret-leak-watchdog.py" \
   "Scans cron outputs and session files for printf/echo credential leaks" \
+  "" \
+  "" \
+  "origin" \
+  "" \
+  "true"
+
+# Security posture check (hourly, fleet-wide): fail2ban service + jails,
+# firewall ban set, SSH key-only policy, nginx jail logpath starvation,
+# 24h brute-force volume. Silent when healthy (watchdog pattern); prints a
+# report + exit 1 on any gap → delivered to the origin channel.
+create_cron "agent-security-posture-check" "17 * * * *" \
+  "security-posture-check.sh" \
+  "Hourly security posture verification: fail2ban active + jails (sshd, nginx-http-auth, nginx-badbots), firewall ban set, SSH key-only, nginx jail logpaths, brute-force volume. Silent when healthy." \
   "" \
   "" \
   "origin" \
