@@ -178,7 +178,7 @@ print(r.json())
 
 Expected output — the trace appears under `"data"` with `"name": "connection-test"`.
 
-After starting a new Hermes session (via `/reset` in chat, or `hermes` from CLI), traces will appear at `http://localhost:3000` (or nginx port 14002 on esther — see `agent-health-monitoring/references/port-allocation.md` for per-host ports) — **if the OTLP issue below is resolved**. If traces are missing, debug the SDK export path first.
+After starting a new Hermes session (via `/reset` in chat, or `hermes` from CLI), traces will appear at `http://localhost:3000` (or nginx port 13002 if exposed) — **if the OTLP issue below is resolved**. If traces are missing, debug the SDK export path first.
 
 ## Seed data (populating Langfuse with demo traces)
 
@@ -324,7 +324,7 @@ If traces are missing, check the version first: `curl -s http://localhost:3000/a
 - **Key display truncation.** The terminal tool truncates long strings (70+ chars) for display with `...`. The full 64-hex-char `sk-lf-` key may not be readable from terminal output. Always use the all-in-one script (`scripts/install-api-key.sh`) that writes directly to `.env` without needing to display the key.
 - **Duplicate keys accumulate.** Every key-generation run adds another row. `DELETE FROM api_keys WHERE note NOT LIKE 'Hermes Agent%'` to clean old provisioned keys, or delete by specific `id`.
 - **The SDK accepts both `host=` and `base_url=`.** In Langfuse SDK v4, both parameters work but `base_url` has highest precedence and cannot be overridden by env vars. The Hermes plugin uses `base_url` internally. When testing directly, either works but `base_url` is preferred per the Langfuse docs (`Langfuse(public_key=..., secret_key=..., base_url=...)`). Using `host=` works but may be deprecated in future SDK versions.
-- **Nginx reverse proxy.** Langfuse is typically exposed on port 14002 (esther; per-host table in `agent-health-monitoring/references/port-allocation.md`) behind auth_basic. The `HERMES_LANGFUSE_BASE_URL` should point to the internal Docker address (`http://localhost:3000`), not the nginx proxy, to avoid auth headers conflicting.
+- **Nginx reverse proxy.** Langfuse is typically exposed on port 13002 behind auth_basic. The `HERMES_LANGFUSE_BASE_URL` should point to the internal Docker address (`http://localhost:3000`), not the nginx proxy, to avoid auth headers conflicting.
 - **Worker needs a restart after ClickHouse migration.** If Langfuse updates and changes the ClickHouse schema, the worker container may fail silently. Check `docker logs langfuse-langfuse-worker-1 --tail 20` if traces stop appearing.
 - **Token analytics config.** Hermes has `show_token_analytics: false` in its config — this is a display toggle, not a tracing toggle. It does not affect Langfuse plugin behavior.
 - **ClickHouse config XML files must be world-readable (`chmod 644`).** Docker mounts them with `:ro`, but ClickHouse runs as a non-root user inside the container. If the files are `600` (owner-only), ClickHouse crashes on startup with `Access to file denied: /etc/clickhouse-server/config.d/*.xml` and goes into a restart loop. Always `chmod 644 ~/langfuse/clickhouse-config.d/*.xml` before bringing up the stack for the first time.
