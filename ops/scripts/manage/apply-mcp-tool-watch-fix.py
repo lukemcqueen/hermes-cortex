@@ -61,7 +61,15 @@ FIX_MARKER = "# Local fix: probe _watch_stdio_children as a function, not an inv
 
 
 def _is_fixed(src: str) -> bool:
-    return FIX_MARKER in src or "asyncio.iscoroutinefunction(_watch_children)" in src
+    # Fixed = the watcher is probed as a FUNCTION, never invoked during the
+    # probe. Matches both the local form (`asyncio.iscoroutinefunction`,
+    # with the FIX_MARKER comment) and the upstream-native fix
+    # (`inspect.iscoroutinefunction(_watch_children)`, landed on
+    # origin/main after the local patch was written — 2026-09-02). Both
+    # spellings reference the same predicate; the substring check covers
+    # either without matching the buggy `isawaitable(_watch_children())`
+    # invocation form.
+    return FIX_MARKER in src or "iscoroutinefunction(_watch_children)" in src
 
 
 def _apply() -> bool:
