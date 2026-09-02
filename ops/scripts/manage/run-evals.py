@@ -108,6 +108,34 @@ def _task_db_identity() -> tuple[str, str]:
     return f"mycortex_reader_{profile}", profile
 
 
+def _bus_sender_name() -> str:
+    """Local agent name for the bus envelope `from` field.
+
+    The bus rejects envelopes whose `from` does not match the authenticated
+    agent (no-spoofing contract, Luke directive 2026-09-02). Through nginx
+    the authenticated agent IS the Basic-auth username, which per-host is its
+    AGENT_NAME (agent.env / .env). Resolved WITHOUT the HERMES_PROFILE
+    shortcut used by _task_db_identity — the profile name is the DB reader
+    role, not the bus identity.
+    """
+    env_val = os.environ.get("AGENT_NAME", "").strip()
+    if env_val and env_val != "unknown":
+        return env_val
+    for _p in (Path.home() / ".hermes-cortex" / "agent.env",
+               Path.home() / "hermes-cortex" / ".env"):
+        try:
+            if _p.is_file():
+                for _l in _p.read_text().splitlines():
+                    _l = _l.strip()
+                    if _l.startswith("AGENT_NAME="):
+                        _v = _l.split("=", 1)[1].strip().strip("\"'")
+                        if _v and _v != "unknown":
+                            return _v
+        except OSError:
+            continue
+    return ""
+
+
 # ── Grader registry ──────────────────────────────────────────────
 # name -> callable() returning (passed: bool, detail: str)
 
@@ -146,10 +174,18 @@ def _bus_round_trip() -> tuple[bool, str]:
 
     queue = "inbox_esther"
     correlation_id = f"regression-gate-{uuid.uuid4().hex[:12]}"
+    sender = _bus_sender_name()
+    if not sender:
+        return False, ("AGENT_NAME not configured — bus envelope needs a "
+                       "valid `from` (no-spoofing contract, 2026-09-02)")
     probe = {
         # Subject PING = a known silent-noise subject the message-handler
         # archives without alerting — a probe raced by the 5-min poll is
         # silently removed, never processed as a command.
+        # `from` is REQUIRED since the 2026-09-02 no-spoofing contract: the
+        # app 400s envelopes whose from != the authenticated agent, and the
+        # client then misreports that 400 as the Bearer 401 it saw at nginx.
+        "from": sender,
         "subject": "PING",
         "body": {"regression_gate": True, "correlation_id": correlation_id},
         "correlation_id": correlation_id,
