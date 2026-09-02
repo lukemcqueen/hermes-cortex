@@ -194,8 +194,19 @@ compaction/rewrites fire (those bust cache worse than a fresh start).
   cost math stays correct (`miss = input + write`); only the hit-rate metric
   lies. **True hit rate = read/(read+input_tokens)** — measured 93–99% across
   all cron jobs (7-day window, 2026-08-29), so the system-prompt prefix IS
-  byte-stable. Upstream fix candidate: add `prompt_cache_miss_tokens` to the
-  cache_write fallback chain (task `orch-upstream-cache-write-fix`).
+  byte-stable.
+- **DO NOT map DeepSeek `prompt_cache_miss_tokens` → `cache_write_tokens` (2026-09-02, verified).**
+  DeepSeek has NO cache-write tier — miss tokens are billed at the input rate,
+  and the pricing entries for deepseek define no `cache_write_cost_per_million`.
+  `estimate_usage_cost` returns `status="unknown", amount=None`
+  ("cache-write pricing unavailable for route") whenever `cache_write_tokens > 0`
+  with no write rate, so the mapping would turn EVERY direct DeepSeek call's
+  cost into `n/a` (verified by execution: current main prices the same payload
+  `estimated`; with the mapping applied it goes `unknown`). The correct
+  upstream behavior is the current one: miss stays in `input_tokens`. Local
+  commit `5e7a4b50d` (branch `fix/deepseek-cache-write-tokens`,
+  esther 08-29) must NOT be pushed. If a metric reads a fake 100%, fix the
+  metric formula (`read/(read+input_tokens)`), never the token buckets.
 
 ## Verification
 
