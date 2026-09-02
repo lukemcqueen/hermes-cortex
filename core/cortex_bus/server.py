@@ -38,9 +38,15 @@ if str(SRC_DIR) not in sys.path:
 
 from cortex_bus.queue import get_queue, NotAvailableError, BusClient
 from cortex_bus.auth import validate_token
+from cortex_bus.validate import validate_send_payload
+from cortex_bus.ratelimit import RateLimiter
 from cortex_bus.circuit_breaker import get_circuit_breaker
 from cortex_bus.workflow.dispatcher import dispatch_workflow, process_dispatch_message
 from cortex_bus.workflow.router import process_step_result as router_process_step
+
+# Per-agent send rate limiter (anti-spam at fleet scale). In-memory sliding
+# window; quota per authenticated agent (default 600/hour, env-tunable).
+_rate_limiter = RateLimiter()
 from cortex_bus.workflow.human_gate import get_pending_hil, process_hil_response
 from cortex_bus.workflow.db import get_workflow, get_steps_for_workflow, list_active_workflows
 
@@ -182,7 +188,16 @@ async def api_send(request: Request):
     
     if not queue or not message:
         raise HTTPException(400, "queue and message are required")
-    
+
+    # Strict input formatting (2026-09-02): envelope schema + identity
+    # binding + per-agent rate limit. Malformed, spoofed, or flooding sends
+    # are rejected before they ever reach a queue.
+    errors, _parsed = validate_send_payload(body, authenticated_from=agent)
+    if errors:
+        raise HTTPException(400, "Invalid message: " + "; ".join(errors[:6]))
+    if not _rate_limiter.allow(agent):
+        raise HTTPException(429, "Rate limit exceeded — try again later")
+
     _check_permission(agent, queue, "write")
     
     try:

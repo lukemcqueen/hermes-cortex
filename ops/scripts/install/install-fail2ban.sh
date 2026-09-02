@@ -142,6 +142,23 @@ for jail in sshd nginx-http-auth nginx-badbots; do
   fail2ban-client status "$jail" 2>&1 | grep -E 'Status|Currently banned|Total banned' || true
 done
 
+# ── Posture-check sudoers (nft/iptables NOPASSWD) ──────────────
+# Lets security-posture-check.sh verify the f2b-sshd ban set as the
+# agent user (non-root cron). Added 2026-09-02 — without this rule the
+# ban-set check can only warn ("not verifiable as non-root").
+# Idempotent: only writes when run with sudo as root.
+if [ "$(id -u)" -eq 0 ] && [ -n "${SUDO_USER:-}" ]; then
+  SUDOERS_FILE="/etc/sudoers.d/${SUDO_USER}-firewall-check"
+  if ! grep -q 'nft' "$SUDOERS_FILE" 2>/dev/null; then
+    printf '%s ALL=(root) NOPASSWD: /usr/sbin/nft, /usr/sbin/iptables\n' \
+      "$SUDO_USER" > "$SUDOERS_FILE"
+    chmod 440 "$SUDOERS_FILE"
+    echo "[install-fail2ban] sudoers: ${SUDO_USER} NOPASSWD nft/iptables → ${SUDOERS_FILE}"
+  else
+    echo "[install-fail2ban] sudoers rule already present"
+  fi
+fi
+
 echo ""
 echo "✅ Done. Verify the ban set:"
 if [[ "$OS" == "Darwin" ]]; then
