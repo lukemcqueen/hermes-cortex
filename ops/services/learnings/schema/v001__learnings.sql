@@ -28,7 +28,13 @@ CREATE SCHEMA IF NOT EXISTS learnings;
 -- ── pgcrypto for sha256 content_hash (L-3) ─────────────────────────
 -- Available cluster-wide (pg_available_extensions), created per-DB here so
 -- fresh test DBs and the live mycortex DB both get digest().
-CREATE EXTENSION IF NOT EXISTS pgcrypto;
+-- SCHEMA public is PINNED (mirror of v004__embeddings.sql): migrate.py runs
+-- DDL as role `mycortex`, whose default search_path "$user", public would
+-- install a bare CREATE EXTENSION into the EXISTING mycortex schema — but the
+-- capture()/set_status() functions below pin `search_path = learnings, public`,
+-- so digest() would never resolve and every capture 400s (found live 2026-09-03
+-- after a restore: ledger had 0 rows since creation).
+CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA public;
 
 -- ── Version gate ─────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS learnings.schema_version (
