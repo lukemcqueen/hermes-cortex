@@ -615,6 +615,15 @@ Run both axes as parallel sub-agents so they don't pollute each other. Present f
 | 11 | review | read_file + analysis | issues + recommendations | n/a |
 | 12 | planning | read_file + web_search | saved plan | n/a |
 
+## When to be concise — the fleet-wide standard
+
+**Every sentence must earn its place** (Luke 2026-09-02 directive). Before a
+skill, prompt, or doc section ships, review: "Would the agent do anything
+differently if I deleted this sentence?" If no, cut it. This applies to
+everything in the always-skills load (99KB/task today) — the goal is to keep
+the essential, drop the rest. Vector: thoroughness in verification over
+verbosity in explanation.
+
 ---
 
 ## Ambiguity resolution

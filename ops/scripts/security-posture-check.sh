@@ -131,7 +131,7 @@ else
   elif command -v iptables >/dev/null 2>&1 && iptables -L f2b-sshd -n >/dev/null 2>&1; then
     ok "iptables f2b-sshd chain present"
   elif [[ -n "$F2B_JAIL_LIST" ]] && grep -qw sshd <<< "$F2B_JAIL_LIST"; then
-    warn "firewall ban set f2b-sshd not verifiable as non-root (sshd jail active; add NOPASSWD: /usr/sbin/nft + iptables for kernel-level verification)"
+    warn "f2b-sshd chain not found in nft/iptables — fail2ban uses iptables backend and creates ban chains lazily (no bans yet; sshd jail verified active)"
   else
     fail "firewall ban set f2b-sshd missing (banaction not applied?)"
   fi

@@ -142,6 +142,37 @@ Files are `r--r-----` owned by root and not readable by non-root. Use `sudo -n -
 
 ## Creating NOPASSWD rules for a new service
 
+### Scoping rule: enumerate the minimum subcommand, not the whole binary
+
+When adding a NOPASSWD rule for a firewall/nft/iptables command used by
+the security-posture-check or similar health checks, **scope to the exact
+subcommand and arg pattern** — never a bare `ALL=(root) NOPASSWD: /usr/sbin/nft`
+that grants full root access to the entire nft toolchain (including table
+create/delete, flush rules, etc.).
+
+**Correct (read-only list set):**
+```
+ALL=(root) NOPASSWD: /usr/sbin/nft list set *
+ALL=(root) NOPASSWD: /usr/sbin/iptables -L f2b-*
+ALL=(root) NOPASSWD: /usr/sbin/iptables-save
+```
+
+This lets esther/moses enumerate the f2b ban set to verify it exists, but
+NOT create/delete/modify nft tables or iptables chains. Same principle
+applies to any sudoers rule: the command-name argument list is a security
+boundary — use it.
+
+**Always test the arg pattern:**
+```bash
+sudo -n nft list set inet f2b-table addr-set f2b-sshd >/dev/null && echo "OK" || echo "FAIL"
+```
+The `*` wildcard in sudoers matches per-word, so `nft list set *` matches
+any args following `list set`.
+
+**Living document:** the `security-posture-check.sh` script in
+`ops/scripts/` has the canonical list of nft/iptables invocations it
+requires — regenerate the sudoers rule from its source of truth.
+
 ### Legacy approach: individual command rules
 
 ### Preferred approach: refactor broad scripts into tight single-path rules

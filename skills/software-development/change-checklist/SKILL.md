@@ -233,14 +233,10 @@ Different agents have different setups. Your change shouldn't break them.
 
 ### Role-Aware Health Check Patterns
 
-When writing health checks or scripts that run on both orchestrator and regular agents:
-
-- **Process-gate localhost checks.** Never curl 127.0.0.1 for a service unless you've verified the daemon process exists first (pgrep -f cortex_bus). Non-orchestrators don't run local daemons - curling a dead port is both wasteful and misleading.
-- **Never mention irrelevant services in messages.** A non-orchestrator agent should never see "local bus", "local daemon", or similar phrasing. It implies that service should be present, which agents may interpret as an instruction to install it.
-- **Severity matters.** If a service is confirmed running (process found, port open), any non-200 response is a FAIL, not a WARN. A faulty service that the doctor knows exists is an error.
-- **If no URL is configured, it's a FAIL.** On agents that should have remote connectivity (bus URL, fallback URL), absence of configuration is a hard error - not a SKIP.
-- **Check both URLs, not just one.** CORTEX_BUS_URL and CORTEX_BUS_FALLBACK_URL should both be present. Check env and config file; reuse the same config reader pattern.
-- **Process names use underscores.** The cortex_bus daemon runs under uvicorn as cortex_bus.server:app. pgrep -f cortex-bus (hyphen) silently returns nothing. Always verify the actual command line with ps aux | grep before hardcoding a pgrep pattern - use that exact string, not a guess.
+When writing health checks or scripts that run on both orchestrator and regular agents,
+the `agent-health-monitoring` skill documents the canonical patterns for process-gating,
+message content, and severity. Apply those patterns here — this checklist verifies you
+checked them before shipping.
 
 ### Phase 4: Update Documentation
 
