@@ -146,6 +146,29 @@ cortex-bus.service` (or launchd on macOS). Moses picks up the endpoint on his
 next pull + restart; until then his :13004 returns 404 for /api/learnings
 (workers already fail over to Esther via lib fallback).
 
+## Known operational note — reader SELECT grant depends on role timing
+
+`v001__learnings.sql` grants `SELECT ON learnings.learning TO mycortex_reader_moses`
+inside a conditional `IF EXISTS (pg_roles)` DO-block (line ~252). If the migration
+applies BEFORE the profile reader role exists on a host (e.g. a fresh restore where
+the role is re-created after the schema), the grant is skipped and never retried
+(version-gated pipeline won't re-apply v001). Result: `learning-ledger.py list`
+fails with `permission denied for table learning` even though the role and table
+both exist.
+
+**First seen 2026-09-02 on moses** (orch-skill-lifecycle collection). Fix: re-issue
+the grant as owner once the role exists:
+
+```
+docker exec mycortex-postgres psql -U mycortex -d mycortex \
+  -c "GRANT USAGE ON SCHEMA learnings TO mycortex_reader_moses; \
+      GRANT SELECT ON learnings.learning TO mycortex_reader_moses;"
+```
+
+Same applies to `task-*` reader role if a parallel timing gap appears. A future
+hardening (F-nnn): make the grant unconditional in a v00X migration, or reconcile
+grants at cortex-update time.
+
 ## Testing
 
 `tests/test-learnings-schema.sh` — hermetic scratch DB battery, 21 checks:
