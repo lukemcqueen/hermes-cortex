@@ -48,6 +48,12 @@ echo ""
 echo "═══ Setup: scratch DB ${TEST_DB} ═══"
 $PSQL_SUPER -c "DROP DATABASE IF EXISTS ${TEST_DB};" >/dev/null 2>&1 || true
 $PSQL_SUPER -c "CREATE DATABASE ${TEST_DB};" >/dev/null 2>&1
+# Live-DB condition (regression guard, 2026-09-03): the real mycortex DB has
+# an EXISTING `mycortex` schema, so role mycortex's search_path "\$user", public
+# resolves \$user → mycortex. A bare CREATE EXTENSION then installs into the
+# mycortex schema and capture() (search_path learnings,public) 400s forever.
+# Pre-creating the schema here makes the battery reproduce that failure mode.
+$PSQL -c "CREATE SCHEMA mycortex;" >/dev/null 2>&1
 # Temp worker profile role — cluster-level, mimics a fleet worker's DB role.
 # LOGIN so the psql client can connect as it (trust auth inside the container).
 $PSQL_SUPER -c "DO \$\$ BEGIN IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname='${TEST_WORKER_ROLE}') THEN CREATE ROLE ${TEST_WORKER_ROLE} LOGIN; END IF; END \$\$;" >/dev/null 2>&1
@@ -156,12 +162,17 @@ else
   fail "un-granted worker role saw rows: $WORKER_READ"
 fi
 
-PSQL_ESTHER="docker exec ${CONTAINER} psql -U mycortex_reader_esther -d ${TEST_DB} -t -A"
-ESTHER_READ=$($PSQL_ESTHER -c "SELECT count(*) FROM learnings.learning;" 2>/dev/null || true)
-if [[ "$ESTHER_READ" =~ ^[0-9]+$ ]] && [ "$ESTHER_READ" -ge 1 ]; then
-  pass "lifecycle role (esther) reads rows ($ESTHER_READ)"
+# Lifecycle reader role = the LOCAL orchestrator's profile reader
+# (mycortex_reader_<AGENT_NAME>). Hardcoding esther's role here broke the
+# battery on the moses host — same lesson as run-evals.py _task_db_identity
+# (2026-08-09): each host provisions only its own reader role.
+LOCAL_AGENT="${LEARNINGS_READER_AGENT:-$(grep -h '^AGENT_NAME=' "$HOME/.hermes-cortex/agent.env" "$HOME/hermes-cortex/.env" 2>/dev/null | head -1 | cut -d= -f2- | tr -d '"' | tr -d ' ')}"
+PSQL_LIFECYCLE="docker exec ${CONTAINER} psql -U mycortex_reader_${LOCAL_AGENT} -d ${TEST_DB} -t -A"
+LIFECYCLE_READ=$($PSQL_LIFECYCLE -c "SELECT count(*) FROM learnings.learning;" 2>/dev/null || true)
+if [[ "$LIFECYCLE_READ" =~ ^[0-9]+$ ]] && [ "$LIFECYCLE_READ" -ge 1 ]; then
+  pass "lifecycle role (mycortex_reader_${LOCAL_AGENT}) reads rows ($LIFECYCLE_READ)"
 else
-  fail "lifecycle role read failed (got: $ESTHER_READ)"
+  fail "lifecycle role read failed (got: $LIFECYCLE_READ)"
 fi
 
 echo ""
