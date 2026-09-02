@@ -42,6 +42,24 @@ Key architectural facts:
 - Fixing bus auth or permission issues
 - Investigating why an agent isn't receiving messages
 
+## Message Contract (strict input formatting)
+
+Every `/api/pgmq/send` is validated at ingestion (2026-09-02, anti-poisoning/anti-spam at fleet scale). Violations → **400 + reason**; over quota → **429**.
+
+| Field | Rule |
+|-------|------|
+| `from` | Required, lowercase agent name, **must equal the authenticated sender** (spoofing rejected) |
+| `subject` | Required, `^[A-Z][A-Z0-9_]{0,63}$` (`EXEC`, `PING`, `DOCTOR_TEST`, …) |
+| `body` | Required, object or string |
+| `to` / `correlation_id` / `timestamp` / `type` / `priority` | Optional; `priority` int 0-100 |
+| Unknown keys | **Rejected** — no field smuggling |
+| Size | 64 KiB max/message |
+| Rate | 600 sends/hr/agent (`CORTEX_BUS_RATE_LIMIT_PER_HOUR`), sliding window |
+
+`workflow_step_result` queue uses its own schema (`workflow_id` `step_id` `status` `result` `error`) — agents post step results without an envelope.
+
+Implementation: `core/cortex_bus/validate.py` + `core/cortex_bus/ratelimit.py`, tests in `tests/test_bus_validate.py`. Sending messages: use `bus_send()` / the MCP inbox tools — they build conforming envelopes.
+
 ## Diagnosing Bus State
 
 ### 1. Queue Overview

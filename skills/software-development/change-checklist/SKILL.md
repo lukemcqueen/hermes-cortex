@@ -109,7 +109,7 @@ See `references/testing-deployable-scripts.md` for detailed testing patterns by 
   - ⚠️ **DOGFOOD (mandatory, enforced):** a change is not done until the **deployed** copy ran through its **real scheduler invocation**. For cron scripts: `cortex-update.sh` (deploy) then `cronjob action='run' job_id=<id>` — manual `python3 script.py` does NOT update the scheduler's `last_status`. The doctor's **`Script run evidence`** check WARNs on any ops/scripts file changed in the last 7 days whose cron job hasn't run since the change — if it warns, run the named cron. The **`Cron prompt stale refs`** check WARNs if live prompts still name old targets (source edits don't rewrite existing jobs).
   - If it produces a config: verify the output has correct paths for the OS you're on
   - If it's a cron job: create it with `cronjob(action='run')` and inspect the delivery
-  - ⚠️ **Manual `python3 script.py` does NOT update the cron scheduler's `last_status`.** The doctor reads the scheduler's recorded status, not the script exit code. After fixing a cron, ALWAYS run `cronjob action='run' job_id=<id>` to refresh the scheduler's status. Then run the doctor to confirm it clears.
+  - ⚠️ **Manual `python3 script.py` does NOT update the cron scheduler's `last_status`** — the doctor reads scheduler status, not script exit code. After fixing a cron, run `cronjob action='run' job_id=<id>` to refresh it, then run the doctor.
   - ⚠️ **Don't test in isolation** — run the full command, not an imported function
 
 - [ ] **Config changes:** Diff generated vs deployed
@@ -163,13 +163,7 @@ See `references/testing-deployable-scripts.md` for detailed testing patterns by 
   as "checked X, Y, Z and found nothing", never as "verified clean" with no
   evidence.
 
-> **Why this exists:** Moses' 2026-08-03 failures — a 200-line upstream patch
-> shipped on an unexamined premise (queries only run via `python3 -c` in
-> terminal — false, disproven in 0.29s with `execute_code`), and a "12/12"
-> claim where the deployed guard wasn't the file the gateway loads. Both were
-> motivated reasoning, and a mandatory adversarial pass is the structural cure.
-> The tool existed; the process never invoked it. Now it cannot be skipped on a
-> bad day.
+> **Why this exists:** Moses' 2026-08-03 failures shipped on unexamined premises (a 200-line upstream patch on a false assumption; a "12/12" claim where the deployed guard wasn't the loaded file). A mandatory adversarial pass is the structural cure — it cannot be skipped on a bad day.
 
 ### Phase 2: Verify Multi-OS Compatibility
 

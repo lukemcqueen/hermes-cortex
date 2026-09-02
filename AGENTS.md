@@ -64,6 +64,20 @@ Before: `survey-before-action` (search_files → map scope → skill_view). Afte
 
 ---
 
+## Bus Message Contract
+
+Every `/api/pgmq/send` is validated at ingestion — violations get **400 + reason** (or **429** over quota):
+
+- **Envelope keys (allowlist):** `from` `to` `subject` `body` `correlation_id` `timestamp` `priority` `type` — anything else is rejected (no smuggling)
+- **`from` MUST be your authenticated agent name** — spoofed senders are rejected
+- **`subject`:** UPPER_CASE protocol name (`EXEC`, `PING`, `DOCTOR_TEST`, …)
+- **Limits:** 64 KiB max/message · 600 sends/hr/agent (`CORTEX_BUS_RATE_LIMIT_PER_HOUR` tunable)
+- **`workflow_step_result`** queue uses the workflow schema (`workflow_id` `step_id` `status` `result` `error`) — no envelope needed
+
+Full schema: `skills/devops/cortex-bus/SKILL.md`.
+
+---
+
 ## Inbox Message Decision Framework
 
 | Axis | Values |
