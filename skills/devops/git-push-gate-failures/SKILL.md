@@ -109,6 +109,32 @@ git ls-remote --exit-code origin main >/dev/null 2>&1 || LSRC=$?
 [[ $LSRC -eq 2 ]] && echo "absent"
 ```
 
+## 4. Push blocked after rebasing over a peer's overlapping fix
+
+**Symptom:** `git pull --rebase` succeeds (possibly after resolving a
+conflict), but the push is then blocked by the dogfood gate: `❌ Deploy sync`,
+`❌ Script content (<name>)`, `❌ Checksum: <file>.sh`. Your commit looks fine.
+
+**Mechanism:** the dogfood gate diffs DEPLOYED scripts
+(`~/.hermes-cortex/scripts/`) against repo HEAD. A peer's overlapping commit
+changed the same script in the repo; your deployed copy still carries YOUR
+pre-rebase version → checksum mismatch → gate blocks. The gate compares
+deploy state, not your diff — your commit is not the problem.
+
+**Fix:** re-run `bash ops/scripts/cortex-update.sh` (deploys the rebased repo
+state, including the peer's version), verify the deployed file matches repo
+(`diff <(grep -v '^# SOURCE:' ops/scripts/X.sh) <(grep -v '^# SOURCE:'
+~/.hermes-cortex/scripts/X.sh)`), then push.
+
+**Rebase conflict gotcha (2026-09-02):** during `git pull --rebase`, `--ours`
+is the UPSTREAM (incoming, peer) version and `--theirs` is YOUR replayed
+commit — the opposite of a merge. Taking `--theirs` on a conflict keeps YOUR
+version, so your commit still carries a duplicate of a peer's identical fix.
+To yield to the peer's already-pushed version, use `git checkout --ours
+<file>` then `git add`; verify with `git show <sha> -- <file>` (should be
+empty for the duplicated file) before amending. Prefer the peer's version
+when it is identical-or-better and already public.
+
 ## Verification checklist
 
 - [ ] `stat` the update-commit mtime before debugging your diff
