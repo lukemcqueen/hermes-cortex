@@ -119,11 +119,12 @@ def main():
     body = "\n".join(lines)
 
     # Send inbox message to self
+    body_with_topic = json.loads(body) if isinstance(body, str) else {}
+    body_with_topic["topic"] = "system"
     payload = json.dumps({
         "to": AGENT_NAME,
         "subject": f"⚠️ Cron failures detected ({len(failures)} job(s))",
-        "body": body,
-        "topic": "system",
+        "body": json.dumps(body_with_topic),
         "priority": "normal",
     })
 

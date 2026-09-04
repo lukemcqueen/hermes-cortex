@@ -253,12 +253,14 @@ def send_report(report: dict) -> bool:
 
         payload = {
             "queue": "inbox_health_check",
-            "message": {
+            "message": json.dumps({
                 "from": agent_name,
-                "topic": "health",
                 "subject": f"health-report {report.get('agent', 'unknown')} — {'healthy' if report.get('healthy', False) else 'issues'}",
-                "body": json.dumps(report, indent=2),
-            },
+                "body": json.dumps({
+                    "topic": "health",
+                    "report": report,
+                }, indent=2),
+            }),
         }
 
         req = Request(

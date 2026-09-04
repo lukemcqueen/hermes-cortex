@@ -329,13 +329,15 @@ for ci, chunk in enumerate(chunks):
 
     payload = {
         "queue": "inbox_orchestrator",
-        "message": {
+        "message": json.dumps({
             "from": agent_name,
             "subject": subject,
-            "body": body_text,
-            "topic": "reports",
+            "body": json.dumps({
+                "topic": "reports",
+                "text": body_text,
+            }),
             "priority": "normal",
-        },
+        }),
     }
 
     req = urllib.request.Request(

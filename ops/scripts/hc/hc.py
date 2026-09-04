@@ -543,9 +543,11 @@ def cmd_send(cfg: dict, args: list):
     body = {
         "from": cfg["agent"],
         "to": agent,
-        "topic": "general",
         "subject": subject,
-        "body": body_text,
+        "body": json.dumps({
+            "topic": "general",
+            "text": body_text,
+        }),
         "priority": "normal",
         "correlation_id": corr_id,
     }
@@ -1117,7 +1119,6 @@ def cmd_exec(cfg: dict, args: list):
     body = {
         "from": cfg["agent"],
         "to": agent,
-        "topic": "command",
         "subject": "EXEC",
         "correlation_id": corr_id,
         "body": json.dumps(exec_payload),

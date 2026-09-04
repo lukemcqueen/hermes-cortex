@@ -259,8 +259,10 @@ def notify_fleet(subject: str, body: str, queues: list[str] | None = None) -> in
             bus_send(queue, {
                 "from": "esther",
                 "subject": subject,
-                "body": body,
-                "topic": "system",
+                "body": {
+                    "topic": "system",
+                    "payload": body,
+                },
                 "priority": "high",
             })
             sent += 1

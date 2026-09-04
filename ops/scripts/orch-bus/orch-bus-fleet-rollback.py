@@ -50,20 +50,21 @@ def load_dispatch_state() -> dict:
 def send_rollback_request(agent: str, target_sha: str, reason: str, dispatch_id: str) -> bool:
     """Send ROLLBACK_REQUEST to an agent's inbox."""
     correlation_id = f"rollback-{dispatch_id[:8]}-{agent}"
+    body_with_topic = {
+        "topic": "fleet-update",
+        "target_sha": target_sha,
+        "reason": reason,
+        "dispatch_id": dispatch_id,
+        "run_doctor": True,
+        "deadline_minutes": 10,
+    }
     body = {
         "from": "moses",
         "to": agent,
-        "topic": "fleet-update",
         "subject": "ROLLBACK_REQUEST",
         "correlation_id": correlation_id,
         "priority": "high",
-        "body": {
-            "target_sha": target_sha,
-            "reason": reason,
-            "dispatch_id": dispatch_id,
-            "run_doctor": True,
-            "deadline_minutes": 10,
-        },
+        "body": body_with_topic,
     }
     try:
         from lib.cortex_bus import bus_send

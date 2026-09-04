@@ -50,8 +50,10 @@ def _validate_envelope(msg: dict, authenticated_from: str) -> list[str]:
 
     unknown = set(msg) - ENVELOPE_KEYS
     if unknown:
+        allowed = ", ".join(sorted(ENVELOPE_KEYS))
         errors.append(
             "unknown envelope field(s): " + ", ".join(sorted(unknown))
+            + f". Allowed fields: {allowed}"
         )
 
     sender = msg.get("from")

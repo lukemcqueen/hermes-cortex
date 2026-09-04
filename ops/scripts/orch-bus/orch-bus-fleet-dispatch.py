@@ -237,9 +237,9 @@ def main():
     if args.execute:
       success = send_bus_message(queue, {
         "to": agent["key"],
-        "topic": "fleet-update",
         "subject": "UPDATE_REQUEST",
         "body": {
+          "topic": "fleet-update",
           "target_sha": current_sha,
           "target_version": "2.0.0",
           "branch": "main",

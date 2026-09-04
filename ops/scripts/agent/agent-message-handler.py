@@ -453,13 +453,18 @@ def run_doctor() -> dict:
 
 def send_bus_result(queue: str, correlation_id: str, result_body: dict, subject: str = "UPDATE_RESULT") -> bool:
   """Send a result message back to orchestrator."""
+  # The bus API enforces an envelope key allowlist: from, to, subject, body,
+  # correlation_id, timestamp, priority, type.  topic is NOT an envelope
+  # field — it goes inside the body dict.  Including it in the envelope
+  # causes 400 Bad Request (Invalid message: unknown envelope field(s)).
+  body_with_topic = dict(result_body)
+  body_with_topic["topic"] = "fleet-update"
   full_body = {
     "from": AGENT_NAME,
     "to": "moses",
-    "topic": "fleet-update",
     "subject": subject,
     "correlation_id": correlation_id,
-    "body": result_body,
+    "body": body_with_topic,
   }
   try:
     from lib.cortex_bus import bus_send
@@ -961,16 +966,17 @@ def report_health_change(doctor: dict, prev_doctor: dict) -> None:
     level = "PERSISTENT_ISSUES"
     log(f"⚠️ Health still failing: {summary.get('fail', 0)} fail, {summary.get('warn', 0)} warn")
 
+  body_with_topic = {
+    "healthy": healthy,
+    "topic": "health",
+    "summary": summary,
+    "prev_summary": prev_summary if not prev_healthy else {},
+  }
   full_body = {
     "from": AGENT_NAME,
     "to": "moses",
-    "topic": "health",
     "subject": f"HEALTH_{level}",
-    "body": {
-      "healthy": healthy,
-      "summary": summary,
-      "prev_summary": prev_summary if not prev_healthy else {},
-    },
+    "body": body_with_topic,
   }
   try:
     from lib.cortex_bus import bus_send

@@ -506,13 +506,15 @@ def send_report(report: dict, dry_run: bool = False) -> list[str] | None:
 
     payload = {
         "queue": "inbox_orchestrator",
-        "message": {
+        "message": json.dumps({
             "from": hostname,
             "subject": subject,
-            "body": body_text,
-            "topic": "reports",
+            "body": json.dumps({
+                "topic": "reports",
+                "text": body_text,
+            }),
             "priority": "high" if (skills or learnings) else "normal",
-        },
+        }),
     }
 
     # Collect file paths to return on success

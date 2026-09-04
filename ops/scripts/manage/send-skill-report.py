@@ -155,12 +155,14 @@ api_url = f"{bus_url}/api/pgmq/send"
 
 payload = {
     "queue": "inbox_orchestrator",
-    "message": {
+    "message": json.dumps({
         "from": AGENT_NAME,
         "subject": f"Skill Report: {custom_total} custom skills",
-        "body": body_text,
-        "topic": "reports",
-    },
+        "body": json.dumps({
+            "topic": "reports",
+            "text": body_text,
+        }),
+    }),
 }
 
 req = Request(

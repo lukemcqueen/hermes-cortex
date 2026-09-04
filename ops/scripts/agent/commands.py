@@ -112,9 +112,12 @@ def _parse_body(body_field: Any) -> dict:
 
 def send_bus_result(queue: str, correlation_id: str, result_body: dict, subject: str) -> bool:
     """Send result back to orchestrator via bus."""
+    # topic is NOT a bus envelope field — put it inside the body dict.
+    body_with_topic = dict(result_body)
+    body_with_topic["topic"] = "fleet-update"
     full = {
-        "from": AGENT_NAME, "to": "moses", "topic": "fleet-update",
-        "subject": subject, "correlation_id": correlation_id, "body": result_body,
+        "from": AGENT_NAME, "to": "moses",
+        "subject": subject, "correlation_id": correlation_id, "body": body_with_topic,
     }
     try:
         from lib.cortex_bus import bus_send

@@ -179,17 +179,21 @@ def update_to_bus_payload(update: dict | None, agent: str) -> dict | None:
     first = sender.get("first_name") or sender.get("username") or "Telegram"
     return {
         "queue": f"inbox_{agent}",
-        "message": {
+        "message": json.dumps({
             "from": f"telegram:{sender.get('username') or first}",
             "to": agent,
-            "topic": "telegram",
             "subject": first,
-            "body": text,
+            "body": json.dumps({
+                "text": text,
+                "topic": "telegram",
+                "chat_id": chat.get("id"),
+                "sender": sender,
+                "thread_id": thread.get("id") if thread else None,
+                "telegram_chat_id": chat.get("id"),
+                "telegram_msg_id": msg.get("message_id"),
+            }),
             "priority": "normal",
-            # the originating chat is needed for the reply leg
-            "telegram_chat_id": chat.get("id"),
-            "telegram_msg_id": msg.get("message_id"),
-        },
+        }),
     }
 
 

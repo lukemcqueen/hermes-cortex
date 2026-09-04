@@ -91,18 +91,20 @@ def send_bus_alert(
     def _do_send(url: str) -> bool:
         payload = {
             "queue": f"inbox_{owner}",
-            "message": {
+            "message": json.dumps({
                 "from": "doctor",
                 "subject": f"AGENTS.md missing: {repo_name}",
-                "body": (
-                    f"AGENTS.md is missing from ~/{repo_name}. "
-                    f"This repo was detected as a git project you maintain.\n\n"
-                    f"Please create ~/{repo_name}/AGENTS.md with agent guidelines for this project. "
-                    f"Template: ~/hermes-cortex/docs/templates/AGENTS.seed.md"
-                ),
-                "topic": "development",
+                "body": json.dumps({
+                    "text": (
+                        f"AGENTS.md is missing from ~/{repo_name}. "
+                        f"This repo was detected as a git project you maintain.\n\n"
+                        f"Please create ~/{repo_name}/AGENTS.md with agent guidelines for this project. "
+                        f"Template: ~/hermes-cortex/docs/templates/AGENTS.seed.md"
+                    ),
+                    "topic": "development",
+                }),
                 "priority": "normal",
-            },
+            }),
             "priority": 0,
         }
         headers = {"Content-Type": "application/json"}

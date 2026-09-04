@@ -99,17 +99,18 @@ def check_local_git_auth() -> dict:
 def send_git_auth_check(agent: str) -> bool:
     """Send GIT_AUTH_CHECK to an agent."""
     correlation_id = f"git-auth-{uuid.uuid4().hex[:8]}-{agent}"
+    body_with_topic = {
+        "topic": "fleet-update",
+        "remote": "origin",
+        "expected_url": EXPECTED_REMOTE,
+    }
     body = {
         "from": "moses",
         "to": agent,
-        "topic": "fleet-update",
         "subject": "GIT_AUTH_CHECK",
         "correlation_id": correlation_id,
         "priority": "normal",
-        "body": {
-            "remote": "origin",
-            "expected_url": EXPECTED_REMOTE,
-        },
+        "body": body_with_topic,
     }
     try:
         result = bus_send(f"inbox_{agent}", body)

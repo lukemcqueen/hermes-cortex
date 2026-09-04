@@ -146,10 +146,12 @@ def resend_command(row: dict) -> bool:
     body = {
         "from": "moses",
         "to": row["out_agent"],
-        "topic": "general",
         "subject": row["out_subject"],
         "correlation_id": row["out_corr"],
-        "body": f"retry of {row['out_corr']}",
+        "body": json.dumps({
+            "topic": "general",
+            "retry_of": row["out_corr"],
+        }),
     }
     return _bus_send(queue, body)
 

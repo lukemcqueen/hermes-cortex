@@ -177,8 +177,10 @@ def main():
                 {
                     "from": AGENT_NAME,
                     "subject": f"Skill Stub Recovery (part {ci + 1}/{len(chunks)})",
-                    "body": payload,
-                    "topic": "reports",
+                    "body": json.dumps({
+                        "topic": "reports",
+                        "payload": payload,
+                    }),
                     "priority": "normal",
                 },
             )
