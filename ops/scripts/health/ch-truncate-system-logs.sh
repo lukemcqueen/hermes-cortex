@@ -34,7 +34,7 @@ for i in "${!TABLES[@]}"; do
 
   if [ "$BYTES" -gt "$THRESHOLD" ]; then
     MB=$((BYTES / 1048576))
-    $CH_CLIENT --query "TRUNCATE TABLE system.${TABLE}" 2>/dev/null
+    $CH_CLIENT --query "TRUNCATE TABLE system.${TABLE} SETTINGS max_table_size_to_drop = 0" 2>/dev/null
     echo "🧹 Truncated system.${TABLE} (${MB} MB)"
     TRUNCATED=1
   fi

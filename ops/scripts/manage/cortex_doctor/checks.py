@@ -4198,6 +4198,33 @@ def check_langfuse_observability(res):
     elif s_n > 0:
         res.add("Langfuse scoring", "PASS",
                 f"{s_n} scores, newest {s_age}d old, traces newest {t_age}d old")
+
+    # ── ClickHouse system database bloat check ──
+    # Detects when system.trace_log (or other system tables) have grown
+    # unbounded due to sampling profiler or missing TTL. See kustos cisnet02:
+    # 48G trace_log / 55G system db from default 10ms profiler.
+    system_bytes = _docker([
+        "exec", "langfuse-clickhouse-1", "clickhouse-client", "--query",
+        "SELECT sum(bytes_on_disk) FROM system.parts WHERE database='system'"
+    ]).strip()
+    try:
+        sys_mb = int(system_bytes) // (1024 * 1024) if system_bytes else 0
+        if sys_mb > 5120:  # 5 GB threshold
+            res.add("ClickHouse system db", "WARN",
+                    f"system database is {sys_mb} MB — "
+                    "the sampling profiler or missing TTL may be causing unbounded growth",
+                    "Fix: disable query_profiler in 03-profile-defaults.xml, restart "
+                    "clickhouse, then TRUNCATE oversized system tables. "
+                    "See: ops/install/deploy/README-langfuse-clickhouse.md")
+        elif sys_mb > 2000:  # 2 GB — getting large but not critical
+            res.add("ClickHouse system db", "INFO",
+                    f"system database is {sys_mb} MB — monitor; may need truncation")
+        else:
+            res.add("ClickHouse system db", "PASS",
+                    f"system database is {sys_mb} MB")
+    except (ValueError, TypeError):
+        res.add("ClickHouse system db", "INFO",
+                "system database size not readable — skipping")
     return
 
 

@@ -671,9 +671,71 @@ The watchdog supports custom judge models via:
 - Defaults to `qwen2.5:3b` if neither is set
 - `nomic-embed-text:v1.5` is always required and always checked
 
-Use the `extract_langfuse_env.py` utility to regenerate the `.env` file from the running
+Check the `extract_langfuse_env.py` utility to regenerate the `.env` file from the running
 Docker stack if keys ever need updating:
 
 ```bash
 python3 ~/hermes-cortex/deploy/extract_langfuse_env.py > ~/.hermes-cortex/.env
+```
+
+---
+
+## ClickHouse system.trace_log Bloat
+
+**Symptom:** ClickHouse volumes grow to tens of GB while real Langfuse data stays tiny.
+
+**Root cause:** ClickHouse's default sampling query profiler
+(`query_profiler_real_time_period_ns` default 10ms) writes stack traces to
+`system.trace_log` for EVERY query. Combined with missing TTL on pre-existing
+system tables, this causes unbounded growth. On cisnet02: 55G volume, of which
+system.trace_log = 48G / 3.2B rows while the Langfuse default DB was 232 MiB.
+
+**Fix — disable the profiler:**
+
+Add to `~/langfuse/clickhouse-config.d/03-profile-defaults.xml` (the profile for
+the `default` user, mounted to `/etc/clickhouse-server/users.d/`):
+
+```xml
+<query_profiler_real_time_period_ns>0</query_profiler_real_time_period_ns>
+<query_profiler_cpu_time_period_ns>0</query_profiler_cpu_time_period_ns>
+```
+
+Then restart ClickHouse (`docker compose stop clickhouse && docker compose up -d clickhouse`).
+`SYSTEM RELOAD USERS` alone is NOT sufficient — verified stale values pre-restart on CH 25.12.11.
+
+**Fix — truncate oversized system tables:**
+
+```bash
+for table in trace_log query_log text_log metric_log asynchronous_metric_log \
+             part_log processors_profile_log; do
+  docker exec langfuse-clickhouse-1 clickhouse-client --query \
+    "TRUNCATE TABLE system.${table} SETTINGS max_table_size_to_drop = 0"
+done
+```
+
+The `SETTINGS max_table_size_to_drop = 0` is required when a table exceeds
+ClickHouse's default 50GB drop protection.
+
+**Belt-and-suspenders — nightly truncate cron:**
+
+The `ch-truncate-system-logs.sh` script (deployed via cortex-update.sh) runs
+as a `local-clickhouse-log-cleanup` cron — uses thresholds (10-25MB) and
+auto-targets only oversized tables. Silent when healthy.
+
+**Verify:**
+
+```bash
+# Profiler disabled
+docker exec langfuse-clickhouse-1 clickhouse-client \
+  -q "SELECT name, value FROM system.settings WHERE name LIKE '%query_profiler%'"
+# Expected: query_profiler_real_time_period_ns = 0
+
+# System db small
+docker exec langfuse-clickhouse-1 clickhouse-client \
+  -q "SELECT formatReadableSize(sum(bytes_on_disk)) FROM system.parts WHERE database='system'"
+# Expected: < 200 MiB after truncation
+
+# Doctor check
+cortex-doctor.py --quiet | grep 'ClickHouse'
+# Expected: PASS
 ```

@@ -19,6 +19,12 @@
             <max_threads>2</max_threads>
             <!-- Smaller blocks = less memory per query -->
             <max_block_size>4096</max_block_size>
+            <!-- ── Disable sampling profiler (prevents system.trace_log bloat) ── -->
+            <!-- Kustos cisnet02: 48G trace_log from 10ms default profiler.
+                 Setting to 0 disables the stack-trace writer entirely.
+                 Must be in users.d profile AND container restarted. -->
+            <query_profiler_real_time_period_ns>0</query_profiler_real_time_period_ns>
+            <query_profiler_cpu_time_period_ns>0</query_profiler_cpu_time_period_ns>
         </default>
     </profiles>
 </clickhouse>
