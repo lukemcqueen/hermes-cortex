@@ -30,7 +30,7 @@
 set -uo pipefail
 
 # ── State dedup (source first, before any logic) ──
-SCRIPT_NAME="security-posture-check"
+SCRIPT_NAME="agent-security-posture-check"
 STATE_DIR="${HOME}/.hermes-cortex/state"
 FINGERPRINT_FILE="${STATE_DIR}/${SCRIPT_NAME}-fingerprint.txt"
 mkdir -p "$STATE_DIR"
@@ -64,12 +64,23 @@ TIER_MINIMAL=0
 
 # --- 1. fail2ban service ---
 if [[ "$OS" == "Darwin" ]]; then
-  if launchctl list | grep -q 'fail2ban'; then
+  # fail2ban runs as a root LaunchDaemon — user-domain launchctl list won't
+  # show it. Check via sudo launchctl list (needs passwordless sudo for
+  # com.google.code.fail2ban), or fall back to pgrep the fail2ban-server PID.
+  F2B_ACTIVE=0
+  if launchctl list 2>/dev/null | grep -q 'fail2ban'; then
+    F2B_ACTIVE=1  # user-agent (unusual but possible)
+  elif sudo -n launchctl list 2>/dev/null | grep -qiE 'fail2ban'; then
+    F2B_ACTIVE=1  # root LaunchDaemon (canonical)
+  elif pgrep -x fail2ban-server >/dev/null 2>&1; then
+    F2B_ACTIVE=1  # process-check fallback
+  fi
+  if [[ $F2B_ACTIVE -eq 1 ]]; then
     ok "fail2ban loaded (launchd)"
   elif [[ $TIER_MINIMAL -eq 1 ]]; then
     ok "skip fail2ban (minimal tier — host not directly exposed)"
   else
-    fail "fail2ban is NOT loaded (launchctl list | grep fail2ban)"
+    fail "fail2ban is NOT running (checked launchctl list, sudo launchctl list, pgrep fail2ban-server)"
   fi
 else
   if systemctl is-active fail2ban >/dev/null 2>&1; then
@@ -202,7 +213,16 @@ fi
 
 # --- 5. nginx jail logpaths exist (silent starvation check) ---
 if [[ "$HAS_NGINX" -eq 1 ]]; then
-  for lp in /var/log/nginx/error.log /var/log/nginx/access.log; do
+  # macOS Homebrew puts nginx logs under /opt/homebrew/var/log/nginx/ (arm64)
+  # or /usr/local/var/log/nginx/ (x86_64). Linux uses /var/log/nginx/.
+  if [[ "$OS" == "Darwin" ]]; then
+    NGINX_LOG_DIR="/opt/homebrew/var/log/nginx"
+    [[ ! -d "$NGINX_LOG_DIR" ]] && NGINX_LOG_DIR="/usr/local/var/log/nginx"
+    [[ ! -d "$NGINX_LOG_DIR" ]] && NGINX_LOG_DIR="/var/log/nginx"
+  else
+    NGINX_LOG_DIR="/var/log/nginx"
+  fi
+  for lp in "${NGINX_LOG_DIR}/error.log" "${NGINX_LOG_DIR}/access.log"; do
     if [[ -f "$lp" ]]; then
       ok "nginx log $lp present"
     else
