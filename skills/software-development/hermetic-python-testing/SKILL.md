@@ -94,6 +94,28 @@ After the suite is green, confirm no real resources were touched:
 
 ## Pitfalls
 
+- **NEVER mutate `sys.path` in test files to import the module under test.**
+  A `sys.path.insert(0, <repo>/core)` in one suite SHADOWS same-named
+  modules/packages for every sibling suite running later in the same pytest
+  process. Verified 2026-09-02: inserting `<repo>/core` made
+  `import cortex_bus` resolve to the `core/cortex_bus/` PACKAGE instead of
+  the `lib/cortex_bus.py` MODULE a sibling suite (test_bus_outbox) expected
+  → ImportErrors in the full run, green in isolation. The suite that
+  "passes alone but breaks others" is the culprit — run the pair together
+  to confirm. Fix for pure-stdlib modules under test: load them by FILE
+  PATH with a unique module name, zero path mutation:
+  ```python
+  def _load(name, path):
+      spec = importlib.util.spec_from_file_location(name, os.path.normpath(path))
+      assert spec is not None and spec.loader is not None, f"cannot load {path}"
+      mod = importlib.util.module_from_spec(spec)
+      spec.loader.exec_module(mod)
+      return mod
+  validate = _load("cortex_bus_validate_test", "core/cortex_bus/validate.py")
+  ```
+  Works whenever the module has no intra-package imports. If it does, use a
+  `conftest.py` `pythonpath` entry (pytest-managed) instead of hand-rolled
+  inserts.
 - **Import-time path constants** are the #1 hermeticity killer (see rule 1).
 - **Real identifiers in fixtures** — a numeric chat id (e.g. `111222333`)
   looks like an arbitrary integer and sails through the secret-leak detector;

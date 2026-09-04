@@ -44,15 +44,23 @@ working tree), not a problem with your diff.
    Load the skill, run
    `python3 ~/.hermes-cortex/scripts/adversarial-verify.py --file <your-staged-files> --level A2 --gate`,
    then commit.
-4. **Orphaned PENDING cycles block push** (verified 2026-08-27). The doctor
+4. **Orphaned PENDING cycles block push** (verified 2026-08-27, again 2026-09-02). The doctor
    FAILs on PENDING cycles from FINISHED tasks (no active lock) — e.g. a
    cycle created by `begin_change` in a session whose lock was later purged
-   by restart/cortex-update. Symptom: push blocked with "doctor reports N
+   by restart/cortex-update, OR a cycle created by a BACKGROUND/delegation
+   session (`bg_*` session id) that finished without scoring. Symptom: push blocked with "doctor reports N
    failure" + `❌ PENDING cycles`, even after dogfood passes. Fix: query
    `mcp_loop_governance_cycle_query(unreviewed=true)`, `feedback_accept`
    (or `feedback_override`) every orphaned PENDING cycle, re-run doctor to
    0 fail, then push. The current task's own cycle (lock held) is INFO, not
    a blocker.
+   - **Per-task `cycle_query(task_id=...)` does NOT show other tasks' leaked
+     cycles** — if the doctor still reports PENDING after scoring your own,
+     find the leak directly:
+     `python3 -c "import sqlite3; c=sqlite3.connect('$HOME/.hermes-cortex/data/loop-governance.db'); [print(r) for r in c.execute(\"SELECT id, task_id, session_id FROM loop_cycles WHERE decision='PENDING'\")]"`
+     (DB table is `loop_cycles`, not `cycles`.) 2026-09-02: the blocker was
+     `bus-poison-filter` from bg session `bg_090100_065b51` — an async
+     delegation's cycle never scored.
 5. **Deploy-sync gate fires before push** (verified 2026-08-27). The push
    gate requires deployed state == repo source (`❌ Deploy sync` /
    `❌ <plugin> content`). After committing a repo change to a deployed
@@ -106,6 +114,17 @@ May need several rounds on active days; each round's dogfood re-runs clean.
 
 ## Pitfalls
 
+- **Editing an always-skill mid-cycle invalidates the skills-loaded marker.**
+  The enforcer's marker pins a fingerprint of the 7 always-skill mtimes —
+  any `skill_manage`/`patch` on one of them (e.g. a conciseness trim) makes
+  the stored fingerprint stale. The NEXT write tool call fails with
+  "session skills not fully loaded" even though all 7 show ✅ loaded (the
+  ✅ reflects the in-memory set, the block reflects the stale marker).
+  Fix: re-load all 7 always-skills via `skill_view()` (serial; the 7th
+  call regenerates the marker) BEFORE continuing the push sequence.
+  Deploying (cortex-update) has the same effect — it changes deployed
+  skill mtimes. Verified 2026-09-02 (change-checklist trim → push gate
+  blocked mid-sequence).
 - "Push blocked" after a clean commit is usually the OTHER session's tree,
   not your diff. Check `git status --short` before debugging your commit.
 - The dogfood gate auto-runs cortex-update; its pull step failing with

@@ -169,7 +169,7 @@ sudo -n nft list set inet f2b-table addr-set f2b-sshd >/dev/null && echo "OK" ||
 The `*` wildcard in sudoers matches per-word, so `nft list set *` matches
 any args following `list set`.
 
-**Living document:** the `security-posture-check.sh` script in
+**Living document:** the `agent-security-posture-check.sh` script in
 `ops/scripts/` has the canonical list of nft/iptables invocations it
 requires — regenerate the sudoers rule from its source of truth.
 

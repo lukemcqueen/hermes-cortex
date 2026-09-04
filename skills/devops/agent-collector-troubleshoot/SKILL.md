@@ -41,6 +41,13 @@ curl -sI "$(grep CORTEX_BUS_URL ~/.hermes-cortex/cortex-bus.conf 2>/dev/null | h
 
 **Required:** HTTP 200 + auth creds. Missing = contact Moses.
 
+**Known 401 trap (2026-09-04):** the collector's `_build_auth_headers` prefers
+`CORTEX_BASIC_AUTH` and gives up on 401, whereas `lib/cortex_bus.py` prefers the
+Bearer `CORTEX_BUS_TOKEN` and falls back to Basic on 401/403. A stale Basic cred
+STILL in `cortex-bus.conf` alongside a valid token makes the collector 401 while
+`bus_send` (moses/esther handlers) succeeds on the same host. Collector-and-lib
+must agree: prefer the token, add the Basic fallback.
+
 ## Step 3 — Cron Status
 
 ```bash
@@ -74,6 +81,17 @@ python3 ~/.hermes-cortex/scripts/agent-learning-collector.py --force     # send
 ```
 
 **Output:** `Sent: Learning Report: ... (msg_id=...)`. Silent = bus issue (Step 2).
+
+**Silent-but-OK does NOT mean delivered (2026-09-04):** the collector swallows send
+failures (prints `ERR: ...` then exits 0, so `last_status=ok`). The bus `strict input
+formatting` envelope contract (repo commit 9cec8b8e, 2026-09-02) rejects the
+collector's legacy payload with HTTP 400 `Invalid message: unknown envelope
+field(s): topic; subject: required UPPER_CASE protocol name; priority: optional
+integer` — no report is staged and the collector still reports `ok`. A 400/`ERR`
+line in the run means conformance, not connectivity: drop the `topic` field, UPPER_CASE
+the subject (and keep every `LIKE 'Learning Report%'` consumer in sync), integer
+priority 0-100. Verify by watching `~/.hermes-cortex/state/learning-reports/` for
+a newly staged file, not by trusting `last_status`.
 
 ## Step 6 — Submit Ad-Hoc Learning
 
@@ -112,7 +130,10 @@ cat ~/.hermes-cortex/state/agent-session-mine-state.json
 
 | Symptom | Cause | Fix |
 |---------|-------|-----|
-| `--dry-run` shows content, `--force` silent | No bus creds | Step 2 |
+| `--dry-run` shows content, `--force` prints none | No bus creds | Step 2 |
+| `ERR: Send failed: 400 ... unknown envelope field(s): topic` | Envelope not conformant to strict bus contract (9cec8b8e) | Drop `topic`, UPPER_CASE subject, int priority; sync consumers |
+| Send 401 (collector) while `bus_send` works on same host | Collector prefers stale Basic cred, no token/Basic fallback | Retire stale Basic, add fallback (Step 2 note) |
+| `last_status=ok` but no staged report | 400 swallowed; collector exits 0 on failure | Watch state/learning-reports/ not `last_status` |
 | Lesson count 0 | session_mine.py path | Step 4 |
 | `session-mine: not found` | Not deployed | `cortex-update.sh` |
 | Collector silent | Already sent | Delete state, re-run |

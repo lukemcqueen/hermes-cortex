@@ -143,7 +143,7 @@ for jail in sshd nginx-http-auth nginx-badbots; do
 done
 
 # ── Posture-check sudoers (nft/iptables NOPASSWD) ──────────────
-# Lets security-posture-check.sh verify the f2b-sshd ban set as the
+# Lets agent-security-posture-check.sh verify the f2b-sshd ban set as the
 # agent user (non-root cron). Added 2026-09-02 — without this rule the
 # ban-set check can only warn ("not verifiable as non-root").
 # Idempotent: only writes when run with sudo as root.

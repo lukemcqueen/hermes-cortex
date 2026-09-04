@@ -48,6 +48,62 @@ mycortex stats [--json]
 mycortex doctor [--json]
 ```
 
+## Answer Cache (S-017, 2026-09-03)
+
+A new `mycortex.answers` table (v005 schema) for caching LLM responses keyed by
+query + source scope. Separates Q&A from bug-fix/skill lessons (which live in
+the `lessons` brain source). See the `answer-cache` skill for the agent protocol.
+
+### Architecture
+
+| Layer | Detail |
+|-------|--------|
+| Storage | `mycortex.answers` table in Postgres (not filesystem) |
+| Dedup | sha256 of normalized query + trigram similarity on `normalized_query` |
+| Quality gates | Time-sensitive, refusal, PII — auto-skip; `--force` bypasses all |
+| RLS | Same per-profile model — `is_answer_visible()` helper, answers have `source_scope` (federated or source name) |
+| Pruning | Existing `agent-mycortex-retention` cron handles auto-aging; manual `mycortex answer prune` for ad-hoc |
+
+### CLI Commands
+
+```
+mycortex answer store "<query>" "<answer>" [--confidence high|medium|low] [--model NAME] [--tokens N] [--force] [--update] [--source-scope SCOPE]
+mycortex answer search "<query>" [--limit N] [--min-score 0.0] [--json]
+mycortex answer stats [--json]
+mycortex answer prune [--days N] [--min-access N] [--dry-run]
+```
+
+### Workflow (agent protocol)
+
+```
+Query -> mycortex search (hit? 0 tokens)
+       -> miss? mycortex answer search (hit? 0 tokens)
+       -> miss? model answers (costs tokens)
+       -> quality gate passes? mycortex answer store
+```
+
+### Schema
+
+Table in `ops/services/mycortex/schema/v005__answers.sql`. Extends the role split:
+- `mycortex_admin`: full CRUD on answers (INSERT/UPDATE policies for curation)
+- `mycortex_ingest`: INSERT/UPDATE for store operations
+- `mycortex_reader`: SELECT filtered by `is_answer_visible()` (RLS)
+
+### Pitfalls
+
+- Queries must be non-empty and answers non-empty (CLI enforces)
+- PII detection is basic regex — not a replacement for proper scanning
+- `--force` bypasses ALL quality gates (use intentionally)
+- Pruning: existing `agent-mycortex-retention` cron handles auto-aging; manual
+  `mycortex answer prune` for ad-hoc cleanup
+- Works across ALL brain repos an agent has (source_scope controls visibility,
+  not repo path)
+
+### Related
+
+- `answer-cache` skill — the agent protocol with step-by-step instructions
+- `docs/design/mycortex-DESIGN.md` — canonical design doc
+
 **Connection:** psql via `sg docker -c "docker exec -i mycortex-postgres psql -U <role> -d <db>"` on Linux (trust auth inside container); direct psql reading `~/.legacy-brain/config.json` on macOS. Roles connect WITHOUT passwords inside the container; direct TCP to :15432 from the host requires a password (pg_hba scram for non-localhost).
 
 ## Schema Gotchas (found by real CLI testing 2026-08-02 — all fixed in mycortex.sql)

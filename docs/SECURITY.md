@@ -414,7 +414,7 @@ sudo pfctl -a "f2b/nginx-http-auth" -s table
 > nginx jails, install the filters (see `ops/scripts/install/install-fail2ban.sh`
 > — it writes both standard filters before enabling jails) and restart the
 > service. macOS (brew) has the same gap; the installer handles the brew
-> prefix path. The hourly `security-posture-check.sh` cron catches this live.
+> prefix path. The hourly `agent-security-posture-check.sh` cron catches this live.
 
 ---
 

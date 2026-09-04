@@ -1,8 +1,11 @@
 #!/usr/bin/env bash
-# security-posture-check.sh — hourly security posture verification.
+# agent-security-posture-check.sh — hourly security posture verification.
 #
 # Silent (exit 0, no output) when everything is healthy.
 # Prints a report + exits 1 when ANY check fails — cron delivers it.
+#
+# State dedup via cron-failure-state.sh: same warning fingerprint is
+# suppressed within the cooldown window to prevent hourly floods.
 #
 # Cross-platform: Linux (systemd, nftables, journalctl) and macOS
 # (launchd, pf, system.log). Platform-inapplicable checks are skipped
@@ -19,11 +22,18 @@
 # Checks (full tier):
 #   1. fail2ban service active (systemctl / launchctl)
 #   2. fail2ban jails enabled (sshd, nginx-http-auth, nginx-badbots)
-#   3. firewall ban set exists (Linux: nftables f2b-table / macOS: pf anchor)
+#   3. firewall ban set exists (Linux: nftables f2b-table / macOS: pf anchor;
+#      fallback to fail2ban.log evidence when chain not probeable)
 #   4. SSH is key-only (no PasswordAuthentication yes, no root login)
 #   5. nginx jails' logpaths exist (not silently starving)
 #   6. recent SSH brute-force volume (last 24h) for situational awareness
 set -uo pipefail
+
+# ── State dedup (source first, before any logic) ──
+SCRIPT_NAME="security-posture-check"
+STATE_DIR="${HOME}/.hermes-cortex/state"
+FINGERPRINT_FILE="${STATE_DIR}/${SCRIPT_NAME}-fingerprint.txt"
+mkdir -p "$STATE_DIR"
 
 FAILS=0
 REPORT=""
@@ -112,7 +122,7 @@ for jail in sshd nginx-http-auth nginx-badbots; do
 done
 fi
 
-# --- 3. firewall ban set ---
+# --- 3. firewall ban set + fail2ban log verification ---
 if [[ $TIER_MINIMAL -eq 1 ]]; then
   ok "skip firewall ban-set check (minimal tier)"
 elif [[ "$OS" == "Darwin" ]]; then
@@ -122,18 +132,57 @@ elif [[ "$OS" == "Darwin" ]]; then
     warn "pf f2b anchor not verified (needs root; check: sudo pfctl -s Anchors | grep f2b)"
   fi
 else
-  if command -v nft >/dev/null 2>&1 && sudo -n nft list set inet f2b-table addr-set f2b-sshd >/dev/null 2>&1; then
-    ok "nftables f2b-sshd set present"
-  elif command -v nft >/dev/null 2>&1 && nft list set inet f2b-table addr-set f2b-sshd >/dev/null 2>&1; then
-    ok "nftables f2b-sshd set present (readable without sudo)"
-  elif command -v iptables >/dev/null 2>&1 && sudo -n iptables -L f2b-sshd -n >/dev/null 2>&1; then
-    ok "iptables f2b-sshd chain present"
-  elif command -v iptables >/dev/null 2>&1 && iptables -L f2b-sshd -n >/dev/null 2>&1; then
-    ok "iptables f2b-sshd chain present"
-  elif [[ -n "$F2B_JAIL_LIST" ]] && grep -qw sshd <<< "$F2B_JAIL_LIST"; then
-    warn "f2b-sshd chain not found in nft/iptables — fail2ban uses iptables backend and creates ban chains lazily (no bans yet; sshd jail verified active)"
-  else
-    fail "firewall ban set f2b-sshd missing (banaction not applied?)"
+  # Detection ladder:
+  #   1. nft/iptables chain probe succeeds → OK (bans enforced)
+  #   2. probes fail → check fail2ban.log for recent bans
+  #   3. bans found in log → OK with note (chain not probeable, bans confirmed)
+  #   4. no bans in log + no chain → honest lazy-chain warn
+  #   5. bans with action errors → FAIL
+  CHAIN_OK=0
+  if command -v nft >/dev/null 2>&1; then
+    if sudo -n nft list set inet f2b-table addr-set f2b-sshd >/dev/null 2>&1; then
+      ok "nftables f2b-sshd set present"
+      CHAIN_OK=1
+    elif nft list set inet f2b-table addr-set f2b-sshd >/dev/null 2>&1; then
+      ok "nftables f2b-sshd set present (readable without sudo)"
+      CHAIN_OK=1
+    fi
+  fi
+  if [[ $CHAIN_OK -eq 0 ]] && command -v iptables >/dev/null 2>&1; then
+    if sudo -n iptables -L f2b-sshd -n >/dev/null 2>&1; then
+      ok "iptables f2b-sshd chain present"
+      CHAIN_OK=1
+    elif iptables -L f2b-sshd -n >/dev/null 2>&1; then
+      ok "iptables f2b-sshd chain present"
+      CHAIN_OK=1
+    fi
+  fi
+
+  if [[ $CHAIN_OK -eq 0 ]]; then
+    # Chain probes failed — fall back to fail2ban log evidence
+    F2B_LOG=""
+    for _lp in /var/log/fail2ban.log /var/log/fail2ban.log.1; do
+      [[ -r "$_lp" ]] && { F2B_LOG="$_lp"; break; }
+    done
+    if [[ -n "$F2B_LOG" ]]; then
+      RECENT_BANS=$(grep -c 'NOTICE.*Ban' "$F2B_LOG" 2>/dev/null || true)
+      RECENT_BANS=${RECENT_BANS:-0}
+      ACTION_ERRORS=$(grep -c 'Failed to execute ban' "$F2B_LOG" 2>/dev/null || true)
+      ACTION_ERRORS=${ACTION_ERRORS:-0}
+      if [[ "$ACTION_ERRORS" -gt 0 ]]; then
+        fail "firewall ban set f2b-sshd missing AND fail2ban.log shows $ACTION_ERRORS ban-action error(s) — bans not enforced"
+      elif [[ "$RECENT_BANS" -gt 0 ]]; then
+        ok "nft/iptables chain not probeable (no sudo), $RECENT_BANS bans in fail2ban.log — bans enforced"
+      elif [[ -n "$F2B_JAIL_LIST" ]] && grep -qw sshd <<< "$F2B_JAIL_LIST"; then
+        warn "f2b-sshd chain not found in nft/iptables (no sudo) and fail2ban.log shows 0 bans — fail2ban creates ban chains lazily (no bans yet; sshd jail active)"
+      else
+        fail "firewall ban set f2b-sshd missing (banaction not applied?)"
+      fi
+    elif [[ -n "$F2B_JAIL_LIST" ]] && grep -qw sshd <<< "$F2B_JAIL_LIST"; then
+      warn "f2b-sshd chain not found in nft/iptables (no sudo) and fail2ban.log not readable — cannot verify ban enforcement"
+    else
+      fail "firewall ban set f2b-sshd missing (banaction not applied?)"
+    fi
   fi
 fi
 
@@ -179,7 +228,21 @@ else
   fi
 fi
 
-# --- output ---
+# --- output + state dedup ---
+# Compute a fingerprint of the current report to suppress identical
+# deliveries within the cooldown window (cron-failure-state.sh pattern).
+REPORT_HASH=$(echo -n "$REPORT" | sha256sum | cut -c1-16)
+if [[ -f "$FINGERPRINT_FILE" ]]; then
+  LAST_HASH=$(cat "$FINGERPRINT_FILE" 2>/dev/null || echo "")
+  if [[ "$REPORT_HASH" == "$LAST_HASH" ]]; then
+    # Same warning as last run — suppress to prevent hourly flood.
+    # The cooldown lasts until the fingerprint file is removed, which
+    # happens when REPORT is empty (no warnings) or changes.
+    exit 0
+  fi
+fi
+echo -n "$REPORT_HASH" > "$FINGERPRINT_FILE"
+
 if [[ $FAILS -gt 0 ]]; then
   echo "🔐 SECURITY POSTURE FAILING — ${FAILS} issue(s)"
   echo ""
@@ -191,4 +254,6 @@ if [[ -n "$REPORT" ]]; then
   echo ""
   echo "$REPORT"
 fi
+# Clear fingerprint on clean run (no warnings)
+[[ -z "$REPORT" ]] && rm -f "$FINGERPRINT_FILE"
 exit 0

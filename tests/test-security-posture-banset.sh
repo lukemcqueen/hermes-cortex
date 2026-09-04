@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # test-security-posture-banset.sh
-# Case matrix for the firewall ban-set decision in security-posture-check.sh.
+# Case matrix for the firewall ban-set decision in agent-security-posture-check.sh.
 # Extracts the real block (anchored on stable markers) and runs it under
 # stub binaries (nft/iptables/sudo on a temp PATH), so the test covers the
 # deployed logic, not a copy.
 set -uo pipefail
 
-SCRIPT="${HOME}/hermes-cortex/ops/scripts/security-posture-check.sh"
+SCRIPT="${HOME}/hermes-cortex/ops/scripts/agent-security-posture-check.sh"
 [ -f "$SCRIPT" ] || { echo "SKIP: script not found"; exit 0; }
 
 BLOCK=$(awk '/^# --- 3\. firewall ban set ---/{p=1} p{print} /^# --- 4\./{exit}' "$SCRIPT")

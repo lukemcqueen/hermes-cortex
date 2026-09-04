@@ -1273,7 +1273,7 @@ create_cron "agent-secret-leak-watchdog" "0 */4 * * *" \
 # 24h brute-force volume. Silent when healthy (watchdog pattern); prints a
 # report + exit 1 on any gap → delivered to the origin channel.
 create_cron "agent-security-posture-check" "17 * * * *" \
-  "security-posture-check.sh" \
+  "agent-security-posture-check.sh" \
   "Hourly security posture verification: fail2ban active + jails (sshd, nginx-http-auth, nginx-badbots), firewall ban set, SSH key-only, nginx jail logpaths, brute-force volume. Silent when healthy." \
   "" \
   "" \

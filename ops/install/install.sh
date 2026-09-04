@@ -550,6 +550,10 @@ done
 mkdir -p "${BRAIN_DIR}/lessons"
 info " Created ${BRAIN_DIR}/lessons/"
 
+# Create answers directory for LLM answer cache
+mkdir -p "${BRAIN_DIR}/answers"
+info " Created ${BRAIN_DIR}/answers/"
+
 # ─────────────────────────────────────────────────────────────
 # 5. Brain .gitignore — Protect memory and secrets per source
 # ─────────────────────────────────────────────────────────────
@@ -620,6 +624,17 @@ else
    info " Added mycortex source: ${source}"
   fi
  done
+ # Register the answers cache source (local-only, not a git source)
+ ANSWERS_DIR="${BRAIN_DIR}/answers"
+ if [[ -d "$ANSWERS_DIR" ]]; then
+   if "$MYCORTEX_CLI" sources list 2>/dev/null | grep -q '"answers"'; then
+     skip "mycortex source 'answers' already configured"
+   else
+     "$MYCORTEX_CLI" sources add "answers" "$ANSWERS_DIR" --mode local 2>/dev/null || \
+       warn "Failed to add source 'answers' — run: mycortex sources add answers ${ANSWERS_DIR}"
+     info " Added mycortex source: answers (answer cache)"
+   fi
+ fi
  ok
 fi
 

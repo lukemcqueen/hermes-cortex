@@ -720,6 +720,362 @@ SELECT
     return 0
 
 
+# ── Answer cache (mycortex_ingest for store, mycortex_reader for search) ──
+
+def _normalize_query(query: str) -> str:
+    """Lowercase, collapse whitespace, strip punctuation for hash matching."""
+    q = query.lower().strip()
+    q = re.sub(r'[^\w\s]', '', q)
+    q = re.sub(r'\s+', ' ', q)
+    return q
+
+
+def _query_hash(query: str) -> str:
+    return hashlib.sha256(_normalize_query(query).encode()).hexdigest()
+
+
+def _answer_hash(answer: str) -> str:
+    return hashlib.sha256(answer.encode()).hexdigest()
+
+
+def _is_time_sensitive(query: str) -> bool:
+    """Check if a query is time-sensitive and shouldn't be cached."""
+    time_keywords = [
+        "current", "today", "yesterday", "now", "latest", "recent",
+        "price", "weather", "temperature", "news", "stock", "time",
+        "date", "schedule", "opening hours", "availability", "status",
+        "health", "uptime", "traffic", "busy", "free", "tomorrow",
+    ]
+    q = query.lower()
+    return any(kw in q for kw in time_keywords)
+
+
+def _is_refusal(answer: str) -> bool:
+    """Detect LLM refusal / 'I cannot help' patterns."""
+    refusal_patterns = [
+        r"i cannot",
+        r"i can't",
+        r"i'(?:m not able|am not able)",
+        r"i'm sorry",
+        r"i apologize",
+        r"as an ai",
+        r"i don't have",
+        r"i do not have",
+        r"unable to (?:answer|provide|assist)",
+        r"cannot (?:answer|assist|help)",
+        r"not (?:able|in a position) to",
+        r"i must decline",
+        r"i'm not sure",
+    ]
+    a = answer.lower().strip()
+    return any(re.search(p, a) for p in refusal_patterns)
+
+
+def _contains_pii(text: str) -> bool:
+    """Basic PII detection for answers."""
+    # Email addresses
+    if re.search(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', text):
+        return True
+    # Phone numbers (various formats)
+    if re.search(r'\b\d{3}[-.]?\d{3}[-.]?\d{4}\b', text):
+        return True
+    # IP addresses
+    if re.search(r'\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b', text):
+        return True
+    return False
+
+
+def _semantic_similarity_exists(query: str, conn_meta: dict) -> bool:
+    """Check if a semantically similar answer already exists using trigram similarity."""
+    q = _normalize_query(query)
+    sql = f"""
+SELECT count(*) FROM mycortex.answers
+WHERE NOT archived
+  AND similarity(normalized_query, {esc_literal(q)}) > 0.6
+LIMIT 1;
+"""
+    try:
+        out = psql_query(sql, "mycortex_reader", conn_meta["db"])
+        count = int(out.strip() or 0)
+        return count > 0
+    except (RuntimeError, ValueError):
+        return False
+
+
+def answer_store(args: argparse.Namespace) -> int:
+    """Store an answer in the cache."""
+    conn = {"db": args.db_name}
+    query = args.query.strip()
+    answer = args.answer.strip()
+
+    if not query or not answer:
+        print("❌ query and answer are required", file=sys.stderr)
+        return 1
+
+    # Quality gate checks
+    if not args.force:
+        # Time-sensitive check
+        if _is_time_sensitive(query):
+            print("⏭  skipping: time-sensitive query (not cached)")
+            return 0
+        # Refusal check
+        if _is_refusal(answer):
+            print("⏭  skipping: answer appears to be a refusal (not cached)")
+            return 0
+        # PII check
+        if _contains_pii(answer):
+            print("⏭  skipping: answer contains potential PII (not cached)")
+            return 0
+
+    norm = _normalize_query(query)
+    qhash = _query_hash(query)
+    ahash = _answer_hash(answer)
+    source_scope = args.source_scope or "federated"
+    confidence = args.confidence or "medium"
+    model = args.model or ""
+    token_count = args.tokens or 0
+    agent = os.environ.get("AGENT_NAME", os.uname().nodename)
+
+    # Dedup: check if exact same query hash exists
+    dedup_sql = f"SELECT id FROM mycortex.answers WHERE query_hash = {esc_literal(qhash)} AND NOT archived LIMIT 1;"
+    try:
+        existing = psql_query(dedup_sql, "mycortex_reader", conn["db"])
+    except RuntimeError:
+        existing = ""
+
+    if existing.strip():
+        if args.update:
+            # Update existing answer
+            aid = existing.splitlines()[0]
+            update_sql = f"""
+UPDATE mycortex.answers
+SET answer = {esc_literal(answer)},
+    answer_hash = {esc_literal(ahash)},
+    confidence = {esc_literal(confidence)},
+    quality_gate = 'passed',
+    token_count = {token_count},
+    model = {esc_literal(model)},
+    agent_name = {esc_literal(agent)},
+    accessed_at = now(),
+    access_count = access_count + 1
+WHERE id = {esc_literal(aid)};
+"""
+            try:
+                run_sql(update_sql, "mycortex_ingest", conn["db"])
+                print(f"✅ answer updated (id: {aid[:8]}…): {query[:60]}…")
+            except RuntimeError as e:
+                print(f"❌ update failed: {e}", file=sys.stderr)
+                return 1
+        else:
+            # Touch accessed_at for LRU tracking
+            touch_sql = f"""
+UPDATE mycortex.answers
+SET accessed_at = now(), access_count = access_count + 1
+WHERE query_hash = {esc_literal(qhash)} AND NOT archived;
+"""
+            try:
+                run_sql(touch_sql, "mycortex_ingest", conn["db"])
+            except RuntimeError:
+                pass
+            print(f"⏭  duplicate query — existing answer touched (hash: {qhash[:12]}…)")
+        return 0
+
+    # Semantic dedup before insert
+    if not args.force and _semantic_similarity_exists(query, conn):
+        print("⏭  skipping: semantically similar answer already exists")
+        return 0
+
+    # Insert new answer
+    sql = f"""
+INSERT INTO mycortex.answers
+    (source_scope, query_hash, query, normalized_query, answer, answer_hash,
+     confidence, quality_gate, token_count, model, agent_name)
+VALUES
+    ({esc_literal(source_scope)},
+     {esc_literal(qhash)},
+     {esc_literal(query)},
+     {esc_literal(norm)},
+     {esc_literal(answer)},
+     {esc_literal(ahash)},
+     {esc_literal(confidence)},
+     'passed',
+     {token_count},
+     {esc_literal(model)},
+     {esc_literal(agent)})
+RETURNING id;
+"""
+    try:
+        out = psql_query(sql, "mycortex_ingest", conn["db"])
+        aid = out.splitlines()[0].strip() if out else "?"
+        print(f"✅ answer stored (id: {aid[:8]}…): {query[:60]}…")
+    except RuntimeError as e:
+        print(f"❌ store failed: {e}", file=sys.stderr)
+        return 1
+    return 0
+
+
+def answer_search(args: argparse.Namespace) -> int:
+    """Search the answer cache."""
+    conn = {"db": args.db_name}
+    q = args.query.strip()
+    if not q:
+        print("❌ query is required", file=sys.stderr)
+        return 1
+
+    # Check min-score filter
+    min_score = args.min_score or 0.0
+
+    norm = _normalize_query(q)
+    sql = f"""
+SELECT a.id, a.query, a.answer, a.confidence, a.source_scope,
+       a.token_count, a.model, a.agent_name, a.created_at::text,
+       a.accessed_at::text, a.access_count,
+       COALESCE(similarity(a.normalized_query, {esc_literal(norm)}), 0) AS sim_score
+FROM mycortex.answers a
+WHERE NOT a.archived
+  AND (
+    a.query_hash = {esc_literal(_query_hash(q))}
+    OR similarity(a.normalized_query, {esc_literal(norm)}) > 0.4
+    OR a.query ILIKE '%' || {esc_literal(q)} || '%'
+  )
+  AND COALESCE(similarity(a.normalized_query, {esc_literal(norm)}), 0) >= {min_score}
+ORDER BY
+  CASE WHEN a.query_hash = {esc_literal(_query_hash(q))} THEN 0 ELSE 1 END,
+  sim_score DESC,
+  a.access_count DESC,
+  a.created_at DESC
+LIMIT {int(args.limit)};
+"""
+    try:
+        out = psql_query(sql, "mycortex_reader", conn["db"])
+    except RuntimeError as e:
+        print(f"❌ {e}", file=sys.stderr)
+        return 1
+
+    results = []
+    for ln in out.splitlines():
+        if not ln.strip():
+            continue
+        parts = ln.split("|")
+        if len(parts) >= 7:
+            results.append({
+                "id": parts[0],
+                "query": parts[1],
+                "answer": parts[2][:200],  # preview
+                "confidence": parts[3],
+                "source_scope": parts[4],
+                "token_count": int(parts[5]) if parts[5] else 0,
+                "model": parts[6],
+                "agent_name": parts[7],
+                "created_at": parts[8],
+                "accessed_at": parts[9] or None,
+                "access_count": int(parts[10]) if parts[10] else 0,
+                "similarity": float(parts[11]) if len(parts) > 11 else 0.0,
+            })
+
+    if args.json:
+        print(json.dumps(results, indent=2))
+    else:
+        if not results:
+            print("(no cached answers)")
+        for r in results:
+            print(f"[{r['confidence']}] sim={r['similarity']:.2f} hits={r['access_count']} "
+                  f"{r['created_at'][:16]} | {r['query'][:60]}")
+    return 0
+
+
+def answer_stats(args: argparse.Namespace) -> int:
+    """Statistics on the answer cache."""
+    conn = {"db": args.db_name}
+    sql = """
+SELECT
+  count(*) AS total,
+  count(*) FILTER (WHERE NOT archived) AS active,
+  count(*) FILTER (WHERE confidence = 'high' AND NOT archived) AS high_confidence,
+  count(*) FILTER (WHERE confidence = 'medium' AND NOT archived) AS medium_confidence,
+  count(*) FILTER (WHERE confidence = 'low' AND NOT archived) AS low_confidence,
+  count(*) FILTER (WHERE quality_gate = 'refused' AND NOT archived) AS refused,
+  count(*) FILTER (WHERE quality_gate = 'pii_rejected' AND NOT archived) AS pii_rejected,
+  count(*) FILTER (WHERE quality_gate = 'time_sensitive' AND NOT archived) AS time_sensitive,
+  COALESCE(sum(token_count) FILTER (WHERE NOT archived), 0) AS total_tokens,
+  COALESCE(avg(token_count) FILTER (WHERE NOT archived), 0)::int AS avg_tokens,
+  count(*) FILTER (WHERE source_scope = 'federated' AND NOT archived) AS federated,
+  count(*) FILTER (WHERE source_scope != 'federated' AND NOT archived) AS isolated,
+  count(DISTINCT agent_name) FILTER (WHERE NOT archived) AS agents,
+  max(created_at)::text AS last_answer
+FROM mycortex.answers;
+"""
+    try:
+        out = psql_query(sql, "mycortex_admin", conn["db"])
+    except RuntimeError as e:
+        print(f"❌ {e}", file=sys.stderr)
+        return 1
+
+    parts = out.splitlines()[0].split("|") if out.strip() else []
+    keys = ["total", "active", "high_confidence", "medium_confidence", "low_confidence",
+            "refused", "pii_rejected", "time_sensitive", "total_tokens", "avg_tokens",
+            "federated", "isolated", "agents", "last_answer"]
+    data = dict(zip(keys, parts)) if len(parts) == len(keys) else {}
+
+    if args.json:
+        print(json.dumps(data, indent=2))
+    else:
+        if not data:
+            print("(no answers data)")
+            return 0
+        print(f"  total entries:     {data['total']}")
+        print(f"  active:            {data['active']}")
+        print(f"  high confidence:   {data['high_confidence']}")
+        print(f"  medium confidence: {data['medium_confidence']}")
+        print(f"  low confidence:    {data['low_confidence']}")
+        print(f"  refused:           {data['refused']}")
+        print(f"  PII rejected:      {data['pii_rejected']}")
+        print(f"  time-sensitive:    {data['time_sensitive']}")
+        print(f"  total tokens:      {data['total_tokens']}")
+        print(f"  avg tokens/answer: {data['avg_tokens']}")
+        print(f"  federated:         {data['federated']}")
+        print(f"  isolated:          {data['isolated']}")
+        print(f"  agents:            {data['agents']}")
+        print(f"  last answer:       {data['last_answer'][:19] if data.get('last_answer') else '-'}")
+    return 0
+
+
+def answer_prune(args: argparse.Namespace) -> int:
+    """Prune stale/expired answers (manual trigger; cron handles automated pruning)."""
+    conn = {"db": args.db_name}
+    days = args.days or 90
+    min_access = args.min_access or 0
+    dry_run = args.dry_run
+
+    # Archive old, rarely-accessed answers
+    conditions = []
+    if days:
+        conditions.append(f"created_at < now() - interval '{days} days'")
+    if min_access > 0:
+        conditions.append(f"access_count < {min_access}")
+    where = " AND ".join(conditions) if conditions else "TRUE"
+
+    count_sql = f"SELECT count(*) FROM mycortex.answers WHERE NOT archived AND ({where});"
+    arch_sql = f"""
+UPDATE mycortex.answers SET archived = TRUE
+WHERE NOT archived AND ({where});
+"""
+    try:
+        out = psql_query(count_sql, "mycortex_admin", conn["db"])
+        count = int(out.strip() or 0)
+        if dry_run:
+            print(f"[dry-run] would archive {count} answer(s) (age >{days}d or hits <{min_access})")
+        elif count:
+            run_sql(arch_sql, "mycortex_admin", conn["db"])
+            print(f"✅ archived {count} stale answer(s)")
+        else:
+            print("(no stale answers to prune)")
+    except RuntimeError as e:
+        print(f"❌ {e}", file=sys.stderr)
+        return 1
+    return 0
+
+
 def doctor(args: argparse.Namespace) -> int:
     ok = True
     # schema present?
@@ -807,6 +1163,43 @@ def main() -> int:
     stats_p = sub.add_parser("stats", help="counts")
     stats_p.add_argument("--json", action="store_true")
     stats_p.set_defaults(func=stats)
+
+    # ── answer subcommands ──────────────────────────────────
+    answer_p = sub.add_parser("answer", help="answer cache operations")
+    answer_sub = answer_p.add_subparsers(dest="sub", required=True)
+
+    store_p = answer_sub.add_parser("store", help="store an answer in the cache")
+    store_p.add_argument("query", help="the original query")
+    store_p.add_argument("answer", help="the answer text")
+    store_p.add_argument("--source-scope", default="federated",
+                         help="source scope (default: federated, or a source name for isolated scope)")
+    store_p.add_argument("--confidence", default="medium", choices=["high", "medium", "low"],
+                         help="confidence level (default: medium)")
+    store_p.add_argument("--model", default="", help="model that produced the answer")
+    store_p.add_argument("--tokens", type=int, default=0, help="token count")
+    store_p.add_argument("--force", action="store_true",
+                         help="skip quality gates (PII/refusal/time-sensitive checks)")
+    store_p.add_argument("--update", action="store_true",
+                         help="update existing answer if same query exists")
+    store_p.set_defaults(func=answer_store)
+
+    search_a_p = answer_sub.add_parser("search", help="search cached answers")
+    search_a_p.add_argument("query")
+    search_a_p.add_argument("--limit", type=int, default=10)
+    search_a_p.add_argument("--min-score", type=float, default=0.0,
+                            help="minimum similarity score (0.0-1.0)")
+    search_a_p.add_argument("--json", action="store_true")
+    search_a_p.set_defaults(func=answer_search)
+
+    stats_a_p = answer_sub.add_parser("stats", help="answer cache statistics")
+    stats_a_p.add_argument("--json", action="store_true")
+    stats_a_p.set_defaults(func=answer_stats)
+
+    prune_a_p = answer_sub.add_parser("prune", help="prune stale/expired answers")
+    prune_a_p.add_argument("--days", type=int, default=90, help="archive answers older than N days")
+    prune_a_p.add_argument("--min-access", type=int, default=0, help="archive answers with fewer than N accesses")
+    prune_a_p.add_argument("--dry-run", action="store_true", help="show what would be pruned")
+    prune_a_p.set_defaults(func=answer_prune)
 
     doc_p = sub.add_parser("doctor", help="schema + staleness checks")
     doc_p.add_argument("--json", action="store_true")
