@@ -472,8 +472,20 @@ def send_bus_result(queue: str, correlation_id: str, result_body: dict, subject:
       log(f"Sent {subject} to {queue} (mid={mid[:8]}… corr={correlation_id[:8] if correlation_id else '?'}…)")
     else:
       log(f"Failed to send {subject}")
+      # Save to pending-update-results for retry on next tick (same pattern
+      # as the detached worker sweep). The _send_pending_update_results
+      # function reads these files and retries bus_send.
+      if correlation_id and subject in ("UPDATE_RESULT", "EXEC_RESULT"):
+        try:
+          UPDATE_PENDING_DIR.mkdir(parents=True, exist_ok=True)
+          pending_file = UPDATE_PENDING_DIR / f"{correlation_id}.json"
+          pending_file.write_text(json.dumps(result_body))
+          log(f"Saved pending {subject} to {pending_file.name} for retry")
+        except Exception as e:
+          log(f"Failed to save pending {subject} for retry: {e}")
       try:
         notify_telegram(
+          f"⚠️ [{AGENT_NAME}] Failed to send {subject} to {queue} (corr={correlation_id[:8] if correlation_id else '?'}…) — bus_send returned None. Pending file saved for retry." if correlation_id and subject in ("UPDATE_RESULT", "EXEC_RESULT") else
           f"⚠️ [{AGENT_NAME}] Failed to send {subject} to {queue} (corr={correlation_id[:8] if correlation_id else '?'}…) — bus_send returned None",
           f"⚠️ {AGENT_NAME}:SEND_FAIL",
         )
