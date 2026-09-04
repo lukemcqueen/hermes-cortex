@@ -44,6 +44,7 @@ Without domain skills, agents make preventable mistakes: writing `.sh` files wit
 | Building a web app service | `nginx-web-app-deployment`, `prevent-crash-looping` |
 | Writing tests (any language) | `test-driven-development` |
 | Debugging a failure | `root-cause-debugging` (or `systematic-debugging`) |
+| Code review / refactoring (structural) | `data-structure-efficiency-review` |
 | Performance diagnosis | `linux-performance-diagnostics` |
 | Cross-agent feature / protocol | `cross-agent-design` |
 | Installing packages | `package-security` |

@@ -8,7 +8,7 @@ platforms: [linux, macos, windows]
 metadata:
   hermes:
     tags: [code-review, security, verification, quality, pre-commit, auto-fix, standards, spec]
-    related_skills: [subagent-driven-development, change-test-loop, root-cause-debugging, codebase-design]
+    related_skills: [subagent-driven-development, change-test-loop, root-cause-debugging, codebase-design, data-structure-efficiency-review]
 ---
 
 # Two-Axis Code Verification
@@ -266,6 +266,21 @@ Wait for both sub-agents to complete. Present their findings under separate head
 **Do NOT merge or rerank findings.** The two axes are deliberately separate. Keeping them separate is the whole point.
 
 End with a one-line summary: total findings per axis, and the worst issue *within each axis* (if any). Don't pick a single winner across axes.
+
+### Step 7.5 — Data Structure Efficiency Review
+
+**Run after the Standards and Spec sub-agents return.** Load `data-structure-efficiency-review` and its language reference files for the code under review. Scan the diff for:
+
+- **Hot loops with linear scans** (P1/P2) — membership test or key lookup inside a loop → build `Set`/`Map` once outside
+- **N+1 queries** (P8) — per-row DB/API calls → eager-load or batch query
+- **Quadratic accumulation** (P7) — string/array built via `+=`/spread in a loop → `join`/`push`
+- **Unbounded retention** (P10) — caches/memos/registries without cap or TTL
+- **Wrong collection type** (P12) — access pattern doesn't match the chosen structure
+- **Repeated index rebuild** (P3) — grouping/sorting inside the loop body
+
+For each finding at Medium+: write a finding entry with severity, pattern name, complexity before/after, and a minimal semantic-preserving patch. Merge with the aggregated results from Standards and Spec.
+
+**Do not skip this step for any code change that modifies loops, data access patterns, or persistent structures.** For trivial single-line changes, a 10-second mental scan is sufficient.
 
 ## Step 8 — Evaluate + Self-Review Quick Check
 
