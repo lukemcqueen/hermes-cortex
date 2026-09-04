@@ -253,7 +253,9 @@ docker system prune -a --volumes       # EVERYTHING — named volumes too
 | "no space left on device" | Docker disk full | `docker system df` then targeted prune |
 | Can't connect to container | App binds to 127.0.0.1 inside container | App must bind to `0.0.0.0`, check `-p` mapping |
 | Permission denied on volume | UID/GID mismatch host vs container | Use `--user $(id -u):$(id -g)` or fix permissions |
+| Container can't write to /exports or shared dir | Non-root user lacks write permission | Create dir + `chmod 777` in Dockerfile BEFORE `USER` switch — entrypoint runs as non-root and can't chmod |
 | Compose services can't reach each other | Wrong network or service name | Services use service name as hostname, check `docker compose config` |
+| Compose fails with "invalid interpolation format" | `***` used to mask credentials in compose.yml | Never mask secrets with `***` in docker-compose.yml — it breaks variable substitution. Use `.env` file or Docker secrets instead |
 | Build cache not working | Layer order wrong in Dockerfile | Put rarely-changing layers first (deps before source code) |
 | Image too large | No multi-stage build, no .dockerignore | Use multi-stage builds, add `.dockerignore` |
 
