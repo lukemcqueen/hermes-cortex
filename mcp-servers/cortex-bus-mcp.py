@@ -459,7 +459,7 @@ def _inbox_send(args: dict) -> CallToolResult:
                 "topic": topic,
                 "text": body_text,
             }),
-            "priority": priority,
+            "priority": {"normal": 0, "urgent": 10, "critical": 20}.get(priority, 0),
         }),
         "priority": {"normal": 0, "urgent": 10, "critical": 20}.get(priority, 0),
     })
