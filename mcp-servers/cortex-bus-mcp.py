@@ -451,14 +451,16 @@ def _inbox_send(args: dict) -> CallToolResult:
     queue_name = f"inbox_{recipient}" if recipient != "all" else "broadcast"
     status, body = _request("POST", "api/pgmq/send", {
         "queue": queue_name,
-        "message": {
+        "message": json.dumps({
             "from": DEFAULT_AGENT,
             "to": recipient,
-            "topic": topic,
             "subject": args["subject"],
-            "body": body_text,
+            "body": json.dumps({
+                "topic": topic,
+                "text": body_text,
+            }),
             "priority": priority,
-        },
+        }),
         "priority": {"normal": 0, "urgent": 10, "critical": 20}.get(priority, 0),
     })
 
