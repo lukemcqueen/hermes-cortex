@@ -80,7 +80,7 @@ message = {
     "to": "orchestrator",
     "subject": os.environ["SUBJECT"],
     "body": os.environ["BODY"],
-    "priority": os.environ["PRIORITY"],
+    "priority": {"normal": 0, "urgent": 10, "critical": 20}.get(os.environ["PRIORITY"], 0),
 }
 result = bus_send(os.environ["TARGET_QUEUE"], message)
 # bus_send returns the API response dict on success, None when the bus (and

@@ -198,7 +198,7 @@ payload = {
         'subject': '📋 Skill Report Request ($REQUEST_ID)',
         'body': '''$BODY''',
         'topic': 'operations',
-        'priority': 'normal',
+        'priority': 0,
     },
 }
 
