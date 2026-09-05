@@ -616,6 +616,9 @@ register "docs/templates/memory-readme.seed.md" "${CORTEX_DEPLOY_HOME}/memory/RE
 
 # Langfuse
 register_orch "ops/install/deploy/docker-compose.langfuse.yml"        "${HOME}/langfuse/docker-compose.yml" "langfuse" "restart_langfuse"
+register    "ops/install/deploy/clickhouse-config.d/01-log-level.xml"  "${HOME}/langfuse/clickhouse-config.d/01-log-level.xml" "langfuse"
+register    "ops/install/deploy/clickhouse-config.d/02-low-memory.xml"  "${HOME}/langfuse/clickhouse-config.d/02-low-memory.xml" "langfuse"
+register    "ops/install/deploy/clickhouse-config.d/03-profile-defaults.xml" "${HOME}/langfuse/clickhouse-config.d/03-profile-defaults.xml" "langfuse"
 
 # Dashboard
 register_orch "ops/services/dashboard/server.py"               "${CORTEX_DEPLOY_HOME}/dashboard/server.py" "dashboard" "restart_dashboard"
