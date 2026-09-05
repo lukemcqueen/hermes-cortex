@@ -624,6 +624,35 @@ everything in the always-skills load (99KB/task today) — the goal is to keep
 the essential, drop the rest. Vector: thoroughness in verification over
 verbosity in explanation.
 
+## Config-change discipline — prefer the documented knob over infrastructure
+
+When the user asks why a system setting isn't taking effect or why something
+is still running when it shouldn't be, the default approach is:
+
+1. **Find the config file or setting that governs the behavior.** Read its
+   entire documentation (`zcat /usr/share/doc/...`, `man ...`, the default
+   config with all comments) — these files document every available option.
+   The answer is almost always a single-line config change, not a new script,
+   service, timer, or sudoers rule.
+
+2. **Change the value** — not the mechanism. DPMS timeout too long? Edit
+   `xset s 300` to `xset s 30` in the greeter-setup-script. Don't add a
+   systemd timer, a greeter timestamp, or an auto-shutdown service.
+
+3. **If the config option doesn't exist** (genuinely absent from the
+   documented keys), then evaluate the simplest extension: a one-line
+   addition to the existing startup script before creating a new daemon.
+
+**Failure case (2026-09-04):** user asked why the login screen stays on
+after reboot. The existing `greeter-setup-script` already set DPMS to 300s
+(5 min). The correct answer was changing 300 to 30. Instead, the agent
+proposed a systemd timer service, a greeter timestamp file, sudoers entries,
+and `systemctl set-default multi-user.target` — four escalating layers of
+infrastructure for a one-character config diff. The user had to correct
+three times before arriving at the original config change. Lesson: read the
+config file completely, find the number, change it. Build infrastructure no
+sooner than the documented setting is proven absent.
+
 ---
 
 ## Ambiguity resolution
