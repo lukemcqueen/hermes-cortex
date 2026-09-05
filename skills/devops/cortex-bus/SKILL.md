@@ -48,10 +48,10 @@ Every `/api/pgmq/send` is validated at ingestion (2026-09-02, anti-poisoning/ant
 
 | Field | Rule |
 |-------|------|
-| `from` | Required, lowercase agent name, **must equal the authenticated sender** (spoofing rejected) |
+| `from` | Required, lowercase agent name, **must equal the authenticated sender** (spoofing rejected with 400 `"from '<X>' does not match authenticated agent '<Y>'"`) |
 | `subject` | Required, `^[A-Z][A-Z0-9_]{0,63}$` (`EXEC`, `PING`, `DOCTOR_TEST`, …) |
 | `body` | Required, object or string |
-| `to` / `correlation_id` / `timestamp` / `type` / `priority` | Optional; `priority` int 0-100 |
+| `to` / `correlation_id` / `timestamp` / `type` / `priority` | Optional; `priority` **int** 0-100 — string values (`"normal"`, `"urgent"`) are rejected with 400. Map via dict before sending. |
 | Unknown keys | **Rejected** — no field smuggling |
 | Size | 64 KiB max/message |
 | Rate | 600 sends/hr/agent (`CORTEX_BUS_RATE_LIMIT_PER_HOUR`), sliding window |
@@ -396,6 +396,12 @@ sg docker -c "docker exec -i mycortex-postgres psql -U mycortex -d mycortex -v O
 `SELECT name FROM bus.queues WHERE name = '<queue>_dlq';` exists for every
 non-DLQ queue. Check for other missing DLQ rows: `SELECT name FROM bus.queues
 WHERE is_dlq = false AND name || '_dlq' NOT IN (SELECT name FROM bus.queues)`.
+
+**Pitfall — string `priority` rejected with 400.** The bus API expects `"priority"` as an **integer** (0-100). Passing `"normal"`, `"urgent"`, or `"critical"` as strings produces a 400. Always map string priorities to int before sending:
+```python
+priority = {"normal": 0, "urgent": 10, "critical": 20}.get(priority_str, 0)
+```
+The same 400 is returned when the `from` field doesn't match the authenticated user — `"from 'moses' does not match authenticated agent 'esther'"`. Each agent must send as themselves, not as another agent.
 
 ### All Bus Tools Return 401 (Not 200)
 
