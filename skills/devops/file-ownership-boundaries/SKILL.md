@@ -33,6 +33,21 @@ This system has **two domains** with different ownership:
 
 If a file only exists in `~/.hermes/` and not in the repo: **do not touch it.**
 
+### Hard boundary: upstream Hermes files are NEVER modified
+
+This includes local-only patches applied directly to deployed files. A temporary fix
+that works locally and never leaves the machine is still a fix to upstream code — and
+is not permitted. Reasons, in order:
+
+1. **The user forbids it** — "Do not try to fix hermes ever!" (Luke, 2026-09-06)
+2. The fix is lost on the next update — wasted effort
+3. The fix creates drift between this host and the fleet — harder to diagnose later
+
+If an upstream bug blocks your workflow, the options are:
+- **Pause affected crons** (`hermes cron pause <id>`) to stop error noise
+- **Set up an upstream-fix-watchdog** cron to alert when the fix lands upstream
+- **Report the bug** — but do not patch the file
+
 ## Before Every File Edit
 
 Ask yourself these three questions IN ORDER:

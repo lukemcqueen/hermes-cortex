@@ -562,6 +562,30 @@ snapshot of an unconsumed message). Tests 4-6 in
 on the backup's Postgres — a growing `pending` count of `topic='reports'`
 mirrors (skill/learning reports, each ×2: original + mirror) is the signature.
 
+### Forwarder must rewrite `from` to match the forwarding agent's auth identity
+
+**Symptom:** forwarder-sync cron reports `PEER→LOCAL: N failed` with
+`400 Invalid message: from 'esther' does not match authenticated agent 'moses'`.
+
+**Root cause:** the forwarder copies messages from the peer bus and sends them
+to the local bus preserving the original sender's `from` field. The destination
+bus validates `from` against the authenticated agent — when Moses' forwarder
+forwards Esther's messages, it authenticates as `moses` but sends `from: esther`.
+
+**Fix:** before calling `_send_bus()`, rewrite `body["from"]` to `_HOST` (the
+forwarding agent's hostname). The canonical sender identity is preserved in
+the `correlation_id` chain, which the forwarder already preserves.
+
+```python
+# In orch-bus-forwarder.py _sync_direction(), before _send_bus():
+body["from"] = _HOST
+```
+
+**Detection:** check the forwarder cron output for "Invalid message: from 'X'
+does not match authenticated agent 'Y'" errors. The fix applies to both
+PEER→LOCAL and LOCAL→PEER directions since both authenticate as the
+forwarding agent.
+
 ## Shared orchestrator inbox (`inbox_orchestrator`, 2026-08-03)
 
 Workers' fix requests to `inbox_moses` are **invisible to Esther** — each agent
