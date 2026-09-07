@@ -72,6 +72,14 @@ def _is_fixed(src: str) -> bool:
     return FIX_MARKER in src or "iscoroutinefunction(_watch_children)" in src
 
 
+def _is_probe_removed(src: str) -> bool:
+    # Upstream refactored the stdio watchdog from mcp_tool.py into
+    # mcp_death_supervisor.py — the _watch_children function no longer
+    # exists, so the probe mechanism is gone. The coroutine-leak bug
+    # is structurally removed; nothing to patch. Treat as fixed.
+    return "_watch_children" not in src
+
+
 def _apply() -> bool:
     if not MCP_TOOL.exists():
         print(f"SKIP: {MCP_TOOL} not found", file=sys.stderr)
@@ -79,6 +87,10 @@ def _apply() -> bool:
     src = MCP_TOOL.read_text(encoding="utf-8", errors="replace")
     if _is_fixed(src):
         print("SKIP: mcp_tool.py watch-probe fix already applied")
+        return True
+    if _is_probe_removed(src):
+        # Upstream refactored the probe out of this file — nothing to patch.
+        print("SKIP: mcp_tool.py probe mechanism removed upstream — nothing to fix")
         return True
     if BUGGY not in src:
         print(
@@ -106,6 +118,9 @@ def _status() -> int:
     src = MCP_TOOL.read_text(encoding="utf-8", errors="replace")
     if _is_fixed(src):
         print("STATUS: fixed (iscoroutinefunction probe)")
+        return 0
+    if _is_probe_removed(src):
+        print("STATUS: probe mechanism removed upstream — nothing to fix")
         return 0
     if BUGGY in src:
         print("STATUS: BUGGY (isawaitable-invocation probe) — fix needed")
