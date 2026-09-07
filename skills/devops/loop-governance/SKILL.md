@@ -676,19 +676,16 @@ See `references/mcp-servers.md` for full tool descriptions and usage examples.
 **Installation:** Loop governance is installed automatically by `cortex-update.sh` (MCP server + plugin). The old CLI tools (`score-cycle`, `loop-feedback`) are deprecated.
 
 **Usage in a session:**
-1. `mcp_loop_governance_begin_change(task_id="<name>", description="...")` — start a change
+1. `mcp_loop_governance_begin_change(task_id="<name>", description="...")` — start a change (response includes `[CYCLE_ID=N]` — extract it for the explicit id path)
 2. Do the work (MCP server blocks write tools without a lock)
-3. `mcp_loop_governance_cycle_query(task_id="<name>")` — find the cycle
-4. `mcp_loop_governance_feedback_accept(cycle_id=N, note="...")` — score it (parameter is **`cycle_id`**, NOT `id` — passing `id` fails with "missing required argument")
-5. `mcp_loop_governance_end_change(task_id="<name>")` — release the lock
+3. `mcp_loop_governance_feedback_accept(task_id="<name>", note="...")` — score it. The `task_id` parameter is the preferred path: it auto-resolves to the session's single PENDING cycle without needing to extract the numeric id. Alternatively pass `cycle_id=N` (from the `[CYCLE_ID=N]` marker) for explicit targeting — both parameters work.
+4. `mcp_loop_governance_end_change(task_id="<name>")` — release the lock
 
-**Close-out is ENFORCED (2026-08-08, Luke directive):** `end_change()` refuses
-to release the lock while the task's cycle is unscored, and `begin_change()`
-refuses a new task while this session still holds unscored PENDING cycles.
-There is no warning-only path anymore — score every cycle (steps 3-4) BEFORE
-`end_change`, and never start a new task until the previous one is scored and
-closed. Hook-created cycles (`precommit-*` task ids, `session_id NULL`) do not
-trip the gate.
+The old intermediate `cycle_query(task_id="...")` call is eliminated: `begin_change` already knows the numeric id and the feedback functions resolve `task_id` to the PENDING cycle directly. The agent flow is now 2 post-work calls instead of 3.
+
+**Close-out is ENFORCED (2026-08-08, Luke directive):** `end_change()` refuses to release the lock while the task's cycle is unscored, and `begin_change()` refuses a new task while this session still holds unscored PENDING cycles. There is no warning-only path anymore — score every cycle (step 3) BEFORE `end_change`, and never start a new task until the previous one is scored and closed. Hook-created cycles (`precommit-*` task ids, `session_id NULL`) do not trip the gate.
+
+**task_id resolution guard:** `feedback_accept(task_id=...)` and `feedback_override(task_id=...)` will reject the call if the session has zero or multiple PENDING cycles — ambiguity forces explicit `cycle_id`. They also reject if the resolved cycle's actual `task_id` does not match the passed `task_id` (e.g. session has one PENDING cycle for task "fix-auth" but you pass task_id="fix-db"). In all rejection cases the error message includes the correct cycle_id to pass instead. This guard is structural: the close-out gate in `begin_change` already limits each session to 1 PENDING cycle at a time, so in normal operation the `task_id` path is unambiguous. The guard covers the rare case where the gate's DB check was unavailable and sibling PENDING cycles snuck in.
 
 **Orphaned PENDING cycles from sibling sessions:** the doctor's `❌ PENDING cycles` failure often lists cycles you did NOT create — sibling/daemon sessions (background subagents, other CLI sessions, party agents) called `begin_change` and never scored. Enumerate with `cycle_query(status="pending")`, then `feedback_accept(cycle_id=N, note="...")` each verified-complete one. For cycles superseded by a later MOVE_ON cycle of the same task, cite the superseding cycle in the note (e.g. "cycle 2 (2152) verified deploy end-to-end").
 
