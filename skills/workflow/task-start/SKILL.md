@@ -122,8 +122,7 @@ before calling `end_change()`. Phase 6 (Reflexion) is mandatory.
 
 ### Step 13: Score and close
 ```python
-mcp_loop_governance_cycle_query(task_id="<task-id>")
-mcp_loop_governance_feedback_accept(id=<cycle-id>, note="<summary>")
+mcp_loop_governance_feedback_accept(task_id="<task-id>", note="<summary>")
 mcp_loop_governance_end_change(task_id="<task-id>")
 ```
 
@@ -142,7 +141,7 @@ mcp_loop_governance_end_change(task_id="<task-id>")
 | 9 | Work | (task execution) |
 | 10 | Reflexion check | `reflexion-check` skill |
 | 11 | Change checklist | `change-checklist` skill |
-| 12 | Score and close | `cycle_query` → `feedback_accept` → `end_change` |
+| 12 | Score and close | `feedback_accept` → `end_change` |
 
 ## Known Gaps & Recovery
 

@@ -2002,8 +2002,7 @@ def register(ctx):
                     '    description="<what this does>"\n'
                     "  )\n\n"
                     "After the change, score and release:\n"
-                    '  mcp_loop_governance_cycle_query(task_id="<task>")\n'
-                    '  mcp_loop_governance_feedback_accept(cycle_id=N, note="verified: ...")\n'
+                    '  mcp_loop_governance_feedback_accept(task_id="<task>", note="verified: ...")\n'
                     '  mcp_loop_governance_end_change(task_id="<task>")\n\n'
                     "This enforcement comes from ~/.hermes/plugins/governance-enforcer/.\n"
                     "Lock files are scoped per git repo — two repos can govern independently.\n"
