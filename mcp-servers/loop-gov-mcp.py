@@ -692,23 +692,24 @@ async def list_tools(ctx, params=None) -> ListToolsResult:
         ),
         Tool(
             name="feedback_accept",
-            description="Mark a scored cycle decision as correct.",
+            description="Mark a scored cycle decision as correct. Provide cycle_id OR task_id (resolves to session's current PENDING cycle).",
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "cycle_id": {"type": "integer", "description": "Cycle ID from cycle_query"},
+                    "cycle_id": {"type": "integer", "description": "Cycle ID from cycle_query (alternative to task_id)"},
+                    "task_id": {"type": "string", "description": "Task ID — resolves to the session's current PENDING cycle (alternative to cycle_id)"},
                     "note": {"type": "string", "description": "Optional note"},
                 },
-                "required": ["cycle_id"],
             },
         ),
         Tool(
             name="feedback_override",
-            description="Mark a scored cycle decision as wrong and record the correct decision.",
+            description="Mark a scored cycle decision as wrong and record the correct decision. Provide cycle_id OR task_id (resolves to session's current PENDING cycle).",
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "cycle_id": {"type": "integer", "description": "Cycle ID from cycle_query"},
+                    "cycle_id": {"type": "integer", "description": "Cycle ID from cycle_query (alternative to task_id)"},
+                    "task_id": {"type": "string", "description": "Task ID — resolves to the session's current PENDING cycle (alternative to cycle_id)"},
                     "correct_decision": {
                         "type": "string",
                         "enum": ["STOP", "LOOP", "MOVE_ON"],
@@ -716,7 +717,6 @@ async def list_tools(ctx, params=None) -> ListToolsResult:
                     },
                     "note": {"type": "string", "description": "Why the override"},
                 },
-                "required": ["cycle_id"],
             },
         ),
         Tool(
@@ -912,9 +912,8 @@ def _begin_change(args: dict) -> CallToolResult:
                         "This session still has unscored PENDING cycles:\n"
                         f"  {listing}\n\n"
                         "Score them first (AGENTS.md RULE 2 — score before moving on):\n"
-                        "  mcp_loop_governance_cycle_query(task_id='<task>')\n"
-                        "  mcp_loop_governance_feedback_accept(cycle_id=N, note='...')\n"
-                        "  or mcp_loop_governance_feedback_override(cycle_id=N, "
+                        "  mcp_loop_governance_feedback_accept(task_id='<task>', note='...')\n"
+                        "  or mcp_loop_governance_feedback_override(task_id='<task>', "
                         "correct_decision='...', note='...')\n"
                         "  then mcp_loop_governance_end_change(task_id='<task>')\n\n"
                         "No new lock is acquired until prior cycles are scored."
@@ -1014,9 +1013,10 @@ def _begin_change(args: dict) -> CallToolResult:
         pending_msg = (
             f"\n📝 Pending cycle #{cycle_id} created in loop-governance DB.\n"
             f"   After your change, call:\n"
-            f"     1. mcp_loop_governance_cycle_query(task_id='{task_id}')\n"
-            f"     2. mcp_loop_governance_feedback_accept(id={cycle_id}, note='...')\n"
-            f"     3. mcp_loop_governance_end_change(task_id='{task_id}')"
+            f"     1. mcp_loop_governance_feedback_accept(cycle_id={cycle_id}"
+            f", task_id='{task_id}', note='...')\n"
+            f"     2. mcp_loop_governance_end_change(task_id='{task_id}')\n"
+            f"\n   [CYCLE_ID={cycle_id}]"
         )
     except Exception as e:
         return CallToolResult(content=[TextContent(
@@ -1346,11 +1346,46 @@ def _config_set(args: dict) -> CallToolResult:
 
 def _feedback_accept(args: dict) -> CallToolResult:
     cycle_id = args.get("cycle_id")
-    if cycle_id is None:
-        return CallToolResult(content=[TextContent(type="text", text="Error: cycle_id is required")])
+    task_id = args.get("task_id", "").strip()
     note = args.get("note", "")
+    if cycle_id is None and not task_id:
+        return CallToolResult(content=[TextContent(type="text", text="Error: cycle_id or task_id is required")])
     try:
         conn = _db()
+        # Resolve task_id to the session's current PENDING cycle
+        if cycle_id is None and task_id:
+            session_id = get_session_id(args)
+            # Guard: verify session has at most 1 PENDING cycle
+            all_pending = conn.execute(
+                "SELECT id, task_id FROM loop_cycles "
+                "WHERE session_id = ? AND decision = 'PENDING' AND user_overrode IS NULL "
+                "ORDER BY id DESC",
+                (session_id,),
+            ).fetchall()
+            if len(all_pending) > 1:
+                conn.close()
+                return CallToolResult(content=[TextContent(
+                    type="text",
+                    text=f"Error: Session has {len(all_pending)} PENDING cycles — "
+                         f"use explicit cycle_id to disambiguate, not task_id."
+                )])
+            if len(all_pending) == 0:
+                conn.close()
+                return CallToolResult(content=[TextContent(
+                    type="text",
+                    text=f"Error: No PENDING cycle found for task '{task_id}' in this session. "
+                         f"Use cycle_query to find valid cycle IDs or call begin_change first."
+                )])
+            # Confirm the resolved cycle matches the given task_id
+            if all_pending[0]["task_id"] != task_id:
+                conn.close()
+                return CallToolResult(content=[TextContent(
+                    type="text",
+                    text=f"Error: Session has one PENDING cycle (#{all_pending[0]['id']} "
+                         f"for task '{all_pending[0]['task_id']}'), not '{task_id}'. "
+                         f"Use cycle_id={all_pending[0]['id']} instead."
+                )])
+            cycle_id = all_pending[0]["id"]
         existing = conn.execute("SELECT id, decision FROM loop_cycles WHERE id = ?", (cycle_id,)).fetchone()
         if not existing:
             conn.close()
@@ -1378,13 +1413,48 @@ def _feedback_accept(args: dict) -> CallToolResult:
 
 def _feedback_override(args: dict) -> CallToolResult:
     cycle_id = args.get("cycle_id")
-    if cycle_id is None:
-        return CallToolResult(content=[TextContent(type="text", text="Error: cycle_id is required")])
+    task_id = args.get("task_id", "").strip()
+    if cycle_id is None and not task_id:
+        return CallToolResult(content=[TextContent(type="text", text="Error: cycle_id or task_id is required")])
     correct = args.get("correct_decision", "LOOP")
     note = args.get("note", "")
     correct_note = correct + ": " + note
     try:
         conn = _db()
+        # Resolve task_id to the session's current PENDING cycle
+        if cycle_id is None and task_id:
+            session_id = get_session_id(args)
+            # Guard: verify session has at most 1 PENDING cycle
+            all_pending = conn.execute(
+                "SELECT id, task_id FROM loop_cycles "
+                "WHERE session_id = ? AND decision = 'PENDING' AND user_overrode IS NULL "
+                "ORDER BY id DESC",
+                (session_id,),
+            ).fetchall()
+            if len(all_pending) > 1:
+                conn.close()
+                return CallToolResult(content=[TextContent(
+                    type="text",
+                    text=f"Error: Session has {len(all_pending)} PENDING cycles — "
+                         f"use explicit cycle_id to disambiguate, not task_id."
+                )])
+            if len(all_pending) == 0:
+                conn.close()
+                return CallToolResult(content=[TextContent(
+                    type="text",
+                    text=f"Error: No PENDING cycle found for task '{task_id}' in this session. "
+                         f"Use cycle_query to find valid cycle IDs or call begin_change first."
+                )])
+            # Confirm the resolved cycle matches the given task_id
+            if all_pending[0]["task_id"] != task_id:
+                conn.close()
+                return CallToolResult(content=[TextContent(
+                    type="text",
+                    text=f"Error: Session has one PENDING cycle (#{all_pending[0]['id']} "
+                         f"for task '{all_pending[0]['task_id']}'), not '{task_id}'. "
+                         f"Use cycle_id={all_pending[0]['id']} instead."
+                )])
+            cycle_id = all_pending[0]["id"]
         existing = conn.execute("SELECT id FROM loop_cycles WHERE id = ?", (cycle_id,)).fetchone()
         if not existing:
             conn.close()
