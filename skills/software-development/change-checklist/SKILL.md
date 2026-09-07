@@ -271,6 +271,7 @@ Changes that affect other agents' workflow must be documented.
 
 ### Phase 5: Final Verification
 
+- [ ] **Symptom verification — prove the fix stops the actual failure**: confirm the specific error, alert, or deploy blocker that prompted the fix is gone, not just that the code compiles and the doctor passes. If the fix was for a cron alert, wait for the next tick or trigger it manually. If the fix changed a script's exit code in a `set -euo pipefail` deploy pipeline (cortex-update.sh), trace every branch through the decision tree and verify the failure-closed path is preserved — a false exit-0 on a genuinely unknown state is a governance regression that masks future breakage. If the fix was for a deploy blocker (doctor `Deploy sync` red), verify the blocker clears end-to-end (dogfood passes, doctor shows ✅ Deploy sync). Show the evidence in the cycle note.
 - [ ] **Stale expected list cleanup**: if you removed any cron during this cycle, verify its name is also removed from the uninstall arrays in `install-crons.sh` and `install-orch-crons.sh`. The doctor reads these arrays as the *expected cron list*. A name in the uninstall array but no matching live cron = false ❌ on the doctor.
 - [ ] **Stale bus/state artifact cleanup**: after a debugging or testing cycle, clean up leftover test artifacts before calling end_change(). Check:
   - Bus messages: `DELETE FROM bus.messages WHERE ...` — stale test messages with old correlation IDs accumulate and confuse subsequent diagnostics
