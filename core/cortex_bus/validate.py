@@ -31,7 +31,7 @@ RE_CORR_ID = re.compile(r"^[A-Za-z0-9._:-]{0,128}$")
 # rejected — an attacker cannot smuggle extra keys or instructions in.
 ENVELOPE_KEYS = {
     "from", "to", "subject", "body", "correlation_id", "timestamp",
-    "priority", "type",
+    "priority", "type", "forwarded_from",
 }
 
 # Workflow messages use a different schema (agent-worker posts step results

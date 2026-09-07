@@ -72,6 +72,21 @@ MAX_PER_QUEUE = 10
 MAX_SEEN = 10000  # compact state when seen set exceeds this
 PEER_HEALTH_TIMEOUT = 5  # quick health check before attempting sync
 
+# ── Local agent name ──
+# The bus server validates that `from` matches the authenticated agent.
+# When forwarding messages from other agents, we must rewrite `from` to
+# our own name and preserve the original sender as `forwarded_from`.
+_AGENT_ENV = HOME / ".hermes-cortex" / "agent.env"
+LOCAL_AGENT = "unknown"
+try:
+    for line in _AGENT_ENV.read_text().splitlines():
+        line = line.strip()
+        if line.startswith("AGENT_NAME="):
+            LOCAL_AGENT = line.split("=", 1)[1].strip().strip("'\"")
+            break
+except OSError:
+    pass  # fallback: leave as "unknown"
+
 
 def _load_config_file(path: Path) -> dict:
     """Load env vars from a config file."""
@@ -456,9 +471,13 @@ def _sync_direction(
             if corr_id:
                 body["correlation_id"] = corr_id
 
-            # Rewrite `from` to the forwarding agent's name — the destination
-            # bus validates that `from` matches the authenticated agent.
-            body["from"] = _HOST
+            # Rewrite `from` to the local agent name (bus server requires
+            # `from` to match the authenticated agent). Preserve the original
+            # sender as `forwarded_from` so consumers know who sent it.
+            original_from = body.get("from", "")
+            if original_from and original_from != LOCAL_AGENT:
+                body["forwarded_from"] = original_from
+                body["from"] = LOCAL_AGENT
 
             ok, reason = _send_bus(dest_url, dest_token, dest_auth, queue, body)
             if ok:
