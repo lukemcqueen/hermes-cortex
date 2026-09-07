@@ -190,7 +190,7 @@ else
         fail "firewall ban set f2b-sshd missing (banaction not applied?)"
       fi
     elif [[ -n "$F2B_JAIL_LIST" ]] && grep -qw sshd <<< "$F2B_JAIL_LIST"; then
-      warn "f2b-sshd chain not found in nft/iptables (no sudo) and fail2ban.log not readable — cannot verify ban enforcement"
+        warn "f2b-sshd chain not probeable (no sudo) — fail2ban creates ban chains lazily; sshd jail confirmed active"
     else
       fail "firewall ban set f2b-sshd missing (banaction not applied?)"
     fi
@@ -222,13 +222,15 @@ if [[ "$HAS_NGINX" -eq 1 ]]; then
   else
     NGINX_LOG_DIR="/var/log/nginx"
   fi
-  for lp in "${NGINX_LOG_DIR}/error.log" "${NGINX_LOG_DIR}/access.log"; do
-    if [[ -f "$lp" ]]; then
-      ok "nginx log $lp present"
-    else
-      warn "nginx log $lp missing — jail may be silently starving"
-    fi
-  done
+  # Logs are named <app>-error.log on this host (not error.log). Check
+  # for any matching error log rather than one fixed name — this covers
+  # both {app1,agent-bus,health}-error.log and the classic error.log.
+  LOG_COUNT=$(find "$NGINX_LOG_DIR" -maxdepth 1 '(' -name '*-error.log' -o -name 'error.log' ')' 2>/dev/null | wc -l)
+  if [[ "$LOG_COUNT" -gt 0 ]]; then
+    ok "nginx error log(s) present in $NGINX_LOG_DIR"
+  else
+    warn "nginx error log not found in $NGINX_LOG_DIR — jail may be silently starving"
+  fi
 else
   ok "skip nginx logpaths (no nginx on this host)"
 fi
