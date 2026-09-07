@@ -107,25 +107,48 @@ FAIL_INSERT = """        # Record partial token usage on failure (agent may be p
 # cost is computable (the 31x cache lever). DeepSeek/OpenAI-style
 # providers report cache_read/cache_write in usage; Hermes exposes
 # them as agent.session_cache_*_tokens counters.
-AUDIT_CACHE_MARKER = '"total_tokens": result.get("total_tokens"),\n            "cache_read_tokens": getattr(agent, "session_cache_read_tokens", 0) or 0,'
+# 2026-09-07 fix: the original patch referenced bare `agent` inside
+# _FireAudit.write() — a method scope with no `agent` (upstream moved
+# the audit dict into the class in a refactor), so every LLM cron
+# died at the audit write with NameError. Agent is now threaded into
+# _FireAudit at construction (AUDIT_INIT/AUDIT_CTOR patches below).
+AUDIT_CACHE_MARKER = '"total_tokens": result.get("total_tokens"),\n            "cache_read_tokens": getattr(self.agent, "session_cache_read_tokens", 0) or 0,'
 AUDIT_CACHE_OLD = """            "prompt_tokens": result.get("prompt_tokens"),
             "completion_tokens": result.get("completion_tokens"),
             "total_tokens": result.get("total_tokens"),"""
 AUDIT_CACHE_NEW = """            "prompt_tokens": result.get("prompt_tokens"),
             "completion_tokens": result.get("completion_tokens"),
             "total_tokens": result.get("total_tokens"),
-            "cache_read_tokens": getattr(agent, "session_cache_read_tokens", 0) or 0,
-            "cache_write_tokens": getattr(agent, "session_cache_write_tokens", 0) or 0,"""
+            "cache_read_tokens": getattr(self.agent, "session_cache_read_tokens", 0) or 0,
+            "cache_write_tokens": getattr(self.agent, "session_cache_write_tokens", 0) or 0,"""
+
+# ── Patch: _FireAudit.__init__ agent threading (2026-09-07) ──
+# Without this the audit-cache split above raises AttributeError on
+# fresh installs (self.agent never set). Must be applied with the
+# cache-split patch.
+AUDIT_INIT_MARKER = 'def __init__(self, job: dict, job_id: str, model: str, agent=None):'
+AUDIT_INIT_OLD = """    def __init__(self, job: dict, job_id: str, model: str):
+        self.job, self.job_id, self.model = job, job_id, model
+        self.fire_id = uuid.uuid4().hex"""
+AUDIT_INIT_NEW = """    def __init__(self, job: dict, job_id: str, model: str, agent=None):
+        self.job, self.job_id, self.model = job, job_id, model
+        self.agent = agent
+        self.fire_id = uuid.uuid4().hex"""
+
+# ── Patch: _FireAudit construction passes agent (2026-09-07) ──
+AUDIT_CTOR_MARKER = '_audit = _FireAudit(job, job_id, model, agent=agent)'
+AUDIT_CTOR_OLD = "        _audit = _FireAudit(job, job_id, model)"
+AUDIT_CTOR_NEW = "        _audit = _FireAudit(job, job_id, model, agent=agent)"
 
 # ── Patch: usage_audit cache split (failure path) ─────────────
 # NOTE: the failure-path audit write is nested inside `if "_audit_fire_id"
 # in locals():` — 16-space indent, unlike the 12-space success path.
-AUDIT_FAIL_MARKER = '"total_tokens": None,\n                "cache_read_tokens": getattr(agent, "session_cache_read_tokens", 0) or 0,'
+AUDIT_FAIL_MARKER = '"total_tokens": None,\n                "cache_read_tokens": getattr(self.agent, "session_cache_read_tokens", 0) or 0,'
 AUDIT_FAIL_OLD = """                "total_tokens": None,
                 "response_silent": False,"""
 AUDIT_FAIL_NEW = """                "total_tokens": None,
-                "cache_read_tokens": getattr(agent, "session_cache_read_tokens", 0) or 0,
-                "cache_write_tokens": getattr(agent, "session_cache_write_tokens", 0) or 0,
+                "cache_read_tokens": getattr(self.agent, "session_cache_read_tokens", 0) or 0,
+                "cache_write_tokens": getattr(self.agent, "session_cache_write_tokens", 0) or 0,
                 "response_silent": False,"""
 
 # ── O6-S1: MAX_COST guard (preflight kill at request time) ──
@@ -332,6 +355,8 @@ _PATCHES = [
     ("scheduler.py (no_agent)", NOAGENT_MARKER, NOAGENT_OLD, NOAGENT_NEW),
     ("scheduler.py (LLM success)", LLM_MARKER, LLM_OLD, LLM_NEW),
     ("scheduler.py (failure)", FAIL_MARKER, FAIL_INSERT_MARKER, FAIL_INSERT),
+    ("scheduler.py (_FireAudit __init__ agent)", AUDIT_INIT_MARKER, AUDIT_INIT_OLD, AUDIT_INIT_NEW),
+    ("scheduler.py (_FireAudit ctor agent)", AUDIT_CTOR_MARKER, AUDIT_CTOR_OLD, AUDIT_CTOR_NEW),
     ("scheduler.py (audit cache success)", AUDIT_CACHE_MARKER, AUDIT_CACHE_OLD, AUDIT_CACHE_NEW),
     ("scheduler.py (audit cache failure)", AUDIT_FAIL_MARKER, AUDIT_FAIL_OLD, AUDIT_FAIL_NEW),
     ("scheduler.py (preflight MAX_COST tuple)", GUARD_PREFLIGHT_MARKER, GUARD_PREFLIGHT_OLD, GUARD_PREFLIGHT_NEW),
@@ -410,7 +435,7 @@ def do_install(force=False):
         print(f"  FAIL scheduler.py not found at {sched_path}")
         return False
 
-    for name, marker, old, new in _PATCHES[:7]:
+    for name, marker, old, new in _PATCHES[0:9]:
         _patch(name, marker, old, new, sched_path, force)
 
     print("\nStep 3: Patch tools/cronjob_tools.py")
@@ -419,7 +444,7 @@ def do_install(force=False):
         print(f"  FAIL cronjob_tools.py not found at {tools_path}")
         return False
 
-    for name, marker, old, new in _PATCHES[7:]:
+    for name, marker, old, new in _PATCHES[9:]:
         _patch(name, marker, old, new, tools_path, force)
 
     print("Step 4: Deploy max_cost_guard.py (O6-S1)")
@@ -455,8 +480,12 @@ def do_status():
         print(f"  {'OK' if 'Record zero-cost run for no_agent' in sched else 'MISS'} scheduler: no_agent hook")
         print(f"  {'OK' if 'Record token usage and cost' in sched else 'MISS'} scheduler: LLM success hook")
         print(f"  {'OK' if 'Record partial token usage on failure' in sched else 'MISS'} scheduler: failure hook")
-        _audit_cache_ok = ('"total_tokens": result.get("total_tokens"),\n            "cache_read_tokens": getattr(agent, "session_cache_read_tokens", 0) or 0,' in sched)
+        _audit_cache_ok = ('"total_tokens": result.get("total_tokens"),\n            "cache_read_tokens": getattr(self.agent, "session_cache_read_tokens", 0) or 0,' in sched)
         print(f"  {'OK' if _audit_cache_ok else 'MISS'} scheduler: audit cache split")
+        _audit_init_ok = 'def __init__(self, job: dict, job_id: str, model: str, agent=None):' in sched
+        print(f"  {'OK' if _audit_init_ok else 'MISS'} scheduler: _FireAudit agent threading")
+        _audit_ctor_ok = '_audit = _FireAudit(job, job_id, model, agent=agent)' in sched
+        print(f"  {'OK' if _audit_ctor_ok else 'MISS'} scheduler: _FireAudit ctor agent")
         _guard_ok = 'def _preflight_check_max_cost(job: dict)' in sched
         print(f"  {'OK' if _guard_ok else 'MISS'} scheduler: MAX_COST preflight (O6-S1)")
         _guard_reg = '("max_cost", lambda: _preflight_check_max_cost(job)),' in sched
@@ -495,12 +524,16 @@ def do_uninstall():
     sched_path = os.path.join(HERMES_CRON, "scheduler.py")
     tools_path = os.path.join(HERMES_TOOLS, "cronjob_tools.py")
 
+    # Scheduler patches are _PATCHES[0:9]; cronjob_tools patches are _PATCHES[9:13].
+    _SCHED_PATCHES = _PATCHES[0:9]
+    _TOOLS_PATCHES = _PATCHES[9:13]
+
     if os.path.exists(sched_path):
-        for name, marker, old, new in _PATCHES[:3]:
+        for name, marker, old, new in _SCHED_PATCHES:
             _unpatch(name, marker, old, new, sched_path)
 
     if os.path.exists(tools_path):
-        for name, marker, old, new in _PATCHES[3:]:
+        for name, marker, old, new in _TOOLS_PATCHES:
             _unpatch(name, marker, old, new, tools_path)
 
     cost_store = os.path.join(HERMES_CRON, "cost_store.py")
