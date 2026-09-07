@@ -51,7 +51,7 @@ Every `/api/pgmq/send` is validated at ingestion (2026-09-02, anti-poisoning/ant
 | `from` | Required, lowercase agent name, **must equal the authenticated sender** (spoofing rejected with 400 `"from '<X>' does not match authenticated agent '<Y>'"`) |
 | `subject` | Required, `^[A-Z][A-Z0-9_]{0,63}$` (`EXEC`, `PING`, `DOCTOR_TEST`, …) |
 | `body` | Required, object or string |
-| `to` / `correlation_id` / `timestamp` / `type` / `priority` | Optional; `priority` **int** 0-100 — string values (`"normal"`, `"urgent"`) are rejected with 400. Map via dict before sending. |
+| `to` / `correlation_id` / `timestamp` / `type` / `priority` / `forwarded_from` | Optional; `priority` **int** 0-100 — string values (`"normal"`, `"urgent"`) are rejected with 400. Map via dict before sending. `forwarded_from` set by the bus forwarder when relaying a message between bus instances (preserves the original sender). |
 | Unknown keys | **Rejected** — no field smuggling |
 | Size | 64 KiB max/message |
 | Rate | 600 sends/hr/agent (`CORTEX_BUS_RATE_LIMIT_PER_HOUR`), sliding window |
@@ -564,26 +564,43 @@ mirrors (skill/learning reports, each ×2: original + mirror) is the signature.
 
 ### Forwarder must rewrite `from` to match the forwarding agent's auth identity
 
-**Symptom:** forwarder-sync cron reports `PEER→LOCAL: N failed` with
-`400 Invalid message: from 'esther' does not match authenticated agent 'moses'`.
+**Symptom:** forwarder-sync cron reports `PEER->LOCAL: N failed` with
+`400 Invalid message: from 'moses' does not match authenticated agent 'esther'`.
 
 **Root cause:** the forwarder copies messages from the peer bus and sends them
 to the local bus preserving the original sender's `from` field. The destination
-bus validates `from` against the authenticated agent — when Moses' forwarder
-forwards Esther's messages, it authenticates as `moses` but sends `from: esther`.
+bus validates `from` against the authenticated agent — when Esther's forwarder
+forwards Moses' messages, it authenticates as `esther` but sends `from: moses`.
 
-**Fix:** before calling `_send_bus()`, rewrite `body["from"]` to `_HOST` (the
-forwarding agent's hostname). The canonical sender identity is preserved in
-the `correlation_id` chain, which the forwarder already preserves.
+**Fix:** two changes in `orch-bus-forwarder.py`:
+
+1. **Resolve `LOCAL_AGENT` from `agent.env`** at module load — reads
+   `~/.hermes-cortex/agent.env` for `AGENT_NAME=`. Falls back to `"unknown"`
+   if the file is missing.
+
+2. **Before `_send_bus()`**, rewrite `body["from"]` to `LOCAL_AGENT` and
+   preserve the original sender as `body["forwarded_from"]`:
 
 ```python
-# In orch-bus-forwarder.py _sync_direction(), before _send_bus():
-body["from"] = _HOST
+original_from = body.get("from", "")
+if original_from and original_from != LOCAL_AGENT:
+    body["forwarded_from"] = original_from
+    body["from"] = LOCAL_AGENT
 ```
+
+**Why `forwarded_from`:** consumers that need to know who actually sent the
+message (e.g. the orchestrator processing a worker's escalation) can read
+`forwarded_from`. The old approach (just `body["from"] = _HOST`) lost the
+original sender identity entirely.
+
+**Envelope allowlist:** the bus server's `ENVELOPE_KEYS` in
+`core/cortex_bus/validate.py` includes `forwarded_from` — the field passes
+validation and does not trigger "unknown envelope field" rejection. Without
+this, a forwarded message with `forwarded_from` gets **400**.
 
 **Detection:** check the forwarder cron output for "Invalid message: from 'X'
 does not match authenticated agent 'Y'" errors. The fix applies to both
-PEER→LOCAL and LOCAL→PEER directions since both authenticate as the
+PEER->LOCAL and LOCAL->PEER directions since both authenticate as the
 forwarding agent.
 
 ## Shared orchestrator inbox (`inbox_orchestrator`, 2026-08-03)

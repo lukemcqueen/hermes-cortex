@@ -67,7 +67,7 @@ Replace `TZ=Asia/Seoul date '+%Y-%m-%d %H:%M KST'` with `$(ts)` everywhere.
 
 ### LLM cron prompts
 
-Add a `## TIMEZONE — READ FIRST` section before the OUTPUT FORMAT template:
+Add a `## TIMEZONE — READ FIRST` section **before** the OUTPUT FORMAT template:
 
 ```
 ## TIMEZONE — READ FIRST
@@ -75,6 +75,18 @@ The header timestamp must use the host configured timezone, NOT a hardcoded labe
 ```
 
 The KST in the example header stays (LLMs mimic concrete text) — the rule above it overrides the label.
+
+**Structural enforcement (required):** LLM models strongly bias toward UTC in their training data. A soft TIMEZONE instruction is frequently ignored — the model defaults to what it "knows" (UTC). To reliably force correct output, use a **two-part enforcement pattern** inside the prompt:
+
+1. **Declare the timezone as a fact the model must respond in:**
+   `` The CURRENT timezone on this host is: `$(date +%Z)` (`$(date +%:z)`). ALL timestamps in your response MUST use this timezone, not UTC, not your training default. ``
+
+2. **Reference the shell command as a constraint, not a suggestion:**
+   `` Run `date '+%Y-%m-%d %H:%M %Z'` NOW and embed its exact output as the header timestamp. If the abbreviation says 'UTC', your instruction was wrong — check HERMES_TIMEZONE and try again. ``
+
+3. **Sanity-check the output before delivering:** The last line of your response must contain the timestamp. If its timezone abbreviation differs from `date +%Z`, your output is wrong — correct it before finishing.
+
+The difference between "run `date` and use it" (suggestion) and "run `date` NOW and embed its EXACT output — if UTC, correct" (constraint) is the difference between KST output and UTC output.
 
 ## Wiring the env var (one-time per host)
 
@@ -86,6 +98,7 @@ The KST in the example header stays (LLMs mimic concrete text) — the rule abov
 
 - `grep -rn "timedelta(hours=9)\|TZ=Asia/Seoul date\|%H:%M KST" ops/scripts/ --include="*.py" --include="*.sh"` — must be empty (excluding comments/docstrings)
 - `grep -rn "HERMES_TIMEZONE" ~/hermes-cortex/.env ~/hermes-cortex/.env.example` — var present
+- **Verify var is ACTIVE (not commented out):** `grep -n "^HERMES_TIMEZONE=" ~/hermes-cortex/.env` must return an uncommented line. `.env.example` shows `# HERMES_TIMEZONE="Asia/Seoul"` by default — a new or re-synced host may have the var documented but disabled. The audit must check the live `.env` specifically, not just `.env.example`.
 - `grep -rn "JOB_ID) \[YYYY-MM-DD HH:MM KST\]" ops/scripts/ skills/` — remaining template headers must each have a TIMEZONE rule above them
 - LLM prompt sources: patch BOTH live `jobs.json` (via cronjob update) AND the installer `create_cron` blocks (install-crons.sh / install-dream-crons.sh) — a live-only edit gets reverted by the next reinstall
 - Runtime proof: `HERMES_TIMEZONE=UTC bash script.sh --report` must show UTC-converted time; unset → system local
@@ -97,6 +110,8 @@ The KST in the example header stays (LLMs mimic concrete text) — the rule abov
 - **execute_code `hermes_tools.write_file` can return `verified: None` and NOT persist** (observed 2026-08-20: bulk bash migration silently didn't land). After any execute_code write batch, verify with `git diff --stat` / grep before proceeding; use the `patch` tool for repo edits.
 - **Deployed copies lag repo** — after editing `ops/scripts/*`, the `~/.hermes-cortex/scripts/` copy is stale until `cortex-update.sh` runs. Test the repo source path, not the deployed one, mid-migration.
 - **Bible/other scripts with dead TZ constants** — `KST = timezone.utc` commented "we'll note KST in output" is a landmine; the actual dates used system-local `datetime.now()`. Mark deprecated or fix to `get_timezone()`.
+- **`.env` shows var documented but commented out** — `.env.example` has `# HERMES_TIMEZONE="Asia/Seoul"` by default. A `cortex-update.sh` sync that copies `.env.example` over `.env`, or a fresh install, leaves the var *present* in `.env` but *disabled*. The grep presence check passes; the var has no effect. After any deploy sync, verify the line is uncommented with `grep ^HERMES_TIMEZONE= ~/hermes-cortex/.env`.
+- **LLM models default to UTC from training data** — LLMs "know" UTC as the universal standard timestamp and will output it even when an explicit TIMEZONE instruction exists. A TIMEZONE section in the prompt is necessary but not sufficient: the instruction must be a **hard format constraint** ("run `date` NOW — if the abbreviation is UTC your output is wrong") not a suggestion ("use the host timezone"). The constraint pattern in the LLM prompts section above is required, not optional, for every LLM cron prompt.
 
 ## Verification
 

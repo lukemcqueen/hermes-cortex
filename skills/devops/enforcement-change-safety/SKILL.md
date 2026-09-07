@@ -528,6 +528,61 @@ candidate list includes `workflow/`. Regression tests: `TestSkillsDirResolution`
       with prior PENDING; scored flow releases cleanly
 - [ ] Hook cycles (session_id NULL) never trip the begin_change gate
 
+## Rule 15: Fix-Apply Scripts Need a Four-State Guard — "Upstream Removed It" Is Fixed, Not Fail
+
+Scripts that re-apply a local patch to upstream code after every deploy (e.g.
+`apply-mcp-tool-watch-fix.py`, `install-lean-index.py`, `install-cron-cost-tracking.py`)
+must handle four states when deciding whether to apply:
+
+1. **Already fixed** (marker or corrected pattern present) → SKIP, exit 0
+2. **Upstream removed the mechanism entirely** (probe function name absent from the
+   file) → SKIP, exit 0 — the bug is structurally gone; nothing to patch.
+3. **Buggy pattern still present** → APPLY, exit 0
+4. **Neither pattern matched** → FAIL, exit 1 — genuinely unknown state; needs human
+   inspection.
+
+**Never exit 0 on "unknown" — that reduces governance by masking a drifted pattern
+that needs eyes on it.** The two-state original (fixed? → skip; buggy? → apply;
+else → fail) cannot tell "upstream refactored the mechanism away" from "the textual
+pattern drifted." The false-positive FAIL blocks the entire deploy tail under
+`set -euo pipefail` fleet-wide until an operator manually inspects and overrides.
+
+**Trigger:** the script has an `_is_fixed()` or equivalent check for a specific
+multiline pattern string, and the only other path is a catch-all FAIL. If upstream
+could ever remove the feature being patched, add the "removed" guard before the
+catch-all. The cost of a false SKIP (no-op apply on an already-absent patch target)
+is zero; the cost of a false FAIL (blocked deploy, doctor red, every host blocked)
+is fleet-wide. The probe check must be sufficiently unique — a function name that
+only appears as a def or assign, not a bare string that could appear in a comment
+or error message independently.
+
+When adding this guard to `_status()` too, ensure exit 0 on "removed" mirrors
+the apply path so automated checks (`--status` pollers, doctor probes) stop
+flagging the host.
+
+Implementation pattern in Python:
+
+```python
+def _is_probe_removed(src: str) -> bool:
+    return "probe_function_name" not in src
+
+
+def _apply() -> bool:
+    ...
+    if _is_fixed(src):
+        print("SKIP: already applied")
+        return True
+    if _is_probe_removed(src):
+        # Upstream removed the mechanism entirely — bug structurally gone.
+        print("SKIP: mechanism removed upstream — nothing to fix")
+        return True
+    if BUGGY not in src:
+        print("FAIL: probe pattern not found — upstream may have changed "
+              "the surrounding code. Inspect manually.")
+        return False
+    # ... apply fix ...
+```
+
 ## References
 
 - `references/memory-seed-clobber-2026-08-05.md` — the memory-clobber root

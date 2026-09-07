@@ -175,6 +175,23 @@ to restore. Decide by content, not by default:
   **Before trusting an upstream fix, grep the whole feature for the same
   flaw class** — a fix to one function often leaves siblings broken. See
   `references/mcp-tool-watch-probe-case.md` for the full reproduction.
+- **Seam-rot on the LOCAL patch re-apply (whole-deploy abort).** Hermes Cortex
+  re-applies local hermes-agent patches after every `hermes update` via
+  `ops/scripts/install/install-*.py` (lean index, cron cost-tracking, mcp-tool
+  watch). When upstream refactors the seam, the installer's marker anchor no
+  longer matches → it prints `FAIL ... anchor not found` and exits 2, which
+  aborts `cortex-update.sh` under `set -euo pipefail` BEFORE the state-save
+  writes `state/update-commit`. Net: the deploy looks normal but the doctor's
+  `Deploy sync` stays red forever. Diagnose by mechanism (`cortex-update.sh`
+  exit 0 is NOT clean — grep the log for `[<installer>] FAIL ... anchor not
+  found`, compare `state/update-commit` to `git rev-parse HEAD`). Distinguish
+  load-bearing (re-target the anchor — e.g. keeping `coding_context: lean`
+  distinct when upstream folds it into `focus`) from superseded (mechanism
+  removed upstream — convert to treat "absent upstream" as success, not
+  drift-fail), then re-target in REPO source, verify markers match, COMMIT (a
+  concurrent workflow can `git reset` and sweep uncommitted edits), then
+  deploy. Verify behavior with a live import (`_coding_mode({'coding_context':
+  'lean'})` must return `lean`), not just exit 0.
 - **Marker file must be per-incident** — reuse the same `<name>` for a new
   incident and the old marker suppresses the new notify. Name it after the
   incident (`upstream-hermes-fix-notified`), not generically.
