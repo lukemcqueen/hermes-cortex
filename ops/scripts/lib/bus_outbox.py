@@ -52,7 +52,10 @@ import random
 from datetime import datetime, timezone
 from pathlib import Path
 
-from cortex_bus import bus_peek, bus_send, bus_find_duplicate  # noqa: E402
+try:
+    from lib.cortex_bus import bus_peek, bus_send, bus_find_duplicate  # noqa: E402
+except ImportError:
+    from cortex_bus import bus_peek, bus_send, bus_find_duplicate  # noqa: E402
 
 log = logging.getLogger("bus_outbox")
 

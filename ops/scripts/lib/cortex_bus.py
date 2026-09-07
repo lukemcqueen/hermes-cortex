@@ -158,7 +158,10 @@ def bus_send(queue: str, message_body: dict) -> dict | None:
         if os.environ.get("CORTEX_BUS_NO_OUTBOX") == "1":
             return None
         try:
-            from bus_outbox import enqueue  # lazy: break import cycle
+            try:
+                from lib.bus_outbox import enqueue  # lazy: break import cycle
+            except ImportError:
+                from bus_outbox import enqueue  # lib/ directly on sys.path (sweep cron)
             return enqueue(queue, message_body)  # pristine message, not wire_body
         except Exception as outbox_err:  # noqa: BLE001 — outbox must not mask the original
             logging.getLogger("cortex_bus").error(
