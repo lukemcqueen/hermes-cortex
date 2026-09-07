@@ -52,7 +52,7 @@ import random
 from datetime import datetime, timezone
 from pathlib import Path
 
-try:
+try:  # adversarial-ignore: error-swallow — dual-mode import fallback (lib. vs bare)
     from lib.cortex_bus import bus_peek, bus_send, bus_find_duplicate  # noqa: E402
 except ImportError:
     from cortex_bus import bus_peek, bus_send, bus_find_duplicate  # noqa: E402
@@ -117,8 +117,12 @@ def enqueue(queue: str, message_body: dict) -> dict:
             os.fsync(dfd)
         finally:
             os.close(dfd)
-    except OSError:
-        pass  # dir fsync is best-effort on some filesystems
+    except OSError as e:
+        # Dir fsync is best-effort on some filesystems (e.g. overlayfs).
+        # The file itself was already fsynced + renamed — durability of the
+        # rename is a nice-to-have, not a data-loss risk. Log at debug so
+        # the swallow is visible, not silent.
+        log.debug("bus_outbox: dir fsync skipped: %s", e)
     log.info("queued %s -> %s (%s)", queue, path.name,
              message_body.get("correlation_id") or "no-corr")
     return {"queued": True, "outbox_file": str(path)}

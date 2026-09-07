@@ -209,7 +209,7 @@ When a bus send fails, check in order:
    sys.path.insert(0, 'ops/scripts')
    from lib.cortex_bus import bus_send, CONFIG_FILE
    print(f'Config exists: {CONFIG_FILE.exists()}')
-   r = bus_send('inbox_moses', {'from':'test','subject':'TEST',
+   r = bus_send('inbox_moses', {'from':'esther','subject':'PING',
                                  'body':{},'correlation_id':'cron-sim'})
    print(f'Send result: {r}')
    "
@@ -243,9 +243,40 @@ When asked "how do we test the bus?" or when setting up connectivity for a new a
 
 See `references/bus-test-plan-framework.md` for the full protocol with exact commands for every step.
 
+## Test-Traffic Discipline — Never Alert Peers With Probe Messages
+
+Every agent's send path crosses `bus_send()` in `lib/cortex_bus.py`. Since
+2026-09-07 it **rejects junk placeholder subjects before the wire** with an
+instructive error — the guard is fleet-wide, not per-agent:
+
+- **Sanctioned diagnostic subjects** (silently archived by every receiver's
+  handler — no Telegram notify, no task row): `PING`, `DOCTOR_TEST`,
+  `STATUS_REQUEST`, `HEARTBEAT`. Use these for bus connectivity tests.
+- **Junk subjects rejected** by `bus_send`: `TEST`, `TESTING`, `T1`-style,
+  `HELLO`, `HI`, `FOO`, `BAR`, `ASDF`, `PLACEHOLDER` (case-insensitive).
+- **Real protocol subjects** pass: `EXEC`, `UPDATE_REQUEST`, `PROPOSAL`,
+  `ISSUES`, `IMPROVEMENTS`, `TASK_REQUEST`, `ROLLBACK_REQUEST`,
+  `GIT_AUTH_CHECK`, `*_RESULT`, and the documented report subjects.
+
+Why: an unknown subject arriving at a peer's inbox makes the receiver's
+handler notify Telegram ("Unknown subject") — observed when a stray `TEST`
+from esther hit moses' inbox (2026-09-07). The guard makes the mistake
+impossible instead of relying on agent memory.
+
+After any test that did reach a peer queue (e.g. a raw curl that bypasses
+`bus_send`), **archive the message** — leave no probe traffic behind:
+
+```bash
+sg docker -c "docker exec mycortex-postgres psql -U mycortex -d mycortex -c \"
+SELECT bus.archive('inbox_<peer>', '<msg_id>'::uuid, 'test-traffic-cleanup');
+\""
+```
+
 ## Pitfalls
 
 - ❌ **Using `hc send` for agent testing** — bypasses everything. Always use the direct backend API for same-machine tests.
 - ❌ **Testing with `test-q`** — `test-q` exists but only Moses has write permission. Other agents get 403. Test against the actual target queue.
 - ❌ **Assuming `hc inbox` works on remote machines** — `hc inbox` uses `docker exec` to the local Postgres. Only works on the bus server.
+- ❌ **Sending `TEST`/`HELLO`/`FOO` as a bus subject** — `bus_send()` rejects junk subjects with an instructive error. For diagnostics use `PING` / `DOCTOR_TEST` / `STATUS_REQUEST` / `HEARTBEAT`; for real work use protocol subjects (`EXEC`, `UPDATE_REQUEST`, `PROPOSAL`, `*_RESULT`, …). A junk subject on a peer queue alerts the receiver's operator.
+- ❌ **Leaving test messages in peer queues** — after any probe that reached a peer inbox, archive it (`bus.archive()`). Leftover probes make the receiver's handler react (or the next diagnostics session trip over them).
 - ❌ **Bearer token without Basic Auth through nginx** — nginx returns 401 before the bus server is reached. Both layers are required for the external path.

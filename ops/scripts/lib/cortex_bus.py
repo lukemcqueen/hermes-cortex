@@ -16,12 +16,37 @@ import base64
 import json
 import logging
 import os
+import re
 import time
 from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 CONFIG_FILE = Path(os.environ.get("CORTEX_DEPLOY_HOME", Path.home() / ".hermes-cortex")) / "cortex-bus.conf"
+
+# ── Test-traffic discipline (2026-09-07) ────────────────────────────────
+# Receiver handlers (agent-message-handler.py) SILENTLY ARCHIVE the
+# diagnostic subjects below — no Telegram notify, no task row. Any other
+# subject arriving on a peer's inbox triggers an "Unknown subject" alert
+# on the receiver (observed: moses alerted on a stray TEST from esther,
+# 2026-09-07). Every fleet send crosses bus_send() — the guard here is the
+# single chokepoint: junk subjects never reach the wire, and the rejection
+# message teaches the agent the sanctioned alternative.
+DIAGNOSTIC_SUBJECTS = ("PING", "DOCTOR_TEST", "STATUS_REQUEST", "HEARTBEAT")
+
+# Subjects whose UPPERCASE form is an obvious test/junk placeholder and
+# must never be sent to a peer queue (would alert the receiver).
+_JUNK_SUBJECT_RE = re.compile(r"^(TEST|TESTING|T[0-9]+|HELLO|HI|FOO|BAR|ASDF|PLACEHOLDER)$", re.I)
+
+
+def _subject_is_diagnostic(subject: str) -> bool:
+    """True for the sanctioned silent diagnostic subjects."""
+    return subject.upper() in DIAGNOSTIC_SUBJECTS
+
+
+def _subject_is_junk(subject: str) -> bool:
+    """True for obvious test-placeholder subjects that alert peers."""
+    return bool(_JUNK_SUBJECT_RE.match(subject.strip()))
 
 
 def _read_config(key: str) -> str:
@@ -139,6 +164,22 @@ def bus_send(queue: str, message_body: dict) -> dict | None:
     Set CORTEX_BUS_NO_OUTBOX=1 to disable (hard-fail to None).
     """
     try:
+        # ── Test-traffic discipline guard (2026-09-07) ──
+        # Reject junk placeholder subjects BEFORE the wire: receivers
+        # alert on unknown subjects, flooding the operator's chat.
+        # Sanctioned diagnostics: PING / DOCTOR_TEST / STATUS_REQUEST /
+        # HEARTBEAT (silently archived by handlers). Real protocol
+        # subjects (EXEC, UPDATE_REQUEST, PROPOSAL, *_RESULT, ...) pass.
+        subj = str(message_body.get("subject", "")).strip()
+        if _subject_is_junk(subj):
+            raise ValueError(
+                "bus_send rejected subject "
+                f"'{subj}' (junk placeholder — would alert the receiver).\n"
+                "  For diagnostics use: PING, DOCTOR_TEST, STATUS_REQUEST, or HEARTBEAT "
+                "(silently archived by handlers).\n"
+                "  For real work use a protocol subject: EXEC, UPDATE_REQUEST, "
+                "PROPOSAL, ISSUES, IMPROVEMENTS, *_RESULT, or the documented report subject."
+            )
         # Serialize into a LOCAL copy — never mutate the caller's dict.
         # The pristine message goes to the wire AND to the outbox on
         # failure, so retry-file hashes match across attempts.
@@ -160,7 +201,7 @@ def bus_send(queue: str, message_body: dict) -> dict | None:
         try:
             try:
                 from lib.bus_outbox import enqueue  # lazy: break import cycle
-            except ImportError:
+            except ImportError:  # adversarial-ignore: error-swallow — dual-mode import fallback (lib. vs bare)
                 from bus_outbox import enqueue  # lib/ directly on sys.path (sweep cron)
             return enqueue(queue, message_body)  # pristine message, not wire_body
         except Exception as outbox_err:  # noqa: BLE001 — outbox must not mask the original
@@ -183,8 +224,13 @@ def bus_norm_body(value) -> str:
     if s.startswith("{"):
         try:
             return json.dumps(json.loads(s), sort_keys=True, default=str)
-        except json.JSONDecodeError:
-            pass
+        except json.JSONDecodeError as e:
+            # Malformed JSON input: log it rather than silently passing.
+            # A duplicate-check on malformed input should not fail closed
+            # (the caller still has the raw string to compare), but the
+            # swallowing must not be invisible.
+            logging.getLogger("cortex_bus").debug(
+                "bus_norm_body: malformed JSON (falling back to raw string): %s", e)
     return s
 
 
@@ -313,6 +359,8 @@ def _bus_get(endpoint: str, fallback: bool = False) -> dict:
     last_error = ""
 
     def _try(auth_scheme: str, auth_creds: str) -> dict:
+        if not auth_scheme or not auth_creds:
+            raise ValueError("bus_get: empty auth scheme or credentials")
         req = Request(url, headers={"Authorization": f"{auth_scheme} {auth_creds}"}, method="GET")
         with urlopen(req, timeout=10) as resp:
             return json.loads(resp.read().decode())
@@ -416,6 +464,8 @@ def bus_health() -> dict:
     scheme, creds = _get_auth_header()
     logger = logging.getLogger("cortex_bus")
     def _try(base_url: str, auth_scheme: str, auth_creds: str):
+        if not base_url or not auth_scheme or not auth_creds:
+            raise ValueError("bus_health: empty url or auth")
         req = Request(f"{base_url}/health",
                       headers={"Authorization": f"{auth_scheme} {auth_creds}"},
                       method="GET")
