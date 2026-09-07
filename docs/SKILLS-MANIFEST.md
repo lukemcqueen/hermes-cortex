@@ -113,7 +113,7 @@ their domain.
 | `meme-generation` | 2.0.0 | Create meme PNGs from templates with Pillow text overlay. | `skill_view(name='meme-generation')` |
 | `pixel-art` | 2.0.0 | Pixel art w/ era palettes (NES, Game Boy, PICO-8). | `skill_view(name='pixel-art')` |
 
-## Devops (151 skills)
+## Devops (152 skills)
 
 | Skill | Version | Purpose | Load With |
 |-------|---------|---------|-----------|
@@ -124,6 +124,7 @@ their domain.
 | `agent-fundamentals` | 1.0.0 | Universal 'basic things every agent should know' — distilled from real frustration patterns across 10+ sess... | `skill_view(name='agent-fundamentals')` |
 | `agent-health-monitoring` | 3.5.0 | Cross-server agent health monitoring using binary status vectors — deploy health endpoints on each agent, p... | `skill_view(name='agent-health-monitoring')` |
 | `alembic-postgres-migrations` | 1.1.0 | Use when debugging Alembic Postgres migration failures. | `skill_view(name='alembic-postgres-migrations')` |
+| `answer-cache` | 1.0.0 | Agent protocol for mycortex answer cache — inserts a cache-check step between RAG miss and model call. Save... | `skill_view(name='answer-cache')` |
 | `approval-gate-debugging` | 1.0.0 | Use when a command is flagged as a security issue. | `skill_view(name='approval-gate-debugging')` |
 | `arq-worker-startup-pitfalls` | 1.0.0 | Use when an arq worker crash-loops or runs no jobs. | `skill_view(name='arq-worker-startup-pitfalls')` |
 | `auto-remediation` | 1.0.0 | Auto-remediate cron job failures, agent inbox requests, and service issues. Checks every 5m and fixes known... | `skill_view(name='auto-remediation')` |
@@ -383,7 +384,7 @@ their domain.
 |-------|---------|---------|-----------|
 | `openclaw-migration` | 1.0.0 | Import an OpenClaw setup (memories, skills) into Hermes. | `skill_view(name='openclaw-migration')` |
 
-## Mlops (32 skills)
+## Mlops (33 skills)
 
 | Skill | Version | Purpose | Load With |
 |-------|---------|---------|-----------|
@@ -397,6 +398,7 @@ their domain.
 | `fine-tuning-with-trl` | 1.0.1 | TRL: SFT, DPO, GRPO, RLOO reward modeling for LLM RLHF. | `skill_view(name='fine-tuning-with-trl')` |
 | `guidance` | 1.0.1 | Constrain LLM output with grammars; guarantee valid JSON. | `skill_view(name='guidance')` |
 | `huggingface-accelerate` | 1.0.1 | Run PyTorch training across GPUs with minimal changes. | `skill_view(name='huggingface-accelerate')` |
+| `huggingface-hub` | 1.0.1 | HuggingFace hf CLI: search/download/upload models, datasets. | `skill_view(name='huggingface-hub')` |
 | `instructor` | 1.0.0 | Structured LLM outputs validated with Pydantic. | `skill_view(name='instructor')` |
 | `lambda-labs-gpu-cloud` | 1.0.0 | On-demand GPU cloud instances for ML training. | `skill_view(name='lambda-labs-gpu-cloud')` |
 | `llava` | 1.0.0 | Vision-language chat: VQA, captioning, image dialogue. | `skill_view(name='llava')` |
@@ -520,7 +522,7 @@ their domain.
 |-------|---------|---------|-----------|
 | `social-media-analyzer` | 1.0.0 | Social media campaign analysis and performance tracking. Calculates engagement rates, ROI, and benchmarks a... | `skill_view(name='social-media-analyzer')` |
 
-## Software Development (57 skills)
+## Software Development (58 skills)
 
 | Skill | Version | Purpose | Load With |
 |-------|---------|---------|-----------|
@@ -541,6 +543,7 @@ their domain.
 | `codebase-design` | 1.0.0 | Deep module vocabulary and design principles — module, interface, depth, seam, adapter, leverage, locality.... | `skill_view(name='codebase-design')` |
 | `context-engineering` | 1.0.0 | Context design for agents: pre-fetch, compaction, envelopes. | `skill_view(name='context-engineering')` |
 | `cwr-file-processing` | 1.0.0 | CISAC CWR (Common Works Registration) file processing for music copyright societies. Covers export generati... | `skill_view(name='cwr-file-processing')` |
+| `data-structure-efficiency-review` | 1.0.0 | Find inefficient data structures and hot loops in code. | `skill_view(name='data-structure-efficiency-review')` |
 | `dev-plan` | 2.1.0 | Plan mode: write an actionable markdown plan to .hermes/plans/, no execution. Bite-sized tasks, exact paths... | `skill_view(name='dev-plan')` |
 | `dhh-rails-reviewer` | 1.0.0 | Use for brutally honest DHH-style Rails code review. | `skill_view(name='dhh-rails-reviewer')` |
 | `dhh-rails-style` | 1.0.0 | Use when writing Ruby/Rails code in DHH/37signals style. | `skill_view(name='dhh-rails-style')` |
