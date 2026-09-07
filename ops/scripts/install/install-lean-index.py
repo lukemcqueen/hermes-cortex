@@ -26,30 +26,32 @@ AGENT_DIR = os.path.expanduser("~/.hermes/hermes-agent/agent")
 TARGET = os.path.join(AGENT_DIR, "coding_context.py")
 
 # ── Patch 1: _coding_mode lean normalization ──────────────
-MODE_OLD = '''    if mode in {"focus", "strict", "lean"}:
-        return "focus"'''
+MODE_OLD = '''_MODE_ALIASES = {
+    **dict.fromkeys(("focus", "strict", "lean"), "focus"),
+    **dict.fromkeys(("on", "true", "yes", "1", "always"), "on"),
+    **dict.fromkeys(("off", "false", "no", "0", "never"), "off"),
+}'''
 
-MODE_NEW = '''    if mode in {"focus", "strict"}:
-        return "focus"
-    if mode in {"lean"}:
-        # Local lean-index extension (HC fleet 2026-08-21): distinct mode so
-        # compact_skill_categories() demotes the non-fleet categories WITHOUT
-        # the focus-mode toolset collapse (toolset() gates on == "focus").
-        return "lean"'''
+MODE_NEW = '''_MODE_ALIASES = {
+    **dict.fromkeys(("focus", "strict"), "focus"),
+    **dict.fromkeys(("on", "true", "yes", "1", "always"), "on"),
+    **dict.fromkeys(("off", "false", "no", "0", "never"), "off"),
+    # Local lean-index extension (HC fleet, re-targeted 2026-09-07 for the
+    # _MODE_ALIASES refactor): keep "lean" a distinct mode so
+    # compact_skill_categories() demotes the non-fleet categories WITHOUT the
+    # focus-mode toolset collapse (toolset_selection() gates on == "focus").
+    "lean": "lean",
+}'''
 
 # ── Patch 2: _LEAN_INDEX_CATEGORIES constant ──────────────
 CONST_ANCHOR = '''_NON_CODING_SKILL_CATEGORIES = (
-    "apple", "communication", "cooking", "creative", "email", "finance",
-    "gaming", "gifs", "health", "media", "music", "note-taking",
-    "productivity", "shopping", "smart-home", "social-media", "travel",
-    "yuanbao",
+    "apple", "communication", "cooking", "creative", "email", "finance", "gaming", "gifs", "health", "media",
+    "music", "note-taking", "productivity", "shopping", "smart-home", "social-media", "travel", "yuanbao",
 )'''
 
 CONST_ADD = '''_NON_CODING_SKILL_CATEGORIES = (
-    "apple", "communication", "cooking", "creative", "email", "finance",
-    "gaming", "gifs", "health", "media", "music", "note-taking",
-    "productivity", "shopping", "smart-home", "social-media", "travel",
-    "yuanbao",
+    "apple", "communication", "cooking", "creative", "email", "finance", "gaming", "gifs", "health", "media",
+    "music", "note-taking", "productivity", "shopping", "smart-home", "social-media", "travel", "yuanbao",
 )
 
 # Local lean-index extension (HC fleet 2026-08-21): categories demoted to
@@ -73,13 +75,14 @@ COMPACT_OLD = '''        if not self.is_coding or self.config_mode != "focus":
         return frozenset(self.profile.compact_skill_categories)'''
 
 COMPACT_NEW = '''        if not self.is_coding or self.config_mode != "focus":
-            # Local lean-index extension (HC fleet 2026-08-21): mode "lean"
-            # (already accepted by _coding_mode) demotes non-fleet skill
-            # categories to names-only on ANY platform WITHOUT the focus-mode
-            # toolset collapse — focus swaps the toolset to "coding" and only
-            # fires on cli/tui/desktop surfaces, so telegram ops agents never
-            # qualify. "lean" keeps the full toolset and only trims the index.
-            # Same safety contract as focus: demoted, never hidden.
+            # Local lean-index extension (HC fleet 2026-08-21, re-targeted
+            # 2026-09-07 for the _MODE_ALIASES refactor): mode "lean"
+            # (distinct via _MODE_ALIASES) demotes non-fleet skill categories
+            # to names-only on ANY platform WITHOUT the focus-mode toolset
+            # collapse — focus swaps the toolset to "coding" and only fires on
+            # cli/tui/desktop surfaces, so telegram ops agents never qualify.
+            # "lean" keeps the full toolset and only trims the index. Same
+            # safety contract as focus: demoted, never hidden.
             if self.config_mode == "focus":
                 return frozenset()
             if self.config_mode == "lean":
