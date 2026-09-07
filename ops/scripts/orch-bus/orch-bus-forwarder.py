@@ -456,6 +456,10 @@ def _sync_direction(
             if corr_id:
                 body["correlation_id"] = corr_id
 
+            # Rewrite `from` to the forwarding agent's name — the destination
+            # bus validates that `from` matches the authenticated agent.
+            body["from"] = _HOST
+
             ok, reason = _send_bus(dest_url, dest_token, dest_auth, queue, body)
             if ok:
                 seen.add(dkey)
