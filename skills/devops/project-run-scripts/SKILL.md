@@ -54,12 +54,12 @@ Every `./run` MUST implement these commands with identical semantics:
 ### Variation policy
 
 - **Non-Docker projects** (standalone Go tools, scripts): omit Docker commands, implement only test/lint/clean/help.
-- **No-compose projects** (simple services): fall back to individual `docker run` commands but still implement `up`/`down`/`logs`.
-- **Rails projects** — use the **Taskfile pattern** (`time "${@:-help}"` + bare function names), NOT the bash case-dispatch template. See `references/taskfile-pattern.md` for how this dispatch mechanism works and how to add commands.
-- **Rails projects** MUST add: `rails <cmd>`, `bundle:install`, `yarn:build`, `psql`, `test`, `migrate`, `seed`. Use `templates/run.rails.sh` for new Rails projects.
-- **Multi-compose projects** (e.g., acme-alpha) MUST route service names to the correct compose file. Use a `case` dispatch in the build function.
-- **Multi-compose projects** (e.g., acme-alpha) MUST route service names to the correct compose file. Use a `case` dispatch in the build function.
-- **Platform dispatchers** (e.g., acme-platform) use a root dispatcher + per-component `./run` scripts. Each component's `./run` implements the same interface above.
+- **Rails projects** — use the **Taskfile pattern** (`time "${@:-help}"` + bare function names), NOT the bash case-dispatch template.
+- **Rails projects** MUST add: `rails <cmd>`, `bundle:install`, `yarn:build`, `psql`, `test`, `migrate`, `seed`.
+- **Multi-compose projects** MUST route service names to the correct compose file. Use a `case` dispatch in the build function.
+- **Platform dispatchers** use a root dispatcher + per-component `./run` scripts. Each component's `./run` implements the same interface above.
+
+> ⚠️ **Skill-dir assets:** this skill ships NO bundled files (no `templates/`, `scripts/`, or `references/` directories are installed). The canonical template is `~/hermes-cortex/ops/scripts/project-run-scripts/templates/run.sh`; check it exists before relying on it. If it's absent, write `./run` from the Template Structure below — every required file (check-alembic-heads.py, entrypoint.sh, test_migrations.py) is fully inlined in this SKILL.md so no external asset is a hard dependency.
 
 ## Migration Head Integrity — Fail-Fast, No Auto-Merge
 
@@ -84,10 +84,34 @@ Every project with Alembic migrations MUST have these two files:
 |-------|----------|
 | **`./run build`** | Runs `check-alembic-heads.py` before building Docker images. Aborts on multi-head. |
 | **`./run migrate`** | Validate single head before upgrade. Fail with instructions if >1 head. |
-| **`./run check:alembic`** | Manual alias: runs `check-alembic-heads.py` on demand. |
+| **`./run check:alembic`** | Manual alias: inline head check (code below). |
 | **`entrypoint.sh`** | Run `alembic upgrade head` directly. If multiple heads or corruption, fail loudly. |
 | **CI (`test_migrations.py`)** | Assert `len(script.get_heads()) == 1`. Block deploy on divergence. |
 | **Local dev** | Developer runs `alembic merge heads` or rebases before pushing. |
+
+### `./run check:alembic` — on-demand head check
+
+No bundled script ships with this skill. Inline the check directly in `cmd_check_alembic`:
+
+```bash
+cmd_check_alembic() {
+    python3 - <<'EOF'
+from alembic.config import Config
+from alembic.script import ScriptDirectory
+import sys
+config = Config("alembic.ini")
+script = ScriptDirectory.from_config(config)
+heads = script.get_heads()
+if len(heads) != 1:
+    print(f"✗ {len(heads)} Alembic heads detected: {heads}")
+    print("  Fix: alembic merge heads -m 'merge' (or rebase your branch).")
+    sys.exit(1)
+print(f"✓ single head: {heads[0]}")
+EOF
+}
+```
+
+When writing `check-alembic-heads.py` yourself, use `re.DOTALL` to correctly parse multiline `down_revision` tuples (e.g., merge revisions with two parents spread across multiple lines).
 
 ### `scripts/check-alembic-heads.py`
 
@@ -96,9 +120,6 @@ Copy this script from the skill's `scripts/` directory:
 ```bash
 cp $(dirname $(skill_view name=project-run-scripts file_path=scripts/check-alembic-heads.py 2>/dev/null || echo "$HOME/.hermes/skills/devops/project-run-scripts/scripts/check-alembic-heads.py"))/*.py scripts/
 ```
-
-The script uses `re.DOTALL` to correctly parse multiline `down_revision` tuples
-(e.g., merge revisions with two parents spread across multiple lines).
 
 ### `./run migrate` — Fail-Fast
 
@@ -230,17 +251,17 @@ Every `./run` follows this structure:
 14. Main case dispatch
 ```
 
-## Canonical Template (replaces templates/run.sh)
+## Canonical Template
 
-The canonical template is at `$HERMES_HOME/skills/devops/project-run-scripts/templates/run.sh` — it is the definitive starting point for every new project. Customize: PROJECT_ROOT paths, service names, env var defaults, test runner commands.
+The canonical template lives at
+`~/hermes-cortex/ops/scripts/project-run-scripts/templates/run.sh` — verify it
+exists (`ls` the path) and read it before writing a new `./run`; it is the
+definitive starting point for every new project. Customize: PROJECT_ROOT paths, service names, env var defaults, test runner commands. If the template is
+missing, build from the Template Structure section above instead of guessing.
 
 ## Reference: Multi-Repo Audit
 
 `references/multi-repo-audit-2026-06.md` documents the actual state of every `./run` file across all user repos as of June 2026 — what was changed, what was preserved, and which repos were skipped (and why). Consult this before updating an existing repo's `./run` to understand its specific structure.
-
-## Hermes Cortex Variant
-
-For agent-only repos (hermes-cortex-style, no Docker, no database), use the minimal template at `templates/run.cortex.sh`.
 
 ## Vitest Cleanup (ALL repos with web tests)
 
@@ -249,7 +270,7 @@ Every repo with vitest tests MUST include `_cleanup_vitest` and `_run_vitest` fu
 ## Update Workflow
 
 When writing a `./run` for a repo that lacks one, or updating one that's incomplete:
-1. Read the canonical template: `skill_view(name="project-run-scripts", file_path="templates/run.sh")`
+1. Read the canonical template: `cat ~/hermes-cortex/ops/scripts/project-run-scripts/templates/run.sh` (verify it exists first)
 2. Determine which tech stack(s) the project uses (Python/FastAPI? Rails? Go? Node?)
 3. Customize: service names, env var defaults, test paths, db credentials
 4. Copy `scripts/check-alembic-heads.py` from the skill (see Migration Head Integrity section above) if the project uses Alembic

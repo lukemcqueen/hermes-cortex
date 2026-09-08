@@ -23,6 +23,20 @@ Run `project-map analyze` when:
 - You're debugging and need to understand the dependency graph
 - You want to verify your mental model of the project structure
 
+## Prerequisites
+
+`project-map` is installed by the Hermes Cortex installer as a wrapper at
+`~/hermes-cortex/ops/scripts/project-map/project_map.sh`, which runs
+`~/.hermes-cortex/offline/project_map.py` (falls back to the repo copy if
+the deployed one is missing). Check availability first:
+
+```bash
+which project-map || ls ~/hermes-cortex/ops/scripts/project-map/project_map.sh
+```
+
+If missing: `bash ~/hermes-cortex/ops/install/install.sh` redeploys it, or
+invoke the module directly: `python3 ~/hermes-cortex/ops/scripts/project-map/project_map.py analyze`.
+
 ## Quick Start
 
 ```bash
@@ -61,6 +75,25 @@ The analysis writes to `.hermes-cortex/project-map.json`:
 3. Before multi-file changes, check dependency_graph for impacted files
 4. After significant structural changes, re-run: project-map analyze
 ```
+
+## Verification (after analyze)
+
+```bash
+ls -la .hermes-cortex/project-map.json   # exists, non-zero size, fresh mtime
+project-map status                        # stats reflect the current tree
+```
+
+If the JSON is missing or `status` shows 0 files for a non-empty repo, you
+ran from the wrong directory — `cd` to the project root and re-run
+`project-map analyze`.
+
+## Failure Modes
+
+| Symptom | Cause | Fix |
+|---------|-------|-----|
+| `command not found: project-map` | Not installed / not on PATH | Reinstall via cortex installer, or run the module directly: `python3 ~/hermes-cortex/ops/scripts/project-map/project_map.py analyze` |
+| `status` shows 0 files | Ran outside the project root | `cd <project-root>` and re-run `analyze` |
+| Map is stale (shows deleted files) | Structural changes since last run | Re-run `project-map analyze` — it overwrites the JSON in place; no rollback needed (the file is a generated cache) |
 
 ## Example
 

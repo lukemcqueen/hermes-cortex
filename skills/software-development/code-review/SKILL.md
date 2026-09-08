@@ -237,7 +237,7 @@ Detect the project language and run the appropriate tools. Capture the failure c
 
 ```bash
 # Test frameworks (auto-detect by project files)
-python -m pytest --tb=no -q 2>&1 | tail -5
+python3 -m pytest --tb=no -q 2>&1 | tail -5
 npm test -- --passWithNoTests 2>&1 | tail -5
 cargo test 2>&1 | tail -5
 go test ./... 2>&1 | tail -5
@@ -248,6 +248,8 @@ which mypy && mypy . --ignore-missing-imports 2>&1 | tail -10
 which npx && npx eslint . 2>&1 | tail -10
 which npx && npx tsc --noEmit 2>&1 | tail -10
 ```
+
+(Use `python3` — this environment has no `python` alias.)
 
 **Baseline comparison:** If baseline was clean and your changes introduce failures, that's a regression. If baseline already had failures, only count NEW ones.
 
@@ -349,13 +351,22 @@ git add -A && git commit -m "[verified] <description>"
 
 The `[verified]` prefix indicates independent two-axis review approved this change.
 
+## Rollback / Error Recovery
+
+| Failure | Recovery |
+|---------|----------|
+| Auto-fix loop broke something new | `git checkout -- <file>` the files the fix agent touched (or `git stash` if mixed with good edits), then re-run Step 9 with the narrower issue list |
+| Sub-agent returned non-JSON twice | Treat axis as FAIL-CLOSED, run the review inline yourself (read diff + standards/spec sources directly) and mark the result `"reviewer=inline-fallback"` |
+| Both sub-agents failed | Skip sub-agents; do the two axes inline in two separate passes (one pass per axis), never merged |
+| Committed with `[verified]` but a regression appears later | `git revert <commit>` — do not "hotfix on top"; the verified prefix means the review passed, not that the code is bug-proof |
+
 ## Integration with Other Skills
 
 - **subagent-driven-development** — Run this after EACH task as the quality gate. The two-axis architecture matches the two-stage review pattern.
 - **change-test-loop** — This pipeline verifies TDD discipline was followed — tests exist, tests pass, no regressions.
 - **root-cause-debugging** — When bugs survive review, use the feedback loop approach to pin down what the review missed.
 - **codebase-design** — Spec axis issues often trace back to shallow modules (no clean seam). Hand off to codebase-design for deepening recommendations.
-- **design-doc-audit** — Spec axis needs a spec. If the spec is missing or stale, use design-doc-audit to fix it first.
+- **design-doc-audit** — Spec axis needs a spec. If no `design-doc-audit` skill is installed in your environment, fall back to `prd-lite`/`product-requirements` (PRD template skills) or, failing that, ask the user for the spec before running the Spec axis.
 
 ## Pitfalls
 
