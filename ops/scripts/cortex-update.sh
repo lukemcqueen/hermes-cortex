@@ -2801,9 +2801,15 @@ except Exception:
     # every host converges to the same fallback_providers chain on every
     # sync/deploy, even if ~/hermes-cortex/.env is untouched. qwen2.5:3b
     # was removed (watchdog known-bad — token garbage in agentic loops).
-    if [[ -f "${CORTEX_DEPLOY_HOME}/scripts/install-fallback-providers.py" ]]; then
+    # DECOUPLED (2026-09-08): Hermes runtime model/fallback (~/.hermes/config.yaml
+    # model.default + fallback_providers) are operator-owned — NOT cortex cron config.
+    # Cron primary model is per-job (manifest), so cortex must not write these keys.
+    # Opt-out: CORTEX_SKIP_MODEL_CONVERGENCE=1 in ~/hermes-cortex/.env (gitignored).
+    if [[ -z "${CORTEX_SKIP_MODEL_CONVERGENCE:-}" && -f "${CORTEX_DEPLOY_HOME}/scripts/install-fallback-providers.py" ]]; then
       python3 "${CORTEX_DEPLOY_HOME}/scripts/install-fallback-providers.py" 2>/dev/null && \
         info "Fallback chain up to date" || warn "Fallback chain update skipped"
+    elif [[ -n "${CORTEX_SKIP_MODEL_CONVERGENCE:-}" ]]; then
+      info "CORTEX_SKIP_MODEL_CONVERGENCE set — Hermes fallback_providers left as operator set them"
     fi
 
     # ── Orchestrator-only crons (team health, soul refinement, etc.) ──
@@ -2950,12 +2956,16 @@ except Exception:
       warn "  install-profile-reader-role.sh failed (non-fatal)"
   fi
 
-  # model.default convergence (Titus learning 2026-08-18) — makes config.yaml
-  # follow the DEFAULT_MODEL convention on every update so a stale manual
-  # model.default can never survive an update cycle. Idempotent; no restart.
-  if [[ -f "${CORTEX_DEPLOY_HOME}/scripts/install-model-default.sh" ]]; then
+  # model.default convergence — DECOUPLED (2026-09-08): Hermes runtime model.default
+  # (~/.hermes/config.yaml) is operator-owned. Cortex LLM crons pin their primary
+  # model per-job (cron-manifest.yaml / jobs.json job.model), which the scheduler
+  # resolves independently of config model.default — so cortex must not overwrite it.
+  # Opt-out: CORTEX_SKIP_MODEL_CONVERGENCE=1 in ~/hermes-cortex/.env (gitignored).
+  if [[ -z "${CORTEX_SKIP_MODEL_CONVERGENCE:-}" && -f "${CORTEX_DEPLOY_HOME}/scripts/install-model-default.sh" ]]; then
     bash "${CORTEX_DEPLOY_HOME}/scripts/install-model-default.sh" 2>&1 | sed 's/^/    /' || \
       warn "  install-model-default.sh failed (non-fatal)"
+  elif [[ -n "${CORTEX_SKIP_MODEL_CONVERGENCE:-}" ]]; then
+    info "CORTEX_SKIP_MODEL_CONVERGENCE set — Hermes model.default left as operator set it"
   fi
 
   # O7-S2 soft session cap (cost story c579ef95) — converges
