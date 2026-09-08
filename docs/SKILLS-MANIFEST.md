@@ -143,7 +143,7 @@ their domain.
 | `cortex-bus-automation` | 2.0.0 | Automated Agent Bus processing via MCP. | `skill_view(name='cortex-bus-automation')` |
 | `cortex-bus-inbox` | 2.0.0 | MCP inbox tools for cortex-bus messaging. | `skill_view(name='cortex-bus-inbox')` |
 | `cortex-bus-messaging` | 1.2.0 | ORCHESTRATORS ONLY — message the orchestrator via the bus MCP client (inbox_send). Workers use contact-orch... | `skill_view(name='cortex-bus-messaging')` |
-| `cortex-bus-polling` | 2.0.0 | Agent Bus polling setup — MCP tools, cron, verification. | `skill_view(name='cortex-bus-polling')` |
+| `cortex-bus-polling` | 2.1.0 | Agent Bus polling setup — MCP tools, cron, verification. | `skill_view(name='cortex-bus-polling')` |
 | `cortex-deployment-sync` | 1.0.0 | Use when pulling latest or running cortex update. | `skill_view(name='cortex-deployment-sync')` |
 | `cortex-preflight` | 1.0.0 | Hermes Cortex supporting pre-flight checks — supplements Hermes default survey-before-action with repo-spec... | `skill_view(name='cortex-preflight')` |
 | `cron-agent-identity` | 1.0.0 | Diagnose which agent/profile a Hermes cron session runs as. | `skill_view(name='cron-agent-identity')` |
@@ -224,7 +224,7 @@ their domain.
 | `nextjs-docker-multistage` | 1.0.0 | Next.js Docker multi-stage builds with standalone output — minimal runtime images, no node_modules in produ... | `skill_view(name='nextjs-docker-multistage')` |
 | `nginx-security-pipeline` | 1.0.0 | Set up nginx security with IP blocking, fail2ban integration, daily automated scanning, and atomic deploy.... | `skill_view(name='nginx-security-pipeline')` |
 | `nginx-web-app-deployment` | 1.0.0 | Deploy a custom web app (Flask, Python, Node) behind nginx — upstream config, SSL, basic auth, rate limitin... | `skill_view(name='nginx-web-app-deployment')` |
-| `offline-code` | 1.0.0 | Offline code snippet search + generation using local Ollama models. Search a 520-snippet corpus across 30+... | `skill_view(name='offline-code')` |
+| `offline-code` | 1.0.0 | Offline code snippet search + generation using local Ollama models. Search a curated corpus (run `offline_c... | `skill_view(name='offline-code')` |
 | `omarchy-nvim` | 0.1.0 | Install omarchy-nvim (LazyVim) user-local without sudo. | `skill_view(name='omarchy-nvim')` |
 | `orch-backlog-driver` | 1.0.0 | Backlog-driven orchestrator work (F-023) — pull the top pending fleet tasks from the tasks DB, execute or d... | `skill_view(name='orch-backlog-driver')` |
 | `orch-skill-lifecycle` | 1.0.0 | Unified daily skill lifecycle pipeline — collects lessons, evaluates quality, and upgrades skills/SOUL.md.... | `skill_view(name='orch-skill-lifecycle')` |
@@ -249,7 +249,7 @@ their domain.
 | `sensor-false-positive-remediation` | 1.0.0 | Handle false positives from the auto-remediation sensor pipeline. Covers the trace-before-create workflow f... | `skill_view(name='sensor-false-positive-remediation')` |
 | `server-administration` | 1.10.0 | Ongoing IT & Security Administration for production Linux servers. Covers routine health checks, Docker con... | `skill_view(name='server-administration')` |
 | `server-hardening` | 1.8.0 | Comprehensive security audit and hardening for Linux servers running web services (nginx, Docker, fail2ban,... | `skill_view(name='server-hardening')` |
-| `session-start-discipline` | 1.1.0 | Restore cross-session todos, enforce skill-loading discipline at session start | `skill_view(name='session-start-discipline')` |
+| `session-start-discipline` | 2.0.0 | DEPRECATED alias — merged into task-start (2026-08-20). Load task-start instead; it bundles skill-loading d... | `skill_view(name='session-start-discipline')` |
 | `shared-repo-push-gates` | 1.0.0 | Shared-repo push blocked? Know the gates that block you. | `skill_view(name='shared-repo-push-gates')` |
 | `shell-scripting` | 1.1.0 | Shell scripting patterns, portability pitfalls, and cross-platform compatibility for bash/awk scripts in th... | `skill_view(name='shell-scripting')` |
 | `skill-curation` | 1.0.0 | Consolidate, dedupe, and prune the skill library — merge overlapping skills into one (absorbed_into), delet... | `skill_view(name='skill-curation')` |
