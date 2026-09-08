@@ -203,3 +203,4 @@ venv/bin/python test_api.py
 | Gunicorn binding to 0.0.0.0 | App accessible without auth | Bind gunicorn to `127.0.0.1` only |
 | launchd PATH missing | Gunicorn not found | Set `EnvironmentVariables:PATH` in plist |
 | No automated test suite | Regression goes unnoticed | Write test_api.py before declaring done |
+| htpasswd written to wrong file | 401 even with correct credentials | Check which file `auth_basic_user_file` in nginx config actually points to vs where you wrote the passwords |

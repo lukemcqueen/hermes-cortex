@@ -6,6 +6,7 @@ Each check_* function accepts a Results object and appends results.
 
 import hashlib
 import json
+import logging
 import os
 import re
 import shlex
@@ -15,6 +16,8 @@ import time
 import uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+
+log = logging.getLogger(__name__)
 
 from .config import (
   HOME,
@@ -58,7 +61,7 @@ def _read_config_from_bus_conf(key: str) -> str:
         val = line.split("=", 1)[1].strip().strip("\"'")
         return val
   except OSError:
-    log.warning("Could not read config file: %s", CONFIG_FILE)
+    log.warning("Could not read bus config file: %s", conf_path)
   return ""
 
 
@@ -1589,15 +1592,41 @@ def check_services(res):
 def check_system(res):
   """5. System resources: disk, memory, systemd service scope."""
   if IS_LINUX:
+    # Systemd scope is DESIGN-AWARE (2026-09-08). cortex-update.sh is
+    # explicitly scope-aware: on migrated hosts Hermes services (gateway,
+    # cortex-bus, dashboard, health-vector) run as SYSTEM units
+    # (multi-user.target) by design. A flat WARN whenever any hermes-*.service
+    # exists in /etc/systemd/system/ was a false positive on those hosts, and
+    # its suggested remediation (rm /etc/systemd/system/hermes-*.service)
+    # would break the running gateway.
+    # Rule: PASS when the system Hermes units are present AND active (valid
+    # migrated-host system scope). WARN only when a system unit file exists
+    # but its service is NOT active — a stale/misconfigured unit that may
+    # indicate a real scope problem.
     out = run_bg(["sh", "-c", "ls /etc/systemd/system/hermes-*.service 2>/dev/null"], timeout=5)
-    if out.strip():
-      count = len(out.strip().split("\n"))
-      res.add("Systemd scope", "WARN",
-          f"{count} Hermes service(s) found in /etc/systemd/system/ (must use ~/.config/systemd/user/)",
-          "sudo systemctl disable --now hermes-dashboard hermes-health hermes-gateway ; "
-          "sudo rm /etc/systemd/system/hermes-*.service ; "
-          "sudo rm /etc/systemd/system/multi-user.target.wants/hermes-*.service ; "
-          "sudo systemctl daemon-reload")
+    units = [u.strip() for u in out.strip().splitlines() if u.strip()] if out.strip() else []
+    if units:
+      inactive = []
+      for u in units:
+        name = Path(u).name
+        st = run_bg(["systemctl", "is-active", name], timeout=5).strip()
+        # 'masked' / 'inactive' units are deliberately disabled (e.g. the
+        # hermes-user-boot.service mask symlink → /dev/null from the 09-01
+        # user-scope decision). A disabled system unit is NOT a scope problem.
+        if st in ("inactive", "masked", "disabled", "not-found"):
+          continue
+        if st != "active":
+          inactive.append(f"{name} ({st})")
+      if inactive:
+        res.add("Systemd scope", "WARN",
+            f"{len(units)} Hermes service(s) in /etc/systemd/system/, {len(inactive)} not active: "
+            + ", ".join(inactive),
+            "Check why the system unit is inactive: systemctl status <unit>. If user-scope is "
+            "intended, remove the system unit and install under ~/.config/systemd/user/.")
+      else:
+        res.add("Systemd scope", "PASS",
+            f"{len(units)} Hermes service(s) in /etc/systemd/system/ all active "
+            "(migrated-host system scope is a valid design)")
     else:
       res.add("Systemd scope", "PASS", "no system-level Hermes services (all user-level)")
 

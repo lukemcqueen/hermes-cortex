@@ -50,13 +50,15 @@ metadata:
    #   handler once, verify EXEC_RESULT, archive the test message.
    # Then the real dispatch:
    python3 - <<'EOF'
-   import sys, json, uuid
+   import sys, json, uuid, socket
    sys.path.insert(0, str(Path.home() / "hermes-cortex" / "ops" / "scripts"))
    from lib.cortex_bus import bus_send
    corr = f"backlog-{uuid.uuid4().hex[:12]}"
-   body = {"from": "esther", "to": "<agent>", "topic": "fleet-update",
+   my_name = socket.gethostname().split(".")[0]
+   body = {"from": my_name, "to": "<agent>",
            "subject": "EXEC", "correlation_id": corr,
-           "body": json.dumps({"command": "<script>", "params": [], "timeout": 60})}
+           "body": json.dumps({"topic": "fleet-update",
+                               "command": "<script>", "params": [], "timeout": 60})}
    print(bus_send(f"inbox_<agent>", body), corr)
    EOF
    ```

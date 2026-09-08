@@ -105,3 +105,7 @@ tail -5 /etc/nginx/allow-ips-manual.conf 2>/dev/null
 - `linux-performance-diagnostics` — deep "system is slow" diagnosis
 - `staging-server-operations` — staging-specific ops
 - `security-audit` / `server-hardening` — security pipelines
+
+## References
+- `references/sddm-remote-access.md` — Debug SSH unreachable at boot: PAM nologin gate,
+  sddm crash loop detection + fix, uwsm session wrapper, network bringup timing.
