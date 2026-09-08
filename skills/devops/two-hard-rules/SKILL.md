@@ -20,8 +20,8 @@ Every code, config, or cron change REQUIRES this sequence — no exceptions:
 1. `mcp_loop_governance_cache_search(query="<what you are about to do>")` — learn from past
 2. `mcp_loop_governance_begin_change(task_id="<short-name>", description="<what this does>")` — create lock
 3. Make your changes (patch, write_file, cronjob, etc.)
-4. `mcp_loop_governance_cycle_query(task_id="<descriptive-name>")` — find the cycle
-5. `mcp_loop_governance_feedback_accept(id=N)` or `feedback_override(id=N, correct_decision=...)` — score
+4. `mcp_loop_governance_cycle_query(task_id="<short-name>")` — find the cycle
+5. `mcp_loop_governance_feedback_accept(cycle_id=N, task_id="<short-name>", note="<evidence>")` or `feedback_override(...)` — score
 6. `mcp_loop_governance_end_change(task_id="<short-name>")` — release lock
 
 **If `end_change` rejects** (no cycle auto-created, or cycle not scored — 2026-08-08):
@@ -30,7 +30,9 @@ Every code, config, or cron change REQUIRES this sequence — no exceptions:
   Luke directive). Score first: `cycle_query` → `feedback_accept/override` →
   `end_change`, THEN the next `begin_change`.
 - If genuinely stuck: confess clearly: "end_change rejected — no cycle auto-created. Force-clearing lock."
-- `rm -f ~/.hermes-cortex/state/.governance-active.json`
+- Locks are session-scoped: `rm -f ~/.hermes-cortex/state/.governance-<session-id>.json`
+  (find yours with `ls -t ~/.hermes-cortex/state/.governance-*.json | head -1`;
+  the legacy name `.governance-active.json` is obsolete).
 - Never silently force-clear without calling `end_change` first.
 
 The MCP server blocks write tools without an active lock — this is enforced at the tool level, not optional.
@@ -53,10 +55,13 @@ Every improvement you make that benefits other agents MUST go into the `hermes-c
 ## Enforcement
 
 - **Rule 1** is enforced by the MCP server at the tool level — you cannot write files without a lock
-- **Skills gate** — `~/.hermes-cortex/state/skills-loaded/<session-id>` is auto-created when all 8
-  always-section skills are loaded via `skill_view()`. Do NOT `touch` it — the enforcer
-  rejects empty/session-mismatched markers. Per-session files mean concurrent sessions
+- **Skills gate** — `~/.hermes-cortex/state/skills-loaded/<session-id>` is auto-created when all 7
+  always-section skills are loaded via `skill_view()` (task-start bundles the list). Do NOT `touch` it —
+  the enforcer rejects empty/session-mismatched markers. Per-session files mean concurrent sessions
   never stomp each other's proof.
+- **After a gateway restart or a deploy that touched skill files, the marker fingerprint is stale —
+  re-load all 7 always-skills with `skill_view()` (read-only, so the gate lets them through);
+  the 7th call regenerates the marker.**
 - **Reflexion gate** — The pre-commit hook queries the session DB for proof that `reflexion-check`
   was loaded. Do NOT use `--no-verify` — it's logged and audited.
 - **Adversarial verify** — The pre-commit scanner checks for issues. **Correct:** Fix what it reports.
@@ -75,8 +80,8 @@ say 'are you bypassing governance?'" If yes, you're about to make a mistake.
 
 | Block | Read the message | It tells you | Then do that |
 |-------|-----------------|--------------|-------------|
-| Skills gate | Load 8 skills | Which 8 skills | skill_view() |
+| Skills gate | Load 7 skills | Which 7 skills | skill_view() (list bundled in task-start) |
 | Lock required | begin_change() | task_id + description | MCP tool |
-| Reflexion check | Load reflexion-check | Answer 6 questions | skill_view() |
+| Reflexion check | Load reflexion-check | Answer 7 questions | skill_view() |
 | Adversarial verify | Fix issues | What failed | Fix them |
 | Dogfood | Deploy + test | cortex-update.sh | Run it |

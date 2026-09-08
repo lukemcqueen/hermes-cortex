@@ -18,6 +18,20 @@ Triggers: "audit docs for stale paths", "check documentation for broken referenc
 "find stale src/ or deploy/ paths in docs", "verify docs are in sync with repo
 structure", "run a stale-paths audit", "fresh audit of the docs directory".
 
+## Prerequisites
+
+**Repo layout (verified 2026-09-08 on host esther):**
+- The old `src/` tree and the root `deploy/` symlink are **GONE** from this repo — only historical/prose mentions remain (e.g. `core/governance/__init__.py` says the legacy `src/loop-governance/` shim was removed). Treat every live `src/` or bare `deploy/` reference as STALE unless it is prose in a migration doc.
+- The deploy tree lives at `ops/install/deploy/` (e.g. `ops/install/deploy/nginx/hermes-services.conf`).
+- `docs/DOCS-INDEX.md` exists — Phase 6 checks it.
+- There is currently **no** `docs/stale-paths-audit.md` in the repo — if it doesn't exist when you reach Phase 9, CREATE it fresh (use the Phase 8 report structure as its skeleton) instead of assuming a prior audit file exists.
+
+**Required tools:** `search_files` (or `grep`/`rg`), `read_file`, filesystem access to `~/hermes-cortex/`. No external network access needed.
+
+## Audit corpus boundary
+
+Search ALL `.md` files under `docs/` (including `docs/prd/` and `docs/runbooks/`), plus top-level `README.md` and `AGENTS.md`. Do not scan `ops/offline/code-corpus/` (third-party snippets, not our docs) or `skills/` (audited separately).
+
 ## Workflow
 
 ### Phase 1: Identify Stale Path Patterns
@@ -38,8 +52,11 @@ For each stale path prefix, search all docs `.md` files:
 
 ```bash
 # Exclude integration-audit.md (intentional historical record) and stale-paths-audit.md (the report itself)
-grep -rn 'src/pattern' docs/ --include='*.md' | grep -v 'integration-audit.md' | grep -v 'stale-paths-audit.md'
+grep -rn --include='*.md' -E '\bsrc/(scripts|mcp-servers|skills|agent-inbox|dashboard|offline|loop-governance|auth)/' docs/ | grep -v 'integration-audit.md' | grep -v 'stale-paths-audit.md'
+grep -rn --include='*.md' -E '(^|[ `(/])deploy/' docs/ | grep -v 'ops/install/deploy/' | grep -v 'integration-audit.md' | grep -v 'stale-paths-audit.md'
 ```
+
+Note the `--` before the pattern and quoted regexes: an unquoted or un-dashed grep treats a leading-dash pattern as a flag and fails with "unrecognized flag".
 
 Batch the searches — they are independent. Use `search_files` tool with appropriate `file_glob` and `output_mode`. For large docsets (80+ files), consider using `delegate_task` to offload the heavy scanning to a background subagent — this keeps your context uncluttered while the subagent does the exhaustive search and returns a structured report.
 
@@ -63,14 +80,15 @@ Not every `src/` or `deploy/` reference is stale. Classify each:
 For every stale reference found, check the filesystem:
 
 ```bash
-# Check old path
-test -f ~/hermes-cortex/<old-path> && echo "EXISTS at old path" || echo "NOT FOUND at old path"
+# Replace <old-path> with the actual stale path found in Phase 2, e.g.:
+test -f ~/hermes-cortex/src/scripts/foo.py && echo "EXISTS at old path" || echo "NOT FOUND at old path"
 
 # Check canonical/new path
-test -f ~/hermes-cortex/<canonical-path> && echo "EXISTS at canonical path" || echo "NOT FOUND at canonical path"
+test -f ~/hermes-cortex/ops/scripts/foo.py && echo "EXISTS at canonical path" || echo "NOT FOUND at canonical path"
 
 # Check symlinks
-ls -la ~/hermes-cortex/deploy 2>&1  # is the symlink still alive?
+test -e ~/hermes-cortex/deploy && echo "deploy/ exists (symlink or dir)" || echo "deploy/ GONE — bare deploy/ refs are stale"
+ls -la ~/hermes-cortex/deploy 2>&1  # confirm whether it is a live symlink
 ```
 
 Also check the directory's parent to discover what *does* exist there:
@@ -84,8 +102,10 @@ This uncovers cases like "the file doesn't exist at the stated path and the cano
 ### Phase 5: Load Previous Audit (if exists)
 
 ```bash
-find docs/ -name '*stale-paths-audit*' -o -name '*audit*stale*'
+find ~/hermes-cortex/docs -iname '*stale*path*audit*' -o -iname '*audit*stale*'
 ```
+
+If the find returns nothing, there is no previous audit — proceed to Phase 6 and note "no prior audit exists" in the report. Do not invent prior findings.
 
 Read it and note:
 - Which references were **previously flagged** vs. **newly discovered**
@@ -125,7 +145,7 @@ Write the report with these sections:
 
 ### Phase 9: Apply Fixes and Update Audit Report
 
-After fixing stale paths, update the audit report itself (`docs/stale-paths-audit.md`) to reflect what was fixed:
+After fixing stale paths, update the audit report itself (create `docs/stale-paths-audit.md` if it doesn't exist — as of 2026-09-08 it does not) to reflect what was fixed:
 
 1. Update the **Summary** section to note fixes applied
 2. Move items from "STILL STALE" to "ALL FIXED" (with date)

@@ -5,10 +5,17 @@ description: |
   Builds a personal bug-fix memory that makes the agent smarter over time.
   Trigger: after fixing a bug, after resolving an error, after debugging.
 
-  Run: offline_knowledge lesson create --title "..." ...
-  Search: offline_knowledge lesson search "error message"
+  Lessons are markdown files in `~/brain/lessons/` (YAML frontmatter + Problem/
+  Root Cause/Solution sections), mined automatically by the daily
+  `daily-lesson-mine.sh` cron and indexed by mycortex.
 
-  Use before attempting to debug: search lessons first to see if the fix is already known.
+  IMPORTANT: `offline_knowledge lesson create|search|index` does NOT exist —
+  the `offline_knowledge` tool has only `bible` and `hymns` subcommands.
+  Save lessons by writing the markdown file directly; search with grep or
+  mycortex search. See "How to Create a Lesson" below.
+
+  Use before attempting to debug: search lessons first to see if the fix is
+  already known.
 version: 1.0.0
 author: Hermes Cortex
 platforms: [linux, macos, windows]
@@ -33,96 +40,98 @@ Do NOT save a lesson for:
 
 ## How to Create a Lesson
 
-After fixing a bug:
+After fixing a bug, write a markdown file directly to `~/brain/lessons/`
+(the `offline_knowledge lesson` subcommand does NOT exist — do not use it):
 
 ```bash
-# Quick save with mandatory fields
-offline_knowledge lesson create \
-  --title "FastAPI 422 on Pydantic model with alias_generator" \
-  --problem "POST endpoint returning 422 on valid-looking body" \
-  --cause "missing populate_by_name=True in model_config" \
-  --solution "Add ConfigDict(populate_by_name=True)" \
-  --language python \
-  --framework fastapi \
-  --tags pydantic validation error-handling
+# Filename convention: YYYY-MM-DD_<timestamp>_<hash>.md
+LESSON="$HOME/brain/lessons/$(date +%F)_$(date +%H%M%S)_$RANDOM.md"
+```
 
-# Interactive mode (prompts for all fields)
-offline_knowledge lesson create --interactive
+```markdown
+---
+title: "FastAPI 422 on Pydantic model with alias_generator"
+created: "2026-09-08T10:00:00+00:00"
+updated: "2026-09-08T10:00:00+00:00"
+language: python
+framework: fastapi
+tags: [pydantic, validation, error-handling]
+project: ""
+success_count: 1
+source: manual
+---
+
+## Problem
+
+POST endpoint returning 422 on valid-looking body.
+
+## Root Cause
+
+Missing `populate_by_name=True` in model_config — aliases not populated by
+field name.
+
+## Solution
+
+Add `ConfigDict(populate_by_name=True)` to the model's `model_config`.
 ```
 
 ### Field Guidelines
 
 | Field | Required? | Guidance |
 |-------|-----------|----------|
-| `--title` | Yes | Descriptive title others can search for. Include error code if relevant. |
-| `--problem` | Yes | What went wrong from the user's perspective |
-| `--cause` | Yes | The root cause — not the symptom |
-| `--solution` | Yes | The fix — exactly what changed |
-| `--evidence` | No | Supporting details: stack traces, error codes, steps to reproduce |
-| `--language` | Recommended | Programming language |
-| `--framework` | Recommended | Framework / library (fastapi, react, django, etc.) |
-| `--tags` | Recommended | Categorization tags (validation, auth, database, etc.) |
-| `--project` | No | Project name |
+| `title` | Yes | Descriptive title others can grep for. Include error code if relevant. |
+| `## Problem` | Yes | What went wrong from the user's perspective |
+| `## Root Cause` | Yes | The root cause — not the symptom |
+| `## Solution` | Yes | The fix — exactly what changed |
+| `## Evidence` | Optional | Stack traces, error codes, repro steps |
+| `language` / `framework` / `tags` | Recommended | Categorization for search |
+| `success_count` | Yes | Start at 1; increment via `lesson-hit.sh` on each reuse |
 
 ## How to Search Before Debugging
 
-Before spending significant effort on a new error, search the lesson database:
+Before spending significant effort on a new error, search existing lessons:
 
 ```bash
-# Search by error message or description
-offline_knowledge lesson search "422 Validation Error"
+# Search by keyword across all lessons (grep the body, not just titles)
+grep -rli "database is locked" ~/brain/lessons/
 
-# Search with filters
-offline_knowledge lesson search "database timeout" --language python --tag postgres
+# Search titles only
+grep -rl '^title:.*422' ~/brain/lessons/
 
-# Check if the exact error has been seen before
-offline_knowledge lesson search "sqlite database is locked"
+# Read the match, then if the fix applies:
+bash ~/.hermes-cortex/scripts/lesson-hit.sh --by-id "<basename>.md"   # increments success_count
 ```
 
 ### Agent Workflow
 
 ```
 1. Receive error or bug report
-2. Run: offline_knowledge lesson search "<error message>"
-3. If match found (similarity ≥ 0.55):
+2. grep -rli "<error keyword>" ~/brain/lessons/   (or mycortex search)
+3. If a matching lesson found:
    a. Apply known fix from the lesson
-   b. Increment success_count by editing the lesson file's frontmatter
+   b. bash ~/.hermes-cortex/scripts/lesson-hit.sh --by-id "<basename>.md"
 4. If no match:
    a. Debug and fix as normal
-   b. After fix is verified, create a lesson
-   c. Run: offline_knowledge lesson index (to make it searchable)
+   b. After fix is verified, write a lesson file per the template above
+   c. mycortex re-indexes automatically (~2 min)
 ```
-
-## Index Management
-
-After creating lessons, rebuild the embedding index so new lessons are searchable:
-
-```bash
-# After every batch of new lessons
-offline_knowledge lesson index
-```
-
-The index is also automatically rebuilt by mycortex's sync daemon within 2 minutes,
-but for immediate searchability after creating lessons in the same session, run index manually.
 
 ## Example — Full Session
 
-```bash
+```text
 # Agent encounters error
 ❌ sqlite3.OperationalError: database is locked
 
 # Step 1: Search lessons
-offline_knowledge lesson search "sqlite database locked"
-
-# Match found: "SQLite WAL checkpoint timeout during concurrent writes"
-# Similarity: 0.72
+grep -rli "database is locked" ~/brain/lessons/
+# Match found: "SQLite WAL checkpoint timeout during concurrent writes" (success_count: 1)
 # Solution: set timeout=5000 on connection, use WAL mode
 
 # Step 2: Apply fix
-# ... (fix applied)
+# ... (fix applied and verified)
 
-# Step 3: Increment success count
-# Edit the lesson file's frontmatter: success_count: 2 (was 1)
+# Step 3: Increment success count (proves the lesson was useful)
+bash ~/.hermes-cortex/scripts/lesson-hit.sh --by-id "2026-07-22_20260713-102221-e19f923c.md"
 ```
 
 ## Auto-Save Hook (Recommended)
@@ -130,7 +139,7 @@ offline_knowledge lesson search "sqlite database locked"
 Add to your session workflow: after every bug fix, ask:
 - "Was this non-trivial?"
 - "Would I want to remember this?"
-- If yes → `offline_knowledge lesson create ...`
+- If yes → write a lesson file per the template above (and run the daily miner keeps compounding automatically)
 
 This builds the database passively with normal work.
 

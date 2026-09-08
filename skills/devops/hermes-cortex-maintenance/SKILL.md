@@ -19,7 +19,7 @@ description: >-
 
 - Hermes Cortex installed at `~/hermes-cortex/`
 - Bun at `~/.bun/bin/bun`
-- mycortex at `~/.bun/bin/mycortex`
+- mycortex at `~/.hermes-cortex/scripts/mycortex`
 - Ollama running as a systemd user service (or equivalent)
 
 ## Daily Auto-Update Timer (3am)
@@ -30,10 +30,8 @@ standalone maintenance cron jobs.
 ### Install the timer
 
 ```bash
-# Copy the systemd user unit + timer
-cp ~/hermes-cortex/ops/install/hermes-cortex-update.{service,timer} ~/.config/systemd/user/
-systemctl --user daemon-reload
-systemctl --user enable --now hermes-cortex-update.timer
+# Install via cortex update cron script
+bash ~/hermes-cortex/ops/scripts/install/install-cortex-update-cron.sh
 ```
 
 Verify it's scheduled:
@@ -92,8 +90,8 @@ tar xzf "$BACKUP_DIR/brain-<date>.tgz" -C ~
 ## mycortex Import
 
 ```bash
-# Import brain pages into mycortex
-cd ~/brain && mycortex import --recursive . 2>&1 | tail -5
+# Sync brain pages into mycortex
+cd ~/brain && mycortex sync --dir . 2>&1 | tail -5
 # Verify
 mycortex search "test query" | head
 ```

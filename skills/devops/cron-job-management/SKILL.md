@@ -18,23 +18,6 @@ Every cron name starts with a **group prefix** that determines install scope, do
 | `agent-` | All agents with Hermes Agent. Remediation, monitoring, memory, knowledge, governance, scoring. | `install-crons.sh` (in `ops/scripts/`) | `parse_expected_crons()` reads uninstall array from `install-crons.sh` |
 | `local-` | This server only. Personal briefings, machine-specific maintenance. NOT in repo install scripts. | Created manually via `cronjob action='create' name='local-<name>'` | Silently excluded by doctor. Orphan crons show: rename to `local-<name>` to opt out. |
 
-**Combining:** `local-agent-*` when a cron is both concept-level AND this-server-only. The `local-` prefix always comes first.
-
-**Rules:**
-- **Every cron in the repo MUST have a prefix** (`orch-` or `agent-`). Bare names like `system-alert-watchdog` or `remediation-sensor` are forbidden — they break doctor validation and create ambiguity about install scope. See the "Critical: uninstall array = doctor truth source" section below.
-- Names are descriptive and human-readable — no abbreviations or cryptic codes.
-- When renaming: `cronjob action='update' job_id=<id> name=<new-name>` — but read the full rename workflow below first.
-- **Do not batch-rename more than 3-4 crons without confirming with the user first.** Large batch renames (10+) are disruptive — the user may undo them entirely. Prefer step-by-step or ask.
-## Naming convention — definitive
-
-Every cron name starts with a **group prefix** that determines install scope, doctor validation, and update workflow:
-
-| Prefix | Scope | Who installs | Doctor validation |
-|--------|-------|-------------|-------------------|
-| `orch-` | Orchestrator-only (Moses, Esther). Bus infra, fleet watchdogs, health reports to Luke. | `install-orch-crons.sh` (in `ops/scripts/install/`) | `parse_orch_crons()` reads uninstall array from `install-orch-crons.sh` |
-| `agent-` | All agents with Hermes Agent. Remediation, monitoring, memory, knowledge, governance, scoring. | `install-crons.sh` (in `ops/scripts/`) | `parse_expected_crons()` reads uninstall array from `install-crons.sh` |
-| `local-` | This server only. Personal briefings, machine-specific maintenance. NOT in repo install scripts. | Created manually via `cronjob action='create' name='local-<name>'` | Silently excluded by doctor. Orphan crons show: rename to `local-<name>` to opt out. |
-
 ### Combining and nesting
 
 - `local-agent-*` — a cron that is both machine-specific AND concept-level. The `local-` prefix always comes first.
@@ -64,16 +47,16 @@ Prefix-less names break doctor validation because the doctor reads the uninstall
 `cortex-doctor.py` reads expected cron names from the **uninstall arrays** in `install-crons.sh` and `install-orch-crons.sh`. The doctor does NOT read the create sections. This means:
 
 ```
-install-crons.sh         cortex-doctor.py
-┌──────────────┐         ┌──────────────────┐
-│ create_cron  │         │         │
-│  "agent-fx" │ ──(ignored)──►│ parse_expected │
-│        │         │         │
-│ for job in  │         │ reads this   │
-│  "agent-fx" │ ──(source)───►│ → expected list │
-│  "agent-mem" │         │         │
-│ ...; do    │         └──────────────────┘
-└──────────────┘
+install-crons.sh                     cortex-doctor.py
+┌─────────────────────┐              ┌──────────────────┐
+│ create_cron         │              │                  │
+│  "agent-fx"        │ ──(ignored)──► │                  │
+│                     │              │  parse_expected  │
+│ for job in          │              │  reads this:     │
+│  "agent-fx"        │ ──(source)───► │  → expected list │
+│  "agent-mem"       │              │                  │
+│ ...; do             │              └──────────────────┘
+└─────────────────────┘
 ```
 
 **Every cron in a `create_cron` block MUST be in the corresponding uninstall array, with the exact same name.** If they drift:
@@ -142,7 +125,7 @@ For self-contained pull + install / check + alert jobs that should be silent on 
   - `set -euo pipefail` (bash) or proper error handling (Python)
   - Capture command output and exit code
   - On failure: echo error details, exit 1
-  - On clean success (up to date or updated OK): exit 0 with NO stdout
+  - On clean success (up to date or updated OK): exit 0 with NO stdout — even a harmless line like `Already up to date.` is delivered as an alert, so detect and suppress it
 2. `chmod +x ~/.hermes/scripts/<name>` + syntax check (`bash -n` or `python3 -m py_compile`)
 3. Schedule with `cronjob`:
   - `no_agent=True`
@@ -161,9 +144,7 @@ when the signature changes. See `references/state-transition-watchdog.md`.
 cadences at different times of day, split into multiple time-bounded jobs
 instead of a single compromise schedule. See `references/tiered-schedule-pattern.md`.
 
-**Real examples on this server:**
-- `~/.hermes/scripts/hermes-update` — `hermes update --yes`, silent on success
-- `~/.hermes/scripts/hermes-cortex-sync` — `git pull` on hermes-cortex, runs install-crons.py + setup.sh if changes detected
+See `references/silent-when-healthy-pattern.md` for the silent-on-success protocol.
 
 ## LLM-cron stagger — fleet-wide model load (Luke directive 2026-08-07)
 
@@ -296,24 +277,13 @@ When explicitly directed to add a cron to another Hermes profile (e.g. Esther):
 
 ## Pitfalls
 
-- **LLM crons with `workdir` are exclusive TERMINAL_CWD writers — adjacent-scheduled workdir-less crons starve (2026-08-10, #79768).** A cron with `workdir=HOME` holds the TERMINAL_CWD write lock for its whole LLM run; a neighboring cron without a workdir (a reader) blocked behind it times out after 660s. `agent-fixer-workday` (:49, writer) starved `cortex-bus-workday` (:50, reader) hourly until the workdirs were dropped from all LLM crons. **Rule: LLM crons (`no_agent != true`) get NO workdir** — a reader's terminal cwd defaults to HOME anyway, so the workdir is behavior-neutral while eliminating lock contention (zero writers = zero blocking). Fixed fleet-wide in `install-crons.sh` / `install-orch-crons.sh` / `cron-manifest.yaml` (commits 1fb1e9f9, e92118ee) — do not re-add `--workdir` when creating or editing an LLM cron. `no_agent` scripts with real file requirements may still set an absolute workdir.
+- **LLM crons with `workdir` are exclusive TERMINAL_CWD writers (#79768).** A cron with `workdir=HOME` holds the TERMINAL_CWD write lock for its whole LLM run; a neighboring cron without a workdir (a reader) blocked behind it times out after 660s. `agent-fixer-workday` (:49, writer) starved `cortex-bus-workday` (:50, reader) hourly until the workdirs were dropped from all LLM crons. **Rule: LLM crons (`no_agent != true`) get NO workdir** — a reader's terminal cwd defaults to HOME anyway, so the workdir is behavior-neutral while eliminating lock contention (zero writers = zero blocking). Fixed fleet-wide in `install-crons.sh` / `install-orch-crons.sh` / `cron-manifest.yaml` (commits 1fb1e9f9, e92118ee) — do not re-add `--workdir` when creating or editing an LLM cron. `no_agent` scripts with real file requirements may still set an absolute workdir.
 
 - **Cron/scheduled environments may lack the `cronjob` MCP tool — use the CLI fallback (2026-08-05).** In a cron-driven session (e.g. `agent-auto-remediate`), `tool_search('cronjob')` can return nothing while `hermes cron list` works fine. Fallback pattern: `hermes cron list > /tmp/cronlist.txt` then `grep 'Last run' /tmp/cronlist.txt | grep -v 'ok$'` to find errored jobs, and `grep -B8 'agent-fixer' /tmp/cronlist.txt` to inspect one job. **Interpretation:** `Execution: running` on an LLM cron (agent-fixer-*) just means its current run is live (that's the very job you may be executing as) — NOT a failure; check `Last run: ... ok` for status. Also note `grep -A6` truncates at 100 lines — dump to a file and grep the file for full coverage of 60+ job lists.
 - **Source prompt edits do NOT propagate to existing cron jobs (2026-08-04).** `create_cron` skips jobs that already exist, so changing a prompt in `install-crons.sh` / `install-orch-crons.sh` never touches the running job — its prompt stays stale until updated via `cronjob action='update' job_id=<id> prompt=...` (CLI on older builds: `hermes cron edit <id> --prompt ...`). The fleet-wide `inbox_moses` → `inbox_orchestrator` rename shipped with live `orch-skill-lifecycle` + `agent-learning-collector` prompts still naming the old queue; the doctor now WARNs on stale bus-target tokens in live prompts (`Cron prompt stale refs` check), but the rule is: **after any rename/policy change, grep the LIVE prompts in `~/.hermes/cron/jobs.json` (and peer hosts via ssh) for the old term — not just the repo install scripts — and update each hit via the cronjob tool.**
 - **Manual `cronjob action='run'` sessions are tool-restricted BY DESIGN — not a regression (2026-08-18).** A manually-triggered run (`cronjob action='run' job_id=<id>`) executes as a delegation-style session with only the 17 core tools — **no governance MCP tools** (`begin_change`/`end_change` unreachable), so the enforcer fail-closes every write path and the run can't make changes. Scheduled ticks, by contrast, get the full toolset (proven: scheduled ticks scored governance cycles #5108/#5109 the same morning). Diagnosis rule: if a manual run reports "governance tools unavailable / write blocked", that is the design working, NOT a toolset regression — verify with the next scheduled tick before declaring an MCP outage. (Real case 2026-08-18: manual `orch-backlog-driver` run deadlocked on governance while scheduled ticks were healthy; the cron agent correctly rejected all bypasses and left the repo untouched.)
 - **Live schedule edits via the cronjob MCP tool get reverted by the next cortex-update reinstall — patch the installer `create_cron` block (repo) for durable changes (2026-08-18).** The installer's drift-edit path rewrites schedules from the `create_cron` blocks, so a `cronjob action='update'` schedule change survives only until the next `cortex-update.sh` reinstall. Real case (2026-08-18): off-peak schedule moves (agent-fixer-evening, cortex-bus-evening, judge-scorer-weekday) applied live via the MCP tool were reverted by a reinstall; the repo change was the durable fix and live values had to be re-applied afterward. **Rule: for schedule changes, patch the `create_cron` block in `install-crons.sh` / `install-orch-crons.sh` first (durable), then re-apply live if the next install isn't imminent.**
 - **Build `cron-manifest.yaml` schedules installer-first, live-second (2026-08-17).** When the source (installer `create_cron` block) changes but the live job never converged (cortex-update/installer not re-run), the live job's schedule is STALE — so building the manifest from live (`jobs.json`) bakes in the drift. Real case (2026-08-10): installer had `0 3` base → `37 3` live on moses, but a peer's manifest entry was written from the still-stale live `0 23`, re-encoding the drift into the source of truth. **Rule: the manifest's schedule column always comes from the installer base, never from the live job.** The per-host minute rewrite (`cksum(hostname:cron-name) % 60`, Luke directive 2026-08-07) means live minutes legitimately differ from base — that is NOT drift; a manifest entry that copies a live minute will fight the per-host rewrite on every host. Verify with `python3 ops/scripts/manage/cron_manifest.py --check`.
-- **`process_registry.py` OOMPolicy=kill on `--user --scope` units (upstream bug, 2026-09-04).** `tools/process_registry.py` (~/.hermes/hermes-agent/tools/process_registry.py) passes `--property OOMPolicy=kill` in its systemd scope-creation args (lines ~238 and ~320). This is a **valid property for service/scope units but INVALID for `--user` scope units** — `systemd-run --user --scope` rejects it silently, so `_systemd_run_user_scope_available()` always returns False and ALL cron dispatch falls back to the subprocess path (no process tracking, no OOM kill, no cgroup isolation). **Symptom:** every cron job on a systemd gateway host runs without scope tracking; `process_registry` shows zero managed processes. **Fix:** delete those two `--property OOMPolicy=kill` entries from the scope-args dicts. The fix needs a gateway reload to take effect. Patched locally pending upstream PR — do NOT reduce governance to work around it (the scope path is the fix, governance bypass is not).
-  Every job pinned to `opencode-free` / `deepseek-v4-flash-free` failed with
-  `HTTP 400: Model is unavailable` from `opencode.ai/zen/v1` (~Sep 1). All 14
-  manifest pins were migrated to `deepseek`/`deepseek-v4-flash` (commit
-  8e08c79d). Live jobs were re-pinned via `hermes cron edit <id> --provider
-  deepseek --model deepseek-v4-flash`; unpinned jobs got the same pin (they
-  were drift-skipping: global config moved opencode-zen → deepseek). Check
-  `grep -c opencode-free ops/install/cron-manifest.yaml` is 0 before shipping
-  any pin. The doctor's `Cron manifest drift` check flags live-vs-manifest
-  pin mismatches — after any provider migration, patch the manifest AND the
-  live jobs in the same cycle.
 - **Unpinned crons snapshot the provider at creation — a later provider swap makes them SKIP with a loud "pin explicitly" error (2026-08-15).** When a cron is created without an explicit provider/model (unpinned), the scheduler snapshots the then-active provider into the job. When the fleet later migrates providers (e.g. opencode-zen → openrouter), an unpinned job's snapshot no longer resolves, so the scheduler SKIPS the run and delivers a loud error telling the user to pin explicitly — it does NOT silently run on the new provider. **Rule: pin provider+model explicitly at creation** (`cronjob action='create' ... provider=... model=...` or `pin_cron_model` after edit) so provider migration never skips a run. Diagnosis: the loud "pin explicitly" error in a cron delivery is the drift guard working as designed, not a transient failure — pin the job and re-run.
 - **Orphan cron with wrong prefix duplicates a working cron (2026-08-02).** `orch-mycortex-sync` failed every tick with "Script not found: ~/.hermes-cortex/scripts/orch-mycortex-sync.sh" — the script never existed, the name had the wrong prefix (`orch-` on a per-host job), and a correct `agent-mycortex-sync` (same script, right prefix, status ok) was already running. The doctor did NOT flag it because the broken name was absent from every installer's uninstall array (not an "expected" cron). **Diagnosis:** on "Script not found", first grep jobs.json for sibling names under other prefixes (`python3 -c "import json; [print(j['name']) for j in json.load(open('$HOME/.hermes/cron/jobs.json')) if 'KEYWORD' in j['name']]"`) BEFORE creating anything — if a correctly-named twin exists, the fix is `cronjob action='remove'` on the orphan, NOT a new script. Prefix is a scope declaration: `orch-` = orchestrator-only (Moses/Esther infra), `agent-` = per-host fleet-wide. A per-host sync job (e.g. mycortex brain sync — design D4, explicitly "NOT orchestrator-only") is `agent-` by definition; only bus infra and fleet watchdogs are `orch-`. Running `python3 ~/.hermes-cortex/scripts/<script>` tests the script logic but does NOT update the cron scheduler's `last_status`. The doctor reads the scheduler's recorded status, not the script exit code. After fixing a cron, ALWAYS run `cronjob action='run' job_id=<id>` to refresh the scheduler's status, then run the doctor to confirm it clears. The user will see what the doctor shows — never claim a cron is "fixed" until the doctor confirms it.
 - **Never guess job IDs.** Always `cronjob action='list'` first before update/remove.
@@ -326,8 +296,6 @@ When explicitly directed to add a cron to another Hermes profile (e.g. Esther):
 - **Delivery matters for cron jobs.** `deliver='local'` logs only. `deliver='origin'` delivers to the creating session (which may not exist at cron time). For unattended crons that should notify on error, set deliver to a live channel (e.g. `telegram:chat_id`).
 - **Respect Esther's crons.** The Esther profile at `~/.hermes/profiles/esther/` has its own cron namespace. Never create, rename, or remove crons there unless explicitly directed.
 - **shellcheck scripts.** Run `bash -n` after writing any bash script. A syntax error in a no_agent script means it silently fails forever.
-- **Prefer crons.json over ad-hoc creation.** For anything permanent, use the template + installer pattern. Manual `hermes cron create` is for testing only.
-- **Orchestrator-only crons.** If a cron should only run on the orchestrator (Moses), set `orchestrator_only: true` in crons.json. The installer will skip it on non-orchestrator machines.
 - **Ask before bulk operations.** Renaming 10+ crons at once without confirmation will likely get undone. Batch at most 3-4 in a turn, or step through each group with user sign-off between batches. The user may reject the whole convention after seeing it applied — confirm early.
 - **Undo is cheaper to prevent than to revert.** A batch of 22 renames takes 3-4 turns to undo because the cronjob tool has no rollback. Check with the user before applying a convention change to the entire cron table.
 - **Doctor truth source = uninstall array.** `cortex-doctor.py` reads expected cron names from the uninstall arrays in `install-crons.sh` and `install-orch-crons.sh`. If a cron name in the `create_cron` block doesn't match the uninstall array — or is missing from it entirely — the doctor reports false failures. Every rename MUST update BOTH the create block and the uninstall array. Run `cortex-doctor.py --quiet` after any rename to verify sync. See the "Critical: uninstall array = doctor truth source" section under Naming Convention above for the function-level detail.

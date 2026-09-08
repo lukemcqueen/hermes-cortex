@@ -2,7 +2,7 @@
 name: offline-code
 version: 1.0.0
 category: devops
-description: "Offline code snippet search + generation using local Ollama models. Search a 520-snippet corpus across 30+ topics and 25 languages with nomic-embed-text:v1.5, generate code with auto-detected qwen2.5 (3b on 4-8GB, 7b on 8-24GB, 14b on 24GB+). No internet needed."
+description: "Offline code snippet search + generation using local Ollama models. Search a curated corpus (run `offline_code stats` for the live count) across 30+ topics and 25 languages with nomic-embed-text:v1.5, generate code with auto-detected qwen2.5 (3b on 4-8GB, 7b on 8-24GB, 14b on 24GB+). No internet needed."
 author: Hermes Cortex
 license: MIT
 metadata:
@@ -65,6 +65,15 @@ offline_code gen "terraform aws vpc with subnets"
 
 The generator: (1) finds top-3 matching snippets via search, (2) injects them as context, (3) sends everything to qwen2.5:3b for generation. Result: small model + good context ≈ much larger model's quality.
 
+### Agent-friendly JSON check (for scripting)
+
+```bash
+offline_code check "flask rest api"            # JSON: hit/miss verdict, no prose
+offline_code search --learn-on-miss "flask"    # on miss, output a learnable template
+```
+
+`check` is the right tool for cron/agent gating (parse JSON, branch on hit/miss). `search` supports `--limit N` and `--lang <language>` filters.
+
 ### Index management
 
 ```bash
@@ -100,8 +109,7 @@ Without explicit `--code`, you can pipe via stdin: `echo "code" | offline_code l
 ```
 
 Skipping the offline check and going straight to `web_search()` is a
-**quality gate failure** — it wastes API credits on questions the 518-snippet
-corpus can answer for free.
+**quality gate failure** — it wastes API credits on questions the corpus can answer for free.
 
 This saves API costs, works offline, and is faster than web search.
 
@@ -121,15 +129,17 @@ offline_code gen "binary search tree" --model qwen2.5:7b
 offline_code gen "api endpoint" --model qwen2.5:3b
 ```
 
-The corpus lives at `~/hermes-cortex/ops/offline/code-corpus/` with 366 snippets across 25 languages. Index stored at `~/offline/code-index.json`.
+The corpus lives at `~/hermes-cortex/ops/offline/code-corpus/` (per-language snippet modules in `code-corpus/snippets/`; regenerate `.md` files with `python3 ops/offline/code-corpus/generate.py` after editing modules). Index stored at `~/offline/code-index.json`. Run `offline_code stats` for the current snippet count — the corpus grows via `learn`, so never hardcode a count in scripts.
 
 ## Troubleshooting
 
 | Symptom | Fix |
 |---|---|
-| `offline_code: command not found` | `ln -sf ~/hermes-cortex/ops/offline/offline_code.sh ~/.hermes/bin/offline_code` |
+| `offline_code: command not found` | `ln -sf ~/hermes-cortex/ops/offline/offline_code.sh ~/.hermes/bin/offline_code` (and ensure `~/.hermes/bin` is on PATH) |
 | `nomic-embed-text:v1.5 not found` | `ollama pull nomic-embed-text:v1.5` |
 | `qwen2.5 not found` | `ollama pull qwen2.5:3b` (minimum, auto-detects higher) |
 | `Index is current` on `--force` | Use `--force` flag to rebuild |
 | Corpus empty / no snippets | Run `offline_code index --force` to build from scratch |
 | Slow search | First run indexes all snippets — subsequent runs use cached index |
+| `connection refused` / urllib error on gen | Ollama not running — start it (`ollama serve` or the system service), then retry |
+| `learn` says nothing saved | Provide `--code` or pipe code via stdin: `echo "..." | offline_code learn "Title" --lang python` |

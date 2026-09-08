@@ -74,9 +74,13 @@ current code against ALL stored good patterns, not just the immediate previous c
 
 **Build/re-build the cache:**
 ```bash
-session-cache build   # scans sessions, loop DB, skills → embeds → stores
-session-cache status  # show cache stats
-session-cache search  # interactive similarity search
+```bash
+session-cache-build build    # scans sessions, loop DB, skills → embeds → stores
+session-cache-build search   # similarity search
+session-cache-build --help   # list all subcommands (there is no `status` subcommand)
+```
+
+Note: the CLI is `session-cache-build` (hyphenated, one word, symlinked into `~/.local/bin/`). `session-cache build` (two words) is NOT a valid command.
 ```
 
 **Cache integration:** `loop_scorer._cache_boost()` checks the cache during every
@@ -90,11 +94,13 @@ similarity (>0.75), +1 boost. This means scoring improves as the cache grows.
 
 ### Installation & invocation
 
-The scorer module lives at `scripts/loop_scorer.py` in this skill directory (underscore so Python can import it directly). Run a demo from any directory:
+The scorer module lives at `loop_scorer.py` in the installed tool directory `~/.hermes-cortex/tools/loop-governance/` (underscore so Python can import it directly). Run a demo from any directory:
 
 ```bash
-python3 ~/.hermes/skills/devops/loop-governance/scripts/loop_scorer.py
+python3 ~/.hermes-cortex/tools/loop-governance/loop_scorer.py
 ```
+
+> Do NOT use `~/.hermes/skills/devops/loop-governance/scripts/...` — the installed skill directory contains only SKILL.md + references; the Python modules live in `~/.hermes-cortex/tools/loop-governance/`.
 
 Import the functions directly:
 
@@ -267,7 +273,7 @@ SCORE_TASK_ID=my-feature \
 SCORE_CYCLE_NUM=1 \
 SCORE_SPEC="Add two numbers" \
 SCORE_OUTPUT="def add(a,b): return a+b" \
-python3 loop_scorer.py --score
+python3 ~/.hermes-cortex/tools/loop-governance/loop_scorer.py --score
 ```
 
 Output includes `logged: true` on success.
@@ -453,10 +459,12 @@ Thresholds and weights live in `~/.hermes-cortex/data/loop-governance-config.jso
 
 ```bash
 # View current config
-python3 ~/.hermes/skills/.../scripts/loop_config.py --show
+loop-config --show
+# or directly:
+python3 ~/.hermes-cortex/tools/loop-governance/loop_config.py --show
 
 # Set a value manually
-python3 ~/.hermes/skills/.../scripts/loop_config.py --set weights.completeness 0.45
+loop-config --set weights.completeness 0.45
 ```
 
 See `references/config-format.md` for the full config schema, field descriptions, and rollback procedure.
@@ -468,19 +476,19 @@ All loop-governance crons managed via `crons.json` (versioned) + `install-crons.
 | Cron | Schedule | Mode | Behaviour |
 |------|----------|------|-----------|
 | `agent-session-cache-build` | Mon 5am KST | no_agent | Rebuilds embedding cache from sessions, DB, skills |
-| `local-agent-weekly-loop-eval` | Mon 9am KST | LLM-driven | Per-host weekly loop evaluation (fleet-level eval absorbed into `orch-skill-lifecycle` 2026-08-02) |
+| `local-weekly-loop-eval` | Weekly | LLM-driven | Per-host weekly loop evaluation (fleet-level eval absorbed into `orch-skill-lifecycle` 2026-08-02) |
 
 **Versioning:** Bump the `version` field in `crons.json` to trigger agent updates.
 The `install-crons.py` script reads the template, removes stale crons (by name),
 and creates fresh ones idempotently with the correct argument order (prompt must
 come BEFORE --flags in `hermes cron create`). Called automatically by `setup.sh`.
 
-**New project setup:** The `agent-session-cache-build` and `local-agent-weekly-loop-eval` crons run only on machines
+**New project setup:** The `agent-session-cache-build` and `local-weekly-loop-eval` crons run only on machines
 with the loop-governance toolchain installed. Health monitoring (Ollama, DB, nomic
 model, cycle count) runs inside `system-alert.py` every 10 minutes — no separate
 health cron needed.
 
-Verify: `hermes cron list | grep -E '(loop|weekly|session-cache)'`
+Verify: `hermes cron list | grep -E '(loop|weekly|session-cache)'` — expect `agent-session-cache-build` and `local-weekly-loop-eval` (the eval cron is named `local-weekly-loop-eval`, NOT `local-agent-weekly-loop-eval`; old docs use that name).
 
 ### Content sanitization
 
@@ -509,8 +517,8 @@ A weekly analysis pipeline (`loop_evaluator.py`) reads the loop governance DB an
 ### How to run manually
 
 ```bash
-# Full report
-python3 ~/.hermes/skills/devops/loop-governance/scripts/loop_evaluator.py
+# Full report (module lives in the installed tool dir, not the skill dir)
+python3 ~/.hermes-cortex/tools/loop-governance/loop_evaluator.py
 
 # JSON output (for programmatic consumption)
 python3 loop_evaluator.py --json
@@ -524,7 +532,7 @@ python3 loop_evaluator.py --days 30
 
 ### Cron schedule
 
-A weekly evaluation runs every **Monday at 9:00 AM KST** via the `local-agent-weekly-loop-eval` cron job. It delivers the report automatically to the chat that created it.
+A weekly evaluation runs via the `local-weekly-loop-eval` cron job. It delivers the report automatically to the chat that created it.
 
 ### Config patch
 
@@ -743,15 +751,11 @@ Every loop-governance module must have corresponding tests in `scripts/tests/`:
 
 Run with:
 ```bash
-cd src/loop-governance
+cd ~/hermes-cortex/src/loop-governance
 python3 -m pytest tests/ -v
 ```
 
-**Current status:** 68 tests across 7 test files — all pass. Run with:
-```bash
-cd src/loop-governance
-python3 -m pytest tests/ -v
-```
+**Current status:** 68 tests across 7 test files — all pass.
 
 ## Auto-Recovery Integration
 
@@ -856,7 +860,7 @@ The 137M parameter embedding model is adequate for semantic similarity at ~50ms 
 
 The fleet has one orchestrator (Moses) and several agent machines (Titus, Gisu, Joseph,
 Kustos). Only the orchestrator runs cross-agent tasks. Regular agents run local-only tasks
-(agent-session-cache-build, local-agent-weekly-loop-eval).
+(agent-session-cache-build, local-weekly-loop-eval).
 
 **Agent registry:** `~/hermes-cortex/ops/services/agent-registry.json` defines each agent's role,
 hostname, whether it's server-reachable (`accessible`), and whether it's the orchestrator

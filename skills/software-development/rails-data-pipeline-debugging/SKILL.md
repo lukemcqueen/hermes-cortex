@@ -137,12 +137,30 @@ end
 ### C. Fix the data, not just the code
 
 The heuristic already corrupted stored rows. After fixing the code, run a
-data repair migration:
+data repair migration — **with a backup, a dry-run count, and a rollback**:
+
+```bash
+# 1. BACKUP FIRST — a wrong repair is worse than the bug
+pg_dump -t titles <database> > titles_backup_$(date +%F).sql
+```
 
 ```ruby
-Title.where("translation IN (?)", %w[INST LIVE MR MIX VER REMIX]).find_each do |t|
-  t.update!(title: "#{t.main} (#{t.translation})", translation: nil)
+# 2. DRY RUN — verify the damage signature count before touching anything
+scope = Title.where("translation IN (?)", %w[INST LIVE MR MIX VER REMIX])
+puts "rows to repair: #{scope.count}"   # compare against pre-fix expectation
+
+# 3. REPAIR inside a transaction so it's all-or-nothing
+ActiveRecord::Base.transaction do
+  scope.find_each do |t|
+    t.update!(title: "#{t.main} (#{t.translation})", translation: nil)
+  end
 end
+```
+
+```ruby
+# 4. ROLLBACK — restore from the backup if counts look wrong
+# execute: psql <database> < titles_backup_YYYY-MM-DD.sql
+# then re-run the dry-run count to confirm the original state
 ```
 
 **Always back up first, and verify counts before/after.**

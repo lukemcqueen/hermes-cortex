@@ -92,8 +92,9 @@ When you update or add a frontend API function (tRPC, fetch, React Query hook), 
 
 Do not run only the pre-existing test suite. If the test file doesn't exist yet, create it.
 
-```
+## Workflow Loop
 
+```
 baseline → inspect → change → test → fix → retry → fallback (once) → verify → report
 ```
 

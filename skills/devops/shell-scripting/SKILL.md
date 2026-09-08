@@ -602,46 +602,6 @@ for cmd in timeout gtimeout; do
 done
 ```
 
-### Coupled installations — one function installing multiple independent artifacts
-
-When a function installs two independent artifacts (e.g., pre-commit hook AND pre-push hook), BOTH must be installed regardless of whether artifact A was newly installed or already current. An early return for "A already current" that silently skips B's installation is a bug.
-
-```bash
-# ❌ BAD: install_push_hook only called on NEW installs
-install_hook() {
-  if already_current; then
-    SKIPPED=$((SKIPPED + 1))
-    return                     # ← silently skips push hook!
-  fi
-  cp "$SOURCE" "$DEST"
-  install_push_hook "$repo"    # ← only reached on new installs
-}
-
-# ✅ GOOD: each function owns one artifact, caller orchestrates both
-install_hook() {
-  if already_current; then
-    SKIPPED=$((SKIPPED + 1))
-    return
-  fi
-  cp "$SOURCE" "$DEST"
-}
-install_push_hook() {
-  if already_current; then
-    return
-  fi
-  cp "$SOURCE" "$DEST"
-}
-# Caller always calls both independently:
-install_hook "$repo"
-install_push_hook "$repo"
-```
-
-**The symptom:** Script outputs "Installed hook: ..." or "Already current" for pre-commit, but pre-push is never written. Silent — no error, no warning.
-
-**How to detect in review:** Look for any function that (a) calls another install function, (b) has an early return path, and (c) the called function is NOT invoked before that return. If `install_thing_A` calls `install_thing_B`, but `return` on line N can skip the call on line N+M, it's a latent bug.
-
-**Fix pattern:** Make each install function self-contained with its own skip-if-current logic. The caller (or a dispatch loop) calls each function independently. `install_push_hook` handles its own "already current" check — the caller never decides whether to call it.
-
 ### `sudo -n true` — always check for passwordless sudo before using sudo in scripts
 
 When a script needs `sudo` for system-level operations (config file writes, service reloads), check that sudo works without a password FIRST. `command -v sudo` only checks that the binary exists, not that it's usable non-interactively.
@@ -780,11 +740,9 @@ Before shipping changes to installer scripts (`install-crons.sh`, `setup.sh`, et
 | Pitfall | Symptom | Fix |
 |---------|---------|------|
 | **Fence counting: `grep -c '^```'` vs strip-based count** | Strip-based counting (`line.strip().startswith("```")`) includes INDENTED fences (inside code blocks) → phantom imbalance; a file that reads 1080 by strip-count is 885 line-starting and BALANCED. Appending an EOF closer to a file already even/paired by the line-starting rule flips it to UNBALANCED (the appended fence becomes a NEW orphan opener — llms-full.md 884→885 on 2026-08-02). | Count with `grep -c '^```'` or python `line.startswith("```")` — NEVER `strip().startswith()`. Verify with sequential pairing (open/close stack), not just parity. Only append a closer when the file's LAST line-starting fence is genuinely unclosed. |
-|---------|---------|------|
 | `declare -A` (associative arrays) on macOS | `declare: -A: invalid option` on macOS (ships bash 3.2, needs 4+) | Use parallel indexed arrays: `ARR_KEYS=() ARR_VALS=()` + numeric-index loop. Or use a Python script for complex maps. |
-|---------|---------|------|
 | `set -e` + `((var++))` | Script exits silently mid-function when counter is 0 | Use `var=$((var + 1))` or `: $((var++))` |
-| `\\$` in double-quoted strings | Literal string `$HOME` passed instead of expanded path | Remove `\\` before `$`: `"$HOME"` not `"\\$HOME"` |
+| `\$` in double-quoted strings | Literal string `$HOME` passed instead of expanded path | Remove `\` before `$`: `"$HOME"` not `"\$HOME"` |
 | Bare `if` in mawk | `awk: line 2: syntax error at or near if` on Ubuntu | Wrap awk body in `{ }` |
 | Missing `timeout` on macOS | `command not found: timeout` | Fall back to `gtimeout`, then no timeout |
 | `grep -P` on macOS | `grep: invalid option -- P` | macOS grep doesn't support Perl regex; use `grep -E` or install `ggrep` |

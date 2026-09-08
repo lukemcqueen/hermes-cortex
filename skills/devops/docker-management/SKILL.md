@@ -28,9 +28,11 @@ Manage Docker containers, images, volumes, networks, and Compose stacks using st
 
 ## Prerequisites
 
-- Docker Engine installed and running
-- User added to the `docker` group (or use `sudo`)
+- Docker Engine installed and running (`docker info` exits 0)
+- User added to the `docker` group (or prefix commands with `sudo`)
 - Docker Compose v2 (included with modern Docker installations)
+
+If `docker` is not installed: `curl -fsSL https://get.docker.com | sh` (Linux) or install Docker Desktop (macOS/Windows). If `permission denied ... /var/run/docker.sock`: run `sudo usermod -aG docker $USER`, log out/in, then re-run `docker info`.
 
 Quick check:
 
@@ -253,6 +255,9 @@ docker system prune -a --volumes       # EVERYTHING — named volumes too
 | "no space left on device" | Docker disk full | `docker system df` then targeted prune |
 | Can't connect to container | App binds to 127.0.0.1 inside container | App must bind to `0.0.0.0`, check `-p` mapping |
 | Permission denied on volume | UID/GID mismatch host vs container | Use `--user $(id -u):$(id -g)` or fix permissions |
+| "permission denied ... /var/run/docker.sock" | User not in docker group (or daemon down) | `sudo usermod -aG docker $USER` then re-login; check `systemctl status docker` if daemon is down |
+| Compose env var empty / not applied after edit | `docker compose restart` does NOT re-read env | Recreate instead: `docker compose up -d --force-recreate <service>` |
+| Container OOM-killed / exits 137 | Memory limit hit | `docker inspect NAME --format '{{.State.OOMKilled}}'`; raise `--memory` or fix the leak |
 | Container can't write to /exports or shared dir | Non-root user lacks write permission | Create dir + `chmod 777` in Dockerfile BEFORE `USER` switch — entrypoint runs as non-root and can't chmod |
 | Compose services can't reach each other | Wrong network or service name | Services use service name as hostname, check `docker compose config` |
 | Compose fails with "invalid interpolation format" | `***` used to mask credentials in compose.yml | Never mask secrets with `***` in docker-compose.yml — it breaks variable substitution. Use `.env` file or Docker secrets instead |
@@ -269,6 +274,13 @@ After any Docker operation, verify the result:
 - **Image built?** → `docker images | grep TAG`
 - **Compose stack healthy?** → `docker compose ps` (all services "running" or "healthy")
 - **Disk freed?** → `docker system df` (compare before/after)
+- **Config change took effect?** → env vars require recreate, not restart: `docker compose up -d --force-recreate <service>`, then `docker compose exec <service> env | grep <VAR>`
+
+## Rollback
+
+- Container misbehaving after an update → re-run the previous image tag: `docker run -d --name NAME <previous-tag>` (keep old tags; never auto-prune the image a stack depends on)
+- Compose stack broken by a compose.yml edit → `git checkout -- compose.yml && docker compose up -d` to restore the last committed config
+- `docker compose down` is NOT data loss (named volumes survive); `docker compose down -v` IS — never run `-v` without user confirmation
 
 ## Dockerfile Optimization Tips
 

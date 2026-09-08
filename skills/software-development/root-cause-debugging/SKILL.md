@@ -232,6 +232,17 @@ Each probe must map to a specific prediction from Phase 3. **Change one variable
 - Ask the user for help
 - Research more
 
+**Decision table — which probe to use:**
+
+| Situation | Probe |
+|-----------|-------|
+| Debugger/REPL available for the runtime | Breakpoint at the boundary — one breakpoint beats ten logs |
+| No debugger, deterministic repro | Tagged log (`[DEBUG-xxxx]`) at the boundary that distinguishes hypotheses #1 vs #2 |
+| Bug is a wrong value | Log the value's origin and each transform (`search_files` on `variable\s*=` first) |
+| Bug is performance | NO logs — baseline measurement (profiler, query plan, `performance.now()`), then bisect |
+| Bug is intermittent | Raise repro rate first (see Phase 0) before probing — 1% flakes can't be probed |
+| Bug spans components | Log inputs AND outputs at each component boundary before opening any single component |
+
 ### Phase 3 Completion Checklist
 
 - [ ] 3-5 ranked hypotheses generated (shown to user if present)
@@ -253,6 +264,8 @@ Write the regression test **before the fix** — but only if there is a **correc
 A correct seam is one where the test exercises the **real bug pattern** as it occurs at the call site. If the only available seam is too shallow (unit test that can't replicate the chain that triggered the bug), a regression test there gives false confidence.
 
 **If no correct seam exists, that itself is the finding.** Note it. The codebase architecture is preventing the bug from being locked down. This is a candidate for the `codebase-design` skill — the module needs deepening to create a testable seam.
+
+**Rollback:** every fix must be reversible. Before applying the fix, note the baseline: `git status` clean + `git rev-parse HEAD`. If the fix goes wrong mid-way: `git checkout -- <files-touched>` restores the pre-fix state (or `git stash` if you want to keep partial work). Never push a fix you cannot undo.
 
 ### 2. If a Correct Seam Exists
 

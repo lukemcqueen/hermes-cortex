@@ -79,11 +79,13 @@ What the session was hired to do (one sentence).
 
 When starting a new session that follows a previous one:
 
-1. **Find the latest checkpoint** — search for `session-checkpoint-*` or look in `MEMORY.md`.
+1. **Find the latest checkpoint** — search for `session-checkpoint-*` or look in `MEMORY.md`:
+   `search_files(pattern="session-checkpoint", target="files")` (verify with `ls -t *.md | head` if zero hits — never trust a single zero-result search).
 2. **Read the checkpoint** — get the context snapshot.
 3. **Load the objective** — confirm with the user what to resume.
-4. **Re-verify file state** — ensure working tree hasn't changed since checkpoint (e.g., `git status`, `diff` on key files).
+4. **Re-verify file state** — ensure working tree hasn't changed since checkpoint: `git status`, `git log --oneline -5`, and `git diff` on the files listed in the checkpoint's "Context Snapshot". If files differ from what the checkpoint recorded, note the delta before continuing — do not assume the checkpoint state.
 5. **Pick up from "In Progress" or "Blocked"** — continue exactly where the prior session left off.
+6. **Confirm resumability before acting** — re-run the checkpoint's "Last command run" if it was a verification command; if it now fails, the recovery assumption is stale — investigate before proceeding.
 
 ---
 
@@ -194,9 +196,10 @@ What the very next action should be:
 
 If no recovery file was written before interruption, reconstruct context by:
 1. Checking `git reflog` or `git log --oneline -5` for recent commits.
-2. Grepping the workspace for any recent or partial files (`find . -mmin -60`).
-3. Checking shell history (`history | tail -50`) for the most recent commands.
+2. Grepping the workspace for recent or partial files: `find . -mmin -60 -type f -not -path './.git/*'`.
+3. Checking shell history (`history | tail -50`).
 4. Asking the user: "The session was interrupted. What were you working on?"
+5. After reconstructing, write the recovery file FIRST (from what you now know) before resuming work — so a second interruption doesn't lose the reconstruction.
 
 ---
 

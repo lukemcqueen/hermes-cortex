@@ -71,9 +71,9 @@ For every function/endpoint parameter, list:
 | `amount` | integer | 0 < amount < 1000000 | negative, zero, overflow, float, NaN |
 | `email` | string | valid email format | empty, no-at-sign, too long, unicode, null |
 
-**Run the `adversarial-verify.py` script** for automated boundary analysis:
+**Run the `adversarial-verify.py` script** for automated boundary analysis (script lives at `~/.hermes-cortex/scripts/adversarial-verify.py`, deployed from the repo at `ops/scripts/quality/adversarial-verify.py` — if the deployed copy is missing, run `bash ~/hermes-cortex/ops/scripts/cortex-update.sh` or use the repo path directly):
 ```bash
-python3 ~/.hermes-cortex/scripts/adversarial-verify.py --file <path> --level A1
+python3 ~/.hermes-cortex/scripts/adversarial-verify.py --file src/handler.py --level A1
 ```
 
 **Static detection layers are implemented in the script (2026-08-03):**
@@ -85,8 +85,13 @@ python3 ~/.hermes-cortex/scripts/adversarial-verify.py --file <path> --level A1
 
 Run the appropriate level:
 ```bash
-python3 ~/.hermes-cortex/scripts/adversarial-verify.py --file <path> --level A4 --gate
+python3 ~/.hermes-cortex/scripts/adversarial-verify.py --file src/handler.py --level A4 --gate
 ```
+
+**Recovery if the script itself fails:**
+- `No such file or directory` → deployed copy missing: run `bash ~/hermes-cortex/ops/scripts/cortex-update.sh`, or fall back to `python3 ~/hermes-cortex/ops/scripts/quality/adversarial-verify.py ...`
+- `unrecognized arguments` → your CLI is too old for `--gate`/`--level A6`: use the repo copy at `ops/scripts/quality/adversarial-verify.py`, which is the newest
+- Non-zero exit with findings at `--gate` → treat as a blocked commit; fix the findings (or add inline `# adversarial-ignore: <pattern>` exemptions) — never `--no-verify`
 
 False-positive controls built in: triple-quoted docstring/snippet content is never
 scanned (corpus files with PHP/Ruby examples stay silent); string literals and
@@ -160,7 +165,7 @@ numeric_inputs = [
 
 **Run the fuzzing script:**
 ```bash
-python3 ~/.hermes-cortex/scripts/adversarial-verify.py --file <path> --level A2
+python3 ~/.hermes-cortex/scripts/adversarial-verify.py --file src/handler.py --level A2
 ```
 
 **🚨 CRITICAL: a static scan returning 0 findings is NOT adversarial verification.** The script is a static analysis pass — it enumerates surfaces but does not execute the function. "0 findings" from `--file X --level A2` means *nothing about runtime boundary behavior*. You MUST ALSO manually execute the function/parser against boundary inputs (including `-1`, `nan`, `inf`, `None`, empty, whitespace, hex, underscores, non-ASCII) and check what it actually returns. Real bugs found this way (2026-07-31, `parse_restart_drain_timeout`): negative → silently clamped to 0.0, NaN → silently 0.0, `inf` accepted, all with no warning because `float()` succeeds. The static scanner reported 0 findings on all of them.
@@ -342,7 +347,7 @@ feedback:
 Run the gate on every changed script file:
 
 ```bash
-python3 ~/.hermes-cortex/scripts/adversarial-verify.py --file <changed-files> --level A2 --gate
+python3 ~/.hermes-cortex/scripts/adversarial-verify.py --file ops/scripts/health/my-changed-script.py --level A2 --gate
 # A4 for anything under plugins/, hooks/, mcp-servers/, ops/scripts/manage/,
 # ops/scripts/cortex_doctor/, ops/scripts/quality/, tests/, and the
 # enforcement scripts themselves (pre-commit-score, cortex-update.sh)

@@ -14,11 +14,11 @@ Hermes Cortex is the local AI infrastructure layer that provides:
 - **systemd (Linux) / launchd (macOS) services** — Persistent daemons for Ollama, mycortex, Dashboard
 - **Hermes plugins** — `/brain` slash command for knowledge queries (`mycortex-command`)
 
-> **mycortex is DEAD — mycortex replaces it.** All `mycortex` CLI commands below are
+> **⚠️ The legacy `brain` CLI is DEAD — the `mycortex` CLI replaces it.** All `brain` CLI commands below are
 > legacy. The mycortex CLI lives at `ops/scripts/manage/mycortex` (deployed to
 > `~/.hermes-cortex/scripts/mycortex`): `sources add|list|remove`, `sync`,
 > `search`, `list`, `stats`, `doctor`. Runs over mycortex-postgres (:15432) —
-> no daemon, no bun; sync is a cron. mycortex troubleshooting sections further
+> no daemon, no bun; sync is a cron. Legacy brain troubleshooting sections further
 > down are historical and kept only for migration reference.
 
 ## Installation
@@ -70,7 +70,7 @@ The installer runs **~30 steps** (exact count varies by OS/profile):
 | 6 | Hermes mycortex plugin | `/brain` slash command (`plugins/mycortex-command`) |
 | 7 | Hermes utility scripts | heartbeat, memory-to-brain-sync, check-memory-budget, etc. |
 | 8 | Cron jobs | Essential crons (auto-remediation, health, memory sync) + orchestrator-only |
-| 9 | Hermes skills | Deploys repo `skills/` → `~/.hermes/skills/` via `sync_skills()` |
+| 9 | Hermes skills | Deploys repo `skills/` → `~/.hermes/skills/` via an inline install loop (`install.sh` step 10, `find ... -name SKILL.md` → copy; **skips existing files** — it never overwrites). Ongoing skill updates flow repo → `cortex-update.sh` `sync_skills()` (delta engine, only changed files), NOT this one-time copy. |
 | 10 | Hooks | Scoring pre-commit hooks to all projects + post-merge hook |
 | 11 | MCP servers | loop-governance (loop-gov-mcp.py), tasks (task-mcp.py) |
 | 12 | Web Cache | Semantic web result cache |

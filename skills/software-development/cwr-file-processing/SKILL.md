@@ -29,6 +29,12 @@ domain: music copyright, CISAC CWR 2.1, collective rights management
 | `client-mwi` | Rails/PostgreSQL | Legacy export + validation, share calculations |
 | `client-works` | Python/FastAPI/Next.js | Modern export/import pipeline, ACK analysis |
 
+## Prerequisites
+
+- Python 3.11+ with the relevant project modules (client-mwi Rails app or client-works Python/FastAPI app)
+- Access to a known-good CWR v2.1 sample file for verification (never commit real client data)
+- Understanding of fixed-width text formats and ISO-8859-1 character encoding
+
 ## CWR Format Basics (v2.1)
 
 CWR (Common Works Registration) is a fixed-width or delimited text format
@@ -205,16 +211,16 @@ Report the analysis as: total, accepted, rejected, top error reasons.
 
 ```bash
 # Structural validation
-python -m services.cwr_validate < export.cwr && echo "structure OK"
+python3 -m services.cwr_validate < export.cwr && echo "structure OK"
 
 # Field-level
-python -m services.cwr_validate --fields < export.cwr
+python3 -m services.cwr_validate --fields < export.cwr
 
 # Share totals
-python -m services.cwr_validate --shares < export.cwr
+python3 -m services.cwr_validate --shares < export.cwr
 
 # ACK analysis
-python -m services.ack_parser < ack.cwr
+python3 -m services.ack_parser < ack.cwr
 ```
 
 ## Related

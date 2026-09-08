@@ -45,9 +45,9 @@ Reviews today's sessions for user corrections and distill lessons into principle
 
 **Setup (do once):**
 ```bash
-cronjob create --name "agent-daily-soul-refinement" \
+hermes cron create --name "agent-daily-soul-refinement" \
   --schedule "0 23 * * *" \
-  --skills "soul-refinement" \
+  --skill "soul-refinement" \
   --prompt "Load the soul-refinement skill. Search today's sessions for user corrections. Distill into principle patches. Report summary or stay silent if nothing changed."
 ```
 

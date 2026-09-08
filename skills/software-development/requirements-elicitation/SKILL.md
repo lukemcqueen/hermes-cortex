@@ -19,6 +19,15 @@ metadata:
 
 Use this skill when the user says **"elicit requirements"**, **"gather specs"**, or mentions a feature with **unclear scope**. It structures the discovery of what needs to be built, prioritises it, and produces ready-to-use user stories with acceptance criteria.
 
+## Prerequisites & Tools
+
+Before asking any question, gather what's already known — never ask the user what you can look up:
+
+1. **Check existing artifacts** — `search_files(pattern="<feature-keywords>")` in the repo for prior specs, ADRs, and elicitation docs (`docs/elicit/`, `docs/plans/`, `docs/adr/`).
+2. **Load related skills** — `plan` (downstream consumer of stories), `spike` (for high-uncertainty requirements), `subagent-driven-development` (handoff target).
+3. **Output tools** — `write_file` for the elicitation document (see Save location below).
+4. If prior elicitation docs exist for the same feature, resume/extend them rather than starting a duplicate.
+
 ## When to use
 
 Trigger this skill when:
@@ -167,10 +176,12 @@ After RICE scoring, classify each requirement:
 
 | Category | Meaning | RICE guidance |
 |----------|---------|---------------|
-| **M**ust have | Non-negotiable for launch | Score typically > 20 |
-| **S**hould have | Important but not critical | Score 10–20 |
-| **C**ould have | Nice to have if time permits | Score 5–10 |
-| **W**on't have | Explicitly out of scope this round | Score < 5 |
+| **Must have** | Non-negotiable for launch | Score typically > 20 |
+| **Should have** | Important but not critical | Score 10–20 |
+| **Could have** | Nice to have if time permits | Score 5–10 |
+| **Won't have** | Explicitly out of scope this round | Score < 5 |
+
+> MoSCoW overrides RICE: a hard compliance/security requirement with a low RICE score is still **Must**. The RICE guidance is a default, not a rule — state the override reason in the doc when you apply it. Also note Effort is a divisor, so Effort=1 (Trivial) inflates scores — sanity-check that trivial-effort items really deserve top priority.
 
 **Output:** A prioritised requirements list with both RICE scores and MoSCoW categories.
 

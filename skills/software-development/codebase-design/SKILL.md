@@ -127,7 +127,7 @@ When a module is shallow, deepen it. The strategy depends on the dependency cate
 ## Integration with Other Skills
 
 - **architecture-review** — Use deep module vocabulary when evaluating approach A vs B: compare their depth (interface size vs hidden complexity), seam placement, and adapter count.
-- **design-doc-audit** — Call out shallow modules when auditing design docs against codebase. The "deletion test" is a quick audit heuristic.
+- **documentation-auditing** — Call out shallow modules when auditing docs against codebase. The "deletion test" is a quick audit heuristic.
 - **root-cause-debugging** — When a bug resists fixing, evaluate whether missing seam discipline (no clean interface to test against) is the root cause. Flag it as a post-mortem finding.
 - **change-test-loop** — Apply deep module principles when designing the module before the first RED test.
 
@@ -146,3 +146,10 @@ When a module is shallow, deepen it. The strategy depends on the dependency cate
 - **Depth is not line count.** A 300-line function with no interface is not deep — it's monolithic. Depth is measured at the interface, not the implementation.
 - **Don't expose internal seams.** A module can have internal seams for testing, but they should stay private. Exposing them through the interface breaks encapsulation and prevents future refactoring.
 - **"Interface" is broader than types.** Interface includes error modes, ordering constraints, config requirements, and performance characteristics — not just the type signature.
+
+## Applying This in a Session
+
+1. **Name the seam first.** Before writing code, state: "the seam is `<function/module boundary>`; production adapter is `<real impl>`, test adapter is `<fake impl>`." If you cannot name two adapters, you do not have a seam yet — write the concrete implementation and extract the seam later.
+2. **Write the test through the interface.** The first test constructs only what a caller would: inputs + dependencies (adapters), asserts on the return value or observable effect. If the test needs to reach into private state, the interface is wrong — go back to step 1.
+3. **Check the deletion test after implementation.** Ask: "if I deleted this module, would complexity reappear across N callers?" If complexity vanishes with the module, it was a pass-through — inline it or deepen it.
+4. **Review the interface size.** Count what a caller must know: methods, params, error modes, ordering constraints, required config. If that list is longer than the behaviour it unlocks, split or deepen the module before shipping.

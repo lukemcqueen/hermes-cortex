@@ -17,7 +17,7 @@ metadata:
 
 The Agent Bus is a Postgres-native message queue (`lib/pgmq` implementation with `SKIP LOCKED`) running on port `:8903`, proxied through nginx. All inter-agent communication flows through it. It replaces the old file-based agent inbox.
 
-> **📐 Architecture reference:** See [`docs/reference/cortex-bus-config.md`](../../docs/reference/cortex-bus-config.md) for the full architecture — fleet topology, auth model, ACL/permissions, message consumption patterns, and forwarder design. This skill covers operational diagnostics only.
+> **📐 Architecture reference:** `docs/reference/cortex-bus-config.md`, `docs/bus-architecture.md`, `docs/orch-bus-setup.md`, `docs/esther-bus-setup.md` — these live on the **orchestrator hosts' private repo** (moses/esther) and may NOT exist on this host or in the public repo. Check before opening: `ls ~/hermes-cortex/docs/reference/cortex-bus-config.md 2>/dev/null || echo "not on this host — request from orchestrator via inbox_orchestrator"`. This skill covers operational diagnostics only.
 
 > **⚠️ Postgres access (post-2026-08-05 migration):** the `legacy Postgres`
 > container was replaced by **`mycortex-postgres`** (role/db **`mycortex`**,
@@ -625,10 +625,6 @@ the agent's `can_write` array, not boolean flags.
 ## References
 
 - `references/forwarder-peer-resolution.md` — role-aware PEER fix detail (2026-08-03)
-- `references/credential-rotation.md` — credential leak response & rotation playbook: bearer-vs-Basic exposure model, live-test baseline method, Basic-auth (htpasswd) rotation blockers on orchestrator hosts, scrub caveats, concurrent-session git safety (2026-08-03)
-- `references/dlq-monitor-fix.md` — DLQ alert fix: processing state detection + silent-when-clean pattern for `orch-bus-confirmation-poller.py report`
-- `references/cross-server-architecture.md` — Per-server independent Postgres architecture: why local `inbox_moses` sends don't reach the orchestrator, fleet port map, and correct curl pattern for cross-server messages
+- `references/credential-rotation.md`, `references/dlq-monitor-fix.md`, `references/cross-server-architecture.md` — may exist on orchestrator hosts only (check `ls ~/.hermes/skills/devops/cortex-bus/references/` first)
 - `core/cortex_bus/queue.py` — Queue creation, DLQ logic, send/read/archive
 - `core/cortex_bus/server.py` — HTTP API, auth, dashboard
-- `docs/orch-bus-setup.md` — Architecture, security model, deployment guide, DLQ maintenance section
-- `docs/esther-bus-setup.md` — Maintenance steps, changelog (DLQ fix, threshold changes, pipeline updates)

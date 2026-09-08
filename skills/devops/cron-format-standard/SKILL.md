@@ -163,9 +163,11 @@ If nothing to report: output exactly [SILENT]
 cronjob action=run job_id=<id>
 ```
 
-Then check the output file at `~/.hermes/cron/output/<job-id>/<latest>.md`. Look at the actual LLM response section — verify it matches the header/dashes/phases/Result/footer structure.
+Then check the output file at `~/.hermes/cron/output/<job-id>/` (the newest `.md` file in the job's output dir). Look at the actual LLM response section — verify it matches the header/dashes/phases/Result/footer structure.
 
 If the output doesn't match, the example in the prompt is too abstract — add more concrete text.
+
+If the run errors instead of producing output, check `cronjob(action='list')` for the job's `last_status` and the scheduler log before re-running — a failing job retries into the same error, not into format compliance.
 
 ## Step 4 — Commit and push skill changes (repo changes only)
 
@@ -179,10 +181,10 @@ git add skills/devops/cron-format-standard/SKILL.md
 git commit -m "skill: cron-format-standard — <what changed>"
 ```
 
-For pushes from no_agent cron scripts, see the temp governance lock pattern in `nginx-threat-pipeline.sh` or `agent-ip-submission.sh`.
+For pushes from no_agent cron scripts, see the temp governance lock pattern in `agent-ip-submission.sh` (function `_create_gov_lock`, at `ops/scripts/agent/agent-ip-submission.sh`). Note: `agent-nginx-threat-pipeline.sh` uses a different, pipeline-specific marker mechanism (`_create_pipe_marker`) — do not copy that one for general scripts.
 
 **About the SKIP flags (REMOVED):**
-- `SKIP_SCORE=1` has been **removed** — no env-var bypasses. Use `_create_gov_lock` in automation scripts (see `nginx-threat-pipeline.sh` for the pattern).
+- `SKIP_SCORE=1` has been **removed** — no env-var bypasses. Use `_create_gov_lock` in automation scripts (see `agent-ip-submission.sh` for the pattern).
 
 **Important:** The `cronjob` API updates are NOT repo changes — they modify `~/.hermes/cron/jobs.json` directly. No git operation needed for prompt-only changes.
 
@@ -194,9 +196,9 @@ To force an immediate sync on another agent:
 ```bash
 # On the target agent's machine:
 bash ~/hermes-cortex/ops/scripts/cortex-update.sh
-# OR just:
-bash ~/hermes-cortex/install.sh --skip-existing
 ```
+
+(`cortex-update.sh` is idempotent and safe to re-run — default mode deploys all changed files. There is no `--skip-existing` flag on `install.sh`; do not use one.)
 
 ## Step 6 — Score the change (loop governance)
 

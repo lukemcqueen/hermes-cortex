@@ -96,7 +96,7 @@ code fences. The agent-fixer has stripped trailing ``` fences from skills
 that loads the skill. The HARD GUARD above prevents fixing; this step detects.
 
 ```bash
-cd "$CORTEX_REPO" 2>/dev/null || cd ~/hermes-cortex
+cd "${CORTEX_REPO:-$HOME/hermes-cortex}"
 for f in $(find skills -name 'SKILL.md'); do
   n=$(grep -c '^```' "$f")
   if [ $((n % 2)) -ne 0 ]; then echo "UNBALANCED: $f ($n fences)"; fi
@@ -119,20 +119,30 @@ For each errored job, diagnose the failure:
 
 | Failure type | Auto-fix action |
 |---|---|
-| Script not found / missing path | Run `bun doctor` check; reinstall or copy from `$CORTEX_REPO/ops/scripts/` |
+| Script not found / missing path | Run `bash cron-auto-remediate.sh fix-missing` (copies from `$CORTEX_REPO/ops/scripts/` into `~/.hermes-cortex/scripts/`), then verify with `python3 ~/hermes-cortex/ops/scripts/manage/cortex-doctor.py --quiet` |
 | Git error (detached HEAD, merge conflict) | `cd "${CORTEX_REPO:-$HOME/hermes-cortex}" && git checkout main && git pull --ff-only` |
-| Permission denied | `chmod +x ~/.hermes/scripts/<script>` |
+| Permission denied | `chmod +x ~/.hermes-cortex/scripts/<script>` (or run `bash cron-auto-remediate.sh fix-perms` for all scripts at once) |
 | Python import error | Re-activate venv; reinstall deps; check Python version |
 | Disk full / no space | `brew cleanup`, `docker system prune -f`, purge log files >7d old |
-| Docker service down | Run `agent-service-recovery.py` manually |
-|| mycortex sync error | Restart the legacy autopilot: `launchctl kickstart gui/$(id -u)/com.legacy-brain.autopilot` |
-|| Ollama not running | `launchctl kickstart gui/$(id -u)/com.ollama.serve` |
+| Docker service down | Run the service recovery script manually: `python3 ~/.hermes-cortex/scripts/agent-service-recovery.py` (silently exits 0 if all services healthy) |
+|| mycortex sync error | Run `bash cron-auto-remediate.sh fix-mycortex` (checks the mycortex CLI doctor + Postgres container). NOTE: the legacy launchd autopilot (`com.legacy-brain.autopilot`) is DECOMMISSIONED — do not kickstart it |
+|| Ollama not running | Linux: `sudo systemctl start ollama` (or `systemctl --user start ollama` if no system unit). macOS: `launchctl kickstart gui/$(id -u)/com.ollama.serve`. Verify with `curl -s http://127.0.0.1:11434/api/tags` → HTTP 200 |
 || Agent Bus unreachable / empty responses on :8903 | **Detect:** `systemctl --user is-active cortex-bus.service` (Linux) or `launchctl list com.hermes.cortex-bus` (macOS, also try `com.hermes.cortex-bus-fallback`) + `curl -s http://127.0.0.1:8903/health` → HTTP 200. The `agent-remediation-sensor.py` checks this every 5min on all platforms — trust its output. **Fix:** `systemctl --user restart cortex-bus.service` (Linux) or `launchctl kickstart gui/$(id -u)/com.hermes.cortex-bus` (macOS) then re-verify. Check `CORTEX_BUS_URL` via `echo $CORTEX_BUS_URL` or `grep 'CORTEX_BUS_URL' ~/hermes-cortex/.env`. |
-|| nginx config invalid | `nginx -t` to validate; revert recent config changes |
-| Memory pressure | Run `purge` on macOS to free memory cache |
-| Network timeout | Retry the job once; check internet with `ping -c1 google.com` |
+|| nginx config invalid | `sudo nginx -t` to validate; revert the most recent config change (check `git -C /etc/nginx diff` if tracked, or your last edit) then `sudo nginx -s reload` |
+| Memory pressure | Linux: find top consumers with `ps aux --sort=-%mem | head -5`, free caches with `sync && echo 3 | sudo tee /proc/sys/vm/drop_caches`. macOS: run `purge` to free the memory cache |
+| Network timeout | Retry the job once; check internet with `ping -c1 1.1.1.1` (IP — tests routing even if DNS is down), then `ping -c1 google.com` (tests DNS) |
 | `Cron job '<name>' idle for Ns (limit 30s)` TimeoutError | **LLM cron inactivity timeout — do NOT just retry.** The scheduler killed an LLM job idle for `HERMES_CRON_TIMEOUT` (gateway-process env, default 600s, fleet 300s; NOT per-job, no config.yaml key). Root cause is usually a hung non-streaming API response. **Fix:** if the cron legitimately needs long single API calls, raise `HERMES_CRON_TIMEOUT` in `~/hermes-cortex/.env` (Linux: systemd drop-in via `install-gateway-cron-timeout.sh`) or enable streaming for that job; then re-run once. See `docs/cron-job-recipes.md` §LLM cron inactivity timeout. |
-| SSL cert expired / expiring soon | Run `cron-auto-remediate.sh fix-certs` — auto-renews via certbot if available; reports cert paths that need manual renewal |\n\n> The script `cron-auto-remediate.sh` is a companion diagnostic shell script\n> (not the cron itself). The LLM-driven cron is `agent-auto-remediate`.
+| SSL cert expired / expiring soon | Run `bash cron-auto-remediate.sh fix-certs` — auto-renews via certbot if available; reports cert paths that need manual renewal |
+| Wrong script permissions (Permission denied on a `.sh`/`.py`) | Run `bash cron-auto-remediate.sh fix-perms` — chmods everything under `~/.hermes-cortex/scripts/` |
+| Git detached HEAD or merge conflict in hermes-cortex | Run `bash cron-auto-remediate.sh fix-git` |
+| Docker container down/unhealthy | Run `bash cron-auto-remediate.sh fix-docker` |
+| Disk/memory pressure (generic) | Run `bash cron-auto-remediate.sh fix-purge` |
+
+**All fix-* actions are in `~/hermes-cortex/ops/scripts/health/cron-auto-remediate.sh`.** Full action list: `diagnose check fix-missing fix-perms fix-git fix-docker fix-purge fix-certs fix-mycortex fix-ssl-perms fix-certbot-perms`. Usage: `bash cron-auto-remediate.sh <action>` (default action is `diagnose` if omitted). This script is a **diagnostic/fix helper**, not the cron itself — the LLM-driven cron that calls it is `agent-auto-remediate`.
+
+### Recovery when a fix-* action itself fails
+
+If a `fix-*` action exits non-zero: do NOT retry blindly. Run `bash cron-auto-remediate.sh diagnose` first to see the current issue list, then apply the single most specific matching fix from the table above. If the same issue reappears 3 times, stop and escalate per "Escalate only if remediation failed 3+ times" below — do not loop silently.
 
 After fixing:
 1. Verify the fix (re-run the failing script or check the service)
@@ -146,10 +156,12 @@ table above, not a repeat of a previously captured fix), record it so the
 whole fleet learns once:
 
 ```bash
-learning-collect.py --route remediation --type fix --impact 1 \
-  --content "<failure> → <root cause> → <fix>" \
-  --source-ref "<job name / issue ref>"
+python3 ~/.hermes-cortex/scripts/learning-collect.py --route remediation --type fix --impact 1 \
+  --content "port 13001 unreachable → nginx worker crashed on bad reload → systemctl restart nginx && nginx -t" \
+  --source-ref "agent-auto-remediate run 2026-09-08"
 ```
+
+Constraint check before running: `--impact` must be an integer in [-3, 3] (default 0); `--content` must be ≤4000 chars (longer is truncated with a warning) and must not be paired with `--content-file`. If the script prints `ERROR: lib.cortex_bus unavailable`, the bus client config is missing — report `⚠️ learning capture failed: bus lib unavailable` and move on (do not retry the capture).
 
 - **Idempotent by fix signature** — the content IS the fix signature; the
   ledger dedups on (route, content_hash), so re-capturing the same fix is a

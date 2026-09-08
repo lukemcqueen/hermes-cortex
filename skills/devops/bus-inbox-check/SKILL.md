@@ -16,12 +16,13 @@ Check the PGMQ-based agent bus inbox for pending messages, used during auto-reme
 
 ## Credential source
 
-The bus token lives in `~/.hermes-cortex/.env`:
+The bus token lives in `~/hermes-cortex/.env` (the REPO env file — the runtime env at `~/.hermes-cortex/.env` does NOT carry the bus token on this host):
 
 ```
 CORTEX_BUS_TOKEN=hbus_<hex>
-CORTEX_BUS_PORT=8903
 ```
+
+If `grep '^CORTEX_BUS_TOKEN='` returns nothing, the bus is not configured on this machine — stop and report instead of guessing the port.
 
 ## Step-by-step
 
@@ -34,6 +35,8 @@ curl -s http://localhost:8903/health
 Expected: `{"status":"ok","backend":"pgmq","queues":16,...}`
 
 ### 2. Extract the auth token
+
+Port is fixed at **8903** in the current deployment (`ss -tlnp | grep 8903` to confirm). The `CORTEX_BUS_PORT` env var is a server-side default (8905 in `bus/server.py`) — the LISTENING port reported by `ss` is authoritative.
 
 ```bash
 TOKEN=$(grep '^CORTEX_BUS_TOKEN=' ~/hermes-cortex/.env | cut -d= -f2)
@@ -70,7 +73,7 @@ curl -s -H "$AUTH" "$BASE/api/pgmq/queues"
 
 - `auto-remediation` skill — full Phase 1-3 workflow that calls this check
 - `cron-job-management` skill — context detection (MCP tool vs terminal vs cron)
-- Agent bus server at `~/hermes-cortex/core/cortex_bus/server.py` — all API routes
+- Agent bus server source at `~/.hermes-cortex/bus/server.py` (deployed) and `~/hermes-cortex/core/cortex_bus/server.py` (repo source) — all API routes
 - `references/cron-mode-analysis.md` — batch analysis patterns using `python3 -c` via terminal when `execute_code` is blocked in cron mode
 
 ## Pitfalls

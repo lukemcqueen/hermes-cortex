@@ -73,10 +73,9 @@ Manual `chmod`/`cp` fails with `Operation not permitted` — the `i` flag surviv
 
 **Detect:**
 ```bash
-# cortex-update prints "FAILED: <path>" per immutable file
-lsattr ~/.hermes/plugins/governance-enforcer/__init__.py   # ----i---------e-------  ← immutable
+# cortex-update prints "FAILED: <path>" per immutable filelsattr ~/.hermes/plugins/governance-enforcer/__init__.py   # ----i---------e-------  ← immutable
 sudo -n hermes-plugin-lock unlock                          # clears the flags
-~/hermes-cortex/ops/scripts/cortex-update.sh               # deploy — DIRECT path, no bash prefix
+bash ~/hermes-cortex/ops/scripts/cortex-update.sh          # deploy — the ONE sanctioned form
 # verify: diff deployed vs repo = empty, plugin enabled, immutable re-applied
 ```
 
@@ -232,7 +231,15 @@ will land via `hermes update`, not a local patch.
 - `diff <repo-source> <deployed-copy>` empty for governance files
 - `hermes plugins list | grep governance` → enabled
 - `lsattr` shows `i` re-applied after deploy
-- Doctor: no ❌ (warnings OK)
+- Doctor: no ❌ (warnings OK): `python3 ~/hermes-cortex/ops/scripts/manage/cortex-doctor.py --quiet`
+- **Deploy ≠ load:** if the new enforcer still blocks writes after a clean deploy, that is a pending gateway restart (host-operator action) — see the ⚠ note above. Do not re-run the update to "fix" it.
+
+## Rollback
+
+Deployed governance files are immutable (`chattr +i`); there is no agent-side rollback. If a deploy broke something:
+1. `git checkout HEAD~1 -- <path>` in `~/hermes-cortex` to revert repo source
+2. Commit + push, then re-run `bash ~/hermes-cortex/ops/scripts/cortex-update.sh` to redeploy the previous version
+3. If the gateway itself misbehaves, escalate to the host operator for a restart
 
 ## References
 
