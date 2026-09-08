@@ -22,22 +22,18 @@ fallback 1 and opencode deepseek flash as fallback 2 — for the LLM crons."
 
 **Correct sequence (verified):** patch `ops/install/cron-manifest.yaml` entries → `hermes cron edit` each live job → `cortex-update.sh` → verify `jobs.json` still shows the new pins (0 mispinned).
 
-## Env-driven fallback chain (fleet convention added 2026-08-31)
+## Fallback chain is operator-owned config.yaml (env-driven writer removed 2026-09-09)
 
-`ops/scripts/install-fallback-providers.py` was converted from hardcoded
-(opencode-zen + qwen) to env-driven. It reads:
-
-- `LLM_CRON_FALLBACK1_PROVIDER` / `LLM_CRON_FALLBACK1_MODEL` (default `deepseek` / `deepseek-v4-flash`)
-- `LLM_CRON_FALLBACK2_PROVIDER` / `LLM_CRON_FALLBACK2_MODEL` (default `opencode-zen` / `deepseek-v4-flash`)
-
-An empty model OR provider drops that tier (adversarially tested — a naive
-`os.environ.get` produced a garbage entry with empty strings). Sourced from
-`~/hermes-cortex/.env` (repo root). Run: `set -a && source .env && set +a &&
-python3 ops/scripts/install-fallback-providers.py`.
+The old env-driven writer `ops/scripts/install-fallback-providers.py` (which
+read `LLM_CRON_FALLBACK1/2_MODEL/PROVIDER` from `.env` and wrote config.yaml)
+was **removed** after d709d752 de-registered its auto-run — it was a clobber
+footgun that overwrote operator-owned `~/.hermes/config.yaml fallback_providers`
+on fleet hosts. The chain is now set directly by the operator:
 
 `hermes fallback add/remove/clear` are TTY-interactive pickers — no flags.
-Non-interactive alternative: `hermes config set fallback_providers '<json list>'`
+Non-interactive: `hermes config set fallback_providers '<json list>'`
 (current `set_config_value` YAML-parses list/mapping-looking values).
+Do not re-add an env-driven fallback writer.
 
 ## Verification recipe (end-to-end, no cron tick needed)
 

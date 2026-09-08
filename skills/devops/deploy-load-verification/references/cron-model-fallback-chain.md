@@ -57,8 +57,7 @@ pins are provisional until they survive a cortex-update.**
 |---|---|---|
 | Cron primary model | `ops/install/cron-manifest.yaml` (per-cron) vs `~/hermes-cortex/.env` `LLM_CRON_MODEL/PROVIDER` | manifest > env |
 | Live job pin | `~/.hermes/cron/jobs.json` via `hermes cron edit --model --provider` | reverted by manifest on next deploy |
-| Fallback chain | `~/.hermes/config.yaml` `fallback_providers` | only changes when `install-fallback-providers.py` RUNS (registered, never auto-run) |
-| Chain env vars | `~/hermes-cortex/.env` `LLM_CRON_FALLBACK1/2_MODEL/PROVIDER` | consumed by install-fallback-providers.py when invoked |
+| Fallback chain | `~/.hermes/config.yaml` `fallback_providers` | operator-owned; set via `hermes config set fallback_providers '<json>'` |
 | API keys | `~/.hermes/.env` (`OPENCODE_ZEN_API_KEY`) | secrets only; models/chain go in HC .env |
 
 Env-file trap: `~/hermes-cortex/.env` (repo root, gitignored, real config) is
@@ -75,14 +74,11 @@ editing; a model change written to the symlink target silently does nothing.
   '[{"provider":"deepseek","model":"deepseek-v4-flash"},...]'` —
   `set_config_value` YAML-parses structured values (`_looks_structured_value`
   → `yaml.safe_load`) and stores a real list, not a string.
-- Canonical env-driven path (fleet convention): set
-  `LLM_CRON_FALLBACK1/2_MODEL/PROVIDER` in HC .env, then
-  `set -a; source ~/hermes-cortex/.env; set +a; python3
-  ops/scripts/install-fallback-providers.py`. Empty model OR provider env var
-  drops that tier (adversarially verified — the naive
-  `os.environ.get(..., default)` version wrote a garbage
-  `{provider:"", model:"", base_url:...}` entry for empty env; the fixed
-  `_env_entry()` helper returns None and the list comp drops it).
+- **No env-driven writer exists** (2026-09-09): the old
+  `LLM_CRON_FALLBACK1/2_MODEL/PROVIDER` env vars and
+  `install-fallback-providers.py` were removed — the chain is set directly in
+  config.yaml by the operator. Do not re-add an env-driven fallback writer; it
+  is the clobber footgun this trace's fix (d709d752) removed.
 
 ## Verify end-to-end (real path)
 
@@ -111,18 +107,17 @@ EOF
 
 ## Fleet propagation gap (answer to "will all agents update?")
 
-- Repo files (manifest, install-fallback-providers.py, docs) reach all agents
-  via `agent-hermes-cortex-sync` (daily pull) + `cortex-update.sh` deploy →
-  their crons DO get repinned on next install-crons run (manifest wins).
-- BUT config.yaml `fallback_providers` is per-host and only changes when
-  `install-fallback-providers.py` runs on THAT host — it is registered in
-  cortex-update.sh but never invoked by it or by install-crons.sh. Peers keep
-  stale chains (incl. qwen garbage tier) until the script runs there.
+- Repo files (manifest, docs) reach all agents via `agent-hermes-cortex-sync`
+  (daily pull) + `cortex-update.sh` deploy → their crons DO get repinned on
+  next install-crons run (manifest wins).
+- BUT config.yaml `fallback_providers` is per-host **operator-owned** — it is
+  not written by any cortex script (the env-driven writer was removed 2026-09-09),
+  so each host's chain must be set locally via `hermes config set
+  fallback_providers`. Peers keep their own chains until set there.
 - API keys are secrets: `OPENCODE_ZEN_API_KEY` must be added per-host to
   `~/.hermes/.env`; cannot propagate.
-- Closing the gap = wire `install-fallback-providers.py` into
-  cortex-update.sh / install-crons.sh (small repo change), or dispatch a
-  fleet command to run it on every host once.
+- Propagation = document the intended chain in a shared doc + set it per-host;
+  there is intentionally no cortex auto-writer (that was the clobber bug).
 
 ## Governance notes hit during this change
 

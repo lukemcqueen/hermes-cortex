@@ -593,7 +593,7 @@ Changing an LLM cron's model has TWO layers of truth; editing only the live pin 
 
 **Correct order:** (1) patch the manifest entry → (2) repin live via `hermes cron edit` → (3) run `cortex-update.sh` → (4) verify pins survived in jobs.json.
 
-**Fallback chain is GLOBAL, not per-cron** — config.yaml `fallback_providers`, consumed by cron sessions via `get_fallback_chain`. `hermes fallback add/remove/clear` are TTY-interactive only. Non-interactive paths: `hermes config set fallback_providers '<json list>'` (current `set_config_value` parses structured list values) or the env-driven `ops/scripts/install-fallback-providers.py` — it reads `LLM_CRON_FALLBACK1/2_MODEL` + `LLM_CRON_FALLBACK1/2_PROVIDER` from `~/hermes-cortex/.env`; an empty model OR provider drops that tier.
+**Fallback chain is GLOBAL, not per-cron** — config.yaml `fallback_providers`, consumed by cron sessions via `get_fallback_chain`. `hermes fallback add/remove/clear` are TTY-interactive only. Non-interactive path: `hermes config set fallback_providers '<json list>'` (current `set_config_value` parses structured list values). This chain is operator-owned — set it directly; no installer script writes it (the env-driven `install-fallback-providers.py` writer was removed 2026-09-09).
 
 **Env file location gotcha:** `install-crons.sh` sources `ENV_FILE="${HOME}/hermes-cortex/.env"` — the **repo-root** gitignored file. On some hosts `~/.hermes-cortex/.env` (deployed dir) is a symlink to an unrelated project (Esther: → `~/langfuse/.env`) and holds NO model vars — don't edit it looking for model config.
 

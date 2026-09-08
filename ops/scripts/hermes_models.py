@@ -19,7 +19,6 @@ Defined env vars (see ~/hermes-cortex/.env for current values):
   EMBEDDING_MODEL   — Text embeddings (default: nomic-embed-text)
   CODING_MODEL      — Code generation via offline_code (default: auto-detected)
   CREATIVE_MODEL    — Reserved for creative/text generation (no default yet)
-  DEFAULT_MODEL     — Default chat model for Hermes Agent
 
 Usage:
     from hermes_models import get_model

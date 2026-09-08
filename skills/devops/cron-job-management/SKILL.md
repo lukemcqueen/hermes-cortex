@@ -284,22 +284,20 @@ Pins should be the rare exception — only for crons that legitimately need a
 different model from the fleet default (e.g. local free-tier crons that must
 never fall back to paid).
 
-### The env chain (defined in `~/hermes-cortex/.env` — see `.env.example` for the template)
+### Primary model: the env var (`~/hermes-cortex/.env` — see `.env.example` for the template)
 
 ```
 LLM_CRON_MODEL=deepseek-v4-flash-free          ← primary model name
 LLM_CRON_PROVIDER=opencode-free                ← primary provider
-LLM_CRON_FALLBACK1_MODEL=deepseek/deepseek-v4-flash  ← fallback 1 model
-LLM_CRON_FALLBACK1_PROVIDER=openrouter              ← fallback 1 provider
-LLM_CRON_FALLBACK2_MODEL=deepseek-v4-flash          ← fallback 2 model
-LLM_CRON_FALLBACK2_PROVIDER=deepseek                ← fallback 2 provider
-LLM_CRON_FALLBACK3_MODEL=deepseek-v4-flash          ← fallback 3 model
-LLM_CRON_FALLBACK3_PROVIDER=opencode-zen            ← fallback 3 provider
 ```
 
-**How resolution works:** An unpinned cron tries `LLM_CRON_PROVIDER` first.
-If it fails (rate-limit, 5xx, connection error), it falls through to
-`FALLBACK1`, then `FALLBACK2`, then `FALLBACK3`. If all fail → cron errors.
+**Fallback chain is operator-owned `config.yaml`, not env.** When the pinned
+job model fails (rate-limit, 5xx, connection error), cron falls through the
+`fallback_providers` list in `~/.hermes/config.yaml` — resolved at runtime by
+upstream `hermes_cli/fallback_config.get_fallback_chain()`, never by env vars.
+Set it non-interactively with `hermes config set fallback_providers '<json>'`
+(the `hermes fallback add/remove/clear` CLIs are TTY-interactive only). A chain
+missing entirely → the job errors on failure.
 
 ### How to change the fleet's model
 

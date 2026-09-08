@@ -243,7 +243,7 @@ def find_script_consumers():
     scripts_dir = SCRIPTS_SRC
     if not scripts_dir.is_dir():
         return {}
-    known_vars = ["JUDGE_MODEL", "EMBEDDING_MODEL", "CODING_MODEL", "CREATIVE_MODEL", "DEFAULT_MODEL"]
+    known_vars = ["JUDGE_MODEL", "EMBEDDING_MODEL", "CODING_MODEL", "CREATIVE_MODEL"]
     consumers = {v: [] for v in known_vars}
     for script in sorted(scripts_dir.iterdir()):
         if not script.is_file():

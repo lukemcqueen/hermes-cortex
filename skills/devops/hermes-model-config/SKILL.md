@@ -18,7 +18,9 @@ warning, cron model overrides, model.default regressions after `hermes update`.
 
 - **Regular sessions = `deepseek-v4-flash`** — set in `config.yaml`
   `model.default` (provider `deepseek`, base_url `https://api.deepseek.com/v1`).
-  Also encoded as `DEFAULT_MODEL=deepseek-v4-flash` in `~/.hermes-cortex/.env`.
+  This is operator-owned config — set it with `hermes config set model.default
+  <model>`; no cortex installer writes it (the env-driven
+  `install-model-default.sh` writer was removed 2026-09-09).
 - **`deepseek-chat` is LLM-cron-ONLY.** It must never be the session default.
   Crons pin it per-job: `"model": "deepseek-chat"` in `~/.hermes/cron/jobs.json`
   (see `LLM_CRON_MODEL=deepseek-chat` in `ops/scripts/install-crons.sh` and

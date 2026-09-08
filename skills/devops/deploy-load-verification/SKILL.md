@@ -143,10 +143,13 @@ next deploy.** The cron-model chain is the canonical example (2026-08-31):
   for j in json.load(open('$HOME/.hermes/cron/jobs.json'))['jobs']
   if not j.get('no_agent')]"`). A pin that survives a deploy is real; one that
   doesn't means the manifest still disagrees.
-- Same class of trap: `install-fallback-providers.py` is REGISTERED
-  (deployed to every host) but **never auto-run** — so the config.yaml
-  `fallback_providers` chain it manages is per-host and stays stale on peers
-  until the script actually executes there. Registered ≠ applied.
+- **Remove the writer, not just its auto-run** (2026-09-08 → 09-09): the two
+  cortex scripts that WROTE operator-owned `config.yaml` model/fallback keys
+  (`install-model-default.sh`, `install-fallback-providers.py`) were first
+  de-registered from auto-run (d709d752), then removed entirely — source,
+  register lines, deployed copies, env vars, docs. A config-writer must be
+  deleted, not left "registered for manual use": a registered-but-inert writer
+  is a live clobber footgun that only needs one re-invocation to strike.
 - Verify end-to-end through the REAL path, not the picker:
   `hermes chat -q "Reply with exactly: OK" -m <model> --provider <provider>`
   — a fallback fires as `⚠️ Model fallback: ... unavailable (provider failure);
