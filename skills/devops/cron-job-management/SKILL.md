@@ -275,6 +275,79 @@ When explicitly directed to add a cron to another Hermes profile (e.g. Esther):
 
 **CRITICAL:** Never touch another profile's cron files without explicit user direction. When you do, use `cross_profile=True` on write_file/patch and use surgical patches, not full-file overwrites.
 
+## LLM Cron Model — Default Provider Chain (Env Vars, Not Pins)
+
+**THE RULE: Set the model in `.env`, never pin per-cron (Luke 2026-09-08).**
+Every LLM cron without an explicit `provider`/`model` pin inherits from
+environment variables. To change the fleet's model, edit exactly one env var.
+Pins should be the rare exception — only for crons that legitimately need a
+different model from the fleet default (e.g. local free-tier crons that must
+never fall back to paid).
+
+### The env chain (defined in `~/hermes-cortex/.env` — see `.env.example` for the template)
+
+```
+LLM_CRON_MODEL=deepseek-v4-flash-free          ← primary model name
+LLM_CRON_PROVIDER=opencode-free                ← primary provider
+LLM_CRON_FALLBACK1_MODEL=deepseek/deepseek-v4-flash  ← fallback 1 model
+LLM_CRON_FALLBACK1_PROVIDER=openrouter              ← fallback 1 provider
+LLM_CRON_FALLBACK2_MODEL=deepseek-v4-flash          ← fallback 2 model
+LLM_CRON_FALLBACK2_PROVIDER=deepseek                ← fallback 2 provider
+LLM_CRON_FALLBACK3_MODEL=deepseek-v4-flash          ← fallback 3 model
+LLM_CRON_FALLBACK3_PROVIDER=opencode-zen            ← fallback 3 provider
+```
+
+**How resolution works:** An unpinned cron tries `LLM_CRON_PROVIDER` first.
+If it fails (rate-limit, 5xx, connection error), it falls through to
+`FALLBACK1`, then `FALLBACK2`, then `FALLBACK3`. If all fail → cron errors.
+
+### How to change the fleet's model
+
+1. Edit `.env` — change `LLM_CRON_MODEL` and/or `LLM_CRON_PROVIDER`
+2. Run `bash ~/hermes-cortex/ops/scripts/cortex-update.sh` to deploy the env to all agents
+3. No per-cron changes needed — every unpinned cron picks it up on next tick
+
+### When to pin (rare exceptions)
+
+Some crons pin explicitly so they stay on a free tier and never consume budget:
+
+```
+local-daily-soul-refinement:   provider=opencode-free (free tier, pinned)
+local-weekly-loop-eval:        provider=opencode-free (free tier, pinned)
+job-opportunity-scanner:       provider=opencode-free (free tier, pinned)
+```
+
+These use `hermes cron edit <job_id> --model "deepseek-v4-flash-free" --provider "opencode-free"`
+and `/or` `pin_cron_model` in the installer. Only pin when the cron MUST stay
+on a specific provider regardless of the fleet default.
+
+### Creating a new cron — do NOT pin by default
+
+```bash
+# PREFERRED — no pin, inherits from env chain:
+hermes cron create --name "agent-my-scanner" --schedule "0 9 * * *" --prompt "..." provider="" model=""
+
+# RARE — explicit pin for non-default model:
+hermes cron create --name "local-my-free-tier-cron" --schedule "0 9 * * *" --prompt "..." --provider "opencode-free" --model "deepseek-v4-flash-free"
+```
+
+### Migrating unpinned crons after a provider swap (known behavior)
+
+When the env `LLM_CRON_PROVIDER` changes, crons that were created unpinned
+have a **stale snapshot** of the old provider baked into `jobs.json` by the
+scheduler at creation time. On next tick, the scheduler cannot resolve the
+snapshot and SKIPS the run with a loud "pin explicitly" error. This is the
+drift guard working as designed. The fix is NOT to pin — instead, verify the
+new env, then **remove the stale cron and recreate it** with the new env active:
+
+```bash
+hermes cron remove <job_id>          # remove stale snapshot
+hermes cron create ...               # recreate — picks up new env chain
+```
+
+This ensures the cron snaps the new provider, not the old one. Do NOT pin
+as a workaround — pinning bypasses future env-driven changes.
+
 ## Pitfalls
 
 - **LLM crons with `workdir` are exclusive TERMINAL_CWD writers (#79768).** A cron with `workdir=HOME` holds the TERMINAL_CWD write lock for its whole LLM run; a neighboring cron without a workdir (a reader) blocked behind it times out after 660s. `agent-fixer-workday` (:49, writer) starved `cortex-bus-workday` (:50, reader) hourly until the workdirs were dropped from all LLM crons. **Rule: LLM crons (`no_agent != true`) get NO workdir** — a reader's terminal cwd defaults to HOME anyway, so the workdir is behavior-neutral while eliminating lock contention (zero writers = zero blocking). Fixed fleet-wide in `install-crons.sh` / `install-orch-crons.sh` / `cron-manifest.yaml` (commits 1fb1e9f9, e92118ee) — do not re-add `--workdir` when creating or editing an LLM cron. `no_agent` scripts with real file requirements may still set an absolute workdir.
@@ -284,7 +357,7 @@ When explicitly directed to add a cron to another Hermes profile (e.g. Esther):
 - **Manual `cronjob action='run'` sessions are tool-restricted BY DESIGN — not a regression (2026-08-18).** A manually-triggered run (`cronjob action='run' job_id=<id>`) executes as a delegation-style session with only the 17 core tools — **no governance MCP tools** (`begin_change`/`end_change` unreachable), so the enforcer fail-closes every write path and the run can't make changes. Scheduled ticks, by contrast, get the full toolset (proven: scheduled ticks scored governance cycles #5108/#5109 the same morning). Diagnosis rule: if a manual run reports "governance tools unavailable / write blocked", that is the design working, NOT a toolset regression — verify with the next scheduled tick before declaring an MCP outage. (Real case 2026-08-18: manual `orch-backlog-driver` run deadlocked on governance while scheduled ticks were healthy; the cron agent correctly rejected all bypasses and left the repo untouched.)
 - **Live schedule edits via the cronjob MCP tool get reverted by the next cortex-update reinstall — patch the installer `create_cron` block (repo) for durable changes (2026-08-18).** The installer's drift-edit path rewrites schedules from the `create_cron` blocks, so a `cronjob action='update'` schedule change survives only until the next `cortex-update.sh` reinstall. Real case (2026-08-18): off-peak schedule moves (agent-fixer-evening, cortex-bus-evening, judge-scorer-weekday) applied live via the MCP tool were reverted by a reinstall; the repo change was the durable fix and live values had to be re-applied afterward. **Rule: for schedule changes, patch the `create_cron` block in `install-crons.sh` / `install-orch-crons.sh` first (durable), then re-apply live if the next install isn't imminent.**
 - **Build `cron-manifest.yaml` schedules installer-first, live-second (2026-08-17).** When the source (installer `create_cron` block) changes but the live job never converged (cortex-update/installer not re-run), the live job's schedule is STALE — so building the manifest from live (`jobs.json`) bakes in the drift. Real case (2026-08-10): installer had `0 3` base → `37 3` live on moses, but a peer's manifest entry was written from the still-stale live `0 23`, re-encoding the drift into the source of truth. **Rule: the manifest's schedule column always comes from the installer base, never from the live job.** The per-host minute rewrite (`cksum(hostname:cron-name) % 60`, Luke directive 2026-08-07) means live minutes legitimately differ from base — that is NOT drift; a manifest entry that copies a live minute will fight the per-host rewrite on every host. Verify with `python3 ops/scripts/manage/cron_manifest.py --check`.
-- **Unpinned crons snapshot the provider at creation — a later provider swap makes them SKIP with a loud "pin explicitly" error (2026-08-15).** When a cron is created without an explicit provider/model (unpinned), the scheduler snapshots the then-active provider into the job. When the fleet later migrates providers (e.g. opencode-zen → openrouter), an unpinned job's snapshot no longer resolves, so the scheduler SKIPS the run and delivers a loud error telling the user to pin explicitly — it does NOT silently run on the new provider. **Rule: pin provider+model explicitly at creation** (`cronjob action='create' ... provider=... model=...` or `pin_cron_model` after edit) so provider migration never skips a run. Diagnosis: the loud "pin explicitly" error in a cron delivery is the drift guard working as designed, not a transient failure — pin the job and re-run.
+- **Unpinned crons snapshot the provider at creation — after an env change, remove+recreate instead of pinning (2026-09-08).** When a cron is created without an explicit provider/model (unpinned), the scheduler snapshots the then-active provider into the job. When the env `LLM_CRON_PROVIDER` changes, the snapshot no longer resolves and the job SKIPS with a "pin explicitly" error. **Do NOT pin as a workaround.** Instead: remove the stale cron and recreate it so it snaps the new env chain. Pinning bypasses future env-driven changes and creates maintenance debt.
 - **Orphan cron with wrong prefix duplicates a working cron (2026-08-02).** `orch-mycortex-sync` failed every tick with "Script not found: ~/.hermes-cortex/scripts/orch-mycortex-sync.sh" — the script never existed, the name had the wrong prefix (`orch-` on a per-host job), and a correct `agent-mycortex-sync` (same script, right prefix, status ok) was already running. The doctor did NOT flag it because the broken name was absent from every installer's uninstall array (not an "expected" cron). **Diagnosis:** on "Script not found", first grep jobs.json for sibling names under other prefixes (`python3 -c "import json; [print(j['name']) for j in json.load(open('$HOME/.hermes/cron/jobs.json')) if 'KEYWORD' in j['name']]"`) BEFORE creating anything — if a correctly-named twin exists, the fix is `cronjob action='remove'` on the orphan, NOT a new script. Prefix is a scope declaration: `orch-` = orchestrator-only (Moses/Esther infra), `agent-` = per-host fleet-wide. A per-host sync job (e.g. mycortex brain sync — design D4, explicitly "NOT orchestrator-only") is `agent-` by definition; only bus infra and fleet watchdogs are `orch-`. Running `python3 ~/.hermes-cortex/scripts/<script>` tests the script logic but does NOT update the cron scheduler's `last_status`. The doctor reads the scheduler's recorded status, not the script exit code. After fixing a cron, ALWAYS run `cronjob action='run' job_id=<id>` to refresh the scheduler's status, then run the doctor to confirm it clears. The user will see what the doctor shows — never claim a cron is "fixed" until the doctor confirms it.
 - **Never guess job IDs.** Always `cronjob action='list'` first before update/remove.
 - **no_agent scripts must handle silent-on-success correctly.** If the command prints "Already up to date." on stdout, the script must detect and suppress it — otherwise a "success" delivers noise to the user every tick.
