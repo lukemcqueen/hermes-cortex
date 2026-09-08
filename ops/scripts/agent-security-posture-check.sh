@@ -253,7 +253,11 @@ fi
 # --- output + state dedup ---
 # Compute a fingerprint of the current report to suppress identical
 # deliveries within the cooldown window (cron-failure-state.sh pattern).
-REPORT_HASH=$(echo -n "$REPORT" | sha256sum | cut -c1-16)
+# Normalize digits to '#' before hashing: a live counter inside a warning
+# (e.g. "740 SSH brute-force attempts in last 24h") changes every run, so a
+# raw-text fingerprint defeats dedup and re-delivers hourly. Identical
+# warnings still dedup; only genuinely NEW warning kinds re-notify.
+REPORT_HASH=$(echo -n "$REPORT" | tr '0-9' '#' | sha256sum | cut -c1-16)
 if [[ -f "$FINGERPRINT_FILE" ]]; then
   LAST_HASH=$(cat "$FINGERPRINT_FILE" 2>/dev/null || echo "")
   if [[ "$REPORT_HASH" == "$LAST_HASH" ]]; then
