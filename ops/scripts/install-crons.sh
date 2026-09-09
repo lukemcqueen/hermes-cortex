@@ -381,6 +381,13 @@ PYEOF
 pin_cron_model() {
   local name="$1" model="$2" provider="$3" reasoning_effort="$4"
   local _mf="${CORTEX_REPO:-$HOME/hermes-cortex}/ops/install/cron-manifest.yaml"
+  # Env chain is the single control point (2026-09-09): when LLM_CRON_MODEL/
+  # LLM_CRON_PROVIDER are set, manifest model/provider pins are IGNORED so an
+  # upstream manifest sync can never re-pin crons to a dead model again
+  # (deepseek-direct recurrence — fleet-wide, all agents).
+  if [[ -n "${LLM_CRON_MODEL:-}" && -n "${LLM_CRON_PROVIDER:-}" ]]; then
+    return 0
+  fi
   if [[ -f "$_mf" ]]; then
     local _mp
     _mp="$(python3 -c "
