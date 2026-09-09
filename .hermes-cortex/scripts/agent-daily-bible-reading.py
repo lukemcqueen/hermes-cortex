@@ -660,18 +660,40 @@ Generate the entry for {book}:"""
         if not entry:
             break
         cit = _extract_citation(entry) or ""
-        if not cit or (
+        # Citation must come from the ENTRY HEADER line, not anywhere in the
+        # body — the Foundations line ("(Ex 20:1–17) · (Matt 22:37–40)")
+        # otherwise satisfies the regex for entries with no real header verse.
+        header_line = next((l for l in entry.splitlines() if l.startswith("###")), "")
+        cit = _extract_citation(header_line) or ""
+        # Placeholder guard: the template's literal placeholders ("[key verse]",
+        # "(Book Chapter:Verse)") must never be accepted. They contain no
+        # digits, so _extract_citation returns None and this loop used to
+        # break immediately — ACCEPTING the unfilled template as a valid
+        # entry (2 Timothy 2026-09-09 incident).
+        is_placeholder = "[key verse]" in entry or "Book Chapter:Verse" in entry
+        if cit and not is_placeholder and (
             not any(_cites_forbidden(entry, f) for f in forbidden)
             and cit not in seen
         ):
             break
-        seen.append(cit)
+        if cit:
+            seen.append(cit)
         prompt = prompt.rstrip() + (
-            f"\n\nYour previous attempt chose {cit or 'an unusable entry'}, which is "
-            "forbidden or a duplicate for this entry. Choose a different verse. "
+            f"\n\nYour previous attempt chose {cit or 'an unusable entry'}"
+            + (" — it left the template placeholders unfilled" if is_placeholder else "")
+            + ", which is forbidden or a duplicate for this entry. "
+            "Choose a different verse. "
             "Output ONLY the corrected entry in the exact same format."
         )
         temperature += 0.2
+    # Fail closed: an entry without a real Chapter:Verse citation IN ITS
+    # HEADER, or still carrying template placeholders, is worse than no entry
+    # — return None so the caller reports a generation failure instead of
+    # writing garbage to SOUL.md and the brain page.
+    header_line = next((l for l in (entry or "").splitlines() if l.startswith("###")), "")
+    if entry is None or _extract_citation(header_line) is None \
+            or "[key verse]" in entry or "Book Chapter:Verse" in entry:
+        return None
     return entry
 
 
