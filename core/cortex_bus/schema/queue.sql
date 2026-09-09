@@ -428,6 +428,37 @@ BEGIN
     GET DIAGNOSTICS v_dlq_step = ROW_COUNT;
     v_dlq_moved := v_dlq_moved + v_dlq_step;
 
+    -- Step 2c (US-005, 2026-09-09): promote PENDING messages already at
+    -- max retries into their DLQ. Step 2b only catches `processing` ones —
+    -- a message that timed out max_retries times and was never dequeued
+    -- again stays pending forever (never re-enters processing for 2b to
+    -- see). This is the "stuck pending at max retries" gap.
+    INSERT INTO bus.queues (name, is_dlq, parent_queue)
+    SELECT DISTINCT m.queue_name || '_dlq', true, m.queue_name
+    FROM bus.messages m
+    LEFT JOIN bus.queues q ON q.name = m.queue_name || '_dlq'
+    WHERE q.name IS NULL
+      AND m.state = 'pending'
+      AND m.retry_count >= m.max_retries
+      AND m.enqueued_at < now() - interval '1 hour'
+    ON CONFLICT (name) DO NOTHING;
+
+    UPDATE bus.messages m
+    SET state = 'pending',
+        queue_name = m.queue_name || '_dlq',
+        visible_after = now(),
+        timeout_at = NULL,
+        error = COALESCE(error, 'stuck pending at max retries — promoted to DLQ')
+    FROM bus.queues q
+    WHERE m.queue_name = q.name
+      AND q.is_dlq = false
+      AND m.state = 'pending'
+      AND m.retry_count >= m.max_retries
+      AND m.enqueued_at < now() - interval '1 hour';
+
+    GET DIAGNOSTICS v_dlq_step = ROW_COUNT;
+    v_dlq_moved := v_dlq_moved + v_dlq_step;
+
     -- Step 3: Auto-archive old DLQ messages stuck in pending state
     -- (Messages that were moved to DLQ but never consumed)
     WITH archived AS (

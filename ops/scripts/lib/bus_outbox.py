@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+
 """bus_outbox — enterprise-grade client-side retry for the Agent Bus.
 
 When the bus is unreachable, `bus_send()` would return None and the
@@ -58,6 +58,13 @@ except ImportError:
     from cortex_bus import bus_peek, bus_send, bus_find_duplicate  # noqa: E402
 
 log = logging.getLogger("bus_outbox")
+
+# US-001: sweep resolves bus_send via the module-level import above; tests
+# monkeypatch bus_outbox_test.bus_send — keep a module attribute lookup so
+# the patch is honored (function-local `from` import would bypass it).
+def _resolved_bus_send(queue, body):
+    return bus_send(queue, body)
+
 
 DEFAULT_RETRY_DIR = Path.home() / ".hermes-cortex" / "bus-retry"
 RETRY_DIR = Path(os.environ.get("CORTEX_BUS_RETRY_DIR", DEFAULT_RETRY_DIR))
@@ -203,9 +210,15 @@ def sweep(now: float | None = None) -> dict:
                 continue
 
             try:
-                outcome = bus_send(queue, message_body)
+                outcome = _resolved_bus_send(queue, message_body)
             except Exception as e:  # noqa: BLE001 — never let one file kill the sweep
                 outcome = None
+            if isinstance(outcome, dict) and outcome.get("permanent"):
+                # US-001: the bus PERMANENTLY rejected this message (4xx).
+                # Quarantine immediately — retrying can never succeed.
+                _quarantine(path, f"permanent rejection: {outcome.get('error', '?')[:120]}")
+                result["quarantined"] += 1
+                continue
             if outcome is not None and outcome.get("queued") is not True:
                 path.unlink(missing_ok=True)
                 result["sent"] += 1

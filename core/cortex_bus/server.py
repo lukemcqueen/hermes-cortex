@@ -22,6 +22,7 @@ Usage:
 """
 
 import json
+import logging
 import os
 import sys
 from datetime import datetime, timezone
@@ -132,6 +133,56 @@ def _check_permission(agent: str, queue: str, action: str):
         )
 
 
+_MIRROR_QUEUE = "inbox_orchestrator"
+_ORCH_QUEUES = {"inbox_moses", "inbox_esther"}
+
+
+def _mirror_to_orchestrator_inbox(bus, source_queue: str, message: dict, sender: str, primary_msg_id) -> None:
+    """US-002: mirror orchestrator-addressed messages to inbox_orchestrator.
+
+    Any message whose `to` names an orchestrator (personal inbox_moses /
+    inbox_esther today; extend _ORCH_QUEUES as orchestrators are added) is
+    copied into the shared inbox_orchestrator so all orchestrators see it.
+    The mirror envelope preserves the original sender as `forwarded_from`
+    and tags `from` as the sender so ACL validation passes. Best-effort:
+    failures are logged, never raised (primary delivery already succeeded).
+    Suppressed when the source IS the mirror queue (no loops) and for
+    result-subject replies already targeted at orchestrators (dedup noise).
+    """
+    if source_queue == _MIRROR_QUEUE:
+        return
+    if isinstance(message, str):
+        # request JSON may carry the envelope pre-serialized (validate_send_payload
+        # tolerates both); parse for the mirror — never mutate the original.
+        try:
+            message = json.loads(message)
+        except (json.JSONDecodeError, TypeError):
+            return
+    if not isinstance(message, dict):
+        return
+    to = (message.get("to") or "").lower()
+    if not to or f"inbox_{to}" not in _ORCH_QUEUES:
+        return
+    mirror = dict(message)
+    mirror["forwarded_from"] = message.get("from", sender)
+    mirror["from"] = sender
+    mirror.setdefault("subject", "FORWARDED")
+    mirror["body"] = {
+        "mirrored_from_queue": source_queue,
+        "primary_msg_id": str(primary_msg_id),
+        "original_body": message.get("body"),
+    }
+    try:
+        bus.send(_MIRROR_QUEUE, mirror, 0, mirror.get("correlation_id"))
+        _log_audit_safe(f"mirror→{_MIRROR_QUEUE}: {message.get('subject')} (to={to})")
+    except Exception as e:  # noqa: BLE001 — mirror must never break delivery
+        logging.getLogger("cortex_bus").warning("orchestrator mirror failed: %s", e)
+
+
+def _log_audit_safe(message: str) -> None:
+    logging.getLogger("cortex_bus").info(message)
+
+
 def _queue_allowed(queue: str, allowed: list | None) -> bool:
     """True if queue matches the agent's grant list.
 
@@ -205,6 +256,12 @@ async def api_send(request: Request):
         msg_id = bus.send(queue, message, priority, correlation_id)
         _log_audit(agent, "send", queue, {"msg_id": msg_id}, 
                    request.client.host if request.client else None)
+        # US-002 orchestrator mirror (Luke directive 2026-09-09): messages
+        # addressed to an orchestrator are mirrored to the SHARED
+        # inbox_orchestrator so every orchestrator sees everything and any
+        # future orchestrator inherits visibility automatically. Best-effort:
+        # a mirror failure never fails the primary send.
+        _mirror_to_orchestrator_inbox(bus, queue, message, agent, msg_id)
         return {"msg_id": msg_id}
     except Exception as e:
         _log_audit(agent, "send", queue, {"error": str(e)[:200]},

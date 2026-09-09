@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+
 """
 cortex_bus.py — Shared bus interaction library for fleet scripts.
 
@@ -81,6 +81,17 @@ if not BUS_URL:
     )
 
 
+class BusPermanentError(Exception):
+    """The bus permanently rejected the message (HTTP 4xx).
+
+    Unlike ConnectionError, retrying can NEVER succeed — the message is
+    malformed (bad subject/envelope), unauthorized, or the queue is gone.
+    Callers must quarantine/fail fast, NOT outbox-retry (US-001, 2026-09-09:
+    a lowercase-subject poison message was retried 12x over 17h because 4xx
+    was indistinguishable from an outage).
+    """
+
+
 def _get_auth_header() -> tuple[str, str]:
     """Return (scheme, credentials) for Authorization header."""
     if CORTEX_BUS_TOKEN:
@@ -110,6 +121,11 @@ def _bus_post(endpoint: str, payload: dict, fallback: bool = False) -> dict:
             with urlopen(req, timeout=15) as resp:
                 return json.loads(resp.read().decode())
         except HTTPError as e:
+            # US-001: 4xx = PERMANENT rejection — fail fast, no retry.
+            # Only 401/403 get the Basic-auth fallback (auth downshift, not
+            # a message problem); all other 4xx raise BusPermanentError.
+            if 400 <= e.code < 500 and not (e.code in (401, 403) and scheme == "Bearer" and CORTEX_BUS_AUTH):
+                raise BusPermanentError(f"Bus permanently rejected request (HTTP {e.code}): {e}") from e
             logging.getLogger("cortex_bus").debug("HTTPError %d for Bearer auth — trying Basic fallback", e.code)
             if (
                 e.code in (401, 403)
@@ -124,7 +140,17 @@ def _bus_post(endpoint: str, payload: dict, fallback: bool = False) -> dict:
                     })
                     with urlopen(req2, timeout=15) as resp2:
                         return json.loads(resp2.read().decode())
-                except (HTTPError, URLError, OSError) as basic_err:
+                except HTTPError as basic_err:
+                    if 400 <= basic_err.code < 500 and basic_err.code not in (401, 403):
+                        # US-001: the server itself rejected the message (auth
+                        # was fine — Basic got through). Permanent, fail fast.
+                        raise BusPermanentError(
+                            f"Bus permanently rejected request (HTTP {basic_err.code}): {basic_err}"
+                        ) from basic_err
+                    logging.getLogger("cortex_bus").debug(
+                        "Basic auth fallback also failed for %s: %s", url, basic_err
+                    )
+                except (URLError, OSError) as basic_err:
                     logging.getLogger("cortex_bus").debug(
                         "Basic auth fallback also failed for %s: %s", url, basic_err
                     )
@@ -194,6 +220,12 @@ def bus_send(queue: str, message_body: dict) -> dict | None:
             "correlation_id": message_body.get("correlation_id", ""),
         }
         return _bus_post("/api/pgmq/send", payload)
+    except BusPermanentError as e:
+        # US-001: permanent rejection — NEVER outbox. Retry cannot succeed.
+        logging.getLogger("cortex_bus").error(
+            "bus_send PERMANENT rejection (no outbox): %s — subject=%s", e,
+            message_body.get("subject", "?"))
+        return {"queued": False, "permanent": True, "error": str(e)}
     except (ConnectionError, OSError, json.JSONDecodeError) as e:
         logging.getLogger("cortex_bus").warning("bus_send failed: %s", e)
         if os.environ.get("CORTEX_BUS_NO_OUTBOX") == "1":
