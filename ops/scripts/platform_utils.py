@@ -112,6 +112,20 @@ def restart_service(label: str) -> bool:
         return rc == 0
 
     elif is_linux():
+        # Scope-aware: prefer the SYSTEM unit when its file exists (orchestrator
+        # hosts migrated to system scope 2026-08-31). Plain `systemctl --user
+        # restart` on an inactive-but-present user unit STARTS it — which
+        # resurrected the user-scope cortex-bus twin to fight the system unit
+        # for port 8903 (1,600+ restart crash loop, 2026-09-09).
+        probe = _run(["systemctl", "list-unit-files", "--no-legend",
+                      f"{label}.service"])
+        system_unit_exists = bool(probe[0].strip()) and probe[2] == 0
+        if system_unit_exists:
+            # Suppress the user-scope twin so recovery never resurrects it
+            _run(["systemctl", "--user", "stop", label])
+            _run(["systemctl", "--user", "mask", label])
+            _, _, rc = _run(["systemctl", "restart", label])
+            return rc == 0
         _, _, rc = _run(["systemctl", "--user", "restart", label])
         if rc != 0:
             _, _, rc = _run(["sudo", "systemctl", "restart", label])

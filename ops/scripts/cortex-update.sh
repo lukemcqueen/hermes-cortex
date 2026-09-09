@@ -646,6 +646,13 @@ restart_cortex_bus() {
     info "  Restarting Agent Bus (systemd)…"
     systemctl daemon-reload 2>/dev/null || true
     systemctl --user daemon-reload 2>/dev/null || true
+    # Suppress the user-scope twin when the system unit owns the bus:
+    # an inactive-but-present user unit gets STARTED by `--user restart`,
+    # then fights the system unit for port 8903 (crash loop, 2026-09-09).
+    if systemctl list-unit-files cortex-bus.service --no-legend 2>/dev/null | grep -q '^cortex-bus'; then
+      systemctl --user stop cortex-bus 2>/dev/null || true
+      systemctl --user mask cortex-bus 2>/dev/null || true
+    fi
     SERVICE_CTL restart cortex-bus 2>&1 | sed 's/^/    /'
   fi
 }
