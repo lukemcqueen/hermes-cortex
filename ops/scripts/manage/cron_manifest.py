@@ -322,9 +322,13 @@ def repair_cron(cron: dict, dry_run: bool = False) -> tuple[str, str]:
 
 
 def _pin_model(name: str, model: str, provider: str) -> None:
-    """Set model/provider on a live cron via jobs.json patch (CLI has no --model)."""
-    if not model and not provider:
-        return
+    """Set model/provider on a live cron via jobs.json patch (CLI has no --model).
+
+    Writes BOTH set and EMPTY values (2026-09-09): empty = explicit unpin
+    (defer to the LLM_CRON_* env chain). The old `if not model and not
+    provider: return` made unpins a silent no-op while --repair still
+    reported 'updated' — manifest re-pin drift could never be cleared.
+    """
     if not JOBS_FILE.exists():
         return
     try:
@@ -332,10 +336,8 @@ def _pin_model(name: str, model: str, provider: str) -> None:
         jobs = data.get("jobs", []) if isinstance(data, dict) else data
         for job in jobs:
             if isinstance(job, dict) and job.get("name") == name:
-                if model:
-                    job["model"] = model
-                if provider:
-                    job["provider"] = provider
+                job["model"] = model
+                job["provider"] = provider
                 break
         else:
             return
