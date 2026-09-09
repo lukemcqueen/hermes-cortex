@@ -548,7 +548,7 @@ def cmd_send(cfg: dict, args: list):
             "topic": "general",
             "text": body_text,
         }),
-        "priority": "normal",
+        "priority": 1,
         "correlation_id": corr_id,
     }
 
