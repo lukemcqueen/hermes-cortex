@@ -883,6 +883,17 @@ crons:
   no_agent: false
   model: ''
   provider: ''
+- name: orch-autonomy-digest
+  scope: orchestrator
+  schedule: 30 7 * * *
+  script: manage/orch-autonomy-digest.sh
+  prompt: ''
+  skill: ''
+  deliver: telegram:{{HOME_CHANNEL}}
+  workdir: ''
+  no_agent: true
+  model: ''
+  provider: ''
 - name: orch-bus-audit-watchdog
   scope: orchestrator
   schedule: '*/1 * * * *'
