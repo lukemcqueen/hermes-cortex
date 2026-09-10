@@ -2,7 +2,7 @@
 """agent-daily-bible-reading.py — no_agent cron script.
 
 Reads SOUL.md, determines the next canonical book to cover,
-generates two artifacts via deepseek API:
+generates two artifacts via the LLM API (opencode-zen, model deepseek-v4-flash):
   1. A SOUL.md entry (concise, lesson-focused)
   2. A rich brain page at ~/brain/<agent>/bible/<book>.md
 
@@ -119,13 +119,19 @@ def commandments_section(book: str) -> str:
         "",
     ])
 
-DEEPSEEK_URL = "https://api.deepseek.com/v1/chat/completions"
-# O2 migration (2026-08-24): pinned to deepseek-v4-flash with reasoning
-# disabled via top-level reasoning_effort:"none" — same non-thinking behavior
-# as the retired deepseek-chat alias, but on the fleet-standard model.
-DEEPSEEK_MODEL = "deepseek-v4-flash"
-DEEPSEEK_REASONING = "none"
+# 2026-09-09 (Luke directive): NO deepseek PROVIDER (api.deepseek.com) anywhere —
+# account 402s (Insufficient Balance) and is banned fleet-wide. Model stays
+# deepseek-v4-flash, served via opencode-zen (same OpenAI-compatible shape).
+LLM_URL = "https://opencode.ai/zen/v1/chat/completions"
+LLM_MODEL = "deepseek-v4-flash"
+LLM_REASONING = "none"
+LLM_KEY_ENV = "OPENCODE_ZEN_API_KEY"
 ENV_FILE = HOME / ".hermes" / ".env"
+
+# Legacy aliases kept for grep compatibility during the provider migration.
+DEEPSEEK_URL = LLM_URL
+DEEPSEEK_MODEL = LLM_MODEL
+DEEPSEEK_REASONING = LLM_REASONING
 
 
 # ── Agent name detection ─────────────────────────────────────
@@ -283,12 +289,13 @@ def get_next_book(last_book: str) -> str | None:
 # ── Deepseek API call ─────────────────────────────────────────
 
 def get_deepseek_api_key() -> str | None:
-    """Read DEEPSEEK_API_KEY from the Hermes .env file."""
+    """Read the LLM API key (LLM_KEY_ENV, default DEEPSEEK_API_KEY) from the Hermes .env file."""
     if not ENV_FILE.exists():
         return None
+    prefix = f"{LLM_KEY_ENV}="
     for line in ENV_FILE.read_text().splitlines():
         line = line.strip()
-        if line.startswith("DEEPSEEK_API_KEY="):
+        if line.startswith(prefix):
             val = line.split("=", 1)[1].strip().strip("\"'")
             if val:
                 return val
@@ -354,7 +361,7 @@ def _call_deepseek(prompt: str, max_tokens: int = 4096, temperature: float = 0.7
     Falls back to local Ollama if DEEPSEEK_API_KEY is not available."""
     api_key = get_deepseek_api_key()
     if not api_key:
-        print("⚠️  DEEPSEEK_API_KEY not found — falling back to local Ollama (qwen2.5:3b)", file=sys.stderr)
+        print(f"⚠️  {LLM_KEY_ENV} not found — falling back to local Ollama (qwen2.5:3b)", file=sys.stderr)
         return _call_ollama(prompt, max_tokens)
 
     payload = json.dumps({
@@ -385,7 +392,7 @@ def _call_deepseek(prompt: str, max_tokens: int = 4096, temperature: float = 0.7
             return None
 
         if http_code != "200":
-            print(f"⚠️  DeepSeek API returned HTTP {http_code} — falling back to local Ollama (qwen2.5:3b)", file=sys.stderr)
+            print(f"⚠️  LLM API ({LLM_URL}) returned HTTP {http_code} — falling back to local Ollama (qwen2.5:3b)", file=sys.stderr)
             if body:
                 print(f"   Error body: {body[:300]}", file=sys.stderr)
             return _call_ollama(prompt, max_tokens)

@@ -112,15 +112,15 @@ FAIL_INSERT = """        # Record partial token usage on failure (agent may be p
 # the audit dict into the class in a refactor), so every LLM cron
 # died at the audit write with NameError. Agent is now threaded into
 # _FireAudit at construction (AUDIT_INIT/AUDIT_CTOR patches below).
-AUDIT_CACHE_MARKER = '"total_tokens": result.get("total_tokens"),\n            "cache_read_tokens": getattr(self._agent, "session_cache_read_tokens", 0) or 0,'
+AUDIT_CACHE_MARKER = '"total_tokens": result.get("total_tokens"),\n            "cache_read_tokens": getattr(self.agent, "session_cache_read_tokens", 0) or 0,'
 AUDIT_CACHE_OLD = """            "prompt_tokens": result.get("prompt_tokens"),
             "completion_tokens": result.get("completion_tokens"),
             "total_tokens": result.get("total_tokens"),"""
 AUDIT_CACHE_NEW = """            "prompt_tokens": result.get("prompt_tokens"),
             "completion_tokens": result.get("completion_tokens"),
             "total_tokens": result.get("total_tokens"),
-            "cache_read_tokens": getattr(self._agent, "session_cache_read_tokens", 0) or 0,
-            "cache_write_tokens": getattr(self._agent, "session_cache_write_tokens", 0) or 0,"""
+            "cache_read_tokens": getattr(self.agent, "session_cache_read_tokens", 0) or 0,
+            "cache_write_tokens": getattr(self.agent, "session_cache_write_tokens", 0) or 0,"""
 
 # ── Patch: _FireAudit.__init__ agent threading (2026-09-07) ──
 # Without this the audit-cache split above raises AttributeError on
@@ -132,7 +132,7 @@ AUDIT_INIT_OLD = """    def __init__(self, job: dict, job_id: str, model: str):
         self.fire_id = uuid.uuid4().hex"""
 AUDIT_INIT_NEW = """    def __init__(self, job: dict, job_id: str, model: str, agent=None):
         self.job, self.job_id, self.model = job, job_id, model
-        self._agent = agent
+        self.agent = agent
         self.fire_id = uuid.uuid4().hex"""
 
 # ── Patch: _FireAudit construction passes agent (2026-09-07) ──
@@ -143,12 +143,12 @@ AUDIT_CTOR_NEW = "        _audit = _FireAudit(job, job_id, model, agent=agent)"
 # ── Patch: usage_audit cache split (failure path) ─────────────
 # NOTE: the failure-path audit write is nested inside `if "_audit_fire_id"
 # in locals():` — 16-space indent, unlike the 12-space success path.
-AUDIT_FAIL_MARKER = '"total_tokens": None,\n                "cache_read_tokens": getattr(self._agent, "session_cache_read_tokens", 0) or 0,'
+AUDIT_FAIL_MARKER = '"total_tokens": None,\n                "cache_read_tokens": getattr(self.agent, "session_cache_read_tokens", 0) or 0,'
 AUDIT_FAIL_OLD = """                "total_tokens": None,
                 "response_silent": False,"""
 AUDIT_FAIL_NEW = """                "total_tokens": None,
-                "cache_read_tokens": getattr(self._agent, "session_cache_read_tokens", 0) or 0,
-                "cache_write_tokens": getattr(self._agent, "session_cache_write_tokens", 0) or 0,
+                "cache_read_tokens": getattr(self.agent, "session_cache_read_tokens", 0) or 0,
+                "cache_write_tokens": getattr(self.agent, "session_cache_write_tokens", 0) or 0,
                 "response_silent": False,"""
 
 # ── O6-S1: MAX_COST guard (preflight kill at request time) ──
@@ -480,7 +480,7 @@ def do_status():
         print(f"  {'OK' if 'Record zero-cost run for no_agent' in sched else 'MISS'} scheduler: no_agent hook")
         print(f"  {'OK' if 'Record token usage and cost' in sched else 'MISS'} scheduler: LLM success hook")
         print(f"  {'OK' if 'Record partial token usage on failure' in sched else 'MISS'} scheduler: failure hook")
-        _audit_cache_ok = ('"total_tokens": result.get("total_tokens"),\n            "cache_read_tokens": getattr(self._agent, "session_cache_read_tokens", 0) or 0,' in sched)
+        _audit_cache_ok = ('"total_tokens": result.get("total_tokens"),\n            "cache_read_tokens": getattr(self.agent, "session_cache_read_tokens", 0) or 0,' in sched)
         print(f"  {'OK' if _audit_cache_ok else 'MISS'} scheduler: audit cache split")
         _audit_init_ok = 'def __init__(self, job: dict, job_id: str, model: str, agent=None):' in sched
         print(f"  {'OK' if _audit_init_ok else 'MISS'} scheduler: _FireAudit agent threading")
