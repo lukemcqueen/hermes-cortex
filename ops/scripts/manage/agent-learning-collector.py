@@ -502,7 +502,14 @@ def send_report(report: dict, dry_run: bool = False) -> list[str] | None:
         subject_parts.append(f"{len(lessons)} lessons")
     if learnings:
         subject_parts.append(f"{len(learnings)} learnings")
-    subject = "Learning Report: " + (", ".join(subject_parts) if subject_parts else "heartbeat")
+    # Bus protocol (core/cortex_bus/validate.py) requires UPPER_CASE subject
+    # names (A-Z0-9_) and integer priority 0-100: a human-readable
+    # "Learning Report: N skills" subject and a "high"/"normal" string priority
+    # are both rejected with HTTP 400 and the report is silently lost
+    # (verified 2026-09-11 — collector blind for 9 days, state frozen, cron
+    # "silent"). Detail stays in the body header; the subject is the protocol
+    # name only.
+    subject = "LEARNING_REPORT"
 
     payload = {
         "queue": "inbox_orchestrator",
@@ -513,7 +520,7 @@ def send_report(report: dict, dry_run: bool = False) -> list[str] | None:
                 "topic": "reports",
                 "text": body_text,
             }),
-            "priority": "high" if (skills or learnings) else "normal",
+            "priority": 80 if (skills or learnings) else 50,
         }),
     }
 
@@ -551,6 +558,10 @@ def send_report(report: dict, dry_run: bool = False) -> list[str] | None:
             except Exception:
                 body = str(e)
         print(f"ERR: Send failed: {getattr(e, 'code', '?')} {body}", file=sys.stderr, flush=True)
+        # Also surface on stdout — a stderr-only failure read as "silent (empty
+        # output)" in the cron wrapper and hid the 400 rejection for 9 days
+        # (2026-09-11). A failed send must be visible in the job output.
+        print(f"WARN: Send failed: {getattr(e, 'code', '?')} {body}", flush=True)
         return None
     except (OSError, json.JSONDecodeError) as e:
         print(f"ERR: Send failed: {e}", file=sys.stderr, flush=True)

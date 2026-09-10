@@ -45,7 +45,11 @@ This pipeline collects from ALL agents in the fleet. Each agent runs `agent-lear
 The pipeline reads `inbox_orchestrator` PGMQ queue (the shared orchestrator inbox). Each agent sends a `Learning Report` every 6h via `agent-learning-collector`:
 
 ```
-Subject: Learning Report: N skills, M lessons
+Subject: LEARNING_REPORT (bus protocol name — UPPER_CASE A-Z0-9_ per
+core/cortex_bus/validate.py). The human-readable "Learning Report — {hostname}"
+header and the counts live in the BODY, not the subject: a "Learning Report: N
+skills" subject is rejected with HTTP 400 and the report dies silently
+(2026-09-11 — collector blind 9 days). See Pitfalls.
 
 ━━━ Learning Report — {hostname} ━━━
 Generated: {timestamp}
@@ -314,6 +318,17 @@ Result: 3 skills updated, 1 upstreamed, 1 SOUL.md entry.
   it (2026-08-05). Note esther (dual orchestrator) upstreams her own + fleet
   skills directly (42625c80, acea4937) — re-check the repo before upstreaming
   so a skill doesn't get committed twice.
+- **Subject must be UPPER_CASE protocol (2026-09-11)** → the bus validator
+  (`core/cortex_bus/validate.py`) rejects any subject outside `[A-Z0-9_]` with
+  HTTP 400, and likewise rejects string priorities ("high"/"normal" — must be
+  integer 0-100). `agent-learning-collector` printed the rejection to
+  **stderr only**, so the cron wrapper recorded "silent (empty output)", state
+  never saved, and the pipeline was blind for 9 days (last staged report
+  2026-09-02, ~36 failed retries). Subject is now `LEARNING_REPORT`
+  (counts/header live in the body; priority 80/50); the handler matches both
+  `Learning Report*` and `LEARNING_REPORT`. When a fleet report seems missing,
+  first verify the collector produced output and a `LEARNING_REPORT` reached
+  the archive — never conclude "nothing changed" from silence alone.
 - **Don't patch the same skill twice in one run** — deduplicate before acting
 - **Don't upstream fleet skills that already exist** — check repo + Hermes bundle
 - **Don't modify SOUL.md for workflow lessons** — skills are for workflow, SOUL.md is for principles

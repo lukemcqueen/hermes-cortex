@@ -1438,7 +1438,7 @@ def main():
       # content is lost from the live flow (regression: early-archive added
       # 2026-07-23 ate all reports; verified 2026-08-03 — queue empty at 04:00,
       # collector state frozen since 07-28).
-      if subject.startswith("Learning Report"):
+      if subject.startswith(("Learning Report", "LEARNING_REPORT")):
         try:
           stage_dir = Path(os.environ.get("CORTEX_DEPLOY_HOME", Path.home() / ".hermes-cortex")) / "state" / "learning-reports"
           stage_dir.mkdir(parents=True, exist_ok=True)
