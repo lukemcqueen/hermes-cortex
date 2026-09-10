@@ -1,0 +1,13 @@
+#!/bin/sh
+# LightDM greeter screen blank + auto-shutdown timer
+# Runs in the X session of the login greeter
+
+# Screen blank (existing behavior)
+sleep 2
+/usr/bin/xset s blank
+/usr/bin/xset s 300
+/usr/bin/xset dpms 300 300 300
+/usr/bin/xset dpms force standby
+
+# Mark when the greeter appeared — the auto-shutdown service checks this
+/usr/bin/touch /run/lightdm-greeter-since
