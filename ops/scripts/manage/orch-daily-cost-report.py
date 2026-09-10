@@ -26,6 +26,7 @@ from pathlib import Path
 HOME = Path.home()
 AUDIT = HOME / ".hermes" / "cron" / "usage_audit.jsonl"
 COST_DB = HOME / ".hermes" / "cron" / "cron-costs.db"
+JOBS_FILE = HOME / ".hermes" / "cron" / "jobs.json"
 
 # DeepSeek v4-flash pricing, USD per 1M tokens (effective 2026-08-16):
 # cache-hit input, cache-miss input, output (off-peak). Peak = 2x.
@@ -65,6 +66,31 @@ def load_audit(path: Path):
     return rows
 
 
+def load_job_names(path: Path = JOBS_FILE) -> dict:
+    """Map job_id -> human cron name from jobs.json (for audit rows written
+    before the `job_name` field existed). Returns {} on any failure; the
+    report falls back to the short id, never crashes on a missing file."""
+    if not path.exists():
+        return {}
+    try:
+        data = json.loads(path.read_text())
+    except (json.JSONDecodeError, OSError):
+        return {}
+    jobs = data.get("jobs", data) if isinstance(data, dict) else data
+    if not isinstance(jobs, list):
+        return {}
+    return {str(j.get("id")): str(j.get("name") or j.get("id") or "") for j in jobs if isinstance(j, dict)}
+
+
+def _job_label(jid: str, audit_row: dict, name_map: dict) -> str:
+    """Human label for an audit row's job: prefer the row's own job_name
+    (written since O1-S3), else resolve the hash via jobs.json, else short id."""
+    row_name = audit_row.get("job_name")
+    if row_name:
+        return row_name
+    return name_map.get(jid) or jid[:16]
+
+
 def build_report(days: int, audit_path: Path = AUDIT, cost_db: Path = COST_DB):
     now = datetime.utcnow()
     cutoff = (now - timedelta(days=days)).replace(hour=0, minute=0, second=0, microsecond=0)
@@ -84,12 +110,14 @@ def build_report(days: int, audit_path: Path = AUDIT, cost_db: Path = COST_DB):
                         "session": {"runs": 0, "cost_usd": 0.0, "prompt_m": 0.0, "cache_read_m": 0.0},
                         "subagent": {"runs": 0, "cost_usd": 0.0}},
         "top_jobs": [],
+        "subagent_items": [],
     }
 
     if audit_rows is None:
         report["coverage"]["usage_audit"] = "MISSING"
     else:
         report["coverage"]["usage_audit"] = "ok"
+        name_map = load_job_names()
         job_costs = {}
         total_hit = total_prompt = 0
         for r in audit_rows:
@@ -106,6 +134,7 @@ def build_report(days: int, audit_path: Path = AUDIT, cost_db: Path = COST_DB):
             cw = r.get("cache_write_tokens") or 0
             cost = compute_cost(pt, ct, cr, cw, dt)
             jid = r.get("job_id")
+            label = _job_label(jid, r, name_map) if jid else None
             cat = "cron" if jid else "session"
             if "subagent" in json.dumps(r.get("fire_id", "")) or "deleg" in str(r.get("fire_id", "")):
                 cat = "subagent"
@@ -121,14 +150,14 @@ def build_report(days: int, audit_path: Path = AUDIT, cost_db: Path = COST_DB):
             if is_peak_hour(dt):
                 report["summary"]["peak_runs"] += 1
             if jid:
-                jc = job_costs.setdefault(jid, {"runs": 0, "cost": 0.0})
+                jc = job_costs.setdefault(jid, {"runs": 0, "cost": 0.0, "name": label})
                 jc["runs"] += 1
                 jc["cost"] += cost
 
         if total_prompt > 0:
             report["summary"]["cache_hit_pct"] = round(total_hit / total_prompt * 100, 1)
         report["top_jobs"] = sorted(
-            [{"job_id": k[:16], "runs": v["runs"], "cost_usd": round(v["cost"], 4)}
+            [{"job_name": v["name"], "job_id": k[:16], "runs": v["runs"], "cost_usd": round(v["cost"], 4)}
              for k, v in job_costs.items()], key=lambda x: -x["cost_usd"])[:5]
 
     # cron-costs.db coverage (secondary source)
@@ -157,14 +186,32 @@ def build_report(days: int, audit_path: Path = AUDIT, cost_db: Path = COST_DB):
                        ROUND(SUM(COALESCE(input_tokens,0))/1e6,1),
                        ROUND(SUM(COALESCE(cache_read_tokens,0))/1e6,1)
                 FROM sessions
-                WHERE source != 'cron' AND started_at >= ?
+                WHERE source NOT IN ('cron','subagent') AND started_at >= ?
                 GROUP BY source ORDER BY 3 DESC""", (cutoff_ts,)).fetchall()
+            # Itemize subagents individually (O1-S3). source='subagent' rows in
+            # state.db carry parent_session_id + per-session cost/tokens — one
+            # row per delegate_task subagent, so this is the per-subagent total.
+            subagents = con.execute("""
+                SELECT id, model, COALESCE(estimated_cost_usd,0),
+                       ROUND(COALESCE(input_tokens,0)/1e6,1),
+                       ROUND(COALESCE(output_tokens,0)/1e6,1),
+                       ROUND(COALESCE(cache_read_tokens,0)/1e6,1),
+                       COALESCE(parent_session_id,'')
+                FROM sessions
+                WHERE source = 'subagent' AND started_at >= ?
+                ORDER BY estimated_cost_usd DESC""", (cutoff_ts,)).fetchall()
             con.close()
             report["coverage"]["sessions_db"] = "ok"
             report["by_category"]["session"]["runs"] = sum(r[1] for r in rows)
             report["by_category"]["session"]["cost_usd"] = round(sum(r[2] for r in rows), 2)
             report["by_category"]["session"]["prompt_m"] = round(sum(r[3] for r in rows), 1)
             report["by_category"]["session"]["cache_read_m"] = round(sum(r[4] for r in rows), 1)
+            report["by_category"]["subagent"]["runs"] = len(subagents)
+            report["by_category"]["subagent"]["cost_usd"] = round(sum(r[2] for r in subagents), 2)
+            report["subagent_items"] = [
+                {"id": r[0][:16], "model": r[1], "cost_usd": r[2],
+                 "input_m": r[3], "output_m": r[4], "cache_read_m": r[5],
+                 "parent_id": r[6][:16]} for r in subagents]
         except Exception as e:
             report["coverage"]["sessions_db"] = f"error: {e}"
 
@@ -191,7 +238,12 @@ def render_text(r: dict) -> str:
     if r["top_jobs"]:
         lines.append("   Top jobs:")
         for j in r["top_jobs"]:
-            lines.append(f"     {j['job_id']}: ${j['cost_usd']:.2f} ({j['runs']} runs)")
+            label = j.get("job_name") or j.get("job_id", "?")
+            lines.append(f"     {label}: ${j['cost_usd']:.2f} ({j['runs']} runs)")
+    if r.get("subagent_items"):
+        lines.append("   Subagents itemized:")
+        for s in r["subagent_items"]:
+            lines.append(f"     {s['id']} ({s['model']}): ${s['cost_usd']:.2f} · {s['input_m']}M in / {s['output_m']}M out · cache {s['cache_read_m']}M")
     gaps = [k for k, v in cov.items() if v == "MISSING"]
     lines.append(f"   Coverage: audit={cov.get('usage_audit')} db={cov.get('cron_costs_db')}"
                  + (f" ⚠️ GAPS: {', '.join(gaps)}" if gaps else ""))

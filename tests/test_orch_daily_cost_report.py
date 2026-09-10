@@ -156,17 +156,24 @@ def test_sessions_table_source():
         con.execute("""CREATE TABLE sessions (
             id TEXT, source TEXT, started_at REAL, ended_at REAL, end_reason TEXT,
             estimated_cost_usd REAL, input_tokens INTEGER, output_tokens INTEGER,
-            cache_read_tokens INTEGER, cache_write_tokens INTEGER)""")
+            cache_read_tokens INTEGER, cache_write_tokens INTEGER,
+            model TEXT, parent_session_id TEXT)""")
         import time
         now = time.time()
         con.execute("""INSERT INTO sessions
-            (id, source, started_at, estimated_cost_usd, input_tokens, output_tokens, cache_read_tokens)
-            VALUES ('s1','telegram',?, 1.25, 5000000, 100000, 4000000)""", (now - 3600,))
+            (id, source, started_at, estimated_cost_usd, input_tokens, output_tokens, cache_read_tokens,
+             model, parent_session_id)
+            VALUES ('s1','telegram',?, 1.25, 5000000, 100000, 4000000, 'm1', NULL)""", (now - 3600,))
         # an OLD session (9 days ago) must be excluded — guards the timezone bug
         # where naive-UTC .timestamp() misread the cutoff as local (+8.6h shift)
         con.execute("""INSERT INTO sessions
-            (id, source, started_at, estimated_cost_usd, input_tokens, output_tokens, cache_read_tokens)
-            VALUES ('s0','telegram',?, 9.99, 90000000, 100000, 0)""", (now - 9*86400,))
+            (id, source, started_at, estimated_cost_usd, input_tokens, output_tokens, cache_read_tokens,
+             model, parent_session_id)
+            VALUES ('s0','telegram',?, 9.99, 90000000, 100000, 0, 'm0', NULL)""", (now - 9*86400,))
+        con.execute("""INSERT INTO sessions
+            (id, source, started_at, estimated_cost_usd, input_tokens, output_tokens, cache_read_tokens,
+             model, parent_session_id)
+            VALUES ('sa1','subagent',?, 2.50, 11, 22, 33, 'model-x', 'parent1')""", (now - 1800,))
         con.commit(); con.close()
 
         r = build_report(days=1, audit_path=audit, cost_db=Path(td) / "nope.db")
@@ -174,6 +181,12 @@ def test_sessions_table_source():
         assert r["by_category"]["session"]["runs"] == 1, "old session leaked in (timezone bug)"
         assert abs(r["by_category"]["session"]["cost_usd"] - 1.25) < 0.01
         assert r["by_category"]["session"]["prompt_m"] == 5.0
+        # O1-S3: the subagent session is itemized individually
+        assert r["by_category"]["subagent"]["runs"] == 1
+        assert abs(r["by_category"]["subagent"]["cost_usd"] - 2.50) < 0.01
+        assert len(r["subagent_items"]) == 1
+        assert r["subagent_items"][0]["id"] == 'sa1'[:16]
+        assert r["subagent_items"][0]["model"] == 'model-x'
 
 
 if __name__ == "__main__":
