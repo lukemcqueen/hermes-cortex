@@ -52,8 +52,22 @@ def test_protocol_probes_still_silent(handler_module):
 
 
 def test_real_subjects_still_visible(handler_module):
-    for s in ("EXEC", "UPDATE_REQUEST", "TASK_REQUEST", "PROPOSAL", "EXEC_RESULT", "UPDATE_RESULT"):
+    for s in ("EXEC", "UPDATE_REQUEST", "TASK_REQUEST", "PROPOSAL"):
         assert handler_module._is_silent_subject(s) is False
+
+
+def test_result_subjects_dispatched_but_not_notified(handler_module):
+    # *_RESULT replies must still reach dispatch (they close task rows),
+    # so they are NOT silent-archived — but the pickup notify is noise.
+    for s in ("TASK_RESULT", "EXEC_RESULT", "UPDATE_RESULT", "EXEC_RESULT", "STATUS_RESULT"):
+        assert handler_module._is_silent_subject(s) is False
+        assert handler_module._notify_on_pickup(s) is False
+
+
+def test_non_result_subjects_still_notify(handler_module):
+    # A genuine inbound non-task message (e.g. a health check request on
+    # a remote queue, or a tracked-but-not-result message) still notifies.
+    assert handler_module._notify_on_pickup("PING_REQUEST") is True
 
 
 def test_none_input_does_not_crash(handler_module):
