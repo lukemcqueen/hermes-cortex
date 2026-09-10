@@ -581,6 +581,7 @@ if $UNINSTALL; then
     "agent-session-cache-build" \
     "agent-session-correction-scan" \
     "agent-session-mine" \
+    "orch-autonomy-digest" \
     "agent-stale-ref-watchdog" \
     "agent-swap-refresh" \
     "agent-system-alert-watchdog"; do
@@ -1020,17 +1021,7 @@ create_cron "agent-review-queue-sweep" "45 1 * * *" \
   "" \
   "true"
 
-# Autonomy digest (O4-S2) — daily "what ran unattended" shadow digest 07:30
-# (no_agent: runs autonomy-classifier.py --digest --ledger for last 24h;
-#  stdout is the compact daily digest; kill switch fails closed silent)
-create_cron "orch-autonomy-digest" "30 7 * * *" \
-  "manage/orch-autonomy-digest.sh" \
-  "" \
-  "" \
-  "" \
-  "origin" \
-  "" \
-  "true"
+
 
 
 # Session embedding cache rebuild (weekly Monday 05:00 — universal, loop-governance)

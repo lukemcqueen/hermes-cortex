@@ -146,7 +146,8 @@ if $UNINSTALL; then
     "orch-task-board-digest" \
     "orch-task-morning-pass" \
     "orch-task-evening-pass" \
-    "orch-backlog-driver"; do
+    "orch-backlog-driver" \
+    "orch-autonomy-digest"; do
     remove_cron "$job" 2>/dev/null || true
   done
   info "Uninstall complete"
@@ -640,6 +641,18 @@ Your job is to:
   "" \
   "false" \
   "$LLM_CRON_MODEL" "$LLM_CRON_PROVIDER" "none"
+
+# Autonomy digest (O4-S2) — daily "what ran unattended" shadow digest 07:30
+# (no_agent: runs autonomy-classifier.py --digest --ledger for last 24h;
+#  stdout is the compact daily digest; kill switch fails closed silent)
+create_cron "orch-autonomy-digest" "30 7 * * *" \
+  "manage/orch-autonomy-digest.sh" \
+  "" \
+  "" \
+  "" \
+  "telegram:${TELEGRAM_HOME_CHANNEL}" \
+  "" \
+  "true"
 
 # ── 5. Backlog Driver (F-023) ──────────────────────────────
 printf "${CYAN}  5. Backlog Driver${RESET}\n"
