@@ -61,13 +61,13 @@ def test_result_subjects_dispatched_but_not_notified(handler_module):
     # so they are NOT silent-archived — but the pickup notify is noise.
     for s in ("TASK_RESULT", "EXEC_RESULT", "UPDATE_RESULT", "EXEC_RESULT", "STATUS_RESULT"):
         assert handler_module._is_silent_subject(s) is False
-        assert handler_module._notify_on_pickup(s) is False
+        assert handler_module._should_skip_pickup_notify(s) is True
 
 
 def test_non_result_subjects_still_notify(handler_module):
     # A genuine inbound non-task message (e.g. a health check request on
     # a remote queue, or a tracked-but-not-result message) still notifies.
-    assert handler_module._notify_on_pickup("PING_REQUEST") is True
+    assert handler_module._should_skip_pickup_notify("PING_REQUEST") is False
 
 
 def test_none_input_does_not_crash(handler_module):
