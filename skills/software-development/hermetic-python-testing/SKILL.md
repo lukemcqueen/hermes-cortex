@@ -125,3 +125,10 @@ After the suite is green, confirm no real resources were touched:
   sharing one makes tests order-dependent.
 - **The module's own `if __name__ == "__main__"` self-test** should also go
   through the same seams, or it will hit real resources when run manually.
+- **Queue mock returns for EVERY caller of a seam, not just the call site you
+  are testing.** Before writing the mock, grep the function under test's full
+  call tree for uses of the seam — a sibling helper (e.g. a probe that queries
+  the same LLM/API function) silently consumes the queued responses, and the
+  code under test receives the wrong fixture or runs dry. The failure looks
+  like a parsing bug in the function under test; the real bug is the mock
+  budget. Count the seam's call sites first, then size the queue.

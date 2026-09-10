@@ -99,3 +99,10 @@ for the shipped file = the update landed, response lost.
   `git_sha_after == target_sha`, not the exit code.
 - Always check BOTH `bus.messages` (live) and `bus.archives` — results are
   consumed+archived by the orchestrator's own handler within minutes.
+- **Sender tracing when a subject appears from nowhere:** grep the sender
+  host's scripts first, but a miss proves nothing — ad-hoc one-off messages
+  sent from a live session never touch any script. Ground truth is the
+  receiver's `bus.archives` filtered on the subject: the row's `from` field
+  plus the envelope body text tells you who sent it and what it asked. Check
+  `~/.hermes-cortex/bus-retry/*.json` (both hosts) too — spooled dead letters
+  carry the full message plus `attempts`/`created_at`.
