@@ -1,5 +1,16 @@
 version: 1
 crons:
+- name: agent-restic-backup
+  scope: universal
+  schedule: 43 2 * * 0
+  script: agent-restic-backup.py
+  prompt: ''
+  skill: ''
+  deliver: telegram:{{HOME_CHANNEL}}
+  workdir: ''
+  no_agent: true
+  model: ''
+  provider: ''
 - name: agent-agents-md-prune-apply
   scope: universal
   schedule: 30 4 * * 1-6

@@ -564,6 +564,7 @@ if $UNINSTALL; then
     "agent-message-handler" \
     "agent-mcp-health-watchdog" \
     "agent-bus-retry-sweep" \
+    "agent-restic-backup" \
     "agent-mycortex-sync" \
     "agent-mycortex-retention" \
     "agent-model-health-watchdog" \
@@ -945,6 +946,18 @@ create_cron "agent-mcp-health-watchdog" "*/5 * * * *" \
 # directly (no wrapper): lib/ is on sys.path[0] as the script's dir.
 create_cron "agent-bus-retry-sweep" "*/15 * * * *" \
   "lib/bus_outbox.py" \
+  "" \
+  "" \
+  "" \
+  "telegram:${TELEGRAM_HOME_CHANNEL}" \
+  "" \
+  "true"
+
+# Weekly cross-platform restic backup (no_agent): local repo + off-box
+# SFTP copy on every host (Arch/Debian/RHEL/macOS). Delivers only on
+# failure (watchdog pattern); success is silent.
+create_cron "agent-restic-backup" "43 2 * * 0" \
+  "agent-restic-backup.py" \
   "" \
   "" \
   "" \
