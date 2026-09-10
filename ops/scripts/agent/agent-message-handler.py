@@ -156,6 +156,27 @@ def _is_silent_subject(subject: str) -> bool:
     return subject in ("DOCTOR_TEST", "STATUS_REQUEST", "HEARTBEAT", "PING") \
         or (isinstance(subject, str) and subject.startswith("HEALTH_"))
 
+
+def _should_skip_pickup_notify(subject) -> bool:
+    """True when the 📥 'Received <subject>' pickup notify must NOT fire.
+
+    Luke 2026-09-10 flood: every *_RESULT reply produced '📥 Received
+    TASK_RESULT from moses' one-per-result. Results are receipts, not
+    pickups — the handler logs them (📬) and transitions the task; no
+    pickup notice is warranted. Skipped:
+      - *_RESULT subjects (expected replies; TASK_RESULT and any
+        fallback '<subject>_RESULT' error echo included)
+      - TASK_CREATING_SUBJECTS (R-14: task-db.py's entry notify replaces
+        the pickup notify — one EXEC = 1 entry message, not 5)
+    Everything else (GIT_AUTH_CHECK, FIX_REQUEST, plain-text probes) still
+    notifies.
+    """
+    if not isinstance(subject, str):
+        return False
+    if subject in TASK_CREATING_SUBJECTS:
+        return True
+    return subject.endswith("_RESULT")
+
 # Prefix forms of the report subjects (AGENTS.md convention:
 # "📝 PROPOSAL: <what>"). The TASK_CREATING_SUBJECTS exact-match check
 # would otherwise skip task-row creation for the documented prefix form
@@ -1182,7 +1203,9 @@ def main():
 
     # Notify pickup — SKIPPED for tracked subjects: the task-entry notify
     # from task-db.py replaces it (R-14: one EXEC = 1 entry message, not 5).
-    if subject not in TASK_CREATING_SUBJECTS:
+    # Also skipped for *_RESULT subjects (Luke 2026-09-10 flood: every result
+    # reply produced '📥 Received TASK_RESULT' — receipts are not pickups).
+    if not _should_skip_pickup_notify(subject):
       notify_telegram(
         f"📥 [{AGENT_NAME}] Received {subject} from {body.get('from', '?')}",
         f"📥 {AGENT_NAME}:{subject}",
