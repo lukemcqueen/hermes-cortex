@@ -143,6 +143,19 @@ def notify_telegram(message: str, subject: str = ""):
 TASK_CREATING_SUBJECTS = ("EXEC", "UPDATE_REQUEST", "TASK_REQUEST",
                           "PROPOSAL", "ISSUES", "IMPROVEMENTS")
 
+
+def _is_silent_subject(subject: str) -> bool:
+    """True for known-noise subjects: archive without Telegram pickup notify.
+
+    Protocol probes (DOCTOR_TEST/STATUS_REQUEST/HEARTBEAT/PING) plus the
+    HEALTH_* family. HEALTH_* reports are self-generated: report_health_change()
+    addresses them to moses, the bus US-002 mirror copies orchestrator-addressed
+    messages into inbox_orchestrator, and the handler polls that queue — so its
+    own health report comes back as a pickup and re-notifies (flood 2026-09-10).
+    """
+    return subject in ("DOCTOR_TEST", "STATUS_REQUEST", "HEARTBEAT", "PING") \
+        or (isinstance(subject, str) and subject.startswith("HEALTH_"))
+
 # Prefix forms of the report subjects (AGENTS.md convention:
 # "📝 PROPOSAL: <what>"). The TASK_CREATING_SUBJECTS exact-match check
 # would otherwise skip task-row creation for the documented prefix form
@@ -1153,7 +1166,11 @@ def main():
     # manual runs). Archive and move on WITHOUT notifying Telegram. This MUST
     # precede the pickup notify: previously the notify fired first and every
     # drained test message became a chat message (flood observed 2026-08-08).
-    if subject in ("DOCTOR_TEST", "STATUS_REQUEST", "HEARTBEAT", "PING"):
+    # HEALTH_* reports are ALSO silent: report_health_change() addresses them
+    # to moses, the bus mirrors orchestrator-addressed messages into
+    # inbox_orchestrator (US-002), and the handler polls that queue — so its
+    # OWN health report returns as a pickup and re-notifies (flood 2026-09-10).
+    if _is_silent_subject(subject):
         log(f"Silently archived {subject} from {body.get('from', '?')}")
         archive_message(source_queue, msg_id)
         state.setdefault("last_noise", []).append(
@@ -1356,7 +1373,7 @@ def main():
           return False
 
       # Silent subjects — known noise, just archive and move on
-      if subject in ("DOCTOR_TEST", "STATUS_REQUEST", "HEARTBEAT", "PING"):
+      if _is_silent_subject(subject):
         log(f"Silently archived {subject} from {body.get('from', '?')}")
         archive_message(source_queue, msg_id)
         state.setdefault("last_noise", []).append(
