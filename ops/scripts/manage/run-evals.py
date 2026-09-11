@@ -26,6 +26,7 @@ import os
 import re
 import subprocess
 import sys
+import time
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -197,10 +198,19 @@ def _bus_round_trip() -> tuple[bool, str]:
         return False, f"send failed: {json.dumps(sent)[:160] if sent else 'no response'}"
     sent_id = sent["msg_id"]
 
-    # 2. Read back (vt=600 — hidden, not consumed)
-    msg = bus_read(queue, vt=600)
-    if not msg or not msg.get("msg_id"):
-        return False, "read failed: no message returned"
+    # 2. Read back (vt=600 — hidden, not consumed). inbox_esther is a LIVE
+    # queue: real fleet traffic can sit at the head and be returned first,
+    # which used to false-fail the gate (2026-09-10, twice in 30 min). Retry
+    # until the probe's correlation surfaces — foreign messages were vt-hidden
+    # by the peek and resurface after expiry; they are never archived here.
+    msg = None
+    for _attempt in range(3):
+        msg = bus_read(queue, vt=600)
+        if not msg or not msg.get("msg_id"):
+            return False, "read failed: no message returned"
+        if msg.get("correlation_id") == correlation_id:
+            break
+        time.sleep(1)
     if msg.get("correlation_id") != correlation_id:
         return False, (f"read returned msg {str(msg.get('msg_id'))[:8]} but "
                        f"correlation mismatch (expected {correlation_id[:8]}…)")
