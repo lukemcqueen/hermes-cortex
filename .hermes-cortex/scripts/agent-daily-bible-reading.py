@@ -533,6 +533,87 @@ def _extract_citation(entry: str) -> str | None:
     return m.group(1) if m else None
 
 
+def _extract_verse_text(header_line: str) -> str | None:
+    """The quoted verse prose inside the header (*\"...\"), or None.
+
+    The canonical template is ``### {book} — *\"[key verse]\" ([Book
+    Chapter:Verse])*``; the closing ``*`` may sit after the parenthesized
+    citation (``*\"...\" (Book 1:1)*``), so we only anchor on the opening
+    ``*\"`` and the next closing quote.
+    """
+    m = re.search(r'\*"([^"]+)"', header_line)
+    return m.group(1).strip() if m else None
+
+
+def _sane_citation(cit: str) -> bool:
+    """True if cit is a well-formed ``Book Chapter:Verse`` reference.
+
+    Rejects malformed citations that once passed the old gate: bracketed
+    refs (``[Phm 6:17:17]``), double-colon refs (``1:15:15``), and
+    placeholder-shaped refs. Allows verse ranges (``2:14–15``).
+    """
+    c = cit.strip()
+    if not c or "[" in c or "]" in c or c.count(":") != 1:
+        return False
+    return bool(re.fullmatch(r"[A-Za-z0-9 ]+?\s+\d+:\d+(?:[–\-]\d+)?", c))
+
+
+def _header_is_acceptable(header_line: str) -> bool:
+    """True iff the header carries REAL quoted verse prose AND a sane citation.
+
+    The old gate only required *a* citation somewhere in the header, so the
+    model could echo the reference back as the \"verse\" (``*\"Titus 3:8\"
+    (Titus 3:8)*``), leave the template unfilled, or emit a mangled citation
+    — and every one of those was accepted and delivered fleet-wide. This
+    guard fails closed on all of them (moses/esther evidence 2026-09-08..12).
+    """
+    if not header_line or not header_line.startswith("###"):
+        return False
+    if "[key verse]" in header_line or "Book Chapter:Verse" in header_line:
+        return False
+    cit = _extract_citation(header_line)
+    if not cit or not _sane_citation(cit):
+        return False
+    verse = _extract_verse_text(header_line)
+    if not verse:
+        return False
+    # Real scripture prose: >=10 chars with a real word, no brackets, and no
+    # citation-shaped text (digits-colon) — the model must QUOTE the verse,
+    # not re-state the reference it was given. The word check is Unicode
+    # (a Hebrew/Greek verse is still real prose; digits-only is not).
+    if len(verse) < 10 or not re.search(r"[^\W\d_]{2,}", verse):
+        return False
+    if "[" in verse or "]" in verse:
+        return False
+    if re.search(r"\d+:\d+", verse):
+        return False
+    return True
+
+
+def _reject_reason(header_line: str) -> str:
+    """Human-readable reason a header failed the accept gate (feedback text)."""
+    if "[key verse]" in header_line or "Book Chapter:Verse" in header_line:
+        return " (it left the template placeholders unfilled)"
+    if not _extract_verse_text(header_line):
+        return " (it omitted the quoted verse text)"
+    cit = _extract_citation(header_line)
+    if not cit or not _sane_citation(cit):
+        return f" (its citation {cit or '<missing>'} is malformed)"
+    return ""
+
+
+def _strip_rejection_feedback(entry: str) -> str:
+    """Remove echoed rejection-feedback lines from an accepted entry.
+
+    The retry prompt's rejection text ends up buried in the delivered entry
+    when the model echoes it back (esther 2026-09-10: the Philemon entry
+    carried \"Your previous attempt chose ...\" after the date comment).
+    Drop any such trailing line before write/deliver.
+    """
+    kept = [l for l in entry.splitlines() if not l.startswith("Your previous attempt chose")]
+    return "\n".join(kept).rstrip() + "\n"
+
+
 def _cites_forbidden(entry: str, forbidden: str) -> bool:
     """True if the entry's citation starts at the forbidden chapter:verse.
 
@@ -666,19 +747,16 @@ Generate the entry for {book}:"""
         entry = _call_deepseek(prompt, max_tokens=1024, temperature=temperature)
         if not entry:
             break
-        cit = _extract_citation(entry) or ""
-        # Citation must come from the ENTRY HEADER line, not anywhere in the
-        # body — the Foundations line ("(Ex 20:1–17) · (Matt 22:37–40)")
-        # otherwise satisfies the regex for entries with no real header verse.
+        # Accept gate: the header must carry REAL quoted verse prose AND a
+        # sane Book Chapter:Verse citation. The old gate only required a
+        # citation, so the model could fill the verse slot with the
+        # reference itself (*"Titus 3:8" (Titus 3:8)*), echo the template,
+        # or emit mangled citations (1:15:15, [Phm 6:17:17]) — all accepted
+        # and delivered fleet-wide (2026-09-08..12 evidence).
         header_line = next((l for l in entry.splitlines() if l.startswith("###")), "")
         cit = _extract_citation(header_line) or ""
-        # Placeholder guard: the template's literal placeholders ("[key verse]",
-        # "(Book Chapter:Verse)") must never be accepted. They contain no
-        # digits, so _extract_citation returns None and this loop used to
-        # break immediately — ACCEPTING the unfilled template as a valid
-        # entry (2 Timothy 2026-09-09 incident).
         is_placeholder = "[key verse]" in entry or "Book Chapter:Verse" in entry
-        if cit and not is_placeholder and (
+        if _header_is_acceptable(header_line) and not is_placeholder and (
             not any(_cites_forbidden(entry, f) for f in forbidden)
             and cit not in seen
         ):
@@ -687,21 +765,21 @@ Generate the entry for {book}:"""
             seen.append(cit)
         prompt = prompt.rstrip() + (
             f"\n\nYour previous attempt chose {cit or 'an unusable entry'}"
-            + (" — it left the template placeholders unfilled" if is_placeholder else "")
+            + _reject_reason(header_line)
             + ", which is forbidden or a duplicate for this entry. "
             "Choose a different verse. "
             "Output ONLY the corrected entry in the exact same format."
         )
         temperature += 0.2
-    # Fail closed: an entry without a real Chapter:Verse citation IN ITS
-    # HEADER, or still carrying template placeholders, is worse than no entry
-    # — return None so the caller reports a generation failure instead of
-    # writing garbage to SOUL.md and the brain page.
+    # Fail closed: an entry without REAL quoted verse prose in its HEADER, or
+    # still carrying template placeholders, is worse than no entry — return
+    # None so the caller reports a generation failure instead of writing
+    # garbage to SOUL.md and the brain page.
     header_line = next((l for l in (entry or "").splitlines() if l.startswith("###")), "")
-    if entry is None or _extract_citation(header_line) is None \
+    if entry is None or not _header_is_acceptable(header_line) \
             or "[key verse]" in entry or "Book Chapter:Verse" in entry:
         return None
-    return entry
+    return _strip_rejection_feedback(entry)
 
 
 def ensure_foundations_line(entry: str) -> str:
