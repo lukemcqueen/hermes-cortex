@@ -112,15 +112,15 @@ FAIL_INSERT = """        # Record partial token usage on failure (agent may be p
 # the audit dict into the class in a refactor), so every LLM cron
 # died at the audit write with NameError. Agent is now threaded into
 # _FireAudit at construction (AUDIT_INIT/AUDIT_CTOR patches below).
-AUDIT_CACHE_MARKER = '"total_tokens": result.get("total_tokens"),\n            "cache_read_tokens": getattr(self.agent, "session_cache_read_tokens", 0) or 0,'
+AUDIT_CACHE_MARKER = '"total_tokens": result.get("total_tokens"),\n            "cache_read_tokens": getattr(self._agent, "session_cache_read_tokens", 0) or 0,'
 AUDIT_CACHE_OLD = """            "prompt_tokens": result.get("prompt_tokens"),
             "completion_tokens": result.get("completion_tokens"),
             "total_tokens": result.get("total_tokens"),"""
 AUDIT_CACHE_NEW = """            "prompt_tokens": result.get("prompt_tokens"),
             "completion_tokens": result.get("completion_tokens"),
             "total_tokens": result.get("total_tokens"),
-            "cache_read_tokens": getattr(self.agent, "session_cache_read_tokens", 0) or 0,
-            "cache_write_tokens": getattr(self.agent, "session_cache_write_tokens", 0) or 0,"""
+            "cache_read_tokens": getattr(self._agent, "session_cache_read_tokens", 0) or 0,
+            "cache_write_tokens": getattr(self._agent, "session_cache_write_tokens", 0) or 0,"""
 
 # ── Patch: _FireAudit.__init__ agent threading (2026-09-07) ──
 # Without this the audit-cache split above raises AttributeError on
@@ -132,7 +132,7 @@ AUDIT_INIT_OLD = """    def __init__(self, job: dict, job_id: str, model: str):
         self.fire_id = uuid.uuid4().hex"""
 AUDIT_INIT_NEW = """    def __init__(self, job: dict, job_id: str, model: str, agent=None):
         self.job, self.job_id, self.model = job, job_id, model
-        self.agent = agent
+        self._agent = agent  # live run agent; None-safe (getattr default below)
         self.fire_id = uuid.uuid4().hex"""
 
 # ── Patch: _FireAudit construction passes agent (2026-09-07) ──
@@ -143,12 +143,12 @@ AUDIT_CTOR_NEW = "        _audit = _FireAudit(job, job_id, model, agent=agent)"
 # ── Patch: usage_audit cache split (failure path) ─────────────
 # NOTE: the failure-path audit write is nested inside `if "_audit_fire_id"
 # in locals():` — 16-space indent, unlike the 12-space success path.
-AUDIT_FAIL_MARKER = '"total_tokens": None,\n                "cache_read_tokens": getattr(self.agent, "session_cache_read_tokens", 0) or 0,'
+AUDIT_FAIL_MARKER = '"total_tokens": None,\n                "cache_read_tokens": getattr(self._agent, "session_cache_read_tokens", 0) or 0,'
 AUDIT_FAIL_OLD = """                "total_tokens": None,
                 "response_silent": False,"""
 AUDIT_FAIL_NEW = """                "total_tokens": None,
-                "cache_read_tokens": getattr(self.agent, "session_cache_read_tokens", 0) or 0,
-                "cache_write_tokens": getattr(self.agent, "session_cache_write_tokens", 0) or 0,
+                "cache_read_tokens": getattr(self._agent, "session_cache_read_tokens", 0) or 0,
+                "cache_write_tokens": getattr(self._agent, "session_cache_write_tokens", 0) or 0,
                 "response_silent": False,"""
 
 # ── O6-S1: MAX_COST guard (preflight kill at request time) ──
@@ -417,6 +417,38 @@ def _unpatch(name, marker, old, new, path):
     return True
 
 
+def _repair_audit_cache(sched_path: str) -> bool:
+    """Repair the 2026-09-12 self.agent breakage.
+
+    The audit-cache snippet was injected as `getattr(self.agent, ...)` while the
+    class attribute is `self._agent`, so _FireAudit.write() raised AttributeError
+    on EVERY LLM cron fire and the job was reported failed at the audit write.
+    Also collapses duplicate cache pairs left by earlier double-applies.
+    """
+    with open(sched_path) as f:
+        s = f.read()
+    bad = ('            "cache_read_tokens": getattr(self.agent, "session_cache_read_tokens", 0) or 0,\n'
+           '            "cache_write_tokens": getattr(self.agent, "session_cache_write_tokens", 0) or 0,\n')
+    good = ('            "cache_read_tokens": getattr(self._agent, "session_cache_read_tokens", 0) or 0,\n'
+            '            "cache_write_tokens": getattr(self._agent, "session_cache_write_tokens", 0) or 0,\n')
+    bad16, good16 = bad.replace(" " * 12, " " * 16), good.replace(" " * 12, " " * 16)
+    changed = False
+    for text, label in ((bad, "success"), (bad16, "failure")):
+        if text in s:
+            s = s.replace(text, "")
+            changed = True
+            print(f"  REPAIR scheduler: removed broken self.agent cache pair ({label} path)")
+    for text, label in ((good, "success"), (good16, "failure")):
+        while s.count(text) > 1:
+            s = s.replace(text, "", 1)
+            changed = True
+            print(f"  REPAIR scheduler: collapsed duplicate cache pair ({label} path)")
+    if changed:
+        with open(sched_path, "w") as f:
+            f.write(s)
+    return changed
+
+
 def do_install(force=False):
     print("Step 1: Deploy cost_store.py")
     src = os.path.join(HERE, "cost_store.py")
@@ -435,6 +467,7 @@ def do_install(force=False):
         print(f"  FAIL scheduler.py not found at {sched_path}")
         return False
 
+    _repair_audit_cache(sched_path)
     for name, marker, old, new in _PATCHES[0:9]:
         _patch(name, marker, old, new, sched_path, force)
 
@@ -480,8 +513,10 @@ def do_status():
         print(f"  {'OK' if 'Record zero-cost run for no_agent' in sched else 'MISS'} scheduler: no_agent hook")
         print(f"  {'OK' if 'Record token usage and cost' in sched else 'MISS'} scheduler: LLM success hook")
         print(f"  {'OK' if 'Record partial token usage on failure' in sched else 'MISS'} scheduler: failure hook")
-        _audit_cache_ok = ('"total_tokens": result.get("total_tokens"),\n            "cache_read_tokens": getattr(self.agent, "session_cache_read_tokens", 0) or 0,' in sched)
+        _audit_cache_ok = ('"total_tokens": result.get("total_tokens"),\n            "cache_read_tokens": getattr(self._agent, "session_cache_read_tokens", 0) or 0,' in sched)
         print(f"  {'OK' if _audit_cache_ok else 'MISS'} scheduler: audit cache split")
+        if 'getattr(self.agent, "session_cache_read_tokens"' in sched:
+            print("  BAD  scheduler: BROKEN self.agent cache pair present — every LLM cron fails at the audit write; re-run this installer to repair")
         _audit_init_ok = 'def __init__(self, job: dict, job_id: str, model: str, agent=None):' in sched
         print(f"  {'OK' if _audit_init_ok else 'MISS'} scheduler: _FireAudit agent threading")
         _audit_ctor_ok = '_audit = _FireAudit(job, job_id, model, agent=agent)' in sched
