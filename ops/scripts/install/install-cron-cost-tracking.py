@@ -433,6 +433,17 @@ def _repair_audit_cache(sched_path: str) -> bool:
             '            "cache_write_tokens": getattr(self._agent, "session_cache_write_tokens", 0) or 0,\n')
     bad16, good16 = bad.replace(" " * 12, " " * 16), good.replace(" " * 12, " " * 16)
     changed = False
+    # Normalize the init attribute name FIRST: hosts patched by an earlier build
+    # set `self.agent = agent`, hosts hand-edited set `self._agent`. The snippet
+    # below uses `self._agent`, so every host must agree before it is inserted —
+    # otherwise the fix for one host becomes the breakage for another.
+    t, n = re.subn(r"^        self\.agent = agent.*$",
+                   "        self._agent = agent  # live run agent; None-safe (getattr default below)",
+                   s, flags=re.M)
+    if n:
+        s = t
+        changed = True
+        print("  REPAIR scheduler: normalized _FireAudit init to self._agent")
     for text, label in ((bad, "success"), (bad16, "failure")):
         if text in s:
             s = s.replace(text, "")
