@@ -157,3 +157,40 @@ python3 ~/.hermes/hermes-agent/cron/cost_store.py --reprice --days 7
 
 Current rates (USD/1M, mirror orch-daily-cost-report.py): hit `$0.007`,
 miss `$0.22`, out `$0.66`, peak (01–04 & 06–10 UTC) ×2.
+
+## ⚠️ Pitfalls that kill crons fleet-wide (learned the hard way)
+
+**The audit write must never raise — it is inside the job's try block.**
+`_FireAudit.write()` runs after a *successful* agent run; if it raises, the
+outer `except` calls `write()` again (which raises again) and the exception
+escapes `run_job`, so the job is reported **failed even though the agent
+succeeded**. Symptom: `'_FireAudit' object has no attribute '<x>'` and 3+ failed
+runs in a row on every LLM cron of that host.
+
+**Hosts diverge on the injected attribute name** — an earlier patcher build wrote
+`self.agent = agent`, a hand-edited install has `self._agent`. The snippet and
+the init line must be normalized to ONE name *before* the snippet is inserted;
+otherwise the fix for one host is the breakage for another. `_repair_audit_cache()`
+now does this (normalize → remove the broken pair → collapse duplicates) and
+`--status` prints a `BAD` line instead of reporting the audit split as OK.
+
+**Diagnose in one command:**
+```bash
+f=~/.hermes/hermes-agent/cron/scheduler.py
+grep -c 'getattr(self.agent' "$f"     # >0 on the broken variant
+grep -n 'self\.agent = agent\|self\._agent = agent' "$f"   # which name the init sets
+```
+
+**Never hand-edit the injected snippet in the deployed copy.** The next
+`cortex-update.sh` re-injects it (and a stale hand edit is what produced the
+duplicate pairs). Fix the patcher in the repo, deploy, let the repair step run.
+
+**`py_compile` is not enough — run the patcher through the real deploy.**
+A repair step that used `re.subn` without `import re` passed every static check
+and crashed only when `cortex-update.sh` executed it, turning the deploy-sync
+gate red. The verification that counts is the deploy itself.
+
+**Recovery for an already-broken host:** run `cortex-update.sh` (it deploys the
+patcher and runs it) — the repair step heals the file in place. Then confirm:
+`grep -c 'getattr(self.agent' <scheduler.py>` → 0, and fire the affected job with
+`cronjob action='run' job_id=<id>` (a manual run is what refreshes `last_status`).
