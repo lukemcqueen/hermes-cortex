@@ -418,6 +418,26 @@ def _unpatch(name, marker, old, new, path):
     return True
 
 
+def _config_enabled() -> bool:
+    """cron.cost_tracking.enabled — the config override for this local patch.
+
+    Set `cron.cost_tracking.enabled: false` in ~/.hermes/config.yaml and the next
+    installer run (cortex-update.sh runs it on every sync) removes the hooks
+    cleanly, so a broken optional feature is switched off from CONFIG instead of
+    by hand-editing Python inside the agent tree. Reads fail OPEN: a missing or
+    unreadable config keeps the feature rather than silently dropping it.
+    """
+    try:
+        import yaml
+        with open(os.path.expanduser("~/.hermes/config.yaml")) as f:
+            cfg = yaml.safe_load(f) or {}
+        node = cfg.get("cron") or {}
+        node = node.get("cost_tracking") or {}
+        return bool(node.get("enabled", True))
+    except Exception:
+        return True
+
+
 def _repair_audit_cache(sched_path: str) -> bool:
     """Repair the 2026-09-12 self.agent breakage.
 
@@ -462,6 +482,11 @@ def _repair_audit_cache(sched_path: str) -> bool:
 
 
 def do_install(force=False):
+    if not _config_enabled():
+        print("Step 0: cron.cost_tracking.enabled is false — removing the hooks")
+        do_uninstall()
+        print("✓ Cron cost tracking disabled by config (re-enable: set it true and re-run).")
+        return True
     print("Step 1: Deploy cost_store.py")
     src = os.path.join(HERE, "cost_store.py")
     dst = os.path.join(HERMES_CRON, "cost_store.py")
