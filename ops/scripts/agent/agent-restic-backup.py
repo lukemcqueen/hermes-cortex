@@ -69,7 +69,10 @@ EXCLUDES = Path(os.environ.get("RESTIC_EXCLUDES") or (HOME / ".local" / "bin" / 
 PASSFILE = Path(os.environ.get("RESTIC_PASSWORD_FILE") or (HOME / ".hermes-cortex" / "state" / "restic" / "passphrase"))
 LOCAL_REPO = HOME / "backups" / "restic-repo"
 BACKUP_HOST = os.environ.get("BACKUP_HOST", "esther")
-REMOTE_REPO = os.environ.get("RESTIC_REMOTE") or f"sftp:{BACKUP_HOST}:~/backups/{AGENT_NAME}/restic-repo"
+# NOTE: restic's sftp backend REJECTS "~" in the path (parse error — the
+# tilde is never expanded on the remote). A relative path is interpreted
+# relative to the remote user's home dir, which is exactly what "~" intended.
+REMOTE_REPO = os.environ.get("RESTIC_REMOTE") or f"sftp:{BACKUP_HOST}:backups/{AGENT_NAME}/restic-repo"
 
 # ── Sources (same on every OS; existence-checked) --------------------------
 SOURCES = [s for s in [
@@ -147,6 +150,26 @@ def service_snapshot(family: str) -> list[str] | None:
     return ["systemctl", "list-units", "--type=service", "--no-pager"]
 
 
+def _tar_add_readable(tf: tarfile.TarFile, path: Path, arcname: str) -> None:
+    """Add path to the tar, silently skipping entries the current user cannot read.
+
+    Non-root backups of system config dirs (e.g. /etc on Linux) always contain
+    root-only files — /etc/.pwd.lock, ssh host keys, /etc/sudoers.d. One
+    unreadable entry must never fail the whole backup (tarfile.add raises
+    PermissionError when it opens such a file to stream it).
+    """
+    try:
+        mode = os.R_OK | (os.X_OK if path.is_dir() else 0)
+        if not os.access(path, mode):
+            return
+        tf.add(str(path), arcname=arcname, recursive=False)
+    except PermissionError:
+        return
+    if path.is_dir():
+        for child in sorted(path.iterdir()):
+            _tar_add_readable(tf, child, f"{arcname}/{child.name}")
+
+
 # ── Main -------------------------------------------------------------------
 def main() -> None:
     # 1. staging: consistent snapshots of live state
@@ -200,7 +223,7 @@ def main() -> None:
             continue
         tgz = STAGING / f"sysconfig-{i}.tar.gz"
         with tarfile.open(tgz, "w:gz") as tf:
-            tf.add(cfg, arcname=Path(cfg).name)
+            _tar_add_readable(tf, Path(cfg), Path(cfg).name)
         (host_dir / f"sysconfig-{i}.tar.gz").symlink_to(tgz)
 
     svc = service_snapshot(OS_FAMILY)
