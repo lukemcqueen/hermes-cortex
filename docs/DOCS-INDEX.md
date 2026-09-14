@@ -78,6 +78,7 @@ repo; this public repo carries only framework docs (PRDs, design, reference).
 | `docs/design/bus-scale/` | Bus scale-out design (sharding, circuit-breaker, long-poll, metrics) |
 | `docs/deprecated-profile-model.md` | Deprecated profile model — history |
 | `docs/cloud-deploy.md` | Cloud deployment reference |
+| `docs/design/frontieragent-gap-analysis.md` | **FrontierAgent gap analysis (2026-09-14)** — benchmark vs our core: inference-aware context management, bounded orchestration, sandbox safety, SDK seam; prioritized recommendations |
 
 ## Operations
 
