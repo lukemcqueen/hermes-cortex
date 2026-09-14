@@ -664,10 +664,23 @@ def _write_session_marker(hermes_session_id: str) -> None:
 
 
 def _derive_repo_slug() -> str:
-    """Derive the current repo slug via git rev-parse.
+    """Derive the current repo slug for governance-lock matching.
     Returns "" when outside a git repo — enforcer blocks all writes.
+
+    Canonical governed repo ($HOME/hermes-cortex / .hermes-cortex) is resolved
+    FIRST. The gateway process cwd is a launch artifact — typically
+    ~/.hermes (not itself a git repo) or the hermes-agent checkout — so
+    trusting ``git rev-parse`` from it first produced the wrong slug
+    (``hermes-agent``) and the git hooks (which derive from the committed
+    repo = ``hermes-cortex``) could not match the lock, blocking commit/push
+    (2026-09-14 gotcha). This mirrors loop-gov-mcp._derive_slug so both sides
+    of lock discovery agree.
     """
-    # Strategy 1: git rev-parse (fast, authoritative)
+    # Priority 1: canonical governed repo — the repo the hooks enforce on.
+    for candidate in (Path.home() / "hermes-cortex", Path.home() / ".hermes-cortex"):
+        if (candidate / ".git").exists():
+            return candidate.name
+    # Priority 2: cwd git repo (project-repo-only hosts).
     try:
         result = subprocess.run(["git", "rev-parse", "--show-toplevel"], capture_output=True, text=True, timeout=5)
         if result.returncode == 0:

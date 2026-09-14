@@ -255,21 +255,30 @@ def get_session_id(args: dict | None = None) -> str:
 def _derive_slug() -> str:
     """Derive repo slug matching the enforcer plugin's approach.
 
-    Uses git rev-parse from cwd first (matching the enforcer's
-    _derive_repo_slug()), then falls back to canonical repo dirs.
-    Both phases of the enforcer's lock discovery now agree on slug.
+    The MCP server is a shared daemon spawned by the gateway: its own cwd is
+    a launch artifact (often the hermes-agent checkout, itself a git repo) and
+    is NEVER a reliable signal of the session's working repo. Trusting
+    ``git rev-parse`` from cwd first made locks carry ``hermes-agent`` while
+    the git hooks (which derive the slug from the repo they run in) expected
+    ``hermes-cortex`` — the lock never matched and every commit/push on
+    hermes-cortex was blocked. So the canonical governed repo is resolved
+    FIRST; the cwd git repo is only a fallback for project-repo-only hosts.
     """
+    # Priority 1: canonical governed repo — the repo the git hooks enforce on.
+    for candidate in [HOME / "hermes-cortex", HOME / ".hermes-cortex"]:
+        if (candidate / ".git").exists():
+            return candidate.name
+    # Priority 2: cwd git repo (hosts with no canonical governed repo, e.g.
+    # a project-repo-only workstation). Same resolution the hooks use.
     try:
         repo_root = subprocess.check_output(  # noqa: S603,S404 — fixed argv; timeout=3 below
             ["git", "rev-parse", "--show-toplevel"], timeout=3, stderr=subprocess.DEVNULL,
         ).decode().strip()
-        return Path(repo_root).name
+        if repo_root:
+            return Path(repo_root).name
     except Exception:
         log.warning("Expected failure for: except Exception")
         pass
-    for candidate in [HOME / "hermes-cortex", HOME / ".hermes-cortex"]:
-        if (candidate / ".git").exists():
-            return candidate.name
     return "generic"
 
 
