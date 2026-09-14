@@ -954,18 +954,6 @@ create_cron "agent-bus-retry-sweep" "*/15 * * * *" \
   "" \
   "true"
 
-# Weekly cross-platform restic backup (no_agent): local repo + off-box
-# SFTP copy on every host (Arch/Debian/RHEL/macOS). Delivers only on
-# failure (watchdog pattern); success is silent.
-create_cron "agent-restic-backup" "43 2 * * 0" \
-  "agent-restic-backup.py" \
-  "" \
-  "" \
-  "" \
-  "telegram:${TELEGRAM_HOME_CHANNEL}" \
-  "" \
-  "true"
-
 # Daily swap refresh (no_agent — cycles swapoff/swapon, safety-guarded:
 # only runs when RAM > swap_used + 1 GB; silent no-op otherwise).
 # Requires NOPASSWD sudo for /sbin/swapoff, /sbin/swapon (docs/cron-job-recipes.md).

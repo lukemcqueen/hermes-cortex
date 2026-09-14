@@ -1,4 +1,4 @@
-"""agent-restic-backup platform-adaptation tests.
+"""orch-restic-backup platform-adaptation tests.
 
 The backup script must run identically on Arch, Debian-family (Mint) and
 macOS: restic is the universal engine; only the recipe pieces (package
@@ -10,7 +10,7 @@ from pathlib import Path
 import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-SRC = REPO_ROOT / "ops" / "scripts" / "agent" / "agent-restic-backup.py"
+SRC = REPO_ROOT / "ops" / "scripts" / "agent" / "orch-restic-backup.py"
 
 
 def _load():
@@ -34,6 +34,30 @@ def test_repo_targets_are_both_defined(backup_mod):
     assert backup_mod.LOCAL_REPO
     assert backup_mod.REMOTE_REPO
     assert backup_mod.LOCAL_REPO != backup_mod.REMOTE_REPO
+
+
+def test_orch_peer_direction(backup_mod):
+    """Moses backs up to Esther; Esther backs up to Moses (peer orchestrator).
+
+    The off-box repo target (BACKUP_HOST) must be the OTHER orchestrator —
+    never itself. Derived from AGENT_NAME so no per-host env is needed.
+    """
+    assert backup_mod._ORCH_PEER["moses"] == "esther"
+    assert backup_mod._ORCH_PEER["esther"] == "moses"
+    # BACKUP_HOST follows the mapping for this host's AGENT_NAME.
+    expected = backup_mod._ORCH_PEER.get(backup_mod.AGENT_NAME, "esther")
+    assert backup_mod.BACKUP_HOST == expected
+    # Off-box target is never the host itself.
+    if backup_mod.AGENT_NAME in ("moses", "esther"):
+        assert backup_mod.BACKUP_HOST != backup_mod.AGENT_NAME
+
+
+def test_cloud_repos_excluded_from_backup(backup_mod, monkeypatch):
+    """Git working trees (hermes-agent checkout, hermes-cortex) live in the
+    cloud (GitHub) — they must be excluded from the restic source set."""
+    assert backup_mod.REPO_EXCLUDES
+    for excl in backup_mod.REPO_EXCLUDES:
+        assert ".hermes" in excl or "hermes-cortex" in excl
 
 
 def test_package_manifest_commands_cover_all_families(backup_mod):

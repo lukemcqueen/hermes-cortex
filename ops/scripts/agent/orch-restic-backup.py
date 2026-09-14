@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
-"""agent-restic-backup.py — fleet-wide cross-platform restic backup (weekly).
+"""orch-restic-backup.py — orchestrator-only cross-platform restic backup.
+
+Orchestrator-only: this runs on Moses (primary) and Esther (backup). Each
+orchestrator backs itself up locally AND off-box to the PEER orchestrator
+(Moses → Esther, Esther → Moses), so the pair holds each other's copy.
 
 One backup engine (restic) on every fleet host: Arch, Debian-family (Mint),
 RHEL-family, and macOS. Two restic repos per agent, both snapshotted on the
-same weekly run:
+same weekly run, on each of the three OSes (Arch/Debian/RHEL Linux, macOS):
   LOCAL_REPO   ~/backups/restic-repo          (same-disk, fast rollback)
   REMOTE_REPO  sftp:<backup_host>:~/backups/<agent>/restic-repo  (off-box)
 
@@ -42,7 +46,7 @@ if OS_FAMILY == "linux":
     try:
         _osr = Path("/etc/os-release").read_text()
     except OSError:
-        _osr = ""
+        _osr = ""  # best-effort OS detection — empty means 'other'
     if "ID=arch" in _osr or "ID=manjaro" in _osr or "ID=endeavouros" in _osr:
         DISTRO_FAMILY = "arch"
     elif "ID=debian" in _osr or "ID=ubuntu" in _osr or "ID=linuxmint" in _osr:
@@ -68,7 +72,18 @@ if not Path(RESTIC_BIN).exists():
 EXCLUDES = Path(os.environ.get("RESTIC_EXCLUDES") or (HOME / ".local" / "bin" / "restic-excludes.txt"))
 PASSFILE = Path(os.environ.get("RESTIC_PASSWORD_FILE") or (HOME / ".hermes-cortex" / "state" / "restic" / "passphrase"))
 LOCAL_REPO = HOME / "backups" / "restic-repo"
-BACKUP_HOST = os.environ.get("BACKUP_HOST", "esther")
+# Off-box target = the PEER orchestrator: Moses backs up to Esther, Esther
+# backs up to Moses. Derived from AGENT_NAME so no per-host env is needed;
+# BACKUP_HOST env still overrides (e.g. a temp/test target).
+_ORCH_PEER = {"moses": "esther", "esther": "moses"}
+BACKUP_HOST = os.environ.get("BACKUP_HOST") or _ORCH_PEER.get(AGENT_NAME, "esther")
+# Repos live in the cloud (GitHub) — no need to store a second copy inside
+# the backup. Exclude the git working trees we would otherwise walk:
+# hermes-agent checkout under ~/.hermes, the hermes-cortex repo itself.
+REPO_EXCLUDES = [
+    str(HOME / ".hermes" / "hermes-agent"),
+    str(HOME / "hermes-cortex"),
+]
 # NOTE: restic's sftp backend REJECTS "~" in the path (parse error — the
 # tilde is never expanded on the remote). A relative path is interpreted
 # relative to the remote user's home dir, which is exactly what "~" intended.
@@ -245,7 +260,13 @@ def main() -> None:
 
     # 2. restic backup — local repo, then remote repo
     env = dict(os.environ, RESTIC_PASSWORD_FILE=str(PASSFILE))
-    cmd = [RESTIC_BIN, "backup", "--exclude-file", str(EXCLUDES), "--tag", "weekly"]
+    cmd = [RESTIC_BIN, "backup", "--tag", "weekly"]
+    # --exclude-file only when present (restic fails on a missing exclude
+    # file); always pass the cloud-repo excludes directly.
+    if EXCLUDES.is_file():
+        cmd += ["--exclude-file", str(EXCLUDES)]
+    for repo_excl in REPO_EXCLUDES:
+        cmd += ["--exclude", repo_excl]
     for repo in (str(LOCAL_REPO), REMOTE_REPO):
         env_repo = dict(env, RESTIC_REPOSITORY=repo)
         _ensure_repo(repo, env_repo)

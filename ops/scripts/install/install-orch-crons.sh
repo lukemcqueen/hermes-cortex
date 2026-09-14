@@ -147,7 +147,8 @@ if $UNINSTALL; then
     "orch-task-morning-pass" \
     "orch-task-evening-pass" \
     "orch-backlog-driver" \
-    "orch-autonomy-digest"; do
+    "orch-autonomy-digest" \
+    "orch-restic-backup"; do
     remove_cron "$job" 2>/dev/null || true
   done
   info "Uninstall complete"
@@ -647,6 +648,20 @@ Your job is to:
 #  stdout is the compact daily digest; kill switch fails closed silent)
 create_cron "orch-autonomy-digest" "30 7 * * *" \
   "manage/orch-autonomy-digest.sh" \
+  "" \
+  "" \
+  "" \
+  "telegram:${TELEGRAM_HOME_CHANNEL}" \
+  "" \
+  "true"
+
+# Weekly cross-platform restic backup (no_agent): local + off-box SFTP.
+# ORCHESTRATOR-ONLY: runs on moses + esther; Moses backs up to Esther and
+# Esther backs up to Moses (peer orchestrator). No other agent needs it.
+# SOURCES exclude the cloud-hosted git repos. Delivers only on failure
+# (watchdog pattern); success is silent.
+create_cron "orch-restic-backup" "43 2 * * 0" \
+  "orch-restic-backup.py" \
   "" \
   "" \
   "" \
