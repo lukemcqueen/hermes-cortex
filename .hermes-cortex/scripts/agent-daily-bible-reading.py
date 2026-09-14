@@ -122,10 +122,14 @@ def commandments_section(book: str) -> str:
 # 2026-09-09 (Luke directive): NO deepseek PROVIDER (api.deepseek.com) anywhere —
 # account 402s (Insufficient Balance) and is banned fleet-wide. Model stays
 # deepseek-v4-flash, served via opencode-zen (same OpenAI-compatible shape).
-LLM_URL = "https://opencode.ai/zen/v1/chat/completions"
-LLM_MODEL = "deepseek-v4-flash"
+# 2026-09-14 (auto-remediation): opencode-zen key returns 401 fleet-wide and the
+# deepseek direct API is banned (402 balance). Failover: OpenRouter, same model
+# (deepseek/deepseek-v4-flash not offered there — use deepseek/deepseek-chat as
+# the served equivalent), key from OPENROUTER_API_KEY (verified 200 on 2026-09-14).
+LLM_URL = "https://openrouter.ai/api/v1/chat/completions"
+LLM_MODEL = "deepseek/deepseek-chat"
 LLM_REASONING = "none"
-LLM_KEY_ENV = "OPENCODE_ZEN_API_KEY"
+LLM_KEY_ENV = "OPENROUTER_API_KEY"
 ENV_FILE = HOME / ".hermes" / ".env"
 
 # Legacy aliases kept for grep compatibility during the provider migration.
