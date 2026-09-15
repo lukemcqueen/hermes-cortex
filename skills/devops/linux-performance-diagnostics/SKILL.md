@@ -581,5 +581,14 @@ If load is reduced, temps are normal (60-75°C), but `idle_inject` threads persi
 - **schedutil governor + intel_cpufreq**: This combination on Haswell/Broadwell mobile CPUs occasionally gets stuck at min frequency. The fix is governor toggle or module reload. If the governor toggle doesn't unstick it (and nothing else does either), it's a firmware-level lock, not a schedutil bug — proceed to Phase 8.
 - **cpufreq sysfs is root-owned (644)**. You can read but not write without sudo. If no NOPASSWD rule covers cpufreq, you can only report the finding.
 - **MacBook firmware lock (applesmc)**: On Apple hardware running Linux, the SMC firmware can lock ALL cores at minimum frequency (~798-800 MHz) regardless of OS driver, governor, or performance settings. OS writes are accepted silently but have zero effect. The signature is all cores at exactly the same min frequency while load is high. Resolution: SMC reset (power off → Shift+Control+Option+Power 10s), or reboot. See `references/macbook-cpu-frequency-lock.md` for full session detail.
+- **PPD-decorative trap (verified 2026-09-15 on moses, Haswell):** power-profiles-daemon can
+  report `Profile=performance` in `/var/lib/power-profiles-daemon/state.ini` while the ACTUAL
+  governor is schedutil and cores sit stuck at min — the daemon never drives cpufreq on that
+  box. Before trusting `powerprofilesctl`, check `CpuDriver=`/`PlatformDriver=` in state.ini:
+  `PlatformDriver=placeholder` means PPD cannot set the governor, so `powerprofilesctl set X`
+  is cosmetic there. Persist a governor fix with `/etc/tmpfiles.d/*.conf` `w` lines instead
+  (per core: `w /sys/devices/system/cpu/cpuN/cpufreq/scaling_governor - - - - performance`;
+  NO comment lines — a stripped `#` turns the line into an invalid command verb and
+  `systemd-tmpfiles --create` aborts with "Unknown modifiers in command").
 - **LLM thermal throttle (MacBook on CPU)**: CPU-only LLM inference on thin laptops (especially pre-2015 MacBooks) frequently triggers `intel_powerclamp` kernel throttling. See `references/macbook-llm-thermal-throttling.md` for a full session trace with before/after measurements, plus Ollama-specific mitigation steps.
 - **When changing system parameters, enumerate ALL consumers first.** Changing a project-standard value (like model context from 65536 to 4096) without interviewing every cron, script, and workflow that depends on it produces silent breakage. The user will say "check again" — and they'll be right. Always ask: *"If someone set this value, why? What breaks if I lower it?"*
