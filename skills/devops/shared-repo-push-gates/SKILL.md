@@ -1,7 +1,7 @@
 ---
 name: shared-repo-push-gates
 description: "Shared-repo push blocked? Know the gates that block you."
-version: 1.0.0
+version: 1.1.0
 author: Hermes Cortex (Esther)
 license: MIT
 platforms: [linux, macos]
@@ -103,7 +103,10 @@ May need several rounds on active days; each round's dogfood re-runs clean.
   (autostash ref), rebases, and restores it. Verify `git status` after
   that the foreign file is back (` M ops/...` present). A MANUAL
   `git stash push <their-file>` is the prohibited variant — autostash is
-  git-managed and restores automatically.
+  git-managed and restores automatically. Manual stash push/pop is only
+  acceptable when autostash is unavailable (plain `git rebase origin/main`
+  on an already-fetched ref), and then ONLY on files whose diff you
+  inspected and confirmed unrelated to your change.
 - **A peer's COMPLETED, intentional change that blocks you** (mtime old,
   coherent diff, matches known design): commit it as its OWN commit with
   clear attribution in the message ("Completed <date> session, committed
@@ -116,6 +119,13 @@ May need several rounds on active days; each round's dogfood re-runs clean.
   Deploy-sync. Run `bash ~/hermes-cortex/ops/scripts/cortex-update.sh`
   (deploy), confirm `Updated: <sha> → <sha>`, then push. Order is always
   commit → deploy → push.
+- **Every NEW deployable file needs its own `register` line in
+  `cortex-update.sh`** — a new shared module imported by an already-
+  registered script (e.g. a doctor helper module) is NOT deployed unless
+  registered itself. The deploy "succeeds" on your host only because the
+  untracked file already exists in the deployed dir; the next host or the
+  doctor then fails with `ModuleNotFoundError`. After adding any file to a
+  deployed package, grep its package siblings in the register block.
 
 ## Concurrent-Session Discipline
 
@@ -176,6 +186,16 @@ headered repo copy fails every checksum/script-content check.
 - The dogfood gate auto-runs cortex-update; its pull step failing with
   "cannot pull with rebase: You have unstaged changes" is a second
   fingerprint of the concurrent tree.
+- **Stash-and-restore is the repeatable pattern for rebase-with-peer-changes** when
+  `--autostash` is unavailable (plain `git rebase origin/main` after a fetch).
+  Same session, repeated rounds: `git stash push -m '<label>' <the-3-foreign-files>`
+  → rebase → push → `git stash pop`, verify `git status` shows the foreign files
+  back unstaged. Confirmed safe for files whose diffs were inspected and are
+  unrelated; keep the same file list every round and never add files to it.
+- **A new sub-patch to an already-deployed import can surface as MULTIPLE
+  checksum failures at once** (`Checksum: <new-module>` alongside checksums of
+  peer-modified files) — after deploy, re-check the doctor output for which
+  failures REMAIN before assuming your fix was incomplete.
 - Docs-only changes are deploy-exempt (cortex-update does not deploy
   docs/) — no deploy step needed after a docs push.
 

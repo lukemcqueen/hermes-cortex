@@ -375,6 +375,22 @@ the sanctioned fix lands in the wrong dir and the doctor FAIL persists.
   a host simply never matches (harmless dead entry on the other platform).
 - Detect platform ONCE at top: `[ "$(uname -s)" = "Darwin" ]`.
 
+**Governance audits must probe the same object the lock tool protects —
+resolve symlinks before any immutability/permission check.** Hooks like
+`hooks/pre-commit` are SYMLINKS to deploy targets (`scripts/pre-commit-score`);
+the immutable flag (chattr +i / chflags uchg) lives on the TARGET, and on
+macOS `ls -lO` on a symlink reports the LINK's own empty flag field. A check
+that probes the symlink path reports "flag missing" on fully-protected files —
+a false positive that fires daily until fixed. Every immutability probe must
+`realpath()`/`resolve()` first and route through the shared cross-platform
+probe (`cortex_doctor/immutability.py`: `lsattr 'i'` on Linux, `ls -lO 'uchg'
+on macOS) — never shell to `lsattr` directly (absent on macOS), and never
+treat probe failure as "not immutable" (raise → caller WARNs; P12). When a
+peer reports "your auditor says X is unprotected", first compare the exact
+paths probed against the paths the lock tool actually protects — a contract
+mismatch between checker and enforcement tool is the bug class, and the
+fix belongs to whoever owns the checker script.
+
 ## Rule 12: TZ Bug in Lock-Age Math Kills Live Locks — and Mandatory Dogfood Runs the Deploy
 
 **The TZ bug (2026-08-05, Luke: "this lock issue is MISERABLE"):** the "cortex-

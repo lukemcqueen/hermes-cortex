@@ -87,6 +87,34 @@ round-trip uses a different code path and often works when the UPDATE result
 send failed. `Deploy sync: deployed commit matches HEAD` + a passing checksum
 for the shipped file = the update landed, response lost.
 
+## Querying From Esther (remote host — nested-quoting pitfall)
+
+From Esther, queries go over ssh to the bus host
+(`ssh mosesaaron 'sg docker -c "docker exec ... psql ... -c \"<sql>\""'`).
+Hand-building these one-liners in bash fails on the FIRST string/uuid literal
+inside the SQL — the quotes must survive BOTH the ssh shell and the outer
+single-quoted command, and the errors are misleading (`trailing junk after
+numeric literal` for an unquoted uuid, `column "inbox_titus" does not exist`
+for an unquoted string). Escape SQL single quotes for BOTH layers by replacing
+`'` with `'\\''` in the SQL before wrapping, and run it from a Python cell
+(execute_code) rather than hand-typing the bash:
+
+```python
+def bus_q(q):
+    sql = q.replace("'", "'\\''")
+    cmd = ("ssh -o BatchMode=yes -o ConnectTimeout=10 mosesaaron '"
+           "sg docker -c \"docker exec mycortex-postgres psql -U mycortex "
+           "-d mycortex -t -A -c \\\"" + sql + "\\\"\"'")
+    return terminal(cmd, timeout=60).get('output', '')
+```
+
+Also: `hc` is not on PATH on Esther — invoke as
+`python3 ~/hermes-cortex/ops/scripts/hc/hc.py` (beware: `ops/scripts/hc`
+contains a same-named subdirectory, so the bare path resolves to a directory).
+`bus.audit_log` columns are `queue_name`/`agent_name` — an older `WHERE queue =`
+reference errors with `column "queue" does not exist`; verify column names via
+`information_schema.columns` when a query errors on a name you did not write.
+
 ## Pitfalls
 
 - `hc exec` polls ~5 min and can time out right before a result lands — for
