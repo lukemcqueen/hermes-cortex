@@ -542,12 +542,11 @@ if $UNINSTALL; then
     "agent-agents-md-prune-apply" \
     "agent-agents-md-prune-scan" \
     "agent-auto-save-sessions" \
-    "cortex-bus-evening" \
-    "cortex-bus-overnight" \
-    "cortex-bus-workday" \
-    "agent-cron-quality-watchdog" \
+    "agent-bus-retry-sweep" \
     "agent-cron-failure-watchdog" \
+    "agent-cron-quality-watchdog" \
     "agent-daily-bible-reading" \
+    "agent-deploy-drift-audit" \
     "agent-fixer-evening" \
     "agent-fixer-overnight" \
     "agent-fixer-workday" \
@@ -559,19 +558,17 @@ if $UNINSTALL; then
     "agent-learning-collector" \
     "agent-llm-judge-scorer-weekday" \
     "agent-llm-judge-scorer-weekend" \
+    "agent-mcp-health-watchdog" \
     "agent-memory-pruning" \
     "agent-memory-to-brain-sync" \
-    "cortex-bus-failover-watchdog" \
     "agent-message-handler" \
-    "agent-mcp-health-watchdog" \
-    "agent-bus-retry-sweep" \
-    "agent-restic-backup" \
-    "agent-mycortex-sync" \
-    "agent-mycortex-retention" \
     "agent-model-health-watchdog" \
+    "agent-mycortex-retention" \
+    "agent-mycortex-sync" \
     "agent-nginx-threat-pipeline" \
     "agent-no-verify-audit" \
     "agent-offline-code-index" \
+    "agent-pending-cycle-watchdog" \
     "agent-push-metrics" \
     "agent-remediate-apply" \
     "agent-remediation-sensor" \
@@ -583,10 +580,14 @@ if $UNINSTALL; then
     "agent-session-cache-build" \
     "agent-session-correction-scan" \
     "agent-session-mine" \
-    "orch-autonomy-digest" \
     "agent-stale-ref-watchdog" \
     "agent-swap-refresh" \
-    "agent-system-alert-watchdog"; do
+    "agent-system-alert-watchdog" \
+    "cortex-bus-evening" \
+    "cortex-bus-failover-watchdog" \
+    "cortex-bus-overnight" \
+    "cortex-bus-workday"; do
+  
   
   
   
