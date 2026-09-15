@@ -27,7 +27,8 @@ CREATE TABLE IF NOT EXISTS bus.agent_workflows (
     completed_at        TIMESTAMPTZ,
     error               TEXT,
     result              JSONB,
-    created_at          TIMESTAMPTZ DEFAULT now()
+    created_at          TIMESTAMPTZ DEFAULT now(),
+    started_at          TIMESTAMPTZ
 );
 
 CREATE INDEX IF NOT EXISTS idx_workflows_state
@@ -57,7 +58,8 @@ CREATE TABLE IF NOT EXISTS bus.agent_workflow_steps (
     completed_at        TIMESTAMPTZ,
     error               TEXT,
     result              JSONB,
-    created_at          TIMESTAMPTZ DEFAULT now()
+    created_at          TIMESTAMPTZ DEFAULT now(),
+    started_at          TIMESTAMPTZ
 );
 
 CREATE INDEX IF NOT EXISTS idx_steps_workflow
@@ -65,6 +67,9 @@ CREATE INDEX IF NOT EXISTS idx_steps_workflow
 
 CREATE INDEX IF NOT EXISTS idx_steps_assigned
     ON bus.agent_workflow_steps (assigned_to, state);
+
+CREATE INDEX IF NOT EXISTS idx_steps_running
+    ON bus.agent_workflow_steps (state, started_at);
 
 -- ── Workflow Audit ──────────────────────────────────────────
 

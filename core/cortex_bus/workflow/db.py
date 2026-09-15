@@ -74,6 +74,14 @@ def update_workflow_state(wf_id: str, state: str, error: Optional[str] = None,
                    WHERE id = %s""",
                 (state, now, error, json.dumps(result or {}), wf_id),
             )
+        elif state == "running":
+            cur.execute(
+                """UPDATE bus.agent_workflows
+                   SET state = %s, error = %s, result = %s::jsonb,
+                       started_at = COALESCE(started_at, %s)
+                   WHERE id = %s""",
+                (state, error, json.dumps(result or {}), now, wf_id),
+            )
         else:
             cur.execute(
                 """UPDATE bus.agent_workflows
@@ -171,6 +179,14 @@ def update_step_state(step_id: str, state: str, error: Optional[str] = None,
                        result = %s::jsonb
                    WHERE id = %s""",
                 (state, now, error, json.dumps(result or {}), step_id),
+            )
+        elif state == "running":
+            cur.execute(
+                """UPDATE bus.agent_workflow_steps
+                   SET state = %s, error = %s, result = %s::jsonb,
+                       started_at = COALESCE(started_at, %s)
+                   WHERE id = %s""",
+                (state, error, json.dumps(result or {}), now, step_id),
             )
         else:
             cur.execute(
