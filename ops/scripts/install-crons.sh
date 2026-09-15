@@ -546,6 +546,7 @@ if $UNINSTALL; then
     "cortex-bus-overnight" \
     "cortex-bus-workday" \
     "agent-cron-quality-watchdog" \
+    "agent-cron-failure-watchdog" \
     "agent-daily-bible-reading" \
     "agent-fixer-evening" \
     "agent-fixer-overnight" \
@@ -1078,6 +1079,20 @@ create_cron "agent-cron-quality-watchdog" "*/10 * * * *" \
   "" \
   "" \
   "origin" \
+  "" \
+  "true"
+
+# Consecutive-failure escalation (every 5 min, silent when healthy — universal)
+# Counts last_status=error per job; after 3 consecutive failures alerts AND
+# pauses the cron so it stops re-firing. Fixes the 1053-run gap: nothing used
+# to count failures or pause them — the 2026-08-30..09-14 push-metrics outage
+# burned 1000+ ticks before anyone noticed. Transient failures stay silent.
+create_cron "agent-cron-failure-watchdog" "*/5 * * * *" \
+  "agent-cron-failure-watchdog.py" \
+  "" \
+  "" \
+  "" \
+  "telegram:${TELEGRAM_HOME_CHANNEL}" \
   "" \
   "true"
 
