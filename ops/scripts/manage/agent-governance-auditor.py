@@ -338,6 +338,12 @@ def _check_infrastructure() -> list[str]:
         continue # file removed between stat and chmod — skip gracefully
 
   # ── 5. Immutability ──
+  # hooks/pre-commit and hooks/pre-push are SYMLINKS (→ scripts/pre-commit-score,
+  # scripts/pre-push-pull). The immutable flag lives on the TARGET: on macOS,
+  # `ls -lO` on a symlink reports the symlink's own flag field (empty), so the
+  # probe must resolve first (same pattern as the doctor's
+  # _check_enforcer_immutability). Without resolve() the auditor flags a state
+  # the lock tool never creates (false positive on Titus, 2026-09-15).
   immutable_targets = [
     os.path.expanduser("~/.hermes/plugins/governance-enforcer/__init__.py"),
     os.path.join(hooks_dir, "pre-commit"),
@@ -345,11 +351,13 @@ def _check_infrastructure() -> list[str]:
   ]
   for path in immutable_targets:
     if os.path.exists(path):
+      # Resolve symlinks — the immutable flag is on the target file
+      probe_path = os.path.realpath(path)
       try:
         from cortex_doctor.immutability import is_file_immutable
-        if not is_file_immutable(path):
+        if not is_file_immutable(probe_path):
           issues.append(
-            f" 🔓 Immutable flag MISSING on {path}.\n"
+            f" 🔓 Immutable flag MISSING on {path} (target: {probe_path}).\n"
             f"    Fix: sudo hermes-plugin-lock lock"
           )
       except (subprocess.TimeoutExpired, OSError, IndexError):
