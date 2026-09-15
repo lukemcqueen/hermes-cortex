@@ -570,6 +570,7 @@ if $UNINSTALL; then
     "agent-offline-code-index" \
     "agent-pending-cycle-watchdog" \
     "agent-push-metrics" \
+    "agent-restic-backup" \
     "agent-remediate-apply" \
     "agent-remediation-sensor" \
     "agent-review-queue-sweep" \
