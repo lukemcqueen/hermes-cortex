@@ -14,6 +14,8 @@ import subprocess
 import sys
 import time
 import uuid
+
+from .immutability import immutable_remediation, is_file_immutable
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -2006,19 +2008,14 @@ def _check_enforcer_permissions(res, plugin_dir, hooks_dir):
       else:
         # Check if file has chattr +i — if immutable, permissions
         # are irrelevant (chattr +i is stronger than 0o444 alone)
-        is_immutable = False
+        is_immutable = None
         try:
-          r = subprocess.run(
-            ["lsattr", str(path)],
-            capture_output=True, text=True, timeout=5,
-          )
-          if r.returncode == 0:
-            flags = r.stdout.split()[0] if r.stdout else ""
-            is_immutable = "i" in flags
+          if is_file_immutable(path):
+            is_immutable = True
         except (subprocess.TimeoutExpired, OSError, IndexError) as e:
           res.add(f"Perms: {label}", "WARN",
-              f"cannot verify immutability (lsattr failed: {type(e).__name__})",
-              "Linux: run sudo chattr +i " + str(path))
+              f"cannot verify immutability ({type(e).__name__})",
+              immutable_remediation(path))
         if is_immutable:
           res.add(f"Perms: {label}", "PASS",
               f"{oct(have)} (+ chattr +i) — immutable trumps")
@@ -2054,25 +2051,16 @@ def _check_enforcer_immutability(res, plugin_dir, hooks_dir):
     # Resolve symlinks — the immutable flag is on the target file
     real_path = path.resolve() if path.is_symlink() else path
     try:
-      result = subprocess.run(
-        ["lsattr", str(real_path)],
-        capture_output=True, text=True, timeout=5,
-      )
-      if result.returncode != 0:
-        res.add(f"Immutable: {path.name}", "WARN",
-            f"lsattr exit {result.returncode} — immutability unverifiable",
-            "Fix the filesystem error so the immutability check covers this enforcement file")
-        continue
-      flags = result.stdout.split()[0] if result.stdout else ""
-      if "i" in flags:
-        res.add(f"Immutable: {path.name}", "PASS", "chattr +i set")
+      if is_file_immutable(real_path):
+        res.add(f"Immutable: {path.name}", "PASS",
+            "immutable flag set")
       else:
         res.add(f"Immutable: {path.name}", "FAIL",
             "immutable flag not set — enforcement file is modifiable",
-            f"Fix: sudo hermes-plugin-lock lock")
+            f"Fix: {immutable_remediation(real_path)}")
     except (subprocess.TimeoutExpired, OSError, IndexError) as e:
       res.add(f"Immutable: {path.name}", "WARN",
-          f"lsattr failed ({type(e).__name__}) — immutability unverifiable",
+          f"immutability probe failed ({type(e).__name__}) — unverifiable",
           "Fix the filesystem error so the immutability check covers this enforcement file")
 
 
@@ -2191,25 +2179,19 @@ def _check_fix_blocked_ips_root_copy(res):
       "root copy present and matches repo source")
 
   # ── Immutable (chattr +i / chflags uchg) ──
-  # macOS: lsattr absent — chflags uchg is the equivalent. A check that
-  # cannot verify must warn, not silently pass (P12).
+  # Cross-platform probe: Linux lsattr 'i', macOS `ls -lO` uchg. A check
+  # that cannot verify must warn, not silently pass (P12).
   try:
-    result = subprocess.run(
-        ["lsattr", str(root_path)], capture_output=True, text=True, timeout=5
-    )
-    flags = result.stdout.split()[0] if result.returncode == 0 and result.stdout else ""
-    if "i" in flags:
-      res.add("Blocked-IPs root copy immutable", "PASS", "chattr +i set")
+    if is_file_immutable(root_path):
+      res.add("Blocked-IPs root copy immutable", "PASS", "immutable flag set")
     else:
       res.add("Blocked-IPs root copy immutable", "FAIL",
           "immutable flag not set — root copy is modifiable",
-          f"Fix: sudo chattr +i {root_path}"
-          + ("" if not _is_macos else " (macOS: sudo chflags uchg)"))
+          f"Fix: {immutable_remediation(root_path)}")
   except (subprocess.TimeoutExpired, OSError, IndexError) as e:
     res.add("Blocked-IPs root copy immutable", "WARN",
-        f"could not verify immutable flag (lsattr failed: {type(e).__name__}: {e})",
-        "Linux: run sudo chattr +i " + str(root_path)
-        + (" | macOS: lsattr is absent — use sudo chflags uchg" if _is_macos else ""))
+        f"could not verify immutable flag ({type(e).__name__}: {e})",
+        immutable_remediation(root_path))
 
 
 def check_governance(res):

@@ -235,13 +235,8 @@ print('ADDED')
         # chmod fail with "Operation not permitted"
         is_immutable = False
         try:
-          r = subprocess.run(
-            ["lsattr", str(path)],
-            capture_output=True, text=True, timeout=5,
-          )
-          if r.returncode == 0:
-            flags = r.stdout.split()[0] if r.stdout else ""
-            is_immutable = "i" in flags
+          from .immutability import is_file_immutable
+          is_immutable = is_file_immutable(path)
         except (subprocess.TimeoutExpired, OSError, IndexError):
           pass  # expected — silently handled
         if is_immutable:

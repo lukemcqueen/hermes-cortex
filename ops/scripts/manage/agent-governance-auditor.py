@@ -324,14 +324,9 @@ def _check_infrastructure() -> list[str]:
           # are irrelevant (file cannot be modified regardless of bits).
           # chattr +i is stronger than 0o444 alone.
           try:
-            r = subprocess.run(
-              ["lsattr", path],
-              capture_output=True, text=True, timeout=5,
-            )
-            if r.returncode == 0:
-              flags = r.stdout.split()[0] if r.stdout else ""
-              if "i" in flags:
-                continue  # immutable flag set — skip permission warning
+            from cortex_doctor.immutability import is_file_immutable
+            if is_file_immutable(path):
+              continue  # immutable flag set — skip permission warning
           except (subprocess.TimeoutExpired, OSError, IndexError):
             pass  # expected — silently handled
           issues.append(
@@ -351,19 +346,14 @@ def _check_infrastructure() -> list[str]:
   for path in immutable_targets:
     if os.path.exists(path):
       try:
-        r = subprocess.run(
-          ["lsattr", path],
-          capture_output=True, text=True, timeout=5,
-        )
-        if r.returncode == 0:
-          flags = r.stdout.split()[0] if r.stdout else ""
-          if "i" not in flags:
-            issues.append(
-              f" 🔓 Immutable flag MISSING on {path}.\n"
-              f"    Fix: sudo hermes-plugin-lock lock"
-            )
+        from cortex_doctor.immutability import is_file_immutable
+        if not is_file_immutable(path):
+          issues.append(
+            f" 🔓 Immutable flag MISSING on {path}.\n"
+            f"    Fix: sudo hermes-plugin-lock lock"
+          )
       except (subprocess.TimeoutExpired, OSError, IndexError):
-        continue # lsattr failed or file removed — skip gracefully
+        continue # probe failed or file removed — skip gracefully
 
   return issues
 
