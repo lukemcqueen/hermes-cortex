@@ -62,10 +62,11 @@ their domain.
 |-------|---------|---------|-----------|
 | `cold-email` | 1.0.0 | Write B2B cold emails and follow-up sequences that get replies. Use when the user wants to write cold outre... | `skill_view(name='cold-email')` |
 
-## Communication (1 skill)
+## Communication (2 skills)
 
 | Skill | Version | Purpose | Load With |
 |-------|---------|---------|-----------|
+| `agent-interaction-signals` | 1.0.0 | Use when user says stop/forget it. Stop, do not persist. | `skill_view(name='agent-interaction-signals')` |
 | `one-three-one-rule` | 1.0.0 | Structured decision-making framework for technical proposals and trade-off analysis. When the user faces a... | `skill_view(name='one-three-one-rule')` |
 
 ## Content Creator (1 skill)
@@ -250,7 +251,7 @@ their domain.
 | `server-administration` | 1.10.0 | Ongoing IT & Security Administration for production Linux servers. Covers routine health checks, Docker con... | `skill_view(name='server-administration')` |
 | `server-hardening` | 1.8.0 | Comprehensive security audit and hardening for Linux servers running web services (nginx, Docker, fail2ban,... | `skill_view(name='server-hardening')` |
 | `session-start-discipline` | 2.0.0 | DEPRECATED alias — merged into task-start (2026-08-20). Load task-start instead; it bundles skill-loading d... | `skill_view(name='session-start-discipline')` |
-| `shared-repo-push-gates` | 1.0.0 | Shared-repo push blocked? Know the gates that block you. | `skill_view(name='shared-repo-push-gates')` |
+| `shared-repo-push-gates` | 1.1.0 | Shared-repo push blocked? Know the gates that block you. | `skill_view(name='shared-repo-push-gates')` |
 | `shell-scripting` | 1.1.0 | Shell scripting patterns, portability pitfalls, and cross-platform compatibility for bash/awk scripts in th... | `skill_view(name='shell-scripting')` |
 | `skill-curation` | 1.0.0 | Consolidate, dedupe, and prune the skill library — merge overlapping skills into one (absorbed_into), delet... | `skill_view(name='skill-curation')` |
 | `staging-server-operations` | 1.19.0 | Safe operational practices for Docker-based staging servers — volume management, change verification, and d... | `skill_view(name='staging-server-operations')` |
