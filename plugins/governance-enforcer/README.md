@@ -631,32 +631,38 @@ After calling `begin_change()`, the same tool should **pass**.
 
 ## Cron / Cold-Session Bootstrap
 
-Cron sessions (detected by `cron_` prefix in the session ID) start with no
-per-session skills marker. The enforcer blocks all write tools until skills are
-loaded — but cron agents may not have `skill_view()` in their tool registry,
+Non-interactive sessions (cron_ and bg_ prefixes) start with no per-session
+skills marker. The enforcer blocks all write tools until skills are loaded —
+but cron/bg agents may not have `skill_view()` in their tool registry,
 creating a bootstrapping deadlock.
 
 **Solution:** The `_on_session_start` hook auto-creates a per-session marker
-(`state/skills-loaded/<cron-session-id>`) for cron sessions by:
+(`state/skills-loaded/<session-id>`) for non-interactive sessions by:
 
 1. Reading `~/.hermes-cortex/skills.yaml` for the `always` section
-2. Verifying each of the 8 required skills has a `SKILL.md` on disk under
+2. Verifying each required skill has a `SKILL.md` on disk under
    `~/.hermes/skills/`
 3. If all skills are present, calling `_auto_create_skills_marker()` with the
    session ID — same function used when all `skill_view()` calls succeed
 
-This means the cron agent's first tool call is **not blocked** by the skills
-gate, because the marker was created during session initialization (before
-any tool call). The agent can then proceed to load skills for content.
+The `cron_`/`bg_` distinction is unified through `_session_type()`: the domain
+skill gate and adversarial gate both exempt `("cron","bg")` as the
+cannot-load-skills class, so the marker bootstrap covers the full class too
+(Titus terminal deadlock, 2026-09-16).
+
+This means the non-interactive agent's first tool call is **not blocked** by
+the skills gate, because the marker was created during session initialization
+(before any tool call).
 
 **Security properties:**
-- Only cron sessions (`cron_*` session IDs) get the bootstrap — interactive
-  sessions still require `skill_view()` calls
-- The bootstrap validates all 8 required skills exist on disk before creating
+- Only non-interactive sessions (`cron_*`/`bg_*` prefixes, via
+  `_session_type()`) get the bootstrap — interactive sessions still require
+  `skill_view()` calls
+- The bootstrap validates all required skills exist on disk before creating
   the marker
 - The marker content includes the session ID (same verification as interactive)
-- Missing skills.yaml or missing SKILL.md files → bootstrap skipped → cron
-  session is blocked (correct behavior for corrupted environments)
+- Missing skills.yaml or missing SKILL.md files → bootstrap skipped → session
+  is blocked (correct behavior for corrupted environments)
 
 ---
 

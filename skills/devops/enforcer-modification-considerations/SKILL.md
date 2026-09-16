@@ -37,7 +37,8 @@ documented structural fix.
 **Guard locations in the enforcer:**
 - `_auto_create_skills_marker()` — writes `state/skills-loaded/<session_id>` (atomic temp+rename)
 - `_check_skills_loaded_marker()` — reads THIS session's own marker; exact content match
-- `_on_session_start()` — cron bootstrap creates the cron session's OWN marker
+- `_on_session_start()` — non-interactive bootstrap creates the session's OWN
+  marker (`_session_type(session_id) in ("cron","bg")` — cron_ OR bg_ prefixes)
 
 **Checklist when modifying:**
 - [ ] Search for ALL existing prefix guards: `grep -n 'cron_\|bg_' plugins/governance-enforcer/__init__.py`

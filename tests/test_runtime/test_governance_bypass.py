@@ -545,6 +545,58 @@ class TestSkillsMarkerPerSession:
         assert (temp_state_dir / "skills-loaded" / "sess").exists() is False
 
 
+class TestSkillsLoadedBootstrapSessionType:
+    """The always-skills marker bootstrap must cover ALL non-interactive
+    session types that may lack skill_view() in their tool registry.
+
+    Cron venues are covered by the `cron_` prefix; background subagents
+    (`bg_`) are the SAME legitimate non-interactive class (their
+    enabled_toolsets may be [terminal,file] without the skills toolset),
+    so they had the same bootstrapping deadlock as cron had — the
+    terminal/write gate blocked on a skills marker they can never create.
+    Regression: _on_session_start only bootstrapped `cron_`-prefixed IDs,
+    but _session_type() classifies bg_ as "bg", and the domain-skill and
+    adversarial gates both exempt ("cron","bg") as the cannot-load-skills
+    class — so bg sessions deadlocked. Cover the full class.
+    """
+
+    def test_bg_session_triggers_bootstrap(self, temp_state_dir, monkeypatch):
+        """A bg_ subagent session must auto-bootstrap its skills marker
+        exactly like a cron session (both may lack skill_view())."""
+        calls = []
+        monkeypatch.setattr(enforcer, "_bootstrap_cron_skills",
+                            lambda sid: (calls.append(sid) or True))
+        enforcer._on_session_start("bg_subagent_alpha")
+        assert calls == ["bg_subagent_alpha"], \
+            "bg_ session was NOT bootstrapped — terminal deadlocks (Titus)"
+
+    def test_cron_session_still_triggers_bootstrap(self, temp_state_dir, monkeypatch):
+        """Existing behaviour preserved: cron_ still bootstraps."""
+        calls = []
+        monkeypatch.setattr(enforcer, "_bootstrap_cron_skills",
+                            lambda sid: (calls.append(sid) or True))
+        enforcer._on_session_start("cron_batch_job")
+        assert calls == ["cron_batch_job"]
+
+    def test_interactive_session_does_not_bootstrap(self, temp_state_dir, monkeypatch):
+        """Interactive sessions still require real skill_view() calls —
+        the bootstrap must NOT weaken the interactive gate."""
+        calls = []
+        monkeypatch.setattr(enforcer, "_bootstrap_cron_skills",
+                            lambda sid: (calls.append(sid) or True))
+        enforcer._on_session_start("interactive_telgram_id")
+        assert calls == [], \
+            "interactive session must not auto-bootstrap skills marker"
+
+    def test_bg_marker_passes_skills_gate(self, temp_state_dir, monkeypatch):
+        """End-to-end: after _on_session_start on a bg session, the skills
+        gate check returns True (the marker exists and is valid)."""
+        monkeypatch.setattr(enforcer, "_bootstrap_cron_skills",
+                            lambda sid: _auto_create_skills_marker(sid))
+        enforcer._on_session_start("bg_subagent_beta")
+        assert _check_skills_loaded_marker("bg_subagent_beta") is True
+
+
 class TestSkillsStatePerSession:
     """Per-session skills-state files — no cross-session bleed."""
 

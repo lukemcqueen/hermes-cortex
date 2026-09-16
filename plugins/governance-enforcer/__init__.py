@@ -1584,10 +1584,11 @@ def _check_adversarial_commit_gate(
 def _on_session_start(session_id: str, **kwargs):
     """Write session marker at session start so MCP finds it before begin_change.
 
-    For cron/automated sessions (session_id starts with 'cron_'), also
-    auto-create the .skills-loaded marker if the 8 required always-section
-    skills exist on disk. This breaks the bootstrapping deadlock where cron
-    sessions can't load skills because all tools are blocked.
+    For non-interactive/automated sessions (cron_ and bg_ prefixes), also
+    auto-create the .skills-loaded marker if the required always-section
+    skills exist on disk. This breaks the bootstrapping deadlock where
+    cron/bg sessions can't load skills because all tools are blocked
+    (their enabled_toolsets may exclude the skills toolset entirely).
 
     Interactive sessions are unaffected — they still require skill_view()
     calls to create the marker, maintaining full governance security.
@@ -1599,22 +1600,32 @@ def _on_session_start(session_id: str, **kwargs):
         if session_id:
             _write_session_marker(session_id)
 
-            # ── Cron bootstrap: auto-create per-session skills marker ──
+            # ── Non-interactive bootstrap: auto-create per-session skills marker ──
             # Cron sessions start fresh with no skills-loaded marker. The
             # enforcer blocks all write tools until skills are loaded, but
             # cron agents may not have skill_view() in their tool registry.
             # This bootstrap reads the always-section skills from disk and
             # pre-creates the marker, so cron agents can proceed normally.
             #
+            # bg_ sessions (background subagents) are the SAME legitimate
+            # non-interactive class: their enabled_toolsets may be
+            # [terminal,file] with no skills toolset (skill_view() absent),
+            # so the base skills gate is structurally unsatisfiable for them
+            # and every write deadlocks — exactly the cron case. The
+            # domain-skill and adversarial gates already exempt ("cron","bg")
+            # as the cannot-load-skills class; the marker bootstrap must
+            # cover the full class too (Titus terminal deadlock, 2026-09-16).
+            #
             # Markers are per-session files (skills-loaded/<session_id>),
             # so a cron session creating its own marker can never touch
             # another session's proof (pre-2026-08-01 shared-file race is
             # structurally gone — no "first marker owns the boot cycle"
             # rule needed anymore).
-            if session_id.startswith("cron_"):
+            if _session_type(session_id) in ("cron", "bg"):
                 if _session_marker_path(session_id).exists():
                     log.debug(
-                        "Cron session %s skipped bootstrap — marker already exists",
+                        "Non-interactive session %s skipped bootstrap — "
+                        "marker already exists",
                         session_id[:20],
                     )
                 elif not _check_skills_loaded_marker(session_id):
