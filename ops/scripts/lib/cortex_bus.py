@@ -210,6 +210,17 @@ def bus_send(queue: str, message_body: dict) -> dict | None:
         # The pristine message goes to the wire AND to the outbox on
         # failure, so retry-file hashes match across attempts.
         wire_body = dict(message_body)
+        # Strict envelope validator (2026-09-02) requires `priority` to be
+        # an int 0-100 or absent — string priorities ("normal"/"high") get
+        # 400. Normalize legacy string values here so every caller (hc,
+        # learning-collector, failover-watchdog, …) is compliant without
+        # per-caller edits. Int values pass through untouched.
+        pri = wire_body.get("priority")
+        if isinstance(pri, str):
+            wire_body["priority"] = {
+                "normal": 0, "low": 0, "high": 50,
+                "urgent": 10, "critical": 20,
+            }.get(pri.lower(), 0)
         inner_body = wire_body.get("body")
         if isinstance(inner_body, dict):
             wire_body["body"] = json.dumps(inner_body)

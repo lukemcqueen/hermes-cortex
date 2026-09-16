@@ -336,7 +336,8 @@ for ci, chunk in enumerate(chunks):
                 "topic": "reports",
                 "text": body_text,
             }),
-            "priority": "normal",
+            # priority omitted: strict bus validator (2026-09-02) requires
+            # int 0-100 or absent; string priorities are rejected 400.
         }),
     }
 
