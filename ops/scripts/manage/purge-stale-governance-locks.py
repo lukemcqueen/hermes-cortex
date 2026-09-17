@@ -27,20 +27,31 @@ DEFAULT_TTL = 3600  # 1 hour
 MARKER_MAX_AGE = 86400  # 24 hours
 
 
-def _is_lock_stale(state: dict) -> bool:
-    """Check if a lock's heartbeat has exceeded its TTL."""
+def _is_lock_stale(state: dict, mtime_fallback: float | None = None) -> bool:
+    """Check if a lock's heartbeat has exceeded its TTL.
+
+    2026-09-17 (Titus LEAK report): time-only heartbeats ("09:12:00Z") and
+    naive (no-tz) heartbeats defeat datetime.fromisoformat / aware-vs-naive
+    subtraction — the old code caught both and returned False, pinning the
+    lock and its orphaned PENDING cycle forever (doctor FAIL, push blocked).
+    Fix: fall back to the lock file's mtime when the heartbeat can't be aged
+    in-band, and treat naive timestamps as UTC.
+    """
     ttl = state.get("ttl_seconds", DEFAULT_TTL)
     heartbeat_str = state.get("heartbeat_at", state.get("started_at", ""))
-    if not heartbeat_str:
-        return False
-    try:
-        hb_str = heartbeat_str.replace("Z", "+00:00").replace("+00:00", "+00:00")
-        heartbeat = datetime.fromisoformat(hb_str)
-        now = datetime.now(timezone.utc)
-        elapsed = (now - heartbeat).total_seconds()
-        return elapsed > ttl
-    except (ValueError, TypeError):
-        return False
+    now = datetime.now(timezone.utc)
+    if heartbeat_str:
+        try:
+            hb_str = heartbeat_str.replace("Z", "+00:00")
+            heartbeat = datetime.fromisoformat(hb_str)
+            if heartbeat.tzinfo is None:
+                heartbeat = heartbeat.replace(tzinfo=timezone.utc)
+            return (now - heartbeat).total_seconds() > ttl
+        except (ValueError, TypeError):
+            pass
+    if mtime_fallback is not None:
+        return (now.timestamp() - mtime_fallback) > ttl
+    return False
 
 
 def purge() -> int:
@@ -58,7 +69,11 @@ def purge() -> int:
             if lock_file.is_symlink():
                 continue  # Process real file separately
             state = json.loads(lock_file.read_text())
-            if _is_lock_stale(state):
+            try:
+                mtime = lock_file.stat().st_mtime
+            except OSError:
+                mtime = None
+            if _is_lock_stale(state, mtime):
                 lock_file.unlink()
                 removed += 1
         except (json.JSONDecodeError, OSError, ValueError):

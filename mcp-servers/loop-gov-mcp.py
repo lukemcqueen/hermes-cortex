@@ -319,20 +319,38 @@ def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
 
 
-def _is_lock_stale(state: dict) -> bool:
-    """Check if a lock's heartbeat has exceeded its TTL."""
+def _is_lock_stale(state: dict, mtime_fallback: float | None = None) -> bool:
+    """Check if a lock's heartbeat has exceeded its TTL.
+
+    2026-09-17 (Titus LEAK report): two heartbeat formats defeat the old
+    parser and pin a lock in 'never stale' forever:
+      * time-only heartbeat ("09:12:00Z") — datetime.fromisoformat raises,
+        caught, returned False → lock never aged, orphan PENDING cycle blocked
+        every push until a manual feedback_accept.
+      * naive (no-tz) heartbeat — aware-vs-naive subtraction raises TypeError,
+        caught, returned False → same indefinite pin.
+    Fix: when the heartbeat can't be aged in-band, fall back to the lock
+    file's mtime (last write). An abandoned lock's mtime is long in the past,
+    so it still ages out; a lock mid-write that P1-A protects is a fresh mtime,
+    so it is never falsely purged. Naive timestamps are treated as UTC.
+    """
     ttl = state.get("ttl_seconds", DEFAULT_TTL)
     heartbeat_str = state.get("heartbeat_at", state.get("started_at", ""))
-    if not heartbeat_str:
-        return False
-    try:
-        hb_str = heartbeat_str.replace("Z", "+00:00").replace("+00:00", "+00:00")
-        heartbeat = datetime.fromisoformat(hb_str)
-        now = datetime.now(timezone.utc)
-        elapsed = (now - heartbeat).total_seconds()
-        return elapsed > ttl
-    except (ValueError, TypeError):
-        return False
+    now = datetime.now(timezone.utc)
+    if heartbeat_str:
+        try:
+            hb_str = heartbeat_str.replace("Z", "+00:00")
+            heartbeat = datetime.fromisoformat(hb_str)
+            if heartbeat.tzinfo is None:
+                heartbeat = heartbeat.replace(tzinfo=timezone.utc)  # naive = UTC
+            return (now - heartbeat).total_seconds() > ttl
+        except (ValueError, TypeError):
+            # Time-only / malformed heartbeat — can't age it in-band.
+            # Fall through to mtime if provided (caller has the file).
+            pass
+    if mtime_fallback is not None:
+        return (now.timestamp() - mtime_fallback) > ttl
+    return False
 
 
 def _read_lock(args: dict | None = None) -> dict | None:
@@ -444,7 +462,7 @@ def _log_force_acquire(
 
 def _purge_stale_locks() -> int:
     """Proactively remove all stale lock files from ANY session.
-    
+
     Fix GAP #9: scans all .governance-*.json files and removes those
     whose heartbeat has exceeded their TTL. This prevents stale lock
     buildup from crashed sessions and ensures every session starts clean.
@@ -454,9 +472,19 @@ def _purge_stale_locks() -> int:
     it steals another session's fresh lock. Only parseable-and-stale
     locks are removed.
 
+    2026-09-17 (Titus LEAK report): this only removed the LOCK FILE — the
+    orphaned PENDING cycle for the purged task was left behind, so the
+    doctor still FAILed "PENDING cycles" (leak, blocked push) even after
+    the lock vanished. Now also resolves those cycles to MOVE_ON here, so
+    a crashed session's debris can't gate the repo indefinitely.
+    Also passes the lock file's mtime as a fallback so time-only/naive
+    heartbeats (which the old parser pinned as never-stale) finally age out.
+
     Returns the number of stale locks removed.
     """
     removed = 0
+    resolved_cycles = 0
+    purged_task_ids: set[str] = set()
     if not GOVERNANCE_STATE_DIR.exists():
         return 0
     for lock_file in sorted(GOVERNANCE_STATE_DIR.glob(".governance-*.json")):
@@ -466,12 +494,23 @@ def _purge_stale_locks() -> int:
                 # Skip symlinks — we'll process the real file separately
                 continue
             state = json.loads(lock_file.read_text())
-            if _is_lock_stale(state):
+            try:
+                mtime = lock_file.stat().st_mtime
+            except OSError:
+                mtime = None
+            if _is_lock_stale(state, mtime):
+                tid = state.get("task_id")
+                if tid:
+                    purged_task_ids.add(tid)
                 lock_file.unlink()
                 removed += 1
         except (json.JSONDecodeError, OSError, ValueError) as _parse_err:
             log.warning("Skipping unparseable lock file (mid-write?): %s (%s)", lock_file.name, _parse_err)
             # P1-A: unparseable = possibly mid-write. Leave it — never delete.
+    # Resolve orphaned PENDING cycles for tasks whose locks were just purged
+    # (their owning session is gone — the cycle can never be scored by them).
+    if purged_task_ids:
+        resolved_cycles = _resolve_orphaned_pending_cycles(purged_task_ids)
     # Also clean up orphan symlinks (pointing to deleted targets)
     for lock_file in sorted(GOVERNANCE_STATE_DIR.glob(".governance-*.json")):
         try:
@@ -481,7 +520,95 @@ def _purge_stale_locks() -> int:
         except OSError:
             log.warning("Expected failure for: except OSError")
             pass
+    if resolved_cycles:
+        log.warning("Purge: resolved %d orphaned PENDING cycle(s) for purged tasks", resolved_cycles)
     return removed
+
+
+def _resolve_orphaned_pending_cycles(task_ids: set[str] | None = None) -> int:
+    """MOVE_ON PENDING cycles whose task holds no live lock (leaked/abandoned).
+
+    The doctor's rule (cortex_doctor/checks.py, single source of truth):
+    a PENDING cycle whose task_id has NO active .governance-*.json lock is a
+    LEAK — begin_change ran but feedback_accept never did, and the session
+    (or its lock) is gone. This is the auto-resolve half of that rule so a
+    crashed/lost session can't FAIL the doctor forever and gate every push.
+
+    When task_ids is provided (purge path), only those tasks are touched
+    (their locks were just removed as stale — provably abandoned). When
+    task_ids is None (gate/startup path), every PENDING cycle whose task
+    has no live lock is resolved — but only if it is OLDER than the lock TTL,
+    to avoid racing a session that is CURRENTLY mid-begin_change (cycle row
+    written, lock write microseconds later).
+
+    Never touches hook-created cycles (decision LOOP/MOVE_ON, not PENDING),
+    never touches a PENDING cycle whose task still holds a live lock (that's
+    the current task — expected mid-session, INFO).
+
+    Returns the number of cycles resolved to MOVE_ON.
+    """
+    try:
+        conn = _db()
+    except Exception as e:
+        log.warning("resolve-orphans: DB unavailable (%s) — skipping", e)
+        return 0
+    # Live task ids = those with a non-terminal lock file.
+    _terminal = {"completed", "cancelled"}
+    live: set[str] = set()
+    if GOVERNANCE_STATE_DIR.is_dir():
+        for lf in GOVERNANCE_STATE_DIR.glob(".governance-*.json"):
+            try:
+                ld = json.loads(lf.read_text())
+                if ld.get("task_id") and ld.get("status") not in _terminal:
+                    live.add(ld["task_id"])
+            except (OSError, ValueError):
+                continue  # P1-A: unparseable = possibly mid-write — skip, never delete
+    try:
+        if task_ids:
+            ph = ",".join("?" * len(task_ids))
+            pending = conn.execute(
+                f"SELECT id, task_id, timestamp FROM loop_cycles "
+                f"WHERE decision='PENDING' AND user_overrode IS NULL AND task_id IN ({ph})",
+                tuple(task_ids),
+            ).fetchall()
+        else:
+            pending = conn.execute(
+                "SELECT id, task_id, timestamp FROM loop_cycles "
+                "WHERE decision='PENDING' AND user_overrode IS NULL LIMIT 5000"
+            ).fetchall()
+        now = datetime.now(timezone.utc)
+        resolved = 0
+        for r in pending:
+            if r["task_id"] in live:
+                continue  # current task — expected, not a leak
+            # When not explicitly targeting purged tasks, require the cycle to
+            # be older than the TTL so a mid-begin_change row is never raced.
+            if task_ids is None:
+                try:
+                    ts = datetime.fromisoformat(str(r["timestamp"]).replace("Z", "+00:00"))
+                    if ts.tzinfo is None:
+                        ts = ts.replace(tzinfo=timezone.utc)
+                except (ValueError, TypeError):
+                    ts = None  # unparseable timestamp → treat as young, skip
+                if ts is None or (now - ts).total_seconds() <= DEFAULT_TTL:
+                    continue
+            conn.execute(
+                "UPDATE loop_cycles SET decision='MOVE_ON', "
+                "outcome_note='auto-resolved by governance MCP — task has no live lock (abandoned/crashed session)' "
+                "WHERE id=?",
+                (r["id"],),
+            )
+            resolved += 1
+        conn.commit()
+        conn.close()
+        return resolved
+    except Exception as e:
+        log.warning("resolve-orphans failed (non-critical): %s", e)
+        try:
+            conn.close()
+        except Exception:
+            pass
+        return 0
 
 
 # ── Embedding helpers ────────────────────────────────────────
@@ -893,6 +1020,20 @@ def _begin_change(args: dict) -> CallToolResult:
 
     session_id = get_session_id(args)
     now_iso = _now_iso()
+
+    # ── Step 0: Purge stale locks + resolve orphaned PENDING cycles ──
+    # (2026-09-17, Titus LEAK report) The gate entry point must clear
+    # crashed-session debris BEFORE acquiring, so a stale lock / orphan
+    # PENDING cycle from a dead session can't block begin_change or leave
+    # the doctor FAILing on every subsequent push. _purge_stale_locks also
+    # resolves the orphaned PENDING cycle(s) for the tasks whose locks it
+    # removes; _resolve_orphaned_pending_cycles() additionally sweeps any
+    # PENDING cycle (older than TTL) that has no live lock at all.
+    try:
+        _purge_stale_locks()
+        _resolve_orphaned_pending_cycles()  # task_ids=None → sweep all lockless
+    except Exception as _purge_err:
+        log.warning("begin_change: pre-purge failed (non-critical): %s", _purge_err)
 
     # ── Step 0: Close-out gate — score before moving to a new task ──
     # Luke directive (2026-08-08): agents must close out/score before moving
