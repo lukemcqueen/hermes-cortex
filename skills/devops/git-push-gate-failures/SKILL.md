@@ -145,6 +145,19 @@ To yield to the peer's already-pushed version, use `git checkout --ours
 empty for the duplicated file) before amending. Prefer the peer's version
 when it is identical-or-better and already public.
 
+## 5. Push blocked by a "PENDING cycles" governance leak (no live lock)
+
+**Symptom:** the doctor FAILs `❌ PENDING cycles` — "N unscored cycle(s) from finished task(s)" — and the pre-push gate blocks every push. The cycles listed are NOT yours; they are sibling/daemon/crashed sessions that called `begin_change` and never scored. Each has `decision='PENDING'`, `user_overrode IS NULL`, and its task's `.governance-*.json` lock is gone.
+
+**The two distinct root causes — diagnose before patching:**
+
+1. **Malformed-heartbeat locks are pinned "never stale".** `_is_lock_stale` (in `loop-gov-mcp.py`, `purge-stale-governance-locks.py`, and the enforcer) previously returned `False` forever when `datetime.fromisoformat` raised: a time-only heartbeat (`09:12:00Z` — no date, fromisoformat needs one) or a naive no-TZ timestamp (aware-vs-naive subtraction raises `TypeError`). Both were caught and treated as fresh, so the crashed session's lock never aged past TTL and was never purged.
+2. **Purge deletes the lock file but leaves the orphaned cycle.** The doctor's leak rule is "PENDING cycle whose task_id has NO live lock = FAIL". Removing the lock does NOT clear the cycle — the doctor still FAILs and blocks. Fix as a pair: when a lock is purged as stale, also resolve that task's PENDING cycle(s) to `MOVE_ON`, and run the purge from `begin_change` (the acquiring gate) not just `_check_lock`.
+
+**Check the deployed copy matches repo first** — `diff` the deployed `~/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py` against `mcp-servers/loop-gov-mcp.py`; the ONLY allowed difference is the injected `# SOURCE:` / `# Do NOT edit` header lines. Any other diff (or a running gateway process started before the fix — "deploy ≠ load") means the running code is stale and the fix hasn't loaded.
+
+**Hermetic repro for a purge fix** (no real state touched): repoint the module's `GOVERNANCE_STATE_DIR` / `LOOP_DB` at a temp dir, write a stale time-only-heartbeat lock, seed a PENDING cycle for its task, run `_purge_stale_locks()`, assert the lock is gone AND the cycle flipped to `MOVE_ON`. Proving the cycle resolution is what unblocks the gate — deleting the lock alone demonstrably does not.
+
 ## Verification checklist
 
 - [ ] `stat` the update-commit mtime before debugging your diff
