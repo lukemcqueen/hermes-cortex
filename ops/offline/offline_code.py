@@ -39,70 +39,38 @@ CORPUS_DIR = Path(__file__).parent / "code-corpus"
 INDEX_DB = HOME / "offline" / "code-index.json"
 OLLAMA_URL = "http://localhost:11434"
 EMBED_MODEL = get_model("EMBEDDING_MODEL", "nomic-embed-text:v1.5")
-GEN_MODEL = get_model("CODING_MODEL", "qwen2.5:3b")  # default; auto-upgraded if VRAM available
+GEN_MODEL = get_model("CODING_MODEL", "qwen2.5-coder:3b")  # default; auto-upgraded if VRAM available
+# Explicit CODING_MODEL env override (set → detection returns it verbatim, never auto-upgraded)
+_USER_CODING_MODEL_SET = bool(os.environ.get("CODING_MODEL"))
 
 
 def _detect_gen_model() -> str:
-    """Auto-select code generation model based on available VRAM.
+    """Choose the code generation model for this host.
 
-    Returns the best model slug for the current hardware.
-    Respects the GEN_MODEL constant as minimum floor.
+    Strategy (fleet-uniform, matches "small + effective + performant"):
+      1. Explicit CODING_MODEL env override wins — never auto-upgrade past a pin.
+      2. Prefer a small effective model actually installed in Ollama.
+         A 7b/14b slug with no pulled blob is a guaranteed 404 at generation time.
+      3. RAM-based upgrade is deliberately capped at 3b: larger models are
+         slower and less portable; the 3b coder is correct where it matters.
     """
+    if _USER_CODING_MODEL_SET:
+        return GEN_MODEL
     try:
-        import subprocess
-        total_gb = 0
+        import urllib.request
+        installed = []
         try:
-            # macOS: use sysctl for total RAM
-            result = subprocess.run(
-                ["sysctl", "-n", "hw.memsize"],
-                capture_output=True, text=True, timeout=3
-            )
-            if result.returncode == 0 and result.stdout.strip():
-                total_gb = int(result.stdout.strip()) / (1024**3)
+            req = urllib.request.Request(f"{OLLAMA_URL}/api/tags")
+            with urllib.request.urlopen(req, timeout=5) as resp:
+                installed = [m.get("name", "") for m in json.loads(resp.read().decode()).get("models", [])]
         except Exception:
-            pass
-
-        if total_gb == 0:
-            # Linux: read /proc/meminfo
-            try:
-                with open("/proc/meminfo") as f:
-                    for line in f:
-                        if line.startswith("MemTotal:"):
-                            total_gb = int(line.split()[1]) / (1024**2)
-                            break
-            except Exception:
-                pass
-
-        # VRAM estimate: on Apple Silicon, ~70% of RAM is available to GPU
-        # On CPU-only, use total RAM / 8 as CPU-inference estimate
-        if total_gb == 0:
-            return GEN_MODEL  # can't detect — use default
-
-        # Detect platform
-        is_macos = False
-        try:
-            is_macos = subprocess.run(
-                ["uname", "-s"], capture_output=True, text=True, timeout=2
-            ).stdout.strip().lower() == "darwin"
-        except Exception:
-            pass
-
-        if is_macos:
-            vram_gb = total_gb * 0.7
-        else:
-            # Linux CPU: estimate usable context as ~1/8 of RAM for 1.5B
-            vram_gb = total_gb / 8
-
-        if vram_gb > 24:
-            return "qwen2.5:14b"                         # Q4_K_M ~8GB
-        elif vram_gb > 10:
-            return "qwen2.5:7b"                          # Q4_K_M ~4.5GB
-        elif vram_gb > 4:
-            return "qwen2.5:3b"                          # Q4_K_M ~1.7GB (sweet spot)
-        else:
-            return "qwen2.5:3b"                          # floor — always runs
+            installed = []
+        for cand in ("qwen2.5-coder:3b", "qwen2.5:3b", "qwen2.5-coder:1.5b"):
+            if any(cand == m or m.startswith(cand) for m in installed):
+                return cand
+        return GEN_MODEL  # none installed — caller reports how to pull it
     except Exception:
-        return GEN_MODEL  # fall back to default
+        return GEN_MODEL  # query failed — fall back to default
 
 
 # ── Corpus Loading ──────────────────────────────────────────

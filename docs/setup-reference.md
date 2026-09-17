@@ -229,7 +229,7 @@ This is the single source of truth for Cortex. ⚠ `~/.hermes/.env` is Hermes Ag
 | `CORTEX_HEALTH_URL` | External health endpoint. Orchestrator pollers use this to verify agent reachability through nginx. Format: `https://yourdomain.com:xx007/health` | _(none)_ |
 | `JUDGE_MODEL` | LLM-as-Judge scorer | `qwen2.5:3b` |
 | `EMBEDDING_MODEL` | Text embeddings (mycortex, session cache, loop scorer, offline_code) | `nomic-embed-text:v1.5` |
-| `CODING_MODEL` | Code generation via offline_code | auto-detected by RAM |
+| `CODING_MODEL` | Code generation via offline_code | `qwen2.5-coder:3b` (small+effective fleet standard; prefers an installed model, pinned if env set) |
 | `CREATIVE_MODEL` | Reserved for future creative tasks | _(not yet wired)_ |
 
 Resolution priority (every script follows this):
