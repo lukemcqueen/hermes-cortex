@@ -27,6 +27,16 @@ the END of its run. If ANY earlier step dies under `set -euo pipefail`, the
 record never advances. The log tail looks fine because the failing section
 (service restarts) is adjacent to the end.
 
+**Simplest cause — check this before `bash -x`:** the deploy was never run.
+Manually `cp`-ing changed files to `~/.hermes-cortex/scripts/` (e.g. to work
+around a slow `cortex-update.sh --force` timeout) does NOT advance
+`state/update-commit` — only cortex-update.sh writes it, so a manual copy
+leaves the marker behind HEAD and the dogfood gate blocks every push. Tell:
+`git log --oneline -1 origin/main` shows your commit while
+`cat ~/.hermes-cortex/state/update-commit` is an older SHA, and `bash -x`
+finds no dying step because none ran. Fix: `bash ops/scripts/cortex-update.sh
+--force`, confirm `cat state/update-commit` == `git rev-parse HEAD`, push.
+
 **Diagnosis (the tell):**
 
 ```bash
