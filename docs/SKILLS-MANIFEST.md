@@ -23,13 +23,14 @@ their domain.
 | `macos-computer-use` | 1.0.0 | Drive the macOS desktop in the background — screenshots, mouse, keyboard, | `skill_view(name='macos-computer-use')` |
 | `macos-service-management` | 1.0.0 | Manage and troubleshoot macOS launchd services — plist authoring, exit code diagnosis, variable expansion r... | `skill_view(name='macos-service-management')` |
 
-## Autonomous Ai Agents (8 skills)
+## Autonomous Ai Agents (9 skills)
 
 | Skill | Version | Purpose | Load With |
 |-------|---------|---------|-----------|
 | `ai-coding-agents` | 1.0.0 | Delegate coding tasks to external AI coding agent CLIs — Claude Code, Codex CLI, and OpenCode. Orchestratio... | `skill_view(name='ai-coding-agents')` |
 | `antigravity-cli` | 0.2.0 | Operate the Antigravity CLI (agy): plugins, auth, sandbox. | `skill_view(name='antigravity-cli')` |
 | `blackbox` | 1.0.1 | Delegate coding tasks to the Blackbox AI multi-model CLI. | `skill_view(name='blackbox')` |
+| `evaluating-agent-frameworks` | 1.0.0 | Evaluate an external agent framework for interop. | `skill_view(name='evaluating-agent-frameworks')` |
 | `grok` | 0.1.1 | Delegate coding to xAI Grok Build CLI (features, PRs). | `skill_view(name='grok')` |
 | `hermes-cortex` | 2.0.0 | Install, configure, and maintain Hermes Cortex — the observability and knowledge layer for Hermes Agent (Ol... | `skill_view(name='hermes-cortex')` |
 | `hermes-cortex-setup` | 1.0.0 | Install and configure Hermes Cortex core components — Ollama, mycortex knowledge brain, health server, agen... | `skill_view(name='hermes-cortex-setup')` |
@@ -114,7 +115,7 @@ their domain.
 | `meme-generation` | 2.0.0 | Create meme PNGs from templates with Pillow text overlay. | `skill_view(name='meme-generation')` |
 | `pixel-art` | 2.0.0 | Pixel art w/ era palettes (NES, Game Boy, PICO-8). | `skill_view(name='pixel-art')` |
 
-## Devops (152 skills)
+## Devops (157 skills)
 
 | Skill | Version | Purpose | Load With |
 |-------|---------|---------|-----------|
@@ -123,6 +124,7 @@ their domain.
 | `agent-ergonomic-cli` | 1.0.0 | Use when writing or auditing agent-facing CLI output. | `skill_view(name='agent-ergonomic-cli')` |
 | `agent-ergonomic-cli-output` | 1.0.0 | Agent-facing CLI output: token-lean by design (AXI/TOON). | `skill_view(name='agent-ergonomic-cli-output')` |
 | `agent-fundamentals` | 1.0.0 | Universal 'basic things every agent should know' — distilled from real frustration patterns across 10+ sess... | `skill_view(name='agent-fundamentals')` |
+| `agent-harness-design` | 1.0.0 | Use when designing a coding-agent harness or runtime. | `skill_view(name='agent-harness-design')` |
 | `agent-health-monitoring` | 3.5.0 | Cross-server agent health monitoring using binary status vectors — deploy health endpoints on each agent, p... | `skill_view(name='agent-health-monitoring')` |
 | `alembic-postgres-migrations` | 1.1.0 | Use when debugging Alembic Postgres migration failures. | `skill_view(name='alembic-postgres-migrations')` |
 | `answer-cache` | 1.0.0 | Agent protocol for mycortex answer cache — inserts a cache-check step between RAG miss and model call. Save... | `skill_view(name='answer-cache')` |
@@ -132,9 +134,11 @@ their domain.
 | `auto-remediation-ecosystem` | 1.0.0 | Complete auto-remediation ecosystem setup, configuration, and maintenance | `skill_view(name='auto-remediation-ecosystem')` |
 | `auto-remediation-setup` | 1.0.0 | Set up, configure, and troubleshoot the auto-remediation system. | `skill_view(name='auto-remediation-setup')` |
 | `bus-archive-diagnostics` | 1.0.0 | Query bus queues and archives reliably for fleet results. | `skill_view(name='bus-archive-diagnostics')` |
+| `bus-client-resilience` | 1.0.0 | Use when changing the bus client, outbox, mirror, or DLQ. | `skill_view(name='bus-client-resilience')` |
 | `bus-connectivity-diagnostics` | 1.0.0 | Diagnostic procedures for Agent Bus connectivity, permissions, and message delivery. Covers the three bus p... | `skill_view(name='bus-connectivity-diagnostics')` |
 | `bus-inbox-check` | 1.0.0 | Check agent bus inbox depth and read messages via HTTP API — for use in LLM cron context where inbox_read M... | `skill_view(name='bus-inbox-check')` |
 | `bus-queue-maintenance` | 1.0.0 | Bus queue lifecycle — inspecting stuck messages, archiving orphaned messages, navigating state constraints,... | `skill_view(name='bus-queue-maintenance')` |
+| `bus-send-auth-diagnostics` | 1.1.0 | Use when bus sends 401 — check proxy Basic auth first. | `skill_view(name='bus-send-auth-diagnostics')` |
 | `ci-cd-pipeline` | 1.0.0 | CI/CD pipeline configuration patterns: GitHub Actions, multi-stage builds, testing matrices, deployment wor... | `skill_view(name='ci-cd-pipeline')` |
 | `ci-pipeline-hardening` | 1.0.0 | Fix CI gates: bounded subsets, parity, coverage baselines. | `skill_view(name='ci-pipeline-hardening')` |
 | `cleanup-commit-regression-check` | 1.0.0 | When scripts fail with NameError after a mass-edit commit. | `skill_view(name='cleanup-commit-regression-check')` |
@@ -198,6 +202,7 @@ their domain.
 | `hermes-agent-regression-triage` | 1.0.0 | Use when hermes-agent breaks after update; audit+pin. | `skill_view(name='hermes-agent-regression-triage')` |
 | `hermes-backup` | 1.0.0 | Use when performing a full-system backup of a Hermes Agent server — survey, clean up caches, checkpoint dat... | `skill_view(name='hermes-backup')` |
 | `hermes-cortex-maintenance` | 1.36.0 | Maintain an installed Hermes Cortex instance — update both the upstream Hermes Agent and the cortex repo la... | `skill_view(name='hermes-cortex-maintenance')` |
+| `hermes-cortex-repo-deploy` | 1.0.0 | Use when committing to the hermes-cortex repo. | `skill_view(name='hermes-cortex-repo-deploy')` |
 | `hermes-gateway-operations` | 1.0.0 | Diagnose, configure, and maintain Hermes messaging gateway platforms (Telegram, Discord, WhatsApp, etc.). C... | `skill_view(name='hermes-gateway-operations')` |
 | `hermes-home-cleanup` | 1.0.0 | Use when cleaning ~/.hermes or ~/.hermes-cortex. Verify. | `skill_view(name='hermes-home-cleanup')` |
 | `hermes-model-config` | 1.0.0 | Use when sessions run the wrong model or config regresses. | `skill_view(name='hermes-model-config')` |
@@ -255,6 +260,7 @@ their domain.
 | `shell-scripting` | 1.1.0 | Shell scripting patterns, portability pitfalls, and cross-platform compatibility for bash/awk scripts in th... | `skill_view(name='shell-scripting')` |
 | `skill-curation` | 1.0.0 | Consolidate, dedupe, and prune the skill library — merge overlapping skills into one (absorbed_into), delet... | `skill_view(name='skill-curation')` |
 | `staging-server-operations` | 1.19.0 | Safe operational practices for Docker-based staging servers — volume management, change verification, and d... | `skill_view(name='staging-server-operations')` |
+| `subagent-delegation` | 1.0.0 | Use when pinning subagent models or multi-role reviews. | `skill_view(name='subagent-delegation')` |
 | `sudoers-audit` | 1.0.0 | Systematically audit, test, and debug sudoers NOPASSWD rules — verify allowed commands actually run without... | `skill_view(name='sudoers-audit')` |
 | `sweep-verification` | 1.0.0 | Verify a decommission sweep removed every file and ref. | `skill_view(name='sweep-verification')` |
 | `sync-allow-ips-to-fail2ban` | 1.0.0 | Sync IPs from allow-ips-manual.conf to fail2ban ignoreip | `skill_view(name='sync-allow-ips-to-fail2ban')` |
@@ -455,7 +461,7 @@ their domain.
 |-------|---------|---------|-----------|
 | `godmode` | 1.0.0 | Jailbreak LLMs: Parseltongue, GODMODE, ULTRAPLINIAN. | `skill_view(name='godmode')` |
 
-## Research (14 skills)
+## Research (16 skills)
 
 | Skill | Version | Purpose | Load With |
 |-------|---------|---------|-----------|
@@ -466,6 +472,8 @@ their domain.
 | `drug-discovery` | 1.0.0 | Pharmaceutical research assistant for drug discovery workflows. Search bioactive compounds on ChEMBL, calcu... | `skill_view(name='drug-discovery')` |
 | `duckduckgo-search` | 1.3.0 | Free keyless web, news, and image search via ddgs. | `skill_view(name='duckduckgo-search')` |
 | `gitnexus-explorer` | 1.0.0 | Serve an interactive codebase knowledge graph web UI. | `skill_view(name='gitnexus-explorer')` |
+| `job-board-research` | 1.0.0 | Use when compiling vetted job listings from job boards. | `skill_view(name='job-board-research')` |
+| `job-market-research` | 1.0.0 | Use when compiling job listings from web boards. | `skill_view(name='job-market-research')` |
 | `osint-investigation` | 0.1.0 | Follow the money via public records and sanctions data. | `skill_view(name='osint-investigation')` |
 | `parallel-cli` | 1.1.0 | Agent-native web search, deep research, and enrichment. | `skill_view(name='parallel-cli')` |
 | `polymarket` | 1.0.0 | Query Polymarket: markets, prices, orderbooks, history. | `skill_view(name='polymarket')` |
@@ -523,7 +531,7 @@ their domain.
 |-------|---------|---------|-----------|
 | `social-media-analyzer` | 1.0.0 | Social media campaign analysis and performance tracking. Calculates engagement rates, ROI, and benchmarks a... | `skill_view(name='social-media-analyzer')` |
 
-## Software Development (59 skills)
+## Software Development (63 skills)
 
 | Skill | Version | Purpose | Load With |
 |-------|---------|---------|-----------|
@@ -537,6 +545,7 @@ their domain.
 | `architecture-review` | 1.2.0 | Multi-role architecture review (a.k.a. HC-Party) with weighted decision matrices, conflict resolution, and... | `skill_view(name='architecture-review')` |
 | `background-job-queue` | 1.0.0 | Add durable background job processing to a FastAPI/asyncpg app using arq. Covers project layout, job functi... | `skill_view(name='background-job-queue')` |
 | `batch-job-optimization` | 1.0.0 | Systematically analyze and optimize database-bound batch processing jobs (imports, exports, ETL, bulk updat... | `skill_view(name='batch-job-optimization')` |
+| `build-check-split` | 1.0.0 | Use when driving a task list tagged BUILD vs CHECK. | `skill_view(name='build-check-split')` |
 | `change-checklist` | 2.2.0 | Mandatory pre-ship verification before calling end_change(). Covers survey, test, adversarial verify, multi... | `skill_view(name='change-checklist')` |
 | `change-test-loop` | 1.1.0 | Small changes with real verification, bounded retries, self-healing. | `skill_view(name='change-test-loop')` |
 | `code-review` | 3.0.0 | Two-axis pre-commit review: Standards (documents + code smells) and Spec (requirement compliance) via paral... | `skill_view(name='code-review')` |
@@ -551,6 +560,7 @@ their domain.
 | `documentation-auditing` | 1.0.0 | Audit documentation for stale file paths, broken cross-references, and correctness gaps. Systematic approac... | `skill_view(name='documentation-auditing')` |
 | `engineering-approach` | 1.9.0 | Engineering and communication standards for this project: terse, direct, skip explanations, always handle e... | `skill_view(name='engineering-approach')` |
 | `error-handling` | 1.0.0 | Error handling patterns and idioms: structured exceptions, graceful degradation, retry strategies, circuit... | `skill_view(name='error-handling')` |
+| `fail-closed-design` | 1.0.0 | Use when writing fail-closed security-critical code. | `skill_view(name='fail-closed-design')` |
 | `hermetic-python-testing` | 1.0.0 | Write Python modules with hermetic unit-test seams. | `skill_view(name='hermetic-python-testing')` |
 | `legacy-codebase-navigation` | 1.0.0 | Navigate, understand, and debug large legacy codebases (Rails, Django, early Node). Techniques for tracing... | `skill_view(name='legacy-codebase-navigation')` |
 | `lesson-aware-agent` | 1.0.0 | Universal lesson-aware injection pattern. Makes every agent action memory-aware: search lessons before acti... | `skill_view(name='lesson-aware-agent')` |
@@ -572,6 +582,7 @@ their domain.
 | `repo-organization` | 1.1.0 | Canonical repo organization for Hermes Cortex — structure, naming, consolidation, symlinks, and audit proce... | `skill_view(name='repo-organization')` |
 | `requirements-elicitation` | 1.2.0 | Requirements elicitation for Hermes Cortex (a.k.a. elicit) — structured domain exploration, RICE/MoSCoW pri... | `skill_view(name='requirements-elicitation')` |
 | `rest-graphql-debug` | 1.2.0 | Debug REST/GraphQL APIs: status codes, auth, schemas, repro. | `skill_view(name='rest-graphql-debug')` |
+| `robust-code-design` | 1.0.0 | Use when hardening code against adversarial failure modes. | `skill_view(name='robust-code-design')` |
 | `role-gating-and-public-moderation` | 1.0.0 | Role gating, PII tiers, and UGC moderation patterns. | `skill_view(name='role-gating-and-public-moderation')` |
 | `root-cause-debugging` | 2.0.0 | 6-phase root cause debugging: feedback loop, reproduce, pattern, hypothesise + instrument, fix, cleanup. Un... | `skill_view(name='root-cause-debugging')` |
 | `save-lesson` | 1.0.0 | Auto-save a bug-fix lesson after resolving any non-trivial error. | `skill_view(name='save-lesson')` |
@@ -579,6 +590,7 @@ their domain.
 | `session-orchestration` | 1.0.0 | Five-wave session orchestration: Discovery → Impl-Core → Impl-Polish → Quality → Finalization. Quality gate... | `skill_view(name='session-orchestration')` |
 | `software-factory` | 1.0.0 | Real features: 4-gate design with user approval per gate. | `skill_view(name='software-factory')` |
 | `state-orchestrator` | 1.0.0 | Information routing decision matrix for Hermes Cortex agents. Defines when to consult live context vs sessi... | `skill_view(name='state-orchestrator')` |
+| `steadfaste-design` | 1.0.0 | steadfaste design-doc and governance-cycle work. | `skill_view(name='steadfaste-design')` |
 | `story-decomposition` | 1.0.0 | Break features into user-visible, testable stories using vertical slicing patterns. | `skill_view(name='story-decomposition')` |
 | `storybook-setup` | 1.0.0 | Set up Storybook with Next.js (Vite) + Tailwind CSS + @storybook/test — init, Tailwind wiring, story patter... | `skill_view(name='storybook-setup')` |
 | `subagent-driven-development` | 1.2.0 | Execute plans via delegate_task subagents (2-stage review). | `skill_view(name='subagent-driven-development')` |
