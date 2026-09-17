@@ -2,7 +2,7 @@
 name: offline-code
 version: 1.0.0
 category: devops
-description: "Offline code snippet search + generation using local Ollama models. Search a curated corpus (run `offline_code stats` for the live count) across 30+ topics and 25 languages with nomic-embed-text:v1.5, generate code with auto-detected qwen2.5 (3b on 4-8GB, 7b on 8-24GB, 14b on 24GB+). No internet needed."
+description: "Offline code snippet search + generation using local Ollama models. Search a curated corpus (run `offline_code stats` for the live count) across 30+ topics and 25 languages with nomic-embed-text:v1.5, generate code with qwen2.5:3b (single fleet model, also used for judging; CODING_MODEL env pin wins). No internet needed."
 author: Hermes Cortex
 license: MIT
 metadata:
@@ -20,7 +20,7 @@ A two-tier local coding assistant: **search** a curated corpus of algorithms and
               search                   gen
                  │                       │
                  ▼                       ▼
-      nomic-embed-text:v1.5            qwen2.5:3b
+      nomic-embed-text:v1.5        qwen2.5:3b
       (embeds query,              (RAG: top-3 snippets
        cosine similarity           + user prompt → code)
        → ranked snippets)
@@ -40,7 +40,7 @@ offline_code index --force
 
 # Step 4: Ensure models are pulled
 ollama pull nomic-embed-text:v1.5        # already pulled by install.sh
-ollama pull qwen2.5:3b        # minimum (then build with 64k: see AGENTS.md)
+ollama pull qwen2.5:3b                   # single fleet model — serves both judge and code gen
 ```
 
 ## Usage
@@ -119,14 +119,11 @@ This saves API costs, works offline, and is faster than web search.
 |---|---|---|---|
 | Search indexing | nomic-embed-text:v1.5 | 261 MB | Embed snippets into 768-dim vectors |
 | Query embedding | nomic-embed-text:v1.5 | — | Embed your search query for cosine comparison |
-| Code generation | Auto-detected qwen2.5 | varies | **3b** on 4-8GB RAM (default, 32K ctx) |
-| | | | **7b** on 8-24GB RAM (better quality) |
-| | | | **14b** on 24GB+ RAM (best quality) |
+| Code generation | qwen2.5:3b | 1.9 GB | Single fleet model — also used for judge, classification, routing, quality gates |
 
-The model is auto-selected based on available RAM. You can override with `--model`:
+The model **prefers an installed model** and **honors a `CODING_MODEL` env pin** (a pin wins — never auto-upgraded past it). If `CODING_MODEL` is unset, it uses qwen2.5:3b if installed. You can override per-call with `--model`:
 ```bash
-offline_code gen "binary search tree" --model qwen2.5:7b
-offline_code gen "api endpoint" --model qwen2.5:3b
+offline_code gen "binary search tree" --model qwen2.5:3b
 ```
 
 The corpus lives at `~/hermes-cortex/ops/offline/code-corpus/` (per-language snippet modules in `code-corpus/snippets/`; regenerate `.md` files with `python3 ops/offline/code-corpus/generate.py` after editing modules). Index stored at `~/offline/code-index.json`. Run `offline_code stats` for the current snippet count — the corpus grows via `learn`, so never hardcode a count in scripts.
@@ -137,7 +134,7 @@ The corpus lives at `~/hermes-cortex/ops/offline/code-corpus/` (per-language sni
 |---|---|
 | `offline_code: command not found` | `ln -sf ~/hermes-cortex/ops/offline/offline_code.sh ~/.hermes/bin/offline_code` (and ensure `~/.hermes/bin` is on PATH) |
 | `nomic-embed-text:v1.5 not found` | `ollama pull nomic-embed-text:v1.5` |
-| `qwen2.5 not found` | `ollama pull qwen2.5:3b` (minimum, auto-detects higher) |
+| `qwen2.5 not found` | `ollama pull qwen2.5:3b` (single fleet model; `CODING_MODEL` env pin wins) |
 | `Index is current` on `--force` | Use `--force` flag to rebuild |
 | Corpus empty / no snippets | Run `offline_code index --force` to build from scratch |
 | Slow search | First run indexes all snippets — subsequent runs use cached index |

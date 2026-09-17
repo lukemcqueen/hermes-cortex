@@ -39,7 +39,7 @@ CORPUS_DIR = Path(__file__).parent / "code-corpus"
 INDEX_DB = HOME / "offline" / "code-index.json"
 OLLAMA_URL = "http://localhost:11434"
 EMBED_MODEL = get_model("EMBEDDING_MODEL", "nomic-embed-text:v1.5")
-GEN_MODEL = get_model("CODING_MODEL", "qwen2.5-coder:3b")  # default; auto-upgraded if VRAM available
+GEN_MODEL = get_model("CODING_MODEL", "qwen2.5:3b")  # single fleet model — same qwen2.5:3b used for judge and code gen
 # Explicit CODING_MODEL env override (set → detection returns it verbatim, never auto-upgraded)
 _USER_CODING_MODEL_SET = bool(os.environ.get("CODING_MODEL"))
 
@@ -47,12 +47,10 @@ _USER_CODING_MODEL_SET = bool(os.environ.get("CODING_MODEL"))
 def _detect_gen_model() -> str:
     """Choose the code generation model for this host.
 
-    Strategy (fleet-uniform, matches "small + effective + performant"):
+    Strategy (fleet-uniform — a single qwen2.5:3b serves both judge and code gen):
       1. Explicit CODING_MODEL env override wins — never auto-upgrade past a pin.
-      2. Prefer a small effective model actually installed in Ollama.
-         A 7b/14b slug with no pulled blob is a guaranteed 404 at generation time.
-      3. RAM-based upgrade is deliberately capped at 3b: larger models are
-         slower and less portable; the 3b coder is correct where it matters.
+      2. Otherwise use qwen2.5:3b if it's installed (avoids the 404 of an unpulled slug).
+      3. Fall back to the default so the caller can report how to pull it.
     """
     if _USER_CODING_MODEL_SET:
         return GEN_MODEL
@@ -65,10 +63,10 @@ def _detect_gen_model() -> str:
                 installed = [m.get("name", "") for m in json.loads(resp.read().decode()).get("models", [])]
         except Exception:
             installed = []
-        for cand in ("qwen2.5-coder:3b", "qwen2.5:3b", "qwen2.5-coder:1.5b"):
-            if any(cand == m or m.startswith(cand) for m in installed):
-                return cand
-        return GEN_MODEL  # none installed — caller reports how to pull it
+        cand = "qwen2.5:3b"
+        if any(cand == m or m.startswith(cand) for m in installed):
+            return cand
+        return GEN_MODEL  # not installed — caller reports how to pull it
     except Exception:
         return GEN_MODEL  # query failed — fall back to default
 

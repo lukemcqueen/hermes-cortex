@@ -229,7 +229,7 @@ This is the single source of truth for Cortex. ⚠ `~/.hermes/.env` is Hermes Ag
 | `CORTEX_HEALTH_URL` | External health endpoint. Orchestrator pollers use this to verify agent reachability through nginx. Format: `https://yourdomain.com:xx007/health` | _(none)_ |
 | `JUDGE_MODEL` | LLM-as-Judge scorer | `qwen2.5:3b` |
 | `EMBEDDING_MODEL` | Text embeddings (mycortex, session cache, loop scorer, offline_code) | `nomic-embed-text:v1.5` |
-| `CODING_MODEL` | Code generation via offline_code | `qwen2.5-coder:3b` (small+effective fleet standard; prefers an installed model, pinned if env set) |
+| `CODING_MODEL` | Code generation via offline_code | `qwen2.5:3b` (single fleet model, also the judge; honors a pin, prefers an installed model) |
 | `CREATIVE_MODEL` | Reserved for future creative tasks | _(not yet wired)_ |
 
 Resolution priority (every script follows this):
@@ -242,7 +242,7 @@ Resolution priority (every script follows this):
 | Tier | Model | Size | Role |
 |------|-------|------|------|
 | Embedding | `nomic-embed-text:v1.5` | 274 MB | Vector search (embeddings for search, RAG) |
-| Unified gen/judge | `qwen2.5:3b` | 1.9 GB | Code gen, classification, routing, quality gates |
+| Unified judge + code gen | `qwen2.5:3b` | 1.9 GB | Single fleet model — judge, classification, routing, quality gates, and `offline_code gen` |
 
 > **⚠️ 64k context minimum required.** `qwen2.5:3b` from the Ollama registry defaults to 32k — build it with 64k:
 > ```bash
@@ -252,7 +252,7 @@ Resolution priority (every script follows this):
 >
 > **Thermal note (CPU-only):** 65536 context on a CPU-only MacBook was previously blamed for 92°C throttling, but the real cause was unlimited Ollama threads + model kept loaded 24/7. With `OLLAMA_NUM_THREADS=2` and `OLLAMA_KEEP_ALIVE=0`, 65536 context runs at 58°C under load. See `install-ollama.sh` comments.
 
-This replaces the previous three-model stack with a unified **qwen2.5:3b** model for code generation, classification, and judging. Agents use it via `http://localhost:11434/api/generate` or `offline_code gen`.
+This replaces the previous three-model stack with a single **`qwen2.5:3b`** model used for both judging (classification, routing, quality gates) and `offline_code gen`. One model, one pull, on every host. Agents use it via `offline_code gen`; `CODING_MODEL` pin wins if set.
 
 ### Scripts that respect `.env`
 
