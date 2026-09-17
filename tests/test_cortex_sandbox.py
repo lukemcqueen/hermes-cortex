@@ -59,7 +59,7 @@ class TestSpecificConfig:
     def test_path_outside_blocked(self):
         sandbox = cs.Sandbox(cs.SandboxConfig(level="specific", allowed_paths=["/tmp/test-area"]))
         try:
-            sandbox.check("/etc/passwd", "read")
+            sandbox.check("/etc/passwd", "write")
             assert False, "Should have raised SandboxBlocked"
         except cs.SandboxBlocked as e:
             assert "blocked" in str(e).lower()
@@ -78,7 +78,7 @@ class TestSpecificConfig:
     def test_is_allowed_returns_correct_bools(self):
         sandbox = cs.Sandbox(cs.SandboxConfig(level="specific", allowed_paths=["/tmp/test-area"]))
         assert sandbox.is_allowed("/tmp/test-area/file", "write")
-        assert not sandbox.is_allowed("/etc/shadow", "read")
+        assert not sandbox.is_allowed("/etc/shadow", "write")
 
 
 class TestMultiplePaths:
@@ -108,6 +108,24 @@ class TestMultiplePaths:
         config = cs.SandboxConfig(level="specific", allowed_paths=["/tmp/area-a", "/tmp/area-b"])
         d = config.to_dict()
         assert d["allowed_paths"] == ["/tmp/area-a", "/tmp/area-b"]
+
+
+class TestReadOpen:
+    """Under level=specific, reads are unrestricted; mutations are gated."""
+
+    def test_read_outside_allowed(self):
+        sandbox = cs.Sandbox(cs.SandboxConfig(level="specific", allowed_paths=["/tmp/test-area"]))
+        sandbox.check("/etc/passwd", "read")
+        sandbox.check("/home/moses/other/file.txt", "read")
+
+    def test_is_allowed_read_outside_true(self):
+        sandbox = cs.Sandbox(cs.SandboxConfig(level="specific", allowed_paths=["/tmp/test-area"]))
+        assert sandbox.is_allowed("/etc/shadow", "read")
+
+    def test_mutations_outside_still_blocked(self):
+        sandbox = cs.Sandbox(cs.SandboxConfig(level="specific", allowed_paths=["/tmp/test-area"]))
+        for op in ("write", "execute", "delete"):
+            assert not sandbox.is_allowed("/etc/passwd", op)
 
 
 class TestTildeExpansion:
@@ -215,7 +233,7 @@ class TestAllOperations:
 
     def test_all_operations_blocked_when_outside(self):
         sandbox = cs.Sandbox(cs.SandboxConfig(level="specific", allowed_paths=["/tmp/test-area"]))
-        for op in ("read", "write", "execute", "delete"):
+        for op in ("write", "execute", "delete"):
             try:
                 sandbox.check("/etc/passwd", op)
                 assert False, f"Should have blocked {op}"

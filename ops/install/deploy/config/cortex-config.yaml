@@ -6,7 +6,8 @@
 #
 #   folder_access:
 #     level: full              # "full" (default) — unrestricted access
-#     # level: specific        # restrict to allowed_paths (recursive)
+#     # level: specific        # restrict writes/execute/delete to allowed_paths
+#     #                        # (reads remain unrestricted)
 #     # allowed_paths:         # required when level=specific — one or more folders
 #     #   - ~/projects
 #     #   - ~/work

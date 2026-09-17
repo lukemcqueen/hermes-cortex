@@ -29,6 +29,8 @@ CONFIG_PATH = Path.home() / ".hermes-cortex" / "config.yaml"
 DEFAULT_LEVEL = "full"
 VALID_LEVELS = {"full", "specific"}
 VALID_OPERATIONS = {"read", "write", "execute", "delete"}
+# Operations gated by the sandbox under level=specific. Reads are always open.
+RESTRICTED_OPERATIONS = frozenset({"write", "execute", "delete"})
 
 
 # ── Exceptions ─────────────────────────────────────────────────
@@ -156,13 +158,18 @@ class Sandbox:
         """Raise SandboxBlocked if the operation on path is not permitted.
 
         When level=full, all paths pass.
-        When level=specific, only paths under any allowed_path (recursively) pass.
+        When level=specific, write/execute/delete are restricted to
+        allowed_paths (recursively); reads remain unrestricted.
         """
         if not self._config.is_restricted:
             return
 
         if operation not in VALID_OPERATIONS:
             raise SandboxError(f"Unknown operation: '{operation}'")
+
+        # Read-open policy: reads are unrestricted even under 'specific'.
+        if operation not in RESTRICTED_OPERATIONS:
+            return
 
         resolved = Path(path).expanduser().resolve()
 
