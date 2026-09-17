@@ -116,7 +116,7 @@ class TestReadOpen:
     def test_read_outside_allowed(self):
         sandbox = cs.Sandbox(cs.SandboxConfig(level="specific", allowed_paths=["/tmp/test-area"]))
         sandbox.check("/etc/passwd", "read")
-        sandbox.check("/home/moses/other/file.txt", "read")
+        sandbox.check(str(Path.home() / "other" / "file.txt"), "read")
 
     def test_is_allowed_read_outside_true(self):
         sandbox = cs.Sandbox(cs.SandboxConfig(level="specific", allowed_paths=["/tmp/test-area"]))
