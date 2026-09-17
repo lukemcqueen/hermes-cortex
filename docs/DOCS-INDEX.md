@@ -141,6 +141,7 @@ repo; this public repo carries only framework docs (PRDs, design, reference).
 | `docs/pinned-repo-hooks.md` | Pinned enforcement hooks |
 | `docs/pre-commit-scoring.md` | Pre-commit scoring |
 | `docs/git-enforcement.md` | Git enforcement model |
+| `docs/enforcer-known-issues.md` | **Known issues** in the governance enforcer / loop-gov lock machinery (check_lock false-clear, orphan TTL window, PID-marker buildup, close-out gap) — verified on moses 2026-09-17 |
 
 ## Development
 
