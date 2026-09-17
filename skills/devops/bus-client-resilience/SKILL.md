@@ -1,4 +1,5 @@
 ---
+version: 1.0.0
 name: bus-client-resilience
 category: devops
 description: "Use when changing the bus client, outbox, mirror, or DLQ."

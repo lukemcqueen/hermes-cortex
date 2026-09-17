@@ -1,4 +1,5 @@
 ---
+version: 1.0.0
 name: evaluating-agent-frameworks
 description: Evaluate an external agent framework for interop.
 ---

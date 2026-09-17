@@ -1,4 +1,5 @@
 ---
+version: 1.0.0
 name: steadfaste-design
 category: software-development
 description: steadfaste design-doc and governance-cycle work.

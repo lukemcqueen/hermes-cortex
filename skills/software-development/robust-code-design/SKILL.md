@@ -1,4 +1,5 @@
 ---
+version: 1.0.0
 name: robust-code-design
 category: software-development
 description: Use when hardening code against adversarial failure modes.

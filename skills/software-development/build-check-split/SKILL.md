@@ -1,4 +1,5 @@
 ---
+version: 1.0.0
 name: build-check-split
 category: software-development
 description: "Use when driving a task list tagged BUILD vs CHECK."

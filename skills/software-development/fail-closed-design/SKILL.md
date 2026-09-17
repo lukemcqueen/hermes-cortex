@@ -1,4 +1,5 @@
 ---
+version: 1.0.0
 name: fail-closed-design
 category: software-development
 description: "Use when writing fail-closed security-critical code."
