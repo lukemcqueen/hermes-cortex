@@ -1,0 +1,13 @@
+# Hermes Cortex Configuration
+# Copy to ~/.hermes-cortex/config.yaml and edit.
+
+# ── Disk Access Sandbox ──────────────────────────────────────
+# Control which filesystem paths Hermes agents may access.
+#
+#   folder_access:
+#     level: full              # "full" (default) — unrestricted access
+#     # level: specific        # restrict to allowed_path (recursive)
+#     # allowed_path: ~/projects  # required when level=specific
+
+folder_access:
+  level: full
