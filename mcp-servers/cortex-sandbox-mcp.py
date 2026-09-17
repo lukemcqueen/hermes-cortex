@@ -177,7 +177,7 @@ def _sandbox_check(args: dict) -> CallToolResult:
                 "path": path,
                 "operation": operation,
                 "reason": str(e),
-                "allowed_path": str(config.allowed_path),
+                "allowed_paths": [str(p) for p in config.allowed_paths],
             })
         )])
 

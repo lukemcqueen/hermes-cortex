@@ -5,7 +5,9 @@ Cortex Sandbox — disk access control for Hermes Cortex agents.
 Config file: ~/.hermes-cortex/config.yaml
     folder_access:
       level: full              # "full" (default) or "specific"
-      allowed_path: ~/projects # required when level=specific
+      allowed_paths:           # required when level=specific
+        - ~/projects
+        - ~/work
 
 Module interface:
     load_config() -> SandboxConfig
@@ -17,10 +19,9 @@ CLI:
     python3 cortex-sandbox.py check <path>   # exit 0=allowed, 1=blocked
 """
 
-import os
 import sys
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Sequence
 
 import yaml
 
@@ -39,13 +40,14 @@ class SandboxError(Exception):
 class SandboxBlocked(SandboxError):
     """Operation blocked by sandbox policy."""
 
-    def __init__(self, path: str, operation: str, allowed_path: str):
+    def __init__(self, path: str, operation: str, allowed_paths: Sequence[Path]):
         self.path = path
         self.operation = operation
-        self.allowed_path = allowed_path
+        self.allowed_paths = list(allowed_paths)
+        joined = ", ".join(str(p) for p in self.allowed_paths)
         super().__init__(
             f"Sandbox blocked {operation} on '{path}': "
-            f"only paths under '{allowed_path}' are permitted."
+            f"only paths under {joined} are permitted."
         )
 
 
@@ -58,20 +60,21 @@ class SandboxConfigError(SandboxError):
 class SandboxConfig:
     """Parsed sandbox policy. Immutable after construction."""
 
-    def __init__(self, level: str = DEFAULT_LEVEL, allowed_path: Optional[str] = None):
+    def __init__(self, level: str = DEFAULT_LEVEL, allowed_paths: Optional[Sequence[str]] = None):
         if level not in VALID_LEVELS:
             raise SandboxConfigError(
                 f"Invalid level '{level}'; must be one of {sorted(VALID_LEVELS)}"
             )
         self.level = level
-        self._raw_allowed_path = allowed_path
-        self.allowed_path: Optional[Path] = None
-        if allowed_path:
-            self.allowed_path = Path(allowed_path).expanduser().resolve()
+        self.allowed_paths: tuple[Path, ...] = ()
+        if allowed_paths:
+            self.allowed_paths = tuple(
+                Path(p).expanduser().resolve() for p in allowed_paths
+            )
 
-        if self.level == "specific" and self.allowed_path is None:
+        if self.level == "specific" and not self.allowed_paths:
             raise SandboxConfigError(
-                "level=specific requires allowed_path to be set"
+                "level=specific requires at least one entry in allowed_paths"
             )
 
     @property
@@ -82,7 +85,7 @@ class SandboxConfig:
     def to_dict(self) -> dict:
         return {
             "level": self.level,
-            "allowed_path": str(self.allowed_path) if self.allowed_path else None,
+            "allowed_paths": [str(p) for p in self.allowed_paths] or None,
             "is_restricted": self.is_restricted,
         }
 
@@ -113,18 +116,22 @@ def load_config(config_path: Optional[Path] = None) -> SandboxConfig:
         return SandboxConfig()
 
     level = sandbox_cfg.get("level", DEFAULT_LEVEL)
-    allowed_path = sandbox_cfg.get("allowed_path")
+    allowed_paths = sandbox_cfg.get("allowed_paths")
+
+    # Backward compat: accept singular allowed_path as a single-element list.
+    if allowed_paths is None and sandbox_cfg.get("allowed_path"):
+        allowed_paths = [sandbox_cfg["allowed_path"]]
 
     if level not in VALID_LEVELS:
         print(f"cortex-sandbox: invalid level '{level}', defaulting to 'full'", file=sys.stderr)
         level = DEFAULT_LEVEL
 
-    if level == "specific" and not allowed_path:
-        print("cortex-sandbox: level=specific but allowed_path not set, defaulting to 'full'",
+    if level == "specific" and not allowed_paths:
+        print("cortex-sandbox: level=specific but no allowed_paths set, defaulting to 'full'",
               file=sys.stderr)
         level = DEFAULT_LEVEL
 
-    return SandboxConfig(level=level, allowed_path=allowed_path)
+    return SandboxConfig(level=level, allowed_paths=allowed_paths)
 
 
 # ── Sandbox ────────────────────────────────────────────────────
@@ -149,7 +156,7 @@ class Sandbox:
         """Raise SandboxBlocked if the operation on path is not permitted.
 
         When level=full, all paths pass.
-        When level=specific, only paths under allowed_path (recursively) pass.
+        When level=specific, only paths under any allowed_path (recursively) pass.
         """
         if not self._config.is_restricted:
             return
@@ -158,13 +165,15 @@ class Sandbox:
             raise SandboxError(f"Unknown operation: '{operation}'")
 
         resolved = Path(path).expanduser().resolve()
-        allowed = self._config.allowed_path
-        assert allowed is not None, "is_restricted guarantees allowed_path is set"
 
-        try:
-            resolved.relative_to(allowed)
-        except ValueError:
-            raise SandboxBlocked(str(path), operation, str(allowed))
+        for allowed in self._config.allowed_paths:
+            try:
+                resolved.relative_to(allowed)
+                return  # allowed — under one of the permitted trees
+            except ValueError:
+                continue
+
+        raise SandboxBlocked(str(path), operation, self._config.allowed_paths)
 
     def is_allowed(self, path: str | Path, operation: str = "write") -> bool:
         """Return True if the operation is permitted."""
