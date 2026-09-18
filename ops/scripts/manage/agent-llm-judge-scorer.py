@@ -416,6 +416,16 @@ def main():
             skipped += 1
             continue
 
+        # Skip delivery-suppressed no-op turns: a final response ending in the
+        # literal "[SILENT]" control token means "nothing to deliver" (e.g. a
+        # session guard skipping a tick). There is no agent behavior to judge;
+        # scoring them produced recurring false low-score alerts (2-6 per
+        # alert, 09-10..09-18). Not a quality regression.
+        if out.strip().endswith("[SILENT]"):
+            print(f"     ⏭ Delivery-suppressed [SILENT] no-op turn, skipping")
+            skipped += 1
+            continue
+
         print(f"     Content: {len(inp)} chars in → {len(out)} chars out")
         print(f"     Judging with {JUDGE_MODEL}...", end=" ", flush=True)
 
