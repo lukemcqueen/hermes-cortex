@@ -126,11 +126,72 @@ def main() -> int:
         for f in failures:
             print(f"  - {f}")
         return 1
+
+    # 4. Paused-cron auto-resume: resumes a paused job, records cooldown,
+    #    and respects the cooldown (no re-resume within RESUME_COOLDOWN_HOURS).
+    with tempfile.TemporaryDirectory(prefix="remediate-resume-test-") as home:
+        mod = _load_module(home)
+        jobs_file = Path(home) / ".hermes" / "cron" / "jobs.json"
+        jobs_file.parent.mkdir(parents=True, exist_ok=True)
+        paused_job = {
+            "id": "abcd1234",
+            "name": "agent-fake-sync",
+            "state": "paused",
+            "enabled": False,
+            "paused_at": "2026-09-20T01:00:00.000000+09:00",
+        }
+        active_job = {
+            "id": "efgh5678",
+            "name": "agent-normal",
+            "state": "scheduled",
+            "enabled": True,
+        }
+        jobs_file.write_text(
+            json.dumps({"jobs": [paused_job, active_job]}), encoding="utf-8"
+        )
+        mod.subprocess = _FakeSubprocess()
+
+        # First call resumes exactly the paused job, not the active one.
+        res = mod.maybe_resume_paused_crons()
+        resumed = [m for _, m in res if m.startswith("✅")]
+        cmd = mod.subprocess.calls
+        if len(resumed) != 1 or "agent-fake-sync" not in resumed[0]:
+            failures.append(f"4a resume result wrong: {res}")
+        if cmd != [["hermes", "cron", "resume", "abcd1234"]]:
+            failures.append(f"4b resume command wrong: {cmd}")
+
+        # Cooldown recorded → second call (immediately) is a no-op.
+        res2 = mod.maybe_resume_paused_crons()
+        if any(m.startswith("✅") for _, m in res2):
+            failures.append(f"4c cooldown not honored: {res2}")
+        if len(mod.subprocess.calls) != 1:
+            failures.append(
+                f"4d resume attempted again during cooldown: {mod.subprocess.calls}"
+            )
+
+    if failures:
+        print(f"FAIL ({len(failures)}):")
+        for f in failures:
+            print(f"  - {f}")
+        return 1
     print(
-        "PASS — agent-remediate-apply: 3/3 (timestamp-insensitive id, "
-        "detail-sensitive id, main() reports once then silent)"
+        "PASS — agent-remediate-apply: 5/5 (timestamp-insensitive id, "
+        "detail-sensitive id, main() reports once then silent, "
+        "paused-cron auto-resume, resume cooldown)"
     )
     return 0
+
+
+class _FakeSubprocess:
+    """Stub subprocess with .run() returning rc=0 and recording calls."""
+
+    def __init__(self):
+        self.calls = []
+
+    def run(self, cmd, capture_output=False, text=False, timeout=30):
+        self.calls.append(list(cmd))
+        import subprocess as _real
+        return _real.CompletedProcess(cmd, 0, stdout="resumed", stderr="")
 
 
 if __name__ == "__main__":

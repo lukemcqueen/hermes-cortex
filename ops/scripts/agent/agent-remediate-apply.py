@@ -24,6 +24,9 @@ DONE_DIR = REMEDIATE_DIR / "done"
 SENSOR_JOB_NAME = "agent-remediation-sensor"
 SENSOR_OUTPUT_ROOT = HOME / ".hermes" / "cron" / "output"
 SEEN_FILE = STATE_DIR / "remediate-seen.txt"
+JOBS_FILE = HOME / ".hermes" / "cron" / "jobs.json"
+RESUME_COOLDOWN_FILE = REMEDIATE_DIR / "resume-cooldown.json"
+RESUME_COOLDOWN_HOURS = 6
 
 KST = get_timezone()
 
@@ -194,6 +197,90 @@ def fix_disk_space(context: dict) -> str | None:
     return None
 
 
+# ── Paused-cron auto-resume ─────────────────────────────────────
+
+
+def _load_resume_cooldown() -> dict:
+    if RESUME_COOLDOWN_FILE.exists():
+        try:
+            return json.loads(RESUME_COOLDOWN_FILE.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            return {}
+    return {}
+
+
+def _save_resume_cooldown(cd: dict) -> None:
+    RESUME_COOLDOWN_FILE.parent.mkdir(parents=True, exist_ok=True)
+    RESUME_COOLDOWN_FILE.write_text(json.dumps(cd, indent=2), encoding="utf-8")
+
+
+def maybe_resume_paused_crons() -> list[tuple[str, str]]:
+    """Auto-resume crons paused by the failure watchdog once the transient
+    failure has cleared. Returns [(name, result_msg), ...].
+
+    Why: agent-cron-failure-watchdog pauses a job after 3 consecutive
+    errors but nothing ever resumes it — a transient failure became a
+    permanent outage (agent-mycortex-sync sat paused 2 days, 2026-09-18,
+    surfacing as endless 'mycortex down' fleet-watchdog alerts).
+
+    Safety: only jobs in state 'paused' (the watchdog/operator pause path)
+    are resumed — a plain enabled=false is left alone. A 6h per-job
+    cooldown bounds pause/resume flapping: if the job is genuinely broken
+    the watchdog re-pauses it after 3 runs and this handler stays quiet
+    until the cooldown expires. The cooldown is keyed by job id and
+    independent of the sensor seen-file, so a NEW incident after a healthy
+    period still triggers a fresh resume.
+    """
+    results: list[tuple[str, str]] = []
+    if not JOBS_FILE.exists():
+        return results
+    try:
+        data = json.loads(JOBS_FILE.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return results
+    jobs = data if isinstance(data, list) else data.get("jobs", [])
+
+    now = datetime.now(timezone.utc)
+    cooldown = _load_resume_cooldown()
+    dirty = False
+
+    for job in jobs:
+        if not isinstance(job, dict) or job.get("state") != "paused":
+            continue
+        job_id = str(job.get("id") or "")
+        name = job.get("name") or job_id
+        if not job_id:
+            continue
+        last = cooldown.get(job_id)
+        if last:
+            try:
+                if now - datetime.fromisoformat(last) < timedelta(
+                    hours=RESUME_COOLDOWN_HOURS
+                ):
+                    continue  # cooldown — let the watchdog re-pause cycle finish
+            except ValueError:
+                pass  # malformed entry — treat as no cooldown
+        r = subprocess.run(
+            ["hermes", "cron", "resume", job_id],
+            capture_output=True, text=True, timeout=30,
+        )
+        if r.returncode == 0:
+            cooldown[job_id] = now.isoformat()
+            dirty = True
+            results.append(
+                (job_id, f"✅ Resumed paused cron '{name}' (auto-restore after pause)")
+            )
+        else:
+            results.append(
+                (job_id, f"❌ Could not resume paused cron '{name}': "
+                         f"{(r.stderr or r.stdout).strip()[:120]}")
+            )
+
+    if dirty:
+        _save_resume_cooldown(cooldown)
+    return results
+
+
 # ── Issue Router ────────────────────────────────────────────────
 
 FIX_HANDLERS = {
@@ -249,6 +336,14 @@ def main() -> int:
     fixed = []
     failed = []
     skipped = []
+
+    # Auto-resume crons paused by the failure watchdog (independent of the
+    # sensor seen-file so a later incident can still trigger a fresh resume).
+    for rid, msg in maybe_resume_paused_crons():
+        if msg.startswith("✅"):
+            fixed.append(("paused_cron_restore", msg))
+        else:
+            failed.append(("paused_cron_restore", msg))
     
     # 1. Read sensor output (job id discovered — ids are ephemeral)
     sensor_dir = discover_sensor_output_dir()
