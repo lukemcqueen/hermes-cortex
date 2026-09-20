@@ -27,6 +27,21 @@ SEEN_FILE = STATE_DIR / "remediate-seen.txt"
 JOBS_FILE = HOME / ".hermes" / "cron" / "jobs.json"
 RESUME_COOLDOWN_FILE = REMEDIATE_DIR / "resume-cooldown.json"
 RESUME_COOLDOWN_HOURS = 6
+WATCHDOG_STATE_FILE = HOME / ".hermes-cortex" / "state" / "cron-failure-watchdog.json"
+
+# Jobs that must NEVER be auto-resumed, even if a watchdog flag lingers in
+# its state file. Cover deliberate/operator holds and superseded duplicates:
+#   - agent-hermes-update: fleet-wide pause (see MEMORY) — resume is a
+#     deliberate operator action only
+#   - orch-backlog-driver: paused on Luke's directive (paused_reason)
+#   - the OLD duplicate agent-bus-retry-sweep (d22d6b2a3f47) was superseded by
+#     the live one (80dc43b602a9) — resuming it would double-fire the sweep
+NEVER_RESUME = {
+    "195fa856001d",  # agent-hermes-update
+    "dbcdec6bb40d",  # orch-backlog-driver
+    "b8c62b635aed",  # check-hermes-upstream-fix
+    "d22d6b2a3f47",  # obsolete duplicate agent-bus-retry-sweep
+}
 
 KST = get_timezone()
 
@@ -240,6 +255,20 @@ def maybe_resume_paused_crons() -> list[tuple[str, str]]:
         return results
     jobs = data if isinstance(data, list) else data.get("jobs", [])
 
+    # Only jobs the failure-watchdog itself flagged (alerted + hit the
+    # 3-strike limit) are candidates — deliberate/operator pauses are never
+    # auto-resumed. Respect the NEVER_RESUME denylist on top of that.
+    watchdog_alerted = set()
+    if WATCHDOG_STATE_FILE.exists():
+        try:
+            wd = json.loads(WATCHDOG_STATE_FILE.read_text(encoding="utf-8"))
+            watchdog_alerted = {
+                str(jid) for jid, st in wd.items()
+                if st.get("alerted") and st.get("consecutive", 0) >= 3
+            }
+        except (json.JSONDecodeError, OSError):
+            watchdog_alerted = set()
+
     now = datetime.now(timezone.utc)
     cooldown = _load_resume_cooldown()
     dirty = False
@@ -250,6 +279,8 @@ def maybe_resume_paused_crons() -> list[tuple[str, str]]:
         job_id = str(job.get("id") or "")
         name = job.get("name") or job_id
         if not job_id:
+            continue
+        if job_id in NEVER_RESUME or job_id not in watchdog_alerted:
             continue
         last = cooldown.get(job_id)
         if last:

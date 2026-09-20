@@ -149,6 +149,10 @@ def main() -> int:
         jobs_file.write_text(
             json.dumps({"jobs": [paused_job, active_job]}), encoding="utf-8"
         )
+        # Seed the watchdog state so the paused job is a legitimate candidate.
+        wd_state = Path(home) / ".hermes-cortex" / "state" / "cron-failure-watchdog.json"
+        wd_state.parent.mkdir(parents=True, exist_ok=True)
+        wd_state.write_text(json.dumps({"abcd1234": {"alerted": True, "consecutive": 3}}))
         mod.subprocess = _FakeSubprocess()
 
         # First call resumes exactly the paused job, not the active one.
@@ -169,6 +173,23 @@ def main() -> int:
                 f"4d resume attempted again during cooldown: {mod.subprocess.calls}"
             )
 
+        # 5. Gates: a paused job NOT flagged by the watchdog (deliberate hold)
+        #    and one on the NEVER_RESUME denylist are both left untouched.
+        denylisted = {"id": "195fa856001d", "name": "agent-hermes-update",
+                      "state": "paused", "enabled": False,
+                      "paused_at": "2026-09-20T01:00:00.000000+09:00"}
+        held = {"id": "held0001", "name": "agent-on-hold", "state": "paused",
+                "enabled": False, "paused_at": "2026-09-20T01:00:00.000000+09:00"}
+        jobs_file.write_text(json.dumps({"jobs": [denylisted, held]}), encoding="utf-8")
+        # denylisted IS watchdog-flagged (tests NEVER_RESUME); held is NOT
+        # flagged at all (tests the watchdog-identity gate).
+        wd_state.write_text(json.dumps({
+            "195fa856001d": {"alerted": True, "consecutive": 3},
+        }))
+        res3 = mod.maybe_resume_paused_crons()
+        if any(m.startswith("✅") for _, m in res3):
+            failures.append(f"5a gated job resumed incorrectly: {res3}")
+
     if failures:
         print(f"FAIL ({len(failures)}):")
         for f in failures:
@@ -177,7 +198,7 @@ def main() -> int:
     print(
         "PASS — agent-remediate-apply: 5/5 (timestamp-insensitive id, "
         "detail-sensitive id, main() reports once then silent, "
-        "paused-cron auto-resume, resume cooldown)"
+        "paused-cron auto-resume + watchdog gate + never-resume)"
     )
     return 0
 
