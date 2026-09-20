@@ -115,7 +115,7 @@ their domain.
 | `meme-generation` | 2.0.0 | Create meme PNGs from templates with Pillow text overlay. | `skill_view(name='meme-generation')` |
 | `pixel-art` | 2.0.0 | Pixel art w/ era palettes (NES, Game Boy, PICO-8). | `skill_view(name='pixel-art')` |
 
-## Devops (157 skills)
+## Devops (158 skills)
 
 | Skill | Version | Purpose | Load With |
 |-------|---------|---------|-----------|
@@ -154,6 +154,7 @@ their domain.
 | `cron-agent-identity` | 1.0.0 | Diagnose which agent/profile a Hermes cron session runs as. | `skill_view(name='cron-agent-identity')` |
 | `cron-cost-scheduling` | 1.0.0 | Schedule LLM crons around provider peak/off-peak windows. | `skill_view(name='cron-cost-scheduling')` |
 | `cron-cost-tracking` | 1.0.0 | SQLite-backed per-run token usage and cost tracking for Hermes cron jobs. Deploys cost_store.py and patches... | `skill_view(name='cron-cost-tracking')` |
+| `cron-failure-restore` | 1.0.0 | Use when a cron is paused or an alert won't clear. | `skill_view(name='cron-failure-restore')` |
 | `cron-filesystem-fallback` | 1.0.0 | Read cron job definitions and execution history from filesystem when cronjob CLI is unavailable. Platform-a... | `skill_view(name='cron-filesystem-fallback')` |
 | `cron-format-standard` | 3.0.0 | Standard three-phase output format for ALL LLM-driven cron jobs. Uses concrete examples — not annotated pla... | `skill_view(name='cron-format-standard')` |
 | `cron-job-management` | 1.0.0 | Create, name, list, and maintain Hermes cron jobs — no_agent watchdog scripts, naming conventions, and the... | `skill_view(name='cron-job-management')` |
