@@ -378,21 +378,13 @@ def main() -> int:
     
     # 1. Read sensor output (job id discovered — ids are ephemeral)
     sensor_dir = discover_sensor_output_dir()
-    if sensor_dir is None:
-        log("No remediation-sensor output dir found — nothing to do")
-        return 0
-    sensor_text = get_latest_sensor_output(sensor_dir)
-    if not sensor_text:
-        log("No sensor output found — nothing to do")
-        return 0
-    
-    issues = parse_issues(sensor_text)
-    if not issues:
-        log("No issues in sensor output — system healthy")
-        return 0
-    
-    log(f"📋 Found {len(issues)} issue(s) in sensor output")
-    
+    sensor_text = get_latest_sensor_output(sensor_dir) if sensor_dir else None
+    issues = parse_issues(sensor_text) if sensor_text else []
+    if issues:
+        log(f"📋 Found {len(issues)} issue(s) in sensor output")
+    else:
+        log("No remediation-sensor issues found" if sensor_dir else "No remediation-sensor output found")
+
     # 2. Process each issue
     for issue in issues:
         issue_id = make_issue_id(issue)
