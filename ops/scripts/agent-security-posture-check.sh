@@ -257,7 +257,26 @@ fi
 # (e.g. "740 SSH brute-force attempts in last 24h") changes every run, so a
 # raw-text fingerprint defeats dedup and re-delivers hourly. Identical
 # warnings still dedup; only genuinely NEW warning kinds re-notify.
-REPORT_HASH=$(echo -n "$REPORT" | tr '0-9' '#' | sha256sum | cut -c1-16)
+# ── Portable SHA-256 (macOS has no coreutils sha256sum) ─────────────
+# sha256sum first, shasum -a 256 fallback (macOS ships perl shasum).
+# Hashes STDIN only; fails closed (non-zero) when no hasher exists.
+# Bare sha256sum here broke on macOS (titus): command-not-found yielded
+# an EMPTY fingerprint, so every report collapsed to one hash and the
+# dedup below suppressed genuinely NEW warnings forever.
+# Constructs are bash-3.2-safe (local, command -v, ${out%% *}).
+_sha256_stdin() {
+  local out
+  if command -v sha256sum >/dev/null 2>&1; then
+    out=$(sha256sum 2>&1) || { echo "" >&2; return 1; }
+  elif command -v shasum >/dev/null 2>&1; then
+    out=$(shasum -a 256 2>&1) || { echo "" >&2; return 1; }
+  else
+    echo "_sha256_stdin: no sha256sum/shasum available — cannot hash" >&2
+    return 1
+  fi
+  echo "${out%% *}"
+}
+REPORT_HASH=$(echo -n "$REPORT" | tr '0-9' '#' | _sha256_stdin | cut -c1-16)
 if [[ -f "$FINGERPRINT_FILE" ]]; then
   LAST_HASH=$(cat "$FINGERPRINT_FILE" 2>/dev/null || echo "")
   if [[ "$REPORT_HASH" == "$LAST_HASH" ]]; then

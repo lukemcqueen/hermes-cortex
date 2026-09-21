@@ -54,11 +54,31 @@ except: sys.exit(0)" 2>/dev/null || echo "0")
     fi
 }
 
+# ── Portable SHA-256 (macOS has no coreutils sha256sum) ─────────────
+# sha256sum first, shasum -a 256 fallback (macOS ships perl shasum).
+# Hashes STDIN only. The bare sha256sum here broke on macOS (titus):
+# command-not-found yielded an EMPTY hash, so every error fingerprint
+# collapsed to one value and dedup suppressed genuinely NEW failures.
+# Fails closed (non-zero, empty stdout) when no hasher exists.
+# Constructs are bash-3.2-safe (local, command -v, ${out%% *}).
+_sha256_stdin() {
+    local out
+    if command -v sha256sum >/dev/null 2>&1; then
+        out=$(sha256sum 2>&1) || { echo "" >&2; return 1; }
+    elif command -v shasum >/dev/null 2>&1; then
+        out=$(shasum -a 256 2>&1) || { echo "" >&2; return 1; }
+    else
+        echo "_sha256_stdin: no sha256sum/shasum available — cannot hash" >&2
+        return 1
+    fi
+    echo "${out%% *}"
+}
+
 # ── Compute an error hash from an error string ──────────────────────
 # Deterministic: same string → same hash (SHA-256 first 16 chars).
 cron_error_hash() {
     local error_msg="$1"
-    echo -n "$error_msg" | sha256sum | cut -c1-16
+    echo -n "$error_msg" | _sha256_stdin | cut -c1-16
 }
 
 # ── Should we report this failure? ──────────────────────────────────
