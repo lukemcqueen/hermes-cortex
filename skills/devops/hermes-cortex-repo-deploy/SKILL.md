@@ -77,6 +77,24 @@ them") on nearly every push. Stash just that path by name, rebase, pop.
   landed even if a later command in the same chain printed an earlier
   failure line. Verify with `git log --oneline -1 origin/main`.
 
+## Doctor skill-drift: deployed newer than repo = sync INTO the repo
+
+The doctor warns `Skill drift: <skill> — Deployed copy is newer than repo
+source` when accumulated lessons live only in `~/.hermes/skills/` (Hermes
+skips Hermes-default skills, but deployed skills sourced from the repo drift
+every time a session adds a lesson locally without committing). Fix direction
+is deployed → repo, NOT repo → deployed (that would erase the lessons):
+
+1. `diff skills/<cat>/<skill>/SKILL.md ~/.hermes/skills/<cat>/<skill>/SKILL.md`
+   and read it — confirm the delta is lesson additions, no PII.
+2. Copy the deployed SKILL.md (and any deployed `references/` files the repo
+   copy lacks) into the repo, stage ONLY those paths, commit through the hook.
+3. `cortex-update.sh`, doctor, push. The drift warning clears when deployed
+   matches repo again.
+
+Do not "fix" drift by deleting the deployed copy or re-deploying over it —
+both discard the lessons the doctor is pointing you at.
+
 ## Reversing your own wrong fix
 
 If a just-pushed correction turns out to be the wrong direction (e.g. you

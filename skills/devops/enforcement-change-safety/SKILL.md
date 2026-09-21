@@ -77,6 +77,27 @@ binary on macOS, or every commit on Titus blocks:
   SCORE_OUTPUT=$($_TIMEOUT_BIN "$PYTHON_BIN" "$SCORE_CYCLE" ...)
   ```
   Empty `_TIMEOUT_BIN` = unbounded run; the `||` hard-block still guards.
+- **Hash with the portable helper, never bare `sha256sum`.** Any hook code that
+  hashes a file or git object must call a `_sha256()` helper (sha256sum first,
+  `shasum -a 256` fallback, exit non-zero when neither exists) — macOS has no
+  coreutils sha256sum, and the fallback already exists as the pattern to copy
+  in cortex-update.sh (`_sha256_of`). Grep the hook for bare `sha256sum` calls
+  outside the helper before shipping.
+- **Watch the silent-empty pipeline (fail-open trap).** In `producer |
+  missing-tool | consumer` the pipeline's exit status is the CONSUMER's — a
+  missing MIDDLE tool yields empty output and exit 0, so a guard like
+  `[[ -n "$HASH" ]] && run-check` silently SKIPS instead of failing. When a
+  guard branches on the hash/derived value, an empty value is a skip path by
+  construction; if the check must run or fail, treat empty as an error.
+- **Test macOS portability from a Linux host with a sandboxed PATH.** Build a
+  scratch bin dir containing a `shasum` shim (shell script over `openssl dgst
+  -sha256`, parsing the hash with `awk '{print $NF}'`), symlinks to the tools
+  the code needs, and NO sha256sum; run the helper under that PATH and compare
+  against the real sha256sum computed outside the sandbox. Assert on the
+  VALUE, not the exit code (the pipeline-empty trap above). The shim must exit
+  non-zero when its backend fails (missing file) — a lenient shim masks the
+  helper's fail-closed path. Also probe the no-hasher case (empty bin dir):
+  the helper must exit non-zero, never fake a hash.
 - macOS ships bash 3.2 — `for-in`, `command -v`, `[[ -z ]]`, `$()` are safe;
   `grep -P`, `mapfile`, `${var,,}` are NOT. Check the whole hook, not just your
   edit.
