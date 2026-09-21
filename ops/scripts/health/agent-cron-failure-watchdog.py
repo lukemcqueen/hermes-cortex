@@ -31,6 +31,12 @@ HOME = Path.home()
 CRON_JOBS_FILE = HOME / ".hermes" / "cron" / "jobs.json"
 STATE_FILE = HOME / ".hermes-cortex" / "state" / "cron-failure-watchdog.json"
 
+# The watchdog's own cron job name — it must never evaluate/count/pause ITSELF.
+# When it pauses a broken cron it exits 1 (to deliver the alert), which sets its
+# OWN last_status=error; counting that would accumulate 3 self-errors and pause
+# itself — the observed fleet-wide self-pause cascade.
+OWN_JOB_NAME = "agent-cron-failure-watchdog"
+
 CONSECUTIVE_FAILURE_LIMIT = 3  # consecutive errors before alert + pause
 
 
@@ -86,6 +92,9 @@ def _evaluate(jobs: list[dict], limit: int = CONSECUTIVE_FAILURE_LIMIT) -> tuple
         job_id = job.get("id")
         if not job_id:
             continue
+        if str(job.get("name") or "").strip() == OWN_JOB_NAME:
+            # Never monitor/count/pause ourselves — see OWN_JOB_NAME docstring.
+            continue
         if job.get("paused_at") or not job.get("enabled", True):
             continue
 
@@ -107,14 +116,12 @@ def _evaluate(jobs: list[dict], limit: int = CONSECUTIVE_FAILURE_LIMIT) -> tuple
                 entry["alerted"] = True
                 to_pause.append(str(job_id))
         else:
+            # Any non-error status (ok, None, ...) = the cron is healthy now.
+            # Reset the counter/alarm so a NEW failure streak re-alerts. This is
+            # deliberately SILENT: a recovered cron is a success, and emitting it
+            # as an alert (exit 1) used to mark the watchdog's OWN last_status=error
+            # and cascade into self-pause.
             if entry["consecutive"] or entry["alerted"]:
-                name = job.get("name") or job_id
-                if entry["alerted"]:
-                    alerts.append(
-                        f"✅ Cron '{name}' recovered after being paused "
-                        f"({now}) — resuming not automatic; run `hermes "
-                        f"cron resume {job_id}` once the fix is verified."
-                    )
                 entry["consecutive"] = 0
                 entry["alerted"] = False
 

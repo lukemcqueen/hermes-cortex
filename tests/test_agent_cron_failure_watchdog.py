@@ -91,6 +91,58 @@ class TestConsecutiveCounting:
         assert "a1" not in wd._load_state()
 
 
+class TestRecoveryIsSilent:
+    def test_recovery_does_not_emit_alert_or_exit(self, wd):
+        # A cron that was alerted (paused) then returns to ok RECOVERED. That is a
+        # SUCCESS, not a failure: the watchdog must be silent (no alert, no exit 1).
+        # Regression: the recovery line was appended to `alerts`, so run_once() exited
+        # 1, marking the watchdog's OWN last_status=error and cascading into self-pause.
+        j = _job("a1", "error")
+        wd._evaluate([j]); wd._evaluate([j]); wd._evaluate([j])  # cross threshold, alerted
+        recovered = _job("a1", "ok")
+        alerts, to_pause = wd._evaluate([recovered])
+        assert alerts == []        # recovery is silent, not an alert
+        assert to_pause == []      # nothing to pause on recovery
+        st = wd._load_state()
+        assert st["a1"]["alerted"] is False  # state reset so a future failure re-alerts
+        assert st["a1"]["consecutive"] == 0
+
+    def test_recovery_subsequent_failure_realerts(self, wd):
+        # After a silent recovery resets the state, a NEW failure streak must alert
+        # again (recovery must not permanently mute the cron).
+        j = _job("a1", "error")
+        [wd._evaluate([j]) for _ in range(3)]  # alerted
+        wd._evaluate([_job("a1", "ok")])        # silent recovery, state reset
+        alerts, to_pause = wd._evaluate([j]); wd._evaluate([j])
+        alerts, to_pause = wd._evaluate([j])    # new streak crosses threshold
+        assert len(alerts) == 1
+        assert "3 consecutive" in alerts[0]
+        assert to_pause == ["a1"]
+
+
+class TestSelfExclusion:
+    def test_watchdog_never_counts_its_own_errors(self, wd):
+        # The watchdog must not evaluate its own job. When it pauses a BROKEN cron it
+        # exits 1 (delivery), so its own last_status turns error; if it counted itself
+        # it would accumulate 3 self-errors and pause ITSELF — the fleet-wide self-pause.
+        me = _job("self-id", "error", name="agent-cron-failure-watchdog")
+        alerts, to_pause = wd._evaluate([me])
+        alerts2, to_pause2 = wd._evaluate([me])
+        alerts3, to_pause3 = wd._evaluate([me])
+        assert to_pause == [] and to_pause2 == [] and to_pause3 == []
+        assert alerts == [] and alerts2 == [] and alerts3 == []
+        assert "self-id" not in wd._load_state()  # never even tracked
+
+    def test_other_watchdogs_still_monitored(self, wd):
+        # Self-exclusion must be scoped to THIS script's name only — sibling watchdogs
+        # (and every other cron) are still counted and paused normally.
+        sibling = _job("sib", "error", name="agent-other-watchdog")
+        wd._evaluate([sibling]); wd._evaluate([sibling])
+        alerts, to_pause = wd._evaluate([sibling])
+        assert to_pause == ["sib"]
+        assert any("other-watchdog" in a for a in alerts)
+
+
 class TestPauseAndAlertNoisyProps:
     def test_unique_job_names_in_alert(self, wd):
         # 1053-failure scenario: the alert must carry the job name so the
