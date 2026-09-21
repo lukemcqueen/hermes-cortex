@@ -318,7 +318,7 @@ register "docs/templates/repo-efficiency-block.md"       "${CORTEX_DEPLOY_HOME}/
 register "ops/scripts/manage/wave-orchestrate.py"        "${CORTEX_DEPLOY_HOME}/scripts/wave-orchestrate.py"
 register "ops/scripts/manage/agent-budget-enforcer.py"     "${CORTEX_DEPLOY_HOME}/scripts/agent-budget-enforcer.py"
 register "ops/scripts/manage/escalate-to-human.py"     "${CORTEX_DEPLOY_HOME}/scripts/escalate-to-human.py"
-register "ops/scripts/manage/fleet-kill-switch.py"    "${CORTEX_DEPLOY_HOME}/scripts/fleet-kill-switch.py"
+register "ops/scripts/manage/fleet-stop-switch.py"    "${CORTEX_DEPLOY_HOME}/scripts/fleet-stop-switch.py"
 register "ops/scripts/manage/outerloop.py"               "${CORTEX_DEPLOY_HOME}/scripts/outerloop.py"
 register "ops/scripts/lib/handoff_schema.py"             "${CORTEX_DEPLOY_HOME}/scripts/lib/handoff_schema.py"
 register "ops/scripts/quality/adversarial-verify.py"     "${CORTEX_DEPLOY_HOME}/scripts/adversarial-verify.py"
@@ -3054,7 +3054,7 @@ except: print('error')
   # These are protected by chmod as a second layer. For full chattr +i
   # protection, the user must run: sudo hermes-plugin-lock lock
   # NOTE: hooks/post-merge is EXCLUDED from chmod 444 only — git ignores
-  # non-executable hooks, so 444 would kill the auto-deploy-on-pull
+  # non-executable hooks, so 444 would stall the auto-deploy-on-pull
   # mechanism. It IS still locked chattr +i by hermes-plugin-lock TARGETS
   # (immutable but executable, deployed 755). See hermes-plugin-lock.
   # (2026-08-03, Titus ISSUE-2).

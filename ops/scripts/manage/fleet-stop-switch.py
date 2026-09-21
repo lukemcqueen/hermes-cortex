@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
 """
-fleet-kill-switch.py — Emergency stop for fleet agents.
+fleet-stop-switch.py — Emergency stop for fleet agents.
 
 Sends a KILL signal to one or all fleet agents via the agent bus,
 records outerloop evidence, attempts rollback on wave sessions.
 
 Usage:
-    fleet-kill-switch.py --reason "Security breach"          Kill all agents
-    fleet-kill-switch.py --agent esther --reason "Bug"       Kill specific agent
-    fleet-kill-switch.py --agent esther --no-rollback        Kill without rollback
-    fleet-kill-switch.py --reason "OOB" --evidence-id <id>   Link to existing evidence
-    fleet-kill-switch.py --dry-run                           Simulate only
-    fleet-kill-switch.py --json                              Machine-readable
+    fleet-stop-switch.py --reason "Security breach"          Kill all agents
+    fleet-stop-switch.py --agent esther --reason "Bug"       Kill specific agent
+    fleet-stop-switch.py --agent esther --no-rollback        Kill without rollback
+    fleet-stop-switch.py --reason "OOB" --evidence-id <id>   Link to existing evidence
+    fleet-stop-switch.py --dry-run                           Simulate only
+    fleet-stop-switch.py --json                              Machine-readable
 
 Exit codes:
     0 — Kill signal sent (or dry-run)

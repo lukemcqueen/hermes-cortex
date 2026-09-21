@@ -1012,8 +1012,8 @@ def cmd_kill(cfg: dict, args: list):
         print("   Example: hc kill esther --reason 'Emergency maintenance'")
         return
 
-    # Build fleet-kill-switch args
-    ks_script = str(Path.home() / "hermes-cortex" / "ops" / "scripts" / "manage" / "fleet-kill-switch.py")
+    # Build fleet-stop-switch args
+    ks_script = str(Path.home() / "hermes-cortex" / "ops" / "scripts" / "manage" / "fleet-stop-switch.py")
     ks_args = [sys.executable, ks_script, "--reason", reason]
     if target != "all":
         ks_args.extend(["--agent", target])
