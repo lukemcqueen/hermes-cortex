@@ -158,6 +158,27 @@ if [[ ! -f "$ENFORCER_PLUGIN" ]]; then
   exit 1
 fi
 
+# ── Portable SHA-256 (macOS has no coreutils sha256sum) ─────
+# Mirrors cortex-update.sh's _sha256_of: sha256sum first, shasum -a 256
+# fallback (macOS ships perl shasum). Hashes stdin when called with no
+# argument, the file argument otherwise. Prints the bare hash; on failure
+# prints nothing and exits non-zero — callers keep their existing
+# empty-hash/`|| echo ""` semantics. Without this, the DOGFOOD check
+# below computes an empty hash on macOS and silently skips (fail-open).
+_sha256() {
+  local out
+  if command -v sha256sum >/dev/null 2>&1; then
+    out=$(sha256sum "$@" 2>&1) || { echo "" >&2; return 1; }
+    echo "${out%% *}"
+  elif command -v shasum >/dev/null 2>&1; then
+    out=$(shasum -a 256 "$@" 2>&1) || { echo "" >&2; return 1; }
+    echo "${out%% *}"
+  else
+    echo "pre-commit-score: no sha256sum/shasum available — cannot hash" >&2
+    return 1
+  fi
+}
+
 # ── Dogfood gate: deployed must match repo before commit ─────
 # P1-A hardening (2026-07-31): the previous self-heal auto-deployed the
 # enforcer via direct `sudo unlock + cp + lock`, bypassing cortex-update
@@ -176,9 +197,9 @@ fi
 #     No silent drift acceptance.
 DOGFOOD_REPO="${HOME}/hermes-cortex/plugins/governance-enforcer/__init__.py"
 DOGFOOD_DEPLOY="${HOME}/.hermes/plugins/governance-enforcer/__init__.py"
-DOGFOOD_HEAD=$(cd "${HOME}/hermes-cortex" && git show HEAD:plugins/governance-enforcer/__init__.py 2>/dev/null | sha256sum | cut -d' ' -f1 || echo "")
+DOGFOOD_HEAD=$(cd "${HOME}/hermes-cortex" && git show HEAD:plugins/governance-enforcer/__init__.py 2>/dev/null | _sha256 | cut -d' ' -f1 || echo "")
 if [[ -n "$DOGFOOD_HEAD" && -f "$DOGFOOD_DEPLOY" ]]; then
-  DEPLOY_HASH=$(sha256sum "$DOGFOOD_DEPLOY" | cut -d' ' -f1)
+  DEPLOY_HASH=$(_sha256 "$DOGFOOD_DEPLOY" | cut -d' ' -f1)
   STAGED_ENFORCER=$(git diff --cached --name-only 2>/dev/null | grep -c '^plugins/governance-enforcer/__init__.py$' || true)
   IS_ORCH=0
   if _detect_orch; then
