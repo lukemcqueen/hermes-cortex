@@ -61,6 +61,22 @@ concurrent session — leave them unstaged, commit only your files by explicit
 path. The push-gate dogfood diffs the whole tree, so their in-flight edits
 can trip doc-friendliness heuristics; coordinate rather than cleaning.
 
+## Perpetually-dirty pipeline file + push races
+
+`ops/install/deploy/nginx/blocked_ips.add` is rewritten by the
+`agent-nginx-threat-pipeline` cron on every tick — it is *always* modified at
+commit time, and the pipeline both stages it and pushes its own commits. So
+on the hermes-cortex repo:
+
+- Expect this file to block `git pull --rebase` ("Please commit or stash
+them") on nearly every push. Stash just that path by name, rebase, pop.
+- Expect the push itself to be raced: the pipeline can land a new
+  `auto: block N suspect IPs` commit between your `pull --rebase` and your
+  `push`, so the push is rejected as non-fast-forward. `git pull --rebase`
+  again and retry the push — once it shows `A..B  main -> main` it has
+  landed even if a later command in the same chain printed an earlier
+  failure line. Verify with `git log --oneline -1 origin/main`.
+
 ## Reversing your own wrong fix
 
 If a just-pushed correction turns out to be the wrong direction (e.g. you

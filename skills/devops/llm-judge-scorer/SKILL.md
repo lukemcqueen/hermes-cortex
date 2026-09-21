@@ -83,6 +83,7 @@ When `overall` < 5 on your traces:
 | `ollama: connection refused` | `brew services start ollama` or `ollama serve` |
 | `Model not found` | `ollama pull qwen2.5:3b` |
 | Zero traces scored | Normal if all traces already scored. Check Langfuse has traces. |
+| False low-score alerts on no-op cron turns | Delivery-suppressed turns ending in the literal `[SILENT]` token are no-op ticks, not quality regressions — the scorer skips them (guard after the no-content skip, ~line 419/427). If a low-score alert fires on a `[SILENT]` trace, update the deployed script from repo source; do not chase the alert. (Learned 2026-09-18.) |
 
 ## Deployment
 
