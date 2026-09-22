@@ -620,6 +620,44 @@ def _apply() -> bool:
     # ... apply fix ...
 ```
 
+## Rule 16: Enforcer Block-Message Changes — Two-Gate Contract + Test Pattern
+
+The skills gate and the lock gate block the SAME write tools with two
+independent messages. Agents that fix one gate and then get blocked by the
+other conclude the system is broken. When touching either block message:
+
+- **Preserve (or extend) the gate cross-reference.** Every block message must
+  label its gate ("GATE 1 of 2" / "GATE 2 of 2"), state that the OTHER gate
+  still applies, and name the other gate's remedy — loading skills does not
+  satisfy the lock, and an active lock does not satisfy the skills gate. A
+  message that describes only its own gate is a defect.
+- **Explain write-capable classifications in the block itself.** A terminal
+  command with compound metacharacters (`; | & > < \` $()`, newline, or
+  interpreter forms like `python3 -c`) is treated as write-capable even when
+  it only reads — the lock-gate message must say WHY when this fires
+  (condition the note on the same metachar regex the gate uses) and point at
+  the read-only alternatives: single clean commands and
+  read_file/search_files.
+- **Test block messages through register(), not mocks of the closure.**
+  Existing hook tests stub the enforcement flow and never exercise message
+  text. Build the real hook via a minimal ctx mock (`register_hook` captures
+  `pre_tool_call`) with `GOVERNANCE_STATE_DIR` pointed at a temp dir, call it
+  with `session_id=`, and assert on the message: gate label present, other
+  gate's remedy present, and — for the compound note — silent on clean
+  non-terminal writes. Watch it fail before editing the message.
+- **Load adversarial-verifier BEFORE pushing enforcement-path changes.** The
+  pre-push gate checks the skill was loaded THIS session (per-session
+  enforcement, Rule 14a) — a push after commit fails with "ADVERSARIAL
+  VERIFICATION REQUIRED" until one `skill_view('adversarial-verifier')`.
+- **Order for enforcer changes: commit → dogfood (`cortex-dogfood.sh
+  --force`) → push.** The push gate fails "Deploy sync / Plugin content"
+  until deployed == repo, and only dogfood syncs the deploy. Docs-only
+  changes skip dogfood, but an enforcer `.py` change never does.
+- **Deploy ≠ loaded.** cortex-update.sh puts new message text on disk; the
+  running gateway keeps the OLD in-memory enforcer until an operator restarts
+  it from a separate shell — verify the deployed file's content directly
+  (grep the new strings) instead of expecting the live gate to show them.
+
 ## References
 
 - `references/memory-seed-clobber-2026-08-05.md` — the memory-clobber root
