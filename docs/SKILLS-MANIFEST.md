@@ -282,7 +282,7 @@ their domain.
 
 | Skill | Version | Purpose | Load With |
 |-------|---------|---------|-----------|
-| `adversarial-ux-test` | 1.0.0 | Roleplay a hostile user to find and triage UX pain points. | `skill_view(name='adversarial-ux-test')` |
+| `dogfood` | 1.0.0 | Exploratory QA of web apps: find bugs, evidence, reports. | `skill_view(name='dogfood')` |
 
 ## Email (1 skill)
 
@@ -380,11 +380,12 @@ their domain.
 | `fastmcp` | 1.0.0 | Build, test, and deploy Python MCP servers. | `skill_view(name='fastmcp')` |
 | `mcporter` | 1.0.0 | List, auth, and call MCP servers/tools from the terminal. | `skill_view(name='mcporter')` |
 
-## Media (1 skill)
+## Media (2 skills)
 
 | Skill | Version | Purpose | Load With |
 |-------|---------|---------|-----------|
 | `heartmula` | 1.0.0 | HeartMuLa: Suno-like song generation from lyrics + tags. | `skill_view(name='heartmula')` |
+| `youtube-transcript` | 1.0.0 | Use when fetching a YouTube video transcript into text. | `skill_view(name='youtube-transcript')` |
 
 ## Migration (1 skill)
 
