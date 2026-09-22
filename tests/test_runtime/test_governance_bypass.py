@@ -1102,3 +1102,65 @@ class TestSkillsDirResolution:
         finally:
             enforcer._skills_dir = orig
         assert fp1 != fp2, "fingerprint must change when a required skill mtime changes"
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# BLOCK-MESSAGE CROSS-REFERENCE (two-gate confusion fix, 2026-09-22)
+# ═════════════════════════════════════════════════════════════════════════════
+# The skills gate and the lock gate block the SAME tools with two unrelated
+# messages. Agents that fix one gate then get blocked by the other concluded
+# the system was broken. Both messages must state the two-gate structure, and
+# the lock-gate message must explain why a compound/read-only terminal command
+# was treated as write-capable.
+
+class _HookCapture:
+    """Minimal ctx mock that captures hooks registered by register()."""
+
+    def __init__(self):
+        self.hooks = {}
+
+    def register_hook(self, name, fn):
+        self.hooks[name] = fn
+
+
+class TestGateCrossReferenceMessages:
+
+    def _hook(self, monkeypatch):
+        capture = _HookCapture()
+        enforcer.register(capture)
+        return capture.hooks["pre_tool_call"]
+
+    def test_skills_gate_message_names_gate_1_of_2(self, temp_state_dir, monkeypatch):
+        hook = self._hook(monkeypatch)
+        result = hook("write_file", {"path": "/tmp/x"}, session_id="sess_gate1")
+        assert result is not None and result["action"] == "block"
+        msg = result["message"]
+        assert "GATE 1 of 2" in msg, "skills-gate block must label itself gate 1 of 2"
+        assert "begin_change" in msg, "must cross-reference the lock gate remedy"
+
+    def test_lock_gate_message_names_gate_2_of_2(self, temp_state_dir, monkeypatch):
+        hook = self._hook(monkeypatch)
+        monkeypatch.setattr(enforcer, "_check_skills_loaded_marker", lambda sid: True)
+        result = hook("write_file", {"path": "/tmp/x"}, session_id="sess_gate2")
+        assert result is not None and result["action"] == "block"
+        msg = result["message"]
+        assert "GATE 2 of 2" in msg, "lock-gate block must label itself gate 2 of 2"
+        assert "skills" in msg.lower(), "must cross-reference the skills gate"
+
+    def test_lock_gate_explains_compound_terminal_read(self, temp_state_dir, monkeypatch):
+        hook = self._hook(monkeypatch)
+        monkeypatch.setattr(enforcer, "_check_skills_loaded_marker", lambda sid: True)
+        cmd = "echo hi; ls ~/.hermes-cortex/state/"
+        result = hook("terminal", {"command": cmd}, session_id="sess_gate3")
+        assert result is not None and result["action"] == "block"
+        msg = result["message"]
+        assert "compound" in msg.lower(), "must explain why the compound command was gated"
+        assert "read_file" in msg, "must point at the read-only alternative"
+
+    def test_lock_gate_compound_note_silent_for_clean_read(self, temp_state_dir, monkeypatch):
+        """A single clean write command gets no compound-command note."""
+        hook = self._hook(monkeypatch)
+        monkeypatch.setattr(enforcer, "_check_skills_loaded_marker", lambda sid: True)
+        result = hook("write_file", {"path": "/tmp/x"}, session_id="sess_gate4")
+        assert result is not None and result["action"] == "block"
+        assert "compound" not in result["message"].lower()

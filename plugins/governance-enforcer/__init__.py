@@ -1841,6 +1841,15 @@ def register(ctx):
                             "  7. skill_view('test-driven-development') # TDD Iron Law\n\n"
                             "The marker is auto-created when all 7 are loaded.\n"
                             "Do NOT try to set skills-state.json directly — it will be rejected.\n\n"
+                            "This is GATE 1 of 2. The gates are INDEPENDENT: after loading all\n"
+                            "7 skills, writes still require an active governance lock (gate 2),\n"
+                            "so a second block saying 'GOVERNANCE LOCK REQUIRED' is EXPECTED —\n"
+                            "call mcp_loop_governance_begin_change() then.\n\n"
+                            "Note: a terminal command containing compound metacharacters\n"
+                            "(; | & > < ` $() or a newline) is treated as write-capable even\n"
+                            "when it only READS — a lock covers those too. Use a single clean\n"
+                            "command (ls, grep, git status) or read_file/search_files for\n"
+                            "lock-free inspection.\n\n"
                             "Read-only tools (read_file, search_files, session_search,\n"
                             "skill_view, skills_list, web_search, web_extract,\n"
                             "vision_analyze, tool_search, tool_describe,\n"
@@ -2014,12 +2023,32 @@ def register(ctx):
             else:
                 extra = ""
 
+            # Compound-command note: a read-only-looking terminal command hits this
+            # gate solely because of ; | & > < ` $() — say so explicitly, or the
+            # agent concludes the lock is nonsensical (2026-09-22, Titus diagnosis).
+            _compound_note = ""
+            if (
+                tool_name == "terminal"
+                and _COMMAND_COMPOUND_METACHARS.search(str(args.get("command", "")))
+            ):
+                _compound_note = (
+                    "\nYour command was treated as WRITE-CAPABLE because it contains\n"
+                    "compound metacharacters (; | & > < ` $() or a newline) — even if it\n"
+                    "only reads. For read-only inspection use a SINGLE clean command\n"
+                    "(ls, grep, git status ...) or the read_file/search_files tools.\n\n"
+                )
+
             return {
                 "action": "block",
                 "message": (
                     "GOVERNANCE LOCK REQUIRED\n\n"
                     "Tool '" + tool_name + "' modifies system state" + extra + "\n\n"
-                    "This repo requires an active governance lock.\n"
+                    + _compound_note
+                    + "This repo requires an active governance lock.\n"
+                    "This is GATE 2 of 2 — gate 1 is the skills gate (all 7 always-section\n"
+                    "skills loaded via skill_view). If you just fixed gate 1, a second\n"
+                    "block here is EXPECTED: the two gates are independent and BOTH must\n"
+                    "be satisfied.\n\n"
                     "Call begin_change() first:\n"
                     "  mcp_loop_governance_begin_change(\n"
                     '    task_id="<short-description>",\n'

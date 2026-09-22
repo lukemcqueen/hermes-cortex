@@ -85,3 +85,21 @@ say 'are you bypassing governance?'" If yes, you're about to make a mistake.
 | Reflexion check | Load reflexion-check | Answer 7 questions | skill_view() |
 | Adversarial verify | Fix issues | What failed | Fix them |
 | Dogfood | Deploy + test | cortex-update.sh | Run it |
+
+### Two independent gates — expect the second block
+
+The skills gate and the lock gate BOTH block write tools, each with its own
+message and remedy, and neither implies the other:
+
+1. **Gate 1 (skills gate):** all 7 always-section skills loaded → marker auto-created.
+2. **Gate 2 (lock gate):** an active governance lock → `begin_change()`.
+
+Fixing gate 1 does NOT satisfy gate 2 — a "GOVERNANCE LOCK REQUIRED" block
+immediately after loading skills is EXPECTED, not a malfunction. The reverse
+also holds. Both block messages now label themselves (GATE 1 of 2 / GATE 2 of 2).
+
+Also: a terminal command with compound metacharacters (semicolon, pipe, ampersand,
+redirection, backtick, `$()` — or a newline; including `python3 -c "..."`) is
+classified write-capable even when
+it only reads. For lock-free inspection use a SINGLE clean command or
+read_file/search_files. That is conservative-by-design, not a bug.

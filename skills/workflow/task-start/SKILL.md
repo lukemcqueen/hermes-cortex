@@ -48,6 +48,23 @@ If write tools block with "session skills not fully loaded":
 - After a gateway restart or deploy changed a skill mtime → re-load ALL 7 always-skills serially; the last call regenerates the marker. This is the "7/7 loaded ✅ but still blocked" state.
 - delegate_task subagents can invalidate the parent's marker — re-call skill_view('<any>') if blocked.
 
+## Two Independent Gates — Expect the Second Block
+
+The enforcer gates write tools with TWO independent checks; fixing one does not
+satisfy the other:
+
+- **Gate 1 — skills gate:** "session skills not fully loaded (N/7)" → load the 7 always-skills serially (above).
+- **Gate 2 — lock gate:** "GOVERNANCE LOCK REQUIRED" → `begin_change()`.
+
+After fixing gate 1, a gate-2 block is EXPECTED — call `begin_change()`; it is
+not a malfunction and the lock is not "already held". Each block message labels
+its gate (GATE 1 of 2 / GATE 2 of 2).
+
+Terminal nuance: any command with compound metacharacters (`; | & > < \` $() or
+a newline — including `python3 -c "..."`) is treated as write-capable even when
+it only reads, so it requires BOTH gates. For lock-free inspection use a single
+clean command (`ls`, `grep`, `git status`) or read_file/search_files.
+
 ## Quick Reference
 
 | Step | Action |

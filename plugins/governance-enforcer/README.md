@@ -623,9 +623,24 @@ GOVERNANCE LOCK REQUIRED
 
 Tool 'write_file' modifies system state
 ...
+This is GATE 2 of 2 — gate 1 is the skills gate (all 7 always-section
+skills loaded via skill_view). If you just fixed gate 1, a second
+block here is EXPECTED: the two gates are independent and BOTH must
+be satisfied.
+...
 ```
 
 After calling `begin_change()`, the same tool should **pass**.
+
+### Two gates, one flow
+
+The skills gate (all 7 always-skills loaded) and the lock gate (active
+governance lock) are INDEPENDENT — both must be satisfied before writes pass.
+Fixing one and getting blocked by the other is expected behavior. Terminal
+commands with compound metacharacters (`; | & > < \` $()` or a newline,
+including `python3 -c "..."`) are treated as write-capable even when they only
+read — the lock-gate block message says so explicitly and points at
+read_file/search_files for lock-free inspection.
 
 ---
 
