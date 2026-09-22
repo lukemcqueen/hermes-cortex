@@ -19,6 +19,17 @@ set -euo pipefail
 
 CORTEX_REPO="$HOME/hermes-cortex"
 
+# timeout: linux=timeout, mac=gtimeout (brew coreutils). Never assume the
+# binary exists — fail with a clear message instead of a cryptic 127.
+TIMEOUT_CMD=""
+for _cmd in timeout gtimeout; do
+  if command -v "$_cmd" >/dev/null 2>&1; then TIMEOUT_CMD="$_cmd"; break; fi
+done
+if [ -z "$TIMEOUT_CMD" ]; then
+  echo "[$(ts) cortex-sync] FATAL: neither 'timeout' nor 'gtimeout' found — install coreutils (brew install coreutils on macOS)"
+  exit 1
+fi
+
 if [ ! -d "$CORTEX_REPO" ]; then
     echo "[$(ts) cortex-sync] Repo not found at $CORTEX_REPO"
     exit 1
@@ -38,7 +49,7 @@ if ! git diff --quiet || ! git diff --cached --quiet; then
     STASHED=true
 fi
 
-FETCH_OUTPUT=$(timeout 12 git fetch origin 2>&1) || {
+FETCH_OUTPUT=$("$TIMEOUT_CMD" 12 git fetch origin 2>&1) || {
     FETCH_EXIT=$?
     CTS=$(ts)
     if [ "$FETCH_EXIT" -eq 124 ]; then
@@ -68,7 +79,7 @@ fi
 # timeout and gets killed mid-deploy — the merge succeeds (reflog) but the
 # cron reports error and leaves a partial deploy. The deploy now runs
 # explicitly below with its own generous budget.
-PULL_OUTPUT=$(GIT_EDITOR=true SKIP_POST_MERGE=1 timeout 20 git pull --rebase origin main 2>&1) || {
+PULL_OUTPUT=$(GIT_EDITOR=true SKIP_POST_MERGE=1 "$TIMEOUT_CMD" 20 git pull --rebase origin main 2>&1) || {
     PULL_EXIT=$?
     CTS=$(ts)
     if [ "$PULL_EXIT" -eq 124 ]; then
@@ -91,7 +102,7 @@ stash_pop
 # timeout only bounds the network operation. Run the full cortex-update.sh
 # now with a generous budget; without this the hook's deploy was killed
 # mid-flight at 20s, erroring the cron on every merge (v3: 2026-08-07).
-DEPLOY_OUTPUT=$(timeout 600 bash "$CORTEX_REPO/ops/scripts/cortex-update.sh" 2>&1) || {
+DEPLOY_OUTPUT=$("$TIMEOUT_CMD" 600 bash "$CORTEX_REPO/ops/scripts/cortex-update.sh" 2>&1) || {
     DEPLOY_EXIT=$?
     CTS=$(ts)
     echo "[$CTS cortex-sync] cortex-update.sh failed (exit $DEPLOY_EXIT)"
