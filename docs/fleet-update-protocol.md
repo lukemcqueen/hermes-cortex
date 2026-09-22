@@ -53,6 +53,16 @@ parse it programmatically.
 
 Sent when Moses pushes new code to main and the fleet should update.
 
+**Fleet broadcast (mandatory, 2026-09-22):** after an update round lands
+(or any fleet-wide push/deploy — enforcer, skills, hooks, crons, doctor,
+MCP servers), the orchestrator ALSO sends a `FLEET_NOTICE` to every agent
+(one message per agent) describing what changed, the commit SHA, and any
+action needed. Verify delivery with the non-destructive peek
+`~/.hermes-cortex/scripts/hc inbox <agent>` (HTTP — never the
+ssh+docker/psql path by default). Full procedure:
+`skills/devops/fleet-commands/SKILL.md` → "Fleet Broadcast After
+Fleet-Wide Changes".
+
 When an agent receives `UPDATE_REQUEST`, it:
 1. **`git pull origin main`** — pulls the latest code (so agents stuck on an old SHA get up to date)
 2. **`cortex-update.sh`** — deploys all registered files to disk

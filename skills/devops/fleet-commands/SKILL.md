@@ -155,6 +155,31 @@ forwarder fix stops the infrastructure-side one.
 - One-shot operational commands that don't need a full workflow
 - Testing bus connectivity to a specific agent
 
+## Fleet Broadcast After Fleet-Wide Changes (MANDATORY)
+
+**After ANY fleet-wide change — a repo push/deploy that affects all agents
+(enforcer, skills, hooks, crons, doctor, MCP servers) — the orchestrator
+(Moses OR Esther, including hot-backup) MUST send a FLEET_NOTICE to every
+agent. A fleet-wide change the fleet doesn't know about is a silent change.**
+
+Procedure (proven end-to-end 2026-09-22, gate-fix commit 9f36544e):
+
+1. **One message per agent** — never one combined message (agents get confused
+   by intermingled instructions). Targets: moses, titus, joseph, gisu, kustos.
+2. **Subject is a plain UPPER_CASE name** — `FLEET_NOTICE`. The legacy
+   `COMMAND:<action>` colon form is REJECTED by bus ingestion (HTTP 400).
+3. **Self-test first** — `hc send esther FLEET_NOTICE '<body>' --force`, run
+   `agent-message-handler.py --once`, confirm consumed + responded. Then
+   re-send fleet-wide with `--self-tested` (the gate refuses without it).
+4. **Verify delivery with a PEEK, not the ssh/psql path:**
+   `~/.hermes-cortex/scripts/hc inbox <agent>` (non-destructive, HTTP-only —
+   no docker socket, no approval prompt). ssh+psql on mosesaaron is the
+   FALLBACK only when the HTTP peek looks wrong. Pending = delivered;
+   empty = consumed+archived by the agent's 5-min handler (also delivered).
+5. **Content:** what changed, commit SHA, what it means for agents, whether
+   any action is needed now. If the running gateway needs a restart to load
+   it, say so explicitly.
+
 ## Precondition: Clean Bus Before Send
 
 **Critical rule: the bus must be clean before sending new commands.** Stale/stuck messages from previous rounds (especially `processing` state messages from crashed handlers) interfere with new commands — the handler crashes trying to process old ones instead of the fresh command.

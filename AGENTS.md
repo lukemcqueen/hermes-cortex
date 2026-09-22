@@ -99,7 +99,7 @@ Full schema: `skills/devops/cortex-bus/SKILL.md`.
 | Layer | What | Who | When |
 |-------|------|-----|------|
 | Weekly audit | Check mandatory sections | Moses | Mon 7am KST |
-| Broadcast | Notify on change | Moses | On change |
+| Fleet broadcast | FLEET_NOTICE after any fleet-wide change — see `skills/devops/fleet-commands/SKILL.md` "Fleet Broadcast After Fleet-Wide Changes" | Orchestrator (Moses/Esther) | On change |
 | Soul refinement | Fill gaps | Each agent | Daily 23:00 |
 | Session start | Read AGENTS.md + SOUL.md | Each agent | Every session |
 
