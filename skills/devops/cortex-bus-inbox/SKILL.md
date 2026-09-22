@@ -57,6 +57,7 @@ Limits: **64 KiB max per message** · **600 sends/hour/agent** (429 over quota).
 | `400: spoofed sender` | `from` ≠ authenticated agent | Use your real agent name from `inbox_list_agents` |
 | `429` on send | Over 600 sends/hr | Wait for the quota window to reset |
 | `inbox_read` empty but work pending | Routed to another queue | `inbox_list_agents()` to confirm target name |
+| `inbox_send_task` returns `status: failed` — `Invalid message: subject: required UPPER_CASE protocol name` | The MCP wrapper posts the task delegation without a valid `subject`, which envelope ingestion requires | Fall back to `inbox_send(to=<agent>, subject="TASK_REQUEST", body=<task JSON>)`, then verify pending via `hc inbox <agent>` peek (proven fallback 2026-09-22 morning task pass) |
 | MCP tool not found | Bus MCP not registered | Non-orchestrators: use the HTTP client (`contact-orchestrator.sh`), NOT the MCP client — installing the bus server/MCP client fails the doctor |
 
 ## Usage Pattern
