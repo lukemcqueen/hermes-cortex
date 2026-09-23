@@ -118,6 +118,14 @@ tagged BUILD or CHECK, with a status column. The split is the whole discipline:
 - **Drive autonomously, top-to-bottom.** The owner should only have to say
   "continue" — not re-prompt per task. Do CHECKs yourself, delegate BUILD,
   commit each task, and report the next task to hand off.
+- **Session-tail handoff, not in-session slicing.** When the next phase is a
+  large build and this session is already long, stop after the survey: close
+  the cycle and emit a SELF-CONTAINED handoff prompt instead — repo state
+  (HEAD + green test count), what exists vs what doesn't, the task table with
+  BUILD/CHECK tags, and the TDD/governance/commit rules a cold session needs.
+  Hand it to the owner verbatim for a fresh session ("Don't slice yet — give
+  me a prompt for another session to do it", 2026-09-23; the fresh session
+  then built Story 7 end-to-end off that prompt).
 
 **One task = one file (or one tightly-coupled pair) + one test + one RED→GREEN
 cycle.** Never batch unrelated edits. After every task, `cd core && cargo test`
@@ -172,7 +180,10 @@ weakening the assertion to make the code look correct.
 **Don't let `cargo fmt -p <crate>` creep the commit.** It reformats the whole
 crate — including pre-existing files that were never rustfmt-clean — so
 `git status` shows unrelated `M` files. Revert the files you didn't otherwise
-touch (`git checkout -- …`) and keep the commit to the task's own files.
+touch (`git checkout -- …`) and keep the commit to the task's own files. To
+confirm remaining fmt diffs are pre-existing rather than yours: `git stash`,
+re-run `cargo fmt --check` on the clean tree, `git stash pop` — if the diff
+persists without your changes, leave it alone.
 
 ## "Show the current design" — the component & interface accommodation map
 
@@ -266,10 +277,22 @@ When asked "test a sub-agent command with it" (or verifying lifecycle work), dri
    - **socket path** (shared session): start `core/target/debug/steadfaste --serve /tmp/steadfaste.sock &`, connect a `socket.AF_UNIX` client, send frames line-by-line, read one ACK line per frame, then `pkill -f 'steadfaste --serve'` and remove the socket when done.
 2. Frame shape: `{"version":1,"kind":<lowercase snake_case verb>,"job_id":...,"seq":N,"ts":<RFC3339 UTC>,"trust":"untrusted","data":{...}}`. Kinds are the enum's snake_case names (`commission`, `started`, `progress`, `result`, `stop`, `keep_alive`, ...) — a PascalCase kind is rejected as `unknown variant` (parse error ACK, job_id empty).
 3. Assert on `data.state` and `data.ledger_len`, **never on the ACK's `kind`** — the ACK frames echo a fixed label regardless of the request kind; `data.state` (Handshake → Commissioned → Running → Result) is the real lifecycle readout.
-4. Always include the negative sequence — a governed system is proven by its rejections: duplicate `commission`, out-of-order `result` (no `started`), heartbeat on a finished lease must each come back `kind:error` with `TransitionError`/lease error. A success-only script proves nothing. Note the append-first ledger rule: even a REJECTED frame is appended to the ledger before the transition fails — `ledger_len` grows on a rejected action (auditable attempt), so assert `data.state`/`kind`, not that `ledger_len` stayed put.
+4. Always include the negative sequence — a governed system is proven by its rejections: duplicate `commission`, a `result` naming a foreign job id, heartbeat on a finished/released lease. Both listeners share ONE dispatch, so expect IDENTICAL responses per step: `kind:error` with `TransitionError` or the lease errors (`JobAlreadyLeased` on a dup commission, `NotLeaseHolder` for a foreign job's advancing frame, `LeaseReleased`/`LeaseNotFound` on a dead-lease heartbeat). Parity = identical kind + state + error on EVERY step — if the two transports ever disagree again, that is a regression of the shared-dispatch invariant: record it in the design-gaps ledger, never accommodate it in the probe. A success-only script proves nothing. An error ACK does NOT prove the state didn't move — verify from the NEXT step's observed state, never from the error alone. Even a REJECTED attempt is appended (auditable): `ledger_len` grows on a refused action, so assert `data.state`/`kind`, not that `ledger_len` stayed put. And when re-running a stored probe after a legitimate behavior change, re-derive its expectations (which frames answer, expected states) from the NEW behavior FIRST — stale hardcoded expectations make a PASS read as a FAIL and send you debugging the wrong thing.
 5. **Plain heartbeats are `keep_alive`, not repeated `progress`.** Every governance kind advances the lifecycle, so a second `progress` from the same state is a TransitionError, not a no-op; `keep_alive` is the passive lease-renewal verb. Reserve `progress`/`started`/`result` for actual state transitions.
 6. **Verify both wire listeners separately** — the stdin loop and the `--serve` loop are separate code paths that CAN diverge (the serve loop has lagged the stdin loop on lifecycle mapping). A green stdin run does not prove the serve path; drive both with the same frame sequence before claiming parity.
 7. Cleanup: kill the serve process and remove the socket file in the same session — a stale `/tmp/steadfaste.sock` makes the next `--serve` start look successful while clients connect to a dead listener. `pkill -f 'steadfaste --serve'` from a bash tool call can SIGTERM the tool's own wrapper shell (pattern matches it) — verify with a socket `connect()` instead and clean the socket file separately.
+8. **Promote a probe that must stay into a cargo integration test in the owning crate** (`core/crates/steadfaste/tests/…`): spawn the real binary with `Command::new(env!("CARGO_BIN_EXE_steadfaste")).arg("--serve")`, poll-connect the socket until it accepts (never sleep blind), give EACH test a unique socket path — tests run in parallel, and two tests deriving one path from the pid collide and fail with `ConnectionReset` mid-sequence — and clean up in `Drop` (kill + wait + remove socket). A manual Python probe explores; the committed integration test is the regression net.
+9. **Grep the dispatch arms (`SessionManager::dispatch`) before trusting a documented verb.** An unmapped kind falls into the passive `_ => Ok(self.state())` arm, which ACKs it as OK while touching nothing — exactly how `keep_alive` silently stopped renewing leases while the docs called it the passive lease-renewal verb. A new verb needs an explicit match arm plus a test for the dead/unknown-lease case.
+
+**Wire findings that touch the single-writer dispatch story get RECORDED, not patched.** When live testing surfaces a cross-listener divergence that changes the dispatch/ownership design, add a row to the findings ledger (`docs/design/design-gaps.md`, the ID | Sev | finding | status/where-it-lands table style), point the `build-tasks.md` header at it, and leave the design decision to Luke — the design-first gate applies during build too. Fix in the same cycle only the unambiguous defect (a documented verb that silently no-ops), with its conformance test. **Write each finding row from the probe transcript, not from the design intent** — cross-check the claimed mechanism against the observed step sequence (an error followed by a still-advancing state proves the mutation happened despite the error) before committing the row; a row narrated from the intended design has claimed "rejected before touching state" when the probe had just proved the opposite, and had to be rewritten before commit.
+
+### When a recorded finding becomes a build task — unify, don't accommodate
+
+When Luke says continue on a recorded divergence, the fix direction is **unify the dispatch, never accommodate per-transport**: two transports of one core answering the same frame differently get ONE shared dispatch function both call — per-transport patches that make observed outputs match just re-create the divergence on the next verb.
+
+- **Gate before mutate, record the refusal.** An ownership/authorization gate runs BEFORE the state transition; the refused attempt is still appended through an append-only path (auditable), and the error names the actual failure (a dedicated `NotLeaseHolder` variant, not a reused `JobAlreadyLeased` — a wrong error name sends clients debugging the wrong thing). A gate placed after the mutation protects nothing.
+- **Carve exemptions from pinned tests, not intuition.** Before adding a gate, grep the existing test suite for legitimate flows the gate would refuse (the pinned stop-after-failed → Closed client test forced the one exemption: sealing an already-terminal session is record-keeping, not work). Each exemption stays pinned by that existing test.
+- **Layer the verification: unit conformance first, live probe second.** RED→GREEN the gate at the SessionManager level (state unmoved + attempt appended + the holder still lands), then re-run the live parity probe to prove the transports stayed in lockstep — the unit test proves the rule, the probe proves the wiring.
 
 ## Pitfalls that recur on the steadfaste repo
 - **A shared doc-freshness hook may expect a `docs/DOCS-INDEX.md` that steadfaste does not have.** Its canonical doc map is `docs/README.md` (which IS updated). Do NOT invent a parallel `DOCS-INDEX.md` to placate the hook — that is a second source of truth and bloat. Recognize it as a mismatched hermes-cortex hook expectation and leave it (or flag scoping the hook to steadfaste's real index — the operator's call).
@@ -281,13 +304,22 @@ When asked "test a sub-agent command with it" (or verifying lifecycle work), dri
   `search_files`, and `skill_view` stay allowed, so survey the docs first and
   `begin_change` the moment a shell command is needed; retrying a blocked call
   never works.
-- **"Exists" means "has files".** `worker/`, `web/`, `gateway/`, `packaging/`,
-  `governance/`, `test/`, and `config/` exist as EMPTY placeholder directories
-  and `core/` does not exist at all; git does not track empty dirs, so a folder
-  in the designed tree need not be on disk. Count per directory before writing
-  any status column:
-  `for d in core worker web gateway packaging governance test config prototype-ts; do printf '%-14s %s\n' "$d" "$(find "$d" -type f | wc -l)"; done`
-  — never infer a component's state from a folder name or a README tree.
+- **"Exists" means "has files" — never infer from a folder name or README tree.**
+  `core/` holds the Rust workspace (crates under `core/crates/`), `prototype-ts/`
+  holds the TS prototype, while `worker/`, `web/`, `gateway/`, `packaging/`,
+  `governance/`, `test/`, and `config/` remain EMPTY placeholder directories;
+  git does not track empty dirs, so a folder in the designed tree need not be on
+  disk. The build advances over time, so COUNT rather than trust this
+  sentence: `for d in core worker web gateway packaging governance test config prototype-ts; do printf '%-14s %s\n' "$d" "$(find "$d" -type f | wc -l)"; done` — a component's state is the file count, not the folder existence.
+- **`docs/design/build-tasks.md` lists every task TWICE — the cumulative top
+  table AND the per-story section tables — and they silently diverge.** A task
+  marked ✅ in the top table can still sit ⬜ in its Story section below, and
+  the "Path at a glance" story-map block at the top goes stale the moment a
+  released story's next marker isn't moved. The doc header's "Where we are" is
+  the agreed source of truth, so before polling a task/status column from a
+  section table, cross-check it against the top table + header, and when a
+  build task lands, update BOTH the cumulative row and the story-section row in
+  the same commit — never just one copy.
 
 ## The doc-corpus shape (current vs historical) — keep it this way
 
@@ -355,9 +387,11 @@ Beyond docs, the repo ships a TypeScript prototype under `prototype-ts/` (Bun, `
   small initial `write_file` + successive `patch` appends** — a single oversized
   write can be cut off mid-stream and silently not land; re-read the file after
   each chunk to confirm where to continue.
-- **`write_file` into `docs/` is gated until `documentation-auditing` is loaded**
-  (domain-skill gate, one-time per session) — load it on the first refusal
-  instead of switching tools.
+- **Domain-skill write gates fire per file type: first a suggestion, then a
+  hard block** (`docs/*.md` → `documentation-auditing`, repo `.py` →
+  `codebase-design`). Load the named skill on the FIRST warning instead of
+  retrying or switching tools — the retried write is refused outright, and
+  each blocked attempt burns a cycle.
 
 ## Docs archive regeneration
 On request, regenerate the portable archive under a governance cycle:
