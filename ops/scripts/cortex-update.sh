@@ -322,6 +322,7 @@ register "ops/scripts/manage/fleet-stop-switch.py"    "${CORTEX_DEPLOY_HOME}/scr
 register "ops/scripts/manage/outerloop.py"               "${CORTEX_DEPLOY_HOME}/scripts/outerloop.py"
 register "ops/scripts/lib/handoff_schema.py"             "${CORTEX_DEPLOY_HOME}/scripts/lib/handoff_schema.py"
 register "ops/scripts/quality/adversarial-verify.py"     "${CORTEX_DEPLOY_HOME}/scripts/adversarial-verify.py"
+register "ops/scripts/quality/probe-gate-logic.py"      "${CORTEX_DEPLOY_HOME}/scripts/probe-gate-logic.py"
 register_orch "ops/scripts/orch-bus/orch-bus-fleet-dispatch.py" "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-fleet-dispatch.py"
 
 

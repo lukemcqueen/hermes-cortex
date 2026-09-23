@@ -89,6 +89,85 @@ _REQUIRED_SKILLS: set = {
 _session_skills_loaded: dict[str, set] = {}
 _skills_loaded_in_session: set = set()
 
+# ── Per-session skill-credit journal (2026-09-23) ─────────────────────────
+# `_session_skills_loaded` lives in PROCESS memory, so it is wiped every time
+# the plugin is reloaded — notably on every `cortex-update.sh` deploy. Result:
+# a session that loaded `codebase-design` or `adversarial-verifier` an hour ago
+# got blocked mid-task ("DOMAIN SKILL SUGGESTION" / "ADVERSARIAL VERIFICATION
+# REQUIRED") for a skill it had provably loaded, and weak agents burned turns
+# re-deriving why. Credit is now journalled to a fingerprint-pinned per-session
+# file that ONLY this plugin writes, and rehydrated on first use after a reload.
+# Trust model is identical to the skills marker (session id + deployed-skills
+# fingerprint, content-verified, hand-writing rejected) — no new secret material
+# and no new gate relaxation: a deploy that changes the skills still invalidates
+# the credit, exactly like the marker.
+SKILLS_CREDIT_DIR_NAME = "skills-credit"
+
+
+def _skills_credit_dir() -> Path:
+    return GOVERNANCE_STATE_DIR / SKILLS_CREDIT_DIR_NAME
+
+
+def _skills_credit_path(session_id: str) -> Path:
+    _assert_safe_session_id(session_id)
+    return _skills_credit_dir() / f"{session_id}.json"
+
+
+def _persist_session_skills(session_id: str) -> None:
+    """Journal this session's loaded-skill credit (best-effort, atomic)."""
+    if not session_id:
+        return
+    try:
+        _assert_safe_session_id(session_id)
+        d = _skills_credit_dir()
+        d.mkdir(parents=True, exist_ok=True)
+        payload = {
+            "session": session_id,
+            "skills_fp": _skills_fingerprint(),
+            "skills": sorted(_session_skills_loaded.get(session_id, set())),
+            "written": time.strftime("%Y-%m-%dT%H:%M:%S"),
+        }
+        tmp = d / f".{session_id}.json.tmp"
+        tmp.write_text(json.dumps(payload))
+        tmp.replace(_skills_credit_path(session_id))
+    except (OSError, ValueError) as exc:
+        # Best-effort journal: a failed write only costs the session a re-load
+        # after the next plugin reload — but never fail SILENTLY, or the fleet
+        # cannot tell why credit evaporated (agent-contract rule 12).
+        logging.getLogger("governance-enforcer").warning(
+            "skills-credit journal write failed for session %s: %s", session_id, exc
+        )
+
+
+def _session_skills(session_id: str) -> set:
+    """Loaded skills for a session; rehydrates from the credit journal.
+
+    Fail-closed: a missing, corrupt, session-mismatched or
+    fingerprint-stale journal yields an EMPTY set (agent must re-load),
+    never a pass.
+    """
+    if not session_id:
+        return set()
+    cached = _session_skills_loaded.get(session_id)
+    if cached is not None:
+        return cached
+    loaded: set = set()
+    try:
+        path = _skills_credit_path(session_id)
+        if path.exists():
+            data = json.loads(path.read_text())
+            if (
+                isinstance(data, dict)
+                and data.get("session") == session_id
+                and data.get("skills_fp") == _skills_fingerprint()
+                and isinstance(data.get("skills"), list)
+            ):
+                loaded = {str(s) for s in data["skills"]}
+    except (OSError, ValueError, TypeError):
+        loaded = set()
+    _session_skills_loaded[session_id] = loaded
+    return loaded
+
 # ── Domain skill gate ──────────────────────────────────
 # Before write_file/patch, check if the file type's domain
 # skill has been loaded. First offense → suggest (educate).
@@ -501,8 +580,10 @@ def _check_skills_loaded_marker(session_id: str = "") -> bool:
         created against, so a deploy that updates the skills invalidates
         old markers (skills-before-task gate, Luke 2026-08-05). Legacy
         'session:{session_id}' markers are accepted once (backward compat).
-      - Without session_id (bootstrap/legacy callers): any valid per-session
-        marker proves skills were loaded by SOME session
+      - Without session_id: FAIL CLOSED (2026-09-23). This used to accept any
+        valid per-session marker, i.e. a session with broken session-id
+        plumbing inherited another session's proof (probe-confirmed
+        fail-open).
     """
     if session_id:
         try:
@@ -517,18 +598,15 @@ def _check_skills_loaded_marker(session_id: str = "") -> bool:
             return content == f"session:{session_id}|skills:{_skills_fingerprint()}"
         except (OSError, ValueError):
             return False
-    # No session_id: accept any valid per-session marker
-    try:
-        if not _skills_marker_dir().exists():
-            return False
-        for path in _skills_marker_dir().iterdir():
-            try:
-                if path.is_file() and path.read_text().strip().startswith("session:"):
-                    return True
-            except OSError:
-                continue
-    except OSError:
-        return False
+    # No session_id: FAIL CLOSED (2026-09-23).
+    #
+    # This branch used to accept ANY valid per-session marker ("skills were
+    # loaded by SOME session"). That was a probe-confirmed fail-open: a session
+    # whose hooks delivered no session id wrote freely on the strength of a
+    # completely different session's proof. Nothing is accepted here now; the
+    # caller emits a plumbing diagnosis instead. A host that hits this has a
+    # broken hook/session-id path — the remedy is a gateway restart by the
+    # operator (AGENTS.md RULE 27), never a looser gate.
     return False
 
 
@@ -624,7 +702,7 @@ def _auto_create_skills_marker(session_id: str) -> None:
         # Tracks individual skill load times and workflow progress. Read by
         # block messages to show which skills are loaded. Per-session file
         # (skills-state/<session_id>.json) — no cross-session bleed.
-        _sess_set = _session_skills_loaded.get(session_id, set())
+        _sess_set = _session_skills(session_id)
         _write_skills_state(
             session_id,
             always_loaded=_sess_set.copy() if _sess_set else None,
@@ -1015,39 +1093,85 @@ READONLY_COMMAND_PATTERNS = [
     r"^\s*(hermes)\s+mcp\s+(list|test)\b",
 ]
 
-# Metacharacters that make a command compound/write-capable — a read-allowlisted
-# prefix with any of these appended is NOT read-only (e.g. `git status > file`,
-# `ls | grep x`, `grep foo; rm bar`). Rejects redirects, pipes, separators,
-# command substitution, and backgrounding.
-_COMMAND_COMPOUND_METACHARS = re.compile(r"[>|;&`]|\$\(")
+# Metacharacters that can never appear in a lock-free read-only command:
+#   > <        redirect (writes a file / feeds stdin)
+#   ` $(       command substitution (arbitrary execution)
+#   &          backgrounding (lone &; `&&` is a separator handled below)
+#   ||         or-else — a branch that this check does not analyse
+#   newline    multi-command
+# Pipes (|), `&&` and `;` ARE allowed BETWEEN segments, but every segment must
+# independently match the read-only allowlist — `ls | grep foo` is lock-free,
+# while `ls | sh` and `git log; rm -rf x` are write-class.
+_COMMAND_FORBIDDEN_METACHARS = re.compile(r"[<>`]|\$\(|\|\||\n|(?<!&)&(?!&)")
+
+# Segment separators (evaluated only after the forbidden set is clean).
+_COMMAND_SEPARATORS = re.compile(r"&&|;|\|")
+
+# Mutating flags/predicates that hide INSIDE otherwise read-only primitives.
+# The allowlist only anchors the FIRST token, so before these guards existed
+# `find . -exec rm {} +`, `find . -delete`, `sort -o out f`, `date -s ...`,
+# `curl -s URL -d x=y`, `env bash -c '...'`, `git branch new`,
+# `journalctl --vacuum-time=1d` and `dmesg -C` all matched a read-only prefix
+# while mutating state (pre-existing holes; compound support would have made
+# them cheap to reach, so they close here).
+_READONLY_MUTATION_GUARDS = [
+    re.compile(r"\bfind\b[^|;]*\s-(exec|execdir|ok|okdir|delete|fprint|fprintf|fls)\b"),
+    re.compile(r"\bsort\b[^|;]*(\s-o\s|\s--output[=\s])"),
+    re.compile(r"\bdate\b[^|;]*\s(-s|--set)\b"),
+    re.compile(r"\bhostname\s+[^-\s]"),
+    re.compile(r"\bdmesg\b[^|;]*\s(-C|-c|--clear)\b"),
+    re.compile(r"\bjournalctl\b[^|;]*--(vacuum-\w+|rotate|flush|sync|relinquish-var)"),
+    re.compile(
+        r"\bcurl\b[^|;]*\s(-d|--data[\w-]*|-X|--request|-F|--form|-T|--upload-file"
+        r"|-o|--output|-O|-J|--remote-name|-c|--cookie-jar)\b"
+    ),
+    re.compile(r"\bgit\b[^|;]*\s(--output|-o\s)"),
+    re.compile(r"\b(cat|head|tail|grep|wc|diff|comm|uniq|stat)\b[^|;]*\s--output[=\s]"),
+    # `git branch <name>` creates; `-d/-D/-m/-M/-c/-C` mutate. Only flag args pass.
+    re.compile(r"\bgit\s+branch\b[^|;]*(?:\s+(?!-)\S)"),
+    # `env <cmd>` executes its arguments — only bare VAR=value / -flag args read.
+    re.compile(r"\benv\b[^|;&]*(?:\s+(?:-{1,2}[\w-]+|\w+=\S*))*\s+(?![-\w]+=)(?!-)[^|;&\s]"),
+]
 
 
 def _is_readonly_terminal_command(command: str) -> bool:
-    """Fail-closed read-only terminal check.
+    """Fail-closed read-only terminal check (compound-aware, 2026-09-23).
 
     A terminal command is lock-free ONLY when:
-      1. it matches a strict read-only allowlist pattern, AND
-      2. it contains no compound metacharacters (>, |, ;, &, `, $(), newline)
-         that could turn the read primitive into a write.
+      1. it carries no forbidden metacharacter (>, <, `, $(, ||, lone &,
+         newline) — the things that turn a read primitive into a write,
+      2. every `|` / `&&` / `;` segment independently matches the strict
+         read-only allowlist, AND
+      3. no mutating flag or predicate rides along inside an allowlisted
+         primitive (see _READONLY_MUTATION_GUARDS).
 
-    Everything else (interpreters, sqlite3 CLI, curl POST, wget, ssh, scp,
-    redirections, compound commands) requires a governance lock.
+    Lock-free examples: `ls -la`, `git status --short`, `ls | grep foo`,
+    `journalctl -u hermes-gateway | tail -20`, `git log --oneline && git diff`.
+    Still write-class (need a lock): `ls > f`, `cat $(f)`, `git status; rm -rf x`,
+    `python3 -c '...'`, `find . -exec rm {} +`, `curl -s URL -d x=y`.
     """
     if not command:
         return False
     # `doctor --fix` mutates the fleet (P1-5 auto-reconcile) — never read-only
     if re.search(r"hermes\s+doctor", command) and re.search(r"--fix|-f\b", command):
         return False
-    # Compound/redirect/pipe/background/substitution → NOT read-only
-    if _COMMAND_COMPOUND_METACHARS.search(command):
+    # Forbidden metacharacters / multi-line → NOT read-only
+    if _COMMAND_FORBIDDEN_METACHARS.search(command):
         return False
-    # Multi-line commands are never read-only
     if "\n" in command:
         return False
-    for pattern in READONLY_COMMAND_PATTERNS:
-        if re.search(pattern, command):
-            return True
-    return False
+    # Mutating flags hiding inside read-only primitives → NOT read-only
+    for guard in _READONLY_MUTATION_GUARDS:
+        if guard.search(command):
+            return False
+    # Every separator-joined segment must itself be a read primitive
+    segments = [s.strip() for s in _COMMAND_SEPARATORS.split(command)]
+    if not segments or any(not s for s in segments):
+        return False
+    for segment in segments:
+        if not any(re.search(pattern, segment) for pattern in READONLY_COMMAND_PATTERNS):
+            return False
+    return True
 
 
 # ── Sanctioned lock-free recovery command ──────────────────────────
@@ -1064,7 +1188,8 @@ def _is_readonly_terminal_command(command: str) -> bool:
 #   - the skills gate, domain gate, and adversarial gate all still apply
 #     BEFORE this check — nothing else changes
 #   - no sudo, no `-c`, no chaining, no metacharacters: the anchored regex
-#     plus _COMMAND_COMPOUND_METACHARS rejection make the match exact
+#     plus _COMMAND_FORBIDDEN_METACHARS / _COMMAND_SEPARATORS rejection make
+#     the match exact
 # The pre-commit hook advertises this exact command as "allowed for every
 # agent" (AGENTS.md RULE 7b) — this makes that promise true.
 _SANCTIONED_CORTEX_UPDATE_RE = re.compile(
@@ -1083,7 +1208,9 @@ def _is_sanctioned_cortex_update_command(command: str) -> bool:
     """
     if not command:
         return False
-    if _COMMAND_COMPOUND_METACHARS.search(command):
+    # No metacharacter AND no separator may ride along — even a lock-free
+    # read-only compound (`... | tail -1`) is not the sanctioned deploy call.
+    if _COMMAND_FORBIDDEN_METACHARS.search(command) or _COMMAND_SEPARATORS.search(command):
         return False
     return _SANCTIONED_CORTEX_UPDATE_RE.fullmatch(command) is not None
 
@@ -1169,7 +1296,7 @@ def _check_domain_skill_gate(tool_name: str, args: dict, session_id: str) -> Opt
     # educate→block escalation as the domain gate below.
     tdd_needed, tdd_fname = _tdd_required(tool_name, args)
     if tdd_needed:
-        if "test-driven-development" not in _session_skills_loaded.get(session_id or "", set()):
+        if "test-driven-development" not in _session_skills(session_id or ""):
             if session_id not in _domain_warnings:
                 _domain_warnings[session_id] = {}
             tdd_count = _domain_warnings[session_id].get("tdd-iron-law", 0)
@@ -1213,7 +1340,7 @@ def _check_domain_skill_gate(tool_name: str, args: dict, session_id: str) -> Opt
     # loaded by ANY session satisfied the gate for every session. On long
     # turns, agents then skipped loading the mid-turn domain skill entirely.
     # The per-session registry forces THIS session to load the skill.
-    if skill_name in _session_skills_loaded.get(session_id or "", set()):
+    if skill_name in _session_skills(session_id or ""):
         # Clear any prior warnings for this file type
         if session_id in _domain_warnings:
             _domain_warnings[session_id].pop(skill_name, None)
@@ -1518,7 +1645,7 @@ def _check_adversarial_commit_gate(
         return None
 
     # Skill already loaded — clear warnings and pass (per-session, 2026-08-08)
-    if "adversarial-verifier" in _session_skills_loaded.get(session_id or "", set()):
+    if "adversarial-verifier" in _session_skills(session_id or ""):
         _adversarial_warnings.pop(session_id, None)
         return None
 
@@ -1778,6 +1905,10 @@ def register(ctx):
                     _skills_loaded_in_session.add(skill_name)
                     if hermes_session_id:
                         _session_skills_loaded.setdefault(hermes_session_id, set()).add(skill_name)
+                        # Journal the credit so a plugin reload (cortex-update
+                        # deploy) does not silently strip this session's
+                        # domain/adversarial credit mid-task.
+                        _persist_session_skills(hermes_session_id)
                         if _session_skills_loaded[hermes_session_id] >= _REQUIRED_SKILLS:
                             _auto_create_skills_marker(hermes_session_id)
 
@@ -1845,11 +1976,11 @@ def register(ctx):
                             + str(loaded_count) + "/7 always-section skills loaded.\n\n"
                             + (
                                 "⚠️ All 7 are recorded for this session, but its proof is STALE:\n"
-                                "a deploy changed the governance plugin or a skill file, which also\n"
-                                "resets this session's in-memory loaded-set. Re-load all 7 IN ONE\n"
-                                "TURN (batched skill_view calls; unchanged content is deduplicated,\n"
-                                "so this is cheap) to regenerate the marker. Expected after any\n"
-                                "deploy — not an error, and not something to work around.\n\n"
+                                "a deploy changed a governance skill file (skill credit itself now\n"
+                                "survives a plugin reload, so this only fires when a skill changed).\n"
+                                "Re-load all 7 IN ONE TURN (batched skill_view calls; unchanged\n"
+                                "content is deduplicated, so this is cheap) to regenerate the\n"
+                                "marker. Expected after a skills deploy — not an error.\n\n"
                                 if loaded_count == 7 else ""
                             )
                             + (
@@ -1881,11 +2012,14 @@ def register(ctx):
                             "7 skills, writes still require an active governance lock (gate 2),\n"
                             "so a second block saying 'GOVERNANCE LOCK REQUIRED' is EXPECTED —\n"
                             "call mcp__loop_governance__begin_change() then.\n\n"
-                            "Note: a terminal command containing compound metacharacters\n"
-                            "(; | & > < ` $() or a newline) is treated as write-capable even\n"
-                            "when it only READS — a lock covers those too. Use a single clean\n"
-                            "command (ls, grep, git status) or read_file/search_files for\n"
-                            "lock-free inspection.\n\n"
+                            "Note: READ-ONLY commands are lock-free, INCLUDING compounds where\n"
+                            "every segment is a read primitive — `ls | grep foo`,\n"
+                            "`git status && git log --oneline`, `journalctl -u x | tail -5`.\n"
+                            "Redirects (>, <), $(), backticks, lone &, ||, newlines,\n"
+                            "interpreters (python3 -c, bash -c), and mutating flags (find -exec,\n"
+                            "sort -o, date -s, curl -d, env <cmd>) are write-class and need a\n"
+                            "lock. If a read-only command is somehow blocked, use\n"
+                            "read_file/search_files instead of retrying.\n\n"
                             "Read-only tools (read_file, search_files, session_search,\n"
                             "skill_view, skills_list, web_search, web_extract,\n"
                             "vision_analyze, tool_search, tool_describe,\n"
@@ -2059,19 +2193,34 @@ def register(ctx):
             else:
                 extra = ""
 
-            # Compound-command note: a read-only-looking terminal command hits this
-            # gate solely because of ; | & > < ` $() — say so explicitly, or the
-            # agent concludes the lock is nonsensical (2026-09-22, Titus diagnosis).
+            # Compound-command note: a terminal command reaches this gate either
+            # because it is genuinely write-class or because it is a compound
+            # whose segments are NOT all read primitives — say so explicitly, or
+            # the agent concludes the lock is nonsensical (2026-09-22 Titus
+            # diagnosis). Read-only compounds (`ls | grep foo`) never get here:
+            # they pass the fast-path above. (2026-09-23: the note now fires only
+            # for commands that really are write-class or partly non-read.)
             _compound_note = ""
+            _cmd = str(args.get("command", ""))
             if (
                 tool_name == "terminal"
-                and _COMMAND_COMPOUND_METACHARS.search(str(args.get("command", "")))
+                and (
+                    _COMMAND_FORBIDDEN_METACHARS.search(_cmd)
+                    or (
+                        _COMMAND_SEPARATORS.search(_cmd)
+                        and not _is_readonly_terminal_command(_cmd)
+                    )
+                )
             ):
                 _compound_note = (
-                    "\nYour command was treated as WRITE-CAPABLE because it contains\n"
-                    "compound metacharacters (; | & > < ` $() or a newline) — even if it\n"
-                    "only reads. For read-only inspection use a SINGLE clean command\n"
-                    "(ls, grep, git status ...) or the read_file/search_files tools.\n\n"
+                    "\nYour command was treated as WRITE-CAPABLE: either it contains a\n"
+                    "metacharacter that turns a read into a write (> < ` $() || & newline),\n"
+                    "or it is a compound whose segments are not ALL read primitives\n"
+                    "(`ls | grep foo` is lock-free; `echo hi; ls` and `git log; rm x` are\n"
+                    "not). Mutating flags inside a read primitive (find -exec, sort -o,\n"
+                    "date -s, curl -d, env <cmd>) are write-class too. For lock-free\n"
+                    "inspection use read primitives joined by | && ;, or the\n"
+                    "read_file/search_files tools.\n\n"
                 )
 
             return {

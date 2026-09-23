@@ -144,6 +144,26 @@ check's 24h rule or the >TTL purge finally classifies it.
 | 3 | Stale PID marker files never GC'd | 2026-09-17 | Legacy bridge written forever, never cleaned | No |
 | 4 | No single tool shows complete lock truth | 2026-09-17 | Observability layer not extended with session-scoped model | No |
 | 5 | `begin_change` close-out ignores PENDING cycles from dead sessions | 2026-09-17 | Close-out gate filters only `this session_id` | No (but weakens RULE 2) |
+| 6 | Skills gate passed with NO session id if any other session had a marker | 2026-09-23 | `_check_skills_loaded_marker()` no-session branch accepted any marker | Was FAIL-OPEN (now fixed: fails closed) |
+| 7 | Domain/adversarial skill credit vanished after every deploy | 2026-09-23 | Loaded-skill set lived only in process memory; plugin reload wiped it | Yes (re-blocked mid-task) — fixed via the credit journal |
+
+---
+
+## Self-check any host
+
+`~/.hermes-cortex/scripts/probe-gate-logic.py` (repo:
+`ops/scripts/quality/probe-gate-logic.py`) loads the ACTIVE enforcer module in a
+throwaway state dir and asserts the gate behaviour end-to-end — marker timing,
+block-message contents, the read-only classifier matrix, the credit journal, and
+the no-session-id fail-closed path. Run it when an agent claims a gate is
+"stuck", after a deploy, or when a peer host behaves differently:
+
+```bash
+python3 ~/.hermes-cortex/scripts/probe-gate-logic.py            # active copy
+python3 ~/.hermes-cortex/scripts/probe-gate-logic.py --json     # machine-readable
+```
+
+Exit 0 = the enforcer on this host behaves as documented.
 
 ---
 
@@ -158,3 +178,7 @@ check's 24h rule or the >TTL purge finally classifies it.
    remove `.hermes-session-{PID}.id` files whose PID is no longer alive.
 4. **Close-out gate breadth** — consider a fallback branch that resolves (MOVE_ON) a PENDING cycle
    whose owning session is dead, so RULE 2 holds across crashed sessions, not just live ones.
+5. **No-session-id fail-closed** (DONE 2026-09-23) — the marker check no longer accepts another
+   session's proof; the block message now diagnoses broken session-id plumbing instead.
+6. **Skill-credit journal** (DONE 2026-09-23) — `state/skills-credit/<session_id>.json`,
+   fingerprint-pinned, rehydrated on cold start, invalidated when the skills change.

@@ -509,9 +509,17 @@ class TestSkillsMarkerPerSession:
     def test_missing_marker_rejected(self, temp_state_dir):
         assert _check_skills_loaded_marker("ghost_session") is False
 
-    def test_no_session_id_accepts_any_valid_marker(self, temp_state_dir):
+    def test_no_session_id_fails_closed(self, temp_state_dir):
+        """2026-09-23: no session id → FAIL CLOSED.
+
+        This used to accept ANY valid per-session marker, so a session whose
+        hooks lost the session id inherited another session's proof (probe-
+        confirmed fail-open). Nothing is accepted now.
+        """
         _auto_create_skills_marker("session_A")
-        assert _check_skills_loaded_marker("") is True
+        assert _check_skills_loaded_marker("") is False, (
+            "another session's marker must NOT satisfy a session-id-less call"
+        )
 
     def test_no_session_id_no_markers_rejected(self, temp_state_dir):
         assert _check_skills_loaded_marker("") is False

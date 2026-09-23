@@ -191,15 +191,46 @@ echo ... >|>> (file redirection)
 
 ### Read Commands (always pass)
 
+Strict read-only allowlist — the FIRST token of every segment must match:
+
 ```
-ls|cat|head|tail|less|more|grep|find|which|whoami|id|pwd|date|echo|printf
-ps|top|htop|df|du|free|uptime|uname|hostname|dmesg|journalctl
+ls|cat|head|tail|less|more|grep|find|which|whoami|id|pwd|date|stat|file|du|wc|sort|uniq|diff|comm|env|printenv|getent|nproc|lscpu|lsblk|pgrep
+ps|top|htop|df|free|uptime|uname|hostname|dmesg|journalctl|ss|netstat
 git status|log|diff|show|branch|stash list
 docker ps|images|logs|inspect|stats
 pip|npm list|show|search
 hermes --version|doctor|config get|config show|config path|config check|env-path
 systemctl is-active|is-enabled|status|list-units
+curl -sI | curl -s <http(s):// | localhost: | 127.0.0.1:>    (GET/HEAD only)
+hermes mcp list|test                                          (lock-free diagnostics)
 ```
+
+(`echo`/`printf` are NOT allowlisted — use read_file/write_file.)
+
+**Compound-aware (2026-09-23):** `|`, `&&` and `;` ARE allowed *between*
+read-only segments, so `ls | grep foo`, `git status && git log --oneline` and
+`journalctl -u hermes-gateway | tail -20` are lock-free. Every segment must
+independently match the allowlist — `ls | sh` and `git status; rm -rf x` are not.
+
+**Still write-class:** redirects (`>` `<`), command substitution (`$(` or
+backticks), lone `&` (backgrounding), `||`, newlines, interpreters
+(`python3 -c`, `bash -c`), non-read segments, and mutating flags hiding inside a
+read primitive — `find -exec/-delete/-fprint`, `sort -o`, `date -s`,
+`git branch <name>`, `curl -d/-o/-X/-F`, `env <cmd>`, `journalctl --vacuum-*`,
+`dmesg -C`, `hostname <name>`.
+
+### Self-check (any host)
+
+```bash
+python3 ~/.hermes-cortex/scripts/probe-gate-logic.py [--json]
+```
+
+Loads the ACTIVE enforcer module in a throwaway state dir and asserts: marker
+timing (created on the 7th serial `skill_view`; repeat loads harmless), both gate
+messages (exact tool names, gate labelling, "this message IS the procedure"),
+the read-only matrix above, the no-session-id fail-closed path, and skill-credit
+rehydration across a simulated plugin reload. Exit 0 = this host matches the
+documented behaviour. Source: `ops/scripts/quality/probe-gate-logic.py`.
 
 ---
 
