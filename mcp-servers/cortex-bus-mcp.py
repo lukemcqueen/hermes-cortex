@@ -782,11 +782,22 @@ def _inbox_send_task(args: dict) -> CallToolResult:
         plan=str(args.get("plan", "")),
     )
 
-    # Call inbox_send internally with structured task payload
+    # Call inbox_send internally with structured task payload.
+    #
+    # Subject MUST be a UPPER_CASE protocol name: the bus validates subjects at
+    # ingestion ("required UPPER_CASE protocol name (A-Z0-9_)"), so the previous
+    # `f"Task: {description[:80]}"` was refused 100% of the time — every
+    # orchestrator task delegation through this MCP tool failed with "Send
+    # failed across all endpoints" (observed live 2026-09-23 delegating to
+    # titus). The handler tolerates a `Task:` prefix, but that path is
+    # unreachable when the bus rejects the message first. TASK_REQUEST is the
+    # canonical task-creating subject (agent-message-handler
+    # TASK_CREATING_SUBJECTS); the human-readable description already rides in
+    # the body. Regression test: tests/test_bus_task_subject.py
     send_args = {
         "to": agent,
         "topic": "tasks",
-        "subject": f"Task: {description[:80]}",
+        "subject": "TASK_REQUEST",
         "body": json.dumps(body, indent=2),
         "priority": priority,
     }
