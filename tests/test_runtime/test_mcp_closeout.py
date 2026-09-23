@@ -80,19 +80,25 @@ class TestEndChangeRequiresScoredCycle:
         conn = mcp._db()
         row = conn.execute("SELECT id FROM loop_cycles WHERE task_id='task-A' ORDER BY id DESC LIMIT 1").fetchone()
         conn.close()
-        mcp._feedback_accept({"cycle_id": row[0], "note": "verified", **args})
+        mcp._feedback_accept({"cycle_id": row[0], "note": "verified",
+                              "completeness": 10, "quality": 9, "progress": 8, **args})
         result = mcp._end_change({"task_id": "task-A", **args})
         text = result.content[0].text
         assert "closed" in text, text
         assert not (isolated / "state" / ".governance-sess_2.json").exists()
 
-    def test_override_also_counts_as_scored(self, isolated):
+    def test_override_with_reason_releases(self, isolated):
+        """An override also has to leave a closed-out record (2026-09-23):
+        a decision correction is not a measurement, so it carries the reason."""
         args = {"session_id": "sess_3"}
         mcp._begin_change({"task_id": "task-A", "description": "test A", **args})
         conn = mcp._db()
         row = conn.execute("SELECT id FROM loop_cycles WHERE task_id='task-A' ORDER BY id DESC LIMIT 1").fetchone()
         conn.close()
-        mcp._feedback_override({"cycle_id": row[0], "correct_decision": "STOP", "note": "spike done", **args})
+        mcp._feedback_override({"cycle_id": row[0], "correct_decision": "STOP",
+                                "note": "spike done",
+                                "unscored_reason": "spike discarded — nothing to measure",
+                                **args})
         result = mcp._end_change({"task_id": "task-A", **args})
         assert "closed" in result.content[0].text
 
@@ -123,14 +129,16 @@ class TestBeginChangeCloseOutGate:
         conn = mcp._db()
         row = conn.execute("SELECT id FROM loop_cycles WHERE task_id='task-A' ORDER BY id DESC LIMIT 1").fetchone()
         conn.close()
-        mcp._feedback_accept({"cycle_id": row[0], "note": "done", **args})
+        mcp._feedback_accept({"cycle_id": row[0], "note": "done",
+                              "completeness": 10, "quality": 8, "progress": 9, **args})
         result = mcp._begin_change({"task_id": "task-B", "description": "test B", **args})
         assert "Governance session started" in result.content[0].text
         # cleanup
         conn = mcp._db()
         row = conn.execute("SELECT id FROM loop_cycles WHERE task_id='task-B' ORDER BY id DESC LIMIT 1").fetchone()
         conn.close()
-        mcp._feedback_accept({"cycle_id": row[0], "note": "done", **args})
+        mcp._feedback_accept({"cycle_id": row[0], "note": "done",
+                              "completeness": 10, "quality": 8, "progress": 9, **args})
         mcp._end_change({"task_id": "task-B", **args})
 
     def test_hook_cycles_do_not_trip_gate(self, isolated):
@@ -150,5 +158,6 @@ class TestBeginChangeCloseOutGate:
         conn = mcp._db()
         row = conn.execute("SELECT id FROM loop_cycles WHERE task_id='task-A' ORDER BY id DESC LIMIT 1").fetchone()
         conn.close()
-        mcp._feedback_accept({"cycle_id": row[0], "note": "done", **args})
+        mcp._feedback_accept({"cycle_id": row[0], "note": "done",
+                              "completeness": 10, "quality": 8, "progress": 9, **args})
         mcp._end_change({"task_id": "task-A", **args})

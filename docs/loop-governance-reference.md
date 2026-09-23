@@ -71,6 +71,37 @@ GROUP BY decision_class;
 
 Always filter `composite > 0` for score trends: unscored cycles pull any average down.
 
+## Close-out enforcement (2026-09-23)
+
+`end_change` releases the lock only when the cycle is **closed out**, which is now a
+record requirement rather than a spelling one:
+
+* `composite > 0`, **or** an explicit `unscored_reason` recorded by
+  `feedback_accept(cycle_id=…, unscored_reason='…')` (or by `feedback_override`, which
+  also takes the field);
+* the decision is compared by **class** — `LOOP 🔄 — keep iterating` is `LOOP`, so a
+  decorated label can no longer slip past the gate.
+
+Previously the gate read `user_overrode IS NOT NULL` and compared the decision with exact
+string equality, so an accepted cycle carrying `composite 0.0` passed as "scored" while
+nothing had been measured.
+
+Remedies, in the order you'll usually reach them:
+
+```
+mcp__loop_governance__feedback_accept(cycle_id=N, note='…',
+    completeness=<0-10>, quality=<0-10>, progress=<0-10>)
+mcp__loop_governance__feedback_accept(cycle_id=N, note='…',
+    unscored_reason='why nothing could be measured')
+mcp__loop_governance__feedback_override(cycle_id=N, correct_decision='…', note='…',
+    unscored_reason='why nothing could be measured')
+```
+
+**The numbers are still self-reported.** `composite` comes from your components and the
+configured weights; the pre-commit hook (`pre-commit-score`) is what measures real commits,
+and it writes its own cycle (`task_id=precommit-<repo>-<branch>-<slug>`) rather than
+scoring the task's cycle. State what you actually verified.
+
 ## Multi-file changes — how to score
 
 | Pattern | What to do |

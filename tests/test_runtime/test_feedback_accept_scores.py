@@ -70,15 +70,22 @@ def test_scores_are_recorded_and_composite_uses_configured_weights(mcp):
     assert str(expected) in out
 
 
-def test_no_scores_stays_unscored_and_says_so(mcp):
+def test_no_scores_needs_a_stated_reason(mcp):
+    """Was: closes unscored. Now: an unscored close must say WHY (2026-09-23)."""
     cycle_id = _pending_cycle(mcp, "score-test-none")
 
-    out = _text(mcp._feedback_accept({"cycle_id": cycle_id, "note": "audit only"}))
+    refused = _text(mcp._feedback_accept({"cycle_id": cycle_id, "note": "audit only"}))
+    assert "Refusing to close" in refused
+    assert _row(mcp, cycle_id)["decision"] == "PENDING"
+
+    out = _text(mcp._feedback_accept({
+        "cycle_id": cycle_id, "note": "audit only",
+        "unscored_reason": "read-only audit — no diff to measure"}))
 
     row = _row(mcp, cycle_id)
     assert row["composite"] == 0.0          # unchanged — never fabricated
     assert row["decision"] == "MOVE_ON"
-    assert "unscored" in out
+    assert "read-only audit" in out
 
 
 def test_out_of_range_score_is_refused_and_cycle_untouched(mcp):

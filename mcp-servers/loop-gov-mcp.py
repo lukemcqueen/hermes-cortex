@@ -637,6 +637,25 @@ def _cosine_sim(a: list[float], b: list[float]) -> float:
 
 # ── Database ─────────────────────────────────────────────────
 
+def _decision_class(decision) -> str:
+    """Bucket a decision label into its canonical class.
+
+    Legacy rows carry emoji and prose ('LOOP 🔄 — keep iterating',
+    'MOVE ON → …', 'STOP ✗ — hard fail'), so every gate must compare the
+    CLASS and never the exact string: exact equality against "LOOP" silently
+    let decorated cycles through the close-out gate unscored (2026-09-23).
+    """
+    text = (decision or "").strip().upper()
+    if not text:
+        return "PENDING"
+    if text.startswith("MOVE"):
+        return "MOVE_ON"
+    for known in ("STOP", "LOOP", "PENDING"):
+        if text.startswith(known):
+            return known
+    return text
+
+
 def _db() -> sqlite3.Connection:
     """Get or create the loop-governance DB with auto-schema init."""
     LOOP_DB.parent.mkdir(parents=True, exist_ok=True)
@@ -668,6 +687,15 @@ def _db() -> sqlite3.Connection:
         conn.execute("ALTER TABLE loop_cycles ADD COLUMN session_id TEXT")
     except sqlite3.OperationalError:
         log.warning("SQL migration: column already exists — expected")
+        pass
+
+    # Add unscored_reason column if missing (schema v2→v3, 2026-09-23):
+    # a cycle closed WITHOUT a measurement must record WHY it is unscored,
+    # so "accepted, composite 0.0" stops meaning both "trivial" and "unmeasured".
+    try:
+        conn.execute("ALTER TABLE loop_cycles ADD COLUMN unscored_reason TEXT")
+    except sqlite3.OperationalError:
+        log.warning("SQL migration: unscored_reason already exists — expected")
         pass
 
     # Task events table (harness v3)
@@ -838,6 +866,7 @@ async def list_tools(ctx, params=None) -> ListToolsResult:
                     "completeness": {"type": "number", "description": "Self-reported 0-10: did the work cover the stated scope?"},
                     "quality": {"type": "number", "description": "Self-reported 0-10: was it verified (tests, real output, docs)?"},
                     "progress": {"type": "number", "description": "Self-reported 0-10: how much of the goal advanced?"},
+                    "unscored_reason": {"type": "string", "description": "Required when no scores are passed: why nothing could be measured (e.g. 'read-only audit — no diff to measure'). An unscored close must state its reason."},
                 },
             },
         ),
@@ -1051,11 +1080,18 @@ def _begin_change(args: dict) -> CallToolResult:
         try:
             _conn = _db()
             prior = _conn.execute(
-                "SELECT id, task_id FROM loop_cycles "
-                "WHERE session_id = ? AND decision = 'PENDING' AND user_overrode IS NULL",
+                "SELECT id, task_id, decision FROM loop_cycles WHERE session_id = ?",
                 (session_id,),
             ).fetchall()
             _conn.close()
+            # Class, not exact string (2026-09-23): a row whose decision reads
+            # 'PENDING ' or another decorated spelling is still an unclosed
+            # cycle and must trip this gate. The score-or-reason requirement is
+            # enforced at feedback_accept (you cannot create an unscored close)
+            # and at end_change (you cannot release the lock with one), so this
+            # gate stays about *unclosed* work and does not retro-block sessions
+            # holding cycles accepted under the older rules.
+            prior = [r for r in prior if _decision_class(r["decision"]) == "PENDING"]
             if prior:
                 listing = ", ".join(f"#{r['id']} ({r['task_id']})" for r in prior)
                 return CallToolResult(content=[TextContent(
@@ -1261,29 +1297,64 @@ def _end_change(args: dict) -> CallToolResult:
     try:
         conn = _db()
         row = conn.execute(
-            "SELECT id, composite, decision, user_overrode FROM loop_cycles WHERE task_id = ? ORDER BY id DESC LIMIT 1",
+            "SELECT id, composite, decision, user_overrode, unscored_reason "
+            "FROM loop_cycles WHERE task_id = ? ORDER BY id DESC LIMIT 1",
             (task_id,)
         ).fetchone()
         conn.close()
         if row:
             has_cycle = True
-            accept = "✅" if row["decision"] and row["decision"].strip().upper().startswith("STOP") else "⬜"
-            scored = row["user_overrode"] is not None
+            decision_class = _decision_class(row["decision"])
+            composite = float(row["composite"] or 0.0)
+            try:
+                unscored_reason = (row["unscored_reason"] or "").strip()
+            except (IndexError, KeyError):
+                unscored_reason = ""
+            accept = "✅" if decision_class == "STOP" else "⬜"
             cycle_info = f"Cycle #{row['id']} ({row['decision']}) {accept}"
-            if not scored and (row["decision"] or "PENDING").strip().upper() in ("PENDING", "LOOP"):
+
+            # (2026-09-23) Two independent requirements, both about the RECORD
+            # rather than the spelling of the decision:
+            #   1. class, not exact string — 'LOOP 🔄 — keep iterating' is LOOP;
+            #   2. a closed-out cycle must carry a measurement OR say why it is
+            #      unscored. 'user_overrode is not None' alone let an accepted
+            #      cycle with composite 0.0 pass as "scored" when nothing was
+            #      ever measured.
+            if decision_class == "PENDING":
+                return CallToolResult(content=[TextContent(
+                    type="text",
+                    text=(
+                        "❌ Cannot release lock: this task's cycle is NOT scored — "
+                        "it was never closed out.\n\n"
+                        f"  Cycle #{row['id']} for task '{task_id}' is still PENDING "
+                        "(no feedback recorded).\n\n"
+                        "Close it out (AGENTS.md RULE 2 — score before moving on):\n"
+                        f"  mcp__loop_governance__cycle_query(task_id='{task_id}')\n"
+                        "  mcp__loop_governance__feedback_accept(cycle_id=" + str(row['id']) + ", note='…',\n"
+                        "      completeness=<0-10>, quality=<0-10>, progress=<0-10>)\n"
+                        "  or, when nothing could be measured:\n"
+                        "  mcp__loop_governance__feedback_accept(cycle_id=" + str(row['id']) + ", note='…',\n"
+                        "      unscored_reason='why nothing could be measured')\n"
+                        "  or mcp__loop_governance__feedback_override(cycle_id=" + str(row['id']) + ", "
+                        "correct_decision='…', note='…')\n\n"
+                        "Then retry end_change. The lock stays held until the cycle is closed out."
+                    )
+                )])
+            if composite <= 0.0 and not unscored_reason:
                 return CallToolResult(content=[TextContent(
                     type="text",
                     text=(
                         "❌ Cannot release lock: this task's cycle is NOT scored.\n\n"
-                        f"  Cycle #{row['id']} for task '{task_id}' is still "
-                        f"'{row['decision']}' (user_overrode IS NULL).\n\n"
-                        "Score it before releasing (AGENTS.md RULE 2 — close out "
-                        "before moving on):\n"
-                        "  mcp__loop_governance__cycle_query(task_id='" + task_id + "')\n"
-                        "  mcp__loop_governance__feedback_accept(cycle_id=" + str(row['id']) + ", note='...')\n"
-                        "  or mcp__loop_governance__feedback_override(cycle_id=" + str(row['id']) + ", "
-                        "correct_decision='...', note='...')\n\n"
-                        "Then retry end_change. The lock stays held until the cycle is scored."
+                        f"  Cycle #{row['id']} for task '{task_id}' reads "
+                        f"'{row['decision']}' with composite 0.0 and no unscored_reason —\n"
+                        "  an unscored close has to say WHY (2026-09-23).\n\n"
+                        "Record the measurement:\n"
+                        "  mcp__loop_governance__feedback_accept(cycle_id=" + str(row['id']) + ", note='…',\n"
+                        "      completeness=<0-10>, quality=<0-10>, progress=<0-10>)\n"
+                        "or state the reason it is unscored:\n"
+                        "  mcp__loop_governance__feedback_accept(cycle_id=" + str(row['id']) + ", note='…',\n"
+                        "      unscored_reason='why nothing could be measured')\n\n"
+                        "Then retry end_change."
                     )
                 )])
     except Exception as e:
@@ -1577,6 +1648,26 @@ def _feedback_accept(args: dict) -> CallToolResult:
                     text=f"Error: '{field}' must be between 0 and 10 (got {value}).")])
             reported[field] = value
 
+        unscored_reason = (args.get("unscored_reason") or "").strip()
+        if not reported and not unscored_reason:
+            conn.close()
+            return CallToolResult(content=[TextContent(
+                type="text",
+                text=(
+                    f"❌ Refusing to close cycle #{cycle_id} with nothing measured.\n\n"
+                    "An accepted cycle must either carry a score or say why it is\n"
+                    "unscored — 'composite 0.0' on its own is indistinguishable from a\n"
+                    "failed change (2026-09-23).\n\n"
+                    "  • scored —\n"
+                    f"      mcp__loop_governance__feedback_accept(cycle_id={cycle_id}, note='…',\n"
+                    "          completeness=<0-10>, quality=<0-10>, progress=<0-10>)\n"
+                    "  • unscored —\n"
+                    f"      mcp__loop_governance__feedback_accept(cycle_id={cycle_id}, note='…',\n"
+                    "          unscored_reason='why nothing could be measured')\n\n"
+                    "The cycle stays PENDING until one of the two is supplied."
+                )
+            )])
+
         if reported:
             row = conn.execute(
                 "SELECT completeness, quality, progress FROM loop_cycles WHERE id = ?",
@@ -1590,18 +1681,20 @@ def _feedback_accept(args: dict) -> CallToolResult:
             composite = round(sum(components[f] * float(weights.get(f, 0.0)) for f in components), 2)
             conn.execute(
                 "UPDATE loop_cycles SET completeness=?, quality=?, progress=?, composite=?, "
-                "user_overrode=0, decision=?, outcome_note=? WHERE id=?",
+                "unscored_reason=?, user_overrode=0, decision=?, outcome_note=? WHERE id=?",
                 (components["completeness"], components["quality"], components["progress"],
-                 composite, new_decision, note, cycle_id))
+                 composite, unscored_reason or None, new_decision, note, cycle_id))
         else:
-            conn.execute("UPDATE loop_cycles SET user_overrode=0, decision=?, outcome_note=? WHERE id=?",
-                         (new_decision, note, cycle_id))
+            conn.execute(
+                "UPDATE loop_cycles SET unscored_reason=?, user_overrode=0, decision=?, "
+                "outcome_note=? WHERE id=?",
+                (unscored_reason, new_decision, note, cycle_id))
         conn.commit()
         conn.close()
         scored = (
             f" Scored: completeness={components['completeness']}, quality={components['quality']}, "
             f"progress={components['progress']} → composite={composite}."
-            if reported else " (unscored — pass completeness/quality/progress to record a score)"
+            if reported else f" Unscored (reason recorded: {unscored_reason})."
         )
         return CallToolResult(content=[TextContent(
             type="text",
@@ -1662,8 +1755,10 @@ def _feedback_override(args: dict) -> CallToolResult:
                 type="text",
                 text=f"Error: Cycle #{cycle_id} not found in loop-governance DB. Use cycle_query to find valid cycle IDs."
             )])
-        conn.execute("UPDATE loop_cycles SET user_overrode=1, decision=?, outcome_note=? WHERE id=?",
-                     (correct, correct_note, cycle_id))
+        conn.execute(
+            "UPDATE loop_cycles SET user_overrode=1, decision=?, outcome_note=?, "
+            "unscored_reason=COALESCE(?, unscored_reason) WHERE id=?",
+            (correct, correct_note, (args.get("unscored_reason") or "").strip() or None, cycle_id))
         conn.commit()
         conn.close()
         return CallToolResult(content=[TextContent(type="text", text=f"⏩ Cycle #{cycle_id} overridden → {correct}.")])
