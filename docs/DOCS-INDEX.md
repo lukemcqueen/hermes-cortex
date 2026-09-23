@@ -141,7 +141,7 @@ repo; this public repo carries only framework docs (PRDs, design, reference).
 | `docs/pinned-repo-hooks.md` | Pinned enforcement hooks |
 | `docs/pre-commit-scoring.md` | Pre-commit scoring |
 | `docs/git-enforcement.md` | Git enforcement model |
-| `docs/enforcer-known-issues.md` | **Known issues** in the governance enforcer / loop-gov lock machinery (check_lock false-clear, orphan TTL window, PID-marker buildup, close-out gap, no-session-id fail-closed, post-deploy skill-credit loss) + how to self-check any host with `probe-gate-logic.py` — verified on moses 2026-09-17 / 2026-09-23 |
+| `docs/enforcer-known-issues.md` | **Known issues** in the governance enforcer / loop-gov lock machinery (check_lock false-clear, orphan TTL window, PID-marker buildup, close-out gap, no-session-id fail-closed, post-deploy skill-credit loss, mtime-fingerprint false invalidation) + how to self-check any host with `probe-gate-logic.py` — verified on moses 2026-09-17 / 2026-09-23 |
 
 ## Development
 

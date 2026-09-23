@@ -205,6 +205,24 @@ def _session_skills(session_id: str) -> set:
     return loaded
 
 
+def _credit_skill(session_id: str, skill_name: str) -> None:
+    """Record a `skill_view` load: rehydrate, add, re-persist, maybe mark.
+
+    Rehydrating FIRST is load-bearing (2026-09-23): after a plugin reload the
+    in-memory set is empty, so adding to it blindly and re-persisting rewrote
+    the journal with only the just-loaded skill — silently dropping every
+    credit earned earlier in the session. That is why a commit could re-block
+    on `adversarial-verifier` after a deploy that changed nothing.
+    """
+    if not session_id or not skill_name:
+        return
+    _skills_loaded_in_session.add(skill_name)
+    _session_skills(session_id).add(skill_name)
+    _persist_session_skills(session_id)
+    if _session_skills_loaded[session_id] >= _REQUIRED_SKILLS:
+        _auto_create_skills_marker(session_id)
+
+
 def _stale_skills(session_id: str) -> list:
     """Required skills this session loaded whose CONTENT changed since.
 
@@ -2025,15 +2043,10 @@ def register(ctx):
             if tool_name == "skill_view":
                 skill_name = args.get("name", "")
                 if skill_name:
-                    _skills_loaded_in_session.add(skill_name)
-                    if hermes_session_id:
-                        _session_skills_loaded.setdefault(hermes_session_id, set()).add(skill_name)
-                        # Journal the credit so a plugin reload (cortex-update
-                        # deploy) does not silently strip this session's
-                        # domain/adversarial credit mid-task.
-                        _persist_session_skills(hermes_session_id)
-                        if _session_skills_loaded[hermes_session_id] >= _REQUIRED_SKILLS:
-                            _auto_create_skills_marker(hermes_session_id)
+                    # Journals the credit (rehydrating first) so a plugin
+                    # reload — a cortex-update deploy — cannot strip this
+                    # session's domain/adversarial credit mid-task.
+                    _credit_skill(hermes_session_id, skill_name)
 
             # ── Read-only tools exempt from skills gate ─────────────
             # Read-only tools (read_file, search_files, web_search, skill_view, etc.)

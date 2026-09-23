@@ -89,16 +89,16 @@ written `skills-state.json`) fails content verification.
 If write tools block with "session skills not fully loaded":
 - Read the block message — it lists all 7 with ✅/blank marks. Load only the blanks;
   everything already loaded counts and never needs repeating.
-- After a gateway restart OR a deploy, load all 7 again in ONE turn — a
-  `cortex-update.sh` deploy reloads the enforcer plugin and that resets this
-  session's in-memory loaded-set (the state file still lists the 7, which is why
-  the block reads "7/7 ✅ but still blocked"). Unchanged content is deduplicated,
-  so re-loading is cheap. Observed 2026-09-23: a deploy that touched one skill
-  file left a session in exactly that state.
-- The same reset hits on-demand skill credit: after a deploy, a domain skill
-  (`codebase-design`, `documentation-auditing`, `cron-job-management`, …) or
-  `adversarial-verifier` counts as unloaded again, so a mid-task write or commit
-  can re-block. One `skill_view('<that skill>')` clears it — expected, not a bug.
+- After a gateway restart, load all 7 again in ONE turn. After a DEPLOY, only the
+  skills whose CONTENT changed need re-loading, and the block message names them
+  (`skill_view(name='<skill>')` per line) — credit is kept per skill (content-hashed
+  since 2026-09-23), so a deploy that rewrote identical files costs you nothing. The
+  per-session credit journal (`~/.hermes-cortex/state/skills-credit/<session-id>.json`)
+  rehydrates your loaded-set after a plugin reload.
+- On-demand skill credit works the same way: a domain skill (`codebase-design`,
+  `documentation-auditing`, `cron-job-management`, …) or `adversarial-verifier` only
+  counts as unloaded again if its file's content actually changed. One
+  `skill_view('<that skill>')` clears it — expected, not a bug.
 - `delegate_task` subagents can invalidate the parent's marker — re-call
   `skill_view('<any>')` if blocked.
 

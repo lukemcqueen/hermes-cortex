@@ -136,6 +136,27 @@ def test_stale_skills_empty_after_noop_redeploy(state_dir, skills_tree):
     assert enforcer._stale_skills("sess_stale_noop") == []
 
 
+def test_credit_survives_reload_then_new_load(state_dir, skills_tree):
+    """A plugin reload must not TRUNCATE the journal.
+
+    Regression (2026-09-23): the skill_view hook added the newly loaded skill
+    to the in-memory set without rehydrating first, so after a deploy the next
+    skill_view rewrote the journal with only that one skill — silently
+    dropping every credit earned earlier in the session (observed live: a
+    commit re-blocked on `adversarial-verifier` after two deploys).
+    """
+    enforcer._credit_skill("sess_merge", "codebase-design")
+    enforcer._session_skills_loaded.clear()                    # plugin reload
+    enforcer._credit_skill("sess_merge", "test-driven-development")
+    assert enforcer._session_skills("sess_merge") == {
+        "codebase-design", "test-driven-development",
+    }, "a later skill_view must keep earlier credit, not overwrite the journal"
+    journal = json.loads(
+        (state_dir / "skills-credit" / "sess_merge.json").read_text()
+    )
+    assert set(journal["skills"]) == {"codebase-design", "test-driven-development"}
+
+
 def test_journal_records_content_hashes(state_dir, skills_tree):
     _load("sess_hashes", "test-driven-development")
     data = json.loads(
