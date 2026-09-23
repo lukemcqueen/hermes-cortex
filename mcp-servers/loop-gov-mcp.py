@@ -828,13 +828,16 @@ async def list_tools(ctx, params=None) -> ListToolsResult:
         ),
         Tool(
             name="feedback_accept",
-            description="Mark a scored cycle decision as correct. Provide cycle_id OR task_id (resolves to session's current PENDING cycle).",
+            description="Mark a scored cycle decision as correct. Provide cycle_id OR task_id (resolves to session's current PENDING cycle). Optionally supply your own completeness/quality/progress (0-10) — accepted cycles otherwise keep composite 0.0, which reads as 'failed' in trend queries when it only means 'unscored'.",
             inputSchema={
                 "type": "object",
                 "properties": {
                     "cycle_id": {"type": "integer", "description": "Cycle ID from cycle_query (alternative to task_id)"},
                     "task_id": {"type": "string", "description": "Task ID — resolves to the session's current PENDING cycle (alternative to cycle_id)"},
                     "note": {"type": "string", "description": "Optional note"},
+                    "completeness": {"type": "number", "description": "Self-reported 0-10: did the work cover the stated scope?"},
+                    "quality": {"type": "number", "description": "Self-reported 0-10: was it verified (tests, real output, docs)?"},
+                    "progress": {"type": "number", "description": "Self-reported 0-10: how much of the goal advanced?"},
                 },
             },
         ),
@@ -1549,13 +1552,60 @@ def _feedback_accept(args: dict) -> CallToolResult:
         new_decision = current_decision
         if current_decision in ("PENDING", "LOOP"):
             new_decision = "MOVE_ON"
-        conn.execute("UPDATE loop_cycles SET user_overrode=0, decision=?, outcome_note=? WHERE id=?",
-                     (new_decision, note, cycle_id))
+
+        # Optional self-reported scores (2026-09-23): an accepted cycle used to
+        # keep composite 0.0, which trend queries read as a hard failure when
+        # it only meant "never measured". The caller may now supply the three
+        # components; composite is recomputed with the configured weights, so
+        # nothing is invented — a cycle with no scores stays unscored.
+        reported = {}
+        for field in ("completeness", "quality", "progress"):
+            raw = args.get(field)
+            if raw is None:
+                continue
+            try:
+                value = float(raw)
+            except (TypeError, ValueError):
+                conn.close()
+                return CallToolResult(content=[TextContent(
+                    type="text",
+                    text=f"Error: '{field}' must be a number 0-10 (got {raw!r}).")])
+            if not 0.0 <= value <= 10.0:
+                conn.close()
+                return CallToolResult(content=[TextContent(
+                    type="text",
+                    text=f"Error: '{field}' must be between 0 and 10 (got {value}).")])
+            reported[field] = value
+
+        if reported:
+            row = conn.execute(
+                "SELECT completeness, quality, progress FROM loop_cycles WHERE id = ?",
+                (cycle_id,)).fetchone()
+            components = {
+                f: reported.get(f, float(row[f] or 0.0))
+                for f in ("completeness", "quality", "progress")
+            }
+            weights = _config().get(
+                "weights", {"completeness": 0.4, "quality": 0.3, "progress": 0.3})
+            composite = round(sum(components[f] * float(weights.get(f, 0.0)) for f in components), 2)
+            conn.execute(
+                "UPDATE loop_cycles SET completeness=?, quality=?, progress=?, composite=?, "
+                "user_overrode=0, decision=?, outcome_note=? WHERE id=?",
+                (components["completeness"], components["quality"], components["progress"],
+                 composite, new_decision, note, cycle_id))
+        else:
+            conn.execute("UPDATE loop_cycles SET user_overrode=0, decision=?, outcome_note=? WHERE id=?",
+                         (new_decision, note, cycle_id))
         conn.commit()
         conn.close()
+        scored = (
+            f" Scored: completeness={components['completeness']}, quality={components['quality']}, "
+            f"progress={components['progress']} → composite={composite}."
+            if reported else " (unscored — pass completeness/quality/progress to record a score)"
+        )
         return CallToolResult(content=[TextContent(
             type="text",
-            text=f"✅ Cycle #{cycle_id} marked as accepted (decision: {current_decision} → {new_decision})."
+            text=f"✅ Cycle #{cycle_id} marked as accepted (decision: {current_decision} → {new_decision}).{scored}"
         )])
     except Exception as e:
         return CallToolResult(content=[TextContent(type="text", text=f"Error accepting cycle #{cycle_id}: {e}")])

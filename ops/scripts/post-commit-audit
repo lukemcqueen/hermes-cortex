@@ -26,6 +26,12 @@ fi
 if [[ -f "$SENTINEL" ]]; then
   rm -f "$SENTINEL"
   # Verified commit — reset the bypass-debt counter.
+  #
+  # INVARIANT: total_no_verify > 0 ⟹ last_no_verify_at is a timestamp.
+  # The reset must PRESERVE the previous last_no_verify_at: it used to take
+  # the None from the literal below while keeping the old total, so the file
+  # ended up claiming one historical bypass with no date (audited
+  # 2026-09-23 — the count was unauditable).
   python3 - "$LOGDIR" "$DEBT_FILE" <<'PYEOF' 2>/dev/null || true
 import json, os, sys, datetime
 logdir, debt_file = sys.argv[1], sys.argv[2]
@@ -36,8 +42,13 @@ if os.path.exists(debt_file):
     try:
         old = json.load(open(debt_file))
         debt["total_no_verify"] = old.get("total_no_verify", 0)
+        debt["last_no_verify_at"] = old.get("last_no_verify_at")
     except (OSError, ValueError):
         pass
+# Backfill: a count with no date means an undatable bypass. Say so instead of
+# leaving null, so downstream audits see the gap rather than a false blank.
+if (debt["total_no_verify"] or 0) > 0 and not debt["last_no_verify_at"]:
+    debt["last_no_verify_at"] = "unknown (pre-2026-09-23 record)"
 with open(debt_file, "w") as f:
     json.dump(debt, f, indent=2)
 PYEOF

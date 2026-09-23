@@ -16,7 +16,7 @@ Public installer + skill set for [Hermes Agent](https://hermes-agent.nousresearc
 
 ## Skill loading — NOT OPTIONAL
 
-Every session: read `.hermes-cortex/skills.yaml`, load `always` skills, classify with `agent-flow`, load `on_task` skills. See [`docs/skills-manifest-reference.md`](docs/skills-manifest-reference.md).
+Every session: read the skills manifest — `$HOME/.hermes-cortex/skills.yaml` (deployed form) or `.hermes-cortex/skills.yaml` inside a seeded project — load `always` skills, classify with `agent-flow`, load `on_task` skills. The repo's canonical source for that file is [`docs/templates/skills.yaml`](docs/templates/skills.yaml); see [`docs/skills-manifest-reference.md`](docs/skills-manifest-reference.md).
 
 ---
 

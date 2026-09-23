@@ -25,6 +25,52 @@ After verifying: cycle_query(task_id="story-name") ← review the cycle
                  feedback_accept / feedback_override ← train the model
 ```
 
+## Recording a score when the hook never scored the cycle
+
+`begin_change` writes a PENDING cycle with every score at `0.0`. The pre-commit hook
+(`score-cycle`) normally fills in completeness / quality / progress and computes
+`composite` — but a cycle closed straight through `feedback_accept` never passes that
+path, so it keeps `composite = 0.0`.
+
+**Read `composite = 0.0` as "unscored", not "failed".** As of 2026-09-23 you can supply
+your own components so the number means something:
+
+```
+feedback_accept(cycle_id=1234, note="…", completeness=10, quality=8, progress=6)
+```
+
+`composite` is then recomputed with the configured weights
+(`weights.completeness` 0.4 · `weights.quality` 0.3 · `weights.progress` 0.3, see
+`config_show`). Each value must be 0-10 — out-of-range or non-numeric input is refused and
+the cycle stays PENDING. Omit them and the cycle is recorded unscored (never fabricated).
+
+Scores are **self-reported**: state what you actually verified. A green test run, real
+command output, or a named file that changed justifies a high quality score; "I wrote
+some code" does not.
+
+## Decision labels — canonical values and legacy rows
+
+New cycles use three canonical decisions: `PENDING`, `MOVE_ON`, `STOP` (plus `LOOP` for
+keep-iterating and `PENDING` for an unclosed cycle). Older rows in `loop_cycles` carry
+decorated spellings — `LOOP 🔄 — keep iterating`, `MOVE ON → …`, `STOP ✗ — hard fail,
+escalate`, `STOP ✓ …` — because earlier scoring code embedded emoji and prose in the
+column. Nothing rewrites history, so trend queries must bucket on the prefix:
+
+```sql
+SELECT CASE
+         WHEN decision LIKE 'MOVE%' THEN 'MOVE_ON'
+         WHEN decision LIKE 'LOOP%' THEN 'LOOP'
+         WHEN decision LIKE 'STOP%' THEN 'STOP'
+         ELSE decision
+       END AS decision_class,
+       COUNT(*), ROUND(AVG(composite), 1)
+FROM loop_cycles
+WHERE composite > 0          -- exclude unscored rows from quality trends
+GROUP BY decision_class;
+```
+
+Always filter `composite > 0` for score trends: unscored cycles pull any average down.
+
 ## Multi-file changes — how to score
 
 | Pattern | What to do |

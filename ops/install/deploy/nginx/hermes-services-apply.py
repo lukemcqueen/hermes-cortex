@@ -541,6 +541,32 @@ def main():
         else:
             extra_dst = services_enabled_dir / extras_conf
             if extra_dst.exists():
+                # Drift guard (2026-09-23): the extra-services file owns the
+                # bus (xx004), grafana (xx003) and metrics (xx005) server
+                # blocks. Removing it takes those ports down — and on hosts
+                # whose core conf no longer defines them (the bus moved to
+                # extras), the reverse proxy for a LIVE service disappears
+                # silently. Warn loudly so an operator sees it before nginx
+                # reloads into a broken state.
+                core_conf = config_dir.parent / "sites-available" / "hermes-services.conf"
+                try:
+                    core_text = core_conf.read_text() if core_conf.is_file() else ""
+                except OSError:
+                    core_text = ""
+                orphaned = [
+                    name for name, needle in (
+                        ("bus (xx004)", "agent_bus_backend"),
+                        ("grafana (xx003)", "grafana_backend"),
+                        ("push-metrics (xx005)", "metrics_backend"),
+                    ) if needle not in core_text
+                ]
+                if orphaned:
+                    print(
+                        f"  ⚠️  Extra services disabled, but the core conf does NOT define: "
+                        f"{', '.join(orphaned)} — those ports will stop being served. "
+                        f"Set HERMES_SERVICES to include bus,metrics,grafana (or 'all') "
+                        f"on orchestrator hosts before re-applying."
+                    )
                 extra_dst.unlink()
                 print(f"  ○ Extra services: disabled (HERMES_SERVICES={hermes_services})")
 

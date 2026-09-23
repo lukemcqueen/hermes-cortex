@@ -1319,9 +1319,13 @@ def _check_bus_e2e(res):
     # Probe not read back — the message-handler may have silently archived
     # it (DOCTOR_TEST is on its silent-archive list). Verify via the
     # archive log before declaring failure.
+    # Scan WIDE (2026-09-23): a 10-message / 2-minute window false-FAILed on a
+    # busy bus — the probe had been consumed and archived, just beyond the
+    # window. A ❌ on this governance-critical check is what makes agents loop,
+    # so err on the side of finding it.
     consumed = False
     try:
-      recent = bus_archives(queue, limit=10, since_minutes=2)
+      recent = bus_archives(queue, limit=50, since_minutes=5)
       consumed = any(
         (m.get("body") or {}).get("correlation_id") == test_cid
         or m.get("correlation_id") == test_cid
@@ -1404,6 +1408,110 @@ def _check_bus_e2e(res):
   except Exception as e:
     res.add("Bus stuck msgs", "SKIP",
         f"Cannot query queue stats: {e}")
+
+  # ── 4b. Delivery age — messages that arrived but sit unread ──
+  # Delivered ≠ usable (2026-09-23): an inbox-only agent can be healthy,
+  # reachable and busy elsewhere while nobody consumes its queue — five
+  # messages sat unread for over an hour and the sender had no way to see it.
+  # Peek is non-destructive, so the receiving agent is not disturbed.
+  try:
+    import base64
+    import urllib.error
+    import urllib.request
+    from datetime import datetime, timezone
+    from lib.cortex_bus import BUS_URL, CORTEX_BUS_TOKEN, CORTEX_BUS_AUTH
+
+    registry_path = CORTEX_HOME / "state" / "agent-registry.json"
+    agents = []
+    if registry_path.is_file():
+      reg = json.loads(registry_path.read_text())
+      # Shape: {"version":…, "agents": {name: {name, role, host, …}}}
+      entries = reg.get("agents", reg) if isinstance(reg, dict) else reg
+      if isinstance(entries, dict):
+        for key, val in entries.items():
+          name = val.get("name") if isinstance(val, dict) else None
+          name = name or key
+          if isinstance(name, str) and name and not name.startswith("_"):
+            agents.append(name)
+      elif isinstance(entries, list):
+        agents = [a.get("name") for a in entries if isinstance(a, dict) and a.get("name")]
+    agents = sorted({a for a in agents if isinstance(a, str) and a})
+
+    attempts = []
+    if CORTEX_BUS_TOKEN:
+      attempts.append(("Bearer", CORTEX_BUS_TOKEN))
+    if CORTEX_BUS_AUTH:
+      attempts.append(("Basic", base64.b64encode(CORTEX_BUS_AUTH.encode()).decode()))
+
+    if not agents or not attempts:
+      res.add("Bus delivery age", "SKIP",
+          f"nothing to scan (agents={len(agents)}, auth_schemes={len(attempts)})")
+    else:
+      STALE_MIN = 60
+      stale = []
+      unparsable = 0
+      for agent in agents:
+        # Queue names are lowercase (inbox_titus) while the registry keys are
+        # display-cased (Titus) — a case mismatch silently scanned nothing.
+        qname = f"inbox_{str(agent).lower()}"
+        msgs = []
+        for scheme, creds in attempts:
+          req = urllib.request.Request(
+              f"{BUS_URL}/api/pgmq/peek/{qname}?limit=50")
+          if creds:
+            req.add_header("Authorization", f"{scheme} {creds}")
+          try:
+            msgs = json.loads(
+                urllib.request.urlopen(req, timeout=8).read().decode()).get("messages", [])
+            break
+          except urllib.error.HTTPError as e:
+            if e.code not in (401, 403) or scheme == attempts[-1][0]:
+              raise
+        if not msgs:
+          continue
+        oldest = None
+        for m in msgs:
+          body = m.get("body")
+          if isinstance(body, str):
+            try:
+              body = json.loads(body)
+            except (json.JSONDecodeError, TypeError):
+              body = {}
+          # Prefer the SERVER's enqueued_at (tz-aware, +00) — a body
+          # timestamp is written by the sender in host-local time with no
+          # offset, so reading it as UTC puts a KST message hours in the
+          # FUTURE and hides real backlog (2026-09-23).
+          raw = m.get("enqueued_at") or m.get("created_at") or m.get("inserted_at")
+          naive_is_local = False
+          if not raw and isinstance(body, dict):
+            raw = body.get("timestamp") or body.get("sent_at")
+            naive_is_local = bool(raw)
+          if not raw:
+            continue
+          try:
+            ts = datetime.fromisoformat(str(raw).replace("Z", "+00:00"))
+          except ValueError:
+            continue
+          if ts.tzinfo is None:
+            ts = ts.replace(tzinfo=datetime.now().astimezone().tzinfo if naive_is_local else timezone.utc)
+          if oldest is None or ts < oldest:
+            oldest = ts
+        if oldest is None:
+          unparsable += 1
+          continue
+        age_min = int((datetime.now(timezone.utc) - oldest).total_seconds() / 60)
+        if age_min >= STALE_MIN:
+          stale.append(f"{qname}: {len(msgs)} pending, oldest {age_min}m")
+      if stale:
+        res.add("Bus delivery age", "WARN", "; ".join(stale),
+            "Delivered but unread — the receiving agent is not consuming its queue "
+            "(check its inbox cron/poller); a handoff here is NOT usable yet")
+      else:
+        res.add("Bus delivery age", "PASS",
+            f"no inbox holds a message older than {STALE_MIN}m"
+            + (f" ({unparsable} queue(s) had no parsable timestamp)" if unparsable else ""))
+  except Exception as e:
+    res.add("Bus delivery age", "SKIP", f"cannot scan delivery age: {e}")
 
   # ── 5. Handler script check ──
   # Verify the handler script exists at the expected path (will be what processes EXEC)
