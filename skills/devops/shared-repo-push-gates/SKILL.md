@@ -163,16 +163,18 @@ headered repo copy fails every checksum/script-content check.
 ## Pitfalls
 
 - **Editing an always-skill mid-cycle invalidates the skills-loaded marker.**
-  The enforcer's marker pins a fingerprint of the 7 always-skill mtimes —
-  any `skill_manage`/`patch` on one of them (e.g. a conciseness trim) makes
-  the stored fingerprint stale. The NEXT write tool call fails with
-  "session skills not fully loaded" even though all 7 show ✅ loaded (the
-  ✅ reflects the in-memory set, the block reflects the stale marker).
-  Fix: re-load all 7 always-skills via `skill_view()` (serial; the 7th
-  call regenerates the marker) BEFORE continuing the push sequence.
-  Deploying (cortex-update) has the same effect — it changes deployed
-  skill mtimes. Verified 2026-09-02 (change-checklist trim → push gate
-  blocked mid-sequence).
+  The enforcer's marker pins a fingerprint of the 7 always-skill CONTENTS
+  (content hash since 2026-09-23; mtimes before that, which fired on
+  redeploys that changed nothing) — any `skill_manage`/`patch` on one of them
+  (e.g. a conciseness trim) makes the stored fingerprint stale. The NEXT write
+  tool call fails with "session skills not fully loaded" even though all 7
+  show ✅ loaded (the ✅ reflects the in-memory set, the block reflects the
+  stale marker). The block message now names the skills whose content changed:
+  re-load THOSE via `skill_view()` (serial; the 7th of a full set regenerates
+  the marker) BEFORE continuing the push sequence. A deploy (cortex-update)
+  only has this effect when the deployed skill CONTENT actually changed.
+  Verified 2026-09-02 (change-checklist trim → push gate blocked
+  mid-sequence); mechanism corrected 2026-09-23.
 - "Push blocked" after a clean commit is usually the OTHER session's tree,
   not your diff. Check `git status --short` before debugging your commit.
 - **ANY doctor FAIL blocks push, not just Deploy sync** — e.g.

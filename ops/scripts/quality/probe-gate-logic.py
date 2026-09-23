@@ -216,14 +216,83 @@ def main() -> int:
         enforcer._session_skills(credit_sid) == {"codebase-design"},
     )
     credit_file = enforcer._skills_credit_path(credit_sid)
-    original_fp = enforcer._skills_fingerprint
     enforcer._session_skills_loaded.clear()
-    enforcer._skills_fingerprint = lambda: "different-fingerprint"
-    check("credit invalidated when the skills fingerprint changes", enforcer._session_skills(credit_sid) == set())
-    enforcer._skills_fingerprint = original_fp
+    # Legacy journal (written before per-skill content hashes existed): the
+    # fingerprint is its only signal, so a mismatch must still fail closed.
+    credit_file.write_text(json.dumps({
+        "session": credit_sid,
+        "skills_fp": "fp-from-before-the-deploy",
+        "skills": ["codebase-design"],
+    }))
+    check(
+        "legacy journal pinned to another fingerprint fails closed",
+        enforcer._session_skills(credit_sid) == set(),
+    )
     credit_file.write_text("{corrupt")
     enforcer._session_skills_loaded.clear()
     check("corrupt credit journal fails closed", enforcer._session_skills(credit_sid) == set())
+    credit_file.unlink(missing_ok=True)
+
+    # ── Content fingerprint: a deploy must not wipe skill credit ──────────
+    # 2026-09-23: the fingerprint used to hash skill-file MTIMES, so a deploy
+    # that rewrote byte-identical files invalidated the 7/7 marker mid-task
+    # ("7/7 loaded ✅ but still blocked"). These checks fail on the old rule.
+    lines.append("")
+    lines.append("Skill content fingerprint (no-op deploy must not wipe credit)")
+    original_skills_dir = enforcer._skills_dir
+    content_sid = "probe_session_content"
+    try:
+        with tempfile.TemporaryDirectory() as tree_tmp:
+            tree = Path(tree_tmp) / "skills"
+            for name in enforcer._REQUIRED_SKILLS:
+                d = tree / "workflow" / name
+                d.mkdir(parents=True, exist_ok=True)
+                (d / "SKILL.md").write_text("body-v1\n")
+            enforcer._skills_dir = lambda: tree
+            enforcer._session_skills_loaded.clear()
+            enforcer._session_skills_loaded.setdefault(content_sid, set()).update(
+                enforcer._REQUIRED_SKILLS
+            )
+            enforcer._persist_session_skills(content_sid)
+            fp_before = enforcer._skills_fingerprint()
+
+            # identical bytes, newer mtime == what a redeploy does
+            for name in enforcer._REQUIRED_SKILLS:
+                p = tree / "workflow" / name / "SKILL.md"
+                st = p.stat()
+                os.utime(p, (st.st_atime + 5, st.st_mtime + 5))
+            check(
+                "fingerprint unchanged by an identical-bytes redeploy",
+                enforcer._skills_fingerprint() == fp_before,
+            )
+            enforcer._session_skills_loaded.clear()
+            check(
+                "credit survives an identical-bytes redeploy",
+                enforcer._session_skills(content_sid) == set(enforcer._REQUIRED_SKILLS),
+            )
+
+            (tree / "workflow" / "task-start" / "SKILL.md").write_text("body-v2\n")
+            check(
+                "fingerprint changes when skill CONTENT changes",
+                enforcer._skills_fingerprint() != fp_before,
+            )
+            enforcer._session_skills_loaded.clear()
+            check(
+                "only the changed skill loses credit",
+                enforcer._session_skills(content_sid)
+                == set(enforcer._REQUIRED_SKILLS) - {"task-start"},
+            )
+            check(
+                "stale_skills names exactly the changed skill",
+                enforcer._stale_skills(content_sid) == ["task-start"],
+            )
+    finally:
+        enforcer._skills_dir = original_skills_dir
+        enforcer._session_skills_loaded.clear()
+        try:
+            enforcer._skills_credit_path(content_sid).unlink(missing_ok=True)
+        except (OSError, ValueError):
+            pass
 
     lines.append("")
     summary = {

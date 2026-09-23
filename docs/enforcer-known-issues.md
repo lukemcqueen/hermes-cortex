@@ -146,6 +146,7 @@ check's 24h rule or the >TTL purge finally classifies it.
 | 5 | `begin_change` close-out ignores PENDING cycles from dead sessions | 2026-09-17 | Close-out gate filters only `this session_id` | No (but weakens RULE 2) |
 | 6 | Skills gate passed with NO session id if any other session had a marker | 2026-09-23 | `_check_skills_loaded_marker()` no-session branch accepted any marker | Was FAIL-OPEN (now fixed: fails closed) |
 | 7 | Domain/adversarial skill credit vanished after every deploy | 2026-09-23 | Loaded-skill set lived only in process memory; plugin reload wiped it | Yes (re-blocked mid-task) — fixed via the credit journal |
+| 8 | "7/7 loaded ✅ but still blocked" after a deploy that changed no skill text | 2026-09-23 | `_skills_fingerprint()` hashed skill-file MTIMES, so a byte-identical redeploy moved the fingerprint, discarded the credit journal and invalidated the 7/7 marker | Yes — fixed: content-hash fingerprint + per-skill credit; the block message names the skills to reload |
 
 ---
 
@@ -182,3 +183,11 @@ Exit 0 = the enforcer on this host behaves as documented.
    session's proof; the block message now diagnoses broken session-id plumbing instead.
 6. **Skill-credit journal** (DONE 2026-09-23) — `state/skills-credit/<session_id>.json`,
    fingerprint-pinned, rehydrated on cold start, invalidated when the skills change.
+7. **Content-hash fingerprint + per-skill invalidation** (DONE 2026-09-23) — `_skills_fingerprint()`
+   now hashes skill CONTENT (`_skill_content_hash()`, memoized on mtime+size) instead of mtimes, and
+   the credit journal stores a per-skill `hashes` map, so only a skill whose bytes actually changed
+   loses credit. `_stale_skills(session_id)` names them, and the skills-gate block message prints
+   `skill_view(name='<skill>')` for exactly those — a weak model reloads one skill, not seven.
+   Legacy journals (no `hashes`) keep the old all-or-nothing rule, fail closed. Regression tests:
+   `tests/test_runtime/test_skill_content_fingerprint.py` + the probe's
+   "no-op deploy must not wipe credit" section.

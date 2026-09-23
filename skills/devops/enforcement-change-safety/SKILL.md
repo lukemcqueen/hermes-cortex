@@ -556,7 +556,25 @@ was silently dead). Also, `task-start` lives under `workflow/`, which the
 fingerprint candidate paths missed. Fix: `_skills_dir()` resolves
 `HERMES_HOME/skills` when it exists (HERMES_HOME IS the .hermes dir), and the
 candidate list includes `workflow/`. Regression tests: `TestSkillsDirResolution`
-(3 env variants + fingerprint-mtime-change).
+(3 env variants + content-vs-mtime fingerprint).
+
+**14e. The fingerprint hashed MTIMES, so a no-op redeploy wiped session credit
+(2026-09-23).** `cortex-update.sh` rewrites deployed skill files, moving their
+mtimes even when the bytes are identical. That changed `_skills_fingerprint()`,
+which discarded the per-session credit journal and invalidated the 7/7 marker
+mid-task: the agent saw "7/7 loaded ✅ but still blocked" with nothing wrong on
+its side. Live proof on moses — the deployed and repo copies of
+`test-driven-development/SKILL.md` were `diff`-identical while the deployed mtime
+had moved 15:42 → 15:56. The old rule also had a 1-second blind spot: a
+same-second content change did not move the fingerprint at all (the gate missed
+real changes while failing on fake ones). Fix: hash CONTENT
+(`_skill_content_hash()`, memoized on mtime+size), keep credit per SKILL in the
+journal (`hashes` map) so only a skill whose bytes changed loses credit, and
+name those skills in the block message via `_stale_skills()` — a weak model
+reloads one skill instead of seven. Legacy journals (no `hashes`) keep the old
+all-or-nothing rule, fail closed. Regression tests:
+`tests/test_runtime/test_skill_content_fingerprint.py` + the probe's "no-op
+deploy must not wipe credit" section.
 
 **Checklist when touching these paths:**
 - [ ] Per-session skill tests: session A's loads never satisfy session B
@@ -681,8 +699,11 @@ other conclude the system is broken. When touching either block message:
   amend --no-verify) proving genuine bypasses still log and internal replays
   stay silent. Run before shipping any sentinel-touching hook change.
 - `references/skill-marker-fingerprint-invalidation-2026-09-01.md` — the
-  "7/7 loaded ✅ but still blocked" loop: any deploy touching a skill file
-  invalidates every session marker (fingerprint of skill mtimes); recovery is
-  one serial `skill_view` (in-memory set intact) or re-loading all 7 (after a
-  gateway restart); plus the docs-drift variant (AGENTS.md enumerating the
-  always-set with old names) and the whole-repo grep rule when the set changes.
+  "7/7 loaded ✅ but still blocked" loop. A deploy that touches a skill file's
+  CONTENT invalidates every session marker (the fingerprint hashes skill
+  content since 2026-09-23; it hashed mtimes before, which fired on redeploys
+  that changed nothing); recovery is one serial `skill_view` (in-memory set
+  intact) or re-loading all 7 (after a gateway restart), and the block message
+  now names the exact skills to reload. Includes the docs-drift variant
+  (AGENTS.md enumerating the always-set with old names) and the whole-repo grep
+  rule when the set changes.

@@ -28,6 +28,7 @@ or talk my way out of — the block comes from outside myself.
 Install: ln -sf ~/hermes-cortex/plugins/governance-enforcer ~/.hermes/plugins/
 """
 
+import hashlib
 import json
 import logging
 import os
@@ -42,6 +43,11 @@ from typing import Any, Dict, Optional
 
 GOVERNANCE_STATE_DIR = Path.home() / ".hermes-cortex" / "state"
 SURVEY_MARKER = GOVERNANCE_STATE_DIR / ".cron-survey-done"
+
+# Skill-file content hashes, memoized on (mtime, size) — see
+# _skill_content_hash(). Keyed by path so a redeploy that rewrites identical
+# bytes recomputes to the same digest instead of invalidating credit.
+_SKILL_HASH_CACHE: Dict[str, tuple] = {}
 # ── Skills-loading proof: PER-SESSION files (2026-08-01) ──────────────
 # Previously a single shared .skills-loaded file gated every session on a
 # machine. Concurrent sessions (telegram + cli 1 + cli 2 on one server)
@@ -125,6 +131,15 @@ def _persist_session_skills(session_id: str) -> None:
             "session": session_id,
             "skills_fp": _skills_fingerprint(),
             "skills": sorted(_session_skills_loaded.get(session_id, set())),
+            # Per-skill content hash: credit is dropped only for a skill whose
+            # bytes actually changed (2026-09-23) — not for every skill because
+            # a deploy touched the set.
+            "hashes": {
+                _name: _skill_content_hash(_path)
+                for _name in sorted(_session_skills_loaded.get(session_id, set()))
+                for _path in [_skill_file(_name)]
+                if _path is not None
+            },
             "written": time.strftime("%Y-%m-%dT%H:%M:%S"),
         }
         tmp = d / f".{session_id}.json.tmp"
@@ -142,9 +157,16 @@ def _persist_session_skills(session_id: str) -> None:
 def _session_skills(session_id: str) -> set:
     """Loaded skills for a session; rehydrates from the credit journal.
 
+    Per-skill validity (2026-09-23): a credited skill is kept unless we can
+    locate its file AND its current content hash differs from the hash recorded
+    when it was credited. A deploy that rewrote byte-identical skill files
+    therefore costs the session nothing, while a real content change still
+    revokes that one skill.
+
     Fail-closed: a missing, corrupt, session-mismatched or
     fingerprint-stale journal yields an EMPTY set (agent must re-load),
-    never a pass.
+    never a pass. Legacy journals (no per-skill hashes) keep the old
+    all-or-nothing fingerprint rule.
     """
     if not session_id:
         return set()
@@ -159,14 +181,62 @@ def _session_skills(session_id: str) -> set:
             if (
                 isinstance(data, dict)
                 and data.get("session") == session_id
-                and data.get("skills_fp") == _skills_fingerprint()
                 and isinstance(data.get("skills"), list)
             ):
-                loaded = {str(s) for s in data["skills"]}
+                recorded = data.get("hashes")
+                if not isinstance(recorded, dict):
+                    # Legacy journal: all-or-nothing fingerprint pin.
+                    if data.get("skills_fp") == _skills_fingerprint():
+                        loaded = {str(s) for s in data["skills"]}
+                else:
+                    for name in (str(s) for s in data["skills"]):
+                        want = recorded.get(name)
+                        if want is None:
+                            # Credited but unhashable at credit time (file not
+                            # locatable) — keep it; we cannot prove it changed.
+                            loaded.add(name)
+                            continue
+                        current = _skill_file(name)
+                        if current is None or _skill_content_hash(current) == want:
+                            loaded.add(name)
     except (OSError, ValueError, TypeError):
         loaded = set()
     _session_skills_loaded[session_id] = loaded
     return loaded
+
+
+def _stale_skills(session_id: str) -> list:
+    """Required skills this session loaded whose CONTENT changed since.
+
+    Returned sorted so a block message can list exact `skill_view(name=...)`
+    calls: a weak model re-loads the one skill that changed instead of the
+    whole always-set. Empty list = nothing to reload. When no journal exists
+    the honest answer is "all of them".
+    """
+    if not session_id:
+        return []
+    try:
+        path = _skills_credit_path(session_id)
+        if not path.exists():
+            return sorted(_REQUIRED_SKILLS)
+        data = json.loads(path.read_text())
+    except (OSError, ValueError, TypeError):
+        return sorted(_REQUIRED_SKILLS)
+    if not isinstance(data, dict) or data.get("session") != session_id:
+        return sorted(_REQUIRED_SKILLS)
+    recorded = data.get("hashes")
+    if not isinstance(recorded, dict):
+        # Legacy journal — the fingerprint is the only signal available.
+        return sorted(_REQUIRED_SKILLS) if data.get("skills_fp") != _skills_fingerprint() else []
+    stale: list = []
+    for name in sorted(_REQUIRED_SKILLS):
+        want = recorded.get(name)
+        if want is None:
+            continue  # never loaded — the missing-skills list already names it
+        current = _skill_file(name)
+        if current is None or _skill_content_hash(current) != want:
+            stale.append(name)
+    return stale
 
 # ── Domain skill gate ──────────────────────────────────
 # Before write_file/patch, check if the file type's domain
@@ -625,30 +695,81 @@ def _skills_fingerprint() -> str:
     mandatory and mechanical, WITHOUT touching governance locks (the
     deploy lock-purge TZ bug was fixed separately — locks stay stable).
 
-    Uses mtimes (not content hashes) for speed — the check runs on every
-    write-tool call. mtime granularity (1s) is fine: a deploy that changes
-    a skill updates its mtime.
+    Uses CONTENT HASHES (2026-09-23), memoized on (mtime, size) so the
+    per-write-tool-call cost stays a stat() per skill.
+
+    Why not mtimes (the previous rule): a deploy that rewrites BYTE-IDENTICAL
+    skill files moved the mtime, changed the fingerprint, discarded the
+    per-session credit journal and invalidated the 7/7 marker mid-task. Live
+    proof on moses 2026-09-23: the deployed and repo copies of
+    test-driven-development/SKILL.md were `diff`-identical while the deployed
+    mtime had moved 15:42 → 15:56, and the plugin reported that skill as NOT
+    loaded in a session that had loaded it ("7/7 loaded ✅ but still blocked").
+    mtime also has a 1-second blind spot: a same-second content change left the
+    fingerprint untouched. Hashing the bytes makes invalidation mean "the rules
+    changed", and lets the gate name the exact skill to reload.
     """
     import hashlib as _hl
     _h = _hl.md5()
-    _skills_root = _skills_dir()
-    for _name in sorted(_REQUIRED_SKILLS):
-        _candidates = [
-            _skills_root / _name / "SKILL.md",
-            _skills_root / "devops" / _name / "SKILL.md",
-            _skills_root / "software-development" / _name / "SKILL.md",
-            _skills_root / "workflow" / _name / "SKILL.md",
-        ]
-        _found = ""
-        for _c in _candidates:
-            try:
-                if _c.is_file():
-                    _found = str(int(_c.stat().st_mtime))
-                    break
-            except OSError:
-                continue
-        _h.update(f"{_name}:{_found}|".encode())
+    for _name, _digest in _required_skill_hashes().items():
+        _h.update(f"{_name}:{_digest}|".encode())
     return _h.hexdigest()[:16]
+
+
+def _skill_file(name: str):
+    """Locate a deployed skill's SKILL.md, or None.
+
+    Layout is `<skills_root>/<name>/SKILL.md` for local-only skills and
+    `<skills_root>/<category>/<name>/SKILL.md` for fleet skills — both are
+    probed, plus a two-level category dir for nested collections.
+    """
+    root = _skills_dir()
+    try:
+        direct = root / name / "SKILL.md"
+        if direct.is_file():
+            return direct
+        for pattern in ("*/%s/SKILL.md" % name, "*/*/%s/SKILL.md" % name):
+            for cand in root.glob(pattern):
+                try:
+                    if cand.is_file():
+                        return cand
+                except OSError:
+                    continue
+    except OSError:
+        return None
+    return None
+
+
+def _skill_content_hash(path) -> str:
+    """sha256[:12] of a skill file's bytes; '' when unreadable.
+
+    Memoized on (mtime, size): a rewrite with the same mtime AND size cannot
+    change the digest, so the cache is safe — and st_mtime is a float, so a
+    same-second edit still misses the cache (unlike the old int(mtime) rule).
+    """
+    try:
+        st = path.stat()
+    except OSError:
+        return ""
+    key = str(path)
+    cached = _SKILL_HASH_CACHE.get(key)
+    if cached is not None and cached[0] == st.st_mtime and cached[1] == st.st_size:
+        return cached[2]
+    try:
+        digest = hashlib.sha256(path.read_bytes()).hexdigest()[:12]
+    except OSError:
+        return ""
+    _SKILL_HASH_CACHE[key] = (st.st_mtime, st.st_size, digest)
+    return digest
+
+
+def _required_skill_hashes() -> Dict[str, str]:
+    """Content hash per required skill ('' when its file is missing)."""
+    out: Dict[str, str] = {}
+    for name in sorted(_REQUIRED_SKILLS):
+        path = _skill_file(name)
+        out[name] = _skill_content_hash(path) if path is not None else ""
+    return out
 
 
 def _skills_dir() -> Path:
@@ -1382,8 +1503,9 @@ def _check_domain_skill_gate(tool_name: str, args: dict, session_id: str) -> Opt
             f"  skill_view(name='{skill_name}')\n\n"
             f"Or discover related skills:\n"
             f"  skills_list(category='devops')\n\n"
-            f"Already loaded it earlier this session? A deploy reloads the enforcement\n"
-            f"plugin and resets this session's skill state — ONE skill_view clears it.\n\n"
+            f"Already loaded it earlier this session? Credit is kept unless that\n"
+            f"skill's CONTENT changed, so a deploy only clears the skills it\n"
+            f"rewrote — ONE skill_view clears this one.\n\n"
             f"The write is blocked until you load the skill. "
             f"Read-only tools ARE available.\n"
         )
@@ -1398,8 +1520,9 @@ def _check_domain_skill_gate(tool_name: str, args: dict, session_id: str) -> Opt
             f"  {why}\n\n"
             f"You must load it before writing:\n"
             f"  skill_view(name='{skill_name}')\n\n"
-            f"Already loaded it earlier this session? A deploy reloads the enforcement\n"
-            f"plugin and resets this session's skill state — ONE skill_view clears it.\n\n"
+            f"Already loaded it earlier this session? Credit is kept unless that\n"
+            f"skill's CONTENT changed, so a deploy only clears the skills it\n"
+            f"rewrote — ONE skill_view clears this one.\n\n"
             f"After loading, retry the write. Read-only tools ARE still available.\n"
         )
         return {"action": "block", "message": msg}
@@ -1703,9 +1826,9 @@ def _check_adversarial_commit_gate(
             "Then retry the commit. The pre-commit hook's adversarial gate will "
             "also block critical/high findings — this check requires the skill "
             "to be loaded at all.\n\n"
-            "Already loaded it earlier this session? A deploy reloads the "
-            "enforcement plugin and resets this session's skill state — ONE "
-            "skill_view clears this gate.\n"
+            "Already loaded it earlier this session? Credit is kept unless "
+            "that skill's CONTENT changed, so a deploy only clears the skills "
+            "it rewrote — ONE skill_view clears this gate.\n"
         )
         return {"action": "block", "message": msg}
 
@@ -1964,6 +2087,12 @@ def register(ctx):
                     # skills are loaded.
                     loaded = _get_loaded_skills_summary(hermes_session_id)
                     loaded_count = sum(1 for v in loaded.values() if v)
+                    # Which skills actually CHANGED since this session loaded
+                    # them (content-hashed) — named in the message below so the
+                    # agent reloads exactly those, not the whole always-set.
+                    stale_skills = (
+                        _stale_skills(hermes_session_id) if loaded_count == 7 else []
+                    )
                     loaded_list = ", ".join(
                         f"✅ {s}" if loaded[s] else f"  {s}"
                         for s in _REQUIRED_SKILLS
@@ -1975,12 +2104,23 @@ def register(ctx):
                             "Tool '" + tool_name + "' modifies state — "
                             + str(loaded_count) + "/7 always-section skills loaded.\n\n"
                             + (
-                                "⚠️ All 7 are recorded for this session, but its proof is STALE:\n"
-                                "a deploy changed a governance skill file (skill credit itself now\n"
-                                "survives a plugin reload, so this only fires when a skill changed).\n"
-                                "Re-load all 7 IN ONE TURN (batched skill_view calls; unchanged\n"
-                                "content is deduplicated, so this is cheap) to regenerate the\n"
-                                "marker. Expected after a skills deploy — not an error.\n\n"
+                                (
+                                    "⚠️ All 7 are recorded for this session, but the proof is STALE —\n"
+                                    "the CONTENT of these skills changed since you loaded them:\n"
+                                    + "".join(
+                                        f"  skill_view(name='{s}')\n" for s in stale_skills
+                                    )
+                                    + "\nRe-load ONLY the skills listed above (content hashes are\n"
+                                    "compared, so a deploy that changed no skill text no longer\n"
+                                    "invalidates credit). Expected after a real skills change —\n"
+                                    "not an error, and not something to work around.\n\n"
+                                    if stale_skills else
+                                    "⚠️ All 7 are recorded for this session, but its proof is STALE:\n"
+                                    "re-load the 7 always-section skills IN ONE TURN (batched\n"
+                                    "skill_view calls; unchanged content is deduplicated, so this\n"
+                                    "is cheap) to regenerate the marker. Expected after a skills\n"
+                                    "deploy — not an error.\n\n"
+                                )
                                 if loaded_count == 7 else ""
                             )
                             + (

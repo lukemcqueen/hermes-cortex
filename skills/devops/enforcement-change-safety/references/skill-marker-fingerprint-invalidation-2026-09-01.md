@@ -9,20 +9,42 @@ of the 7 — it wasn't in the manifest's always list I loaded."
 
 The per-session marker (`~/.hermes-cortex/state/skills-loaded/<session_id>`) is
 `session:{id}|skills:{fingerprint}`, where the fingerprint is an md5 of the
-**mtimes of the 7 always-skill SKILL.md files** (`_skills_fingerprint()`,
-Rule 14d). Consequences:
+**CONTENT of the 7 always-skill SKILL.md files** (`_skills_fingerprint()`,
+Rule 14d). **Updated 2026-09-23:** it used to hash their MTIMES, which made the
+fingerprint change when nothing the agent had to read had changed — see
+"Why the fingerprint was rewritten" below. Consequences:
 
-1. **ANY deploy that touches a skill file changes the fingerprint.** That means
-   `cortex-update.sh` AND the mandatory dogfood deploy inside `git push` (Rule 12)
-   — pushing a skill/docs change re-deploys the skills and invalidates EVERY
-   session's marker, including the session doing the pushing.
+1. **Only a real CONTENT change to a skill file changes the fingerprint.** A
+   deploy that rewrites byte-identical files (`cortex-update.sh`, the dogfood
+   deploy inside `git push`) no longer invalidates anyone's marker. When a skill
+   body genuinely changes, the marker goes stale for every session — including
+   the session doing the pushing — and the block message names the exact skills
+   to reload.
 2. The auto-create fires on `skill_view` ONLY when the in-memory per-session
    loaded-set (`_session_skills_loaded[session_id]`) already contains all 7.
    That set lives in the GATEWAY PROCESS — a gateway restart (or host reboot)
-   empties it.
+   empties it; the per-session credit journal
+   (`state/skills-credit/<session_id>.json`) rehydrates it on the next write
+   attempt.
 3. Result: "7/7 always-section skills loaded ✅" in the block message AND the
    write still blocked. The ✅ reflects the current load; the block reflects the
    stale marker. Not a contradiction — two different state pieces.
+
+## Why the fingerprint was rewritten (2026-09-23)
+
+mtime is not content. Live proof on moses: after a deploy, the plugin reported
+`test-driven-development` as NOT loaded in a session that had loaded it, while
+the deployed and repo copies of that `SKILL.md` were `diff`-identical and only
+the deployed mtime had moved (15:42 → 15:56). The agent had done nothing wrong;
+the fingerprint counted the redeploy as a content change. mtime also has a
+1-second blind spot (a same-second edit left the fingerprint unchanged, so the
+gate missed real changes).
+
+Now: content hashes (memoized on mtime+size), **per-skill** validity in the
+credit journal, and `_stale_skills()` names the changed skills so the block
+message says `skill_view(name='<that one>')` instead of "reload all 7". A weak
+model reloads one skill, not seven. Legacy journals (no per-skill hashes) keep
+the old all-or-nothing rule — fail closed.
 
 ## Recovery (both paths)
 

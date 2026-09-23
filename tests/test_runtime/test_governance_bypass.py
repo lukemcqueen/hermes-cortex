@@ -1082,12 +1082,15 @@ class TestSkillsDirResolution:
         monkeypatch.delenv("HERMES_HOME", raising=False)
         assert enforcer._skills_dir() == Path.home() / ".hermes" / "skills"
 
-    def test_fingerprint_tracks_skill_mtime_change(self, monkeypatch, tmp_path):
-        """The fingerprint must CHANGE when a required skill's mtime changes —
-        this is what forces mid-turn reloads after deploys. With the old
-        double-.hermes path it never changed (regression)."""
-        import hashlib as hl
+    def test_fingerprint_ignores_mtime_only_and_tracks_content(self, monkeypatch, tmp_path):
+        """Fingerprint is CONTENT-based (2026-09-23), not mtime-based.
 
+        The old rule hashed mtimes, so a deploy that rewrote byte-identical
+        skill files changed the fingerprint, discarded session credit and
+        invalidated the 7/7 marker mid-task ("7/7 loaded ✅ but still blocked").
+        It also missed a same-second content change. Now: an mtime-only move
+        must NOT change it, and a content change MUST.
+        """
         # Build a fake skills tree: one required skill at workflow/ (task-start
         # lives there), the rest under software-development/.
         root = tmp_path / "skills"
@@ -1102,14 +1105,20 @@ class TestSkillsDirResolution:
         enforcer._skills_dir = lambda: root
         try:
             fp1 = enforcer._skills_fingerprint()
-            # touch task-start's SKILL.md → fingerprint must change
+            # identical bytes, newer mtime — exactly what a redeploy does
             import os as _os
             ts = (root / "workflow" / "task-start" / "SKILL.md")
             _os.utime(ts, (ts.stat().st_atime + 2, ts.stat().st_mtime + 2))
             fp2 = enforcer._skills_fingerprint()
+            # real content change
+            ts.write_text("x-changed")
+            fp3 = enforcer._skills_fingerprint()
         finally:
             enforcer._skills_dir = orig
-        assert fp1 != fp2, "fingerprint must change when a required skill mtime changes"
+        assert fp1 == fp2, (
+            "a redeploy of IDENTICAL skill bytes must not invalidate the fingerprint"
+        )
+        assert fp1 != fp3, "a skill CONTENT change must invalidate the fingerprint"
 
 
 # ═════════════════════════════════════════════════════════════════════════════

@@ -59,9 +59,10 @@ Every improvement you make that benefits other agents MUST go into the `hermes-c
   always-section skills are loaded via `skill_view()` (task-start bundles the list). Do NOT `touch` it —
   the enforcer rejects empty/session-mismatched markers. Per-session files mean concurrent sessions
   never stomp each other's proof.
-- **After a gateway restart or a deploy that touched skill files, the marker fingerprint is stale —
-  re-load all 7 always-skills with `skill_view()` (read-only, so the gate lets them through);
-  the 7th call regenerates the marker.**
+- **After a gateway restart, load all 7 always-skills with `skill_view()` (read-only, so the gate lets
+  them through); the 7th call regenerates the marker.** A deploy only invalidates the marker when a
+  skill's CONTENT changed (fingerprint = content hash since 2026-09-23) — and then the block message
+  names exactly which skills to reload, so re-load that list, not the whole set.
 - **Reflexion gate** — The pre-commit hook queries the session DB for proof that `reflexion-check`
   was loaded. Do NOT use `--no-verify` — it's logged and audited.
 - **Adversarial verify** — The pre-commit scanner checks for issues. **Correct:** Fix what it reports.
