@@ -9,7 +9,7 @@
 
 | Situation | Use | Example |
 |-----------|-----|---------|
-| Agent before coding | `cache_search(query)` | `mcp_loop_governance_cache_search(query="build user auth")` |
+| Agent before coding | `cache_search(query)` | `mcp__loop_governance__cache_search(query="build user auth")` |
 | Agent session init | `config_show()` + `cycle_stats()` | At session start, query current thresholds + recent stats |
 | Agent after a cycle | `feedback_accept(cycle_id=...)` / `feedback_override(cycle_id=..., ...)` | Confirm or correct the decision |
 | Agent reviewing cycles | `cycle_query(task_id="...")` | Check what was scored for a task |

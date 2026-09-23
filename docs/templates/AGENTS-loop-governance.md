@@ -29,12 +29,12 @@ Every change — code, config, script, or deployment — must be logged to the
 loop-governance DB. Two paths:
 
 **Path A — MCP tools (PRIMARY — enforced by the MCP server):**
-- Before coding: `mcp_loop_governance_begin_change(task_id="<task>", description="...")`
-- `mcp_loop_governance_cache_search(query="task description")` — learn from past
-- After change: `mcp_loop_governance_cycle_query(task_id="<task>")`
-- Provide feedback: `mcp_loop_governance_feedback_accept(cycle_id=N)`
-  or `mcp_loop_governance_feedback_override(cycle_id=N, correct_decision="...", note="...")`
-- Release lock: `mcp_loop_governance_end_change(task_id="<task>")`
+- Before coding: `mcp__loop_governance__begin_change(task_id="<task>", description="...")`
+- `mcp__loop_governance__cache_search(query="task description")` — learn from past
+- After change: `mcp__loop_governance__cycle_query(task_id="<task>")`
+- Provide feedback: `mcp__loop_governance__feedback_accept(cycle_id=N)`
+  or `mcp__loop_governance__feedback_override(cycle_id=N, correct_decision="...", note="...")`
+- Release lock: `mcp__loop_governance__end_change(task_id="<task>")`
 
 **Path B — CLI tools (secondary, for manual scoring or script use):**
 ```bash
@@ -52,9 +52,9 @@ cannot self-improve.
 At the start of every session, run:
 
 ```python
-mcp_loop_governance_config_show()           # check thresholds
-mcp_loop_governance_cycle_stats(days=7)     # review scoring health
-mcp_loop_governance_cache_search(query="<current task>")  # learn from past
+mcp__loop_governance__config_show()           # check thresholds
+mcp__loop_governance__cycle_stats(days=7)     # review scoring health
+mcp__loop_governance__cache_search(query="<current task>")  # learn from past
 ```
 
 ## Multi-file changes

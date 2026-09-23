@@ -77,7 +77,7 @@ be duplicating functionality. Investigate before writing.
 ### Step 2: Open Governance Lock
 
 ```python
-mcp_loop_governance_begin_change(task_id="<short-description>", description="<what this does>")
+mcp__loop_governance__begin_change(task_id="<short-description>", description="<what this does>")
 ```
 
 This opens a governance lock AND creates a pending cycle in the loop-governance
@@ -307,13 +307,13 @@ to pull first.
 
 ```python
 # 1. Find the cycle
-mcp_loop_governance_cycle_query(task_id="<your-task-id>")
+mcp__loop_governance__cycle_query(task_id="<your-task-id>")
 
 # 2. Accept feedback (or override if it was wrong)
-mcp_loop_governance_feedback_accept(id=N, note="<summary>")
+mcp__loop_governance__feedback_accept(id=N, note="<summary>")
 
 # 3. Release the lock
-mcp_loop_governance_end_change(task_id="<your-task-id>")
+mcp__loop_governance__end_change(task_id="<your-task-id>")
 ```
 
 **If `end_change` rejects** (no cycle auto-created for this tool type):

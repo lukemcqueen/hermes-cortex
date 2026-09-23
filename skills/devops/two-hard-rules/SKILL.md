@@ -17,12 +17,12 @@ metadata:
 
 Every code, config, or cron change REQUIRES this sequence — no exceptions:
 
-1. `mcp_loop_governance_cache_search(query="<what you are about to do>")` — learn from past
-2. `mcp_loop_governance_begin_change(task_id="<short-name>", description="<what this does>")` — create lock
+1. `mcp__loop_governance__cache_search(query="<what you are about to do>")` — learn from past
+2. `mcp__loop_governance__begin_change(task_id="<short-name>", description="<what this does>")` — create lock
 3. Make your changes (patch, write_file, cronjob, etc.)
-4. `mcp_loop_governance_cycle_query(task_id="<short-name>")` — find the cycle
-5. `mcp_loop_governance_feedback_accept(cycle_id=N, task_id="<short-name>", note="<evidence>")` or `feedback_override(...)` — score
-6. `mcp_loop_governance_end_change(task_id="<short-name>")` — release lock
+4. `mcp__loop_governance__cycle_query(task_id="<short-name>")` — find the cycle
+5. `mcp__loop_governance__feedback_accept(cycle_id=N, task_id="<short-name>", note="<evidence>")` or `feedback_override(...)` — score
+6. `mcp__loop_governance__end_change(task_id="<short-name>")` — release lock
 
 **If `end_change` rejects** (no cycle auto-created, or cycle not scored — 2026-08-08):
 - `end_change` now BLOCKS while the task's cycle is unscored, and `begin_change`

@@ -35,7 +35,7 @@ When finding a pre-existing bug/problem during other work:
 LEARN → RED → GREEN → REFACTOR → SCORE → [repeat/next]
 ```
 
-LEARN: `mcp_loop_governance_cache_search(query="task description")`
+LEARN: `mcp__loop_governance__cache_search(query="task description")`
 RED: failing test first
 GREEN: minimal implementation
 REFACTOR: clean up while green

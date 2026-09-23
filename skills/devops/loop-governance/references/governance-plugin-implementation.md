@@ -211,7 +211,7 @@ each get their own file.
 
 ### Created By
 
-`mcp_loop_governance_begin_change(task_id="...", description="...")`
+`mcp__loop_governance__begin_change(task_id="...", description="...")`
 
 The `loop-gov-mcp.py` MCP server writes the session-scoped lock file when
 `begin_change` is called.
@@ -265,7 +265,7 @@ def _has_governance_lock() -> bool:
 
 ### Released By
 
-`mcp_loop_governance_end_change(task_id="...")` — deletes the session's
+`mcp__loop_governance__end_change(task_id="...")` — deletes the session's
 lock file.
 
 ### Critical: File Must Be Accessible

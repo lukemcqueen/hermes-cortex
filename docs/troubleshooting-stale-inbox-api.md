@@ -35,7 +35,7 @@
 
 ## Issue 3: MCP Server Path Mismatch (Most Critical)
 
-**Symptom:** `mcp_loop_governance_*` MCP tools never appeared in the agent's tool list. Agents fell back to manually creating `.governance-generic.json` lock files (the old format).
+**Symptom:** `mcp__loop_governance__*` MCP tools never appeared in the agent's tool list. Agents fell back to manually creating `.governance-generic.json` lock files (the old format).
 
 **Root cause:** `config.yaml` had:
 

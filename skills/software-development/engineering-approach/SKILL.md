@@ -206,10 +206,10 @@ rm -f /tmp/installer.sh
 
 | Situation | Interface | Example |
 |-----------|-----------|---------|
-| Agent before coding | MCP tool `cache_search` | `mcp_loop_governance_cache_search(query="build user auth")` |
+| Agent before coding | MCP tool `cache_search` | `mcp__loop_governance__cache_search(query="build user auth")` |
 | Agent session init | MCP tools | `config_show()` + `cycle_stats(days=7)` |
 | Agent after a cycle | MCP tools | `feedback_accept(cycle_id=N)` or `feedback_override(cycle_id=N, correct_decision="...")` |
-| Agent reviewing past | MCP tool `cycle_query` | `mcp_loop_governance_cycle_query(task_id="story-name")` |
+| Agent reviewing past | MCP tool `cycle_query` | `mcp__loop_governance__cycle_query(task_id="story-name")` |
 | Pre-commit hook | CLI `score-cycle` | `score-cycle --task precommit-<repo>-<branch> --code-file <file> --pass-pct <rate>` |
 | Script/CI pipeline | CLI `score-cycle` | `score-cycle --task <id> --cycle 1 --code-file <file> --json` |
 

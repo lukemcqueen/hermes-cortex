@@ -1006,6 +1006,13 @@ READONLY_COMMAND_PATTERNS = [
     # are excluded because they mutate remote or local state.
     r"^\s*curl\s+(-s\s+)?(-o\s+/dev/null\s+)?-s?I\s+",
     r"^\s*curl\s+(-s\s+)?-s\s+(https?://|file:///dev/|localhost:|127\.0\.0\.1:)",
+    # MCP introspection — `hermes mcp list` / `hermes mcp test <name>` only
+    # report configured servers and their tool lists; neither writes state.
+    # Without this exemption the diagnostic path for a MISSING loop-governance
+    # MCP server (the gate-2 deadlock: no begin_change tool → no lock → the
+    # read-only check itself blocked) was unreachable. Add/remove of servers
+    # (`hermes mcp add|remove`) stays write-class.
+    r"^\s*(hermes)\s+mcp\s+(list|test)\b",
 ]
 
 # Metacharacters that make a command compound/write-capable — a read-allowlisted
@@ -1829,9 +1836,17 @@ def register(ctx):
                             "🛑 Write tool blocked — session skills not fully loaded.\n\n"
                             "Tool '" + tool_name + "' modifies state — "
                             + str(loaded_count) + "/7 always-section skills loaded.\n\n"
-                            "Required always-section skills:\n"
+                            + (
+                                "⚠️ The enforcer received NO session id on this call, so no\n"
+                                "skills marker can ever be created for this session. Reloading\n"
+                                "skills will NOT clear this — it is session/host plumbing, not\n"
+                                "something you can fix by working harder. Report this exact\n"
+                                "message to your orchestrator (Moses/Esther).\n\n"
+                                if not hermes_session_id else ""
+                            )
+                            + "Required always-section skills:\n"
                             + loaded_list + "\n\n"
-                            "Load all 7 with:\n"
+                            "Load all 7 with — START HERE, this is the whole procedure:\n"
                             "  1. skill_view('task-start')              # bundles the complete sequence\n"
                             "  2. skill_view('agent-flow')              # workflow router + reasoning patterns\n"
                             "  3. skill_view('reflexion-check')         # self-critique before deliver\n"
@@ -1839,12 +1854,17 @@ def register(ctx):
                             "  5. skill_view('survey-before-action')    # pre-flight + repo-specific checks\n"
                             "  6. skill_view('agent-contract')          # execution rules\n"
                             "  7. skill_view('test-driven-development') # TDD Iron Law\n\n"
-                            "The marker is auto-created when all 7 are loaded.\n"
-                            "Do NOT try to set skills-state.json directly — it will be rejected.\n\n"
+                            "Load all 7 IN ONE TURN — batched skill_view calls work and are fastest.\n"
+                            "Loads you already made count and never need repeating; the marker is\n"
+                            "auto-created the moment the 7th one arrives.\n"
+                            "Do NOT go reading ~/.hermes/plugins/governance-enforcer/ to work out\n"
+                            "what to do — this message IS the procedure.\n"
+                            "Do NOT try to set skills-state.json or touch skills-loaded directly —\n"
+                            "rejected.\n\n"
                             "This is GATE 1 of 2. The gates are INDEPENDENT: after loading all\n"
                             "7 skills, writes still require an active governance lock (gate 2),\n"
                             "so a second block saying 'GOVERNANCE LOCK REQUIRED' is EXPECTED —\n"
-                            "call mcp_loop_governance_begin_change() then.\n\n"
+                            "call mcp__loop_governance__begin_change() then.\n\n"
                             "Note: a terminal command containing compound metacharacters\n"
                             "(; | & > < ` $() or a newline) is treated as write-capable even\n"
                             "when it only READS — a lock covers those too. Use a single clean\n"
@@ -2043,20 +2063,35 @@ def register(ctx):
                 "message": (
                     "GOVERNANCE LOCK REQUIRED\n\n"
                     "Tool '" + tool_name + "' modifies system state" + extra + "\n\n"
+                    + (
+                        "⚠️ The enforcer received NO session id on this call, so no lock can\n"
+                        "be matched to this session even if one exists. Report this exact\n"
+                        "message to your orchestrator (Moses/Esther).\n\n"
+                        if not hermes_session_id else ""
+                    )
                     + _compound_note
                     + "This repo requires an active governance lock.\n"
                     "This is GATE 2 of 2 — gate 1 is the skills gate (all 7 always-section\n"
                     "skills loaded via skill_view). If you just fixed gate 1, a second\n"
                     "block here is EXPECTED: the two gates are independent and BOTH must\n"
                     "be satisfied.\n\n"
-                    "Call begin_change() first:\n"
-                    "  mcp_loop_governance_begin_change(\n"
+                    "Call begin_change() first — exact tool name, copy it as-is:\n"
+                    "  mcp__loop_governance__begin_change(\n"
                     '    task_id="<short-description>",\n'
                     '    description="<what this does>"\n'
                     "  )\n\n"
                     "After the change, score and release:\n"
-                    '  mcp_loop_governance_feedback_accept(task_id="<task>", note="verified: ...")\n'
-                    '  mcp_loop_governance_end_change(task_id="<task>")\n\n'
+                    '  mcp__loop_governance__feedback_accept(task_id="<task>", note="verified: ...")\n'
+                    '  mcp__loop_governance__end_change(task_id="<task>")\n\n'
+                    "If that tool is NOT in your tool list, the loop-governance MCP server is\n"
+                    "not registered on this host — a host setup problem, not something to work\n"
+                    "around. Check it lock-free: hermes mcp list\n"
+                    "Then report it to your orchestrator (Moses/Esther) so they can register it\n"
+                    "with: hermes mcp add loop-governance --command <python> --args <repo>/mcp-servers/loop-gov-mcp.py\n"
+                    "NEVER hand-write a lock file under ~/.hermes-cortex/state/ — a fabricated\n"
+                    "lock is a governance violation and is audited.\n"
+                    "Do NOT go reading ~/.hermes/plugins/governance-enforcer/ to work out what\n"
+                    "to do — this message IS the procedure.\n\n"
                     "This enforcement comes from ~/.hermes/plugins/governance-enforcer/.\n"
                     "Lock files are scoped per git repo — two repos can govern independently.\n"
                     "I cannot bypass or disable this mid-session."

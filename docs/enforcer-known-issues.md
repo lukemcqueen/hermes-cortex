@@ -10,7 +10,7 @@
 
 ## 1. `check_lock` reports "no active lock" while a valid, non-stale lock exists on disk
 
-**Symptom.** `mcp_loop_governance_check_lock` returns `{"active": false, "lock": null}` even
+**Symptom.** `mcp__loop_governance__check_lock` returns `{"active": false, "lock": null}` even
 though a `~/.hermes-cortex/state/.governance-*.json` lock file exists, is non-stale, and its
 task still has a PENDING cycle in the loop-governance DB. An agent (or the operator) reading
 `check_lock` concludes "no governance lock is held" and, combined with a PENDING cycle in

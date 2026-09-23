@@ -19,9 +19,9 @@ metadata:
 
 ## Pre-Work (Before `begin_change`)
 
-- [ ] `mcp_loop_governance_cache_search(query="<what you are about to do>")` — learn from past cycles
+- [ ] `mcp__loop_governance__cache_search(query="<what you are about to do>")` — learn from past cycles
 - [ ] Read this repo's `AGENTS.md` and `SOUL.md` for agent-specific rules
-- [ ] Run `mcp_loop_governance_config_show()` to know current thresholds
+- [ ] Run `mcp__loop_governance__config_show()` to know current thresholds
 
 ## Phase 1 — Tests
 
@@ -67,9 +67,9 @@ metadata:
 
 ## Closing the Cycle
 
-- [ ] `mcp_loop_governance_cycle_query(task_id="<task-id>")`
-- [ ] `mcp_loop_governance_feedback_accept(cycle_id=N, note="verified: <how>")`
-- [ ] `mcp_loop_governance_end_change(task_id="<task-id>")`
+- [ ] `mcp__loop_governance__cycle_query(task_id="<task-id>")`
+- [ ] `mcp__loop_governance__feedback_accept(cycle_id=N, note="verified: <how>")`
+- [ ] `mcp__loop_governance__end_change(task_id="<task-id>")`
 - [ ] `git add <files> && git commit -m "<descriptive message>"` — **through the pre-commit hook** (it runs the adversarial gate + scoring; `--no-verify` is a logged, audited bypass — never use it to ship a hook/gate-rejected change)
 - [ ] `git pull --rebase origin main && git push origin main`
 

@@ -126,13 +126,13 @@ system can learn whether each cycle was good or bad.
 
 ```python
 # Find the cycle
-mcp_loop_governance_cycle_query(task_id="precommit-hermes-cortex-main/nginx-returns-0-for-uninstalled")
+mcp__loop_governance__cycle_query(task_id="precommit-hermes-cortex-main/nginx-returns-0-for-uninstalled")
 
 # Accept it (correct decision)
-mcp_loop_governance_feedback_accept(cycle_id=122, note="nginx health fix — 0 for uninstalled")
+mcp__loop_governance__feedback_accept(cycle_id=122, note="nginx health fix — 0 for uninstalled")
 
 # Or override (wrong decision)
-mcp_loop_governance_feedback_override(cycle_id=122, correct_decision="STOP", note="This change was complete, should have been STOP")
+mcp__loop_governance__feedback_override(cycle_id=122, correct_decision="STOP", note="This change was complete, should have been STOP")
 ```
 
 ### Via CLI (scripts, pre-commit hooks, shell)

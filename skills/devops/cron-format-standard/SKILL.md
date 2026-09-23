@@ -204,8 +204,8 @@ bash ~/hermes-cortex/ops/scripts/cortex-update.sh
 
 If the change included a repo commit:
 ```
-mcp_loop_governance_cycle_query task_id="<commit-subject>"
-mcp_loop_governance_feedback_accept id=<N> note="<summary>"
+mcp__loop_governance__cycle_query task_id="<commit-subject>"
+mcp__loop_governance__feedback_accept id=<N> note="<summary>"
 ```
 
 If the change was cron-only (no repo commit), note it in your session but there's no pre-commit hook cycle to score.

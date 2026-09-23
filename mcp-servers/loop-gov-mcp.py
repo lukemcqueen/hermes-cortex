@@ -1062,10 +1062,10 @@ def _begin_change(args: dict) -> CallToolResult:
                         "This session still has unscored PENDING cycles:\n"
                         f"  {listing}\n\n"
                         "Score them first (AGENTS.md RULE 2 — score before moving on):\n"
-                        "  mcp_loop_governance_feedback_accept(task_id='<task>', note='...')\n"
-                        "  or mcp_loop_governance_feedback_override(task_id='<task>', "
+                        "  mcp__loop_governance__feedback_accept(task_id='<task>', note='...')\n"
+                        "  or mcp__loop_governance__feedback_override(task_id='<task>', "
                         "correct_decision='...', note='...')\n"
-                        "  then mcp_loop_governance_end_change(task_id='<task>')\n\n"
+                        "  then mcp__loop_governance__end_change(task_id='<task>')\n\n"
                         "No new lock is acquired until prior cycles are scored."
                     )
                 )])
@@ -1163,9 +1163,9 @@ def _begin_change(args: dict) -> CallToolResult:
         pending_msg = (
             f"\n📝 Pending cycle #{cycle_id} created in loop-governance DB.\n"
             f"   After your change, call:\n"
-            f"     1. mcp_loop_governance_feedback_accept(cycle_id={cycle_id}"
+            f"     1. mcp__loop_governance__feedback_accept(cycle_id={cycle_id}"
             f", task_id='{task_id}', note='...')\n"
-            f"     2. mcp_loop_governance_end_change(task_id='{task_id}')\n"
+            f"     2. mcp__loop_governance__end_change(task_id='{task_id}')\n"
             f"\n   [CYCLE_ID={cycle_id}]"
         )
     except Exception as e:
@@ -1276,9 +1276,9 @@ def _end_change(args: dict) -> CallToolResult:
                         f"'{row['decision']}' (user_overrode IS NULL).\n\n"
                         "Score it before releasing (AGENTS.md RULE 2 — close out "
                         "before moving on):\n"
-                        "  mcp_loop_governance_cycle_query(task_id='" + task_id + "')\n"
-                        "  mcp_loop_governance_feedback_accept(cycle_id=" + str(row['id']) + ", note='...')\n"
-                        "  or mcp_loop_governance_feedback_override(cycle_id=" + str(row['id']) + ", "
+                        "  mcp__loop_governance__cycle_query(task_id='" + task_id + "')\n"
+                        "  mcp__loop_governance__feedback_accept(cycle_id=" + str(row['id']) + ", note='...')\n"
+                        "  or mcp__loop_governance__feedback_override(cycle_id=" + str(row['id']) + ", "
                         "correct_decision='...', note='...')\n\n"
                         "Then retry end_change. The lock stays held until the cycle is scored."
                     )
@@ -1294,8 +1294,8 @@ def _end_change(args: dict) -> CallToolResult:
                 "❌  Cannot release lock: no governance cycle found for this task.\n\n"
                 "    A cycle must be created (via any write tool under this lock) and scored\n"
                 "    before end_change() can release the lock.\n\n"
-                "    To score: mcp_loop_governance_cycle_query(task_id='<task>')\n"
-                "             mcp_loop_governance_feedback_accept(cycle_id=N, note='...')\n\n"
+                "    To score: mcp__loop_governance__cycle_query(task_id='<task>')\n"
+                "             mcp__loop_governance__feedback_accept(cycle_id=N, note='...')\n\n"
                 "    This prevents orphan cycles that silently accumulate in the governance DB."
             )
         )])

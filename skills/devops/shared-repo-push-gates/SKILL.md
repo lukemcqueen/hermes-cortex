@@ -50,7 +50,7 @@ working tree), not a problem with your diff.
    by restart/cortex-update, OR a cycle created by a BACKGROUND/delegation
    session (`bg_*` session id) that finished without scoring. Symptom: push blocked with "doctor reports N
    failure" + `❌ PENDING cycles`, even after dogfood passes. Fix: query
-   `mcp_loop_governance_cycle_query(unreviewed=true)`, `feedback_accept`
+   `mcp__loop_governance__cycle_query(unreviewed=true)`, `feedback_accept`
    (or `feedback_override`) every orphaned PENDING cycle, re-run doctor to
    0 fail, then push. The current task's own cycle (lock held) is INFO, not
    a blocker.

@@ -776,9 +776,9 @@ If it fires during a direct `git commit` outside of an agent session:
 
 ```bash
 # Create a governance lock first (the correct path — never --no-verify):
-mcp_loop_governance_begin_change(task_id="direct-commit", description="...")
+mcp__loop_governance__begin_change(task_id="direct-commit", description="...")
 # Then commit, then:
-mcp_loop_governance_end_change(task_id="direct-commit")
+mcp__loop_governance__end_change(task_id="direct-commit")
 ```
 
 `git commit --no-verify` is a logged, audited bypass (`agent-no-verify-audit` cron) — never use it to ship a hook-rejected change.
@@ -883,7 +883,7 @@ Or accept the `FAILED:` line; the home copy is the protected one.
 **Fix:** re-acquire after every deploy:
 
 ```
-mcp_loop_governance_begin_change(task_id="post-update", description="...")
+mcp__loop_governance__begin_change(task_id="post-update", description="...")
 ```
 
 Then score all PENDING cycles (`cycle_query` → `feedback_accept`) and `end_change` — the doctor reports `❌ PENDING cycles` until they are scored.
@@ -923,7 +923,7 @@ pending restart, not a code bug — do not loop re-running the deploy.
 
 ### 19. Loop-gov MCP server fails: `ModuleNotFoundError: No module named 'hermes_models'`
 
-**Symptom:** `hermes mcp test loop-governance` fails. The `mcp_loop_governance_*` tools (begin_change, cycle_query, feedback_accept, etc.) don't appear in the agent's tool list.
+**Symptom:** `hermes mcp test loop-governance` fails. The `mcp__loop_governance__*` tools (begin_change, cycle_query, feedback_accept, etc.) don't appear in the agent's tool list.
 
 **Root cause:** The deployed `loop-gov-mcp.py` adds the wrong directory to `sys.path`. It looks for `hermes_models.py` in `~/.hermes-cortex/scripts/` but the file is deployed to `~/.hermes/scripts/hermes_models.py` by `install.sh`.
 

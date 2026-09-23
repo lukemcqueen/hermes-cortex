@@ -684,10 +684,10 @@ See `references/mcp-servers.md` for full tool descriptions and usage examples.
 **Installation:** Loop governance is installed automatically by `cortex-update.sh` (MCP server + plugin). The old CLI tools (`score-cycle`, `loop-feedback`) are deprecated.
 
 **Usage in a session:**
-1. `mcp_loop_governance_begin_change(task_id="<name>", description="...")` — start a change (response includes `[CYCLE_ID=N]` — extract it for the explicit id path)
+1. `mcp__loop_governance__begin_change(task_id="<name>", description="...")` — start a change (response includes `[CYCLE_ID=N]` — extract it for the explicit id path)
 2. Do the work (MCP server blocks write tools without a lock)
-3. `mcp_loop_governance_feedback_accept(task_id="<name>", note="...")` — score it. The `task_id` parameter is the preferred path: it auto-resolves to the session's single PENDING cycle without needing to extract the numeric id. Alternatively pass `cycle_id=N` (from the `[CYCLE_ID=N]` marker) for explicit targeting — both parameters work.
-4. `mcp_loop_governance_end_change(task_id="<name>")` — release the lock
+3. `mcp__loop_governance__feedback_accept(task_id="<name>", note="...")` — score it. The `task_id` parameter is the preferred path: it auto-resolves to the session's single PENDING cycle without needing to extract the numeric id. Alternatively pass `cycle_id=N` (from the `[CYCLE_ID=N]` marker) for explicit targeting — both parameters work.
+4. `mcp__loop_governance__end_change(task_id="<name>")` — release the lock
 
 The old intermediate `cycle_query(task_id="...")` call is eliminated: `begin_change` already knows the numeric id and the feedback functions resolve `task_id` to the PENDING cycle directly. The agent flow is now 2 post-work calls instead of 3.
 
