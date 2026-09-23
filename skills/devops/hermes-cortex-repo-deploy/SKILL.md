@@ -14,11 +14,13 @@ deploy-order and manifest pitfalls that cost time when missed.
 
 ## Push sequence (gates run in this order)
 
-1. `git pull --rebase origin main` — REQUIRES a clean tree. Peer/other-session
-   unstaged changes block the rebase AND the push's built-in dogfood. Stash
-   ONLY the specific peer files (name them explicitly, never `git stash` bare),
-   rebase/push, then `git stash pop` immediately. Never stash, clean, or commit
-   a peer's work.
+1. `git pull --rebase origin main` — REQUIRES a clean tree. ANY unstaged
+   change blocks the rebase AND the push's built-in dogfood — your own edits
+   included, not just a peer's. Stash the specific blocking files by name
+   (never `git stash` bare), rebase/push, then `git stash pop` immediately —
+   pop your own files back FIRST so your edits are restored before the next
+   step. Never stash, clean, or commit a peer's work, and never stage a
+   file you did not edit.
 2. `git push` runs a doctor gate — it fails on ANY doctor ❌. Most common
    blocker: `Deploy sync` / `Checksum: <file>` FAIL because the deployed copy
    predates the pushed commit. Fix by running `cortex-update.sh`, re-running
@@ -53,6 +55,26 @@ deploying, re-running the doctor.
   the tool first.
 - After any manifest change: `bash -n <install script>`, run
   `fix-cron-duplicates.py` (no `--fix`) to check sync, deploy, run the doctor.
+
+## Cron scope/prompt change = three surfaces in one pass
+
+Changing a cron's scope, prompt, or schedule touches three places; a partial
+update leaves each layer contradicting the others:
+
+1. **Live prompt** — `~/.hermes/cron/jobs.json`, updated via the cronjob tool
+   (`action='update'`); installer edits never rewrite an existing job's
+   prompt.
+2. **Installer `create_cron` block** — the durable source for non-`local-`
+   crons.
+3. **Doc tables** — `docs/fleet-reference.md` AND `docs/cron-schedules.md`
+   each carry one row per cron describing its scope. A `local-` cron has NO
+   installer block, so its doc row is the repo's only record of the job's
+   scope — commit the row update in the same push.
+
+Verify the live prompt by reading it back out of jobs.json (the update
+response shows only a truncated preview), grep both docs for the old scope
+term to catch sibling rows, and fire one real run (`cronjob action='run'`)
+so the scheduler's last_status reflects the new prompt.
 
 ## Peer in-flight work
 

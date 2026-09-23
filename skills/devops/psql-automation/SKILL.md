@@ -156,6 +156,15 @@ docker exec -i inspect psql -U <user> -d <db> -t -A -c "<query>"
 docker rm -f inspect
 ```
 
+⚠️ **The mount path is image-major-version specific.** `postgres:16-` and
+earlier expect the volume at `/var/lib/postgresql/data`; `postgres:18+`
+stores data in a major-versioned subdirectory (`/var/lib/postgresql/18/…`) and
+crash-loops on startup if you mount at the old `/var/lib/postgresql/data` path
+(`Error: in 18+, … appears to be PostgreSQL data in /var/lib/postgresql/data
+(unused mount/volume)`). For 18+, mount at `/var/lib/postgresql` and use the
+SAME image major version that wrote the volume — inspecting a 16 volume with an
+18 image (or vice versa) fails for the same reason.
+
 Pitfalls: don't pass `-c port=NNNN` to postgres — that changes the listening
 port while psql inside still tries the 5432 socket; and don't pipe the query
 through `head` when checking rc (head's rc masks psql's).
@@ -193,6 +202,7 @@ through `head` when checking rc (head's rc masks psql's).
 - **`--source`-style filters never grant access** — RLS is the enforcement; a filter is just a filter.
 - **Idempotent schema files are your friend** — `IF NOT EXISTS` + `CREATE OR REPLACE` means you can apply on every deploy/update; wire it into the update script so Linux (docker exec) and macOS (direct psql via config URL) both converge.
 - **When a path-hardcoding bug is fixed in ONE of two sibling files, grep for the sibling.** 2026-08-06: `session_mine.py` was fixed to write `~/brain/lessons/`, but `lessons.py` (the module the index/search imports) still hardcoded `~/brain/kustos/lessons/` — offline search read a stale 241-file dir while 631 live lessons sat elsewhere. `git log -S '<bad-string>'` finds every file that ever contained it.
+- **`now()` is STABLE, not IMMUTABLE — it cannot appear in a partial-index WHERE predicate.** `CREATE UNIQUE INDEX ... WHERE ... > now()` fails with `ERROR: functions in index predicate must be marked IMMUTABLE`. Drop the time condition from the index and filter at query time; the "one live row" uniqueness is then enforced by the app, not the DB (note the trade-off). A DB-level time-varying guarantee needs an EXCLUDE constraint or trigger, never a partial unique index with `now()`.
 - **Check `psql` via the `-t -A` flags when parsing** — column headers break naive parsers on macOS without `-t -A`.
 
 ## References
