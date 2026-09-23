@@ -1255,6 +1255,8 @@ def _check_domain_skill_gate(tool_name: str, args: dict, session_id: str) -> Opt
             f"  skill_view(name='{skill_name}')\n\n"
             f"Or discover related skills:\n"
             f"  skills_list(category='devops')\n\n"
+            f"Already loaded it earlier this session? A deploy reloads the enforcement\n"
+            f"plugin and resets this session's skill state — ONE skill_view clears it.\n\n"
             f"The write is blocked until you load the skill. "
             f"Read-only tools ARE available.\n"
         )
@@ -1269,6 +1271,8 @@ def _check_domain_skill_gate(tool_name: str, args: dict, session_id: str) -> Opt
             f"  {why}\n\n"
             f"You must load it before writing:\n"
             f"  skill_view(name='{skill_name}')\n\n"
+            f"Already loaded it earlier this session? A deploy reloads the enforcement\n"
+            f"plugin and resets this session's skill state — ONE skill_view clears it.\n\n"
             f"After loading, retry the write. Read-only tools ARE still available.\n"
         )
         return {"action": "block", "message": msg}
@@ -1571,7 +1575,10 @@ def _check_adversarial_commit_gate(
             "  # A4 for security/guard/hook/enforcer files\n\n"
             "Then retry the commit. The pre-commit hook's adversarial gate will "
             "also block critical/high findings — this check requires the skill "
-            "to be loaded at all.\n"
+            "to be loaded at all.\n\n"
+            "Already loaded it earlier this session? A deploy reloads the "
+            "enforcement plugin and resets this session's skill state — ONE "
+            "skill_view clears this gate.\n"
         )
         return {"action": "block", "message": msg}
 
@@ -1836,6 +1843,15 @@ def register(ctx):
                             "🛑 Write tool blocked — session skills not fully loaded.\n\n"
                             "Tool '" + tool_name + "' modifies state — "
                             + str(loaded_count) + "/7 always-section skills loaded.\n\n"
+                            + (
+                                "⚠️ All 7 are recorded for this session, but its proof is STALE:\n"
+                                "a deploy changed the governance plugin or a skill file, which also\n"
+                                "resets this session's in-memory loaded-set. Re-load all 7 IN ONE\n"
+                                "TURN (batched skill_view calls; unchanged content is deduplicated,\n"
+                                "so this is cheap) to regenerate the marker. Expected after any\n"
+                                "deploy — not an error, and not something to work around.\n\n"
+                                if loaded_count == 7 else ""
+                            )
                             + (
                                 "⚠️ The enforcer received NO session id on this call, so no\n"
                                 "skills marker can ever be created for this session. Reloading\n"

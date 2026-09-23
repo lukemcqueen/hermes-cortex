@@ -89,11 +89,16 @@ written `skills-state.json`) fails content verification.
 If write tools block with "session skills not fully loaded":
 - Read the block message — it lists all 7 with ✅/blank marks. Load only the blanks;
   everything already loaded counts and never needs repeating.
-- After a gateway restart the in-memory set is gone → load all 7 again.
-- After a deploy that changed a skill file, the marker's fingerprint goes stale
-  ("7/7 loaded ✅ but still blocked"): the in-memory set usually survives, so ONE
-  `skill_view('<any-always-skill>')` regenerates the marker. If the set was lost
-  too, load all 7.
+- After a gateway restart OR a deploy, load all 7 again in ONE turn — a
+  `cortex-update.sh` deploy reloads the enforcer plugin and that resets this
+  session's in-memory loaded-set (the state file still lists the 7, which is why
+  the block reads "7/7 ✅ but still blocked"). Unchanged content is deduplicated,
+  so re-loading is cheap. Observed 2026-09-23: a deploy that touched one skill
+  file left a session in exactly that state.
+- The same reset hits on-demand skill credit: after a deploy, a domain skill
+  (`codebase-design`, `documentation-auditing`, `cron-job-management`, …) or
+  `adversarial-verifier` counts as unloaded again, so a mid-task write or commit
+  can re-block. One `skill_view('<that skill>')` clears it — expected, not a bug.
 - `delegate_task` subagents can invalidate the parent's marker — re-call
   `skill_view('<any>')` if blocked.
 
