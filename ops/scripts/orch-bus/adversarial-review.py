@@ -181,6 +181,7 @@ def _record(db_path: Path, cycle_id: int, reviewer_id: str, model: str,
             text: str) -> int:
     """Insert the review verdict directly into the adversarial_reviews table."""
     findings_json, verdict = _extract_reviewer_json(text)
+    conn = None
     try:
         conn = sqlite3.connect(str(db_path), timeout=30)
         conn.execute(
@@ -211,15 +212,25 @@ def _record(db_path: Path, cycle_id: int, reviewer_id: str, model: str,
             ),
         )
         conn.commit()
-        conn.close()
+        return 0
     except sqlite3.IntegrityError as e:
+        if conn is not None:
+            conn.rollback()
         if "UNIQUE" in str(e):
+            # Already reviewed = the review EXISTS: the sweep's goal is met.
+            # Benign no-op — counting it as failure exit-1s the cron and
+            # restarts the 3-strike pause (watchdog pattern, fleet dedupe).
             print(f"  cycle #{cycle_id}: already reviewed (UNIQUE constraint)",
                   file=sys.stderr)
-        else:
-            print(f"  cycle #{cycle_id}: DB error: {e}", file=sys.stderr)
+            return 0
+        print(f"  cycle #{cycle_id}: DB error: {e}", file=sys.stderr)
         return 3
-    return 0
+    finally:
+        # Close on EVERY path — an open transaction on the error path holds
+        # the write lock and the next cycle dies with 'database is locked'
+        # (observed: cron run 2026-09-24 20:58 KST aborted the whole sweep).
+        if conn is not None:
+            conn.close()
 
 
 def main() -> int:
@@ -273,6 +284,9 @@ def main() -> int:
                 print(f"  cycle #{row['id']}: recorded (rc={rc})")
             except SystemExit as e:
                 print(f"  cycle #{row['id']}: {e}", file=sys.stderr)
+                failed += 1
+            except sqlite3.OperationalError as e:
+                print(f"  cycle #{row['id']}: DB busy: {e}", file=sys.stderr)
                 failed += 1
         return 1 if failed else 0
 

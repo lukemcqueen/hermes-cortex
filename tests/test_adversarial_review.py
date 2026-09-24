@@ -158,9 +158,10 @@ def test_record_does_not_leak_db_lock_on_duplicate(tmp_path):
     mod = _load_review_module()
     db = tmp_path / "review.db"
     assert mod._record(db, 1, "r1", "m", '{"findings": [], "verdict": "CLEAN"}') == 0
-    dup_rc = mod._record(db, 1, "r2", "m", '{"findings": [], "verdict": "CLEAN"}')
-    assert dup_rc != 0, "duplicate must be refused"
-    # The decisive assertion: the cycle after a duplicate must succeed.
+    # Duplicate is refused as a benign no-op (rc 0 — see
+    # test_record_duplicate_is_benign_not_failure); the decisive assertion
+    # here is that the NEXT cycle must succeed — no leaked write lock.
+    assert mod._record(db, 1, "r2", "m", '{"findings": [], "verdict": "CLEAN"}') == 0
     assert mod._record(db, 2, "r3", "m", '{"findings": [], "verdict": "CLEAN"}') == 0
 
 
