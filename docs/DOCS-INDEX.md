@@ -81,7 +81,8 @@ repo; this public repo carries only framework docs (PRDs, design, reference).
 | `docs/cloud-deploy.md` | Cloud deployment reference |
 | `docs/design/frontieragent-gap-analysis.md` | **FrontierAgent gap analysis (2026-09-14)** — benchmark vs our core: inference-aware context management, bounded orchestration, sandbox safety, SDK seam; prioritized recommendations |
 | `docs/design/moral-architecture-adaptation.md` | **Moral architecture adaptation (2026-09-24)** — the "Moral Architecture for Autonomous Systems" report translated onto Hermes Cortex's L0–L7 stack, adapted for LLM agents; 9 prioritized architecture changes (layer-tagged guardrail registry, failure-propensity register, independent evaluator, refusal metrics, Jubilee TTLs, unannounced probes) + open questions |
-| `docs/reference/moral-architecture/` | **Moral Architecture for Autonomous Systems** — source PDF + working digest (16 theses, 7-layer stack, placement rule, seams, practical program, Scripture index) |
+| `docs/reference/moral-architecture/` | **Moral Architecture for Autonomous Systems** — source PDF (gitignored) + working digest (16 theses, 7-layer stack, placement rule, seams, practical program, Scripture index) |
+| `docs/design/moral-architecture-slices.md` | **Moral architecture story/slice build plan (2026-09-24)** — the 9 adaptation gaps sliced into deepseek-flash-sized BUILD/CHECK tasks (failure-propensity register, layer-tagged registry, refusal metrics, seam ownership, permission TTL, independent evaluator, unannounced probe, evidence allowlist) |
 
 ## Operations
 
