@@ -12,7 +12,9 @@
       ],
       "added": "2026-07-30",
       "restraint": "skill:reflexion-check",
-      "noticed": "2026-07-30"
+      "noticed": "2026-07-30",
+      "layer": "model",
+      "tier": "encouraged"
     },
     "repeat-correction": {
       "artifacts": [
@@ -22,7 +24,9 @@
       ],
       "added": "2026-07-29",
       "restraint": "skill:self-improvement-pipeline",
-      "noticed": "2026-07-29"
+      "noticed": "2026-07-29",
+      "layer": "harness",
+      "tier": "enforced"
     },
     "no-permanent-fix": {
       "artifacts": [
@@ -32,7 +36,9 @@
       ],
       "added": "2026-07-30",
       "restraint": "skill:change-checklist",
-      "noticed": "2026-07-30"
+      "noticed": "2026-07-30",
+      "layer": "model",
+      "tier": "encouraged"
     },
     "trust-language-breach": {
       "artifacts": [
@@ -42,7 +48,9 @@
       ],
       "added": "2026-07-31",
       "restraint": "skill:reflexion-check",
-      "noticed": "2026-07-31"
+      "noticed": "2026-07-31",
+      "layer": "model",
+      "tier": "encouraged"
     },
     "bypass-attempt": {
       "artifacts": [
@@ -53,7 +61,9 @@
       ],
       "added": "2026-07-30",
       "restraint": "hook:pre-commit-score",
-      "noticed": "2026-07-30"
+      "noticed": "2026-07-30",
+      "layer": "harness",
+      "tier": "enforced"
     },
     "drift-deployed-vs-repo": {
       "artifacts": [
@@ -64,7 +74,9 @@
       ],
       "added": "2026-07-30",
       "restraint": "doctor:check_deploy_checksums",
-      "noticed": "2026-07-30"
+      "noticed": "2026-07-30",
+      "layer": "ops",
+      "tier": "enforced"
     },
     "naming-clarity": {
       "artifacts": [
@@ -74,7 +86,9 @@
       ],
       "added": "2026-07-30",
       "restraint": "doctor:check_script_naming",
-      "noticed": "2026-07-30"
+      "noticed": "2026-07-30",
+      "layer": "ops",
+      "tier": "enforced"
     },
     "cross-agent-forgot": {
       "artifacts": [
@@ -84,7 +98,9 @@
       ],
       "added": "2026-07-28",
       "restraint": "skill:cross-agent-design",
-      "noticed": "2026-07-28"
+      "noticed": "2026-07-28",
+      "layer": "ops",
+      "tier": "enforced"
     },
     "bus-messaging": {
       "artifacts": [
@@ -94,7 +110,9 @@
       ],
       "added": "2026-07-27",
       "restraint": "doctor:_check_bus_e2e",
-      "noticed": "2026-07-27"
+      "noticed": "2026-07-27",
+      "layer": "ops",
+      "tier": "enforced"
     },
     "ceremony-friction": {
       "artifacts": [
@@ -106,7 +124,9 @@
       "added": "2026-07-31",
       "note": "P0-2 fail-closed terminal policy; 2026-08-01: per-session skills markers structurally fix the multi-session race (gap-doc P1-A candidate #3)",
       "restraint": "enforcer:_is_readonly_terminal_command",
-      "noticed": "2026-07-31"
+      "noticed": "2026-07-31",
+      "layer": "harness",
+      "tier": "enforced"
     },
     "docs-stale": {
       "artifacts": [
@@ -117,7 +137,9 @@
       ],
       "added": "2026-07-28",
       "restraint": "skill:doc-freshness",
-      "noticed": "2026-07-28"
+      "noticed": "2026-07-28",
+      "layer": "model",
+      "tier": "encouraged"
     },
     "skill-not-loaded": {
       "artifacts": [
@@ -127,7 +149,9 @@
       ],
       "added": "2026-07-29",
       "restraint": "enforcer:_check_skills_loaded_marker",
-      "noticed": "2026-07-29"
+      "noticed": "2026-07-29",
+      "layer": "harness",
+      "tier": "enforced"
     },
     "dont-ask-just-fix": {
       "artifacts": [
@@ -137,7 +161,9 @@
       ],
       "added": "2026-07-27",
       "restraint": "skill:agent-contract",
-      "noticed": "2026-07-27"
+      "noticed": "2026-07-27",
+      "layer": "model",
+      "tier": "encouraged"
     },
     "governance-not-followed": {
       "artifacts": [
@@ -147,7 +173,9 @@
       ],
       "added": "2026-07-26",
       "restraint": "enforcer:_has_governance_lock",
-      "noticed": "2026-07-26"
+      "noticed": "2026-07-26",
+      "layer": "harness",
+      "tier": "enforced"
     },
     "verification-artifact": {
       "artifacts": [
@@ -157,7 +185,9 @@
       ],
       "added": "2026-07-30",
       "restraint": "skill:change-checklist",
-      "noticed": "2026-07-30"
+      "noticed": "2026-07-30",
+      "layer": "model",
+      "tier": "encouraged"
     }
   },
   "known_gaps": [

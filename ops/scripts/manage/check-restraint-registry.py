@@ -25,6 +25,10 @@ DEFAULT_REGISTRY = (
     / "guardrail-registry.json"
 )
 
+VALID_LAYERS = {"model", "harness", "ops", "institutional"}
+VALID_TIERS = {"enforced", "encouraged", "detected"}
+MODEL_ARTIFACT_PREFIXES = ("SOUL.md:", "AGENTS.md:", "skill:")
+
 
 def _is_valid_iso(value) -> bool:
     """Accept an ISO date (YYYY-MM-DD) or a full ISO-8601 datetime."""
@@ -59,6 +63,28 @@ def validate_registry(data) -> list:
         noticed = cls.get("noticed")
         if not _is_valid_iso(noticed):
             errors.append(f"{name}: invalid or missing 'noticed' ({noticed!r})")
+
+        layer = cls.get("layer")
+        if layer not in VALID_LAYERS:
+            errors.append(f"{name}: missing or invalid 'layer' ({layer!r})")
+        tier = cls.get("tier")
+        if tier not in VALID_TIERS:
+            errors.append(f"{name}: missing or invalid 'tier' ({tier!r})")
+
+        # Placement rule (M2.1): a class whose artifacts are all model-layer
+        # (SOUL.md/AGENTS.md/skill) is encouraged, never enforced — a
+        # requirement enforced only in the model is not enforced, it is
+        # encouraged. Reject an 'enforced' tag on such a class.
+        if tier == "enforced":
+            artifacts = cls.get("artifacts", [])
+            if artifacts and all(
+                isinstance(a, str) and a.startswith(MODEL_ARTIFACT_PREFIXES)
+                for a in artifacts
+            ):
+                errors.append(
+                    f"{name}: tier 'enforced' but all artifacts are model-layer "
+                    "(SOUL.md/AGENTS.md/skill) — a model-layer artifact can never be enforced"
+                )
 
     gaps = data.get("known_gaps", [])
     if not isinstance(gaps, list):

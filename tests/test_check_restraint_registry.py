@@ -27,8 +27,15 @@ def _load_module():
     return mod
 
 
-def _class(restraint="doctor:check_governance", noticed="2026-07-30"):
-    return {"artifacts": ["doctor:check_governance"], "restraint": restraint, "noticed": noticed}
+def _class(restraint="doctor:check_governance", noticed="2026-07-30",
+           layer="ops", tier="enforced", artifacts=None):
+    return {
+        "artifacts": artifacts if artifacts is not None else ["doctor:check_governance"],
+        "restraint": restraint,
+        "noticed": noticed,
+        "layer": layer,
+        "tier": tier,
+    }
 
 
 def test_well_formed_registry_has_no_errors():
@@ -63,6 +70,42 @@ def test_invalid_noticed_is_rejected():
 def test_full_iso_datetime_noticed_accepted():
     crr = _load_module()
     data = {"classes": {"verify-before-declare": _class(noticed="2026-07-30T10:00:00+09:00")}}
+    assert crr.validate_registry(data) == []
+
+
+def test_missing_layer_tier_rejected():
+    crr = _load_module()
+    data = {"classes": {"verify-before-declare": {"restraint": "r", "noticed": "2026-07-30"}}}
+    errors = crr.validate_registry(data)
+    assert any("layer" in e for e in errors), errors
+    assert any("tier" in e for e in errors), errors
+
+
+def test_invalid_layer_value_rejected():
+    crr = _load_module()
+    data = {"classes": {"verify-before-declare": _class(layer="banana")}}
+    errors = crr.validate_registry(data)
+    assert any("layer" in e for e in errors), errors
+
+
+def test_enforced_with_only_model_artifacts_rejected():
+    crr = _load_module()
+    data = {"classes": {
+        "verify-before-declare": _class(
+            tier="enforced",
+            artifacts=["SOUL.md:Principle-21", "skill:reflexion-check"],
+        ),
+    }}
+    errors = crr.validate_registry(data)
+    assert errors, "enforced tier with only model-layer artifacts must be rejected"
+    assert any("model-layer" in e for e in errors)
+
+
+def test_enforced_with_harness_artifact_accepted():
+    crr = _load_module()
+    data = {"classes": {
+        "bypass-attempt": _class(tier="enforced", artifacts=["hook:pre-commit-score"]),
+    }}
     assert crr.validate_registry(data) == []
 
 
