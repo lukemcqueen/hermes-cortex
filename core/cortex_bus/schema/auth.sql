@@ -45,7 +45,8 @@ CREATE TABLE IF NOT EXISTS bus.permissions (
     is_admin        BOOLEAN DEFAULT false,
     created_at      TIMESTAMPTZ DEFAULT now(),
     labels          JSONB DEFAULT '{}'::jsonb,
-    config          JSONB DEFAULT '{}'::jsonb
+    config          JSONB DEFAULT '{}'::jsonb,
+    expires_at      TIMESTAMPTZ
 );
 
 -- ── Migration from the boolean model (backup host, 2026-08-04) ──
@@ -67,6 +68,7 @@ END $$;
 ALTER TABLE bus.permissions ADD COLUMN IF NOT EXISTS can_read TEXT[] DEFAULT '{}';
 ALTER TABLE bus.permissions ADD COLUMN IF NOT EXISTS can_write TEXT[] DEFAULT '{}';
 ALTER TABLE bus.permissions ADD COLUMN IF NOT EXISTS is_admin BOOLEAN DEFAULT false;
+ALTER TABLE bus.permissions ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ;
 
 UPDATE bus.permissions SET can_read = ARRAY['*'], can_write = ARRAY['*']
  WHERE is_admin = false
