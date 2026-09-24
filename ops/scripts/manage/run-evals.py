@@ -75,6 +75,23 @@ def _run(cmd: list[str], timeout: int = 60) -> tuple[int, str]:
         return 127, f"command not found: {cmd[0]}"
 
 
+def _parse_doctor_json(out: str) -> dict:
+    """Parse the doctor's --json report out of combined stdout+stderr.
+
+    The doctor's MCP-server probes (loop-governance, M6) emit
+    `[mcp-server] DEBUG: ...` lines to stderr, and _run() returns stdout+
+    stderr combined. Recover the FIRST complete JSON object and ignore the
+    noise on either side; raise ValueError when no JSON object exists.
+    """
+    start = out.find("{")
+    if start < 0:
+        raise ValueError("no JSON object in doctor output")
+    report, _end = json.JSONDecoder().raw_decode(out[start:])
+    if not isinstance(report, dict):
+        raise ValueError("doctor output JSON is not an object")
+    return report
+
+
 def _task_db_identity() -> tuple[str, str]:
     """Resolve the local task-DB reader role + creator name.
 
@@ -309,8 +326,8 @@ def _doctor_clean() -> tuple[bool, str]:
         return False, f"cortex-doctor.py not found at {DOCTOR}"
     rc, out = _run(["python3", str(DOCTOR), "--json"], timeout=120)
     try:
-        report = json.loads(out)
-    except json.JSONDecodeError:
+        report = _parse_doctor_json(out)
+    except (ValueError, json.JSONDecodeError):
         return False, f"doctor JSON parse failed (rc={rc}): {out.strip()[-200:]}"
     summary = report.get("summary", {})
     fails = summary.get("fail", -1)
