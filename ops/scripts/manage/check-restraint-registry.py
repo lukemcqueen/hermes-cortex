@@ -59,6 +59,24 @@ def validate_registry(data) -> list:
         noticed = cls.get("noticed")
         if not _is_valid_iso(noticed):
             errors.append(f"{name}: invalid or missing 'noticed' ({noticed!r})")
+
+    gaps = data.get("known_gaps", [])
+    if not isinstance(gaps, list):
+        errors.append("'known_gaps' is not a list")
+    else:
+        for i, gap in enumerate(gaps):
+            if not isinstance(gap, dict):
+                errors.append(f"known_gaps[{i}]: gap entry is not an object")
+                continue
+            gclass = gap.get("class")
+            if not gclass or not str(gclass).strip():
+                errors.append(f"known_gaps[{i}]: empty 'class'")
+            restraint = gap.get("restraint")
+            if not restraint or not str(restraint).strip():
+                errors.append(f"known_gaps[{i}]: empty 'restraint'")
+            noticed = gap.get("noticed")
+            if not _is_valid_iso(noticed):
+                errors.append(f"known_gaps[{i}]: invalid or missing 'noticed' ({noticed!r})")
     return errors
 
 

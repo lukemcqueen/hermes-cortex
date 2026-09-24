@@ -66,6 +66,50 @@ def test_full_iso_datetime_noticed_accepted():
     assert crr.validate_registry(data) == []
 
 
+def test_known_gaps_validated():
+    crr = _load_module()
+    data = {
+        "classes": {},
+        "known_gaps": [
+            {"class": "P0-3 end_change evidence", "restraint": "planned: allowlist", "noticed": "2026-07-31"},
+        ],
+    }
+    assert crr.validate_registry(data) == []
+
+
+def test_known_gap_empty_restraint_rejected():
+    crr = _load_module()
+    data = {
+        "classes": {},
+        "known_gaps": [
+            {"class": "P0-3 end_change evidence", "restraint": "", "noticed": "2026-07-31"},
+        ],
+    }
+    errors = crr.validate_registry(data)
+    assert errors, "empty restraint in a known gap must be rejected"
+    assert any("known_gaps" in e for e in errors)
+
+
+def test_known_gap_missing_class_rejected():
+    crr = _load_module()
+    data = {
+        "classes": {},
+        "known_gaps": [
+            {"restraint": "planned: allowlist", "noticed": "2026-07-31"},
+        ],
+    }
+    errors = crr.validate_registry(data)
+    assert errors, "missing class in a known gap must be rejected"
+
+
+def test_known_gaps_not_a_list_rejected():
+    crr = _load_module()
+    data = {"classes": {}, "known_gaps": "not-a-list"}
+    errors = crr.validate_registry(data)
+    assert errors, "known_gaps must be a list"
+    assert any("known_gaps" in e for e in errors)
+
+
 def test_script_exit_codes(tmp_path):
     """End-to-end: exit 0 on well-formed, non-zero + names class on empty restraint."""
     good = tmp_path / "good.json"

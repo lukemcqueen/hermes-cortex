@@ -161,9 +161,25 @@
     }
   },
   "known_gaps": [
-    "P0-3 verify-before-declare structural gate (end_change evidence) — planned, not yet shipped",
-    "P2-9 trust-language enforcement at recidivism layer — planned, not yet shipped",
-    "EVIDENCE_COMMANDS allowlist for P0-3 — planned",
-    "doctor bypass-attempt counter with trend — planned (MAJOR-04)"
+    {
+      "class": "P0-3 verify-before-declare structural gate (end_change evidence)",
+      "restraint": "planned: EVIDENCE_COMMANDS allowlist at end_change (Story M8)",
+      "noticed": "2026-07-31"
+    },
+    {
+      "class": "P2-9 trust-language enforcement at recidivism layer",
+      "restraint": "planned: trust-language recidivism enforcement",
+      "noticed": "2026-07-31"
+    },
+    {
+      "class": "EVIDENCE_COMMANDS allowlist for P0-3",
+      "restraint": "planned: evidence-command allowlist (Story M8)",
+      "noticed": "2026-07-31"
+    },
+    {
+      "class": "doctor bypass-attempt counter with trend",
+      "restraint": "planned: doctor bypass-attempt trend counter (MAJOR-04)",
+      "noticed": "2026-07-31"
+    }
   ]
 }
