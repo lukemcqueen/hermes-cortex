@@ -43,6 +43,7 @@ from .checks import (
     check_mem_plugins,
     check_cron_runtime_scripts,
     check_langfuse_observability,
+    check_restraint_registry,
 )
 from .fix import apply_fixes
 from .bus_alert import dispatch_bus_alerts
@@ -92,6 +93,7 @@ def main():
         check_hook_drift,
         check_cron_runtime_scripts,
         check_langfuse_observability,
+        check_restraint_registry,
     ]
 
     if do_quick:

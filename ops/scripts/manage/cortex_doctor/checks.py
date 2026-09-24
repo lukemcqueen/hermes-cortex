@@ -4347,3 +4347,106 @@ def check_langfuse_observability(res):
     return
 
 
+def _restraint_resolves(restraint) -> tuple:
+    """Resolve a guardrail-registry restraint string to (exists: bool, reason).
+
+    Accepts four artifact kinds, each resolved against a real on-disk artifact:
+      doctor:<check_fn>   — a check_* function defined in this module
+      hook:<name>         — a hook file under ops/scripts/ or a hooks dir
+      skill:<name>        — a skill directory under repo or hermes skills
+      enforcer:<name>     — a token present in the governance-enforcer plugin
+    """
+    restraint = (restraint or "").strip()
+    if not restraint:
+        return (False, "empty restraint")
+    if ":" not in restraint:
+        return (False, f"missing kind prefix ({restraint!r})")
+    kind, _, name = restraint.partition(":")
+    name = name.strip()
+    if not name:
+        return (False, f"empty artifact name ({restraint!r})")
+
+    if kind == "doctor":
+        fn = globals().get(name)
+        if callable(fn):
+            return (True, f"doctor check {name!r}")
+        return (False, f"doctor check {name!r} not defined in checks.py")
+
+    if kind == "hook":
+        for base in (CORTEX_REPO / "ops" / "scripts", CORTEX_HOME / "hooks", HERMES_HOME / "hooks"):
+            if (base / name).exists():
+                return (True, f"hook {name!r}")
+        return (False, f"hook {name!r} not found")
+
+    if kind == "skill":
+        for base in (CORTEX_REPO / "skills", HERMES_HOME / "skills"):
+            if (base / name).is_dir():
+                return (True, f"skill {name!r}")
+            if base.is_dir():
+                try:
+                    for sub in base.iterdir():
+                        if sub.is_dir() and (sub / name).is_dir():
+                            return (True, f"skill {name!r}")
+                except OSError:
+                    continue
+        return (False, f"skill {name!r} not found")
+
+    if kind == "enforcer":
+        enforcer = HERMES_HOME / "plugins" / "governance-enforcer" / "__init__.py"
+        if enforcer.exists():
+            try:
+                if name in enforcer.read_text(encoding="utf-8", errors="replace"):
+                    return (True, f"enforcer {name!r}")
+            except OSError:
+                pass
+        return (False, f"enforcer {name!r} not found")
+
+    return (False, f"unknown restraint kind {kind!r}")
+
+
+def check_restraint_registry(res: "Results") -> None:
+    """Every documented failure mode must name a restraint that actually exists.
+
+    Story M1 (goring ox): once a propensity is documented with a `restraint`,
+    deploying without that restraint present is the culpable act. This check
+    walks docs/guardrail-registry.json and FAILs any class whose `restraint`
+    does not resolve to a real artifact on disk (doctor/hook/skill/enforcer).
+    """
+    registry = CORTEX_REPO / "docs" / "guardrail-registry.json"
+    if not registry.exists():
+        res.add("Restraint registry", "WARN",
+                "guardrail-registry.json not found — restraint presence unchecked",
+                "Run: git pull && cortex-update.sh (restore docs/guardrail-registry.json)")
+        return
+    try:
+        data = json.loads(registry.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError) as e:
+        res.add("Restraint registry", "FAIL",
+                f"cannot parse guardrail-registry.json: {e}",
+                "Fix the JSON syntax in docs/guardrail-registry.json")
+        return
+
+    classes = data.get("classes", {}) if isinstance(data, dict) else {}
+    if not isinstance(classes, dict):
+        res.add("Restraint registry", "FAIL", "'classes' is not an object",
+                "Fix docs/guardrail-registry.json structure")
+        return
+
+    missing = []
+    for name, cls in classes.items():
+        if not isinstance(cls, dict):
+            missing.append(f"{name}: class entry is not an object")
+            continue
+        ok, reason = _restraint_resolves(cls.get("restraint"))
+        if not ok:
+            missing.append(f"{name}: {reason}")
+
+    if missing:
+        res.add("Restraint registry", "FAIL",
+                f"{len(missing)} class(es) with unresolvable restraint: " + "; ".join(missing[:6]),
+                "Name a real artifact (doctor:/hook:/skill:/enforcer:) in each restraint")
+    else:
+        res.add("Restraint registry", "PASS",
+                f"all {len(classes)} classes name a present restraint")
+
+
