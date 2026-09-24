@@ -48,6 +48,49 @@ def record(challenged, outcome, context="", session_id="", path=None) -> dict:
     return rec
 
 
+def load_records(path) -> list:
+    """Read JSONL records, skipping blank lines and ignoring malformed ones."""
+    p = Path(path)
+    if not p.exists():
+        return []
+    recs = []
+    for line in p.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            recs.append(json.loads(line))
+        except json.JSONDecodeError:
+            continue
+    return recs
+
+
+def report(records) -> dict:
+    """Compute the three refusal metrics — kept SEPARATE, never folded into
+    one satisfaction number (Story M3.2).
+
+      refusal_rate       = challenged / total            (recall of pushback)
+      false_refusal_rate = overridden / challenged        (challenges that were wrong)
+      override_rate      = overridden / total             (how often the human overrode)
+    """
+    total = len(records)
+    challenged = sum(1 for r in records if r.get("challenged"))
+    overridden = sum(1 for r in records if r.get("override_outcome") == "overridden")
+    return {
+        "refusal_rate": challenged / total if total else 0.0,
+        "false_refusal_rate": overridden / challenged if challenged else 0.0,
+        "override_rate": overridden / total if total else 0.0,
+    }
+
+
+def _print_report(d: dict) -> str:
+    return (
+        f"refusal_rate: {d['refusal_rate']:.4f}\n"
+        f"false_refusal_rate: {d['false_refusal_rate']:.4f}\n"
+        f"override_rate: {d['override_rate']:.4f}"
+    )
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     sub = ap.add_subparsers(dest="command", required=True)
@@ -60,6 +103,9 @@ def main(argv=None) -> int:
     rec.add_argument("--session-id", default="", help="session identifier")
     rec.add_argument("--path", default="", help="override log file path")
 
+    rep = sub.add_parser("report", help="print the three refusal metrics")
+    rep.add_argument("--path", default="", help="override log file path")
+
     args = ap.parse_args(argv)
 
     if args.command == "record":
@@ -68,6 +114,11 @@ def main(argv=None) -> int:
             return 2
         r = record(args.challenged, args.outcome, args.context, args.session_id, args.path or None)
         print(json.dumps(r))
+        return 0
+
+    if args.command == "report":
+        path = args.path or log_path()
+        print(_print_report(report(load_records(path))))
         return 0
 
     ap.error(f"unknown command {args.command}")
