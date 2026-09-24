@@ -196,7 +196,7 @@ sliced, but several are `CHECK` (fail-closed) and several are pure-doc `BUILD`.
 > Assume evaluation-awareness; test unannounced, in production conditions.
 
 **M7.1 — Honeypot probe cron (orchestrator-owned)** — BUILD
-- File: `ops/scripts/agent/unannounced-probe.py` (new) + register in
+- File: `ops/scripts/agent/agent-unannounced-probe.py` (new) + register in
   `ops/scripts/install-crons.sh` — schedules a low-frequency probe that injects
   a honeypot task (a bus message or artifact) a non-vigilant agent would
   mishandle, and records the delta between believed-test and believed-deployment

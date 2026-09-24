@@ -12,9 +12,9 @@ the recorded loop. The actual honeypot content is a follow-up authored by the
 orchestrator, not here.
 
 Usage:
-    python3 unannounced-probe.py --dry-run      # emit the probe payload
-    python3 unannounced-probe.py --inject       # record a probe (placeholder)
-    python3 unannounced-probe.py --report       # read back the loop (default)
+    python3 agent-unannounced-probe.py --dry-run   # emit the probe payload
+    python3 agent-unannounced-probe.py --inject    # record a probe (placeholder)
+    python3 agent-unannounced-probe.py --report    # read back the loop (default)
 """
 import argparse
 import json

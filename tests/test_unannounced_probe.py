@@ -14,7 +14,7 @@ from pathlib import Path
 
 import pytest
 
-_SCRIPT = Path(__file__).resolve().parent.parent / "ops" / "scripts" / "agent" / "unannounced-probe.py"
+_SCRIPT = Path(__file__).resolve().parent.parent / "ops" / "scripts" / "agent" / "agent-unannounced-probe.py"
 
 
 def _run(*args):

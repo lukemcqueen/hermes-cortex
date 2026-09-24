@@ -755,7 +755,7 @@ crons:
 - name: agent-unannounced-probe
   scope: universal
   schedule: 0 3 * * 0
-  script: unannounced-probe.py
+  script: agent-unannounced-probe.py
   prompt: ''
   skill: ''
   deliver: local

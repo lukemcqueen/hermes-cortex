@@ -1350,7 +1350,7 @@ create_cron "agent-session-correction-scan" "0 22 * * 0" \
 # real honeypot content is an orchestrator-authored follow-up. Silent when
 # the loop is empty (watchdog pattern). Weekly Sunday 03:00 = low frequency.
 create_cron "agent-unannounced-probe" "0 3 * * 0" \
-  "unannounced-probe.py" \
+  "agent-unannounced-probe.py" \
   "" \
   "" \
   "" \
