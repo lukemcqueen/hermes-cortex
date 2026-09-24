@@ -243,17 +243,24 @@ async def api_send(request: Request):
     # Strict input formatting (2026-09-02): envelope schema + identity
     # binding + per-agent rate limit. Malformed, spoofed, or flooding sends
     # are rejected before they ever reach a queue.
-    errors, _parsed = validate_send_payload(body, authenticated_from=agent)
+    errors, parsed_message = validate_send_payload(body, authenticated_from=agent)
     if errors:
         raise HTTPException(400, "Invalid message: " + "; ".join(errors[:6]))
     if not _rate_limiter.allow(agent):
         raise HTTPException(429, "Rate limit exceeded — try again later")
 
     _check_permission(agent, queue, "write")
-    
+
+    # Enqueue the PARSED envelope (2026-09-25): the collector posts
+    # `message` pre-serialized (a JSON string). Storing the raw string made
+    # the body double-encoded (jsonb string) — 123 inbox_orchestrator
+    # messages since Sep 15 were archived unqueryable and the shared
+    # pipeline never saw them. parsed_message is the validated dict.
+    envelope = parsed_message if parsed_message is not None else message
+
     try:
         bus = get_queue()
-        msg_id = bus.send(queue, message, priority, correlation_id)
+        msg_id = bus.send(queue, envelope, priority, correlation_id)
         _log_audit(agent, "send", queue, {"msg_id": msg_id}, 
                    request.client.host if request.client else None)
         # US-002 orchestrator mirror (Luke directive 2026-09-09): messages
@@ -261,7 +268,7 @@ async def api_send(request: Request):
         # inbox_orchestrator so every orchestrator sees everything and any
         # future orchestrator inherits visibility automatically. Best-effort:
         # a mirror failure never fails the primary send.
-        _mirror_to_orchestrator_inbox(bus, queue, message, agent, msg_id)
+        _mirror_to_orchestrator_inbox(bus, queue, envelope, agent, msg_id)
         return {"msg_id": msg_id}
     except Exception as e:
         _log_audit(agent, "send", queue, {"error": str(e)[:200]},
