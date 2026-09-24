@@ -224,12 +224,55 @@ for src in "${CORTEX_REPO}/ops/install/deploy/nginx/hermes-zone-defs.conf" "${CO
           -e "s|__HTPASSWD_FILE__|${NGINX_DIR}/.hermes-htpasswd|g" \
           -e "s|__NGINX_CONFIG_DIR__|${NGINX_DIR}|g" \
           > "$EXTRAS_DST"
-        echo "  ✓ Extra services enabled: grafana, bus, metrics"
+        echo "  ✓ Extra services enabled: grafana, bus (push-metrics is separate: metrics-sink.conf)"
       else
         if [ -f "$EXTRAS_DST" ]; then
           rm -f "$EXTRAS_DST"
           echo "  ○ Extra services: disabled (core only)"
         fi
+      fi
+
+      # ── Push-metrics sink (xx005) — deployed by DEFAULT where a sink exists ──
+      # Split out of orch-hermes-services.conf (2026-09-23). The push CLIENT is
+      # universal (agent-push-metrics, every 5m on every host) but the sink was
+      # opt-in and defaulted OFF, so remote agents' pushes were refused 1053
+      # consecutive runs and each failure fed the escalation loop.
+      # Explicit HERMES_SERVICES wins; when it is unset (the default) the sink
+      # is deployed only if a local VictoriaMetrics backend actually answers —
+      # a host never gets a proxy pointing at a service it doesn't run.
+      METRICS_SRC="${CORTEX_REPO}/ops/install/deploy/nginx/metrics-sink.conf"
+      METRICS_DST="${NGINX_DIR}/conf.d/metrics-sink.conf"
+      VM_HEALTH_URL="${CORTEX_VM_HEALTH_URL:-http://127.0.0.1:8428/-/healthy}"
+      if [ -z "${HERMES_SERVICES:-}" ]; then
+        if curl -fsS --max-time 2 -o /dev/null "$VM_HEALTH_URL" 2>/dev/null; then
+          METRICS_ON=1
+          METRICS_WHY="auto-detected local VictoriaMetrics backend"
+        else
+          METRICS_ON=0
+          METRICS_WHY="no backend answered ${VM_HEALTH_URL}"
+        fi
+      elif grep -qiE 'metrics|extra|all' <<< "${HERMES_SERVICES}"; then
+        METRICS_ON=1
+        METRICS_WHY="explicit (HERMES_SERVICES=${HERMES_SERVICES})"
+      else
+        METRICS_ON=0
+        METRICS_WHY="explicitly excluded (HERMES_SERVICES=${HERMES_SERVICES})"
+      fi
+      if [ -f "$METRICS_SRC" ] && [ "$METRICS_ON" = "1" ]; then
+        mkdir -p "$(dirname "$METRICS_DST")"
+        < "$METRICS_SRC" sed \
+          -e "s|__SSL_CERT__|${ssl_cert:-__SSL_CERT__}|g" \
+          -e "s|__SSL_CERT_KEY__|${ssl_key:-__SSL_CERT_KEY__}|g" \
+          -e "s|__NGINX_LOG_DIR__|${NGINX_LOG_DIR:-/var/log/nginx}|g" \
+          -e "s|__HTPASSWD_FILE__|${NGINX_DIR}/.hermes-htpasswd|g" \
+          -e "s|__NGINX_CONFIG_DIR__|${NGINX_DIR}|g" \
+          > "$METRICS_DST"
+        echo "  ✓ Push-metrics sink enabled: metrics-sink.conf (port xx005) — ${METRICS_WHY}"
+      else
+        if [ -f "$METRICS_DST" ]; then
+          rm -f "$METRICS_DST"
+        fi
+        echo "  ○ Push-metrics sink: disabled — ${METRICS_WHY}"
       fi
     fi
   fi

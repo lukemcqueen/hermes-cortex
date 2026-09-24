@@ -1,83 +1,104 @@
-# Runbook — deploy the push-metrics reverse proxy (port xx005)
+# Runbook — push-metrics sink (port xx005)
 
-**Status: needs root (not runnable by an agent without passwordless sudo).**
-Owner: the fleet operator. Prepared from live evidence 2026-09-23 by moses (audit cycles #2778/#2779).
+**Repo-side fixed 2026-09-23; the host-side deploy still needs root.**
+Owner: the fleet operator. Evidence from audit cycles #2778/#2779/#2793/#2794.
 
 ## Symptom
 
-`agent-push-metrics` fails every run — HTTP 000 / connection refused to the orchestrator's
-`:13005` (primary) and the peer's `:14003` (fallback). The cron has failed 1000+
-consecutive runs since 2026-08-30, and the paused ISSUES tasks on orchestrator hosts all
-trace back to it.
+`agent-push-metrics` failed on remote hosts for weeks — HTTP 000 / connection refused to
+the orchestrator's `:13005` (primary) and a peer's `:14003` (fallback). 1000+ consecutive
+failures since 2026-08-30, an escalation loop (sensor → P1 ISSUE → task reopen →
+governance cycle), and a cron the failure-watchdog kept pausing, all for a condition no
+agent could fix without root.
 
-## Root cause (verified)
+## Root cause (verified, two layers)
 
-The push-metrics reverse proxy is defined **only** in the opt-in extras template
-`ops/install/deploy/nginx/orch-hermes-services.conf` (App 5, `xx005` →
-`127.0.0.1:8428`, i.e. VictoriaMetrics). That file is deployed to `conf.d/` **only when
-the host's environment opts in**:
+**1. Half-wired feature.** The push **client** is universal — cron `agent-push-metrics`,
+scope universal, `every 5m`, on every host. The push **sink** (the xx005 reverse proxy in
+front of VictoriaMetrics) lived inside `orch-hermes-services.conf`, an opt-in bundle that
+defaults to off:
 
 ```
-hermes-services-apply.py:  hermes_services = os.environ.get("HERMES_SERVICES", "dashboard,langfuse,health")
-                           needs_extra = any(svc in hermes_services for svc in ["grafana","bus","metrics","extra","all"])
+hermes-services-apply.py:  os.environ.get("HERMES_SERVICES", "dashboard,langfuse,health")
+                           needs_extra = any(svc in HERMES_SERVICES for svc in
+                                             ["grafana","bus","metrics","extra","all"])
 ```
 
-Evidence on the orchestrator host:
+So 288 attempts/host/day were aimed at a port almost no host served. On the orchestrator:
+`/etc/nginx/conf.d/` did not exist and the core conf served only xx001/xx002/xx004/xx007.
 
-* `/etc/nginx/conf.d/` **does not exist** — the extras file was never deployed.
-* `/etc/nginx/sites-available/hermes-services.conf` serves xx001 / xx002 / xx004 / xx007 —
-  **no xx005**.
-* The repo's extras template does define xx005 (`listen 13005 ssl;` → `metrics_backend`).
+**2. A second, independent bug in the client.** `push_metrics()` iterated
+`"${VICTORIA_URL}" "${VICTORIA_METRICS_FALLBACK_URL}"` under `set -u`, so any host
+without `VICTORIA_METRICS_FALLBACK_URL` in its env **aborted with "unbound variable"**
+(exit 1) before it ever sent anything. That alone produced one cron error per tick on
+hosts that had no fallback configured.
 
-So the config exists in the repo; the host simply never enabled it. A container/VM
-restart does **not** fix this (that proposal was correctly refused — the VM is healthy).
+## What changed in the repo (2026-09-23)
 
-## Do this (per host, as root)
+* The xx005 block moved out of the extras bundle into its own template
+  `ops/install/deploy/nginx/metrics-sink.conf` — one owner for the port, no duplicate
+  `listen` when extras are toggled.
+* Deploy gate (`metrics_sink_decision()` in `hermes-services-apply.py`, mirrored in
+  `install-nginx-full.sh`):
+  * `HERMES_SERVICES` unset → deploy **iff** a local VictoriaMetrics answers
+    (`CORTEX_VM_HEALTH_URL`, default `http://127.0.0.1:8428/-/healthy`). The default now
+    works on hosts that have a sink and never creates a dead listener on hosts that don't.
+  * `HERMES_SERVICES` set with `metrics`/`extra`/`all` → deploy (explicit).
+  * `HERMES_SERVICES` set without them → do not deploy (explicit wins; if a live xx005
+    block is being removed, the operator gets the drift warning).
+* The client's failure accounting is bounded: first failure of an outage alerts (exit 1,
+  self-diagnosing, names this runbook); later ticks inside the cooldown exit 0 with a
+  suppressed line; the cooldown (6h) re-alerts; recovery clears the state. State:
+  `~/.hermes-cortex/state/push-metrics.state`. A `000` alert therefore no longer means
+  288 error-ticks a day, and the cron-failure watchdog never sees 3 consecutive errors.
+* Unwritable state file fails closed: it alerts every run rather than silently suppressing.
+
+## Do this (per sink host, as root)
 
 ```bash
-# 1. What is actually served right now?
+# 1. What is served right now?
 grep -rE "listen 1[34]00[0-9]" /etc/nginx/sites-available/ /etc/nginx/conf.d/ 2>/dev/null
 
-# 2. Check the opt-in gate for THIS host.
-#    Orchestrators must include bus + metrics (+ grafana) or 'all'.
-echo "$HERMES_SERVICES"        # empty ⇒ extras are DISABLED on this host
+# 2. Confirm the backend is alive (the proxy is the only missing piece).
+curl -s http://127.0.0.1:8428/-/healthy        # expect "OK"
 
-# 3. Apply the nginx config with extras enabled (run from the deployed cortex home).
-sudo env HERMES_SERVICES=bus,metrics,grafana \
-  python3 ~/.hermes-cortex/scripts/hermes-services-apply.py
+# 3. Apply. HERMES_SERVICES is no longer required for metrics — the gate
+#    auto-detects the backend. Set it only to be explicit.
+sudo python3 ~/.hermes-cortex/scripts/hermes-services-apply.py
+#    …or explicitly:  sudo env HERMES_SERVICES=all python3 ~/.hermes-cortex/scripts/hermes-services-apply.py
 
 # 4. Validate BEFORE reloading — never reload a config that fails the check.
 sudo nginx -t && sudo systemctl reload nginx
 
-# 5. Verify the port is really served (from another host, not loopback).
-curl -sk -o /dev/null -w '%{http_code}\n' https://<orchestrator-host>:13005/   # primary
-curl -sk -o /dev/null -w '%{http_code}\n' https://<peer-orchestrator-host>:14005/  # fallback host
+# 5. Verify the port is served from ANOTHER host (loopback proves nothing).
+curl -sk -o /dev/null -w '%{http_code}\n' https://<sink-host>:13005/
 ```
 
-401 is a **pass** (the block requires basic auth). `000` / connection refused is a fail.
+`401` is a **pass** (the block requires basic auth). `000` / refused is a fail.
+Then confirm the sink actually ingests: `curl -s 'http://127.0.0.1:8428/api/v1/label/agent/values'`
+should list the agents that have pushed since.
 
 ## Caveats — read before running
 
-1. **Do not enable extras blindly on a host whose core conf already defines the bus.**
-   `sites-available/hermes-services.conf` on the orchestrator currently contains an
-   `agent_bus_backend` (xx004) block that the *current* repo template no longer has. If
-   extras are enabled, the extras file adds its own `xx004` block → two blocks on one
-   port → `nginx -t` fails. Check step 1 first; if xx004 appears in both, remove the
-   duplicate block from the core conf in the same edit.
-2. **Removing extras takes the bus down.** `hermes-services-apply.py` now prints a loud
-   drift warning (2026-09-23) when it disables extras while the core conf no longer
-   defines bus/grafana/metrics. If you see that warning, stop and reconcile.
-3. **The `:14003` fallback in the push script looks wrong.** 14003 is the peer
-   orchestrator's *grafana* port (xx003); the metrics proxy there is **14005** (xx005).
-   Fix the fallback URL after the port is live, or the client keeps failing even though
-   the proxy works.
-4. VictoriaMetrics itself listens on `127.0.0.1:8428` — the proxy is the only thing
-   missing. `curl -s http://127.0.0.1:8428/-/healthy` on the host confirms the backend.
+1. **Do not enable `grafana`/`bus` extras blindly.** A host whose core conf still contains
+   its own xx004 block gets a second xx004 block from the extras file → `nginx -t` fails.
+   Metrics is unaffected by this now — it is no longer in that bundle.
+2. **The `:14003` fallback looks wrong.** 14003 is a peer orchestrator's *grafana* port
+   (xx003); its metrics proxy is **14005** (xx005) after the port-prefix translation.
+   Fix that host's `VICTORIA_METRICS_FALLBACK_URL` or drop it — a wrong fallback makes a
+   working primary look broken.
+3. **A host with no sink at all is not broken.** Either deploy one, or unset
+   `VICTORIA_METRICS_URL` in `~/.hermes-cortex/.env`: the client then exits 0 with
+   "metrics push disabled (this is optional)" and records nothing.
+4. `401`/`403` from the sink in the client alert is an **auth** problem (htpasswd), not a
+   dead sink — the alert text says so.
 
 ## Repo-side status
 
-* Config present: `ops/install/deploy/nginx/orch-hermes-services.conf` (App 5 / xx005).
-* Deploy gate hardened: `ops/install/deploy/nginx/hermes-services-apply.py` warns on the
-  silent-removal path (2026-09-23).
-* Nothing else in the repo needs to change for this port to exist — the remaining work is
-  the root deploy above.
+* Template: `ops/install/deploy/nginx/metrics-sink.conf` (xx005 → local VictoriaMetrics).
+* Gates: `metrics_sink_decision()` (python deployer) + the mirrored block in
+  `install-nginx-full.sh`.
+* Client: `ops/scripts/manage/agent-push-metrics.sh` (bounded alerting).
+* Tests: `tests/test_runtime/test_metrics_sink_gate.py`,
+  `tests/test_runtime/test_push_metrics_bounded_alerts.py`.
+* Remaining work: the root deploy above, on each host that should own a sink.

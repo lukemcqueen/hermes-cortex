@@ -71,6 +71,52 @@ MAX_RETRIES=3
 RETRY_DELAY=2
 OS="$(uname)"
 
+# ── Failure accounting (2026-09-23) ──────────────────────────
+# Why: this cron runs every 5m on EVERY host (288 runs/day). When the sink is
+# legitimately dead — e.g. the xx005 reverse proxy was never deployed, which
+# needs root to fix — the old script exited 1 on every tick. That produced 1053
+# consecutive failures, an escalation loop (sensor → P1 issue → task reopen →
+# governance cycle) and a cron the watchdog kept pausing, for a condition no
+# agent could fix. Bounded alerting keeps the signal and drops the churn:
+#   - first failure of a streak   → exit 1 (alert, self-diagnosing)
+#   - same streak inside cooldown → exit 0, one suppressed line to stderr
+#   - cooldown elapsed            → exit 1 again (re-alert)
+#   - recovery                    → exit 0 + recovery line, state cleared
+# Fail-closed: if the state file cannot be written we CANNOT prove we already
+# alerted, so we alert on every run rather than silently suppressing.
+STATE_FILE="${PUSH_METRICS_STATE_FILE:-${HOME}/.hermes-cortex/state/push-metrics.state}"
+ALERT_COOLDOWN_S="${PUSH_METRICS_ALERT_COOLDOWN_S:-21600}"   # 6h
+CURL_BIN="${PUSH_METRICS_CURL:-curl}"
+LAST_STATUS=""
+
+_state_get() {
+  # Read one key from the state file; prints nothing when missing.
+  [ -f "$STATE_FILE" ] || return 0
+  grep -E "^$1=" "$STATE_FILE" 2>/dev/null | sed -n '1p' | cut -d= -f2-
+}
+
+_state_write() {
+  # Non-zero exit means "cannot track" → caller must alert, never suppress.
+  local dir
+  dir="$(dirname "$STATE_FILE")"
+  mkdir -p "$dir" 2>/dev/null || return 1
+  printf '%s\n' "$@" > "${STATE_FILE}.tmp" 2>/dev/null || return 1
+  mv "${STATE_FILE}.tmp" "$STATE_FILE" 2>/dev/null || return 1
+  return 0
+}
+
+_state_clear() {
+  rm -f "$STATE_FILE" "${STATE_FILE}.tmp" 2>/dev/null || true
+}
+
+_human_age() {
+  local secs="${1:-0}"
+  [ "$secs" -gt 0 ] 2>/dev/null || { printf '0m'; return 0; }
+  if [ "$secs" -lt 3600 ]; then printf '%dm' $((secs / 60));
+  elif [ "$secs" -lt 86400 ]; then printf '%dh' $((secs / 3600));
+  else printf '%dd' $((secs / 86400)); fi
+}
+
 # ── Metric Collection ────────────────────────────────────────
 
 collect_metrics() {
@@ -249,7 +295,7 @@ push_metrics() {
   local metrics status url
   metrics=$(collect_metrics)
 
-  for url in "${VICTORIA_URL}" "${VICTORIA_METRICS_FALLBACK_URL}"; do
+  for url in "${VICTORIA_URL}" "${VICTORIA_FALLBACK_URL:-}"; do
     [ -n "$url" ] || continue
     for attempt in $(seq 1 "${MAX_RETRIES}"); do
       # Bounded curl (2026-08-05): a dead endpoint must fail fast, not hang the
@@ -262,7 +308,8 @@ push_metrics() {
         "--max-time" "20" "--connect-timeout" "5"
         "-w" "%{http_code}" "-o" "/dev/null")
 
-      status=$(echo "${metrics}" | curl "${curl_args[@]}")
+      status=$(echo "${metrics}" | "$CURL_BIN" "${curl_args[@]}")
+      LAST_STATUS="${status}"
 
       if [ "${status}" = "204" ]; then
         return 0
@@ -281,9 +328,76 @@ push_metrics() {
 
 # ── Main ─────────────────────────────────────────────────────
 
-if ! push_metrics; then
-  echo "[push-metrics] FAILED — all retries exhausted" >&2
+now="$(date +%s)"
+consec="$(_state_get CONSECUTIVE)"; case "$consec" in ''|*[!0-9]*) consec=0 ;; esac
+first_fail="$(_state_get FIRST_FAILURE)"; case "$first_fail" in ''|*[!0-9]*) first_fail=0 ;; esac
+last_alert="$(_state_get LAST_ALERT)"; case "$last_alert" in ''|*[!0-9]*) last_alert=0 ;; esac
+
+sinks="$(sanitize_url "${VICTORIA_URL}")"
+if [ -n "${VICTORIA_FALLBACK_URL}" ]; then
+  sinks="${sinks} + $(sanitize_url "${VICTORIA_FALLBACK_URL}")"
+fi
+
+if push_metrics; then
+  if [ "$consec" -gt 0 ]; then
+    echo "[push-metrics] ✓ sink reachable again after ${consec} consecutive failure(s) over $( _human_age "$(( now - first_fail ))" ) — alert state cleared" >&2
+    _state_clear
+  fi
+  exit 0
+fi
+
+# ── Failure path — bounded alerting (see config block for the why) ──
+consec=$((consec + 1))
+if [ "$first_fail" -eq 0 ]; then
+  first_fail="$now"
+fi
+
+alert=0
+alert_why=""
+if [ "$consec" -eq 1 ]; then
+  alert=1
+  alert_why="first failure of this streak"
+elif [ $(( now - last_alert )) -ge "$ALERT_COOLDOWN_S" ]; then
+  alert=1
+  alert_why="alert cooldown ($( _human_age "$ALERT_COOLDOWN_S" )) elapsed"
+fi
+
+if [ "$alert" -eq 1 ]; then
+  saved_alert="$now"
+else
+  saved_alert="$last_alert"
+fi
+
+if ! _state_write \
+    "CONSECUTIVE=${consec}" \
+    "FIRST_FAILURE=${first_fail}" \
+    "LAST_FAILURE=${now}" \
+    "LAST_ALERT=${saved_alert}" \
+    "LAST_STATUS=${LAST_STATUS:-000}" \
+    "SINKS=${sinks}"; then
+  # Fail-closed: cannot prove a prior alert happened → alert every run.
+  alert=1
+  alert_why="state file not writable (${STATE_FILE}) — suppression impossible"
+fi
+
+outage_age=$(( now - first_fail ))
+
+if [ "$alert" -eq 1 ]; then
+  cat >&2 <<EOF
+[push-metrics] ❌ SINK UNREACHABLE — ${alert_why}
+  sinks       : ${sinks}
+  last HTTP   : ${LAST_STATUS:-000}   (000 = refused/DNS/timeout; 401/403 = auth, not a dead sink)
+  failing for : $( _human_age "$outage_age" ) (${consec} consecutive attempt(s); this cron runs every 5m)
+  next alert  : suppressed for $( _human_age "$ALERT_COOLDOWN_S" ) from now — later ticks exit 0
+  what to do  : the sink is the xx005 reverse proxy in front of VictoriaMetrics.
+                On the host that owns the sink (an orchestrator): deploy it —
+                docs/runbooks/push-metrics-nginx-deploy.md
+                If this host is not supposed to push anywhere: unset
+                VICTORIA_METRICS_URL in ${ENV_FILE} (pushing is optional; the
+                script exits 0 quietly when it is unset).
+EOF
   exit 1
 fi
 
+echo "[push-metrics] sink still down ($( _human_age "$outage_age" ), ${consec} attempts, last HTTP ${LAST_STATUS:-000}) — alert already sent, next in $( _human_age "$(( ALERT_COOLDOWN_S - (now - last_alert) ))" )" >&2
 exit 0

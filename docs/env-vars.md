@@ -33,6 +33,17 @@ bash ~/.hermes-cortex/scripts/consolidate-env.sh
 || `CORTEX_SSL_CERT_PATH` | *(auto-detect)* | `hermes-services-apply.py`, `cortex-update.sh` | Explicit SSL certificate path. Overrides all auto-detection. |
 || `CORTEX_SSL_CERT_KEY_PATH` | *(auto-detect)* | `hermes-services-apply.py`, `cortex-update.sh` | Explicit SSL certificate key path. Overrides all auto-detection. |
 || `CORTEX_SSL_DOMAIN` | *(auto-scan)* | `hermes-services-apply.py`, `cortex-update.sh` | Domain name for Let's Encrypt cert lookup at `/etc/letsencrypt/live/<domain>`. When unset, scans all directories under `/etc/letsencrypt/live/`. |
+| `HERMES_SERVICES` | _(unset ⇒ auto)_ | `hermes-services-apply.py`, `install-nginx-full.sh` | Comma-separated nginx service opt-ins: `dashboard,langfuse,health,grafana,bus,metrics` (or `all` / `extra`). The extras bundle is grafana (xx003) + bus (xx004). **Unset is the default**: extras stay off, while the push-metrics sink (xx005, `metrics-sink.conf`) deploys automatically wherever a local VictoriaMetrics answers — that default exists because the push client is universal but the sink used to be opt-in and defaulted off. Set it explicitly to override; a list without `metrics` keeps xx005 off. |
+| `CORTEX_VM_HEALTH_URL` | `http://127.0.0.1:8428/-/healthy` | `hermes-services-apply.py`, `install-nginx-full.sh` | Backend health probe behind the push-metrics auto-detect gate. Repoint it if VictoriaMetrics runs on a non-default address. |
+
+### Agent-side metrics push (read by `agent-push-metrics.sh`, set in `~/.hermes-cortex/.env`)
+
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `VICTORIA_METRICS_URL` | _(unset = push disabled)_ | Prometheus-compatible import endpoint on the sink host (the xx005 proxy). Unset ⇒ the cron exits 0 with "metrics push disabled (this is optional)". |
+| `VICTORIA_METRICS_FALLBACK_URL` | _(unset)_ | Second sink tried after the primary exhausts its retries. Must point at the peer's **xx005** port (e.g. `14005` on a `14xxx` host) — pointing it at a grafana port (xx003) makes a working primary look broken. |
+| `PUSH_METRICS_STATE_FILE` | `~/.hermes-cortex/state/push-metrics.state` | Outage bookkeeping (consecutive failures, last alert). |
+| `PUSH_METRICS_ALERT_COOLDOWN_S` | `21600` (6h) | How long the client stays quiet after the first alert of an outage, so a root-blocked sink yields one alert per 6h instead of one error per 5m tick. |
 
 ---
 

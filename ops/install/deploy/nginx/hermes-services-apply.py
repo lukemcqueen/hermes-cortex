@@ -237,6 +237,57 @@ def discover_ssl_certs(domain="", explicit_cert=None, explicit_key=None, user_ho
     return None, None
 
 
+# ── File deployment helper ───────────────────────────────────────────
+
+def metrics_sink_decision(hermes_services_env, vm_present):
+    """Decide whether to deploy the push-metrics sink (metrics-sink.conf).
+
+    The push CLIENT is universal (cron `agent-push-metrics`, every 5m on every
+    host) while the SINK used to be bundled with grafana/bus behind an opt-in
+    flag that defaulted OFF — remote agents' pushes were then refused 1053
+    consecutive runs and each failure fed the escalation loop (2026-09-23).
+
+    Rules:
+      - HERMES_SERVICES set and contains metrics|extra|all -> deploy (explicit)
+      - HERMES_SERVICES set without them                   -> do not deploy
+        (an explicit config always wins over a default)
+      - HERMES_SERVICES unset (the default)                -> deploy iff a local
+        VictoriaMetrics backend answers, so a host never gets a proxy pointing
+        at a service it does not run
+
+    Returns (deploy: bool, reason: str) — the reason is printed so an operator
+    can see WHY a host has or lacks the sink.
+    """
+    if hermes_services_env is not None:
+        svc = hermes_services_env.lower()
+        if any(name in svc for name in ("metrics", "extra", "all")):
+            return True, f"explicit (HERMES_SERVICES={svc})"
+        return False, f"explicitly excluded (HERMES_SERVICES={svc})"
+    if vm_present:
+        return True, "auto-detected local VictoriaMetrics backend"
+    return False, "no local VictoriaMetrics backend answered (host without a sink)"
+
+
+def _write_file(src, dst):
+    """Copy a generated conf into place, falling back to sudo when the target
+    directory is root-owned.
+
+    Module scope (2026-09-23): this used to be defined *inside* the non-dry-run
+    branch of the core deploy, so the name was only conditionally bound — other
+    callers (the extras block, the push-metrics sink block) then tripped static
+    analysis and would NameError on any path that skipped that branch. Cheap to
+    hoist, removes the trap.
+    """
+    try:
+        dst_dir = os.path.dirname(str(dst))
+        if dst_dir:
+            os.makedirs(dst_dir, exist_ok=True)
+        shutil.copy2(src, str(dst))
+    except (PermissionError, OSError):
+        subprocess.run(["sudo", "cp", src, str(dst)], check=True, timeout=30)
+        subprocess.run(["sudo", "chmod", "644", str(dst)], check=True, timeout=30)
+
+
 # ── Template processing ──────────────────────────────────────────────
 
 def process_template(
@@ -472,14 +523,6 @@ def main():
             os.chmod(tmp.name, 0o644)
 
             # Write to available_dir (sites-available on Linux, servers/ on macOS)
-            def _write_file(src, dst):
-                try:
-                    dst.parent.mkdir(parents=True, exist_ok=True)
-                    shutil.copy2(src, str(dst))
-                except (PermissionError, OSError):
-                    subprocess.run(["sudo", "cp", src, str(dst)], check=True, timeout=30)
-                    subprocess.run(["sudo", "chmod", "644", str(dst)], check=True, timeout=30)
-
             _write_file(tmp.name, output_path)
             print(f"  ✓ Deployed: {output_path}")
 
@@ -542,12 +585,14 @@ def main():
             extra_dst = services_enabled_dir / extras_conf
             if extra_dst.exists():
                 # Drift guard (2026-09-23): the extra-services file owns the
-                # bus (xx004), grafana (xx003) and metrics (xx005) server
-                # blocks. Removing it takes those ports down — and on hosts
-                # whose core conf no longer defines them (the bus moved to
-                # extras), the reverse proxy for a LIVE service disappears
-                # silently. Warn loudly so an operator sees it before nginx
-                # reloads into a broken state.
+                # bus (xx004) and grafana (xx003) server blocks. Removing it
+                # takes those ports down — and on hosts whose core conf no
+                # longer defines them (the bus moved to extras), the reverse
+                # proxy for a LIVE service disappears silently. Warn loudly so
+                # an operator sees it before nginx reloads into a broken state.
+                # NOTE: push-metrics (xx005) is NOT in this bundle any more —
+                # it lives in metrics-sink.conf and is gated by
+                # metrics_sink_decision(), so removing extras can't take it down.
                 core_conf = config_dir.parent / "sites-available" / "hermes-services.conf"
                 try:
                     core_text = core_conf.read_text() if core_conf.is_file() else ""
@@ -557,18 +602,86 @@ def main():
                     name for name, needle in (
                         ("bus (xx004)", "agent_bus_backend"),
                         ("grafana (xx003)", "grafana_backend"),
-                        ("push-metrics (xx005)", "metrics_backend"),
                     ) if needle not in core_text
                 ]
                 if orphaned:
                     print(
                         f"  ⚠️  Extra services disabled, but the core conf does NOT define: "
                         f"{', '.join(orphaned)} — those ports will stop being served. "
-                        f"Set HERMES_SERVICES to include bus,metrics,grafana (or 'all') "
+                        f"Set HERMES_SERVICES to include bus,grafana (or 'all') "
                         f"on orchestrator hosts before re-applying."
                     )
                 extra_dst.unlink()
                 print(f"  ○ Extra services: disabled (HERMES_SERVICES={hermes_services})")
+
+    # ── Push-metrics sink (xx005) — deployed by DEFAULT where a sink exists ──
+    # Split out of orch-hermes-services.conf (2026-09-23). The push CLIENT is
+    # universal (cron-manifest `agent-push-metrics`: scope universal, every 5m)
+    # while the SINK used to be opt-in and defaulted OFF — so remote agents'
+    # pushes were refused 1053 consecutive runs and each failure fed the
+    # escalation loop (sensor → P1 issue → task reopen → governance cycle).
+    # Rules:
+    #   HERMES_SERVICES set WITH metrics|extra|all → deploy (explicit)
+    #   HERMES_SERVICES set WITHOUT it             → do NOT deploy (explicit wins)
+    #   HERMES_SERVICES unset (the default)        → auto-detect: deploy only if a
+    #     local VictoriaMetrics backend answers, so no host gets a proxy pointing
+    #     at a service it doesn't run (that was the old all-or-nothing bundle).
+    metrics_conf = "metrics-sink.conf"
+    metrics_src = services_avail_dir / metrics_conf
+    metrics_dst = services_enabled_dir / metrics_conf
+    metrics_explicit = metrics_sink_decision(os.environ.get("HERMES_SERVICES"), False)[0]
+
+    vm_health_url = os.environ.get("CORTEX_VM_HEALTH_URL",
+                                   "http://127.0.0.1:8428/-/healthy")
+    vm_present = False
+    try:
+        import urllib.request as _urlreq
+        with _urlreq.urlopen(vm_health_url, timeout=2) as _resp:
+            vm_present = 200 <= int(getattr(_resp, "status", _resp.getcode())) < 400
+    except Exception:
+        vm_present = False
+
+    deploy_metrics, metrics_why = metrics_sink_decision(
+        os.environ.get("HERMES_SERVICES"), vm_present
+    )
+
+    if metrics_src.is_file() and deploy_metrics:
+        if args.dry_run:
+            print(f"  → Would enable push-metrics sink: {metrics_conf} → conf.d/ ({metrics_why})")
+        else:
+            services_enabled_dir.mkdir(parents=True, exist_ok=True)
+            metrics_processed = process_template(
+                template_path=str(metrics_src),
+                nginx_config_dir=config_dir.parent,
+                nginx_log_dir=log_dir,
+                htpasswd_file=htpasswd,
+                cortex_home=cortex_home,
+                ssl_cert_path=cert_path,
+                ssl_cert_key_path=key_path,
+                port_prefix=port_prefix,
+            )
+            tmp4 = tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".conf")
+            try:
+                tmp4.write(metrics_processed)
+                tmp4.close()
+                os.chmod(tmp4.name, 0o644)
+                _write_file(tmp4.name, metrics_dst)
+                print(f"  ✓ Push-metrics sink enabled: {metrics_dst} ({metrics_why})")
+            finally:
+                os.unlink(tmp4.name)
+        if metrics_explicit and not vm_present:
+            print(
+                f"  ⚠️  Push-metrics sink deployed but no backend answered {vm_health_url} — "
+                "pushers will get 502 until VictoriaMetrics runs on this host."
+            )
+    else:
+        if not metrics_src.is_file():
+            print(f"  ⚠️  Push-metrics template missing: {metrics_src} — sink not deployed")
+        elif metrics_dst.exists() and not args.dry_run:
+            metrics_dst.unlink()
+            print(f"  ○ Push-metrics sink: disabled ({metrics_why})")
+        elif args.dry_run:
+            print(f"  → Would leave push-metrics sink OFF ({metrics_why})")
 
     # ── Deploy shared defaults to conf.d/ ──
     defaults_template = template.parent / "hermes-services-shared-defaults.conf"
