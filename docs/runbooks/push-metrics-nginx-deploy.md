@@ -53,6 +53,37 @@ hosts that had no fallback configured.
   288 error-ticks a day, and the cron-failure watchdog never sees 3 consecutive errors.
 * Unwritable state file fails closed: it alerts every run rather than silently suppressing.
 
+## How an outage is detected now (both halves)
+
+Push cannot report its own absence, so the alarm lives at the **sink**, not in each
+agent's cron. The doctor now carries a sink-side check:
+
+```
+Metrics arrival age — 2 agent(s) pushed within 30m; arrived: Esther, Moses;
+  no node_uptime_seconds sample for: moses; 4 known agent(s) not seen at this sink
+  (Gisu, Joseph, Kustos, Titus) — expected if they push elsewhere or have no
+  VICTORIA_METRICS_URL
+```
+
+* `check_metrics_arrival()` asks VictoriaMetrics `/api/v1/label/agent/values` and then
+  `time() - timestamp(<metric>{agent="<name>"})` per agent. Read-only; no writes.
+* It derives the query target from **this host's own** `VICTORIA_METRICS_URL` and
+  `VICTORIA_METRICS_FALLBACK_URL` (in push order, local backend last), because the sink
+  that actually receives may be a peer. A 401 is not "unreachable": the sink blocks sit
+  behind htpasswd, and the credential travels as a Basic-auth header, never in output.
+* Levels: agents stale past the threshold → **WARN**; sink reachable but holding no agent
+  series → **INFO** with the runbook pointer (silence must never read as health); sink
+  unreachable → **INFO** naming what was tried.
+* Knobs: `CORTEX_VM_QUERY_URL` (pin one sink), `CORTEX_METRICS_STALE_MINUTES`
+  (default 30 — six missed 5m ticks), `CORTEX_VM_FRESHNESS_METRIC`
+  (default `node_uptime_seconds`).
+
+What it showed on the first live run (2026-09-24): moses's **primary** sink
+(this host's own public xx005) is refused, the fleet's live sink is a **peer's** metrics
+port, and four of six registered agents have never been seen at it — their pushes are
+failing outright, most likely because their fallback points at a grafana port. Fix the
+primary here and the picture becomes readable in one line.
+
 ## Do this (per sink host, as root)
 
 ```bash

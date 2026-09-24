@@ -35,6 +35,9 @@ bash ~/.hermes-cortex/scripts/consolidate-env.sh
 || `CORTEX_SSL_DOMAIN` | *(auto-scan)* | `hermes-services-apply.py`, `cortex-update.sh` | Domain name for Let's Encrypt cert lookup at `/etc/letsencrypt/live/<domain>`. When unset, scans all directories under `/etc/letsencrypt/live/`. |
 | `HERMES_SERVICES` | _(unset ⇒ auto)_ | `hermes-services-apply.py`, `install-nginx-full.sh` | Comma-separated nginx service opt-ins: `dashboard,langfuse,health,grafana,bus,metrics` (or `all` / `extra`). The extras bundle is grafana (xx003) + bus (xx004). **Unset is the default**: extras stay off, while the push-metrics sink (xx005, `metrics-sink.conf`) deploys automatically wherever a local VictoriaMetrics answers — that default exists because the push client is universal but the sink used to be opt-in and defaulted off. Set it explicitly to override; a list without `metrics` keeps xx005 off. |
 | `CORTEX_VM_HEALTH_URL` | `http://127.0.0.1:8428/-/healthy` | `hermes-services-apply.py`, `install-nginx-full.sh` | Backend health probe behind the push-metrics auto-detect gate. Repoint it if VictoriaMetrics runs on a non-default address. |
+| `CORTEX_VM_QUERY_URL` | _(derived)_ | `cortex-doctor` (Metrics arrival age) | Pin the sink the arrival check queries. Unset, it derives from this host's `VICTORIA_METRICS_URL`/`_FALLBACK_URL` in push order (local backend last), so it asks the sink that actually receives. |
+| `CORTEX_METRICS_STALE_MINUTES` | `30` | `cortex-doctor` (Metrics arrival age) | Warn when an agent that has pushed before has not been seen at the sink for this long (6 missed 5m ticks). |
+| `CORTEX_VM_FRESHNESS_METRIC` | `node_uptime_seconds` | `cortex-doctor` (Metrics arrival age) | Series used to measure arrival age per agent. Pick a metric every pushing agent reports. |
 
 ### Agent-side metrics push (read by `agent-push-metrics.sh`, set in `~/.hermes-cortex/.env`)
 

@@ -1421,21 +1421,7 @@ def _check_bus_e2e(res):
     from datetime import datetime, timezone
     from lib.cortex_bus import BUS_URL, CORTEX_BUS_TOKEN, CORTEX_BUS_AUTH
 
-    registry_path = CORTEX_HOME / "state" / "agent-registry.json"
-    agents = []
-    if registry_path.is_file():
-      reg = json.loads(registry_path.read_text())
-      # Shape: {"version":…, "agents": {name: {name, role, host, …}}}
-      entries = reg.get("agents", reg) if isinstance(reg, dict) else reg
-      if isinstance(entries, dict):
-        for key, val in entries.items():
-          name = val.get("name") if isinstance(val, dict) else None
-          name = name or key
-          if isinstance(name, str) and name and not name.startswith("_"):
-            agents.append(name)
-      elif isinstance(entries, list):
-        agents = [a.get("name") for a in entries if isinstance(a, dict) and a.get("name")]
-    agents = sorted({a for a in agents if isinstance(a, str) and a})
+    agents = _known_agent_names()
 
     attempts = []
     if CORTEX_BUS_TOKEN:
@@ -1524,6 +1510,218 @@ def _check_bus_e2e(res):
     res.add("Bus handler", "FAIL",
         "agent-message-handler.py not found at expected path",
         f"Run: cortex-update.sh (expected at {handler_path})")
+
+
+def _known_agent_names() -> list:
+  """Agent names from the local registry (display-cased keys included).
+
+  One reader for both the bus delivery-age check and the metrics arrival check —
+  two copies of this parsing would drift. Missing/unreadable registry → [].
+  """
+  names = []
+  try:
+    registry_path = CORTEX_HOME / "state" / "agent-registry.json"
+    if registry_path.is_file():
+      reg = json.loads(registry_path.read_text())
+      # Shape: {"version":…, "agents": {name: {name, role, host, …}}}
+      entries = reg.get("agents", reg) if isinstance(reg, dict) else reg
+      if isinstance(entries, dict):
+        for key, val in entries.items():
+          name = val.get("name") if isinstance(val, dict) else None
+          name = name or key
+          if isinstance(name, str) and name and not name.startswith("_"):
+            names.append(name)
+      elif isinstance(entries, list):
+        names = [a.get("name") for a in entries if isinstance(a, dict) and a.get("name")]
+  except Exception:
+    return []
+  return sorted({n for n in names if isinstance(n, str) and n})
+
+
+VM_QUERY_DEFAULT = "http://127.0.0.1:8428"
+
+
+def _env_file_value(key: str) -> str:
+  """Read one KEY=value from the agent env file (no sourcing, no code execution).
+
+  Same file precedence as agent-push-metrics.sh: ~/.hermes-cortex/.env, then the
+  legacy ~/.hermes-cortex/hermes-cortex.env.
+  """
+  for name in (".env", "hermes-cortex.env"):
+    path = CORTEX_HOME / name
+    try:
+      if not path.is_file():
+        continue
+      for line in path.read_text(errors="replace").splitlines():
+        line = line.strip()
+        if line.startswith(f"{key}="):
+          return line.split("=", 1)[1].strip().strip('"').strip("'")
+    except OSError:
+      continue
+  return ""
+
+
+def _split_sink_url(url: str):
+  """(base without userinfo, basic-auth header value) from a push URL."""
+  import base64
+  import re as _re
+  m = _re.match(r"^(https?://)(?:([^@/]*)@)?([^/]+)", url or "")
+  if not m:
+    return (url or "").rstrip("/"), ""
+  scheme, userinfo, host = m.group(1), m.group(2) or "", m.group(3)
+  return f"{scheme}{host}", (base64.b64encode(userinfo.encode()).decode() if userinfo else "")
+
+
+def _push_sink_candidates() -> list:
+  """(base, auth) for the sinks THIS host pushes to, in push order, then local.
+
+  Why derive instead of hardcoding: the check must ask the sink that actually
+  receives. On a host whose fleet sink is a peer (primary refused, fallback
+  serving), a hardcoded local query would report an empty sink while the data
+  was arriving elsewhere — the check would be blind in exactly the situation it
+  exists for.
+
+  The base NEVER carries userinfo (so no message can leak it); the credential
+  travels separately as a ready Basic-auth header, because the sink's nginx
+  blocks are behind htpasswd and an unauthenticated query just 401s.
+  """
+  cands = []
+  for key in ("VICTORIA_METRICS_URL", "VICTORIA_METRICS_FALLBACK_URL"):
+    val = _env_file_value(key)
+    if val:
+      cands.append(_split_sink_url(val))
+  cands.append((VM_QUERY_DEFAULT, ""))
+
+  seen, out = set(), []
+  for base, auth in cands:
+    if base not in seen:
+      seen.add(base)
+      out.append((base, auth))
+  return out
+
+
+def _vm_json(url: str, timeout: int = 8, auth: str = ""):
+  import urllib.request
+  req = urllib.request.Request(url)
+  if auth:
+    req.add_header("Authorization", f"Basic {auth}")
+  with urllib.request.urlopen(req, timeout=timeout) as resp:
+    return json.loads(resp.read().decode())
+
+
+def evaluate_metrics_arrival(vm_base: str, *, metric: str = "node_uptime_seconds",
+                             stale_min: int = 30, roster=(), timeout: int = 8,
+                             auth: str = ""):
+  """Sink-side view: which agents have PUSHED, and how long ago.
+
+  Push transports data but cannot report its own absence. A host whose push cron
+  is paused, whose env lost VICTORIA_METRICS_URL, or whose sink port was never
+  deployed sends nothing — and silence looks exactly like health. That is how one
+  missing nginx block caused 1053 consecutive client-side failures while the sink
+  never noticed that nobody had arrived (2026-09-24). This asks VictoriaMetrics
+  directly; it reads the query API and writes nothing.
+
+  Returns (level, detail, suggestion).
+  """
+  import urllib.parse  # noqa: F401  (kept local: checks.py imports lazily)
+  base = (vm_base or VM_QUERY_DEFAULT).rstrip("/")
+
+  # 1. Which agents exist in the pushed series at all?
+  try:
+    labels = _vm_json(f"{base}/api/v1/label/agent/values", timeout, auth).get("data", [])
+  except Exception as e:
+    return ("INFO",
+            f"no metrics sink reachable at {base} ({type(e).__name__}) — arrival not verifiable",
+            "A host without VictoriaMetrics is legitimate (the push is optional). "
+            "If this host IS the sink, check the service and the xx005 block.")
+  labels = sorted({str(a) for a in labels if str(a).strip()})
+  if not labels:
+    return ("INFO",
+            f"sink {base} reachable but holds NO agent series — nothing has ever "
+            "arrived here",
+            "If agents are supposed to push to this sink, the path into it is "
+            "broken: check the sink block (metrics-sink.conf / port xx005) and "
+            "each agent's VICTORIA_METRICS_URL. "
+            "docs/runbooks/push-metrics-nginx-deploy.md")
+
+  # 2. Freshness per agent — seconds since the newest sample of `metric`.
+  stale, no_sample = [], []
+  for agent in labels:
+    query = f'time() - timestamp({metric}{{agent="{agent}"}})'
+    try:
+      result = _vm_json(
+          f"{base}/api/v1/query?query=" + urllib.parse.quote(query), timeout, auth
+      ).get("data", {}).get("result", [])
+    except Exception:
+      no_sample.append(agent)
+      continue
+    if not result:
+      no_sample.append(agent)
+      continue
+    try:
+      age_s = float(result[0]["value"][1])
+    except (KeyError, IndexError, TypeError, ValueError):
+      no_sample.append(agent)
+      continue
+    if age_s >= stale_min * 60:
+      stale.append(f"{agent}: last push {int(age_s // 60)}m ago")
+
+  # Case matters: registry keys are display-cased (Moses) while the pushed label
+  # is whatever AGENT_NAME held (moses) — comparing raw strings labelled every
+  # agent "never pushed", including the host doing the checking.
+  roster_by_lower = {str(n).lower(): str(n) for n in roster}
+  label_lowers = {l.lower() for l in labels}
+  never = sorted(roster_by_lower[n] for n in roster_by_lower if n not in label_lowers)
+  arrived = [roster_by_lower.get(l.lower(), l) for l in labels]
+
+  suffix = f"; arrived: {', '.join(arrived[:8])}{'…' if len(arrived) > 8 else ''}"
+  if no_sample:
+    suffix += f"; no {metric} sample for: {', '.join(no_sample)}"
+  if never:
+    suffix += (f"; {len(never)} known agent(s) not seen at this sink "
+               f"({', '.join(never[:5])}{'…' if len(never) > 5 else ''}) — "
+               "expected if they push elsewhere or have no VICTORIA_METRICS_URL")
+
+  if stale:
+    return ("WARN",
+            "; ".join(stale) + suffix,
+            "Push works but lately nobody arrived from these agents — check the "
+            "agent's push cron and its sink URL (000 = no listener, 401 = auth). "
+            "See docs/runbooks/push-metrics-nginx-deploy.md.")
+  return ("PASS",
+          f"{len(labels)} agent(s) pushed within {stale_min}m" + suffix,
+          "")
+
+
+def check_metrics_arrival(res):
+  """4d. Sink-side arrival: did every pushing agent actually arrive lately?"""
+  try:
+    metric = os.environ.get("CORTEX_VM_FRESHNESS_METRIC", "node_uptime_seconds")
+    stale_min = int(os.environ.get("CORTEX_METRICS_STALE_MINUTES", "30"))
+    roster = _known_agent_names()
+
+    explicit = os.environ.get("CORTEX_VM_QUERY_URL", "").strip()
+    bases = [_split_sink_url(explicit)] if explicit else _push_sink_candidates()
+
+    tried = []
+    for base, auth in bases:
+      try:
+        _vm_json(f"{base}/api/v1/label/agent/values", 8, auth)
+      except Exception as e:
+        tried.append(f"{base} ({type(e).__name__})")
+        continue
+      level, detail, suggestion = evaluate_metrics_arrival(
+          base, metric=metric, stale_min=stale_min, roster=roster, auth=auth)
+      res.add("Metrics arrival age", level, detail, suggestion)
+      return
+
+    res.add("Metrics arrival age", "INFO",
+        "no push sink reachable — arrival not verifiable (tried: "
+        + ("; ".join(tried) or "none configured") + ")",
+        "Expected on a host that neither pushes nor hosts a sink. Otherwise check "
+        "the sink service and this agent's VICTORIA_METRICS_URL.")
+  except Exception as e:
+    res.add("Metrics arrival age", "SKIP", f"cannot evaluate arrival: {e}")
 
 
 def _check_self_stale(res):
