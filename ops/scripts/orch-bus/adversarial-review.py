@@ -45,6 +45,13 @@ try:
 except Exception:  # noqa: BLE001 — git unavailable; fall back to walk-up
     REPO = _SCRIPT_DIR.parents[2]
 TEMPLATE = REPO / "docs" / "templates" / "adversarial-reviewer-prompt.md"
+# Deployed hosts have no git clone — the template is deployed alongside this
+# script by cortex-update.sh. Prefer the deployed copy when present (it is the
+# version the deploy put there); fall back to the repo copy when running from
+# a source checkout (dev/test).
+_DEPLOYED_TEMPLATE = _SCRIPT_DIR.parent / "templates" / "adversarial-reviewer-prompt.md"
+if _DEPLOYED_TEMPLATE.is_file():
+    TEMPLATE = _DEPLOYED_TEMPLATE
 MARKER = "=== REVIEWED MATERIAL ==="
 DEFAULT_DB = Path.home() / ".hermes-cortex" / "data" / "loop-governance.db"
 
@@ -172,18 +179,47 @@ def _extract_reviewer_json(text: str) -> tuple[str, str]:
 
 def _record(db_path: Path, cycle_id: int, reviewer_id: str, model: str,
             text: str) -> int:
+    """Insert the review verdict directly into the adversarial_reviews table."""
     findings_json, verdict = _extract_reviewer_json(text)
-    record = _SCRIPT_DIR.parent / "manage" / "record-review.py"
-    return subprocess.run([
-        sys.executable, str(record),
-        "--db", str(db_path),
-        "--cycle-id", str(cycle_id),
-        "--reviewer-id", reviewer_id,
-        "--reviewer-model", model,
-        "--verdict", verdict,
-        "--findings-json", findings_json,
-        "--summary", text[:2000],
-    ]).returncode
+    try:
+        conn = sqlite3.connect(str(db_path))
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS adversarial_reviews ("
+            " review_id TEXT PRIMARY KEY,"
+            " cycle_id INTEGER NOT NULL UNIQUE,"
+            " reviewer_id TEXT NOT NULL,"
+            " reviewer_model TEXT NOT NULL,"
+            " verdict TEXT NOT NULL,"
+            " findings_json TEXT NOT NULL,"
+            " summary TEXT,"
+            " ts TEXT NOT NULL)"
+        )
+        conn.execute(
+            "INSERT INTO adversarial_reviews"
+            " (review_id, cycle_id, reviewer_id, reviewer_model,"
+            "  verdict, findings_json, summary, ts)"
+            " VALUES (?,?,?,?,?,?,?,?)",
+            (
+                str(uuid.uuid4()),
+                cycle_id,
+                reviewer_id,
+                model,
+                verdict,
+                findings_json,
+                text[:2000],
+                datetime.now(timezone.utc).isoformat(),
+            ),
+        )
+        conn.commit()
+        conn.close()
+    except sqlite3.IntegrityError as e:
+        if "UNIQUE" in str(e):
+            print(f"  cycle #{cycle_id}: already reviewed (UNIQUE constraint)",
+                  file=sys.stderr)
+        else:
+            print(f"  cycle #{cycle_id}: DB error: {e}", file=sys.stderr)
+        return 3
+    return 0
 
 
 def main() -> int:
