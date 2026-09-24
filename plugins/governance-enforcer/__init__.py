@@ -1214,7 +1214,7 @@ def _is_terminal_write(args: Dict[str, Any]) -> bool:
 READONLY_COMMAND_PATTERNS = [
     r"^\s*(ls|cat|head|tail|less|more|grep|find|which|whoami|id|pwd|date|stat|file|du|wc|sort|uniq|diff|comm|env|printenv|getent|nproc|lscpu|lsblk|pgrep)(?:\s|$)",
     r"^\s*(ps|top|htop|df|free|uptime|uname|hostname|dmesg|journalctl|ss|netstat)(?:\s|$)",
-    r"^\s*(git)\s+(status|log|diff|show|branch|stash\s+list)",
+    r"^\s*(git)\s+(status|log|diff|show|branch|stash\s+list|rev-parse|rev-list|for-each-ref|ls-files|ls-tree|cat-file|show-ref|merge-base|describe)",
     r"^\s*(docker)\s+(ps|images|logs|inspect|stats)",
     r"^\s*(pip|npm)\s+(list|show|search)",
     r"^\s*(hermes)\s+(--version|doctor|config\s+get|config\s+show|config\s+path|config\s+check|env-path)",

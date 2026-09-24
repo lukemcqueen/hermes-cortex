@@ -38,6 +38,7 @@ WRITE_CRON_ACTIONS = enforcer.WRITE_CRON_ACTIONS
 WRITE_SKILL_ACTIONS = enforcer.WRITE_SKILL_ACTIONS
 _is_write_tool = enforcer._is_write_tool
 _is_terminal_write = enforcer._is_terminal_write
+_is_readonly_terminal_command = enforcer._is_readonly_terminal_command
 _is_cronjob_write = enforcer._is_cronjob_write
 _is_skill_write = enforcer._is_skill_write
 _has_governance_lock = enforcer._has_governance_lock
@@ -196,6 +197,69 @@ class TestTerminalWriteDetection:
     ])
     def test_read_commands_allowed(self, cmd):
         assert _is_terminal_write({"command": cmd}) is False, f"Should NOT detect write: {cmd}"
+
+
+class TestReadonlyTerminalCommand:
+    """The fail-closed read-only gate (_is_readonly_terminal_command) — the
+    actual enforcement for the terminal tool.
+
+    Read-only git plumbing commands must be lock-free (they query the object
+    DB / refs / index only — never mutate), while interpreter -c forms and
+    sqlite3 stay write-class (documented invariants G1/G4: "no write intent"
+    is not observable from the command string).
+    """
+
+    @pytest.mark.parametrize("cmd", [
+        # Read-only git plumbing — query object DB/refs/index, never mutate.
+        "git rev-parse HEAD",
+        "git rev-parse --abbrev-ref HEAD",
+        "git rev-parse --show-toplevel",
+        "git rev-list --count HEAD..origin/main",
+        "git rev-list -1 HEAD",
+        "git for-each-ref",
+        "git ls-files",
+        "git ls-tree HEAD",
+        "git cat-file -p HEAD:README.md",
+        "git show-ref",
+        "git merge-base HEAD origin/main",
+        "git describe --tags",
+        # Already-allowlisted read-only git commands still pass.
+        "git status --short",
+        "git log --oneline -1",
+        "git diff HEAD~1",
+        # Read primitives unaffected.
+        "ls -la",
+        "cat /etc/hosts",
+    ])
+    def test_readonly_git_plumbing_is_lock_free(self, cmd):
+        assert _is_readonly_terminal_command(cmd) is True, \
+            f"Should be lock-free (read-only): {cmd}"
+
+    @pytest.mark.parametrize("cmd", [
+        # Interpreter -c forms stay write-class (G1).
+        "python3 -c 'print(42)'",
+        "python3 -c \"import sqlite3; print(1)\"",
+        "bash -c 'echo hi'",
+        # sqlite3 CLI stays write-class (G4).
+        "sqlite3 db.sqlite 'SELECT 1'",
+        # Mutating git subcommands stay write-class.
+        "git checkout -b newbranch",
+        "git reset --hard HEAD",
+        "git clean -fd",
+        "git push origin main",
+        "git commit -m msg",
+        "git tag v1.0",
+        "git branch newbranch",
+        "git remote add origin url",
+        # Redirects / command substitution stay write-class.
+        "git rev-parse HEAD > /tmp/hash.txt",
+        "cat $(git rev-parse HEAD)",
+        # A write appended after a read-only segment stays write-class.
+        "git status; rm -rf /tmp/x",
+    ])
+    def test_write_commands_still_require_lock(self, cmd):
+        assert _is_readonly_terminal_command(cmd) is False, \
+            f"Should require a lock (write-class): {cmd}"
 
 
 # ═════════════════════════════════════════════════════════════════════════════
