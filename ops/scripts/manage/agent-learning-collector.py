@@ -529,7 +529,10 @@ def send_report(report: dict, dry_run: bool = False) -> list[str] | None:
 
     if dry_run:
         print(f"[DRY RUN] Would send to {bus_url}")
-        print(f"  Subject: {payload['message']['subject']}")
+        # `message` is a pre-serialized JSON string — print the plain subject
+        # var (payload['message']['subject'] crashed with TypeError: the
+        # dry-run is the DIAGNOSTIC path and must never crash, 2026-09-25).
+        print(f"  Subject: {subject}")
         print(f"  Body: {len(body_text)} chars")
         return sent_files if sent_files else ["(dry-run)"]
 
