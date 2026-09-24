@@ -300,6 +300,18 @@ no one accountable when the boundary fails.
 
 ---
 
+## Maker/Checker Split (enforced)
+
+The evaluator must not report to the evaluated (§8.7 rule 1). For
+quality-critical work, the **adversarial-verifier MUST run on a different
+model and a different context** than the implementer — this is an enforced
+rule, not a recommendation. The mechanism is a **second session or an
+orchestrator-owned review**, never a same-session self-check: a checker that
+shares the implementer's model and context shares its blind spots and defeats
+the purpose of independent verification.
+
+---
+
 ## Related Documents
 
 - [`fleet-reference.md`](fleet-reference.md) — Deployment-specific cron schedules and agent registry
