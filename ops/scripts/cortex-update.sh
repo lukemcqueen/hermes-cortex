@@ -525,6 +525,7 @@ register "ops/scripts/agent/agent-message-handler.py" "${CORTEX_DEPLOY_HOME}/scr
 register "ops/scripts/agent/commands.py"               "${CORTEX_DEPLOY_HOME}/scripts/commands.py"
 register "ops/scripts/agent/agent-diagnostic.py"       "${CORTEX_DEPLOY_HOME}/scripts/agent-diagnostic.py"
 register "ops/scripts/agent/agent-unannounced-probe.py"      "${CORTEX_DEPLOY_HOME}/scripts/agent-unannounced-probe.py"
+register "ops/scripts/orch-bus/adversarial-review.py"        "${CORTEX_DEPLOY_HOME}/scripts/adversarial-review.py"
 
 # Timezone helper (required by monitoring scripts)
 register "ops/scripts/hermes_tz.py"                "${CORTEX_DEPLOY_HOME}/scripts/hermes_tz.py"

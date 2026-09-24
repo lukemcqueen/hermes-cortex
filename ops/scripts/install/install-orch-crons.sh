@@ -687,13 +687,13 @@ printf "${CYAN}  4a. Independent Adversarial Reviewer${RESET}\n"
 # completed cycles not yet reviewed and reviews them. Silent when the queue
 # is empty (watchdog pattern). Hourly, off-peak minute staggered by
 # create_cron.
-create_cron "orch-adversarial-review" "0 * * * *" \\
-  "adversarial-review.py" \\
-  "" \\
-  "" \\
-  "" \\
-  "local" \\
-  "" \\
+create_cron "orch-adversarial-review" "0 * * * *" \
+  "adversarial-review.py" \
+  "" \
+  "" \
+  "" \
+  "local" \
+  "" \
   "true"
 
 # ── 5. Backlog Driver (F-023) ──────────────────────────────
