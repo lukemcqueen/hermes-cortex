@@ -146,7 +146,6 @@ if $UNINSTALL; then
     "orch-task-board-digest" \
     "orch-task-morning-pass" \
     "orch-task-evening-pass" \
-    "orch-adversarial-review" \
     "orch-backlog-driver" \
     "orch-autonomy-digest" \
     "orch-restic-backup"; do
@@ -670,31 +669,17 @@ create_cron "orch-restic-backup" "43 2 * * 0" \
   "" \
   "true"
 
-# ── 4a. Independent Adversarial Reviewer (M6) ──────────────
-printf "${CYAN}  4a. Independent Adversarial Reviewer${RESET}\n"
-
-# Independent adversarial review — a SEPARATE evaluator reviews completed
-# governance cycles (report §8.7 rule 1: the evaluator must not report to the
-# evaluated). ORCHESTRATOR-ONLY: the worker has no cronjob tool, so it cannot
-# schedule, unschedule, or pre-empt the review. The reviewer prompt is the
-# FIXED committed template (docs/templates/adversarial-reviewer-prompt.md) —
-# never worker-authored text. The reviewer model is pinned below
-# (ADVERSARIAL_REVIEWER_MODEL, default deepseek-v4-pro, same provider family
-# per operator decision 2026-09-24 — independence = context isolation +
-# fixed prompt + orchestrator trigger, NOT model difference).
-#
-# The script is a no_agent run of adversarial-review.py --sweep: it lists
-# completed cycles not yet reviewed and reviews them. Silent when the queue
-# is empty (watchdog pattern). Hourly, off-peak minute staggered by
-# create_cron.
-create_cron "orch-adversarial-review" "0 * * * *" \
-  "adversarial-review.py" \
-  "" \
-  "" \
-  "" \
-  "local" \
-  "" \
-  "true"
+# ── 4a. Independent Adversarial Reviewer (M6) — EVENT-DRIVEN ──
+# No cron: adversarial review is a complexity-gated HARD GATE in
+# loop-gov-mcp.py `end_change`. A sufficiently complex change cannot close
+# its cycle until an independent reviewer (fixed prompt, distinct model)
+# returns CLEAN; a reviewer outage refuses the close. See
+# docs/design/independent-adversarial-verifier.md. The reviewer prompt is the
+# FIXED committed template (docs/templates/adversarial-reviewer-prompt.md).
+# The reviewer model is pinned in loop-gov-mcp.py
+# (ADVERSARIAL_REVIEWER_MODEL, default deepseek-v4-pro — independence =
+# context isolation + fixed prompt + orchestrator-side trigger, NOT model
+# difference).
 
 # ── 5. Backlog Driver (F-023) ──────────────────────────────
 printf "${CYAN}  5. Backlog Driver${RESET}\n"

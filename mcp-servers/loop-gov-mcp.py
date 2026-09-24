@@ -29,6 +29,7 @@ import sys
 import time
 import traceback
 import urllib.error
+import urllib.request
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -1262,6 +1263,347 @@ def _begin_change(args: dict) -> CallToolResult:
     )])
 
 
+# ═════════════════════════════════════════════════════════════════════════════
+# Event-driven adversarial review — complexity-gated hard gate (2026-09-24)
+#
+# The reviewer fires at end_change (NOT a cron). A "sufficiently complex"
+# change cannot close its cycle until an independent reviewer (fixed prompt,
+# distinct model) returns CLEAN. Trivial changes skip review. If the reviewer
+# is unavailable, the close is REFUSED (fail loudly — governance is essential,
+# never silently degraded).
+#
+# Complexity is MEASURED, never self-reported: it is the git diff (added +
+# removed lines, files touched) since the cycle began, plus a size-independent
+# always-review path list for enforcement/security surface. Anti-gaming:
+#  - added+removed counted separately (net-zero rewrite still complex)
+#  - uncommitted work counts (staged + unstaged, not just committed)
+#  - always-review paths gate BEFORE the noise allowlist, so a tiny change
+#    to the enforcer/security is never "trivial"
+#  - noise allowlist is exact-name only (lockfiles), so a worker cannot bury
+#    a malicious line inside a "generated" file — that file still counts
+#  - the reviewer is a separate process (this MCP daemon) with a fixed prompt
+#    and a DISTINCT model the worker session cannot influence
+# ═════════════════════════════════════════════════════════════════════════════
+
+# Paths that are ALWAYS reviewed regardless of size — enforcement, governance,
+# security, and shared-repo plumbing. A one-line change here is never trivial.
+ALWAYS_REVIEW_PATHS = [
+    "plugins/governance-enforcer/",
+    "mcp-servers/loop-gov-mcp.py",
+    "core/governance/",
+    "ops/scripts/pre-commit-score",
+    "ops/scripts/pre-push-pull",
+    "ops/scripts/post-commit-audit",
+    "ops/scripts/post-push-audit",
+    "ops/scripts/cortex-update.sh",
+    "ops/scripts/quality/adversarial-verify.py",
+    ".hermes-cortex/hooks/",
+]
+
+# Exact-name noise: generated/lock files whose size is not a complexity signal.
+# Checked AFTER always-review paths. A worker cannot hide a change here — a
+# real source edit still counts; only a pure lockfile bump is discounted.
+NOISE_PATHS = [
+    "Cargo.lock", "package-lock.json", "yarn.lock", "pnpm-lock.yaml",
+    "poetry.lock", "go.sum", "Gemfile.lock", "composer.lock",
+]
+
+# Complexity thresholds (diff-based). Complex when EITHER bound is crossed.
+COMPLEXITY_LINE_THRESHOLD = 50      # added + removed lines (non-noise)
+COMPLEXITY_FILE_THRESHOLD = 3       # files touched (non-noise)
+
+REVIEWER_MODEL_DEFAULT = "deepseek/deepseek-v4-pro"  # distinct from worker
+REVIEW_TEMPLATE_REL = "docs/templates/adversarial-reviewer-prompt.md"
+REVIEW_MARKER = "=== REVIEWED MATERIAL ==="
+DIFF_CHAR_BUDGET = 12000
+
+
+def _git_capture(repo: Path, *args: str, timeout: int = 15) -> str:
+    """Run a read-only git command in `repo`, return stdout ("" on any error)."""
+    try:
+        return subprocess.run(  # noqa: S603,S404 — fixed argv, git -C
+            ["git", "-C", str(repo)] + list(args),
+            capture_output=True, text=True, timeout=timeout,
+        ).stdout
+    except Exception:
+        return ""
+
+
+def _parse_numstat(text: str):
+    """(files: set[str], added: int, removed: int) from `git diff --numstat`."""
+    files = set()
+    added = removed = 0
+    for line in text.splitlines():
+        parts = line.split("\t")
+        if len(parts) < 3:
+            continue
+        a, r, f = parts[0], parts[1], parts[2]
+        if not f or f.startswith('"'):
+            continue
+        files.add(f)
+        if a.isdigit():
+            added += int(a)
+        if r.isdigit():
+            removed += int(r)
+    return files, added, removed
+
+
+def _is_noise(path: str) -> bool:
+    return any(path == n or path.endswith("/" + n) for n in NOISE_PATHS)
+
+
+def _complexity(repo: Path, started_at: str) -> dict:
+    """Measured complexity of the change under the current cycle.
+
+    Considers committed work since `started_at` PLUS staged and unstaged
+    working-tree changes (uncommitted work counts — the worker cannot dodge
+    the gate by leaving risky edits uncommitted).
+    """
+    # Base commit: last commit before the cycle started, else the empty tree.
+    empty_tree = "4b825dc642cb6eb9a060e54bf8d69288fbee4904"
+    base = ""
+    if started_at:
+        base = _git_capture(repo, "rev-list", "-1", "--before=" + started_at, "HEAD").strip()
+    base = base or empty_tree
+
+    numstat = _git_capture(repo, "diff", "--numstat", base + "..HEAD")
+    numstat += _git_capture(repo, "diff", "--cached", "--numstat")   # staged
+    numstat += _git_capture(repo, "diff", "--numstat")               # unstaged
+
+    files, added, removed = _parse_numstat(numstat)
+
+    # Untracked new files (not yet `git add`ed) still count — a worker cannot
+    # dodge review by creating a big new file and leaving it untracked, then
+    # committing it after the review passed. Their full line count is the
+    # "added" signal (there is no prior version to diff against).
+    untracked_lines = 0
+    for f in _git_capture(repo, "ls-files", "--others", "--exclude-standard").splitlines():
+        f = f.strip()
+        if not f:
+            continue
+        files.add(f)
+        if not _is_noise(f):
+            try:
+                with open(repo / f, encoding="utf-8", errors="ignore") as fh:
+                    untracked_lines += sum(1 for _ in fh)
+            except OSError:
+                pass
+
+    # Always-review paths gate FIRST (size-independent, raw files).
+    always = [f for f in files if any(ap in f for ap in ALWAYS_REVIEW_PATHS)]
+
+    # Complexity from non-noise files.
+    non_noise = [f for f in files if not _is_noise(f)]
+    non_noise_lines = 0
+    # Recompute lines restricted to non-noise files for an honest threshold.
+    nn_added = nn_removed = 0
+    for line in numstat.splitlines():
+        parts = line.split("\t")
+        if len(parts) < 3:
+            continue
+        a, r, f = parts[0], parts[1], parts[2]
+        if _is_noise(f):
+            continue
+        if a.isdigit():
+            nn_added += int(a)
+        if r.isdigit():
+            nn_removed += int(r)
+    non_noise_lines = nn_added + nn_removed + untracked_lines
+
+    is_complex = bool(always) or (
+        len(non_noise) >= COMPLEXITY_FILE_THRESHOLD
+        or non_noise_lines >= COMPLEXITY_LINE_THRESHOLD
+    )
+    return {
+        "is_complex": is_complex,
+        "files": len(non_noise),
+        "lines": non_noise_lines,
+        "always_review": bool(always),
+        "always_paths": sorted(set(always)),
+        "numstat": numstat.strip(),
+    }
+
+
+def _review_template_text(repo: Path) -> str:
+    """The fixed reviewer prompt, from the repo (or the deployed copy)."""
+    for cand in (
+        repo / REVIEW_TEMPLATE_REL,
+        HOME / ".hermes-cortex" / "templates" / "adversarial-reviewer-prompt.md",
+    ):
+        if cand.is_file():
+            return cand.read_text()
+    return ""
+
+
+def _reviewer_api_key() -> str:
+    key = os.environ.get("OPENROUTER_API_KEY", "")
+    if key:
+        return key
+    env = HOME / ".hermes" / ".env"
+    try:
+        if env.is_file():
+            for line in env.read_text().splitlines():
+                if line.startswith("OPENROUTER_API_KEY="):
+                    return line.split("=", 1)[1].strip().strip('"').strip("'")
+    except OSError:
+        pass
+    return ""
+
+
+def _call_reviewer(prompt: str) -> str:
+    """Call the independent reviewer model; return its text (raises on error)."""
+    model = os.environ.get("ADVERSARIAL_REVIEWER_MODEL", REVIEWER_MODEL_DEFAULT)
+    api_key = _reviewer_api_key()
+    if not api_key:
+        raise RuntimeError("OPENROUTER_API_KEY not set — reviewer cannot run")
+    body = json.dumps({
+        "model": model,
+        "messages": [{"role": "user", "content": prompt}],
+    }).encode()
+    req = urllib.request.Request(
+        "https://openrouter.ai/api/v1/chat/completions",
+        data=body,
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        },
+    )
+    with urllib.request.urlopen(req, timeout=300) as resp:
+        data = json.loads(resp.read())
+    return data["choices"][0]["message"]["content"]
+
+
+def _extract_verdict(text: str):
+    """(verdict, findings_json) from the reviewer's reply. Fail-closed: an
+    unparseable reply is NEVER trusted as CLEAN — it is FINDINGS."""
+    start = text.find("{")
+    end = text.rfind("}")
+    if start != -1 and end > start:
+        try:
+            obj = json.loads(text[start:end + 1])
+            findings = obj.get("findings", [])
+            if not isinstance(findings, list):
+                findings = []
+            verdict = obj.get("verdict", "FINDINGS" if findings else "CLEAN")
+            return str(verdict).upper(), json.dumps(findings)
+        except json.JSONDecodeError:
+            pass
+    return "FINDINGS", "[]"
+
+
+def _record_review(cycle_id, reviewer_id, model, verdict, findings_json, summary):
+    """Insert the verdict; duplicate cycle_id is a benign no-op (idempotent)."""
+    try:
+        conn = _db()
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS adversarial_reviews ("
+            " review_id TEXT PRIMARY KEY,"
+            " cycle_id INTEGER NOT NULL UNIQUE,"
+            " reviewer_id TEXT NOT NULL,"
+            " reviewer_model TEXT NOT NULL,"
+            " verdict TEXT NOT NULL,"
+            " findings_json TEXT NOT NULL,"
+            " summary TEXT,"
+            " ts TEXT NOT NULL)"
+        )
+        conn.execute(
+            "INSERT INTO adversarial_reviews"
+            " (review_id, cycle_id, reviewer_id, reviewer_model,"
+            "  verdict, findings_json, summary, ts)"
+            " VALUES (?,?,?,?,?,?,?,?)",
+            (str(uuid.uuid4()), cycle_id, reviewer_id, model,
+             verdict, findings_json, summary, _now_iso()),
+        )
+        conn.commit()
+        conn.close()
+    except sqlite3.IntegrityError:
+        pass  # already reviewed — idempotent
+
+
+def _adversarial_review_gate(lock: dict, cycle: dict) -> Optional[CallToolResult]:
+    """The complexity-gated hard gate. Returns None (proceed) or a block result.
+
+    Simple changes pass through. Complex changes must earn a CLEAN review;
+    a FINDINGS verdict or a reviewer outage REFUSES the close (fail loudly).
+    """
+    repo_slug = lock.get("repo_slug", "")
+    repo = HOME / repo_slug if repo_slug else None
+    if repo is None or not (repo / ".git").exists():
+        # No governed repo to diff — cannot measure complexity. Fail CLOSED:
+        # an unmeasurable close is a complex close, and it must be reviewed.
+        return CallToolResult(content=[TextContent(type="text", text=(
+            "❌ Cannot close: no governed repo to measure complexity — "
+            "adversarial review cannot run. Report to the orchestrator."
+        ))])
+
+    cx = _complexity(repo, lock.get("started_at", ""))
+    if not cx["is_complex"]:
+        log.info("adversarial review: cycle %s simple (%s lines, %s files) — skip",
+                 cycle.get("id"), cx["lines"], cx["files"])
+        return None
+
+    # Complex: build the review material and run the reviewer.
+    task_id = lock.get("task_id", "")
+    description = lock.get("description", "")
+    outcome_note = cycle.get("outcome_note") or "(no note)"
+    diff_text = _git_capture(
+        repo, "diff", "--no-ext-diff", "-U3",
+        (_git_capture(repo, "rev-list", "-1", "--before=" + lock.get("started_at", ""), "HEAD").strip() or "HEAD") + "..HEAD"
+    )
+    # Bound the diff (head+tail) so a huge change still fits the reviewer.
+    if len(diff_text) > DIFF_CHAR_BUDGET:
+        diff_text = diff_text[:DIFF_CHAR_BUDGET] + "\n...[diff truncated]...\n"
+
+    template = _review_template_text(repo)
+    if not template or REVIEW_MARKER not in template:
+        return CallToolResult(content=[TextContent(type="text", text=(
+            "❌ Cannot close: adversarial reviewer prompt template is missing or "
+            "corrupt. Run cortex-update.sh, then retry end_change."
+        ))])
+
+    material = (
+        f"Task: {task_id}\n"
+        f"Description: {description}\n"
+        f"Diff stat (files={cx['files']}, lines={cx['lines']}"
+        + (f", always-review={','.join(cx['always_paths'])}" if cx["always_paths"] else "")
+        + "):\n" + cx["numstat"] + "\n\n"
+        f"Worker's note (self-report — the thing being reviewed):\n{outcome_note}\n\n"
+        f"Full diff:\n{diff_text}\n"
+    )
+    prompt = f"{template}\n{material}\n"
+
+    try:
+        reviewer_text = _call_reviewer(prompt)
+    except Exception as e:
+        log.error("adversarial review: reviewer call failed: %s", e)
+        return CallToolResult(content=[TextContent(type="text", text=(
+            "❌ Cannot close: adversarial reviewer is UNAVAILABLE. "
+            "Governance requires review before this complex change ships — "
+            f"the close is refused, not skipped. (error: {e})\n\n"
+            "Retry end_change when the reviewer is reachable."
+        ))])
+
+    verdict, findings_json = _extract_verdict(reviewer_text)
+    reviewer_id = f"adv-review-{uuid.uuid4().hex[:8]}"
+    _record_review(cycle.get("id"), reviewer_id,
+                   os.environ.get("ADVERSARIAL_REVIEWER_MODEL", REVIEWER_MODEL_DEFAULT),
+                   verdict, findings_json, reviewer_text[:2000])
+
+    if verdict == "CLEAN":
+        log.info("adversarial review: cycle %s CLEAN", cycle.get("id"))
+        return None
+
+    # FINDINGS (or unparseable): hard-block.
+    return CallToolResult(content=[TextContent(type="text", text=(
+        "❌ Adversarial review FAILED — this complex change cannot close.\n\n"
+        f"Verdict: {verdict}\n"
+        f"Findings: {findings_json}\n"
+        f"Summary: {reviewer_text[:1200]}\n\n"
+        "Resolve the findings and retry end_change. The lock stays held; "
+        "nothing sufficiently complex ships unreviewed."
+    ))])
+
+
 def _end_change(args: dict) -> CallToolResult:
     """Release governance lock — requires a scored cycle in the loop-governance DB."""
     task_id = args.get("task_id", "").strip()
@@ -1294,16 +1636,18 @@ def _end_change(args: dict) -> CallToolResult:
     # gate never sees a leaked PENDING from a completed task.)
     cycle_info = ""
     has_cycle = False
+    cycle_data = None
     try:
         conn = _db()
         row = conn.execute(
-            "SELECT id, composite, decision, user_overrode, unscored_reason "
+            "SELECT id, composite, decision, user_overrode, unscored_reason, outcome_note "
             "FROM loop_cycles WHERE task_id = ? ORDER BY id DESC LIMIT 1",
             (task_id,)
         ).fetchone()
         conn.close()
         if row:
             has_cycle = True
+            cycle_data = {"id": row["id"], "outcome_note": row["outcome_note"]}
             decision_class = _decision_class(row["decision"])
             composite = float(row["composite"] or 0.0)
             try:
@@ -1373,6 +1717,15 @@ def _end_change(args: dict) -> CallToolResult:
                 "    This prevents orphan cycles that silently accumulate in the governance DB."
             )
         )])
+
+    # Step 3b: Adversarial review hard gate (event-driven, complexity-gated).
+    # A "sufficiently complex" change cannot close until an independent
+    # reviewer returns CLEAN. Trivial changes skip. Reviewer outage refuses
+    # the close (fail loudly). Runs AFTER the scored-cycle requirement and
+    # BEFORE the lock release, so a blocked review keeps the lock held.
+    review_block = _adversarial_review_gate(lock, cycle_data or {})
+    if review_block is not None:
+        return review_block
 
     # Step 4: Release the lock
     _release_lock(args)

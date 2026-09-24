@@ -231,60 +231,60 @@ def check_deployed_gate_smoke(res: "Results") -> None:
 
 
 def check_adversarial_review(res: "Results") -> None:
-  """Adversarial-review deploy health (M6).
+  """Adversarial-review capability (M6) — event-driven hard gate.
 
-  The independent reviewer is orchestrator-side and must be exercisable from
-  the DEPLOYED path, not just the repo tree. The 2026-09-24 blunder: the
-  deployed adversarial-review.py resolved its prompt template via a git-clone
-  path that only exists in the repo source tree — on a deployed host (no git
-  clone) git toplevel returned / and the sweep died with FileNotFoundError
-  mid-run. This check (a) asserts the template is deployed alongside the
-  script, (b) executes the deployed script's --dry-run so a broken template
-  resolution cannot ship silently, and (c) on orchestrator hosts asserts the
-  OpenRouter key is resolvable (else every sweep exits silently with no review).
+  The reviewer fires in loop-gov-mcp.py `end_change` (complexity-gated), NOT a
+  cron. This check verifies the CAPABILITY is intact so the hard gate can fire
+  — a broken reviewer must not silently degrade governance:
+    (a) the fixed prompt template is present AND carries the marker;
+    (b) the MCP server's review helpers import cleanly (so end_change's gate
+        cannot crash mid-close);
+    (c) on orchestrator hosts the OpenRouter key is resolvable (else a complex
+        close refuses with "reviewer unavailable" — fail loudly, correctly, but
+        the operator must be able to see and fix it).
   """
-  script = CORTEX_HOME / "scripts" / "adversarial-review.py"
   template = CORTEX_HOME / "templates" / "adversarial-reviewer-prompt.md"
+  repo_template = CORTEX_REPO / "docs" / "templates" / "adversarial-reviewer-prompt.md"
 
-  if not script.exists():
-    res.add("Adversarial review", "INFO",
-            "adversarial-review.py not deployed — reviewer not present on this host")
-    return
-
-  # (a) Template deployed alongside the script.
-  if not template.exists():
+  # (a) Template present and carries the reviewer marker.
+  t = template if template.exists() else repo_template
+  if not t.exists():
     res.add("Adversarial review template", "FAIL",
-            f"prompt template missing at {template}",
+            f"prompt template missing (checked {template} and {repo_template})",
             "Run: cortex-update.sh (registers docs/templates/adversarial-reviewer-prompt.md)")
+  elif "=== REVIEWED MATERIAL ===" not in t.read_text(errors="replace"):
+    res.add("Adversarial review template", "FAIL",
+            "template is missing the === REVIEWED MATERIAL === marker",
+            "Restore docs/templates/adversarial-reviewer-prompt.md from git, then cortex-update.sh")
   else:
-    res.add("Adversarial review template", "PASS", "deployed alongside script")
+    res.add("Adversarial review template", "PASS", "present with REVIEWED MATERIAL marker")
 
-  # (b) Deployed smoke: the script must assemble a prompt from the deployed
-  # template (exit 0 + marker). A repo-works/deployed-broken script fails here.
+  # (b) The MCP server's review helpers import cleanly — end_change's gate must
+  # not raise on a missing/renamed helper.
   try:
-    import subprocess as _sp
-    out = _sp.run(
-        [sys.executable, str(script), "--dry-run",
-         "--cycle-id", "1", "--material", "doctor smoke"],
-        capture_output=True, text=True, timeout=30)
-    marker_ok = "=== REVIEWED MATERIAL ===" in (out.stdout or "")
-    if out.returncode == 0 and marker_ok:
-      res.add("Adversarial review smoke", "PASS",
-              "deployed script assembled a prompt (dry-run)")
-    elif out.returncode != 0:
-      res.add("Adversarial review smoke", "FAIL",
-              f"deployed script exited {out.returncode}: {(out.stderr or '').strip()[:160]}",
-              "Run: cortex-update.sh then re-run doctor (check template resolution)")
+    import importlib.util as _ilu
+    mcp = CORTEX_HOME / "tools" / "loop-governance" / "loop-gov-mcp.py"
+    if not mcp.exists():
+      mcp = CORTEX_REPO / "mcp-servers" / "loop-gov-mcp.py"
+    spec = _ilu.spec_from_file_location("loop_gov_doctor_probe", mcp)
+    mod = _ilu.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    helpers = ["_adversarial_review_gate", "_complexity", "_extract_verdict",
+               "_call_reviewer", "_review_template_text"]
+    missing = [h for h in helpers if not hasattr(mod, h)]
+    if missing:
+      res.add("Adversarial review gate", "FAIL",
+              f"loop-gov-mcp.py missing helpers: {', '.join(missing)}",
+              "The end_change hard gate cannot run — restore the review section in mcp-servers/loop-gov-mcp.py")
     else:
-      res.add("Adversarial review smoke", "FAIL",
-              "deployed script ran but did not emit the REVIEWED MATERIAL marker",
-              "Check docs/templates/adversarial-reviewer-prompt.md contains the marker")
-  except Exception as _e:  # advisory — never crash the doctor
-    res.add("Adversarial review smoke", "WARN",
-            f"smoke test could not run: {type(_e).__name__}: {str(_e)[:120]}")
+      res.add("Adversarial review gate", "PASS",
+              "end_change hard gate helpers present in loop-gov-mcp.py")
+  except Exception as _e:
+    res.add("Adversarial review gate", "FAIL",
+            f"loop-gov-mcp.py import failed: {type(_e).__name__}: {str(_e)[:160]}",
+            "Fix the MCP server import — end_change would crash on a complex close")
 
-  # (c) Orchestrator-only: the API key must be resolvable, else every sweep
-  # exits with "OPENROUTER_API_KEY not set" and no review is ever recorded.
+  # (c) Orchestrator-only: the key must be resolvable or complex closes refuse.
   if AGENT_ROLE == "orchestrator":
     key = os.environ.get("OPENROUTER_API_KEY", "")
     if not key:
@@ -301,8 +301,8 @@ def check_adversarial_review(res: "Results") -> None:
       res.add("Adversarial review key", "PASS", "OPENROUTER_API_KEY resolvable")
     else:
       res.add("Adversarial review key", "FAIL",
-              "OPENROUTER_API_KEY not set (env or ~/.hermes/.env) — reviews cannot run",
-              "Set OPENROUTER_API_KEY in ~/.hermes/.env so the sweep can call the model")
+              "OPENROUTER_API_KEY not set (env or ~/.hermes/.env) — complex closes will refuse",
+              "Set OPENROUTER_API_KEY in ~/.hermes/.env so the review hard gate can call the model")
 
 
 def check_dev_repo_agents(res: "Results") -> None:
