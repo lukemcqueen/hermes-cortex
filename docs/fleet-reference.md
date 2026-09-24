@@ -69,57 +69,66 @@ Every cron name MUST start with a group prefix. No bare names:
 
 ### Orchestrator-only (`orch-*`) — 13 crons
 
-| Name | Schedule | Type | Script | Deliver |
-|------|----------|------|--------|---------|
-| `orch-bus-audit-watchdog` | `*/1 * * * *` | no_agent | `orch-bus-audit-watchdog.py` | Telegram |
-| `orch-bus-recover-timeouts` | `*/5 * * * *` | no_agent | `orch-bus-recover-timeouts.sh` | origin |
-| `orch-bus-confirmation-poller` | `every 10m` | no_agent | `orch-bus-confirmation-poller.py` | local |
-| `orch-bus-confirmation-alert` | `every 60m` | no_agent | `orch-bus-confirmation-alert.sh` | Telegram |
-| `orch-bus-forwarder-sync` | `*/2 * * * *` | no_agent | `orch-bus-forwarder.py` | origin |
-| `orch-daily-regression-gate` | `15 3 * * *` | no_agent | `orch-daily-regression-gate.sh` | Telegram |
-| `orch-fleet-watchdog` | `*/5 * * * *` | no_agent | `orch-fleet-watchdog.py` | Telegram |
-| `orch-health-report-weekday` | `0 9-18 * * 1-5` | no_agent | `orch-health-report.py` | origin |
-| `orch-health-report-saturday` | `0 11,17 * * 6` | no_agent | `orch-health-report.py` | origin |
-| `orch-skill-lifecycle` | `0 4 * * 1,3,5` | LLM | (skill) | origin |
+| Name | Schedule | Type | Script | Deliver | Accountable |
+|------|----------|------|--------|---------|-------------|
+| `orch-bus-audit-watchdog` | `*/1 * * * *` | no_agent | `orch-bus-audit-watchdog.py` | Telegram | the fleet owner |
+| `orch-bus-recover-timeouts` | `*/5 * * * *` | no_agent | `orch-bus-recover-timeouts.sh` | origin | the fleet owner |
+| `orch-bus-confirmation-poller` | `every 10m` | no_agent | `orch-bus-confirmation-poller.py` | local | the fleet owner |
+| `orch-bus-confirmation-alert` | `every 60m` | no_agent | `orch-bus-confirmation-alert.sh` | Telegram | the fleet owner |
+| `orch-bus-forwarder-sync` | `*/2 * * * *` | no_agent | `orch-bus-forwarder.py` | origin | the fleet owner |
+| `orch-daily-regression-gate` | `15 3 * * *` | no_agent | `orch-daily-regression-gate.sh` | Telegram | the fleet owner |
+| `orch-fleet-watchdog` | `*/5 * * * *` | no_agent | `orch-fleet-watchdog.py` | Telegram | the fleet owner |
+| `orch-health-report-weekday` | `0 9-18 * * 1-5` | no_agent | `orch-health-report.py` | origin | the fleet owner |
+| `orch-health-report-saturday` | `0 11,17 * * 6` | no_agent | `orch-health-report.py` | origin | the fleet owner |
+| `orch-skill-lifecycle` | `0 4 * * 1,3,5` | LLM | (skill) | origin | the fleet owner |
 
 ### All-agent crons (`agent-*`) — 44 crons
 
 These run on every agent in the fleet. Created by `install-crons.sh`.
 
-| Name | Schedule | Type | Script | Deliver |
-|------|----------|------|--------|---------|
-| `agent-fixer-workday` | `0 8,14,20 * * 1-5` | LLM | auto-remediation skill | origin |
-| `agent-fixer-evening` | `0 20,22 * * 1-5` | LLM | auto-remediation skill | origin |
-| `agent-fixer-overnight` | `0 23 * * 1-5` | LLM | auto-remediation skill | origin |
-| `agent-remediation-sensor` | `*/5 * * * *` | no_agent | `agent-remediation-sensor.py` | local (runs only where IS_SERVER=true) |
-| `agent-remediate-apply` | `*/10 * * * *` | no_agent | `agent-remediate-apply.py` | origin |
-| `agent-message-handler` | `*/5 * * * *` | no_agent | `agent-message-handler.py` | local |
-| `cortex-bus-failover-watchdog` | `*/5 * * * *` | no_agent | `cortex-bus-failover-watchdog.py` | Telegram |
-| `agent-service-recovery` | `*/5 * * * *` | no_agent | `agent-service-recovery.py` | origin |
-| `agent-system-alert-watchdog` | `*/30 * * * *` | no_agent | `agent-system-alert-watchdog.py` | origin |
-| `agent-hermes-update` | `23 22 * * *` | no_agent | `agent-hermes-update.sh` | local |
-| `agent-hermes-cortex-sync` | `33 22 * * *` | no_agent | `agent-hermes-cortex-sync.sh` | origin |
-| `agent-memory-to-brain-sync` | `0 */6 * * *` | no_agent | `agent-memory-to-brain-sync.py` | local |
-| `agent-governance-auditor` | `0 */6 * * *` | no_agent | `agent-governance-auditor.py` | origin |
-| `agent-learning-collector` | `0 */6 * * *` | no_agent | `agent-learning-collector.py` | local |
-| `agent-cron-quality-watchdog` | `*/10 * * * *` | no_agent | `agent-cron-quality-watchdog.py` | origin |
-| `agent-scoring-activity-watchdog` | `0 14,20 * * *` | no_agent | `agent-scoring-activity-watchdog.py` | origin |
-| `agent-model-health-watchdog` | `0 7 * * *` | no_agent | `agent-model-health-watchdog.py` | origin |
-| `agent-langfuse-health-watchdog` | `0 * * * *` | no_agent | `langfuse-health-watchdog.py` | origin |
-| `agent-mcp-health-watchdog` | `*/5 * * * *` | no_agent | `agent-mcp-health-watchdog.py` | telegram home |
-| `agent-memory-pruning` | `0 4 * * 1` | LLM | — | origin |
-| `agent-session-cache-build` | `0 5 * * 1` | no_agent | `session_cache.py` | origin |
-| `agent-daily-bible-reading` | `0 1 * * *` | LLM | agent-daily-bible-reading skill | origin |
-| `agent-mycortex-nightly-dream` | ~~`0 3 * * 6`~~ | ~~no_agent~~ | ~~`agent-mycortex-nightly-dream.sh`~~ | ~~origin~~ | ⚠️ STALE/REMOVED 2026-08-02 — legacy brain decommissioned; no consumer (verified) |
-| `agent-mycortex-update-sync` | ~~`0 2 * * 0`~~ | ~~no_agent~~ | ~~`agent-mycortex-update-sync.sh`~~ | ~~origin~~ | ⚠️ STALE/REMOVED 2026-08-02 — obsolete with mycortex binary uninstall |
-| `agent-nginx-threat-pipeline` | `0 5 * * *` | no_agent | `nginx-threat-pipeline.sh` | origin |
-| `agent-ip-submission` | `*/30 * * * *` | no_agent | `agent-ip-submission.sh` | origin |
-| `agent-offline-code-index` | `0 5 * * 0` | no_agent | `agent-offline-code-index.sh` | local |
-| `agent-llm-judge-scorer-weekday` | `30 13,20 * * 1-5` | no_agent | `llm-judge-scorer.py` | local |
-| `agent-llm-judge-scorer-weekend` | `0 22 * * 0,6` | no_agent | `llm-judge-scorer.py` | local |
-| `agent-agents-md-prune-scan` | `0 4 * * 1-6` | no_agent | `agents-md-prune-scan.py` | local |
-| `agent-agents-md-prune-apply` | `30 4 * * 1-6` | LLM | — | origin |
-| `agent-auto-save-sessions` | `every 360m` | no_agent | `agent-auto-save-sessions.py` | local |
+| Name | Schedule | Type | Script | Deliver | Accountable |
+|------|----------|------|--------|---------|-------------|
+| `agent-fixer-workday` | `0 8,14,20 * * 1-5` | LLM | auto-remediation skill | origin | the fleet owner |
+| `agent-fixer-evening` | `0 20,22 * * 1-5` | LLM | auto-remediation skill | origin | the fleet owner |
+| `agent-fixer-overnight` | `0 23 * * 1-5` | LLM | auto-remediation skill | origin | the fleet owner |
+| `agent-remediation-sensor` | `*/5 * * * *` | no_agent | `agent-remediation-sensor.py` | local (runs only where IS_SERVER=true) | the fleet owner |
+| `agent-remediate-apply` | `*/10 * * * *` | no_agent | `agent-remediate-apply.py` | origin | the fleet owner |
+| `agent-message-handler` | `*/5 * * * *` | no_agent | `agent-message-handler.py` | local | the fleet owner |
+| `cortex-bus-failover-watchdog` | `*/5 * * * *` | no_agent | `cortex-bus-failover-watchdog.py` | Telegram | the fleet owner |
+| `agent-service-recovery` | `*/5 * * * *` | no_agent | `agent-service-recovery.py` | origin | the fleet owner |
+| `agent-system-alert-watchdog` | `*/30 * * * *` | no_agent | `agent-system-alert-watchdog.py` | origin | the fleet owner |
+| `agent-hermes-update` | `23 22 * * *` | no_agent | `agent-hermes-update.sh` | local | the fleet owner |
+| `agent-hermes-cortex-sync` | `33 22 * * *` | no_agent | `agent-hermes-cortex-sync.sh` | origin | the fleet owner |
+| `agent-memory-to-brain-sync` | `0 */6 * * *` | no_agent | `agent-memory-to-brain-sync.py` | local | the fleet owner |
+| `agent-governance-auditor` | `0 */6 * * *` | no_agent | `agent-governance-auditor.py` | origin | the fleet owner |
+| `agent-learning-collector` | `0 */6 * * *` | no_agent | `agent-learning-collector.py` | local | the fleet owner |
+| `agent-cron-quality-watchdog` | `*/10 * * * *` | no_agent | `agent-cron-quality-watchdog.py` | origin | the fleet owner |
+| `agent-scoring-activity-watchdog` | `0 14,20 * * *` | no_agent | `agent-scoring-activity-watchdog.py` | origin | the fleet owner |
+| `agent-model-health-watchdog` | `0 7 * * *` | no_agent | `agent-model-health-watchdog.py` | origin | the fleet owner |
+| `agent-langfuse-health-watchdog` | `0 * * * *` | no_agent | `langfuse-health-watchdog.py` | origin | the fleet owner |
+| `agent-mcp-health-watchdog` | `*/5 * * * *` | no_agent | `agent-mcp-health-watchdog.py` | telegram home | the fleet owner |
+| `agent-memory-pruning` | `0 4 * * 1` | LLM | — | origin | the fleet owner |
+| `agent-session-cache-build` | `0 5 * * 1` | no_agent | `session_cache.py` | origin | the fleet owner |
+| `agent-daily-bible-reading` | `0 1 * * *` | LLM | agent-daily-bible-reading skill | origin | the fleet owner |
+| `agent-mycortex-nightly-dream` | ~~`0 3 * * 6`~~ | ~~no_agent~~ | ~~`agent-mycortex-nightly-dream.sh`~~ | ~~origin~~ | ⚠️ STALE/REMOVED 2026-08-02 — legacy brain decommissioned; no consumer (verified) | — |
+| `agent-mycortex-update-sync` | ~~`0 2 * * 0`~~ | ~~no_agent~~ | ~~`agent-mycortex-update-sync.sh`~~ | ~~origin~~ | ⚠️ STALE/REMOVED 2026-08-02 — obsolete with mycortex binary uninstall | — |
+| `agent-nginx-threat-pipeline` | `0 5 * * *` | no_agent | `nginx-threat-pipeline.sh` | origin | the fleet owner |
+| `agent-ip-submission` | `*/30 * * * *` | no_agent | `agent-ip-submission.sh` | origin | the fleet owner |
+| `agent-offline-code-index` | `0 5 * * 0` | no_agent | `agent-offline-code-index.sh` | local | the fleet owner |
+| `agent-llm-judge-scorer-weekday` | `30 13,20 * * 1-5` | no_agent | `llm-judge-scorer.py` | local | the fleet owner |
+| `agent-llm-judge-scorer-weekend` | `0 22 * * 0,6` | no_agent | `llm-judge-scorer.py` | local | the fleet owner |
+| `agent-agents-md-prune-scan` | `0 4 * * 1-6` | no_agent | `agents-md-prune-scan.py` | local | the fleet owner |
+| `agent-agents-md-prune-apply` | `30 4 * * 1-6` | LLM | — | origin | the fleet owner |
+| `agent-auto-save-sessions` | `every 360m` | no_agent | `agent-auto-save-sessions.py` | local | the fleet owner |
+
+> **Accountability note:** the `Accountable` column names the human operator
+> responsible for each autonomous cron. For crons that perform **irreversible
+> actions** (apply/delete/overwrite — e.g. `agent-remediate-apply`,
+> `agent-memory-pruning`, `agent-swap-refresh`), **takeover latency** — the
+> time between the cron firing and a human being able to take over — is a
+> *measured* metric read from delivery and log timestamps, never an
+> assertion. A cron whose takeover latency cannot be measured is not yet
+> accountable.
 
 ### Local-only crons (`local-*`) — 5 crons
 
