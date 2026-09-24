@@ -141,6 +141,40 @@ def test_bare_invocation_defaults_to_sweep(tmp_path):
     assert "silent" in r.stdout.lower(), r.stdout
 
 
+def _load_review_module():
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("adv_review", REVIEW)
+    assert spec is not None and spec.loader is not None, "spec load failed"
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def test_record_does_not_leak_db_lock_on_duplicate(tmp_path):
+    """A UNIQUE rejection must close the connection — a leaked transaction
+    holds the write lock and the NEXT cycle's INSERT dies with
+    'database is locked' (observed: orch-adversarial-review cron run
+    2026-09-24 20:58 KST crashed the whole sweep after one duplicate)."""
+    mod = _load_review_module()
+    db = tmp_path / "review.db"
+    assert mod._record(db, 1, "r1", "m", '{"findings": [], "verdict": "CLEAN"}') == 0
+    dup_rc = mod._record(db, 1, "r2", "m", '{"findings": [], "verdict": "CLEAN"}')
+    assert dup_rc != 0, "duplicate must be refused"
+    # The decisive assertion: the cycle after a duplicate must succeed.
+    assert mod._record(db, 2, "r3", "m", '{"findings": [], "verdict": "CLEAN"}') == 0
+
+
+def test_record_duplicate_is_benign_not_failure(tmp_path):
+    """'Already reviewed' means the review EXISTS — the sweep's goal is met.
+    Counting it as a failure exit-1s the cron and 3-strike-pauses it again."""
+    mod = _load_review_module()
+    db = tmp_path / "review.db"
+    assert mod._record(db, 1, "r1", "m", '{"findings": [], "verdict": "CLEAN"}') == 0
+    assert mod._record(db, 1, "r2", "m", '{"findings": [], "verdict": "CLEAN"}') == 0, (
+        "duplicate review must be a benign no-op (rc 0), not a failure"
+    )
+
+
 def test_review_rejects_injected_override_instruction():
     """Seam A guard: the material may not rewrite the reviewer's instructions."""
     r = _run(

@@ -182,7 +182,7 @@ def _record(db_path: Path, cycle_id: int, reviewer_id: str, model: str,
     """Insert the review verdict directly into the adversarial_reviews table."""
     findings_json, verdict = _extract_reviewer_json(text)
     try:
-        conn = sqlite3.connect(str(db_path))
+        conn = sqlite3.connect(str(db_path), timeout=30)
         conn.execute(
             "CREATE TABLE IF NOT EXISTS adversarial_reviews ("
             " review_id TEXT PRIMARY KEY,"
