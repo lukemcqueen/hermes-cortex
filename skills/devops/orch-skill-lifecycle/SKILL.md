@@ -2,7 +2,7 @@
 name: orch-skill-lifecycle
 category: devops
 description: "Unified daily skill lifecycle pipeline — collects lessons, evaluates quality, and upgrades skills/SOUL.md. Replaces skill-miner, harvest-lessons, skill-triage, soul-refinement, and agent-weekly-loop-eval."
-version: 1.0.0
+version: 1.1.0
 author: Hermes Cortex
 license: MIT
 platforms: [linux, macos]
@@ -329,6 +329,19 @@ Result: 3 skills updated, 1 upstreamed, 1 SOUL.md entry.
   `Learning Report*` and `LEARNING_REPORT`. When a fleet report seems missing,
   first verify the collector produced output and a `LEARNING_REPORT` reached
   the archive — never conclude "nothing changed" from silence alone.
+- **Direct-send string bodies blind the pipeline (2026-09-25)** → the bus
+  `api_send` used to store the collector's pre-serialized envelope as a
+  double-encoded jsonb STRING (123 inbox_orchestrator rows since Sep 15):
+  `body->>'subject'` returns NULL on those, so subject-filtered archive
+  queries silently miss reports (moses's 18:00 Sep 24 report looked like a
+  9-day collection gap but was staged host-locally). Fixes: api_send now
+  enqueues the parsed envelope (8b219937 — each orchestrator's bus server
+  needs a restart to load it). When a report seems missing: (1) query
+  `body::text LIKE '%Learning Report%'` (matches both shapes), (2) check
+  BOTH orchestrator hosts' staging dirs, (3) dedupe by the body header's
+  Generated timestamp + agent — staged FILENAMES are unreliable (the same
+  report stages under several agents' names; the `from` envelope field is
+  scrambled by forwarder from-rewrites).
 - **Don't patch the same skill twice in one run** — deduplicate before acting
 - **Don't upstream fleet skills that already exist** — check repo + Hermes bundle
 - **Don't modify SOUL.md for workflow lessons** — skills are for workflow, SOUL.md is for principles
