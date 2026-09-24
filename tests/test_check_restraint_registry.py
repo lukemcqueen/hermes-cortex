@@ -153,6 +153,34 @@ def test_known_gaps_not_a_list_rejected():
     assert any("known_gaps" in e for e in errors)
 
 
+def test_encouraged_not_enforced_report():
+    crr = _load_module()
+    data = {"classes": {
+        "verify-before-declare": dict(_class(layer="model", tier="encouraged"), should_be_enforced=True),
+    }}
+    drift = crr.report_encouraged_not_enforced(data)
+    assert "verify-before-declare" in drift
+
+
+def test_no_should_be_enforced_no_drift():
+    crr = _load_module()
+    data = {"classes": {"verify-before-declare": _class(layer="model", tier="encouraged")}}
+    assert crr.report_encouraged_not_enforced(data) == []
+
+
+def test_script_exits_nonzero_on_encouraged_not_enforced(tmp_path):
+    p = tmp_path / "drift.json"
+    p.write_text(json.dumps({"classes": {
+        "x": dict(_class(layer="model", tier="encouraged"), should_be_enforced=True),
+    }}))
+    r = subprocess.run(
+        [sys.executable, str(_SCRIPT), "--registry", str(p)],
+        capture_output=True, text=True,
+    )
+    assert r.returncode != 0
+    assert "x" in r.stderr
+
+
 def test_script_exit_codes(tmp_path):
     """End-to-end: exit 0 on well-formed, non-zero + names class on empty restraint."""
     good = tmp_path / "good.json"

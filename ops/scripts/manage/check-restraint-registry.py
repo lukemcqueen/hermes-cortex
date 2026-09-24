@@ -106,6 +106,22 @@ def validate_registry(data) -> list:
     return errors
 
 
+def report_encouraged_not_enforced(data) -> list:
+    """Return class names a human marked `should_be_enforced: true` but which
+    are still tagged `tier: encouraged` — the 'encouraged-not-enforced' drift
+    that would otherwise go silent (Story M2.2)."""
+    drift: list = []
+    classes = data.get("classes", {}) if isinstance(data, dict) else {}
+    if not isinstance(classes, dict):
+        return drift
+    for name, cls in classes.items():
+        if not isinstance(cls, dict):
+            continue
+        if cls.get("should_be_enforced") is True and cls.get("tier") == "encouraged":
+            drift.append(name)
+    return drift
+
+
 def load_registry(path) -> dict:
     with open(path, encoding="utf-8") as f:
         return json.load(f)
@@ -126,12 +142,19 @@ def main(argv=None) -> int:
         return 2
 
     errors = validate_registry(data)
+    drift = report_encouraged_not_enforced(data)
+    rc = 0
     if errors:
         for e in errors:
             print(f"FAIL: {e}", file=sys.stderr)
-        return 1
-    print("OK: every class has a non-empty restraint and a valid noticed timestamp")
-    return 0
+        rc = 1
+    if drift:
+        for name in drift:
+            print(f"ENCOURAGED-NOT-ENFORCED: {name}", file=sys.stderr)
+        rc = 1
+    if rc == 0:
+        print("OK: every class has a non-empty restraint and a valid noticed timestamp")
+    return rc
 
 
 if __name__ == "__main__":
