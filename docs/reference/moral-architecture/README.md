@@ -1,10 +1,8 @@
 # Moral Architecture for Autonomous Systems — Working Reference
 
-> **Source:** `Moral-Architecture-for-Autonomous-Systems.pdf` (held in the
-> private repo — this public repo carries only the scrubbed digest, per the PII
-> rule: the source PDF is prepared for a named person). Primary frame: Scripture;
-> secondary: psychology, sociology, safety engineering. This digest is a faithful
-> working reference, not the full argument — read the PDF for the evidence trail.
+> **Source:** `Moral-Architecture-for-Autonomous-Systems.pdf` — the full report
+> lives in the same directory, gitignored (it carries the author's name; kept
+> local-only). This digest is the committed, PII-scrubbed working reference.
 > **Verification caveat (the report's own, Appendix C):** compiled without live
 > web access; verify framework version numbers, EU AI Act dates, and §8 case
 > specifics before any decision-critical use.
