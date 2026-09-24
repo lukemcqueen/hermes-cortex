@@ -12,6 +12,7 @@ from .results import Results
 from .checks import (
     check_repo,
     check_deployed_gate_smoke,
+    check_adversarial_review,
     check_dev_repo_agents,
     check_dev_repo_claude,
     check_soul_sync,
@@ -65,6 +66,7 @@ def main():
     all_checks = [
         check_repo,
         check_deployed_gate_smoke,
+        check_adversarial_review,
         check_dev_repo_agents,
         check_dev_repo_claude,
         check_soul_sync,

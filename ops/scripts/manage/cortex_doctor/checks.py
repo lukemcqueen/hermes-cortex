@@ -230,6 +230,81 @@ def check_deployed_gate_smoke(res: "Results") -> None:
             f"smoke test could not run: {type(_e).__name__}: {str(_e)[:120]}")
 
 
+def check_adversarial_review(res: "Results") -> None:
+  """Adversarial-review deploy health (M6).
+
+  The independent reviewer is orchestrator-side and must be exercisable from
+  the DEPLOYED path, not just the repo tree. The 2026-09-24 blunder: the
+  deployed adversarial-review.py resolved its prompt template via a git-clone
+  path that only exists in the repo source tree — on a deployed host (no git
+  clone) git toplevel returned / and the sweep died with FileNotFoundError
+  mid-run. This check (a) asserts the template is deployed alongside the
+  script, (b) executes the deployed script's --dry-run so a broken template
+  resolution cannot ship silently, and (c) on orchestrator hosts asserts the
+  OpenRouter key is resolvable (else every sweep exits silently with no review).
+  """
+  script = CORTEX_HOME / "scripts" / "adversarial-review.py"
+  template = CORTEX_HOME / "templates" / "adversarial-reviewer-prompt.md"
+
+  if not script.exists():
+    res.add("Adversarial review", "INFO",
+            "adversarial-review.py not deployed — reviewer not present on this host")
+    return
+
+  # (a) Template deployed alongside the script.
+  if not template.exists():
+    res.add("Adversarial review template", "FAIL",
+            f"prompt template missing at {template}",
+            "Run: cortex-update.sh (registers docs/templates/adversarial-reviewer-prompt.md)")
+  else:
+    res.add("Adversarial review template", "PASS", "deployed alongside script")
+
+  # (b) Deployed smoke: the script must assemble a prompt from the deployed
+  # template (exit 0 + marker). A repo-works/deployed-broken script fails here.
+  try:
+    import subprocess as _sp
+    out = _sp.run(
+        [sys.executable, str(script), "--dry-run",
+         "--cycle-id", "1", "--material", "doctor smoke"],
+        capture_output=True, text=True, timeout=30)
+    marker_ok = "=== REVIEWED MATERIAL ===" in (out.stdout or "")
+    if out.returncode == 0 and marker_ok:
+      res.add("Adversarial review smoke", "PASS",
+              "deployed script assembled a prompt (dry-run)")
+    elif out.returncode != 0:
+      res.add("Adversarial review smoke", "FAIL",
+              f"deployed script exited {out.returncode}: {(out.stderr or '').strip()[:160]}",
+              "Run: cortex-update.sh then re-run doctor (check template resolution)")
+    else:
+      res.add("Adversarial review smoke", "FAIL",
+              "deployed script ran but did not emit the REVIEWED MATERIAL marker",
+              "Check docs/templates/adversarial-reviewer-prompt.md contains the marker")
+  except Exception as _e:  # advisory — never crash the doctor
+    res.add("Adversarial review smoke", "WARN",
+            f"smoke test could not run: {type(_e).__name__}: {str(_e)[:120]}")
+
+  # (c) Orchestrator-only: the API key must be resolvable, else every sweep
+  # exits with "OPENROUTER_API_KEY not set" and no review is ever recorded.
+  if AGENT_ROLE == "orchestrator":
+    key = os.environ.get("OPENROUTER_API_KEY", "")
+    if not key:
+      hermes_env = HERMES_HOME / ".env"
+      try:
+        if hermes_env.exists():
+          for line in hermes_env.read_text().splitlines():
+            if line.startswith("OPENROUTER_API_KEY="):
+              key = line.split("=", 1)[1].strip().strip('"').strip("'")
+              break
+      except OSError:
+        key = ""
+    if key:
+      res.add("Adversarial review key", "PASS", "OPENROUTER_API_KEY resolvable")
+    else:
+      res.add("Adversarial review key", "FAIL",
+              "OPENROUTER_API_KEY not set (env or ~/.hermes/.env) — reviews cannot run",
+              "Set OPENROUTER_API_KEY in ~/.hermes/.env so the sweep can call the model")
+
+
 def check_dev_repo_agents(res: "Results") -> None:
   """1b. Development repos: check each project-level git repo has an AGENTS.md."""
   if not CORTEX_REPO.is_dir():
