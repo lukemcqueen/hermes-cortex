@@ -44,6 +44,7 @@ from .checks import (
     check_cron_runtime_scripts,
     check_langfuse_observability,
     check_restraint_registry,
+    check_bus_grant_expiry,
 )
 from .fix import apply_fixes
 from .bus_alert import dispatch_bus_alerts
@@ -94,6 +95,7 @@ def main():
         check_cron_runtime_scripts,
         check_langfuse_observability,
         check_restraint_registry,
+        check_bus_grant_expiry,
     ]
 
     if do_quick:

@@ -4450,3 +4450,84 @@ def check_restraint_registry(res: "Results") -> None:
                 f"all {len(classes)} classes name a present restraint")
 
 
+def _find_unjustified_indefinite(grants) -> list:
+    """Return agent_names whose grant is indefinite (expires_at NULL) with no
+    named justifier (config.indefinite_justification or labels.indefinite).
+
+    Power expires by default (Story M5 — Jubilee); an indefinite grant is a
+    standing exception that must be justified by a named human decision.
+    """
+    unjustified = []
+    for g in grants:
+        if not isinstance(g, dict):
+            continue
+        if g.get("expires_at") not in (None, ""):
+            continue
+        config = g.get("config") or {}
+        labels = g.get("labels") or {}
+        if isinstance(config, str):
+            try:
+                config = json.loads(config)
+            except (json.JSONDecodeError, TypeError):
+                config = {}
+        if isinstance(labels, str):
+            try:
+                labels = json.loads(labels)
+            except (json.JSONDecodeError, TypeError):
+                labels = {}
+        justified = bool(config.get("indefinite_justification")) or bool(labels.get("indefinite"))
+        if not justified:
+            unjustified.append(g.get("agent_name"))
+    return unjustified
+
+
+def _query_bus_grants():
+    """Return bus.permissions rows as dicts (agent_name, expires_at, config,
+    labels) via the orchestrator Postgres container; None if unreachable."""
+    sql = (
+        "SELECT agent_name, expires_at, COALESCE(config::text, '{}'), "
+        "COALESCE(labels::text, '{}') FROM bus.permissions"
+    )
+    out, rc = run(
+        ["docker", "exec", "-i", "mycortex-postgres", "psql",
+         "-U", "mycortex", "-d", "mycortex", "-t", "-A", "-F", "|", "-c", sql],
+        timeout=15,
+    )
+    if rc != 0 or not out:
+        return None
+    grants = []
+    for line in out.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        parts = line.split("|")
+        if len(parts) < 2:
+            continue
+        g = {"agent_name": parts[0].strip(), "expires_at": parts[1].strip() or None}
+        if len(parts) >= 3:
+            g["config"] = parts[2].strip()
+        if len(parts) >= 4:
+            g["labels"] = parts[3].strip()
+        grants.append(g)
+    return grants
+
+
+def check_bus_grant_expiry(res: "Results") -> None:
+    """Warn on any bus grant that is indefinite (expires_at NULL) with no
+    named justifier — the Jubilee rule: power expires by default."""
+    grants = _query_bus_grants()
+    if grants is None:
+        res.add("Bus grant expiry", "SKIP",
+                "bus.permissions not queryable (orchestrator host only?)")
+        return
+    unjustified = _find_unjustified_indefinite(grants)
+    if unjustified:
+        res.add("Bus grant expiry", "WARN",
+                f"{len(unjustified)} indefinite grant(s) without a justifier: "
+                + ", ".join(unjustified[:6]),
+                "Set expires_at on the grant, or add a config.indefinite_justification note")
+    else:
+        res.add("Bus grant expiry", "PASS",
+                "no indefinite grants without a named justifier")
+
+
