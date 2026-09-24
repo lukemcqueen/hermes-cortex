@@ -752,6 +752,17 @@ crons:
   no_agent: true
   model: ''
   provider: ''
+- name: agent-unannounced-probe
+  scope: universal
+  schedule: 0 3 * * 0
+  script: unannounced-probe.py
+  prompt: ''
+  skill: ''
+  deliver: local
+  workdir: ''
+  no_agent: true
+  model: ''
+  provider: ''
 - name: cortex-bus-evening
   scope: universal
   schedule: 0 20,22 * * 1-5

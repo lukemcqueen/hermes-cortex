@@ -524,6 +524,7 @@ register_orch "ops/scripts/orch-bus/orch-bus-test.py"            "${CORTEX_DEPLO
 register "ops/scripts/agent/agent-message-handler.py" "${CORTEX_DEPLOY_HOME}/scripts/agent-message-handler.py"
 register "ops/scripts/agent/commands.py"               "${CORTEX_DEPLOY_HOME}/scripts/commands.py"
 register "ops/scripts/agent/agent-diagnostic.py"       "${CORTEX_DEPLOY_HOME}/scripts/agent-diagnostic.py"
+register "ops/scripts/agent/unannounced-probe.py"      "${CORTEX_DEPLOY_HOME}/scripts/unannounced-probe.py"
 
 # Timezone helper (required by monitoring scripts)
 register "ops/scripts/hermes_tz.py"                "${CORTEX_DEPLOY_HOME}/scripts/hermes_tz.py"

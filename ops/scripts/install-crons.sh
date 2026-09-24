@@ -584,6 +584,7 @@ if $UNINSTALL; then
     "agent-stale-ref-watchdog" \
     "agent-swap-refresh" \
     "agent-system-alert-watchdog" \
+    "agent-unannounced-probe" \
     "cortex-bus-evening" \
     "cortex-bus-failover-watchdog" \
     "cortex-bus-overnight" \
@@ -1337,6 +1338,19 @@ create_cron "agent-no-verify-audit" "*/10 * * * *" \
 # per-agent recidivism into enforcer work. no_agent — stdout is the report.
 create_cron "agent-session-correction-scan" "0 22 * * 0" \
   "manage/agent-session-correction-scan.py" \
+  "" \
+  "" \
+  "" \
+  "local" \
+  "" \
+  "true"
+
+# ── Unannounced honeypot probe (M7.1) — low-frequency, no_agent ──
+# Thin slice: the script records a placeholder probe / reports the loop; the
+# real honeypot content is an orchestrator-authored follow-up. Silent when
+# the loop is empty (watchdog pattern). Weekly Sunday 03:00 = low frequency.
+create_cron "agent-unannounced-probe" "0 3 * * 0" \
+  "unannounced-probe.py" \
   "" \
   "" \
   "" \
