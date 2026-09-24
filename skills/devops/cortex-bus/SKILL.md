@@ -1,6 +1,6 @@
 ---
 name: cortex-bus
-version: 1.2.0
+version: 1.3.0
 category: devops
 description: "Agent Bus (PGMQ) operations — queue inspection, DLQ management, message recovery, auth, and health diagnostics. Covers the Postgres-backed message queue that replaces the legacy file inbox."
 platforms: [linux]
@@ -438,6 +438,26 @@ systemctl --user restart cortex-bus.service
 ```
 
 Note: The bus at `:8903` is a direct local connection. It's also proxied through nginx at the orchestrator's bus port (e.g. `:13004` for Moses, `:14004` for Esther) with Bearer auth. The MCP tools route through nginx, not directly.
+
+## Client fail-fast on 4xx — BusPermanentError, never outboxed (2026-09-09)
+
+`ops/scripts/lib/cortex_bus.py` classifies 4xx responses as PERMANENT, not retryable:
+
+- `lib._bus_post` raises `BusPermanentError` on any 4xx — except 401/403 while the
+  Basic-auth fallback still has a try left.
+- On a permanent rejection `bus_send` returns `{queued: false, permanent: true}`
+  and **never writes the outbox file**. Do not layer retry-on-4xx logic on top:
+  permanent means permanent (bad subject/format/ACL — e.g. a lowercase subject
+  that `validate.py` rejects with HTTP 400).
+- The inner Basic-auth fallback propagates any non-401/403 server response as
+  permanent too. A 400 behind nginx now fails fast instead of looping.
+- The outbox sweep **quarantines permanently-rejected files on the first
+  attempt** instead of burning retry budget — a poison message no longer
+  retries 12× over 17h (the incident that motivated this contract).
+
+Verification pattern: send a live poison message (lowercase subject), assert
+exactly one rejection and zero outbox writes (US-001, 8/8 tests, commit
+`4dd90223`).
 
 ## Forwarder: role-aware PEER resolution (2026-08-03)
 

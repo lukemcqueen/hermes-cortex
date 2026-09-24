@@ -1,6 +1,6 @@
 ---
 name: skill-curation
-version: 1.0.0
+version: 1.1.0
 description: "Consolidate, dedupe, and prune the skill library — merge overlapping skills into one (absorbed_into), delete truly dead skills, and keep the manifest honest. Use when the doctor flags skill drift, two skills overlap, or a lifecycle run surfaces consolidation candidates."
 triggers:
   - "curate skills"
@@ -59,3 +59,17 @@ and a merged skill serves better than two overlapping ones.
 - Deleting a skill and leaving its references dangling
 - "Fixing" a balanced file's fences (see orch-skill-lifecycle fence rule)
 - Creating a new skill because the existing one needed a patch
+
+## Bulk Curation Mechanics
+
+- `skill_manage` **`delete` is a sole op** — it refuses to compose with other
+  ops in a single `operations` array (rollback safety). Fire each `delete` as
+  its own `skill_manage` call; issue several single-op calls in parallel when
+  pruning a batch, but never put a `delete` alongside another action.
+- Writing redirect bodies over many existing `SKILL.md` files hits the
+  `write_file` read-before-write guard: it refuses to overwrite a file whose
+  current content you have not fully read this task, and a `read_file(limit=N)`
+  counts as a "partial view" that still blocks. For bulk redirects, delegate
+  the mechanical overwrite to a subagent (it reads-then-writes cleanly), or
+  read each file fully (no `limit`) first, or `patch` just the frontmatter
+  lines instead of overwriting the whole file.

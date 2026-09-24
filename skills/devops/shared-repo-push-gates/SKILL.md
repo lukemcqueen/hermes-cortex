@@ -1,7 +1,7 @@
 ---
 name: shared-repo-push-gates
 description: "Shared-repo push blocked? Know the gates that block you."
-version: 1.1.0
+version: 1.2.0
 author: Hermes Cortex (Esther)
 license: MIT
 platforms: [linux, macos]
@@ -200,6 +200,16 @@ headered repo copy fails every checksum/script-content check.
   failures REMAIN before assuming your fix was incomplete.
 - Docs-only changes are deploy-exempt (cortex-update does not deploy
   docs/) — no deploy step needed after a docs push.
+- **A gate-blocked `git commit -F <file>` commits with a STALE subject on retry.**
+  The enforcer rejects the WHOLE compound command —
+  `printf "...msg" > /tmp/msg && git commit -F /tmp/msg` is blocked before the
+  `printf` runs, so `/tmp/msg` still holds the PREVIOUS task's message. After
+  you satisfy the gate (load `adversarial-verifier`, etc.) and re-run the bare
+  `git commit -F /tmp/msg`, the commit lands with the wrong subject and the
+  pre-commit hook scores it under a misleading task name. Use a UNIQUE temp
+  message file per commit, and after any gated commit verify
+  `git log -1 --format=%s` matches what you meant — `git commit --amend -F
+  <correct-file>` if it does not.
 
 ## Verification
 

@@ -1,6 +1,6 @@
 ---
 name: enforcement-change-safety
-version: 1.0.0
+version: 1.1.0
 category: devops
 description: "Use before enforcement code changes or shared-repo commits."
 author: Hermes Cortex
@@ -135,6 +135,14 @@ governance lock: `_has_governance_lock()` Phase 3 reads the repo marker
 - Prove contamination: `mv .hermes-cortex/.governance-lock /tmp/x` → tests pass
   → `mv` back. Phase 1 primary lock is separate, so your write gate survives.
 - Never call these a regression while mid-lock.
+
+### DOGFOOD test contamination (un-deployed enforcer edit)
+
+When you edit `plugins/governance-enforcer/__init__.py` but haven't deployed it
+via `cortex-update.sh`, `test_score_gate.py::test_begin_change_refuses_on_decorated_pending_cycle`
+fails with `"DOGFOOD REQUIRED"` instead of the expected `"Close out your previous task"`.
+This is NOT a regression — the DOGFOOD gate correctly prevents `begin_change` when
+repo ≠ deployed. Deploy (`cortex-update.sh`), then rerun: the test passes.
 
 ## Rule 4: PENDING Cycles — Yours vs Others
 
@@ -675,6 +683,29 @@ other conclude the system is broken. When touching either block message:
   running gateway keeps the OLD in-memory enforcer until an operator restarts
   it from a separate shell — verify the deployed file's content directly
   (grep the new strings) instead of expecting the live gate to show them.
+
+## Rule 17: Essential Gates Are Event-Driven, Never Cron-Swept — and Fail Loud, Never Silent
+
+An essential governance gate (adversarial review, mandatory verification) must
+fire in the COMPLETION path (e.g. `end_change`), not as a scheduled cron sweep.
+A cron can be strike-paused after repeated failures — silently disabling the
+gate with no alert — and it carries latency between the work and the review.
+An event-driven gate fires immediately and can refuse the completion.
+
+- When the gate's dependency is down (reviewer unreachable, scanner missing,
+  key unset), REFUSE the completion with a loud error — never silently skip.
+  "Essential to governance ALWAYS" means degradation must be visible, not quiet.
+- Complexity-gating ("only review non-trivial work") is legitimate
+  friction-reduction, but the complexity signal must be MEASURED, never
+  self-reported. A worker who gets to declare its own work "trivial" will
+  declare trivial. Measure the diff — added+removed lines counted separately
+  (a net-zero rewrite is still complex), files touched, untracked new files
+  (`git ls-files --others` — `git diff --numstat` omits them) — plus a
+  size-independent always-review path list for enforcement/security surface.
+- Keep the gate independent even when event-driven: the reviewer runs with a
+  fixed committed prompt and a distinct model in a process the worker cannot
+  reach, so being triggered by the worker's own close does not let the worker
+  grade itself.
 
 ## References
 

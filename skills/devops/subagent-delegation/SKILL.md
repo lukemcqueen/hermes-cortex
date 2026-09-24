@@ -1,7 +1,7 @@
 ---
 name: subagent-delegation
 description: "Use when pinning subagent models or multi-role reviews."
-version: 1.0.0
+version: 1.1.0
 category: devops
 platforms: [linux, macos]
 ---
@@ -62,3 +62,26 @@ parallel `delegate_task` subagents — not sequential self-prompting:
    weighted matrix / recommendation itself — never delegate the synthesis.
 4. **Pass exact read paths + output path** in each child's context; children
    know nothing of the parent conversation.
+
+## Delegating implementation (children that commit code)
+
+When subagents will implement AND `git commit` (not just write review files),
+three extra rules apply:
+
+- **One subagent per git repository.** The git index is shared state — two
+  parallel subagents in the SAME repo collide on `git add`/`git commit` even
+  when they touch different files (staging serializes the whole working tree).
+  Parallelize ACROSS repos; within one repo run subagents sequentially, or have
+  them do the work without committing and commit serially yourself.
+- **Put the full governance sequence in the child's context.** In a governed
+  repo (Hermes Cortex enforcer), a child's first write blocks until it loads the
+  always-skills and holds a lock. Tell it explicitly: load the 7 always-skills
+  in one turn → `cache_search` → `begin_change` → work with TDD →
+  `feedback_accept` → `end_change`, commit through the hooks (no `--no-verify`),
+  and DO NOT `git push` — the parent reviews and pushes.
+- **Verify the child's self-report with real tool output — never trust it.**
+  "N tests pass" is a claim, not a fact. After it returns: `git log` for the
+  commits, run the test suite yourself, read the key diffs. Catch what a weak
+  model misses — a script that violates a repo naming convention (the doctor
+  flags it), a graceful-SKIP that is actually an unverified check, a decision the
+  child made because a slice left it open.
