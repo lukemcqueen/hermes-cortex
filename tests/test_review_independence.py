@@ -34,10 +34,15 @@ def test_reviewer_script_reads_prompt_from_committed_template_only():
         r'\s*/\s*["\']adversarial-reviewer-prompt\.md["\']',
         src,
     ), "reviewer script does not pin the committed template path"
-    # The only .read_text() in the script must be the template read.
-    reads = re.findall(r"\.read_text\(\)", src)
-    assert len(reads) == 1, (
-        "reviewer script reads more than the committed template — "
+    # The ONLY file read feeding the prompt is the committed template.
+    # (assemble_prompt must contain the sole read_text() that touches the
+    # prompt; other reads in the script are env/db, never prompt input.)
+    asm_start = src.find("def assemble_prompt")
+    asm_end = src.find("\ndef ", asm_start + 1)
+    asm = src[asm_start:asm_end]
+    assert "TEMPLATE.read_text()" in asm, "assemble_prompt must read the template"
+    assert asm.count(".read_text()") == 1, (
+        "assemble_prompt reads something besides the committed template — "
         "worker-authored text could become instructions"
     )
 

@@ -146,6 +146,7 @@ if $UNINSTALL; then
     "orch-task-board-digest" \
     "orch-task-morning-pass" \
     "orch-task-evening-pass" \
+    "orch-adversarial-review" \
     "orch-backlog-driver" \
     "orch-autonomy-digest" \
     "orch-restic-backup"; do
@@ -667,6 +668,32 @@ create_cron "orch-restic-backup" "43 2 * * 0" \
   "" \
   "telegram:${TELEGRAM_HOME_CHANNEL}" \
   "" \
+  "true"
+
+# ── 4a. Independent Adversarial Reviewer (M6) ──────────────
+printf "${CYAN}  4a. Independent Adversarial Reviewer${RESET}\n"
+
+# Independent adversarial review — a SEPARATE evaluator reviews completed
+# governance cycles (report §8.7 rule 1: the evaluator must not report to the
+# evaluated). ORCHESTRATOR-ONLY: the worker has no cronjob tool, so it cannot
+# schedule, unschedule, or pre-empt the review. The reviewer prompt is the
+# FIXED committed template (docs/templates/adversarial-reviewer-prompt.md) —
+# never worker-authored text. The reviewer model is pinned below
+# (ADVERSARIAL_REVIEWER_MODEL, default deepseek-v4-pro, same provider family
+# per operator decision 2026-09-24 — independence = context isolation +
+# fixed prompt + orchestrator trigger, NOT model difference).
+#
+# The script is a no_agent run of adversarial-review.py --sweep: it lists
+# completed cycles not yet reviewed and reviews them. Silent when the queue
+# is empty (watchdog pattern). Hourly, off-peak minute staggered by
+# create_cron.
+create_cron "orch-adversarial-review" "0 * * * *" \\
+  "adversarial-review.py" \\
+  "" \\
+  "" \\
+  "" \\
+  "local" \\
+  "" \\
   "true"
 
 # ── 5. Backlog Driver (F-023) ──────────────────────────────
