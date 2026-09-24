@@ -18,7 +18,10 @@
 A **separate evaluator** that adversarially reviews a worker agent's output,
 with three hard properties:
 
-1. **Different model** — the reviewer is not the same model that did the work.
+1. **Separate context** — the reviewer runs in its own session/process that
+   sees only the output, never the worker's reasoning. (Decision: same model,
+   `deepseek-v4-pro` — so independence is context isolation, not model
+   difference; see §5.1.)
 2. **Fixed prompt** — the reviewer's instructions are a committed,
    orchestrator-owned artifact the worker **cannot edit**.
 3. **Orchestrator-triggered** — the worker **cannot invoke** the reviewer.
@@ -33,7 +36,7 @@ subsystem, no new service. The pieces already exist and are only wired together.
 | Need | Existing infra | How it's used |
 |---|---|---|
 | Schedule the reviewer | `cronjob` MCP (orchestrator-only) + `ops/scripts/install-orch-crons.sh` | an `orch-adversarial-review` cron the worker cannot create or edit |
-| Pin a different model | `LLM_CRON_PROVIDER` + fallback chain (the single control point) | the review cron's provider is set to a model **different** from the worker's default |
+| Pin the reviewer model | `LLM_CRON_PROVIDER` + fallback chain (the single control point) | the review cron's provider is set to `deepseek-v4-pro` — the *same* provider/model family as the worker; independence is context isolation, not model difference (§5.1) |
 | Fixed, un-editable prompt | `docs/templates/` (orchestrator-only path; pre-commit hook blocks non-orchestrator edits; `cortex-update.sh` overwrites local drift) | the reviewer prompt lives there and is read by the cron at run time |
 | Where findings land | the loop-governance DB (already tracks cycles/notes) | a new `adversarial_reviews` table — or the existing bus `REVIEW_FINDINGS` message to the orchestrator inbox |
 | Deterministic first pass | the pre-commit hook + `adversarial-verify.py` | kept as-is: the static gate runs first, the semantic reviewer runs second |
@@ -47,7 +50,7 @@ worker agent ── does work ──► loop-governance DB (cycles + notes + out
                                    │  (recent completed cycles)
                                    ▼
                     orch-adversarial-review cron (ORCHESTRATOR-owned)
-                    ├─ different model (LLM_CRON_PROVIDER override)
+                    ├─ deepseek-v4-pro (same model, SEPARATE context)
                     ├─ reads FIXED prompt from docs/templates/ (committed, immutable)
                     ├─ treats every cycle's note/output as UNTRUSTED DATA
                     └─ writes findings ──► adversarial_reviews table
@@ -58,9 +61,12 @@ worker agent ── does work ──► loop-governance DB (cycles + notes + out
 
 **The independence guarantee, stated precisely:**
 
-- *Different model* — the cron runs under `LLM_CRON_PROVIDER` (or a per-cron
-  override) set to a model distinct from the worker's; the review record stores
-  `reviewer_model`, and a doctor check asserts it is not the worker's model.
+- *Separate context* — the reviewer runs in its own session/process that sees
+  only the cycle's output + note, never the worker's reasoning. It is the same
+  model (`deepseek-v4-pro`) by decision (§5.1), so independence is context
+  isolation + fixed prompt + orchestrator trigger, *not* model difference. The
+  review record stores a distinct `reviewer_id` (a fresh session id), and a
+  doctor check asserts it is not the worker's session.
 - *Fixed prompt* — the reviewer prompt is a committed file in
   `docs/templates/`, an orchestrator-only path: the pre-commit hook refuses a
   non-orchestrator's edit, and `cortex-update.sh` overwrites any local drift on
@@ -105,15 +111,17 @@ a security guarantee (strong model verifies).
 - Test: write a review → read it back → fields match. (Reuse the DB's existing
   connection helper; no new driver.)
 
-**M6.3 — Review cron + script** — BUILD
-- Files: `ops/scripts/orch-bus/adversarial-review.py` (reads recent completed
-  cycles, builds the reviewer prompt from the committed template, calls the
-  cron's model, writes findings via `record-review.py`) + register in
-  `install-orch-crons.sh` (name `orch-adversarial-review`, `orchestrator_only:
-  true`).
-- Test: `--dry-run` emits the prompt + the target cycles without calling a
-  model; `bash -n` + manifest load clean; `cronjob list` shows it as
-  orchestrator-only.
+**M6.3 — Reviewer script (picks up pending reviews)** — BUILD
+- File: `ops/scripts/orch-bus/adversarial-review.py` — reads **pending** review
+  rows from the `adversarial_reviews` queue, builds the reviewer prompt from the
+  committed template, calls `deepseek-v4-pro` (same provider, separate context),
+  and writes findings back via `record-review.py`. The *enqueue* (a row is
+  created the moment a cycle closes) is part of the enforcement follow-up
+  (§5.3), because it is a server-side change to the loop-governance MCP — the
+  same file the auto-block touches.
+- Test: `--dry-run` emits the prompt + the target pending rows without calling a
+  model; `bash -n` clean.
+- Depends: M6.1, M6.2.
 
 **M6.4 — Independence guarantee** — CHECK
 - Verify three facts with real tool output, not claims: (a) the prompt template
@@ -124,11 +132,14 @@ a security guarantee (strong model verifies).
   (grep the script for the prompt source).
 - Depends: M6.1–M6.3.
 
-**M6.5 — Model-independence** — CHECK
-- Assert the review cron's provider is a **different model** from the worker's
-  default provider (compare `LLM_CRON_PROVIDER` for the cron vs the worker's
-  session provider), and that `record-review.py` refuses to write a
-  `reviewer_model` that equals the worker's default.
+**M6.5 — Context-independence** — CHECK
+- The reviewer is the *same* model as the worker, so independence is not model
+  difference — it is **context isolation** + **fixed prompt** +
+  **orchestrator trigger**. Assert all three: (a) the reviewer runs in a
+  separate session/process that does not read the worker's conversation
+  history (only the cycle's output + note); (b) `record-review.py` records the
+  reviewer as a distinct `reviewer_id` (a fresh session id, not the worker's);
+  (c) the prompt is the committed template, not any worker-authored text.
 - Depends: M6.2–M6.3.
 
 ---
@@ -138,21 +149,34 @@ a security guarantee (strong model verifies).
 The pre-commit hook + `adversarial-verify.py` (deterministic, static) is **not
 removed** — it is the cheap first pass that catches what a static scan can. The
 independent reviewer (M6) adds the **semantic** layer the static scan cannot:
-a *different model* reasoning adversarially about the output. The two are
+a *separate-context model* reasoning adversarially about the output. The two are
 complementary, not competing. The report's rule 1 is satisfied by the semantic
-layer being a different model, a fixed prompt, and an orchestrator trigger.
+layer being a separate context, a fixed prompt, and an orchestrator trigger.
 
 ---
 
-## 5. Open questions for the operator (before building)
+## 5. Decisions (operator, 2026-09-24)
 
-1. **Which model is the reviewer?** A different provider/model than the
-   worker's default — but *which*? (Different provider for true independence, or
-   a different model on the same provider is cheaper but weaker.)
-2. **Cadence.** On-demand per completed cycle (expensive), or batched daily
-   (cheap, but a bad output may ship before review)? The slice defaults to a
-   daily batch; flag if you want per-cycle.
-3. **Findings → action.** Should a CRITICAL/HIGH finding auto-block the worker's
-   next `begin_change` (strong, but touches enforcement), or surface to the
-   orchestrator for a human decision (weaker, safer)? Default: surface first;
-   auto-block is a follow-up.
+1. **Reviewer model:** `deepseek/deepseek-v4-pro` on OpenRouter — the *same*
+   provider (and same model family) as the worker. Independence therefore rests
+   on **context isolation** (the reviewer is a separate session that sees only
+   the diff/output, never the worker's reasoning) + **fixed prompt** +
+   **orchestrator trigger**, *not* on model difference. Honest caveat carried
+   forward: same-model means shared blind spots (the report's maker/checker
+   note) — accepted as a cost tradeoff; if a review ever rubber-stamps a real
+   failure, the answer is to escalate the reviewer to a different model, not to
+   trust it more.
+2. **Cadence:** **per completed cycle** — a review is enqueued the moment the
+   worker closes a cycle (server-side, on `feedback_accept`/`end_change`), and
+   a reviewer picks up the pending item. Not a daily batch. The worker never
+   invokes the review directly; it only closes its cycle, and the review is a
+   server-side consequence.
+3. **Findings → action:** **surface first, then a short timeout, then
+   auto-block.** A CRITICAL/HIGH finding is surfaced to the worker's session and
+   the orchestrator; if it is not resolved (addressed, or overridden by a
+   human) within a short timeout, the worker's next `begin_change` is blocked.
+   The **surface** is M6.4/M6.5. The **auto-block** touches the enforcement
+   chain (the loop-governance MCP's `begin_change` must consult open critical
+   findings) and is a **follow-up** gated like M8 — orchestrator-only, strong
+   model, `enforcement-change-safety` + `enforcer-modification-considerations`
+   skills.
