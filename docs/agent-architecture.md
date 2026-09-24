@@ -286,6 +286,20 @@ display:
 
 ---
 
+## Seam Ownership
+
+Seams are where accountability disappears — a requirement enforced only in
+the model is encouraged, not enforced. Name one owner per seam so the
+boundary is always someone's job:
+
+- **Seam A** (model↔harness — prompt-injection / untrusted-content boundary): owned by the **enforcer** (the `governance-enforcer` plugin) + the security-notice marker.
+- **Seam B** (harness↔controller — MCP arg-passing, tool gating): owned by the **loop-governance MCP** + the enforcer.
+
+One named owner per seam, stated explicitly — if a seam has no owner, it has
+no one accountable when the boundary fails.
+
+---
+
 ## Related Documents
 
 - [`fleet-reference.md`](fleet-reference.md) — Deployment-specific cron schedules and agent registry
