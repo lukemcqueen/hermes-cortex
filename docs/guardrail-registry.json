@@ -10,7 +10,9 @@
         "skill:reflexion-check:Q2-verify-claims",
         "skill:change-checklist:Phase-1-Test"
       ],
-      "added": "2026-07-30"
+      "added": "2026-07-30",
+      "restraint": "skill:reflexion-check",
+      "noticed": "2026-07-30"
     },
     "repeat-correction": {
       "artifacts": [
@@ -18,7 +20,9 @@
         "skill:self-improvement-pipeline",
         "hook:post-push-audit"
       ],
-      "added": "2026-07-29"
+      "added": "2026-07-29",
+      "restraint": "skill:self-improvement-pipeline",
+      "noticed": "2026-07-29"
     },
     "no-permanent-fix": {
       "artifacts": [
@@ -26,7 +30,9 @@
         "SOUL.md:Principle-25-Own-Every-Issue",
         "skill:change-checklist:workmanship"
       ],
-      "added": "2026-07-30"
+      "added": "2026-07-30",
+      "restraint": "skill:change-checklist",
+      "noticed": "2026-07-30"
     },
     "trust-language-breach": {
       "artifacts": [
@@ -34,7 +40,9 @@
         "skill:reflexion-check:Q6-irony",
         "docs/governance-improvement-plan-gaps.md:G9"
       ],
-      "added": "2026-07-31"
+      "added": "2026-07-31",
+      "restraint": "skill:reflexion-check",
+      "noticed": "2026-07-31"
     },
     "bypass-attempt": {
       "artifacts": [
@@ -43,7 +51,9 @@
         "doctor:check_governance",
         "chattr-immutable-chain"
       ],
-      "added": "2026-07-30"
+      "added": "2026-07-30",
+      "restraint": "hook:pre-commit-score",
+      "noticed": "2026-07-30"
     },
     "drift-deployed-vs-repo": {
       "artifacts": [
@@ -52,7 +62,9 @@
         "doctor:check_stale_deploys",
         "cortex-update.sh:register()"
       ],
-      "added": "2026-07-30"
+      "added": "2026-07-30",
+      "restraint": "doctor:check_deploy_checksums",
+      "noticed": "2026-07-30"
     },
     "naming-clarity": {
       "artifacts": [
@@ -60,7 +72,9 @@
         "doctor:check_skills_version",
         "docs/fleet-reference.md:cron-table"
       ],
-      "added": "2026-07-30"
+      "added": "2026-07-30",
+      "restraint": "doctor:check_script_naming",
+      "noticed": "2026-07-30"
     },
     "cross-agent-forgot": {
       "artifacts": [
@@ -68,7 +82,9 @@
         "docs/fleet-update-protocol.md:UPDATE_REQUEST/RESULT",
         "docs/orchestrator-only-paths.txt"
       ],
-      "added": "2026-07-28"
+      "added": "2026-07-28",
+      "restraint": "skill:cross-agent-design",
+      "noticed": "2026-07-28"
     },
     "bus-messaging": {
       "artifacts": [
@@ -76,7 +92,9 @@
         "ops/scripts/manage/orch-bus-audit-watchdog.py",
         "doctor:check_services"
       ],
-      "added": "2026-07-27"
+      "added": "2026-07-27",
+      "restraint": "doctor:_check_bus_e2e",
+      "noticed": "2026-07-27"
     },
     "ceremony-friction": {
       "artifacts": [
@@ -86,7 +104,9 @@
         "enforcer:_is_subagent_session (legacy — superseded by per-session markers)"
       ],
       "added": "2026-07-31",
-      "note": "P0-2 fail-closed terminal policy; 2026-08-01: per-session skills markers structurally fix the multi-session race (gap-doc P1-A candidate #3)"
+      "note": "P0-2 fail-closed terminal policy; 2026-08-01: per-session skills markers structurally fix the multi-session race (gap-doc P1-A candidate #3)",
+      "restraint": "enforcer:_is_readonly_terminal_command",
+      "noticed": "2026-07-31"
     },
     "docs-stale": {
       "artifacts": [
@@ -95,7 +115,9 @@
         "skill:documentation-auditing",
         "DOCS-INDEX.md"
       ],
-      "added": "2026-07-28"
+      "added": "2026-07-28",
+      "restraint": "skill:doc-freshness",
+      "noticed": "2026-07-28"
     },
     "skill-not-loaded": {
       "artifacts": [
@@ -103,7 +125,9 @@
         "skill:task-start:Step-3",
         "enforcer:_check_skills_loaded_marker"
       ],
-      "added": "2026-07-29"
+      "added": "2026-07-29",
+      "restraint": "enforcer:_check_skills_loaded_marker",
+      "noticed": "2026-07-29"
     },
     "dont-ask-just-fix": {
       "artifacts": [
@@ -111,7 +135,9 @@
         "SOUL.md:Principle-14-Be-Proactive",
         "agent-contract:Rule-14"
       ],
-      "added": "2026-07-27"
+      "added": "2026-07-27",
+      "restraint": "skill:agent-contract",
+      "noticed": "2026-07-27"
     },
     "governance-not-followed": {
       "artifacts": [
@@ -119,7 +145,9 @@
         "enforcer:governance-lock-required",
         "mcp-servers/loop-gov-mcp.py"
       ],
-      "added": "2026-07-26"
+      "added": "2026-07-26",
+      "restraint": "enforcer:_has_governance_lock",
+      "noticed": "2026-07-26"
     },
     "verification-artifact": {
       "artifacts": [
@@ -127,7 +155,9 @@
         "agent-contract:Rule-17",
         "skill:change-checklist:Phase-5"
       ],
-      "added": "2026-07-30"
+      "added": "2026-07-30",
+      "restraint": "skill:change-checklist",
+      "noticed": "2026-07-30"
     }
   },
   "known_gaps": [
