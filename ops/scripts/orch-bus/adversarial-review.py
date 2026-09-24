@@ -242,6 +242,13 @@ def main() -> int:
                    help="assemble and print the prompt; do not call a model")
     args = p.parse_args()
 
+    if not args.sweep and args.cycle_id is None and args.material is None:
+        # Cron mode: install-orch-crons.sh create_cron() registers this script
+        # with NO argument mechanism, so the orchestrator cron invokes it bare.
+        # A bare invocation IS the sweep (docstring: --sweep is "cron mode");
+        # erroring here 3-strike-pauses the cron (2026-09-24 incident).
+        args.sweep = True
+
     if args.sweep:
         db_path = Path(args.db).expanduser()
         if not db_path.exists():

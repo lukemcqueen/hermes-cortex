@@ -128,6 +128,19 @@ def test_review_rejects_empty_material():
     assert r.returncode != 0, "empty reviewed material must be refused"
 
 
+def test_bare_invocation_defaults_to_sweep(tmp_path):
+    """Cron invocation passes no args (create_cron has no arg mechanism) —
+    bare run must enter sweep (cron) mode, not argparse-exit 2, which
+    3-strike-pauses the orchestrator cron."""
+    # Scratch --db that does not exist: sweep returns 0 silently BEFORE any
+    # model call, making this test hermetic.
+    r = _run(REVIEW, "--db", str(tmp_path / "missing.db"))
+    assert r.returncode == 0, (
+        f"bare invocation must sweep silently, got rc={r.returncode}: {r.stderr}"
+    )
+    assert "silent" in r.stdout.lower(), r.stdout
+
+
 def test_review_rejects_injected_override_instruction():
     """Seam A guard: the material may not rewrite the reviewer's instructions."""
     r = _run(
