@@ -57,6 +57,12 @@ their domain.
 |-------|---------|---------|-----------|
 | `campaign-analytics` | 1.0.0 | Analyzes campaign performance with multi-touch attribution, funnel conversion analysis, and ROI calculation... | `skill_view(name='campaign-analytics')` |
 
+## Career Document Writing (1 skill)
+
+| Skill | Version | Purpose | Load With |
+|-------|---------|---------|-----------|
+| `career-document-writing` | 1.0.0 | Use when writing the user's resume or LinkedIn profile. | `skill_view(name='career-document-writing')` |
+
 ## Cold Email (1 skill)
 
 | Skill | Version | Purpose | Load With |
@@ -115,14 +121,13 @@ their domain.
 | `meme-generation` | 2.0.0 | Create meme PNGs from templates with Pillow text overlay. | `skill_view(name='meme-generation')` |
 | `pixel-art` | 2.0.0 | Pixel art w/ era palettes (NES, Game Boy, PICO-8). | `skill_view(name='pixel-art')` |
 
-## Devops (158 skills)
+## Devops (157 skills)
 
 | Skill | Version | Purpose | Load With |
 |-------|---------|---------|-----------|
 | `admin-cli-tools` | 1.0.0 | Patterns and architecture for admin-level CLI tools that use direct DB access, not agent-level API auth. | `skill_view(name='admin-cli-tools')` |
 | `agent-collector-troubleshoot` | 1.0.0 | Use when collectors can't send. Diagnoses bus, paths, crons. | `skill_view(name='agent-collector-troubleshoot')` |
 | `agent-ergonomic-cli` | 1.0.0 | Use when writing or auditing agent-facing CLI output. | `skill_view(name='agent-ergonomic-cli')` |
-| `agent-ergonomic-cli-output` | 1.0.0 | Agent-facing CLI output: token-lean by design (AXI/TOON). | `skill_view(name='agent-ergonomic-cli-output')` |
 | `agent-fundamentals` | 1.0.0 | Universal 'basic things every agent should know' — distilled from real frustration patterns across 10+ sess... | `skill_view(name='agent-fundamentals')` |
 | `agent-harness-design` | 1.0.0 | Use when designing a coding-agent harness or runtime. | `skill_view(name='agent-harness-design')` |
 | `agent-health-monitoring` | 3.5.0 | Cross-server agent health monitoring using binary status vectors — deploy health endpoints on each agent, p... | `skill_view(name='agent-health-monitoring')` |
@@ -144,7 +149,7 @@ their domain.
 | `cleanup-commit-regression-check` | 1.0.0 | When scripts fail with NameError after a mass-edit commit. | `skill_view(name='cleanup-commit-regression-check')` |
 | `codebase-portability` | 1.0.0 | Systematically find and fix hardcoded absolute paths across scripts, docs, and configs. Ensures codebases w... | `skill_view(name='codebase-portability')` |
 | `config-drift-diagnostics` | 1.0.0 | (no description) | `skill_view(name='config-drift-diagnostics')` |
-| `cortex-bus` | 1.2.0 | Agent Bus (PGMQ) operations — queue inspection, DLQ management, message recovery, auth, and health diagnost... | `skill_view(name='cortex-bus')` |
+| `cortex-bus` | 1.3.0 | Agent Bus (PGMQ) operations — queue inspection, DLQ management, message recovery, auth, and health diagnost... | `skill_view(name='cortex-bus')` |
 | `cortex-bus-automation` | 1.0.0 | (no description) | `skill_view(name='cortex-bus-automation')` |
 | `cortex-bus-inbox` | 1.0.0 | (no description) | `skill_view(name='cortex-bus-inbox')` |
 | `cortex-bus-messaging` | 1.0.0 | (no description) | `skill_view(name='cortex-bus-messaging')` |
@@ -181,7 +186,7 @@ their domain.
 | `docker-test-isolation-harness` | 1.0.0 | Isolated throwaway containers for Docker test runs. | `skill_view(name='docker-test-isolation-harness')` |
 | `doctor-warning-resolution` | 1.0.0 | (no description) | `skill_view(name='doctor-warning-resolution')` |
 | `documentation-scope` | 1.0.0 | Multi-audience documentation scoping conventions for Hermes Cortex. Defines when and how to distinguish gen... | `skill_view(name='documentation-scope')` |
-| `enforcement-change-safety` | 1.0.0 | Use before enforcement code changes or shared-repo commits. | `skill_view(name='enforcement-change-safety')` |
+| `enforcement-change-safety` | 1.1.0 | Use before enforcement code changes or shared-repo commits. | `skill_view(name='enforcement-change-safety')` |
 | `enforcer-modification-considerations` | 1.0.0 | Use before modifying any enforcer/governance code. | `skill_view(name='enforcer-modification-considerations')` |
 | `env-aware-compose-wrapper` | 2 | Build an env-aware `_compose()` wrapper for `./run` CLI scripts that requires an explicit environment varia... | `skill_view(name='env-aware-compose-wrapper')` |
 | `eval-harness` | 1.0.0 | Systematic evaluation framework for agent capabilities — capability tests, regression suites, failure analysis | `skill_view(name='eval-harness')` |
@@ -234,7 +239,7 @@ their domain.
 | `offline-code` | 1.0.0 | Offline code snippet search + generation using local Ollama models. Search a curated corpus (run `offline_c... | `skill_view(name='offline-code')` |
 | `omarchy-nvim` | 0.1.0 | Install omarchy-nvim (LazyVim) user-local without sudo. | `skill_view(name='omarchy-nvim')` |
 | `orch-backlog-driver` | 1.0.0 | Backlog-driven orchestrator work (F-023) — pull the top pending fleet tasks from the tasks DB, execute or d... | `skill_view(name='orch-backlog-driver')` |
-| `orch-skill-lifecycle` | 1.0.0 | Unified daily skill lifecycle pipeline — collects lessons, evaluates quality, and upgrades skills/SOUL.md.... | `skill_view(name='orch-skill-lifecycle')` |
+| `orch-skill-lifecycle` | 1.1.0 | Unified daily skill lifecycle pipeline — collects lessons, evaluates quality, and upgrades skills/SOUL.md.... | `skill_view(name='orch-skill-lifecycle')` |
 | `orch-weekly-auto-fix` | 1.1.0 | After the weekly opportunity scan identifies issues, run auto-fix patterns — git pull, branch cleanup, Dock... | `skill_view(name='orch-weekly-auto-fix')` |
 | `package-security` | 1.0.0 | Age-gated package installation protection. Before installing any package with pip, npm, brew, or cargo, ver... | `skill_view(name='package-security')` |
 | `pg-texample-fuzzy-search` | 1.0.0 | Fuzzy retrieval over an internal corpus via pg_texample. | `skill_view(name='pg-texample-fuzzy-search')` |
@@ -257,11 +262,11 @@ their domain.
 | `server-administration` | 1.0.0 | (no description) | `skill_view(name='server-administration')` |
 | `server-hardening` | 1.0.0 | (no description) | `skill_view(name='server-hardening')` |
 | `session-start-discipline` | 2.0.0 | DEPRECATED alias — merged into task-start (2026-08-20). Load task-start instead; it bundles skill-loading d... | `skill_view(name='session-start-discipline')` |
-| `shared-repo-push-gates` | 1.1.0 | Shared-repo push blocked? Know the gates that block you. | `skill_view(name='shared-repo-push-gates')` |
+| `shared-repo-push-gates` | 1.2.0 | Shared-repo push blocked? Know the gates that block you. | `skill_view(name='shared-repo-push-gates')` |
 | `shell-scripting` | 1.1.0 | Shell scripting patterns, portability pitfalls, and cross-platform compatibility for bash/awk scripts in th... | `skill_view(name='shell-scripting')` |
-| `skill-curation` | 1.0.0 | Consolidate, dedupe, and prune the skill library — merge overlapping skills into one (absorbed_into), delet... | `skill_view(name='skill-curation')` |
+| `skill-curation` | 1.1.0 | Consolidate, dedupe, and prune the skill library — merge overlapping skills into one (absorbed_into), delet... | `skill_view(name='skill-curation')` |
 | `staging-server-operations` | 1.19.0 | Safe operational practices for Docker-based staging servers — volume management, change verification, and d... | `skill_view(name='staging-server-operations')` |
-| `subagent-delegation` | 1.0.0 | Use when pinning subagent models or multi-role reviews. | `skill_view(name='subagent-delegation')` |
+| `subagent-delegation` | 1.1.0 | Use when pinning subagent models or multi-role reviews. | `skill_view(name='subagent-delegation')` |
 | `sudoers-audit` | 1.0.0 | Systematically audit, test, and debug sudoers NOPASSWD rules — verify allowed commands actually run without... | `skill_view(name='sudoers-audit')` |
 | `sweep-verification` | 1.0.0 | Verify a decommission sweep removed every file and ref. | `skill_view(name='sweep-verification')` |
 | `sync-allow-ips-to-fail2ban` | 1.0.0 | Sync IPs from allow-ips-manual.conf to fail2ban ignoreip | `skill_view(name='sync-allow-ips-to-fail2ban')` |

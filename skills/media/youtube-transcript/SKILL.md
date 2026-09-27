@@ -35,7 +35,9 @@ Procedure for turning a YouTube URL into clean plain text for reading/summarizin
    ./yenv/bin/yt-dlp --skip-download --write-auto-subs \
      --sub-langs en --sub-format vtt -o <prefix> <url>
    ```
-   A transient impersonation warning is harmless; the file still downloads.
+   A transient impersonation warning is harmless; the file still downloads. If
+   this step fails outright on a newer video, retry with `--extractor-args
+   "youtube:player_client=default"` or install the impersonation deps.
 
 4. **Strip the VTT to plain text** (drop timestamp lines, tags, and the duplicated
    rolling-caption lines):
