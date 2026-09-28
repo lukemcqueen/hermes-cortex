@@ -1096,3 +1096,142 @@ crons:
   no_agent: false
   model: ''
   provider: ''
+- name: agent-pending-cycle-watchdog
+  scope: universal
+  schedule: '0 */6 * * *'
+  script: 'agent-pending-cycle-watchdog.py'
+  prompt: ''
+  skill: ''
+  deliver: telegram:{{HOME_CHANNEL}}
+  workdir: ''
+  no_agent: true
+  model: ''
+  provider: ''
+- name: agent-deploy-drift-audit
+  scope: universal
+  schedule: '0 7 * * *'
+  script: 'agent-deploy-drift-audit.py'
+  prompt: ''
+  skill: ''
+  deliver: telegram:{{HOME_CHANNEL}}
+  workdir: ''
+  no_agent: true
+  model: ''
+  provider: ''
+- name: agent-review-queue-sweep
+  scope: universal
+  schedule: '45 1 * * *'
+  script: 'agent-review-queue-sweep.py'
+  prompt: ''
+  skill: ''
+  deliver: telegram:{{HOME_CHANNEL}}
+  workdir: ''
+  no_agent: true
+  model: ''
+  provider: ''
+- name: agent-bus-retry-sweep
+  scope: universal
+  schedule: '*/15 * * * *'
+  script: 'lib/bus_outbox.py'
+  prompt: |-
+    Bus outbox retry sweep — re-sends messages queued by bus_send when the bus was unreachable. Silent when the outbox is empty; alerts on quarantine or persistent bus-down.
+  skill: ''
+  deliver: telegram:{{HOME_CHANNEL}}
+  workdir: ''
+  no_agent: true
+  model: ''
+  provider: ''
+- name: agent-security-posture-check
+  scope: universal
+  schedule: '17 * * * *'
+  script: 'agent-security-posture-check.sh'
+  prompt: |-
+    Hourly security posture verification: fail2ban active + jails (sshd, nginx-http-auth, nginx-badbots), firewall ban set, SSH key-only, nginx jail logpaths, brute-force volume. Silent when healthy.
+  skill: ''
+  deliver: origin
+  workdir: ''
+  no_agent: true
+  model: ''
+  provider: ''
+- name: agent-cron-failure-watchdog
+  scope: universal
+  schedule: '*/5 * * * *'
+  script: 'agent-cron-failure-watchdog.py'
+  prompt: ''
+  skill: ''
+  deliver: telegram:{{HOME_CHANNEL}}
+  workdir: ''
+  no_agent: true
+  model: ''
+  provider: ''
+- name: orch-daily-cost-report
+  scope: orchestrator
+  schedule: '0 8 * * *'
+  script: 'orch-daily-cost-report.py'
+  prompt: ''
+  skill: ''
+  deliver: telegram:{{HOME_CHANNEL}}
+  workdir: ''
+  no_agent: true
+  model: ''
+  provider: ''
+- name: orch-axi-telemetry
+  scope: orchestrator
+  schedule: '35 2 * * *'
+  script: 'orch-axi-telemetry.py'
+  prompt: ''
+  skill: ''
+  deliver: local
+  workdir: ''
+  no_agent: true
+  model: ''
+  provider: ''
+- name: orch-task-board-digest
+  scope: orchestrator
+  schedule: '30 8 * * *'
+  script: 'orch-task-board-digest.py'
+  prompt: |-
+    Daily task board digest (zero-token no_agent cron).
+  skill: ''
+  deliver: telegram:{{HOME_CHANNEL}}
+  workdir: ''
+  no_agent: true
+  model: ''
+  provider: ''
+- name: orch-task-morning-pass
+  scope: orchestrator
+  schedule: '0 7 * * *'
+  script: ''
+  prompt: |-
+    Morning task pass (orchestrator, task model v3). You are the orchestrator on this host (host-derived identity, never self-claimed).
+
+    task-db.py lives at ~/hermes-cortex/ops/scripts/manage/task-db.py (NOT tools/). For reads, run the DEPLOYED copy from ~ to stay lock-free: python3 ~/.hermes-cortex/scripts/task-db.py ... (if absent, use the repo path under a governance lock).
+
+    1. task-db.py list --status pending --kind story + list --claimable.
+    2. Decompose unsliced stories: task-db.py add '<slice>' --parent <story-id> --kind slice --scope fleet. Write executable plans into each slice.
+    3. Dispatch urgent slices (priority 2-3) via bus TASK_REQUEST to capable workers.
+    4. Do NOT claim intelligence-only work yourself (strategy/research/verification/case-study authoring are orchestrator work).
+    5. End: 3-line summary (decomposed N → M slices, dispatched K, X claimable).
+  skill: ''
+  deliver: telegram:{{HOME_CHANNEL}}
+  workdir: ''
+  no_agent: false
+  model: 'deepseek-v4-flash-free'
+  provider: 'opencode-free'
+- name: orch-task-evening-pass
+  scope: orchestrator
+  schedule: '0 21 * * *'
+  script: ''
+  prompt: |-
+    Evening verification pass (orchestrator, task model v3). You are the orchestrator on this host (host-derived identity, never self-claimed).
+
+    1. task-db.py list --board + list --status review.
+    2. For each review slice: verify evidence is real (test output, measured numbers — never trust self-reported done). approve: task-db.py verify <id> --approve --note '<checked>'. reject: task-db.py verify <id> --reject --note '<gap>' (returns to in_progress).
+    3. Flag review > 24h (stale sweep should have caught it).
+    4. End: 2-line summary (verified N, rejected M, X in review).
+  skill: ''
+  deliver: telegram:{{HOME_CHANNEL}}
+  workdir: ''
+  no_agent: false
+  model: 'deepseek-v4-flash-free'
+  provider: 'opencode-free'

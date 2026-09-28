@@ -124,7 +124,7 @@ create_cron() {
   # fleet host's dreams from firing at the same minute.
   if [[ "$no_agent" != "true" ]] && [[ "$schedule" =~ ^[0-9]+([[:space:]]+[^ ]+){4}$ ]]; then
     local _minute
-    _minute="$(printf '%s:%s' "$(hostname)" "$name" | cksum | awk '{print $1 % 60}')"
+    _minute="$(printf '%s:%s' "$(hostname -s)" "$name" | cksum | awk '{print $1 % 60}')"
     schedule="${_minute} ${schedule#* }"
     info "Staggered LLM cron '${name}' minute → ${_minute} (schedule: ${schedule})"
   fi

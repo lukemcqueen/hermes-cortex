@@ -225,7 +225,7 @@ create_cron() {
   # rationale: hostname:cron-name hash % 60, same hour, per-host minute.
   if [[ "$no_agent" != "true" ]] && [[ "$schedule" =~ ^[0-9]+([[:space:]]+[^ ]+){4}$ ]]; then
     local _minute
-    _minute="$(printf '%s:%s' "$(hostname)" "$name" | cksum | awk '{print $1 % 60}')"
+    _minute="$(printf '%s:%s' "$(hostname -s)" "$name" | cksum | awk '{print $1 % 60}')"
     schedule="${_minute} ${schedule#* }"
     echo "  Staggered LLM cron '${name}' minute → ${_minute} (schedule: ${schedule})" >&2
   fi
@@ -446,7 +446,7 @@ create_cron "orch-axi-telemetry" "35 2 * * *" \
 # tokens). Delivers to the orchestrator's home channel (Luke + Amy).
 create_cron "orch-task-board-digest" "30 8 * * *" \
   "orch-task-board-digest.py" \
-  "" \
+  "Daily task board digest (zero-token no_agent cron)." \
   "" \
   "" \
   "telegram:${TELEGRAM_HOME_CHANNEL}" \
@@ -458,6 +458,8 @@ create_cron "orch-task-board-digest" "30 8 * * *" \
 create_cron "orch-task-morning-pass" "0 7 * * *" \
   "" \
   "Morning task pass (orchestrator, task model v3). You are the orchestrator on this host (host-derived identity, never self-claimed).
+
+task-db.py lives at ~/hermes-cortex/ops/scripts/manage/task-db.py (NOT tools/). For reads, run the DEPLOYED copy from ~ to stay lock-free: python3 ~/.hermes-cortex/scripts/task-db.py ... (if absent, use the repo path under a governance lock).
 
 1. task-db.py list --status pending --kind story + list --claimable.
 2. Decompose unsliced stories: task-db.py add '<slice>' --parent <story-id> --kind slice --scope fleet. Write executable plans into each slice.

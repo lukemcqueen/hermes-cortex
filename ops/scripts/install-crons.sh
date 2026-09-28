@@ -168,7 +168,7 @@ create_cron() {
   # no_agent scripts keep exact schedules (they make no model calls).
   if [[ "$no_agent" != "true" ]] && [[ "$schedule" =~ ^[0-9]+([[:space:]]+[^ ]+){4}$ ]]; then
     local _minute
-    _minute="$(printf '%s:%s' "$(hostname)" "$name" | cksum | awk '{print $1 % 60}')"
+    _minute="$(printf '%s:%s' "$(hostname -s)" "$name" | cksum | awk '{print $1 % 60}')"
     schedule="${_minute} ${schedule#* }"
     info "Staggered LLM cron '${name}' minute → ${_minute} (schedule: ${schedule})"
   fi
@@ -950,7 +950,7 @@ create_cron "agent-mcp-health-watchdog" "*/5 * * * *" \
 # directly (no wrapper): lib/ is on sys.path[0] as the script's dir.
 create_cron "agent-bus-retry-sweep" "*/15 * * * *" \
   "lib/bus_outbox.py" \
-  "" \
+  "Bus outbox retry sweep — re-sends messages queued by bus_send when the bus was unreachable. Silent when the outbox is empty; alerts on quarantine or persistent bus-down." \
   "" \
   "" \
   "telegram:${TELEGRAM_HOME_CHANNEL}" \
@@ -997,7 +997,7 @@ create_cron "agent-pending-cycle-watchdog" "0 */6 * * *" \
   "" \
   "" \
   "" \
-  "origin" \
+  "telegram:${TELEGRAM_HOME_CHANNEL}" \
   "" \
   "true"
 
@@ -1009,7 +1009,7 @@ create_cron "agent-deploy-drift-audit" "0 7 * * *" \
   "" \
   "" \
   "" \
-  "origin" \
+  "telegram:${TELEGRAM_HOME_CHANNEL}" \
   "" \
   "true"
 
