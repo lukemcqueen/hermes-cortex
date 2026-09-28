@@ -72,22 +72,25 @@ fi
 
 if [[ ! -f "$FILTER_DIR/nginx-badbots.conf" ]]; then
   cat > "$FILTER_DIR/nginx-badbots.conf" <<'EOF'
+# ─────────────────────────────────────────────────────────────────────────
+# FAIL2BAN FILTER — URL-encoded-dot + secret-file scanner detection.
+# Class fix 2026-09-28. AVOIDS the \[[^]]+\] date-bracket form (silently
+# fails to compile in fail2ban — "nested set" warning — matches nothing).
+# Keep in the loose "^<HOST> -.*" idiom. %% = configparser escape for %.
+# ─────────────────────────────────────────────────────────────────────────
 [Definition]
 
-failregex = ^<HOST> -.*"(GET|POST|HEAD|PUT|DELETE|OPTIONS).*"(?:[12345]\d\d) .*"(?:Mozilla.*(?:BOT|bot|spider|crawl|curl|wget|scrapy|python-requests|Go-http-client)|curl|wget|Scrapy|python-requests|Go-http-client).*"$
-            ^<HOST> -.*"(GET|POST|HEAD|PUT|DELETE|OPTIONS).*"(?:[12345]\d\d) .*"(?:${_badbotscustom})"$
+failregex = ^<HOST> -.*"GET\s+/\S*%%(?:2e|2E)(?:env|pem|ssh|git|htaccess|bash_history|dockerenv|env\.pw|supervisor|config|sql|zip|tar|gz|log|key|json|ya?ml|yml|txt|ini|conf)\s*(?:HTTP|\?)
+            ^<HOST> -.*"GET\s+/\S*(?:\.git/config|\.env(?:\.local)?|\.(?:pem|ssh|htaccess|bash_history|dockerenv)|settings\.ya?ml|config\.json)\s*(?:HTTP|\?)
+            ^<HOST> -.*"GET\s+/\S*\.(?:zip|rar|tar(?:\.gz)?|tar\.bz2|tar\.xz|7z|zst|sql|sql\.gz|sql\.bz2)\s*(?:HTTP|\?)
+            ^<HOST> -.*"GET\s+/storage/\S+\s+HTTP\/[0-9.]+"\s+404
+            ^<HOST> -.*"GET\s+/\S*phpinfo\S*\s+HTTP\/[0-9.]+
 
 ignoreregex =
 
 [Init]
-
-# List of bad bots to ban
-_badbotscustom = 12345|Badbot|Baiduspider|Curl|Go-http-client|libwww-perl|Lwp-trivial|MJ12bot|python-requests|Scrapy|Wget|YandexBot
-
-# default port if not specified in jail.conf
-port = http,https
 EOF
-  ok "filter nginx-badbots.conf written"
+  ok "filter nginx-badbots.conf written (URL-encoded + secret-file rules)"
 else
   ok "filter nginx-badbots.conf present"
 fi
