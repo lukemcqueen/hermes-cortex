@@ -4,7 +4,7 @@ crons:
   scope: universal
   schedule: 30 4 * * 1-6
   script: ''
-  prompt: "Review the AGENTS.md pruning scan report injected below (via context_from=agents-md-prune-scan).\nIf candidates exist and look correct, apply them by running:\n  python3 ~/.hermes-cortex/scripts/agents-doc-audit.py --repo ~/hermes-cortex --prune --apply\nThen commit and push the changes.\nIf no candidates (empty context) or you disagree with the recommendations, stay silent.\n\n## OUTPUT FORMAT — FOLLOW EXACTLY\nMatch this structure line for line. Your content replaces the values.\nEverything else stays: dashes, colons, spacing, line breaks.\n\nagents-md-prune-apply (JOB_ID) [YYYY-MM-DD HH:MM KST]\n-------------\n\nPhase 1 — Scan: 12 candidates found\nPhase 2 — Review: accepted 10 / rejected 2\nPhase 3 — Apply: 10 sections moved to docs/\n\n\U0001F4CA deepseek-v4-flash (opencode-zen) | $0.006/run ≈ $0.18/mo\n\nIf nothing to apply: output exactly [SILENT]"
+  prompt: "Review the AGENTS.md pruning scan report injected below (via context_from=agents-md-prune-scan).\nIf candidates exist and look correct, apply them by running:\n  python3 ~/.hermes-cortex/scripts/agents-doc-audit.py --repo ~/hermes-cortex --prune --apply\nThen commit and push the changes.\nIf no candidates (empty context) or you disagree with the recommendations, stay silent.\n\n## TIMEZONE — READ FIRST\nThe header timestamp must use the host configured timezone, NOT a hardcoded label. Run `date '+%Y-%m-%d %H:%M %Z'` (or `date '+%H:%M %Z'` for time-only) and use its exact output — the timezone comes from HERMES_TIMEZONE / system local time. The KST in the example below is illustrative; substitute whatever %Z returns.\n\n## OUTPUT FORMAT — FOLLOW EXACTLY\nMatch this structure line for line. Your content replaces the values.\nEverything else stays: dashes, colons, spacing, line breaks.\n\nagents-md-prune-apply (JOB_ID) [YYYY-MM-DD HH:MM KST]\n-------------\n\nPhase 1 — Scan: 12 candidates found\nPhase 2 — Review: accepted 10 / rejected 2\nPhase 3 — Apply: 10 sections moved to docs/\n\n\U0001F4CA deepseek-v4-flash (opencode-zen) | $0.006/run ≈ $0.18/mo\n\nIf nothing to apply: output exactly [SILENT]"
   skill: documentation-scope
   skills:
   - documentation-scope
@@ -236,6 +236,11 @@ crons:
   schedule: 0 4 * * 1
   script: ''
   prompt: 'Consolidate Hermes agent memory and project agent instructions. Read MEMORY.md, USER.md from the active profile and project roots. Consolidate into compact pointers. Prune stale entries. Keep under 2,200 chars.
+
+
+    ## TIMEZONE — READ FIRST
+
+    The header timestamp must use the host configured timezone, NOT a hardcoded label. Run `date ''+%Y-%m-%d %H:%M %Z''` (or `date ''+%H:%M %Z''` for time-only) and use its exact output — the timezone comes from HERMES_TIMEZONE / system local time. The KST in the example below is illustrative; substitute whatever %Z returns.
 
 
     ## OUTPUT FORMAT — FOLLOW EXACTLY

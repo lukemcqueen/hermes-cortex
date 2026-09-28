@@ -196,7 +196,7 @@ create_cron "agent-mycortex-dream-monthly" "0 5 1 * *" \
 Real numbers only — every count from an actual command. Real connections only — never fabricate. If the brain is genuinely empty, output exactly [SILENT].
 
 ## TIMEZONE — READ FIRST
-The header timestamp must use the host configured timezone, NOT a hardcoded label. Run `date '+%Y-%m-%d %H:%M %Z'` (or `date '+%H:%M %Z'` for time-only) and use its exact output — the timezone comes from HERMES_TIMEZONE / system local time. The KST in the example below is illustrative; substitute whatever %Z returns.
+The header timestamp must use the host configured timezone, NOT a hardcoded label. Run \`date '+%Y-%m-%d %H:%M %Z'\` (or \`date '+%H:%M %Z'\` for time-only) and use its exact output — the timezone comes from HERMES_TIMEZONE / system local time. The KST in the example below is illustrative; substitute whatever %Z returns.
 
 ## OUTPUT FORMAT — FOLLOW EXACTLY
 Match this structure line for line. Your content replaces the values. Everything else stays: dashes, colons, spacing, line breaks.
@@ -255,7 +255,7 @@ create_cron "agent-mycortex-dream-nightly" "0 5 * * *" \
 Real connections only — never fabricate page relationships; every claimed link must come from an actual mycortex search result or session. If the brain is genuinely empty (no pages, no sessions), output exactly [SILENT].
 
 ## TIMEZONE — READ FIRST
-The header timestamp must use the host configured timezone, NOT a hardcoded label. Run `date '+%Y-%m-%d %H:%M %Z'` (or `date '+%H:%M %Z'` for time-only) and use its exact output — the timezone comes from HERMES_TIMEZONE / system local time. The KST in the example below is illustrative; substitute whatever %Z returns.
+The header timestamp must use the host configured timezone, NOT a hardcoded label. Run \`date '+%Y-%m-%d %H:%M %Z'\` (or \`date '+%H:%M %Z'\` for time-only) and use its exact output — the timezone comes from HERMES_TIMEZONE / system local time. The KST in the example below is illustrative; substitute whatever %Z returns.
 
 ## OUTPUT FORMAT — FOLLOW EXACTLY
 Match this structure line for line. Your content replaces the values. Everything else stays: dashes, colons, spacing, line breaks.
@@ -307,7 +307,7 @@ create_cron "agent-mycortex-dream-weekly" "0 5 * * 6" \
 Real connections only — never fabricate relationships. Every claimed link must come from an actual mycortex search result or file read. If the brain is genuinely empty, output exactly [SILENT].
 
 ## TIMEZONE — READ FIRST
-The header timestamp must use the host configured timezone, NOT a hardcoded label. Run `date '+%Y-%m-%d %H:%M %Z'` (or `date '+%H:%M %Z'` for time-only) and use its exact output — the timezone comes from HERMES_TIMEZONE / system local time. The KST in the example below is illustrative; substitute whatever %Z returns.
+The header timestamp must use the host configured timezone, NOT a hardcoded label. Run \`date '+%Y-%m-%d %H:%M %Z'\` (or \`date '+%H:%M %Z'\` for time-only) and use its exact output — the timezone comes from HERMES_TIMEZONE / system local time. The KST in the example below is illustrative; substitute whatever %Z returns.
 
 ## OUTPUT FORMAT — FOLLOW EXACTLY
 Match this structure line for line. Your content replaces the values. Everything else stays: dashes, colons, spacing, line breaks.

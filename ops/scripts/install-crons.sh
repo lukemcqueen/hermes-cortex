@@ -1130,7 +1130,7 @@ create_cron "agent-memory-pruning" "0 4 * * 1" \
   "Consolidate Hermes agent memory and project agent instructions. Read MEMORY.md, USER.md from the active profile and project roots. Consolidate into compact pointers. Prune stale entries. Keep under 2,200 chars.
 
 ## TIMEZONE — READ FIRST
-The header timestamp must use the host configured timezone, NOT a hardcoded label. Run `date '+%Y-%m-%d %H:%M %Z'` (or `date '+%H:%M %Z'` for time-only) and use its exact output — the timezone comes from HERMES_TIMEZONE / system local time. The KST in the example below is illustrative; substitute whatever %Z returns.
+The header timestamp must use the host configured timezone, NOT a hardcoded label. Run \`date '+%Y-%m-%d %H:%M %Z'\` (or \`date '+%H:%M %Z'\` for time-only) and use its exact output — the timezone comes from HERMES_TIMEZONE / system local time. The KST in the example below is illustrative; substitute whatever %Z returns.
 
 ## OUTPUT FORMAT — FOLLOW EXACTLY
 Match this structure line for line. Your content replaces the values.
@@ -1221,7 +1221,7 @@ Then commit and push the changes.
 If no candidates (empty context) or you disagree with the recommendations, stay silent.
 
 ## TIMEZONE — READ FIRST
-The header timestamp must use the host configured timezone, NOT a hardcoded label. Run `date '+%Y-%m-%d %H:%M %Z'` (or `date '+%H:%M %Z'` for time-only) and use its exact output — the timezone comes from HERMES_TIMEZONE / system local time. The KST in the example below is illustrative; substitute whatever %Z returns.
+The header timestamp must use the host configured timezone, NOT a hardcoded label. Run \`date '+%Y-%m-%d %H:%M %Z'\` (or \`date '+%H:%M %Z'\` for time-only) and use its exact output — the timezone comes from HERMES_TIMEZONE / system local time. The KST in the example below is illustrative; substitute whatever %Z returns.
 
 ## OUTPUT FORMAT — FOLLOW EXACTLY
 Match this structure line for line. Your content replaces the values.
@@ -1234,7 +1234,7 @@ Phase 1 — Scan: 12 candidates found
 Phase 2 — Review: accepted 10 / rejected 2
 Phase 3 — Apply: 10 sections moved to docs/
 
-📊 deepseek-v4-flash (deepseek) | \$0.006/run ≈ \$0.18/mo
+📊 deepseek-v4-flash (opencode-zen) | \$0.006/run ≈ \$0.18/mo
 
 If nothing to apply: output exactly [SILENT]" \
   "documentation-scope" "" "telegram:${TELEGRAM_HOME_CHANNEL}" \
