@@ -261,6 +261,13 @@ def check_adversarial_review(res: "Results") -> None:
 
   # (b) The MCP server's review helpers import cleanly — end_change's gate must
   # not raise on a missing/renamed helper.
+  # NOTE: this import probe must never kill the doctor. loop-gov-mcp.py
+  # sys.exit(1)s at import when the probing interpreter lacks the `mcp`
+  # package (Titus runs the doctor under /usr/local/bin/python3, 2026-09-28).
+  # SystemExit derives from BaseException, so `except Exception` does NOT
+  # catch it — the whole doctor died before printing its report. A missing
+  # mcp SDK is an environment problem (the doctor's other checks still matter)
+  # → WARN with the interpreter remedy; real import errors stay FAIL.
   try:
     import importlib.util as _ilu
     mcp = CORTEX_HOME / "tools" / "loop-governance" / "loop-gov-mcp.py"
@@ -279,6 +286,14 @@ def check_adversarial_review(res: "Results") -> None:
     else:
       res.add("Adversarial review gate", "PASS",
               "end_change hard gate helpers present in loop-gov-mcp.py")
+  except SystemExit as _se:
+    res.add("Adversarial review gate", "WARN",
+            f"loop-gov-mcp.py refused to import under {sys.executable} "
+            f"(exit {_se.code}) — usually the 'mcp' package is missing from "
+            "this interpreter; review helpers unverifiable here",
+            "Run the doctor with the hermes-agent venv python "
+            "(~/.hermes/hermes-agent/venv/bin/python3 ~/.hermes-cortex/scripts/cortex-doctor.py) "
+            "so the MCP SDK imports and the gate can be verified")
   except Exception as _e:
     res.add("Adversarial review gate", "FAIL",
             f"loop-gov-mcp.py import failed: {type(_e).__name__}: {str(_e)[:160]}",
