@@ -73,14 +73,17 @@ fi
 if [[ ! -f "$FILTER_DIR/nginx-badbots.conf" ]]; then
   cat > "$FILTER_DIR/nginx-badbots.conf" <<'EOF'
 # ─────────────────────────────────────────────────────────────────────────
-# FAIL2BAN FILTER — URL-encoded-dot + secret-file scanner detection.
+# FAIL2BAN FILTER — bad bots + URL-encoded-dot / secret-file scanners.
+# Keeps generic bad-bot/crawler UA blocking AND adds scanner detection.
 # Class fix 2026-09-28. AVOIDS the \[[^]]+\] date-bracket form (silently
 # fails to compile in fail2ban — "nested set" warning — matches nothing).
 # Keep in the loose "^<HOST> -.*" idiom. %% = configparser escape for %.
 # ─────────────────────────────────────────────────────────────────────────
 [Definition]
 
-failregex = ^<HOST> -.*"GET\s+/\S*%%(?:2e|2E)(?:env|pem|ssh|git|htaccess|bash_history|dockerenv|env\.pw|supervisor|config|sql|zip|tar|gz|log|key|json|ya?ml|yml|txt|ini|conf)\s*(?:HTTP|\?)
+failregex = ^<HOST> -.*"(GET|POST|HEAD|PUT|DELETE|OPTIONS).*"(?:[1-5]\d\d) .*"(?:Mozilla.*(?:BOT|bot|spider|crawl|curl|wget|scrapy|python-requests|Go-http-client)|curl|wget|Scrapy|python-requests|Go-http-client).*"$
+            ^<HOST> -.*"(GET|POST|HEAD|PUT|DELETE|OPTIONS).*"(?:[1-5]\d\d) .*"(?:${_badbotscustom})"$
+            ^<HOST> -.*"GET\s+/\S*%%(?:2e|2E)(?:env|pem|ssh|git|htaccess|bash_history|dockerenv|env\.pw|supervisor|config|sql|zip|tar|gz|log|key|json|ya?ml|yml|txt|ini|conf)\s*(?:HTTP|\?)
             ^<HOST> -.*"GET\s+/\S*(?:\.git/config|\.env(?:\.local)?|\.(?:pem|ssh|htaccess|bash_history|dockerenv)|settings\.ya?ml|config\.json)\s*(?:HTTP|\?)
             ^<HOST> -.*"GET\s+/\S*\.(?:zip|rar|tar(?:\.gz)?|tar\.bz2|tar\.xz|7z|zst|sql|sql\.gz|sql\.bz2)\s*(?:HTTP|\?)
             ^<HOST> -.*"GET\s+/storage/\S+\s+HTTP\/[0-9.]+"\s+404
@@ -89,6 +92,9 @@ failregex = ^<HOST> -.*"GET\s+/\S*%%(?:2e|2E)(?:env|pem|ssh|git|htaccess|bash_hi
 ignoreregex =
 
 [Init]
+
+# Classic bad-bot UA list (fleet-consistent across the repo canonical)
+_badbotscustom = 12345|Badbot|Baiduspider|Curl|Go-http-client|libwww-perl|Lwp-trivial|MJ12bot|python-requests|Scrapy|Wget|YandexBot
 EOF
   ok "filter nginx-badbots.conf written (URL-encoded + secret-file rules)"
 else
