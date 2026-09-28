@@ -124,8 +124,13 @@ def _is_silent_noop(response: str) -> bool:
     no-op ["SILENT"] (14 chars) which failed the literal `response == "[SILENT]"`
     match and fell through to Check 5b (short response = "token garbage").
     Normalize away wrapping whitespace/quotes before the no-op check.
+
+    2026-09-28: a cron lane can emit the no-op wrapped in ASCII angle brackets
+    (<SILENT>) after a provider fallback; strip those too so the watchdog does not
+    false-flag the healthy no-op as token garbage. Square brackets stay structural
+    (a malformed [SILENT must never become a bare marker).
     """
-    normalized = re.sub(r"[\s\"']", "", response.strip())
+    normalized = re.sub(r"[\s\"'<>]", "", response.strip())
     return normalized in ("[SILENT]", "SILENT")
 
 
