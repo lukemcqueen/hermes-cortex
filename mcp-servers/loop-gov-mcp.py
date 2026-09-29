@@ -122,6 +122,25 @@ from mcp.types import Tool, TextContent, CallToolResult, ListToolsResult
 
 HOME = Path.home()
 SESSION_FILE = HOME / ".hermes" / "session.id"
+
+# Process-scoped session id for NON-Hermes callers (2026-09-29).
+#
+# Hermes callers get args["session_id"] injected by the enforcer (Priority 0).
+# Non-Hermes callers (Claude Code via .mcp.json) do NOT — and the old fallback
+# read the HOST-GLOBAL ~/.hermes/session.id cache, which every session shares:
+# two Claude invocations (or Claude + a live Hermes session on the same box)
+# resolved to the SAME id, so begin_change from one blocked the next and any
+# session could release a lock it didn't own.
+#
+# Claude Code spawns one stdio MCP child per session/project, so a per-process
+# id is a correct session discriminator: stable across begin→end within one
+# Claude session, disjoint across concurrent sessions, and never the Hermes id.
+#
+# We also STOP reading the Hermes marker files (~/.hermes-cortex/state/
+# .hermes-session-*) on this path — those belong to whatever Hermes session
+# last wrote them and are the collision source. If no per-call id was injected
+# we are a non-Hermes caller; use our own process id.
+_PROCESS_SESSION_ID: str = ""
 LOOP_DB = HOME / ".hermes-cortex" / "data" / "loop-governance.db"
 CONFIG_PATH = HOME / ".hermes-cortex" / "data" / "loop-governance-config.json"
 CACHE_DB = HOME / ".hermes-cortex" / "data" / "session-embeddings.db"
@@ -186,21 +205,24 @@ def _require_dogfood() -> Optional[str]:
 def get_session_id(args: dict | None = None) -> str:
     """Return a persistent session ID, creating one on first call.
 
-    Priority:
+    Resolution order:
     0. Per-call session_id injected into the tool call args by the
-       governance-enforcer plugin (runs in the Hermes gateway, knows the
-       real session ID from kwargs). This is the ONLY reliable signal:
-       the MCP server is one shared process for all sessions, and the
-       shared marker files below are clobbered by concurrent sessions.
-    1. Fixed-path marker from the Hermes enforcer
-       (~/.hermes-cortex/state/.hermes-session-current.id)
-       This bypasses the PID-chain problem: even when the MCP server is
-       separated from Hermes by a watchdog process, the fixed path is
-       the same regardless of process ancestry.
-    2. PID-scoped marker scan (~/.hermes-cortex/state/.hermes-session-*.id)
-       Fallback for MCP versions that don't support the fixed path.
-    3. Cached ~/.hermes/session.id (previous value from this session)
-    4. Generate new UUID-based ID (first call, no enforcer present)
+       governance-enforcer plugin (Hermes gateway). The ONLY reliable signal
+       for Hermes: the MCP server is one shared process for all Hermes
+       sessions, and the shared marker files below are clobbered by concurrent
+       sessions.
+    1. Non-Hermes caller (no per-call id): a PROCESS-scoped id, generated once
+       per MCP server process. Claude Code spawns one stdio child per
+       session/project, so this is a correct session discriminator. We do NOT
+       fall back to the host-global ~/.hermes/session.id cache or the Hermes
+       marker files — those are shared by every session and caused
+       begin/end to collide across concurrent Claude+Hermes sessions
+       (2026-09-29).
+
+    The old Priority 1-3 marker-file fallbacks were REPLACED by the
+    process-scoped id. Rationale: the markers only ever hold the last Hermes
+    session id, so a non-Hermes caller adopting them stole another session's
+    identity instead of getting its own. A per-process id cannot collide.
     """
     # Priority 0: per-call session ID injected by the enforcer plugin
     if isinstance(args, dict):
@@ -210,46 +232,14 @@ def get_session_id(args: dict | None = None) -> str:
             SESSION_FILE.parent.mkdir(parents=True, exist_ok=True)
             SESSION_FILE.write_text(sid)
             return sid
-    # Priority 1: Fixed-path marker (primary — no PID needed)
-    try:
-        fixed = Path.home() / ".hermes-cortex" / "state" / ".hermes-session-current.id"
-        if fixed.exists():
-            sid = fixed.read_text().strip()
-            if sid:
-                # Cache it so future calls are instant
-                SESSION_FILE.parent.mkdir(parents=True, exist_ok=True)
-                SESSION_FILE.write_text(sid)
-                return sid
-    except (OSError, ValueError):
-        log.warning("Expected failure for: except (OSError, ValueError)")
-        pass
 
-    # Priority 2: Scan all PID-scoped markers from the enforcer
-    # This handles the legacy case where only PID-scoped markers exist.
-    try:
-        state_dir = Path.home() / ".hermes-cortex" / "state"
-        for marker in sorted(state_dir.glob(".hermes-session-*.id")):
-            # Skip the fixed-path marker (already tried above)
-            if marker.name == ".hermes-session-current.id":
-                continue
-            sid = marker.read_text().strip()
-            if sid:
-                SESSION_FILE.parent.mkdir(parents=True, exist_ok=True)
-                SESSION_FILE.write_text(sid)
-                return sid
-    except (OSError, ValueError):
-        log.warning("Expected failure for: except (OSError, ValueError)")
-        pass
-
-    # Priority 3: Cached value from a previous call
-    if SESSION_FILE.exists():
-        return SESSION_FILE.read_text().strip()
-
-    # Priority 4: Generate new ID
-    sid = f"sess_{uuid.uuid4().hex[:12]}"
-    SESSION_FILE.parent.mkdir(parents=True, exist_ok=True)
-    SESSION_FILE.write_text(sid)
-    return sid
+    # Priority 1: process-scoped id for non-Hermes callers — stable per MCP
+    # child (per Claude session), disjoint across concurrent sessions, and
+    # never adopts another session's Hermes id.
+    global _PROCESS_SESSION_ID
+    if not _PROCESS_SESSION_ID:
+        _PROCESS_SESSION_ID = f"sess_{uuid.uuid4().hex[:12]}"
+    return _PROCESS_SESSION_ID
 
 
 # ── Governance Lock Path ─────────────────────────────────────

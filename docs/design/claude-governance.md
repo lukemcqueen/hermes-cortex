@@ -127,9 +127,40 @@ at the same governance servers:
 
 ## 6. Deliverables (when approved)
 
-| # | File | Purpose |
-|---|---|---|
-| 1 | `CLAUDE.md` | governance contract Claude reads automatically |
-| 2 | `.mcp.json` | same MCP servers, `AGENT_NAME=titusclaude` |
-| 3 | `docs/design/claude-governance.md` (this) | the equivalence contract |
-| 4 | identity setup snippet (installer) | AGENT_NAME + git author for titusclaude |
+| # | File | Purpose | Status |
+|---|------|---------|--------|
+| 1 | `CLAUDE.md` | governance contract Claude reads automatically | ✅ shipped |
+| 2 | `.mcp.json` | same MCP servers, `AGENT_NAME=titusclaude` | ✅ shipped (project scope — per-repo override) |
+| 3 | `docs/design/claude-governance.md` (this) | the equivalence contract | ✅ this file |
+| 4 | `ops/scripts/install/install-claude-governance.sh` | **USER-scope registration** (`~/.claude.json` `mcpServers`) — governance MCP available in EVERY repo Claude opens | ✅ shipped 2026-09-29 |
+| 5 | process-scoped session id for non-Hermes callers (`mcp-servers/loop-gov-mcp.py`) | per-Claude-session lock isolation (no host-global collision) | ✅ shipped 2026-09-29 |
+
+## 7. Shipped 2026-09-29 — the two bugs that broke Claude on separate repos
+
+Luke's report: Claude Code on a separate titus repo "couldn't use governance
+properly". Root causes and fixes:
+
+1. **MCP access was project-scoped only.** `.mcp.json` is loaded by Claude
+   Code ONLY in the repo containing it — a separate repo had NO
+   loop-governance tools at all. Fix: `install-claude-governance.sh`
+   registers the servers at USER scope (`claude mcp add --scope user` writes
+   the same `mcpServers` key in `~/.claude.json`), so every repo inherits
+   them; `.mcp.json` remains the per-repo override (Luke chose "both").
+   Idempotent, backs up `~/.claude.json` first, preserves the user's own
+   servers, `--check`/`--remove` supported.
+2. **Non-Hermes session ids collided.** Without the Hermes enforcer's
+   per-call injection, `get_session_id()` fell back to the HOST-GLOBAL
+   `~/.hermes/session.id` cache and the Hermes marker files — every Claude
+   session on the box shared one id, so `begin_change` from one blocked the
+   next and any session could release another's lock. Fix: a PROCESS-scoped
+   id (Claude Code spawns one stdio MCP child per session/project), never
+   adopting Hermes markers or the shared cache. Hermes callers are unchanged
+   (per-call injection still wins — Priority 0).
+
+Tests: `tests/test_non_hermes_session_id.py` (7 assertions),
+`tests/test_claude_governance_installer.sh` (4 assertions; runs against a
+temp HOME, never the real config).
+
+**Titus rollout** (no SSH by design — deploy via the bus/fleet notice):
+`git pull` → `cortex-update.sh` → `bash ops/scripts/install/install-claude-governance.sh`
+→ restart the Claude Code session → verify with the script's `--check`.
