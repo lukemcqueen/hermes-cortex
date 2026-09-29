@@ -1,5 +1,12 @@
 # Building a Specialized Model from the Ground Up — Research Findings
 
+**⚠️ SUPERSEDED — 2026-09-28.** This document was written under the assumption that "jev"
+meant Devin (a coding-agent LLM). Luke confirmed Jev is **TypeSafe's System One decision
+model** — NOT an LLM and NOT Devin. For the correct, current research see
+**`docs/plans/2026-09-28-build-jev-style-decision-model.md`**. The LLM fine-tuning material
+below is retained as general reference only (it answers a different question than the one
+actually asked).
+
 **Date:** 2026-09-28 · **Author:** Moses (for Luke) · **Status:** Research / decision input
 
 ## Objective
