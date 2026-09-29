@@ -168,7 +168,8 @@ properly". Root causes and fixes:
    exposed to stdio MCP servers); per-project is the strongest identity
    available and matches how the git hooks already scope enforcement.
 
-Tests: `tests/test_non_hermes_session_id.py` (7 assertions),
+Tests: `tests/test_non_hermes_session_id.py` (15 assertions incl. A–D,
+   current total; grep -c `^  PASS` = 15, exit 0),
 `tests/test_claude_governance_installer.sh` (4 assertions; runs against a
 temp HOME, never the real config).
 
