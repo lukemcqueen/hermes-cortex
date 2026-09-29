@@ -142,7 +142,11 @@ def test_sweep_dedupes_against_pending(outbox, monkeypatch):
 
 def test_dedup_requires_same_correlation(outbox):
     # the sweep's dedup uses the canonical bus_find_duplicate (shared with hc.py)
-    from cortex_bus import bus_find_duplicate
+    # Load the single-file module by PATH: in the full suite the core/cortex_bus
+    # package may already own the `cortex_bus` name in sys.modules and it has no
+    # bus_find_duplicate — path-loading is deterministic.
+    _cb = _load("bus_outbox_cortex_bus", _LIB / "cortex_bus.py")
+    bus_find_duplicate = _cb.bus_find_duplicate
     pending = [{"body": {"subject": "PING", "correlation_id": "c-1"}}]
     assert bus_find_duplicate(pending, "PING", "x", "c-1") is not None
     assert bus_find_duplicate(pending, "PING", "x", "c-2") is None
