@@ -235,10 +235,33 @@ def get_session_id(args: dict | None = None) -> str:
 
     # Priority 1: process-scoped id for non-Hermes callers — stable per MCP
     # child (per Claude session), disjoint across concurrent sessions, and
-    # never adopts another session's Hermes id.
+    # never adopts another session's Hermes id. PERSISTED per project
+    # (repo slug of cwd, same resolution the git hooks use) so the id
+    # survives an MCP-child restart mid-session (adversarial finding
+    # ADV-2872-2: an in-memory-only id orphans the lock when Claude Code
+    # restarts the server between begin_change and end_change). Same-project
+    # sharing is correct governance semantics — begin_change already
+    # serializes a repo to one active change; cross-PROJECT ids stay disjoint,
+    # which is the collision class this fix removes.
     global _PROCESS_SESSION_ID
     if not _PROCESS_SESSION_ID:
-        _PROCESS_SESSION_ID = f"sess_{uuid.uuid4().hex[:12]}"
+        slug = _derive_slug()
+        persist = GOVERNANCE_STATE_DIR / f".session-{slug}.id"
+        try:
+            if persist.exists():
+                cached = persist.read_text().strip()
+                if cached:
+                    _PROCESS_SESSION_ID = cached
+            if not _PROCESS_SESSION_ID:
+                _PROCESS_SESSION_ID = f"sess_{uuid.uuid4().hex[:12]}"
+                GOVERNANCE_STATE_DIR.mkdir(parents=True, exist_ok=True)
+                persist.write_text(_PROCESS_SESSION_ID)
+        except OSError:
+            # Persist failure must not break the session — fall back to the
+            # in-memory id (restart orphan risk returns, but the lock system
+            # still works for the common no-restart path).
+            if not _PROCESS_SESSION_ID:
+                _PROCESS_SESSION_ID = f"sess_{uuid.uuid4().hex[:12]}"
     return _PROCESS_SESSION_ID
 
 

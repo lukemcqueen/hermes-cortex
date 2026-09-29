@@ -73,17 +73,37 @@ def test_non_hermes_gets_process_scoped_id():
 
 
 def test_two_processes_get_disjoint_ids():
-    """Two MCP server processes (two Claude sessions) must never share an id."""
-    ids = []
-    for _ in range(2):
-        # Re-exec the module fresh = a new MCP child process.
+    """Different projects stay disjoint; a mid-session MCP-child RESTART in
+    the same project keeps the SAME id (adversarial ADV-2872-2: an
+    in-memory-only id would orphan the lock on restart)."""
+    def fresh_process(slug):
         spec = importlib.util.spec_from_file_location(
             f"lgm_{os.urandom(4).hex()}", _MCP_PATH)
         mod = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(mod)
-        ids.append(mod.get_session_id(None))
-    _check("two fresh processes get DISJOINT session ids",
-           ids[0] != ids[1], f"{ids}")
+        mod._derive_slug = lambda: slug  # control the project identity
+        return mod
+
+    with tempfile.TemporaryDirectory() as td:
+        stateA = Path(td) / "stateA"; stateA.mkdir()
+        stateB = Path(td) / "stateB"; stateB.mkdir()
+
+        # Session in project alpha: two fresh processes (original + restart).
+        m1 = fresh_process("alpha"); m1.GOVERNANCE_STATE_DIR = stateA
+        id1 = m1.get_session_id(None)
+        m2 = fresh_process("alpha"); m2.GOVERNANCE_STATE_DIR = stateA
+        id2 = m2.get_session_id(None)
+        _check("restart in same project keeps the SAME id (lock survives)",
+               id1 == id2 and id1, f"{id1} vs {id2}")
+
+        # Session in a different project: must be disjoint.
+        m3 = fresh_process("beta"); m3.GOVERNANCE_STATE_DIR = stateB
+        id3 = m3.get_session_id(None)
+        _check("different project gets a DISJOINT id", id3 != id1, f"{id1} vs {id3}")
+
+        # Persistence file exists per project.
+        _check("per-project session file written",
+               (stateA / ".session-alpha.id").read_text().strip() == id1)
 
 
 def main():
