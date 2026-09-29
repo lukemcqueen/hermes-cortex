@@ -29,7 +29,7 @@ their domain.
 | `macos-computer-use` | 1.0.0 | Drive the macOS desktop in the background — screenshots, mouse, keyboard, | `skill_view(name='macos-computer-use')` |
 | `macos-service-management` | 1.0.0 | Manage and troubleshoot macOS launchd services — plist authoring, exit code diagnosis, variable expansion r... | `skill_view(name='macos-service-management')` |
 
-## Autonomous Ai Agents (9 skills)
+## Autonomous Ai Agents (10 skills)
 
 | Skill | Version | Purpose | Load With |
 |-------|---------|---------|-----------|
@@ -42,6 +42,7 @@ their domain.
 | `hermes-cortex-setup` | 1.0.0 | Install and configure Hermes Cortex core components — Ollama, mycortex knowledge brain, health server, agen... | `skill_view(name='hermes-cortex-setup')` |
 | `honcho` | 2.0.0 | Configure and troubleshoot Honcho memory for Hermes. | `skill_view(name='honcho')` |
 | `openhands` | 0.1.0 | Delegate coding to OpenHands CLI (model-agnostic, LiteLLM). | `skill_view(name='openhands')` |
+| `pi-coding-agent` | 1.0.0 | Operate the Pi coding agent CLI — install, extensions, Jev. | `skill_view(name='pi-coding-agent')` |
 
 ## Blockchain (3 skills)
 
@@ -550,7 +551,7 @@ their domain.
 |-------|---------|---------|-----------|
 | `social-media-analyzer` | 1.0.0 | Social media campaign analysis and performance tracking. Calculates engagement rates, ROI, and benchmarks a... | `skill_view(name='social-media-analyzer')` |
 
-## Software Development (63 skills)
+## Software Development (64 skills)
 
 | Skill | Version | Purpose | Load With |
 |-------|---------|---------|-----------|
@@ -570,6 +571,7 @@ their domain.
 | `code-review` | 3.0.0 | Two-axis pre-commit review: Standards (documents + code smells) and Spec (requirement compliance) via paral... | `skill_view(name='code-review')` |
 | `code-wiki` | 0.1.0 | Generate wiki docs + Mermaid diagrams for any codebase. | `skill_view(name='code-wiki')` |
 | `codebase-design` | 1.0.0 | Deep module vocabulary and design principles — module, interface, depth, seam, adapter, leverage, locality.... | `skill_view(name='codebase-design')` |
+| `codegen-from-schema` | 1.0.0 | Use when building schema codegen with committed artifacts. | `skill_view(name='codegen-from-schema')` |
 | `context-engineering` | 1.0.0 | Context design for agents: pre-fetch, compaction, envelopes. | `skill_view(name='context-engineering')` |
 | `cwr-file-processing` | 1.0.0 | CISAC CWR (Common Works Registration) file processing for music copyright societies. Covers export generati... | `skill_view(name='cwr-file-processing')` |
 | `data-structure-efficiency-review` | 1.0.0 | Find inefficient data structures and hot loops in code. | `skill_view(name='data-structure-efficiency-review')` |

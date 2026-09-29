@@ -131,13 +131,19 @@ tagged BUILD or CHECK, with a status column. The split is the whole discipline:
 cycle.** Never batch unrelated edits. After every task, `cd core && cargo test`
 must be full-suite green before commit.
 
-**Every task — BUILD and CHECK alike, and including delegated output — closes
-with edge-case tests and an adversarial review.** This is a standing operator
-directive, not a per-task request: probe the boundaries (empty input, integer
-extremes, malformed/wrong-typed input, reordered/duplicate data) and attack the
-implementation's assumptions with a scratch probe rather than reasoning from
-memory. A finding becomes either a fix (a panic path, a lenient parse) or a
-pinned fail-closed test — never a silent acceptance.
+- **Every task — BUILD and CHECK alike, and including delegated output — closes
+  with edge-case tests and an adversarial review.** This is a standing operator
+  directive, not a per-task request: probe the boundaries (empty input, integer
+  extremes, malformed/wrong-typed input, reordered/duplicate data) and attack the
+  implementation's assumptions with a scratch probe rather than reasoning from
+  memory. A finding becomes either a fix (a panic path, a lenient parse) or a
+  pinned fail-closed test — never a silent acceptance. **For a typed-probability
+  threshold gate (a verdict split at a LM/HI band), pin the EXACT seam values
+  both sides of every threshold and the type extremes** — `LO-1`, `LO`, `HI`,
+  `HI+1`, and the domain limits (`0`, `1_000_000` ppm), plus the wrong-typed
+  answer failing closed. Representative middles (a confident-low, a confident-high,
+  a mid value) pass while the inclusive/exclusive edge is silently wrong; a
+  security gate's contract IS the seam.
 
 **A hand-written `validate()` on a typed record must bound EVERY numeric field,
 not just the ones the happy-path example exercises.** Adversarial review caught
@@ -411,6 +417,21 @@ When Luke says continue on a recorded divergence, the fix direction is **unify t
   `git stash`, run the count (BEFORE), `git stash pop`, run it again (AFTER), diff.
   Correct the number in the same commit rather than carrying a header that already
   disagrees with the suite.
+- **A rejected push usually means origin/main advanced with a PEER's work — count
+  AFTER the merge, never propagate either side's header count.** A mid-build
+  `git pull --rebase` that lands a parallel author's commit (e.g. another agent's
+  Story) will conflict on the hand-maintained count header precisely because both
+  sides rewrote it. Resolve the header by MEASURING the merged tree
+  (`cargo test --workspace -- --list | grep -cE ': test$'`) + the MERGED `test
+  result` lines, combining BOTH bodies of work, not by taking either line's "N".
+  **If the peer brought failing tests (e.g. live-API integration tests hitting a
+  real provider), prove they are pre-existing before claiming green**: `git show
+  <peer-commit>:<path> | md5sum` vs the merged file (byte-identical + your diff is
+  confined to other crates = not yours). Then put the HONEST number + a named
+  caveat ("4 pre-existing `live_jev` live-API tests fail without a valid key") in
+  the header — a header that claims all green while the suite is red is a lie
+  that misleads every reader. A peer's live-API failure is that peer's domain;
+  document + flag it, do not silently fix it into your unrelated slice.
 - **Adding a wire/surface type is now SCHEMA-FIRST, not hand-edits.** CG1–CG4
   and surface Slice 0.3 built the generator (`abi-codegen`), which is the
   primary path: `abi.schema.json` (and `surface/interface.schema.json`) carry an
@@ -475,6 +496,49 @@ When Luke says continue on a recorded divergence, the fix direction is **unify t
   step of compose, the surface judgment reads, the autonomy dial, the judge
   adapters, or a judge baseline battery, start at §6's slice table — the design
   (invariants MN-1..MN-10, output classes, Decision Classes) is settled.
+- **The concrete, tested Jev integration patterns live in
+  `docs/research/ten-levels-of-jev-2026-09-30.md`** (digest of
+  `disler/ten-levels-of-jev`: 30 Jev use cases in 10 levels). When asked how Jev
+  integrates into steadfaste, or to wire a Jev gate/route/cheap-read, start there:
+  it maps each level onto the machine-native design (what VALIDATES, what BORROWs
+  — hook placement at tool_call/tool_result/turn_end, cheap file reads, parallel
+  fan-out — and the deliberate divergences: weights-in-code and agent-authored
+  questions are forbidden by the compose grammar / MN-3). It also records Luke's
+  cost posture: Pi (`@earendil-works/pi-coding-agent`) as the coding agent + Jev
+  for judgment + offline coding (`offline_code`/`qwen2.5:3b`) for generation.
+- **The coding-agent model-cost routing design lives in
+  `docs/design/coding-cost-routing.md`** (pi → Jev / offline / other at the
+  lowest honest model cost, commissioned by the Steward over the Telegram
+  gateway). When asked how coding work should route models, or to wire the pi
+  harness's cost layer, start there: a three-tier resource model (T0 Jev
+  judgment ~$16.80/million, T1 offline_code+qwen2.5:3b codegen at $0 marginal,
+  T2 hosted workhorse, T3 hosted reasoning), a governed four-class routing
+  Decision Class (BOUNDED/ROUTINE/COMPLEX/CREATIVE → cheapest capable tier, per
+  MN-3 the question is the policy), five Jev judge-worker hooks in the pi loop
+  (routing classifier, destructive-command gate, compaction scoring, cheap file
+  reads, output screening), and monotone-toward-caution failover (never downgrade
+  a tier, fail closed to the Steward on undecidable). The routing classification
+  is itself a Jev `choice` — it never costs an LLM call; the verbosity tier rides
+  the same routing (BOUNDED→MINIMAL … CREATIVE→FULL). The core routing module is
+  BUILT (`core/crates/constitution/src/routing.rs`: `route_for_class` /
+  `route_from_answers`, provider-neutral — takes `JudgmentAnswer`, never a Jev
+  handle — fail-closed undecidable/unknown/missing → T3); the CR0–CR7 build
+  track (one test owned once) is in `build-tasks.md`. **pi install:**
+  `npm install -g @earendil-works/pi-coding-agent` — requires Node `>=22.19.0`,
+  NOT Node 24 (Node 24 was only the ten-levels repo's own TS requirement, not
+  pi's).
+- **Neither pi nor Jev is load-bearing — both are swappable behind adapter seams
+  (a standing design rule: "easy swappability and interoperability is very
+  important").** A coding agent (pi) is ONE adapter behind a GENERIC
+  coding-worker event interface (`on_tool_call`/`on_tool_result`/`on_turn_end`/
+  `on_context_gather`/`on_output`) — the Jev hooks are defined against that
+  interface, never pi's extension API; pi maps its own events onto it and is the
+  reference adapter. A judgment model (Jev) is ONE provider behind the judgment
+  client (`decide(class, state, questions)`), resolved from config — Jev/von/
+  own-model are provider profiles (swap = base_url + api_key + model_id; tier
+  gating + shadow gate unproven providers). No consumer code hard-references pi
+  or Jev. Interop test: swap the harness, swap the provider — the governed
+  pipeline behaves identically.
 - **A record that a downstream fold/report JOINs on must carry its join key
   whenever it can reach a calibratable (outcome-bearing) state — refuse an
   unlinked record loudly, never append it as a silent orphan.** The
@@ -560,13 +624,21 @@ Beyond docs, the repo ships a TypeScript prototype under `prototype-ts/` (Bun, `
 - **Before blaming your change for a failing repo test, stash and run it on a clean tree** — prototype tests can be pre-broken (test-dir import paths drifted after a repo restructure). If pre-existing, fixing it belongs in the same commit (contract rule: no known issues left unfixed), noted in the message.
 - **Test isolation: reset ALL `STEADFASTE_*` env vars in a `finally` after any expected-throw config test** — a leaked bad value poisons sibling test files that load config through the store, failing them mysteriously. One `resetEnv()` helper covering every `STEADFASTE_` key; `clearConfigCache()` after every env mutation (config is cached).
 - **Multi-line commit messages: write the message to a file and `git commit -F <file>`.** Inline multi-line messages in a shell tool call break on quotes/apostrophes/parens and split into bogus pathspecs.
+- **After a governance gate blocks `git add A B C && git commit`, verify what actually staged before re-committing — a blocked commit can SPLIT the change.** The adversarial-verify gate can refuse the commit after the add already ran (or the add rolled back); re-adding only a subset then commits a test-only commit and leaves the source uncommitted, an intermediate HEAD that fails `cargo test`. Before retrying with a subset, check `git status` and stage the WHOLE intended set so source + test + docs land as one atomic commit. If a split already happened, repair with `git reset --soft HEAD~2 && git commit -F <msg>` to squash the fragments back into one compiling HEAD.
 - **Nested heredocs inside a `terminal()`/`execute_code` string break on quoting — write the script to a file first, then run it.** A Python patcher or TS probe containing `<<'EOF'` cannot be passed as an inline shell string (the inner heredoc collides with the outer string literal); `write_file('/tmp/script.py')` then `terminal('python3 /tmp/script.py')` always works. Same for any multi-line script with backticks or `${}` interpolation.
 - **For outside-expert model input on a design question, consult DeepSeek Pro via OpenRouter** — recipe and pitfalls (reasoning-model token budget, empty-content trap) in `references/llm-consult-via-openrouter.md`. Treat the answer as expert input to overlap-check, never as the design itself.
 - **Fetch external APIs (GitHub org listings, raw file reads) via `browser_exec`'s
   `js()` with `fetch()`, not `terminal curl`** — a shell curl of an external API
   can sit awaiting user consent and stall the session; the browser fetch returns
   the JSON in one call. Parse the JSON in the same browser_exec call (json.loads
-  of the innerText).
+  of the innerText). **The `fetch` must be wrapped in an async IIFE inside `js()`
+  (`js("(async () => {...})()")))` — a top-level `await fetch(...)` in the
+  `browser_exec` `code` block fails with `SyntaxError: 'await' outside async
+  function`, because the code runs as a sync Python exec. Use
+  `raw.githubusercontent.com/<owner>/<repo>/<branch>/<path>` for raw file content
+  (with `await r.text()`), and the git trees API
+  (`/repos/<owner>/<repo>/git/trees/HEAD?recursive=1` → `tree[].path`) for the
+  file list before deciding which files to read.
 - **Split any doc write that would exceed roughly 8K tokens of arguments into a
   small initial `write_file` + successive `patch` appends** — a single oversized
   write can be cut off mid-stream and silently not land; re-read the file after
