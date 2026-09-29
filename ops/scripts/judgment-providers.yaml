@@ -1,0 +1,53 @@
+# Judgment provider config — Jev/von hot-swap routing.
+# Design: steadfaste docs/design/judgment-abstraction.md
+# Secrets come from env vars only (api_key_env names), never this file.
+#
+# Shadow mode is PROBATION-GATED: a class gets a `shadow:` entry only while a
+# candidate provider is under evaluation; remove it once divergence gates pass.
+# Global kill switch: JUDGMENT_SHADOW=off. Fail-closed: all-fail -> caller escalates.
+
+providers:
+  jev:
+    base_url: https://api.typesafe.ai
+    api_key_env: TYPESAFE_API_KEY
+    model_id: jev-latest
+    profile:
+      accuracy_tier: T2
+      composite: 63.3
+      calibration: 76.3
+      source: JevBench v1.4 (2026-09-29)
+  von:
+    base_url: http://127.0.0.1:8000
+    api_key_env: VON_BEARER_TOKEN
+    model_id: von-1.2.0
+    profile:
+      accuracy_tier: T3
+      composite: 27.5
+      calibration: 75.7
+      source: JevBench v1.4 + wfzyx/von README (2026-09-29)
+
+tiers:
+  T1: 2
+  T2: 1
+  T3: 0
+
+routing:
+  decision_classes:
+    bus-triage:
+      primary: jev
+      fallback: []
+      shadow: von          # PROBATION: von under evaluation on bus triage
+    bus-dedup:
+      primary: jev
+      fallback: []
+    doc-freshness:
+      primary: jev
+      fallback: []
+    health-triage:
+      primary: jev
+      fallback: []
+      min_tier: T2
+    verification-fanout:
+      primary: jev
+      fallback: []
+      min_tier: T2         # von may NEVER auto-serve this until tier validated
