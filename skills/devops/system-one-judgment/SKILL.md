@@ -81,3 +81,18 @@ hot-swap provider abstraction (design doc: steadfaste
   tool use. If the task needs synthesis or explanation, keep the LLM session.
 - The DeepSeek direct key may be unfunded — prefer the OpenRouter fallback
   (`deepseek/deepseek-v4-pro` via OPENROUTER_API_KEY) for pro-model reviews.
+- **Steadfaste's Ledger rejects IEEE-754 floats in hashed content** — a Jev
+  answer is a probability (`noul: 0.87`, `score: 1.4`, `confidence`) and the
+  Ledger's `canonical_bytes` returns `FloatRejected` for any float spelling
+  (`-0`, `0.0`, `1e2`, nested). A `JudgmentEvent` that logs answers as
+  decimals cannot be appended. Store each probability as an integer
+  (parts-per-million) and keep the raw provider response by hash — never
+  inline a decimal in the append payload.
+- **A judgment is evidence, never authority, and monotone toward caution.**
+  A machine-native output may route work or add scrutiny (escalate, raise
+  review level) but may never remove scrutiny that readable policy sets, and
+  never ratifies or passes a gate. Legibility moves from the answer to the
+  question: the alien answer (`0.41`) need not be explained, but the
+  question, the threshold that consumed it, and the resulting action must be
+  versioned, Steward-ratified configuration. In steadfaste the judge is a
+  governed worker role (like `critic`), never an in-core client.

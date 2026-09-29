@@ -139,6 +139,14 @@ implementation's assumptions with a scratch probe rather than reasoning from
 memory. A finding becomes either a fix (a panic path, a lenient parse) or a
 pinned fail-closed test — never a silent acceptance.
 
+**A hand-written `validate()` on a typed record must bound EVERY numeric field,
+not just the ones the happy-path example exercises.** Adversarial review caught
+`conf_ppm`/`score_ppm` passing at >1,000,000 while only `p_ppm` and the
+distribution sums were checked — the example tested a noul and a choice, never a
+score, so the score branch's bounds were never exercised. Enumerate the record's
+fields in the validator and give each a bound (or a sum-to-exact rule), then write
+one adversarial test per field that violates it.
+
 **A conformance test is expected to reveal spec-vs-code divergence.** When the
 test fails not because the code is missing but because the code *violates the
 frozen contract* (e.g. the spec says "unknown `type` → ignore" but a derived
@@ -175,7 +183,12 @@ weakening the assertion to make the code look correct.
   past `u64::MAX` all parse to `is_f64()==true` (the last becomes scientific
   notation — the exact non-deterministic form the rule exists to block);
   `u64::MAX`/`i64::MIN` stay exact `is_f64()==false`. Reject `is_f64()`
-  recursively over the value, before serializing.
+  recursively over the value, before serializing. In a *test* asserting a
+  serialized record is float-free, walk the parsed JSON value checking
+  `!n.is_f64()` at every number — do NOT scan the serialized string for `.`/`e`/`E`,
+  because ordinary field values ("severity", "verification") contain those
+  characters and trip a false positive. The string-level guarantee is also
+  dependent on field names; the value-walk is not.
 
 **Don't let `cargo fmt -p <crate>` creep the commit.** It reformats the whole
 crate — including pre-existing files that were never rustfmt-clean — so
@@ -184,6 +197,45 @@ touch (`git checkout -- …`) and keep the commit to the task's own files. To
 confirm remaining fmt diffs are pre-existing rather than yours: `git stash`,
 re-run `cargo fmt --check` on the clean tree, `git stash pop` — if the diff
 persists without your changes, leave it alone.
+
+## The codegen-primary build (abi-codegen)
+
+The generator (`core/crates/abi-codegen`, lib+bin) reads a schema and emits the
+SHAPE-ONLY types; two targets (`abi`, `surface`). Codegen only reproduces a
+schema that carries `x-rust` metadata — wire `enum`/`properties` values alone
+record neither rename_case, integer widths, nor the serde attribute set, so a
+schema without `x-rust` cannot be regenerated faithfully.
+
+- **Shape vs logic split is the whole point.** The generator emits rename_all,
+  derive flags (`copy`/`eq`), field order, widths, and serde attrs — nothing
+  else. Doc comments flow from the schema `description`. Logic moves OUT to
+  hand-written files: `impl Default` → `*_policy.rs`, `#[cfg(test)]` modules →
+  `tests/`, projection fns → `surface/src/projections.rs`. A
+  `deserialize_with`/`tag`/`skip_serializing_if` attribute is WIRING the
+  generator reproduces verbatim, but the function it points at
+  (`frame_policy::deserialize_ignorable_type`) stays hand-written.
+- **Field order lives in an explicit `x-rust.fields` array, never JSON key
+  order** — `serde_json::Map` is a `BTreeMap`, which re-sorts keys and drops
+  insertion order; emitting in `$defs`/`properties` order scrambles struct
+  fields (a silent wire regression a round-trip test won't catch).
+- **`--target` on a cargo-built tool collides with cargo's own cross-compile
+  `--target` flag.** `cargo run -p abi-codegen --target surface` is swallowed
+  by cargo and fails on a nonexistent target triple; use `cargo run -p
+  abi-codegen -- --target surface`, and make the generator's banner/doc
+  comments state the `--`-separated invocation, not the one cargo swallows.
+- **Never run `cargo fmt -p <crate>` on a crate that contains GENERATED files**
+  — rustfmt reformats the generated output, which then diverges from the
+  generator bytes and fails the committed-match test; regenerate to restore.
+  `cargo fmt -p` only the hand-written crates/files.
+- **A generator is production code → it needs a test.** A bare `main.rs` bin
+  trips the TDD Iron Law gate (no test target); refactor to lib+bin and expose
+  `generate(schema, target)` as a lib fn so the idempotence + committed-match
+  tests can call it directly.
+- **Idempotence is the load-bearing guarantee** — fixed layout, ordered arrays,
+  no timestamps or HashMap iteration. The committed-match test (generated
+  output == committed files byte-for-byte) is the "regenerate → zero diff"
+  CHECK; prove it non-vacuous by hand-editing a generated file and watching the
+  test fail before trusting it.
 
 ## "Show the current design" — the component & interface accommodation map
 
@@ -274,7 +326,7 @@ cutting any slices:
   pick, and do not build past it.
 
 ## Doc-writing pitfalls (these cost real time — proven)
-- **Append large markdown via `write_file` to /tmp then `cat >> file`** — do NOT use `printf`/heredoc; backticks/quotes get shell-escaped and the command errors or writes garbled bytes.
+- **Append large markdown via `write_file` to /tmp then `cat >> file`** — do NOT use `printf`/heredoc; backticks/quotes get shell-escaped and the command errors or writes garbled bytes. The same `>/tmp` + `cat >>` rule applies to APPENDING a large block to a code file: `patch`'s fuzzy matcher can grab the WRONG closing brace and corrupt the file (an MN3 append to `fold.rs` merged the new `calibration_fold` block INTO the `RefusalFold` struct and renamed an unrelated field). Recovery is `git checkout -- <file>` then re-append via `cat >>`; grep the diff after a large append confirms nothing got nested.
 - **Before appending a numbered `## N.` section, grep `^## N.` in the target.** If a collision exists (an added `## 8.` collided with an existing `## 8.` this project), renumber the NEW section (8→9) AND its subsections (8.1→9.1).
 - **After ANY `write_file`, re-read your own written section.** Placeholders are not auto-filled (saw a literal `"v": null — placeholder` ship), and multi-bullet prose gets mangled (dup/missing words, stray tokens). `write_file` writes bytes; it does not proofread.
 - **Proofread prose for typos before commit** — misspellings such as `agentatic`, `tracable`, `"A get, not a stylistic note"` slipped through and needed a separate fix pass.
@@ -359,20 +411,99 @@ When Luke says continue on a recorded divergence, the fix direction is **unify t
   `git stash`, run the count (BEFORE), `git stash pop`, run it again (AFTER), diff.
   Correct the number in the same commit rather than carrying a header that already
   disagrees with the suite.
-- **The frozen ABI has no code generator behind its "codegen primary" doc
-  claim.** `core/crates/abi/src/enums.rs` is hand-maintained; there is no `abi.ts`
-  and no codegen script, and the parity/roundtrip/golden tests ARE the enforcement.
-  Adding an `EventType` member means updating, in ONE commit: the enum,
-  `abi.schema.json`, `tests/golden/abi_parity.golden.json`, the `all_event_types()`
-  list in `tests/abi_parity.rs`, and the `roundtrip_upper` list in
-  `tests/enums_extra.rs`. Miss one and the parity test fails at the golden fixture.
-  Grep the variant name across `core/crates/abi/` before declaring an add complete
-  — an "already covered, additive" claim is only safe after reading the live enum.
+- **Adding a wire/surface type is now SCHEMA-FIRST, not hand-edits.** CG1–CG4
+  and surface Slice 0.3 built the generator (`abi-codegen`), which is the
+  primary path: `abi.schema.json` (and `surface/interface.schema.json`) carry an
+  `x-rust` block per `$def` (rename_case, integer widths, field order,
+  Option-ness, serde attrs) + a `description` (the semantic freeze), and the
+  shape files (`abi/src/*.rs`, `surface/src/reads.rs`/`verbs.rs`) are GENERATED
+  from them with a `GENERATED — DO NOT EDIT` banner. To add a type: (1) add the
+  `$def` with its `x-rust`; (2) register it in `abi/tests/schema_complete.rs`
+  (`WIRE_TYPES` for a Rust type, `DATA_PAYLOAD_DEFS` for a `*_data` payload);
+  (3) `cargo run -p abi-codegen` (or `-- --target surface`) to regenerate;
+  (4) STILL hand-update the golden/parity fixtures
+  (`tests/golden/abi_parity.golden.json`, `all_event_types()`, `roundtrip_upper`)
+  — the generator does NOT emit those. The committed-match + idempotence tests
+  (`abi-codegen/tests/`) and the CI `git diff --exit-code` gate then enforce no
+  manual divergence. Grep the variant name across `core/crates/abi/` before
+  declaring an add complete — an "already covered, additive" claim is only safe
+  after reading the live schema+enum.
+- **Any new `$def` in `abi.schema.json` MUST be registered in `abi/tests/schema_complete.rs`
+  (the CG1.2 inventory guard) or `every_schema_def_is_accounted_for` fails the suite.**
+  The guard's `WIRE_TYPES` lists Rust wire types by PascalCase name
+  (`Kind`, `Frame`, `ReviewVerdict`, `JudgmentData`, `JudgmentAnswer`); a `$def`
+  with no Rust struct (a `*_data` payload) goes in `DATA_PAYLOAD_DEFS` keyed to a
+  data-carrying `Kind`. The `$def` NAME must match the Rust type exactly: a
+  `snake_case` `$def` like `judgment_data` against a `JudgmentData` struct breaks
+  the guard (it looks for the PascalCase wire-type name in `WIRE_TYPES`). This
+  guard is a LATER addition than the golden/parity lists — a new wire-shape commit
+  must touch it too, and the enum+golden+parity list in the pitfall above is no
+  longer sufficient on its own.
+- **After a `git pull --rebase` that re-merges `abi.schema.json`, grep for
+  DUPLICATE `$def` keys and stale cases BEFORE trusting the schema.** When a
+  parallel branch/commit also edited the schema (upstream CG1.1 did), git
+  auto-merges by line and can leave two `WorkerRole` defs (our `"judge"` version
+  plus upstream's `primary/critic`) or one def under a stale case. JSON with
+  duplicate keys parses but the LAST wins — a silent behavioral change. Fix by
+  consolidating to one canonical def (the one carrying every member) and confirm
+  `schema_complete.rs` still accounts for every key. Run
+  `python3 -c "import json;json.load(open('core/crates/abi/abi.schema.json'))"`
+  won't catch a duplicate-key collision; grep for the key count instead.
 - **The pre-commit secret-leak detector flags the frozen `abi.schema.json`
   `"$schema": "https://json-schema.org/…"` line as a "non-placeholder domain".**
   That is a non-blocking false positive (it is the JSON Schema draft URI, not PII).
   Do not "fix" the URI or add an ignore — the warning is cosmetic and the commit
   lands.
+- **Any design that puts model probabilities, confidence, or scores on the
+  Ledger as decimals is unappendable.** `canonical_json` rejects every IEEE-754
+  float (`CanonicalError::FloatRejected`, pinned by `ledger/tests/entry_hash.rs`
+  + `edge_cases.rs`). Quantize at the *schema* boundary, not by the consumer:
+  integer parts-per-million (`u32`, 0–1,000,000); every distribution sums to
+  exactly 1,000,000 (largest-remainder residual); raw provider bytes ride by
+  hash, never inline. This is what `judgment-abstraction.md` got wrong (Jev
+  `noul: 0.87` could never append) and why `machine-native-substrate.md` §4.3
+  quantizes to ppm.
+- **The machine-native / judgment layer is owned by
+  `docs/design/machine-native-substrate.md`; MN0–MN3 have SHIPPED, MN4–MN7 are the
+  remaining slices.** Shipped: MN0 (`WorkerRole::Judge` in `abi/src/review.rs`,
+  `judgment_data`/`JudgmentAnswer` in `abi/src/judgment.rs`,
+  `EventType::JudgmentRendered`; the CG2 shape/logic split keeps `validate()` +
+  `judge_commission()` in `judgment_policy.rs`), MN1 (`Constitution::judgment()
+  append`), MN2 (`constitution/src/decision_class.rs` compose grammar —
+  `compose(floor,a) ≥ floor`, untrusted-never-clears, undecidable-escalates),
+  MN3 (`calibration_fold` in `ledger/src/fold.rs`). When asked to build the apply
+  step of compose, the surface judgment reads, the autonomy dial, the judge
+  adapters, or a judge baseline battery, start at §6's slice table — the design
+  (invariants MN-1..MN-10, output classes, Decision Classes) is settled.
+- **A record that a downstream fold/report JOINs on must carry its join key
+  whenever it can reach a calibratable (outcome-bearing) state — refuse an
+  unlinked record loudly, never append it as a silent orphan.** The
+  `calibration_fold` in `ledger/src/fold.rs` joins each escalating judgment to the
+  same job's later `ratified`/`veto` via `job_id`; if `judgment_entry` wrote
+  `job_id: None`, every escalating judgment would be counted as `no_outcome`
+  forever and nothing would explain the gap. So `Constitution::judgment()`
+  REFUSES an escalating-but-jobless judgment (`HandleError::EscalationUnlinked`,
+  nothing appended) — a loud defect with its own test (escalating+None refused,
+  shadow/proceed+None ok, escalating+Some linked). General rule: when you add a
+  fold or report that links records by a key, make the WRITE of that key
+  fail-closed for the records the fold depends on, and give the missing-key
+  error a distinct variant so the caller sees WHY, not a generic failure.
+- **Verify a peer's cited docs exist on THIS checkout before propagating them.**
+  A parallel agent/Opus may cite `steward-tui.md`, `baml-evaluation.md`, or a
+  commit hash that live only on its own branch/worktree, not `main` — `search_files`
+  for the cited path before baking it into a doc, and cite the real source
+  (`core-interface.md` §7/§8 held the TUI and "judgment runs as a governed
+  worker" rules here) instead of the phantom one.
+- **A governance verb (stop/veto/direct) must never hard-code a `job_id`, `seq`,
+  or `ts` — it targets the job the caller actually holds.** The Steward TUI's
+  `stop()` shipped `job_id: "job-1"` with a fixed `seq: 1` and a constant `ts`;
+  since the TUI's job counter starts at 2, the emergency stop fired at a job
+  that was never commissioned. Track `current_job` + a per-job sequence in the
+  client state, timestamp with a now() helper, and keep that logic in the
+  crate's `lib.rs` (testable without a terminal) rather than in the interactive
+  `main.rs` rendering loop. When fixing a client/TUI bug, extract the pure
+  decision into the lib so it can be TDD'd; the rendering loop should only wire
+  I/O and input.
 
 ## The doc-corpus shape (current vs historical) — keep it this way
 
