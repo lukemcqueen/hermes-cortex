@@ -108,6 +108,21 @@ variant shows even a from-scratch tokenizer is optional):
   (Laya's base) — the synthetic corpus is the moat.
 - Jev's weights are proprietary/unpublished; everything here is open-reimplementation-based.
 
+## Sources (primary references for the claims above)
+- TypeSafe AI blog — "Introducing System One Models & Jev" (2026-09-15): https://typesafe.ai/blog/introducing-system-one-models-and-jev — RLCD vs RLHF/RLVR, parallel sampler, primitives, cost/speed claims, "can't hallucinate."
+- TypeSafe docs — Introduction + llms.txt index: https://docs.typesafe.ai/introduction · https://docs.typesafe.ai/llms.txt — Choice/Score/Noul primitives, calibration semantics, server path (`/v1/systemone`).
+- TypeSafe AI Primer (training rationale): https://docs.typesafe.ai/introduction/machine-learning-primer.md — calibrated decisions vs generated text.
+- Wikipedia "Jev (AI model)": https://en.wikipedia.org/wiki/Jev_(AI_model) — release, founders, transformer-based, synthetic-data-only, RLCD, unpublished weights, 70–500 ms claims.
+- Von (open-source System One decision model, Apache-2.0): https://github.com/wfzyx/von + `training/` dir (synthetic-decision generators, `train_option_marker.py`, `train_rlcd.py`, contamination audit, AWS-spot launcher). JevBench v1.4 results table.
+- Open-ecosystem survey + independent 49-task jabr benchmark (0.966 Jev vs 0.704 Von zero-shot OOD): https://pinggy.io/blog/best_open_source_jev_alternatives_self_hosted_decision_models/ · https://www.scriptbyai.com/jev-open-source-alternatives/ · https://www.datacamp.com/blog/top-open-source-jev-alternatives
+- jevlike (train-your-own decision head): https://github.com/wfzyx/von (byte-encoder variant) / ecosystem listing https://github.com/AbdelStark/awesome-typesafe-jev
+- Proper scoring rules / calibration: Brier score + log loss + ECE (reliability diagram): https://en.wikipedia.org/wiki/Brier_score · https://metricgate.com/blogs/brier-score-vs-log-loss-vs-calibration/ · https://scikit-learn.org/stable/modules/model_evaluation.html
+- Cross-encoder scoring as the decision-head pattern: https://www.sbert.net/examples/cross_encoder/
+
+**Verify-first note:** TypeSafe's Jev weights, exact architecture and training data are
+proprietary/unpublished (per Wikipedia + TypeSafe docs as of 2026-09-28); every "build it
+ourselves" claim rests on the open re-implementations (von et al.), not on TypeSafe internals.
+
 ## Counterpart: the `typesafe-ai` skill
 Esther published **`typesafe-ai`** (skill, deployed to fleet 2026-09-29) covering *using* the
 hosted Jev API — primitives, confidence semantics, composable judgment patterns, and a
