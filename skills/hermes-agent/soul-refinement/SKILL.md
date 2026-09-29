@@ -177,6 +177,7 @@ body are invisible to it. So:
 - **Bible insights must be genuine.** Don't force-fit a lesson. If the day's book has nothing obvious for the agent's role, say so honestly.
 - **Silence is better than forced growth.** If no corrections or lessons exist for a given day, produce nothing.
 - **Watchdog scripts must update their state/timestamp file BEFORE checking for work**, to avoid stale state readings.
+- **Mining large sessions via session_search:** the scroll shape ignores `role_filter` (discovery-only), and windows >100KB spill to `~/.hermes/cache/spillover/*.txt` — extract user messages from the spilled JSON with one terminal `python3` pass instead of re-requesting. `execute_code` is blocked in cron mode; terminal under a governance lock is the path (observed 2026-09-28).
 
 ## Template: Initial SOUL.md Structure
 

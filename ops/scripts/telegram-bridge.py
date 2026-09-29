@@ -188,7 +188,7 @@ def update_to_bus_payload(update: dict | None, agent: str) -> dict | None:
                 "topic": "telegram",
                 "chat_id": chat.get("id"),
                 "sender": sender,
-                "thread_id": thread.get("id") if thread else None,
+                "thread_id": msg.get("message_thread_id"),
                 "telegram_chat_id": chat.get("id"),
                 "telegram_msg_id": msg.get("message_id"),
             }),
@@ -324,7 +324,7 @@ def run_once(agent: str, bot_token: str, bus_url: str, bus_token: str,
         ok = bus_send(bus_url, bus_token, payload["queue"], payload["message"])
         if ok:
             ledger.record(uid)  # remember: delivered (dedup on crash)
-            state["last_msg"] = payload["message"].get("telegram_msg_id", 0)
+            state["last_msg"] = json.loads(payload["message"]).get("telegram_msg_id", 0)
             state["offset"] = max(state["offset"], uid + 1)
             save_state(state_file, state)  # commit AFTER durable send
         # on failure: offset unchanged → re-polled next cycle (at-least-once)

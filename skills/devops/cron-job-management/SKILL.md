@@ -42,6 +42,8 @@ Crons without a prefix (`orch-`, `agent-`, or `local-`) are **forbidden** in the
 
 Prefix-less names break doctor validation because the doctor reads the uninstall arrays — and `parse_expected_crons()`/`parse_orch_crons()` only finds names in those arrays. A bare name that IS in the create section but ISN'T in the uninstall array silently passes doctor (no extra cron check) but causes drift.
 
+- **Stagger hash must use `hostname -s` everywhere (2026-09-28).** All 3 installers (`install-crons.sh`, `install-orch-crons.sh`, `install-dream-crons.sh`) hash `hostname -s:name` % 60 — same as `cron_manifest.py _hostname()`. A full-`hostname` hash diverges on FQDN hosts (macOS: hostname ≠ short name), so every reinstall rewrote LLM cron minutes and the doctor flagged schedule drift — looked like "randomized re-staggering". When adding a cron: add the create_cron block AND a `cron-manifest.yaml` entry in the SAME commit — a cron in an installer but not the manifest is flagged as an ORPHAN by `cron_manifest.py --check` (verified: 11 orphans, commit 1f2276d5). After changing the stagger formula fleet-wide, each host needs one `install-crons.sh --force` to rewrite minutes once to the canonical values, then they are stable.
+
 #### 2. Uninstall array = doctor truth source (enforced by architecture)
 
 `cortex-doctor.py` reads expected cron names from the **uninstall arrays** in `install-crons.sh` and `install-orch-crons.sh`. The doctor does NOT read the create sections. This means:

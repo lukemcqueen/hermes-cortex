@@ -39,6 +39,23 @@ Procedure for turning a YouTube URL into clean plain text for reading/summarizin
    this step fails outright on a newer video, retry with `--extractor-args
    "youtube:player_client=default"` or install the impersonation deps.
 
+3b. **If the subtitle download returns `HTTP 429 Too Many Requests` (rate-limit),
+   don't keep retrying player clients — the caption endpoint is throttled
+   independently of the metadata endpoint.** Switch to the `youtube-transcript-api`
+   package, which fetches the timed text in one call without entering YouTube's
+   format-selection path:
+   ```bash
+   ./yenv/bin/pip -q install youtube-transcript-api
+   ./yenv/bin/python -c "
+   from youtube_transcript_api import YouTubeTranscriptApi
+   t = YouTubeTranscriptApi().fetch('vGCJ7diEtrw')  # the 11-char video id
+   txt = ' '.join(s.text for s in t)
+   open('transcript.txt','w').write(txt); print('CHARS', len(txt))
+   "
+   ```
+   This is the fallback to reach for on the FIRST 429 — a couple of
+   player-client retries is enough; after that, switch tools rather than looping.
+
 4. **Strip the VTT to plain text** (drop timestamp lines, tags, and the duplicated
    rolling-caption lines):
    ```python
@@ -59,7 +76,18 @@ Procedure for turning a YouTube URL into clean plain text for reading/summarizin
 
 6. **Reading a long transcript (>~30 min):** split it into ~8 word-wrapped segments
    (~12K chars each) into files and `read_file` them one at a time — a single
-   `read_file` on the whole file truncates. Auto-transcripts garble proper nouns
+   `read_file` on the whole file truncates. The auto transcript lands as ONE
+   long line (no newlines), so split on word boundaries, not lines:
+   ```python
+   words = open('transcript.txt').read().split(' ')
+   segs, cur = [], ''
+   for w in words:
+       if len(cur)+len(w)+1 > 1800: segs.append(cur); cur = w
+       else: cur = (cur+' '+w) if cur else w
+   if cur: segs.append(cur)
+   for i,s in enumerate(segs): open(f'seg_{i:02d}.txt','w').write(s)
+   ```
+   Auto-transcripts garble proper nouns
    (product/person names become plausible wrong words) — flag suspected name
    garbling instead of confidently repeating the wrong name.
 

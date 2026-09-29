@@ -47,11 +47,13 @@ def test_text_update_maps_to_bus_send():
     }
     payload = _bridge.update_to_bus_payload(update, agent="titusclaude")
     assert payload["queue"] == "inbox_titusclaude"
-    assert payload["message"]["body"] == "hello from telegram"
-    assert payload["message"]["to"] == "titusclaude"
-    assert payload["message"]["topic"] == "telegram"
-    assert payload["message"]["from"] == "telegram:luke"
-    assert payload["message"]["subject"] == "Luke"
+    msg = json.loads(payload["message"])  # message is a JSON string per bus contract
+    body = json.loads(msg["body"])  # body is a JSON string too (nested contract)
+    assert body["text"] == "hello from telegram"
+    assert msg["to"] == "titusclaude"
+    assert body["topic"] == "telegram"
+    assert msg["from"] == "telegram:luke"
+    assert msg["subject"] == "Luke"
 
 
 def test_edit_message_is_skipped():

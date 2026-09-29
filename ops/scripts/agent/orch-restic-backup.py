@@ -160,9 +160,12 @@ def system_config_sources(family: str) -> list[str]:
 
 
 def service_snapshot(family: str) -> list[str] | None:
-    if family == "macos":
+    # platform-guarded: launchctl only exists on darwin; systemctl on linux
+    if family == "macos" and sys.platform == "darwin":
         return ["launchctl", "list"]
-    return ["systemctl", "list-units", "--type=service", "--no-pager"]
+    if sys.platform.startswith("linux"):
+        return ["systemctl", "list-units", "--type=service", "--no-pager"]
+    return None
 
 
 def _tar_add_readable(tf: tarfile.TarFile, path: Path, arcname: str) -> None:

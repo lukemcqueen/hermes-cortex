@@ -201,7 +201,6 @@ their domain.
 | `fleet-commands` | 1.6.0 | Send operational commands to fleet agents via the PGMQ bus — message format, delivery verification, bus_acc... | `skill_view(name='fleet-commands')` |
 | `fleet-management` | 1.0.0 | Fleet-level agent management for Hermes Cortex — agent registry, fleet ready score, fleet-audit CLI, adding... | `skill_view(name='fleet-management')` |
 | `fresh-tomato-router` | 1.0.0 | Interact with FreshTomato/DD-WRT routers programmatically via curl — authentication, nvram access, port for... | `skill_view(name='fresh-tomato-router')` |
-| `gbrain-maintenance` | 1.0.0 | (no description) | `skill_view(name='gbrain-maintenance')` |
 | `git-deployment-workflow` | 1.0.0 | Deploy code by pushing to bare remote repositories (Capistrano-style deployment targets). Covers force push... | `skill_view(name='git-deployment-workflow')` |
 | `git-forensics` | 1.0.0 | Use when files vanished or uncommitted deletions appeared. | `skill_view(name='git-forensics')` |
 | `git-push-gate-failures` | 1.0.0 | Use when a push is blocked and the cause is unclear. | `skill_view(name='git-push-gate-failures')` |
@@ -586,7 +585,7 @@ their domain.
 | `logging-patterns` | 1.0.0 | Structured logging conventions: log levels, format standards, context injection, correlation IDs, sensitive... | `skill_view(name='logging-patterns')` |
 | `mcp-server-building` | 1.1.0 | Build, test, and debug MCP servers for Hermes Agent — logging, dependency checks, fix hints, and best pract... | `skill_view(name='mcp-server-building')` |
 | `memory-architecture` | 1.0.0 | Design and maintain agent memory system: MEMORY.md structure, privacy boundaries, gitignore per brain sourc... | `skill_view(name='memory-architecture')` |
-| `prd-lite` | 1.0.0 | Concise 1-page PRD template for lightweight product requirements documentation | `skill_view(name='prd-lite')` |
+| `lite-product-requirements` | 1.0.0 | Concise 1-page PRD template for lightweight product requirements documentation | `skill_view(name='lite-product-requirements')` |
 | `product-requirements` | 1.0.0 | Concise 1-page PRD template: problem, scope, functional/non-functional requirements, edge cases, acceptance... | `skill_view(name='product-requirements')` |
 | `project-map` | 1.0.0 | Structural project analysis — build a dependency graph so agents | `skill_view(name='project-map')` |
 | `prove-before-create` | 1.0.0 | Enforce the "prove existing can't handle it" discipline before creating any new file. Supplements survey-be... | `skill_view(name='prove-before-create')` |

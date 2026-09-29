@@ -117,6 +117,51 @@ is deployed → repo, NOT repo → deployed (that would erase the lessons):
 Do not "fix" drift by deleting the deployed copy or re-deploying over it —
 both discard the lessons the doctor is pointing you at.
 
+## Publishing a new skill to the fleet (end-to-end)
+
+Skills reach every agent only through the repo: identify → vet → copy →
+clobber-check → commit → deploy → doctor → push → FLEET_NOTICE.
+
+1. **Identify the skill.** `find ~/.hermes/skills -name SKILL.md
+   -newermt '<N days>'` and `cmp` each hit against the repo copy; grep
+   `~/.hermes/logs/agent.log` for the session that touched it so you publish
+   the skill the user means, not just the newest-looking file.
+2. **Vet before publishing** — skill-vetting checklist: read the FULL
+   SKILL.md (stub body, scripts, injection, exfil, undeclared services),
+   `bash ops/scripts/secret-leak-detector.sh`. Copy LICENSE and
+   `references/` along with the skill, using `cp` — byte-identical is the
+   verification; a hand-typed rewrite can silently drift.
+3. **Clobber check before deploying.** cortex-update's delta engine pushes
+   the REPO copy over the deployed skill, so any lesson that exists only in
+   `~/.hermes/skills/` — including ones other sessions added the same day,
+   to skills you are not publishing — is erased by the publish deploy. Diff
+   every recently-changed skill deployed vs repo and sync deployed → repo
+   first. cortex-update's `⚠ SKILL DRIFT: deployed copy is newer than repo
+   source` entries name them; each is content to copy in, never `--force`
+   past.
+4. **Commit → deploy → doctor → push.** Pull with `--autostash`; expect the
+   fleet push race (rebase onto new origin/main, retry). After a race-rebase
+   your commit gets a new sha, so Deploy sync FAILs again — run
+   `bash ~/.hermes-cortex/scripts/cortex-dogfood.sh --force`, push, then
+   verify `git ls-remote origin main` == HEAD.
+5. **Verify the deployed tree** — `diff -r ~/hermes-cortex/skills/<name>
+   ~/.hermes/skills/<name>` identical — then broadcast FLEET_NOTICE per the
+   fleet-commands skill (self-test on yourself, one message per agent with
+   `--self-tested`, verify with `hc inbox` peeks).
+
+## Transient doctor FAILs — verify live before treating as host debt
+
+- **`Bus stuck msgs` FAIL can be a sampling artifact.** The doctor probes
+  the LIVE bus over HTTP, and a message sitting between the handler's read
+  and its early archive fails the check once, then clears. Confirm with the
+  live endpoint before fixing handler debt:
+  `curl -s -u "$CORTEX_BASIC_AUTH" "$CORTEX_BUS_URL/api/pgmq/queue/inbox_<agent>"`
+  (both vars in `~/.hermes-cortex/cortex-bus.conf`) — `depth: 0,
+  processing: 0` = clean, just push again. The path is singular `queue/`;
+  `/queues/<name>` 404s. Don't conclude from local psql — on the backup
+  orchestrator the local mycortex-postgres is a stale REPORTS MIRROR.
+- **`hc` is not on PATH** — call it as `~/.hermes-cortex/scripts/hc`.
+
 ## Reversing your own wrong fix
 
 If a just-pushed correction turns out to be the wrong direction (e.g. you

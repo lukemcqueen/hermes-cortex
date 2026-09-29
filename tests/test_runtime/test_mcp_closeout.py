@@ -17,6 +17,7 @@ for one session, only caught later by the doctor at push time.
 """
 
 import importlib.util
+import os
 import tempfile
 from pathlib import Path
 
@@ -39,6 +40,7 @@ def isolated():
             "CACHE_DB": mcp.CACHE_DB,
             "GOVERNANCE_STATE_DIR": mcp.GOVERNANCE_STATE_DIR,
             "FORCE_AUDIT_PATH": mcp.FORCE_AUDIT_PATH,
+            "HOME": mcp.HOME,
         }
         mcp.LOOP_DB = tmp / "loop.db"
         mcp.CONFIG_PATH = tmp / "config.json"
@@ -47,6 +49,21 @@ def isolated():
         mcp.FORCE_AUDIT_PATH = mcp.GOVERNANCE_STATE_DIR / "force-acquire-audit.json"
         # Isolate from the real deployed-vs-repo dogfood check
         mcp._require_dogfood = lambda: None
+        # Isolate the complexity/adversarial review from the REAL repo:
+        # give the sandbox its own tiny governed repo so the reviewer never
+        # diffs this working tree (its 20-file mid-session diff made the
+        # review fail on unrelated evidence-mismatch findings).
+        import subprocess as sp
+        repo = tmp / "hermes-cortex"
+        repo.mkdir()
+        env = {**os.environ, "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t",
+               "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t"}
+        for argv in (["git", "init", "-q"], ["git", "add", "-A"]):
+            sp.run(argv, cwd=repo, env=env, check=True, capture_output=True)
+        (repo / "readme.txt").write_text("tiny sandbox change\n")
+        sp.run(["git", "add", "-A"], cwd=repo, env=env, check=True, capture_output=True)
+        sp.run(["git", "commit", "-qm", "tiny"], cwd=repo, env=env, check=True, capture_output=True)
+        mcp.HOME = tmp
         yield tmp
         for k, v in originals.items():
             setattr(mcp, k, v)
@@ -80,7 +97,9 @@ class TestEndChangeRequiresScoredCycle:
         conn = mcp._db()
         row = conn.execute("SELECT id FROM loop_cycles WHERE task_id='task-A' ORDER BY id DESC LIMIT 1").fetchone()
         conn.close()
-        mcp._feedback_accept({"cycle_id": row[0], "note": "verified",
+        mcp._feedback_accept({"cycle_id": row[0],
+                              "note": "verified: pytest tests/test_x.py -q -> '1 passed in 0.02s'; "
+                                      "diff: ops/scripts/foo.py (+3/-1) adds retry with timeout=5",
                               "completeness": 10, "quality": 9, "progress": 8, **args})
         result = mcp._end_change({"task_id": "task-A", **args})
         text = result.content[0].text
@@ -96,7 +115,8 @@ class TestEndChangeRequiresScoredCycle:
         row = conn.execute("SELECT id FROM loop_cycles WHERE task_id='task-A' ORDER BY id DESC LIMIT 1").fetchone()
         conn.close()
         mcp._feedback_override({"cycle_id": row[0], "correct_decision": "STOP",
-                                "note": "spike done",
+                                "note": "spike: ran python3 spike.py --dry-run -> 'dry-run ok, 0 writes'; "
+                                        "diff: none committed (throwaway prototype, discarded)",
                                 "unscored_reason": "spike discarded — nothing to measure",
                                 **args})
         result = mcp._end_change({"task_id": "task-A", **args})

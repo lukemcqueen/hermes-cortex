@@ -33,11 +33,15 @@ def _mkdb():
 
 
 def _seed_history(conn, job_id, n=10, cost=0.10):
+    # dates relative to NOW — absolute dates rot out of the lookback window
+    import datetime as dt
+    base = dt.datetime.now(dt.timezone.utc) - dt.timedelta(days=20)
     for i in range(n):
+        t = (base + dt.timedelta(days=i)).strftime("%Y-%m-%dT00:00:00Z")
         conn.execute(
             "INSERT INTO cron_runs (job_id, run_time, estimated_cost_usd, no_agent) "
             "VALUES (?, ?, ?, 0)",
-            (job_id, f"2026-08-{10+i:02d}T00:00:00Z", cost))
+            (job_id, t, cost))
     conn.commit()
 
 

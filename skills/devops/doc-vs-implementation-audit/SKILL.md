@@ -70,8 +70,8 @@ protocol applies to any public/docs-driven repo.
   fixing only the install table, the counts, and the PII — not a rewrite.
   Verify-before-claiming beats edit-for-edit's-sake.
 - **Step-table drift hides in installer comments.** The README can say
-  "migrating from gbrain → mycortex" while `install.sh` already says
-  "gbrain DECOMMISSIONED 2026-08-02". Always read the installer's own
+  "migrating from the legacy brain → mycortex" while `install.sh` already says
+  "legacy brain DECOMMISSIONED 2026-08-02". Always read the installer's own
   step markers, not just the README's claims.
 - **Link audits are only trustworthy when exhaustive.** A partial scan that
   checks a few links and says "all good" misses broken ones. Enumerate all

@@ -76,8 +76,10 @@ def _is_probe_removed(src: str) -> bool:
     # Upstream refactored the stdio watchdog from mcp_tool.py into
     # mcp_death_supervisor.py — the _watch_children function no longer
     # exists, so the probe mechanism is gone. The coroutine-leak bug
-    # is structurally removed; nothing to patch. Treat as fixed.
-    return "_watch_children" not in src
+    # is structurally removed; nothing to patch. Require positive evidence
+    # of the refactor (supervisor import/use), not just absence of the
+    # probe — otherwise ANY unrelated content would read as "removed".
+    return "_watch_children" not in src and "mcp_death_supervisor" in src
 
 
 def _apply() -> bool:

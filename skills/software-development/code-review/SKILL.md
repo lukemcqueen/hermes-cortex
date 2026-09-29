@@ -366,7 +366,7 @@ The `[verified]` prefix indicates independent two-axis review approved this chan
 - **change-test-loop** — This pipeline verifies TDD discipline was followed — tests exist, tests pass, no regressions.
 - **root-cause-debugging** — When bugs survive review, use the feedback loop approach to pin down what the review missed.
 - **codebase-design** — Spec axis issues often trace back to shallow modules (no clean seam). Hand off to codebase-design for deepening recommendations.
-- **design-doc-audit** — Spec axis needs a spec. If no `design-doc-audit` skill is installed in your environment, fall back to `prd-lite`/`product-requirements` (PRD template skills) or, failing that, ask the user for the spec before running the Spec axis.
+- **design-doc-audit** — Spec axis needs a spec. If no `design-doc-audit` skill is installed in your environment, fall back to `lite-product-requirements`/`product-requirements` (PRD template skills) or, failing that, ask the user for the spec before running the Spec axis.
 
 ## Pitfalls
 

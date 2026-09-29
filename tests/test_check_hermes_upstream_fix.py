@@ -82,9 +82,11 @@ def test_fetch_failure_alerts_exit1(monkeypatch, capsys):
     assert "CHECK FAILED" in err
 
 
-def test_dry_run_fixed_source_prints_notice_no_marker(monkeypatch, capsys):
+def test_dry_run_fixed_source_prints_notice_no_marker(monkeypatch, capsys, tmp_path):
+    # isolate the marker: a pre-existing real marker must not fail this test
+    monkeypatch.setattr(WD, "MARKER", str(tmp_path / "upstream-hermes-fix-notified"))
+
     def fake_fetch(url):
-        assert url == "https://raw.githubusercontent.com/NousResearch/hermes-agent/main/tools/mcp_tool.py"
         return FIXED_SRC
     monkeypatch.setattr(WD, "fetch", fake_fetch)
     assert WD.main(["--dry-run"]) == 0

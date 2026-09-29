@@ -14,7 +14,7 @@ metadata:
 # Installer Validation
 
 When the repo's installers have been updated over time and a component was
-decommissioned or renamed (real example: gbrain → mycortex, 2026-08-02),
+decommissioned or renamed (real example: legacy brain → mycortex, 2026-08-02),
 run a class-level validation sweep before touching anything. This skill is
 the checklist for "are the installers current and will they work" plus the
 commit-gate reality that attends repo `ops/` work.
@@ -66,12 +66,12 @@ done
 
 Classify each match:
 - **Dead dependency (remove):** an install block that existed only for the
-  old component and now uses a broken URL. Real case: the gbrain
+  old component and now uses a broken URL. Real case: the legacy-brain
   `ollama-linux-*.tgz` `llama-server` tarball extraction — the `.tgz` format
   is a 404 (became `.tar.zst`), and the replacement (mycortex) is pure Python
   needing no `llama-server`. Remove the whole block.
 - **Compat logic (keep, relabel):** password-variable reuse
-  (`GBRAIN_PG_PASSWORD` → `MYCORTEX_PG_PASSWORD`), legacy plugin-name checks
+  (`LEGACY_BRAIN_PG_PASSWORD` → `MYCORTEX_PG_PASSWORD` (variable renamed)), legacy plugin-name checks
   in `config.yaml`, decommission comments. Keep these; only fix wording that
   claims the old component is installed/needed.
 
@@ -93,7 +93,7 @@ The `SERVICE_MAP` key list is duplicated across the live emitter
 (`ops/scripts/health/health-vector.py`) and several consumers that must agree:
 `agent-registry.template.json`, `agent-registry.json.example`,
 `orch-fleet-watchdog.py`, `orch-health-report.py`, and the push script's
-index comments. After any rename (e.g. `gbrain_sources_ok` →
+index comments. After any rename (e.g. `legacy_brain_sources_ok` →
 `mycortex_sources_ok`) all five must match or the fleet watchdog/report misreads
 the live vector. Treat the emitter's list as the authority and grep every copy
 of the old key. Validate the JSON files still parse after edits.

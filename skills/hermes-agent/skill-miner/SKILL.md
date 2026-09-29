@@ -1,74 +1,59 @@
 ---
 name: skill-miner
-description: "Mine loop governance DB, sessions, and memory for reusable skill patterns. Scores findings with nomic-embed-text and reports to the orchestrator via the agent inbox."
-version: 1.0.0
+description: "Use when running the loop-gov skill digest miner."
+version: 2.0.0
 author: Hermes Cortex
 license: MIT
 platforms: [linux]
 metadata:
   hermes:
-    tags: [mining, skills, patterns, loop-governance, moses]
-    related_skills: [soul-refinement, save-lesson, hermes-agent-skill-authoring]
+    tags: [mining, skills, loop-governance, digest]
+    related_skills: [soul-refinement, save-lesson, hermes-agent-skill-authoring, orch-skill-lifecycle]
 ---
 
-# Skill Miner
+# Skill Miner (digest collector)
 
-## What This Is
+> **Removed-and-replaced (2026-08-02):** the original script that mined the loop
+> governance DB, sessions, and memory and inboxed candidate skills to the
+> orchestrator no longer exists on this host — neither deployed nor in the repo
+> (verified 2026-09-28, esther). Its collection role was absorbed into the
+> orchestrator's unified skill-intake pipeline (`orch-skill-lifecycle`, daily
+> 04:34 KST). The `--send` / `--dry-run` CLI documented by older versions of
+> this file is gone.
 
-A script that mines available local data sources on an agent machine for reusable patterns — high-scoring TDD cycles from loop governance, session history patterns, agent memory workflows, and custom skills not yet in the hermes-cortex repo.
+## What survives
 
-Scores findings with `nomic-embed-text` (Ollama) and sends high-confidence results to the orchestrator via the agent inbox (`inbox_orchestrator`) for review and upstreaming.
-
-## Location
+`skill_miner.py` is now a **skill digest collector for loop-governance scoring** —
+it hashes local skill files and feeds the session embedding cache that
+`loop_scorer._cache_boost()` uses.
 
 | File | Path |
 |------|------|
-| Bash wrapper | `~/.hermes-cortex/scripts/skill-miner-wrapper` (deployed) |
-| Python script | `~/hermes-cortex/core/governance/skill_miner.py` |
-| Config | `~/.hermes-cortex/state/skill-miner.json` |
+| Deployed copy (run this) | `~/.hermes-cortex/tools/loop-governance/skill_miner.py` |
+| Repo source | `~/hermes-cortex/core/governance/skill_miner.py` |
+| Output default | `/tmp/skills-manifest.json` (change manifest: added/removed/unchanged_count) |
 
-## Data Sources
-
-1. **Loop governance DB** — high-scoring TDD cycles (`composite >= 0.7`) with
-   clean `feedback_accept` notes. These prove a reusable pattern was found.
-2. **Session history** — recurring tool sequences and user corrections.
-3. **Agent memory** — MEMORY.md / USER.md entries that describe workflows.
-4. **Custom skills** — `~/.hermes/skills/` skills not present in the
-   hermes-cortex repo (candidates for upstreaming).
-
-## Scoring
-
-Each finding is embedded with `nomic-embed-text` and compared against the
-embedding of "reusable Hermes agent skill pattern". Findings above a
-similarity threshold are reported; low-confidence findings are dropped
-to keep the report signal-dense.
-
-## Output
-
-The script sends Moses an inbox message with subject
-`📬 SKILL MINER: N candidates` containing:
-
-- Skill name (or pattern name)
-- Category suggestion
-- Evidence (cycle id / session id / memory entry)
-- Score
-- Suggested trigger/description
-
-Moses reviews the candidates, upstreams the good ones to `skills/`, and
-updates `skill-decisions.json` with the disposition.
-
-## Running Manually
+## Running
 
 ```bash
-# Full scan + report
-python3 ~/hermes-cortex/core/governance/skill_miner.py --send
+# Scan skill files (incremental; manifest written only on change)
+python3 ~/.hermes-cortex/tools/loop-governance/skill_miner.py collect
 
-# Dry run — show candidates without sending
-python3 ~/hermes-cortex/core/governance/skill_miner.py --dry-run
+# Embed new/changed digests into the session cache (silent when nothing new)
+python3 ~/.hermes-cortex/tools/loop-governance/skill_miner.py score
 ```
 
+Silent-watchdog design: zero output + exit 0 = "no changes" — not a failure.
+
+## Known issue (2026-09-28, esther)
+
+`~/.hermes-cortex/scripts/skill-miner-wrapper` is broken: it execs
+`~/.hermes-cortex/scripts/skill_miner.py`, which does not exist on this host.
+Use the deployed toolchain path above instead.
+
 ## Related
+
+- `orch-skill-lifecycle` — the orchestrator's skill intake pipeline (successor to mining)
 - `soul-refinement` — daily SOUL.md refinement (companion mining)
 - `save-lesson` — one-off bug-fix lesson capture
 - `hermes-agent-skill-authoring` — how to author upstreamable SKILL.md files
-- `orch-skill-lifecycle` — the orchestrator's skill intake pipeline

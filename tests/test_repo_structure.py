@@ -187,7 +187,12 @@ def test_no_gbrain_legacy_refs_in_tracked_source():
          # mention the token to BE the record — same rationale as this test's
          # own self-exclusion. Do NOT add live code here; resurrected refs
          # must stay red.
-         ":(exclude)skills/devops/sweep-verification/references/legacy-brain-sweep-2026-08-21.md"],
+         ":(exclude)skills/devops/sweep-verification/references/legacy-brain-sweep-2026-08-21.md",
+         # Dated pre-sweep audit records (2026-08-05/06): they document the
+         # gbrain state being audited AT THAT TIME — same record rationale.
+         ":(exclude)skills/devops/mycortex/references/dream-todo-bridge-2026-08-06.md",
+         ":(exclude)skills/devops/mycortex/references/fleet-migration-verification-ledger-2026-08-05.md",
+         ":(exclude)skills/devops/mycortex/references/gbrain-reference-audit-2026-08-05.md"],
         cwd=REPO_ROOT, capture_output=True, text=True,
     ).stdout.strip()
     assert not hits, f"Legacy gbrain refs found in: {hits}"

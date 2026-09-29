@@ -16,6 +16,18 @@ _spec.loader.exec_module(adv)
 VULN = "/tmp/verify-adv/vuln.py"
 CLEAN = "/tmp/verify-adv/clean.py"
 
+# VULN/CLEAN are referenced by gate tests but never written anywhere —
+# they only passed when /tmp leftovers existed. Create them explicitly.
+_VULN_SRC = 'import os\ndef ping(h):\n    os.system("ping -c 1 " + h)\n'  # adversarial-ignore: command-injection — test fixture deliberately contains the vuln
+_CLEAN_SRC = 'def add(a, b):\n    return a + b\n'
+
+
+@pytest.fixture(autouse=True)
+def _ensure_fixture_files():
+    Path("/tmp/verify-adv").mkdir(parents=True, exist_ok=True)
+    Path(VULN).write_text(_VULN_SRC)
+    Path(CLEAN).write_text(_CLEAN_SRC)
+
 
 def _write(path, content):
     Path(path).write_text(content)

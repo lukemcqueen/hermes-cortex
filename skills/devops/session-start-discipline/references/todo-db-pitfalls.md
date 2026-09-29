@@ -13,12 +13,12 @@ consumes stdin, so psql never sees the SQL, and no rows are updated.
 **Detection:** If a todo's status doesn't change after `update`:
 1. Check the DB directly:
    ```bash
-   psql() { sg docker -c "docker exec -i gbrain-postgres psql -U gbrain -d gbrain -t -A -F '||'" <<< "$1"; }
+   psql() { sg docker -c "docker exec -i mycortex-postgres psql -U mycortex -d mycortex -t -A -F '||'" <<< "$1"; }
    psql "SELECT content, status FROM bus.todos WHERE id='<uuid>'::uuid;"
    ```
 2. Or skip todo-db.py update entirely and use direct SQL:
    ```bash
-   sg docker -c "docker exec -i gbrain-postgres psql -U gbrain -d gbrain -t -A" <<SQL
+   sg docker -c "docker exec -i mycortex-postgres psql -U mycortex -d mycortex -t -A" <<SQL
    UPDATE bus.todos SET status = 'completed', updated_at = now()
    WHERE id = '<uuid>'::uuid;
    SQL

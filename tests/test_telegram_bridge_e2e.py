@@ -187,10 +187,11 @@ def test_e2e_full_loop(servers, tmp_path):
     # 2. It must have landed in inbox_titusclaude on the bus
     assert "inbox_titusclaude" in servers["bus"].queues
     inbound = servers["bus"].queues["inbox_titusclaude"][0]
-    body = json.loads(inbound["body"])
-    assert body["body"] == "check the failing test"
-    assert body["to"] == "titusclaude"
-    assert body["telegram_chat_id"] == CHAT  # reply routing captured
+    env = json.loads(json.loads(inbound["body"]))  # fake bus re-encodes the message string
+    inner = json.loads(env["body"])  # bus contract: body is a JSON string
+    assert inner["text"] == "check the failing test"
+    assert env["to"] == "titusclaude"
+    assert inner["telegram_chat_id"] == CHAT  # reply routing captured
     # offset advanced past the consumed update
     assert state["offset"] == 502
 

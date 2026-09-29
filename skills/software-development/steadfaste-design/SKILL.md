@@ -242,6 +242,37 @@ doc that owns it before the cycle closes — a finding without a home is an orph
 5. Split a large new doc across multiple tool calls — draft the file, then
    append sections via `patch` — rather than one oversized write.
 
+### From BORROW findings to a story/slice plan — split v1-core vs v2-deferred FIRST
+
+When a grounded review produces BORROW findings and Luke then says "story and
+slice the gaps," the honest answer is usually **most of them are not v1-core
+sliceable**, and padding the plan with fake slices is the failure shape. Before
+cutting any slices:
+
+- **Check `core-build-blueprint.md` §6** with `search_files` for what is already
+  `DEFERRED v2, out of core`. Almost every borrow that touches routing / the
+  model pool / the Model Reputation Library / the Evaluator-L2b-critic is
+  already deferred — so it becomes a **recorded DEFERRAL with a v2 trigger**, not
+  a v1 slice. The borrow note is already applied into the owning doc (step 4);
+  the slice plan just names the trigger under which the v2 subsystem will pick
+  it up.
+- **Only an additive core change is a genuine v1 slice** — a new `EventType`
+  member, a new additive field on the frozen schema. Verify against the live
+  enum/schema (`core/crates/abi/src/enums.rs`, `abi.schema.json`), never
+  intuition: grep the actual variant list before declaring something "additive,
+  already covered." (e.g. `TOOL_LOADED` is a real add because the enum has
+  `TOOL_REQUESTED/STARTED/FINISHED` but not it; an "already covered" claim is
+  only safe after reading the enum.)
+- **A one-BUILD/CHECK-story slice plan is a correct outcome, not a thin one.**
+  State the v1-vs-deferred split in a table (finding → verdict → v1 core? →
+  disposition), put the single additive slice in BUILD/CHECK form, and record
+  the rest as deferrals. If a borrow reduces to "already covered by the existing
+  event/field," collapse it and say so rather than inventing work.
+- **A deferral whose only open question is a one-word owner decision** (e.g.
+  "is event X distinct from event Y, or does the existing one suffice?") goes in
+  the slice plan as a named decision point blocking its BUILD — do not silently
+  pick, and do not build past it.
+
 ## Doc-writing pitfalls (these cost real time — proven)
 - **Append large markdown via `write_file` to /tmp then `cat >> file`** — do NOT use `printf`/heredoc; backticks/quotes get shell-escaped and the command errors or writes garbled bytes.
 - **Before appending a numbered `## N.` section, grep `^## N.` in the target.** If a collision exists (an added `## 8.` collided with an existing `## 8.` this project), renumber the NEW section (8→9) AND its subsections (8.1→9.1).
@@ -320,6 +351,28 @@ When Luke says continue on a recorded divergence, the fix direction is **unify t
   section table, cross-check it against the top table + header, and when a
   build task lands, update BOTH the cumulative row and the story-section row in
   the same commit — never just one copy.
+- **The `build-tasks.md` "Where we are" test-count header is hand-maintained and
+  drifts.** Verify the true count with `cargo test --workspace -- --list 2>/dev/null
+  | grep -cE ': test$'` — the `--list` count is authoritative; the "N passed" sum
+  over-inflates it because some target shards are counted more than once. To prove
+  a change is exactly +N (and catch a stale header you would otherwise propagate),
+  `git stash`, run the count (BEFORE), `git stash pop`, run it again (AFTER), diff.
+  Correct the number in the same commit rather than carrying a header that already
+  disagrees with the suite.
+- **The frozen ABI has no code generator behind its "codegen primary" doc
+  claim.** `core/crates/abi/src/enums.rs` is hand-maintained; there is no `abi.ts`
+  and no codegen script, and the parity/roundtrip/golden tests ARE the enforcement.
+  Adding an `EventType` member means updating, in ONE commit: the enum,
+  `abi.schema.json`, `tests/golden/abi_parity.golden.json`, the `all_event_types()`
+  list in `tests/abi_parity.rs`, and the `roundtrip_upper` list in
+  `tests/enums_extra.rs`. Miss one and the parity test fails at the golden fixture.
+  Grep the variant name across `core/crates/abi/` before declaring an add complete
+  — an "already covered, additive" claim is only safe after reading the live enum.
+- **The pre-commit secret-leak detector flags the frozen `abi.schema.json`
+  `"$schema": "https://json-schema.org/…"` line as a "non-placeholder domain".**
+  That is a non-blocking false positive (it is the JSON Schema draft URI, not PII).
+  Do not "fix" the URI or add an ignore — the warning is cosmetic and the commit
+  lands.
 
 ## The doc-corpus shape (current vs historical) — keep it this way
 
