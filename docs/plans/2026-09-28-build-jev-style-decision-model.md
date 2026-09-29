@@ -108,6 +108,13 @@ variant shows even a from-scratch tokenizer is optional):
   (Laya's base) — the synthetic corpus is the moat.
 - Jev's weights are proprietary/unpublished; everything here is open-reimplementation-based.
 
+## Counterpart: the `typesafe-ai` skill
+Esther published **`typesafe-ai`** (skill, deployed to fleet 2026-09-29) covering *using* the
+hosted Jev API — primitives, confidence semantics, composable judgment patterns, and a
+`TYPESAFE_API_KEY` in `~/.hermes/.env`. That skill is about **consuming** Jev; this document
+is about **building** a Jev-style model. They are complementary — use the skill if you want
+the hosted API; use this document if you want to build/train our own.
+
 ## Immediate next step (needs your decision)
 Reply **1, 2, or 3** (or "which domain" — e.g. what decisions you want it to make: routing,
 scoring, guardrails, ticket triage) and I'll turn it into an executable plan: data-synthesis
