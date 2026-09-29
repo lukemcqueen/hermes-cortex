@@ -133,7 +133,7 @@ at the same governance servers:
 | 2 | `.mcp.json` | same MCP servers, `AGENT_NAME=titusclaude` | ✅ shipped (project scope — per-repo override) |
 | 3 | `docs/design/claude-governance.md` (this) | the equivalence contract | ✅ this file |
 | 4 | `ops/scripts/install/install-claude-governance.sh` | **USER-scope registration** (`~/.claude.json` `mcpServers`) — governance MCP available in EVERY repo Claude opens | ✅ shipped 2026-09-29 |
-| 5 | process-scoped session id for non-Hermes callers (`mcp-servers/loop-gov-mcp.py`) | per-Claude-session lock isolation (no host-global collision) | ✅ shipped 2026-09-29 |
+| 5 | per-PROJECT session id for non-Hermes callers (`mcp-servers/loop-gov-mcp.py`) | restart-stable, cross-project-disjoint lock identity | ✅ shipped 2026-09-29 |
 
 ## 7. Shipped 2026-09-29 — the two bugs that broke Claude on separate repos
 
@@ -150,12 +150,23 @@ properly". Root causes and fixes:
    servers, `--check`/`--remove` supported.
 2. **Non-Hermes session ids collided.** Without the Hermes enforcer's
    per-call injection, `get_session_id()` fell back to the HOST-GLOBAL
-   `~/.hermes/session.id` cache and the Hermes marker files — every Claude
-   session on the box shared one id, so `begin_change` from one blocked the
-   next and any session could release another's lock. Fix: a PROCESS-scoped
-   id (Claude Code spawns one stdio MCP child per session/project), never
-   adopting Hermes markers or the shared cache. Hermes callers are unchanged
-   (per-call injection still wins — Priority 0).
+   `~/.hermes/session.id` cache and the Hermes marker files — every session
+   on the box (any repo, Claude OR Hermes) shared one id, so `begin_change`
+   from one blocked the next and any session could release another's lock
+   ACROSS UNRELATED REPOS. Fix: a per-PROJECT id persisted at
+   `~/.hermes-cortex/state/.session-<repo_slug>.id`:
+   - **restart-stable** — an MCP-child restart mid-session keeps the id, so
+     the lock survives (Claude Code restarts the server between calls);
+   - **cross-project disjoint** — different repos never share an id (the
+     collision class removed);
+   - **same-project serialization, not theft** — two concurrent Claude
+     sessions in ONE repo share the id, but they cannot both hold a change:
+     `begin_change`'s one-PENDING-cycle gate refuses the second while the
+     first is open (tested), so no silent lock release is reachable through
+     the sanctioned flow. A per-session-unique AND restart-stable id is not
+     achievable without a session identity from Claude Code itself (none is
+   exposed to stdio MCP servers); per-project is the strongest identity
+   available and matches how the git hooks already scope enforcement.
 
 Tests: `tests/test_non_hermes_session_id.py` (7 assertions),
 `tests/test_claude_governance_installer.sh` (4 assertions; runs against a
