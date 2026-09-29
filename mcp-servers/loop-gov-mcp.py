@@ -679,8 +679,23 @@ def _db() -> sqlite3.Connection:
         # writer queues on the busy timeout instead of erroring.
         conn.execute("PRAGMA journal_mode=WAL")
         conn.execute("PRAGMA busy_timeout=30000")
-    except sqlite3.OperationalError:
-        pass
+    except sqlite3.OperationalError as e:
+        # Don't silently swallow (adversarial ADV-0-3): a failed pragma means
+        # concurrent sessions will NOT serialize — log it loudly so a doctor
+        # reviewer can see WAL/busy_timeout are not in effect on this DB.
+        log.warning("loop-gov: could not enable WAL/busy_timeout on %s: %s", LOOP_DB, e)
+    else:
+        # Verify the pragma actually took (a pragma can be silently ignored if
+        # another connection holds the DB open in a conflicting journal mode).
+        try:
+            jm = conn.execute("PRAGMA journal_mode").fetchone()[0]
+            bt = conn.execute("PRAGMA busy_timeout").fetchone()[0]
+            if str(jm).lower() != "wal":
+                log.warning("loop-gov: journal_mode=%s (expected wal) on %s", jm, LOOP_DB)
+            if int(bt) < 30000:
+                log.warning("loop-gov: busy_timeout=%s (expected >=30000) on %s", bt, LOOP_DB)
+        except sqlite3.OperationalError as e:
+            log.warning("loop-gov: could not verify pragmas on %s: %s", LOOP_DB, e)
     conn.execute(
         """CREATE TABLE IF NOT EXISTS loop_cycles (
             id              INTEGER PRIMARY KEY AUTOINCREMENT,
