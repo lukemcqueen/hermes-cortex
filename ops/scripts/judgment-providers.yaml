@@ -36,7 +36,12 @@ routing:
     bus-triage:
       primary: jev
       fallback: []
-      shadow: von          # PROBATION: von under evaluation on bus triage
+      shadow:
+        provider: von
+        mode: adaptive        # intelligent shadow: uncertain calls always
+        confidence_floor: 0.95  # shadowed; confident calls sampled, decaying
+        sample_rate: 0.2        # to a 2% drift canary as von proves itself
+        decay_after_clean: 50
     bus-dedup:
       primary: jev
       fallback: []

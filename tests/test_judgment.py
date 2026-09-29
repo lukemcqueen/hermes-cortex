@@ -211,3 +211,60 @@ def test_missing_api_key_fails_closed(monkeypatch):
         shadow_fn=None, log_path=None,
     )
     assert out["status"] == "unavailable"
+
+
+# ---------- intelligent shadow (adaptive mode) ----------
+
+ADAPTIVE = {
+    "provider": "von", "mode": "adaptive",
+    "sample_rate": 0.2, "confidence_floor": 0.95,
+}
+CONFIDENT_NOUL = {"type": "noul", "noul": 0.02}     # confidence 0.98 >= floor
+UNCERTAIN_NOUL = {"type": "noul", "noul": 0.52}     # confidence 0.52 < floor
+
+
+def test_answer_confidence_noul_margin():
+    assert judgment.answer_confidence(CONFIDENT_NOUL) == 0.98
+    assert judgment.answer_confidence(UNCERTAIN_NOUL) == 0.52
+    assert judgment.answer_confidence(None) is None
+
+
+def test_adaptive_shadows_uncertain_always():
+    go, reason = judgment.should_shadow(ADAPTIVE, {"is_action": UNCERTAIN_NOUL}, env={})
+    assert go is True and reason == "uncertain"
+
+
+def test_adaptive_skips_confident_call(monkeypatch):
+    monkeypatch.setattr(judgment.random, "random", lambda: 0.99)  # never sample
+    go, reason = judgment.should_shadow(ADAPTIVE, {"is_action": CONFIDENT_NOUL}, env={})
+    assert go is False and reason == "confident-skip"
+
+
+def test_adaptive_samples_confident_call_by_rate(monkeypatch):
+    monkeypatch.setattr(judgment.random, "random", lambda: 0.01)  # always sample
+    go, reason = judgment.should_shadow(ADAPTIVE, {"is_action": CONFIDENT_NOUL}, env={})
+    assert go is True and reason == "sampled"
+
+
+def test_score_answer_without_probabilities_counts_uncertain():
+    go, reason = judgment.should_shadow(ADAPTIVE, {"sev": {"type": "score", "score": 3}}, env={})
+    assert go is True and reason == "uncertain"
+
+
+def test_adaptive_decay_after_clean_streak(tmp_path, monkeypatch):
+    state = tmp_path / "shadow-state.json"
+    state.write_text(json.dumps({"von": 100}))  # proven candidate
+    # decayed rate = 0.2 * 0.5 = 0.1: random()=0.15 skips (full rate 0.2 would sample)
+    monkeypatch.setattr(judgment.random, "random", lambda: 0.15)
+    go, reason = judgment.should_shadow(ADAPTIVE, {"is_action": CONFIDENT_NOUL},
+                                        env={"JUDGMENT_SHADOW_STATE_PATH": str(state)})
+    assert go is False  # decay shrank the rate below the draw
+
+
+def test_decay_never_below_canary_floor(tmp_path, monkeypatch):
+    state = tmp_path / "shadow-state.json"
+    state.write_text(json.dumps({"von": 10_000_000}))
+    monkeypatch.setenv("JUDGMENT_SHADOW_STATE_PATH", str(state))
+    monkeypatch.setattr(judgment.random, "random", lambda: 0.001)
+    go, reason = judgment.should_shadow(ADAPTIVE, {"is_action": CONFIDENT_NOUL}, env={})
+    assert go is True and reason == "sampled"  # 2% canary survives any streak

@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import json
 import os
+import random
 import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
@@ -91,6 +92,88 @@ def provider_eligible(provider_id: str, class_cfg: dict, config: dict) -> bool:
 
 
 # ---------------------------------------------------------------- shadow
+
+def answer_confidence(ans: dict | None) -> float | None:
+    """Best-effort confidence of one typed answer (0..1), or None if unknown.
+
+    - explicit 'confidence' field wins
+    - noul: max(p, 1-p) — distance from the 0.5 flip point
+    - choice: max of the probability distribution
+    - score: unknown without level probabilities -> None (treated as uncertain)
+    """
+    if not ans:
+        return None
+    if isinstance(ans.get("confidence"), (int, float)):
+        return float(ans["confidence"])
+    t = ans.get("type")
+    if t == "noul":
+        p = float(ans.get("noul", 0.5))
+        return max(p, 1.0 - p)
+    if t == "choice":
+        probs = [float(v) for v in (ans.get("probabilities") or {}).values()]
+        return max(probs) if probs else None
+    return None
+
+
+def should_shadow(shadow_cfg, answers: dict | None, env: dict | None = None,
+                  state: dict | None = None) -> tuple[bool, str]:
+    """Intelligent shadow gate. Returns (shadow_now, reason).
+
+    shadow_cfg forms:
+      "provider-id"                                   -> always (probation)
+      {"provider": id, "mode": "adaptive",
+       "sample_rate": 0.2, "confidence_floor": 0.95}  -> intelligent
+    Adaptive rule: shadow UNCERTAIN calls always (low margin = decision
+    relevance is highest exactly there); confident calls are sampled at
+    sample_rate — a standing low-rate sample keeps candidate-drift visible.
+    JUDGMENT_SHADOW=off (kill switch) is handled upstream in build_call_plan.
+    """
+    env = env if env is not None else dict(os.environ)
+    if not shadow_cfg:
+        return False, "no-shadow"
+    if isinstance(shadow_cfg, str):
+        return True, "always"
+    cfg = shadow_cfg if isinstance(shadow_cfg, dict) else {}
+    if cfg.get("mode") != "adaptive":
+        return True, "always"
+    floor = float(cfg.get("confidence_floor", 0.95))
+    answers = answers or {}
+    if not answers:
+        return True, "no-answers"
+    confs = [answer_confidence(a) for a in answers.values()]
+    if any(c is None or c < floor for c in confs):
+        return True, "uncertain"
+    rate = float(cfg.get("sample_rate", 0.0))
+    # decay: consecutive clean results shrink the sample rate (state file)
+    rate = max(rate * _decay_factor(cfg, env), 0.02)  # 2% drift canary floor
+    if random.random() < rate:
+        return True, "sampled"
+    return False, "confident-skip"
+
+
+_DECAY_STATE: dict | None = None
+
+def _decay_factor(cfg: dict, env: dict) -> float:
+    """<1 shrinks shadow sampling as the candidate proves itself.
+
+    State: {class/provider key: consecutive non-divergent count}.
+    clean_streak >= threshold (default 50) -> 0.5; resets to 1.0 on any
+    divergence (written by the corpus-log consumer, not here).
+    """
+    global _DECAY_STATE
+    path = env.get("JUDGMENT_SHADOW_STATE_PATH")
+    if not path:
+        return 1.0
+    try:
+        if _DECAY_STATE is None:
+            with open(path) as fh:
+                _DECAY_STATE = json.load(fh)
+        streak = float(_DECAY_STATE.get(cfg.get("provider", ""), 0))
+        threshold = float(cfg.get("decay_after_clean", 50))
+        return 0.5 if streak >= threshold else 1.0
+    except Exception:
+        return 1.0  # no/unreadable state -> full sampling (fail towards more data)
+
 
 def build_call_plan(decision_class: str, config: dict, env: dict | None = None) -> dict:
     """Resolve primary + shadow for a decision class.
@@ -197,21 +280,26 @@ def decide(decision_class: str, state, questions: dict, config: dict | None = No
             except Exception as exc:  # noqa: BLE001
                 primary_err = str(exc)
 
-    # shadow: fire-and-forget, best-effort, corpus only
+    # shadow: intelligent gate (uncertain -> always; confident -> sampled),
+    # fire-and-forget, best-effort, corpus only
     shadow_rec = None
-    if plan["shadow"] and primary_result is not None:
+    do_shadow, shadow_reason = should_shadow(plan["shadow"], (primary_result or {}).get("answers"), env)
+    if do_shadow and primary_result is not None:
+        s_id = plan["shadow"].get("provider") if isinstance(plan["shadow"], dict) else plan["shadow"]
         try:
+            if not s_id:
+                raise RuntimeError("shadow config missing 'provider'")
             s_body = dict(body)
-            s_ans = _invoke(config["providers"][plan["shadow"]], s_body, env,
+            s_ans = _invoke(config["providers"][s_id], s_body, env,
                             shadow_fn or primary_fn).get("answers")
             diffs = {q: divergent(primary_result["answers"].get(q), s_ans.get(q))
                      for q in questions if q in (s_ans or {})}
-            shadow_rec = {"provider": plan["shadow"], "answers": s_ans,
+            shadow_rec = {"provider": s_id, "reason": shadow_reason, "answers": s_ans,
                           "divergent": any(diffs.values()),
                           "divergent_questions": diffs}
         except Exception as exc:  # noqa: BLE001 — shadow failures are never fatal, but logged
-            print(f"judgment: shadow provider {plan['shadow']} failed: {exc}", flush=True)
-            shadow_rec = {"provider": plan["shadow"], "answers": None,
+            print(f"judgment: shadow provider {s_id} failed: {exc}", flush=True)
+            shadow_rec = {"provider": s_id, "reason": shadow_reason, "answers": None,
                           "divergent": None, "divergent_questions": {}}
 
     rec = {"ts": datetime.now(timezone.utc).isoformat(), "decision_class": decision_class,
