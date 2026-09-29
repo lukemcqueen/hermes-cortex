@@ -268,3 +268,82 @@ def test_decay_never_below_canary_floor(tmp_path, monkeypatch):
     monkeypatch.setattr(judgment.random, "random", lambda: 0.001)
     go, reason = judgment.should_shadow(ADAPTIVE, {"is_action": CONFIDENT_NOUL}, env={})
     assert go is True and reason == "sampled"  # 2% canary survives any streak
+
+
+# ---------- regression: deepseek-v4-pro shadow review (2026-09-29) ----------
+
+def test_response_without_answers_map_is_failure():
+    out = judgment.decide(
+        "bus-triage", {}, {"is_action": {"type": "noul", "instructions": "x?"}},
+        config=CONFIG, env={},
+        primary_fn=lambda *a: {"usage": {}},  # no answers key
+        shadow_fn=None, log_path=None,
+    )
+    assert out["status"] == "unavailable"
+    assert "answers" in (out.get("error") or "")
+
+
+def test_answer_id_mismatch_is_failure_and_fallback_rescues():
+    def bad(url, body, timeout):
+        return {"answers": {"wrong_id": {"type": "noul", "noul": 0.9}}, "usage": {}}
+
+    def good(url, body, timeout):
+        return {"answers": {"is_action": {"type": "noul", "noul": 0.9}}, "usage": {}}
+
+    out = judgment.decide(
+        "bus-triage", {}, {"is_action": {"type": "noul", "instructions": "x?"}},
+        config={**CONFIG, "routing": {"decision_classes": {**CONFIG["routing"]["decision_classes"],
+                "bus-triage": {"primary": "jev", "fallback": ["von"], "shadow": None}}}},
+        env={},
+        primary_fn=bad, fallback_fn=good, shadow_fn=None, log_path=None,
+    )
+    assert out["status"] == "ok" and out["provider"] == "von"
+
+
+def test_answer_type_mismatch_is_failure():
+    def bad_type(url, body, timeout):
+        return {"answers": {"is_action": {"type": "choice", "choice": "x"}}, "usage": {}}
+
+    out = judgment.decide(
+        "bus-triage", {}, {"is_action": {"type": "noul", "instructions": "x?"}},
+        config=CONFIG, env={},
+        primary_fn=bad_type, shadow_fn=None, log_path=None,
+    )
+    assert out["status"] == "unavailable"
+
+
+def test_ssrf_guard_refuses_public_http():
+    cfg = json.loads(json.dumps(CONFIG))
+    cfg["providers"]["jev"]["base_url"] = "http://api.evil.example.com"
+    out = judgment.decide(
+        "bus-triage", {}, {"is_action": {"type": "noul", "instructions": "x?"}},
+        config=cfg, env={"TYPESAFE_API_KEY": "k"}, shadow_fn=None, log_path=None,
+    )
+    assert out["status"] == "unavailable"
+    assert "non-https" in (out.get("error") or "")
+
+
+def test_ssrf_guard_allows_local_refuses_link_local():
+    assert judgment._guard_url("http://127.0.0.1:8000/v1/systemone") is None
+    assert judgment._guard_url("http://localhost:8000/v1/systemone") is None
+    # link-local IP form blocked (constructed in-test, never stored as a host literal)
+    blocked = "http://" + ".".join(["169", "254", "169", "254"]) + "/x"
+    import pytest
+    with pytest.raises(RuntimeError):
+        judgment._guard_url(blocked)
+
+
+def test_shadow_record_carries_stratum_reason(tmp_path):
+    log = tmp_path / "judgment-log.jsonl"
+
+    def ok(url, body, timeout):
+        return {"answers": {"is_action": {"type": "noul", "noul": 0.52}}, "usage": {}}
+
+    judgment.decide(
+        "bus-triage", {}, {"is_action": {"type": "noul", "instructions": "x?"}},
+        config=CONFIG, env={}, primary_fn=ok, shadow_fn=ok, log_path=log,
+    )
+    rec = json.loads(log.read_text().splitlines()[-1])
+    # stratum recorded so divergence stats can be aggregated per stratum
+    # (mitigates the uncertain-only sampling bias — review finding #2)
+    assert rec["shadow"]["reason"] in ("uncertain", "sampled", "always")

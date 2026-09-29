@@ -136,13 +136,17 @@ def should_shadow(shadow_cfg, answers: dict | None, env: dict | None = None,
     cfg = shadow_cfg if isinstance(shadow_cfg, dict) else {}
     if cfg.get("mode") != "adaptive":
         return True, "always"
-    floor = float(cfg.get("confidence_floor", 0.95))
+    floor_default = float(cfg.get("confidence_floor", 0.95))
+    floors = {**{"noul": floor_default, "choice": floor_default, "score": floor_default},
+              **{k: float(v) for k, v in (cfg.get("confidence_floors") or {}).items()}}
     answers = answers or {}
     if not answers:
         return True, "no-answers"
-    confs = [answer_confidence(a) for a in answers.values()]
-    if any(c is None or c < floor for c in confs):
-        return True, "uncertain"
+    for a in answers.values():
+        c = answer_confidence(a)
+        floor = floors.get((a or {}).get("type"), floor_default)
+        if c is None or c < floor:
+            return True, "uncertain"
     rate = float(cfg.get("sample_rate", 0.0))
     # decay: consecutive clean results shrink the sample rate (state file)
     rate = max(rate * _decay_factor(cfg, env), 0.02)  # 2% drift canary floor
@@ -151,28 +155,27 @@ def should_shadow(shadow_cfg, answers: dict | None, env: dict | None = None,
     return False, "confident-skip"
 
 
-_DECAY_STATE: dict | None = None
-
 def _decay_factor(cfg: dict, env: dict) -> float:
     """<1 shrinks shadow sampling as the candidate proves itself.
 
-    State: {class/provider key: consecutive non-divergent count}.
-    clean_streak >= threshold (default 50) -> 0.5; resets to 1.0 on any
-    divergence (written by the corpus-log consumer, not here).
+    State: {provider: consecutive non-divergent count}, re-read on EVERY call
+    (no cache — cron scripts are short-lived but overlapping; a cached
+    snapshot lags real drift resets). Writers must write atomically
+    (tmp file + rename). Unreadable state -> full sampling (fail towards
+    more data).
     """
-    global _DECAY_STATE
     path = env.get("JUDGMENT_SHADOW_STATE_PATH")
     if not path:
         return 1.0
     try:
-        if _DECAY_STATE is None:
-            with open(path) as fh:
-                _DECAY_STATE = json.load(fh)
-        streak = float(_DECAY_STATE.get(cfg.get("provider", ""), 0))
+        with open(path) as fh:
+            state = json.load(fh)
+        streak = float(state.get(cfg.get("provider", ""), 0))
         threshold = float(cfg.get("decay_after_clean", 50))
         return 0.5 if streak >= threshold else 1.0
-    except Exception:
-        return 1.0  # no/unreadable state -> full sampling (fail towards more data)
+    except Exception as exc:  # noqa: BLE001 — degrade to more shadowing, say so
+        print(f"judgment: shadow state unreadable ({path}): {exc}", flush=True)
+        return 1.0
 
 
 def build_call_plan(decision_class: str, config: dict, env: dict | None = None) -> dict:
@@ -222,6 +225,7 @@ def divergent(a: dict | None, b: dict | None,
 
 def _http_post(base_url: str, body: dict, timeout: float, api_key: str = "") -> dict:
     url = base_url.rstrip("/") + "/v1/systemone"
+    _guard_url(url)
     data = json.dumps(body).encode()
     headers = {"Content-Type": "application/json"}
     if api_key:
@@ -229,6 +233,44 @@ def _http_post(base_url: str, body: dict, timeout: float, api_key: str = "") -> 
     req = urllib.request.Request(url, data=data, headers=headers)
     with urllib.request.urlopen(req, timeout=timeout) as resp:
         return json.load(resp)
+
+
+def _guard_url(url: str) -> None:
+    """SSRF guard: https for public hosts; plain http only for loopback/LAN."""
+    from urllib.parse import urlparse
+    import ipaddress
+    p = urlparse(url)
+    host = p.hostname or ""
+    if p.scheme == "https":
+        return
+    try:
+        addr = ipaddress.ip_address(host)
+        # loopback/LAN ok (von local); link-local is the cloud-metadata
+        # attack surface — never allowed over http
+        private = addr.is_loopback or (addr.is_private and not addr.is_link_local)
+    except ValueError:
+        private = host in ("localhost", "") or host.endswith(".local") or host.endswith(".internal")
+    if p.scheme == "http" and private:
+        return
+    raise RuntimeError(f"judgment: refusing non-https endpoint for a non-local host: {url}")
+
+
+def _validate_response(result, questions: dict) -> str | None:
+    """Validate a provider response. Returns error string, or None if usable.
+
+    answers must be a dict whose keys exactly match the questions, with
+    matching types. A malformed response is a FAILURE (never served), so a
+    provider bug can never ship a silent wrong answer.
+    """
+    if not isinstance(result, dict) or not isinstance(result.get("answers"), dict):
+        return "response missing answers map"
+    ans = result["answers"]
+    if set(ans) != set(questions):
+        return f"answer ids mismatch: got {sorted(ans)} want {sorted(questions)}"
+    for qid, q in questions.items():
+        if not isinstance(ans[qid], dict) or ans[qid].get("type") != q.get("type"):
+            return f"answer '{qid}' type mismatch"
+    return None
 
 
 def _invoke(provider_cfg: dict, body: dict, env: dict, fn=None) -> dict:
@@ -262,9 +304,17 @@ def decide(decision_class: str, state, questions: dict, config: dict | None = No
 
     primary_result, primary_err = None, None
     primary_id = plan["primary"]
+
+    def _usable(result):
+        """Return (result, None) if valid, else (None, error)."""
+        err = _validate_response(result, questions)
+        return (None, err) if err else (result, None)
+
     if primary_id and provider_eligible(primary_id, class_cfg, config):
         try:
-            primary_result = _invoke(config["providers"][primary_id], body, env, primary_fn)
+            primary_result, verr = _usable(_invoke(config["providers"][primary_id], body, env, primary_fn))
+            if verr:
+                primary_err = verr
         except Exception as exc:  # noqa: BLE001 — fail-closed on ANY provider error
             primary_err = str(exc)
 
@@ -273,8 +323,12 @@ def decide(decision_class: str, state, questions: dict, config: dict | None = No
             if not provider_eligible(fb_id, class_cfg, config):
                 continue
             try:
-                primary_result = _invoke(config["providers"][fb_id], body, env,
-                                         fallback_fn or primary_fn)
+                candidate, verr = _usable(_invoke(config["providers"][fb_id], body, env,
+                                                  fallback_fn or primary_fn))
+                if verr:
+                    primary_err = verr
+                    continue
+                primary_result = candidate
                 primary_id, primary_err = fb_id, None
                 break
             except Exception as exc:  # noqa: BLE001
@@ -292,6 +346,8 @@ def decide(decision_class: str, state, questions: dict, config: dict | None = No
             s_body = dict(body)
             s_ans = _invoke(config["providers"][s_id], s_body, env,
                             shadow_fn or primary_fn).get("answers")
+            if not isinstance(s_ans, dict):
+                raise RuntimeError("shadow response missing answers map")
             diffs = {q: divergent(primary_result["answers"].get(q), s_ans.get(q))
                      for q in questions if q in (s_ans or {})}
             shadow_rec = {"provider": s_id, "reason": shadow_reason, "answers": s_ans,
@@ -316,8 +372,12 @@ def decide(decision_class: str, state, questions: dict, config: dict | None = No
         log_path = env.get("JUDGMENT_LOG_PATH")
     if log_path:
         try:
+            import fcntl
             with open(log_path, "a") as fh:
+                fcntl.flock(fh, fcntl.LOCK_EX)  # atomic line appends across crons
                 fh.write(json.dumps(rec) + "\n")
+                fh.flush()
+                fcntl.flock(fh, fcntl.LOCK_UN)
         except OSError as exc:
             print(f"judgment: corpus log write failed ({log_path}): {exc}", flush=True)
 
