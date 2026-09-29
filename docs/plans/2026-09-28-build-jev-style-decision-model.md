@@ -39,14 +39,21 @@ model: a **395M ModernBERT (large) encoder** + **option-marker head**. One forwa
 all declared options against the state; softmax over options gives the distribution. CPU-served
 (OpenVINO), also CUDA/ROCm/MPS. Wire-compatible with TypeSafe's `/v1/systemone` spec.
 
-Its `training/` directory is literally the open recipe you want. It contains:
-- **Synthetic data generators** (`generate_synthetic_decisions.py`, `generate_standard_spines.py`,
-  `generate_numeric_decisions.py`, `generate_adequacy_decisions.py`, `prepare_universal_dataset.py`)
+Its `training/` directory is the open recipe (file listing **verified by browsing the repo
+directly**, 2026-09-28): `train_option_marker.py`, `train_rlcd.py`,
+`generate_synthetic_decisions.py`, `generate_standard_spines.py`, `generate_numeric_decisions.py`,
+`generate_adequacy_decisions.py`, `prepare_universal_dataset.py`, `prepare_distill_dataset.py`,
+`prepare_decision_dataset.py`, `prepare_jevbench_dataset.py`, `prepare_long_context_dataset.py`,
+`balance_corpus.py`, `contamination_audit.py`, `harden_corpus.py`, `download_and_verify.py`,
+`launch_aws_spot.py`, `launch_marker_training.py`, `launch_universal_training.py`,
+`launch_continue_training.py`. See https://github.com/wfzyx/von/tree/master/training.
+It groups into:
+- **Synthetic data generators** — build decision corpora with derivable ground truth
 - **`train_option_marker.py`** — trains the option-marker head (choice/score/noul)
-- **`train_rlcd.py`** — implements the RLCD method directly (4-GPU DDP)
-- **Distillation** (`prepare_distill_dataset.py`, soft-label training)
-- **Data hygiene** (`contamination_audit.py`, `balance_corpus.py`, `harden_corpus.py`)
-- **AWS spot launcher** (`launch_aws_spot.py`) — cheap cloud training orchestration
+- **`train_rlcd.py`** — implements RLCD (4-GPU DDP) for calibration
+- **Distillation** — `prepare_distill_dataset.py` (soft-label training)
+- **Data hygiene** — `contamination_audit.py`, `balance_corpus.py`, `harden_corpus.py`
+- **AWS spot launcher** — `launch_aws_spot.py` (cheap cloud orchestration)
 
 ## The ecosystem landscape (what to start from)
 | Project | Params | Base | Train yourself? | Best for |
@@ -58,10 +65,19 @@ Its `training/` directory is literally the open recipe you want. It contains:
 | **NanoJev** | 0.6B | Qwen3 + heads | Trained on 4 games | Real-time control loops (beats Jev on ViZDoom) |
 | **jevlike** | any | byte encoder / any HF encoder | **Yes — laptop trainer** | **Your own label set, from scratch** |
 
-**The honest calibration caveat** (from the independent 49-task jabr benchmark):
+**The honest calibration caveat** (from the independent 49-task **jabr** classifier benchmark,
+surveyed in the pinggy ecosystem article):
 - Jev 0.966 macro accuracy vs best open (Von) 0.704 **zero-shot / out-of-domain** — a 26-pt gap.
 - **In-domain, after you fine-tune on your own labels, the open models are competitive.**
 - The gap is a *research* problem (training data / calibration), not an architecture problem.
+
+## Benchmark disambiguation (two different benchmarks)
+- **jabr** — the *independent* 49-task classifier benchmark (triage, compliance, legal, DevOps,
+  linguistics, safety; 869 cases) surveyed by the pinggy ecosystem article. This is where **Jev
+  0.966 vs Von 0.704** (zero-shot / OOD) comes from. URL in Sources.
+- **JevBench v1.x** — a *vendor* System One benchmark that von's README uses to self-report its
+  own I/C/S/K axes. Watching it: Jev 1.13 composite 63.3, von 1.2 composite 27.5. URL in Sources.
+Do not conflate the two: one is third-party independent evaluation, the other is vendor-benchmark.
 
 ## How to build it ourselves — recommended path
 The **from-the-ground-up** route that actually works (they all start from a pretrained encoder;
@@ -86,8 +102,11 @@ variant shows even a from-scratch tokenizer is optional):
 ## Compute / cost reality
 - **This host: NO GPU, 15 GB RAM.** A 395M encoder will fine-tune but slowly on CPU; for
   real iteration use a cheap cloud GPU (T4/RTX ~$0.5–1.5/hr, or `launch_aws_spot.py` + spot).
-- **Budget anchors:** fine-tuning an open encoder + decision head on synthetic data is
-  **$50–$300** for a small specialized model — not the $200–5k of LLM pretraining.
+- **Budget anchors (INFORMAL estimate, not a vendor quote):** fine-tuning an open encoder +
+  decision head on synthetic data is roughly **$50–$300** of cloud GPU time for a small
+  specialized model — an order cheaper than the $200–5k of LLM pretraining. Derives from
+  community/anecdotal cloud pricing (T4/RTX $0.5–1.5/hr); validate against current cloud
+  pricing before committing budget. The `launch_aws_spot.py` pattern is the cost-control lever.
 - The bottleneck is **data synthesis + calibration tuning**, not raw FLOPs.
 
 ## Decision point — three concrete options
@@ -122,6 +141,11 @@ variant shows even a from-scratch tokenizer is optional):
 **Verify-first note:** TypeSafe's Jev weights, exact architecture and training data are
 proprietary/unpublished (per Wikipedia + TypeSafe docs as of 2026-09-28); every "build it
 ourselves" claim rests on the open re-implementations (von et al.), not on TypeSafe internals.
+Claims sourced: primitives/RLCD/synthetic-only/cost-speed from TypeSafe blog+docs+Wikipedia;
+von architecture + `training/` listing from the von repo (browsed directly); jabr benchmark
+numbers from the pinggy survey; JevBench numbers from von's README. Representations not sourced
+as primary: the $50–300 budget (informal estimate), the "~24h field reproduction" timing
+(anecdotal, from pinggy/AINews survey prose).
 
 ## Counterpart: the `typesafe-ai` skill
 Esther published **`typesafe-ai`** (skill, deployed to fleet 2026-09-29) covering *using* the
