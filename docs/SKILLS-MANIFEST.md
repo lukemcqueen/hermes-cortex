@@ -275,6 +275,7 @@ their domain.
 | `sudoers-audit` | 1.0.0 | Systematically audit, test, and debug sudoers NOPASSWD rules — verify allowed commands actually run without... | `skill_view(name='sudoers-audit')` |
 | `sweep-verification` | 1.0.0 | Verify a decommission sweep removed every file and ref. | `skill_view(name='sweep-verification')` |
 | `sync-allow-ips-to-fail2ban` | 1.0.0 | Sync IPs from allow-ips-manual.conf to fail2ban ignoreip | `skill_view(name='sync-allow-ips-to-fail2ban')` |
+| `system-one-judgment` | 1.0.0 | Use when integrating Jev/von judgment providers or clients. | `skill_view(name='system-one-judgment')` |
 | `task-queue-workflow` | 1.0.0 | Use when claiming task-db slices under task model v3. | `skill_view(name='task-queue-workflow')` |
 | `telegram-delivery-diagnostics` | 1.0.0 | Diagnose and fix Telegram delivery issues for Hermes cron jobs — delivery pipeline tracing, DNS/network dia... | `skill_view(name='telegram-delivery-diagnostics')` |
 | `terminal-emulator-config` | 1.0.0 | Diagnose terminal input issues and review emulator configs. | `skill_view(name='terminal-emulator-config')` |
@@ -350,7 +351,7 @@ their domain.
 
 | Skill | Version | Purpose | Load With |
 |-------|---------|---------|-----------|
-| `skill-miner` | 1.0.0 | Mine loop governance DB, sessions, and memory for reusable skill patterns. Scores findings with nomic-embed... | `skill_view(name='skill-miner')` |
+| `skill-miner` | 2.0.0 | Use when running the loop-gov skill digest miner. | `skill_view(name='skill-miner')` |
 | `soul-refinement` | 1.0.0 | Daily SOUL.md refinement process — mine sessions for lessons, apply corrections, codify principles. Optiona... | `skill_view(name='soul-refinement')` |
 
 ## Hermes Desktop Plugins (1 skill)
@@ -582,10 +583,10 @@ their domain.
 | `hermetic-python-testing` | 1.0.0 | Write Python modules with hermetic unit-test seams. | `skill_view(name='hermetic-python-testing')` |
 | `legacy-codebase-navigation` | 1.0.0 | Navigate, understand, and debug large legacy codebases (Rails, Django, early Node). Techniques for tracing... | `skill_view(name='legacy-codebase-navigation')` |
 | `lesson-aware-agent` | 1.0.0 | Universal lesson-aware injection pattern. Makes every agent action memory-aware: search lessons before acti... | `skill_view(name='lesson-aware-agent')` |
+| `lite-product-requirements` | 1.0.0 | Concise 1-page PRD template for lightweight product requirements documentation | `skill_view(name='lite-product-requirements')` |
 | `logging-patterns` | 1.0.0 | Structured logging conventions: log levels, format standards, context injection, correlation IDs, sensitive... | `skill_view(name='logging-patterns')` |
 | `mcp-server-building` | 1.1.0 | Build, test, and debug MCP servers for Hermes Agent — logging, dependency checks, fix hints, and best pract... | `skill_view(name='mcp-server-building')` |
 | `memory-architecture` | 1.0.0 | Design and maintain agent memory system: MEMORY.md structure, privacy boundaries, gitignore per brain sourc... | `skill_view(name='memory-architecture')` |
-| `lite-product-requirements` | 1.0.0 | Concise 1-page PRD template for lightweight product requirements documentation | `skill_view(name='lite-product-requirements')` |
 | `product-requirements` | 1.0.0 | Concise 1-page PRD template: problem, scope, functional/non-functional requirements, edge cases, acceptance... | `skill_view(name='product-requirements')` |
 | `project-map` | 1.0.0 | Structural project analysis — build a dependency graph so agents | `skill_view(name='project-map')` |
 | `prove-before-create` | 1.0.0 | Enforce the "prove existing can't handle it" discipline before creating any new file. Supplements survey-be... | `skill_view(name='prove-before-create')` |
@@ -622,6 +623,12 @@ their domain.
 | Skill | Version | Purpose | Load With |
 |-------|---------|---------|-----------|
 | `agent-daily-bible-reading` | 1.0.0 | Daily bible reading cron pattern — generates SOUL.md entries and brain pages for agent-wide scripture engag... | `skill_view(name='agent-daily-bible-reading')` |
+
+## Typesafe Ai (1 skill)
+
+| Skill | Version | Purpose | Load With |
+|-------|---------|---------|-----------|
+| `typesafe-ai` | 1.0.0 | Build AI-powered software with TypeSafe: small units of AI intelligence you can use like programming primit... | `skill_view(name='typesafe-ai')` |
 
 ## Video Content Strategist (1 skill)
 
