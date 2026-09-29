@@ -136,6 +136,17 @@ state, including the peer's version), verify the deployed file matches repo
 (`diff <(grep -v '^# SOURCE:' ops/scripts/X.sh) <(grep -v '^# SOURCE:'
 ~/.hermes-cortex/scripts/X.sh)`), then push.
 
+**Confirm the push actually landed, not just that the command ran:** after a
+re-deploy the push can still be raced — the threat-pipeline cron pushes its
+own auto-commits between your `pull --rebase` and your `push`, so the push is
+rejected as non-fast-forward. `git pull --rebase` again and retry; once the
+push shows `A..B  main -> main` it has landed even if a later line in the same
+chain printed an earlier failure. Verify with `git log --oneline -1
+origin/main` == your commit before reporting success. Also re-run
+`cortex-update.sh` one final time AFTER the push so the deployed tree carries
+the just-pushed commit — the push gate's internal deploy can trail the newest
+commit.
+
 **Rebase conflict gotcha (2026-09-02):** during `git pull --rebase`, `--ours`
 is the UPSTREAM (incoming, peer) version and `--theirs` is YOUR replayed
 commit — the opposite of a merge. Taking `--theirs` on a conflict keeps YOUR
