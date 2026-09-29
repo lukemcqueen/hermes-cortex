@@ -658,10 +658,29 @@ def _decision_class(decision) -> str:
 
 
 def _db() -> sqlite3.Connection:
-    """Get or create the loop-governance DB with auto-schema init."""
+    """Get or create the loop-governance DB with auto-schema init.
+
+    Multi-session concurrency (2026-09-29): every interactive Hermes session
+    spawns its OWN loop-gov-mcp.py daemon with its own connection to the
+    shared ~/.hermes-cortex/data/loop-governance.db. Two sessions calling
+    begin_change()/feedback/end_change concurrently must SERIALIZE on the
+    SQLite write lock, not fail. WAL mode lets readers run while a writer
+    commits, and a generous busy-timeout makes a second writer WAIT for the
+    first to release instead of erroring with 'database is locked' (observed:
+    concurrent hermes-cortex sessions on moses blocked each other for minutes).
+    """
     LOOP_DB.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(str(LOOP_DB))
+    # timeout=busy_timeout: wait up to 30s for a concurrent writer to release
+    # (default 5s is too short under real interleaved begin_change contention).
+    conn = sqlite3.connect(str(LOOP_DB), timeout=30.0)
     conn.row_factory = sqlite3.Row
+    try:
+        # WAL: concurrent readers never block the single writer; a second
+        # writer queues on the busy timeout instead of erroring.
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("PRAGMA busy_timeout=30000")
+    except sqlite3.OperationalError:
+        pass
     conn.execute(
         """CREATE TABLE IF NOT EXISTS loop_cycles (
             id              INTEGER PRIMARY KEY AUTOINCREMENT,
