@@ -26,6 +26,7 @@ import os
 import sqlite3
 import subprocess
 import sys
+import threading
 import time
 import traceback
 import urllib.error
@@ -637,6 +638,13 @@ def _cosine_sim(a: list[float], b: list[float]) -> float:
 
 
 # ── Database ─────────────────────────────────────────────────
+# Schema-init-once flag: see _db() docstring. DDL runs once per process;
+# later calls skip it (schema is immutable, DDL is idempotent). Guarded by a
+# lock because the MCP daemon is threaded: two sessions' first _db() could
+# otherwise interleave the flag-set and both run DDL (adversarial-gate flag,
+# lost-update race). The lock makes the DDL run-once atomic.
+_SCHEMA_DONE = False
+_SCHEMA_LOCK = threading.Lock()
 
 def _decision_class(decision) -> str:
     """Bucket a decision label into its canonical class.
@@ -657,45 +665,22 @@ def _decision_class(decision) -> str:
     return text
 
 
-def _db() -> sqlite3.Connection:
-    """Get or create the loop-governance DB with auto-schema init.
+def _ensure_schema(conn: sqlite3.Connection) -> None:
+    """Run schema DDL exactly once per process (guard: _SCHEMA_DONE).
 
-    Multi-session concurrency (2026-09-29): every interactive Hermes session
-    spawns its OWN loop-gov-mcp.py daemon with its own connection to the
-    shared ~/.hermes-cortex/data/loop-governance.db. Two sessions calling
-    begin_change()/feedback/end_change concurrently must SERIALIZE on the
-    SQLite write lock, not fail. WAL mode lets readers run while a writer
-    commits, and a generous busy-timeout makes a second writer WAIT for the
-    first to release instead of erroring with 'database is locked' (observed:
-    concurrent hermes-cortex sessions on moses blocked each other for minutes).
+    2026-09-29 friction fix: the DDL block was previously inlined in _db()
+    and ran on EVERY connection, re-invoking two swallowed-ALTER-exception
+    warning logs and a no-op write-lock commit per call. The schema is
+    immutable after first creation; extracting it behind the guard makes
+    later _db() calls pure reads (connect + pragmas) with zero DDL/re-exception/
+    write-commit overhead. No table, column, or index is skipped — the DDL is
+    byte-identical, only its execution frequency changes.
     """
-    LOOP_DB.parent.mkdir(parents=True, exist_ok=True)
-    # timeout=busy_timeout: wait up to 30s for a concurrent writer to release
-    # (default 5s is too short under real interleaved begin_change contention).
-    conn = sqlite3.connect(str(LOOP_DB), timeout=30.0)
-    conn.row_factory = sqlite3.Row
-    try:
-        # WAL: concurrent readers never block the single writer; a second
-        # writer queues on the busy timeout instead of erroring.
-        conn.execute("PRAGMA journal_mode=WAL")
-        conn.execute("PRAGMA busy_timeout=30000")
-    except sqlite3.OperationalError as e:
-        # Don't silently swallow (adversarial ADV-0-3): a failed pragma means
-        # concurrent sessions will NOT serialize — log it loudly so a doctor
-        # reviewer can see WAL/busy_timeout are not in effect on this DB.
-        log.warning("loop-gov: could not enable WAL/busy_timeout on %s: %s", LOOP_DB, e)
-    else:
-        # Verify the pragma actually took (a pragma can be silently ignored if
-        # another connection holds the DB open in a conflicting journal mode).
-        try:
-            jm = conn.execute("PRAGMA journal_mode").fetchone()[0]
-            bt = conn.execute("PRAGMA busy_timeout").fetchone()[0]
-            if str(jm).lower() != "wal":
-                log.warning("loop-gov: journal_mode=%s (expected wal) on %s", jm, LOOP_DB)
-            if int(bt) < 30000:
-                log.warning("loop-gov: busy_timeout=%s (expected >=30000) on %s", bt, LOOP_DB)
-        except sqlite3.OperationalError as e:
-            log.warning("loop-gov: could not verify pragmas on %s: %s", LOOP_DB, e)
+    global _SCHEMA_DONE
+    with _SCHEMA_LOCK:
+        if _SCHEMA_DONE:
+            return
+        _SCHEMA_DONE = True
     conn.execute(
         """CREATE TABLE IF NOT EXISTS loop_cycles (
             id              INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -751,8 +736,55 @@ def _db() -> sqlite3.Connection:
     except sqlite3.OperationalError:
         log.warning("Expected failure for: except sqlite3.OperationalError")
         pass
-
     conn.commit()
+
+
+def _db() -> sqlite3.Connection:
+    """Get or create the loop-governance DB with auto-schema init.
+
+    Multi-session concurrency (2026-09-29): every interactive Hermes session
+    spawns its OWN loop-gov-mcp.py daemon with its own connection to the
+    shared ~/.hermes-cortex/data/loop-governance.db. Two sessions calling
+    begin_change()/feedback/end_change concurrently must SERIALIZE on the
+    SQLite write lock, not fail. WAL mode lets readers run while a writer
+    commits, and a generous busy-timeout makes a second writer WAIT for the
+    first to release instead of erroring with 'database is locked' (observed:
+    concurrent hermes-cortex sessions on moses blocked each other for minutes).
+
+    Schema-init-once (2026-09-29 friction fix): DDL is delegated to
+    _ensure_schema(), guarded by _SCHEMA_DONE, so it runs once per process.
+    Later calls are pure reads. WAL/busy_timeout stay per-connection and
+    their verification is unchanged — concurrency safety is not relaxed.
+    """
+    LOOP_DB.parent.mkdir(parents=True, exist_ok=True)
+    # timeout=busy_timeout: wait up to 30s for a concurrent writer to release
+    # (default 5s is too short under real interleaved begin_change contention).
+    conn = sqlite3.connect(str(LOOP_DB), timeout=30.0)
+    conn.row_factory = sqlite3.Row
+    try:
+        # WAL: concurrent readers never block the single writer; a second
+        # writer queues on the busy timeout instead of erroring.
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("PRAGMA busy_timeout=30000")
+    except sqlite3.OperationalError as e:
+        # Don't silently swallow (adversarial ADV-0-3): a failed pragma means
+        # concurrent sessions will NOT serialize — log it loudly so a doctor
+        # reviewer can see WAL/busy_timeout are not in effect on this DB.
+        log.warning("loop-gov: could not enable WAL/busy_timeout on %s: %s", LOOP_DB, e)
+    else:
+        # Verify the pragma actually took (a pragma can be silently ignored if
+        # another connection holds the DB open in a conflicting journal mode).
+        try:
+            jm = conn.execute("PRAGMA journal_mode").fetchone()[0]
+            bt = conn.execute("PRAGMA busy_timeout").fetchone()[0]
+            if str(jm).lower() != "wal":
+                log.warning("loop-gov: journal_mode=%s (expected wal) on %s", jm, LOOP_DB)
+            if int(bt) < 30000:
+                log.warning("loop-gov: busy_timeout=%s (expected >=30000) on %s", bt, LOOP_DB)
+        except sqlite3.OperationalError as e:
+            log.warning("loop-gov: could not verify pragmas on %s: %s", LOOP_DB, e)
+
+    _ensure_schema(conn)
     return conn
 
 
@@ -891,7 +923,7 @@ async def list_tools(ctx, params=None) -> ListToolsResult:
         ),
         Tool(
             name="feedback_accept",
-            description="Mark a scored cycle decision as correct. Provide cycle_id OR task_id (resolves to session's current PENDING cycle). Optionally supply your own completeness/quality/progress (0-10) — accepted cycles otherwise keep composite 0.0, which reads as 'failed' in trend queries when it only means 'unscored'.",
+            description="Mark a cycle decision as correct. REQUIRED up front (2026-09-29, to end the bare-note-refusal retry loop): pass either the three scores/completeness/quality/progress (0-10) OR unscored_reason. A bare note is refused — a close must carry a measurement or say why it is unscored. Provide cycle_id OR task_id (resolves to the session's current PENDING cycle).",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -1596,6 +1628,7 @@ def _adversarial_review_gate(lock: dict, cycle: dict) -> Optional[CallToolResult
         ))])
 
     material = (
+        f"Cycle ID: {cycle.get('id', 0)}\n"
         f"Task: {task_id}\n"
         f"Description: {description}\n"
         f"Diff stat (files={cx['files']}, lines={cx['lines']}"

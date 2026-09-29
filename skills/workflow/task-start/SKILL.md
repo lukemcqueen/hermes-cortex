@@ -44,8 +44,10 @@ mcp__loop_governance__cache_search(query="<what you are about to do>")
 # 3. Open the governance lock — exact tool name, double underscores:
 mcp__loop_governance__begin_change(task_id="<short-name>", description="<what this does>")
 
-# 4. ... work ... then score and release:
-mcp__loop_governance__feedback_accept(task_id="<short-name>", note="verified: <evidence>")
+# 4. ... work ... then score and release — scores in the SAME call (a bare
+#    note is refused, 2026-09-23; there is no retry-and-add-scores step):
+mcp__loop_governance__feedback_accept(task_id="<short-name>", note="verified: <evidence>",
+    completeness=<0-10>, quality=<0-10>, progress=<0-10>)
 mcp__loop_governance__end_change(task_id="<short-name>")
 ```
 

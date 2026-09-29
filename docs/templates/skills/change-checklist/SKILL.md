@@ -68,7 +68,7 @@ metadata:
 ## Closing the Cycle
 
 - [ ] `mcp__loop_governance__cycle_query(task_id="<task-id>")`
-- [ ] `mcp__loop_governance__feedback_accept(cycle_id=N, note="verified: <how>")`
+- [ ] `mcp__loop_governance__feedback_accept(cycle_id=N, note="verified: <how>", completeness=<0-10>, quality=<0-10>, progress=<0-10>)` — score in the SAME call (a bare note is refused, 2026-09-23)
 - [ ] `mcp__loop_governance__end_change(task_id="<task-id>")`
 - [ ] `git add <files> && git commit -m "<descriptive message>"` — **through the pre-commit hook** (it runs the adversarial gate + scoring; `--no-verify` is a logged, audited bypass — never use it to ship a hook/gate-rejected change)
 - [ ] `git pull --rebase origin main && git push origin main`

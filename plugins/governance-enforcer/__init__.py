@@ -851,8 +851,27 @@ def _auto_create_skills_marker(session_id: str) -> None:
         log.warning("Cannot auto-create skills-loaded marker: %s", e)
 
 
+# Cache the last-written session id so per-tool-call marker writes are a no-op
+# when nothing changed (2026-09-29 friction fix). _write_session_marker is
+# called on EVERY tool call and rewrites 3 files each time; for a long session
+# the id is stable, so this collapses 3 writes per tool call into 1 on the
+# first call and 0 after. Same content, same files, same visibility to the MCP
+# daemon — pure write-elision, no logic change and no security change.
+_LAST_MARKER_SESSION: str = ""
+
+
 def _write_session_marker(hermes_session_id: str) -> None:
-    """Write the Hermes session ID to PID-scoped AND fixed-path marker files."""
+    """Write the Hermes session ID to PID-scoped AND fixed-path marker files.
+
+    Memoized on the session id: when the id is unchanged since the last write
+    the function returns immediately — the markers already carry this id.
+    """
+    global _LAST_MARKER_SESSION
+    if not hermes_session_id:
+        return
+    if hermes_session_id == _LAST_MARKER_SESSION:
+        return  # nothing changed — markers already carry this session id
+    _LAST_MARKER_SESSION = hermes_session_id
     pid = os.getpid()
     try:
         GOVERNANCE_STATE_DIR.mkdir(parents=True, exist_ok=True)
@@ -1005,12 +1024,37 @@ def _has_governance_lock(hermes_session_id: str = "") -> bool:
     Phase 3 — Secondary lock marker (extra safety):
       Checks the repo-located marker at .hermes-cortex/.governance-lock
       as a fallback when the primary state directory is inaccessible.
+
+    Performance (2026-09-29 friction fix): the stale-lock purge scan
+    (glob + JSON-parse of EVERY lock file) previously ran BEFORE the cheap
+    Phase-1 exact-match on every tool call. For a mid-task session already
+    holding a live exact-match lock that is wasteful — the purge exists to
+    clear abandoned locks so the NEXT acquisition is clean, and it fires at
+    begin_change/check_lock. So Phase 1 now returns FIRST; only when this
+    session holds NO exact lock does the purge-scan + Phase-2/3 fallback run
+    (the acquisition path). Same purge behaviour, same fail-closed rules —
+    the purge is never skipped, just not run redundantly on the hot path.
     """
     current_slug = _derive_repo_slug()
     if not GOVERNANCE_STATE_DIR.exists():
         return False
 
-    # Proactively purge stale locks from any session (GAP #9).
+    # ── Phase 1: Exact match by Hermes session ID (cheap, checked FIRST) ──
+    if hermes_session_id:
+        lock_path = GOVERNANCE_STATE_DIR / f".governance-{hermes_session_id}.json"
+        if lock_path.exists():
+            try:
+                state = json.loads(lock_path.read_text())
+                if state.get("task_id", "") and not _is_lock_stale(state):
+                    return True
+                if state.get("task_id", ""):
+                    lock_path.unlink(missing_ok=True)
+            except (json.JSONDecodeError, OSError):
+                lock_path.unlink(missing_ok=True)
+
+    # ── Proactively purge stale locks from any session (GAP #9) ──
+    # Only reached when this session holds NO exact-match lock (i.e. the
+    # begin/acquire or lock-free path) — never on the mid-task hot path.
     # P1-A hardening: an UNPARSEABLE lock file is a lock being written RIGHT
     # NOW (non-atomic write in loop-gov-mcp._write_lock) — deleting it steals
     # another session's fresh lock. Never delete unparseable files; only
@@ -1032,19 +1076,6 @@ def _has_governance_lock(hermes_session_id: str = "") -> bool:
                 lock_file.unlink(missing_ok=True)
         except (json.JSONDecodeError, OSError):
             log.debug("Skipping unparseable lock file (possibly mid-write — leaving it, never delete): %s", lock_file.name)
-
-    # ── Phase 1: Exact match by Hermes session ID ──
-    if hermes_session_id:
-        lock_path = GOVERNANCE_STATE_DIR / f".governance-{hermes_session_id}.json"
-        if lock_path.exists():
-            try:
-                state = json.loads(lock_path.read_text())
-                if state.get("task_id", "") and not _is_lock_stale(state):
-                    return True
-                if state.get("task_id", ""):
-                    lock_path.unlink(missing_ok=True)
-            except (json.JSONDecodeError, OSError):
-                lock_path.unlink(missing_ok=True)
 
     # ── Phase 2: Scan by repo_slug (backward compat fallback) ──
     # NOTE: This is a TIGHTENED fallback. When the lock has a session_id
