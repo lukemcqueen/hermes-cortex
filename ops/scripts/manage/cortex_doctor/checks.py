@@ -4454,19 +4454,14 @@ def check_mem_plugins(res):
 
 
 def check_mycortex_parity(res):
-    """Mycortex parity gate — RETIRED 2026-08-03.
+    """Mycortex parity gate — RETIRED 2026-08-03, notice removed 2026-09-29.
 
     The parity gate was the legacy → mycortex MIGRATION gate (prove the two
     engines retrieve equivalently BEFORE the flip). The flip happened; the
-    legacy brain is deprecated and removed. Comparing mycortex against
-    legacy-era golden expectations is obsolete — the golden set is retained
-    as a regression fixture only, not a gate.
-
-    Short-circuits to INFO (no subprocess, no 180s timeout) so every doctor
-    run fleet-wide stops paying for a dead gate.
+    legacy brain is deprecated and removed. The golden set is retained as a
+    regression fixture only. The retirement notice has been broadcast long
+    enough — emitting it every run forever is noise; the check is now a no-op.
     """
-    res.add("Mycortex parity gate", "INFO",
-            "retired 2026-08-03 — legacy brain deprecated; golden set kept as a mycortex regression fixture, not a gate")
     return
 
 

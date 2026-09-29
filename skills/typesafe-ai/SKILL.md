@@ -1,5 +1,6 @@
 ---
 name: typesafe-ai
+version: 1.0.0
 license: MIT
 description: >
   Build AI-powered software with TypeSafe: small units of AI intelligence you
