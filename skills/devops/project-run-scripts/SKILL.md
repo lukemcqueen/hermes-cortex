@@ -59,7 +59,10 @@ Every `./run` MUST implement these commands with identical semantics:
 - **Multi-compose projects** MUST route service names to the correct compose file. Use a `case` dispatch in the build function.
 - **Platform dispatchers** use a root dispatcher + per-component `./run` scripts. Each component's `./run` implements the same interface above.
 
-> ⚠️ **Skill-dir assets:** this skill ships NO bundled files (no `templates/`, `scripts/`, or `references/` directories are installed). The canonical template is `~/hermes-cortex/ops/scripts/project-run-scripts/templates/run.sh`; check it exists before relying on it. If it's absent, write `./run` from the Template Structure below — every required file (check-alembic-heads.py, entrypoint.sh, test_migrations.py) is fully inlined in this SKILL.md so no external asset is a hard dependency.
+> ⚠️ **Skill-dir assets:** the canonical assets live in the shared repo, NOT inside this skill's directory:
+> - Template → `~/hermes-cortex/ops/scripts/project-run-scripts/templates/run.sh`
+> - `check-alembic-heads.py` → `~/hermes-cortex/ops/scripts/project-run-scripts/scripts/check-alembic-heads.py`
+> Both deploy to `~/.hermes-cortex/scripts/project-run-scripts/...` via `cortex-update.sh`. Check the repo path exists before relying on it. If either is absent, write `./run` from the Template Structure below — every required piece (check-alembic-heads.py, entrypoint.sh, test_migrations.py) is fully inlined in this SKILL.md so no external asset is a hard dependency.
 
 ## Migration Head Integrity — Fail-Fast, No Auto-Merge
 
@@ -75,7 +78,7 @@ Every project with Alembic migrations MUST have these two files:
 
 | File | Purpose | Provided by skill |
 |------|---------|-------------------|
-| `scripts/check-alembic-heads.py` | Static-analysis script: checks for multiple heads, validates revision ID length (max 32 chars) | `skill_view(name="project-run-scripts", file_path="scripts/check-alembic-heads.py")` — copy to your repo |
+| `scripts/check-alembic-heads.py` | Static-analysis script: checks for multiple heads, validates revision ID length (max 32 chars) | `~/hermes-cortex/ops/scripts/project-run-scripts/scripts/check-alembic-heads.py` — copy to your repo's `scripts/` |
 | `tests/test_migrations.py` | Pytest: asserts `len(script.get_heads()) == 1` at runtime | Template below — include in your test suite |
 
 ### Policy
@@ -115,10 +118,13 @@ When writing `check-alembic-heads.py` yourself, use `re.DOTALL` to correctly par
 
 ### `scripts/check-alembic-heads.py`
 
-Copy this script from the skill's `scripts/` directory:
+Copy this script from the repo's `ops/scripts/project-run-scripts/scripts/` directory:
 
 ```bash
-cp $(dirname $(skill_view name=project-run-scripts file_path=scripts/check-alembic-heads.py 2>/dev/null || echo "$HOME/.hermes/skills/devops/project-run-scripts/scripts/check-alembic-heads.py"))/*.py scripts/
+# Pick the file we already have on disk (repo path beats $HOME fallback):
+CHECKER="${HOME}/hermes-cortex/ops/scripts/project-run-scripts/scripts/check-alembic-heads.py"
+[ -f "$CHECKER" ] || CHECKER="${HOME}/.hermes-cortex/scripts/project-run-scripts/scripts/check-alembic-heads.py"
+mkdir -p scripts && cp "$CHECKER" scripts/
 ```
 
 ### `./run migrate` — Fail-Fast
@@ -258,6 +264,40 @@ The canonical template lives at
 exists (`ls` the path) and read it before writing a new `./run`; it is the
 definitive starting point for every new project. Customize: PROJECT_ROOT paths, service names, env var defaults, test runner commands. If the template is
 missing, build from the Template Structure section above instead of guessing.
+
+## Version Increment Convention (recommended — Rails / release-tracking repos)
+
+A `./run version` command keeps releases repeatable and discoverable. Pattern
+(from koscap-mwi): `./run version next|+minor|+major` bumps the version in a
+`.proj-version` file, then prints the tag + changelog release steps so the
+developer (or a release cron) knows exactly what to run next:
+
+```bash
+# .proj-version holds the current version, e.g. "1.4.2"
+cmd_version() {
+  local mode="${1:-next}"
+  local f=".proj-version"
+  [[ -f "$f" ]] || { error "No $f found"; return 1; }
+  local cur; cur="$(tr -d '[:space:]' < "$f")"
+  local next=""
+  case "$mode" in
+    next)    next="$(echo "$cur" | awk -F. '{printf "%d.%d.%d", $1, $2, $3+1}')" ;;
+    +minor)  next="$(echo "$cur" | awk -F. '{printf "%d.%d.0", $1, $2+1}')" ;;
+    +major)  next="$(echo "$cur" | awk -F. '{printf "%d.0.0", $1+1}')" ;;
+    *)       error "Usage: ./run version next|+minor|+major"; return 1 ;;
+  esac
+  printf '%s\n' "$next" > "$f"
+  ok "Bumped $cur → $next (written to $f)"
+  echo "  Next: tag + push the release:" 
+  echo "    git tag v$next && git push origin v$next"
+  echo "    # then run the project's release/changelog step (ggt/ggc):"
+  echo "    ggt bump  # or your release tooling"
+  echo "    ggc -g    # generate changelog, or your equivalent"
+}
+```
+
+Register it in the dispatch (`version) cmd_version "$@" ;;`). Adopt the same
+`next` / `+minor` / `+major` semantics in any repo that wants scripted releases.
 
 ## Reference: Multi-Repo Audit
 

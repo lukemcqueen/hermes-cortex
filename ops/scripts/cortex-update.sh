@@ -345,6 +345,12 @@ register "ops/scripts/install/install-post-commit-hook.sh"    "${CORTEX_DEPLOY_H
 # Template drift checker (runs during cortex-update.sh)
 register "ops/scripts/manage/template-diff-check.py"          "${CORTEX_DEPLOY_HOME}/scripts/template-diff-check.py"
 
+# project-run-scripts skill assets — canonical ./run template + Alembic head checker.
+# Deployed under scripts/project-run-scripts/ mirroring the repo layout; the skill
+# references these for agents to copy into project repos.
+register "ops/scripts/project-run-scripts/templates/run.sh"                         "${CORTEX_DEPLOY_HOME}/scripts/project-run-scripts/templates/run.sh"
+register "ops/scripts/project-run-scripts/scripts/check-alembic-heads.py"           "${CORTEX_DEPLOY_HOME}/scripts/project-run-scripts/scripts/check-alembic-heads.py"
+
 # Orch skill evaluation — wrapper for orch-skill-report-process, used by cron
 register "ops/scripts/manage/orch-skill-evaluate.sh"         "${CORTEX_DEPLOY_HOME}/scripts/orch-skill-evaluate.sh"
 
