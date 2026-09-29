@@ -10,6 +10,12 @@ their domain.
 > The pre-commit doc audit runs `--check` whenever skills/ changes.
 
 
+## Ads (1 skill)
+
+| Skill | Version | Purpose | Load With |
+|-------|---------|---------|-----------|
+| `ads` | 2.2.0 | When the user wants help with paid advertising campaigns on Google Ads, Meta (Facebook/Instagram), LinkedIn... | `skill_view(name='ads')` |
+
 ## App Store Optimization (1 skill)
 
 | Skill | Version | Purpose | Load With |
@@ -359,6 +365,12 @@ their domain.
 | Skill | Version | Purpose | Load With |
 |-------|---------|---------|-----------|
 | `hermes-themes` | 1.0.0 | Author a Hermes color theme that skins every surface. | `skill_view(name='hermes-themes')` |
+
+## Launch (1 skill)
+
+| Skill | Version | Purpose | Load With |
+|-------|---------|---------|-----------|
+| `launch` | 2.0.1 | When the user wants to plan a product launch, feature announcement, or release strategy. Also use when the... | `skill_view(name='launch')` |
 
 ## Launch Strategy (1 skill)
 

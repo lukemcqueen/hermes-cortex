@@ -114,7 +114,7 @@ repo; this public repo carries only framework docs (PRDs, design, reference).
 
 | Doc | Description |
 |-----|-------------|
-| `docs/SKILLS-MANIFEST.md` | Skills manifest — all shared skills (auto-generated: 367 skills, 53 categories) |
+| `docs/SKILLS-MANIFEST.md` | Skills manifest — all shared skills (auto-generated: 369 skills, 55 categories) |
 | `docs/skills-manifest-reference.md` | Skills manifest reference |
 | `docs/continuous-skill-suggestion.md` | Continuous skill suggestion |
 | `docs/agent-learning-submissions.md` | Agent learning submissions |
