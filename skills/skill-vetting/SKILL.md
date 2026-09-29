@@ -89,3 +89,21 @@ but upstreaming priority is LOW. Fleet evaluation (orch-skill-evaluate):
 2. `bash -n` / `py_compile` on any scripts
 3. `secret-leak-detector.sh` clean before committing to the repo
 4. Doctor `Skills manifest` checks pass after deploy
+
+## Installing a third-party skill (approved)
+
+Use the `npx skills` CLI — it auto-detects hermes-agent, so it runs non-interactively:
+
+```bash
+# Inspect what's in the repo without installing:
+npx -y skills add <owner>/<repo> --skill <name> -l
+# Install globally (user-level, → ~/.hermes/skills/<name>):
+npx -y skills add <owner>/<repo> --skill <name> -a hermes-agent -g -y
+```
+
+- The CLI runs its own supply-chain scan (Socket/Snyk table in output) — read it; 0 alerts is expected, note anything above.
+- It does NOT run our vet checklist — the scan is an extra signal, never a substitute for reading the SKILL.md first.
+- If the task prompt offers a different install path (e.g. a vendor-specific CLI), pick the one that lands the skill in `~/.hermes/skills/`; one method only.
+- Verify by loading it (`skill_view`) — the installed body must match the vetted upstream content before declaring done.
+- Fetching raw SKILL.md content when the extract/search backend can't: `urllib.request.urlopen(raw_url)` from the browser tool, or the raw.githubusercontent.com URL directly.
+- Installing a skill is a write → needs a governance lock like any other change; close the cycle after verification.
