@@ -239,7 +239,7 @@ Description=Cortex bridge — {name} (no_agent cron, standalone runner)
 
 [Service]
 Type=oneshot
-ExecStart=/usr/bin/env python3 {runner_path} --name {name} --script {job.get('script')}
+ExecStart=/usr/bin/env python3 {runner_path} --name {name} --script {job.get('script')} --deliver {job.get('deliver') or 'origin'}
 """
         timer_text = f"""[Unit]
 Description=Cortex bridge timer — {name}

@@ -1,6 +1,6 @@
 # Component↔Hermes Separation — Scope 1 + 2
 
-> **Status:** Scope 1 **DONE** (S1a cortex_lib + tz/paths, tools, models, bus-seam — all shipped/deployed/pushed 2026-09-30). Scope 2 **in build**: S2a bridge delivered + proven on one job. **Audience:** builder, orchestrator, owner.
+> **Status:** Scope 1 **DONE** (S1a cortex_lib + tz/paths, tools, models, bus-seam — all shipped/deployed/pushed 2026-09-30). Scope 2 **in build**: S2a bridge delivered AND migration executed — 54 no_agent crons moved off the Hermes cronjob scheduler onto active systemd-timer units (2026-09-30). S2b gateway re-host, S2c plugin/MCP standalone, S2d route-around gate remain. **Audience:** builder, orchestrator, owner.
 > **Pairs with:** `steadfaste-design` (north-star replacement) · `messaging-gateway.md` (bus already standalone) · `bus-scale/` (bus internals) · `env-vars.md` · `operations-reference.md`.
 
 **The one-line goal:** make every fleet component *resolvable and schedulable without requiring the Hermes Agent runtime*, so nothing is load-bearing on Hermes — the migration rule "nothing the target does requires the incumbent" applied to the present fleet.
@@ -59,7 +59,7 @@ Most infra is **already Hermes-independent**: Postgres/PGMQ bus server (`core/co
 
 | Slice | What | Where |
 |---|---|---|
-| **S2a** | Cron: move the 81-job schedule to a standalone scheduler (systemd-timer bridge) that invokes each no_agent job script directly; Hermes `cronjob` MCP stays owner of LLM/chained jobs, the bridge owns the pure script jobs — the gateway process no longer needs to be alive for the 61 no_agent jobs to fire | `ops/scripts/cortex-bus-bridge-{run,generate}.py` + systemd user timers |
+| **S2a** | Cron: move the no_agent job schedule to a standalone scheduler (systemd-timer bridge) that invokes each job script directly and honors its `deliver` target (`local` = save-only, else Telegram). **DONE:** 54 no_agent jobs migrated off the Hermes cronjob scheduler onto active timers (2026-09-30); Hermes `cronjob` MCP stays owner of the 21 LLM/chained jobs + the 7 already-paused jobs. Gateway no longer needs to be alive for the no_agent jobs to fire | `ops/scripts/cortex-bus-bridge-{run,generate}.py` + systemd user timers |
 | **S2b** | Gateway: `msg-gateway.py` already standalone — ensure systemd/docker hosting independent of the Hermes process/restart (confirm the "gateway restart kills cron" coupling is gone — the O1-S3 lesson) | gateway unit |
 | **S2c** | Plugin/MCP layer: governance-enforcer, mycortex-mem/command, prompt-guard, and the MCP servers run as standalone MCP servers (loop-gov, task, bus, executor already are filesystem+MCP; remove their in-process Hermes plugin coupling) | `plugins/`, `mcp-servers/` |
 | **S2d** | Verify "route around Hermes": with the Hermes process stopped (maintenance window), each component's scheduled job + core service still runs and its output still lands (local/telegram) | runbook + a gated test |

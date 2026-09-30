@@ -127,6 +127,48 @@ def test_runner_executes_python_script_and_captures_stdout(tmp_path):
     assert "Traceback" not in (proc.stderr or ""), proc.stderr
 
 
+def test_runner_local_deliver_saves_not_sends(tmp_path):
+    r = _load("cortex-bus-bridge-run")
+    # _deliver('local') must write the output file and NOT touch the messenger.
+    import os
+    os.environ["CORTEX_DEPLOY_HOME"] = str(tmp_path)
+    r._CORTEX_ENV = tmp_path
+    r._deliver("internal output", "testjob", "local")
+    log = tmp_path / "cron-output" / "testjob.log"
+    assert log.read_text().strip() == "internal output"
+
+
+def test_runner_default_deliver_is_telegram(tmp_path):
+    # Non-'local' deliver must route to the messenger code path (not the local
+    # save). We assert the dispatch decision: _deliver with deliver='' reaches
+    # the notify branch (which attempts the real messenger; gated by env token
+    # presence in the deployed lib, so we mock the import).
+    r = _load("cortex-bus-bridge-run")
+    import os
+    os.environ["CORTEX_DEPLOY_HOME"] = str(tmp_path)
+    r._CORTEX_ENV = tmp_path
+    calls = []
+    def fake_notify(text, subject=""):
+        calls.append((text, subject))
+    r_notify_holder = {"notify": fake_notify}
+    # Monkeypatch the imported notify by injecting a module into sys.modules
+    # before _deliver imports lib.telegram_notify.
+    import sys, types
+    fake_lib = types.ModuleType("lib")
+    fake_lib.telegram_notify = types.SimpleNamespace(notify=fake_notify)
+    sys.modules["lib"] = fake_lib
+    sys.modules["lib.telegram_notify"] = fake_lib.telegram_notify
+    try:
+        r._deliver("report", "testjob", "origin")
+    finally:
+        sys.modules.pop("lib", None)
+        sys.modules.pop("lib.telegram_notify", None)
+    assert calls, "default/telegram deliver must reach notify"
+    assert calls[0][0] == "report"
+    # And local must NOT be written for a telegram job.
+    assert not (tmp_path / "cron-output" / "testjob.log").exists()
+
+
 def test_runner_hermes_free():
     r = _load("cortex-bus-bridge-run")
     src = Path(r.__file__).read_text()

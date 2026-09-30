@@ -30,6 +30,7 @@ Usage (from a systemd unit or shell):
 Flags:
     --name  job name (for logs)
     --script  script path; if relative, resolved under ~/.hermes-cortex/scripts/
+    --deliver  the job's deliver target ('local' = save-only, else Telegram)
     --enabled  "true"/"false" — the generated timer is enabled only when true
 """
 from __future__ import annotations
@@ -77,16 +78,28 @@ def _resolve_script(path: str) -> str:
     return str(p)
 
 
-def _deliver(text: str, job: str) -> None:
-    """Deliver job stdout via the standalone messenger. Best-effort: a
-    delivery failure is logged, never propagated to the timer (a wedged
-    timer is worse than a missed delivery)."""
+def _deliver(text: str, job: str, deliver: str = "") -> None:
+    """Deliver job stdout per the job's `deliver` target, matching Hermes cron
+    semantics with a standalone messenger.
+
+    deliver targets (same grammar as Hermes `cronjob`):
+      '' / 'origin' / 'telegram' / 'telegram:<chat_id>'  -> send to Telegram
+         (the home channel; 'origin' for script jobs resolves here)
+      'local'                                            -> save-only to
+         ~/.hermes-cortex/cron-output/<job>.log, NEVER a send (some no_agent
+         jobs are internal collectors whose stdout must not reach the channel).
+
+    Best-effort: a delivery failure is logged, never propagated to the timer
+    (a wedged timer is worse than a missed delivery; an internal job's stdout
+    MUST not leak to the channel by mis-routing to 'local')."""
+    if deliver == "local":
+        _save_local(text, job)
+        return
     try:
+        sys.path.insert(0, str(_SCRIPTS_DIR))
         from lib.telegram_notify import notify  # ops/scripts/lib on path
         notify(text, subject=f"cron:{job}")
     except ImportError:
-        # Try resolving lib/ relative to the scripts dir.
-        sys.path.insert(0, str(_SCRIPTS_DIR))
         from lib.telegram_notify import notify  # type: ignore
         notify(text, subject=f"cron:{job}")
     except Exception:
@@ -96,10 +109,22 @@ def _deliver(text: str, job: str) -> None:
         traceback.print_exc()
 
 
+def _save_local(text: str, job: str) -> None:
+    """Save job stdout to a file (deliver=local): internal collectors keep a
+    durable record without sending to any channel."""
+    outdir = _CORTEX_ENV / "cron-output"
+    try:
+        outdir.mkdir(parents=True, exist_ok=True)
+        (outdir / f"{job}.log").write_text(text + "\n")
+    except (OSError, IOError) as e:
+        print(f"[bridge] local save failed for {job}: {e}", file=sys.stderr)
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--name", required=True)
     ap.add_argument("--script", required=True)
+    ap.add_argument("--deliver", default="")
     ap.add_argument("--enabled", default="true")
     args = ap.parse_args()
 
@@ -124,7 +149,7 @@ def main() -> int:
 
     stdout = (proc.stdout or "").strip()
     if stdout:
-        _deliver(stdout, args.name)
+        _deliver(stdout, args.name, args.deliver)
     # Script exit != 0 with output still gets delivered (its stdout is the
     # report); a non-zero exit is surfaced in the timer's status, not dropped.
     return 0
