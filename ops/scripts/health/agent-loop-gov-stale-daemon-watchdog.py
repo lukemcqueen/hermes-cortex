@@ -204,11 +204,12 @@ def main() -> int:
 
     if db_blocked:
         # PRIMARY: DB is locked -> surface its loop-gov fd-holders (alert-only).
-        loop_holders, _ = _holder_pids()
+        loop_holders, other_holders = _holder_pids()
         alert_targets = sorted(set(loop_holders) | set(secondary_stale))
     else:
         # DB writable -> only the stale-code (secondary) path applies.
         alert_targets = sorted(set(secondary_stale))
+        other_holders = []
 
     if not alert_targets:
         if db_blocked:
@@ -244,8 +245,10 @@ def main() -> int:
             f"these pids (do NOT blindly SIGTERM — killing as a working norm is "
             f"rejected).")
     if still_blocked:
+        other = f"{'; '.join(other_holders) if other_holders else 'none'}"
         lines.append(
             f"{_cron_ts('loop-gov-lock-watchdog')} loop-governance.db STILL write-blocked. "
+            f"Non-loop-gov holders: {other}. "
             f"Requires operator attention — do NOT bypass the enforcer.")
     elif db_blocked and not still_blocked:
         lines.append(
