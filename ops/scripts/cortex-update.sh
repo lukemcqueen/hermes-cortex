@@ -547,6 +547,8 @@ register "ops/scripts/hermes_tz.py"                "${CORTEX_DEPLOY_HOME}/script
 register "ops/scripts/cortex_lib/__init__.py"      "${CORTEX_DEPLOY_HOME}/scripts/cortex_lib/__init__.py"
 register "ops/scripts/cortex_lib/tz.py"            "${CORTEX_DEPLOY_HOME}/scripts/cortex_lib/tz.py"
 register "ops/scripts/cortex_lib/paths.py"         "${CORTEX_DEPLOY_HOME}/scripts/cortex_lib/paths.py"
+register "ops/scripts/cortex_lib/tools.py"         "${CORTEX_DEPLOY_HOME}/scripts/cortex_lib/tools.py"
+register "ops/scripts/cortex_lib/models.py"        "${CORTEX_DEPLOY_HOME}/scripts/cortex_lib/models.py"
 
 # mycortex knowledge brain — schema, migration runner, import, CLI, parity harness
 register "ops/services/mycortex/migrate.py"          "${CORTEX_DEPLOY_HOME}/services/mycortex/migrate.py"

@@ -15,15 +15,17 @@ INTENDED USAGE:
     execute_code(code="python3 ~/.hermes-cortex/scripts/analyze-failures.py --week last")
 
 NOTES:
-    This script imports from hermes_tools, which is only available inside
-    a running Hermes agent session. Running standalone from shell will fail
-    with ModuleNotFoundError.
-    
-    For standalone testing, use: hermes chat -z "analyze failures from last week"
+    This script now uses cortex_lib.tools.read_file/write_file (component-hermes-
+    separation S1b), so it runs standalone from the shell with no Hermes runtime
+    required:
+        python3 ~/.hermes-cortex/scripts/analyze-failures.py --week last
+
+    It reads trace JSON from ~/.hermes-cortex/evals/traces/ and writes the
+    report to ~/.hermes-cortex/evals/reports/.
 
 Examples:
-    python3 analyze-failures.py --week last  # Inside Hermes agent session
-    python3 analyze-failures.py --days 7     # Inside Hermes agent session
+    python3 analyze-failures.py --week last   # reads ~/.hermes-cortex/evals/traces
+    python3 analyze-failures.py --days 7
 """
 import argparse
 import json
@@ -34,18 +36,22 @@ from pathlib import Path
 from collections import defaultdict
 from typing import Any
 
-# Hermes tools — only available inside Hermes agent session
-try:
-    from hermes_tools import read_file, write_file, search_files, web_search
-except ImportError:
-    print("ERROR: hermes_tools not found.", file=sys.stderr)
-    print("This script must run inside a Hermes agent session.", file=sys.stderr)
-    print("", file=sys.stderr)
-    print("Usage options:", file=sys.stderr)
-    print("  1. Via cron: hermes cron create --skill eval-harness ...", file=sys.stderr)
-    print("  2. Via chat: hermes chat -z 'analyze failures from last week'", file=sys.stderr)
-    print("  3. Via execute_code in agent session", file=sys.stderr)
-    sys.exit(1)
+# File tools — resolved from cortex_lib.tools (Hermes-independent, S1b of
+# component-hermes-separation). Runs standalone, no Hermes runtime required.
+# Bootstrap cortex_lib onto sys.path for BOTH layouts: in-repo this file sits at
+# ops/scripts/manage/ (cortex_lib is two levels up at ops/scripts/), deployed it
+# sits flat at ~/.hermes-cortex/scripts/ (cortex_lib is alongside). Same walk
+# cortex_lib.paths.ensure_scripts_path does, done here directly to avoid a
+# circular import.
+_T_SCRIPTS = {
+    str(Path(__file__).resolve().parent.parent),   # ops/scripts/            (in-repo)
+    str(Path(__file__).resolve().parent),          # ~/.hermes-cortex/scripts (deployed flat)
+}
+for _t in _T_SCRIPTS:
+    if _t not in sys.path:
+        sys.path.insert(0, _t)
+
+from cortex_lib.tools import read_file, write_file
 
 # Configuration
 CORTEX_HOME = Path.home() / ".hermes-cortex"
