@@ -37,6 +37,17 @@ AGENT_ROOT = HOME / ".hermes" / "hermes-agent"
 if str(AGENT_ROOT) not in sys.path:
     sys.path.insert(0, str(AGENT_ROOT))
 
+# The compressor import chain can trigger a hermes re-exec via
+# runpy.run_path (seen 2026-09-30: process re-ran itself under a wiped
+# sys.path and `import ruamel.yaml` then failed with ModuleNotFoundError,
+# breaking the daily regression gate's fact-retention grader). Keep the
+# hermes-agent venv site-packages explicitly on sys.path so the import
+# survives a re-exec.
+import glob as _glob
+for _site in sorted(_glob.glob(str(AGENT_ROOT / "venv" / "lib" / "python3.*" / "site-packages"))):
+    if Path(_site).is_dir() and _site not in sys.path:
+        sys.path.append(_site)
+
 from agent.context_compressor import (  # noqa: E402
     SUMMARY_PREFIX,
     ContextCompressor,
