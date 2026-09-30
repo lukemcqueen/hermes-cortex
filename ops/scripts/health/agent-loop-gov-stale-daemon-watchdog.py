@@ -179,17 +179,6 @@ def _deployed_mtime() -> float | None:
         return None
 
 
-def _alert(pids: list[int]) -> None:
-    """Alert-only backstop: we DETECT and ATTRIBUTE stuck loop-gov daemons but
-    never auto-kill. The operator (or the leak-fix that the daemon runs) resolves
-    the lock; an unattended SIGTERM is deliberately NOT issued — killing
-    processes as a working norm was rejected (operator directive).
-    """
-    # No-op body retained for symmetry: main() reads _alert()'s targets to
-    # compose the report. Actual output happens in main().
-
-
-
 def main() -> int:
     db_blocked = _db_write_blocked()
     deployed = _deployed_mtime()
@@ -221,8 +210,6 @@ def main() -> int:
                 f"DB={DB_PATH}")
             return 1
         return 0  # silent — clean
-
-    _alert(alert_targets)
 
     still_blocked = _db_write_blocked() if db_blocked else False
 
