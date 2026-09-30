@@ -111,20 +111,29 @@ def test_runner_executes_python_script_and_captures_stdout(tmp_path):
     r = _load("cortex-bus-bridge-run")
     script = tmp_path / "echo.py"
     script.write_text("print('hello from test')\n")
-    import subprocess as sp
-    # Run the runner in a subprocess so we can assert its standalone behavior
-    # (empty stdout must yield empty delivered text — we assert the runner exits 0).
+    import os, subprocess as sp
+    # HERMETIC: deliver=local + CORTEX_DEPLOY_HOME=tmp_path means this run saves
+    # the captured stdout to a temp log and can never reach the real messenger
+    # (a prior version omitted --deliver, so every pytest run sent a 'cron:test-
+    # echo / hello from test' telegram to the home channel — a real side-effect
+    # a unit test must never have).
+    env = dict(os.environ)
+    env["CORTEX_DEPLOY_HOME"] = str(tmp_path)
     proc = sp.run(
         ["/usr/bin/env", "python3", str(SCRIPTS / "cortex-bus-bridge-run.py"),
          "--name", "test-echo", "--script", str(script),
-         "--enabled", "true"],
-        capture_output=True, text=True, timeout=120,
+         "--deliver", "local", "--enabled", "true"],
+        capture_output=True, text=True, timeout=120, env=env,
     )
     assert proc.returncode == 0, proc.stderr
-    # The wrapper runs the script standalone (no Hermes runtime) and survives a
-    # script that prints. Delivery to the real messenger is side-effectful and
-    # best-effort by design — the observable contract is: exit 0, no traceback.
     assert "Traceback" not in (proc.stderr or ""), proc.stderr
+    # Prove stdout was captured and routed through the local-delivery path.
+    log = tmp_path / "cron-output" / "test-echo.log"
+    assert log.exists(), "runner must save captured stdout under cron-output"
+    assert log.read_text().strip() == "hello from test"
+    # And it must NOT have gone to the messenger (no telegram-notify state file
+    # was touched inside this hermetic CORTEX_DEPLOY_HOME).
+    assert not (tmp_path / "state" / "telegram-notify.json").exists()
 
 
 def test_runner_local_deliver_saves_not_sends(tmp_path):
