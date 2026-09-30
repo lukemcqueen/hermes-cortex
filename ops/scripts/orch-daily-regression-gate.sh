@@ -28,7 +28,18 @@ fi
 # 10-minute budget (spec F-008): the suite itself is fast (<30s when healthy);
 # timeout catches a hung grader (e.g. bus unreachable) without blocking the
 # scheduler. 570s leaves headroom under the 600s gateway cron limit.
-OUTPUT="$(timeout 570 python3 "${RUN_EVALS}" --suite regression --standalone 2>&1)"
+#
+# Resolve the python interpreter: prefer the hermes venv python (has PyYAML —
+# run-evals.py needs it to parse eval suites), falling back to PATH python3.
+# The Hermes-managed tools python (~/.hermes/tools/python-3.14.x) shadows
+# python3 in the cron PATH and lacks PyYAML, which silently broke this gate
+# (2026-09-30: "PyYAML is not installed — cannot parse eval definitions").
+PY_CMD="${HOME}/.hermes/hermes-agent/venv/bin/python3"
+if [[ ! -x "${PY_CMD}" ]]; then
+  PY_CMD="python3"
+fi
+
+OUTPUT="$(timeout 570 "${PY_CMD}" "${RUN_EVALS}" --suite regression --standalone 2>&1)"
 RC=$?
 
 if [[ ${RC} -eq 0 ]]; then

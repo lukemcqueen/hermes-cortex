@@ -234,6 +234,20 @@ EXEC_RESULT_SCHEMA = {
             "type": "integer",
             "description": "Execution duration in milliseconds",
             "minimum": 0
+        },
+        "duration_seconds": {
+            "type": "number",
+            "description": "Execution duration in seconds (added by agent-message-handler at send time)",
+            "minimum": 0
+        },
+        "task_id": {
+            "type": "string",
+            "description": "Task DB id for the inbox task this EXEC created (R-19/M-12 reply↔task join)",
+            "minLength": 1
+        },
+        "topic": {
+            "type": "string",
+            "description": "Bus topic channel — carried inside the result body (bus envelope rejects topic at top level)"
         }
     }
 }
@@ -324,7 +338,10 @@ UPDATE_RESULT_SCHEMA = {
         "sha": {"type": "string", "minLength": 7, "maxLength": 40},
         "doctor_passed": {"type": "boolean"},
         "doctor_output": {"type": "string", "maxLength": 5000},
-        "error": {"type": "string", "maxLength": 2000}
+        "error": {"type": "string", "maxLength": 2000},
+        "duration_seconds": {"type": "number", "minimum": 0},
+        "task_id": {"type": "string", "minLength": 1},
+        "topic": {"type": "string"}
     }
 }
 
