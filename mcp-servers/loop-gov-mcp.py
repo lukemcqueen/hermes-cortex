@@ -1571,9 +1571,18 @@ def _extract_verdict(text: str):
 
 
 def _record_review(cycle_id, reviewer_id, model, verdict, findings_json, summary):
-    """Insert the verdict; duplicate cycle_id is a benign no-op (idempotent)."""
+    """Insert the verdict; duplicate cycle_id is a benign no-op (idempotent).
+
+    Connection hygiene (2026-09-30): conn MUST be closed on EVERY path. cycle_id
+    is UNIQUE, so a retried end_change re-runs the review and re-INSERTs ->
+    IntegrityError. The old code swallowed that error without closing the
+    connection, leaking its open write transaction into the long-lived serving
+    daemon — in WAL that held the write reservation indefinitely, so each review
+    retry wedged the DB for all sessions and forced pointless daemon kills.
+    try/finally guarantees the connection (and its lock) is always released.
+    """
+    conn = _db()
     try:
-        conn = _db()
         conn.execute(
             "CREATE TABLE IF NOT EXISTS adversarial_reviews ("
             " review_id TEXT PRIMARY KEY,"
@@ -1594,9 +1603,10 @@ def _record_review(cycle_id, reviewer_id, model, verdict, findings_json, summary
              verdict, findings_json, summary, _now_iso()),
         )
         conn.commit()
-        conn.close()
     except sqlite3.IntegrityError:
         pass  # already reviewed — idempotent
+    finally:
+        conn.close()  # NEVER leak the connection (or its write lock) into the daemon
 
 
 def _adversarial_review_gate(lock: dict, cycle: dict) -> Optional[CallToolResult]:

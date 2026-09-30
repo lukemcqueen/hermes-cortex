@@ -329,6 +329,14 @@ crons:
   skill: ''
   deliver: telegram:{{HOME_CHANNEL}}
   workdir: ''
+- name: agent-loop-gov-lock-watchdog
+  scope: universal
+  schedule: '*/5 * * * *'
+  script: agent-loop-gov-stale-daemon-watchdog.py
+  prompt: ''
+  skill: ''
+  deliver: telegram:{{HOME_CHANNEL}}
+  workdir: ''
   no_agent: true
   model: ''
   provider: ''

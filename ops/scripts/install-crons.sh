@@ -559,6 +559,7 @@ if $UNINSTALL; then
     "agent-llm-judge-scorer-weekday" \
     "agent-llm-judge-scorer-weekend" \
     "agent-mcp-health-watchdog" \
+    "agent-loop-gov-lock-watchdog" \
     "agent-memory-pruning" \
     "agent-memory-to-brain-sync" \
     "agent-message-handler" \
@@ -936,6 +937,21 @@ create_cron "agent-langfuse-health-watchdog" "0 * * * *" \
 # alert when loop-governance/tasks go down (ALL WRITES BLOCKED). no_agent.
 create_cron "agent-mcp-health-watchdog" "*/5 * * * *" \
   "agent-mcp-health-watchdog.py" \
+  "" \
+  "" \
+  "" \
+  "telegram:${TELEGRAM_HOME_CHANNEL}" \
+  "" \
+  "true"
+
+# Loop-gov DB-lock watchdog (2026-09-30, security-audited): learns that
+# begin_change fails with "database is locked" when ANY loop-gov daemon holds
+# an open/uncommitted write txn on loop-governance.db (post-deploy leaks
+# included — the mtime heuristic alone misses these). Restarts the fd-holding
+# daemons so the gateway supervisor respawns them clean; re-probes; alerts if a
+# NON-loop-gov holder is found. Silent when the DB is writable. no_agent.
+create_cron "agent-loop-gov-lock-watchdog" "*/5 * * * *" \
+  "agent-loop-gov-stale-daemon-watchdog.py" \
   "" \
   "" \
   "" \
