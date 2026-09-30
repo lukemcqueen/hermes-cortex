@@ -1135,6 +1135,14 @@ def main() -> int:
 
     last_book = find_last_book()
 
+    # Same-day guard (2026-10-01): if SOUL.md already has today's entry, a
+    # manual rerun is colliding with the scheduler (or a catch-up fire after
+    # a missed 01:00 run) — exit 0 without double-appending or advancing the
+    # book anchor twice in one day.
+    if SOUL_MD.exists() and f"<!-- Added {get_kst_today()} -->" in SOUL_MD.read_text(encoding="utf-8"):
+        print("⏭️  Today's entry already in SOUL.md — nothing to do", file=sys.stderr)
+        return 0
+
     # Edge case 1: No books in SOUL.md — start from Genesis
     if last_book is None:
         next_book = BOOKS[0]  # Genesis
