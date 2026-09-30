@@ -81,3 +81,25 @@ def test_hermes_paths_shim_reexports_cortex_lib(hermetic_scripts_path):
     shim = importlib.import_module("hermes_paths")
     canonical = importlib.import_module("cortex_lib.paths")
     assert shim.ensure_scripts_path is canonical.ensure_scripts_path
+
+
+# ── Deploy-map contract (S1a: package + shims deploy together) ──────────────
+# cortex-update.sh deploys shims (hermes_tz/hermes_paths) to the runtime copy.
+# If a cortex_lib member is NOT registered, the deployed shims point at a
+# missing package and every import breaks at runtime. This test proves every
+# cortex_lib source file is in cortex-update.sh's register map — the deploy
+# half of the S1a done-proof (the push/dogfood checksum gate enforces it live).
+def test_cortex_lib_files_registered_in_cortex_update_sh():
+    updater = Path(__file__).resolve().parents[1] / "ops" / "scripts" / "cortex-update.sh"
+    text = updater.read_text()
+    unregistered = []
+    for src in sorted((SCRIPTS_DIR / "cortex_lib").glob("*.py")):
+        rel = f"ops/scripts/cortex_lib/{src.name}"
+        # register maps source→dest; the source path must appear in the map.
+        if f'register "{rel}"' not in text:
+            unregistered.append(rel)
+    assert not unregistered, (
+        f"cortex_lib members not registered in cortex-update.sh deploy map — "
+        f"the deployed shims would break (component-hermes-separation S1a): "
+        f"{unregistered}"
+    )

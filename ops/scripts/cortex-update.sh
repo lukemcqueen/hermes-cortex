@@ -539,6 +539,14 @@ register "docs/templates/adversarial-reviewer-prompt.md"     "${CORTEX_DEPLOY_HO
 
 # Timezone helper (required by monitoring scripts)
 register "ops/scripts/hermes_tz.py"                "${CORTEX_DEPLOY_HOME}/scripts/hermes_tz.py"
+# cortex_lib — canonical Hermes-independent client library (component-hermes-
+# separation S1a). hermes_tz.py / hermes_paths.py above are thin re-export shims
+# that import cortex_lib at runtime; the package MUST deploy alongside them or
+# the deployed shims break (import fails). Register file-by-file like
+# core/governance — register() maps single files, not directories.
+register "ops/scripts/cortex_lib/__init__.py"      "${CORTEX_DEPLOY_HOME}/scripts/cortex_lib/__init__.py"
+register "ops/scripts/cortex_lib/tz.py"            "${CORTEX_DEPLOY_HOME}/scripts/cortex_lib/tz.py"
+register "ops/scripts/cortex_lib/paths.py"         "${CORTEX_DEPLOY_HOME}/scripts/cortex_lib/paths.py"
 
 # mycortex knowledge brain — schema, migration runner, import, CLI, parity harness
 register "ops/services/mycortex/migrate.py"          "${CORTEX_DEPLOY_HOME}/services/mycortex/migrate.py"
