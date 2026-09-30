@@ -15,6 +15,10 @@ set -uo pipefail
 # is the runtime copy, not the repo source).
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 RUN_EVALS="${SCRIPT_DIR}/run-evals.py"
+# run-evals.py relocated to ops/scripts/manage/ (commit 0e5be574) — resolve robustly.
+if [[ ! -f "${RUN_EVALS}" ]]; then
+  RUN_EVALS="${SCRIPT_DIR}/manage/run-evals.py"
+fi
 
 if [[ ! -f "${RUN_EVALS}" ]]; then
   echo "❌ orch-daily-regression-gate: run-evals.py not found at ${RUN_EVALS}"
