@@ -547,6 +547,8 @@ register "ops/scripts/hermes_tz.py"                "${CORTEX_DEPLOY_HOME}/script
 register "ops/scripts/cortex_lib/__init__.py"      "${CORTEX_DEPLOY_HOME}/scripts/cortex_lib/__init__.py"
 register "ops/scripts/cortex_lib/tz.py"            "${CORTEX_DEPLOY_HOME}/scripts/cortex_lib/tz.py"
 register "ops/scripts/cortex_lib/paths.py"         "${CORTEX_DEPLOY_HOME}/scripts/cortex_lib/paths.py"
+register "ops/scripts/cortex-bus-bridge-run.py"      "${CORTEX_DEPLOY_HOME}/scripts/cortex-bus-bridge-run.py"
+register "ops/scripts/cortex-bus-bridge-generate.py" "${CORTEX_DEPLOY_HOME}/scripts/cortex-bus-bridge-generate.py"
 register "ops/scripts/cortex_lib/tools.py"         "${CORTEX_DEPLOY_HOME}/scripts/cortex_lib/tools.py"
 register "ops/scripts/cortex_lib/models.py"        "${CORTEX_DEPLOY_HOME}/scripts/cortex_lib/models.py"
 
