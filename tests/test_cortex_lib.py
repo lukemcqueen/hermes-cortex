@@ -134,6 +134,20 @@ def test_analyze_failures_uses_cortex_lib_not_hermes_tools():
     )
 
 
+# ── S1e: cortex_bus/__init__.py is hermetic (no hermes_bus seam) ────────────
+def test_cortex_bus_init_is_hermes_free():
+    # The bus __init__ must not reference the phantom Hermes-runtime module
+    # `hermes_bus` (its docstring used to show it as the import example; the
+    # real import was always the package's own `.queue`).
+    init = Path(__file__).resolve().parents[1] / "core" / "cortex_bus" / "__init__.py"
+    text = init.read_text()
+    assert "from .queue import" in text, "bus must import from its own .queue"
+    assert "hermes_bus" not in text, (
+        "cortex_bus/__init__.py must not reference the Hermes-runtime hermes_bus "
+        "module (component-hermes-separation S1e)"
+    )
+
+
 # ── Deploy-map contract (S1a–S1c: package + shims deploy together) ──────────
 # cortex-update.sh deploys shims (hermes_tz/hermes_paths) to the runtime copy.
 # If a cortex_lib member is NOT registered, the deployed shims point at a
