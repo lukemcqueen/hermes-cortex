@@ -39,7 +39,8 @@ Watchdog pattern (StateTracker-gated, no_agent):
 Cross-platform:
   - ps lstart: Linux GNU ps and macOS BSD ps both emit 'Wed Sep 29 23:47:11 2026'
     (local time); parsed with datetime (naive-local -> epoch, matching mtime).
-  - /proc attribution is Linux-only; elsewhere we restart all loop-gov daemons.
+  - /proc attribution is Linux-only; on non-Linux hosts the alert reports the
+    loop-gov daemons in view (mtime-secondary path) with no holder attribution.
 
 Run (no_agent cron or manual):  python3 agent-loop-gov-stale-daemon-watchdog.py
 """
