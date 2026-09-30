@@ -57,7 +57,7 @@ from pathlib import Path
 try:
     from state_tracker import StateTracker  # deployed ops lib
     from hermes_tz import format_timestamp
-except Exception:  # pragma: no cover - standalone fallback
+except ImportError:  # pragma: no cover - standalone fallback only on missing lib
     class StateTracker:  # type: ignore
         def __init__(self, *a, **k): pass
         def evaluate(self, fp, has_issues): return "alert" if has_issues else "silent"
@@ -82,7 +82,13 @@ def _cron_ts(name: str) -> str:
 
 
 def _db_write_blocked() -> bool:
-    """True iff a BEGIN IMMEDIATE cannot be acquired within PROBE_TIMEOUT_MS."""
+    """True iff a BEGIN IMMEDIATE cannot be acquired within PROBE_TIMEOUT_MS.
+
+    Only a genuine "database is locked" timeout counts as blocked. Any OTHER
+    failure (file missing, I/O error, corrupt db) is a real problem we must NOT
+    silently treat as writable — return True (callers alert on it) rather than
+    swallow it as healthy.
+    """
     conn = None
     try:
         conn = sqlite3.connect(str(DB_PATH), timeout=PROBE_TIMEOUT_MS / 1000.0)
@@ -91,7 +97,12 @@ def _db_write_blocked() -> bool:
         conn.rollback()
         return False  # writable — no stuck txn
     except sqlite3.OperationalError as e:
-        return "locked" in str(e).lower()
+        msg = str(e).lower()
+        if "locked" in msg or "busy" in msg:
+            return True  # stuck write lock — the incident we chase
+        # other OperationalError (can't open / I/O / corrupt) -> also a problem;
+        # surface it as blocked so the watchdog ALERTS instead of going silent.
+        return True
     finally:
         if conn is not None:
             try:
@@ -113,11 +124,20 @@ def _loop_gov_pids() -> list[int]:
 
 
 def _fd_points_to_db(pid: int, fd: str) -> bool:
+    """True iff fd resolves to the MAIN loop-governance.db inode.
+
+    Only the main database file counts as a hold — the -wal / -shm sidecars are
+    not lock holders (a writer takes its write lock on the main db, and they
+    exist in WAL even when idle). realpath comparison excludes them.
+    """
     try:
-        link = os.readlink(f"/proc/{pid}/fd/{fd}")
+        link = os.path.realpath(f"/proc/{pid}/fd/{fd}")
     except OSError:
         return False
-    return "loop-governance.db" in link
+    try:
+        return link == str(Path(os.path.realpath(str(DB_PATH))))
+    except OSError:
+        return link == str(DB_PATH)
 
 
 def _holder_pids() -> tuple[list[int], list[str]]:
