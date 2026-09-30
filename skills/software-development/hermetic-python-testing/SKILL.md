@@ -1,6 +1,6 @@
 ---
 name: hermetic-python-testing
-description: "Write Python modules with hermetic unit-test seams."
+description: "Write Python modules with hermetic unit-test seams. Covers sandboxed inputs AND live-side-effect output defaults (telegram/webhook/mail routes)."
 version: 1.0.0
 category: software-development
 author: Hermes Cortex
@@ -84,6 +84,18 @@ After the suite is green, confirm no real resources were touched:
 - No real credentials were read (check for side effects like real sends)
 - Grep the test file for real identifiers (chat ids, tokens, hostnames,
   `/home/<user>/` paths) — placeholder values only
+
+### 5. Override live-side-effect defaults EXPLICITLY — sandboxed inputs are not hermeticity
+
+A test that feeds tmp_path INPUTS can still act on the real world if the tool
+under test has a default OUTPUT route. Proven 2026-09-30: the bridge-runner
+test ran `cortex-bus-bridge-run.py` on a tmp echo.py without `--deliver` — the
+runner's default is Telegram, so every test run sent `cron:test-echo / hello
+from test` to the user's real chat (repeated complaints: "I keep seeing
+this"). Before invoking any tool/CLI in a test, grep its args/env for defaults
+that route to a real channel (messenger, webhook, mail, metrics) and pass the
+explicit safe target (`--deliver local`, `CORTEX_DEPLOY_HOME=tmp_path`).
+Assert the live default in a dedicated test — never exercise it by accident.
 
 ## Verification
 
