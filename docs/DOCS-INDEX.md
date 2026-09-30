@@ -84,6 +84,7 @@ repo; this public repo carries only framework docs (PRDs, design, reference).
 | `docs/reference/moral-architecture/` | **Moral Architecture for Autonomous Systems** — source PDF (gitignored) + working digest (16 theses, 7-layer stack, placement rule, seams, practical program, Scripture index) |
 | `docs/design/moral-architecture-slices.md` | **Moral architecture story/slice build plan (2026-09-24)** — the 9 adaptation gaps sliced into deepseek-flash-sized BUILD/CHECK tasks (failure-propensity register, layer-tagged registry, refusal metrics, seam ownership, permission TTL, independent evaluator, unannounced probe, evidence allowlist) |
 | `docs/design/independent-adversarial-verifier.md` | **Independent adversarial verifier spec (2026-09-24)** — the M6 "separate evaluator" gap made concrete: a different model + fixed orchestrator-owned prompt + orchestrator-triggered cron, built entirely on existing infra (cronjob, LLM_CRON_PROVIDER, loop-governance DB, orchestrator-only paths). 5 BUILD/CHECK slices + 3 open questions |
+| `docs/design/component-hermes-separation.md` | **Component↔Hermes separation (2026-09-30)** — scope-1+2 plan to make every fleet component resolve/schedule without requiring the Hermes runtime: sever the `hermes_*` import seam (cortex_lib vendoring) + standalone scheduler/gateway/MCP hosting; the route-around-Hermes migration rule applied to the present fleet |
 
 ## Operations
 
