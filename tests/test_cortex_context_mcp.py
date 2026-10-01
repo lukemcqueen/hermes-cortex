@@ -14,6 +14,7 @@ Run: python3 -m pytest tests/test_cortex_context_mcp.py -q
 """
 import importlib.util
 import json
+import subprocess
 import sys
 from pathlib import Path
 
@@ -256,22 +257,55 @@ def test_session_key_includes_all_three_axes(monkeypatch):
 def test_server_completes_a_real_mcp_handshake():
     """Start the server over stdio and list its tools over the real protocol —
     proves the SDK wiring, not just the module's shape. The protocol version is
-    read from the SDK rather than hardcoded, so it cannot go stale."""
+    read from the SDK rather than hardcoded, so it cannot go stale.
+
+    Read INCREMENTALLY rather than writing everything and closing stdin: a stdio
+    server exits on stdin EOF, so a one-shot write races the flush of the final
+    response. That race is a property of the test, not the server — a real client
+    holds stdin open — so the test must not encode it.
+    """
     mcp_types = pytest.importorskip("mcp.types")
-    import subprocess
+    event = importlib.import_module("threading").Event()
     script = REPO / "mcp-servers" / "cortex-context-mcp.py"
     py = Path.home() / ".hermes" / "hermes-agent" / "venv" / "bin" / "python3"
     py = str(py) if py.is_file() else sys.executable
     version = getattr(mcp_types, "LATEST_PROTOCOL_VERSION", None) or \
         getattr(mcp_types, "DEFAULT_NEGOTIATED_VERSION", "")
-    init = json.dumps({"jsonrpc": "2.0", "id": 1, "method": "initialize",
-                       "params": {"protocolVersion": version, "capabilities": {},
-                                  "clientInfo": {"name": "probe", "version": "1"}}})
-    # MCP requires the `initialized` notification before tools/list is honoured.
-    ready = json.dumps({"jsonrpc": "2.0", "method": "notifications/initialized"})
-    listed = json.dumps({"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}})
-    proc = subprocess.run([py, str(script)], input=init + "\n" + ready + "\n" + listed + "\n",
-                          capture_output=True, text=True, timeout=30)
-    out = proc.stdout + proc.stderr
+
+    proc = subprocess.Popen([py, str(script)], stdin=subprocess.PIPE,
+                            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    out_lines: list[str] = []
+
+    def _drain() -> None:
+        for line in proc.stdout:              # type: ignore[union-attr]
+            out_lines.append(line)
+            try:
+                if json.loads(line).get("id") == 2:
+                    event.set()               # tools/list answered — done
+            except Exception:
+                pass
+
+    reader = importlib.import_module("threading").Thread(target=_drain, daemon=True)
+    reader.start()
+
+    def send(obj: dict) -> None:
+        proc.stdin.write(json.dumps(obj) + "\n")   # type: ignore[union-attr]
+        proc.stdin.flush()                          # type: ignore[union-attr]
+
+    send({"jsonrpc": "2.0", "id": 1, "method": "initialize",
+          "params": {"protocolVersion": version, "capabilities": {},
+                     "clientInfo": {"name": "probe", "version": "1"}}})
+    send({"jsonrpc": "2.0", "method": "notifications/initialized"})
+    send({"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}})
+
+    got = event.wait(timeout=30)
+    proc.terminate()
+    try:
+        proc.wait(timeout=10)
+    except subprocess.TimeoutExpired:
+        proc.kill()
+
+    out = "".join(out_lines)
+    assert got, f"tools/list never answered: {out[-400:]}"
     assert "session_checkpoint" in out, f"session family missing: {out[-400:]}"
     assert "mem_profile" in out, f"memory family missing: {out[-400:]}"
