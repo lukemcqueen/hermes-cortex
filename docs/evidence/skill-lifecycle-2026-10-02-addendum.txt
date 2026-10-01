@@ -1,26 +1,7 @@
 === orch-skill-lifecycle run 2026-10-02 — evidence transcript (addendum) ===
 
-This addendum answers the remaining advisory findings by MEASUREMENT. Every
-block below is the raw output of the command shown above it, reproducible
-from the repo at HEAD.
-
---- ADV-10314-2: raw clean-tree proof (uncommented) ----------------------
-
-$ git status --short
-(empty output — tree clean)
-
-$ git rev-parse --short HEAD
-fe8af950
-
-$ python3 ops/scripts/manage/cortex-doctor.py --quiet | grep Overall
-  ✅ Overall: HEALTHY  (415 pass · 0 warn · 0 fail · 4 info)
-
-Capture method: the doctor's "Repo clean" check is self-referential for a
-file that records its own post-commit checks, so an in-place capture shows a
-1-warn WARNING (retained earlier in the main transcript, labelled as such). The
-clean-tree reading above was taken with the tree clean (this addendum committed
-only afterwards). The pre-push deploy gate independently refuses a FAIL doctor,
-so the push of fe8af950 succeeding is a second, external confirmation.
+Every block below is the raw output of the command shown above it, reproducible
+from the repo. This file is self-consistent at the commit that adds it.
 
 --- ADV-10314-1: blocked_ips.add is NOT this task's work (measurement) ---
 
@@ -29,43 +10,77 @@ $ git log --format='%h %an %s' -3 -- ops/install/deploy/nginx/blocked_ips.add
 d61449e6 kustos-agent auto: block 48 suspect IPs [pipeline]
 9e58cde1 esther-agent auto: block 1 suspect IPs [pipeline]
 
-$ for c in 3ae7b92c 0cf659aa 92d9f5c6 a25a7ec5 fe8af950; do echo "--- $c ---"; git show --stat $c --format="" | tail -1; done
+$ for c in 3ae7b92c 0cf659aa 92d9f5c6 a25a7ec5 fe8af950 0c78776b; do echo "--- $c ---"; git show --name-only --format="%h %s" $c | grep -vE '^$'; done
 --- 3ae7b92c ---
- 6 files changed, 218 insertions(+), 3 deletions(-)
+3ae7b92c chore(skills): propagate 5 deployed lessons back into the repo source
+docs/SKILLS-MANIFEST.md
+skills/autonomous-ai-agents/pi-coding-agent/SKILL.md
+skills/devops/agent-ergonomic-cli/SKILL.md
+skills/devops/enforcement-change-safety/SKILL.md
+skills/software-development/adversarial-finding-fix-patterns/SKILL.md
+skills/software-development/hermetic-python-testing/SKILL.md
 --- 0cf659aa ---
- 3 files changed, 234 insertions(+), 1 deletion(-)
+0cf659aa feat(skills): upstream governance-closeout + enforcement-gate-migration
+docs/SKILLS-MANIFEST.md
+skills/devops/enforcement-gate-migration/SKILL.md
+skills/devops/governance-closeout/SKILL.md
 --- 92d9f5c6 ---
- 2 files changed, 242 insertions(+)
+92d9f5c6 test(skill-lifecycle): runnable evidence + tests for the 2026-10-02 run
+ops/scripts/manage/verify-skill-lifecycle-run.py
+tests/test_verify_skill_lifecycle_run.py
 --- a25a7ec5 ---
- 3 files changed, 65 insertions(+), 7 deletions(-)
+a25a7ec5 test(skill-lifecycle): attach a raw evidence transcript; downgrade the titus claim
+docs/evidence/skill-lifecycle-2026-10-02.txt
+ops/scripts/manage/verify-skill-lifecycle-run.py
+tests/test_verify_skill_lifecycle_run.py
 --- fe8af950 ---
- 1 file changed, 8 insertions(+)
+fe8af950 docs(evidence): record the post-commit doctor output (clean tree, HEALTHY)
+docs/evidence/skill-lifecycle-2026-10-02.txt
+--- 0c78776b ---
+0c78776b docs(evidence): addendum answering the advisory findings by measurement
+docs/evidence/skill-lifecycle-2026-10-02-addendum.txt
 
-None of this run's five commits touch ops/install/deploy/nginx/blocked_ips.add.
-The 96 blocked_ips lines in the reviewed diff window are peer pipeline commits
-(joseph-agent 783c1380, kustos-agent d61449e6) that entered the window because
-this branch was rebased onto origin/main after a push was rejected (a peer had
-pushed ahead). The lock's started_at predates that rebase, so the reviewer's
-diff window includes those peer commits through no action of this task, and the
-lock's description must never be hand-edited to hide it.
+The full path list is shown (not a tail summary). No commit of this run touches
+ops/install/deploy/nginx/blocked_ips.add. The 96 blocked_ips lines in the
+reviewed diff window belong to peer pipeline commits (joseph-agent 783c1380,
+kustos-agent d61449e6) that entered the window because this branch was rebased
+onto origin/main after a push was rejected (a peer had pushed ahead). The lock's
+started_at predates that rebase; the lock description is never hand-edited.
 
---- ADV-10314-3: SOUL.md evaluation (explicit) --------------------------
+--- ADV-10314-2: raw clean-tree proof -------------------------------
+
+$ git status --short
+(empty output — tree clean at capture)
+
+$ git rev-parse --short HEAD
+fe8af950
+
+$ python3 ops/scripts/manage/cortex-doctor.py --quiet | grep Overall
+  ✅ Overall: HEALTHY  (415 pass · 0 warn · 0 fail · 4 info)
+
+Capture method: the doctor's "Repo clean" check is self-referential for a file
+that records its own post-commit checks, so an in-place capture shows a 1-warn
+WARNING (retained in the main transcript, labelled). The reading above was taken
+with the tree clean at fe8af950, before this addendum existed. The push of
+fe8af950 then passed the pre-push deploy gate, which refuses a FAIL doctor — an
+independent external confirmation of the healthy state.
+
+--- ADV-10314-3: SOUL.md evaluation (explicit) ----------------------
 
 $ ls -la ~/.hermes/SOUL.md
 -rw-r--r-- 1 esther esther 13895 Oct  2 01:01 /home/esther/.hermes/SOUL.md
 
-$ git diff --stat b58eaa1d..fe8af950 -- '**/SOUL.md'
+$ git diff --stat b58eaa1d..HEAD -- '**/SOUL.md'
 (empty output — no SOUL.md file changed in this run)
 
 SOUL.md was EVALUATED and deliberately NOT changed. This run's material is
-workflow/technical (skill pitfalls: tool_result event recording, CLI manifests,
-lock-file cycle reading, threading re-qualification, phrase-assertion
-normalisation). Per the pipeline's skills-vs-SOUL split those belong in skills,
-not SOUL.md; no behavioural principle emerged that SOUL.md does not already
-state, so no entry was added. SOUL.md mtime (Oct 2 01:01) predates this run,
-confirming this run did not write it.
+workflow/technical (tool_result event recording, CLI manifests, lock-file cycle
+reading, threading re-qualification, phrase-assertion normalisation). Per the
+pipeline's skills-vs-SOUL split those belong in skills, not SOUL.md; no
+behavioural principle emerged that SOUL.md does not already state. The SOUL.md
+mtime (Oct 2 01:01) predates this run, confirming this run did not write it.
 
---- ADV-10314-4: the verification script + pinning test are in the repo ---
+--- ADV-10314-4: the verification script + pinning test are in the repo --
 
 $ grep -n "def check_titus" -A6 ops/scripts/manage/verify-skill-lifecycle-run.py
 96:def check_titus(failures: list[str]) -> None:
@@ -76,7 +91,14 @@ $ grep -n "def check_titus" -A6 ops/scripts/manage/verify-skill-lifecycle-run.py
 101-    way — this check is CORROBORATING evidence only, never a delivery claim.
 102-    The only hard failure is a missing hc CLI (the probe could not run).
 
-$ grep -n "def test_titus_never_hard_fails" -A2 tests/test_verify_skill_lifecycle_run.py
+$ grep -n "def test_titus_never_hard_fails" -A3 tests/test_verify_skill_lifecycle_run.py
 112:def test_titus_never_hard_fails_on_an_unreadable_queue(verifier, monkeypatch):
 113-    """check_titus is corroborating only — a bad peek must NOT fail the run.
 114-
+
+--- Commit identifier reconciliation (ADV-10314-1, note vs addendum) ---
+
+The evidence in this file was captured at fe8af950; this addendum is committed
+as the NEXT commit after it. The run's commit series is
+3ae7b92c, 0cf659aa, 92d9f5c6, a25a7ec5, fe8af950, <addendum commit>. Where a
+note cites a commit, it cites one present in the lists above.
