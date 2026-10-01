@@ -87,6 +87,29 @@ suppression** — firing it every turn cannot shred history.
 **Do not put the trigger in the system prompt as an instruction.** "Remember to
 save" is not a mechanism; it fails exactly when it matters.
 
+### The hook API is the one thing you must verify, never assume (Pi 0.87.1)
+
+Both of these were got wrong on the first attempt, and BOTH failed silently:
+
+| Hook | Reality |
+|---|---|
+| `pi.on(name, (event, ctx) => …)` | **the first parameter is the EVENT, not a ctx.** The original code read `ctx.completed?.()` off it, got `undefined`, and the optional chain hid it — every checkpoint was written **empty**. |
+| `before_agent_start` | injection is the **RETURN VALUE** (`{ systemPrompt }` / `{ message }`). There is **no `ctx.addSystemPrompt()`** — calling a non-existent method did nothing, while a stderr marker made it *look* like it worked. |
+
+Checked against `dist/core/extensions/types.d.ts`. `turn_end` carries
+`turnIndex`, `message`, `toolResults`, `entries`, `outcome` — the checkpoint is
+built from `toolResults` + `message`. **A checkpoint that looks like continuity
+and carries none is worse than no checkpoint at all**, so the extension now
+warns loudly rather than writing an empty one.
+
+Generate and verify against the installed package:
+
+```bash
+P=$(npm root -g)/@earendil-works/pi-coding-agent
+grep -n -A6 "type ExtensionHandler" "$P"/dist/core/extensions/types.d.ts
+grep -n -A10 "interface TurnEndEvent" "$P"/dist/core/extensions/types.d.ts
+```
+
 ---
 
 ## 3. Wiring a harness
@@ -177,6 +200,8 @@ running service").
 | Checkpoints land, restore finds none | identity mismatch (different repo/branch) | pin `CORTEX_SESSION_*`, or pass `session_key` |
 | A checkpoint every turn | suppression state unwritable | the stderr message names it; fix perms |
 | Hook never fires | wrong hook name for that harness | read the harness's own extension docs |
+| **macOS: every call returns empty, `CORTEX_FAIL` on stderr** | `python3` not on Pi's PATH (Homebrew is at `/opt/homebrew/bin` on Apple Silicon, `/usr/local/bin` on Intel; a GUI-launched app sees a narrower PATH) | `export CORTEX_CONTEXT_PYTHON=/opt/homebrew/bin/python3` |
+| **macOS: the store is unreachable but Linux works** | the Linux path shells through `sg docker -c docker exec` — neither exists on macOS | the store has a darwin path (direct `psql` + 0600 `PGPASSFILE`); if it is not firing, check `MYCORTEX_MEM_PASSWORD` and that Postgres is listening locally |
 
 `CORTEX_CONTEXT_FAIL` / `session-autocheckpoint: …` lines on **stderr are
 findings, not noise** — they mean a capability is silently degraded.

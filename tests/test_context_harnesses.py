@@ -154,6 +154,83 @@ def test_pi_extension_wires_the_lifecycle_trigger():
     assert "before_agent_start" in src, "no restore hook — sessions cannot resume"
 
 
+def test_pi_extension_uses_the_REAL_event_api():
+    """Regression guard. Both of these were wrong once and failed SILENTLY:
+
+      * the handler's first parameter is the EVENT, not a ctx — reading
+        `ctx.completed?.()` yielded undefined and wrote EMPTY checkpoints;
+      * before_agent_start injection is the RETURN value — there is no
+        ctx.addSystemPrompt(), and calling one did nothing.
+
+    A checkpoint that looks like continuity and carries none is worse than none,
+    so assert the shape rather than trusting a stderr marker.
+    """
+    src = PI_EXT.read_text()
+    # Compare CODE, not prose: the docstring legitimately NAMES the method it
+    # says does not exist. Asserting against the raw text was a bad probe — it
+    # flagged its own explanation.
+    code = "\n".join(ln for ln in src.splitlines()
+                     if not ln.lstrip().startswith(("*", "//", "/*")))
+    assert "addSystemPrompt(" not in code, "no such ctx method — injection is the return value"
+    assert "ctx.completed" not in code and "ctx.pending" not in code, \
+        "those live on the event, not the ctx"
+    assert re.search(r'pi\.on\(\s*"turn_end"\s*,\s*async\s*\(\s*event', code), \
+        "turn_end handler must take (event, ctx)"
+    assert "systemPrompt:" in code, "before_agent_start must RETURN the injected prompt"
+    assert "CORTEX_CHECKPOINT_EMPTY" in code, \
+        "must warn loudly rather than write a silently-empty checkpoint"
+
+
+def test_macos_parity_for_the_context_layers():
+    """macOS is a fleet platform, not an afterthought. Two things break there:
+
+      * the store must NOT shell through `sg docker -c docker exec` (no sg, no
+        docker on macOS) — it runs psql directly with a 0600 PGPASSFILE;
+      * a hardcoded `python3` is unsafe because it may not be on Pi's PATH
+        (Homebrew lives at /opt/homebrew/bin or /usr/local/bin), so the
+        interpreter is overridable.
+    """
+    store_src = (REPO / "ops/services/mycortex-mem/store.py").read_text()
+    # The real detector is os.uname().sysname == "Darwin" (checked, not assumed —
+    # an earlier version of this assertion demanded sys.platform and failed
+    # against correct code: the probe was wrong, not the store).
+    assert 'Darwin' in store_src, "store.py needs an explicit macOS branch"
+    assert "_is_macos" in store_src, "macOS detection should be resolved once, at init"
+    assert "PGPASSFILE" in store_src, "macOS path should use a 0600 PGPASSFILE"
+    # And the Linux path must NOT be reachable on macOS.
+    assert "sg" in store_src, "Linux path shells through sg"
+
+    # Behavioural, not a string match: force the darwin branch and check the
+    # command it builds actually avoids `sg`/`docker`.
+    import importlib.util as _ilu
+    spec = _ilu.spec_from_file_location("store_mac_test",
+                                        REPO / "ops/services/mycortex-mem/store.py")
+    assert spec and spec.loader
+    mod = _ilu.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    pc = mod.PgConnection()
+    pc._is_macos = True
+    cmd, env = pc._cmd("mycortex_mem_reader")
+    assert "sg" not in cmd and "docker" not in cmd, f"Linux path leaked to macOS: {cmd}"
+    assert cmd[0] == "psql" and "-h" in cmd and "localhost" in cmd, cmd
+    assert "PGPASSFILE" in env and env["PGPASSFILE"].endswith(".pgpass"), env
+    # The Linux branch must still be the docker one.
+    pc._is_macos = False
+    cmd_linux, _ = pc._cmd("mycortex_mem_reader")
+    assert cmd_linux[0] == "sg" and "docker" in cmd_linux, cmd_linux
+
+    ext = PI_EXT.read_text()
+    assert "CORTEX_CONTEXT_PYTHON" in ext, \
+        "the interpreter must be overridable for macOS PATH differences"
+
+    cli_src = CLI_PY.read_text()
+    assert cli_src.startswith("#!"), "CLI needs a shebang"
+    assert "/usr/bin/env python3" in cli_src.splitlines()[0], \
+        "use /usr/bin/env python3 so macOS picks up a Homebrew python"
+    for linux_only in ("sg docker", "/proc/", "systemctl", "apt-get"):
+        assert linux_only not in cli_src, f"Linux-only construct in the CLI: {linux_only}"
+
+
 def test_mcp_server_shares_the_implementation():
     """The MCP server must import the shared surface, not define its own."""
     src = MCP_PY.read_text()

@@ -36,6 +36,11 @@ defaults:
     - CORTEX_SESSION_HARNESS
     - CORTEX_SESSION_REPO
     - CORTEX_SESSION_BRANCH
+  # macOS: the interpreter may not be on Pi's PATH (Homebrew python lives at
+  # /opt/homebrew/bin on Apple Silicon, /usr/local/bin on Intel) — override it.
+  env_optional:
+    - CORTEX_CONTEXT_CLI
+    - CORTEX_CONTEXT_PYTHON
 
 harnesses:
   - name: pi

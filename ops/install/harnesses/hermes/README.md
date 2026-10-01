@@ -39,6 +39,13 @@ export CORTEX_SESSION_REPO=<value>
 export CORTEX_SESSION_BRANCH=<value>
 ```
 
+Overrides (usually unnecessary, needed on macOS):
+
+```bash
+export CORTEX_CONTEXT_CLI=<path>   # see the failure modes in the runbook
+export CORTEX_CONTEXT_PYTHON=<path>   # see the failure modes in the runbook
+```
+
 ## Shared pieces (identical for every harness — never fork them)
 
 - CLI: `~/.hermes-cortex/scripts/cortex-context.py`

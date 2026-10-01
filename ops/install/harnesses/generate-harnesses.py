@@ -142,12 +142,17 @@ def render_readme(reg: dict, h: dict) -> str:
         out += ["## Verify", "", "Nothing to verify until the surface is known.", ""]
 
     envs = defaults.get("env", [])
-    if envs:
+    optional = defaults.get("env_optional", [])
+    if envs or optional:
         out += ["## Session identity", "",
                 "One session = one identity. Precedence is identical in every layer "
                 "(args → env → git), which is what lets a checkpoint written here be "
                 "restored by another harness.", "", "```bash"]
         out += [f"export {e}=<value>" for e in envs]
+        out += ["```", ""]
+    if optional:
+        out += ["Overrides (usually unnecessary, needed on macOS):", "", "```bash"]
+        out += [f"export {e}=<path>   # see the failure modes in the runbook" for e in optional]
         out += ["```", ""]
 
     out += ["## Shared pieces (identical for every harness — never fork them)", "",
