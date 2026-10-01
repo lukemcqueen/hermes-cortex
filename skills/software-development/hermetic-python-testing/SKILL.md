@@ -209,3 +209,18 @@ Two rules follow:
   DISCARDS a passing test's output, so the print never appears and you wrongly
   conclude "no leak". Check the var at SETUP, not teardown — fixtures undo
   their own patches during teardown, so a teardown probe misses real leaks.
+ - **A flaky test is not evidence the artifact is broken — probe the artifact
+ OUT-OF-BAND before "fixing" it.** Identical code that fails 2 runs in 3 is a
+ RACE, and the race is often in the TEST. Before touching the module under
+ test, drive it directly by hand (same request, outside pytest); if it answers
+ correctly, the fault is the harness you wrote, not the code you were about to
+ "fix". Re-run the single test 3x first — deterministic vs flaky selects
+ completely different fixes, and guessing wrong means rewriting working code.
+ - **A stdio server test must READ INCREMENTALLY — closing stdin races the last
+ response.** A stdio server exits on stdin EOF, so
+ `subprocess.run(cmd, input=init + "\n" + ready + "\n" + request, ...)` can
+ kill it before it flushes the final reply; the test then judges a partial
+ transcript and blames the server. Use `Popen`, write+flush each message, read
+ stdout until the response you need arrives (or a deadline expires), then
+ terminate. A real client holds stdin open — the test must not encode a race
+ the product does not have.
