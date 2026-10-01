@@ -470,20 +470,36 @@ class MycortexMemMemoryProvider(MemoryProvider):
             return []
         if self._recall_mode == "context":
             return []
-        return [PROFILE_SCHEMA, SEARCH_SCHEMA, CONTEXT_SCHEMA, REASONING_SCHEMA, CONCLUDE_SCHEMA]
+        # DERIVED from the shared surface, not hand-written: the schema is a
+        # property of the tool, not of this host. mem_reasoning is the one
+        # host-local extra (it needs the host's own LLM, which is exactly why
+        # the shared surface deliberately does not ship it).
+        tools = _load_context_tools()
+        if tools is None:
+            return []
+        return [
+            {"name": t["name"], "description": t["description"],
+             "parameters": tools.tool_schema_for_mcp(t)}
+            for t in tools.TOOLS
+        ] + [REASONING_SCHEMA]
 
     def handle_tool_call(self, tool_name: str, args: Dict[str, Any], **kwargs) -> str:
-        handlers = {
-            "mem_profile": self._tool_profile,
-            "mem_search": self._tool_search,
-            "mem_context": self._tool_context,
-            "mem_reasoning": self._tool_reasoning,
-            "mem_conclude": self._tool_conclude,
-        }
-        handler = handlers.get(tool_name)
-        if not handler:
+        # ONE implementation: every shared tool is dispatched through
+        # context_tools. Only mem_reasoning is handled locally, because it needs
+        # the host's LLM and therefore cannot live in a host-neutral surface.
+        if tool_name == "mem_reasoning":
+            return self._tool_reasoning(args)
+        tools = _load_context_tools()
+        if tools is None:
+            return tool_error(
+                "cortex context_tools is unavailable — the shared mem_* surface "
+                "could not be loaded (checked ~/.hermes-cortex/services/mycortex-mem/)."
+            )
+        if tool_name not in tools.HANDLERS:
             return tool_error(f"Unknown tool: {tool_name}")
-        return handler(args)
+        # dispatch() is fail-open and returns a JSON string, matching the plain
+        # string this provider already returns.
+        return tools.dispatch(tool_name, args)
 
     def shutdown(self) -> None:
         if self._sync_thread and self._sync_thread.is_alive():
@@ -648,6 +664,43 @@ def _esc(val: str) -> str:
 
 def _esc_lit(val: str) -> str:
     return "'" + val.replace("'", "''") + "'"
+
+
+def _load_context_tools():
+    """The ONE implementation of the mem_* surface.
+
+    `ops/services/mycortex-mem/context_tools.py` is the canonical tool contract,
+    shared by every host: this plugin (Hermes), the MCP server and the CLI. This
+    plugin used to reimplement all five tools, so `mem_context` existed TWICE —
+    and whichever the runtime resolved, the other silently did not exist. An
+    agent then reported "mem_context is broken" and reached for raw SQL.
+
+    Loaded by path (not import) because the plugin is deployed into the Hermes
+    tree while the shared surface lives in the cortex tree. Returns None when it
+    is unavailable, and the caller must SAY SO — never fall back to a second
+    implementation, which is how the drift started.
+    """
+    import importlib.util
+
+    candidates = [
+        Path.home() / ".hermes-cortex" / "services" / "mycortex-mem" / "context_tools.py",
+        Path(__file__).resolve().parents[2] / "ops" / "services" / "mycortex-mem" / "context_tools.py",
+    ]
+    for path in candidates:
+        if not path.is_file():
+            continue
+        try:
+            spec = importlib.util.spec_from_file_location("cortex_context_tools", path)
+            if spec is None or spec.loader is None:
+                continue
+            mod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)
+            return mod
+        except Exception as e:  # noqa: BLE001 — a provider must not die at import
+            logger.warning("cortex context_tools failed to load from %s: %s", path, e)
+    logger.warning("cortex context_tools not found (tried %s) — mem_* tools unavailable",
+                   ", ".join(str(c) for c in candidates))
+    return None
 
 
 def register(ctx) -> None:

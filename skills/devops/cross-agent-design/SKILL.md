@@ -159,6 +159,56 @@ Moses's peer = Esther :14004; `PEER_AUTH` = nginx Basic creds).
 - Agents connecting to Esther's bus see only Esther-local messages
 - Cross-server message sync requires the forwarder to be running
 
+## Designing for N HETEROGENEOUS CODING AGENTS (the second axis)
+
+The rest of this skill is about agents on the **bus**. This section is about
+agents consuming a **capability** — Pi, Hermes, Claude Code, Codex, whatever
+appears next. Standing constraint (Luke 2026-10-02): *"fix things for
+interoperability with different coding agents. always be thinking this."*
+
+**The rule: ONE implementation, per-host ADAPTERS.** A capability is implemented
+once in a host-neutral contract; each host gets a thin adapter that converts its
+calling convention and adds **no semantics**.
+
+The failure this prevents is real and was shipped: `mem_context` existed in BOTH
+the Hermes plugin and the MCP server, so whichever the runtime resolved, the
+other **silently did not exist**. An agent concluded "memory is broken", fell
+back to raw SQL, and reported the backend as the working path.
+
+Rules, each of which is a bug that actually happened:
+
+1. **One implementation per capability.** Two implementations of one tool NAME
+   is worse than none — the runtime picks one silently and the other becomes a
+   phantom. Enforce with a test.
+2. **The contract may not import a harness.** If it needs one, either extract it
+   or declare it a **host-local extra** that names the reason (e.g. a tool that
+   needs the host's own LLM).
+3. **Schemas are DERIVED, never hand-written** — a hand-written schema list *is*
+   a second definition and drifts immediately.
+4. **Never substitute a fallback implementation on failure.** Fail-open is for
+   *availability* ("carry on without memory"), never for *semantics*. A fallback
+   is how the duplicate starts.
+5. **Fail loudly, never silently-empty.** An empty result that *looks* like "no
+   data" when the backend is down is worse than an error.
+6. **Verify the host's OWN API before writing its adapter** — never infer it from
+   a skill or a doc. Pi's first adapter failed TWICE, silently: the handler's
+   first parameter is the event (not a ctx), and prompt injection is the RETURN
+   VALUE (there is no ctx method). Both were masked by optional chaining.
+7. **Never let the model own a lifecycle guarantee.** Triggers (`turn_end`, stop
+   hooks, crons) belong to the host — "remember to save" is not a mechanism.
+8. **A registry, not per-host prose.** At N hosts the failure mode is N docs that
+   disagree; declare hosts in one file and GENERATE their docs from it.
+
+Checklist before shipping anything agent-facing:
+- [ ] works from **at least two different harnesses** (prove it, don't claim it)
+- [ ] semantics in **one** place; adapters add none
+- [ ] metadata **derived**, not duplicated
+- [ ] unreachable dependency → **visible message**, never a silent empty
+- [ ] Linux **and macOS**
+- [ ] a **drift guard test**, not just a doc
+
+Reference: `docs/design/agent-interop.md`.
+
 ## Common Pitfalls
 
 ### ❌ "I sent a message to inbox_esther, why didn't she respond?"

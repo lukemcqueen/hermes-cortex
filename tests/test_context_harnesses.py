@@ -238,6 +238,50 @@ def test_mcp_server_shares_the_implementation():
     assert "def mem_context" not in src and "def session_checkpoint" not in src
 
 
+def test_plugin_is_an_adapter_not_a_second_implementation():
+    """The Hermes plugin must DELEGATE to the shared surface.
+
+    It used to reimplement all five mem_* tools, so `mem_context` existed twice
+    — and whichever the runtime resolved, the other silently did not exist. An
+    agent then reported "mem_context is broken" and reached for raw SQL. One
+    implementation, however many hosts.
+    """
+    src = (REPO / "plugins/mycortex-mem/__init__.py").read_text()
+    assert "_load_context_tools" in src, "plugin must load the shared surface"
+    assert "tools.dispatch(" in src, "plugin must dispatch through the shared surface"
+    assert "tools.tool_schema_for_mcp(" in src, "schemas must be DERIVED, not hand-written"
+    # The hand-written schema list must be gone: that list was the second
+    # definition of the same tools.
+    assert "PROFILE_SCHEMA, SEARCH_SCHEMA, CONTEXT_SCHEMA" not in src, \
+        "hand-written schema list is back — that is the duplicate surface"
+    # Exactly one host-local tool is allowed, and it must be documented as such.
+    # Compare whitespace-normalised text: prose wraps across lines, so a phrase
+    # assertion against raw source fails on a line break (this caught me three
+    # times tonight — question the probe before the code).
+    flat = " ".join(src.split())
+    assert src.count('"mem_reasoning"') >= 1
+    assert "host-neutral" in flat, \
+        "the host-local exception must say WHY it is local (host-bound capability)"
+
+
+def test_every_access_layer_funnels_through_one_dispatch():
+    """Interop invariant: hosts may differ, semantics may not.
+
+    Each layer must reach the store through context_tools.dispatch — the MCP
+    server, the CLI and the plugin alike. A new host means a new ACCESS LAYER,
+    never a new implementation.
+    """
+    layers = {
+        "mcp server": (REPO / "mcp-servers/cortex-context-mcp.py").read_text(),
+        "cli": CLI_PY.read_text(),
+        "plugin": (REPO / "plugins/mycortex-mem/__init__.py").read_text(),
+    }
+    for name, src in layers.items():
+        assert "context_tools" in src, f"{name} does not reference the shared surface"
+    assert "tools.dispatch(" in layers["mcp server"] or "tools.dispatch(" in layers["cli"], \
+        "MCP/CLI must dispatch, not reimplement"
+
+
 # ── The harness registry ─────────────────────────────────────────
 
 def test_registry_is_valid_and_every_entry_is_complete():

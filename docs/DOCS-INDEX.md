@@ -81,6 +81,7 @@ repo; this public repo carries only framework docs (PRDs, design, reference).
 | `docs/adr/0005-messaging-gateway.md` | **ADR-0005: Unified Messaging Gateway** — one daemon owns all messaging apps; agents bus-only; envelope v1; per-bot ACLs + advisory locks |
 | `docs/design/messaging-gateway.md` | **Messaging gateway design** — party-converged architecture (adapters, routing, envelope, reliability, security, migration, MVP) |
 | `docs/external/README.md` | **External context** — what exists outside the repo: third-party services + where credentials live. Never values. (Env var NAMES live in `docs/env-vars.md`) |
+| `docs/design/agent-interop.md` | **Agent interoperability — the abstraction layer (2026-10-02)** — the standing constraint (design for N coding agents). ONE implementation (contract) + per-host ADAPTERS that add no semantics; where host-local extras are allowed and how they must declare themselves; the 8 rules (each a bug that shipped); the checklist for adding a host via `ops/install/harnesses/registry.yaml`; and the drift-guard tests that enforce it. Motivated by `mem_context` existing TWICE, so one copy was a phantom. |
 | `docs/design/mycortex-DESIGN.md` | mycortex knowledge-brain design |
 | `docs/design/mycortex-dream-layer.md` | Dream-layer design |
 | `docs/design/mycortex-dream-task-bridge.md` | Dream→task bridge |
