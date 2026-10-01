@@ -58,7 +58,7 @@ health = bus_health()                        # active bus, fallback, auth
 
 ### Agent Identity
 Admin tools resolve the operator's agent name from (in order): `HC_AGENT` env →
-`hc.env` → `AGENT_NAME` in `.env` → hostname-derived guess.
+`HC_AGENT` in the canonical `.env` → `AGENT_NAME` in `.env` → hostname-derived guess.
 **Never default to a hardcoded other agent** — the old `DEFAULT_AGENT="moses"`
 made esther's host silently impersonate moses.
 

@@ -51,9 +51,6 @@ fi
 # host's PRIVATE env (~/hermes-cortex/.env, never committed); fall back
 # to the user running this deploy.
 SUDO_USERS=""
-if [ -f "$CORTEX_DEPLOY_HOME/.env" ]; then
-  SUDO_USERS="$(grep '^CORTEX_SUDO_USERS=' "$CORTEX_DEPLOY_HOME/.env" 2>/dev/null | head -1 | cut -d= -f2- || true)"
-fi
 if [ -z "$SUDO_USERS" ] && [ -f "$HOME/hermes-cortex/.env" ]; then
   SUDO_USERS="$(grep '^CORTEX_SUDO_USERS=' "$HOME/hermes-cortex/.env" 2>/dev/null | head -1 | cut -d= -f2- || true)"
 fi

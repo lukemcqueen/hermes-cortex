@@ -52,9 +52,14 @@ from .helpers import run, run_bg, http_get, read_file, process_running, find_sim
 from .results import Results
 
 
+# The ONE canonical cortex env (gitignored). Module-level so tests can
+# redirect it: monkeypatch.setattr(checks, "CORTEX_ENV_FILE", tmp_path / ".env").
+CORTEX_ENV_FILE = Path.home() / "hermes-cortex" / ".env"
+
+
 def _read_config_from_bus_conf(key: str) -> str:
   """Read a value from .env by key. Returns '' if not found."""
-  conf_path = Path.home() / "hermes-cortex" / ".env"
+  conf_path = CORTEX_ENV_FILE
   if not conf_path.exists():
     return ""
   try:
@@ -1638,7 +1643,7 @@ def _env_file_value(key: str) -> str:
   (~/hermes-cortex/.env), then the legacy ~/.hermes-cortex/hermes-cortex.env.
   The deploy dir (~/.hermes-cortex) holds no .env — it is a deployed path.
   """
-  for path in (Path(os.path.expanduser("~/hermes-cortex/.env")),
+  for path in (CORTEX_ENV_FILE,
                CORTEX_HOME / "hermes-cortex.env"):
     try:
       if not path.is_file():

@@ -128,7 +128,7 @@ def test_sink_candidates_come_from_this_hosts_push_config(tmp_path, monkeypatch)
         f"VICTORIA_METRICS_URL=https://{creds}@127.0.0.1:13005/api/v1/import/prometheus\n"
         f"VICTORIA_METRICS_FALLBACK_URL=http://{creds}@127.0.0.1:14005/api/v1/import/prometheus\n"
     )
-    monkeypatch.setattr(checks, "CORTEX_HOME", tmp_path)
+    monkeypatch.setattr(checks, "CORTEX_ENV_FILE", env)
     cands = checks._push_sink_candidates()
     assert cands[0][0] == "https://127.0.0.1:13005", "push order preserved, userinfo stripped"
     assert cands[0][1], "the credential must survive as a ready Basic-auth header"

@@ -58,7 +58,7 @@ import os as _os
 STATE_DB = Path(_os.path.join(str(HOME), ".hermes", "state.db"))
 STATE_FILE = Path(_os.path.join(str(HOME), ".hermes-cortex", "state", "session-correction-scan-state.json"))
 GUARDRAIL_REGISTRY = Path(_os.path.join(str(HOME), "hermes-cortex", "docs", "guardrail-registry.json"))
-BUS_CONF = Path(_os.path.join(str(HOME), ".hermes-cortex", ".env"))
+BUS_CONF = Path(_os.path.join(str(HOME), "hermes-cortex", ".env"))
 
 # ── System-injected wrappers to strip before matching (F-01) ──────────
 WRAPPER_PATTERNS = [

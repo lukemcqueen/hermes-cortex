@@ -6,7 +6,7 @@ Provides send/read/archive/list_queues functions using the Agent Bus HTTP API.
 Bus URL is read from .env (CORTEX_BUS_URL); when
 CORTEX_BUS_FALLBACK_URL is set, sends automatically retry the fallback bus
 per-call when the primary is unreachable (failover path, since 2026-08-04).
-Config file location: $CORTEX_DEPLOY_HOME/.env or ~/hermes-cortex/.env
+Config file location: ~/hermes-cortex/.env (the ONE canonical cortex env)
 
 Usage:
     from lib.cortex_bus import bus_send, bus_read, bus_archive, bus_list_queues
@@ -22,7 +22,7 @@ from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
-CONFIG_FILE = Path(os.environ.get("CORTEX_DEPLOY_HOME", Path.home() / ".hermes-cortex")) / ".env"
+CONFIG_FILE = Path.home() / "hermes-cortex" / ".env"
 
 # ── Test-traffic discipline (2026-09-07) ────────────────────────────────
 # Receiver handlers (agent-message-handler.py) SILENTLY ARCHIVE the

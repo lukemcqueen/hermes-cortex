@@ -22,7 +22,7 @@ moses and esther hosts. No docker exec, no local-Postgres assumption.
   hc env               show current config
   hc help              this message
 
-Config: ~/.hermes-cortex/hc.env (optional; every field falls back)
+Config: ~/hermes-cortex/.env (optional HC_AGENT; every field falls back)
   HC_AGENT=esther                          # your agent name (default)
 Bus config comes from ~/hermes-cortex/.env:
   CORTEX_BUS_URL=https://…:13004           # active bus (Moses)
@@ -44,7 +44,7 @@ from pathlib import Path
 
 # ── Config ──────────────────────────────────────────────────────
 
-CONFIG_FILE = Path.home() / ".hermes-cortex" / "hc.env"
+CONFIG_FILE = Path.home() / "hermes-cortex" / ".env"
 BUS_CONF_FILE = Path.home() / "hermes-cortex" / ".env"
 DEFAULT_AGENT = ""
 
@@ -108,11 +108,11 @@ def _read_bus_conf(key: str) -> str:
 
 
 def load_config() -> dict:
-    """Load config from hc.env + .env (env vars override).
+    """Load config from the canonical .env (env vars override).
 
     Agent resolution order:
       1. HC_AGENT env var
-      2. HC_AGENT in hc.env
+      2. HC_AGENT in ~/hermes-cortex/.env
       3. AGENT_NAME in .env (canonical per-host identity)
       NEVER hostname — a machine name is not an agent identity. Missing
       identity fails loudly (Luke directive 2026-08-14).
@@ -142,8 +142,8 @@ def load_config() -> dict:
         # directive 2026-08-14). Fail loudly with setup instructions.
         print(
             "❌ Cannot determine agent identity. Set one of:\n"
-            "   1. export HC_AGENT=<your-agent>   (or add HC_AGENT= to ~/.hermes-cortex/hc.env)\n"
-            "   2. AGENT_NAME= in ~/hermes-cortex/.env / ~/hermes-cortex/.env\n"
+            "   1. export HC_AGENT=<your-agent>   (or add HC_AGENT= to ~/hermes-cortex/.env)\n"
+            "   2. AGENT_NAME= in ~/hermes-cortex/.env\n"
             "   3. export AGENT_NAME=<your-agent>",
             file=sys.stderr,
         )
