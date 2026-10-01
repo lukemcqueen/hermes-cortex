@@ -7,6 +7,11 @@
 > (`inbox_send`/`inbox_read` tools) is **orchestrator-only** (Moses, Esther) —
 > the doctor WARNS if you add it to `config.yaml`. Your only bus access is the
 > HTTP client: `~/hermes-cortex/.env` + `contact-orchestrator.sh`.
+>
+> 📄 **Connected, and now working?** See
+> [`agent-session-lifecycle.md`](agent-session-lifecycle.md) for what a normal
+> governed session looks like — the two gates, the lock, commit/push/close-out,
+> the adversarial review, and the gotchas.
 
 ---
 

@@ -29,6 +29,7 @@ A lightweight map of all project documents. Files are grouped by topic.
 | `docs/setup-reference.md` | Deployment setup, health monitoring pipeline, Ollama model tier |
 | `docs/operations-reference.md` | Operations — inbox architecture, Agent Bus, offline code, common tasks |
 | `docs/agent-onboarding.md` | Agent onboarding — step-by-step guide for client-only agents to connect to the bus and fleet |
+| `docs/agent-session-lifecycle.md` | What a working session looks like — the two gates, the lock, commit/push/close-out, adversarial review, and the gotchas that cost real time |
 | `docs/fleet-reference.md` | Fleet reference — cron jobs, agent summary, auto-remediation |
 | `docs/fleet-update-protocol.md` | **NEW** — Fleet update bus protocol: UPDATE_REQUEST/RESULT, FIX_REQUEST/RESULT schemas for Moses→fleet orchestration. **Shared orchestrator inbox** (`inbox_orchestrator`) for failover-aware escalation |
 | `docs/runbooks/blocklist-cleanup-ddos-relax.md` | **Blocklist cleanup & DDoS relaxation (2026-08-08)** — legit users blocked on Kustos/Gisu/Joseph. DDoS burst relaxation (manual templates), scanner now adds ONLY fail2ban-confirmed abusers, allow-list guard, `classify-blocked-ips.sh` evidence-based review tool. Run on Joseph (primary discovery host) |
