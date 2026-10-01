@@ -41,6 +41,12 @@ one place, and its README is derived from it.
 Find your harness in `INDEX.md` and follow its generated README; the sections
 below explain the two shapes it can take.
 
+**Wiring Pi?** Read
+[`ops/install/harnesses/pi/IMPLEMENT.md`](../ops/install/harnesses/pi/IMPLEMENT.md)
+instead of improvising: it is the self-contained guide (install, verify, the
+hook API verified against the installed package, the stderr markers, and the
+known host-side failure to check before filing a bug).
+
 ---
 
 ## 1. The shape

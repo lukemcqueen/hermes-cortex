@@ -594,6 +594,9 @@ register "ops/scripts/cortex-context.py"                   "${CORTEX_DEPLOY_HOME
 register "ops/install/harnesses/registry.yaml"             "${CORTEX_DEPLOY_HOME}/harnesses/registry.yaml"
 register "ops/install/harnesses/generate-harnesses.py"     "${CORTEX_DEPLOY_HOME}/harnesses/generate-harnesses.py"
 register "ops/install/harnesses/pi/extensions/cortex-context.ts" "${CORTEX_DEPLOY_HOME}/harnesses/pi/extensions/cortex-context.ts"
+# The self-contained implementation guide for the Pi agent (hand-written).
+register "ops/install/harnesses/pi/IMPLEMENT.md"           "${CORTEX_DEPLOY_HOME}/harnesses/pi/IMPLEMENT.md"
+register "ops/install/harnesses/README.md"                 "${CORTEX_DEPLOY_HOME}/harnesses/README.md"
 register "ops/scripts/manage/mycortex-parity.py"      "${CORTEX_DEPLOY_HOME}/scripts/mycortex-parity.py"
 register "ops/scripts/manage/mycortex"                "${CORTEX_DEPLOY_HOME}/scripts/mycortex"
 # mycortex-postgres compose (dedicated hermes-cortex-owned Postgres, NOT langfuse)
