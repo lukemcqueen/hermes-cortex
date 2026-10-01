@@ -140,6 +140,53 @@ else
 fi
 
 echo ""
+echo "═══ AC9: STORE UNREACHABLE → rc 3, fail-closed, actionable ═══"
+# The branch a fleet-wide outage would hit (docker down / container gone). It was
+# previously untested — the reviewer was right to call that out. Exercised through
+# the test-only path override rather than by stopping the database.
+cat > "$WORK/store_down.py" <<'PYEOF'
+class Store:
+    def __init__(self, *a, **k):
+        pass
+    def available(self):
+        return False
+PYEOF
+out=$(HC_REFLEXION_STORE_MODULE="$WORK/store_down.py" python3 "$CHECKER" --session any 2>&1); rc=$?
+if [[ "$rc" == "3" ]] && echo "$out" | grep -q "mycortex-postgres"; then
+  pass "store unreachable → rc 3 with the actionable fix named"
+else
+  fail "store unreachable gave rc=$rc (expected 3, fail-closed)" "$out"
+fi
+
+echo ""
+echo "═══ AC10: store raises mid-query → rc 3, no stack dump leaked ═══"
+cat > "$WORK/store_raises.py" <<'PYEOF'
+class _Sessions:
+    def loaded_skill(self, *a, **k):
+        raise RuntimeError("internal detail that must not be dumped raw")
+
+class Store:
+    def __init__(self, *a, **k):
+        self.sessions = _Sessions()
+    def available(self):
+        return True
+PYEOF
+out=$(HC_REFLEXION_STORE_MODULE="$WORK/store_raises.py" python3 "$CHECKER" --session any 2>&1); rc=$?
+if [[ "$rc" == "3" ]]; then
+  pass "an exception inside the store still refuses (rc 3), never crashes or passes"
+else
+  fail "store exception gave rc=$rc (expected 3)" "$out"
+fi
+if echo "$out" | grep -q "Traceback"; then
+  fail "a stack trace reached the gate output (leaks internals to the commit log)"
+else
+  pass "no stack trace in the gate output"
+fi
+[[ "$(echo "$out" | wc -l)" -le 1 ]] && \
+  pass "gate output stays a single line (no raw dump)" || \
+  fail "gate output was multi-line"
+
+echo ""
 echo "═══ Summary ═══"
 echo "  ${P} passed, ${F} failed"
 if [ "$F" -gt 0 ]; then

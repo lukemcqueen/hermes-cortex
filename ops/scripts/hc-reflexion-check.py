@@ -96,26 +96,37 @@ def active_session_id(slug: str) -> str:
     return ""
 
 
+def _import_module(path: Path):
+    """Import a module from an explicit path, or None (with the reason printed)."""
+    try:
+        spec = importlib.util.spec_from_file_location("hc_store_reflexion", path)
+        if spec is None or spec.loader is None:
+            return None
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+    except Exception as exc:  # noqa: BLE001 — reported, never faked
+        print(f"hc-reflexion-check: cannot load store module {path}: {exc}", file=sys.stderr)
+        return None
+
+
 def load_store_module():
-    """HC's store module: repo layout first, then the deployed copy."""
+    """HC's store module: repo layout first, then the deployed copy.
+
+    HC_REFLEXION_STORE_MODULE overrides the path and is TEST-ONLY. The
+    store-unreachable branch (exit 3) is what a fleet-wide outage would hit — docker
+    down, container gone — and it must be exercisable in a test without stopping the
+    database. Never set it in production; the default lookup is unchanged.
+    """
+    override = os.environ.get("HC_REFLEXION_STORE_MODULE", "").strip()
+    if override:
+        candidate = Path(override)
+        return _import_module(candidate) if candidate.is_file() else None
     here = Path(__file__).resolve()
-    candidates = [
-        here.parent.parent / "ops" / "services" / "mycortex-mem" / "store.py",
-        Path.home() / ".hermes-cortex" / "services" / "mycortex-mem" / "store.py",
-    ]
-    for c in candidates:
+    for c in (here.parent.parent / "ops" / "services" / "mycortex-mem" / "store.py",
+              Path.home() / ".hermes-cortex" / "services" / "mycortex-mem" / "store.py"):
         if c.is_file():
-            try:
-                spec = importlib.util.spec_from_file_location("hc_store_reflexion", c)
-                if spec is None or spec.loader is None:
-                    continue
-                mod = importlib.util.module_from_spec(spec)
-                spec.loader.exec_module(mod)
-                return mod
-            except Exception as exc:  # noqa: BLE001 — reported, never faked
-                print(f"hc-reflexion-check: cannot load store module {c}: {exc}",
-                      file=sys.stderr)
-                return None
+            return _import_module(c)
     return None
 
 
