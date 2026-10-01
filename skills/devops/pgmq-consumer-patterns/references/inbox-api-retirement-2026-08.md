@@ -23,7 +23,7 @@ inbox API was retired but consumers/docs were never swept.
 | Claim | Evidence |
 |-------|----------|
 | `api/inbox` retired | `grep "@app.post\|@app.get" ops/services/agent-bus/server.py` — only `/api/pgmq/*`, `/api/bus/dashboard`, `/health`, `/.well-known/agent-card.json` |
-| Push moved to PGMQ | `ops/scripts/health/health-vector-push.sh` reads `CORTEX_BUS_URL`+`CORTEX_BASIC_AUTH` from `~/.hermes-cortex/cortex-bus.conf`, POSTs `/api/pgmq/send` → `inbox_health_check` |
+| Push moved to PGMQ | `ops/scripts/health/health-vector-push.sh` reads `CORTEX_BUS_URL`+`CORTEX_BASIC_AUTH` from `~/hermes-cortex/.env`, POSTs `/api/pgmq/send` → `inbox_health_check` |
 | Report still on old API | `orch-health-report.py` `_fetch_inbox_vector` → `_inbox_request("api/inbox?...")` |
 | `orch-team-health.py` gone | `git log --oneline --diff-filter=D -- "**/orch-team-health.py"` → `69e3cf8e` "Remove orch-team-health cron… superseded by fleet-status-watchdog" |
 | Migration commit | `0f01556d` "refactor: migrate all scripts/docs from CORTEX_INBOX_URL/AUTH to CORTEX_BUS_FALLBACK_URL/AUTH" |
@@ -39,7 +39,7 @@ inbox API was retired but consumers/docs were never swept.
    matching on `body.from`. Deleted dead `_load_inbox_config`/`_inbox_request`.
 3. **Skill docs** — `agent-health-monitoring` SKILL.md + 5 references rewritten:
    architecture diagram, `orch-team-health.py`→`orch-health-report.py`,
-   anchor-keep→drain-and-persist, `moses-inbox.conf`→`cortex-bus.conf`,
+   anchor-keep→drain-and-persist, `moses-inbox.conf`→`.env`,
    pitfall rows pruned/added (silent-404 consumer, drained-before-read).
 4. **Onboarding/ops docs** — `api/inbox?limit=3` curl examples → `/api/pgmq/queues` / `/api/pgmq/depth/...`.
 

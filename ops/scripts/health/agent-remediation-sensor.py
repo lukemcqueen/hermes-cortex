@@ -368,7 +368,7 @@ def check_certbot():
 
 
 def _read_bus_config():
-    """Read bus URL and auth from env or cortex-bus.conf.
+    """Read bus URL and auth from env or .env.
     
     Returns (bus_url, bus_auth) or (None, None) if not configured.
     """
@@ -380,7 +380,7 @@ def _read_bus_config():
             bus_auth = os.environ.get("CORTEX_BASIC_AUTH", "")
         return bus_url, bus_auth
     
-    conf_path = HOME / ".hermes-cortex" / "cortex-bus.conf"
+    conf_path = HOME / "hermes-cortex" / ".env"
     if conf_path.exists():
         try:
             for line in conf_path.read_text().splitlines():

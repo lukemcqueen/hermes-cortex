@@ -574,7 +574,7 @@ A scheduled script that evaluates Hermes conversation traces using a local Ollam
 | Ollama running | `curl -s http://localhost:11434/api/tags` | `systemctl start ollama` |
 | Judge model | `ollama list \| grep qwen2.5` | `ollama pull qwen2.5:3b` |
 | Embeddings model | `ollama list \| grep nomic-embed-text:v1.5` | `ollama pull nomic-embed-text:v1.5` |
-| Langfuse .env | `cat ~/.hermes-cortex/.env` | See "Step 5" below |
+| Langfuse .env | `cat ~/hermes-cortex/.env` | See "Step 5" below |
 | Langfuse running | `curl -s -o /dev/null -w '%{http_code}' http://localhost:3000` | `docker compose up -d` |
 
 ### Setup
@@ -587,16 +587,16 @@ ollama pull qwen2.5:3b
 
 **Step 2 — Create the Langfuse `.env` for the scorer:**
 
-The scorer reads Langfuse API keys from `~/.hermes-cortex/.env`. Extract them from your existing Hermes config:
+The scorer reads Langfuse API keys from `~/hermes-cortex/.env`. Extract them from your existing Hermes config:
 
 ```bash
-grep -E 'HERMES_LANGFUSE_(PUBLIC|SECRET)_KEY' ~/.hermes/.env > ~/.hermes-cortex/.env
+grep -E 'HERMES_LANGFUSE_(PUBLIC|SECRET)_KEY' ~/.hermes/.env > ~/hermes-cortex/.env
 ```
 
 Or extract from the running Docker container:
 
 ```bash
-python3 ~/hermes-cortex/deploy/extract_langfuse_env.py > ~/.hermes-cortex/.env
+python3 ~/hermes-cortex/deploy/extract_langfuse_env.py > ~/hermes-cortex/.env
 ```
 
 **Step 3 — Deploy the script:**
@@ -659,7 +659,7 @@ The scorer checks prerequisites before starting:
 |-------|-------------|-----|
 | `Cannot reach Ollama` | Ollama not running | `systemctl start ollama` |
 | `Judge model 'qwen2.5:3b' not found` | Model not pulled | `ollama pull qwen2.5:3b` |
-| `Could not read Langfuse project keys` | Missing `.env` | Create `~/.hermes-cortex/.env` |
+| `Could not read Langfuse project keys` | Missing `.env` | Create `~/hermes-cortex/.env` |
 | `HTTP 401` on Langfuse POST | Stale API keys | Regenerate in Langfuse UI |
 
 The `model-health-watchdog` cron (daily 7am) alerts you if any models are missing,
@@ -675,7 +675,7 @@ Check the `extract_langfuse_env.py` utility to regenerate the `.env` file from t
 Docker stack if keys ever need updating:
 
 ```bash
-python3 ~/hermes-cortex/deploy/extract_langfuse_env.py > ~/.hermes-cortex/.env
+python3 ~/hermes-cortex/deploy/extract_langfuse_env.py > ~/hermes-cortex/.env
 ```
 
 ---

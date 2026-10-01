@@ -5,7 +5,7 @@ Designed to run as a no_agent cron (every 6h). Reads the skills
 manifest written by agent-collect-skills.sh and sends it to Moses
 via PGMQ Agent Bus. Silent when no custom skills to report.
 
-Requires (from ~/.hermes-cortex/cortex-bus.conf, ~/hermes-cortex/.env,
+Requires (from ~/hermes-cortex/.env, ~/hermes-cortex/.env,
   or env vars):
   CORTEX_BUS_URL         — Moses Agent Bus URL (primary)
   CORTEX_BUS_FALLBACK_URL — Esther Agent Bus URL (fallback)
@@ -50,7 +50,6 @@ def _resolve_var(key: str, default: str = "") -> str:
     if val:
         return val
     for cfg_path in [
-        HOME / ".hermes-cortex" / "cortex-bus.conf",
         HOME / "hermes-cortex" / ".env",
     ]:
         cfg = _load_env(cfg_path)
@@ -71,7 +70,7 @@ BUS_TOKEN = _resolve_var("CORTEX_BUS_TOKEN")
 AGENT_NAME = _resolve_var("AGENT_NAME")
 if not AGENT_NAME or AGENT_NAME == "unknown":
     print("❌ AGENT_NAME not configured — set AGENT_NAME= in "
-          "~/.hermes-cortex/agent.env / cortex-bus.conf / ~/hermes-cortex/.env "
+          "~/.hermes-cortex/agent.env / .env / ~/hermes-cortex/.env "
           "or export AGENT_NAME", file=sys.stderr)
     sys.exit(1)
 

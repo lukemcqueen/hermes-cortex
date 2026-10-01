@@ -4,9 +4,9 @@ Agent Bus MCP Server — send, read, and watch messages via the Agent Bus.
 
 Reads CORTEX_INBOX_URL, CORTEX_INBOX_AUTH, and AGENT_NAME from:
   1. Environment variables
-  2. ~/.hermes-cortex/cortex-bus.conf (key=value format)
+  2. ~/hermes-cortex/.env (key=value format)
 
-🔒  PROTECT YOUR CONFIG: chmod 600 ~/.hermes-cortex/cortex-bus.conf
+🔒  PROTECT YOUR CONFIG: chmod 600 ~/hermes-cortex/.env
      The password is sent over HTTPS (encrypted in transit).
      At-rest protection relies on filesystem permissions.
 
@@ -57,7 +57,7 @@ from mcp.types import Tool, TextContent, CallToolResult
 # Same pattern as report-agent-health.py and agent-collect-skills.sh
 CONFIG_FILES = [
     Path.home() / "hermes-cortex" / ".env",
-    Path.home() / ".hermes" / "cortex-bus.conf",
+    Path.home() / ".hermes" / ".env",
 ]
 
 inbox_url = os.environ.get("CORTEX_INBOX_URL", "")
@@ -92,7 +92,7 @@ else:
     BASE_URL = "http://localhost:8903"
     IS_LOCAL_FALLBACK = True
     log.warning("❗ CORTEX_INBOX_URL not configured — routing to %s (local only). "
-                "Set CORTEX_INBOX_URL in ~/.hermes-cortex/cortex-bus.conf for external agents.",
+                "Set CORTEX_INBOX_URL in ~/hermes-cortex/.env for external agents.",
                 BASE_URL)
 
 # Build auth header if credentials available
@@ -109,7 +109,7 @@ if not agent_name and inbox_auth and ":" in inbox_auth:
     agent_name = inbox_auth.split(":", 1)[0]
 if not agent_name:
     print("❌ AGENT_NAME not configured — set AGENT_NAME= in "
-          "~/.hermes-cortex/cortex-bus.conf / ~/hermes-cortex/.env or export AGENT_NAME",
+          "~/hermes-cortex/.env / ~/hermes-cortex/.env or export AGENT_NAME",
           file=sys.stderr)
     sys.exit(1)
 
@@ -319,7 +319,7 @@ def _inbox_read(args: dict) -> CallToolResult:
     elif status == 401:
         return CallToolResult(content=[TextContent(type="text",
             text="Read failed (HTTP 401 Unauthorized). Configure credentials:\n"
-                 "  nano ~/.hermes-cortex/cortex-bus.conf\n"
+                 "  nano ~/hermes-cortex/.env\n"
                  "  Set: CORTEX_INBOX_AUTH=user:pass")])
     else:
         return CallToolResult(content=[TextContent(type="text", text=f"Read failed (HTTP {status}): {resp_body}")])
@@ -336,7 +336,7 @@ def _inbox_watch(args: dict) -> CallToolResult:
     if status != 200:
         if status == 401:
             return CallToolResult(content=[TextContent(type="text",
-                text="Watch failed (HTTP 401). Configure CORTEX_INBOX_AUTH in ~/.hermes-cortex/cortex-bus.conf")])
+                text="Watch failed (HTTP 401). Configure CORTEX_INBOX_AUTH in ~/hermes-cortex/.env")])
         return CallToolResult(content=[TextContent(type="text", text=f"Watch failed (HTTP {status}): {resp_body}")])
 
     try:

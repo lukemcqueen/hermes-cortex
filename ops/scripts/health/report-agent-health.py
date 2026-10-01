@@ -14,7 +14,7 @@ Reads dashboard health at http://127.0.0.1:8901/api/health
 and POSTs the structured result to Moses's agent inbox for
 dashboard consumption.
 
-Configuration (env vars or ~/.hermes-cortex/cortex-bus.conf):
+Configuration (env vars or ~/hermes-cortex/.env):
   CORTEX_BUS_FALLBACK_URL     — Moses inbox MCP endpoint (POST via internal API)
   CORTEX_BUS_FALLBACK_AUTH    — "user:pass" for Basic Auth
   AGENT_NAME           — name to report as (required; never hostname)
@@ -41,7 +41,7 @@ from urllib.request import Request, urlopen
 from typing import Optional
 
 HOME = Path.home()
-CONFIG_FILE = HOME / ".hermes" / "cortex-bus.conf"
+CONFIG_FILE = HOME / ".hermes" / ".env"
 HEALTH_LOCAL = 'http://127.0.0.1:8901/api/health'
 STATE_FILE = HOME / ".hermes-cortex" / "state" / "agent-health-push-state.json"
 TIMEOUT = 15
@@ -87,7 +87,7 @@ if not inbox_url:
     print("ERROR: CORTEX_BUS_FALLBACK_URL (or CORTEX_INBOX_URL) not set", file=sys.stderr)
     sys.exit(1)
 
-# Agent identity — env → agent.env → cortex-bus.conf. NEVER hostname: a
+# Agent identity — env → agent.env → .env. NEVER hostname: a
 # machine name is not an agent name and would report under the wrong
 # identity (Luke directive 2026-08-14). Fail loudly when unset.
 if not agent_name:
@@ -103,7 +103,7 @@ if not agent_name:
         pass
 if not agent_name or agent_name == "unknown":
     print("ERROR: AGENT_NAME not configured — set AGENT_NAME= in "
-          "~/.hermes-cortex/agent.env / ~/.hermes-cortex/cortex-bus.conf or export AGENT_NAME",
+          "~/.hermes-cortex/agent.env / ~/hermes-cortex/.env or export AGENT_NAME",
           file=sys.stderr)
     sys.exit(1)
 

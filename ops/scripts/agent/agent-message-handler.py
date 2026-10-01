@@ -41,10 +41,10 @@ HOME = Path.home()
 CORTEX_REPO = HOME / "hermes-cortex"
 CORTEX_UPDATE = CORTEX_REPO / "ops" / "scripts" / "cortex-update.sh"
 DOCTOR_PATH = CORTEX_REPO / "ops" / "scripts" / "manage" / "cortex-doctor.py"
-# Derive AGENT_NAME from env (set by cron/launchd) or cortex-bus.conf (fleet setup)
+# Derive AGENT_NAME from env (set by cron/launchd) or .env (fleet setup)
 AGENT_NAME = os.environ.get("AGENT_NAME", "")
 if not AGENT_NAME:
-  bus_conf = HOME / ".hermes-cortex" / "cortex-bus.conf"
+  bus_conf = HOME / "hermes-cortex" / ".env"
   if bus_conf.exists():
     for line in bus_conf.read_text().splitlines():
       if line.startswith("AGENT_NAME="):
@@ -52,7 +52,7 @@ if not AGENT_NAME:
         AGENT_NAME = val
         break
 if not AGENT_NAME:
-  print(f"❌ AGENT_NAME not configured. Set AGENT_NAME= in ~/.hermes-cortex/cortex-bus.conf or export AGENT_NAME.", flush=True)
+  print(f"❌ AGENT_NAME not configured. Set AGENT_NAME= in ~/hermes-cortex/.env or export AGENT_NAME.", flush=True)
   sys.exit(1)
 # Export for child modules (commands.py dispatch etc.) — identity is explicit,
 # never hostname-derived (Luke directive 2026-08-10).

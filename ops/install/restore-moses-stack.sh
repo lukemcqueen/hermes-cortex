@@ -30,9 +30,9 @@ fi
 
 # 2. mycortex-postgres compose
 # Compose reads ${MYCORTEX_PG_PASSWORD} from ITS project .env
-# (~/.hermes-cortex/.env), NOT the repo .env (single source of truth).
+# (~/hermes-cortex/.env), NOT the repo .env (single source of truth).
 # Provision the deploy-home .env with the value from the repo .env.
-log "provisioning ~/.hermes-cortex/.env (MYCORTEX_PG_PASSWORD for compose)"
+log "provisioning ~/hermes-cortex/.env (MYCORTEX_PG_PASSWORD for compose)"
 DEPLOY_ENV="${DEPLOY}/.env"
 if grep -q '^MYCORTEX_PG_PASSWORD=' "${DEPLOY_ENV}" 2>/dev/null; then
   log "MYCORTEX_PG_PASSWORD already in deploy .env"

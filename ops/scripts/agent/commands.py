@@ -31,14 +31,14 @@ SCRIPTS_DIR = HOME / ".hermes-cortex" / "scripts"
 COLLECTOR_SCRIPT = SCRIPTS_DIR / "agent-learning-collector.py"
 STATE_DIR = HOME / ".hermes-cortex" / "state"
 def _agent_name() -> str:
-    """Resolve agent identity from env → .env (cortex-bus.conf is a symlink
+    """Resolve agent identity from env → .env (.env is a symlink
     to the consolidated .env; agent.env is the per-host identity file).
     Never falls back to whoami/hostname (Luke directive 2026-08-10): a
     missing identity is a hard error, not a guess."""
     for path in (
         HOME / ".hermes-cortex" / "agent.env",
         HOME / "hermes-cortex" / ".env",
-        HOME / ".hermes-cortex" / "cortex-bus.conf",
+        HOME / "hermes-cortex" / ".env",
     ):
         try:
             if path.is_file():
@@ -51,7 +51,7 @@ def _agent_name() -> str:
             continue
     raise RuntimeError(
         "AGENT_NAME not configured — set AGENT_NAME= in "
-        "~/.hermes-cortex/agent.env / cortex-bus.conf or export AGENT_NAME")
+        "~/.hermes-cortex/agent.env / .env or export AGENT_NAME")
 
 
 AGENT_NAME = os.environ.get("AGENT_NAME", "") or _agent_name()

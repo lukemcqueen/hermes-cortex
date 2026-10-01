@@ -46,7 +46,7 @@ Agent → Bus (:8903) directly
 3. Neither?                → HTTP 401
 ```
 
-no_agent crons use Path A — `_read_config()` reads `CORTEX_BASIC_AUTH` from `cortex-bus.conf`.
+no_agent crons use Path A — `_read_config()` reads `CORTEX_BASIC_AUTH` from `.env`.
 
 ## ACL Model (`bus.permissions`)
 

@@ -30,13 +30,13 @@ python3 -m py_compile ~/.hermes-cortex/offline/session_mine.py
 
 ```bash
 # Bus URL
-grep -r "CORTEX_BUS_URL" ~/.hermes-cortex/cortex-bus.conf ~/hermes-cortex/.env 2>/dev/null
+grep -r "CORTEX_BUS_URL" ~/hermes-cortex/.env ~/hermes-cortex/.env 2>/dev/null
 
 # Auth
-grep -r "CORTEX_BUS_AUTH\|CORTEX_BASIC_AUTH" ~/.hermes-cortex/cortex-bus.conf 2>/dev/null
+grep -r "CORTEX_BUS_AUTH\|CORTEX_BASIC_AUTH" ~/hermes-cortex/.env 2>/dev/null
 
 # Test
-curl -sI "$(grep CORTEX_BUS_URL ~/.hermes-cortex/cortex-bus.conf 2>/dev/null | head -1 | cut -d= -f2)" | head -3
+curl -sI "$(grep CORTEX_BUS_URL ~/hermes-cortex/.env 2>/dev/null | head -1 | cut -d= -f2)" | head -3
 ```
 
 **Required:** HTTP 200 + auth creds. Missing = contact Moses.
@@ -44,7 +44,7 @@ curl -sI "$(grep CORTEX_BUS_URL ~/.hermes-cortex/cortex-bus.conf 2>/dev/null | h
 **Known 401 trap (2026-09-04):** the collector's `_build_auth_headers` prefers
 `CORTEX_BASIC_AUTH` and gives up on 401, whereas `lib/cortex_bus.py` prefers the
 Bearer `CORTEX_BUS_TOKEN` and falls back to Basic on 401/403. A stale Basic cred
-STILL in `cortex-bus.conf` alongside a valid token makes the collector 401 while
+STILL in `.env` alongside a valid token makes the collector 401 while
 `bus_send` (moses/esther handlers) succeeds on the same host. Collector-and-lib
 must agree: prefer the token, add the Basic fallback.
 

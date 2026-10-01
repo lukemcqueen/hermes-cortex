@@ -32,7 +32,7 @@ SKIP = 0
 
 HOME = Path.home()
 BUS_URL = "http://127.0.0.1:8903"
-CONFIG_FILE = HOME / ".hermes-cortex" / "cortex-bus.conf"
+CONFIG_FILE = HOME / "hermes-cortex" / ".env"
 
 # Load token from config
 TOKEN = ""

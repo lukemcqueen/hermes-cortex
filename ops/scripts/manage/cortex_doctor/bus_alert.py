@@ -163,7 +163,7 @@ def dispatch_bus_alerts(res):
     if not token and not basic_auth_val:
         print(
             "  ℹ️  --bus-alert: no bus auth found "
-            "(set CORTEX_BUS_TOKEN or CORTEX_BUS_AUTH in env or cortex-bus.conf)"
+            "(set CORTEX_BUS_TOKEN or CORTEX_BUS_AUTH in env or .env)"
         )
         return
 

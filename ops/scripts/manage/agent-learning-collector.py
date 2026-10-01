@@ -405,7 +405,7 @@ def _resolve_env(key: str, default: str = "") -> str:
     if val:
         return val
     for cfg in [
-        HOME / ".hermes-cortex" / "cortex-bus.conf",
+        HOME / "hermes-cortex" / ".env",
         CORTEX_REPO / ".env",
     ]:
         if cfg.exists():

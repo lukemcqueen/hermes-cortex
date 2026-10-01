@@ -54,10 +54,10 @@ if OS_FAMILY == "linux":
     elif "ID=fedora" in _osr or "ID=rhel" in _osr or "ID=centos" in _osr:
         DISTRO_FAMILY = "rhel"
 
-# Agent identity: env first (cron sets it), else cortex-bus.conf, else HOME name
+# Agent identity: env first (cron sets it), else .env, else HOME name
 AGENT_NAME = os.environ.get("AGENT_NAME", "")
 if not AGENT_NAME:
-    bus_conf = HOME / ".hermes-cortex" / "cortex-bus.conf"
+    bus_conf = HOME / "hermes-cortex" / ".env"
     if bus_conf.exists():
         for line in bus_conf.read_text().splitlines():
             if line.startswith("AGENT_NAME="):

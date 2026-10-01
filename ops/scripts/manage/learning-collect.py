@@ -107,7 +107,7 @@ def main() -> int:
         print("WARNING: content truncated to 4000 chars", file=sys.stderr)
 
     if not _HAS_LIB or learning_capture is None:
-        print("ERROR: lib.cortex_bus unavailable (is cortex-bus.conf configured?)",
+        print("ERROR: lib.cortex_bus unavailable (is .env configured?)",
               file=sys.stderr)
         return 1
 

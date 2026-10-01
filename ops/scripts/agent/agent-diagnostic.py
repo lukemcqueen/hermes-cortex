@@ -32,7 +32,7 @@ from typing import Any
 HOME = Path.home()
 STATE_DIR = HOME / ".hermes-cortex" / "state"
 HANDLER_STATE = STATE_DIR / "agent-message-state.json"
-CONFIG_FILE = HOME / ".hermes-cortex" / "cortex-bus.conf"
+CONFIG_FILE = HOME / "hermes-cortex" / ".env"
 CORTEX_REPO = HOME / "hermes-cortex"
 
 # Bus API connection (used on worker agents that can't query DB directly)
@@ -40,8 +40,8 @@ BUS_URL = None
 
 
 def _read_config(key: str) -> str:
-    """Read a value from config files. Checks cortex-bus.conf then hermes-cortex/.env."""
-    # Check cortex-bus.conf first
+    """Read a value from config files. Checks .env then hermes-cortex/.env."""
+    # Check .env first
     if CONFIG_FILE.exists():
         for line in CONFIG_FILE.read_text().splitlines():
             line = line.strip().strip("'\"")
@@ -57,7 +57,7 @@ def _read_config(key: str) -> str:
     return ""
 
 
-# Agent identity — env → cortex-bus.conf → agent.env. NEVER hostname: a
+# Agent identity — env → .env → agent.env. NEVER hostname: a
 # machine name is not an agent name (Luke directive 2026-08-14). A missing
 # identity is a hard error — the diagnostic fails loudly instead of
 # reporting under a guessed name.
@@ -75,7 +75,7 @@ if not AGENT_NAME:
         pass
 if not AGENT_NAME or AGENT_NAME == "unknown":
     print("❌ AGENT_NAME not configured — set AGENT_NAME= in "
-          "~/.hermes-cortex/agent.env / cortex-bus.conf or export AGENT_NAME",
+          "~/.hermes-cortex/agent.env / .env or export AGENT_NAME",
           file=sys.stderr)
     sys.exit(1)
 

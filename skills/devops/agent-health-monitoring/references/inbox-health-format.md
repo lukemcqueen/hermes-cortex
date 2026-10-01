@@ -24,7 +24,7 @@ The client agent sends a JSON body via `health-vector-push.sh` to queue
 | `t` | `int` | Unix timestamp |
 
 Config: `health-vector-push.sh` reads `CORTEX_BUS_URL` + `CORTEX_BASIC_AUTH`
-(or Bearer `CORTEX_BUS_TOKEN`) from `~/.hermes-cortex/cortex-bus.conf`.
+(or Bearer `CORTEX_BUS_TOKEN`) from `~/hermes-cortex/.env`.
 
 ## Push Format — Rich Health-Report (optional)
 
@@ -77,6 +77,6 @@ queue.
 | Read | `POST /api/pgmq/read` with `{"queue": "inbox_health_check", "vt": 60}` |
 | Archive | `POST /api/pgmq/archive` with `{"queue": ..., "msg_id": ...}` |
 | Depth | `GET /api/pgmq/depth/inbox_health_check` |
-| Auth | Basic Auth with `CORTEX_BASIC_AUTH` or Bearer `CORTEX_BUS_TOKEN` from `~/.hermes-cortex/cortex-bus.conf` |
+| Auth | Basic Auth with `CORTEX_BASIC_AUTH` or Bearer `CORTEX_BUS_TOKEN` from `~/hermes-cortex/.env` |
 | Timeout | 5 seconds per request |
 | Retired | `GET /api/inbox`, `DELETE /api/delete/{filename}` — 404 on the PGMQ bus |

@@ -148,7 +148,7 @@ WHERE queue_name = 'inbox_target' AND state = 'processing';
 
 | Agent | Issue | Fix |
 |-------|-------|-----|
-| **Kustos** | Missing `AGENT_NAME=kustos` in `cortex-bus.conf` — polled `inbox_cisnet02` instead of `inbox_kustos` | Set AGENT_NAME in config |
+| **Kustos** | Missing `AGENT_NAME=kustos` in `.env` — polled `inbox_cisnet02` instead of `inbox_kustos` | Set AGENT_NAME in config |
 | **Esther** | Handler crashed mid-processing (crash pattern, not archive loop) | Push `df3a419` (try/except guard) |
 
 ### Corrections Received

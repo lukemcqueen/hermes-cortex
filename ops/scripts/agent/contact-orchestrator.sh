@@ -7,7 +7,7 @@
 #   priority: normal (default), urgent, critical
 #
 # FALLBACK (2026-08-05): this script now uses lib.cortex_bus (bus_send) instead of a
-# hand-rolled curl. The library resolves CORTEX_BUS_URL from env or cortex-bus.conf
+# hand-rolled curl. The library resolves CORTEX_BUS_URL from env or .env
 # and AUTOMATICALLY falls back to CORTEX_BUS_FALLBACK_URL when the primary bus is
 # unreachable (per-call failover — same mechanism the rest of the fleet uses). It
 # fails with a clear message only when BOTH buses are unreachable. Previously this
@@ -16,7 +16,7 @@
 #
 # Target queue resolution order:
 #   1. CORTEX_INBOX_TARGET env var
-#   2. CORTEX_INBOX_TARGET in ~/.hermes-cortex/cortex-bus.conf
+#   2. CORTEX_INBOX_TARGET in ~/hermes-cortex/.env
 #   3. Default: inbox_orchestrator (shared orchestrator inbox — seen by BOTH
 #      orchestrators, Moses and Esther, so whichever is available handles it)
 #
@@ -41,7 +41,7 @@ SUBJECT="${1:-}"
 BODY="${2:-}"
 PRIORITY="${3:-normal}"
 
-CONF="${CORTEX_BUS_CONF:-${HOME}/.hermes-cortex/cortex-bus.conf}"
+CONF="${CORTEX_BUS_CONF:-${HOME}/hermes-cortex/.env}"
 
 _read_conf() {
   local key="$1"

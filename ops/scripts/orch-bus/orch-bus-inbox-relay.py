@@ -45,7 +45,7 @@ HOSTNAME = os.uname().nodename.split(".")[0]
 STATE_DIR = HOME / ".hermes-cortex" / "state"
 MARKER_FILE = STATE_DIR / ".failover-active"
 FAILOVER_STATE_FILE = STATE_DIR / "bus-failover-state.json"
-CONF_FILE = HOME / ".hermes-cortex" / "cortex-bus.conf"
+CONF_FILE = HOME / "hermes-cortex" / ".env"
 
 LOCAL_URL = "http://127.0.0.1:8903"
 MAX_PER_TICK = 20
@@ -55,7 +55,7 @@ MARGIN_MINUTES = 10  # safe window before first_failure_at (see docstring)
 
 
 def _conf(key: str) -> str:
-    """Read a KEY=value line from cortex-bus.conf (env wins)."""
+    """Read a KEY=value line from .env (env wins)."""
     val = os.environ.get(key, "")
     if val:
         return val

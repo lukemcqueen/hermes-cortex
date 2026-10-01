@@ -30,7 +30,7 @@ actually needed to be the backup.
 
 Role-aware resolution in BOTH the module-level constant and `main()`'s
 config-file fallback (cron runs have no env, so `main()` re-resolves from
-`cortex-bus.conf` — fixing only module level was NOT enough):
+`.env` — fixing only module level was NOT enough):
 
 ```python
 # Peer = the OTHER orchestrator's bus:

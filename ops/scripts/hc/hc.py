@@ -2,7 +2,7 @@
 """
 hc — Hermes Cortex CLI for humans. Talks to the Agent Bus over HTTP.
 Host-independent: reads CORTEX_BUS_URL / CORTEX_BUS_FALLBACK_URL from
-cortex-bus.conf (same as every fleet script), so it works identically on
+.env (same as every fleet script), so it works identically on
 moses and esther hosts. No docker exec, no local-Postgres assumption.
 
   hc inbox             list your messages (non-destructive read)
@@ -24,7 +24,7 @@ moses and esther hosts. No docker exec, no local-Postgres assumption.
 
 Config: ~/.hermes-cortex/hc.env (optional; every field falls back)
   HC_AGENT=esther                          # your agent name (default)
-Bus config comes from ~/.hermes-cortex/cortex-bus.conf:
+Bus config comes from ~/hermes-cortex/.env:
   CORTEX_BUS_URL=https://…:13004           # active bus (Moses)
   CORTEX_BUS_FALLBACK_URL=https://…:14004  # fallback bus (Esther)
   CORTEX_BASIC_AUTH=user:pass              # nginx Basic auth
@@ -45,7 +45,7 @@ from pathlib import Path
 # ── Config ──────────────────────────────────────────────────────
 
 CONFIG_FILE = Path.home() / ".hermes-cortex" / "hc.env"
-BUS_CONF_FILE = Path.home() / ".hermes-cortex" / "cortex-bus.conf"
+BUS_CONF_FILE = Path.home() / "hermes-cortex" / ".env"
 DEFAULT_AGENT = ""
 
 # Make the shared bus client importable from both the repo and the
@@ -76,7 +76,7 @@ try:
     _HAS_LIB = True
 except Exception:
     # ImportError (module missing) OR RuntimeError (BUS_URL unset on this
-    # host — e.g. a bare machine without cortex-bus.conf). Both degrade to
+    # host — e.g. a bare machine without .env). Both degrade to
     # a clear message; hc must never crash at import.
     _HAS_LIB = False
     BUS_URL = ""
@@ -92,7 +92,7 @@ except Exception:
 
 
 def _read_bus_conf(key: str) -> str:
-    """Read a value from cortex-bus.conf (fallback for env)."""
+    """Read a value from .env (fallback for env)."""
     if BUS_CONF_FILE.exists():
         try:
             for line in BUS_CONF_FILE.read_text().splitlines():
@@ -108,12 +108,12 @@ def _read_bus_conf(key: str) -> str:
 
 
 def load_config() -> dict:
-    """Load config from hc.env + cortex-bus.conf (env vars override).
+    """Load config from hc.env + .env (env vars override).
 
     Agent resolution order:
       1. HC_AGENT env var
       2. HC_AGENT in hc.env
-      3. AGENT_NAME in cortex-bus.conf (canonical per-host identity)
+      3. AGENT_NAME in .env (canonical per-host identity)
       NEVER hostname — a machine name is not an agent identity. Missing
       identity fails loudly (Luke directive 2026-08-14).
     """
@@ -143,7 +143,7 @@ def load_config() -> dict:
         print(
             "❌ Cannot determine agent identity. Set one of:\n"
             "   1. export HC_AGENT=<your-agent>   (or add HC_AGENT= to ~/.hermes-cortex/hc.env)\n"
-            "   2. AGENT_NAME= in ~/.hermes-cortex/cortex-bus.conf / ~/hermes-cortex/.env\n"
+            "   2. AGENT_NAME= in ~/hermes-cortex/.env / ~/hermes-cortex/.env\n"
             "   3. export AGENT_NAME=<your-agent>",
             file=sys.stderr,
         )

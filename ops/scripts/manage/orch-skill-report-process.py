@@ -31,8 +31,8 @@ CORTEX_BUS_TOKEN = os.environ.get("CORTEX_BUS_TOKEN", "")
 # Try reading from .env if env vars not set
 if not CORTEX_BUS_TOKEN:
     for conf in [Path.home() / "hermes-cortex" / ".env",
-                 Path.home() / ".hermes-cortex" / "cortex-bus.conf",
-                 Path.home() / ".hermes" / "cortex-bus.conf"]:
+                 Path.home() / "hermes-cortex" / ".env",
+                 Path.home() / ".hermes" / ".env"]:
         if conf.exists():
             try:
                 for line in conf.read_text().splitlines():

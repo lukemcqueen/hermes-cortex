@@ -45,7 +45,7 @@ Three concurrent searches found 22+41+12 unique files touching the org:
 | agent-onboarding.md | Change | Architecture diagram, config entries, health guidance (full rewrite) |
 | DOCS-INDEX.md | Change | Descriptions for agent-inbox-setup.md and health-push plist |
 | migration-2026-07-08-hermes-to-cortex.md | Historical | Directory paths, service names in migration context |
-| symlink-policy.md | Change | agent-inbox.conf → cortex-bus.conf, directory map |
+| symlink-policy.md | Change | agent-inbox.conf → .env, directory map |
 | service-layer-decision.md | Change | "agent-inbox" service scope → "cortex-bus" |
 | linux-service-layer.md | Change | Service name in fleet map, grep pattern |
 | SKILLS-MANIFEST.md | Change | Skill descriptions (agent-inbox skill name kept as-is) |

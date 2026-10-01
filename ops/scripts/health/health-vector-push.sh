@@ -6,7 +6,7 @@ set -euo pipefail
 
 # ── Config ──
 HOME="${HOME:-/home/$(whoami)}"
-CONFIG_FILE="$HOME/.hermes-cortex/cortex-bus.conf"
+CONFIG_FILE="$HOME/hermes-cortex/.env"
 ENV_FILE="$HOME/hermes-cortex/.env"
 ERROR_LOG="$HOME/.hermes-cortex/logs/health-push-errors.log"
 mkdir -p "$(dirname "$ERROR_LOG")"
@@ -38,7 +38,7 @@ AGENT_NAME="${AGENT_NAME:-$(load_var AGENT_NAME)}"
 # identity must fail loudly, not impersonate another agent (Luke
 # directive 2026-08-14).
 if [[ -z "$AGENT_NAME" || "$AGENT_NAME" == "unknown" ]]; then
-  echo "[$(date '+%Y-%m-%d %H:%M:%S')] AGENT_NAME not configured — set AGENT_NAME= in cortex-bus.conf / hermes-cortex/.env or export AGENT_NAME" >> "$ERROR_LOG"
+  echo "[$(date '+%Y-%m-%d %H:%M:%S')] AGENT_NAME not configured — set AGENT_NAME= in .env / hermes-cortex/.env or export AGENT_NAME" >> "$ERROR_LOG"
   exit 1
 fi
 

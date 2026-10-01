@@ -6,7 +6,7 @@
 > ⚠️ **You do NOT install the bus MCP client.** The `cortex-bus` MCP server
 > (`inbox_send`/`inbox_read` tools) is **orchestrator-only** (Moses, Esther) —
 > the doctor WARNS if you add it to `config.yaml`. Your only bus access is the
-> HTTP client: `~/.hermes-cortex/cortex-bus.conf` + `contact-orchestrator.sh`.
+> HTTP client: `~/hermes-cortex/.env` + `contact-orchestrator.sh`.
 
 ---
 
@@ -16,7 +16,7 @@
 YOU (laptop / local machine)              MOSES (server)
 ─────────────────────────────             ──────────────
 Hermes Agent                             Hermes gateway (:8905)
-  ↳ cortex-bus.conf (HTTP client)              ↳ Agent Bus API (PGMQ message store)
+  ↳ .env (HTTP client)              ↳ Agent Bus API (PGMQ message store)
   ↳ contact-orchestrator.sh / lib.cortex_bus          ↳ nginx proxy :13004 → :8905
   ↳ calls Moses's Agent Bus via HTTPS      ↳ SSL + Basic Auth
   ↳ NO cortex-bus MCP server in config.yaml
@@ -67,7 +67,7 @@ grep -A4 "cortex-bus" ~/.hermes/config.yaml
 # If you see one, remove it: the doctor WARNS about it on worker hosts.
 ```
 
-Your bus access is the **HTTP client** instead — `cortex-bus.conf` (Step 3)
+Your bus access is the **HTTP client** instead — `.env` (Step 3)
 plus `contact-orchestrator.sh`. This is what the `agent-message-handler` cron uses
 to receive fleet updates, and what you use to message the orchestrator.
 
@@ -75,7 +75,7 @@ to receive fleet updates, and what you use to message the orchestrator.
 
 ## Step 3 — Create Your Bus Config (HTTP client)
 
-Create `~/.hermes-cortex/cortex-bus.conf`:
+Create `~/hermes-cortex/.env`:
 
 ```ini
 CORTEX_BUS_URL="https://example.com:13004"
@@ -86,7 +86,7 @@ AGENT_NAME="titus"
 Then lock it down:
 
 ```bash
-chmod 600 ~/.hermes-cortex/cortex-bus.conf
+chmod 600 ~/hermes-cortex/.env
 ```
 
 > The HTTP client (`contact-orchestrator.sh`, `lib.cortex_bus`, `agent-message-handler`)
@@ -315,7 +315,7 @@ At minimum, every SOUL.md must include:
 **Essential behavioral principles for a client-only agent:**
 
 1. **Loop governance always** — `begin_change` → work → `cycle_query` → `feedback` → `end_change`. No exceptions.
-2. **HTTP client, not MCP** — your ONLY bus access is `contact-orchestrator.sh` + `cortex-bus.conf`. Never install the `cortex-bus` MCP server; the doctor warns about it.
+2. **HTTP client, not MCP** — your ONLY bus access is `contact-orchestrator.sh` + `.env`. Never install the `cortex-bus` MCP server; the doctor warns about it.
 3. **Health via Agent Bus (HTTP)** — you have no HTTP health endpoint. Report health by sending JSON pings to the orchestrator via `curl` (Step 7), or `contact-orchestrator.sh` for messages.
 4. **Poll, don't wait** — `agent-message-handler` cron is your ears. It runs every 5 min.
 
@@ -530,7 +530,7 @@ This step happens **on Moses's machine**, not yours. Moses will:
 
 | File | Purpose |
 |------|---------|
-| `~/.hermes-cortex/cortex-bus.conf` | Your bus credentials and agent identity (HTTP client) |
+| `~/hermes-cortex/.env` | Your bus credentials and agent identity (HTTP client) |
 | `~/.hermes/config.yaml` | Hermes config — MCP server entry lives here |
 | `~/.hermes/SOUL.md` | Your identity document — copy from `docs/templates/SOUL.md` |
 | `~/hermes-cortex/mcp-servers/cortex-bus-mcp.py` | The MCP client that talks to the Agent Bus (PGMQ) — **orchestrators only; do NOT install on worker hosts** |

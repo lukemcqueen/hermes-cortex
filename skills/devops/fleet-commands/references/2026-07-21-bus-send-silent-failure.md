@@ -17,7 +17,7 @@ Agents consume UPDATE_REQUESTs from the shared bus (state → processing → arc
 
 ## Resolution (End of Session)
 
-All agents that had `bus_send` returning `None` were confirmed WORKING after fixing their `cortex-bus.conf`:
+All agents that had `bus_send` returning `None` were confirmed WORKING after fixing their `.env`:
 
 - **Kustos**: missing `AGENT_NAME=kustos` — was polling `inbox_cisnet02`. Fixed by adding AGENT_NAME.
 - **Joseph**: `bus_send` returned msg_id successfully — no config fix needed, was working all along.
@@ -39,7 +39,7 @@ If `bus_read()` succeeds but `bus_send()` fails, the issue is NOT:
 
 Possible root causes when read works but send doesn't:
 
-1. **Local PGMQ running on agent** — agent has its OWN Postgres running with PGMQ at `localhost:13004`. The `cortex-bus.conf` points to `https://example.com:13004` for READ (nginx proxy), but something in the stack resolves SEND to the local PGMQ instead. Check: does the agent have its own `legacy Postgres` Docker container?
+1. **Local PGMQ running on agent** — agent has its OWN Postgres running with PGMQ at `localhost:13004`. The `.env` points to `https://example.com:13004` for READ (nginx proxy), but something in the stack resolves SEND to the local PGMQ instead. Check: does the agent have its own `legacy Postgres` Docker container?
 
 2. **CORTEX_BASIC_AUTH env var override** — `cortex_bus.py` line 39 reads `CORTEX_BUS_AUTH` from env FIRST before falling back to config file. If an env var has a stale or wrong auth value, it overrides the config file. Check: `echo $CORTEX_BUS_AUTH` on the agent.
 
@@ -72,7 +72,7 @@ CORTEX_BASIC_AUTH=moses:your-password
 
 ### AGENT_NAME (must be present)
 
-The handler determines which queue to poll from `AGENT_NAME` in `cortex-bus.conf`:
+The handler determines which queue to poll from `AGENT_NAME` in `.env`:
 
 ```ini
 AGENT_NAME=esther    # → polls inbox_esther

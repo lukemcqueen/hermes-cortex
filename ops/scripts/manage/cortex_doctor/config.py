@@ -73,7 +73,7 @@ def resolve_external_base() -> str:
         return base.rstrip("/")
 
     # Also check .env file (sourced by cortex-update.sh but not always in env)
-    _env_file = CORTEX_HOME / ".env"
+    _env_file = Path.home() / "hermes-cortex" / ".env"
     try:
         for _line in _env_file.read_text().splitlines():
             _line = _line.strip()
@@ -92,7 +92,7 @@ def resolve_external_base() -> str:
             if parsed.scheme and parsed.hostname:
                 return f"{parsed.scheme}://{parsed.hostname}"
 
-    bus_conf = CORTEX_HOME / "cortex-bus.conf"
+    bus_conf = Path.home() / "hermes-cortex" / ".env"
     if bus_conf.exists():
         try:
             for line in bus_conf.read_text().splitlines():
@@ -113,7 +113,7 @@ def resolve_external_base() -> str:
 EXTERNAL_BASE = resolve_external_base()
 
 # ── Port prefix ─────────────────────────────────────────────────
-_PORT_PREFIX_ENV = CORTEX_HOME / ".env"
+_PORT_PREFIX_ENV = Path.home() / "hermes-cortex" / ".env"
 _PORT_PREFIX = "13"
 try:
     for _line in _PORT_PREFIX_ENV.read_text().split("\n"):
@@ -164,7 +164,7 @@ CORE_FOOTPRINT = [
 REPO_OWNERS_PATH = CORTEX_HOME / "config" / "repo-owners.yaml"
 REPO_OWNERS_TEMPLATE = CORTEX_REPO / "docs" / "templates" / "repo-owners.yaml"
 BUS_CONFIG_PATHS = [
-    HOME / ".hermes-cortex" / "cortex-bus.conf",
+    HOME / "hermes-cortex" / ".env",
 ]
 
 

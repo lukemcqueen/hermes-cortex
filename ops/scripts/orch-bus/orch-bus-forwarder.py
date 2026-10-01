@@ -36,7 +36,7 @@ FAILOVER SCENARIO
                drains Esther's backlog to Moses. Next tick, normal sync resumes.
 
 CONFIGURATION
-  All via env vars (set in ~/.hermes-cortex/cortex-bus.conf or ~/hermes-cortex/.env):
+  All via env vars (set in ~/hermes-cortex/.env or ~/hermes-cortex/.env):
 
   BUS_FORWARDER_LOCAL_URL     Local bus (default: http://127.0.0.1:8903)
   BUS_FORWARDER_LOCAL_TOKEN   Token for local bus (default: CORTEX_BUS_TOKEN)
@@ -111,7 +111,7 @@ def _resolve_var(key: str, default: str = "") -> str:
         return val
     # Try config files
     for cfg_path in [
-        HOME / ".hermes-cortex" / "cortex-bus.conf",
+        HOME / "hermes-cortex" / ".env",
         HOME / "hermes-cortex" / ".env",
     ]:
         cfg = _load_config_file(cfg_path)
@@ -122,9 +122,9 @@ def _resolve_var(key: str, default: str = "") -> str:
 
 # ── Config from env vars (with conf-file fallback) ──
 # NOTE (2026-08-05): ALL of these must resolve via _resolve_var (env →
-# cortex-bus.conf → ~/hermes-cortex/.env), NOT os.environ alone. The
+# .env → ~/hermes-cortex/.env), NOT os.environ alone. The
 # failover watchdog rewrites CORTEX_BUS_URL / CORTEX_BUS_FALLBACK_URL in
-# cortex-bus.conf when it activates/recovers — an env-only read ignores
+# .env when it activates/recovers — an env-only read ignores
 # the swap, and cron runs (no env) resolve to empty peers/tokens, so the
 # LOCAL→PEER drain silently failed. Found 2026-08-05: 2 worker replies
 # stranded on Esther's bus despite Moses being reachable.

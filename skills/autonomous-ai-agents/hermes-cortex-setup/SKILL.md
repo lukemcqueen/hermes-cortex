@@ -30,7 +30,7 @@ behavioral_principles:
  - Name the bus service file cortex-bus.service, not cortex-bus.service. The doctor checks for exactly cortex-bus.service.
  - Verify bus setup at three layers: (1) systemctl is-active cortex-bus.service, (2) curl :8903/health returns backend pgmq, (3) nginx upstream cortex_bus_backend matches :8903. A running process on a port is not enough.
  - After cortex-update , check ~/.hermes/scripts/ for symlinks that point outside the scripts dir. Cron's no_agent runtime rejects symlinks. Replace with real `cp` copies.
- - no_agent cron scripts don't inherit Hermes env vars. If a script needs CORTEX_BUS_TOKEN or CORTEX_BUS_URL, ensure they're set via ~/.hermes-cortex/cortex-bus.conf, not just ~/hermes-cortex/.env.
+ - no_agent cron scripts don't inherit Hermes env vars. If a script needs CORTEX_BUS_TOKEN or CORTEX_BUS_URL, ensure they're set via ~/hermes-cortex/.env, not just ~/hermes-cortex/.env.
  - After running install-orch-crons.sh, always check for stale old-name duplicate crons (bus-* vs orch-bus-*) and remove them. The installer doesn't auto-uninstall renamed crons.
  - When patching a no_agent cron script that uses `docker`, always wrap with `sg docker -c`. The cron runtime doesn't have docker group access even if the agent's shell does.
  - After cortex-update , verify deployed cron scripts in ~/.hermes/scripts/ are real file copies, not symlinks to the repo. Cron runtime rejects symlinks that resolve outside ~/.hermes/scripts/.

@@ -2,7 +2,7 @@
 # ──────────────────────────────────────────────────────────────
 # agent-setup-metrics.sh — Bootstrap metrics push on a fleet agent
 #
-# One-time setup script. Reads cortex-bus.conf for the Moses host
+# One-time setup script. Reads .env for the Moses host
 # and auth, configures hermes-cortex.env, creates the cron, and
 # does a test push. Reports results at each step.
 #
@@ -12,23 +12,23 @@ set -euo pipefail
 
 echo "[agent-setup-metrics] === Metrics push setup ==="
 
-# ── 1. Source cortex-bus.conf ──
-bus_conf="${CORTEX_BUS_CONF:-${HOME}/.hermes-cortex/cortex-bus.conf}"
+# ── 1. Source .env ──
+bus_conf="${CORTEX_BUS_CONF:-${HOME}/hermes-cortex/.env}"
 if [ ! -f "$bus_conf" ]; then
-  echo "[agent-setup-metrics] ❌ cortex-bus.conf not found at $bus_conf"
+  echo "[agent-setup-metrics] ❌ .env not found at $bus_conf"
   exit 1
 fi
 # shellcheck source=/dev/null
 source "$bus_conf"
 
 if [ -z "${CORTEX_BUS_URL:-}" ] || [ -z "${CORTEX_BASIC_AUTH:-}" ]; then
-  echo "[agent-setup-metrics] ❌ cortex-bus.conf missing CORTEX_BUS_URL or CORTEX_BASIC_AUTH"
+  echo "[agent-setup-metrics] ❌ .env missing CORTEX_BUS_URL or CORTEX_BASIC_AUTH"
   exit 1
 fi
 
 bus_host=$(echo "$CORTEX_BUS_URL" | sed -E 's|^https?://([^:/]+).*|\1|')
 VM_URL="https://${CORTEX_BASIC_AUTH}@${bus_host}:13005/api/v1/import/prometheus"
-echo "[agent-setup-metrics] ✅ Derived VICTORIA_METRICS_URL from cortex-bus.conf"
+echo "[agent-setup-metrics] ✅ Derived VICTORIA_METRICS_URL from .env"
 
 # ── 2. Set env var in hermes-cortex.env ──
 env_file="${HOME}/.hermes-cortex/hermes-cortex.env"

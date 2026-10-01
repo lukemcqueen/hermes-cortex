@@ -21,7 +21,7 @@ STATE_DIR="$CORTEX_DEPLOY_HOME/state"
 REGISTRY_FILE="$STATE_DIR/agent-registry.json"
 
 # ── Source config ───────────────────────────────────────────
-# Resolve bus config with canonical precedence env → cortex-bus.conf → .env
+# Resolve bus config with canonical precedence env → .env → .env
 # (same as orch-bus-forwarder.py). Fix 2026-08-17: the old if/elif sourced
 # ONLY ~/hermes-cortex/.env when it existed, so INBOX_URL fell back to the
 # dead CORTEX_INBOX_URL (localhost:8904 — the bus listens on 8903) and every
@@ -30,8 +30,8 @@ REGISTRY_FILE="$STATE_DIR/agent-registry.json"
 resolve_var() {
   local varname="$1" val=""
   if [[ -n "${!varname:-}" ]]; then val="${!varname}"; fi
-  if [[ -z "$val" && -f "${HOME}/.hermes-cortex/cortex-bus.conf" ]]; then
-    val=$(grep -E "^${varname}=" "${HOME}/.hermes-cortex/cortex-bus.conf" 2>/dev/null | head -1 | cut -d= -f2- | tr -d '"' | tr -d "'")
+  if [[ -z "$val" && -f "${HOME}/hermes-cortex/.env" ]]; then
+    val=$(grep -E "^${varname}=" "${HOME}/hermes-cortex/.env" 2>/dev/null | head -1 | cut -d= -f2- | tr -d '"' | tr -d "'")
   fi
   if [[ -z "$val" && -f "${HOME}/hermes-cortex/.env" ]]; then
     val=$(grep -E "^${varname}=" "${HOME}/hermes-cortex/.env" 2>/dev/null | head -1 | cut -d= -f2- | tr -d '"' | tr -d "'")

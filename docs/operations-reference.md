@@ -49,7 +49,7 @@ The confusion is that "agent inbox" sounds like one thing. It's two (and was for
 ```
 MOSES / ESTHER (bus servers)     ORCHESTRATORS ONLY (MCP client)        WORKERS (HTTP path)
 ─────────────────────────────      ─────────────────────────────────────  ───────────────────────────
-Hermes gateway (:8905)         ~/.hermes/config.yaml                  ~/.hermes-cortex/cortex-bus.conf
+Hermes gateway (:8905)         ~/.hermes/config.yaml                  ~/hermes-cortex/.env
  ↳ built-in Agent Bus API        ↳ mcp_servers.cortex-bus               ↳ CORTEX_BUS_URL + CORTEX_BASIC_AUTH
  ↳ stores messages (PGMQ)        ↳ runs cortex-bus-mcp.py as subprocess  ↳ contact-orchestrator.sh / lib.cortex_bus.bus_send
                      ↳ reads ~/hermes-cortex/.env
@@ -136,7 +136,7 @@ If you are Moses or Esther (orchestrator):
 If you are Gisu, Joseph, Kustos, or Titus (worker):
  └─ You DO NOT install the MCP client (cortex-bus-mcp.py). It is
     orchestrator-only — the doctor warns if you add it.
- └─ You DO have the HTTP client: ~/.hermes-cortex/cortex-bus.conf
+ └─ You DO have the HTTP client: ~/hermes-cortex/.env
     + contact-orchestrator.sh (or lib.cortex_bus). This is your ONLY bus access.
  └─ You DO NOT run a bus server, Postgres, or nginx proxy
 ```
@@ -157,7 +157,7 @@ grep -A4 "cortex-bus" ~/.hermes/config.yaml
 # Should show: command: python3, args: [cortex-bus-mcp.py], enabled: true
 
 # 3. Create credentials file — YOUR OWN credentials
-nano ~/hermes-cortex/cortex-bus.conf
+nano ~/hermes-cortex/.env
 ```
 ```ini
 CORTEX_BUS_URL="https://your-domain.com:13004"
@@ -165,7 +165,7 @@ CORTEX_BASIC_AUTH="your_username:your_password"
 AGENT_NAME="your_agent_name"
 ```
 ```bash
-chmod 600 ~/hermes-cortex/cortex-bus.conf
+chmod 600 ~/hermes-cortex/.env
 
 # 4. Verify you can talk to the bus
 curl -s -u "your_username:your_password" \
@@ -174,7 +174,7 @@ curl -s -u "your_username:your_password" \
 
 **Workers (Gisu, Joseph, Kustos, Titus):** Do NOT add an `cortex-bus` entry to
 `config.yaml` — the MCP client is orchestrator-only. Your bus access is the
-HTTP client (`~/.hermes-cortex/cortex-bus.conf` + `contact-orchestrator.sh`), which
+HTTP client (`~/hermes-cortex/.env` + `contact-orchestrator.sh`), which
 the installer sets up. Verify it with:
 ```bash
 bash ~/.hermes-cortex/scripts/contact-orchestrator.sh "TEST: connectivity" "ping"
@@ -192,7 +192,7 @@ curl -s -u "your_username:your_password" https://your-domain.com:13004/api/pgmq/
 
 Key rule: only Moses and Esther run the Agent Bus API backend and the MCP
 client. Every other agent uses the HTTP client only (`contact-orchestrator.sh` +
-`~/.hermes-cortex/cortex-bus.conf`). Do NOT share credentials — every agent
+`~/hermes-cortex/.env`). Do NOT share credentials — every agent
 has their own htpasswd user.
 
 ---
@@ -248,7 +248,7 @@ The installer:
 
 ### Config
 
-The worker reads from `~/.hermes-cortex/cortex-bus.conf`:
+The worker reads from `~/hermes-cortex/.env`:
 ```ini
 BUS_URL=http://bus-host:8905
 CORTEX_BUS_AUTH=<your-basic-auth>

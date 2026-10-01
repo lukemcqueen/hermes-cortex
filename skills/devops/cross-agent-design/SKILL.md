@@ -79,7 +79,7 @@ Before ANY cross-agent design, protocol, or command: prove the identical flow wo
 #   - Same Postgres (orchestrators only)? → localhost:15432, Bearer token
 #   - External URL (all workers)?         → CORTEX_BUS_URL, Basic Auth
 #
-# Check the receiving agent's cortex-bus.conf
+# Check the receiving agent's .env
 #   CORTEX_BUS_URL=https://example.com:13004  (or :14004 for Esther)
 #   CORTEX_BASIC_AUTH=agentname:password
 #   AGENT_NAME=esther
@@ -207,7 +207,7 @@ This is the trickiest failure: no evidence left behind. The handler consumed the
    Returns `{'msg_id': '...'}` → send works interactively. The cron environment differs.
    Returns `None` → bus_send is broken. Check config, auth, and URL.
 
-4. **AGENT_NAME misconfiguration** — The handler polls `inbox_{AGENT_NAME}`. If AGENT_NAME falls back to hostname (older code) instead of being set in `cortex-bus.conf`, the handler polled `inbox_cisnet03` while you sent to `inbox_gisu`. Check the agent's `cortex-bus.conf` has `AGENT_NAME=<name>`.
+4. **AGENT_NAME misconfiguration** — The handler polls `inbox_{AGENT_NAME}`. If AGENT_NAME falls back to hostname (older code) instead of being set in `.env`, the handler polled `inbox_cisnet03` while you sent to `inbox_gisu`. Check the agent's `.env` has `AGENT_NAME=<name>`.
 
 5. **Known silent-failure gap** — `send_bus_result()` catches all exceptions internally and returns `False` without propagating. The crash guard's except block is never triggered. The handler logs "Failed to send" to stdout (which the cron runner captures) but returns `True` (all done). The message is archived with no result sent. Being actively fixed.
 
@@ -217,7 +217,7 @@ This is the trickiest failure: no evidence left behind. The handler consumed the
 
 Your machine (Moses) has a Bearer token for direct localhost access. Remote
 agents only have Basic Auth through nginx. The MCP tool resolves auth from
-`cortex-bus.conf` — verify the remote agent's config matches their actual
+`.env` — verify the remote agent's config matches their actual
 auth mode.
 
 ### ❌ "I designed a protocol where Agent X sends to Agent Y directly"

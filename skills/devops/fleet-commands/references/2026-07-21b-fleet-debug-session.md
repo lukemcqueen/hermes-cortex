@@ -7,8 +7,8 @@ Full cycle of sending UPDATE_REQUEST to fleet agents, diagnosing stuck handlers,
 
 ### Kustos — Wrong Queue Polling
 - **Symptom:** EXEC sent to `inbox_kustos` never consumed. Message sat `pending`.
-- **Root cause:** `cortex-bus.conf` missing `AGENT_NAME=kustos`. Handler polled `inbox_cisnet02` (hostname fallback) instead of `inbox_kustus`.
-- **Fix:** Set `AGENT_NAME=kustos` in cortex-bus.conf. Handler now polls correct queue.
+- **Root cause:** `.env` missing `AGENT_NAME=kustos`. Handler polled `inbox_cisnet02` (hostname fallback) instead of `inbox_kustus`.
+- **Fix:** Set `AGENT_NAME=kustos` in .env. Handler now polls correct queue.
 
 ### Esther — Handler Crashes Silently (No Crash Guard)
 - **Symptom:** Messages go `pending → processing` but never complete. Archive never called. No result sent.

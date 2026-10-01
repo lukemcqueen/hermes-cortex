@@ -20,7 +20,7 @@
 #    hermes cron create name=cortex-bus schedule="0 */2 * * *" \
 #      prompt="Process bus messages..." context_from=<job_id>
 #
-#  Auth: Uses ~/.hermes-cortex/cortex-bus.conf if present (BASIC auth).
+#  Auth: Uses ~/hermes-cortex/.env if present (BASIC auth).
 #  Or set INBOX_AUTH env var to "user:pass".
 # ─────────────────────────────────────────────────────────────
 set -euo pipefail
@@ -43,11 +43,11 @@ BUS_URL="${CORTEX_BUS_URL:-https://your-domain.com:13004}"
 AUTH=""
 
 # Try loading auth from config file — check new name first, fall back to old
-AUTH_FILE="${HOME}/.hermes-cortex/cortex-bus.conf"
+AUTH_FILE="${HOME}/hermes-cortex/.env"
 if [ ! -f "$AUTH_FILE" ]; then
   AUTH_FILE="${HOME}/.hermes-cortex/moses-inbox.conf"
   if [ -f "$AUTH_FILE" ]; then
-    echo "[deprecated] Rename ~/.hermes/moses-inbox.conf → ~/.hermes-cortex/cortex-bus.conf" >&2
+    echo "[deprecated] Rename ~/.hermes/moses-inbox.conf → ~/hermes-cortex/.env" >&2
   fi
 fi
 if [ -f "$AUTH_FILE" ]; then

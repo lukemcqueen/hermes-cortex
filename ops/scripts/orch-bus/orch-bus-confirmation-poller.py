@@ -27,7 +27,7 @@ BUS_FALLBACK_URL = os.environ.get(
     "CORTEX_BUS_FALLBACK_URL",
     os.environ.get("CORTEX_BUS_FALLBACK_URL", ""),
 )
-CONFIG_FILE = CORTEX_HOME / "cortex-bus.conf"
+CONFIG_FILE = Path.home() / "hermes-cortex" / ".env"
 
 
 def _read_config(key: str) -> str:

@@ -130,10 +130,10 @@ After the review, when the user directs you to revert: see `references/revert-ex
 When identifying the agent running the review, use the authoritative source:
 
 ```bash
-grep ^AGENT_NAME ~/.hermes-cortex/cortex-bus.conf | cut -d= -f2
+grep ^AGENT_NAME ~/hermes-cortex/.env | cut -d= -f2
 ```
 
-Do NOT use `hostname`, `git config user.name`, or `$(whoami)`. The `cortex-bus.conf` file is the single source of truth for agent identity. Every bus message, health report, and registry entry uses this name.
+Do NOT use `hostname`, `git config user.name`, or `$(whoami)`. The `.env` file is the single source of truth for agent identity. Every bus message, health report, and registry entry uses this name.
 
 ### Git log direction: newest first
 

@@ -137,7 +137,6 @@ def _env_agent_name() -> str:
     for path in (
         Path.home() / ".hermes-cortex" / "agent.env",
         Path.home() / "hermes-cortex" / ".env",
-        Path.home() / ".hermes-cortex" / ".env",
     ):
         try:
             if path.is_file():

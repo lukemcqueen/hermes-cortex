@@ -113,7 +113,7 @@ Non-orchestrators: submit proposals via the orchestrator inbox (`📝 PROPOSAL: 
 
 **RULE 7b: ENFORCEMENT CHAIN — cortex-update.sh IS THE ONLY UPDATE PATH.** Enforcement files (enforcer plugin, hooks, loop-gov-mcp.py, hermes-plugin-lock) update ONLY via `bash ~/hermes-cortex/ops/scripts/cortex-update.sh`. Direct `sudo hermes-plugin-lock unlock` is REFUSED for non-orchestrators (audit-logged); exceptions: `--cortex-update` / `--orchestrator` (moses|esther). If DOGFOOD blocks you (deployed ≠ repo enforcer): run cortex-update.sh (lock-free), re-acquire, retry. ⚠️ **Deploy ≠ load:** gateway keeps the OLD enforcer until `hermes gateway restart` (agent-blocked — ask the operator; do not loop).
 
-**RULE 7c: BUS ACCESS — NON-ORCHESTRATORS USE THE HTTP CLIENT ONLY.** Non-orchestrators have the bus **HTTP client** (`cortex-bus.conf` + `contact-orchestrator.sh`) and NOTHING ELSE. Never install the bus server or the `cortex-bus` MCP client — the doctor WARNS on both. Role matrix: `docs/bus-architecture.md`. **Bus ACL:** per queue via `bus.permissions`; `is_admin=true` bypasses (moses). Grants in `core/cortex_bus/schema/auth.sql`.
+**RULE 7c: BUS ACCESS — NON-ORCHESTRATORS USE THE HTTP CLIENT ONLY.** Non-orchestrators have the bus **HTTP client** (`~/hermes-cortex/.env` + `contact-orchestrator.sh`) and NOTHING ELSE. Never install the bus server or the `cortex-bus` MCP client — the doctor WARNS on both. Role matrix: `docs/bus-architecture.md`. **Bus ACL:** per queue via `bus.permissions`; `is_admin=true` bypasses (moses). Grants in `core/cortex_bus/schema/auth.sql`.
 
 **RULE 8: "PULL LATEST" = FULL REFRESH.** (1) `git pull origin main`, (2) `cortex-update.sh` — deploy, (3) run the doctor, (4) fix every issue until clean, (5) verify services, crons, skills.
 

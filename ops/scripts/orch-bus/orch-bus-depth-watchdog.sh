@@ -17,7 +17,7 @@ if [[ -z "$AGENT_NAME" || "$AGENT_NAME" == "unknown" ]]; then
 fi
 # Requires bus URL from config — no localhost fallback
 if [[ -z "$BUS_URL" ]]; then
-    echo "ERROR: BUS_URL not set — configure CORTEX_BUS_URL in env or cortex-bus.conf" >&2
+    echo "ERROR: BUS_URL not set — configure CORTEX_BUS_URL in env or .env" >&2
     exit 1
 fi
 

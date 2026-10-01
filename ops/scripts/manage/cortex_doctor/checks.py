@@ -53,8 +53,8 @@ from .results import Results
 
 
 def _read_config_from_bus_conf(key: str) -> str:
-  """Read a value from cortex-bus.conf by key. Returns '' if not found."""
-  conf_path = CORTEX_HOME / "cortex-bus.conf"
+  """Read a value from .env by key. Returns '' if not found."""
+  conf_path = Path.home() / "hermes-cortex" / ".env"
   if not conf_path.exists():
     return ""
   try:
@@ -1339,12 +1339,12 @@ def _check_bus_e2e(res):
     if bus_url:
       res.add("Bus config (URL)", "PASS", f"BUS_URL set")
     else:
-      res.add("Bus config (URL)", "FAIL", "BUS_URL not set", "Set CORTEX_BUS_URL in cortex-bus.conf")
+      res.add("Bus config (URL)", "FAIL", "BUS_URL not set", "Set CORTEX_BUS_URL in .env")
     if fallback_url:
       res.add("Bus config (fallback)", "PASS", f"FALLBACK_URL set")
     else:
       res.add("Bus config (fallback)", "WARN", "No FALLBACK_URL configured",
-          "Add CORTEX_BUS_FALLBACK_URL in cortex-bus.conf for resilience")
+          "Add CORTEX_BUS_FALLBACK_URL in .env for resilience")
   except Exception:
     return # cortex_bus not importable — bus checks handled by earlier import guard
 
@@ -1357,7 +1357,7 @@ def _check_bus_e2e(res):
     else:
       res.add("Bus health", "WARN", f"Status: {status}")
   except Exception as e:
-    res.add("Bus health", "FAIL", str(e), "Check CORTEX_BUS_URL in cortex-bus.conf")
+    res.add("Bus health", "FAIL", str(e), "Check CORTEX_BUS_URL in .env")
     return
 
   # ── 3. Self round-trip: send → read → archive ──
@@ -1370,7 +1370,7 @@ def _check_bus_e2e(res):
     })
     if not send_r or not send_r.get("msg_id"):
       res.add("Bus self (send)", "FAIL", f"No msg_id returned: {send_r}",
-          "Check auth credentials in cortex-bus.conf")
+          "Check auth credentials in .env")
       return
   except Exception as e:
     res.add("Bus self (send)", "FAIL", str(e),
@@ -1458,7 +1458,7 @@ def _check_bus_e2e(res):
     from lib.cortex_bus import BUS_URL, CORTEX_BUS_TOKEN, CORTEX_BUS_AUTH
     bus_url = BUS_URL
     # Try Bearer if token available, then fall back to Basic auth on 401/403.
-    # The orchestrator bus accepts Basic (cortex-bus.conf); a stale Bearer
+    # The orchestrator bus accepts Basic (.env); a stale Bearer
     # token in .env must not mask the check as SKIP (2026-08-10).
     import base64
     attempts = []
@@ -1914,7 +1914,7 @@ def check_services(res):
       val = os.environ.get(key, "")
       if val:
         return val
-      conf = CORTEX_HOME / "cortex-bus.conf"
+      conf = Path.home() / "hermes-cortex" / ".env"
       if conf.exists():
         for line in conf.read_text().splitlines():
           if line.startswith(f"{key}="):
@@ -1935,7 +1935,7 @@ def check_services(res):
     else:
       res.add("Agent Bus (direct)", "FAIL",
           "No bus URLs configured",
-          "Set CORTEX_BUS_URL (and CORTEX_BUS_FALLBACK_URL) in cortex-bus.conf")
+          "Set CORTEX_BUS_URL (and CORTEX_BUS_FALLBACK_URL) in .env")
 
   _check_bus_e2e(res)
 

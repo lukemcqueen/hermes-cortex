@@ -473,7 +473,7 @@ exactly one rejection and zero outbox writes (US-001, 8/8 tests, commit
 **Verify:** run the forwarder; state file `~/.hermes-cortex/state/bus-forwarder-state.json` should show `peer_downed_at` cleared and "Peer recovered — drained N→local, N→peer".
 
 **Config resolution (commit `c8c54b4b`, 2026-08-05):** the forwarder reads its
-config (LOCAL_URL/TOKEN, PEER_URL/AUTH/TOKEN) in **env → `cortex-bus.conf` →
+config (LOCAL_URL/TOKEN, PEER_URL/AUTH/TOKEN) in **env → `.env` →
 `~/.hermes-cortex/.env`** order. Before this fix it read `os.environ` ONLY
 despite the docstring claiming conf/.env fallback — so cron runs (no env)
 resolved empty `PEER_URL`/`PEER_AUTH`/`LOCAL_TOKEN` and the LOCAL→PEER drain
@@ -483,7 +483,7 @@ failed` every tick, or `total_local_to_peer` stops advancing. Fix keeps every
 config key resolvable from the conf in a bare env; `_load_config_file` /
 `_resolve_var` are defined above the config block (were after use — NameError
 at import). Verify: run the forwarder in a bare env and confirm `PEER_URL`
-resolves from `cortex-bus.conf`; a manual drain run pushes stranded messages
+resolves from `.env`; a manual drain run pushes stranded messages
 (`total_local_to_peer` increments) and worker inboxes empty locally.
 
 **ACL prerequisite (2026-08-03):** the backup orchestrator's `orch-bus-forwarder`
@@ -547,11 +547,11 @@ for a in ('gisu','joseph','kustos','titus','moses'):
 ## Token rotation (Bearer, `hbus_*`)
 
 - **Hash scheme:** `bus.tokens.token_hash` = `hashlib.pbkdf2_hmac("sha256", token, b"hermes-bus-salt", 100000).hex()` (`core/cortex_bus/auth.py hash_token`).
-- **Rotate:** generate `"hbus_" + secrets.token_hex(32)` → update `~/hermes-cortex/.env` AND `~/.hermes-cortex/cortex-bus.conf` (both carry `CORTEX_BUS_TOKEN`; the forwarder's `LOCAL_TOKEN` reads the conf) → `UPDATE bus.tokens SET token_hash='<pbkdf2(new)>', rotated_at=NOW() WHERE agent_name='<agent>'` → verify Bearer against the LOCAL bus (`127.0.0.1:8903`): new → 200, old → 401.
+- **Rotate:** generate `"hbus_" + secrets.token_hex(32)` → update `~/hermes-cortex/.env` AND `~/hermes-cortex/.env` (both carry `CORTEX_BUS_TOKEN`; the forwarder's `LOCAL_TOKEN` reads the conf) → `UPDATE bus.tokens SET token_hash='<pbkdf2(new)>', rotated_at=NOW() WHERE agent_name='<agent>'` → verify Bearer against the LOCAL bus (`127.0.0.1:8903`): new → 200, old → 401.
 - **Verify Bearer on the LOCAL bus only.** Testing Bearer against the external nginx port (`:13004`/`:14004`) is meaningless — nginx validates Basic auth and sets `X-Forwarded-User`; a Bearer header sent through nginx is ignored (401 for missing Basic). A token that "401s" through nginx can still be LIVE on the local bus.
 - **Identity mapping pitfall:** a token found in another agent's docs/config may be a DIFFERENT agent's row — the esther setup guide carried MOSES' token (esther's `.env` seeded with it), so it authenticated as moses with full queue privileges. Before rotating, look up the identity by hash: `SELECT agent_name FROM bus.tokens WHERE token_hash='<pbkdf2(leaked)>' AND is_active=true`. Rotate the MAPPED row (or sync it to the owner's real token hash).
 - **Peer-bus consistency:** each orchestrator's Postgres is independent; if the peer's token row on your bus doesn't match his real token, sync it from his bus (`SELECT token_hash FROM bus.tokens WHERE agent_name='moses'` on his host, then UPDATE your row) so a leaked token dies on your bus too.
-- **Rotation order (configs first):** update consumer configs (`.env`, `cortex-bus.conf`) BEFORE the token table so the forwarder/MCP never hit a dead token mid-rotation.
+- **Rotation order (configs first):** update consumer configs (`.env`, `.env`) BEFORE the token table so the forwarder/MCP never hit a dead token mid-rotation.
 
 ## Stale-mirror sweep — backup bus no longer grows forever (2026-08-14)
 

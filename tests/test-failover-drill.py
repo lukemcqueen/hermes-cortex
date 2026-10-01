@@ -8,7 +8,7 @@ Thorough, repeatable test of the orchestrator failover contract:
   PHASE 1  Detection — Moses down for >15 min must be DETECTED (watchdog
            counts consecutive failures; first failure warns).
   PHASE 2  Auto-failover — after the outage threshold, the watchdog ACTIVATES:
-           Esther's cortex-bus.conf swaps primary→local, marker written,
+           Esther's .env swaps primary→local, marker written,
            fleet notified (dry-run in safe mode).
   PHASE 3  All-agent fallback — every agent's bus config must have Esther's
            URL as fallback (primary=Moses, fallback=Esther) so their
@@ -51,7 +51,7 @@ WATCHDOG_SRC = HOME / "hermes-cortex" / "ops" / "scripts" / "agent" / "cortex-bu
 STATE_DIR = HOME / ".hermes-cortex" / "state"
 STATE_FILE = STATE_DIR / "bus-failover-state.json"
 MARKER_FILE = STATE_DIR / ".failover-active"
-CONF_FILE = HOME / ".hermes-cortex" / "cortex-bus.conf"
+CONF_FILE = HOME / "hermes-cortex" / ".env"
 REGISTRY_FILE = STATE_DIR / "agent-registry.local.json"
 
 # Moses' real health URLs (from agent registry)
@@ -279,9 +279,9 @@ def phase2_autofailover(mod) -> None:
     conf = _read_conf()
     if not mod.DRY_RUN and LIVE:
         if conf.get("CORTEX_BUS_URL", "").startswith("http://127.0.0.1"):
-            ok("cortex-bus.conf primary = local (acting orchestrator)")
+            ok(".env primary = local (acting orchestrator)")
         else:
-            bad("cortex-bus.conf primary NOT local", str(conf.get("CORTEX_BUS_URL")))
+            bad(".env primary NOT local", str(conf.get("CORTEX_BUS_URL")))
     else:
         warn("config swap not executed (dry-run) — not audited")
 
@@ -520,9 +520,9 @@ def cleanup(mod) -> None:
             conf = _read_conf()
             if conf.get("CORTEX_BUS_URL", "").startswith("http://127.0.0.1"):
                 mod.swap_bus_config(active=False)
-                ok("restored cortex-bus.conf to standby (primary=Moses)")
+                ok("restored .env to standby (primary=Moses)")
             else:
-                ok("cortex-bus.conf already standby")
+                ok(".env already standby")
         else:
             ok("dry-run: no config/marker changes to undo")
     except Exception as e:

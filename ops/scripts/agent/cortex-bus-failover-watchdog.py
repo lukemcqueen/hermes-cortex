@@ -10,7 +10,7 @@ ROLE BEHAVIOR
   IDLE       Moses healthy → silent.
   DEGRADED   1-2 consecutive failed checks → warn ONCE on first failure.
   FAILOVER   3+ consecutive failures AND elapsed >= FAILOVER_MIN_DOWN_MINUTES
-             → ACTIVATE: swap Esther's cortex-bus.conf primary/fallback,
+             → ACTIVATE: swap Esther's .env primary/fallback,
                write .failover-active marker, notify fleet, report.
   RECOVERED  Moses healthy 3 consecutive checks while failover active
              → RESTORE: swap config back, remove marker, notify fleet, report.
@@ -68,7 +68,7 @@ STATE_DIR = HOME / ".hermes-cortex" / "state"
 STATE_FILE = STATE_DIR / "bus-failover-state.json"
 MARKER_FILE = STATE_DIR / ".failover-active"
 LOG_FILE = STATE_DIR / ".bus-failover-log"
-CONF_FILE = HOME / ".hermes-cortex" / "cortex-bus.conf"
+CONF_FILE = HOME / "hermes-cortex" / ".env"
 WATCHDOG_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # Esther's ACL (docs/bus-architecture.md): workers and Esther send to
@@ -185,7 +185,7 @@ def _esther_reachable(urls: list[str] | None = None) -> bool:
 
 # ── Seam 2: config swap (orchestrator only, injectable for tests) ─
 def swap_bus_config(active: bool) -> bool:
-    """Rewrite cortex-bus.conf primary/fallback URLs (Esther only).
+    """Rewrite .env primary/fallback URLs (Esther only).
 
     active=True  → acting primary: URL=local :8903, FALLBACK=Moses :13004
     active=False → standby restored: URL=Moses :13004, FALLBACK=Esther :14004
@@ -285,9 +285,9 @@ def _activate(state: dict) -> list[str]:
         return lines
 
     if swap_bus_config(active=True):
-        lines.append("   ✅ cortex-bus.conf → primary=local :8903, fallback=Moses :13004")
+        lines.append("   ✅ .env → primary=local :8903, fallback=Moses :13004")
     else:
-        lines.append("   ❌ cortex-bus.conf swap FAILED — check permissions")
+        lines.append("   ❌ .env swap FAILED — check permissions")
     try:
         MARKER_FILE.write_text(_now_iso())
         lines.append("   ✅ failover marker written")
@@ -312,9 +312,9 @@ def _recover(state: dict) -> list[str]:
         return lines
 
     if swap_bus_config(active=False):
-        lines.append("   ✅ cortex-bus.conf → primary=Moses :13004, fallback=Esther :14004")
+        lines.append("   ✅ .env → primary=Moses :13004, fallback=Esther :14004")
     else:
-        lines.append("   ❌ cortex-bus.conf restore FAILED")
+        lines.append("   ❌ .env restore FAILED")
     try:
         if MARKER_FILE.exists():
             MARKER_FILE.unlink()

@@ -8,7 +8,7 @@
 #
 #  Uses the SAME config loading pattern as inbox-mcp.py:
 #    1. CORTEX_INBOX_* environment variables
-#    2. ~/.hermes-cortex/cortex-bus.conf (KEY=VALUE format, parsed line-by-line)
+#    2. ~/hermes-cortex/.env (KEY=VALUE format, parsed line-by-line)
 #    3. URL fallback chain: primary → fallback → third → localhost:8903
 #
 #  Silent when:
@@ -25,7 +25,7 @@ set -euo pipefail
 # ── Paths ──
 STATE_FILE="${HOME}/.hermes-cortex/state/post-commit-notify"
 LOG_FILE="${STATE_FILE}.log"
-CONFIG_FILE="${HOME}/.hermes-cortex/cortex-bus.conf"
+CONFIG_FILE="${HOME}/hermes-cortex/.env"
 
 # ── Helpers ──
 log()  { echo "[notify] $*" >> "$LOG_FILE"; }
@@ -103,7 +103,7 @@ if [ -z "$AGENT_NAME" ]; then
   if [ -n "$INBOX_AUTH" ] && [[ "$INBOX_AUTH" == *:* ]]; then
     AGENT_NAME="${INBOX_AUTH%%:*}"
   else
-    echo "❌ AGENT_NAME not configured — set AGENT_NAME= in ~/.hermes-cortex/agent.env / cortex-bus.conf or export AGENT_NAME" >&2
+    echo "❌ AGENT_NAME not configured — set AGENT_NAME= in ~/.hermes-cortex/agent.env / .env or export AGENT_NAME" >&2
     exit 1
   fi
 fi

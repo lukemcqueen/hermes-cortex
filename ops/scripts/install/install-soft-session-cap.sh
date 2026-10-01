@@ -19,7 +19,7 @@
 # cache-killer long contexts) while keeping the session alive.
 #
 # VALUE SOURCE (priority): runtime env SOFT_SESSION_CAP_TOKENS >
-# ~/hermes-cortex/.env (repo) > ~/.hermes-cortex/.env (deploy).
+# ~/hermes-cortex/.env (repo) > ~/hermes-cortex/.env (deploy).
 # UNSET = NO-OP: the script is safe to deploy fleet-wide BEFORE Luke
 # picks the A/B value; it only writes when a value is explicitly set.
 #

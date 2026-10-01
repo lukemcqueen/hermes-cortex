@@ -84,7 +84,7 @@ hermes cortex agent list --show-labels
 ```
 
 Labels are stored in `bus.permissions.labels` and cached in the
-agent's local `cortex-bus.conf` (or a companion `.labels` file)
+agent's local `.env` (or a companion `.labels` file)
 so the `agent-message-handler.py` can read them without bus access
 for label checks.
 

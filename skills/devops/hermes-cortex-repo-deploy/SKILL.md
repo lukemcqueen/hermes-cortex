@@ -156,7 +156,7 @@ clobber-check → commit → deploy → doctor → push → FLEET_NOTICE.
   and its early archive fails the check once, then clears. Confirm with the
   live endpoint before fixing handler debt:
   `curl -s -u "$CORTEX_BASIC_AUTH" "$CORTEX_BUS_URL/api/pgmq/queue/inbox_<agent>"`
-  (both vars in `~/.hermes-cortex/cortex-bus.conf`) — `depth: 0,
+  (both vars in `~/hermes-cortex/.env`) — `depth: 0,
   processing: 0` = clean, just push again. The path is singular `queue/`;
   `/queues/<name>` 404s. Don't conclude from local psql — on the backup
   orchestrator the local mycortex-postgres is a stale REPORTS MIRROR.

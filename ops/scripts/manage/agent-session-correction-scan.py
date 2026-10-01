@@ -58,7 +58,7 @@ import os as _os
 STATE_DB = Path(_os.path.join(str(HOME), ".hermes", "state.db"))
 STATE_FILE = Path(_os.path.join(str(HOME), ".hermes-cortex", "state", "session-correction-scan-state.json"))
 GUARDRAIL_REGISTRY = Path(_os.path.join(str(HOME), "hermes-cortex", "docs", "guardrail-registry.json"))
-BUS_CONF = Path(_os.path.join(str(HOME), ".hermes-cortex", "cortex-bus.conf"))
+BUS_CONF = Path(_os.path.join(str(HOME), ".hermes-cortex", ".env"))
 
 # ── System-injected wrappers to strip before matching (F-01) ──────────
 WRAPPER_PATTERNS = [
@@ -334,7 +334,7 @@ def scan(days: int | None, all_history: bool) -> list[dict]:
 
 
 def load_bus_config() -> tuple[str, str, str]:
-    """Load (bus_url, auth, agent_name) from cortex-bus.conf.
+    """Load (bus_url, auth, agent_name) from .env.
 
     Agents push to the orchestrator's bus via the HTTP API (contact-orchestrator.sh
     pattern). Falls back to env vars, then defaults; returns agent_name which

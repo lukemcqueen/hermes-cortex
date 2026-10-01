@@ -49,7 +49,7 @@ your current session.
 After cleanup, load reflexion-check and commit:
 
 ```bash
-AGENT_ID=$(grep AGENT_NAME ~/.hermes-cortex/cortex-bus.conf | cut -d= -f2) \
+AGENT_ID=$(grep AGENT_NAME ~/hermes-cortex/.env | cut -d= -f2) \
   git commit -m "your message"
 ```
 

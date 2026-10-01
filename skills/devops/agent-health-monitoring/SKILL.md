@@ -465,7 +465,7 @@ every lid-close would generate a 🔴 alert within 10 minutes.
 > `last-seen.json` grace period suppresses alerts during sleep, but the health report will
 > still show the current state. See the "Client-only agent unreachable (laptop sleep)" pitfall below.
 
-The bus connection is read from `~/.hermes-cortex/cortex-bus.conf`
+The bus connection is read from `~/hermes-cortex/.env`
 (`CORTEX_BUS_URL` + `CORTEX_BASIC_AUTH`, or Bearer `CORTEX_BUS_TOKEN`). Each
 agent has their own credentials — never share the orchestrator's credentials
 with peer agents. See `references/inbox-health-format.md` for the push format,
@@ -481,7 +481,7 @@ For agents with no inbound access (`health_method="inbox"`). Runs on a cron/laun
 ```bash
 # Determines hostname, runs health-vector.py --check,
 # POSTs the JSON vector to the PGMQ bus queue inbox_health_check
-# (reads CORTEX_BUS_URL + CORTEX_BASIC_AUTH from ~/.hermes-cortex/cortex-bus.conf)
+# (reads CORTEX_BUS_URL + CORTEX_BASIC_AUTH from ~/hermes-cortex/.env)
 bash ~/hermes-cortex/ops/scripts/health-vector-push.sh
 ```
 
@@ -515,7 +515,7 @@ bash ~/hermes-cortex/ops/scripts/health-vector-push.sh
 ```
 
 Requires `CORTEX_BUS_URL` + `CORTEX_BASIC_AUTH` (or Bearer `CORTEX_BUS_TOKEN`) in
-`~/.hermes-cortex/cortex-bus.conf` (the push script reads them from there).
+`~/hermes-cortex/.env` (the push script reads them from there).
 **Each client agent uses their OWN credentials** — never Moses' password.
 
 ### 4. `agent-registry.json` — Agent configuration (public)
@@ -676,7 +676,7 @@ Copy the script to `~/.hermes/scripts/` first. See AGENTS.md for full setup.
 
 5. **Set up bus config** for agent-to-agent messaging:
    ```bash
-   # ~/.hermes-cortex/cortex-bus.conf
+   # ~/hermes-cortex/.env
    # Each agent uses their OWN credentials — ask Moses to create a htpasswd entry
    CORTEX_BUS_URL="https://<moses-domain>:13004"
    CORTEX_BASIC_AUTH="your-agent-name:<your-password>"
@@ -687,12 +687,12 @@ Copy the script to `~/.hermes/scripts/` first. See AGENTS.md for full setup.
 
 1. **Set up bus config:**
    ```ini
-   # ~/.hermes-cortex/cortex-bus.conf
+   # ~/hermes-cortex/.env
    CORTEX_BUS_URL="https://<moses-domain>:13004"
    CORTEX_BASIC_AUTH="<your-agent-name>:<your-password>"
    AGENT_NAME="<your-agent-name>"
    ```
-   `chmod 600 ~/.hermes-cortex/cortex-bus.conf`
+   `chmod 600 ~/hermes-cortex/.env`
 
 2. **Install the launchd push agent:**
    ```bash

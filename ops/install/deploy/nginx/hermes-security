@@ -5,7 +5,7 @@
 # NOTE (2026-08-05): __SUDO_USERS__ is a PLACEHOLDER. Real account names are
 # PII and never committed to the public repo. deploy-sudoers.sh substitutes
 # the per-host user list at deploy time (CORTEX_SUDO_USERS in the host's
-# private ~/.hermes-cortex/.env; falls back to the deploying user).
+# private ~/hermes-cortex/.env; falls back to the deploying user).
 #
 # Fleet agents — nginx management (called by crons)
 __SUDO_USERS__ ALL=(root) NOPASSWD: /usr/sbin/nginx -t

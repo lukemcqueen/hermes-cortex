@@ -10,7 +10,7 @@
 
 ## Root Causes Found
 
-### 1. Missing AGENT_NAME in cortex-bus.conf (Kustos)
+### 1. Missing AGENT_NAME in .env (Kustos)
 
 Kustos was polling `inbox_cisnet02` instead of `inbox_kustos`. Config was missing `AGENT_NAME=kustos`.
 
