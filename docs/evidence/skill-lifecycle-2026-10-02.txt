@@ -1,5 +1,7 @@
 === orch-skill-lifecycle run 2026-10-02 — raw evidence transcript ===
-2026-10-02 04:55:34 KST
+2026-10-02 04:58:31 KST
+(captured on this host; the doctor 'repo clean' warn below is this very
+ file being uncommitted at capture time — it clears once committed)
 
 $ python3 ops/scripts/manage/verify-skill-lifecycle-run.py
 {
@@ -29,9 +31,6 @@ tests/test_verify_skill_lifecycle_run.py ......                          [100%]
 
 ============================== 6 passed in 0.04s ===============================
 
-$ git log --oneline -1 origin/main
-92d9f5c6 test(skill-lifecycle): runnable evidence + tests for the 2026-10-02 run
-
 $ git ls-tree -r b58eaa1d --name-only | grep -E 'one-owner-migrations|systemd-cron-bridge|documentation-consolidation'
 skills/devops/one-owner-migrations/SKILL.md
 skills/devops/systemd-cron-bridge/SKILL.md
@@ -39,4 +38,4 @@ skills/devops/systemd-cron-bridge/references/systemd-timer-oncalendar.md
 skills/software-development/documentation-consolidation/SKILL.md
 
 $ python3 ops/scripts/manage/cortex-doctor.py --quiet | grep Overall
-  ❌ Overall: FAILING  (413 pass · 1 warn · 1 fail · 4 info)
+  ⚠️  Overall: WARNING  (414 pass · 1 warn · 0 fail · 4 info)
