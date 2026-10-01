@@ -86,6 +86,13 @@ fi
 # ── Cortex environment — single source of truth ──────────────
 # ~/hermes-cortex/.env is the gitignored per-machine config.
 # ⚠ ~/.hermes/.env is Hermes Agent's own config — never write to it.
+# Migrate the legacy bus conf into the canonical env FIRST (idempotent). Every
+# script reads ~/hermes-cortex/.env since the 2026-10 refactor, so a host with
+# only ~/.hermes-cortex/cortex-bus.conf must be migrated before anything reads
+# the env. Uses $HOME + bash only — identical on Linux and macOS.
+if [[ -f "${REPO_DIR}/ops/scripts/manage/consolidate-env.sh" ]]; then
+  bash "${REPO_DIR}/ops/scripts/manage/consolidate-env.sh" >/dev/null 2>&1 || true
+fi
 if [[ -f "${REPO_DIR}/.env" ]]; then
   set -a; source "${REPO_DIR}/.env"; set +a
 fi
@@ -557,6 +564,7 @@ register "ops/scripts/cortex_gateway/hermes_backend.py" "${CORTEX_DEPLOY_HOME}/s
 register "ops/scripts/cortex_gateway/daemon.py"      "${CORTEX_DEPLOY_HOME}/scripts/cortex_gateway/daemon.py"
 register "ops/scripts/gateway.yaml.example"          "${CORTEX_DEPLOY_HOME}/gateway.yaml.example"
 register "docs/templates/cortex-gateway.service"     "${CORTEX_DEPLOY_HOME}/templates/cortex-gateway.service"
+register "docs/templates/com.hermes.cortex-gateway.plist" "${CORTEX_DEPLOY_HOME}/templates/com.hermes.cortex-gateway.plist"
 register "ops/scripts/cortex_lib/tools.py"         "${CORTEX_DEPLOY_HOME}/scripts/cortex_lib/tools.py"
 register "ops/scripts/cortex_lib/models.py"        "${CORTEX_DEPLOY_HOME}/scripts/cortex_lib/models.py"
 

@@ -42,7 +42,18 @@ if [[ -L "${CONF}" ]]; then
   fail "${CONF} is a symlink to ${target}, not ${REPO_ENV} — refusing to touch"
 fi
 
-[[ -f "${REPO_ENV}" ]] || fail "${REPO_ENV} missing — run install.sh first"
+# Seed the canonical env from the legacy conf when it does not exist yet —
+# hosts installed before the single-env refactor otherwise break, since every
+# script now reads ${REPO_ENV}. (Never overwrite an existing canonical env.)
+if [[ ! -f "${REPO_ENV}" ]]; then
+  if [[ -f "${CONF}" ]]; then
+    cp "${CONF}" "${REPO_ENV}"
+    chmod 600 "${REPO_ENV}"
+    info "seeded ${REPO_ENV} from ${CONF} (migration)"
+  else
+    fail "neither ${REPO_ENV} nor ${CONF} exists — run install.sh first"
+  fi
+fi
 [[ -f "${CONF}" ]] || { info "no ${CONF} — nothing to consolidate"; exit 0; }
 
 # ── Collect conf vars missing from the target (conflict-safe) ─

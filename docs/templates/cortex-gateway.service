@@ -1,6 +1,9 @@
 # cortex-gateway.service — Hermes Cortex standalone messaging gateway
 #
 # ⚠️ USER-LEVEL ONLY — must live in ~/.config/systemd/user/
+#    Linux/systemd ONLY. macOS has no systemd: use the launchd counterpart
+#    docs/templates/com.hermes.cortex-gateway.plist (~/Library/LaunchAgents/),
+#    which sources the same canonical env before exec'ing the daemon.
 #    Never copy to /etc/systemd/system/ (a second poller on the same bot
 #    token gets a Telegram 409 Conflict).
 #    Enable/start: systemctl --user enable --now cortex-gateway.service

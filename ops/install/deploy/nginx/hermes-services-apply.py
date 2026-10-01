@@ -49,10 +49,19 @@ import tempfile
 from pathlib import Path
 
 # ── Source .env overrides ─────────────────────────────────────
-_cortex_repo = Path(os.environ.get("CORTEX_REPO", Path.home() / "hermes-cortex"))
-_env_path = _cortex_repo / ".env"
-if _env_path.exists():
-    for line in _env_path.read_text().splitlines():
+
+def _source_env_overrides():
+    """Load ~/hermes-cortex/.env into os.environ (never overriding existing).
+
+    Called from main(), NOT at import: a module-scope splash-export mutates the
+    importing process's environment (it polluted os.environ for unrelated tests
+    and callers that merely loaded this module).
+    """
+    repo = Path(os.environ.get("CORTEX_REPO", Path.home() / "hermes-cortex"))
+    env_path = repo / ".env"
+    if not env_path.exists():
+        return
+    for line in env_path.read_text().splitlines():
         line = line.strip()
         if line and not line.startswith("#") and "=" in line:
             k, v = line.split("=", 1)
@@ -376,6 +385,7 @@ def reload_nginx():
 # ── Main ─────────────────────────────────────────────────────────────
 
 def main():
+    _source_env_overrides()
     parser = argparse.ArgumentParser(
         description="SSL-aware nginx config deploy for hermes-services.conf",
         formatter_class=argparse.RawDescriptionHelpFormatter,

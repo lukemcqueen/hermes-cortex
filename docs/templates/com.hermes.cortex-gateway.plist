@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Hermes Cortex — cortex-gateway Launchd Plist (macOS counterpart of
+  docs/templates/cortex-gateway.service, which is Linux/systemd only).
+
+  The decoupled messaging gateway daemon. Independent of com.hermes.gateway:
+  no dependency on the Hermes runtime (see docs/design/cortex-gateway.md).
+
+  launchd has no systemd-style EnvironmentFile, so the wrapper sources the ONE
+  canonical cortex env (~/hermes-cortex/.env) before exec'ing the daemon. That
+  is the same file the systemd unit reads — no macOS-specific env name.
+
+  Setup:
+    1. cp this file to ~/Library/LaunchAgents/com.hermes.cortex-gateway.plist
+    2. launchctl load ~/Library/LaunchAgents/com.hermes.cortex-gateway.plist
+
+  Check:  launchctl list com.hermes.cortex-gateway
+  Remove: launchctl unload ~/Library/LaunchAgents/com.hermes.cortex-gateway.plist
+
+  ⚠️ Only ONE poller per bot token — stop com.hermes.gateway first, or the two
+  will 409 against each other.
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.hermes.cortex-gateway</string>
+
+    <!-- Source the canonical env, then exec the daemon (no shell left running). -->
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>-lc</string>
+        <string>set -a; . "$HOME/hermes-cortex/.env"; set +a; exec /usr/bin/python3 "$HOME/.hermes-cortex/scripts/cortex_gateway/daemon.py" --config "$HOME/.hermes-cortex/gateway.yaml"</string>
+    </array>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/bin:/bin</string>
+    </dict>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/luke/.hermes-cortex/scripts</string>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>KeepAlive</key>
+    <dict>
+        <key>CrashedOrAbnormalExit</key>
+        <true/>
+    </dict>
+
+    <key>ThrottleInterval</key>
+    <integer>15</integer>
+
+    <key>StandardOutPath</key>
+    <string>/Users/luke/Library/Logs/com.hermes.cortex-gateway.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/Users/luke/Library/Logs/com.hermes.cortex-gateway.log</string>
+</dict>
+</plist>

@@ -48,6 +48,9 @@ def _setup(tmp_path, monkeypatch, chat: str = "111222333", quiet: str = "", mute
     env_file = _write_env(tmp_path, chat=chat)
     monkeypatch.setenv("TELEGRAM_NOTIFY_STATE_DIR", str(state_dir))
     monkeypatch.setenv("TELEGRAM_NOTIFY_ENV_FILE", str(env_file))
+    # Hermetic: a leaked process-env value must not override the fixture (the
+    # chat id resolution reads the process env first).
+    monkeypatch.delenv("TELEGRAM_HOME_CHANNEL", raising=False)
     monkeypatch.setenv("TASKS_NOTIFY_QUIET", quiet)
     monkeypatch.setenv("TASKS_NOTIFY_MUTE", mute)
     return state_dir, env_file
