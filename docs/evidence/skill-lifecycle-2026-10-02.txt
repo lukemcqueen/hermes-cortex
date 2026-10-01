@@ -1,5 +1,5 @@
 === orch-skill-lifecycle run 2026-10-02 — raw evidence transcript ===
-2026-10-02 04:54:49 KST
+2026-10-02 04:55:34 KST
 
 $ python3 ops/scripts/manage/verify-skill-lifecycle-run.py
 {
@@ -39,4 +39,4 @@ skills/devops/systemd-cron-bridge/references/systemd-timer-oncalendar.md
 skills/software-development/documentation-consolidation/SKILL.md
 
 $ python3 ops/scripts/manage/cortex-doctor.py --quiet | grep Overall
-  ⚠️  Overall: WARNING  (414 pass · 1 warn · 0 fail · 4 info)
+  ❌ Overall: FAILING  (413 pass · 1 warn · 1 fail · 4 info)
