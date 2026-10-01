@@ -15,12 +15,16 @@ asking; it reads the value from env when it needs it.
 - **NAMES only.** Never write a value, token, URL-with-credentials, or
   test account here.
 - If a value would be needed, cite the env var name and the file that
-  holds it (`~/.hermes-cortex/.env` or `~/.hermes/.env`, both gitignored).
+  holds it (`~/hermes-cortex/.env` or `~/.hermes/.env`, both gitignored).
 - The PII gate enforces this — server URLs, domains, and personal
   identifiers are blocked from the public repo.
 
 ## Files
 
-- [env-vars.md](env-vars.md) — the env var NAME registry (both env files)
 - [external-services.md](external-services.md) — third-party services and
   where their credentials live
+
+**Env var names are NOT here** — the name registry is merged into
+[`docs/env-vars.md`](../env-vars.md) (one document for the whole env surface:
+the file layout, the deploy/metrics variables, and the identity/model/bus
+registry). Survey that before inventing a name.

@@ -474,7 +474,7 @@ exactly one rejection and zero outbox writes (US-001, 8/8 tests, commit
 
 **Config resolution (commit `c8c54b4b`, 2026-08-05):** the forwarder reads its
 config (LOCAL_URL/TOKEN, PEER_URL/AUTH/TOKEN) in **env → `.env` →
-`~/.hermes-cortex/.env`** order. Before this fix it read `os.environ` ONLY
+`~/hermes-cortex/.env`** order. Before this fix it read `os.environ` ONLY
 despite the docstring claiming conf/.env fallback — so cron runs (no env)
 resolved empty `PEER_URL`/`PEER_AUTH`/`LOCAL_TOKEN` and the LOCAL→PEER drain
 failed silently (failover messages sat on the backup bus even after the primary

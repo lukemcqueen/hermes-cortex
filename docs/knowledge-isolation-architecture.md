@@ -195,7 +195,7 @@ Update any MEMORY.md pointers that referenced the old location.
 
 | Version | Date | Changes |
 |---------|------|---------|
-| 2.0.0 | 2026-06-11 | Rewritten for single-profile + legacy brain source isolation model. Deprecated multi-profile approach archived in `docs/deprecated-profile-model.md` |
+| 2.0.0 | 2026-06-11 | Rewritten for single-profile + legacy brain source isolation model. Deprecated multi-profile approach archived in `docs/older/deprecated-profile-model.md` |
 | 1.0.0 | 2026-06-08 | Initial release — three-layer isolation model |
 
 ## See Also

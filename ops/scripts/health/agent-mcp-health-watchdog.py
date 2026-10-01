@@ -20,7 +20,7 @@ Severity (M-001/M-002, docs/elicit/2026-08-18_governance-fail-loudly-party.md):
 Fires after 2 consecutive probe failures per server (transient tolerance),
 re-alerts at most hourly, and emits a recovery notice when a server passes
 again. A fresh import-crash signature in mcp-stderr.log fires immediately
-(definitive evidence — see docs/reference/mcp-sdk-v2-migration.md).
+(definitive evidence — see docs/older/reference/mcp-sdk-v2-migration.md).
 
 Probes are read-only and need no governance lock: the watchdog runs fine even
 while every agent session is deadlocked, which is exactly when it matters.
@@ -66,7 +66,7 @@ EXPECTED_TOOLS = {
 
 RECOVERY_HINT = (
     "Recovery: fix repo source -> bash ops/scripts/cortex-update.sh -> restart "
-    "gateway. See docs/reference/mcp-sdk-v2-migration.md. Escalate to the "
+    "gateway. See docs/older/reference/mcp-sdk-v2-migration.md. Escalate to the "
     "orchestrator if needed."
 )
 

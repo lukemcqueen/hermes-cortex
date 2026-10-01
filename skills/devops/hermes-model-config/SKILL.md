@@ -91,7 +91,7 @@ warning, cron model overrides, model.default regressions after `hermes update`.
   update` — verify before "removing" anything; an empty grep result means the
   warning is already neutralized.
 - model ids evolve: verify the exact id against
-  `grep -n '"model"' ~/.hermes/cron/jobs.json` and `~/.hermes-cortex/.env`
+  `grep -n '"model"' ~/.hermes/cron/jobs.json` and `~/hermes-cortex/.env`
   before assuming a shorthand ("deepseek-flash" = `deepseek-v4-flash`).
 
   2026-08-18 deepseek-chat regression: investigation trail + verification

@@ -61,7 +61,7 @@ pins are provisional until they survive a cortex-update.**
 | API keys | `~/.hermes/.env` (`OPENCODE_ZEN_API_KEY`) | secrets only; models/chain go in HC .env |
 
 Env-file trap: `~/hermes-cortex/.env` (repo root, gitignored, real config) is
-NOT the same file as `~/.hermes-cortex/.env` — on Esther the latter is a
+NOT the same file as `~/hermes-cortex/.env` — on Esther the latter is a
 SYMLINK to `~/langfuse/.env`. `install-crons.sh` sources
 `${HOME}/hermes-cortex/.env` (repo root). Verify with `ls -la` before
 editing; a model change written to the symlink target silently does nothing.

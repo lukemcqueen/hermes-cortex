@@ -8,6 +8,14 @@ A lightweight map of all project documents. Files are grouped by topic.
 > host-specific implementation docs live in the **private** repo
 > (`hermes-cortex-private`) — never here.
 
+> **Documentation areas (2026-10-01):** docs are split by *currency*, not topic.
+> `docs/` holds what is **current** — everything indexed below. `docs/older/`
+> holds what is **historical** — dated records, deprecated/superseded designs,
+> completed plans, migration records, and foreign-project design material
+> (see `docs/older/README.md` for what belongs where and the move procedure).
+> If a doc below describes live behaviour, it stays here; when it stops being
+> true, it moves to `docs/older/` rather than being deleted.
+
 ---
 
 ## Getting Started
@@ -70,7 +78,7 @@ repo; this public repo carries only framework docs (PRDs, design, reference).
 | `docs/adr/README.md` | **ADR convention** — durable fleet decisions (model contract, MAX_COST guard, bus v2 API). Read before re-deriving WHY the system is shaped this way |
 | `docs/adr/0005-messaging-gateway.md` | **ADR-0005: Unified Messaging Gateway** — one daemon owns all messaging apps; agents bus-only; envelope v1; per-bot ACLs + advisory locks |
 | `docs/design/messaging-gateway.md` | **Messaging gateway design** — party-converged architecture (adapters, routing, envelope, reliability, security, migration, MVP) |
-| `docs/external/README.md` | **External context** — env var NAME registry + external services (payment processor, credentials locations). Never values |
+| `docs/external/README.md` | **External context** — what exists outside the repo: third-party services + where credentials live. Never values. (Env var NAMES live in `docs/env-vars.md`) |
 | `docs/design/mycortex-DESIGN.md` | mycortex knowledge-brain design |
 | `docs/design/mycortex-dream-layer.md` | Dream-layer design |
 | `docs/design/mycortex-dream-task-bridge.md` | Dream→task bridge |
@@ -78,7 +86,7 @@ repo; this public repo carries only framework docs (PRDs, design, reference).
 | `docs/design/learning-ledger.md` | Learning ledger design |
 | `docs/design/skills-session-manager-v2.md` | Skills session manager v2 |
 | `docs/design/bus-scale/` | Bus scale-out design (sharding, circuit-breaker, long-poll, metrics) |
-| `docs/deprecated-profile-model.md` | Deprecated profile model — history |
+| `docs/older/deprecated-profile-model.md` | Deprecated profile model — history |
 | `docs/cloud-deploy.md` | Cloud deployment reference |
 | `docs/design/frontieragent-gap-analysis.md` | **FrontierAgent gap analysis (2026-09-14)** — benchmark vs our core: inference-aware context management, bounded orchestration, sandbox safety, SDK seam; prioritized recommendations |
 | `docs/design/moral-architecture-adaptation.md` | **Moral architecture adaptation (2026-09-24)** — the "Moral Architecture for Autonomous Systems" report translated onto Hermes Cortex's L0–L7 stack, adapted for LLM agents; 9 prioritized architecture changes (layer-tagged guardrail registry, failure-propensity register, independent evaluator, refusal metrics, Jubilee TTLs, unannounced probes) + open questions |
@@ -97,7 +105,7 @@ repo; this public repo carries only framework docs (PRDs, design, reference).
 | `docs/fleet-reference.md` | Fleet reference — crons, agents, remediation |
 | `docs/pipeline-reference.md` | Pipeline reference |
 | `docs/troubleshooting.md` | Troubleshooting guide |
-| `docs/troubleshooting-stale-inbox-api.md` | Stale inbox API troubleshooting |
+| `docs/older/troubleshooting-stale-inbox-api.md` | Stale inbox API troubleshooting |
 | `docs/cron-format-standard.md` | Cron output format standard |
 | `docs/axi-agent-ergonomics.md` | **NEW (2026-08-24)** — AXI agent-ergonomics principles (from the AXI project): 10-principle distillation + mapping to Cortex surfaces — TOON output, minimal schemas, structured errors, ambient context |
 | `docs/cron-job-recipes.md` | Cron job recipes |

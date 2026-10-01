@@ -3,7 +3,7 @@
 - Status: accepted
 - Date: 2026-08-24
 - Author: Esther (facts verified from `ops/scripts/cost_store.py` +
-  `~/.hermes-cortex/.env`)
+  `~/hermes-cortex/.env`)
 
 ## Context
 
@@ -49,4 +49,4 @@ output billed at $0.66/1M; peak hours double the total.
 
 - `ops/scripts/cost_store.py` (authoritative pricing constants)
 - `docs/setup-reference.md` (run-type cost table)
-- `~/.hermes-cortex/.env` (values — never committed)
+- `~/hermes-cortex/.env` (values — never committed)

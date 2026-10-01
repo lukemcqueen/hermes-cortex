@@ -17,7 +17,7 @@ metadata:
 > constructor: `Server(name, on_list_tools=..., on_call_tool=...)`.
 > The old decorators crash with `AttributeError: 'Server' object has no
 > attribute 'list_tools'` on mcp ≥1.0 (see
-> `docs/reference/mcp-sdk-v2-migration.md`). All examples below use the
+> `docs/older/reference/mcp-sdk-v2-migration.md`). All examples below use the
 > 2.0 API. Version pinned in the hermes-agent venv: `mcp==2.0.0`.
 
 This skill covers everything needed to build, debug, and deploy MCP servers that agents install via `hermes mcp add`.
@@ -262,7 +262,7 @@ yes | hermes mcp add server-name --command python3 --args /path/to/server.py
 | `Connection closed` | Stale config | `hermes mcp remove` then re-add |
 | `Connection closed` | Import error in server | Run `python3 server.py` directly, check stderr |
 | `Connection closed` | Wrong Python interpreter | Use `--command /path/to/python3` instead of just `python3` |
-| `AttributeError: 'Server' object has no attribute 'list_tools'` | mcp SDK ≥1.0 removed the `@server.list_tools()` / `@server.call_tool()` decorators | Use the 2.0 constructor API: `Server(name, on_list_tools=..., on_call_tool=...)`. See `docs/reference/mcp-sdk-v2-migration.md` |
+| `AttributeError: 'Server' object has no attribute 'list_tools'` | mcp SDK ≥1.0 removed the `@server.list_tools()` / `@server.call_tool()` decorators | Use the 2.0 constructor API: `Server(name, on_list_tools=..., on_call_tool=...)`. See `docs/older/reference/mcp-sdk-v2-migration.md` |
 | `ModuleNotFoundError` | Missing dependency | Install the missing package |
 | `Permission denied` | File not executable | `chmod +x server.py` |
 | `Tool not found` | Wrong tool name in call | Check `hermes mcp test` output for exact names |

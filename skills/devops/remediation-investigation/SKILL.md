@@ -116,5 +116,5 @@ curl -s http://localhost:8903/health
 # → {"status":"ok","backend":"pgmq","queues":N,...}
 ```
 
-Requires `CORTEX_BUS_TOKEN` from `~/.hermes-cortex/.env` for direct API calls.
+Requires `CORTEX_BUS_TOKEN` from `~/hermes-cortex/.env` for direct API calls.
 The bus-audit-watchdog (no_agent cron, every 1m) is the primary health indicator.

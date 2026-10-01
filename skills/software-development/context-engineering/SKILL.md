@@ -69,7 +69,7 @@ Pitfalls learned building it:
 - **Missing repo → return an error marker, never raise** (fail-open for
   the caller).
 - **Missing/invalid plan is fine** — task alone still builds an envelope.
-- **Never invent env names** — survey the registry (docs/external/env-vars.md)
+- **Never invent env names** — survey the registry (docs/env-vars.md)
   before introducing a variable.
 
 ## Context-in-the-codebase (point 7)

@@ -63,7 +63,7 @@ Agent Session
 
 Agent identity (`PROFILE`, `CRUD_ROLE`) resolves from, in order:
 `HERMES_PROFILE` env → `AGENT_NAME` env → `AGENT_NAME` in
-`~/.hermes-cortex/agent.env` → `~/hermes-cortex/.env` → `~/.hermes-cortex/.env`.
+`~/.hermes-cortex/agent.env` → `~/hermes-cortex/.env` → `~/hermes-cortex/.env`.
 **There is NO hostname/whoami fallback** — if no agent variable is found,
 task-db.py exits 1 with a clear error. A misconfigured host fails loudly
 instead of silently writing rows as the machine name. Same rule in

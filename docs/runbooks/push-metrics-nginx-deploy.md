@@ -119,7 +119,7 @@ should list the agents that have pushed since.
    Fix that host's `VICTORIA_METRICS_FALLBACK_URL` or drop it — a wrong fallback makes a
    working primary look broken.
 3. **A host with no sink at all is not broken.** Either deploy one, or unset
-   `VICTORIA_METRICS_URL` in `~/.hermes-cortex/.env`: the client then exits 0 with
+   `VICTORIA_METRICS_URL` in `~/hermes-cortex/.env`: the client then exits 0 with
    "metrics push disabled (this is optional)" and records nothing.
 4. `401`/`403` from the sink in the client alert is an **auth** problem (htpasswd), not a
    dead sink — the alert text says so.

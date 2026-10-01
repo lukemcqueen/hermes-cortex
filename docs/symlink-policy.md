@@ -117,7 +117,7 @@ transparently — no data is lost.
 │  (Each .env is independent —     ├── skills → ../.hermes/skills/ [SYMLINK]
 │   NOT symlinked.                  │
 │   ~/.hermes/.env = Agent only    Both point to same skills dir
-│   ~/.hermes-cortex/.env = Cortex (Hermes manages ~/.hermes/skills/
+│   ~/hermes-cortex/.env = Cortex (Hermes manages ~/.hermes/skills/
 │   ~/hermes-cortex/.env = Repo)   via skills_sync.py, cortex-update
 │                                   deploys through the symlink)
 ```

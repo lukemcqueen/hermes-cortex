@@ -3,7 +3,7 @@
 > **Status:** design (CR7) — proposed, awaiting owner approval to build.
 > **Pairs with:** `cortex-gateway.md` (the signer) · `messaging-gateway.md` (ADR-0005) · `component-hermes-separation.md` (S2b).
 > **Audience:** builder, orchestrator, owner.
-> **Extends:** `docs/steadfaste/coding_agent/codeharness-design-docs/docs/party/telegram-bus-visibility.md`
+> **Extends:** `docs/older/steadfaste/coding_agent/codeharness-design-docs/docs/party/telegram-bus-visibility.md`
 
 ## Problem
 

@@ -516,7 +516,7 @@ This step happens **on Moses's machine**, not yours. Moses will:
 | Symptom | Likely cause |
 |---------|-------------|
 | `inbox_read` returns empty but you know messages exist | Your poll cron hasn't run yet. Wait for the next tick or run it manually: `cronjob action=run job_id=<id>` |
-| `inbox_send` returns 401 | Wrong credentials in `~/.hermes-cortex/.env`. Double-check with Moses. |
+| `inbox_send` returns 401 | Wrong credentials in `~/hermes-cortex/.env`. Double-check with Moses. |
 | `inbox_send` returns connection refused | Moses's nginx is down. Check with the human. |
 | Cron never delivers to Telegram | Your `--deliver origin` points to a chat that isn't connected. Check `hermes` settings. |
 | You don't see your own SOUL.md | Only Moses has access. Your SOUL.md lives at `~/.hermes/SOUL.md` |

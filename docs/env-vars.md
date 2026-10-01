@@ -40,7 +40,7 @@ bash ~/.hermes-cortex/scripts/consolidate-env.sh
 | `CORTEX_METRICS_STALE_MINUTES` | `30` | `cortex-doctor` (Metrics arrival age) | Warn when an agent that has pushed before has not been seen at the sink for this long (6 missed 5m ticks). |
 | `CORTEX_VM_FRESHNESS_METRIC` | `node_uptime_seconds` | `cortex-doctor` (Metrics arrival age) | Series used to measure arrival age per agent. Pick a metric every pushing agent reports. |
 
-### Agent-side metrics push (read by `agent-push-metrics.sh`, set in `~/.hermes-cortex/.env`)
+### Agent-side metrics push (read by `agent-push-metrics.sh`, set in `~/hermes-cortex/.env`)
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
@@ -48,6 +48,64 @@ bash ~/.hermes-cortex/scripts/consolidate-env.sh
 | `VICTORIA_METRICS_FALLBACK_URL` | _(unset)_ | Second sink tried after the primary exhausts its retries. Must point at the peer's **xx005** port (e.g. `14005` on a `14xxx` host) — pointing it at a grafana port (xx003) makes a working primary look broken. |
 | `PUSH_METRICS_STATE_FILE` | `~/.hermes-cortex/state/push-metrics.state` | Outage bookkeeping (consecutive failures, last alert). |
 | `PUSH_METRICS_ALERT_COOLDOWN_S` | `21600` (6h) | How long the client stays quiet after the first alert of an outage, so a root-blocked sink yields one alert per 6h instead of one error per 5m tick. |
+
+### Identity, model & fleet variables (`~/hermes-cortex/.env`)
+
+**NAMES ONLY — values live in the gitignored env file.** An agent needing a
+value reads it from the env file, never from this doc or from memory. These
+names are the contract — never invent a new name without checking here first
+(Rule 11: never invent config or env names).
+
+| Variable | Purpose |
+|---|---|
+| `AGENT_NAME` | Agent identity (esther/moses/titus/…) — identity is env-derived ONLY, never hostname/USER fallback |
+| `CODING_MODEL` | Coding task model |
+| `CREATIVE_MODEL` | Creative/content model |
+| `JUDGE_MODEL` | Governance judge model |
+| `EMBEDDING_MODEL` | Embedding model (local Ollama: `nomic-embed-text:v1.5`) |
+| `LLM_CRON_MODEL` | Cron LLM model (deepseek-v4-flash) |
+| `LLM_CRON_PROVIDER` | Cron LLM provider (deepseek) |
+| `HERMES_CRON_TIMEOUT` | Cron timeout budget |
+| `HERMES_TIMEZONE` | Fleet timezone (Asia/Seoul, KST) |
+| `IS_ORCHESTRATOR` | Orchestrator flag (host-derived) |
+| `IS_SERVER` | Server-mode flag |
+| `CORTEX_BASE` | Cortex base path |
+| `CORTEX_DOMAIN` | Fleet public domain (values never in repo) |
+| `CORTEX_BASIC_AUTH` | Basic-auth credential pair |
+| `CORTEX_BUS_URL` | Bus primary endpoint (env-first — see ADR history) |
+| `CORTEX_BUS_FALLBACK_URL` | Bus fallback endpoint |
+| `CORTEX_BUS_TOKEN` | Bus bearer token |
+| `CORTEX_BUS_PG_*` (HOST/PORT/DB/USER/PASS) | Bus Postgres connection |
+| `CORTEX_INBOX_URL` | Agent inbox v2 API base |
+| `CORTEX_NGINX_PORT_PREFIX` | Nginx port prefixing |
+
+### Health-probe variables (`~/.hermes/.env` — the file the gateway/cron reads)
+
+| Variable | Purpose |
+|---|---|
+| `ORCH_HEALTH_URLS` | Active orchestrator's health probe targets (failover watchdog) |
+| `BACKUP_ORCH_HEALTH_URLS` | Standby orchestrator's health probe targets (failover watchdog) |
+
+### Hermes agent variables (`~/.hermes/.env`)
+
+Hermes-owned — never merged into the Cortex env.
+
+| Variable | Purpose |
+|---|---|
+| `DEEPSEEK_API_KEY` | DeepSeek API credential |
+| `TELEGRAM_BOT_TOKEN` | Telegram bot credential |
+| `TELEGRAM_ALLOWED_USERS` | Allowed Telegram user IDs |
+| `TELEGRAM_HOME_CHANNEL` | Default delivery channel (Esther: Luke DM) |
+| `TELEGRAM_API_BASE` | Telegram Bot API base URL for the messaging gateway (`msg-gateway.py`) |
+
+### Rules
+
+1. **Never hardcode a value that has an env var.** The bus URLs were
+   over-scrubbed in the 2026-08-24 history rewrite because they were
+   hardcoded in scripts — the fix moved them to env (commit `9a95ceb8`).
+2. **Never invent a name** — survey this registry first.
+3. **Auth-gated liveness** uses `CORTEX_BUS_URL` + token; `/health` alone
+   is insufficient.
 
 ---
 

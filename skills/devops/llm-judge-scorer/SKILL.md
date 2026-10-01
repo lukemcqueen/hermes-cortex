@@ -35,7 +35,7 @@ llm-judge-scorer.py (no_agent cron)
 | Langfuse running | `curl -s http://localhost:3000/api/public/health` | `docker compose -f ~/langfuse/docker-compose.yml up -d` |
 | Ollama running | `curl -s http://localhost:11434/api/tags` | `brew services start ollama` |
 | Judge model | `ollama list \| grep qwen2.5:3b` | `ollama pull qwen2.5:3b` |
-| Env file | `~/.hermes-cortex/.env` (symlink to `~/langfuse/.env`) or `--env-path` | `ln -sf ~/langfuse/.env ~/.hermes-cortex/.env` |
+| Env file | `~/hermes-cortex/.env` (symlink to `~/langfuse/.env`) or `--env-path` | `ln -sf ~/langfuse/.env ~/hermes-cortex/.env` |
 
 ## Invocation
 
@@ -78,7 +78,7 @@ When `overall` < 5 on your traces:
 
 | Symptom | Fix |
 |---|---|
-| `FileNotFoundError: .env` | Create symlink: `ln -sf ~/langfuse/.env ~/.hermes-cortex/.env` |
+| `FileNotFoundError: .env` | Create symlink: `ln -sf ~/langfuse/.env ~/hermes-cortex/.env` |
 | `HTTP 401` from Langfuse | Check `LANGFUSE_INIT_PROJECT_PUBLIC_KEY` and `SECRET_KEY` in `.env` |
 | `ollama: connection refused` | `brew services start ollama` or `ollama serve` |
 | `Model not found` | `ollama pull qwen2.5:3b` |
