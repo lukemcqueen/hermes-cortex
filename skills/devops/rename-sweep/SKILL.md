@@ -46,7 +46,9 @@ cross-references that silently break tests and indexes.
 | Dead artifact | Files/dirs/skills whose whole purpose was the old term | `git rm` |
 | Historical | Dated docs, transcripts, review reports, design comparisons | Rephrase to a neutral descriptor ("the legacy brain"), never the new term |
 
-Delete the dead artifacts FIRST (git rm), then sweep references to them.
+Delete the dead artifacts FIRST (git rm), then sweep references to them — but
+verify a suspected DUPLICATE tree is really a duplicate before `rm -rf` (see
+Pitfalls: a copy can hold the only copy of some files).
 
 ### 2. Replacement engine — guards BEFORE catch-all, in one ordered pass
 
@@ -83,6 +85,26 @@ Guards with spaces mangle compound tokens. Grep for these and fix:
 Finish with `git grep -i <term>` == 0 AND a token-mangle grep
 (`legacy brain/`, `install-legacy `, `~/.legacy `) == 0.
 
+### 3b. Sweeping a PATH, not just a bare term
+
+When the target is a file PATH (`~/.dir/old.conf` → `~/newdir/.env`), the
+replacement changes BOTH the directory and the basename. A bare-filename
+catch-all (`old.conf` → `.env`) then rewrites variable- and call-composed
+forms into paths that still aim at the OLD directory:
+
+```python
+OLD_HOME / "old.conf"                  →  OLD_HOME / ".env"          # ✗ old dir!
+Path.home() / ".dir" / "old.conf"      →  Path.home()/".dir"/".env" # ✗ old dir!
+```
+
+Enumerate the FORMS first, then give each its own rule, most specific first:
+`$HOME/.dir/old.conf`, `${VAR}/old.conf`, `~/.dir/old.conf`, `%h/.dir/old.conf`,
+`Path.home()/".dir"/"old.conf"`, `HOME/".dir"/"old.conf"`, `.dir/old.conf`,
+and only then the bare basename. Finish with the residue grep — the NEW
+basename still sitting in the OLD directory
+(`grep -rnE '"\.dir" */ *"\.env"'`) — that grep, not the old-name grep, is
+what finds these mangles. Dry-run the table and read the plan before writing.
+
 ### 4. Deleted-artifact cross-reference sweep
 
 Deleting files breaks things that assert their existence:
@@ -110,8 +132,55 @@ Deleting files breaks things that assert their existence:
 - `git grep -i <term>` == 0, doctor clean, deploy via cortex-update,
   then push.
 
+### 6. Land it fleet-wide — 0 residuals is NOT done
+
+A sweep that only changes files is finished on YOUR host and broken
+elsewhere. A fleet-wide rename/config move is done when every other host
+converges without a human, and agents can see what changed. Ship all four
+with the sweep, in the same change:
+
+1. **An automatic per-host migration** on the update path — make the deploy
+   script RUN the consolidation (idempotently) before anything reads the moved
+   thing, and make the migration script seed the new location from the old one
+   rather than failing when it is absent. A host that still has only the old
+   layout must self-heal on the next `cortex-update.sh`.
+2. **An enforcement check in the doctor** — FAIL on the new invariant (target
+   exists, right perms, old path absent or a symlink to it, and a `fix:` line
+   naming the exact script to run). A sweep with no check silently regresses
+   the first time someone recreates the old artifact.
+3. **A runbook** (`docs/runbooks/<topic>-migration.md`) — the convention table
+   (which path is canonical, which are symlinks, which are not ours), how to
+   apply on Linux AND macOS, how to verify, the changes to implement, and a
+   symptom→cause→fix table. Index it in DOCS-INDEX.
+4. **Agent-facing skill notes** — update the setup/troubleshooting skill the
+   agents actually load, and fix any prose your own sweep mangled (check every
+   line you rewrote reads sensibly; a rename can turn a sentence into a
+   tautology).
+
+The user WILL ask "will agents be able to implement this?" if you skip 1–4 —
+treat that as part of the deliverable, not a follow-up.
+
 ## Pitfalls
 
+- **A directory that LOOKS like a duplicate copy is not provably one — diff it
+  file-by-file before deleting anything.** The same sub-path appearing twice
+  (`<dir>/docs/…` alongside `<dir>/docs/new/<project>/docs/…`) usually means a
+  stale copy, but the copy can hold files the canonical tree lacks. Hash both
+  trees (`find <a> <b> -name '*.md' -exec md5sum {} + | sort`) and print BOTH
+  the duplicate hashes AND the files present in only one tree — in the real
+  case 15 of 38 files were byte-identical while **23 existed only in the copy**,
+  so deleting on the assumption of duplication would have destroyed the only
+  copy of real content. Procedure: merge the uniques up into the canonical tree
+  (preserving relative paths — some may land OUTSIDE the subtree you are
+  keeping, e.g. a sibling `spec/`), then delete only the residual duplicates.
+  The proof is `duplicate hashes == 0` afterwards, not the deletion itself.
+- **A prefix-INSERTION sweep is not idempotent — the new text still contains the
+  old pattern.** Renaming a bare term never re-matches itself; INSERTING a path
+  segment does (`docs/<x>/` → `docs/older/<x>/`), so a second rule in the same
+  pass — or any re-run — matches inside the already-rewritten string and produces
+  `docs/older/older/<x>/`. Guard the replacement with a negative lookbehind
+  (`(?<!older/)docs/<x>/`) or match only the un-prefixed form, then assert exactly
+  one pass's worth of change before writing.
 - **git stash pop without `--index` silently unstages everything** — the
   staged index is lost; re-stage with `git add -A` before re-committing.
 - **`git checkout --ours/--theirs <file>` during rebase restores the WHOLE
@@ -132,6 +201,34 @@ Deleting files breaks things that assert their existence:
 - **The word count in PII scans includes pre-existing patterns** — diff
   the flagged lines against what you actually changed before claiming
   your sweep introduced PII.
+- **Exclude the tool that PERFORMS the migration.** A script that merges the
+  old artifact into the new one legitimately references the old name (its
+  idempotency check depends on it). A blanket rename breaks the very mechanism
+  you are migrating to — add it to the skip list explicitly, and say so in the
+  commit message so a later reader does not "fix" it.
+- **Exclude the tool that DETECTS and REPORTS the old artifact.** A checker or
+  doctor check whose *message* names the old path must keep that literal — there
+  the old name is the SUBJECT of the sentence, not a reference to a path. A
+  blanket replace turns `stray ~/old/dir/.env` into a message naming the
+  CANONICAL file: a tautology that now misreports which path is wrong.
+- **A clean residue grep does not prove the surviving text is TRUE.** It only
+  proves no old token survives. This is the code-side twin of the prose-mangle
+  check in step 6.4 — re-read every string the run changed, error/warning
+  message strings included, and confirm each still describes what it claims.
+- **Exclude same-basename files in other directories.** `~/.dir/conf.d/old.conf`
+  and `~/.other/old.conf` are DIFFERENT files; a basename rule rewrites them
+  happily. Guard per-line on the full distinguishing path, and verify the
+  genuine ones survived.
+- **After a path sweep the repo can still WORK while being wrong.** A symlink
+  at the old location hides every missed reference until the symlink is
+  removed — so residue-grep the source, then remove the symlink deliberately,
+  never assume "the tests pass" means the sweep is complete.
+- **A background result can be SUPERSEDED — check it is the latest run before
+  acting.** A long test/deploy run finishing late reports the tree from when it
+  STARTED. Two completion notices can disagree (an older 7-failure run landing
+  after the fixed 5-failure run). Compare against the current HEAD and re-run
+  the pair/suite if in doubt; never report a stale FAIL list as the state, and
+  never "fix" what a superseded run complained about.
 
 ## Verification
 

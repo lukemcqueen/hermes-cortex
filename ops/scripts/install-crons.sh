@@ -951,7 +951,7 @@ create_cron "agent-mcp-health-watchdog" "*/5 * * * *" \
 # daemons so the gateway supervisor respawns them clean; re-probes; alerts if a
 # NON-loop-gov holder is found. Silent when the DB is writable. no_agent.
 create_cron "agent-loop-gov-lock-watchdog" "*/5 * * * *" \
-  "agent-loop-gov-stale-daemon-watchdog.py" \
+  "agent-loop-gov-lock-watchdog.py" \
   "" \
   "" \
   "" \

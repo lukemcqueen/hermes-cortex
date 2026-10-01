@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""agent-loop-gov-stale-daemon-watchdog.py — ALERT-ONLY backstop for loop-gov
+"""agent-loop-gov-lock-watchdog.py — ALERT-ONLY backstop for loop-gov
 daemons that hold a stuck write-lock on loop-governance.db (or run pre-deploy
 code). It DETECTS and ATTRIBUTES; it never auto-kills.
 
@@ -42,7 +42,7 @@ Cross-platform:
   - /proc attribution is Linux-only; on non-Linux hosts the alert reports the
     loop-gov daemons in view (mtime-secondary path) with no holder attribution.
 
-Run (no_agent cron or manual):  python3 agent-loop-gov-stale-daemon-watchdog.py
+Run (no_agent cron or manual):  python3 agent-loop-gov-lock-watchdog.py
 """
 
 from __future__ import annotations

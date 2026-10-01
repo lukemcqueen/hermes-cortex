@@ -86,7 +86,27 @@ Verify by instantiating the manager in a `with` block; if it exits cleanly,
 the finding is protocol behavior, not a bug. Document that in the delivery
 evidence rather than contorting the code.
 
-### 4. "0 findings" is never a pass
+### 4. Extracted/copied code inherits the source's findings — verify baseline, don't re-fix
+
+When you extract or copy a module into a new file and the gate flags findings
+on it, those may be **inherited from the source**, not introduced by your
+change. Before "fixing" anything, run the SAME gate level on the ORIGINAL
+file:
+
+```bash
+python3 ~/.hermes-cortex/scripts/adversarial-verify.py --file <original>.py --level A4
+```
+
+- **Identical findings** (same technique + target + parameter) → baseline.
+  The extraction is faithful; harden the NEW code if cheap (a real validation
+  guard), but don't chase the static enumeration to zero — the source ships
+  with the same findings and the gate still PASSES (no critical/high).
+- **New or different findings** → introduced by your edit; fix those for real.
+
+This avoids burning a turn re-hardening code that was already shipped clean,
+and keeps the fix scope on what you actually changed.
+
+### 5. "0 findings" is never a pass
 
 A static A2 scan returning zero findings says nothing about runtime
 behavior. After the gate passes, still execute the changed path with

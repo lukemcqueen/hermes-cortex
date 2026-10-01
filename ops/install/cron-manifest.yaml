@@ -335,7 +335,7 @@ crons:
 - name: agent-loop-gov-lock-watchdog
   scope: universal
   schedule: '*/5 * * * *'
-  script: agent-loop-gov-stale-daemon-watchdog.py
+  script: agent-loop-gov-lock-watchdog.py
   prompt: ''
   skill: ''
   deliver: telegram:{{HOME_CHANNEL}}

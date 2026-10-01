@@ -97,6 +97,25 @@ that route to a real channel (messenger, webhook, mail, metrics) and pass the
 explicit safe target (`--deliver local`, `CORTEX_DEPLOY_HOME=tmp_path`).
 Assert the live default in a dedicated test — never exercise it by accident.
 
+### 6. An imported module must not mutate `os.environ` at import
+
+Loading a module is not a side-effect-free act. A module that parses an env
+file into `os.environ` at MODULE scope poisons the whole pytest process for
+every suite that runs after it. Verified 2026-10-01: a deploy script
+exported the canonical env file at import; a metrics suite `exec_module`d it,
+so a var added to that file that day leaked into the process env and the
+notify suite — which resolves its chat id from `os.environ` FIRST — used the
+real value and failed only in the full run.
+
+Two rules follow:
+
+- **The module:** keep env-file parsing in a function called from `main()`
+  (`_source_env_overrides()`), never at module scope. Prove it: `exec_module`
+  the file and assert no var appeared.
+- **The test:** if the code under test reads a process-env var BEFORE its
+  fixture file, `monkeypatch.delenv` that var in the fixture. A fixture that
+  only points its own env file cannot defend against a leaked process value.
+
 ## Verification
 
 - `pytest tests/test_<module>_unit.py -q` → all pass
@@ -144,3 +163,49 @@ Assert the live default in a dedicated test — never exercise it by accident.
   code under test receives the wrong fixture or runs dry. The failure looks
   like a parsing bug in the function under test; the real bug is the mock
   budget. Count the seam's call sites first, then size the queue.
+- **Import repo packages at MODULE level in the test file, not inside test
+  functions.** A `from pkg.sub import X` written inside a test function
+  re-reads `sys.path` at call time; when a sibling suite (or a conftest
+  fixture) restores/snapshots `sys.path` between tests, the function-level
+  import fails with `ModuleNotFoundError` even though the suite passes in
+  isolation. Symptom: green alone, `No module named 'pkg.sub'` only in the
+  full run. Import the package at module top (after any `sys.path.insert`) so
+  it is cached in `sys.modules` — the cached module resolves from memory and
+  is immune to path resets. This is the complement of the shadowing rule
+  above: that rule is "your insert breaks siblings"; this is "siblings'
+  restore breaks you."
+- **Keep fixtures free of long digit runs.** The repo PII guard
+  pattern-matches digit sequences as phone numbers and REFUSES the write — a
+  10-digit unix timestamp (`1700000000`) and an all-zeros UUID both tripped
+  it as "phone number". Use small ints for ids/timestamps (chat id `7`,
+  `ts=1`), hex-letter UUIDs (`aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee`), and
+  `example.com` for URLs in shared-surface test files. (The flip side of the
+  numeric-chat-id rule above: that one is the detector missing a real id;
+  this one is the detector flagging a fake one.)
+- **A package module that imports cleanly can still crash when run as a
+  script.** Relative imports (`from .transport import X`) need a parent
+  package, so `python3 daemon.py` / systemd `ExecStart` fails with
+  "attempted relative import with no known parent package" even though
+  `from pkg.daemon import main` works. Verify the REAL invocation path, not
+  just the import. Make one file work both ways with the run-as-script
+  bootstrap:
+  ```python
+  if __package__ in (None, ""):
+      import sys
+      from pathlib import Path
+      sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+      __package__ = "<pkg_name>"
+  ```
+- **Do not replace a monkeypatchable module constant with a hardcoded path.**
+  Repointing a reader from `SOME_HOME / ".env"` to a literal
+  `Path.home() / "x" / ".env"` silently broke the test that redirects it with
+  `monkeypatch.setattr(mod, "SOME_HOME", tmp)` — it read the real host path and
+  failed. Keep a module-level constant (e.g. `CORTEX_ENV_FILE`) and let tests
+  patch THAT; a hardcoded path has no seam.
+- **To find WHICH test pollutes `os.environ`, hook pytest — and run with `-s`.**
+  A throwaway plugin (`-p <name>`, module on `PYTHONPATH`) that prints at
+  `pytest_runtest_setup` when the leaked var is present, plus the previous test
+  id, pinpoints the leaker in one full run. Without `-s` pytest CAPTURES and
+  DISCARDS a passing test's output, so the print never appears and you wrongly
+  conclude "no leak". Check the var at SETUP, not teardown — fixtures undo
+  their own patches during teardown, so a teardown probe misses real leaks.

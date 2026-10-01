@@ -81,6 +81,49 @@ task-db.py list --board                                     # counts + per-agent
   "1) visibility for tasks easily viewable 2) agents working truly
   autonomously and efficiently").
 
+## Board maintenance — "how old is this task?" / "should we drop it?"
+
+To answer age/staleness questions, the board MCP (`task_board`/`task_list`/
+`task_pending`) and `task-db.py list` do NOT surface timestamps — query the
+Postgres store directly with the read-only reader role:
+
+```bash
+docker exec -i mycortex-postgres psql -U mycortex_reader_<profile> -d mycortex \
+  -F'||' -c "SELECT status, kind, priority, left(created_at::text,10) AS created, \
+  left(status_changed_at::text,10) AS last_chg, \
+  round(extract(epoch from now()-created_at)/86400) AS age_days, left(content,60) \
+  FROM tasks.tasks WHERE status NOT IN ('completed','cancelled') AND \
+  (kind IN ('story','slice') OR kind IS NULL) ORDER BY created_at;"
+```
+
+- Reader role = `mycortex_reader_<profile>` (never superuser); container
+  `mycortex-postgres`; database `mycortex`; table `tasks.tasks`. Age columns
+  `created_at` (age) and `status_changed_at` (last state move — use this, not
+  `updated_at`, to see real movement since a row's `updated_at` updates on any
+  touch). The board's in_progress count is a snapshot; the table is the truth.
+
+**Drop decision — classify, don't mass-drop; actual deletion is the owner's call.**
+- **Parked by design** (owner explicitly deferred, or env-gated on a human/
+  restart window) → keep but re-tag to `blocked`/`waiting` so the board reads
+  honestly; do not burn cycles re-attempting.
+- **Live work just untouched** (in_progress with an assignee on an active
+  workstream, stale 1–3 weeks) → poke/re-claim the owner, never cancel their work.
+- **Sequential backlog** (slices gated on a prerequisite phase completing) →
+  normal backlog, not cruft.
+- **Exact duplicates** (two slices describing the same deliverable) → the only
+  safe dedupe: keep the fuller plan, cancel the other, with explicit go.
+- **Scope-crossing work — CANCEL, don't improvise** (standing Luke rule). A
+  slice whose real deliverable requires changing BASE Hermes, the
+  metrics/cost telemetry pipeline, or the fleet review-pipeline automation is
+  not slice work — those belong as an explicit upstream/base change (or
+  upstream PR), never a partial implement crammed into a task slice. Before
+  claiming a slice "do it yourself," check whether its genuine deliverable
+  crosses that boundary ("per-cron token/spend cost tagging", "model-tier
+  routing config", "auto-approve review automation" all do). When it does,
+  `--status cancelled` the slice and flag the scope boundary for the owner
+  rather than building. Pure business research (a brand audit, a competitor
+  gap analysis) is safe to do inline — zero Hermes code.
+
 ## Pitfalls
 
 - **verify is orchestrator-only** — the function checks
@@ -98,6 +141,20 @@ task-db.py list --board                                     # counts + per-agent
   column-derivation CHECK in sync; hand-written UPDATEs that don't will fail.
 - **review ≠ done** — reporting puts work in a queue, it does not close it.
   The orchestrator's evening pass is the closer.
+- **A peer reporting "N stuck delegations / nothing claimable" is usually a
+  wrong-lane mis-route, not lost work — verify the fleet DB before
+  re-delivering.** When a worker says its queue holds delegation rows that
+  consumed with `correlation_id=None` and never became claimable, do NOT take
+  "re-deliver the slices" at face value (a reply that duplicates or re-mis-routes
+  is the worst outcome). Query `tasks.tasks` for the cited slice IDs first: if
+  the real rows exist and are already correctly homed (created_by=orchestrator,
+  `source=manual`, scope=`fleet`, under their owning story and the right lane),
+  the peer's copies are orphaned tracking residue from a delegation pointed at
+  the wrong agent type (e.g. content-marketing slices handed to a staging-ops
+  agent with a null correlation_id). The fix is the peer ARCHIVES its copies
+ (they are not its deliverables, not claimable, not actionable) + you confirm
+ the real work is intact — never a re-delivery. Judge the lane from the slice
+ subject, not from the peer's framing.
 
 ## Compete mode (opt-in, orchestrator)
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Integration test for agent-loop-gov-stale-daemon-watchdog.py — proves it
+"""Integration test for agent-loop-gov-lock-watchdog.py — proves it
 DETECTS and REPORTS a stuck write-lock held by a loop-gov-named process
 (POST-deploy leak, the exact case the security audit found the mtime heuristic
 misses), but does NOT auto-kill (alert-only backstop, per operator directive
@@ -30,7 +30,7 @@ from pathlib import Path
 
 HOME = Path.home()
 DB = HOME / ".hermes-cortex" / "data" / "loop-governance.db"
-WATCHDOG = HOME / "hermes-cortex" / "ops" / "scripts" / "health" / "agent-loop-gov-stale-daemon-watchdog.py"
+WATCHDOG = HOME / "hermes-cortex" / "ops" / "scripts" / "health" / "agent-loop-gov-lock-watchdog.py"
 PY = str(HOME / ".hermes" / "hermes-agent" / "venv" / "bin" / "python3")
 
 PASS = "  PASS"

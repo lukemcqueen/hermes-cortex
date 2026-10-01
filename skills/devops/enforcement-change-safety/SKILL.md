@@ -103,6 +103,14 @@ binary on macOS, or every commit on Titus blocks:
   edit.
 - The pre-existing hook ALREADY uses `<<<` herestrings and `[[ =~ ]]` — both are
   bash-3.2-safe; do not "fix" them.
+- **Never call `sudo` unguarded from a hook or a deploy step.** macOS locks with
+  `chflags uchg`, which needs NO root — a bare `sudo` there blocks on a password
+  prompt mid-commit, which is a HANG, not a clean error. Linux does need root
+  (`chattr +i`), but must use `sudo -n` (non-interactive) so a missing NOPASSWD
+  rule fails fast instead of prompting. Branch once on `uname -s`: plain
+  `hermes-plugin-lock` on Darwin, `sudo -n hermes-plugin-lock` on Linux — the
+  pattern `cortex-update.sh` already uses for its lock handling. A hook runs on
+  every commit in every repo, so a prompt here poisons unrelated work.
 
 ## Rule 2: Shared Repo = Check the Staged Set Before Every Commit
 
@@ -379,6 +387,28 @@ to them must be doubly scoped or it will block innocent work in project repos:
    for its self-test; copy it, don't reinvent). Non-orch hosts never run the
    doctor gate. `cortex-dogfood.sh` exits 1 with a clear message on
    non-orch hosts.
+
+**Scoping is not only for NEW gates — audit the EXISTING ones.** A gate written
+before the repo guard existed keeps firing in every repo, and one stale cortex
+state then blocks ordinary commits in unrelated projects while telling the user
+to run a cortex deploy they have no reason to run. The failure mode is
+structural and greppable: the gate sits ABOVE the `IS_CORTEX_REPO` assignment
+(`REPO_ROOT == ${HOME}/hermes-cortex`), so it is unscoped BY CONSTRUCTION.
+
+- When touching any shared hook, walk every `echo "❌ …"` block and classify it:
+  (a) repo-scoped, (b) orchestrator-scoped, or (c) a genuinely universal quality
+  gate (syntax, secret scan, adversarial) that SHOULD run everywhere. Anything
+  that compares cortex-internal state — the enforcer-drift ("DOGFOOD") check,
+  which compares this repo's HEAD enforcer against the DEPLOYED copy — belongs
+  in (a): no other repo can act on that divergence.
+- If the guard is computed late, either move it above the gate or inline the
+  cheap equivalent (`_TOP=$(git rev-parse --show-toplevel)` +
+  `[[ "$_TOP" == "${HOME}/hermes-cortex" ]]`) rather than reordering a long
+  script. Use the SAME `${HOME}/hermes-cortex` comparison the other cortex-only
+  gates use, so there is one scoping idiom to audit.
+- Prove it by real execution, not inspection: run the deployed hook from a
+  throwaway `git init` repo and assert the gate does NOT fire (the hook still
+  runs its universal gates), then confirm it DOES fire in the cortex repo.
 
 **Orchestrator-only path arrays must be repo-scoped too (Titus over-block):**
 the hardcoded `ORCHESTRATOR_ONLY_PATHS` array had UNANCHORED patterns
@@ -706,6 +736,35 @@ An event-driven gate fires immediately and can refuse the completion.
   fixed committed prompt and a distinct model in a process the worker cannot
   reach, so being triggered by the worker's own close does not let the worker
   grade itself.
+
+## Rule 18: Optional Steps Never Abort the Critical Sync — Defer, Then Exit Loud
+
+A deploy script under `set -euo pipefail` ends on ANY `exit 1`. Order therefore
+matters: file sync, the enforcer plugin deploy, and the git-hook install are
+CRITICAL (they are what clears enforcer drift and DOGFOOD drift); DB schema
+migrations are optional, dependency-bound, and retryable. When a migration sits
+BEFORE a critical step and hard-exits, a database that is merely restarting
+(`container is restarting`) aborts the whole deploy — the enforcer is never
+refreshed, and the stale-enforcer gate then blocks every repo on the host while
+the user chases the wrong problem.
+
+- **Never `exit 1` from a step whose failure leaves the host no worse for
+  running the rest.** Append it to a `_DEFERRED_FAILURES` array, `error` the
+  message, and CONTINUE.
+- **Re-check at the END of the flow**, after the critical sync: if the array is
+  non-empty, list every failed step and `exit 1`. The non-zero exit still tells
+  automation the deploy was incomplete — the point is only that it happens AFTER
+  the sync, so no host is left with a stale enforcement chain.
+- **Guard the expansion for `set -u`**: test `${#arr[@]} -gt 0` before
+  `"${arr[@]}"` — bash 4.0–4.3 error on an empty array expansion under `set -u`,
+  and the guard is what keeps the same code correct on macOS.
+- **Expect repo≠deployed doctor FAILs mid-change.** After editing a deployed
+  script and before running the deploy, the doctor's checksum checks report that
+  file as drifting. That is the check WORKING; it clears on the next
+  `cortex-update.sh`. Do not "fix" it by reverting the edit or weakening the
+  check, and do not report it as a regression.
+- Same family as Rule 1 and Rule 15: the goal is never a silent green — it is a
+  LOUD failure that does not take the enforcement chain down with it.
 
 ## References
 
