@@ -20,6 +20,7 @@ Tools:
 """
 import asyncio
 import importlib.util
+import hashlib
 import json
 import logging
 import os
@@ -1650,7 +1651,7 @@ def _extract_verdict(text: str):
 
 
 def _record_review(cycle_id, reviewer_id, model, verdict, findings_json, summary,
-                   replace: bool = False):
+                   replace: bool = False, fingerprint: str = ""):
     """Insert the verdict. Duplicate cycle_id is a no-op unless replace=True.
 
     Connection hygiene (2026-09-30): conn MUST be closed on EVERY path. cycle_id
@@ -1661,10 +1662,15 @@ def _record_review(cycle_id, reviewer_id, model, verdict, findings_json, summary
     retry wedged the DB for all sessions and forced pointless daemon kills.
     try/finally guarantees the connection (and its lock) is always released.
 
-    `replace=True` is used ONLY by rereview_change: the frozen UNIQUE row is what
-    made a cycle unclosable once FINDINGS was recorded, so a fixed change could
-    never be re-judged. Replacing keeps ONE verdict per cycle (no history
-    inflation) and is recorded in the governance log, so it stays auditable.
+    `replace=True` is used by the gate for the judgement it just made: the frozen
+    UNIQUE row is what made a cycle unclosable once FINDINGS was recorded, so a
+    fixed change could never be re-judged. Replacing keeps ONE verdict per cycle
+    (no history inflation) and is recorded in the governance log, so it stays
+    auditable.
+
+    `fingerprint` pins the verdict to the exact material it judged (note + diff).
+    A CLEAN is only reusable while that material is unchanged, so a CLEAN cannot
+    be carried over a later, unreviewed change.
     """
     conn = _db()
     try:
@@ -1677,30 +1683,54 @@ def _record_review(cycle_id, reviewer_id, model, verdict, findings_json, summary
             " verdict TEXT NOT NULL,"
             " findings_json TEXT NOT NULL,"
             " summary TEXT,"
-            " ts TEXT NOT NULL)"
+            " ts TEXT NOT NULL,"
+            " fingerprint TEXT)"
         )
+        try:
+            conn.execute("ALTER TABLE adversarial_reviews ADD COLUMN fingerprint TEXT")
+        except sqlite3.OperationalError:
+            pass  # column already exists — expected
         if replace:
             conn.execute(
                 "UPDATE adversarial_reviews SET reviewer_id=?, reviewer_model=?,"
-                " verdict=?, findings_json=?, summary=?, ts=?"
+                " verdict=?, findings_json=?, summary=?, ts=?, fingerprint=?"
                 " WHERE cycle_id=?",
                 (reviewer_id, model, verdict, findings_json, summary,
-                 _now_iso(), cycle_id),
+                 _now_iso(), fingerprint, cycle_id),
             )
         else:
             conn.execute(
                 "INSERT INTO adversarial_reviews"
                 " (review_id, cycle_id, reviewer_id, reviewer_model,"
-                "  verdict, findings_json, summary, ts)"
-                " VALUES (?,?,?,?,?,?,?,?)",
+                "  verdict, findings_json, summary, ts, fingerprint)"
+                " VALUES (?,?,?,?,?,?,?,?,?)",
                 (str(uuid.uuid4()), cycle_id, reviewer_id, model,
-                 verdict, findings_json, summary, _now_iso()),
+                 verdict, findings_json, summary, _now_iso(), fingerprint),
             )
         conn.commit()
     except sqlite3.IntegrityError:
         pass  # already reviewed — idempotent
     finally:
         conn.close()  # NEVER leak the connection (or its write lock) into the daemon
+
+
+def _stored_review(cycle_id) -> Optional[dict]:
+    """The recorded verdict for a cycle, or None. Never raises."""
+    conn = _db()
+    try:
+        row = conn.execute(
+            "SELECT verdict, findings_json, summary, fingerprint"
+            " FROM adversarial_reviews WHERE cycle_id=?", (cycle_id,)).fetchone()
+        return dict(row) if row else None
+    except sqlite3.Error:
+        return None
+    finally:
+        conn.close()
+
+
+def _review_fingerprint(material: str) -> str:
+    """Identify the exact material a verdict was reached on (note + diff)."""
+    return hashlib.sha256(material.encode("utf-8", "replace")).hexdigest()
 
 
 def _rereview_change(args: dict) -> CallToolResult:
@@ -1778,7 +1808,7 @@ def _rereview_change(args: dict) -> CallToolResult:
     log.info("rereview: cycle %s task %s — verdict was %s, material changed",
              cycle_id, task_id, old_verdict)
 
-    block = _adversarial_review_gate(lock, cycle)
+    block = _adversarial_review_gate(lock, cycle, force=True)
     if block is not None:
         # The gate already recorded the fresh verdict; report it plainly.
         return CallToolResult(content=[TextContent(type="text", text=(
@@ -1792,11 +1822,17 @@ def _rereview_change(args: dict) -> CallToolResult:
         "Call end_change('" + task_id + "') to release the lock."))])
 
 
-def _adversarial_review_gate(lock: dict, cycle: dict) -> Optional[CallToolResult]:
+def _adversarial_review_gate(lock: dict, cycle: dict,
+                            force: bool = False) -> Optional[CallToolResult]:
     """The complexity-gated hard gate. Returns None (proceed) or a block result.
 
     Simple changes pass through. Complex changes must earn a CLEAN review;
     a FINDINGS verdict or a reviewer outage REFUSES the close (fail loudly).
+
+    `force=True` re-judges even when a verdict for this exact material is already
+    stored. Only rereview_change uses it, and only after the material changed — it
+    must not be a way to re-roll an unchanged verdict, so rereview_change refuses
+    an unchanged note before it gets here.
     """
     repo_slug = lock.get("repo_slug", "")
     repo = HOME / repo_slug if repo_slug else None
@@ -1844,6 +1880,36 @@ def _adversarial_review_gate(lock: dict, cycle: dict) -> Optional[CallToolResult
         f"Full diff:\n{diff_text}\n"
     )
     prompt = f"{template}\n{material}\n"
+    fingerprint = _review_fingerprint(material)
+
+    # Honour a verdict already reached on THIS material.
+    #
+    # The reviewer is a sampling model: re-running it on byte-identical material can
+    # return the opposite verdict. Observed on cycle 10301 — rereview_change returned
+    # CLEAN, then end_change returned FINDINGS quoting the same note, and the claim
+    # in one of those findings was itself measurably false. That made a complex cycle
+    # close on a coin-flip while looking deliberate, and it made rereview_change
+    # pointless. The verdict is stored once per cycle, pinned to this fingerprint;
+    # only rereview_change (force=True, after the material changed) asks again.
+    #
+    # A stored verdict with no/mismatched fingerprint (e.g. recorded before this
+    # existed, or the diff moved since) is NOT reused — the change is re-judged.
+    if not force:
+        stored = _stored_review(cycle.get("id"))
+        if stored is not None and (stored.get("fingerprint") or "") == fingerprint:
+            stored_verdict = str(stored.get("verdict") or "").upper()
+            if stored_verdict == "CLEAN":
+                log.info("adversarial review: cycle %s CLEAN (stored, material unchanged)",
+                         cycle.get("id"))
+                return None
+            return CallToolResult(content=[TextContent(type="text", text=(
+                "❌ Adversarial review FAILED — this complex change cannot close.\n\n"
+                f"Verdict: {stored_verdict} (already recorded for exactly this material)\n"
+                f"Findings: {stored.get('findings_json') or '[]'}\n\n"
+                "Fix the findings, then call rereview_change with a NEW note describing "
+                "what changed and the evidence for it. The lock stays held; nothing "
+                "sufficiently complex ships unreviewed."
+            ))])
 
     try:
         reviewer_text = _call_reviewer(prompt)
@@ -1858,9 +1924,14 @@ def _adversarial_review_gate(lock: dict, cycle: dict) -> Optional[CallToolResult
 
     verdict, findings_json = _extract_verdict(reviewer_text)
     reviewer_id = f"adv-review-{uuid.uuid4().hex[:8]}"
+    # replace=True: this is the authoritative judgement for this cycle, and the row is
+    # UNIQUE per cycle. Without it the judgement is silently DISCARDED on a re-review
+    # (the IntegrityError path below is a no-op), which left a FINDINGS verdict frozen
+    # forever — the exact gap rereview_change exists to close.
     _record_review(cycle.get("id"), reviewer_id,
                    os.environ.get("ADVERSARIAL_REVIEWER_MODEL", REVIEWER_MODEL_DEFAULT),
-                   verdict, findings_json, reviewer_text[:2000])
+                   verdict, findings_json, reviewer_text[:2000],
+                   replace=True, fingerprint=fingerprint)
 
     if verdict == "CLEAN":
         log.info("adversarial review: cycle %s CLEAN", cycle.get("id"))

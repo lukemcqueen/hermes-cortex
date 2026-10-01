@@ -135,6 +135,69 @@ def test_cli_refusal_exits_1_not_0():
         f"exit code says refused but the message reads as success: {r.stdout[:200]}"
 
 
+def test_record_review_replace_actually_replaces(gov):
+    """rereview_change's verdict must not be silently discarded.
+
+    THE BUG: the gate recorded its judgement with replace=False. adversarial_reviews
+    has cycle_id UNIQUE, and the non-replace path swallows IntegrityError as an
+    idempotent no-op — so a re-review's verdict was thrown away and the original
+    FINDINGS row stayed frozen. That is the exact gap rereview_change was written to
+    close, and its docstring claimed it was closed.
+
+    This fails on the old code: the second call is a no-op and the stored verdict
+    stays FINDINGS.
+    """
+    cycle_id = 990001  # a cycle id no real run will use
+    try:
+        gov._record_review(cycle_id, "rev-1", "model-x", "FINDINGS", "[]", "first")
+        first = gov._stored_review(cycle_id)
+        assert first and first["verdict"] == "FINDINGS"
+
+        gov._record_review(cycle_id, "rev-2", "model-x", "CLEAN", "[]", "second",
+                           replace=True, fingerprint="fp-abc")
+        after = gov._stored_review(cycle_id)
+        assert after is not None, "no row after replace"
+        assert after["verdict"] == "CLEAN", \
+            f"replace did not take: verdict is still {after['verdict']}"
+        assert after["fingerprint"] == "fp-abc", \
+            f"fingerprint not stored: {after.get('fingerprint')!r}"
+    finally:
+        conn = gov._db()
+        try:
+            conn.execute("DELETE FROM adversarial_reviews WHERE cycle_id=?", (cycle_id,))
+            conn.commit()
+        finally:
+            conn.close()
+
+
+def test_review_fingerprint_pins_the_material(gov):
+    """A CLEAN is only reusable for the exact material it judged."""
+    a = gov._review_fingerprint("note\n\ndiff A")
+    b = gov._review_fingerprint("note\n\ndiff B")
+    assert a != b, "fingerprint does not change when the diff changes"
+    assert a == gov._review_fingerprint("note\n\ndiff A"), "fingerprint is not stable"
+
+
+def test_gate_accepts_force_but_the_repo_check_runs_first(gov):
+    """A gate with no governed repo fails CLOSED before any reviewer call.
+
+    Written as the honest version of a probe that was wrong: the first attempt
+    asserted that force=True reaches the reviewer, and failed — because an empty
+    lock has no repo_slug, so the gate refuses at the complexity check first. The
+    short-circuit itself is verified end-to-end against a real cycle instead of
+    through an artificial lock.
+    """
+    import inspect
+    sig = inspect.signature(gov._adversarial_review_gate)
+    assert "force" in sig.parameters, "the gate has no force parameter"
+    assert sig.parameters["force"].default is False, \
+        "force must default to False — only rereview_change may re-judge"
+
+    block = gov._adversarial_review_gate({}, {"id": 990003, "outcome_note": "n"})
+    text = block.model_dump()["content"][0]["text"]
+    assert "no governed repo" in text, f"expected a fail-closed repo refusal, got: {text[:120]}"
+
+
 def test_refusal_detector_covers_the_no_session_phrasing():
     """The SECOND wording of the same refusal class, pinned hermetically.
 
