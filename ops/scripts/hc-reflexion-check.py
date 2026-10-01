@@ -119,36 +119,17 @@ def load_store_module():
     return None
 
 
-def journal_skill_loaded(skill: str, session_id: str) -> bool:
-    """TRANSITIONAL BRIDGE — HC's OWN enforcer journal, not Hermes's state.db.
-
-    The store writer (the enforcer plugin writing `tool_events`) only becomes live
-    on the gateway after a restart. Between the deploy that re-points this gate and
-    that restart, no session has store rows — and failing every agent's commit for
-    that window would be an outage dressed up as enforcement.
-
-    `~/.hermes-cortex/state/skills-credit/<session>.json` is written by HC's own
-    enforcer plugin and is HC-owned, so bridging to it does NOT reintroduce the
-    Hermes dependency this whole change removes. It is strictly narrower than the
-    store: it can only ever say yes for a skill HC itself recorded as loaded.
-
-    DELETE THIS once the store writer is proven live fleet-wide (a real
-    `tool_events` row appearing for a real session with no manual recording).
-    """
-    path = GOV_DIR / "skills-credit" / f"{session_id}.json"
-    try:
-        with open(path) as fh:
-            payload = json.load(fh)
-    except (OSError, json.JSONDecodeError):
-        return False
-    skills = payload.get("skills")
-    if not isinstance(skills, list):
-        return False
-    return skill in {str(s) for s in skills}
-
-
 def skill_loaded(skill: str, session_id: str) -> tuple[int, str]:
-    """(exit_code, message) — never raises; the caller only reads the code."""
+    """(exit_code, message) — never raises; the caller only reads the code.
+
+    STORE-ONLY, deliberately. There is no fallback to the Hermes conversation DB:
+    a fallback keeps the incumbent load-bearing and hides a failure of HC's own
+    recording instead of surfacing it. The transitional bridge to HC's enforcer
+    journal was deleted once the enforcer writer was proven live here (a real
+    skill_view landing a row with no manual recording, and the answer coming from
+    the store rather than the journal) — see tests/test-reflexion-gate-repoint.sh,
+    which pins that a journal-only session is REFUSED.
+    """
     mod = load_store_module()
     if mod is None:
         return EXIT_STORE_UNREACHABLE, (
@@ -164,12 +145,6 @@ def skill_loaded(skill: str, session_id: str) -> tuple[int, str]:
             return EXIT_LOADED, f"LOADED {skill} (session {session_id})"
     except Exception as exc:  # noqa: BLE001 — a gate must answer, not crash
         return EXIT_STORE_UNREACHABLE, f"HC store error: {exc}"
-
-    if journal_skill_loaded(skill, session_id):
-        return EXIT_LOADED, (
-            f"LOADED {skill} (session {session_id}) [bridge: HC enforcer journal — "
-            "the store writer is not live for this session yet; the store is authoritative "
-            "when it has the row]")
     return EXIT_NOT_LOADED, f"NOT-LOADED {skill} (session {session_id})"
 
 

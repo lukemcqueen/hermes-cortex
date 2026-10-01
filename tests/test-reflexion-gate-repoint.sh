@@ -115,6 +115,31 @@ else
 fi
 
 echo ""
+echo "═══ AC8: STORE-ONLY — an enforcer-journal-only session is REFUSED ═══"
+# The transitional bridge (accept HC's enforcer journal while the store had no row)
+# was deleted once the enforcer writer was proven live: a real skill_view landed a
+# tool_events row with no manual recording, and the verifier answered from the
+# store. If the bridge ever returns, this fails — a session HC's journal credits
+# but the store does not know must NOT pass, or the store stops being authoritative
+# and the Hermes-shaped coupling is back.
+JOURNAL_SID="probe-journal-only-$$"
+mkdir -p "$HOME/.hermes-cortex/state/skills-credit"
+printf '{"session":"%s","skills":["reflexion-check"]}\n' "$JOURNAL_SID" \
+  > "$HOME/.hermes-cortex/state/skills-credit/$JOURNAL_SID.json"
+out=$(python3 "$CHECKER" --session "$JOURNAL_SID" 2>&1); rc=$?
+rm -f "$HOME/.hermes-cortex/state/skills-credit/$JOURNAL_SID.json"
+if [[ "$rc" == "1" ]]; then
+  pass "journal-only session refused — the store is authoritative, bridge gone"
+else
+  fail "journal-only session PASSED (rc=$rc) — the bridge is back" "$out"
+fi
+if grep -q "journal_skill_loaded" "$CHECKER"; then
+  fail "the bridge function is still present in the verifier"
+else
+  pass "no bridge code remains in the verifier"
+fi
+
+echo ""
 echo "═══ Summary ═══"
 echo "  ${P} passed, ${F} failed"
 if [ "$F" -gt 0 ]; then
