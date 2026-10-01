@@ -196,9 +196,16 @@ def _load_server():
     return _load(REPO / "mcp-servers" / "cortex-context-mcp.py", "cortex_context_mcp_t")
 
 
+def _load_tools():
+    """The tool surface lives in the SHARED module now, not in the server: the
+    MCP server and the CLI are both thin access layers over it."""
+    return _load(REPO / "ops" / "services" / "mycortex-mem" / "context_tools.py",
+                 "context_tools_mcp_t")
+
+
 def test_server_declares_both_families():
     pytest.importorskip("mcp")
-    names = {t["name"] for t in _load_server()._TOOLS}
+    names = {t["name"] for t in _load_tools().TOOLS}
     mem = {n for n in names if n.startswith("mem_")}
     ses = {n for n in names if n.startswith("session_")}
     assert mem == {"mem_profile", "mem_search", "mem_context", "mem_conclude"}, mem
@@ -208,30 +215,30 @@ def test_server_declares_both_families():
 
 def test_every_declared_tool_has_a_handler():
     pytest.importorskip("mcp")
-    srv = _load_server()
-    for t in srv._TOOLS:
-        assert t["name"] in srv._HANDLERS, f"{t['name']} has no handler"
+    tools = _load_tools()
+    for t in tools.TOOLS:
+        assert t["name"] in tools.HANDLERS, f"{t['name']} has no handler"
 
 
 def test_fail_open_message_is_not_an_exception():
     pytest.importorskip("mcp")
-    msg = _load_server()._unavailable()
+    msg = _load_tools().UNAVAILABLE
     assert "unavailable" in msg and "not an error" in msg
 
 
 def test_identity_precedence_args_beat_env(monkeypatch):
     pytest.importorskip("mcp")
-    srv = _load_server()
+    tools = _load_tools()
     monkeypatch.setenv("CORTEX_SESSION_HARNESS", "envharness")
-    assert srv._resolve_identity({"harness": "argharness"})[0] == "argharness"
-    assert srv._resolve_identity({})[0] == "envharness"
+    assert tools.resolve_identity({"harness": "argharness"})[0] == "argharness"
+    assert tools.resolve_identity({})[0] == "envharness"
 
 
 def test_explicit_session_key_env_wins_outright(monkeypatch):
     pytest.importorskip("mcp")
-    srv = _load_server()
+    tools = _load_tools()
     monkeypatch.setenv("CORTEX_SESSION_KEY", "pi:repo:main")
-    assert srv._resolve_identity({}) == ("pi:repo:main", "", "")
+    assert tools.resolve_identity({}) == ("pi:repo:main", "", "")
 
 
 def test_session_key_includes_all_three_axes(monkeypatch):
@@ -241,7 +248,7 @@ def test_session_key_includes_all_three_axes(monkeypatch):
     monkeypatch.setenv("CORTEX_SESSION_HARNESS", "pi")
     monkeypatch.setenv("CORTEX_SESSION_REPO", "hermes-cortex")
     monkeypatch.setenv("CORTEX_SESSION_BRANCH", "main")
-    assert srv._session_key_from({}) == "pi:hermes-cortex:main"
+    assert _load_tools().session_key_from({}) == "pi:hermes-cortex:main"
 
 
 # ── Real wire protocol: the server actually speaks MCP ───────

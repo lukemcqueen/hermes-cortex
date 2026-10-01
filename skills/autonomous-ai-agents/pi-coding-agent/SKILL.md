@@ -32,6 +32,26 @@ integration is `github.com/disler/ten-levels-of-jev` (30 tested Jev use cases in
 - **Compaction** — `.pi/settings.json` sets `compaction.keepRecentTokens` low so compaction has material; `ctx.compact()` wraps pi's compaction; `ctx.getContextUsage()` feeds the numbers.
 - **Side channel** — report every decision on stderr as `JEV_EVENT` lines (and as session entries) so a run is auditable line-by-line (tool call, hook decision, Jev call, model, cost, context).
 
+## Cortex context (memory + session)
+
+Pi has **no MCP client** — do not try to wire it to an MCP server. It reaches the
+cortex context store through the shared CLI from an extension:
+
+```bash
+cp ~/hermes-cortex/ops/install/harnesses/pi/extensions/cortex-context.ts extensions/
+pi -e extensions/cortex-context.ts --tools read,bash,edit,write,mem_context,session_restore,session_checkpoint,session_close
+```
+
+The extension registers `mem_*` / `session_*` tools AND wires the lifecycle:
+
+- `before_agent_start` → restore + inject the checkpoint (a fresh session resumes)
+- **`turn_end` → write a checkpoint** — the harness owns WHEN, never the model
+- `session_before_compact` → checkpoint before continuity is lost
+
+Harness index: `ops/install/harnesses/INDEX.md` · Adding another harness:
+`registry.yaml` + `generate-harnesses.py` · Runbook:
+`docs/runbooks/context-integration.md`.
+
 ## Jev integration (the cost-routing hooks)
 The five high-value Jev hooks in the pi loop, from ten-levels-of-jev and mapped in
 steadfaste `docs/design/coding-cost-routing.md`:

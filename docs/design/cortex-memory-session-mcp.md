@@ -1,4 +1,4 @@
-# Design — cortex context: memory + session as one MCP surface (S2c)
+# Design — cortex context: memory + session over one shared tool surface (S2c)
 
 > **Status:** proposed v2. Answers Luke: *"we need Pi to have session stage and
 > mycortex memory. can hermes-cortex provide this as a service or mcp server?"*,
@@ -48,12 +48,36 @@ cortex-context-mcp.py
 This is the **S2c** slice already recorded in
 `docs/design/component-hermes-separation.md`.
 
-## Why MCP, not a bespoke service
+## Why a shared tool surface (and why the access layer is per-harness)
 
-- **The harnesses already speak it** — Pi, Claude Code, Codex. Zero bespoke
-  integration per harness.
+> **Correction (found by verifying the premise).** An earlier revision of this
+> doc claimed *"the harnesses already speak MCP — Pi, Claude Code, Codex."*
+> **That is false for Pi.** Pi has no MCP client: its extension surface is
+> `pi.on("turn_end" | "before_agent_start" | "session_before_compact", …)` plus
+> `pi.registerTool({…})`, in TypeScript. MCP was chosen on an unverified premise,
+> and the runbook now opens by warning against repeating it.
+
+What survives the correction is the part that was actually load-bearing: **the
+tool surface must be shared, but the access layer is per-harness.**
+
+- **The store is the shared artifact** — one implementation in
+  `ops/services/mycortex-mem/context_tools.py`, so Pi's history is searchable
+  from Hermes and vice versa, and no harness has its own opinion about what a
+  session is.
+- **The layer is chosen to fit the harness** — MCP for MCP-native harnesses,
+  a CLI (+ extension) for Pi. Same "one shim per agent, never bespoke per agent"
+  rule as `docs/adr/0005`, just applied correctly.
 - **The pattern is in-repo** — `mcp-servers/` ships five servers; lifecycle,
   registration and doctor treatment are solved.
+
+The corrected shape:
+
+```
+        ops/services/mycortex-mem/context_tools.py     ← ONE implementation
+              │                          │
+   cortex-context-mcp.py          cortex-context.py  ← access layers
+   (Hermes/Claude/Codex)          (Pi + anything shelling out)
+```
 - **ADR-0005's principle** — *"ONE standard shim, generated per agent, never
   hand-written bespoke per agent."*
 
@@ -63,7 +87,7 @@ The split Luke asked for is **not** memory-vs-session. It's:
 
 | Concern | Owner | Why |
 |---|---|---|
-| **Store + search** | **the MCP server** (shared, cross-harness) | Pi's history must be searchable from Hermes and vice versa |
+| **Store + search** | **the shared tool surface** (MCP + CLI, cross-harness) | Pi's history must be searchable from Hermes and vice versa |
 | **When a checkpoint is written** | **the harness** (hook / on-stop) | MCP is tool-call shaped and has no lifecycle. The agent that most needs a checkpoint is the one that just got killed — it can never write one. |
 
 This removes the biggest weakness of an MCP-hosted session: **auto-capture is a

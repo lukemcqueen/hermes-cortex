@@ -1,0 +1,113 @@
+# ops/install/harnesses/registry.yaml
+#
+# THE SINGLE SOURCE for coding-agent harness integration.
+#
+# Everything else in this tree is DERIVED: a harness's README, its shim script
+# and its verify steps are generated from the entry below, so adding harness
+# #37 is one entry plus `generate-harnesses.py` — never a hand-written bespoke
+# shim. That is ADR-0005's rule ("ONE standard shim, generated per agent, never
+# hand-written bespoke per agent") applied to context integration.
+#
+#   generate-harnesses.py --check     # CI/doctor: is every derived file current?
+#   generate-harnesses.py --report    # coverage: declared vs actually wired
+#
+# WHY A REGISTRY, NOT PER-HARNESS DIRECTORIES OF PROSE: with ~100 harnesses the
+# failure mode is not "no docs", it is "100 docs that disagree". A registry makes
+# disagreement impossible — there is one place a harness's layer is stated.
+#
+# layer:
+#   mcp            harness reads an MCP server from its own config
+#   cli-extension  harness has NO MCP client; it needs an extension/shim that
+#                  shells out to the shared CLI (Pi is the canonical example)
+#   cli-hook       harness only needs a lifecycle command run at a boundary
+#   none           declared as unsupported, with the reason — so the gap is
+#                  visible instead of silently absent
+version: 1
+
+defaults:
+  # Every non-MCP harness goes through this one CLI (never a bespoke script).
+  cli: cortex-context
+  cli_path: ~/.hermes-cortex/scripts/cortex-context.py
+  mcp_server: ~/hermes-cortex/mcp-servers/cortex-context-mcp.py
+  # The trigger half: the harness owns WHEN a checkpoint is written.
+  trigger: ~/.hermes-cortex/scripts/session-autocheckpoint.py
+  impl: ops/services/mycortex-mem/context_tools.py
+  env:
+    - CORTEX_SESSION_HARNESS
+    - CORTEX_SESSION_REPO
+    - CORTEX_SESSION_BRANCH
+
+harnesses:
+  - name: pi
+    layer: cli-extension
+    status: shipped
+    surface: 'pi.on("turn_end"|"before_agent_start"|"session_before_compact") + pi.registerTool'
+    why: |
+      Pi has NO MCP client. Its extension API is hooks + registered tools in
+      TypeScript, so it reaches the shared CLI through the extension below.
+    artifact: extensions/cortex-context.ts
+    triggers:
+      turn_end: checkpoint (the trigger — MCP cannot provide this)
+      before_agent_start: restore + inject the checkpoint
+      session_before_compact: checkpoint before continuity is lost
+    install: |
+      mkdir -p extensions
+      cp <harnesses>/pi/extensions/cortex-context.ts extensions/
+    run: |
+      pi -e extensions/cortex-context.ts --tools read,bash,edit,write,mem_context,mem_search,mem_profile,mem_conclude,session_checkpoint,session_restore,session_search,session_note,session_close
+    verify:
+      - 'In a Pi session call mem_context — the peer card must come back.'
+      - 'Let a turn end with a decision, then: cortex-context session_restore "{}" | grep <marker>'
+      - 'Start a second session; the checkpoint must appear unasked (Pi logs CORTEX_RESUME).'
+
+  - name: hermes
+    layer: mcp
+    status: shipped
+    surface: 'hermes mcp add'
+    why: Hermes reads MCP servers from config, so it needs no shim at all.
+    install: |
+      hermes mcp add cortex-context \
+          --command ~/.hermes/hermes-agent/venv/bin/python3 \
+          --args ~/hermes-cortex/mcp-servers/cortex-context-mcp.py
+    verify:
+      - 'hermes mcp list | grep cortex-context'
+      - 'Call mcp__cortex_context__mem_context; the peer card must come back.'
+    triggers:
+      note: 'Harness side: ops/scripts/session-autocheckpoint.py at a boundary, or a cron.'
+
+  - name: claude-code
+    layer: mcp
+    status: documented
+    surface: '.mcp.json'
+    why: MCP-native; registration is a config entry, no shim.
+    install: |
+      Add to .mcp.json:
+        {"mcpServers": {"cortex-context": {"command": "python3",
+          "args": ["<mcp_server>"]}}}
+    verify:
+      - 'claude mcp list  (or /mcp) shows cortex-context'
+      - 'Call mem_context; the peer card must come back.'
+
+  - name: codex
+    layer: mcp
+    status: documented
+    surface: '~/.codex/config.toml [mcp_servers]'
+    why: MCP-native; registration is a config entry, no shim.
+    install: |
+      Add to ~/.codex/config.toml:
+        [mcp_servers.cortex-context]
+        command = "python3"
+        args = ["<mcp_server>"]
+    verify:
+      - 'codex mcp list shows cortex-context'
+      - 'Call mem_context; the peer card must come back.'
+
+  - name: steadfaste-tui
+    layer: none
+    status: blocked
+    surface: unknown
+    why: |
+      Steadfaste's own gateway is not complete, so its harness surface cannot be
+      designed against it yet. Declared here with the reason rather than guessed
+      at: a wrong layer means a wiring that "exists" and does nothing.
+    verify: []
