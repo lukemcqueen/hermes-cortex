@@ -38,13 +38,29 @@ and a merged skill serves better than two overlapping ones.
    explicitly routes to the replacement (and an `aliases:` entry in
    frontmatter) — never a placeholder. Deleting a redirect without a
    forwarding target orphans every reference to the old name.
-4. **Check consumers before pruning.** A deployed-only skill may be
-   referenced by crons, manifests, or other skills. Grep jobs.json,
+4. **Check consumers before pruning.** A deployed-only skill may
+   be referenced by crons, manifests, or other skills. Grep jobs.json,
    install-crons.sh, and skills before `delete`. Deploy warnings are not
-   deletes.
+   deletes. A deployed-only skill is also an **orphan** — no repo source, so
+   the doctor reports `Stale skills: orphaned` and one deploy can remove it.
+   Import it into the repo or delete it deliberately; never leave it
+   half-owned, and same for a `references/` file that exists only deployed.
 5. **Verify after every merge/delete.** `skill_view` both skills, re-read
    the merged SKILL.md for fence balance, run the doctor, regenerate the
    manifest if skills/ changed.
+6. **The REPO is the source of truth — a deployed-only edit is reverted.**
+   `skill_manage` writes the DEPLOYED copy (`~/.hermes/skills/<...>`), while
+   the next `cortex-update.sh` overwrites that copy from
+   `hermes-cortex/skills/<category>/<name>/`. So any curatorial edit not
+   propagated back to the repo is **silently lost on the next deploy** — the
+   pipeline undoing its own work. The doctor names it: *"Deployed copy is
+   newer than repo source. Commit the repo source before cortex-update
+   overwrites it."* After ANY skill edit, propagate the deployed skill back
+   to the repo path (the whole dir, `references/` included) and commit it in
+   the same run. Check for drifted pairs at the **start** of a pass too: drift
+   means a previous run's lesson is still unlanded, and re-deriving it instead
+   of propagating it duplicates the work. Verify with `diff` — the only
+   acceptable difference is the deploy header.
 
 ## Manifest Discipline
 
