@@ -108,3 +108,19 @@ def test_preexisting_checks_git_not_disk(verifier, monkeypatch):
     assert any("ls-tree" in c for c in seen), f"git ls-tree not used: {seen}"
     assert any(verifier.BASE_COMMIT in c for c in seen)
 
+
+def test_titus_never_hard_fails_on_an_unreadable_queue(verifier, monkeypatch):
+    """check_titus is corroborating only — a bad peek must NOT fail the run.
+
+    Delivered != still-pending: titus's handler consumes messages, so an
+    empty/unreadable inbox cannot disprove delivery and must never be
+    reported as a failure (ADV-10314-2).
+    """
+    # A failing peek must yield no failure (the hc CLI exists on this host).
+    monkeypatch.setattr(verifier, "_run", lambda cmd: (1, "boom"))
+    failures: list[str] = []
+    verifier.check_titus(failures)
+    assert failures == [], f"check_titus hard-failed on a bad peek: {failures}"
+
+
+

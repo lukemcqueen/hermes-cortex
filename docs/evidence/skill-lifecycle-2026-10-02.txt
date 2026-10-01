@@ -1,0 +1,42 @@
+=== orch-skill-lifecycle run 2026-10-02 — raw evidence transcript ===
+2026-10-02 04:54:49 KST
+
+$ python3 ops/scripts/manage/verify-skill-lifecycle-run.py
+{
+  "checks": [
+    "sync",
+    "manifest",
+    "preexisting",
+    "titus"
+  ],
+  "changed_skills": [
+    "autonomous-ai-agents/pi-coding-agent",
+    "devops/agent-ergonomic-cli",
+    "devops/enforcement-change-safety",
+    "software-development/adversarial-finding-fix-patterns",
+    "software-development/hermetic-python-testing",
+    "devops/governance-closeout",
+    "devops/enforcement-gate-migration"
+  ],
+  "base_commit": "b58eaa1d",
+  "failures": [],
+  "ok": true
+}
+exit=0
+
+$ python3 -m pytest tests/test_verify_skill_lifecycle_run.py -q
+tests/test_verify_skill_lifecycle_run.py ......                          [100%]
+
+============================== 6 passed in 0.04s ===============================
+
+$ git log --oneline -1 origin/main
+92d9f5c6 test(skill-lifecycle): runnable evidence + tests for the 2026-10-02 run
+
+$ git ls-tree -r b58eaa1d --name-only | grep -E 'one-owner-migrations|systemd-cron-bridge|documentation-consolidation'
+skills/devops/one-owner-migrations/SKILL.md
+skills/devops/systemd-cron-bridge/SKILL.md
+skills/devops/systemd-cron-bridge/references/systemd-timer-oncalendar.md
+skills/software-development/documentation-consolidation/SKILL.md
+
+$ python3 ops/scripts/manage/cortex-doctor.py --quiet | grep Overall
+  ⚠️  Overall: WARNING  (414 pass · 1 warn · 0 fail · 4 info)
