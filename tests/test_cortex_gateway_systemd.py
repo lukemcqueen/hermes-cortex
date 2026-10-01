@@ -53,6 +53,17 @@ def test_unit_sources_env_from_cortex_env_file():
     assert "cortex-bus.conf" in body
 
 
+def test_unit_does_not_source_hermes_env():
+    """We are migrating AWAY from Hermes: the unit must not read ~/.hermes/.env.
+
+    Matching the var NAMES is right; depending on Hermes's env file would
+    re-couple the target to the incumbent.
+    """
+    directives = _directives(UNIT.read_text())
+    offenders = [ln for ln in directives if ".hermes/.env" in ln]
+    assert not offenders, f"unit must not source Hermes's env: {offenders}"
+
+
 def test_example_is_pure_json_and_parseable():
     # The daemon reads it with json.loads — comments would break that.
     data = json.loads(EXAMPLE.read_text())

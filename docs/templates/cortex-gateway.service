@@ -13,7 +13,9 @@
 # hermes-gateway.service here.
 #
 # Config:  %h/.hermes-cortex/gateway.yaml   (see ops/scripts/gateway.yaml.example)
-# Env:     %h/.hermes-cortex/cortex-bus.conf + %h/.hermes/.env — must define
+# Env:     %h/.hermes-cortex/cortex-bus.conf — the CORTEX env (self-sufficient;
+#          we are MIGRATING AWAY from Hermes, so this unit must NOT read
+#          %h/.hermes/.env). It must define:
 #            TELEGRAM_BOT_TOKEN     referenced by gateway.yaml bots[].token_ref
 #            TELEGRAM_ALLOWED_USERS sender allowlist — REQUIRED; without it any
 #                                   Telegram user could talk to the agent
@@ -22,7 +24,11 @@
 #            CORTEX_BUS_URL         (or set bus_url in gateway.yaml)
 #            CORTEX_BUS_TOKEN  or  CORTEX_BASIC_AUTH
 #            TELEGRAM_API_BASE      (optional)
-#          These are the SAME Telegram vars Hermes uses — no new names.
+#          Same NAMES as Hermes (no invented config), but the VALUES live here,
+#          in the cortex env — copy them over once during migration.
+#          Migrating a value without printing it:
+#            grep -E '^TELEGRAM_(BOT_TOKEN|ALLOWED_USERS|HOME_CHANNEL)=' \
+#              "$HOME/.hermes/.env" >> "$HOME/.hermes-cortex/cortex-bus.conf"
 #
 # ⚠️ Only ONE poller per bot token. Before enabling this, stop the incumbent
 #    (systemctl --user stop hermes-gateway.service) or the two will 409.
@@ -37,7 +43,6 @@ Type=simple
 WorkingDirectory=%h/.hermes-cortex/scripts
 Environment=PATH=%h/.local/bin:%h/.bun/bin:/usr/local/bin:/usr/bin:/bin
 EnvironmentFile=-%h/.hermes-cortex/cortex-bus.conf
-EnvironmentFile=-%h/.hermes/.env
 ExecStart=/usr/bin/python3 %h/.hermes-cortex/scripts/cortex_gateway/daemon.py --config %h/.hermes-cortex/gateway.yaml
 Restart=always
 RestartSec=5
