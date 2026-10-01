@@ -1,0 +1,46 @@
+# cortex-gateway.service — Hermes Cortex standalone messaging gateway
+#
+# ⚠️ USER-LEVEL ONLY — must live in ~/.config/systemd/user/
+#    Never copy to /etc/systemd/system/ (a second poller on the same bot
+#    token gets a Telegram 409 Conflict).
+#    Enable/start: systemctl --user enable --now cortex-gateway.service
+#    Template source: docs/templates/cortex-gateway.service (hermes-cortex repo)
+#
+# This is the DECOUPLED replacement for the in-process `hermes gateway run`
+# loop. It shares NO process, unit dependency, or env file with
+# hermes-gateway.service — that independence is the point (see
+# docs/design/cortex-gateway.md). Do NOT add After=/Wants=/Requires=
+# hermes-gateway.service here.
+#
+# Config:  %h/.hermes-cortex/gateway.yaml   (see ops/scripts/gateway.yaml.example)
+# Env:     %h/.hermes-cortex/cortex-bus.conf — must define
+#            TELEGRAM_BOT_TOKEN   (referenced by gateway.yaml bots[].token_ref)
+#            GATEWAY_SECRET       (HMAC signing secret for bus envelopes)
+#            CORTEX_BUS_URL       (or set bus_url in gateway.yaml)
+#            CORTEX_BUS_TOKEN  or  CORTEX_BASIC_AUTH
+#            TELEGRAM_API_BASE    (optional)
+#
+# ⚠️ Only ONE poller per bot token. Before enabling this, stop the incumbent
+#    (systemctl --user stop hermes-gateway.service) or the two will 409.
+
+[Unit]
+Description=Hermes Cortex Gateway (cortex-gateway)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/.hermes-cortex/scripts
+Environment=PATH=%h/.local/bin:%h/.bun/bin:/usr/local/bin:/usr/bin:/bin
+EnvironmentFile=-%h/.hermes-cortex/cortex-bus.conf
+ExecStart=/usr/bin/python3 %h/.hermes-cortex/scripts/cortex_gateway/daemon.py --config %h/.hermes-cortex/gateway.yaml
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+Nice=10
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=default.target

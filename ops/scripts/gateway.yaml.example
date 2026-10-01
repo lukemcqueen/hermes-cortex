@@ -1,11 +1,7 @@
-# gateway.yaml — Messaging Gateway config (ADR-0005)
-# Lives OUTSIDE the repo (deployed): ~/.hermes-cortex/gateway.yaml
-# Functional URLs + tokens come from env — never here.
-# `gateway reload` applies changes without dropping polls (future).
-
 {
-  "secret": "<HMAC-signing-secret — env GATEWAY_SECRET preferred>",
-
+  "_comment": "cortex-gateway config. Copy to ~/.hermes-cortex/gateway.yaml (OUTSIDE the repo). Secrets come from the ENVIRONMENT, never this file: TELEGRAM_BOT_TOKEN (bots[].token_ref), GATEWAY_SECRET (HMAC signing secret), CORTEX_BUS_URL (or bus_url below), CORTEX_BUS_TOKEN or CORTEX_BASIC_AUTH. Optional: TELEGRAM_API_BASE. See docs/templates/cortex-gateway.service.",
+  "bus_url": "https://bus.example.com:8903",
+  "backends": ["hermes"],
   "bots": [
     {
       "token_ref": "TELEGRAM_BOT_TOKEN",
@@ -16,5 +12,9 @@
         "overrides": {}
       }
     }
-  ]
+  ],
+  "routing": {
+    "default": "hermes",
+    "overrides": {}
+  }
 }

@@ -555,6 +555,8 @@ register "ops/scripts/cortex_gateway/transport.py"   "${CORTEX_DEPLOY_HOME}/scri
 register "ops/scripts/cortex_gateway/backend.py"     "${CORTEX_DEPLOY_HOME}/scripts/cortex_gateway/backend.py"
 register "ops/scripts/cortex_gateway/hermes_backend.py" "${CORTEX_DEPLOY_HOME}/scripts/cortex_gateway/hermes_backend.py"
 register "ops/scripts/cortex_gateway/daemon.py"      "${CORTEX_DEPLOY_HOME}/scripts/cortex_gateway/daemon.py"
+register "ops/scripts/gateway.yaml.example"          "${CORTEX_DEPLOY_HOME}/gateway.yaml.example"
+register "docs/templates/cortex-gateway.service"     "${CORTEX_DEPLOY_HOME}/templates/cortex-gateway.service"
 register "ops/scripts/cortex_lib/tools.py"         "${CORTEX_DEPLOY_HOME}/scripts/cortex_lib/tools.py"
 register "ops/scripts/cortex_lib/models.py"        "${CORTEX_DEPLOY_HOME}/scripts/cortex_lib/models.py"
 

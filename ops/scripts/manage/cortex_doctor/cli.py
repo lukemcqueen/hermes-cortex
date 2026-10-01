@@ -47,6 +47,7 @@ from .checks import (
     check_langfuse_observability,
     check_restraint_registry,
     check_bus_grant_expiry,
+    check_cortex_gateway,
 )
 from .fix import apply_fixes
 from .bus_alert import dispatch_bus_alerts
@@ -100,6 +101,7 @@ def main():
         check_langfuse_observability,
         check_restraint_registry,
         check_bus_grant_expiry,
+        check_cortex_gateway,
     ]
 
     if do_quick:

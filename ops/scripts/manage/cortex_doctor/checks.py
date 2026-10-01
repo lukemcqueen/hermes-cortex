@@ -4814,3 +4814,47 @@ def check_bus_grant_expiry(res: "Results") -> None:
                 "no indefinite grants without a named justifier")
 
 
+def check_cortex_gateway(res: "Results") -> None:
+    """cortex-gateway: the deployed daemon imports hermetically (no Hermes on
+    the path) and its config + systemd unit carry no hermes-gateway dependency.
+    Serving without the incumbent harness is the whole point of the gateway."""
+    scripts = HOME / ".hermes-cortex" / "scripts"
+    if not (scripts / "cortex_gateway").is_dir():
+        res.add("cortex-gateway", "SKIP", "package not deployed")
+        return
+    probe = ("import sys; sys.path.insert(0, %r); "
+             "from cortex_gateway.daemon import build_gateway; "
+             "from cortex_gateway.hermes_backend import HermesBackend"
+             % str(scripts))
+    try:
+        p = subprocess.run([sys.executable, "-I", "-c", probe],
+                           capture_output=True, text=True, timeout=30)
+    except Exception as exc:  # pragma: no cover - environment failure
+        res.add("cortex-gateway", "WARN", f"import probe failed to run: {exc}")
+        return
+    if p.returncode != 0:
+        res.add("cortex-gateway", "FAIL",
+                f"daemon does not import hermetically: {p.stderr.strip()[-200:]}",
+                "run cortex-update.sh")
+        return
+    cfg = HOME / ".hermes-cortex" / "gateway.yaml"
+    if cfg.is_file():
+        try:
+            if not json.loads(cfg.read_text()).get("bots"):
+                res.add("cortex-gateway", "WARN", "gateway.yaml has no bots")
+                return
+        except Exception as exc:
+            res.add("cortex-gateway", "FAIL", f"gateway.yaml invalid: {exc}")
+            return
+    unit = HOME / ".config" / "systemd" / "user" / "cortex-gateway.service"
+    if unit.is_file():
+        directives = [ln for ln in unit.read_text().splitlines()
+                      if ln.strip() and not ln.lstrip().startswith("#")]
+        if any("hermes-gateway" in ln for ln in directives):
+            res.add("cortex-gateway", "FAIL",
+                    "unit depends on hermes-gateway.service (breaks independence)")
+            return
+    res.add("cortex-gateway", "PASS",
+            "daemon imports hermetically; config + unit independent of hermes-gateway")
+
+
