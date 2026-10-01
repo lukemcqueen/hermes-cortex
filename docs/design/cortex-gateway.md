@@ -1,6 +1,6 @@
 # cortex-gateway — the decoupled Hermes-cortex gateway
 
-> **Status:** in build — CR1 ✅ CR2 ✅ (transport + backend seam) · CR3 daemon · CR4 systemd · CR5 pi · CR6 steadfaste pending.
+> **Status:** in build — CR1 ✅ CR2 ✅ CR3 ✅ (transport, backend seam, daemon + hermes backend) · CR4 systemd · CR5 pi · CR6 steadfaste pending.
 > **Pairs with:** `component-hermes-separation.md` (S2b) · `messaging-gateway.md` (ADR-0005, the in-process incumbent).
 > **Audience:** builder, orchestrator, owner.
 
@@ -35,7 +35,7 @@ in a transport or a backend. The reply must round-trip through
 |---|---|---|
 | CR1 | `cortex_gateway/transport.py` — transport extraction from msg-gateway.py (parity-proven) + `__init__.py` | ✅ |
 | CR2 | `cortex_gateway/backend.py` — BackendAdapter ABC + structural `__subclasshook__` | ✅ |
-| CR3 | `cortex_gateway/daemon.py` — poll_bot + drain_outbound + dispatch/reply step; hermes adapter first | pending |
+| CR3 | `cortex_gateway/daemon.py` + `hermes_backend.py` — poll_bot + drain_outbound + dispatch/reply step; hermes (bus) adapter first | ✅ |
 | CR4 | `cortex-gateway.service` systemd user unit + deploy-map + doctor check; independence proof vs hermes-gateway.service | pending |
 | CR5 | pi backend adapter | pending |
 | CR6 | steadfaste backend adapter (blocked until steadfaste gateway is complete — Luke) | pending |

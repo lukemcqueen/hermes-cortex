@@ -553,6 +553,8 @@ register "ops/scripts/cortex-bus-bridge-generate.py" "${CORTEX_DEPLOY_HOME}/scri
 register "ops/scripts/cortex_gateway/__init__.py"    "${CORTEX_DEPLOY_HOME}/scripts/cortex_gateway/__init__.py"
 register "ops/scripts/cortex_gateway/transport.py"   "${CORTEX_DEPLOY_HOME}/scripts/cortex_gateway/transport.py"
 register "ops/scripts/cortex_gateway/backend.py"     "${CORTEX_DEPLOY_HOME}/scripts/cortex_gateway/backend.py"
+register "ops/scripts/cortex_gateway/hermes_backend.py" "${CORTEX_DEPLOY_HOME}/scripts/cortex_gateway/hermes_backend.py"
+register "ops/scripts/cortex_gateway/daemon.py"      "${CORTEX_DEPLOY_HOME}/scripts/cortex_gateway/daemon.py"
 register "ops/scripts/cortex_lib/tools.py"         "${CORTEX_DEPLOY_HOME}/scripts/cortex_lib/tools.py"
 register "ops/scripts/cortex_lib/models.py"        "${CORTEX_DEPLOY_HOME}/scripts/cortex_lib/models.py"
 

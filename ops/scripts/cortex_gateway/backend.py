@@ -59,3 +59,13 @@ class BackendAdapter(ABC):
     @abstractmethod
     def health(self) -> dict:
         """Backend liveness/readiness probe."""
+
+    def poll_replies(self, max_n: int = 5) -> list:
+        """Collect completed outbound reply envelopes (async backends only).
+
+        Sync backends answer inside ``dispatch`` and leave this empty; async
+        backends (hermes over the bus, a long-running pi/steadfaste turn)
+        override it to drain their reply queue. Not abstract — an async-only
+        method that sync backends inherit as a no-op.
+        """
+        return []
