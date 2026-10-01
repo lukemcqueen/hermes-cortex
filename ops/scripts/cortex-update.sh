@@ -549,6 +549,10 @@ register "ops/scripts/cortex_lib/tz.py"            "${CORTEX_DEPLOY_HOME}/script
 register "ops/scripts/cortex_lib/paths.py"         "${CORTEX_DEPLOY_HOME}/scripts/cortex_lib/paths.py"
 register "ops/scripts/cortex-bus-bridge-run.py"      "${CORTEX_DEPLOY_HOME}/scripts/cortex-bus-bridge-run.py"
 register "ops/scripts/cortex-bus-bridge-generate.py" "${CORTEX_DEPLOY_HOME}/scripts/cortex-bus-bridge-generate.py"
+# cortex-gateway — the decoupled gateway package (CR1 transport + CR2 backend seam)
+register "ops/scripts/cortex_gateway/__init__.py"    "${CORTEX_DEPLOY_HOME}/scripts/cortex_gateway/__init__.py"
+register "ops/scripts/cortex_gateway/transport.py"   "${CORTEX_DEPLOY_HOME}/scripts/cortex_gateway/transport.py"
+register "ops/scripts/cortex_gateway/backend.py"     "${CORTEX_DEPLOY_HOME}/scripts/cortex_gateway/backend.py"
 register "ops/scripts/cortex_lib/tools.py"         "${CORTEX_DEPLOY_HOME}/scripts/cortex_lib/tools.py"
 register "ops/scripts/cortex_lib/models.py"        "${CORTEX_DEPLOY_HOME}/scripts/cortex_lib/models.py"
 
