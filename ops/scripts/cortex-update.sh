@@ -581,6 +581,12 @@ register "ops/services/mycortex-mem/schema/v001__mem.sql"  "${CORTEX_DEPLOY_HOME
 # S2c — memory + session over one store: the shared psql seam + checkpoint schema.
 register "ops/services/mycortex-mem/store.py"              "${CORTEX_DEPLOY_HOME}/services/mycortex-mem/store.py"
 register "ops/services/mycortex-mem/schema/v002__sessions.sql" "${CORTEX_DEPLOY_HOME}/services/mycortex-mem/schema/v002__sessions.sql"
+# v003 — HC's own tool-event log, so the reflexion gate stops reading
+# ~/.hermes/state.db (Hermes-owned, and unsatisfiable for a harness with no
+# Hermes). A migration NOT registered here is never deployed, and migrate.py
+# discovers migrations by FILE — the repo applying cleanly proves nothing
+# about any other host.
+register "ops/services/mycortex-mem/schema/v003__tool_events.sql" "${CORTEX_DEPLOY_HOME}/services/mycortex-mem/schema/v003__tool_events.sql"
 # S2c — the MCP surface any harness can reach, and the harness-side trigger.
 register "mcp-servers/cortex-context-mcp.py"               "${CORTEX_DEPLOY_HOME}/scripts/cortex-context-mcp.py"
 register "ops/scripts/session-autocheckpoint.py"           "${CORTEX_DEPLOY_HOME}/scripts/session-autocheckpoint.py"
@@ -589,6 +595,10 @@ register "ops/scripts/session-autocheckpoint.py"           "${CORTEX_DEPLOY_HOME
 register "ops/services/mycortex-mem/context_tools.py"      "${CORTEX_DEPLOY_HOME}/services/mycortex-mem/context_tools.py"
 # S2c — the CLI access layer (Pi, and anything that shells out).
 register "ops/scripts/cortex-context.py"                   "${CORTEX_DEPLOY_HOME}/scripts/cortex-context.py"
+# The generic governance CLI — the interactive ritual for a harness with no MCP
+# client. Unregistered = the repo has it and no host does; a new script is not
+# deployed by existing.
+register "ops/scripts/loop-gov.py"                         "${CORTEX_DEPLOY_HOME}/scripts/loop-gov.py"
 # S2c — harness integration registry + generator: adding harness #37 is a
 # registry entry, never hand-written prose per harness.
 register "ops/install/harnesses/registry.yaml"             "${CORTEX_DEPLOY_HOME}/harnesses/registry.yaml"

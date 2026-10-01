@@ -316,6 +316,62 @@ class SessionStore:
             "at": row[6], "session_key": row[7],
         }
 
+    # ── Tool events (HC's own session record — NOT Hermes's state.db) ──
+    #
+    # The pre-commit reflexion gate needs to know "did this session load skill
+    # X?". It used to ask ~/.hermes/state.db, which is HERMES-owned: fragile to
+    # its schema, and structurally unsatisfiable for a harness with no Hermes
+    # (Pi, aider, CI). Recording it here makes the gate harness-agnostic and
+    # removes the incumbent dependency — no fallback, by design.
+
+    def record_tool_event(self, harness: str, tool_name: str, content,
+                          role: str = "tool", repo: str = "", branch: str = "",
+                          session_key: Optional[str] = None) -> None:
+        """Record one tool invocation for the current session.
+
+        The session row is ENSURED first (idempotent), then the event is written
+        by subquery. Both halves matter, and the first cut only had the second:
+
+          - recording must never FAIL because a session row is absent, and
+          - the event must never be UNROUTABLE because the row is absent.
+
+        Writing without the row stores `session_id NULL`, which the gate can
+        never match — "never fails" achieved by making the event useless.
+        Measured on the first cut: `loaded_skill()` returned False for an event
+        that had, in fact, been written successfully.
+        """
+        key = session_key or self.session_key(harness, repo, branch)
+        self.pg.run_sql(
+            "INSERT INTO mycortex_mem.sessions (session_key) "
+            f"VALUES ({_lit(key)}) ON CONFLICT (session_key) DO NOTHING;",
+            role=_WRITER,
+        )
+        payload = content if isinstance(content, str) else json.dumps(content)
+        self.pg.run_sql(
+            "INSERT INTO mycortex_mem.tool_events "
+            "(session_id, harness, tool_name, role, content) VALUES ("
+            f"(SELECT id FROM mycortex_mem.sessions WHERE session_key = {_lit(key)}), "
+            f"{_lit(harness)}, {_lit(tool_name)}, {_lit(role)}, "
+            f"{_lit(payload)}::jsonb);",
+            role=_WRITER,
+        )
+
+    def loaded_skill(self, skill: str, harness: str, repo: str = "",
+                     branch: str = "", session_key: Optional[str] = None) -> bool:
+        """Did this session load `skill`? The gate's question, answered from HC's
+        own store. Same semantics as Hermes's: tool_name='skill_view', role='tool',
+        and a payload naming the skill — so the gate's question is unchanged while
+        the dependency is gone."""
+        key = session_key or self.session_key(harness, repo, branch)
+        row = self.pg.row(
+            "SELECT 1 FROM mycortex_mem.tool_events e "
+            "JOIN mycortex_mem.sessions s ON s.id = e.session_id "
+            f"WHERE s.session_key = {_lit(key)} AND e.tool_name = 'skill_view' "
+            f"AND e.role = 'tool' AND e.content_text_tsv @@ "
+            f"plainto_tsquery('simple', {_lit(skill)}) LIMIT 1;"
+        )
+        return row is not None
+
     def list_sessions(self, limit: int = 10) -> list[dict]:
         rows = self.pg.query(
             "SELECT s.session_key, s.started_at::text, "

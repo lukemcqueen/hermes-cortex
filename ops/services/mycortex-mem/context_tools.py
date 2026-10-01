@@ -235,6 +235,45 @@ def session_close(args: dict) -> str:
                         "decisions_promoted": bool(args.get("promote_decisions"))})
 
 
+def session_tool_event(args: dict) -> str:
+    """Record ONE tool invocation for this session — the harness's half of the
+    reflexion gate's question.
+
+    This is the seam that makes governance harness-agnostic: any harness (Pi,
+    aider, CI, Hermes) reports its tool calls here, and the pre-commit gate
+    answers "did this session load skill X?" from HC's own store instead of
+    ~/.hermes/state.db — which only Hermes can populate.
+    """
+    tool_name = (args.get("tool_name") or "").strip()
+    if not tool_name:
+        return "error: tool_name is required"
+    harness, repo, branch = resolve_identity(args)
+    _store().sessions.record_tool_event(
+        harness, tool_name,
+        args.get("content") if args.get("content") is not None else {},
+        role=(args.get("role") or "tool").strip(),
+        repo=repo, branch=branch,
+        session_key=args.get("session_key") or None,
+    )
+    return json_result({"recorded": True, "tool_name": tool_name,
+                        "session_key": session_key_from(args)})
+
+
+def session_loaded_skill(args: dict) -> str:
+    """Did this session load `skill`? The gate's exact question, answered from
+    HC's own store — no Hermes dependency, no fallback to one."""
+    skill = (args.get("skill") or "").strip()
+    if not skill:
+        return "error: skill is required"
+    harness, repo, branch = resolve_identity(args)
+    loaded = _store().sessions.loaded_skill(
+        skill, harness, repo, branch,
+        session_key=args.get("session_key") or None,
+    )
+    return json_result({"skill": skill, "loaded": loaded,
+                        "session_key": session_key_from(args)})
+
+
 HANDLERS = {
     "mem_profile": mem_profile,
     "mem_search": mem_search,
@@ -246,6 +285,8 @@ HANDLERS = {
     "session_search": session_search,
     "session_note": session_note,
     "session_close": session_close,
+    "session_tool_event": session_tool_event,
+    "session_loaded_skill": session_loaded_skill,
 }
 
 # ── Tool metadata — the single source both access layers publish ──
@@ -316,6 +357,18 @@ TOOLS = [
                 "repo": ("string", "identity override"),
                 "branch": ("string", "identity override")},
      "required": []},
+    {"name": "session_tool_event",
+     "description": "Record ONE tool invocation for this session. A harness calls this so governance can answer 'did this session load skill X?' without reading a harness-private DB. Call it for tool calls a gate cares about (skill loads/reviews), not for every action.",
+     "params": {"tool_name": ("string", "the tool that ran, e.g. 'skill_view'"),
+                "content": ("object", "the tool payload, e.g. {\"name\": \"reflexion-check\"}"),
+                "role": ("string", "message role (default 'tool')"),
+                "session_key": ("string", "exact key (harness:repo:branch); optional if env-derived")},
+     "required": ["tool_name"]},
+    {"name": "session_loaded_skill",
+     "description": "Did THIS session load `skill`? The exact question the pre-commit reflexion gate asks, answered from the cortex store. Harness-agnostic and Hermes-independent.",
+     "params": {"skill": ("string", "the skill name, e.g. 'reflexion-check'"),
+                "session_key": ("string", "exact key (harness:repo:branch); optional if env-derived")},
+     "required": ["skill"]},
 ]
 
 
