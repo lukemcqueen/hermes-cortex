@@ -46,3 +46,11 @@ $ git log --format='%h %an %s' -2 -- ops/install/deploy/nginx/blocked_ips.add
 783c1380 joseph-agent auto: block 47 suspect IPs [pipeline]
 d61449e6 kustos-agent auto: block 48 suspect IPs [pipeline]
 (blocked_ips.add is peer pipeline commits, not this task: they entered the diff window via a rebase-onto-origin)
+
+=== post-commit doctor (captured on a CLEAN tree, this file committed) ===
+$ git status --short   # (empty — clean tree)
+$ python3 ops/scripts/manage/cortex-doctor.py --quiet | grep Overall
+  ✅ Overall: HEALTHY  (415 pass · 0 warn · 0 fail · 4 info)
+
+$ git log --oneline -1 origin/main
+5f87da93 docs(evidence): make the transcript honest about the self-observing doctor warn
