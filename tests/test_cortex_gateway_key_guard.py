@@ -87,6 +87,8 @@ def test_build_backends_skips_guard_when_no_backends(monkeypatch):
 def test_build_gateway_fails_closed_without_secret(monkeypatch):
     """End-to-end: a valid bot token but no GATEWAY_SECRET must not start."""
     monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "dummy")
+    monkeypatch.setenv("TELEGRAM_ALLOWED_USERS", "1001")
+    monkeypatch.setenv("TELEGRAM_HOME_CHANNEL", "1001")
     monkeypatch.delenv("GATEWAY_SECRET", raising=False)
     with pytest.raises(SystemExit):
         DAEMON.build_gateway(EXAMPLE)
@@ -95,5 +97,7 @@ def test_build_gateway_fails_closed_without_secret(monkeypatch):
 def test_build_gateway_starts_with_secret(monkeypatch):
     monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "dummy")
     monkeypatch.setenv("GATEWAY_SECRET", "real-secret")
+    monkeypatch.setenv("TELEGRAM_ALLOWED_USERS", "1001")
+    monkeypatch.setenv("TELEGRAM_HOME_CHANNEL", "1001")
     gw = DAEMON.build_gateway(EXAMPLE)
     assert gw.backends

@@ -46,11 +46,15 @@ class Gateway:
 
     def __init__(self, transport: TransportAdapter, backends: dict,
                  default_agent: str = DEFAULT_BACKEND_AGENT,
-                 routing_overrides: dict | None = None):
+                 routing_overrides: dict | None = None,
+                 allowed_users: set | None = None):
         self.transport = transport
         self.backends = backends          # agent_name -> BackendAdapter
         self.default_agent = default_agent
         self.routing_overrides = routing_overrides or {}
+        # Sender allowlist (TELEGRAM_ALLOWED_USERS). None means "not gated
+        # here" — build_gateway requires it, so production is never None.
+        self.allowed_users = allowed_users
         # offset tracks the transport's own offset (transport owns the truth).
         self.offset = getattr(transport, "offset", 0)
 
@@ -90,6 +94,12 @@ class Gateway:
         envelope = self.transport.parse(raw)
         if envelope is None:
             return
+        if self.allowed_users is not None:
+            sender = str(envelope.get("channel_user_id"))
+            if sender not in self.allowed_users:
+                print(f"⛔ dropped sender {sender} — not in "
+                      "TELEGRAM_ALLOWED_USERS", file=sys.stderr)
+                return
         envelope["to_agent"] = self.route(envelope["channel_user_id"])
         backend = self.backends.get(envelope["to_agent"])
         if backend is None:
@@ -175,8 +185,19 @@ def _bus_headers(bus_token: str, bus_auth: str) -> dict:
             + base64.b64encode(bus_auth.encode()).decode()}
 
 
+def _parse_allowed_users(raw: str) -> set:
+    """TELEGRAM_ALLOWED_USERS → a set of chat/user ids (comma or space)."""
+    return {tok.strip() for tok in raw.replace(",", " ").split() if tok.strip()}
+
+
 def build_gateway(config_path: Path) -> Gateway:
-    """gateway.yaml → a wired Gateway (transport + backends + routing)."""
+    """gateway.yaml + env → a wired Gateway (transport + backends + routing).
+
+    Uses the SAME Telegram env vars Hermes uses — no invented names:
+      TELEGRAM_BOT_TOKEN      the bot (via bots[].token_ref)
+      TELEGRAM_ALLOWED_USERS  sender allowlist (required, fail-closed)
+      TELEGRAM_HOME_CHANNEL   default delivery target (required)
+    """
     data = json.loads(config_path.read_text())
     bots = [BotConfig.from_dict(b) for b in data.get("bots", [])]
     if not bots:
@@ -185,12 +206,29 @@ def build_gateway(config_path: Path) -> Gateway:
     token = os.environ.get(bot.token_ref, "")
     if not token:
         raise SystemExit(f"gateway.yaml: {bot.token_ref} not set in env")
-    transport = TelegramAdapter(token=token, initial_offset=bot.initial_offset)
+
+    allowed = _parse_allowed_users(os.environ.get("TELEGRAM_ALLOWED_USERS", ""))
+    if not allowed:
+        raise SystemExit(
+            "cortex-gateway: TELEGRAM_ALLOWED_USERS is unset or empty — "
+            "without an allowlist any Telegram user who finds the bot could "
+            "talk to the agent. Set it to the allowed chat/user ids "
+            "(comma-separated); this is the same var Hermes uses.")
+    home = os.environ.get("TELEGRAM_HOME_CHANNEL", "").strip()
+    if not home:
+        raise SystemExit(
+            "cortex-gateway: TELEGRAM_HOME_CHANNEL is unset — it is the "
+            "default delivery target for agent-initiated messages (the same "
+            "var Hermes uses).")
+
+    transport = TelegramAdapter(token=token, initial_offset=bot.initial_offset,
+                                home_channel=home)
     backends = _build_backends(data)
     routing = data.get("routing", {})
     return Gateway(transport=transport, backends=backends,
                    default_agent=routing.get("default", DEFAULT_BACKEND_AGENT),
-                   routing_overrides=routing.get("overrides", {}))
+                   routing_overrides=routing.get("overrides", {}),
+                   allowed_users=allowed)
 
 
 def main() -> int:

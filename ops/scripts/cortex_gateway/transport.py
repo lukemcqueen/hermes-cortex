@@ -132,7 +132,8 @@ class TransportAdapter:
 class TelegramAdapter(TransportAdapter):
     """Long-poll getUpdates, ONE poller per bot (gateway owns it)."""
 
-    def __init__(self, token: str, initial_offset: int = 0):
+    def __init__(self, token: str, initial_offset: int = 0,
+                 home_channel=None):
         # A4 fuzz hardening: fail fast on a malformed bot definition rather
         # than building a broken poller that errors at runtime.
         if not isinstance(token, str) or not token:
@@ -141,6 +142,7 @@ class TelegramAdapter(TransportAdapter):
             raise ValueError("initial_offset must be an int")
         self.token = token
         self.offset = initial_offset
+        self.home_channel = home_channel
 
     def start(self) -> None:
         pass
@@ -163,8 +165,17 @@ class TelegramAdapter(TransportAdapter):
         return data.get("result", [])
 
     def send(self, envelope: dict) -> bool:
+        chat_id = envelope.get("channel_user_id")
+        if chat_id is None:
+            # Agent-initiated/proactive message with no explicit chat →
+            # deliver to the home channel (TELEGRAM_HOME_CHANNEL).
+            chat_id = self.home_channel
+        if chat_id is None:
+            raise ValueError(
+                "send: envelope has no channel_user_id and "
+                "TELEGRAM_HOME_CHANNEL is unset")
         params = {
-            "chat_id": envelope["channel_user_id"],
+            "chat_id": chat_id,
             "text": envelope["body"][:4000],
         }
         if envelope.get("reply_to_msg_id"):

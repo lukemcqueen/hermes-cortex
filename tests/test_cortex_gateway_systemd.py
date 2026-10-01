@@ -69,6 +69,8 @@ def test_example_embeds_no_literal_secret():
 def test_build_gateway_wires_the_example(monkeypatch):
     monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "dummy")
     monkeypatch.setenv("GATEWAY_SECRET", "dummy")
+    monkeypatch.setenv("TELEGRAM_ALLOWED_USERS", "1001")
+    monkeypatch.setenv("TELEGRAM_HOME_CHANNEL", "1001")
     gw = cortex_gateway.daemon.build_gateway(EXAMPLE)
     assert gw.default_agent
     assert gw.backends
