@@ -165,7 +165,71 @@ a wrong conclusion once already.
 
 ---
 
-## 7. Report back
+## 8. Skills autoload
+
+Pi discovers skills itself — `--no-skills` *disables* discovery, so it is ON by
+default, and `--skill <path>` (repeatable) adds a file or directory. Confirm your
+own install:
+
+```bash
+P=$(npm root -g)/@earendil-works/pi-coding-agent
+grep -rl "skills" "$P"/dist/core/ | head        # discovery implementation
+ls ~/.pi/agent/                                  # your config dir (may not exist)
+```
+
+Two rules, learned from Hermes:
+
+- **Point it at a CURATED set, not the whole fleet library.** Hermes autoloads
+  skill *names + descriptions* and loads bodies on demand (progressive
+  disclosure). If Pi loads whole skill bodies, wiring 400 skills into the context
+  window is a self-inflicted wound. Ship the handful that matter for the repo you
+  are in.
+- **Discovery is not enforcement.** A skill autoloaded is a *suggestion*; nothing
+  checks that it was followed. Do not confuse the two — see below.
+
+```bash
+pi -e extensions/cortex-context.ts --skill <curated-skills-dir> --tools …
+```
+
+---
+
+## 9. Governance
+
+**The good news, verified on this host: the commit-time pipeline already covers
+you, whatever harness you are.** `core.hooksPath` is global, so a `git commit`
+made from inside a Pi session in ANY repo runs the same gates as Hermes:
+change-validate, an orchestrator self-test (host-derived, not env-spoofable), an
+adversarial scan, and `score-cycle` — which records a governance cycle and scores
+it. A foreign-repo commit from a Pi-style session was observed passing all four
+and succeeding. **You do not need to do anything to be governed at commit time.**
+
+**The gap: the interactive ritual.** Hermes agents call
+`cache_search → begin_change → work → cycle_query → feedback_accept → end_change`
+through the **loop-governance MCP server**. **Pi has no MCP client**, so those
+calls are unavailable to you. Do not pretend otherwise, and do not hand-write a
+lock file under `~/.hermes-cortex/state/` — a fabricated lock is a governance
+violation and is audited.
+
+The correct shape (same pattern as everything else here — **one implementation,
+a per-host adapter**):
+
+```
+   loop-governance MCP server  ──┬── Hermes, Claude Code, Codex  (MCP)
+   (the one implementation)      │
+                                 └── a `loop-gov` CLI  ⤷ Pi extension  (no MCP client)
+```
+
+That CLI adapter **does not exist yet** — it is the next build, the exact
+counterpart of `cortex-context` for governance. Until it lands:
+
+1. **Commit-time governance applies anyway** (above) — rely on it, do not skip it.
+2. If you need the ritual, **ask the orchestrator** to run
+   `begin_change`/`end_change` for your task id, and say plainly in your report
+   that you could not call them yourself.
+
+---
+
+## 10. Report back
 
 Tell the orchestrator, in this order:
 
