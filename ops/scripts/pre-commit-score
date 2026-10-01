@@ -225,9 +225,23 @@ if [[ "$_DOGFOOD_TOPLEVEL" == "${HOME}/hermes-cortex" && -n "$DOGFOOD_HEAD" && -
       echo ""
       echo "🔄  DOGFOOD — committed enforcer differs from deployed copy."
       echo "    Orchestrator authoring detected (staged enforcer change). Auto-deploying via sanctioned helper..."
-      sudo hermes-plugin-lock unlock --cortex-update 2>/dev/null || true
+      # OS-aware lock handling — the SAME pattern as cortex-update.sh:936.
+      #   macOS — chflags uchg needs NO root; a bare `sudo` would prompt for a
+      #           password mid-commit and hang the hook (Titus/any mac host).
+      #   Linux — chattr +i needs root; `sudo -n` (NOPASSWD, non-interactive)
+      #           fails fast instead of prompting when sudoers is not set up.
+      _dogfood_os=$(uname -s 2>/dev/null || true)
+      if [[ "$_dogfood_os" == "Darwin" ]]; then
+        hermes-plugin-lock unlock --cortex-update 2>/dev/null || true
+      else
+        sudo -n hermes-plugin-lock unlock --cortex-update 2>/dev/null || true
+      fi
       cp -f "$DOGFOOD_REPO" "$DOGFOOD_DEPLOY" 2>/dev/null || true
-      sudo hermes-plugin-lock lock 2>/dev/null || true
+      if [[ "$_dogfood_os" == "Darwin" ]]; then
+        hermes-plugin-lock lock 2>/dev/null || true
+      else
+        sudo -n hermes-plugin-lock lock 2>/dev/null || true
+      fi
       echo "✅  Auto-deployed: $(basename "$DOGFOOD_DEPLOY")"
     else
       echo ""

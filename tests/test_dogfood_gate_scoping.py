@@ -20,6 +20,7 @@ comparison the IS_CORTEX_REPO guard uses.
 
 Run: python3 -m pytest tests/test_dogfood_gate_scoping.py -q
 """
+import re
 import subprocess
 import tempfile
 from pathlib import Path
@@ -90,3 +91,36 @@ def test_scope_guard_rejects_subdirectory_of_foreign_repo():
         sub.mkdir(parents=True)
         subprocess.run(["git", "init", "-q"], cwd=d, check=True)
         assert _run_guard(sub) != 0, "nested dir of a foreign repo must fail the guard"
+
+
+# ── macOS parity: the auto-deploy path must be OS-aware ───────
+# macOS (Darwin) locks via `chflags uchg`, which needs NO root. A bare `sudo`
+# there prompts for a password mid-commit and HANGS the hook. Linux needs root
+# (`chattr +i`) and must use `sudo -n` so a missing NOPASSWD rule fails fast
+# instead of prompting. Same pattern as cortex-update.sh's lock handling.
+
+def test_autodeploy_does_not_use_bare_sudo():
+    """A bare interactive `sudo` would hang commits (macOS then, Linux prompts)."""
+    assert "sudo hermes-plugin-lock" not in _HOOK, (
+        "bare `sudo hermes-plugin-lock` present — prompts/hangs; use the "
+        "OS-aware pattern (no sudo on Darwin, `sudo -n` on Linux)")
+
+
+def test_autodeploy_is_darwin_aware():
+    assert "uname -s" in _HOOK, "the lock path must detect the OS"
+    assert "Darwin" in _HOOK, "must branch on Darwin for the macOS lock path"
+
+
+def test_autodeploy_macos_path_has_no_sudo():
+    """Within the Darwin branch the lock call must not use sudo."""
+    m = re.search(r'if \[\[ "\$?_dogfood_os" == "Darwin" \]\]; then\n(.*?)\n\s*else',
+                  _HOOK, re.S)
+    assert m, "Darwin lock branch not found"
+    assert "sudo" not in m.group(1), (
+        f"macOS lock branch must not use sudo, found: {m.group(1).strip()[:80]}")
+
+
+def test_autodeploy_linux_path_uses_noninteractive_sudo():
+    """Linux must use `sudo -n` so a missing sudoers rule never prompts."""
+    assert "sudo -n hermes-plugin-lock" in _HOOK, (
+        "Linux lock path must use `sudo -n` (non-interactive)")
