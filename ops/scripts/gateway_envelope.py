@@ -118,6 +118,10 @@ def sign_payload(envelope: dict, secret: str) -> dict:
     """
     import hashlib
     import hmac as _hmac
+    if not secret or not isinstance(secret, str):
+        raise ValueError(
+            "secret must be a non-empty string — refusing to sign with an "
+            "empty HMAC key (such signatures are forgeable by anyone)")
     canonical = json.dumps(
         {k: envelope.get(k) for k in sorted(envelope)}, sort_keys=True,
         default=str)
@@ -129,6 +133,8 @@ def verify_signature(envelope: dict, secret: str) -> bool:
     """Agent side: verify a gateway-signed envelope (constant-time)."""
     import hashlib
     import hmac as _hmac
+    if not secret or not isinstance(secret, str):
+        return False  # never verify against an empty key
     sig = envelope.get("gateway_sig", "")
     if not sig:
         return False

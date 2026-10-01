@@ -27,6 +27,10 @@ class HermesBackend(BackendAdapter):
                  secret: str):
         if not isinstance(agent, str) or not agent:
             raise ValueError("agent must be a non-empty string")
+        if not isinstance(secret, str) or not secret:
+            raise ValueError(
+                "secret must be a non-empty string — an empty HMAC key "
+                "yields forgeable signatures (set GATEWAY_SECRET)")
         self.agent = agent
         self.bus_url = bus_url
         self.bus_headers = bus_headers

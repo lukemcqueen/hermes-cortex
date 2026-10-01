@@ -151,9 +151,17 @@ def _build_backends(cfg: dict) -> dict:
     bus_auth = (cfg.get("bus_auth") or os.environ.get("CORTEX_BUS_AUTH", "")
                 or os.environ.get("CORTEX_BASIC_AUTH", ""))
     secret = cfg.get("secret") or os.environ.get("GATEWAY_SECRET", "")
+    names = cfg.get("backends", [DEFAULT_BACKEND_AGENT])
+    if names and not secret:
+        raise SystemExit(
+            "cortex-gateway: GATEWAY_SECRET is not set. Every inbound "
+            "envelope is HMAC-signed so agents can verify it came from the "
+            "gateway; an empty key makes those signatures forgeable by "
+            "anyone. Set GATEWAY_SECRET (e.g. `openssl rand -hex 32`) in the "
+            "env, or 'secret' in gateway.yaml.")
     headers = _bus_headers(bus_token, bus_auth)
     backends = {}
-    for name in cfg.get("backends", [DEFAULT_BACKEND_AGENT]):
+    for name in names:
         backends[name] = HermesBackend(agent=name, bus_url=bus_url,
                                        bus_headers=headers, secret=secret)
     return backends

@@ -1,5 +1,5 @@
 {
-  "_comment": "cortex-gateway config. Copy to ~/.hermes-cortex/gateway.yaml (OUTSIDE the repo). Secrets come from the ENVIRONMENT, never this file: TELEGRAM_BOT_TOKEN (bots[].token_ref), GATEWAY_SECRET (HMAC signing secret), CORTEX_BUS_URL (or bus_url below), CORTEX_BUS_TOKEN or CORTEX_BASIC_AUTH. Optional: TELEGRAM_API_BASE. See docs/templates/cortex-gateway.service.",
+  "_comment": "cortex-gateway config. Copy to ~/.hermes-cortex/gateway.yaml (OUTSIDE the repo). Secrets come from the ENVIRONMENT, never this file: TELEGRAM_BOT_TOKEN (bots[].token_ref), GATEWAY_SECRET (REQUIRED — HMAC signing secret; the gateway refuses to start without it, since an empty key makes every signature forgeable), CORTEX_BUS_URL (or bus_url below), CORTEX_BUS_TOKEN or CORTEX_BASIC_AUTH. Optional: TELEGRAM_API_BASE. See docs/templates/cortex-gateway.service.",
   "bus_url": "https://bus.example.com:8903",
   "backends": ["hermes"],
   "bots": [

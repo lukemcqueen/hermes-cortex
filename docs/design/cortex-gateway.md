@@ -40,6 +40,10 @@ in a transport or a backend. The reply must round-trip through
 | CR5 | pi backend adapter | pending |
 | CR6 | steadfaste backend adapter (blocked until steadfaste gateway is complete — Luke) | pending |
 
+## Fail-closed guarantees
+
+- **`GATEWAY_SECRET` is mandatory.** The daemon refuses to start (`SystemExit`) when a backend is configured and the secret is empty; `sign_payload` raises on an empty key and `verify_signature` returns `False`. An empty HMAC key still yields a `gateway_sig` — but a forgeable one — so an unset secret would silently reduce "agents MUST verify" to theatre. Set it with `openssl rand -hex 32`; the same value must reach every verifying agent.
+
 ## Anti-bloat
 
 No multi-transport fan-out, no gateway-owned inbox, no re-implemented Hermes
