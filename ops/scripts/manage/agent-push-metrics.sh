@@ -25,7 +25,7 @@
 set -euo pipefail
 
 # ── Source env (deploy-root .env preferred; old hermes-cortex.env fallback) ──
-ENV_FILE="${HOME}/.hermes-cortex/.env"
+ENV_FILE="${HOME}/hermes-cortex/.env"
 if [ ! -f "$ENV_FILE" ]; then
   ENV_FILE="${HOME}/.hermes-cortex/hermes-cortex.env"
 fi

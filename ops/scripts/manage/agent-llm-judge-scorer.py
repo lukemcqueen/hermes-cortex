@@ -70,7 +70,7 @@ def _check_ollama_model() -> None:
 def _get_langfuse_keys():
     """Read Langfuse project keys from a configurable .env file.
 
-    Priority: --env-path CLI arg > LANGFUSE_ENV_PATH env var > ~/.hermes-cortex/.env
+    Priority: --env-path CLI arg > LANGFUSE_ENV_PATH env var > ~/.hermes/.env
     """
     env_path = None
     args = sys.argv[1:]

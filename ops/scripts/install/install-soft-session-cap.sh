@@ -39,15 +39,13 @@ HERMES_HOME="${HERMES_HOME:-${HOME_DIR}/.hermes}"
 CORTEX_DEPLOY_HOME="${CORTEX_DEPLOY_HOME:-${HOME_DIR}/.hermes-cortex}"
 
 # ── Resolve the intended cap ─────────────────────────────────
-# Priority: runtime env > ~/hermes-cortex/.env (repo) >
-# ~/.hermes-cortex/.env (deploy). No fleet fallback: an unset cap is a
-# valid state (control host / value not yet chosen) — NEVER invent one.
+# Priority: runtime env > ~/hermes-cortex/.env — the ONE canonical cortex env.
+# The deploy dir (~/.hermes-cortex) holds no .env: it is a deployed path.
+# No fleet fallback: an unset cap is a valid state (control host / value not
+# yet chosen) — NEVER invent one.
 SOFT_SESSION_CAP_TOKENS="${SOFT_SESSION_CAP_TOKENS:-}"
 if [[ -z "$SOFT_SESSION_CAP_TOKENS" && -f "${HOME_DIR}/hermes-cortex/.env" ]]; then
   SOFT_SESSION_CAP_TOKENS="$(grep -E '^SOFT_SESSION_CAP_TOKENS=' "${HOME_DIR}/hermes-cortex/.env" 2>/dev/null | tail -1 | cut -d= -f2- | tr -d '"' || true)"
-fi
-if [[ -z "$SOFT_SESSION_CAP_TOKENS" && -f "${CORTEX_DEPLOY_HOME}/.env" ]]; then
-  SOFT_SESSION_CAP_TOKENS="$(grep -E '^SOFT_SESSION_CAP_TOKENS=' "${CORTEX_DEPLOY_HOME}/.env" 2>/dev/null | tail -1 | cut -d= -f2- | tr -d '"' || true)"
 fi
 
 if [[ -z "$SOFT_SESSION_CAP_TOKENS" ]]; then

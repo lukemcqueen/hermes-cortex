@@ -1634,11 +1634,12 @@ VM_QUERY_DEFAULT = "http://127.0.0.1:8428"
 def _env_file_value(key: str) -> str:
   """Read one KEY=value from the agent env file (no sourcing, no code execution).
 
-  Same file precedence as agent-push-metrics.sh: ~/.hermes-cortex/.env, then the
-  legacy ~/.hermes-cortex/hermes-cortex.env.
+  Precedence matches agent-push-metrics.sh: the ONE canonical cortex env
+  (~/hermes-cortex/.env), then the legacy ~/.hermes-cortex/hermes-cortex.env.
+  The deploy dir (~/.hermes-cortex) holds no .env — it is a deployed path.
   """
-  for name in (".env", "hermes-cortex.env"):
-    path = CORTEX_HOME / name
+  for path in (Path(os.path.expanduser("~/hermes-cortex/.env")),
+               CORTEX_HOME / "hermes-cortex.env"):
     try:
       if not path.is_file():
         continue
