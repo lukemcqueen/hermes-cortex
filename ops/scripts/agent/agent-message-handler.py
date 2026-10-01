@@ -1414,7 +1414,20 @@ def main():
       # archives it only after it has been surfaced). Fixes the "Unknown
       # subject" drop of kustos's doctor-fails report (2026-08-03).
       _issue_prefixes = ("ISSUES:", "🚨 ISSUES:", "IMPROVEMENTS:", "PROPOSAL:", "📝 PROPOSAL:", "RE: ")
-      if subject.startswith(_issue_prefixes):
+      # Bare tracked report subjects (2026-10-01).
+      # PROPOSAL / ISSUES / IMPROVEMENTS are in TASK_CREATING_SUBJECTS so the
+      # task lifecycle records them, and normalize_tracked_subject() maps the
+      # documented "PROPOSAL: <what>" form to exactly "PROPOSAL". But they have
+      # NO handler in the command registry (commands.py), so once normalized —
+      # or sent bare via `hc send --subject PROPOSAL` — the prefix-only check
+      # below matched nothing and they fell through to the "Unknown subject"
+      # error path, which archives the message and replies with an error.
+      # Observed: esther→moses PROPOSAL answered with error on moses
+      # ("Unknown subject 'PROPOSAL' from esther"), silently dropping a
+      # legitimate fleet report. Treat the bare form exactly like the prefixed
+      # one — leave it queued for the orchestrator, notify, never error.
+      _bare_report_subjects = ("PROPOSAL", "ISSUES", "IMPROVEMENTS")
+      if subject.startswith(_issue_prefixes) or subject in _bare_report_subjects:
         log(f"📋 Issue report '{subject}' from {body.get('from', '?')} — left in queue for orchestrator")
         notify_telegram(
           f"📋 [{AGENT_NAME}] Issue report from {body.get('from', '?')}: {subject}",
