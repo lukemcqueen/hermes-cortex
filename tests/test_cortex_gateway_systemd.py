@@ -51,7 +51,7 @@ def test_unit_sources_env_from_cortex_env_file():
     # Exactly one env source, and it is the canonical cortex env.
     envfile = [ln for ln in _directives(UNIT.read_text())
                if ln.startswith("EnvironmentFile=")]
-    assert envfile == ["EnvironmentFile=-%h/.hermes-cortex/.env"], envfile
+    assert envfile == ["EnvironmentFile=-%h/hermes-cortex/.env"], envfile
 
 
 def test_unit_does_not_source_hermes_env():
