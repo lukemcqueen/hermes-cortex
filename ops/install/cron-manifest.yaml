@@ -1232,8 +1232,8 @@ crons:
   deliver: telegram:{{HOME_CHANNEL}}
   workdir: ''
   no_agent: false
-  model: 'deepseek-v4-flash-free'
-  provider: 'opencode-free'
+  model: ''
+  provider: ''
 - name: orch-task-evening-pass
   scope: orchestrator
   schedule: '0 21 * * *'
@@ -1249,5 +1249,5 @@ crons:
   deliver: telegram:{{HOME_CHANNEL}}
   workdir: ''
   no_agent: false
-  model: 'deepseek-v4-flash-free'
-  provider: 'opencode-free'
+  model: ''
+  provider: ''
