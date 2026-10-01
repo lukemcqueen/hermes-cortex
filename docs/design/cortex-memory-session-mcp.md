@@ -1,143 +1,227 @@
-# Design — cortex memory & session as MCP servers (S2c)
+# Design — cortex context: memory + session as one MCP surface (S2c)
 
-> **Status:** proposed. Answers Luke's question: *"we need Pi to have session
-> stage and mycortex memory. can hermes-cortex provide this as a service or mcp
-> server?"* — **Yes**, as two standalone MCP servers under `mcp-servers/`.
-> Pi's reading of "session stage": **checkpoint/restore _plus_ searchable
-> session history.**
+> **Status:** proposed v2. Answers Luke: *"we need Pi to have session stage and
+> mycortex memory. can hermes-cortex provide this as a service or mcp server?"*,
+> then *"session and mycortex memory are related too — consider how best to
+> incorporate memory too/mix/match/etc"*, and *"split the concerns design and
+> implement both"*.
+>
+> **v1 of this doc proposed two servers. That was wrong.** Memory and session
+> are not two adjacent capabilities — they are two *views of one store*, and the
+> design below exploits that.
 
-## Goal
+## The relationship (why one surface)
 
-Any agent harness — Pi, Claude Code, Codex, steadfaste-tui, a future one — gets
-two capabilities that today exist only inside a Hermes process:
+Look at what the memory store already is (`mycortex_mem`):
 
-1. **Durable memory** — facts, profiles, semantic search over the past.
-2. **Session continuity** — where a session is (done / pending / blockers /
-   decisions) and a searchable record of what previous sessions did.
+| Table | What it holds |
+|---|---|
+| `peers` | who the agent talks to |
+| `sessions` | a conversation — `started_at` / `ended_at` / `message_count` |
+| `messages` | the per-session, per-peer history (user/assistant, 5k cap) |
+| `conclusions` | durable facts distilled from that history |
+| `profiles` | the curated peer card |
 
-## Why MCP, not a bespoke service
+**Sessions are already the substrate memory is built from.** `messages` *is*
+session history; `conclusions` and `profiles` are what memory distilled out of
+it. Two servers over this would mean two connections, two identity resolutions,
+and two slowly-diverging opinions about what a session is.
 
-- **The harnesses already speak it.** Pi has an MCP client; so do Claude Code
-  and Codex. Zero bespoke integration per harness, and no "integration drifts
-  per agent" maintenance burden.
-- **The pattern is in-repo.** `mcp-servers/` already ships five servers
-  (`loop-gov`, `task`, `bus`, `executor`, `sandbox`) — lifecycle, transport,
-  registration and doctor treatment are solved.
-- **ADR-0005's principle** — *"ONE standard shim, generated per agent, never
-  hand-written bespoke per agent."* A new harness inherits both capabilities by
-  pointing at the same two servers.
-- A bespoke HTTP service would need a client library per harness and would
-  re-solve auth, discovery and versioning that MCP already defines.
+Therefore: **one MCP server, two tool families, one store, one identity model.**
+
+```
+cortex-context-mcp.py
+├── mem_*      memory family   — what do I know?
+└── session_*  session family  — where am I?
+        └── both over mycortex_mem (+ one new checkpoint table)
+```
 
 ## Current state (the gap)
 
 | Capability | Today | Reachable by Pi? |
 |---|---|---|
-| `mem_profile` / `mem_search` / `mem_context` / `mem_reasoning` / `mem_conclude` | `plugins/mycortex-mem/__init__.py` — registered via `ctx.register_memory_provider(...)` | ❌ Hermes plugin-system call; exists only in a Hermes process |
+| `mem_profile` / `mem_search` / `mem_context` / `mem_conclude` | `plugins/mycortex-mem/__init__.py`, via `ctx.register_memory_provider(...)` | ❌ Hermes plugin-system call |
+| `mem_reasoning` | same plugin, via `agent.auxiliary_client.call_llm` | ❌ Hermes internal |
 | Session state | Hermes session storage + the `session-manager` skill | ❌ no standalone surface |
 | loop-gov / task / bus / executor / sandbox | `mcp-servers/*.py` | ✅ |
 
 This is the **S2c** slice already recorded in
-`docs/design/component-hermes-separation.md`: *"Plugin/MCP layer: … mycortex-mem
-/ command … run as standalone MCP servers … remove their in-process Hermes
-plugin coupling."*
+`docs/design/component-hermes-separation.md`.
 
-## Surface A — `mcp-servers/cortex-mem-mcp.py`
+## Why MCP, not a bespoke service
 
-**No new data model.** Wrap the existing mycortex-mem store; expose the same five
-tools the plugin exposes, so a Hermes-side migration later becomes a
-delete-the-plugin change rather than a rewrite.
+- **The harnesses already speak it** — Pi, Claude Code, Codex. Zero bespoke
+  integration per harness.
+- **The pattern is in-repo** — `mcp-servers/` ships five servers; lifecycle,
+  registration and doctor treatment are solved.
+- **ADR-0005's principle** — *"ONE standard shim, generated per agent, never
+  hand-written bespoke per agent."*
+
+## Split 1 — the one that matters: the TRIGGER, not the surface
+
+The split Luke asked for is **not** memory-vs-session. It's:
+
+| Concern | Owner | Why |
+|---|---|---|
+| **Store + search** | **the MCP server** (shared, cross-harness) | Pi's history must be searchable from Hermes and vice versa |
+| **When a checkpoint is written** | **the harness** (hook / on-stop) | MCP is tool-call shaped and has no lifecycle. The agent that most needs a checkpoint is the one that just got killed — it can never write one. |
+
+This removes the biggest weakness of an MCP-hosted session: **auto-capture is a
+harness responsibility, never the model's memory.**
+
+## The mix/match — where the two families reinforce each other
+
+This is what makes one server better than two:
+
+1. **`mem_context` becomes true orientation.** Today it returns card + facts +
+   recent activity. It also returns **the current session's checkpoint** — so one
+   cheap call orients an agent on *both* axes ("what do I know" and "where am
+   I"). A cold start gets memory and position in a single request.
+2. **Checkpoint content is memory candidate material.** `decisions` and
+   `blockers` are exactly what `mem_conclude` exists for; `session_close` can
+   promote them rather than losing them in a session blob.
+3. **`session_search` is one query surface, not a second index.** It searches
+   checkpoints *and* the message history the memory family already searches —
+   same store, same ranking code, no second embeddings pipeline.
+4. **Identity is shared.** A session is keyed to a peer; a card is keyed to the
+   participants. One resolution path, so a restore cannot land on another peer.
+
+## Tool surface
+
+### Memory family (`mem_*`) — mirrors the existing plugin exactly
 
 | Tool | Behaviour |
 |---|---|
-| `mem_profile` | read / write the peer card (cheapest orient-first call) |
-| `mem_search` | hybrid search over past messages (raw excerpts, no LLM) |
-| `mem_context` | full standing snapshot for the session (no LLM) |
-| `mem_reasoning` | LLM-synthesised answer — most expensive; use sparingly |
+| `mem_profile` | read / write the peer card — cheapest call, no LLM |
+| `mem_search` | search over past messages — raw excerpts, no LLM |
+| `mem_context` | orientation snapshot **(now includes the session checkpoint)** |
 | `mem_conclude` | write / list / delete durable facts |
 
 Design rule carried over from the plugin: **`mem_profile` is the orientation
-call, `mem_reasoning` is the expensive one** — the tool descriptions must say so,
-because a harness with no other guidance will reach for the expensive one first.
+call, `mem_reasoning` is the expensive one** — the descriptions must say so, or a
+harness with no other guidance reaches for the costly one first.
 
-## Surface B — `mcp-servers/cortex-session-mcp.py`
-
-Checkpoint/restore **and** search, per Luke's answer.
+### Session family (`session_*`)
 
 | Tool | Behaviour |
 |---|---|
-| `session_checkpoint` | persist a compact snapshot: `done`, `pending`, `blockers`, `decisions`, free-form notes |
-| `session_restore` | return a snapshot by id, or the latest for a repo/agent — enough for a *fresh* session to resume exactly |
-| `session_list` | recent sessions (repo, agent, started/ended, status) |
-| `session_search` | semantic + keyword search across history — "did we already try X?" |
-| `session_note` | append a durable progress line mid-session (visible to the user) |
-| `session_close` | final snapshot + mark ended (resume later without re-deriving) |
+| `session_checkpoint` | persist `done` / `pending` / `blockers` / `decisions` / notes |
+| `session_restore` | snapshot by id, or latest for `harness:repo:branch` — **facts, never a transcript** |
+| `session_list` | recent sessions (harness, repo, agent, status) |
+| `session_search` | checkpoint + message history search ("did we already try X?") |
+| `session_note` | append a durable progress line mid-session |
+| `session_close` | final snapshot + end; optionally promote decisions to memory |
 
-`session_restore` must return **facts, not a transcript** — the checkpoint's job
-is to make resumption cheap, so it caps (done / pending / blockers / decisions)
-rather than echoing conversation.
+**Session identity is explicit and derivable** — `harness:repo:branch`, never
+"latest". A caller that cannot name its session cannot silently resume someone
+else's.
+
+## Disadvantages of MCP for sessions (and the mitigations)
+
+Honest list, since Luke asked:
+
+| Disadvantage | Mitigation in this design |
+|---|---|
+| **No lifecycle hook — best-effort only** | the harness owns writes (`session-autocheckpoint.py` on turn-end/stop); the model is never the only trigger |
+| **Stateless server: no "current session"** | explicit, derivable session id passed by the harness |
+| **No locking — concurrent writers** | one owner per record; checkpoint writes are append-only, the session row is upserted by its derived key |
+| **A summary, never a true context resume** | accepted and stated: `session_restore` returns structured facts and says so |
+| **Tool-schema cost on every call** | one server, families kept tight; session tools are called at boundaries, not per turn |
+| **Start-of-session dependency** | fail-open: an unreachable store reports "memory unavailable" and the harness continues |
+
+Inherent to *any* external store (not MCP-specific): the context window stays in
+the harness; only what the agent writes is recoverable.
 
 ## Stores
 
 | Surface | Store | Notes |
 |---|---|---|
-| Memory | the **existing** mycortex-mem Postgres schema | reuse as-is; no migration |
-| Session | a **new** `sessions` schema in the same cortex Postgres (`session`, `session_checkpoint`, `session_event`) | same host/credentials path mycortex-mem already uses; no new infrastructure |
-| Session search | reuse the **existing embeddings** infra (`schema/v004__embeddings.sql`) | one embedding path, not a second one |
+| Memory | the **existing** `mycortex_mem` schema | reuse as-is; no migration |
+| Session checkpoints | a new **`mycortex_mem`-adjacent** table (`v002__sessions.sql`) | same DB, roles and psql seam — no new infrastructure |
+| Search | the same store + the existing messages table | one ranking path, no second index |
 
-Rationale for Postgres over a local file: the value of session history is
-cross-harness (Pi's session should be searchable from Hermes and vice versa), and
-mycortex-mem already establishes the connection path, roles and RLS pattern.
+Host without the shared Postgres → "memory unavailable", harness continues.
+Memory is an enhancement, never a hard dependency (fail-open).
 
-Host without the shared Postgres → the server reports "memory unavailable"
-cleanly and the harness continues; memory is an enhancement, never a hard
-dependency (fail-open, matching `bus_send`'s outbox behaviour).
+## Deferred (explicitly, not silently)
 
-## Consumption (how Pi gets it)
-
-1. Each harness declares the two servers in its own MCP config — for Pi that is
-   its MCP server list, resolved from the same repo path the other five use.
-2. The ADR-0005 shim (`agent-shim.py`) remains the single generated client, so a
-   new harness gets the wiring from the same generator rather than hand-editing.
-3. Registration never requires the Hermes gateway: the servers read `.env` +
-   Postgres directly, exactly like `task-mcp.py` / `loop-gov-mcp.py`.
+- **`mem_reasoning`** — needs a provider resolved without Hermes's
+  `auxiliary_client`. v1 exposes the no-LLM tools plus session;
+  exposed-but-broken would be worse than absent.
+- **Embedding-backed search** — v1 uses keyword matching over the same store; the
+  embedding upgrade is a later slice and reuses one path, not a new one.
 
 ## Slices
 
 | Slice | What | Depends on |
 |---|---|---|
-| **S2c-a** | `cortex-mem-mcp.py` — wrap the five existing tools | nothing (store exists) — **smallest, immediate Pi win** |
-| **S2c-b** | `sessions` schema + `session_checkpoint` / `_restore` / `_list` / `_close` | S2c-a (shares the server skeleton + Postgres path) |
-| **S2c-c** | `session_search` on the existing embeddings | S2c-b |
-| **S2c-d** | wiring + a doctor check ("this host's harnesses can reach memory/session") | S2c-a…c |
+| **S2c-a** | `store.py` (shared psql seam + SQL) + `v002__sessions.sql` | — |
+| **S2c-b** | `cortex-context-mcp.py`: memory (no-LLM) + session families | S2c-a |
+| **S2c-c** | `session-autocheckpoint.py` harness trigger + Pi consumption docs | S2c-b |
+| **S2c-d** | doctor check + `cortex-update` registration | S2c-b |
+| **S2c-e** | `mem_reasoning` (provider resolution) + embedding search | decided separately |
 
-S2c-a is independently shippable and delivers the memory half on its own.
+## Consumption — how Pi (or any harness) gets it
+
+Two independent pieces, per the split:
+
+**1. The store + search — declare the MCP server once:**
+```bash
+hermes mcp add cortex-context \
+    --command ~/.hermes/hermes-agent/venv/bin/python3 \
+    --args ~/hermes-cortex/mcp-servers/cortex-context-mcp.py
+```
+Same wiring as `tasks` / `loop-governance`. No Hermes gateway required — the
+server reads `.env` + Postgres directly.
+
+**2. The trigger — the harness calls this at a boundary, not the model:**
+```bash
+python3 ~/hermes-cortex/ops/scripts/session-autocheckpoint.py \
+    --done "<x>" --pending "<y>" --decision "<z>" [--close]
+```
+Wire it to the harness's stop/turn-end hook (Pi: its stop hook; Claude Code:
+a `Stop` hook). It is fail-open — a memory outage never breaks the harness — and
+it suppresses an *identical consecutive* checkpoint, so firing it every turn
+cannot shred session history.
+
+**Set the session identity once per session** (all optional; falls back to git):
+```bash
+export CORTEX_SESSION_HARNESS=pi CORTEX_SESSION_REPO=<repo> CORTEX_SESSION_BRANCH=main
+```
+Then tools need no session argument, and a checkpoint written by the harness and
+one read by the MCP server agree on the session.
+
+## Verified
+
+- 22 hermetic tests (`tests/test_cortex_context_mcp.py`), including a **real MCP
+  handshake** over stdio (tools/list through the SDK, not a shape check).
+- **Real end-to-end**: the harness trigger wrote a checkpoint → the MCP server's
+  own handler read it back with structured facts → a repeat was suppressed →
+  `mem_context` returned memory *and* the session in one call →
+  `session_close(promote_decisions=True)` landed the decision as a durable
+  memory fact (`source: session`).
+
+
 
 ## Non-goals
 
-- **Not** a new memory model — the store is mycortex-mem's.
-- **Not** a Hermes plugin removal yet: the plugin keeps working while the MCP
-  server is added. The plugin becomes deletable *after* a harness proves parity
-  (same sequencing as Scope-1's additive shims).
-- **Not** a vector DB or a second embeddings pipeline — reuse `v004`.
-- **Not** an LLM-in-the-loop session summary: checkpoints are structured facts,
-  so restore is cheap and deterministic.
+- No new memory model — `mycortex_mem` is the store.
+- No plugin removal yet: additive first; retire the plugin once the MCP path is
+  proven (the cron-bridge one-owner lesson).
+- Not a transcript archive: checkpoints are structured and capped.
+- No LLM-in-the-loop checkpoint summaries: restore must be cheap and deterministic.
 
 ## Risks
 
-- **Two writers, one store.** The memory plugin and the MCP server write the same
-  schema. Mitigate exactly as the cron bridge did: one owner per concern —
-  additive first, and the plugin is retired once the MCP path is proven, never
-  both live indefinitely.
-- **Prompt-cache/`cost`** — `mem_reasoning` is an LLM call. It must stay explicit
-  and rare (tool description says so), or a harness will burn tokens orienting.
-- **Secret handling** — the servers read the canonical `~/hermes-cortex/.env`
-  like every other MCP server; no new credential surface.
+- **Two writers, one store** — the plugin and the MCP server share a schema.
+  Additive first, then retire the plugin; never both live indefinitely.
+- **Secret handling** — reads the canonical `~/hermes-cortex/.env` like every
+  other MCP server; no new credential surface.
 
 ## Verification
 
-- Parity: the same query through the plugin and through the MCP server returns
-  the same result (golden known-answer, not a smoke test).
-- A real non-Hermes harness (Pi) completing: `mem_profile` → `session_checkpoint`
-  → new session → `session_restore` + `session_search` — end-to-end, on the
-  deployed path.
+- **Hermetic unit tests** with an injected fake store (no live DB).
+- **Parity** — the same `mem_profile` / `mem_search` query through the plugin and
+  the MCP server returns identical results (golden known-answer).
+- **Real end-to-end on the deployed path with Pi** — `mem_profile` →
+  `session_checkpoint` → *new* session → `session_restore` + `session_search`.

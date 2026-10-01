@@ -578,6 +578,12 @@ register "ops/services/mycortex/schema/v004__embeddings.sql" "${CORTEX_DEPLOY_HO
 # mycortex-mem — persistent memory provider (Honcho replacement)
 register "ops/services/mycortex-mem/migrate.py"            "${CORTEX_DEPLOY_HOME}/services/mycortex-mem/migrate.py"
 register "ops/services/mycortex-mem/schema/v001__mem.sql"  "${CORTEX_DEPLOY_HOME}/services/mycortex-mem/schema/v001__mem.sql"
+# S2c — memory + session over one store: the shared psql seam + checkpoint schema.
+register "ops/services/mycortex-mem/store.py"              "${CORTEX_DEPLOY_HOME}/services/mycortex-mem/store.py"
+register "ops/services/mycortex-mem/schema/v002__sessions.sql" "${CORTEX_DEPLOY_HOME}/services/mycortex-mem/schema/v002__sessions.sql"
+# S2c — the MCP surface any harness can reach, and the harness-side trigger.
+register "mcp-servers/cortex-context-mcp.py"               "${CORTEX_DEPLOY_HOME}/scripts/cortex-context-mcp.py"
+register "ops/scripts/session-autocheckpoint.py"           "${CORTEX_DEPLOY_HOME}/scripts/session-autocheckpoint.py"
 register "ops/scripts/manage/mycortex-parity.py"      "${CORTEX_DEPLOY_HOME}/scripts/mycortex-parity.py"
 register "ops/scripts/manage/mycortex"                "${CORTEX_DEPLOY_HOME}/scripts/mycortex"
 # mycortex-postgres compose (dedicated hermes-cortex-owned Postgres, NOT langfuse)
