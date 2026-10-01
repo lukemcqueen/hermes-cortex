@@ -208,6 +208,34 @@ def diff_cron(live: dict, desired: dict) -> list[str]:
     return drift
 
 
+def _bridge_owned() -> set:
+    """Cron names owned by the standalone HC cron bridge, not by Hermes.
+
+    The S2a migration hosts eligible simple no_agent jobs on user-scope systemd
+    timers and REMOVES the Hermes entry so exactly one scheduler owns each job.
+    Those jobs are therefore legitimately absent from live jobs.json and must
+    not be reported as manifest-missing.
+
+    Marker = systemd's own enable symlink in timers.target.wants/ (filesystem
+    only, so it works from a cron/doctor context with no DBus session). A
+    DISABLED unit — a job paused for a reason — is absent from wants/, so that
+    job is still expected live.
+    """
+    wants = Path.home() / ".config" / "systemd" / "user" / "timers.target.wants"
+    if not wants.is_dir():
+        return set()
+    prefix, suffix = "cortex-bridge-", ".timer"
+    out: set[str] = set()
+    try:
+        for p in wants.glob("cortex-bridge-*.timer"):
+            n = p.name
+            if n.startswith(prefix) and n.endswith(suffix):
+                out.add(n[len(prefix):-len(suffix)])
+    except OSError:
+        return set()
+    return out
+
+
 def check_drift(verbose: bool = False) -> tuple[list[dict], list[dict], list[str]]:
     """Compare manifest vs live. Returns (drifted, missing, errors)."""
     crons = load_manifest()
@@ -215,6 +243,7 @@ def check_drift(verbose: bool = False) -> tuple[list[dict], list[dict], list[str
     drifted: list[dict] = []
     missing: list[dict] = []
     errors: list[str] = []
+    bridged = _bridge_owned()
 
     manifest_names = set()
     for cron in crons:
@@ -224,6 +253,10 @@ def check_drift(verbose: bool = False) -> tuple[list[dict], list[dict], list[str
         if not is_in_scope(cron):
             continue
         manifest_names.add(name)
+        if name in bridged:
+            # Owned by the HC cron bridge (systemd timer) and removed from
+            # Hermes by design — not expected in live jobs.json.
+            continue
         if name not in live:
             missing.append(cron)
             continue
