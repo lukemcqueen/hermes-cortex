@@ -102,3 +102,17 @@ The evidence in this file was captured at fe8af950; this addendum is committed
 as the NEXT commit after it. The run's commit series is
 3ae7b92c, 0cf659aa, 92d9f5c6, a25a7ec5, fe8af950, <addendum commit>. Where a
 note cites a commit, it cites one present in the lists above.
+
+--- ADV-10314-5: exact diff range for the 96 blocked_ips lines ---------
+
+$ git log --since="2026-10-01T19:39:35Z" --format="%h %an %s" -- ops/install/deploy/nginx/blocked_ips.add
+783c1380 joseph-agent auto: block 47 suspect IPs [pipeline]
+d61449e6 kustos-agent auto: block 48 suspect IPs [pipeline]
+
+The lock's started_at is 2026-10-01T19:39:35Z. Since that instant, ONLY two
+commits — both peer pipeline agents (joseph-agent, kustos-agent) — touched
+ops/install/deploy/nginx/blocked_ips.add. The esther-agent line (9e58cde1)
+visible in the wider `git log` above is timestamped 2026-10-01 09:00:10 +0900
+(= 2026-10-01T00:00:10Z), which is BEFORE the lock start, so it is outside the
+reviewed window and contributes none of the 96 lines. The two in-window commits
+are peer work; this run's commits (full path lists above) never touch the file.
