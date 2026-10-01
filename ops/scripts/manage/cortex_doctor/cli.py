@@ -49,6 +49,7 @@ from .checks import (
     check_bus_grant_expiry,
     check_cortex_gateway,
     check_cortex_env,
+    check_cron_bridge_migration,
 )
 from .fix import apply_fixes
 from .bus_alert import dispatch_bus_alerts
@@ -104,6 +105,7 @@ def main():
         check_bus_grant_expiry,
         check_cortex_gateway,
         check_cortex_env,
+        check_cron_bridge_migration,
     ]
 
     if do_quick:

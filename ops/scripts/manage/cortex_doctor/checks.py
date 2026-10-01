@@ -8,6 +8,7 @@ import hashlib
 import json
 import logging
 import os
+import platform
 import re
 import shlex
 import subprocess
@@ -1222,6 +1223,92 @@ def _check_manifest_drift(res):
       res.add(f"Cron manifest missing ({m.get('name')})", "FAIL",
           "declared in manifest, absent from live jobs",
           "Run: python3 ~/hermes-cortex/ops/scripts/manage/cron_manifest.py --repair")
+
+
+def _bridge_unit_names() -> set:
+    """Cron names that have a bridge unit file, in ANY state (enabled or not).
+
+    Distinct from `_bridge_owned_jobs()` (which is enabled-only): a job the
+    migration deliberately left alone still gets a DISABLED unit, so a unit
+    file in any state means the job was *considered* by the migration. Only a
+    job with no unit file at all is a migration gap.
+    """
+    units = Path.home() / ".config" / "systemd" / "user"
+    prefix, suffix = "cortex-bridge-", ".timer"
+    out = set()
+    try:
+        for p in units.glob("cortex-bridge-*.timer"):
+            n = p.name
+            if n.startswith(prefix) and n.endswith(suffix):
+                out.add(n[len(prefix):-len(suffix)])
+    except OSError:
+        return set()
+    return out
+
+
+def check_cron_bridge_migration(res) -> None:
+    """Have this host's eligible no_agent crons been migrated to the HC bridge?
+
+    S2a moves simple no_agent jobs off the Hermes `cronjob` scheduler onto
+    systemd user timers, so they fire whether or not the gateway is alive. A
+    host that has not migrated still works while the gateway is up — but it
+    silently loses every no_agent job when the gateway restarts or is down,
+    which is the exact coupling S2a removes. Hence a WARN with the runbook
+    rather than a FAIL (nothing is broken, something is un-migrated).
+
+    Eligibility mirrors the bridge generator's `job_is_simple()`: `no_agent` +
+    a script, no chaining (`context_from`/`continuity`), no model pin. Those
+    are precisely the jobs the generator can host; anything else stays on the
+    Hermes scheduler by design and is not reported.
+
+    A job the migration deliberately left alone (a job paused for a reason)
+    keeps a DISABLED unit, so a unit file in any state means "considered".
+    Only a job with NO unit file at all is reported as a gap.
+    """
+    # systemd user timers are Linux-only. On macOS (and anywhere without
+    # systemd) the bridge is not the mechanism, so this is not a gap.
+    if platform.system() != "Linux":
+        res.add("Cron bridge", "INFO",
+            f"not applicable on {platform.system()} — the HC cron bridge is systemd-based")
+        return
+    if not JOBS_FILE.exists():
+        return
+    try:
+        data = json.loads(JOBS_FILE.read_text())
+    except (json.JSONDecodeError, OSError):
+        return
+    jobs = data.get("jobs", []) if isinstance(data, dict) else data
+
+    have_unit = _bridge_unit_names()
+    pending = []
+    for job in jobs:
+        if not isinstance(job, dict):
+            continue
+        name = job.get("name") or ""
+        if not name:
+            continue
+        if not (job.get("no_agent") and job.get("script")):
+            continue
+        if job.get("context_from") or job.get("continuity") or job.get("model"):
+            continue
+        if name in have_unit:
+            continue
+        # An enabled job with no unit was never migrated. A *paused* job with
+        # no unit is simply not running and needs no bridge unit.
+        if job.get("enabled"):
+            pending.append(name)
+
+    if pending:
+        res.add(f"Cron bridge migration ({len(pending)})", "WARN",
+            f"{len(pending)} eligible no_agent job(s) still on the Hermes scheduler "
+            f"with no bridge unit: {', '.join(sorted(pending)[:5])}"
+            + (" …" if len(pending) > 5 else ""),
+            "Run the per-host migration: docs/runbooks/cron-bridge-migration.md "
+            "(generate units → enable timers → remove the Hermes entries). "
+            "Until then these jobs stop firing whenever the gateway is down.")
+    else:
+        res.add("Cron bridge migration", "PASS",
+            "every eligible no_agent job is either bridged or deliberately left on Hermes")
 
 
 def check_scripts(res):
