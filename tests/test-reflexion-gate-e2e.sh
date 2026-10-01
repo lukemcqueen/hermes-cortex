@@ -25,10 +25,8 @@ P=0; F=0
 pass() { P=$((P + 1)); echo "  ✅ $1"; }
 fail() { F=$((F + 1)); echo "  ❌ $1${2:+ — $2}"; }
 
+CLEANUP_FAILED=0
 cleanup() {
-  # Report a failed cleanup rather than hiding it: silenced cleanup means probe rows
-  # persist and nobody knows. The rows are session-scoped to probe-e2e-* so they are
-  # harmless, but "harmless" is a claim the next reader should be able to check.
   local rc=0
   python3 - "$STORE" <<'PY' >/dev/null || rc=$?
 import importlib.util, sys
@@ -43,9 +41,8 @@ except Exception as exc:
     sys.exit(1)
 PY
   if [[ "$rc" -ne 0 ]]; then
-    echo "  ⚠️  cleanup could not remove probe-e2e-* rows (rc=$rc) — they persist until" >&2
-    echo "      the store is reachable again; they are session-scoped and do not affect" >&2
-    echo "      a real session's evidence." >&2
+    CLEANUP_FAILED=1
+    echo "  ❌ cleanup could not remove probe-e2e-* rows (rc=$rc)" >&2
   fi
 }
 trap cleanup EXIT
@@ -60,8 +57,7 @@ sys.exit(0 if m.Store().available() else 1)
 PY
 then
   echo "  ⏭  SKIP — HC store unreachable (mycortex-postgres not running on this host)."
-  echo "     This test verifies the live writer→store→verifier path; with no store"
-  echo "     there is nothing honest to assert. Not a failure."
+  echo "     This test requires the live store; without it no assertion can run."
   exit 0
 fi
 echo "  store reachable"
@@ -115,6 +111,11 @@ echo "═══ Summary ═══"
 echo "  ${P} passed, ${F} failed"
 if [ "$F" -gt 0 ]; then
   echo "  ❌ SOME TESTS FAILED"
+  exit 1
+fi
+cleanup
+if [[ "$CLEANUP_FAILED" -eq 1 ]]; then
+  echo "  ❌ CLEANUP FAILED — probe rows persist; this run is not a clean pass"
   exit 1
 fi
 echo "  ✅ ALL TESTS PASSED"

@@ -111,14 +111,11 @@ def _import_module(path: Path):
 
 
 def load_store_module():
-    """HC's store module: repo layout first, then the deployed copy.
+    """Resolve HC's store module.
 
-    `here.parents[2]` is the repo root for `<repo>/ops/scripts/hc-reflexion-check.py`
-    — parents[0]=scripts, [1]=ops, [2]=repo. The first version used
-    `here.parent.parent` (which is ops), so the candidate resolved to
-    `ops/ops/services/...` and NEVER matched: the repo copy was only ever found
-    through the $HOME fallback. Caught by tests/test-reflexion-gate-repoint.sh,
-    which stages a verifier copy in a temp tree and needs this lookup to work.
+    Search order: `$repo/ops/services/mycortex-mem/store.py` (repo root derived from
+    this file's location), then `~/.hermes-cortex/services/mycortex-mem/store.py`.
+    Returns the module, or None when neither exists.
     """
     here = Path(__file__).resolve()
     for c in (here.parents[2] / "ops" / "services" / "mycortex-mem" / "store.py",
@@ -129,17 +126,13 @@ def load_store_module():
 
 
 def skill_loaded(skill: str, session_id: str) -> tuple[int, str]:
-    """(exit_code, message) — never raises; the caller only reads the code.
+    """(exit_code, message) for "did this session load this skill".
 
-    STORE-ONLY, deliberately: no fallback to the Hermes conversation DB, which keeps
-    the incumbent load-bearing and hides a failure of HC's own recording instead of
-    surfacing it. It is also not overridable at run time — an environment variable
-    that redirects the store lookup would let a caller point the gate at a stub that
-    answers "loaded" for anything, which is a bigger hole than the one being closed.
+    Reads HC's own store only (mycortex_mem.tool_events, keyed by session_id). There
+    is no fallback source and no run-time override of the store lookup.
 
-    What this path is verified by, in the repo rather than in prose:
-      tests/test-reflexion-gate-e2e.sh      writer -> real store -> verifier, live
-      tests/test-reflexion-gate-repoint.sh  this gate block + the exit-code branches
+    Returns (0, message) when loaded, (1, message) when not loaded, (3, message) when
+    the store module is missing, unreachable, or raises. Never raises.
     """
     mod = load_store_module()
     if mod is None:
