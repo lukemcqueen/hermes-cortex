@@ -27,8 +27,19 @@ integration is `github.com/disler/ten-levels-of-jev` (30 tested Jev use cases in
   — the `--tools` allowlist is explicit; only listed tools are available.
 
 ## Extension API (the Jev-hook surface)
+
+**Read the installed type defs before writing a hook — never infer the signature.**
+```bash
+P=$(npm root -g)/@earendil-works/pi-coding-agent
+sed -n '1,60p' "$P"/dist/core/extensions/types.d.ts   # + grep the event interfaces
+```
+
 - **Hooks** — `pi.on("tool_call" | "tool_result" | "turn_end" | "before_agent_start" | "session_before_compact", fn)`. A `tool_call` hook can `return { block: true, reason }` to stop a tool call before it runs; the agent sees only the reason + a notice that the block is final.
-- **Tools** — `pi.registerTool({ name, label, description, parameters, run })`. Tool descriptions carry the question schema; a `before_agent_start` hook injects a one-line system-prompt nudge so the agent knows the tool exists.
+- **The handler's FIRST parameter is the EVENT, not a ctx**: `ExtensionHandler<E> = (event: E, ctx: ExtensionContext) => R`. Reading `ctx.<thing>` off that first parameter yields `undefined`.
+- **Injection is the RETURN VALUE.** `before_agent_start` returns `BeforeAgentStartEventResult` (`{ message?, systemPrompt? }`); there is **no `ctx.addSystemPrompt()`**. To add context, return an augmented `systemPrompt` (or a `message`).
+- **Event payloads carry the data**: `turn_end` → `{ turnIndex, message, toolResults, entries, outcome }`; `before_agent_start` → `{ prompt, images, systemPrompt, systemPromptOptions }`. Derive what you need from the event.
+- **Tools** — `pi.registerTool({ name, label, description, parameters, run })`. Tool descriptions carry the question schema.
+- **Verify a hook fires AND does its job** — a stderr marker in the handler proves the hook ran, not that the effect landed. Assert the effect (did the injected text appear? did the row have content?).
 - **Compaction** — `.pi/settings.json` sets `compaction.keepRecentTokens` low so compaction has material; `ctx.compact()` wraps pi's compaction; `ctx.getContextUsage()` feeds the numbers.
 - **Side channel** — report every decision on stderr as `JEV_EVENT` lines (and as session entries) so a run is auditable line-by-line (tool call, hook decision, Jev call, model, cost, context).
 
@@ -77,3 +88,12 @@ steadfaste `docs/design/coding-cost-routing.md`:
 - **Fail closed on routing** — an undecidable/unknown/missing classification routes
   pessimistically to the most capable (most expensive) tier, never a silent cheap
   default.
+- **An optional chain over a guessed API hides the defect** — `event.completed?.()`
+  returned `undefined` against a non-existent method, so every checkpoint was
+  written EMPTY while the code looked defensive. When a hook must produce output,
+  assert the output is non-empty (warn loudly with the observed keys) rather than
+  letting `?.` be the difference between working and silent.
+- **`python3` may not be on pi's PATH on macOS** — Homebrew is `/opt/homebrew/bin`
+  (Apple Silicon) or `/usr/local/bin` (Intel), and a GUI-launched pi sees a narrower
+  PATH than your shell. Make the interpreter overridable (e.g.
+  `CORTEX_CONTEXT_PYTHON`) instead of hardcoding `python3`.

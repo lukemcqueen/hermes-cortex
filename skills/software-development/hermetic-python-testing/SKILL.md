@@ -216,11 +216,18 @@ Two rules follow:
  correctly, the fault is the harness you wrote, not the code you were about to
  "fix". Re-run the single test 3x first — deterministic vs flaky selects
  completely different fixes, and guessing wrong means rewriting working code.
- - **A stdio server test must READ INCREMENTALLY — closing stdin races the last
- response.** A stdio server exits on stdin EOF, so
- `subprocess.run(cmd, input=init + "\n" + ready + "\n" + request, ...)` can
- kill it before it flushes the final reply; the test then judges a partial
- transcript and blames the server. Use `Popen`, write+flush each message, read
- stdout until the response you need arrives (or a deadline expires), then
- terminate. A real client holds stdin open — the test must not encode a race
- the product does not have.
+- **Asserting on SOURCE TEXT? Strip comments and docstrings first — the file
+  legitimately names the thing you are asserting is absent.** A guard written as
+  `assert "addSystemPrompt" not in src` failed against correct code, because the
+  file's own comment explained *why there is no `addSystemPrompt()`*. Grep the
+  raw text and you flag your own documentation; strip comment lines (and
+  preferably match the CALL, `addSystemPrompt(`, not the bare word) before
+  asserting. Same family as any probe that is wrong rather than the code:
+  a failing assertion is a claim about your probe first and the artifact
+  second.
+- **A guard that asserts a DETECTOR must assert the real one, not a plausible
+  one.** `assert "sys.platform" in src` failed against a store that correctly
+  detects macOS via `os.uname().sysname == "Darwin"`. Read the implementation
+  and assert what it actually does — or better, make the test
+  BEHAVIOURAL: force the branch (set the flag) and assert the built command,
+  instead of grepping for a string that merely resembles the mechanism.
