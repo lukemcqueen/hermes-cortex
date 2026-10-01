@@ -170,6 +170,33 @@ def test_record_review_replace_actually_replaces(gov):
             conn.close()
 
 
+def test_replace_records_the_first_review_of_a_cycle(gov):
+    """replace=True must also CREATE the row when the cycle has none yet.
+
+    THE BUG: replace was implemented as a plain UPDATE, and the first review of a
+    cycle has no row to update — so the verdict was silently never stored. It
+    surfaced later as rereview_change answering "no recorded review" for a cycle the
+    gate had just judged. The replace test above only exercises the
+    update-an-existing-row path, so it passed while this was broken.
+    """
+    cycle_id = 990004
+    try:
+        assert gov._stored_review(cycle_id) is None, "probe cycle id is not clean"
+        gov._record_review(cycle_id, "rev-first", "model-x", "CLEAN", "[]", "first",
+                           replace=True, fingerprint="fp-first")
+        row = gov._stored_review(cycle_id)
+        assert row is not None, "first review with replace=True was not recorded"
+        assert row["verdict"] == "CLEAN", row
+        assert row["fingerprint"] == "fp-first", row
+    finally:
+        conn = gov._db()
+        try:
+            conn.execute("DELETE FROM adversarial_reviews WHERE cycle_id=?", (cycle_id,))
+            conn.commit()
+        finally:
+            conn.close()
+
+
 def test_review_fingerprint_pins_the_material(gov):
     """A CLEAN is only reusable for the exact material it judged."""
     a = gov._review_fingerprint("note\n\ndiff A")

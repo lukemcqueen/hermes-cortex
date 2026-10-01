@@ -1691,12 +1691,26 @@ def _record_review(cycle_id, reviewer_id, model, verdict, findings_json, summary
         except sqlite3.OperationalError:
             pass  # column already exists — expected
         if replace:
+            # UPSERT, not UPDATE. The first review of a cycle has no row to update,
+            # so a plain UPDATE matched nothing and the verdict was never stored —
+            # observed when rereview_change then reported "no recorded review" for a
+            # cycle the gate had just judged. ON CONFLICT covers both first record
+            # and replacement, which is exactly the pair of behaviours wanted.
             conn.execute(
-                "UPDATE adversarial_reviews SET reviewer_id=?, reviewer_model=?,"
-                " verdict=?, findings_json=?, summary=?, ts=?, fingerprint=?"
-                " WHERE cycle_id=?",
-                (reviewer_id, model, verdict, findings_json, summary,
-                 _now_iso(), fingerprint, cycle_id),
+                "INSERT INTO adversarial_reviews"
+                " (review_id, cycle_id, reviewer_id, reviewer_model,"
+                "  verdict, findings_json, summary, ts, fingerprint)"
+                " VALUES (?,?,?,?,?,?,?,?,?)"
+                " ON CONFLICT(cycle_id) DO UPDATE SET"
+                "  reviewer_id=excluded.reviewer_id,"
+                "  reviewer_model=excluded.reviewer_model,"
+                "  verdict=excluded.verdict,"
+                "  findings_json=excluded.findings_json,"
+                "  summary=excluded.summary,"
+                "  ts=excluded.ts,"
+                "  fingerprint=excluded.fingerprint",
+                (str(uuid.uuid4()), cycle_id, reviewer_id, model,
+                 verdict, findings_json, summary, _now_iso(), fingerprint),
             )
         else:
             conn.execute(
