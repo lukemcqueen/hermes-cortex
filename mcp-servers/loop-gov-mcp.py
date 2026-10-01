@@ -103,22 +103,73 @@ except Exception as _model_lookup_err:
 # ── Dependency Check: mcp package ────────────────────────────
 _HAVE_MCP = importlib.util.find_spec("mcp")
 if _HAVE_MCP is None:
-    msg = (
-        "[mcp-server] ERROR: Required 'mcp' Python package not found.\n"
-        "[mcp-server] Install it with:\n"
-        f"[mcp-server]   {sys.executable} -m pip install mcp\n"
-        "[mcp-server] Or if using system Python:\n"
-        "[mcp-server]   pip install mcp"
-    )
-    print(msg, file=sys.stderr)
-    sys.exit(1)
+    # NOT a hard exit. The tool handlers are SDK-independent, so the module must
+    # stay importable and drivable on a host with no MCP client — that is the
+    # whole point of the CLI adapter. Only the stdio SERVER needs the SDK, and
+    # main() refuses cleanly without it. Exiting here made the guard below
+    # unreachable and broke governance for exactly the hosts this serves.
+    print("[mcp-server] WARNING: the 'mcp' package is not installed — the stdio "
+          "server cannot start; the CLI adapter (ops/scripts/loop-gov.py) still "
+          "works.\n"
+          f"[mcp-server]   {sys.executable} -m pip install mcp", file=sys.stderr)
 
 log = logging.getLogger("loop-governance")
 logging.basicConfig(level=logging.DEBUG, format="[mcp-server] %(levelname)s: %(message)s", stream=sys.stderr, force=True)
 
-from mcp.server import Server
-from mcp.server.stdio import stdio_server
-from mcp.types import Tool, TextContent, CallToolResult, ListToolsResult
+try:
+    from mcp.server import Server
+    from mcp.server.stdio import stdio_server
+    from mcp.types import Tool, TextContent, CallToolResult, ListToolsResult
+    MCP_AVAILABLE = True
+except ImportError:  # pragma: no cover — governance without the MCP SDK
+    # Governance must be usable by a host with no MCP client (Pi). Rather than
+    # fork the implementation, this module stays importable without the SDK: the
+    # handlers below build CallToolResult/TextContent objects, so minimal
+    # stand-ins keep the SAME code path working. The CLI is then an adapter over
+    # this file, not a second implementation of it.
+    MCP_AVAILABLE = False
+
+    class TextContent:  # type: ignore[no-redef]
+        def __init__(self, type: str = "text", text: str = ""):
+            self.type = type
+            self.text = text
+
+        def model_dump(self) -> dict:
+            return {"type": self.type, "text": self.text}
+
+    class CallToolResult:  # type: ignore[no-redef]
+        def __init__(self, content: list | None = None, is_error: bool = False):
+            self.content = content or []
+            self.is_error = is_error
+
+        def model_dump(self) -> dict:
+            return {
+                "content": [c.model_dump() if hasattr(c, "model_dump") else c
+                            for c in self.content],
+                "isError": self.is_error,
+            }
+
+    class Tool:  # type: ignore[no-redef]
+        def __init__(self, name: str = "", description: str = "",
+                     inputSchema: dict | None = None, input_schema: dict | None = None):
+            self.name = name
+            self.description = description
+            # The real SDK (and every call site here) uses the camelCase
+            # `inputSchema`; accept both so the shim cannot diverge from it.
+            self.input_schema = inputSchema if inputSchema is not None else (input_schema or {})
+
+    class ListToolsResult:  # type: ignore[no-redef]
+        def __init__(self, tools: list | None = None):
+            self.tools = tools or []
+
+    class Server:  # type: ignore[no-redef]
+        """Placeholder: the stdio server is only constructed when MCP is present."""
+
+        def __init__(self, *args, **kwargs):
+            pass
+
+    def stdio_server():  # type: ignore[no-redef]
+        raise RuntimeError("the MCP SDK is not installed — run the CLI adapter instead")
 
 HOME = Path.home()
 SESSION_FILE = HOME / ".hermes" / "session.id"
@@ -817,6 +868,34 @@ def _config() -> dict:
 
 async def list_tools(ctx, params=None) -> ListToolsResult:
     return ListToolsResult(tools=[
+        Tool(
+            name="rereview_change",
+            description=(
+                "Re-judge an OPEN cycle after its adversarial findings were FIXED. The "
+                "verdict is stored once per cycle, so without this a FINDINGS verdict was "
+                "permanent: correct the code, and the reviewer still read the same frozen "
+                "note and refused forever — forcing agents toward an override. Requires a "
+                "NEW note stating what changed AND the evidence for it (command output, not "
+                "a narrative) — an unchanged note is REFUSED, because this exists to re-judge "
+                "a fixed change, not to re-roll a verdict. The reviewer still runs live against "
+                "the current diff and decides; this cannot manufacture a CLEAN."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "task_id": {"type": "string", "description": "The task whose cycle should be re-judged."},
+                    "note": {
+                        "type": "string",
+                        "description": (
+                            "What changed since the findings, WITH the evidence attached — paste "
+                            "the command output, do not summarise it. Must differ from the note "
+                            "that was reviewed."
+                        ),
+                    },
+                },
+                "required": ["task_id", "note"],
+            },
+        ),
         Tool(
             name="begin_change",
             description="MANDATORY: Call before making any code/config change. Creates a governance lock AND a pending cycle in the loop-governance DB. Scoring is handled by log_cycle() — STOP decisions auto-accept. After work, call end_change() to release.",
@@ -1570,8 +1649,9 @@ def _extract_verdict(text: str):
     return "FINDINGS", "[]"
 
 
-def _record_review(cycle_id, reviewer_id, model, verdict, findings_json, summary):
-    """Insert the verdict; duplicate cycle_id is a benign no-op (idempotent).
+def _record_review(cycle_id, reviewer_id, model, verdict, findings_json, summary,
+                   replace: bool = False):
+    """Insert the verdict. Duplicate cycle_id is a no-op unless replace=True.
 
     Connection hygiene (2026-09-30): conn MUST be closed on EVERY path. cycle_id
     is UNIQUE, so a retried end_change re-runs the review and re-INSERTs ->
@@ -1580,6 +1660,11 @@ def _record_review(cycle_id, reviewer_id, model, verdict, findings_json, summary
     daemon — in WAL that held the write reservation indefinitely, so each review
     retry wedged the DB for all sessions and forced pointless daemon kills.
     try/finally guarantees the connection (and its lock) is always released.
+
+    `replace=True` is used ONLY by rereview_change: the frozen UNIQUE row is what
+    made a cycle unclosable once FINDINGS was recorded, so a fixed change could
+    never be re-judged. Replacing keeps ONE verdict per cycle (no history
+    inflation) and is recorded in the governance log, so it stays auditable.
     """
     conn = _db()
     try:
@@ -1594,19 +1679,117 @@ def _record_review(cycle_id, reviewer_id, model, verdict, findings_json, summary
             " summary TEXT,"
             " ts TEXT NOT NULL)"
         )
-        conn.execute(
-            "INSERT INTO adversarial_reviews"
-            " (review_id, cycle_id, reviewer_id, reviewer_model,"
-            "  verdict, findings_json, summary, ts)"
-            " VALUES (?,?,?,?,?,?,?,?)",
-            (str(uuid.uuid4()), cycle_id, reviewer_id, model,
-             verdict, findings_json, summary, _now_iso()),
-        )
+        if replace:
+            conn.execute(
+                "UPDATE adversarial_reviews SET reviewer_id=?, reviewer_model=?,"
+                " verdict=?, findings_json=?, summary=?, ts=?"
+                " WHERE cycle_id=?",
+                (reviewer_id, model, verdict, findings_json, summary,
+                 _now_iso(), cycle_id),
+            )
+        else:
+            conn.execute(
+                "INSERT INTO adversarial_reviews"
+                " (review_id, cycle_id, reviewer_id, reviewer_model,"
+                "  verdict, findings_json, summary, ts)"
+                " VALUES (?,?,?,?,?,?,?,?)",
+                (str(uuid.uuid4()), cycle_id, reviewer_id, model,
+                 verdict, findings_json, summary, _now_iso()),
+            )
         conn.commit()
     except sqlite3.IntegrityError:
         pass  # already reviewed — idempotent
     finally:
         conn.close()  # NEVER leak the connection (or its write lock) into the daemon
+
+
+def _rereview_change(args: dict) -> CallToolResult:
+    """Re-judge an OPEN cycle after its findings were fixed.
+
+    THE GAP THIS CLOSES: the adversarial verdict is stored under a UNIQUE
+    cycle_id, so FINDINGS was permanent. Fix the code, re-run end_change, and the
+    reviewer still read the same frozen outcome_note and the same recorded
+    verdict — a legitimately fixed change could never close. The only escape was
+    an override, which is exactly what governance should not force an agent to
+    reach for.
+
+    GOVERNANCE IS NOT WEAKENED — friction is:
+      * the reviewer still runs LIVE against the current diff and decides. This
+        cannot manufacture a CLEAN; it only asks again;
+      * it REFUSES unless the material actually changed — a new note is required
+        and must differ from the one that was reviewed. Re-rolling without doing
+        the work is the same request twice and is rejected;
+      * the replacement is logged and leaves exactly one verdict per cycle, so
+        the record stays honest and auditable;
+      * it is an explicit, named action — never a silent side effect of closing.
+    """
+    task_id = str(args.get("task_id") or "").strip()
+    new_note = str(args.get("note") or "").strip()
+    if not task_id:
+        return CallToolResult(content=[TextContent(type="text", text=(
+            "❌ rereview_change requires task_id."))])
+    if not new_note:
+        return CallToolResult(content=[TextContent(type="text", text=(
+            "❌ rereview_change requires a NEW note describing what changed and the "
+            "evidence for it. A re-review without new material is the same request "
+            "twice — fix the findings first."))])
+
+    lock, err = _verify_lock_for_task(task_id, args)
+    if lock is None:
+        return CallToolResult(content=[TextContent(type="text", text=(
+            f"❌ Cannot re-review: {err or 'no live lock for this task'}"))])
+
+    conn = _db()
+    try:
+        row = conn.execute(
+            "SELECT id, outcome_note, decision FROM loop_cycles WHERE task_id=? "
+            "ORDER BY id DESC LIMIT 1", (task_id,)).fetchone()
+        if row is None:
+            return CallToolResult(content=[TextContent(type="text", text=(
+                f"❌ No cycle recorded for task '{task_id}'."))])
+        cycle_id, old_note, decision = row["id"], (row["outcome_note"] or ""), row["decision"]
+
+        rev = conn.execute(
+            "SELECT verdict, findings_json FROM adversarial_reviews WHERE cycle_id=?",
+            (cycle_id,)).fetchone()
+        if rev is None:
+            return CallToolResult(content=[TextContent(type="text", text=(
+                f"❌ Cycle #{cycle_id} has no recorded review — nothing to re-review. "
+                "Run end_change to get it reviewed."))])
+        old_verdict = str(rev["verdict"] or "").upper()
+        if old_verdict == "CLEAN":
+            return CallToolResult(content=[TextContent(type="text", text=(
+                f"✅ Cycle #{cycle_id} already CLEAN — call end_change to release."))])
+        if new_note == (old_note or "").strip():
+            return CallToolResult(content=[TextContent(type="text", text=(
+                f"❌ Refused: the note is unchanged from what was reviewed on cycle "
+                f"#{cycle_id}. Re-review exists for a FIXED change — describe what "
+                "changed and attach the evidence (command output, not prose)."))])
+
+        # The material changed: update the note the reviewer reads, then re-judge.
+        conn.execute("UPDATE loop_cycles SET outcome_note=? WHERE id=?",
+                     (new_note, cycle_id))
+        conn.commit()
+        cycle = dict(row)
+        cycle["outcome_note"] = new_note
+    finally:
+        conn.close()
+
+    log.info("rereview: cycle %s task %s — verdict was %s, material changed",
+             cycle_id, task_id, old_verdict)
+
+    block = _adversarial_review_gate(lock, cycle)
+    if block is not None:
+        # The gate already recorded the fresh verdict; report it plainly.
+        return CallToolResult(content=[TextContent(type="text", text=(
+            f"Cycle #{cycle_id}: re-review completed — the reviewer still has "
+            "findings below. Governance is unchanged: fix them, then re-review "
+            "again with the new evidence.\n\n"
+            + "\n".join(c.text for c in block.content if getattr(c, "text", None))))])
+
+    return CallToolResult(content=[TextContent(type="text", text=(
+        f"✅ Cycle #{cycle_id} re-reviewed and CLEAN — the findings are resolved. "
+        "Call end_change('" + task_id + "') to release the lock."))])
 
 
 def _adversarial_review_gate(lock: dict, cycle: dict) -> Optional[CallToolResult]:
@@ -2683,12 +2866,19 @@ def _promote_issue_to_task(args: dict) -> CallToolResult:
 
 
 # ── MCP Server ───────────────────────────────────────────────
-server = Server("loop-governance", on_list_tools=list_tools, on_call_tool=call_tool)
+# Only constructed when the SDK is present. Everything above (the handlers) is
+# SDK-independent so an MCP-less host can drive it through the CLI adapter.
+server = Server("loop-governance", on_list_tools=list_tools, on_call_tool=call_tool) if MCP_AVAILABLE else None
 
 
 # ── Main ─────────────────────────────────────────────────────
 
 async def main():
+    if not MCP_AVAILABLE:
+        print("loop-governance: the MCP SDK is not installed. Use the CLI adapter "
+              "(ops/scripts/loop-gov.py) or run this with a python that has 'mcp'.",
+              file=sys.stderr)
+        sys.exit(1)
     async with stdio_server() as (read_stream, write_stream):
         await server.run(read_stream, write_stream, server.create_initialization_options())
 

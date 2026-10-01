@@ -1,0 +1,216 @@
+#!/usr/bin/env python3
+"""Tests for the generic governance adapter (loop-gov) and the re-review path.
+
+These cover the CHANGED code paths directly — a green suite that never touches
+mcp-servers/loop-gov-mcp.py or ops/scripts/loop-gov.py does not verify them.
+Each test here fails without the change it guards.
+"""
+from __future__ import annotations
+
+import importlib.util
+import inspect
+import json
+import subprocess
+import sys
+from pathlib import Path
+
+import pytest
+
+REPO = Path(__file__).resolve().parent.parent
+SERVER = REPO / "mcp-servers" / "loop-gov-mcp.py"
+CLI = REPO / "ops" / "scripts" / "loop-gov.py"
+
+
+def _load(path: Path, name: str):
+    spec = importlib.util.spec_from_file_location(name, path)
+    assert spec and spec.loader
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+@pytest.fixture(scope="module")
+def gov():
+    return _load(SERVER, "loop_gov_under_test")
+
+
+def cli(*args: str, timeout: int = 180):
+    return subprocess.run([sys.executable, str(CLI), *args],
+                          capture_output=True, text=True, timeout=timeout)
+
+
+# ── The change that lets a no-MCP host drive governance ──────────
+
+def test_server_is_importable_and_usable_without_the_mcp_sdk(gov):
+    """The SDK import must be guarded, and the handlers must still work.
+
+    This is what makes the CLI possible at all: without the guard, importing the
+    server on a harness with no `mcp` package raises and governance is
+    unreachable from that host.
+    """
+    assert hasattr(gov, "MCP_AVAILABLE"), "no MCP_AVAILABLE flag — the guard is gone"
+    # Handlers are SDK-independent and return a CallToolResult either way.
+    r = gov._check_lock({})
+    dumped = r.model_dump()
+    text = dumped["content"][0]["text"]
+    assert "active" in text, text[:200]
+
+
+def test_shim_tool_accepts_the_sdk_camelcase_kwarg():
+    """The shim must accept `inputSchema`, exactly as the real SDK and every call
+    site in the server do. A shim that only understood `input_schema` would raise
+    on `list_tools()` for a host without the SDK — precisely the hosts this
+    mechanism exists to serve.
+
+    Exercised for REAL, in a subprocess where `mcp` cannot be imported: on a
+    machine that HAS the SDK the shim is never defined, so asserting on the
+    imported module here would test nothing (it did — that was a bad probe).
+    """
+    script = (
+        "import importlib.util, sys\n"
+        # A None entry in sys.modules makes `import mcp` raise ImportError — the
+        # supported way to simulate an absent SDK (a finder that raises from
+        # find_spec propagates instead of being caught).
+        "sys.modules['mcp'] = None\n"
+        "sys.modules['mcp.server'] = None\n"
+        "sys.modules['mcp.server.stdio'] = None\n"
+        "sys.modules['mcp.types'] = None\n"
+        "spec = importlib.util.spec_from_file_location('gov_nomcp', sys.argv[1])\n"
+        "m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)\n"
+        "assert m.MCP_AVAILABLE is False, 'guard did not engage'\n"
+        "t = m.Tool(name='x', description='d', inputSchema={'type': 'object'})\n"
+        "assert t.input_schema == {'type': 'object'}, t.input_schema\n"
+        "r = m._check_lock({})\n"                       # handlers still work
+        "assert 'active' in r.model_dump()['content'][0]['text']\n"
+        "print('NOMCP_OK')\n"
+    )
+    r = subprocess.run([sys.executable, "-c", script, str(SERVER)],
+                       capture_output=True, text=True, timeout=180)
+    assert "NOMCP_OK" in r.stdout, f"{r.stdout[-300:]}\n{r.stderr[-500:]}"
+
+
+# ── The generic CLI ─────────────────────────────────────────────
+
+def test_cli_lists_and_manifests_the_surface():
+    r = cli("--list")
+    assert r.returncode == 0, r.stderr
+    assert "begin_change" in r.stdout and "end_change" in r.stdout
+
+    r = cli("--tools-json")
+    assert r.returncode == 0, r.stderr
+    manifest = json.loads(r.stdout)
+    assert manifest["transport"] == "cli"
+    assert manifest["exit_codes"]["1"] == "governance refused"
+    names = {t["name"] for t in manifest["tools"]}
+    assert {"begin_change", "end_change", "check_lock"} <= names
+
+
+def test_every_advertised_tool_has_a_handler(gov):
+    """Drift guard: the manifest and the handlers cannot disagree. The CLI maps
+    `<tool>` to `_<tool>`, so a tool advertised without a handler is a dead entry
+    an agent would call and fail on."""
+    import asyncio
+    result = asyncio.run(gov.list_tools(None))
+    for t in result.tools:
+        assert hasattr(gov, f"_{t.name}"), f"advertised but no handler: {t.name}"
+
+
+def test_cli_refusal_exits_1_not_0():
+    """A governance refusal must be visible to a script gating on the exit code.
+
+    This shipped wrong: 'Error: Lock belongs to task X' exited 0, so an automation
+    checking the code would conclude a locked repo was free.
+
+    The exact wording depends on ambient lock state (a foreign lock → 'belongs to
+    task', no lock at all → 'No governance session active'), so this asserts the
+    CONTRACT rather than one phrasing: exit 1 AND `is_refusal()` reads the message
+    as a refusal. Exit code and message must agree — a caller gating on either
+    must reach the same conclusion. Specific phrasings are pinned hermetically in
+    the test below.
+    """
+    r = cli("end_change", '{"task_id":"definitely-not-locked"}')
+    assert r.returncode == 1, f"expected refusal exit 1, got {r.returncode}: {r.stdout[:200]}"
+    mod = _load(CLI, "loop_gov_cli_under_test")
+    assert mod.is_refusal({}, r.stdout) is True, \
+        f"exit code says refused but the message reads as success: {r.stdout[:200]}"
+
+
+def test_refusal_detector_covers_the_no_session_phrasing():
+    """The SECOND wording of the same refusal class, pinned hermetically.
+
+    The live CLI test above depends on ambient lock state, so it passed while a
+    stale lock for another task happened to exist and failed once it was cleared.
+    This asserts the contract directly, with no state at all:
+
+      $ loop-gov end_change '{"task_id":"definitely-not-locked"}'
+      No governance session active. Nothing to release.   → exit 0  ✗
+
+    A caller gating on that exit code concludes the release succeeded. `is_refusal`
+    enumerates phrasings, so every refusal the server can emit must be pinned here
+    or the next new wording silently reads as success again.
+    """
+    mod = _load(CLI, "loop_gov_cli_under_test")
+    assert mod.is_refusal({}, "No governance session active. Nothing to release.") is True, \
+        "no-session refusal still reports success to a caller gating on exit codes"
+    assert mod.is_refusal({}, "Error: Lock belongs to task 'x', not 'y'.") is True
+    assert mod.is_refusal({"isError": True}, "") is True
+    # ...and a genuine success must NOT be read as a refusal.
+    assert mod.is_refusal({}, '{"active": false}') is False
+
+
+def test_cli_usage_errors_are_distinct():
+    assert cli("no_such_tool", "{}").returncode == 2
+    assert cli("check_lock", "{not json").returncode == 2
+
+
+def test_cli_stdout_is_machine_readable():
+    """The server logs at DEBUG with force=True on import; the CLI must not let
+    that noise onto stdout, or every consumer has to filter it."""
+    r = cli("check_lock", "{}")
+    assert r.returncode == 0, r.stderr
+    payload = json.loads(r.stdout)          # stdout must parse as JSON, cleanly
+    assert "active" in payload
+
+
+# ── The re-review path (the friction fix) ───────────────────────
+
+def test_rereview_is_advertised(gov):
+    """Registered as a real tool, so the CLI exposes it with no CLI change."""
+    import asyncio
+    result = asyncio.run(gov.list_tools(None))
+    names = {t.name for t in result.tools}
+    assert "rereview_change" in names
+    assert hasattr(gov, "_rereview_change")
+
+
+def test_rereview_requires_a_note(gov):
+    """A re-review without new material is the same request twice — refused, so
+    the path cannot be used to re-roll a verdict instead of fixing a finding."""
+    r = gov._rereview_change({"task_id": "whatever"})
+    text = r.model_dump()["content"][0]["text"]
+    assert "requires a NEW note" in text, text[:200]
+
+
+def test_rereview_requires_a_task(gov):
+    r = gov._rereview_change({})
+    assert "requires task_id" in r.model_dump()["content"][0]["text"]
+
+
+def test_record_review_can_replace_a_verdict(gov):
+    """The frozen UNIQUE row is what made a FINDINGS verdict permanent. The
+    replace path must exist, or a fixed change can never be re-judged."""
+    import inspect
+    sig = inspect.signature(gov._record_review)
+    assert "replace" in sig.parameters, "no replace path — verdict stays frozen"
+    assert sig.parameters["replace"].default is False, \
+        "replace must be opt-in; normal reviews stay idempotent"
+
+
+def test_rereview_cannot_bypass_the_reviewer(gov):
+    """It must ask the reviewer again, never decide for itself: it has to go
+    through the same gate, and it must not write a verdict row on its own."""
+    src = inspect.getsource(gov._rereview_change)
+    assert "_adversarial_review_gate" in src, \
+        "re-review must re-run the same gate, not decide for itself"
+    assert "_record_review(" not in src, \
+        "re-review must let the gate record the verdict, not record one itself"
