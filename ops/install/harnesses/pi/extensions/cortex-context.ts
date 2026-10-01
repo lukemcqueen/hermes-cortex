@@ -21,7 +21,7 @@
  * INSTALL (in the Pi project):
  *   cp <cortex>/ops/install/harnesses/pi/extensions/cortex-context.ts extensions/
  *   pi -e extensions/cortex-context.ts \
- *      --tools read,bash,edit,write,mem_context,mem_search,mem_profile,mem_conclude,session_checkpoint,session_restore,session_search,session_note,session_close
+ *      --tools read,bash,edit,write,mem_context,mem_search,mem_profile,mem_conclude,session_checkpoint,session_restore,session_search,session_note,session_close,session_tool_event,session_loaded_skill
  *
  * ENV: CORTEX_SESSION_HARNESS / _REPO / _BRANCH (else derived from git),
  *      CORTEX_CONTEXT_CLI to override the CLI path.
@@ -150,7 +150,31 @@ export default function (pi: any) {
     });
   });
 
-  // ── 4. The memory + session tools, as native Pi tools ────────────
+  // ── 4. Record tool events: the pre-commit reflexion gate's evidence ──────
+  //
+  // A Pi commit is gated by the same global git hook as a Hermes one, and that gate
+  // asks HC's own store "did this session load skill X?". Nothing recorded it for
+  // Pi, so a Pi session's commit was REFUSED no matter what the agent did — the
+  // gate was satisfiable only by a harness that had a writer. Measured before this
+  // hook existed: `hc-reflexion-check.py --session pi:<repo>:<branch>` => NOT-LOADED.
+  //
+  // Only gate-relevant tools are recorded, not every call: the store is evidence,
+  // not a transcript. A failure is reported, never silent — a silent failure here is
+  // indistinguishable from an agent that loaded nothing.
+  pi.on("tool_result", async (event: any) => {
+    // The base ToolResultEvent has no toolName; the concrete variants do, so read
+    // it defensively rather than assuming the general shape.
+    const toolName = typeof event?.toolName === "string" ? event.toolName : "";
+    if (toolName !== "skill_view") return;
+    const raw = await cortex("session_tool_event", {
+      tool_name: toolName,
+      content: event?.input ?? {},
+    });
+    process.stderr.write(
+      `CORTEX_TOOL_EVENT ${toolName} ${raw ? "recorded" : "FAILED"}\n`);
+  });
+
+  // ── 5. The memory + session tools, as native Pi tools ────────────
   const tool = (
     name: string,
     label: string,
@@ -182,4 +206,6 @@ export default function (pi: any) {
   tool("session_search", "Session: search", "Search structured session state AND message history in one call — 'did we already try X?'.", { query: { type: "string" }, limit: { type: "number" } }, ["query", "limit"]);
   tool("session_note", "Session: note", "Append a durable progress line mid-session.", { text: { type: "string" } }, ["text"]);
   tool("session_close", "Session: close", "Final snapshot + end the session. promote_decisions=true carries the decisions into durable memory.", { promote_decisions: { type: "boolean" } }, ["promote_decisions"]);
+  tool("session_tool_event", "Session: tool event", "Record ONE tool invocation for this session so governance can answer 'did this session load skill X?' without reading a harness-private DB. The tool_result hook already records skill_view automatically; call this for anything else a gate cares about.", { tool_name: { type: "string" }, content: { type: "object" }, role: { type: "string" } }, ["tool_name", "content", "role"]);
+  tool("session_loaded_skill", "Session: skill loaded?", "Did THIS session load a skill? The exact question the pre-commit reflexion gate asks, answered from the cortex store — useful before committing.", { skill: { type: "string" } }, ["skill"]);
 }
