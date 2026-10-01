@@ -128,7 +128,7 @@ their domain.
 | `meme-generation` | 2.0.0 | Create meme PNGs from templates with Pillow text overlay. | `skill_view(name='meme-generation')` |
 | `pixel-art` | 2.0.0 | Pixel art w/ era palettes (NES, Game Boy, PICO-8). | `skill_view(name='pixel-art')` |
 
-## Devops (159 skills)
+## Devops (161 skills)
 
 | Skill | Version | Purpose | Load With |
 |-------|---------|---------|-----------|
@@ -194,6 +194,7 @@ their domain.
 | `doctor-warning-resolution` | 1.0.0 | (no description) | `skill_view(name='doctor-warning-resolution')` |
 | `documentation-scope` | 1.0.0 | Multi-audience documentation scoping conventions for Hermes Cortex. Defines when and how to distinguish gen... | `skill_view(name='documentation-scope')` |
 | `enforcement-change-safety` | 1.1.0 | Use before enforcement code changes or shared-repo commits. | `skill_view(name='enforcement-change-safety')` |
+| `enforcement-gate-migration` | 1.0.0 | Use when re-pointing a gate onto a new evidence store. | `skill_view(name='enforcement-gate-migration')` |
 | `enforcer-modification-considerations` | 1.0.0 | Use before modifying any enforcer/governance code. | `skill_view(name='enforcer-modification-considerations')` |
 | `env-aware-compose-wrapper` | 2 | Build an env-aware `_compose()` wrapper for `./run` CLI scripts that requires an explicit environment varia... | `skill_view(name='env-aware-compose-wrapper')` |
 | `eval-harness` | 1.0.0 | Systematic evaluation framework for agent capabilities — capability tests, regression suites, failure analysis | `skill_view(name='eval-harness')` |
@@ -206,6 +207,7 @@ their domain.
 | `git-forensics` | 1.0.0 | Use when files vanished or uncommitted deletions appeared. | `skill_view(name='git-forensics')` |
 | `git-push-gate-failures` | 1.0.0 | Use when a push is blocked and the cause is unclear. | `skill_view(name='git-push-gate-failures')` |
 | `golden-parity-harness` | 1.0.0 | Golden known-answer parity testing for system replacement. | `skill_view(name='golden-parity-harness')` |
+| `governance-closeout` | 1.0.0 | Use when a governed change will not close. | `skill_view(name='governance-closeout')` |
 | `governance-compliance-reporting` | 1.0.0 | Review agent commits for enforcement compliance. | `skill_view(name='governance-compliance-reporting')` |
 | `governance-identity-hardening` | 1.0.0 | Use when hardening orchestrator identity or unlock tokens. | `skill_view(name='governance-identity-hardening')` |
 | `governance-lock-lifecycle` | 1.0.0 | Use when blocked after cortex update or end_change rejects. | `skill_view(name='governance-lock-lifecycle')` |
