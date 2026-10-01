@@ -35,6 +35,7 @@ import os
 import re
 import sqlite3
 import subprocess
+import threading
 import time
 import traceback
 from datetime import datetime, timezone
@@ -152,6 +153,82 @@ def _persist_session_skills(session_id: str) -> None:
         logging.getLogger("governance-enforcer").warning(
             "skills-credit journal write failed for session %s: %s", session_id, exc
         )
+
+
+# ── HC's own tool-event store — the reflexion gate's evidence ──────
+# The pre-commit reflexion gate used to read ~/.hermes/state.db: HERMES-owned, and
+# structurally unsatisfiable for a harness with no Hermes (Pi, aider, CI). HC
+# records its own events in the session/memory store instead, and the gate asks
+# THAT. This is the Hermes-side writer: every skill_view the enforcer already
+# tracks is also recorded there, under the SAME key the gate asks about — the
+# governance lock's session_id IS the Hermes session id.
+#
+# Off the tool-call path: a daemon thread does the psql round trip, so a slow or
+# unreachable store can never stall the gateway. Failures are LOGGED, never
+# swallowed — a silent failure here looks exactly like an agent that never loaded
+# the skill, and the commit is refused with nothing to explain why.
+# Guard for the memoized module-level caches below. One enforcer plugin instance
+# is shared by concurrent sessions inside ONE gateway process, and tool calls can
+# run on different threads, so an unguarded `global x` read-modify-write is a real
+# (if small) lost-update race. For a memo the damage is benign — an extra write —
+# but "benign" argued from memory is how a benign race becomes a bug later.
+_CACHE_LOCK = threading.Lock()
+
+_HC_STORE_MOD = None
+_HC_STORE_TRIED = False
+
+
+def _hc_store_module():
+    """The store module, imported once. None means unavailable (logged once)."""
+    global _HC_STORE_MOD, _HC_STORE_TRIED
+    with _CACHE_LOCK:
+        if _HC_STORE_TRIED:
+            return _HC_STORE_MOD
+        _HC_STORE_TRIED = True
+        try:
+            import importlib.util
+            path = Path.home() / ".hermes-cortex" / "services" / "mycortex-mem" / "store.py"
+            if not path.is_file():
+                logging.getLogger("governance-enforcer").warning(
+                    "tool-event store not deployed at %s — the reflexion gate cannot see "
+                    "this session's skill loads until cortex-update.sh runs", path)
+                return None
+            spec = importlib.util.spec_from_file_location("hc_store_tool_events", path)
+            if spec is None or spec.loader is None:
+                return None
+            mod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)
+            _HC_STORE_MOD = mod
+        except Exception as exc:  # noqa: BLE001 — never let evidence-record break a tool call
+            logging.getLogger("governance-enforcer").warning(
+                "tool-event store unavailable (%s) — the reflexion gate will not see this "
+                "session's skill loads", exc)
+            _HC_STORE_MOD = None
+        return _HC_STORE_MOD
+
+
+def _record_tool_event(session_id: str, skill_name: str) -> None:
+    """Record one `skill_view` into HC's own store. Never raises, never blocks."""
+    if not session_id or not skill_name:
+        return
+
+    def _work() -> None:
+        try:
+            mod = _hc_store_module()
+            if mod is None:
+                return
+            mod.Store().sessions.record_tool_event(
+                "hermes", "skill_view", {"name": skill_name}, session_key=session_id)
+        except Exception as exc:  # noqa: BLE001
+            logging.getLogger("governance-enforcer").warning(
+                "tool-event record failed (session %s, skill %s): %s",
+                session_id, skill_name, exc)
+
+    try:
+        threading.Thread(target=_work, name="hc-tool-event", daemon=True).start()
+    except Exception as exc:  # noqa: BLE001
+        logging.getLogger("governance-enforcer").warning(
+            "tool-event thread failed to start: %s", exc)
 
 
 def _session_skills(session_id: str) -> set:
@@ -869,9 +946,10 @@ def _write_session_marker(hermes_session_id: str) -> None:
     global _LAST_MARKER_SESSION
     if not hermes_session_id:
         return
-    if hermes_session_id == _LAST_MARKER_SESSION:
-        return  # nothing changed — markers already carry this session id
-    _LAST_MARKER_SESSION = hermes_session_id
+    with _CACHE_LOCK:
+        if hermes_session_id == _LAST_MARKER_SESSION:
+            return  # nothing changed — markers already carry this session id
+        _LAST_MARKER_SESSION = hermes_session_id
     pid = os.getpid()
     try:
         GOVERNANCE_STATE_DIR.mkdir(parents=True, exist_ok=True)
@@ -2078,6 +2156,10 @@ def register(ctx):
                     # reload — a cortex-update deploy — cannot strip this
                     # session's domain/adversarial credit mid-task.
                     _credit_skill(hermes_session_id, skill_name)
+                    # ...and into HC's own store, which is what the pre-commit
+                    # reflexion gate now asks. Best-effort and off the hot path;
+                    # a failure is logged, never silent (see _record_tool_event).
+                    _record_tool_event(hermes_session_id, skill_name)
 
             # ── Read-only tools exempt from skills gate ─────────────
             # Read-only tools (read_file, search_files, web_search, skill_view, etc.)

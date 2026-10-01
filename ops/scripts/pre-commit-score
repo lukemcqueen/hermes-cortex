@@ -527,135 +527,50 @@ if [[ -n "$_TDD_NEW_CODE" ]]; then
   fi
 fi
 
-# ── Reflexion gate: verify skill_view('reflexion-check') was called this session ──
-# Query the session DB for proof the agent actually loaded the skill — not just
-# a file-presence check. The governance lock carries the session_id.
+# ── Reflexion gate: verify this session loaded reflexion-check ──────────────
+# Answered from HC's OWN session/memory store (mycortex_mem.tool_events), NOT the
+# Hermes conversation DB under the hermes home. That DB is HERMES-owned: a
+# Pi/aider/Claude Code/CI session has no Hermes and therefore no rows, so reflexion
+# governance was structurally unsatisfiable for every non-Hermes harness — and a
+# change to how Hermes records tool calls could silently break the gate for all.
+#
+# Session identity is the repo's ACTIVE GOVERNANCE LOCK (session_id) — exactly the
+# session the gate always used — so there is no ambiguous "latest session" guess.
+# The writer records under that same key, so question and answer cannot disagree.
+#
+# Exit codes: 0 loaded / 1 not loaded / 3 store unreachable. ALL non-zero REFUSE:
+# a gate that passes when it cannot verify is not a gate. The verifier prints the
+# reason, so a failure is never a mystery to debug.
 # SKIPPED for sanctioned pipeline commits — no_agent cron has no session;
 # those commits are gated by the append-only guard + adversarial + scoring.
 # SKIPPED in non-HC repos — a manual commit has no session to prove against.
-if [[ "$SANCTIONED_PIPELINE" != "1" && "$IS_CORTEX_REPO" -eq 1 ]] && ! python3 -c "
-import sqlite3, json, os, glob, sys
-
-state_db = os.path.expanduser('~/.hermes/state.db')
-gov_dir = os.path.expanduser('~/.hermes-cortex/state')
-
-# Determine repo slug (same logic as governance lock check below)
-try:
-    repo_slug = os.path.basename(os.popen('git rev-parse --show-toplevel 2>/dev/null').read().strip() or 'generic')
-except:
-    repo_slug = 'generic'
-
-# Find the governance lock for this repo to get session_id.
-# Prefer the current session's own lock (HERMES_SESSION_ID), then any
-# interactive (non-cron) lock, then the first matching lock. Multiple
-# agents (interactive + cron remediation) can hold locks on the same
-# repo simultaneously — picking a cron session's lock here would fail
-# the reflexion gate for an interactive commit that did the ritual.
-session_id = None
-lock_files = glob.glob(os.path.join(gov_dir, '.governance-*.json'))
-current_session = os.environ.get('HERMES_SESSION_ID', '')
-matching = []
-for f in lock_files:
-    try:
-        d = json.load(open(f))
-        if d.get('repo_slug') == repo_slug:
-            matching.append((f, d))
-    except (OSError, json.JSONDecodeError):
-        continue
-# 1) Exact current-session match
-for f, d in matching:
-    if current_session and d.get('session_id') == current_session:
-        session_id = d.get('session_id')
-        break
-# 2) First interactive (non-cron) lock
-if not session_id:
-    for f, d in matching:
-        sid = d.get('session_id') or ''
-        if not sid.startswith('cron_') and not sid.startswith('bg_'):
-            session_id = sid
-            break
-# 3) Fallback: first matching lock
-if not session_id and matching:
-    session_id = matching[0][1].get('session_id')
-
-if not session_id:
-    # Fallback: no lock file — check the most recent non-cron session
-    if os.path.exists(state_db):
-        try:
-            conn = sqlite3.connect(state_db)
-            rows = conn.execute('''SELECT id FROM sessions WHERE id NOT LIKE 'cron_%' ORDER BY started_at DESC LIMIT 3''').fetchall()
-            conn.close()
-            for (sid,) in rows:
-                # Check each recent session for reflexion-check
-                conn2 = sqlite3.connect(state_db)
-                hits = conn2.execute('''SELECT 1 FROM messages WHERE session_id=? AND tool_name=? AND role=? AND content LIKE ? LIMIT 1''',
-                    (sid, 'skill_view', 'tool', '%reflexion-check%')).fetchone()
-                conn2.close()
-                if hits:
-                    session_id = sid
-                    break
-        except:
-            session_id = None  # Acceptable: fallback exhausted, will fail at gate below
-
-if not session_id:
-    print('NO-LOCK')
-    sys.exit(1)
-
-# ── Cron/bg sessions: accept the enforcer's skills-loaded marker ──
-# Cron/bg agents (e.g. enabled_toolsets=[terminal,file,web]) have NO
-# skill_view() in their tool registry and their messages are NOT
-# recorded to state.db mid-run, so the reflexion gate is structurally
-# unsatisfiable for them (same rationale as the enforcer's domain-skill
-# gate cron/bg exemption, commit b8bbaf52 2026-08-07). Accept the
-# enforcer's per-session skills-loaded marker instead: the cron
-# bootstrap (_bootstrap_cron_skills) creates it ONLY after verifying
-# all 8 always-section skills exist on disk, and its fingerprint pins
-# it to the deployed skill versions. Fail closed if the marker is
-# missing or stale — such commits fall through to the normal checks.
-if session_id.startswith('cron_') or session_id.startswith('bg_'):
-    _marker = os.path.join(gov_dir, 'skills-loaded', session_id)
-    try:
-        with open(_marker) as _mf:
-            _content = _mf.read().strip()
-    except OSError:
-        _content = ''
-    if _content.startswith(f'session:{session_id}'):
-        sys.exit(0)
-
-# Query the messages table for skill_view('reflexion-check') in this session
-if not os.path.exists(state_db):
-    print('NO-DB')
-    sys.exit(1)
-
-try:
-    conn = sqlite3.connect(state_db)
-    rows = conn.execute(
-        'SELECT content FROM messages WHERE session_id=? AND tool_name=? AND role=? ORDER BY id',
-        (session_id, 'skill_view', 'tool')
-    ).fetchall()
-    conn.close()
-except sqlite3.OperationalError:
-    print('NO-DB')
-    sys.exit(1)
-
-for (content_json,) in rows:
-    try:
-        d = json.loads(content_json)
-        if d.get('name') == 'reflexion-check':
-            sys.exit(0)
-    except (json.JSONDecodeError, AttributeError):
-        continue
-
-sys.exit(1)
-"; then
-  echo ""
-  echo "❌  Reflexion check not completed."
-  echo "    You must actually run the reflexion-check skill before committing:"
-  echo "      skill_view(name='reflexion-check')"
-  echo "    Answer all 6 questions, then commit."
-  echo "    No bypass flags — use --no-verify only in emergencies."
-  echo ""
-  exit 1
+if [[ "$SANCTIONED_PIPELINE" != "1" && "$IS_CORTEX_REPO" -eq 1 ]]; then
+  HC_REFLEXION_CHECK=""
+  for _cand in "$REPO_ROOT/ops/scripts/hc-reflexion-check.py" \
+               "$HOME/.hermes-cortex/scripts/hc-reflexion-check.py" \
+               "$HOME/.local/bin/hc-reflexion-check.py"; do
+    if [[ -f "$_cand" ]]; then HC_REFLEXION_CHECK="$_cand"; break; fi
+  done
+  if [[ -z "$HC_REFLEXION_CHECK" ]]; then
+    echo ""
+    echo "❌  Reflexion gate verifier missing (hc-reflexion-check.py)."
+    echo "    Re-run: bash ~/hermes-cortex/ops/scripts/cortex-update.sh"
+    echo "    Failing closed — a gate that cannot verify must not pass."
+    echo ""
+    exit 1
+  fi
+  _hc_rc=0
+  _hc_out=$(python3 "$HC_REFLEXION_CHECK" 2>&1) || _hc_rc=$?
+  if [[ "$_hc_rc" -ne 0 ]]; then
+    echo ""
+    echo "❌  Reflexion check not completed."
+    echo "    ${_hc_out}"
+    echo ""
+    echo "    Load the skill, answer the 7 questions, then commit:"
+    echo "      skill_view(name='reflexion-check')"
+    echo ""
+    exit 1
+  fi
 fi
 
 # ── Level 3: Governance lock check (secondary - MCP handles this) ───

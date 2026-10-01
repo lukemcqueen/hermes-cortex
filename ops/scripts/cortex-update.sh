@@ -269,6 +269,11 @@ register "ops/scripts/install/install-score-hook.sh"       "${CORTEX_DEPLOY_HOME
 register "ops/scripts/install/install-claude-governance.sh" "${CORTEX_DEPLOY_HOME}/scripts/install-claude-governance.sh"
 register "ops/scripts/cortex-dogfood.sh" "${CORTEX_DEPLOY_HOME}/scripts/cortex-dogfood.sh"
 register "ops/scripts/pre-commit-score"            "${CORTEX_DEPLOY_HOME}/scripts/pre-commit-score"
+# The reflexion gate's verifier — answers "did this session load skill X?" from
+# HC's own session/memory store instead of the Hermes conversation DB, so the gate
+# works for every harness rather than only Hermes. pre-commit-score fails CLOSED if
+# this is missing, so an unregistered verifier would block every commit.
+register "ops/scripts/hc-reflexion-check.py"       "${CORTEX_DEPLOY_HOME}/scripts/hc-reflexion-check.py"
 register "ops/scripts/post-commit-audit" "${CORTEX_DEPLOY_HOME}/scripts/post-commit-audit"
 register "ops/scripts/pre-push-pull" "${CORTEX_DEPLOY_HOME}/scripts/pre-push-pull"
 register "ops/scripts/manage/agent-no-verify-audit.py" "${CORTEX_DEPLOY_HOME}/scripts/manage/agent-no-verify-audit.py"
