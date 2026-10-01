@@ -30,7 +30,7 @@ behavioral_principles:
  - Name the bus service file cortex-bus.service, not cortex-bus.service. The doctor checks for exactly cortex-bus.service.
  - Verify bus setup at three layers: (1) systemctl is-active cortex-bus.service, (2) curl :8903/health returns backend pgmq, (3) nginx upstream cortex_bus_backend matches :8903. A running process on a port is not enough.
  - After cortex-update , check ~/.hermes/scripts/ for symlinks that point outside the scripts dir. Cron's no_agent runtime rejects symlinks. Replace with real `cp` copies.
- - no_agent cron scripts don't inherit Hermes env vars. If a script needs CORTEX_BUS_TOKEN or CORTEX_BUS_URL, ensure they're set via ~/hermes-cortex/.env, not just ~/hermes-cortex/.env.
+ - no_agent cron scripts don't inherit Hermes env vars. If a script needs CORTEX_BUS_TOKEN or CORTEX_BUS_URL, ensure they're set in `~/hermes-cortex/.env` — the ONE canonical cortex env (there is no deploy-dir `.env`; `~/.hermes/.env` is Hermes-owned and never merged).
  - After running install-orch-crons.sh, always check for stale old-name duplicate crons (bus-* vs orch-bus-*) and remove them. The installer doesn't auto-uninstall renamed crons.
  - When patching a no_agent cron script that uses `docker`, always wrap with `sg docker -c`. The cron runtime doesn't have docker group access even if the agent's shell does.
  - After cortex-update , verify deployed cron scripts in ~/.hermes/scripts/ are real file copies, not symlinks to the repo. Cron runtime rejects symlinks that resolve outside ~/.hermes/scripts/.
@@ -595,7 +595,12 @@ Changing an LLM cron's model has TWO layers of truth; editing only the live pin 
 
 **Fallback chain is GLOBAL, not per-cron** — config.yaml `fallback_providers`, consumed by cron sessions via `get_fallback_chain`. `hermes fallback add/remove/clear` are TTY-interactive only. Non-interactive path: `hermes config set fallback_providers '<json list>'` (current `set_config_value` parses structured list values). This chain is operator-owned — set it directly; no installer script writes it (the env-driven `install-fallback-providers.py` writer was removed 2026-09-09).
 
-**Env file location gotcha:** `install-crons.sh` sources `ENV_FILE="${HOME}/hermes-cortex/.env"` — the **repo-root** gitignored file. On some hosts `~/.hermes-cortex/.env` (deployed dir) is a symlink to an unrelated project (Esther: → `~/langfuse/.env`) and holds NO model vars — don't edit it looking for model config.
+**Env file location (2026-10, single-env refactor):** every script sources `~/hermes-cortex/.env` — the **ONE canonical cortex env** (gitignored). Concretely:
+- The deployed dir `~/.hermes-cortex/` holds **no `.env`** (a stray symlink to `~/langfuse/.env` was removed 2026-10-01). `~/.hermes-cortex/cortex-bus.conf` is a **symlink to the canonical env** (kept for back-compat).
+- `~/.hermes/.env` is **Hermes-owned** (provider keys, Telegram) and is never merged.
+- All `cortex-bus.conf` references were swept to `.env`; if you find one, it's a regression — the only legitimate reference is `ops/scripts/manage/consolidate-env.sh` (which performs the merge).
+- Migrating a legacy host: just run `cortex-update.sh` — it runs `consolidate-env.sh` first (idempotent), which seeds the canonical env from the old conf if needed and creates the symlink. Verify with `bash ~/.hermes-cortex/scripts/consolidate-env.sh --check`.
+- The doctor has a `cortex env` check that FAILs on a missing canonical env / stray deploy-dir `.env` and points at this fix.
 
 **opencode provider tiers** (verified 2026-08-31): `opencode-free` = keyless free tier (aliases `free`, no account needed); `opencode-zen` = paid, needs `OPENCODE_ZEN_API_KEY` (aliases `opencode`/`zen`); `opencode-go` = needs `OPENCODE_GO_API_KEY`. The free tier currently has NO working deepseek: `deepseek-v4-flash-free` was delisted (completion POST → `server_error: "Model is unavailable"`; keys ship as commented+EMPTY placeholders in `~/.hermes/.env`), and no `deepseek-v4-pro-free` exists. The live `GET /zen/v1/models` list can still show delisted models — verify availability with a real chat-completions POST, never trust the list. Full verification recipe: `references/llm-cron-model-fallback.md`.
 

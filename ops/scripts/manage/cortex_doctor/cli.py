@@ -48,6 +48,7 @@ from .checks import (
     check_restraint_registry,
     check_bus_grant_expiry,
     check_cortex_gateway,
+    check_cortex_env,
 )
 from .fix import apply_fixes
 from .bus_alert import dispatch_bus_alerts
@@ -102,6 +103,7 @@ def main():
         check_restraint_registry,
         check_bus_grant_expiry,
         check_cortex_gateway,
+        check_cortex_env,
     ]
 
     if do_quick:

@@ -4864,3 +4864,47 @@ def check_cortex_gateway(res: "Results") -> None:
             "daemon imports hermetically; config + unit independent of hermes-gateway")
 
 
+def check_cortex_env(res: "Results") -> None:
+    """The ONE canonical cortex env: ~/hermes-cortex/.env.
+
+    Since the 2026-10 single-env refactor every script reads that file, so a
+    missing or misplaced env silently degrades the whole host. Catches the two
+    historical traps: a stray `.env` in the DEPLOYED dir (~/.hermes-cortex — it
+    was a symlink to ~/langfuse/.env), and a legacy cortex-bus.conf that is not
+    the sanctioned symlink to the canonical env.
+    """
+    canon = HOME / "hermes-cortex" / ".env"
+    deploy_env = CORTEX_HOME / ".env"
+    legacy = CORTEX_HOME / "cortex-bus.conf"
+
+    if not canon.exists() and not legacy.exists() and not deploy_env.exists():
+        res.add("cortex env", "SKIP", "no cortex env on this host (not installed)")
+        return
+
+    problems = []
+    if deploy_env.exists():
+        problems.append("stray ~/.hermes-cortex/.env (the deployed dir holds no .env)")
+    if not canon.exists():
+        problems.append("canonical ~/hermes-cortex/.env is MISSING")
+    elif (canon.stat().st_mode & 0o777) != 0o600:
+        problems.append(
+            f"~/hermes-cortex/.env perms {oct(canon.stat().st_mode & 0o777)} (want 600)")
+    if legacy.exists() and not legacy.is_symlink():
+        problems.append("~/.hermes-cortex/cortex-bus.conf is a real file, not the symlink")
+    elif legacy.is_symlink():
+        try:
+            if legacy.resolve() != canon.resolve():
+                problems.append("cortex-bus.conf symlink points elsewhere")
+        except OSError:
+            problems.append("cortex-bus.conf symlink is broken")
+
+    if problems:
+        res.add("cortex env", "FAIL", "; ".join(problems),
+                "run cortex-update.sh (it runs consolidate-env.sh), or "
+                "bash ~/.hermes-cortex/scripts/consolidate-env.sh")
+    else:
+        res.add("cortex env", "PASS",
+                "canonical ~/hermes-cortex/.env present (600); cortex-bus.conf is "
+                "the sanctioned symlink; no deploy-dir .env")
+
+
