@@ -198,7 +198,17 @@ _sha256() {
 DOGFOOD_REPO="${HOME}/hermes-cortex/plugins/governance-enforcer/__init__.py"
 DOGFOOD_DEPLOY="${HOME}/.hermes/plugins/governance-enforcer/__init__.py"
 DOGFOOD_HEAD=$(cd "${HOME}/hermes-cortex" && git show HEAD:plugins/governance-enforcer/__init__.py 2>/dev/null | _sha256 | cut -d' ' -f1 || echo "")
-if [[ -n "$DOGFOOD_HEAD" && -f "$DOGFOOD_DEPLOY" ]]; then
+# ── Scope guard (2026-10-01): the hermes-cortex repo ONLY ─────
+# core.hooksPath is GLOBAL (~/.hermes-cortex/hooks), so this hook runs in
+# EVERY repo on the host — client repos, projects, steadfaste. The DOGFOOD
+# check compares THIS repo's committed enforcer against the DEPLOYED copy,
+# a cortex-internal sync state no other repo can act on. Unscoped, a single
+# stale deploy on one host hard-blocked every ordinary commit in every
+# unrelated repo (Titus: "push from a regular non-hc repo"). That is exactly
+# the "gates are scoped to what they govern" rule. Same ${HOME}/hermes-cortex
+# pattern as the IS_CORTEX_REPO guard further down.
+_DOGFOOD_TOPLEVEL=$(git rev-parse --show-toplevel 2>/dev/null || echo "")
+if [[ "$_DOGFOOD_TOPLEVEL" == "${HOME}/hermes-cortex" && -n "$DOGFOOD_HEAD" && -f "$DOGFOOD_DEPLOY" ]]; then
   DEPLOY_HASH=$(_sha256 "$DOGFOOD_DEPLOY" | cut -d' ' -f1)
   STAGED_ENFORCER=$(git diff --cached --name-only 2>/dev/null | grep -c '^plugins/governance-enforcer/__init__.py$' || true)
   IS_ORCH=0

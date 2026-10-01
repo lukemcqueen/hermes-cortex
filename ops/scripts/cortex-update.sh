@@ -2533,6 +2533,18 @@ main() {
   # Sync offline code corpus from repo
   sync_code_corpus
 
+  # ── Deferred failures for the DB schema migrations below ─────
+  # The enforcement chain (deploy_governance_plugin, install_precommit_hook)
+  # is deployed AFTER these migrations. Until 2026-10-01 each migration did
+  # `exit 1`, so a database that was merely restarting aborted the WHOLE
+  # update: the enforcer plugin was never refreshed, DOGFOOD drift persisted,
+  # and the pre-commit gate then blocked every repo on the host (Titus
+  # 2026-10-01 — `psql: container is restarting` while the agent needed a
+  # one-line commit in an unrelated repo).
+  # A schema step must NEVER brick the enforcement sync. Record it, continue,
+  # and fail loudly at the END of the update — never a silent green.
+  local -a _DEFERRED_FAILURES=()
+
   # ── Apply mycortex schema migrations (DDL path) ──────────────
   # cortex-update.sh is a file-copier with NO DDL path (party-2 SS1). The
   # schema reaches existing agents via ops/services/mycortex/migrate.py,
@@ -2545,7 +2557,7 @@ main() {
       : # migrations applied / already current
     else
       error "mycortex migrate.py FAILED — schema may be missing on this host"
-      exit 1
+      _DEFERRED_FAILURES+=("mycortex schema (${mycortex_migrate})")
     fi
   fi
 
@@ -2582,7 +2594,7 @@ except Exception:
         : # migrations applied / already current
       else
         error "mycortex-mem migrate.py FAILED — memory backend will be unavailable"
-        exit 1
+        _DEFERRED_FAILURES+=("mycortex-mem schema (${mem_migrate})")
       fi
     else
       info "Skipping mycortex-mem migration — memory.provider is '${mem_provider:-unset}' (not mycortex-mem)"
@@ -2601,7 +2613,7 @@ except Exception:
       : # migrations applied / already current
     else
       error "tasks migrate.py FAILED — task workflow will be dead on this host (retried next update)"
-      exit 1
+      _DEFERRED_FAILURES+=("tasks schema (${tasks_migrate})")
     fi
   fi
 
@@ -2617,7 +2629,7 @@ except Exception:
       : # migrations applied / already current
     else
       error "learnings migrate.py FAILED — ledger will be dead on this host (retried next update)"
-      exit 1
+      _DEFERRED_FAILURES+=("learnings schema (${learnings_migrate})")
     fi
   fi
 
@@ -3118,6 +3130,21 @@ except: print('error')
   # ── Auto-run doctor after update ─────────────────────────
   info "Running doctor to verify installation…"
   python3 "${CORTEX_DEPLOY_HOME}/scripts/cortex-doctor.py" --quiet 2>&1 || true
+
+  # ── Deferred DB-migration failures: loud, but AFTER the critical sync ──
+  # Everything that keeps the enforcement chain honest (file sync, enforcer
+  # plugin, git hooks) has now run. A schema step that failed earlier must
+  # still surface as a non-zero exit so automation sees it — but it no longer
+  # prevents the sync that clears DOGFOOD drift. Never a silent green.
+  if [[ ${#_DEFERRED_FAILURES[@]} -gt 0 ]]; then
+    echo ""
+    error "Update completed the enforcement/critical sync, but these DB schema migrations FAILED:"
+    for _f in "${_DEFERRED_FAILURES[@]}"; do
+      error "  • ${_f}"
+    done
+    error "The host is NOT fully migrated. Re-run cortex-update.sh once the database is reachable."
+    exit 1
+  fi
 
   echo ""
 }
