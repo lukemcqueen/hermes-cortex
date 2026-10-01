@@ -84,6 +84,46 @@ error: --title is required
 help: tasks create --title "..." [--body "..."]
 ```
 
+## CLIs that OTHER AGENTS integrate with (not just read)
+
+The principles above optimize for an agent *reading* stdout. A second case:
+a harness — Pi, aider, a CI job, a shell script — must *call* your CLI because it
+cannot speak your native protocol (no MCP client, no plugin API). Design for that
+explicitly:
+
+1. **Publish a manifest, not a per-agent binding.** `--tools-json` emitting the
+   tool names, descriptions, input schemas, entrypoint shape and exit codes lets
+   ANY harness, in any language, generate its own thin shim. One manifest beats
+   N hand-written bindings that drift apart.
+2. **Discover the surface at runtime; never hand-write a route table.** Mapping
+   `<tool>` to a handler and enumerating the tool list from the implementation
+   means a newly added capability is reachable automatically. A route list
+   maintained beside the implementation is a second definition of the same thing
+   and it drifts silently — a tool advertised with no handler is a dead entry an
+   agent will call and fail on. Assert the invariant in a test.
+3. **Separate a checking exit code from a failure.** Generalize principle 6:
+   `0` ran/allowed, `1` ran but the operation was REFUSED (a decision — a caller
+   gating on the code must see it), `2` usage error, `3` the dependency is
+   unavailable. Collapsing a refusal into 0 is the damaging case: an automation
+   that gates on the exit code concludes the guarded thing was free when it was
+   locked. Give each meaning its own number and document them in the manifest.
+4. **Keep the core importable without the optional protocol dependency.** Guard
+   the import and degrade, rather than exiting at import time: the handlers are
+   usually protocol-independent, so an import-time exit makes the capability
+   unreachable from exactly the hosts that need the adapter. Only the server/
+   transport entrypoint should refuse when the dependency is missing.
+5. **Suppress the server's log configuration in CLI mode.** A module tuned for
+   serving (e.g. `logging.basicConfig(level=DEBUG, force=True)` at import) floods
+   stderr and buries the answer for a caller parsing output. Re-apply a quiet
+   level after import, since `force=True` wins otherwise.
+6. **Never fall back to a second implementation on failure.** Fail-open is for
+   availability ("carry on with the feature"); it is never a license to
+   re-implement the semantics locally. Report the dependency as unavailable
+   instead — a fallback copy is how two implementations start.
+
+Sibling rule for the adapter side: one implementation, per-host adapters that add
+no semantics — see the `cross-agent-design` skill.
+
 ## When NOT to apply
 
 - **Machine protocol** (bus wire format, MCP transport): stays JSON — TOON

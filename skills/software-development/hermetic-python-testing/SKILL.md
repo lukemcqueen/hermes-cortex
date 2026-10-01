@@ -231,3 +231,40 @@ Two rules follow:
   and assert what it actually does — or better, make the test
   BEHAVIOURAL: force the branch (set the flag) and assert the built command,
   instead of grepping for a string that merely resembles the mechanism.
+- **Whitespace-normalise before asserting a PHRASE against source text.** The
+  same family as the rule above: asserting a multi-word phrase failed because
+  the prose wrapped across a line break, so the substring never appeared
+  contiguously. Assert against `" ".join(text.split())`, or drop the phrase
+  assertion for a structural one.
+- **Test the code you CHANGED — a neighbouring green suite is not evidence.**
+  Reporting "24 passed" from a test file that never imports either modified
+  module verifies nothing about the change; it is reassurance shaped like
+  proof, and it is the finding a reviewer will (correctly) raise. Before citing
+  a test run as evidence, check the path: does any test in that file FAIL if you
+  revert the change? If not, write one that does — a behavioural test on the
+  changed code path, not a broader suite that happens to be nearby.
+- **A fallback/shim only defined when a dependency is ABSENT cannot be tested
+  from the machine that has the dependency.** A guard asserting on the
+  conditional-shim class passed everywhere it was run and tested nothing: on a
+  host with the real package installed, the shim is never defined, so the
+  assertion inspected the real library instead. Drive the absent case for real
+  in a subprocess, by making the import fail:
+  ```python
+  # a None entry in sys.modules makes `import pkg` raise ImportError
+  script = "import sys; sys.modules['pkg'] = None; sys.modules['pkg.sub'] = None\n"
+  script += "...load the module by path, assert the fallback engaged..."
+  subprocess.run([sys.executable, "-c", script], ...)
+  ```
+  A custom `find_spec` that RAISES ImportError is the wrong tool: the import
+  machinery does not catch it, so it aborts instead of falling through to your
+  guard. This case is worth a real test because it is the whole point of the
+  fallback — and it is exactly where a pre-existing hard exit or an
+  unreachable guard hides.
+- **A test that reads AMBIENT state tests the machine, not the code.** A refusal
+  case passed for as long as an unrelated stale lock file happened to exist in the
+  host's state dir, and went red the moment it was cleared — it had never once
+  exercised the branch it claimed to cover. Anything a test reads from a shared
+  location (locks, journals, session markers, live DB rows) is an accidental
+  fixture: point it at a temp `HOME`/`ROOT` or inject the value, and keep the
+  real-resource assertion as ONE explicitly-labelled case. Clearing unrelated
+  state is the cheapest way to discover tests that were passing by accident.

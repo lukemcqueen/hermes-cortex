@@ -148,6 +148,21 @@ Do not argue it away as "tools run sequentially" — add the lock. It is three
 lines, and the finding is describing a real class of bug even when today's
 call pattern happens to be safe.
 
+**Importing `threading` into an existing module re-qualifies the WHOLE file as
+threaded** — the scanner then reports `shared-global-race` on module globals you
+never touched, including plain write-elision memos (`if x == _LAST: return` /
+`_LAST = x`) whose race only costs a duplicate write. Expect latent races to
+appear in the same commit that introduced concurrency, and read them before
+deciding they are noise: two threads really can interleave the check-and-set.
+
+- A single module-level `_CACHE_LOCK = threading.Lock()` shared by several memos
+  is enough; guard the read-modify-write (`with _CACHE_LOCK:` around the check
+  AND the assignment), not just the import.
+- **Never silence one with an inline `# adversarial-ignore: shared-global-race`.**
+  Suppressing a HIGH to get a commit through is exactly the governance reduction
+  the gate exists to prevent; the honest fix is two lines, and the delivery note
+  should say the finding was fixed rather than waived.
+
 ### 7. Read the finding before fixing it: plain output hides the pattern
 
 The text run prints only severity COUNTS and the vague line
@@ -180,6 +195,71 @@ When a commit is blocked but your own per-file check passed, re-run at the
 level the hook reports (grep the hook for `ADV_LEVEL` if unsure) — and check
 EVERY staged file, not just the one you changed most recently. `--gate` is the
 flag that decides blocking; a bare run reports findings without gating.
+
+## The LLM review gate — a DIFFERENT mechanism from the static scan
+
+The rules above fix the **static** `adversarial-verify.py` scan. The close of a
+**complex** change is separately gated by an **LLM reviewer** that reads your
+diff plus your outcome note. Its findings are not pattern matches; they are
+judgements, and the dominant one is `unverified-claim`. Treat them differently:
+
+### Commit BEFORE you close
+
+The gate diffs `lock.started_at..HEAD` — **committed** history. Close before
+committing and the reviewer receives an **empty diff** while your note describes
+a change, so it reports the material as absent (correctly). The order is:
+
+```
+begin_change → work → COMMIT → end_change
+```
+
+### The note is EVIDENCE, not a summary
+
+- **Evidence must live IN THE REPO as a runnable test, not in the note.** A quoted
+  command and its output still reads as unverifiable self-report ("no transcript in
+  the material") even when the run genuinely happened: the reviewer sees only your
+  note and the diff, and it cannot re-run a paste. Put the reproduction in the
+  diff — a test that drives the real components, plus the one-line command to run
+  it — and let the note say only what changed and what the code does.
+- **Test the code you CHANGED — a neighbouring green suite is not evidence.**
+  `"running unrelated tests does not verify the changed code"` is a recurring
+  finding, and a fair one: cite a test run only if some test in it fails when
+you revert the change.
+- **Map each claim to the diff** — which function, what the old line was, what
+the new one is. One line per claim is enough.
+- **Mark gaps `[UNVERIFIED]`** with the check that would close them. An honest
+gap is not a finding; a confident guess is.
+- **Do not editorialise about the review** ("this is unverified", "only the
+  reviewer can decide"). It is read as `evaluation-awareness` — output shaped for
+  acceptance rather than correctness.
+
+### A FINDINGS verdict is per cycle — re-review, do not override
+
+The verdict is stored under a UNIQUE cycle id, so FINDINGS is otherwise
+permanent: fix everything and the reviewer still reads the same frozen note.
+Forcing an override is the wrong answer. Instead: fix, **commit**, then
+`rereview_change(task_id=…, note=…)` (or `loop-gov rereview_change '{…}'` from a
+harness with no MCP client) with a note that **differs** and carries evidence.
+The gate judges live against the current diff and records its own verdict — it
+cannot manufacture a CLEAN, and it refuses an unchanged note, because re-review
+exists to re-judge a fixed change, not to re-roll a verdict.
+
+Two mechanics decide whether that actually works, and both have failed in
+practice:
+
+- **The verdict row is UNIQUE per cycle.** A re-review written as a plain insert is
+  swallowed by the idempotent-duplicate path, so the fresh verdict is DISCARDED and
+  the original FINDINGS stays frozen — indistinguishable, from the outside, from a
+  fix that did not work. Re-review must write with replace semantics, and the close
+  must then honour the stored verdict instead of calling the reviewer again.
+- **The reviewer is a sampling model.** Re-running it on the same material can
+  return the opposite verdict, so a close that re-judges every attempt is a
+  coin-flip dressed up as deliberation. Pin the stored verdict to a fingerprint of
+  the material it judged (note + diff) and reuse it while that material is
+  unchanged; a verdict with no or mismatched fingerprint must be re-judged, so a
+  CLEAN can never be carried over a later, unreviewed change.
+
+Full pass-off contract: `docs/runbooks/adversarial-review-passoff.md`.
 
 ## Verification
 

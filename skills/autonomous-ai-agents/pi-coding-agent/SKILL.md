@@ -58,6 +58,15 @@ The extension registers `mem_*` / `session_*` tools AND wires the lifecycle:
 - `before_agent_start` → restore + inject the checkpoint (a fresh session resumes)
 - **`turn_end` → write a checkpoint** — the harness owns WHEN, never the model
 - `session_before_compact` → checkpoint before continuity is lost
+- **`tool_result` → record the tool event** for tools a gate asks about. The git hook
+  is GLOBAL, so a Pi commit is gated by the same reflexion gate as a Hermes one, and
+  that gate reads HC's store — not the harness's own DB. With no `tool_result` hook a
+  Pi session has no recorded evidence and **every commit is refused** no matter how
+  well the agent behaved.
+
+Register every shared tool the harness must reach in the extension's `tool()` list.
+A tool that exists on the store contract but not in the harness is unreachable to the
+agent, and this hand-written list drifts as `context_tools.TOOLS` grows.
 
 Harness index: `ops/install/harnesses/INDEX.md` · Adding another harness:
 `registry.yaml` + `generate-harnesses.py` · Runbook:
@@ -93,6 +102,15 @@ steadfaste `docs/design/coding-cost-routing.md`:
   written EMPTY while the code looked defensive. When a hook must produce output,
   assert the output is non-empty (warn loudly with the observed keys) rather than
   letting `?.` be the difference between working and silent.
+- **Verify a hook's EFFECT without an LLM run.** A host with no provider ready
+  cannot run a turn, so don't wait on one to test wiring: import the extension with
+  Node 22's `--experimental-strip-types`, call its default export with a fake `pi`
+  (`{ on, registerTool }`) that captures the handlers, fire the handler with a
+  synthetic event in Pi's real shape, and assert the effect landed (a store row
+  exists) — a stderr marker alone proves only that the handler ran.
+- **`ToolResultEventBase` carries `input`/`content`/`isError` but NOT `toolName`** —
+  only the concrete variants (`BashToolResultEvent`, …) declare it. Read `toolName`
+  defensively in a generic `tool_result` handler.
 - **`python3` may not be on pi's PATH on macOS** — Homebrew is `/opt/homebrew/bin`
   (Apple Silicon) or `/usr/local/bin` (Intel), and a GUI-launched pi sees a narrower
   PATH than your shell. Make the interpreter overridable (e.g.

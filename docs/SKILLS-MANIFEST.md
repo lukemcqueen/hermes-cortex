@@ -128,7 +128,7 @@ their domain.
 | `meme-generation` | 2.0.0 | Create meme PNGs from templates with Pillow text overlay. | `skill_view(name='meme-generation')` |
 | `pixel-art` | 2.0.0 | Pixel art w/ era palettes (NES, Game Boy, PICO-8). | `skill_view(name='pixel-art')` |
 
-## Devops (157 skills)
+## Devops (159 skills)
 
 | Skill | Version | Purpose | Load With |
 |-------|---------|---------|-----------|
@@ -244,6 +244,7 @@ their domain.
 | `nginx-web-app-deployment` | 1.0.0 | Deploy a custom web app (Flask, Python, Node) behind nginx — upstream config, SSL, basic auth, rate limitin... | `skill_view(name='nginx-web-app-deployment')` |
 | `offline-code` | 1.0.0 | Offline code snippet search + generation using local Ollama models. Search a curated corpus (run `offline_c... | `skill_view(name='offline-code')` |
 | `omarchy-nvim` | 0.1.0 | Install omarchy-nvim (LazyVim) user-local without sudo. | `skill_view(name='omarchy-nvim')` |
+| `one-owner-migrations` | 1.0.0 | Use when moving a job to a new owner system. | `skill_view(name='one-owner-migrations')` |
 | `orch-backlog-driver` | 1.0.0 | Backlog-driven orchestrator work (F-023) — pull the top pending fleet tasks from the tasks DB, execute or d... | `skill_view(name='orch-backlog-driver')` |
 | `orch-skill-lifecycle` | 1.1.0 | Unified daily skill lifecycle pipeline — collects lessons, evaluates quality, and upgrades skills/SOUL.md.... | `skill_view(name='orch-skill-lifecycle')` |
 | `orch-weekly-auto-fix` | 1.1.0 | After the weekly opportunity scan identifies issues, run auto-fix patterns — git pull, branch cleanup, Dock... | `skill_view(name='orch-weekly-auto-fix')` |
@@ -277,6 +278,7 @@ their domain.
 | `sweep-verification` | 1.0.0 | Verify a decommission sweep removed every file and ref. | `skill_view(name='sweep-verification')` |
 | `sync-allow-ips-to-fail2ban` | 1.0.0 | Sync IPs from allow-ips-manual.conf to fail2ban ignoreip | `skill_view(name='sync-allow-ips-to-fail2ban')` |
 | `system-one-judgment` | 1.0.0 | Use when integrating Jev/von judgment providers or clients. | `skill_view(name='system-one-judgment')` |
+| `systemd-cron-bridge` | 1.0.0 | Use when hosting no_agent crons on systemd timers. | `skill_view(name='systemd-cron-bridge')` |
 | `task-queue-workflow` | 1.0.0 | Use when claiming task-db slices under task model v3. | `skill_view(name='task-queue-workflow')` |
 | `telegram-delivery-diagnostics` | 1.0.0 | Diagnose and fix Telegram delivery issues for Hermes cron jobs — delivery pipeline tracing, DNS/network dia... | `skill_view(name='telegram-delivery-diagnostics')` |
 | `terminal-emulator-config` | 1.0.0 | Diagnose terminal input issues and review emulator configs. | `skill_view(name='terminal-emulator-config')` |
@@ -551,7 +553,7 @@ their domain.
 |-------|---------|---------|-----------|
 | `social-media-analyzer` | 1.0.0 | Social media campaign analysis and performance tracking. Calculates engagement rates, ROI, and benchmarks a... | `skill_view(name='social-media-analyzer')` |
 
-## Software Development (64 skills)
+## Software Development (65 skills)
 
 | Skill | Version | Purpose | Load With |
 |-------|---------|---------|-----------|
@@ -579,10 +581,11 @@ their domain.
 | `dhh-rails-reviewer` | 1.0.0 | Use for brutally honest DHH-style Rails code review. | `skill_view(name='dhh-rails-reviewer')` |
 | `dhh-rails-style` | 1.0.0 | Use when writing Ruby/Rails code in DHH/37signals style. | `skill_view(name='dhh-rails-style')` |
 | `documentation-auditing` | 1.0.0 | Audit documentation for stale file paths, broken cross-references, and correctness gaps. Systematic approac... | `skill_view(name='documentation-auditing')` |
+| `documentation-consolidation` | 1.0.0 | Use when reorganizing, pruning, or merging a docs corpus. | `skill_view(name='documentation-consolidation')` |
 | `engineering-approach` | 1.9.0 | Engineering and communication standards for this project: terse, direct, skip explanations, always handle e... | `skill_view(name='engineering-approach')` |
 | `error-handling` | 1.0.0 | Error handling patterns and idioms: structured exceptions, graceful degradation, retry strategies, circuit... | `skill_view(name='error-handling')` |
 | `fail-closed-design` | 1.0.0 | Use when writing fail-closed security-critical code. | `skill_view(name='fail-closed-design')` |
-| `hermetic-python-testing` | 1.0.0 | Write Python modules with hermetic unit-test seams. | `skill_view(name='hermetic-python-testing')` |
+| `hermetic-python-testing` | 1.0.0 | Write Python modules with hermetic unit-test seams. Covers sandboxed inputs AND live-side-effect output def... | `skill_view(name='hermetic-python-testing')` |
 | `legacy-codebase-navigation` | 1.0.0 | Navigate, understand, and debug large legacy codebases (Rails, Django, early Node). Techniques for tracing... | `skill_view(name='legacy-codebase-navigation')` |
 | `lesson-aware-agent` | 1.0.0 | Universal lesson-aware injection pattern. Makes every agent action memory-aware: search lessons before acti... | `skill_view(name='lesson-aware-agent')` |
 | `lite-product-requirements` | 1.0.0 | Concise 1-page PRD template for lightweight product requirements documentation | `skill_view(name='lite-product-requirements')` |

@@ -169,6 +169,12 @@ repo ≠ deployed. Deploy (`cortex-update.sh`), then rerun: the test passes.
 - Do NOT score a sibling session's or cron's cycles while they are paused or
   mid-work — they own those. Enumerate with `cycle_query(status="pending")`,
   score only the ones your session_id created.
+- **Before deleting a lock FILE, read its cycle.** A lock the doctor prints as
+  `Remove: rm -f ...` may still carry an UNSCORED cycle; deleting the file then
+  converts it from "current task" (INFO, expected mid-session) into a LEAK
+  (FAIL) that blocks the push. Confirm the cycle's `decision != PENDING` (or
+  score it) first. Removing an ORPHANED lock whose cycle is already scored is
+  correct cleanup and leaves no leak — check, do not assume either way.
 - **`cortex-update.sh` no longer purges live locks (FIXED 2026-08-05).** The
   old "deploy purges locks" behavior was a TIMEZONE BUG, not a feature: the
   stale-lock cleanup sliced the heartbeat to `[:19]`, STRIPPING the ISO-8601
@@ -796,6 +802,37 @@ is NO.
 
 Same family as Rules 17 and 18: enforcement that is invisible, or that arrives
 as prose rather than as a check, is not enforcement.
+
+## Rule 20: Reduce FRICTION, Never Enforcement (Luke directive)
+
+"Make sure you're not reducing governance — but reduce friction to get the work
+done." Every governance change trades the two, and the failure mode is reaching
+for the wrong one because it is quicker:
+
+- **Never the control.** Not a relaxed test assertion, not an inline
+  `adversarial-ignore` on a critical/high finding, not `warn + exit 0` where a
+  refusal belongs, not a widened "latest session" lookup used to dodge a session
+  key mismatch. Each is small, plausible, and permanent.
+- **Always the interface.** Add the missing wiring, make the failure message name
+  the fix, register the tool so it actually deploys, and make the recorder
+  automatic instead of asking every agent to remember a manual call.
+- **Catching yourself mid-weaken and restoring it is normal; hiding it is the
+  violation.** If you loosened an assertion to get a suite green, say so and
+  assert the real contract instead — exit code AND the message agreeing.
+- **A gate that cannot verify must REFUSE — but say what that costs.** Moving a
+  gate off a local file onto a shared store adds a dependency; state it plainly
+  (a store outage now blocks every commit) and let the user overrule it, rather
+  than quietly failing open.
+
+**Transitional bridge — how to ship a gate re-point without an outage.** When the
+new writer cannot be live yet (it needs a gateway restart, an operator, or a fleet
+rollout) and flipping the gate would fail every commit in the window: while the new
+store has NO row for the session, accept evidence from a strictly NARROWER artifact
+that is ALSO yours — never from the incumbent you are replacing. Bridging back to
+the old source keeps it load-bearing and hides your own writer's failure, which is
+the whole thing being removed. Mark the bridge in code as transitional with its
+deletion condition, name it in the delivery, and delete it once the real writer is
+proven live.
 
 ## References
 
