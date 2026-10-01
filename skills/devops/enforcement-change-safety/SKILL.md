@@ -766,6 +766,37 @@ the user chases the wrong problem.
 - Same family as Rule 1 and Rule 15: the goal is never a silent green — it is a
   LOUD failure that does not take the enforcement chain down with it.
 
+## Rule 19: A Fleet-Wide Gap Needs a CHECK, Not Just a Doc
+
+Documentation tells an agent HOW to do something; it never tells it THAT the
+work is outstanding. An agent only loads a skill it already knows it needs, and
+only opens a runbook that something else points it at — so a migration, or any
+change every host must apply, will sit undone however well it is written up.
+When asked "will agents know what to do?", the honest answer about docs alone
+is NO.
+
+- **Pair every fleet-wide change with a check that reports the gap from the
+  host's own evidence** — a doctor check that computes the expected state and
+  names the shortfall, so each agent discovers it on its next routine scan with
+  no message to lose. A dispatch/message is a one-shot nudge: a host that
+  misses it, or that bootstraps later, learns nothing.
+- **Make applicability and the deliberately-left-alone set explicit, or the
+  check becomes ignored noise.** Skip where the mechanism does not apply at all
+  (platform gate — do not warn forever about something the host cannot use),
+  and treat a resource the change intentionally did NOT touch as satisfied (a
+  unit file in ANY state means the job was considered, so a paused-for-a-reason
+  job is never flagged).
+- **Prefer WARN over FAIL while nothing is broken yet** — the host still works,
+  it is merely un-migrated — and put the runbook path in the remediation field
+  so the report is actionable on its own.
+- **Mirror the migration's OWN predicate rather than re-deriving it.** Import or
+  copy the function that decides eligibility, so the check and the tool can
+  never disagree about what is in scope; a hand-written second definition drifts
+  from the first one silently.
+
+Same family as Rules 17 and 18: enforcement that is invisible, or that arrives
+as prose rather than as a check, is not enforcement.
+
 ## References
 
 - `references/memory-seed-clobber-2026-08-05.md` — the memory-clobber root

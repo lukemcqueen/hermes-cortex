@@ -63,6 +63,24 @@ Full per-host procedure, the 3-part verification, and pitfalls:
   migrated job is not reported as "declared in manifest, absent from live jobs"
   (that FAIL blocks the pre-push deploy-sync gate).
 
+### How a host learns it needs this
+
+You do not have to reason about it: the doctor reports the gap itself. The
+`Cron bridge migration` check counts ENABLED eligible `no_agent` jobs that have
+no bridge unit AT ALL, and WARNs with the runbook path in its remediation — so
+every host discovers its own un-migrated state on a routine scan, with no
+fleet message to lose. Two details make it quiet enough to trust:
+
+- Its eligibility predicate mirrors the generator's (`no_agent` + script, no
+  `context_from`/`continuity`, no model pin), so it can never disagree with what
+  the bridge can host.
+- A unit file in ANY state counts as "considered" — a job deliberately left on
+  the Hermes scheduler has a DISABLED unit, so it is never flagged as a gap.
+
+**macOS:** systemd user timers are Linux-only, so the check reports INFO there
+rather than warning forever about a mechanism the host cannot use. Do not
+"port" the bridge to a host without systemd — that needs a different runner.
+
 ## Verify the standalone run actually delivers
 
 A silent watchdog is a poor proof — it exits 0 without exercising delivery. Prove delivery on an **always-output** job (e.g. `orch-task-board-digest`): start the bridge service, then confirm the messenger's state/log shows a send at that timestamp. Silent-when-clean stays silent; an always-printing job proves the full systemd → runner → messenger chain.

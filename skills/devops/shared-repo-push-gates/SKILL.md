@@ -82,6 +82,24 @@ working tree), not a problem with your diff.
    A mid-push deploy may itself report cost-tracking marker FAILs inside
    scheduler/cronjob files; re-run `cortex-dogfood.sh` — if it ends with
    `✅ DOGFOOD PASSED`, the deploy is clean and the push succeeds on retry.
+6. **Removing an INDEXED resource trips the expectation checks — fix the
+   expectation side in the SAME change.** Every health check that holds a list
+   of "what should exist" (the cron manifest, the doctor's expected-cron
+   arrays, a register/MAP of deployed files) FAILs the push the moment you
+   remove the thing it declares, surfacing as `❌ Cron manifest missing
+   (<name>)`, `<thing> missing`, or a bare `❌ Deploy sync`. The REMOVAL is
+   usually correct; the stale EXPECTATION is the bug. Teach the check the new
+   owner/state (e.g. skip names now hosted by another scheduler) rather than
+   restoring the resource — restoring re-creates the duplicate the removal was
+   fixing.
+
+   **Corollary — before removing a resource, make its CREATE path aware.** A
+   removal on its own is a trap whenever something recreates what is missing:
+   `create_cron` in the installers recreates any absent cron, so a removal
+   without a guard silently resurrects a second owner and the job then runs
+   twice. Guard the create path first (skip anything already owned elsewhere),
+   then remove — and prove it by running the installer and asserting the count
+   did not grow.
 
 ## Fleet-Active Push Races (verified 2026-09-01)
 
