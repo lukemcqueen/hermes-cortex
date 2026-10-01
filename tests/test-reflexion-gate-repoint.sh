@@ -141,17 +141,29 @@ fi
 
 echo ""
 echo "═══ AC9: STORE UNREACHABLE → rc 3, fail-closed, actionable ═══"
-# The branch a fleet-wide outage would hit (docker down / container gone). It was
-# previously untested — the reviewer was right to call that out. Exercised through
-# the test-only path override rather than by stopping the database.
-cat > "$WORK/store_down.py" <<'PYEOF'
-class Store:
-    def __init__(self, *a, **k):
-        pass
-    def available(self):
-        return False
-PYEOF
-out=$(HC_REFLEXION_STORE_MODULE="$WORK/store_down.py" python3 "$CHECKER" --session any 2>&1); rc=$?
+# Exercised WITHOUT any production seam. The verifier resolves its store module
+# relative to its OWN location (`<parent>/../ops/services/mycortex-mem/store.py`)
+# and then $HOME, so a copy of it in a temp tree finds only what this test puts
+# there. Deliberately no env-var override in production code: an override lets a
+# caller point the gate at a stub that answers "loaded" for anything, which is a
+# bigger hole than the one being closed.
+NOSEAM="$WORK/noseam"
+mkdir -p "$NOSEAM/ops/scripts" "$WORK/home"
+cp "$CHECKER" "$NOSEAM/ops/scripts/hc-reflexion-check.py"
+
+# (a) no store module at all
+out=$(HOME="$WORK/home" python3 "$NOSEAM/ops/scripts/hc-reflexion-check.py" --session any 2>&1); rc=$?
+if [[ "$rc" == "3" ]] && echo "$out" | grep -q "cortex-update.sh"; then
+  pass "store module missing → rc 3, names the fix"
+else
+  fail "missing store module gave rc=$rc (expected 3)" "$out"
+fi
+
+# (b) store present but unreachable — the branch a fleet outage hits
+mkdir -p "$NOSEAM/ops/services/mycortex-mem"
+printf 'class Store:\n    def __init__(self, *a, **k): pass\n    def available(self): return False\n' \
+  > "$NOSEAM/ops/services/mycortex-mem/store.py"
+out=$(HOME="$WORK/home" python3 "$NOSEAM/ops/scripts/hc-reflexion-check.py" --session any 2>&1); rc=$?
 if [[ "$rc" == "3" ]] && echo "$out" | grep -q "mycortex-postgres"; then
   pass "store unreachable → rc 3 with the actionable fix named"
 else
@@ -160,23 +172,12 @@ fi
 
 echo ""
 echo "═══ AC10: store raises mid-query → rc 3, no stack dump leaked ═══"
-cat > "$WORK/store_raises.py" <<'PYEOF'
-class _Sessions:
-    def loaded_skill(self, *a, **k):
-        raise RuntimeError("internal detail that must not be dumped raw")
-
-class Store:
-    def __init__(self, *a, **k):
-        self.sessions = _Sessions()
-    def available(self):
-        return True
-PYEOF
-out=$(HC_REFLEXION_STORE_MODULE="$WORK/store_raises.py" python3 "$CHECKER" --session any 2>&1); rc=$?
-if [[ "$rc" == "3" ]]; then
-  pass "an exception inside the store still refuses (rc 3), never crashes or passes"
-else
+printf 'class _S:\n    def loaded_skill(self, *a, **k):\n        raise RuntimeError("internal detail that must not be dumped raw")\n\nclass Store:\n    def __init__(self, *a, **k):\n        self.sessions = _S()\n    def available(self):\n        return True\n' \
+  > "$NOSEAM/ops/services/mycortex-mem/store.py"
+out=$(HOME="$WORK/home" python3 "$NOSEAM/ops/scripts/hc-reflexion-check.py" --session any 2>&1); rc=$?
+[[ "$rc" == "3" ]] && \
+  pass "an exception inside the store still refuses (rc 3), never crashes or passes" || \
   fail "store exception gave rc=$rc (expected 3)" "$out"
-fi
 if echo "$out" | grep -q "Traceback"; then
   fail "a stack trace reached the gate output (leaks internals to the commit log)"
 else
@@ -185,6 +186,9 @@ fi
 [[ "$(echo "$out" | wc -l)" -le 1 ]] && \
   pass "gate output stays a single line (no raw dump)" || \
   fail "gate output was multi-line"
+grep -q "HC_REFLEXION_STORE_MODULE\|getenv" "$CHECKER" && \
+  fail "the verifier still reads a store-path override from the environment" || \
+  pass "no run-time store-path override exists in the verifier"
 
 echo ""
 echo "═══ Summary ═══"

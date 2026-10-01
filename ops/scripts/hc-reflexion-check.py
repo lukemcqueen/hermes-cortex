@@ -113,17 +113,15 @@ def _import_module(path: Path):
 def load_store_module():
     """HC's store module: repo layout first, then the deployed copy.
 
-    HC_REFLEXION_STORE_MODULE overrides the path and is TEST-ONLY. The
-    store-unreachable branch (exit 3) is what a fleet-wide outage would hit — docker
-    down, container gone — and it must be exercisable in a test without stopping the
-    database. Never set it in production; the default lookup is unchanged.
+    `here.parents[2]` is the repo root for `<repo>/ops/scripts/hc-reflexion-check.py`
+    — parents[0]=scripts, [1]=ops, [2]=repo. The first version used
+    `here.parent.parent` (which is ops), so the candidate resolved to
+    `ops/ops/services/...` and NEVER matched: the repo copy was only ever found
+    through the $HOME fallback. Caught by tests/test-reflexion-gate-repoint.sh,
+    which stages a verifier copy in a temp tree and needs this lookup to work.
     """
-    override = os.environ.get("HC_REFLEXION_STORE_MODULE", "").strip()
-    if override:
-        candidate = Path(override)
-        return _import_module(candidate) if candidate.is_file() else None
     here = Path(__file__).resolve()
-    for c in (here.parent.parent / "ops" / "services" / "mycortex-mem" / "store.py",
+    for c in (here.parents[2] / "ops" / "services" / "mycortex-mem" / "store.py",
               Path.home() / ".hermes-cortex" / "services" / "mycortex-mem" / "store.py"):
         if c.is_file():
             return _import_module(c)
@@ -133,13 +131,15 @@ def load_store_module():
 def skill_loaded(skill: str, session_id: str) -> tuple[int, str]:
     """(exit_code, message) — never raises; the caller only reads the code.
 
-    STORE-ONLY, deliberately. There is no fallback to the Hermes conversation DB:
-    a fallback keeps the incumbent load-bearing and hides a failure of HC's own
-    recording instead of surfacing it. The transitional bridge to HC's enforcer
-    journal was deleted once the enforcer writer was proven live here (a real
-    skill_view landing a row with no manual recording, and the answer coming from
-    the store rather than the journal) — see tests/test-reflexion-gate-repoint.sh,
-    which pins that a journal-only session is REFUSED.
+    STORE-ONLY, deliberately: no fallback to the Hermes conversation DB, which keeps
+    the incumbent load-bearing and hides a failure of HC's own recording instead of
+    surfacing it. It is also not overridable at run time — an environment variable
+    that redirects the store lookup would let a caller point the gate at a stub that
+    answers "loaded" for anything, which is a bigger hole than the one being closed.
+
+    What this path is verified by, in the repo rather than in prose:
+      tests/test-reflexion-gate-e2e.sh      writer -> real store -> verifier, live
+      tests/test-reflexion-gate-repoint.sh  this gate block + the exit-code branches
     """
     mod = load_store_module()
     if mod is None:

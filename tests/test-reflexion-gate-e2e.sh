@@ -26,7 +26,11 @@ pass() { P=$((P + 1)); echo "  ✅ $1"; }
 fail() { F=$((F + 1)); echo "  ❌ $1${2:+ — $2}"; }
 
 cleanup() {
-  python3 - "$STORE" <<'PY' 2>/dev/null || true
+  # Report a failed cleanup rather than hiding it: silenced cleanup means probe rows
+  # persist and nobody knows. The rows are session-scoped to probe-e2e-* so they are
+  # harmless, but "harmless" is a claim the next reader should be able to check.
+  local rc=0
+  python3 - "$STORE" <<'PY' >/dev/null || rc=$?
 import importlib.util, sys
 spec = importlib.util.spec_from_file_location("s", sys.argv[1])
 m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
@@ -34,9 +38,15 @@ try:
     m.Store().pg.run_sql(
         "DELETE FROM mycortex_mem.sessions WHERE session_key LIKE 'probe-e2e-%';",
         role="mycortex_mem_admin")
-except Exception:
-    pass
+except Exception as exc:
+    print(f"cleanup failed: {exc}", file=sys.stderr)
+    sys.exit(1)
 PY
+  if [[ "$rc" -ne 0 ]]; then
+    echo "  ⚠️  cleanup could not remove probe-e2e-* rows (rc=$rc) — they persist until" >&2
+    echo "      the store is reachable again; they are session-scoped and do not affect" >&2
+    echo "      a real session's evidence." >&2
+  fi
 }
 trap cleanup EXIT
 
