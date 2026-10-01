@@ -220,6 +220,17 @@ create_cron() {
   local name="$1" schedule="$2" script="$3" prompt="$4" skill="$5" toolsets="$6" deliver="$7" workdir="$8" no_agent="$9"
   local model="${10:-}" provider="${11:-}" reasoning_effort="${12:-}"
 
+  # ── HC cron-bridge ownership guard (S2a) ──────────────────
+  # See install-crons.sh create_cron() for the full rationale: a bridge-owned
+  # job lives ONLY on its systemd timer, so recreating it here would give the
+  # job a second owner and make it fire twice. Marker = systemd's enable
+  # symlink in timers.target.wants/ (filesystem-only, no DBus); a disabled
+  # unit (paused-for-a-reason job) is absent and still gets created here.
+  if [[ -e "${HOME}/.config/systemd/user/timers.target.wants/cortex-bridge-${name}.timer" ]]; then
+    info "Skipping '${name}' — owned by the HC cron bridge (systemd timer)"
+    return 0
+  fi
+
   # ── Fleet stagger: deterministic per-host minute for LLM-driven crons ──
   # (Luke directive 2026-08-07) — see install-crons.sh create_cron() for the
   # rationale: hostname:cron-name hash % 60, same hour, per-host minute.

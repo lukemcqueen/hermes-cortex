@@ -1007,6 +1007,36 @@ def _check_changed_script_execution(res):
         f"all {len(changed)} changed script(s) have run through the scheduler since their change")
 
 
+def _bridge_owned_jobs() -> set:
+    """Cron names owned by the standalone HC cron bridge, not by Hermes.
+
+    The S2a migration hosts eligible simple no_agent jobs on user-scope
+    systemd timers (`cortex-bridge-<name>.timer`) and REMOVES the Hermes entry
+    so exactly one scheduler owns each job. Those names must therefore be
+    excluded from the Hermes "expected crons" comparison, or every migrated
+    job reports as missing.
+
+    The marker is systemd's own enable symlink in `timers.target.wants/`:
+    filesystem-only, so it works from a cron/doctor context with no DBus
+    session. A DISABLED unit — a job deliberately paused for a reason, e.g.
+    bible-reading or hermes-update — is absent from wants/, so that job is
+    correctly still expected in Hermes.
+    """
+    wants = Path.home() / ".config" / "systemd" / "user" / "timers.target.wants"
+    if not wants.is_dir():
+        return set()
+    prefix, suffix = "cortex-bridge-", ".timer"
+    out = set()
+    try:
+        for p in wants.glob("cortex-bridge-*.timer"):
+            n = p.name
+            if n.startswith(prefix) and n.endswith(suffix):
+                out.add(n[len(prefix):-len(suffix)])
+    except OSError:
+        return set()
+    return out
+
+
 def check_crons(res):
   """2. Cron audit: all expected crons registered, workdirs valid, run status, extra crons."""
   if not JOBS_FILE.exists():
@@ -1030,6 +1060,13 @@ def check_crons(res):
     res.add("Crons registry", "WARN", "Could not parse install-crons.sh",
         "Check ops/scripts/install-crons.sh exists")
     expected_crons = list(registered.keys())
+
+  # Bridge-owned jobs are hosted on systemd user timers and REMOVED from
+  # Hermes (one owner only), so they must not be expected here — otherwise
+  # every migrated job reports as "missing". See _bridge_owned_jobs().
+  _bridged = _bridge_owned_jobs()
+  if _bridged:
+    expected_crons = [n for n in expected_crons if n not in _bridged]
 
   missing = []
   bad_workdir = []
@@ -1068,6 +1105,8 @@ def check_crons(res):
 
   orphan_crons = []
   for name, job in registered.items():
+    if name in _bridged:
+      continue  # owned by the HC cron bridge (systemd timer), not by Hermes
     if name not in expected_crons:
       if name.startswith("local-"):
         continue # local-* crons silently excluded
@@ -1082,7 +1121,8 @@ def check_crons(res):
     res.add("Crons: orphans", "PASS", "no unexpected crons found")
 
   expected_set = set(expected_crons)
-  extra = [str(n) for n in registered if n not in expected_set if not n.startswith("local-")]
+  extra = [str(n) for n in registered if n not in expected_set
+           if not str(n).startswith("local-") and n not in _bridged]
   if extra:
     display = sorted(extra)
     if len(display) <= 5:
@@ -1102,6 +1142,8 @@ def check_crons(res):
             f"{info_total} cron(s) not part of system — benign user/workday crons (e.g. {', '.join(display[:3])}...)")
 
   orch_crons_list = parse_orch_crons()
+  if _bridged:
+    orch_crons_list = [n for n in orch_crons_list if n not in _bridged]
   is_orch = AGENT_ROLE == "orchestrator"
   _orch_hostname = run_bg(["hostname", "-s"]).strip() or "unknown"
   if orch_crons_list:

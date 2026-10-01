@@ -159,6 +159,20 @@ create_cron() {
   local name="$1" schedule="$2" script="$3" prompt="$4" skill="$5" toolsets="$6" deliver="$7" workdir="$8" no_agent="$9"
   local model="${10:-}" provider="${11:-}" reasoning_effort="${12:-}"
 
+  # ── HC cron-bridge ownership guard (S2a) ──────────────────
+  # A simple no_agent job migrated to the standalone bridge is REMOVED from
+  # Hermes so there is exactly ONE owner (running it in both places = the job
+  # fires twice). Recreating it here would resurrect a second owner, so skip
+  # anything the bridge owns. The marker is systemd's own enable symlink in
+  # timers.target.wants/ — filesystem-only, so this works from a cron/install
+  # context with no DBus session. A DISABLED unit (a job paused for a reason:
+  # bible-reading, hermes-update, …) is absent from wants/, so that job is
+  # still created here, exactly as intended.
+  if [[ -e "${HOME}/.config/systemd/user/timers.target.wants/cortex-bridge-${name}.timer" ]]; then
+    info "Skipping '${name}' — owned by the HC cron bridge (systemd timer)"
+    return 0
+  fi
+
   # ── Fleet stagger: deterministic per-host minute for LLM-driven crons ──
   # (Luke directive 2026-08-07) — all agents used to fire the same LLM cron
   # at :00 simultaneously, hitting the model as a thundering herd. Give every
