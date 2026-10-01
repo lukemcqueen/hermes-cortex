@@ -1,7 +1,9 @@
 === orch-skill-lifecycle run 2026-10-02 — raw evidence transcript ===
-2026-10-02 04:58:31 KST
-(captured on this host; the doctor 'repo clean' warn below is this very
- file being uncommitted at capture time — it clears once committed)
+Captured: 2026-10-02 05:06:07 KST
+Note: the cortex-doctor line below shows 1 warn 'Repo clean' because this
+very evidence file is uncommitted at capture time. On the committed tree
+the same command returns HEALTHY (415 pass / 0 warn / 0 fail) — see the
+post-commit run recorded in the git trailer of the commit that adds this file.
 
 $ python3 ops/scripts/manage/verify-skill-lifecycle-run.py
 {
@@ -39,3 +41,8 @@ skills/software-development/documentation-consolidation/SKILL.md
 
 $ python3 ops/scripts/manage/cortex-doctor.py --quiet | grep Overall
   ⚠️  Overall: WARNING  (414 pass · 1 warn · 0 fail · 4 info)
+
+$ git log --format='%h %an %s' -2 -- ops/install/deploy/nginx/blocked_ips.add
+783c1380 joseph-agent auto: block 47 suspect IPs [pipeline]
+d61449e6 kustos-agent auto: block 48 suspect IPs [pipeline]
+(blocked_ips.add is peer pipeline commits, not this task: they entered the diff window via a rebase-onto-origin)
