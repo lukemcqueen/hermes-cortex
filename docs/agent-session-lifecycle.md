@@ -153,8 +153,8 @@ that moved after a review is judged again.
 |---|---|---|
 | `No active governance lock` from the CLI | the CLI is a **subprocess** with no harness session, so it cannot resolve your lock | pass `session_id` in the payload — the documented priority-0 override |
 | A commit-message phrase vanished | **backticks in a shell-quoted message** — bash ran them as command substitution | single-quote the message, or avoid backticks |
-| A command is blocked, mentioning a `.db` you never named | the lifecycle guard scans scripts your command references, and a binary DB cannot be scanned as a script | don't name the Hermes conversation DB in a command; edit with file tools instead |
-| The reviewer calls your evidence "unverifiable self-report" | you pasted test output into your closing **note**; the reviewer sees the note and the diff and cannot re-run your terminal | put the proof **in the repo** as a runnable test; the note describes the change |
+| A command is blocked, mentioning a `.db` that was never opened | the lifecycle guard scans the scripts a command references, and a binary database cannot be scanned as a script | don't name the Hermes conversation DB in a command; edit with file tools instead |
+| An adversarial reviewer calls evidence "unverifiable self-report" | the reviewer sees only the closing note and the diff — it cannot re-run a terminal, so output pasted into a note is not checkable by it | commit the proof as a runnable test; keep the note descriptive |
 | A complex cycle will not close however much you fix | the lock's **description** no longer matches the diff window — work was stacked under one lock | one lock per logical change; if it already happened, the orchestrator must clear the cycle |
 
 The last one is the most expensive: a cycle whose locked description no longer
