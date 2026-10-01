@@ -27,6 +27,14 @@ import time
 import urllib.error
 from pathlib import Path
 
+if __package__ in (None, ""):
+    # Run as a script (python3 daemon.py / systemd ExecStart): make the
+    # package importable so the relative imports below resolve. Imported as a
+    # module (python3 -m cortex_gateway.daemon / from cortex_gateway.daemon)
+    # this branch is skipped.
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+    __package__ = "cortex_gateway"
+
 from .transport import (DEFAULT_POLL_SECONDS, BotConfig, TransportAdapter,
                         TelegramAdapter)
 
