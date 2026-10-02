@@ -352,9 +352,9 @@ def test_severity_policy_blocks_medium_and_above():
     _check("policy FAIL-CLOSED: non-list payload blocks", len(b) == 1, f"got {b}")
 
 
-def test_refute_and_triage_layers():
-    """(H) Layer 1 refutes ONLY provably-unmoored citations; Layer 2 triage is
-    classification-only, disabled by default, and fail-safe."""
+def test_refute_layer_is_conservative():
+    """(H1) Layer 1 refutes ONLY provably-unmoored citations; the merge never
+    raises a severity and leaves findings untouched without triage."""
     material = "diff --git a/x b/x\n+present fragment here\n"
 
     absent = {"finding_id": "A", "severity": "high",
@@ -390,29 +390,87 @@ def test_refute_and_triage_layers():
     _check("triage: absent triage leaves findings unchanged",
            mcp._apply_triage([admin], None)[0][0]["severity"] == "medium")
 
+
+def test_triage_speaks_the_typed_protocol():
+    """(H2) Layer 2 uses the judgment client's TYPED (systemone) protocol — Jev
+    takes typed questions, never a chat prompt — and the CALLER composes the
+    thresholds. Exercised against the real client with an injected transport."""
     os.environ.pop("ADVERSARIAL_TRIAGE_MODEL", None)
-    _check("triage hook: DISABLED by default (no ADVERSARIAL_TRIAGE_MODEL)",
-           mcp._triage_findings([admin], material) is None)
+    os.environ.pop("JUDGMENT_LOG_PATH", None)   # no corpus write from a test
 
-    os.environ["ADVERSARIAL_TRIAGE_MODEL"] = "stub-system1"
-    try:
-        ok = mcp._triage_findings(
-            [admin], material,
-            caller=lambda p, m: json.dumps(
-                [{"finding_id": "D", "class": "administrative",
-                  "cites_artifact": False, "severity": "low"}]))
-        _check("triage hook: parses a stubbed classifier reply",
-               isinstance(ok, list) and ok[0]["finding_id"] == "D", f"got {ok}")
+    jc = mcp._load_judgment_client()
+    _check("typed: judgment client loads from the repo", jc is not None)
+    if jc is None:
+        return
 
-        def _boom(p, m):
-            raise RuntimeError("triage model down")
+    f1 = {"finding_id": "A1", "severity": "high",
+          "evidence": 'quotes "present fragment here" from the diff'}
+    f2 = {"finding_id": "A2", "severity": "medium", "evidence": "note is not traceable"}
 
-        _check("triage hook FAIL-SAFE: transport error -> None (severities stand)",
-               mcp._triage_findings([admin], material, caller=_boom) is None)
-        _check("triage hook FAIL-SAFE: non-list reply -> None",
-               mcp._triage_findings([admin], material, caller=lambda p, m: '"nope"') is None)
-    finally:
-        os.environ.pop("ADVERSARIAL_TRIAGE_MODEL", None)
+    cfg = {"providers": {"jev": {"base_url": "https://api.example.invalid",
+                                 "api_key_env": "NOPE_UNUSED", "model_id": "jev-latest",
+                                 "profile": {"accuracy_tier": "T2"}}},
+           "tiers": {"T1": 2, "T2": 1, "T3": 0},
+           "routing": {"decision_classes": {"review-triage": {
+               "primary": "jev", "fallback": [], "min_tier": "T2"}}}}
+
+    seen = {}
+
+    def fake(base_url, payload, timeout):
+        seen["payload"] = payload
+        return {"answers": {
+            "A1.cites_artifact": {"type": "noul", "noul": 0.93},
+            "A1.class": {"type": "choice", "choice": "administrative",
+                         "probabilities": {"administrative": 0.8}},
+            "A1.severity": {"type": "choice", "choice": "low",
+                            "probabilities": {"low": 0.9}},
+            "A2.cites_artifact": {"type": "noul", "noul": 0.05},
+            "A2.class": {"type": "choice", "choice": "judgement",
+                         "probabilities": {"judgement": 0.9}},
+            "A2.severity": {"type": "choice", "choice": "high",
+                            "probabilities": {"high": 0.9}},
+        }, "usage": {}}
+
+    tri = mcp._triage_findings([f1, f2], "material text", client=jc,
+                               primary_fn=fake, config=cfg)
+    _check("typed: returns one classification per finding",
+           isinstance(tri, list) and len(tri) == 2, f"got {tri}")
+
+    p = seen.get("payload", {})
+    _check("typed: request carries questions + state + model (NOT a chat prompt)",
+           isinstance(p.get("questions"), dict) and "state" in p and "model" in p,
+           f"payload keys={sorted(p)}")
+    _check("typed: one noul + two choice questions per finding",
+           len(p.get("questions", {})) == 6
+           and {q.get("type") for q in p["questions"].values()} == {"noul", "choice"},
+           f"n={len(p.get('questions', {}))}")
+    _check("typed: question ids carry the finding id",
+           "A1.cites_artifact" in p.get("questions", {})
+           and "A2.severity" in p.get("questions", {}))
+
+    by = {t["finding_id"]: t for t in tri}
+    _check("typed: noul >= NOUL_TRUE composes to cites_artifact TRUE",
+           by["A1"]["cites_artifact"] is True)
+    _check("typed: noul < NOUL_TRUE composes to cites_artifact FALSE",
+           by["A2"]["cites_artifact"] is False)
+    _check("typed: the choice answer is carried through",
+           by["A1"]["class"] == "administrative", f"got {by['A1']}")
+
+    def boom(base_url, payload, timeout):
+        raise RuntimeError("provider down")
+
+    _check("typed FAIL-SAFE: provider error -> None (severities stand)",
+           mcp._triage_findings([f1], "m", client=jc, primary_fn=boom, config=cfg) is None)
+
+    def incomplete(base_url, payload, timeout):
+        return {"answers": {"A1.cites_artifact": {"type": "noul", "noul": 0.9}}}
+
+    _check("typed FAIL-SAFE: incomplete answers rejected by the client -> None",
+           mcp._triage_findings([f1, f2], "m", client=jc,
+                                primary_fn=incomplete, config=cfg) is None)
+
+    _check("typed: DISABLED with no model and no injected transport",
+           mcp._triage_findings([f1], "m") is None)
 
 
 def _reset_enf_state(state: Path, now: datetime):
@@ -436,7 +494,9 @@ def main():
     print("G. severity policy: MEDIUM+ blocks, LOW annotates")
     test_severity_policy_blocks_medium_and_above()
     print("H. refutation + triage layers")
-    test_refute_and_triage_layers()
+    test_refute_layer_is_conservative()
+    print("H2. triage speaks the typed systemone protocol")
+    test_triage_speaks_the_typed_protocol()
     print()
     if _FAIL:
         print(f"{len(_FAIL)} FAILED: {', '.join(_FAIL)}")

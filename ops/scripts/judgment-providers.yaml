@@ -56,3 +56,16 @@ routing:
       primary: jev
       fallback: []
       min_tier: T2         # von may NEVER auto-serve this until tier validated
+    review-triage:
+      # Adversarial-gate finding triage. Jev is a SYSTEM ONE classifier: it takes
+      # typed questions (noul|choice|score) and returns typed answers — never a
+      # chat prompt — so consumers must use ops/scripts/judgment.py, not an LLM
+      # completion. Thresholds live in the caller (loop-gov-mcp.NOUL_TRUE).
+      # von is protocol-compatible but T3 < T2, so it is INELIGIBLE here by the
+      # tier gate until its accuracy is validated: an ineligible fallback is
+      # skipped and the call fails closed (triage unavailable -> reviewer
+      # severities stand, which is safe). Do not lower min_tier to "make the
+      # fallback work" — validate von's tier first.
+      primary: jev
+      fallback: [von]
+      min_tier: T2

@@ -1798,64 +1798,122 @@ def _refute_findings(findings, material):
     return refuted
 
 
-TRIAGE_PROMPT = (
-    "You are a TRIAGE classifier for an automated code-review gate. You do not "
-    "review code. You classify findings a reviewer already produced.\n"
-    "For each finding, using the finding text and the material excerpt:\n"
-    "  class: 'judgement' (needs a human/orchestrator decision) or "
-    "'administrative' (formatting, evidence-attachment, note phrasing)\n"
-    "  cites_artifact: true ONLY if the finding names a concrete artifact "
-    "(file path, commit sha, symbol, or quoted code) that the material shows\n"
-    "  severity: low | medium | high. Rubric: high = incorrect or unsafe "
-    "behaviour, a broken gate, or an unverified claim about the code; "
-    "medium = a real gap that should be fixed; low = administrative or "
-    "presentation only.\n"
-    "Output ONLY a JSON array of objects with keys finding_id, class, "
-    "cites_artifact, severity. No prose, no markdown.\n\n"
-)
+# The judgment client (ops/scripts/judgment.py) speaks the systemone wire format:
+# typed QUESTIONS in, typed ANSWERS out —
+#   POST {base_url}/v1/systemone
+#     {"model":…, "state":…, "questions": {id: {type: noul|choice|score,
+#                                               instructions, criteria?}}}
+#  -> {"answers": {id: {type, …value}}, "usage": {…}}
+# Jev and von consume exactly that and take NO chat prompt, so the triage layer
+# must not ask for prose+JSON. Thresholds live HERE, in the caller, per the
+# client's own contract ("code stays in control: this module returns typed
+# answers; thresholds and actions belong to the caller").
+TRIAGE_MAX_FINDINGS = 12
+NOUL_TRUE = 0.7          # cites_artifact counts as TRUE at/above this probability
 
 
-def _call_triage_default(prompt, model):
-    """Transport for the triage model. Reuses the reviewer transport with the
-    configured model; falls back to the reviewer's own signature if the transport
-    does not accept a model override."""
-    try:
-        return _call_reviewer(prompt, model=model)
-    except TypeError:
-        log.warning("triage: transport has no model override — using the reviewer model")
-        return _call_reviewer(prompt)
+def _load_judgment_client():
+    """Import the judgment client (repo first, then deployed). None if absent."""
+    for cand in (Path(__file__).resolve().parents[1] / "ops" / "scripts" / "judgment.py",
+                 HOME / ".hermes-cortex" / "scripts" / "judgment.py"):
+        if cand.is_file():
+            try:
+                spec = importlib.util.spec_from_file_location("hc_judgment_client", cand)
+                if spec is None or spec.loader is None:
+                    log.warning("triage: judgment client spec unavailable at %s", cand)
+                    return None
+                mod = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(mod)
+                return mod
+            except Exception as e:
+                log.warning("triage: judgment client failed to load (%s: %s)",
+                            type(e).__name__, e)
+                return None
+    return None
 
 
-def _triage_findings(findings, material, caller=None):
-    """Classify findings with a fast 'system 1' model.
+def _triage_questions(findings):
+    """Typed questions for the review-triage class: one triple per finding.
 
-    Returns a list of classification dicts, or None when triage is DISABLED
-    (ADVERSARIAL_TRIAGE_MODEL unset) or FAILED. On None the caller keeps the
-    reviewer's severities unchanged — a triage outage must never silently relax
-    or tighten the gate.
+    Question ids embed the finding id, and the client validates that the answer
+    keys match the question ids EXACTLY — a provider that drops or invents an
+    answer is rejected outright rather than half-consumed.
     """
-    model = (os.environ.get("ADVERSARIAL_TRIAGE_MODEL", "") or "").strip()
-    if not model or not isinstance(findings, list) or not findings:
+    qs = {}
+    for i, f in enumerate(findings[:TRIAGE_MAX_FINDINGS]):
+        fid = str(f.get("finding_id") or f"f{i}")
+        qs[f"{fid}.cites_artifact"] = {
+            "type": "noul",
+            "instructions": ("Does this finding name a concrete artifact — a file path, "
+                             "commit sha, symbol, or quoted code — that the state shows?")}
+        qs[f"{fid}.class"] = {
+            "type": "choice",
+            "instructions": ("Is this finding administrative (formatting, evidence "
+                             "attachment, or note phrasing) or a judgement call about the "
+                             "behaviour of the change?"),
+            "criteria": ["administrative", "judgement"]}
+        qs[f"{fid}.severity"] = {
+            "type": "choice",
+            "instructions": ("Severity. high = incorrect or unsafe behaviour, a broken "
+                             "gate, or an unverified claim about the code; medium = a real "
+                             "gap that should be fixed; low = administrative or presentation."),
+            "criteria": ["low", "medium", "high"]}
+    return qs
+
+
+def _triage_findings(findings, material, client=None, primary_fn=None, config=None):
+    """Classify findings through the judgment client's typed (systemone) interface.
+
+    Returns [{finding_id, class, cites_artifact, severity}] or None when triage is
+    DISABLED (no model configured and no injected transport), UNAVAILABLE (client
+    missing, provider error, non-ok status, or a reply the client rejected), or the
+    findings list is empty. On None the caller keeps the reviewer's severities
+    unchanged — a triage outage must never relax or tighten the gate.
+
+    ``primary_fn`` is the injectable transport ``(base_url, payload, timeout) ->
+    dict``, used by tests so they never touch the network.
+    """
+    if not findings:
         return None
-    payload = {
-        "findings": [
-            {k: f.get(k) for k in ("finding_id", "severity", "technique", "target", "evidence")}
-            for f in findings
-        ],
-        "material_excerpt": (material or "")[:6000],
+    if primary_fn is None and not (os.environ.get("ADVERSARIAL_TRIAGE_MODEL", "") or "").strip():
+        return None
+    jc = client if client is not None else _load_judgment_client()
+    if jc is None:
+        log.warning("triage: judgment client unavailable — reviewer severities stand")
+        return None
+    state = {
+        "material": (material or "")[:6000],
+        "findings": [{k: f.get(k) for k in ("finding_id", "severity", "technique",
+                                            "target", "evidence")}
+                     for f in findings[:TRIAGE_MAX_FINDINGS]],
     }
     try:
-        raw = (caller or _call_triage_default)(TRIAGE_PROMPT + json.dumps(payload,
-                                                                         ensure_ascii=False), model)
-        data = json.loads(raw)
+        res = jc.decide("review-triage", state, _triage_questions(findings),
+                        config=config, primary_fn=primary_fn)
     except Exception as e:
-        log.warning("triage: unavailable (%s: %s) — reviewer severities stand",
+        log.warning("triage: judgement call failed (%s: %s) — reviewer severities stand",
                     type(e).__name__, e)
         return None
-    if not isinstance(data, list):
-        log.warning("triage: non-list reply — reviewer severities stand")
+    if not isinstance(res, dict) or str(res.get("status")) != "ok":
+        log.warning("triage: judgement status=%s — reviewer severities stand",
+                    (res or {}).get("status"))
         return None
-    return [d for d in data if isinstance(d, dict)]
+    ans = res.get("answers") or {}
+    out = []
+    for i, f in enumerate(findings[:TRIAGE_MAX_FINDINGS]):
+        fid = str(f.get("finding_id") or f"f{i}")
+        art = ans.get(f"{fid}.cites_artifact") or {}
+        cls = ans.get(f"{fid}.class") or {}
+        sev = ans.get(f"{fid}.severity") or {}
+        try:
+            cites = float(art.get("noul", 0.5)) >= NOUL_TRUE
+        except (TypeError, ValueError):
+            cites = True          # unusable probability -> assume it cites (fail safe)
+        out.append({"finding_id": f.get("finding_id"),
+                    "cites_artifact": cites,
+                    "class": cls.get("choice"),
+                    "severity": sev.get("choice")})
+    return out
 
 
 def _apply_triage(findings, triage):
