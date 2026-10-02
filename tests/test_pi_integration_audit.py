@@ -92,10 +92,59 @@ def _host(home: Path, *, mcp_json: bool = True, agent_name: str = "testagent",
     return dep
 
 
+def _path_without_pi() -> str:
+    """A PATH with no `pi` executable on it.
+
+    The audit detects Pi via `$HOME/.pi/agent/bin/pi`, then falls back to
+    `command -v pi` on PATH. Leaving PATH inherited makes the synthetic host
+    NOT the only source of truth: anything that happens to put a `pi` on the
+    runner's PATH (a real install, a leaked temp bin dir) makes the
+    "no Pi at all" case pass the audit and fail the test — intermittently,
+    depending only on the environment. The cases below are about the synthetic
+    host, so PATH is scrubbed for all of them.
+    """
+    keep = []
+    for d in os.environ.get("PATH", "/usr/bin:/bin").split(os.pathsep):
+        if d and not os.path.exists(os.path.join(d, "pi")):
+            keep.append(d)
+    return os.pathsep.join(keep) or "/usr/bin:/bin"
+
+
 def _run(home: Path, dep: Path) -> subprocess.CompletedProcess:
     return subprocess.run(["bash", str(AUDIT)], capture_output=True, text=True,
                           env={**os.environ, "HOME": str(home),
-                               "CORTEX_DEPLOY_HOME": str(dep), "PATH": os.environ.get("PATH", "")})
+                               "CORTEX_DEPLOY_HOME": str(dep), "PATH": _path_without_pi()})
+
+
+def test_the_cases_are_immune_to_a_pi_on_the_inherited_path() -> None:
+    """Control: a `pi` on PATH must NOT leak into the 'no Pi at all' case.
+
+    This is the exact mechanism of the intermittent failure observed in
+    full-suite runs (2026-10-02): the audit's fallback is `command -v pi`, so an
+    inherited PATH carrying a `pi` made case E report RESULT: PASS.
+    """
+    with tempfile.TemporaryDirectory() as td:
+        td = Path(td)
+        binp = td / "fakebin"
+        binp.mkdir()
+        fake = binp / "pi"
+        fake.write_text("#!/bin/sh\ncase \"$1\" in --help) echo 'commands: install remove mcp';;"
+                        " --version) echo 9.9.9;; esac\n")
+        fake.chmod(0o755)
+
+        home = td / "home"
+        dep = _host(home, pi=False)
+
+        original = os.environ.get("PATH", "")
+        os.environ["PATH"] = f"{binp}{os.pathsep}{original}"
+        try:
+            r = _run(home, dep)
+        finally:
+            os.environ["PATH"] = original
+
+        assert r.returncode == 1, (
+            "a `pi` on the inherited PATH satisfied the audit for a host with no Pi — "
+            f"the synthetic host must be the only source of truth. stdout tail:\n{r.stdout[-400:]}")
 
 
 def test_pi_integration_audit() -> None:
@@ -137,10 +186,14 @@ def test_pi_integration_audit() -> None:
         home = Path(td)
         dep = _host(home, pi=False)
         r = _run(home, dep)
-        _check("exit 1", r.returncode == 1)
-        _check("reports Pi missing", "not installed" in r.stdout or "FAIL" in r.stdout)
+        # Detail must name the ROUTE the audit took, not just the exit code: an
+        # inherited `pi` on PATH satisfies this case for a host that has none, and
+        # that is invisible in a bare "expected 1" message (2026-10-02).
+        why = f"pi_on_PATH={shutil.which('pi')!r} home_pi={(home / '.pi' / 'agent' / 'bin' / 'pi').exists()}"
+        _check("exit 1", r.returncode == 1, why + " | " + r.stdout[-200:])
+        _check("reports Pi missing", "not installed" in r.stdout or "FAIL" in r.stdout, why)
         _check("gives the install command", "npm install -g @earendil-works/pi-coding-agent" in r.stdout,
-               r.stdout[-300:])
+               why + " | " + r.stdout[-300:])
 
     assert not _F, f"{len(_F)} audit check(s) failed: {', '.join(_F)}"
 

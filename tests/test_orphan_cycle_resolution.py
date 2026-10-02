@@ -111,28 +111,38 @@ def _status(res: Results, name: str) -> str:
 
 
 def _doctor_case(tmp: Path, cycle_task: str, cycle_session: str, hold_lock: bool) -> str:
-    """Build a temp CORTEX_HOME holding one reaper-tagged close; return the check's status."""
+    """Build a temp CORTEX_HOME holding one reaper-tagged close; return the check's status.
+
+    Restores `doc.CORTEX_HOME` on the way out (success AND failure): it is
+    MODULE state shared with every other test in the process, and leaving it
+    pointing at a deleted temp dir silently disabled `check_governance()` for
+    everything that ran afterwards (2026-10-02).
+    """
+    original_home = doc.CORTEX_HOME
     setattr(doc, "CORTEX_HOME", tmp)
-    (tmp / "data").mkdir(parents=True, exist_ok=True)
-    (tmp / "state").mkdir(parents=True, exist_ok=True)
-    con = sqlite3.connect(tmp / "data" / "loop-governance.db")
-    con.execute(
-        "CREATE TABLE IF NOT EXISTS loop_cycles (id INTEGER PRIMARY KEY, timestamp TEXT, task_id TEXT, "
-        "session_id TEXT, decision TEXT, composite REAL, unscored_reason TEXT, outcome_note TEXT)"
-    )
-    con.execute(
-        "INSERT INTO loop_cycles (id, timestamp, task_id, session_id, decision, composite, "
-        "unscored_reason, outcome_note) VALUES (?,?,?,?,'MOVE_ON',0,?,'')",
-        (9001 if hold_lock else 9002, _iso(7200), cycle_task, cycle_session,
-         mcp.ORPHAN_REAPER_TAG + " abandoned: no live lock"),
-    )
-    con.commit()
-    con.close()
-    if hold_lock:
-        _lock(tmp, cycle_task, cycle_session)
-    res = Results()
-    doc.check_orphan_cycle_resolution(res)
-    return _status(res, "Orphan-cycle resolution")
+    try:
+        (tmp / "data").mkdir(parents=True, exist_ok=True)
+        (tmp / "state").mkdir(parents=True, exist_ok=True)
+        con = sqlite3.connect(tmp / "data" / "loop-governance.db")
+        con.execute(
+            "CREATE TABLE IF NOT EXISTS loop_cycles (id INTEGER PRIMARY KEY, timestamp TEXT, task_id TEXT, "
+            "session_id TEXT, decision TEXT, composite REAL, unscored_reason TEXT, outcome_note TEXT)"
+        )
+        con.execute(
+            "INSERT INTO loop_cycles (id, timestamp, task_id, session_id, decision, composite, "
+            "unscored_reason, outcome_note) VALUES (?,?,?,?,'MOVE_ON',0,?,'')",
+            (9001 if hold_lock else 9002, _iso(7200), cycle_task, cycle_session,
+             mcp.ORPHAN_REAPER_TAG + " abandoned: no live lock"),
+        )
+        con.commit()
+        con.close()
+        if hold_lock:
+            _lock(tmp, cycle_task, cycle_session)
+        res = Results()
+        doc.check_orphan_cycle_resolution(res)
+        return _status(res, "Orphan-cycle resolution")
+    finally:
+        setattr(doc, "CORTEX_HOME", original_home)
 
 
 def test_orphan_cycle_resolution() -> None:
@@ -196,6 +206,31 @@ def test_orphan_cycle_resolution() -> None:
     assert not failed, f"{len(failed)} orphan-cycle check(s) failed: {', '.join(failed)}"
 
 
+def test_the_orphan_cases_do_not_leak_the_doctor_home() -> None:
+    """Regression: the cases point the SHARED checks module at a temp home.
+
+    `_doctor_case` did `setattr(doc, "CORTEX_HOME", tmp)` and never restored it,
+    so once this module ran, `cortex_doctor.checks.CORTEX_HOME` pointed at a
+    DELETED temp directory for the rest of the process. Every later test that
+    called `check_governance()` read that missing home and silently produced no
+    "PENDING cycles" entry — which is exactly how
+    tests/test_runtime/test_doctor_pending_cycles.py failed 3/3 in a full-suite
+    run while passing alone (2026-10-02). Module-level state a test mutates must
+    be restored on the way out, success or failure.
+    """
+    before = doc.CORTEX_HOME
+    with tempfile.TemporaryDirectory() as td:
+        _doctor_case(Path(td), "leak-task", "leak-session", hold_lock=False)
+        assert doc.CORTEX_HOME == before, (
+            "the temp CORTEX_HOME leaked into the shared cortex_doctor.checks module "
+            "while the temp dir still existed")
+        leaked = doc.CORTEX_HOME
+    assert doc.CORTEX_HOME == before, (
+        f"cortex_doctor.checks.CORTEX_HOME is still {leaked!r} after the temp dir was "
+        f"removed (expected {before!r}) — later tests in this process read a dead home")
+
+
 if __name__ == "__main__":
     test_orphan_cycle_resolution()
+    test_the_orphan_cases_do_not_leak_the_doctor_home()
     print("\n✅ all orphan-cycle resolution checks passed")
