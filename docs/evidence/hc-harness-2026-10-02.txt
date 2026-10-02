@@ -25,7 +25,7 @@ Declared harnesses: 5
   hc harness verify  [<name>]             prove it, don't assume it
 
 ## 4. DEPLOYED path: install pi (copy + derived run line)
-hc harness install pi  →  /home/esther/.hermes/cache/scratch/evid-up7M3x   (layer: cli-extension)
+hc harness install pi  →  ~/.hermes/cache/scratch/evid-up7M3x   (layer: cli-extension)
 
   ✓ mkdir extensions
   ✓ extensions/cortex-context.ts  (from pi/extensions/cortex-context.ts)
@@ -63,7 +63,7 @@ OLD literal could NOT reach: ['session_loaded_skill', 'session_tool_event']
 ## 7. Boundary cases (must fail loudly)
 hc harness: unknown harness 'not-a-real-harness' — try: hc harness list
 unknown_rc=2
-hc harness install steadfaste-tui  →  /home/esther/.hermes/cache/scratch   (layer: none)
+hc harness install steadfaste-tui  →  ~/.hermes/cache/scratch   (layer: none)
 
 NOT SUPPORTED — Steadfaste's own gateway is not complete, so its harness surface cannot be
 designed against it yet. Declared here with the reason rather than guessed
