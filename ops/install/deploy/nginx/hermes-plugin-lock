@@ -218,9 +218,17 @@ case "${1:-help}" in
     for t in "${TARGETS[@]}"; do
       if [[ -e "$t" ]]; then
         if [[ "$_os" == "Darwin" ]]; then
-          ls -lO "$t" | awk -v f="$t" '{for(i=1;i<=NF;i++){if($i~/^[a-z]+chg/||$i~/^[a-z]+immutable/){print f": locked";exit}} print f": not locked"}'
+          # -d: inspect the TARGET, not its children. Without it `ls -lO` on a
+          # directory lists the contents (plus a total header), so awk emitted one
+          # verdict per child — the same path reported twice and a locked dir
+          # reported as "not locked" (Titus, 2026-10-02: hooks/ was locked but the
+          # status branch said otherwise every 10-min cycle).
+          ls -ldO "$t" | awk -v f="$t" '{for(i=1;i<=NF;i++){if($i~/^[a-z]+chg/||$i~/^[a-z]+immutable/){print f": locked";exit}} print f": not locked"}'
         else
-          lsattr "$t" 2>/dev/null || echo "$t: lsattr failed"
+          # -d for the same reason: `lsattr DIR` lists the directory's CHILDREN,
+          # so the hooks dir was reported via hooks/post-merge instead of itself
+          # (verified on Linux, same class of defect as the macOS branch above).
+          lsattr -d "$t" 2>/dev/null || echo "$t: lsattr failed"
         fi
       fi
     done
