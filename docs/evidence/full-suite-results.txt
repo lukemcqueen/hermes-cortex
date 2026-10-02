@@ -1,0 +1,35 @@
+# Full repo test suite — measured evidence
+
+command: python3 -m pytest tests/ -q -p no:cacheprovider
+regenerate: bash ops/scripts/quality/full-suite-evidence.sh
+date (UTC): 2026-10-02 13:34:57
+host: esther
+revision: 360ec127 (main), uncommitted paths: 2
+
+measured: ======================= 1289 passed in 320.88s (0:05:20) =======================
+failures: 0
+
+Tail of the run:
+tests/test_runtime/test_skill_content_fingerprint.py .........           [ 84%]
+tests/test_script_naming_lib_exempt.py .......                           [ 85%]
+tests/test_seed_project.py .......................                       [ 87%]
+tests/test_skill_report_whitelist.py .....                               [ 87%]
+tests/test_soul_merge.py .........                                       [ 88%]
+tests/test_task_db_unit.py ............................................. [ 91%]
+............                                                             [ 92%]
+tests/test_task_db_v4.py .......                                         [ 93%]
+tests/test_task_mcp_v3.py .........                                      [ 93%]
+tests/test_telegram_bridge.py ....................                       [ 95%]
+tests/test_telegram_bridge_e2e.py ...                                    [ 95%]
+tests/test_telegram_notify_unit.py ............................          [ 97%]
+tests/test_toon_gates.py ....                                            [ 98%]
+tests/test_toon_parse.py ....                                            [ 98%]
+tests/test_unannounced_probe.py ...                                      [ 98%]
+tests/test_update_migration_deferral.py ......                           [ 99%]
+tests/test_update_notification.py .                                      [ 99%]
+tests/test_verify_skill_lifecycle_run.py ......                          [ 99%]
+tests/test_webapp_http_crawl.py ....                                     [100%]
+
+======================= 1289 passed in 320.88s (0:05:20) =======================
+
+Failing tests: none
