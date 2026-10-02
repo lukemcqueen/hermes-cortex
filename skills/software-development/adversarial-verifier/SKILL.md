@@ -170,6 +170,8 @@ python3 ~/.hermes-cortex/scripts/adversarial-verify.py --file src/handler.py --l
 
 **🚨 CRITICAL: a static scan returning 0 findings is NOT adversarial verification.** The script is a static analysis pass — it enumerates surfaces but does not execute the function. "0 findings" from `--file X --level A2` means *nothing about runtime boundary behavior*. You MUST ALSO manually execute the function/parser against boundary inputs (including `-1`, `nan`, `inf`, `None`, empty, whitespace, hex, underscores, non-ASCII) and check what it actually returns. Real bugs found this way (2026-07-31, `parse_restart_drain_timeout`): negative → silently clamped to 0.0, NaN → silently 0.0, `inf` accepted, all with no warning because `float()` succeeds. The static scanner reported 0 findings on all of them.
 
+**🚨 A boundary probe of a PUBLISHING CLI must stub the transport first.** Running the real command with a valid-looking input on a live system does not "just test validation" — it performs the side effect. Real case (2026-10-02): a non-ASCII text probe of `agent-reply.py` passed every check and published a signed reply to the live `out_esther` queue, which a running gateway daemon then drained and tried to deliver. Before executing boundaries, monkeypatch the publish/send call (or point the probe at a stub bus) and assert the refusal paths only; make "it published" a deliberate, separately-verified case with cleanup ready. The same probe also showed why static scans are not verification: the whitespace-only case that the static scan called clean was a real unhandled-input bug.
+
 ### Technique B: State Corruption (A3)
 
 For every state mutation point, simulate failure:
