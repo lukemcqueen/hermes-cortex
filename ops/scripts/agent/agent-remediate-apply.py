@@ -362,6 +362,49 @@ def make_issue_id(issue: dict) -> str:
     return f"{t}|{d[:80]}"
 
 
+def selfheal_enforcement_relock() -> str | None:
+    """Re-lock enforcement files that lost the immutable flag.
+
+    Luke 2026-10-02: the lock must survive inactivity. A deploy unlocks these
+    files before overwriting them; cortex-update.sh now relocks in an EXIT trap
+    and the doctor's --fix path remediates too, but a crash, a kill -9, a manual
+    unlock or an interrupted dogfood can still leave the gate tamperable. This
+    runs on EVERY apply cycle (10 min), probes FIRST via the helper's own
+    `status` — so the common case (everything locked) costs one lsattr pass and
+    NO sudo — and relocks only when something is actually unprotected. The
+    helper owns the target list, so this can never drift from it.
+    """
+    try:
+        out, _, rc = run_cmd("hermes-plugin-lock status", timeout=20)
+    except Exception:
+        return None
+    if rc != 0 or not out:
+        return None
+
+    unprotected: list[str] = []
+    if sys.platform == "darwin":
+        # status prints "<path>: locked" / "<path>: not locked"
+        unprotected = [l.rsplit(":", 1)[0].strip()
+                       for l in out.splitlines() if l.strip().endswith("not locked")]
+    else:
+        for line in out.splitlines():
+            parts = line.split()
+            # "<flags> <path>" — a missing 'i' means the file is modifiable.
+            if len(parts) >= 2 and "i" not in parts[0]:
+                unprotected.append(parts[-1])
+
+    if not unprotected:
+        return None
+
+    _, _, rc2 = run_cmd("sudo -n hermes-plugin-lock lock", timeout=60)
+    if rc2 != 0:
+        _, _, rc2 = run_cmd("hermes-plugin-lock lock", timeout=60)
+    if rc2 == 0:
+        return (f"Re-locked {len(unprotected)} enforcement file(s) that had lost "
+                f"the immutable flag: {', '.join(unprotected[:4])}")
+    return None
+
+
 def main() -> int:
     seen = load_seen_issues()
     fixed = []
@@ -376,6 +419,14 @@ def main() -> int:
         else:
             failed.append(("paused_cron_restore", msg))
     
+    # 0. Self-heal: re-lock enforcement files that lost the immutable flag.
+    # Unconditional — NOT driven by the sensor seen-file — so an unlocked state
+    # is repaired within one cycle whether or not anything flagged it.
+    relock_msg = selfheal_enforcement_relock()
+    if relock_msg:
+        fixed.append(("enforcement_relock", relock_msg))
+        log(f"  🔒 {relock_msg}")
+
     # 1. Read sensor output (job id discovered — ids are ephemeral)
     sensor_dir = discover_sensor_output_dir()
     sensor_text = get_latest_sensor_output(sensor_dir) if sensor_dir else None
