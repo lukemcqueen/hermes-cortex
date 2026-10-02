@@ -96,12 +96,17 @@ harnesses:
           - 'Pi shows the always-skills as /skill:<name> commands (startup diagnostics).'
       governance:
         # VERSION-AWARE (2026-10-02). `adapter: mcp` below is the PREFERRED route, but
-        # it needs Pi >= 0.99 and the shipped Pi is 0.87.1 — no MCP client. Declaring
-        # only that route left an agent on an older Pi with a register command it
-        # cannot run and a verify step ("pi mcp list shows…") that fails for a reason
-        # unrelated to governance. Both routes reach the SAME implementation: the gates
-        # and the governance DB are host state, so a Pi commit is governed identically
-        # either way. Do NOT conclude governance is unavailable because MCP is.
+        # it needs Pi >= 0.99 and the shipped Pi is 0.87.1: its own CLI exposes no
+        # 'mcp' subcommand (pi --help has ZERO matches for mcp) and there is no
+        # ~/.pi/agent/mcp.json. Do NOT infer this from 'pi mcp list' — that command
+        # errors on authentication BEFORE it can report MCP status, so an auth failure
+        # is not evidence about MCP availability (a probe that never ran is not a
+        # negative result). Declaring only the MCP route left an agent on an older Pi
+        # with a register command it cannot run and a verify step ("pi mcp list shows…")
+        # that fails for a reason unrelated to governance — and would reasonably
+        # conclude governance is unavailable. Both routes reach the SAME
+        # implementation: the gates and the governance DB are host state, so a Pi
+        # commit is governed identically either way.
         adapter: mcp
         register: ops/scripts/install/install-pi-mcp.sh
         from: loop-gov-mcp.py
