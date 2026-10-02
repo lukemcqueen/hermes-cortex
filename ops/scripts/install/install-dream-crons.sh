@@ -113,7 +113,10 @@ sys.exit(1)
 # NOTE: the hermes CLI (`cron create`) does NOT expose --toolsets. The
 # toolsets argument here is carried for documentation only; after create,
 # apply enabled_toolsets via the cronjob MCP tool (update) so LLM crons
-# stay lean — design says ["terminal","file"] for the dream tiers.
+# stay lean — design says ["terminal","file","skills","session_search"] for
+# the dream tiers. (2026-09-30: skills+session_search are REQUIRED — a
+# skills-only toolset excludes skill_view, so the governance skills-gate can
+# never pass and every dream run dies with a skills-gate deadlock, exit 127.)
 create_cron() {
   local name="$1" schedule="$2" script="$3" prompt="$4" skill="$5" toolsets="$6" deliver="$7" workdir="$8" no_agent="$9"
 
@@ -233,7 +236,7 @@ Result: 1 monthly arc written to brain and delivered.
 
 📊 deepseek-v4-flash (deepseek) | \$0.006/run ≈ \$0.01/mo" \
   "" \
-  "terminal,file" \
+  "terminal,file,skills,session_search" \
   "origin" \
   "" \
   "false"
@@ -284,7 +287,7 @@ Result: 1 dream written to brain and delivered.
 
 📊 deepseek-v4-flash (deepseek) | \$0.006/run ≈ \$0.18/mo" \
   "" \
-  "terminal,file" \
+  "terminal,file,skills,session_search" \
   "origin" \
   "" \
   "false"
@@ -346,7 +349,7 @@ Result: 1 weekly dream written to brain and delivered.
 
 📊 deepseek-v4-flash (deepseek) | \$0.006/run ≈ \$0.03/wk" \
   "" \
-  "terminal,file" \
+  "terminal,file,skills,session_search" \
   "origin" \
   "" \
   "false"
