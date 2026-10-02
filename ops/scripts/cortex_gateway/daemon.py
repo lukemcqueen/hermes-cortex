@@ -17,6 +17,17 @@ Invariants kept from msg-gateway.py (party-converged):
     silent), never on a failed dispatch.
   - routing lives here (channel_user_id → agent), never in transport/backend.
   - gateway is the ONLY getUpdates consumer per bot (bot_locks on run_locked).
+
+Parity slice 2 (G5/G6/G7, 2026-10-02) — the incumbent's daemon-side behaviour:
+  - G5 slash commands: /stop and /status are handled here; /stop is ALSO
+    forwarded so the agent can stop the work it started; every other command is
+    forwarded with tg_kind="command" rather than becoming prompt prose.
+  - G6 busy/interrupt: one in-flight turn per chat, arrivals queue behind it
+    (bounded), and /stop clears the queue and suppresses that chat's pending
+    replies until the next human message.
+  - G7 polling recovery: transient poll errors back off exponentially instead of
+    spinning; a conflict stands by, and only PERSISTENT conflicts exit (a real
+    second poller must not have its updates stolen).
 """
 from __future__ import annotations
 
@@ -35,8 +46,8 @@ if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
     __package__ = "cortex_gateway"
 
-from .transport import (DEFAULT_POLL_SECONDS, BotConfig, TransportAdapter,
-                        TelegramAdapter)
+from .transport import (DEFAULT_POLL_SECONDS, BotConfig, PollingConflict,
+                        TransportAdapter, TelegramAdapter)
 
 DEFAULT_BACKEND_AGENT = "hermes"
 
@@ -58,6 +69,22 @@ class Gateway:
         # offset tracks the transport's own offset (transport owns the truth).
         self.offset = getattr(transport, "offset", 0)
 
+        # ── per-chat turn state (G5/G6: slash dispatch, busy/interrupt) ────
+        # A turn is IN FLIGHT from dispatch until its reply is drained. The
+        # incumbent serializes turns per chat and lets /stop interrupt; the
+        # target fired every message straight at the agent with no state at
+        # all. Now: one in-flight turn per chat, arrivals queue behind it, and
+        # /stop clears both the pending replies and the queue.
+        self.inflight: dict = {}      # chat_id -> {"ts": float, "envelope": dict}
+        self.queues: dict = {}        # chat_id -> [envelope, ...]
+        self.suppressed: set = set()  # chat_id -> drop replies until next user msg
+        self.max_queue = int(os.environ.get("GATEWAY_MAX_QUEUE_PER_CHAT", "5") or 5)
+
+        # ── poll health (G7: recovery) ──────────────────────────────
+        self.consecutive_failures = 0
+        self.consecutive_conflicts = 0
+        self.max_conflicts = int(os.environ.get("GATEWAY_MAX_POLL_CONFLICTS", "3") or 3)
+
     # ── routing ────────────────────────────────────────────────
     def route(self, chat_id) -> str:
         if chat_id is not None and str(chat_id) in self.routing_overrides:
@@ -66,20 +93,26 @@ class Gateway:
 
     # ── one inbound poll cycle ─────────────────────────────────
     def poll_once(self) -> None:
-        """getUpdates → parse → route → dispatch → sync reply → send."""
+        """getUpdates → parse → route → (command | dispatch) → reply."""
         try:
             updates = self.transport.get_updates(timeout=30)
-        except urllib.error.HTTPError as e:
-            if e.code == 409:
-                print("⛔ 409: ANOTHER poller owns this bot (lock should "
-                      "prevent this)", file=sys.stderr)
-                raise SystemExit(4)
-            print(f"⚠️  getUpdates HTTP {e.code}", file=sys.stderr)
+        except (urllib.error.HTTPError, PollingConflict) as e:
+            code = getattr(e, "code", None)
+            if isinstance(e, PollingConflict) or code == 409:
+                self._note_conflict(e)
+                return
+            self.consecutive_failures += 1
+            print(f"⚠️  getUpdates HTTP {code} ({self.consecutive_failures} in a "
+                  f"row) — backing off {self._poll_delay():.0f}s", file=sys.stderr)
             return
         except Exception as e:
-            print(f"⚠️  poll error: {e}", file=sys.stderr)
+            self.consecutive_failures += 1
+            print(f"⚠️  poll error ({self.consecutive_failures} in a row): {e} "
+                  f"— backing off {self._poll_delay():.0f}s", file=sys.stderr)
             return
 
+        self.consecutive_failures = 0
+        self.consecutive_conflicts = 0
         for upd in updates:
             uid = upd.get("update_id")
             if uid is None:
@@ -90,7 +123,7 @@ class Gateway:
                 self.transport.offset = self.offset
 
     def _turn(self, raw: dict) -> None:
-        """One app event → parse → route → dispatch → sync reply → send."""
+        """One app event → parse → route → (command | dispatch) → reply."""
         envelope = self.transport.parse(raw)
         if envelope is None:
             return
@@ -100,22 +133,173 @@ class Gateway:
                 print(f"⛔ dropped sender {sender} — not in "
                       "TELEGRAM_ALLOWED_USERS", file=sys.stderr)
                 return
-        envelope["to_agent"] = self.route(envelope["channel_user_id"])
+        chat = envelope.get("channel_user_id")
+        # A new human message lifts a previous /stop suppression.
+        if envelope.get("tg_kind") == "message":
+            self.suppressed.discard(chat)
+        envelope["to_agent"] = self.route(chat)
         backend = self.backends.get(envelope["to_agent"])
         if backend is None:
             print(f"⚠️  no backend for agent {envelope['to_agent']}",
                   file=sys.stderr)
             return
+
+        command = self._command_of(envelope)
+        if command is not None and self._handle_command(command, envelope, backend):
+            return
+
+        self._dispatch_or_queue(chat, envelope, backend)
+
+    # ── slash commands (G5) ────────────────────────────────────
+    @staticmethod
+    def _command_of(envelope: dict):
+        """`/stop`, `/stop@MyBot `, or None. Only a leading token counts."""
+        body = (envelope.get("body") or "").strip()
+        if not body.startswith("/") or len(body) < 2:
+            return None
+        return body.split()[0].split("@")[0].lower()
+
+    def _handle_command(self, command: str, envelope: dict, backend) -> bool:
+        """Handle a gateway-level command. True = consumed (do not dispatch again)."""
+        chat = envelope.get("channel_user_id")
+        if command == "/stop":
+            dropped = self._interrupt(chat)
+            # ALSO forward it: the gateway can drop a pending reply, but only the
+            # agent can stop work it has already started. tg_kind marks it as a
+            # command so it is never mistaken for a prompt.
+            self._forward(envelope, backend)
+            self._reply(chat, f"🛑 /stop sent to {envelope.get('to_agent')}; "
+                              f"dropped {dropped} queued message(s)")
+            return True
+        if command == "/status":
+            self._reply(chat, self._status_line())
+            return True
+        if command == "/help":
+            self._reply(chat, "gateway commands: /stop · /status · /help — "
+                              "anything else is forwarded to the agent")
+            return True
+        # Unknown command → forward, so the agent (or a later backend) owns it
+        # instead of the text silently becoming part of a prompt.
+        self._forward(envelope, backend)
+        return True
+
+    def _forward(self, envelope: dict, backend) -> None:
+        """Send a command envelope straight through — never queued behind a turn."""
+        envelope["tg_kind"] = "command"
+        reply = backend.dispatch(envelope)
+        if reply is not None:            # synchronous backend answers immediately
+            self.transport.send(reply)
+
+    def _reply(self, chat, text: str) -> None:
+        if chat is None:
+            return
+        self.transport.send({"channel_user_id": chat, "body": text})
+
+    def _status_line(self) -> str:
+        busy = ",".join(str(c) for c in self.inflight) or "none"
+        queued = sum(len(q) for q in self.queues.values())
+        return (f"gateway ok · backends: {','.join(sorted(self.backends))} · "
+                f"in flight: {busy} · queued: {queued}")
+
+    # ── busy / interrupt (G6) ──────────────────────────────────
+    def _interrupt(self, chat) -> int:
+        """Forget the in-flight turn and drop what was queued behind it."""
+        queued = len(self.queues.pop(chat, []) or [])
+        self.inflight.pop(chat, None)
+        self.suppressed.add(chat)
+        return queued
+
+    def _dispatch_or_queue(self, chat, envelope: dict, backend) -> None:
+        """One in-flight turn per chat; arrivals wait their turn (two-level guard)."""
+        if chat in self.inflight:
+            q = self.queues.setdefault(chat, [])
+            if len(q) >= self.max_queue:
+                print(f"⚠️  queue full for chat {chat} — dropping oldest",
+                      file=sys.stderr)
+                q.pop(0)
+            q.append(envelope)
+            return
+        self._start_turn(chat, envelope, backend)
+
+    def _start_turn(self, chat, envelope: dict, backend) -> None:
+        """Dispatch one turn. A SYNCHRONOUS backend reply frees the chat at once.
+
+        The hermes backend is async (bus enqueue → None, reply arrives via
+        poll_replies), but the seam also allows a backend that returns a reply
+        directly — the original daemon sent it, and dropping it here was a
+        regression caught by test_cortex_gateway_daemon.py.
+        """
+        self.inflight[chat] = {"ts": time.time(), "envelope": envelope}
         reply = backend.dispatch(envelope)
         if reply is not None:
             self.transport.send(reply)
+            self._next_from_queue(chat)
+
+    def _next_from_queue(self, chat) -> None:
+        """The chat is free → run queued turns until one is async or the queue empties.
+
+        Iterative rather than recursive: a synchronous backend would otherwise
+        recurse once per queued message.
+        """
+        self.inflight.pop(chat, None)
+        while True:
+            q = self.queues.get(chat) or []
+            if not q:
+                return
+            nxt = q.pop(0)
+            backend = self.backends.get(nxt.get("to_agent"))
+            if backend is None:
+                return
+            self.inflight[chat] = {"ts": time.time(), "envelope": nxt}
+            reply = backend.dispatch(nxt)
+            if reply is None:            # async backend → wait for its reply
+                return
+            self.transport.send(reply)   # sync backend → the chat is free again
+            self.inflight.pop(chat, None)
 
     # ── outbound drain (async replies) ─────────────────────────
     def drain_outbound(self) -> None:
         """poll_replies from every backend → transport.send."""
         for backend in self.backends.values():
             for reply in backend.poll_replies():
+                chat = reply.get("channel_user_id")
+                if chat in self.suppressed:
+                    # /stop dropped this turn: deliver nothing, but free the chat
+                    # so the next queued message can run.
+                    print(f"🛑 suppressed a reply for chat {chat} (after /stop)",
+                          file=sys.stderr)
+                    self._next_from_queue(chat)
+                    continue
                 self.transport.send(reply)
+                self._next_from_queue(chat)
+
+    # ── polls (G7: recovery) ───────────────────────────────────
+    def _poll_delay(self) -> float:
+        """Normal cadence when healthy; exponential backoff while polls fail.
+
+        The target used to `return` on any poll error and immediately poll again —
+        an error loop that spins a CPU and floods the log — and treated a
+        transient conflict as fatal. Backoff bounds both, capped at a minute.
+        """
+        bad = max(self.consecutive_failures, self.consecutive_conflicts)
+        if bad <= 0:
+            return DEFAULT_POLL_SECONDS
+        return min(60.0, DEFAULT_POLL_SECONDS * (2 ** min(bad, 6)))
+
+    def _note_conflict(self, err) -> None:
+        """A second getUpdates consumer. Transient → stand by; persistent → exit.
+
+        Holding the bot lock should make this impossible. If it persists, another
+        process genuinely owns the bot and polling on would STEAL its updates —
+        so give it a few cycles to clear, then refuse to continue.
+        """
+        self.consecutive_conflicts += 1
+        if self.consecutive_conflicts >= self.max_conflicts:
+            print(f"⛔ {self.consecutive_conflicts} consecutive poll conflicts — "
+                  "another poller owns this bot", file=sys.stderr)
+            raise SystemExit(4)
+        print(f"⏸️  poll conflict {self.consecutive_conflicts}/{self.max_conflicts}: "
+              f"{err} — standing by {self._poll_delay():.0f}s", file=sys.stderr)
 
     # ── run loops ──────────────────────────────────────────────
     def run_once(self) -> None:
@@ -131,7 +315,7 @@ class Gateway:
     def run(self) -> None:
         while True:
             self.run_once()
-            time.sleep(DEFAULT_POLL_SECONDS)
+            time.sleep(self._poll_delay())
 
     def run_locked(self) -> None:
         """run() with per-bot advisory locks (no double-poll on cutover)."""
@@ -148,7 +332,7 @@ class Gateway:
                 else:
                     self.poll_once()
             self.drain_outbound()
-            time.sleep(DEFAULT_POLL_SECONDS)
+            time.sleep(self._poll_delay())
 
 
 # ── config → wiring (env + gateway.yaml) ───────────────────────────────────

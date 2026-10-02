@@ -30,6 +30,7 @@ _SUITES = [
     "tests/test_telegram_bridge_e2e.py",
     "tests/test_telegram_notify_unit.py",
     "tests/test_cortex_gateway_parity_matrix.py",
+    "tests/test_cortex_gateway_daemon_slice.py",
 ]
 
 
@@ -69,8 +70,8 @@ def test_gap_register_in_the_doc_is_numbered_and_matches_the_test():
     closed = [g for g, rest in rows if re.search(r"\|\s*closed", rest, re.I)]
     opened = [g for g, rest in rows if re.search(r"OPEN", rest)]
     print(f"  doc register rows: 9 | closed={len(closed)} {closed} | open={len(opened)} {opened}")
-    assert len(closed) == 6 and len(opened) == 3, \
-        f"the register claims 9 -> 3 open; rows say closed={closed} open={opened}"
+    assert len(closed) == 9 and len(opened) == 0, \
+        f"the daemon slice closed the register; rows say closed={closed} open={opened}"
 
 
 def test_correction_is_recorded_in_the_doc():

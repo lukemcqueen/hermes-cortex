@@ -62,7 +62,8 @@
       "update": {"update_id": 3, "message": {"message_id": 13, "date": 170003, "chat": {"id": 100001, "type": "private"}, "text": "/stop"}},
       "expect": "envelope", "body": "/stop", "thread": null, "media": 0,
       "reply_to": null, "tg_kind": "message",
-      "gap": "DAEMON SLICE: no slash-command dispatch — '/stop' still becomes the prompt body, so there is no in-band way to interrupt a turn"
+      "gap": null,
+      "note": "the TRANSPORT still passes /stop through as a message; the DAEMON now recognises it, forwards it as tg_kind=command and interrupts the chat (G5/G6 closed) — asserted in tests/test_cortex_gateway_daemon_slice.py"
     },
     {
       "name": "empty_text",

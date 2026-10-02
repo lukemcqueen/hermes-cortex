@@ -38,21 +38,25 @@ Evidence: `T` = asserted by the committed test (executed), `C` = code path cited
 | Polling conflict | ✅ stall/reconnect | ⚠️ classified as `PollingConflict` | T — **handling belongs to the daemon slice** |
 | API base missing | env-required | ✅ **fails closed** (was: empty base → invalid URL on every call) | T |
 
-### Open — daemon slice (the gap register)
+### Closed by slice 2 (daemon) — G5/G6/G7
 
-These are asserted as *today's* behavior in the test, so implementing any of them FAILS
-the test and forces this matrix to be updated:
+| Capability | incumbent | target | Evidence |
+|---|---|---|---|
+| Slash commands (`/stop`, `/status`) | ✅ gateway-level dispatch | ✅ gateway handles them; `/stop` also forwards so the agent can stop its own work | daemon test (11) |
+| Busy/interrupt while a turn runs | ✅ two-level guard | ✅ one in-flight turn per chat, bounded queue, `/stop` clears queue + suppresses pending replies | daemon test |
+| Polling stall detection / reconnect loop | ✅ | ✅ exponential backoff (capped 60s); conflict tolerated 3 cycles then exit 4 so a real second poller keeps its updates | daemon test |
+
+### Still not at parity (beyond the audited register)
+
+The G1–G9 register is empty, but these differences are real and are NOT claimed as closed:
 
 | Capability | incumbent | target | Why it matters |
 |---|---|---|---|
-| **Slash commands (`/stop`, `/status`, `/model`)** | ✅ gateway-level dispatch | ❌ text becomes the prompt body | **material** — no in-band way to interrupt a runaway turn from Telegram |
-| **Busy/interrupt while a turn runs** | ✅ two-level guard | ❌ single dispatch, no queue, no interrupt | material for long jobs |
 | **Inline keyboards (button approvals)** | ✅ | ❌ callbacks forwarded, but nothing renders buttons | the approval flow is unreachable from Telegram |
 | Typing indicator / drafts / streaming edits | ✅ | ❌ | cosmetic, but it is UX parity |
 | Forum/DM topic anchors + topic bindings | ✅ thread kwargs, reply anchors, prune | ⚠️ raw `message_thread_id` passes through | DM topics behave differently |
 | DM pairing flow | ✅ pairing code | ❌ unknown senders refused (fail-closed) | behaviour difference, not a security loss |
 | Multi-platform (Discord/Slack/… 20+) | ✅ | ❌ Telegram only | accepted by design (anti-bloat) |
-| Polling stall detection / reconnect loop | ✅ | ⚠️ error classified, daemon must act | **material** |
 
 ### Where the target wins (unchanged)
 
@@ -64,12 +68,19 @@ transport can carry); **HMAC-signed envelopes** with a fail-closed secret.
 
 Confidence is defined, not felt. Cut over when **all four** hold:
 
-1. The gap register is empty — no `DAEMON SLICE` entries left in the parity test.
-2. One live end-to-end turn through the cortex gateway on a **second** bot token (never
-   the live bot: one poller per bot, or `getUpdates` conflicts and the live channel drops).
-3. The three material risks are covered by a test each (interrupt, polling recovery,
-   chunking ✓ already covered).
-4. Rollback is a single documented step (restore the hermes-gateway unit).
+1. ✅ **The gap register is empty** — G1–G9 all closed, asserted by
+   `tests/test_gateway_parity_evidence.py` (9 closed, 0 open).
+2. ⬜ **One live end-to-end turn on a SECOND bot token** — never the live bot: one poller
+   per bot, or `getUpdates` conflicts and the live channel drops. Not done yet; this is
+   the remaining gate.
+3. ✅ **The three material risks each covered by a test** — truncation (chunking, loss-free
+   asserted), interrupt (`/stop` + suppression), polling recovery (backoff + conflict).
+4. ⬜ **Rollback is a single documented step** (restore the hermes-gateway unit) — written,
+   but not exercised on the live bot.
+
+**State: build complete, cutover NOT performed.** 1 and 3 are satisfied; 2 and 4 require a
+live second-bot rehearsal, which is the next step and is deliberately not something this
+document can claim on its own.
 
 ## Gap register (G1–G9) — numbered so the before/after is checkable
 
@@ -82,14 +93,15 @@ ones as today's behaviour, so closing one fails the test until this table is upd
 | G2 | Media outbound (photo/document) | closed | `sendPhoto`/`sendDocument` assertions |
 | G3 | Long message chunking (was `body[:4000]` truncation) | closed | `''.join(chunks) == body` assertion |
 | G4 | Rich formatting (parse_mode, code blocks) | closed | parse_mode + plain-text fallback assertions |
-| G5 | Slash commands (`/stop`, `/status`, `/model`) | OPEN — daemon slice | asserted as today's behaviour (text becomes the prompt) |
-| G6 | Busy/interrupt while a turn runs | OPEN — daemon slice | single dispatch, no queue/interrupt |
-| G7 | Polling recovery (stall detect, reconnect loop) | OPEN — daemon slice | error now classified as `PollingConflict`; daemon does not yet act on it |
+| G5 | Slash commands (`/stop`, `/status`, `/model`) | closed | daemon test: `/stop` interrupts + forwards `tg_kind=command`; `/status` answered locally; unknown commands forwarded |
+| G6 | Busy/interrupt while a turn runs | closed | daemon test: one in-flight turn per chat, bounded queue, queue advances on reply |
+| G7 | Polling recovery (stall detect, reconnect loop) | closed | daemon test: exponential backoff (capped 60s), conflict tolerated then exit 4, counters reset |
 | G8 | Retry/backoff + 429 handling | closed | `_api` retry assertions |
 | G9 | Reactions, inline callbacks, edited messages | closed | `tg_kind` forwarding assertions |
 
-**Gap register: 9 → 3 open (G5, G6, G7), all daemon-level.** G7 is half-closed: the error
-is classified rather than generic, but the recovery loop is daemon work.
+**Gap register: 9 → 0 open — every named gap is now closed.** G5/G6/G7 closed by the
+daemon slice (`tests/test_cortex_gateway_daemon_slice.py`, 11 tests); G7's recovery loop is
+exponential backoff with a conflict fault-tolerance of 3 consecutive cycles before exit 4.
 
 ## Revision note — claims corrected by execution
 
@@ -107,6 +119,14 @@ is classified rather than generic, but the recovery loop is daemon work.
   dropped the newline at every chunk boundary, and the parity test recorded outbound
   `params` by reference while `send()` mutates that dict for the plain-text retry — so "the
   retry dropped the formatting" had been passing for the wrong reason.
+- **2026-10-02, slice 2 (G5/G6/G7):** the daemon gained slash dispatch, per-chat
+  serialization with a bounded queue and `/stop` interruption, and exponential poll
+  backoff. The fixture entry that registered "no slash-command dispatch" is now `gap:
+  null` — the transport still passes `/stop` through as a message (the daemon, not the
+  transport, is where a command is recognised), which is why the transport-level matrix
+  does not change even though the user-visible behaviour does. The three material cutover
+  risks named in the first audit — silent truncation, no interrupt, no polling recovery —
+  are now each covered by a test.
 
 ## Evidence
 
