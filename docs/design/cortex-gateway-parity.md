@@ -70,17 +70,33 @@ Confidence is defined, not felt. Cut over when **all four** hold:
 
 1. ✅ **The gap register is empty** — G1–G9 all closed, asserted by
    `tests/test_gateway_parity_evidence.py` (9 closed, 0 open).
-2. ⬜ **One live end-to-end turn on a SECOND bot token** — never the live bot: one poller
-   per bot, or `getUpdates` conflicts and the live channel drops. Not done yet; this is
-   the remaining gate.
+2. ❌ **One live end-to-end turn on a SECOND bot token** — rehearsal run 2026-10-02 on
+   @Esther0001Bot: the gateway polls, the allowlist holds, `/status` is answered end-to-end
+   over the second bot's loop, and stopping the daemon releases the bot cleanly. BUT the
+   **reply leg is unprovisioned**: `HermesBackend.poll_replies()` reads `out_<agent>`, and
+   **no `out_*` queue exists anywhere in the fleet** (`all queues: broadcast,
+   bus-health-probe, inbox_*`) — agent replies can never come back through this gateway.
+   Cut Telegram over today and the bot would accept messages and never answer. `/status`
+   works precisely because the gateway answers it itself, without the bus.
+   A normal message's inbound leg is also unproven: `inbox_esther` depth 0 is ambiguous
+   (a bus processor may consume it) and there is no reply to observe.
 3. ✅ **The three material risks each covered by a test** — truncation (chunking, loss-free
    asserted), interrupt (`/stop` + suppression), polling recovery (backoff + conflict).
-4. ⬜ **Rollback is a single documented step** (restore the hermes-gateway unit) — written,
-   but not exercised on the live bot.
+4. ⚠️ **Rollback is a single documented step** (restore the hermes-gateway unit) — the
+   mechanism was DEMONSTRATED in rehearsal (stop the daemon → clean exit rc=0 → the bot is
+   released), but not exercised on the live bot.
 
-**State: build complete, cutover NOT performed.** 1 and 3 are satisfied; 2 and 4 require a
-live second-bot rehearsal, which is the next step and is deliberately not something this
-document can claim on its own.
+**State: build complete, cutover NOT performed, and condition 2 is DISQUALIFYING.**
+
+The rehearsal's job was to find exactly this before the flip. Remaining work, in order:
+(a) provision the reply path — create `out_<agent>` queues and make an agent's replies
+land there (or choose a different reply mechanism and document it); (b) re-run the
+second-bot rehearsal to a delivered reply; (c) exercise the rollback on the live bot.
+
+Two further findings from the same rehearsal, both fixed: the rehearsal config's
+placeholder agent ("hermes", copied from `gateway.yaml.example`) has no queue and a failed
+dispatch was swallowed silently — now a WARNING naming the queue; and the token file handed
+over was mode 0644, now 0600.
 
 ## Gap register (G1–G9) — numbered so the before/after is checkable
 
