@@ -110,6 +110,36 @@ if [[ -f "${HOME}/.hermes/.env" ]]; then
   set -a; source "${HOME}/.hermes/.env"; set +a
 fi
 CORTEX_DEPLOY_HOME="${CORTEX_DEPLOY_HOME:-${HOME}/.hermes-cortex}"
+
+# ── Fail-closed relock (Luke 2026-10-02) ────────────────────────────────
+# This script unlocks each immutable enforcement file before overwriting it.
+# The relock used to live ONLY on the success path, so any failure after the
+# first unlock — a copy error, a failed syntax check, an interrupt, a doctor
+# FAIL — left every enforcement file modifiable. A failed deploy must never
+# leave the gate tamperable, so the relock is installed as an EXIT trap: it
+# runs on success, on error and on signal alike. `lock` is idempotent and
+# covers every TARGET, so a run that never unlocked is a harmless no-op.
+_relock_enforcement() {
+  local _rc=$?
+  local _helper="${CORTEX_DEPLOY_HOME}/scripts/hermes-plugin-lock"
+  if [[ "$(uname -s)" == "Darwin" ]]; then
+    if [[ -f "$_helper" ]]; then
+      bash "$_helper" lock >/dev/null 2>&1 || true
+    elif command -v hermes-plugin-lock >/dev/null 2>&1; then
+      hermes-plugin-lock lock >/dev/null 2>&1 || true
+    fi
+  else
+    if command -v hermes-plugin-lock >/dev/null 2>&1; then
+      sudo -n hermes-plugin-lock lock >/dev/null 2>&1 || true
+    elif [[ -f "$_helper" ]]; then
+      sudo -n bash "$_helper" lock >/dev/null 2>&1 || true
+    fi
+  fi
+  if [[ $_rc -ne 0 ]]; then
+    warn "  relock ran on a FAILED exit (rc=$_rc) — enforcement files re-secured"
+  fi
+}
+trap _relock_enforcement EXIT
 STATE_DIR="${CORTEX_DEPLOY_HOME}/state"
 LAST_COMMIT_FILE="${STATE_DIR}/update-commit"
 BUN_PATH="${HOME}/.bun/bin"

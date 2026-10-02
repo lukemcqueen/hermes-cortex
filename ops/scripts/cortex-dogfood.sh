@@ -89,7 +89,43 @@ if [[ -z "$DOCTOR_ONLY" ]]; then
   #    stuck interactive rebase (unmerged files) that breaks the deploy sync.
   echo "▶ 1/4 pull latest"
   _DEFAULT_BRANCH=$(git -C "$REPO" symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's#refs/remotes/origin/##' || echo "main")
-  (cd "$REPO" && git pull --rebase origin "$_DEFAULT_BRANCH" 2>&1 | sed 's/^/   /' || { echo "   (no remote or up to date)"; })
+  # ── Fail-closed relock (Luke 2026-10-02) ──
+  # This script runs the deploy, which unlocks the immutable enforcement files.
+  # cortex-update.sh relocks via its own EXIT trap now, but the mandated
+  # pre-push gate must not depend on a CHILD script's trap for a security
+  # property: if this script dies between the unlock and the deploy, the gate is
+  # left tamperable. Belt and braces — relock on OUR exit too. `lock` is
+  # idempotent, so a run that never unlocked is a harmless no-op.
+  _dogfood_relock() {
+    local _rc=$?
+    bash -c 'hermes-plugin-lock lock 2>/dev/null || sudo -n hermes-plugin-lock lock' >/dev/null 2>&1 || true
+    if [[ $_rc -ne 0 ]]; then
+      echo "   (relock ran on a failed exit rc=$_rc — enforcement files re-secured)"
+    fi
+  }
+  trap _dogfood_relock EXIT
+
+  # ── Pull must never damage local work (Luke 2026-10-02) ──
+  # `git pull --rebase` with unpushed commits, or a conflicted rebase, leaves
+  # the repo mid-rebase and MOVES HEAD TO ORIGIN — dropping the local commits.
+  # That happened: two unpushed commits were orphaned and were recoverable only
+  # from the reflog. The local work IS what this gate is about to verify, so do
+  # not rebase over it: refuse when anything local exists, and abort a failed
+  # rebase rather than walking away from it.
+  _pull_log="${TMPDIR:-/tmp}/cortex-dogfood-pull.log"
+  (cd "$REPO" && {
+      if [[ -n "$(git log --oneline "origin/${_DEFAULT_BRANCH}..HEAD" 2>/dev/null)" ]]; then
+        echo "   (unpushed local commits present — skipping pull; local work is what we verify)"
+      elif [[ -n "$(git status --porcelain 2>/dev/null)" ]]; then
+        echo "   (working tree has changes — skipping pull)"
+      elif git pull --rebase --autostash origin "$_DEFAULT_BRANCH" >"$_pull_log" 2>&1; then
+        sed 's/^/   /' "$_pull_log"
+      else
+        sed 's/^/   /' "$_pull_log"
+        echo "   (pull failed — aborting the rebase so local commits are not left dangling)"
+        git rebase --abort 2>/dev/null || true
+      fi
+    })
 
   # 2. Deploy — sync deployed files to repo source
   if [[ -f "$UPDATE" ]]; then

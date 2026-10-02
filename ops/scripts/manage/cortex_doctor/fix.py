@@ -73,6 +73,22 @@ def apply_fixes(res):
       else:
         failed += 1
 
+  if any(k.startswith("Immutable:") and v in ("FAIL", "WARN")
+         for k, v in fix_map.items()):
+    # The doctor and the governance auditor have always DETECTED a missing
+    # immutable flag; nothing REMEDIATED it, so an unlocked state — a crashed
+    # or interrupted deploy, a manual unlock, an unattended failure — stayed
+    # open until a human noticed. `lock` is idempotent and covers every
+    # TARGET, so this is the self-heal for "unlocked after inactivity"
+    # (Luke 2026-10-02). Portable: non-root lock works on macOS (chflags as
+    # owner), sudo NOPASSWD is required on Linux.
+    if _run_fix("Re-locking enforcement files",
+                ["bash", "-c",
+                 "hermes-plugin-lock lock 2>/dev/null || sudo -n hermes-plugin-lock lock"]):
+      fixed += 1
+    else:
+      failed += 1
+
   # Fix: missing scripts → cortex-update.sh
   if any(k.startswith("Script") for k in fix_map):
     if _run_fix("Deploying scripts via cortex-update", ["bash", str(CORTEX_UPDATE), ""]):
