@@ -320,6 +320,38 @@ def test_foreign_always_review_commit_still_triggers():
                f"always_review={cx['always_review']} paths={cx['always_paths']}")
 
 
+def test_severity_policy_blocks_medium_and_above():
+    """(G) MEDIUM and above block a close; LOW annotates; unknown fails CLOSED.
+
+    Policy (operator 2026-10-02). Blocking on LOW turned the gate into a
+    formatting police: cycles 10337/10371 were held open by LOW/MEDIUM
+    evidence-format findings while every real defect of the day was HIGH.
+    """
+    def _sev(payload):
+        b, a = mcp._blocking_findings(payload)
+        return [str((f or {}).get("severity", "")).lower() for f in b], len(a)
+
+    _check("policy: empty findings block nothing", _sev("[]") == ([], 0))
+    _check("policy: LOW only ANNOTATES, never blocks",
+           _sev(json.dumps([{"severity": "low"}])) == ([], 1))
+
+    for sev in ("medium", "high", "critical"):
+        b, _ = _sev(json.dumps([{"severity": sev}]))
+        _check(f"policy: {sev.upper()} blocks", b == [sev], f"got {b}")
+
+    b, _ = _sev(json.dumps([{"severity": "low"}, {"severity": "medium"}]))
+    _check("policy: MEDIUM blocks even alongside LOW", b == ["medium"], f"got {b}")
+
+    b, _ = _sev(json.dumps([{"finding_id": "no-severity"}]))
+    _check("policy FAIL-CLOSED: finding with no severity blocks", b == [""], f"got {b}")
+
+    b, _ = _sev("{not json at all")
+    _check("policy FAIL-CLOSED: unparseable payload blocks", len(b) == 1, f"got {b}")
+
+    b, _ = _sev(json.dumps({"verdict": "FINDINGS"}))
+    _check("policy FAIL-CLOSED: non-list payload blocks", len(b) == 1, f"got {b}")
+
+
 def _reset_enf_state(state: Path, now: datetime):
     for p in state.glob(".governance-*.json"):
         p.unlink()
@@ -338,6 +370,8 @@ def main():
     test_review_range_scoped_to_authored_commits()
     print("F. scoping never lessens review")
     test_foreign_always_review_commit_still_triggers()
+    print("G. severity policy: MEDIUM+ blocks, LOW annotates")
+    test_severity_policy_blocks_medium_and_above()
     print()
     if _FAIL:
         print(f"{len(_FAIL)} FAILED: {', '.join(_FAIL)}")

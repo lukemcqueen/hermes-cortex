@@ -1701,6 +1701,45 @@ def _extract_verdict(text: str):
     return "FINDINGS", "[]"
 
 
+# Severity policy (operator, 2026-10-02): MEDIUM and above BLOCK a close; LOW is
+# recorded and surfaced but never blocks. Blocking on LOW turned the gate into a
+# formatting police — cycles 10337 and 10371 were held open by LOW/MEDIUM
+# evidence-format findings ("attach raw output", "diff stat header") while every
+# real defect of the day was HIGH.
+BLOCKING_SEVERITIES = ("critical", "high", "medium")
+
+
+def _blocking_findings(findings_json):
+    """``(blocking, annotating)`` — findings split by severity. Never returns None.
+
+    Fail-closed: an unparseable payload, a non-list, or a finding with no
+    recognised severity is returned as BLOCKING. This policy narrows WHICH
+    findings block; it must never make an unknown finding stop blocking.
+    """
+    try:
+        items = json.loads(findings_json or "[]")
+    except Exception:
+        return [{"finding_id": "unparseable-findings", "severity": "high",
+                 "technique": "unverified-claim",
+                 "evidence": str(findings_json)[:200],
+                 "recommendation": "findings payload could not be parsed"}], []
+    if not isinstance(items, list):
+        return [{"finding_id": "malformed-findings", "severity": "high",
+                 "technique": "unverified-claim",
+                 "evidence": str(findings_json)[:200],
+                 "recommendation": "findings payload was not a list"}], []
+    blocking, annotating = [], []
+    for it in items:
+        sev = str((it or {}).get("severity", "")).lower() if isinstance(it, dict) else ""
+        if sev in BLOCKING_SEVERITIES:
+            blocking.append(it)
+        elif sev:
+            annotating.append(it)
+        else:
+            blocking.append(it)          # unknown/absent severity -> fail closed
+    return blocking, annotating
+
+
 def _record_review(cycle_id, reviewer_id, model, verdict, findings_json, summary,
                    replace: bool = False, fingerprint: str = ""):
     """Insert the verdict. Duplicate cycle_id is a no-op unless replace=True.
@@ -2006,10 +2045,17 @@ def _adversarial_review_gate(lock: dict, cycle: dict,
                 log.info("adversarial review: cycle %s CLEAN (stored, material unchanged)",
                          cycle.get("id"))
                 return None
+            _block, _annot = _blocking_findings(stored.get("findings_json") or "[]")
+            if not _block:
+                log.info("adversarial review: cycle %s stored %s but all LOW (%d) — not blocking",
+                         cycle.get("id"), stored_verdict, len(_annot))
+                return None
             return CallToolResult(content=[TextContent(type="text", text=(
                 "❌ Adversarial review FAILED — this complex change cannot close.\n\n"
                 f"Verdict: {stored_verdict} (already recorded for exactly this material)\n"
                 f"Findings: {stored.get('findings_json') or '[]'}\n\n"
+                "Findings at MEDIUM or above block the close; LOW findings are recorded "
+                "(they remain in the stored review) but do not block.\n"
                 "Fix the findings, then call rereview_change with a NEW note describing "
                 "what changed and the evidence for it. The lock stays held; nothing "
                 "sufficiently complex ships unreviewed."
@@ -2041,12 +2087,26 @@ def _adversarial_review_gate(lock: dict, cycle: dict,
         log.info("adversarial review: cycle %s CLEAN", cycle.get("id"))
         return None
 
-    # FINDINGS (or unparseable): hard-block.
+    # Severity policy: MEDIUM and above block; LOW annotates. LOW findings are NOT
+    # discarded — they stay in the stored review row (findings_json, written just
+    # above) and are logged here, so the observation survives without holding the
+    # cycle open.
+    _block, _annot = _blocking_findings(findings_json)
+    if not _block:
+        log.info("adversarial review: cycle %s FINDINGS with only LOW severity (%d) — "
+                 "annotating, not blocking: %s",
+                 cycle.get("id"), len(_annot),
+                 "; ".join(str((f or {}).get("finding_id", "?")) for f in _annot[:6]))
+        return None
+
+    # MEDIUM+ (or unclassifiable): hard-block.
     return CallToolResult(content=[TextContent(type="text", text=(
         "❌ Adversarial review FAILED — this complex change cannot close.\n\n"
         f"Verdict: {verdict}\n"
         f"Findings: {findings_json}\n"
         f"Summary: {reviewer_text[:1200]}\n\n"
+        "Findings at MEDIUM or above block the close; LOW findings are recorded but "
+        "do not block.\n"
         "Resolve the findings and retry end_change. The lock stays held; "
         "nothing sufficiently complex ships unreviewed."
     ))])
