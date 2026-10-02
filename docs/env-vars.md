@@ -65,6 +65,8 @@ names are the contract — never invent a new name without checking here first
 | `ADVERSARIAL_TRIAGE_MODEL` | Faster "System One" model for the close-gate's finding triage. **Unset = triage DISABLED** — the gate then behaves exactly as it did before triage existed, with the reviewer's severities unchanged. It is **not** a chat-completions model: see `docs/runbooks/review-triage-jev.md` |
 | `JUDGMENT_CONFIG_PATH` | Optional override for the judgment client's provider/routing config. Default: `judgment-providers.yaml` beside `judgment.py`. Set per host to route triage to your own judge |
 | `TYPESAFE_API_KEY` | Credential for the Jev judge (`typesafe/jev-router`). **Name only — the value lives in the gitignored env file.** Without it the `review-triage` class cannot run and triage stays off (fail-safe) |
+| `CORTEX_ENV_FILE` | Explicit path to the env file the **gate** reads for its own config (reviewer backend/model, triage switch, credentials). Unset ⇒ it resolves `$CORTEX_REPO/.env` (default `~/hermes-cortex/.env`), then the deploy root, and only **last** `~/.hermes/.env` |
+| `CORTEX_REPO` | Cortex repo root, used to locate the canonical env when `CORTEX_ENV_FILE` is unset |
 | `ADVERSARIAL_REVIEW_BACKEND` | Who reviews a complex change before it can close: `llm` (default) or `agent`. See `docs/runbooks/review-triage-jev.md` |
 | `ADVERSARIAL_REVIEWER_MODEL` | _llm backend._ The reviewer model. Use a model DIFFERENT from the worker's — a model reviewing its own output is not a review |
 | `ADVERSARIAL_REVIEW_BASE_URL` | _llm backend._ Chat-completions base URL (default OpenRouter). Point it at a local/self-hosted endpoint to review without a remote provider |

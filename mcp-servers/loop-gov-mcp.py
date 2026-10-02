@@ -1647,24 +1647,72 @@ def _review_template_text(repo: Path) -> str:
     return ""
 
 
-def _reviewer_api_key() -> str:
-    key = os.environ.get("OPENROUTER_API_KEY", "")
-    if key:
-        return key
-    env = HOME / ".hermes" / ".env"
-    try:
-        if env.is_file():
-            for line in env.read_text().splitlines():
-                if line.startswith("OPENROUTER_API_KEY="):
+def _env_file_paths() -> list:
+    """Env files to consult, MOST canonical first — and NOT Hermes.
+
+    The gate is a cortex component, so it resolves its own configuration from the
+    cortex env before reaching into a Hermes-owned file. ~/.hermes/.env stays last
+    so a host whose credential happens to live there keeps working, but it is not
+    the source of truth for cortex config.
+    """
+    paths = []
+    explicit = (os.environ.get("CORTEX_ENV_FILE", "") or "").strip()
+    if explicit:
+        paths.append(Path(explicit))
+    repo = (os.environ.get("CORTEX_REPO", "") or "").strip()
+    paths.append((Path(repo) if repo else HOME / "hermes-cortex") / ".env")
+    paths.append(Path(os.environ.get("CORTEX_DEPLOY_HOME", str(HOME / ".hermes-cortex"))) / ".env")
+    paths.append(HOME / ".hermes" / ".env")          # legacy last resort
+    return paths
+
+
+def _env_value(name: str, default: str = "") -> str:
+    """Resolve ONE config value, decoupled from Hermes.
+
+    Order: the PROCESS environment, then the canonical cortex env
+    (CORTEX_ENV_FILE, else ~/hermes-cortex/.env, else the deploy root), and only
+    then the Hermes-owned ~/.hermes/.env.
+
+    Two deliberate choices:
+    - Only the NAMED key is extracted; a file is never loaded wholesale into
+      os.environ. Loading it would pull every other secret into the process and
+      change behaviour for code that does not expect it.
+    - Files are read on EVERY call. This server is long-lived, so a snapshot
+      cached at import would keep an operator's fix from taking effect until the
+      process restarted — the exact failure that made triage look unavailable.
+    """
+    value = (os.environ.get(name, "") or "").strip()
+    if value:
+        return value
+    for path in _env_file_paths():
+        try:
+            if not path.is_file():
+                continue
+            for line in path.read_text(errors="ignore").splitlines():
+                if line.startswith(f"{name}="):
                     return line.split("=", 1)[1].strip().strip('"').strip("'")
-    except OSError:
-        pass
-    return ""
+        except OSError:
+            continue
+    return default
+
+
+def _reviewer_api_key() -> str:
+    """The reviewer's credential, resolved through cortex config.
+
+    Backend-aware: the llm backend may NAME its own credential variable, and that
+    name is resolved the same way. An explicitly named credential is honoured
+    strictly — if it is absent the result is empty and the caller refuses, rather
+    than silently reviewing with a different key.
+    """
+    key_env = _env_value("ADVERSARIAL_REVIEW_API_KEY_ENV")
+    if key_env:
+        return _env_value(key_env)
+    return _env_value("OPENROUTER_API_KEY")
 
 
 def _reviewer_backend() -> str:
     """Which reviewer backend runs the close-gate review. Default `llm`."""
-    return (os.environ.get("ADVERSARIAL_REVIEW_BACKEND", "llm") or "llm").strip().lower()
+    return (_env_value("ADVERSARIAL_REVIEW_BACKEND", "llm") or "llm").strip().lower()
 
 
 def _reviewer_label() -> str:
@@ -1672,8 +1720,8 @@ def _reviewer_label() -> str:
     name for the agent backend. A stored review whose reviewer is ambiguous
     cannot be re-derived from the record."""
     if _reviewer_backend() == "agent":
-        return "agent:" + ((os.environ.get("ADVERSARIAL_REVIEW_AGENT_NAME", "") or "unnamed").strip())
-    return os.environ.get("ADVERSARIAL_REVIEWER_MODEL", REVIEWER_MODEL_DEFAULT)
+        return "agent:" + (_env_value("ADVERSARIAL_REVIEW_AGENT_NAME") or "unnamed").strip()
+    return _env_value("ADVERSARIAL_REVIEWER_MODEL", REVIEWER_MODEL_DEFAULT)
 
 
 def _call_reviewer_llm(prompt: str) -> str:
@@ -1681,18 +1729,13 @@ def _call_reviewer_llm(prompt: str) -> str:
     OpenRouter, but ADVERSARIAL_REVIEW_BASE_URL lets a local or self-hosted
     endpoint do the reviewing, and ADVERSARIAL_REVIEW_API_KEY_ENV names the
     credential to read (never the value)."""
-    model = os.environ.get("ADVERSARIAL_REVIEWER_MODEL", REVIEWER_MODEL_DEFAULT)
-    base = ((os.environ.get("ADVERSARIAL_REVIEW_BASE_URL", "") or "").strip()
-            or "https://openrouter.ai/api/v1").rstrip("/")
-    key_env = (os.environ.get("ADVERSARIAL_REVIEW_API_KEY_ENV", "") or "").strip()
-    if key_env:
-        # An EXPLICITLY named credential is honoured strictly. Falling back to a
-        # different one would mean the reviewer ran with a credential the operator
-        # did not choose — silently, and from a file. Better to refuse.
-        api_key = (os.environ.get(key_env, "") or "").strip()
-    else:
-        api_key = ((os.environ.get("OPENROUTER_API_KEY", "") or "").strip()
-                   or _reviewer_api_key())
+    model = _env_value("ADVERSARIAL_REVIEWER_MODEL", REVIEWER_MODEL_DEFAULT)
+    base = (_env_value("ADVERSARIAL_REVIEW_BASE_URL") or "https://openrouter.ai/api/v1").rstrip("/")
+    key_env = _env_value("ADVERSARIAL_REVIEW_API_KEY_ENV")
+    # An EXPLICITLY named credential is honoured strictly: _reviewer_api_key
+    # resolves exactly that name, so a missing one REFUSES rather than silently
+    # reviewing with a different credential.
+    api_key = _reviewer_api_key()
     if not api_key:
         raise RuntimeError(f"{key_env or 'OPENROUTER_API_KEY'} not set — reviewer cannot run")
     body = json.dumps({
@@ -1707,7 +1750,7 @@ def _call_reviewer_llm(prompt: str) -> str:
             "Content-Type": "application/json",
         },
     )
-    timeout = int(os.environ.get("ADVERSARIAL_REVIEW_TIMEOUT", "300"))
+    timeout = int(_env_value("ADVERSARIAL_REVIEW_TIMEOUT", "300") or 300)
     with urllib.request.urlopen(req, timeout=timeout) as resp:
         data = json.loads(resp.read())
     return data["choices"][0]["message"]["content"]
@@ -1736,17 +1779,17 @@ def _call_reviewer_agent(prompt: str, author: Optional[str] = None) -> str:
     author (derived, not operator-supplied), because an author must not
     adjudicate its own work.
     """
-    cmd = (os.environ.get("ADVERSARIAL_REVIEW_AGENT_CMD", "") or "").strip()
+    cmd = _env_value("ADVERSARIAL_REVIEW_AGENT_CMD").strip()
     if not cmd:
         raise RuntimeError(
             "ADVERSARIAL_REVIEW_BACKEND=agent requires ADVERSARIAL_REVIEW_AGENT_CMD "
             "(the agent CLI invocation — the review prompt is passed on stdin)")
-    agent = (os.environ.get("ADVERSARIAL_REVIEW_AGENT_NAME", "") or "").strip()
+    agent = _env_value("ADVERSARIAL_REVIEW_AGENT_NAME").strip()
     if agent and author and agent.lower() in author.lower():
         raise RuntimeError(
             f"refusing SELF-REVIEW: the review agent '{agent}' is this change's "
             f"author ('{author}') — an author cannot adversarially review its own work")
-    timeout = int(os.environ.get("ADVERSARIAL_REVIEW_AGENT_TIMEOUT", "900"))
+    timeout = int(_env_value("ADVERSARIAL_REVIEW_AGENT_TIMEOUT", "900") or 900)
     proc = subprocess.run(
         shlex.split(cmd), input=prompt, capture_output=True, text=True, timeout=timeout,
     )
@@ -1980,7 +2023,7 @@ def _triage_findings(findings, material, client=None, primary_fn=None, config=No
     """
     if not findings:
         return None
-    if primary_fn is None and not (os.environ.get("ADVERSARIAL_TRIAGE_MODEL", "") or "").strip():
+    if primary_fn is None and not _env_value("ADVERSARIAL_TRIAGE_MODEL"):
         return None
     jc = client if client is not None else _load_judgment_client()
     if jc is None:

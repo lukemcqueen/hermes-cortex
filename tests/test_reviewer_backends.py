@@ -131,9 +131,74 @@ def test_backends():
                 os.environ[k] = v
 
 
+def test_env_resolution():
+    """Config resolution is DECOUPLED from Hermes: process env, then the canonical
+    cortex env, and ~/.hermes/.env only as a last resort — read per call."""
+    mcp = _load()
+    saved = {k: os.environ.get(k) for k in
+             ("CORTEX_ENV_FILE", "GOV_TEST_KEY", "GOV_TEST_KEY2", "ADVERSARIAL_TRIAGE_MODEL", "CORTEX_REPO")}
+    try:
+        # The shell that runs this test may already export the enable switch (it
+        # does on this host), and the PROCESS env is legitimately consulted first —
+        # so clear it, otherwise this tests the shell, not the resolution order.
+        os.environ.pop("ADVERSARIAL_TRIAGE_MODEL", None)
+        os.environ.pop("GOV_TEST_KEY", None)
+        os.environ.pop("GOV_TEST_KEY2", None)
+        with tempfile.TemporaryDirectory() as td:
+            f = Path(td) / "cortex.env"
+            f.write_text('GOV_TEST_KEY="from-cortex-file"\nADVERSARIAL_TRIAGE_MODEL=from-cortex-file\n')
+
+            os.environ["CORTEX_ENV_FILE"] = str(f)
+
+            _check("value is read from the canonical cortex env",
+                   mcp._env_value("GOV_TEST_KEY") == "from-cortex-file",
+                   mcp._env_value("GOV_TEST_KEY"))
+            _check("quotes are stripped",
+                   mcp._env_value("GOV_TEST_KEY") == "from-cortex-file")
+
+            # the canonical cortex env BEATS the Hermes file for the same name
+            # (the repo .env sets this to 'jev'; CORTEX_ENV_FILE must win)
+            _check("the cortex file WINS over ~/.hermes/.env, not the reverse",
+                   mcp._env_value("ADVERSARIAL_TRIAGE_MODEL") == "from-cortex-file",
+                   mcp._env_value("ADVERSARIAL_TRIAGE_MODEL"))
+
+            os.environ["GOV_TEST_KEY"] = "from-process"
+            _check("the PROCESS env wins over any file",
+                   mcp._env_value("GOV_TEST_KEY") == "from-process",
+                   mcp._env_value("GOV_TEST_KEY"))
+
+            _check("a missing name returns the default, not an exception",
+                   mcp._env_value("DEFINITELY_ABSENT_XYZ", "fallback") == "fallback")
+
+            # read per call: a later edit to the file is visible with no restart.
+            # Uses a name that is NOT in the process env, else the process wins and
+            # this measures nothing.
+            f.write_text("GOV_TEST_KEY2=first\n")
+            first = mcp._env_value("GOV_TEST_KEY2")
+            f.write_text("GOV_TEST_KEY2=changed-later\n")
+            _check("files are re-read per call (a long-lived server is not frozen)",
+                   first == "first" and mcp._env_value("GOV_TEST_KEY2") == "changed-later",
+                   f"first={first!r} second={mcp._env_value('GOV_TEST_KEY2')!r}")
+
+            # decoupling: the Hermes path is LAST, never first
+            paths = [str(p) for p in mcp._env_file_paths()]
+            _check("the Hermes env is consulted LAST, not first",
+                   paths and paths[-1].endswith("/.hermes/.env")
+                   and not paths[0].endswith("/.hermes/.env"), str(paths))
+    finally:
+        for k, v in saved.items():
+            if v is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
+
+
 if __name__ == "__main__":
     print("Reviewer backends — pluggable transport, fixed fail-closed contract")
     test_backends()
+    print()
+    print("Config resolution — decoupled from Hermes")
+    test_env_resolution()
     print()
     if _FAIL:
         print(f"{len(_FAIL)} FAILED: {', '.join(_FAIL)}")

@@ -162,6 +162,30 @@ Two rules that are not negotiable, both enforced in code:
 - Silence is not CLEAN: a reviewer that exits non-zero, or prints nothing, refuses
   the close.
 
+## Where the gate reads its config (decoupled from Hermes)
+
+The gate is a cortex component, so it resolves its own configuration itself — it
+does **not** depend on Hermes, and it does not need Hermes to pass the values in:
+
+1. the **process** environment (wins, so an explicit export always overrides);
+2. `$CORTEX_ENV_FILE`, else `$CORTEX_REPO/.env` (default `~/hermes-cortex/.env`);
+3. the deploy root (`$CORTEX_DEPLOY_HOME/.env`);
+4. `~/.hermes/.env` — **last resort only**, kept so a host whose credential happens
+   to live there keeps working. It is not the source of truth for cortex config.
+
+Two properties that matter operationally:
+
+- **Only the named key is extracted.** The file is never loaded wholesale into the
+  process environment — that would import every other secret and change behaviour
+  for code that does not expect it.
+- **Files are re-read on every call.** A long-lived MCP server therefore picks up
+  an operator's change *without a restart*. (The one thing a restart is still
+  needed for is deploying this code in the first place: a running server keeps the
+  module it imported.)
+
+Practical consequence: setting `ADVERSARIAL_TRIAGE_MODEL` in `~/hermes-cortex/.env`
+is enough for the gate to see it — no `config.yaml` change and no Hermes env block.
+
 ## Failure is fail-safe — by construction
 
 Disabled (no model named), client missing, provider error, non-`ok` status, or a
