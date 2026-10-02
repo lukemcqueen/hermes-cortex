@@ -41,7 +41,18 @@ chain and re-installs cannot re-pin a dead model.
 
 ## 3. Procedure
 
-### 3.1 Fix the env chain
+**First, the mechanism — two different questions, two different control points:**
+
+| Question | Control point |
+|---|---|
+| What model do crons actually RUN on? | The **main agent model** — `hermes model`, i.e. `~/.hermes/config.yaml` `model.default`. An unpinned job inherits it (verified: `cron/jobs.py::_main_model_pin()` returns `(None, None)` for unpinned jobs; the scheduler then uses the main model). |
+| Will a future manifest sync RE-PIN jobs to a dead model? | The **env pair** `LLM_CRON_MODEL` + `LLM_CRON_PROVIDER`. When both are set, `install-crons.sh pin_cron_model()` returns early and applies no pin, so jobs stay unpinned. |
+
+Nothing in Hermes reads `LLM_CRON_MODEL` at fire time, so editing it alone does
+**not** change what crons run on. Set the main model for that; set the env pair
+to stop the installer re-pinning it.
+
+### 3.1 Set the env pair (prevents re-pinning)
 
 Edit `~/hermes-cortex/.env`, changing **only** the `LLM_CRON*` keys:
 

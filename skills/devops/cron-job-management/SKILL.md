@@ -279,9 +279,15 @@ When explicitly directed to add a cron to another Hermes profile (e.g. Esther):
 
 ## LLM Cron Model — Default Provider Chain (Env Vars, Not Pins)
 
-**THE RULE: Set the model in `.env`, never pin per-cron (Luke 2026-09-08).**
-Every LLM cron without an explicit `provider`/`model` pin inherits from
-environment variables. To change the fleet's model, edit exactly one env var.
+**THE RULE: never pin per-cron (Luke 2026-09-08) — and know which knob does what.**
+An UNPINNED cron job follows the **main agent model** (`hermes model`, i.e.
+`~/.hermes/config.yaml` `model.default` + its resolved provider). It does NOT
+read `LLM_CRON_MODEL` at fire time — verified in `cron/jobs.py::_main_model_pin()`.
+The `LLM_CRON_MODEL` / `LLM_CRON_PROVIDER` env pair is consumed by the HC
+**installer**: when both values are set, `pin_cron_model()` applies no per-cron
+pin, so jobs stay unpinned and no manifest sync can re-pin them to a dead model.
+Change what crons actually RUN on via the main model; set the env pair to stop
+the installer re-pinning.
 Pins should be the rare exception — only for crons that legitimately need a
 different model from the fleet default (e.g. local free-tier crons that must
 never fall back to paid).
