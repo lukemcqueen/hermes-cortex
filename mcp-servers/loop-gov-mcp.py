@@ -117,7 +117,37 @@ if _HAVE_MCP is None:
           f"[mcp-server]   {sys.executable} -m pip install mcp", file=sys.stderr)
 
 log = logging.getLogger("loop-governance")
-logging.basicConfig(level=logging.DEBUG, format="[mcp-server] %(levelname)s: %(message)s", stream=sys.stderr, force=True)
+_LOG_FORMAT = "[mcp-server] %(levelname)s: %(message)s"
+logging.basicConfig(level=logging.DEBUG, format=_LOG_FORMAT, stream=sys.stderr, force=True)
+
+# ── Cortex-owned log record (2026-10-02) ────────────────────────────────
+# A stdio MCP server must not write to stdout (it carries the protocol), so the
+# gate logs to stderr — and the HARNESS then captures that wherever IT decides
+# (Hermes puts it in ~/.hermes/logs/mcp-stderr.log). That made the gate's only
+# record a Hermes-owned artifact: outside our tree, and subject to Hermes's
+# rotation policy. The gate is a cortex component, so it also keeps its own
+# bounded log under the cortex tree, where the rest of our logs already live
+# (~/.hermes-cortex/logs/, cf. health-vector-push.sh, service-writer.sh).
+#
+# stderr is KEPT, unchanged: live debugging and the harness capture keep working.
+# Non-fatal by design — if the directory or file cannot be opened, the gate runs
+# exactly as before with stderr only. A logging failure must never break
+# governance.
+try:
+    from logging.handlers import RotatingFileHandler
+
+    _log_dir = Path(os.environ.get("CORTEX_DEPLOY_HOME") or (Path.home() / ".hermes-cortex")) / "logs"
+    _log_dir.mkdir(parents=True, exist_ok=True)
+    _file_handler = RotatingFileHandler(
+        str(_log_dir / "loop-governance.log"),
+        maxBytes=5 * 1024 * 1024,   # bounded; never an unbounded growth file
+        backupCount=3,
+        encoding="utf-8",
+    )
+    _file_handler.setFormatter(logging.Formatter(_LOG_FORMAT))
+    log.addHandler(_file_handler)
+except Exception:  # noqa: BLE001 — stderr-only fallback, deliberately silent
+    pass
 
 try:
     from mcp.server import Server

@@ -66,8 +66,14 @@ material it judged (note + diff):
 ## Verifying the gate actually RAN — a pass is not evidence of a review
 
 A close that succeeds may mean the review passed, or that the review never ran.
-Only the gate's own log separates those, and the log is
-`~/.hermes/logs/mcp-stderr.log` (the MCP server's stderr):
+Only the gate's own log separates those, and the gate writes **two** places:
+
+- **`~/.hermes-cortex/logs/loop-governance.log`** — the cortex-owned record
+  (bounded: rotates at 5 MB, 3 backups). **Read this one first**: it is ours, it
+  sits with the other cortex logs, and it does not depend on Hermes's rotation.
+- `~/.hermes/logs/mcp-stderr.log` — stderr, captured by the harness. Useful for
+  live debugging, and it interleaves every gateway-spawned server, so prefer the
+  cortex log when asking "what did the gate decide".
 
 | Line | What actually happened |
 |---|---|
@@ -76,7 +82,8 @@ Only the gate's own log separates those, and the log is
 | findings listed with severities | MEDIUM+ findings blocked the close. |
 
 Cheap check before claiming "the gate passed": `search_files` for
-`adversarial review: cycle` (or `triage:`) in that log. The triage layer also logs
+`adversarial review: cycle` (or `triage:`) in
+`~/.hermes-cortex/logs/loop-governance.log`. The triage layer also logs
 `triage: judgement status=…` and `reviewer severities stand` when the judge is
 unreachable — silence there means triage never ran, not that it approved.
 
