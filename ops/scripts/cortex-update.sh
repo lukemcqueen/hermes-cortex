@@ -321,6 +321,10 @@ register "ops/scripts/manage/session-identity.sh"               "${CORTEX_DEPLOY
 register "ops/scripts/judgment.py"                             "${CORTEX_DEPLOY_HOME}/scripts/judgment.py"
 register "ops/scripts/judgment-providers.yaml"                 "${CORTEX_DEPLOY_HOME}/scripts/judgment-providers.yaml"
 register "ops/scripts/install/install-pi-integration.sh"       "${CORTEX_DEPLOY_HOME}/scripts/install-pi-integration.sh"
+# Version-aware audit of the Pi integration, so ANY agent can verify its own host
+# instead of working from a checklist that assumes the MCP route (Pi 0.87.1 has no
+# MCP client, so the MCP checklist reports FAIL on a healthy install).
+register "ops/scripts/manage/audit-pi-integration.sh"          "${CORTEX_DEPLOY_HOME}/scripts/audit-pi-integration.sh"
 # One-secret extractor: hands a consuming harness exactly ONE named variable, so
 # it never has to be given (or source) the whole environment.
 register "ops/scripts/manage/env-value.sh"                    "${CORTEX_DEPLOY_HOME}/scripts/env-value.sh"
@@ -491,7 +495,6 @@ register "ops/scripts/manage/agent-auto-save-sessions.py"      "${CORTEX_DEPLOY_
 # legacy brain decommissioned; dead scripts no longer deployed.
 register "ops/scripts/manage/send-skill-report.py"       "${CORTEX_DEPLOY_HOME}/scripts/send-skill-report.py"
 
-register_orch "mcp-servers/cortex-bus-mcp.py"               "${CORTEX_DEPLOY_HOME}/scripts/cortex-bus-mcp.py"
 
 # Inbox MCP tools
 # Inbox→bus renamed scripts (source files moved to ops/scripts/bus/)
@@ -582,6 +585,14 @@ register_orch "ops/scripts/orch-bus/orch-bus-health-check.py"  "${CORTEX_DEPLOY_
 register_orch "ops/scripts/orch-bus/orch-bus-watch.py"         "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-watch.py"
 register_orch "ops/scripts/orch-bus/orch-bus-watch.sh"         "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-watch.sh"
 register_orch "ops/scripts/orch-bus/orch-bus-mcp.py"           "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-mcp.py"
+# NOT orch-only (fixed 2026-10-02): the bus MCP exposes only CLIENT tools
+# (inbox_send/read/watch/list_agents/send_task/…), every agent's card declares
+# bus_access: client, and install-pi-mcp.sh requires this file on EVERY host. As
+# register_orch, non-orchestrator hosts never received it, so Pi registered 3 of 4
+# MCP servers and the bus was unusable there (Titus, worker-4, hit exactly this and
+# had to copy the file by hand — a manual workaround, not a fix).
+# Guard: tests/test_mcp_servers_deployed.py fails if this becomes orch-only again.
+register "mcp-servers/cortex-bus-mcp.py"                    "${CORTEX_DEPLOY_HOME}/scripts/cortex-bus-mcp.py"
 register_orch "ops/scripts/orch-bus/orch-bus-readiness-check.py" "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-readiness-check.py"
 register_orch "ops/scripts/orch-bus/orch-bus-git-auth-check.py" "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-git-auth-check.py"
 register_orch "ops/scripts/orch-bus/orch-clean-health-queue.py" "${CORTEX_DEPLOY_HOME}/scripts/orch-clean-health-queue.py"
