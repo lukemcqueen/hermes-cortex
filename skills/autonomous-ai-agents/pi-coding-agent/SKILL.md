@@ -85,6 +85,51 @@ Harness index: `ops/install/harnesses/INDEX.md` · Adding another harness:
 `registry.yaml` + `generate-harnesses.py` · Runbook:
 `docs/runbooks/context-integration.md`.
 
+## Configure a provider (OpenRouter + a model)
+
+Verified against the installed package docs — `docs/providers.md`,
+`docs/settings.md`, `docs/configuration.md` — not inferred:
+
+```bash
+# <agent-dir>/auth.json   — {"<provider>": {"type": "api_key", "key": "... | !command"}}
+# <agent-dir>/settings.json — {"defaultProvider": ..., "defaultModel": ...}
+# <agent-dir>/models.json — custom/compatible models and overrides
+```
+
+Set the model defaults (preserve existing keys — `extensions`, `skills`):
+
+```json
+{"defaultProvider": "openrouter", "defaultModel": "moonshotai/kimi-k2.6"}
+```
+
+**Do NOT source an env file to supply the key.** Pi's docs support a `!command`
+precisely so the resolved key is never written to disk, but the obvious command —
+`bash -lc 'set -a; . ~/.hermes/.env; printf %s $OPENROUTER_API_KEY'` — hands the
+coding agent EVERY secret in that file, and this skill's own pitfall says the agent
+can print its own environment. Supply exactly one variable:
+
+```json
+{"openrouter": {"type": "api_key",
+                "key": "!bash ~/.hermes-cortex/scripts/env-secret.sh OPENROUTER_API_KEY"}}
+```
+
+`env-secret.sh` prints one named value (cortex env first, then the Hermes env, first
+match wins), fails closed when absent, and refuses a name that isn't
+`^[A-Z][A-Z0-9_]*$` so it can't become a pattern. Point it at a Hermes-only key and
+copy that key into the cortex env: no harness should reach into a Hermes-owned file
+for a provider key.
+
+Verify all three, in this order — the last one is the only real proof:
+
+```bash
+pi auth check --provider openrouter          # ready
+pi --list-models kimi                        # the model, with context/thinking capabilities
+pi --model "openrouter/<vendor>/<model>" "Reply with exactly: ready"   # a real turn
+```
+
+`pi auth check --model <id>` without the provider qualifier reports `not_ready` even
+when the model is fine — check the provider-qualified form.
+
 ## Jev integration (the cost-routing hooks)
 The five high-value Jev hooks in the pi loop, from ten-levels-of-jev and mapped in
 steadfaste `docs/design/coding-cost-routing.md`:
