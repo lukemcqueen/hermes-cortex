@@ -202,6 +202,28 @@ class Gateway:
                 f"in flight: {busy} · queued: {queued}")
 
     # ── busy / interrupt (G6) ──────────────────────────────────
+    # ── typing indicator (parity: "typing…" while a turn runs) ──
+    TYPING_REFRESH_S = 4.0        # Telegram shows the action for ~5s
+
+    def _typing(self, chat, envelope=None) -> None:
+        """Best-effort: feature-detected, so a transport without typing still works."""
+        fn = getattr(self.transport, "send_typing", None)
+        if not fn or chat is None:
+            return
+        try:
+            fn(chat, thread_id=(envelope or {}).get("thread_id"))
+        except Exception as e:  # noqa: BLE001 — UX must never break a turn
+            print(f"⚠️  typing indicator failed: {e}", file=sys.stderr)
+        if chat in self.inflight:
+            self.inflight[chat]["typing_ts"] = time.time()
+
+    def _refresh_typing(self) -> None:
+        """Keep the indicator alive for every in-flight turn (refreshed, not once)."""
+        now = time.time()
+        for chat, st in list(self.inflight.items()):
+            if now - st.get("typing_ts", 0) >= self.TYPING_REFRESH_S:
+                self._typing(chat, st.get("envelope"))
+
     def _interrupt(self, chat) -> int:
         """Forget the in-flight turn and drop what was queued behind it."""
         queued = len(self.queues.pop(chat, []) or [])
@@ -230,6 +252,7 @@ class Gateway:
         regression caught by test_cortex_gateway_daemon.py.
         """
         self.inflight[chat] = {"ts": time.time(), "envelope": envelope}
+        self._typing(chat, envelope)
         reply = backend.dispatch(envelope)
         if reply is not None:
             self.transport.send(reply)
@@ -304,6 +327,7 @@ class Gateway:
     # ── run loops ──────────────────────────────────────────────
     def run_once(self) -> None:
         self.poll_once()
+        self._refresh_typing()
         self.drain_outbound()
 
     def run_outbound_only(self) -> None:
@@ -331,6 +355,7 @@ class Gateway:
                           file=sys.stderr)
                 else:
                     self.poll_once()
+            self._refresh_typing()
             self.drain_outbound()
             time.sleep(self._poll_delay())
 

@@ -192,6 +192,41 @@ def test_output_shape_is_declared_not_guessed():
         print("  an unknown output mode is refused at build ✓")
 
 
+def test_per_chat_session_continuity_is_declared_and_deterministic():
+    """pi spawns per turn, so without this every message starts a blank conversation.
+
+    The id is deterministic (hc-<agent>-<chat>) so continuity survives a gateway restart
+    with no shared state, and the argv template keeps pi's flag names out of our code.
+    """
+    spec = A.AgentSpec(name="pi", kind="command", session="per_chat",
+                       session_args=["--session-id", "{session_id}"],
+                       command=["/bin/echo"])
+    backend = A.CommandBackend(spec)
+    reply_a = backend.dispatch(_inbound("first", chat=111))
+    reply_b = backend.dispatch(_inbound("second", chat=111))
+    reply_c = backend.dispatch(_inbound("other chat", chat=222))
+    ids = [r["body"].split("--session-id ")[1].split()[0] for r in (reply_a, reply_b, reply_c)]
+    assert ids[0] == ids[1] == "hc-pi-111", f"same chat must reuse its session: {ids}"
+    assert ids[2] == "hc-pi-222", f"a different chat must get its own session: {ids}"
+    print(f"  per-chat sessions are deterministic: {ids} ✓")
+
+    off = A.AgentSpec(name="pi", kind="command", command=["/bin/echo"])
+    assert "--session-id" not in A.CommandBackend(off).dispatch(_inbound("hi"))["body"]
+    print("  session=none (default) spawns a fresh conversation ✓")
+
+    for spec_dict, expect in (
+        ({"name": "pi", "kind": "command", "command": ["pi"], "session": "sometimes"}, "session must be one of"),
+        ({"name": "pi", "kind": "command", "command": ["pi"], "session": "per_chat",
+          "session_args": ["--flag"]}, "needs '{session_id}'"),
+    ):
+        try:
+            A.build_backends([spec_dict], {})
+            raise AssertionError(f"{spec_dict} must not build")
+        except ValueError as e:
+            assert expect in str(e), f"expected {expect!r} in {e}"
+    print("  a bad session mode, and per_chat without a session id, are refused ✓")
+
+
 def test_bus_reply_mode_publishes_to_out_agent(monkeypatch):
     sent = {}
     import cortex_gateway.transport as T

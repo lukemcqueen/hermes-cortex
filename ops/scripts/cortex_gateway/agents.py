@@ -70,6 +70,13 @@ REPLY_MODES = ("sync", "bus")
 # involved belongs in a wrapper command in the spec, which the registry already supports.
 OUTPUT_MODES = ("raw", "last_line")
 
+# How an agent remembers the conversation. `none` = a fresh process per turn (no memory);
+# `per_chat` = one agent session per human chat, declared via session_args. The id is
+# DETERMINISTIC (hc-<agent>-<chat>), so continuity survives a gateway restart without
+# shared state — and the argv template keeps the agent's own flag names out of our code
+# (pi: --session-id, others differ).
+SESSION_MODES = ("none", "per_chat")
+
 
 @dataclass
 class AgentSpec:
@@ -82,6 +89,8 @@ class AgentSpec:
     timeout_s: int = 300
     reply_mode: str = "sync"                      # sync (return) | bus (write out_<agent>)
     output: str = "raw"                           # raw | last_line (agents print chatter)
+    session: str = "none"                         # none | per_chat (one agent session per chat)
+    session_args: list = field(default_factory=lambda: ["--session-id", "{session_id}"])
     capabilities: list = field(default_factory=list)  # free-form, for operators/health
     model: str = ""
     subject: str = "USER_MESSAGE"                 # kind=hermes inbound subject
@@ -94,7 +103,8 @@ class AgentSpec:
         if not isinstance(d, dict):
             raise ValueError(f"backend spec must be a mapping or a name, got {type(d).__name__}")
         allowed = {"name", "kind", "command", "prompt_template", "timeout_s", "reply_mode",
-                   "capabilities", "model", "subject", "output", "extra"}
+                   "capabilities", "model", "subject", "output", "session", "session_args",
+                   "extra"}
         unknown = set(d) - allowed
         if unknown:
             raise ValueError(
@@ -111,6 +121,8 @@ class AgentSpec:
             timeout_s=int(d.get("timeout_s", 300) or 300),
             reply_mode=str(d.get("reply_mode", "sync")).strip().lower(),
             output=str(d.get("output", "raw")).strip().lower(),
+            session=str(d.get("session", "none")).strip().lower(),
+            session_args=list(d.get("session_args") or ["--session-id", "{session_id}"]),
             capabilities=list(d.get("capabilities", []) or []),
             model=str(d.get("model", "") or ""),
             subject=str(d.get("subject", "USER_MESSAGE") or "USER_MESSAGE"),
@@ -137,6 +149,15 @@ class AgentSpec:
             raise ValueError(
                 f"backend '{self.name}': output must be one of {OUTPUT_MODES}, "
                 f"got {self.output!r}")
+        if self.session not in SESSION_MODES:
+            raise ValueError(
+                f"backend '{self.name}': session must be one of {SESSION_MODES}, "
+                f"got {self.session!r}")
+        if self.session == "per_chat" and not any("{session_id}" in a for a in self.session_args):
+            raise ValueError(
+                f"backend '{self.name}': session='per_chat' needs '{{session_id}}' somewhere "
+                f"in session_args (got {self.session_args}) — otherwise every chat shares one "
+                "session, which is not what 'per_chat' says")
         if not self.subject or self.subject != self.subject.upper():
             raise ValueError(
                 f"backend '{self.name}': subject must be UPPER_CASE "
@@ -241,7 +262,7 @@ class CommandBackend:
         except env.EnvelopeError:
             return None                       # malformed — DLQ, never crash the loop
         prompt = self._prompt(inbound)
-        out = self._run(prompt)
+        out = self._run(prompt, self._session_id(inbound))
         if not out:
             return None                       # silent turn is legitimate
         reply = reply_from_origin(inbound, out, agent=self.spec.name)
@@ -273,8 +294,23 @@ class CommandBackend:
                         "using the raw body", self.spec.name)
             return str(inbound.get("body", ""))
 
-    def _run(self, prompt: str) -> str:
-        cmd = [*self.spec.command, prompt]
+    def _session_id(self, inbound: dict) -> str:
+        """Deterministic per-chat session id: stable, no shared state, restart-safe.
+
+        hc-<agent>-<chat> — pi creates the session if it does not exist, so the first turn
+        of a chat starts one and every later turn continues it. A random or in-memory id
+        would silently reset the conversation on every gateway restart.
+        """
+        if self.spec.session != "per_chat":
+            return ""
+        chat = inbound.get("channel_user_id")
+        return f"hc-{self.spec.name}-{chat}" if chat is not None else ""
+
+    def _run(self, prompt: str, session_id: str = "") -> str:
+        cmd = [*self.spec.command]
+        if session_id:
+            cmd += [str(a).replace("{session_id}", session_id) for a in self.spec.session_args]
+        cmd.append(prompt)
         try:
             proc = subprocess.run(cmd, capture_output=True, text=True,
                                   timeout=self.spec.timeout_s)

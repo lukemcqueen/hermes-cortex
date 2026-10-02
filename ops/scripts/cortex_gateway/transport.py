@@ -18,6 +18,7 @@ import base64
 import json
 import os
 import re
+import sys
 import time
 import urllib.error
 import urllib.parse
@@ -291,6 +292,27 @@ class TelegramAdapter(TransportAdapter):
         return data.get("result", [])
 
     # ── outbound ──
+    # ── typing indicator (parity: the incumbent shows "typing…" while a turn runs) ──
+    def send_typing(self, chat_id, thread_id=None, action: str = "typing") -> bool:
+        """Best-effort chat action. NEVER raises and never breaks a turn.
+
+        A typing indicator is UX, not delivery: if Telegram rejects it (rate limit, a
+        chat that forbids actions, a topic id that no longer exists) the turn must still
+        run and the reply must still arrive. Optional capability — the daemon
+        feature-detects it, so a transport without it stays conformant.
+        """
+        if chat_id is None:
+            return False
+        params = {"chat_id": chat_id, "action": action}
+        if thread_id:
+            params["message_thread_id"] = thread_id
+        try:
+            data = self._api("sendChatAction", params)
+        except Exception as e:  # noqa: BLE001 — UX must never break the loop
+            print(f"⚠️  sendChatAction failed: {e}", file=sys.stderr)
+            return False
+        return bool(data.get("ok"))
+
     def parse_mode(self, envelope: dict) -> str:
         """Formatting mode: the envelope wins, else TELEGRAM_PARSE_MODE, else none.
 
