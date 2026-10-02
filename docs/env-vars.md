@@ -62,6 +62,9 @@ names are the contract — never invent a new name without checking here first
 | `CODING_MODEL` | Coding task model |
 | `CREATIVE_MODEL` | Creative/content model |
 | `JUDGE_MODEL` | Governance judge model |
+| `ADVERSARIAL_TRIAGE_MODEL` | Faster "System One" model for the close-gate's finding triage. **Unset = triage DISABLED** — the gate then behaves exactly as it did before triage existed, with the reviewer's severities unchanged. It is **not** a chat-completions model: see `docs/runbooks/review-triage-jev.md` |
+| `JUDGMENT_CONFIG_PATH` | Optional override for the judgment client's provider/routing config. Default: `judgment-providers.yaml` beside `judgment.py`. Set per host to route triage to your own judge |
+| `TYPESAFE_API_KEY` | Credential for the Jev judge (`typesafe/jev-router`). **Name only — the value lives in the gitignored env file.** Without it the `review-triage` class cannot run and triage stays off (fail-safe) |
 | `EMBEDDING_MODEL` | Embedding model (local Ollama: `nomic-embed-text:v1.5`) |
 | `LLM_CRON_MODEL` | Cron LLM model. Controls **installer pinning only** — an unpinned cron RUNS on the main model (`model.default`), not on this value. Provider-specific id form (`deepseek/deepseek-v4.1-flash` on openrouter) |
 | `LLM_CRON_PROVIDER` | Cron LLM provider (`openrouter`), same scope as above. Never a free tier that can stop resolving — a dead free pin falls through to a PAID route while reporting `ok` |

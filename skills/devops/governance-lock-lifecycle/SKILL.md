@@ -66,6 +66,28 @@ The doctor's REQUIRED ACTIONS print commands like `Check: hermes cron logs --nam
 
 Writing `/tmp/inspect.py` triggers the domain-skill gate: "write blocked until `test-driven-development` loaded". Loading it satisfies the gate — it does NOT obligate a TDD cycle for a disposable inspection script (TDD's own exceptions cover throwaway prototypes). State this explicitly ("gate satisfied — disposable script, no test cycle") so the user isn't confused about why TDD was loaded.
 
+## Guarantees (2026-10-02) — the unlock can no longer outlive the run
+
+The deploy unlocks each immutable enforcement file before overwriting it. Two
+guarantees make a leftover unlocked state self-correcting:
+
+1. **Relock on error.** `cortex-update.sh` installs `_relock_enforcement` as an
+   `EXIT` trap — and `cortex-dogfood.sh` has its own, so the mandated pre-push
+   gate does not depend on a CHILD script's trap for a security property. The
+   relock runs on success, on error and on signal alike; a FAILED deploy no
+   longer leaves the gate tamperable. Verified by failing a deploy on purpose
+   (bad `CORTEX_DEPLOY_HOME` → rc=1) and watching all nine files come back
+   `----i---------e-------`.
+2. **Relock after inactivity.** `agent-remediate-apply.py` (no_agent, every
+   10 min) self-heals at the top of every cycle, probing
+   `hermes-plugin-lock status` FIRST so the already-locked case costs one
+   `lsattr` and no sudo. `cortex_doctor --fix` relocks on a failing
+   `Immutable:` check as well.
+
+Consequences for an agent who finds a missing `i` flag: it is a **symptom, not a
+task**. Wait one cycle, or run `sudo -n hermes-plugin-lock lock`. Do NOT hand-lock
+individual files, and never "fix" it by weakening the check.
+
 ## Verification
 
 - `check_lock` confirms the purge (active: false) — expect this after every update run
