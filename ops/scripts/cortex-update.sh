@@ -284,6 +284,12 @@ register "ops/scripts/manage/purge-stale-governance-locks.py" "${CORTEX_DEPLOY_H
 register "ops/scripts/manage/soul-merge.py"                    "${CORTEX_DEPLOY_HOME}/scripts/soul-merge.py"
 register "ops/scripts/manage/session-active-guard.py"          "${CORTEX_DEPLOY_HOME}/scripts/session-active-guard.py"
 register "ops/install/deploy/nginx/hermes-plugin-lock"           "${CORTEX_DEPLOY_HOME}/scripts/hermes-plugin-lock"
+register "ops/scripts/manage/session-identity.sh"               "${CORTEX_DEPLOY_HOME}/scripts/session-identity.sh"
+# Judgment client + provider routing. The client resolves its config as
+# Path(__file__).parent/"judgment-providers.yaml" (or JUDGMENT_CONFIG_PATH), so
+# the two must deploy together or the triage layer silently reports unavailable.
+register "ops/scripts/judgment.py"                             "${CORTEX_DEPLOY_HOME}/scripts/judgment.py"
+register "ops/scripts/judgment-providers.yaml"                 "${CORTEX_DEPLOY_HOME}/scripts/judgment-providers.yaml"
 register "ops/scripts/manage/soul-sync-all.sh"                 "${CORTEX_DEPLOY_HOME}/scripts/soul-sync-all.sh"
 register "ops/scripts/agent/agents-doc-audit.py"          "${CORTEX_DEPLOY_HOME}/scripts/agents-doc-audit.py"
 register_orch "ops/scripts/agent/orch-restic-backup.py"        "${CORTEX_DEPLOY_HOME}/scripts/orch-restic-backup.py"
