@@ -67,7 +67,7 @@ def test_import_refusal_is_warn_not_crash():
         try:
             res = results.Results()
             checks.check_adversarial_review(res)  # must NOT raise SystemExit
-            entry = _find_result(res, "Adversarial review gate")
+            entry = _find_result(res, "Self-adversarial review gate")
             assert entry is not None, "check produced no 'Adversarial review gate' result"
             assert entry["status"] == "WARN", (
                 f"expected WARN for interpreter-without-mcp, got: {entry}"
@@ -88,7 +88,7 @@ def test_missing_helpers_still_fails():
         try:
             res = results.Results()
             checks.check_adversarial_review(res)
-            entry = _find_result(res, "Adversarial review gate")
+            entry = _find_result(res, "Self-adversarial review gate")
             assert entry is not None, "check produced no 'Adversarial review gate' result"
             assert entry["status"] == "FAIL", f"expected FAIL for missing helpers, got: {entry}"
             assert "_adversarial_review_gate" in entry.get("detail", "")
@@ -107,7 +107,7 @@ def test_import_error_still_fails():
         try:
             res = results.Results()
             checks.check_adversarial_review(res)
-            entry = _find_result(res, "Adversarial review gate")
+            entry = _find_result(res, "Self-adversarial review gate")
             assert entry is not None, "check produced no 'Adversarial review gate' result"
             assert entry["status"] == "FAIL", f"expected FAIL for import error, got: {entry}"
         finally:

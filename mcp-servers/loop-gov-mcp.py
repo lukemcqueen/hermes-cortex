@@ -1455,7 +1455,11 @@ def _begin_change(args: dict) -> CallToolResult:
 
 
 # ═════════════════════════════════════════════════════════════════════════════
-# Event-driven adversarial review — complexity-gated hard gate (2026-09-24)
+# Event-driven SELF-adversarial review — worker-invoked, in-session, and
+# therefore NOT an independent evaluator: a worker-triggered review of its own
+# work is a self-report. It is a useful gate, but the INDEPENDENT evaluation is
+# the orchestrator-triggered sweep (ops/scripts/orch-bus/adversarial-review.py,
+# fixed prompt, own process) — see docs/design/independent-adversarial-verifier.md.
 #
 # The reviewer fires at end_change (NOT a cron). A "sufficiently complex"
 # change cannot close its cycle until an independent reviewer (fixed prompt,
@@ -2329,12 +2333,12 @@ def _adversarial_review_gate(lock: dict, cycle: dict,
         # an unmeasurable close is a complex close, and it must be reviewed.
         return CallToolResult(content=[TextContent(type="text", text=(
             "❌ Cannot close: no governed repo to measure complexity — "
-            "adversarial review cannot run. Report to the orchestrator."
+            "self-adversarial review cannot run. Report to the orchestrator."
         ))])
 
     cx = _complexity(repo, lock.get("started_at", ""))
     if not cx["is_complex"]:
-        log.info("adversarial review: cycle %s simple (%s lines, %s files) — skip",
+        log.info("self-adversarial review: cycle %s simple (%s lines, %s files) — skip",
                  cycle.get("id"), cx["lines"], cx["files"])
         return None
 
@@ -2378,7 +2382,7 @@ def _adversarial_review_gate(lock: dict, cycle: dict,
     template = _review_template_text(repo)
     if not template or REVIEW_MARKER not in template:
         return CallToolResult(content=[TextContent(type="text", text=(
-            "❌ Cannot close: adversarial reviewer prompt template is missing or "
+            "❌ Cannot close: self-adversarial reviewer prompt template is missing or "
             "corrupt. Run cortex-update.sh, then retry end_change."
         ))])
 
@@ -2426,16 +2430,16 @@ def _adversarial_review_gate(lock: dict, cycle: dict,
         if stored is not None and (stored.get("fingerprint") or "") == fingerprint:
             stored_verdict = str(stored.get("verdict") or "").upper()
             if stored_verdict == "CLEAN":
-                log.info("adversarial review: cycle %s CLEAN (stored, material unchanged)",
+                log.info("self-adversarial review: cycle %s CLEAN (stored, material unchanged)",
                          cycle.get("id"))
                 return None
             _block, _annot = _blocking_findings(stored.get("findings_json") or "[]")
             if not _block:
-                log.info("adversarial review: cycle %s stored %s but all LOW (%d) — not blocking",
+                log.info("self-adversarial review: cycle %s stored %s but all LOW (%d) — not blocking",
                          cycle.get("id"), stored_verdict, len(_annot))
                 return None
             return CallToolResult(content=[TextContent(type="text", text=(
-                "❌ Adversarial review FAILED — this complex change cannot close.\n\n"
+                "❌ Self-adversarial review FAILED — this complex change cannot close.\n\n"
                 f"Verdict: {stored_verdict} (already recorded for exactly this material)\n"
                 f"Findings: {stored.get('findings_json') or '[]'}\n\n"
                 "Findings at MEDIUM or above block the close; LOW findings are recorded "
@@ -2448,9 +2452,9 @@ def _adversarial_review_gate(lock: dict, cycle: dict,
     try:
         reviewer_text = _call_reviewer(prompt, author=_author)
     except Exception as e:
-        log.error("adversarial review: reviewer call failed: %s", e)
+        log.error("self-adversarial review: reviewer call failed: %s", e)
         return CallToolResult(content=[TextContent(type="text", text=(
-            "❌ Cannot close: adversarial reviewer is UNAVAILABLE. "
+            "❌ Cannot close: self-adversarial reviewer is UNAVAILABLE. "
             "Governance requires review before this complex change ships — "
             f"the close is refused, not skipped. (error: {e})\n\n"
             "Retry end_change when the reviewer is reachable."
@@ -2475,14 +2479,14 @@ def _adversarial_review_gate(lock: dict, cycle: dict,
                              "absent from the material] " +
                              "; ".join(f"{f.get('finding_id', '?')}: {str(f.get('evidence', ''))[:160]}"
                                        for f in _refuted))
-                log.warning("adversarial review: cycle %s REFUTED %d finding(s) whose quoted "
+                log.warning("self-adversarial review: cycle %s REFUTED %d finding(s) whose quoted "
                             "evidence is absent from the material: %s",
                             cycle.get("id"), len(_refuted),
                             "; ".join(str(f.get("finding_id", "?")) for f in _refuted))
             _tri = _triage_findings(_findings, material)
             _findings, _tdec = _apply_triage(_findings, _tri)
             if _tdec:
-                log.info("adversarial review: cycle %s triage lowered %d administrative "
+                log.info("self-adversarial review: cycle %s triage lowered %d administrative "
                          "finding(s) to LOW: %s", cycle.get("id"), len(_tdec), _tdec)
             findings_json = json.dumps(_findings)
 
@@ -2496,7 +2500,7 @@ def _adversarial_review_gate(lock: dict, cycle: dict,
                    replace=True, fingerprint=fingerprint)
 
     if verdict == "CLEAN":
-        log.info("adversarial review: cycle %s CLEAN", cycle.get("id"))
+        log.info("self-adversarial review: cycle %s CLEAN", cycle.get("id"))
         return None
 
     # Severity policy: MEDIUM and above block; LOW annotates. LOW findings are NOT
@@ -2505,7 +2509,7 @@ def _adversarial_review_gate(lock: dict, cycle: dict,
     # cycle open.
     _block, _annot = _blocking_findings(findings_json)
     if not _block:
-        log.info("adversarial review: cycle %s FINDINGS with only LOW severity (%d) — "
+        log.info("self-adversarial review: cycle %s FINDINGS with only LOW severity (%d) — "
                  "annotating, not blocking: %s",
                  cycle.get("id"), len(_annot),
                  "; ".join(str((f or {}).get("finding_id", "?")) for f in _annot[:6]))
@@ -2513,7 +2517,7 @@ def _adversarial_review_gate(lock: dict, cycle: dict,
 
     # MEDIUM+ (or unclassifiable): hard-block.
     return CallToolResult(content=[TextContent(type="text", text=(
-        "❌ Adversarial review FAILED — this complex change cannot close.\n\n"
+        "❌ Self-adversarial review FAILED — this complex change cannot close.\n\n"
         f"Verdict: {verdict}\n"
         f"Findings: {findings_json}\n"
         f"Summary: {reviewer_text[:1200]}\n\n"
@@ -2638,7 +2642,8 @@ def _end_change(args: dict) -> CallToolResult:
             )
         )])
 
-    # Step 3b: Adversarial review hard gate (event-driven, complexity-gated).
+    # Step 3b: SELF-adversarial review hard gate (worker-invoked, event-driven,
+    # complexity-gated). The independent evaluator is the orch sweep.
     # A "sufficiently complex" change cannot close until an independent
     # reviewer returns CLEAN. Trivial changes skip. Reviewer outage refuses
     # the close (fail loudly). Runs AFTER the scored-cycle requirement and

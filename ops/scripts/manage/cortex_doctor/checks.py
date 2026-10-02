@@ -255,15 +255,15 @@ def check_adversarial_review(res: "Results") -> None:
   # (a) Template present and carries the reviewer marker.
   t = template if template.exists() else repo_template
   if not t.exists():
-    res.add("Adversarial review template", "FAIL",
+    res.add("Self-adversarial review template", "FAIL",
             f"prompt template missing (checked {template} and {repo_template})",
             "Run: cortex-update.sh (registers docs/templates/adversarial-reviewer-prompt.md)")
   elif "=== REVIEWED MATERIAL ===" not in t.read_text(errors="replace"):
-    res.add("Adversarial review template", "FAIL",
+    res.add("Self-adversarial review template", "FAIL",
             "template is missing the === REVIEWED MATERIAL === marker",
             "Restore docs/templates/adversarial-reviewer-prompt.md from git, then cortex-update.sh")
   else:
-    res.add("Adversarial review template", "PASS", "present with REVIEWED MATERIAL marker")
+    res.add("Self-adversarial review template", "PASS", "present with REVIEWED MATERIAL marker")
 
   # (b) The MCP server's review helpers import cleanly — end_change's gate must
   # not raise on a missing/renamed helper.
@@ -286,14 +286,14 @@ def check_adversarial_review(res: "Results") -> None:
                "_call_reviewer", "_review_template_text"]
     missing = [h for h in helpers if not hasattr(mod, h)]
     if missing:
-      res.add("Adversarial review gate", "FAIL",
+      res.add("Self-adversarial review gate", "FAIL",
               f"loop-gov-mcp.py missing helpers: {', '.join(missing)}",
               "The end_change hard gate cannot run — restore the review section in mcp-servers/loop-gov-mcp.py")
     else:
-      res.add("Adversarial review gate", "PASS",
+      res.add("Self-adversarial review gate", "PASS",
               "end_change hard gate helpers present in loop-gov-mcp.py")
   except SystemExit as _se:
-    res.add("Adversarial review gate", "WARN",
+    res.add("Self-adversarial review gate", "WARN",
             f"loop-gov-mcp.py refused to import under {sys.executable} "
             f"(exit {_se.code}) — usually the 'mcp' package is missing from "
             "this interpreter; review helpers unverifiable here",
@@ -301,7 +301,7 @@ def check_adversarial_review(res: "Results") -> None:
             "(~/.hermes/hermes-agent/venv/bin/python3 ~/.hermes-cortex/scripts/cortex-doctor.py) "
             "so the MCP SDK imports and the gate can be verified")
   except Exception as _e:
-    res.add("Adversarial review gate", "FAIL",
+    res.add("Self-adversarial review gate", "FAIL",
             f"loop-gov-mcp.py import failed: {type(_e).__name__}: {str(_e)[:160]}",
             "Fix the MCP server import — end_change would crash on a complex close")
 
@@ -319,9 +319,9 @@ def check_adversarial_review(res: "Results") -> None:
       except OSError:
         key = ""
     if key:
-      res.add("Adversarial review key", "PASS", "OPENROUTER_API_KEY resolvable")
+      res.add("Self-adversarial review key", "PASS", "OPENROUTER_API_KEY resolvable")
     else:
-      res.add("Adversarial review key", "FAIL",
+      res.add("Self-adversarial review key", "FAIL",
               "OPENROUTER_API_KEY not set (env or ~/.hermes/.env) — complex closes will refuse",
               "Set OPENROUTER_API_KEY in ~/.hermes/.env so the review hard gate can call the model")
 

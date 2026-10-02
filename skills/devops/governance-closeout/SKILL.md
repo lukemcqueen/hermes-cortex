@@ -77,12 +77,12 @@ Only the gate's own log separates those, and the gate writes **two** places:
 
 | Line | What actually happened |
 |---|---|
-| `adversarial review: cycle N simple (L lines, F files) — skip` | The change was BELOW the complexity threshold. No reviewer, no triage, no findings. A clean close here says **nothing** about review quality. |
-| `adversarial review: cycle N stored <verdict> but all LOW (n) — not blocking` | A review ran and every finding was classified administrative and lowered, so it annotated instead of blocking. |
+| `self-adversarial review: cycle N simple (L lines, F files) — skip` | The change was BELOW the complexity threshold. No reviewer, no triage, no findings. A clean close here says **nothing** about review quality. |
+| `self-adversarial review: cycle N stored <verdict> but all LOW (n) — not blocking` | A review ran and every finding was classified administrative and lowered, so it annotated instead of blocking. |
 | findings listed with severities | MEDIUM+ findings blocked the close. |
 
 Cheap check before claiming "the gate passed": `search_files` for
-`adversarial review: cycle` (or `triage:`) in
+`self-adversarial review: cycle` (or `triage:`) in
 `~/.hermes-cortex/logs/loop-governance.log`. The triage layer also logs
 `triage: judgement status=…` and `reviewer severities stand` when the judge is
 unreachable — silence there means triage never ran, not that it approved.
