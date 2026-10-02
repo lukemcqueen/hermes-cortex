@@ -500,6 +500,9 @@ register_orch "ops/scripts/orch-bus/orch-bus-depth-watchdog.sh"  "${CORTEX_DEPLO
 register_orch "ops/scripts/orch-bus/orch-bus-audit-watchdog.py"     "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-audit-watchdog.py"
 register_orch "ops/scripts/orch-bus/orch-bus-recover-timeouts.sh"   "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-recover-timeouts.sh"
 register "ops/scripts/manage/loop-gov-mcp.sh"            "${CORTEX_DEPLOY_HOME}/scripts/loop-gov-mcp.sh"
+# Coding-agent adversarial reviewer backend (pluggable gate "agent" transport):
+# read-only pi wrapper for the close-gate's ADVERSARIAL_REVIEW_AGENT_CMD.
+register "ops/scripts/manage/reviewer-agent-pi.sh"       "${CORTEX_DEPLOY_HOME}/scripts/reviewer-agent-pi.sh"
 # P1-A hardening (2026-07-31): the enforcement MCP server itself must run
 # from the IMMUTABLE deployed copy, not the user-writable repo working tree
 # (config.yaml previously booted it from ~/hermes-cortex/mcp-servers/ — an
