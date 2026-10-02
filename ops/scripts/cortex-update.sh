@@ -321,6 +321,9 @@ register "ops/scripts/manage/session-identity.sh"               "${CORTEX_DEPLOY
 register "ops/scripts/judgment.py"                             "${CORTEX_DEPLOY_HOME}/scripts/judgment.py"
 register "ops/scripts/judgment-providers.yaml"                 "${CORTEX_DEPLOY_HOME}/scripts/judgment-providers.yaml"
 register "ops/scripts/install/install-pi-integration.sh"       "${CORTEX_DEPLOY_HOME}/scripts/install-pi-integration.sh"
+# One-secret extractor: hands a consuming harness exactly ONE named variable, so
+# it never has to be given (or source) the whole environment.
+register "ops/scripts/manage/env-secret.sh"                    "${CORTEX_DEPLOY_HOME}/scripts/env-secret.sh"
 register "ops/scripts/manage/soul-sync-all.sh"                 "${CORTEX_DEPLOY_HOME}/scripts/soul-sync-all.sh"
 register "ops/scripts/agent/agents-doc-audit.py"          "${CORTEX_DEPLOY_HOME}/scripts/agents-doc-audit.py"
 register_orch "ops/scripts/agent/orch-restic-backup.py"        "${CORTEX_DEPLOY_HOME}/scripts/orch-restic-backup.py"
