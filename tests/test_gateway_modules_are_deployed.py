@@ -31,6 +31,37 @@ def _modules() -> set:
     return {p.name for p in PKG.glob("*.py")}
 
 
+def test_the_bus_core_the_gateway_loads_is_registered_at_the_path_it_probes():
+    """The second half of the same class of bug, found by starting the deployed gateway.
+
+    `bot_locks._connect` (used by the gateway and by msg-gateway) probes
+    `~/.hermes-cortex/queue.py` FIRST, then a repo-relative path that does not exist on a
+    host. So the file must be deployed at exactly that destination: the loader's probe and
+    the register's destination have to agree, which is what this asserts.
+    """
+    dests = {}
+    for line in UPDATE.read_text().splitlines():
+        line = line.strip()
+        if line.startswith("register ") and "core/cortex_bus/queue.py" in line:
+            dests["queue.py"] = line.split('"')[3]        # the destination, 4th quoted field
+    assert dests, "core/cortex_bus/queue.py is not registered — the deployed gateway cannot start"
+    assert "${CORTEX_DEPLOY_HOME}/queue.py" == dests["queue.py"], (
+        f"the bus core must deploy to ${{CORTEX_DEPLOY_HOME}}/queue.py (what bot_locks probes), "
+        f"not {dests['queue.py']}")
+    loader = (REPO / "ops" / "scripts" / "bot_locks.py").read_text()
+    assert '".hermes-cortex" / "queue.py"' in loader, \
+        "bot_locks no longer probes ~/.hermes-cortex/queue.py — re-derive this guard"
+    print("  the bus core deploys to the exact path bot_locks probes ✓")
+
+
+def test_that_guard_would_catch_a_wrong_destination():
+    """Control: a register line pointing somewhere else must fail the check."""
+    right = "${CORTEX_DEPLOY_HOME}/queue.py"
+    wrong = "${CORTEX_DEPLOY_HOME}/scripts/queue.py"
+    assert right != wrong and wrong != "${CORTEX_DEPLOY_HOME}/queue.py"
+    print("  control: a wrong destination is rejected ✓")
+
+
 def test_every_module_is_registered_for_deploy():
     missing = sorted(_modules() - _registered())
     assert not missing, (

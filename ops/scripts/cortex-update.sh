@@ -714,6 +714,10 @@ register "ops/scripts/manage/agent-session-correction-scan.py" "${CORTEX_DEPLOY_
 # orch-bus-* scripts are orchestrator-only — run from repo path
 # Shared bus library for fleet scripts
 register "ops/scripts/lib/cortex_bus.py" "${CORTEX_DEPLOY_HOME}/scripts/lib/cortex_bus.py"
+# The bus core: bot_locks.py (used by the gateway AND msg-gateway) loads the bus core from
+# ~/.hermes-cortex/queue.py, so this destination is load-bearing, not cosmetic. Without it the
+# deployed gateway dies at startup with "cortex_bus queue.py not found (bus core missing)".
+register "core/cortex_bus/queue.py" "${CORTEX_DEPLOY_HOME}/queue.py"
 register "ops/scripts/lib/bus_outbox.py" "${CORTEX_DEPLOY_HOME}/scripts/lib/bus_outbox.py"
 # Shared Telegram notify library (R-9: single Bot API copy — handler, verifier, task-db)
 register "ops/scripts/lib/telegram_notify.py" "${CORTEX_DEPLOY_HOME}/scripts/lib/telegram_notify.py"
