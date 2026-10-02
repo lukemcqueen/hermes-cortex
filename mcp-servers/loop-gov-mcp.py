@@ -25,6 +25,7 @@ import json
 import logging
 import os
 import re
+import shlex
 import sqlite3
 import subprocess
 import sys
@@ -1661,27 +1662,119 @@ def _reviewer_api_key() -> str:
     return ""
 
 
-def _call_reviewer(prompt: str) -> str:
-    """Call the independent reviewer model; return its text (raises on error)."""
+def _reviewer_backend() -> str:
+    """Which reviewer backend runs the close-gate review. Default `llm`."""
+    return (os.environ.get("ADVERSARIAL_REVIEW_BACKEND", "llm") or "llm").strip().lower()
+
+
+def _reviewer_label() -> str:
+    """What to RECORD as the reviewer: the model for the llm backend, the agent
+    name for the agent backend. A stored review whose reviewer is ambiguous
+    cannot be re-derived from the record."""
+    if _reviewer_backend() == "agent":
+        return "agent:" + ((os.environ.get("ADVERSARIAL_REVIEW_AGENT_NAME", "") or "unnamed").strip())
+    return os.environ.get("ADVERSARIAL_REVIEWER_MODEL", REVIEWER_MODEL_DEFAULT)
+
+
+def _call_reviewer_llm(prompt: str) -> str:
+    """Review via a chat-completions model. Provider-agnostic: the default is
+    OpenRouter, but ADVERSARIAL_REVIEW_BASE_URL lets a local or self-hosted
+    endpoint do the reviewing, and ADVERSARIAL_REVIEW_API_KEY_ENV names the
+    credential to read (never the value)."""
     model = os.environ.get("ADVERSARIAL_REVIEWER_MODEL", REVIEWER_MODEL_DEFAULT)
-    api_key = _reviewer_api_key()
+    base = ((os.environ.get("ADVERSARIAL_REVIEW_BASE_URL", "") or "").strip()
+            or "https://openrouter.ai/api/v1").rstrip("/")
+    key_env = (os.environ.get("ADVERSARIAL_REVIEW_API_KEY_ENV", "") or "").strip()
+    if key_env:
+        # An EXPLICITLY named credential is honoured strictly. Falling back to a
+        # different one would mean the reviewer ran with a credential the operator
+        # did not choose — silently, and from a file. Better to refuse.
+        api_key = (os.environ.get(key_env, "") or "").strip()
+    else:
+        api_key = ((os.environ.get("OPENROUTER_API_KEY", "") or "").strip()
+                   or _reviewer_api_key())
     if not api_key:
-        raise RuntimeError("OPENROUTER_API_KEY not set — reviewer cannot run")
+        raise RuntimeError(f"{key_env or 'OPENROUTER_API_KEY'} not set — reviewer cannot run")
     body = json.dumps({
         "model": model,
         "messages": [{"role": "user", "content": prompt}],
     }).encode()
     req = urllib.request.Request(
-        "https://openrouter.ai/api/v1/chat/completions",
+        f"{base}/chat/completions",
         data=body,
         headers={
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
         },
     )
-    with urllib.request.urlopen(req, timeout=300) as resp:
+    timeout = int(os.environ.get("ADVERSARIAL_REVIEW_TIMEOUT", "300"))
+    with urllib.request.urlopen(req, timeout=timeout) as resp:
         data = json.loads(resp.read())
     return data["choices"][0]["message"]["content"]
+
+
+def _call_reviewer_agent(prompt: str, author: Optional[str] = None) -> str:
+    """Review by shelling out to a CODING AGENT, with the prompt on STDIN.
+
+    The command is operator-supplied (ADVERSARIAL_REVIEW_AGENT_CMD) rather than a
+    hardcoded per-CLI table. The fleet's agent CLIs each have their own flags, and
+    inventing one produces a wiring that exists and does nothing — while a
+    configured command works for ANY agent, including one this repo has never
+    heard of (which is the flexibility this is for).
+
+    Why an agent at all: an agent can open the repo, run the tests and check the
+    claims, which a single chat completion cannot. That matters here because the
+    recurring review finding is 'a self-report is not execution evidence'.
+
+    READ-ONLY IS THE OPERATOR'S RESPONSIBILITY. This function grants no write
+    access, but it also cannot revoke what the configured command itself allows,
+    so the command must put the agent in its read-only/plan/sandbox mode. Do not
+    point this at a command that can edit the tree: a reviewer that can write can
+    fix its own objections.
+
+    Self-review is refused: the agent name is compared against the change's git
+    author (derived, not operator-supplied), because an author must not
+    adjudicate its own work.
+    """
+    cmd = (os.environ.get("ADVERSARIAL_REVIEW_AGENT_CMD", "") or "").strip()
+    if not cmd:
+        raise RuntimeError(
+            "ADVERSARIAL_REVIEW_BACKEND=agent requires ADVERSARIAL_REVIEW_AGENT_CMD "
+            "(the agent CLI invocation — the review prompt is passed on stdin)")
+    agent = (os.environ.get("ADVERSARIAL_REVIEW_AGENT_NAME", "") or "").strip()
+    if agent and author and agent.lower() in author.lower():
+        raise RuntimeError(
+            f"refusing SELF-REVIEW: the review agent '{agent}' is this change's "
+            f"author ('{author}') — an author cannot adversarially review its own work")
+    timeout = int(os.environ.get("ADVERSARIAL_REVIEW_AGENT_TIMEOUT", "900"))
+    proc = subprocess.run(
+        shlex.split(cmd), input=prompt, capture_output=True, text=True, timeout=timeout,
+    )
+    if proc.returncode != 0:
+        raise RuntimeError(
+            f"review agent exited {proc.returncode}: {(proc.stderr or proc.stdout or '')[:400]}")
+    out = (proc.stdout or "").strip()
+    if not out:
+        raise RuntimeError("review agent produced no output — refusing to treat silence as CLEAN")
+    return out
+
+
+def _call_reviewer(prompt: str, author: Optional[str] = None) -> str:
+    """Dispatch to the configured reviewer backend. Return its text (raises on error).
+
+    The backend is pluggable; the CONTRACT is not: given the review prompt, return
+    text containing the findings JSON. Every backend must stay fail-closed —
+    raising here refuses the close, it never passes it — so a misconfigured or
+    unreachable reviewer can only make closing harder, never easier.
+    """
+    backend = _reviewer_backend()
+    if backend == "agent":
+        return _call_reviewer_agent(prompt, author=author)
+    if backend == "llm":
+        return _call_reviewer_llm(prompt)
+    raise RuntimeError(
+        f"unknown ADVERSARIAL_REVIEW_BACKEND {backend!r} (expected llm|agent) — "
+        "refusing to guess a reviewer")
 
 
 def _extract_verdict(text: str):
@@ -2267,7 +2360,7 @@ def _adversarial_review_gate(lock: dict, cycle: dict,
             ))])
 
     try:
-        reviewer_text = _call_reviewer(prompt)
+        reviewer_text = _call_reviewer(prompt, author=_author)
     except Exception as e:
         log.error("adversarial review: reviewer call failed: %s", e)
         return CallToolResult(content=[TextContent(type="text", text=(
@@ -2312,7 +2405,7 @@ def _adversarial_review_gate(lock: dict, cycle: dict,
     # (the IntegrityError path below is a no-op), which left a FINDINGS verdict frozen
     # forever — the exact gap rereview_change exists to close.
     _record_review(cycle.get("id"), reviewer_id,
-                   os.environ.get("ADVERSARIAL_REVIEWER_MODEL", REVIEWER_MODEL_DEFAULT),
+                   _reviewer_label(),
                    verdict, findings_json, (reviewer_text[:2000] + _ref_note),
                    replace=True, fingerprint=fingerprint)
 

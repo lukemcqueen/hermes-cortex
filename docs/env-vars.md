@@ -65,6 +65,13 @@ names are the contract — never invent a new name without checking here first
 | `ADVERSARIAL_TRIAGE_MODEL` | Faster "System One" model for the close-gate's finding triage. **Unset = triage DISABLED** — the gate then behaves exactly as it did before triage existed, with the reviewer's severities unchanged. It is **not** a chat-completions model: see `docs/runbooks/review-triage-jev.md` |
 | `JUDGMENT_CONFIG_PATH` | Optional override for the judgment client's provider/routing config. Default: `judgment-providers.yaml` beside `judgment.py`. Set per host to route triage to your own judge |
 | `TYPESAFE_API_KEY` | Credential for the Jev judge (`typesafe/jev-router`). **Name only — the value lives in the gitignored env file.** Without it the `review-triage` class cannot run and triage stays off (fail-safe) |
+| `ADVERSARIAL_REVIEW_BACKEND` | Who reviews a complex change before it can close: `llm` (default) or `agent`. See `docs/runbooks/review-triage-jev.md` |
+| `ADVERSARIAL_REVIEWER_MODEL` | _llm backend._ The reviewer model. Use a model DIFFERENT from the worker's — a model reviewing its own output is not a review |
+| `ADVERSARIAL_REVIEW_BASE_URL` | _llm backend._ Chat-completions base URL (default OpenRouter). Point it at a local/self-hosted endpoint to review without a remote provider |
+| `ADVERSARIAL_REVIEW_API_KEY_ENV` | _llm backend._ NAME of the credential variable to read. When set it is honoured **strictly** — no silent fallback to another credential. Never the value |
+| `ADVERSARIAL_REVIEW_AGENT_CMD` | _agent backend._ The coding-agent CLI invocation for reviews; the prompt is passed on **stdin**. Must put the agent in its read-only mode — a reviewer that can write can fix its own objections |
+| `ADVERSARIAL_REVIEW_AGENT_NAME` | _agent backend._ The agent's identity, used to refuse **self-review** when it matches the change's git author |
+| `ADVERSARIAL_REVIEW_AGENT_TIMEOUT` | _agent backend._ Seconds to wait for the reviewing agent (default 900) |
 | `EMBEDDING_MODEL` | Embedding model (local Ollama: `nomic-embed-text:v1.5`) |
 | `LLM_CRON_MODEL` | Cron LLM model. Controls **installer pinning only** — an unpinned cron RUNS on the main model (`model.default`), not on this value. Provider-specific id form (`deepseek/deepseek-v4.1-flash` on openrouter) |
 | `LLM_CRON_PROVIDER` | Cron LLM provider (`openrouter`), same scope as above. Never a free tier that can stop resolving — a dead free pin falls through to a PAID route while reporting `ok` |
