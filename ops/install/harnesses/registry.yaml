@@ -56,10 +56,18 @@ harnesses:
       before_agent_start: restore + inject the checkpoint
       session_before_compact: checkpoint before continuity is lost
     install: |
-      mkdir -p extensions
-      cp <harnesses>/pi/extensions/cortex-context.ts extensions/
-    run: |
-      pi -e extensions/cortex-context.ts --tools read,bash,edit,write,mem_context,mem_search,mem_profile,mem_conclude,session_checkpoint,session_restore,session_search,session_note,session_close
+      hc harness install pi --dir <your-pi-project>
+      # (equivalent, manual: mkdir -p extensions && cp <harnesses>/pi/extensions/cortex-context.ts extensions/)
+    install_ops:
+      - mkdir: extensions
+      - copy:
+          from: pi/extensions/cortex-context.ts
+          to: extensions/cortex-context.ts
+    # Base built-in tools only. The mem_*/session_* half of `--tools` is DERIVED
+    # from the contract by `hc harness install pi` (context_tools.TOOLS) — never
+    # hand-typed here, because a hand-typed list silently rots when the contract
+    # grows a tool and Pi ends up unable to reach it.
+    tools_base: [read, bash, edit, write]
     verify:
       - 'In a Pi session call mem_context — the peer card must come back.'
       - 'Let a turn end with a decision, then: cortex-context session_restore "{}" | grep <marker>'

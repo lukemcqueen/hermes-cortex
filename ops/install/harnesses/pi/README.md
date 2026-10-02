@@ -26,15 +26,17 @@ The harness owns **when** a checkpoint is written. Never make the model responsi
 ## Install
 
 ```bash
-mkdir -p extensions
-cp <harnesses>/pi/extensions/cortex-context.ts extensions/
+hc harness install pi --dir <your-pi-project>
+# (equivalent, manual: mkdir -p extensions && cp <harnesses>/pi/extensions/cortex-context.ts extensions/)
 ```
 
 ## Run
 
 ```bash
-pi -e extensions/cortex-context.ts --tools read,bash,edit,write,mem_context,mem_search,mem_profile,mem_conclude,session_checkpoint,session_restore,session_search,session_note,session_close
+pi -e extensions/cortex-context.ts --tools read,bash,edit,write,mem_profile,mem_search,mem_context,mem_conclude,session_checkpoint,session_restore,session_search,session_note,session_close,session_tool_event,session_loaded_skill
 ```
+
+The `mem_*`/`session_*` half of `--tools` is **derived from the contract** by `hc harness install` — a hand-typed list rots silently when the tool surface grows.
 
 ## Verify (do not report a wiring you have not exercised)
 

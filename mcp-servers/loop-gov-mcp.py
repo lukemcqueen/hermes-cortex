@@ -1587,11 +1587,13 @@ def _complexity(repo: Path, started_at: str) -> dict:
     # committing it after the review passed. Their full line count is the
     # "added" signal (there is no prior version to diff against).
     untracked_lines = 0
+    untracked_n = 0
     for f in _git_capture(repo, "ls-files", "--others", "--exclude-standard").splitlines():
         f = f.strip()
         if not f:
             continue
         files.add(f)
+        untracked_n += 1
         if not _is_noise(f):
             try:
                 with open(repo / f, encoding="utf-8", errors="ignore") as fh:
@@ -1628,6 +1630,7 @@ def _complexity(repo: Path, started_at: str) -> dict:
         "is_complex": is_complex,
         "files": len(non_noise),
         "lines": non_noise_lines,
+        "untracked": untracked_n,
         "always_review": bool(always),
         "always_paths": sorted(set(always)),
         "numstat": numstat.strip(),
@@ -1940,13 +1943,10 @@ def _adversarial_review_gate(lock: dict, cycle: dict,
         if _theirs:
             _log = _git_capture(repo, "log", "--format=%h %an <%ae> %s", _base + "..HEAD")
             diff_text += (
-                "\n\n[CONTEXT — commits in this window that this session did NOT author. "
-                "They are included IN FULL so nothing is hidden; they are NOT part of the "
-                "audited change and must not be scored against the worker. IMPORTANT: if "
-                "any of this work is actually the worker's own (a git identity that does "
-                "not match its configured agent identity), treat that as an attempt to "
-                "escape review and report it.]\n"
+                "\n\n[provenance] commits in this window NOT authored by this session "
+                "(author identity per commit):\n"
                 + _log + "\n"
+                + "[provenance] their patches, included for completeness:\n"
                 + _git_capture(repo, "show", "-p", "--no-ext-diff", "-U3", *_theirs)
             )
     else:
@@ -1967,9 +1967,13 @@ def _adversarial_review_gate(lock: dict, cycle: dict,
         f"Cycle ID: {cycle.get('id', 0)}\n"
         f"Task: {task_id}\n"
         f"Description: {description}\n"
-        f"Diff stat (files={cx['files']}, lines={cx['lines']}"
+        f"Diff stat (files={cx['files']}, lines={cx['lines']}, "
+        f"untracked={cx.get('untracked', 0)}"
         + (f", always-review={','.join(cx['always_paths'])}" if cx["always_paths"] else "")
-        + "):\n" + cx["numstat"] + "\n\n"
+        + "):\n"
+        f"[numstat — TRACKED changes only; untracked new files are counted in "
+        f"'files'/'lines' but have no numstat entry]\n"
+        + cx["numstat"] + "\n\n"
         f"Worker's note (self-report — the thing being reviewed):\n{outcome_note}\n\n"
         f"Full diff:\n{diff_text}\n"
     )

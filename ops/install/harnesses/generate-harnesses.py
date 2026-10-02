@@ -108,6 +108,38 @@ def validate(data: dict) -> list[str]:
     return problems
 
 
+def derived_run_line(h: dict) -> str | None:
+    """The harness's run command, with the tool allowlist DERIVED.
+
+    Pi's mem_*/session_* half of `--tools` must never be hand-typed in the
+    registry: a literal silently rots when `context_tools.TOOLS` grows, and the
+    harness then cannot reach a tool that plainly exists (the exact drift
+    `tests/test_context_harnesses.py` exists to catch). So the one generator both
+    the docs and `hc harness install` agree on is `ops/scripts/hc/harness.py`.
+    """
+    if h.get("run"):
+        return h["run"].strip()
+    if h.get("layer") != "cli-extension" or not h.get("tools_base"):
+        return None
+    harness_py = next((p for p in [
+        HERE.parent.parent / "scripts" / "hc" / "harness.py",          # repo: ops/scripts/hc
+        Path.home() / "hermes-cortex" / "ops" / "scripts" / "hc" / "harness.py",
+        Path.home() / ".hermes-cortex" / "scripts" / "hc" / "harness.py",  # deployed
+    ] if p.is_file()), None)
+    if harness_py is None:
+        return None
+    try:
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("hc_harness_for_gen", harness_py)
+        if spec is None or spec.loader is None:
+            return None
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod.derived_run_line(h)[0]
+    except Exception:
+        return None
+
+
 def render_readme(reg: dict, h: dict) -> str:
     defaults = reg.get("defaults", {})
     name, layer = h["name"], h["layer"]
@@ -131,8 +163,13 @@ def render_readme(reg: dict, h: dict) -> str:
 
     if h.get("install"):
         out += ["## Install", "", "```bash", h["install"].strip(), "```", ""]
-    if h.get("run"):
-        out += ["## Run", "", "```bash", h["run"].strip(), "```", ""]
+    run = derived_run_line(h)
+    if run:
+        out += ["## Run", "", "```bash", run, "```", ""]
+        if not h.get("run"):
+            out += ["The `mem_*`/`session_*` half of `--tools` is **derived from "
+                    "the contract** by `hc harness install` — a hand-typed list "
+                    "rots silently when the tool surface grows.", ""]
 
     if h.get("verify"):
         out += ["## Verify (do not report a wiring you have not exercised)", ""]

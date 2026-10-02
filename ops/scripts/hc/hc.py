@@ -18,6 +18,8 @@ moses and esther hosts. No docker exec, no local-Postgres assumption.
   hc watch moses       watch only moses' inbox (non-destructive)
   hc kill <agent>    send KILL signal to a fleet agent (emergency stop)
   hc doctor            run cortex-doctor
+  hc harness <cmd>     wire a coding agent (Pi, Claude Code, Codex) to the cortex
+                       context store — list | show | install | verify | add
   hc dashboard         open bus dashboard in browser
   hc env               show current config
   hc help              this message
@@ -1231,6 +1233,35 @@ def _match_result_msg(queue: str, corr_id: str, agent: str, command: str,
     return False
 
 
+def cmd_harness(cfg: dict, args: list):
+    """`hc harness` — wire any coding agent to the cortex context store.
+
+    A THIN DRIVER over ops/install/harnesses/registry.yaml (the single source of
+    harness knowledge) — it never re-encodes a harness's layer or tool list, so
+    adding harness #37 is a registry entry, not another bespoke script.
+    """
+    import importlib.util
+    from pathlib import Path
+    here = Path(__file__).resolve().parent
+    candidates = [
+        here / "hc" / "harness.py",                        # repo: ops/scripts/hc/harness.py
+        here / "harness.py",
+        Path.home() / "hermes-cortex" / "ops" / "scripts" / "hc" / "harness.py",
+        Path.home() / ".hermes-cortex" / "scripts" / "hc" / "harness.py",   # deployed
+    ]
+    mod_path = next((p for p in candidates if p.is_file()), None)
+    if mod_path is None:
+        print("hc harness: harness.py not found — run cortex-update.sh", file=sys.stderr)
+        sys.exit(1)
+    spec = importlib.util.spec_from_file_location("hc_harness", mod_path)
+    if spec is None or spec.loader is None:
+        print(f"hc harness: cannot load {mod_path}", file=sys.stderr)
+        sys.exit(1)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    sys.exit(mod.main(args))
+
+
 def cmd_help(cfg: dict, args: list):
     """Show this help."""
     print(__doc__.strip())
@@ -1248,6 +1279,8 @@ def cmd_help(cfg: dict, args: list):
     print("  hc watch              — watch ALL inbox queues (default)")
     print("  hc watch moses        — watch only moses' inbox")
     print("  hc doctor             — run cortex-doctor")
+    print("  hc harness <cmd>      — wire a coding agent to the cortex context store")
+    print("                          (list | show | install | verify | add)")
     print("  hc dashboard          — open bus dashboard")
     print("  hc env                — show config")
     print("  hc help               — this message")
@@ -1265,6 +1298,7 @@ COMMANDS = {
     "bus": cmd_bus,
     "watch": cmd_watch,
     "doctor": cmd_doctor,
+    "harness": cmd_harness,
     "dashboard": cmd_dashboard,
     "kill": cmd_kill,
     "env": cmd_env,

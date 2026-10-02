@@ -33,6 +33,23 @@ python3 ops/install/harnesses/generate-harnesses.py --check    # CI: derived fil
 python3 ops/install/harnesses/generate-harnesses.py --add <name> --layer mcp --surface '...'
 ```
 
+**Or just use the driver** — `hc harness` reads the registry for you (never a second
+copy of the harness knowledge):
+
+```bash
+hc harness list                       # every declared harness + its layer
+hc harness show pi                    # why this layer, install, run, verify
+hc harness install pi --dir <project> # do the file steps, print the DERIVED run line
+hc harness verify pi                  # registry current? store reachable? artifact there?
+hc harness add <name> --layer mcp --surface '...'   # scaffold a new entry
+```
+
+`hc harness install` derives the `--tools` allowlist from
+`context_tools.TOOLS` — never hand-typed, because a hand-typed list rots silently
+when the contract grows a tool and the harness then cannot reach it. For an `mcp`
+layer harness it prints the registration entry and **does not touch that other
+tool's config file**; for `cli-extension` it copies the shipped artifact.
+
 **Adding a harness = adding a registry entry**, then `--check`. At ~100 harnesses
 the failure mode is not missing docs — it is *100 docs that disagree*. The
 registry makes disagreement impossible: a harness's layer is stated in exactly

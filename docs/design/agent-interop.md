@@ -74,11 +74,13 @@ the working path.
 
 ```bash
 # 1. Declare it — the registry is the single source
-python3 ops/install/harnesses/generate-harnesses.py \
-    --add <name> --layer mcp|cli-extension|cli-hook|none --surface '<what you wire against>'
+hc harness add <name> --layer mcp|cli-extension|cli-hook|none --surface '<what you wire against>'
+#    (or: python3 ops/install/harnesses/generate-harnesses.py --add … ; hc harness drives it)
 # 2. Fill in why / install / verify in registry.yaml, then:
 python3 ops/install/harnesses/generate-harnesses.py && \
 python3 ops/install/harnesses/generate-harnesses.py --check
+# 3. Wire a project to it (one command, no hand-typed tool list)
+hc harness install <name> --dir <project>
 ```
 
 Then, for a **new** capability (not just a new host):
