@@ -22,7 +22,9 @@ Run:  python3 tests/test_gov_friction_fixes.py
 import importlib.util
 import json
 import os
+import subprocess
 import tempfile
+import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -194,6 +196,73 @@ def test_lock_phase1_first_returns_without_purge_scan():
                enf._has_governance_lock("nobody-none") is False)
 
 
+def test_review_range_scoped_to_authored_commits():
+    """(E) The reviewed range covers THIS agent's commits, not the whole window.
+
+    base..HEAD can contain commits pulled in by a rebase — another agent's work,
+    or an automated pipeline. Auditing those re-reports changes outside the
+    cycle and quotes text that may already be gone at HEAD; it blocked cycle
+    10337 (esther) and 2936 (moses).
+
+    A CONTROL asserts the unscoped range DOES contain the foreign file, so this
+    test fails against the pre-fix behaviour rather than passing vacuously.
+    """
+    def _git(repo, *args, author=None, email=None):
+        # Only override the identity when explicitly asked — otherwise the repo's
+        # git config decides, which is exactly what _agent_author() reads.
+        env = dict(os.environ)
+        if author or email:
+            env.update(GIT_AUTHOR_NAME=author or "t", GIT_AUTHOR_EMAIL=email or "t@t",
+                       GIT_COMMITTER_NAME=author or "t", GIT_COMMITTER_EMAIL=email or "t@t")
+        return subprocess.run(["git", *args], cwd=repo, env=env,
+                              capture_output=True, text=True, check=True).stdout
+
+    with tempfile.TemporaryDirectory() as td:
+        repo = Path(td) / "repo"
+        repo.mkdir()
+        _git(repo, "init", "-q")
+        # This repo's identity == "our" agent.
+        _git(repo, "config", "user.email", "esther-agent@hermes.local")
+        _git(repo, "config", "user.name", "esther-agent")
+
+        (repo / "README").write_text("x\n")
+        _git(repo, "add", "-A")
+        _git(repo, "commit", "-qm", "root")
+        base = _git(repo, "rev-parse", "HEAD").strip()
+
+        window_start = datetime.now(timezone.utc)
+        time.sleep(1.1)  # so `rev-list --before` lands on the root commit
+
+        # FOREIGN commit inside the window (as a rebase would pull in).
+        (repo / "foreign.txt").write_text("".join(f"{i}\n" for i in range(40)))
+        _git(repo, "add", "-A")
+        _git(repo, "commit", "-qm", "auto: pipeline", author="pipeline-bot", email="bot@pipeline")
+
+        # OUR commit.
+        (repo / "ours.txt").write_text("a\nb\nc\n")
+        _git(repo, "add", "-A")
+        _git(repo, "commit", "-qm", "ours")
+
+        author = mcp._agent_author(repo)
+        _check("scope: agent author resolved from git config",
+               author == "esther-agent@hermes.local", f"got {author!r}")
+
+        authored = mcp._authored_commits(repo, base, author)
+        _check("scope: exactly 1 authored commit in the window",
+               len(authored) == 1, f"got {len(authored)}: {authored}")
+
+        unscoped = _git(repo, "diff", "--numstat", base + "..HEAD")
+        _check("scope CONTROL: the unscoped range DOES include the foreign file",
+               "foreign.txt" in unscoped,
+               "control failed — the test would pass even without the fix")
+
+        cx = mcp._complexity(repo, window_start.isoformat())
+        _check("scope: foreign commit excluded from the reviewed range",
+               "foreign.txt" not in cx["numstat"], f"numstat={cx['numstat']!r}")
+        _check("scope: our commit included in the reviewed range",
+               "ours.txt" in cx["numstat"], f"numstat={cx['numstat']!r}")
+
+
 def _reset_enf_state(state: Path, now: datetime):
     for p in state.glob(".governance-*.json"):
         p.unlink()
@@ -208,6 +277,8 @@ def main():
     test_write_session_marker_memoized()
     print("D. enforcer lock phase1-first")
     test_lock_phase1_first_returns_without_purge_scan()
+    print("E. review range scoped to authored commits")
+    test_review_range_scoped_to_authored_commits()
     print()
     if _FAIL:
         print(f"{len(_FAIL)} FAILED: {', '.join(_FAIL)}")

@@ -1511,6 +1511,33 @@ def _is_noise(path: str) -> bool:
     return any(path == n or path.endswith("/" + n) for n in NOISE_PATHS)
 
 
+def _agent_author(repo: Path) -> str:
+    """Author identity of THIS agent's commits, or "" when unknown.
+
+    Git authorship comes from the per-host agent env (AGENTS.md rule 21) and
+    surfaces as the repo's git config user.email / user.name.
+    """
+    for key in ("user.email", "user.name"):
+        val = _git_capture(repo, "config", "--get", key).strip()
+        if val:
+            return val
+    return ""
+
+
+def _authored_commits(repo: Path, base: str, author: str) -> list:
+    """SHAs in ``base..HEAD`` authored by ``author``. Empty when unknown/none.
+
+    A non-empty result is the ONLY licence to narrow the reviewed range: if we
+    cannot positively identify this agent's commits we must keep auditing the
+    whole window, or a worker could dodge review by committing under another
+    name.
+    """
+    if not author or not base or base == "HEAD":
+        return []
+    out = _git_capture(repo, "log", "--format=%H", "--author=" + author, base + "..HEAD")
+    return [ln.strip() for ln in out.splitlines() if ln.strip()]
+
+
 def _complexity(repo: Path, started_at: str) -> dict:
     """Measured complexity of the change under the current cycle.
 
@@ -1525,7 +1552,17 @@ def _complexity(repo: Path, started_at: str) -> dict:
         base = _git_capture(repo, "rev-list", "-1", "--before=" + started_at, "HEAD").strip()
     base = base or empty_tree
 
-    numstat = _git_capture(repo, "diff", "--numstat", base + "..HEAD")
+    # Committed work is scoped to THIS session's own commits. The window
+    # (base..HEAD) can also hold commits pulled in by a rebase — other agents'
+    # work — and counting those misattributes complexity and re-reports changes
+    # that are not part of this cycle (and may already be gone at HEAD).
+    _author = _agent_author(repo)
+    if _authored_commits(repo, base, _author):
+        numstat = _git_capture(repo, "log", "--numstat", "--format=",
+                               "--author=" + _author, base + "..HEAD")
+    else:
+        # No positive identity / nothing authored: do NOT narrow (fail open).
+        numstat = _git_capture(repo, "diff", "--numstat", base + "..HEAD")
     numstat += _git_capture(repo, "diff", "--cached", "--numstat")   # staged
     numstat += _git_capture(repo, "diff", "--numstat")               # unstaged
 
@@ -1868,10 +1905,26 @@ def _adversarial_review_gate(lock: dict, cycle: dict,
     task_id = lock.get("task_id", "")
     description = lock.get("description", "")
     outcome_note = cycle.get("outcome_note") or "(no note)"
-    diff_text = _git_capture(
-        repo, "diff", "--no-ext-diff", "-U3",
-        (_git_capture(repo, "rev-list", "-1", "--before=" + lock.get("started_at", ""), "HEAD").strip() or "HEAD") + "..HEAD"
+    _base = (
+        _git_capture(repo, "rev-list", "-1", "--before=" + lock.get("started_at", ""), "HEAD").strip()
+        or "HEAD"
     )
+    _author = _agent_author(repo)
+    if _authored_commits(repo, _base, _author):
+        # AUDIT only this session's own commits. The window also contains
+        # commits pulled in by a rebase (other agents' work, or an automated
+        # pipeline); reviewing those reports changes outside this cycle and
+        # quotes text that may already be gone at HEAD — the defect that
+        # blocked cycles 10337 (esther) and 2936 (moses).
+        diff_text = _git_capture(repo, "log", "-p", "--no-ext-diff", "-U3",
+                                 "--author=" + _author, _base + "..HEAD")
+        _others = _git_capture(repo, "log", "--format=%h %an %s", _base + "..HEAD")
+        diff_text += (
+            "\n\n[context — commits in this window the session did NOT author; "
+            "NOT part of the audited change]\n" + _others
+        )
+    else:
+        diff_text = _git_capture(repo, "diff", "--no-ext-diff", "-U3", _base + "..HEAD")
     # Bound the diff (head+tail) so a huge change still fits the reviewer.
     if len(diff_text) > DIFF_CHAR_BUDGET:
         diff_text = diff_text[:DIFF_CHAR_BUDGET] + "\n...[diff truncated]...\n"
