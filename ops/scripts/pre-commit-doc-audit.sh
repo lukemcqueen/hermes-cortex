@@ -20,8 +20,9 @@
 # ─────────────────────────────────────────────────────────────
 set -euo pipefail
 
-# Only check staged files
-STAGED=$(git diff --cached --name-only --diff-filter=ACMR 2>/dev/null)
+# Only check staged files. STAGED is overridable so the check can be tested
+# without staging anything (an externally-set STAGED wins).
+STAGED="${STAGED:-$(git diff --cached --name-only --diff-filter=ACMR 2>/dev/null)}"
 
 # Exit silently if nothing staged
 [[ -z "$STAGED" ]] && exit 0
@@ -42,6 +43,14 @@ if [[ "$DOCS_CHANGED" -gt 0 && "$DOCS_INDEX_CHANGED" -eq 0 ]]; then
                 continue
                 ;;
         esac
+        # Already indexed? Then editing the file does NOT require touching the
+        # index — the entry exists. Warning on every edit of an indexed doc is a
+        # false positive, and false positives train people to ignore the audit
+        # (observed 3x on 2026-10-02, every time for a doc that was already
+        # listed). A NEW doc still warns, which is the case that matters.
+        if [[ -f docs/DOCS-INDEX.md ]] && grep -qF "$doc" docs/DOCS-INDEX.md 2>/dev/null; then
+            continue
+        fi
         echo "⚠️  DOCS AUDIT: $doc changed but docs/DOCS-INDEX.md was not updated."
         echo "   → Add/modify the entry for this file in docs/DOCS-INDEX.md"
         issues=$((issues + 1))
