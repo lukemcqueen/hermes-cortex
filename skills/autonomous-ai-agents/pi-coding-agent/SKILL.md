@@ -110,10 +110,10 @@ can print its own environment. Supply exactly one variable:
 
 ```json
 {"openrouter": {"type": "api_key",
-                "key": "!bash ~/.hermes-cortex/scripts/env-secret.sh OPENROUTER_API_KEY"}}
+                "key": "!bash ~/.hermes-cortex/scripts/env-value.sh OPENROUTER_API_KEY"}}
 ```
 
-`env-secret.sh` prints one named value (cortex env first, then the Hermes env, first
+`env-value.sh` prints one named value (cortex env first, then the Hermes env, first
 match wins), fails closed when absent, and refuses a name that isn't
 `^[A-Z][A-Z0-9_]*$` so it can't become a pattern. Point it at a Hermes-only key and
 copy that key into the cortex env: no harness should reach into a Hermes-owned file
