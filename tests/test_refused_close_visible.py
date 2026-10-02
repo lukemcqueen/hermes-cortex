@@ -43,8 +43,11 @@ _spec.loader.exec_module(mcp)
 import logging as _logging  # noqa: E402
 
 _gate_log = _logging.getLogger("loop-governance")
+# Level alone is the silencing — the gate's FileHandler stays ATTACHED on purpose:
+# test_tests_do_not_pollute_the_production_log re-enables the level to prove the
+# handler really targets the real production log (a control that clearing handlers
+# here would make impossible).
 _gate_log.setLevel(_logging.CRITICAL + 1)
-_gate_log.handlers.clear()
 _gate_log.propagate = False
 
 ADVISORY = REPO / "ops" / "scripts" / "governance-refused-close-advisory.sh"
@@ -208,30 +211,86 @@ def test_refused_close_visible() -> None:
 def test_tests_do_not_pollute_the_production_log() -> None:
     """Running the gate under test must not append to the governance audit log.
 
-    A close that succeeds, a finding that blocks — all of it is auditable, and the
-    audit trail is worthless if test runs can inject fabricated cycles into it.
+    Premise, checked rather than assumed (adversarial finding ADV-10463-1 asked this
+    point directly): loop-gov-mcp.py builds its RotatingFileHandler AT IMPORT TIME
+    over (CORTEX_DEPLOY_HOME or Path.home()/".hermes-cortex")/logs/loop-governance.log.
+    Patching mcp.HOME afterwards redirects where the gate looks for the REPO, not where
+    it logs — so the production log is the correct file to assert on.
+
+    But a premise is not a test. DIRECTION 1 proves the handler really does reach the
+    production log: with the logger's level restored, the gate writes to it even while
+    mcp.HOME is patched to a temp dir. Only then does DIRECTION 2 mean anything: with
+    the silencing on, the same run appends nothing. If the reviewer's concern were
+    true, DIRECTION 1 would fail and this test would fail with it.
     """
-    log_path = Path.home() / ".hermes-cortex" / "logs" / "loop-governance.log"
-    before = log_path.stat().st_size if log_path.exists() else 0
-    with tempfile.TemporaryDirectory() as td:
-        home = Path(td)
-        _make_repo(home)
-        setattr(mcp, "HOME", home)
-        lock_state: dict = {"repo_slug": SLUG, "task_id": "t", "session_id": "s"}
-        setattr(mcp, "_read_lock", lambda args=None: dict(lock_state))
-        setattr(mcp, "_write_lock", lambda st, args=None: None)
-        setattr(mcp, "_record_review", lambda *a, **k: None)
-        setattr(mcp, "_refute_findings", lambda findings, material: [])
-        setattr(mcp, "_triage_findings", lambda findings, material, **k: findings)
-        setattr(mcp, "_call_reviewer", lambda prompt, author=None: FINDINGS_JSON)
-        lock = {"repo_slug": SLUG, "task_id": "t", "session_id": "s", "description": "d",
-                "started_at": datetime.now(timezone.utc).isoformat()}
-        mcp._adversarial_review_gate(lock, {"id": 999, "outcome_note": "a note"})
-    after = log_path.stat().st_size if log_path.exists() else 0
-    assert after == before, (
-        f"the test appended {after - before} bytes to the production governance log "
+    log_path = (Path(os.environ.get("CORTEX_DEPLOY_HOME") or (Path.home() / ".hermes-cortex"))
+                / "logs" / "loop-governance.log")
+
+    def _run_gate() -> None:
+        with tempfile.TemporaryDirectory() as td:
+            home = Path(td)
+            _make_repo(home)
+            setattr(mcp, "HOME", home)      # repo lookup only — see docstring
+            lock_state: dict = {"repo_slug": SLUG, "task_id": "t", "session_id": "s"}
+            setattr(mcp, "_read_lock", lambda args=None: dict(lock_state))
+            setattr(mcp, "_write_lock", lambda st, args=None: None)
+            setattr(mcp, "_record_review", lambda *a, **k: None)
+            setattr(mcp, "_refute_findings", lambda findings, material: [])
+            setattr(mcp, "_triage_findings", lambda findings, material, **k: findings)
+            setattr(mcp, "_call_reviewer", lambda prompt, author=None: FINDINGS_JSON)
+            lock = {"repo_slug": SLUG, "task_id": "t", "session_id": "s", "description": "d",
+                    "started_at": datetime.now(timezone.utc).isoformat()}
+            mcp._adversarial_review_gate(lock, {"id": 999, "outcome_note": "a note"})
+
+    # DIRECTION 1 — control, and it writes NOTHING (writing to prove a file is not
+    # written to would be self-defeating):
+    #   (a) the gate's logger really has a handler BOUND to the production log;
+    #   (b) with the level restored, this code path really does emit records.
+    # Together they prove DIRECTION 2 is not vacuous. If patching mcp.HOME redirected
+    # the gate's logging, (a) would fail — that is ADV-10463-1's concern, settled by
+    # measurement rather than by argument.
+    file_handler = None
+    for h in list(_gate_log.handlers):
+        base = getattr(h, "baseFilename", "")
+        if base and Path(base).resolve() == log_path.resolve():
+            file_handler = h
+            break
+    assert file_handler is not None, (
+        f"CONTROL FAILED: no handler on the gate logger is bound to {log_path} "
+        f"(handlers={[getattr(h, 'baseFilename', str(h)) for h in _gate_log.handlers]}) — "
+        "then an assertion that the file does not grow while silenced would be vacuous"
+    )
+
+    seen: list[str] = []
+
+    class _Counter(_logging.Handler):
+        def emit(self, record):
+            seen.append(record.getMessage())
+
+    _gate_log.removeHandler(file_handler)          # detach so the control writes no file
+    counter = _Counter()
+    _gate_log.addHandler(counter)
+    _gate_log.setLevel(_logging.DEBUG)
+    try:
+        _run_gate()
+    finally:
+        _gate_log.removeHandler(counter)
+        _gate_log.addHandler(file_handler)         # re-attach for DIRECTION 2
+        _gate_log.setLevel(_logging.CRITICAL + 1)
+    assert seen, ("CONTROL FAILED: the gate emitted no records even unsilenced, so there "
+                  "is nothing for the silencing to suppress")
+    print(f"  PASS  control: handler bound to the real log; {len(seen)} record(s) emitted "
+          f"when unsilenced (none written to the file)")
+
+    # DIRECTION 2 — the guarantee: silenced, the same run appends nothing.
+    before2 = log_path.stat().st_size
+    _run_gate()
+    after2 = log_path.stat().st_size
+    assert after2 == before2, (
+        f"the test appended {after2 - before2} bytes to the production governance log "
         f"({log_path}) — silence the gate logger; the audit trail must only hold real cycles"
     )
+    print(f"  PASS  silenced, the same run appended 0 bytes ({after2} bytes unchanged)")
 
 
 if __name__ == "__main__":
