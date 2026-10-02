@@ -283,6 +283,7 @@ register "ops/scripts/manage/purge-stale-governance-locks.py" "${CORTEX_DEPLOY_H
 register "ops/scripts/manage/soul-merge.py"                    "${CORTEX_DEPLOY_HOME}/scripts/soul-merge.py"
 register "ops/scripts/manage/session-active-guard.py"          "${CORTEX_DEPLOY_HOME}/scripts/session-active-guard.py"
 register "ops/install/deploy/nginx/hermes-plugin-lock"           "${CORTEX_DEPLOY_HOME}/scripts/hermes-plugin-lock"
+register "ops/scripts/manage/session-identity.sh"               "${CORTEX_DEPLOY_HOME}/scripts/session-identity.sh"
 register "ops/scripts/manage/soul-sync-all.sh"                 "${CORTEX_DEPLOY_HOME}/scripts/soul-sync-all.sh"
 register "ops/scripts/agent/agents-doc-audit.py"          "${CORTEX_DEPLOY_HOME}/scripts/agents-doc-audit.py"
 register_orch "ops/scripts/agent/orch-restic-backup.py"        "${CORTEX_DEPLOY_HOME}/scripts/orch-restic-backup.py"
