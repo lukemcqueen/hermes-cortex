@@ -21,8 +21,7 @@ warnings.
 `~/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py` (deployed) resolves:
 - `_reviewer_backend()` → **agent**
 - `_reviewer_label()` → **agent:pi**
-- `_env_value('ADVERSARIAL_REVIEW_AGENT_CMD')` →
-  `/home/moses/.hermes-cortex/scripts/reviewer-agent-pi.sh`
+- `_env_value('ADVERSARIAL_REVIEW_AGENT_CMD')` → `~/.hermes-cortex/scripts/reviewer-agent-pi.sh`
 
 Hermetic suite `tests/test_reviewer_backends.py`: every agent-backend behavior
 passes (returns agent stdout, records agent:pi, refuses self-review on author
