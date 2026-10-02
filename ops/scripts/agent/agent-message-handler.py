@@ -1405,6 +1405,29 @@ def main():
         save_state(state)
         return True
 
+      # FLEET_NOTICE — the documented fleet-broadcast subject (fleet-commands
+      # skill: mandatory after any fleet-wide change). It had NO branch, so it
+      # fell through to "Unknown subject": archived and answered with an error,
+      # and the notice was never surfaced to anyone. Observed 2026-10-02 — all
+      # five fleet agents answered `success: false / Unknown subject`. A
+      # broadcast is not a command and must not error: notify so it is seen,
+      # archive, and answer success so the orchestrator's delivery check is
+      # unambiguous. Same failure shape as the bare PROPOSAL fix above.
+      if subject == "FLEET_NOTICE":
+        _raw = body.get("body")
+        _txt = _raw.get("text", "") if isinstance(_raw, dict) else (_raw if isinstance(_raw, str) else "")
+        log(f"📢 FLEET_NOTICE from {body.get('from', '?')} — notified + archived")
+        notify_telegram(
+          f"📢 [{AGENT_NAME}] FLEET_NOTICE from {body.get('from', '?')}: {str(_txt)[:280]}",
+          f"📢 {AGENT_NAME}:FLEET_NOTICE"
+        )
+        archive_message(source_queue, msg_id)
+        send_bus_result("inbox_moses", correlation_id,
+                        {"success": True, "command": subject,
+                         "duration_seconds": round(time.time() - start, 1)},
+                        "FLEET_NOTICE_RESULT")
+        return True
+
       # Issue-report subjects — agents pushing findings TO the orchestrator
       # (ISSUES:, IMPROVEMENTS:, PROPOSAL:, RE: ...). These are reports, not
       # commands: a command registry lookup is the wrong shape (there is no
