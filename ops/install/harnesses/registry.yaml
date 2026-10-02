@@ -52,7 +52,7 @@ harnesses:
       hooks + registered tools in TypeScript, so it reaches the shared CLI
       through the extension below. (Governance is a separate capability — see
       `capabilities.governance`, which is MCP for Pi >= 0.99 and the git hooks
-      plus the loop-gov CLI otherwise.)
+      plus the loop-gov CLI otherwise. On the shipped Pi 0.87.1 there is NO MCP client, so the VERIFIED route is the git hooks — core.hooksPath is global, so a Pi commit is gated exactly like a Hermes one — plus loop-gov.py, which exposes the whole governance toolset (begin_change, end_change, check_lock, cycle_query, feedback_accept/override) over the ONE MCP implementation; see capabilities.governance.fallback for the three checks. Do NOT conclude governance is unavailable because MCP is: memory, skills and governance are all reachable on this Pi today.)
     artifact: extensions/cortex-context.ts
     triggers:
       turn_end: checkpoint (the trigger — MCP cannot provide this)
@@ -95,9 +95,33 @@ harnesses:
           - 'bash ops/scripts/install/install-pi-integration.sh --check exits 0.'
           - 'Pi shows the always-skills as /skill:<name> commands (startup diagnostics).'
       governance:
+        # VERSION-AWARE (2026-10-02). `adapter: mcp` below is the PREFERRED route, but
+        # it needs Pi >= 0.99 and the shipped Pi is 0.87.1 — no MCP client. Declaring
+        # only that route left an agent on an older Pi with a register command it
+        # cannot run and a verify step ("pi mcp list shows…") that fails for a reason
+        # unrelated to governance. Both routes reach the SAME implementation: the gates
+        # and the governance DB are host state, so a Pi commit is governed identically
+        # either way. Do NOT conclude governance is unavailable because MCP is.
         adapter: mcp
         register: ops/scripts/install/install-pi-mcp.sh
         from: loop-gov-mcp.py
+        requires: "pi >= 0.99 (MCP client)"
+        fallback:
+          adapter: cli
+          requires: "any Pi version — verified on 0.87.1"
+          register: "(none — core.hooksPath is global, and loop-gov.py is deployed with the rest of ops/scripts)"
+          from: loop-gov-mcp.py
+          why: "A Pi commit runs the SAME gates as a Hermes commit (core.hooksPath is a
+            \ global git config, so the hooks are not harness-specific), and
+            \ loop-gov.py --list exposes the full governance toolset — begin_change,
+            \ end_change, check_lock, cycle_query, feedback_accept/override — as a
+            \ generic CLI over the one MCP implementation, so a Pi agent without MCP
+            \ can run the entire ritual."
+          verify:
+          - git config --get core.hooksPath prints ~/.hermes-cortex/hooks — so a commit made from a Pi session is gated.
+          - python3 ~/.hermes-cortex/scripts/loop-gov.py --list lists begin_change and end_change.
+          - python3 ~/.hermes-cortex/scripts/loop-gov.py check_lock (read-only) reaches the governance store and reports the active lock, so the CLI path is live.
+          - python3 ~/.hermes-cortex/scripts/loop-gov.py begin_change '{"task_id":"pi-smoke","description":"probe"}' returns a cycle id and end_change releases it — run this only when you hold no other lock.
         why: |
           Pi >= 0.99 gained an MCP client and reads user-scope servers from
           ~/.pi/agent/mcp.json, so the four governance servers (loop-governance,

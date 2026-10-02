@@ -8,8 +8,11 @@ This harness has **no MCP client**. It reaches the shared CLI through the extens
 
 ## Why this layer
 
-Pi has NO MCP client. Its extension API is hooks + registered tools in
-TypeScript, so it reaches the shared CLI through the extension below.
+Pi has NO MCP client at the CONTEXT layer: its memory/session surface is
+hooks + registered tools in TypeScript, so it reaches the shared CLI
+through the extension below. (Governance is a separate capability — see
+`capabilities.governance`, which is MCP for Pi >= 0.99 and the git hooks
+plus the loop-gov CLI otherwise. On the shipped Pi 0.87.1 there is NO MCP client, so the VERIFIED route is the git hooks — core.hooksPath is global, so a Pi commit is gated exactly like a Hermes one — plus loop-gov.py, which exposes the whole governance toolset (begin_change, end_change, check_lock, cycle_query, feedback_accept/override) over the ONE MCP implementation; see capabilities.governance.fallback for the three checks. Do NOT conclude governance is unavailable because MCP is: memory, skills and governance are all reachable on this Pi today.)
 
 ## Shipped artifact
 
@@ -26,6 +29,9 @@ The harness owns **when** a checkpoint is written. Never make the model responsi
 ## Install
 
 ```bash
+# USER SCOPE — every Pi project, one registration (recommended):
+bash ~/hermes-cortex/ops/scripts/install/install-pi-integration.sh
+# PROJECT SCOPE — one repo, files copied in + a generated run line:
 hc harness install pi --dir <your-pi-project>
 # (equivalent, manual: mkdir -p extensions && cp <harnesses>/pi/extensions/cortex-context.ts extensions/)
 ```
