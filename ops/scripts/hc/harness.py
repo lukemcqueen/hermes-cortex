@@ -52,13 +52,21 @@ HERE = Path(__file__).resolve().parent          # repo: <repo>/ops/scripts/hc
 
 
 def registry_dir() -> Path:
-    """Where registry.yaml lives: repo, deploy, or an explicit override."""
+    """Where registry.yaml lives: override, repo layout, or deployed layout.
+
+    The deployed harness.py is FLAT (`~/.hermes-cortex/scripts/hc-harness.py`)
+    because `scripts/hc` is the launcher file — so this must not assume a
+    directory shape. Every candidate is checked, and the last one is only a
+    fallback for the error message.
+    """
     override = os.environ.get("CORTEX_HARNESS_DIR")
     candidates = [
         Path(override) if override else None,
-        HERE.parents[1] / "install" / "harnesses",              # repo: ops/install/harnesses
+        HERE.parents[1] / "install" / "harnesses",                        # repo: ops/install/harnesses
         Path.home() / "hermes-cortex" / "ops" / "install" / "harnesses",
-        Path.home() / ".hermes-cortex" / "harnesses",           # deployed
+        Path.home() / "hermes-cortex" / "harnesses",
+        Path.home() / ".hermes-cortex" / "ops" / "install" / "harnesses",
+        Path.home() / ".hermes-cortex" / "harnesses",                     # deployed
     ]
     for c in candidates:
         if c and (c / "registry.yaml").is_file():

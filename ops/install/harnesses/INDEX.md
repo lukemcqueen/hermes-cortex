@@ -18,7 +18,6 @@ Declared harnesses: **5**
 
 - **`mcp`** — This harness reads MCP servers from its own configuration, so it needs **no shim**. Registration is a config entry.
 - **`cli-extension`** — This harness has **no MCP client**. It reaches the shared CLI through the extension shipped in this directory.
-- **`mcp+cli-extension`** — This harness **does** read MCP servers from its own configuration, but MCP cannot provide a lifecycle trigger — so it uses MCP for the tool surface **and** the extension shipped here for WHEN a checkpoint is written.
 - **`cli-hook`** — This harness needs only a lifecycle command run at a boundary — the shared trigger, no tool surface.
 - **`none`** — **Not supported (and deliberately declared, not silently missing).** See *why* — a guessed layer produces a wiring that exists and does nothing.
 

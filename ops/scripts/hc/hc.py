@@ -1246,8 +1246,9 @@ def cmd_harness(cfg: dict, args: list):
     candidates = [
         here / "hc" / "harness.py",                        # repo: ops/scripts/hc/harness.py
         here / "harness.py",
+        here / "hc-harness.py",                            # deployed: scripts/hc-harness.py
         Path.home() / "hermes-cortex" / "ops" / "scripts" / "hc" / "harness.py",
-        Path.home() / ".hermes-cortex" / "scripts" / "hc" / "harness.py",   # deployed
+        Path.home() / ".hermes-cortex" / "scripts" / "hc-harness.py",   # deployed
     ]
     mod_path = next((p for p in candidates if p.is_file()), None)
     if mod_path is None:

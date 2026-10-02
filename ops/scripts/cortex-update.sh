@@ -267,6 +267,7 @@ register "ops/scripts/install/install-soft-session-cap.sh" "${CORTEX_DEPLOY_HOME
 register "ops/scripts/install/install-profile-reader-role.sh" "${CORTEX_DEPLOY_HOME}/scripts/install-profile-reader-role.sh"
 register "ops/scripts/install/install-score-hook.sh"       "${CORTEX_DEPLOY_HOME}/scripts/install-score-hook.sh"
 register "ops/scripts/install/install-claude-governance.sh" "${CORTEX_DEPLOY_HOME}/scripts/install-claude-governance.sh"
+register "ops/scripts/install/install-pi-mcp.sh"           "${CORTEX_DEPLOY_HOME}/scripts/install-pi-mcp.sh"
 register "ops/scripts/cortex-dogfood.sh" "${CORTEX_DEPLOY_HOME}/scripts/cortex-dogfood.sh"
 register "ops/scripts/pre-commit-score"            "${CORTEX_DEPLOY_HOME}/scripts/pre-commit-score"
 # The reflexion gate's verifier — answers "did this session load skill X?" from
@@ -307,7 +308,7 @@ register "ops/scripts/manage/cortex_doctor/results.py" "${CORTEX_DEPLOY_HOME}/sc
 register "ops/scripts/manage/cortex-agent-manager.py"  "${CORTEX_DEPLOY_HOME}/scripts/cortex-agent-manager.py"
 
 register "ops/scripts/hc/hc.py"                      "${CORTEX_DEPLOY_HOME}/scripts/hc.py"
-register "ops/scripts/hc/harness.py"                 "${CORTEX_DEPLOY_HOME}/scripts/hc/harness.py"
+register "ops/scripts/hc/harness.py"                 "${CORTEX_DEPLOY_HOME}/scripts/hc-harness.py"
 register "ops/scripts/hc/hc"                         "${CORTEX_DEPLOY_HOME}/scripts/hc"
 register "ops/scripts/health/agent-stale-ref-watchdog.sh"            "${CORTEX_DEPLOY_HOME}/scripts/manage/agent-stale-ref-watchdog.sh"
 register "ops/scripts/manage/autonomy-classifier.py"                  "${CORTEX_DEPLOY_HOME}/scripts/manage/autonomy-classifier.py"
