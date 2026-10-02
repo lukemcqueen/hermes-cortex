@@ -13,14 +13,15 @@ Every harness reaches ONE implementation
 | Layer | Used by | Why |
 |---|---|---|
 | `mcp` | Hermes, Claude Code, Codex | they read MCP servers from their own config — no shim needed |
-| `cli-extension` | harness with no MCP client | it shells out to the shared CLI (Pi: `pi.on(hook)` + `pi.registerTool`) |
+| `cli-extension` | harness with no MCP client | it shells out to the shared CLI (`pi.on(hook)` + `pi.registerTool`) |
 | `cli-hook` | anything that only needs a lifecycle command | trigger only, no tool surface |
 | `none` | declared-unsupported | the gap is **visible with its reason**, never silently absent |
 
-> **Pi grows an MCP client at >= 0.99 / 1.0** (verified against 1.0.0): it reads
-> `mcpServers` from `~/.pi/agent/mcp.json`, so governance arrives over MCP —
-> `install-pi-mcp.sh` registers loop-governance, tasks, executor and agent-bus —
-> while the extension keeps the lifecycle trigger MCP cannot provide.
+> **Pi is a mixed layer at >= 0.99 / 1.0** (pi 1.0.0; one run recorded, independent
+> reproduction pending): it reads `mcpServers` from `~/.pi/agent/mcp.json`, so
+> governance arrives over MCP — `install-pi-mcp.sh` registers loop-governance,
+> tasks, executor and agent-bus — while the extension keeps the lifecycle trigger
+> MCP cannot provide. The registry entry still needs repointing to match.
 
 > **The mistake this tree exists to prevent:** assuming every harness speaks MCP.
 > A wrong layer yields a wiring that "exists" and does nothing.

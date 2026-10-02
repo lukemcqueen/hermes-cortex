@@ -1,8 +1,10 @@
 # Pi MCP end-to-end transcript — 2026-10-02 (host: esther, Linux)
 
-Evidence artifact for `ops/scripts/install/install-pi-mcp.sh`, recorded from a real
-run against **pi 1.0.0** (the MCP-capable client), not a mock. The installer's own
-regression test does not prove the *client* accepts the config; this does.
+Evidence artifact for `ops/scripts/install/install-pi-mcp.sh`, recorded by one
+operator's run on the esther host against **pi 1.0.0** (the MCP-capable client).
+This is a single-operator transcript, not a CI log; it has not yet been
+independently reproduced. The installer's own regression test does not prove the
+*client* accepts the config; this does.
 
 ## Reproduce
 

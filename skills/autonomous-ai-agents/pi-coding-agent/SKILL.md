@@ -45,7 +45,7 @@ sed -n '1,60p' "$P"/dist/core/extensions/types.d.ts   # + grep the event interfa
 
 ## Cortex context (memory + session)
 
-**Pi >= 0.99 / 1.0 has an MCP client** (verified against 1.0.0): it reads
+**Pi >= 0.99 / 1.0 has an MCP client** (pi 1.0.0; one run recorded, independent reproduction pending): it reads
 `mcpServers` from `~/.pi/agent/mcp.json` (user scope) and `.pi/mcp.json` (trusted
 projects only), the same shape as Claude Code. Governance is therefore an MCP
 registration — never hand-write a lock:

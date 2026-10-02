@@ -1593,13 +1593,17 @@ def _complexity(repo: Path, started_at: str) -> dict:
         if not f:
             continue
         files.add(f)
+        if _is_noise(f):
+            continue
+        # Count only non-noise untracked files, so `untracked` agrees with
+        # `files`/`lines` (which are noise-filtered) — the gate message says the
+        # untracked files are counted in files/lines, and it must be true.
         untracked_n += 1
-        if not _is_noise(f):
-            try:
-                with open(repo / f, encoding="utf-8", errors="ignore") as fh:
-                    untracked_lines += sum(1 for _ in fh)
-            except OSError:
-                pass
+        try:
+            with open(repo / f, encoding="utf-8", errors="ignore") as fh:
+                untracked_lines += sum(1 for _ in fh)
+        except OSError:
+            pass
 
     # Always-review paths gate FIRST (size-independent, raw files).
     always = [f for f in files if any(ap in f for ap in ALWAYS_REVIEW_PATHS)]
