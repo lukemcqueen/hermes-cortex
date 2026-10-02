@@ -352,6 +352,69 @@ def test_severity_policy_blocks_medium_and_above():
     _check("policy FAIL-CLOSED: non-list payload blocks", len(b) == 1, f"got {b}")
 
 
+def test_refute_and_triage_layers():
+    """(H) Layer 1 refutes ONLY provably-unmoored citations; Layer 2 triage is
+    classification-only, disabled by default, and fail-safe."""
+    material = "diff --git a/x b/x\n+present fragment here\n"
+
+    absent = {"finding_id": "A", "severity": "high",
+              "evidence": 'claims the material says "this text is absent"'}
+    present = {"finding_id": "B", "severity": "high",
+               "evidence": 'quotes "present fragment here" from the diff'}
+    paraphrase = {"finding_id": "C", "severity": "high",
+                  "evidence": "the note is not traceable to the diff"}
+
+    r = mcp._refute_findings([absent, present, paraphrase], material)
+    ids = [f["finding_id"] for f in r]
+    _check("refute: fabricated citation IS refuted", ids == ["A"], f"got {ids}")
+    _check("refute: a citation present in the material is NOT refuted", "B" not in ids)
+    _check("refute: a paraphrase (no quoted fragment) is NEVER refuted", "C" not in ids)
+    _check("refute: no material -> nothing refuted",
+           mcp._refute_findings([absent], "") == [])
+
+    admin = {"finding_id": "D", "severity": "medium"}
+    judge = {"finding_id": "E", "severity": "high"}
+    tri = [{"finding_id": "D", "class": "administrative", "cites_artifact": False},
+           {"finding_id": "E", "class": "judgement", "cites_artifact": True}]
+    out, dec = mcp._apply_triage([admin, judge], tri)
+    by = {f["finding_id"]: f for f in out}
+    _check("triage: administrative/no-artifact lowered to LOW", by["D"]["severity"] == "low")
+    _check("triage: reviewer severity preserved for audit",
+           by["D"]["severity_reviewer"] == "medium")
+    _check("triage: a judgement finding is untouched", by["E"]["severity"] == "high")
+    _check("triage: decisions are recorded", dec == ["D"], f"got {dec}")
+
+    raise_try = [{"finding_id": "F", "class": "administrative", "cites_artifact": False}]
+    out2, _ = mcp._apply_triage([{"finding_id": "F", "severity": "low"}], raise_try)
+    _check("triage: NEVER raises a severity", out2[0]["severity"] == "low")
+    _check("triage: absent triage leaves findings unchanged",
+           mcp._apply_triage([admin], None)[0][0]["severity"] == "medium")
+
+    os.environ.pop("ADVERSARIAL_TRIAGE_MODEL", None)
+    _check("triage hook: DISABLED by default (no ADVERSARIAL_TRIAGE_MODEL)",
+           mcp._triage_findings([admin], material) is None)
+
+    os.environ["ADVERSARIAL_TRIAGE_MODEL"] = "stub-system1"
+    try:
+        ok = mcp._triage_findings(
+            [admin], material,
+            caller=lambda p, m: json.dumps(
+                [{"finding_id": "D", "class": "administrative",
+                  "cites_artifact": False, "severity": "low"}]))
+        _check("triage hook: parses a stubbed classifier reply",
+               isinstance(ok, list) and ok[0]["finding_id"] == "D", f"got {ok}")
+
+        def _boom(p, m):
+            raise RuntimeError("triage model down")
+
+        _check("triage hook FAIL-SAFE: transport error -> None (severities stand)",
+               mcp._triage_findings([admin], material, caller=_boom) is None)
+        _check("triage hook FAIL-SAFE: non-list reply -> None",
+               mcp._triage_findings([admin], material, caller=lambda p, m: '"nope"') is None)
+    finally:
+        os.environ.pop("ADVERSARIAL_TRIAGE_MODEL", None)
+
+
 def _reset_enf_state(state: Path, now: datetime):
     for p in state.glob(".governance-*.json"):
         p.unlink()
@@ -372,6 +435,8 @@ def main():
     test_foreign_always_review_commit_still_triggers()
     print("G. severity policy: MEDIUM+ blocks, LOW annotates")
     test_severity_policy_blocks_medium_and_above()
+    print("H. refutation + triage layers")
+    test_refute_and_triage_layers()
     print()
     if _FAIL:
         print(f"{len(_FAIL)} FAILED: {', '.join(_FAIL)}")
