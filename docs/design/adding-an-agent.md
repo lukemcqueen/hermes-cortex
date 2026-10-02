@@ -42,6 +42,35 @@ Spec fields (`AgentSpec`, `ops/scripts/cortex_gateway/agents.py`):
 | `model` | informational, and available to `prompt_template` |
 | `subject` | kind=hermes: the UPPER_CASE bus subject for inbound human messages |
 
+## Worked example: a Telegram bot answered by pi (verified live)
+
+```json
+"backends": [
+  {"name": "pi", "kind": "command",
+   "command": ["/home/esther/.pi/agent/bin/pi", "--model", "openrouter/moonshotai/kimi-k2.6"],
+   "output": "last_line",
+   "timeout_s": 300,
+   "reply_mode": "sync",
+   "capabilities": ["code", "review"],
+   "model": "openrouter/moonshotai/kimi-k2.6"}
+],
+"bots": [{"token_ref": "TELEGRAM_BOT_TOKEN", "channel": "telegram",
+          "routing": {"default": "pi", "overrides": {}}}],
+"routing": {"default": "pi", "overrides": {}}
+```
+
+Copy: `ops/scripts/gateway-pi.example.yaml`. Three things the live rehearsal taught, all of
+which are now spec fields rather than gotchas to rediscover:
+
+- **Absolute path to the binary.** pi's linuxbrew symlink is not on a service PATH; a
+  relative command in a systemd context is an agent that answers nothing.
+- **`output: last_line`.** pi prints its extension's session line before the answer, so
+  `raw` would send `CORTEX_RESUME …` to the human.
+- **`timeout_s` sized for a real turn.** A coding turn is not a chat reply.
+
+Verified end to end on a second bot token: the bot's message → the command backend spawned
+pi → pi's last line became the reply → Telegram returned `message_id 12`.
+
 ## Add a new KIND (one class, one line)
 
 A different protocol (a hosted API, a websocket agent, an agent that answers on a callback

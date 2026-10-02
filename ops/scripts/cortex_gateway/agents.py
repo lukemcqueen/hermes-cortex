@@ -64,6 +64,12 @@ def known_kinds() -> list:
 
 REPLY_MODES = ("sync", "bus")
 
+# Agents differ in what they print. `raw` takes stdout as the reply; `last_line` takes the
+# final non-empty line — for agents that chat on stdout first (pi, for example, prints its
+# extension's session line, e.g. CORTEX_RESUME …, before the answer). Anything more
+# involved belongs in a wrapper command in the spec, which the registry already supports.
+OUTPUT_MODES = ("raw", "last_line")
+
 
 @dataclass
 class AgentSpec:
@@ -75,6 +81,7 @@ class AgentSpec:
     prompt_template: str = "{body}"               # what the agent is asked
     timeout_s: int = 300
     reply_mode: str = "sync"                      # sync (return) | bus (write out_<agent>)
+    output: str = "raw"                           # raw | last_line (agents print chatter)
     capabilities: list = field(default_factory=list)  # free-form, for operators/health
     model: str = ""
     subject: str = "USER_MESSAGE"                 # kind=hermes inbound subject
@@ -87,7 +94,7 @@ class AgentSpec:
         if not isinstance(d, dict):
             raise ValueError(f"backend spec must be a mapping or a name, got {type(d).__name__}")
         allowed = {"name", "kind", "command", "prompt_template", "timeout_s", "reply_mode",
-                   "capabilities", "model", "subject", "extra"}
+                   "capabilities", "model", "subject", "output", "extra"}
         unknown = set(d) - allowed
         if unknown:
             raise ValueError(
@@ -103,6 +110,7 @@ class AgentSpec:
             prompt_template=str(d.get("prompt_template") or "{body}"),
             timeout_s=int(d.get("timeout_s", 300) or 300),
             reply_mode=str(d.get("reply_mode", "sync")).strip().lower(),
+            output=str(d.get("output", "raw")).strip().lower(),
             capabilities=list(d.get("capabilities", []) or []),
             model=str(d.get("model", "") or ""),
             subject=str(d.get("subject", "USER_MESSAGE") or "USER_MESSAGE"),
@@ -125,6 +133,10 @@ class AgentSpec:
             raise ValueError(
                 f"backend '{self.name}': reply_mode must be one of {REPLY_MODES}, "
                 f"got {self.reply_mode!r}")
+        if self.output not in OUTPUT_MODES:
+            raise ValueError(
+                f"backend '{self.name}': output must be one of {OUTPUT_MODES}, "
+                f"got {self.output!r}")
         if not self.subject or self.subject != self.subject.upper():
             raise ValueError(
                 f"backend '{self.name}': subject must be UPPER_CASE "
@@ -277,7 +289,15 @@ class CommandBackend:
         if proc.returncode != 0:
             log.warning("command backend %s: exit %s; stderr=%r",
                         self.spec.name, proc.returncode, (proc.stderr or "")[:200])
-        return (proc.stdout or "").strip()
+        return self._shape_output(proc.stdout or "")
+
+    def _shape_output(self, stdout: str) -> str:
+        """Turn the agent's stdout into the reply text (spec-declared, never guessed)."""
+        text = (stdout or "").strip()
+        if self.spec.output == "last_line":
+            lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
+            return lines[-1] if lines else ""
+        return text
 
 
 @register_kind("command")

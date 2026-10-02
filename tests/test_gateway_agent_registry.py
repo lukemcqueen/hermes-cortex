@@ -167,6 +167,31 @@ def test_command_backend_survives_a_failing_agent_without_crashing_the_loop():
     print("  a failing or missing agent yields no reply and never crashes the loop ✓")
 
 
+def test_output_shape_is_declared_not_guessed():
+    """Agents print differently: pi chats on stdout before the answer.
+
+    `output` is a spec field because guessing a format breaks the first time a new agent
+    prints something unexpected — and the wrong guess sends chatter to the human.
+    """
+    spec = A.AgentSpec(name="pi", kind="command", output="last_line",
+                       command=["/bin/sh", "-c", "echo 'CORTEX_RESUME session x'; echo 'the answer'"])
+    reply = A.CommandBackend(spec).dispatch(_inbound("q"))
+    assert reply["body"] == "the answer", reply["body"]
+    print("  output=last_line skips the agent's chatter ✓")
+
+    raw = A.AgentSpec(name="pi", kind="command", command=["/bin/sh", "-c", "printf 'line1\\nline2\\n'"])
+    assert A.CommandBackend(raw).dispatch(_inbound())["body"] == "line1\nline2"
+    print("  output=raw (default) keeps the whole stdout ✓")
+
+    try:
+        A.build_backends([{"name": "pi", "kind": "command", "command": ["pi"],
+                           "output": "clever"}], {})
+        raise AssertionError("an unknown output mode must not build")
+    except ValueError as e:
+        assert "output must be one of" in str(e)
+        print("  an unknown output mode is refused at build ✓")
+
+
 def test_bus_reply_mode_publishes_to_out_agent(monkeypatch):
     sent = {}
     import cortex_gateway.transport as T

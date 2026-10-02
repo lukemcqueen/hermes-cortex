@@ -1,0 +1,30 @@
+{
+  "_comment": "Worked example: a Telegram bot answered by the PI coding agent. Copy to ~/.hermes-cortex/gateway.yaml (or a rehearsal config) and set the env vars named below. NO gateway code changes: kind=command runs any CLI agent per turn. Notes learned from the live rehearsal (2026-10-02): (1) use the ABSOLUTE path to pi — its linuxbrew symlink is not on a service PATH, and a missing executable would otherwise be a per-message no-op; (2) output=last_line because pi prints its extension's session line (CORTEX_RESUME …) before the answer, and sending that to the human is noise; (3) timeout_s must cover a real coding turn, not just a chat reply.",
+  "backends": [
+    {
+      "name": "pi",
+      "kind": "command",
+      "command": ["/home/esther/.pi/agent/bin/pi", "--model", "openrouter/moonshotai/kimi-k2.6"],
+      "output": "last_line",
+      "timeout_s": 300,
+      "reply_mode": "sync",
+      "capabilities": ["code", "review"],
+      "model": "openrouter/moonshotai/kimi-k2.6"
+    }
+  ],
+  "bots": [
+    {
+      "token_ref": "TELEGRAM_BOT_TOKEN",
+      "channel": "telegram",
+      "initial_offset": 0,
+      "routing": {
+        "default": "pi",
+        "overrides": {}
+      }
+    }
+  ],
+  "routing": {
+    "default": "pi",
+    "overrides": {}
+  }
+}
