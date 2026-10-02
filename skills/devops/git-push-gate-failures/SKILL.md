@@ -125,6 +125,19 @@ git ls-remote --exit-code origin main >/dev/null 2>&1 || LSRC=$?
 conflict), but the push is then blocked by the dogfood gate: `❌ Deploy sync`,
 `❌ Script content (<name>)`, `❌ Checksum: <file>.sh`. Your commit looks fine.
 
+**A register() source can be SILENTLY UNCOMMITTED by a `.gitignore`
+pattern.** When a new registered file is missing from a commit, check
+`git check-ignore <src>` FIRST: a filename matching a broad rule (`*secret*`,
+`*token*`) makes `git add` skip it with no error, so the commit lands with
+only the `register` line. The doctor then FAILs `Deploy source missing:
+<file>` on every host. Fix by renaming the artifact out of the pattern (keeps
+	the guard intact) or adding an explicit `!negation`; verify it staged with
+`git ls-files <src>` before committing. Do not re-implement a peer's
+in-flight fix to the same artifact without checking `git log --all -- <path>`
+and `git ls-tree origin/main -- <path>` first — if the peer is actively
+pushing that fix, your re-implementation is a wrong-direction commit you
+must then revert and push the revert.
+
 **Mechanism:** the dogfood gate diffs DEPLOYED scripts
 (`~/.hermes-cortex/scripts/`) against repo HEAD. A peer's overlapping commit
 changed the same script in the repo; your deployed copy still carries YOUR
@@ -177,6 +190,18 @@ when it is identical-or-better and already public.
       normal push → PASS; fetch fails + ref exists → BLOCK; remote
       unreachable → BLOCK
 - [ ] A4 adversarial gate on hook/deploy changes before commit
+
+## Fleet-shared vs local- (user preference, workflow decision)
+
+Decide by who needs the artifact, NOT by what dodges a doctor warning. A
+genuinely fleet-useful artifact (a gate backend, a reviewer wrapper, a shared
+helper) belongs FLEET-SHARED in the repo with a proper `register()` entry, then
+deploy + push. Renaming it to `local-` purely to clear a doctor stale-deploy
+warning is backwards — the answer to a genuine fleet need is to register and
+deploy it, not hide it as a one-off. `local-` is for one-off, host-specific
+things only. Ask "would another host want this?" — if yes, make it fleet-shared.
+The user: "if it isn't fleet shared, then what's the point?" (respond in kind,
+not by dodging the warning).
 
 ## Public-repo publishing discipline (user preference, 2026-09-01)
 
