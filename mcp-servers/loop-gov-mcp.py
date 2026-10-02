@@ -1611,6 +1611,40 @@ def _authored_commits(repo: Path, base: str, author: str) -> list:
     return [ln.strip() for ln in out.splitlines() if ln.strip()]
 
 
+def _provenance_block(repo: Path, base: str, own_author: str) -> str:
+    """Authorship disclosure appended to the reviewed diff — never narrow silently.
+
+    A lock window (last commit before the lock .. HEAD) spans whatever a pull or
+    rebase brought in, so it can contain OTHER agents' commits. Two branches of
+    the material builder need this text; keeping it here means they cannot drift
+    apart. The labels come from git, so a worker cannot re-attribute a peer's
+    commit by writing prose in its note.
+
+    Narrowed (``own_author`` resolves): list the commits that are NOT this
+    session's. Unnarrowed (identity unresolved): list EVERY commit with its
+    author, because presenting them unlabelled is what made a reviewer charge a
+    peer's enforcement edits to this worker (Titus, 2026-10-02).
+    """
+    if own_author:
+        _mine = set(_authored_commits(repo, base, own_author))
+        shas = [s for s in _git_capture(repo, "log", "--format=%H", base + "..HEAD").split()
+                if s and s not in _mine]
+        log = _git_capture(repo, "log", "--format=%h %an <%ae> %s", *shas).strip() if shas else ""
+        if not log:
+            return ""
+        return ("\n\n[provenance — commits in this window NOT authored by this session; "
+                "author identity shown per commit. Included for completeness.]\n" + log + "\n")
+    log = _git_capture(repo, "log", "--format=%h %an <%ae> %s", base + "..HEAD").strip()
+    if not log:
+        return ""
+    return ("\n\n[provenance — this session's git identity could NOT be resolved on this host, "
+            "so the range could not be narrowed to its own commits. EVERY commit in the window "
+            "is listed below with its author. Attribute a change to this worker ONLY where git "
+            "shows this session authored that commit; a peer's commits may be here because a "
+            "pull or rebase brought them into the window, and they are NOT part of this "
+            "cycle.]\n" + log + "\n")
+
+
 def _complexity(repo: Path, started_at: str) -> dict:
     """Measured complexity of the change under the current cycle.
 
@@ -2402,16 +2436,21 @@ def _adversarial_review_gate(lock: dict, cycle: dict,
         _theirs = [s for s in _git_capture(repo, "log", "--format=%H", _base + "..HEAD").split()
                    if s and s not in _mine]
         if _theirs:
-            _log = _git_capture(repo, "log", "--format=%h %an <%ae> %s", _base + "..HEAD")
-            diff_text += (
-                "\n\n[provenance — commits in this window NOT authored by this session; "
-                "author identity shown per commit. Included for completeness.]\n"
-                + _log + "\n"
-                + _git_capture(repo, "show", "-p", "--no-ext-diff", "-U3", *_theirs)
-            )
+            diff_text += _provenance_block(repo, _base, _author)
+            diff_text += _git_capture(repo, "show", "-p", "--no-ext-diff", "-U3", *_theirs)
     else:
-        # No positive identity / nothing authored: review the whole window.
+        # No positive identity / nothing authored: review the whole window —
+        # but NEVER unlabelled. On a host where the session's git identity does
+        # not resolve, a pull/rebase puts OTHER agents' commits inside the lock
+        # window; presenting them unlabelled made the reviewer attribute a peer's
+        # enforcement edits (mcp-servers/, ops/scripts/cortex-update.sh) to this
+        # worker and reject its evidence as fabrication (Titus, 2026-10-02).
+        # Enforcement is unchanged: every commit is still included, and the same
+        # always-review fail-safe in _complexity() still forces this review.
+        # Only the authorship is disclosed — and it comes from git, not from the
+        # worker's claim, so it cannot be forged from the note.
         diff_text = _git_capture(repo, "diff", "--no-ext-diff", "-U3", _base + "..HEAD")
+        diff_text += _provenance_block(repo, _base, "")
     # Bound the diff (head+tail) so a huge change still fits the reviewer.
     if len(diff_text) > DIFF_CHAR_BUDGET:
         diff_text = diff_text[:DIFF_CHAR_BUDGET] + "\n...[diff truncated]...\n"
@@ -2433,11 +2472,17 @@ def _adversarial_review_gate(lock: dict, cycle: dict,
     _sid = lock.get("session_id", "") or get_session_id(None)
     _head_sha = _git_capture(repo, "rev-parse", "--short", "HEAD").strip()
     _branch = _git_capture(repo, "rev-parse", "--abbrev-ref", "HEAD").strip()
+    # Never claim the range is narrowed when it is not: an unresolved identity
+    # means the window holds whatever a pull brought in.
+    _range_note = (
+        "(commits authored by the agent above)" if _authored
+        else "(UNNARROWED — session identity unresolved; authorship per commit below)"
+    )
     material = (
         f"Session: {_sid}\n"
         f"Agent (git author): {_author or '(unresolved)'}\n"
         f"Repo tree: {repo}  branch={_branch}  HEAD={_head_sha}\n"
-        f"Audited range: {_base}..HEAD (commits authored by the agent above)\n"
+        f"Audited range: {_base}..HEAD {_range_note}\n"
         f"Cycle ID: {cycle.get('id', 0)}\n"
         f"Task: {task_id}\n"
         f"Description: {description}\n"
