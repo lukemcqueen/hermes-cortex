@@ -186,7 +186,12 @@ def reply_from_origin(origin: dict, body: str, *, agent: str) -> dict:
         "thread_id": origin.get("thread_id"),
         "body": body,
         "media": [],
-        "reply_to_msg_id": origin.get("reply_to_msg_id"),
+        # ANCHOR: in a topic, anchor the answer to the message that triggered it, so a busy
+        # topic shows which question each reply belongs to (the incumbent anchors too).
+        # Outside a topic the anchor is only set when the human themselves replied to
+        # something — quoting every DM would be noise.
+        "reply_to_msg_id": (origin.get("tg_msg_id") if origin.get("thread_id")
+                            else origin.get("reply_to_msg_id")),
         "ack_required": False,
     }
 

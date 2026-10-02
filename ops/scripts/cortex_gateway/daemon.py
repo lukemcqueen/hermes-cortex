@@ -37,6 +37,10 @@ import sys
 import time
 import urllib.error
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:                      # runtime import stays lazy (pairing is opt-in)
+    from .pairing import PairingStore
 
 if __package__ in (None, ""):
     # Run as a script (python3 daemon.py / systemd ExecStart): make the
@@ -58,7 +62,8 @@ class Gateway:
     def __init__(self, transport: TransportAdapter, backends: dict,
                  default_agent: str = DEFAULT_BACKEND_AGENT,
                  routing_overrides: dict | None = None,
-                 allowed_users: set | None = None):
+                 allowed_users: set | None = None,
+                 pairing: "PairingStore | None" = None):
         self.transport = transport
         self.backends = backends          # agent_name -> BackendAdapter
         self.default_agent = default_agent
@@ -66,6 +71,9 @@ class Gateway:
         # Sender allowlist (TELEGRAM_ALLOWED_USERS). None means "not gated
         # here" — build_gateway requires it, so production is never None.
         self.allowed_users = allowed_users
+        # DM pairing (opt-in): an unknown sender can request enrolment, but their message
+        # is NEVER dispatched until an already-allowed user approves the code.
+        self.pairing = pairing
         # offset tracks the transport's own offset (transport owns the truth).
         self.offset = getattr(transport, "offset", 0)
 
@@ -129,7 +137,12 @@ class Gateway:
             return
         if self.allowed_users is not None:
             sender = str(envelope.get("channel_user_id"))
-            if sender not in self.allowed_users:
+            if not self._sender_allowed(sender):
+                if self.pairing is not None:
+                    # Enrolment path: reply with a code, tell the owner, and DISPATCH
+                    # NOTHING. The agent must never see an unpaired sender's text.
+                    self._pair_request(envelope, sender)
+                    return
                 print(f"⛔ dropped sender {sender} — not in "
                       "TELEGRAM_ALLOWED_USERS", file=sys.stderr)
                 return
@@ -137,6 +150,10 @@ class Gateway:
         # A new human message lifts a previous /stop suppression.
         if envelope.get("tg_kind") == "message":
             self.suppressed.discard(chat)
+        # A button press: clear its spinner immediately. The agent decides what the choice
+        # MEANS; the gateway only acknowledges that it was received (best-effort).
+        if envelope.get("tg_kind") == "callback":
+            self._answer_callback(envelope)
         envelope["to_agent"] = self.route(chat)
         backend = self.backends.get(envelope["to_agent"])
         if backend is None:
@@ -162,6 +179,8 @@ class Gateway:
     def _handle_command(self, command: str, envelope: dict, backend) -> bool:
         """Handle a gateway-level command. True = consumed (do not dispatch again)."""
         chat = envelope.get("channel_user_id")
+        if command in ("/approve", "/deny") and self.pairing is not None:
+            return self._handle_pair_command(command, envelope)
         if command == "/stop":
             dropped = self._interrupt(chat)
             # ALSO forward it: the gateway can drop a pending reply, but only the
@@ -223,6 +242,79 @@ class Gateway:
         for chat, st in list(self.inflight.items()):
             if now - st.get("typing_ts", 0) >= self.TYPING_REFRESH_S:
                 self._typing(chat, st.get("envelope"))
+
+    # ── DM pairing (parity: unknown senders can enrol, with the owner's consent) ──
+    def _sender_allowed(self, sender: str) -> bool:
+        """Env allowlist ∪ persisted approvals. One place decides who may talk."""
+        if self.allowed_users is None:
+            return True
+        return sender in self.allowed_users or bool(
+            self.pairing and self.pairing.is_approved(sender))
+
+    def _is_owner(self, sender: str) -> bool:
+        """Only an ENV-allowed user may approve — an approved guest is not an owner."""
+        return self.allowed_users is not None and sender in self.allowed_users
+
+    def _notify_owner(self, text: str) -> None:
+        """Tell the owner via the home channel (the transport's own fallback)."""
+        try:
+            self.transport.send({"body": text})
+        except Exception as e:  # noqa: BLE001 — a failed notice must not break the loop
+            print(f"⚠️  could not notify the owner: {e}", file=sys.stderr)
+
+    def _pair_request(self, envelope: dict, sender: str) -> None:
+        """Offer a code and tell the owner. Silent when rate limited (no amplification)."""
+        code = self.pairing.request(sender)
+        if code is None:
+            print(f"⏳ pairing rate limit hit for {sender}", file=sys.stderr)
+            return
+        self._reply(envelope.get("channel_user_id"),
+                    "This bot is not paired with you yet, so your message was not "
+                    f"delivered. Ask the owner to approve pairing code {code} "
+                    "(it expires shortly).")
+        self._notify_owner(
+            f"🔐 Pairing request from chat {sender}. Approve with: /approve {code} "
+            f"(or /deny {code}). Approving lets that chat talk to the agent.")
+        print(f"🔐 pairing requested by {sender} (code issued)", file=sys.stderr)
+
+    def _handle_pair_command(self, command: str, envelope: dict) -> bool:
+        """/approve <code> · /deny <code> — owner only."""
+        sender = str(envelope.get("channel_user_id"))
+        parts = (envelope.get("body") or "").split()
+        code = parts[1] if len(parts) > 1 else ""
+        if not self._is_owner(sender):
+            # An approved guest must not be able to enrol anyone else.
+            self._reply(sender, "Only the bot owner can approve or deny pairing requests.")
+            return True
+        if command == "/deny":
+            ok = self.pairing.deny(code)
+            self._reply(sender, f"Pairing code {code.upper()} denied." if ok
+                        else f"No pending request with code {code.upper()}.")
+            return True
+        chat = self.pairing.approve(code)
+        if chat is None:
+            self._reply(sender, f"No valid pending request with code {code.upper()} "
+                                "(it may have expired or already been used).")
+            return True
+        self._reply(sender, f"Approved — chat {chat} can now talk to the agent.")
+        try:
+            self.transport.send({"channel_user_id": int(chat),
+                                 "body": "You are paired. Send your message again and the "
+                                         "agent will answer."})
+        except Exception as e:  # noqa: BLE001 — approval stands even if the notice fails
+            print(f"⚠️  could not notify the newly paired chat: {e}", file=sys.stderr)
+        print(f"🔐 paired chat {chat}", file=sys.stderr)
+        return True
+
+    def _answer_callback(self, envelope: dict) -> None:
+        """Clear a pressed button's spinner. Feature-detected and best-effort."""
+        fn = getattr(self.transport, "answer_callback", None)
+        if not fn:
+            return
+        try:
+            fn(envelope.get("tg_query_id"))
+        except Exception as e:  # noqa: BLE001 — UX must never break a turn
+            print(f"⚠️  answering the callback failed: {e}", file=sys.stderr)
 
     def _interrupt(self, chat) -> int:
         """Forget the in-flight turn and drop what was queued behind it."""
@@ -433,10 +525,18 @@ def build_gateway(config_path: Path) -> Gateway:
                                 home_channel=home)
     backends = _build_backends(data)
     routing = data.get("routing", {})
+    # Pairing is opt-in and its approvals persist NEXT TO the deploy, not in the repo.
+    pairing = None
+    from . import pairing as _pairing
+    if _pairing.enabled():
+        store_path = Path(os.environ.get("CORTEX_DEPLOY_HOME", str(Path.home() / ".hermes-cortex"))) / "paired_chats.json"
+        pairing = _pairing.PairingStore(store_path)
+        print(f"🔐 DM pairing enabled ({len(pairing.approved)} approved chat(s))",
+              file=sys.stderr)
     return Gateway(transport=transport, backends=backends,
                    default_agent=routing.get("default", DEFAULT_BACKEND_AGENT),
                    routing_overrides=routing.get("overrides", {}),
-                   allowed_users=allowed)
+                   allowed_users=allowed, pairing=pairing)
 
 
 def main() -> int:

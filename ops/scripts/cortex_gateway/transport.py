@@ -53,6 +53,33 @@ TRANSIENT_HTTP = {429, 500, 502, 503, 504}
 TG_MAX_CHARS = 4000          # Telegram's own limit for one text message
 
 
+def _inline_keyboard(buttons):
+    """Envelope `buttons` → Telegram inline_keyboard markup, or None.
+
+    Shape: ``[[{"text": "Approve", "data": "approve"}], ...]``. Malformed entries are
+    SKIPPED rather than forwarded: a missing button is a UI wart, but invalid markup makes
+    Telegram reject the ENTIRE message — which would lose the text along with the buttons.
+    """
+    if not buttons:
+        return None
+    rows = []
+    for row in buttons:
+        if not isinstance(row, (list, tuple)):
+            continue
+        clean = []
+        for b in row:
+            if not isinstance(b, dict):
+                continue
+            label = b.get("text")
+            data = b.get("data", b.get("callback_data"))
+            if not label or data is None:
+                continue
+            clean.append({"text": str(label)[:60], "callback_data": str(data)[:64]})
+        if clean:
+            rows.append(clean)
+    return {"inline_keyboard": rows} if rows else None
+
+
 def chunk_body(body: str, limit: int = TG_MAX_CHARS) -> list:
     """Split a long body into sendable chunks WITHOUT losing characters.
 
@@ -351,6 +378,8 @@ class TelegramAdapter(TransportAdapter):
         base = {"chat_id": chat_id}
         if envelope.get("thread_id"):
             base["message_thread_id"] = envelope["thread_id"]
+        thread_id_present = bool(base.get("message_thread_id"))
+        pruned = False                # set once a stale topic id has been dropped
 
         ok = True
         for item in (envelope.get("media") or []):
@@ -359,19 +388,77 @@ class TelegramAdapter(TransportAdapter):
         # CHUNKED, never truncated: the incumbent splits and the target used to
         # drop everything past 4000 chars with no error.
         mode = self.parse_mode(envelope)
-        for i, chunk in enumerate(chunk_body(envelope.get("body") or "")):
+        chunks = chunk_body(envelope.get("body") or "")
+        markup = _inline_keyboard(envelope.get("buttons"))
+        for i, chunk in enumerate(chunks):
             params = {**base, "text": chunk}
             if i == 0 and envelope.get("reply_to_msg_id"):
                 params["reply_to_message_id"] = envelope["reply_to_msg_id"]
             if mode:
                 params["parse_mode"] = mode
+            if markup and i == len(chunks) - 1:
+                # Buttons ride the LAST chunk (the end of the message), which is where a
+                # human looks for them — and where an approval prompt belongs.
+                params["reply_markup"] = markup
             data = self._api("sendMessage", params)
-            if not data.get("ok") and mode:
+            if not data.get("ok") and thread_id_present and not pruned:
+                # PRUNE: a thread that no longer exists must not swallow the answer — the
+                # incumbent drops the binding and delivers into the chat. (Telegram answers
+                # 400 "message thread not found" for a stale DM-topic id.)
+                why = str(data.get("description", "")).lower()
+                if "thread" in why or "topic" in why:
+                    print(f"⚠️  topic {base.get('message_thread_id')} refused ({why[:60]}); "
+                          "delivering without it", file=sys.stderr)
+                    base.pop("message_thread_id", None)
+                    params.pop("message_thread_id", None)
+                    pruned = True
+                    data = self._api("sendMessage", params)
+            if not data.get("ok") and mode and "parse_mode" in params:
                 # Formatting must never cost a message: retry this chunk plain.
                 params.pop("parse_mode", None)
                 data = self._api("sendMessage", params)
             ok = bool(data.get("ok")) and ok
         return ok
+
+    # ── approvals: callbacks and edits (parity: the incumbent's button flow) ──
+    def answer_callback(self, query_id, text: str = "") -> bool:
+        """Clear the client's spinner after a button press. Best-effort, never fatal.
+
+        Telegram shows a progress indicator on the pressed button until this is called;
+        skipping it leaves the user staring at a spinner for a choice that already landed.
+        """
+        if not query_id:
+            return False
+        try:
+            data = self._api("answerCallbackQuery",
+                             {"callback_query_id": query_id, **({"text": text} if text else {})})
+        except Exception as e:  # noqa: BLE001 — UX must never break a turn
+            print(f"⚠️  answerCallbackQuery failed: {e}", file=sys.stderr)
+            return False
+        return bool(data.get("ok"))
+
+    def edit_message(self, chat_id, message_id, text: str, buttons=None,
+                     parse_mode: str = "") -> bool:
+        """Rewrite a message the gateway already sent (approval updates, streaming).
+
+        Used to turn an approval prompt into its outcome without leaving a stale prompt in
+        the chat. Best-effort: a message older than the edit window cannot be rewritten and
+        that must not fail the turn.
+        """
+        if chat_id is None or message_id is None:
+            return False
+        params = {"chat_id": chat_id, "message_id": message_id, "text": text}
+        if parse_mode:
+            params["parse_mode"] = parse_mode
+        markup = _inline_keyboard(buttons)
+        if markup:
+            params["reply_markup"] = markup
+        try:
+            data = self._api("editMessageText", params)
+        except Exception as e:  # noqa: BLE001 — UX must never break a turn
+            print(f"⚠️  editMessageText failed: {e}", file=sys.stderr)
+            return False
+        return bool(data.get("ok"))
 
     def parse(self, raw: dict) -> Optional[dict]:
         """Telegram update → envelope v1 (routing filled by the gateway).
@@ -414,6 +501,9 @@ class TelegramAdapter(TransportAdapter):
                     "body": f"[callback: {cb.get('data') or ''}]", "media": [],
                     "reply_to_msg_id": (cb.get("message") or {}).get("message_id"),
                     "ack_required": False, "tg_kind": "callback",
+                    # the query id: needed to clear the button's spinner (answerCallbackQuery)
+                    "tg_query_id": cb.get("id"),
+                    "tg_msg_id": (cb.get("message") or {}).get("message_id"),
                 }
             return None
 
@@ -440,4 +530,7 @@ class TelegramAdapter(TransportAdapter):
             "reply_to_msg_id": reply_to,
             "ack_required": False,
             "tg_kind": "edited" if "edited_message" in raw else "message",
+            # the PLATFORM message id: lets the gateway anchor a reply to this message and
+            # rewrite it later (approval updates, streaming) — the incumbent uses it too.
+            "tg_msg_id": msg.get("message_id"),
         }
