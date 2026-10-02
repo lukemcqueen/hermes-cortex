@@ -763,6 +763,32 @@ def process_update_request(msg_body: dict, correlation_id: str) -> dict:
     s = doctor.get("summary", {})
     result["errors"].append(f"Doctor: {s.get('warn', 0)} warn, {s.get('fail', 0)} fail")
 
+  # Visibility (Luke 2026-10-02): a queue-driven update used to run SILENTLY —
+  # the requester got an UPDATE_RESULT back, but the human watching the fleet saw
+  # nothing at all. An update is a fleet-affecting action, so report who asked,
+  # what moved, and whether the host came out healthy.
+  try:
+    _sender = msg_body.get("from", "unknown") if isinstance(msg_body, dict) else "unknown"
+    _subj = msg_body.get("subject", "UPDATE_REQUEST") if isinstance(msg_body, dict) else "UPDATE_REQUEST"
+    _d = (doctor.get("summary", {}) or {}) if run_doctor_flag else {}
+    _lines = [
+      f"🔄 Queue-driven update — {'✅ OK' if result['success'] else '❌ FAILED'}",
+      f"requested by: {_sender} ({_subj})",
+      f"target: {target_sha}" + (f" / {target_version}" if target_version else ""),
+      f"git: {before} → {after}",
+    ]
+    if run_doctor_flag:
+      _lines.append(
+        f"doctor: {_d.get('fail', 0)} fail / {_d.get('warn', 0)} warn / "
+        f"{_d.get('pass', 0)} pass")
+    for _e in (result.get("errors") or [])[:3]:
+      _lines.append(f"⚠️ {_e}")
+    notify_telegram("\n".join(_lines), subject=_subj)
+  except Exception as e:
+    # Non-fatal, same contract as notify_telegram itself: never let a
+    # notification failure break message processing.
+    log(f"update notification failed (non-fatal): {type(e).__name__}: {e}")
+
   return result
 
 
