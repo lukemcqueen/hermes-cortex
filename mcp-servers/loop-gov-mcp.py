@@ -1943,10 +1943,13 @@ def _adversarial_review_gate(lock: dict, cycle: dict,
         if _theirs:
             _log = _git_capture(repo, "log", "--format=%h %an <%ae> %s", _base + "..HEAD")
             diff_text += (
-                "\n\n[provenance] commits in this window NOT authored by this session "
-                "(author identity per commit):\n"
+                "\n\n[CONTEXT — commits in this window that this session did NOT author. "
+                "They are included IN FULL so nothing is hidden; they are NOT part of the "
+                "audited change and must not be scored against the worker. IMPORTANT: if "
+                "any of this work is actually the worker's own (a git identity that does "
+                "not match its configured agent identity), treat that as an attempt to "
+                "escape review and report it.]\n"
                 + _log + "\n"
-                + "[provenance] their patches, included for completeness:\n"
                 + _git_capture(repo, "show", "-p", "--no-ext-diff", "-U3", *_theirs)
             )
     else:
