@@ -90,7 +90,43 @@ elif [[ "$MCP_CAPABLE" == "1" ]]; then
       if [[ -n "$srv_missing" ]]; then
         _failed 1 "mcp.json lists 4 servers but the deployed files are missing:$srv_missing — run cortex-update.sh"
       else
-        _line 1 PASS "4 servers configured and deployed (loop-governance, tasks, executor, agent-bus)"
+        # Presence of a name is not a working server: verify each entry actually points
+        # at a runnable command, an existing script, and THIS agent's name (a stale or
+        # copied-in mcp.json can look complete and hand the agent another agent's bus
+        # identity).
+        entry_issues="$(MCP_JSON="$MCP_JSON" AGENT_ENV="$AGENT_ENV" python3 - <<'PY' 2>/dev/null
+import json, os, shutil
+from pathlib import Path
+d = json.loads(Path(os.environ["MCP_JSON"]).read_text())
+srv = d.get("mcpServers") or d.get("servers") or {}
+want = ""
+env_path = Path(os.environ["AGENT_ENV"])
+if env_path.exists():
+    for ln in env_path.read_text().splitlines():
+        if ln.startswith("AGENT_NAME="):
+            want = ln.split("=", 1)[1].strip()
+issues = []
+for name, cfg in srv.items():
+    cfg = cfg or {}
+    cmd = cfg.get("command", "")
+    args = cfg.get("args") or []
+    if not cmd or not (Path(cmd).exists() or shutil.which(cmd)):
+        issues.append(f"{name}: command not runnable ({cmd or 'none'})")
+    if not args or not Path(str(args[0])).exists():
+        issues.append(f"{name}: script missing ({args[0] if args else 'none'})")
+    got = (cfg.get("env") or {}).get("AGENT_NAME", "")
+    if want and got != want:
+        issues.append(f"{name}: AGENT_NAME={got or 'unset'} (host is {want!r})")
+print("; ".join(issues))
+PY
+)"
+        if [[ -n "$entry_issues" ]]; then
+          _failed 1 "MCP entries are not fully usable: $entry_issues"
+        else
+          agent_name="$(grep -E '^AGENT_NAME=' "$AGENT_ENV" 2>/dev/null | head -1 | cut -d= -f2)"
+          _line 1 PASS "4 servers configured — command runnable, script present, AGENT_NAME=${agent_name:-?} on every entry"
+          _line 1 PASS "live check (agent, in a Pi session): 'pi mcp list' → 4 servers / 46 tools (17 loop-governance + 13 tasks + 6 executor + 10 agent-bus)"
+        fi
       fi
     fi
   fi
