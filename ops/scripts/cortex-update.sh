@@ -571,6 +571,12 @@ register "ops/scripts/token-expiry-alert.py"               "${CORTEX_DEPLOY_HOME
 register "ops/scripts/gateway_envelope.py"                 "${CORTEX_DEPLOY_HOME}/scripts/gateway_envelope.py"
 register "ops/scripts/msg-gateway.py"                      "${CORTEX_DEPLOY_HOME}/scripts/msg-gateway.py"
 register "ops/scripts/agent-shim.py"                       "${CORTEX_DEPLOY_HOME}/scripts/agent-shim.py"
+# The agent-side reply primitive: the documented way an agent answers a human
+# (docs/design/gateway-reply-path.md -> agent-reply -> out_<agent>). Committed and
+# tested but never registered, so the deployed host had no agent-reply at all — the
+# same class of bug the cortex_gateway register guard exists for, one layer out at an
+# entrypoint (the guard now covers it too).
+register "ops/scripts/agent-reply.py"                      "${CORTEX_DEPLOY_HOME}/scripts/agent-reply.py"
 register "ops/scripts/bot_locks.py"                        "${CORTEX_DEPLOY_HOME}/scripts/bot_locks.py"
 register "ops/scripts/pre-commit-doc-audit.sh"            "${CORTEX_DEPLOY_HOME}/scripts/pre-commit-doc-audit.sh"
 register "ops/scripts/health/health-vector.py"            "${CORTEX_DEPLOY_HOME}/scripts/health-vector.py" "health-vector" "restart_health_server"

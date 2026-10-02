@@ -87,6 +87,37 @@ def test_the_guard_actually_detects_a_missing_module():
     print("  control: an unregistered module is detected ✓")
 
 
+def test_the_agent_reply_entrypoint_is_registered_for_deploy():
+    """Same class of bug, one layer further out: an ENTRYPOINT, not a package module.
+
+    `agent-reply.py` is the fleet's agent-side reply primitive (docs/design/gateway-reply-path.md
+    names it as the supported producer for `out_<agent>`), and it imports the SAME repo tree the
+    directory guard above covers. It sat in the repo, deployed nowhere: the host had no
+    `~/.hermes-cortex/scripts/agent-reply.py`, so the one documented way for an agent to answer a
+    human did not exist on the deployed path — while every repo test passed, because they load it
+    by repo path (`tests/test_agent_reply_cli.py`).
+    """
+    dests = {}
+    for line in UPDATE.read_text().splitlines():
+        line = line.strip()
+        if line.startswith("register ") and "ops/scripts/agent-reply.py" in line:
+            dests["agent-reply.py"] = line.split('"')[3]
+    assert dests, ("ops/scripts/agent-reply.py is not in the deploy register, so the deployed host "
+                   "has no agent-reply: the documented reply path cannot run there")
+    assert "${CORTEX_DEPLOY_HOME}/scripts/agent-reply.py" == dests["agent-reply.py"], (
+        f"agent-reply.py must deploy to ${{CORTEX_DEPLOY_HOME}}/scripts/agent-reply.py, "
+        f"not {dests['agent-reply.py']}")
+    # Premise: the CLI test still loads the script BY REPO PATH — that is exactly why a
+    # green suite could hide a missing deployed copy, so the guard is only meaningful
+    # while that stays true.
+    cli_test = (REPO / "tests" / "test_agent_reply_cli.py").read_text()
+    assert "agent-reply.py" in cli_test, (
+        "tests/test_agent_reply_cli.py no longer loads ops/scripts/agent-reply.py by repo "
+        "path — re-derive this guard's premise before trusting it")
+    print("  the agent-reply entrypoint is registered for deploy (and the test that would "
+          "otherwise hide its absence still loads it from the repo) ✓")
+
+
 def test_the_dependent_imports_really_are_in_those_modules():
     """The guard is only meaningful if the deployed daemon imports them — verify that, too."""
     daemon = (PKG / "daemon.py").read_text()

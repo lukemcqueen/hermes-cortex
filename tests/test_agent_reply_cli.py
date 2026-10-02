@@ -43,6 +43,11 @@ def _origin():
 
 def _run(monkeypatch, argv):
     bus = _Bus()
+    # Hermetic: the agent name must come from ARGS in these tests. Left inherited, a
+    # caller's AGENT_NAME (the agent shell exports one) silently satisfied the "no agent
+    # name" refusal case, so the test passed only in an env without it — a green suite
+    # that proves nothing about the branch it names.
+    monkeypatch.delenv("AGENT_NAME", raising=False)
     monkeypatch.setattr(T, "bus_send", bus.send)
     monkeypatch.setattr(cli, "_bus_config", lambda: ("https://bus.example.com", {}))
     rc = cli.main(argv)

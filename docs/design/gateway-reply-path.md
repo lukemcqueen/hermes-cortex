@@ -50,23 +50,31 @@ no error surfaced anywhere, which is why every unit test passed while no message
    Remaining recommendation: make the failover LOUD (log which endpoint served a write) —
    a silent failover between two bus instances is a data-loss shape.
 
-## What is left: the agent-side producer
+## The agent-side producer
 
-Something must write the reply envelope to `out_<agent>`. Two supported routes:
+Something must write the reply envelope to `out_<agent>`. Three routes, one contract
+(the routing fields come from the ORIGIN envelope — the gateway is the only component
+that knows where a message came from):
 
-- **`ops/scripts/agent-shim.py` (ADR-0005 §8)** — the designed shim: poll `inbox_<agent>`,
-  hand the message to the agent, `reply()` → `out_<agent>`, `ack()` after handling. It
-  already implements the queue contract for external coding agents; for the Hermes agent it
-  needs the "hand the message to the agent" step wired.
+- **`ops/scripts/agent-reply.py` — IMPLEMENTED (2026-10-02).** The generic primitive: hand
+  it the origin envelope (or explicit `--channel`/`--chat` for a proactive send) plus the
+  text, and it publishes a signed reply to `out_<agent>`. Any agent that can run a command
+  can answer a human through it — CLI coding agents, the shim, a bespoke script — so
+  nothing about a particular agent enters the gateway. Registered for deploy in
+  `cortex-update.sh` (next to `agent-shim.py`) so it exists on the DEPLOYED path; a
+  repo-only copy leaves the documented reply path unusable on a host.
+- **`ops/scripts/agent-shim.py` (ADR-0005 §8)** — the designed polling shim: poll
+  `inbox_<agent>`, hand the message to the agent, `reply()` → `out_<agent>`, `ack()` after
+  handling. It implements the queue contract for external coding agents; the "hand the
+  message to the agent" step is still backend-specific.
 - **A `reply` tool on the agent-bus MCP** (`mcp-servers/cortex-bus-mcp.py`) — the agent
-  itself answers deliberately: `inbox_reply(text, origin_msg_id)` reads the origin message
-  (which carries `channel`, `channel_user_id`, `thread_id`, `reply_to_msg_id`), builds the
-  reply envelope from that routing, and sends it to `out_<agent>`. This is the smaller,
-  more honest integration for an LLM agent that already has the inbox tools, and it keeps
-  the routing decision in the gateway's envelope rather than in the agent's prompt.
+  answers deliberately from its own session: `inbox_reply(text, origin_msg_id)` reads the
+  origin message and builds the reply envelope from that routing.
 
-Either way the reply envelope's routing fields must come from the ORIGIN envelope — the
-gateway is the only component that knows where a message came from.
+**Still not automatic for a Hermes session:** nothing hands an `inbox_<agent>` envelope to
+a RUNNING agent session, so a turn is answered by an explicit `agent-reply` call (a CLI
+subprocess has no session to prompt). That is a wiring choice, not a transport defect — the
+transport legs below are proven.
 
 ## Verification standard for this path
 

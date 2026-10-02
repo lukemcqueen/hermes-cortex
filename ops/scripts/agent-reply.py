@@ -66,7 +66,11 @@ def main(argv=None) -> int:
     args = ap.parse_args(argv)
 
     agent = _agent_name(args.agent)
-    text = args.text or sys.stdin.read().strip()
+    # `args.text or sys.stdin.read()` misses a whitespace-only --text: "   " is a TRUTHY
+    # string, so it skipped the empty check and travelled all the way into the envelope
+    # validator ("channel '' not in [...]") — a stray error instead of the intended refusal.
+    # Found by tests/test_agent_reply_cli.py::test_refuses_empty_text_no_origin_and_no_agent.
+    text = (args.text if args.text else sys.stdin.read()).strip()
     if not text:
         raise SystemExit("agent-reply: refusing to send an empty reply")
 
