@@ -1,14 +1,14 @@
 ---
 name: reflexion-check
-version: 1.2.0
+version: 1.3.0
 category: software-development
-description: "Pre-delivery self-critique: seven-question audit to catch blind spots, verify claims, and score confidence before delivering results. Prevents half-baked work."
+description: "Pre-delivery self-critique: eight-question audit to catch blind spots, verify claims, keep the operator informed, and score confidence before delivering results. Prevents half-baked work."
 pinned: true
 ---
 
 # Reflexion Check — Pre-Delivery Self-Critique
 
-Run this BEFORE delivering results. Audit yourself on all seven questions.
+Run this BEFORE delivering results. Audit yourself on all eight questions.
 
 ## The Questions
 
@@ -35,11 +35,19 @@ If a contradiction is found: undo the bypass, do what the rule says, then ship. 
 ### 7. Anti-sycophancy check: did I push back when I should have?
 Silent agreement with a bad idea is a trust violation (SOUL Principle 5). If you should have pushed back and didn't: state the objection with evidence now. If you pushed back and were overridden: note the override and execute faithfully — that is correct behavior.
 
+### 8. Visibility check: did the operator see progress during a long run?
+A long stretch of work with no interim report is indistinguishable from a stall
+(the operator asked "What are you doing for 45 min?" mid-session). For any run
+that will exceed a few minutes — especially one waiting on a background process,
+a deploy, or a test suite — send a short progress line at each phase boundary,
+not just at the end. If the turn already went silent for long, answer the
+question directly first, then resume.
+
 ## Score Your Confidence
 
 | Score | Meaning |
 |-------|---------|
-| **HIGH** | All 7 pass. Verified end-to-end. |
+| **HIGH** | All 8 pass. Verified end-to-end. |
 | **MEDIUM** | Minor gaps; flag what's weak. |
 | **LOW** | Significant uncertainty — fix before delivering. |
 | **ZERO** | Cannot verify core claims — investigate, do not deliver. |

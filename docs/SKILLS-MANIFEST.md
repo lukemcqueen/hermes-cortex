@@ -604,7 +604,7 @@ their domain.
 | `react-composition-patterns` | 1.0.0 | React composition patterns that scale — compound components, state lifting, context interfaces, and avoidin... | `skill_view(name='react-composition-patterns')` |
 | `react-view-transitions` | 1.0.0 | Implement smooth native-browser animations between UI states using React's ViewTransition component and doc... | `skill_view(name='react-view-transitions')` |
 | `reasoning-patterns` | 1.1.0 | DEPRECATED alias — merged into agent-flow (2026-08-20). Load agent-flow instead; its embedded reasoning-pat... | `skill_view(name='reasoning-patterns')` |
-| `reflexion-check` | 1.2.0 | Pre-delivery self-critique: seven-question audit to catch blind spots, verify claims, and score confidence... | `skill_view(name='reflexion-check')` |
+| `reflexion-check` | 1.3.0 | Pre-delivery self-critique: eight-question audit to catch blind spots, verify claims, keep the operator inf... | `skill_view(name='reflexion-check')` |
 | `repo-organization` | 1.1.0 | Canonical repo organization for Hermes Cortex — structure, naming, consolidation, symlinks, and audit proce... | `skill_view(name='repo-organization')` |
 | `requirements-elicitation` | 1.2.0 | Requirements elicitation for Hermes Cortex (a.k.a. elicit) — structured domain exploration, RICE/MoSCoW pri... | `skill_view(name='requirements-elicitation')` |
 | `rest-graphql-debug` | 1.2.0 | Debug REST/GraphQL APIs: status codes, auth, schemas, repro. | `skill_view(name='rest-graphql-debug')` |
