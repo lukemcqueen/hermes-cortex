@@ -24,6 +24,7 @@ import hashlib
 import json
 import logging
 import os
+import re
 import sqlite3
 import subprocess
 import sys
@@ -1740,8 +1741,154 @@ def _blocking_findings(findings_json):
     return blocking, annotating
 
 
+def _parse_findings_list(findings_json):
+    """Findings as a list of dicts. [] for anything unparseable (the caller's
+    fail-closed path in _blocking_findings still applies to the RAW payload)."""
+    try:
+        items = json.loads(findings_json or "[]")
+    except Exception:
+        return []
+    if not isinstance(items, list):
+        return []
+    return [f for f in items if isinstance(f, dict)]
+
+
+# ── Triage: deterministic refutation + an optional fast-model classifier ──
+#
+# Rationale (operator 2026-10-02): most gate churn came from findings that are
+# computably wrong, or merely administrative. Both are handled more reliably
+# than by asking the sampling reviewer again.
+#
+# Two layers, in order:
+#   1. _refute_findings  — DETERMINISTIC. A finding that quotes a string must be
+#      quoting something the reviewer actually saw; if none of its quoted
+#      fragments is in the material, the citation is fabricated or stale. This is
+#      the failure that held cycle 10337 open by quoting text a later commit had
+#      deleted. Conservative: a finding with NO quoted fragment is never refuted.
+#   2. _triage_findings  — a fast "system 1" model, DISABLED unless
+#      ADVERSARIAL_TRIAGE_MODEL is set. Classification only, never adjudication.
+#
+# Neither layer may RAISE a severity, and triage may only lower one to LOW for a
+# finding it calls administrative AND that cites no artifact. Everything else
+# keeps the reviewer's severity. All decisions are recorded on the finding.
+
+_QUOTED_RE = re.compile(r"[`\"\u201c\u201d']([^`\"\u201c\u201d']{12,})[`\"\u201c\u201d']")
+
+
+def _quoted_fragments(text):
+    """Fragments a finding explicitly quotes (>=12 chars)."""
+    return [m.group(1).strip() for m in _QUOTED_RE.finditer(str(text or ""))]
+
+
+def _refute_findings(findings, material):
+    """Findings whose quoted evidence is absent from the material.
+
+    Returns the refuted subset; the caller reports them and excludes them from
+    the blocking decision. Never refutes on a paraphrase (no quote -> no refute).
+    """
+    if not material or not isinstance(findings, list):
+        return []
+    refuted = []
+    for f in findings:
+        if not isinstance(f, dict):
+            continue
+        frags = _quoted_fragments(f.get("evidence", ""))
+        if frags and not any(fr in material for fr in frags):
+            refuted.append(f)
+    return refuted
+
+
+TRIAGE_PROMPT = (
+    "You are a TRIAGE classifier for an automated code-review gate. You do not "
+    "review code. You classify findings a reviewer already produced.\n"
+    "For each finding, using the finding text and the material excerpt:\n"
+    "  class: 'judgement' (needs a human/orchestrator decision) or "
+    "'administrative' (formatting, evidence-attachment, note phrasing)\n"
+    "  cites_artifact: true ONLY if the finding names a concrete artifact "
+    "(file path, commit sha, symbol, or quoted code) that the material shows\n"
+    "  severity: low | medium | high. Rubric: high = incorrect or unsafe "
+    "behaviour, a broken gate, or an unverified claim about the code; "
+    "medium = a real gap that should be fixed; low = administrative or "
+    "presentation only.\n"
+    "Output ONLY a JSON array of objects with keys finding_id, class, "
+    "cites_artifact, severity. No prose, no markdown.\n\n"
+)
+
+
+def _call_triage_default(prompt, model):
+    """Transport for the triage model. Reuses the reviewer transport with the
+    configured model; falls back to the reviewer's own signature if the transport
+    does not accept a model override."""
+    try:
+        return _call_reviewer(prompt, model=model)
+    except TypeError:
+        log.warning("triage: transport has no model override — using the reviewer model")
+        return _call_reviewer(prompt)
+
+
+def _triage_findings(findings, material, caller=None):
+    """Classify findings with a fast 'system 1' model.
+
+    Returns a list of classification dicts, or None when triage is DISABLED
+    (ADVERSARIAL_TRIAGE_MODEL unset) or FAILED. On None the caller keeps the
+    reviewer's severities unchanged — a triage outage must never silently relax
+    or tighten the gate.
+    """
+    model = (os.environ.get("ADVERSARIAL_TRIAGE_MODEL", "") or "").strip()
+    if not model or not isinstance(findings, list) or not findings:
+        return None
+    payload = {
+        "findings": [
+            {k: f.get(k) for k in ("finding_id", "severity", "technique", "target", "evidence")}
+            for f in findings
+        ],
+        "material_excerpt": (material or "")[:6000],
+    }
+    try:
+        raw = (caller or _call_triage_default)(TRIAGE_PROMPT + json.dumps(payload,
+                                                                         ensure_ascii=False), model)
+        data = json.loads(raw)
+    except Exception as e:
+        log.warning("triage: unavailable (%s: %s) — reviewer severities stand",
+                    type(e).__name__, e)
+        return None
+    if not isinstance(data, list):
+        log.warning("triage: non-list reply — reviewer severities stand")
+        return None
+    return [d for d in data if isinstance(d, dict)]
+
+
+def _apply_triage(findings, triage):
+    """Merge triage verdicts. Returns (findings, decisions).
+
+    Only LOWERS a severity, and only to 'low', and only for a finding the
+    classifier calls administrative AND that cites no artifact. The reviewer's
+    original severity is preserved on the finding for audit.
+    """
+    if not triage:
+        return findings, []
+    by_id = {str(d.get("finding_id")): d for d in triage if d.get("finding_id")}
+    out, decisions = [], []
+    for f in findings:
+        if not isinstance(f, dict):
+            out.append(f)
+            continue
+        d = by_id.get(str(f.get("finding_id", "")))
+        if d and str(d.get("class", "")).lower() == "administrative" \
+                and not d.get("cites_artifact"):
+            nf = dict(f)
+            nf["severity_reviewer"] = f.get("severity")
+            nf["severity"] = "low"
+            nf["triage"] = "administrative/no-artifact -> low"
+            decisions.append(f.get("finding_id"))
+            out.append(nf)
+        else:
+            out.append(f)
+    return out, decisions
+
+
 def _record_review(cycle_id, reviewer_id, model, verdict, findings_json, summary,
-                   replace: bool = False, fingerprint: str = ""):
+                    replace: bool = False, fingerprint: str = ""):
     """Insert the verdict. Duplicate cycle_id is a no-op unless replace=True.
 
     Connection hygiene (2026-09-30): conn MUST be closed on EVERY path. cycle_id
@@ -2074,13 +2221,41 @@ def _adversarial_review_gate(lock: dict, cycle: dict,
 
     verdict, findings_json = _extract_verdict(reviewer_text)
     reviewer_id = f"adv-review-{uuid.uuid4().hex[:8]}"
+
+    # Layer 1 — deterministic refutation; Layer 2 — optional fast-model triage.
+    # Both run BEFORE the verdict is recorded, so what is stored is the final set.
+    # Neither may raise a severity. Nothing is silently dropped: refuted findings
+    # are appended to the stored summary and every triage decision is recorded.
+    _ref_note = ""
+    if verdict != "CLEAN":
+        _findings = _parse_findings_list(findings_json)
+        if _findings:
+            _refuted = _refute_findings(_findings, material)
+            if _refuted:
+                _rids = {id(f) for f in _refuted}
+                _findings = [f for f in _findings if id(f) not in _rids]
+                _ref_note = ("\n\n[refuted by the deterministic pre-check: quoted evidence "
+                             "absent from the material] " +
+                             "; ".join(f"{f.get('finding_id', '?')}: {str(f.get('evidence', ''))[:160]}"
+                                       for f in _refuted))
+                log.warning("adversarial review: cycle %s REFUTED %d finding(s) whose quoted "
+                            "evidence is absent from the material: %s",
+                            cycle.get("id"), len(_refuted),
+                            "; ".join(str(f.get("finding_id", "?")) for f in _refuted))
+            _tri = _triage_findings(_findings, material)
+            _findings, _tdec = _apply_triage(_findings, _tri)
+            if _tdec:
+                log.info("adversarial review: cycle %s triage lowered %d administrative "
+                         "finding(s) to LOW: %s", cycle.get("id"), len(_tdec), _tdec)
+            findings_json = json.dumps(_findings)
+
     # replace=True: this is the authoritative judgement for this cycle, and the row is
     # UNIQUE per cycle. Without it the judgement is silently DISCARDED on a re-review
     # (the IntegrityError path below is a no-op), which left a FINDINGS verdict frozen
     # forever — the exact gap rereview_change exists to close.
     _record_review(cycle.get("id"), reviewer_id,
                    os.environ.get("ADVERSARIAL_REVIEWER_MODEL", REVIEWER_MODEL_DEFAULT),
-                   verdict, findings_json, reviewer_text[:2000],
+                   verdict, findings_json, (reviewer_text[:2000] + _ref_note),
                    replace=True, fingerprint=fingerprint)
 
     if verdict == "CLEAN":
