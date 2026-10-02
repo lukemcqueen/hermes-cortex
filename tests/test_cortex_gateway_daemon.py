@@ -119,6 +119,16 @@ def test_backend_adapter_default_poll_replies_empty():
 
 # ── CR3.2 HermesBackend: dispatch → inbox_<agent>, poll_replies → out_<agent> ─
 def test_hermes_backend_dispatch_enqueues_to_inbox(monkeypatch):
+    """The bus message WRAPS the signed envelope — and this test used to encode the bug.
+
+    It previously asserted `msg["body"] == "hi"`, i.e. the envelope's text sent as the bus
+    message's body. That shape passes against a fake bus and is a 400 against the real one
+    ("unknown envelope field(s): ack_required, channel, ..."), so every dispatch was
+    rejected while this test stayed green. The contract is now the bus's schema, with the
+    signed envelope as the message body payload (docs/design/gateway-reply-path.md).
+    """
+    import json as _json
+
     from cortex_gateway import hermes_backend as hb
     from cortex_gateway import transport
 
@@ -133,8 +143,19 @@ def test_hermes_backend_dispatch_enqueues_to_inbox(monkeypatch):
     reply = b.dispatch(env)
     assert reply is None, "hermes is async — dispatch returns no immediate reply"
     assert bus.sent and bus.sent[0][0] == "inbox_hermes"
-    assert bus.sent[0][1]["body"] == "hi"
-    assert bus.sent[0][1].get("gateway_sig"), "hermes backend must sign inbound"
+
+    msg = bus.sent[0][1]
+    # 1. the bus's own schema: only these keys, `from` == the authenticated agent
+    allowed = {"body", "correlation_id", "forwarded_from", "from", "priority",
+               "subject", "timestamp", "to", "type"}
+    assert not (set(msg) - allowed), f"the bus rejects unknown fields: {sorted(set(msg) - allowed)}"
+    assert msg["from"] == "hermes"
+    assert msg["subject"] == msg["subject"].upper()
+    # 2. the signed envelope rides INSIDE the message body
+    inner = _json.loads(msg["body"])
+    assert inner["body"] == "hi"
+    assert inner.get("gateway_sig"), "hermes backend must sign inbound"
+    print("  dispatch wraps the signed envelope in the bus schema ✓")
 
 
 def test_hermes_backend_dispatch_none_and_malformed_are_silent(monkeypatch):

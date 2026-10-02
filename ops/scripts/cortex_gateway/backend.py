@@ -35,6 +35,11 @@ class BackendAdapter(ABC):
     table, and the transport never change (the interop invariant).
     """
 
+    # The spec this backend was built from (cortex_gateway.agents.AgentSpec), when the
+    # registry built it. Optional and generic: health/status reporting can show an
+    # operator WHAT was declared for this agent without knowing its kind.
+    spec = None
+
     @classmethod
     def __subclasshook__(cls, subclass):
         """Structural conformance: any object with the four methods is a

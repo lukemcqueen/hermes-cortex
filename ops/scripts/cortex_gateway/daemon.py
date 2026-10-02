@@ -338,8 +338,7 @@ class Gateway:
 # ── config → wiring (env + gateway.yaml) ───────────────────────────────────
 
 def _build_backends(cfg: dict) -> dict:
-    """Build BackendAdapters from config. hermes is the default reference."""
-    from .hermes_backend import HermesBackend
+    """Build BackendAdapters from config through the agent registry (agents.py)."""
     bus_url = cfg.get("bus_url") or os.environ.get("CORTEX_BUS_URL", "")
     bus_token = os.environ.get("CORTEX_BUS_TOKEN", "")
     bus_auth = (cfg.get("bus_auth") or os.environ.get("CORTEX_BUS_AUTH", "")
@@ -354,11 +353,11 @@ def _build_backends(cfg: dict) -> dict:
             "anyone. Set GATEWAY_SECRET (e.g. `openssl rand -hex 32`) in the "
             "env, or 'secret' in gateway.yaml.")
     headers = _bus_headers(bus_token, bus_auth)
-    backends = {}
-    for name in names:
-        backends[name] = HermesBackend(agent=name, bus_url=bus_url,
-                                       bus_headers=headers, secret=secret)
-    return backends
+    # The registry validates every entry and fails closed on an unknown kind, so a typo in
+    # gateway.yaml is a startup error naming the entry instead of a silent no-backend drop.
+    from .agents import build_backends
+    return build_backends(cfg.get("backends", [DEFAULT_BACKEND_AGENT]),
+                          {"bus_url": bus_url, "bus_headers": headers, "secret": secret})
 
 
 def _bus_headers(bus_token: str, bus_auth: str) -> dict:
