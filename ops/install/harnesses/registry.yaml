@@ -52,7 +52,7 @@ harnesses:
       hooks + registered tools in TypeScript, so it reaches the shared CLI
       through the extension below. (Governance is a separate capability — see
       `capabilities.governance`, which is MCP for Pi >= 0.99 and the git hooks
-      plus the loop-gov CLI otherwise. On the shipped Pi 0.87.1 there is NO MCP client, so the VERIFIED route is the git hooks — core.hooksPath is global, so a Pi commit is gated exactly like a Hermes one — plus loop-gov.py, which exposes the whole governance toolset (begin_change, end_change, check_lock, cycle_query, feedback_accept/override) over the ONE MCP implementation; see capabilities.governance.fallback for the three checks. Do NOT conclude governance is unavailable because MCP is: memory, skills and governance are all reachable on this Pi today.)
+      plus the loop-gov CLI otherwise. MCP support depends on the INSTALLED Pi version — detect it from the harness itself (`~/.pi/agent/bin/pi --help`; never assume from a version number in a doc), since these hosts run 1.0.0 (MCP-capable) while an earlier Pi 0.87.1 had NO MCP client. Where MCP is absent the VERIFIED route is the git hooks — core.hooksPath is global, so a Pi commit is gated exactly like a Hermes one — plus loop-gov.py, which exposes the whole governance toolset (begin_change, end_change, check_lock, cycle_query, feedback_accept/override) over the ONE MCP implementation; see capabilities.governance.fallback for the three checks. Do NOT conclude governance is unavailable because MCP is: memory, skills and governance are all reachable on this Pi today.)
     artifact: extensions/cortex-context.ts
     triggers:
       turn_end: checkpoint (the trigger — MCP cannot provide this)
@@ -96,7 +96,7 @@ harnesses:
           - 'Pi shows the always-skills as /skill:<name> commands (startup diagnostics).'
       governance:
         # VERSION-AWARE (2026-10-02). `adapter: mcp` below is the PREFERRED route, but
-        # it needs Pi >= 0.99 and the shipped Pi is 0.87.1: its own CLI exposes no
+        # it needs an MCP-capable Pi — detected from the CLI's own help, not assumed: on Pi 0.87.1 the CLI exposed no
         # 'mcp' subcommand (pi --help has ZERO matches for mcp) and there is no
         # ~/.pi/agent/mcp.json. Do NOT infer this from 'pi mcp list' — that command
         # errors on authentication BEFORE it can report MCP status, so an auth failure
@@ -113,7 +113,7 @@ harnesses:
         requires: "pi >= 0.99 (MCP client)"
         fallback:
           adapter: cli
-          requires: "any Pi version — verified on 0.87.1"
+          requires: "any Pi version — the installed version is detected on the host, not assumed"
           register: "(none — core.hooksPath is global, and loop-gov.py is deployed with the rest of ops/scripts)"
           from: loop-gov-mcp.py
           why: "A Pi commit runs the SAME gates as a Hermes commit (core.hooksPath is a

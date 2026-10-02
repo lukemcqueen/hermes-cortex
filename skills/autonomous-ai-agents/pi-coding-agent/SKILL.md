@@ -11,13 +11,37 @@ The coding-agent harness the fleet owner wants for steadfaste (replacing hermes)
 integration is `github.com/disler/ten-levels-of-jev` (30 tested Jev use cases in
 10 levels; levels 6–10 put Jev inside pi).
 
-## Install
-- `npm install -g @earendil-works/pi-coding-agent`
-- Requires Node `>=22.19.0` — **NOT Node 24**. (Node 24 is only the ten-levels
-  repo's own TypeScript requirement, not pi's. Check `npm view
-  @earendil-works/pi-coding-agent engines` before assuming a Node bump is needed.)
-- Verify: `pi --version` and `pi --help` (the help lists read/bash/edit/write tools
-  and the `pi install/remove/list/config/auth` extension commands).
+## Install — a MANAGED install, NOT an npm global (corrected 2026-10-02)
+
+Pi installs itself into its own agent directory and pins each release; there is no
+`npm install -g`. Measured on a live host:
+
+    ~/.pi/agent/bin/pi                        launcher (sh): reads the version, execs the release
+    ~/.pi/agent/install/current-version       the authoritative version string (1.0.0 here)
+    ~/.pi/agent/install/managed-install.json  {kind: pi-managed-install, layout: releases-v1,
+                                               entrypoint: symlink -> <user bin dir>/pi}
+    ~/.pi/agent/install/releases/<v>/node_modules/.bin/pi    the real executable
+    ~/.local/share/pi-node/current/bin        Node.js that PI installs and manages
+
+Consequences that cost time and must not be re-learned:
+
+- **`command -v pi` is NOT a reliable probe.** The entrypoint is a symlink into the
+  user's bin dir (on the esther host: `/home/linuxbrew/.linuxbrew/bin/pi`). When that
+  dir is not on PATH, `pi` looks *missing* to every caller while being installed and
+  working. Invoke the launcher directly — `~/.pi/agent/bin/pi` — or read
+  `~/.pi/agent/install/current-version` without executing anything.
+- **Pi's Node is deliberately NOT on shell profiles.** The launcher puts
+  `~/.local/share/pi-node/current/bin` on PATH for itself and its children, so `node`
+  and `npm` resolve correctly inside pi and nowhere else. Do not "fix" that by
+  exporting it globally.
+- **Extension type defs live in the release, not an npm root:**
+  `V=$(cat ~/.pi/agent/install/current-version)` then
+  `$HOME/.pi/agent/install/releases/$V/node_modules/@earendil-works/pi-coding-agent/dist/...`
+- **Never infer the version from a doc or a package name** — read `current-version`
+  (or the launcher's `--version`). A harness registry claiming a shipped version can
+  be stale on any given host: these hosts run 1.0.0 while the registry said 0.87.1.
+- Verify: `~/.pi/agent/bin/pi --version` and `--help` (read/bash/edit/write tools, plus
+  the `pi install/remove/list/config/auth` extension commands).
 
 ## Core
 - Built-in tools: read, bash, edit, write.

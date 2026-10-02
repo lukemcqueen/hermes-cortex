@@ -128,7 +128,8 @@ warns loudly rather than writing an empty one.
 Generate and verify against the installed package:
 
 ```bash
-P=$(npm root -g)/@earendil-works/pi-coding-agent
+V=$(cat ~/.pi/agent/install/current-version)
+P="$HOME/.pi/agent/install/releases/$V/node_modules/@earendil-works/pi-coding-agent"
 grep -n -A6 "type ExtensionHandler" "$P"/dist/core/extensions/types.d.ts
 grep -n -A10 "interface TurnEndEvent" "$P"/dist/core/extensions/types.d.ts
 ```

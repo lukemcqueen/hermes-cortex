@@ -45,13 +45,25 @@ _failed() {  # record a required failure
 }
 
 # ── route detection ──
-PI_BIN="$(command -v pi 2>/dev/null || true)"
+# Pi is a MANAGED install (see the pi-coding-agent skill): the entrypoint is a symlink
+# into the user's bin dir, which may not be on PATH, so `command -v pi` reports a
+# perfectly working install as missing. Try the launcher first, then PATH.
+PI_BIN=""
+for cand in "$HOME/.pi/agent/bin/pi" "$(command -v pi 2>/dev/null || true)"; do
+  [[ -n "$cand" && -x "$cand" ]] && PI_BIN="$cand" && break
+done
 PI_VER=""
 MCP_CAPABLE=0
 if [[ -n "$PI_BIN" ]]; then
-  PI_VER="$(pi --version 2>/dev/null | head -1 | tr -d '[:space:]')"
+  # current-version is authoritative and needs no execution; fall back to the CLI.
+  _cv="$HOME/.pi/agent/install/current-version"
+  if [[ -r "$_cv" ]]; then
+    PI_VER="$(head -1 "$_cv" | tr -d '[:space:]')"
+  else
+    PI_VER="$("$PI_BIN" --version 2>/dev/null | head -1 | tr -d '[:space:]')"
+  fi
   # The registry's method: the CLI's own help is the signal, not `pi mcp list`.
-  if pi --help 2>/dev/null | grep -qiE '(^|[^a-z])mcp([^a-z]|$)'; then MCP_CAPABLE=1; fi
+  if "$PI_BIN" --help 2>/dev/null | grep -qiE '(^|[^a-z])mcp([^a-z]|$)'; then MCP_CAPABLE=1; fi
 fi
 
 [[ "$JSON_MODE" == "1" ]] || echo "Pi integration audit — ${PI_BIN:-pi not installed}${PI_VER:+ (v$PI_VER)}"
