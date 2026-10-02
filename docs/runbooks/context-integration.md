@@ -164,19 +164,40 @@ The tools then appear as `mcp__cortex_context__mem_context`, etc.
 
 ### 3c. Pi
 
-Pi extensions are TypeScript files loaded with `-e`, and the tool allowlist is
-explicit via `--tools`.
+Pi extensions are TypeScript files. The extension auto-loads from user settings,
+and the tool allowlist is persisted via `defaultTools` — **no `-e`/`--tools`
+flags needed at launch** (pi ≥ 1.0; `pi --version` to confirm).
 
-```bash
-cd <pi-project>
-mkdir -p extensions
-cp ~/hermes-cortex/ops/install/pi/extensions/cortex-context.ts extensions/
+The harness installer deploys the extension to
+`~/.hermes-cortex/harnesses/pi/extensions/cortex-context.ts` (repo source:
+`ops/install/harnesses/pi/extensions/cortex-context.ts`). Register it and the
+cortex tools in `~/.pi/agent/settings.json` — `+name` entries in `defaultTools`
+add to the inherited default set (`read, bash, edit, write`):
+
+```json
+{
+  "extensions": [
+    "~/.hermes-cortex/harnesses/pi/extensions/cortex-context.ts"
+  ],
+  "defaultTools": [
+    "+mem_context", "+mem_search", "+mem_profile", "+mem_conclude",
+    "+session_checkpoint", "+session_restore", "+session_search",
+    "+session_note", "+session_close"
+  ]
+}
 ```
 
-Then launch with the extension and the tool list:
+A bare `pi` now has every cortex tool. Verify by asking the running agent to
+list its tools — expect `mem_context`, `session_restore`, etc. in the output.
+
+Override rules: a CLI `--tools` allowlist still overrides `defaultTools` for
+that one invocation (use it to constrain a run); `/reload` enables tools newly
+added to the setting but does not disable removed ones.
+
+Legacy launch form (still valid, per-invocation):
 
 ```bash
-pi -e extensions/cortex-context.ts \
+pi -e ~/.hermes-cortex/harnesses/pi/extensions/cortex-context.ts \
    --tools read,bash,edit,write,mem_context,mem_search,mem_profile,mem_conclude,session_checkpoint,session_restore,session_search,session_note,session_close
 ```
 
