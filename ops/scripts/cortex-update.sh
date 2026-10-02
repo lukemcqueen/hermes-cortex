@@ -626,6 +626,12 @@ register "ops/scripts/cortex_gateway/transport.py"   "${CORTEX_DEPLOY_HOME}/scri
 register "ops/scripts/cortex_gateway/backend.py"     "${CORTEX_DEPLOY_HOME}/scripts/cortex_gateway/backend.py"
 register "ops/scripts/cortex_gateway/hermes_backend.py" "${CORTEX_DEPLOY_HOME}/scripts/cortex_gateway/hermes_backend.py"
 register "ops/scripts/cortex_gateway/daemon.py"      "${CORTEX_DEPLOY_HOME}/scripts/cortex_gateway/daemon.py"
+# New modules MUST be registered here: the deploy syncs this explicit list, so a module that
+# is imported but not registered ships as an ImportError on the host (the repo tests still
+# pass, because they import the repo tree). tests/test_gateway_modules_are_deployed.py fails
+# the build when this list and the package directory disagree.
+register "ops/scripts/cortex_gateway/agents.py"      "${CORTEX_DEPLOY_HOME}/scripts/cortex_gateway/agents.py"
+register "ops/scripts/cortex_gateway/pairing.py"     "${CORTEX_DEPLOY_HOME}/scripts/cortex_gateway/pairing.py"
 register "ops/scripts/gateway.yaml.example"          "${CORTEX_DEPLOY_HOME}/gateway.yaml.example"
 register "docs/templates/cortex-gateway.service"     "${CORTEX_DEPLOY_HOME}/templates/cortex-gateway.service"
 register "docs/templates/com.hermes.cortex-gateway.plist" "${CORTEX_DEPLOY_HOME}/templates/com.hermes.cortex-gateway.plist"
