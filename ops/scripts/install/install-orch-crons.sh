@@ -126,6 +126,12 @@ parse_args "$@"
 if $UNINSTALL; then
   echo ""
   printf "${CYAN}━━━ Uninstalling Orchestrator-Only Crons ━━━${RESET}\n\n"
+  # This list is BOTH the uninstall set and the doctor's expected-orch-cron list.
+  # `orch-task-board-digest` is deliberately here with NO matching create_cron
+  # block: retired 2026-10-02 (Luke — "remove them as they are done"), and this
+  # entry is what removes it from hosts that still carry it. Doctor verified
+  # clean with the pair split (do not add a comment INSIDE the list — a
+  # backslash-continued line swallows the comment and breaks the syntax).
   for job in \
     "orch-bus-audit-watchdog" \
     "orch-bus-confirmation-alert" \
@@ -452,17 +458,9 @@ create_cron "orch-axi-telemetry" "35 2 * * *" \
   "" \
   "true"
 
-# Daily task board digest — task model v3 visibility (T4): open counts,
-# per-agent in_progress, review queue, claimable slices (no_agent, zero
-# tokens). Delivers to the orchestrator's home channel (Luke + Amy).
-create_cron "orch-task-board-digest" "30 8 * * *" \
-  "orch-task-board-digest.py" \
-  "Daily task board digest (zero-token no_agent cron)." \
-  "" \
-  "" \
-  "telegram:${TELEGRAM_HOME_CHANNEL}" \
-  "" \
-  "true"
+# Daily task board digest — RETIRED 2026-10-02 (Luke: "please remove them as
+# they are done"). The cron is gone; the script stays (hc board / commands.py
+# still calls it on demand). Nothing recreates the job.
 
 # Orchestrator morning pass (task model v3 T5) — decompose stories → slices
 # with plans, dispatch urgent work (LLM-driven, orchestrator intelligence).

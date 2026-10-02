@@ -1202,18 +1202,6 @@ crons:
   no_agent: true
   model: ''
   provider: ''
-- name: orch-task-board-digest
-  scope: orchestrator
-  schedule: '30 8 * * *'
-  script: 'orch-task-board-digest.py'
-  prompt: |-
-    Daily task board digest (zero-token no_agent cron).
-  skill: ''
-  deliver: telegram:{{HOME_CHANNEL}}
-  workdir: ''
-  no_agent: true
-  model: ''
-  provider: ''
 - name: orch-task-morning-pass
   scope: orchestrator
   schedule: '0 7 * * *'

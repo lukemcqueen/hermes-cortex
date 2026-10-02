@@ -70,8 +70,6 @@ task-db.py list --board                                     # counts + per-agent
 
 ## Automated layers (no manual action needed)
 
-- **orch-task-board-digest** — 08:30 KST zero-token no_agent cron → Telegram
-  (Luke + Amy): open counts, per-agent in_progress, review queue, claimable.
 - **orch-task-morning-pass** — 07:00 KST: decompose stories → planned slices,
   dispatch urgent via bus.
 - **orch-task-evening-pass** — 19:00 KST: verify all review slices.

@@ -83,7 +83,28 @@ rather than warning forever about a mechanism the host cannot use. Do not
 
 ## Verify the standalone run actually delivers
 
-A silent watchdog is a poor proof — it exits 0 without exercising delivery. Prove delivery on an **always-output** job (e.g. `orch-task-board-digest`): start the bridge service, then confirm the messenger's state/log shows a send at that timestamp. Silent-when-clean stays silent; an always-printing job proves the full systemd → runner → messenger chain.
+A silent watchdog is a poor proof — it exits 0 without exercising delivery. Prove delivery on an **always-output** job: start the bridge service, then confirm the messenger's state/log shows a send at that timestamp. Silent-when-clean stays silent; an always-printing job proves the full systemd → runner → messenger chain.
+
+### ⚠️ Retiring a bridged job: the timer OUTLIVES the job
+
+Removing a job from `~/.hermes/cron/jobs.json` does **not** remove its bridge units.
+`cortex-bus-bridge-generate.py` only CREATES units; it has no prune step, so a
+retired job keeps firing from its systemd timer and keeps delivering to the user
+— with the cron gone from every listing, so nothing looks wrong. Real case
+(2026-10-02): `orch-task-board-digest` was retired, yet Luke kept receiving its
+daily Telegram digest; the job was absent from `jobs.json` and from the `cronjob`
+listing, and only `systemctl --user list-timers | grep board` showed it.
+
+**Retire a bridged job in BOTH places:**
+```bash
+systemctl --user disable --now cortex-bridge-<name>.timer
+rm -f ~/.config/systemd/user/cortex-bridge-<name>.{service,timer}
+systemctl --user daemon-reload
+systemctl --user list-timers --all | grep <name> || echo "gone"
+```
+Then remove the `create_cron` block from the installer (keep the name in the
+uninstall array so other hosts clean up too), drop the `cron-manifest.yaml`
+entry, and grep the docs/skills for the name.
 
 ## Cron → OnCalendar translation
 

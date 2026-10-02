@@ -262,7 +262,7 @@ execute fully, report once. No thrash loops, no re-derivation (SOUL #4).
 - [ ] Worker can `claim` a pending slice atomically; double-claim fails
 - [ ] Worker can `unclaim` with reason; slice returns to pending
 - [ ] `report` sets review; only orchestrator `verify` → completed
-- [x] Daily board digest delivers to Telegram (zero-token, coverage-aware) — `orch-task-board-digest` cron
+- [x] Daily board digest delivers to Telegram (zero-token, coverage-aware) — `orch-task-board-digest` cron *(RETIRED 2026-10-02: Luke — "remove them as they are done". The script remains for `hc board`; the scheduled job and its systemd timer are gone.)*
 - [x] On-demand board query works via bus — `TASK_REQUEST` with `action=board` (commands.py handle_task, deployed 2026-08-29; verified via self-test inbox_esther → inbox_moses TASK_RESULT)
 - [ ] Orchestrator decompose→dispatch→verify loop runs a full client slice end-to-end
 - [ ] Compete mode: 2 candidates on one slice → deterministic winner by AC + adversarial findings; loser archived with reason
