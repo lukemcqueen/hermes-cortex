@@ -83,6 +83,38 @@ If the gateway is connected but messages don't reach the user:
 - Check `deliver` targets on the failing cron/job
 - Verify the platform session didn't expire (re-auth if needed)
 
+## Restarting to load new code — and verifying it actually happened
+
+The gateway **holds the MCP servers it spawned**, so new governance/enforcer code
+is not loaded until the gateway restarts. Two independent failure modes:
+
+1. **Restarting from inside the gateway is blocked by design.** A restart issued
+   from inside a Hermes session (a tool call) is refused — the gateway would
+   SIGTERM the command before it completed. Restart from a **separate shell**.
+2. **A restart can report success and still not land.** Verify; do not assume:
+
+```bash
+systemctl --user show hermes-gateway.service -p MainPID -p ExecMainStartTimestamp -p NRestarts
+```
+
+`MainPID` and `ExecMainStartTimestamp` **must change**. Observed failure: an
+attempt that left both unchanged at the previous start time — the unit never
+re-activated, so the MCP child still held pre-change code while everything
+*looked* restarted.
+
+Then confirm the child post-dates the deploy:
+
+```bash
+ps -o lstart= -p $(pgrep -f loop-governance/loop-gov-mcp.py)
+date -r ~/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py '+%e %H:%M:%S'
+```
+
+If the child's start time is older than the deployed file's mtime, the old code
+is still live — regardless of what the restart command printed.
+
+Note: a config value in `~/hermes-cortex/.env` does **not** need a restart once
+the gate's own resolver is deployed (it re-reads per call); only the code does.
+
 ## Adding a New Platform
 
 1. Obtain the token/secret for the platform (Telegram bot token from

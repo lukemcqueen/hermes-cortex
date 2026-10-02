@@ -63,6 +63,26 @@ material it judged (note + diff):
   wrong. State the measurement that refutes one and leave the code alone rather than
   "fixing" a non-defect.
 
+## Verifying the gate actually RAN — a pass is not evidence of a review
+
+A close that succeeds may mean the review passed, or that the review never ran.
+Only the gate's own log separates those, and the log is
+`~/.hermes/logs/mcp-stderr.log` (the MCP server's stderr):
+
+| Line | What actually happened |
+|---|---|
+| `adversarial review: cycle N simple (L lines, F files) — skip` | The change was BELOW the complexity threshold. No reviewer, no triage, no findings. A clean close here says **nothing** about review quality. |
+| `adversarial review: cycle N stored <verdict> but all LOW (n) — not blocking` | A review ran and every finding was classified administrative and lowered, so it annotated instead of blocking. |
+| findings listed with severities | MEDIUM+ findings blocked the close. |
+
+Cheap check before claiming "the gate passed": `search_files` for
+`adversarial review: cycle` (or `triage:`) in that log. The triage layer also logs
+`triage: judgement status=…` and `reviewer severities stand` when the judge is
+unreachable — silence there means triage never ran, not that it approved.
+
+**A skipped review is silent by design**, so the log is the only evidence. Never
+report a gate as "passed adversarial review" without it.
+
 ## Pitfalls
 
 - **A fix to the close-out path is not live until the MCP daemon restarts.** The
