@@ -6,7 +6,7 @@ variable. A harness (pi, claude-code, codex) can print its own environment, so a
 command like `. ~/.hermes/.env` would leak every secret in that file to the agent.
 This script exists so a consumer can be given exactly one named value.
 
-Run: python3 tests/test_env_secret.py
+Run: python3 tests/test_env_value.py
 """
 import os
 import subprocess
@@ -33,7 +33,7 @@ def _call(env_file: str, name: str, herm: str | None = None):
                           timeout=30, env=env)
 
 
-def test_env_secret():
+def test_env_value():
     with tempfile.TemporaryDirectory() as td:
         t = Path(td)
         herm = t / "hermes-home"
@@ -78,7 +78,7 @@ def test_env_secret():
 
 if __name__ == "__main__":
     print("env-value.sh — one variable, nothing else")
-    test_env_secret()
+    test_env_value()
     print()
     if _FAIL:
         print(f"{len(_FAIL)} FAILED: {', '.join(_FAIL)}")
