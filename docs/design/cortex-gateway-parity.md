@@ -46,17 +46,24 @@ Evidence: `T` = asserted by the committed test (executed), `C` = code path cited
 | Busy/interrupt while a turn runs | ✅ two-level guard | ✅ one in-flight turn per chat, bounded queue, `/stop` clears queue + suppresses pending replies | daemon test |
 | Polling stall detection / reconnect loop | ✅ | ✅ exponential backoff (capped 60s); conflict tolerated 3 cycles then exit 4 so a real second poller keeps its updates | daemon test |
 
-### Still not at parity (beyond the audited register)
+### Feature parity (beyond the audited register)
 
-The G1–G9 register is empty, but these differences are real and are NOT claimed as closed:
+Every difference named below is now closed, and the row names the test that holds it closed.
 
-| Capability | incumbent | target | Why it matters |
+| Capability | incumbent | target | Evidence |
 |---|---|---|---|
-| **Inline keyboards (button approvals)** | ✅ | ❌ callbacks forwarded, but nothing renders buttons | the approval flow is unreachable from Telegram |
-| Typing indicator / drafts / streaming edits | ✅ | ❌ | cosmetic, but it is UX parity |
-| Forum/DM topic anchors + topic bindings | ✅ thread kwargs, reply anchors, prune | ⚠️ raw `message_thread_id` passes through | DM topics behave differently |
-| DM pairing flow | ✅ pairing code | ❌ unknown senders refused (fail-closed) | behaviour difference, not a security loss |
-| Multi-platform (Discord/Slack/… 20+) | ✅ | ❌ Telegram only | accepted by design (anti-bloat) |
+| **Inline keyboards (button approvals)** | ✅ | ✅ envelope `buttons` → `reply_markup.inline_keyboard` (on the last chunk); a malformed button is SKIPPED, never forwarded (invalid markup costs the whole message); `answerCallbackQuery` clears the spinner; the press routes back as `tg_kind=callback` carrying `tg_query_id` | `tests/test_gateway_approvals.py` |
+| Typing indicator | ✅ | ✅ `sendChatAction` on dispatch, refreshed every 4s while the turn is in flight (Telegram expires it after ~5s), never fatal | `tests/test_gateway_typing.py` |
+| Streaming partial output | ✅ | ✅ spec `stream: true`; ONE message EDITED as output arrives (throttled 1.5s) — never a message per partial; the final text lands on that same message, never as a second copy; no edit support → the ordinary reply path | `tests/test_gateway_streaming.py` |
+| Forum/DM topic anchors + bindings | ✅ | ✅ in a topic the answer ANCHORS to the triggering message; a stale topic id is PRUNED (deliver without it) instead of losing the answer; a non-topic failure never silently de-topics | `tests/test_gateway_approvals.py` |
+| DM pairing flow | ✅ | ✅ code → owner `/approve` (only an env-allowed user), single-use, TTL-bounded, per-sender rate-limited, persisted across restarts; ON by default as the incumbent is, `TELEGRAM_PAIRING=off` for a silent refusal | `tests/test_gateway_pairing.py` |
+| Per-chat agent sessions | ✅ | ✅ spec `session: per_chat` + `session_args`; deterministic `hc-<agent>-<chat>` id, so continuity survives a restart | `tests/test_gateway_agent_registry.py` |
+| Message edits | ✅ | ✅ `editMessageText` (approval outcomes, streaming updates) | `tests/test_gateway_approvals.py` |
+| Multi-platform (Discord/Slack/… 20+) | ✅ | ❌ Telegram only | accepted by design (anti-bloat); the transport seam is where another platform attaches |
+
+One deliberate difference remains, and it is strictly narrower than the incumbent: our
+pairing path can be switched off per host (`TELEGRAM_PAIRING=off`), which the incumbent
+cannot do. Additive, never a capability removed.
 
 ### Where the target wins (unchanged)
 
@@ -70,16 +77,18 @@ Confidence is defined, not felt. Cut over when **all four** hold:
 
 1. ✅ **The gap register is empty** — G1–G9 all closed, asserted by
    `tests/test_gateway_parity_evidence.py` (9 closed, 0 open).
-2. ❌ **One live end-to-end turn on a SECOND bot token** — rehearsal run 2026-10-02 on
+2. ⚠️ **One live end-to-end turn on a SECOND bot token** — rehearsal 2026-10-02 on
    @Esther0001Bot: the gateway polls, the allowlist holds, `/status` is answered end-to-end
-   over the second bot's loop, and stopping the daemon releases the bot cleanly. BUT the
-   **reply leg is unprovisioned**: `HermesBackend.poll_replies()` reads `out_<agent>`, and
-   **no `out_*` queue exists anywhere in the fleet** (`all queues: broadcast,
-   bus-health-probe, inbox_*`) — agent replies can never come back through this gateway.
-   Cut Telegram over today and the bot would accept messages and never answer. `/status`
-   works precisely because the gateway answers it itself, without the bus.
-   A normal message's inbound leg is also unproven: `inbox_esther` depth 0 is ambiguous
-   (a bus processor may consume it) and there is no reply to observe.
+   over the second bot's own loop, and stopping the daemon releases the bot cleanly.
+   The **reply leg is now proven live**: `out_esther` exists, `esther` holds read+write, and
+   a signed envelope written to it was drained by the gateway and delivered by the bot —
+   Telegram `sendMessage` returned **`message_id 8`**, with `out_esther` back to depth 0
+   (delivered AND archived). The inbound dispatch shape was accepted (`inbox_esther` depth 1)
+   — the first time that leg ever carried a message, after five faults were found and fixed
+   (`docs/design/gateway-reply-path.md`).
+   What remains before cutover is the **whole path in one motion**: a human message → the
+   agent's own reply → back out through the second bot. Every leg is proven; the composition
+   is not yet.
 3. ✅ **The three material risks each covered by a test** — truncation (chunking, loss-free
    asserted), interrupt (`/stop` + suppression), polling recovery (backoff + conflict).
 4. ⚠️ **Rollback is a single documented step** (restore the hermes-gateway unit) — the

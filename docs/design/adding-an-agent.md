@@ -38,6 +38,9 @@ Spec fields (`AgentSpec`, `ops/scripts/cortex_gateway/agents.py`):
 | `prompt_template` | how the inbound message becomes the prompt: `{body}` `{agent}` `{channel}` `{user}` `{model}` |
 | `timeout_s` | per-turn wall clock; a timeout is a logged no-reply, never a crash |
 | `reply_mode` | `sync` (return the reply now) · `bus` (write it to `out_<name>`, gateway drains) |
+| `session` | `none` · `per_chat` — the agent keeps one session per chat, so a conversation has memory |
+| `session_args` | how to pass that session: `["--session-id", "{session_id}"]` (must contain `{session_id}`) |
+| `stream` | `true` — show the turn's output as it arrives, by editing ONE message (the gateway owns delivery) |
 | `capabilities` | free-form, for operators and `health()` — this is what "different functions" looks like |
 | `model` | informational, and available to `prompt_template` |
 | `subject` | kind=hermes: the UPPER_CASE bus subject for inbound human messages |
@@ -133,3 +136,24 @@ dropping every message is the failure this validation exists to prevent.
    that "passes the unit tests" can still be a wire mismatch — every fault on this path was
    silent until it met the real bus (docs/design/gateway-reply-path.md).
 3. `health()` for the new backend via `/status`, which reports the declared spec.
+
+## Capabilities are declared, not coded
+
+The point of the spec is that adding a coding agent — or giving one a new behaviour — is a
+CONFIG change:
+
+| You want | You declare |
+|---|---|
+| Keep a conversation | `"session": "per_chat"` (the id is deterministic: `hc-<agent>-<chat>`, so it survives a restart) |
+| Show progress while it works | `"stream": true` (the gateway builds the sink; the backend only reports text) |
+| Only the agent's answer matters | `"output": "last_line"` |
+| The agent writes its own reply to the bus | `"reply_mode": "bus"` (needs `out_<name>` to exist and to be granted) |
+| A brand-new kind of agent (HTTP, another CLI shape) | `register_kind(name, cls)` in `cortex_gateway/agents.py` — the daemon never learns what it is talking to |
+
+A backend that can stream advertises `supports_stream = True`; the daemon feature-detects it,
+so a backend that cannot stream is not broken by the flag. Streaming is a courtesy: if the
+transport cannot edit, or an edit is refused, the answer still arrives through the ordinary
+reply path (`tests/test_gateway_streaming.py`).
+
+Unknown spec keys are REFUSED at build time. That is deliberate: a typo (`"streem"`) would
+otherwise silently disable the behaviour you asked for, and you would debug the wrong layer.

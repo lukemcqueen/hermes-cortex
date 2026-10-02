@@ -171,18 +171,24 @@ def test_without_pairing_the_refusal_path_is_unchanged(tmp_path):
     print("  pairing disabled → silent fail-closed refusal (unchanged) ✓")
 
 
-def test_pairing_is_off_by_default():
-    """Opt-in: a fresh host must not open enrolment because the code exists."""
+def test_pairing_is_on_by_default_and_can_be_switched_off():
+    """Parity: the incumbent pairs by default (Luke: 'switch to pairing').
+
+    Either way the security property is the same — an unpaired sender is never dispatched —
+    so the default only decides whether a stranger is OFFERED an enrolment path.
+    """
     import os
     saved = os.environ.pop("TELEGRAM_PAIRING", None)
     try:
-        assert P.enabled() is False
-        os.environ["TELEGRAM_PAIRING"] = "on"
-        assert P.enabled() is True
-        os.environ["TELEGRAM_PAIRING"] = "off"
-        assert P.enabled() is False
+        assert P.enabled() is True, "pairing is on by default (incumbent parity)"
+        for val in ("off", "0", "false", "no"):
+            os.environ["TELEGRAM_PAIRING"] = val
+            assert P.enabled() is False, f"{val!r} must disable pairing"
+        for val in ("on", "1", "true", "yes", ""):
+            os.environ["TELEGRAM_PAIRING"] = val
+            assert P.enabled() is True, f"{val!r} must leave pairing on"
     finally:
         os.environ.pop("TELEGRAM_PAIRING", None)
         if saved is not None:
             os.environ["TELEGRAM_PAIRING"] = saved
-    print("  TELEGRAM_PAIRING is opt-in (default off) ✓")
+    print("  pairing is ON by default, TELEGRAM_PAIRING=off disables it ✓")

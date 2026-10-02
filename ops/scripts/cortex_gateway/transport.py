@@ -437,6 +437,25 @@ class TelegramAdapter(TransportAdapter):
             return False
         return bool(data.get("ok"))
 
+    def send_text(self, chat_id, text: str, thread_id=None) -> Optional[int]:
+        """Send one plain message and return its Telegram message_id (or None).
+
+        Streaming and approvals need to ADDRESS a message the gateway just sent (to edit it
+        in place). `send()` returns only a boolean, so this is the small door for the cases
+        that need the id.
+        """
+        params = {"chat_id": chat_id, "text": text}
+        if thread_id:
+            params["message_thread_id"] = thread_id
+        try:
+            data = self._api("sendMessage", params)
+        except Exception as e:  # noqa: BLE001 — UX must never break a turn
+            print(f"⚠️  sendMessage failed: {e}", file=sys.stderr)
+            return None
+        if not data.get("ok"):
+            return None
+        return (data.get("result") or {}).get("message_id")
+
     def edit_message(self, chat_id, message_id, text: str, buttons=None,
                      parse_mode: str = "") -> bool:
         """Rewrite a message the gateway already sent (approval updates, streaming).

@@ -21,9 +21,11 @@ Properties that matter (each one is a real failure mode, not decoration):
   keeps the code out of the way of secret-scanners that flag digit runs.
 - **The owner decides.** Approval requires a sender already in the allowlist; an unpaired
   chat cannot approve itself (or anyone else).
-- **Fail-closed default OFF.** Pairing is enabled only when `TELEGRAM_PAIRING=on`, so a fresh
-  host does not silently open enrolment. This is the one deliberate deviation from the
-  incumbent's default, and it is one env var wide.
+- **Owner-approved, not open.** Pairing is ON by default (parity with the incumbent); the
+  fail-closed property is unchanged either way, because an unpaired sender's message is
+  never dispatched and enrolment still requires the OWNER to approve a code. The default
+  changes who can ASK, never who can talk to the agent. `TELEGRAM_PAIRING=off` gives unknown
+  senders a silent refusal instead.
 """
 from __future__ import annotations
 
@@ -43,8 +45,16 @@ RATE_WINDOW_S = 3600
 
 
 def enabled() -> bool:
-    """Pairing is opt-IN: `TELEGRAM_PAIRING=on` (anything else leaves it fail-closed)."""
-    return (os.environ.get("TELEGRAM_PAIRING", "") or "").strip().lower() in ("1", "on", "true", "yes")
+    """Pairing is ON by default (parity with the incumbent); `TELEGRAM_PAIRING=off` disables.
+
+    ON by default because that IS the incumbent's behaviour — Luke, 2026-10-02: "switch to
+    pairing". The fail-closed property is preserved either way: an unpaired sender's message
+    is never dispatched and enrolment still needs the OWNER to approve a code, so the
+    default changes who can ASK, never who can talk to the agent. Set `TELEGRAM_PAIRING=off`
+    on a host where unknown senders should get a silent refusal instead.
+    """
+    val = (os.environ.get("TELEGRAM_PAIRING", "") or "").strip().lower()
+    return val not in ("0", "off", "false", "no", "disabled")
 
 
 class PairingStore:

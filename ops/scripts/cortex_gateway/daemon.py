@@ -56,6 +56,58 @@ from .transport import (DEFAULT_POLL_SECONDS, BotConfig, PollingConflict,
 DEFAULT_BACKEND_AGENT = "hermes"
 
 
+class _Streamer:
+    """Show a turn's progress by editing ONE message (never a message per partial).
+
+    Throttled because Telegram rate-limits edits: a partial every line would be rejected and
+    would also be unreadable. On any failure it gives up (failed=True) and the final text is
+    delivered normally — streaming is a courtesy, never the delivery path.
+    """
+
+    MIN_INTERVAL_S = 1.5
+
+    def __init__(self, gateway, chat, envelope):
+        self.gw = gateway
+        self.chat = chat
+        self.thread_id = (envelope or {}).get("thread_id")
+        self.message_id = None
+        self.last_sent = ""
+        self.last_at = 0.0
+        self.failed = False
+
+    @property
+    def streamed(self) -> bool:
+        return self.message_id is not None and not self.failed
+
+    def partial(self, text: str) -> None:
+        if self.failed or not text or text == self.last_sent:
+            return
+        now = time.time()
+        if now - self.last_at < self.MIN_INTERVAL_S:
+            return
+        self.last_at = now
+        self.last_sent = text
+        tr = self.gw.transport
+        if self.message_id is None:
+            send_text = getattr(tr, "send_text", None)
+            if not send_text:
+                self.failed = True
+                return
+            self.message_id = send_text(self.chat, text, self.thread_id)
+            if self.message_id is None:
+                self.failed = True
+        elif not tr.edit_message(self.chat, self.message_id, text):
+            self.failed = True
+
+    def finish(self, final_text: str) -> bool:
+        """True when the streamed message already carries the final text (do not resend)."""
+        if not self.streamed:
+            return False
+        if not final_text or final_text == self.last_sent:
+            return True
+        return bool(self.gw.transport.edit_message(self.chat, self.message_id, final_text))
+
+
 class Gateway:
     """The decoupled gateway daemon. Transport ↔ BackendAdapter."""
 
@@ -345,9 +397,17 @@ class Gateway:
         """
         self.inflight[chat] = {"ts": time.time(), "envelope": envelope}
         self._typing(chat, envelope)
-        reply = backend.dispatch(envelope)
+        streamer = None
+        if getattr(backend, "supports_stream", False) and hasattr(self.transport, "edit_message"):
+            streamer = _Streamer(self, chat, envelope)
+            reply = backend.dispatch(envelope, sink=streamer.partial)
+        else:
+            reply = backend.dispatch(envelope)
         if reply is not None:
-            self.transport.send(reply)
+            if streamer is not None and streamer.finish(reply.get("body") or ""):
+                pass                      # already on screen, updated in place
+            else:
+                self.transport.send(reply)
             self._next_from_queue(chat)
 
     def _next_from_queue(self, chat) -> None:

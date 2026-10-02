@@ -91,6 +91,7 @@ class AgentSpec:
     output: str = "raw"                           # raw | last_line (agents print chatter)
     session: str = "none"                         # none | per_chat (one agent session per chat)
     session_args: list = field(default_factory=lambda: ["--session-id", "{session_id}"])
+    stream: bool = False                          # kind=command: show output as it arrives
     capabilities: list = field(default_factory=list)  # free-form, for operators/health
     model: str = ""
     subject: str = "USER_MESSAGE"                 # kind=hermes inbound subject
@@ -104,7 +105,7 @@ class AgentSpec:
             raise ValueError(f"backend spec must be a mapping or a name, got {type(d).__name__}")
         allowed = {"name", "kind", "command", "prompt_template", "timeout_s", "reply_mode",
                    "capabilities", "model", "subject", "output", "session", "session_args",
-                   "extra"}
+                   "stream", "extra"}
         unknown = set(d) - allowed
         if unknown:
             raise ValueError(
@@ -123,6 +124,7 @@ class AgentSpec:
             output=str(d.get("output", "raw")).strip().lower(),
             session=str(d.get("session", "none")).strip().lower(),
             session_args=list(d.get("session_args") or ["--session-id", "{session_id}"]),
+            stream=bool(d.get("stream", False)),
             capabilities=list(d.get("capabilities", []) or []),
             model=str(d.get("model", "") or ""),
             subject=str(d.get("subject", "USER_MESSAGE") or "USER_MESSAGE"),
@@ -259,7 +261,11 @@ class CommandBackend:
         return {"ok": found, "backend": "command", "agent": self.spec.name,
                 "command": self.spec.command[:1], "capabilities": self.spec.capabilities}
 
-    def dispatch(self, envelope: dict):
+    # A backend that can report partial output advertises it, so the gateway only builds a
+    # sink for an agent that will use one.
+    supports_stream = True
+
+    def dispatch(self, envelope: dict, sink=None):
         if not isinstance(envelope, dict):
             return None
         try:
@@ -267,7 +273,14 @@ class CommandBackend:
         except env.EnvelopeError:
             return None                       # malformed — DLQ, never crash the loop
         prompt = self._prompt(inbound)
-        out = self._run(prompt, self._session_id(inbound))
+        session_id = self._session_id(inbound)
+        # STREAMING (opt-in per spec): report partial output as it is produced, so a long
+        # coding turn is visible instead of silent. The sink is the GATEWAY's (it owns
+        # formatting and delivery); a backend that can stream advertises supports_stream.
+        if sink is not None and self.spec.stream:
+            out = self._run_streaming(prompt, session_id, sink)
+        else:
+            out = self._run(prompt, session_id)
         if not out:
             return None                       # silent turn is legitimate
         reply = reply_from_origin(inbound, out, agent=self.spec.name)
@@ -311,11 +324,15 @@ class CommandBackend:
         chat = inbound.get("channel_user_id")
         return f"hc-{self.spec.name}-{chat}" if chat is not None else ""
 
-    def _run(self, prompt: str, session_id: str = "") -> str:
+    def _argv(self, prompt: str, session_id: str = "") -> list:
         cmd = [*self.spec.command]
         if session_id:
             cmd += [str(a).replace("{session_id}", session_id) for a in self.spec.session_args]
         cmd.append(prompt)
+        return cmd
+
+    def _run(self, prompt: str, session_id: str = "") -> str:
+        cmd = self._argv(prompt, session_id)
         try:
             proc = subprocess.run(cmd, capture_output=True, text=True,
                                   timeout=self.spec.timeout_s)
@@ -331,6 +348,40 @@ class CommandBackend:
             log.warning("command backend %s: exit %s; stderr=%r",
                         self.spec.name, proc.returncode, (proc.stderr or "")[:200])
         return self._shape_output(proc.stdout or "")
+
+    def _run_streaming(self, prompt: str, session_id: str, sink) -> str:
+        """Run the agent, reporting accumulated stdout as it arrives.
+
+        Line-buffered reading with a best-effort sink: a sink failure (say, a rate-limited
+        edit) must not abort the turn — the final text still comes back through dispatch and
+        the gateway delivers it normally.
+        """
+        cmd = self._argv(prompt, session_id)
+        acc: list = []
+        try:
+            proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
+                                    stderr=subprocess.DEVNULL, text=True, bufsize=1)
+        except OSError as e:
+            log.warning("command backend %s: could not start %r (%s)",
+                        self.spec.name, self.spec.command[:1], e)
+            return ""
+        try:
+            stream = proc.stdout
+            if stream is not None:
+                for line in stream:
+                    acc.append(line)
+                    try:
+                        sink(self._shape_output("".join(acc)))
+                    except Exception as e:  # noqa: BLE001 — UX only, never the turn
+                        log.debug("stream sink failed: %s", e)
+            proc.wait(timeout=self.spec.timeout_s)
+        except subprocess.TimeoutExpired:
+            log.warning("command backend %s: timed out after %ss (streaming)",
+                        self.spec.name, self.spec.timeout_s)
+        finally:
+            if proc.poll() is None:
+                proc.kill()
+        return self._shape_output("".join(acc))
 
     def _shape_output(self, stdout: str) -> str:
         """Turn the agent's stdout into the reply text (spec-declared, never guessed)."""
