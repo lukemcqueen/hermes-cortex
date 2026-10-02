@@ -385,6 +385,9 @@ register "ops/scripts/manage/outerloop.py"               "${CORTEX_DEPLOY_HOME}/
 register "ops/scripts/lib/handoff_schema.py"             "${CORTEX_DEPLOY_HOME}/scripts/lib/handoff_schema.py"
 register "ops/scripts/quality/adversarial-verify.py"     "${CORTEX_DEPLOY_HOME}/scripts/adversarial-verify.py"
 register "ops/scripts/quality/probe-gate-logic.py"      "${CORTEX_DEPLOY_HOME}/scripts/probe-gate-logic.py"
+# Regenerates docs/evidence/full-suite-results.txt so "the suite is green" is a
+# reproducible artifact with a named revision, not a pasted transcript.
+register "ops/scripts/quality/full-suite-evidence.sh"   "${CORTEX_DEPLOY_HOME}/scripts/full-suite-evidence.sh"
 register_orch "ops/scripts/orch-bus/orch-bus-fleet-dispatch.py" "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-fleet-dispatch.py"
 
 
