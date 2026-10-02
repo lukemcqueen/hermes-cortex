@@ -230,6 +230,11 @@ CONFIG_PATH = HOME / ".hermes-cortex" / "data" / "loop-governance-config.json"
 CACHE_DB = HOME / ".hermes-cortex" / "data" / "session-embeddings.db"
 GOVERNANCE_STATE_DIR = HOME / ".hermes-cortex" / "state"
 DEFAULT_TTL = 3600  # 1 hour
+# Provenance tag written by the orphan-cycle reaper's unscored_reason. The
+# doctor's "Orphan-cycle resolution" check matches this exact string and a test
+# asserts the two agree, so a reaper-closed cycle can never be silently confused
+# with an agent-declared unscored close (and the check re-verifies the claim).
+ORPHAN_REAPER_TAG = "[orphan-reaper]"
 
 
 # ── Dogfood Gate ─────────────────────────────────────────────
@@ -625,7 +630,8 @@ def _purge_stale_locks() -> int:
 
 
 def _resolve_orphaned_pending_cycles(task_ids: set[str] | None = None) -> int:
-    """MOVE_ON PENDING cycles whose task holds no live lock (leaked/abandoned).
+    """Close PENDING cycles whose task holds no live lock (leaked/abandoned)
+    as UNSCORED, with a recomputable reason — never as a judged MOVE_ON.
 
     The doctor's rule (cortex_doctor/checks.py, single source of truth):
     a PENDING cycle whose task_id has NO active .governance-*.json lock is a
@@ -644,7 +650,11 @@ def _resolve_orphaned_pending_cycles(task_ids: set[str] | None = None) -> int:
     never touches a PENDING cycle whose task still holds a live lock (that's
     the current task — expected mid-session, INFO).
 
-    Returns the number of cycles resolved to MOVE_ON.
+    Returns the number of cycles closed. Each close sets decision='MOVE_ON' so
+    the close-out gate sees it closed, and unscored_reason (tagged
+    ORPHAN_REAPER_TAG, carrying the facts an auditor can recompute) so no
+    consumer mistakes an abandoned cycle for a judged one. Every reaped id is
+    logged — reaping used to be silent on the begin_change path.
     """
     try:
         conn = _db()
@@ -677,11 +687,13 @@ def _resolve_orphaned_pending_cycles(task_ids: set[str] | None = None) -> int:
             ).fetchall()
         now = datetime.now(timezone.utc)
         resolved = 0
+        reaped: list[tuple[int, str]] = []
         for r in pending:
             if r["task_id"] in live:
                 continue  # current task — expected, not a leak
             # When not explicitly targeting purged tasks, require the cycle to
             # be older than the TTL so a mid-begin_change row is never raced.
+            age_s: int | None = None
             if task_ids is None:
                 try:
                     ts = datetime.fromisoformat(str(r["timestamp"]).replace("Z", "+00:00"))
@@ -691,15 +703,40 @@ def _resolve_orphaned_pending_cycles(task_ids: set[str] | None = None) -> int:
                     ts = None  # unparseable timestamp → treat as young, skip
                 if ts is None or (now - ts).total_seconds() <= DEFAULT_TTL:
                     continue
+                age_s = int((now - ts).total_seconds())
+            # Honesty (Luke 2026-10-02): an abandoned cycle is NOT a judged one.
+            # Record WHY it closed in unscored_reason — the field the schema has
+            # for exactly this — and invent no score. The reason states facts an
+            # auditor can RECOMPUTE (the task held no live lock; the cycle was
+            # older than the TTL), so a forged reaper claim for a cycle that does
+            # hold a lock, or is younger than the TTL, fails corroboration
+            # (cortex_doctor "Orphan-cycle resolution" check).
+            reason = (
+                f"{ORPHAN_REAPER_TAG} abandoned: no live lock for task '{r['task_id']}'"
+                + (f" and cycle age {age_s}s > TTL {DEFAULT_TTL}s" if age_s is not None else "")
+                + " — the session ended without closing it, so it carries no score and none is invented"
+            )
             conn.execute(
-                "UPDATE loop_cycles SET decision='MOVE_ON', "
+                "UPDATE loop_cycles SET decision='MOVE_ON', unscored_reason=?, "
                 "outcome_note='auto-resolved by governance MCP — task has no live lock (abandoned/crashed session)' "
                 "WHERE id=?",
-                (r["id"],),
+                (reason, r["id"]),
             )
+            reaped.append((r["id"], r["task_id"]))
             resolved += 1
         conn.commit()
         conn.close()
+        if reaped:
+            # Visibility (Luke 2026-10-02): reaping used to be silent on the
+            # begin_change path, so abandonments accumulated unobserved. Name
+            # every cycle, not just a count — abandonments are the early warning
+            # for an agent that keeps crashing mid-cycle.
+            shown = ", ".join(f"#{cid}({task[:40]})" for cid, task in reaped[:10])
+            more = f" (+{len(reaped) - 10} more)" if len(reaped) > 10 else ""
+            log.warning(
+                "Orphan-cycle reaper: closed %d abandoned PENDING cycle(s) unscored — %s%s",
+                len(reaped), shown, more,
+            )
         return resolved
     except Exception as e:
         log.warning("resolve-orphans failed (non-critical): %s", e)

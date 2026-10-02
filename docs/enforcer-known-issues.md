@@ -57,6 +57,19 @@ the doctor's PENDING-cycle check passes it as "current task (lock held)", `check
   whose task has **no live lock** — treats `fleet-update-792a8abd` as live (the lock exists),
   so it correctly skips 2682.
 
+**Update 2026-10-02 (Luke: "there should be no open cycles … honesty and doing things the right
+way").** When `_resolve_orphaned_pending_cycles()` *does* resolve a cycle it now closes it
+**unscored**: decision `MOVE_ON` so the close-out gate sees it closed, plus `unscored_reason` tagged
+`[orphan-reaper]` naming facts an auditor can recompute (no live lock for task X; cycle age > TTL).
+No score is invented, and every reaped id is logged — previously the `begin_change` sweep reaped
+silently, so an abandoned session's bare `MOVE_ON` accumulated and read as a *judged* cycle. The
+distinction matters in this DB: 2,966 cycles are `MOVE_ON` with no score and no reason, so "closed"
+must never be read as "judged". The doctor's `Orphan-cycle resolution` check now corroborates the
+reaper's claim and FAILs on the one contradiction that cannot happen honestly — a reaper-closed
+cycle whose **own** session still holds a live lock for the same task (deliberately not the weaker
+"the task has no lock now", which a later resumed task would trip). *Still open here: the TTL-window
+invisibility described above.*
+
 **Root cause.** Staleness is defined purely by heartbeat age vs TTL (`_is_lock_stale`). There is
 no liveness probe (does the owning session still exist? is its process alive?). A session that
 dies after `begin_change` but before its heartbeat would age out leaves a lock that is, by the

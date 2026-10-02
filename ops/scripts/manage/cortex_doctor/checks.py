@@ -52,6 +52,11 @@ from .config import (
 from .helpers import run, run_bg, http_get, read_file, process_running, find_similar_name
 from .results import Results
 
+# Provenance tag the orphan-cycle reaper writes into unscored_reason. MUST match
+# loop-gov-mcp.py ORPHAN_REAPER_TAG — a test asserts the two agree, so the check
+# that corroborates a reaper's close can never drift from the writer.
+ORPHAN_REAPER_TAG = "[orphan-reaper]"
+
 
 # The ONE canonical cortex env (gitignored). Module-level so tests can
 # redirect it: monkeypatch.setattr(checks, "CORTEX_ENV_FILE", tmp_path / ".env").
@@ -5035,5 +5040,92 @@ def check_cortex_env(res: "Results") -> None:
         res.add("cortex env", "PASS",
                 "canonical ~/hermes-cortex/.env present (600); cortex-bus.conf is "
                 "the sanctioned symlink; no deploy-dir .env")
+
+
+def check_orphan_cycle_resolution(res) -> None:
+  """Orphan-cycle resolution (2026-10-02, Luke): "there should be no open cycles
+  ... i want honesty and doing things the right way".
+
+  Two properties, re-verified here rather than asserted:
+
+  1. `closed` stays distinguishable from `judged`. The reaper writes an explicit
+     unscored_reason tagged [orphan-reaper] instead of a bare MOVE_ON, so an
+     abandoned cycle can never be counted as a judged one. Rows the OLD reaper
+     closed (bare MOVE_ON, trace only in outcome_note) are REPORTED so they are
+     seen rather than silently read as judged.
+
+  2. The reaper's claim is CORROBORATED by a contradiction that cannot happen
+     honestly: a reaper-closed cycle whose OWN session still holds a live lock for
+     the SAME task. A session cannot abandon a task while holding its lock, so
+     that combination is a false abandonment claim. Deliberately NOT checking
+     merely "the task holds no lock now" — a task resumed after abandonment
+     legitimately holds a new lock and the old close stays true; session identity
+     is what makes the test decisive rather than noisy.
+  """
+  db = CORTEX_HOME / "data" / "loop-governance.db"
+  if not db.exists():
+    res.add("Orphan-cycle resolution", "INFO",
+            f"no governance DB at {db} — nothing to corroborate")
+    return
+  try:
+    import sqlite3
+    con = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
+    try:
+      reaped = con.execute(
+          "SELECT id, task_id, session_id FROM loop_cycles WHERE unscored_reason LIKE ?",
+          (ORPHAN_REAPER_TAG + "%",),
+      ).fetchall()
+      legacy = con.execute(
+          "SELECT id, task_id FROM loop_cycles "
+          "WHERE (unscored_reason IS NULL OR trim(unscored_reason)='') "
+          "AND outcome_note LIKE '%auto-resolved by governance MCP%'"
+      ).fetchall()
+      agent_unscored = con.execute(
+          "SELECT count(*) FROM loop_cycles WHERE unscored_reason IS NOT NULL "
+          "AND trim(unscored_reason)<>'' AND unscored_reason NOT LIKE ?",
+          (ORPHAN_REAPER_TAG + "%",),
+      ).fetchone()[0]
+    finally:
+      con.close()
+  except Exception as e:
+    res.add("Orphan-cycle resolution", "WARN", f"could not read {db.name}: {e}")
+    return
+
+  # Live locks, mirroring the gate's semantics: an unparseable lock file is
+  # possibly mid-write → skip it, never guess at its contents.
+  _terminal = {"completed", "cancelled"}
+  live: dict[str, set[str]] = {}
+  for lf in sorted((CORTEX_HOME / "state").glob(".governance-*.json")):
+    try:
+      d = json.loads(lf.read_text())
+    except (OSError, ValueError):
+      continue
+    if d.get("task_id") and d.get("status") not in _terminal:
+      live.setdefault(str(d.get("session_id") or ""), set()).add(str(d["task_id"]))
+
+  contradictions = [
+      (cid, task, sess) for cid, task, sess in reaped
+      if str(task) in live.get(str(sess or ""), set())
+  ]
+  if contradictions:
+    shown = ", ".join(f"#{c}({t})" for c, t, _ in contradictions[:5])
+    res.add("Orphan-cycle resolution", "FAIL",
+            f"{len(contradictions)} reaper-closed cycle(s) claim an abandoned task that the SAME "
+            f"session still holds a live lock for — a false abandonment claim: {shown}",
+            fix="A session cannot abandon a task while holding its lock. Compare each "
+                "unscored_reason's provenance in loop-governance.db against the lock files "
+                "before trusting any unscored close.")
+    return
+
+  detail = (f"{len(reaped)} reaper-closed (unscored, tagged) · "
+            f"{agent_unscored} agent-declared unscored close(s)")
+  if legacy:
+    ids = ", ".join(f"#{c}" for c, _ in legacy[:5])
+    res.add("Orphan-cycle resolution", "INFO",
+            f"{detail}; {len(legacy)} legacy row(s) closed by the OLD reaper carry a bare MOVE_ON "
+            f"and are NOT judged: {ids}")
+  else:
+    res.add("Orphan-cycle resolution", "PASS",
+            f"{detail} — no bare MOVE_ON left behind by the reaper")
 
 
