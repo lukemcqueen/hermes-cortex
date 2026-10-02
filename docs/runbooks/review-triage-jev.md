@@ -24,15 +24,33 @@ is `ops/scripts/judgment.py`:
 POST {base_url}/v1/systemone
   {"model": …, "state": …, "questions": {
       "<id>": {"type": "noul" | "choice" | "score",
-               "instructions": "…", "criteria": ["…"]?}}}
+               "instructions": "…", "criteria": {"<option>": "<definition>"}?}}}
 -> {"answers": {"<id>": {"type": …, …value}}, "usage": {…}}
 ```
 
 Answer shapes:
 
 - **noul** → `{"type": "noul", "noul": 0.87}` — a probability.
-- **choice** → `{"type": "choice", "choice": "administrative", "probabilities": {…}}`.
+- **choice** → `{"type": "choice", "choice": "administrative", "confidence": 0.94,
+  "probabilities": {"administrative": 0.03, "judgement": 0.97}}`.
 - **score** → a value on the question's scale.
+
+**`criteria` is a DICT, not a list.** Each option maps to what that option means
+(`{"administrative": "Formatting or evidence attachment only.", "judgement": "A claim
+about the behaviour of the change."}`). This was learned against the live API: a list
+returns **HTTP 422** —
+
+```
+loc:  ["body","questions","<id>","choice","criteria"]
+msg:  "Input should be a valid dictionary"   input: ["administrative","judgement"]
+```
+
+A list is therefore not documentation shorthand, it is a failed request. The client
+now refuses it **locally** (`_validate_question_shapes`) so the mistake fails in
+milliseconds with a real message instead of costing a round trip and being reported
+as "the judge is unavailable" when the judge is fine.
+
+`model` is **required** by the API — omitting it is also a 422 (`loc: ["body","model"]`).
 
 `decide(decision_class, state, questions, config=None, primary_fn=…)` returns
 `{status, provider, answers}`. The client validates that **the answer keys match

@@ -1944,13 +1944,25 @@ def _triage_questions(findings):
             "instructions": ("Is this finding administrative (formatting, evidence "
                              "attachment, or note phrasing) or a judgement call about the "
                              "behaviour of the change?"),
-            "criteria": ["administrative", "judgement"]}
+            # criteria is a DICT of option -> what the option means. The live
+            # systemone API rejects a list here with HTTP 422
+            # ('questions.<id>.choice.criteria: Input should be a valid dictionary'),
+            # so a list is not 'documentation shorthand' — it is a failed request.
+            "criteria": {
+                "administrative": "Formatting, evidence attachment, or note phrasing only.",
+                "judgement": "A claim about the behaviour, correctness or safety of the change.",
+            }}
         qs[f"{fid}.severity"] = {
             "type": "choice",
             "instructions": ("Severity. high = incorrect or unsafe behaviour, a broken "
                              "gate, or an unverified claim about the code; medium = a real "
                              "gap that should be fixed; low = administrative or presentation."),
-            "criteria": ["low", "medium", "high"]}
+            "criteria": {
+                "low": "Administrative or presentation only.",
+                "medium": "A real gap that should be fixed.",
+                "high": ("Incorrect or unsafe behaviour, a broken gate, or an unverified "
+                         "claim about the code."),
+            }}
     return qs
 
 

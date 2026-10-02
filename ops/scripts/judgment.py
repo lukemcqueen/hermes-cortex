@@ -285,6 +285,31 @@ def _invoke(provider_cfg: dict, body: dict, env: dict, fn=None) -> dict:
     return _http_post(provider_cfg["base_url"], payload, PRIMARY_TIMEOUT_S, api_key=key)
 
 
+def _validate_question_shapes(questions: dict) -> None:
+    """Fail FAST on a question shape the live systemone API rejects.
+
+    Learned live (2026-10-02): a `choice` question's `criteria` must be a DICT of
+    option -> definition. Sending a list returns HTTP 422
+    ('questions.<id>.choice.criteria: Input should be a valid dictionary') — a
+    remote rejection for a purely local mistake, which costs a round trip and
+    reads as 'the judge is unavailable' when nothing is wrong with the judge.
+    """
+    for qid, q in (questions or {}).items():
+        if not isinstance(q, dict):
+            raise ValueError(f"judgment: question {qid!r} must be an object")
+        qtype = q.get("type")
+        if qtype not in ("noul", "choice", "score"):
+            raise ValueError(
+                f"judgment: question {qid!r} has unknown type {qtype!r} "
+                "(expected noul|choice|score)")
+        crit = q.get("criteria")
+        if crit is not None and not isinstance(crit, dict):
+            raise ValueError(
+                f"judgment: question {qid!r} 'criteria' must be a DICT of "
+                f"option -> definition (got {type(crit).__name__}); the systemone "
+                "API rejects a list with HTTP 422")
+
+
 # ---------------------------------------------------------------- decide
 
 def decide(decision_class: str, state, questions: dict, config: dict | None = None,
@@ -301,6 +326,7 @@ def decide(decision_class: str, state, questions: dict, config: dict | None = No
     plan = build_call_plan(decision_class, config, env)
     class_cfg = config["routing"]["decision_classes"].get(decision_class, {})
     body = {"state": state, "questions": questions}
+    _validate_question_shapes(questions)
 
     primary_result, primary_err = None, None
     primary_id = plan["primary"]
