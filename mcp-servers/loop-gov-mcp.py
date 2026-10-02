@@ -457,6 +457,57 @@ def _is_lock_stale(state: dict, mtime_fallback: float | None = None) -> bool:
     return False
 
 
+def _mark_close_refused(cycle_id: int, verdict: str, findings_json: str) -> None:
+    """Record ON THE LOCK that the adversarial review refused this close.
+
+    Why this exists (2026-10-02, Luke: "will your lock issue be a continual
+    issue?"): a refused close leaves the lock held, and nothing said so. The next
+    change could then be stacked under that lock in silence, and the reviewer
+    would later read a description that no longer matches the diff — the one case
+    the close-out skill calls unclosable by a worker. That is what happened to
+    cycle 10445, and the fix is to make the state visible at the moment it occurs
+    instead of after the fact.
+
+    The marker is written by the GATE, so a worker cannot forge it, and the
+    pre-commit advisory reads it to warn when new work is committed under a
+    refused close. Advisory only: the review that refused the close is unchanged.
+    """
+    try:
+        state = _read_lock(None)
+        if not state:
+            return
+        try:
+            found = json.loads(findings_json or "[]")
+        except (ValueError, TypeError):
+            found = []
+        _block, _annot = _blocking_findings(findings_json or "[]")
+        state["close_refused"] = {
+            "at": _now_iso(),
+            "cycle_id": cycle_id,
+            "verdict": str(verdict or "").upper(),
+            "blocking": len(_block),
+            "low": len(_annot),
+            "finding_ids": [str((f or {}).get("finding_id", "?")) for f in (found or [])][:12],
+        }
+        _write_lock(state, None)
+        log.warning("close refused for cycle %s (%s) — marker written to the lock; "
+                    "new work under this lock will be flagged as a stacked change",
+                    cycle_id, verdict or "FINDINGS")
+    except Exception as e:
+        log.warning("could not record close_refused on the lock: %s", e)
+
+
+def _clear_close_refused() -> None:
+    """Drop the refusal marker: the close is no longer refused (CLEAN review)."""
+    try:
+        state = _read_lock(None)
+        if state and state.pop("close_refused", None) is not None:
+            _write_lock(state, None)
+            log.info("close no longer refused — marker cleared from the lock")
+    except Exception as e:
+        log.warning("could not clear close_refused on the lock: %s", e)
+
+
 def _read_lock(args: dict | None = None) -> dict | None:
     """Read this session's lock file, return state dict or None."""
     session_id = get_session_id(args)
@@ -2457,6 +2508,9 @@ def _adversarial_review_gate(lock: dict, cycle: dict,
 
     template = _review_template_text(repo)
     if not template or REVIEW_MARKER not in template:
+        # A refusal is a refusal — this one also leaves the lock held, so record it
+        # on the lock like every other refusal (same stacking risk).
+        _mark_close_refused(cycle.get("id", 0), "TEMPLATE_MISSING", "[]")
         return CallToolResult(content=[TextContent(type="text", text=(
             "❌ Cannot close: self-adversarial reviewer prompt template is missing or "
             "corrupt. Run cortex-update.sh, then retry end_change."
@@ -2514,12 +2568,15 @@ def _adversarial_review_gate(lock: dict, cycle: dict,
             if stored_verdict == "CLEAN":
                 log.info("self-adversarial review: cycle %s CLEAN (stored, material unchanged)",
                          cycle.get("id"))
+                _clear_close_refused()
                 return None
             _block, _annot = _blocking_findings(stored.get("findings_json") or "[]")
             if not _block:
                 log.info("self-adversarial review: cycle %s stored %s but all LOW (%d) — not blocking",
                          cycle.get("id"), stored_verdict, len(_annot))
                 return None
+            _mark_close_refused(cycle.get("id", 0), stored_verdict,
+                                stored.get("findings_json") or "[]")
             return CallToolResult(content=[TextContent(type="text", text=(
                 "❌ Self-adversarial review FAILED — this complex change cannot close.\n\n"
                 f"Verdict: {stored_verdict} (already recorded for exactly this material)\n"
@@ -2535,6 +2592,12 @@ def _adversarial_review_gate(lock: dict, cycle: dict,
         reviewer_text = _call_reviewer(prompt, author=_author)
     except Exception as e:
         log.error("self-adversarial review: reviewer call failed: %s", e)
+        # A refusal is a refusal: the reviewer being unreachable leaves the lock
+        # HELD exactly like a MEDIUM+ verdict does, so record it on the lock too —
+        # otherwise an outage silently looks like a live cycle and the next change
+        # gets stacked under it. (Found by test_refused_close_visible: the outage
+        # path had no marker at all.)
+        _mark_close_refused(cycle.get("id", 0), "REVIEWER_UNAVAILABLE", "[]")
         return CallToolResult(content=[TextContent(type="text", text=(
             "❌ Cannot close: self-adversarial reviewer is UNAVAILABLE. "
             "Governance requires review before this complex change ships — "
@@ -2583,6 +2646,7 @@ def _adversarial_review_gate(lock: dict, cycle: dict,
 
     if verdict == "CLEAN":
         log.info("self-adversarial review: cycle %s CLEAN", cycle.get("id"))
+        _clear_close_refused()
         return None
 
     # Severity policy: MEDIUM and above block; LOW annotates. LOW findings are NOT
@@ -2598,6 +2662,7 @@ def _adversarial_review_gate(lock: dict, cycle: dict,
         return None
 
     # MEDIUM+ (or unclassifiable): hard-block.
+    _mark_close_refused(cycle.get("id", 0), verdict, findings_json)
     return CallToolResult(content=[TextContent(type="text", text=(
         "❌ Self-adversarial review FAILED — this complex change cannot close.\n\n"
         f"Verdict: {verdict}\n"

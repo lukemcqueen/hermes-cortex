@@ -324,6 +324,9 @@ register "ops/scripts/install/install-pi-integration.sh"       "${CORTEX_DEPLOY_
 # One-secret extractor: hands a consuming harness exactly ONE named variable, so
 # it never has to be given (or source) the whole environment.
 register "ops/scripts/manage/env-value.sh"                    "${CORTEX_DEPLOY_HOME}/scripts/env-value.sh"
+# Advisory: warn (never block) when a commit stacks work under a lock whose close
+# the review refused. Called by pre-commit-score.
+register "ops/scripts/governance-refused-close-advisory.sh"     "${CORTEX_DEPLOY_HOME}/scripts/governance-refused-close-advisory.sh"
 register "ops/scripts/manage/soul-sync-all.sh"                 "${CORTEX_DEPLOY_HOME}/scripts/soul-sync-all.sh"
 register "ops/scripts/agent/agents-doc-audit.py"          "${CORTEX_DEPLOY_HOME}/scripts/agents-doc-audit.py"
 register_orch "ops/scripts/agent/orch-restic-backup.py"        "${CORTEX_DEPLOY_HOME}/scripts/orch-restic-backup.py"

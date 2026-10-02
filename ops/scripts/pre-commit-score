@@ -607,6 +607,16 @@ except:
   done
 fi
 
+# ── ADVISORY: committing under a REFUSED close (stacking warning) ──
+# Delegated to a script so it is directly testable and reusable (the CLI can call
+# it too). ADVISORY ONLY — always exits 0; the review that refused the close is
+# unchanged. See governance-refused-close-advisory.sh for the reasoning.
+if [[ "$LOCK_FOUND" -eq 1 && "$SANCTIONED_PIPELINE" != "1" ]]; then
+  _ADVISORY="${CORTEX_DEPLOY_ROOT:-$HOME/.hermes-cortex}/scripts/governance-refused-close-advisory.sh"
+  [[ -x "$_ADVISORY" ]] || _ADVISORY=$(command -v governance-refused-close-advisory.sh 2>/dev/null || true)
+  [[ -n "$_ADVISORY" && -x "$_ADVISORY" ]] && "$_ADVISORY" "$REPO_SLUG" || true
+fi
+
 if [[ "$SANCTIONED_PIPELINE" != "1" && "$IS_CORTEX_REPO" -eq 1 && "$LOCK_FOUND" -ne 1 ]]; then
   # No session-scoped lock for this repo — block with help message
   echo ""
