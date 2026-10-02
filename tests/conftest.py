@@ -29,3 +29,29 @@ def _hermetic_precommit_db(tmp_path_factory):
     scratch = tmp_path_factory.mktemp("precommit-scratch")
     os.environ["PRE_COMMIT_SCORE_DB"] = str(scratch / "loop-governance.db")
     yield
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _no_real_notifications(tmp_path_factory):
+    """A test run must NEVER be able to message the human.
+
+    `lib/telegram_notify` resolves its token from TELEGRAM_NOTIFY_ENV_FILE and
+    sends to TELEGRAM_HOME_CHANNEL, and nothing in the suite pointed either away
+    from production — so any test driving a notify path sent a REAL message.
+    Observed (Luke, 2026-10-02): tests/test_task_db_unit.py's
+    `test_shell_payload_stored_as_literal` calls cmd_add("learn $(whoami) —
+    literal", …), which post-commits a task-event, so a full-suite run delivered
+    "[esther] task-event / learn $(whoami) — literal: ⏳ pending (<uuid>)" to
+    Telegram ~every time. The case only intends to prove the string is stored as
+    a LITERAL, never that it notifies.
+
+    Fail-safe: point the env file at a path that does not exist (no token →
+    notify() logs a skip and returns False) and clear the home channel. A test
+    that genuinely exercises the send path sets its own TELEGRAM_NOTIFY_ENV_FILE
+    via monkeypatch — test_telegram_notify_unit.py already does.
+    """
+    scratch = tmp_path_factory.mktemp("notify-off")
+    os.environ["TELEGRAM_NOTIFY_ENV_FILE"] = str(scratch / "absent.env")
+    os.environ["TELEGRAM_NOTIFY_STATE_DIR"] = str(scratch / "state")
+    os.environ.pop("TELEGRAM_HOME_CHANNEL", None)
+    yield
