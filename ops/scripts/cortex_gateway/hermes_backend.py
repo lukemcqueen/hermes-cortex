@@ -14,10 +14,14 @@ Contract (mirrors msg-gateway.py):
 """
 from __future__ import annotations
 
+import logging
+
 import gateway_envelope as env
 
 from . import transport as _bus
 from .backend import BackendAdapter
+
+log = logging.getLogger("cortex_gateway.backend")
 
 
 class HermesBackend(BackendAdapter):
@@ -53,10 +57,22 @@ class HermesBackend(BackendAdapter):
         signed = env.sign_payload(envelope, self.secret)
         ok = _bus.bus_send(self.bus_url, self.bus_headers,
                            f"inbox_{self.agent}", signed)
+        if not ok:
+            # A FAILED enqueue used to be swallowed (`_ = ok`) — the message vanished
+            # with no log, no error and an offset that still advanced, so a mis-routed
+            # agent name (e.g. the example config's placeholder "hermes", which has no
+            # queue) silently dropped every human message. Found by the cutover rehearsal
+            # 2026-10-02: /status worked (it never touches the bus) while a normal message
+            # went nowhere. Visibility is the minimum; the daemon's offset still advances,
+            # so this is logged as a WARNING rather than pretended to be handled.
+            log.warning(
+                "dispatch FAILED for agent %s: could not enqueue to inbox_%s "
+                "(bus=%s). The inbound message was NOT delivered — check that the "
+                "agent name matches a real queue (e.g. 'esther' → inbox_esther).",
+                self.agent, self.agent, self.bus_url)
         # Async: never a synchronous reply. A failed enqueue surfaces as None
         # too (the daemon's enqueue-then-ack treats None dispatch + False send
         # identically to a silent backend for offset purposes).
-        _ = ok
         return None
 
     def poll_replies(self, max_n: int = 5) -> list:
