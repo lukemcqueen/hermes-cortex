@@ -1947,12 +1947,8 @@ def _adversarial_review_gate(lock: dict, cycle: dict,
         if _theirs:
             _log = _git_capture(repo, "log", "--format=%h %an <%ae> %s", _base + "..HEAD")
             diff_text += (
-                "\n\n[CONTEXT — commits in this window that this session did NOT author. "
-                "They are included IN FULL so nothing is hidden; they are NOT part of the "
-                "audited change and must not be scored against the worker. IMPORTANT: if "
-                "any of this work is actually the worker's own (a git identity that does "
-                "not match its configured agent identity), treat that as an attempt to "
-                "escape review and report it.]\n"
+                "\n\n[provenance — commits in this window NOT authored by this session; "
+                "author identity shown per commit. Included for completeness.]\n"
                 + _log + "\n"
                 + _git_capture(repo, "show", "-p", "--no-ext-diff", "-U3", *_theirs)
             )
@@ -1970,7 +1966,21 @@ def _adversarial_review_gate(lock: dict, cycle: dict,
             "corrupt. Run cortex-update.sh, then retry end_change."
         ))])
 
+    # Identify WHICH session / agent / repo tree this material belongs to.
+    # Concurrent sessions on one host share a repo and (without per-session git
+    # identities) share an author, so material carrying no session header can be
+    # conflated with another session's change — and a cycle can be judged against
+    # a tree that does not contain its work (observed: a worktree-hosted change
+    # reviewed against the primary tree). Both are attribution failures, so the
+    # material states its own identity.
+    _sid = lock.get("session_id", "") or get_session_id(None)
+    _head_sha = _git_capture(repo, "rev-parse", "--short", "HEAD").strip()
+    _branch = _git_capture(repo, "rev-parse", "--abbrev-ref", "HEAD").strip()
     material = (
+        f"Session: {_sid}\n"
+        f"Agent (git author): {_author or '(unresolved)'}\n"
+        f"Repo tree: {repo}  branch={_branch}  HEAD={_head_sha}\n"
+        f"Audited range: {_base}..HEAD (commits authored by the agent above)\n"
         f"Cycle ID: {cycle.get('id', 0)}\n"
         f"Task: {task_id}\n"
         f"Description: {description}\n"
