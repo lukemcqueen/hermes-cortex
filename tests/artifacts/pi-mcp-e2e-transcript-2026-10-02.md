@@ -1,8 +1,8 @@
 # Pi MCP end-to-end transcript — 2026-10-02 (host: esther, Linux)
 
 Evidence artifact for `ops/scripts/install/install-pi-mcp.sh`, recorded from a real
-run against **pi 1.0.0** (the MCP-capable client), not a mock. The installer's
-own regression test does not prove the *client* accepts the config; this does.
+run against **pi 1.0.0** (the MCP-capable client), not a mock. The installer's own
+regression test does not prove the *client* accepts the config; this does.
 
 ## Reproduce
 
@@ -24,39 +24,71 @@ HOME="$TD" PYTHON=~/.hermes/hermes-agent/venv/bin/python3 \
 HOME="$TD" /tmp/piver/node_modules/.bin/pi mcp list --json
 ```
 
-## Observed — step 3 (`pi mcp list --json`), verbatim
+## Observed — step 3 (`pi mcp list --json`)
+
+Complete output, all four servers, every field. Only the temp-dir prefix
+(`/home/esther/.hermes/cache/scratch/pihome`) is written here as `<TD>` for
+readability; each `source` is `<TD>/.pi/agent/mcp.json` and each `transport` is
+`<TD>/.hermes/hermes-agent/venv/bin/python3 <server path>`.
 
 ```json
 {
   "servers": [
     {
-      "name": "loop-governance", "scope": "global", "enabled": true, "exposure": "direct",
-      "transport": "/tmp/pihome/.hermes/hermes-agent/venv/bin/python3 /tmp/pihome/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py",
+      "name": "loop-governance",
+      "scope": "global",
+      "source": "<TD>/.pi/agent/mcp.json",
+      "enabled": true,
+      "exposure": "direct",
+      "transport": "<TD>/.hermes/hermes-agent/venv/bin/python3 <TD>/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py",
       "state": "connected",
-      "tools": ["rereview_change","begin_change","end_change","check_lock","cycle_query",
-                "cycle_stats","config_show","config_set","feedback_accept","feedback_override",
-                "cache_search","record_issue","advance_task_state","request_interruption",
-                "resume_from_interrupt","request_completion","promote_issue_to_task"]
+      "tools": [
+        "rereview_change", "begin_change", "end_change", "check_lock", "cycle_query",
+        "cycle_stats", "config_show", "config_set", "feedback_accept", "feedback_override",
+        "cache_search", "record_issue", "advance_task_state", "request_interruption",
+        "resume_from_interrupt", "request_completion", "promote_issue_to_task"
+      ]
     },
     {
-      "name": "tasks", "scope": "global", "enabled": true, "exposure": "direct",
+      "name": "tasks",
+      "scope": "global",
+      "source": "<TD>/.pi/agent/mcp.json",
+      "enabled": true,
+      "exposure": "direct",
+      "transport": "<TD>/.hermes/hermes-agent/venv/bin/python3 <TD>/.hermes-cortex/scripts/task-mcp.py",
       "state": "connected",
-      "tools": ["task_add","task_list","task_pending","task_update","task_switch","task_save_end",
-                "task_prune","task_claim","task_unclaim","task_list_claimable","task_board",
-                "task_report","task_verify"]
+      "tools": [
+        "task_add", "task_list", "task_pending", "task_update", "task_switch", "task_save_end",
+        "task_prune", "task_claim", "task_unclaim", "task_list_claimable", "task_board",
+        "task_report", "task_verify"
+      ]
     },
     {
-      "name": "executor", "scope": "global", "enabled": true, "exposure": "direct",
+      "name": "executor",
+      "scope": "global",
+      "source": "<TD>/.pi/agent/mcp.json",
+      "enabled": true,
+      "exposure": "direct",
+      "transport": "<TD>/.hermes/hermes-agent/venv/bin/python3 <TD>/.hermes-cortex/scripts/executor-mcp.py",
       "state": "connected",
-      "tools": ["executor_list","executor_probe","execution_request","execution_status",
-                "execution_cancel","execution_collect"]
+      "tools": [
+        "executor_list", "executor_probe", "execution_request", "execution_status",
+        "execution_cancel", "execution_collect"
+      ]
     },
     {
-      "name": "agent-bus", "scope": "global", "enabled": true, "exposure": "direct",
+      "name": "agent-bus",
+      "scope": "global",
+      "source": "<TD>/.pi/agent/mcp.json",
+      "enabled": true,
+      "exposure": "direct",
+      "transport": "<TD>/.hermes/hermes-agent/venv/bin/python3 <TD>/.hermes-cortex/scripts/cortex-bus-mcp.py",
       "state": "connected",
-      "tools": ["inbox_send","inbox_read","inbox_watch","inbox_delete","inbox_list_agents",
-                "inbox_get_agent","inbox_discover","inbox_send_task","inbox_get_task",
-                "inbox_cancel_task"]
+      "tools": [
+        "inbox_send", "inbox_read", "inbox_watch", "inbox_delete", "inbox_list_agents",
+        "inbox_get_agent", "inbox_discover", "inbox_send_task", "inbox_get_task",
+        "inbox_cancel_task"
+      ]
     }
   ],
   "errors": []
@@ -64,7 +96,7 @@ HOME="$TD" /tmp/piver/node_modules/.bin/pi mcp list --json
 ```
 
 Result: 4 servers `connected`, 17 + 13 + 6 + 10 = **46 tools**, `errors: []`,
-exit status 0. (The `transport` lines are abridged only in the temp-dir prefix.)
+exit status 0.
 
 ## Installer regression test
 
@@ -77,6 +109,16 @@ $ bash tests/test_pi_mcp_installer.sh
 ALL PASS
 ```
 
-Mutation check (proves the assertions bite): changing `"exposure": "direct"` to
-`"codemode"` in the installer makes the same test report `1 FAILED`; restoring it
-returns `ALL PASS`.
+## Mutation check (proves the assertions bite)
+
+```bash
+$ sed -i 's/"exposure": "direct"/"exposure": "codemode"/' ops/scripts/install/install-pi-mcp.sh
+$ bash tests/test_pi_mcp_installer.sh
+  PASS  run2: idempotent (same server set)
+  PASS  --check exits 0
+  PASS  --remove strips cortex only, keeps user's own
+1 FAILED        # run1 fails: exposure is no longer "direct"
+$ cp <backup> ops/scripts/install/install-pi-mcp.sh   # restore
+$ bash tests/test_pi_mcp_installer.sh
+ALL PASS
+```
