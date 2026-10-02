@@ -3,71 +3,81 @@
 **Question (Luke, 2026-10-02):** can Telegram move from `hermes-gateway` to
 `cortex-gateway` without losing functionality?
 
-**Verdict: NOT full functional parity — and that was never claimed.** The design doc's
-CR1 parity claim is against **`ops/scripts/msg-gateway.py`** (HC's own precursor), not
-against Hermes's platform adapter. The two are different bars:
+**Directive (Luke, 2026-10-02): "build feature parity, and once we are confident, then
+cut over."** So this file is a *progress bar*, not a judgement: parity is built in
+slices, each slice is executed by the committed test, and the cutover happens only when
+the gap register below is empty.
+
+**Verdict: TRANSPORT SLICE AT PARITY (slice 1, shipped) — DAEMON SLICE STILL OPEN.**
+The design doc's original CR1 parity claim was against **`ops/scripts/msg-gateway.py`**
+(HC's own precursor), never against Hermes's platform adapter:
 
 | | incumbent | target |
 |---|---|---|
-| code | `hermes-agent/plugins/platforms/telegram/adapter.py` (~1400 lines) | `ops/scripts/cortex_gateway/transport.py` + `daemon.py` (~400 lines) |
+| code | `hermes-agent/plugins/platforms/telegram/adapter.py` (~1400 lines) | `ops/scripts/cortex_gateway/transport.py` + `daemon.py` (~700 lines after slice 1) |
 | shape | full platform adapter inside the agent process | transport + dispatch seam, agent out-of-process |
-
-`docs/design/cortex-gateway.md` states the target's own rule: "no re-implemented Hermes
-agent loop", "nothing else". So the gap is intentional in shape — what matters is naming
-exactly what a cutover drops, and deciding each one deliberately.
 
 ## Matrix
 
-Evidence column: `T` = asserted by the committed test below (executed), `C` = code path
-cited, `-` = absent.
+Evidence: `T` = asserted by the committed test (executed), `C` = code path cited.
 
-| Capability | incumbent | target | Evidence | Cutover verdict |
-|---|---|---|---|---|
-| Plain text inbound → agent | ✅ | ✅ | T | equivalent |
-| Sender allowlist | ✅ env + callback auth + pairing | ✅ `TELEGRAM_ALLOWED_USERS`, fail-closed | T, C(`daemon._turn`) | equivalent (target has NO pairing flow: unknown senders are refused, not paired) |
-| Text outbound | ✅ | ✅ | T | equivalent |
-| Reply/quote | ✅ | ✅ if envelope carries `reply_to_msg_id` | C(`transport.send`) | equivalent for agent-initiated replies |
-| **Media (photo/document/voice) inbound** | ✅ | ❌ `media: []` always; a captioned photo is dropped ENTIRELY (`parse` reads only `text`, never `caption`) | T | **GAP — dropped silently** |
-| **Media outbound** | ✅ | ❌ text-only | T | **GAP — agents cannot send images/files** |
-| **Long message chunking** | ✅ splits | ❌ `body[:4000]` truncation | T | **GAP — silent data loss on long replies** |
-| **Rich formatting (markdown/HTML, code blocks)** | ✅ rich rendering, desktop crash/CJK workarounds | ❌ plain text | T | **GAP** |
-| **Slash commands (/stop, /status, /model)** | ✅ gateway-level dispatch | ❌ text becomes the prompt body | T | **GAP — no way to interrupt a runaway turn from Telegram** |
-| **Busy/interrupt (queue while agent runs)** | ✅ two-level guard | ❌ single dispatch, no interrupt | C | **GAP** |
-| **Polling recovery (stall detect, conflict, reconnect)** | ✅ `_PollingStallError`, `_wait_for_reconnection` | ❌ raises `RuntimeError` on `!ok` | C | **GAP — one bad poll can kill the loop** |
-| **Retry/backoff + 429 handling** | ✅ error classification | ❌ no retry | C | **GAP** |
-| Forum topics / DM topics | ✅ thread kwargs, reply anchors, binding prune | ⚠️ passes `message_thread_id` only | C | partial |
-| Typing indicator / drafts / streaming edits | ✅ | ❌ | C | GAP (cosmetic) |
-| Reactions, inline callbacks, edits | ✅ | ❌ (non-`message` updates → `None`) | T | GAP |
-| Multi-platform (Discord/Slack/… 20+) | ✅ | ❌ Telegram only (anti-bloat by design) | C | accepted by design |
-| Agent out-of-process (survives gateway restart) | ❌ in-process | ✅ | C | **target wins** |
-| Swappable agent backend (pi/steadfaste) | ❌ | ✅ seam; pi = CR5 pending | C | **target wins** |
-| HMAC-signed envelopes between gateway and agent | ❌ in-process | ✅ `GATEWAY_SECRET`, fail-closed | T(`test_cortex_gateway_key_guard`) | **target wins** |
+### Closed by slice 1 (transport, shipped)
 
-## What this means for the cutover
+| Capability | incumbent | target | Evidence |
+|---|---|---|---|
+| Media inbound (photo/document/voice/video) | ✅ | ✅ `media[]` with `kind`/`file_id`/`size`, caption preserved | T |
+| Caption-only message | ✅ | ✅ `text or caption` (was: dropped entirely) | T |
+| Reply/quote inbound | ✅ | ✅ `reply_to_msg_id` from `reply_to_message` | T |
+| Edited messages | ✅ | ✅ re-dispatched, `tg_kind="edited"` | T |
+| Reactions | ✅ | ✅ forwarded as `[reaction: …]`, `tg_kind="reaction"` | T |
+| Inline callbacks (data) | ✅ | ✅ forwarded as `[callback: …]`, `tg_kind="callback"` | T |
+| Long message outbound | ✅ splits | ✅ `chunk_body()` — provably loss-free (`''.join(chunks) == body`) | T |
+| Media outbound | ✅ | ✅ `sendPhoto`/`sendDocument` from `envelope.media` | T |
+| Formatting | ✅ rich | ✅ `parse_mode` (envelope → `TELEGRAM_PARSE_MODE`), invalid mode ignored, rejected formatting retried as plain text | T |
+| Retry/backoff + 429 | ✅ | ✅ `_api` retries transient failures (4 attempts, exponential, honours `retry_after`) | T, C |
+| Polling conflict | ✅ stall/reconnect | ⚠️ classified as `PollingConflict` | T — **handling belongs to the daemon slice** |
+| API base missing | env-required | ✅ **fails closed** (was: empty base → invalid URL on every call) | T |
 
-The target is better where it was designed to be (out-of-process, swappable backend,
-signed envelopes) and thinner in platform features that Hermes's adapter accumulated over
-a long time. Three of the gaps are not cosmetic:
+### Open — daemon slice (the gap register)
 
-1. **Silent truncation at 4000 chars** — a long agent reply loses its tail with no error.
-2. **No `/stop`-equivalent** — with the agent out-of-process there is currently no
-   in-band way to interrupt a turn from Telegram.
-3. **No polling recovery/backoff** — the incumbent treats a polling conflict or a network
-   blip as a recoverable state; the target raises.
+These are asserted as *today's* behavior in the test, so implementing any of them FAILS
+the test and forces this matrix to be updated:
 
-Recommendation: treat "adapter feature parity" as its own slice (call it CR5a) before the
-Telegram cutover, OR cut over accepting the three named losses above. The pi backend
-(CR5) is orthogonal — it changes *who answers*, not what the transport can carry.
+| Capability | incumbent | target | Why it matters |
+|---|---|---|---|
+| **Slash commands (`/stop`, `/status`, `/model`)** | ✅ gateway-level dispatch | ❌ text becomes the prompt body | **material** — no in-band way to interrupt a runaway turn from Telegram |
+| **Busy/interrupt while a turn runs** | ✅ two-level guard | ❌ single dispatch, no queue, no interrupt | material for long jobs |
+| **Inline keyboards (button approvals)** | ✅ | ❌ callbacks forwarded, but nothing renders buttons | the approval flow is unreachable from Telegram |
+| Typing indicator / drafts / streaming edits | ✅ | ❌ | cosmetic, but it is UX parity |
+| Forum/DM topic anchors + topic bindings | ✅ thread kwargs, reply anchors, prune | ⚠️ raw `message_thread_id` passes through | DM topics behave differently |
+| DM pairing flow | ✅ pairing code | ❌ unknown senders refused (fail-closed) | behaviour difference, not a security loss |
+| Multi-platform (Discord/Slack/… 20+) | ✅ | ❌ Telegram only | accepted by design (anti-bloat) |
+| Polling stall detection / reconnect loop | ✅ | ⚠️ error classified, daemon must act | **material** |
+
+### Where the target wins (unchanged)
+
+Agent **out-of-process** (survives a gateway restart, unlike the in-process loop);
+**swappable agent backend** (pi = CR5, orthogonal — it changes *who answers*, not what the
+transport can carry); **HMAC-signed envelopes** with a fail-closed secret.
+
+## Cutover gate
+
+Confidence is defined, not felt. Cut over when **all four** hold:
+
+1. The gap register is empty — no `DAEMON SLICE` entries left in the parity test.
+2. One live end-to-end turn through the cortex gateway on a **second** bot token (never
+   the live bot: one poller per bot, or `getUpdates` conflicts and the live channel drops).
+3. The three material risks are covered by a test each (interrupt, polling recovery,
+   chunking ✓ already covered).
+4. Rollback is a single documented step (restore the hermes-gateway unit).
 
 ## Evidence
 
-- Committed capability test: `tests/test_cortex_gateway_parity_matrix.py` (golden Telegram
-  updates → the target's actual envelope/`send` behavior; each GAP above is asserted as
-  today's behavior so an improvement FAILS the test and forces this matrix to be updated).
-- Fixtures: `tests/fixtures/telegram-golden-updates.json`.
-- Existing suite (executed): `tests/test_cortex_gateway_*.py`,
-  `test_telegram_bridge*.py`, `test_msg_gateway.py`, `test_gateway_envelope.py`,
-  `test_telegram_notify_unit.py` — **106 passed**.
+- Capability test (executed): `tests/test_cortex_gateway_parity_matrix.py` — golden updates
+  → the target's real `parse()`/`send()`, gap register printed each run.
+- Fixtures: `tests/fixtures/telegram-golden-updates.json` (synthetic ids/dates — real chat
+  ids are personal identifiers and 10-digit unix timestamps read as phone numbers).
+- Gateway suites (executed): **111 passed** (106 pre-existing + 5 new).
 - Incumbent: `hermes-agent/plugins/platforms/telegram/adapter.py`.
 - Target: `hermes-cortex/ops/scripts/cortex_gateway/{transport,daemon}.py`;
   design `docs/design/cortex-gateway.md` (CR1–CR4 ✅, CR5 pi pending).

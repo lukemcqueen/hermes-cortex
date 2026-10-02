@@ -69,6 +69,15 @@ def _sample_update():
 
 
 def test_telegram_parse_parity_with_msg_gateway():
+    """msg-gateway parity for every field IT produced; the target may ADD fields.
+
+    2026-10-02 (Luke: "build feature parity, and once we are confident, then cut over"):
+    the parity TARGET for parse/send became the incumbent Hermes adapter — which carries
+    media, captions, reply linkage, edits, reactions and callbacks that msg-gateway.py
+    never had. Those arrive as ADDED fields (`tg_kind`, populated `media`/`reply_to_msg_id`),
+    so the legacy parity assertion is now "every legacy field is still produced with the
+    same value", not "the key sets are identical".
+    """
     from cortex_gateway.transport import TelegramAdapter
     new = TelegramAdapter(token="t", initial_offset=0)
     raw = _sample_update()
@@ -76,14 +85,15 @@ def test_telegram_parse_parity_with_msg_gateway():
     got = new.parse(raw)
     legacy = GW.TelegramAdapter(token="t", initial_offset=0).parse(raw)
 
-    # Identical shape and values except the generated msg_id (uuid).
-    assert set(got) == set(legacy)
+    missing = set(legacy) - set(got)
+    assert not missing, f"the extraction dropped legacy field(s): {sorted(missing)}"
     for k in legacy:
         if k == "msg_id":
             import uuid as _uuid
             _uuid.UUID(str(got[k]))  # must be a valid uuid, not shared
         else:
-            assert got[k] == legacy[k], f"field {k} diverged"
+            assert got[k] == legacy[k], f"field {k} diverged from msg-gateway"
+    assert got.get("tg_kind") == "message"        # the added discriminator
 
     # And the produced envelope validates against the contract.
     env.validate({**got, "to_agent": "x"})
@@ -99,25 +109,34 @@ def test_telegram_parse_none_cases_parity():
         assert legacy.parse(raw) is None
 
 
-# ── CR1.4 send() uses chat_id, truncates, and threads reply_to ──────────────
+# ── CR1.4 send() uses chat_id, CHUNKS long bodies, and threads reply_to ─────
 def test_telegram_send_contract(monkeypatch):
+    """Chunking replaced truncation (2026-10-02, parity with the incumbent).
+
+    The extracted transport used to send `body[:4000]` — silently dropping the tail of
+    a long reply, which the parity audit named a material cutover risk. The incumbent
+    chunks, so now the target does too: every call fits Telegram's limit, the pieces
+    reconstruct the original exactly, and reply_to rides the FIRST chunk only.
+    """
     from cortex_gateway.transport import TelegramAdapter
     a = TelegramAdapter(token="t")
-    calls = {}
+    calls = []
 
     def fake_api(method, params):
-        calls["method"] = method
-        calls["params"] = params
+        calls.append({"method": method, "params": dict(params)})
         return {"ok": True}
 
     monkeypatch.setattr(a, "_api", fake_api)
-    ok = a.send({"channel_user_id": 9, "body": "x" * 5000,
-                 "reply_to_msg_id": 5})
+    body = "y" * 5000
+    ok = a.send({"channel_user_id": 9, "body": body, "reply_to_msg_id": 5})
     assert ok is True
-    assert calls["method"] == "sendMessage"
-    assert calls["params"]["chat_id"] == 9
-    assert len(calls["params"]["text"]) == 4000
-    assert calls["params"]["reply_to_message_id"] == 5
+    assert all(c["method"] == "sendMessage" for c in calls)
+    assert all(c["params"]["chat_id"] == 9 for c in calls)
+    assert all(len(c["params"]["text"]) <= 4000 for c in calls)
+    assert "".join(c["params"]["text"] for c in calls) == body, "no characters may be lost"
+    assert len(calls) > 1, "a 5000-char body must be split"
+    assert calls[0]["params"]["reply_to_message_id"] == 5
+    assert all("reply_to_message_id" not in c["params"] for c in calls[1:])
 
 
 def test_telegram_init_rejects_bad_token_and_offset():

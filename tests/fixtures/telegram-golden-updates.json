@@ -1,58 +1,68 @@
 {
-  "_comment": "Golden Telegram updates for the cortex-gateway parity matrix (docs/design/cortex-gateway-parity.md). Ids and dates are SYNTHETIC on purpose (real chat/user ids are personal identifiers, and real unix timestamps read as phone numbers). 'expect': envelope = the target parses it, null = ignored. 'gap' names behavior the INCUMBENT has and the target does not; the test asserts today's behavior so implementing one FAILS the test and forces the matrix to be updated.",
+  "_comment": "Golden Telegram updates for the cortex-gateway parity matrix (docs/design/cortex-gateway-parity.md). Ids and dates are SYNTHETIC (real chat ids are personal identifiers; real unix timestamps read as phone numbers). 'expect' = envelope|null; 'gap' names behavior STILL missing after parity slice 1, asserted as today's behavior so implementing it FAILS this test and forces the matrix to be updated.",
   "cases": [
     {
       "name": "plain_text_private",
       "update": {"update_id": 1, "message": {"message_id": 11, "date": 170001, "chat": {"id": 100001, "type": "private"}, "from": {"id": 100001}, "text": "hello cortex"}},
-      "expect": "envelope", "body": "hello cortex", "thread": null, "gap": null
+      "expect": "envelope", "body": "hello cortex", "thread": null, "media": 0,
+      "reply_to": null, "tg_kind": "message", "gap": null
     },
     {
       "name": "forum_topic_text",
       "update": {"update_id": 2, "message": {"message_id": 12, "date": 170002, "message_thread_id": 42, "chat": {"id": -100002, "type": "supergroup", "is_forum": true}, "text": "in a topic"}},
-      "expect": "envelope", "body": "in a topic", "thread": 42,
-      "gap": "topic semantics beyond the raw thread id (reply anchors, DM-topic bindings) are the incumbent's"
-    },
-    {
-      "name": "slash_command",
-      "update": {"update_id": 3, "message": {"message_id": 13, "date": 170003, "chat": {"id": 100001, "type": "private"}, "text": "/stop"}},
-      "expect": "envelope", "body": "/stop", "thread": null,
-      "gap": "no slash-command dispatch: '/stop' becomes the prompt body — there is no in-band way to interrupt a turn"
-    },
-    {
-      "name": "photo_no_caption",
-      "update": {"update_id": 4, "message": {"message_id": 14, "date": 170004, "chat": {"id": 100001, "type": "private"}, "photo": [{"file_id": "abc", "file_size": 1234}]}},
-      "expect": null,
-      "gap": "inbound media (photo/document/voice) is dropped"
-    },
-    {
-      "name": "photo_with_caption",
-      "update": {"update_id": 5, "message": {"message_id": 15, "date": 170005, "chat": {"id": 100001, "type": "private"}, "caption": "look at this", "photo": [{"file_id": "abc", "file_size": 1234}]}},
-      "expect": null,
-      "gap": "captioned media is dropped ENTIRELY — parse() reads only `text`, never `caption` (measured; my first write-up wrongly claimed the caption survives)"
+      "expect": "envelope", "body": "in a topic", "thread": 42, "media": 0,
+      "reply_to": null, "tg_kind": "message",
+      "gap": "DM-topic reply anchors / topic bindings remain the incumbent's (the raw thread id passes through)"
     },
     {
       "name": "reply_to_message",
       "update": {"update_id": 6, "message": {"message_id": 16, "date": 170006, "chat": {"id": 100001, "type": "private"}, "text": "yes", "reply_to_message": {"message_id": 15, "date": 170005, "chat": {"id": 100001}, "text": "look at this"}}},
-      "expect": "envelope", "body": "yes", "thread": null,
-      "gap": "inbound reply linkage is not parsed (reply_to_msg_id stays null)"
+      "expect": "envelope", "body": "yes", "thread": null, "media": 0,
+      "reply_to": 15, "tg_kind": "message", "gap": null
+    },
+    {
+      "name": "photo_no_caption",
+      "update": {"update_id": 4, "message": {"message_id": 14, "date": 170004, "chat": {"id": 100001, "type": "private"}, "photo": [{"file_id": "abc", "file_size": 1234}]}},
+      "expect": "envelope", "body": "[photo attachment]", "thread": null, "media": 1,
+      "reply_to": null, "tg_kind": "message", "gap": null
+    },
+    {
+      "name": "photo_with_caption",
+      "update": {"update_id": 5, "message": {"message_id": 15, "date": 170005, "chat": {"id": 100001, "type": "private"}, "caption": "look at this", "photo": [{"file_id": "abc", "file_size": 1234}]}},
+      "expect": "envelope", "body": "look at this", "thread": null, "media": 1,
+      "reply_to": null, "tg_kind": "message", "gap": null
+    },
+    {
+      "name": "document_attachment",
+      "update": {"update_id": 11, "message": {"message_id": 19, "date": 170010, "chat": {"id": 100001, "type": "private"}, "caption": "the report", "document": {"file_id": "doc9", "file_name": "report.pdf", "file_size": 999}}},
+      "expect": "envelope", "body": "the report", "thread": null, "media": 1,
+      "reply_to": null, "tg_kind": "message", "gap": null
     },
     {
       "name": "edited_message",
       "update": {"update_id": 7, "edited_message": {"message_id": 11, "date": 170007, "chat": {"id": 100001, "type": "private"}, "text": "hello cortex (fixed)"}},
-      "expect": null,
-      "gap": "edited messages are ignored (the incumbent re-dispatches them)"
+      "expect": "envelope", "body": "hello cortex (fixed)", "thread": null, "media": 0,
+      "reply_to": null, "tg_kind": "edited", "gap": null
     },
     {
       "name": "message_reaction",
       "update": {"update_id": 8, "message_reaction": {"chat": {"id": 100001}, "message_id": 11, "user": {"id": 100001}, "new_reaction": [{"type": "emoji", "emoji": "thumbsup"}]}},
-      "expect": null,
-      "gap": "reactions are ignored (the incumbent authorizes + forwards them)"
+      "expect": "envelope", "body": "[reaction: thumbsup]", "thread": null, "media": 0,
+      "reply_to": 11, "tg_kind": "reaction", "gap": null
     },
     {
       "name": "callback_query",
       "update": {"update_id": 9, "callback_query": {"id": "cb1", "from": {"id": 100001}, "data": "approve", "message": {"message_id": 17, "chat": {"id": 100001}, "date": 170008}}},
-      "expect": null,
-      "gap": "inline-button callbacks are ignored (no approval flow from Telegram)"
+      "expect": "envelope", "body": "[callback: approve]", "thread": null, "media": 0,
+      "reply_to": 17, "tg_kind": "callback",
+      "gap": "no inline-keyboard rendering yet, so the incumbent's button-based approval flow is not reachable from Telegram"
+    },
+    {
+      "name": "slash_command",
+      "update": {"update_id": 3, "message": {"message_id": 13, "date": 170003, "chat": {"id": 100001, "type": "private"}, "text": "/stop"}},
+      "expect": "envelope", "body": "/stop", "thread": null, "media": 0,
+      "reply_to": null, "tg_kind": "message",
+      "gap": "DAEMON SLICE: no slash-command dispatch — '/stop' still becomes the prompt body, so there is no in-band way to interrupt a turn"
     },
     {
       "name": "empty_text",
