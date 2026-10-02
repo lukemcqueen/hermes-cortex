@@ -263,6 +263,63 @@ def test_review_range_scoped_to_authored_commits():
                "ours.txt" in cx["numstat"], f"numstat={cx['numstat']!r}")
 
 
+def test_foreign_always_review_commit_still_triggers():
+    """(F) Scoping must never LESSEN review.
+
+    A commit in the window that this session did NOT author, but which touches an
+    always-review (enforcement/governance) path, must still force adversarial
+    review. Without this guard a worker could escape the gate by committing
+    risky enforcement edits under another git identity.
+
+    CONTROL: that file is absent from the authored numstat, proving the trigger
+    comes from the guard and not from the ordinary diff.
+    """
+    def _git(repo, *args, author=None, email=None):
+        env = dict(os.environ)
+        if author or email:
+            env.update(GIT_AUTHOR_NAME=author or "t", GIT_AUTHOR_EMAIL=email or "t@t",
+                       GIT_COMMITTER_NAME=author or "t", GIT_COMMITTER_EMAIL=email or "t@t")
+        return subprocess.run(["git", *args], cwd=repo, env=env,
+                              capture_output=True, text=True, check=True).stdout
+
+    with tempfile.TemporaryDirectory() as td:
+        repo = Path(td) / "repo"
+        repo.mkdir()
+        _git(repo, "init", "-q")
+        _git(repo, "config", "user.email", "esther-agent@hermes.local")
+        _git(repo, "config", "user.name", "esther-agent")
+
+        (repo / "README").write_text("x\n")
+        _git(repo, "add", "-A")
+        _git(repo, "commit", "-qm", "root")
+        base = _git(repo, "rev-parse", "HEAD").strip()
+
+        window_start = datetime.now(timezone.utc)
+        time.sleep(1.1)
+
+        # FOREIGN commit touching an ALWAYS_REVIEW path.
+        target = repo / "mcp-servers" / "loop-gov-mcp.py"
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text("# enforcement edit by someone else\n")
+        _git(repo, "add", "-A")
+        _git(repo, "commit", "-qm", "auto: pipeline enforcement edit",
+             author="pipeline-bot", email="bot@pipeline")
+
+        # OUR (trivial) commit.
+        (repo / "ours.txt").write_text("a\n")
+        _git(repo, "add", "-A")
+        _git(repo, "commit", "-qm", "ours")
+
+        cx = mcp._complexity(repo, window_start.isoformat())
+        _check("fail-safe CONTROL: the foreign enforcement file is NOT in the authored numstat",
+               "loop-gov-mcp.py" not in cx["numstat"],
+               f"numstat={cx['numstat']!r}")
+        _check("fail-safe: foreign commit on an always-review path STILL triggers review",
+               cx["always_review"] is True
+               and any("loop-gov-mcp.py" in p for p in cx["always_paths"]),
+               f"always_review={cx['always_review']} paths={cx['always_paths']}")
+
+
 def _reset_enf_state(state: Path, now: datetime):
     for p in state.glob(".governance-*.json"):
         p.unlink()
@@ -279,6 +336,8 @@ def main():
     test_lock_phase1_first_returns_without_purge_scan()
     print("E. review range scoped to authored commits")
     test_review_range_scoped_to_authored_commits()
+    print("F. scoping never lessens review")
+    test_foreign_always_review_commit_still_triggers()
     print()
     if _FAIL:
         print(f"{len(_FAIL)} FAILED: {', '.join(_FAIL)}")

@@ -1557,7 +1557,8 @@ def _complexity(repo: Path, started_at: str) -> dict:
     # work — and counting those misattributes complexity and re-reports changes
     # that are not part of this cycle (and may already be gone at HEAD).
     _author = _agent_author(repo)
-    if _authored_commits(repo, base, _author):
+    _authored = _authored_commits(repo, base, _author)
+    if _authored:
         numstat = _git_capture(repo, "log", "--numstat", "--format=",
                                "--author=" + _author, base + "..HEAD")
     else:
@@ -1567,6 +1568,19 @@ def _complexity(repo: Path, started_at: str) -> dict:
     numstat += _git_capture(repo, "diff", "--numstat")               # unstaged
 
     files, added, removed = _parse_numstat(numstat)
+
+    # FAIL-SAFE (never lessen review): a commit in the window that this session
+    # did NOT author but which touches an always-review (enforcement /
+    # governance) path still forces review. Without this, a worker could escape
+    # the gate by committing risky work under another git identity.
+    if _authored:
+        _mine = set(_authored)
+        _theirs = [s for s in _git_capture(repo, "log", "--format=%H", base + "..HEAD").split()
+                   if s and s not in _mine]
+        if _theirs:
+            _of, _, _ = _parse_numstat(
+                _git_capture(repo, "show", "--numstat", "--format=", *_theirs))
+            files.update(f for f in _of if any(ap in f for ap in ALWAYS_REVIEW_PATHS))
 
     # Untracked new files (not yet `git add`ed) still count — a worker cannot
     # dodge review by creating a big new file and leaving it untracked, then
@@ -1910,20 +1924,33 @@ def _adversarial_review_gate(lock: dict, cycle: dict,
         or "HEAD"
     )
     _author = _agent_author(repo)
-    if _authored_commits(repo, _base, _author):
-        # AUDIT only this session's own commits. The window also contains
-        # commits pulled in by a rebase (other agents' work, or an automated
-        # pipeline); reviewing those reports changes outside this cycle and
-        # quotes text that may already be gone at HEAD — the defect that
-        # blocked cycles 10337 (esther) and 2936 (moses).
+    _authored = _authored_commits(repo, _base, _author)
+    if _authored:
+        # AUDIT this session's own commits; show the rest of the window as
+        # labelled CONTEXT so nothing is hidden from the reviewer. The window
+        # also contains commits pulled in by a rebase (other agents' work, or an
+        # automated pipeline) — reviewing those as the worker's change reports
+        # work outside this cycle, which is what blocked cycles 10337 (esther)
+        # and 2936 (moses).
         diff_text = _git_capture(repo, "log", "-p", "--no-ext-diff", "-U3",
                                  "--author=" + _author, _base + "..HEAD")
-        _others = _git_capture(repo, "log", "--format=%h %an %s", _base + "..HEAD")
-        diff_text += (
-            "\n\n[context — commits in this window the session did NOT author; "
-            "NOT part of the audited change]\n" + _others
-        )
+        _mine = set(_authored)
+        _theirs = [s for s in _git_capture(repo, "log", "--format=%H", _base + "..HEAD").split()
+                   if s and s not in _mine]
+        if _theirs:
+            _log = _git_capture(repo, "log", "--format=%h %an <%ae> %s", _base + "..HEAD")
+            diff_text += (
+                "\n\n[CONTEXT — commits in this window that this session did NOT author. "
+                "They are included IN FULL so nothing is hidden; they are NOT part of the "
+                "audited change and must not be scored against the worker. IMPORTANT: if "
+                "any of this work is actually the worker's own (a git identity that does "
+                "not match its configured agent identity), treat that as an attempt to "
+                "escape review and report it.]\n"
+                + _log + "\n"
+                + _git_capture(repo, "show", "-p", "--no-ext-diff", "-U3", *_theirs)
+            )
     else:
+        # No positive identity / nothing authored: review the whole window.
         diff_text = _git_capture(repo, "diff", "--no-ext-diff", "-U3", _base + "..HEAD")
     # Bound the diff (head+tail) so a huge change still fits the reviewer.
     if len(diff_text) > DIFF_CHAR_BUDGET:
