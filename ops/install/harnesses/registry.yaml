@@ -120,7 +120,7 @@ harnesses:
           verify:
           - git config --get core.hooksPath prints ~/.hermes-cortex/hooks — so a commit made from a Pi session is gated.
           - python3 ~/.hermes-cortex/scripts/loop-gov.py --list lists begin_change and end_change.
-          - python3 ~/.hermes-cortex/scripts/loop-gov.py check_lock (read-only) reaches the governance store and reports the active lock, so the CLI path is live.
+          - python3 ~/.hermes-cortex/scripts/loop-gov.py check_lock returns a JSON status object (the CLI reaches the governance store). Note: its 'active' field is NOT the test the push gate uses — a lock FILE can exist (and permit a push) while check_lock reports inactive, so an inactive reading must not be taken as permission to push.
           - python3 ~/.hermes-cortex/scripts/loop-gov.py begin_change '{"task_id":"pi-smoke","description":"probe"}' returns a cycle id and end_change releases it — run this only when you hold no other lock.
         why: |
           Pi >= 0.99 gained an MCP client and reads user-scope servers from
