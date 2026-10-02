@@ -30,7 +30,10 @@ HOME_T="$TD/home"; mkdir -p "$HOME_T/.pi/agent" "$HOME_T/.hermes-cortex"
 PJ="$HOME_T/.pi/agent/mcp.json"
 
 # Per-host identity file — the installer must use this name, not a guess.
-printf 'AGENT_NAME=tituspi\n' > "$HOME_T/.hermes-cortex/agent.env"
+python3 - "$HOME_T/.hermes-cortex/agent.env" <<'PY'
+import pathlib, sys
+pathlib.Path(sys.argv[1]).write_text("AGENT_NAME=tituspi\n")
+PY
 
 # A pre-existing Pi config with user state + a user-owned server.
 cat > "$PJ" <<'EOF'

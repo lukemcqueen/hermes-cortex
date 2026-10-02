@@ -45,13 +45,26 @@ sed -n '1,60p' "$P"/dist/core/extensions/types.d.ts   # + grep the event interfa
 
 ## Cortex context (memory + session)
 
-Pi has **no MCP client** — do not try to wire it to an MCP server. It reaches the
-cortex context store through the shared CLI from an extension:
+**Pi >= 0.99 / 1.0 has an MCP client** (verified against 1.0.0): it reads
+`mcpServers` from `~/.pi/agent/mcp.json` (user scope) and `.pi/mcp.json` (trusted
+projects only), the same shape as Claude Code. Governance is therefore an MCP
+registration — never hand-write a lock:
+
+```bash
+bash ~/hermes-cortex/ops/scripts/install/install-pi-mcp.sh   # loop-governance, tasks, executor, agent-bus
+pi mcp list                                                 # expect 4 servers, state "connected"
+```
+
+The **memory/session** tools stay on the extension (a CLI shim), because the
+extension also owns the lifecycle triggers MCP cannot provide:
 
 ```bash
 cp ~/hermes-cortex/ops/install/harnesses/pi/extensions/cortex-context.ts extensions/
 pi -e extensions/cortex-context.ts --tools read,bash,edit,write,mem_context,session_restore,session_checkpoint,session_close
 ```
+
+An older Pi (<= 0.87, no MCP client) reaches the same governance through the
+`loop-gov` CLI instead.
 
 The extension registers `mem_*` / `session_*` tools AND wires the lifecycle:
 

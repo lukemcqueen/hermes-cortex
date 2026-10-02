@@ -50,12 +50,24 @@ This is the **S2c** slice already recorded in
 
 ## Why a shared tool surface (and why the access layer is per-harness)
 
-> **Correction (found by verifying the premise).** An earlier revision of this
-> doc claimed *"the harnesses already speak MCP — Pi, Claude Code, Codex."*
-> **That is false for Pi.** Pi has no MCP client: its extension surface is
-> `pi.on("turn_end" | "before_agent_start" | "session_before_compact", …)` plus
-> `pi.registerTool({…})`, in TypeScript. MCP was chosen on an unverified premise,
-> and the runbook now opens by warning against repeating it.
+> **Update (2026-10-02, verified).** The correction below was right when written:
+> Pi <= 0.87 had no MCP client. **Pi >= 0.99 / 1.0 does** — it reads `mcpServers`
+> from `~/.pi/agent/mcp.json` (user scope) and `.pi/mcp.json` (trusted projects
+> only), the same shape as Claude Code, and names tools `mcp__<server>__<tool>`.
+> Pi therefore takes the **MCP layer for the tool surface** *and* the extension,
+> which MCP cannot replace: the extension owns WHEN a checkpoint is written
+> (`turn_end`), because a killed session can never call a tool. Governance is
+> registered by `ops/scripts/install/install-pi-mcp.sh` (verified: `pi mcp list
+> --json` reports the 4 governance servers `connected`); the extension and the
+> curated skill set by `install-pi-integration.sh`.
+>
+> Original correction (retained for the record): an earlier revision of this doc
+> claimed *"the harnesses already speak MCP — Pi, Claude Code, Codex"*, which was
+> false for Pi at the time — its surface was `pi.on("turn_end" |
+> "before_agent_start" | "session_before_compact", …)` plus
+> `pi.registerTool({…})`, in TypeScript. MCP was chosen then on an unverified
+> premise. **The lesson stands: verify the harness's actual surface before
+> choosing a layer** — and re-verify it, because surfaces change.
 
 What survives the correction is the part that was actually load-bearing: **the
 tool surface must be shared, but the access layer is per-harness.**
