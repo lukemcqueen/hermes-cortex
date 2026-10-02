@@ -127,10 +127,37 @@ def _check_permission(agent: str, queue: str, action: str):
         allowed = (can_write if action == "write" else can_read) or []
         if _queue_allowed(queue, allowed):
             return
+        # PREFIX patterns (ADR-0005 §4, "verified gap"): an agent's own outbound
+        # queue is `out_<agent>`, and the gateway writes `inbox_<agent>`, so a
+        # grant of `out_*` / `inbox_*` should scope an agent to its family of
+        # queues without granting '*' (all queues). Only patterns an ADMIN
+        # explicitly granted are honoured — this widens what a grant MEANS, never
+        # who has one. Without it the reply leg is unusable: esther writing
+        # out_esther is a 403 ("does not have write access"), which is why no
+        # out_* queue exists in the fleet (found 2026-10-02).
+        if _prefix_allowed(queue, allowed):
+            return
         raise HTTPException(
             403,
             f"Agent '{agent}' does not have {action} access to queue '{queue}'"
         )
+
+
+def _prefix_allowed(queue: str, patterns: list) -> bool:
+    """True when a granted pattern like `out_*` / `inbox_*` covers `queue`.
+
+    Deliberately conservative: the pattern must end in '*' and match a PREFIX
+    (``out_*`` covers ``out_esther`` but not ``some_out_esther``), and a bare '*'
+    is NOT handled here (it is the documented all-queues wildcard, checked by
+    _queue_allowed so its meaning stays in one place).
+    """
+    for pat in patterns or []:
+        if not isinstance(pat, str) or not pat.endswith("*") or pat == "*":
+            continue
+        prefix = pat[:-1]
+        if prefix and queue.startswith(prefix):
+            return True
+    return False
 
 
 _MIRROR_QUEUE = "inbox_orchestrator"
