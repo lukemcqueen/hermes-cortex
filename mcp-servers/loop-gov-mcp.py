@@ -2043,8 +2043,9 @@ def _triage_findings(findings, material, client=None, primary_fn=None, config=No
                     type(e).__name__, e)
         return None
     if not isinstance(res, dict) or str(res.get("status")) != "ok":
-        log.warning("triage: judgement status=%s — reviewer severities stand",
-                    (res or {}).get("status"))
+        log.warning("triage: judgement status=%s (%s) — reviewer severities stand",
+                    (res or {}).get("status"),
+                    (res or {}).get("error") or "no error detail reported")
         return None
     ans = res.get("answers") or {}
     out = []

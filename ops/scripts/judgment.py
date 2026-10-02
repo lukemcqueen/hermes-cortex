@@ -273,11 +273,53 @@ def _validate_response(result, questions: dict) -> str | None:
     return None
 
 
+def _env_file_paths(env: dict) -> list:
+    """Env files to consult for a credential, cortex-first (Hermes last)."""
+    paths = []
+    explicit = (env.get("CORTEX_ENV_FILE") or "").strip()
+    if explicit:
+        paths.append(Path(explicit))
+    repo = (env.get("CORTEX_REPO") or "").strip()
+    paths.append((Path(repo) if repo else Path.home() / "hermes-cortex") / ".env")
+    paths.append(Path(env.get("CORTEX_DEPLOY_HOME") or (Path.home() / ".hermes-cortex")) / ".env")
+    paths.append(Path.home() / ".hermes" / ".env")     # legacy last resort
+    return paths
+
+
+def _env_file_secret(name: str, env: dict) -> str:
+    """Resolve a credential from the cortex env FILES when it is absent from the
+    process environment.
+
+    2026-10-02: the gate runs as a long-lived server spawned by the gateway, whose
+    process environment does not necessarily carry the judge credential — so every
+    in-gate triage call returned 'unavailable' while a direct probe with the env
+    sourced worked. The client is a cortex component like the gate, so it resolves
+    the credential the same way: process env first, then the cortex env, Hermes
+    last. Only the NAMED key is extracted, and files are re-read per call.
+    """
+    if not name:
+        return ""
+    for path in _env_file_paths(env):
+        try:
+            if not path.is_file():
+                continue
+            for line in path.read_text(errors="ignore").splitlines():
+                if line.startswith(f"{name}="):
+                    return line.split("=", 1)[1].strip().strip('"').strip("'")
+        except OSError:
+            continue
+    return ""
+
+
 def _invoke(provider_cfg: dict, body: dict, env: dict, fn=None) -> dict:
     """Call one provider. fn is the injectable transport (tests). Raises on failure."""
-    key = (env.get(provider_cfg.get("api_key_env", "")) or "").strip()
+    api_key_env = provider_cfg.get("api_key_env", "")
+    key = (env.get(api_key_env) or "").strip()
     if fn is None and not key:
-        raise RuntimeError(f"judgment: missing API key env {provider_cfg.get('api_key_env', '')}")
+        # Fall back to the cortex env files, NOT a different credential.
+        key = _env_file_secret(api_key_env, env)
+    if fn is None and not key:
+        raise RuntimeError(f"judgment: missing API key env {api_key_env}")
     payload = dict(body)
     payload["model"] = provider_cfg.get("model_id", "jev-latest")
     if fn is not None:
