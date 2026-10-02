@@ -2436,6 +2436,42 @@ def _rereview_change(args: dict) -> CallToolResult:
         "Call end_change('" + task_id + "') to release the lock."))])
 
 
+def _bound_diff(diff_text: str, budget: int = DIFF_CHAR_BUDGET) -> str:
+    """Bound the review material to `budget` chars, HEAD+TAIL, disclosing the cut.
+
+    Why this exists as its own function (2026-10-02): the bound was written as
+    head-only while its comment claimed head+tail, so a large implementation diff
+    was cut mid-line and an adversarial reviewer — correctly, on the material it
+    was given — reported the implementation and tests as missing. Cycles 10488
+    and 10482 were refused that way. A truncation is a limit of THIS GATE, not
+    absent evidence, so it must say so, name the files affected, and point at the
+    committed content. Tested by tests/test_review_material_bound.py.
+    """
+    if len(diff_text) <= budget:
+        return diff_text
+    total = len(diff_text)
+    head = budget * 2 // 3
+    tail = budget - head
+    dropped = diff_text[head:total - tail]
+    files = []
+    for line in dropped.splitlines():
+        if line.startswith("diff --git a/"):
+            f = line[len("diff --git a/"):].split(" ")[0]
+            if f not in files:
+                files.append(f)
+    notice = (
+        f"\n...[DIFF TRUNCATED BY THE GATE'S OWN {budget}-char BUDGET: "
+        f"{len(dropped)} of {total} chars omitted from the middle. This is a MATERIAL "
+        f"LIMIT, not absent evidence — the full content is committed and readable with "
+        f"read_file]"
+    )
+    if files:
+        notice += (f"\n...[files partly hidden in the omitted middle: "
+                   f"{', '.join(files[:15])}"
+                   + (f" (+{len(files) - 15} more)" if len(files) > 15 else "") + "]")
+    return diff_text[:head] + notice + "\n" + diff_text[total - tail:]
+
+
 def _adversarial_review_gate(lock: dict, cycle: dict,
                             force: bool = False) -> Optional[CallToolResult]:
     """The complexity-gated hard gate. Returns None (proceed) or a block result.
@@ -2502,9 +2538,10 @@ def _adversarial_review_gate(lock: dict, cycle: dict,
         # worker's claim, so it cannot be forged from the note.
         diff_text = _git_capture(repo, "diff", "--no-ext-diff", "-U3", _base + "..HEAD")
         diff_text += _provenance_block(repo, _base, "")
-    # Bound the diff (head+tail) so a huge change still fits the reviewer.
-    if len(diff_text) > DIFF_CHAR_BUDGET:
-        diff_text = diff_text[:DIFF_CHAR_BUDGET] + "\n...[diff truncated]...\n"
+    # Bound the diff so a huge change still fits the reviewer (head+tail, with the
+    # cut DISCLOSED — see _bound_diff; a silent mid-line cut made a reviewer report
+    # committed evidence as missing).
+    diff_text = _bound_diff(diff_text)
 
     template = _review_template_text(repo)
     if not template or REVIEW_MARKER not in template:

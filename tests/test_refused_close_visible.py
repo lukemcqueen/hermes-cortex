@@ -282,15 +282,35 @@ def test_tests_do_not_pollute_the_production_log() -> None:
     print(f"  PASS  control: handler bound to the real log; {len(seen)} record(s) emitted "
           f"when unsilenced (none written to the file)")
 
-    # DIRECTION 2 — the guarantee: silenced, the same run appends nothing.
+    # DIRECTION 2 — the guarantee: silenced, the same run injects NO fabricated cycle.
+    #
+    # Measured by CONTENT, not by byte size. A size-equality assertion is racy: another
+    # process (a cron, a deploy, another agent) may legitimately append to the audit trail
+    # during this window, and on 2026-10-02 that turned a concurrent write into a failure
+    # of THIS test — a false report about the thing it claims to measure. What matters is
+    # that no FABRICATED cycle (the ids/strings these tests use) reaches the log.
     before2 = log_path.stat().st_size
     _run_gate()
     after2 = log_path.stat().st_size
-    assert after2 == before2, (
-        f"the test appended {after2 - before2} bytes to the production governance log "
-        f"({log_path}) — silence the gate logger; the audit trail must only hold real cycles"
+    appended = b""
+    if after2 > before2:
+        with open(log_path, "rb") as fh:
+            fh.seek(before2)
+            appended = fh.read()
+    text = appended.decode(errors="ignore")
+    markers = ("cycle 999", "cycle 1 ", "cycle 1\n", "sess-test",
+               "refused-close-visible", "reviewer unreachable (test)", "test change")
+    hit = [m for m in markers if m in text]
+    assert not hit, (
+        f"this test injected fabricated cycle(s) into the production governance log "
+        f"({log_path}): {hit} found in the {after2 - before2} bytes appended — silence the "
+        f"gate logger; the audit trail must only hold real cycles"
     )
-    print(f"  PASS  silenced, the same run appended 0 bytes ({after2} bytes unchanged)")
+    if after2 > before2:
+        print(f"  PASS  silenced: 0 fabricated lines (another process appended "
+              f"{after2 - before2} bytes meanwhile, none of them test traffic)")
+    else:
+        print(f"  PASS  silenced, the same run appended 0 bytes ({after2} bytes unchanged)")
 
 
 if __name__ == "__main__":
