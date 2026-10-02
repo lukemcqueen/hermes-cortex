@@ -60,18 +60,21 @@ def _reset_mcp(home: Path):
 
 
 def test_db_schema_init_once():
-    """(_db) The write-lock 'commit' path runs once; later calls are reads.
+    """(_db) The write-lock 'commit' path runs once PER DATABASE; later calls are reads.
 
-    Proves the guard by asserting _SCHEMA_DONE flips and that a SECOND _db()
-    call returns a usable connection (a regression here would surface as the
-    second connection erroring or the DDL committing a second time — which is
-    exactly the per-call overhead the fix removes).
+    Proves the guard by asserting _SCHEMA_DONE records the database and that a
+    SECOND _db() call against the SAME database returns a usable connection (a
+    regression here would surface as the second connection erroring or the DDL
+    committing a second time — which is exactly the per-call overhead the fix
+    removes). The guard is keyed by database FILE, not by process: a process
+    that opens a second database must still get its schema there
+    (tests/test_mcp_schema_per_db.py covers that half).
     """
     with tempfile.TemporaryDirectory() as td:
         root = Path(td) / "mcp"
         root.mkdir(exist_ok=True)
         _reset_mcp(root)
-        mcp._SCHEMA_DONE = False  # fresh process-equivalent state
+        mcp._SCHEMA_DONE = set()  # fresh process-equivalent state
 
         c1 = mcp._db()
         tables1 = {r[0] for r in c1.execute("SELECT name FROM sqlite_master WHERE type='table'")}
@@ -90,7 +93,8 @@ def test_db_schema_init_once():
         c2.commit()
         c2.close()
 
-        _check("db: first call flips _SCHEMA_DONE", first_done is True)
+        _check("db: first call records the database as schema-initialized",
+               isinstance(first_done, set) and str(mcp.LOOP_DB) in first_done)
         _check("db: second call returns usable connection", n == 1)
 
 

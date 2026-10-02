@@ -210,8 +210,14 @@ def test_server_declares_both_families():
     mem = {n for n in names if n.startswith("mem_")}
     ses = {n for n in names if n.startswith("session_")}
     assert mem == {"mem_profile", "mem_search", "mem_context", "mem_conclude"}, mem
+    # The session seam is part of the shared surface now (memory/session seam):
+    # checkpoint/restore/list/note/close plus the loaded-skill and tool-event
+    # records the governance gates read. Pinned exactly — a tool that appears
+    # here without a handler is a routing hole, and one that vanishes silently
+    # breaks whichever gate asked for it.
     assert ses == {"session_checkpoint", "session_restore", "session_list",
-                   "session_search", "session_note", "session_close"}, ses
+                   "session_search", "session_note", "session_close",
+                   "session_loaded_skill", "session_tool_event"}, ses
 
 
 def test_every_declared_tool_has_a_handler():

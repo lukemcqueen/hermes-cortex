@@ -828,8 +828,26 @@ def _cosine_sim(a: list[float], b: list[float]) -> float:
 # lock because the MCP daemon is threaded: two sessions' first _db() could
 # otherwise interleave the flag-set and both run DDL (adversarial-gate flag,
 # lost-update race). The lock makes the DDL run-once atomic.
-_SCHEMA_DONE = False
+_SCHEMA_DONE: set = set()      # DB paths whose schema THIS process has created
 _SCHEMA_LOCK = threading.Lock()
+
+
+def _db_file(conn: sqlite3.Connection) -> str:
+    """The main database file a connection is attached to (':memory:' if none).
+
+    Read from the connection itself, not from LOOP_DB: the caller may have
+    repointed the module constant after the connection was opened, and the
+    question the guard answers is "does THIS database have its schema".
+    """
+    try:
+        rows = conn.execute("PRAGMA database_list").fetchall()
+    except sqlite3.Error:
+        return ":unknown:"
+    for row in rows:
+        if row[1] == "main":
+            return row[2] or ":memory:"
+    return ":memory:"
+
 
 def _decision_class(decision) -> str:
     """Bucket a decision label into its canonical class.
@@ -851,7 +869,7 @@ def _decision_class(decision) -> str:
 
 
 def _ensure_schema(conn: sqlite3.Connection) -> None:
-    """Run schema DDL exactly once per process (guard: _SCHEMA_DONE).
+    """Run schema DDL once per DATABASE (guard: _SCHEMA_DONE), not once per process.
 
     2026-09-29 friction fix: the DDL block was previously inlined in _db()
     and ran on EVERY connection, re-invoking two swallowed-ALTER-exception
@@ -860,12 +878,21 @@ def _ensure_schema(conn: sqlite3.Connection) -> None:
     later _db() calls pure reads (connect + pragmas) with zero DDL/re-exception/
     write-commit overhead. No table, column, or index is skipped — the DDL is
     byte-identical, only its execution frequency changes.
+
+    2026-10-02: the guard was a process-global boolean, so the FIRST database a
+    process opened got the schema and every LATER one was skipped — callers then
+    queried a table that was never created ("no such table: loop_cycles").
+    Production opens one DB per process and never noticed; the repo's sandbox
+    tests repoint LOOP_DB and hit it (5 tests failing in a full-suite run while
+    passing in isolation — the signature of order-dependent global state). The
+    guard is now keyed by the database FILE the connection is attached to.
     """
     global _SCHEMA_DONE
+    key = _db_file(conn)
     with _SCHEMA_LOCK:
-        if _SCHEMA_DONE:
+        if key in _SCHEMA_DONE:
             return
-        _SCHEMA_DONE = True
+        _SCHEMA_DONE.add(key)
     conn.execute(
         """CREATE TABLE IF NOT EXISTS loop_cycles (
             id              INTEGER PRIMARY KEY AUTOINCREMENT,

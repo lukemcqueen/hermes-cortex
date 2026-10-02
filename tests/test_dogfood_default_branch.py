@@ -23,10 +23,16 @@ _DOGFOOD = (_REPO / "ops" / "scripts" / "cortex-dogfood.sh").read_text()
 
 
 def _extract_default_branch_logic() -> str:
-    """Pull the default-branch resolution block out of cortex-dogfood.sh."""
-    m = re.search(r"_DEFAULT_BRANCH=\$\(.*?\n  \(cd \"\$REPO\" && git pull --rebase origin \"\$_DEFAULT_BRANCH\"",
-                  _DOGFOOD, re.S)
-    assert m, "default-branch resolution block not found in cortex-dogfood.sh"
+    """Pull the default-branch RESOLUTION line out of cortex-dogfood.sh.
+
+    Anchored on the assignment itself, not on what follows it: the original
+    regex required the pull line to come immediately after the assignment, and
+    it broke when the script grew a fail-closed relock block plus a guarded
+    pull block in between (2026-10-02). The behaviour under test is the
+    resolution, so extract that and assert the pull CONSUMES it separately.
+    """
+    m = re.search(r"^  _DEFAULT_BRANCH=\$\(.*\)$", _DOGFOOD, re.M)
+    assert m, "default-branch resolution line not found in cortex-dogfood.sh"
     return m.group(0)
 
 
@@ -43,7 +49,7 @@ def test_dogfood_resolves_remote_default_branch():
     block = _extract_default_branch_logic()
     assert "symbolic-ref refs/remotes/origin/HEAD" in block, (
         "must resolve the remote default branch via symbolic-ref origin/HEAD")
-    assert 'origin "$_DEFAULT_BRANCH"' in block, (
+    assert "git pull --rebase" in _DOGFOOD and 'origin "$_DEFAULT_BRANCH"' in _DOGFOOD, (
         "pull must target the resolved default branch variable")
 
 
@@ -52,6 +58,18 @@ def test_dogfood_falls_back_to_main_when_no_remote_head():
     block = _extract_default_branch_logic()
     assert '|| echo "main"' in block or "|| echo main" in block, (
         "must fall back to main when the origin/HEAD symref is missing")
+
+
+def test_the_extractor_actually_fails_when_the_resolution_is_gone():
+    """Control: a script with no resolution line must fail the extractor.
+
+    Without this, a regex that silently stops matching real content would leave
+    the behaviour tests asserting on stale text — indistinguishable from a pass.
+    """
+    stripped = "\n".join(l for l in _DOGFOOD.splitlines()
+                         if "_DEFAULT_BRANCH=$(" not in l)
+    m = re.search(r"^  _DEFAULT_BRANCH=\$\(.*\)$", stripped, re.M)
+    assert m is None, "the extractor matched a script with the resolution removed"
 
 
 # ── Real-behavior test: the actual command resolves on this host ──
