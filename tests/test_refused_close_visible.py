@@ -34,6 +34,19 @@ _spec = importlib.util.spec_from_file_location("loop_gov_mcp_refused", REPO / "m
 mcp = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(mcp)
 
+# Tests must NOT write into the PRODUCTION governance log: the gate's logger appends
+# to ~/.hermes-cortex/logs/loop-governance.log, so running these tests injected
+# fabricated "cycle 1" / "cycle 999" lines into the audit trail (found 2026-10-02 by
+# reading the log back). The audit log must only ever contain real cycles, so the
+# gate logger is silenced here and the refused-close test asserts the file does not
+# grow during a run.
+import logging as _logging  # noqa: E402
+
+_gate_log = _logging.getLogger("loop-governance")
+_gate_log.setLevel(_logging.CRITICAL + 1)
+_gate_log.handlers.clear()
+_gate_log.propagate = False
+
 ADVISORY = REPO / "ops" / "scripts" / "governance-refused-close-advisory.sh"
 SLUG = "hermes-cortex"
 _F: list[str] = []
@@ -192,7 +205,37 @@ def test_refused_close_visible() -> None:
     assert not _F, f"{len(_F)} refused-close check(s) failed: {', '.join(_F)}"
 
 
+def test_tests_do_not_pollute_the_production_log() -> None:
+    """Running the gate under test must not append to the governance audit log.
+
+    A close that succeeds, a finding that blocks — all of it is auditable, and the
+    audit trail is worthless if test runs can inject fabricated cycles into it.
+    """
+    log_path = Path.home() / ".hermes-cortex" / "logs" / "loop-governance.log"
+    before = log_path.stat().st_size if log_path.exists() else 0
+    with tempfile.TemporaryDirectory() as td:
+        home = Path(td)
+        _make_repo(home)
+        setattr(mcp, "HOME", home)
+        lock_state: dict = {"repo_slug": SLUG, "task_id": "t", "session_id": "s"}
+        setattr(mcp, "_read_lock", lambda args=None: dict(lock_state))
+        setattr(mcp, "_write_lock", lambda st, args=None: None)
+        setattr(mcp, "_record_review", lambda *a, **k: None)
+        setattr(mcp, "_refute_findings", lambda findings, material: [])
+        setattr(mcp, "_triage_findings", lambda findings, material, **k: findings)
+        setattr(mcp, "_call_reviewer", lambda prompt, author=None: FINDINGS_JSON)
+        lock = {"repo_slug": SLUG, "task_id": "t", "session_id": "s", "description": "d",
+                "started_at": datetime.now(timezone.utc).isoformat()}
+        mcp._adversarial_review_gate(lock, {"id": 999, "outcome_note": "a note"})
+    after = log_path.stat().st_size if log_path.exists() else 0
+    assert after == before, (
+        f"the test appended {after - before} bytes to the production governance log "
+        f"({log_path}) — silence the gate logger; the audit trail must only hold real cycles"
+    )
+
+
 if __name__ == "__main__":
     test_refused_close_visible()
+    test_tests_do_not_pollute_the_production_log()
     print("\n✅ refused-close visibility checks passed")
     sys.exit(0)

@@ -33,6 +33,16 @@ _spec = importlib.util.spec_from_file_location("loop_gov_mcp_attr", REPO / "mcp-
 mcp = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(mcp)
 
+# Tests must NOT write into the PRODUCTION governance log — the gate's logger appends
+# to ~/.hermes-cortex/logs/loop-governance.log, so a test run would inject fabricated
+# cycles into the audit trail (found 2026-10-02 by reading the log back).
+import logging as _logging  # noqa: E402
+
+_gate_log = _logging.getLogger("loop-governance")
+_gate_log.setLevel(_logging.CRITICAL + 1)
+_gate_log.handlers.clear()
+_gate_log.propagate = False
+
 OWN = "esther@example.com"
 PEER = "titus@example.com"
 _F: list[str] = []
