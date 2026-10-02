@@ -163,20 +163,26 @@ hermes config set model.api_key ollama
 If the local model is down or too slow, Hermes falls through to a cloud provider:
 
 ```bash
-hermes config set fallback_providers '[{"provider":"opencode","model":"deepseek-v4-flash-free","base_url":"https://opencode.ai/zen/v1","api_mode":"chat_completions"}]'
+hermes config set fallback_providers '[{"provider":"openrouter","model":"deepseek/deepseek-v4.1-flash","base_url":"https://openrouter.ai/api/v1","api_mode":"chat_completions"}]'
 ```
+
+⚠️ **Never point a fallback at a free tier** (`opencode-free` /
+`deepseek-v4-flash-free` are dead). A dead free entry is worse than no entry:
+it looks like a cost control, then fails or silently falls through to a paid
+route. Verify a provider/model pair resolves before adding it — see
+`docs/runbooks/cron-model-chain-repoint.md`.
 
 **Important:** `hermes config set` saves lists/objects as YAML quoted strings, which may corrupt structured fallback config. Verify with `grep -A5 fallback_providers ~/.hermes/config.yaml` — if it's a single quoted line, fix with `sed`:
 
 ```bash
-sed -i 's/fallback_providers:.*/fallback_providers:\n  - provider: opencode\n    model: deepseek-v4-flash-free\n    base_url: https:\/\/opencode.ai\/zen\/v1\n    api_mode: chat_completions/' ~/.hermes/config.yaml
+sed -i 's/fallback_providers:.*/fallback_providers:\n  - provider: openrouter\n    model: deepseek\/deepseek-v4.1-flash\n    base_url: https:\/\/openrouter.ai\/api\/v1\n    api_mode: chat_completions/' ~/.hermes/config.yaml
 ```
 
 ### Model selection in session
 
 - `/model qwen2.5:3b` — switch to local code model
 - `/model nomic-embed-text` — switch to embedding model
-- `/model deepseek-v4-flash-free` — switch back to cloud
+- `/model deepseek/deepseek-v4.1-flash` — switch back to cloud
 - `/model` (no arg) — interactive picker
 
 ## Configuring Model Context Size

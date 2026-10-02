@@ -6,6 +6,14 @@ fallback 1 and opencode deepseek flash as fallback 2 — for the LLM crons."
 
 ## Resulting chain (applied live)
 
+> ⚠️ **SUPERSEDED (2026-10-02).** `opencode-free` / `deepseek-v4-flash-free` no
+> longer resolve, and the **per-job pin** approach described below is the known
+> cost leak: the pin survives, the run silently falls through to a PAID route,
+> and the job still reports `status: ok`. The env chain is now the single control
+> point. Current procedure →
+> `docs/runbooks/cron-model-chain-repoint.md`. Read the rest of this file as
+> history, not as instructions.
+
 - Primary (per-job pin on all 21 LLM crons): `opencode-free` / `deepseek-v4-flash-free`
 - Fallback 1 (global `fallback_providers`): `deepseek` / `deepseek-v4-flash`
 - Fallback 2 (global `fallback_providers`): `opencode-zen` / `deepseek-v4-flash`

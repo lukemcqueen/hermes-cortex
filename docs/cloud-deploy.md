@@ -127,8 +127,8 @@ Required variables — set every one:
 | `CORTEX_SSL_CERT_KEY_PATH` | `/etc/letsencrypt/live/.../privkey.pem` | certbot output |
 | `JUDGE_MODEL` | `qwen2.5:3b` | Local or API model |
 | `EMBEDDING_MODEL` | `nomic-embed-text:v1.5` | Local Ollama model |
-| `LLM_CRON_MODEL` | `deepseek-v4-flash` | API model |
-| `LLM_CRON_PROVIDER` | `deepseek` | Provider name |
+| `LLM_CRON_MODEL` | `deepseek/deepseek-v4.1-flash` | API model (provider-specific id form) |
+| `LLM_CRON_PROVIDER` | `openrouter` | Provider name — must resolve; see `docs/runbooks/cron-model-chain-repoint.md` |
 
 ### 3. Run Installer
 

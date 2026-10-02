@@ -289,8 +289,8 @@ never fall back to paid).
 ### Primary model: the env var (`~/hermes-cortex/.env` — see `.env.example` for the template)
 
 ```
-LLM_CRON_MODEL=deepseek-v4-flash-free          ← primary model name
-LLM_CRON_PROVIDER=opencode-free                ← primary provider
+LLM_CRON_MODEL=deepseek/deepseek-v4.1-flash    ← primary model (provider-specific id form)
+LLM_CRON_PROVIDER=openrouter                   ← primary provider — must RESOLVE
 ```
 
 **Fallback chain is operator-owned `config.yaml`, not env.** When the pinned
@@ -307,19 +307,25 @@ missing entirely → the job errors on failure.
 2. Run `bash ~/hermes-cortex/ops/scripts/cortex-update.sh` to deploy the env to all agents
 3. No per-cron changes needed — every unpinned cron picks it up on next tick
 
-### When to pin (rare exceptions)
+### When to pin (rare exceptions — and never a free tier)
 
-Some crons pin explicitly so they stay on a free tier and never consume budget:
+**A free-tier pin is NOT a cost control.** If the free provider stops resolving,
+the pin SURVIVES, the run falls through the operator `fallback_providers` chain
+to a PAID route, and the job still reports `status: ok` — the cost appears while
+the pin hides it. `opencode-free` / `deepseek-v4-flash-free` are dead this way
+today (verified 2026-10-02), as is the retired name `deepseek-v4-flash`. The
+delivery header's `⚠️ Provider fallback: <free> unavailable; using <paid>` line
+is the ONLY visible signal — check it on any free-tier-pinned job.
 
-```
-local-daily-soul-refinement:   provider=opencode-free (free tier, pinned)
-local-weekly-loop-eval:        provider=opencode-free (free tier, pinned)
-job-opportunity-scanner:       provider=opencode-free (free tier, pinned)
-```
+Pin ONLY when a cron genuinely needs a model different from the fleet default AND
+that `(provider, model)` pair resolves today. Prefer a cheap-but-resolvable pair
+over a free one, and make the fallback chain a different model FAMILY from the
+primary so a single upstream outage cannot take out consecutive slots.
 
-These use `hermes cron edit <job_id> --model "deepseek-v4-flash-free" --provider "opencode-free"`
-and `/or` `pin_cron_model` in the installer. Only pin when the cron MUST stay
-on a specific provider regardless of the fleet default.
+Existing free pins (`local-daily-soul-refinement`, `local-weekly-loop-eval`,
+`local-job-opportunity-scanner`, `local-agent-daily-ai-brief`, …) must be
+UNPINNED so they follow the main model, not re-pinned to a different free tier.
+Full procedure: `docs/runbooks/cron-model-chain-repoint.md`.
 
 ### Creating a new cron — do NOT pin by default
 

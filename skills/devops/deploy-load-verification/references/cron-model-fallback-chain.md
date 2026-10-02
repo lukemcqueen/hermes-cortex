@@ -10,6 +10,12 @@ Cortex fleet host. Complements `deploy-load-verification` SKILL.md
 as fallback 1, opencode deepseek flash as fallback 2 — for the LLM crons."
 
 Target chain:
+> ⚠️ **SUPERSEDED (2026-10-02).** The chain below names `opencode-free` /
+> `deepseek-v4-flash-free`, which no longer resolve — and a dead free-tier pin
+> silently falls through to a PAID route while reporting `ok`. Do not re-apply
+> the pins described here. Current procedure →
+> `docs/runbooks/cron-model-chain-repoint.md`.
+
 1. Primary: `opencode-free` / `deepseek-v4-flash-free` (free tier, keyless)
 2. Fallback 1: `deepseek` / `deepseek-v4-flash`
 3. Fallback 2: `opencode-zen` / `deepseek-v4-flash` (needs OPENCODE_ZEN_API_KEY)
