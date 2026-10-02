@@ -1,0 +1,72 @@
+# Evidence — hc harness (cycle 10357, 2026-10-02)
+
+## 1. Tests (repo path)
+2026-10-02 11:18:01 KST
+
+tests/test_hc_harness.py .........                                       [100%]
+
+============================== 9 passed in 2.02s ===============================
+
+## 2. Registry generated docs current (repo)
+generate-harnesses: STALE (run the generator):
+  ✗ pi/README.md
+
+## 3. DEPLOYED path: list
+Declared harnesses: 5
+
+  HARNESS          LAYER          STATUS      SURFACE
+  hermes           mcp            shipped     hermes mcp add
+  pi               cli-extension  shipped     pi.on("turn_end"|"before_agent_start"|"session_before_compact") + pi.registerTool
+  claude-code      mcp            documented  .mcp.json
+  codex            mcp            documented  ~/.codex/config.toml [mcp_servers]
+  steadfaste-tui   none           blocked     unknown
+
+  hc harness install <name> [--dir DIR]   wire it into a project
+  hc harness verify  [<name>]             prove it, don't assume it
+
+## 4. DEPLOYED path: install pi (copy + derived run line)
+hc harness install pi  →  /home/esther/.hermes/cache/scratch/evid-up7M3x   (layer: cli-extension)
+
+  ✓ mkdir extensions
+  ✓ extensions/cortex-context.ts  (from pi/extensions/cortex-context.ts)
+
+Run (tool list derived from the contract — do not hand-edit):
+  pi -e extensions/cortex-context.ts --tools read,bash,edit,write,mem_profile,mem_search,mem_context,mem_conclude,session_checkpoint,session_restore,session_search,session_note,session_close,session_tool_event,session_loaded_skill
+  note: this extension does not expose: session_list
+
+Session identity (else derived from git, which is usually right):
+  export CORTEX_SESSION_HARNESS=pi
+  export CORTEX_SESSION_REPO=<value>
+  export CORTEX_SESSION_BRANCH=<value>
+
+Then prove it (a copied file is not a working wiring):
+  1. In a Pi session call mem_context — the peer card must come back.
+  2. Let a turn end with a decision, then: cortex-context session_restore "{}" | grep <marker>
+  3. Start a second session; the checkpoint must appear unasked (Pi logs CORTEX_RESUME).
+total 12
+-rw-rw-r-- 1 esther esther 10643 Oct  2 03:11 cortex-context.ts
+
+## 5. DEPLOYED path: verify pi
+registry: STALE — generate-harnesses: STALE (run the generator):
+  ✗ pi/README.md
+store: reachable
+artifact: pi/extensions/cortex-context.ts present
+next: hc harness install pi --dir <your-project>
+
+result: FAIL
+verify_rc=1
+
+## 6. The drift this removes (old hand-typed literal vs contract ∩ extension)
+extension registers: ['mem_conclude', 'mem_context', 'mem_profile', 'mem_search', 'session_checkpoint', 'session_close', 'session_loaded_skill', 'session_note', 'session_restore', 'session_search', 'session_tool_event']
+OLD literal could NOT reach: ['session_loaded_skill', 'session_tool_event']
+
+## 7. Boundary cases (must fail loudly)
+hc harness: unknown harness 'not-a-real-harness' — try: hc harness list
+unknown_rc=2
+hc harness install steadfaste-tui  →  /home/esther/.hermes/cache/scratch   (layer: none)
+
+NOT SUPPORTED — Steadfaste's own gateway is not complete, so its harness surface cannot be
+designed against it yet. Declared here with the reason rather than guessed
+at: a wrong layer means a wiring that "exists" and does nothing.
+The gap is declared on purpose: a guessed wiring exists and does nothing.
+blocked_layer_rc=1

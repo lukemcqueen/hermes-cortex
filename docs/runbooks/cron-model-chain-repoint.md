@@ -35,9 +35,10 @@ Two independent layers can hold a stale model/provider:
 | Operator fallback chain | `~/.hermes/config.yaml` → `fallback_providers` | Resolved at runtime when the pinned route fails. |
 
 `pin_cron_model()` in `install-crons.sh` / `install-orch-crons.sh` returns early
-whenever `LLM_CRON_MODEL` and `LLM_CRON_PROVIDER` are both set — **the env chain is
-the declared single control point** and manifest pins are ignored. Fix the env
-chain and re-installs cannot re-pin a dead model.
+whenever `LLM_CRON_MODEL` and `LLM_CRON_PROVIDER` are both set — so it applies
+**no per-cron pin**. That pair is therefore the control point for *install-time
+pinning*, not for the runtime model (see §3): the manifest pins are ignored, and
+re-installs cannot re-pin a dead model.
 
 ## 3. Procedure
 

@@ -48,14 +48,20 @@ harnesses:
     status: shipped
     surface: 'pi.on("turn_end"|"before_agent_start"|"session_before_compact") + pi.registerTool'
     why: |
-      Pi has NO MCP client. Its extension API is hooks + registered tools in
-      TypeScript, so it reaches the shared CLI through the extension below.
+      Pi has NO MCP client at the CONTEXT layer: its memory/session surface is
+      hooks + registered tools in TypeScript, so it reaches the shared CLI
+      through the extension below. (Governance is a separate capability — see
+      `capabilities.governance`, which is MCP for Pi >= 0.99 and the git hooks
+      plus the loop-gov CLI otherwise.)
     artifact: extensions/cortex-context.ts
     triggers:
       turn_end: checkpoint (the trigger — MCP cannot provide this)
       before_agent_start: restore + inject the checkpoint
       session_before_compact: checkpoint before continuity is lost
     install: |
+      # USER SCOPE — every Pi project, one registration (recommended):
+      bash ~/hermes-cortex/ops/scripts/install/install-pi-integration.sh
+      # PROJECT SCOPE — one repo, files copied in + a generated run line:
       hc harness install pi --dir <your-pi-project>
       # (equivalent, manual: mkdir -p extensions && cp <harnesses>/pi/extensions/cortex-context.ts extensions/)
     install_ops:
@@ -63,6 +69,46 @@ harnesses:
       - copy:
           from: pi/extensions/cortex-context.ts
           to: extensions/cortex-context.ts
+    # A capability is what a harness must be wired to; the layer above is only
+    # its CONTEXT half. Declaring skills/governance here is the difference
+    # between "registered somewhere" and "registered the same way" — each names
+    # the one script that registers it and how to prove it landed.
+    capabilities:
+      context:
+        adapter: cli-extension
+        register: ops/scripts/install/install-pi-integration.sh
+        verify:
+          - 'In a Pi session call mem_context — the peer card must come back.'
+      skills:
+        adapter: discovery
+        register: ops/scripts/install/install-pi-integration.sh
+        from: skills.yaml#always
+        why: |
+          Pi advertises each skill's NAME + DESCRIPTION at startup and loads the
+          body on demand, so it must be pointed at a CURATED set — wiring the
+          whole ~400-skill library in is a self-inflicted context wound. The set
+          is DERIVED from the skills manifest's `always:` section (the same one
+          definition Hermes loads), and registered at USER scope in
+          ~/.pi/agent/settings.json — the same one-file pattern the MCP servers
+          already use, instead of re-copying flags per repo.
+        verify:
+          - 'bash ops/scripts/install/install-pi-integration.sh --check exits 0.'
+          - 'Pi shows the always-skills as /skill:<name> commands (startup diagnostics).'
+      governance:
+        adapter: mcp
+        register: ops/scripts/install/install-pi-mcp.sh
+        from: loop-gov-mcp.py
+        why: |
+          Pi >= 0.99 gained an MCP client and reads user-scope servers from
+          ~/.pi/agent/mcp.json, so the four governance servers (loop-governance,
+          tasks, executor, agent-bus) register exactly like Claude Code's — one
+          implementation, one way in per harness. On an older Pi with no MCP
+          client the commit-time git hooks STILL govern (core.hooksPath is
+          global, so a Pi commit runs the same gates as a Hermes one), and
+          ops/scripts/loop-gov.py is the CLI way in for the interactive ritual.
+        verify:
+          - 'pi mcp list shows loop-governance, tasks, executor, agent-bus.'
+          - 'A commit made from a Pi session passes the hooks (or names the gate it hit).'
     # Base built-in tools only. The mem_*/session_* half of `--tools` is DERIVED
     # from the contract by `hc harness install pi` (context_tools.TOOLS) — never
     # hand-typed here, because a hand-typed list silently rots when the contract

@@ -63,8 +63,8 @@ names are the contract — never invent a new name without checking here first
 | `CREATIVE_MODEL` | Creative/content model |
 | `JUDGE_MODEL` | Governance judge model |
 | `EMBEDDING_MODEL` | Embedding model (local Ollama: `nomic-embed-text:v1.5`) |
-| `LLM_CRON_MODEL` | Cron LLM model — provider-specific id form (`deepseek/deepseek-v4.1-flash` on openrouter). Single control point for this host's cron model |
-| `LLM_CRON_PROVIDER` | Cron LLM provider (`openrouter`). Never a free tier that can stop resolving — a dead free pin falls through to a PAID route while reporting `ok` |
+| `LLM_CRON_MODEL` | Cron LLM model. Controls **installer pinning only** — an unpinned cron RUNS on the main model (`model.default`), not on this value. Provider-specific id form (`deepseek/deepseek-v4.1-flash` on openrouter) |
+| `LLM_CRON_PROVIDER` | Cron LLM provider (`openrouter`), same scope as above. Never a free tier that can stop resolving — a dead free pin falls through to a PAID route while reporting `ok` |
 | `HERMES_CRON_TIMEOUT` | Cron timeout budget |
 | `HERMES_TIMEZONE` | Fleet timezone (Asia/Seoul, KST) |
 | `IS_ORCHESTRATOR` | Orchestrator flag (host-derived) |

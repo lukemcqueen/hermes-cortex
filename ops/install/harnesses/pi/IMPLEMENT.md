@@ -168,13 +168,22 @@ a wrong conclusion once already.
 ## 8. Skills autoload
 
 Pi discovers skills itself — `--no-skills` *disables* discovery, so it is ON by
-default, and `--skill <path>` (repeatable) adds a file or directory. Confirm your
-own install:
+default, and `--skill <path>` (repeatable) adds a file or directory. At startup
+Pi advertises each skill's **name + description** and loads the body on demand.
+
+**Register it once, at user scope — do not re-copy flags per repo:**
 
 ```bash
-P=$(npm root -g)/@earendil-works/pi-coding-agent
-grep -rl "skills" "$P"/dist/core/ | head        # discovery implementation
-ls ~/.pi/agent/                                  # your config dir (may not exist)
+bash ~/hermes-cortex/ops/scripts/install/install-pi-integration.sh
+# → ~/.pi/agent/settings.json: "skills": ["~/.pi/agent/cortex-skills"]
+# → that dir holds ONE symlink per skill in the manifest's `always:` section
+bash ~/hermes-cortex/ops/scripts/install/install-pi-integration.sh --check
+```
+
+Project scope (one repo, explicit flags) is the other half of the same pattern:
+
+```bash
+pi -e extensions/cortex-context.ts --skill <curated-skills-dir> --tools …
 ```
 
 Two rules, learned from Hermes:
@@ -182,50 +191,54 @@ Two rules, learned from Hermes:
 - **Point it at a CURATED set, not the whole fleet library.** Hermes autoloads
   skill *names + descriptions* and loads bodies on demand (progressive
   disclosure). If Pi loads whole skill bodies, wiring 400 skills into the context
-  window is a self-inflicted wound. Ship the handful that matter for the repo you
-  are in.
+  window is a self-inflicted wound. The curated set is DERIVED from the skills
+  manifest's `always:` section — one definition, shared with Hermes — never
+  hand-typed here.
 - **Discovery is not enforcement.** A skill autoloaded is a *suggestion*; nothing
   checks that it was followed. Do not confuse the two — see below.
-
-```bash
-pi -e extensions/cortex-context.ts --skill <curated-skills-dir> --tools …
-```
 
 ---
 
 ## 9. Governance
 
-**The good news, verified on this host: the commit-time pipeline already covers
-you, whatever harness you are.** `core.hooksPath` is global, so a `git commit`
-made from inside a Pi session in ANY repo runs the same gates as Hermes:
-change-validate, an orchestrator self-test (host-derived, not env-spoofable), an
-adversarial scan, and `score-cycle` — which records a governance cycle and scores
-it. A foreign-repo commit from a Pi-style session was observed passing all four
-and succeeding. **You do not need to do anything to be governed at commit time.**
+**Registered the same way as everything else here — one implementation, a thin
+per-harness way in.**
 
-**The gap: the interactive ritual.** Hermes agents call
-`cache_search → begin_change → work → cycle_query → feedback_accept → end_change`
-through the **loop-governance MCP server**. **Pi has no MCP client**, so those
-calls are unavailable to you. Do not pretend otherwise, and do not hand-write a
-lock file under `~/.hermes-cortex/state/` — a fabricated lock is a governance
-violation and is audited.
+- **Pi ≥ 0.99 (MCP client):** the four governance servers register at user scope
+  in `~/.pi/agent/mcp.json`:
 
-The correct shape (same pattern as everything else here — **one implementation,
-a per-host adapter**):
+  ```bash
+  bash ~/hermes-cortex/ops/scripts/install/install-pi-mcp.sh
+  pi mcp list          # loop-governance, tasks, executor, agent-bus
+  ```
 
-```
-   loop-governance MCP server  ──┬── Hermes, Claude Code, Codex  (MCP)
-   (the one implementation)      │
-                                 └── a `loop-gov` CLI  ⤷ Pi extension  (no MCP client)
-```
+  That is the SAME server set Claude Code gets from
+  `install-claude-governance.sh` — not a Pi-specific governance implementation.
 
-That CLI adapter **does not exist yet** — it is the next build, the exact
-counterpart of `cortex-context` for governance. Until it lands:
+- **Older Pi, or no MCP client:** the **commit-time pipeline already covers you**,
+  verified on this host. `core.hooksPath` is global, so a `git commit` made from
+  inside a Pi session in ANY repo runs the same gates as Hermes: change-validate,
+  an orchestrator self-test (host-derived, not env-spoofable), an adversarial
+  scan, and `score-cycle` — which records a governance cycle and scores it. **You
+  do not need to do anything to be governed at commit time.**
 
-1. **Commit-time governance applies anyway** (above) — rely on it, do not skip it.
-2. If you need the ritual, **ask the orchestrator** to run
-   `begin_change`/`end_change` for your task id, and say plainly in your report
-   that you could not call them yourself.
+  The interactive ritual (`cache_search → begin_change → work → cycle_query →
+  feedback_accept → end_change`) reaches a no-MCP harness through the generic CLI,
+  which is an adapter over the same server module (never a second implementation):
+
+  ```bash
+  loop-gov begin_change '{"task_id":"my-task","description":"what and why"}'
+  loop-gov --tools-json        # machine-readable manifest for any harness
+  ```
+
+Never hand-write a lock file under `~/.hermes-cortex/state/` — a fabricated lock
+is a governance violation and is audited. If governance is unreachable, say so in
+your report; do not pretend otherwise.
+
+**The enforcement-hook half** (lifecycle triggers + gate evidence) is the
+extension registered in §8's installer: the pre-commit reflexion gate asks HC's
+store "did this session load skill X?", and without the `tool_result` writer a Pi
+commit is refused no matter how well the agent behaved.
 
 ---
 
