@@ -1,0 +1,50 @@
+# PRESERVED FAILURE ARTIFACT — NOT regenerable
+
+**Provenance:** captured verbatim by `ops/scripts/quality/full-suite-evidence.sh`
+during its first run on 2026-10-02 at 13:29:15Z against revision `fa964ce6`.
+The script wrote the detailed run output to `docs/evidence/full-suite-results.txt`,
+and the NEXT (green) run overwrote it — which is why the script now also appends to
+`docs/evidence/full-suite-results-history.txt`. This file is that captured output,
+re-committed for the record. It is *not* regenerable: the condition it records
+(a registered source not yet tracked by git) was fixed, so re-running the script
+produces the green artifact instead. Everything below this header is unedited
+captured output.
+
+---
+
+# Full repo test suite — measured evidence
+
+command: python3 -m pytest tests/ -q -p no:cacheprovider
+regenerate: bash ops/scripts/quality/full-suite-evidence.sh
+date (UTC): 2026-10-02 13:29:15
+host: esther
+revision: fa964ce6 (main), uncommitted paths: 3
+
+measured: ================== 1 failed, 1288 passed in 321.36s (0:05:21) ==================
+failures: 1
+
+Tail of the run:
+tests/test_task_mcp_v3.py .........                                      [ 93%]
+tests/test_telegram_bridge.py ....................                       [ 95%]
+tests/test_telegram_bridge_e2e.py ...                                    [ 95%]
+tests/test_telegram_notify_unit.py ............................          [ 97%]
+tests/test_toon_gates.py ....                                            [ 98%]
+tests/test_toon_parse.py ....                                            [ 98%]
+tests/test_unannounced_probe.py ...                                      [ 98%]
+tests/test_update_migration_deferral.py ......                           [ 99%]
+tests/test_update_notification.py .                                      [ 99%]
+tests/test_verify_skill_lifecycle_run.py ......                          [ 99%]
+tests/test_webapp_http_crawl.py ....                                     [100%]
+
+=================================== FAILURES ===================================
+_____________________ test_registered_sources_are_tracked ______________________
+tests/test_registered_sources_are_tracked.py:67: in test_registered_sources_are_tracked
+    assert not problems, (
+E   AssertionError: deploy manifest integrity (292 entries checked): 1 registered source(s) are not tracked by git: ['ops/scripts/quality/full-suite-evidence.sh'] — rename the artifact out of the ignore pattern, or track it deliberately (never rely on git add -A to pick up an ignored file).
+E   assert not ["1 registered source(s) are not tracked by git: ['ops/scripts/quality/full-suite-evidence.sh']"]
+=========================== short test summary info ============================
+FAILED tests/test_registered_sources_are_tracked.py::test_registered_sources_are_tracked
+================== 1 failed, 1288 passed in 321.36s (0:05:21) ==================
+
+Failing tests:
+FAILED tests/test_registered_sources_are_tracked.py::test_registered_sources_are_tracked

@@ -13,6 +13,10 @@ set -uo pipefail
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 OUT="${1:-$REPO/docs/evidence/full-suite-results.txt}"
+# History ledger: the detailed artifact is per-run and gets overwritten, so a
+# FAILING run's evidence used to vanish the moment a later run passed. The
+# ledger keeps one durable line per run — a failure cannot be erased by time.
+HIST="$REPO/docs/evidence/full-suite-results-history.txt"
 LOG="$(mktemp "${TMPDIR:-/tmp}/full-suite-XXXXXX.log")"
 trap 'rm -f "$LOG"' EXIT
 
@@ -56,8 +60,15 @@ _tail_start=$(( _total > 20 ? _total - 20 : 1 ))
 
 echo "✅ wrote $OUT"
 echo "   ${_summary}"
+
+# Durable ledger line (append-only) — the detailed artifact is overwritten by the
+# next run, so the failure record must live somewhere that does not get recycled.
+printf '%s | rev=%s (%s) | %s | failures=%s\n' \
+  "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" "$_sha" "$_branch" "$_summary" "$_failed" >>"$HIST"
+echo "   ledger: $HIST"
+
 if (( _rc != 0 || _failed > 0 )); then
-  echo "❌ suite is NOT green (${_failed} failing) — see ${OUT}" >&2
+  echo "❌ suite is NOT green (${_failed} failing) — see ${OUT} and ${HIST}" >&2
   exit 1
 fi
 echo "✅ suite green"

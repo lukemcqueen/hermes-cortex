@@ -2,11 +2,11 @@
 
 command: python3 -m pytest tests/ -q -p no:cacheprovider
 regenerate: bash ops/scripts/quality/full-suite-evidence.sh
-date (UTC): 2026-10-02 13:34:57
+date (UTC): 2026-10-02 13:43:27
 host: esther
-revision: 360ec127 (main), uncommitted paths: 2
+revision: 228e3622 (main), uncommitted paths: 3
 
-measured: ======================= 1289 passed in 320.88s (0:05:20) =======================
+measured: ======================= 1289 passed in 325.40s (0:05:25) =======================
 failures: 0
 
 Tail of the run:
@@ -30,6 +30,6 @@ tests/test_update_notification.py .                                      [ 99%]
 tests/test_verify_skill_lifecycle_run.py ......                          [ 99%]
 tests/test_webapp_http_crawl.py ....                                     [100%]
 
-======================= 1289 passed in 320.88s (0:05:20) =======================
+======================= 1289 passed in 325.40s (0:05:25) =======================
 
 Failing tests: none
