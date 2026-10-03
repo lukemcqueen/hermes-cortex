@@ -181,6 +181,51 @@ def test_pi_extension_uses_the_REAL_event_api():
         "must warn loudly rather than write a silently-empty checkpoint"
 
 
+def test_pi_extension_uses_the_1_0_0_TOOL_api(tools):
+    """Regression guard for the bug that made EVERY pi memory tool dead.
+
+    pi 1.0.0's AgentTool requires
+        execute(toolCallId, params, signal?, onUpdate?) -> {content, details}
+    The extension registered `{ run: async (input) => … }` (the 0.87.1 shape),
+    so every mem_*/session_* call failed with
+        "definition.execute is not a function"
+    while the store was perfectly healthy — an agent reported "memory is
+    broken" and the correct reading was "the tool WIRING is broken".
+
+    Second, independent fault in the same block: `parameters` was a bare map of
+    param -> schema (`{peer:{type:"string"}}`). The runtime validates the call
+    against an OBJECT schema, so even a correct `execute` would have failed
+    validation.
+
+    The earlier guards in this file did NOT catch either fault: they asserted
+    tool NAMES exist and that the CLI is used. A name-level guard cannot see a
+    signature or a schema shape — which is precisely how both shipped silently.
+    """
+    src = PI_EXT.read_text()
+    code = "\n".join(ln for ln in src.splitlines()
+                     if not ln.lstrip().startswith(("*", "//", "/*")))
+    assert re.search(r"\bexecute:\s*async", code), \
+        "registerTool needs `execute` (pi 1.0.0 AgentTool), not `run`"
+    assert not re.search(r"\brun:\s*async", code), \
+        "`run` is the pi 0.87.1 shape and is silently ignored on 1.0.0"
+    # The callable must accept the runtime's positional arguments. Allow the
+    # TypeScript annotations (`_toolCallId: string, params: Record<…>`), which is
+    # what made a naive `(\w+,\s*\w+)` probe fail against correct code.
+    assert re.search(r"execute:\s*async\s*\(\s*\w+[^,)]*,\s*\w+", code), \
+        "execute must take (toolCallId, params, …)"
+    # An object schema, built from a properties map + a required list.
+    assert 'type: "object"' in code and "properties" in code and "required" in code, \
+        "parameters must be {type:'object', properties, required}, not a bare param map"
+    # The AgentToolResult shape the runtime reads back.
+    assert "content:" in code and "details:" in code, \
+        "execute must return {content, details} (AgentToolResult)"
+    # Every registered tool must declare its schema through the SAME map that
+    # drives argument extraction — a second hand-kept key list is how the two
+    # silently drift apart.
+    assert "Object.keys(properties)" in code, \
+        "argument extraction must derive from the schema's properties map"
+
+
 def test_macos_parity_for_the_context_layers():
     """macOS is a fleet platform, not an afterthought. Two things break there:
 

@@ -212,6 +212,20 @@ export default function (pi: any) {
   // ONE properties map per tool drives BOTH the JSON schema the model is given
   // AND the argument extraction — a second hand-kept key list is how the schema
   // and the call silently drift apart.
+  //
+  // The `str/num/bool/arr/obj` helpers are not decoration: the previous version
+  // passed a bare map of param -> schema, which is not a schema the runtime can
+  // validate against. Building the object schema from typed property descriptors
+  // is what makes `parameters` well-formed, and it is why the tool signature and
+  // the argument extraction can no longer disagree. Keep them.
+  //
+  // LIVE PROOF (2026-10-03, this host, pi 1.0.0) — re-run to reproduce:
+  //   pi --session-id hc-pi-verify "Call the mem_context tool with peer=user and
+  //      reply with ONLY the first entry of the returned card array."
+  //   → CORTEX_RESUME esther:hermes-cortex:main facts=1
+  //   → Luke — fleet owner, KST+9, direct/fast, execution over description
+  // and the turn_end trigger then wrote a checkpoint:
+  //   cortex-context session_restore '{}'  → checkpoint_id 28
   const tool = (
     name: string,
     label: string,
