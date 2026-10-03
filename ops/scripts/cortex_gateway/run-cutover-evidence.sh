@@ -141,7 +141,10 @@ tests/test_gateway_pairing.py"
 _PYTEST_LOG="$(mktemp)"
 (cd "$REPO" && "${PYTEST_PY:-$(command -v python3)}" -m pytest $TESTS -q > "$_PYTEST_LOG" 2>&1)
 TEST_RC=$?                                  # the subshell's status — NOT tail's
-TEST_OUT="$(tail -3 "$_PYTEST_LOG")"
+# Record the WHOLE run, not a tail: a truncated transcript is what made a reviewer
+# reasonably read "7 files, 66 passed" as a claim of one file. Per-file progress
+# lines plus the summary ARE the evidence.
+TEST_OUT="$(cat "$_PYTEST_LOG")"
 rm -f "$_PYTEST_LOG"
 _say "\$ pytest <7 files> -q"
 _say "$TEST_OUT"

@@ -198,6 +198,34 @@ def test_servers_declare_their_resource_as_a_named_constant():
             "constant and hand that to the resolver")
 
 
+def test_deploy_registry_doc_counts_match_the_register_map():
+    """The doc quotes exact counts. A number in prose drifts the moment someone adds
+    a register() line, and a reader has no way to tell whether it is still true —
+    which is exactly what the adversarial gate flagged. Compute them, assert them.
+    """
+    rows = re.findall(
+        r'^(?:register|register_orch)\s+"([^"]+)"\s+"\$\{CORTEX_DEPLOY_HOME\}/([^"]+)"',
+        UPDATE_SH.read_text(), re.M)
+    assert rows, "no register() rows parsed — fix the parser, not the doc"
+
+    def strip_ops(rel: str) -> str:
+        parts = rel.split("/")
+        return "/".join(parts[1:]) if parts and parts[0] == "ops" else rel
+
+    total = len(rows)
+    derivable = sum(1 for src_rel, dst_rel in rows if strip_ops(src_rel) == dst_rel)
+    outliers = total - derivable
+
+    doc = (REPO / "docs/deploy-registry-pattern.md").read_text()
+    assert f"**{total}**" in doc, (
+        f"docs/deploy-registry-pattern.md must state the real register count "
+        f"({total}); update the doc in the same change")
+    assert f"Only {derivable} of the {total}" in doc, (
+        f"the doc must state that {derivable} of {total} are derivable")
+    assert f"**{outliers} follow no rule at all**" in doc, (
+        f"the doc must state that {outliers} follow no rule")
+
+
 # ── a registered file must actually be IN git ───────────────────────
 
 def test_every_registered_file_is_tracked_by_git():
