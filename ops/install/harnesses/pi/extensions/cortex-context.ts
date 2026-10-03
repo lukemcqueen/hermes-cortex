@@ -216,14 +216,10 @@ export default function (pi: any) {
   // The `str/num/bool/arr/obj` helpers exist so `parameters` is a real object
   // schema; keep them (a bare param->schema map is not validatable).
   //
-  // LIVE PROOF (2026-10-03, this host, pi 1.0.0) — re-run to reproduce:
-  //   pi --session-id hc-pi-verify "Call the mem_context tool with peer=user and
-  //      reply with ONLY the first entry of the returned card array."
-  //   → CORTEX_RESUME esther:hermes-cortex:main facts=1
-  //   → Luke — fleet owner, KST+9, direct/fast, execution over description
-  // and the turn_end trigger then wrote a checkpoint:
-  //   cortex-context session_restore '{}'  → checkpoint_id 28
-  // Executable guard (no model needed): ops/install/harnesses/pi/verify-extension.mjs
+  // Executable guard, no model needed:
+  //   node ops/install/harnesses/pi/verify-extension.mjs
+  // Committed output of that guard (fixed + pre-fix) and the test suite:
+  //   ops/install/harnesses/pi/EVIDENCE.md   (regenerate: run-evidence.sh)
   const tool = (
     name: string,
     label: string,
