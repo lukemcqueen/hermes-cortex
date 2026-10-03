@@ -11,6 +11,7 @@ from __future__ import annotations
 import importlib.util
 import json
 import re
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -224,6 +225,27 @@ def test_pi_extension_uses_the_1_0_0_TOOL_api(tools):
     # silently drift apart.
     assert "Object.keys(properties)" in code, \
         "argument extraction must derive from the schema's properties map"
+
+
+def test_pi_extension_tool_wiring_EXECUTES():
+    """EXECUTE the wiring — the static guards above cannot see a signature.
+
+    Runs `ops/install/harnesses/pi/verify-extension.mjs`, which loads the REAL
+    extension through pi's own jiti loader, hands it a stub `pi`, and CALLS
+    `execute(id, params)` against a throwaway CLI (the store is never touched).
+
+    Verified both ways before committing: on the pre-fix extension it fails with
+    `TypeError: target.execute is not a function` — the same class as the live
+    "definition.execute is not a function" — and on the fixed one it passes.
+    That two-way check is what makes this a guard rather than a happy path.
+    """
+    node = shutil.which("node")
+    if not node:
+        pytest.skip("node not available — cannot execute the extension")
+    r = subprocess.run([node, str(HARNESS_DIR / "pi" / "verify-extension.mjs")],
+                       capture_output=True, text=True, timeout=180)
+    assert r.returncode == 0, f"extension tool wiring is broken:\n{r.stdout}\n{r.stderr}"
+    assert "EXTENSION WIRING OK" in r.stdout
 
 
 def test_macos_parity_for_the_context_layers():

@@ -213,11 +213,8 @@ export default function (pi: any) {
   // AND the argument extraction — a second hand-kept key list is how the schema
   // and the call silently drift apart.
   //
-  // The `str/num/bool/arr/obj` helpers are not decoration: the previous version
-  // passed a bare map of param -> schema, which is not a schema the runtime can
-  // validate against. Building the object schema from typed property descriptors
-  // is what makes `parameters` well-formed, and it is why the tool signature and
-  // the argument extraction can no longer disagree. Keep them.
+  // The `str/num/bool/arr/obj` helpers exist so `parameters` is a real object
+  // schema; keep them (a bare param->schema map is not validatable).
   //
   // LIVE PROOF (2026-10-03, this host, pi 1.0.0) — re-run to reproduce:
   //   pi --session-id hc-pi-verify "Call the mem_context tool with peer=user and
@@ -226,6 +223,7 @@ export default function (pi: any) {
   //   → Luke — fleet owner, KST+9, direct/fast, execution over description
   // and the turn_end trigger then wrote a checkpoint:
   //   cortex-context session_restore '{}'  → checkpoint_id 28
+  // Executable guard (no model needed): ops/install/harnesses/pi/verify-extension.mjs
   const tool = (
     name: string,
     label: string,
