@@ -51,6 +51,37 @@ exact script path the gateway spawned at startup. An old path in the child argv
 gateway started before the config change — what config.yaml says on disk is
 irrelevant until restart.
 
+### systemd --user units (cortex_gateway, and any agent-hosted service)
+
+The gateway family is not the only long-running process on a host. `cortex_gateway`
+runs as its own `systemctl --user` unit, separate from the Hermes gateway, and a
+deploy does NOT restart it — so new code sits on disk while the unit keeps answering
+with the previous behaviour. Compare the unit's start time with the deploy:
+
+```bash
+systemctl --user show <unit> -p MainPID -p ExecMainStartTimestamp --value
+systemctl --user is-active <unit>
+date '+%F %T %Z'        # now, to compare against
+```
+
+Start time older than the deploy → the unit is running the old code and every
+behavioural probe against the live unit will show the OLD behaviour. Report that
+exactly: "deployed, not yet loaded", not "the change failed". A user reporting the
+old behaviour right after a clean deploy is this, not a broken fix.
+
+**Hand over the restart; do not hunt for a way to run it yourself.** The lifecycle
+guard refuses a gateway restart from inside an agent session, and its stated reason
+(SIGTERM reaching the child) may not even apply to the unit you want — the guard is
+pattern-based and cannot tell. Give the operator the exact one-line command and say
+what will change after it. What the guard does NOT block is proving a startup guard:
+a throwaway probe unit can be run to show an `ExecStartPre` refusing or accepting a
+config, which is how you verify that logic without touching the live service.
+
+**A per-turn `command` backend answers from the code loaded at START**, so a change
+to the gateway's own modules (a new slash command, a changed prompt template) is
+inert until the unit cycles. Only a change to the *config* can be verified live —
+and only if the module reads it per turn.
+
 ## MCP Config-Key → Tool-Namespace Coupling
 
 - The `mcp_servers.<name>:` key in `config.yaml` determines the exposed tool
