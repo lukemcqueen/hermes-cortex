@@ -60,16 +60,29 @@ logging.basicConfig(
 log = logging.getLogger("task-mcp")
 
 # ── Locate + import task-db.py (hyphenated filename → importlib) ──
-_CANDIDATES = [
-    Path(__file__).resolve().parent / "task-db.py",                 # deployed: ~/.hermes-cortex/scripts/
-    Path(__file__).resolve().parent.parent / "ops" / "scripts" / "manage" / "task-db.py",  # repo: mcp-servers/ → ops/scripts/manage/
-    Path.home() / "hermes-cortex" / "ops" / "scripts" / "manage" / "task-db.py",
-    Path.home() / ".hermes-cortex" / "scripts" / "task-db.py",
-]
-_TASK_DB = next((p for p in _CANDIDATES if p.is_file()), None)
+# ── cortex_lib bootstrap — IDENTICAL in every MCP server; do not vary. ─────
+# cortex_lib/paths.py sits in the scripts dir in BOTH layouts (ops/scripts/
+# in-repo, scripts/ deployed), so locate it by that dir rather than by guessing a
+# relative depth. Guarded on purpose: the import failure is reported by whichever
+# server actually needs the resource, naming what it wanted.
+resolve_repo_resource = repo_resource_candidates = None
+for _p in Path(__file__).resolve().parents:
+    if (_p / "cortex_lib" / "paths.py").is_file():
+        sys.path.insert(0, str(_p))
+        break
+try:
+    from cortex_lib.paths import (  # noqa: E402
+        repo_resource_candidates, resolve_repo_resource)
+except ImportError:
+    pass
+
+_TASK_DB_REL = "ops/scripts/manage/task-db.py"
+_TASK_DB = resolve_repo_resource(_TASK_DB_REL) if resolve_repo_resource else None
 if _TASK_DB is None:
-    print("[task-mcp] ERROR: task-db.py not found (tried: "
-          + ", ".join(str(p) for p in _CANDIDATES) + ")", file=sys.stderr)
+    _tried = ([str(p) for p in repo_resource_candidates(_TASK_DB_REL)]
+              if repo_resource_candidates else ["<cortex_lib.paths unavailable>"])
+    print(f"[task-mcp] ERROR: {_TASK_DB_REL} not found. Tried: "
+          + ", ".join(_tried), file=sys.stderr)
     sys.exit(1)
 
 _spec = importlib.util.spec_from_file_location("task_db", _TASK_DB)

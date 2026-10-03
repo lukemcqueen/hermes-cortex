@@ -1017,12 +1017,31 @@ scoring-activity-watchdog: DB not found at ~/.hermes-cortex/state/loop-governanc
 
 The MCP server (`loop-gov-mcp.py`) was also fixed to sync both slug-specific + generic lock files on `_write_lock` / `_release_lock`, preventing governance enforcer lock gaps when running from non-git cwds.
 
+### 24. `governance-auditor` reports "Immutable flag MISSING" on exactly 3 files
+
+**Symptom:**
+```
+[2026-10-03 16:30 KST] governance-auditor: 3 infrastructure issue(s)
+ 🔓 Immutable flag MISSING on <path> (target: <path>)
+    Fix: sudo hermes-plugin-lock lock
+```
+Always three, always the same three: `~/.hermes/plugins/governance-enforcer/__init__.py`, `hooks/pre-commit`, `hooks/pre-push`.
+
+**Root cause:** a RACE, not a break. `cortex-update.sh` unlocks the immutable enforcement files early in its run and relocks them at the END, so that tree is legitimately writable for the whole deploy — and those three files are exactly the three the auditor samples. An auditor run landing inside that window reports an unlocked gate that the deploy is about to relock itself. Observed 2026-10-03: the deploy wrote its manifest at 16:30:04, the alert is stamped 16:30.
+
+Confirm before touching anything: compare the alert timestamp with the deploy's writes (`stat -c '%y %n' ~/.hermes-cortex/deploy-manifest.tsv`) and check `hermes-plugin-lock status`. If every target shows `----i`, nothing is broken and the "fix" the auditor printed is the relock that already ran.
+
+**Fix (repo, 2026-10-03):** the deploy publishes its window as `~/.hermes-cortex/state/deploy-in-progress` (written at start, removed by the EXIT trap AFTER the relock), and the auditor defers the immutability check while that marker is fresh (< 30 min). The staleness bound is load-bearing: without it, a deploy killed hard enough to strand the marker would silence the check forever.
+
+Do NOT "fix" this by deleting the check or by relocking during a deploy — relocking mid-run breaks the deploy, and removing the check removes the detection that catches a genuine unlock.
+
 ---
 
 ## Changelog
 
 | Version | Date | Changes |
 |---|---|---|
+| 1.8.0 | 2026-10-03 | Added #24 (governance-auditor immutable-flag false positive inside a deploy's unlock window; deploy-in-progress marker) |
 | 1.7.0 | 2026-07-13 | Added #23 (scoring-activity-watchdog DB path fix), corrected 17 stale `state/`→`data/` references across docs and core governance scripts, fixed MCP lock file sync to prevent enforcer gaps |
 | 1.5.0 | 2026-06-22 | Added #24 (Alembic migration fork troubleshooting, prevention protocol, diagnostics) |
 | 1.4.0 | 2026-06-10 | Rewrote #23 (Langfuse costs) — fixed schema from `langfuse.models` to `public.models`, corrected INSERT SQL for v3 schema, added opencode-zen/opencode-go provider subsection with deepseek-v4-flash-free pricing SQL |

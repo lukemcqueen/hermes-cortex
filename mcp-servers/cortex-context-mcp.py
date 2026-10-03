@@ -39,35 +39,30 @@ if importlib.util.find_spec("mcp") is None:
 
 logging.basicConfig(level=logging.INFO, format="[cortex-context-mcp] %(levelname)s: %(message)s")
 
-def _find_tools_py():
-    """Locate the shared contract from EITHER layout.
+# ── cortex_lib bootstrap — IDENTICAL in every MCP server; do not vary. ─────
+# cortex_lib/paths.py sits in the scripts dir in BOTH layouts (ops/scripts/
+# in-repo, scripts/ deployed), so locate it by that dir rather than by guessing a
+# relative depth. Guarded on purpose: the import failure is reported by whichever
+# server actually needs the resource, naming what it wanted.
+resolve_repo_resource = repo_resource_candidates = None
+for _p in Path(__file__).resolve().parents:
+    if (_p / "cortex_lib" / "paths.py").is_file():
+        sys.path.insert(0, str(_p))
+        break
+try:
+    from cortex_lib.paths import (  # noqa: E402
+        repo_resource_candidates, resolve_repo_resource)
+except ImportError:
+    pass
 
-    repo:     <repo>/mcp-servers/cortex-context-mcp.py
-              -> <repo>/ops/services/mycortex-mem/context_tools.py
-    deployed: <deploy>/scripts/cortex-context-mcp.py   (cortex-update.sh flattens
-              mcp-servers/ into scripts/)
-              -> <deploy>/services/mycortex-mem/context_tools.py
-
-    This used to hard-code the repo-relative path, so the DEPLOYED copy could
-    never start ("context_tools.py not found at .../ops/services/..."): the
-    deploy maps ops/services/ to <deploy>/services/, dropping the "ops". A
-    registered server that cannot start is a wiring that exists and does nothing.
-    """
-    root = Path(__file__).resolve().parent.parent
-    for rel in (Path("ops") / "services" / "mycortex-mem" / "context_tools.py",
-                Path("services") / "mycortex-mem" / "context_tools.py"):
-        candidate = root / rel
-        if candidate.is_file():
-            return candidate
-    return None
-
-
-_TOOLS_PY = _find_tools_py()
+_TOOLS_REL = "ops/services/mycortex-mem/context_tools.py"
+_TOOLS_PY = resolve_repo_resource(_TOOLS_REL) if resolve_repo_resource else None
 if _TOOLS_PY is None:
-    _root = Path(__file__).resolve().parent.parent
-    print(f"[cortex-context-mcp] ERROR: context_tools.py not found under {_root} "
-          "(looked for ops/services/mycortex-mem/ and services/mycortex-mem/). "
-          "Run cortex-update.sh, or point --args at the repo copy.",
+    _tried = ([str(p) for p in repo_resource_candidates(_TOOLS_REL)]
+              if repo_resource_candidates else ["<cortex_lib.paths unavailable>"])
+    print(f"[cortex-context-mcp] ERROR: {_TOOLS_REL} not found. Tried: "
+          + ", ".join(_tried)
+          + " — run cortex-update.sh, or point --args at the repo copy.",
           file=sys.stderr)
     sys.exit(1)
 _spec = importlib.util.spec_from_file_location("cortex_context_tools", _TOOLS_PY)

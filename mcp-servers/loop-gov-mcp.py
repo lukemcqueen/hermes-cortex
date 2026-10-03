@@ -85,6 +85,22 @@ for _candidate in (_HERMES_SCRIPTS, _CORTEX_DEPLOY_SCRIPTS, _REPO_SCRIPTS):
     if _candidate.exists():
         sys.path.insert(0, str(_candidate))
 
+# ── cortex_lib bootstrap — IDENTICAL in every MCP server; do not vary. ─────
+# cortex_lib/paths.py sits in the scripts dir in BOTH layouts (ops/scripts/
+# in-repo, scripts/ deployed), so locate it by that dir rather than by guessing a
+# relative depth. Guarded on purpose: the import failure is reported by whichever
+# server actually needs the resource, naming what it wanted.
+resolve_repo_resource = repo_resource_candidates = None
+for _p in Path(__file__).resolve().parents:
+    if (_p / "cortex_lib" / "paths.py").is_file():
+        sys.path.insert(0, str(_p))
+        break
+try:
+    from cortex_lib.paths import (  # noqa: E402
+        repo_resource_candidates, resolve_repo_resource)
+except ImportError:
+    pass
+
 # Fail-soft: hermes_models is a model-name LOOKUP with a documented default —
 # NOT an enforcement gate. If it cannot be imported (e.g. macOS host without
 # the ~/.hermes/scripts symlink), degrade to the default instead of killing the
@@ -2131,24 +2147,38 @@ TRIAGE_MAX_FINDINGS = 12
 NOUL_TRUE = 0.7          # cites_artifact counts as TRUE at/above this probability
 
 
+_JUDGMENT_REL = "ops/scripts/judgment.py"
+
+
 def _load_judgment_client():
-    """Import the judgment client (repo first, then deployed). None if absent."""
-    for cand in (Path(__file__).resolve().parents[1] / "ops" / "scripts" / "judgment.py",
-                 HOME / ".hermes-cortex" / "scripts" / "judgment.py"):
-        if cand.is_file():
-            try:
-                spec = importlib.util.spec_from_file_location("hc_judgment_client", cand)
-                if spec is None or spec.loader is None:
-                    log.warning("triage: judgment client spec unavailable at %s", cand)
-                    return None
-                mod = importlib.util.module_from_spec(spec)
-                spec.loader.exec_module(mod)
-                return mod
-            except Exception as e:
-                log.warning("triage: judgment client failed to load (%s: %s)",
-                            type(e).__name__, e)
-                return None
-    return None
+    """Import the judgment client (repo or deployed). None if absent.
+
+    Resolved through cortex_lib.paths so both layouts agree. The hand-rolled pair
+    this replaced looked at `<deploy>/tools/ops/scripts/judgment.py` first — a
+    path that exists in NEITHER layout, because this server deploys under
+    tools/loop-governance/ rather than scripts/.
+    """
+    if resolve_repo_resource is None:
+        log.warning("triage: cortex_lib.paths unavailable — cannot resolve the "
+                    "judgment client")
+        return None
+    cand = resolve_repo_resource(_JUDGMENT_REL)
+    if cand is None:
+        log.warning("triage: judgment client not found. Tried: %s",
+                    ", ".join(str(p) for p in (repo_resource_candidates(_JUDGMENT_REL) or [])))
+        return None
+    try:
+        spec = importlib.util.spec_from_file_location("hc_judgment_client", cand)
+        if spec is None or spec.loader is None:
+            log.warning("triage: judgment client spec unavailable at %s", cand)
+            return None
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+    except Exception as e:
+        log.warning("triage: judgment client failed to load (%s: %s)",
+                    type(e).__name__, e)
+        return None
 
 
 def _triage_questions(findings):

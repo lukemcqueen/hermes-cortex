@@ -29,6 +29,27 @@ def _cron_ts(name: str) -> str:
   return f"{kst} {name}:"
 
 
+def _deploy_in_progress(max_age_s: int = 1800) -> bool:
+  """True while a cortex-update deploy holds the enforcement files unlocked.
+
+  The deploy unlocks the enforcement files early and relocks them at the END of
+  its run, so that tree is LEGITIMATELY writable for the whole deploy. Sampling
+  the flags inside that window reports a break that is not one: on 2026-10-03
+  this auditor fired at 16:30 inside a deploy's window and named exactly the
+  three targets the deploy unlocks, with the relock the deploy was about to run
+  printed as the "fix".
+
+  Bounded on purpose. The marker is trusted only while FRESH, so a deploy killed
+  hard enough to strand it cannot silence this check indefinitely.
+  """
+  marker = Path.home() / ".hermes-cortex" / "state" / "deploy-in-progress"
+  try:
+    age = time.time() - marker.stat().st_mtime
+  except OSError:
+    return False
+  return age < max_age_s
+
+
 # ── Config ──────────────────────────────────────────────────
 LOOKBACK_HOURS = int(os.environ.get("SCORE_AUDITOR_LOOKBACK", "24"))
 MAX_FILES_SHOWN = 15
@@ -349,6 +370,12 @@ def _check_infrastructure() -> list[str]:
     os.path.join(hooks_dir, "pre-commit"),
     os.path.join(hooks_dir, "pre-push"),
   ]
+  # A deploy unlocks these SAME files early and relocks them at the end of its
+  # run, so they are legitimately writable for the whole deploy. Sampling inside
+  # that window reports a break that is not one. Defer rather than alarm, and
+  # return early so the deferral is a decision in the code, not a silent skip.
+  if _deploy_in_progress():
+    return issues
   for path in immutable_targets:
     if os.path.exists(path):
       # Resolve symlinks — the immutable flag is on the target file

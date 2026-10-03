@@ -1,5 +1,18 @@
 # Deploy Registry Pattern
 
+> ⚠️ **STALE — do not follow this document.**
+>
+> This describes a `legacy-brain/` + `private-data` multi-repo strategy with
+> `cortex-profile.sh` profiles and `brain-*` branches. **None of that exists in this
+> repository.** The real deployment is a single repo synced by
+> `ops/scripts/cortex-update.sh` through its `register()` map.
+>
+> - For how a file's deployed path is resolved: `docs/repo-vs-deployed-paths.md`
+> - For the authoritative mapping: the `register()` calls in `ops/scripts/cortex-update.sh`
+>   (or the generated `~/.hermes-cortex/deploy-manifest.tsv`)
+>
+> Kept only so the existing links resolve. Rewrite or delete it.
+
 ## Overview
 
 The **Deploy Registry Pattern** is a deployment architecture for Hermes Cortex that uses a **multi-repo** strategy: a public MIT-licensed repository holds shared tooling and brain logic, while a private companion repository contains environment-specific configuration, secrets, and deployment metadata. This split enables open-source collaboration without exposing sensitive infrastructure details.
