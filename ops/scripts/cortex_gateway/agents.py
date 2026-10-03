@@ -336,11 +336,32 @@ class CommandBackend:
         hc-<agent>-<chat> — pi creates the session if it does not exist, so the first turn
         of a chat starts one and every later turn continues it. A random or in-memory id
         would silently reset the conversation on every gateway restart.
+
+        The gateway may publish a `session_generation` (its `/new` command). Generation
+        0 is the chat's original session and keeps the UNSUFFIXED id, so a chat that has
+        never used `/new` looks exactly as it did before this existed — no migration and
+        no lost history. Generation N appends `-g<N>`, giving `/new` a fresh session while
+        the earlier ones stay on disk under their own ids (archive, not delete).
         """
         if self.spec.session != "per_chat":
             return ""
         chat = inbound.get("channel_user_id")
-        return f"hc-{self.spec.name}-{chat}" if chat is not None else ""
+        if chat is None:
+            return ""
+        base = f"hc-{self.spec.name}-{chat}"
+        generation = inbound.get("session_generation") or 0
+        # bool is an int subclass; True must not read as generation 1.
+        if isinstance(generation, bool) or not isinstance(generation, int) or generation <= 0:
+            return base
+        return f"{base}-g{generation}"
+
+    def session_id_for(self, inbound: dict) -> str:
+        """The session id this backend WOULD use for an envelope (read-only).
+
+        The gateway calls this to NAME the conversation it is archiving in its `/new`
+        reply, so the transcript is discoverable without reading this module.
+        """
+        return self._session_id(inbound)
 
     def _argv(self, prompt: str, session_id: str = "") -> list:
         cmd = [*self.spec.command]

@@ -41,6 +41,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:                      # runtime import stays lazy (pairing is opt-in)
     from .pairing import PairingStore
+    from .sessions import SessionBook
 
 if __package__ in (None, ""):
     # Run as a script (python3 daemon.py / systemd ExecStart): make the
@@ -115,7 +116,8 @@ class Gateway:
                  default_agent: str = DEFAULT_BACKEND_AGENT,
                  routing_overrides: dict | None = None,
                  allowed_users: set | None = None,
-                 pairing: "PairingStore | None" = None):
+                 pairing: "PairingStore | None" = None,
+                 sessions: "SessionBook | None" = None):
         self.transport = transport
         self.backends = backends          # agent_name -> BackendAdapter
         self.default_agent = default_agent
@@ -126,6 +128,9 @@ class Gateway:
         # DM pairing (opt-in): an unknown sender can request enrolment, but their message
         # is NEVER dispatched until an already-allowed user approves the code.
         self.pairing = pairing
+        # Per-chat session generations (/new). None = rotation not configured, in
+        # which case a chat keeps one session forever (the behaviour before /new).
+        self.sessions = sessions
         # offset tracks the transport's own offset (transport owns the truth).
         self.offset = getattr(transport, "offset", 0)
 
@@ -206,6 +211,12 @@ class Gateway:
                       "TELEGRAM_ALLOWED_USERS", file=sys.stderr)
                 return
         chat = envelope.get("channel_user_id")
+        # Publish the chat's session generation BEFORE any dispatch, so the backend
+        # derives the right session id. `/new` bumps it (see _handle_new) and this is
+        # read per message, so every later turn picks up the new generation while an
+        # envelope already queued keeps the one it was sent under.
+        if self.sessions is not None:
+            envelope["session_generation"] = self.sessions.generation(chat)
         # A new human message lifts a previous /stop suppression.
         if envelope.get("tg_kind") == "message":
             self.suppressed.discard(chat)
@@ -253,9 +264,11 @@ class Gateway:
             self._reply(chat, self._status_line())
             return True
         if command == "/help":
-            self._reply(chat, "gateway commands: /stop · /status · /help — "
+            self._reply(chat, "gateway commands: /stop · /status · /help · /new — "
                               "anything else is forwarded to the agent")
             return True
+        if command == "/new":
+            return self._handle_new(chat, envelope, backend)
         # Unknown command → forward, so the agent (or a later backend) owns it
         # instead of the text silently becoming part of a prompt.
         self._forward(envelope, backend)
@@ -278,6 +291,42 @@ class Gateway:
         queued = sum(len(q) for q in self.queues.values())
         return (f"gateway ok · backends: {','.join(sorted(self.backends))} · "
                 f"in flight: {busy} · queued: {queued}")
+
+    # ── /new: start a fresh session, ARCHIVING the old one ─────
+    def _handle_new(self, chat, envelope: dict, backend) -> bool:
+        """Rotate this chat's session. The previous conversation is KEPT.
+
+        Handled here rather than forwarded, because the gateway is the only
+        component that owns the session id: the agent cannot rotate its own — the
+        gateway pins `--session-id` per chat. Forwarded, `/new` is just four
+        characters the agent answers as prose (which is what used to happen:
+        `pi "/new"` replies "New task. What are we doing?" and keeps all context).
+
+        Archive, not delete (Luke, 2026-10-03). The previous transcript stays on
+        disk under its own session id, which is DETERMINISTIC (hc-<agent>-<chat>-g<N>),
+        so every archived conversation is findable after the fact. Nothing here
+        removes, truncates or renames anything.
+        """
+        if self.sessions is None:
+            self._reply(chat, "Session rotation is not configured on this gateway — "
+                              "keep talking to continue this conversation.")
+            return True
+        # Name the OUTGOING session BEFORE rotating: the envelope still carries the
+        # pre-rotation generation, so the backend reports the id we are archiving.
+        previous = ""
+        namer = getattr(backend, "session_id_for", None)
+        if namer is not None:
+            try:
+                previous = namer(envelope) or ""
+            except Exception as e:          # noqa: BLE001 — naming is cosmetic
+                print(f"⚠️  could not name the archived session: {e}",
+                      file=sys.stderr)
+        generation = self.sessions.rotate(chat)
+        archived = (f" Previous conversation archived as `{previous}`."
+                    if previous else " Previous conversation archived.")
+        self._reply(chat, f"🆕 New session (generation {generation}).{archived} "
+                          "Your next message starts fresh.")
+        return True
 
     # ── busy / interrupt (G6) ──────────────────────────────────
     # ── typing indicator (parity: "typing…" while a turn runs) ──
@@ -597,6 +646,11 @@ def build_gateway(config_path: Path) -> Gateway:
         state_path=_state_dir / f"gateway-offset-{bot.token_ref}.json")
     backends = _build_backends(data)
     routing = data.get("routing", {})
+    # Per-chat session generations for `/new`. Persisted NEXT TO the deploy so a
+    # rotation survives a restart (the unit comes back after any crash) — an
+    # in-memory counter would silently resume the archived conversation.
+    from . import sessions as _sessions
+    sessions = _sessions.SessionBook(_state_dir / "gateway-sessions.json")
     # Pairing is opt-in and its approvals persist NEXT TO the deploy, not in the repo.
     pairing = None
     from . import pairing as _pairing
@@ -608,7 +662,7 @@ def build_gateway(config_path: Path) -> Gateway:
     return Gateway(transport=transport, backends=backends,
                    default_agent=routing.get("default", DEFAULT_BACKEND_AGENT),
                    routing_overrides=routing.get("overrides", {}),
-                   allowed_users=allowed, pairing=pairing)
+                   allowed_users=allowed, pairing=pairing, sessions=sessions)
 
 
 def main() -> int:

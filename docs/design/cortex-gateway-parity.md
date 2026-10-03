@@ -58,6 +58,7 @@ Every difference named below is now closed, and the row names the test that hold
 | Forum/DM topic anchors + bindings | ✅ | ✅ in a topic the answer ANCHORS to the triggering message; a stale topic id is PRUNED (deliver without it) instead of losing the answer; a non-topic failure never silently de-topics | `tests/test_gateway_approvals.py` |
 | DM pairing flow | ✅ | ✅ code → owner `/approve` (only an env-allowed user), single-use, TTL-bounded, per-sender rate-limited, persisted across restarts; ON by default as the incumbent is, `TELEGRAM_PAIRING=off` for a silent refusal | `tests/test_gateway_pairing.py` |
 | Per-chat agent sessions | ✅ | ✅ spec `session: per_chat` + `session_args`; deterministic `hc-<agent>-<chat>` id, so continuity survives a restart | `tests/test_gateway_agent_registry.py` |
+| `/new` — start a fresh session (ARCHIVE) | ➖ | ✅ `/new` bumps a PERSISTED per-chat generation → `hc-<agent>-<chat>-g<N>`; the previous transcript stays on disk under its own derivable id and is NAMED in the reply. Generation 0 keeps the unsuffixed id, so an existing conversation never moves | `tests/test_gateway_new_session.py` |
 | Message edits | ✅ | ✅ `editMessageText` (approval outcomes, streaming updates) | `tests/test_gateway_approvals.py` |
 | Multi-platform (Discord/Slack/… 20+) | ✅ | ❌ Telegram only | accepted by design (anti-bloat); the transport seam is where another platform attaches |
 
