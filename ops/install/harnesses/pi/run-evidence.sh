@@ -33,12 +33,36 @@ rm -rf "$tmp"
 
 verdict() { [ "$1" -eq 0 ] && echo "PASS (exit 0)" || echo "FAIL (exit $1)"; }
 
+# ── Assert on the FULL captured output ──────────────────────────────────────
+# A `tail` window can hide a failure above it, so the pass/fail markers are
+# matched against the whole capture, and a missing marker is a hard error.
+grep -q "EXTENSION WIRING OK" <<<"$node_out" \
+  || { echo "❌ guard did not report a passing wiring (full output above)"; exit 1; }
+grep -qE "[0-9]+ passed" <<<"$py_out" \
+  || { echo "❌ test suite did not report passing tests"; exit 1; }
+grep -q "execute is not a function" <<<"$old_out" \
+  || { echo "❌ guard did not reproduce the pre-fix failure — it is not discriminating"; exit 1; }
+
+# Pin the artifacts: a reviewer whose diff is truncated can still confirm that
+# the file this evidence was produced from is the file that is committed.
+EXT_SHA="$(sha256sum "$REPO/$OLD_EXT_PATH" | cut -d' ' -f1)"
+GUARD_SHA="$(sha256sum "$HERE/verify-extension.mjs" | cut -d' ' -f1)"
+EVID_SHA="$(sha256sum "$HERE/run-evidence.sh" | cut -d' ' -f1)"
+
 {
   echo "# pi extension — committed, re-runnable evidence"
   echo
   echo "Regenerate with: \`bash ops/install/harnesses/pi/run-evidence.sh\`"
   echo
   echo "Generated: $(date -u '+%Y-%m-%dT%H:%M:%SZ')  ·  host: $(hostname)"
+  echo
+  echo "Artifacts this evidence was produced from (verify with \`sha256sum\`):"
+  echo
+  echo '```'
+  echo "$EXT_SHA  ${OLD_EXT_PATH}"
+  echo "$GUARD_SHA  ops/install/harnesses/pi/verify-extension.mjs"
+  echo "$EVID_SHA  ops/install/harnesses/pi/run-evidence.sh"
+  echo '```'
   echo
   echo "The guard loads the REAL extension through pi's own jiti loader, hands it"
   echo "a stub \`pi\`, and CALLS \`execute(id, params)\` against a throwaway CLI — the"

@@ -2,7 +2,15 @@
 
 Regenerate with: `bash ops/install/harnesses/pi/run-evidence.sh`
 
-Generated: 2026-10-03T05:42:07Z  ·  host: esther
+Generated: 2026-10-03T05:46:36Z  ·  host: esther
+
+Artifacts this evidence was produced from (verify with `sha256sum`):
+
+```
+70950ce2a8645ccb9389557bf4f8ffb9e776e6f46e0492062500da38340c3f8c  ops/install/harnesses/pi/extensions/cortex-context.ts
+22c8a5745927ee8af6ba9c3d22854c51a9d87c659dcc23f04789cb1589f3f4fa  ops/install/harnesses/pi/verify-extension.mjs
+a22087c89bfc02562031221b5f012c2c629ceea0df160b04a05dae7ecd2fb02d  ops/install/harnesses/pi/run-evidence.sh
+```
 
 The guard loads the REAL extension through pi's own jiti loader, hands it
 a stub `pi`, and CALLS `execute(id, params)` against a throwaway CLI — the
@@ -26,7 +34,7 @@ schema shape, which is why the bug shipped; this can.
 
 tests/test_context_harnesses.py ..........................               [100%]
 
-============================== 26 passed in 1.58s ==============================
+============================== 26 passed in 1.68s ==============================
 ```
 
 ## 3. PRE-FIX extension (48e85271) — same guard, must fail: FAIL (exit 1)
