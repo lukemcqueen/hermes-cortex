@@ -2,14 +2,14 @@
 
 Regenerate with: `bash ops/install/harnesses/pi/run-evidence.sh`
 
-Generated: 2026-10-03T06:55:40Z  ·  host: esther
+Generated: 2026-10-03T07:02:05Z  ·  host: esther
 
 Artifacts this evidence was produced from (verify with `sha256sum`):
 
 ```
 582e5654cabd0503598c8583301bb1479352e3c145311ff2f17d06e204e2c1b5  ops/install/harnesses/pi/extensions/cortex-context.ts
 a20ab85eb54ba28febeac5c35fa81029fc6f5e6ff242d781331176e18f238520  ops/install/harnesses/pi/verify-extension.mjs
-40ea2d27408590c2e6aea8747ee976c5908318ff9a1da2c9d1044d4483ef4c22  ops/install/harnesses/pi/run-evidence.sh
+aa7bd6f8f6fffc9ed0fc533fe7c2e1248ce9dd27384a049c2a4be5ed9ad6279d  ops/install/harnesses/pi/run-evidence.sh
 ```
 
 The guard loads the REAL extension through pi's own jiti loader, hands it
@@ -28,13 +28,13 @@ CORTEX_CHECKPOINT_EMPTY turn=2 keys=turnIndex
 ✅ EXTENSION OK — registers no tools (MCP owns them) and its lifecycle hooks execute.
 ```
 
-## 2. Test suite (includes the executable guard): PASS (exit 0)
+## 2. Test suite — the two files this change touches: PASS (exit 0)
 
 ```
+tests/test_context_harnesses.py ..........................               [ 63%]
+tests/test_gateway_agent_registry.py ...............                     [100%]
 
-tests/test_context_harnesses.py ..........................               [100%]
-
-============================== 26 passed in 1.72s ==============================
+============================== 41 passed in 1.88s ==============================
 ```
 
 ## 3. PRE-FIX extension (48e85271) — same guard, must fail: FAIL (exit 1)

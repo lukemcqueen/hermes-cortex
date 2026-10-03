@@ -21,8 +21,9 @@ OLD_EXT_PATH="ops/install/harnesses/pi/extensions/cortex-context.ts"
 echo "→ wiring guard (fixed extension)"
 node_out="$(cd "$REPO" && node ops/install/harnesses/pi/verify-extension.mjs 2>&1)"; node_rc=$?
 
-echo "→ test suite"
-py_out="$(cd "$REPO" && python3 -m pytest tests/test_context_harnesses.py -q 2>&1)"; py_rc=$?
+echo "→ test suite (context harnesses + gateway agent registry)"
+py_out="$(cd "$REPO" && python3 -m pytest tests/test_context_harnesses.py \
+  tests/test_gateway_agent_registry.py -q 2>&1)"; py_rc=$?
 
 echo "→ wiring guard (PRE-FIX extension — must FAIL)"
 tmp="$(mktemp -d)"; mkdir -p "$tmp/extensions"
@@ -98,7 +99,7 @@ fi
   echo "$node_out" | tail -6
   echo '```'
   echo
-  echo "## 2. Test suite (includes the executable guard): $(verdict "$py_rc")"
+  echo "## 2. Test suite — the two files this change touches: $(verdict "$py_rc")"
   echo
   echo '```'
   echo "$py_out" | tail -4
