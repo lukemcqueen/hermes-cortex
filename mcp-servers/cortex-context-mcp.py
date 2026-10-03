@@ -45,9 +45,16 @@ logging.basicConfig(level=logging.INFO, format="[cortex-context-mcp] %(levelname
 # relative depth. Guarded on purpose: the import failure is reported by whichever
 # server actually needs the resource, naming what it wanted.
 resolve_repo_resource = repo_resource_candidates = None
+# cortex_lib sits BESIDE this file in the deployed layout (<deploy>/scripts/cortex_lib/)
+# but ONE LEVEL DOWN in the repo (<repo>/ops/scripts/cortex_lib/). Search both: a
+# bootstrap that knew only the deployed shape left every server unimportable from the
+# repo tree — the running system stayed green while the repo's own tests died at import.
 for _p in Path(__file__).resolve().parents:
     if (_p / "cortex_lib" / "paths.py").is_file():
         sys.path.insert(0, str(_p))
+        break
+    if (_p / "ops" / "scripts" / "cortex_lib" / "paths.py").is_file():
+        sys.path.insert(0, str(_p / "ops" / "scripts"))
         break
 try:
     from cortex_lib.paths import (  # noqa: E402

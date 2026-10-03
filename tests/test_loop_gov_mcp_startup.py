@@ -57,8 +57,25 @@ def test_server_starts_without_hermes_models_symlink():
             f"server crashed with a traceback under fake HOME.\n"
             f"stderr:\n{proc.stderr[:2000]}"
         )
-        # Degrade-not-crash: the fallback warning must be present
-        assert "hermes_models.py not importable" in proc.stderr
+        # Degrade-not-crash: the fallback warning is expected ONLY when the module is
+        # genuinely unavailable. Since the cortex_lib bootstrap now also puts the REPO's
+        # ops/scripts on sys.path, hermes_models.py IS importable from the repo tree
+        # (it lives there), so the fallback is correctly not taken. Asserting the
+        # warning unconditionally would now be asserting the module is missing, which
+        # is the opposite of what this file wants.
+        #
+        # The crash-prevention invariant below is what actually guards the regression,
+        # and it is asserted in both directions.
+        importable = (Path(__file__).resolve().parent.parent
+                      / "ops" / "scripts" / "hermes_models.py").is_file()
+        if not importable:
+            assert "hermes_models.py not importable" in proc.stderr, (
+                "hermes_models is absent, so the fail-soft warning must be present")
+        else:
+            assert "hermes_models.py not importable" not in proc.stderr, (
+                "hermes_models is present on the repo path, so the fail-soft warning "
+                "must NOT fire — a spurious warning here would mean the path search "
+                "is wrong")
         # Server should reach the stdio loop (EOF exit 0, or clean handled exit)
         assert proc.returncode == 0, (
             f"server exited {proc.returncode} under fake HOME.\n"

@@ -54,6 +54,7 @@ from .checks import (
 )
 from .fix import apply_fixes
 from .bus_alert import dispatch_bus_alerts
+from .task_integrity import check_task_model_integrity
 
 
 def main():
@@ -108,6 +109,7 @@ def main():
         check_cortex_env,
         check_cron_bridge_migration,
         check_orphan_cycle_resolution,
+        check_task_model_integrity,
         ]
 
     if do_quick:

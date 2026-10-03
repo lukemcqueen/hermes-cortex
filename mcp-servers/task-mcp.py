@@ -16,9 +16,10 @@ lifecycle as plain-named MCP tools for every agent:
 
 Task-model-v3 (v4, schema v009+) worker/orchestrator tools:
     task_claim          atomically claim a pending slice for yourself
-    task_unclaim        return an in_progress slice to pending (blocker/tool gap)
+    task_unclaim        return a slice to pending (started work, OR release a stale hand-off)
     task_list_claimable worker queue view — pending slices with no assignee
-    task_board          one-view board: open counts + per-agent in_progress
+    task_list_handed_out the OTHER half — pending slices WITH an assignee, never started
+    task_board          one-view board: open counts (pending split) + in_progress
     task_report         worker submits completion evidence → slice goes to review
     task_verify         ORCHESTRATOR-ONLY: review → completed (or back)
 
@@ -66,9 +67,16 @@ log = logging.getLogger("task-mcp")
 # relative depth. Guarded on purpose: the import failure is reported by whichever
 # server actually needs the resource, naming what it wanted.
 resolve_repo_resource = repo_resource_candidates = None
+# cortex_lib sits BESIDE this file in the deployed layout (<deploy>/scripts/cortex_lib/)
+# but ONE LEVEL DOWN in the repo (<repo>/ops/scripts/cortex_lib/). Search both: a
+# bootstrap that knew only the deployed shape left every server unimportable from the
+# repo tree — the running system stayed green while the repo's own tests died at import.
 for _p in Path(__file__).resolve().parents:
     if (_p / "cortex_lib" / "paths.py").is_file():
         sys.path.insert(0, str(_p))
+        break
+    if (_p / "ops" / "scripts" / "cortex_lib" / "paths.py").is_file():
+        sys.path.insert(0, str(_p / "ops" / "scripts"))
         break
 try:
     from cortex_lib.paths import (  # noqa: E402
@@ -232,6 +240,11 @@ def _task_list_claimable(args: dict) -> CallToolResult:
     return _run(lambda: task_db.cmd_list_claimable(limit))
 
 
+def _task_list_handed_out(args: dict) -> CallToolResult:
+    limit = int(args.get("limit", 20))
+    return _run(lambda: task_db.cmd_list_assigned(limit))
+
+
 def _task_board(args: dict) -> CallToolResult:
     return _run(task_db.cmd_list_board)
 
@@ -264,13 +277,16 @@ _HANDLERS = {
     "task_claim": _task_claim,
     "task_unclaim": _task_unclaim,
     "task_list_claimable": _task_list_claimable,
+    "task_list_handed_out": _task_list_handed_out,
     "task_board": _task_board,
     "task_report": _task_report,
     "task_verify": _task_verify,
 }
 
 _SCOPE_DESC = "personal (default) or fleet (stored locally on this host only — not fleet-wide until transport ships)"
-_STATUS_DESC = "pending, in_progress, paused, completed, or cancelled (paused requires tasks schema v005+)"
+_STATUS_DESC = ("pending, in_progress, review, blocked, waiting, paused, completed, "
+                "or cancelled (review/waiting/blocked are real store states; "
+                "a filter that omits them makes those rows unqueryable)")
 _KIND_DESC = "story (parent must be NULL) or slice (parent required); requires tasks schema v005+"
 _SOURCE_DESC = "manual, session, dream, bridge, governance, inbox, or doctor-probe"
 _AGENT_DESC = "creator/owner name (defaults to profile)"
@@ -309,7 +325,7 @@ async def list_tools(ctx, params=None) -> ListToolsResult:
                 "type": "object",
                 "properties": {
                     "agent": {"type": "string", "description": _AGENT_DESC},
-                    "status": {"type": "string", "enum": ["pending", "in_progress", "paused", "completed", "cancelled"], "description": _STATUS_DESC},
+                    "status": {"type": "string", "enum": ["pending", "in_progress", "review", "blocked", "waiting", "paused", "completed", "cancelled"], "description": _STATUS_DESC},
                     "project": {"type": "string", "description": "Filter by project label."},
                     "scope": {"type": "string", "enum": ["personal", "fleet"], "description": "Filter by scope."},
                     "repo": {"type": "string", "description": "Filter by repo label."},
@@ -332,7 +348,7 @@ async def list_tools(ctx, params=None) -> ListToolsResult:
                 "properties": {
                     "task_id": {"type": "string", "description": "Task UUID (from task_list)."},
                     "by_correlation": {"type": "string", "description": "Bus correlation_id instead of task_id (inbox tasks only)."},
-                    "status": {"type": "string", "enum": ["pending", "in_progress", "paused", "completed", "cancelled"], "description": _STATUS_DESC},
+                    "status": {"type": "string", "enum": ["pending", "in_progress", "review", "blocked", "waiting", "paused", "completed", "cancelled"], "description": _STATUS_DESC},
                     "reason": {"type": "string", "description": "Transition reason — 'reopen' to resume a completed task."},
                     "no_notify": {"type": "boolean", "description": "Suppress the Telegram event notification."},
                 },
@@ -388,7 +404,7 @@ async def list_tools(ctx, params=None) -> ListToolsResult:
         ),
         Tool(
             name="task_unclaim",
-            description="Return an in_progress slice you own to pending with a reason (blocker, tool gap). Task-model-v3. " + _CONTENT_WARNING,
+            description="Return a slice you own to pending with a reason. TWO cases: (1) an in_progress slice you started and must give back (blocker, tool gap); (2) a PENDING slice that already carries an assignee — a hand-off nobody started, which is otherwise unclaimable AND unwatched. Case 2 is the release path for stranded hand-offs (see task_list_handed_out). Task-model-v3. " + _CONTENT_WARNING,
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -397,6 +413,16 @@ async def list_tools(ctx, params=None) -> ListToolsResult:
                     "no_notify": {"type": "boolean", "description": "Suppress the Telegram event notification."},
                 },
                 "required": ["task_id"],
+            },
+        ),
+        Tool(
+            name="task_list_handed_out",
+            description="The OTHER half of the pending queue: pending slices that ALREADY carry an assignee — handed out at decomposition and never started. Excluded from task_list_claimable (someone owns them) but NOT in_progress, so nothing is working them; without this view they have no reader at all and rot unseen. Release one back to the pool with task_unclaim. Task-model-v3. " + _CONTENT_WARNING,
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "limit": {"type": "integer", "description": "Max rows (default 20)."},
+                },
             },
         ),
         Tool(

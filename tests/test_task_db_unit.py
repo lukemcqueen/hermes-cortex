@@ -665,7 +665,8 @@ def test_mcp_tool_registry_and_confirm_gate():
     assert names == {"task_add", "task_list", "task_pending", "task_update",
                      "task_switch", "task_save_end", "task_prune",
                      "task_claim", "task_unclaim", "task_list_claimable",
-                     "task_board", "task_report", "task_verify"}
+                     "task_list_handed_out", "task_board", "task_report",
+                     "task_verify"}, names
 
     # destructive tools refuse without confirm=true
     r = task_mcp._task_prune({"older_than": "1d"})

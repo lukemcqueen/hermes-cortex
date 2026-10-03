@@ -747,13 +747,56 @@ def cmd_list_claimable(limit: int = 10):
             print(f"{parts[0][:8]:<10} {parts[1]:<3} {parts[2][:60]}")
 
 
+def cmd_list_assigned(limit: int = 20):
+    """v4: pending slices that ALREADY have an assignee — handed out, never started.
+
+    These are deliberately excluded from the claimable pool (someone owns them), but
+    they are not `in_progress` either, so nothing is working them. Without this view
+    they had NO reader at all: six slices sat here from 2026-08-23 to 2026-10-04 while
+    every board counted them as ordinary pending work.
+
+    Release one back to the pool:  task-db.py unclaim <id> --reason "<why>"
+    """
+    _require_v4("list --assigned")
+    rows = psql(
+        "SELECT t.id, t.priority, t.project, t.content, "
+        "COALESCE(t.assignee, '') "
+        "FROM tasks.tasks t "
+        "WHERE t.status = 'pending' AND t.kind = 'slice' "
+        "AND t.assignee IS NOT NULL "
+        "ORDER BY t.priority DESC, t.status_changed_at ASC LIMIT ?;",
+        [limit],
+    )
+    if not rows.strip():
+        print("(no unstarted hand-offs)")
+        return
+    print(f"{'ID':<10} {'PR':<3} {'ASSIGNEE':<10} {'PROJECT':<18} CONTENT")
+    for line in rows.splitlines():
+        parts = line.split("||")
+        if len(parts) >= 5:
+            print(f"{parts[0][:8]:<10} {parts[1]:<3} {parts[4][:9]:<10} "
+                  f"{parts[2][:16]:<18} {parts[3][:50]}")
+
+
 def cmd_list_board():
-    """v4: one-view board — open counts + per-agent in_progress + review queue."""
+    """v4: one-view board — open counts + per-agent in_progress + review queue.
+
+    The pending count is SPLIT by what it actually means. A bare `pending: 18` was
+    misleading: 9 were slice work anyone could claim, 6 were slices handed to someone
+    who never started (unclaimable, unwatched) and 3 were stories (never claimable —
+    the pool takes slices only). A count an agent cannot act on hides the rot inside it.
+    """
     _require_v4("list --board")
     counts = psql(
-        "SELECT status, count(*) FROM tasks.tasks "
+        "SELECT CASE "
+        "         WHEN status <> 'pending' THEN status "
+        "         WHEN kind = 'story' THEN 'pending (story, not claimable)' "
+        "         WHEN assignee IS NOT NULL THEN 'pending (assigned, not started)' "
+        "         ELSE 'pending (claimable)' "
+        "       END AS bucket, count(*) "
+        "FROM tasks.tasks "
         "WHERE status IN ('pending','in_progress','review') "
-        "GROUP BY status ORDER BY status;",
+        "GROUP BY bucket ORDER BY bucket;",
     )
     print("📋 Task Board")
     if counts.strip():
@@ -1017,6 +1060,9 @@ def main():
         if _has("--claimable"):
             limit = int(_flag("--limit", "10") or 10)
             cmd_list_claimable(limit)
+        elif _has("--assigned"):
+            limit = int(_flag("--limit", "20") or 20)
+            cmd_list_assigned(limit)
         elif _has("--board"):
             cmd_list_board()
         else:

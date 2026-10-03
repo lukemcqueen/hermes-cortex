@@ -316,6 +316,12 @@ register "ops/services/tasks/schema/v005__lifecycle.sql"     "${CORTEX_DEPLOY_HO
 register "ops/services/tasks/schema/v006__schema-version-grant.sql" "${CORTEX_DEPLOY_HOME}/services/tasks/schema/v006__schema-version-grant.sql"
 register "ops/services/tasks/schema/v007__upsert-preserve-partial.sql" "${CORTEX_DEPLOY_HOME}/services/tasks/schema/v007__upsert-preserve-partial.sql"
 register "ops/services/tasks/schema/v008__v006-deferred.sql" "${CORTEX_DEPLOY_HOME}/services/tasks/schema/v008__v006-deferred.sql"
+# v009/v010 were never registered: the deployed schema dir stopped at v008, so a host's
+# --apply-schema could not reach the v3 task model at all. The register map IS the deploy.
+register "ops/services/tasks/schema/v009__task-model-v3.sql" "${CORTEX_DEPLOY_HOME}/services/tasks/schema/v009__task-model-v3.sql"
+register "ops/services/tasks/schema/v010__task-model-v3-matrix-fix.sql" "${CORTEX_DEPLOY_HOME}/services/tasks/schema/v010__task-model-v3-matrix-fix.sql"
+register "ops/services/tasks/schema/v011__release-stale-assignment.sql" "${CORTEX_DEPLOY_HOME}/services/tasks/schema/v011__release-stale-assignment.sql"
+register "ops/services/tasks/schema/v012__parked-rows-return-to-pool.sql" "${CORTEX_DEPLOY_HOME}/services/tasks/schema/v012__parked-rows-return-to-pool.sql"
 # learnings ledger (F-001) — schema + version-gated runner, orchestrator-only
 # (the bus Postgres that hosts learnings exists only on Moses/Esther; workers
 # write via the HTTP collector path and never need this schema locally).
@@ -403,6 +409,9 @@ register "ops/scripts/manage/cortex_doctor/fix.py"     "${CORTEX_DEPLOY_HOME}/sc
 register "ops/scripts/manage/cortex_doctor/immutability.py" "${CORTEX_DEPLOY_HOME}/scripts/cortex_doctor/immutability.py"
 register "ops/scripts/manage/cortex_doctor/helpers.py" "${CORTEX_DEPLOY_HOME}/scripts/cortex_doctor/helpers.py"
 register "ops/scripts/manage/cortex_doctor/results.py" "${CORTEX_DEPLOY_HOME}/scripts/cortex_doctor/results.py"
+# Task-model integrity: migrations must actually deploy, and no slice may be
+# pending-with-an-assignee (unclaimable AND unwatched).
+register "ops/scripts/manage/cortex_doctor/task_integrity.py" "${CORTEX_DEPLOY_HOME}/scripts/cortex_doctor/task_integrity.py"
 
 register "ops/scripts/manage/cortex-agent-manager.py"  "${CORTEX_DEPLOY_HOME}/scripts/cortex-agent-manager.py"
 
