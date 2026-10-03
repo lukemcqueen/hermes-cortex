@@ -213,7 +213,9 @@ crawled; a leaked identifier is permanent. Practice:
 - Use placeholders everywhere: `YOURUSER`, `192.168.1.x`, `example.com`,
   `mymac`. Configs are templates for strangers to copy, never live values.
 - Before pushing, grep the whole tree:
-  `grep -rniE '192\.168|1270130526|<realhost>|<realdomain>' .` → clean.
+  `grep -rniE '192\.168|<realhost>|<realdomain>|<chat-id>' .` → clean.
+  (Never paste a REAL identifier into the pattern — this line used to carry one,
+  which is the exact leak it warns about.)
 - Audit doc cross-references resolve (`](path)` from each file's own dir);
   broken links fail the repo's own QA.
 - Scripts ship with a `--check` mode and pass `bash -n` before commit.

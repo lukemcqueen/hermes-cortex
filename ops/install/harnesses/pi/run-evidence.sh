@@ -49,6 +49,29 @@ EXT_SHA="$(sha256sum "$REPO/$OLD_EXT_PATH" | cut -d' ' -f1)"
 GUARD_SHA="$(sha256sum "$HERE/verify-extension.mjs" | cut -d' ' -f1)"
 EVID_SHA="$(sha256sum "$HERE/run-evidence.sh" | cut -d' ' -f1)"
 
+# ── Captured RUNTIME state ──────────────────────────────────────────────────
+# These sections record what the host reports RIGHT NOW. They are capture, not
+# guard: the re-runnable guards are the test suite and verify-extension.mjs,
+# which need no prior state.
+#
+# Chat ids are PERSONAL IDENTIFIERS and this is a public repo, so the pinned key
+# is shown with its id REDACTED — the shape (`hc-pi-<chat>`) is the evidence, the
+# specific id is not.
+PI_BIN="${PI_BIN:-$HOME/.pi/agent/bin/pi}"
+CTX_CLI="${HOME}/.hermes-cortex/scripts/cortex-context.py"
+if [ -x "$PI_BIN" ]; then
+  mcp_out="$("$PI_BIN" mcp list 2>&1 | grep -A2 'cortex-context' || true)"
+else
+  mcp_out="(pi not installed here)"
+fi
+if [ -f "$CTX_CLI" ]; then
+  key_out="$(python3 "$CTX_CLI" session_list '{}' 2>&1 \
+    | grep -o 'hc-pi-[0-9]*' | sed -E 's/[0-9]+$/NNNNNNNNNN/' | sort -u | head -5 || true)"
+  [ -n "$key_out" ] || key_out="(no hc-pi-* session keys recorded yet)"
+else
+  key_out="(cortex-context CLI not deployed here)"
+fi
+
 {
   echo "# pi extension — committed, re-runnable evidence"
   echo
@@ -88,6 +111,30 @@ EVID_SHA="$(sha256sum "$HERE/run-evidence.sh" | cut -d' ' -f1)"
   echo
   echo '```'
   echo "$old_out" | grep -E 'ZERO tools|EXTENSION BROKEN' | head -3
+  echo '```'
+  echo
+  echo "---"
+  echo
+  echo "## 4. MCP registration on this host (captured, not a guard)"
+  echo
+  echo "The tool surface is a CONFIG entry pointing at the shared server. The"
+  echo "re-runnable guard for this is"
+  echo "\`tests/test_context_harnesses.py::test_pi_context_tools_are_registered_as_the_shared_MCP_server\`."
+  echo
+  echo '```'
+  echo "$mcp_out"
+  echo '```'
+  echo
+  echo "## 5. Pinned per-chat session keys (captured, not a guard)"
+  echo
+  echo "The gateway declares \`env: {CORTEX_SESSION_KEY: {session_id}}\` on the command"
+  echo "backend, so each chat gets its OWN key instead of the shared fallback. Ids are"
+  echo "redacted — a chat id is a personal identifier and this is a public repo. The"
+  echo "re-runnable guard for the seam is"
+  echo "\`tests/test_gateway_agent_registry.py::test_command_backend_pins_session_identity_via_spec_env\`."
+  echo
+  echo '```'
+  echo "$key_out"
   echo '```'
   echo
   echo "---"
