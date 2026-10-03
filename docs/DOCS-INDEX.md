@@ -120,7 +120,7 @@ repo; this public repo carries only framework docs (PRDs, design, reference).
 | `docs/cron-job-recipes.md` | Cron job recipes |
 | `docs/cron-schedules.md` | Cron schedules reference |
 | `docs/cron-jobs-reference.md` | Cron jobs reference |
-| `docs/deploy-registry-pattern.md` | ⚠️ **STALE** — describes a `legacy-brain/` + `private-data` multi-repo layout that does not match this repository. Use `docs/repo-vs-deployed-paths.md` and the `register()` map in `ops/scripts/cortex-update.sh` instead |
+| `docs/deploy-registry-pattern.md` | **REWRITTEN (2026-10-03)** — the real deployment: one repo, the `register()` map in `ops/scripts/cortex-update.sh`, and the generated `deploy-manifest.tsv` (previously described a fabricated `legacy-brain/` + `private-data` layout) |
 | `docs/repo-vs-deployed-paths.md` | **NEW (2026-10-03)** — how a component resolves a repo-relative sibling file in the repo AND after a deploy: the one resolver, the generated `deploy-manifest.tsv`, and why the deployed path cannot be derived |
 | `docs/git-enforcement.md` | Git enforcement model |
 | `docs/loop-governance-reference.md` | Loop governance reference |

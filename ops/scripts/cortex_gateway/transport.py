@@ -24,6 +24,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Optional
 
 import gateway_envelope as env
@@ -253,7 +254,7 @@ class TelegramAdapter(TransportAdapter):
     """Long-poll getUpdates, ONE poller per bot (gateway owns it)."""
 
     def __init__(self, token: str, initial_offset: int = 0,
-                 home_channel=None):
+                 home_channel=None, state_path=None):
         # A4 fuzz hardening: fail fast on a malformed bot definition rather
         # than building a broken poller that errors at runtime.
         if not isinstance(token, str) or not token:
@@ -261,8 +262,48 @@ class TelegramAdapter(TransportAdapter):
         if isinstance(initial_offset, bool) or not isinstance(initial_offset, int):
             raise ValueError("initial_offset must be an int")
         self.token = token
-        self.offset = initial_offset
+        self.state_path = Path(state_path) if state_path else None
+        # Resume from the PERSISTED offset when there is one. It is the only record
+        # of which updates this bot already consumed; held in memory alone it resets
+        # to `initial_offset` on every restart, and the unit restarts on any crash
+        # (Restart=always), so a restart re-reads whatever Telegram still holds
+        # instead of resuming where it stopped.
+        self.offset = max(initial_offset, self._load_offset())
         self.home_channel = home_channel
+
+    def _load_offset(self) -> int:
+        """The persisted poll offset, or 0 when absent or unreadable."""
+        if self.state_path is None:
+            return 0
+        try:
+            raw = json.loads(self.state_path.read_text())
+            value = raw.get("offset", 0)
+        except (OSError, ValueError, AttributeError):
+            return 0
+        if isinstance(value, bool) or not isinstance(value, int):
+            return 0
+        return max(0, value)
+
+    def set_offset(self, value: int) -> None:
+        """Advance the poll offset and persist it.
+
+        Best-effort on the WRITE: an unwritable state dir must not stop the poll
+        loop — losing the resume point is a degradation, not an outage — but it is
+        reported, because silence would hide a state dir that never works.
+        """
+        if isinstance(value, bool) or not isinstance(value, int) or value <= self.offset:
+            return
+        self.offset = value
+        if self.state_path is None:
+            return
+        try:
+            self.state_path.parent.mkdir(parents=True, exist_ok=True)
+            tmp = self.state_path.with_suffix(".tmp")
+            tmp.write_text(json.dumps({"offset": self.offset}))
+            tmp.replace(self.state_path)
+        except OSError as e:
+            print(f"⚠️  could not persist poll offset to {self.state_path}: {e}",
+                  file=sys.stderr)
 
     def start(self) -> None:
         pass

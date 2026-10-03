@@ -179,7 +179,14 @@ class Gateway:
                 continue
             self._turn(upd)
             self.offset = max(self.offset, uid + 1)
-            if hasattr(self.transport, "offset"):
+            # Persist through the transport when it supports it (Telegram does), so a
+            # restart resumes at the last CONSUMED update instead of re-reading from
+            # initial_offset. Falls back to the bare attribute for a transport that
+            # has an offset but nowhere to keep it.
+            _set_offset = getattr(self.transport, "set_offset", None)
+            if _set_offset is not None:
+                _set_offset(self.offset)
+            elif hasattr(self.transport, "offset"):
                 self.transport.offset = self.offset
 
     def _turn(self, raw: dict) -> None:
@@ -581,8 +588,13 @@ def build_gateway(config_path: Path) -> Gateway:
             "default delivery target for agent-initiated messages (the same "
             "var Hermes uses).")
 
-    transport = TelegramAdapter(token=token, initial_offset=bot.initial_offset,
-                                home_channel=home)
+    # The poll offset is persisted NEXT TO the deploy and keyed by token_ref, so two
+    # gateways on one host never share a resume point (and a deploy never clobbers it).
+    _state_dir = Path(os.environ.get(
+        "CORTEX_DEPLOY_HOME", str(Path.home() / ".hermes-cortex"))) / "state"
+    transport = TelegramAdapter(
+        token=token, initial_offset=bot.initial_offset, home_channel=home,
+        state_path=_state_dir / f"gateway-offset-{bot.token_ref}.json")
     backends = _build_backends(data)
     routing = data.get("routing", {})
     # Pairing is opt-in and its approvals persist NEXT TO the deploy, not in the repo.

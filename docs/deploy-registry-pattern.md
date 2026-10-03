@@ -1,498 +1,145 @@
 # Deploy Registry Pattern
 
-> ⚠️ **STALE — do not follow this document.**
->
-> This describes a `legacy-brain/` + `private-data` multi-repo strategy with
-> `cortex-profile.sh` profiles and `brain-*` branches. **None of that exists in this
-> repository.** The real deployment is a single repo synced by
-> `ops/scripts/cortex-update.sh` through its `register()` map.
->
-> - For how a file's deployed path is resolved: `docs/repo-vs-deployed-paths.md`
-> - For the authoritative mapping: the `register()` calls in `ops/scripts/cortex-update.sh`
->   (or the generated `~/.hermes-cortex/deploy-manifest.tsv`)
->
-> Kept only so the existing links resolve. Rewrite or delete it.
+> **Rewritten 2026-10-03.** This document previously described a `legacy-brain/` +
+> `private-data` multi-repo strategy with hermetic `cortex-profile.sh` profiles,
+> `brain-*` branches and a private→public sync workflow. **None of that exists in
+> this repository** — it was fabricated documentation. Every claim below was
+> checked against the tree.
 
 ## Overview
 
-The **Deploy Registry Pattern** is a deployment architecture for Hermes Cortex that uses a **multi-repo** strategy: a public MIT-licensed repository holds shared tooling and brain logic, while a private companion repository contains environment-specific configuration, secrets, and deployment metadata. This split enables open-source collaboration without exposing sensitive infrastructure details.
+Hermes Cortex deploys with **one repository and one explicit file map**:
 
----
+```
+hermes-cortex (repo)                        ~/.hermes-cortex (deploy)
+        │                                            ▲
+        └────── ops/scripts/cortex-update.sh ────────┘
+                     register() map
+```
 
-## Table of Contents
+There is **no private companion repository** and **no second remote**:
 
-- [Repository Topology](#repository-topology)
-- [Branching Strategy](#branching-strategy)
-- [Sync Workflow: Private → Public](#sync-workflow-private--public)
-- [cortex-profile.sh: Hermetic Project Profiles](#cortex-profilersh-hermetic-project-profiles)
-- [legacy brain: Isolated Sources](#legacy brain-isolated-sources)
-- [Directory Layout](#directory-layout)
-- [Setup Guide](#setup-guide)
-- [Operations Guide](#operations-guide)
-- [Security Considerations](#security-considerations)
+```bash
+$ git remote -v
+origin  https://github.com/lukemcqueen/hermes-cortex.git (fetch)
+origin  https://github.com/lukemcqueen/hermes-cortex.git (push)
+```
 
----
+Branches are `main` plus topic branches (e.g. `session/gov-isolation`). There are
+no `brain-*` branches, no `legacy-brain/` directory, and no `private-data/`.
 
-## Repository Topology
+## The register() map
 
-| Repository | Visibility | License | Contents |
-|---|---|---|---|
-| `hermes-cortex` | **Public** | MIT | Brain code, profiles, deploy scripts, documentation |
-| `private-data` | **Private** | Proprietary | Secrets, per-environment config, encrypted credentials |
+`ops/scripts/cortex-update.sh` holds the deployment as data: a list of
+`register "<repo path>" "<deployed path>"` calls — **328** of them at the time of
+writing.
 
-### Public Repo (`hermes-cortex`)
+**The deployed path cannot be derived from the repo path.** Only 102 of the 328
+follow the obvious "strip the leading `ops/`" rule. **226 follow no rule at all**,
+and every one of those also drops a subdirectory:
 
-- MIT licensed — anyone can fork, use, and contribute.
-- Contains all brain sources (`legacy-brain/`), deploy orchestration, profile definitions, and this document.
-- CI/CD runs public tests and linting.
-- Brain data resides on `brain-*` branches (see [Branching Strategy](#branching-strategy)).
-
-### Private Repo (`private-data`)
-
-- Tightly access-controlled.
-- Stores environment-specific configuration (e.g., `staging.env`, `production.env`).
-- Holds encrypted secrets (API keys, tokens, SSH keys) managed via `sops` or `age`.
-- Never checked into the public repo — the sync workflow ensures only non-sensitive artifacts cross the boundary.
-
----
-
-## Branching Strategy
-
-### Public Repo Branches
-
-| Branch Pattern | Purpose |
+| repo | deployed |
 |---|---|
-| `main` | Stable release line. All deployable code is merged here after review. |
-| `brain-*` | Brain data branches. Each `brain-*` branch holds the artifact output of a `legacy brain` source (e.g., `brain-agent`, `brain-tools`). These are the deployable units consumed by the registry. |
-| `develop` | Integration branch for feature work. |
-| `feature/*` | Topic branches for individual changes. |
+| `ops/scripts/manage/task-db.py` | `scripts/task-db.py` |
+| `ops/scripts/health/heartbeat.py` | `scripts/heartbeat.py` |
+| `ops/scripts/install/check-system.sh` | `scripts/check-system.sh` |
+| `ops/scripts/cortex_gateway/daemon.py` | `scripts/cortex_gateway/daemon.py` |
+| `ops/services/mycortex-mem/context_tools.py` | `services/mycortex-mem/context_tools.py` |
 
-### Private Repo Branches
+Two files under `ops/scripts/manage/` deploy to different depths. **Never guess a
+deployed path and never write a candidate list** — call
+`cortex_lib.paths.resolve_repo_resource()`, which reads the map. See
+[`docs/repo-vs-deployed-paths.md`](repo-vs-deployed-paths.md).
 
-| Branch Pattern | Purpose |
-|---|---|
-| `main` | Current state of secrets and config, kept in sync with public `main`. |
-| `env/*` | Environment overlays (`env/staging`, `env/production`). |
-| `brain-*` | Mirrors of public `brain-*` branches, augmented with private config overlays. |
+## The generated manifest
 
-### Brain Branch Lifecycle
-
-1. A developer creates a feature branch off `develop` in the public repo.
-2. Changes to brain logic are committed under `legacy-brain/`.
-3. On merge to `develop`, CI builds the brain artifact and pushes it to a `brain-*` branch.
-4. On merge to `main`, the brain branch is tagged and the private repo syncs it in.
-
----
-
-## Sync Workflow: Private → Public
-
-The sync direction is **private → public**: the private repo is the authoritative source for production deployment, but non-sensitive changes flow upstream to the public repo.
+Because the mapping is data, the deploy writes it out. Every sync emits:
 
 ```
-┌─────────────────────┐       sync       ┌────────────────────┐
-│  hermes-cortex       │ ◄─────────────── │  hermes-cortex      │
-│  (public, MIT)      │    (upstream)    │  (private)          │
-│                     │                  │                     │
-│  legacy-brain/            │                  │  config/            │
-│  profiles/          │                  │  secrets/           │
-│  docs/              │                  │  env/               │
-│  brain-* branches   │                  │  brain-* overlays   │
-└─────────────────────┘                  └────────────────────┘
+${CORTEX_DEPLOY_HOME}/deploy-manifest.tsv
+# repo-relative path<TAB>deployed path
+ops/scripts/manage/task-db.py	/home/<user>/.hermes-cortex/scripts/task-db.py
 ```
 
-### Sync Script
+It is **generated, never hand-edited**, and lives at the deploy root rather than
+under `scripts/`, so the orphan sweep does not remove it. Read it with
+`cortex_lib.paths.deploy_manifest()`.
 
-A script at `scripts/sync-upstream.sh` handles the one-way sync:
+## Adding a file
 
-```bash
-#!/usr/bin/env bash
-# scripts/sync-upstream.sh — Sync public repo changes into the private repo
-set -euo pipefail
+1. Add the file to the repo.
+2. Add a `register` line in `ops/scripts/cortex-update.sh` — **repo path first,
+   then deployed path**.
+3. `bash ops/scripts/cortex-update.sh`
+4. Verify on the **deployed** tree, not the repo.
 
-PUBLIC_REMOTE="${1:-origin}"
-PRIVATE_REMOTE="${2:-private}"
+Step 2 is not optional. The deploy syncs an explicit list, so a file that is
+imported but never registered ships as an `ImportError` on the host **while the
+repo tests stay green** — the repo tests import the repo tree, which always has
+the file. `tests/test_gateway_modules_are_deployed.py` fails the build when the
+register list and a package directory disagree.
 
-echo "=== Sync: Public → Private ==="
+## Environment
 
-# Fetch both remotes
-git fetch "$PUBLIC_REMOTE" --prune
-git fetch "$PRIVATE_REMOTE" --prune
-
-# Sync main branch
-git checkout main
-git pull "$PUBLIC_REMOTE" main
-git push "$PRIVATE_REMOTE" main
-
-# Sync brain-* branches
-for branch in $(git branch -r | grep "$PUBLIC_REMOTE/brain-" | sed "s|$PUBLIC_REMOTE/||"); do
-    echo "Syncing $branch"
-    git checkout "$branch"
-    git pull "$PUBLIC_REMOTE" "$branch"
-    # Apply private config overlays if they exist
-    if git show "$PRIVATE_REMOTE/$branch":config/overlay.yaml &>/dev/null; then
-        git merge "$PRIVATE_REMOTE/$branch" --no-edit || true
-    fi
-    git push "$PRIVATE_REMOTE" "$branch"
-done
-
-# Return to main
-git checkout main
-echo "=== Sync complete ==="
-```
-
-### Triggering a Sync
-
-- **Automatic**: A GitHub Actions / GitLab CI workflow runs the sync script on every push to `main` or `brain-*` branches in the public repo.
-- **Manual**: Run `scripts/sync-upstream.sh` from the private repo clone after pulling the latest public changes.
-
-### What Does NOT Sync
-
-- Files listed in `.syncignore` (e.g., `secrets/*.age`, `config/production/*`).
-- Any path containing `.secret` or `.private` in its name.
-- Environment-specific overlays that would leak infrastructure details.
-
----
-
-## cortex-profile.sh: Hermetic Project Profiles
-
-`cortex-profile.sh` is the entry point for **hermetic project profiles** — self-contained environment definitions that isolate one project's toolchain, variables, and dependencies from another's.
-
-### Structure
-
-Each profile lives in `profiles/<name>/` and includes:
+The canonical env is the **repo** env:
 
 ```
-profiles/<name>/
-├── cortex-profile.sh      # Sourced by the Hermes shell to set up the environment
-├── .env                   # Project-specific environment variables (no secrets)
-├── activate               # Activation hook
-├── deactivate             # Deactivation hook
-├── tools/                 # Local tool wrappers / pinned versions
-└── README.md
+~/hermes-cortex/.env        mode 600 — the one file to edit
 ```
 
-### How It Works
+Units read it via `EnvironmentFile=-%h/hermes-cortex/.env`. Do not invent variable
+names: the deploy and the units reuse the same names Hermes uses
+(`TELEGRAM_BOT_TOKEN`, `TELEGRAM_ALLOWED_USERS`, `TELEGRAM_HOME_CHANNEL`, …).
 
-```bash
-# cortex-profile.sh — Hermetic project profile loader
-# Source this in your shell or via Hermes' --profile flag
-
-HERMES_PROFILE="${HERMES_PROFILE:-default}"
-PROFILE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-
-export HERMES_PROFILE_DIR="$PROFILE_DIR"
-export PATH="$PROFILE_DIR/tools:$PATH"
-
-# Load project environment (non-secret)
-if [[ -f "$PROFILE_DIR/.env" ]]; then
-    set -a
-    source "$PROFILE_DIR/.env"
-    set +a
-fi
-
-# Run activation hook
-if [[ -f "$PROFILE_DIR/activate" ]]; then
-    source "$PROFILE_DIR/activate"
-fi
-
-echo "Hermes profile [${HERMES_PROFILE}] loaded from ${PROFILE_DIR}"
-```
-
-### Activation
-
-```bash
-# Activate a profile explicitly
-source profiles/my-project/cortex-profile.sh
-
-# Or via Hermes CLI
-hermes --profile my-project
-```
-
-### Hermetic Isolation
-
-- Each profile sets `$PATH`, `$PYTHONPATH`, `$NODE_PATH`, and other environment variables **only for that session**.
-- Profiles cannot leak variables into other profiles — the deactivation hook restores the prior environment.
-- Tool versions are pinned per profile in `tools/`, avoiding global version conflicts.
-
----
-
-## legacy brain: Isolated Sources
-
-**legacy brain** ("grouped brain") is the source directory structure for all brain logic. Each subdirectory under `legacy-brain/` is a self-contained module that can be built and deployed independently.
-
-### Directory Layout
-
-```
-legacy-brain/
-├── agent/                  # Agent brain — decision-making and planning
-│   ├── main.legacy-brain         # Entry point
-│   ├── rules/              # Decision rules
-│   └── tests/
-├── tools/                  # Tool brain — defines tool interfaces and registries
-│   ├── main.legacy-brain
-│   ├── registries/         # Tool registry definitions
-│   └── tests/
-├── memory/                 # Memory brain — persistence and recall
-│   ├── main.legacy-brain
-│   ├── stores/             # Memory storage backends
-│   └── tests/
-└── cortex/                 # Core brain — Hermes Cortex integration
-    ├── main.legacy-brain
-    ├── profiles/           # Profile-aware cortex logic
-    └── tests/
-```
-
-### Building a Brain
-
-```bash
-# Build all brains
-hermes build-legacy-brain --all
-
-# Build a specific brain
-hermes build-legacy-brain legacy-brain/agent
-
-# Output lands on brain-agent branch
-```
-
-### Key Properties
-
-- **Isolated**: Each brain has its own dependency manifest and build pipeline. A change to `legacy-brain/tools` does not affect `legacy-brain/agent`.
-- **Testable**: Each brain ships with its own test suite. CI runs tests per brain in parallel.
-- **Deployable**: Built artifacts are pushed to `brain-*` branches and can be deployed independently via the registry.
-
----
-
-## Directory Layout
-
-Below is the full suggested layout for both repos.
-
-### Public Repo (`hermes-cortex`)
+## Repository layout
 
 ```
 hermes-cortex/
-├── README.md
-├── LICENSE                    # MIT
-├── CONTRIBUTING.md
-├── legacy-brain/                    # Isolated brain sources
-│   ├── agent/
-│   ├── tools/
-│   ├── memory/
-│   └── cortex/
-├── profiles/                  # Hermetic project profiles
-│   ├── default/
-│   ├── staging/
-│   └── production/
-├── scripts/                   # Deploy and sync scripts
-│   ├── sync-upstream.sh
-│   ├── deploy-brain.sh
-│   └── verify-profile.sh
-├── docs/                      # Documentation
-│   └── deploy-registry-pattern.md
-├── tests/                     # Integration and E2E tests
-├── .github/                   # CI/CD workflows
-│   └── workflows/
-│       ├── sync.yaml
-│       ├── build.yaml
-│       └── test.yaml
-├── .gitignore
-└── .syncignore                # Files excluded from private → public sync
+├── core/            cortex_bus, governance — shared runtime libraries
+├── docs/            this document, design docs, runbooks, templates/
+├── evals/           evaluation harnesses
+├── laptop/          workstation-specific tooling
+├── mcp-servers/     the MCP servers every agent connects to
+├── ops/
+│   ├── deploy/      deploy helpers
+│   ├── install/     installers (cortex-profile.sh, bootstrap-brain.sh, …)
+│   ├── offline/     offline content tooling
+│   ├── scripts/     cortex-update.sh, cortex_lib/, health/, manage/, …
+│   ├── services/    long-running services (mycortex-mem, …)
+│   └── web-cache/   web cache tooling
+├── plugins/         Hermes plugins (governance-enforcer)
+├── profiles/        profile docs (README only — NOT per-project toolchains)
+├── skills/          agent skills
+└── tests/           pytest suite
 ```
 
-### Private Repo (`private-data`)
+`ops/scripts/install/cortex-profile.sh` **does** exist, but it is not the hermetic
+per-project toolchain loader the previous version described: `profiles/` contains a
+README, not `profiles/<name>/` directories with `activate`/`deactivate` hooks and
+pinned `tools/`.
 
-```
-private-data/
-├── README.md
-├── config/                    # Per-environment configuration
-│   ├── staging.env
-│   ├── production.env
-│   └── overlay.yaml           # Overrides applied during sync
-├── secrets/                   # Encrypted secrets (sops/age)
-│   ├── staging.age
-│   └── production.age
-├── env/                       # Environment descriptors
-│   ├── staging/
-│   │   ├── terraform.tfvars
-│   │   └── kustomization.yaml
-│   └── production/
-│       ├── terraform.tfvars
-│       └── kustomization.yaml
-├── profiles/                  # Profile overlays (secrets-aware)
-│   └── production/
-│       └── .env.encrypted
-├── scripts/                   # Private deployment scripts
-│   └── deploy.sh
-├── .syncignore                # Mirror of public .syncignore
-└── .gitignore
-```
-
----
-
-## Setup Guide
-
-### 1. Create the Public Repository
+## Operations
 
 ```bash
-mkdir hermes-cortex && cd hermes-cortex
-git init
-git remote add origin git@github.com:your-org/hermes-cortex.git
-# Create initial structure as shown above
-git add .
-git commit -m "Initial public repo scaffold"
-git push -u origin main
+# Deploy — syncs the register map and relocks the enforcement files
+bash ops/scripts/cortex-update.sh
+
+# Pre-push gate: pull → deploy → doctor → verify
+bash ~/.hermes-cortex/scripts/cortex-dogfood.sh --force
+
+# Verify what actually landed
+cat ~/.hermes-cortex/deploy-manifest.tsv
+hermes-plugin-lock status
 ```
 
-### 2. Create the Private Repository
+`cortex-update.sh` unlocks the immutable enforcement files early and **relocks them
+in its EXIT trap**, so even a failed run leaves the gate locked. It also publishes
+`state/deploy-in-progress` for the duration, so a periodic auditor does not mistake
+that legitimate unlock window for a break — see `docs/troubleshooting.md` #24.
 
-```bash
-mkdir private-data && cd private-data
-git init
-git remote add private git@github.com:your-org/private-data.git
-# Create private structure as shown above
-git add .
-git commit -m "Initial private repo scaffold"
-git push -u private main
-```
+## Related
 
-### 3. Link the Repositories
-
-In the private repo clone, add the public repo as a remote:
-
-```bash
-cd private-data
-git remote add public git@github.com:your-org/hermes-cortex.git
-git fetch public
-git merge public/main --allow-unrelated-histories -m "Sync initial public state"
-git push private main
-```
-
-### 4. Configure Sync Workflow
-
-Copy `.github/workflows/sync.yaml` into the public repo:
-
-```yaml
-# .github/workflows/sync.yaml
-name: Sync to Private Repo
-
-on:
-  push:
-    branches:
-      - main
-      - brain-*
-
-jobs:
-  sync:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: Sync upstream
-        run: |
-          git remote add private https://x-access-token:${{ secrets.SYNC_TOKEN }}@github.com/your-org/private-data.git
-          bash scripts/sync-upstream.sh origin private
-```
-
-### 5. Set Up Brain Branches
-
-```bash
-# From the public repo
-git checkout -b brain-agent        # Scaffold from legacy-brain/agent build
-git checkout -b brain-tools        # Scaffold from legacy-brain/tools build
-git checkout -b brain-memory       # Scaffold from legacy-brain/memory build
-git checkout main
-```
-
----
-
-## Operations Guide
-
-### Daily Workflow
-
-1. **Develop** brain logic in `legacy-brain/` on a `feature/*` branch.
-2. **Build** the brain locally: `hermes build-legacy-brain legacy-brain/<name>`.
-3. **Push** the feature branch and open a PR against `develop`.
-4. **CI** builds the brain artifact and pushes it to the corresponding `brain-*` branch.
-5. **Merge** `develop` → `main` when ready.
-6. **Sync** triggers automatically, pushing `main` and `brain-*` branches to the private repo.
-7. **Deploy** from the private repo using `scripts/deploy.sh`.
-
-### Deploying a Brain
-
-```bash
-# On the private repo
-./scripts/deploy.sh \
-    --brain agent \
-    --env production \
-    --version v1.2.3
-```
-
-The deploy script:
-1. Checks out the matching `brain-agent` branch.
-2. Applies the environment config overlay from `config/overlay.yaml`.
-3. Decrypts secrets from `secrets/production.age`.
-4. Runs the deployment (e.g., push to a registry, restart services).
-5. Tags the deployment: `deploy-agent-production-v1.2.3`.
-
-### Verifying a Profile
-
-```bash
-hermes --profile staging verify-profile
-```
-
-This runs the `verify-profile.sh` script, which checks:
-- All required environment variables are set.
-- Required tools are present in `$PATH`.
-- The private repo remote is reachable.
-- Secrets can be decrypted (if age/sops key is available).
-
----
-
-## Security Considerations
-
-| Concern | Mitigation |
-|---|---|
-| **Secret leakage via sync** | `.syncignore` blocks secret files; CI scans for accidental secrets before pushing. |
-| **Unauthorized access to private repo** | Strict GitHub/GitLab access controls; SSH key rotation; branch protection rules. |
-| **Sync token compromise** | Use a short-lived deploy token with minimal scope; rotate regularly. |
-| **Brain branch tampering** | Branch protection on `brain-*` branches; signed commits required. |
-| **Profile injection** | Hermetic profiles are sourced with `set -a` / `set +a`; deactivation hooks restore state. |
-| **Supply chain** | Pin tool versions in profile `tools/`; verify checksums on build artifacts. |
-
-### `.syncignore` Template
-
-```gitignore
-# .syncignore — Files that must NOT flow from public to private
-secrets/
-*.age
-*.sops
-.env.encrypted
-config/production/
-config/staging/
-**/*.secret
-**/*.private
-```
-
----
-
-## Related Resources
-
-- [Hermes Cortex Documentation](https://hermes-agent.nousresearch.com/docs)
-- [SOPS — Mozilla's Secrets Ops](https://github.com/mozilla/sops)
-- [age — Simple modern file encryption](https://age-encryption.org/)
-
----
-
-## FAQ
-
-**Q: Why private → public sync and not the reverse?**
-A: The private repo contains secrets that must never enter the public repo. Syncing public→private and then stripping secrets is error-prone. Private→public ensures only sanitized content reaches the open-source repo.
-
-**Q: Can I use this pattern with a mono-repo?**
-A: Yes — use `.syncignore` and branch-permissions to simulate the same isolation within a single repository. However, the multi-repo approach is cleaner for MIT + proprietary separation.
-
-**Q: How do I rotate the sync token?**
-A: Generate a new fine-grained access token with `contents:write` scope on the private repo, update the `SYNC_TOKEN` secret in the public repo's CI settings, and revoke the old token.
-
-**Q: What if a brain branch diverges between repos?**
-A: The sync script uses `--no-edit` merge commits for config overlays. If a conflict occurs, the sync workflow fails and alerts. Resolve by manually merging in the private repo and pushing upstream.
+- [`docs/repo-vs-deployed-paths.md`](repo-vs-deployed-paths.md) — resolving a
+  repo-relative sibling in both layouts
+- [`docs/architecture.md`](architecture.md) — services and ports
+- [`docs/fleet-update-protocol.md`](fleet-update-protocol.md) — fleet rollout

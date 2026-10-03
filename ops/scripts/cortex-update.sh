@@ -693,6 +693,10 @@ register "ops/scripts/cortex_gateway/daemon.py"      "${CORTEX_DEPLOY_HOME}/scri
 # the build when this list and the package directory disagree.
 register "ops/scripts/cortex_gateway/agents.py"      "${CORTEX_DEPLOY_HOME}/scripts/cortex_gateway/agents.py"
 register "ops/scripts/cortex_gateway/pairing.py"     "${CORTEX_DEPLOY_HOME}/scripts/cortex_gateway/pairing.py"
+# ExecStartPre guard: refuses to start a unit whose token_ref resolves to the LIVE
+# bot's token (a second poller on one token 409s the live channel). The separation
+# used to be a comment in the unit file; a comment cannot fail.
+register "ops/scripts/cortex_gateway/guard_distinct_token.py" "${CORTEX_DEPLOY_HOME}/scripts/cortex_gateway/guard_distinct_token.py"
 register "ops/scripts/gateway.yaml.example"          "${CORTEX_DEPLOY_HOME}/gateway.yaml.example"
 register "docs/templates/cortex-gateway.service"     "${CORTEX_DEPLOY_HOME}/templates/cortex-gateway.service"
 register "docs/templates/com.hermes.cortex-gateway.plist" "${CORTEX_DEPLOY_HOME}/templates/com.hermes.cortex-gateway.plist"

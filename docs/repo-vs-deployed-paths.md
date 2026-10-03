@@ -99,7 +99,5 @@ manifest of its own and a walk-up lookup would always skip there).
 
 - `docs/troubleshooting.md` #24 — the deploy's immutable-flag unlock window and the
   auditor that samples inside it.
-- `docs/deploy-registry-pattern.md` — ⚠️ **stale.** It describes a `legacy-brain/` +
-  `private-data` multi-repo layout that does not match this repository. Treat the
-  `register()` map in `ops/scripts/cortex-update.sh` as the real deployment
-  documentation until that document is rewritten.
+- `docs/deploy-registry-pattern.md` — the real deployment: the `register()` map, the
+  generated `deploy-manifest.tsv`, and how to add a file.

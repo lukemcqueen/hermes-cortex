@@ -47,6 +47,11 @@ Type=simple
 WorkingDirectory=%h/.hermes-cortex/scripts
 Environment=PATH=%h/.local/bin:%h/.bun/bin:/usr/local/bin:/usr/bin:/bin
 EnvironmentFile=-%h/hermes-cortex/.env
+# Fail CLOSED on the live token. The warning above is a comment, and a comment
+# cannot fail — this refuses to start when the config's token_ref resolves to
+# TELEGRAM_BOT_TOKEN (the bot hermes-gateway.service polls) or names it directly.
+# See ops/scripts/cortex_gateway/guard_distinct_token.py.
+ExecStartPre=/usr/bin/python3 %h/.hermes-cortex/scripts/cortex_gateway/guard_distinct_token.py %h/.hermes-cortex/gateway.yaml
 ExecStart=/usr/bin/python3 %h/.hermes-cortex/scripts/cortex_gateway/daemon.py --config %h/.hermes-cortex/gateway.yaml
 Restart=always
 RestartSec=5
