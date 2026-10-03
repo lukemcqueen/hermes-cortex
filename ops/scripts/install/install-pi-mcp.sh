@@ -16,13 +16,17 @@
 #  .pi/mcp.json (trusted project roots only); an entry there
 #  overrides a user-level entry with the same name.
 #
-#  Why NOT cortex-context here: Pi's memory/session tool surface is
-#  provided by the cli-extension
-#  (ops/install/harnesses/pi/extensions/cortex-context.ts), which
-#  ALSO owns the LIFECYCLE triggers MCP cannot provide (turn_end
-#  checkpoint, before_agent_start restore injection). Registering
-#  the cortex-context MCP server as well would give the model two
-#  names for one tool. One implementation, one way in per harness.
+#  cortex-context IS registered here (2026-10-03). The earlier note said
+#  Pi had no MCP client at the CONTEXT layer, so the memory/session tools
+#  came from the extension's own registerTool calls — and when Pi moved
+#  0.87.1 → 1.0.0 that hand-written tool surface broke SILENTLY (every call
+#  failed with "definition.execute is not a function") while the store was
+#  perfectly healthy. Pi 1.0.0 HAS an MCP client (`pi mcp list`), so the
+#  tools now come from the SAME server Claude Code and Codex use: one
+#  implementation, schemas DERIVED from the contract, and nothing
+#  per-harness left to drift. The extension is kept ONLY for the lifecycle
+#  triggers MCP cannot provide (turn_end checkpoint, before_agent_start
+#  restore), so the TOOLS still have exactly one way in.
 #
 #  Requires a Pi build with MCP support. Verify after installing:
 #    pi mcp list
@@ -48,6 +52,7 @@ LOOP_GOV="${HOME}/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py"
 TASK_MCP="${HOME}/.hermes-cortex/scripts/task-mcp.py"
 EXECUTOR_MCP="${HOME}/.hermes-cortex/scripts/executor-mcp.py"
 BUS_MCP="${HOME}/.hermes-cortex/scripts/cortex-bus-mcp.py"
+CONTEXT_MCP="${HOME}/.hermes-cortex/scripts/cortex-context-mcp.py"
 
 # Identity: the per-host agent name, so cycles are attributed to this host's
 # agent (see AGENTS.md rule 21 — identity is host-derived, never guessed).
@@ -61,7 +66,7 @@ AGENT_NAME="${AGENT_NAME:-${DEFAULT_AGENT:-pi}}"
 PY_CMD="${HOME}/.hermes/hermes-agent/venv/bin/python3"
 [[ -x "$PY_CMD" ]] || PY_CMD="${PYTHON}"
 
-for f in "$LOOP_GOV" "$TASK_MCP" "$EXECUTOR_MCP" "$BUS_MCP"; do
+for f in "$LOOP_GOV" "$TASK_MCP" "$EXECUTOR_MCP" "$BUS_MCP" "$CONTEXT_MCP"; do
   if [[ ! -f "$f" ]]; then
     echo "Warning: cortex MCP server not found: $f"
     echo "  Run cortex-update.sh first, then this script."
@@ -98,10 +103,10 @@ else
   mkdir -p "$(dirname "$PI_MCP")"
 fi
 
-"$PYTHON" - "$PI_MCP" "$LOOP_GOV" "$TASK_MCP" "$EXECUTOR_MCP" "$BUS_MCP" "$AGENT_NAME" "$MODE" "$PY_CMD" <<'PYEOF'
+"$PYTHON" - "$PI_MCP" "$LOOP_GOV" "$TASK_MCP" "$EXECUTOR_MCP" "$BUS_MCP" "$CONTEXT_MCP" "$AGENT_NAME" "$MODE" "$PY_CMD" <<'PYEOF'
 import json, os, sys
 
-(pi_mcp, loop_gov, task_mcp, executor_mcp, bus_mcp,
+(pi_mcp, loop_gov, task_mcp, executor_mcp, bus_mcp, context_mcp,
  agent_name, mode, py_cmd) = sys.argv[1:]
 
 
@@ -133,6 +138,14 @@ GOVERNANCE = {
     "agent-bus": server(
         bus_mcp,
         "Agent bus: inbox read/send and task dispatch."),
+    # The memory/session TOOLS. Same server as Claude Code/Codex — Pi is not
+    # special here. NOTE: no CORTEX_SESSION_* in `env` on purpose — Pi merges
+    # this block over its own environment, so a session key the GATEWAY pinned
+    # on the pi process (per chat) still reaches this server.
+    "cortex-context": server(
+        context_mcp,
+        "Cortex context: mem_profile/search/context/conclude + "
+        "session_checkpoint/restore/list/search/note/close."),
 }
 
 data = {}

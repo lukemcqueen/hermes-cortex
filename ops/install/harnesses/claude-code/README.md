@@ -4,7 +4,7 @@
 
 **Layer:** `mcp`  ·  **Status:** `documented`  ·  **Surface:** `.mcp.json`
 
-This harness reads MCP servers from its own configuration, so it needs **no shim**. Registration is a config entry.
+This harness reads MCP servers from its own configuration, so its TOOL surface needs **no shim** — registration is a config entry. (MCP has no lifecycle, so a harness may still ship a small trigger artifact; see *Shipped artifact*.)
 
 ## Why this layer
 

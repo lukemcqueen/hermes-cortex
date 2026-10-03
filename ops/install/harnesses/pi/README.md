@@ -2,17 +2,28 @@
 
 # pi — cortex context integration
 
-**Layer:** `cli-extension`  ·  **Status:** `shipped`  ·  **Surface:** `pi.on("turn_end"|"before_agent_start"|"session_before_compact") + pi.registerTool`
+**Layer:** `mcp`  ·  **Status:** `shipped`  ·  **Surface:** `MCP (cortex-context) + pi.on("turn_end"|"before_agent_start"|"session_before_compact")`
 
-This harness has **no MCP client**. It reaches the shared CLI through the extension shipped in this directory.
+This harness reads MCP servers from its own configuration, so its TOOL surface needs **no shim** — registration is a config entry. (MCP has no lifecycle, so a harness may still ship a small trigger artifact; see *Shipped artifact*.)
 
 ## Why this layer
 
-Pi has NO MCP client at the CONTEXT layer: its memory/session surface is
-hooks + registered tools in TypeScript, so it reaches the shared CLI
-through the extension below. (Governance is a separate capability — see
-`capabilities.governance`, which is MCP for Pi >= 0.99 and the git hooks
-plus the loop-gov CLI otherwise. MCP support depends on the INSTALLED Pi version — detect it from the harness itself (`~/.pi/agent/bin/pi --help`; never assume from a version number in a doc), since these hosts run 1.0.0 (MCP-capable) while an earlier Pi 0.87.1 had NO MCP client. Where MCP is absent the VERIFIED route is the git hooks — core.hooksPath is global, so a Pi commit is gated exactly like a Hermes one — plus loop-gov.py, which exposes the whole governance toolset (begin_change, end_change, check_lock, cycle_query, feedback_accept/override) over the ONE MCP implementation; see capabilities.governance.fallback for the three checks. Do NOT conclude governance is unavailable because MCP is: memory, skills and governance are all reachable on this Pi today.)
+Pi 1.0.0 HAS an MCP client (verified on the host with `pi mcp list`, which
+lists the connected servers and their tools), so the memory/session TOOLS
+come from the SAME MCP server Claude Code and Codex use — one
+implementation, schemas DERIVED from the contract, nothing per-harness left
+to drift. The extension is kept for the half MCP CANNOT provide: WHEN a
+checkpoint is written (turn_end / before_agent_start / session_before_compact).
+
+This entry used to be `cli-extension` for BOTH halves, with the tools
+registered by hand as `{ run: async (input) => … }`. When Pi moved
+0.87.1 → 1.0.0 that shape became invalid and every memory/session call
+failed SILENTLY with "definition.execute is not a function" while the store
+was perfectly healthy. The hand-written parameter maps were also a SECOND
+definition of tools that already existed in the contract. One way in per
+capability, or one of the two becomes a phantom.
+
+(Governance is a separate capability — see `capabilities.governance`.)
 
 ## Shipped artifact
 
@@ -30,7 +41,8 @@ The harness owns **when** a checkpoint is written. Never make the model responsi
 
 ```bash
 # USER SCOPE — every Pi project, one registration (recommended):
-bash ~/hermes-cortex/ops/scripts/install/install-pi-integration.sh
+bash ~/hermes-cortex/ops/scripts/install/install-pi-mcp.sh          # the TOOLS (MCP)
+bash ~/hermes-cortex/ops/scripts/install/install-pi-integration.sh  # the TRIGGERS + skills
 # PROJECT SCOPE — one repo, files copied in + a generated run line:
 hc harness install pi --dir <your-pi-project>
 # (equivalent, manual: mkdir -p extensions && cp <harnesses>/pi/extensions/cortex-context.ts extensions/)
@@ -39,16 +51,15 @@ hc harness install pi --dir <your-pi-project>
 ## Run
 
 ```bash
-pi -e extensions/cortex-context.ts --tools read,bash,edit,write,mem_profile,mem_search,mem_context,mem_conclude,session_checkpoint,session_restore,session_search,session_note,session_close,session_tool_event,session_loaded_skill
+pi   # tools come from ~/.pi/agent/mcp.json (install-pi-mcp.sh)
 ```
-
-The `mem_*`/`session_*` half of `--tools` is **derived from the contract** by `hc harness install` — a hand-typed list rots silently when the tool surface grows.
 
 ## Verify (do not report a wiring you have not exercised)
 
-1. In a Pi session call mem_context — the peer card must come back.
-2. Let a turn end with a decision, then: cortex-context session_restore "{}" | grep <marker>
-3. Start a second session; the checkpoint must appear unasked (Pi logs CORTEX_RESUME).
+1. pi mcp list shows cortex-context with the memory/session tools.
+2. In a Pi session call mem_context — the peer card must come back.
+3. Let a turn end with a decision, then: cortex-context session_restore "{}" | grep <marker>
+4. Start a second session; the checkpoint must appear unasked (Pi logs CORTEX_RESUME).
 
 ## Session identity
 

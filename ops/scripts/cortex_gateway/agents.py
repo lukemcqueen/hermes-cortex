@@ -95,6 +95,13 @@ class AgentSpec:
     capabilities: list = field(default_factory=list)  # free-form, for operators/health
     model: str = ""
     subject: str = "USER_MESSAGE"                 # kind=hermes inbound subject
+    # kind=command: extra env for the child process, templated like prompt_template
+    # ({session_id}, {agent}, {channel}, {user}, {body}, {model}).
+    # Load-bearing for session identity: a harness started OUTSIDE a git repo (the
+    # gateway runs pi from its deploy dir) cannot derive repo/branch, so without a
+    # pinned key every chat falls back to ONE session key and they share a
+    # checkpoint. That is a data-correctness bug, not a cosmetic one.
+    env: dict = field(default_factory=dict)
     extra: dict = field(default_factory=dict)
 
     @staticmethod
@@ -105,7 +112,7 @@ class AgentSpec:
             raise ValueError(f"backend spec must be a mapping or a name, got {type(d).__name__}")
         allowed = {"name", "kind", "command", "prompt_template", "timeout_s", "reply_mode",
                    "capabilities", "model", "subject", "output", "session", "session_args",
-                   "stream", "extra"}
+                   "stream", "env", "extra"}
         unknown = set(d) - allowed
         if unknown:
             raise ValueError(
@@ -128,6 +135,7 @@ class AgentSpec:
             capabilities=list(d.get("capabilities", []) or []),
             model=str(d.get("model", "") or ""),
             subject=str(d.get("subject", "USER_MESSAGE") or "USER_MESSAGE"),
+            env={str(k): str(v) for k, v in (d.get("env") or {}).items()},
             extra=dict(d.get("extra", {}) or {}),
         )
 
@@ -166,6 +174,15 @@ class AgentSpec:
                 f"(the bus rejects anything else), got {self.subject!r}")
         if self.timeout_s <= 0:
             raise ValueError(f"backend '{self.name}': timeout_s must be positive")
+        # `env` is a command-kind field. On another kind it would be accepted and
+        # then silently ignored — the failure mode this module exists to stop.
+        for key in self.env:
+            if not str(key).strip():
+                raise ValueError(f"backend '{self.name}': env has an empty key")
+        if self.env and self.kind != "command":
+            raise ValueError(
+                f"backend '{self.name}': 'env' is only honoured by kind 'command' "
+                f"(got {self.kind!r}) — it would be accepted and silently ignored")
 
 
 # ── reply routing (the one rule every backend shares) ────────────────────
@@ -274,13 +291,14 @@ class CommandBackend:
             return None                       # malformed — DLQ, never crash the loop
         prompt = self._prompt(inbound)
         session_id = self._session_id(inbound)
+        child_env = self._child_env(inbound, session_id)
         # STREAMING (opt-in per spec): report partial output as it is produced, so a long
         # coding turn is visible instead of silent. The sink is the GATEWAY's (it owns
         # formatting and delivery); a backend that can stream advertises supports_stream.
         if sink is not None and self.spec.stream:
-            out = self._run_streaming(prompt, session_id, sink)
+            out = self._run_streaming(prompt, session_id, sink, child_env)
         else:
-            out = self._run(prompt, session_id)
+            out = self._run(prompt, session_id, child_env)
         if not out:
             return None                       # silent turn is legitimate
         reply = reply_from_origin(inbound, out, agent=self.spec.name)
@@ -331,11 +349,49 @@ class CommandBackend:
         cmd.append(prompt)
         return cmd
 
-    def _run(self, prompt: str, session_id: str = "") -> str:
+    def _child_env(self, inbound: dict, session_id: str = "") -> dict | None:
+        """The child's environment: the spec's `env`, templated, over the parent's.
+
+        Returns None when the spec declares nothing, so the child inherits
+        normally. When it DOES declare env, the whole environment is passed
+        explicitly (parent + overrides): `env=` REPLACES rather than merges, and
+        handing a child a stripped environment breaks it in ways that read as an
+        agent bug instead of a config bug.
+
+        This is the seam that pins session identity. The harness resolves
+        harness/repo/branch from its cwd when nothing is set, and the gateway's
+        cwd is a deploy dir outside any git repo — so the resolution collapses and
+        every chat lands on ONE session key. Declaring
+        `env: {"CORTEX_SESSION_KEY": "{session_id}"}` makes each chat its own.
+        """
+        if not self.spec.env:
+            return None
+        vals = {
+            "body": str(inbound.get("body", "")),
+            "agent": self.spec.name,
+            "channel": str(inbound.get("channel", "")),
+            "user": str(inbound.get("channel_user_id", "")),
+            "model": self.spec.model,
+            "session_id": session_id,
+        }
+        overrides: dict = {}
+        for key, raw in self.spec.env.items():
+            try:
+                overrides[str(key)] = str(raw).format(**vals)
+            except (KeyError, IndexError):
+                # A bad placeholder is a config error, not a message error: pass it
+                # through and say so rather than dropping the turn.
+                log.warning("command backend %s: env %s has an unknown placeholder; "
+                            "passing it verbatim", self.spec.name, key)
+                overrides[str(key)] = str(raw)
+        return {**os.environ, **overrides}
+
+    def _run(self, prompt: str, session_id: str = "",
+             child_env: dict | None = None) -> str:
         cmd = self._argv(prompt, session_id)
         try:
             proc = subprocess.run(cmd, capture_output=True, text=True,
-                                  timeout=self.spec.timeout_s)
+                                  timeout=self.spec.timeout_s, env=child_env)
         except subprocess.TimeoutExpired:
             log.warning("command backend %s: timed out after %ss — no reply",
                         self.spec.name, self.spec.timeout_s)
@@ -349,7 +405,8 @@ class CommandBackend:
                         self.spec.name, proc.returncode, (proc.stderr or "")[:200])
         return self._shape_output(proc.stdout or "")
 
-    def _run_streaming(self, prompt: str, session_id: str, sink) -> str:
+    def _run_streaming(self, prompt: str, session_id: str, sink,
+                       child_env: dict | None = None) -> str:
         """Run the agent, reporting accumulated stdout as it arrives.
 
         Line-buffered reading with a best-effort sink: a sink failure (say, a rate-limited
@@ -360,7 +417,8 @@ class CommandBackend:
         acc: list = []
         try:
             proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
-                                    stderr=subprocess.DEVNULL, text=True, bufsize=1)
+                                    stderr=subprocess.DEVNULL, text=True, bufsize=1,
+                                    env=child_env)
         except OSError as e:
             log.warning("command backend %s: could not start %r (%s)",
                         self.spec.name, self.spec.command[:1], e)

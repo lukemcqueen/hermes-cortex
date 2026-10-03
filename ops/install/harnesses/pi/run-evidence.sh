@@ -36,12 +36,12 @@ verdict() { [ "$1" -eq 0 ] && echo "PASS (exit 0)" || echo "FAIL (exit $1)"; }
 # ── Assert on the FULL captured output ──────────────────────────────────────
 # A `tail` window can hide a failure above it, so the pass/fail markers are
 # matched against the whole capture, and a missing marker is a hard error.
-grep -q "EXTENSION WIRING OK" <<<"$node_out" \
-  || { echo "❌ guard did not report a passing wiring (full output above)"; exit 1; }
+grep -q "EXTENSION OK" <<<"$node_out" \
+  || { echo "❌ guard did not report a passing extension (full output above)"; exit 1; }
 grep -qE "[0-9]+ passed" <<<"$py_out" \
   || { echo "❌ test suite did not report passing tests"; exit 1; }
-grep -q "execute is not a function" <<<"$old_out" \
-  || { echo "❌ guard did not reproduce the pre-fix failure — it is not discriminating"; exit 1; }
+grep -q "EXTENSION BROKEN" <<<"$old_out" \
+  || { echo "❌ guard did not reject the pre-fix extension — it is not discriminating"; exit 1; }
 
 # Pin the artifacts: a reviewer whose diff is truncated can still confirm that
 # the file this evidence was produced from is the file that is committed.
@@ -83,10 +83,11 @@ EVID_SHA="$(sha256sum "$HERE/run-evidence.sh" | cut -d' ' -f1)"
   echo
   echo "## 3. PRE-FIX extension (${PREFIX_COMMIT}) — same guard, must fail: $(verdict "$old_rc")"
   echo
-  echo "Reproduces the live failure verbatim (\`definition.execute is not a function\`):"
+  echo "The pre-fix extension registered 11 tools BY HAND. The one-way-in invariant"
+  echo "rejects that — which is what makes this a guard rather than a happy path:"
   echo
   echo '```'
-  echo "$old_out" | grep -E 'execute|EXTENSION WIRING' | tail -6
+  echo "$old_out" | grep -E 'ZERO tools|EXTENSION BROKEN' | head -3
   echo '```'
   echo
   echo "---"

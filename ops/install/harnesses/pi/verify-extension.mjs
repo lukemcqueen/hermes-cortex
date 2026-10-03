@@ -1,33 +1,30 @@
 #!/usr/bin/env node
 /**
- * verify-extension.mjs — EXECUTE the Pi extension's tool wiring, don't grep it.
+ * verify-extension.mjs — EXECUTE the Pi extension, don't grep it.
  *
- * Why this exists (ADV-10538-1): the drift guards in tests/ are STATIC — they
- * assert tool names exist and that the shared CLI is called. Neither can see a
- * tool SIGNATURE or a SCHEMA SHAPE, so the extension shipped registering
- * `{ run: async (input) => … }` (the pi 0.87.1 shape) and a bare
- * `parameters: {peer:{type:"string"}}` map. On pi 1.0.0 every memory/session
- * tool call then failed with "definition.execute is not a function" while the
- * store was perfectly healthy — and no static guard could tell.
+ * Two things are asserted, both by RUNNING the extension rather than reading it:
  *
- * This script loads the REAL extension through pi's own jiti loader, hands it a
- * STUB `pi`, and then:
- *   1. asserts every registered tool has a callable `execute` (and no `run`);
- *   2. asserts `parameters` is an object schema (type/properties/required);
- *   3. CALLS `execute(id, params)` against a stubbed CLI and asserts the
- *      returned AgentToolResult shape `{ content:[{type:"text",…}], details }`.
+ *  1. IT REGISTERS NO TOOLS. The memory/session tools come from the shared
+ *     cortex-context MCP server, so a registerTool call here would be a SECOND
+ *     definition of the same capability — and when the hand-written one went
+ *     stale (pi 0.87.1 -> 1.0.0) every call failed silently while the store was
+ *     healthy. A grep can see the word "registerTool"; only running it proves
+ *     the count is zero.
  *
- * Hermetic: CORTEX_CONTEXT_CLI points at a throwaway stub, so the real store is
- * never touched and no queue is written. Run it any time; it is the executable
- * proof that the tool wiring is intact.
+ *  2. THE LIFECYCLE HOOKS STILL WORK, because that is the half MCP cannot
+ *     provide. The guard drives `before_agent_start` (restore + inject) and
+ *     `turn_end` (the checkpoint trigger) against a throwaway CLI and asserts on
+ *     what the extension actually asked the store to do.
+ *
+ * Hermetic: CORTEX_CONTEXT_CLI points at a temp stub, so the real store is never
+ * touched and no checkpoint is written.
  *
  *   node ops/install/harnesses/pi/verify-extension.mjs
  *
- * Exit 0 = the wiring is correct. Non-zero = it is broken, with the reason.
+ * Exit 0 = the extension is correct. Non-zero = it is broken, with the reason.
  */
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
-import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -51,8 +48,7 @@ function findJiti() {
   for (const root of roots) {
     const rel = path.join(root, "releases");
     if (!fs.existsSync(rel)) continue;
-    const versions = fs.readdirSync(rel).sort().reverse();
-    for (const v of versions) {
+    for (const v of fs.readdirSync(rel).sort().reverse()) {
       const p = path.join(rel, v, "node_modules", "jiti", "lib", "jiti.cjs");
       if (fs.existsSync(p)) return p;
     }
@@ -68,12 +64,23 @@ if (!jitiPath) {
 console.log(`jiti: ${jitiPath}`);
 console.log(`ext : ${EXT}\n`);
 
-// ── a stub CLI so no real store is touched ──────────────────────────────────
+// ── a stub CLI: records what the extension asked for, touches no store ──────
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "cortex-verify-"));
+const callsLog = path.join(tmp, "calls.jsonl");
 const stubCli = path.join(tmp, "stub-cli.py");
-fs.writeFileSync(stubCli, `import json,sys\nprint(json.dumps({"ok": True, "tool": sys.argv[1], "args": json.loads(sys.argv[2])}))\n`);
+fs.writeFileSync(stubCli, `import json, os, sys
+tool, args = sys.argv[1], json.loads(sys.argv[2])
+with open(os.environ["CORTEX_STUB_LOG"], "a") as fh:
+    fh.write(json.dumps({"tool": tool, "args": args}) + "\\n")
+if tool == "session_restore":
+    print(json.dumps({"restored": {"done": ["MARKER-DONE"], "pending": ["MARKER-PENDING"],
+                                   "session_key": "pi:verify:main"}, "session_key": "pi:verify:main"}))
+else:
+    print(json.dumps({"ok": True, "tool": tool}))
+`);
 process.env.CORTEX_CONTEXT_CLI = stubCli;
 process.env.CORTEX_CONTEXT_PYTHON = process.env.CORTEX_CONTEXT_PYTHON || "python3";
+process.env.CORTEX_STUB_LOG = callsLog;
 
 // ── load the REAL extension through pi's loader ─────────────────────────────
 const createJiti = require(jitiPath).createJiti || require(jitiPath);
@@ -103,79 +110,68 @@ const pi = {
 try {
   register(pi);
 } catch (err) {
-  console.error(`❌ registering tools threw: ${err}`);
+  console.error(`❌ registering the extension threw: ${err}`);
   process.exit(1);
 }
 
-// ── 1. the hooks that own WHEN a checkpoint is written ──────────────────────
-note(typeof hooks["before_agent_start"] === "function",
-     "before_agent_start hook registered (restore + inject)");
-note(typeof hooks["turn_end"] === "function",
-     "turn_end hook registered (the checkpoint trigger)");
-note(typeof hooks["session_before_compact"] === "function",
-     "session_before_compact hook registered");
-note(typeof hooks["tool_result"] === "function",
-     "tool_result hook registered (reflexion-gate evidence)");
+// ── 1. NO tools: one way in per capability ──────────────────────────────────
+note(tools.length === 0,
+     `extension registers ZERO tools (got ${tools.length}) — the tools come from the ` +
+     `shared cortex-context MCP server, so a second definition here is the phantom bug`);
 
-// ── 2. every tool: execute, not run; object schema ──────────────────────────
-note(tools.length > 0, `tools registered: ${tools.length}`);
-const expected = ["mem_context", "mem_search", "mem_profile", "mem_conclude",
-                  "session_checkpoint", "session_restore", "session_search",
-                  "session_note", "session_close", "session_tool_event",
-                  "session_loaded_skill"];
-const names = tools.map((t) => t.name);
-for (const want of expected) {
-  note(names.includes(want), `tool registered: ${want}`);
-}
-for (const t of tools) {
-  const hasExecute = typeof t.execute === "function";
-  const hasRun = typeof t.run === "function";
-  note(hasExecute, `${t.name}: execute() is a callable (the pi 1.0.0 AgentTool shape)`);
-  note(!hasRun, `${t.name}: no \`run\` key (the pi 0.87.1 shape — silently ignored)`);
-  const p = t.parameters || {};
-  note(p.type === "object" && p.properties && Array.isArray(p.required),
-       `${t.name}: parameters is an object schema (type/properties/required)`);
-  // Every declared property must be extractable, and vice versa: the schema and
-  // the argument extraction must come from ONE map.
-  const declared = Object.keys(p.properties || {}).sort();
-  note(declared.length > 0 || (p.required || []).length === 0,
-       `${t.name}: schema declares its properties`);
-  for (const r of p.required || []) {
-    note(declared.includes(r), `${t.name}: required '${r}' is also declared in properties`);
-  }
+// ── 2. the hooks that own WHEN a checkpoint is written ──────────────────────
+for (const h of ["before_agent_start", "turn_end", "session_before_compact", "tool_result"]) {
+  note(typeof hooks[h] === "function", `hook registered: ${h}`);
 }
 
-// ── 3. CALL execute() and check the returned AgentToolResult shape ──────────
-const target = tools.find((t) => t.name === "mem_context");
-if (!target) {
-  note(false, "mem_context not registered — cannot exercise execute()");
-} else {
-  let res;
+// ── 3. DRIVE the hooks and check what the extension asked the store to do ───
+const readCalls = () => fs.existsSync(callsLog)
+  ? fs.readFileSync(callsLog, "utf8").trim().split("\n").filter(Boolean).map((l) => JSON.parse(l))
+  : [];
+
+if (typeof hooks["before_agent_start"] === "function") {
+  let injected;
   try {
-    res = await target.execute("call-1", { peer: "user" }, undefined, undefined);
+    injected = await hooks["before_agent_start"]({ systemPrompt: "BASE" });
   } catch (err) {
-    note(false, `execute() threw instead of returning a result: ${err}`);
+    note(false, `before_agent_start threw: ${err}`);
   }
-  if (res !== undefined) {
-    note(Array.isArray(res.content) && res.content.length > 0,
-         "execute() returned content[] (AgentToolResult.content)");
-    note(res.content?.[0]?.type === "text" && typeof res.content?.[0]?.text === "string",
-         "content[0] is {type:'text', text} the model can read");
-    note("details" in res, "execute() returned details (AgentToolResult.details)");
-    // The stubbed CLI echoes the args, which proves the schema→args path ran and
-    // that the argument the model supplied actually reached the CLI.
-    const echoed = res.content?.[0]?.text || "";
-    note(echoed.includes('"peer"') && echoed.includes('"user"'),
-         `execute() passed the model's argument through to the CLI: ${echoed.slice(0, 80)}`);
-  }
-  // A tool with a required arg must not explode when it is missing.
-  let missing;
+  const prompt = injected?.systemPrompt ?? "";
+  note(typeof prompt === "string" && prompt.includes("BASE"),
+       "before_agent_start returns { systemPrompt } built on the event's prompt (injection IS the return value)");
+  note(prompt.includes("MARKER-DONE") && prompt.includes("MARKER-PENDING"),
+       "the restored checkpoint is INJECTED (done + pending present)");
+  note(prompt.includes("pi:verify:main"), "the injection names the session key it restored");
+}
+
+if (typeof hooks["turn_end"] === "function") {
   try {
-    missing = await target.execute("call-2", {}, undefined, undefined);
-    note(missing !== undefined, "execute() tolerates a missing optional arg");
+    await hooks["turn_end"]({
+      turnIndex: 1,
+      message: { content: "MARKER-NOTE: did the thing" },
+      toolResults: [{ toolName: "read" }, { toolName: "edit" }],
+    });
   } catch (err) {
-    note(false, `execute() threw on empty params: ${err}`);
+    note(false, `turn_end threw: ${err}`);
   }
+  const cp = readCalls().filter((c) => c.tool === "session_checkpoint").pop();
+  note(!!cp, "turn_end WROTE a checkpoint (the trigger fired without the model asking)");
+  if (cp) {
+    const done = cp.args?.done ?? [];
+    note(done.includes("read") && done.includes("edit"),
+         `the checkpoint carries the turn's tool names: ${JSON.stringify(done)}`);
+    note(String(cp.args?.notes ?? "").includes("MARKER-NOTE"),
+         "the checkpoint carries the turn's note text");
+  }
+}
+
+if (typeof hooks["turn_end"] === "function") {
+  // A turn with nothing recognisable must NOT write a silently-empty checkpoint.
+  const before = readCalls().filter((c) => c.tool === "session_checkpoint").length;
+  await hooks["turn_end"]({ turnIndex: 2 });
+  const after = readCalls().filter((c) => c.tool === "session_checkpoint").length;
+  note(after === before,
+       "an empty turn writes NO checkpoint (a checkpoint that looks like continuity and carries none is worse than none)");
 }
 
 // ── cleanup + verdict ───────────────────────────────────────────────────────
@@ -183,8 +179,8 @@ try { fs.rmSync(tmp, { recursive: true, force: true }); } catch { /* best effort
 
 console.log("");
 if (failures.length) {
-  console.error(`❌ EXTENSION WIRING BROKEN — ${failures.length} check(s) failed:`);
+  console.error(`❌ EXTENSION BROKEN — ${failures.length} check(s) failed:`);
   for (const f of failures) console.error(`   - ${f}`);
   process.exit(1);
 }
-console.log(`✅ EXTENSION WIRING OK — ${tools.length} tools executed against the pi 1.0.0 AgentTool shape.`);
+console.log("✅ EXTENSION OK — registers no tools (MCP owns them) and its lifecycle hooks execute.");

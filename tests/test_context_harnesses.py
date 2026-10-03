@@ -131,14 +131,21 @@ def test_cli_reaches_the_store_and_exits_zero():
 
 # ── Drift guards ─────────────────────────────────────────────────
 
-def test_pi_extension_registers_only_real_tools(tools):
-    """The extension must not invent a tool: it would fail at runtime, in Pi,
-    far from here. Parse the .ts and check every registered name."""
+def test_pi_extension_registers_NO_tools(tools):
+    """ONE way in per capability: the tools come from the shared MCP server.
+
+    They used to be registered here by hand, which made TWO definitions of the
+    same tools — and the hand-written one broke SILENTLY when Pi moved
+    0.87.1 → 1.0.0 ("definition.execute is not a function") while the store was
+    healthy. Registering them here again reintroduces exactly that phantom.
+    """
     src = PI_EXT.read_text()
-    registered = set(re.findall(r'tool\(\s*"([a-z_]+)"', src))
-    assert registered, "no registerTool calls found — did the extension change shape?"
-    unknown = registered - set(tools.HANDLERS)
-    assert not unknown, f"Pi extension registers tools the implementation lacks: {unknown}"
+    code = "\n".join(ln for ln in src.splitlines()
+                     if not ln.lstrip().startswith(("*", "//", "/*")))
+    assert "registerTool" not in code, (
+        "the extension must NOT register tools — they arrive from the cortex-context "
+        "MCP server, so a second definition here is the duplicate surface")
+    assert "pi.on(" in code, "the lifecycle hooks must stay — that is the whole point"
 
 
 def test_pi_extension_uses_the_shared_cli_not_its_own_logic():
@@ -182,62 +189,39 @@ def test_pi_extension_uses_the_REAL_event_api():
         "must warn loudly rather than write a silently-empty checkpoint"
 
 
-def test_pi_extension_uses_the_1_0_0_TOOL_api(tools):
-    """Regression guard for the bug that made EVERY pi memory tool dead.
+def test_pi_context_tools_are_registered_as_the_shared_MCP_server():
+    """The tool surface is a CONFIG entry pointing at the SHARED server.
 
-    pi 1.0.0's AgentTool requires
-        execute(toolCallId, params, signal?, onUpdate?) -> {content, details}
-    The extension registered `{ run: async (input) => … }` (the 0.87.1 shape),
-    so every mem_*/session_* call failed with
-        "definition.execute is not a function"
-    while the store was perfectly healthy — an agent reported "memory is
-    broken" and the correct reading was "the tool WIRING is broken".
-
-    Second, independent fault in the same block: `parameters` was a bare map of
-    param -> schema (`{peer:{type:"string"}}`). The runtime validates the call
-    against an OBJECT schema, so even a correct `execute` would have failed
-    validation.
-
-    The earlier guards in this file did NOT catch either fault: they asserted
-    tool NAMES exist and that the CLI is used. A name-level guard cannot see a
-    signature or a schema shape — which is precisely how both shipped silently.
+    Not a shim, and not a Pi-specific implementation: the same
+    cortex-context-mcp.py Claude Code and Codex use, whose schemas are derived
+    from the contract. The registry and the installer must agree, or a host
+    follows one and silently lacks the other.
     """
-    src = PI_EXT.read_text()
-    code = "\n".join(ln for ln in src.splitlines()
-                     if not ln.lstrip().startswith(("*", "//", "/*")))
-    assert re.search(r"\bexecute:\s*async", code), \
-        "registerTool needs `execute` (pi 1.0.0 AgentTool), not `run`"
-    assert not re.search(r"\brun:\s*async", code), \
-        "`run` is the pi 0.87.1 shape and is silently ignored on 1.0.0"
-    # The callable must accept the runtime's positional arguments. Allow the
-    # TypeScript annotations (`_toolCallId: string, params: Record<…>`), which is
-    # what made a naive `(\w+,\s*\w+)` probe fail against correct code.
-    assert re.search(r"execute:\s*async\s*\(\s*\w+[^,)]*,\s*\w+", code), \
-        "execute must take (toolCallId, params, …)"
-    # An object schema, built from a properties map + a required list.
-    assert 'type: "object"' in code and "properties" in code and "required" in code, \
-        "parameters must be {type:'object', properties, required}, not a bare param map"
-    # The AgentToolResult shape the runtime reads back.
-    assert "content:" in code and "details:" in code, \
-        "execute must return {content, details} (AgentToolResult)"
-    # Every registered tool must declare its schema through the SAME map that
-    # drives argument extraction — a second hand-kept key list is how the two
-    # silently drift apart.
-    assert "Object.keys(properties)" in code, \
-        "argument extraction must derive from the schema's properties map"
+    installer = (REPO / "ops/scripts/install/install-pi-mcp.sh").read_text()
+    assert "cortex-context" in installer, "pi must register the cortex-context MCP server"
+    assert "cortex-context-mcp.py" in installer, "…and it must be the deployed shared server"
+    # The registered server must be the contract-derived one, not a reimplementation.
+    mcp_src = MCP_PY.read_text()
+    assert "context_tools.py" in mcp_src
+    assert "def mem_context" not in mcp_src and "def session_checkpoint" not in mcp_src
+    # Registry must not drift from the installer.
+    reg = yaml.safe_load(REGISTRY.read_text())
+    pi = next(h for h in reg["harnesses"] if h["name"] == "pi")
+    assert pi["layer"] == "mcp", "pi reads its context tools over MCP now"
+    ctx = pi["capabilities"]["context"]
+    assert ctx["adapter"] == "mcp"
+    assert "install-pi-mcp.sh" in ctx["register"]
 
 
-def test_pi_extension_tool_wiring_EXECUTES():
-    """EXECUTE the wiring — the static guards above cannot see a signature.
+def test_pi_extension_EXECUTES():
+    """EXECUTE the extension — a static guard cannot see behaviour.
 
     Runs `ops/install/harnesses/pi/verify-extension.mjs`, which loads the REAL
-    extension through pi's own jiti loader, hands it a stub `pi`, and CALLS
-    `execute(id, params)` against a throwaway CLI (the store is never touched).
-
-    Verified both ways before committing: on the pre-fix extension it fails with
-    `TypeError: target.execute is not a function` — the same class as the live
-    "definition.execute is not a function" — and on the fixed one it passes.
-    That two-way check is what makes this a guard rather than a happy path.
+    extension through pi's own jiti loader, hands it a stub `pi`, then DRIVES the
+    lifecycle hooks against a throwaway CLI (the store is never touched): it
+    asserts the extension registers ZERO tools (they come from the shared MCP
+    server) and that `before_agent_start` injects the restored checkpoint and
+    `turn_end` writes one — including NOT writing a silently-empty one.
     """
     node = shutil.which("node")
     if not node:
@@ -245,7 +229,7 @@ def test_pi_extension_tool_wiring_EXECUTES():
     r = subprocess.run([node, str(HARNESS_DIR / "pi" / "verify-extension.mjs")],
                        capture_output=True, text=True, timeout=180)
     assert r.returncode == 0, f"extension tool wiring is broken:\n{r.stdout}\n{r.stderr}"
-    assert "EXTENSION WIRING OK" in r.stdout
+    assert "EXTENSION OK" in r.stdout
 
 
 def test_macos_parity_for_the_context_layers():

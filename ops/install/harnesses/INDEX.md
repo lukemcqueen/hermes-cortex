@@ -9,14 +9,14 @@ Declared harnesses: **5**
 | Harness | Layer | Status | Surface |
 |---|---|---|---|
 | `hermes` | `mcp` | shipped | `hermes mcp add` |
-| `pi` | `cli-extension` | shipped | `pi.on("turn_end"|"before_agent_start"|"session_before_compact") + pi.registerTool` |
+| `pi` | `mcp` | shipped | `MCP (cortex-context) + pi.on("turn_end"|"before_agent_start"|"session_before_compact")` |
 | `claude-code` | `mcp` | documented | `.mcp.json` |
 | `codex` | `mcp` | documented | `~/.codex/config.toml [mcp_servers]` |
 | `steadfaste-tui` | `none` | blocked | `unknown` |
 
 ## Layer meanings
 
-- **`mcp`** — This harness reads MCP servers from its own configuration, so it needs **no shim**. Registration is a config entry.
+- **`mcp`** — This harness reads MCP servers from its own configuration, so its TOOL surface needs **no shim** — registration is a config entry. (MCP has no lifecycle, so a harness may still ship a small trigger artifact; see *Shipped artifact*.)
 - **`cli-extension`** — This harness has **no MCP client**. It reaches the shared CLI through the extension shipped in this directory.
 - **`cli-hook`** — This harness needs only a lifecycle command run at a boundary — the shared trigger, no tool surface.
 - **`none`** — **Not supported (and deliberately declared, not silently missing).** See *why* — a guessed layer produces a wiring that exists and does nothing.

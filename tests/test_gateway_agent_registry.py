@@ -227,6 +227,56 @@ def test_per_chat_session_continuity_is_declared_and_deterministic():
     print("  a bad session mode, and per_chat without a session id, are refused ✓")
 
 
+def test_command_backend_pins_session_identity_via_spec_env():
+    """The gateway runs the agent from a deploy dir OUTSIDE any git repo.
+
+    The harness resolves its session identity as args -> env -> git. With no env
+    and no repo, that resolution COLLAPSES and every chat lands on the same
+    session key — so separate conversations share one checkpoint. `env` is the
+    seam that pins it, and {session_id} is already the deterministic per-chat id.
+    """
+    spec = A.AgentSpec(name="pi", kind="command", session="per_chat",
+                       command=[sys.executable, "-c",
+                                "import os;print(os.environ.get('CORTEX_SESSION_KEY',''))"],
+                       env={"CORTEX_SESSION_KEY": "{session_id}"})
+    backend = A.CommandBackend(spec)
+    a = backend.dispatch(_inbound("first", chat=111))["body"]
+    b = backend.dispatch(_inbound("second", chat=222))["body"]
+    c = backend.dispatch(_inbound("third", chat=111))["body"]
+    assert a == "hc-pi-111" and b == "hc-pi-222", (a, b)
+    assert c == a, "the same chat must keep ONE key across turns (and restarts)"
+    print(f"  spec env pins a per-chat session key: {a}, {b} ✓")
+
+
+def test_spec_env_merges_the_parent_environment_and_is_validated():
+    # subprocess `env=` REPLACES rather than merges, so the child must still see
+    # the parent environment (a stripped PATH breaks the agent, and it reads as
+    # an agent bug rather than a config bug).
+    spec = A.AgentSpec(name="pi", kind="command",
+                       command=[sys.executable, "-c",
+                                "import os;print('has-path' if os.environ.get('PATH') else 'no-path')"],
+                       env={"SOME_FLAG": "1"})
+    assert A.CommandBackend(spec).dispatch(_inbound())["body"] == "has-path"
+    # No env declared -> inherit normally (env=None), never an empty environment.
+    plain = A.AgentSpec(name="pi", kind="command", command=[sys.executable, "-c", "print('x')"])
+    assert A.CommandBackend(plain)._child_env({}, "") is None
+    # A bad placeholder degrades to the literal rather than dropping the turn.
+    odd = A.AgentSpec(name="pi", kind="command", command=[sys.executable, "-c", "print('x')"],
+                      env={"K": "{nope}"})
+    assert A.CommandBackend(odd)._child_env({}, "")["K"] == "{nope}"
+    # env is a command-kind field: elsewhere it would be accepted and SILENTLY ignored.
+    for bad, expect in (
+        ([{"name": "e", "kind": "hermes", "env": {"A": "1"}}], "only honoured by kind 'command'"),
+        ([{"name": "p", "kind": "command", "command": ["pi"], "env": {"": "1"}}], "empty key"),
+    ):
+        try:
+            A.build_backends(bad, {"secret": "s" * 32})
+            raise AssertionError(f"{bad} must not build")
+        except ValueError as e:
+            assert expect in str(e), f"expected {expect!r} in {e}"
+    print("  env merges the parent env, degrades a bad placeholder, and is refused elsewhere ✓")
+
+
 def test_bus_reply_mode_publishes_to_out_agent(monkeypatch):
     sent = {}
     import cortex_gateway.transport as T
