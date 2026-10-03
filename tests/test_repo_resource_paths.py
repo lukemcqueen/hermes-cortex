@@ -16,6 +16,7 @@ cortex_lib.paths.resolve_repo_resource() READS it. These tests hold that line.
 from __future__ import annotations
 
 import importlib.util
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -195,3 +196,37 @@ def test_servers_declare_their_resource_as_a_named_constant():
         assert "_REL = \"" in src, (
             f"{server} must name its repo-relative resource in a `_…_REL` "
             "constant and hand that to the resolver")
+
+
+# ── a registered file must actually be IN git ───────────────────────
+
+def test_every_registered_file_is_tracked_by_git():
+    """A registered file that git IGNORES deploys from the working tree and nowhere else.
+
+    `cortex-update.sh` reads the WORKING TREE, so a gitignored source file still
+    deploys on the machine where it was written — while every other host, and any
+    fresh clone, never receives it. `.gitignore` carries broad secret patterns
+    (`*token*`, `*secret*`, `*cred*`), so a source file whose NAME trips one of them
+    goes untracked silently, and nothing else notices.
+
+    That is not hypothetical: it happened to the live-token guard. It deployed here,
+    both units referenced it, the tests read it from disk — and it was absent from
+    the commit, so the unit's ExecStartPre pointed at a file no other host has.
+    """
+    rows = re.findall(
+        r'^(?:register|register_orch)\s+"([^"]+)"\s+"\$\{CORTEX_DEPLOY_HOME\}/[^"]+"',
+        UPDATE_SH.read_text(), re.M)
+    assert rows, "no register() rows parsed — fix the parser, not the assertion"
+
+    untracked = []
+    for src_rel in rows:
+        if not (REPO / src_rel).exists():
+            continue                      # absent from the repo: a different failure
+        r = subprocess.run(["git", "ls-files", "--error-unmatch", src_rel],
+                           cwd=REPO, capture_output=True, text=True, timeout=60)
+        if r.returncode != 0:
+            untracked.append(src_rel)
+    assert not untracked, (
+        "these registered files are NOT tracked by git, so they deploy from the "
+        "working tree only and never reach another host:\n  "
+        + "\n  ".join(untracked))

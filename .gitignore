@@ -53,6 +53,12 @@ logs/
 !ops/scripts/secret-leak-watchdog.py
 # Negate our own code that legitimately contains "token" (not a secret file)
 !ops/scripts/token-expiry-alert.py
+# The live-token guard. `*token*` above silently untracked it: the file existed in
+# the working tree (so cortex-update.sh deployed it and the tests read it), but it
+# was never IN git — a fresh clone would have the unit's ExecStartPre pointing at a
+# file that does not exist, and the unit would refuse to start everywhere else.
+# A source file whose NAME trips the secret patterns needs an explicit negation.
+!ops/scripts/cortex_gateway/guard_distinct_token.py
 # Negate our own skills that legitimately contain "credential" or "secret"
 !**/secure-credential-handling/**
 !**/credential-leak-response/
