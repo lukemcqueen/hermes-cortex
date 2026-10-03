@@ -157,6 +157,54 @@ next deploy.** The cron-model chain is the canonical example (2026-08-31):
   the full 2026-08-31 trace (chain rebuild, opencode free/zen landscape,
   propagation gap).
 
+## Verify through the PRODUCT's own builders, not a hand-built harness
+
+A harness that rebuilds the product's invocation by hand tests the harness, not
+the product — and its failures look exactly like product bugs. Two false FAILs in
+one session (2026-10-03) came from a verification script while the product was
+correct both times:
+
+- The script built `[command, "--session-id", id, prompt]` directly instead of
+  calling the backend's own `_argv`/`_child_env`. It therefore omitted
+  `CORTEX_SESSION_KEY` — and that env var, not the argv, was the real isolation
+  seam. Every session shared one checkpoint, so the new session "remembered" the
+  old secret and the report read **"/new leaks memory"**. The product was fine.
+- The script then used a FIXED probe id, so its second run resumed the sessions
+  its first run had left behind — the same false failure, for a different reason.
+
+Rules:
+
+- **Drive the code under test through its own API** (`backend._argv(prompt, sid)`,
+  `backend._child_env(inbound, sid)`) — never re-implement its argument or env
+  construction. A hand-built equivalent silently drops whatever field the real
+  builder adds next.
+- **Assert on the isolation KEY, not just the visible id.** When the artifact that
+  actually scopes state is an env var / checkpoint key, test THAT follows the
+  change (`CORTEX_SESSION_KEY` before != after). A correct argv with a constant
+  key is the trap: a fresh transcript that still resumes the old checkpoint.
+- **Make every probe UNIQUE per run** (`os.urandom`), and clean it up after.
+  A fixed probe id makes run 2 inherit run 1's leftovers; a committed evidence
+  script then fails intermittently and looks like a regression.
+- **Run the acceptance script TWICE.** Determinism is part of the claim: one
+  PASS can be a leftover; two consecutive PASSes on a cold probe is evidence.
+
+When your own harness reports a failure, suspect the harness first — a false FAIL
+costs the same as a missed bug and sends you editing correct code.
+
+## Coda: a lesson written only into the DEPLOYED skill copy is not landed
+
+The deployed tree (`~/.hermes/skills/…`) and the repo source
+(`skills/…/*/SKILL.md`) drift independently; the repo is the source of truth and
+the only copy that reaches other hosts. A lesson appended to the deployed copy
+alone is therefore invisible to the fleet AND is **clobbered by the next
+`cortex-update.sh` deploy**, which copies the repo source over it.
+
+- **Write the lesson into the REPO source**, then deploy. Verify by grepping the
+  repo path, not `~/.hermes/skills/`.
+- Tell them apart by size: a deployed copy materially LARGER than its repo source
+  is carrying un-synced lessons (this exact drift was 16858 vs 8427 bytes,
+  2026-10-03). Sync deployed → repo before editing, or the edit is a no-op.
+
 ## References
 
 - `references/rename-verification-example.md` — worked example: the `agent_bus` → `cortex_bus` fleet rename (2026-08-04)
