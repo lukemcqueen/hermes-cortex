@@ -17,6 +17,13 @@ The artifact is a committed PUBLIC file, so it must never restate the
 identifiers it reports: hits are printed as sha256 handles, and the component
 list itself is assembled at runtime so this generator does not carry the
 literals either.
+
+Registration policy: this is a REPO-LOCAL evidence generator and is
+deliberately NOT registered in cortex-update.sh's register() map, matching its
+sibling ops/scripts/manage/task-queue-evidence.py. It reads git history with
+``git show <sha>:<path>`` and resolves the repo root from its own location, so
+a deployed copy under ~/.hermes-cortex/scripts/ would resolve the wrong root
+and fail. No runtime path consumes it.
 """
 from __future__ import annotations
 
@@ -40,7 +47,7 @@ PRE_FIX_COMMIT = "fd190e42"
 # does not match its own scan.
 COMPONENTS = ("qu" + "een", "real" + "gospel")
 
-_ELAPSED_RE = re.compile(r"in \d+\.\d+s")
+_ELAPSED_RE = re.compile(r"\s+in \d+\.\d+s")
 
 
 def _git(*args: str) -> str:
@@ -70,7 +77,7 @@ def _pytest_summary() -> tuple[int, str]:
     )
     lines = [ln.strip() for ln in proc.stdout.splitlines() if ln.strip()]
     summary = lines[-1] if lines else "(no output)"
-    return proc.returncode, _ELAPSED_RE.sub("in <elapsed>s", summary)
+    return proc.returncode, _ELAPSED_RE.sub("", summary)
 
 
 def build() -> tuple[str, bool]:
