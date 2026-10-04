@@ -101,6 +101,16 @@ def main() -> int:
     parked = int(q("SELECT count(*) FROM tasks.tasks WHERE status='waiting';").strip())
     check("No row is left parked in `waiting`", parked == 0,
           f"{parked} still waiting (baseline {WAS_PARKED})")
+    # Cancelled rows are MOVED to tasks.task_archive (51 cancelled there), NOT left in
+    # tasks.tasks — so a `count(*) WHERE status='cancelled'` on tasks.tasks is 0 even
+    # when the cancellation worked. Check the archive, and use archived_at so the check
+    # evidences THESE cancellations rather than any historical ones.
+    arch = q("SELECT count(*) FROM tasks.task_archive WHERE status='cancelled' "
+             "AND archived_at > now() - interval '3 hours';").strip()
+    check("The 5 superseded slices were archived, not deleted",
+          arch.isdigit() and int(arch) >= 5,
+          f"{arch} cancelled rows archived in the last 3h — a cancel MOVES the row to "
+          f"tasks.task_archive, so it is recoverable and absent from the live table")
 
     # 4 — the parked arc is live in the DB function itself
     arcs = {s: q(f"SELECT tasks.transition_allowed('{s}', 'pending');").strip()

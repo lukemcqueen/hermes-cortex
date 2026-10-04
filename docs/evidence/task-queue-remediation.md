@@ -15,11 +15,12 @@ the committed file, so a hand-written table cannot pass for script output.
 | Pending-slice pool fully accounted for by its two views | PASS | claimable 16 + assigned 0 = 16 |
 | The pool GREW by exactly the released slices (work is reachable again) | PASS | claimable 16 (baseline 9 + 6 released) |
 | No row is left parked in `waiting` | PASS | 0 still waiting (baseline 6) |
+| The 5 superseded slices were archived, not deleted | PASS | 5 cancelled rows archived in the last 3h — a cancel MOVES the row to tasks.task_archive, so it is recoverable and absent from the live table |
 | Parked rows can return to the claim pool | PASS | waiting->pending=t blocked->pending=t paused->pending=t |
 | Every task migration is registered for deploy | PASS | 12 migrations; unregistered: none |
 | Every task migration is on the deployed tree | PASS | 12 of 12 deployed |
 | DB schema version matches the newest repo migration | PASS | DB=12 repo=12 |
-| test_hc_harness failures reproduce WITHOUT this change (pre-existing) | PASS | with changes: ========================= 3 failed, 6 passed in 1.77s ========================== · HEAD~1 worktree: ========================= 3 failed, 6 passed in 1.78s ========================== |
+| test_hc_harness failures reproduce WITHOUT this change (pre-existing) | PASS | with changes: ========================= 3 failed, 6 passed in 1.73s ========================== · HEAD~1 worktree: ========================= 3 failed, 6 passed in 1.75s ========================== |
 
 **Verdict: PASS**
 
@@ -68,7 +69,7 @@ E    +  and   "Declared harnesses: 5\n\n  HARNESS          LAYER          STATUS
 FAILED tests/test_hc_harness.py::test_lists_registry_harnesses - assert ('cli...
 FAILED tests/test_hc_harness.py::test_run_line_is_derived_not_the_hand_written_registry_literal
 FAILED tests/test_hc_harness.py::test_hc_entrypoint_dispatches_harness - asse...
-========================= 3 failed, 6 passed in 1.77s ==========================
+========================= 3 failed, 6 passed in 1.73s ==========================
 ```
 
 ### On a HEAD~1 worktree (this change absent)
@@ -111,5 +112,5 @@ E    +  and   "Declared harnesses: 5\n\n  HARNESS          LAYER          STATUS
 FAILED tests/test_hc_harness.py::test_lists_registry_harnesses - assert ('cli...
 FAILED tests/test_hc_harness.py::test_run_line_is_derived_not_the_hand_written_registry_literal
 FAILED tests/test_hc_harness.py::test_hc_entrypoint_dispatches_harness - asse...
-========================= 3 failed, 6 passed in 1.78s ==========================
+========================= 3 failed, 6 passed in 1.75s ==========================
 ```

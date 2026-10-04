@@ -1,0 +1,47 @@
+# Task-queue remediation — full test suite results
+
+Generated: 2026-10-04T00:19:44Z
+Command: python3 -m pytest tests/ -q
+
+```
+E     MISSING agent-mycortex-dream-nightly
+E     MISSING agent-mycortex-dream-weekly
+E     MISSING agent-remediate-apply
+E     MISSING cortex-bus-evening
+E     MISSING cortex-bus-overnight
+E     MISSING cortex-bus-workday
+E     MISSING orch-daily-regression-gate
+E     MISSING orch-skill-evaluate
+E     MISSING orch-skill-lifecycle
+E     MISSING orch-backlog-driver
+E     MISSING agent-bus-retry-sweep
+E     MISSING orch-task-morning-pass
+E     MISSING orch-task-evening-pass
+E     
+E     
+E   assert 1 == 0
+E    +  where 1 = CompletedProcess(args=['/home/esther/.hermes/hermes-agent/venv/bin/python3', '/home/esther/hermes-cortex/ops/scripts/m...og-driver\nMISSING agent-bus-retry-sweep\nMISSING orch-task-morning-pass\nMISSING orch-task-evening-pass\n', stderr='').returncode
+_____________ test_the_committed_evidence_is_actual_script_output ______________
+tests/test_task_queue_evidence.py:112: in test_the_committed_evidence_is_actual_script_output
+    assert fresh.returncode == 0, (
+E   AssertionError: the evidence script failed when re-run:
+E     arness verify  [<name>]             prove it, don't assume it\n")
+E     E    +  where "Declared harnesses: 5\n\n  HARNESS          LAYER          STATUS      SURFACE\n  hermes           mcp            shi...all <name> [--dir DIR]   wire it into a project\n  hc harness verify  [<name>]             prove it, don't assume it\n" = CompletedProcess(args=['/home/esther/.hermes/hermes-agent/venv/bin/python3', '/tmp/tq-evidence-clean-tree/ops/scripts/...-dir DIR]   wire it into a project\n  hc harness verify  [<name>]             prove it, don\'t assume it\n', stderr='').stdout
+E     E    +  and   "Declared harnesses: 5\n\n  HARNESS          LAYER          STATUS      SURFACE\n  hermes           mcp            shi...all <name> [--dir DIR]   wire it into a project\n  hc harness verify  [<name>]             prove it, don't assume it\n" = CompletedProcess(args=['/home/esther/.hermes/hermes-agent/venv/bin/python3', '/tmp/tq-evidence-clean-tree/ops/scripts/...-dir DIR]   wire it into a project\n  hc harness verify  [<name>]             prove it, don\'t assume it\n', stderr='').stdout
+E     =========================== short test summary info ============================
+E     FAILED tests/test_hc_harness.py::test_lists_registry_harnesses - assert ('cli...
+E     FAILED tests/test_hc_harness.py::test_run_line_is_derived_not_the_hand_written_registry_literal
+E     FAILED tests/test_hc_harness.py::test_hc_entrypoint_dispatches_harness - asse...
+E     ========================= 3 failed, 6 passed in 1.72s ==========================
+E     ```
+E     
+E   assert 1 == 0
+E    +  where 1 = CompletedProcess(args=['python3', '/home/esther/hermes-cortex/ops/scripts/manage/task-queue-evidence.py'], returncode=...harness - asse...\n========================= 3 failed, 6 passed in 1.72s ==========================\n```\n', stderr='').returncode
+=========================== short test summary info ============================
+FAILED tests/test_hc_harness.py::test_lists_registry_harnesses - assert ('cli...
+FAILED tests/test_hc_harness.py::test_run_line_is_derived_not_the_hand_written_registry_literal
+FAILED tests/test_hc_harness.py::test_hc_entrypoint_dispatches_harness - asse...
+FAILED tests/test_retired_orch_crons.py::test_the_manifest_check_accepts_the_retirement
+FAILED tests/test_task_queue_evidence.py::test_the_committed_evidence_is_actual_script_output
+================== 5 failed, 1382 passed in 328.55s (0:05:28) ==================
+```
