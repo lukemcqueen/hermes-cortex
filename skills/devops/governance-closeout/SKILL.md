@@ -95,6 +95,18 @@ material it judged (note + diff):
   exactly the finding it was meant to answer: the reviewer reads the revision field and
   asks for the run at the head of the change's commits. Generate it after the last code
   commit — the artifact's own commit may follow, since it is documentation.
+- **The audited range is every commit since the lock, it is TRUNCATED, and it shows
+  SUPERSEDED hunks.** The gate budgets roughly 12k characters of diff, so a large range
+  reaches the reviewer with its middle omitted — and a range holding SEVERAL commits
+  contains the earlier commits' hunks as well as the final ones. The reviewer then reads
+  an intermediate state and files `fabrication` against a claim that is true of the
+  final state ("the test still ages mtimes" — when the second commit deleted exactly
+  that). Two things prevent it: **keep the audited range to ONE commit** wherever the
+  work allows, and when it cannot be, **say the commit count out loud, name HEAD, and
+  quote `git show HEAD:<path>` for the files under dispute** — the note is the material,
+  so the final state has to be readable from it. Do not paste or commit the whole diff
+  in response: a 100 KB range is what truncated in the first place, and committing it as
+  an artifact duplicates git history and lands in the next range.
 - **A per-run artifact is OVERWRITTEN by the next run, so a FAILING run's evidence
   disappears the moment a later run passes.** Keep an append-only ledger beside it: one
   line per run carrying timestamp, revision, measured summary and failure count, so a

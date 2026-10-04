@@ -331,6 +331,59 @@ cutting any slices:
   the slice plan as a named decision point blocking its BUILD — do not silently
   pick, and do not build past it.
 
+## Designing an external-vendor integration ("integrate X for the system")
+
+When asked to design an integration with an external product (a runtime, an observability platform, a
+policy engine), the deliverable is a design/plan doc under `docs/design/` — requirements, invariants,
+conformance tests, scope split, story slices, Ledger relationship, scale ladder — and the work order is:
+
+1. **Verify the product exists and read its OWN docs before designing anything.** `web_extract` is
+   unavailable on the ddgs backend (search-only), and vendor doc sites may refuse a browser `fetch`
+   (docs.nvidia.com did) — but `raw.githubusercontent.com/<owner>/<repo>/main/<path>` works from
+   `browser_exec`'s `js()` with an async IIFE, and the git trees API
+   (`/repos/<o>/<r>/git/trees/HEAD?recursive=1`) gives the doc file list. Read the real extension/API
+   docs, not the marketing page, and cite the paths in the doc's grounding line.
+2. **Record what the docs do NOT say as UNKNOWN, never as a requirement.** A vendor's silence on
+   fail-closed behavior (e.g. what a gateway does when an external interceptor is unreachable) is not a
+   guarantee — it becomes a pre-slice verification test plus an explicit open item.
+3. **Decide the authority topology explicitly and state the failure mode.** For a governed core
+   integrating an enforcement engine: the core decides, the vendor enforces, the vendor's config is a
+   DERIVED SUBSET of the frozen Mandate, and the vendor's audit log is diagnostics (best-effort) while
+   the Ledger is evidence. Name the concrete breakage if both claim to decide.
+4. **Overlap-check before adopting the vendor's primitives.** Map every vendor extension point onto an
+   existing steadfaste seam and say which is the FIRST slice and why the others are not (the one that
+   governs *creation* beats the one that polices traffic afterwards).
+5. **Apply the anti-bloat rule to the consult's own requirements.** A model consult reliably proposes
+   mTLS, HA/leader election, and extra replicas — all rejected at n=1 with the rung+trigger recorded
+   instead. Also reject: reimplementing the vendor's core competency inside the core (kernel sandboxing
+   is the canonical NEVER), and letting the vendor own the evidence store.
+6. **Observability integrations have one hard rule:** the platform is evidence, never the authorizer,
+   and never in a synchronous decision path. Scores/metrics from an eventually-consistent store
+   (seconds to minutes) become admissible only as an anchored, hashed, integer projection in the Ledger;
+   a gate reads the anchor and fails CLOSED on absence. Out-of-range values are rejected, never clamped.
+7. **Give the integration a zero-config default that needs no vendor** (local file sink + a
+   `trace <run_id>`-style local join) and make vendor compatibility a matter of *pointing* a standard
+   protocol (OTLP) at it, with the vendor mapping living in the sink crate, never in the core.
+
+### When the owner hands you a conceptual interface or a phased plan
+
+- **A hand-drawn interface is reviewed, never copied.** The deliverable is a *right / wrong / missing* review plus a
+  settled version, with `[corrected]` marks and the reason. Recurring corrections: authorization must not move into a
+  component that only enforces (`execute(…, AuthorizedAction)` is wrong — the provider executes a constrained process,
+  the core authorizes); a policy parameter must be DERIVED from the Mandate/Charter, never caller-authored (an
+  authored policy is a bypass vector); numeric fields become integer-only snake_case (`cpu_limit_millicores`,
+  `memory_limit_bytes`); a Promise/async shape becomes a synchronous trait; and every capability a provider cannot
+  enforce must be *declared* so the job is refused rather than silently under-enforced.
+- **A phased plan (30/60/90) expands into per-phase requirements + stories + the tests they own**, plus an anti-bloat
+  fence naming what each phase must NOT grow into, and an explicit "these dates are planning artifacts, these
+  demonstrations are targets" note.
+- **Experiment plans pre-register their numbers.** Every claim gets: what it supports, what it does NOT support, the
+  falsifier, and the pre-registered inputs (suite/policy/threshold hashes committed before the run). Each harness needs
+  a non-vacuity test proving it FAILS when it should, and every result must state "targets vs measured" plus its
+  conditions. "100% prevention" is never the claim — "no bypass in the pre-registered suite, on the tested day" is.
+- **A scope-reduction message arriving mid-consult goes into the prompt before launch** — append it as an addendum
+  asking for the minimal component set, rather than re-running the consult.
+
 ## Doc-writing pitfalls (these cost real time — proven)
 - **Append large markdown via `write_file` to /tmp then `cat >> file`** — do NOT use `printf`/heredoc; backticks/quotes get shell-escaped and the command errors or writes garbled bytes. The same `>/tmp` + `cat >>` rule applies to APPENDING a large block to a code file: `patch`'s fuzzy matcher can grab the WRONG closing brace and corrupt the file (an MN3 append to `fold.rs` merged the new `calibration_fold` block INTO the `RefusalFold` struct and renamed an unrelated field). Recovery is `git checkout -- <file>` then re-append via `cat >>`; grep the diff after a large append confirms nothing got nested.
 - **Before appending a numbered `## N.` section, grep `^## N.` in the target.** If a collision exists (an added `## 8.` collided with an existing `## 8.` this project), renumber the NEW section (8→9) AND its subsections (8.1→9.1).

@@ -913,6 +913,96 @@ tool) and let the lock sit until TTL; do not override to get a green close.
   scoping (review the session's own reported/staged set, not every commit in the
   range). File it as an issue rather than bending your change to satisfy it.
 
+## Rule 23: Preserve Enforcement Behaviour by DIFFERENTIAL PROBE, Not by Inspection
+
+Rewriting a matcher, classifier or scanner in enforcement code leaves exactly one
+question that matters: does it still decide the same way? Reading the diff cannot
+answer it. Load BOTH implementations in one process and run the same inputs
+through both:
+
+```python
+import importlib.util
+
+def load(name, path):
+    spec = importlib.util.spec_from_file_location(name, path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+old = load("enf_old", "/home/<user>/.hermes/plugins/governance-enforcer/__init__.py")   # DEPLOYED
+new = load("enf_new", "/home/<user>/hermes-cortex/plugins/governance-enforcer/__init__.py")  # REPO
+for case in FIXTURES:
+    assert (old.gate(case) is None) == (new.gate(case) is None), case
+```
+
+- **The DEPLOYED copy is the oracle.** It is the behaviour currently in force, so
+  a mismatch is a real behaviour change rather than a test-authoring choice. Run
+  the probe before the commit and again after any follow-up edit.
+- **It finds defects the diff review does not.** One real example: `frozenset(some_bytes)`
+  iterates the bytes into single-byte INTs, so an "allowed digests" set silently
+  held 28 one-byte entries instead of one digest and every case it was meant to
+  permit was blocked. Nothing about the diff looked wrong.
+- **Keep the probe in the scratch dir.** It has to hold the plaintext and fixtures
+  the scanner blocks, so it can never be committed; commit only the derived test.
+- Assert on the VERDICT (blocked / allowed), not on message text, unless the
+  message itself is the contract.
+
+## Rule 24: A Content Scanner That Scans Its Own Source
+
+Three traps that all appear when the artefact you are editing is subject to the
+scanner it implements.
+
+- **A readable deny-list in a public repo is an index of what it protects.** Store
+  the terms as digests and hash candidate substrings, so the gate still detects a
+  term it never spells out. Keep the entry LENGTHS beside the digests — they bound
+  the scan — and slide a window of each length over the content, which preserves
+  substring semantics (a term embedded inside a longer token is still found).
+- **Pick an encoding the scanner does not itself flag.** A hex digest can contain a
+  seven-digit run, which the same module's phone pattern flags when the file is
+  written through the gate it implements; base64 of the raw digest is shorter and
+  does not collide. Whenever a module's own constants are scanned by that module,
+  check the constants against every pattern in it before shipping.
+- **Fixtures the scanner blocks cannot be written literally.** A test for a
+  phone/PII/host scanner must exercise real-shaped values, and those are exactly what
+  the gate refuses to let you write. Assemble them at runtime from parts, and prefer
+  DERIVING a real value from an already-public source in the repo (parse the owner
+  handle out of the README's own URL) over restating it — that keeps end-to-end
+  coverage of the real deny-list with no new literal, and the same technique lets the
+  write itself pass the gate.
+- **Never echo the matched term into the block message.** That message is written
+  into logs and transcripts, so name the CLASS ("personal identifier"), never the value.
+- **Behaviour-preserving refactors of a deny-list are testable without the terms.**
+  Drive the mechanism end to end with SYNTHETIC digests injected through the module's
+  own attributes (blocked in prose, allowed inside the sanctioned URL, found inside a
+  longer token), and pin the real configuration by cardinality and digest width.
+
+## Rule 25: Judge Repo↔Deployed Drift by CONTENT, Never by mtime
+
+A "deployed copy is newer than repo source" warning (the doctor's `Skill drift`, or
+any repo-vs-deployed parity check) is a DIFFERENT condition from "repo changed,
+deploy pending", and it never resolves itself: the deploy's drift guardrail SKIPS
+any deployed file newer than its repo source, so the content is neither clobbered
+nor propagated — it is STRANDED on one host and the fleet never receives it.
+
+- **Reconcile by copying deployed → repo, byte-for-byte, and assert it**
+  (`shutil.copy2(deployed, repo)`, then
+  `assert repo.read_bytes() == deployed.read_bytes()`). Review each diff first —
+  a deployed copy can carry host-specific paths or PII that must not enter a
+  public repo.
+- **Direction decided by mtime is unreliable: `git clone` and `git checkout` reset
+  every repo mtime to "now"**, so a genuinely stranded file is classified
+  repo-newer and the check stays SILENT — the one case it exists to catch. Decide
+  by CONTENT instead: a file is stranded when its deployed content appears neither
+  in the repo working tree nor in any committed revision of that path
+  (`git log -n<N> --format=%H -- <path>`, then `git show <rev>:<path>`). Deployed
+  content that matches an OLDER commit is a normal pending deploy, not stranding.
+- **A deploy banner is not drift.** Deployed `.sh`/`.py` copies carry a 3-line
+  `# SOURCE:` banner the repo copy lacks — inserted after the shebang, or at line 1
+  when the file has no shebang. Strip it before comparing, or every deployed script
+  reports drift.
+- **Compare every file, not just the entry point.** A check that only compares
+  `SKILL.md` cannot see a drifted `references/` or `scripts/` file.
+
 ## References
 
 - `references/memory-seed-clobber-2026-08-05.md` — the memory-clobber root
