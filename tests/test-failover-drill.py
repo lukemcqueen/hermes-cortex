@@ -435,43 +435,51 @@ def phase6_worker_mode(mod) -> None:
     mod.IS_ORCHESTRATOR = False
     mod.IS_MOSES = False
 
-    # Worker, Moses down, Esther up → warn once (fallback path active)
+    # Worker, Moses down + Esther up → warn ONCE, debounced: a single transient
+    # probe blip stays silent; only after WORKER_ALERT_CONSECUTIVE consecutive
+    # failures does the fallback warning fire.
     mod._save_state({
         "consecutive_failures": 0, "first_failure_at": None,
         "consecutive_successes": 0, "failover_active": False,
         "last_status": "idle", "last_check_at": None,
     })
-    out = mod.run_once(moses_up=False, esther_up=True)
-    if any("routes via Esther" in l for l in out):
-        ok("worker: Moses down + Esther up → warns 'traffic routes via Esther'")
+    silent = mod.run_once(moses_up=False, esther_up=True)  # 1st failure < threshold
+    out = mod.run_once(moses_up=False, esther_up=True)      # 2nd consecutive → alert
+    if silent == [] and any("routes via Esther" in l for l in out):
+        ok("worker: Moses down (2 consecutive) + Esther up → debounced fallback warning")
     else:
-        bad("worker: no fallback warning when Moses down", str(out))
+        bad(f"worker: fallback warning debounce wrong — first={silent} second={out}")
 
-    # Worker, BOTH down → CRITICAL alert
+    # Worker, BOTH down → CRITICAL alert (debounced like the fallback warning)
     mod._save_state({
         "consecutive_failures": 0, "first_failure_at": None,
         "consecutive_successes": 0, "failover_active": False,
         "last_status": "idle", "last_check_at": None,
     })
-    out = mod.run_once(moses_up=False, esther_up=False)
+    mod.run_once(moses_up=False, esther_up=False)  # tick 1 (below threshold → silent)
+    out = mod.run_once(moses_up=False, esther_up=False)  # tick 2 → CRITICAL
     if any("CRITICAL" in l and "NO BUS PATH" in l for l in out):
-        ok("worker: both buses down → CRITICAL no-bus-path alert")
+        ok("worker: both buses down (2 consecutive) → CRITICAL no-bus-path alert")
     else:
-        bad("worker: both-down did not raise CRITICAL", str(out))
+        bad("worker: both-down did not raise CRITICAL after threshold", str(out))
 
-    # Worker, Moses back → recovery report (worker_was_down is set by the
-    # real code on first failure — mirror that in the primed state)
+    # Worker, Moses back → recovery reported only after RECOVER_REQUIRED_SUCCESSES
+    # consecutive healthy checks (debounced — not on the first good probe).
     mod._save_state({
         "consecutive_failures": 2, "first_failure_at": mod._now_iso(),
         "consecutive_successes": 0, "failover_active": False,
         "worker_was_down": True,
         "last_status": "degraded", "last_check_at": None,
     })
-    out = mod.run_once(moses_up=True, esther_up=True)
-    if any("reachable again" in l for l in out):
-        ok("worker: Moses back → recovery reported")
+    rec_tick = -1
+    for i in range(1, mod.RECOVER_REQUIRED_SUCCESSES + 1):
+        out = mod.run_once(moses_up=True, esther_up=True)
+        if any("reachable again" in l for l in out):
+            rec_tick = i
+    if rec_tick == mod.RECOVER_REQUIRED_SUCCESSES:
+        ok(f"worker: recovery reported after {mod.RECOVER_REQUIRED_SUCCESSES} healthy checks")
     else:
-        bad("worker: recovery not reported when Moses returns", str(out))
+        bad(f"worker: recovery timing wrong — fired on tick {rec_tick} (expected {mod.RECOVER_REQUIRED_SUCCESSES})")
 
     # Worker, healthy idle → silent
     mod._save_state({

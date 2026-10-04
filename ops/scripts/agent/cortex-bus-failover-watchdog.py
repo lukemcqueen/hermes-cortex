@@ -19,12 +19,15 @@ ROLE BEHAVIOR
 
   ── Worker (Gisu, Joseph, Kustos, Titus) ──────────────────────────
   IDLE       Primary bus (Moses :13004) reachable → silent.
-  DEGRADED   Primary down but fallback (Esther :14004) up → warn ONCE:
-             traffic now routes via Esther automatically (lib.cortex_bus
-             per-call fallback). No config change needed on the worker.
+  DEGRADED   Primary down but fallback (Esther :14004) up → warn ONCE
+             after WORKER_ALERT_CONSECUTIVE consecutive failures (debounced —
+             a single transient probe blip never announces an outage): traffic
+             routes via Esther automatically (lib.cortex_bus per-call
+             fallback). No config change needed on the worker.
   ISOLATED   PRIMARY AND FALLBACK BOTH DOWN → CRITICAL alert: no bus path
              at all; messages queue locally until a bus returns.
-  RECOVERED  Primary back after being down → report recovery, silent.
+  RECOVERED  Primary back for RECOVER_REQUIRED_SUCCESSES consecutive checks
+             → report recovery, silent.
 
   Workers NEVER swap config or write markers — their lib.cortex_bus already
   falls back per-call; this watchdog only detects and reports.
@@ -44,6 +47,11 @@ CONFIG (env vars, all optional):
   MOSES_HEALTH_URLS          comma-separated probes; default Moses :13007+:13004
   ESTHER_HEALTH_URLS         comma-separated probes; default Esther :14004
   FAILOVER_CHECK_INTERVAL    default 5 — tick minutes (warning text only)
+  WORKER_ALERT_CONSECUTIVE   default 2 — worker emits the "Moses unreachable"
+                             warning only after this many consecutive failed
+                             probes (single-transient-blip debounce, 2026-10-04);
+                             recovery is reported only after
+                             RECOVER_REQUIRED_SUCCESSES consecutive successes
 
 Safe to run anytime. no_agent cron pattern: empty stdout = silent; text
 output = delivered to the configured channel.
@@ -111,6 +119,12 @@ ESTHER_HEALTH_URLS = [
 WARN_TICK_TOTAL = divmod(MIN_DOWN_MINUTES, CHECK_INTERVAL)[0] + 1
 
 RECOVER_REQUIRED_SUCCESSES = 3  # consecutive healthy checks before restoring
+# Worker alert debounce (Luke 2026-10-04 — recurrent false flapping): emit the
+# "Moses unreachable" warning only after this many CONSECUTIVE failed probes,
+# and the "reachable again" recovery only after RECOVER_REQUIRED_SUCCESSES
+# consecutive successes. A single transient probe blip must produce ZERO
+# output. Mirrors the orchestrator path (3 failures + elapsed, 3 successes).
+WORKER_ALERT_CONSECUTIVE = int(os.environ.get("WORKER_ALERT_CONSECUTIVE", "2"))
 
 
 def _now_iso() -> str:
@@ -401,12 +415,18 @@ def run_once(
                 state["last_status"] = "idle"
                 out = _recover(state)
         elif state.get("worker_was_down") and not IS_ORCHESTRATOR:
-            # Worker: report recovery once (worker_was_down tracks the
-            # degraded/isolated period without touching failover_active,
-            # which is orchestrator-only semantics).
-            state["worker_was_down"] = False
-            state["last_status"] = "idle"
-            out = ["✅ Moses (primary bus) reachable again — normal routing restored"]
+            # Worker: report recovery only after RECOVER_REQUIRED_SUCCESSES
+            # consecutive healthy checks — debounced like the orchestrator so
+            # one good probe doesn't instantly reverse a real outage (and a
+            # single blip never even reaches this branch: worker_was_down is
+            # only set after WORKER_ALERT_CONSECUTIVE failures).
+            if state["consecutive_successes"] >= RECOVER_REQUIRED_SUCCESSES:
+                state["worker_was_down"] = False
+                state["consecutive_successes"] = 0
+                state["last_status"] = "idle"
+                out = ["✅ Moses (primary bus) reachable again — normal routing restored"]
+            else:
+                state["last_status"] = "recovering"
         else:
             state["last_status"] = "idle"
             state["consecutive_successes"] = 0
@@ -442,7 +462,12 @@ def run_once(
                 state["last_status"] = "degraded"
         else:
             # Worker: Moses down. Alert depends on whether Esther is also down.
-            if state["consecutive_failures"] == 1:
+            # Debounced (Luke 2026-10-04 — recurrent flapping): alert only after
+            # WORKER_ALERT_CONSECUTIVE consecutive failures, so a single
+            # transient probe blip never announces an outage. A real sustained
+            # outage still alerts (once).
+            if (state["consecutive_failures"] >= WORKER_ALERT_CONSECUTIVE
+                    and not state.get("worker_was_down")):
                 state["worker_was_down"] = True
                 out = _worker_alert(isolated=not esther_up)
                 state["last_status"] = "isolated" if not esther_up else "degraded"
