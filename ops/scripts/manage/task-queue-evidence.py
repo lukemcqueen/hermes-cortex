@@ -103,14 +103,16 @@ def main() -> int:
           f"{parked} still waiting (baseline {WAS_PARKED})")
     # Cancelled rows are MOVED to tasks.task_archive (51 cancelled there), NOT left in
     # tasks.tasks — so a `count(*) WHERE status='cancelled'` on tasks.tasks is 0 even
-    # when the cancellation worked. Check the archive, and use archived_at so the check
-    # evidences THESE cancellations rather than any historical ones.
+    # when the cancellation worked. Check the archive instead.
+    #
+    # The cutoff is a FIXED date, not `now() - interval '3h'`: a sliding window makes
+    # "re-runnable evidence" stop being re-runnable a few hours after it is written.
     arch = q("SELECT count(*) FROM tasks.task_archive WHERE status='cancelled' "
-             "AND archived_at > now() - interval '3 hours';").strip()
-    check("The 5 superseded slices were archived, not deleted",
+             "AND archived_at >= '2026-10-04'::timestamptz;").strip()
+    check("The superseded slices were archived, not deleted",
           arch.isdigit() and int(arch) >= 5,
-          f"{arch} cancelled rows archived in the last 3h — a cancel MOVES the row to "
-          f"tasks.task_archive, so it is recoverable and absent from the live table")
+          f"{arch} cancelled rows archived since 2026-10-04 (fixed cutoff) — a cancel "
+          f"MOVES the row to tasks.task_archive, so it stays recoverable")
 
     # 4 — the parked arc is live in the DB function itself
     arcs = {s: q(f"SELECT tasks.transition_allowed('{s}', 'pending');").strip()

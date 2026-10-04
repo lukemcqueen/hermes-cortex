@@ -1,0 +1,32 @@
+# Task-queue remediation — baseline suite (BEFORE this change)
+
+Commit: 626b964b (the commit this change was built on)
+Command: python3 -m pytest tests/ -q
+
+```
+E     MISSING orch-skill-lifecycle
+E     MISSING orch-backlog-driver
+E     MISSING agent-bus-retry-sweep
+E     MISSING orch-task-morning-pass
+E     MISSING orch-task-evening-pass
+E     
+E     
+E   assert 1 == 0
+E    +  where 1 = CompletedProcess(args=['$HOME/.hermes/hermes-agent/venv/bin/python3', '/<path>/ops/scripts/manage/cron...og-driver\nMISSING agent-bus-retry-sweep\nMISSING orch-task-morning-pass\nMISSING orch-task-evening-pass\n', stderr='').returncode
+=========================== short test summary info ============================
+FAILED tests/test_cortex_context_mcp.py::test_server_completes_a_real_mcp_handshake
+FAILED tests/test_dogfood_gate_scoping.py::test_scope_guard_passes_in_the_cortex_repo
+FAILED tests/test_enforcer_pii_gate.py::test_pii_blocked[<redacted-email>]
+FAILED tests/test_enforcer_pii_gate.py::test_pii_blocked[Built by <redacted-name> in Seoul]
+FAILED tests/test_enforcer_pii_gate.py::test_pii_blocked[the bus at realgospelmessage.org:13004]
+FAILED tests/test_enforcer_pii_gate.py::test_pii_blocked[co-founder with <redacted-name>]
+FAILED tests/test_enforcer_pii_gate.py::test_pii_blocked[call <redacted-number>]
+FAILED tests/test_enforcer_pii_gate.py::test_pii_blocked[connect to https://my-secret-server.internal:8443]
+FAILED tests/test_enforcer_pii_gate.py::test_pii_blocked[panel at https://192.168.1.10/admin]
+FAILED tests/test_hc_harness.py::test_lists_registry_harnesses - assert ('cli...
+FAILED tests/test_hc_harness.py::test_run_line_is_derived_not_the_hand_written_registry_literal
+FAILED tests/test_hc_harness.py::test_hc_entrypoint_dispatches_harness - asse...
+FAILED tests/test_loop_gov_mcp_startup.py::test_server_starts_without_hermes_models_symlink
+FAILED tests/test_retired_orch_crons.py::test_the_manifest_check_accepts_the_retirement
+================= 14 failed, 1344 passed in 360.10s (0:06:00) ==================
+```
