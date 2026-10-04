@@ -27,6 +27,7 @@ Exit: 0 = every check passed.
 from __future__ import annotations
 
 import importlib.util
+import os
 import re
 import subprocess
 from pathlib import Path
@@ -138,14 +139,25 @@ def main() -> int:
     # 7 — the pre-existing failures, reproduced on a tree WITHOUT this change.
     #     A git WORKTREE, not `git stash`: the stash would also stash this script's
     #     own untracked output file mid-run and delete it from under the redirect.
-    def hc_run(cwd) -> str:
+    def hc_run(cwd):
+        """Return (full_output, summary_line) for the hc_harness suite.
+
+        PYTHONHASHSEED=0 is set deliberately: the assertion diff prints a Python SET
+        of tool names ("Extra items in the left set: ..."), and set iteration order
+        varies with the hash seed. Without this the captured output differs run to
+        run and the report becomes unreproducible — which is exactly what the
+        provenance test caught.
+        """
+        env = {**os.environ, "PYTHONHASHSEED": "0"}
         r = subprocess.run(["python3", "-m", "pytest", "tests/test_hc_harness.py",
                             "-q"], cwd=cwd, capture_output=True, text=True,
-                           timeout=300)
-        return (r.stdout or "").strip().splitlines()[-1] if r.stdout else "no output"
+                           timeout=300, env=env)
+        full = (r.stdout or "") + (r.stderr or "")
+        summary = full.strip().splitlines()[-1] if full.strip() else "no output"
+        return full, summary
 
-    with_changes = hc_run(REPO)
-    clean_tree = "not attempted"
+    with_changes_full, with_changes = hc_run(REPO)
+    clean_tree_full, clean_tree = "", "not attempted"
     wt = Path("/tmp/tq-evidence-clean-tree")
     subprocess.run(["git", "worktree", "remove", "--force", str(wt)], cwd=REPO,
                    capture_output=True, text=True, timeout=120)
@@ -153,7 +165,7 @@ def main() -> int:
                          cwd=REPO, capture_output=True, text=True, timeout=180)
     if add.returncode == 0:
         try:
-            clean_tree = hc_run(wt)
+            clean_tree_full, clean_tree = hc_run(wt)
         finally:
             subprocess.run(["git", "worktree", "remove", "--force", str(wt)],
                            cwd=REPO, capture_output=True, text=True, timeout=120)
@@ -169,12 +181,28 @@ def main() -> int:
     print("Every number below is RE-DERIVED from the live store and the live repo by")
     print("running this script. Aggregates only — no row identifiers, so the checks")
     print("keep holding for rows added later.\n")
+    print("Provenance: a regression test regenerates this report and compares it to")
+    print("the committed file, so a hand-written table cannot pass for script output.\n")
     print("| Check | Result | Detail |")
     print("|---|---|---|")
     for ln in rows:
         print(ln)
     print(f"\n**Verdict: {'PASS' if not failures else 'FAIL'}**"
           + ("" if not failures else f" — failed: {failures}"))
+
+    # Full raw output for the load-bearing claim (that the hc_harness failures are
+    # pre-existing). A one-line paste is not evidence a reviewer can check.
+    print("\n## Raw test output — `tests/test_hc_harness.py`\n")
+    print("This change does not touch `hc` or its harness registry. The failures below")
+    print("are reproduced on a HEAD~1 worktree, i.e. WITHOUT this change applied.\n")
+    print("### With this change applied\n")
+    print("```")
+    print(with_changes_full.strip() or "(no output)")
+    print("```\n")
+    print("### On a HEAD~1 worktree (this change absent)\n")
+    print("```")
+    print(clean_tree_full.strip() or "(no output)")
+    print("```")
     return 0 if not failures else 1
 
 
