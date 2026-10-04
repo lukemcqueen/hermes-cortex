@@ -106,13 +106,20 @@ def main() -> int:
     # when the cancellation worked. Check the archive instead.
     #
     # The cutoff is a FIXED date, not `now() - interval '3h'`: a sliding window makes
-    # "re-runnable evidence" stop being re-runnable a few hours after it is written.
+    # "re-runnable evidence" stop being re-runnable hours after it is written.
+    #
+    # It MUST be 2026-10-03, not 2026-10-04. The DB stores UTC while this host runs
+    # KST (+9), so the cancellations landed at 2026-10-03 23:40 UTC — i.e. 2026-10-04
+    # 08:40 local. A cutoff written as the LOCAL date ('2026-10-04') is midnight UTC
+    # and excludes them, which reported 0 on a correct system. Verified against the
+    # table: `GROUP BY left(archived_at::text,10)` shows exactly 5 cancelled on
+    # 2026-10-03, and those 5 are this change's.
     arch = q("SELECT count(*) FROM tasks.task_archive WHERE status='cancelled' "
-             "AND archived_at >= '2026-10-04'::timestamptz;").strip()
+             "AND archived_at >= '2026-10-03'::timestamptz;").strip()
     check("The superseded slices were archived, not deleted",
           arch.isdigit() and int(arch) >= 5,
-          f"{arch} cancelled rows archived since 2026-10-04 (fixed cutoff) — a cancel "
-          f"MOVES the row to tasks.task_archive, so it stays recoverable")
+          f"{arch} cancelled rows archived since 2026-10-03 UTC (fixed cutoff) — a "
+          f"cancel MOVES the row to tasks.task_archive, so it stays recoverable")
 
     # 4 — the parked arc is live in the DB function itself
     arcs = {s: q(f"SELECT tasks.transition_allowed('{s}', 'pending');").strip()
