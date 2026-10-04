@@ -128,7 +128,7 @@ their domain.
 | `meme-generation` | 2.0.0 | Create meme PNGs from templates with Pillow text overlay. | `skill_view(name='meme-generation')` |
 | `pixel-art` | 2.0.0 | Pixel art w/ era palettes (NES, Game Boy, PICO-8). | `skill_view(name='pixel-art')` |
 
-## Devops (161 skills)
+## Devops (162 skills)
 
 | Skill | Version | Purpose | Load With |
 |-------|---------|---------|-----------|
@@ -291,6 +291,7 @@ their domain.
 | `unified-cli-script` | 1.0.0 | Design a unified ./run CLI script for multi-environment Docker Compose deployments. Covers the _compose() w... | `skill_view(name='unified-cli-script')` |
 | `upstream-fix-watchdog` | 1.0.0 | Watch upstream for a bug fix to land; silent until fixed. | `skill_view(name='upstream-fix-watchdog')` |
 | `wan-reachability-probing` | 0.1.0 | Test port reachability from internet via external probes. | `skill_view(name='wan-reachability-probing')` |
+| `watchdog-alert-design` | 1.0.0 | Fix periodic health watchdogs that alert without flapping. | `skill_view(name='watchdog-alert-design')` |
 | `watchers` | 1.0.0 | Poll RSS, JSON APIs, and GitHub with watermark dedup. | `skill_view(name='watchers')` |
 | `webapp-deploy-verification` | 1.0.0 | Verify deployed web app routes render and links resolve. | `skill_view(name='webapp-deploy-verification')` |
 
