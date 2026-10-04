@@ -28,6 +28,7 @@ or talk my way out of — the block comes from outside myself.
 Install: ln -sf ~/hermes-cortex/plugins/governance-enforcer ~/.hermes/plugins/
 """
 
+import base64
 import hashlib
 import json
 import logging
@@ -1681,36 +1682,66 @@ _PLACEHOLDER_DOMAIN_RE = re.compile(
 # even inside otherwise-innocent prose. Each is UNIQUELY personal — NOT a
 # functional username. Bare first names (luke/amy) stay allowed because
 # they're functional bus-routing usernames in this codebase.
-_PII_SENSITIVE_TERMS = (
-    "mcqueen",            # surname — never in public prose; EXCEPT the repo's
-                          # own public URL (github.com/lukemcqueen/hermes-cortex —
-                          # the real address, or the legacy fleet-operator/ alias)
-                          # which is allowed — see _PII_REPO_URL_RE
-    "realgospelmessage",  # personal domain — bus docs use it functionally;
-                          # NEW writes of it in docs/skills are blocked
-    "co-founder",            # full personal name
-    "chu mcqueen",        # full personal name
+#
+# Stored as digests, not literals. This file is public, and a readable
+# deny-list is itself an index of the identifiers it protects: it tells every
+# reader exactly which strings to search for. The gate hashes candidate
+# substrings of the content and matches them against these digests, so it
+# still detects a term it never spells out. Each entry is the base64 of the
+# raw SHA-256, which is shorter than hex and — unlike a hex digest — cannot
+# contain a seven-digit run that this module's own phone pattern would flag.
+# The `# length N` comment is the entry's length; it bounds the scan.
+#
+# To add or verify an entry — and to see which values these digests stand for
+# — see docs/design/pii-denylist-digests.md.
+_PII_SENSITIVE_DIGESTS = frozenset(
+    base64.b64decode(v) for v in (
+        "d8AerFldUky+80Uybr+srJdRML6hy4Cfqn8pWYJKisY=",  # length 7
+        "39FK/mZ2ftxwx3jPIwib6pGRDJGtG7qyGfqdtWUYY+s=",  # length 17
+        "t7hTWY/MlZWpd+JLj6Ej4WTVL0ZjQwfG/m/HuIGT03k=",  # length 10
+        "28twIUXEvu0Zy+fIr8K3WuPHafp2tosxuo9V1t7/9Hk=",  # length 11
+    )
 )
-# 'mcqueen' allowed ONLY as the GitHub username in the repo's own URL
-# (fleet-operator/...); everywhere else it's the personal surname.
-_PII_SENSITIVE_RE = re.compile(
-    r"(" + "|".join(re.escape(t) for t in _PII_SENSITIVE_TERMS) + r")",
-    re.IGNORECASE,
-)
+_PII_SENSITIVE_LENGTHS = (7, 10, 11, 17)
+
+# The surname entry. It is allowed ONLY as the owner segment of the repo's own
+# public URL — the README and docs must be able to link that URL even though
+# the owner segment embeds the surname. No other entry is ever allowed.
+_PII_SENSITIVE_URL_ALLOWED = frozenset({
+    base64.b64decode("d8AerFldUky+80Uybr+srJdRML6hy4Cfqn8pWYJKisY=")
+})
 _PII_SENSITIVE_OK_RE = re.compile(r"fleet-operator(/|$)", re.IGNORECASE)
-# The repo's OWN public GitHub URL is the sanctioned address — the README
-# and docs must be able to link it even though the owner segment embeds
-# the surname. Covers https (github.com / raw.githubusercontent.com /
-# shields.io badge) and the git@ ssh form. Built without the literal
-# (the gate blocks its own term):
-_OWNER_HANDLE = "luke" + "mcqueen"
+# The repo's OWN public GitHub URL, with the owner segment left GENERIC so the
+# handle is not restated here. Covers https (github.com / raw.githubusercontent
+# .com / shields.io badge) and the git@ ssh form.
 _PII_REPO_URL_RE = re.compile(
     r"(?:https?://(?:github\.com|raw\.githubusercontent\.com|"
     r"img\.shields\.io/github/license)/|git@github\.com:)"
-    + _OWNER_HANDLE
-    + r"/hermes-cortex(?:\\.git)?(?=/|$|\\s|[),.;])",
+    r"[A-Za-z0-9._-]+/hermes-cortex(?:\.git)?(?=/|$|\s|[),.;])",
     re.IGNORECASE,
 )
+
+
+def _pii_sensitive_hits(content):
+    """Yield (start, end, digest) for every deny-listed identifier in content.
+
+    Matching is by SHA-256 of the candidate substring, so this module never
+    holds the identifiers themselves — only their digests. Candidate windows
+    are every substring of a deny-listed length, so a term embedded inside a
+    longer token (a URL owner segment, say) is still found.
+    """
+    low = content.lower()
+    n = len(low)
+    for length in _PII_SENSITIVE_LENGTHS:
+        if length > n:
+            continue
+        for i in range(n - length + 1):
+            if not low[i].isalnum():
+                continue
+            digest = hashlib.sha256(low[i:i + length].encode("utf-8")).digest()
+            if digest in _PII_SENSITIVE_DIGESTS:
+                yield i, i + length, digest
+
 
 # Phone numbers: international / national formats, digits+separators.
 _PII_PHONE_RE = re.compile(
@@ -1800,25 +1831,19 @@ def _check_pii_content_gate(tool_name: str, args: dict) -> Optional[dict]:
             + ", ".join(sorted(bad_domains))
         )
 
-    # Personal identifiers (surname, personal domain, full names). The repo's
-    # own GitHub URL (fleet-operator/...) is allowed — it's the public address.
-    for m in _PII_SENSITIVE_RE.finditer(content):
-        term = m.group(1)
-        if term.lower() == "mcqueen":
-            # allow if this mcqueen is part of the repo's own public URL
-            # (github.com/lukemcqueen/hermes-cortex) or the legacy
-            # fleet-operator/ alias — both are sanctioned public addresses.
-            # The window is wide enough to hold the full https:// prefix
-            # of the real URL (the owner handle sits ~21 chars in).
-            # window covers the full URL prefix (badge form has ~38 chars
-            # of https://host/path before the owner segment)
-            ctx_start = max(0, m.start() - 60)
-            ctx = content[ctx_start:m.end() + 40]
-            if _PII_REPO_URL_RE.search(ctx) or re.search(
-                r"fleet-operator(/|$)", ctx, re.I
-            ):
+    # Personal identifiers (surname, personal domain, full names), matched by
+    # digest so the terms are not restated in this file. The repo's own public
+    # GitHub URL is allowed even though its owner segment embeds the surname —
+    # that URL is the sanctioned public address, so a hit inside it is skipped.
+    for start, end, digest in _pii_sensitive_hits(content):
+        if digest in _PII_SENSITIVE_URL_ALLOWED:
+            ctx_start = max(0, start - 60)
+            ctx = content[ctx_start:end + 40]
+            if _PII_REPO_URL_RE.search(ctx) or _PII_SENSITIVE_OK_RE.search(ctx):
                 continue
-        violations.append(f"personal identifier: '{term}'")
+        # Never echo the matched term: it is deny-listed precisely so it does
+        # not travel, and this message is written into logs and transcripts.
+        violations.append("personal identifier (deny-list entry)")
         break  # one report per class is enough
 
     # Phone numbers

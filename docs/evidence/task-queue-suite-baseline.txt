@@ -3,6 +3,10 @@
 Commit: 626b964b (the commit this change was built on)
 Command: python3 -m pytest tests/ -q
 
+Captured output, not regenerable. Personal identifiers that appear inside the
+captured test ids are redacted to <redacted-...> placeholders — this repo is
+public.
+
 ```
 E     MISSING orch-skill-lifecycle
 E     MISSING orch-backlog-driver
@@ -18,7 +22,7 @@ FAILED tests/test_cortex_context_mcp.py::test_server_completes_a_real_mcp_handsh
 FAILED tests/test_dogfood_gate_scoping.py::test_scope_guard_passes_in_the_cortex_repo
 FAILED tests/test_enforcer_pii_gate.py::test_pii_blocked[<redacted-email>]
 FAILED tests/test_enforcer_pii_gate.py::test_pii_blocked[Built by <redacted-name> in Seoul]
-FAILED tests/test_enforcer_pii_gate.py::test_pii_blocked[the bus at realgospelmessage.org:13004]
+FAILED tests/test_enforcer_pii_gate.py::test_pii_blocked[the bus at <redacted-domain>:13004]
 FAILED tests/test_enforcer_pii_gate.py::test_pii_blocked[co-founder with <redacted-name>]
 FAILED tests/test_enforcer_pii_gate.py::test_pii_blocked[call <redacted-number>]
 FAILED tests/test_enforcer_pii_gate.py::test_pii_blocked[connect to https://my-secret-server.internal:8443]
