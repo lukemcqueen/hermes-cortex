@@ -2,15 +2,17 @@
 
 Regenerate with: `python3 ops/scripts/manage/check-skill-drift-parity.py`
 
-A deployed skill file newer than its repo counterpart means a lesson was
-written on this host and never copied back: it is stranded here, and the
-deploy's drift guardrail will refuse to overwrite it, so it never reaches
-the fleet. Deploy banners (the 3-line SOURCE header) are not compared.
+A deployed skill file whose content appears in neither the repo working
+tree nor any committed revision of that path means a lesson was written on
+this host and never copied back: it is stranded here, and the deploy's
+drift guardrail refuses to overwrite it, so it never reaches the fleet.
+Direction is decided by content, not mtime, so a fresh clone cannot hide it.
+Deploy banners (the 3-line SOURCE header) are not compared.
 
 | Measure | Value |
 |---|---|
-| Deployed-newer files (stranded) | 0 |
+| Deployed-only files (stranded) | 0 |
 | Files in sync | 816 |
-| Skipped (no repo counterpart, or repo-newer) | 578 |
+| Skipped (no repo counterpart, or repo ahead) | 578 |
 
 **Verdict: PASS**

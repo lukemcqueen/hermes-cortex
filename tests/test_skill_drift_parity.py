@@ -4,12 +4,13 @@
 A guard only ever run against the healthy state is a happy path with a name.
 This drives ops/scripts/manage/check-skill-drift-parity.py against the revision
 before the deployed->repo skill sync (where the skills were still stranded) and
-against the working tree, using a throwaway git worktree whose mtimes are aged:
-the check decides direction by mtime, so a fresh checkout would otherwise look
-like "repo newer" and hide the drift.
+against the working tree, using a throwaway git worktree.
+
+The worktree's files carry FRESH mtimes from the checkout, and the check still
+reports the drift — direction is decided by content, not mtime, so a clone or
+checkout cannot hide stranded content.
 """
 import importlib.util
-import os
 import subprocess
 from pathlib import Path
 
@@ -17,7 +18,6 @@ _REPO = Path(__file__).resolve().parent.parent
 _CHECKER = _REPO / "ops" / "scripts" / "manage" / "check-skill-drift-parity.py"
 # The commit immediately before the deployed->repo skill sync.
 _PRE_SYNC_SHA = "8c0212ec"
-_AGED = 1_000_000_000  # 2001 — unambiguously older than any deployed copy
 _KNOWN_STRANDED = "devops/governance-closeout/SKILL.md"
 
 
@@ -38,9 +38,6 @@ def test_parity_check_discriminates(tmp_path, monkeypatch):
         check=True,
     )
     try:
-        for path in (worktree / "skills").rglob("*"):
-            if path.is_file():
-                os.utime(path, (_AGED, _AGED))
         monkeypatch.setattr(mod, "REPO_SKILLS", worktree / "skills")
         stranded, _, _ = mod.survey()
         assert _KNOWN_STRANDED in stranded, (
