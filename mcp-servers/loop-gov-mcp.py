@@ -1343,6 +1343,7 @@ async def call_tool(ctx, params=None) -> CallToolResult:
             "feedback_override": _feedback_override,
             "cache_search": _cache_search,
             "record_issue": _record_issue,
+            "rereview_change": _rereview_change,
             "advance_task_state": _advance_task_state,
             "request_interruption": _request_interruption,
             "resume_from_interrupt": _resume_from_interrupt,
