@@ -1,0 +1,53 @@
+# Adversarial verification - skill-parity checker (A4, --gate)
+
+Regenerate with: `bash ops/scripts/manage/run-skill-parity-verify.sh`
+
+Verifier: /home/esther/.hermes-cortex/scripts/adversarial-verify.py
+Revision: 9d5a49b25b141bc25bead161986b6cf8ef309f1c
+
+## ops/scripts/manage/check-skill-drift-parity.py
+```
+
+── /home/esther/hermes-cortex/ops/scripts/manage/check-skill-drift-parity.py ──
+   Level: A4
+   Attack Surface:
+     ⚠️ Inputs: 8 item(s)
+     ✅ State: 0 item(s)
+     ⚠️ Dependencies: 6 item(s)
+     ✅ Concurrency: 0 item(s)
+   Fuzz inputs generated: 0
+
+📊 Summary: 1 file(s), 1 finding(s)
+   🔵 Low: 1
+
+ℹ️  Low/info findings — review before shipping.
+
+✅ GATE_PASSED — no critical/high findings
+```
+
+## tests/test_skill_drift_parity.py
+```
+
+── /home/esther/hermes-cortex/tests/test_skill_drift_parity.py ──
+   Level: A4
+   Attack Surface:
+     ⚠️ Inputs: 2 item(s)
+     ✅ State: 0 item(s)
+     ⚠️ Dependencies: 5 item(s)
+     ✅ Concurrency: 0 item(s)
+   Functions: 2
+     - _load()
+     - test_parity_check_discriminates(tmp_path, monkeypatch)
+   Fuzz inputs generated: 18
+
+📊 Summary: 1 file(s), 20 finding(s)
+   🟡 Medium: 2
+   🔵 Low: 2
+   ⚪ Info: 16
+
+🟡 Medium findings — fix before shipping.
+
+✅ GATE_PASSED — no critical/high findings
+```
+
+**Verdict: PASS**
