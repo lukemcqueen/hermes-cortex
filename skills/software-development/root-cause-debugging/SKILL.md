@@ -94,6 +94,14 @@ A 30-second flaky loop is barely better than no loop; a 2-second deterministic o
 
 The goal is not a clean repro but a **higher reproduction rate**. Loop the trigger 100×, parallelise, add stress, narrow timing windows, inject sleeps. A 50%-flake bug is debuggable; 1% is not — keep raising the rate until it's debuggable.
 
+**Determinism is the DEFAULT — do not label a bug "non-deterministic" until you have
+proven it.** Before reaching for flakiness as the explanation, rule out the
+deterministic causes: pin the seed (`PYTHONHASHSEED=0`), the timezone, the clock,
+and the iteration order, then re-run. A failure that reproduces identically on every
+run is deterministic even when the *output* looks random; calling it nondeterminism
+sends the investigation toward flake-hunting and away from the real, findable cause.
+You cannot call a bug intermittent without a measured reproduction rate.
+
 ### When you genuinely cannot build a loop
 
 Stop and say so explicitly. List what you tried. Ask the user for: (a) access to whatever environment reproduces it, (b) a captured artifact (HAR file, log dump, core dump, screen recording with timestamps), or (c) permission to add temporary production instrumentation. Do **not** proceed to hypothesise without a loop.
@@ -135,6 +143,13 @@ Now that you have a minimised repro, gather evidence systematically:
 1. **Read Error Messages Carefully** — stack traces, line numbers, error codes
 2. **Check Recent Changes** — `git log --oneline -10`, `git diff`
 3. **Trace Data Flow** — where does the bad value originate? Trace upstream to find the source
+
+**A reported diagnosis is a hypothesis, not a fact.** A handoff, a summary, or a
+prior pass that says *"the cause is X"* is a claim to VERIFY against the
+underlying data — the rows, the query, the log — never a premise to act on. A
+confident report can be confidently wrong; in practice a triage report can name
+the wrong cause for every symptom and send the fix the wrong way. Read the
+artifact the diagnosis rests on and confirm it yourself before writing any fix.
 
 **Action:** Use `read_file` on relevant source files. Use `search_files` to trace references:
 
