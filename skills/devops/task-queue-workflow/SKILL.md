@@ -18,7 +18,7 @@ metadata:
 - Any agent claiming or executing a slice from the task queue
 - Orchestrators decomposing stories, dispatching, or verifying completions
 - Reading the task board or daily digest
-- Design: `docs/design/task-model-v3.md`; schema: `ops/services/tasks/schema/v009__task-model-v3.sql` + `v010__task-model-v3-matrix-fix.sql`
+- Design: `docs/design/task-model-v3.md`; schema: `ops/services/tasks/schema/` (a version-gated runner; the highest `vNNN__` file present wins — see the migration pitfall below)
 
 ## The Model
 
@@ -103,7 +103,12 @@ docker exec -i mycortex-postgres psql -U mycortex_reader_<profile> -d mycortex \
 **Drop decision — classify, don't mass-drop; actual deletion is the owner's call.**
 - **Parked by design** (owner explicitly deferred, or env-gated on a human/
   restart window) → keep but re-tag to `blocked`/`waiting` so the board reads
-  honestly; do not burn cycles re-attempting.
+  honestly; do not burn cycles re-attempting. **Parking REMOVES the row from the
+  claim pool** — `claim` takes `pending` only — so a parked slice comes back only
+  through the parked→`pending` arc. State the unblock condition in the row, or it
+  parks indefinitely; prefer `waiting` for a genuinely external dependency, and
+  re-tag back to `pending` the moment the condition clears rather than leaving it
+  parked because nothing forced a decision.
 - **Live work just untouched** (in_progress with an assignee on an active
   workstream, stale 1–3 weeks) → poke/re-claim the owner, never cancel their work.
 - **Sequential backlog** (slices gated on a prerequisite phase completing) →
@@ -130,11 +135,45 @@ docker exec -i mycortex-postgres psql -U mycortex_reader_<profile> -d mycortex \
   you can claim only FOR YOURSELF, never assign work to others.
 - **A claimed slice can't be re-claimed** — the single claimer holds it until
   unclaim/report.
+- **A slice that is `pending` WITH an assignee is STRANDED: unclaimable and
+  unwatched.** The pool requires `assignee IS NULL` and the row is not
+  `in_progress`, so no worker can take it, nobody is working it, and the board still
+  counts it as ordinary pending work. Assigning a slice is NOT the same as starting
+  it. Find them with `list --assigned` (MCP `task_list_handed_out`); release them
+  with `unclaim <id> --reason "<why>"`, which now clears the assignee on a PENDING
+  row as well as returning an `in_progress` one — a hand-off nobody started used to
+  be unreleasable, which is how six slices sat stuck for six weeks.
+- **A bare `pending` count overstates the queue.** It mixes claimable slices,
+  assigned-but-unstarted slices, and stories (never claimable — the pool takes
+  slices only). An actionable count is the split: `pending (claimable)` /
+  `pending (assigned, not started)` / `pending (story)`. A count nobody can act on
+  is what hides rot inside it.
+- **A cancel MOVES the row to `tasks.task_archive`; it does not leave
+  `status='cancelled'` in `tasks.tasks`.** So `count(*) FROM tasks.tasks WHERE
+  status='cancelled'` is 0 even when the cancellation worked — verify or audit a
+  cancel against `tasks.task_archive` (which carries `archived_at`). The live table
+  is open work only.
+- **The store is UTC; the host usually is not.** A date filter written from the
+  LOCAL calendar day is midnight UTC and silently excludes every row written earlier
+  that UTC day — a 09:00 KST change lands on the previous UTC date. Filter on a UTC
+  date or compare the timestamp, and check the boundary before believing a 0-row
+  result (a cutoff only hours away from the data is the failure shape).
+- **A migration that is not in `cortex-update.sh`'s `register()` map is NEVER
+  deployed** — the register map IS the deploy. The version-gated runner only sees
+  migrations present in the DEPLOYED schema dir, so an unregistered one leaves every
+  host silently behind while the repo looks correct. Register each migration in the
+  same change, then confirm the host reports the new version (`task-db.py
+  --apply-schema` is a no-op at the right version).
+- **The MCP status filter must accept every status the STORE uses.** An enum
+  narrower than `STATUSES` makes those rows unqueryable through MCP: they exist, are
+  counted nowhere, and cannot be asked for. Extend the tool enums in the same change
+  that adds a status.
 - **Unclaim/claim/report work on YOUR OWN rows** — `created_by` must match the
   caller; you can't unclaim or report someone else's work.
 - **Schema v009+ required** — these commands `_require_v4` (schema 9). On an
-  older host, run `bash cortex-update.sh` first (the version-gated runner
-  applies v009/v010).
+  older host, run `bash cortex-update.sh` first; the version-gated runner applies
+  the pending migrations, and a migration missing from `register()` is never
+  carried (see the migration pitfall below).
 - **report/verify set the derivation column too** — the functions keep the
   column-derivation CHECK in sync; hand-written UPDATEs that don't will fail.
 - **review ≠ done** — reporting puts work in a queue, it does not close it.

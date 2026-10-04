@@ -75,6 +75,19 @@ printf 'myP@ssw0rd!' > /tmp/pass.txt
 ### Shell `&` in password causes silent truncation
 If the password contains `&` and you use inline `$(cat ~/file)`, the shell expansion is fine within `$()`. But if you accidentally paste the password directly into the command, the `&` background-processes the rest. Always use a file reference, never inline.
 
+### Context-echoing edit tools leak secrets from SURROUNDING lines
+A `patch`/find-and-replace tool returns a **diff with context lines**. Editing a
+comment in a secret-bearing file (`.env`, `auth.json`, an env file) prints the
+neighbouring `KEY=value` lines into the chat, even though the edit itself was
+trivial. On 2026-10-02 a live provider key reached the session transcript this way,
+via a one-word comment rename in `.env`.
+- **Never** use a context-echoing edit tool on a file that holds secrets, however
+  small the edit. A cosmetic change never justifies touching such a file.
+- If such a file genuinely must change, edit without echoing: `sed -i` from the
+  shell shows only the command string, not the affected lines.
+- Reading the value for a scan: `V=$(sed -n 's/^NAME=//p' file)` in a subshell and
+  print **counts** — never the value.
+
 ### Terminal output vs command display
 The `terminal` tool shows the `command` parameter in full. Even though this is tool metadata (not standard output), it IS visible to the user and recorded in the session log. Treat it as a broadcast channel.
 

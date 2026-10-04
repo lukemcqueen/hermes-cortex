@@ -154,6 +154,20 @@ May need several rounds on active days; each round's dogfood re-runs clean.
   delivery, push after the tree clears.
 - Stage only YOUR files (`git add <yours>`) — never `git add -A` in a
   shared tree.
+- **Verify the file set that actually LANDED, not the one you staged.** Even
+  with an explicit `git add <yours>`, a gated commit can sweep a file a peer
+  session had modified into your commit. Run `git show --stat HEAD` and confirm
+  it matches your intended paths. If a peer's file is present, do not rewrite
+  history to drop it (that discards real work) — record whose change it is and
+  continue; the owning session's own commit normally lands on origin anyway.
+- **Tag your work while a concurrent session is active** (`git tag -f <name>
+  <sha>`) so a later `reset --hard` or rebase-rewrite in the other session
+  cannot orphan your commits. Report "committed locally + deployed, not yet
+  pushed" with that SHA — never claim a push that did not land.
+- **A peer's rebase-rewrite shows up as non-fast-forward with identical
+  messages.** When origin's tip has the same subject as your local HEAD under a
+  different SHA, the other session rewrote shared history; fetch and rebase onto
+  it rather than force-pushing anything.
 
 ## Drift-Resolution Direction for a Peer's Unstaged Change
 
@@ -218,6 +232,17 @@ headered repo copy fails every checksum/script-content check.
   failures REMAIN before assuming your fix was incomplete.
 - Docs-only changes are deploy-exempt (cortex-update does not deploy
   docs/) — no deploy step needed after a docs push.
+- **Never pass a multi-line or backtick-bearing body to `git commit -m`.** A
+  shell-quoted `-m "..."` is expanded by the shell BEFORE git sees it, so
+  backticks in the body run as COMMAND SUBSTITUTION: a message that merely
+  mentions `code`, a log line, or a filename can truncate itself, corrupt the
+  rest of the command line (observed: a chained deploy invocation that then
+  exited 127 with no output at all), or create a stray file named after the
+  fragment — which a later commit then sweeps in as scope drift. Write the
+  message to a temp file and use `git commit -F <file>`; `-m` is safe only for a
+  one-line subject carrying no shell metacharacters. After a malformed-commit
+  cleanup, `git status --short` before the next `git add` and look for junk
+  paths (a bare `=`, a fragment word) at the repo root.
 - **A gate-blocked `git commit -F <file>` commits with a STALE subject on retry.**
   The enforcer rejects the WHOLE compound command —
   `printf "...msg" > /tmp/msg && git commit -F /tmp/msg` is blocked before the

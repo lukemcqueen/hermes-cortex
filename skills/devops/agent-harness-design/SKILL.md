@@ -184,6 +184,41 @@ adapter (the landscape is volatile: Windsurf→Devin, Roo Code shut down,
 Continue frozen). Full grounded table in
 `references/adapter-layer.md`; the stale-doc-authoring discipline in *Pitfalls*.
 
+## Always-on rule: every harness must be able to WRITE the evidence a gate reads
+
+When governance derives its evidence from harness-reported events (did this
+session load skill X, which tool did it call), re-pointing the gate onto a new
+store is only half the change. **Enumerate EVERY harness and confirm each has a
+writer.** A harness whose adapter registers tools but not the event recorder will
+have its commits refused no matter how correct the agent's behaviour — and "the
+gate is harness-agnostic" is then false in practice, because only the harnesses
+with a writer can satisfy it.
+
+Order the work: **writer in every harness → the checker → re-point the gate.**
+Re-pointing first fails every commit fleet-wide against an empty store.
+
+Corollaries:
+- Register the recorder in the adapter's **deploy** path — a file in the repo that
+  no installer copies is not deployed.
+- **Derive a harness's tool list from the shared surface**; a hand-written list in
+  the adapter drifts and leaves an agent calling nothing the store contract knows.
+  When you add a tool to the shared surface, the adapters must follow.
+- Record only what a gate asks about (evidence), not every tool call (transcript).
+
+### Verify a foreign harness's hook WITHOUT an LLM turn
+
+An extension hook can be verified hermetically before any provider is configured:
+load the extension module with a **fake harness object** that captures the hooks
+and tools it registers, then invoke the hook with the harness's real event shape
+and assert the side effect actually landed. That proves registration + handler
+logic; it does NOT prove the harness delivers the event at runtime — state which
+of the two you verified rather than claiming "it works".
+
+Read the **installed** type definitions for the event shape first; never infer it.
+The base interface may omit a field that only the concrete variants carry (a
+tool name present only on the per-tool variants is the common trap) — read such
+fields defensively and skip events you cannot identify.
+
 ## Consolidating a design that has grown — see `references/adversarial-consolidation.md`
 
 When the covenant/spec has accumulated many later principles, consolidate it

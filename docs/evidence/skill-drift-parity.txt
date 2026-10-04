@@ -1,0 +1,16 @@
+# Skill source parity - deployed tree vs repo source
+
+Regenerate with: `python3 ops/scripts/manage/check-skill-drift-parity.py`
+
+A deployed skill file newer than its repo counterpart means a lesson was
+written on this host and never copied back: it is stranded here, and the
+deploy's drift guardrail will refuse to overwrite it, so it never reaches
+the fleet. Deploy banners (the 3-line SOURCE header) are not compared.
+
+| Measure | Value |
+|---|---|
+| Deployed-newer files (stranded) | 0 |
+| Files in sync | 816 |
+| Skipped (no repo counterpart, or repo-newer) | 578 |
+
+**Verdict: PASS**

@@ -132,6 +132,14 @@ its author panics ("my edits vanished").
 - [ ] Verify against origin: `git rev-parse HEAD origin/main`,
       `git branch -r --contains <sha>`. A sibling may have pushed a commit that
       absorbed yours — confirm the final state on origin rather than fighting it.
+- [ ] **Author identity does NOT separate SESSIONS.** Two sessions of the same agent
+      on one host share one git identity, so `git log --author` — and any
+      author-scoped review range built on it — cannot tell whose work is whose. A
+      concurrent session's `git add`/commit can sweep your staged edits into ITS
+      commit, and its commit reads as yours. Before pulling, pushing or deploying in
+      a shared tree, check `git status --short` for foreign uncommitted work and
+      stand down rather than racing it: a rebase cannot proceed over it, and a
+      deploy run beside it can abort mid-way (see Rule 21).
 
 ## Rule 3: Enforcer Test Contamination While Holding a Lock
 
@@ -833,6 +841,77 @@ the old source keeps it load-bearing and hides your own writer's failure, which 
 the whole thing being removed. Mark the bridge in code as transitional with its
 deletion condition, name it in the delivery, and delete it once the real writer is
 proven live.
+
+## Rule 21: A Deploy That Dies Mid-Run Leaves the Immutable Layer OPEN
+
+`cortex-update.sh` unlocks the enforcement targets EARLY and relocks them LATE, after
+the deployment steps, with no EXIT guard. Any run that exits non-zero or is killed in
+between — a `set -euo pipefail` abort like Rule 18 describes, a timeout, a stop —
+leaves the enforcer plugin, the hooks, the gate scripts and `loop-gov-mcp.py`
+WRITABLE. Nothing announces it; the governance auditor reports it later.
+
+**Detect (read-only, no lock needed):**
+
+```bash
+hermes-plugin-lock status    # nine lines. `----i---` = locked, `--------` = UNLOCKED
+```
+
+**Fix — and do not over-think the permissions:**
+
+```bash
+sudo -n /usr/local/sbin/hermes-plugin-lock lock
+hermes-plugin-lock status | grep -c -- '----i'    # expect 9
+```
+
+- **Never probe with `sudo -n true`.** `/bin/true` is named by no command-specific
+  rule, so it answers "a password is required" on a host where the lock helper IS
+  granted. That false negative reads as "passwordless sudo is broken" and sends you
+  designing workarounds for a grant that was never missing. Probe the exact path you
+  intend to run: `sudo -n /usr/local/sbin/hermes-plugin-lock status`.
+- **Read the deploy log WHOLE — count both sides.** A healthy run logs `Locking
+  enforcement files…` plus ~63 `LOCKED:` lines, and the relock sits AFTER the last
+  `UNLOCKED:` line. A `head`/`tail` view of a long log shows the unlocks and hides
+  the relock, which reads as "the deploy never relocked" when it did.
+- **A deploy that died this way leaves a stale `.running` marker under
+  `state/pending-update-results/` with no live process.** Do NOT delete it: the
+  handler sweep declares it dead after ~30 minutes and reports a timeout result, and
+  removing the marker silently converts a reported-dead deploy into an
+  apparently-successful one.
+- **Unlocked is not tampered.** Check the doctor's checksum checks before assuming
+  corruption — the flag goes missing, the content does not. Report it as a protection
+  gap, not as file damage.
+- **Fail-safe direction for any unlock/relock window:** relock on EXIT, not only on
+  the success path. A guard that only relocks when the run completes is a lock that is
+  off precisely when the deploy failed — the worst case.
+
+## Rule 22: The Adversarial Verdict Is FROZEN Per Cycle — Make Your Work VISIBLE First
+
+`end_change()` on a complex change runs an adversarial review whose verdict is
+stored ONCE per cycle. A `FINDINGS` verdict does not refresh: calling
+`end_change()` again re-reports the identical findings verbatim, quoting the
+ORIGINAL note. The refresh path is `rereview_change` (a NEW note plus the
+evidence that changed) — and where that tool is not registered on the deployed
+server ('Unknown tool'), the cycle cannot close without `feedback_override`,
+which is exactly the escape hatch that must not be used to escape a review.
+Report the deadlock as a governance defect (record an issue, name the missing
+tool) and let the lock sit until TTL; do not override to get a green close.
+
+- **Untracked files are INVISIBLE to the reviewer.** It reads the staged/diff
+  window, so a new file you never `git add` reads as "claimed but absent" → the
+  reviewer files a **fabrication** finding against your own note. Stage your work
+  (or paste raw command output, exit codes and resolved paths into the cycle
+  note) BEFORE `end_change`. A summary such as "tests pass / the resolver
+  confirms it" is unsupported self-report by construction.
+- **The same window picks up OTHER sessions' commits.** Commits landing in the
+  repo while your cycle is open appear in the material, so findings can target
+  work you did not author. Classify every finding against your OWN staged set
+  before accepting it: state plainly which findings are not yours (and why), with
+  the evidence — `git show --stat` on the peer's commit, and the absence of the
+  file from your staged set.
+- **A frozen verdict is fixable only at the source.** When the reviewer's
+  findings keep citing a file outside your change, the real defect is window
+  scoping (review the session's own reported/staged set, not every commit in the
+  range). File it as an issue rather than bending your change to satisfy it.
 
 ## References
 

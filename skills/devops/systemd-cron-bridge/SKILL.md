@@ -106,6 +106,18 @@ Then remove the `create_cron` block from the installer (keep the name in the
 uninstall array so other hosts clean up too), drop the `cron-manifest.yaml`
 entry, and grep the docs/skills for the name.
 
+**Pin the retirement with a test, or the next reinstall re-arms it.** Assert
+(a) no `create_cron` block for the name, (b) the name is STILL in the uninstall
+array, (c) no manifest entry, (d) `bash -n` on the installer exits 0. The
+uninstall-only entry is deliberate — `fix-cron-duplicates.py` will warn about it,
+and that warning is expected for a retirement rather than a defect to clear.
+
+**Check the live host, not just the repo.** A timer can outlive the job for a
+long time before anyone notices, so when a user reports noise from a job you
+cannot find, grep the timer list by NAME FRAGMENT (`list-timers --all | grep -i
+<word>`) — the unit is named `cortex-bridge-<job>`, which does not appear in any
+cron listing.
+
 ## Cron → OnCalendar translation
 
 Use `references/systemd-timer-oncalendar.md` — the correct syntax variants (minute-step is `*:0/N:00`, hour-step is `*:00/N:00` *not* `*/N:00:00`, ranges `..`, lists `,`) and the **`systemd-analyze calendar <expr>` validator** that catches a wrong form before it ships (validate every generated value; a step-position typo passes the generator silently). Also `systemd-analyze verify` the unit pair.

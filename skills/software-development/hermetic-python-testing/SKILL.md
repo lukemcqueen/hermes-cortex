@@ -97,6 +97,42 @@ that route to a real channel (messenger, webhook, mail, metrics) and pass the
 explicit safe target (`--deliver local`, `CORTEX_DEPLOY_HOME=tmp_path`).
 Assert the live default in a dedicated test — never exercise it by accident.
 
+**Prefer a SUITE-LEVEL kill-switch over per-call flags.** Passing the safe
+target into the test you happen to be writing does not protect the suite: the
+next test someone adds calls the same function with the same dangerous default,
+and the live channel fires again. Put an autouse SESSION fixture in
+`conftest.py` that redirects the module's config away from production for the
+whole process — point its env-file at a path that does not exist and clear the
+destination chat/webhook variable. The fail-safe direction is "no credential →
+skip", never "no credential → guess". Tests that genuinely exercise the send
+path set their own values back via `monkeypatch`, so the guard costs them
+nothing.
+
+**Mocking the write does NOT mock the notify.** A post-commit side effect sits
+AFTER the call you patched: a unit test that mocks the DB layer and asserts the
+stored value still runs the notification that write triggers. Verified: a test
+proving a shell payload is stored as a literal — mocking only the query layer —
+also sent a real message on every run, which surfaced as recurring user noise
+("I keep seeing this") that could never resolve because each run minted a fresh
+id. When you mock a dependency, read the function you are calling through to the
+END and list every external effect that follows the mocked call.
+
+**A guard needs a control proving the GUARD did the work.** "notify returned
+False" also passes if the module is simply broken. Pair it: assert the send path
+refuses under the suite's environment, AND assert that with a valid env file the
+same probe DOES resolve its credential (a read-only call — no send). Without the
+second half, the first half proves nothing.
+
+**A tool you invoke may detect its SUBJECT on the inherited PATH.** When the
+code under test shells out and probes for a binary (`command -v <tool>`), passing
+the ambient `PATH` through means the case asserting "tool not installed" can be
+satisfied by the runner's own install: the audited host is no longer the only
+source of truth, the assertion flips per machine, and the failure names nothing
+useful ("expected exit 1, got 0"). Scrub the PATH for every case — drop each
+directory that actually contains the binary — and put the detected route in the
+failure DETAIL (`tool_on_PATH=<which(...)>`, `home_tool=<exists>`), so the next
+red run says which route the tool took instead of only the exit code.
+
 ### 6. An imported module must not mutate `os.environ` at import
 
 Loading a module is not a side-effect-free act. A module that parses an env
@@ -115,6 +151,69 @@ Two rules follow:
 - **The test:** if the code under test reads a process-env var BEFORE its
   fixture file, `monkeypatch.delenv` that var in the fixture. A fixture that
   only points its own env file cannot defend against a leaked process value.
+
+### 7. An imported module's LOGGER writes to real state
+
+Loading a module runs its module-level logging setup. A module that attaches a file
+handler at import (a `RotatingFileHandler` over a real log directory) means every
+test that imports it APPENDS to that production log, and the entries are
+indistinguishable from real ones — a fabricated cycle number or a `(test)` error line
+lands in the audit trail a reviewer will later read as history. Same family as rule 6:
+import is not a side-effect-free act.
+
+- **Silence by LEVEL, and leave the handler attached.** Setting the logger above
+  CRITICAL suppresses records. Clearing handlers is stronger but destroys the seam you
+  need to prove the silencing works, and a module that re-attaches handlers later
+  defeats the clear.
+- **Prove the "it did not write" assertion is not vacuous.** An assertion that a real
+  file did not grow also passes when the code could never have written to it — e.g.
+  the module resolves its log path from a constant the test redirected. Check both
+  directions, and make the control write NOTHING (writing to prove a file is not
+  written to is self-defeating): first assert the logger carries a handler BOUND to
+  the real target (a `FileHandler`'s `baseFilename`), then detach it, restore the
+  level with a counting handler attached, and assert records ARE emitted — so there
+  was something to suppress — then re-attach and assert the silenced run contributes no
+  FABRICATED line. If the control cannot emit, the test is measuring nothing.
+- **Assert the "did not write" property by CONTENT, never by file SIZE.** A byte-equality
+  check on a shared log is racy: any concurrent writer — a cron, a deploy, another
+  agent — appending a legitimate entry during the measurement window fails a test about
+  YOUR code, i.e. a false report of the very thing the test claims to measure. Read the
+  bytes appended in the window and assert none of them carries the test's own markers
+  (its fabricated ids, its session name, its `(test)` strings); if something else wrote
+  meanwhile, report that as non-test growth instead of failing on it.
+- **Know what the module binds at IMPORT vs what you patch afterwards.** A handler
+  built at import keeps the real path even after the test patches the module's HOME; a
+  path resolved per call follows the patch. Assert what is actually bound before
+  trusting either result — a passing one-way size check is a claim about your probe,
+  not about the artifact.
+
+### 8. Once-only initialization must be keyed to the RESOURCE, not to the process
+
+A module-level "already done" flag (`_SCHEMA_DONE = False`) makes the FIRST
+resource a process touches the only one that ever gets set up. Any caller that
+switches resources later — a test repointing the module constant at a tmp file,
+a tool opening a second database — receives an un-set-up resource and fails on
+the first query against it (`no such table: <name>`). The failure reads as
+flakiness: those tests pass in isolation and fail in a full run, because some
+other test has already opened the first resource.
+
+- **Key the guard to the thing that varies** — the database FILE, the directory
+  being prepared, the fixture identity — a SET of resources rather than a
+  boolean.
+- **Read the key from the connection/handle under test, not from the module
+  constant.** The caller may have repointed the constant after the connection was
+  opened, and the question the guard actually answers is "does THIS resource have
+  its setup" (`PRAGMA database_list` gives the file a sqlite connection is
+  attached to).
+- **This is a SEAM, not just a test fix.** The process-global flag is untestable
+  by construction: no fixture can prove setup happened for the second resource
+  while the code can only ever answer for the first. Fix the module, then pin it
+  with a test that opens two resources in one process — and a premise test so the
+  guard cannot pass vacuously if the DDL entry point moves.
+- **When the repo's own suite is red, test the claim that it is not your fault.**
+  Re-run the full suite with no lock and no in-flight change and compare the
+  failure LIST, not the count: identical list = pre-existing, and "passes in
+  isolation, fails in the full run" points at module state, not at you.
 
 ## Verification
 
@@ -214,8 +313,16 @@ Two rules follow:
  RACE, and the race is often in the TEST. Before touching the module under
  test, drive it directly by hand (same request, outside pytest); if it answers
  correctly, the fault is the harness you wrote, not the code you were about to
- "fix". Re-run the single test 3x first — deterministic vs flaky selects
+ "fixing" it. Re-run the single test 3x first — deterministic vs flaky selects
  completely different fixes, and guessing wrong means rewriting working code.
+ **If the flake stops reproducing, STOP bisecting and bank what you proved.** A
+ failure that vanishes after N runs was a WINDOW, not an ordering: further
+ bisect rounds buy nothing and cost the session. Record the MECHANISM you
+ demonstrated with a control (a stub that reproduces it on demand), make the
+ test hermetic against that mechanism, and leave the discriminator in the
+ failure detail so a recurrence names its own route. "Mechanism proven, trigger
+ unidentified, guarded and diagnosed" is a complete result — report it that way
+ instead of widening the search.
 - **Asserting on SOURCE TEXT? Strip comments and docstrings first — the file
   legitimately names the thing you are asserting is absent.** A guard written as
   `assert "addSystemPrompt" not in src` failed against correct code, because the
@@ -264,7 +371,27 @@ Two rules follow:
   case passed for as long as an unrelated stale lock file happened to exist in the
   host's state dir, and went red the moment it was cleared — it had never once
   exercised the branch it claimed to cover. Anything a test reads from a shared
-  location (locks, journals, session markers, live DB rows) is an accidental
-  fixture: point it at a temp `HOME`/`ROOT` or inject the value, and keep the
-  real-resource assertion as ONE explicitly-labelled case. Clearing unrelated
-  state is the cheapest way to discover tests that were passing by accident.
+  location (locks, journals, session markers, live DB rows, **and inherited
+  environment variables**) is an accidental fixture: point it at a temp
+  `HOME`/`ROOT`, inject the value, or `monkeypatch.delenv(<VAR>, raising=False)` in
+  the shared runner when the test asserts the VAR-ABSENT branch. An agent shell
+  commonly exports identity vars (`AGENT_NAME`) — a test that passes `--agent`
+  explicitly still silently depends on the caller NOT exporting one, so it goes
+  green in a bare CI shell and red on a real host. Keep the real-resource assertion
+  as ONE explicitly-labelled case. Clearing unrelated state is the cheapest way to
+  discover tests that were passing by accident.
+- **A test that repoints a SHARED module attribute (a module it does not own)
+  must restore it in `finally`.** `setattr(doctor_checks, "HOME", tmp)` looks
+  like ordinary fixture setup and is not: the value outlives the test, survives
+  into every later file in the process, and points at a temporary directory the
+  harness then deletes. Every later test that reads that module silently
+  produces nothing. The signature is worth memorising: **the failures appear in a
+  DIFFERENT file from the culprit, and the culprit's own tests are green** — so
+  the file you are staring at is the symptom, not the cause. Restore on the way
+  out whether the body succeeded or raised, and add a regression test in the
+  mutating file asserting the attribute is unchanged after the call.
+- **Finding WHICH test pollutes shared state is a pairing search, not a reading
+  exercise.** See `references/order-dependent-failure-bisect.md` for the recipe
+  — run the victim alone, pair it with each candidate that touches the module,
+  then bisect the failing group — and for what to do when the failure will not
+  reproduce at all.

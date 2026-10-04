@@ -135,6 +135,31 @@ restarts, even though a fresh AIAgent is built per message. Log line
 memory; restart required (from a separate shell — in-process restart is
 blocked by the lifecycle guard).
 
+## Deploy ≠ IMPORTABLE: the source tree can stop importing while the runtime is green
+
+The same file is loaded from TWO sites, and a bootstrap that resolves its own
+dependencies by probing relative paths works in exactly one of them:
+
+| Loaded as | Shared code sits |
+|-----------|------------------|
+| Deployed (`<deploy>/scripts/<file>.py`) | **beside** it |
+| In-repo (`<repo>/<subdir>/<file>.py`) | **one level down** — `<repo>/ops/scripts/` |
+
+**Why it survives for weeks:** nothing at runtime fails. The deployed copy resolves,
+so the service is green — while the SOURCE TREE can no longer be imported at all.
+Only the repo's own tests break, and they break in a shape that reads as unrelated:
+pytest reports `INTERNALERROR> … SystemExit: 1` and `mainloop: caught unexpected
+SystemExit!`, and OTHER files in the same run fail to COLLECT, because a module-level
+`sys.exit()` fired during import.
+
+- **Verify the source tree IMPORTS, not just that the service runs.** "It works" and
+  "the repo can load it" are two different questions; ask the second one explicitly,
+  with its own test that loads the file from the repo path.
+- **Treat a `SystemExit` during test COLLECTION as a bootstrap bug**, not a test
+  problem — the bootstrap could not find its resource in that layout.
+- **Assert any shared bootstrap block is byte-identical across every copy** (hash it).
+  Divergence is how one copy keeps a stale candidate list while the others are fixed.
+
 ## Pitfalls
 
 1. **Claiming "everything renamed" while the config key still has the old
@@ -153,6 +178,7 @@ blocked by the lifecycle guard).
 ## Verification Checklist
 
 - [ ] Gateway `lstart` > every changed file's mtime (or restart happened after deploy)
+- [ ] The changed file IMPORTS from the repo tree, not only from the deployed path
 - [ ] `mcp_stdio_watchdog` children show the NEW script paths
 - [ ] Config key name matches the tool namespace skills reference (`mcp__<key>__*`)
 - [ ] Bus/daemon process argv shows the new module name

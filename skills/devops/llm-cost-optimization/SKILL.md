@@ -179,6 +179,34 @@ compaction/rewrites fire (those bust cache worse than a fresh start).
 - **Peak-by-design jobs.** Some crons (bus overnight, orch lifecycle) are peak BY
   DESIGN; re-timing them defeats their purpose. Never move daytime-service or
   overnight-orchestrator jobs.
+- **A free-tier pin is not a cost control unless it RESOLVES.** A cron pinned to a
+  free provider keeps its pin when that provider goes unavailable, and the run
+  then falls through the operator `fallback_providers` chain to a PAID route while
+  still reporting `status: ok` — the cost appears, the pin hides it. The delivery
+  header's `Provider fallback: <free> unavailable; using <paid>` line is the only
+  visible signal; check it on any free-tier-pinned job. Verify the free tier still
+  exists before trusting a pin (see
+  `references/openrouter-model-catalogue.md`). Mitigation: pin a RESOLVABLE pair
+  (cheap paid primary + a distinctly different fallback), or re-point at a free
+  model that exists today — never leave one free provider as the whole strategy.
+- **Prove which route a run took from its OUTPUT FILE, not from config.** Every
+  delivery is written to `~/.hermes/cron/output/<job_id>/<timestamp>.md` and the
+  header repeats the fallback banner verbatim. Grepping those files across
+  successive runs of the SAME job is the before/after evidence — it shows the
+  banner disappearing after a fix, or (as often) that the job has been falling
+  through to a paid route on EVERY run for days while reporting `status: ok`.
+  Config read-back shows intent; the output file shows what happened. Do not
+  claim a route fix without a run whose header is clean.
+- **The durable fix for a dead pinned route is to UNPIN, not to re-pin.** An
+  unpinned cron follows the MAIN agent model (`config.yaml model.default` /
+  `hermes model`): nothing in Hermes reads `LLM_CRON_MODEL` at fire time. The
+  `LLM_CRON_MODEL`/`LLM_CRON_PROVIDER` env pair only governs whether the HC
+  installer applies a per-cron pin (both set → the installer skips pinning), so
+  it prevents a manifest sync re-pinning a dead model; it does not choose the
+  runtime model. Sequence that works: `hermes cron edit <id> --unpin` for every
+  job carrying a stale pin, set the main model for what crons actually run on,
+  and keep the env pair set so manifests cannot re-pin. Re-pinning to a
+  different free tier just reinstates the same trap.
 - **Don't build a MAX_COST cap on unmeasured data.** A sane cap set against
   today's bloat kills legitimate jobs (a 26M-token run is $0.18 at hit rates).
   Measure first, cap later (per-job p95 + headroom).
@@ -236,3 +264,8 @@ compaction/rewrites fire (those bust cache worse than a fresh start).
   the interactive-cost source.
 - `references/session-telemetry-reporting.md` — session-specific detail behind
   the playbook.
+- `references/openrouter-model-catalogue.md` — surveying the live model market:
+  OpenRouter catalogue API mechanics (per-token pricing, no speed data, uptime
+  per provider), model-id matching, where speed actually comes from (and its
+  chars/sec unit), and free-tier-pin verification. Read before recommending or
+  re-pinning any model.

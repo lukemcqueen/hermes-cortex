@@ -36,6 +36,16 @@ the DIRECT localhost bus port — Bearer through nginx is ignored (nginx demands
 Basic and sets X-Forwarded-User), so a token that "401s" through nginx can
 still be LIVE locally.
 
+**Test the operation that CONSUMES the credential, not a listing/health endpoint.**
+Provider catalog endpoints are usually public: an LLM provider's model list returns 200 for
+a REVOKED key, and `/health` returns 200 for anything reachable. Probing those yields a
+false green — "the key still works" — which sends you looking for the fault somewhere else
+entirely (a reviewer auth error, a config resolution bug) while the credential is the
+problem. Use an authenticated, billable/authorized operation (a completion call, a queue
+read) and keep the deliberately-wrong control alongside it. State the probe you used when
+reporting a credential's liveness; "verified live" from an unauthenticated endpoint is a
+false claim, not a shortcut.
+
 ### 2. Identify the owner by hash, not label
 
 A token's owner is the DB row whose hash matches — never the account name in
@@ -57,6 +67,17 @@ The value remains in **git history** (`git show <old-commit>:<file>`), and the
 credential may still be **live server-side**. Two closures:
 - **History:** rewrite with `git-filter-repo` (see `pii-scrubbing` skill Phase 4) — needs user authorization, force-push coordination
 - **Running system:** rotate the credential itself (generate new → update all consumer configs → update the auth store → verify old dies)
+- **Every RESOLVER of the value, not just the file you edited.** A rotation is only closed
+  when the running consumers actually resolve the NEW value, and resolvers disagree about
+  where to look. Two traps, both silent: (1) a resolver that reads the process environment
+  FIRST keeps serving the old value for the life of the process — the updated file has no
+  effect until that process restarts, and a long-lived server (an MCP child, a daemon) can
+  outlive the rotation by hours; (2) a resolver that searches SEVERAL files in a fixed order
+  takes the FIRST match, so updating the file you found (or the last one in its order) leaves
+  an older copy winning. Enumerate the resolver's order, verify the value it will actually
+  pick — hash it and probe THAT against the consuming endpoint — and check the running
+  process's environment separately from the file on disk. Report which source was stale,
+  never the value.
 
 Do whichever the user authorizes. Scrubbing alone only stops NEW exposure.
 
@@ -81,6 +102,26 @@ which let the live credential through every commit for 12 days. Since
 short demos) stay warn-only. If a commit is blocked: replace the literal — do
 NOT `--no-verify`. When the detector report prints "N potential leaks",
 REVIEW every line before pushing; don't tail-past the report.
+
+### 7. The session transcript is an exposure channel — rotation is the only closure
+
+Not every leak is in git. An edit tool's context/diff echo (or any tool output) can
+put a live credential into the **session transcript and its persisted store**, where
+no working-tree or history scrub can reach it. Scope it honestly, then rotate:
+
+```bash
+V=$(sed -n 's/^NAME=//p' .env | head -1)          # subshell: the value never appears
+printf 'tracked: %s\n' "$(git grep -l -F "$V" -- . | wc -l)"      # 0 = no repo closure
+printf 'history: %s\n' "$(git log --all -S"$V" --oneline | wc -l)"
+grep -rl -F "$V" ~/.hermes/logs ~/.hermes/cron/output /tmp | wc -l  # persisted copies
+curl -s -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $V" <gated-endpoint>  # 200
+curl -s -o /dev/null -w '%{http_code}' -H "Authorization: Bearer INVALID-CONTROL" <same> # 401
+```
+
+If the repo/history counts are 0, there is nothing to rewrite — **report it, and
+rotate**. Scrubbing the transcript does not un-expose a value the model already read;
+the 401 control is what proves the old key is dead. Tell the user plainly which file
+and channel leaked, and never re-embed the literal while investigating.
 
 ## Rotation mechanics by system
 
