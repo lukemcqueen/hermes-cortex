@@ -1,0 +1,17 @@
+# PII-gate redaction - acceptance evidence (ADV-10571-1)
+
+Regenerate with: `bash ops/scripts/manage/run-pii-gate-evidence.sh`
+
+Every value below is RE-DERIVED from the repo by running that script.
+`tests/test_pii_gate_evidence.py` re-runs the generator and compares its
+output to this committed file, so a hand-written table cannot pass for
+script output. Identifier hits are printed as sha256 handles - this is a
+public file and must not restate the identifiers it reports.
+
+| Check | Result | Detail |
+|---|---|---|
+| The guard DISCRIMINATES - the pre-fix revision trips it | PASS | fd190e42: 2 component(s) present (sha256 handles 3545efa3,a9c3c1f7) |
+| The redacted revision carries no identifier component | PASS | 87b6991e: 0 component(s) |
+| tests/test_enforcer_pii_gate.py passes on the redacted revision | PASS | ============================== 17 passed in <elapsed>s ============================== |
+
+**Verdict: PASS**
