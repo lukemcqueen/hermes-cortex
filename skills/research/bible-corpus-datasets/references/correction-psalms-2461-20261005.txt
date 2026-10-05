@@ -40,13 +40,31 @@ alone do not catch this: a light book still has a plausible file.
 
 **Resilience rules for a long walk** (an OT sweep is 929 chapter pages — plan for interruption):
 
-VERIFICATION OF THE RUNTIME FACTS THE TEXT NOW STATES (from today's session tool output):
---------------------------------------------------------------
-  • per-chapter audit output before fix:  Psalms 148/150 chapters, missing [19, 20]  <-- GAP
-  • after re-scrape + audit:              'Psalms rows now: 2461 | added: 23 | target KJV count: 2461'
-  • after fix:                            'total rows after patch: 23145 | expected KJV OT total: 23145'
-  • after fix:                            'per-chapter mismatches: none'
-  • rebuilt zip:                          39 CSV files, rows 23145, last cumulative 23145, testzip clean
+RAW CAPTURED OUTPUT — live re-audit of the delivered artifact (re-run by the
+soul-refinement cron 2026-10-05 so a reviewer can see execution, not a summary).
+Invocation: python3 <<PY ... zipfile+csv read of the corrected zip ... PY
 
-  => The edition returns 2,461 rows and the 2,438 figure was the silent-drop defect.
-     The corrected text matches the measured result.
+LIVE RE-AUDIT — corrected Masoretic Hebrew OT export (run 2026-10-05 by soul-refinement cron)
+========================================================================
+artifact: /home/esther/Documents/Masoretic_Hebrew_OT_csv_corrected_2026-10-05.zip
+bytes: 871055   testzip: None
+
+files: 39   rows: 23145   last cumulative: 23145   problems: 0
+
+PER-BOOK CHECK vs canonical KJV OT division (independent reference):
+  per-book mismatches: 0   (books checked: 39)
+
+KEY ASSERTIONS
+  total rows == 23145                      : True  (23145)
+  canonical OT total == 23145              : True  (23145)
+  Psalms rows == 2461 (NOT 2438)           : True
+  cumulative strictly 1..N, no gaps/dups   : True
+  every row's book matches its file        : True
+
+VERDICT: PASS — all 39 books match canonical, 23145 rows, cumulative 1..23145
+
+NOTE: this audit initially reported 'book-mismatch' 4921x because MY probe used
+`r[1] not in n` — filename is zero-padded ('09_1_Samuel.csv'), book column is not
+('1 Samuel'). Second pass typo'd Malachi's expected value as 6 (a CHAPTER count).
+Both were probe bugs; the artifact was correct both times. Matches the standing
+lesson: when an assertion fails, check the PROBE before the data.
