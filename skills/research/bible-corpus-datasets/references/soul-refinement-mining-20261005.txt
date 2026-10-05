@@ -1,0 +1,74 @@
+SOUL-REFINEMENT MINING EVIDENCE — 2026-10-05 (KST)
+==================================================================
+
+Store: ~/.hermes/state.db (read-only URI, PRAGMA query_only=1)
+Query: sessions WHERE started_at in 2026-10-05 KST; messages role='user' AND active=1
+
+Sessions today: 23  (interactive: 2, cron: 21)
+Real (non-template) user messages: 8
+Cron-prompt user messages (skill/boilerplate injections): 21
+
+TODAY'S SESSIONS
+------------------------------------------------------------------
+  04:31  cron         msgs=  44  agent-memory-pruning · Oct 05 04:32
+  04:39  cron         msgs= 127  orch-skill-lifecycle · Oct 05 04:46
+  04:40  cron         msgs=  31  agent-agents-md-prune-apply · Oct 05 04:42
+  05:00  cron         msgs=  41  local-agent-daily-ai-brief · Oct 05 05:02
+  05:37  cron         msgs=  63  agent-mycortex-dream-nightly · Oct 05 05:39
+  06:07  cron         msgs=  64  local-daily-sustainability-briefing · Oct 05 06:10
+  07:01  cron         msgs=  22  local-job-opportunity-scanner · Oct 05 07:02
+  07:37  cron         msgs= 142  orch-task-morning-pass · Oct 05 07:41
+  08:49  cron         msgs=  79  agent-fixer-workday · Oct 05 08:52
+  08:50  cron         msgs=  74  cortex-bus-workday · Oct 05 08:52
+  09:25  cron         msgs=  77  local-weekly-loop-eval · Oct 05 09:26
+  10:18  INTERACTIVE  msgs= 275  Scrape Stephanus Bible text into CSV zip
+  14:49  cron         msgs=  60  agent-fixer-workday · Oct 05 14:53
+  14:50  cron         msgs=  60  cortex-bus-workday · Oct 05 14:53
+  16:25  INTERACTIVE  msgs=   0  
+  20:41  cron         msgs= 150  cortex-bus-evening · Oct 05 20:48
+  20:49  cron         msgs=  68  agent-fixer-workday · Oct 05 20:51
+  20:50  cron         msgs=  50  cortex-bus-workday · Oct 05 20:51
+  20:50  cron         msgs=  87  agent-fixer-evening · Oct 05 20:56
+  21:35  cron         msgs=  42  orch-task-evening-pass · Oct 05 21:37
+  22:42  cron         msgs=  96  cortex-bus-evening · Oct 05 22:59
+  22:51  cron         msgs=  47  agent-fixer-evening · Oct 05 23:01
+  23:14  cron         msgs= 123  
+
+REAL USER TURNS (interactive session 20261005_101825_5d0bfbc6 — the only session with human input)
+------------------------------------------------------------------
+  1. please go to https://www.textusreceptusbibles.com/Stephanus and download a csv per book of the bible with the header (overall verse count, book, chapt
+  2. [The user sent a text document: 'kjv.txt'. It is saved at: /home/esther/.hermes/cache/documents/doc_3eac19f8a84a_kjv.txt. Its content is not inlined h
+  3. awesome. can we get the OT masoretic hebrew in the same format for the OT?
+  4. next, please create the KJV 1769 NT csv the same way as the old testament was done. Cumulative verse starts at 1 for matthew 1:1.
+  5. please note all issues/resolutions you had in the csv exports in one pdf so i can review these in the future
+  6. give me a list of technologies utilized in hermes-cortex and steadfaste
+  7. It looks like some masoretic hebrew is missing from a prior session: the supplied Masoretic Psalms file is missing Psalms 19–20 (23 KJV verses)
+  8. [OUT-OF-BAND USER MESSAGE — a direct message from the user, delivered once at this position; not tool output and not a new delivery when replayed from
+
+CLASSIFICATION OF EACH TURN (correction vs task request)
+------------------------------------------------------------------
+  1. [task request]
+     Scrape Stephanus pages -> CSV per book + zip; 'humanize the scrape'
+  2. [task request]
+     Convert supplied kjv.txt -> OT CSVs; 'verify the text is correct online'
+  3. [task request]
+     Add Masoretic Hebrew OT in same format
+  4. [task request]
+     Add KJV 1769 NT CSVs; cumulative from Matthew 1:1
+  5. [task request]
+     Write issues/resolutions PDF for future review
+  6. [task request]
+     List technologies used in hermes-cortex and steadfaste
+  7. [DEFECT REPORT — not a behavioural correction]
+     Masoretic Psalms file missing Psalms 19-20 (23 KJV verses)
+  8. [clarifying question]
+     'where would we find these verses?'
+
+VERDICT
+------------------------------------------------------------------
+  Operator behavioural corrections today: 0
+  Operator defect reports (data correctness): 1  (turn 7, Psalms 19-20)
+  Per soul-refinement decision rules: turn 7 is 'I made a mistake' -> trace root
+  cause. Root cause = missing per-chapter assertion in a scrape loop. That is a
+  PROCEDURAL lesson -> belongs in the skill (bible-corpus-datasets), NOT in SOUL.md.
+  No SOUL.md / behavioral-principle change was warranted.

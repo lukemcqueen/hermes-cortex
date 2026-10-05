@@ -1,0 +1,52 @@
+BEFORE/AFTER EVIDENCE — bible-corpus-datasets/SKILL.md (2026-10-05)
+==============================================================
+
+BEFORE (the deployed-copy text that carried the disproved claim; captured in-session):
+--------------------------------------------------------------
+- **The edition keeps English chaptering while printing Hebrew numbers inline.** A psalm's
+  superscription is merged into the row of the verse it precedes and the Hebrew number appears
+  inside the text as `(3:2)`; Malachi 4:6 carries `(3:24)` because Hebrew Malachi has 3 chapters.
+  This edition therefore returns Psalms 2,438 rows against the familiar 2,461 — a versification
+  convention, not lost data. **Keep the cell verbatim**, count how many rows carry a marker, and
+  report the quirk; stripping the markers silently invents a numbering the source never printed.
+
+AFTER (committed at 26519d8e):
+--------------------------------------------------------------
+  number it ALSO reaches under the Hebrew numbering inline** — the superscription is not a
+  separate row, so `Psalms` returns **2,461 rows**, the familiar count (this was once recorded
+  here as 2,438 "by design"; that claim was wrong — it was a scraper that silently dropped two
+  chapters, and the per-chapter assertion above is what catches that class). The Hebrew number
+  appears inside the text as `(19:2)`, and Malachi 4:6 carries `(3:24)` because Hebrew Malachi has
+  3 chapters. **Keep the cell verbatim**, count how many rows carry a marker, and
+  report the quirk; stripping the markers silently invents a numbering the source never printed.
+
+Hebrew must be compared as a **word sequence per book**, not verse-by-verse — see the Sefaria
+section and normalisation recipe in `references/verification-sources.md`. Aligning verses across
+two sources with different versification manufactures differences that are not textual.
+
+ADDED GUARDRAIL (new text, committed at 26519d8e):
+--------------------------------------------------------------
+**Assert per chapter before writing a book file — the missing-chapter class is silent.**
+A fetch that returns a page with no parseable rows writes nothing and the loop continues, so a
+book can land 148/150 chapters, look complete in the file listing, and ship a clean-looking zip
+whose cumulative total is short. This is not hypothetical: an OT Masoretic export delivered
+23,122 rows missing Psalms 19–20 (23 verses) because the loop had no per-chapter assertion, and
+the first `VERIFICATION.txt` blamed the *source* for the shortfall instead of the scraper. Guard
+both directions, per chapter: (a) the chapter has ≥1 row, and (b) the row count matches the
+chapter's expected verse count from the independent reference. Then, before zipping, run a
+full-pass audit — for every book, chapters-present vs chapters-expected **and** each chapter
+non-empty — and stamp the result (`0 mismatches`) into `VERIFICATION.txt`. Book-level totals
+alone do not catch this: a light book still has a plausible file.
+
+**Resilience rules for a long walk** (an OT sweep is 929 chapter pages — plan for interruption):
+
+VERIFICATION OF THE RUNTIME FACTS THE TEXT NOW STATES (from today's session tool output):
+--------------------------------------------------------------
+  • per-chapter audit output before fix:  Psalms 148/150 chapters, missing [19, 20]  <-- GAP
+  • after re-scrape + audit:              'Psalms rows now: 2461 | added: 23 | target KJV count: 2461'
+  • after fix:                            'total rows after patch: 23145 | expected KJV OT total: 23145'
+  • after fix:                            'per-chapter mismatches: none'
+  • rebuilt zip:                          39 CSV files, rows 23145, last cumulative 23145, testzip clean
+
+  => The edition returns 2,461 rows and the 2,438 figure was the silent-drop defect.
+     The corrected text matches the measured result.
