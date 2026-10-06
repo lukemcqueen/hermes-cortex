@@ -138,10 +138,18 @@ material it judged (note + diff):
   which is exactly what the artifact invites. The same guard reads a long digit run as a
   phone number and will refuse a repo write carrying raw PIDs — describe a process by its
   ROLE ("the reviewer child", "the cron worker's server") rather than its pid.
-- **The committed artifact's SCOPE must equal the claim's scope.** A capture that
-  ran ONE test file cannot substantiate "41 tests pass" across two — the reviewer
-  checks the arithmetic and the gap is the finding. Regenerate the artifact to
-  cover exactly what the note asserts: the run, not a slice of it.
+- **The committed artifact's SCOPE must equal the claim's scope — the SUMMARY
+  included, not just the files.** A capture that ran ONE test file cannot
+  substantiate "41 tests pass" across two — the reviewer checks the arithmetic
+  and the gap is the finding. Regenerate the artifact to cover exactly what the
+  note asserts: the run, not a slice of it. The same rule bites the per-test
+  OUTPUT: a generator that keeps only the last N lines of each test's output
+  truncates the `PASS (N):` block, so a 13-test harness reaches the reviewer
+  showing 4 names while the note claims 13 — and it files `fabrication` against a
+  claim that is completely true. The finding is then WRONG about the code and
+  RIGHT about the evidence, which is the expensive shape: fix the generator, not
+  the note. Size the tail to hold the whole summary (these harnesses print it
+  last, so a generous tail suffices), and have it re-emitted in full.
 - **When the load-bearing value is a personal identifier, commit the SHAPE and
   claim the shape.** An evidence artifact is a committed file, so a real chat id,
   hostname or key has to be redacted to its pattern (`hc-<agent>-<chat>`) — but a
@@ -380,6 +388,22 @@ because the commit itself succeeded locally and the tree looks clean.
 - **Score before you investigate.** A cycle left PENDING with no live lock is a doctor
   FAIL that blocks every push, so scoring an orphaned cycle is the first move, not the
   last.
+- **A cycle you opened and then did NOT work in still has to be closed.** When an
+  approval times out, the operator redirects, or you stand down mid-task, the cycle is
+  left PENDING and blocks the next push. Close it with `unscored_reason` stating that
+  nothing happened and why ("cycle opened to restart the daemon; approval timed out,
+  no change made") — an explicit unscored close is an accurate record, while walking
+  away from the cycle is a leak. Do not leave it for the reaper, and do not let the
+  abandoned cycle stop you from reporting which half of the work is still pending.
 - **Test a verdict-recording helper BOTH ways.** One exercised only by re-recording an
   existing row never runs its insert path — assert the first record into an EMPTY
   cycle too, or the insert half can be silently broken while the suite is green.
+- **A test that models the lock WINDOW must open the window BEFORE creating the work.**
+  The gate measures the commits since `lock.started_at`, so a self-test that commits
+  first and computes the timestamp afterwards places its own fixture OUTSIDE the window
+  and fails for a reason that has nothing to do with the code under test. Capture the
+  window start, THEN create the work. Also point sandbox repos at an empty
+  `core.hooksPath`: otherwise the host's global git hooks fire on every fixture commit
+  and add seconds of latency between the two, which can push the work out of a narrow
+  window by itself. (Compare the window as EPOCH seconds, never `git log --since=` —
+  see `concurrent-session-isolation`.)
