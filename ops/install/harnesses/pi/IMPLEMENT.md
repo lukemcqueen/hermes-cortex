@@ -167,14 +167,16 @@ grep -n -A12 "interface BeforeAgentStartEvent" "$P"/dist/core/extensions/types.d
 build the checkpoint from `toolResults` + `message`.
 
 > **Install-route matters for the verify guard.** These example paths describe the
-> **npm-managed** install (`~/.pi/agent/install/releases/<v>/node_modules/…`). Some
-> hosts install pi via **mise/binary** instead — the launcher is `~/.local/bin/pi`
+> npm-managed install (`~/.pi/agent/install/releases/<v>/node_modules/…`). However,
+> some hosts install pi via **mise/binary** instead — the launcher is `~/.local/bin/pi`
 > and the package lives at `~/.local/share/mise/installs/pi/<v>/pi`, with **no**
-> extracted `node_modules/jiti`. `verify-extension.mjs` and `run-evidence.sh`
-> locate jiti from the `node_modules` tree and **cannot run there**: the probe exits
-> code 2, so `test_pi_extension_EXECUTES` FAILS the enclosing assert (it skips only
-> when `node` itself is absent). Prefer running the guard on a host with the
-> npm-managed layout. The extension source is layout-agnostic and still deploys to
+> extracted `node_modules/jiti`. On such a host the guard `verify-extension.mjs`
+> finds no jiti loader and exits 0 with `EXTENSION SKIPPED`, so
+> `test_pi_extension_EXECUTES` **skips cleanly** (an environment skip, not a
+> failure). That skip is correct — it does not mean wiring is fine, it means this
+> host cannot drive a `.ts` extension without a TS loader. Prefer running the
+> guard on a host with the npm-managed layout. The extension source is
+> layout-agnostic and still deploys to
 > `~/.hermes-cortex/harnesses/pi/extensions/` via `cortex-update.sh`.
 
 ---

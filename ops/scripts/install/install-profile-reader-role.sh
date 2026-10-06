@@ -72,9 +72,16 @@ END
 \$\$;
 EOF
 
+# ── Connect as the `mycortex` superuser INSIDE the container on both OSes ──
+# migrate.py's canonical pattern: `docker exec -i mycortex-postgres psql` (trust
+# auth inside the container — no ~/.pgpass dependency, no bare-socket guess).
+# A bare `psql -U mycortex -d mycortex` on macOS hits the DEFAULT unix socket
+# (e.g. /tmp/.s.PGSQL.5432) and often finds a different/local postgres where the
+# `mycortex` role does not exist → "FATAL: role \"mycortex\" does not exist"
+# (observed LAM2 2026-10-06). Docker Desktop on macOS needs no `sg docker`
+# wrapper — same exec form as Linux minus the group elevation.
 if [[ "$(uname -s)" == "Darwin" ]]; then
-  psql_bin="$(command -v psql || echo /opt/homebrew/bin/psql)"
-  "$psql_bin" -U mycortex -d mycortex -v ON_ERROR_STOP=1 < "$SQL_FILE" >/dev/null
+  docker exec -i mycortex-postgres psql -U mycortex -d mycortex -v ON_ERROR_STOP=1 < "$SQL_FILE" >/dev/null
 elif command -v sg >/dev/null 2>&1; then
   sg docker -c "docker exec -i mycortex-postgres psql -U mycortex -d mycortex -v ON_ERROR_STOP=1" < "$SQL_FILE" >/dev/null
 else
@@ -101,7 +108,7 @@ ${MIGRATE_SQL}
 EOF
 
 if [[ "$(uname -s)" == "Darwin" ]]; then
-  "$psql_bin" -U mycortex -d mycortex -v ON_ERROR_STOP=1 < "$SQL_FILE" >/dev/null
+  docker exec -i mycortex-postgres psql -U mycortex -d mycortex -v ON_ERROR_STOP=1 < "$SQL_FILE" >/dev/null
 elif command -v sg >/dev/null 2>&1; then
   sg docker -c "docker exec -i mycortex-postgres psql -U mycortex -d mycortex -v ON_ERROR_STOP=1" < "$SQL_FILE" >/dev/null
 else
