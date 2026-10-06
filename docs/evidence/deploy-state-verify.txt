@@ -1,0 +1,17 @@
+=== deploy-state verification ===
+host: cisnet02
+
+CHECK 1 clean-tree: PASS (git status --porcelain empty, ignoring own artifact)
+CHECK 2 HEAD==after: PASS (HEAD 6bbfa204 == last-update after)
+CHECK 3 enforcer identity: PASS (deployed == repo)
+CHECK 4 last-update.json: PASS (files_updated=238)
+CHECK 5 doctor: PASS —   Overall: HEALTHY (424 pass, 0 warn, 0 fail)
+    fail count: 0
+CHECK 6 gateway restart: ADVISORY — gateway process predates the enforcer deploy; old enforcer still in memory; host operator must restart the gateway
+
+RESULT: PASS
+
+---- provenance ----
+Revision: 6bbfa204 (HEAD == origin/main + 1 local pipeline auto-commit)
+Checks are re-runnable: bash ops/scripts/manage/verify-deploy-state.sh
+Doctor summary from: python3 ops/scripts/manage/cortex-doctor.py --quiet
