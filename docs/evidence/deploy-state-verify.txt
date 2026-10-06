@@ -30,5 +30,8 @@ Gateway restart: ADVISORY — gateway process started before the enforcer file
 RESULT: PASS
 
 ---- provenance ----
-Final revision: e03e984e. Re-runnable: each command above is a one-liner;
-  the doctor is python3 ops/scripts/manage/cortex-doctor.py --quiet.
+Final deployed revision: ccdaeacd (HEAD; last-update.json before == after ==
+  ccdaeacd). Raw outputs above were captured at the deploy that produced this
+  state; the artifact's own commit follows the state it documents. Re-runnable:
+  each command above is a one-liner; the doctor is
+  python3 ops/scripts/manage/cortex-doctor.py --quiet.
