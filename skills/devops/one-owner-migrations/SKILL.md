@@ -127,6 +127,17 @@ rule 6.
 `docs/design/cortex-memory-session-mcp.md` — same shape, the host-coupled
 registration is replaced by a process-independent surface.
 
+- **Hermes Agent → cortex/steadfaste (framework-level, in flight)**: the framework
+itself is being retired, so every Hermes-side extension point is an
+**owner-in-waiting** — a Hermes plugin under `plugins/`, a harness extension under
+`ops/install/harnesses/`, a core file re-patched on every `hermes update`. Fix them
+only when they block production; do not add new ones, do not offer upstream PRs, and
+surface an existing core patch to the user as a migration blocker instead of quietly
+maintaining it. When a Hermes component is removed, revert the key that SELECTED it
+(e.g. `cron.provider`, its sub-blocks) in the same change: the framework then falls
+back to its own default but logs a fallback warning on every tick, which reads to the
+user as the removed thing still causing issues.
+
 ## Reporting
 
 Report the counts, the marker used for each set, and the two proofs (the audit

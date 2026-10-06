@@ -50,6 +50,11 @@ except ImportError:  # pragma: no cover
 
 HERE = Path(__file__).resolve().parent          # repo: <repo>/ops/scripts/hc
 
+# The layer vocabulary, in the order the usage text lists it. `hc harness list`
+# prints this so a reader can see every layer the registry trades in — a layer no
+# harness currently declares (cli-extension today) is still part of the contract.
+LAYERS = ("mcp", "cli-extension", "cli-hook", "none")
+
 
 def registry_dir() -> Path:
     """Where registry.yaml lives: override, repo layout, or deployed layout.
@@ -160,10 +165,22 @@ def artifact_tool_names(h: dict) -> list[str]:
 def derived_run_line(h: dict) -> tuple[str, list[str]] | None:
     """(run line, contract tools this harness does NOT expose).
 
-    `--tools` is derived from the contract ∩ the artifact's registrations. The
-    second element is returned so a caller can report the gap LOUDLY instead of
-    letting a tool quietly not exist in the harness.
+    The LAYER decides where the tool surface comes from, and therefore whether a
+    `--tools` allowlist belongs in the run line at all:
+
+    * `mcp` (Pi included): the memory/session contract arrives from the MCP server
+      (`~/.pi/agent/mcp.json`), so the run line must NOT carry an allowlist. The
+      hand-maintained list this function used to emit was the drift it exists to
+      remove — it rotted, and an omitted gate tool made Pi commits fail.
+    * `cli-extension`: no MCP client, so the CLI IS the surface and the allowlist
+      is derived from the contract ∩ what the artifact actually registers. An
+      artifact that registers nothing is unverifiable, so expose the base tools
+      only and RETURN the gap instead of silently listing tools that may not exist.
     """
+    ext = h.get("artifact")
+    layer = h.get("layer")
+    if layer == "mcp":
+        return (f"pi -e {ext}", []) if ext else None
     base = list(h.get("tools_base") or [])
     if not base:
         return None
@@ -171,9 +188,10 @@ def derived_run_line(h: dict) -> tuple[str, list[str]] | None:
     if not names:
         return None
     registered = artifact_tool_names(h)
-    exposed = [n for n in names if n in registered] if registered else list(names)
-    unexposed = [n for n in names if registered and n not in registered]
-    ext = h.get("artifact")
+    if not registered:
+        return f"pi -e {ext} --tools {','.join(base)}", list(names)
+    exposed = [n for n in names if n in registered]
+    unexposed = [n for n in names if n not in registered]
     return f"pi -e {ext} --tools {','.join(base + exposed)}", unexposed
 
 
@@ -188,7 +206,8 @@ def cmd_list(reg: dict) -> int:
     for h in hs:
         print(f"  {h['name']:<16} {h['layer']:<14} {h.get('status', 'planned'):<11} "
               f"{h.get('surface', 'n/a')}")
-    print("\n  hc harness install <name> [--dir DIR]   wire it into a project")
+    print(f"\n  layers: {' · '.join(LAYERS)}   (hc harness add <name> --layer <one>)")
+    print("  hc harness install <name> [--dir DIR]   wire it into a project")
     print("  hc harness verify  [<name>]             prove it, don't assume it")
     return 0
 
@@ -260,7 +279,12 @@ def cmd_install(reg: dict, name: str, target: Path) -> int:
     derived = derived_run_line(h)
     if derived:
         run, unexposed = derived
-        print("\nRun (tool list derived from the contract — do not hand-edit):")
+        if layer == "mcp":
+            mcp_server = reg.get("defaults", {}).get("mcp_server", "the harness's MCP config")
+            print(f"\nRun (tool surface arrives over MCP — {mcp_server}; no --tools "
+                  "allowlist, so nothing can be silently excluded):")
+        else:
+            print("\nRun (tool list derived from the contract — do not hand-edit):")
         print(f"  {run}")
         if unexposed:
             print(f"  note: this extension does not expose: {', '.join(unexposed)}")

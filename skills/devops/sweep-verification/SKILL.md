@@ -51,6 +51,47 @@ else (many such files are deployed-only, never in git).
    `comm -13 <(ls repo-dir | sort) <(ls deployed-dir | sort)` — deployed-only
    extras are stale unless proven otherwise. Delete stale deployed files even
    though git status stays clean.
+   - **Deleting a file without deleting its `register()` line is a doctor FAIL**
+     (`Deploy source missing`). After the sweep, assert every registration still points
+     at a real file: parse the `^register(?:_orch)?\s+"<source>"\s+"<dest>"` lines from
+     `ops/scripts/cortex-update.sh` and stat each source path. One missing source means
+     either a leftover line to drop or a file to restore — never leave it standing, and
+     re-run the doctor (it exits FAIL, so the push is blocked too).
+   - **Deployed SKILLS are preserved, not pruned.** A skill deleted from the repo stays
+     deployed, and the next deploy reports it as a stale "deployed-only skill" instead of
+     deleting it (the deploy cannot tell an orphan from a local skill someone depends on).
+     The explicit cleanup must remove the deployed skill directory as well, or the
+     warning — and the doctor's stale-skill WARN — reappears on every run.
+1b. **Removing the artifact is not removing the FEATURE — revert the key that
+   selects it.** A component wired by config (e.g. `cron.provider: <plugin>`) keeps
+   pointing at something that no longer exists once its directory is deleted: the
+   consumer falls back to its built-in default but logs a warning on every tick, and
+   the user reads that warning as "that thing is still causing issues". Grep
+   `~/.hermes/config.yaml` for the component name and drop the selecting keys
+   (provider + its sub-blocks) in the same sweep.
+1c. **Consumers are part of the sweep.** A component usually outlives itself in its
+   readers — a watchdog that queries its DB, a report script that imports it, a cron
+   manifest entry, an installer that re-creates it, a doctor check that asserts on it.
+   Grep the repo for the artifact names and fix every consumer in the same pass; one
+   left behind keeps firing (or re-creates the artifact at the next deploy), which is
+   how a "removed" feature generates fresh alerts.
+7. **The deletion set comes from a grep, not from memory.** Enumerate the names across
+   the repo (`grep -rl`) AND the deployed tree first, then check dependents
+   (`~/.hermes/cron/jobs.json`, `ops/install/cron-manifest.yaml`, installers, doctor
+   checks, tests) before removing anything. Report the surviving mentions explicitly
+   (dated reports, advisory docs) so the user can decide on those rather than
+discovering them in a later grep.
+8. **A destructive sweep is one APPROVED step, and consent is per-command.** A compound
+   `git rm` of many paths (or one `rm -rf` over several artifact dirs) can trip the
+   approval gate; if that prompt times out, NOTHING ran — do not retry it, do not reword
+   it, do not reach the same outcome another way. Report the exact removal set plus the
+   edit sites, and wait for an explicit go. Confirm the tree is untouched
+   (`git status --porcelain`) so "nothing ran" is evidence rather than assumption.
+9. **Do not hold a governance lock while you wait on the user.** A decommission spanning
+   turns leaves the cycle's lock held, which blocks every peer session from taking one.
+   Score the cycle you have (a low completeness score and a factual "inventory only,
+   blocked on consent, no files changed" note is honest and correct), release it, and
+   take a fresh lock for the actual removal.
 2. **Guard tests must self-exclude.** A `test_no_<token>_refs` test that runs
    `git grep -il <token>` fails on its OWN source. Fix:
    `git grep -il <token> -- . ':(exclude)tests/<guard-file>.py'`.
@@ -79,7 +120,10 @@ else (many such files are deployed-only, never in git).
 5. Run the guard test (`pytest tests/test_repo_structure.py -q`) + full suite.
 6. Post-sweep validation: run the component's own battery (e.g. mycortex:
    CLI doctor, sources/stats, schema battery, crons, parity fixture, doctor
-   Deploy+Repo sync) to prove the component still works after the purge.
+   Deploy+Repo sync) to prove the component still works after the purge. When the
+   sweep removed config, exercise the path that REPLACED it — e.g. after deleting a
+   cron provider, run the scheduling surface (`hermes cron list`) and confirm no
+   fallback warning, which is the only proof the default is really in charge.
 7. Report: verified-clean surfaces, what was removed, what was kept (counts),
    flagged items. Score + close cycle.
 

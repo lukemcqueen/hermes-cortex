@@ -82,6 +82,25 @@ working tree), not a problem with your diff.
    A mid-push deploy may itself report cost-tracking marker FAILs inside
    scheduler/cronjob files; re-run `cortex-dogfood.sh` — if it ends with
    `✅ DOGFOOD PASSED`, the deploy is clean and the push succeeds on retry.
+   - **A `❌ Checksum: <file>` you did not cause by committing late is a RACE:
+     you edited a registered file while the deploy was still copying it.** The
+     doctor compares repo source to the deployed copy, so an edit that lands
+     mid-copy makes them disagree and the deploy ends FAIL — then the push is
+     rejected even though nothing is broken. Do not diagnose it as drift and do
+     not re-deploy on top of another edit: finish and COMMIT the edits, confirm
+     the running deploy has exited (it is a background process — poll it), then
+     deploy once more and push. Rule: never patch a file the deploy is about to
+     copy.
+7. **DOCS AUDIT blocks a new doc that is not in `docs/DOCS-INDEX.md`.** Adding
+   (or moving) a file under `docs/` fails the commit with `<file> changed but
+   docs/DOCS-INDEX.md was not updated`. Add the index row in the SAME commit; the
+   index also dictates WHICH directory a doc belongs in (cycle/decommission
+   evidence goes under `docs/evidence/`, not a scratch or reports path). Two more
+   gates hit on the same writes: a hardcoded `/home/<user>/` path in a new doc or
+   test (use `$HOME` / `Path.home()`), and a GENERATED file edited by hand — such a
+   file carries a "do NOT edit by hand" banner plus its own `--check` test
+   (`generate-harnesses.py --check`, `gen-skills-manifest.py`), so fix the source it
+   is generated from and re-run the generator.
 6. **Removing an INDEXED resource trips the expectation checks — fix the
    expectation side in the SAME change.** Every health check that holds a list
    of "what should exist" (the cron manifest, the doctor's expected-cron
@@ -137,6 +156,15 @@ May need several rounds on active days; each round's dogfood re-runs clean.
   Deploy-sync. Run `bash ~/hermes-cortex/ops/scripts/cortex-update.sh`
   (deploy), confirm `Updated: <sha> → <sha>`, then push. Order is always
   commit → deploy → push.
+- **Deploy-sync can LIVELOCK against a peer's commit stream.** On a host where
+  another session keeps committing, every `cortex-update.sh` is invalidated by the
+  next peer commit and the gate reports `❌ Deploy sync — HEAD (<sha>) ahead of last
+  deploy (<sha>)` round after round. Before spending another deploy, check whether
+  the peer is still active (`git log -3 --format='%h %ad %s' --date=iso`) — your
+  commits sit on the SAME branch, so the peer's own push publishes yours; confirm
+  with `git log --oneline -1 origin/main` instead of looping. While the peer is
+  mid-stream, report "committed + deployed locally, push rides the peer's next
+  push" with the SHA rather than claiming a push that did not land.
 - **Every NEW deployable file needs its own `register` line in
   `cortex-update.sh`** — a new shared module imported by an already-
   registered script (e.g. a doctor helper module) is NOT deployed unless
@@ -217,6 +245,15 @@ headered repo copy fails every checksum/script-content check.
   clears the state; the doctor's `disable --now && rm
   ~/.config/systemd/user/<unit>` suggestion only applies when a user unit
   file actually exists.
+  The FAIL need not touch your diff, or even this repo: a doc-freshness FAIL on a
+  DIFFERENT repo on the same host (`❌ AGENTS.md (<other repo>)`) blocks every push on
+  that host until it clears — read WHICH check failed before debugging your commit, and
+  re-run the deploy gate first, since deploying your own change is what usually retires
+  a stale `❌ Deploy sync`. Clearing such a FAIL can be outside your authority — an
+  `AGENTS.md` refresh is an approval-gated write (the prompt times out while the
+  operator is away) — so commit locally, report the blocking check plus the local SHA
+  ("committed locally, not yet pushed"), and let the operator approve the fix. Never
+  bypass the gate or delete the check to silence it.
 - The dogfood gate auto-runs cortex-update; its pull step failing with
   "cannot pull with rebase: You have unstaged changes" is a second
   fingerprint of the concurrent tree.

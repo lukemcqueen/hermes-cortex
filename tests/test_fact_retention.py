@@ -18,9 +18,12 @@ tail protection) with the summarizer LLM stubbed — deterministic, no API.
 """
 import importlib.util
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
+
+import pytest
 
 _REPO = Path(__file__).resolve().parent.parent
 _PROBE = _REPO / "ops" / "scripts" / "manage" / "fact-retention-eval.py"
@@ -41,104 +44,61 @@ def test_conversation_has_all_regions():
         assert f in texts, f"fact not planted: {f}"
 
 
-def test_compressor_opens_compress_window():
-    messages = _mod.build_conversation()
-    compressor = _mod.make_compressor()
-    head_size = compressor._protect_head_size(messages)
-    compress_start = compressor._align_boundary_forward(messages, head_size)
-    compress_end = compressor._find_tail_cut_by_tokens(messages, compress_start)
-    assert compress_start < compress_end, (
-        f"no compressible window: start={compress_start} end={compress_end} "
-        f"tail_budget={compressor.tail_token_budget}"
-    )
+@pytest.fixture(scope="module")
+def probe_report() -> dict:
+    """Run the probe ONCE, in a child process, and hand its JSON to the assertions.
 
-
-def test_compress_shrinks_transcript():
-    messages = _mod.build_conversation()
-    compressor = _mod.make_compressor()
-    from unittest.mock import MagicMock, patch
-
-    mock_response = MagicMock()
-    mock_response.choices = [MagicMock()]
-    mock_response.choices[0].message.content = "test summary"
-    with patch(
-        "agent.context_compressor.call_llm", return_value=mock_response
-    ):
-        compressed = compressor.compress(messages, current_tokens=90_000)
-    assert len(compressed) < len(messages), (
-        f"compression did not shrink: {len(messages)} -> {len(compressed)}"
-    )
-
-
-def test_head_tail_user_facts_survive_verbatim():
-    """The hard guarantee: protected regions are never silently truncated."""
-    messages = _mod.build_conversation()
-    compressor = _mod.make_compressor()
-    from unittest.mock import MagicMock, patch
-
-    mock_response = MagicMock()
-    mock_response.choices = [MagicMock()]
-    mock_response.choices[0].message.content = (
-        "[CONTEXT SUMMARY]\nGoal: test.\nProgress: condensed.\n"
-    )
-    with patch(
-        "agent.context_compressor.call_llm", return_value=mock_response
-    ):
-        compressed = compressor.compress(messages, current_tokens=90_000)
-
-    full_text = _mod.region_text(compressed)
-    for f in _mod.HEAD_FACTS:
-        assert f in full_text, f"HEAD fact lost: {f}"
-    for f in _mod.TAIL_FACTS:
-        assert f in full_text, f"TAIL fact lost: {f}"
-    for f in _mod.USER_FACTS:
-        assert f in full_text, f"USER fact lost: {f}"
-
-
-def test_summary_marker_inserted():
-    """Compaction inserts a visible summary row — never silent deletion."""
-    messages = _mod.build_conversation()
-    compressor = _mod.make_compressor()
-    from unittest.mock import MagicMock, patch
-
-    mock_response = MagicMock()
-    mock_response.choices = [MagicMock()]
-    mock_response.choices[0].message.content = (
-        "[CONTEXT SUMMARY]\nGoal: test.\nProgress: condensed.\n"
-    )
-    with patch(
-        "agent.context_compressor.call_llm", return_value=mock_response
-    ):
-        compressed = compressor.compress(messages, current_tokens=90_000)
-
-    assert any(
-        isinstance(m.get("content"), str)
-        and _mod.SUMMARY_PREFIX in m["content"]
-        for m in compressed
-    ), "no compaction summary marker in compressed transcript"
-
-
-def test_probe_exit_zero_with_json():
-    """End-to-end: the probe script itself passes and emits parseable JSON."""
+    WHY A CHILD PROCESS: importing Hermes core's compressor IN-PROCESS (what these
+    tests used to do) sends the import chain through the Hermes launcher, which
+    re-execs the interpreter with pytest's own argv — the child then cannot import
+    pytest, and the ENTIRE pytest run dies mid-suite with no failure report
+    (observed: the suite stopped at 37% with rc=1 and nothing else). The probe is
+    the real path regardless: it drives the same compressor mechanics with the
+    summarizer stubbed and prints every guarantee, so each one is still asserted
+    individually here.
+    """
     if not _VENV_PY.exists():
-        import pytest
-
         pytest.skip("hermes-agent venv not present on this host")
-    r = subprocess.run(
-        [str(_VENV_PY), str(_PROBE)],
-        capture_output=True, text=True, timeout=90,
-    )
-    assert r.returncode == 0, f"probe rc={r.returncode}: {r.stdout[-300:]} {r.stderr[-300:]}"
+    r = subprocess.run([str(_VENV_PY), str(_PROBE)],
+                       capture_output=True, text=True, timeout=90)
+    assert r.returncode == 0, f"probe rc={r.returncode}: {r.stdout[-500:]} {r.stderr[-500:]}"
     report = None
     for line in reversed(r.stdout.strip().splitlines()):
-        line = line.strip()
-        if line.startswith("{"):
+        if line.strip().startswith("{"):
             report = json.loads(line)
             break
     assert report is not None, f"no JSON in probe stdout: {r.stdout[-300:]}"
-    assert report["passed"] is True, f"probe reports failed: {report}"
-    for g in ("head_verbatim", "tail_verbatim", "user_turn_verbatim", "summary_marker_present"):
-        assert report["guarantees"][g] is True, f"guarantee {g} not met"
+    return report
+
+
+def test_compress_window_opens_and_shrinks_the_transcript(probe_report):
+    """A real compress window opens (legacy tail_mode) and the transcript shrinks."""
+    m = re.search(r"compressed (\d+) msgs \u2192 (\d+) msgs", probe_report["detail"])
+    assert m, f"unparseable probe detail: {probe_report['detail']}"
+    before, after = int(m.group(1)), int(m.group(2))
+    assert after < before, f"compression did not shrink: {before} -> {after}"
+
+
+def test_head_tail_and_user_facts_survive_verbatim(probe_report):
+    """The hard guarantee: protected regions are never silently truncated."""
+    guarantees = probe_report["guarantees"]
+    for key in ("head_verbatim", "tail_verbatim", "user_turn_verbatim"):
+        assert guarantees[key] is True, f"guarantee {key} failed: {probe_report}"
+    retention = probe_report["retention"]
+    for region in ("head", "tail", "user"):
+        kept, total = retention[region].split("/")
+        assert kept == total, f"{region} facts lost: {retention}"
+
+
+def test_summary_marker_is_inserted(probe_report):
+    """Compaction inserts a visible summary row — never silent deletion."""
+    assert probe_report["guarantees"]["summary_marker_present"] is True, probe_report
+    assert probe_report["summary_prefix"].startswith("[CONTEXT COMPACTION"), probe_report
+
+
+def test_probe_passes_all_guarantees(probe_report):
+    """The probe's own verdict, from its own process (rc=0 is asserted in the fixture)."""
+    assert probe_report["passed"] is True, probe_report
 
 
 if __name__ == "__main__":

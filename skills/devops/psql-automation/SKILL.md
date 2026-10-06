@@ -100,6 +100,40 @@ Two safe patterns:
    the script falls back to the sg path. Verified exploitable in todo-db.py
    (2026-08-06 party, Security role, finding B-1).
 
+## Every harness-invoked psql must be non-interactive: always pass `-w`
+
+`psql` prompts for a password on **/dev/tty** whenever no usable credential is
+available (`MYCORTEX_MEM_PASSWORD` empty, wrong or missing `PGPASSFILE`). That
+prompt is invisible to the caller — it is neither stdout nor stderr — so a script
+or an agent harness running psql sees NO output and **blocks** instead of failing.
+A fail-open contract then reads the call as "store unavailable" only after its
+timeout, or never, and in a TUI harness the prompt text lands in the user's input
+area.
+
+**Rule:** every psql invocation a script builds carries `-w` (`--no-password`) — a
+child that cannot answer a prompt must never be given the chance to ask. Same
+family: `ssh -o BatchMode=yes`, `sudo -n`, `git` with `GIT_TERMINAL_PROMPT=0`; a
+non-tty child that prompts is a hang, not an error.
+
+Check EVERY copy of the command builder, not just the file you were pointed at:
+the platform branches differ (macOS runs `psql` directly; Linux goes through
+`sg docker -c "docker exec … psql …"`) and the same seam is often duplicated in a
+store module and a plugin wrapper. Put `-w` with the other option flags (before
+`-v ON_ERROR_STOP=1`) in all of them.
+
+A flag assertion is necessary but NOT sufficient. Pair it with a runtime test: put
+a `psql` stand-in on `PATH` that implements the documented contract — with `-w` it
+exits non-zero immediately ("no password supplied"); without `-w` it takes the
+prompt path and blocks — then drive the REAL code path (the store's `run_sql`) with
+no usable password and assert it raises `StoreUnavailable` promptly. Keep the test
+non-vacuous by asserting on the auth-refusal text, not only on the duration, so it
+fails when the flag is dropped.
+
+Do not expect a live before/after demo to be easy: demonstrating the prompt needs a
+password-requiring endpoint the host can actually reach (published container ports
+may not be reachable from the host namespace at all) — state that limitation rather
+than claiming the demo ran.
+
 ## Verify "verified" schema claims before building on them
 
 A design doc or peer's "Existing plumbing (verified YYYY-MM-DD)" is a claim,

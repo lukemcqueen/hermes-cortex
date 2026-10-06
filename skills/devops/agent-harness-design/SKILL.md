@@ -227,6 +227,30 @@ S1/S2/S3 findings as a tracked open design ledger, and hook the spec's
 Acceptance to it ("settled in intent, open in mechanism"). Full procedure +
 pitfalls in that reference.
 
+## Always-on rule: the harness's stderr IS the prompt area
+
+Whatever a harness writes to stderr lands in the user's input area (Pi, a TUI, any
+interactive surface), so a diagnostic line scribbles over what they are typing and
+the bug arrives as "the TUI is polluted", not "a log line".
+
+- **Routine diagnostics are gated; failures stay loud.** Route success-path traces
+  through ONE `trace()` gate behind a debug env var and keep genuine failures on
+  stderr. Deleting the failures instead re-creates the opposite bug: a silent memory
+  failure reads as "the agent had no memory", a wrong conclusion the user cannot
+  debug.
+- **Every child the harness spawns must be non-interactive** (`psql -w`,
+  `ssh -o BatchMode=yes`, `sudo -n`): a child with no tty that prompts blocks
+  instead of erroring.
+- **"Child stderr leaks into the prompt" is usually the wrong premise.** `execFile`
+  pipes a child's stdio, so child output does NOT reach the harness's stderr. Verify
+  before "fixing" it; the realistic leak is an edit that captures the child's stderr
+  and echoes it, or a child spawned with inherited stdio.
+- **Measure at the FD level, in the parent.** Patching `process.stderr.write` inside
+  the guard cannot see a write that bypasses it, so capture the guard PROCESS's own
+  stderr from the test that spawns it. Prove non-vacuity with a variant built from
+  source (an extension that echoes the captured child stderr) that must trip the
+  check.
+
 ## Pitfalls
 
 - **Don't adopt the framework to get its loop.** If upstream permits breaking

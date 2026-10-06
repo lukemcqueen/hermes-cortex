@@ -25,6 +25,15 @@ HARNESS_CMD = REPO / "ops/scripts/hc/harness.py"
 TOOLS_PY = REPO / "ops/services/mycortex-mem/context_tools.py"
 
 
+def _harness_module():
+    """The CLI's own module — the derivation is unit-testable without spawning it."""
+    spec = importlib.util.spec_from_file_location("hc_harness_mod", HARNESS_CMD)
+    assert spec and spec.loader
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
 def _contract_tool_names() -> set[str]:
     spec = importlib.util.spec_from_file_location("ctx_tools_for_hc_test", TOOLS_PY)
     assert spec and spec.loader
@@ -66,37 +75,61 @@ def _run_line(stdout: str) -> str:
     return line
 
 
-def test_install_pi_prints_a_run_line_with_the_full_contract_surface(tmp_path):
+def test_install_pi_prints_a_run_line_without_an_allowlist(tmp_path):
+    """Pi reads the memory/session contract over MCP, so its run line carries no
+    `--tools` allowlist: the surface cannot be silently narrowed by a list that ages."""
     r = run("install", "pi", "--dir", str(tmp_path))
     assert r.returncode == 0, r.stderr
     line = _run_line(r.stdout)
-    for base in ("read", "bash", "edit", "write"):
-        assert base in line
-    for name in _contract_tool_names():
-        if name in _extension_registered():
-            assert name in line, f"contract tool '{name}' missing from the generated run line"
+    assert "--tools" not in line, f"Pi run line still carries an allowlist: {line}"
+    assert "over MCP" in r.stdout, "the install output must name where the tools come from"
 
 
-def test_the_gate_critical_tools_are_in_the_run_line(tmp_path):
+def test_no_gate_tool_can_be_excluded_from_a_pi_session(tmp_path):
     """Regression pin for the drift this command removes.
 
     The hand-typed literal in the old registry omitted `session_tool_event` and
-    `session_loaded_skill` — the two tools the global pre-commit reflexion gate
-    reads for a Pi session. A developer following that literal got a Pi session
-    whose commits are REFUSED (the gate cannot see the evidence), which is
-    invisible until the commit fails.
+    `session_loaded_skill` — the two tools the global pre-commit reflexion gate reads
+    for a Pi session — so a developer following it got commits REFUSED, invisible
+    until the commit failed. Pi now reads those tools over MCP, and the invariant is
+    stronger: no allowlist exists, so no gate tool can be excluded at all.
     """
     line = _run_line(run("install", "pi", "--dir", str(tmp_path)).stdout)
-    for gate_tool in ("session_tool_event", "session_loaded_skill"):
-        assert gate_tool in line, f"{gate_tool} unreachable from Pi"
+    assert "--tools" not in line, f"an allowlist could exclude a gate tool: {line}"
 
 
-def test_run_line_is_derived_not_the_hand_written_registry_literal(tmp_path):
-    """`--tools` = base + (contract ∩ artifact registrations), computed — not typed."""
-    line = _run_line(run("install", "pi", "--dir", str(tmp_path)).stdout)
-    printed_tools = set(line.split("--tools", 1)[1].strip().split(","))
-    expected = _contract_tool_names() & _extension_registered()
-    assert printed_tools == expected | {"read", "bash", "edit", "write"}
+def test_run_line_is_derived_not_the_hand_written_registry_literal(tmp_path, monkeypatch):
+    """`--tools` = base + (contract ∩ artifact registrations), computed — not typed.
+
+    No harness declares `cli-extension` today (Pi moved to MCP), so the derivation is
+    driven on a synthetic entry: an artifact registering a SUBSET must yield exactly
+    base + that subset and return the REST of the contract as the unexposed gap — the
+    return value that makes a missing gate tool visible instead of silent.
+    """
+    mod = _harness_module()
+    contract = mod.contract_tool_names()
+    assert contract, "contract tools unavailable — fix the probe, not the test"
+    subset = contract[:2]
+
+    regdir = tmp_path / "harnesses"
+    (regdir / "fake").mkdir(parents=True)
+    shim = regdir / "fake" / "shim.ts"
+    shim.write_text("\n".join(f'tool("{n}", {{}});' for n in subset) + "\n", encoding="utf-8")
+    monkeypatch.setattr(mod, "registry_dir", lambda: regdir)
+    entry = {"name": "fake", "layer": "cli-extension", "artifact": "shim.ts",
+             "tools_base": ["read", "bash", "edit", "write"]}
+
+    run_line, unexposed = mod.derived_run_line(entry)
+    printed = set(run_line.split("--tools", 1)[1].strip().split(","))
+    assert printed == set(subset) | {"read", "bash", "edit", "write"}
+    assert unexposed == [n for n in contract if n not in subset]
+
+    # An artifact registering NOTHING is unverifiable: expose the base only and report
+    # the whole contract as the gap — never silently list tools that may not exist.
+    shim.write_text("// no tool() registrations\n", encoding="utf-8")
+    run_line2, gap = mod.derived_run_line(entry)
+    assert run_line2.endswith("--tools read,bash,edit,write")
+    assert gap == contract
 
 
 def test_unknown_harness_fails_loudly():

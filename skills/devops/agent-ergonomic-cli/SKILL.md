@@ -124,6 +124,36 @@ explicitly:
 Sibling rule for the adapter side: one implementation, per-host adapters that add
 no semantics — see the `cross-agent-design` skill.
 
+## Child processes: non-interactive, and out of the prompt area
+
+When a harness, extension or script SHELLS OUT to another CLI, two rules apply to the
+child, not to your own stdout:
+
+1. **Pass the child's non-interactive flag; never let it prompt.** A password/passphrase
+   prompt is written to `/dev/tty`, not to stdout/stderr — so a capture sees nothing, and
+   the caller does not fail, it HANGS until a timeout (or forever), after which a
+   fail-open contract reports "dependency unavailable" for what is really a missing
+   credential. Give every child its flag: `psql -w` (`--no-password`), `ssh -o
+   BatchMode=yes`, `git -c core.askpass=`, `ssh-keygen -N ""`, `apt-get -y`, package
+   managers' `--yes`. Verify with the real binary and no credentials: it must exit
+   non-zero FAST with a named error. A test that only asserts the flag is in the argv is
+   necessary but not sufficient — exercise the runtime path once with the flag and once
+   against a stand-in that honours the documented flag contract (prompt-path stub = a
+   hang) when no server is reachable.
+2. **A TUI harness's stderr IS the user's prompt area.** Routine diagnostics written
+   there scribble over the input line. Route them to a BOUNDED log file under the
+   cortex tree (`~/.hermes-cortex/logs/<component>.log`, mode 0600, rotate to `<log>.1`
+   at a size cap) — the same shape `mcp-servers/loop-gov-mcp.py` uses — with the whole
+   write wrapped so a logging failure can never change what the tool does. Keep GENUINE
+   failures LOUD on stderr (a silent failure reads as "the feature had no data", a
+   different and wrong conclusion) and also record them, since stderr is ephemeral;
+   gate an echo-to-stderr behind a `*_DEBUG=1` env var so live debugging stays possible.
+3. **Assert "child output does not leak" at the FD level in the PARENT.** `execFile`
+   pipes stdio by default, so a child's stderr never reaches the parent's stderr — and
+   patching the parent's stderr write in-process cannot see a write that bypasses it (an
+   inherited fd). Capture the child process's real stderr and assert on that, and prove
+   the check non-vacuous with a variant that DOES leak.
+
 ## When NOT to apply
 
 - **Machine protocol** (bus wire format, MCP transport): stays JSON — TOON

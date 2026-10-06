@@ -16,7 +16,7 @@ suites (11):
   tests/test_cortex_gateway_daemon_slice.py
 
 measured: 122 passed (claim >= 111)
-pytest summary: ============================= 122 passed in 5.15s ==============================
+pytest summary: ============================= 122 passed in 6.11s ==============================
 
 Tail of the run:
 ============================= test session starts ==============================
@@ -38,7 +38,7 @@ tests/test_telegram_notify_unit.py ............................          [ 86%]
 tests/test_cortex_gateway_parity_matrix.py .....                         [ 90%]
 tests/test_cortex_gateway_daemon_slice.py ...........                    [100%]
 
-============================= 122 passed in 5.15s ==============================
+============================= 122 passed in 6.11s ==============================
 
 
 test names in the files cited by review findings (16):

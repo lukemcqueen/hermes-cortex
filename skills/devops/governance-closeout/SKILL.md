@@ -107,6 +107,17 @@ material it judged (note + diff):
   so the final state has to be readable from it. Do not paste or commit the whole diff
   in response: a 100 KB range is what truncated in the first place, and committing it as
   an artifact duplicates git history and lands in the next range.
+  - **When the reviewer's own reasoning is "the last commit does not touch <file>, so the
+    earlier hunk stands", give it a commit that DOES touch the file.** A note quoting
+    `git show HEAD:<path>` is not enough while the visible diff still ends on the
+    superseded hunk. Fold a REAL improvement to that file into one more commit (a
+    stronger assertion, a persistence check) so the final state is the last hunk the
+    material shows — then the finding's premise is gone rather than argued with.
+  - **Same finding, same superseded hunk, two retries = stop re-writing the note.** It
+    means the range is too long for the budget, not that your note lacked evidence.
+    Shorten the range (one commit per close where the work allows) instead of
+    re-rolling the reviewer — it samples, so a lucky CLEAN on unreadable material is
+    not a fix.
 - **A per-run artifact is OVERWRITTEN by the next run, so a FAILING run's evidence
   disappears the moment a later run passes.** Keep an append-only ledger beside it: one
   line per run carrying timestamp, revision, measured summary and failure count, so a
@@ -160,6 +171,11 @@ material it judged (note + diff):
   diff. Name YOUR OWN shas in the re-review note (the material states authorship, so
   the reviewer can check them against git) and re-review — do not "fix" a peer's
   change to appease a finding aimed at the wrong worker.
+- **A fix that was merely REQUIRED to keep the tree green reads as `scope-drift` if it
+  rides in the same range.** When the change forced a side-fix (a generated file had to be
+  regenerated, a red suite had to go green), keep it in its OWN commit and state in one
+  line why the change required it. An unexplained unrelated commit in the audited range is
+  graded `scope-drift` at MEDIUM and blocks the close.
 - **Answer a false finding with a measurement, not with prose.** Findings can be
   wrong. State the measurement that refutes one and leave the code alone rather than
   "fixing" a non-defect.
@@ -257,6 +273,14 @@ because the commit itself succeeded locally and the tree looks clean.
     re-review, ask an orchestrator to clear the cycle, or let the TTL reap it.
     `force=True` releases the held cycle to make room, so it is an override, not a
     convenience — never take it to get past your own refusal.
+
+- **A timed-out `end_change` may have SUCCEEDED — do not report it as a failure.** The
+    call can hit the MCP client's ~300 s ceiling while the reviewer is still working.
+    Retrying then answers `No governance session active. Nothing to release.` — the same
+    wording as an expired TTL, which reads like a lost close. Confirm from the gate's own
+    record before saying either way: `grep '<cycle id>' ~/.hermes-cortex/logs/loop-governance.log`
+    showing `<…> review: cycle N CLEAN` plus the cycle's stored decision means the close
+    landed and the lock was released.
 
     **A close can also fail because the LOCK EXPIRED, not because it was refused.** The
     session TTL (one hour) is shorter than a long verification tail — deploying, waiting
