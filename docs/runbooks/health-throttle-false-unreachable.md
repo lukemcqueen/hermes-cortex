@@ -42,33 +42,53 @@ next tick — the flapping pair.
 
 ## Fix
 
-### 1. Relax the health endpoint limits (root cause)
+### 1. Allowlist the fleet's IPs to bypass the DDoS limits (canonical fix)
 
-Live config `/etc/nginx/sites-available/hermes-services.conf`, health server
-block (`listen 13007 ssl`):
+nginx applies **no limit when a limit zone's key variable is empty**. Key the
+rate/conn zones off a `geo` allowlist so the fleet's probes bypass the tight
+limits entirely, while everyone else keeps the public DDoS ceiling.
 
-- `limit_conn conn_limit 10;`  →  `limit_conn conn_limit 200;`
-- `limit_req zone=general burst=10 nodelay;`  →  `limit_req zone=general burst=200 nodelay;`
+Live config `/etc/nginx/hermes-zone-defs.conf` — add the `geo` map and re-key
+the three zones:
+
+```nginx
+geo $limit_bypass {
+    default          $binary_remote_addr;
+    192.168.1.0/24   "";     # LAN fleet (router NAT aggregate)
+    115.21.71.146    "";     # external WAN worker
+    127.0.0.0/8      "";     # localhost
+}
+limit_req_zone  $limit_bypass zone=general:10m rate=20r/s;
+limit_req_zone  $limit_bypass zone=auth:10m   rate=5r/s;
+limit_conn_zone $limit_bypass zone=conn_limit:10m;
+```
+
+An allowlisted IP gets an **empty** zone key → nginx applies no limit. The
+health server block keeps its tight `conn_limit 10` / `burst 10` as the real
+public ceiling: the fleet bypasses it, a DDoS attacker does not. Add a new
+worker/agent IP to the `geo` map when it joins off-LAN.
 
 Then apply:
 
 ```bash
-sudo nginx -t
-sudo nginx -s reload
+sudo cp ~/hermes-cortex/ops/install/deploy/nginx/hermes-zone-defs.conf /etc/nginx/hermes-zone-defs.conf
+sudo nginx -t && sudo systemctl reload nginx
 ```
 
-A generous bound (conn/burst 200) still caps a DDoS flood, and the health
-endpoint returns a tiny fixed payload, so the higher limit costs ~nothing.
+> The earlier approach — *raising* the health block's limits (e.g. burst/conn
+> 200) — is **superseded**. It weakens the DDoS ceiling for the public and is
+> unnecessary: the allowlist gives the fleet unlimited access without relaxing
+> anything for everyone else.
 
-### 2. Source-of-truth (repo template)
+### 2. Source-of-truth (repo)
 
-`ops/install/deploy/nginx/hermes-services.conf` — the health block carries
-`burst=200` and an explicit `limit_conn conn_limit 200;` so a future nginx
-re-deploy cannot silently regress the fix. **Note:** the live `/etc/nginx`
-config on this host was *drifted tighter* (10/10) than the repo template
-(40/50 → the earlier relaxation was never re-deployed), which is why the
-throttle showed intermittently instead of being resolved by a routine
-`cortex-update`.
+- `ops/install/deploy/nginx/hermes-zone-defs.conf` carries the
+  `geo $limit_bypass` allowlist — this is the actual fix.
+- `ops/install/deploy/nginx/hermes-services.conf` health block keeps its tight
+  limits — do **not** relax it.
+- Live `/etc/nginx` had drifted tighter than the templates and was never
+  re-deployed by `cortex-update` (that step needs root), which is why the
+  earlier doc-only round didn't take.
 
 ### 3. Watchdog debounce (complementary noise suppression)
 
