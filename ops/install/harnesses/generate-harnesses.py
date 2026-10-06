@@ -181,8 +181,8 @@ def render_readme(reg: dict, h: dict) -> str:
     elif layer == "none":
         out += ["## Verify", "", "Nothing to verify until the surface is known.", ""]
 
-    envs = defaults.get("env", [])
-    optional = defaults.get("env_optional", [])
+    envs = h.get("env", defaults.get("env", []))
+    optional = h.get("env_optional", defaults.get("env_optional", []))
     if envs or optional:
         out += ["## Session identity", "",
                 "One session = one identity. Precedence is identical in every layer "
@@ -192,7 +192,12 @@ def render_readme(reg: dict, h: dict) -> str:
         out += ["```", ""]
     if optional:
         out += ["Overrides (usually unnecessary, needed on macOS):", "", "```bash"]
-        out += [f"export {e}=<path>   # see the failure modes in the runbook" for e in optional]
+        for e in optional:
+            if isinstance(e, dict):  # {NAME: comment} — comment documents the default
+                for name, comment in e.items():
+                    out.append(f"export {name}=<value>   # {comment}")
+            else:
+                out.append(f"export {e}=<path>   # see the failure modes in the runbook")
         out += ["```", ""]
 
     out += ["## Shared pieces (identical for every harness — never fork them)", "",

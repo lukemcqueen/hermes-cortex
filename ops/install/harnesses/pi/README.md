@@ -76,9 +76,9 @@ Overrides (usually unnecessary, needed on macOS):
 ```bash
 export CORTEX_CONTEXT_CLI=<path>   # see the failure modes in the runbook
 export CORTEX_CONTEXT_PYTHON=<path>   # see the failure modes in the runbook
-export CORTEX_CONTEXT_LOG=<path>   # default: ~/.hermes-cortex/logs/pi-context.log
-export CORTEX_CONTEXT_LOG_MAX_BYTES=<bytes>   # default: 1 MiB; rotates to <log>.1
-export CORTEX_CONTEXT_DEBUG=1   # echo routine markers to stderr while diagnosing
+export CORTEX_CONTEXT_LOG=<value>   # default: ~/.hermes-cortex/logs/pi-context.log
+export CORTEX_CONTEXT_LOG_MAX_BYTES=<value>   # default: 1 MiB; rotates to <log>.1
+export CORTEX_CONTEXT_DEBUG=<value>   # 1 = echo routine markers to stderr while diagnosing
 ```
 
 ## Shared pieces (identical for every harness — never fork them)

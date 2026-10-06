@@ -168,7 +168,15 @@ harnesses:
       - 'pi mcp list shows cortex-context with the memory/session tools.'
       - 'In a Pi session call mem_context — the peer card must come back.'
       - 'Let a turn end with a decision, then: cortex-context session_restore "{}" | grep <marker>'
-      - 'Start a second session; the checkpoint must appear unasked (Pi logs CORTEX_RESUME).'
+      - 'Start a second session; the checkpoint must appear unasked (`CORTEX_RESUME` in `~/.hermes-cortex/logs/pi-context.log`).'
+    # The extension's own knobs. Routine markers go to the cortex log, never the
+    # prompt area, so a diagnosing agent needs to know where to look.
+    env_optional:
+      - CORTEX_CONTEXT_CLI
+      - CORTEX_CONTEXT_PYTHON
+      - {CORTEX_CONTEXT_LOG: 'default: ~/.hermes-cortex/logs/pi-context.log'}
+      - {CORTEX_CONTEXT_LOG_MAX_BYTES: 'default: 1 MiB; rotates to <log>.1'}
+      - {CORTEX_CONTEXT_DEBUG: '1 = echo routine markers to stderr while diagnosing'}
 
   - name: hermes
     layer: mcp
