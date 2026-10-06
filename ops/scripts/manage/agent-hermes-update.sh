@@ -37,7 +37,15 @@ if [ -f "$LATEST_UPDATE_FILE" ]; then
     CURRENT_VERSION=$(cat "$LATEST_UPDATE_FILE")
 fi
 
-# Step 1: Update upstream Hermes Agent
+# ── Step 1: Update upstream Hermes Agent ─────────────────────────────
+# Compiler override: the pm-managed CPython (3.14) is built with CC=clang /
+# CXX=clang++, but this fleet's Linux hosts ship gcc/g++, not clang. The
+# `matrix` extra's python-olm has no cp314 wheel, so pm builds it from source
+# and the build dies with "No such file or directory: 'clang++'" — which fails
+# the WHOLE update at the dependency-sync stage. Point the build at gcc/g++.
+# Harmless when clang IS present (an explicit CC/CXX just wins).
+if [ -z "${CC:-}" ] && command -v gcc >/dev/null 2>&1; then export CC=gcc; fi
+if [ -z "${CXX:-}" ] && command -v g++ >/dev/null 2>&1; then export CXX=g++; fi
 # NOTE: hermes update -y requires gateway restart approval and hangs in cron context.
 # Use a timeout to avoid blocking indefinitely — if it times out, skip to migrate+doctor.
 UPDATE_OUTPUT=$(timeout 30 hermes update -y 2>&1) || {
@@ -83,35 +91,12 @@ elif [ -f "$RESTART_MARKER" ] && ! grep -q "updated:${NEW_VERSION}" "$RESTART_MA
     true
 fi
 
-# ── Step 1.5: Post-update auto-reapply of the cost-capture patch (O1-S3) ──
-# `hermes update` replaces scheduler.py / cronjob_tools.py, silently wiping
-# the cron-cost-tracking marker patch. The reapply used to live only in
-# cortex-update.sh, which runs only when the hermes-cortex repo has new
-# commits — a version-only update left cost capture dead until the next
-# repo change (2-day cron-costs.db gap, 2026-08-21). Re-run the idempotent
-# installer here, in the same cycle as the update, so the patch always
-# survives. Silent when everything is already applied (SKIP-only).
-COST_INSTALLER="${CORTEX_DEPLOY_HOME:-${HOME}/.hermes-cortex}/scripts/install-cron-cost-tracking.py"
-if [ -f "$COST_INSTALLER" ]; then
-    COST_OUTPUT=$(timeout 30 python3 "$COST_INSTALLER" 2>&1) || {
-        COST_EXIT=$?
-        log "cost-tracking reapply failed (exit $COST_EXIT)"
-        log "$(echo "$COST_OUTPUT" | tail -5)"
-        HAD_OUTPUT=true
-    }
-    # Report only when a patch was actually (re)applied or something FAILed —
-    # SKIP-only output means the patch survived and needs no attention.
-    # (The `|| true` above already logged failures; only fire on OK lines here,
-    # and only when the installer itself exited 0 — a FAIL text on non-zero
-    # exit must not double-report as "re-applied".)
-    if [ "${COST_EXIT:-0}" -eq 0 ] && echo "$COST_OUTPUT" | grep -qE '^  OK   (scheduler|cronjob_tools)'; then
-        log "cost-tracking patch re-applied after hermes update"
-        HAD_OUTPUT=true
-    fi
-else
-    log "install-cron-cost-tracking.py missing at $COST_INSTALLER — cost capture may be dead"
-    HAD_OUTPUT=true
-fi
+# ── Step 1.5: (retired) cost-capture patch re-apply ──────────────────
+# Cron cost capture and the MAX_COST guard now live in the user plugin
+# ~/.hermes/plugins/cost-guard/ (a sanctioned cron.provider extension loaded
+# by cron/scheduler_provider.py). They are NOT affected by `hermes update`,
+# so there is nothing to re-apply and nothing is written into the agent git
+# tree. Kept as a marker so the removed step is not re-added by mistake.
 
 # Step 2: Config migration (runs even if update timed out or failed)
 MIGRATE_OUTPUT=$(timeout 35 hermes config migrate 2>&1) || {

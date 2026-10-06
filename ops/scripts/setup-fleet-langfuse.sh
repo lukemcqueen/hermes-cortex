@@ -124,14 +124,18 @@ hermes plugins list 2>/dev/null | grep -q langfuse && \
     echo "   ⚠️ Langfuse plugin not listed."
 
 # ── Step 5: Enable cost tracking ──────────────────────────────
-echo "→ Installing cron cost tracking..."
-if [ -f "${HOME}/.hermes-cortex/scripts/install-cron-cost-tracking.py" ]; then
-    python3 "${HOME}/.hermes-cortex/scripts/install-cron-cost-tracking.py" --force 2>/dev/null && \
-        echo "   ✓ Cost tracking enabled" || \
-        echo "   ⚠️ Cost tracking install failed"
+# Cost capture now ships in the cost-guard USER plugin (~/.hermes/plugins/
+# cost-guard/), deployed by cortex-update.sh. Do NOT run the retired core-patch
+# installer here — it rewrote ~/.hermes/hermes-agent/cron/scheduler.py and
+# dirtied the agent git tree (breaking `hermes update`). Just make sure the
+# plugin is present and the provider is selected.
+echo "→ Verifying cron cost tracking (cost-guard plugin)..."
+if [ -f "${HOME}/.hermes/plugins/cost-guard/__init__.py" ]; then
+    echo "   ✓ cost-guard user plugin present"
 else
-    echo "   ⚪ Cost tracking script not found (not deployed yet)"
+    echo "   ⚠️ cost-guard plugin missing — run: bash ~/hermes-cortex/ops/scripts/cortex-update.sh"
 fi
+hermes config set cron.provider cost-guard 2>/dev/null || true
 
 # ── Step 6: Enable token analytics ────────────────────────────
 echo "→ Enabling token analytics display..."

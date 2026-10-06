@@ -229,6 +229,13 @@ done
 _assert_register_dest_safe() {
   local dest="$1"
   case "$dest" in
+    "${HOME}/.hermes/hermes-agent/"*)
+      echo "❌ REFUSED: register target '${dest/$HOME/~}' is the upstream Hermes git checkout." >&2
+      echo "   ~/.hermes/hermes-agent is pulled by 'hermes update' — writing into it dirties" >&2
+      echo "   the tree and breaks fleet updates. Deploy user plugins to ~/.hermes/plugins/" >&2
+      echo "   instead (see deploy_cost_guard_provider / deploy_hc_lean_index in this script)." >&2
+      exit 1
+      ;;
     *"/memories/"*|"${HOME}/.hermes/"*)
       echo "❌ REFUSED: register target '${dest/$HOME/~}' is Hermes-owned user data." >&2
       echo "   Memory and config files under ~/.hermes/ belong to Hermes — never deploy them." >&2
@@ -2242,25 +2249,72 @@ deploy_mem_plugins() {
 }
 
 # ── Cost-guard cron provider deploy ───────────────────────
-# Deploys the cost-guard cron scheduler provider plugin into the Hermes
-# agent's bundled-provider tree (plugins/cron_providers/cost-guard/), where
-# cron.scheduler_provider discovery finds it. Selected via
-# `cron.provider: cost-guard` in config.yaml. This is the sanctioned
-# replacement for the O6-S1 scheduler.py preflight patch: same guard, zero
-# core edits, survives `hermes update` without re-apply.
+# Deploys the cost-guard cron scheduler provider into the Hermes USER plugin
+# dir ($HERMES_HOME/plugins/cost-guard/), which plugins/cron_providers
+# discovery scans AFTER the bundled tree. Selected via
+# `cron.provider: cost-guard` in config.yaml.
+#
+# NEVER write into ~/.hermes/hermes-agent/: that is the upstream git checkout
+# `hermes update` pulls into. Deploying there dirtied the tree (a SOUL boundary
+# breach). The provider is self-contained — max_cost_guard.py + cost_store.py
+# are bundled beside it and loaded by file path — so nothing needs to live in
+# the agent's cron/ dir. Guard + cost-capture logic unchanged; install
+# location moved out of the agent tree.
 deploy_cost_guard_provider() {
   local repo_plugin="${REPO_DIR}/plugins/cron_providers/cost-guard"
-  local agent_plugins="${HOME}/.hermes/hermes-agent/plugins/cron_providers"
-  local dest="${agent_plugins}/cost-guard"
+  local dest="${HOME}/.hermes/plugins/cost-guard"
   if [[ ! -d "$repo_plugin" ]]; then
     warn "  cost-guard provider source missing: ${repo_plugin}"
     return 0
   fi
   mkdir -p "$dest"
+  local changed=0
   if [[ -f "$repo_plugin/__init__.py" ]]; then
     cp -f "$repo_plugin/__init__.py" "$dest/__init__.py"
-    info "  cost-guard cron provider deployed (cron.provider: cost-guard)"
+    changed=$((changed + 1))
   fi
+  # Bundle the two helper modules the provider loads by file path. Single
+  # source of truth stays in the repo; this is a copy, never a core edit.
+  local helper src base
+  for helper in "${REPO_DIR}/ops/scripts/cost_store.py:cost_store.py" \
+                "${REPO_DIR}/ops/scripts/manage/max_cost_guard.py:max_cost_guard.py"; do
+    src="${helper%%:*}"; base="${helper##*:}"
+    if [[ -f "$src" ]]; then
+      cp -f "$src" "${dest}/${base}"
+      changed=$((changed + 1))
+    else
+      warn "  cost-guard helper missing: ${src}"
+    fi
+  done
+  [[ "${changed:-0}" -gt 0 ]] && info "  cost-guard provider deployed to ~/.hermes/plugins/cost-guard (${changed} file(s))"
+  return 0
+}
+
+# ── hc-lean-index user plugin deploy ──────────────────────
+# Deploys the hc-lean-index general plugin into the Hermes USER plugin dir.
+# Replaces the old marker-patch into agent/coding_context.py (which dirtied the
+# agent git tree). The plugin installs the distinct "lean" coding-context mode
+# via a runtime monkeypatch, so `agent.coding_context: lean` keeps working with
+# zero core edits and survives `hermes update` untouched.
+deploy_hc_lean_index() {
+  local repo_plugin="${REPO_DIR}/plugins/hc-lean-index"
+  local dest="${HOME}/.hermes/plugins/hc-lean-index"
+  if [[ ! -d "$repo_plugin" ]]; then
+    warn "  hc-lean-index source missing: ${repo_plugin}"
+    return 0
+  fi
+  mkdir -p "$dest"
+  local changed=0 file
+  for file in __init__.py plugin.yaml; do
+    [[ -f "${repo_plugin}/${file}" ]] || continue
+    cp -f "${repo_plugin}/${file}" "${dest}/${file}"
+    changed=$((changed + 1))
+  done
+  if command -v hermes &>/dev/null; then
+    hermes plugins disable hc-lean-index 2>/dev/null || true
+    hermes plugins enable hc-lean-index 2>/dev/null || true
+  fi
+  [[ "${changed:-0}" -gt 0 ]] && info "  hc-lean-index plugin deployed (${changed} file(s); activates after gateway restart)"
   return 0
 }
 
@@ -2857,22 +2911,15 @@ except Exception:
   # Deploy mycortex-mem + prompt-guard plugins (memory provider + LLM guard)
   deploy_mem_plugins
 
-  # Deploy the cost-guard cron scheduler provider (sanctioned cron.provider
-  # extension point — replaces the O6-S1 scheduler.py preflight patch).
+  # Deploy the cost-guard cron scheduler provider into the USER plugin dir
+  # (sanctioned cron.provider extension point). It carries the MAX_COST guard
+  # AND the cron cost-capture hooks, so the old scheduler.py marker-patch is
+  # gone — the agent git tree is never touched.
   deploy_cost_guard_provider
 
-  # ── Cron cost tracking: auto-reapply the scheduler patch ──
-  # The cost capture lives as a marker-patch inside scheduler.py (Hermes
-  # source). Every `hermes update` replaces scheduler.py and silently kills
-  # the patch (seam rot — cron-costs.db went 2-days-of-data on Esther,
-  # stale June-July on Titus). Re-run the installer after every deploy so
-  # the patch survives updates. Idempotent: SKIPs already-applied patches.
-  if [[ -f "${CORTEX_DEPLOY_HOME}/scripts/install-cron-cost-tracking.py" ]]; then
-    python3 "${CORTEX_DEPLOY_HOME}/scripts/install-cron-cost-tracking.py" 2>&1 \
-      | sed 's/^/    [cost-tracking] /'
-  else
-    warn "  install-cron-cost-tracking.py missing — cost capture may be dead"
-  fi
+  # Deploy the hc-lean-index user plugin (distinct "lean" coding-context mode).
+  # Replaces the old agent/coding_context.py core patch — zero core edits.
+  deploy_hc_lean_index
 
   # ── MCP stdio watch-probe fix: auto-reapply after hermes updates ──
   # Upstream bug (NousResearch mcp_tool.py ~6189, present on origin/main
@@ -2889,16 +2936,11 @@ except Exception:
     warn "  apply-mcp-tool-watch-fix.py missing — mcp_tool.py watch probe may be buggy"
   fi
 
-  # ── Lean skill index: auto-reapply the coding_context patch ──
-  # Same seam-rot pattern: the lean-index extension patches hermes-agent
-  # source, wiped on every `hermes update`. Re-run so `coding_context:
-  # lean` keeps working. Idempotent: SKIPs applied patches.
-  if [[ -f "${CORTEX_DEPLOY_HOME}/scripts/install-lean-index.py" ]]; then
-    python3 "${CORTEX_DEPLOY_HOME}/scripts/install-lean-index.py" 2>&1 \
-      | sed 's/^/    [lean-index] /'
-  else
-    warn "  install-lean-index.py missing — lean skill index may be dead"
-  fi
+  # ── Lean skill index is now a user plugin ──
+  # Previously a marker-patch that rewrote agent/coding_context.py in the
+  # agent git tree (deleted on every `hermes update`). Now deployed by
+  # deploy_hc_lean_index() into ~/.hermes/plugins/hc-lean-index/ above — the
+  # core tree is never modified.
 
   # Merge template updates into agent SOUL.md (preserves customizations)
   local soul_merge="${CORTEX_DEPLOY_HOME}/scripts/soul-merge.py"

@@ -1,0 +1,11 @@
+name: hc-lean-index
+description: >-
+  Adds a distinct 'lean' agent.coding_context mode that demotes non-fleet skill
+  categories to names-only on ANY platform, without the upstream focus-mode
+  toolset collapse. Replaces the local core patch to agent/coding_context.py
+  (keeps the hermes-agent git tree clean so `hermes update` never conflicts).
+version: 1.0.0
+author: Hermes Cortex
+license: MIT
+platforms: [linux, macos]
+kind: general

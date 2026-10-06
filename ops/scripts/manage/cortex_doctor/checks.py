@@ -3692,6 +3692,39 @@ def check_install(res):
       res.add("Symlinks", "INFO", "symlink audit ran (check output manually)")
 
 
+def check_hermes_tree_clean(res):
+  """Hermes agent git tree must stay clean — cortex must NEVER write into it.
+
+  ~/.hermes/hermes-agent is the upstream checkout ``hermes update`` pulls into.
+  Any cortex deploy that copies or patch-writes into it (local core patches,
+  bundled-provider copies) shows up as a local change here. Those edits breach
+  the upstream boundary and have repeatedly broken the fleet's updates, so a
+  dirty tree is a FAIL that names the offending paths.
+  """
+  import subprocess as _sp
+  agent = HOME / ".hermes" / "hermes-agent"
+  if not (agent / ".git").exists():
+    res.add("Hermes tree clean", "SKIP", "no git checkout at ~/.hermes/hermes-agent")
+    return
+  try:
+    proc = _sp.run(["git", "-C", str(agent), "status", "--porcelain"],
+                   capture_output=True, text=True, timeout=20)
+    out = proc.stdout
+  except Exception as e:  # noqa: BLE001 — a probe failure must never raise
+    res.add("Hermes tree clean", "WARN", f"could not inspect hermes-agent tree: {e}")
+    return
+  lines = [ln for ln in out.splitlines() if ln.strip()]
+  if not lines:
+    res.add("Hermes tree clean", "PASS", "no local edits in the hermes-agent checkout")
+    return
+  shown = "; ".join(ln.strip() for ln in lines[:6])
+  more = f" (+{len(lines) - 6} more)" if len(lines) > 6 else ""
+  res.add("Hermes tree clean", "FAIL",
+          f"{len(lines)} local change(s) in the hermes-agent tree: {shown}{more}",
+          "Cortex must not edit ~/.hermes/hermes-agent (the upstream checkout). "
+          "Re-home the change as a user plugin under ~/.hermes/plugins/ and re-run cortex-update.sh.")
+
+
 def check_stale_deploys(res):
   """Check ~/.hermes-cortex/scripts/ for orphaned or mis-deployed files."""
   cortex_update = Path.home() / "hermes-cortex" / "ops" / "scripts" / "cortex-update.sh"

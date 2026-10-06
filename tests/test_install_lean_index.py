@@ -1,95 +1,66 @@
 #!/usr/bin/env python3
-"""Tests for install-lean-index.py — the coding_context 'lean' patch (O8-S3).
+"""Tests for the hc-lean-index user plugin — the distinct 'lean' mode.
 
-Run: python3 tests/test_install_lean_index.py
-     (or: python3 -m pytest tests/test_install_lean_index.py -v)
+Replaces the retired ``install-lean-index.py`` core patch, which rewrote
+``~/.hermes/hermes-agent/agent/coding_context.py`` and dirtied the upstream git
+tree. The plugin now installs lean via a runtime monkeypatch in the user plugin
+dir, so no core file is touched.
 
 Verifies:
-  1. The three patch templates are internally consistent (old exists, new differs)
-  2. Applying to a pristine coding_context.py produces all 3 patches
-  3. The lean mode demotes categories WITHOUT collapsing the toolset (the
-     focus-mode difference that makes 'lean' the right choice for ops agents)
+  1. The plugin installs a distinct 'lean' mode (>10 categories demoted).
+  2. lean does NOT collapse the toolset (the focus-mode difference).
+  3. The agent git tree is NOT patched (the core edit is gone).
 """
 import importlib.util
 import os
-import shutil
 import subprocess
 import sys
-import tempfile
 from pathlib import Path
 
 _REPO = Path(__file__).resolve().parent.parent
-_INSTALLER = _REPO / "ops" / "scripts" / "install" / "install-lean-index.py"
-
-_spec = importlib.util.spec_from_file_location("ili", str(_INSTALLER))
-_mod = importlib.util.module_from_spec(_spec)
-_spec.loader.exec_module(_mod)
-
-# A pristine coding_context.py: real file with the lean patches REVERTED
-def _pristine_copy() -> Path:
-    """Copy the real coding_context.py and revert the 3 lean patches."""
-    src = Path(os.path.expanduser("~/.hermes/hermes-agent/agent/coding_context.py"))
-    content = src.read_text(encoding="utf-8", errors="replace")
-    # revert compact branch -> original
-    for name, old, new in _mod.PATCHES:
-        if new in content:
-            content = content.replace(new, old, 1)
-        elif old not in content:
-            raise AssertionError(f"pristine prep: {name} neither old nor new present")
-    dst = Path(tempfile.mkdtemp()) / "coding_context.py"
-    dst.write_text(content, encoding="utf-8")
-    return dst
+_PLUGIN = _REPO / "plugins" / "hc-lean-index" / "__init__.py"
 
 
-def test_templates_consistent():
-    # The old templates must exist in the CURRENT (patched) file so a
-    # --force revert could work; and new must differ from old.
-    current = _mod.read()
-    for name, old, new in _mod.PATCHES:
-        assert new != old, f"{name}: new must differ from old"
-        # old may be absent if already applied (new present) — that's fine;
-        # the invariant is new-vs-old differ and both are non-empty
-        assert old.strip(), f"{name}: old template empty"
-        assert new.strip(), f"{name}: new template empty"
+def _load_plugin():
+    spec = importlib.util.spec_from_file_location("hc_lean_index_test", str(_PLUGIN))
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
 
 
-def test_apply_to_pristine_produces_all_three():
-    pristine = _pristine_copy()
-    # point the installer at the pristine copy and apply
-    old_target = _mod.TARGET
-    _mod.TARGET = str(pristine)
-    try:
-        rc = _mod.apply()
-        assert rc == 0, f"apply returned {rc}"
-        content = pristine.read_text()
-        for name, _old, new in _mod.PATCHES:
-            assert new in content, f"{name}: patch not present after apply"
-    finally:
-        _mod.TARGET = old_target
-
-
-def test_lean_demotes_without_toolset_collapse():
-    """The core behavioral contract: lean shrinks the index, keeps tools."""
-    # Simulate against the REAL (already-patched) module via subprocess to
-    # get the actual coding_context runtime behavior.
+def test_plugin_installs_lean_without_toolset_collapse():
+    _load_plugin()  # import performs the install in this process
     code = """
-import sys, os
+import os, sys
 from pathlib import Path
+repo = os.environ['HC_REPO']
 sys.path.insert(0, str(Path.home() / '.hermes' / 'hermes-agent'))
-os.environ['HERMES_HOME'] = os.path.expanduser('~/.hermes')
+os.environ.setdefault('HERMES_HOME', os.path.expanduser('~/.hermes'))
+import importlib.util
+spec = importlib.util.spec_from_file_location('hc_lean_index', os.path.join(repo, 'plugins', 'hc-lean-index', '__init__.py'))
+m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
 from agent.coding_context import coding_compact_skill_categories, resolve_runtime_mode
-cats = coding_compact_skill_categories(platform='telegram', cwd=str(Path.home()),
-                                      config={'agent': {'coding_context': 'lean'}})
-rm = resolve_runtime_mode(platform='telegram', cwd=str(Path.home()),
-                          config={'agent': {'coding_context': 'lean'}})
+cfg = {'agent': {'coding_context': 'lean'}}
+cats = coding_compact_skill_categories(platform='telegram', cwd=str(Path.home()), config=cfg)
+rm = resolve_runtime_mode(platform='telegram', cwd=str(Path.home()), config=cfg)
 assert len(cats) > 10, f'expected >10 demoted categories, got {len(cats)}'
 assert 'ads' in cats, 'ads should be demoted'
-assert rm.profile.toolset is None or not rm.is_coding, 'lean must NOT collapse toolset'
-print(f'lean: {len(cats)} categories demoted, toolset intact')
+assert rm.profile.toolset is None or not rm.is_coding, 'lean must NOT collapse the toolset'
+print('lean:', len(cats), 'categories demoted, toolset intact')
 """
-    r = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True)
-    assert r.returncode == 0, f"runtime check failed: {r.stderr[-500:]}"
+    env = dict(os.environ, HC_REPO=str(_REPO))
+    r = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, env=env)
+    assert r.returncode == 0, f"runtime check failed: {r.stderr[-800:]}"
     assert "demoted" in r.stdout
+
+
+def test_agent_tree_not_patched():
+    """The retired core patch must NOT be present in the agent checkout."""
+    src = Path(os.path.expanduser("~/.hermes/hermes-agent/agent/coding_context.py"))
+    if not src.exists():
+        return  # no git-installed checkout on this host
+    content = src.read_text(encoding="utf-8", errors="replace")
+    assert "Local lean-index extension" not in content, "core lean patch must be gone from the agent tree"
 
 
 if __name__ == "__main__":
