@@ -88,13 +88,13 @@ class PgConnection:
             os.chmod(f.name, 0o600)
             return (
                 ["psql", "-h", "localhost", "-p", str(self._port), "-U", role,
-                 "-d", self._db_name, "-v", "ON_ERROR_STOP=1", "-t", "-A"],
+                 "-d", self._db_name, "-w", "-v", "ON_ERROR_STOP=1", "-t", "-A"],
                 {"PGPASSFILE": f.name},
             )
         return (
             ["sg", "docker", "-c",
              f"docker exec -i {self._container} psql -U {role} -d {self._db_name} "
-             f"-v ON_ERROR_STOP=1 -t -A"],
+             f"-w -v ON_ERROR_STOP=1 -t -A"],
             {},
         )
 

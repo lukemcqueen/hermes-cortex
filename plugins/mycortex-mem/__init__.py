@@ -73,11 +73,11 @@ class _PgConnection:
             f.write(pgpass + "\n")
             f.close()
             os.chmod(f.name, 0o600)
-            return ["psql", "-h", "localhost", "-p", str(_DEFAULT_PORT), "-U", role, "-d", self._db_name, "-v", "ON_ERROR_STOP=1", "-t", "-A"], {"PGPASSFILE": f.name}
+            return ["psql", "-h", "localhost", "-p", str(_DEFAULT_PORT), "-U", role, "-d", self._db_name, "-w", "-v", "ON_ERROR_STOP=1", "-t", "-A"], {"PGPASSFILE": f.name}
         else:
             return [
                 "sg", "docker", "-c",
-                f"docker exec -i {_DEFAULT_CONTAINER} psql -U {role} -d {self._db_name} -v ON_ERROR_STOP=1 -t -A"
+                f"docker exec -i {_DEFAULT_CONTAINER} psql -U {role} -d {self._db_name} -w -v ON_ERROR_STOP=1 -t -A"
             ], {}
 
     def run_sql(self, sql: str, role: str = "mycortex_mem_writer", timeout: int = 10) -> str:
