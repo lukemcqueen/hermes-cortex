@@ -213,17 +213,42 @@ say("=" * 72)
 say(f"RESULT: {'ALL PASS' if not FAILS else 'FAILURES: ' + ', '.join(FAILS)}")
 say("=" * 72)
 
+# The reviewer's material is truncated at a character budget, so the assertions
+# and the load-state evidence are emitted FIRST — a transcript whose proof lines
+# sit in the omitted middle cannot be reviewed (ADV-10780-2/-3).
+assertions = [ln for ln in OUT if ln.startswith(("PASS  ", "FAIL  "))]
+evidence = [ln.strip() for ln in OUT
+            if any(k in ln for k in ("deploy mtime", " 364", "repo_slug=", "Skill drift"))
+            or ln.strip().startswith("Verdict:")]
+
 ARTIFACT.parent.mkdir(parents=True, exist_ok=True)
-note = (
-    "absolute-path (repo_path) change — LIVE verification artifact\n"
-    + "=" * 72 + "\n"
-    f"generated      : {datetime.now(timezone.utc).isoformat(timespec='seconds')}\n"
-    f"revision       : {_git('rev-parse', '--short', 'HEAD')}  (branch {_git('rev-parse', '--abbrev-ref', 'HEAD')})\n"
-    f"origin/main    : {_git('rev-parse', '--short', 'origin/main')}\n"
-    f"generator      : tests/run_abs_path_live_verification.py\n\n"
-    "Re-run with:  python3 tests/run_abs_path_live_verification.py\n\n"
-    + _scrub("\n".join(OUT)) + "\n"
-)
+head = [
+    "absolute-path (repo_path) change — LIVE verification artifact",
+    "=" * 72,
+    f"generated      : {datetime.now(timezone.utc).isoformat(timespec='seconds')}",
+    f"revision       : {_git('rev-parse', '--short', 'HEAD')}  (branch {_git('rev-parse', '--abbrev-ref', 'HEAD')})",
+    f"origin/main    : {_git('rev-parse', '--short', 'origin/main')}",
+    "generator      : tests/run_abs_path_live_verification.py",
+    "",
+    "Re-run with:  python3 tests/run_abs_path_live_verification.py",
+    "",
+    "=" * 72,
+    f"RESULT: {'ALL PASS' if not FAILS else 'FAILURES: ' + ', '.join(FAILS)}"
+    f"  ({len(assertions) - len(FAILS)}/{len(assertions)} assertions PASS, exit {1 if FAILS else 0})",
+    "=" * 72,
+    "",
+    "ASSERTIONS (every claim in the delivery note maps to one of these)",
+    "-" * 72,
+    *assertions,
+    "",
+    "EVIDENCE — is the deployed code LOADED? (process start vs deploy mtime)",
+    "-" * 72,
+    *evidence,
+    "",
+    "FULL TRANSCRIPT",
+    "=" * 72,
+]
+note = _scrub("\n".join(head) + "\n" + "\n".join(OUT) + "\n")
 ARTIFACT.write_text(note)
 print(f"\nArtifact written: {ARTIFACT}")
 sys.exit(1 if FAILS else 0)
