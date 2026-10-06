@@ -31,11 +31,12 @@ no `brain-*` branches, no `legacy-brain/` directory, and no `private-data/`.
 ## The register() map
 
 `ops/scripts/cortex-update.sh` holds the deployment as data: a list of
-`register "<repo path>" "<deployed path>"` calls — **335** of them at the time of
-writing.
+`register "<repo path>" "<deployed path>"` calls — **328** of them (2026-10-06;
+`tests/test_repo_resource_paths.py` computes all three numbers below, so change
+the doc in the same commit as any `register()` edit).
 
-**The deployed path cannot be derived from the repo path.** Only 108 of the 335
-follow the obvious "strip the leading `ops/`" rule. **227 follow no rule at all**,
+**The deployed path cannot be derived from the repo path.** Only 107 of the 328
+follow the obvious "strip the leading `ops/`" rule. **221 follow no rule at all**,
 and every one of those also drops a subdirectory:
 
 | repo | deployed |
