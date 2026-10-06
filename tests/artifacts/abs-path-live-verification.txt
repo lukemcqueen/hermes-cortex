@@ -1,8 +1,8 @@
 absolute-path (repo_path) change — LIVE verification artifact
 ========================================================================
-generated      : 2026-10-06T15:21:27+00:00
-revision       : c99a3f3a  (branch main)
-origin/main    : c99a3f3a
+generated      : 2026-10-06T15:25:23+00:00
+revision       : 120829f2  (branch main)
+origin/main    : 120829f2
 generator      : tests/run_abs_path_live_verification.py
 
 Re-run with:  python3 tests/run_abs_path_live_verification.py
@@ -41,17 +41,17 @@ PASS  _secondary_lock_path puts the marker inside the nested repo
 ========================================================================
 3. DEPLOYED == REPO SOURCE
 ========================================================================
-deployed loop-gov-mcp.py: md5=fc43262fa9f082f6091bd21f1d3a1c8f  (192870 bytes, mtime=2026-10-07T00:17:29)
+deployed loop-gov-mcp.py: md5=fc43262fa9f082f6091bd21f1d3a1c8f  (192870 bytes, mtime=2026-10-07T00:22:46)
 repo     loop-gov-mcp.py: md5=fc43262fa9f082f6091bd21f1d3a1c8f  (192723 bytes)
 PASS  deployed matches repo: loop-gov-mcp.py
-deployed governance-enforcer/__init__.py: md5=b2b15994216d03cabb2aad41372cb5b4  (131326 bytes, mtime=2026-10-07T00:17:29)
+deployed governance-enforcer/__init__.py: md5=b2b15994216d03cabb2aad41372cb5b4  (131326 bytes, mtime=2026-10-07T00:22:46)
 repo     governance-enforcer/__init__.py: md5=b2b15994216d03cabb2aad41372cb5b4  (131326 bytes)
 PASS  deployed matches repo: governance-enforcer/__init__.py
 
 ========================================================================
 4. LOADED OR ONLY DEPLOYED — process start vs deploy mtime
 ========================================================================
-deploy mtime (newest of the two deployed files): 2026-10-07T00:17:29
+deploy mtime (newest of the two deployed files): 2026-10-07T00:22:46
   364198 Tue Oct 6 23:18:35 2026 ~/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3 … run
   364506 Tue Oct 6 23:18:43 2026 ~/.hermes/hermes-agent/venv/bin/python3 … ~/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py
 Verdict: a start time BEFORE the deploy mtime means the new code is on disk but
