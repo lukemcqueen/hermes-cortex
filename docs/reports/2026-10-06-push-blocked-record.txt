@@ -12,3 +12,12 @@ $ git log --oneline -3
 ede18959 test(mycortex-mem): commit re-runnable evidence for the psql -w fix (incl. a RED case)
 5be10512 docs: drop per-SHA attribution claim (concurrent sessions make it unverifiable)
 bd0032f1 docs: scope the fleet-notice claim to verifiable states; name all session commits
+
+# Correction: git branch -r reads LOCAL remote-tracking refs, not the network.
+# Authoritative check (contacts the remote):
+$ git ls-remote origin main
+ede18959445c36449cebd5a8d7ed7001661d9fa9	refs/heads/main
+
+# Status: BLOCKED — the supporting commits cannot be pushed while a concurrent
+# same-host session keeps advancing HEAD past the last deploy (deploy-sync gate).
+# Owner: the concurrent esther-agent session sharing this checkout.
