@@ -113,6 +113,11 @@ material it judged (note + diff):
     superseded hunk. Fold a REAL improvement to that file into one more commit (a
     stronger assertion, a persistence check) so the final state is the last hunk the
     material shows — then the finding's premise is gone rather than argued with.
+  - **Collapse UNPUSHED documentation commits before you close.** The artifact's own
+    commit may follow the code commit, but a range of three or more commits is what
+    truncates: fold the docs commit back with `git reset --soft <last-code-commit>` and
+    re-commit once. Do this ONLY for commits you have not pushed — do not rewrite
+    published history on a shared repo, and never force-push to make a range smaller.
   - **Same finding, same superseded hunk, two retries = stop re-writing the note.** It
     means the range is too long for the budget, not that your note lacked evidence.
     Shorten the range (one commit per close where the work allows) instead of
@@ -124,6 +129,15 @@ material it judged (note + diff):
   failure cannot be erased by time. If you already overwrote one, commit the captured
   output as a file with a provenance header stating it is NOT regenerable and why — do
   not silently lose it, and do not re-run to reconstruct it.
+- **Scrub the artifact at the SOURCE, not in the committed copy.** An evidence artifact
+  carries host paths — the interpreter's bin dir, the checkout path, whatever the tests
+  printed — and the leak detector flags `/home/<user>/…` in anything committed to a
+  shared repo. Put the scrub INSIDE the generator (one function replacing the home dir,
+  the checkout path and the python bin dir with placeholders, applied to every emitted
+  line): a hand-sanitised copy is republished the moment anyone re-runs the generator,
+  which is exactly what the artifact invites. The same guard reads a long digit run as a
+  phone number and will refuse a repo write carrying raw PIDs — describe a process by its
+  ROLE ("the reviewer child", "the cron worker's server") rather than its pid.
 - **The committed artifact's SCOPE must equal the claim's scope.** A capture that
   ran ONE test file cannot substantiate "41 tests pass" across two — the reviewer
   checks the arithmetic and the gap is the finding. Regenerate the artifact to
@@ -246,11 +260,35 @@ because the commit itself succeeded locally and the tree looks clean.
   `Unknown tool: <name>` from the running process. That means the daemon predates
   the deploy — not that the tool is missing — so a restart is the whole fix, and
   until then every newly deployed tool (e.g. `rereview_change`) is unavailable even
-  though it is present in the deployed path. Restart from a shell OUTSIDE the
-  session: the in-session guard blocks restarting the gateway by design.
+  though it is present in the deployed path. Restarting the GATEWAY from inside a
+  session is blocked by design, but you rarely need to: kill the SERVER's own child
+  (`ps -eo pid,ppid,args --no-headers | grep '<server>.py'`, then `kill <pid>`) and the
+  gateway respawns it on the next call. Confirm a NEW pid appeared before trusting the
+  reload, and expect the first call after the kill to answer *"lost its stdio subprocess
+  … the operation may have completed"* — that is the restart, not a failure. Re-issue a
+  read-only call (e.g. `check_lock`) to confirm the fresh process serves, then continue.
 - **The CLI is a subprocess with no harness session.** Run from a plain shell it finds
   no session and answers `No active governance lock`. Pass `session_id` explicitly in
   the payload — the documented priority-0 override.
+- **One session's close can wedge the SHARED loop-gov server for every other session.**
+  ONE server process serves every session of its parent, and handlers used to run
+  inline on the event loop, so a single `end_change` blocked the server from answering
+  ANYONE while its adversarial reviewer ran for minutes — peer sessions then hit the
+  300 s MCP client ceiling on *every* call, so a session could not close its own cycle
+  because somebody else's close held the process (2026-10-06: the daemon was found
+  wedged in `poll_schedule_timeout` with the reviewer child still running). Symptoms
+  are exactly "governance is broken": every tool times out at ~300–420 s, `check_lock`
+  lies, and closing your OWN cycle is impossible. Distinguish it from a refused close
+  (findings) and from a lost lock (TTL): if *unrelated* calls also hang, the server is
+  wedged, not your cycle. The fix is `asyncio.to_thread(handler, args)` plus an
+  `RLock` around the shared-state primitives — deployed, but not LIVE until the daemon
+  restarts (see the daemon pitfall above), so a wedge can persist after the fix lands.
+- **A reviewer timeout at or above the client ceiling is a hang, not a wait.** The MCP
+  client gives up at 300 s, so `ADVERSARIAL_REVIEW_TIMEOUT=420` never returns a
+  verdict — the caller observes nothing and the close is neither confirmed nor refused,
+  and the lock stays held. Reviewer budgets must be clamped BELOW the client ceiling
+  (`REVIEWER_TIMEOUT_CEILING = 240`); prefer a short fail-closed refusal over an
+  unobservable hang.
 - **One lock per logical change.** `begin_change`'s description is fixed for the life
   of the cycle and must NEVER be hand-edited (that is fabricated governance state).
   The reviewer diffs the window from the lock's `started_at`, so stacking a second
@@ -307,6 +345,38 @@ because the commit itself succeeded locally and the tree looks clean.
     verdict, an UNREACHABLE reviewer, and a missing reviewer prompt template. If a
     refusal shows no marker, the daemon is running code that predates the marker —
     restart and re-check; do not conclude the refusal was harmless.
+- **A close that hangs may be a WEDGED SERVER, not your cycle.** MCP servers are
+  spawned per PARENT process (one gateway owns one `loop-gov-mcp.py`), so a session
+  blocked inside `end_change`'s reviewer freezes the server for every session that
+  parent serves — including yours, which then cannot close its OWN already-scored
+  cycle. Do not rework the cycle and do not reach for `force=True`: prove the block
+  first (`ps -eo pid,wchan:22,args | grep loop-gov-mcp`; `poll_schedule_timeout`
+  means blocked in a `subprocess.run` on a reviewer child, `do_epoll_wait` means the
+  server is healthy and the cause is elsewhere). Full probe and the off-loop rule:
+  `concurrent-session-isolation` → "A wedged shared MCP server". The governance
+  STATE is already per-session; only the transport is shared.
+- **A cycle that will not close no matter what you change may be reviewing the WRONG
+  REPO.** Both slug resolvers (`loop-gov-mcp.py::_derive_slug`,
+  `governance-enforcer::_derive_repo_slug`) return the canonical governed repo whenever
+  `~/<canonical>/.git` exists, because the gateway cwd is a launch artifact and that
+  preference is what keeps the git hooks and the lock agreeing. The cost lands on every
+  session working in a DIFFERENT repo: its lock is tagged with the canonical slug, and
+  `_adversarial_review_gate` then diffs `HOME / lock["repo_slug"]` — a tree that cannot
+  contain the work. The reviewer returns FINDINGS every time, the close is refused
+  forever, and each `end_change` retry spawns another full review.
+
+  The tell is a finding that says the diff does not show your change while your own
+  `git log` plainly shows it. Check the lock's slug against the repo you are in BEFORE
+  reworking anything:
+
+  ```bash
+  python3 -c "import glob,json;print([json.load(open(p)).get('repo_slug') for p in glob.glob('$HOME/.hermes-cortex/state/.governance-*.json')])"
+  ```
+
+  Also read `git rev-parse --show-toplevel` from your session: if the two disagree, the
+  review is auditing a different tree and no rewrite of the note can fix it. Report it —
+  re-pointing lock identity is a fleet-wide change, not a local workaround.
+
 - **Score before you investigate.** A cycle left PENDING with no live lock is a doctor
   FAIL that blocks every push, so scoring an orphaned cycle is the first move, not the
   last.
