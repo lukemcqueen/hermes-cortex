@@ -570,23 +570,42 @@ def _write_lock(state: dict, args: dict | None = None) -> None:
     # Write secondary marker inside repo for extra safety
     secondary = _secondary_lock_path(state)
     if secondary:
-        secondary.parent.mkdir(parents=True, exist_ok=True)
-        tmp2 = secondary.with_suffix(".tmp")
-        tmp2.write_text(json.dumps(state, indent=2))
-        tmp2.rename(secondary)
+        with _STATE_LOCK:
+            # One fixed path per repo = shared with every session there, so it is
+            # serialized against a peer's _release_lock, which decides by
+            # ownership whether the marker may be removed at all.
+            secondary.parent.mkdir(parents=True, exist_ok=True)
+            tmp2 = secondary.with_suffix(".tmp")
+            tmp2.write_text(json.dumps(state, indent=2))
+            tmp2.rename(secondary)
 
 
 def _release_lock(args: dict | None = None) -> None:
     """Remove this session's lock file and secondary marker."""
     session_id = get_session_id(args)
     path = _session_lock_path(session_id)
-    if path.exists():
+    if not path.exists():
+        return
+    with _STATE_LOCK:
         # Read state before unlinking so we know the repo_slug for cleanup
         try:
             state = json.loads(path.read_text())
             secondary = _secondary_lock_path(state)
             if secondary and secondary.exists():
-                secondary.unlink()
+                # The in-repo marker is ONE FIXED PATH per repo, so it is shared
+                # by every session holding a lock there. Remove it only when it is
+                # OURS: unlinking a peer's marker leaves their still-live lock
+                # invisible to the enforcer's Phase-3 fallback. A marker with no
+                # owner field (legacy) or one that cannot be parsed is usable by
+                # nobody, so it is removed rather than left as a stale,
+                # permissive marker.
+                try:
+                    marker = json.loads(secondary.read_text())
+                except (json.JSONDecodeError, OSError):
+                    marker = {}
+                marker_sid = marker.get("session_id") if isinstance(marker, dict) else None
+                if marker_sid is None or marker_sid == session_id:
+                    secondary.unlink()
         except (json.JSONDecodeError, OSError):
             log.warning("Best-effort operation — expected failure: except (json.JSONDecodeError, OSError)")
             pass
@@ -638,7 +657,21 @@ def _log_force_acquire(
         pass
 
 
+# Guards the lock-state primitives that touch state SHARED by every session of
+# this host: the state-dir purge scan and the fixed-path in-repo marker. Handlers
+# are dispatched on worker threads (see call_tool), so two sessions can now be
+# inside these at once. Re-entrant: _purge_stale_locks calls into the orphan
+# resolver, and begin_change nests a write under its own purge.
+_STATE_LOCK = threading.RLock()
+
+
 def _purge_stale_locks() -> int:
+    """Serialized entry point for the global stale-lock sweep."""
+    with _STATE_LOCK:
+        return _purge_stale_locks_unlocked()
+
+
+def _purge_stale_locks_unlocked() -> int:
     """Proactively remove all stale lock files from ANY session.
 
     Fix GAP #9: scans all .governance-*.json files and removes those
@@ -1352,7 +1385,20 @@ async def call_tool(ctx, params=None) -> CallToolResult:
         }
         handler = handlers.get(name)
         if handler:
-            return handler(args)
+            # OFF the event loop. Handlers block SYNCHRONOUSLY — the adversarial
+            # reviewer alone runs subprocess.run/urllib for minutes — and ONE
+            # server process serves EVERY session of its parent (gateway or cron
+            # worker), because the mcp dispatcher's per-request tasks only
+            # interleave at await points. Dispatched inline, a single end_change
+            # stopped this server answering anyone else (2026-10-06: the
+            # loop-gov daemon was found wedged in poll_schedule_timeout with its
+            # reviewer child running for minutes, while peer sessions hit the
+            # 300s client ceiling on EVERY call — so a session could not close
+            # its own cycle because somebody else's close held the process).
+            # Threading is safe here: _db() opens a connection per call, lock
+            # files are session-scoped and written atomically (tmp + rename),
+            # and the global purge scan is serialized by _STATE_LOCK.
+            return await asyncio.to_thread(handler, args)
         return CallToolResult(content=[TextContent(type="text", text="Unknown tool: " + name)])
     except Exception as e:
         return CallToolResult(content=[TextContent(type="text", text="Error: " + str(e))])
@@ -1650,6 +1696,37 @@ REVIEWER_MODEL_DEFAULT = "deepseek/deepseek-v4-pro"  # distinct from worker
 REVIEW_TEMPLATE_REL = "docs/templates/adversarial-reviewer-prompt.md"
 REVIEW_MARKER = "=== REVIEWED MATERIAL ==="
 DIFF_CHAR_BUDGET = 12000
+
+# The MCP CLIENT gives up before we do. Hermes resolves every tool call against
+# _DEFAULT_TOOL_TIMEOUT = 300s (hermes-agent tools/mcp_tool_common.py), so a
+# reviewer timeout at or above that ceiling is not a timeout at all — it is a
+# hang the caller can never observe, and the close it guards is neither
+# confirmed nor refused. Reviewer budgets are therefore CLAMPED under it.
+REVIEWER_TIMEOUT_CEILING = 240      # seconds; must stay < the 300s client ceiling
+
+
+def _reviewer_timeout(env_name: str, default: int) -> int:
+    """Resolve a reviewer timeout, clamped below the MCP client ceiling.
+
+    An operator override under the ceiling is honoured; one above it is clamped
+    with a warning rather than passed through. Passing it through would convert
+    a fail-closed refusal into an unobservable hang, which is strictly worse
+    than a short refusal: the worker learns nothing and the lock stays held.
+    """
+    raw = _env_value(env_name, str(default)) or str(default)
+    try:
+        requested = int(raw)
+    except (TypeError, ValueError):
+        log.warning("reviewer timeout %s=%r is not an integer — using the %ss ceiling",
+                    env_name, raw, REVIEWER_TIMEOUT_CEILING)
+        return REVIEWER_TIMEOUT_CEILING
+    if requested > REVIEWER_TIMEOUT_CEILING:
+        log.warning(
+            "reviewer timeout %s=%ss exceeds the %ss client ceiling — clamping "
+            "(a longer timeout is an unobservable hang, not a longer wait)",
+            env_name, requested, REVIEWER_TIMEOUT_CEILING)
+        return REVIEWER_TIMEOUT_CEILING
+    return max(1, requested)
 
 
 def _git_capture(repo: Path, *args: str, timeout: int = 15) -> str:
@@ -1957,7 +2034,7 @@ def _call_reviewer_llm(prompt: str) -> str:
             "Content-Type": "application/json",
         },
     )
-    timeout = int(_env_value("ADVERSARIAL_REVIEW_TIMEOUT", "300") or 300)
+    timeout = _reviewer_timeout("ADVERSARIAL_REVIEW_TIMEOUT", 300)
     with urllib.request.urlopen(req, timeout=timeout) as resp:
         data = json.loads(resp.read())
     return data["choices"][0]["message"]["content"]
@@ -1996,7 +2073,7 @@ def _call_reviewer_agent(prompt: str, author: Optional[str] = None) -> str:
         raise RuntimeError(
             f"refusing SELF-REVIEW: the review agent '{agent}' is this change's "
             f"author ('{author}') — an author cannot adversarially review its own work")
-    timeout = int(_env_value("ADVERSARIAL_REVIEW_AGENT_TIMEOUT", "900") or 900)
+    timeout = _reviewer_timeout("ADVERSARIAL_REVIEW_AGENT_TIMEOUT", 900)
     proc = subprocess.run(
         shlex.split(cmd), input=prompt, capture_output=True, text=True, timeout=timeout,
     )
