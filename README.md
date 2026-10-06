@@ -83,6 +83,8 @@ begin_change() → work → cycle_query() → feedback_accept() → end_change()
 
 The **`pre-commit score hook`** auto-scores each commit and runs the **mandatory adversarial verification gate** (A2 default, A4 for security/guard/hook/enforcer files) on every staged script. No `SKIP_SCORE=1` bypass — and no `--no-verify` to ship a hook-rejected change: it is logged and audited (`agent-no-verify-audit` cron). Fix the findings, then commit normally.
 
+**Tiered adversarial reviewer (2026-10-06):** every complex change still gets an independent review before it can close, but the reviewer's *depth* tracks the change's measured complexity. Ordinary light-but-complex changes are reviewed by a fast chat-completions model (`ADVERSARIAL_REVIEW_LIGHT_MODEL`, ~1s) even on hosts whose default backend is a coding agent — fixing the 300s close-gate timeouts the slow agent caused. Heavy changes (enforcement/governance files, or ≥10 files / ≥200 lines) keep the deep reviewer. Enforcement is unchanged: no complex change ships without an independent CLEAN verdict. See [`docs/runbooks/review-triage-jev.md`](docs/runbooks/review-triage-jev.md).
+
 ### 🤖 Auto-Remediation Pipeline
 
 Issues fix themselves. The pipeline runs every 5 minutes:
@@ -385,6 +387,7 @@ offline_knowledge query "symptoms of malaria"
 | `ops/install/quick-start.sh` | Quickstart |
 | `ops/scripts/cortex-update.sh` | Deploy scripts from repo to `~/.hermes/scripts/` — run after every `git pull` |
 | `ops/scripts/manage/cortex-doctor.py` | System diagnostics, fix common issues |
+| `ops/scripts/manage/dogfood-reviewer-tiering.py` | Reviewer-tiering dogfood — runs the real loop-governance module and verifies light/heavy/always-review routing |
 | `ops/scripts/install/install-score-hook.sh` | Install/remove pre-commit scoring hooks on any repo |
 | `ops/scripts/install-crons.sh` | Install/remove all 49 agent cron jobs |
 | `ops/scripts/install/install-orch-crons.sh` | Install/remove the 24 orchestrator-only cron jobs (Moses, Esther) |

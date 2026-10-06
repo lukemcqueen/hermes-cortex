@@ -146,9 +146,34 @@ and a guessed one produces a wiring that exists and does nothing. This is also
 what makes the backend genuinely open — any agent works, including one this repo
 has never heard of.
 
+**Reviewer tiering by measured complexity (2026-10-06).** The close-gate used to
+run the configured backend on EVERY complex change. On a host whose backend is
+`agent`, that meant a coding agent (e.g. pi) spawning for even a small diff —
+~100s for a trivial prompt and often >300s on real material, which blew the MCP
+client's 300s tool-call window and read as a fatal timeout when the review had
+only just started. The gate now tiers reviewer depth on the same `_complexity()`
+measurement it already uses to decide *whether* to review:
+
+- **light-but-complex** — crosses the gate, but NOT an always-review surface and
+  under the heavy bar (`<10` files and `<200` added+removed lines): reviewed by
+  the **fast `llm` model** (`ADVERSARIAL_REVIEW_LIGHT_MODEL`, default
+  `deepseek/deepseek-v4-flash-0731`, ~1s) even when `ADVERSARIAL_REVIEW_BACKEND=agent`.
+- **heavy** — an always-review surface (enforcement/governance paths, incl.
+  `loop-gov-mcp.py` and `cortex-update.sh`) or ≥10 files / ≥200 lines: the deep
+  configured backend runs unchanged.
+
+**Enforcement is unchanged.** Every complex change still needs an independent
+CLEAN verdict before the lock releases; only the reviewer's *depth* is tiered,
+and the light reviewer can still report FINDINGS that block the close. For a
+heavy change the deep reviewer still takes minutes — the tiering accelerates
+ordinary light changes, it does not decouple heavy ones from the MCP call.
+
 Why an agent at all: an agent can open the repo, run the tests and check the
 claims, which a single completion cannot — and the recurring review finding here
-is *"a self-report is not execution evidence"*.
+is *"a self-report is not execution evidence"*. A committed dogfood harness,
+`ops/scripts/manage/dogfood-reviewer-tiering.py`, runs the REAL module and prints
+PASS for the decision matrix and light/heavy/always-review routing; it is wired
+into `tests/test_reviewer_backends.py::test_tiering_dogfood_script`.
 
 Two rules that are not negotiable, both enforced in code:
 
