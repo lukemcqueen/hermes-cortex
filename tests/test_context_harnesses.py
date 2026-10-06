@@ -311,6 +311,41 @@ def test_pi_extension_keeps_routine_output_off_the_prompt_area(tmp_path):
         "stderr leaked nothing to the parent's stderr, so the check is vacuous")
 
 
+def test_pi_extension_traces_routine_output_to_a_bounded_cortex_log(tmp_path):
+    """Routine diagnostics belong in the cortex tree's log dir, not the prompt area.
+
+    Mirrors `mcp-servers/loop-gov-mcp.py`: a bounded file under `~/.hermes-cortex/logs/`
+    (here overridden by CORTEX_CONTEXT_LOG), stderr kept for failures, and a logging
+    failure that can never break the hook.
+    """
+    node = shutil.which("node")
+    if not node:
+        pytest.skip("node not available — cannot execute the extension")
+    log = tmp_path / "pi-context.log"
+
+    ok = _run_pi_guard(node, HARNESS_DIR / "pi", {"CORTEX_CONTEXT_LOG": str(log)})
+    assert ok.returncode == 0, f"{ok.stdout}\n{ok.stderr}"
+    assert log.exists(), "the routine trace wrote no log file"
+    body = log.read_text()
+    assert "CORTEX_RESUME" in body, body
+    assert not _routine_stderr_lines(ok.stderr), (
+        "the trace is still on the prompt area:\n" + ok.stderr)
+
+    # Bounded: with a 1-byte cap every append rotates, so a sibling appears and the
+    # live file never grows past a single line.
+    tiny = tmp_path / "tiny.log"
+    rolled = _run_pi_guard(node, HARNESS_DIR / "pi",
+                           {"CORTEX_CONTEXT_LOG": str(tiny), "CORTEX_CONTEXT_LOG_MAX_BYTES": "1"})
+    assert rolled.returncode == 0, f"{rolled.stdout}\n{rolled.stderr}"
+    assert (tmp_path / "tiny.log.1").exists(), "the log is unbounded — no rotation happened"
+    assert tiny.stat().st_size < 512, "the live log exceeded its cap"
+
+    # Non-fatal: an unusable sink must not break the hook.
+    unusable = _run_pi_guard(node, HARNESS_DIR / "pi", {"CORTEX_CONTEXT_LOG": str(tmp_path)})
+    assert unusable.returncode == 0, (
+        "an unusable log sink broke the extension:\n" + unusable.stdout + unusable.stderr)
+
+
 def test_macos_parity_for_the_context_layers():
     """macOS is a fleet platform, not an afterthought. Two things break there:
 

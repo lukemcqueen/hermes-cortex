@@ -38,7 +38,10 @@
  *
  * ENV: CORTEX_SESSION_HARNESS / _REPO / _BRANCH / _KEY (else derived from git;
  *      the gateway pins _KEY per chat so separate chats never share a
- *      checkpoint), CORTEX_CONTEXT_CLI to override the CLI path.
+ *      checkpoint), CORTEX_CONTEXT_CLI to override the CLI path,
+ *      CORTEX_CONTEXT_LOG + CORTEX_CONTEXT_LOG_MAX_BYTES (routine trace sink,
+ *      bounded, defaults to ~/.hermes-cortex/logs/pi-context.log) and
+ *      CORTEX_CONTEXT_DEBUG=1 to also echo the routine trace to stderr.
  *
  * EVERY call is fail-open — but a failure is REPORTED on stderr (a silent
  * failure reads as "the agent had no memory", which is a different, wrong
@@ -46,6 +49,8 @@
  */
 
 import { execFile } from "node:child_process";
+import fs from "node:fs";
+import path from "node:path";
 import { promisify } from "node:util";
 
 const run = promisify(execFile);
@@ -71,7 +76,7 @@ async function cortex(tool: string, args: Record<string, unknown> = {}): Promise
     });
     return stdout.trim();
   } catch (err) {
-    process.stderr.write(`CORTEX_FAIL ${tool}: ${String(err)}\n`);
+    fail(`CORTEX_FAIL ${tool}: ${String(err)}\n`);
     return "";
   }
 }
@@ -110,14 +115,55 @@ type Restored = {
   } | null;
 };
 
-// Routine diagnostics must NEVER go to stderr: in Pi that stream IS the prompt area,
-// so a stray line scribbles over what the user is typing (the reported pollution).
-// Failures stay LOUD on stderr — a silent memory failure reads as "the agent had no
-// memory", a different and wrong conclusion. Set CORTEX_CONTEXT_DEBUG=1 to put the
-// routine trace back on stderr while diagnosing.
+// ── Diagnostics: a bounded cortex log, NEVER the harness's stderr ───────────
+// In Pi the harness's stderr IS the prompt area, so a stray line scribbles over what
+// the user is typing (the reported TUI pollution). Routine trace therefore goes to the
+// cortex tree's own log dir — the same convention `mcp-servers/loop-gov-mcp.py` uses,
+// with the same two rules: bounded by rotation, and never able to break the tool.
+//
+// Failures stay LOUD on stderr: a silent memory failure reads as "the agent had no
+// memory", which is a different and wrong conclusion. They are recorded in the log too,
+// because stderr is ephemeral. CORTEX_CONTEXT_DEBUG=1 additionally echoes the routine
+// trace to stderr for live debugging.
+const LOG_PATH =
+  process.env.CORTEX_CONTEXT_LOG ??
+  `${process.env.HOME ?? ""}/.hermes-cortex/logs/pi-context.log`;
+const LOG_MAX_BYTES = Number(process.env.CORTEX_CONTEXT_LOG_MAX_BYTES ?? 1_048_576);
 const DEBUG = process.env.CORTEX_CONTEXT_DEBUG === "1";
-const trace = (message: string) => {
+
+/** Append one line, rotating to `<log>.1` at the cap. Non-fatal by design. */
+function appendBounded(message: string) {
+  try {
+    fs.mkdirSync(path.dirname(LOG_PATH), { recursive: true });
+    let size = 0;
+    try {
+      size = fs.statSync(LOG_PATH).size;
+    } catch {
+      size = 0;
+    }
+    if (size >= LOG_MAX_BYTES) {
+      try {
+        fs.renameSync(LOG_PATH, `${LOG_PATH}.1`);
+      } catch {
+        // Keep appending rather than lose this line: rotation is housekeeping.
+      }
+    }
+    fs.appendFileSync(LOG_PATH, message, { mode: 0o600 });
+  } catch {
+    // A logging failure must never change what the extension does.
+  }
+}
+
+/** Routine trace: the log file, plus stderr only when explicitly debugging. */
+const note = (message: string) => {
+  appendBounded(message);
   if (DEBUG) process.stderr.write(message);
+};
+
+/** A genuine failure: reported on stderr AND recorded. */
+const fail = (message: string) => {
+  process.stderr.write(message);
+  appendBounded(message);
 };
 
 export default function (pi: any) {
@@ -125,7 +171,7 @@ export default function (pi: any) {
   pi.on("before_agent_start", async (event: any) => {
     const snap = parse<Restored>(await cortex("session_restore", {}), { restored: null }).restored;
     if (!snap) {
-      trace("CORTEX_RESUME none\n");
+      note("CORTEX_RESUME none\n");
       return;
     }
     const line = (label: string, items?: string[]) =>
@@ -137,7 +183,7 @@ export default function (pi: any) {
       line("Decided", snap.decisions),
       snap.notes ? `Notes: ${snap.notes}` : "",
     ].filter(Boolean);
-    trace(`CORTEX_RESUME ${snap.session_key ?? ""} facts=${parts.length}\n`);
+    note(`CORTEX_RESUME ${snap.session_key ?? ""} facts=${parts.length}\n`);
     if (!parts.length) return; // nothing recorded yet — do not inject an empty block
     return {
       systemPrompt:
@@ -158,7 +204,7 @@ export default function (pi: any) {
 
     if (!done.length && !notes) {
       // Never write a silently-empty checkpoint, and never hide why.
-      trace(
+      note(
         `CORTEX_CHECKPOINT_EMPTY turn=${event?.turnIndex} ` +
         `keys=${Object.keys(event ?? {}).join(",")}\n`);
       return;
@@ -193,8 +239,8 @@ export default function (pi: any) {
       tool_name: toolName,
       content: event?.input ?? {},
     });
-    if (raw) trace(`CORTEX_TOOL_EVENT ${toolName} recorded\n`);
-    else process.stderr.write(`CORTEX_TOOL_EVENT ${toolName} FAILED\n`);
+    if (raw) note(`CORTEX_TOOL_EVENT ${toolName} recorded\n`);
+    else fail(`CORTEX_TOOL_EVENT ${toolName} FAILED\n`);
   });
 
   // ── NO registerTool CALLS HERE, DELIBERATELY ─────────────────────

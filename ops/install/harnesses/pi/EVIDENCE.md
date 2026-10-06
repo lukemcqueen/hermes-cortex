@@ -2,12 +2,12 @@
 
 Regenerate with: `bash ops/install/harnesses/pi/run-evidence.sh`
 
-Generated: 2026-10-06T04:00:13Z  ·  host: esther
+Generated: 2026-10-06T04:20:16Z  ·  host: esther
 
 Artifacts this evidence was produced from (verify with `sha256sum`):
 
 ```
-eaea515b7a44099aec353a172778f6d80eb61c49f005a45ba4e6c65f9703ee2a  ops/install/harnesses/pi/extensions/cortex-context.ts
+f637fdfaf6a2f8c90a97440860f5d7efcd77952d6ca8f8977ce1a793395136ad  ops/install/harnesses/pi/extensions/cortex-context.ts
 c8e54608f3046d3d6c7d6e640ccfb46dee455a4e65cf0917a87b8a8cee89533c  ops/install/harnesses/pi/verify-extension.mjs
 7d6a76a256e148a64c5f14b9cfa13662cc2700afb903274c3fc75e4bd68afb11  ops/install/harnesses/pi/run-evidence.sh
 ```
@@ -31,10 +31,10 @@ schema shape, which is why the bug shipped; this can.
 ## 2. Test suite — the two files this change touches: PASS (exit 0)
 
 ```
-tests/test_context_harnesses.py ...........................              [ 64%]
+tests/test_context_harnesses.py ............................             [ 65%]
 tests/test_gateway_agent_registry.py ...............                     [100%]
 
-============================== 42 passed in 2.76s ==============================
+============================== 43 passed in 3.42s ==============================
 ```
 
 ## 3. PRE-FIX extension (48e85271) — same guard, must fail: FAIL (exit 1)
