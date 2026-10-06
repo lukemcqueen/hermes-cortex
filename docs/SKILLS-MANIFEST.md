@@ -113,7 +113,7 @@ their domain.
 |-------|---------|---------|-----------|
 | `copywriting` | 1.0.0 | When the user wants to write, rewrite, or improve marketing copy for any page — including homepage, landing... | `skill_view(name='copywriting')` |
 
-## Creative (10 skills)
+## Creative (11 skills)
 
 | Skill | Version | Purpose | Load With |
 |-------|---------|---------|-----------|
@@ -125,6 +125,7 @@ their domain.
 | `creative-ideation` | 2.1.0 | Generate ideas via named methods from creative practice. | `skill_view(name='creative-ideation')` |
 | `hyperframes` | 1.0.0 | Render MP4/WebM videos from HTML compositions. | `skill_view(name='hyperframes')` |
 | `kanban-video-orchestrator` | 1.0.0 | Plan and run multi-agent video production pipelines. | `skill_view(name='kanban-video-orchestrator')` |
+| `logo-brand-identity` | 1.0.0 | Use when designing a logo or brand identity mark. | `skill_view(name='logo-brand-identity')` |
 | `meme-generation` | 2.0.0 | Create meme PNGs from templates with Pillow text overlay. | `skill_view(name='meme-generation')` |
 | `pixel-art` | 2.0.0 | Pixel art w/ era palettes (NES, Game Boy, PICO-8). | `skill_view(name='pixel-art')` |
 
@@ -460,7 +461,7 @@ their domain.
 |-------|---------|---------|-----------|
 | `paid-ads` | 1.0.0 | When the user wants help with paid advertising campaigns on Google Ads, Meta (Facebook/Instagram), LinkedIn... | `skill_view(name='paid-ads')` |
 
-## Productivity (9 skills)
+## Productivity (10 skills)
 
 | Skill | Version | Purpose | Load With |
 |-------|---------|---------|-----------|
@@ -468,6 +469,7 @@ their domain.
 | `here.now` | 1.15.3 | Publish sites to {slug}.here.now and store files in Drives. | `skill_view(name='here.now')` |
 | `korean-language-learning` | 1.0.0 | A warm, practical Korean language companion for English speakers aged 50+. Covers Hangul mastery, essential... | `skill_view(name='korean-language-learning')` |
 | `memento-flashcards` | 1.0.0 | Spaced-repetition flashcard system. Create cards from facts or text, chat with flashcards using free-text a... | `skill_view(name='memento-flashcards')` |
+| `office-document-generation` | 1.0.0 | Use when producing .docx/.pdf/.md deliverables and files. | `skill_view(name='office-document-generation')` |
 | `pdf-template-match` | 1.0.0 | Use when matching a PDF to a reference PDF's layout. | `skill_view(name='pdf-template-match')` |
 | `shop-app` | 0.0.28 | Shop.app: product search, order tracking, returns, reorder. | `skill_view(name='shop-app')` |
 | `shopify` | 1.0.0 | Shopify Admin & Storefront GraphQL APIs via curl. Products, orders, customers, inventory, metafields. | `skill_view(name='shopify')` |
@@ -557,7 +559,7 @@ their domain.
 |-------|---------|---------|-----------|
 | `social-media-analyzer` | 1.0.0 | Social media campaign analysis and performance tracking. Calculates engagement rates, ROI, and benchmarks a... | `skill_view(name='social-media-analyzer')` |
 
-## Software Development (65 skills)
+## Software Development (66 skills)
 
 | Skill | Version | Purpose | Load With |
 |-------|---------|---------|-----------|
@@ -579,6 +581,7 @@ their domain.
 | `codebase-design` | 1.0.0 | Deep module vocabulary and design principles — module, interface, depth, seam, adapter, leverage, locality.... | `skill_view(name='codebase-design')` |
 | `codegen-from-schema` | 1.0.0 | Use when building schema codegen with committed artifacts. | `skill_view(name='codegen-from-schema')` |
 | `context-engineering` | 1.0.0 | Context design for agents: pre-fetch, compaction, envelopes. | `skill_view(name='context-engineering')` |
+| `corpus-scrape-and-verify` | 1.0.0 | Use when scraping a paginated source into verified CSVs. | `skill_view(name='corpus-scrape-and-verify')` |
 | `cwr-file-processing` | 1.0.0 | CISAC CWR (Common Works Registration) file processing for music copyright societies. Covers export generati... | `skill_view(name='cwr-file-processing')` |
 | `data-structure-efficiency-review` | 1.0.0 | Find inefficient data structures and hot loops in code. | `skill_view(name='data-structure-efficiency-review')` |
 | `dev-plan` | 2.1.0 | Plan mode: write an actionable markdown plan to .hermes/plans/, no execution. Bite-sized tasks, exact paths... | `skill_view(name='dev-plan')` |

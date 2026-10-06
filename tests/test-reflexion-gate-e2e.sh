@@ -107,6 +107,41 @@ python3 "$CHECKER" --session "probe-e2e-absent-$$" >/dev/null 2>&1
 [[ "$?" == "1" ]] && pass "absent session is refused" || fail "absent session was not refused"
 
 echo ""
+echo "═══ AC5: a PREFIXED skill_view record still satisfies the gate ═══"
+# Regression (2026-10-06): skill_view may be called with the QUALIFIED form
+# `category/name`, which the enforcer records verbatim:
+#   {"name": "software-development/reflexion-check"}
+# The old predicate (plainto_tsquery('simple', 'reflexion-check')) expands a
+# hyphenated name to `'reflexion-check' & 'reflexion' & 'check'` (implicit
+# AND). The 'simple' dictionary lexes the prefixed value as `/reflexion-check`
+# plus path parts — the bare `reflexion`/`check` lexemes do not exist — so the
+# AND failed and the gate refused a skill the session HAD loaded. The gate is
+# fail-closed, so every commit using the qualified form was blocked.
+PREFIX_SID="probe-e2e-prefix-$$"
+python3 - "$ENFORCER" "$PREFIX_SID" <<'PY'
+import importlib.util, sys, time
+spec = importlib.util.spec_from_file_location("enf", sys.argv[1])
+m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+m._record_tool_event(sys.argv[2], "software-development/reflexion-check")
+time.sleep(6)                                          # it records off-thread
+PY
+python3 "$CHECKER" --session "$PREFIX_SID" --skill reflexion-check >/dev/null 2>&1
+[[ "$?" == "0" ]] && pass "prefixed (category/name) record satisfies the gate" \
+                  || fail "prefixed record was NOT matched — the hyphen/prefix bug is back"
+# And it must NOT leak a false positive for a skill that was never loaded.
+python3 "$CHECKER" --session "$PREFIX_SID" --skill shell-scripting >/dev/null 2>&1
+[[ "$?" == "1" ]] && pass "prefixed session still refuses a never-loaded skill" \
+                  || fail "prefixed predicate produced a FALSE POSITIVE"
+python3 - "$STORE" "$PREFIX_SID" <<'PY'
+import importlib.util, sys
+spec = importlib.util.spec_from_file_location("s", sys.argv[1])
+m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+m.Store().pg.run_sql(
+    f"DELETE FROM mycortex_mem.sessions WHERE session_key = '{sys.argv[2]}';",
+    role="mycortex_mem_admin")
+PY
+
+echo ""
 echo "═══ Summary ═══"
 echo "  ${P} passed, ${F} failed"
 if [ "$F" -gt 0 ]; then

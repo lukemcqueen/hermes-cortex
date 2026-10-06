@@ -363,12 +363,35 @@ class SessionStore:
         and a payload naming the skill — so the gate's question is unchanged while
         the dependency is gone."""
         key = session_key or self.session_key(harness, repo, branch)
+        # Match the skill name whether the record stored it BARE
+        # (`{"name": "reflexion-check"}`) or PREFIXED with its category
+        # (`{"name": "software-development/reflexion-check"}` — the
+        # qualified form the agent may pass to skill_view).
+        #
+        # The old predicate used plainto_tsquery('simple', skill), which
+        # expands a hyphenated name to `'a-b' & 'a' & 'b'` (implicit AND).
+        # That can never match a PREFIXED record: the 'simple' dictionary
+        # lexes `software-development/reflexion-check` as `/reflexion-check`
+        # (one token, leading slash) plus the path parts, so the bare
+        # `reflexion`/`check` lexemes are absent and the AND fails. The
+        # gate is fail-closed, so a loaded skill was reported NOT-LOADED and
+        # every commit using the qualified `category/name` form was blocked.
+        #
+        # Two predicates, OR'd, cover both record shapes without guessing
+        # which form the writer used:
+        #   (1) the skill name as ONE tsquery lexeme — matches the bare
+        #       record exactly (no sub-word OR: `file-ownership-boundaries`
+        #       must not pass on an unrelated event that merely says "file");
+        #   (2) raw-content suffix `/%<skill>"` — matches the prefixed form,
+        #       which lexes to `/name` and so is invisible to (1).
+        suffix = f'%/{skill}"%'
         row = self.pg.row(
             "SELECT 1 FROM mycortex_mem.tool_events e "
             "JOIN mycortex_mem.sessions s ON s.id = e.session_id "
             f"WHERE s.session_key = {_lit(key)} AND e.tool_name = 'skill_view' "
-            f"AND e.role = 'tool' AND e.content_text_tsv @@ "
-            f"plainto_tsquery('simple', {_lit(skill)}) LIMIT 1;"
+            f"AND e.role = 'tool' AND (e.content_text_tsv @@ "
+            f"to_tsquery('simple', {_lit(skill)}) OR e.content::text LIKE {_lit(suffix)}) "
+            "LIMIT 1;"
         )
         return row is not None
 
