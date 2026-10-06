@@ -248,6 +248,32 @@ Rules:
 When your own harness reports a failure, suspect the harness first — a false FAIL
 costs the same as a missed bug and sends you editing correct code.
 
+## Deploy ≠ VERIFIED: warnings sourced from another system's record
+
+Some verification checks read the state of a DIFFERENT system than the one you
+just deployed, so re-running the local artifact clears nothing. The check that
+fails will keep failing while the fix looks broken.
+
+- **The Hermes doctor's `Cron status (<job>)` and `Script run evidence` checks read the
+  SCHEDULER's recorded `last_status`/run history**, not the script's exit code. A
+  `bash <script>` from a terminal therefore clears neither. Clear each with a
+  scheduler fire — `cronjob action='run' job_id=<id>` — then re-run the doctor to
+  confirm. The warnings clear independently, so one deploy can need several fires.
+  Non-orchestrators have no `cronjob` tool: request the fire, do not work around it.
+- **Look up the id read-only** when the `cronjob` tool is unavailable (cron
+  sessions): `grep -n -B4 "<job-name>" ~/.hermes/cron/jobs.json`.
+- **A watchdog script that prints nothing and exits 0 is a PASS.** `no_agent`
+  watchdogs use the silent-PASS convention (PASS → empty stdout + exit 0;
+  FAIL → report on stdout + exit 1). Read the script's header comment before
+  calling an empty run a failure — the empty output is the designed signal.
+- **A failure in one check can be a downstream symptom of a failure in another.**
+  A golden-suite gate that reports `doctor_clean: doctor reports N failure(s) —
+  gate blocked` is reporting the DOCTOR's failure, not its own. Fix the doctor,
+  then re-fire the gate; do not debug the gate.
+- **Read the deploy's own commit line, not its file count.** A run on an unchanged
+  HEAD still re-checks every mapped file and can print a large `N file(s) updated`
+  summary; `✓ Updated: <sha> → <sha>` is what actually moved.
+
 ## Coda: a lesson written only into the DEPLOYED skill copy is not landed
 
 The deployed tree (`~/.hermes/skills/…`) and the repo source
