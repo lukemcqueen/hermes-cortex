@@ -9,7 +9,7 @@ aliases:
 metadata:
   hermes:
     tags: [cost, cache, tokens, llm, deepseek, observability, spending]
-    related_skills: [cron-cost-tracking, cron-cost-scheduling]
+    related_skills: [cron-cost-scheduling]
 ---
 
 # LLM Cost Optimization
@@ -113,7 +113,7 @@ compaction/rewrites fire (those bust cache worse than a fresh start).
 - `prompt_tokens` per run is CUMULATIVE across turns — a 26M-token "prompt" is a
   long session re-sending growing context, NOT one 26M-token call (context cap
   makes that impossible).
-- The audit has NO cache split unless the cron-cost-tracking patch was extended —
+- The audit has NO cache split unless the provider's usage report exposes it —
   cache hit/miss is the single most important missing field; add it first.
 - Interactive/subagent spend never lands in usage_audit (job_id only) — the
   biggest wallet share (Titus ~70%) is invisible until session capture exists
@@ -165,7 +165,6 @@ compaction/rewrites fire (those bust cache worse than a fresh start).
   pre-hike pricing table for v4-flash (in 0.14/out 0.28/hit 0.0028 vs local
   schedule, reprice guard is now consistency-based (self-heals stale rows).
   The daily REPORT was always correct (recomputes from usage_audit); only the
-  DB store under-reported. See cron-cost-tracking skill.
   at hardcoded indices ([:3]/[3:]); adding scheduler patches shifts the boundary
   and the new patches get applied to cronjob_tools.py. Update the slice boundary
   when adding patches. Its FAIL message ("marker not found") actually means the
@@ -201,7 +200,7 @@ compaction/rewrites fire (those bust cache worse than a fresh start).
   job carrying a stale pin, set the main model for what crons actually run on,
   and keep the env pair set so manifests cannot re-pin. Re-pinning to a
   different free tier just reinstates the same trap.
-- **Don't build a MAX_COST cap on unmeasured data.** A sane cap set against
+- **Never cap spend on unmeasured data.** A sane cap set against
   today's bloat kills legitimate jobs (a 26M-token run is $0.18 at hit rates).
   Measure first, cap later (per-job p95 + headroom).
 - **cache_write_tokens=0 on every row = capture gap, not 100% hit rate (2026-08-29).**

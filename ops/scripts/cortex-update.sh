@@ -443,7 +443,6 @@ register "ops/scripts/manage/orch-task-board-digest.py"  "${CORTEX_DEPLOY_HOME}/
 register "ops/scripts/manage/apply-repo-efficiency.py"   "${CORTEX_DEPLOY_HOME}/scripts/apply-repo-efficiency.py"
 register "docs/templates/repo-efficiency-block.md"       "${CORTEX_DEPLOY_HOME}/templates/repo-efficiency-block.md"
 register "ops/scripts/manage/wave-orchestrate.py"        "${CORTEX_DEPLOY_HOME}/scripts/wave-orchestrate.py"
-register "ops/scripts/manage/agent-budget-enforcer.py"     "${CORTEX_DEPLOY_HOME}/scripts/agent-budget-enforcer.py"
 register "ops/scripts/manage/escalate-to-human.py"     "${CORTEX_DEPLOY_HOME}/scripts/escalate-to-human.py"
 register "ops/scripts/manage/fleet-stop-switch.py"    "${CORTEX_DEPLOY_HOME}/scripts/fleet-stop-switch.py"
 register "ops/scripts/manage/outerloop.py"               "${CORTEX_DEPLOY_HOME}/scripts/outerloop.py"
@@ -2257,6 +2256,12 @@ remove_cost_tracking() {
   fi
   if [[ -f "$cost_db" ]]; then
     rm -f "$cost_db"; removed=$((removed + 1))
+  fi
+  # The retired skill lives in the deployed tree; a repo deletion does not
+  # remove it (deployed-only skills are preserved, not auto-deleted).
+  local skill_dir="${HOME}/.hermes/skills/devops/cron-cost-tracking"
+  if [[ -d "$skill_dir" ]]; then
+    rm -rf "$skill_dir"; removed=$((removed + 1))
   fi
   local script
   for script in cost_store.py max_cost_guard.py fleet-costs.py fleet-cost-query.py \

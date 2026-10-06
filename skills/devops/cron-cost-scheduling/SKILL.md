@@ -10,7 +10,7 @@ description: "Schedule LLM crons around provider peak/off-peak windows."
 When a provider introduces time-of-use pricing (peak vs off-peak rates) and the
 user asks whether LLM crons should be rescheduled to save money. Covers the
 verification, classification, and decision procedure. Does NOT cover cost
-metering (see `cron-cost-tracking` for the SQLite cost DB) — this is about
+metering (no cost-capture store ships with the fleet) — this is about
 scheduling decisions.
 
 ## When to Use
@@ -67,8 +67,9 @@ rescheduling. Classification table for the DeepSeek case:
 
 ### 5. Quantify before trimming frequency
 
-If `cron-cost-tracking` isn't deployed, deploy it and collect a week of real
-spend rather than trimming on estimates. Cron-run spend is often trivial next
+Measure before trimming frequency: gather a week of real spend rather than
+trimming on estimates (no cost-capture store ships with the fleet — use the
+provider's own usage/billing figures when a decision needs numbers). Cron-run spend is often trivial next
 to interactive-session spend — the recommendation should say so.
 
 ## Pitfalls
@@ -97,4 +98,3 @@ to interactive-session spend — the recommendation should say so.
 ## Related
 
 - `cron-job-management` — naming, install, doctor-sync for any schedule change you do make
-- `cron-cost-tracking` — the SQLite cost DB that quantifies the actual spend

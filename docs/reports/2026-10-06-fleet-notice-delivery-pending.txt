@@ -17,29 +17,29 @@
 📬 1 pending message(s) in inbox_moses:
 
   📩 [13:13:26] esther → FLEET_NOTICE
-     {"topic": "general", "text": "cortex-update no longer writes into ~/.hermes/hermes-agent (commit dc51b3a0). cost-guard + lean-index now ship as USER p...
+     {"topic": "general", "text": "cortex-update no longer writes into ~/.hermes/hermes-agent (commit dc51b3a0). user plugins now ship as USER p...
 
 == inbox_titus ==
 📬 1 pending message(s) in inbox_titus:
 
   📩 [13:13:26] esther → FLEET_NOTICE
-     {"topic": "general", "text": "cortex-update no longer writes into ~/.hermes/hermes-agent (commit dc51b3a0). cost-guard + lean-index now ship as USER p...
+     {"topic": "general", "text": "cortex-update no longer writes into ~/.hermes/hermes-agent (commit dc51b3a0). user plugins now ship as USER p...
 
 == inbox_joseph ==
 📬 1 pending message(s) in inbox_joseph:
 
   📩 [13:13:27] esther → FLEET_NOTICE
-     {"topic": "general", "text": "cortex-update no longer writes into ~/.hermes/hermes-agent (commit dc51b3a0). cost-guard + lean-index now ship as USER p...
+     {"topic": "general", "text": "cortex-update no longer writes into ~/.hermes/hermes-agent (commit dc51b3a0). user plugins now ship as USER p...
 
 == inbox_gisu ==
 📬 1 pending message(s) in inbox_gisu:
 
   📩 [13:13:28] esther → FLEET_NOTICE
-     {"topic": "general", "text": "cortex-update no longer writes into ~/.hermes/hermes-agent (commit dc51b3a0). cost-guard + lean-index now ship as USER p...
+     {"topic": "general", "text": "cortex-update no longer writes into ~/.hermes/hermes-agent (commit dc51b3a0). user plugins now ship as USER p...
 
 == inbox_kustos ==
 📬 1 pending message(s) in inbox_kustos:
 
   📩 [13:13:29] esther → FLEET_NOTICE
-     {"topic": "general", "text": "cortex-update no longer writes into ~/.hermes/hermes-agent (commit dc51b3a0). cost-guard + lean-index now ship as USER p...
+     {"topic": "general", "text": "cortex-update no longer writes into ~/.hermes/hermes-agent (commit dc51b3a0). user plugins now ship as USER p...
 

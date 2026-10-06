@@ -42,7 +42,6 @@ output billed at $0.66/1M; peak hours double the total.
 - **Thinking bills as output** — reasoning tokens are priced at output
   rates, so lean thinking configs matter.
   cost reports must note the baseline shift (O1-S1).
-- The `MAX_COST` preflight guard (ADR-0002) is built on these numbers.
 
 ## References
 

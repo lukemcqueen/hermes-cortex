@@ -84,7 +84,7 @@ repo; this public repo carries only framework docs (PRDs, design, reference).
 | `docs/design/task-workflow.md` | Task workflow design (task model v1/v2) |
 | `docs/design/task-lifecycle-v2.md` | Task lifecycle v2 — statuses, transitions, stale sweep |
 | `docs/design/task-model-v3.md` | **Task model v3** — orchestrator-intelligence / worker-execution, claim/report/verify, compete mode |
-| `docs/adr/README.md` | **ADR convention** — durable fleet decisions (model contract, MAX_COST guard, bus v2 API). Read before re-deriving WHY the system is shaped this way |
+| `docs/adr/README.md` | **ADR convention** — durable fleet decisions (model contract + pricing, bus v2 API). Read before re-deriving WHY the system is shaped this way |
 | `docs/adr/0005-messaging-gateway.md` | **ADR-0005: Unified Messaging Gateway** — one daemon owns all messaging apps; agents bus-only; envelope v1; per-bot ACLs + advisory locks |
 | `docs/design/messaging-gateway.md` | **Messaging gateway design** — party-converged architecture (adapters, routing, envelope, reliability, security, migration, MVP) |
 | `docs/external/README.md` | **External context** — what exists outside the repo: third-party services + where credentials live. Never values. (Env var NAMES live in `docs/env-vars.md`) |

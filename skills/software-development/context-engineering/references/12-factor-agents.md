@@ -34,10 +34,10 @@ Source: https://github.com/humanlayer/12-factor-agents (README + content/factor-
 
 - `ops/scripts/executor_context_builder.py` + `mcp-servers/executor-mcp.py` — **F13 pre-fetch**: `execution_request` builds the context envelope deterministically before dispatch (repo rules AGENTS/CLAUDE, slice plan, task, recent git history, worktree diff; budget-capped ~6000 chars). Coding agents spend zero tool round-trips fetching context. Tests: `tests/test_executor_context_builder.py` (6/6).
 - `software-factory` skill — the 4-gate workflow (Product → Architecture → Program Design → Vertical Slices).
-- `docs/adr/` — durable fleet decisions (0001 model contract + pricing, 0002 MAX_COST guard, 0003 bus v2 API), convention README + TEMPLATE.
+- `docs/adr/` — durable fleet decisions (0001 model contract + pricing, 0003 bus v2 API), convention README + TEMPLATE.
 - `docs/external/` — env var NAME registry (never values) + external services.
 - `pre-commit-score` pass-rate measurement: real, monorepo-aware (discovery to depth 3, per-repo `ops/scripts/test-command.sh` opt-in, errors counted as failures, warn on incomplete measurement, fail-open only with no test infra).
 
 ## Already strong in HC (no action)
 
-F2 (SOUL/AGENTS/skills prompts), F4/F8 (loop-governance, enforcer, adversarial verify, pre-commit gates), F6/F11 (cron + bus ecosystem), F9 (auto-remediation), F10 (60+ focused crons), F5 (task-db), cost tracking.
+F2 (SOUL/AGENTS/skills prompts), F4/F8 (loop-governance, enforcer, adversarial verify, pre-commit gates), F6/F11 (cron + bus ecosystem), F9 (auto-remediation), F10 (60+ focused crons), F5 (task-db).
