@@ -1863,7 +1863,21 @@ NOISE_PATHS = [
 COMPLEXITY_LINE_THRESHOLD = 50      # added + removed lines (non-noise)
 COMPLEXITY_FILE_THRESHOLD = 3       # files touched (non-noise)
 
+# Reviewer tiering (operator 2026-10-06): a change that crosses the complexity
+# gate is still escorted by an independent reviewer, but the DEPTH tracks how
+# risky the change is. A "light-but-complex" change (does NOT touch an
+# always-review path and stays under a heavier bar) is reviewed by the fast
+# chat-completions reviewer, so the close-gate returns in ~1s instead of
+# 100s+ — the pi-agent backend blew the MCP client's 300s tool window and read
+# as a timeout on every real review. A "heavy" change (always-review surface,
+# or a much larger diff) keeps the configured deep backend. Enforcement is
+# unchanged: EVERY complex change still needs an independent CLEAN verdict
+# before the lock releases; only the reviewer's depth is tiered.
+REVIEWER_LIGHT_LINE_THRESHOLD = 200  # added+removed lines that force the deep reviewer
+REVIEWER_LIGHT_FILE_THRESHOLD = 10   # files that force the deep reviewer
+
 REVIEWER_MODEL_DEFAULT = "deepseek/deepseek-v4-pro"  # distinct from worker
+REVIEWER_LIGHT_MODEL_DEFAULT = "deepseek/deepseek-v4-flash-0731"  # fast, verified 200
 REVIEW_TEMPLATE_REL = "docs/templates/adversarial-reviewer-prompt.md"
 REVIEW_MARKER = "=== REVIEWED MATERIAL ==="
 DIFF_CHAR_BUDGET = 12000
@@ -2286,21 +2300,82 @@ def _reviewer_backend() -> str:
     return (_env_value("ADVERSARIAL_REVIEW_BACKEND", "llm") or "llm").strip().lower()
 
 
-def _reviewer_label() -> str:
+def _reviewer_label(cx: Optional[dict] = None) -> str:
     """What to RECORD as the reviewer: the model for the llm backend, the agent
     name for the agent backend. A stored review whose reviewer is ambiguous
-    cannot be re-derived from the record."""
+    cannot be re-derived from the record. When a light-but-complex change was
+    routed to the fast chat-completions model (cx passed and tier light on an
+    `agent`-backend host), record THAT model so the stored row is truthful.
+    """
     if _reviewer_backend() == "agent":
+        if cx is not None and _tier(cx) == "light":
+            return _light_reviewer_model()
         return "agent:" + (_env_value("ADVERSARIAL_REVIEW_AGENT_NAME") or "unnamed").strip()
     return _env_value("ADVERSARIAL_REVIEWER_MODEL", REVIEWER_MODEL_DEFAULT)
 
 
-def _call_reviewer_llm(prompt: str) -> str:
+def _light_reviewer_model() -> str:
+    """Model used for the 'light-but-complex' review tier. Overridable via
+    ADVERSARIAL_REVIEW_LIGHT_MODEL; defaults to a fast chat-completions model
+    so the close-gate returns in ~1s instead of the pi-agent's 100s+."""
+    return _env_value("ADVERSARIAL_REVIEW_LIGHT_MODEL", REVIEWER_LIGHT_MODEL_DEFAULT)
+
+
+def _tier(cx: dict) -> str:
+    """Reviewer tier for a measured change: ``heavy`` or ``light``.
+
+    A change that already crossed the complexity gate is reviewed by an
+    independent reviewer either way; this decides only DEPTH. Heavy = an
+    always-review surface (enforcement/governance code) or a diff far above the
+    gate threshold (>= REVIEWER_LIGHT_FILE_THRESHOLD files or >=
+    REVIEWER_LIGHT_LINE_THRESHOLD added+removed lines) — those keep the deep
+    configured backend. Every other complex change is ``light`` and gets the
+    fast chat-completions reviewer. Enforcement is unchanged: the light
+    reviewer is independent and CAN report FINDINGS that block the close.
+    """
+    if cx.get("always_review"):
+        return "heavy"
+    if cx.get("files", 0) >= REVIEWER_LIGHT_FILE_THRESHOLD:
+        return "heavy"
+    if cx.get("lines", 0) >= REVIEWER_LIGHT_LINE_THRESHOLD:
+        return "heavy"
+    return "light"
+
+
+def _call_reviewer(prompt: str, author: Optional[str] = None,
+                   cx: Optional[dict] = None) -> str:
+    """Dispatch to the configured reviewer backend. Return its text (raises on error).
+
+    The backend is pluggable; the CONTRACT is not: given the review prompt, return
+    text containing the findings JSON. Every backend must stay fail-closed —
+    raising here refuses the close, it never passes it — so a misconfigured or
+    unreachable reviewer can only make closing harder, never easier.
+
+    When ``cx`` is supplied and the tier is ``light``, a light-but-complex change
+    is reviewed by the FAST chat-completions model even when the configured
+    backend is the slow ``agent`` — that is the fix for the 300s MCP timeouts.
+    A heavy change (or a light change on a host whose backend is already `llm`)
+    uses the configured backend unchanged.
+    """
+    backend = _reviewer_backend()
+    if cx is not None and _tier(cx) == "light" and backend == "agent":
+        return _call_reviewer_llm(prompt, model=_light_reviewer_model())
+    if backend == "agent":
+        return _call_reviewer_agent(prompt, author=author)
+    if backend == "llm":
+        return _call_reviewer_llm(prompt)
+    raise RuntimeError(
+        f"unknown ADVERSARIAL_REVIEW_BACKEND {backend!r} (expected llm|agent) — "
+        "refusing to guess a reviewer")
+
+
+def _call_reviewer_llm(prompt: str, *, model: Optional[str] = None) -> str:
     """Review via a chat-completions model. Provider-agnostic: the default is
     OpenRouter, but ADVERSARIAL_REVIEW_BASE_URL lets a local or self-hosted
     endpoint do the reviewing, and ADVERSARIAL_REVIEW_API_KEY_ENV names the
-    credential to read (never the value)."""
-    model = _env_value("ADVERSARIAL_REVIEWER_MODEL", REVIEWER_MODEL_DEFAULT)
+    credential to read (never the value). ``model`` overrides the configured
+    model (used for the light-but-complex tier)."""
+    model = model or _env_value("ADVERSARIAL_REVIEWER_MODEL", REVIEWER_MODEL_DEFAULT)
     base = (_env_value("ADVERSARIAL_REVIEW_BASE_URL") or "https://openrouter.ai/api/v1").rstrip("/")
     key_env = _env_value("ADVERSARIAL_REVIEW_API_KEY_ENV")
     # An EXPLICITLY named credential is honoured strictly: _reviewer_api_key
@@ -2371,24 +2446,6 @@ def _call_reviewer_agent(prompt: str, author: Optional[str] = None) -> str:
     if not out:
         raise RuntimeError("review agent produced no output — refusing to treat silence as CLEAN")
     return out
-
-
-def _call_reviewer(prompt: str, author: Optional[str] = None) -> str:
-    """Dispatch to the configured reviewer backend. Return its text (raises on error).
-
-    The backend is pluggable; the CONTRACT is not: given the review prompt, return
-    text containing the findings JSON. Every backend must stay fail-closed —
-    raising here refuses the close, it never passes it — so a misconfigured or
-    unreachable reviewer can only make closing harder, never easier.
-    """
-    backend = _reviewer_backend()
-    if backend == "agent":
-        return _call_reviewer_agent(prompt, author=author)
-    if backend == "llm":
-        return _call_reviewer_llm(prompt)
-    raise RuntimeError(
-        f"unknown ADVERSARIAL_REVIEW_BACKEND {backend!r} (expected llm|agent) — "
-        "refusing to guess a reviewer")
 
 
 def _extract_verdict(text: str):
@@ -3161,7 +3218,7 @@ def _adversarial_review_gate(lock: dict, cycle: dict,
             ))])
 
     try:
-        reviewer_text = _call_reviewer(prompt, author=_author)
+        reviewer_text = _call_reviewer(prompt, author=_author, cx=cx)
     except Exception as e:
         log.error("self-adversarial review: reviewer call failed: %s", e)
         # A refusal is a refusal: the reviewer being unreachable leaves the lock
@@ -3212,7 +3269,7 @@ def _adversarial_review_gate(lock: dict, cycle: dict,
     # (the IntegrityError path below is a no-op), which left a FINDINGS verdict frozen
     # forever — the exact gap rereview_change exists to close.
     _record_review(cycle.get("id"), reviewer_id,
-                   _reviewer_label(),
+                   _reviewer_label(cx),
                    verdict, findings_json, (reviewer_text[:2000] + _ref_note),
                    replace=True, fingerprint=fingerprint)
 

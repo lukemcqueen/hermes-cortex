@@ -193,12 +193,92 @@ def test_env_resolution():
                 os.environ[k] = v
 
 
+def test_tiering():
+    """The complexity gate is tiered: light-but-complex changes get the FAST
+    chat-completions reviewer even on an `agent`-backend host; heavy changes
+    (always-review surface or a diff far above the gate) keep the deep backend.
+    Every branch still goes through a reviewer — enforcement is unchanged."""
+    import unittest.mock as mock
+    mcp = _load()
+    saved = {k: os.environ.get(k) for k in (
+        "ADVERSARIAL_REVIEW_BACKEND", "ADVERSARIAL_REVIEW_AGENT_CMD",
+        "ADVERSARIAL_REVIEW_AGENT_NAME", "ADVERSARIAL_REVIEW_API_KEY_ENV",
+        "ADVERSARIAL_REVIEW_LIGHT_MODEL", "ADVERSARIAL_REVIEWER_MODEL")}
+    try:
+        for k in saved:
+            os.environ.pop(k, None)
+
+        # _tier() decision matrix — reuse the measured _complexity() shape.
+        _check("plain complex change is light",
+               mcp._tier({"lines": 60, "files": 2, "always_review": False}) == "light")
+        _check("always-review surface is heavy",
+               mcp._tier({"lines": 1, "files": 1, "always_review": True}) == "heavy")
+        _check(">=10 files is heavy",
+               mcp._tier({"lines": 0, "files": 10, "always_review": False}) == "heavy")
+        _check(">=200 lines is heavy",
+               mcp._tier({"lines": 200, "files": 1, "always_review": False}) == "heavy")
+        _check("below heavy bars stays light",
+               mcp._tier({"lines": 199, "files": 9, "always_review": False}) == "light")
+
+        # ROUTING on an agent-backend host: light -> fast llm reviewer; heavy ->
+        # the configured agent. Assert via mock so no network/credential is needed.
+        os.environ["ADVERSARIAL_REVIEW_BACKEND"] = "agent"
+        os.environ["ADVERSARIAL_REVIEW_LIGHT_MODEL"] = "light/fast-model"
+        os.environ["ADVERSARIAL_REVIEW_AGENT_NAME"] = "pi"
+
+        # LIGHT: the llm backend is invoked with the FAST model; the agent never runs.
+        calls = {}
+        def fake_llm(prompt, *, model=None):
+            calls["light_model"] = model
+            return "{\"verdict\":\"CLEAN\",\"findings\":[]}"
+        def fake_agent(prompt, author=None):
+            calls["agent_ran"] = True
+            return "{\"verdict\":\"CLEAN\",\"findings\":[]}"
+        with mock.patch.object(mcp, "_call_reviewer_llm", side_effect=fake_llm), \
+             mock.patch.object(mcp, "_call_reviewer_agent", side_effect=fake_agent):
+            mcp._call_reviewer("M", author="esther@x",
+                               cx={"lines": 60, "files": 2, "always_review": False})
+            _check("light change routes to the FAST llm reviewer on an agent host",
+                   calls.get("light_model") == "light/fast-model"
+                   and "agent_ran" not in calls, str(calls))
+            _check("light reviewer is recorded as the fast model",
+                   mcp._reviewer_label(cx={"lines": 60, "files": 2, "always_review": False}) == "light/fast-model",
+                   mcp._reviewer_label({"lines": 60, "files": 2, "always_review": False}))
+
+            # HEAVY: the agent backend is still used.
+            calls.clear()
+            mcp._call_reviewer("M", author="esther@x",
+                               cx={"lines": 220, "files": 1, "always_review": False})
+            _check("heavy change still routes to the agent backend",
+                   calls.get("agent_ran") is True and "light_model" not in calls, str(calls))
+            _check("heavy reviewer label records the agent",
+                   mcp._reviewer_label(cx={"lines": 220, "files": 1, "always_review": False}) == "agent:pi",
+                   mcp._reviewer_label({"lines": 220, "files": 1, "always_review": False}))
+
+            # cx=None (caller did not measure): agent backend used as configured.
+            calls.clear()
+            mcp._call_reviewer("M", author="esther@x")
+            _check("no cx: configured agent backend used unchanged",
+                   calls.get("agent_ran") is True, str(calls))
+            _check("no cx: reviewer label is the agent, not a guest light model",
+                   mcp._reviewer_label() == "agent:pi", mcp._reviewer_label())
+    finally:
+        for k, v in saved.items():
+            if v is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
+
+
 if __name__ == "__main__":
     print("Reviewer backends — pluggable transport, fixed fail-closed contract")
     test_backends()
     print()
     print("Config resolution — decoupled from Hermes")
     test_env_resolution()
+    print()
+    print("Reviewer tiering — depth by measured complexity, enforcement unchanged")
+    test_tiering()
     print()
     if _FAIL:
         print(f"{len(_FAIL)} FAILED: {', '.join(_FAIL)}")
