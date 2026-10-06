@@ -59,7 +59,7 @@ pi   # tools come from ~/.pi/agent/mcp.json (install-pi-mcp.sh)
 1. pi mcp list shows cortex-context with the memory/session tools.
 2. In a Pi session call mem_context — the peer card must come back.
 3. Let a turn end with a decision, then: cortex-context session_restore "{}" | grep <marker>
-4. Start a second session; the checkpoint must appear unasked (Pi logs CORTEX_RESUME).
+4. Start a second session; the checkpoint must appear unasked (`CORTEX_RESUME` in `~/.hermes-cortex/logs/pi-context.log`).
 
 ## Session identity
 
@@ -76,6 +76,9 @@ Overrides (usually unnecessary, needed on macOS):
 ```bash
 export CORTEX_CONTEXT_CLI=<path>   # see the failure modes in the runbook
 export CORTEX_CONTEXT_PYTHON=<path>   # see the failure modes in the runbook
+export CORTEX_CONTEXT_LOG=<path>   # default: ~/.hermes-cortex/logs/pi-context.log
+export CORTEX_CONTEXT_LOG_MAX_BYTES=<bytes>   # default: 1 MiB; rotates to <log>.1
+export CORTEX_CONTEXT_DEBUG=1   # echo routine markers to stderr while diagnosing
 ```
 
 ## Shared pieces (identical for every harness — never fork them)

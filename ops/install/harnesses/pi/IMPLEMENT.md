@@ -106,24 +106,35 @@ debug the harness while the store is down.
    ```bash
    cortex-context session_restore '{}' | grep proof-
    ```
-   Missing ⇒ your hook is not firing. Check stderr for `CORTEX_*` lines.
+   Missing ⇒ your hook is not firing. The extension's routine markers go to the
+   cortex log (`~/.hermes-cortex/logs/pi-context.log`), not the visible stream — see §4.
 
 **d. Session-start injection:** start a SECOND session. The checkpoint must appear
-without being asked, and Pi logs `CORTEX_RESUME <key> facts=N` on stderr.
+without being asked, and `CORTEX_RESUME <key> facts=N` is appended to
+`~/.hermes-cortex/logs/pi-context.log` (set `CORTEX_CONTEXT_DEBUG=1` to also see it on
+stderr).
 
 **e. Fail-open:** stop the store, call a tool, confirm Pi continues with
 `memory unavailable …` and does not error out. Restart the store.
 
 ---
 
-## 4. Read stderr — it is the difference between "no memory" and "broken"
+## 4. Read the log — it is the difference between "no memory" and "broken"
 
-| Marker | Meaning |
-|---|---|
-| `CORTEX_RESUME <key> facts=N` | hook fired. **`facts=0` means the checkpoint was EMPTY** — content was not captured, not "nothing happened". |
-| `CORTEX_RESUME none` | no checkpoint found for this identity — check `CORTEX_SESSION_*` before assuming the store is empty. |
-| `CORTEX_CHECKPOINT_EMPTY turn=… keys=…` | the turn carried nothing recognisable. The `keys=` list is the event's real shape. |
-| `CORTEX_FAIL <tool>: …` | the CLI failed to run — usually a python path or CLI path problem. |
+Routine markers go to `~/.hermes-cortex/logs/pi-context.log` (rotates to
+`pi-context.log.1` at `CORTEX_CONTEXT_LOG_MAX_BYTES`, default 1 MiB). **Only failures
+are printed on stderr** — in Pi stderr *is* the prompt area, so a routine line there
+scribbles over what the user is typing. `CORTEX_CONTEXT_DEBUG=1` echoes the routine
+markers to stderr too, for when you are diagnosing live.
+
+| Marker | Where | Meaning |
+|---|---|---|
+| `CORTEX_RESUME <key> facts=N` | log | hook fired. **`facts=0` means the checkpoint was EMPTY** — content was not captured, not "nothing happened". |
+| `CORTEX_RESUME none` | log | no checkpoint found for this identity — check `CORTEX_SESSION_*` before assuming the store is empty. |
+| `CORTEX_CHECKPOINT_EMPTY turn=… keys=…` | log | the turn carried nothing recognisable. The `keys=` list is the event's real shape. |
+| `CORTEX_TOOL_EVENT <name> recorded` | log | the tool call was attributed to the session. |
+| `CORTEX_FAIL <tool>: …` | **stderr** | the CLI failed to run — usually a python path or CLI path problem. |
+| `CORTEX_TOOL_EVENT <name> FAILED` | **stderr** | attribution failed for that call. |
 
 **Never let these be silent.** An empty checkpoint that *looks* like continuity is
 worse than no checkpoint.
