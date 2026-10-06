@@ -119,6 +119,13 @@ is interim only.
 **Ready-made tools:** `scripts/otel-version-skew-probe.py` runs the whole check on the
 current interpreter (portions, both versions, `TraceFlags` members; exit 1 = skew) and
 prints the align command — run it with the venv/interpreter that serves the MCP client.
+This class is no longer doc-only: `agent-mcp-health-watchdog.py` runs the probe every
+5 min under each agent-runtime interpreter (`~/.hermes/hermes-agent/venv`, then
+`~/.hermes/installs/*/environments/*/venv`, bounded to 4) and raises **GOVERNANCE
+OFFLINE — ALL WRITES BLOCKED** after 2 consecutive fails, with the align command, then
+a `✅ otel runtime recovered` notice once the pair agrees again (no probe on the host ⇒
+an "UNVERIFIED" warning, never silence). That is the check the per-server probes above
+cannot give you: they stay green throughout this class.
 The captured diagnosis, repro and three-layer verification for the 2026-10-06 moses
 incident are in `references/otel-skew-incident-2026-10-06.md`.
 

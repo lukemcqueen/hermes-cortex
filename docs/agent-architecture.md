@@ -186,6 +186,29 @@ Quality dimensions: `helpfulness` (1-5), `clarity` (1-5), `depth` (1-5), `overal
 2. **Cost check** — Queries cron-costs.db; alerts if daily cost exceeds `$0.25`
 3. **Trace quality** — Queries Langfuse for traces scored below 4.0 in the last 48h
 
+### Log Locations
+
+Every agent reads its own logs first. **stderr is reserved for failures** — routine
+diagnostics belong in a log file, never on a stream a user is looking at.
+
+| What | Where | Rotation |
+|---|---|---|
+| Fleet ops sink | `~/.hermes-cortex/logs/` | per writer |
+| ↳ governance cycles | `~/.hermes-cortex/logs/loop-governance.log` | 5 MB × 3 |
+| ↳ dashboard | `~/.hermes-cortex/logs/cortex-dashboard.log` | per writer |
+| ↳ harness diagnostics (Pi) | `~/.hermes-cortex/logs/pi-context.log` | 1 MB → `.log.1` |
+| Hermes agent / errors / gateway | `~/.hermes/logs/{agent,errors,gateway}.log` | Hermes-managed |
+| MCP server stderr | `~/.hermes/logs/mcp-stderr.log` | Hermes-managed |
+
+In an **interactive harness stderr *is* the prompt area**, so a routine line scribbles
+over what the user is typing. The Pi `cortex-context` extension therefore writes its
+routine markers (`CORTEX_RESUME`, `CORTEX_CHECKPOINT_EMPTY`, `CORTEX_TOOL_EVENT …
+recorded`) to the cortex log and keeps only failures (`CORTEX_FAIL`, `… FAILED`) on
+stderr. Knobs: `CORTEX_CONTEXT_LOG` (default `~/.hermes-cortex/logs/pi-context.log`),
+`CORTEX_CONTEXT_LOG_MAX_BYTES` (default 1 MiB), `CORTEX_CONTEXT_DEBUG=1` to also echo
+routine lines to stderr while diagnosing. Every write is fail-open: a logging error can
+never change what the hook does.
+
 ---
 
 ## Data Flow

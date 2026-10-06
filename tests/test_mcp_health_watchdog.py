@@ -173,6 +173,14 @@ def load_wd(tmp: Path):
     wd.STATE_FILE = tmp / "state.json"
     wd.MCP_LOG_DIR = tmp / "logs"
     wd.PROBE_TIMEOUT = 3  # fast tests
+    # Point HOME at the fixture tree and give it a healthy probe stub, so the
+    # client-side skew check stays silent (and never probes the real interpreters).
+    wd.HOME = tmp / "home"
+    probe_dir = wd.HOME / "hermes-cortex/skills/devops/mcp-health-monitoring/scripts"
+    probe_dir.mkdir(parents=True, exist_ok=True)
+    probe = probe_dir / "otel-version-skew-probe.py"
+    if not probe.exists():
+        probe.write_text("import sys\nsys.exit(0)\n", encoding="utf-8")
     return wd
 
 
@@ -365,6 +373,68 @@ def main() -> int:
         with contextlib.redirect_stdout(buf):
             wd.main()  # healthy again
         check("R outage->recovery emits RECOVERED notice", "MCP server recovered" in buf.getvalue(), buf.getvalue())
+
+        # --- S: client-side otel skew — every server HEALTHY, runtime broken ---
+        # The class the server probes cannot see: tools/call still fails on every call.
+        skew_home = tmp / "skew-home"
+        skew_probe = skew_home / "hermes-cortex/skills/devops/mcp-health-monitoring/scripts/otel-version-skew-probe.py"
+        skew_probe.parent.mkdir(parents=True, exist_ok=True)
+        skew_python = skew_home / ".hermes/hermes-agent/venv/bin/python3"
+        skew_python.parent.mkdir(parents=True, exist_ok=True)
+        # The interpreter's verdict is flag-driven so the recovery path is testable.
+        skew_state = skew_python.parent / "skew-state"
+        skew_state.write_text("1\n", encoding="utf-8")
+        skew_python.write_text(
+            '#!/bin/sh\nexit $(cat "$(dirname "$0")/skew-state")\n', encoding="utf-8"
+        )
+        skew_python.chmod(0o755)
+        skew_probe.write_text(
+            "print('SKEW: span creation failed on the resolved api/sdk pair')\nimport sys\nsys.exit(1)\n",
+            encoding="utf-8",
+        )
+        healthy_config = f"""  fakebin:
+    command: {fx['fakebin']}
+    args:
+      - mcp-server
+    enabled: true
+"""
+        wd = load_wd(tmp)
+        wd.HOME = skew_home
+        write_config(tmp, healthy_config)
+        fresh_state(tmp)
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            wd.main()
+            wd.main()  # 2 strikes -> alert
+        check(
+            "S client-side otel skew alerts with every server healthy",
+            "SERVERS are healthy" in buf.getvalue() and "OpenTelemetry" in buf.getvalue(),
+            buf.getvalue(),
+        )
+
+        skew_state.write_text("0\n", encoding="utf-8")
+        with contextlib.redirect_stdout(buf):
+            wd.main()  # the interpreter agrees again
+        check(
+            "S2 skew recovery emits a recovered notice",
+            "otel runtime recovered" in buf.getvalue(),
+            buf.getvalue(),
+        )
+
+        # --- S3: no probe on the host -> say UNVERIFIED rather than stay silent ---
+        wd3 = load_wd(tmp)
+        wd3.HOME = tmp / "no-probe-home"
+        (tmp / "no-probe-home").mkdir(exist_ok=True)
+        write_config(tmp, healthy_config)
+        fresh_state(tmp)
+        buf3 = io.StringIO()
+        with contextlib.redirect_stdout(buf3):
+            wd3.main()
+        check(
+            "S3 missing skew probe reports UNVERIFIED",
+            "skew probe unavailable" in buf3.getvalue(),
+            buf3.getvalue(),
+        )
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 

@@ -24,6 +24,13 @@ again. A fresh import-crash signature in mcp-stderr.log fires immediately
 
 Probes are read-only and need no governance lock: the watchdog runs fine even
 while every agent session is deadlocked, which is exactly when it matters.
+
+It also runs the skill's client-side OpenTelemetry skew probe
+(`skills/devops/mcp-health-monitoring/scripts/otel-version-skew-probe.py`) under each
+agent-runtime interpreter. The per-server probes above CANNOT see that class: an older
+`opentelemetry-api` (mcp's floor) merged with a newer `opentelemetry-sdk` (plugin
+extras) makes every span raise, so every MCP tools/call fails while every server tests
+healthy — moses lost its governance tooling that way for 19h with this watchdog green.
 """
 
 from __future__ import annotations
@@ -93,6 +100,66 @@ async def _run():
     print(json.dumps([getattr(t, "name", str(t)) for t in tools]))
 asyncio.run(_run())
 """
+
+
+# ── Client-side OTel skew (2026-10-06) ──────────────────────────────────────
+# The server probes above CANNOT see this class: every server tests healthy while the
+# AGENT runtime is broken. `opentelemetry` is a PEP 420 namespace package, so two
+# site-packages on one sys.path MERGE — an older api (mcp's floor, e.g. 1.39.1) answers
+# for `opentelemetry.trace` while a newer sdk (plugin extras, e.g. langfuse 4.16 needs
+# api>=1.45) supplies `start_span`, which calls `TraceFlags.RANDOM_TRACE_ID`. Every span
+# then raises and EVERY MCP tools/call fails. moses, 2026-10-05: 19h of dead governance
+# tooling, all servers green, watchdog silent.
+SKEW_PROBE_TIMEOUT = 20
+
+# Interpreters an AGENT session runs under (bounded: these are the plausible runtimes,
+# not every venv on the host).
+RUNTIME_PYTHON_GLOBS = (
+    ".hermes/hermes-agent/venv/bin/python3",              # git-install runtime
+    ".hermes/installs/*/environments/*/venv/bin/python3",  # pm-managed runtime env
+)
+SKEW_PROBE_PATHS = (
+    "hermes-cortex/skills/devops/mcp-health-monitoring/scripts/otel-version-skew-probe.py",
+    ".hermes/skills/devops/mcp-health-monitoring/scripts/otel-version-skew-probe.py",
+)
+
+
+def runtime_pythons() -> list[str]:
+    """The interpreters an agent session runs under, deduped and bounded."""
+    found: list[str] = []
+    for pattern in RUNTIME_PYTHON_GLOBS:
+        for path in sorted(HOME.glob(pattern))[:4]:
+            if path.exists() and str(path) not in found:
+                found.append(str(path))
+    return found
+
+
+def find_skew_probe() -> Path | None:
+    """Repo-local copy first, then the deployed skill copy."""
+    for relative in SKEW_PROBE_PATHS:
+        candidate = HOME / relative
+        if candidate.exists():
+            return candidate
+    return None
+
+
+def probe_otel_skew(python: str, probe: Path) -> tuple[bool, str]:
+    """Run the skill's behavioural probe. True = api/sdk agree (or nothing to skew)."""
+    try:
+        result = subprocess.run(
+            [python, str(probe)], capture_output=True, text=True, timeout=SKEW_PROBE_TIMEOUT
+        )
+    except (subprocess.TimeoutExpired, OSError):
+        # A probe we could not run is not evidence of skew; the server probes above
+        # cover interpreter health. Stay silent rather than cry wolf.
+        return True, ""
+    if result.returncode == 1:
+        detail = next(
+            (line for line in result.stdout.splitlines() if line.startswith("SKEW:")),
+            "OpenTelemetry api/sdk disagree on this interpreter",
+        )
+        return False, detail
+    return True, ""
 
 
 def kst_ts(epoch: float) -> str:
@@ -493,6 +560,62 @@ def main() -> int:
             )
     elif not any(s.get("alerted") for s in sstate.values()):
         state["log_alerted"] = False  # everything healthy -> arm the log alarm again
+
+    # ── client-side otel skew (the class the server probes cannot see) ──
+    skew_probe = find_skew_probe()
+    if skew_probe is None:
+        due = (
+            not state.get("skew_probe_missing_alerted")
+            or (now - state.get("skew_probe_missing_last", 0.0)) >= REALERT_COOLDOWN
+        )
+        if due:
+            state["skew_probe_missing_alerted"] = True
+            state["skew_probe_missing_last"] = now
+            messages.append(
+                "⚠️ MCP skew probe unavailable — client-side OpenTelemetry skew is "
+                "UNVERIFIED on this host\n"
+                "  expected at "
+                f"{HOME / SKEW_PROBE_PATHS[0]}\n"
+                "  Recovery: bash ~/hermes-cortex/ops/scripts/cortex-update.sh "
+                "(the skill ships the probe)."
+            )
+    else:
+        skew_state = state.setdefault("otel_skew", {})
+        for python in runtime_pythons():
+            ok, detail = probe_otel_skew(python, skew_probe)
+            entry = skew_state.setdefault(
+                python, {"fail": 0, "alerted": False, "since": 0.0, "last_alert": 0.0}
+            )
+            if ok:
+                if entry.get("alerted"):
+                    messages.append(
+                        f"✅ otel runtime recovered: {python} — api/sdk agree again"
+                    )
+                entry.update({"fail": 0, "alerted": False, "since": 0.0})
+                continue
+            entry["fail"] = entry.get("fail", 0) + 1
+            if entry.get("since", 0.0) == 0.0:
+                entry["since"] = now
+            if entry["fail"] >= STRIKES_TO_ALERT:
+                due = not entry.get("alerted") or (
+                    now - entry.get("last_alert", 0.0)
+                ) >= REALERT_COOLDOWN
+                if due:
+                    entry["alerted"] = True
+                    entry["last_alert"] = now
+                    messages.append(
+                        "⚠️ GOVERNANCE OFFLINE — ALL WRITES BLOCKED\n"
+                        "Client-side OpenTelemetry skew in the agent runtime\n"
+                        f"  interpreter: {python}\n"
+                        f"  {detail}\n"
+                        f"Since: {kst_ts(entry.get('since', now))} "
+                        f"(consecutive fails: {entry['fail']})\n"
+                        "  The MCP SERVERS are healthy — every tools/call still fails, because "
+                        "the client cannot create a span.\n"
+                        "  Recovery: align the pair on that interpreter "
+                        "(uv pip install --python <interpreter> "
+                        "'opentelemetry-api==<its opentelemetry-sdk version>')."
+                    )
 
     save_state(state)
     if messages:
