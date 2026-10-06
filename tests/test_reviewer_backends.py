@@ -270,6 +270,22 @@ def test_tiering():
                 os.environ[k] = v
 
 
+def test_tiering_dogfood_script():
+    """The standalone dogfood script (ops/scripts/manage/dogfood-reviewer-tiering.py)
+    runs the REAL loop-gov-mcp.py module and prints PASS for the tier decision
+    matrix and light/heavy/always-review routing. Run it via subprocess so its
+    output is machine-verifiable and a regression that breaks routing fails."""
+    import subprocess
+    dogfood = REPO / "ops" / "scripts" / "manage" / "dogfood-reviewer-tiering.py"
+    _check("dogfood script exists", dogfood.exists(), str(dogfood))
+    if not dogfood.exists():
+        return
+    r = subprocess.run([sys.executable, str(dogfood)], capture_output=True, text=True, timeout=60)
+    out = r.stdout + r.stderr
+    _check("dogfood script exits 0", r.returncode == 0, f"exit={r.returncode}")
+    _check("dogfood reports ALL PASS", "ALL PASS" in out, out[-300:])
+
+
 if __name__ == "__main__":
     print("Reviewer backends — pluggable transport, fixed fail-closed contract")
     test_backends()
@@ -279,6 +295,9 @@ if __name__ == "__main__":
     print()
     print("Reviewer tiering — depth by measured complexity, enforcement unchanged")
     test_tiering()
+    print()
+    print("Reviewer tiering dogfood script — real module routing")
+    test_tiering_dogfood_script()
     print()
     if _FAIL:
         print(f"{len(_FAIL)} FAILED: {', '.join(_FAIL)}")
