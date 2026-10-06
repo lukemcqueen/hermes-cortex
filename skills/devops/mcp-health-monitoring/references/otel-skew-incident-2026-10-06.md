@@ -155,7 +155,12 @@ interpreter every 5 min. Smoke it on any host:
 bash skills/devops/mcp-health-monitoring/scripts/skew-watchdog-smoke.sh
 ```
 
-Captured on esther (exit 0):
+The script refuses to pass unless all three hold: the scenario suite passes, no
+interpreter is skewed, AND the watchdog is **silent** — unexpected output on a healthy
+host is a false positive and exits non-zero (as does a host with no probe, where the
+check cannot run at all).
+
+Captured on esther — GREEN (`$HOME` scrubbed):
 
 ```text
 == 1. scenario suite (stubs) ==
@@ -178,14 +183,24 @@ PASS  S4 the watched probe path holds the real script (watched dependency exists
 suite_exit=0
 
 == 2. live probe, every resolved runtime interpreter ==
+probe committed at: 259a84c1 2026-10-06 skills(mcp-health-monitoring): add otel version-skew probe + test + incident evidence
 probe: $HOME/hermes-cortex/skills/devops/mcp-health-monitoring/scripts/otel-version-skew-probe.py
   OK   $HOME/.hermes/hermes-agent/venv/bin/python3 
   OK   $HOME/.hermes/installs/483c6efb1d92c950/environments/161f630fbf524b6dba10c7caa764b526/venv/bin/python3 
   OK   $HOME/.hermes/installs/483c6efb1d92c950/environments/391b894a13414bceb01aa62f0f7fc7d7/venv/bin/python3 
   OK   $HOME/.hermes/installs/483c6efb1d92c950/environments/6806fe6206c2476e8d2609c1e020ba54/venv/bin/python3 
-watchdog output after 2 runs: (silent)
 interpreters_skewed=0
+watchdog output after 2 runs: (silent) — no false positive
 live_exit=0
 
 VERDICT: PASS — the skew check works on this host and is silent when healthy
+```
+
+RED proof — the same script with an empty HOME, where the probe cannot be resolved
+(the check must not silently pass when it cannot verify):
+
+```text
+probe: None
+FAIL: no probe on this host — the check cannot run (expected the repo copy)
+VERDICT: FAIL — suite_exit=0 live_exit=2
 ```

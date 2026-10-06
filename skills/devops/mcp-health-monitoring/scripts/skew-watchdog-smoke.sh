@@ -1,16 +1,21 @@
 #!/usr/bin/env bash
 # skew-watchdog-smoke.sh — prove the client-side otel skew check on THIS host.
 #
-# 1. the watchdog's scenario suite (stubs: alert, recovery, UNVERIFIED, watched path)
-# 2. the live probe under every agent-runtime interpreter the watchdog resolves
-# 3. whether the watchdog stays silent when they agree (no false positive)
+# 1. the watchdog's scenario suite (stubs: threshold, alert, recovery, UNVERIFIED,
+#    watched path)
+# 2. the live probe under every agent-runtime interpreter the watchdog resolves,
+#    plus which commit carries the probe
+# 3. that the watchdog stays SILENT when those interpreters agree — unexpected output
+#    on a healthy host is a false positive and fails this script
 #
-# Exit 0 = the check works here. Exit 1 = the suite failed or an interpreter is skewed.
+# Exit 0 = the check works here. Non-zero = suite failed, an interpreter is skewed,
+# the probe is missing, or the watchdog spoke when it should not have.
 # Usage: bash skills/devops/mcp-health-monitoring/scripts/skew-watchdog-smoke.sh
 set -uo pipefail
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../../.." && pwd)"
 PY="${PYTHON:-python3}"
+PROBE_REL="skills/devops/mcp-health-monitoring/scripts/otel-version-skew-probe.py"
 cd "$REPO" || exit 2
 
 echo "== 1. scenario suite (stubs) =="
@@ -20,6 +25,7 @@ echo "suite_exit=$suite"
 
 echo
 echo "== 2. live probe, every resolved runtime interpreter =="
+echo "probe committed at: $(git log -1 --format='%h %ad %s' --date=short -- "$PROBE_REL")"
 PYTHONPATH=ops/scripts "$PY" - <<'PY'
 import contextlib, importlib.util, io, pathlib, tempfile
 
@@ -31,9 +37,13 @@ spec.loader.exec_module(wd)
 
 probe = wd.find_skew_probe()
 print(f"probe: {probe}")
+if probe is None:
+    print("FAIL: no probe on this host — the check cannot run (expected the repo copy)")
+    raise SystemExit(2)
+
 skewed = []
 for python in wd.runtime_pythons():
-    ok, detail = wd.probe_otel_skew(python, probe) if probe else (True, "no probe")
+    ok, detail = wd.probe_otel_skew(python, probe)
     print(f"  {'OK  ' if ok else 'SKEW'} {python} {detail}")
     if not ok:
         skewed.append(python)
@@ -46,9 +56,18 @@ with contextlib.redirect_stdout(buf):
     wd.main()
     wd.main()  # 2 strikes would be needed to alert
 out = buf.getvalue().strip()
-print(f"watchdog output after 2 runs: {out if out else '(silent)'}")
 print(f"interpreters_skewed={len(skewed)}")
-raise SystemExit(1 if skewed else 0)
+
+if skewed:
+    print("FAIL: an interpreter IS skewed on this host — the watchdog should be alerting")
+    raise SystemExit(1)
+if out:
+    # Healthy interpreters must produce NO output. Anything here is a false positive
+    # (or an unrelated warning this smoke test should not paper over).
+    print(f"FAIL: watchdog spoke on a healthy host (false positive): {out}")
+    raise SystemExit(1)
+print("watchdog output after 2 runs: (silent) — no false positive")
+raise SystemExit(0)
 PY
 live=$?
 echo "live_exit=$live"
