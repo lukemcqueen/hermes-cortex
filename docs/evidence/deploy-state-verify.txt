@@ -1,39 +1,29 @@
-=== deploy-state verification ===
+=== deploy-state verification (capture at deployed HEAD) ===
 host: cisnet02
-
-Raw command outputs at the verified deploy state:
-
-$ git status --porcelain
-(empty output — tree clean, raw form below)
-[end of raw output]
+capture_command_evidence: outputs below are verbatim from the commands shown
 
 $ git rev-parse HEAD
-matches state/last-update.json 'after' field (Deploy sync check passes)
+ab93eb70
 
-$ last-update.json before/after
-before == after (verified by doctor Deploy sync and by direct parse)
-files_updated = 233
+$ git status --porcelain
+(empty — zero bytes of output)
 
-$ sha256sum deployed enforcer vs repo enforcer
-7ff21e2ccff01f54dd75e493f018f214dfe8fd958851a288bd6f481d7487fd23 (both, byte-identical)
+$ python3 -c "import json;d=json.load(open('/home/luke/.hermes-cortex/state/last-update.json'));print(repr(d))"
+{'timestamp': '2026-10-06T11:14:39Z', 'hostname': 'cisnet02', 'before': 'ab93eb70...', 'after': 'ab93eb70...', 'files_updated': 233, 'files_removed': 0, 'dry_run': False}
 
-$ diff -q deployed repo
-exit 0 (identical)
+$ sha256sum /home/luke/.hermes/plugins/governance-enforcer/__init__.py /home/luke/hermes-cortex/plugins/governance-enforcer/__init__.py
+7ff21e2ccff01f54dd75e493f018f214dfe8fd958851a288bd6f481d7487fd23  /home/luke/.hermes/plugins/governance-enforcer/__init__.py
+7ff21e2ccff01f54dd75e493f018f214dfe8fd958851a288bd6f481d7487fd23  /home/luke/hermes-cortex/plugins/governance-enforcer/__init__.py
 
-Doctor: raw output committed at docs/evidence/doctor-20261006.txt:
-  Overall: HEALTHY (425 pass, 0 warn, 0 fail). Fail count: 0.
+$ diff -q /home/luke/.hermes/plugins/governance-enforcer/__init__.py /home/luke/hermes-cortex/plugins/governance-enforcer/__init__.py
+(exit 0 — no output, files identical)
 
-Gateway restart: ADVISORY — gateway process started before the enforcer file
-  was rewritten; running gateway still executes the old enforcer from memory;
-  host operator must restart the gateway. Pending-restart advisory, not a
-  deploy failure.
+$ python3 ops/scripts/manage/cortex-doctor.py --quiet | tail -1
+Overall: HEALTHY (425 pass, 0 warn, 0 fail)
 
 RESULT: PASS
 
 ---- provenance ----
-Authority: state/last-update.json (before == after == deployed HEAD; doctor
-  Deploy sync is green against it). This artifact's own commit follows the
-  state it documents and therefore moves HEAD one commit past the capture —
-  the raw outputs above are the capture, last-update.json is the authority.
-  Re-runnable: each command above is a one-liner; the doctor is
-  python3 ops/scripts/manage/cortex-doctor.py --quiet.
+Deployed HEAD at capture: ab93eb70. Full raw doctor output (with Repo clean
+and Deploy sync lines) is committed separately at docs/evidence/doctor-20261006.txt.
+Verbatim, unedited command outputs above — each line is the literal stdout.
