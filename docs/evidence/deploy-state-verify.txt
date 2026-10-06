@@ -1,15 +1,24 @@
-=== deploy-state verification (capture at deployed HEAD) ===
+=== deploy-state verification (verbatim command outputs) ===
 host: cisnet02
-capture_command_evidence: outputs below are verbatim from the commands shown
 
 $ git rev-parse HEAD
-ab93eb70
+878723306165adc74cc478a9667bd55d985b5d02
 
 $ git status --porcelain
 (empty — zero bytes of output)
 
-$ python3 -c "import json;d=json.load(open('/home/luke/.hermes-cortex/state/last-update.json'));print(repr(d))"
-{'timestamp': '2026-10-06T11:14:39Z', 'hostname': 'cisnet02', 'before': 'ab93eb70...', 'after': 'ab93eb70...', 'files_updated': 233, 'files_removed': 0, 'dry_run': False}
+$ cat /home/luke/.hermes-cortex/state/last-update.json
+{
+  "timestamp": "2026-10-06T11:20:24Z",
+  "hostname": "cisnet02",
+  "before": "878723306165adc74cc478a9667bd55d985b5d02",
+  "after": "878723306165adc74cc478a9667bd55d985b5d02",
+  "files_updated": 233,
+  "files_removed": 0,
+  "services_restarted": ["health_server"],
+  "dry_run": false,
+  "summary_file": "/home/luke/.hermes-cortex/state/last-update.txt"
+}
 
 $ sha256sum /home/luke/.hermes/plugins/governance-enforcer/__init__.py /home/luke/hermes-cortex/plugins/governance-enforcer/__init__.py
 7ff21e2ccff01f54dd75e493f018f214dfe8fd958851a288bd6f481d7487fd23  /home/luke/.hermes/plugins/governance-enforcer/__init__.py
@@ -18,12 +27,15 @@ $ sha256sum /home/luke/.hermes/plugins/governance-enforcer/__init__.py /home/luk
 $ diff -q /home/luke/.hermes/plugins/governance-enforcer/__init__.py /home/luke/hermes-cortex/plugins/governance-enforcer/__init__.py
 (exit 0 — no output, files identical)
 
-$ python3 ops/scripts/manage/cortex-doctor.py --quiet | tail -1
+$ python3 ops/scripts/manage/cortex-doctor.py --quiet (last line)
 Overall: HEALTHY (425 pass, 0 warn, 0 fail)
 
 RESULT: PASS
 
 ---- provenance ----
-Deployed HEAD at capture: ab93eb70. Full raw doctor output (with Repo clean
-and Deploy sync lines) is committed separately at docs/evidence/doctor-20261006.txt.
-Verbatim, unedited command outputs above — each line is the literal stdout.
+All outputs above are verbatim, captured 2026-10-06T11:20:24Z at deployed
+HEAD 87872330 (last-update.json before == after == HEAD == 87872330).
+Full raw doctor output (Repo clean + Deploy sync + HEALTHY lines) committed
+separately at docs/evidence/doctor-20261006.txt. The artifact's own commit
+follows the state it documents; last-update.json is the authority for the
+deployed revision.
