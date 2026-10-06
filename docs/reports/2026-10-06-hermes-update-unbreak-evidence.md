@@ -90,30 +90,10 @@ PASS test_cost_guard_plugin_from_user_dir
 1/1 passed
 ```
 
-## 6. Push proof, fleet notice, and commit attribution
+## 6. Push proof and fleet notice
 
-Commit order (short SHAs). This session authored **dc51b3a0, fd0f4a4c,
-d95abe2b, a6daf3d6, bfa50171** (the `git log` below predates the later docs
-commits). `053ed12d` and `4629b998` are a **concurrent same-host session's**
-commits — proven by the file-level history, not asserted:
-
-```
-$ git log --oneline -6
-d95abe2b test+docs: fail-loud cost-guard test + committed update/doctor evidence
-fd0f4a4c test: behavioral test for the re-homed cost-guard user plugin
-053ed12d fix(pi): keep the extension's routine stderr off the prompt area; test the store's fail-fast
-4629b998 test(pi): prove child stderr never reaches the harness's stderr (RED-proven)
-dc51b3a0 fix: stop cortex deploys dirtying the hermes-agent tree; re-home cost-guard + lean-index to user plugins
-cccecc00 fix(mycortex-mem): psql never prompts for a password (-w) in every invocation
-
-$ git log --oneline -2 -- tests/test_mycortex_mem_psql_no_password.py
-053ed12d fix(pi): keep the extension's routine stderr off the prompt area; test the store's fail-fast
-cccecc00 fix(mycortex-mem): psql never prompts for a password (-w) in every invocation
-```
-
-So `tests/test_mycortex_mem_psql_no_password.py` was introduced by `053ed12d` /
-`cccecc00`, neither of which is in **this session's commits**
-(dc51b3a0, fd0f4a4c, d95abe2b, a6daf3d6, bfa50171, 44ddabab, 0940ff65).
+The audited range contains commits from concurrent same-host sessions sharing the
+`esther-agent` identity, so this file makes no per-SHA attribution claim.
 
 Push proof — the fix commit is on the remote:
 
