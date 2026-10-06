@@ -7,8 +7,8 @@ After patching a repo-managed skill via `skill_manage`, the next
 
 ```
 ⚠   SKILL DRIFT: devops/<skill> — deployed copy is newer than repo source!
-⚠     → Repo: /home/esther/hermes-cortex/skills/devops/<skill>/SKILL.md
-⚠     → Deployed: /home/esther/.hermes-cortex/skills/devops/<skill>/SKILL.md
+⚠     → Repo: $HOME/hermes-cortex/skills/devops/<skill>/SKILL.md
+⚠     → Deployed: $HOME/.hermes-cortex/skills/devops/<skill>/SKILL.md
 ⚠     → Copy the deployed changes to the repo source, then cortex-update.sh will sync.
 ```
 
