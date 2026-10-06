@@ -50,22 +50,53 @@ hermes cron list: 1 lines
 doctor: ⚠️  Overall: WARNING  (433 pass · 10 warn · 0 fail · 7 info)
 ```
 
-## Full test suite — the whole repository, at 2b45a13d
+## Full test suite — measurements, in order
 
-The suite could not complete before these fixes (it aborted at 37%: the fact-retention
-compressor tests re-execed the interpreter through the Hermes launcher with pytest s
-argv). Now:
+THREE distinct runs, each with its own command. They are not the same run.
+
+**Run 1 — the suite could not finish (before any fix):**
 
 ```
 $ python3 -m pytest tests/ -q -p no:cacheprovider
-
-======================= 1376 passed in 335.20s (0:05:35) =======================
-
-# the same command before the pre-existing fixes: 6 failed, 1365 passed, run aborted
+tests/test_fact_retention.py .PYTEST rc=1        # stopped at 37%, no failure report
 ```
 
-The four failures it started with were reproduced at the pre-change revision
-(`git worktree add /tmp/pre-cost e5227fa7^` -> "4 failed, 26 passed"), which is how they
-were classified as pre-existing rather than caused by the removal. All four are now fixed
-and asserted in the tree (see the relevant test files and
-docs/evidence/task-queue-remediation.md for the measured before/after).
+The process died mid-file: `tests/test_fact_retention.py`'s in-process compressor tests
+sent the import chain through the Hermes launcher, which re-execs the interpreter with
+pytest's own argv — the child cannot import pytest, so the run ends. That file is
+untouched by the removal (`git log -2 -- tests/test_fact_retention.py` ends at e97aee91).
+
+**Run 2 — the same suite minus the aborting file, before the fixes:**
+
+```
+$ python3 -m pytest tests/ -q -p no:cacheprovider --ignore=tests/test_fact_retention.py
+6 failed, 1365 passed in 338.41s
+```
+
+Four of those six were reproduced at the pre-change revision in a worktree
+(`git worktree add /tmp/pre-cost e5227fa7^` → `4 failed, 26 passed`), which is how they
+were classified as pre-existing rather than caused by the removal.
+
+**Run 3 — the whole suite after the fixes (HEAD 93b862b0's parent):**
+
+```
+$ python3 -m pytest tests/ -q -p no:cacheprovider
+1376 passed in 335.20s
+```
+
+Nothing is skipped, nothing aborts, and the count is higher than run 2 by the tests the
+fixes made runnable (the crasher file's four guarantees plus the harness-drift checks).
+
+## Deploy + dogfood on this host (scrubbed)
+
+```
+$ bash ops/scripts/cortex-update.sh
+  ⚠️  Overall: WARNING  (436 pass · 2 warn · 0 fail · 7 info)
+$ bash ops/scripts/cortex-dogfood.sh            # rc=0
+  ✅  DOGFOOD PASSED — deployed state verified clean.
+  ⚠️  Overall: WARNING  (436 pass · 2 warn · 0 fail · 7 info)
+```
+
+Both are re-runnable as-is; the two remaining warnings are the pre-existing
+brand-intelligence deployed-only skills. The raw logs for the run in this file are in
+`docs/evidence/` history (the deploy is not a committed artifact — rerun the command).
