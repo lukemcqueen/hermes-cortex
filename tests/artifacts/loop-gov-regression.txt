@@ -1,7 +1,7 @@
 loop-governance regression artifact
 ========================================================================
-generated      : 2026-10-06T13:54:39+00:00
-revision       : d7ab5525  (branch main)
+generated      : 2026-10-06T14:36:42+00:00
+revision       : 742e2bc3  (branch main)
 interpreter    : Python 3.14.7 (<python-bin>/python3)
 generator      : tests/run_loop_gov_regression.py
 
@@ -21,14 +21,14 @@ TEST SET (13 files)
         [mcp-server] DEBUG: Using selector: EpollSelector
 
 [PASS] tests/test_loop_gov_review_repo.py  rc=0
-          - test_enforcer_does_not_inject_a_repo_it_never_learned
-          - test_enforcer_injects_recorded_repo_into_governance_calls
-          - test_enforcer_records_session_repo_from_touched_paths
-          - test_guard_does_not_fire_when_lock_repo_holds_the_work
+          - test_lock_repo_prefers_the_absolute_path_over_the_slug
+          - test_nested_repo_holding_the_work_is_not_refused
           - test_review_refuses_when_lock_repo_cannot_contain_the_work
+          - test_secondary_marker_follows_the_absolute_path
         [mcp-server] WARNING: the 'mcp' package is not installed — the stdio server cannot start; the CLI adapter (ops/scripts/loop-gov.py) still works.
         [mcp-server]   ~/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3 -m pip install mcp
         [mcp-server] INFO: self-adversarial review: cycle 4243 simple (1 lines, 1 files) — skip
+        [mcp-server] INFO: self-adversarial review: cycle 4321 simple (1 lines, 1 files) — skip
 
 [PASS] tests/test_loop_gov_multi_session.py  rc=0
         PASS — loop-gov multi-session DB (adversarial findings resolved):
@@ -107,7 +107,7 @@ TEST SET (13 files)
           PASS harness reports LOCK HELD
           PASS DB blocked while harness holds BEGIN IMMEDIATE
           PASS DB still write-blocked after alert-only watchdog (no kill)
-          PASS watchdog report names holder pid 284982 in: '[2026-10-06 22:56 ] loop-gov-lock-watchdog: lock/anomaly DETECTED — alert-only (no auto-kill): 2 loop-gov daemon(s) in v'
+          PASS watchdog report names holder pid 443124 in: '[2026-10-06 23:38 ] loop-gov-lock-watchdog: lock/anomaly DETECTED — alert-only (no auto-kill): 2 loop-gov daemon(s) in v'
           PASS holder process still alive after watchdog (alert-only, never kills)
         6 checks, 6 pass
 
@@ -116,13 +116,13 @@ TEST SET (13 files)
 ------------------------------------------------------------------------
 STATIC GATE  mcp-servers/loop-gov-mcp.py  level A4
 ------------------------------------------------------------------------
-[PASS] interim/working revision d7ab5525
+[PASS] interim/working revision 742e2bc3
         📊 Summary: 1 file(s), 33 finding(s)
         🟡 Medium: 5
         🔵 Low: 2
         ✅ GATE_PASSED — no critical/high findings
 
-[PASS] PRE-FIX revision HEAD~1 (ba6a7cb8)
+[PASS] PRE-FIX revision HEAD~1 (0cc24405)
         📊 Summary: 1 file(s), 33 finding(s)
         🟡 Medium: 5
         🔵 Low: 2
