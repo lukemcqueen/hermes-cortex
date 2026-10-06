@@ -1,20 +1,38 @@
 === deploy-state verification ===
 host: cisnet02
 
-CHECK 1 clean-tree: PASS (git status --porcelain empty after final commit)
-CHECK 2 HEAD == last-update after: PASS (git rev-parse HEAD == last-update.json 'after', verified at commit 3de9a094)
-CHECK 3 enforcer identity: PASS (sha256 deployed == sha256 repo; diff -q exit 0)
-CHECK 4 last-update.json: PASS (parses; before == after == 3de9a094; files_updated reported)
-CHECK 5 doctor: PASS — raw output committed at docs/evidence/doctor-20261006.txt:
-    Overall: HEALTHY (425 pass, 0 warn, 0 fail). Fail count: 0.
-CHECK 6 gateway restart: ADVISORY — gateway process started before the enforcer
-    file was rewritten; running gateway still executes the old enforcer from
-    memory; host operator must restart the gateway. Pending-restart advisory,
-    not a deploy failure.
+Raw command outputs at final revision:
+
+$ git status --porcelain
+(empty — tree clean)
+
+$ git rev-parse HEAD
+0e93e82c8e810654bffa7459044e730aee4008b7
+
+$ python3 -c "import json; d=json.load(open('/home/luke/.hermes-cortex/state/last-update.json')); print(d['before'], d['after'], d['files_updated'])"
+0e93e82c8e810654bffa7459044e730aee4008b7 0e93e82c8e810654bffa7459044e730aee4008b7 233
+(before == after == HEAD; files_updated = 233)
+
+$ sha256sum /home/luke/.hermes/plugins/governance-enforcer/__init__.py plugins/governance-enforcer/__init__.py
+7ff21e2ccff01f54dd75e493f018f214dfe8fd958851a288bd6f481d7487fd23  /home/luke/.hermes/plugins/governance-enforcer/__init__.py
+7ff21e2ccff01f54dd75e493f018f214dfe8fd958851a288bd6f481d7487fd23  plugins/governance-enforcer/__init__.py
+(deployed enforcer == repo enforcer, byte-identical)
+
+$ diff -q /home/luke/.hermes/plugins/governance-enforcer/__init__.py plugins/governance-enforcer/__init__.py
+exit 0 (identical)
+
+Doctor: raw output committed at docs/evidence/doctor-20261006.txt:
+  Overall: HEALTHY (425 pass, 0 warn, 0 fail). Fail count: 0.
+
+Gateway restart: ADVISORY — gateway process started before the enforcer file
+  was rewritten; running gateway still executes the old enforcer from memory;
+  host operator must restart the gateway. Pending-restart advisory, not a
+  deploy failure.
 
 RESULT: PASS
 
 ---- provenance ----
-Revision: 3de9a094 (HEAD == origin/main + local pipeline auto-commits, not pushed by design)
-Re-runnable checks: git status --porcelain; git rev-parse HEAD;
-  sha256sum <deployed enforcer> <repo enforcer>; python3 ops/scripts/manage/cortex-doctor.py --quiet
+Revision: 0e93e82c (HEAD == origin/main + local pipeline auto-commits, not
+           pushed by design per pull-latest convention).
+Re-runnable: each command above is a one-liner; the doctor is
+  python3 ops/scripts/manage/cortex-doctor.py --quiet
