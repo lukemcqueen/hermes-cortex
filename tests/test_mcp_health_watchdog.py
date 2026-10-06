@@ -404,12 +404,23 @@ def main() -> int:
         fresh_state(tmp)
         buf = io.StringIO()
         with contextlib.redirect_stdout(buf):
-            wd.main()
-            wd.main()  # 2 strikes -> alert
+            wd.main()  # strike 1 — below the threshold, must stay quiet
+        first = buf.getvalue()
+        with contextlib.redirect_stdout(buf):
+            wd.main()  # strike 2 — alert
+        second = buf.getvalue()[len(first):]
         check(
-            "S client-side otel skew alerts with every server healthy",
-            "SERVERS are healthy" in buf.getvalue() and "OpenTelemetry" in buf.getvalue(),
-            buf.getvalue(),
+            "S strike 1 stays quiet (no alert before the 2-strike threshold)",
+            "GOVERNANCE OFFLINE" not in first,
+            first,
+        )
+        check(
+            "S strike 2 alerts: GOVERNANCE OFFLINE + the interpreter + the align command",
+            "GOVERNANCE OFFLINE — ALL WRITES BLOCKED" in second
+            and str(skew_python) in second
+            and "uv pip install --python" in second
+            and "SERVERS are healthy" in second,
+            second,
         )
 
         skew_state.write_text("0\n", encoding="utf-8")
@@ -434,6 +445,18 @@ def main() -> int:
             "S3 missing skew probe reports UNVERIFIED",
             "skew probe unavailable" in buf3.getvalue(),
             buf3.getvalue(),
+        )
+
+        # --- S4: the WATCHED path holds a real probe, not only test stubs ---
+        real_probe = (
+            Path(__file__).resolve().parent.parent
+            / "skills/devops/mcp-health-monitoring/scripts/otel-version-skew-probe.py"
+        )
+        real_text = real_probe.read_text(encoding="utf-8") if real_probe.exists() else ""
+        check(
+            "S4 the watched probe path holds the real script (watched dependency exists)",
+            real_probe.exists() and "TraceFlags" in real_text and "SKEW:" in real_text,
+            f"{real_probe} exists={real_probe.exists()} bytes={len(real_text)}",
         )
     finally:
         shutil.rmtree(tmp, ignore_errors=True)

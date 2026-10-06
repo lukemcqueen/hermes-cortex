@@ -145,3 +145,47 @@ The first draft of the probe used a flag-existence heuristic ("sdk importable bu
 perfectly fine because the old sdk never references the newer flag. The verdict is
 therefore behavioural (create a span, report only a real failure); keep it that way if
 this probe is ever refactored.
+
+## Automated check (added 2026-10-06)
+
+`agent-mcp-health-watchdog.py` runs the probe above under every agent-runtime
+interpreter every 5 min. Smoke it on any host:
+
+```bash
+bash skills/devops/mcp-health-monitoring/scripts/skew-watchdog-smoke.sh
+```
+
+Captured on esther (exit 0):
+
+```text
+== 1. scenario suite (stubs) ==
+PASS  A healthy binary-CLI stays silent (no 'script not found' loop)
+PASS  B crashed binary fails loudly with real reason
+PASS  C hanging binary fails with timeout
+PASS  D python-script server stays healthy via import path
+PASS  E old-API python server healthy via stdio fallback (TypeError)
+PASS  P platform_toolsets children are NOT phantom servers
+PASS  F missing command fails fast
+PASS  G missing args fails fast
+PASS  R outage->recovery emits RECOVERED notice
+PASS  S strike 1 stays quiet (no alert before the 2-strike threshold)
+PASS  S strike 2 alerts: GOVERNANCE OFFLINE + the interpreter + the align command
+PASS  S2 skew recovery emits a recovered notice
+PASS  S3 missing skew probe reports UNVERIFIED
+PASS  S4 the watched probe path holds the real script (watched dependency exists)
+
+14/14 scenarios passed
+suite_exit=0
+
+== 2. live probe, every resolved runtime interpreter ==
+probe: $HOME/hermes-cortex/skills/devops/mcp-health-monitoring/scripts/otel-version-skew-probe.py
+  OK   $HOME/.hermes/hermes-agent/venv/bin/python3 
+  OK   $HOME/.hermes/installs/483c6efb1d92c950/environments/161f630fbf524b6dba10c7caa764b526/venv/bin/python3 
+  OK   $HOME/.hermes/installs/483c6efb1d92c950/environments/391b894a13414bceb01aa62f0f7fc7d7/venv/bin/python3 
+  OK   $HOME/.hermes/installs/483c6efb1d92c950/environments/6806fe6206c2476e8d2609c1e020ba54/venv/bin/python3 
+watchdog output after 2 runs: (silent)
+interpreters_skewed=0
+live_exit=0
+
+VERDICT: PASS — the skew check works on this host and is silent when healthy
+```
