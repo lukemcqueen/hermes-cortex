@@ -63,66 +63,76 @@ def test_backends():
     saved = {k: os.environ.get(k) for k in (
         "ADVERSARIAL_REVIEW_BACKEND", "ADVERSARIAL_REVIEW_AGENT_CMD",
         "ADVERSARIAL_REVIEW_AGENT_NAME", "ADVERSARIAL_REVIEW_API_KEY_ENV",
-        "ADVERSARIAL_REVIEWER_MODEL")}
+        "ADVERSARIAL_REVIEWER_MODEL", "CORTEX_ENV_FILE",
+        "CORTEX_REPO", "CORTEX_DEPLOY_HOME")}
     try:
         for k in saved:
             os.environ.pop(k, None)
+        # Isolate from the deployed cortex config: this host's ./cortex.env repo
+        # .env sets ADVERSARIAL_REVIEW_BACKEND=agent, which would break the
+        # "llm is the default backend" sentinel assertions below. Point every
+        # cortex env source (CORTEX_ENV_FILE, the repo .env via CORTEX_REPO, and
+        # the deploy home) at an EMPTY temp dir so the resolver finds nothing.
+        with tempfile.TemporaryDirectory() as _td:
+            os.environ["CORTEX_ENV_FILE"] = str(Path(_td) / "empty.env")
+            os.environ["CORTEX_REPO"] = _td
+            os.environ["CORTEX_DEPLOY_HOME"] = _td
 
-        _check("default backend is llm", mcp._reviewer_backend() == "llm")
-        _check("llm records the MODEL as the reviewer",
-               mcp._reviewer_label() == mcp.REVIEWER_MODEL_DEFAULT, mcp._reviewer_label())
+            _check("default backend is llm", mcp._reviewer_backend() == "llm")
+            _check("llm records the MODEL as the reviewer",
+                   mcp._reviewer_label() == mcp.REVIEWER_MODEL_DEFAULT, mcp._reviewer_label())
 
-        # llm backend with no credential must REFUSE (fail-closed), not pass
-        os.environ["ADVERSARIAL_REVIEW_API_KEY_ENV"] = "DEFINITELY_NOT_SET_XYZ"
-        err = _raises(mcp._call_reviewer, "prompt")
-        _check("llm backend with no credential raises (close is refused, not skipped)",
-               "not set" in err, err)
+            # llm backend with no credential must REFUSE (fail-closed), not pass
+            os.environ["ADVERSARIAL_REVIEW_API_KEY_ENV"] = "DEFINITELY_NOT_SET_XYZ"
+            err = _raises(mcp._call_reviewer, "prompt")
+            _check("llm backend with no credential raises (close is refused, not skipped)",
+                   "not set" in err, err)
 
-        # unknown backend: never guess a reviewer
-        os.environ["ADVERSARIAL_REVIEW_BACKEND"] = "telepathy"
-        err = _raises(mcp._call_reviewer, "prompt")
-        _check("unknown backend is refused, not guessed", "unknown" in err.lower(), err)
+            # unknown backend: never guess a reviewer
+            os.environ["ADVERSARIAL_REVIEW_BACKEND"] = "telepathy"
+            err = _raises(mcp._call_reviewer, "prompt")
+            _check("unknown backend is refused, not guessed", "unknown" in err.lower(), err)
 
-        # agent backend with no command
-        os.environ["ADVERSARIAL_REVIEW_BACKEND"] = "agent"
-        err = _raises(mcp._call_reviewer, "prompt")
-        _check("agent backend without a command is refused",
-               "AGENT_CMD" in err, err)
+            # agent backend with no command
+            os.environ["ADVERSARIAL_REVIEW_BACKEND"] = "agent"
+            err = _raises(mcp._call_reviewer, "prompt")
+            _check("agent backend without a command is refused",
+                   "AGENT_CMD" in err, err)
 
-        with tempfile.TemporaryDirectory() as td:
-            tmp = Path(td)
+            with tempfile.TemporaryDirectory() as td:
+                tmp = Path(td)
 
-            # a configured command that returns findings
-            os.environ["ADVERSARIAL_REVIEW_AGENT_CMD"] = _fake_agent(
-                tmp, "good.py",
-                'import json,sys\n'
-                'p=sys.stdin.read()\n'
-                'print(json.dumps({"verdict":"CLEAN","findings":[],"saw_prompt":len(p)>0}))\n')
-            os.environ["ADVERSARIAL_REVIEW_AGENT_NAME"] = "claude-code"
-            out = mcp._call_reviewer("REVIEW MATERIAL", author="esther-agent <esther@x>")
-            _check("agent backend returns the agent's stdout",
-                   json.loads(out).get("saw_prompt") is True, out[:120])
-            _check("agent backend records agent:<name> as the reviewer",
-                   mcp._reviewer_label() == "agent:claude-code", mcp._reviewer_label())
+                # a configured command that returns findings
+                os.environ["ADVERSARIAL_REVIEW_AGENT_CMD"] = _fake_agent(
+                    tmp, "good.py",
+                    'import json,sys\n'
+                    'p=sys.stdin.read()\n'
+                    'print(json.dumps({"verdict":"CLEAN","findings":[],"saw_prompt":len(p)>0}))\n')
+                os.environ["ADVERSARIAL_REVIEW_AGENT_NAME"] = "claude-code"
+                out = mcp._call_reviewer("REVIEW MATERIAL", author="esther-agent <esther@x>")
+                _check("agent backend returns the agent's stdout",
+                       json.loads(out).get("saw_prompt") is True, out[:120])
+                _check("agent backend records agent:<name> as the reviewer",
+                       mcp._reviewer_label() == "agent:claude-code", mcp._reviewer_label())
 
-            # SELF-REVIEW: the agent IS the change's author (case-insensitive)
-            err = _raises(mcp._call_reviewer, "REVIEW MATERIAL",
-                          author="Claude-Code Agent <cc@example.com>")
-            _check("SELF-REVIEW is refused (agent name matches the change's author)",
-                   "SELF-REVIEW" in err, err)
+                # SELF-REVIEW: the agent IS the change's author (case-insensitive)
+                err = _raises(mcp._call_reviewer, "REVIEW MATERIAL",
+                              author="Claude-Code Agent <cc@example.com>")
+                _check("SELF-REVIEW is refused (agent name matches the change's author)",
+                       "SELF-REVIEW" in err, err)
 
-            # non-zero exit
-            os.environ["ADVERSARIAL_REVIEW_AGENT_CMD"] = _fake_agent(
-                tmp, "boom.py", 'import sys\nsys.stderr.write("agent exploded")\nsys.exit(3)\n')
-            os.environ["ADVERSARIAL_REVIEW_AGENT_NAME"] = "codex"
-            err = _raises(mcp._call_reviewer, "MATERIAL", author="esther-agent <esther@x>")
-            _check("agent non-zero exit refuses the close", "exited 3" in err, err)
+                # non-zero exit
+                os.environ["ADVERSARIAL_REVIEW_AGENT_CMD"] = _fake_agent(
+                    tmp, "boom.py", 'import sys\nsys.stderr.write("agent exploded")\nsys.exit(3)\n')
+                os.environ["ADVERSARIAL_REVIEW_AGENT_NAME"] = "codex"
+                err = _raises(mcp._call_reviewer, "MATERIAL", author="esther-agent <esther@x>")
+                _check("agent non-zero exit refuses the close", "exited 3" in err, err)
 
-            # silence must not read as CLEAN
-            os.environ["ADVERSARIAL_REVIEW_AGENT_CMD"] = _fake_agent(tmp, "quiet.py", "pass\n")
-            os.environ["ADVERSARIAL_REVIEW_AGENT_NAME"] = "opencode"
-            err = _raises(mcp._call_reviewer, "MATERIAL", author="esther-agent <esther@x>")
-            _check("agent silence is refused (silence is never CLEAN)", "no output" in err, err)
+                # silence must not read as CLEAN
+                os.environ["ADVERSARIAL_REVIEW_AGENT_CMD"] = _fake_agent(tmp, "quiet.py", "pass\n")
+                os.environ["ADVERSARIAL_REVIEW_AGENT_NAME"] = "opencode"
+                err = _raises(mcp._call_reviewer, "MATERIAL", author="esther-agent <esther@x>")
+                _check("agent silence is refused (silence is never CLEAN)", "no output" in err, err)
     finally:
         for k, v in saved.items():
             if v is None:
@@ -228,11 +238,13 @@ def test_tiering():
 
         # LIGHT: the llm backend is invoked with the FAST model; the agent never runs.
         calls = {}
-        def fake_llm(prompt, *, model=None):
+        def fake_llm(prompt, *, model=None, timeout=None):
             calls["light_model"] = model
+            calls["light_timeout"] = timeout
             return "{\"verdict\":\"CLEAN\",\"findings\":[]}"
-        def fake_agent(prompt, author=None):
+        def fake_agent(prompt, author=None, timeout=None):
             calls["agent_ran"] = True
+            calls["agent_timeout"] = timeout
             return "{\"verdict\":\"CLEAN\",\"findings\":[]}"
         with mock.patch.object(mcp, "_call_reviewer_llm", side_effect=fake_llm), \
              mock.patch.object(mcp, "_call_reviewer_agent", side_effect=fake_agent):
@@ -244,6 +256,8 @@ def test_tiering():
             _check("light reviewer is recorded as the fast model",
                    mcp._reviewer_label(cx={"lines": 60, "files": 2, "always_review": False}) == "light/fast-model",
                    mcp._reviewer_label({"lines": 60, "files": 2, "always_review": False}))
+            _check("light change carries an llm-scaled wait budget",
+                   isinstance(calls.get("light_timeout"), int), str(calls))
 
             # HEAVY: the agent backend is still used.
             calls.clear()
@@ -251,6 +265,8 @@ def test_tiering():
                                cx={"lines": 220, "files": 1, "always_review": False})
             _check("heavy change still routes to the agent backend",
                    calls.get("agent_ran") is True and "light_model" not in calls, str(calls))
+            _check("heavy change carries an agent-scaled wait budget",
+                   isinstance(calls.get("agent_timeout"), int), str(calls))
             _check("heavy reviewer label records the agent",
                    mcp._reviewer_label(cx={"lines": 220, "files": 1, "always_review": False}) == "agent:pi",
                    mcp._reviewer_label({"lines": 220, "files": 1, "always_review": False}))
@@ -262,6 +278,66 @@ def test_tiering():
                    calls.get("agent_ran") is True, str(calls))
             _check("no cx: reviewer label is the agent, not a guest light model",
                    mcp._reviewer_label() == "agent:pi", mcp._reviewer_label())
+    finally:
+        for k, v in saved.items():
+            if v is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
+
+
+def test_reviewer_timeout():
+    """_reviewer_timeout scales the wait budget by change size and is bounded.
+
+    A change with measured complexity (files + added/removed lines) gets a
+    proportionally larger reviewer wait window than a flat-config call; a None
+    cx keeps the configured default; growth is hard-capped at
+    REVIEWER_TIMEOUT_CAP so a hung reviewer still surfaces."""
+    mcp = _load()
+    saved = {k: os.environ.get(k) for k in
+             ("ADVERSARIAL_REVIEW_TIMEOUT", "ADVERSARIAL_REVIEW_AGENT_TIMEOUT")}
+    try:
+        for k in saved:
+            os.environ.pop(k, None)
+
+        # No cx -> configured defaults (300 llm / 900 agent), no scaling.
+        _check("no cx: llm wait stays at its configured default",
+               mcp._reviewer_timeout(None, "llm") == 300,
+               mcp._reviewer_timeout(None, "llm"))
+        _check("no cx: agent wait stays at its configured default",
+               mcp._reviewer_timeout(None, "agent") == 900,
+               mcp._reviewer_timeout(None, "agent"))
+
+        # Small light change: base + small growth (2 files, 60 lines).
+        small = {"lines": 60, "files": 2, "always_review": False}
+        llm_wait = mcp._reviewer_timeout(small, "llm")
+        _check("small llm change grows the wait above base",
+               llm_wait > 300, llm_wait)
+        _check("small llm change stays far under the cap",
+               llm_wait <= 1800, llm_wait)
+
+        # Larger change: grows MORE than the small one (22 files, 240 lines).
+        big = {"lines": 240, "files": 22, "always_review": False}
+        big_agent = mcp._reviewer_timeout(big, "agent")
+        small_agent = mcp._reviewer_timeout({"lines": 5, "files": 1, "always_review": False}, "agent")
+        _check("bigger change gets a longer agent wait than a small one",
+               big_agent > small_agent, f"{big_agent} vs {small_agent}")
+
+        # Cap: a huge diff cannot drive the budget past REVIEWER_TIMEOUT_CAP.
+        huge = {"lines": 500000, "files": 99999, "always_review": False}
+        _check("huge change is hard-capped at REVIEWER_TIMEOUT_CAP",
+               mcp._reviewer_timeout(huge, "agent") == mcp.REVIEWER_TIMEOUT_CAP,
+               mcp._reviewer_timeout(huge, "agent"))
+
+        # Growth is per-100-lines: 95 lines adds nothing, 105 adds one step.
+        base_agent = mcp._reviewer_timeout({"lines": 0, "files": 0, "always_review": False}, "agent")
+        under_100 = mcp._reviewer_timeout({"lines": 95, "files": 0, "always_review": False}, "agent")
+        over_100 = mcp._reviewer_timeout({"lines": 105, "files": 0, "always_review": False}, "agent")
+        _check("per-100-lines growth: 95 lines is same as 0 lines",
+               under_100 == base_agent, f"{under_100} vs {base_agent}")
+        _check("per-100-lines growth: 105 lines adds one step",
+               over_100 == base_agent + mcp.REVIEWER_TIMEOUT_PER_100_LINES,
+               f"{over_100} vs {base_agent + mcp.REVIEWER_TIMEOUT_PER_100_LINES}")
     finally:
         for k, v in saved.items():
             if v is None:
@@ -295,6 +371,9 @@ if __name__ == "__main__":
     print()
     print("Reviewer tiering — depth by measured complexity, enforcement unchanged")
     test_tiering()
+    print()
+    print("Reviewer wait-budget scaling — by change size, hard-capped")
+    test_reviewer_timeout()
     print()
     print("Reviewer tiering dogfood script — real module routing")
     test_tiering_dogfood_script()

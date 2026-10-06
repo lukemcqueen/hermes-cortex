@@ -1879,6 +1879,16 @@ REVIEWER_LIGHT_FILE_THRESHOLD = 10   # files that force the deep reviewer
 REVIEWER_MODEL_DEFAULT = "deepseek/deepseek-v4-pro"  # distinct from worker
 REVIEWER_LIGHT_MODEL_DEFAULT = "deepseek/deepseek-v4-flash-0731"  # fast, verified 200
 REVIEW_TEMPLATE_REL = "docs/templates/adversarial-reviewer-prompt.md"
+
+# Reviewer wait-budget scaling (2026-10-06): the close-gate's reviewer gets a
+# longer wait window when the change is genuinely large, instead of always being
+# cut off at a flat per-backend default. A big diff needs proportional review
+# time; a flat 300s/900s budget would abort a slow-but-legitimate review on a
+# huge change. base + per-file/per-line growth, hard-capped so a hung reviewer
+# still surfaces instead of blocking the server for hours.
+REVIEWER_TIMEOUT_CAP = 1800        # max seconds any single review may run
+REVIEWER_TIMEOUT_PER_FILE = 10     # seconds added per changed file
+REVIEWER_TIMEOUT_PER_100_LINES = 30  # seconds added per 100 added+removed lines
 REVIEW_MARKER = "=== REVIEWED MATERIAL ==="
 DIFF_CHAR_BUDGET = 12000
 
@@ -2342,6 +2352,31 @@ def _tier(cx: dict) -> str:
     return "light"
 
 
+def _reviewer_timeout(cx: Optional[dict], backend: str) -> int:
+    """Wait budget for a single review, scaled by the change's measured size.
+
+    base is the backend's configured default: ADVERSARIAL_REVIEW_TIMEOUT (llm)
+    or ADVERSARIAL_REVIEW_AGENT_TIMEOUT (agent). A change that is large (many
+    files / many added+removed lines) gets proportionally more time — a flat
+    budget aborts slow-but-legitimate reviews on big diffs. Growth is per-file
+    and per-100-lines, hard-capped at REVIEWER_TIMEOUT_CAP so a hung reviewer
+    still surfaces instead of blocking the server. A None cx (no measurement)
+    keeps the configured default unchanged.
+    """
+    base = int(_env_value(
+        "ADVERSARIAL_REVIEW_AGENT_TIMEOUT" if backend == "agent"
+        else "ADVERSARIAL_REVIEW_TIMEOUT",
+        "900" if backend == "agent" else "300",
+    ) or (900 if backend == "agent" else 300))
+    if not cx:
+        return base
+    files = int(cx.get("files", 0) or 0)
+    lines = int(cx.get("lines", 0) or 0)
+    growth = (files * REVIEWER_TIMEOUT_PER_FILE
+              + (lines // 100) * REVIEWER_TIMEOUT_PER_100_LINES)
+    return min(base + growth, REVIEWER_TIMEOUT_CAP)
+
+
 def _call_reviewer(prompt: str, author: Optional[str] = None,
                    cx: Optional[dict] = None) -> str:
     """Dispatch to the configured reviewer backend. Return its text (raises on error).
@@ -2355,26 +2390,34 @@ def _call_reviewer(prompt: str, author: Optional[str] = None,
     is reviewed by the FAST chat-completions model even when the configured
     backend is the slow ``agent`` — that is the fix for the 300s MCP timeouts.
     A heavy change (or a light change on a host whose backend is already `llm`)
-    uses the configured backend unchanged.
+    uses the configured backend unchanged. The wait budget is scaled by the
+    change's measured size via _reviewer_timeout, so a large diff gets a
+    proportional review window instead of a flat per-backend cutoff.
     """
     backend = _reviewer_backend()
     if cx is not None and _tier(cx) == "light" and backend == "agent":
-        return _call_reviewer_llm(prompt, model=_light_reviewer_model())
+        # Light-but-complex on an agent host is served by the FAST llm reviewer;
+        # scale its wait budget against the llm backend (not the agent's 900s).
+        return _call_reviewer_llm(prompt, model=_light_reviewer_model(),
+                                  timeout=_reviewer_timeout(cx, "llm"))
+    wait = _reviewer_timeout(cx, backend)
     if backend == "agent":
-        return _call_reviewer_agent(prompt, author=author)
+        return _call_reviewer_agent(prompt, author=author, timeout=wait)
     if backend == "llm":
-        return _call_reviewer_llm(prompt)
+        return _call_reviewer_llm(prompt, timeout=wait)
     raise RuntimeError(
         f"unknown ADVERSARIAL_REVIEW_BACKEND {backend!r} (expected llm|agent) — "
         "refusing to guess a reviewer")
 
 
-def _call_reviewer_llm(prompt: str, *, model: Optional[str] = None) -> str:
+def _call_reviewer_llm(prompt: str, *, model: Optional[str] = None,
+                       timeout: Optional[int] = None) -> str:
     """Review via a chat-completions model. Provider-agnostic: the default is
     OpenRouter, but ADVERSARIAL_REVIEW_BASE_URL lets a local or self-hosted
     endpoint do the reviewing, and ADVERSARIAL_REVIEW_API_KEY_ENV names the
     credential to read (never the value). ``model`` overrides the configured
-    model (used for the light-but-complex tier)."""
+    model (used for the light-but-complex tier); ``timeout`` overrides the
+    configured wait budget (used when scaling by change size)."""
     model = model or _env_value("ADVERSARIAL_REVIEWER_MODEL", REVIEWER_MODEL_DEFAULT)
     base = (_env_value("ADVERSARIAL_REVIEW_BASE_URL") or "https://openrouter.ai/api/v1").rstrip("/")
     key_env = _env_value("ADVERSARIAL_REVIEW_API_KEY_ENV")
@@ -2402,7 +2445,8 @@ def _call_reviewer_llm(prompt: str, *, model: Optional[str] = None) -> str:
     return data["choices"][0]["message"]["content"]
 
 
-def _call_reviewer_agent(prompt: str, author: Optional[str] = None) -> str:
+def _call_reviewer_agent(prompt: str, author: Optional[str] = None,
+                         timeout: Optional[int] = None) -> str:
     """Review by shelling out to a CODING AGENT, with the prompt on STDIN.
 
     The command is operator-supplied (ADVERSARIAL_REVIEW_AGENT_CMD) rather than a

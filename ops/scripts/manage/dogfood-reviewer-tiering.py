@@ -63,12 +63,14 @@ def main() -> int:
         called = {}
         REV = '{"verdict":"CLEAN","findings":[]}'
 
-        def fake_agent(prompt, author=None):
+        def fake_agent(prompt, author=None, timeout=None):
             called["agent"] = True
+            called["agent_timeout"] = timeout
             return REV
 
-        def fake_llm(prompt, *, model=None):
+        def fake_llm(prompt, *, model=None, timeout=None):
             called["light_model"] = model
+            called["light_timeout"] = timeout
             return REV
 
         m._call_reviewer_agent = fake_agent
@@ -78,6 +80,8 @@ def main() -> int:
                          cx={"lines": 220, "files": 1, "always_review": False})
         check("heavy(220 lines) routes to the agent backend",
               called.get("agent") is True and "light_model" not in called, str(called))
+        check("heavy routes with an agent-scaled wait budget",
+              isinstance(called.get("agent_timeout"), int), str(called))
 
         called.clear()
         m._call_reviewer("M", author="esther@x",
@@ -85,6 +89,8 @@ def main() -> int:
         check("light(60 lines) routes to the fast llm reviewer, NOT the agent",
               called.get("light_model") == "deepseek/deepseek-v4-flash-0731"
               and "agent" not in called, str(called))
+        check("light routes with an llm-scaled wait budget",
+              isinstance(called.get("light_timeout"), int), str(called))
 
         called.clear()
         m._call_reviewer("M", author="esther@x",
