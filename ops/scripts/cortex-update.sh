@@ -2280,7 +2280,11 @@ import io, sys, pathlib
 try:
     from ruamel.yaml import YAML
 except ImportError:
-    sys.exit(0)
+    # Fail LOUD: this script cannot drop the keys without a round-trip loader, and
+    # a silent skip would leave `cron.provider: cost-guard` pointing at a provider
+    # that is no longer installed (Hermes would warn on every start).
+    print("cost keys NOT dropped: ruamel.yaml missing in this interpreter", file=sys.stderr)
+    sys.exit(3)
 path = pathlib.Path(sys.argv[1])
 if not path.exists():
     sys.exit(0)
