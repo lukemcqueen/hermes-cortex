@@ -61,17 +61,20 @@ if [[ ! -r "$SKILLS_ROOT" ]]; then
   echo "ERROR: skills root not readable: $SKILLS_ROOT" >&2
   exit 1
 fi
-# Note the find error out-param so a mid-scan failure surfaces.
-FIND_ERR=""
+# Capture find's stderr via a temp file (a process-substitution subshell
+# cannot assign back to the parent — that was the first, broken attempt).
+FIND_ERR_FILE="$(mktemp)"
+trap 'rm -f "$FIND_ERR_FILE"' EXIT
 while IFS= read -r skill_file; do
   skill_name="${skill_file#"$SKILLS_ROOT/"}"
   skill_name="${skill_name%/SKILL.md}"
   SKILL_COUNT=$((SKILL_COUNT + 1))
   CUSTOM_COUNT=$((CUSTOM_COUNT + 1))
   CUSTOM_SKILLS+=("$skill_name")
-done < <(find "$SKILLS_ROOT" -name "SKILL.md" -type f 2> >(FIND_ERR=$(cat); ) | sort)
-if [[ -n "$FIND_ERR" ]]; then
-  echo "WARN: find reported errors while scanning $SKILLS_ROOT: $FIND_ERR" >&2
+done < <(find "$SKILLS_ROOT" -name "SKILL.md" -type f 2>"$FIND_ERR_FILE" | sort)
+if [[ -s "$FIND_ERR_FILE" ]]; then
+  echo "WARN: find reported errors while scanning $SKILLS_ROOT:" >&2
+  sed 's/^/    /' "$FIND_ERR_FILE" >&2
 fi
 if [[ "$SKILL_COUNT" -eq 0 ]]; then
   echo "WARN: 0 SKILL.md files found under $SKILLS_ROOT — inventory may be wrong" >&2
