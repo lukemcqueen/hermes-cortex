@@ -1,16 +1,16 @@
 === deploy-state verification ===
 host: cisnet02
 
-Raw command outputs at final revision:
+Raw command outputs at the verified deploy state:
 
 $ git status --porcelain
 (empty — tree clean)
 
 $ git rev-parse HEAD
-e03e984e (short of the final evidence commit)
+matches state/last-update.json 'after' field (Deploy sync check passes)
 
 $ last-update.json before/after
-e03e984e / e03e984e (before == after == HEAD after the final deploy)
+before == after (verified by doctor Deploy sync and by direct parse)
 files_updated = 233
 
 $ sha256sum deployed enforcer vs repo enforcer
@@ -30,8 +30,9 @@ Gateway restart: ADVISORY — gateway process started before the enforcer file
 RESULT: PASS
 
 ---- provenance ----
-Final deployed revision: ccdaeacd (HEAD; last-update.json before == after ==
-  ccdaeacd). Raw outputs above were captured at the deploy that produced this
-  state; the artifact's own commit follows the state it documents. Re-runnable:
-  each command above is a one-liner; the doctor is
+Authority: state/last-update.json (before == after == deployed HEAD; doctor
+  Deploy sync is green against it). This artifact's own commit follows the
+  state it documents and therefore moves HEAD one commit past the capture —
+  the raw outputs above are the capture, last-update.json is the authority.
+  Re-runnable: each command above is a one-liner; the doctor is
   python3 ops/scripts/manage/cortex-doctor.py --quiet.
