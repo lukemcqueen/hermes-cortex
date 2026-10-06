@@ -1,7 +1,7 @@
 loop-governance regression artifact
 ========================================================================
-generated      : 2026-10-06T14:36:42+00:00
-revision       : 742e2bc3  (branch main)
+generated      : 2026-10-06T14:43:54+00:00
+revision       : 2f8db630  (branch main)
 interpreter    : Python 3.14.7 (<python-bin>/python3)
 generator      : tests/run_loop_gov_regression.py
 
@@ -11,6 +11,12 @@ Re-run with:  python3 tests/run_loop_gov_regression.py
 TEST SET (13 files)
 ------------------------------------------------------------------------
 [PASS] tests/test_loop_gov_mcp_nonblocking.py  rc=0
+        PASS (6):
+          - test_a_session_can_close_its_own_lock_while_another_holds_one
+          - test_both_reviewer_backends_route_through_the_clamp
+          - test_control_legacy_dispatch_still_blocks
+          - test_reviewer_timeout_clamped_below_client_ceiling
+          - test_secondary_marker_only_owner_removes_it
           - test_slow_handler_does_not_block_concurrent_call
         [mcp-server] WARNING: the 'mcp' package is not installed — the stdio server cannot start; the CLI adapter (ops/scripts/loop-gov.py) still works.
         [mcp-server]   ~/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3 -m pip install mcp
@@ -21,6 +27,16 @@ TEST SET (13 files)
         [mcp-server] DEBUG: Using selector: EpollSelector
 
 [PASS] tests/test_loop_gov_review_repo.py  rc=0
+        PASS (13):
+          - test_candidate_scan_finds_a_repo_two_levels_down
+          - test_derive_repo_path_honours_the_injected_path
+          - test_derive_slug_ignores_an_injected_slug_that_is_not_a_repo
+          - test_derive_slug_prefers_the_injected_repo
+          - test_enforcer_does_not_inject_a_repo_it_never_learned
+          - test_enforcer_injects_recorded_repo_into_governance_calls
+          - test_enforcer_records_and_injects_an_absolute_repo_path
+          - test_enforcer_records_session_repo_from_touched_paths
+          - test_guard_does_not_fire_when_lock_repo_holds_the_work
           - test_lock_repo_prefers_the_absolute_path_over_the_slug
           - test_nested_repo_holding_the_work_is_not_refused
           - test_review_refuses_when_lock_repo_cannot_contain_the_work
@@ -57,6 +73,8 @@ TEST SET (13 files)
         [mcp-server]   ~/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3 -m pip install mcp
 
 [PASS] tests/test_loop_gov_review_leak.py  rc=0
+          PASS  DB writable before any review
+          PASS  DB writable after FIRST review (fresh insert)
           PASS  DB writable after DUPLICATE review (IntegrityError path, no leak)
           PASS  duplicate review is idempotent (1 row)
           PASS  DB still writable after all review calls
@@ -67,6 +85,18 @@ TEST SET (13 files)
         [mcp-server] WARNING: SQL migration: unscored_reason already exists — expected
 
 [PASS] tests/test_orphan_cycle_resolution.py  rc=0
+        A. honesty — abandoned cycles close unscored, with a recomputable reason
+          PASS  reaper closed the abandoned cycle
+          PASS  closed (no longer PENDING)
+          PASS  NO score invented
+          PASS  unscored_reason recorded and tagged
+          PASS  reason states recomputable facts (task + TTL)
+        A2. a LIVE task is never reaped
+          PASS  live task untouched
+        A3. a cycle YOUNGER than the TTL is never reaped (no racing live work)
+          PASS  young cycle untouched
+        B. corroboration — a false abandonment claim FAILS
+          PASS  forged claim FAILS
         B2. a truthful abandonment claim does NOT fail
           PASS  truthful claim does not FAIL
           PASS  reaper-closed count is surfaced
@@ -77,6 +107,25 @@ TEST SET (13 files)
         [mcp-server]   ~/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3 -m pip install mcp
 
 [PASS] tests/test_reviewer_backends.py  rc=0
+        Reviewer backends — pluggable transport, fixed fail-closed contract
+          PASS  default backend is llm
+          PASS  llm records the MODEL as the reviewer
+          PASS  llm backend with no credential raises (close is refused, not skipped)
+          PASS  unknown backend is refused, not guessed
+          PASS  agent backend without a command is refused
+          PASS  agent backend returns the agent's stdout
+          PASS  agent backend records agent:<name> as the reviewer
+          PASS  SELF-REVIEW is refused (agent name matches the change's author)
+          PASS  agent non-zero exit refuses the close
+          PASS  agent silence is refused (silence is never CLEAN)
+        Config resolution — decoupled from Hermes
+          PASS  value is read from the canonical cortex env
+          PASS  quotes are stripped
+          PASS  the cortex file WINS over ~/.hermes/.env, not the reverse
+          PASS  the PROCESS env wins over any file
+          PASS  a missing name returns the default, not an exception
+          PASS  files are re-read per call (a long-lived server is not frozen)
+          PASS  the Hermes env is consulted LAST, not first
         ALL PASS
         [mcp-server] WARNING: the 'mcp' package is not installed — the stdio server cannot start; the CLI adapter (ops/scripts/loop-gov.py) still works.
         [mcp-server]   ~/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3 -m pip install mcp
@@ -93,6 +142,44 @@ TEST SET (13 files)
         [mcp-server]   ~/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3 -m pip install mcp
 
 [PASS] tests/test_refused_close_visible.py  rc=0
+        B. the pre-commit advisory fires on a refused-close lock, and only then
+          PASS  silent with no lock
+          PASS  silent without the marker
+          PASS  silent for another repo's lock
+          PASS  warns on a refused close
+          PASS  names the refused cycle
+          PASS  names the blocking findings
+          PASS  offers rereview_change as the exit
+          PASS  never blocks (exit 0)
+        A. the gate marks the lock on a refusal and clears it on CLEAN
+          PASS  a FINDINGS review blocks the close
+          PASS  the lock records close_refused
+          PASS  marker names the cycle
+          PASS  marker names the verdict
+          PASS  marker counts blocking findings
+          PASS  marker carries the finding ids
+          PASS  a CLEAN review does not block
+          PASS  the marker is CLEARED on CLEAN
+          PASS  an unreachable reviewer refuses the close
+          PASS  the outage is recorded on the lock too
+          PASS  control: handler bound to the real log; 1 record(s) emitted when unsilenced (none written to the file)
+          PASS  silenced, the same run appended 0 bytes (74524 bytes unchanged)
+        ✅ refused-close visibility checks passed
+        [mcp-server] WARNING: the 'mcp' package is not installed — the stdio server cannot start; the CLI adapter (ops/scripts/loop-gov.py) still works.
+        [mcp-server]   ~/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3 -m pip install mcp
+          \033[0;32m✅ change-validate: all checks passed\033[0m
+        🧪  Self-test: orchestrator guard...
+        ✅  Self-test passed: host detected as orchestrator (hostname+home-dir)
+            Env spoof check: ok-still-orch (env ignored)
+        ✅  Adversarial verify: passed on 1 file(s)
+        📊  score-cycle: LOOP 🔄 — keep iterating (task=precommit-hermes-cortex-HEAD
+        unknown/update, pass-pct=100)
+          \033[0;32m✅ change-validate: all checks passed\033[0m
+        🧪  Self-test: orchestrator guard...
+        ✅  Self-test passed: host detected as orchestrator (hostname+home-dir)
+            Env spoof check: ok-still-orch (env ignored)
+        ✅  Adversarial verify: passed on 1 file(s)
+        📊  score-cycle: LOOP 🔄 — keep iterating (task=precommit-hermes-cortex-HEAD
         unknown/update, pass-pct=100)
           \033[0;32m✅ change-validate: all checks passed\033[0m
         🧪  Self-test: orchestrator guard...
@@ -107,7 +194,7 @@ TEST SET (13 files)
           PASS harness reports LOCK HELD
           PASS DB blocked while harness holds BEGIN IMMEDIATE
           PASS DB still write-blocked after alert-only watchdog (no kill)
-          PASS watchdog report names holder pid 443124 in: '[2026-10-06 23:38 ] loop-gov-lock-watchdog: lock/anomaly DETECTED — alert-only (no auto-kill): 2 loop-gov daemon(s) in v'
+          PASS watchdog report names holder pid 487774 in: '[2026-10-06 23:45 ] loop-gov-lock-watchdog: lock/anomaly DETECTED — alert-only (no auto-kill): 2 loop-gov daemon(s) in v'
           PASS holder process still alive after watchdog (alert-only, never kills)
         6 checks, 6 pass
 
@@ -116,13 +203,13 @@ TEST SET (13 files)
 ------------------------------------------------------------------------
 STATIC GATE  mcp-servers/loop-gov-mcp.py  level A4
 ------------------------------------------------------------------------
-[PASS] interim/working revision 742e2bc3
+[PASS] interim/working revision 2f8db630
         📊 Summary: 1 file(s), 33 finding(s)
         🟡 Medium: 5
         🔵 Low: 2
         ✅ GATE_PASSED — no critical/high findings
 
-[PASS] PRE-FIX revision HEAD~1 (0cc24405)
+[PASS] PRE-FIX revision HEAD~1 (742e2bc3)
         📊 Summary: 1 file(s), 33 finding(s)
         🟡 Medium: 5
         🔵 Low: 2

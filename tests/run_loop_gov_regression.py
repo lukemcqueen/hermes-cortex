@@ -64,7 +64,14 @@ def _git(*args) -> str:
     return _run(["git", *args]).stdout.strip()
 
 
-def _tail(text: str, n: int = 8) -> str:
+def _tail(text: str, n: int = 60) -> str:
+    """Last n non-blank lines.
+
+    Generous on purpose: these harness scripts print a `PASS (N):` summary
+    followed by one line per test, and a short tail used to cut most of those
+    names out of the artifact — which made a true claim look contradicted by
+    its own evidence. The full summary must survive.
+    """
     lines = [ln for ln in text.rstrip().splitlines() if ln.strip()]
     return "\n".join(lines[-n:])
 
