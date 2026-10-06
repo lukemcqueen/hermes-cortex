@@ -21,6 +21,19 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[1]
 ARTIFACT = REPO / "tests" / "artifacts" / "loop-gov-regression.txt"
 
+_HOME = str(Path.home())
+_REPO = str(REPO)
+_PY_BIN = str(Path(sys.executable).parent)
+
+
+def _scrub(text: str) -> str:
+    """Rule 16: this artifact is committed to a PUBLIC repo, so the host's
+    home path, the checkout path and the interpreter's bin dir are replaced
+    with placeholders. Reproducing the artifact must not republish them."""
+    return (text.replace(_REPO, "<repo>")
+                .replace(_HOME, "~")
+                .replace(_PY_BIN, "<python-bin>"))
+
 # Every test asserted in the change's evidence note. Scope of the artifact must
 # equal the scope of the claim.
 TESTS = [
@@ -75,7 +88,7 @@ def main() -> int:
     out.append("=" * 72)
     out.append(f"generated      : {datetime.now(timezone.utc).isoformat(timespec='seconds')}")
     out.append(f"revision       : {revision}  (branch {branch})")
-    out.append(f"interpreter    : {sys.version.split()[0]} ({sys.executable})")
+    out.append(f"interpreter    : Python {sys.version.split()[0]} (<python-bin>/python3)")
     out.append(f"generator      : tests/run_loop_gov_regression.py")
     out.append("")
     out.append("Re-run with:  python3 tests/run_loop_gov_regression.py")
@@ -131,7 +144,7 @@ def main() -> int:
     out.append("=" * 72)
 
     ARTIFACT.parent.mkdir(parents=True, exist_ok=True)
-    ARTIFACT.write_text("\n".join(out) + "\n")
+    ARTIFACT.write_text("\n".join(_scrub(ln) for ln in out) + "\n")
 
     print(f"artifact: {ARTIFACT}")
     print(f"revision: {revision}   tests: {len(TESTS)}")

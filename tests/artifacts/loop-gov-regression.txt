@@ -1,0 +1,127 @@
+loop-governance regression artifact
+========================================================================
+generated      : 2026-10-06T13:27:18+00:00
+revision       : f2067352  (branch main)
+interpreter    : Python 3.14.7 (<python-bin>/python3)
+generator      : tests/run_loop_gov_regression.py
+
+Re-run with:  python3 tests/run_loop_gov_regression.py
+
+------------------------------------------------------------------------
+TEST SET (12 files)
+------------------------------------------------------------------------
+[PASS] tests/test_loop_gov_mcp_nonblocking.py  rc=0
+          - test_slow_handler_does_not_block_concurrent_call
+        [mcp-server] WARNING: the 'mcp' package is not installed — the stdio server cannot start; the CLI adapter (ops/scripts/loop-gov.py) still works.
+        [mcp-server]   ~/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3 -m pip install mcp
+        [mcp-server] DEBUG: Using selector: EpollSelector
+        [mcp-server] WARNING: reviewer timeout ADVERSARIAL_REVIEW_AGENT_TIMEOUT=900s exceeds the 240s client ceiling — clamping (a longer timeout is an unobservable hang, not a longer wait)
+        [mcp-server] WARNING: reviewer timeout ADVERSARIAL_REVIEW_TIMEOUT=300s exceeds the 240s client ceiling — clamping (a longer timeout is an unobservable hang, not a longer wait)
+        [mcp-server] WARNING: reviewer timeout ADVERSARIAL_REVIEW_AGENT_TIMEOUT=900s exceeds the 240s client ceiling — clamping (a longer timeout is an unobservable hang, not a longer wait)
+        [mcp-server] DEBUG: Using selector: EpollSelector
+
+[PASS] tests/test_loop_gov_multi_session.py  rc=0
+        PASS — loop-gov multi-session DB (adversarial findings resolved):
+          A: _db() busy_timeout=30000ms, journal_mode=wal (verified)
+          B: 2 concurrent OS processes both write while lock held 8.0s (writer-b queued 7.75s, no error)
+          C: control with OLD 5s timeout FAILED under same hold — proves fix required: 'database is locked'
+        [mcp-server] WARNING: the 'mcp' package is not installed — the stdio server cannot start; the CLI adapter (ops/scripts/loop-gov.py) still works.
+        [mcp-server]   ~/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3 -m pip install mcp
+        [mcp-server] WARNING: SQL migration: column already exists — expected
+
+[PASS] tests/test_loop_gov_stale_purge.py  rc=0
+        PASS — loop-gov stale purge: A(time-only) B(naive) C(fresh) D(purge+resolve) E(sweep-all) all green
+        [mcp-server] WARNING: the 'mcp' package is not installed — the stdio server cannot start; the CLI adapter (ops/scripts/loop-gov.py) still works.
+        [mcp-server]   ~/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3 -m pip install mcp
+        [mcp-server] WARNING: Orphan-cycle reaper: closed 1 abandoned PENDING cycle(s) unscored — #1(snapshot-capture-chunked-commit)
+        [mcp-server] WARNING: Purge: resolved 1 orphaned PENDING cycle(s) for purged tasks
+        [mcp-server] WARNING: Orphan-cycle reaper: closed 1 abandoned PENDING cycle(s) unscored — #2(orphan-no-lock)
+
+[PASS] tests/test_loop_gov_db_lock_recovery.py  rc=0
+          PASS  baseline begin_change acquires
+          PASS  begin_change REFUSED while holder active
+          PASS  write lock released after holder killed
+          PASS  begin_change re-acquires after holder killed
+        ALL PASS
+        [mcp-server] WARNING: the 'mcp' package is not installed — the stdio server cannot start; the CLI adapter (ops/scripts/loop-gov.py) still works.
+        [mcp-server]   ~/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3 -m pip install mcp
+
+[PASS] tests/test_loop_gov_review_leak.py  rc=0
+          PASS  DB writable after DUPLICATE review (IntegrityError path, no leak)
+          PASS  duplicate review is idempotent (1 row)
+          PASS  DB still writable after all review calls
+        ALL PASS — no connection leak on the duplicate-review path
+        [mcp-server] WARNING: the 'mcp' package is not installed — the stdio server cannot start; the CLI adapter (ops/scripts/loop-gov.py) still works.
+        [mcp-server]   ~/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3 -m pip install mcp
+        [mcp-server] WARNING: SQL migration: column already exists — expected
+        [mcp-server] WARNING: SQL migration: unscored_reason already exists — expected
+
+[PASS] tests/test_orphan_cycle_resolution.py  rc=0
+        B2. a truthful abandonment claim does NOT fail
+          PASS  truthful claim does not FAIL
+          PASS  reaper-closed count is surfaced
+        C. no drift — writer tag == checker tag
+          PASS  tags agree
+        ✅ all orphan-cycle resolution checks passed
+        [mcp-server] WARNING: the 'mcp' package is not installed — the stdio server cannot start; the CLI adapter (ops/scripts/loop-gov.py) still works.
+        [mcp-server]   ~/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3 -m pip install mcp
+
+[PASS] tests/test_reviewer_backends.py  rc=0
+        ALL PASS
+        [mcp-server] WARNING: the 'mcp' package is not installed — the stdio server cannot start; the CLI adapter (ops/scripts/loop-gov.py) still works.
+        [mcp-server]   ~/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3 -m pip install mcp
+        [mcp-server] WARNING: reviewer timeout ADVERSARIAL_REVIEW_AGENT_TIMEOUT=900s exceeds the 240s client ceiling — clamping (a longer timeout is an unobservable hang, not a longer wait)
+        [mcp-server] WARNING: reviewer timeout ADVERSARIAL_REVIEW_AGENT_TIMEOUT=900s exceeds the 240s client ceiling — clamping (a longer timeout is an unobservable hang, not a longer wait)
+        [mcp-server] WARNING: reviewer timeout ADVERSARIAL_REVIEW_AGENT_TIMEOUT=900s exceeds the 240s client ceiling — clamping (a longer timeout is an unobservable hang, not a longer wait)
+        [mcp-server] WARNING: the 'mcp' package is not installed — the stdio server cannot start; the CLI adapter (ops/scripts/loop-gov.py) still works.
+        [mcp-server]   ~/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3 -m pip install mcp
+
+[PASS] tests/test_review_independence.py  rc=0
+
+[PASS] tests/test_review_material_bound.py  rc=0
+        [mcp-server] WARNING: the 'mcp' package is not installed — the stdio server cannot start; the CLI adapter (ops/scripts/loop-gov.py) still works.
+        [mcp-server]   ~/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3 -m pip install mcp
+
+[PASS] tests/test_refused_close_visible.py  rc=0
+        unknown/update, pass-pct=100)
+          \033[0;32m✅ change-validate: all checks passed\033[0m
+        🧪  Self-test: orchestrator guard...
+        ✅  Self-test passed: host detected as orchestrator (hostname+home-dir)
+            Env spoof check: ok-still-orch (env ignored)
+        ✅  Adversarial verify: passed on 1 file(s)
+        📊  score-cycle: LOOP 🔄 — keep iterating (task=precommit-hermes-cortex-HEAD
+        unknown/update, pass-pct=100)
+
+[PASS] tests/test_loop_gov_lock_watchdog.py  rc=0
+          PASS baseline DB writable
+          PASS harness reports LOCK HELD
+          PASS DB blocked while harness holds BEGIN IMMEDIATE
+          PASS DB still write-blocked after alert-only watchdog (no kill)
+          PASS watchdog report names holder pid 160113 in: '[2026-10-06 22:28 ] loop-gov-lock-watchdog: lock/anomaly DETECTED — alert-only (no auto-kill): 1 loop-gov daemon(s) in v'
+          PASS holder process still alive after watchdog (alert-only, never kills)
+        6 checks, 6 pass
+
+[PASS] tests/test_loop_gov_mcp_startup.py  rc=0
+
+------------------------------------------------------------------------
+STATIC GATE  mcp-servers/loop-gov-mcp.py  level A4
+------------------------------------------------------------------------
+[PASS] interim/working revision f2067352
+        📊 Summary: 1 file(s), 33 finding(s)
+        🟡 Medium: 5
+        🔵 Low: 2
+        ✅ GATE_PASSED — no critical/high findings
+
+[PASS] PRE-FIX revision HEAD~1 (751a3667)
+        📊 Summary: 1 file(s), 33 finding(s)
+        🟡 Medium: 5
+        🔵 Low: 2
+        ✅ GATE_PASSED — no critical/high findings
+
+Comparison: the two summaries above must agree on their finding
+counts (same total / medium / low / info), which is the claim that
+this change introduces no new static findings.
+
+========================================================================
+RESULT: ALL PASS
+========================================================================
