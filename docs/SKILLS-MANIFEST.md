@@ -248,7 +248,7 @@ their domain.
 | `omarchy-nvim` | 0.1.0 | Install omarchy-nvim (LazyVim) user-local without sudo. | `skill_view(name='omarchy-nvim')` |
 | `one-owner-migrations` | 1.0.0 | Use when moving a job to a new owner system. | `skill_view(name='one-owner-migrations')` |
 | `orch-backlog-driver` | 1.0.0 | Backlog-driven orchestrator work (F-023) — pull the top pending fleet tasks from the tasks DB, execute or d... | `skill_view(name='orch-backlog-driver')` |
-| `orch-skill-lifecycle` | 1.1.0 | Unified daily skill lifecycle pipeline — collects lessons, evaluates quality, and upgrades skills/SOUL.md.... | `skill_view(name='orch-skill-lifecycle')` |
+| `orch-skill-lifecycle` | 1.2.0 | Unified daily skill lifecycle pipeline — collects lessons, evaluates quality, and upgrades skills/SOUL.md.... | `skill_view(name='orch-skill-lifecycle')` |
 | `orch-weekly-auto-fix` | 1.1.0 | After the weekly opportunity scan identifies issues, run auto-fix patterns — git pull, branch cleanup, Dock... | `skill_view(name='orch-weekly-auto-fix')` |
 | `package-security` | 1.0.0 | Age-gated package installation protection. Before installing any package with pip, npm, brew, or cargo, ver... | `skill_view(name='package-security')` |
 | `pg-texample-fuzzy-search` | 1.0.0 | Fuzzy retrieval over an internal corpus via pg_texample. | `skill_view(name='pg-texample-fuzzy-search')` |

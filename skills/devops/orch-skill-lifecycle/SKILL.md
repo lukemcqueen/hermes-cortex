@@ -2,7 +2,7 @@
 name: orch-skill-lifecycle
 category: devops
 description: "Unified daily skill lifecycle pipeline — collects lessons, evaluates quality, and upgrades skills/SOUL.md. Replaces skill-miner, harvest-lessons, skill-triage, soul-refinement, and agent-weekly-loop-eval."
-version: 1.1.0
+version: 1.2.0
 author: Hermes Cortex
 license: MIT
 platforms: [linux, macos]
@@ -342,6 +342,35 @@ Result: 3 skills updated, 1 upstreamed, 1 SOUL.md entry.
   Generated timestamp + agent — staged FILENAMES are unreliable (the same
   report stages under several agents' names; the `from` envelope field is
   scrambled by forwarder from-rewrites).
+- **Reflexion gate blocked the commit on a qualified `skill_view` (2026-10-06)** →
+  `loaded_skill()` matched with `plainto_tsquery('simple', <skill>)`, which
+  expands a hyphenated name to an implicit AND (`'a-b' & 'a' & 'b'`). When the
+  pipeline loads a skill via the QUALIFIED form `category/name`, the enforcer
+  records `{"name": "category/name"}`; the 'simple' dictionary lexes the tail
+  as `/name` (one token, leading slash) so the bare `a`/`b` lexemes never
+  exist and the AND fails. The gate is fail-closed, so it refused a skill the
+  session HAD loaded and blocked the commit. Fixed in `store.py`
+  `loaded_skill()`: match the bare name as ONE exact `to_tsquery` lexeme, OR a
+  raw-content `/%<skill>"` LIKE for the prefixed form (no sub-word OR — that
+  would false-positive on names like `file-ownership-boundaries`). Regression
+  guard: AC5 in `tests/test-reflexion-gate-e2e.sh`. If a commit is refused
+  with NOT-LOADED for a skill you DID load, check the recorded form
+  (`mycortex_mem.tool_events.content`) — a `category/` prefix is the tell.
+- **Processor is blind to the fleet's current subject (2026-10-06)** →
+  `orch-skill-report-process.py` filters `extract_skill_report()` on subject
+  containing "skill report" or `topic == reports`. The fleet now sends
+  `LEARNING_REPORT` (handler matches both), so Phase 1 prints nothing even
+  though `agent-learning-collector` is reporting every 6h. Do NOT read that
+  silence as "no reports": read the staged bodies directly from
+  `~/.hermes-cortex/state/learning-reports/` (newest per agent), which is the
+  authoritative input. The processor's queue path is effectively dead for
+  current-format reports.
+- **Staged-file union inflates over time (2026-10-06)** → the
+  `learning-reports/` dir accumulates ~770 files; a naive union of all
+  `[NEW]` entries lists every skill ever seen (500+) and is useless. Scope to
+  the last 24–48h by the body's `Generated:` timestamp before evaluating, and
+  dedupe repeated identical reports (the dual-orchestrator staging race writes
+  the same report under several agents' names).
 - **Don't patch the same skill twice in one run** — deduplicate before acting
 - **Don't upstream fleet skills that already exist** — check repo + Hermes bundle
 - **Don't modify SOUL.md for workflow lessons** — skills are for workflow, SOUL.md is for principles
