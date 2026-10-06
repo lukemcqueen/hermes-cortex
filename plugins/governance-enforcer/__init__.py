@@ -986,8 +986,9 @@ def _session_repo_hint_path(session_id: str) -> Path:
 _PATH_ARG_KEYS = ("path", "file_path", "workdir", "cwd", "directory")
 
 
-def _session_repo_slug(session_id: str) -> str:
-    """The repo this session was last observed working in ('' when unknown)."""
+def _session_repo_hint(session_id: str) -> str:
+    """Raw hint for a session: an absolute repo path (current format) or a bare
+    slug (the format written before the absolute-path fix)."""
     if not session_id:
         return ""
     try:
@@ -997,6 +998,24 @@ def _session_repo_slug(session_id: str) -> str:
     except OSError:
         log.warning("Could not read the session repo hint")
     return ""
+
+
+def _session_repo_path(session_id: str) -> Optional[Path]:
+    """The session's repo as an absolute path, when the hint is path-shaped.
+
+    Absolute, not ``HOME/<name>``: a dev host keeps project checkouts in nested
+    folders, where a bare name resolves to the wrong repo (or to none).
+    """
+    raw = _session_repo_hint(session_id)
+    return Path(raw) if raw and Path(raw).is_absolute() else None
+
+
+def _session_repo_slug(session_id: str) -> str:
+    """The NAME of the session's repo — what the git hooks match locks by."""
+    raw = _session_repo_hint(session_id)
+    if not raw:
+        return ""
+    return Path(raw).name if Path(raw).is_absolute() else raw
 
 
 def _git_root_for(path: Path) -> Optional[Path]:
@@ -1031,13 +1050,13 @@ def _note_session_repo(session_id: str, args: Dict[str, Any]) -> None:
         repo = _git_root_for(Path(raw).expanduser())
         if repo is None:
             continue
-        if _session_repo_slug(session_id) == repo.name:
+        if _session_repo_hint(session_id) == str(repo):
             return
         try:
             hint = _session_repo_hint_path(session_id)
             hint.parent.mkdir(parents=True, exist_ok=True)
             tmp = hint.with_suffix(".tmp")
-            tmp.write_text(repo.name)
+            tmp.write_text(str(repo))
             tmp.rename(hint)
         except OSError:
             log.warning("Could not write the session repo hint")
@@ -1059,9 +1078,17 @@ def _inject_session_context(session_id: str, tool_name: str, args: Dict[str, Any
         return
     args["session_id"] = session_id
     if tool_name.startswith("mcp__loop_governance__"):
-        slug = _session_repo_slug(session_id)
-        if slug:
-            args["repo_slug"] = slug
+        repo = _session_repo_path(session_id)
+        if repo is not None:
+            # Absolute path AND the name: the MCP resolves the repo from the
+            # path (nested checkouts work), while the git hooks match locks by
+            # the slug, so both must travel.
+            args["repo_path"] = str(repo)
+            args["repo_slug"] = repo.name
+        else:
+            legacy = _session_repo_hint(session_id)
+            if legacy:
+                args["repo_slug"] = legacy
 
 
 def _derive_repo_slug() -> str:

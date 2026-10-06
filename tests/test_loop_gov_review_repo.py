@@ -211,6 +211,102 @@ def _iso(ts: float) -> str:
     return datetime.fromtimestamp(ts, timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
 
 
+# ── Part 3: nested repos resolve by ABSOLUTE PATH ──
+#
+# repo_slug is a NAME resolved as HOME/<slug>, a contract the git hooks share.
+# A repo nested deeper than a HOME child (a dev-agent host with many project
+# repos) therefore resolved to the canonical repo, re-creating the wrong-repo
+# review. The repo's absolute path now travels in the lock alongside the slug.
+
+def _nested(tmp_prefix="nested-repo-"):
+    home = Path(tempfile.mkdtemp(prefix=tmp_prefix))
+    deep = home / "projects" / "deep" / "foo"
+    mcp.HOME = home
+    mcp.GOVERNANCE_STATE_DIR = home / "state"
+    mcp.GOVERNANCE_STATE_DIR.mkdir(parents=True, exist_ok=True)
+    mcp._PROCESS_SESSION_ID = ""
+    return home, deep
+
+
+def test_derive_repo_path_honours_the_injected_path():
+    home, deep = _nested()
+    _mkrepo(deep, with_commit=True)
+    got = mcp._derive_repo_path({"repo_path": str(deep)})
+    assert got == deep, f"injected repo_path ignored (got {got!r})"
+    assert mcp._derive_repo_path({"repo_path": str(home / "no-such-repo")}) is None, (
+        "a path that is not a git repo was accepted as the lock's repo"
+    )
+
+
+def test_lock_repo_prefers_the_absolute_path_over_the_slug():
+    """Same basename in two places: the recorded path must win, otherwise the
+    review audits whichever repo happens to sit at HOME/<slug>."""
+    home, deep = _nested()
+    _mkrepo(deep, with_commit=True)
+    _mkrepo(home / "foo", with_commit=False)      # decoy at the slug location
+    lock = {"repo_slug": "foo", "repo_path": str(deep), "started_at": _iso(time.time())}
+    assert mcp._lock_repo(lock) == deep, "the slug won over the recorded absolute path"
+
+
+def test_nested_repo_holding_the_work_is_not_refused():
+    home, deep = _nested()
+    _mkrepo(home / "hermes-cortex", with_commit=False)
+    started = _iso(time.time())
+    time.sleep(1.1)
+    _mkrepo(deep, with_commit=True)               # the work lands INSIDE the window
+    lock = {"task_id": "t", "description": "d", "repo_slug": "foo",
+            "repo_path": str(deep), "started_at": started, "session_id": "S",
+            "ttl_seconds": 3600}
+    block = mcp._adversarial_review_gate(lock, {"id": 4321})
+    assert block is None, (
+        f"a nested repo holding the work should pass the gate, got: "
+        f"{block.content[0].text if block is not None else None!r}"
+    )
+
+
+def test_candidate_scan_finds_a_repo_two_levels_down():
+    _home, deep = _nested()
+    _mkrepo(deep, with_commit=True)
+    assert deep in mcp._candidate_repos(), (
+        f"the guard cannot see a nested repo: {mcp._candidate_repos()}"
+    )
+
+
+def test_secondary_marker_follows_the_absolute_path():
+    _home, deep = _nested()
+    _mkrepo(deep, with_commit=False)
+    state = {"task_id": "t", "description": "d", "repo_slug": "foo",
+             "repo_path": str(deep), "started_at": mcp._now_iso(),
+             "session_id": "N1", "ttl_seconds": 3600, "heartbeat_at": mcp._now_iso()}
+    mcp._write_lock(state, {"session_id": "N1"})
+    marker = deep / ".hermes-cortex" / ".governance-lock"
+    assert marker.exists(), (
+        "the in-repo marker did not follow the absolute repo path — it landed "
+        "at HOME/<slug> instead"
+    )
+    mcp._release_lock({"session_id": "N1"})
+    assert not marker.exists(), "owner's release left its marker behind"
+
+
+def test_enforcer_records_and_injects_an_absolute_repo_path():
+    home = Path(tempfile.mkdtemp(prefix="enf-nested-"))
+    deep = home / "projects" / "deep" / "foo"
+    _mkrepo(deep, with_commit=True)
+    enf.GOVERNANCE_STATE_DIR = home / "state"
+    enf.GOVERNANCE_STATE_DIR.mkdir(parents=True, exist_ok=True)
+
+    enf._note_session_repo("S-abs", {"path": str(deep / "work.txt")})
+    args = {}
+    enf._inject_session_context("S-abs", "mcp__loop_governance__begin_change", args)
+
+    assert args.get("repo_path") == str(deep), (
+        f"the session's absolute repo path was not injected: {args}"
+    )
+    assert args.get("repo_slug") == "foo", (
+        f"repo_slug (used by the git hooks for lock matching) was dropped: {args}"
+    )
+
+
 if __name__ == "__main__":
     tests = [v for k, v in sorted(globals().items())
              if k.startswith("test_") and callable(v)]

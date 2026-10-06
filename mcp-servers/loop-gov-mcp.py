@@ -422,6 +422,45 @@ def _derive_slug(args: dict | None = None) -> str:
     return "generic"
 
 
+def _derive_repo_path(args: dict | None = None) -> Optional[Path]:
+    """Absolute repo root for THIS session, as observed and injected by the
+    enforcer.
+
+    ``repo_slug`` is a NAME resolved as ``HOME/<slug>`` — a contract the git
+    hooks share — which silently resolves to the wrong repo (or to nothing) for
+    a checkout nested deeper than a HOME child, i.e. a dev host holding many
+    project repos. The path is never inferred here: it is accepted only when the
+    enforcer actually observed it for this session, and only when it is a real
+    git repo, so it cannot be used to point a review at an arbitrary directory.
+    """
+    if isinstance(args, dict):
+        raw = str(args.get("repo_path") or "").strip()
+        if raw:
+            candidate = Path(raw).expanduser()
+            if (candidate / ".git").exists():
+                return candidate
+    return None
+
+
+def _lock_repo(lock: dict) -> Optional[Path]:
+    """The repo a lock belongs to.
+
+    Prefers the recorded absolute ``repo_path`` (nested checkouts work), and
+    falls back to ``HOME/<repo_slug>`` for locks written before that field
+    existed. Returns None when neither resolves to a real git repo — the caller
+    must then fail CLOSED rather than guess a tree to review.
+    """
+    raw = str(lock.get("repo_path") or "").strip()
+    if raw:
+        candidate = Path(raw)
+        if (candidate / ".git").exists():
+            return candidate
+    slug = str(lock.get("repo_slug") or "").strip()
+    if slug and (HOME / slug / ".git").exists():
+        return HOME / slug
+    return None
+
+
 def _session_lock_path(session_id: str) -> Path:
     """Return a unique lock file path per session.
 
@@ -442,6 +481,11 @@ def _secondary_lock_path(state: dict) -> Path | None:
 
     Returns None if the repo slug can't be mapped to a known repo path.
     """
+    repo_path = str(state.get("repo_path") or "").strip()
+    if repo_path:
+        candidate = Path(repo_path)
+        if (candidate / ".git").exists():
+            return candidate / ".hermes-cortex" / ".governance-lock"
     repo_slug = state.get("repo_slug", "")
     if not repo_slug:
         return None
@@ -1613,6 +1657,11 @@ def _begin_change(args: dict) -> CallToolResult:
         "task_id": task_id,
         "description": description,
         "repo_slug": _derive_slug(args),
+        # Absolute repo root, when the enforcer observed this session's repo.
+        # repo_slug alone is a NAME resolved as HOME/<slug>, which mis-resolves
+        # for a checkout nested deeper than a HOME child (dev hosts holding many
+        # project repos) and re-created the wrong-repo review.
+        "repo_path": str(_derive_repo_path(args) or ""),
         "started_at": now_iso,
         "agent": os.environ.get("AGENT_NAME", "unknown"),
         "session_id": session_id,
@@ -1837,20 +1886,42 @@ def _provenance_block(repo: Path, base: str, own_author: str) -> str:
             "cycle.]\n" + log + "\n")
 
 
-def _candidate_repos() -> list:
+_CANDIDATE_SKIP_DIRS = {
+    ".git", "node_modules", ".venv", "venv", "__pycache__", ".cache", "target",
+    "dist", "build", ".tox", ".mypy_cache", ".pytest_cache", "site-packages",
+    "Library", "Applications", "Trash",
+}
+
+
+def _candidate_repos(max_depth: int = 3) -> list:
     """Repos that could plausibly hold this session's work.
 
-    Bounded on purpose: every top-level git repo in $HOME (one level, no
-    recursion) plus the cwd repo. Used only by the wrong-repo guard, which
-    needs a cheap second opinion about WHERE the work actually landed.
+    Bounded walk of HOME down to `max_depth` — a dev host keeps project
+    checkouts in nested folders (``~/projects/<org>/<repo>``), which a
+    one-level scan cannot see — plus the cwd repo. Heavy/generated directories
+    and hidden directories (except ``.hermes-cortex``) are skipped so the walk
+    stays cheap, and a directory that IS a repo is a leaf. This runs only from
+    the wrong-repo guard, which needs a cheap second opinion about WHERE the
+    work actually landed.
     """
     out: list = []
-    try:
-        for child in sorted(HOME.iterdir()):
-            if child.is_dir() and (child / ".git").exists():
+    queue = [(HOME, 1)]
+    while queue:
+        directory, depth = queue.pop(0)
+        try:
+            entries = sorted(directory.iterdir())
+        except OSError:
+            continue
+        for child in entries:
+            if not child.is_dir() or child.name in _CANDIDATE_SKIP_DIRS:
+                continue
+            if child.name.startswith(".") and child.name != ".hermes-cortex":
+                continue
+            if (child / ".git").exists():
                 out.append(child)
-    except OSError:
-        log.warning("Candidate repo scan failed — expected failure: except OSError")
+                continue          # a repo is a leaf — never descend into it
+            if depth < max_depth:
+                queue.append((child, depth + 1))
     try:
         root = subprocess.check_output(  # noqa: S603,S404 — fixed argv; timeout below
             ["git", "rev-parse", "--show-toplevel"], timeout=3, stderr=subprocess.DEVNULL,
@@ -2700,9 +2771,8 @@ def _adversarial_review_gate(lock: dict, cycle: dict,
     must not be a way to re-roll an unchanged verdict, so rereview_change refuses
     an unchanged note before it gets here.
     """
-    repo_slug = lock.get("repo_slug", "")
-    repo = HOME / repo_slug if repo_slug else None
-    if repo is None or not (repo / ".git").exists():
+    repo = _lock_repo(lock)
+    if repo is None:
         # No governed repo to diff — cannot measure complexity. Fail CLOSED:
         # an unmeasurable close is a complex close, and it must be reviewed.
         return CallToolResult(content=[TextContent(type="text", text=(
