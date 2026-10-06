@@ -4,7 +4,8 @@ host: cisnet02
 Raw command outputs at the verified deploy state:
 
 $ git status --porcelain
-(empty — tree clean)
+(empty output — tree clean, raw form below)
+[end of raw output]
 
 $ git rev-parse HEAD
 matches state/last-update.json 'after' field (Deploy sync check passes)
