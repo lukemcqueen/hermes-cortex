@@ -1,0 +1,10 @@
+== 1. syntax ==
+  PASS: bash -n clean
+== 2. normal run enumerates skills (count > 0) ==
+  PASS: Total skills: 511
+== 3. missing skills root fails closed ==
+  PASS: missing root -> exit 1 + ERROR
+== 4. unreadable subdir emits find-error WARN ==
+  PASS: unreadable subdir -> find-error WARN
+
+RESULT: 4 passed, 0 failed

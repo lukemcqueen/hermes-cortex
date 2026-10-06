@@ -1,0 +1,18 @@
+[0;32m✓[0m   Skills: 0 updated, 383 unchanged
+[1;33m⚠[0m   ⚠️  Deployed-only skill 'brand-brief' (brand-intelligence/skills/brand-brief) is not in the repo.
+[1;33m⚠[0m   ⚠️  Deployed-only skill 'watchlist-digest' (brand-intelligence/skills/watchlist-digest) is not in the repo.
+[1;33m⚠[0m   ⚠️  Deployed-only skill 'compare-brands' (brand-intelligence/skills/compare-brands) is not in the repo.
+[0;32m✓[0m   Skills: 0 updated, 383 unchanged, 0 stale removed, 3 preserved (deployed-only, not auto-deleted)
+  Skills: auto-remediation
+  Skills: auto-remediation
+  Skills: auto-remediation
+  Skills: cortex-bus-automation
+  Skills: cortex-bus-automation
+  Skills: cortex-bus-automation
+  Skills: none
+  Skills: documentation-scope
+  ✅ Stale skills: orphans
+  ✅ Stale skills: missing
+  ✅ Stale skills: ambiguous names (deployed)
+  ✅ Stale skills: ambiguous names (repo)
+  ✅ Skill drift
