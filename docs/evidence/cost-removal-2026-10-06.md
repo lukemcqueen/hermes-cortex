@@ -63,8 +63,20 @@ tests/test_fact_retention.py .PYTEST rc=1        # stopped at 37%, no failure re
 
 The process died mid-file: `tests/test_fact_retention.py`'s in-process compressor tests
 sent the import chain through the Hermes launcher, which re-execs the interpreter with
-pytest's own argv — the child cannot import pytest, so the run ends. That file is
-untouched by the removal (`git log -2 -- tests/test_fact_retention.py` ends at e97aee91).
+pytest's own argv — the child cannot import pytest, so the run ends.
+
+The crash is PRE-EXISTING and the file is now PART of this range, both stated by the same
+command:
+
+```
+$ git log --oneline -3 -- tests/test_fact_retention.py
+fbfc22b3 fix(tests+harness): the pre-existing suite failures, and a suite that can finish
+e97aee91 feat(cost): O7-S2 — compaction fact-retention eval (never silent truncation)
+```
+
+The crash came in with e97aee91 (weeks before the cost removal, which never touched this
+file); fbfc22b3 is the fix that converted the four in-process tests into probe-driven ones,
+which is why run 3 below completes.
 
 **Run 2 — the same suite minus the aborting file, before the fixes:**
 
@@ -73,9 +85,23 @@ $ python3 -m pytest tests/ -q -p no:cacheprovider --ignore=tests/test_fact_reten
 6 failed, 1365 passed in 338.41s
 ```
 
-Four of those six were reproduced at the pre-change revision in a worktree
-(`git worktree add /tmp/pre-cost e5227fa7^` → `4 failed, 26 passed`), which is how they
-were classified as pre-existing rather than caused by the removal.
+Four of those six were classified pre-existing by reproducing them at the revision
+BEFORE the removal:
+
+```
+$ git worktree add --detach /tmp/pre-cost2 e5227fa7^
+$ cd /tmp/pre-cost2 && python3 -m pytest tests/test_hc_harness.py \
+      tests/test_repo_resource_paths.py tests/test_retired_orch_crons.py \
+      tests/test_skill_drift_parity.py -q -p no:cacheprovider
+FAILED tests/test_hc_harness.py::test_lists_registry_harnesses
+FAILED tests/test_hc_harness.py::test_run_line_is_derived_not_the_hand_written_registry_literal
+FAILED tests/test_hc_harness.py::test_hc_entrypoint_dispatches_harness
+FAILED tests/test_skill_drift_parity.py::test_parity_check_discriminates
+4 failed, 26 passed in 7.73s
+```
+
+The other two were mine and are fixed: `test_repo_resource_paths` (register counts) and
+`test_retired_orch_crons` (an ambient HOME leak, now pinned).
 
 **Run 3 — the whole suite after the fixes (HEAD 93b862b0's parent):**
 
@@ -90,12 +116,18 @@ fixes made runnable (the crasher file's four guarantees plus the harness-drift c
 ## Deploy + dogfood on this host (scrubbed)
 
 ```
-$ bash ops/scripts/cortex-update.sh
-  ⚠️  Overall: WARNING  (436 pass · 2 warn · 0 fail · 7 info)
 $ bash ops/scripts/cortex-dogfood.sh            # rc=0
   ✅  DOGFOOD PASSED — deployed state verified clean.
   ⚠️  Overall: WARNING  (436 pass · 2 warn · 0 fail · 7 info)
+$ bash ops/scripts/cortex-update.sh             # the next deploy, same host
+  ⚠️  Overall: WARNING  (437 pass · 2 warn · 0 fail · 6 info)
 ```
+
+The two lines are two DIFFERENT runs (dogfood, then the deploy after this file was
+committed); the pass/warn/info counts move by one or two as test files and checks are
+added, which is why each line names the command it came from. What does not move:
+**0 fail** in both, and the same two warns — the pre-existing brand-intelligence
+deployed-only skills.
 
 Both are re-runnable as-is; the two remaining warnings are the pre-existing
 brand-intelligence deployed-only skills. The raw logs for the run in this file are in
