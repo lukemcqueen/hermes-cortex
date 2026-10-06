@@ -70,11 +70,17 @@ const PYTHON = process.env.CORTEX_CONTEXT_PYTHON ?? "python3";
 
 async function cortex(tool: string, args: Record<string, unknown> = {}): Promise<string> {
   try {
-    const { stdout } = await run(PYTHON, [CLI, tool, JSON.stringify(args)], {
+    const { stdout, stderr } = await run(PYTHON, [CLI, tool, JSON.stringify(args)], {
       timeout: 15_000,
       maxBuffer: 4 * 1024 * 1024,
+      encoding: "utf8",
     });
-    return stdout.trim();
+    // stderr from child processes must never leak into the Pi TUI prompt area.
+    // The fail-open contract means we continue regardless, but a silent failure
+    // reads as "the agent had no memory" — so stderr is captured (not forwarded)
+    // and only genuine exec failures surface on our own stderr below.
+    void stderr;
+    return (stdout ?? "").trim();
   } catch (err) {
     fail(`CORTEX_FAIL ${tool}: ${String(err)}\n`);
     return "";

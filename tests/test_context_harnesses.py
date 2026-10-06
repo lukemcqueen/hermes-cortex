@@ -407,11 +407,14 @@ def test_macos_parity_for_the_context_layers():
     cmd, env = pc._cmd("mycortex_mem_reader")
     assert "sg" not in cmd and "docker" not in cmd, f"Linux path leaked to macOS: {cmd}"
     assert cmd[0] == "psql" and "-h" in cmd and "localhost" in cmd, cmd
+    assert "-w" in cmd, "macOS psql must be --no-password (-w): it must never prompt on /dev/tty"
     assert "PGPASSFILE" in env and env["PGPASSFILE"].endswith(".pgpass"), env
     # The Linux branch must still be the docker one.
     pc._is_macos = False
     cmd_linux, _ = pc._cmd("mycortex_mem_reader")
     assert cmd_linux[0] == "sg" and "docker" in cmd_linux, cmd_linux
+    assert "-w" in "".join(cmd_linux), \
+        "docker-exec psql must be --no-password (-w): it must never prompt on /dev/tty"
 
     ext = PI_EXT.read_text()
     assert "CORTEX_CONTEXT_PYTHON" in ext, \
