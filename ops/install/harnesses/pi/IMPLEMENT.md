@@ -136,8 +136,11 @@ markers to stderr too, for when you are diagnosing live.
 | `CORTEX_FAIL <tool>: …` | **stderr** | the CLI failed to run — usually a python path or CLI path problem. |
 | `CORTEX_TOOL_EVENT <name> FAILED` | **stderr** | attribution failed for that call. |
 
-**Never let these be silent.** An empty checkpoint that *looks* like continuity is
-worse than no checkpoint.
+**Every other state stays silent.** Diagnosing whether a checkpoint landed is done
+by *reading it back* (`session_restore`), never by watching stderr; a clean resume
+or turn writes nothing, because success is not a finding and noise here sits
+directly above the TUI input prompt. Only `CORTEX_FAIL` (and `CORTEX_TOOL_EVENT …
+FAILED`) are written — and only when something is actually broken.
 
 ---
 
@@ -162,6 +165,17 @@ grep -n -A12 "interface BeforeAgentStartEvent" "$P"/dist/core/extensions/types.d
 
 `turn_end` carries `turnIndex`, `message`, `toolResults`, `entries`, `outcome` —
 build the checkpoint from `toolResults` + `message`.
+
+> **Install-route matters for the verify guard.** These example paths describe the
+> **npm-managed** install (`~/.pi/agent/install/releases/<v>/node_modules/…`). Some
+> hosts install pi via **mise/binary** instead — the launcher is `~/.local/bin/pi`
+> and the package lives at `~/.local/share/mise/installs/pi/<v>/pi`, with **no**
+> extracted `node_modules/jiti`. `verify-extension.mjs` and `run-evidence.sh`
+> locate jiti from the `node_modules` tree and **cannot run there**: the probe exits
+> code 2, so `test_pi_extension_EXECUTES` FAILS the enclosing assert (it skips only
+> when `node` itself is absent). Prefer running the guard on a host with the
+> npm-managed layout. The extension source is layout-agnostic and still deploys to
+> `~/.hermes-cortex/harnesses/pi/extensions/` via `cortex-update.sh`.
 
 ---
 

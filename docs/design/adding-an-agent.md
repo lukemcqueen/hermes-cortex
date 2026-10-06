@@ -67,8 +67,8 @@ which are now spec fields rather than gotchas to rediscover:
 
 - **Absolute path to the binary.** pi's linuxbrew symlink is not on a service PATH; a
   relative command in a systemd context is an agent that answers nothing.
-- **`output: last_line`.** pi prints its extension's session line before the answer, so
-  `raw` would send `CORTEX_RESUME …` to the human.
+- **`output: last_line`.** pi prints its own session/status line before the answer, so
+  `raw` would send that to the human.
 - **`timeout_s` sized for a real turn.** A coding turn is not a chat reply.
 
 Verified end to end on a second bot token: the bot's message → the command backend spawned

@@ -186,8 +186,31 @@ def test_pi_extension_uses_the_REAL_event_api():
     assert re.search(r'pi\.on\(\s*"turn_end"\s*,\s*async\s*\(\s*event', code), \
         "turn_end handler must take (event, ctx)"
     assert "systemPrompt:" in code, "before_agent_start must RETURN the injected prompt"
-    assert "CORTEX_CHECKPOINT_EMPTY" in code, \
-        "must warn loudly rather than write a silently-empty checkpoint"
+    # Empty states must be SILENT on stderr (no cluttering a TUI prompt).
+    # The runbook still verifies "no empty checkpoint" through the executed
+    # guard, not through a stderr marker.
+    assert "CORTEX_CHECKPOINT_EMPTY" not in code, \
+        "empty-turn noise on stderr is gone — stay silent unless genuinely broken"
+
+
+def test_pi_extension_stderr_is_failure_only():
+    """Diagnostics that are not failures must NOT write to stderr: they surface
+    directly above the Pi TUI input prompt and drown out the real signal.
+
+    Keep exactly the failure writes — a CLI crash (CORTEX_FAIL) and a tool-event
+    write that fell over (CORTEX_TOOL_EVENT … FAILED). Everything else returns
+    silently, and a resume marker is not a failure.
+    """
+    src = PI_EXT.read_text()
+    code = "\n".join(ln for ln in src.splitlines()
+                     if not ln.lstrip().startswith(("*", "//", "/*")))
+    # Reads the code's write calls — status quotes are prose, not the call.
+    writes = [ln.strip() for ln in code.splitlines()
+              if "process.stderr.write(" in ln]
+    assert "CORTEX_FAIL" in src, "a real CLI error must still be reported"
+    for marker in ("CORTEX_RESUME", "CORTEX_CHECKPOINT_EMPTY"):
+        assert marker not in code, f"{marker} is not a failure — remove the stderr write"
+    assert "recorded" not in writes, "the success path must not announce itself"
 
 
 def test_pi_context_tools_are_registered_as_the_shared_MCP_server():
@@ -229,6 +252,12 @@ def test_pi_extension_EXECUTES():
         pytest.skip("node not available — cannot execute the extension")
     r = subprocess.run([node, str(HARNESS_DIR / "pi" / "verify-extension.mjs")],
                        capture_output=True, text=True, timeout=180)
+    # A mise/binary pi install has no node_modules/jiti for the guard to drive a
+    # .ts extension with; the guard exits 0 with "EXTENSION SKIPPED" in that case.
+    # That is an environment skip, not a broken wiring — a host with the
+    # npm-managed layout (where jiti resolves) exercises the real guard.
+    if "EXTENSION SKIPPED" in r.stdout:
+        pytest.skip("verify-extension.mjs cannot locate a jiti loader on this pi install — run on an npm-managed pi host")
     assert r.returncode == 0, f"extension tool wiring is broken:\n{r.stdout}\n{r.stderr}"
     assert "EXTENSION OK" in r.stdout
 

@@ -122,8 +122,9 @@ Both of these were got wrong on the first attempt, and BOTH failed silently:
 Checked against `dist/core/extensions/types.d.ts`. `turn_end` carries
 `turnIndex`, `message`, `toolResults`, `entries`, `outcome` — the checkpoint is
 built from `toolResults` + `message`. **A checkpoint that looks like continuity
-and carries none is worse than no checkpoint at all**, so the extension now
-warns loudly rather than writing an empty one.
+and carries none is worse than no checkpoint at all**, so the extension stays
+SILENT and writes nothing rather than emitting an empty block or a stderr line
+(noise there sits directly above the Pi TUI prompt).
 
 Generate and verify against the installed package:
 
@@ -228,9 +229,10 @@ running service").
    ```bash
    cortex-context session_restore '{}' | grep wiring-proof
    ```
-   If it is missing, your hook is not firing — check stderr for `CORTEX_CONTEXT_FAIL`.
+   If it is missing, your hook is not firing — check stderr for `CORTEX_FAIL`.
 3. **Session-start injection.** Start a SECOND session and confirm the checkpoint
-   appears in the prompt without you asking (Pi logs `CORTEX_RESUME <key>`).
+   appears in the prompt without you asking (injection is the return value — there
+   is no stderr marker on a clean resume).
 4. **Fail-open.** Stop the store, call a tool, confirm the harness continues with
    `memory unavailable…` and does **not** error out. Restart the store.
 
@@ -248,8 +250,10 @@ running service").
 | **macOS: every call returns empty, `CORTEX_FAIL` on stderr** | `python3` not on Pi's PATH (Homebrew is at `/opt/homebrew/bin` on Apple Silicon, `/usr/local/bin` on Intel; a GUI-launched app sees a narrower PATH) | `export CORTEX_CONTEXT_PYTHON=/opt/homebrew/bin/python3` |
 | **macOS: the store is unreachable but Linux works** | the Linux path shells through `sg docker -c docker exec` — neither exists on macOS | the store has a darwin path (direct `psql` + 0600 `PGPASSFILE`); if it is not firing, check `MYCORTEX_MEM_PASSWORD` and that Postgres is listening locally |
 
-`CORTEX_CONTEXT_FAIL` / `session-autocheckpoint: …` lines on **stderr are
-findings, not noise** — they mean a capability is silently degraded.
+`CORTEX_FAIL` / `session-autocheckpoint: …` lines on **stderr are
+findings, not noise** — they mean a capability is silently degraded. Everything
+else (a resume, a checkpoint, an empty turn) stays **silent** on stderr: noise
+there sits directly above the Pi TUI input prompt.
 
 ---
 
