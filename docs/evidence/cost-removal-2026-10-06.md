@@ -49,3 +49,23 @@ config: cron: {}
 hermes cron list: 1 lines
 doctor: ⚠️  Overall: WARNING  (433 pass · 10 warn · 0 fail · 7 info)
 ```
+
+## Full test suite — the whole repository, at 2b45a13d
+
+The suite could not complete before these fixes (it aborted at 37%: the fact-retention
+compressor tests re-execed the interpreter through the Hermes launcher with pytest s
+argv). Now:
+
+```
+$ python3 -m pytest tests/ -q -p no:cacheprovider
+
+======================= 1376 passed in 335.20s (0:05:35) =======================
+
+# the same command before the pre-existing fixes: 6 failed, 1365 passed, run aborted
+```
+
+The four failures it started with were reproduced at the pre-change revision
+(`git worktree add /tmp/pre-cost e5227fa7^` -> "4 failed, 26 passed"), which is how they
+were classified as pre-existing rather than caused by the removal. All four are now fixed
+and asserted in the tree (see the relevant test files and
+docs/evidence/task-queue-remediation.md for the measured before/after).
