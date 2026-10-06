@@ -35,10 +35,10 @@ $ hc inbox titus
 (identical pending FLEET_NOTICE observed in inbox_joseph, inbox_gisu,
 inbox_kustos; inbox_moses showed the FLEET_NOTICE_RESULT from the self-test.)
 
-## Delivery proof B — later peek: every queue consumed (empty)
+## Delivery proof B — later peek: every queue no longer pending
 
 A non-destructive peek after the agents' 5-minute handlers ran shows the notices
-gone from `pending` — read + archived (delivered), not lost:
+gone from `pending`:
 
 ```
 ===== inbox_moses =====
@@ -53,4 +53,13 @@ No pending messages in inbox_gisu.
 No pending messages in inbox_kustos.
 ```
 
-Raw capture of proof B: `docs/reports/2026-10-06-fleet-notice-delivery.txt`.
+Scope of this claim: the message was **accepted by the bus** (send returned an
+id) and **showed pending** in each queue immediately after (raw capture above);
+it is **no longer pending** later. Archive-state was NOT independently
+re-verified from this host — esther's local `mycortex-postgres` is a read mirror,
+and the authoritative-bus query is operator-gated. So this file proves
+send-accepted + pending-then-cleared, not archive rows.
+
+Raw captures: `docs/reports/2026-10-06-fleet-notice-delivery-pending.txt`
+(pending, all five) and `docs/reports/2026-10-06-fleet-notice-delivery.txt`
+(later empty).

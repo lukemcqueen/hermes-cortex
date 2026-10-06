@@ -113,7 +113,7 @@ cccecc00 fix(mycortex-mem): psql never prompts for a password (-w) in every invo
 
 So `tests/test_mycortex_mem_psql_no_password.py` was introduced by `053ed12d` /
 `cccecc00`, neither of which is in **this session's commits**
-(dc51b3a0, fd0f4a4c, d95abe2b, a6daf3d6, bfa50171, and the final docs commit).
+(dc51b3a0, fd0f4a4c, d95abe2b, a6daf3d6, bfa50171, 44ddabab, 0940ff65).
 
 Push proof — the fix commit is on the remote:
 
