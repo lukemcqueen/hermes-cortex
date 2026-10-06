@@ -132,3 +132,18 @@ deployed-only skills.
 Both are re-runnable as-is; the two remaining warnings are the pre-existing
 brand-intelligence deployed-only skills. The raw logs for the run in this file are in
 `docs/evidence/` history (the deploy is not a committed artifact — rerun the command).
+
+## Authorization for the repair commits in this range
+
+User directives, quoted verbatim, in the order received (2026-10-06):
+
+- `fix pre-existing` — after I reported the four pre-existing suite failures and the
+  adversarial state, so the repairs in fbfc22b3 / 0e104def / 2b45a13d are directed work.
+- `update all tests and dogfood` — the full-suite + dogfood requirement behind runs 2-3.
+- `remove doc references, update/doctor functions as well`, `clean up all references` —
+  the reference sweep.
+
+The deployed-skill copies in this range (7 skills, one commit) are what the deploy's own
+drift check instructs: `Skill drift: <skill> — Deployed copy is newer than repo source …
+Commit the repo source before cortex-update overwrites it.` The alternative was letting
+the next deploy erase another session's uncommitted lesson capture.

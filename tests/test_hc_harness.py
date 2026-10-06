@@ -85,17 +85,33 @@ def test_install_pi_prints_a_run_line_without_an_allowlist(tmp_path):
     assert "over MCP" in r.stdout, "the install output must name where the tools come from"
 
 
-def test_no_gate_tool_can_be_excluded_from_a_pi_session(tmp_path):
-    """Regression pin for the drift this command removes.
+def test_the_gate_tools_are_reachable_from_a_pi_session(tmp_path):
+    """Regression pin for the drift this command removes, both halves.
 
     The hand-typed literal in the old registry omitted `session_tool_event` and
     `session_loaded_skill` — the two tools the global pre-commit reflexion gate reads
     for a Pi session — so a developer following it got commits REFUSED, invisible
-    until the commit failed. Pi now reads those tools over MCP, and the invariant is
-    stronger: no allowlist exists, so no gate tool can be excluded at all.
+    until the commit failed. Two assertions now, because either alone can pass while
+    the gate is unreachable:
+
+    1. the run line carries NO `--tools` allowlist (nothing can be excluded), and
+    2. the tools the gate reads are actually SERVED by the MCP surface Pi is pointed
+       at — a regression that dropped them from the contract while still printing
+       "over MCP" fails here.
     """
-    line = _run_line(run("install", "pi", "--dir", str(tmp_path)).stdout)
+    out = run("install", "pi", "--dir", str(tmp_path)).stdout
+    line = _run_line(out)
     assert "--tools" not in line, f"an allowlist could exclude a gate tool: {line}"
+    assert "over MCP" in out, "the install output must name where the surface comes from"
+
+    contract = _contract_tool_names()
+    for gate_tool in ("session_tool_event", "session_loaded_skill"):
+        assert gate_tool in contract, (
+            f"{gate_tool} is not in the MCP contract — the reflexion gate cannot read "
+            "a Pi session's evidence")
+    assert "cortex-context-mcp.py" in (
+        (REPO / "ops/install/harnesses/registry.yaml").read_text(encoding="utf-8")), \
+        "the registry must name the MCP server that serves those tools"
 
 
 def test_run_line_is_derived_not_the_hand_written_registry_literal(tmp_path, monkeypatch):
