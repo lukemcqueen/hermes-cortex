@@ -72,6 +72,7 @@ fs.writeFileSync(stubCli, `import json, os, sys
 tool, args = sys.argv[1], json.loads(sys.argv[2])
 with open(os.environ["CORTEX_STUB_LOG"], "a") as fh:
     fh.write(json.dumps({"tool": tool, "args": args}) + "\\n")
+print("MARKER-CHILD-NOISE: stub wrote to stderr", file=sys.stderr)
 if tool == "session_restore":
     print(json.dumps({"restored": {"done": ["MARKER-DONE"], "pending": ["MARKER-PENDING"],
                                    "session_key": "pi:verify:main"}, "session_key": "pi:verify:main"}))

@@ -232,6 +232,59 @@ def test_pi_extension_EXECUTES():
     assert "EXTENSION OK" in r.stdout
 
 
+def _run_pi_guard(node: str, workdir: Path):
+    """Run the pi extension guard from `workdir`; return (rc, stdout, stderr)."""
+    return subprocess.run([node, str(workdir / "verify-extension.mjs")],
+                          capture_output=True, text=True, timeout=180, cwd=str(workdir))
+
+
+def _leaky_variant(tmp_path: Path) -> Path:
+    """The guard's own RED case: a copy of the extension that DOES pollute the TUI.
+
+    `execFile` pipes the child's stdio, so the realistic regression is not an inherited
+    fd — it is an edit that "helpfully" echoes the captured child stderr onto the
+    harness's stderr. That is the shape this test must catch, so the variant is built
+    from source rather than asserted.
+    """
+    workdir = tmp_path / "pi-leak"
+    (workdir / "extensions").mkdir(parents=True)
+    shutil.copy(HARNESS_DIR / "pi" / "verify-extension.mjs", workdir / "verify-extension.mjs")
+    source = PI_EXT.read_text()
+    capture = "    const { stdout } = await run("
+    ret = "    return stdout.trim();\n"
+    assert capture in source and ret in source, "the guard's injection anchors moved — update this RED case"
+    leaky = source.replace(capture, "    const { stdout, stderr } = await run(", 1)
+    leaky = leaky.replace(ret, "    if (stderr) process.stderr.write(String(stderr));\n" + ret, 1)
+    (workdir / "extensions" / "cortex-context.ts").write_text(leaky)
+    return workdir
+
+
+def test_pi_extension_child_stderr_stays_off_the_prompt_area(tmp_path):
+    """A child's stderr must never reach the harness's stderr — in Pi that stream IS
+    the prompt area, and a stray line there is the reported TUI pollution.
+
+    Asserted at the FD level: the guard's stub CLI writes MARKER-CHILD-NOISE to stderr
+    on every call, and this test captures the guard process's own stderr. Patching
+    `process.stderr.write` inside the guard would NOT catch a write that bypasses it
+    (an inherited fd), so the measurement happens here, in the parent.
+    """
+    node = shutil.which("node")
+    if not node:
+        pytest.skip("node not available — cannot execute the extension")
+
+    healthy = _run_pi_guard(node, HARNESS_DIR / "pi")
+    assert healthy.returncode == 0, f"the guard failed:\n{healthy.stdout}\n{healthy.stderr}"
+    assert "MARKER-CHILD-NOISE" not in healthy.stderr, (
+        "a child's stderr reached the harness's stderr (the Pi prompt area):\n" + healthy.stderr)
+
+    # Non-vacuity: the same guard, pointed at an extension that echoes the child's
+    # captured stderr, must see the leak.
+    leaky = _run_pi_guard(node, _leaky_variant(tmp_path))
+    assert "MARKER-CHILD-NOISE" in leaky.stderr, (
+        "the child-stderr check cannot fail — an extension that echoes captured child "
+        "stderr leaked nothing to the parent's stderr, so the check is vacuous")
+
+
 def test_macos_parity_for_the_context_layers():
     """macOS is a fleet platform, not an afterthought. Two things break there:
 
