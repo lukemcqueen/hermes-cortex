@@ -116,6 +116,12 @@ back to the pinned older api and re-break it — the durable fix is upstream (pl
 installs must not skew otel across site-packages on one `sys.path`); re-pinning locally
 is interim only.
 
+**Ready-made tools:** `scripts/otel-version-skew-probe.py` runs the whole check on the
+current interpreter (portions, both versions, `TraceFlags` members; exit 1 = skew) and
+prints the align command — run it with the venv/interpreter that serves the MCP client.
+The captured diagnosis, repro and three-layer verification for the 2026-10-06 moses
+incident are in `references/otel-skew-incident-2026-10-06.md`.
+
 ## Pitfalls
 
 - **HOME/cwd sensitivity (false negatives):** servers resolve `~/hermes-*`
