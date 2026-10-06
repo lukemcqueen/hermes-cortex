@@ -978,6 +978,92 @@ def _write_session_marker(hermes_session_id: str) -> None:
         log.warning("Cannot write fallback session.id cache: %s", e)
 
 
+def _session_repo_hint_path(session_id: str) -> Path:
+    """Per-session file recording the repo this session was last seen using."""
+    return GOVERNANCE_STATE_DIR / "session-repo" / session_id
+
+
+_PATH_ARG_KEYS = ("path", "file_path", "workdir", "cwd", "directory")
+
+
+def _session_repo_slug(session_id: str) -> str:
+    """The repo this session was last observed working in ('' when unknown)."""
+    if not session_id:
+        return ""
+    try:
+        path = _session_repo_hint_path(session_id)
+        if path.exists():
+            return path.read_text().strip()
+    except OSError:
+        log.warning("Could not read the session repo hint")
+    return ""
+
+
+def _git_root_for(path: Path) -> Optional[Path]:
+    """Nearest ancestor of `path` that is a git repo, or None."""
+    start = path if path.is_dir() else path.parent
+    try:
+        proc = subprocess.run(["git", "-C", str(start), "rev-parse", "--show-toplevel"],
+                              capture_output=True, text=True, timeout=5)
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    if proc.returncode != 0 or not proc.stdout.strip():
+        return None
+    return Path(proc.stdout.strip())
+
+
+def _note_session_repo(session_id: str, args: Dict[str, Any]) -> None:
+    """Learn this session's repo from the paths its own tool calls touch.
+
+    The gateway does not hand a pre_tool_call hook the session's cwd, but it
+    does hand it the args of every tool call — so the repo is derived from a
+    write/read target or a terminal workdir (nearest ancestor git repo).
+    Best-effort: a call with no usable path yields no signal and the previous
+    hint stands. Written only when the answer CHANGES, so this costs one stat
+    on the common path.
+    """
+    if not session_id or not isinstance(args, dict):
+        return
+    for key in _PATH_ARG_KEYS:
+        raw = args.get(key)
+        if not isinstance(raw, str) or not raw.strip():
+            continue
+        repo = _git_root_for(Path(raw).expanduser())
+        if repo is None:
+            continue
+        if _session_repo_slug(session_id) == repo.name:
+            return
+        try:
+            hint = _session_repo_hint_path(session_id)
+            hint.parent.mkdir(parents=True, exist_ok=True)
+            tmp = hint.with_suffix(".tmp")
+            tmp.write_text(repo.name)
+            tmp.rename(hint)
+        except OSError:
+            log.warning("Could not write the session repo hint")
+        return
+
+
+def _inject_session_context(session_id: str, tool_name: str, args: Dict[str, Any]) -> None:
+    """Stamp the caller's identity and repo onto a governance call.
+
+    session_id is authoritative — the hook runs in the gateway and knows the
+    real session. repo_slug is injected ONLY when this session's repo was
+    actually observed, so a governance call never invents a repo; without the
+    injection begin_change falls back to the host's canonical repo, which is
+    exactly the wrong-repo bug. The MCP accepts it only when it names a real
+    git repo, and its wrong-repo guard still refuses to review a tree that
+    cannot contain the work.
+    """
+    if not isinstance(args, dict):
+        return
+    args["session_id"] = session_id
+    if tool_name.startswith("mcp__loop_governance__"):
+        slug = _session_repo_slug(session_id)
+        if slug:
+            args["repo_slug"] = slug
+
+
 def _derive_repo_slug() -> str:
     """Derive the current repo slug for governance-lock matching.
     Returns "" when outside a git repo — enforcer blocks all writes.
@@ -2174,12 +2260,17 @@ def register(ctx):
             # through invoke_hook → tool executor → mcp_tool._handler →
             # session.call_tool(arguments=args), so the MCP server sees
             # session_id on every call — transparent to the agent session.
-            if (
-                hermes_session_id
-                and isinstance(args, dict)
-                and tool_name.startswith("mcp__loop_governance__")
-            ):
-                args["session_id"] = hermes_session_id
+            if hermes_session_id and isinstance(args, dict):
+                # Learn this session's repo from the paths its own tool calls
+                # touch — a pre_tool_call hook is NOT given the session's cwd,
+                # so the tool arguments are the only evidence available. Then
+                # stamp identity + repo onto governance calls, so begin_change
+                # tags the lock with the repo the session is ACTUALLY in rather
+                # than the host's canonical repo (the wrong-repo review bug:
+                # a steadfaste session reviewed against hermes-cortex).
+                _note_session_repo(hermes_session_id, args)
+                if tool_name.startswith("mcp__loop_governance__"):
+                    _inject_session_context(hermes_session_id, tool_name, args)
 
             # ── Track skill_view calls ──
             # Moved BEFORE the skills gate so agents can load skills.

@@ -38,6 +38,7 @@ def _scrub(text: str) -> str:
 # equal the scope of the claim.
 TESTS = [
     "tests/test_loop_gov_mcp_nonblocking.py",
+    "tests/test_loop_gov_review_repo.py",
     "tests/test_loop_gov_multi_session.py",
     "tests/test_loop_gov_stale_purge.py",
     "tests/test_loop_gov_db_lock_recovery.py",

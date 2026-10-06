@@ -379,7 +379,7 @@ def get_session_id(args: dict | None = None) -> str:
 
 # ── Governance Lock Path ─────────────────────────────────────
 
-def _derive_slug() -> str:
+def _derive_slug(args: dict | None = None) -> str:
     """Derive repo slug matching the enforcer plugin's approach.
 
     The MCP server is a shared daemon spawned by the gateway: its own cwd is
@@ -390,7 +390,20 @@ def _derive_slug() -> str:
     ``hermes-cortex`` — the lock never matched and every commit/push on
     hermes-cortex was blocked. So the canonical governed repo is resolved
     FIRST; the cwd git repo is only a fallback for project-repo-only hosts.
+
+    Priority 0 (2026-10-06): a repo the ENFORCER observed for THIS session and
+    injected into the call. The canonical preference below is a property of the
+    HOST, not of the session, so on a host with ~/hermes-cortex present every
+    lock — including one opened by a session working in ~/steadfaste — was
+    tagged hermes-cortex, and the close gate then reviewed a tree that could
+    not contain the work (permanent FINDINGS, unclosable cycle). Accepted only
+    when it names a real git repo, so a bogus value cannot point the review at
+    an arbitrary directory.
     """
+    if isinstance(args, dict):
+        injected = str(args.get("repo_slug") or "").strip()
+        if injected and (HOME / injected / ".git").exists():
+            return injected
     # Priority 1: canonical governed repo — the repo the git hooks enforce on.
     for candidate in [HOME / "hermes-cortex", HOME / ".hermes-cortex"]:
         if (candidate / ".git").exists():
@@ -1599,7 +1612,7 @@ def _begin_change(args: dict) -> CallToolResult:
     state = {
         "task_id": task_id,
         "description": description,
-        "repo_slug": _derive_slug(),
+        "repo_slug": _derive_slug(args),
         "started_at": now_iso,
         "agent": os.environ.get("AGENT_NAME", "unknown"),
         "session_id": session_id,
@@ -1822,6 +1835,67 @@ def _provenance_block(repo: Path, base: str, own_author: str) -> str:
             "shows this session authored that commit; a peer's commits may be here because a "
             "pull or rebase brought them into the window, and they are NOT part of this "
             "cycle.]\n" + log + "\n")
+
+
+def _candidate_repos() -> list:
+    """Repos that could plausibly hold this session's work.
+
+    Bounded on purpose: every top-level git repo in $HOME (one level, no
+    recursion) plus the cwd repo. Used only by the wrong-repo guard, which
+    needs a cheap second opinion about WHERE the work actually landed.
+    """
+    out: list = []
+    try:
+        for child in sorted(HOME.iterdir()):
+            if child.is_dir() and (child / ".git").exists():
+                out.append(child)
+    except OSError:
+        log.warning("Candidate repo scan failed — expected failure: except OSError")
+    try:
+        root = subprocess.check_output(  # noqa: S603,S404 — fixed argv; timeout below
+            ["git", "rev-parse", "--show-toplevel"], timeout=3, stderr=subprocess.DEVNULL,
+        ).decode().strip()
+        if root:
+            out.append(Path(root))
+    except Exception:
+        log.warning("Expected failure for: candidate repo lookup from cwd")
+    seen, uniq = set(), []
+    for path in out:
+        if path not in seen:
+            seen.add(path)
+            uniq.append(path)
+    return uniq
+
+
+def _window_commit_count(repo: Path, started_at: str) -> int:
+    """Commits in `repo` since the lock opened (0 when it is not a repo, has no
+    history, or genuinely has none in the window).
+
+    Compared as EPOCH timestamps, not via `git log --since=`: git's
+    approxidate parses a Z-suffixed UTC instant badly against a commit whose
+    date carries a local offset, and returned 0 for a commit made seconds
+    earlier (measured). An integer comparison cannot drift like that.
+    """
+    if not (repo / ".git").exists():
+        return 0
+    stamps = [int(tok) for tok in _git_capture(repo, "log", "--format=%ct", timeout=10).split()
+              if tok.strip().isdigit()]
+    if not stamps:
+        return 0
+    if not started_at:
+        return len(stamps)
+    try:
+        start_ts = datetime.fromisoformat(started_at.replace("Z", "+00:00")).timestamp()
+    except (ValueError, TypeError):
+        return len(stamps)
+    return len([s for s in stamps if s >= start_ts])
+
+
+def _repos_with_window_work(lock: dict, exclude: Path) -> list:
+    """Candidate repos OTHER than `exclude` that gained commits in the window."""
+    started_at = lock.get("started_at", "")
+    return [r for r in _candidate_repos()
+            if r != exclude and _window_commit_count(r, started_at) > 0]
 
 
 def _complexity(repo: Path, started_at: str) -> dict:
@@ -2637,6 +2711,45 @@ def _adversarial_review_gate(lock: dict, cycle: dict,
         ))])
 
     cx = _complexity(repo, lock.get("started_at", ""))
+
+    # ── Wrong-repo guard (part 1 of the right-repo fix) ──
+    # The lock's repo_slug comes from _derive_slug(), whose canonical-repo
+    # preference is a property of the HOST rather than the session — so on a
+    # host where ~/hermes-cortex exists, a session working elsewhere gets a lock
+    # tagged hermes-cortex. Reviewing that tree judges material it cannot
+    # contain: the verdict is permanent FINDINGS, the close is refused forever,
+    # and each retry spawns another full review (observed: a subagent working
+    # in steadfaste reviewed against hermes-cortex, retrying end_change into a
+    # dozen 420s timeouts). When the lock's repo shows NOTHING in the window
+    # while another candidate repo gained commits, refuse and name both instead
+    # of silently auditing the wrong tree. Fail loud, never silently skip.
+    if not cx["lines"] and not cx["files"]:
+        _started = lock.get("started_at", "")
+        if _window_commit_count(repo, _started) == 0:
+            _elsewhere = _repos_with_window_work(lock, exclude=repo)
+            if _elsewhere:
+                _other = _elsewhere[0]
+                try:
+                    _mark_close_refused(cycle.get("id", 0), "WRONG_REPO", "[]")
+                except Exception:
+                    log.warning("Could not mark refusal on the lock (non-critical)")
+                return CallToolResult(content=[TextContent(type="text", text=(
+                    "❌ Cannot close: the lock's repo cannot contain this session's work.\n\n"
+                    f"  Lock repo_slug : {lock.get('repo_slug', '')!r}  ->  {repo}\n"
+                    f"  In that repo   : no diff since the lock opened ({_started}) and\n"
+                    f"                   no commits in the window.\n"
+                    f"  Work found in  : {_other}\n\n"
+                    "The lock was tagged with the HOST's canonical repo while the\n"
+                    "session is working in another repo, so self-adversarial review\n"
+                    "would judge a tree that cannot contain the change. Refusing rather\n"
+                    "than returning permanent findings for work the reviewer cannot see.\n\n"
+                    "  Report this to the orchestrator. Do NOT retry end_change in a loop\n"
+                    "  (each retry re-runs a full review) and do NOT force the close.\n"
+                    "  Remedy: the governance-enforcer injects the session's real repo\n"
+                    "  into mcp__loop_governance__* calls; once that is deployed AND the\n"
+                    "  gateway has reloaded it, begin_change tags the lock correctly."
+                ))])
+
     if not cx["is_complex"]:
         log.info("self-adversarial review: cycle %s simple (%s lines, %s files) — skip",
                  cycle.get("id"), cx["lines"], cx["files"])
