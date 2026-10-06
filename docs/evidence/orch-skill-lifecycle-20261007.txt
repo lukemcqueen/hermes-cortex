@@ -1,0 +1,81 @@
+
+===== revision =====
+6b3c2aaa skills(orch-skill-lifecycle): codify the drift-sync and fleet-upstream procedures
+HEAD=6b3c2aaa7e6e912243e0544aecb9db62cf71c2dd
+origin/main=6b3c2aaa7e6e912243e0544aecb9db62cf71c2dd
+
+===== P1a: staged learning reports in last 24h (deduped by body Generated ts + agent) =====
+unique reports (24h) = 50
+   esther 2026-10-05T19:54:38.995854+00:00
+   moses 2026-10-05T19:54:38.995854+00:00
+   esther 2026-10-05T21:00:20.062915+00:00
+   titus 2026-10-05T21:00:20.062915+00:00
+   moses 2026-10-06T00:36:39.550787+00:00
+   esther 2026-10-06T01:06:05.685646+00:00
+   esther 2026-10-06T01:18:01.974628+00:00
+   esther 2026-10-06T01:24:05.761165+00:00
+   esther 2026-10-06T03:01:02.460111+00:00
+   titus 2026-10-06T03:01:02.460111+00:00
+   esther 2026-10-06T03:18:17.449271+00:00
+   gisu 2026-10-06T03:18:17.449271+00:00
+   moses 2026-10-06T03:18:17.449271+00:00
+   kustos 2026-10-06T03:18:45.759722+00:00
+   gisu 2026-10-06T03:30:15.598019+00:00
+   esther 2026-10-06T04:12:05.694660+00:00
+   esther 2026-10-06T04:42:05.689125+00:00
+   moses 2026-10-06T05:30:15.385963+00:00
+   esther 2026-10-06T05:48:05.782082+00:00
+   esther 2026-10-06T05:54:05.724835+00:00
+   esther 2026-10-06T06:00:06.536764+00:00
+   esther 2026-10-06T06:18:05.616151+00:00
+   esther 2026-10-06T09:00:28.165699+00:00
+   titus 2026-10-06T09:00:28.165699+00:00
+   esther 2026-10-06T10:18:01.820051+00:00
+   joseph 2026-10-06T10:18:01.820051+00:00
+   moses 2026-10-06T10:18:01.820051+00:00
+   esther 2026-10-06T10:30:16.924981+00:00
+   gisu 2026-10-06T10:30:16.924981+00:00
+   esther 2026-10-06T10:36:05.719658+00:00
+   esther 2026-10-06T10:48:05.727414+00:00
+   esther 2026-10-06T10:48:38.881087+00:00
+   moses 2026-10-06T10:48:38.881087+00:00
+   gisu 2026-10-06T10:54:17.324847+00:00
+   esther 2026-10-06T11:00:02.571208+00:00
+   gisu 2026-10-06T11:00:02.571208+00:00
+   moses 2026-10-06T11:00:02.571208+00:00
+   esther 2026-10-06T11:06:18.940844+00:00
+   kustos 2026-10-06T11:06:18.940844+00:00
+   moses 2026-10-06T11:06:39.284157+00:00
+   moses 2026-10-06T12:00:11.918706+00:00
+   esther 2026-10-06T13:12:05.653898+00:00
+   esther 2026-10-06T13:36:05.678430+00:00
+   esther 2026-10-06T14:00:06.284938+00:00
+   esther 2026-10-06T14:30:06.237473+00:00
+   moses 2026-10-06T14:30:06.237473+00:00
+   titus 2026-10-06T15:00:18.497966+00:00
+   esther 2026-10-06T15:42:05.612704+00:00
+   esther 2026-10-06T17:06:05.705344+00:00
+   moses 2026-10-06T19:36:40.417870+00:00
+
+===== P1b: git commits in last 24h =====
+count = 83
+
+===== P1c: doctor summary =====
+  ✅ Skill drift
+  ⚠️  Overall: WARNING  (436 pass · 2 warn · 0 fail · 6 info)
+
+===== P3a: the 2 drift-synced skills — deployed == repo (md5) + fences even =====
+PASS  deploy-load-verification md5 = a4c4b2f69e8cc68cdd090557abdfaf41
+PASS  deploy-load-verification fences even = 0
+PASS  governance-closeout md5 = ed39c1217206af7f4ef8523dc4009ba2
+PASS  governance-closeout fences even = 0
+
+===== P3b: upstreamed fleet skill — md5 local vs moses source + version + no stub =====
+PASS  SKILL.md md5 (repo==moses) = 283b2ac713ecf95d99bd188e8c9485b3
+PASS  ref md5 (repo==moses) = a8428fe63cce83a56e3b7ca8fdb35eed
+version field: version: 1.0.0
+stub markers:  0
+deployed copy: /home/esther/.hermes/skills/software-development/large-mechanical-refactor/SKILL.md
+
+===== FINAL =====
+RESULT: all assertions PASS
