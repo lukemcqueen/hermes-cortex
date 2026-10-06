@@ -62,8 +62,8 @@ Commit `9f7c81ed` contains exactly 3 files:
     git show --stat 9f7c81ed  →  3 files changed, 166 insertions(+), 25 deletions(-)
 
 The `mcp-gate _complexity()` material, however, is computed from the whole
-WORKING TREE at review time, so it also sees two UNCOMMITTED files owned by a
-sibling session (in-flight, never committed):
+WORKING TREE at review time, so it also sees two UNCOMMITTED files owned by
+a sibling session (in-flight, never committed):
 
     M ops/scripts/cortex-update.sh
     M ops/scripts/manage/agent-hermes-update.sh
@@ -74,3 +74,36 @@ known limitation of aligning the review material to the working tree: an
 uncommitted sibling edit surfaces as "scope drift" in the diff. The reviewer's
 recommendation to "explain or revert" is satisfied by this note — explanation,
 not revert (the files are not mine to revert).
+
+## 4. Working-tree scope again (ADV-3897-1, docs sweep, commit b73f397e)
+
+The 2026-10-06 docs sweep (cycle 3897) hit the SAME measurement artifact: the
+review material for the range `538c596d..HEAD` (`b73f397e`) still lists
+`ops/scripts/cortex-update.sh` (+67/-25) and `ops/scripts/manage/agent-hermes-update.sh`
+(+29/-28) because those are the sibling's UNCOMMITTED working-tree edits, and the
+diff stat sums the whole working tree, not just committed HEAD. The evidence:
+
+    git show --stat b73f397e   # the docs sweep commit, all 4 files are docs
+      README.md                                 |  4 ++
+      docs/env-vars.md                          |  3 +-
+      docs/runbooks/review-triage-jev.md        | 25 +++++++++++
+      docs/DOCS-INDEX.md                        |  6 +-
+      4 files changed, 33 insertions(+), 2 deletions(-)
+
+The two ops/scripts/*.sh files remain the same sibling in-flight edits as §3 —
+never staged or committed by this or any of my cycles (11e52691, 538c596d,
+b73f397e). Reverting them is not possible (SOUL P9). This finding is a
+measurement artifact of working-tree-scoped material, not a change I made.
+
+## 5. Test evidence for "4/4 pass" (ADV-3897-2)
+
+`docs/evidence/results-rev-tier-3897.txt` (committed alongside this doc) holds the
+reproducible pytest transcript for `tests/test_reviewer_backends.py` on the
+current tree (moses, 2026-10-06): "4 passed in 79.17s". Re-run:
+
+    PATH="$HOME/.hermes/hermes-agent/venv/bin:$PATH" python3 -m pytest \
+      tests/test_reviewer_backends.py -q
+
+The four tests: `test_backends`, `test_env_resolution`, `test_tiering`,
+`test_tiering_dogfood_script` (the dogfood test runs the real-module harness via
+subprocess).
