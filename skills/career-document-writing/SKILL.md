@@ -76,6 +76,12 @@ description, or "position me for X roles / attract Y opportunities".
   the loop) and never dress it as a certification or compliance badge he does
   not hold.
 
+## File deliverables (.docx / .pdf / .md)
+
+When the user wants the resume / job description / bio as a downloadable file, generate it with the
+`office-document-generation` skill (python-docx + fpdf2, verified, delivered as `MEDIA:` attachments).
+Define the content once and render all three formats from it so they never diverge.
+
 ## Platform depth
 
 `references/linkedin-profile-package.md` — the full LinkedIn deliverable

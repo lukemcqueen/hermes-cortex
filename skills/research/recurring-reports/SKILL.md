@@ -35,6 +35,11 @@ Write a one-page spec before building anything:
 ## Delivery
 - **Email**: SMTP with a stable subject prefix (e.g. "[Daily] Revenue Digest"); report as body or attachment.
 - **Telegram**: send as a message or file; keep daily digests under message limits.
+- **Chat-delivered reports**: the cron agent's FINAL RESPONSE is the delivered message. Instruct the
+  prompt to write the report content itself, then `MEDIA:` lines for any attachments; otherwise the
+  agent may emit a build/verification summary ("all files generated") that reaches the reader instead
+  of the report. Never emit `MEDIA:` lines for files you did not actually produce. For generating the
+  `.docx`/`.pdf`/`.md` attachments, see the `office-document-generation` skill.
 - **Files**: write to a dated path (`reports/2026-08-05/`) with a rolling retention policy (e.g. 90 days).
 - Store recipients, channels, and the failure contact with the job, not inside the script.
 
