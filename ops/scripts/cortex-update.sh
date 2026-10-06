@@ -436,6 +436,8 @@ register "ops/scripts/manage/agent-hermes-update.sh"            "${CORTEX_DEPLOY
 register "ops/scripts/manage/agent-hermes-cortex-sync.sh"      "${CORTEX_DEPLOY_HOME}/scripts/agent-hermes-cortex-sync.sh"
 register "ops/scripts/manage/update-session-state.sh"    "${CORTEX_DEPLOY_HOME}/scripts/update-session-state.sh"
 register "ops/scripts/manage/fleet-audit.py"             "${CORTEX_DEPLOY_HOME}/scripts/fleet-audit.py"
+register "ops/scripts/manage/task-queue-evidence.py" "${CORTEX_DEPLOY_HOME}/scripts/task-queue-evidence.py"
+register "ops/scripts/manage/run-task-queue-evidence.sh" "${CORTEX_DEPLOY_HOME}/scripts/run-task-queue-evidence.sh"
 register "ops/scripts/manage/fleet-hygiene.py"           "${CORTEX_DEPLOY_HOME}/scripts/fleet-hygiene.py"
 register "ops/scripts/manage/fleet-update-check.py"      "${CORTEX_DEPLOY_HOME}/scripts/fleet-update-check.py"
 register "ops/scripts/lib/toon_parse.py"                 "${CORTEX_DEPLOY_HOME}/scripts/lib/toon_parse.py"

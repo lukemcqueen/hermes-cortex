@@ -35,7 +35,7 @@ the claim is a measured before/after rather than an assertion.
 ```
 ============================= test session starts ==============================
 platform linux -- Python 3.11.15, pytest-9.1.1, pluggy-1.6.0
-rootdir: /home/esther/hermes-cortex
+rootdir: $HOME/hermes-cortex
 configfile: pytest.ini
 plugins: anyio-4.12.1
 collected 9 items
@@ -79,8 +79,8 @@ ____________________ test_hc_entrypoint_dispatches_harness _____________________
 tests/test_hc_harness.py:127: in test_hc_entrypoint_dispatches_harness
     assert "pi" in r.stdout and "cli-extension" in r.stdout
 E   assert ('pi' in "Declared harnesses: 5\n\n  HARNESS          LAYER          STATUS      SURFACE\n  hermes           mcp            shi...all <name> [--dir DIR]   wire it into a project\n  hc harness verify  [<name>]             prove it, don't assume it\n" and 'cli-extension' in "Declared harnesses: 5\n\n  HARNESS          LAYER          STATUS      SURFACE\n  hermes           mcp            shi...all <name> [--dir DIR]   wire it into a project\n  hc harness verify  [<name>]             prove it, don't assume it\n")
-E    +  where "Declared harnesses: 5\n\n  HARNESS          LAYER          STATUS      SURFACE\n  hermes           mcp            shi...all <name> [--dir DIR]   wire it into a project\n  hc harness verify  [<name>]             prove it, don't assume it\n" = CompletedProcess(args=['/home/esther/.hermes/hermes-agent/venv/bin/python3', '/tmp/tq-evidence-clean-tree/ops/scripts/...-dir DIR]   wire it into a project\n  hc harness verify  [<name>]             prove it, don\'t assume it\n', stderr='').stdout
-E    +  and   "Declared harnesses: 5\n\n  HARNESS          LAYER          STATUS      SURFACE\n  hermes           mcp            shi...all <name> [--dir DIR]   wire it into a project\n  hc harness verify  [<name>]             prove it, don't assume it\n" = CompletedProcess(args=['/home/esther/.hermes/hermes-agent/venv/bin/python3', '/tmp/tq-evidence-clean-tree/ops/scripts/...-dir DIR]   wire it into a project\n  hc harness verify  [<name>]             prove it, don\'t assume it\n', stderr='').stdout
+E    +  where "Declared harnesses: 5\n\n  HARNESS          LAYER          STATUS      SURFACE\n  hermes           mcp            shi...all <name> [--dir DIR]   wire it into a project\n  hc harness verify  [<name>]             prove it, don't assume it\n" = CompletedProcess(args=['$HOME/.hermes/hermes-agent/venv/bin/python3', '/tmp/tq-evidence-clean-tree/ops/scripts/...-dir DIR]   wire it into a project\n  hc harness verify  [<name>]             prove it, don\'t assume it\n', stderr='').stdout
+E    +  and   "Declared harnesses: 5\n\n  HARNESS          LAYER          STATUS      SURFACE\n  hermes           mcp            shi...all <name> [--dir DIR]   wire it into a project\n  hc harness verify  [<name>]             prove it, don't assume it\n" = CompletedProcess(args=['$HOME/.hermes/hermes-agent/venv/bin/python3', '/tmp/tq-evidence-clean-tree/ops/scripts/...-dir DIR]   wire it into a project\n  hc harness verify  [<name>]             prove it, don\'t assume it\n', stderr='').stdout
 =========================== short test summary info ============================
 FAILED tests/test_hc_harness.py::test_lists_registry_harnesses - assert ('cli...
 FAILED tests/test_hc_harness.py::test_run_line_is_derived_not_the_hand_written_registry_literal

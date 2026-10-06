@@ -16,12 +16,12 @@ suites (11):
   tests/test_cortex_gateway_daemon_slice.py
 
 measured: 122 passed (claim >= 111)
-pytest summary: ============================= 122 passed in 5.66s ==============================
+pytest summary: ============================= 122 passed in 4.65s ==============================
 
-Tail of the run:
+Tail of the run (host paths scrubbed):
 ============================= test session starts ==============================
 platform linux -- Python 3.11.15, pytest-9.1.1, pluggy-1.6.0
-rootdir: /home/esther/hermes-cortex
+rootdir: $HOME/hermes-cortex
 configfile: pytest.ini
 plugins: anyio-4.12.1
 collected 122 items
@@ -38,7 +38,7 @@ tests/test_telegram_notify_unit.py ............................          [ 86%]
 tests/test_cortex_gateway_parity_matrix.py .....                         [ 90%]
 tests/test_cortex_gateway_daemon_slice.py ...........                    [100%]
 
-============================= 122 passed in 5.66s ==============================
+============================= 122 passed in 4.65s ==============================
 
 
 test names in the files cited by review findings (16):

@@ -167,11 +167,15 @@ def main() -> int:
         run and the report becomes unreproducible — which is exactly what the
         provenance test caught.
         """
-        env = {**os.environ, "PYTHONHASHSEED": "0"}
+        env = {**os.environ, "PYTHONHASHSEED": "0",
+               "PYTEST_ADDOPTS": "-p no:cacheprovider"}
         r = subprocess.run(["python3", "-m", "pytest", "tests/test_hc_harness.py",
                             "-q"], cwd=cwd, capture_output=True, text=True,
                            timeout=300, env=env)
         full = (r.stdout or "") + (r.stderr or "")
+        # Public repo: a captured `rootdir: /home/<user>/...` line is a PII finding.
+        import re as _re2
+        full = _re2.sub(r"/home/[A-Za-z0-9._-]+", "$HOME", full)
         summary = full.strip().splitlines()[-1] if full.strip() else "no output"
         return full, summary
 
