@@ -41,16 +41,21 @@ echo "## Phase 2 — Fleet Skill Inventory"
 echo ""
 
 # Count all skills and identify custom ones
+# NOTE: scan the FULL tree — skills live both at the top level and nested in
+# category dirs (e.g. skills/security/1password/SKILL.md). A prior -maxdepth 2
+# only matched top-level skills (36 of 511), silently under-reporting the
+# inventory by ~93% (fixed 2026-10-06). Skill name is reported as its path
+# relative to skills/ so the category is unambiguous.
 SKILL_COUNT=0
 CUSTOM_COUNT=0
 CUSTOM_SKILLS=()
 while IFS= read -r skill_file; do
-  skill_dir=$(dirname "$skill_file")
-  skill_name=$(basename "$skill_dir")
+  skill_name="${skill_file#"$HOME/.hermes/skills/"}"
+  skill_name="${skill_name%/SKILL.md}"
   SKILL_COUNT=$((SKILL_COUNT + 1))
   CUSTOM_COUNT=$((CUSTOM_COUNT + 1))
   CUSTOM_SKILLS+=("$skill_name")
-done < <(find "$HOME/.hermes/skills" -maxdepth 2 -name "SKILL.md" -type f 2>/dev/null || true)
+done < <(find "$HOME/.hermes/skills" -name "SKILL.md" -type f 2>/dev/null | sort || true)
 
 echo "Total skills: $SKILL_COUNT"
 echo "Custom/local skills: $CUSTOM_COUNT"
