@@ -49,13 +49,33 @@ echo ""
 SKILL_COUNT=0
 CUSTOM_COUNT=0
 CUSTOM_SKILLS=()
+SKILLS_ROOT="$HOME/.hermes/skills"
+# Fail loudly, not silently: an unreadable/missing skills root must not be
+# reported as "0 skills" (that is indistinguishable from a genuinely empty
+# inventory and hides permission/dir errors — SOUL Principle 12).
+if [[ ! -d "$SKILLS_ROOT" ]]; then
+  echo "ERROR: skills root not found: $SKILLS_ROOT" >&2
+  exit 1
+fi
+if [[ ! -r "$SKILLS_ROOT" ]]; then
+  echo "ERROR: skills root not readable: $SKILLS_ROOT" >&2
+  exit 1
+fi
+# Note the find error out-param so a mid-scan failure surfaces.
+FIND_ERR=""
 while IFS= read -r skill_file; do
-  skill_name="${skill_file#"$HOME/.hermes/skills/"}"
+  skill_name="${skill_file#"$SKILLS_ROOT/"}"
   skill_name="${skill_name%/SKILL.md}"
   SKILL_COUNT=$((SKILL_COUNT + 1))
   CUSTOM_COUNT=$((CUSTOM_COUNT + 1))
   CUSTOM_SKILLS+=("$skill_name")
-done < <(find "$HOME/.hermes/skills" -name "SKILL.md" -type f 2>/dev/null | sort || true)
+done < <(find "$SKILLS_ROOT" -name "SKILL.md" -type f 2> >(FIND_ERR=$(cat); ) | sort)
+if [[ -n "$FIND_ERR" ]]; then
+  echo "WARN: find reported errors while scanning $SKILLS_ROOT: $FIND_ERR" >&2
+fi
+if [[ "$SKILL_COUNT" -eq 0 ]]; then
+  echo "WARN: 0 SKILL.md files found under $SKILLS_ROOT — inventory may be wrong" >&2
+fi
 
 echo "Total skills: $SKILL_COUNT"
 echo "Custom/local skills: $CUSTOM_COUNT"
