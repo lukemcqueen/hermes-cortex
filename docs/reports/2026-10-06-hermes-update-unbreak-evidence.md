@@ -93,9 +93,9 @@ PASS test_cost_guard_plugin_from_user_dir
 ## 6. Push proof, fleet notice, and commit attribution
 
 Commit order (short SHAs). This session authored **dc51b3a0, fd0f4a4c,
-d95abe2b, a6daf3d6** (the `git log` below predates `a6daf3d6`; it is the same
-session's docs commit). `053ed12d` and `4629b998` are a **concurrent same-host
-session's** commits — proven by the file-level history, not asserted:
+d95abe2b, a6daf3d6, bfa50171** (the `git log` below predates the later docs
+commits). `053ed12d` and `4629b998` are a **concurrent same-host session's**
+commits — proven by the file-level history, not asserted:
 
 ```
 $ git log --oneline -6

@@ -1,0 +1,18 @@
+# FLEET_NOTICE per-agent delivery receipts (hc inbox peek, non-destructive)
+# captured: 2026-10-06T04:08:26Z UTC on esther
+
+===== inbox_moses =====
+📬 No pending messages in inbox_moses.
+
+===== inbox_titus =====
+📬 No pending messages in inbox_titus.
+
+===== inbox_joseph =====
+📬 No pending messages in inbox_joseph.
+
+===== inbox_gisu =====
+📬 No pending messages in inbox_gisu.
+
+===== inbox_kustos =====
+📬 No pending messages in inbox_kustos.
+
