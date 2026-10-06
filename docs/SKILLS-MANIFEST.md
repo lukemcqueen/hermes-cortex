@@ -487,10 +487,11 @@ their domain.
 |-------|---------|---------|-----------|
 | `godmode` | 1.0.0 | Jailbreak LLMs: Parseltongue, GODMODE, ULTRAPLINIAN. | `skill_view(name='godmode')` |
 
-## Research (16 skills)
+## Research (17 skills)
 
 | Skill | Version | Purpose | Load With |
 |-------|---------|---------|-----------|
+| `bible-corpus-datasets` | 1.0.0 | Use when building verse-level Bible CSV datasets. | `skill_view(name='bible-corpus-datasets')` |
 | `bioinformatics` | 1.0.0 | Gateway to 400+ genomics and computational biology skills. | `skill_view(name='bioinformatics')` |
 | `brand-intelligence` | 1.0.0 | Monitor and analyze brand mentions, sentiment, share of voice, and competitive positioning across web/socia... | `skill_view(name='brand-intelligence')` |
 | `darwinian-evolver` | 0.1.0 | Evolve prompts/regex/SQL/code with Imbue's evolution loop. | `skill_view(name='darwinian-evolver')` |

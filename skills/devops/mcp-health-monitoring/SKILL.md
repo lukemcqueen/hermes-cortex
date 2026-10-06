@@ -77,6 +77,45 @@ a subcommand, not a `.py` file) fall back to a real stdio initialize
 handshake (`tests/test_mcp_health_watchdog.py` proves both paths — run it
 after any probe change).
 
+## Client-Side MCP Outage — OTel namespace-package version skew
+
+**Symptom:** EVERY MCP tool call fails on one host with
+`AttributeError: type object 'TraceFlags' has no attribute 'RANDOM_TRACE_ID'` (and the
+langfuse `pre_api_request` hook logs `'TraceFlags' object has no attribute
+'random_trace_id'`), while `hermes mcp list` shows every server enabled and the
+servers' own `mcp-stderr.log` is clean. The MCP *servers* are healthy — the *client*
+runtime is broken, so the per-server watchdog (which probes servers) stays green
+through this class.
+
+**Cause:** `opentelemetry` is a PEP 420 namespace package, so two site-packages on one
+`sys.path` are MERGED rather than shadowed: the env venv's `opentelemetry.trace`
+(e.g. api 1.39.1, pulled in by `mcp>=2.0`) answers while a newer tree's
+`opentelemetry.sdk` (e.g. 1.45.0, pulled in with the Langfuse Observability plugin —
+`langfuse>=4.16` requires `opentelemetry-api>=1.45`) supplies the span code. The older
+`TraceFlags` has no `RANDOM_TRACE_ID`, so every span creation raises; `mcp` 2.x wraps
+every `tools/call` in a span, so all MCP tools die at once.
+
+**Diagnose (5 min):** list the otel installs on the whole runtime path, not just the
+venv — `ls -d <venv>/lib/python*/site-packages/opentelemetry* <shared tools
+python>/lib/python*/site-packages/opentelemetry*`. Confirm the merge with
+`python3 -c "import opentelemetry; print(opentelemetry.__file__, list(opentelemetry.__path__))"`
+(`__file__ is None` = namespace merge across portions) and
+`python3 -c "import opentelemetry.trace as t; print(t.__file__, [a for a in dir(t.TraceFlags) if a.isupper()])"`
+(only `['DEFAULT','SAMPLED']` = the too-old api). **Repro harness:** append the other
+site-packages to `sys.path` AFTER the venv, `set_tracer_provider(TracerProvider())`,
+then enter `mcp.shared._otel.otel_span("x", kind=SpanKind.CLIENT)` — it raises the exact
+AttributeError. Static grep cannot find the culprit: the symbol exists only in the newer
+tree, never in the failing environment.
+
+**Fix:** align the versions — `uv pip install --python <venv>/bin/python3
+"opentelemetry-api==<the sdk's version>"` (safe: `mcp` only needs
+`opentelemetry-api>=1.28`). Verify with the repro (`SPAN OK`), a real
+`mcp.client.stdio.stdio_client` `tools/call` against the server, then a live
+`hermes -z` session calling the tool. A plain `hermes pm sync` can re-resolve the venv
+back to the pinned older api and re-break it — the durable fix is upstream (plugin
+installs must not skew otel across site-packages on one `sys.path`); re-pinning locally
+is interim only.
+
 ## Pitfalls
 
 - **HOME/cwd sensitivity (false negatives):** servers resolve `~/hermes-*`
