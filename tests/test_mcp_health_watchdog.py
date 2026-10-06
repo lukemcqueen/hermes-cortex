@@ -23,6 +23,7 @@ specific copy (e.g. the deployed one).
 import contextlib
 import importlib.util
 import io
+import json
 import os
 import shutil
 import stat
@@ -423,7 +424,19 @@ def main() -> int:
             second,
         )
 
+        # The alert is durable, not just printed: the 2-strike counter is on disk, so a
+        # crash or a re-run continues from that state instead of re-alerting from zero.
+        recorded = json.loads((tmp / "state.json").read_text(encoding="utf-8"))["otel_skew"][
+            str(skew_python)
+        ]
+        check(
+            "S the alert persists: state records 2 consecutive fails + alerted",
+            recorded.get("fail") == 2 and recorded.get("alerted") is True,
+            json.dumps(recorded),
+        )
+
         skew_state.write_text("0\n", encoding="utf-8")
+
         with contextlib.redirect_stdout(buf):
             wd.main()  # the interpreter agrees again
         check(

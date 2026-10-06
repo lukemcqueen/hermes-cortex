@@ -18,6 +18,8 @@ PY="${PYTHON:-python3}"
 PROBE_REL="skills/devops/mcp-health-monitoring/scripts/otel-version-skew-probe.py"
 cd "$REPO" || exit 2
 
+echo "revision: $(git rev-parse --short HEAD)   dirty_files: $(git status --porcelain | wc -l)"
+echo
 echo "== 1. scenario suite (stubs) =="
 PYTHONPATH=ops/scripts "$PY" tests/test_mcp_health_watchdog.py
 suite=$?
