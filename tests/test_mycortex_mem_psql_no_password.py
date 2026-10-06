@@ -23,7 +23,8 @@ from pathlib import Path
 import pytest
 
 REPO = Path(__file__).resolve().parent.parent
-STORE = REPO / "ops" / "services" / "mycortex-mem" / "store.py"
+STORE = Path(os.environ.get("MYCORTEX_MEM_STORE_PATH",
+                            REPO / "ops" / "services" / "mycortex-mem" / "store.py"))
 PLUGIN = REPO / "plugins" / "mycortex-mem" / "__init__.py"
 
 
