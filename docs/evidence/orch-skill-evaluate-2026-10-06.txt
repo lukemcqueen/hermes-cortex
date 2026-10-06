@@ -1,0 +1,56 @@
+# orch-skill-evaluate 2026-10-06 -- verification evidence
+
+HEAD: 0ed5d30079aa5d6a991f4042a1dd043f12a82adf
+Date: 2026-10-06 19:46 KST
+
+## 1. corpus audit helper test (8 cases)
+============================= test session starts ==============================
+platform linux -- Python 3.11.15, pytest-9.1.1, pluggy-1.6.0
+rootdir: /home/esther/hermes-cortex
+configfile: pytest.ini
+plugins: anyio-4.12.1
+collected 8 items
+
+tests/test_audit_unit_completeness.py ........                           [100%]
+
+============================== 8 passed in 0.38s ===============================
+
+## 2. reflexion gate e2e (6 cases, incl. new AC5 prefixed-skill regression)
+
+═══ Setup: is the store reachable? ═══
+  store reachable
+
+═══ AC1: the ENFORCER WRITER records a real row (no manual insert) ═══
+  ✅ writer produced the expected row: hermes|skill_view|tool|{"name": "reflexion-check"}
+
+═══ AC2: the verifier reads that row (store, not a journal) ═══
+  ✅ verifier returns LOADED for the recorded session
+
+═══ AC3: per-skill discrimination — loaded True, never-loaded False ═══
+  ✅ a skill this session never loaded is NOT-LOADED
+
+═══ AC4: a session with no rows at all is refused ═══
+  ✅ absent session is refused
+
+═══ AC5: a PREFIXED skill_view record still satisfies the gate ═══
+  ✅ prefixed (category/name) record satisfies the gate
+  ✅ prefixed session still refuses a never-loaded skill
+
+═══ Summary ═══
+  6 passed, 0 failed
+  ✅ ALL TESTS PASSED
+
+## 3. related unit tests (33 cases)
+============================= test session starts ==============================
+platform linux -- Python 3.11.15, pytest-9.1.1, pluggy-1.6.0
+rootdir: /home/esther/hermes-cortex
+configfile: pytest.ini
+plugins: anyio-4.12.1
+collected 33 items
+
+tests/test_mycortex_mem_tools.py ..                                      [  6%]
+tests/test_mycortex_parity.py ..............                             [ 48%]
+tests/test_hc_harness.py .........                                       [ 75%]
+tests/test_audit_unit_completeness.py ........                           [100%]
+
+============================== 33 passed in 2.12s ==============================
