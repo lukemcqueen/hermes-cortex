@@ -1,0 +1,45 @@
+# FLEET_NOTICE pending-state capture
+# captured immediately after the fleet send on esther, 2026-10-06T04:13:24Z UTC
+
+----- re-send moses -----
+✅ Sent to moses. msg_id=b388947d-026d-4be5-a495-29d5202597ac
+----- re-send titus -----
+✅ Sent to titus. msg_id=66a09970-4ab7-4c93-b01d-0bb37c0e1892
+----- re-send joseph -----
+✅ Sent to joseph. msg_id=3c96658e-ab16-4042-85d0-02247c9c5e45
+----- re-send gisu -----
+✅ Sent to gisu. msg_id=9d1aa175-c8d3-4d04-8f25-89c626da30b1
+----- re-send kustos -----
+✅ Sent to kustos. msg_id=8b37f12a-443d-481f-8c9d-1cbbeb9519bb
+
+----- immediate peek (pending) -----
+== inbox_moses ==
+📬 1 pending message(s) in inbox_moses:
+
+  📩 [13:13:26] esther → FLEET_NOTICE
+     {"topic": "general", "text": "cortex-update no longer writes into ~/.hermes/hermes-agent (commit dc51b3a0). cost-guard + lean-index now ship as USER p...
+
+== inbox_titus ==
+📬 1 pending message(s) in inbox_titus:
+
+  📩 [13:13:26] esther → FLEET_NOTICE
+     {"topic": "general", "text": "cortex-update no longer writes into ~/.hermes/hermes-agent (commit dc51b3a0). cost-guard + lean-index now ship as USER p...
+
+== inbox_joseph ==
+📬 1 pending message(s) in inbox_joseph:
+
+  📩 [13:13:27] esther → FLEET_NOTICE
+     {"topic": "general", "text": "cortex-update no longer writes into ~/.hermes/hermes-agent (commit dc51b3a0). cost-guard + lean-index now ship as USER p...
+
+== inbox_gisu ==
+📬 1 pending message(s) in inbox_gisu:
+
+  📩 [13:13:28] esther → FLEET_NOTICE
+     {"topic": "general", "text": "cortex-update no longer writes into ~/.hermes/hermes-agent (commit dc51b3a0). cost-guard + lean-index now ship as USER p...
+
+== inbox_kustos ==
+📬 1 pending message(s) in inbox_kustos:
+
+  📩 [13:13:29] esther → FLEET_NOTICE
+     {"topic": "general", "text": "cortex-update no longer writes into ~/.hermes/hermes-agent (commit dc51b3a0). cost-guard + lean-index now ship as USER p...
+
