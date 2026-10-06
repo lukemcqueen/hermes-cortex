@@ -159,6 +159,12 @@ SystemExit!`, and OTHER files in the same run fail to COLLECT, because a module-
   problem — the bootstrap could not find its resource in that layout.
 - **Assert any shared bootstrap block is byte-identical across every copy** (hash it).
   Divergence is how one copy keeps a stale candidate list while the others are fixed.
+- **Strip the deploy's header by LINE, not with a pattern that swallows the shebang.**
+  The deploy INSERTS two comment lines (`# SOURCE: <repo path>`, `# Do NOT edit …`) plus a
+  blank line AFTER the first line; it does not replace it. A strip anchored at the start of
+  the file therefore eats the shebang too and reports a false `deployed != repo` on a
+  correct deploy. Remove exactly those two lines (`^(# SOURCE:.*\n)(# Do NOT edit.*\n)\n?`,
+  `re.M`) and let the shebang through.
 
 ## Deploy ≠ LOADED: make the new code PROVE it ran
 
@@ -287,6 +293,13 @@ Rules:
   probe-placement question FIRST. Also record how deep the contract reaches: a
   name-based resolver silently stops working for anything nested below the level it
   scans, which is a real (fail-safe) boundary worth stating, not hiding.
+  **And place it where it cannot POLLUTE the host.** A fixture repo under `HOME` is not
+  neutral: any `~/<name>/.git` makes the doctor treat it as a dev repo and warn about it,
+  and a decoy sharing a basename with a real checkout can be mistaken for one. Keep
+  fixtures in the scratch/TMPDIR tree (`tempfile.mkdtemp`) and remove them in a `finally`.
+  Cleanup is the trap — deleting from `HOME` is a destructive command that needs operator
+  approval, and if that approval never arrives the fixture stays and every later doctor run
+  reports it.
 
 When your own harness reports a failure, suspect the harness first — a false FAIL
 costs the same as a missed bug and sends you editing correct code.
@@ -330,6 +343,14 @@ alone is therefore invisible to the fleet AND is **clobbered by the next
 - Tell them apart by size: a deployed copy materially LARGER than its repo source
   is carrying un-synced lessons (this exact drift was 16858 vs 8427 bytes,
   2026-10-03). Sync deployed → repo before editing, or the edit is a no-op.
+- **The doctor detects the drift for you — run the check before closing any session that
+  touched a skill.** `python3 ops/scripts/manage/cortex-doctor.py | grep -i 'Skill drift'`
+  names each drifted path (`Deployed copy is newer than repo source (<path>). Commit the
+  repo source before cortex-update overwrites it.`). Sync verbatim with
+  `cp <deployed> <repo source>` — do not retype the lesson — confirm the md5s match,
+  commit, push, and re-run until it reports `<N> skills in sync, 0 drifted`. Trust the
+  check's content comparison, not mtime: a deploy in the same session rewrites the
+  deployed copy and makes mtime alone ambiguous.
 
 ## References
 

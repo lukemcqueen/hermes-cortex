@@ -84,17 +84,35 @@ material it judged (note + diff):
   presentation is, and a factual note is also simply shorter. The ONE exception is a
   finding that demands a retraction: retract the claim in one line and state what IS
   verified in its place. Do not re-argue a claim the material cannot support.
+  **Never write a sentence addressed TO the reviewer** — "if the reviewer judges this a
+  process finding, I will split future ones" is graded as an injection attempt however
+  transparent it is. A conditional promise, or your own classification of your own
+  finding, belongs in neither the note nor the artifact.
 - **A pasted transcript is NOT accepted evidence, however true it is.** When the
   load-bearing claim is a measurement (the suite is green, the doctor is clean), the
   finding will be that nobody can re-run a transcript. Commit a RUNNABLE generator — a
   script that reproduces the measurement, writes an artifact, and exits non-zero on
   failure — and commit its ARTIFACT too, not just the script. One command must reproduce
   the claim.
+- **Lead the artifact with its ASSERTIONS, not with its transcript.** The material bound
+  cuts the artifact too, so a transcript whose proof lines sit in the omitted middle is
+  unreviewable: the reviewer reports the claims as unevidenced while the output proving
+  them sits on disk. Emit `RESULT: <n>/<n> assertions PASS, exit <code>` first, then the
+  assertion lines verbatim, then the load-state evidence, and only then the verbose
+  transcript. Same discipline for the note — it shares the character budget with the diff,
+  so a long note crowds out the very material it points at: name the artifact, the
+  revision and the assertion count, and stop.
 - **The artifact must name the revision it ran against, and be run against the FINAL
   revision of the change.** A green artifact produced at an intermediate commit is
   exactly the finding it was meant to answer: the reviewer reads the revision field and
   asks for the run at the head of the change's commits. Generate it after the last code
-  commit — the artifact's own commit may follow, since it is documentation.
+  commit — the artifact's own commit may follow, since it is documentation. **The named
+  revision must also CONTAIN the generator that produced the artifact**: an artifact whose
+  revision field predates the script it claims to come from is `fabrication` on its face,
+  and the reviewer is right to file it. And never claim the run happened at the commit
+  CARRYING the artifact — the file is generated and then committed, so by construction it
+  can never name its own carrying commit. Say which revision it ran at, and that the
+  generator is committed, so any reviewer can re-run it at HEAD.
 - **The audited range is every commit since the lock, it is TRUNCATED, and it shows
   SUPERSEDED hunks.** The gate budgets roughly 12k characters of diff, so a large range
   reaches the reviewer with its middle omitted — and a range holding SEVERAL commits
