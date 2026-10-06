@@ -233,7 +233,7 @@ _assert_register_dest_safe() {
       echo "❌ REFUSED: register target '${dest/$HOME/~}' is the upstream Hermes git checkout." >&2
       echo "   ~/.hermes/hermes-agent is pulled by 'hermes update' — writing into it dirties" >&2
       echo "   the tree and breaks fleet updates. Deploy user plugins to ~/.hermes/plugins/" >&2
-      echo "   instead (see deploy_cost_guard_provider / deploy_hc_lean_index in this script)." >&2
+      echo "   instead (see deploy_hc_lean_index and deploy_mem_plugins in this script)." >&2
       exit 1
       ;;
     *"/memories/"*|"${HOME}/.hermes/"*)
@@ -436,12 +436,9 @@ register "ops/scripts/manage/agent-hermes-update.sh"            "${CORTEX_DEPLOY
 register "ops/scripts/manage/agent-hermes-cortex-sync.sh"      "${CORTEX_DEPLOY_HOME}/scripts/agent-hermes-cortex-sync.sh"
 register "ops/scripts/manage/update-session-state.sh"    "${CORTEX_DEPLOY_HOME}/scripts/update-session-state.sh"
 register "ops/scripts/manage/fleet-audit.py"             "${CORTEX_DEPLOY_HOME}/scripts/fleet-audit.py"
-register "ops/scripts/manage/fleet-costs.py"             "${CORTEX_DEPLOY_HOME}/scripts/fleet-costs.py"
 register "ops/scripts/manage/fleet-hygiene.py"           "${CORTEX_DEPLOY_HOME}/scripts/fleet-hygiene.py"
 register "ops/scripts/manage/fleet-update-check.py"      "${CORTEX_DEPLOY_HOME}/scripts/fleet-update-check.py"
-register "ops/scripts/manage/orch-axi-telemetry.py"           "${CORTEX_DEPLOY_HOME}/scripts/orch-axi-telemetry.py"
 register "ops/scripts/lib/toon_parse.py"                 "${CORTEX_DEPLOY_HOME}/scripts/lib/toon_parse.py"
-register "ops/scripts/manage/orch-daily-cost-report.py"  "${CORTEX_DEPLOY_HOME}/scripts/orch-daily-cost-report.py"
 register "ops/scripts/manage/orch-task-board-digest.py"  "${CORTEX_DEPLOY_HOME}/scripts/orch-task-board-digest.py"
 register "ops/scripts/manage/apply-repo-efficiency.py"   "${CORTEX_DEPLOY_HOME}/scripts/apply-repo-efficiency.py"
 register "docs/templates/repo-efficiency-block.md"       "${CORTEX_DEPLOY_HOME}/templates/repo-efficiency-block.md"
@@ -624,14 +621,8 @@ register "ops/scripts/manage/ek-session-snapshot.py"     "${CORTEX_DEPLOY_HOME}/
 # Orchestrator health report — periodic agent fleet snapshot (no_agent cron)
 register_orch "ops/scripts/agent/orch-health-report.py"       "${CORTEX_DEPLOY_HOME}/scripts/orch-health-report.py"
 
-# Cron cost tracking — SQLite store + deployment script
-register "ops/scripts/cost_store.py"               "${CORTEX_DEPLOY_HOME}/scripts/cost_store.py"
-register "ops/scripts/install/install-cron-cost-tracking.py" "${CORTEX_DEPLOY_HOME}/scripts/install-cron-cost-tracking.py"
 register "ops/scripts/manage/apply-mcp-tool-watch-fix.py" "${CORTEX_DEPLOY_HOME}/scripts/apply-mcp-tool-watch-fix.py"
 register "ops/scripts/install/install-lean-index.py" "${CORTEX_DEPLOY_HOME}/scripts/install-lean-index.py"
-
-# O6-S1 MAX_COST guard — per-job cost cap consulted at cron request time
-register "ops/scripts/manage/max_cost_guard.py"    "${CORTEX_DEPLOY_HOME}/scripts/max_cost_guard.py"
 
 # Health monitoring
 register "ops/scripts/change-validate.sh"                  "${CORTEX_DEPLOY_HOME}/scripts/change-validate.sh"
@@ -2248,45 +2239,64 @@ deploy_mem_plugins() {
   return 0
 }
 
-# ── Cost-guard cron provider deploy ───────────────────────
-# Deploys the cost-guard cron scheduler provider into the Hermes USER plugin
-# dir ($HERMES_HOME/plugins/cost-guard/), which plugins/cron_providers
-# discovery scans AFTER the bundled tree. Selected via
-# `cron.provider: cost-guard` in config.yaml.
+# ── Cost tracking removal (2026-10-06) ────────────────────
+# Hermes-side cost tracking is RETIRED: no cron-costs.db capture, no over-budget
+# cron fire guard, no cost reporting. This converges every host onto stock Hermes
+# behaviour, including hosts that never had it (idempotent, always exit 0).
 #
-# NEVER write into ~/.hermes/hermes-agent/: that is the upstream git checkout
-# `hermes update` pulls into. Deploying there dirtied the tree (a SOUL boundary
-# breach). The provider is self-contained — max_cost_guard.py + cost_store.py
-# are bundled beside it and loaded by file path — so nothing needs to live in
-# the agent's cron/ dir. Guard + cost-capture logic unchanged; install
-# location moved out of the agent tree.
-deploy_cost_guard_provider() {
-  local repo_plugin="${REPO_DIR}/plugins/cron_providers/cost-guard"
-  local dest="${HOME}/.hermes/plugins/cost-guard"
-  if [[ ! -d "$repo_plugin" ]]; then
-    warn "  cost-guard provider source missing: ${repo_plugin}"
-    return 0
+# The config keys go too: Hermes resolves `cron.provider` at boot and falls back
+# to its built-in ticker when the named provider is missing
+# (cron/scheduler_provider.py), so leaving `provider: cost-guard` behind would
+# mean a warning on every start about a provider we deliberately removed.
+remove_cost_tracking() {
+  local removed=0
+  local plugin_dir="${HOME}/.hermes/plugins/cost-guard"
+  local cost_db="${HOME}/.hermes/cron/cron-costs.db"
+  if [[ -d "$plugin_dir" ]]; then
+    rm -rf "$plugin_dir"; removed=$((removed + 1))
   fi
-  mkdir -p "$dest"
-  local changed=0
-  if [[ -f "$repo_plugin/__init__.py" ]]; then
-    cp -f "$repo_plugin/__init__.py" "$dest/__init__.py"
-    changed=$((changed + 1))
+  if [[ -f "$cost_db" ]]; then
+    rm -f "$cost_db"; removed=$((removed + 1))
   fi
-  # Bundle the two helper modules the provider loads by file path. Single
-  # source of truth stays in the repo; this is a copy, never a core edit.
-  local helper src base
-  for helper in "${REPO_DIR}/ops/scripts/cost_store.py:cost_store.py" \
-                "${REPO_DIR}/ops/scripts/manage/max_cost_guard.py:max_cost_guard.py"; do
-    src="${helper%%:*}"; base="${helper##*:}"
-    if [[ -f "$src" ]]; then
-      cp -f "$src" "${dest}/${base}"
-      changed=$((changed + 1))
-    else
-      warn "  cost-guard helper missing: ${src}"
+  local script
+  for script in cost_store.py max_cost_guard.py fleet-costs.py fleet-cost-query.py \
+                orch-daily-cost-report.py orch-axi-telemetry.py agent-budget-enforcer.py \
+                install-cron-cost-tracking.py; do
+    if [[ -f "${CORTEX_DEPLOY_HOME}/scripts/${script}" ]]; then
+      rm -f "${CORTEX_DEPLOY_HOME}/scripts/${script}"; removed=$((removed + 1))
     fi
   done
-  [[ "${changed:-0}" -gt 0 ]] && info "  cost-guard provider deployed to ~/.hermes/plugins/cost-guard (${changed} file(s))"
+  # ruamel's round-trip loader is what Hermes itself uses for config writes
+  # (hermes_cli.config.atomic_config_write → utils.atomic_roundtrip_yaml_save):
+  # round-trip is required to preserve comments and key order. It is not
+  # yaml.unsafe_load — it constructs no arbitrary Python objects.
+  python3 - "${HOME}/.hermes/config.yaml" <<'PY' || warn "  cost keys not dropped (config read failed)"
+import io, sys, pathlib
+try:
+    from ruamel.yaml import YAML
+except ImportError:
+    sys.exit(0)
+path = pathlib.Path(sys.argv[1])
+if not path.exists():
+    sys.exit(0)
+yaml = YAML(); yaml.preserve_quotes = True
+data = yaml.load(path.read_text(encoding="utf-8")) or {}
+cron = data.get("cron")
+if not isinstance(cron, dict):
+    sys.exit(0)
+changed = False
+for key in ("cost_guard", "cost_tracking"):
+    if key in cron:
+        del cron[key]; changed = True
+if str(cron.get("provider", "")).strip() == "cost-guard":
+    del cron["provider"]; changed = True
+if changed:
+    buf = io.StringIO(); yaml.dump(data, buf)
+    path.write_text(buf.getvalue(), encoding="utf-8")
+    print("    [cost-removal] dropped cron.provider=cost-guard / cost_guard / cost_tracking")
+PY
+  [[ "${removed:-0}" -gt 0 ]] && \
+    info "  cost tracking removed from this host (${removed} artifact(s))"
   return 0
 }
 
@@ -2911,11 +2921,10 @@ except Exception:
   # Deploy mycortex-mem + prompt-guard plugins (memory provider + LLM guard)
   deploy_mem_plugins
 
-  # Deploy the cost-guard cron scheduler provider into the USER plugin dir
-  # (sanctioned cron.provider extension point). It carries the MAX_COST guard
-  # AND the cron cost-capture hooks, so the old scheduler.py marker-patch is
-  # gone — the agent git tree is never touched.
-  deploy_cost_guard_provider
+  # Retire cost tracking from earlier deploys: drop the cost-guard provider
+  # plugin, the cron-costs.db store, the reporting scripts and the config keys
+  # that selected the provider. Idempotent — a no-op on a clean host.
+  remove_cost_tracking
 
   # Deploy the hc-lean-index user plugin (distinct "lean" coding-context mode).
   # Replaces the old agent/coding_context.py core patch — zero core edits.
@@ -3235,7 +3244,7 @@ except Exception:
       warn "  install-profile-reader-role.sh failed (non-fatal)"
   fi
 
-  # O7-S2 soft session cap (cost story c579ef95) — converges
+  # O7-S2 soft session cap — converges
   # compression.threshold_tokens to SOFT_SESSION_CAP_TOKENS when set.
   # UNSET = no-op (control host / value pending Luke) — safe fleet-wide.
   # Idempotent; no restart needed (compressor reads config per session).

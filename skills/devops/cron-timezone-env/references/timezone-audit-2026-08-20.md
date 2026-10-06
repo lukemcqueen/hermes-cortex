@@ -35,7 +35,7 @@ not by contract.
 Python (ops/scripts/): health/agent-cron-quality-watchdog.py,
 health/agent-scoring-activity-watchdog.py, health/agent-mcp-health-watchdog.py,
 health/agent-model-health-watchdog.py, health/agent-system-alert-watchdog.py,
-health/agent-service-recovery.py, manage/agent-budget-enforcer.py,
+health/agent-service-recovery.py,
 manage/agent-governance-auditor.py, manage/agent-auto-save-sessions.py,
 manage/agent-memory-to-brain-sync.py, manage/ek-session-snapshot.py,
 manage/analyze-briefings.py, agent/orch-health-report.py,

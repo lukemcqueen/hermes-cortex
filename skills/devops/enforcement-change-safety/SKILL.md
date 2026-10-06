@@ -638,7 +638,7 @@ deploy must not wipe credit" section.
 ## Rule 15: Fix-Apply Scripts Need a Four-State Guard — "Upstream Removed It" Is Fixed, Not Fail
 
 Scripts that re-apply a local patch to upstream code after every deploy (e.g.
-`apply-mcp-tool-watch-fix.py`, `install-lean-index.py`, `install-cron-cost-tracking.py`)
+`apply-mcp-tool-watch-fix.py`, `install-lean-index.py`)
 must handle four states when deciding whether to apply:
 
 1. **Already fixed** (marker or corrected pattern present) → SKIP, exit 0

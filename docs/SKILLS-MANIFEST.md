@@ -128,7 +128,7 @@ their domain.
 | `meme-generation` | 2.0.0 | Create meme PNGs from templates with Pillow text overlay. | `skill_view(name='meme-generation')` |
 | `pixel-art` | 2.0.0 | Pixel art w/ era palettes (NES, Game Boy, PICO-8). | `skill_view(name='pixel-art')` |
 
-## Devops (163 skills)
+## Devops (162 skills)
 
 | Skill | Version | Purpose | Load With |
 |-------|---------|---------|-----------|
@@ -165,7 +165,6 @@ their domain.
 | `cortex-preflight` | 1.1.0 | DEPRECATED alias — merged into survey-before-action (2026-08-20). Load survey-before-action instead; its "R... | `skill_view(name='cortex-preflight')` |
 | `cron-agent-identity` | 1.0.0 | (no description) | `skill_view(name='cron-agent-identity')` |
 | `cron-cost-scheduling` | 1.0.0 | Schedule LLM crons around provider peak/off-peak windows. | `skill_view(name='cron-cost-scheduling')` |
-| `cron-cost-tracking` | 1.0.0 | SQLite-backed per-run token usage and cost tracking for Hermes cron jobs. Deploys cost_store.py and patches... | `skill_view(name='cron-cost-tracking')` |
 | `cron-failure-restore` | 1.0.0 | (no description) | `skill_view(name='cron-failure-restore')` |
 | `cron-filesystem-fallback` | 1.0.0 | (no description) | `skill_view(name='cron-filesystem-fallback')` |
 | `cron-format-standard` | 3.0.0 | Standard three-phase output format for ALL LLM-driven cron jobs. Uses concrete examples — not annotated pla... | `skill_view(name='cron-format-standard')` |

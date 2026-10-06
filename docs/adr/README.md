@@ -49,7 +49,7 @@ reproduce the reasoning>
 1. **Record, don't duplicate.** If a decision already lives in code with a
    clear comment chain, the ADR references it — it doesn't copy it.
 2. **Verifiable facts only.** Numbers (pricing, caps) come from the live
-   source (cost_store.py, config.yaml) — never from memory.
+   source (the provider's pricing card, config.yaml) — never from memory.
 3. **Never secrets.** ADRs go in the public repo — env VALUES stay in
    `.env`; ADRs cite env var NAMES only.
 4. **Record at decision time.** When a non-obvious choice is made during
@@ -63,5 +63,4 @@ reproduce the reasoning>
 | ADR | Title | Status |
 |-----|-------|--------|
 | 0001 | [DeepSeek model contract + pricing](0001-model-contract-pricing.md) | accepted |
-| 0002 | [MAX_COST preflight guard (O6-S1)](0002-max-cost-guard.md) | accepted |
 | 0003 | [Agent Bus API /v2 policy](0003-bus-api-v2-policy.md) | accepted |

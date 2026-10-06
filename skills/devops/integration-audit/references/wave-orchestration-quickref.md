@@ -26,7 +26,6 @@ CLI usage for the 5-wave delivery pipeline.
 
 - **Wave 4** → `adversarial-verify.py --level A2` (adversarial verification)
 - **Wave 5** → `outerloop.py` evidence package (governance ledger)
-- **Wave 5** → `fleet-costs.py` (cost tracking in finalization)
 
 ## Example: Full Cycle
 

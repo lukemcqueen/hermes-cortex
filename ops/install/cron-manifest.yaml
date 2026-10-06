@@ -1180,28 +1180,6 @@ crons:
   no_agent: true
   model: ''
   provider: ''
-- name: orch-daily-cost-report
-  scope: orchestrator
-  schedule: '0 8 * * *'
-  script: 'orch-daily-cost-report.py'
-  prompt: ''
-  skill: ''
-  deliver: telegram:{{HOME_CHANNEL}}
-  workdir: ''
-  no_agent: true
-  model: ''
-  provider: ''
-- name: orch-axi-telemetry
-  scope: orchestrator
-  schedule: '35 2 * * *'
-  script: 'orch-axi-telemetry.py'
-  prompt: ''
-  skill: ''
-  deliver: local
-  workdir: ''
-  no_agent: true
-  model: ''
-  provider: ''
 - name: orch-task-morning-pass
   scope: orchestrator
   schedule: '0 7 * * *'

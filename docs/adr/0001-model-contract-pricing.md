@@ -2,7 +2,7 @@
 
 - Status: accepted
 - Date: 2026-08-24
-- Author: Esther (facts verified from `ops/scripts/cost_store.py` +
+- Author: Esther (facts verified from
   `~/hermes-cortex/.env`)
 
 ## Context
@@ -22,7 +22,7 @@ numbers from memory — which drifts.
 - Embedding: `nomic-embed-text:v1.5` (local Ollama, `EMBEDDING_MODEL`)
 - Judge: `JUDGE_MODEL` env
 
-**Pricing (USD per 1M tokens, source `ops/scripts/cost_store.py`):**
+**Pricing (USD per 1M tokens, from the provider pricing card):**
 
 | Token class | USD/1M |
 |---|---|
@@ -31,7 +31,7 @@ numbers from memory — which drifts.
 | Output | $0.66 |
 | Peak multiplier (01:00–04:00 & 06:00–10:00 UTC) | 2× |
 
-**Cost formula** (cost_store.py): input = prompt_total − hit − write;
+**Cost formula:** input = prompt_total − hit − write;
 output billed at $0.66/1M; peak hours double the total.
 
 ## Consequences
@@ -41,12 +41,10 @@ output billed at $0.66/1M; peak hours double the total.
   system prompts, no per-turn reordering) directly attacks this.
 - **Thinking bills as output** — reasoning tokens are priced at output
   rates, so lean thinking configs matter.
-- Pre-2026-08-16 rows in cron-costs.db used the older (cheaper) schedule;
   cost reports must note the baseline shift (O1-S1).
 - The `MAX_COST` preflight guard (ADR-0002) is built on these numbers.
 
 ## References
 
-- `ops/scripts/cost_store.py` (authoritative pricing constants)
 - `docs/setup-reference.md` (run-type cost table)
 - `~/hermes-cortex/.env` (values — never committed)

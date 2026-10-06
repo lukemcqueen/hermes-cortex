@@ -67,7 +67,7 @@ Every agent in the fleet belongs to one of four roles. The role determines which
 │  └─────────────┘  └──────────────┘  └────────────────┘  │
 │                                                         │
 │  Crons: install-crons.sh + install-orch-crons.sh        │
-│  Observability: Langfuse (traces), cost tracking,       │
+│  Observability: Langfuse (traces),                       │
 │                 LLM judge scorer, scoring watchdog       │
 └─────────────────────────────────────────────────────────┘
 ```
@@ -89,7 +89,7 @@ Every agent in the fleet belongs to one of four roles. The role determines which
 │  └─────────────┘  └──────────────┘                      │
 │                                                         │
 │  Crons: install-crons.sh only (no orch-*)               │
-│  Observability: Langfuse (traces), cost tracking,       │
+│  Observability: Langfuse (traces),                       │
 │                 LLM judge scorer                         │
 └─────────────────────────────────────────────────────────┘
 ```
@@ -112,7 +112,7 @@ Every agent in the fleet belongs to one of four roles. The role determines which
 │                                                         │
 │  Crons: install-crons.sh (agent-* only)                 │
 │  No: nginx, local bus daemon                            │
-│  Observability: Langfuse (traces), cost tracking        │
+│  Observability: Langfuse (traces)                        │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -159,16 +159,6 @@ Every agent sends traces to the **shared Langfuse instance** running on the orch
 
 All crons that interact with Langfuse (judge scorer, scoring watchdog) use the same `agent-*` prefix so they run on every agent.
 
-### Cost Tracking
-
-Every agent with LLM cron jobs should have cost tracking active:
-
-```bash
-python3 ~/.hermes-cortex/scripts/install-cron-cost-tracking.py --force
-```
-
-This patches the Hermes scheduler to record per-run token usage and cost into `~/.hermes/cron/cron-costs.db`.
-
 ### LLM Judge Scorer
 
 Runs on every agent with Langfuse. Scores traces using a local Ollama model and posts quality scores back to Langfuse:
@@ -183,8 +173,7 @@ Quality dimensions: `helpfulness` (1-5), `clarity` (1-5), `depth` (1-5), `overal
 `agent-scoring-activity-watchdog` runs daily at 14:00 and 20:00 on every agent:
 
 1. **Scoring activity** — Checks loop-governance DB for cycles scored today; alerts if below expected threshold
-2. **Cost check** — Queries cron-costs.db; alerts if daily cost exceeds `$0.25`
-3. **Trace quality** — Queries Langfuse for traces scored below 4.0 in the last 48h
+2. **Trace quality** — Queries Langfuse for traces scored below 4.0 in the last 48h
 
 ### Log Locations
 
@@ -269,8 +258,6 @@ browser:
   record_sessions: true
 dashboard:
   show_token_analytics: true
-display:
-  show_cost: true
 ```
 
 ### Server Agent / Dev Agent
@@ -281,8 +268,6 @@ browser:
   record_sessions: true     # optional — enables session_search
 dashboard:
   show_token_analytics: true
-display:
-  show_cost: true
 ```
 
 ---
@@ -293,7 +278,6 @@ display:
 |-----------|:-----------:|:-----------:|:------------:|:---------:|
 | Hermes Agent | ✅ | ✅ | ✅ | ✅ |
 | Langfuse plugin | ✅ | ✅ | ✅ | ✅ |
-| Cost tracking patches | ✅ | ✅ | ✅ | ✅ |
 | LLM judge scorer | ✅ | ✅ | ✅ | ✅ |
 | Scoring watchdog | ✅ | ✅ | ✅ | ✅ |
 | Cron quality watchdog | ✅ | ✅ | ✅ | ✅ |

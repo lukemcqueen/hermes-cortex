@@ -247,7 +247,6 @@ If Wave 4 adversarial finds critical findings and they can't be fixed:
 | **adversarial-verify.py** (S3) | Wave 4 quality gate |
 | **outerloop.py** (S4) | Wave 5 governance ledger |
 | **fleet-audit.py** (S1) | Wave 1 discovery — check registry state |
-| **fleet-costs.py** (F2) | Wave 5 — report costs in finalization |
 | **change-checklist** | Pre-ship checklist in Wave 5 |
 
 ## Failure Recovery

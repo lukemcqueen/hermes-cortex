@@ -5,7 +5,7 @@ pitfalls in the umbrella SKILL.md.
 
 ## 1. Patched on disk ≠ loaded in the daemon (the restart-pending marker)
 
-**Symptom:** `install-cron-cost-tracking.py --status` reports 9/9 OK, yet every
+**Symptom:** the capture hooks report OK, yet every
 new `usage_audit.jsonl` line lacks `cache_read_tokens`/`cache_write_tokens`.
 
 **Root cause:** `hermes update` replaces scheduler.py (and cortex-update.sh

@@ -23,7 +23,6 @@ The full observability pipeline now includes:
 | Layer | Component | Status |
 |-------|-----------|--------|
 | Trace capture | Langfuse v3.206.0 + Hermes plugin | 722 traces/7 days |
-| Cost tracking | cron-costs.db + scheduler patches | All 8 hooks deployed |
 | Quality scoring | LLM judge scorer (qwen2.5-coder:3b) | Scores posted to Langfuse |
 | Quality alerts | trace-quality-watchdog | Alerts if overall < 4/10 |
 | Output quality | cron-quality-watchdog | Every 10 min, no_agent |

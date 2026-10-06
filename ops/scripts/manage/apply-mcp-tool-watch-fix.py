@@ -19,8 +19,8 @@ invoking it. The real watcher instance is created once in the fast-fail
 branch (asyncio.ensure_future(_watch_children())).
 
 Re-apply: every `hermes update` replaces tools/mcp_tool.py and reverts this
-fix. cortex-update.sh runs this script after each deploy (same pattern as
-install-cron-cost-tracking.py). Idempotent: SKIPs when the fix is present.
+fix. cortex-update.sh runs this script after each deploy. Idempotent: SKIPs
+when the fix is present.
 
 Upstream PR: to be filed once local convergence is verified.
 

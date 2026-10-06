@@ -140,17 +140,17 @@
 
 ## DeepSeek peak / off-peak map (KST ↔ UTC)
 
-DeepSeek time-of-use pricing (live card 2026-08-16; authoritative implementation:
-`ops/scripts/cost_store.py::_is_peak_hour` — `(1 <= h < 4) or (6 <= h < 10)` UTC).
-Peak hours are priced **×2** (hit $0.014/M, miss $0.44/M, out $1.32/M); off-peak
-×1 (hit $0.007/M, miss $0.22/M, out $0.66/M).
+DeepSeek time-of-use pricing (live card 2026-08-16): the peak window is
+`(1 <= h < 4) or (6 <= h < 10)` UTC. Peak hours are priced **×2** (hit
+$0.014/M, miss $0.44/M, out $1.32/M); off-peak ×1 (hit $0.007/M, miss
+$0.22/M, out $0.66/M).
 
 | Window | UTC hours | KST hours (UTC+9) |
 |--------|-----------|-------------------|
 | PEAK ×2 | 01:00–03:59 & 06:00–09:59 | 10:00–12:59 & 15:00–18:59 |
 | off-peak | 00:00–00:59, 04:00–05:59, 10:00–23:59 | 09:00–09:59, 13:00–14:59 (lunch gap), 19:00–08:59 |
 
-**Fleet scheduling policy (O3/G-4, 2026-08-25; revised 2026-08-31 cost-cut):**
+**Fleet scheduling policy (O3/G-4, 2026-08-25; revised 2026-08-31):**
 LLM crons run off DeepSeek peak (KST 10–13 & 15–19) where function allows.
 Daytime slots moved off-peak: `orch-backlog-driver` 08/14/20/22 KST (UTC
 23/05/11/13), `agent-fixer-workday`/`cortex-bus-workday` 08/14/20 KST,

@@ -1,7 +1,7 @@
 # OpenCode Relay (zen/go) Pricing & Free-Tier Reality
 
 Verified 2026-08-31 against live `https://opencode.ai/zen/v1/models` and
-`https://opencode.ai/docs/zen/` (plus the fleet's own `cost_store.py`).
+`https://opencode.ai/docs/zen/`.
 
 ## The headline: zen relay charges EXACTLY DeepSeek's own rates
 
@@ -16,7 +16,7 @@ direct is the payment rail.
 
 Same peak window as direct DeepSeek: 01:00–04:00 & 06:00–10:00 UTC (×2).
 
-These match the fleet's canonical `cost_store.py` constants
+These match the fleet's recorded constants
 (RATE_VERSION 2026-08-16: PRICE_HIT 0.007, PRICE_MISS 0.22, PRICE_OUT 0.66,
 PEAK_MULT 2.0) exactly. So cost math does NOT need a per-provider table when
 routing through the relay.

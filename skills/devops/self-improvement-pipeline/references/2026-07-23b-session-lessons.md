@@ -50,14 +50,6 @@ The Langfuse REST API does NOT support PATCH on traces — you cannot rename or 
 
 ## Technical Discovery 2: Cost Tracking Patches Missing
 
-The `install-cron-cost-tracking.py` patches the Hermes scheduler at `~/.hermes/hermes-agent/cron/scheduler.py` and tools at `~/.hermes/hermes-agent/tools/cronjob_tools.py`. These patches are lost after every `hermes update` because Hermes replaces its source directory.
-
-**Deployment:** `python3 ~/.hermes-cortex/scripts/install-cron-cost-tracking.py --force`
-
-**Verification:** `python3 ~/.hermes-cortex/scripts/install-cron-cost-tracking.py --status` — all 8 hooks must show OK.
-
-**Cost data location:** `~/.hermes/cron/cron-costs.db` (SQLite WAL mode). Schema: `cron_runs` table with `job_id`, `input_tokens`, `output_tokens`, `estimated_cost_usd`, `model`, `provider`, `status`.
-
 ## Technical Discovery 3: Fleet Data Collection Pipeline
 
 The fleet data pipeline is already deployed and does NOT need a new cron:

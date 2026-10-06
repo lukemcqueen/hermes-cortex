@@ -23,13 +23,11 @@ def _cron_ts(name: str) -> str:
 
 
 DB_PATH = os.path.expanduser("~/.hermes-cortex/data/loop-governance.db")
-COST_DB = os.path.expanduser("~/.hermes/cron/cron-costs.db")
 THRESHOLDS = {
     # hour: minimum cycles expected by that time
     14: 1,  # by 2pm: at least 1 change scored
     20: 2,  # by 8pm: at least 2 changes scored
 }
-COST_WARNING_DAILY = 0.75  # $0.75/day triggers cost alert
 
 
 def main():
@@ -85,26 +83,6 @@ def main():
 
     # Silent on healthy
     alerts = []
-
-    # ── Cost check ──────────────────────────────────────────
-    if os.path.exists(COST_DB):
-        try:
-            conn = sqlite3.connect(COST_DB)
-            today = datetime.now().date().isoformat()
-            cur = conn.execute(
-                "SELECT SUM(estimated_cost_usd) FROM cron_runs WHERE run_time >= ?",
-                (today,)
-            )
-            row = cur.fetchone()
-            daily_cost = row[0] if row and row[0] else 0.0
-            conn.close()
-            if daily_cost > COST_WARNING_DAILY:
-                alerts.append(
-                    f"⚠️  Daily cron cost ${daily_cost:.4f} exceeds ${COST_WARNING_DAILY:.2f} threshold. "
-                    f"Check ~/.hermes/cron/cron-costs.db for details."
-                )
-        except Exception as e:
-            alerts.append(f"⚠️  Cost DB check failed: {e}")
 
     # ── Trace quality from Langfuse ─────────────────────────
     try:

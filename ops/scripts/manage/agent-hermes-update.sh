@@ -91,13 +91,6 @@ elif [ -f "$RESTART_MARKER" ] && ! grep -q "updated:${NEW_VERSION}" "$RESTART_MA
     true
 fi
 
-# ── Step 1.5: (retired) cost-capture patch re-apply ──────────────────
-# Cron cost capture and the MAX_COST guard now live in the user plugin
-# ~/.hermes/plugins/cost-guard/ (a sanctioned cron.provider extension loaded
-# by cron/scheduler_provider.py). They are NOT affected by `hermes update`,
-# so there is nothing to re-apply and nothing is written into the agent git
-# tree. Kept as a marker so the removed step is not re-added by mistake.
-
 # Step 2: Config migration (runs even if update timed out or failed)
 MIGRATE_OUTPUT=$(timeout 35 hermes config migrate 2>&1) || {
     MIGRATE_EXIT=$?

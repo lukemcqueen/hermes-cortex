@@ -29,7 +29,6 @@ from pathlib import Path
 HOME = Path.home()
 STATE_DIR = HOME / ".hermes-cortex" / "state"
 ESCAPE_DB = STATE_DIR / "escalations.db"
-COST_DB = HOME / ".hermes" / "cron" / "cron-costs.db"
 
 SCHEMA_SQL = """
 CREATE TABLE IF NOT EXISTS escalations (

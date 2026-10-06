@@ -140,9 +140,7 @@ if $UNINSTALL; then
     "orch-bus-inbox-relay" \
     "orch-bus-recover-timeouts" \
     "orch-clean-health-queue" \
-    "orch-daily-cost-report" \
     "orch-daily-regression-gate" \
-    "orch-axi-telemetry" \
     "orch-fleet-watchdog" \
     "orch-health-report-saturday" \
     "orch-health-report-weekday" \
@@ -431,30 +429,6 @@ create_cron "orch-health-report-saturday" "0 11,17 * * 6" \
   "" \
   "" \
   "origin" \
-  "" \
-  "true"
-
-# Daily fleet cost digest — one Telegram message with yesterday's spend
-# (no_agent: script output IS the report — zero LLM token cost)
-create_cron "orch-daily-cost-report" "0 8 * * *" \
-  "orch-daily-cost-report.py" \
-  "" \
-  "" \
-  "" \
-  "telegram:${TELEGRAM_HOME_CHANNEL}" \
-  "" \
-  "true"
-
-# Daily AXI telemetry baseline — refresh state/axi-baseline.json so every
-# later AXI task can prove its token/turn delta (F-022). no_agent; the
-# script defaults to --baseline when run with no args (cron convention).
-# Output to local only (baseline is a file artifact, not a user report).
-create_cron "orch-axi-telemetry" "35 2 * * *" \
-  "orch-axi-telemetry.py" \
-  "" \
-  "" \
-  "" \
-  "local" \
   "" \
   "true"
 

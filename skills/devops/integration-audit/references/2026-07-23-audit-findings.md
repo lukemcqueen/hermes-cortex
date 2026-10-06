@@ -59,7 +59,6 @@ A 37-test Python script (`integration-audit.py`, removed after use) tested:
 - S2: All 5 schemas, valid/invalid payloads per schema, hc exec help
 - S3: A1/A2 runs on real files, cheat detection, JSON output, edge cases
 - S4: Evidence creation, verdict issuance, answerability, error cases
-- F2: DB connectivity, fleet-costs summary/weekly/jobs
 - Integration: cross-system composition, deployed state, help output
 
 ## Key Lessons

@@ -137,7 +137,6 @@ compaction/rewrites fire (those bust cache worse than a fresh start).
 1. **Get the ground truth** — ask the user for the billing-page number (avg/peak
    per day) and the target. Never trust a computed estimate over the bill.
 2. **Measure before optimizing** — per-run cost is uncomputable without the
-   cache-hit/miss split. Check cron-costs.db has data AND current prices (rate
    drift makes stored costs lie). Add cache capture to usage_audit if missing.
 3. **Find the cache hit rate** — the 31× lever dominates everything. If you can't
    measure it, you can't rank any fix (a 26M-token run = $0.18 hit vs $5.81 miss).
@@ -161,17 +160,12 @@ compaction/rewrites fire (those bust cache worse than a fresh start).
   the installer's pin function must both change (14-cron deepseek-chat→v4-flash
   migration reverted exactly this way, 2026-08-21).
 - **Cost-store patches rot on every `hermes update`.** Auto-reapply via a
-  post-update hook (`install-cron-cost-tracking.py --force`); a missing
-  cost_store.py shows as 9× MISS in --status. 2 days of data out of 13 seen
   2026-08-21.
-- **cron-costs.db understated ~2× until O1-S3 (2026-08-26).** The provider
   estimate (`session_estimated_cost_usd`) uses hermes-agent's stale
   pre-hike pricing table for v4-flash (in 0.14/out 0.28/hit 0.0028 vs local
-  0.22/0.66/0.007). Fixed in cost_store.py: record_run recomputes at the local
   schedule, reprice guard is now consistency-based (self-heals stale rows).
   The daily REPORT was always correct (recomputes from usage_audit); only the
   DB store under-reported. See cron-cost-tracking skill.
-- **Installer patch index drift.** install-cron-cost-tracking.py splits patches
   at hardcoded indices ([:3]/[3:]); adding scheduler patches shifts the boundary
   and the new patches get applied to cronjob_tools.py. Update the slice boundary
   when adding patches. Its FAIL message ("marker not found") actually means the
@@ -211,7 +205,6 @@ compaction/rewrites fire (those bust cache worse than a fresh start).
   today's bloat kills legitimate jobs (a 26M-token run is $0.18 at hit rates).
   Measure first, cap later (per-job p95 + headroom).
 - **cache_write_tokens=0 on every row = capture gap, not 100% hit rate (2026-08-29).**
-  cron-costs.db shows `cache_write_tokens` 0 for ALL 4828 rows, so the naive
   `hit% = read/(read+write)` reads a fake 100%. Root cause is UPSTREAM
   (hermes-agent `agent/usage_pricing.py`): the cache_read side maps DeepSeek's
   top-level `prompt_cache_hit_tokens` (line ~1373) but the cache_write fallback

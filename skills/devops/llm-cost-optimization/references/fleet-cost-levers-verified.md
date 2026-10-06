@@ -31,7 +31,6 @@ Measured on Esther (13-day audit + state.db):
 | per-repo efficiency | `apply-repo-efficiency.py` → AGENTS.md block | behavioral batching/no-re-derivation where devs work |
 | peak-hour reduction | backlog-driver 15→8 runs/day; fixer+bus-workday 9→5 | peak LLM runs 19→7/day; no_agent watchdogs cover detection |
 | cache-split capture | scheduler patch → `usage_audit.jsonl` cache_read/write tokens | measurement gap closed (needs gateway restart to LOAD) |
-| daily digest | `orch-daily-cost-report.py` cron 08:00 KST → Telegram | reads usage_audit + cron-costs + **state.db sessions table** |
 
 ## Redactor + timezone gotchas (cost-report code)
 

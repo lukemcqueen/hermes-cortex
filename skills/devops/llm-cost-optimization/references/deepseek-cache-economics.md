@@ -82,7 +82,6 @@ system prompt cold once per session.
 - 12% of cron runs landed in peak (2×) hours.
 - Interactive sessions (Titus) ≈ 70% of weekday spend and were invisible to
   cost tracking (usage_audit is job_id-keyed, cron-only).
-- cron-costs.db had 2 days of data on Esther (patch rotted on a hermes update)
   and old pricing on Moses — no rate-version column.
 
 ## Absorbed from llm-cost-engineering's deepseek-cache-cost-mechanics.md (2026-08-22)
@@ -92,5 +91,5 @@ system prompt cold once per session.
 - Peak pricing applies to ALL rates: hit $0.014, miss $0.44, output $1.32
   per 1M during 01:00–04:00 & 06:00–10:00 UTC.
 - **Where the split is recorded:** usage_audit.jsonl did NOT record the cache
-  split; cron-costs.db has cache_read/cache_write columns (patch-derived).
+  split; usage rows carry cache_read/cache_write columns.
   Always check which store actually captured the field before trusting it.

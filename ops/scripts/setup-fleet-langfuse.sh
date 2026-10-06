@@ -31,8 +31,7 @@ if [ -z "$AGENT_NAME" ]; then
     echo "  2. Sets HERMES_LANGFUSE_* in the agent's ~/.hermes/.env"
     echo "  3. Installs the langfuse Python SDK"
     echo "  4. Enables the Hermes Langfuse plugin"
-    echo "  5. Enables cost tracking (install-cron-cost-tracking.py)"
-    echo "  6. Restarts the Hermes gateway"
+    echo "  5. Restarts the Hermes gateway"
     exit 1
 fi
 
@@ -123,25 +122,10 @@ hermes plugins list 2>/dev/null | grep -q langfuse && \
     echo "   ✓ Langfuse plugin confirmed active" || \
     echo "   ⚠️ Langfuse plugin not listed."
 
-# ── Step 5: Enable cost tracking ──────────────────────────────
-# Cost capture now ships in the cost-guard USER plugin (~/.hermes/plugins/
-# cost-guard/), deployed by cortex-update.sh. Do NOT run the retired core-patch
-# installer here — it rewrote ~/.hermes/hermes-agent/cron/scheduler.py and
-# dirtied the agent git tree (breaking `hermes update`). Just make sure the
-# plugin is present and the provider is selected.
-echo "→ Verifying cron cost tracking (cost-guard plugin)..."
-if [ -f "${HOME}/.hermes/plugins/cost-guard/__init__.py" ]; then
-    echo "   ✓ cost-guard user plugin present"
-else
-    echo "   ⚠️ cost-guard plugin missing — run: bash ~/hermes-cortex/ops/scripts/cortex-update.sh"
-fi
-hermes config set cron.provider cost-guard 2>/dev/null || true
-
-# ── Step 6: Enable token analytics ────────────────────────────
+# ── Step 5: Enable token analytics ────────────────────────────
 echo "→ Enabling token analytics display..."
 hermes config set dashboard.show_token_analytics true 2>/dev/null || true
-hermes config set display.show_cost true 2>/dev/null || true
-echo "   ✓ Token analytics and cost display enabled"
+echo "   ✓ Token analytics display enabled"
 
 # ── Step 6: Verify connectivity ───────────────────────────────
 echo "→ Testing Langfuse connectivity..."

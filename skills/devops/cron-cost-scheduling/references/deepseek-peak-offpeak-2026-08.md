@@ -63,7 +63,4 @@ Peak-hit counts computed by expanding each cron's hour/minute fields:
 - FREE WINS proposed: agent-fixer-evening 18:50→19:50, cortex-bus-evening
   18:41→19:41, judge-scorer 12:00→13:30 (lunch off-peak gap). Zero coverage
   loss, half price.
-- Gap: cron-cost-tracking DB not deployed on this host (fleet-costs.py:
-  "Cost DB not found: ~/.hermes/cron/cron-costs.db") — recommend deploying
-  `install-cron-cost-tracking.py` and collecting a week of real spend before
   any frequency trimming.
