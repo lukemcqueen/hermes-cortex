@@ -109,9 +109,16 @@ def test_the_gate_tools_are_reachable_from_a_pi_session(tmp_path):
         assert gate_tool in contract, (
             f"{gate_tool} is not in the MCP contract — the reflexion gate cannot read "
             "a Pi session's evidence")
-    assert "cortex-context-mcp.py" in (
-        (REPO / "ops/install/harnesses/registry.yaml").read_text(encoding="utf-8")), \
-        "the registry must name the MCP server that serves those tools"
+    # Parse the Pi ENTRY (not a substring of the whole file): the entry must be on the
+    # MCP layer and the registry's MCP server must be the one that serves the contract.
+    import yaml
+    reg = yaml.safe_load(
+        (REPO / "ops/install/harnesses/registry.yaml").read_text(encoding="utf-8"))
+    pi = next(h for h in reg["harnesses"] if h["name"] == "pi")
+    assert pi["layer"] == "mcp", f"pi moved off the MCP layer without moving this test: {pi['layer']}"
+    server = reg.get("defaults", {}).get("mcp_server", "")
+    assert "cortex-context-mcp.py" in server, (
+        f"the registry's MCP server must serve the gate tools; got {server!r}")
 
 
 def test_run_line_is_derived_not_the_hand_written_registry_literal(tmp_path, monkeypatch):

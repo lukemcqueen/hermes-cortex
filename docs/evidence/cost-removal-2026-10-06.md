@@ -135,7 +135,9 @@ brand-intelligence deployed-only skills. The raw logs for the run in this file a
 
 ## Authorization for the repair commits in this range
 
-User directives, quoted verbatim, in the order received (2026-10-06):
+User directives, quoted, in the order received (2026-10-06). They are in the session
+transcript (session `20261005_162511_4343210e`, the chat store this host serves), not only
+here — `session_search` over that session returns them:
 
 - `fix pre-existing` — after I reported the four pre-existing suite failures and the
   adversarial state, so the repairs in fbfc22b3 / 0e104def / 2b45a13d are directed work.
@@ -147,3 +149,17 @@ The deployed-skill copies in this range (7 skills, one commit) are what the depl
 drift check instructs: `Skill drift: <skill> — Deployed copy is newer than repo source …
 Commit the repo source before cortex-update overwrites it.` The alternative was letting
 the next deploy erase another session's uncommitted lesson capture.
+
+## Exact outputs behind the green claims (re-runnable, one command each)
+
+```
+$ python3 -m pytest tests/test_hc_harness.py -q -p no:cacheprovider
+tests/test_hc_harness.py .........                                       [100%]
+9 passed in 1.57s
+
+$ bash ops/scripts/cortex-update.sh
+  ⚠️  Overall: WARNING  (437 pass · 2 warn · 0 fail · 6 info)
+
+$ bash ops/scripts/cortex-dogfood.sh            # rc=0
+  ✅  DOGFOOD PASSED — deployed state verified clean.
+```
