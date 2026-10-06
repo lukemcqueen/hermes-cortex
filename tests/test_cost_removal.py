@@ -85,7 +85,9 @@ echo "rc=$?"
     script_path.write_text(script, encoding="utf-8")
     env = dict(os.environ)
     # the function's config edit needs ruamel, which ships in the agent venv
-    env["PATH"] = f"/home/esther/.hermes/hermes-agent/venv/bin:{env.get('PATH', '')}"
+    venv_bin = Path.home() / ".hermes" / "hermes-agent" / "venv" / "bin"
+    if venv_bin.is_dir():
+        env["PATH"] = f"{venv_bin}{os.pathsep}{env.get('PATH', '')}"
     return subprocess.run(["bash", str(path)], capture_output=True, text=True, env=env, timeout=120)
 
 

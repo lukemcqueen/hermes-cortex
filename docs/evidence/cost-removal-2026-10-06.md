@@ -1,7 +1,7 @@
 # Cost-tracking removal — evidence
 
 Run against revision `ebad883e` (the commit before this artifact; regenerate with the
-command in this file). Supersedes any earlier reference to the removed stack —
+commands in this file). Supersedes any earlier reference to the removed stack —
 that stack no longer exists.
 
 ## 1. The cleanup function, against a throwaway HOME
@@ -41,9 +41,9 @@ $ PYTHONPATH=ops/scripts python3 tests/test_mcp_health_watchdog.py
 ## 3. This host after the deploy
 
 ```
-gone  /home/esther/.hermes/plugins/cost-guard
-gone  /home/esther/.hermes/cron/cron-costs.db
-gone  /home/esther/.hermes/skills/devops/cron-cost-tracking
+gone  $HOME/.hermes/plugins/cost-guard
+gone  $HOME/.hermes/cron/cron-costs.db
+gone  $HOME/.hermes/skills/devops/cron-cost-tracking
 deployed cost scripts: 0 present
 config: cron: {}
 hermes cron list: 1 lines
