@@ -61,10 +61,13 @@ def _run_probe():
 
 
 def test_cost_guard_plugin_from_user_dir():
-    if not PLUGIN_DIR.exists():
-        return  # plugin not deployed on this host — nothing to assert
+    # The plugin is deployed fleet-wide by cortex-update.sh; a missing dir is a
+    # real failure, not a silent skip (a skip here would pass with zero coverage).
+    assert PLUGIN_DIR.exists(), (
+        f"cost-guard user plugin not deployed at {PLUGIN_DIR} — run cortex-update.sh")
     r = _run_probe()
     assert r.returncode == 0, f"probe failed: {r.stderr[-800:]}"
+    print(r.stdout.strip())
     assert "PROVIDER_OK" in r.stdout, r.stdout
     assert "COST_OK" in r.stdout, r.stdout
 
