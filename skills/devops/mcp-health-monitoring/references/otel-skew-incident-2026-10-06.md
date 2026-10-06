@@ -148,8 +148,9 @@ this probe is ever refactored.
 
 ## Automated check (added 2026-10-06)
 
-`agent-mcp-health-watchdog.py` runs the probe above under every agent-runtime
-interpreter every 5 min. Smoke it on any host:
+Run against revision 317a0e3b (head of the change's code commits; this artifact's own
+commit follows it). `agent-mcp-health-watchdog.py` runs the probe above under every
+agent-runtime interpreter every 5 min. Smoke it on any host:
 
 ```bash
 bash skills/devops/mcp-health-monitoring/scripts/skew-watchdog-smoke.sh
@@ -158,11 +159,13 @@ bash skills/devops/mcp-health-monitoring/scripts/skew-watchdog-smoke.sh
 The script refuses to pass unless all three hold: the scenario suite passes, no
 interpreter is skewed, AND the watchdog is **silent** — unexpected output on a healthy
 host is a false positive and exits non-zero (as does a host with no probe, where the
-check cannot run at all).
+check cannot run at all). It prints the revision it ran against.
 
 Captured on esther — GREEN (`$HOME` scrubbed):
 
 ```text
+revision: 317a0e3b   dirty_files: 0
+
 == 1. scenario suite (stubs) ==
 PASS  A healthy binary-CLI stays silent (no 'script not found' loop)
 PASS  B crashed binary fails loudly with real reason
@@ -175,11 +178,12 @@ PASS  G missing args fails fast
 PASS  R outage->recovery emits RECOVERED notice
 PASS  S strike 1 stays quiet (no alert before the 2-strike threshold)
 PASS  S strike 2 alerts: GOVERNANCE OFFLINE + the interpreter + the align command
+PASS  S the alert persists: state records 2 consecutive fails + alerted
 PASS  S2 skew recovery emits a recovered notice
 PASS  S3 missing skew probe reports UNVERIFIED
 PASS  S4 the watched probe path holds the real script (watched dependency exists)
 
-14/14 scenarios passed
+15/15 scenarios passed
 suite_exit=0
 
 == 2. live probe, every resolved runtime interpreter ==
