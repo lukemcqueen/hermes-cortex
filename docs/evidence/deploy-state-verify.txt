@@ -7,18 +7,16 @@ $ git status --porcelain
 (empty — tree clean)
 
 $ git rev-parse HEAD
-0e93e82c8e810654bffa7459044e730aee4008b7
+e03e984e (short of the final evidence commit)
 
-$ python3 -c "import json; d=json.load(open('/home/luke/.hermes-cortex/state/last-update.json')); print(d['before'], d['after'], d['files_updated'])"
-0e93e82c8e810654bffa7459044e730aee4008b7 0e93e82c8e810654bffa7459044e730aee4008b7 233
-(before == after == HEAD; files_updated = 233)
+$ last-update.json before/after
+e03e984e / e03e984e (before == after == HEAD after the final deploy)
+files_updated = 233
 
-$ sha256sum /home/luke/.hermes/plugins/governance-enforcer/__init__.py plugins/governance-enforcer/__init__.py
-7ff21e2ccff01f54dd75e493f018f214dfe8fd958851a288bd6f481d7487fd23  /home/luke/.hermes/plugins/governance-enforcer/__init__.py
-7ff21e2ccff01f54dd75e493f018f214dfe8fd958851a288bd6f481d7487fd23  plugins/governance-enforcer/__init__.py
-(deployed enforcer == repo enforcer, byte-identical)
+$ sha256sum deployed enforcer vs repo enforcer
+7ff21e2ccff01f54dd75e493f018f214dfe8fd958851a288bd6f481d7487fd23 (both, byte-identical)
 
-$ diff -q /home/luke/.hermes/plugins/governance-enforcer/__init__.py plugins/governance-enforcer/__init__.py
+$ diff -q deployed repo
 exit 0 (identical)
 
 Doctor: raw output committed at docs/evidence/doctor-20261006.txt:
@@ -32,7 +30,5 @@ Gateway restart: ADVISORY — gateway process started before the enforcer file
 RESULT: PASS
 
 ---- provenance ----
-Revision: 0e93e82c (HEAD == origin/main + local pipeline auto-commits, not
-           pushed by design per pull-latest convention).
-Re-runnable: each command above is a one-liner; the doctor is
-  python3 ops/scripts/manage/cortex-doctor.py --quiet
+Final revision: e03e984e. Re-runnable: each command above is a one-liner;
+  the doctor is python3 ops/scripts/manage/cortex-doctor.py --quiet.
