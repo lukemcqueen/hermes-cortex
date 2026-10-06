@@ -1,0 +1,14 @@
+# Push/deploy record — supporting commits blocked by a concurrent-session race
+
+$ git branch -r --contains dc51b3a0
+  origin/HEAD -> origin/main
+  origin/main
+
+$ git push origin main
+Push blocked: doctor reports 1 failure.  Deploy sync
+error: failed to push some refs
+
+$ git log --oneline -3
+ede18959 test(mycortex-mem): commit re-runnable evidence for the psql -w fix (incl. a RED case)
+5be10512 docs: drop per-SHA attribution claim (concurrent sessions make it unverifiable)
+bd0032f1 docs: scope the fleet-notice claim to verifiable states; name all session commits
