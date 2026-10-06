@@ -2050,6 +2050,28 @@ def _on_session_start(session_id: str, **kwargs):
         log.error("on_session_start hook crashed:\n%s", traceback.format_exc())
 
 
+def _safe_load_yaml(stream):
+    """Parse YAML with whichever library the running agent environment ships.
+
+    Environments differ: the git-install venv has PyYAML (`import yaml`), while the
+    pm-managed runtime environments ship only `ruamel.yaml`. A bare `import yaml`
+    here raised ModuleNotFoundError and crashed the WHOLE on_session_start hook on
+    those hosts — the cron skills bootstrap died silently. Resolve the loader at
+    call time and let a parse failure propagate to the caller, which already logs
+    and returns False.
+    """
+    try:
+        import yaml
+    except ImportError:  # PyYAML absent (or blocked by a None sys.modules entry)
+        yaml = None
+    if yaml is not None:
+        return yaml.safe_load(stream)
+
+    from ruamel.yaml import YAML as _RuamelYAML
+
+    return _RuamelYAML(typ="safe").load(stream)
+
+
 def _bootstrap_cron_skills(session_id: str) -> bool:
     """For cron sessions: verify always-section skills exist on disk and
     auto-create the .skills-loaded marker.
@@ -2063,8 +2085,6 @@ def _bootstrap_cron_skills(session_id: str) -> bool:
     (cron agent will be blocked by the enforcer — but this is expected
     for a corrupted/bootstrapping environment).
     """
-    import yaml
-
     skills_yaml = Path.home() / ".hermes-cortex" / "skills.yaml"
     if not skills_yaml.exists():
         log.warning("Cron bootstrap: skills.yaml not found at %s", skills_yaml)
@@ -2072,7 +2092,7 @@ def _bootstrap_cron_skills(session_id: str) -> bool:
 
     try:
         with open(skills_yaml) as f:
-            manifest = yaml.safe_load(f)
+            manifest = _safe_load_yaml(f)
     except Exception as e:
         log.warning("Cron bootstrap: cannot parse skills.yaml: %s", e)
         return False
