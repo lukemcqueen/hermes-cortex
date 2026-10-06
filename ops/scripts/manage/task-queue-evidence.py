@@ -176,11 +176,19 @@ def main() -> int:
         return full, summary
 
     with_changes_full, with_changes = hc_run(REPO)
+
+    # The regression pin, stated the only way it stays true: the harness tests are
+    # GREEN now, and they FAILED at the parent of the commit that last touched this
+    # test file — so the fix is what turned them green (not a moved baseline).
+    fix_sha = subprocess.run(
+        ["git", "log", "-1", "--format=%H", "--", "tests/test_hc_harness.py"],
+        cwd=REPO, capture_output=True, text=True, timeout=60).stdout.strip()
+    baseline = f"{fix_sha}^" if fix_sha else "HEAD~1"
     clean_tree_full, clean_tree = "", "not attempted"
     wt = Path("/tmp/tq-evidence-clean-tree")
     subprocess.run(["git", "worktree", "remove", "--force", str(wt)], cwd=REPO,
                    capture_output=True, text=True, timeout=120)
-    add = subprocess.run(["git", "worktree", "add", "--detach", str(wt), "HEAD~1"],
+    add = subprocess.run(["git", "worktree", "add", "--detach", str(wt), baseline],
                          cwd=REPO, capture_output=True, text=True, timeout=180)
     if add.returncode == 0:
         try:
@@ -191,9 +199,9 @@ def main() -> int:
     else:
         clean_tree = f"worktree add failed: {add.stderr.strip()[:80]}"
 
-    check("test_hc_harness failures reproduce WITHOUT this change (pre-existing)",
-          "failed" in with_changes and "failed" in clean_tree,
-          f"with changes: {with_changes} · HEAD~1 worktree: {clean_tree}")
+    check("test_hc_harness passes now and FAILED before the fix (regression pin)",
+          "failed" not in with_changes and "failed" in clean_tree,
+          f"now: {with_changes} · {baseline[:12]} worktree: {clean_tree}")
 
     print("# Task-queue remediation — acceptance evidence\n")
     print("Regenerate with: `bash ops/scripts/manage/run-task-queue-evidence.sh`\n")
@@ -209,11 +217,13 @@ def main() -> int:
     print(f"\n**Verdict: {'PASS' if not failures else 'FAIL'}**"
           + ("" if not failures else f" — failed: {failures}"))
 
-    # Full raw output for the load-bearing claim (that the hc_harness failures are
-    # pre-existing). A one-line paste is not evidence a reviewer can check.
+    # Full raw output for the load-bearing claim (that the harness tests are green
+    # now and were RED before the fix). A one-line paste is not evidence a reviewer
+    # can check.
     print("\n## Raw test output — `tests/test_hc_harness.py`\n")
-    print("This change does not touch `hc` or its harness registry. The failures below")
-    print("are reproduced on a HEAD~1 worktree, i.e. WITHOUT this change applied.\n")
+    print("`hc harness` and its registry were failing their own tests before this fix;")
+    print("the same file is re-run at the parent of the commit that last touched it, so")
+    print("the claim is a measured before/after rather than an assertion.\n")
     print("### With this change applied\n")
     print("```")
     print(with_changes_full.strip() or "(no output)")

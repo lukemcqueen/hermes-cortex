@@ -20,14 +20,15 @@ the committed file, so a hand-written table cannot pass for script output.
 | Every task migration is registered for deploy | PASS | 12 migrations; unregistered: none |
 | Every task migration is on the deployed tree | PASS | 12 of 12 deployed |
 | DB schema version matches the newest repo migration | PASS | DB=12 repo=12 |
-| test_hc_harness failures reproduce WITHOUT this change (pre-existing) | PASS | with changes: ========================= 3 failed, 6 passed in 1.77s ========================== · HEAD~1 worktree: ========================= 3 failed, 6 passed in 1.77s ========================== |
+| test_hc_harness passes now and FAILED before the fix (regression pin) | PASS | now: ============================== 9 passed in 1.84s =============================== · fbfc22b34db2 worktree: ========================= 3 failed, 6 passed in 1.81s ========================== |
 
 **Verdict: PASS**
 
 ## Raw test output — `tests/test_hc_harness.py`
 
-This change does not touch `hc` or its harness registry. The failures below
-are reproduced on a HEAD~1 worktree, i.e. WITHOUT this change applied.
+`hc harness` and its registry were failing their own tests before this fix;
+the same file is re-run at the parent of the commit that last touched it, so
+the claim is a measured before/after rather than an assertion.
 
 ### With this change applied
 
@@ -39,37 +40,9 @@ configfile: pytest.ini
 plugins: anyio-4.12.1
 collected 9 items
 
-tests/test_hc_harness.py F...F...F                                       [100%]
+tests/test_hc_harness.py .........                                       [100%]
 
-=================================== FAILURES ===================================
-________________________ test_lists_registry_harnesses _________________________
-tests/test_hc_harness.py:47: in test_lists_registry_harnesses
-    assert "cli-extension" in out and "mcp" in out
-E   assert ('cli-extension' in "Declared harnesses: 5\n\n  HARNESS          LAYER          STATUS      SURFACE\n  hermes           mcp            shi...all <name> [--dir DIR]   wire it into a project\n  hc harness verify  [<name>]             prove it, don't assume it\n")
-________ test_run_line_is_derived_not_the_hand_written_registry_literal ________
-tests/test_hc_harness.py:99: in test_run_line_is_derived_not_the_hand_written_registry_literal
-    assert printed_tools == expected | {"read", "bash", "edit", "write"}
-E   AssertionError: assert {'bash', 'edi..._search', ...} == {'bash', 'edi...ead', 'write'}
-E     
-E     Extra items in the left set:
-E     'mem_search'
-E     'session_note'
-E     'mem_profile'
-E     'session_list'
-E     'session_close'...
-E     
-E     ...Full output truncated (8 lines hidden), use '-vv' to show
-____________________ test_hc_entrypoint_dispatches_harness _____________________
-tests/test_hc_harness.py:127: in test_hc_entrypoint_dispatches_harness
-    assert "pi" in r.stdout and "cli-extension" in r.stdout
-E   assert ('pi' in "Declared harnesses: 5\n\n  HARNESS          LAYER          STATUS      SURFACE\n  hermes           mcp            shi...all <name> [--dir DIR]   wire it into a project\n  hc harness verify  [<name>]             prove it, don't assume it\n" and 'cli-extension' in "Declared harnesses: 5\n\n  HARNESS          LAYER          STATUS      SURFACE\n  hermes           mcp            shi...all <name> [--dir DIR]   wire it into a project\n  hc harness verify  [<name>]             prove it, don't assume it\n")
-E    +  where "Declared harnesses: 5\n\n  HARNESS          LAYER          STATUS      SURFACE\n  hermes           mcp            shi...all <name> [--dir DIR]   wire it into a project\n  hc harness verify  [<name>]             prove it, don't assume it\n" = CompletedProcess(args=['/home/esther/.hermes/hermes-agent/venv/bin/python3', '/home/esther/hermes-cortex/ops/scripts/h...-dir DIR]   wire it into a project\n  hc harness verify  [<name>]             prove it, don\'t assume it\n', stderr='').stdout
-E    +  and   "Declared harnesses: 5\n\n  HARNESS          LAYER          STATUS      SURFACE\n  hermes           mcp            shi...all <name> [--dir DIR]   wire it into a project\n  hc harness verify  [<name>]             prove it, don't assume it\n" = CompletedProcess(args=['/home/esther/.hermes/hermes-agent/venv/bin/python3', '/home/esther/hermes-cortex/ops/scripts/h...-dir DIR]   wire it into a project\n  hc harness verify  [<name>]             prove it, don\'t assume it\n', stderr='').stdout
-=========================== short test summary info ============================
-FAILED tests/test_hc_harness.py::test_lists_registry_harnesses - assert ('cli...
-FAILED tests/test_hc_harness.py::test_run_line_is_derived_not_the_hand_written_registry_literal
-FAILED tests/test_hc_harness.py::test_hc_entrypoint_dispatches_harness - asse...
-========================= 3 failed, 6 passed in 1.77s ==========================
+============================== 9 passed in 1.84s ===============================
 ```
 
 ### On a HEAD~1 worktree (this change absent)
@@ -112,5 +85,5 @@ E    +  and   "Declared harnesses: 5\n\n  HARNESS          LAYER          STATUS
 FAILED tests/test_hc_harness.py::test_lists_registry_harnesses - assert ('cli...
 FAILED tests/test_hc_harness.py::test_run_line_is_derived_not_the_hand_written_registry_literal
 FAILED tests/test_hc_harness.py::test_hc_entrypoint_dispatches_harness - asse...
-========================= 3 failed, 6 passed in 1.77s ==========================
+========================= 3 failed, 6 passed in 1.81s ==========================
 ```
