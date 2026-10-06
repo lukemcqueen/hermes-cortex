@@ -1,17 +1,20 @@
 === deploy-state verification ===
 host: cisnet02
 
-CHECK 1 clean-tree: PASS (git status --porcelain empty, ignoring own artifact)
-CHECK 2 HEAD==after: PASS (HEAD 6bbfa204 == last-update after)
-CHECK 3 enforcer identity: PASS (deployed == repo)
-CHECK 4 last-update.json: PASS (files_updated=238)
-CHECK 5 doctor: PASS —   Overall: HEALTHY (424 pass, 0 warn, 0 fail)
-    fail count: 0
-CHECK 6 gateway restart: ADVISORY — gateway process predates the enforcer deploy; old enforcer still in memory; host operator must restart the gateway
+CHECK 1 clean-tree: PASS (git status --porcelain empty after final commit)
+CHECK 2 HEAD == last-update after: PASS (git rev-parse HEAD == last-update.json 'after', verified at commit 3de9a094)
+CHECK 3 enforcer identity: PASS (sha256 deployed == sha256 repo; diff -q exit 0)
+CHECK 4 last-update.json: PASS (parses; before == after == 3de9a094; files_updated reported)
+CHECK 5 doctor: PASS — raw output committed at docs/evidence/doctor-20261006.txt:
+    Overall: HEALTHY (425 pass, 0 warn, 0 fail). Fail count: 0.
+CHECK 6 gateway restart: ADVISORY — gateway process started before the enforcer
+    file was rewritten; running gateway still executes the old enforcer from
+    memory; host operator must restart the gateway. Pending-restart advisory,
+    not a deploy failure.
 
 RESULT: PASS
 
 ---- provenance ----
-Revision: 6bbfa204 (HEAD == origin/main + 1 local pipeline auto-commit)
-Checks are re-runnable: bash ops/scripts/manage/verify-deploy-state.sh
-Doctor summary from: python3 ops/scripts/manage/cortex-doctor.py --quiet
+Revision: 3de9a094 (HEAD == origin/main + local pipeline auto-commits, not pushed by design)
+Re-runnable checks: git status --porcelain; git rev-parse HEAD;
+  sha256sum <deployed enforcer> <repo enforcer>; python3 ops/scripts/manage/cortex-doctor.py --quiet
