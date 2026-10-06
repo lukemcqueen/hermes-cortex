@@ -110,12 +110,22 @@ type Restored = {
   } | null;
 };
 
+// Routine diagnostics must NEVER go to stderr: in Pi that stream IS the prompt area,
+// so a stray line scribbles over what the user is typing (the reported pollution).
+// Failures stay LOUD on stderr — a silent memory failure reads as "the agent had no
+// memory", a different and wrong conclusion. Set CORTEX_CONTEXT_DEBUG=1 to put the
+// routine trace back on stderr while diagnosing.
+const DEBUG = process.env.CORTEX_CONTEXT_DEBUG === "1";
+const trace = (message: string) => {
+  if (DEBUG) process.stderr.write(message);
+};
+
 export default function (pi: any) {
   // ── 1. Session start: RESUME, injected via the return value ──────
   pi.on("before_agent_start", async (event: any) => {
     const snap = parse<Restored>(await cortex("session_restore", {}), { restored: null }).restored;
     if (!snap) {
-      process.stderr.write("CORTEX_RESUME none\n");
+      trace("CORTEX_RESUME none\n");
       return;
     }
     const line = (label: string, items?: string[]) =>
@@ -127,8 +137,7 @@ export default function (pi: any) {
       line("Decided", snap.decisions),
       snap.notes ? `Notes: ${snap.notes}` : "",
     ].filter(Boolean);
-    process.stderr.write(
-      `CORTEX_RESUME ${snap.session_key ?? ""} facts=${parts.length}\n`);
+    trace(`CORTEX_RESUME ${snap.session_key ?? ""} facts=${parts.length}\n`);
     if (!parts.length) return; // nothing recorded yet — do not inject an empty block
     return {
       systemPrompt:
@@ -149,7 +158,7 @@ export default function (pi: any) {
 
     if (!done.length && !notes) {
       // Never write a silently-empty checkpoint, and never hide why.
-      process.stderr.write(
+      trace(
         `CORTEX_CHECKPOINT_EMPTY turn=${event?.turnIndex} ` +
         `keys=${Object.keys(event ?? {}).join(",")}\n`);
       return;
@@ -184,8 +193,8 @@ export default function (pi: any) {
       tool_name: toolName,
       content: event?.input ?? {},
     });
-    process.stderr.write(
-      `CORTEX_TOOL_EVENT ${toolName} ${raw ? "recorded" : "FAILED"}\n`);
+    if (raw) trace(`CORTEX_TOOL_EVENT ${toolName} recorded\n`);
+    else process.stderr.write(`CORTEX_TOOL_EVENT ${toolName} FAILED\n`);
   });
 
   // ── NO registerTool CALLS HERE, DELIBERATELY ─────────────────────

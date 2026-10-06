@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -232,10 +233,17 @@ def test_pi_extension_EXECUTES():
     assert "EXTENSION OK" in r.stdout
 
 
-def _run_pi_guard(node: str, workdir: Path):
+def _run_pi_guard(node: str, workdir: Path, extra_env: dict | None = None):
     """Run the pi extension guard from `workdir`; return (rc, stdout, stderr)."""
+    env = dict(os.environ)
+    env.setdefault("CORTEX_STUB_FAIL", "0")
+    env.update(extra_env or {})
     return subprocess.run([node, str(workdir / "verify-extension.mjs")],
-                          capture_output=True, text=True, timeout=180, cwd=str(workdir))
+                          capture_output=True, text=True, timeout=180, cwd=str(workdir), env=env)
+
+
+def _routine_stderr_lines(stderr: str) -> list[str]:
+    return [line for line in stderr.splitlines() if line.startswith("CORTEX_")]
 
 
 def _leaky_variant(tmp_path: Path) -> Path:
@@ -259,14 +267,20 @@ def _leaky_variant(tmp_path: Path) -> Path:
     return workdir
 
 
-def test_pi_extension_child_stderr_stays_off_the_prompt_area(tmp_path):
-    """A child's stderr must never reach the harness's stderr — in Pi that stream IS
-    the prompt area, and a stray line there is the reported TUI pollution.
+def test_pi_extension_keeps_routine_output_off_the_prompt_area(tmp_path):
+    """In Pi, the harness's stderr IS the prompt area.
 
-    Asserted at the FD level: the guard's stub CLI writes MARKER-CHILD-NOISE to stderr
-    on every call, and this test captures the guard process's own stderr. Patching
-    `process.stderr.write` inside the guard would NOT catch a write that bypasses it
-    (an inherited fd), so the measurement happens here, in the parent.
+    Three things must hold at the FD level (measured in the parent, because patching
+    `process.stderr.write` inside the guard cannot see a write that bypasses it):
+
+      1. a child's stderr never reaches it (execFile pipes the child's stdio);
+      2. NOTHING routine is written there on the success path — no CORTEX_RESUME /
+         CORTEX_CHECKPOINT_EMPTY scribbling over what the user is typing;
+      3. genuine failures are still LOUD — a silent memory failure reads as "the agent
+         had no memory", a different and wrong conclusion.
+
+    The routine trace stays reachable via CORTEX_CONTEXT_DEBUG=1 (asserted), so this
+    gates diagnostics, it does not delete them.
     """
     node = shutil.which("node")
     if not node:
@@ -276,6 +290,18 @@ def test_pi_extension_child_stderr_stays_off_the_prompt_area(tmp_path):
     assert healthy.returncode == 0, f"the guard failed:\n{healthy.stdout}\n{healthy.stderr}"
     assert "MARKER-CHILD-NOISE" not in healthy.stderr, (
         "a child's stderr reached the harness's stderr (the Pi prompt area):\n" + healthy.stderr)
+    assert not _routine_stderr_lines(healthy.stderr), (
+        "routine output reached the Pi prompt area:\n" + healthy.stderr)
+
+    debug = _run_pi_guard(node, HARNESS_DIR / "pi", {"CORTEX_CONTEXT_DEBUG": "1"})
+    assert _routine_stderr_lines(debug.stderr), (
+        "CORTEX_CONTEXT_DEBUG=1 no longer surfaces the routine trace — the diagnostics "
+        "were deleted rather than gated")
+
+    failing = _run_pi_guard(node, HARNESS_DIR / "pi", {"CORTEX_STUB_FAIL": "1"})
+    assert "CORTEX_FAIL" in failing.stderr, (
+        "a failing CLI no longer reports itself — a silent failure is indistinguishable "
+        "from an agent with no memory")
 
     # Non-vacuity: the same guard, pointed at an extension that echoes the child's
     # captured stderr, must see the leak.

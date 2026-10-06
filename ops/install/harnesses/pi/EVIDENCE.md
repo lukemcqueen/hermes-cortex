@@ -2,14 +2,14 @@
 
 Regenerate with: `bash ops/install/harnesses/pi/run-evidence.sh`
 
-Generated: 2026-10-03T07:02:05Z  ·  host: esther
+Generated: 2026-10-06T04:00:13Z  ·  host: esther
 
 Artifacts this evidence was produced from (verify with `sha256sum`):
 
 ```
-582e5654cabd0503598c8583301bb1479352e3c145311ff2f17d06e204e2c1b5  ops/install/harnesses/pi/extensions/cortex-context.ts
-a20ab85eb54ba28febeac5c35fa81029fc6f5e6ff242d781331176e18f238520  ops/install/harnesses/pi/verify-extension.mjs
-aa7bd6f8f6fffc9ed0fc533fe7c2e1248ce9dd27384a049c2a4be5ed9ad6279d  ops/install/harnesses/pi/run-evidence.sh
+eaea515b7a44099aec353a172778f6d80eb61c49f005a45ba4e6c65f9703ee2a  ops/install/harnesses/pi/extensions/cortex-context.ts
+c8e54608f3046d3d6c7d6e640ccfb46dee455a4e65cf0917a87b8a8cee89533c  ops/install/harnesses/pi/verify-extension.mjs
+7d6a76a256e148a64c5f14b9cfa13662cc2700afb903274c3fc75e4bd68afb11  ops/install/harnesses/pi/run-evidence.sh
 ```
 
 The guard loads the REAL extension through pi's own jiti loader, hands it
@@ -20,9 +20,9 @@ schema shape, which is why the bug shipped; this can.
 ## 1. Fixed extension — wiring executes: PASS (exit 0)
 
 ```
+✅ turn_end WROTE a checkpoint (the trigger fired without the model asking)
 ✅ the checkpoint carries the turn's tool names: ["read","edit"]
 ✅ the checkpoint carries the turn's note text
-CORTEX_CHECKPOINT_EMPTY turn=2 keys=turnIndex
 ✅ an empty turn writes NO checkpoint (a checkpoint that looks like continuity and carries none is worse than none)
 
 ✅ EXTENSION OK — registers no tools (MCP owns them) and its lifecycle hooks execute.
@@ -31,10 +31,10 @@ CORTEX_CHECKPOINT_EMPTY turn=2 keys=turnIndex
 ## 2. Test suite — the two files this change touches: PASS (exit 0)
 
 ```
-tests/test_context_harnesses.py ..........................               [ 63%]
+tests/test_context_harnesses.py ...........................              [ 64%]
 tests/test_gateway_agent_registry.py ...............                     [100%]
 
-============================== 41 passed in 1.88s ==============================
+============================== 42 passed in 2.76s ==============================
 ```
 
 ## 3. PRE-FIX extension (48e85271) — same guard, must fail: FAIL (exit 1)
@@ -58,7 +58,7 @@ re-runnable guard for this is
 
 ```
 cortex-context: connected, 12 tools (direct, global)
-  /home/esther/.hermes/hermes-agent/venv/bin/python3 /home/esther/.hermes-cortex/scripts/cortex-context-mcp.py
+  $HOME/.hermes/hermes-agent/venv/bin/python3 $HOME/.hermes-cortex/scripts/cortex-context-mcp.py
   tools: mem_profile, mem_search, mem_context, mem_conclude, session_checkpoint, session_restore, session_list, session_search, session_note, session_close, session_tool_event, session_loaded_skill
 ```
 
@@ -71,7 +71,7 @@ re-runnable guard for the seam is
 `tests/test_gateway_agent_registry.py::test_command_backend_pins_session_identity_via_spec_env`.
 
 ```
-hc-pi-NNNNNNNNNN
+(no hc-pi-* session keys recorded yet)
 ```
 
 ---

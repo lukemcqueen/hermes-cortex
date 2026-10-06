@@ -13,8 +13,10 @@ Both copies of the connection seam are pinned: `ops/services/mycortex-mem/store.
 from __future__ import annotations
 
 import importlib.util
+import os
 import re
 import sys
+import time
 import types
 from pathlib import Path
 
@@ -114,4 +116,52 @@ def test_plugin_linux_invocation_forbids_password_prompt(plugin_module):
 
     docker_exec = cmd[3]
     assert "psql" in docker_exec
-    assert " -w " in docker_exec
+    assert re.search(r"psql -U \S+ -d \S+ -w -v ON_ERROR_STOP=1", docker_exec), docker_exec
+
+
+def _psql_standin(tmp_path: Path) -> Path:
+    """A `psql` stand-in that implements the documented -w contract.
+
+    With `-w` present it refuses immediately (no password supplied) — psql's real
+    behaviour. Without it, it takes the prompt path: it writes the prompt text and
+    BLOCKS, which is what an invisible /dev/tty prompt does to a harness call.
+    """
+    bindir = tmp_path / "bin"
+    bindir.mkdir()
+    psql = bindir / "psql"
+    psql.write_text(
+        '#!/bin/sh\n'
+        'for arg in "$@"; do\n'
+        '  if [ "$arg" = "-w" ]; then\n'
+        '    echo "psql: error: connection failed: no password supplied" >&2\n'
+        '    exit 2\n'
+        '  fi\n'
+        'done\n'
+        'echo "Password for user mycortex_mem_reader: " > /dev/tty 2>/dev/null\n'
+        'exit 2\n')
+    psql.chmod(0o755)
+    return bindir
+
+
+def test_store_fails_fast_and_never_prompts_without_a_password(store_module, tmp_path, monkeypatch):
+    """Runtime check, not just a flag check: the store's real code path, run against a
+    psql that honours -w exactly as documented, with no usable password must raise
+    StoreUnavailable PROMPTLY — the fail-open contract, without an invisible prompt.
+
+    RED without the fix: the command loses -w, psql takes the prompt path and the store
+    reports a duration/timeout failure instead of the auth refusal.
+    """
+    bindir = _psql_standin(tmp_path)
+    monkeypatch.setenv("PATH", f"{bindir}:{os.environ['PATH']}")
+    monkeypatch.setenv("MYCORTEX_MEM_PASSWORD", "")
+
+    connection = store_module.PgConnection()
+    connection._is_macos = True  # the branch whose argv starts with `psql`
+    started = time.monotonic()
+    with pytest.raises(store_module.StoreUnavailable) as excinfo:
+        connection.run_sql("SELECT 1;")
+    elapsed = time.monotonic() - started
+
+    assert "no password supplied" in str(excinfo.value), str(excinfo.value)
+    assert elapsed < 5, f"the store did not fail fast ({elapsed:.1f}s) — the child was allowed to prompt"
+    assert connection.available(timeout=3) is False

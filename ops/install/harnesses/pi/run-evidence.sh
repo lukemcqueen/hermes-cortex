@@ -153,6 +153,10 @@ fi
   echo "by \`tests/test_context_harnesses.py::test_cli_reaches_the_store_and_exits_zero\`."
 } > "$OUT"
 
+# A public repo must not carry a host path — `$HOME` is a fact about the reader's
+# machine, not this one. Portable rewrite (sed -i differs across GNU/BSD).
+sed -E 's#/home/[A-Za-z0-9._-]+#$HOME#g' "$OUT" > "$OUT.tmp" && mv "$OUT.tmp" "$OUT"
+
 echo "→ wrote $OUT"
 [ "$node_rc" -eq 0 ] || { echo "❌ fixed-extension guard failed"; exit 1; }
 [ "$py_rc" -eq 0 ] || { echo "❌ test suite failed"; exit 1; }
