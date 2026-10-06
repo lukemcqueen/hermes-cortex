@@ -160,6 +160,42 @@ SystemExit!`, and OTHER files in the same run fail to COLLECT, because a module-
 - **Assert any shared bootstrap block is byte-identical across every copy** (hash it).
   Divergence is how one copy keeps a stale candidate list while the others are fixed.
 
+## Deploy ≠ LOADED: make the new code PROVE it ran
+
+`lstart > mtime` is necessary but NOT sufficient — a process can start after a
+deploy and still never execute the changed path (a guard only reached on some
+inputs, a branch the daemon did not take). The decisive evidence is a
+**liveness witness**: a side effect ONLY the new revision can produce.
+
+- Pick something the new code writes or emits that the old one could not — a new
+  state file, a new log field, a new branch of output. Its existence with an mtime
+  AFTER the deploy proves the running process executed the new code.
+- Prefer a witness an ORDINARY call produces. If reaching it needs a special
+  invocation, you have shown the code is importable, not that it is in play.
+- State which claim you are making. "Deployed and loaded, proven by <witness> at
+  <time>" is a different sentence from "deployed"; only the first is verified.
+
+**The two halves of a plugin + MCP change reload differently — know which you
+have:**
+
+- An **MCP server** fix is loaded by restarting that server's *child* process.
+  Kill it and the parent respawns it on the next call; no gateway restart is
+  needed, and an in-session agent CAN do this. Confirm with
+  `ps -eo pid,lstart,etime,args | grep <server>.py` before and after — the new
+  PID, with a start time after the deploy, is the evidence.
+- A **plugin/enforcer** fix needs the GATEWAY to reload. An in-session agent
+  cannot restart it (lifecycle guard), so hand it over with the exact command and
+  say plainly which half is loaded and which is still pending.
+- Never let "it deployed" stand in for "it is in play". Reporting half a fix as
+  live is the failure this section exists to prevent.
+
+**Validate the chain against the DEPLOYED module copies, hop by hop** — import the
+file that actually runs (`importlib.util.spec_from_file_location(<deploy path>)`)
+and drive its functions, asserting each stage of the pipeline (input learned →
+value injected → value consumed → bad value refused). A green unit test against
+the repo copy says nothing about what the running process loaded, and a
+successful deploy says nothing about which branch it takes.
+
 ## Pitfalls
 
 1. **Claiming "everything renamed" while the config key still has the old
@@ -244,6 +280,13 @@ Rules:
   script then fails intermittently and looks like a regression.
 - **Run the acceptance script TWICE.** Determinism is part of the claim: one
   PASS can be a leftover; two consecutive PASSes on a cold probe is evidence.
+- **Place the fixture where the code's CONTRACT expects it.** A resolver that maps
+  a name to `HOME/<name>` cannot be exercised by a fixture at `HOME/sub/<name>` —
+  it correctly falls back and your probe reports a false failure. Read the contract
+  before choosing the temp layout, and treat a fallback/unexpected result as a
+  probe-placement question FIRST. Also record how deep the contract reaches: a
+  name-based resolver silently stops working for anything nested below the level it
+  scans, which is a real (fail-safe) boundary worth stating, not hiding.
 
 When your own harness reports a failure, suspect the harness first — a false FAIL
 costs the same as a missed bug and sends you editing correct code.
