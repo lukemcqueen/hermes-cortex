@@ -386,3 +386,14 @@ Use a DIFFERENT model for verifier vs implementer (hard requirement).
 | "No findings = no bugs" | Report what was checked and why no failures found |
 | Skipping evidence packaging | Unreproducible findings are not findings |
 | Concurrency test run once | Non-deterministic — run 3x, report only if consistent |
+
+## Pitfalls
+
+**Question the probe before declaring a bug — it was wrong three times in one
+session, and the code was right each time.** A failing assertion usually means the
+harness measures the wrong thing. All three were mine: a session id truncated by
+splitting on `_`; an epoch integer where the parser expected an ISO timestamp; and
+a fixture missing `ttl_seconds`, so the stale-lock purge deleted it before the
+assertion ran. Each looked exactly like a code defect. Before blaming production
+code, verify the probe's own assumptions — input shape, fixture validity,
+extraction logic — and re-run with the value the system actually expects.
