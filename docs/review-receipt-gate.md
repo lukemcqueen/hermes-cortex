@@ -134,6 +134,26 @@ injection. It now states the limit and stops.
 
 ---
 
+## Whose work does the reviewer see? — the cycle's, not the checkout's
+
+The material is built from the **commits in the cycle's window** (`base..HEAD`, scoped to the
+authoring agent). A shared checkout does not change that: a peer's commits appear only as
+labelled context, and a peer's *uncommitted* files are not in the material at all.
+
+The complexity measurement, though, folds in the working tree — deliberately, so a worker
+cannot dodge the gate by leaving risky edits uncommitted. In a **shared** checkout that used
+to count every dirty path, including a peer's. So a simple change was measured as complex,
+and the peer's paths appeared in the `Diff stat` the reviewer reads while their diff was
+nowhere in the material — the reviewer reported material it could not see, and the close was
+refused for work the cycle never did.
+
+The rule now: **the working tree counts only for paths whose content changed since the cycle
+began.** `begin_change` snapshots the dirty paths it finds (`path -> content hash`, capped at
+300); at close, a path whose hash is unchanged belongs to whoever left it dirty, not to this
+cycle. The anti-dodge property is intact — a worker's own edits change the file *during* the
+cycle, so they are still counted. No snapshot at all (an older lock, or a tree over the cap —
+logged) keeps the previous whole-tree behaviour: the fallback is stricter, never looser.
+
 ## Why a repo-local `.hermes-cortex/` can reappear — and what catches it
 
 Removing the directory is not the end of the job, because **two processes can

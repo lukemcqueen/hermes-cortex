@@ -1747,6 +1747,12 @@ def _begin_change(args: dict) -> CallToolResult:
 
     # ── Step 3: Write lock file (only after DB cycle confirmed) ──
     has_plan = bool(args.get("plan", []))
+    # The working tree as this cycle finds it. Recording it here is what lets the close
+    # distinguish this cycle's uncommitted edits from a peer session's in a SHARED
+    # checkout — the reviewer's material is built from commits, so a peer's dirty paths
+    # appearing in the diff stat is material the reviewer cannot see. Empty when the repo
+    # cannot be resolved (the close then keeps the previous whole-tree behaviour).
+    _snap_repo = _derive_repo_path(args)
     state = {
         "task_id": task_id,
         "description": description,
@@ -1755,7 +1761,8 @@ def _begin_change(args: dict) -> CallToolResult:
         # repo_slug alone is a NAME resolved as HOME/<slug>, which mis-resolves
         # for a checkout nested deeper than a HOME child (dev hosts holding many
         # project repos) and re-created the wrong-repo review.
-        "repo_path": str(_derive_repo_path(args) or ""),
+        "repo_path": str(_snap_repo or ""),
+        "dirty_at_start": (_dirty_snapshot(_snap_repo) if _snap_repo else {}),
         "started_at": now_iso,
         "agent": os.environ.get("AGENT_NAME", "unknown"),
         "session_id": session_id,
@@ -2135,12 +2142,86 @@ def _repos_with_window_work(lock: dict, exclude: Path) -> list:
             if r != exclude and _window_commit_count(r, started_at) > 0]
 
 
-def _complexity(repo: Path, started_at: str) -> dict:
+# ── Working-tree scope: whose uncommitted edits are these? ──────────────────
+# Two sessions can share ONE checkout. Then the paths git reports as dirty are a MIX:
+# this cycle's edits and whatever a peer left uncommitted. Counting all of them made a
+# simple change look complex, and — worse — put the PEER's paths in the "Diff stat" the
+# reviewer reads while their diff was nowhere in the material (the material is built from
+# COMMITS), so the reviewer reports material it cannot see and the close is refused for
+# work this cycle never did. Cycle 10861 hit exactly that on this host.
+#
+# The rule: the working tree counts ONLY for paths whose content CHANGED SINCE THIS CYCLE
+# BEGAN. A file already dirty when the cycle opened belongs to whoever left it dirty.
+# The anti-dodge property is preserved: a worker cannot hide its own edits by leaving them
+# uncommitted, because those edits change the file DURING the cycle and so are counted.
+_DIRTY_SNAPSHOT_CAP = 300
+
+
+def _file_hash(path: Path) -> str:
+    """Short content hash of a working-tree file; an absent file is 'MISSING'."""
+    try:
+        return hashlib.sha1(path.read_bytes()).hexdigest()[:12]
+    except OSError:
+        return "MISSING"
+
+
+def _dirty_paths(repo: Path) -> list:
+    """Every path git reports as staged, unstaged or untracked right now."""
+    out = []
+    for line in _git_capture(repo, "status", "--porcelain",
+                             "--untracked-files=all").splitlines():
+        line = line.rstrip()
+        if len(line) < 4:
+            continue
+        path = line[3:]
+        if " -> " in path:                 # a rename is reported as "old -> new"
+            path = path.split(" -> ", 1)[1]
+        path = path.strip().strip('"')
+        if path:
+            out.append(path)
+    return out
+
+
+def _dirty_snapshot(repo: Path, cap: int = _DIRTY_SNAPSHOT_CAP) -> dict:
+    """{path: content-hash} for the working tree at the moment the cycle began."""
+    paths = _dirty_paths(repo)
+    if len(paths) > cap:
+        # Fail toward REVIEW: an unrecorded snapshot keeps the whole tree in scope, which
+        # is stricter than the scoped behaviour, never looser.
+        log.warning("dirty snapshot: %d dirty paths exceed the %d cap — recording none, "
+                    "so the working tree stays fully in scope", len(paths), cap)
+        return {}
+    return {p: _file_hash(repo / p) for p in paths}
+
+
+def _own_working_tree_paths(repo: Path, snapshot) -> Optional[set]:
+    """Paths whose working-tree content changed since this cycle began.
+
+    None means "do not narrow" — no snapshot (an older lock, or one that hit the cap) keeps
+    the previous whole-tree behaviour, which is stricter and never silently looser.
+    """
+    if not isinstance(snapshot, dict) or not snapshot:
+        return None
+    now = {p: _file_hash(repo / p) for p in _dirty_paths(repo)}
+    return {p for p, h in now.items() if snapshot.get(p) != h}
+
+
+def _filter_numstat(numstat: str, own: Optional[set]) -> str:
+    """Keep only the numstat rows for paths this cycle owns (no-op when own is None)."""
+    if own is None:
+        return numstat
+    keep = [line for line in numstat.splitlines()
+            if len(line.split("\t")) >= 3 and line.split("\t")[2].strip() in own]
+    return ("\n".join(keep) + "\n") if keep else ""
+
+
+def _complexity(repo: Path, started_at: str, dirty_at_start=None) -> dict:
     """Measured complexity of the change under the current cycle.
 
-    Considers committed work since `started_at` PLUS staged and unstaged
-    working-tree changes (uncommitted work counts — the worker cannot dodge
-    the gate by leaving risky edits uncommitted).
+    Considers committed work since `started_at` PLUS the cycle's OWN staged and unstaged
+    working-tree changes (uncommitted work counts — the worker cannot dodge the gate by
+    leaving risky edits uncommitted). `dirty_at_start` scopes that second half to what this
+    cycle actually touched when peers share the checkout — see _own_working_tree_paths.
     """
     # Base commit: last commit before the cycle started, else the empty tree.
     empty_tree = "4b825dc642cb6eb9a060e54bf8d69288fbee4904"
@@ -2161,8 +2242,14 @@ def _complexity(repo: Path, started_at: str) -> dict:
     else:
         # No positive identity / nothing authored: do NOT narrow (fail open).
         numstat = _git_capture(repo, "diff", "--numstat", base + "..HEAD")
-    numstat += _git_capture(repo, "diff", "--cached", "--numstat")   # staged
-    numstat += _git_capture(repo, "diff", "--numstat")               # unstaged
+    # Working-tree changes: only the paths THIS cycle touched. A peer session sharing this
+    # checkout leaves its own dirty files here, and counting them made this cycle look
+    # complex while their diff was absent from the material (which is built from commits),
+    # so the reviewer was handed a file list it could not see. None = no snapshot, keep the
+    # whole-tree behaviour.
+    _own_wt = _own_working_tree_paths(repo, dirty_at_start)
+    numstat += _filter_numstat(_git_capture(repo, "diff", "--cached", "--numstat"), _own_wt)  # staged
+    numstat += _filter_numstat(_git_capture(repo, "diff", "--numstat"), _own_wt)              # unstaged
 
     files, added, removed = _parse_numstat(numstat)
 
@@ -2188,6 +2275,8 @@ def _complexity(repo: Path, started_at: str) -> dict:
         f = f.strip()
         if not f:
             continue
+        if _own_wt is not None and f not in _own_wt:
+            continue          # already untracked before this cycle — not this cycle's file
         files.add(f)
         if not _is_noise(f):
             try:
@@ -3075,7 +3164,7 @@ def _adversarial_review_gate(lock: dict, cycle: dict,
             "self-adversarial review cannot run. Report to the orchestrator."
         ))])
 
-    cx = _complexity(repo, lock.get("started_at", ""))
+    cx = _complexity(repo, lock.get("started_at", ""), lock.get("dirty_at_start"))
 
     # ── Wrong-repo guard (part 1 of the right-repo fix) ──
     # The lock's repo_slug comes from _derive_slug(), whose canonical-repo
