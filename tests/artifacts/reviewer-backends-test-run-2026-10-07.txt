@@ -1,0 +1,67 @@
+[mcp-server] DEBUG: Initializing server 'loop-governance'
+[mcp-server] DEBUG: Initializing server 'loop-governance'
+[mcp-server] DEBUG: Initializing server 'loop-governance'
+[mcp-server] DEBUG: Initializing server 'loop-governance'
+[mcp-server] DEBUG: Initializing server 'loop-governance'
+[mcp-server] WARNING: reviewer timeout ADVERSARIAL_REVIEW_TIMEOUT=300s exceeds the 240s client ceiling — clamping (a longer timeout is an unobservable hang, not a longer wait)
+[mcp-server] WARNING: reviewer timeout ADVERSARIAL_REVIEW_AGENT_TIMEOUT=900s exceeds the 240s client ceiling — clamping (a longer timeout is an unobservable hang, not a longer wait)
+Reviewer backends — pluggable transport, fixed fail-closed contract
+  PASS  default backend is llm
+  PASS  llm records the MODEL as the reviewer
+  PASS  llm backend with no credential raises (close is refused, not skipped)
+  PASS  unknown backend is refused, not guessed
+  PASS  agent backend without a command is refused
+  PASS  agent backend returns the agent's stdout
+  PASS  agent backend records agent:<name> as the reviewer
+  PASS  SELF-REVIEW is refused (agent name matches the change's author)
+  PASS  agent non-zero exit refuses the close
+  PASS  agent silence is refused (silence is never CLEAN)
+
+Config resolution — decoupled from Hermes
+  PASS  value is read from the canonical cortex env
+  PASS  quotes are stripped
+  PASS  the cortex file WINS over ~/.hermes/.env, not the reverse
+  PASS  the PROCESS env wins over any file
+  PASS  a missing name returns the default, not an exception
+  PASS  files are re-read per call (a long-lived server is not frozen)
+  PASS  the Hermes env is consulted LAST, not first
+
+Reviewer tiering — depth by measured complexity, enforcement unchanged
+  PASS  plain complex change is light
+  PASS  always-review surface is heavy
+  PASS  >=10 files is heavy
+  PASS  >=200 lines is heavy
+  PASS  below heavy bars stays light
+  PASS  light change routes to the FAST llm reviewer on an agent host
+  PASS  light reviewer is recorded as the fast model
+  PASS  light change carries an llm-scaled wait budget
+  PASS  heavy change still routes to the agent backend
+  PASS  heavy change carries an agent-scaled wait budget
+  PASS  heavy reviewer label records the agent
+  PASS  no cx: configured agent backend used unchanged
+  PASS  no cx: reviewer label is the agent, not a guest light model
+
+Reviewer wait-budget scaling — by change size, hard-capped
+  PASS  no cx: llm wait stays at its configured default
+  PASS  no cx: agent wait stays at its configured default
+  PASS  small llm change grows the wait above base
+  PASS  small llm change stays far under the cap
+  PASS  bigger change gets a longer agent wait than a small one
+  PASS  huge change is hard-capped at REVIEWER_TIMEOUT_CAP
+  PASS  per-100-lines growth: 95 lines is same as 0 lines
+  PASS  per-100-lines growth: 105 lines adds one step
+
+Reviewer leaf callers — passed-timeout honored, env fallback no string crash
+  PASS  env-clamp helper exists under its own name
+  PASS  size-scaled helper kept its name
+  PASS  passed llm timeout is honored
+  PASS  llm env-fallback callable without a string crash
+  PASS  passed agent timeout is honored
+  PASS  agent env-fallback callable without a string crash
+
+Reviewer tiering dogfood script — real module routing
+  PASS  dogfood script exists
+  PASS  dogfood script exits 0
+  PASS  dogfood reports ALL PASS
+
+ALL PASS
