@@ -483,10 +483,15 @@ The governance enforcer plugin's `_has_governance_lock()` function uses a
   protection:** when the current session and the lock both have a `session_id`, an
   exact match is required — Session B cannot write using Session A's lock.
 
-3. **Phase 3 — Secondary lock marker (extra safety):** Checks the repo-located marker
-  at `.hermes-cortex/.governance-lock` as a fallback when the primary state directory
-  is inaccessible. The MCP server writes this alongside the primary lock during
-  `begin_change()`.
+3. **Phase 3 — REMOVED (2026-10-07).** There is no longer an in-repo fallback marker.
+  Locks are **runtime-only**, in `~/.hermes-cortex/state/`. The marker at
+  `<repo>/.hermes-cortex/.governance-lock` was "extra safety" only: its stated
+  purpose was already unreachable (this function returns `False` before any phase
+  when the state dir is absent), the enforcer derived the repo from the
+  host-canonical slug — which wrote a marker into an unrelated checkout — and
+  neither git hook reads it (`pre-commit-score` and `pre-push-pull` both scan
+  `~/.hermes-cortex/state/.governance-*.json` directly). Nothing may write
+  governance state inside a repository.
 
 On every call, the enforcer also **proactively purges stale locks** — any
 `.governance-*.json` file whose `heartbeat_at` exceeds its TTL is removed

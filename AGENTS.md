@@ -12,7 +12,7 @@
 
 ## Core Concepts
 
-Public installer + skill set for [Hermes Agent](https://hermes-agent.nousresearch.com) — Ollama, mycortex, Langfuse, Dashboard, brain dirs, sync daemon. Key dirs: `docs/`, `ops/install/`, `.hermes-cortex/`, `~/.hermes/skills/`. Principles: two-repo (public + private), PII-scrubbed, pointer memory (MEMORY.md ~2.2K → mycortex), state routing; per-profile `mycortex_reader_<profile>` roles. See `docs/design/mycortex-multi-tenancy.md`.
+Public installer + skill set for [Hermes Agent](https://hermes-agent.nousresearch.com) — Ollama, mycortex, Langfuse, Dashboard, brain dirs, sync daemon. Key dirs: `docs/`, `ops/install/`, `ops/scripts/`, `~/.hermes/skills/`. Principles: two-repo (public + private), PII-scrubbed, pointer memory (MEMORY.md ~2.2K → mycortex), state routing; per-profile `mycortex_reader_<profile>` roles. See `docs/design/mycortex-multi-tenancy.md`.
 
 ## Skill loading — NOT OPTIONAL
 
@@ -107,7 +107,7 @@ Full schema: `skills/devops/cortex-bus/SKILL.md`.
 
 ## Orchestrator-Only Domains — SUBMIT PROPOSALS, DON'T EDIT
 
-Only orchestrators (Moses, Esther) may modify: **skills** (`skills/`), **cron scripts** (`ops/scripts/`, install crons), **governance** (`.hermes-cortex/hooks/`, pre-commit hook, enforcer plugins), **MCP servers** (`mcp-servers/`, `plugins/`), **templates** (`AGENTS.md`, `SOUL.md`, `docs/templates/`, `docs/orchestrator-only-paths.txt`), **CI/CD** (`.github/workflows/`, `VERSION`, `ops/install/`), **tests** (`tests/`, `profiles/`), **doctor** (`cortex_doctor/`).
+Only orchestrators (Moses, Esther) may modify: **skills** (`skills/`), **cron scripts** (`ops/scripts/`, install crons), **governance** (`ops/install/hooks/`, pre-commit hook, enforcer plugins), **MCP servers** (`mcp-servers/`, `plugins/`), **templates** (`AGENTS.md`, `SOUL.md`, `docs/templates/`, `docs/orchestrator-only-paths.txt`), **CI/CD** (`.github/workflows/`, `VERSION`, `ops/install/`), **tests** (`tests/`, `profiles/`), **doctor** (`cortex_doctor/`).
 
 Non-orchestrators: submit proposals via the orchestrator inbox (`📝 PROPOSAL: <what>`). The pre-commit hook blocks non-orchestrators from staging `docs/orchestrator-only-paths.txt` — the committed list IS the source of truth. Edits to shared infrastructure propagate to every agent without review.
 

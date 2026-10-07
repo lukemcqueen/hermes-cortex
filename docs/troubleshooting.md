@@ -1011,7 +1011,7 @@ scoring-activity-watchdog: DB not found at ~/.hermes-cortex/state/loop-governanc
 **Fix applied 2026-07-13:** All references corrected from `state/` to `data/` in:
 - `core/governance/score_cycle.py`, `loop_evaluator.py`, `loop_db.py`, `loop_feedback.py`, `loop_config.py`, `auto_apply.py`, `verify.sh`
 - `ops/scripts/health/scoring-activity-watchdog.py`, `ops/scripts/manage/governance-auditor.py`
-- `.hermes-cortex/hooks/pre-commit`
+- `~/.hermes-cortex/hooks/pre-commit`
 - `docs/pre-commit-scoring.md`, `docs/loop-governance-reference.md`, `docs/troubleshooting.md`
 - `skills/devops/loop-governance/SKILL.md`
 

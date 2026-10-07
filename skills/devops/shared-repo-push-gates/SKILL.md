@@ -82,6 +82,16 @@ working tree), not a problem with your diff.
    A mid-push deploy may itself report cost-tracking marker FAILs inside
    scheduler/cronjob files; re-run `cortex-dogfood.sh` — if it ends with
    `✅ DOGFOOD PASSED`, the deploy is clean and the push succeeds on retry.
+   - **A `❌ Deploy sync` with NO code change you can account for is usually
+     SKILL DRIFT: a deployed skill copy is newer than its repo source, because
+     `skill_manage` writes only the deployed copy.** The deploy's own
+     `⚠ SKILL DRIFT: <skill>` warning is the tell, and the cure is to `cp` the
+     deployed SKILL.md back to `skills/<cat>/<name>/SKILL.md` and commit it
+     BEFORE the deploy+push — never to re-deploy on top of it. Symptom, fix and
+     the standing habit are in `references/skill-drift-gate-2026-08-27.md`:
+     after ANY `skill_manage` patch in this repo, sync the deployed copy back to
+     repo source in the same cycle. Treating it as "pre-existing drift I cannot
+     explain" wastes the cycle — it is always the skill you just edited.
    - **A `❌ Checksum: <file>` you did not cause by committing late is a RACE:
      you edited a registered file while the deploy was still copying it.** The
      doctor compares repo source to the deployed copy, so an edit that lands

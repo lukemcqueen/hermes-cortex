@@ -1691,7 +1691,7 @@ fi
 # ─────────────────────────────────────────────────────────────
 # 12c. Post-Merge Hook — Auto-deploy after git pull
 # ─────────────────────────────────────────────────────────────
-POST_MERGE_SRC="${CORTEX_REPO_DIR}/.hermes-cortex/hooks/post-merge"
+POST_MERGE_SRC="${CORTEX_REPO_DIR}/ops/install/hooks/post-merge"
 POST_MERGE_DST="${CORTEX_REPO_DIR}/.git/hooks/post-merge"
 if [[ -f "$POST_MERGE_SRC" ]]; then
  step "Installing post-merge hook (auto cortex-update after git pull)…"

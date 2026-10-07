@@ -487,30 +487,21 @@ def _session_lock_path(session_id: str) -> Path:
 
 
 def _secondary_lock_path(state: dict) -> Path | None:
-    """Return the secondary lock marker path inside the git repo.
+    """ALWAYS None — the in-repo lock marker was removed on 2026-10-07.
 
-    The secondary lock lives at <repo_root>/.hermes-cortex/.governance-lock
-    and is a lightweight marker that the enforcer checks as a fallback
-    when the primary lock directory is outside the repo.
-
-    Returns None if the repo slug can't be mapped to a known repo path.
+    Locks are runtime-only (~/.hermes-cortex/state/). Kept as a stub so both
+    writers (`_write_lock`, `_release_lock`) stay readable, but no path is
+    ever returned, so no governance state can be written inside a repository.
     """
-    repo_path = str(state.get("repo_path") or "").strip()
-    if repo_path:
-        candidate = Path(repo_path)
-        if (candidate / ".git").exists():
-            return candidate / ".hermes-cortex" / ".governance-lock"
-    repo_slug = state.get("repo_slug", "")
-    if not repo_slug:
-        return None
-    # Try known repo paths
-    for candidate in [HOME / repo_slug, HOME / ".hermes-cortex", HOME / "hermes-cortex"]:
-        if candidate.name == repo_slug and (candidate / ".git").exists():
-            return candidate / ".hermes-cortex" / ".governance-lock"
+    # DISABLED (2026-10-07): the in-repo fallback marker is DROPPED — locks are
+    # runtime-only (~/.hermes-cortex/state/). It was the least reliable of the
+    # three lock-discovery phases (the enforcer's copy derived the repo from the
+    # host-canonical slug, so it wrote a marker into an unrelated checkout), and
+    # neither git hook consults it: pre-commit-score:585 and pre-push-pull:84
+    # both scan GOVERNANCE_STATE_DIR="${HOME}/.hermes-cortex/state" directly.
+    # Nothing may write governance state inside a repository.
     return None
 
-
-# ── Lock helpers ─────────────────────────────────────────────
 
 def _now_iso() -> str:
     """Return current UTC time as ISO 8601 string with seconds precision."""
@@ -625,10 +616,12 @@ def _write_lock(state: dict, args: dict | None = None) -> None:
     purge scan (_purge_stale_locks / enforcer _has_governance_lock)
     never reads a partial JSON and deletes a fresh lock mid-write.
 
-    Also writes a secondary marker inside the git repo
-    (.hermes-cortex/.governance-lock) so the enforcer can find
-    governance state even when the primary lock directory is
-    outside the repo filesystem.
+    Locks are RUNTIME-ONLY (as of 2026-10-07): the primary file here is the
+    only lock. The old in-repo fallback marker
+    (<repo>/.hermes-cortex/.governance-lock) is gone — no governance state
+    may live inside a repository, and the enforcer's copy of that marker
+    derived the repo from the host-canonical slug, so it could land in a
+    checkout the session never touched.
     """
     session_id = state.get("session_id", get_session_id(args))
     path = _session_lock_path(session_id)
@@ -1753,7 +1746,7 @@ ALWAYS_REVIEW_PATHS = [
     "ops/scripts/post-push-audit",
     "ops/scripts/cortex-update.sh",
     "ops/scripts/quality/adversarial-verify.py",
-    ".hermes-cortex/hooks/",
+    "ops/install/hooks/",
 ]
 
 # Exact-name noise: generated/lock files whose size is not a complexity signal.

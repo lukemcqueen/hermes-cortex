@@ -131,6 +131,14 @@ material it judged (note + diff):
     superseded hunk. Fold a REAL improvement to that file into one more commit (a
     stronger assertion, a persistence check) so the final state is the last hunk the
     material shows — then the finding's premise is gone rather than argued with.
+  - **Read the range's BASE off the material and claim nothing at or before it.** The
+    range arrives named `<base>..<head>`, and `<base>` — normally the tip already on the
+    remote — is a boundary, not a detail: a file you fixed and pushed in a PREVIOUS cycle
+    is at the base, outside the window, so claiming it reads as `fabrication` even though
+    the claim is true of history. Scope the claim with `git diff --stat <base>..HEAD`,
+    and describe genuinely-earlier work as out of range in one clause rather than as
+    evidence. A clean tree, a green suite or a dogfood pass is context the reviewer
+    cannot check — omit it or mark it, never paste it beside a narrow diff as proof.
   - **Collapse UNPUSHED documentation commits before you close.** The artifact's own
     commit may follow the code commit, but a range of three or more commits is what
     truncates: fold the docs commit back with `git reset --soft <last-code-commit>` and
@@ -416,18 +424,26 @@ because the commit itself succeeded locally and the tree looks clean.
   unrelated commit there (a peer's, a pipeline's), which is exactly how a wrong-repo
   close gets as far as permanent findings. Key such a guard on AUTHORSHIP (does the
   lock's repo hold any commit this session authored), never on an empty change count.
-- **A wrong-repo lock leaves DEBRIS in the other repo, and that debris blocks the push.**
-  The lock's secondary marker is written at `<repo_path>/.hermes-cortex/.governance-lock`,
-  so a mis-tagged lock drops governance state into a repo it does not govern — including
-  the upstream Hermes checkout, which the pre-push dogfood gate then fails on (`Cortex
-  must not edit ~/.hermes/hermes-agent`), blocking a push for a change that is otherwise
-  fine. Repairing the close is therefore only half the job: `git -C <that repo> status
-  --porcelain` shows the stray `.hermes-cortex/`, and clearing it is a DESTRUCTIVE action
-  needing operator consent. Note you may not be able to clear it yourself — the enforcer
+- **A wrong-repo lock could leave DEBRIS in the other repo, and that debris blocked the
+  push.** A mis-tagged lock wrote its secondary marker to
+  `<repo_path>/.hermes-cortex/.governance-lock`, dropping governance state into a repo it
+  did not govern — including the upstream Hermes checkout, which the pre-push dogfood gate
+  then fails on (`Cortex must not edit ~/.hermes/hermes-agent`), blocking a push for a
+  change that is otherwise fine.
+
+  **The durable fix is that the marker is GONE: locks are runtime-only. Removing the
+  resolver bug alone was the wrong fix — a marker that can authorise against a repo the
+  session never touched is a liability, not a safety net.** `_secondary_lock_path` now
+  returns `None` on BOTH sides (the MCP server and the enforcer plugin), so nothing may
+  write governance state inside a repository; `plugins/governance-enforcer/README.md`
+  documents the phase as removed. Both git hooks were unaffected either way — they scan
+  `~/.hermes-cortex/state/.governance-*.json` directly — so dropping it cost no
+  enforcement. If you DO find stray debris, it predates the drop or the daemon still
+  holds pre-drop code (see the daemon pitfall: the reload is the fix, and until it
+  restarts a fresh `begin_change` can re-create the marker). Clearing it is DESTRUCTIVE
+  and needs operator consent, and you may not be able to clear it yourself — the enforcer
   scopes your lock to the LOCK's repo, not the one holding the debris — so back it up,
   report the exact path and command, and stop rather than routing around enforcement.
-  Fix the resolver so the marker follows a correct `repo_path`, or a well-meaning session
-  keeps re-creating it.
 
   **Report it and take a fresh lock; do not fight it.** Re-pointing lock identity is a
   fleet-wide change, not a local workaround. Note a long verification tail can outlive the

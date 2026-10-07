@@ -2785,7 +2785,7 @@ def check_governance(res):
             res.add("Plugin pycache", "PASS", "no stale .pyc files")
       else:
         res.add("Plugin symlink", "WARN",
-            f"symlinked to {target} (not ~/hermes-cortex/.hermes-cortex/...)",
+            f"symlinked to {target} (not ~/hermes-cortex/.hermes-cortex/... — deploy source is now ops/install/hooks/)",
             "Re-create: ln -sf ~/hermes-cortex/plugins/governance-enforcer ~/.hermes/plugins/")
     else:
       deployed_init = plugin_dir / "__init__.py"

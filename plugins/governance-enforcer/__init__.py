@@ -1165,19 +1165,19 @@ def _governance_lock_path(session_id: str = "") -> Path:
 
 
 def _secondary_lock_path() -> Path | None:
-    """Return path to the secondary lock marker inside the git repo.
+    """ALWAYS None — Phase 3 (the in-repo lock marker) was removed 2026-10-07.
 
-    The secondary marker lives at <repo_root>/.hermes-cortex/.governance-lock
-    and is written by the MCP server's begin_change() alongside the primary
-    lock in ~/.hermes-cortex/state/. The enforcer checks this as a fallback
-    when the primary lock directory is inaccessible.
+    Lock discovery is Phase 1 (exact session-id lock in
+    ~/.hermes-cortex/state/, checked FIRST) then Phase 2 (that same dir, by
+    repo_slug). No governance state may live inside a repository.
     """
-    current_slug = _derive_repo_slug()
-    if not current_slug:
-        return None
-    for candidate in [Path.home() / current_slug]:
-        if (candidate / ".git").exists():
-            return candidate / ".hermes-cortex" / ".governance-lock"
+    # DISABLED (2026-10-07): the in-repo fallback marker is DROPPED — locks are
+    # runtime-only. Phase 1 (exact session-id lock in ~/.hermes-cortex/state/)
+    # runs FIRST and is the primary; Phase 2 scans that same dir by repo_slug.
+    # This marker was "extra safety" only, and because `_has_governance_lock`
+    # returns False BEFORE any phase when the state dir is absent, its stated
+    # purpose was already unreachable. Deriving the repo here from the
+    # host-canonical slug is also what wrote a marker into the wrong checkout.
     return None
 
 
@@ -1200,7 +1200,47 @@ def _bypass_debt_count() -> int:
     return 0
 
 
-def _has_governance_lock(hermes_session_id: str = "") -> bool:
+def _lock_is_target_repo(state: dict, target_repo: str) -> bool:
+    """True when the lock's recorded ABSOLUTE repo_path IS the repo being written.
+
+    Slug matching alone is not enough: `current_slug` comes from
+    `_derive_repo_slug()`, which prefers the HOST-canonical repo, so on a
+    multi-repo host a session working elsewhere compares its OWN lock's slug
+    against the host's and is refused a lock it genuinely holds (a false block).
+    Absolute path equality cannot match a different repo, and `repo_path` is
+    written only by the enforcer (observed per session), never by the caller.
+    """
+    if not target_repo:
+        return False
+    recorded = str(state.get("repo_path") or "").strip()
+    if not recorded:
+        return False
+    try:
+        return Path(recorded).resolve() == Path(target_repo).resolve()
+    except OSError:
+        return False
+
+
+def _target_repo_root(args: Dict[str, Any]) -> str:
+    """Absolute git root of the repo this tool call WRITES to, or "".
+
+    A pre_tool_call hook is not given the session's cwd, so the tool arguments
+    are the only evidence available — the same rule `_note_session_repo` uses.
+    Best-effort: no usable path yields "" and the caller falls back to slug
+    matching alone (fail toward refusal, never toward a false permit).
+    """
+    if not isinstance(args, dict):
+        return ""
+    for key in _PATH_ARG_KEYS:
+        raw = args.get(key)
+        if isinstance(raw, str) and raw.strip():
+            repo = _git_root_for(Path(raw).expanduser())
+            if repo is not None:
+                return str(repo)
+    return ""
+
+
+def _has_governance_lock(hermes_session_id: str = "", target_repo: str = "") -> bool:
     """Check if THIS session has an active governance lock for this repo.
 
     Phase 1 — Exact match (primary):
@@ -1213,9 +1253,16 @@ def _has_governance_lock(hermes_session_id: str = "") -> bool:
       If exact match fails (backward compat with old MCP locks), scans all
       .governance-*.json files and matches by repo_slug in content.
 
-    Phase 3 — Secondary lock marker (extra safety):
-      Checks the repo-located marker at .hermes-cortex/.governance-lock
-      as a fallback when the primary state directory is inaccessible.
+    Phase 3 — REMOVED (2026-10-07). There is no in-repo fallback marker;
+      lock discovery is Phase 1 then Phase 2, both inside
+      ~/.hermes-cortex/state/. See _secondary_lock_path() for why it was
+      dropped (it could name a repo the session never touched).
+
+    Phase 2 also accepts a lock whose recorded absolute repo_path IS the repo
+      this call writes to — see _lock_is_target_repo(): slug matching alone
+      produced a false block on multi-repo hosts, because `current_slug` comes
+      from _derive_repo_slug(), which prefers the HOST-canonical repo. Path
+      equality cannot match a different repository.
 
     Performance (2026-09-29 friction fix): the stale-lock purge scan
     (glob + JSON-parse of EVERY lock file) previously ran BEFORE the cheap
@@ -1286,11 +1333,18 @@ def _has_governance_lock(hermes_session_id: str = "") -> bool:
             # When current_slug is "" (CWD not in a git repo), match
             # any lock with a real repo_slug. This fixes Phase 2 being
             # a no-op when the Hermes gateway CWD (~/.hermes) is outside git.
+            # Accept when the slug agrees OR when the lock's recorded absolute
+            # repo_path IS the repo this call writes to. The OR closes a real
+            # false block (see _lock_is_target_repo); it cannot widen access,
+            # because path equality cannot match a different repository.
             if current_slug:
-                if state.get("repo_slug") is not None and state.get("repo_slug") != current_slug:
+                if (state.get("repo_slug") is not None
+                        and state.get("repo_slug") != current_slug
+                        and not _lock_is_target_repo(state, target_repo)):
                     continue
             else:
-                if state.get("repo_slug") is None:
+                if (state.get("repo_slug") is None
+                        and not _lock_is_target_repo(state, target_repo)):
                     continue
             if _is_lock_stale(state):
                 try:
@@ -2611,7 +2665,7 @@ def register(ctx):
                     }
 
             # Check for active governance lock (Phase 1 exact + Phase 2 scan)
-            if _has_governance_lock(hermes_session_id):
+            if _has_governance_lock(hermes_session_id, _target_repo_root(args)):
                 return None
 
             # BLOCKED

@@ -522,7 +522,7 @@ register "ops/scripts/health/check-certs.py"               "${CORTEX_DEPLOY_HOME
 # daily-bible-reading.sh was deleted from repo — replaced by agent-daily-bible-reading.py
 # (2026-08-09: register was missing → script never deployed → LLM-cron fallback produced
 #  garbage via qwen2.5-coder:3b. Canonical mode is no_agent script, per install-crons.sh.)
-register ".hermes-cortex/scripts/agent-daily-bible-reading.py" "${CORTEX_DEPLOY_HOME}/scripts/agent-daily-bible-reading.py"
+register "ops/scripts/agent-daily-bible-reading.py" "${CORTEX_DEPLOY_HOME}/scripts/agent-daily-bible-reading.py"
 register_orch "ops/scripts/bus/generate-bus-wrappers.py"      "${CORTEX_DEPLOY_HOME}/scripts/generate-bus-wrappers.py"
 register "ops/scripts/manage/nginx-security-scanner.sh"    "${CORTEX_DEPLOY_HOME}/scripts/nginx-security-scanner.sh"
 register "ops/scripts/manage/agent-nginx-threat-pipeline.sh"     "${CORTEX_DEPLOY_HOME}/scripts/agent-nginx-threat-pipeline.sh"
@@ -537,7 +537,7 @@ register "ops/scripts/agent/install-worker.sh"      "${CORTEX_DEPLOY_HOME}/scrip
 # Pre-commit hook — managed by install_precommit_hook() as symlink to scripts/pre-commit-score
 # No register() call — the hook is a symlink, not a standalone deploy file.
 # Post-merge hook — auto-runs cortex-update.sh after every git pull
-register ".hermes-cortex/hooks/post-merge"   "${CORTEX_DEPLOY_HOME}/hooks/post-merge"
+register "ops/install/hooks/post-merge"   "${CORTEX_DEPLOY_HOME}/hooks/post-merge"
 # Least privilege: git hooks run only as the owning user, so group/other need
 # nothing. git does NOT track group/other bits (stores 100755/100644 only), so
 # a 700 file in the repo would still deploy as 755 — enforce 700 at deploy
@@ -1474,7 +1474,19 @@ sync_skills() {
   fi
 
   # ── Pass 2: Project-level overrides (.hermes-cortex/skills/) ──
+  # This overlay is for CONSUMER projects only. Inside the Cortex repo itself
+  # it shadowed the runtime directory name (~/.hermes-cortex) and made a stray
+  # governance marker indistinguishable from legitimate repo state. The Cortex
+  # repo is identified by carrying the loop-gov MCP server.
   local override_skills="${REPO_DIR}/.hermes-cortex/skills"
+  # Identity test: the Cortex repo carries BOTH its loop-gov MCP server and this
+  # script. A CONSUMER project carries neither, so this cannot misfire on a
+  # project that merely happens to have an mcp-servers/ dir. Two files, not one:
+  # a single-file test is a heuristic that could wrongly disable a consumer's
+  # legitimate .hermes-cortex/skills/ overlay.
+  if [[ -f "${REPO_DIR}/mcp-servers/loop-gov-mcp.py" && -f "${REPO_DIR}/ops/scripts/cortex-update.sh" ]]; then
+    override_skills="/nonexistent-cortex-repo-overlay"
+  fi
   if [[ -d "$override_skills" ]]; then
     while IFS= read -r -d '' skill_file; do
       local rel_path="${skill_file#$override_skills/}"

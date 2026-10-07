@@ -88,7 +88,7 @@ bash ops/scripts/install/install-score-hook.sh --check
 bash ops/scripts/install/install-score-hook.sh --remove
 ```
 
-The installer deploys the source scripts to `~/.hermes-cortex/scripts/` and `cortex-update.sh` creates symlinks from `.hermes-cortex/hooks/` to those scripts. This means git pull + cortex-update keeps hooks current without manual re-install.
+The installer deploys the source scripts to `~/.hermes-cortex/scripts/` and `cortex-update.sh` creates symlinks from `~/.hermes-cortex/hooks/` to those scripts. This means git pull + cortex-update keeps hooks current without manual re-install.
 
 ---
 
@@ -119,7 +119,7 @@ If you're an agent working on this repo:
 |---------|-------|-----|
 | Push blocked even though I just pulled | Remote received new commits since your last fetch | `git pull --rebase origin main` |
 | `score-cycle` not found warning | `loop-governance` tools not installed | `bash ~/hermes-cortex/core/governance/setup.sh` |
-| Hook not running at all | Hook not symlinked into `.hermes-cortex/hooks/` | Re-run `cortex-update.sh ` |
+| Hook not running at all | Hook not symlinked into `~/.hermes-cortex/hooks/` | Re-run `cortex-update.sh ` |
 | `❌ $file — syntax error` | `.py` file has a Python syntax error | Fix the error and re-push |
 | `❌ $file — shell syntax error` | `.sh` file has a shell syntax error | Fix the error and re-push |
 

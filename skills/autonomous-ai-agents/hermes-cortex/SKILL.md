@@ -831,7 +831,7 @@ Hermes Cortex uses a three-layer skill model with different purposes per layer. 
 |-------|----------|---------|-----------|
 | **Canonical source** | `~/hermes-cortex/skills/` | Public reusable skills distributed by the installer. These are the curated set — ~40 skills across devops, software-development, MCP, github, etc. | `git push` to repo |
 | **Global installed** | `~/.hermes/skills/` | Hermes Agent's primary skill directory (~150 skills). Contains cortex skills + ecosystem skills (apple/, creative/, gaming/, mlops/, testing/, etc.) | `cortex-update.sh sync_skills()` + manual additions |
-| **Project overrides** | `~/hermes-cortex/.hermes-cortex/skills/` | Project-specific skill overrides tracked in the repo. Hermes checks this FIRST when working in the hermes-cortex repo, falling back to `~/.hermes/skills/` for anything not found here. These are condensed versions (e.g. 72-line agent-contract vs 990-line global). | Tracked in repo (project-specific) |
+| **Project overrides** | `<consumer-project>/.hermes-cortex/skills/` | Project-specific skill overrides tracked in THAT project's repo. This overlay is for CONSUMER projects only — the Cortex repo itself must never carry one (inside `~/hermes-cortex` it shadowed the runtime dir name `~/.hermes-cortex` and made a stray governance marker indistinguishable from repo state). `cortex-update.sh` skips the overlay when the repo carries `mcp-servers/loop-gov-mcp.py`. | Tracked in the consumer project |
 
 ### How Skills Flow
 
