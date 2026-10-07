@@ -3,11 +3,11 @@ Task: git pull --rebase origin main, then bash ops/scripts/cortex-update.sh.
 
 [1] Deploy result - cortex-update.sh output (deployed revision recorded in
     state/last-update.json, the live authority):
-    Updated 4f222d56 -> 4f222d56
+    Updated 44fb7c30 -> 44fb7c30
     Deploy sync
     PENDING cycles  (green - zero leaked unscored cycles)
     Overall: HEALTHY (425 pass, 0 warn, 0 fail)
-    last-update.json: before==after==4f222d56, files_updated 233
+    last-update.json: before==after==44fb7c30, files_updated 233
     This is also the live final state (HEAD == last-update after == deployed at
     the run that produced this document; the evidence commit that adds this doc
     advances HEAD but does not alter deployed code).
