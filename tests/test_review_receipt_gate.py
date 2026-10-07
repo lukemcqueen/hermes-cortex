@@ -7,6 +7,8 @@ Exercises the SAME ops/scripts/lib/review-receipt-check.py the pre-push hook
 calls, so these assertions cannot drift from what actually gates a push.
 """
 import json
+import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -68,17 +70,94 @@ def main():
     check("always-review files DO need one",
           any(p in f for p in patterns for f in guarded), True)
 
+    integration_checks()
+
     # AC-5 - runtime-only: the receipt lives in the state dir, never in a repo.
     check("no repo-local receipt convention in the hook",
           ".reviewed-" in (REPO / "ops/scripts/pre-push-pull").read_text()
           and "$GOVERNANCE_STATE_DIR/.reviewed-" in (REPO / "ops/scripts/pre-push-pull").read_text(),
           True)
 
+
+
+def _deployed_hook_run(state_dir):
+    """Run the DEPLOYED pre-push hook against a controlled state dir."""
+    hook = Path.home() / ".hermes-cortex/hooks/pre-push"
+    env = dict(os.environ)
+    env["GOVERNANCE_STATE_DIR"] = str(state_dir)
+    return subprocess.run(["bash", str(hook)], cwd=REPO, env=env,
+                          capture_output=True, text=True, timeout=300)
+
+
+def integration_checks():
+    """End-to-end: the DEPLOYED hook must actually refuse (ADV-10818-1).
+
+    Deterministic by construction: the hook is pointed at a THROWAWAY state dir
+    holding a copy of this session's lock (so the lock gate passes) and NO
+    receipt (so the receipt gate must fire). Nothing here depends on whatever
+    live receipts happen to exist, so it cannot pass or fail by accident.
+
+    SCOPE: this asserts the REFUSAL only. The "a matching receipt is allowed"
+    side is asserted at unit level below, through the same
+    review-receipt-check.py the hook calls. Asserting it here too would run the
+    whole hook past the gate into the doctor/deploy gates, which are not this
+    test's subject and would make the result depend on deployed state.
+    """
+    live = Path.home() / ".hermes-cortex/state"
+    locks = sorted(live.glob(".governance-*.json"))
+    if not locks:
+        print("SKIP integration: no live lock to copy (cannot exercise the gate)")
+        return
+    tmp = Path(tempfile.mkdtemp(prefix="receipt-gate-"))
+    try:
+        shutil.copy2(locks[-1], tmp / locks[-1].name)   # lock present, no receipt
+        r = _deployed_hook_run(tmp)
+        combined = r.stdout + r.stderr
+        check("deployed hook refuses without a receipt",
+              r.returncode != 0 and "carries no clean review receipt" in combined, True)
+        check("refusal names the always-review files",
+              "mcp-servers/loop-gov-mcp.py" in combined
+              or "ops/scripts/pre-push-pull" in combined, True)
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+def main():
+    check("shared checker exists", CHECK.is_file(), True)
+    check("always-review list exists", LIST.is_file(), True)
+
+    clean = {"verdict": "CLEAN", "tip_sha": "aaaa111", "base_sha": "bbbb222"}
+    check("matching range authorises", authorises(clean, "aaaa111", "bbbb222"), "1")
+    check("FINDINGS never authorises",
+          authorises({**clean, "verdict": "FINDINGS"}, "aaaa111", "bbbb222"), "0")
+    check("missing receipt refuses", authorises({}, "aaaa111", "bbbb222"), "0")
+    check("empty base never authorises",
+          authorises({**clean, "base_sha": ""}, "aaaa111", ""), "0")
+
+    # AC-3 - THE replay guard. A receipt earned for range A must not authorise B.
+    check("different tip refuses (range A vs B)",
+          authorises(clean, "cccc333", "bbbb222"), "0")
+    check("different base refuses (same tip, rebased range)",
+          authorises(clean, "aaaa111", "dddd444"), "0")
+
+    # AC-4 - scope: only always-review paths require a receipt.
+    patterns = [l.strip() for l in LIST.read_text().splitlines()
+                if l.strip() and not l.startswith("#")]
+    check("list is non-empty", len(patterns) > 0, True)
+    ordinary = ["docs/README.md", "skills/devops/example/SKILL.md", "README.md"]
+    check("ordinary files need no receipt",
+          any(p in f for p in patterns for f in ordinary), False)
+    guarded = ["mcp-servers/loop-gov-mcp.py", "ops/scripts/pre-push-pull"]
+    check("always-review files DO need one",
+          any(p in f for p in patterns for f in guarded), True)
+
+    integration_checks()
+
     print()
     if failures:
         print(f"RESULT: FAIL ({len(failures)}): {failures}")
         return 1
-    print("RESULT: ALL PASS - review receipt is bound to the range and scoped")
+    print("RESULT: ALL PASS - receipt bound to the range, scoped, and the deployed hook refuses")
     return 0
 
 

@@ -20,9 +20,17 @@ def authorises(receipt, tip, base):
         return False
     if str(receipt.get("verdict") or "").upper() != "CLEAN":
         return False
-    if str(receipt.get("tip_sha") or "") != str(tip or ""):
+    tip = str(tip or "")
+    base = str(base or "")
+    # An EMPTY sha is not a match, it is a missing value. Without this, a receipt
+    # whose base_sha is "" validated against a query whose base is also "" —
+    # i.e. it authorised an unbounded, unreviewed range. Only ever compare
+    # concrete revisions.
+    if not tip or not base:
         return False
-    if str(receipt.get("base_sha") or "") != str(base or ""):
+    if str(receipt.get("tip_sha") or "") != tip:
+        return False
+    if str(receipt.get("base_sha") or "") != base:
         return False
     return True
 

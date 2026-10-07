@@ -614,7 +614,20 @@ def _write_review_receipt(cycle_id=None) -> None:
         base = _git_capture(Path(repo), "merge-base", "origin/main", "HEAD").strip()
         if not base:
             base = _git_capture(Path(repo), "rev-list", "--max-parents=0", "HEAD").strip()
+        # A receipt with an EMPTY base_sha is worse than no receipt: it is
+        # structurally valid and would validate only for a range nobody reviewed.
+        # "" from _git_capture now means "could not determine", not "no commits",
+        # so refuse to write rather than emit a half-filled authorisation.
+        if not base:
+            log.warning("review receipt NOT written: could not determine base for %s "
+                        "(head=%s) — an empty base would be a hollow authorisation",
+                        repo, head[:12] or "?")
+            return
         files = [f for f in _git_capture(Path(repo), "diff", "--name-only", base + ".." + head).splitlines() if f.strip()]
+        if not files:
+            log.warning("review receipt NOT written: range %s..%s lists no files",
+                        base[:12], head[:12])
+            return
         receipt = {
             "verdict": "CLEAN",
             "repo_slug": slug,

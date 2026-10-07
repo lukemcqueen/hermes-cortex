@@ -81,7 +81,11 @@ done
 # every repo. Rule 11 pattern: ${HOME}/hermes-cortex comparison.
 CORTEX_REPO_TOP="${HOME}/hermes-cortex"
 _REPO_TOP=$(git rev-parse --show-toplevel 2>/dev/null || echo "")
-GOVERNANCE_STATE_DIR="${HOME}/.hermes-cortex/state"
+# Overridable so the receipt gate can be exercised by a runnable test against a
+# controlled state dir (tests/test_review_receipt_gate.py). Not a bypass: an
+# empty or unknown dir yields NO lock, which blocks harder, and a dir with a lock
+# still has to satisfy the receipt gate.
+GOVERNANCE_STATE_DIR="${GOVERNANCE_STATE_DIR:-${HOME}/.hermes-cortex/state}"
 GOVERNANCE_STATE_REPO="$CORTEX_REPO_TOP"
 REPO_SLUG=$(basename "$(git rev-parse --show-toplevel 2>/dev/null || echo 'generic')" 2>/dev/null || echo 'generic')
 LOCK_FOUND=0
