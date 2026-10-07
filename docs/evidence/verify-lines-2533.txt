@@ -1,0 +1,19 @@
+=== cycle 2533 pull+deploy: verified lines ===
+Command run: bash ops/scripts/cortex-update.sh   (full transcript in update-final-c0e79fd8.txt)
+Result line:   Updated d7772bff -> d7772bff
+Result line:   Deploy sync
+Result line:   PENDING cycles (green: zero pending)
+Result line:   Overall: HEALTHY (425 pass, 0 warn, 0 fail)
+
+Command run: git status --porcelain
+Output:       (empty)
+
+Command run: python3 ops/scripts/manage/cortex-doctor.py --quiet  (at HEAD d7772bff)
+Key lines:    Repo clean
+              Deploy sync
+              PENDING cycles
+              Overall: HEALTHY (425 pass, 0 warn, 0 fail)
+
+HEAD d7772bff == deployed revision (last-update.json before == after == d7772bff).
+Session authored only docs/evidence/ files; blocked_ips.add + cycle-2497-bus-clean-scan.md
+are prior kustos-agent threat-pipeline auto-commits pulled in the rebase.
