@@ -15,6 +15,6 @@ test_delivered_sources_resolve_to_known_domains (__main__.TestRealArtifacts.test
 test_delivered_word_count (__main__.TestRealArtifacts.test_delivered_word_count) ... ok
 
 ----------------------------------------------------------------------
-Ran 15 tests in 0.032s
+Ran 15 tests in 0.029s
 
 OK

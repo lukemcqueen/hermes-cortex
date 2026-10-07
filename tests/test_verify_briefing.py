@@ -137,7 +137,7 @@ class TestRealArtifacts(unittest.TestCase):
         import urllib.parse
         text = (REAL_DIR / f"sustainability-briefing-{REAL_DATE}.md").read_text()
         urls = re.findall(r"^Source: (https?://\S+)$", text, re.M)
-        self.assertGreaterEqual(len(urls), 13)
+        self.assertEqual(len(urls), 16)  # exact count claimed in the briefing
         allowed = {
             "www.vogue.com", "vegconomist.com", "www.acs.org",
             "sustainablefutures.linklaters.com", "www.bluesign.com",
