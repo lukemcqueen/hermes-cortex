@@ -1868,6 +1868,24 @@ REVIEW_TEMPLATE_REL = "docs/templates/adversarial-reviewer-prompt.md"
 REVIEW_MARKER = "=== REVIEWED MATERIAL ==="
 DIFF_CHAR_BUDGET = 12000
 
+# Documentation-only ranges get a larger material budget, and here is why it is
+# not a loosening of review.
+#
+# For CODE, a head+tail window still lets a reviewer judge structure and notice a
+# missing test. For DOCS the diff IS the artifact: truncating a docs diff is not a
+# smaller review, it is no review — the reviewer cannot see the prose it is asked
+# to judge and reports the content as missing. That is exactly what happened to
+# cycle 10838: a ~39KB docs range against a 12KB budget, where the evidence AND
+# the document under review were both in the omitted middle.
+#
+# The relaxation is COMPUTED FROM THE DIFF, never self-declared. A worker who
+# writes "docs only" in a note gets the standard budget; only a diff in which
+# EVERY path is documentation qualifies. Self-declaration would be a bypass;
+# a computed predicate is a scope decision. One non-doc path, or any
+# always-review path, reverts to the standard budget.
+DIFF_CHAR_BUDGET_DOCS = 60000
+DOC_ONLY_SUFFIXES = (".md", ".txt", ".rst")
+
 # The MCP CLIENT gives up before we do. Hermes resolves every tool call against
 # _DEFAULT_TOOL_TIMEOUT = 300s (hermes-agent tools/mcp_tool_common.py), so a
 # reviewer timeout at or above that ceiling is not a timeout at all — it is a
@@ -2847,7 +2865,36 @@ def _rereview_change(args: dict) -> CallToolResult:
         "Call end_change('" + task_id + "') to release the lock."))])
 
 
-def _bound_diff(diff_text: str, budget: int = DIFF_CHAR_BUDGET) -> str:
+def _diff_paths(diff_text: str) -> list:
+    """Every path named by `diff --git a/<path>` headers, in order."""
+    out = []
+    for line in diff_text.splitlines():
+        if line.startswith("diff --git a/"):
+            p = line[len("diff --git a/"):].split(" ")[0]
+            if p not in out:
+                out.append(p)
+    return out
+
+
+def _range_is_docs_only(diff_text: str) -> bool:
+    """True when EVERY path in this diff is documentation.
+
+    Computed from the diff, so it cannot be claimed from a note. Deliberately
+    conservative: an empty or unparseable path list is NOT docs-only, and any
+    always-review path disqualifies the range even if it ends in `.md`.
+    """
+    paths = _diff_paths(diff_text)
+    if not paths:
+        return False
+    for p in paths:
+        if any(p.startswith(ap) for ap in ALWAYS_REVIEW_PATHS):
+            return False
+        if not p.lower().endswith(DOC_ONLY_SUFFIXES):
+            return False
+    return True
+
+
+def _bound_diff(diff_text: str, budget: int | None = None) -> str:
     """Bound the review material to `budget` chars, HEAD+TAIL, disclosing the cut.
 
     Why this exists as its own function (2026-10-02): the bound was written as
@@ -2858,8 +2905,20 @@ def _bound_diff(diff_text: str, budget: int = DIFF_CHAR_BUDGET) -> str:
     absent evidence, so it must say so, name the files affected, and point at the
     committed content. Tested by tests/test_review_material_bound.py.
     """
+    docs_only = _range_is_docs_only(diff_text)
+    if budget is None:
+        budget = DIFF_CHAR_BUDGET_DOCS if docs_only else DIFF_CHAR_BUDGET
+    # Disclose WHICH budget was applied and why, so a reviewer is not left
+    # inferring it. Only docs-only ranges carry this header; standard reviews are
+    # unchanged.
+    policy = ""
+    if docs_only:
+        policy = (f"\n...[REVIEW MATERIAL POLICY: every path in this range is "
+                  f"documentation, so the docs budget applies "
+                  f"({DIFF_CHAR_BUDGET_DOCS} chars; standard is {DIFF_CHAR_BUDGET}). "
+                  f"Computed from the diff.]")
     if len(diff_text) <= budget:
-        return diff_text
+        return policy + diff_text
     total = len(diff_text)
     head = budget * 2 // 3
     tail = budget - head
@@ -2870,12 +2929,15 @@ def _bound_diff(diff_text: str, budget: int = DIFF_CHAR_BUDGET) -> str:
             f = line[len("diff --git a/"):].split(" ")[0]
             if f not in files:
                 files.append(f)
+    # Neutral wording: state the limit, do not direct the reviewer.
     notice = (
-        f"\n...[DIFF TRUNCATED BY THE GATE'S OWN {budget}-char BUDGET: "
-        f"{len(dropped)} of {total} chars omitted from the middle. This is a MATERIAL "
-        f"LIMIT, not absent evidence — the full content is committed and readable with "
-        f"read_file]"
+        f"\n...[MATERIAL LIMIT: the gate's {budget}-char budget — "
+        f"{len(dropped)} of {total} chars omitted from the middle. This is a limit "
+        f"of the gate, not absent evidence; the full content is committed]"
     )
+    if docs_only:
+        notice += ("\n...[this is a docs-only range and it STILL exceeds the docs "
+                   "budget — split the cycle rather than re-submitting prose]")
     if files:
         notice += (f"\n...[files partly hidden in the omitted middle: "
                    f"{', '.join(files[:15])}"

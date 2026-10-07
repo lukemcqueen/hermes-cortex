@@ -62,8 +62,10 @@ def test_the_omission_is_disclosed_with_true_numbers():
     big = _diff(20, 40)
     budget = 2000
     got = mcp._bound_diff(big, budget=budget)
-    assert "TRUNCATED BY THE GATE'S OWN" in got
-    assert "MATERIAL LIMIT, not absent evidence" in got, \
+    # Wording changed 2026-10-07: the old marker said "readable with read_file",
+    # which directed the reviewer. The limit is now stated neutrally.
+    assert "MATERIAL LIMIT" in got
+    assert "not absent evidence" in got, \
         "the notice must say the cut is the gate's limit, not missing evidence"
     head = budget * 2 // 3
     tail = budget - head
@@ -91,3 +93,93 @@ def test_the_gate_actually_uses_the_helper():
         "a bare head-only slice is the bug this test exists to prevent"
     assert "...[diff truncated]..." not in src, "the old silent marker must be gone"
     print("  gate uses _bound_diff; no bare head-only slice remains ✓")
+
+
+# ── Docs-only budget (2026-10-07) ─────────────────────────────────────────────
+# For CODE a head+tail window is a workable review. For DOCS the diff IS the
+# artifact, so truncation is not a smaller review — it is no review. Cycle 10838
+# was a ~39KB docs range against the 12KB budget; the document under review AND
+# the evidence for it were both in the omitted middle. These pin the relaxation
+# and, more importantly, pin that it is COMPUTED rather than claimed.
+
+
+def _docs_diff(files: int, body_lines: int = 120) -> str:
+    """A docs-only diff, all `.md`, big enough to exceed the standard budget."""
+    out = []
+    for i in range(files):
+        out.append(f"diff --git a/docs/guide{i}.md b/docs/guide{i}.md")
+        out.append(f"--- a/docs/guide{i}.md")
+        out.append(f"+++ b/docs/guide{i}.md")
+        out.append(f"@@ -1,{body_lines} +1,{body_lines} @@")
+        out += [f"+ documentation line {n} of guide{i} " + "x" * 60 for n in range(body_lines)]
+    return "\n".join(out) + "\n"
+
+
+def test_docs_only_range_gets_the_larger_budget():
+    d = _docs_diff(4)
+    assert len(d) > mcp.DIFF_CHAR_BUDGET, "fixture must exceed the standard budget"
+    assert len(d) < mcp.DIFF_CHAR_BUDGET_DOCS, "fixture must fit the docs budget"
+    out = mcp._bound_diff(d)
+    assert "MATERIAL LIMIT" not in out, "a docs range that fits the docs budget must NOT be cut"
+    assert "REVIEW MATERIAL POLICY" in out and "docs budget" in out, "the policy must be disclosed"
+    print(f"  docs-only range ({len(d)} chars) not truncated, policy disclosed ✓")
+
+
+def test_one_code_file_reverts_to_the_standard_budget():
+    d = _docs_diff(5) + "diff --git a/ops/scripts/thing.py b/ops/scripts/thing.py\n" + "x" * 4000
+    out = mcp._bound_diff(d)
+    assert "MATERIAL LIMIT" in out, "one non-doc path must revert to the standard budget"
+    assert "REVIEW MATERIAL POLICY" not in out, "a non-docs range must not claim the docs policy"
+    print("  one .py file reverts the whole range to the standard budget ✓")
+
+
+def test_always_review_path_disqualifies_even_markdown():
+    d = _docs_diff(4) + ("diff --git a/ops/install/hooks/README.md b/ops/install/hooks/README.md\n"
+                         + "x" * 4000)
+    assert mcp._range_is_docs_only(d) is False, "an always-review path must disqualify the range"
+    print("  always-review path disqualifies a .md-only range ✓")
+
+
+def test_empty_diff_is_not_docs_only():
+    assert mcp._range_is_docs_only("") is False, "nothing parsed must never mean docs-only"
+    assert "REVIEW MATERIAL POLICY" not in mcp._bound_diff("")
+    print("  empty/unparseable diff is NOT docs-only ✓")
+
+
+def test_notice_states_the_limit_without_directing_the_reviewer():
+    out = mcp._bound_diff(_docs_diff(20))          # forces the docs budget to truncate too
+    assert "MATERIAL LIMIT" in out
+    assert "read_file" not in out, "the notice must not instruct the reviewer"
+    assert "split the cycle" in out, "an over-budget docs range must say what to do instead"
+    print("  over-budget docs notice is neutral and says to split the cycle ✓")
+
+
+def test_an_explicit_budget_is_still_honoured():
+    d = _docs_diff(6)
+    out = mcp._bound_diff(d, budget=1000)
+    assert "MATERIAL LIMIT" in out and "1000-char budget" in out, "explicit budget wins"
+    print("  explicit budget override still honoured ✓")
+
+
+# ── Standalone runner ─────────────────────────────────────────────────────────
+# pytest is not installed on every fleet host, which left this file unrunnable
+# there and its assertions unverified. Run it directly:
+#     python3 tests/test_review_material_bound.py
+if __name__ == "__main__":
+    import sys
+    import traceback
+    tests = [(n, f) for n, f in sorted(globals().items())
+             if n.startswith("test_") and callable(f)]
+    failed = []
+    for name, fn in tests:
+        try:
+            fn()
+        except Exception:
+            failed.append(name)
+            print(f"FAIL  {name}")
+            traceback.print_exc()
+    print()
+    if failed:
+        print(f"RESULT: FAIL ({len(failed)}/{len(tests)}): {failed}")
+        sys.exit(1)
+    print(f"RESULT: ALL PASS ({len(tests)} tests)")

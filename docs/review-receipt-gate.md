@@ -93,3 +93,41 @@ refused fleet-wide, fail-closed and silent. If you change one, check the other.
 - `ops/scripts/lib/always-review-paths.txt` — scope
 - `ops/scripts/lib/review-receipt-check.py` — one validator, shared by hook and test
 - `docs/pre-commit-scoring.md`, `docs/git-enforcement.md` — the wider hook chain
+
+---
+
+## Review material budget — and why docs get more
+
+The reviewer sees a **bounded** window of the diff, disclosed when it is cut.
+Two budgets exist:
+
+| Range | Budget | Constant |
+|---|---|---|
+| Standard | 12,000 chars | `DIFF_CHAR_BUDGET` |
+| **Docs-only** | **60,000 chars** | `DIFF_CHAR_BUDGET_DOCS` |
+
+**Why docs differ.** For code, a head+tail window is a workable review — a
+reviewer can still judge structure and notice a missing test. For docs the diff
+*is* the artifact: truncating a docs diff is not a smaller review, it is **no**
+review, because the reviewer cannot see the prose it is being asked to judge. A
+39 KB docs range against the 12 KB budget put both the document and its evidence
+in the omitted middle, and the cycle could not close.
+
+**It is computed, never claimed.** `_range_is_docs_only()` reads the
+`diff --git a/...` headers itself. A note saying "this is docs only" buys
+nothing. The range qualifies only when **every** path ends `.md`/`.txt`/`.rst`
+**and** no path is an always-review path — so `ops/install/hooks/README.md`
+disqualifies the whole range despite being markdown. One non-doc path reverts
+everything to the standard budget. A self-declared relaxation would be a bypass;
+a computed one is a scope decision.
+
+Docs-only ranges carry a `REVIEW MATERIAL POLICY` header naming the budget
+applied, so a reviewer is never left inferring it.
+
+**Still too big?** The notice says so plainly and tells you to **split the cycle**
+rather than re-submitting prose. Raising a budget cannot make an unbounded diff
+reviewable — splitting is the only honest answer past that point.
+
+**The notice never instructs the reviewer.** An earlier marker said the content
+was "readable with read_file", which read as a directive and was flagged as
+injection. It now states the limit and stops.
