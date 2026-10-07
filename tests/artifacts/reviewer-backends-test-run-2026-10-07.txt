@@ -5,6 +5,7 @@
 [mcp-server] DEBUG: Initializing server 'loop-governance'
 [mcp-server] WARNING: reviewer timeout ADVERSARIAL_REVIEW_TIMEOUT=300s exceeds the 240s client ceiling — clamping (a longer timeout is an unobservable hang, not a longer wait)
 [mcp-server] WARNING: reviewer timeout ADVERSARIAL_REVIEW_AGENT_TIMEOUT=900s exceeds the 240s client ceiling — clamping (a longer timeout is an unobservable hang, not a longer wait)
+[mcp-server] DEBUG: Initializing server 'loop-governance'
 Reviewer backends — pluggable transport, fixed fail-closed contract
   PASS  default backend is llm
   PASS  llm records the MODEL as the reviewer
@@ -58,6 +59,12 @@ Reviewer leaf callers — passed-timeout honored, env fallback no string crash
   PASS  llm env-fallback callable without a string crash
   PASS  passed agent timeout is honored
   PASS  agent env-fallback callable without a string crash
+
+Reviewer timeout signature contract — cx is a dict, env-clamp is distinct
+  PASS  size-scaled _reviewer_timeout exists (takes cx, backend)
+  PASS  env-clamp helper is a DISTINCT name, not a shadow
+  PASS  the two timeout helpers are different functions
+  PASS  size-scaled helper accepts a dict cx
 
 Reviewer tiering dogfood script — real module routing
   PASS  dogfood script exists

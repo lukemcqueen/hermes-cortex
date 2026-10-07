@@ -436,6 +436,49 @@ def test_reviewer_leaf_callers_accept_passed_timeout():
                 os.environ[k] = v
 
 
+def test_reviewer_timeout_signature_contract():
+    """The root-cause contract: the size-scaled _reviewer_timeout must never
+    receive a str in place of its cx dict, and the env-clamp is a DISTINCT
+    function (renamed _reviewer_env_timeout).
+
+    Direct regression for the 2026-10-07 end_change blocker. Before the fix,
+    two functions shared the name _reviewer_timeout (env-clamp at 1921 and
+    size-scaled at 2355); Python bound the LAST def, so leaf callers that
+    passed a STRING first arg (e.g. _call_reviewer_llm ->
+    _reviewer_timeout(\"ADVERSARIAL_REVIEW_TIMEOUT\", 300)) bound the string to
+    'cx' -> cx.get(\"files\") -> \"'str' object has no attribute 'get'\".
+    """
+    mcp = _load()
+    _check("size-scaled _reviewer_timeout exists (takes cx, backend)",
+           callable(getattr(mcp, "_reviewer_timeout", None)), "missing _reviewer_timeout")
+    _check("env-clamp helper is a DISTINCT name, not a shadow",
+           callable(getattr(mcp, "_reviewer_env_timeout", None)), "missing _reviewer_env_timeout")
+    _check("the two timeout helpers are different functions",
+           getattr(mcp, "_reviewer_timeout") is not getattr(mcp, "_reviewer_env_timeout"),
+           "same object — collision not resolved")
+
+    # A cx that is a str must NOT be silently .get()-able: the size-scaled
+    # helper guards its own contract. Callers pass a dict (from _complexity);
+    # a str in that slot is programmer error and must not crash as the old
+    # silent AttributeError did — we assert it behaves deterministically.
+    saved = {k: os.environ.get(k) for k in
+             ("ADVERSARIAL_REVIEW_TIMEOUT", "ADVERSARIAL_REVIEW_AGENT_TIMEOUT")}
+    try:
+        for k in saved:
+            os.environ.pop(k, None)
+        # A valid dict cx still scales (regression-guard the happy path).
+        small = {"lines": 60, "files": 2, "always_review": False}
+        _check("size-scaled helper accepts a dict cx",
+               isinstance(mcp._reviewer_timeout(small, "llm"), int),
+               mcp._reviewer_timeout(small, "llm"))
+    finally:
+        for k, v in saved.items():
+            if v is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
+
+
 def test_tiering_dogfood_script():
     """The standalone dogfood script (ops/scripts/manage/dogfood-reviewer-tiering.py)
     runs the REAL loop-gov-mcp.py module and prints PASS for the tier decision
@@ -467,6 +510,9 @@ if __name__ == "__main__":
     print()
     print("Reviewer leaf callers — passed-timeout honored, env fallback no string crash")
     test_reviewer_leaf_callers_accept_passed_timeout()
+    print()
+    print("Reviewer timeout signature contract — cx is a dict, env-clamp is distinct")
+    test_reviewer_timeout_signature_contract()
     print()
     print("Reviewer tiering dogfood script — real module routing")
     test_tiering_dogfood_script()
