@@ -21,11 +21,12 @@ catches ALL changes at the Hermes tool level.
 Two git hooks that enforce the governance workflow in a multi-agent repo:
 
 - **pre-commit** — automatically logs a scoring cycle on every commit (secondary logger). Now scores ALL staged files, not just the first.
-- **pre-push** — four checks before allowing a push:
+- **pre-push** — five checks before allowing a push:
  1. **Governance lock** — requires an active `begin_change()` session
- 2. **Syntax check** — parses every changed `.py` and `.sh` file (py_compile/bash -n)
- 3. **Doc coverage** — warns if code/config changes without `.md` changes
- 4. **Pull-before-push** — ensures local `main` isn't behind `origin/main`
+ 2. **Review receipt** — a range touching an always-review path needs a CLEAN review receipt for THAT range (tip+base). Ordinary commits are exempt. See `docs/review-receipt-gate.md`
+ 3. **Syntax check** — parses every changed `.py` and `.sh` file (py_compile/bash -n)
+ 4. **Doc coverage** — warns if code/config changes without `.md` changes
+ 5. **Pull-before-push** — ensures local `main` isn't behind `origin/main`
 
 They're part of the Agent Execution Contract (rules #10 and #13) and apply to every agent and human working on `hermes-cortex`.
 
@@ -52,14 +53,15 @@ Source: `ops/scripts/pre-push-pull`
 
 1. Make changes under governance (begin_change → work)
 2. **Update documentation** — docs, AGENTS.md, skills that other agents consume
-3. Push — the hook enforces three checks:
+3. Push — the hook enforces these checks:
 
   | # | Check | What it does |
   |---|-------|-------------|
   | 1 | Governance lock | No active `begin_change()` session for this repo |
-  | 2 | Syntax check | Parses every changed `.py` (py_compile) and `.sh` (bash -n) file at push time. Cannot be skipped — the hook runs the checker itself. |
-  | 3 | Doc coverage | Warns when code/config files change without a corresponding `.md` change. Soft warning — doesn't block, but reminds agents to update docs. |
-  | 4 | Pull-before-push | Local `main` is behind `origin/main` |
+  | 2 | Review receipt | A range touching an always-review path (`ops/scripts/lib/always-review-paths.txt`) must carry a CLEAN receipt for that exact range — tip AND base. Written automatically when a cycle closes. Verify with `ops/scripts/lib/review-receipt-check.py <receipt> <tip> <base>`. See `docs/review-receipt-gate.md`. |
+  | 3 | Syntax check | Parses every changed `.py` (py_compile) and `.sh` (bash -n) file at push time. Cannot be skipped — the hook runs the checker itself. |
+  | 4 | Doc coverage | Warns when code/config files change without a corresponding `.md` change. Soft warning — doesn't block, but reminds agents to update docs. |
+  | 5 | Pull-before-push | Local `main` is behind `origin/main` |
 
   All checks run automatically at push time. No marker files, no `touch` commands.
 

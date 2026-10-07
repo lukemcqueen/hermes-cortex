@@ -23,7 +23,15 @@ working tree), not a problem with your diff.
 - A push or commit was rejected and the cause isn't obvious
 - Writing docs or scripts to the shared surface (repo or `~/.hermes/skills`)
 
-## The Gates (verified behavior, 2026-08-24)
+## The Gates (verified behavior, 2026-08-24; review-receipt gate added 2026-10-07)
+
+**Review receipt gate.** A push whose range touches an always-review path needs
+a CLEAN review receipt for THAT range (tip AND base must match). Ordinary commits
+are exempt. The receipt is written automatically when a cycle closes
+successfully — including a cycle that changed no code (its review is skipped as
+"simple", but the close still writes the receipt). Every new commit moves the tip
+and invalidates the receipt, so push immediately after closing. Full detail:
+`docs/review-receipt-gate.md`.
 
 1. **Pre-push dogfood gate diffs the WORKING TREE, not the push range.**
    The hook runs `git diff HEAD --name-only`, so a concurrent session's
@@ -231,6 +239,15 @@ before committing — the doctor hashes repo source WITHOUT the header, so a
 headered repo copy fails every checksum/script-content check.
 
 ## Pitfalls
+
+**Review receipt gate: deploy ≠ load.** The receipt is written by the MCP server
+(`loop-gov-mcp.py`). A running MCP child started before that file changed holds
+the old revision and CANNOT write receipts — so the gate refuses and nothing says
+why. After deploying `loop-gov-mcp.py` the gateway must restart; agents cannot do
+it (lifecycle guard), so the deploy banner is the signal. Related trap: the writer
+resolves the lock from tool-call args, and an early version called
+`_read_lock(None)` — which resolves nothing, silently, so no receipt was ever
+written while every code path looked correct.
 
 - **Editing an always-skill mid-cycle invalidates the skills-loaded marker.**
   The enforcer's marker pins a fingerprint of the 7 always-skill CONTENTS

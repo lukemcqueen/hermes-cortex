@@ -127,6 +127,7 @@ repo; this public repo carries only framework docs (PRDs, design, reference).
 | `docs/deploy-registry-pattern.md` | **REWRITTEN (2026-10-03)** — the real deployment: one repo, the `register()` map in `ops/scripts/cortex-update.sh`, and the generated `deploy-manifest.tsv` (previously described a fabricated `legacy-brain/` + `private-data` layout) |
 | `docs/repo-vs-deployed-paths.md` | **NEW (2026-10-03)** — how a component resolves a repo-relative sibling file in the repo AND after a deploy: the one resolver, the generated `deploy-manifest.tsv`, and why the deployed path cannot be derived |
 | `docs/git-enforcement.md` | Git enforcement model |
+| `docs/review-receipt-gate.md` | **Review receipt gate** — a push touching an always-review path needs a CLEAN review receipt for that exact range (review before push) |
 | `docs/loop-governance-reference.md` | Loop governance reference |
 | `docs/seeding-brain-content.md` | Seeding brain content |
 
