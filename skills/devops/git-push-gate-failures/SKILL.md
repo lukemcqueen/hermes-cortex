@@ -169,8 +169,17 @@ To yield to the peer's already-pushed version, use `git checkout --ours
 empty for the duplicated file) before amending. Prefer the peer's version
 when it is identical-or-better and already public.
 
-## 5. Push blocked by a "PENDING cycles" governance leak (no live lock)
+**Orphaned `<<<<<<< HEAD` after a hand-resolved conflict:** when you resolve a
+conflict block by keeping only the top side (e.g. a patch whose delete starts
+at the `=======`/`>>>>>>>` boundary), the leading `<<<<<<< HEAD` line survives
+as stray text; the marker is NOT auto-removed by clearing the bottom side.
+The result compiles/passes silently and only shows up as a stray heredoc/test
+text later. After resolving ANY conflict block, `grep -rn '^<<<<<<<\|^=======\|^>>>>>>>' <path>`
+and delete every leftover line before `git rebase --continue` — a verified
+zero-marker file is the only safe state. When several files conflict, resolve
+all of them in one pass, then grep the set clean before continuing.
 
+## 5. Push blocked by a "PENDING cycles" governance leak (no live lock)
 **Symptom:** the doctor FAILs `❌ PENDING cycles` — "N unscored cycle(s) from finished task(s)" — and the pre-push gate blocks every push. The cycles listed are NOT yours; they are sibling/daemon/crashed sessions that called `begin_change` and never scored. Each has `decision='PENDING'`, `user_overrode IS NULL`, and its task's `.governance-*.json` lock is gone.
 
 **The two distinct root causes — diagnose before patching:**
@@ -179,6 +188,8 @@ when it is identical-or-better and already public.
 2. **Purge deletes the lock file but leaves the orphaned cycle.** The doctor's leak rule is "PENDING cycle whose task_id has NO live lock = FAIL". Removing the lock does NOT clear the cycle — the doctor still FAILs and blocks. Fix as a pair: when a lock is purged as stale, also resolve that task's PENDING cycle(s) to `MOVE_ON`, and run the purge from `begin_change` (the acquiring gate) not just `_check_lock`.
 
 **Check the deployed copy matches repo first** — `diff` the deployed `~/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py` against `mcp-servers/loop-gov-mcp.py`; the ONLY allowed difference is the injected `# SOURCE:` / `# Do NOT edit` header lines. Any other diff (or a running gateway process started before the fix — "deploy ≠ load") means the running code is stale and the fix hasn't loaded.
+
+**Same deploy≠load window refuses `end_change` with a reviewer EXCEPTION, not a clean banner.** After deploying a loop-gov change, the RUNNING MCP daemon still executes the old module; a non-trivial close then fails because the in-memory reviewer hits code it does not have yet. The error reads like a reviewer/data bug (`'str' object has no attribute 'get'`) rather than a "restart pending" notice. Recognize the transition window, not a regression: retrying repeats the same error; `feedback_accept`/close what you can, have the operator restart the gateway, then retry `end_change` after the restart. A watchdog alert naming "N loop-gov daemon(s) ... running pre-deploy code" is the same condition. The same window also produces a bogus-looking doctor run — re-read the doctor as a bare `python3 …cortex-doctor.py` AFTER the deploy process exits, and do not chase warns/fails captured mid-deploy.
 
 **Hermetic repro for a purge fix** (no real state touched): repoint the module's `GOVERNANCE_STATE_DIR` / `LOOP_DB` at a temp dir, write a stale time-only-heartbeat lock, seed a PENDING cycle for its task, run `_purge_stale_locks()`, assert the lock is gone AND the cycle flipped to `MOVE_ON`. Proving the cycle resolution is what unblocks the gate — deleting the lock alone demonstrably does not.
 
