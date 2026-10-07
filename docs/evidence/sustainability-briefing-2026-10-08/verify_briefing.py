@@ -71,7 +71,8 @@ def _pdf_text(path: str) -> str:
         return ""
 
 
-def _binary_carry_text(directory: str, date_str: str) -> bool:
+def check_binary_carry_text(directory: str, date_str: str) -> bool:
+    """The .docx/.pdf artifacts actually carry the briefing text."""
     base = os.path.join(directory, f"sustainability-briefing-{date_str}")
     dx = _docx_text(base + ".docx")
     px = _pdf_text(base + ".pdf")
@@ -101,7 +102,7 @@ def main(date_str: str, directory: str) -> int:
     w_ok = check_word_count(text); ok &= w_ok
     print(f"[words] count={len(text.split())} "
           f"({WORD_MIN}-{WORD_MAX}) {'PASS' if w_ok else 'FAIL'}")
-    b_ok = _binary_carry_text(directory, date_str); ok &= b_ok
+    b_ok = check_binary_carry_text(directory, date_str); ok &= b_ok
     print(f"[binary] docx+pdf carry briefing text {'PASS' if b_ok else 'FAIL'}")
 
     print("\nRESULT:", "ALL PASS" if ok else "FAILURES PRESENT")

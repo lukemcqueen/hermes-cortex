@@ -7,8 +7,13 @@ test_sources_reject_malformed_line (__main__.TestChecks.test_sources_reject_malf
 test_words_good (__main__.TestChecks.test_words_good) ... ok
 test_words_reject_too_long (__main__.TestChecks.test_words_reject_too_long) ... ok
 test_words_reject_too_short (__main__.TestChecks.test_words_reject_too_short) ... ok
+test_delivered_binaries_carry_text (__main__.TestRealArtifacts.test_delivered_binaries_carry_text) ... ok
+test_delivered_files_present (__main__.TestRealArtifacts.test_delivered_files_present) ... ok
+test_delivered_sections (__main__.TestRealArtifacts.test_delivered_sections) ... ok
+test_delivered_sources (__main__.TestRealArtifacts.test_delivered_sources) ... ok
+test_delivered_word_count (__main__.TestRealArtifacts.test_delivered_word_count) ... ok
 
 ----------------------------------------------------------------------
-Ran 9 tests in 0.002s
+Ran 14 tests in 0.024s
 
 OK

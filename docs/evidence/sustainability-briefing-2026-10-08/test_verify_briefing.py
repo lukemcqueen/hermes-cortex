@@ -93,5 +93,40 @@ class TestChecks(unittest.TestCase):
             self.assertFalse(v.check_files(td, "2026-10-08"))
 
 
+REAL_DIR = REPO / "docs" / "evidence" / "sustainability-briefing-2026-10-08"
+REAL_DATE = "2026-10-08"
+
+
+class TestRealArtifacts(unittest.TestCase):
+    """Run the checker against the ACTUAL delivered artifacts, not fakes.
+
+    Skipped (not failed) if the evidence bundle is absent, so the suite still
+    runs on a checkout that does not carry cron evidence.
+    """
+
+    def setUp(self):
+        if not (REAL_DIR / f"sustainability-briefing-{REAL_DATE}.md").exists():
+            self.skipTest("evidence bundle not present in this checkout")
+
+    def test_delivered_files_present(self):
+        self.assertTrue(v.check_files(str(REAL_DIR), REAL_DATE))
+
+    def test_delivered_sections(self):
+        text = (REAL_DIR / f"sustainability-briefing-{REAL_DATE}.md").read_text()
+        self.assertTrue(v.check_sections(text))
+
+    def test_delivered_sources(self):
+        text = (REAL_DIR / f"sustainability-briefing-{REAL_DATE}.md").read_text()
+        self.assertTrue(v.check_sources(text))
+
+    def test_delivered_word_count(self):
+        text = (REAL_DIR / f"sustainability-briefing-{REAL_DATE}.md").read_text()
+        self.assertTrue(v.check_word_count(text))
+
+    def test_delivered_binaries_carry_text(self):
+        # the REAL committed .docx/.pdf, via the same extractor the CLI uses
+        self.assertTrue(v.check_binary_carry_text(str(REAL_DIR), REAL_DATE))
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
