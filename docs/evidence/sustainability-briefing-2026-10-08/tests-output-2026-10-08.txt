@@ -1,0 +1,14 @@
+test_files_good (__main__.TestChecks.test_files_good) ... ok
+test_files_reject_missing_binary (__main__.TestChecks.test_files_reject_missing_binary) ... ok
+test_sections_good (__main__.TestChecks.test_sections_good) ... ok
+test_sections_reject_missing_radar (__main__.TestChecks.test_sections_reject_missing_radar) ... ok
+test_sources_good (__main__.TestChecks.test_sources_good) ... ok
+test_sources_reject_malformed_line (__main__.TestChecks.test_sources_reject_malformed_line) ... ok
+test_words_good (__main__.TestChecks.test_words_good) ... ok
+test_words_reject_too_long (__main__.TestChecks.test_words_reject_too_long) ... ok
+test_words_reject_too_short (__main__.TestChecks.test_words_reject_too_short) ... ok
+
+----------------------------------------------------------------------
+Ran 9 tests in 0.002s
+
+OK
