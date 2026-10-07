@@ -585,7 +585,7 @@ def _mark_close_refused(cycle_id: int, verdict: str, findings_json: str) -> None
 REVIEW_RECEIPT_PREFIX = ".reviewed-"
 
 
-def _write_review_receipt(cycle_id=None) -> None:
+def _write_review_receipt(cycle_id=None, args: dict | None = None) -> None:
     """Write a SHA-bound CLEAN review receipt for the range about to be pushed.
 
     WHY this exists: the self-adversarial review runs at CLOSE, and closing is
@@ -603,7 +603,11 @@ def _write_review_receipt(cycle_id=None) -> None:
     sees a partial receipt.
     """
     try:
-        state = _read_lock(None) or {}
+        # args is REQUIRED in practice: _read_lock(None) cannot resolve this
+        # session's id, so it returned None and every receipt write bailed
+        # silently at the next check. The writer must resolve the lock exactly
+        # as the close path does - from the tool-call args.
+        state = _read_lock(args) or {}
         repo = str(state.get("repo_path") or "").strip()
         slug = str(state.get("repo_slug") or "").strip()
         # EVERY bail path logs. These two returns were silent, which cost a real
@@ -3318,7 +3322,7 @@ def _end_change(args: dict) -> CallToolResult:
     # The close being PERMITTED is the authorisation event. A CLEAN review is one
     # way to reach it, not the only one — so the receipt is written at the point
     # the gate stops objecting, whichever path got us there.
-    _write_review_receipt(task_id)
+    _write_review_receipt(task_id, args)
 
     # Step 4: Release the lock
     _release_lock(args)
