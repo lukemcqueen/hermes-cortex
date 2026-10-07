@@ -22,8 +22,12 @@ RESULT: ALL PASS
 ```
 The FIRST run FAILED (word count 1321 > 1200; AC-1 regex mis-specified). I
 investigated the probe, found the AC-1 threshold was my own wrong spec, fixed the
-probe AND tightened the draft to 902 words, then re-ran. Every source URL in the
-briefing was returned by a real `web_search` call in this session.
+probe AND tightened the draft to 902 words, then re-ran. Source provenance: every
+`Source:` line in the briefing corresponds to a URL returned by a `web_search`
+call made earlier in this session; that correspondence is visible in the session
+tool output but is NOT independently reproducible from the committed artifacts
+(the search backend does not persist a log here), so it is stated as a session
+claim rather than a committed-verifiable one.
 
 ## 3. Did I follow governance for every change?
 YES. `begin_change(sustainability-briefing-2026-10-08)` to work to
@@ -42,11 +46,11 @@ the output dir and the evidence commit carries only the artifacts.
 
 ## 5. Is there anything I would do differently?
 YES — one real lesson. I wrote the deliverables to the cron output dir (correct
-per fleet convention) but the adversarial reviewer only inspects the **git
-diff**, so it could not see them and repeatedly flagged "unverifiable claim."
-Next time: commit the artifact to `docs/evidence/` in the SAME cycle the gate can
-inspect, instead of relying on a hashes-in-a-note self-report. Saved below as a
-lesson.
+per fleet convention) and initially closed the cycle with a prose self-report
+rather than committed, inspectable evidence. The review gate could not read the
+artifacts and flagged them as unverified. The fix is structural, not cosmetic:
+commit the artifacts to a tracked path in the same cycle so any reviewer can
+read them. Saved below as a lesson.
 
 ## 6. Irony check: does my execution contradict my change?
 NO — after correction. Earlier state: I claimed "verified" from a script whose
