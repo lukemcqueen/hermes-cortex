@@ -2010,7 +2010,7 @@ _gateway_start_epoch() {
 }
 
 _restart_pending() {
-  # Returns 0 (restart needed) iff the deployed enforcer content changed
+  # Returns 0 (restart needed) iff the WATCHED SET's content changed
   # AFTER the running gateway started. Uses a persisted hash+epoch state
   # file so unchanged content never re-warns — unless the restart is still
   # genuinely pending (gateway predates the recorded change epoch).
@@ -2023,15 +2023,45 @@ _restart_pending() {
   #       must NEVER silently mean "no restart needed" — that was the
   #       original deploy≠load misery.
   local init_py="${HOME}/.hermes/plugins/governance-enforcer/__init__.py"
-  if [[ ! -f "$init_py" ]]; then
-    warn "  Restart check: enforcer not deployed at ${init_py} — skipping restart check"
+  # Watched set: files whose content activates ONLY after a gateway restart.
+  # The enforcer was the sole entry when this was written. The loop-governance
+  # MCP server is the same hazard and was NOT covered — 2026-10-07: a CLEAN
+  # review could not write its pre-push receipt because the RUNNING MCP child
+  # predated the change, so the receipt gate had no producer and every
+  # always-review push was refused until someone restarted the gateway, with
+  # no banner telling them why. Hashed as ONE combined value so the existing
+  # single-hash state file keeps working: no state migration, and a change to
+  # ANY watched file fires the banner.
+  local watched=(
+    "$init_py"
+    "${CORTEX_DEPLOY_HOME}/tools/loop-governance/loop-gov-mcp.py"
+  )
+  local _present=0 _parts="" _w _h
+  for _w in "${watched[@]}"; do
+    [[ -f "$_w" ]] || continue
+    _present=$((_present + 1))
+    if ! _h=$(_sha256_of "$_w"); then
+      warn "  Restart check: cannot hash ${_w} — UNVERIFIABLE, treating as restart required"
+      return "$RESTART_UNVERIFIABLE"
+    fi
+    _parts="${_parts}${_w}:${_h}"$'\n'
+  done
+  if [[ "$_present" -eq 0 ]]; then
+    warn "  Restart check: none of the watched files are deployed (${watched[*]}) — skipping restart check"
     return "$RESTART_CLEAN"
   fi
-  local deployed_hash stored_hash="" stored_epoch=0 change_epoch gw_epoch
-  if ! deployed_hash=$(_sha256_of "$init_py"); then
-    warn "  Restart check: cannot hash deployed enforcer — UNVERIFIABLE, treating as restart required"
+  local _parts_file deployed_hash stored_hash="" stored_epoch=0 change_epoch gw_epoch
+  if ! _parts_file=$(mktemp); then
+    warn "  Restart check: cannot create a temp file for the combined hash — UNVERIFIABLE, treating as restart required"
     return "$RESTART_UNVERIFIABLE"
   fi
+  printf '%s' "$_parts" > "$_parts_file"
+  if ! deployed_hash=$(_sha256_of "$_parts_file"); then
+    rm -f "$_parts_file"
+    warn "  Restart check: cannot hash the watched set — UNVERIFIABLE, treating as restart required"
+    return "$RESTART_UNVERIFIABLE"
+  fi
+  rm -f "$_parts_file"
   if [[ -f "$GOV_ENFORCER_STATE" ]]; then
     if ! read -r stored_hash stored_epoch < "$GOV_ENFORCER_STATE"; then
       warn "  Restart check: state file ${GOV_ENFORCER_STATE} unreadable/empty — re-recording"
