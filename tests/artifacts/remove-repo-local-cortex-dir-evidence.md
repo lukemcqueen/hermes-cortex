@@ -46,7 +46,26 @@ commit. The 9-count was wrong when stated.
 - adversarial verify: passed on 19 files
 - syntax / OS-aware-path / change-validate: all passed
 
-### AC-5 (hook fail-closed): **INCONCLUSIVE — not verified**
+### AC-5 — NOW VERIFIED at the function level
+
+`python3 tests/test_lock_fail_closed.py` (committed, runnable WITHOUT pytest,
+imports the DEPLOYED enforcer so a bad deploy is caught):
+
+```
+PASS  missing lock refuses (fail-closed): got=False want=False
+PASS  exact session id honoured: got=True want=True
+PASS  foreign id refused: got=False want=False
+PASS  Phase 2 refuses a different session in the same repo (guard holds): got=False want=False
+PASS  Phase 2 OR grants a session-less legacy lock on repo_path match: got=True want=True
+PASS  Phase 2 OR still refuses a different repo: got=False want=False
+
+RESULT: ALL PASS - the lock check fails closed
+```
+
+The earlier hook-level probe (below) remains inconclusive; this covers the
+property directly.
+
+### AC-5 first attempt: INCONCLUSIVE (kept for the record)
 
 Attempted: run the DEPLOYED `~/.hermes-cortex/hooks/pre-push` inside a throwaway
 `git init` repo with no governance lock, expecting a BLOCK.
@@ -109,3 +128,22 @@ Also fixed.
 NOT fixed, and now visible: that heredoc's "Architecture Overview" block is
 hand-maintained and stale ("26 steps", "16 utility scripts", "15 commands",
 "4 categories"). It should be derived or deleted — its own cycle.
+
+## 7. CORRECTION — the Phase-2 `repo_path` OR is narrower than I claimed
+
+I told the operator this change "would increase protection" as belt-and-braces.
+Writing the test showed the claim was WRONG, and the test now records the
+measured truth:
+
+- **Same session, slug mismatch:** NOT fixed by the OR. Phase 1 matches the
+  exact session-id filename before any slug logic runs, so the OR is never
+  consulted. My stated justification was wrong.
+- **Different session, same repo:** the cross-session guard refuses FIRST, so
+  the OR is not reached. It cannot widen access — good, but it is not a fix.
+- **Only reachable benefit:** legacy locks carrying NO `session_id` (the
+  "predates PID handoff" case the docstring cites). Real, but far narrower than
+  the multi-repo false block I described.
+
+Recommendation: keep it for the legacy case, but record it as narrow. Reverting
+is also defensible — it is close to dead weight, and the honest summary is
+"small legacy benefit", not "belt-and-braces".
