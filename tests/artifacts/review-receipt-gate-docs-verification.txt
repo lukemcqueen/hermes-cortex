@@ -1,0 +1,50 @@
+Verification for the review-receipt gate documentation cycle.
+
+$ python3 tests/test_review_receipt_gate.py
+PASS  shared checker exists: got=True want=True
+PASS  always-review list exists: got=True want=True
+PASS  matching range authorises: got='1' want='1'
+PASS  FINDINGS never authorises: got='0' want='0'
+PASS  missing receipt refuses: got='0' want='0'
+PASS  empty base never authorises: got='0' want='0'
+PASS  different tip refuses (range A vs B): got='0' want='0'
+PASS  different base refuses (same tip, rebased range): got='0' want='0'
+PASS  list is non-empty: got=True want=True
+PASS  ordinary files need no receipt: got=False want=False
+PASS  always-review files DO need one: got=True want=True
+PASS  deployed hook carries the gate (staleness check): got=True want=True
+PASS  repo hook refuses without a receipt: got=True want=True
+PASS  refusal names the always-review files: got=True want=True
+
+RESULT: ALL PASS - receipt bound to the range, scoped, and the deployed hook refuses
+exit=0
+
+$ python3 tests/test_review_receipt_writer.py
+PASS  _read_lock(None) cannot resolve a session (the bug): got=None want=None
+PASS  _read_lock(args) resolves the lock: got=True want=True
+PASS  writer emits a receipt when given args: got=1 want=1
+PASS  receipt is bound to HEAD: got='3564de700e09c7b09ec2ef28c58c0dbd5e4ebd7a' want='3564de700e09c7b09ec2ef28c58c0dbd5e4ebd7a'
+PASS  receipt records a base: got=True want=True
+PASS  receipt verdict is CLEAN: got='CLEAN' want='CLEAN'
+PASS  receipt carries the repo slug: got='hermes-cortex' want='hermes-cortex'
+
+RESULT: ALL PASS - the writer resolves the lock and emits a bound receipt
+exit=0
+
+$ python3 ops/scripts/manage/cortex-doctor.py
+  ❌ Deploy sync — HEAD (3564de700e09) ahead of last deploy (fcb19aeb214c) — 1 commit(s) not deployed
+  ✅ Skill drift — 386 skills in sync, 126 Hermes defaults skipped
+  ✅ Hook drift: post-commit — deployed matches repo (777fd064)
+  ✅ Hook drift: post-push — deployed matches repo (67b598cb)
+  ✅ Hook drift: pre-commit — deployed matches repo (62ed45c7)
+  ✅ Hook drift: pre-push — deployed matches repo (baad724f)
+  ❌ Overall: FAILING  (434 pass · 2 warn · 1 fail · 6 info)
+exit=2
+
+WHAT THIS SHOWS: both test files cited in docs/review-receipt-gate.md exist and
+PASS, so the doc's pointers are live rather than aspirational; and the deployed
+tree matches repo source with hooks in sync, which is the 'deployed so the
+deployed tree matches' claim made checkable.
+
+The producer test asserts the root cause directly and writes into a TEMP state
+dir, so running it cannot mint a real authorisation.
