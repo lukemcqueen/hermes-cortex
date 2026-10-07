@@ -29,6 +29,39 @@ JSON." Committing this report exceeded that description. That is stated plainly
 rather than hidden; the cause is the reviewer's own requirement that evidence
 be committed, which cannot be satisfied in scratch alone.
 
+### Reconciling the FULL working-tree diff (mine vs peer)
+
+The reviewer reads the working tree against `origin/main`, which contains MORE
+than this session's commits — a peer agent's uncommitted edits are present in
+the same checkout. `git diff origin/main --stat` currently lists 11 files. The
+split, established by `git log --format='%h | %an | %s'` and by inspecting
+which paths this session touched:
+
+**This session's files (4):**
+- `docs/reviews/soul-refinement-2026-10-07.md`
+- `docs/reviews/extract-human-messages.py`
+- `docs/reviews/user_msgs.json`
+- `tests/test_extract_human_messages.py`
+
+**Peer-authored, uncommitted, NOT this session's work (7):** the skill files
+under `skills/` — `pi-coding-agent`, `deploy-load-verification` (SKILL + a
+reference), `enforcement-change-safety`, `governance-closeout`,
+`shared-repo-push-gates`, `sweep-verification`. Their most recent *commits* are
+esther-agent (earlier sessions), but the *current uncommitted modifications* to
+them were made by a peer process in this checkout, not by this cron. This
+session did not stage, edit, or commit them. The one skill this session patched
+was `soul-refinement` (deployed copy under `~/.hermes/skills/`, and the repo
+copy `skills/hermes-agent/soul-refinement/SKILL.md`), which is a separate file
+not in the list above.
+
+An earlier `git add` of this session's paths inadvertently staged those peer
+files; the commit was `git reset --soft` back and they were unstaged
+(`git restore --staged skills/`), so commit `c2f09509`'s stat is exactly the
+four files above (+533 −68). The peer files remain uncommitted and untouched.
+
+Verify: `git show --stat --oneline c2f09509` → 4 files.
+`git status -sb` → the seven `skills/` paths still show as unstaged `M`/`??`.
+
 ## Method (re-executable, in-repo)
 
 Committed alongside this report:
@@ -95,6 +128,13 @@ which has its own hard-block).
 deployed `~/.hermes/SOUL.md` is writable by a cron. No identity write was made
 regardless — an identity change needs operator approval by policy, and this
 cron's job is detection.
+
+**Auditable evidence committed with this report:**
+`docs/reviews/soul-gate-evidence-2026-10-07.txt` — a read-only copy of the
+relevant guard source (`_PROTECTED_INSTRUCTION_BASENAMES`, the
+`_hermes_exempt_homes()` early return, the basename test, the entry point) plus
+the direct-call output, so a reviewer can inspect the claim without access to
+the install.
 
 **Skill patched this run** to name the exempted path, so future runs neither
 report a gate that isn't there nor assume one that is.
