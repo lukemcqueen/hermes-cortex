@@ -1,3 +1,16 @@
+PRE-PUSH SNAPSHOT - deliberate, not an omission.
+
+This artifact was generated BEFORE the push, on purpose: the operator's standing
+instruction is that review must precede push, so this review is the gate and the
+commits are expected to show as ahead of origin/main. A reviewer should therefore
+read this file for what it CAN establish:
+
+  - local commit integrity: the commits exist and are ordered as claimed
+  - branch divergence: exactly how many commits are local-only
+  - which commit IS the remote tip
+
+It does NOT establish remote state, and no remote-sync claim is made here.
+
 $ git status -sb
 ## main...origin/main [ahead 4]
 
