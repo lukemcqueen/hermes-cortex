@@ -33,6 +33,17 @@ def _check(label, cond, detail=""):
         _FAIL.append(label)
 
 
+def _raises_typeerror(fn):
+    """True if calling fn() raises exactly a TypeError."""
+    try:
+        fn()
+        return False
+    except TypeError:
+        return True
+    except Exception:
+        return False
+
+
 def _load():
     spec = importlib.util.spec_from_file_location("loop_gov_mcp", REPO / "mcp-servers" / "loop-gov-mcp.py")
     if spec is None or spec.loader is None:
@@ -457,10 +468,11 @@ def test_reviewer_timeout_signature_contract():
            getattr(mcp, "_reviewer_timeout") is not getattr(mcp, "_reviewer_env_timeout"),
            "same object — collision not resolved")
 
-    # A cx that is a str must NOT be silently .get()-able: the size-scaled
-    # helper guards its own contract. Callers pass a dict (from _complexity);
-    # a str in that slot is programmer error and must not crash as the old
-    # silent AttributeError did — we assert it behaves deterministically.
+    # A cx that is a str must be rejected with a clear TypeError (fail-fast),
+    # NOT crash as the old silent AttributeError did. This is the exact
+    # 2026-10-07 crash: a str bound to cx flowed into cx.get(\"files\") as
+    # \"'str' object has no attribute 'get'\". Callers pass a dict from
+    # _complexity; a str is programmer error and must fail loudly.
     saved = {k: os.environ.get(k) for k in
              ("ADVERSARIAL_REVIEW_TIMEOUT", "ADVERSARIAL_REVIEW_AGENT_TIMEOUT")}
     try:
@@ -471,6 +483,14 @@ def test_reviewer_timeout_signature_contract():
         _check("size-scaled helper accepts a dict cx",
                isinstance(mcp._reviewer_timeout(small, "llm"), int),
                mcp._reviewer_timeout(small, "llm"))
+        # A str cx is rejected loudly (TypeError), not silently crashed.
+        _check("str cx raises TypeError (fail-fast, not hidden AttributeError)",
+               _raises_typeerror(lambda: mcp._reviewer_timeout("ADVERSARIAL_REVIEW_TIMEOUT", 300)),
+               "expected TypeError for str cx")
+        # None cx keeps the configured default (no scaling).
+        _check("None cx returns the configured default",
+               mcp._reviewer_timeout(None, "llm") == 300,
+               mcp._reviewer_timeout(None, "llm"))
     finally:
         for k, v in saved.items():
             if v is None:

@@ -2368,6 +2368,14 @@ def _reviewer_timeout(cx: Optional[dict], backend: str) -> int:
         else "ADVERSARIAL_REVIEW_TIMEOUT",
         "900" if backend == "agent" else "300",
     ) or (900 if backend == "agent" else 300))
+    # Guard the contract: cx must be a measurement dict or None. A str (the
+    # 2026-10-07 collision) is truthy past `if not cx` and would hit cx.get()
+    # as the silent "'str' object has no attribute 'get'" crash. Fail fast with
+    # a clear error instead of crashing the close in a buried way.
+    if cx is not None and not isinstance(cx, dict):
+        raise TypeError(
+            f"_reviewer_timeout expected cx to be a dict or None, got {type(cx).__name__} "
+            f"(value {cx!r}); a caller bound a non-dict to the change-measurement slot")
     if not cx:
         return base
     files = int(cx.get("files", 0) or 0)

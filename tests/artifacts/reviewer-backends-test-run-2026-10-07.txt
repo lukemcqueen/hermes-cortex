@@ -65,6 +65,8 @@ Reviewer timeout signature contract — cx is a dict, env-clamp is distinct
   PASS  env-clamp helper is a DISTINCT name, not a shadow
   PASS  the two timeout helpers are different functions
   PASS  size-scaled helper accepts a dict cx
+  PASS  str cx raises TypeError (fail-fast, not hidden AttributeError)
+  PASS  None cx returns the configured default
 
 Reviewer tiering dogfood script — real module routing
   PASS  dogfood script exists
