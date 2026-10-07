@@ -1,5 +1,21 @@
 Verification for the review-receipt gate documentation cycle.
 
+CORRECTION: the previous revision of this file was cited as evidence that "the
+deployed tree matches" while its own doctor output said FAILING — because the
+commit was made AFTER the deploy, leaving HEAD ahead of the deployed tree. The
+review was right. Deployed first this time, then captured.
+
+$ bash ~/.hermes-cortex/scripts/cortex-update.sh      # deploy exit=0
+$ python3 ops/scripts/manage/cortex-doctor.py
+  ✅ Deploy sync — deployed commit matches HEAD
+  ✅ Skill drift — 386 skills in sync, 126 Hermes defaults skipped
+  ✅ Hook drift: post-commit — deployed matches repo (777fd064)
+  ✅ Hook drift: post-push — deployed matches repo (67b598cb)
+  ✅ Hook drift: pre-commit — deployed matches repo (62ed45c7)
+  ✅ Hook drift: pre-push — deployed matches repo (baad724f)
+  ⚠️  Overall: WARNING  (435 pass · 2 warn · 0 fail · 6 info)
+doctor exit=1
+
 $ python3 tests/test_review_receipt_gate.py
 PASS  shared checker exists: got=True want=True
 PASS  always-review list exists: got=True want=True
@@ -18,12 +34,11 @@ PASS  refusal names the always-review files: got=True want=True
 
 RESULT: ALL PASS - receipt bound to the range, scoped, and the deployed hook refuses
 exit=0
-
 $ python3 tests/test_review_receipt_writer.py
 PASS  _read_lock(None) cannot resolve a session (the bug): got=None want=None
 PASS  _read_lock(args) resolves the lock: got=True want=True
 PASS  writer emits a receipt when given args: got=1 want=1
-PASS  receipt is bound to HEAD: got='3564de700e09c7b09ec2ef28c58c0dbd5e4ebd7a' want='3564de700e09c7b09ec2ef28c58c0dbd5e4ebd7a'
+PASS  receipt is bound to HEAD: got='cba8aeafe4cb3682aa36527b6c400e4ad58219c3' want='cba8aeafe4cb3682aa36527b6c400e4ad58219c3'
 PASS  receipt records a base: got=True want=True
 PASS  receipt verdict is CLEAN: got='CLEAN' want='CLEAN'
 PASS  receipt carries the repo slug: got='hermes-cortex' want='hermes-cortex'
@@ -31,20 +46,16 @@ PASS  receipt carries the repo slug: got='hermes-cortex' want='hermes-cortex'
 RESULT: ALL PASS - the writer resolves the lock and emits a bound receipt
 exit=0
 
-$ python3 ops/scripts/manage/cortex-doctor.py
-  ❌ Deploy sync — HEAD (3564de700e09) ahead of last deploy (fcb19aeb214c) — 1 commit(s) not deployed
-  ✅ Skill drift — 386 skills in sync, 126 Hermes defaults skipped
-  ✅ Hook drift: post-commit — deployed matches repo (777fd064)
-  ✅ Hook drift: post-push — deployed matches repo (67b598cb)
-  ✅ Hook drift: pre-commit — deployed matches repo (62ed45c7)
-  ✅ Hook drift: pre-push — deployed matches repo (baad724f)
-  ❌ Overall: FAILING  (434 pass · 2 warn · 1 fail · 6 info)
-exit=2
+$ git ls-tree --name-only HEAD tests/artifacts/
+tests/artifacts/abs-path-live-verification.txt
+tests/artifacts/loop-gov-regression.txt
+tests/artifacts/mcp-restart-check-verification.txt
+tests/artifacts/pi-mcp-e2e-transcript-2026-10-02.md
+tests/artifacts/receipt-not-written-diagnosis.txt
+tests/artifacts/remove-repo-local-cortex-dir-evidence.md
+tests/artifacts/remove-repo-local-cortex-dir-git-state.txt
+tests/artifacts/remove-repo-local-cortex-dir-test-run.txt
+tests/artifacts/review-receipt-gate-docs-verification.txt
+tests/artifacts/review-receipt-gate-live-refusal.txt
+tests/artifacts/review-receipt-gate-test-run.txt
 
-WHAT THIS SHOWS: both test files cited in docs/review-receipt-gate.md exist and
-PASS, so the doc's pointers are live rather than aspirational; and the deployed
-tree matches repo source with hooks in sync, which is the 'deployed so the
-deployed tree matches' claim made checkable.
-
-The producer test asserts the root cause directly and writes into a TEMP state
-dir, so running it cannot mint a real authorisation.
