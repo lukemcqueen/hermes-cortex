@@ -1,0 +1,29 @@
+Docs-only review-material budget: verification.
+
+$ python3 tests/test_review_material_bound.py
+  always-review path disqualifies a .md-only range ✓
+  explicit budget override still honoured ✓
+  docs-only range (46068 chars) not truncated, policy disclosed ✓
+  empty/unparseable diff is NOT docs-only ✓
+  over-budget docs notice is neutral and says to split the cycle ✓
+  one .py file reverts the whole range to the standard budget ✓
+  short diff passes through unchanged ✓
+  files in the cut are named (17 of 20) ✓
+  gate uses _bound_diff; no bare head-only slice remains ✓
+  disclosure: 19860 of 21860 chars omitted, stated as a gate limit ✓
+  head+tail bound ✓ (tail preserved); control shows the old head-only form lost it
+
+RESULT: ALL PASS (11 tests)
+exit=0
+
+$ git ls-tree --name-only HEAD tests/artifacts/ | grep review-material
+
+
+Note on the fixture numbers, so they are checkable: the docs fixture is 46068
+chars, which exceeds DIFF_CHAR_BUDGET (12000) and fits DIFF_CHAR_BUDGET_DOCS
+(60000) - so 'not truncated' is evidence the docs budget applied, not that the
+diff was small. The over-budget case is driven by a 20-file fixture.
+
+The file is runnable standalone (no pytest) because pytest is not installed on
+every fleet host; before this it could not execute anywhere and its assertions
+went unverified.
