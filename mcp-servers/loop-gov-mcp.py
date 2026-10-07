@@ -582,22 +582,6 @@ def _mark_close_refused(cycle_id: int, verdict: str, findings_json: str) -> None
         log.warning("could not record close_refused on the lock: %s", e)
 
 
-def _git_out(args: list, repo: str) -> str:
-    """Run git in `repo`, return stripped stdout or "" on ANY failure.
-
-    Empty is the fail-closed answer: the receipt is not written, so the pre-push
-    gate does not find one, so the push is refused. Never guess a SHA.
-    """
-    if not repo:
-        return ""
-    try:
-        p = subprocess.run(["git", "-C", repo] + args,
-                           capture_output=True, text=True, timeout=10)
-    except (OSError, subprocess.TimeoutExpired):
-        return ""
-    return p.stdout.strip() if p.returncode == 0 else ""
-
-
 REVIEW_RECEIPT_PREFIX = ".reviewed-"
 
 
@@ -624,13 +608,13 @@ def _write_review_receipt(cycle_id=None) -> None:
         slug = str(state.get("repo_slug") or "").strip()
         if not repo or not slug:
             return
-        head = _git_out(["rev-parse", "HEAD"], repo)
+        head = _git_capture(Path(repo), "rev-parse", "HEAD").strip()
         if not head:
             return
-        base = _git_out(["merge-base", "origin/main", "HEAD"], repo)
+        base = _git_capture(Path(repo), "merge-base", "origin/main", "HEAD").strip()
         if not base:
-            base = _git_out(["rev-list", "--max-parents=0", "HEAD"], repo)
-        files = [f for f in _git_out(["diff", "--name-only", base + ".." + head], repo).splitlines() if f.strip()]
+            base = _git_capture(Path(repo), "rev-list", "--max-parents=0", "HEAD").strip()
+        files = [f for f in _git_capture(Path(repo), "diff", "--name-only", base + ".." + head).splitlines() if f.strip()]
         receipt = {
             "verdict": "CLEAN",
             "repo_slug": slug,
@@ -1890,14 +1874,29 @@ def _reviewer_timeout(env_name: str, default: int) -> int:
 
 
 def _git_capture(repo: Path, *args: str, timeout: int = 15) -> str:
-    """Run a read-only git command in `repo`, return stdout ("" on any error)."""
+    """Run a read-only git command in `repo`, return stdout ("" on any error).
+
+    Failures are LOGGED, never silently dropped (2026-10-07). "" is a legitimate
+    answer — a repo with no commits, a path with no match — so without a log a
+    corrupt repo, a missing git binary and a valid empty result were
+    indistinguishable. Return values are deliberately UNCHANGED so existing
+    callers keep their behaviour; only the diagnostics improved.
+    """
+    if not str(repo):
+        log.warning("_git_capture called with an empty repo — refusing to guess")
+        return ""
     try:
-        return subprocess.run(  # noqa: S603,S404 — fixed argv, git -C
+        p = subprocess.run(  # noqa: S603,S404 — fixed argv, git -C
             ["git", "-C", str(repo)] + list(args),
             capture_output=True, text=True, timeout=timeout,
-        ).stdout
-    except Exception:
+        )
+    except Exception as e:
+        log.warning("_git_capture(%s) failed in %s: %s", args, repo, e)
         return ""
+    if p.returncode != 0:
+        log.warning("_git_capture(%s) exited %s in %s: %s",
+                    args, p.returncode, repo, (p.stderr or "").strip()[:300])
+    return p.stdout
 
 
 def _parse_numstat(text: str):
