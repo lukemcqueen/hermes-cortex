@@ -705,3 +705,93 @@ Beyond docs, the repo ships a TypeScript prototype under `prototype-ts/` (Bun, `
 ## Docs archive regeneration
 On request, regenerate the portable archive under a governance cycle:
 `tar czf /tmp/steadfaste-docs-<YYYYmmdd-HHMM>.tar.gz spec/ docs/ README.md`, then VERIFY the expected file is present (`tar tzf … | grep <file>`), then deliver as `MEDIA:/abs/path` in Telegram. Include both the byte size and the design-doc count in the report.
+
+## Surface authority: every drive verb must DECLARE its authority
+
+The core enforces surface authority server-side (`session.rs`
+`authority_required_for_kind`): `Commission`/`Ratified`/`Veto` need **Partner**,
+`Direct`/`Stop`/`Resume`/`DryRun`/`Cancel` need **Steward**, worker verbs
+(`Started`/`Progress`/`Result`/`Failed`/`KeepAlive`) are ungated. The declared
+level rides the frame's **data** as `"authority_level": "observer"|"partner"|"steward"`;
+`extract_declared_authority` in `steadfaste/src/main.rs` reads it. With no
+declaration the effective level is the stored lease authority, falling back to
+**Observer** — fail-closed. Symptom: an Error ACK
+`Unauthorized { kind: "Commission", required: Partner, actual: Observer }`.
+
+- **The raw wire `Client` declares nothing**, so anything driving it by hand must
+  put `authority_level` in the frame data itself. `SurfaceClient`
+  (`steadfaste-surface`) injects it and derives `seq`/`ts` — **prefer it for any
+  drive verb**; a hand-built frame is how the TUI silently lost its authority
+  (its `commission()` and `stop_frame()` were rejected by the gate, a real
+  production break invisible to its unit tests, which only covered the lib
+  helpers).
+- **Test frames are drive verbs too.** `steadfaste-client`'s
+  `commission_gets_ack`/`serve_lifecycle`/`shared_session` and `steadfaste`'s
+  `wire_serve` helpers all had to declare authority; a frame builder helper is
+  the right place (inject once, not per call site).
+- **A gate's failure can be downstream.** `Lease(NotLeaseHolder)` on `Stop` was
+  *not* a lease bug — the commission that should have acquired the lease had
+  been rejected as Observer, so the test's `expect("commission")` passed while
+  nothing was leased. Fix the first rejection, re-read the later error.
+- **A doc comment can contradict the code and outlive it.**
+  `dispatch_with_authority`'s comment claimed `None` → backward-compatible
+  `Steward`; the code (correctly) falls back to `Observer`. Fix the comment where
+  it lives; never "fix" the fail-closed code to match a stale comment.
+
+## The Telegram gateway (`core/crates/steadfaste-gateway`)
+
+Not the empty `gateway/` placeholder dir — that holds only the Surface contract
+(`gateway/contract.md`, interface **I6**). The crate drives the core through
+`steadfaste-surface`'s `SurfaceClient`, never a hand-built frame. Layout:
+`surface.rs` (neutral contract v1), `auth.rs` (fail-closed allowlist),
+`command.rs` (the §2.3 command→drive-verb map + `verb()`), `format.rs`
+(chunking + MarkdownV2 escaping), `dedupe.rs` (`update_id` ring), `telegram.rs`
+(adapter + `callback_data` codec + `callback_to_command`), `main.rs` (Gateway
+Core).
+
+- **A button tap must take the SAME path as the typed command** —
+  `callback_to_command` feeds the same `Command` enum, so a callback can never
+  reach a verb the slash form could not.
+- **`Checkpoint` is an `EventType`, not a v1 `Kind`** — `/checkpoint` maps to no
+  drive verb; reply honestly rather than inventing one.
+- **Chat `ratify` must be refused until a read channel exists.** A ratify
+  certifies a specific escalation's `payload_hash`; with no `steadfaste.read.*`
+  on `SurfaceClient` the gateway cannot fetch it, and sending an invented hash
+  is a **forged certification**. Refuse and record the gap (G-GW-1).
+- **Verify end-to-end against a stub Bot API, not just unit tests.** Point
+  `STEADFASTE_TELEGRAM_API_BASE` at a local HTTP stub that serves `/getUpdates`
+  and records `/sendMessage`, run the real `steadfaste-gateway` binary against
+  the real core, and assert: authorized command → reply, **unauthorized → no
+  reply at all**, callback answered, reply chunked/escaped. Env: token
+  `STEADFASTE_TELEGRAM_TOKEN`, allowlist `..._ALLOWED_USERS`/`..._ALLOWED_CHATS`.
+  The gateway **refuses to start** with no allowlist (fail-closed).
+
+## Test-suite hygiene on this repo
+
+- **A single broken test file in an unrelated crate blocks the WHOLE workspace
+  suite from compiling** — one missing import (`unfreeze` in
+  `wire/tests/spawn.rs`) hides every other crate's results and makes the run
+  look like "one failing test". Always run `cargo test --workspace
+  --no-fail-fast` and grep `^error: test failed` for the true target list; fix
+  the compile error first.
+- **A live-API test must be OPT-IN, not triggered by an ambient credential.**
+  `live_jev` skipped only when `TYPESAFE_API_KEY` was unset, but this host has
+  one exported for unrelated tooling — so a plain `cargo test` did a live, paid
+  run against a provider that rejected it (HTTP 400 `api_usage_error`). Gate on
+  `STEADFASTE_LIVE_JEV=1` **and** the key. A test that spends money must never
+  run as a side effect.
+- **Measure the test count, never propagate it.** The `--list` count is
+  authoritative: `cargo test --workspace -- --list 2>/dev/null | grep -cE ': test$'`.
+  After a `git pull --rebase` that lands a peer's work, re-measure on the MERGED
+  tree (the header conflicts on every parallel edit); the "N passed" sum
+  over-inflates. Header lived in `build-tasks.md` ("Where we are") and
+  `docs/README.md` — both must move together.
+- **Probe discipline pays again: two of my own probes were wrong before the code
+  was.** (1) an assertion looked for the raw `job-e2e` in wire text that was
+  correctly MarkdownV2-escaped to `job\-e2e`; (2) a count expected two
+  backslashes where one is right. Check the probe's own assumptions before
+  declaring a bug — the code was correct both times.
+- **The pre-commit secret-leak detector false-positives on the real Telegram API
+  base URL** (`https://api.telegram.org` flagged as a "non-placeholder domain")
+  and on the frozen JSON-Schema `$schema` URI. Non-blocking; do not "fix" the
+  URL or add an ignore.

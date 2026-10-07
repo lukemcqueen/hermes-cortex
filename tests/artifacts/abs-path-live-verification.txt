@@ -1,8 +1,8 @@
 absolute-path (repo_path) change — LIVE verification artifact
 ========================================================================
-generated      : 2026-10-06T15:33:26+00:00
-revision       : db40e0fa  (branch main)
-origin/main    : db40e0fa
+generated      : 2026-10-07T00:54:57+00:00
+revision       : 88f06dc9  (branch main)
+origin/main    : 88f06dc9
 generator      : tests/run_abs_path_live_verification.py
 
 Re-run with:  python3 tests/run_abs_path_live_verification.py
@@ -29,12 +29,10 @@ PASS  repo source == deployed copy: skills/devops/governance-closeout/SKILL.md
 EVIDENCE — is the deployed code LOADED? (process start vs deploy mtime)
 ------------------------------------------------------------------------
 4. LOADED OR ONLY DEPLOYED — process start vs deploy mtime
-deploy mtime (newest of the two deployed files): 2026-10-07T00:26:10
-364198 Tue Oct 6 23:18:35 2026 ~/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3 … run
-364506 Tue Oct 6 23:18:43 2026 ~/.hermes/hermes-agent/venv/bin/python3 … ~/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py
+deploy mtime (newest of the two deployed files): 2026-10-07T09:53:22
 Verdict: a start time BEFORE the deploy mtime means the new code is on disk but
-.governance-20261006_235601_e62faf14.json: repo_slug=True  repo_path=False
-✅ Skill drift — 385 skills in sync, 126 Hermes defaults skipped
+.governance-20261007_085641_cb5794a4.json: repo_slug=True  repo_path=True
+✅ Skill drift — 386 skills in sync, 126 Hermes defaults skipped
 
 FULL TRANSCRIPT
 ========================================================================
@@ -72,26 +70,26 @@ PASS  _secondary_lock_path puts the marker inside the nested repo
 ========================================================================
 3. DEPLOYED == REPO SOURCE
 ========================================================================
-deployed loop-gov-mcp.py: md5=fc43262fa9f082f6091bd21f1d3a1c8f  (192870 bytes, mtime=2026-10-07T00:26:10)
-repo     loop-gov-mcp.py: md5=fc43262fa9f082f6091bd21f1d3a1c8f  (192723 bytes)
+deployed loop-gov-mcp.py: md5=e209fc58d3186041c924e85e9b5f44e0  (195204 bytes, mtime=2026-10-07T09:53:22)
+repo     loop-gov-mcp.py: md5=e209fc58d3186041c924e85e9b5f44e0  (195057 bytes)
 PASS  deployed matches repo: loop-gov-mcp.py
-deployed governance-enforcer/__init__.py: md5=b2b15994216d03cabb2aad41372cb5b4  (131326 bytes, mtime=2026-10-07T00:26:10)
+deployed governance-enforcer/__init__.py: md5=b2b15994216d03cabb2aad41372cb5b4  (131326 bytes, mtime=2026-10-07T09:53:22)
 repo     governance-enforcer/__init__.py: md5=b2b15994216d03cabb2aad41372cb5b4  (131326 bytes)
 PASS  deployed matches repo: governance-enforcer/__init__.py
 
 ========================================================================
 4. LOADED OR ONLY DEPLOYED — process start vs deploy mtime
 ========================================================================
-deploy mtime (newest of the two deployed files): 2026-10-07T00:26:10
-  364198 Tue Oct 6 23:18:35 2026 ~/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3 … run
-  364506 Tue Oct 6 23:18:43 2026 ~/.hermes/hermes-agent/venv/bin/python3 … ~/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py
+deploy mtime (newest of the two deployed files): 2026-10-07T09:53:22
+  2081004 Wed Oct 7 08:55:45 2026 ~/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3 … run
+  2081319 Wed Oct 7 08:55:52 2026 ~/.hermes/hermes-agent/venv/bin/python3 … ~/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py
 Verdict: a start time BEFORE the deploy mtime means the new code is on disk but
 NOT in memory (MCP child needs a kill; enforcer needs a gateway /reset).
 
 ========================================================================
 5. LIVENESS WITNESS — this session's lock payload
 ========================================================================
-  .governance-20261006_235601_e62faf14.json: repo_slug=True  repo_path=False
+  .governance-20261007_085641_cb5794a4.json: repo_slug=True  repo_path=True
 A lock written with repo_slug but no repo_path was written by the PREVIOUS revision.
 
 ========================================================================
@@ -99,17 +97,17 @@ A lock written with repo_slug but no repo_path was written by the PREVIOUS revis
 ========================================================================
   badbc960  skills/devops/deploy-load-verification/SKILL.md
     repo source before sync : 16180 bytes
-    repo source == deployed : True (18899 bytes)
+    repo source == deployed : True (20580 bytes)
 PASS  repo source == deployed copy: skills/devops/deploy-load-verification/SKILL.md
   de5f058c  skills/devops/governance-closeout/SKILL.md
     repo source before sync : 26392 bytes
-    repo source == deployed : True (28324 bytes)
+    repo source == deployed : True (29817 bytes)
 PASS  repo source == deployed copy: skills/devops/governance-closeout/SKILL.md
 
 ========================================================================
 7. DOCTOR — skill drift count
 ========================================================================
-✅ Skill drift — 385 skills in sync, 126 Hermes defaults skipped
+✅ Skill drift — 386 skills in sync, 126 Hermes defaults skipped
 
 ========================================================================
 RESULT: ALL PASS

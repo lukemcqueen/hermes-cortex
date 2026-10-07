@@ -400,6 +400,20 @@ def _derive_slug(args: dict | None = None) -> str:
     when it names a real git repo, so a bogus value cannot point the review at
     an arbitrary directory.
     """
+    # Priority 0 (2026-10-06; corrected 2026-10-07): a repo the ENFORCER observed
+    # for THIS session and injected into the call. The slug is taken from the
+    # SAME absolute path, never from a separate `repo_slug` validated as
+    # `HOME/<slug>`: for a checkout nested deeper than a HOME child the two
+    # disagree — the path is accepted as absolute while the name fails the
+    # `HOME/<slug>` test — and the lock then MIXES provenance. Observed in cycle
+    # 10800: `repo_slug: "hermes-cortex"` beside `repo_path:
+    # "~/.hermes/hermes-agent"`. The close gate resolves the lock's
+    # repo from `repo_path`, so it audited hermes-agent — a tree that session
+    # never touched — and returned permanent FINDINGS for work it could not see.
+    observed = _derive_repo_path(args)
+    if observed is not None:
+        return observed.name
+    # Priority 0b: legacy callers that send only a slug (no absolute path).
     if isinstance(args, dict):
         injected = str(args.get("repo_slug") or "").strip()
         if injected and (HOME / injected / ".git").exists():
@@ -2793,32 +2807,56 @@ def _adversarial_review_gate(lock: dict, cycle: dict,
     # dozen 420s timeouts). When the lock's repo shows NOTHING in the window
     # while another candidate repo gained commits, refuse and name both instead
     # of silently auditing the wrong tree. Fail loud, never silently skip.
-    if not cx["lines"] and not cx["files"]:
-        _started = lock.get("started_at", "")
-        if _window_commit_count(repo, _started) == 0:
-            _elsewhere = _repos_with_window_work(lock, exclude=repo)
-            if _elsewhere:
-                _other = _elsewhere[0]
-                try:
-                    _mark_close_refused(cycle.get("id", 0), "WRONG_REPO", "[]")
-                except Exception:
-                    log.warning("Could not mark refusal on the lock (non-critical)")
-                return CallToolResult(content=[TextContent(type="text", text=(
-                    "❌ Cannot close: the lock's repo cannot contain this session's work.\n\n"
-                    f"  Lock repo_slug : {lock.get('repo_slug', '')!r}  ->  {repo}\n"
-                    f"  In that repo   : no diff since the lock opened ({_started}) and\n"
-                    f"                   no commits in the window.\n"
-                    f"  Work found in  : {_other}\n\n"
-                    "The lock was tagged with the HOST's canonical repo while the\n"
-                    "session is working in another repo, so self-adversarial review\n"
-                    "would judge a tree that cannot contain the change. Refusing rather\n"
-                    "than returning permanent findings for work the reviewer cannot see.\n\n"
-                    "  Report this to the orchestrator. Do NOT retry end_change in a loop\n"
-                    "  (each retry re-runs a full review) and do NOT force the close.\n"
-                    "  Remedy: the governance-enforcer injects the session's real repo\n"
-                    "  into mcp__loop_governance__* calls; once that is deployed AND the\n"
-                    "  gateway has reloaded it, begin_change tags the lock correctly."
-                ))])
+    _started = lock.get("started_at", "")
+    # Authoritative signal: does the lock's repo hold ANY commit THAT THIS
+    # SESSION authored in the window? A "shows nothing" test is not enough —
+    # any unrelated commit in that repo (a peer's, or a pipeline's) makes the
+    # change count non-zero and lets the reviewer audit a tree that cannot
+    # contain the work, returning permanent FINDINGS for work it cannot see
+    # (cycle 10800: 1 file / 86 lines of a PEER's work in the lock's repo while
+    # this session's work sat in another repo). The session identity must be
+    # POSITIVELY resolved before concluding the lock's repo holds none of its
+    # work; an unresolved identity keeps the whole-window review, with the
+    # provenance labels below (fail open toward review).
+    _lock_author = _agent_author(repo)
+    _lock_base = (
+        _git_capture(repo, "rev-list", "-1", "--before=" + _started, "HEAD").strip() or "HEAD"
+    )
+    _lock_holds_own_work = bool(_lock_author) and bool(
+        _authored_commits(repo, _lock_base, _lock_author)
+    )
+    if (not cx["lines"] and not cx["files"]) or (_lock_author and not _lock_holds_own_work):
+        _elsewhere = _repos_with_window_work(lock, exclude=repo)
+        if _elsewhere:
+            _other = _elsewhere[0]
+            try:
+                _mark_close_refused(cycle.get("id", 0), "WRONG_REPO", "[]")
+            except Exception:
+                log.warning("Could not mark refusal on the lock (non-critical)")
+            _why = (
+                "no commits in the window"
+                if _window_commit_count(repo, _started) == 0
+                else f"commits in the window, but NONE authored by this session ({_lock_author})"
+            )
+            return CallToolResult(content=[TextContent(type="text", text=(
+                "❌ Cannot close: the lock's repo cannot contain this session's work.\n\n"
+                f"  Lock repo_slug : {lock.get('repo_slug', '')!r}  ->  {repo}\n"
+                f"  In that repo   : {_why}.\n"
+                f"  Work found in  : {_other}\n\n"
+                "The lock was tagged with a repo this session is not working in (a host-\n"
+                "canonical default, or a session repo-hint that drifted), so self-\n"
+                "adversarial review would judge a tree that cannot contain the change.\n"
+                "Refusing rather than returning permanent findings for work the reviewer\n"
+                "cannot see.\n\n"
+                "  Report this to the orchestrator. Do NOT retry end_change in a loop\n"
+                "  (each retry re-runs a full review) and do NOT force the close.\n"
+                "  Remedy: the governance-enforcer injects the session's real repo\n"
+                "  into mcp__loop_governance__* calls, and begin_change derives BOTH the\n"
+                "  lock's repo_slug and repo_path from that one path (never a canonical\n"
+                "  slug beside an observed path); once that is deployed AND the gateway\n"
+                "  has reloaded it, begin_change tags the lock correctly — open a fresh\n"
+                "  cycle there and land the change with a commit in that repo."
+            ))])
 
     if not cx["is_complex"]:
         log.info("self-adversarial review: cycle %s simple (%s lines, %s files) — skip",
