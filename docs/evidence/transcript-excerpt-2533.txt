@@ -1,0 +1,29 @@
+=== transcript excerpt (docs/evidence/update-transcript-final.txt) lines 307-350, 744-754 ===
+Verified by: sed -n '307,320p;343,347p;744,754p' docs/evidence/update-transcript-final.txt
+
+  Hermes Cortex Doctor
+    Repo branch
+    Repo clean           <- WARNING (the single warning; doctor warn count = 1)
+    Repo sync
+    Deploy sync          <- PASS
+    AGENTS.md sync
+    Private repo         <- INFO
+    Deployed gate smoke
+    Self-adversarial review template
+    Self-adversarial review gate
+    SOUL.md canonical 12
+    SOUL.md local principles
+    Ollama
+    worker-service
+    Metrics arrival age  <- INFO (not a warning)
+    Systemd scope
+    Disk usage
+    Stranded slices
+
+    Overall: WARNING (424 pass, 1 warn, 0 fail, 7 info)   <- 0 FAIL
+
+    REQUIRED ACTIONS — resolve each warning or error above
+      Run: git status to review
+      Expected on a host that neither pushes nor hosts a sink. Otherwise check
+      the sink service and this agent's VICTORIA_METRICS_URL.
+      <- generic help block printed below any warning/error; not a failed check
