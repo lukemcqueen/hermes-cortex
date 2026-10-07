@@ -1,34 +1,32 @@
 === cycle 2533 pull+deploy: final verifiable facts ===
+Deployed revision (last-update.json before == after): abc5bd30
 
-[1] Deploy result (cortex-update.sh, full transcript update-final-c0e79fd8.txt)
-    Updated e770362c -> e770362c
+[1] cortex-update.sh deploy run (full transcript: docs/evidence/update-final-c0e79fd8.txt):
+    Updated abc5bd30 -> abc5bd30
     Deploy sync
     Overall: HEALTHY (425 pass, 0 warn, 0 fail)
 
-[2] git status --porcelain at final HEAD: (empty)
+[2] git status --porcelain at deployed HEAD abc5bd30: (empty)
 
-[3] last-update.json (deployed revision authority):
-    before e770362c  after e770362c  files_updated 233
+[3] last-update.json (deployed revision authority, verified live):
+    before abc5bd30   after abc5bd30   files_updated 233
 
-[4] git log --oneline -3 at final HEAD:
+[4] git log --oneline -3:
+    abc5bd30 docs(evidence): cycle 2533 verifiable facts (deploy, pending-cycles, HEAD, scope)
     e770362c docs(evidence): compact verified lines for cycle 2533
     d7772bff docs(evidence): clean git status after final deploy
-    7665c7ed docs(evidence): final HEALTHY doctor + clean git status captured
 
 [5] "PENDING cycles" semantics (source: ops/scripts/manage/cortex_doctor/checks.py):
-    The check queries loop_cycles WHERE decision='PENDING'; PASS(green) is emitted
-    when there are NO leaked unscored cycles from finished tasks. It does NOT show
-    a count because zero is the pass condition. The live run shows "PENDING cycles"
-    with a green check => zero pending leaks. Confirmed by live grep:
-    python3 cortex-doctor.py --quiet | grep pending =>
-      "  PENDING cycles"   (green)
-      "  Overall: HEALTHY (425 pass, 0 warn, 0 fail)"
+    The check queries loop_cycles WHERE decision='PENDING'; it emits PASS(green)
+    when there are ZERO leaked unscored cycles from finished tasks (no count is
+    shown because zero is the pass condition). Live run shows it green alongside
+    "Overall: HEALTHY (425 pass, 0 warn, 0 fail)".
 
-[6] Doctor output at final HEAD (doctor-final-022508cf.txt):
-    Repo clean / Deploy sync / Overall HEALTHY (425 pass, 0 warn, 0 fail)
+[6] Doctor output at deployed state (docs/evidence/doctor-final-022508cf.txt +
+    doctor-0004e710.txt): Repo clean / Deploy sync / Overall HEALTHY (425 pass,
+    0 warn, 0 fail).
 
-[7] Scope: this session authored ONLY docs/evidence/ files (all commits in window
-    88f06dc..HEAD are under author kustos@hermes.local; docs commits are evidence
-    artifacts). blocked_ips.add and cycle-2497-bus-clean-scan.md are prior
-    threat-pipeline auto-commits pulled in by the rebase, not authored by this
-    pull+deploy session.
+[7] Scope: this session authored ONLY docs/evidence/ files. blocked_ips.add and
+    cycle-2497-bus-clean-scan.md are prior threat-pipeline auto-commits pulled
+    in by the rebase (window 88f06dc..HEAD authored kustos@hermes.local); they
+    are not this pull+deploy session's authored change.
