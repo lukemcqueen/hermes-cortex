@@ -68,11 +68,37 @@ non-200/401/403 as **down**, so one throttled probe = false "unreachable".
 
 ## Step 3 — fix at the source
 
-- Relax the health server block's `limit_req burst` / `limit_conn` (or exempt the
-  health path) so the fleet's legitimate health checks are never throttled into
-  "down". Keep SOME cap for the public no-auth endpoint — a health response is a
-  tiny fixed payload, and the correctness cost of throttling your own monitoring
-  outweighs the DoS defence.
+- **PREFERRED — allowlist the fleet so it bypasses the limits entirely**, via the
+  empty-key trick, instead of relaxing limits for everyone: nginx applies NO rate
+  or conn limit when the limit_zone key variable is empty. Key the zones off a
+  `geo` map that yields `""` for trusted fleet IPs and `$binary_remote_addr` for
+  everyone else. The fleet gets unlimited probes; the public keeps the tight burst
+  / conn ceiling as a real DDoS defence. Add a worker IP to the map when it joins
+  off-LAN:
+  ```nginx
+  geo $limit_bypass {
+      default          $binary_remote_addr;
+      192.168.0.0/16   "";     # LAN fleet (router NAT aggregate)
+      <wan-worker-ip>  "";     # external WAN worker
+      127.0.0.0/8      "";     # localhost
+  }
+  limit_req_zone  $limit_bypass zone=general:10m rate=20r/s;
+  limit_conn_zone $limit_bypass zone=conn_limit:10m;
+  ```
+  Only the zone key changes — no server-block edits. Validate it before shipping:
+  parse-check with `nginx -t -c <minimal-http-conf> -p <writable-prefix> \`
+  `-g 'pid <prefix>/nginx.pid; ...'` (override the root pid/access_paths via -g or
+  the parse fails on permissions, not config), and run that throwaway nginx to
+  confirm an allowlisted IP returns 200 instead of 503 under a burst. Raising
+  burst/conn for everyone is the fallback when allowlisting isn't feasible, but it
+  weakens the public ceiling.
+- **The live /etc/nginx is commonly root-owned and stale** — a fix in the repo
+  template will NOT reach production without a privileged apply. On a host where
+  the agent lacks sudo for /etc/nginx, write the EXACT operator command
+  (`sudo cp <repo>/ops/install/deploy/nginx/<conf> /etc/nginx/<conf> && sudo
+  nginx -t && sudo systemctl reload nginx`) into the report and flag that the
+  change will not take effect until that runs. Shipping the fix and declaring it
+  done while /etc/nginx still throttles is exactly how this class recurs.
 - **Compare /etc/nginx against the repo nginx template FIRST**
   (`ops/install/deploy/nginx/` for a cortex install). A drifted/stale deploy can
   carry tighter limits than the source, and a routine `cortex-update --force` will
