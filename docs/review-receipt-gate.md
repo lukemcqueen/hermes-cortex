@@ -131,3 +131,45 @@ reviewable — splitting is the only honest answer past that point.
 **The notice never instructs the reviewer.** An earlier marker said the content
 was "readable with read_file", which read as a directive and was flagged as
 injection. It now states the limit and stops.
+
+---
+
+## Why a repo-local `.hermes-cortex/` can reappear — and what catches it
+
+Removing the directory is not the end of the job, because **two processes can
+recreate it**, and for a while they did.
+
+**The writers.** `loop-gov-mcp.py` (`_write_lock` → `_secondary_lock_path`) and
+the governance enforcer each wrote `<repo>/.hermes-cortex/.governance-lock`. Both
+are now disabled and both deployed copies are clean — but their *deployed files*
+were fixed while the *running processes* still held the old revision. That is
+**deploy ≠ load**: every `begin_change()` in that window wrote the marker again,
+and once the marker file was cleaned by hand, an **empty directory shell** was
+left behind. That empty shell is what reappeared.
+
+**Why nothing reported it.** Two reasons, both now fixed:
+1. `.gitignore` rules ignored paths inside `.hermes-cortex/`, so a recurrence was
+   invisible to `git status`. Those rules are removed on purpose — unignored, a
+   recurrence surfaces as untracked.
+2. Nothing asserted the directory's *absence*. Now something does.
+
+**The check.** `cortex-doctor` reports `Repo-local .hermes-cortex`:
+
+| Situation | Result |
+|---|---|
+| absent | `PASS — absent — correct for the Cortex repo` |
+| present (empty) | `FAIL`, names the path and its entries |
+| present with `.governance-lock` | `FAIL`, and says governance state is being written inside the repo |
+
+A `FAIL` here is the correct severity, not an over-reaction: the directory's
+presence means a process is writing repo-local governance state, which is exactly
+what removing it was for. If it fires, **restart the gateway** before deleting
+anything — otherwise a stale process writes it straight back.
+
+**Why it matters beyond tidiness.** Inside `~/hermes-cortex`, the name
+`.hermes-cortex` shadows the *runtime* directory `~/.hermes-cortex`, so a marker
+written there is indistinguishable from legitimate repo state — and it makes the
+repo a consumer of the deploy it is meant to be the source of.
+
+`tests/test_repo_local_cortex_dir_check.py` asserts the check fails on presence
+and names the marker, so the guard cannot silently rot.

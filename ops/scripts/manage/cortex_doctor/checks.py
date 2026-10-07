@@ -5161,4 +5161,46 @@ def check_orphan_cycle_resolution(res) -> None:
     res.add("Orphan-cycle resolution", "PASS",
             f"{detail} — no bare MOVE_ON left behind by the reaper")
 
+def check_repo_local_cortex_dir(res):
+  """The Cortex repo must NOT carry a .hermes-cortex/ directory.
 
+  Why this is a check and not a comment: this directory was removed on
+  2026-10-07 precisely because, inside ~/hermes-cortex, its name shadows the
+  RUNTIME directory ~/.hermes-cortex — so a governance marker written into it was
+  indistinguishable from legitimate repo state, and it made the repo a source of
+  the deploy it was supposed to consume.
+
+  It then REAPPEARED as an empty directory, and nothing reported it. Root cause
+  was the pre-fix marker writer: both loop-gov-mcp.py and the enforcer wrote
+  <repo>/.hermes-cortex/.governance-lock, and their DEPLOYED files were fixed
+  while the RUNNING processes still held the old revision (deploy != load), so
+  every lock acquisition in that window recreated it. Once the gateway restarted
+  the writers stopped — but only a hand audit noticed the residue.
+
+  So: FAIL if the directory exists at all, and say what is inside it. A FAIL is
+  correct rather than harsh — its presence means something is writing repo-local
+  governance state, which is the thing the removal was for.
+
+  The .gitignore rules that once hid this path are gone on purpose: unignored, a
+  recurrence also shows up as untracked, which is how it was caught.
+  """
+  stray = CORTEX_REPO / ".hermes-cortex"
+  if not stray.exists():
+    res.add("Repo-local .hermes-cortex", "PASS", "absent — correct for the Cortex repo")
+    return
+  try:
+    entries = sorted(p.name for p in stray.iterdir())
+  except OSError as e:                                  # unreadable is not "clean"
+    res.add("Repo-local .hermes-cortex", "FAIL",
+            f"exists at {stray} but is unreadable: {e}",
+            "Investigate permissions; treat as present")
+    return
+  marker = stray / ".governance-lock"
+  detail = f"exists at {stray}"
+  detail += f" — contains: {', '.join(entries)}" if entries else " — empty"
+  fix = ("Remove it: `rm -rf " + str(stray) + "`. Then find the writer — a "
+         "repo-local lock means an MCP/enforcer process is still running pre-fix "
+         "code (deploy != load: restart the gateway).")
+  if marker.exists():
+    detail += " — CONTAINS .governance-lock, so governance state is being written inside the repo"
+  res.add("Repo-local .hermes-cortex", "FAIL", detail, fix)
