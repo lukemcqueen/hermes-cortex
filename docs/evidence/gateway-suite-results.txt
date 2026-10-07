@@ -3,8 +3,8 @@ Run it and this file is rewritten from the actual output:
     python3 -m pytest tests/test_gateway_parity_evidence.py -q -s
 
 SCOPE — the 11 suites listed first are the PARITY tests the cutover
-claim (>= 111) rests on. The whole gateway surface is 23 files and
-240 tests: cite THAT number for gateway coverage, and this one for
+claim (>= 111) rests on. The whole gateway surface is 24 files and
+248 tests: cite THAT number for gateway coverage, and this one for
 the parity claim. Both are measured in the same run of this file.
 
 parity suites (11):
@@ -21,9 +21,9 @@ parity suites (11):
   tests/test_cortex_gateway_daemon_slice.py
 
 measured: 126 passed (parity claim, not the surface total)
-pytest summary: ============================= 126 passed in 4.78s ==============================
+pytest summary: ============================= 126 passed in 5.35s ==============================
 
-whole gateway surface (23 files):
+whole gateway surface (24 files):
   tests/test_cortex_gateway_backend.py
   tests/test_cortex_gateway_daemon.py
   tests/test_cortex_gateway_daemon_slice.py
@@ -44,12 +44,13 @@ whole gateway surface (23 files):
   tests/test_gateway_streaming.py
   tests/test_gateway_typing.py
   tests/test_msg_gateway.py
+  tests/test_pi_reply_path_boundaries.py
   tests/test_telegram_bridge.py
   tests/test_telegram_bridge_e2e.py
   tests/test_telegram_notify_unit.py
 
-measured: 240 passed (whole gateway surface)
-pytest summary: ============================= 240 passed in 10.73s =============================
+measured: 248 passed (whole gateway surface)
+pytest summary: ============================= 248 passed in 12.72s =============================
 
 Tail of the parity run (host paths scrubbed):
 ============================= test session starts ==============================
@@ -70,7 +71,7 @@ tests/test_telegram_notify_unit.py ............................          [ 87%]
 tests/test_cortex_gateway_parity_matrix.py .....                         [ 91%]
 tests/test_cortex_gateway_daemon_slice.py ...........                    [100%]
 
-============================= 126 passed in 4.78s ==============================
+============================= 126 passed in 5.35s ==============================
 
 
 test names in the files cited by review findings (22):

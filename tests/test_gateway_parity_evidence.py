@@ -58,6 +58,7 @@ _SURFACE = [
     "tests/test_gateway_streaming.py",
     "tests/test_gateway_typing.py",
     "tests/test_msg_gateway.py",
+    "tests/test_pi_reply_path_boundaries.py",
     "tests/test_telegram_bridge.py",
     "tests/test_telegram_bridge_e2e.py",
     "tests/test_telegram_notify_unit.py",
