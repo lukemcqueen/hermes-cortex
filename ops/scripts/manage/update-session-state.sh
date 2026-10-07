@@ -32,9 +32,17 @@ while [[ $# -gt 0 ]]; do
 done
 SESSION_FILE="$REPO_DIR/.hermes-cortex/sessions/current.md"
 
+# The Cortex repo carries no .hermes-cortex/ (removed 2026-10-07: inside
+# ~/hermes-cortex that name shadowed the runtime dir ~/.hermes-cortex and made a
+# governance marker indistinguishable from repo state). Session state is RUNTIME
+# state, so fall back to the deploy home. A consumer PROJECT still keeps its
+# tracked overlay, which is why the repo-local path is preferred when present.
+# Previously this hard-exited 1, so deleting the repo dir made the 2-hourly cron
+# fail on every run for the Cortex repo itself.
 if [ ! -f "$SESSION_FILE" ]; then
-    echo "ERROR: $SESSION_FILE not found. Run from the hermes-cortex repo root." >&2
-    exit 1
+    SESSION_FILE="${HOME}/.hermes-cortex/sessions/current.md"
+    mkdir -p "$(dirname "$SESSION_FILE")"
+    [ -f "$SESSION_FILE" ] || printf '# Session State — %s\n\n' "$REPO_DIR" > "$SESSION_FILE"
 fi
 
 # --- Gather current state ---
@@ -85,7 +93,7 @@ $RECENT_COMMITS
 
 | Layer | What |
 |-------|------|
-| Installer | \`install.sh\` — $(wc -l < install.sh | tr -d ' ') lines, 26 steps, idempotent |
+| Installer | \`ops/install/install.sh\` — $(wc -l < ops/install/install.sh 2>/dev/null | tr -d ' ') lines |
 | Skills | $(find skills -name 'SKILL.md' -not -path './.git/*' 2>/dev/null | wc -l | tr -d ' ') skills across 4 categories (software-development, devops, social-media, productivity) |
 | Python files | ${PY_COUNT} files (${PY_LINES} LOC) |
 | Shell files | ${SH_COUNT} files (${SH_LINES} LOC) |

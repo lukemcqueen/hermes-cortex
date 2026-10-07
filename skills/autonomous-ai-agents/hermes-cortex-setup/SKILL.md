@@ -406,13 +406,12 @@ mkdir -p "${HOME}/brain/lessons"
 ### 10. Copy Skills, Hooks, and Loop Governance Tools
 
 ```bash
-# Skills
-cp -r ~/hermes-cortex/.hermes-cortex/skills ~/.hermes-cortex/
-
-# Hooks
-cp ~/hermes-cortex/.hermes-cortex/hooks/pre-commit ~/.hermes-cortex/hooks/pre-commit
-cp ~/hermes-cortex/.hermes-cortex/hooks/post-commit ~/.hermes-cortex/hooks/post-commit
-chmod +x ~/.hermes-cortex/hooks/pre-commit ~/.hermes-cortex/hooks/post-commit
+# Skills + hooks — deploy from the repo source. The Cortex repo no longer
+# carries a .hermes-cortex/ directory (removed 2026-10-07: inside ~/hermes-cortex
+# that name shadowed the runtime dir ~/.hermes-cortex and made a governance
+# marker indistinguishable from repo state). cortex-update.sh installs both
+# from ops/scripts/ and ops/install/hooks/ into ~/.hermes-cortex/hooks/.
+bash ~/hermes-cortex/ops/scripts/cortex-update.sh
 
 # Governance DB bootstrap (one-time per machine)
 python3 ~/.hermes/scripts/populate-governance-db.py
