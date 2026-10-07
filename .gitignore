@@ -6,7 +6,6 @@
 # Personal/local artifacts — PII protection
 cleanup_repos.sh
 patches/
-.hermes-cortex/plugins/
 # Moral Architecture source PDF — carries the author's real name (kept local)
 docs/reference/moral-architecture/*.pdf
 
@@ -102,9 +101,10 @@ node_modules/
 
 # Git filter-repo artifacts
 # Agent infrastructure
-.hermes-cortex/memory/
-.hermes-cortex/sessions/archive/
-.hermes-cortex/sessions/current.md
+# (.hermes-cortex/ ignore rules REMOVED 2026-10-07: the Cortex repo must not
+#  carry that directory — inside ~/hermes-cortex it shadowed the runtime dir
+#  ~/.hermes-cortex and made a governance marker look like repo state. Deliberately
+#  NOT ignored now, so a recurrence shows up as untracked instead of hiding.)
 IMPROVEMENTS.md
 
 # Agent registry (PII — real hostnames, URLs, IPs)
@@ -119,9 +119,9 @@ allow-ips-manual.conf
 # and worth sharing with the fleet. New scripts are auto-tracked.
 # (Previously used per-file whitelist; fell out of sync too often.)
 /runtime
-# Governance lock marker — written by begin_change() inside repo
-# as secondary protection alongside the primary lock in ~/.hermes-cortex/state/
-.hermes-cortex/.governance-lock
+# (The in-repo governance lock marker was REMOVED 2026-10-07 — locks are
+#  runtime-only in ~/.hermes-cortex/state/, and nothing may write governance
+#  state inside a repository. Its ignore rule went with it.)
 private-data/
 # mycortex DB backups (e.g. pre-migration dumps) — large, PII-heavy, never commit
 ops/services/mycortex/backups/
