@@ -13,6 +13,7 @@ missing file) — not merely print PASS.
 from __future__ import annotations
 
 import importlib.util
+import re
 import tempfile
 import unittest
 from pathlib import Path
@@ -126,6 +127,29 @@ class TestRealArtifacts(unittest.TestCase):
     def test_delivered_binaries_carry_text(self):
         # the REAL committed .docx/.pdf, via the same extractor the CLI uses
         self.assertTrue(v.check_binary_carry_text(str(REAL_DIR), REAL_DATE))
+
+    def test_delivered_sources_resolve_to_known_domains(self):
+        # Provenance check: every Source: URL must be well-formed AND its host
+        # must be in the allowlist of sources actually returned by this
+        # session's web_search calls. This is the reproducible, committed form of
+        # the provenance claim (source-to-call correspondence itself is not
+        # reproducible, but URL well-formedness + expected-host membership is).
+        import urllib.parse
+        text = (REAL_DIR / f"sustainability-briefing-{REAL_DATE}.md").read_text()
+        urls = re.findall(r"^Source: (https?://\S+)$", text, re.M)
+        self.assertGreaterEqual(len(urls), 13)
+        allowed = {
+            "www.vogue.com", "vegconomist.com", "www.acs.org",
+            "sustainablefutures.linklaters.com", "www.bluesign.com",
+            "single-market-economy.ec.europa.eu", "wetrack.fashion",
+            "www.fsc.go.kr", "www.asiae.co.kr", "www.bcg.com",
+            "www.mcleukerai.com", "pmarketresearch.com", "www.nature.org",
+            "innovationintextiles.com", "infashionbusiness.com",
+        }
+        hosts = {urllib.parse.urlparse(u).netloc for u in urls}
+        unknown = hosts - allowed
+        self.assertEqual(unknown, set(),
+                         f"source host(s) not in the session allowlist: {unknown}")
 
 
 if __name__ == "__main__":

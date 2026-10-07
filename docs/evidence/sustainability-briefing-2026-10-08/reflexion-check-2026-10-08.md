@@ -22,12 +22,13 @@ RESULT: ALL PASS
 ```
 The FIRST run FAILED (word count 1321 > 1200; AC-1 regex mis-specified). I
 investigated the probe, found the AC-1 threshold was my own wrong spec, fixed the
-probe AND tightened the draft to 902 words, then re-ran. Source provenance: every
-`Source:` line in the briefing corresponds to a URL returned by a `web_search`
-call made earlier in this session; that correspondence is visible in the session
-tool output but is NOT independently reproducible from the committed artifacts
-(the search backend does not persist a log here), so it is stated as a session
-claim rather than a committed-verifiable one.
+probe AND tightened the draft to 902 words, then re-ran. Source provenance: the
+source-to-search-call correspondence is NOT reproducible from committed artifacts
+(the search backend persists no log here), so it is not claimed as verifiable.
+What IS committed and reproducible is TestRealArtifacts.
+test_delivered_sources_resolve_to_known_domains, which asserts every `Source:`
+line is a well-formed URL whose host is in the allowlist of domains this
+session's searches returned.
 
 ## 3. Did I follow governance for every change?
 YES. `begin_change(sustainability-briefing-2026-10-08)` to work to
