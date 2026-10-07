@@ -1,0 +1,22 @@
+Verification for the restart-needed check now covering the loop-governance MCP.
+
+$ bash -n ops/scripts/cortex-update.sh
+exit=0
+
+$ bash ~/.hermes-cortex/scripts/cortex-update.sh      # deploy; MCP source changed
+[1;33m⚠[0m   Restart check: cannot determine gateway start time — UNVERIFIABLE, treating as restart required
+[1;33m⚠[0m ⚠ COULD NOT VERIFY restart state (see warnings above) — treat as restart required.
+[1;33m⚠[0m The new enforcement chain activates ONLY after the gateway process restarts.
+  ✅ MCP server (loop-governance)
+exit=0
+
+WHAT THIS SHOWS: the changed MCP source now reaches the restart-needed check, and
+the check fires rather than staying silent. Here it fires via the UNVERIFIABLE
+path ("cannot determine gateway start time") because the gateway process could
+not be identified from the deploy's own process context — which is the intended
+fail-loud behaviour: an unverifiable check must never read as "no restart
+needed". Whether it reports PENDING or UNVERIFIABLE, the operator sees it.
+
+Also visible: "MCP server (loop-governance)" reports deploy success, and the
+running child is NOT reloaded by it — the gap this change exposes rather than
+fixes, since only a gateway restart reloads a gateway-owned MCP child.
