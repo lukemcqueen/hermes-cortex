@@ -49,7 +49,7 @@ commit. The 9-count was wrong when stated.
 ### AC-5 — VERIFIED at the function level
 
 Raw execution log committed alongside this file:
-`tests/artifacts/remove-repo-local-cortex-dir-test-run.log` (full invocation +
+`tests/artifacts/remove-repo-local-cortex-dir-test-run.txt` (full invocation +
 stdout + exit code), so the ALL-PASS result is not only prose in this document.
 
 `python3 tests/test_lock_fail_closed.py` (committed, runnable WITHOUT pytest,

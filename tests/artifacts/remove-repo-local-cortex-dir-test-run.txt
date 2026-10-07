@@ -1,0 +1,10 @@
+$ python3 tests/test_lock_fail_closed.py
+PASS  missing lock refuses (fail-closed): got=False want=False
+PASS  exact session id honoured: got=True want=True
+PASS  foreign id refused: got=False want=False
+PASS  Phase 2 refuses a different session in the same repo (guard holds): got=False want=False
+PASS  Phase 2 OR grants a session-less legacy lock on repo_path match: got=True want=True
+PASS  Phase 2 OR still refuses a different repo: got=False want=False
+
+RESULT: ALL PASS - the lock check fails closed
+exit=0
