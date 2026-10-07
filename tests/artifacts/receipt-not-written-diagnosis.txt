@@ -1,0 +1,30 @@
+Diagnosis: a CLEAN review produced no receipt, and no log line said why.
+
+=== CLEAN review for cycle 10828 ===
+2026-10-07 11:25:37,568 [mcp-server] INFO: self-adversarial review: cycle 10828 CLEAN
+=== every receipt-related line since the 11:21:56 restart ===
+(empty above = no receipt log line was emitted)
+
+
+$ git status -sb && git log --oneline origin/main..HEAD
+## main...origin/main [ahead 8]
+caa52e0f fix(governance): log every bail path in the receipt writer
+8ea2c07f fix(governance): write the push receipt whenever the close is permitted
+d17d09cd docs(deploy): commit the restart-check verification output
+a19dcd8c fix(deploy): cover the loop-governance MCP in the restart-needed check
+e8caf1f1 test(governance): run the repo hook, regenerate the refusal transcript
+0d0978b0 fix(governance): close an empty-SHA hole; make the gate testable end-to-end
+3f53f87b fix(governance): reuse _git_capture instead of duplicating it; stop swallowing git errors
+56705d65 feat(governance): make a CLEAN review a PRECONDITION of push
+
+
+WHAT THIS ESTABLISHES: the review for cycle 10828 ran and returned CLEAN (so the
+skip-as-simple path is NOT the explanation here), and no receipt log line was
+emitted at all — which points at _write_review_receipt's silent early returns,
+the defect this commit fixes.
+
+SCOPE NOTE for the deploy-is-not-load claim: that change is commit a19dcd8c
+("fix(deploy): cover the loop-governance MCP in the restart-needed check"), made
+earlier in this session and therefore not part of this cycle's diff. It is
+committed and verifiable with `git show a19dcd8c`; it is not claimed as part of
+this cycle's change.
