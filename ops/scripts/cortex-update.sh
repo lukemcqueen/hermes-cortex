@@ -45,6 +45,64 @@ info()  { echo -e "${GREEN}✓${RESET} $*"; }
 warn()  { echo -e "${YELLOW}⚠${RESET} $*"; }
 error() { echo -e "${RED}✗${RESET} $*"; }
 
+# ── Hermes config read — THE hermes-adapter seam ───────────────────────
+# The ONLY place cortex-update reaches into Hermes to READ a config value.
+# Coding agents: if Hermes changes its config interface, rewrite THIS one
+# function — nothing else here knows Hermes internals.
+#
+# Contract: `hermes_config_value <key>` echoes the value for a dot-path key
+# (e.g. `memory.provider`), or echoes an EMPTY string when the value is unset
+# OR every probe fails. Fail-open is required: a host with no Hermes install
+# must still finish the update, not break it.
+#
+# Probing order (least-coupling first):
+#   1. Public `hermes config get <key>` CLI if the binary is on PATH — a
+#      stable interface, not an internal.
+#   2. Raw PyYAML read of ~/.hermes/config.yaml via the cortex venv python
+#      (the HC venv has PyYAML; no hermes import, no hermes binary needed).
+#   3. Empty — fail-open.
+hermes_config_value() {
+  local key="$1"
+  local value path probe
+  # 1. Public CLI (interface, not internal).
+  if command -v hermes >/dev/null 2>&1; then
+    value="$(hermes config get "$key" --json 2>/dev/null || true)"
+    if [[ -n "$value" ]]; then
+      # --json may print a JSON string for scalar values (e.g. `"mycortex-mem"`).
+      # Strip surrounding quotes so the caller sees the bare value.
+      [[ "$value" == \"*\" ]] && value="${value%\"}" && value="${value#\"}"
+      echo "$value"
+      return 0
+    fi
+  fi
+  # 2. Raw read via the cortex venv (PyYAML present), no hermes dependency.
+  probe="${HERMES_HOME:-$HOME/.hermes}/config.yaml"
+  if [[ -f "$probe" ]] && [[ -x "$CORTEX_DEPLOY_HOME/venv/bin/python3" ]]; then
+    value="$("$CORTEX_DEPLOY_HOME/venv/bin/python3" - "$key" "$probe" <<'PY' 2>/dev/null || true
+import json, os, sys
+key, path = sys.argv[1], sys.argv[2]
+try:
+    import yaml
+    data = yaml.safe_load(open(path, encoding="utf-8")) or {}
+    for part in key.split("."):
+        data = data.get(part)
+        if data is None:
+            break
+    print(json.dumps(data) if isinstance(data, (dict, list)) else ("" if data is None else data))
+except Exception:
+    pass
+PY
+)"
+    if [[ -n "$value" ]]; then
+      [[ "$value" == \"*\" ]] && value="${value%\"}" && value="${value#\"}"
+      echo "$value"
+      return 0
+    fi
+  fi
+  # 3. Fail-open.
+  return 0
+}
+
 REPO_DIR="${REPO_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}"
 
 # ── Detect real user (works even under sudo) ─────────────────
@@ -2875,24 +2933,13 @@ main() {
   # (2026-08-27: Titus stuck on this; same gating principle as the learnings
   # schema below, which is register_orch-limited for the same reason).
   local mem_provider=""
-  # Use the venv python (has PyYAML + hermes_cli). Bare python3 on macOS
-  # without PyYAML makes the import fail → empty provider → the migration
-  # is silently skipped forever (Titus bug 2026-08-28). Fall back to bare
-  # python3 only when the venv is absent; empty result stays fail-open.
-  local _py="${HOME}/.hermes/hermes-agent/venv/bin/python3"
-  [[ -x "$_py" ]] || _py="$(command -v python3 || true)"
-  if [[ -n "$_py" ]]; then
-    mem_provider="$("$_py" -c '
-import os, sys
-try:
-    sys.path.insert(0, os.path.expanduser("~/.hermes/hermes-agent"))
-    from hermes_cli.config import load_config
-    cfg = load_config()
-    print(cfg.get("memory", {}).get("provider", ""))
-except Exception:
-    pass
-' 2>/dev/null || true)"
-  fi
+    # Read memory.provider through the single hermes-adapter seam. This is the
+    # ONLY way cortex-update touches a Hermes config value — prefers the public
+    # `hermes config get` CLI, falls back to a raw PyYAML read via the cortex
+    # venv (no hermes_cli import, no hermes binary required), fail-open empty.
+    # A bare python3 without PyYAML would return empty and skip the migration
+    # forever (Titus bug 2026-08-28) — the cortex venv's PyYAML avoids that.
+    mem_provider="$(hermes_config_value "memory.provider")"
   local mem_migrate="${CORTEX_DEPLOY_HOME}/services/mycortex-mem/migrate.py"
   if [[ -f "$mem_migrate" ]]; then
     if [[ "$mem_provider" == "mycortex-mem" ]]; then
