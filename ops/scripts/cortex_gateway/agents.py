@@ -277,6 +277,12 @@ class CommandBackend:
     / a bespoke script are all the same class plus a config entry.
     """
 
+    # Declared, not inherited: this class satisfies BackendAdapter STRUCTURALLY and does
+    # not subclass it, so without this line its reply mode would come only from the
+    # daemon's `getattr(..., False)` default — correct today, invisible to a reader, and
+    # silently flipped if that default ever changes. A CLI agent answers INSIDE dispatch.
+    async_replies = False
+
     def __init__(self, spec: AgentSpec, *, bus_url: str = "", bus_headers: dict | None = None):
         self.spec = spec
         self.bus_url = bus_url

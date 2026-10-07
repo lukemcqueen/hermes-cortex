@@ -188,6 +188,28 @@ def test_a_failed_turn_reaches_the_human_instead_of_going_quiet():
     print("  a timed-out / missing / crashed agent tells the human, never goes quiet ✓")
 
 
+def test_every_shipped_backend_DECLARES_its_reply_mode():
+    """The daemon must never have to guess: each shipped backend states its reply mode.
+
+    `CommandBackend` satisfies the seam STRUCTURALLY (it does not subclass
+    BackendAdapter), so a missing declaration would be invisible — the daemon's
+    `getattr(..., False)` default supplies the right answer today and a changed default
+    would silently flip it. Assert the declaration is on the class.
+    """
+    assert "async_replies" in vars(A.CommandBackend), \
+        "CommandBackend must DECLARE async_replies (not rely on the daemon's default)"
+    assert A.CommandBackend.async_replies is False, "a CLI agent answers inside dispatch"
+
+    from cortex_gateway.hermes_backend import HermesBackend
+    assert "async_replies" in vars(HermesBackend), \
+        "HermesBackend must DECLARE async_replies (its reply arrives on the bus)"
+    assert HermesBackend.async_replies is True
+
+    built = A.CommandBackend(A.AgentSpec(name="pi", kind="command", command=["/bin/true"]))
+    assert built.async_replies is False
+    print("  both shipped backends declare their reply mode; neither relies on a default ✓")
+
+
 def test_a_non_positive_timeout_is_refused_not_silently_defaulted():
     """`timeout_s: 0` must fail closed at build, not quietly become 300s.
 
