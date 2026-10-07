@@ -1,0 +1,10 @@
+$ git status -sb
+## main...origin/main [ahead 4]
+
+$ git log --oneline --branches --remotes -6
+4d52e85c docs(governance): commit the fail-closed test log as .txt (*.log is gitignored)
+511390aa docs(governance): commit the fail-closed test execution log
+cfa03f01 test(governance): runnable fail-closed lock check, no pytest required
+dc0cf976 fix(governance): close the regression from removing the repo-local .hermes-cortex/
+0673e943 fix(governance): runtime-only locks; drop the in-repo marker and the repo-local .hermes-cortex/
+81c6da1f chore(skills): sync deployed governance-closeout + hermes-cortex-repo-deploy into repo source

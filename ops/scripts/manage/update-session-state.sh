@@ -94,7 +94,7 @@ $RECENT_COMMITS
 | Layer | What |
 |-------|------|
 | Installer | \`ops/install/install.sh\` — $(if [ -r ops/install/install.sh ]; then wc -l < ops/install/install.sh | tr -d ' '; else echo 'MISSING'; fi) lines |
-| Skills | $(find skills -name 'SKILL.md' -not -path './.git/*' 2>/dev/null | wc -l | tr -d ' ') skills across 4 categories (software-development, devops, social-media, productivity) |
+| Skills | $(find skills -path ./.git -prune -o -name 'SKILL.md' -print | wc -l | tr -d ' ') skills across 4 categories (software-development, devops, social-media, productivity) |
 | Python files | ${PY_COUNT} files (${PY_LINES} LOC) |
 | Shell files | ${SH_COUNT} files (${SH_LINES} LOC) |
 | Markdown files | ${MD_COUNT} files |
