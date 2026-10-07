@@ -2148,7 +2148,7 @@ def _repos_with_window_work(lock: dict, exclude: Path) -> list:
 # simple change look complex, and — worse — put the PEER's paths in the "Diff stat" the
 # reviewer reads while their diff was nowhere in the material (the material is built from
 # COMMITS), so the reviewer reports material it cannot see and the close is refused for
-# work this cycle never did. Cycle 10861 hit exactly that on this host.
+# work this cycle never did.
 #
 # The rule: the working tree counts ONLY for paths whose content CHANGED SINCE THIS CYCLE
 # BEGAN. A file already dirty when the cycle opened belongs to whoever left it dirty.

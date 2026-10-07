@@ -81,6 +81,20 @@ pattern-matches command text can refuse the entire commit over words in the MESS
 the refusal names the command rather than the cause. Then run `git status --short`
 and check for surprise paths before pushing.
 
+## Restoring a file you swapped in: `git checkout --` restores the INDEX
+
+To reproduce a failure against an older revision you may copy that revision over a working
+file (`git show <rev>:<path> > <path>`). Restoring it with `git checkout -- <path>` gives
+back the **index** copy, not the working tree — so any edit you made but had not staged is
+silently discarded, and the command reports success. Observed: a comment fix was reverted
+this way, and the commit that followed carried only the evidence file, so the reviewer's
+finding it addressed came straight back on the next close.
+
+- Copy the file aside FIRST (`cp <path> <scratch>/mine.py`) and restore from that copy, or
+  use `git checkout HEAD -- <path>` when HEAD's version is the one you want.
+- Then **grep for the edit** before committing. A clean `git status` proves nothing here:
+  a discarded edit leaves the tree cleaner, not dirtier.
+
 ## Edit the REPO source, never the deployed tree
 
 `cortex-update.sh` copies every `register()` source over its deployed destination,
