@@ -46,7 +46,11 @@ commit. The 9-count was wrong when stated.
 - adversarial verify: passed on 19 files
 - syntax / OS-aware-path / change-validate: all passed
 
-### AC-5 — NOW VERIFIED at the function level
+### AC-5 — VERIFIED at the function level
+
+Raw execution log committed alongside this file:
+`tests/artifacts/remove-repo-local-cortex-dir-test-run.log` (full invocation +
+stdout + exit code), so the ALL-PASS result is not only prose in this document.
 
 `python3 tests/test_lock_fail_closed.py` (committed, runnable WITHOUT pytest,
 imports the DEPLOYED enforcer so a bad deploy is caught):
@@ -147,3 +151,10 @@ measured truth:
 Recommendation: keep it for the legacy case, but record it as narrow. Reverting
 is also defensible — it is close to dead weight, and the honest summary is
 "small legacy benefit", not "belt-and-braces".
+
+## 8. ADV-4 clarification (requested by review)
+
+The `install.sh` handling is a RESOLUTION OF THE PRIOR REVIEW'S FINDING, not a
+new issue and not an ongoing one. The earlier review flagged
+`wc -l < ops/install/install.sh 2>/dev/null` for swallowing its error; it now
+reads `if [ -r ... ]; then wc -l; else echo MISSING; fi`.
