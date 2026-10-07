@@ -82,6 +82,7 @@ done
 CORTEX_REPO_TOP="${HOME}/hermes-cortex"
 _REPO_TOP=$(git rev-parse --show-toplevel 2>/dev/null || echo "")
 GOVERNANCE_STATE_DIR="${HOME}/.hermes-cortex/state"
+GOVERNANCE_STATE_REPO="$CORTEX_REPO_TOP"
 REPO_SLUG=$(basename "$(git rev-parse --show-toplevel 2>/dev/null || echo 'generic')" 2>/dev/null || echo 'generic')
 LOCK_FOUND=0
 if [[ -d "$GOVERNANCE_STATE_DIR" ]]; then
@@ -136,6 +137,57 @@ if [[ "$LOCK_FOUND" -eq 0 && "$_REPO_TOP" == "$CORTEX_REPO_TOP" ]]; then
   echo "    with repo_slug='$REPO_SLUG'."
   echo ""
   exit 1
+fi
+
+# ── Review receipt gate (always-review paths only) ──────────
+# The self-adversarial review runs at CLOSE, and closing is what releases the
+# lock a push requires — so the review landed AFTER the push and its findings
+# always arrived too late to change what shipped. A CLEAN verdict now writes a
+# receipt bound to the pushed range (tip + base), and this gate refuses a push
+# whose range touches an always-review path without one. Review before push, by
+# construction rather than by discipline.
+#
+# Scoped deliberately: an ordinary commit never waits on an LLM review. Only the
+# paths listed in ops/scripts/lib/always-review-paths.txt — enforcement,
+# governance, the hooks themselves — do.
+ALWAYS_REVIEW_LIST="$_REPO_TOP/ops/scripts/lib/always-review-paths.txt"
+if [[ "$_REPO_TOP" == "$CORTEX_REPO_TOP" && -f "$ALWAYS_REVIEW_LIST" ]]; then
+  _TIP=$(git rev-parse HEAD 2>/dev/null || echo "")
+  _BASE=$(git merge-base origin/main HEAD 2>/dev/null || true)
+  [[ -n "$_BASE" ]] || _BASE=$(git rev-list --max-parents=0 HEAD 2>/dev/null | tail -1)
+  if [[ -n "$_TIP" && -n "$_BASE" ]]; then
+    _RANGE_FILES=$(git diff --name-only "${_BASE}..${_TIP}" 2>/dev/null || true)
+    _NEEDS_RECEIPT=0
+    _MATCHED=""
+    while IFS= read -r _pat; do
+      [[ -z "$_pat" || "$_pat" == \#* ]] && continue
+      _hit=$(printf '%s\n' "$_RANGE_FILES" | grep -F -- "$_pat" || true)
+      if [[ -n "$_hit" ]]; then _NEEDS_RECEIPT=1; _MATCHED="${_MATCHED}${_hit}"$'\n'; fi
+    done < "$ALWAYS_REVIEW_LIST"
+
+    if [[ "$_NEEDS_RECEIPT" -eq 1 ]]; then
+      _RECEIPT="$GOVERNANCE_STATE_DIR/.reviewed-${REPO_SLUG}-${_TIP}.json"
+      _CLEAN=0
+      if [[ -f "$_RECEIPT" ]]; then
+        _CHECK="$GOVERNANCE_STATE_REPO/ops/scripts/lib/review-receipt-check.py"
+        [[ -f "$_CHECK" ]] || _CHECK="$_REPO_TOP/ops/scripts/lib/review-receipt-check.py"
+        _CLEAN=$(python3 "$_CHECK" "$_RECEIPT" "$_TIP" "$_BASE" 2>/dev/null || echo 0)
+      fi
+      if [[ "$_CLEAN" != "1" ]]; then
+        echo ""
+        echo "❌  Push blocked: this range touches an always-review path and carries no clean review receipt."
+        echo "    Tip:  $_TIP"
+        echo "    Base: $_BASE"
+        echo "    Always-review file(s) in this range:"
+        printf '%s' "$_MATCHED" | sed 's/^/      - /'
+        echo "    The self-adversarial review must run and return CLEAN for THIS range"
+        echo "    before it can be pushed — close the cycle, then push."
+        echo "    Expected receipt: $_RECEIPT"
+        echo ""
+        exit 1
+      fi
+    fi
+  fi
 fi
 
 # ── Changed-files syntax check ────────────────────────────

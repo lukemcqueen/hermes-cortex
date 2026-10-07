@@ -1,0 +1,17 @@
+# Always-review paths — SINGLE SOURCE OF TRUTH.
+#
+# A change touching any of these is never trivial, so it must carry a CLEAN
+# self-adversarial review receipt before it can be pushed (ops/scripts/pre-push-pull).
+# Read by BOTH the pre-push receipt gate (bash) and loop-gov-mcp.py (complexity +
+# review decision) — the hook cannot import the module, so the list lives here and
+# the module loads it. One list, no drift. One path prefix per line; '#' comments.
+plugins/governance-enforcer/
+mcp-servers/loop-gov-mcp.py
+core/governance/
+ops/scripts/pre-commit-score
+ops/scripts/pre-push-pull
+ops/scripts/post-commit-audit
+ops/scripts/post-push-audit
+ops/scripts/cortex-update.sh
+ops/scripts/quality/adversarial-verify.py
+ops/install/hooks/

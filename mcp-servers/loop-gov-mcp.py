@@ -582,8 +582,83 @@ def _mark_close_refused(cycle_id: int, verdict: str, findings_json: str) -> None
         log.warning("could not record close_refused on the lock: %s", e)
 
 
-def _clear_close_refused() -> None:
-    """Drop the refusal marker: the close is no longer refused (CLEAN review)."""
+def _git_out(args: list, repo: str) -> str:
+    """Run git in `repo`, return stripped stdout or "" on ANY failure.
+
+    Empty is the fail-closed answer: the receipt is not written, so the pre-push
+    gate does not find one, so the push is refused. Never guess a SHA.
+    """
+    if not repo:
+        return ""
+    try:
+        p = subprocess.run(["git", "-C", repo] + args,
+                           capture_output=True, text=True, timeout=10)
+    except (OSError, subprocess.TimeoutExpired):
+        return ""
+    return p.stdout.strip() if p.returncode == 0 else ""
+
+
+REVIEW_RECEIPT_PREFIX = ".reviewed-"
+
+
+def _write_review_receipt(cycle_id=None) -> None:
+    """Write a SHA-bound CLEAN review receipt for the range about to be pushed.
+
+    WHY this exists: the self-adversarial review runs at CLOSE, and closing is
+    what releases the lock the push requires — so the review landed AFTER the
+    push and every finding arrived too late to change what shipped. A receipt the
+    pre-push hook DEMANDS inverts that order: no clean review, no push.
+
+    BOUND TO THE RANGE, not the repo. The receipt carries both the tip pushed and
+    the base it was reviewed against, and the FILENAME carries the tip — so a
+    receipt earned for range A cannot authorise range B. That replay is the one
+    failure that would make this gate worse than no gate at all.
+
+    Runtime-only (~/.hermes-cortex/state/): no governance state inside a repo.
+    Mirrors the lock writer's temp-file + rename so a concurrent reader never
+    sees a partial receipt.
+    """
+    try:
+        state = _read_lock(None) or {}
+        repo = str(state.get("repo_path") or "").strip()
+        slug = str(state.get("repo_slug") or "").strip()
+        if not repo or not slug:
+            return
+        head = _git_out(["rev-parse", "HEAD"], repo)
+        if not head:
+            return
+        base = _git_out(["merge-base", "origin/main", "HEAD"], repo)
+        if not base:
+            base = _git_out(["rev-list", "--max-parents=0", "HEAD"], repo)
+        files = [f for f in _git_out(["diff", "--name-only", base + ".." + head], repo).splitlines() if f.strip()]
+        receipt = {
+            "verdict": "CLEAN",
+            "repo_slug": slug,
+            "repo_path": repo,
+            "tip_sha": head,
+            "base_sha": base,
+            "reviewed_files": files[:500],
+            "cycle_id": cycle_id,
+            "reviewed_at": _now_iso(),
+        }
+        GOVERNANCE_STATE_DIR.mkdir(parents=True, exist_ok=True)
+        path = GOVERNANCE_STATE_DIR / (REVIEW_RECEIPT_PREFIX + slug + "-" + head + ".json")
+        tmp = path.with_suffix(".tmp")
+        tmp.write_text(json.dumps(receipt, indent=2))
+        tmp.replace(path)
+        log.info("review receipt written: %s (tip %s, base %s, %d files)",
+                 path.name, head[:12], (base or "?")[:12], len(files))
+    except Exception as e:
+        log.warning("could not write review receipt: %s", e)
+
+
+def _clear_close_refused(cycle_id=None) -> None:
+    """Drop the refusal marker AND write the push receipt — this is the CLEAN point.
+
+    Both CLEAN paths (fresh verdict, and a stored verdict whose fingerprint still
+    matches the material) funnel through here, so it is the one place that must
+    observe "the review is clean for this range".
+    """
     try:
         state = _read_lock(None)
         if state and state.pop("close_refused", None) is not None:
@@ -591,6 +666,7 @@ def _clear_close_refused() -> None:
             log.info("close no longer refused — marker cleared from the lock")
     except Exception as e:
         log.warning("could not clear close_refused on the lock: %s", e)
+    _write_review_receipt(cycle_id)
 
 
 def _read_lock(args: dict | None = None) -> dict | None:
@@ -1748,6 +1824,21 @@ ALWAYS_REVIEW_PATHS = [
     "ops/scripts/quality/adversarial-verify.py",
     "ops/install/hooks/",
 ]
+
+# Single source of truth, shared with the pre-push receipt gate. The hook is bash
+# and cannot import this module, so the list also lives in
+# ops/scripts/lib/always-review-paths.txt and is loaded here when present. If the
+# two ever disagreed, the hook and the reviewer would disagree about what needs a
+# clean review — so the file WINS, with the literal above as the fallback.
+_ALWAYS_REVIEW_FILE = Path(__file__).resolve().parent.parent / "ops/scripts/lib/always-review-paths.txt"
+try:
+    if _ALWAYS_REVIEW_FILE.is_file():
+        _shared = [ln.strip() for ln in _ALWAYS_REVIEW_FILE.read_text().splitlines()
+                   if ln.strip() and not ln.strip().startswith("#")]
+        if _shared:
+            ALWAYS_REVIEW_PATHS = _shared
+except OSError:
+    _ = None  # fall back to the literal list above
 
 # Exact-name noise: generated/lock files whose size is not a complexity signal.
 # Checked AFTER always-review paths. A worker cannot hide a change here — a
@@ -2961,7 +3052,7 @@ def _adversarial_review_gate(lock: dict, cycle: dict,
             if stored_verdict == "CLEAN":
                 log.info("self-adversarial review: cycle %s CLEAN (stored, material unchanged)",
                          cycle.get("id"))
-                _clear_close_refused()
+                _clear_close_refused(cycle.get("id"))
                 return None
             _block, _annot = _blocking_findings(stored.get("findings_json") or "[]")
             if not _block:
@@ -3039,7 +3130,7 @@ def _adversarial_review_gate(lock: dict, cycle: dict,
 
     if verdict == "CLEAN":
         log.info("self-adversarial review: cycle %s CLEAN", cycle.get("id"))
-        _clear_close_refused()
+        _clear_close_refused(cycle.get("id"))
         return None
 
     # Severity policy: MEDIUM and above block; LOW annotates. LOW findings are NOT
