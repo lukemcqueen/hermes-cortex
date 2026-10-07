@@ -1,0 +1,47 @@
+# Review-material scope — suite evidence
+# captured: 2026-10-08T08:56:32+09:00  host: esther  HEAD: 529cf308
+
+## 1. the new tests (scoped vs unscoped control)
+configfile: pytest.ini
+collected 5 items
+
+tests/test_review_material_scope.py   scoped files=2 vs unscoped files=4: the peer's two paths are excluded only from the scoped measurement ✓
+.  no snapshot -> whole tree counted (unchanged behaviour, fail-open) ✓
+.  own-paths = exactly what changed since the snapshot ✓
+.  unreadable snapshot -> no narrowing; empty own-set -> nothing kept ✓
+.[mcp-server] WARNING: dirty snapshot: 2 dirty paths exceed the 1 cap — recording none, so the working tree stays fully in scope
+  cap exceeded -> snapshot empty -> whole-tree scope (fail toward review) ✓
+.
+
+============================== 5 passed in 21.35s ==============================
+
+## 2. governance regression suites
+
+=================================== FAILURES ===================================
+_______________ test_secondary_marker_follows_the_absolute_path ________________
+tests/test_loop_gov_review_repo.py:283: in test_secondary_marker_follows_the_absolute_path
+    assert marker.exists(), (
+E   AssertionError: the in-repo marker did not follow the absolute repo path — it landed at HOME/<slug> instead
+E   assert False
+E    +  where False = exists()
+E    +    where exists = PosixPath('/home/esther/.hermes/cache/scratch/nested-repo-ea3aee0v/projects/deep/foo/.hermes-cortex/.governance-lock').exists
+=========================== short test summary info ============================
+FAILED tests/test_loop_gov_review_repo.py::test_secondary_marker_follows_the_absolute_path
+=================== 1 failed, 33 passed in 61.55s (0:01:01) ====================
+
+## 3. the one failure is PRE-EXISTING, not caused by this change
+#    reproducibility: put the parent commit's copy of the file in place, run just
+#    that test, then restore the tracked (working) copy with git checkout.
+--- with HEAD~1 (pre-change) loop-gov-mcp.py in place:
+E    +    where exists = PosixPath('/home/esther/.hermes/cache/scratch/nested-repo-vginf_uc/projects/deep/foo/.hermes-cortex/.governance-lock').exists
+=========================== short test summary info ============================
+FAILED tests/test_loop_gov_review_repo.py::test_secondary_marker_follows_the_absolute_path
+============================== 1 failed in 0.17s ===============================
+--- restored to HEAD (working) copy; sha256 of restored file:
+3d22efaec131aeefe4d94356e2931711b121c93ccdb5d8079e71ee45705358ad  mcp-servers/loop-gov-mcp.py
+
+## 4. deployed state — the fix is NOT live in the running MCP server
+#    deployment is the operator/fleet step (cortex-update.sh + a new session or
+#    gateway restart reloads the MCP server); it is outside this commit's scope.
+grep -c dirty_at_start on the DEPLOYED copy: 0 (deployed copy predates this commit)
+repo copy: 5
