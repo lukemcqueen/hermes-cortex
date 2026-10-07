@@ -1,8 +1,8 @@
 absolute-path (repo_path) change — LIVE verification artifact
 ========================================================================
-generated      : 2026-10-07T01:01:41+00:00
-revision       : 4e2da957  (branch main)
-origin/main    : 88f06dc9
+generated      : 2026-10-07T01:35:18+00:00
+revision       : b3b55c60  (branch main)
+origin/main    : 4e2da957
 generator      : tests/run_abs_path_live_verification.py
 
 Re-run with:  python3 tests/run_abs_path_live_verification.py
@@ -29,8 +29,9 @@ PASS  repo source == deployed copy: skills/devops/governance-closeout/SKILL.md
 EVIDENCE — is the deployed code LOADED? (process start vs deploy mtime)
 ------------------------------------------------------------------------
 4. LOADED OR ONLY DEPLOYED — process start vs deploy mtime
-deploy mtime (newest of the two deployed files): 2026-10-07T10:00:14
+deploy mtime (newest of the two deployed files): 2026-10-07T10:32:17
 Verdict: a start time BEFORE the deploy mtime means the new code is on disk but
+.governance-20261007_085641_cb5794a4.json: repo_slug=True  repo_path=True
 ✅ Skill drift — 386 skills in sync, 126 Hermes defaults skipped
 
 FULL TRANSCRIPT
@@ -69,25 +70,27 @@ PASS  _secondary_lock_path puts the marker inside the nested repo
 ========================================================================
 3. DEPLOYED == REPO SOURCE
 ========================================================================
-deployed loop-gov-mcp.py: md5=ead5270aa0df225066beb4eb3a61decb  (195193 bytes, mtime=2026-10-07T10:00:14)
+deployed loop-gov-mcp.py: md5=ead5270aa0df225066beb4eb3a61decb  (195193 bytes, mtime=2026-10-07T10:32:17)
 repo     loop-gov-mcp.py: md5=ead5270aa0df225066beb4eb3a61decb  (195046 bytes)
 PASS  deployed matches repo: loop-gov-mcp.py
-deployed governance-enforcer/__init__.py: md5=b2b15994216d03cabb2aad41372cb5b4  (131326 bytes, mtime=2026-10-07T10:00:14)
+deployed governance-enforcer/__init__.py: md5=b2b15994216d03cabb2aad41372cb5b4  (131326 bytes, mtime=2026-10-07T10:32:17)
 repo     governance-enforcer/__init__.py: md5=b2b15994216d03cabb2aad41372cb5b4  (131326 bytes)
 PASS  deployed matches repo: governance-enforcer/__init__.py
 
 ========================================================================
 4. LOADED OR ONLY DEPLOYED — process start vs deploy mtime
 ========================================================================
-deploy mtime (newest of the two deployed files): 2026-10-07T10:00:14
+deploy mtime (newest of the two deployed files): 2026-10-07T10:32:17
   2081004 Wed Oct 7 08:55:45 2026 ~/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3 … run
   2081319 Wed Oct 7 08:55:52 2026 ~/.hermes/hermes-agent/venv/bin/python3 … ~/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py
+  2522618 Wed Oct 7 10:35:06 2026 ~/.hermes/hermes-agent/venv/bin/python3 … ~/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py
 Verdict: a start time BEFORE the deploy mtime means the new code is on disk but
 NOT in memory (MCP child needs a kill; enforcer needs a gateway /reset).
 
 ========================================================================
 5. LIVENESS WITNESS — this session's lock payload
 ========================================================================
+  .governance-20261007_085641_cb5794a4.json: repo_slug=True  repo_path=True
 A lock written with repo_slug but no repo_path was written by the PREVIOUS revision.
 
 ========================================================================
@@ -99,7 +102,7 @@ A lock written with repo_slug but no repo_path was written by the PREVIOUS revis
 PASS  repo source == deployed copy: skills/devops/deploy-load-verification/SKILL.md
   de5f058c  skills/devops/governance-closeout/SKILL.md
     repo source before sync : 26392 bytes
-    repo source == deployed : True (29817 bytes)
+    repo source == deployed : True (32342 bytes)
 PASS  repo source == deployed copy: skills/devops/governance-closeout/SKILL.md
 
 ========================================================================

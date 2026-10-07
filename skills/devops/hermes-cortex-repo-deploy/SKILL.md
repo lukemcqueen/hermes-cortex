@@ -90,6 +90,17 @@ looks right — the file is right there, and every test still passes, because th
 tests import the REPO tree. The next deploy reverts it, since repo → deployed is
 the only direction a deploy copies.
 
+**On an IMMUTABLE target the write does not even succeed** — the enforcement surface
+(the enforcer plugin, the git hooks, the loop-governance MCP server) carries the
+kernel immutable flag, so a direct write fails with `PermissionError: [Errno 1]
+Operation not permitted`, or `EPERM` from a shell. That is the write-protection layer
+working, not a permissions bug to escalate: you are editing the wrong side. Verify
+with `lsattr <deployed path>` (expect `----i---------e-------`, see
+`enforcement-immutability`), then put the change in the REPO source and let
+`cortex-update.sh` deploy it — the deploy owns the unlock/relock around the copy, so
+it is the only sanctioned way to change one. A `cp`/`python` write to a deployed path
+is the same wrong move whichever way it fails, loudly or silently.
+
 - **Patch by REPO path only.** Anything under `~/.hermes-cortex/` is an artifact;
   the editable twin is `~/hermes-cortex/ops/scripts/…`. A `patch` call resolves the
   path it is given, so a deployed path applies cleanly and gives no hint it will be

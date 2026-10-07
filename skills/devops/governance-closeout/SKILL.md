@@ -382,26 +382,57 @@ because the commit itself succeeded locally and the tree looks clean.
   `concurrent-session-isolation` → "A wedged shared MCP server". The governance
   STATE is already per-session; only the transport is shared.
 - **A cycle that will not close no matter what you change may be reviewing the WRONG
-  REPO.** Both slug resolvers (`loop-gov-mcp.py::_derive_slug`,
-  `governance-enforcer::_derive_repo_slug`) return the canonical governed repo whenever
-  `~/<canonical>/.git` exists, because the gateway cwd is a launch artifact and that
-  preference is what keeps the git hooks and the lock agreeing. The cost lands on every
-  session working in a DIFFERENT repo: its lock is tagged with the canonical slug, and
-  `_adversarial_review_gate` then diffs `HOME / lock["repo_slug"]` — a tree that cannot
-  contain the work. The reviewer returns FINDINGS every time, the close is refused
-  forever, and each `end_change` retry spawns another full review.
+  REPO.** A lock carries BOTH `repo_slug` (a NAME) and `repo_path` (an absolute path),
+  and `_adversarial_review_gate` resolves the tree it diffs from the lock's **`repo_path`**
+  (falling back to `HOME/<repo_slug>` only for locks predating that field). When the two
+  describe DIFFERENT repos, the gate diffs a tree that cannot contain your work: the
+  reviewer returns FINDINGS every time, the close is refused forever, and each
+  `end_change` retry spawns another full review.
 
-  The tell is a finding that says the diff does not show your change while your own
-  `git log` plainly shows it. Check the lock's slug against the repo you are in BEFORE
-  reworking anything:
+  **The mixing is the defect, and it is diagnosable.** `_derive_repo_path` accepts the
+  enforcer's observed absolute path, but a slug resolver that validates the injected slug
+  only as `HOME/<slug>` — which fails for any checkout nested deeper than a HOME child —
+  SKIPS it and falls back to the host-canonical repo. The lock then lands with a canonical
+  slug beside an observed path (observed: `repo_slug: "hermes-cortex"` + `repo_path:
+  "~/.hermes/hermes-agent"`). The fix, when you own the resolver, is to derive the slug
+  FROM the same accepted path — one resolution, one repo — never a canonical slug beside an
+  observed path. A session repo-hint that merely DRIFTED (it records whichever repo the
+  session last touched a path in, so it can name one you are no longer working in) is the
+  same symptom from a different cause.
+
+  **The tell is a finding that says the diff does not show your change while your own
+  `git log` plainly shows it** — including the extreme form where the material's
+  `Full diff:` is EMPTY or its file/line count matches a PEER's commit rather than yours.
+  Check the lock BEFORE reworking anything:
 
   ```bash
-  python3 -c "import glob,json;print([json.load(open(p)).get('repo_slug') for p in glob.glob('$HOME/.hermes-cortex/state/.governance-*.json')])"
+  python3 -c "import glob,json;print([(json.load(open(p)).get('repo_slug'),json.load(open(p)).get('repo_path')) for p in glob.glob('$HOME/.hermes-cortex/state/.governance-*.json')])"
   ```
 
-  Also read `git rev-parse --show-toplevel` from your session: if the two disagree, the
-  review is auditing a different tree and no rewrite of the note can fix it. Report it —
-  re-pointing lock identity is a fleet-wide change, not a local workaround.
+  Disagreeing values, or a `repo_path` that is not the tree you edited (`git rev-parse
+  --show-toplevel`), mean no rewrite of the note can fix it. Also available as a
+  guard read: the review refuses when the lock's repo holds none of YOUR commits in the
+  window — but a guard keyed on "the lock's repo shows nothing" is DEFEATED by a single
+  unrelated commit there (a peer's, a pipeline's), which is exactly how a wrong-repo
+  close gets as far as permanent findings. Key such a guard on AUTHORSHIP (does the
+  lock's repo hold any commit this session authored), never on an empty change count.
+- **A wrong-repo lock leaves DEBRIS in the other repo, and that debris blocks the push.**
+  The lock's secondary marker is written at `<repo_path>/.hermes-cortex/.governance-lock`,
+  so a mis-tagged lock drops governance state into a repo it does not govern — including
+  the upstream Hermes checkout, which the pre-push dogfood gate then fails on (`Cortex
+  must not edit ~/.hermes/hermes-agent`), blocking a push for a change that is otherwise
+  fine. Repairing the close is therefore only half the job: `git -C <that repo> status
+  --porcelain` shows the stray `.hermes-cortex/`, and clearing it is a DESTRUCTIVE action
+  needing operator consent. Note you may not be able to clear it yourself — the enforcer
+  scopes your lock to the LOCK's repo, not the one holding the debris — so back it up,
+  report the exact path and command, and stop rather than routing around enforcement.
+  Fix the resolver so the marker follows a correct `repo_path`, or a well-meaning session
+  keeps re-creating it.
+
+  **Report it and take a fresh lock; do not fight it.** Re-pointing lock identity is a
+  fleet-wide change, not a local workaround. Note a long verification tail can outlive the
+  1-hour session TTL, so the lock may be GONE by the time you get here (see the expired-lock
+  pitfall) — take a new one for the leftover work and name the original cycle in its note.
 
 - **Score before you investigate.** A cycle left PENDING with no live lock is a doctor
   FAIL that blocks every push, so scoring an orphaned cycle is the first move, not the
