@@ -1,0 +1,15 @@
+# Test run output — tests/test_extract_human_messages.py
+
+Captured 2026-10-07 by the soul-refinement cron, at commit 5e509292.
+
+Command and output:
+
+```
+$ python3 tests/test_extract_human_messages.py
+PASS: extraction script is re-runnable and read-only
+$ echo "exit=$?"
+exit=0
+```
+
+The test file's own source is committed at `tests/test_extract_human_messages.py`
+and inspectable in full via `git show 5e509292:tests/test_extract_human_messages.py`.
