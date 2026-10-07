@@ -245,3 +245,33 @@ Deployed governance files are immutable (`chattr +i`); there is no agent-side ro
 
 - `references/governance-deploy-session-2026-07-31.md` — full session trace: immutable-file failure, unlock, deploy, lock purge fallout
 
+## The 300s cell ceiling — where long work belongs
+
+`execute_code` cells have a **per-cell timeout read from config**, not a hard
+wall: Hermes `tools/code_execution_tool.py` defines `DEFAULT_TIMEOUT = 300` with
+the comment *"overridable via config.yaml -> code_execution.*"*, and
+`config.yaml` ships `code_execution.timeout` explicitly. Raise it for a genuinely
+long single shot.
+
+**Why it keeps getting hit here:** one `cortex-dogfood.sh --force` costs roughly
+**96-135s** on this host — it runs pull -> deploy -> doctor -> verify, with
+several doctor passes — and the pre-push gate runs its own checks on top. Put
+tests + deploy + push in the SAME cell and you cross 300s; the cell is killed and
+any state it had not committed is left ambiguous. A killed cell is also easy to
+misread: the work looks done because the earlier steps printed success.
+
+**Practice:**
+
+- Long, bounded work goes in **`terminal`**: 600s foreground allowance, and it
+  auto-backgrounds past that with a completion notification.
+- **Split** the steps — tests | deploy | push — instead of one mega-cell.
+- **Commit before the long deploy.** The commit survives a killed cell; an
+  uncommitted working tree does not. Then the deploy is the last mutating step
+  and deploy-sync holds.
+- Raising the cap helps a genuinely long single operation; it does not make a
+  cell a good container for a multi-stage pipeline.
+
+**Related, easily confused:** there is a *separate* hard-coded 300s in the same
+Hermes file — the RPC deadline for a **nested** tool call made from inside a cell
+(`RPC timeout: no response for <tool> after 300s`). Raising
+`code_execution.timeout` does not lift that one.
