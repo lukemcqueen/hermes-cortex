@@ -4,6 +4,28 @@ The material contract is in `adversarial-gate-material.md`. This file is the oth
 half: WHO performs the review, how it is dispatched, and how to tell which engine
 actually ran.
 
+## One fleet-wide configuration (canonical, 2026-10-07)
+
+All agents configure the reviewer the SAME way — a single chat-completions
+transport, not a per-host mix:
+
+- **`ADVERSARIAL_REVIEW_BACKEND=llm`** on every host.
+- **`ADVERSARIAL_REVIEWER_MODEL=deepseek/deepseek-v4-pro`** — the sole reviewer
+  model (distinct from the worker's model). Do not reuse a host's worker model
+  for reviews; a model reviewing its own output is not a review.
+- Endpoint and credential as below (`ADVERSARIAL_REVIEW_BASE_URL` default
+  OpenRouter; `ADVERSARIAL_REVIEW_API_KEY_ENV` names a credential when strict
+  binding is wanted).
+
+The `agent` transport (a coding agent on stdin — `ADVERSARIAL_REVIEW_AGENT_CMD`)
+still exists as the documented **fallback only**: use it when a host must review on
+offline/local capacity or must run tests to check the claims. It is an exception,
+not a default — deviating from the canonical `llm`/deepseek config requires a
+reason in the host's env (or a comment beside the variable). Consequence for the
+operator who changes a reviewer: one host must not run a subtly different
+reviewer than the fleet, because verdicts and close-gate expectations should be
+comparable across hosts.
+
 ## Two transports, one contract
 
 `ADVERSARIAL_REVIEW_BACKEND` selects it. Default: `llm`.

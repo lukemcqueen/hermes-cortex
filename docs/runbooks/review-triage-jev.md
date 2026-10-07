@@ -124,27 +124,30 @@ behaves exactly as it did before triage existed.
   verdicts. It cannot judge. Its place is the semantic arm of Layer 1, where it
   may only ever *escalate* ("possible paraphrase — do not auto-refute").
 
-## Choosing the reviewer — LLM or coding agent
+## Choosing the reviewer — one fleet-wide configuration
 
 The verifier's transport is pluggable; its **contract is not**. A backend gets the
 review prompt and must return text containing the findings JSON. Every backend
 stays fail-closed: raising refuses the close, and **never** passes it, so a
 misconfigured or unreachable reviewer can only make closing harder.
 
-`ADVERSARIAL_REVIEW_BACKEND=llm` (default) — a chat-completions call. The model is
-`ADVERSARIAL_REVIEWER_MODEL` (keep it different from the worker's model), and the
-endpoint is `ADVERSARIAL_REVIEW_BASE_URL` (default OpenRouter, so a local or
-self-hosted endpoint can review). Name the credential with
-`ADVERSARIAL_REVIEW_API_KEY_ENV`; when you set it, it is honoured **strictly** —
-the reviewer never silently runs with a different credential than the one you
-named.
+**All agents configure the reviewer the SAME way (2026-10-07):**
+`ADVERSARIAL_REVIEW_BACKEND=llm` with
+`ADVERSARIAL_REVIEWER_MODEL=deepseek/deepseek-v4-pro` — the single canonical
+reviewer. Keep the reviewer model DIFFERENT from the worker's model. The endpoint
+is `ADVERSARIAL_REVIEW_BASE_URL` (default OpenRouter, so a local or self-hosted
+endpoint can review). Name the credential with `ADVERSARIAL_REVIEW_API_KEY_ENV`;
+when you set it, it is honoured **strictly** — the reviewer never silently runs
+with a different credential than the one you named.
 
-`ADVERSARIAL_REVIEW_BACKEND=agent` — shells out to a **coding agent**, prompt on
-stdin, via `ADVERSARIAL_REVIEW_AGENT_CMD`. The command is configured rather than
-inferred from a built-in table of CLI flags: each agent CLI has its own arguments
-and a guessed one produces a wiring that exists and does nothing. This is also
-what makes the backend genuinely open — any agent works, including one this repo
-has never heard of.
+`ADVERSARIAL_REVIEW_BACKEND=agent` (shells out to a **coding agent**, prompt on
+stdin, via `ADVERSARIAL_REVIEW_AGENT_CMD`) is the **fallback only** — for a host
+that must review on offline/local capacity or run tests to check claims. Not a
+default: deviating from the canonical `llm`/deepseek config needs a reason beside
+the variable. The command is configured rather than inferred from a built-in table
+of CLI flags: each agent CLI has its own arguments and a guessed one produces a
+wiring that exists and does nothing. This is also what makes the backend genuinely
+open — any agent works, including one this repo has never heard of.
 
 **Reviewer tiering by measured complexity (2026-10-06).** The close-gate used to
 run the configured backend on EVERY complex change. On a host whose backend is
