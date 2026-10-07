@@ -1,5 +1,10 @@
 Docs-only review-material budget: verification.
 
+PROVENANCE - so captured output can be told apart from hand-written output:
+  git HEAD at execution : e7462b7028cf4b6785e7b4f1a58734250b52d948
+  sha256 of the test file: 84b6aa0a2afed48cef8fe1d69f0744159082513d91d9db07bde6c085be632b03
+Re-run and compare: if the file hash matches, this output is that file's.
+
 $ python3 tests/test_review_material_bound.py
   always-review path disqualifies a .md-only range ✓
   explicit budget override still honoured ✓
@@ -16,14 +21,18 @@ $ python3 tests/test_review_material_bound.py
 RESULT: ALL PASS (11 tests)
 exit=0
 
-$ git ls-tree --name-only HEAD tests/artifacts/ | grep review-material
+Scope of that run, stated exactly because the previous revision invited a
+misreading: the file holds ELEVEN test functions in total. SIX are new in this
+cycle (the docs-budget tests); FIVE are pre-existing (short diff unchanged, tail
+survives, omission disclosed, files named, no bare head-only slice). Running the
+file executes all eleven. "11 PASS" means the file passed, not that eleven tests
+were added.
 
+$ python3 ops/scripts/manage/cortex-doctor.py
+✅ Deploy sync — deployed commit matches HEAD
+⚠️  Overall: WARNING  (434 pass · 4 warn · 0 fail · 6 info)
+doctor exit=1   (exit 1 is the WARNING level; FAIL count is 0)
 
-Note on the fixture numbers, so they are checkable: the docs fixture is 46068
-chars, which exceeds DIFF_CHAR_BUDGET (12000) and fits DIFF_CHAR_BUDGET_DOCS
-(60000) - so 'not truncated' is evidence the docs budget applied, not that the
-diff was small. The over-budget case is driven by a 20-file fixture.
-
-The file is runnable standalone (no pytest) because pytest is not installed on
-every fleet host; before this it could not execute anywhere and its assertions
-went unverified.
+Fixture sizes, so "not truncated" is checkable as evidence the docs budget
+applied rather than that the diff was small: the docs fixture is 46068 chars —
+over DIFF_CHAR_BUDGET (12000), under DIFF_CHAR_BUDGET_DOCS (60000).
