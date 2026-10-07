@@ -346,6 +346,68 @@ def test_reviewer_timeout():
                 os.environ[k] = v
 
 
+def test_reviewer_leaf_callers_accept_passed_timeout():
+    """The leaf reviewers are callable with a size-scaled timeout and their
+    env fallback never passes a string where _reviewer_timeout wants a dict.
+
+    Regression for the 2026-10-07 end_change blocker: two _reviewer_timeout
+    defs (env-clamp vs size-scaled) collided — renamed the env-clamp one to
+    _reviewer_env_timeout and made _call_reviewer_llm/_agent honor their
+    'timeout' arg instead of always re-resolving. Before the fix,
+    _call_reviewer_llm called _reviewer_timeout(\"ADVERSARIAL...\", 300) which
+    bound the STRING to 'cx' -> \"'str' object has no attribute 'get'\" on
+    every non-trivial end_change.
+    """
+    mcp = _load()
+    saved = {k: os.environ.get(k) for k in
+             ("ADVERSARIAL_REVIEW_TIMEOUT", "ADVERSARIAL_REVIEW_AGENT_TIMEOUT")}
+    try:
+        for k in saved:
+            os.environ.pop(k, None)
+
+        # The two helpers are distinct names (no shadowing).
+        _check("env-clamp helper exists under its own name",
+               hasattr(mcp, "_reviewer_env_timeout"), "missing _reviewer_env_timeout")
+        _check("size-scaled helper kept its name",
+               hasattr(mcp, "_reviewer_timeout"), "missing _reviewer_timeout")
+
+        # _call_reviewer_llm honors a passed scoped timeout (mock the HTTP call).
+        import unittest.mock as mock
+        llm_calls = {}
+
+        def fake_urlopen(req, timeout):  # noqa: D103
+            llm_calls["timeout"] = timeout
+
+            class _R:
+                def read(self):  # noqa: D103
+                    return b'{"choices":[{"message":{"content":"{}"}}]}'
+                def __enter__(self):  # noqa: D105
+                    return self
+                def __exit__(self, *exc):  # noqa: D105
+                    return False
+            return _R()
+
+        urlopen_patch = mock.patch.object(mcp.urllib.request, "urlopen", side_effect=fake_urlopen)
+        with urlopen_patch:
+            # Pass an explicit scoped timeout; it must be honored, not clobbered.
+            mcp._call_reviewer_llm("review", timeout=1234)
+        _check("passed llm timeout is honored", llm_calls.get("timeout") == 1234,
+               f"got {llm_calls.get('timeout')}")
+
+        # Env fallback path also works and never crashes (no string->cx).
+        llm_calls.clear()
+        with mock.patch.object(mcp.urllib.request, "urlopen", side_effect=fake_urlopen):
+            mcp._call_reviewer_llm("review", model="m")
+        _check("llm env-fallback callable without a string crash",
+               isinstance(llm_calls.get("timeout"), int), f"got {llm_calls.get('timeout')}")
+    finally:
+        for k, v in saved.items():
+            if v is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
+
+
 def test_tiering_dogfood_script():
     """The standalone dogfood script (ops/scripts/manage/dogfood-reviewer-tiering.py)
     runs the REAL loop-gov-mcp.py module and prints PASS for the tier decision
@@ -374,6 +436,9 @@ if __name__ == "__main__":
     print()
     print("Reviewer wait-budget scaling — by change size, hard-capped")
     test_reviewer_timeout()
+    print()
+    print("Reviewer leaf callers — passed-timeout honored, env fallback no string crash")
+    test_reviewer_leaf_callers_accept_passed_timeout()
     print()
     print("Reviewer tiering dogfood script — real module routing")
     test_tiering_dogfood_script()

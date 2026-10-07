@@ -1918,7 +1918,7 @@ DOC_ONLY_SUFFIXES = (".md", ".txt", ".rst")
 REVIEWER_TIMEOUT_CEILING = 240      # seconds; must stay < the 300s client ceiling
 
 
-def _reviewer_timeout(env_name: str, default: int) -> int:
+def _reviewer_env_timeout(env_name: str, default: int) -> int:
     """Resolve a reviewer timeout, clamped below the MCP client ceiling.
 
     An operator override under the ceiling is honoured; one above it is clamped
@@ -2439,7 +2439,7 @@ def _call_reviewer_llm(prompt: str, *, model: Optional[str] = None,
             "Content-Type": "application/json",
         },
     )
-    timeout = _reviewer_timeout("ADVERSARIAL_REVIEW_TIMEOUT", 300)
+    timeout = timeout if timeout is not None else _reviewer_env_timeout("ADVERSARIAL_REVIEW_TIMEOUT", 300)
     with urllib.request.urlopen(req, timeout=timeout) as resp:
         data = json.loads(resp.read())
     return data["choices"][0]["message"]["content"]
@@ -2479,7 +2479,7 @@ def _call_reviewer_agent(prompt: str, author: Optional[str] = None,
         raise RuntimeError(
             f"refusing SELF-REVIEW: the review agent '{agent}' is this change's "
             f"author ('{author}') — an author cannot adversarially review its own work")
-    timeout = _reviewer_timeout("ADVERSARIAL_REVIEW_AGENT_TIMEOUT", 900)
+    timeout = timeout if timeout is not None else _reviewer_env_timeout("ADVERSARIAL_REVIEW_AGENT_TIMEOUT", 900)
     proc = subprocess.run(
         shlex.split(cmd), input=prompt, capture_output=True, text=True, timeout=timeout,
     )
