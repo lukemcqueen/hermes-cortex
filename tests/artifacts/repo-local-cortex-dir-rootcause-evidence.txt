@@ -1,0 +1,50 @@
+Evidence — why the repo-local .hermes-cortex reappeared, and what stops it now.
+
+=== 1. the check is REGISTERED and RUNS (doctor output) ===
+$ python3 ops/scripts/manage/cortex-doctor.py | grep -E "Repo-local |Deploy sync|Overall"
+✅ Deploy sync — deployed commit matches HEAD
+  ✅ Repo-local .hermes-cortex — absent — correct for the Cortex repo
+  ⚠️  Overall: WARNING  (435 pass · 7 warn · 0 fail · 6 info)
+(exit 0)
+
+=== 2. the guard test, all three states, run now ===
+$ python3 tests/test_repo_local_cortex_dir_check.py
+PASS  lock marker named -> FAIL: exists at /home/esther/.hermes/cache/scratch/repo-local-check-ctdjxt86/.hermes-cortex — contains: .governance-lock — CONTAINS .governance-lock, so governance state is being written inside the repo
+
+RESULT: ALL PASS - the check fails on presence and names the marker
+(exit 0)
+
+=== 3. adversarial gate (A4) on every changed file ===
+$ for f in ...; do adversarial-verify.py --file "$f" --level A4 --gate; done
+--- ops/scripts/manage/cortex_doctor/checks.py
+
+✅ GATE_PASSED — no critical/high findings
+--- ops/scripts/manage/cortex_doctor/cli.py
+
+✅ GATE_PASSED — no critical/high findings
+--- tests/test_repo_local_cortex_dir_check.py
+
+✅ GATE_PASSED — no critical/high findings
+
+=== 4. the WRITERS are clean in their DEPLOYED copies ===
+$ (precise greps against the deployed files)
+--- the deployed MCP _session_lock_path resolves to the STATE dir:
+    by the repo_slug stored in each lock's content.
+    """
+    return GOVERNANCE_STATE_DIR / f".governance-{session_id}.json"
+--- calls to _secondary_lock_path in the deployed MCP (expect 0 writes):
+492:def _secondary_lock_path(state: dict) -> Path | None:
+725:    secondary = _secondary_lock_path(state)
+747:            secondary = _secondary_lock_path(state)
+--- its body (expect an immediate return None):
+15:    return None
+--- deployed enforcer _secondary_lock_path (expect return None):
+15:    return None
+--- any code writing <repo>/.hermes-cortex outside ~/.hermes-cortex? (expect none)
+0
+0
+
+=== 5. push state ===
+## main...origin/main
+aba68507 fix(doctor): fail on a repo-local .hermes-cortex, and record why it returns
+aba68507 fix(doctor): fail on a repo-local .hermes-cortex, and record why it returns
