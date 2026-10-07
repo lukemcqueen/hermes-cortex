@@ -62,8 +62,8 @@ if [[ -f "${HOME}/.hermes-cortex/agent.env" ]]; then
 fi
 AGENT_NAME="${AGENT_NAME:-${DEFAULT_AGENT:-pi}}"
 
-# Python that has the `mcp` package: prefer the Hermes venv, fall back to PATH.
-PY_CMD="${HOME}/.hermes/hermes-agent/venv/bin/python3"
+# Python that has the `mcp` package: prefer the cortex venv, fall back to PATH.
+PY_CMD="${HOME}/.hermes-cortex/venv/bin/python3"
 [[ -x "$PY_CMD" ]] || PY_CMD="${PYTHON}"
 
 for f in "$LOOP_GOV" "$TASK_MCP" "$EXECUTOR_MCP" "$BUS_MCP" "$CONTEXT_MCP"; do

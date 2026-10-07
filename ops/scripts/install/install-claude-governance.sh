@@ -32,8 +32,8 @@ TASK_MCP="${HOME}/.hermes-cortex/scripts/task-mcp.py"
 EXECUTOR_MCP="${HOME}/.hermes-cortex/scripts/executor-mcp.py"
 BUS_MCP="${HOME}/.hermes-cortex/scripts/cortex-bus-mcp.py"
 AGENT_NAME="${AGENT_NAME:-titusclaude}"
-# Python that has the `mcp` package: prefer the Hermes venv, fall back to PATH.
-PY_CMD="${HOME}/.hermes/hermes-agent/venv/bin/python3"
+# Python that has the `mcp` package: prefer the cortex venv, fall back to PATH.
+PY_CMD="${HOME}/.hermes-cortex/venv/bin/python3"
 [[ -x "$PY_CMD" ]] || PY_CMD="${PYTHON}"
 
 for f in "$LOOP_GOV" "$TASK_MCP" "$EXECUTOR_MCP" "$BUS_MCP"; do

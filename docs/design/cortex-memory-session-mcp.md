@@ -205,7 +205,7 @@ Two independent pieces, per the split:
 **1. The store + search — declare the MCP server once:**
 ```bash
 hermes mcp add cortex-context \
-    --command ~/.hermes/hermes-agent/venv/bin/python3 \
+    --command ~/.hermes-cortex/venv/bin/python3 \
     --args ~/hermes-cortex/mcp-servers/cortex-context-mcp.py
 ```
 Same wiring as `tasks` / `loop-governance`. No Hermes gateway required — the

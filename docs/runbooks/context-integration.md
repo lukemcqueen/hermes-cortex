@@ -157,7 +157,7 @@ Register the server once. For Hermes:
 
 ```bash
 hermes mcp add cortex-context \
-    --command ~/.hermes/hermes-agent/venv/bin/python3 \
+    --command ~/.hermes-cortex/venv/bin/python3 \
     --args ~/hermes-cortex/mcp-servers/cortex-context-mcp.py
 hermes mcp list | grep cortex-context      # verify it registered
 ```

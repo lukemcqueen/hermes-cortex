@@ -30,7 +30,7 @@ Design: docs/design/task-workflow.md §7 + docs/design/task-lifecycle-v2.md §6.
 Engine: ops/scripts/manage/task-db.py.
 
 Usage (all agents, mirror loop-governance wiring):
-    hermes mcp add tasks --command ~/.hermes/hermes-agent/venv/bin/python3 \
+    hermes mcp add tasks --command ~/.hermes-cortex/venv/bin/python3 \
         --args ~/hermes-cortex/mcp-servers/task-mcp.py
 """
 from __future__ import annotations

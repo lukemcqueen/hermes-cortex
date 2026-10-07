@@ -18,7 +18,7 @@ to keep the root agent guidelines focused on general Hermes Cortex usage.
 | Tool | Min version | Used by (hermes-cortex function) | Install |
 |------|-------------|----------------------------------|---------|
 | `bash` | 4.0+ | `cortex-update.sh` (all deploy logic) | Linux: package manager · macOS: `brew install bash` |
-| `python3` | 3.10+ | Everything — `contact-orchestrator.sh`, `agent-message-handler.py`, doctor, all `.py` scripts | Hermes venv (`~/.hermes/hermes-agent/venv/bin/python3`) or system |
+| `python3` | 3.10+ | Everything — `contact-orchestrator.sh`, `agent-message-handler.py`, doctor, all `.py` scripts | Cortex venv (`~/.hermes-cortex/venv/bin/python3`) or system |
 | `git` | any | Repo pull/push, hooks, `git show` in scripts | Linux: `apt install git` · macOS: `brew install git` |
 | `curl` | any | `contact-orchestrator.sh`, `lib.cortex_bus`, doctor HTTP checks, health pings | Linux/macOS: package manager (preinstalled on macOS) |
 | `jq` | — | **NOT required** — `contact-orchestrator.sh` uses `python3` for JSON (jq removed 2026-08-03). Only used ad-hoc in docs examples | `apt install jq` / `brew install jq` (optional, debugging only) |

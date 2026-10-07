@@ -293,7 +293,7 @@ fallback for doctor checks. The doctor's `--fix` converges this same way.
 ```yaml
 mcp_servers:
   todos:
-    command: /home/<user>/.hermes/hermes-agent/venv/bin/python3
+    command: /home/<user>/.hermes-cortex/venv/bin/python3
     args:
       - /home/<user>/hermes-cortex/mcp-servers/task-mcp.py
     enabled: true

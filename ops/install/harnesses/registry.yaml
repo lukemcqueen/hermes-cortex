@@ -185,7 +185,7 @@ harnesses:
     why: Hermes reads MCP servers from config, so it needs no shim at all.
     install: |
       hermes mcp add cortex-context \
-          --command ~/.hermes/hermes-agent/venv/bin/python3 \
+          --command ~/.hermes-cortex/venv/bin/python3 \
           --args ~/hermes-cortex/mcp-servers/cortex-context-mcp.py
     verify:
       - 'hermes mcp list | grep cortex-context'

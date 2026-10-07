@@ -34,7 +34,8 @@ fi
 # The Hermes-managed tools python (~/.hermes/tools/python-3.14.x) shadows
 # python3 in the cron PATH and lacks PyYAML, which silently broke this gate
 # (2026-09-30: "PyYAML is not installed — cannot parse eval definitions").
-PY_CMD="${HOME}/.hermes/hermes-agent/venv/bin/python3"
+# The cortex venv has PyYAML; fall back to python3 only if it's absent.
+PY_CMD="${HOME}/.hermes-cortex/venv/bin/python3"
 if [[ ! -x "${PY_CMD}" ]]; then
   PY_CMD="python3"
 fi

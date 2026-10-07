@@ -117,6 +117,7 @@ SKEW_PROBE_TIMEOUT = 20
 RUNTIME_PYTHON_GLOBS = (
     ".hermes/hermes-agent/venv/bin/python3",              # git-install runtime
     ".hermes/installs/*/environments/*/venv/bin/python3",  # pm-managed runtime env
+    ".hermes-cortex/venv/bin/python3",                     # HC MCP-server venv
 )
 SKEW_PROBE_PATHS = (
     "hermes-cortex/skills/devops/mcp-health-monitoring/scripts/otel-version-skew-probe.py",

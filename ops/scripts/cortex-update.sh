@@ -2947,7 +2947,7 @@ except Exception:
     if hermes mcp list 2>/dev/null | grep -q "tasks"; then
       : # already registered
     else
-      local mcp_venv="${HOME}/.hermes/hermes-agent/venv/bin/python3"
+      local mcp_venv="${HOME}/.hermes-cortex/venv/bin/python3"
       local mcp_server="${HOME}/hermes-cortex/mcp-servers/task-mcp.py"
       if [[ -x "$mcp_venv" && -f "$mcp_server" ]]; then
         info "Registering tasks MCP server…"

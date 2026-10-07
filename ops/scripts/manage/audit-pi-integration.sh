@@ -200,12 +200,12 @@ if [[ -f "$AGENT_ENV" ]] && grep -qE '^AGENT_NAME=.+' "$AGENT_ENV"; then
 else
   _failed 5 "AGENT_NAME not set in $AGENT_ENV (bus identity + governance attribution need it)"
 fi
-# The Hermes venv is a PREFERENCE: install-pi-mcp.sh falls back to PATH python3 if the
+# The cortex venv is a PREFERENCE: install-pi-mcp.sh falls back to PATH python3 if the
 # MCP extra is importable there. Reporting it as a hard failure would be wrong.
-if [[ -x "$HOME/.hermes/hermes-agent/venv/bin/python3" ]]; then
-  _line 5 PASS "Hermes venv python present (install-pi-mcp.sh prefers it)"
+if [[ -x "$HOME/.hermes-cortex/venv/bin/python3" ]]; then
+  _line 5 PASS "cortex venv python present (install-pi-mcp.sh prefers it)"
 else
-  _line 5 NA "no Hermes venv — install-pi-mcp.sh falls back to python3 on PATH (fine if 'mcp' is importable there)"
+  _line 5 NA "no cortex venv — install-pi-mcp.sh falls back to python3 on PATH (fine if 'mcp' is importable there)"
 fi
 
 [[ "$JSON_MODE" == "1" ]] && printf '{"layer_failures":%s}\n' "$_fail"

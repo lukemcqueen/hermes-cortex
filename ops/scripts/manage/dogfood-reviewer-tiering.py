@@ -7,7 +7,7 @@ fast llm reviewer; heavy / always-review changes must route to the agent
 backend; enforcement must hold (every branch goes through SOME reviewer).
 
 Run (hermes venv, from repo root):
-    PATH="$HOME/.hermes/hermes-agent/venv/bin:$PATH" python3 \
+    PATH="$HOME/.hermes-cortex/venv/bin:$PATH" python3 \
         ops/scripts/manage/dogfood-reviewer-tiering.py
 """
 import importlib.util
