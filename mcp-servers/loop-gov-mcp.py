@@ -606,10 +606,20 @@ def _write_review_receipt(cycle_id=None) -> None:
         state = _read_lock(None) or {}
         repo = str(state.get("repo_path") or "").strip()
         slug = str(state.get("repo_slug") or "").strip()
+        # EVERY bail path logs. These two returns were silent, which cost a real
+        # debugging window on 2026-10-07: cycle 10828 returned CLEAN, no receipt
+        # appeared, and NOTHING in the log said why — the one function that could
+        # explain the failure was the only one with no voice. A silent return is
+        # a swallowed error even when returning is the correct action.
         if not repo or not slug:
+            log.warning("review receipt NOT written: lock has no repo identity "
+                        "(repo_path=%r repo_slug=%r) — cannot bind a receipt to a range",
+                        repo, slug)
             return
         head = _git_capture(Path(repo), "rev-parse", "HEAD").strip()
         if not head:
+            log.warning("review receipt NOT written: could not resolve HEAD in %s "
+                        "(git failed or produced no output)", repo)
             return
         base = _git_capture(Path(repo), "merge-base", "origin/main", "HEAD").strip()
         if not base:
