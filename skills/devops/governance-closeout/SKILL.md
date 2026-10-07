@@ -194,6 +194,11 @@ material it judged (note + diff):
   (and is reusable by every host, unlike a pasted transcript).
 - **FINDINGS → fix, then `rereview_change` with a NEW note.** An unchanged note is
   refused: re-review exists to re-judge a FIXED change, not to re-roll a verdict.
+  Re-calling `end_change` on UNCHANGED material replays the stored verdict word-for-word
+  and says so ("already recorded for exactly this material") — that message means the
+  MATERIAL has to change, not the note: commit the artifact the finding asked for FIRST,
+  then call `rereview_change`. Re-submitting the same material a third time is not a
+  re-roll, it is a wasted cycle.
   **If `rereview_change` is not in the running daemon** (it answers `Unknown tool:`
   because the MCP server predates the deploy — see Pitfalls), the recovery is the
   same end state by the ordinary path: re-issue `feedback_accept` with the evidence
@@ -281,6 +286,40 @@ Verify against `origin` (after a `git fetch`), never against the branch you thin
 pushed. A push that failed is cheap to fix — fetch, confirm the local commit is a
 fast-forward over `origin/main`, push — but only if you check, and the failure is silent
 because the commit itself succeeded locally and the tree looks clean.
+
+### Push order: PUSH BEFORE `end_change`, because the push gate needs the lock
+
+The pre-push hook requires an ACTIVE lock — it refuses with *"the lock file must exist at
+`~/.hermes-cortex/state/.governance-*.json`"*. `end_change` RELEASES that lock, so closing
+first strands the push and you need a fresh cycle just to publish work that is already
+reviewed. The operator's standing preference — **review precedes push** — lands the same
+order from the other side:
+
+```text
+work → commit → review CLEAN → push (lock still held) → end_change
+```
+
+Do not treat "push then close" as the natural sequence. It is the shape that produces the
+push-then-review complaint, because the review is the CLOSE step and therefore lands after
+the push by construction. Review first, push second, close last; if you have already
+closed, take a fresh lock naming the original cycle rather than leaving the commit
+unpublished.
+
+### Verify an artifact is TRACKED before claiming it is committed
+
+`git add -A` does NOT mean the file was added: an ignore rule silently skips it, the commit
+succeeds with a clean-looking message, and the reviewer — who sees only the diff —
+correctly files `fabrication` against a claim naming an artifact that IS on disk but is NOT
+in the commit. Confirmed the expensive way: an evidence log named `*.log` was skipped by
+`.gitignore`, so the note asserting it had been committed was simply false.
+
+```bash
+git diff --cached --name-only                  # before committing
+git ls-tree --name-only HEAD <artifact-dir>    # what the reviewer can actually see
+```
+
+Then let the repo's EXISTING convention choose the extension: artifacts already committed
+as `.txt` mean the ignored `.log` was the wrong filename, not a missing ignore rule.
 
 ## Pitfalls
 

@@ -189,6 +189,50 @@ have:**
   needed, and an in-session agent CAN do this. Confirm with
   `ps -eo pid,lstart,etime,args | grep <server>.py` before and after — the new
   PID, with a start time after the deploy, is the evidence.
+  - **Check the child's PPID before calling the restart yours.** `ps -o pid,ppid,etime,args
+    -p <child>`, then the parent's own argv. A child whose parent is the *session* is
+    yours to cycle. A child whose parent is the GATEWAY is HOST-SHARED — every session
+    on that host is served by the same process, so cycling it is a host-wide action that
+    drops other agents' in-flight governance calls mid-cycle. Hand that one to the
+    operator, and never describe a host-shared child's staleness as if it were only your
+    own session's: "my session needs a reload" and "every session on this host is
+    affected" call for different decisions.
+  - **EXCEPTION — never restart the child that is serving your OWN active
+    governance lock mid-cycle.** The lock persists in
+    `~/.hermes-cortex/state/` and is read through that same MCP server, so
+    killing it mid-cycle strands the lock and cuts the governance tooling you
+    still need for `end_change` — a worse outcome than a push that is simply
+    blocked. Close the cycle first, then restart, then push (the receipt gate
+    below/next may still require a fresh `begin_change`).
+  - **A change whose PRODUCER is not yet live can look like a broken feature.**
+    New code that writes an artifact (a receipt, a token, a marker) on a
+    later trigger is deployed but inert until the child reloads, so the trigger
+    runs and nothing appears. Verify the DEPLOYED FILE contains the new symbol
+    (`grep -c _write_review_receipt <deployed path>`) to prove the disk copy is
+    current, and report "deployed, not yet loaded" rather than "the change
+    failed". If the consumer of that artifact is fail-closed, this state blocks
+    the fleet until the reload — so fly the reload as part of the deploy.
+  - **A producer can also be LOADED and still inert.** Reloading fixes staleness,
+    not a writer that resolves its subject from context it was never given: a
+    helper called with no arguments returns empty, so the writer bails on every
+    run, and a fresh child makes no difference. Distinguish the two before asking
+    for another restart — the deployed file containing the symbol proves the first
+    case is over; only driving the function directly (import the deployed module,
+    call it with the same arguments the real path passes, watch what it writes)
+    rules out the second. Prefer that direct call over another reload cycle when a
+    write keeps not appearing after a restart.
+  - **Extend the deploy's EXISTING deploy≠load detector instead of inventing one.**
+    When the deploy already compares the running process's start time against a
+    CHANGED FILE (a `_restart_pending`-style banner backed by a persisted
+    hash+epoch state file), a daemon that is simply not covered is fixed by adding
+    its source to that WATCHED SET — not by adding a second check, and never by
+    adding a restart. Hash the set as ONE combined value so the persisted state
+    format needs no migration; skip files that are absent so a host without that
+    daemon behaves exactly as before; and keep a hash/temp-write failure as
+    UNVERIFIABLE so the banner still fires rather than reading as clean. Then hand
+    the restart over as usual. Start-up ordering matters here too: if the newly
+    watched daemon is the one that produces an artifact a fail-closed gate
+    consumes, the fleet is blocked from the deploy until the operator restarts.
 - A **plugin/enforcer** fix needs the GATEWAY to reload. An in-session agent
   cannot restart it (lifecycle guard), so hand it over with the exact command and
   say plainly which half is loaded and which is still pending.
@@ -258,10 +302,20 @@ next deploy.** The cron-model chain is the canonical example (2026-08-31):
 
 ## Verify through the PRODUCT's own builders, not a hand-built harness
 
-A harness that rebuilds the product's invocation by hand tests the harness, not
-the product — and its failures look exactly like product bugs. Two false FAILs in
-one session (2026-10-03) came from a verification script while the product was
-correct both times:
+**Full recipe: `references/probe-and-harness-verification.md`.** A harness that
+reimplements the product's invocation tests the harness, not the product, and its
+failures look exactly like product bugs. In short: drive the code through its own
+API (never rebuild argv/env by hand), assert on the isolation KEY not the visible
+id, make every probe unique per run, run the acceptance script twice, place the
+fixture where the code's contract expects it and outside `HOME`, and clone a real
+artifact to build a fixture rather than inventing one from the fields you think
+matter. When a probe fails, suspect the PROBE before the code.
+
+Two false FAILs from one such script, with the product correct both times: a
+hand-built argv omitted the env var that was the real isolation seam, and a fixed
+probe id made run 2 resume run 1's leftovers. Both are in the reference above,
+with the rules for avoiding them.
+
 
 - The script built `[command, "--session-id", id, prompt]` directly instead of
   calling the backend's own `_argv`/`_child_env`. It therefore omitted
@@ -270,39 +324,6 @@ correct both times:
   old secret and the report read **"/new leaks memory"**. The product was fine.
 - The script then used a FIXED probe id, so its second run resumed the sessions
   its first run had left behind — the same false failure, for a different reason.
-
-Rules:
-
-- **Drive the code under test through its own API** (`backend._argv(prompt, sid)`,
-  `backend._child_env(inbound, sid)`) — never re-implement its argument or env
-  construction. A hand-built equivalent silently drops whatever field the real
-  builder adds next.
-- **Assert on the isolation KEY, not just the visible id.** When the artifact that
-  actually scopes state is an env var / checkpoint key, test THAT follows the
-  change (`CORTEX_SESSION_KEY` before != after). A correct argv with a constant
-  key is the trap: a fresh transcript that still resumes the old checkpoint.
-- **Make every probe UNIQUE per run** (`os.urandom`), and clean it up after.
-  A fixed probe id makes run 2 inherit run 1's leftovers; a committed evidence
-  script then fails intermittently and looks like a regression.
-- **Run the acceptance script TWICE.** Determinism is part of the claim: one
-  PASS can be a leftover; two consecutive PASSes on a cold probe is evidence.
-- **Place the fixture where the code's CONTRACT expects it.** A resolver that maps
-  a name to `HOME/<name>` cannot be exercised by a fixture at `HOME/sub/<name>` —
-  it correctly falls back and your probe reports a false failure. Read the contract
-  before choosing the temp layout, and treat a fallback/unexpected result as a
-  probe-placement question FIRST. Also record how deep the contract reaches: a
-  name-based resolver silently stops working for anything nested below the level it
-  scans, which is a real (fail-safe) boundary worth stating, not hiding.
-  **And place it where it cannot POLLUTE the host.** A fixture repo under `HOME` is not
-  neutral: any `~/<name>/.git` makes the doctor treat it as a dev repo and warn about it,
-  and a decoy sharing a basename with a real checkout can be mistaken for one. Keep
-  fixtures in the scratch/TMPDIR tree (`tempfile.mkdtemp`) and remove them in a `finally`.
-  Cleanup is the trap — deleting from `HOME` is a destructive command that needs operator
-  approval, and if that approval never arrives the fixture stays and every later doctor run
-  reports it.
-
-When your own harness reports a failure, suspect the harness first — a false FAIL
-costs the same as a missed bug and sends you editing correct code.
 
 ## Deploy ≠ VERIFIED: warnings sourced from another system's record
 

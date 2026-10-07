@@ -90,3 +90,25 @@ Skip the start-up guard only when the feature is genuinely absent (no
 backends/consumers configured ⇒ nothing signs ⇒ no secret needed). Make the
 message name the fix and the env var (`set GATEWAY_SECRET; e.g. openssl rand
 -hex 32`) so the operator is not left guessing.
+
+## An empty value in a COMPARISON guard authorises the MOST, not the least
+
+The same missing guard hides in equality checks, where it fails in the opposite
+direction to the credential case: a token/range validator written as
+`if receipt["base"] != base: return False` **accepts** a receipt whose field is
+empty whenever the query's field is also empty — so the check passes for an
+UNBOUNDED range, which is exactly what the guard existed to prevent. An empty
+value is not a match, it is a MISSING VALUE.
+
+- **Test truthiness on BOTH sides before any equality**:
+  `if not tip or not base: return False`, then compare. `"" == ""` must never
+  read as authorisation.
+- **Guard BOTH ends when producer and consumer live in different files** — the
+  producer refuses to emit a half-filled artifact, and the consumer refuses to
+  accept one, so neither half is load-bearing alone.
+- **Assert the regression test was RED before the fix.** A test for this written
+  after the patch can pass vacuously; run it against the unfixed check once and
+  see it fail, or you have not shown the hole existed.
+- Ask the same question of every field in an authorisation artifact, not just
+  the SHA-shaped one that broke: name the fields a validator compares, and for
+  each ask what an empty or default value compares EQUAL to.
