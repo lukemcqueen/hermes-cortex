@@ -43,7 +43,15 @@ leave as-is (it IS the record)". Deleting history to reach zero violates the
 keep-logs precedent and permanently destroys knowledge that exists nowhere
 else (many such files are deployed-only, never in git).
 
-## Pitfalls (all hit in real sweeps)
+## Pitfalls
+
+**`git add -A` does NOT mean the file was added.** `*.log` is in `.gitignore`, so
+a "committed execution log" was silently skipped and a commit message claimed a
+file that did not exist — the audit caught it, not the author. Any sweep or
+evidence artifact must confirm tracking from the tree, not from intent:
+`git ls-tree --name-only HEAD <dir>` (or `git diff --cached --name-only` before
+committing). Prefer the repo's existing artifact extension (`.txt` here) and check
+`git check-ignore -v <path>` when a file mysteriously does not stage. (all hit in real sweeps)
 
 1. **Deploy registers but NEVER prunes.** Files removed from the repo stay
    deployed forever: `~/.hermes-cortex/services/mycortex/import-<legacy>.py`,
