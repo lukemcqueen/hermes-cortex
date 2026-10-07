@@ -1,10 +1,10 @@
 [mcp-server] WARNING: the 'mcp' package is not installed — the stdio server cannot start; the CLI adapter (ops/scripts/loop-gov.py) still works.
 [mcp-server]   /home/luke/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3 -m pip install mcp
 
-━━━ Hermes Cortex Doctor ━━━  (09:13:26)
+━━━ Hermes Cortex Doctor ━━━  (09:15:05)
 
   ✅ Repo branch
-  ⚠️  Repo clean
+  ✅ Repo clean
   ✅ Repo sync
   ✅ Deploy sync
   ✅ AGENTS.md sync
@@ -439,14 +439,5 @@
   ✅ Task schema version
   ✅ Stranded slices
 
-  ⚠️  Overall: WARNING  (424 pass · 1 warn · 0 fail · 7 info)
-
-  ═══════════════════════════════════════════════════
-  🔧 REQUIRED ACTIONS — resolve each ⚠️  or ❌ above
-
-    Run: git status to review
-    Expected on a host that neither pushes nor hosts a sink. Otherwise check the sink service and this agent's VICTORIA_METRICS_URL.
-
-  After resolving, run doctor again to confirm.
-  ═══════════════════════════════════════════════════
+  ✅ Overall: HEALTHY  (425 pass · 0 warn · 0 fail · 7 info)
 
