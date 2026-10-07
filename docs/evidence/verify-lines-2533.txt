@@ -1,20 +1,20 @@
 === cycle 2533 pull+deploy: final verifiable facts ===
-Deployed revision (last-update.json before == after): abc5bd30
+Deployed revision (last-update.json before == after): 287e3c13
 
 [1] cortex-update.sh deploy run (full transcript: docs/evidence/update-final-c0e79fd8.txt):
-    Updated abc5bd30 -> abc5bd30
+    Updated 287e3c13 -> 287e3c13
     Deploy sync
     Overall: HEALTHY (425 pass, 0 warn, 0 fail)
 
-[2] git status --porcelain at deployed HEAD abc5bd30: (empty)
+[2] git status --porcelain at deployed HEAD 287e3c13: (empty)
 
 [3] last-update.json (deployed revision authority, verified live):
-    before abc5bd30   after abc5bd30   files_updated 233
+    before 287e3c13   after 287e3c13   files_updated 233
 
 [4] git log --oneline -3:
+    287e3c13 docs(evidence): record deployed revision abc5bd30 consistently in verify-lines
     abc5bd30 docs(evidence): cycle 2533 verifiable facts (deploy, pending-cycles, HEAD, scope)
     e770362c docs(evidence): compact verified lines for cycle 2533
-    d7772bff docs(evidence): clean git status after final deploy
 
 [5] "PENDING cycles" semantics (source: ops/scripts/manage/cortex_doctor/checks.py):
     The check queries loop_cycles WHERE decision='PENDING'; it emits PASS(green)
