@@ -1,0 +1,10 @@
+[AC-4] sustainability-briefing-2026-10-08.md      size=7432     PASS
+[AC-4] sustainability-briefing-2026-10-08.docx    size=10043    PASS
+[AC-4] sustainability-briefing-2026-10-08.pdf     size=78332    PASS
+[AC-1] required sections found=5/5 PASS
+[AC-2] source lines=16 distinct urls=16 malformed=0 PASS
+[AC-3] word count=902 PASS
+[AC-4] docx text chars=7234 markers=['EmpCo', 'Amy', '2026'] PASS
+[AC-4] pdf text chars=7164 EmpCo+KAESA=PASS
+
+RESULT: ALL PASS
