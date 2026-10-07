@@ -40,7 +40,7 @@ the pieces you need:
 | 2 | 🤝 **Agent-to-agent messaging** | [`ops/scripts/lib/cortex_bus.py`](ops/scripts/lib/cortex_bus.py) · [protocol](docs/fleet-update-protocol.md) | Production A2A over Postgres PGMQ — `bus_send`/`bus_read`/`bus_archive`, correlation IDs, no Kafka/Redis |
 | 3 | 💰 **RAG + semantic caching** | [`ops/web-cache/web_cache.py`](ops/web-cache/web_cache.py) · [mycortex](docs/design/mycortex-DESIGN.md) | sqlite-vec + Ollama cache that answers queries **before** the LLM — cuts token spend, works offline |
 | 4 | 🔒 **Enforced change governance** | [`plugins/governance-enforcer/`](plugins/governance-enforcer/) · [reference](docs/loop-governance-reference.md) | Change discipline **blocked at the tool level**, not suggested — no bypass flags, TDD Iron Law, adversarial verification |
-| 5 | 🤖 **Self-healing operations** | `ops/scripts/remediation/` · [reference](docs/fleet-reference.md) | sensor → marker → fixer pipeline that repairs crashes before you wake up |
+| 5 | 🤖 **Self-healing operations** | [`ops/scripts/health/agent-remediation-sensor.py`](ops/scripts/health/agent-remediation-sensor.py) · [reference](docs/fleet-reference.md) | sensor → marker → fixer pipeline that repairs crashes before you wake up |
 | 6 | 🕵️ **Threat pipeline** | [`ops/scripts/manage/agent-nginx-threat-pipeline.sh`](ops/scripts/manage/agent-nginx-threat-pipeline.sh) | Daily log scan → fail2ban bans → new blocklist entries, evidence-based |
 
 👉 **Full patterns guide with reading order:** [`docs/PATTERNS.md`](docs/PATTERNS.md) —
