@@ -21,8 +21,8 @@
 |--------|-------|
 | 🛡️ Evidence-based blocked IPs | **4,559** — one per line, drop into nginx/fail2ban/UFW |
 | 🧠 Curated offline code snippets | **545** across 59 topic areas, 30+ languages |
-| 💻 Shared skills | **336** across 50+ categories |
-| ⚙️ Operational scripts | **276** — installers, health checks, watchdogs, security |
+| 💻 Shared skills | **386** across 50+ categories |
+| ⚙️ Operational scripts | **278** — installers, health checks, watchdogs, security |
 | 🕐 Cron jobs shipped | **73** (49 agent + 24 orchestrator) |
 | 🤖 Agents in the fleet | **6** — 2 orchestrators + 4 specialists |
 
@@ -70,15 +70,16 @@ Agents communicate via a **PGMQ-based Agent Bus** with A2A (Agent-to-Agent) prot
 
 ### 🔒 Loop Governance — Enforced Change Discipline
 
-Every code change follows a mandatory workflow that's **enforced at three levels**:
+Every code change follows a mandatory workflow that's **enforced at four levels**:
 
 ```
-begin_change() → work → cycle_query() → feedback_accept() → end_change()
+begin_change() → work → cycle_query() → feedback_accept() → end_change() → push
 ```
 
 1. **🔴 MCP Enforcement** — The governance enforcer plugin blocks all write tools (`patch`, `write_file`, `terminal`) if no active lock exists
 2. **⚡ Pre-Commit Hook** — Every `git commit` runs `score-cycle` against the diff, logs to the governance DB, and validates AGENTS.md integrity
 3. **🕵️ Cron Auditor** — `governance-auditor` runs every 6h scanning for unscored changes + cleaning stale locks (>12h)
+4. **🚀 Pre-Push Gates** — Five checks before a push leaves the host: governance lock, **review receipt**, syntax, doc coverage, pull-before-push. The receipt gate makes a clean review a *precondition* rather than an afterthought: a range touching an always-review path (`ops/scripts/lib/always-review-paths.txt`) needs a CLEAN receipt bound to that exact range (tip **and** base). See [Review Receipt Gate](docs/review-receipt-gate.md).
 
 The **`pre-commit score hook`** auto-scores each commit and runs the **mandatory adversarial verification gate** (A2 default, A4 for security/guard/hook/enforcer files) on every staged script. No `SKIP_SCORE=1` bypass — and no `--no-verify` to ship a hook-rejected change: it is logged and audited (`agent-no-verify-audit` cron). Fix the findings, then commit normally.
 
@@ -405,6 +406,7 @@ offline_knowledge query "symptoms of malaria"
 | [Architecture](docs/architecture.md) | System diagram, services, port map, design principles |
 | [Troubleshooting](docs/troubleshooting.md) | Common issues and fixes |
 | [Loop Governance Reference](docs/loop-governance-reference.md) | Full governance workflow, scoring, enforcement layers |
+| [Review Receipt Gate](docs/review-receipt-gate.md) | 🚀 Why review must precede push, how to satisfy the gate, and the docs-only material budget |
 | [Fleet Reference](docs/fleet-reference.md) | Agent summary, cron table, auto-remediation pipeline |
 | [Setup Reference](docs/setup-reference.md) | Ollama config, env vars, cron tiers, model selection |
 | [Pipeline Reference](docs/pipeline-reference.md) | Lessons, sessions, skills, memory, quality pipeline |
