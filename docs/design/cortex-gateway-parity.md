@@ -72,6 +72,39 @@ Agent **out-of-process** (survives a gateway restart, unlike the in-process loop
 **swappable agent backend** (pi = CR5, orthogonal — it changes *who answers*, not what the
 transport can carry); **HMAC-signed envelopes** with a fail-closed secret.
 
+### CR5 — the pi backend, measured live on the second bot (2026-10-07)
+
+pi plugs into the backend seam as `kind: command` with **no gateway code change** (config
+only: `ops/scripts/gateway-pi.example.yaml`). Running it on @Esther0001Bot exposed four
+ways a *synchronous* backend loses replies, three of them silent. All four are fixed and
+each is held closed by a named test.
+
+| # | Defect | Why it was invisible | Fix | Held by |
+|---|---|---|---|---|
+| P1 | `output: last_line` truncated every multi-line answer to its final line | the reply arrived, so nothing looked broken — only part of it did | `output: raw` — pi's stdout is EXACTLY the assistant answer, verified with a plain turn AND a turn that used pi's bash tool; the extension's `CORTEX_RESUME` line and tool chatter go to its log/stderr, never stdout | `ops/scripts/gateway-pi.example.yaml`, `test_output_shape_is_declared_not_guessed` |
+| P2 | **A silent turn wedged the chat permanently.** One turn with no reply left the chat "in flight" forever, so every later message queued behind a turn that could never complete and the agent went silent for good | the daemon read a `None` reply as "async, still waiting" — true for hermes (bus), false for a CLI agent, and nothing let it tell them apart | the backend DECLARES it: `BackendAdapter.async_replies` (hermes True, command False). A sync `None` finishes the turn and frees the chat | `test_daemon_a_silent_sync_turn_does_not_wedge_the_chat`, `…an_async_silent_turn_keeps_the_chat_busy…`, `…a_queued_sync_turn_that_answers_nothing_still_frees_the_chat` |
+| P3 | A turn that could not RUN was **silent** — a pi timeout produced no message at all, indistinguishable from a dead gateway | the failure existed only as a `log.warning` | the turn returns a reply naming the reason (`timed out after 300s` / `could not run …` / `exited N with no output`) through the ordinary reply path; a clean turn with no output stays silent | `test_a_failed_turn_reaches_the_human_instead_of_going_quiet` |
+| P4 | A long pi turn showed **no typing prompt at all** | `_refresh_typing()` runs once per poll cycle, and a sync backend blocks the cycle for the whole turn (minutes) while Telegram expires the action in ~5s — the async hermes backend returns immediately and kept it | `_TypingKeeper` thread refreshes the indicator for in-flight turns independently of the loop; every call stays best-effort | `test_the_typing_keeper_refreshes_while_the_loop_is_blocked_in_a_turn` |
+
+Two further defects the same pass found and fixed, both pre-existing and both in the
+synchronous path:
+
+- **`_run_streaming` ignored `timeout_s` while reading.** It read with `for line in
+  stream` and applied the timeout only to the closing `wait()`, so a streaming agent that
+  held its pipe open (a hung turn) was never bounded — the gateway blocked on it
+  indefinitely. The read is now bounded by a `select()` deadline, and a partial answer is
+  delivered WITH the failure note so it cannot pass for a complete one
+  (`test_a_partial_answer_from_a_failed_turn_is_marked_not_silently_truncated`).
+- **`timeout_s: 0` did not fail closed.** `int(raw or default)` turned an explicit `0`
+  into `300`, so `validate()`'s "must be positive" never fired — a fail-open in the field
+  that decides when a turn is reported as timed out
+  (`test_a_non_positive_timeout_is_refused_not_silently_defaulted`).
+
+Still a genuine asymmetry with the incumbent, named rather than hidden: a synchronous
+backend **blocks the poll loop** for the length of its turn, so other chats are polled only
+between turns (the hermes backend returns immediately). The typing keeper and the per-chat
+queue soften it; making sync turns concurrent is the next slice, not a claim about this one.
+
 ## Cutover gate
 
 Confidence is defined, not felt. Cut over when **all four** hold:
@@ -153,6 +186,13 @@ exponential backoff with a conflict fault-tolerance of 3 consecutive cycles befo
   does not change even though the user-visible behaviour does. The three material cutover
   risks named in the first audit — silent truncation, no interrupt, no polling recovery —
   are now each covered by a test.
+
+- **2026-10-07, CR5 (pi):** running the pi backend on the second bot produced the four
+  defects in the CR5 table above — a truncated reply (`output: last_line`), a chat wedged
+  forever by one silent turn, a failed turn that was silent, and no typing prompt during a
+  long turn — plus two pre-existing faults in the synchronous path (an unbounded streaming
+  read, and `timeout_s: 0` silently defaulting). Fixed with tests named in the table; the
+  blocking-turn asymmetry is recorded as still open.
 
 ## Evidence
 

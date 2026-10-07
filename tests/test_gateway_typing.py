@@ -49,6 +49,12 @@ class FakeTransport:
 
 
 class FakeBackend:
+    # Models the ASYNC backend (hermes over the bus): dispatch only enqueues and the
+    # reply arrives via poll_replies. Without the declaration the daemon treats this
+    # as a synchronous backend and frees the chat inside dispatch, so the busy/refresh
+    # behaviour under test here would never happen.
+    async_replies = True
+
     def __init__(self):
         self.dispatched = []
         self.replies = []
@@ -119,3 +125,69 @@ def test_a_transport_without_typing_is_still_conformant():
     gw._turn(_env("no typing capability"))
     assert be.dispatched, "the turn must run without the optional capability"
     print("  a transport without send_typing still works (feature-detected) ✓")
+
+
+def test_typing_after_the_chat_is_free_is_a_no_op_never_an_error():
+    """The keeper thread races the poll loop; the refresh path must not raise.
+
+    `_refresh_typing` runs on the keeper thread while the poll loop may be finishing
+    and popping the chat — an `in`-check followed by item assignment is a KeyError
+    window across the two threads.
+    """
+    gw, tr, be = _gw()
+    gw._typing(CHAT)                       # nothing in flight: must not raise
+    assert gw.inflight == {}
+    gw.inflight[CHAT] = {"ts": 0.0, "envelope": _env("x", thread=None)}
+    gw._typing(CHAT)
+    assert "typing_ts" in gw.inflight[CHAT], "a live turn must have its stamp updated"
+    print("  typing with no in-flight turn is a no-op, not a KeyError ✓")
+
+
+def test_the_typing_keeper_refreshes_while_the_loop_is_blocked_in_a_turn():
+    """The refresh lives BETWEEN poll cycles, so a blocking turn froze the indicator.
+
+    `_refresh_typing()` is called once per poll cycle, and a synchronous backend (a CLI
+    agent like pi) blocks inside dispatch for the whole turn — which is measured in
+    minutes, while Telegram expires a chat action after ~5s. So a long pi turn showed
+    NO typing prompt at all, while the async hermes backend kept it. The keeper thread
+    is what makes the prompt survive a blocked loop.
+    """
+    gw, tr, be = _gw()
+    gw._turn(_env("long job"))
+    assert len(tr.typing) == 1
+    gw.inflight[CHAT]["typing_ts"] = time.time() - gw.TYPING_REFRESH_S - 1   # due now
+
+    keeper = D._TypingKeeper(gw, interval_s=0.05)
+    keeper.start()
+    try:
+        deadline = time.time() + 3.0
+        while len(tr.typing) < 2 and time.time() < deadline:
+            time.sleep(0.02)
+    finally:
+        keeper.stop()
+    assert len(tr.typing) >= 2, "the keeper never refreshed the indicator"
+    assert tr.typing[-1]["chat_id"] == CHAT, tr.typing[-1]
+    print("  the keeper refreshes typing while the poll loop is blocked ✓")
+
+    settled = len(tr.typing)
+    time.sleep(0.25)
+    assert len(tr.typing) == settled, "a stopped keeper must stop refreshing"
+    print("  a stopped keeper stops refreshing ✓")
+
+
+def test_the_keeper_reports_but_never_breaks_on_a_refresh_failure():
+    """UX only: a failing chat action must not kill the keeper (or the gateway)."""
+    gw, tr, be = _gw(typing_raises=True)
+    gw._turn(_env("long job"))
+    gw.inflight[CHAT]["typing_ts"] = time.time() - gw.TYPING_REFRESH_S - 1
+
+    keeper = D._TypingKeeper(gw, interval_s=0.05)
+    keeper.start()
+    try:
+        deadline = time.time() + 2.0
+        while keeper.is_alive() and time.time() < deadline:
+            time.sleep(0.02)
+        assert keeper.is_alive(), "a refused typing action must not kill the keeper"
+    finally:
+        keeper.stop()
+    print("  a refused action is logged, never fatal ✓")

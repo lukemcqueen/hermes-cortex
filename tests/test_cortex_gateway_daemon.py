@@ -307,3 +307,119 @@ def test_daemon_routes_by_channel_user():
                  routing_overrides={"42": "pi"})
     gw.poll_once()
     assert spy_pi.got["to_agent"] == "pi", "channel_user 42 must route to pi"
+
+
+# ── a turn that ends without a reply frees its chat (pi parity) ──────────────
+
+class _SilentSync:
+    """A synchronous backend (a CLI agent) that answers nothing this turn."""
+
+    async_replies = False
+
+    def __init__(self):
+        self.seen = []
+
+    def start(self):
+        pass
+
+    def stop(self):
+        pass
+
+    def dispatch(self, envelope):
+        self.seen.append(envelope["body"])
+        return None
+
+    def health(self):
+        return {"ok": True}
+
+
+def test_daemon_a_silent_sync_turn_does_not_wedge_the_chat():
+    """A sync turn that produces no reply has STILL finished — free the chat.
+
+    Seen live on the second bot (@Esther0001Bot, pi backend): one turn came back
+    with no text (a timed-out pi run), the daemon left the chat 'in flight'
+    waiting for a reply that a synchronous backend never sends — so every later
+    message queued behind a turn that would never complete and the agent went
+    permanently silent. Only an ASYNC backend may stay in flight.
+    """
+    from cortex_gateway.daemon import Gateway
+
+    transport = FakeTransport([_update("one"), _update("two")])
+    backend = _SilentSync()
+    gw = Gateway(transport=transport, backends={"pi": backend}, default_agent="pi")
+    gw.poll_once()
+
+    assert backend.seen == ["one", "two"], \
+        f"the chat was wedged after a silent turn — dispatched {backend.seen}"
+    assert gw.inflight == {}, f"chat left in flight forever: {gw.inflight}"
+    assert transport.sent == [], "a silent turn still sends nothing"
+
+
+def test_daemon_an_async_silent_turn_keeps_the_chat_busy_until_it_drains():
+    """The fix must not free an ASYNC backend's chat early (hermes replies later)."""
+    from cortex_gateway.daemon import Gateway
+    from cortex_gateway.backend import BackendAdapter
+
+    transport = FakeTransport([_update("hi")])
+
+    class AsyncSilent(BackendAdapter):
+        async_replies = True
+
+        def start(self):
+            pass
+
+        def stop(self):
+            pass
+
+        def dispatch(self, envelope):
+            return None                 # enqueued; the reply arrives via poll_replies
+
+        def poll_replies(self, max_n=5):
+            return []
+
+        def health(self):
+            return {"ok": True}
+
+    gw = Gateway(transport=transport, backends={"hermes": AsyncSilent()},
+                 default_agent="hermes")
+    gw.poll_once()
+    assert 7 in gw.inflight, \
+        "an async backend's chat must stay busy until its reply is drained"
+
+
+def test_answers_async_survives_a_backend_attribute_that_raises():
+    """One backend's broken attribute must not kill the poll loop for every chat.
+
+    A backend whose `async_replies` raises (a property touching uninitialised state)
+    is read as synchronous: the safe direction, since sync frees the chat instead of
+    leaving it waiting on a reply that never comes.
+    """
+    from cortex_gateway.daemon import _answers_async
+
+    class Hostile:
+        @property
+        def async_replies(self):
+            raise RuntimeError("uninitialised")
+
+    class Plain:
+        pass
+
+    assert _answers_async(Hostile()) is False
+    assert _answers_async(Plain()) is False
+    assert _answers_async(type("Async", (), {"async_replies": True})()) is True
+    print("  a raising attribute is read as synchronous, never fatal ✓")
+
+
+def test_daemon_a_queued_sync_turn_that_answers_nothing_still_frees_the_chat():
+    """The same rule on the queue path — otherwise the queue stalls behind it."""
+    from cortex_gateway.daemon import Gateway
+
+    gw = Gateway(transport=FakeTransport([]), backends={"pi": _SilentSync()},
+                 default_agent="pi")
+    queued = _update_env("second")
+    queued["to_agent"] = "pi"
+    gw.inflight[7] = {"ts": 0.0, "envelope": _update_env("first")}
+    gw.queues[7] = [queued]
+    gw._next_from_queue(7)
+    assert gw.inflight == {}, f"the queue stalled behind a silent sync turn: {gw.inflight}"
+    assert gw.queues.get(7, []) == [], "the queued turn must have been consumed"

@@ -67,6 +67,10 @@ def _extract_envelope(msg: dict):
 class HermesBackend(BackendAdapter):
     """Reference backend: dispatch/reply over the PGMQ bus (inbox_/out_)."""
 
+    # dispatch() only ENQUEUES; the agent's reply arrives later on out_<agent>, so the
+    # daemon must keep the chat in flight until poll_replies() drains it.
+    async_replies = True
+
     def __init__(self, agent: str, bus_url: str, bus_headers: dict,
                  secret: str):
         if not isinstance(agent, str) or not agent:

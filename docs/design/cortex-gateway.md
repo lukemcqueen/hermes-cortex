@@ -1,6 +1,6 @@
 # cortex-gateway — the decoupled Hermes-cortex gateway
 
-> **Status:** in build — CR1 ✅ CR2 ✅ CR3 ✅ CR4 ✅ (transport, backend seam, daemon + hermes backend, systemd unit + config + doctor) · CR5 pi · CR6 steadfaste pending.
+> **Status:** in build — CR1 ✅ CR2 ✅ CR3 ✅ CR4 ✅ (transport, backend seam, daemon + hermes backend, systemd unit + config + doctor) · CR5 pi ✅ (generic `command` kind — no gateway code change; live on @Esther0001Bot) · CR6 steadfaste pending.
 > **Pairs with:** `component-hermes-separation.md` (S2b) · `messaging-gateway.md` (ADR-0005, the in-process incumbent).
 > **Audience:** builder, orchestrator, owner.
 
@@ -37,7 +37,7 @@ in a transport or a backend. The reply must round-trip through
 | CR2 | `cortex_gateway/backend.py` — BackendAdapter ABC + structural `__subclasshook__` | ✅ |
 | CR3 | `cortex_gateway/daemon.py` + `hermes_backend.py` — poll_bot + drain_outbound + dispatch/reply step; hermes (bus) adapter first | ✅ |
 | CR4 | `cortex-gateway.service` systemd user unit + `gateway.yaml.example` + deploy-map + doctor check; independence proof vs hermes-gateway.service (offline: no hermes dep; live cutover = S2d window) | ✅ |
-| CR5 | pi backend adapter | pending |
+| CR5 | pi backend adapter | ✅ — as a `command` SPEC, not an adapter: `ops/scripts/gateway-pi.example.yaml` (`kind: command`), live on @Esther0001Bot. The seam needed no code; the four reply-path defects it exposed (truncation, a wedged chat, a silent failed turn, no typing prompt) are fixed in the daemon/backend and tabled in `cortex-gateway-parity.md` |
 | CR6 | steadfaste backend adapter (blocked until steadfaste gateway is complete — Luke) | pending |
 
 ## Fail-closed guarantees

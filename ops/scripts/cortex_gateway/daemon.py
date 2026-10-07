@@ -34,6 +34,7 @@ from __future__ import annotations
 import json
 import os
 import sys
+import threading
 import time
 import urllib.error
 from pathlib import Path
@@ -55,6 +56,54 @@ from .transport import (DEFAULT_POLL_SECONDS, BotConfig, PollingConflict,
                         TransportAdapter, TelegramAdapter)
 
 DEFAULT_BACKEND_AGENT = "hermes"
+
+
+def _answers_async(backend) -> bool:
+    """True when this backend's reply arrives LATER (poll_replies), not in dispatch.
+
+    Declared by the backend (`async_replies`), never inferred from a None reply:
+    a synchronous CLI agent returns None when it had nothing to say, and treating
+    that as "still waiting" wedges the chat permanently.
+
+    A backend whose attribute RAISES (a property touching uninitialised state) is
+    reported and read as synchronous: sync is the safe direction — it frees the chat
+    instead of leaving it waiting forever — whereas letting the exception out would
+    kill the poll loop and take every chat with it.
+    """
+    try:
+        return bool(getattr(backend, "async_replies", False))
+    except Exception as e:  # noqa: BLE001 — never let one backend's attribute stop the loop
+        print(f"⚠️  backend {type(backend).__name__}.async_replies raised ({e}); "
+              f"treating it as synchronous", file=sys.stderr)
+        return False
+
+
+class _TypingKeeper(threading.Thread):
+    """Keep the "typing…" prompt alive while the poll loop is BLOCKED in a turn.
+
+    The loop is single-threaded, so a synchronous backend (a CLI agent) blocks
+    inside dispatch for the whole turn and ``Gateway._refresh_typing()`` — called
+    once per poll cycle — never runs. Telegram clears a chat action after ~5s, so
+    on the second bot a long pi turn showed NO typing prompt at all, while the
+    hermes backend (async, returns immediately) kept it alive. UX only: every call
+    is best-effort and a failure can never affect delivery.
+    """
+
+    def __init__(self, gateway, interval_s: float = 4.0):
+        super().__init__(daemon=True, name="cortex-gateway-typing")
+        self.gateway = gateway
+        self.interval_s = interval_s
+        self._stop = threading.Event()
+
+    def run(self) -> None:
+        while not self._stop.wait(self.interval_s):
+            try:
+                self.gateway._refresh_typing()
+            except Exception as e:  # noqa: BLE001 — UX must never kill the loop
+                print(f"⚠️  typing keeper: {e}", file=sys.stderr)
+
+    def stop(self) -> None:
+        self._stop.set()
 
 
 class _Streamer:
@@ -341,8 +390,12 @@ class Gateway:
             fn(chat, thread_id=(envelope or {}).get("thread_id"))
         except Exception as e:  # noqa: BLE001 — UX must never break a turn
             print(f"⚠️  typing indicator failed: {e}", file=sys.stderr)
-        if chat in self.inflight:
-            self.inflight[chat]["typing_ts"] = time.time()
+        # .get() + mutate the dict we got: the typing keeper thread calls this while the
+        # poll loop may be finishing the turn and popping the chat, and an `in`-check
+        # followed by item assignment is a real KeyError window between the two threads.
+        st = self.inflight.get(chat)
+        if st is not None:
+            st["typing_ts"] = time.time()
 
     def _refresh_typing(self) -> None:
         """Keep the indicator alive for every in-flight turn (refreshed, not once)."""
@@ -450,6 +503,12 @@ class Gateway:
         poll_replies), but the seam also allows a backend that returns a reply
         directly — the original daemon sent it, and dropping it here was a
         regression caught by test_cortex_gateway_daemon.py.
+
+        A None reply is ambiguous on its own, so the BACKEND declares which it is
+        (`async_replies`). For a synchronous backend None means the turn ENDED with
+        nothing to say, and the chat must be freed: leaving it in flight made every
+        later message queue behind a turn that could never complete, so the agent
+        went permanently silent after one empty turn (measured live with pi).
         """
         self.inflight[chat] = {"ts": time.time(), "envelope": envelope}
         self._typing(chat, envelope)
@@ -465,12 +524,19 @@ class Gateway:
             else:
                 self.transport.send(reply)
             self._next_from_queue(chat)
+        elif not _answers_async(backend):
+            self._next_from_queue(chat)
 
     def _next_from_queue(self, chat) -> None:
         """The chat is free → run queued turns until one is async or the queue empties.
 
         Iterative rather than recursive: a synchronous backend would otherwise
         recurse once per queued message.
+
+        A turn ENDS when a synchronous backend returns (with a reply, or with None
+        meaning the agent had nothing to say). It ends LATER only for an async
+        backend, whose reply arrives through drain_outbound — so only that case may
+        leave the chat in flight.
         """
         self.inflight.pop(chat, None)
         while True:
@@ -483,9 +549,10 @@ class Gateway:
                 return
             self.inflight[chat] = {"ts": time.time(), "envelope": nxt}
             reply = backend.dispatch(nxt)
-            if reply is None:            # async backend → wait for its reply
-                return
-            self.transport.send(reply)   # sync backend → the chat is free again
+            if reply is None and _answers_async(backend):
+                return                   # async backend → wait for its reply
+            if reply is not None:
+                self.transport.send(reply)   # sync backend → the chat is free again
             self.inflight.pop(chat, None)
 
     # ── outbound drain (async replies) ─────────────────────────
@@ -545,6 +612,8 @@ class Gateway:
             time.sleep(DEFAULT_POLL_SECONDS)
 
     def run(self) -> None:
+        keeper = _TypingKeeper(self, self.TYPING_REFRESH_S)
+        keeper.start()
         while True:
             self.run_once()
             time.sleep(self._poll_delay())
@@ -556,6 +625,11 @@ class Gateway:
             getattr(self.transport, "token_ref",
                     getattr(self.transport, "token", "bot")),
             getattr(self.transport, "channel", "telegram"))
+        # The typing keeper is REQUIRED here, not a nicety: a synchronous backend
+        # blocks this loop for the whole turn, so nothing else can refresh the
+        # indicator. Without it a long CLI-agent turn shows no typing prompt at all.
+        keeper = _TypingKeeper(self, self.TYPING_REFRESH_S)
+        keeper.start()
         while True:
             with bot_locks.BotLock(bot_locks._connect, key) as acquired:
                 if not acquired:

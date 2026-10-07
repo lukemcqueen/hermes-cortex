@@ -158,13 +158,83 @@ def test_command_backend_prompt_template_and_placeholders():
     print("  prompt templates work, and a bad placeholder degrades to the raw body ✓")
 
 
+def test_a_failed_turn_reaches_the_human_instead_of_going_quiet():
+    """A turn that could not RUN must not be silent — silence reads as a dead bot.
+
+    Live on the second bot (pi backend, 2026-10-07): a pi turn that ran past the
+    spec timeout produced no message at all, so the human could not tell "the
+    agent had nothing to say" from "the gateway is down". A failure is now a reply
+    envelope that NAMES the reason; a turn that ran fine and printed nothing stays
+    silent (that is the legitimate silent-when-clean outcome).
+    """
+    timed_out = A.AgentSpec(name="pi", kind="command",
+                            command=["/bin/sh", "-c", "sleep 5; echo too late"],
+                            timeout_s=1)
+    reply = A.CommandBackend(timed_out).dispatch(_inbound())
+    assert reply is not None, "a timed-out turn must not be silent"
+    assert "timed out" in reply["body"], reply["body"]
+    assert reply["channel_user_id"] == 100001, "a failure still routes back to the chat"
+
+    missing = A.AgentSpec(name="pi", kind="command", command=["/nonexistent/agent"])
+    reply = A.CommandBackend(missing).dispatch(_inbound())
+    assert reply is not None, "an agent that cannot start must not be silent"
+    assert "could not run" in reply["body"], reply["body"]
+
+    crashed = A.AgentSpec(name="pi", kind="command",
+                          command=["/bin/sh", "-c", "exit 3"], timeout_s=5)
+    reply = A.CommandBackend(crashed).dispatch(_inbound())
+    assert reply is not None, "a crashed agent that said nothing must not be silent"
+    assert "exited 3" in reply["body"], reply["body"]
+    print("  a timed-out / missing / crashed agent tells the human, never goes quiet ✓")
+
+
+def test_a_non_positive_timeout_is_refused_not_silently_defaulted():
+    """`timeout_s: 0` must fail closed at build, not quietly become 300s.
+
+    It is the field that decides when a turn is reported as timed out, and
+    ``int(raw or default)`` used to swallow the explicit 0 while validate()'s "must be
+    positive" never fired.
+    """
+    for bad in (0, -1, -0.5):
+        try:
+            A.build_backends([{"name": "pi", "kind": "command",
+                               "command": ["/bin/true"], "timeout_s": bad}], {})
+            raise AssertionError(f"timeout_s={bad} must be refused at build")
+        except ValueError as e:
+            assert "timeout_s must be positive" in str(e), str(e)
+    assert A.AgentSpec.from_dict({"name": "pi", "timeout_s": 7}).timeout_s == 7
+    assert A.AgentSpec.from_dict({"name": "pi"}).timeout_s == 300
+    assert A.AgentSpec.from_dict({"name": "pi", "timeout_s": None}).timeout_s == 300
+    print("  a non-positive timeout is refused; an absent one keeps the default ✓")
+
+
+def test_a_partial_answer_from_a_failed_turn_is_marked_not_silently_truncated():
+    """Streaming: output printed before the timeout must not look like a whole answer."""
+    spec = A.AgentSpec(name="pi", kind="command", stream=True, timeout_s=1,
+                       command=["/bin/sh", "-c", "echo partial answer; sleep 5"])
+    seen = []
+    reply = A.CommandBackend(spec).dispatch(_inbound(), sink=seen.append)
+    assert reply is not None
+    assert "partial answer" in reply["body"], reply["body"]
+    assert "timed out" in reply["body"], \
+        f"a truncated answer must say so: {reply['body']!r}"
+    print("  a timed-out streamed answer is delivered WITH the failure note ✓")
+
+
+def test_a_successful_turn_that_prints_nothing_is_still_silent():
+    """The failure path must not turn a legitimate silent turn into a message."""
+    ok = A.AgentSpec(name="pi", kind="command", command=["/bin/true"], timeout_s=5)
+    assert A.CommandBackend(ok).dispatch(_inbound()) is None
+    print("  a clean turn with no output is still silent ✓")
+
+
 def test_command_backend_survives_a_failing_agent_without_crashing_the_loop():
     spec = A.AgentSpec(name="pi", kind="command", command=["/bin/false"], timeout_s=5)
-    assert A.CommandBackend(spec).dispatch(_inbound()) is None      # no reply, no crash
+    assert A.CommandBackend(spec).dispatch(_inbound()) is not None   # loud, no crash
     missing = A.AgentSpec(name="pi", kind="command", command=["/nonexistent/agent"])
-    assert A.CommandBackend(missing).dispatch(_inbound()) is None
+    assert A.CommandBackend(missing).dispatch(_inbound()) is not None
     assert A.CommandBackend(missing).health()["ok"] is False
-    print("  a failing or missing agent yields no reply and never crashes the loop ✓")
+    print("  a failing or missing agent replies with the reason and never crashes the loop ✓")
 
 
 def test_output_shape_is_declared_not_guessed():

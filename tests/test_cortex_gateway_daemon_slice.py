@@ -47,6 +47,11 @@ class FakeTransport:
 
 
 class FakeBackend:
+    # Models the ASYNC backend (hermes over the bus): dispatch only enqueues and the
+    # reply arrives via poll_replies, so the chat must stay busy until it drains.
+    # A backend that answers in dispatch() (a CLI agent) leaves this False.
+    async_replies = True
+
     def __init__(self):
         self.dispatched = []
         self.replies = []

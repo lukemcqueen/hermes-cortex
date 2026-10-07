@@ -35,6 +35,17 @@ class BackendAdapter(ABC):
     table, and the transport never change (the interop invariant).
     """
 
+    # Does the reply arrive LATER, out of band, through poll_replies()?
+    #   False (default) — a CLI agent backend: dispatch() returns the reply, and a
+    #     dispatch that returns None has still FINISHED the turn (the agent chose to
+    #     say nothing). The daemon frees the chat immediately.
+    #   True — an async backend (hermes over the bus): dispatch() enqueues and always
+    #     returns None, so the chat stays in flight until poll_replies delivers.
+    # The daemon cannot infer this from a None reply, and assuming "async" for a
+    # synchronous backend wedges the chat forever — every later message queues behind
+    # a turn that can never complete. Measured on the second bot with the pi backend.
+    async_replies = False
+
     # The spec this backend was built from (cortex_gateway.agents.AgentSpec), when the
     # registry built it. Optional and generic: health/status reporting can show an
     # operator WHAT was declared for this agent without knowing its kind.

@@ -34,8 +34,10 @@ from __future__ import annotations
 import json
 import logging
 import os
+import select
 import shlex
 import subprocess
+import time
 from dataclasses import dataclass, field
 
 import gateway_envelope as env
@@ -65,8 +67,10 @@ def known_kinds() -> list:
 REPLY_MODES = ("sync", "bus")
 
 # Agents differ in what they print. `raw` takes stdout as the reply; `last_line` takes the
-# final non-empty line — for agents that chat on stdout first (pi, for example, prints its
-# extension's session line, e.g. CORTEX_RESUME …, before the answer). Anything more
+# final non-empty line — for an agent that chats on stdout before the answer. Measured on
+# the live pi install (2026-10-07): pi's stdout IS the answer and nothing else (extension
+# chatter and tool output go to its log/stderr), so `last_line` only truncated multi-line
+# replies — verify an agent's stdout before choosing this, and prefer `raw`. Anything more
 # involved belongs in a wrapper command in the spec, which the registry already supports.
 OUTPUT_MODES = ("raw", "last_line")
 
@@ -76,6 +80,19 @@ OUTPUT_MODES = ("raw", "last_line")
 # shared state — and the argv template keeps the agent's own flag names out of our code
 # (pi: --session-id, others differ).
 SESSION_MODES = ("none", "per_chat")
+
+
+def _positive_or_default(raw, default: int) -> int:
+    """`timeout_s` from config: absent → the default; present → coerced, then validated.
+
+    ``int(raw or default)`` silently turned an explicit ``0`` into the default, so a
+    config saying ``timeout_s: 0`` quietly got 300s while ``validate()``'s "must be
+    positive" never fired — a fail-open in the very field that decides how long a turn
+    may run (and therefore when a turn is reported as timed out).
+    """
+    if raw is None or raw == "":
+        return default
+    return int(raw)
 
 
 @dataclass
@@ -126,7 +143,7 @@ class AgentSpec:
             kind=str(d.get("kind", "hermes")).strip().lower(),
             command=list(cmd or []),
             prompt_template=str(d.get("prompt_template") or "{body}"),
-            timeout_s=int(d.get("timeout_s", 300) or 300),
+            timeout_s=_positive_or_default(d.get("timeout_s"), 300),
             reply_mode=str(d.get("reply_mode", "sync")).strip().lower(),
             output=str(d.get("output", "raw")).strip().lower(),
             session=str(d.get("session", "none")).strip().lower(),
@@ -197,7 +214,7 @@ def reply_from_origin(origin: dict, body: str, *, agent: str) -> dict:
         raise ValueError("reply_from_origin: refusing to build an empty reply")
     return {
         "msg_id": env.new_msg_id(),
-        "ts": int(__import__("time").time()),
+        "ts": int(time.time()),
         "from_agent": agent,
         "to_agent": str(origin.get("to_agent", "")),
         "channel": str(origin.get("channel", "")),
@@ -296,11 +313,19 @@ class CommandBackend:
         # coding turn is visible instead of silent. The sink is the GATEWAY's (it owns
         # formatting and delivery); a backend that can stream advertises supports_stream.
         if sink is not None and self.spec.stream:
-            out = self._run_streaming(prompt, session_id, sink, child_env)
+            out, failure = self._run_streaming(prompt, session_id, sink, child_env)
         else:
-            out = self._run(prompt, session_id, child_env)
-        if not out:
-            return None                       # silent turn is legitimate
+            out, failure = self._run(prompt, session_id, child_env)
+        if failure:
+            # The turn could not RUN (in full). Saying nothing here is indistinguishable
+            # from a dead gateway — measured live: a pi turn that ran past its timeout
+            # produced no message at all, so the human could not tell "nothing to say"
+            # from "broken". When the agent did print part of an answer before failing,
+            # the note is appended so partial output can never look complete.
+            note = self._failure_text(failure)
+            out = f"{out}\n\n{note}" if out.strip() else note
+        elif not out:
+            return None                       # a clean turn with nothing to say is legitimate
         reply = reply_from_origin(inbound, out, agent=self.spec.name)
         if self.spec.reply_mode == "bus":
             ok = publish_reply(self.bus_url, self.bus_headers, self.spec.name, reply)
@@ -311,6 +336,11 @@ class CommandBackend:
                     self.spec.name, self.spec.name, self.spec.name)
             return None                       # async: the gateway drains it
         return env.validate(reply)            # sync: the daemon sends it now
+
+    def _failure_text(self, failure: str) -> str:
+        """Tell the human WHY the turn produced nothing. Never a silent failure."""
+        return (f"⚠️ {self.spec.name} could not answer: {failure}. "
+                "Your message was received — send it again to retry.")
 
     def poll_replies(self, max_n: int = 5) -> list:
         return []                             # sync mode answers inside dispatch
@@ -408,59 +438,106 @@ class CommandBackend:
         return {**os.environ, **overrides}
 
     def _run(self, prompt: str, session_id: str = "",
-             child_env: dict | None = None) -> str:
+             child_env: dict | None = None) -> tuple[str, str]:
+        """Run one turn → ``(reply_text, failure_reason)``.
+
+        ``failure_reason`` is "" when the agent RAN. It names the problem when the turn
+        could not run at all (timeout, exec error, a crash that printed nothing), which
+        the caller turns into a visible reply — a silent failure reads as a dead bot.
+        """
         cmd = self._argv(prompt, session_id)
         try:
             proc = subprocess.run(cmd, capture_output=True, text=True,
                                   timeout=self.spec.timeout_s, env=child_env)
         except subprocess.TimeoutExpired:
-            log.warning("command backend %s: timed out after %ss — no reply",
-                        self.spec.name, self.spec.timeout_s)
-            return ""
-        except OSError as e:
-            log.warning("command backend %s: could not run %r (%s) — no reply",
+            log.warning("command backend %s: timed out after %ss — reporting the "
+                        "failure to the human", self.spec.name, self.spec.timeout_s)
+            return "", f"timed out after {self.spec.timeout_s}s"
+        except (OSError, ValueError, TypeError) as e:
+            # OSError = cannot spawn; ValueError/TypeError = an unusable argv from a
+            # bad spec (e.g. a non-string entry). Never let a config typo kill the loop.
+            log.warning("command backend %s: could not run %r (%s)",
                         self.spec.name, self.spec.command[:1], e)
-            return ""
+            return "", f"could not run {self.spec.command[:1]} ({e})"
+        out = self._shape_output(proc.stdout or "")
         if proc.returncode != 0:
             log.warning("command backend %s: exit %s; stderr=%r",
                         self.spec.name, proc.returncode, (proc.stderr or "")[:200])
-        return self._shape_output(proc.stdout or "")
+            if not out:
+                return "", f"exited {proc.returncode} with no output"
+        return out, ""
 
     def _run_streaming(self, prompt: str, session_id: str, sink,
-                       child_env: dict | None = None) -> str:
+                       child_env: dict | None = None) -> tuple[str, str]:
         """Run the agent, reporting accumulated stdout as it arrives.
 
         Line-buffered reading with a best-effort sink: a sink failure (say, a rate-limited
         edit) must not abort the turn — the final text still comes back through dispatch and
-        the gateway delivers it normally.
+        the gateway delivers it normally. Returns ``(reply_text, failure_reason)``.
         """
         cmd = self._argv(prompt, session_id)
         acc: list = []
+        failure = ""
         try:
             proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
                                     stderr=subprocess.DEVNULL, text=True, bufsize=1,
                                     env=child_env)
-        except OSError as e:
+        except (OSError, ValueError, TypeError) as e:
             log.warning("command backend %s: could not start %r (%s)",
                         self.spec.name, self.spec.command[:1], e)
-            return ""
+            return "", f"could not run {self.spec.command[:1]} ({e})"
         try:
             stream = proc.stdout
             if stream is not None:
-                for line in stream:
-                    acc.append(line)
-                    try:
-                        sink(self._shape_output("".join(acc)))
-                    except Exception as e:  # noqa: BLE001 — UX only, never the turn
-                        log.debug("stream sink failed: %s", e)
-            proc.wait(timeout=self.spec.timeout_s)
+                if self._drain_stream(stream, sink, acc):
+                    # The DEADLINE hit while reading: the agent had the pipe open and
+                    # was still talking (or hung). Report it — partial output must
+                    # never be presented as a complete answer.
+                    failure = f"timed out after {self.spec.timeout_s}s"
+            if not failure:
+                proc.wait(timeout=self.spec.timeout_s)
         except subprocess.TimeoutExpired:
             log.warning("command backend %s: timed out after %ss (streaming)",
                         self.spec.name, self.spec.timeout_s)
+            failure = f"timed out after {self.spec.timeout_s}s"
         finally:
             if proc.poll() is None:
                 proc.kill()
-        return self._shape_output("".join(acc))
+        out = self._shape_output("".join(acc))
+        if not out and not failure and proc.returncode not in (0, None):
+            failure = f"exited {proc.returncode} with no output"
+        return out, failure
+
+    def _drain_stream(self, stream, sink, acc: list) -> bool:
+        """Accumulate stdout lines until EOF or the spec deadline. True = deadline hit.
+
+        `timeout_s` must bound the READ, not just the final wait: the previous version
+        read with a plain ``for line in stream`` and applied the timeout only to the
+        closing ``wait()``, so a streaming agent that kept its pipe open (a hung turn)
+        was never bounded at all — the gateway would block on it indefinitely.
+        """
+        deadline = time.monotonic() + self.spec.timeout_s
+        use_select = True
+        while True:
+            if use_select:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    return True
+                try:
+                    ready, _, _ = select.select([stream], [], [], min(remaining, 1.0))
+                except (OSError, ValueError):   # no select on this pipe/platform
+                    use_select = False
+                    continue
+                if not ready:
+                    continue
+            line = stream.readline()
+            if not line:
+                return False                    # EOF — the agent finished on its own
+            acc.append(line)
+            try:
+                sink(self._shape_output("".join(acc)))
+            except Exception as e:  # noqa: BLE001 — UX only, never the turn
+                log.debug("stream sink failed: %s", e)
 
     def _shape_output(self, stdout: str) -> str:
         """Turn the agent's stdout into the reply text (spec-declared, never guessed)."""
