@@ -714,11 +714,6 @@ register "ops/scripts/cortex_gateway/sessions.py"   "${CORTEX_DEPLOY_HOME}/scrip
 # go in the cortex_gateway register, whose entries must be the .py modules.
 register "ops/scripts/cortex_gateway/new_command_evidence.py" "${CORTEX_DEPLOY_HOME}/scripts/cortex_gateway/new_command_evidence.py"
 register "ops/scripts/gateway.yaml.example"          "${CORTEX_DEPLOY_HOME}/gateway.yaml.example"
-# The CR5 worked example: a Telegram bot answered by the pi coding agent through the
-# generic `command` backend. Registered beside the hermes example so the pattern is
-# available on a deployed host, not only in the repo. The four reply-path defects
-# running it exposed are tabled in docs/design/cortex-gateway-parity.md.
-register "ops/scripts/gateway-pi.example.yaml"       "${CORTEX_DEPLOY_HOME}/scripts/gateway-pi.example.yaml"
 register "docs/templates/cortex-gateway.service"     "${CORTEX_DEPLOY_HOME}/templates/cortex-gateway.service"
 register "docs/templates/com.hermes.cortex-gateway.plist" "${CORTEX_DEPLOY_HOME}/templates/com.hermes.cortex-gateway.plist"
 register "ops/scripts/cortex_lib/tools.py"         "${CORTEX_DEPLOY_HOME}/scripts/cortex_lib/tools.py"
