@@ -80,13 +80,24 @@ def main():
 
 
 
-def _deployed_hook_run(state_dir):
-    """Run the DEPLOYED pre-push hook against a controlled state dir."""
-    hook = Path.home() / ".hermes-cortex/hooks/pre-push"
+def _hook_under_test(state_dir):
+    """Run THIS REPO's pre-push-pull, not the deployed copy.
+
+    The deployed hook is uncommitted state: if it were stale or absent the test
+    could exercise a hook that lacks the gate and still look green. Running the
+    committed source makes the test depend only on what is under review.
+    """
+    src = REPO / "ops/scripts/pre-push-pull"
+    tmpdir = Path(tempfile.mkdtemp(prefix="hook-under-test-"))
+    dst = tmpdir / "pre-push"
+    shutil.copy2(src, dst)
+    dst.chmod(0o755)
     env = dict(os.environ)
     env["GOVERNANCE_STATE_DIR"] = str(state_dir)
-    return subprocess.run(["bash", str(hook)], cwd=REPO, env=env,
-                          capture_output=True, text=True, timeout=300)
+    r = subprocess.run(["bash", str(dst)], cwd=REPO, env=env,
+                       capture_output=True, text=True, timeout=300)
+    shutil.rmtree(tmpdir, ignore_errors=True)
+    return r
 
 
 def integration_checks():
@@ -103,6 +114,13 @@ def integration_checks():
     whole hook past the gate into the doctor/deploy gates, which are not this
     test's subject and would make the result depend on deployed state.
     """
+    # Staleness guard: the deployed copy is what actually gates pushes, so if it
+    # lacks the gate that is worth SEEING, not hiding behind a source-only pass.
+    deployed = Path.home() / ".hermes-cortex/hooks/pre-push"
+    if deployed.exists():
+        check("deployed hook carries the gate (staleness check)",
+              "Review receipt gate" in deployed.read_text(), True)
+
     live = Path.home() / ".hermes-cortex/state"
     locks = sorted(live.glob(".governance-*.json"))
     if not locks:
@@ -111,9 +129,9 @@ def integration_checks():
     tmp = Path(tempfile.mkdtemp(prefix="receipt-gate-"))
     try:
         shutil.copy2(locks[-1], tmp / locks[-1].name)   # lock present, no receipt
-        r = _deployed_hook_run(tmp)
+        r = _hook_under_test(tmp)
         combined = r.stdout + r.stderr
-        check("deployed hook refuses without a receipt",
+        check("repo hook refuses without a receipt",
               r.returncode != 0 and "carries no clean review receipt" in combined, True)
         check("refusal names the always-review files",
               "mcp-servers/loop-gov-mcp.py" in combined

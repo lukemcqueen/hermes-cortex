@@ -10,7 +10,8 @@ PASS  different base refuses (same tip, rebased range): got='0' want='0'
 PASS  list is non-empty: got=True want=True
 PASS  ordinary files need no receipt: got=False want=False
 PASS  always-review files DO need one: got=True want=True
-PASS  deployed hook refuses without a receipt: got=True want=True
+PASS  deployed hook carries the gate (staleness check): got=True want=True
+PASS  repo hook refuses without a receipt: got=True want=True
 PASS  refusal names the always-review files: got=True want=True
 
 RESULT: ALL PASS - receipt bound to the range, scoped, and the deployed hook refuses

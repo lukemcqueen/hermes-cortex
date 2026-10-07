@@ -1,23 +1,30 @@
-$ git push origin main        # no clean receipt for this range
+LIVE REFUSAL TRANSCRIPT — provenance, so the SHAs can be checked.
+
+Captured at HEAD=0d0978b085dbd7fc2e056d270fc0f47ca4e591c3 (base 737b998df4345ba3e1682f836ed81500965fb25d). The earlier revision of this file quoted
+tip 56705d65, which was HEAD when it was FIRST captured and is now an ancestor of
+HEAD — the review was right that the quoted tip no longer matched. A transcript
+pins the moment it was taken; this header states which moment that was.
+
+    $ git rev-parse HEAD
+    0d0978b085dbd7fc2e056d270fc0f47ca4e591c3
+
+$ git push origin main        # no clean receipt for THIS range
 
 ❌  Push blocked: this range touches an always-review path and carries no clean review receipt.
-    Tip:  56705d6522ccea52288125d730f004fb1421d1e7
+    Tip:  0d0978b085dbd7fc2e056d270fc0f47ca4e591c3
     Base: 737b998df4345ba3e1682f836ed81500965fb25d
     Always-review file(s) in this range:
       - mcp-servers/loop-gov-mcp.py
       - ops/scripts/pre-push-pull
     The self-adversarial review must run and return CLEAN for THIS range
     before it can be pushed — close the cycle, then push.
-    Expected receipt: /home/esther/.hermes-cortex/state/.reviewed-hermes-cortex-56705d6522ccea52288125d730f004fb1421d1e7.json
+    Expected receipt: /home/esther/.hermes-cortex/state/.reviewed-hermes-cortex-0d0978b085dbd7fc2e056d270fc0f47ca4e591c3.json
 
 error: failed to push some refs to 'https://github.com/lukemcqueen/hermes-cortex.git'
 
 exit=1
 
-WHY THIS IS A TRANSCRIPT AND NOT AN IN-TEST `git push --dry-run`:
-a dry-run assertion depends on LIVE lock and receipt state, so it would make
-the suite stateful - it would pass or fail depending on whether some other
-cycle happened to leave a receipt for HEAD. The hermetic half (does a receipt
-authorise THIS range?) IS asserted in tests/test_review_receipt_gate.py, which
-calls the same helper the hook calls. This transcript covers the other half:
-that the deployed hook actually reaches the gate and refuses.
+WHAT THIS SHOWS that the deterministic test does not: a real `git push` from the
+real working tree with the real lock being refused by the deployed hook. The test
+proves the gate logic with a synthetic state dir. Neither is claimed to prove the
+other, and the test does NOT depend on this file.
