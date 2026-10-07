@@ -357,13 +357,22 @@ def test_reviewer_leaf_callers_accept_passed_timeout():
     _call_reviewer_llm called _reviewer_timeout(\"ADVERSARIAL...\", 300) which
     bound the STRING to 'cx' -> \"'str' object has no attribute 'get'\" on
     every non-trivial end_change.
+
+    Hermetic: mocks _reviewer_api_key, the HTTP transport, subprocess.run, and
+    sets ADVERSARIAL_REVIEW_AGENT_CMD (which _call_reviewer_agent validates
+    before reaching subprocess.run).
     """
+    import unittest.mock as mock
     mcp = _load()
     saved = {k: os.environ.get(k) for k in
-             ("ADVERSARIAL_REVIEW_TIMEOUT", "ADVERSARIAL_REVIEW_AGENT_TIMEOUT")}
+             ("ADVERSARIAL_REVIEW_TIMEOUT", "ADVERSARIAL_REVIEW_AGENT_TIMEOUT",
+              "ADVERSARIAL_REVIEW_AGENT_CMD")}
     try:
-        for k in saved:
+        for k in ("ADVERSARIAL_REVIEW_TIMEOUT", "ADVERSARIAL_REVIEW_AGENT_TIMEOUT"):
             os.environ.pop(k, None)
+        # _call_reviewer_agent refuses (RuntimeError) if AGENT_CMD is unset BEFORE
+        # reaching the mocked subprocess.run, so set a stub to keep it hermetic.
+        os.environ["ADVERSARIAL_REVIEW_AGENT_CMD"] = "stub-agent-cmd"
 
         # The two helpers are distinct names (no shadowing).
         _check("env-clamp helper exists under its own name",
@@ -372,7 +381,6 @@ def test_reviewer_leaf_callers_accept_passed_timeout():
                hasattr(mcp, "_reviewer_timeout"), "missing _reviewer_timeout")
 
         # _call_reviewer_llm honors a passed scoped timeout (mock the HTTP call).
-        import unittest.mock as mock
         llm_calls = {}
 
         def fake_urlopen(req, timeout):  # noqa: D103
