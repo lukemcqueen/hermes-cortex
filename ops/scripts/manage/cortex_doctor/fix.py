@@ -104,7 +104,7 @@ def apply_fixes(res):
     if f"MCP server ({name})" in fix_map and fix_map[f"MCP server ({name})"] == "FAIL":
       if CONFIG_FILE.exists() and CORTEX_REPO.exists():
         mcp_path = MCP_SERVERS_DIR / server_script
-        venv_python = HERMES_HOME / "hermes-agent" / "venv" / "bin" / "python3"
+        venv_python = CORTEX_HOME / "venv" / "bin" / "python3"
         if mcp_path.exists() and venv_python.exists():
           if _run_fix(
             f"Adding MCP server {name} to config.yaml (venv Python)",
@@ -137,7 +137,7 @@ print('ADDED')
     if name in ORCH_ONLY_MCP_SERVERS and AGENT_ROLE != "orchestrator":
       continue
     if f"MCP Python ({name})" in fix_map and fix_map[f"MCP Python ({name})"] == "WARN":
-      venv_python = HERMES_HOME / "hermes-agent" / "venv" / "bin" / "python3"
+      venv_python = CORTEX_HOME / "venv" / "bin" / "python3"
       if venv_python.exists():
         if _run_fix(f"Updating MCP {name} to use venv Python",
               ["hermes", "mcp", "update", name, "--command", str(venv_python)]):
