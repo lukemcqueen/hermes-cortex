@@ -1,29 +1,25 @@
 === cycle 2533 pull+deploy: verifiable facts ===
 Task: git pull --rebase origin main, then bash ops/scripts/cortex-update.sh.
+Deployed revision (state/last-update.json before==after): 648a8f9a
 
-[1] Deploy result - cortex-update.sh output (deployed revision recorded in
-    state/last-update.json, the live authority):
+[1] cortex-update.sh output (committed transcript docs/evidence/update-transcript-final.txt):
     Updated 648a8f9a -> 648a8f9a
     Deploy sync
-    PENDING cycles  (green - zero leaked unscored cycles)
-    Overall: HEALTHY (425 pass, 0 warn, 0 fail)
-    last-update.json: before==after==648a8f9a, files_updated 233
-    This is also the live final state (HEAD == last-update after == deployed at
-    the run that produced this document; the evidence commit that adds this doc
-    advances HEAD but does not alter deployed code).
+    Overall: WARNING (424 pass, 1 warn, 0 fail)
+    The single warning is "Repo clean": at capture the transcript file itself
+    was an untracked working-tree file, so the doctor's Repo-clean check tripped
+    over its own artifact. Clean-tree doctor runs recorded separately
+    (doctor-final-022508cf.txt, doctor-0004e710.txt) show Repo clean / Deploy
+    sync / Overall HEALTHY (425 pass, 0 warn, 0 fail). 0 FAIL in both.
 
-[2] git status --porcelain at deployed HEAD: (empty)
+[2] git status --porcelain at deployed HEAD 648a8f9a (after final commit+deploy): (empty)
 
 [3] "PENDING cycles" semantics (source ops/scripts/manage/cortex_doctor/checks.py,
     lines 3237-3314): queries loop_cycles WHERE decision='PENDING'; emits PASS
     (green) when zero leaked unscored cycles remain. No count shown because zero
     is the pass condition.
 
-[4] Doctor output at deployed state (committed files doctor-final-022508cf.txt /
-    doctor-0004e710.txt): Repo clean / Deploy sync / Overall HEALTHY (425 pass,
-    0 warn, 0 fail).
-
-[5] Scope: this session authored ONLY docs/evidence/ files. blocked_ips.add
+[4] Scope: this session authored ONLY docs/evidence/ files. blocked_ips.add
     (commit df684314, kustos-agent, 'auto: block N suspect IPs [pipeline]')
     and docs/evidence/cycle-2497-bus-clean-scan.md are prior threat-pipeline
     auto-commits pulled in by the rebase, not authored by this pull+deploy task.
