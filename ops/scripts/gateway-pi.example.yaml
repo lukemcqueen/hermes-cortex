@@ -1,10 +1,10 @@
 {
-  "_comment": "Worked example: a Telegram bot answered by the PI coding agent. Copy to ~/.hermes-cortex/gateway.yaml (or a rehearsal config) and set the env vars named below. NO gateway code changes: kind=command runs any CLI agent per turn. Notes measured on the live pi install (2026-10-07): (1) use the ABSOLUTE path to pi — its linuxbrew symlink is not on a service PATH, and a missing executable would otherwise be a per-message no-op; (2) output=raw: pi's stdout is EXACTLY the assistant's answer and nothing else — verified with a plain turn and with a turn that used pi's bash tool (the extension's CORTEX_RESUME line and all tool chatter go to its log/stderr, never stdout). `last_line` was a wrong guess and cost every multi-line answer its first lines; (3) timeout_s must cover a real coding turn, not just a chat reply — and a turn that exceeds it now reports the timeout to the human instead of going silent.",
+  "_comment": "Worked example: a Telegram bot answered by the PI coding agent. Copy to ~/.hermes-cortex/gateway.yaml (or a rehearsal config) and set the env vars named below. NO gateway code changes: kind=command runs any CLI agent per turn. Notes measured on the live pi install (2026-10-07): (1) use the ABSOLUTE path to pi ON YOUR HOST — `command` is an argv list, NOT a shell line, so nothing expands `~` or `$HOME`, and pi's launcher is a symlink into a bin dir that is not on a service PATH, so a relative or wrong path is a per-message no-op; (2) output=raw: pi's stdout is EXACTLY the assistant's answer and nothing else — verified with a plain turn and with a turn that used pi's bash tool (the extension's CORTEX_RESUME line and all tool chatter go to its log/stderr, never stdout). `last_line` was a wrong guess and cost every multi-line answer its first lines; (3) timeout_s must cover a real coding turn, not just a chat reply — and a turn that exceeds it now reports the timeout to the human instead of going silent.",
   "backends": [
     {
       "name": "pi",
       "kind": "command",
-      "command": ["/home/esther/.pi/agent/bin/pi", "--model", "openrouter/moonshotai/kimi-k2.6"],
+      "command": ["/home/<user>/.pi/agent/bin/pi", "--model", "openrouter/moonshotai/kimi-k2.6"],
       "output": "raw",
       "timeout_s": 300,
       "reply_mode": "sync",
