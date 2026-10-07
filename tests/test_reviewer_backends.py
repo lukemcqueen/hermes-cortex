@@ -387,8 +387,9 @@ def test_reviewer_leaf_callers_accept_passed_timeout():
                     return False
             return _R()
 
+        key_patch = mock.patch.object(mcp, "_reviewer_api_key", return_value="dummy-key")
         urlopen_patch = mock.patch.object(mcp.urllib.request, "urlopen", side_effect=fake_urlopen)
-        with urlopen_patch:
+        with key_patch, urlopen_patch:
             # Pass an explicit scoped timeout; it must be honored, not clobbered.
             mcp._call_reviewer_llm("review", timeout=1234)
         _check("passed llm timeout is honored", llm_calls.get("timeout") == 1234,
@@ -396,10 +397,29 @@ def test_reviewer_leaf_callers_accept_passed_timeout():
 
         # Env fallback path also works and never crashes (no string->cx).
         llm_calls.clear()
-        with mock.patch.object(mcp.urllib.request, "urlopen", side_effect=fake_urlopen):
+        with key_patch, mock.patch.object(mcp.urllib.request, "urlopen", side_effect=fake_urlopen):
             mcp._call_reviewer_llm("review", model="m")
         _check("llm env-fallback callable without a string crash",
                isinstance(llm_calls.get("timeout"), int), f"got {llm_calls.get('timeout')}")
+
+        # Agent path: honors a passed scoped timeout (mock subprocess).
+        agent_calls = {}
+
+        def fake_run(*args, **kwargs):  # noqa: D103
+            agent_calls["timeout"] = kwargs.get("timeout")
+            return mock.Mock(returncode=0, stdout='{"verdict":"CLEAN"}', stderr="")
+
+        with key_patch, mock.patch.object(mcp.subprocess, "run", side_effect=fake_run):
+            mcp._call_reviewer_agent("review", author="someone-else", timeout=4321)
+        _check("passed agent timeout is honored", agent_calls.get("timeout") == 4321,
+               f"got {agent_calls.get('timeout')}")
+
+        # Agent env fallback: no string->cx crash.
+        agent_calls.clear()
+        with key_patch, mock.patch.object(mcp.subprocess, "run", side_effect=fake_run):
+            mcp._call_reviewer_agent("review", author="someone-else")
+        _check("agent env-fallback callable without a string crash",
+               isinstance(agent_calls.get("timeout"), int), f"got {agent_calls.get('timeout')}")
     finally:
         for k, v in saved.items():
             if v is None:
