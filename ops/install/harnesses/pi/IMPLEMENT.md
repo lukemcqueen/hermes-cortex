@@ -193,6 +193,35 @@ a wrong conclusion once already.
 
 ---
 
+## 7. Driving pi from another process (a gateway, a cron, a control call)
+
+A prompt is not the only thing you may need to send, and the difference costs hours
+to rediscover. Measured 2026-10-08 while wiring pi into the cortex gateway
+(`ops/scripts/cortex_gateway/pi_control.py` is the working adapter — read it):
+
+- **A built-in slash command sent as a prompt is a no-op.** `/compact`, `/model`,
+  `/new`, `/restart` are handled only in the interactive/RPC surfaces; sent as a
+  prompt they become conversation. Session operations go over **RPC mode**
+  (`pi --mode rpc`: `{"type":"compact"}`, `{"type":"get_state"}`, `set_model`, …).
+- **Pass `--no-mcp` for a control call.** pi connects its MCP servers at RPC
+  startup; with them enabled the control call sat alive and SILENT for the whole
+  deadline on ~40% of runs (no stdout, no stderr, process still there), and
+  answered 8/8 in ~1.2s with `--no-mcp`. A control call uses no MCP tool.
+- **Watch the process EXIT, not only EOF.** pi's MCP children inherit its stdio, so
+  a lingering grandchild can hold the write end of your pipe open: no data, no EOF,
+  and a reader waiting for EOF blocks for its full deadline. Start pi with
+  `start_new_session=True` and kill the **process group** on timeout.
+- **`compact` never answers for a session whose transcript does not exist yet**
+  (45s+, repeated), while `get_state` on the same id answers in ~1.2s and creates
+  it. Ask for the state first, then decide — a chat that just ran `/new` is that
+  case.
+- **Give a check three outcomes, not two**: `0` ok · `1` a negative answer (model
+  not found, nothing to compact) · `3` could not verify (pi missing, timed out). A
+  verdict read off the exit code alone is wrong for `--list-models`, which prints
+  `No models matching "x"` **and exits 0**.
+
+---
+
 ## 8. Skills autoload
 
 Pi discovers skills itself — `--no-skills` *disables* discovery, so it is ON by
