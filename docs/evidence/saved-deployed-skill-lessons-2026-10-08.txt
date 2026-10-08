@@ -2,12 +2,31 @@ SAVED DEPLOYED-ONLY SKILL LESSONS — 2026-10-08 (soul-refinement cron)
 ==============================================================================
 
 These are REVIEW MATERIAL. Nothing was copied or committed by the cron.
+
+READ THE PATH BEFORE YOU COPY IT. Every block below was materialized from the
+deployed copy as it stood when this file was written. The working tree was NOT
+clean at that moment: a peer session was mid-edit on several paths, so the
+[session-manager] and [pi-coding-agent] blocks are snapshots of a HAND-EDITED
+WIP and may be superseded within minutes. Re-read `~/.hermes/skills/<path>` and
+diff it against the repo source again before copying anything whole-file -- the
+snapshot here is evidence of a state, not authority over the live file.
+
+The [core] blocks are the load-bearing lessons only, pinned to the base
+4c4ae92c; the [whole-file] blocks mirror the historical whole-file sync, which
+does NOT preserve the repo-only lines listed above each one.
+
+Capability note: this cron runs from a checkout, so it can commit the repo
+source but CANNOT deploy -- `cortex-update.sh` resolves deployed targets from
+the deploy map and would overwrite the live tree this material was read from.
+That is why the lessons are saved instead of applied.
+
 Copy each whole-file target over the repo source, delete the legacy
-checklist lines it supersedes, then commit and run the parity check:
+checklist lines it supersedes (listed per block as "repo-only"), then commit
+and run the parity check:
   python3 ops/scripts/manage/check-skill-drift-parity.py
 
 ==============================================================================
-### autonomous-ai-agents/pi-coding-agent/SKILL.md   [whole-file]   deployed-only lines: 30
+### autonomous-ai-agents/pi-coding-agent/SKILL.md   [whole-file]   << HAND-EDITED WIP SNAPSHOT (re-read before copying)   deployed-only lines: 30
 ==============================================================================
 -- WHOLE-FILE SUPERSET (apply the full deployed file):
 --- a/skills/autonomous-ai-agents/pi-coding-agent/SKILL.md
@@ -442,7 +461,7 @@ sg path still works without the flag (so it cannot pass for the wrong reason).
 - [ ] Pushed — `git log --oneline -1 origin/main` shows your commit.
 
 ==============================================================================
-### software-development/session-manager/SKILL.md   [whole-file]   deployed-only lines: 23
+### software-development/session-manager/SKILL.md   [whole-file]   << HAND-EDITED WIP SNAPSHOT (a peer was mid-edit; RE-READ before copying)   deployed-only lines: 23
 ==============================================================================
 -- WHOLE-FILE SUPERSET (apply the full deployed file):
 --- a/skills/software-development/session-manager/SKILL.md

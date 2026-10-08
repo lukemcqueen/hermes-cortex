@@ -1,0 +1,43 @@
+captured 2026-10-08T23:32:53+09:00
+
+===== revision =====
+19652047 fix(skills): two lessons from today + save the stranded deployed-only lessons
+HEAD=19652047d7445a4068e3145b4a7976c641dd9b68
+origin/main=19652047d7445a4068e3145b4a7976c641dd9b68
+
+===== 1. adversarial A2 gate — the two changed skill files =====
+PASS  A2 gate skills/devops/orch-skill-lifecycle/SKILL.md = 0
+📊 Summary: 1 file(s), 0 finding(s)
+✅ GATE_PASSED — no critical/high findings
+PASS  A2 gate skills/devops/psql-automation/SKILL.md = 0
+📊 Summary: 1 file(s), 0 finding(s)
+✅ GATE_PASSED — no critical/high findings
+
+===== 2. skills manifest is fresh (uses the PyYAML-capable resolver) =====
+✓ SKILLS-MANIFEST.md fresh (384 skills)
+PASS  manifest --check = 0
+
+===== 3. change-validate on the staged/committed set =====
+PASS  change-validate exit = 0
+
+===== 4. the drift count claimed in orch-skill-lifecycle: TOTAL commits touching skills/ in 7d =====
+80
+-- narrowed to commits whose message says 'skill' or 'drift':
+45
+-- the 6 SHAs the note itself cites:
+6
+
+===== 5. the psql-automation rc=1 claim, reproduced under NoNewPrivileges =====
+setpriv --no-new-privs -- sg docker -c "echo marker"  -> rc=1
+setgid: Operation not permitted
+setpriv --no-new-privs -- docker exec <c> true        -> rc=1 (docker itself works; the sg wrapper is the refusal)
+-- the false-negative shape the note describes:
+setgid: Operation not permitted
+grep reported ABSENT (command never ran: rc=1)
+
+===== 6. deployed-only lessons saved for review (count of stranded paths) =====
+| Deployed-only files (stranded) | 7 |
+| Files in sync | 832 |
+saved file: 503 lines
+
+===== done =====

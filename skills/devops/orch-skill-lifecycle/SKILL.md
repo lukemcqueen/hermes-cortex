@@ -382,14 +382,17 @@ Result: 3 skills updated, 1 upstreamed, 1 SOUL.md entry.
 - **Deployed-vs-repo skill drift is now the MOST COMMON Phase 3 action (2026-10-07)** →
   sessions author lessons directly on the DEPLOYED copy
   (`~/.hermes/skills/.../SKILL.md`) and commit only the repo side in a separate
-  edit, so the next `cortex-update.sh` overwrites the lessons. 7+ drift-sync
-  commits in the 7 days to 2026-10-07 (`badbc960`, `de5f058c`, `56c3a825`,
-  `55173ab5`, `3123e26a`, `8bd82dcb` …) — treat it as routine, not an anomaly.
-  **Count it before you trust it:** `git log --format=%h --since=<7d> -- skills/ |
-  wc -l` measured **89** on 2026-10-08, not 7 — the 7+ figure was a sample that had
-  been copied forward for days. The volume is the argument for making the Phase-3
-  drift-sync mechanical instead of manual; a stale count makes a systemic leak look
-  like a rare one.
+  edit, so the next `cortex-update.sh` overwrites the lessons. Treat it as
+  routine, not an anomaly: **~7–15 skill-touching commits/DAY** (measured
+  2026-10-08), cited by SHA in the examples below (`badbc960`, `de5f058c`,
+  `56c3a825`, `55173ab5`, `3123e26a`, `8bd82dcb`).
+  **Count it before you quote it — and say what the command counts.** No single
+  `git log` measures "drift-sync commits": on 2026-10-08 the 7-day totals were
+  **80** for every commit touching `skills/` and **45** when narrowed to messages
+  containing `skill`/`drift`, while the drift-sync subset was ~7–15/day. The figure
+  that had been copied forward as "7+ in 7 days" was a per-day sample missing its
+  unit, and it made a systemic leak look like a rare one. The volume is the
+  argument for making the Phase-3 drift sync mechanical rather than manual.
   **Procedure (verified this run):** (1) `python3 ops/scripts/manage/cortex-doctor.py
   --quiet | grep -i 'skill drift'` names each drifted path; (2) prove the
   deployed copy is a SUPERSET before syncing — `diff <repo> <deployed> | grep '^<'`
