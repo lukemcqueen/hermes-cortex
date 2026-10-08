@@ -35,9 +35,9 @@ t= 75s  inbox_health_check=d2p0  inbox_orchestrator=d8p0  inbox_titus=d0p0  inbo
   permanently stuck workflow.)
 - `inbox_titus` (this agent's inbox): `d0p0` throughout — **empty**.
 - `inbox_orchestrator_dlq` (the only DLQ): `d0p0` throughout — **empty**.
-- `inbox_orchestrator` depth 8 / processing 0 is the **orchestrator's own
-  inbox** — this agent's read returns HTTP 403 (ACL-isolated), out of scope for
-  a non-orch cron.
+- `inbox_orchestrator` (depth varies across runs, processing 0) is the
+  **orchestrator's own inbox** — this agent's read returns HTTP 403
+  (ACL-isolated), out of scope for a non-orch cron.
 
 ## Conclusion
 
