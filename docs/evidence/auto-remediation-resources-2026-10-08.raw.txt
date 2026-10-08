@@ -1,0 +1,8 @@
+### disk  (df -h / | tail -1)
+/dev/disk3s1s1   926Gi    13Gi    61Gi    18%    484k  639M    0%   /
+
+### ollama  (curl http://127.0.0.1:11434/api/tags, status only)
+HTTP 200
+
+### agent bus  (curl -s -o /dev/null -w "<CORTEX_BUS_URL>/health" — auth-gated, 401 expected)
+HTTP 401

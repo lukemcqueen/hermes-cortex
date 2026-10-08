@@ -31,10 +31,19 @@ done
 # output: (none)
 ```
 
-## System resources
-- Disk: root volume 926Gi, 18% used
-- Ollama: `curl -s http://127.0.0.1:11434/api/tags` → HTTP 200
-- Agent Bus health endpoint (`CORTEX_BUS_URL`): reachable (401 = auth-gated, expected)
+## System resources (raw capture committed)
+
+Verbatim output: `docs/evidence/auto-remediation-resources-2026-10-08.raw.txt`
+```
+### disk  (df -h / | tail -1)
+/dev/disk3s1s1   926Gi    13Gi    61Gi    18%    484k  639M    0%   /
+
+### ollama  (curl http://127.0.0.1:11434/api/tags, status only)
+HTTP 200
+
+### agent bus  (curl -s -o /dev/null -w "<CORTEX_BUS_URL>/health" — auth-gated, 401 expected)
+HTTP 401
+```
 
 ## Host context
 - `IS_SERVER=false` in `~/hermes-cortex/.env` → non-server host, sensor expected empty
