@@ -4,7 +4,7 @@ Purpose: scheduled bus-processor cron. Report only real, actionable issues.
 
 Method:
   Auth from canonical env (~/hermes-cortex/.env CORTEX_BASIC_AUTH, quotes stripped).
-  Host: canonical CORTEX_BUS_URL (127.0.0.1-origin, TLS :13004) from env.
+  Host: canonical CORTEX_BUS_URL :13004 from env (see transcript for exact value).
 
 Observations (verbatim from GET /api/pgmq/queues):
   - inbox_titus            depth=0   processing=0   dlq=false
