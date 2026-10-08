@@ -40,11 +40,20 @@ FAILED tests/test_loop_gov_review_repo.py::test_secondary_marker_follows_the_abs
 --- restored to HEAD (working) copy; sha256 of restored file:
 3d22efaec131aeefe4d94356e2931711b121c93ccdb5d8079e71ee45705358ad  mcp-servers/loop-gov-mcp.py
 
-## 4. deployed state — the fix is NOT live in the running MCP server
-#    deployment is the operator/fleet step (cortex-update.sh + a new session or
-#    gateway restart reloads the MCP server); it is outside this commit's scope.
-grep -c dirty_at_start on the DEPLOYED copy: 0 (deployed copy predates this commit)
-repo copy: 5
+## 4. deployed state — CORRECTED (the first version of this section was wrong)
+
+# The first version probed ~/.hermes-cortex/mcp-servers/loop-gov-mcp.py, a path that does
+# not exist, and its "2>/dev/null || echo <fallback>" rendered that PROBE FAILURE as the
+# finding "0 (deployed copy predates this commit)". Both halves were wrong: the deployed
+# path is elsewhere, and the deploy had already copied the fix.
+#   deployed copy:  ~/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py
+#   registered at:  ~/.hermes/config.yaml:252
+#   running proc:   pid 632349, argv = python3 <that path>, started before this commit
+deployed copy, fix present (hits for dirty_at_start|_own_working_tree_paths): 7
+repo copy,     same pattern:                                                  7
+# => On disk the fix IS deployed. The RUNNING MCP server still executes the pre-fix code
+#    it loaded at start, so the fix takes effect for the next session (or a gateway
+#    restart) — not for the session that made it.
 
 ## 5. Correction of record — which skills/ paths this range CONTAINS
 
