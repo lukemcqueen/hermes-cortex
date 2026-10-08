@@ -49,6 +49,7 @@ TESTS = [
     "tests/test_review_material_bound.py",
     "tests/test_review_material_scope.py",
     "tests/test_review_material_consistency.py",
+    "tests/test_manifest_generator_interpreter.py",
     "tests/test_refused_close_visible.py",
     "tests/test_loop_gov_lock_watchdog.py",
     "tests/test_loop_gov_mcp_startup.py",

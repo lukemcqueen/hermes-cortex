@@ -365,6 +365,7 @@ register "ops/scripts/install/install-gateway-timezone.sh" "${CORTEX_DEPLOY_HOME
 register "ops/scripts/manage/cortex-health.sh"           "${CORTEX_DEPLOY_HOME}/scripts/cortex-health.sh"
 register "ops/scripts/manage/consolidate-env.sh"         "${CORTEX_DEPLOY_HOME}/scripts/consolidate-env.sh"
 register "ops/scripts/manage/gen-skills-manifest.py"      "${CORTEX_DEPLOY_HOME}/scripts/gen-skills-manifest.py"
+register "ops/scripts/manage/gen-skills-manifest.sh"      "${CORTEX_DEPLOY_HOME}/scripts/gen-skills-manifest.sh"
 register "ops/scripts/manage/task-db.py"                "${CORTEX_DEPLOY_HOME}/scripts/task-db.py"
 register "ops/scripts/manage/agent-review-queue-sweep.py" "${CORTEX_DEPLOY_HOME}/scripts/agent-review-queue-sweep.py"
 register "ops/scripts/manage/git-main-sync.sh"          "${CORTEX_DEPLOY_HOME}/scripts/git-main-sync.sh"

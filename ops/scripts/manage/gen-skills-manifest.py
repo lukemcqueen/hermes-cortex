@@ -6,9 +6,13 @@ repo vs 29 listed, 2026-08-04). This generator rebuilds the category tables
 from skills/**/SKILL.md frontmatter, preserving the hand-written tail
 (Infrastructure Scripts, Naming Convention, Notes, Version History).
 
-Usage:
-  gen-skills-manifest.py            # regenerate docs/SKILLS-MANIFEST.md
-  gen-skills-manifest.py --check    # exit 1 if file would change (audit gate)
+Usage (via the wrapper - it resolves an interpreter that HAS PyYAML):
+  bash ops/scripts/manage/gen-skills-manifest.sh           # regenerate
+  bash ops/scripts/manage/gen-skills-manifest.sh --check    # exit 1 if stale
+
+Exit codes: 0 = fresh, 1 = would change (stale), 2 = usage error, 3 = COULD NOT
+VERIFY (no interpreter with PyYAML). A caller must never read 3 as "stale" -
+that mistake made the pre-commit doc audit accuse a fresh manifest.
 
 Registered in cortex-update.sh + wired into pre-commit-doc-audit.sh Check 2
 as the freshness gate: any staged skills/ change triggers --check.
@@ -21,7 +25,24 @@ import re
 import sys
 from pathlib import Path
 
-import yaml
+try:
+    import yaml
+except ModuleNotFoundError:                                  # pragma: no cover
+    # The frontmatter parser needs a REAL YAML parser. A regex fallback would
+    # silently misread block scalars (`description: >-`) into the manifest, which
+    # is worse than refusing. So refuse, and NAME THE FIX - this message is what a
+    # caller reads, and until 2026-10-08 it pointed at the very command that fails
+    # on an interpreter without PyYAML.
+    sys.stderr.write(
+        "gen-skills-manifest: COULD NOT VERIFY - this interpreter has no PyYAML\n"
+        f"  interpreter: {sys.executable}\n"
+        "  Fix one of:\n"
+        "    - python3 -m pip install pyyaml\n"
+        "    - use the wrapper, which resolves an interpreter that has it:\n"
+        "        bash ops/scripts/manage/gen-skills-manifest.sh\n"
+    )
+    sys.exit(3)
+
 
 def _find_repo() -> Path:
     """Locate the hermes-cortex repo root — works from repo source AND deployed copy.
@@ -53,7 +74,8 @@ subdirectories. Skills are distributed across multiple categories matching
 their domain.
 
 > **AUTO-GENERATED FILE — do not edit by hand.** Regenerate with:
-> `python3 ops/scripts/manage/gen-skills-manifest.py`
+> `bash ops/scripts/manage/gen-skills-manifest.sh`
+> (the wrapper picks an interpreter that has PyYAML; a bare `python3` may not)
 > The pre-commit doc audit runs `--check` whenever skills/ changes.
 
 """
@@ -180,7 +202,7 @@ def main() -> int:
         return 0
     if args.check:
         print(f"❌ SKILLS-MANIFEST.md stale — run: "
-              f"python3 ops/scripts/manage/gen-skills-manifest.py", file=sys.stderr)
+              f"bash ops/scripts/manage/gen-skills-manifest.sh", file=sys.stderr)
         return 1
     MANIFEST.write_text(new, encoding="utf-8")
     print(f"✓ Regenerated SKILLS-MANIFEST.md "

@@ -77,7 +77,13 @@ def test_sync_passes_on_identical_bytes(verifier, tmp_path, monkeypatch):
 
 
 def test_manifest_check_uses_the_generator(verifier, monkeypatch):
-    """check_manifest must delegate to gen-skills-manifest.py --check."""
+    """check_manifest must delegate through the WRAPPER, which is what resolves
+    an interpreter that has PyYAML and calls gen-skills-manifest.py --check.
+
+    It used to invoke the generator with a bare `python3`, which dies with
+    ModuleNotFoundError on a host whose python3 lacks PyYAML — and then reported
+    the manifest as STALE. The wrapper is the fix, so it is the thing to assert.
+    """
     calls = []
 
     def fake_run(cmd):
@@ -88,9 +94,28 @@ def test_manifest_check_uses_the_generator(verifier, monkeypatch):
     failures: list[str] = []
     verifier.check_manifest(failures)
     assert failures == []
-    assert any(any("gen-skills-manifest.py" in part for part in c)
+    assert any(any("gen-skills-manifest.sh" in part for part in c)
                and "--check" in c for c in calls), \
-        f"generator --check not invoked: {calls}"
+        f"generator --check not invoked through the wrapper: {calls}"
+
+
+def test_manifest_check_distinguishes_stale_from_could_not_verify(verifier, monkeypatch):
+    """rc=1 is STALE; rc=3 is COULD NOT VERIFY and must NOT be called stale.
+
+    Conflating them is what made the doc audit accuse a fresh manifest.
+    """
+    monkeypatch.setattr(verifier, "_run", lambda cmd: (1, "❌ stale"))
+    stale: list[str] = []
+    verifier.check_manifest(stale)
+    assert stale and "stale" in stale[0].lower(), stale
+
+    monkeypatch.setattr(verifier, "_run",
+                        lambda cmd: (3, "COULD NOT VERIFY: no interpreter with PyYAML"))
+    unverifiable: list[str] = []
+    verifier.check_manifest(unverifiable)
+    assert unverifiable, "rc=3 must be reported, not swallowed"
+    assert "stale" not in unverifiable[0].lower(), unverifiable
+    assert "COULD NOT VERIFY" in unverifiable[0], unverifiable
 
 
 def test_preexisting_checks_git_not_disk(verifier, monkeypatch):

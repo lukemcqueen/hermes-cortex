@@ -72,12 +72,19 @@ def check_sync(failures: list[str]) -> None:
 
 
 def check_manifest(failures: list[str]) -> None:
-    """The generator's freshness gate is the authoritative manifest test."""
-    rc, out = _run(["python3", "ops/scripts/manage/gen-skills-manifest.py",
-                    "--check"])
-    if rc != 0:
-        failures.append(f"manifest stale (generator --check rc={rc}): "
-                        f"{out.strip()[:160]}")
+    """The generator's freshness gate is the authoritative manifest test.
+
+    Run through the WRAPPER, which resolves an interpreter that has PyYAML. rc=1
+    is STALE; rc=3 is COULD NOT VERIFY (no interpreter with PyYAML) and must NOT
+    be reported as stale - only the wrapper can tell those apart, and conflating
+    them made the pre-commit doc audit accuse a fresh manifest (2026-10-08).
+    """
+    rc, out = _run(["bash", "ops/scripts/manage/gen-skills-manifest.sh", "--check"])
+    if rc == 1:
+        failures.append(f"manifest stale (generator --check rc=1): {out.strip()[:160]}")
+    elif rc != 0:
+        failures.append(
+            f"manifest freshness COULD NOT VERIFY (rc={rc}): {out.strip()[:160]}")
 
 
 def check_preexisting(failures: list[str]) -> None:

@@ -61,14 +61,36 @@ fi
 SKILLS_CHANGED=$(echo "$STAGED" | grep -c '^skills/' 2>/dev/null || true)
 
 if [[ "$SKILLS_CHANGED" -gt 0 ]]; then
-    GEN="${CORTEX_DEPLOY_HOME:-$HOME/hermes-cortex}/ops/scripts/manage/gen-skills-manifest.py"
+    GEN="${CORTEX_DEPLOY_HOME:-$HOME/hermes-cortex}/ops/scripts/manage/gen-skills-manifest.sh"
     if [[ ! -f "$GEN" ]]; then
-        GEN="$HOME/hermes-cortex/ops/scripts/manage/gen-skills-manifest.py"
+        GEN="$HOME/hermes-cortex/ops/scripts/manage/gen-skills-manifest.sh"
     fi
-    if ! python3 "$GEN" --check >/dev/null 2>&1; then
-        echo "⚠️  DOCS AUDIT: skills/ changed but docs/SKILLS-MANIFEST.md is stale."
-        echo "   → Run: python3 ops/scripts/manage/gen-skills-manifest.py  (then stage the result)"
+    if [[ ! -f "$GEN" ]]; then
+        echo "⚠️  DOCS AUDIT: COULD NOT VERIFY SKILLS-MANIFEST.md — generator not found"
+        echo "   → Looked for: $GEN"
         issues=$((issues + 1))
+    else
+        # The wrapper resolves an interpreter that HAS PyYAML. rc 0 = fresh,
+        # 1 = STALE, anything else (including 3 = no interpreter with PyYAML) is
+        # COULD NOT VERIFY. Reading a failed CHECK as STALE made this gate accuse a
+        # fresh manifest on every commit touching skills/, AND print a remedy that
+        # could not run on the very host it was printed on (2026-10-08).
+        GEN_OUT=""
+        GEN_RC=0
+        GEN_OUT=$(bash "$GEN" --check 2>&1) || GEN_RC=$?
+        case "$GEN_RC" in
+            0) ;;                       # fresh — stay silent
+            1)
+                echo "⚠️  DOCS AUDIT: skills/ changed but docs/SKILLS-MANIFEST.md is stale."
+                echo "   → Run: bash ops/scripts/manage/gen-skills-manifest.sh  (then stage the result)"
+                issues=$((issues + 1))
+                ;;
+            *)
+                echo "⚠️  DOCS AUDIT: COULD NOT VERIFY SKILLS-MANIFEST.md freshness (rc=$GEN_RC)."
+                echo "   $GEN_OUT"
+                issues=$((issues + 1))
+                ;;
+        esac
     fi
 fi
 

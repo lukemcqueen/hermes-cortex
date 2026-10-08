@@ -6,7 +6,8 @@ subdirectories. Skills are distributed across multiple categories matching
 their domain.
 
 > **AUTO-GENERATED FILE — do not edit by hand.** Regenerate with:
-> `python3 ops/scripts/manage/gen-skills-manifest.py`
+> `bash ops/scripts/manage/gen-skills-manifest.sh`
+> (the wrapper picks an interpreter that has PyYAML; a bare `python3` may not)
 > The pre-commit doc audit runs `--check` whenever skills/ changes.
 
 
