@@ -731,6 +731,11 @@ register_orch "ops/scripts/orch-bus/orch-bus-git-auth-check.py" "${CORTEX_DEPLOY
 register_orch "ops/scripts/orch-bus/orch-clean-health-queue.py" "${CORTEX_DEPLOY_HOME}/scripts/orch-clean-health-queue.py"
 register_orch "ops/scripts/orch-bus/orch-bus-generate-wrappers.py" "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-generate-wrappers.py"
 register_orch "ops/scripts/orch-bus/orch-bus-test.py"            "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-test.py"
+# Read-only bus inbox inspector (queue/DLQ/inbox/out peek → JSON transcript +
+# a --issues invariant check). Orchestrator-only for now: read-only, but its
+# fleet-wide safety on every agent host is not yet reviewed (adversarial review
+# ADV-11686-3), so it deploys to orchestrator hosts only.
+register_orch "ops/scripts/orch-bus/bus-inbox-inspect.py"   "${CORTEX_DEPLOY_HOME}/scripts/bus-inbox-inspect.py"
 
 # Fleet agent message handler (polls inbox for UPDATE_REQUEST etc.)
 register "ops/scripts/agent/agent-message-handler.py" "${CORTEX_DEPLOY_HOME}/scripts/agent-message-handler.py"

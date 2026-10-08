@@ -1,0 +1,87 @@
+{
+  "_note": "Redacted snapshot of a bus-inbox-inspect.py transcript from the 2026-10-08 orchestrator tick. Private hosts/URLs/msg-ids are placeholders so this fixture can live in the shared repo. It is NOT a clean fleet: it contains a known stale out_esther backlog (2 messages from 2026-10-02) that fleet_issues() must flag, while the fresh (<24h) inbox_orchestrator/inbox_health_check mirrors must not be flagged. See tests/test_bus_inbox_inspect.py.",
+  "ts": "2026-10-08T12:00:00+00:00",
+  "agent": "esther",
+  "buses": [
+    {
+      "label": "local",
+      "base": "local-bus-url",
+      "inspection_error": null,
+      "queue_total": 22,
+      "nonempty": [
+        {"name": "inbox_esther_dlq", "depth": 0, "processing": 0, "dlq": true, "parent": null},
+        {"name": "inbox_orchestrator", "depth": 2, "processing": 0, "dlq": false, "parent": null},
+        {"name": "inbox_orchestrator_dlq", "depth": 0, "processing": 0, "dlq": true, "parent": "inbox_orchestrator"},
+        {"name": "out_esther", "depth": 2, "processing": 0, "dlq": false, "parent": null}
+      ],
+      "dlq": [
+        {"name": "inbox_esther_dlq", "depth": 0, "processing": 0},
+        {"name": "inbox_orchestrator_dlq", "depth": 0, "processing": 0}
+      ],
+      "peeks": {
+        "inbox_esther": {"count": 0, "messages": []},
+        "inbox_orchestrator": {"count": 2, "messages": [
+          {"msg_id": "MSG-A", "enqueued_at": "2026-10-08 11:56:06+00", "read_ct": null,
+           "from": "esther", "to": "moses", "subject": "DOCTOR_TEST",
+           "mirrored_from_queue": "inbox_esther"},
+          {"msg_id": "MSG-B", "enqueued_at": "2026-10-08 11:56:06+00", "read_ct": null,
+           "from": "esther", "to": "moses", "subject": "HEALTH_PERSISTENT_ISSUES",
+           "mirrored_from_queue": "inbox_health_check"}
+        ]},
+        "out_esther": {"count": 2, "messages": [
+          {"msg_id": "MSG-C", "enqueued_at": "2026-10-02 08:10:00.143776+00", "read_ct": null,
+           "from": "esther", "to": "esther", "subject": "AGENT_REPLY", "priority": 0},
+          {"msg_id": "MSG-D", "enqueued_at": "2026-10-02 08:16:01.352537+00", "read_ct": null,
+           "from": "esther", "to": "esther", "subject": "AGENT_REPLY", "priority": 0}
+        ]},
+        "inbox_health_check": {"count": 0, "messages": []}
+      }
+    },
+    {
+      "label": "primary",
+      "base": "primary-bus-url",
+      "inspection_error": null,
+      "queue_total": 13,
+      "nonempty": [
+        {"name": "inbox_health_check", "depth": 2, "processing": 0, "dlq": false, "parent": null},
+        {"name": "inbox_orchestrator", "depth": 2, "processing": 0, "dlq": false, "parent": null},
+        {"name": "inbox_orchestrator_dlq", "depth": 0, "processing": 0, "dlq": true, "parent": "inbox_orchestrator"}
+      ],
+      "dlq": [
+        {"name": "inbox_orchestrator_dlq", "depth": 0, "processing": 0}
+      ],
+      "peeks": {
+        "inbox_esther": {"count": 0, "messages": []},
+        "inbox_orchestrator": {"count": 2, "messages": [
+          {"msg_id": "MSG-E", "enqueued_at": "2026-10-08 11:55:19+00", "read_ct": null,
+           "from": "esther", "to": "moses", "subject": "HEALTH_PERSISTENT_ISSUES",
+           "mirrored_from_queue": "inbox_health_check"},
+          {"msg_id": "MSG-F", "enqueued_at": "2026-10-08 11:56:06+00", "read_ct": null,
+           "from": "esther", "to": "moses", "subject": "DOCTOR_TEST",
+           "mirrored_from_queue": "inbox_esther"}
+        ]},
+        "out_esther": {"count": 0, "messages": []},
+        "inbox_health_check": {"count": 2, "messages": [
+          {"msg_id": "MSG-G", "enqueued_at": "2026-10-08 11:55:19+00", "read_ct": null,
+           "from": "esther", "to": "moses", "subject": "HEALTH_PERSISTENT_ISSUES"},
+          {"msg_id": "MSG-H", "enqueued_at": "2026-10-08 11:56:06+00", "read_ct": null,
+           "from": "esther", "to": "moses", "subject": "HEALTH_PERSISTENT_ISSUES"}
+        ]}
+      }
+    }
+  ],
+  "forwarder": {
+    "last_run": "2026-10-08T12:00:12+00:00",
+    "total_forwarded": 1,
+    "total_peer_to_local": 22166,
+    "total_local_to_peer": 9906
+  },
+  "failover": {
+    "consecutive_failures": 0,
+    "first_failure_at": null,
+    "consecutive_successes": 0,
+    "failover_active": false,
+    "last_status": "idle",
+    "last_check_at": "2026-10-08T12:00:10+00:00"
+  }
+}
