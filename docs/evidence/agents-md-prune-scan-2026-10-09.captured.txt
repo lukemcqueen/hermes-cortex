@@ -1,0 +1,27 @@
+# Captured output — agents-md-prune-scan verification (2026-10-09)
+# Produced by: bash docs/evidence/agents-md-prune-scan-verify.sh
+# captured: 2026-10-09 05:27 KST
+
+$ git rev-parse HEAD origin/main
+b21f13ebd00549f078517e66219b3358251a7d8b
+b21f13ebd00549f078517e66219b3358251a7d8b
+
+$ git merge-base --is-ancestor 094eb051 origin/main && echo $?
+0 (is ancestor)
+
+$ git ls-tree --name-only origin/main docs/evidence/ | grep prune-scan
+docs/evidence/agents-md-prune-scan-2026-10-09.sh
+docs/evidence/agents-md-prune-scan-2026-10-09.txt
+
+$ run the apply proof
+$ python3 ~/.hermes-cortex/scripts/agents-doc-audit.py --repo ~/hermes-cortex --prune --apply
+✅ Pruning applied: 0 sections moved to docs/
+
+   Updated: ~/hermes-cortex/AGENTS.md
+exit=0
+
+=== AGENTS.md byte-identical check (apply with 0 candidates is a no-op) ===
+$ git -C ~/hermes-cortex status --short AGENTS.md
+(empty above = AGENTS.md unchanged)
+$ git -C ~/hermes-cortex diff --stat AGENTS.md
+(empty above = no diff)

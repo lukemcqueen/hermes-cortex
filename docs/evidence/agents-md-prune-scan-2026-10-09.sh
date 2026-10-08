@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Re-runnable proof for the 2026-10-09 AGENTS.md pruning scan.
-# Source: hermes-cortex docs/evidence/agents-md-prune-scan-2026-10-09.txt
+# Related transcript: docs/evidence/agents-md-prune-scan-2026-10-09.txt
 #
-# Executes the EXACT command and records its raw output + exit code, plus the
+# Runs the FULL command `agents-doc-audit.py --repo <repo> --prune --apply`
+# (NOT a dry-run) and records its raw output + exit code, plus the
 # byte-identical AGENTS.md check. Run from anywhere:
 #   bash <repo>/docs/evidence/agents-md-prune-scan-2026-10-09.sh
 set -u
