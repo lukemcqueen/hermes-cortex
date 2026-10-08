@@ -1,0 +1,41 @@
+PI-BACKEND ESTHER: cortex store unreachable — evidence log
+captured 2026-10-08T19:04:37 on esther
+
+Symptom: a fresh @Esther0001Bot (/new) answered 'memory unavailable — the cortex
+store is not reachable from this host', while Hermes Esther (same host) has memory.
+
+== units ==
+$ systemctl --user show cortex-gateway-esther0001.service -p NoNewPrivileges -p PrivateTmp
+rc=0
+stdout='PrivateTmp=yes\nNoNewPrivileges=yes'
+$ systemctl --user show hermes-gateway.service -p NoNewPrivileges -p PrivateTmp
+rc=0
+stdout='PrivateTmp=no\nNoNewPrivileges=no'
+
+== store path works in a plain shell ==
+$ ~/.hermes-cortex/scripts/cortex-context.py mem_context {}
+rc=0
+first_line='{'
+
+== same command under NoNewPrivileges (faithful: real groups) ==
+$ setpriv --no-new-privs -- ~/.hermes-cortex/scripts/cortex-context.py mem_context {}
+rc=0
+stdout='memory unavailable — the cortex store is not reachable from this host. This is not an error: continue without memory. Check MYCORTEX_MEM_PASSWORD and that the mycortex-postgres container (or local psql on macOS) is up.'
+
+== the failing primitive: sg docker ==
+$ setpriv --no-new-privs -- sg docker -c "docker exec -i mycortex-postgres psql ..."
+rc=1
+stdout=''
+stderr='setgid: Operation not permitted'
+
+== the fix path: direct docker exec, same hardening ==
+$ setpriv --no-new-privs -- docker exec ... psql -c "SELECT 1;"
+rc=0
+stdout='1'
+NOTE: stdout '1' is the QUERY RESULT (SELECT 1), rc=0 = success — not an exit code of 1.
+
+== groups of the live gateway daemon ==
+$ grep Groups /proc/<MainPID>/status
+rc=0
+stdout='Groups:\t4 24 27 30 46 100 105 125 986 1000'
+
