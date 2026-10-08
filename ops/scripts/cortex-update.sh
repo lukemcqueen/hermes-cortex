@@ -772,11 +772,22 @@ register "ops/scripts/cortex_gateway/guard_distinct_token.py" "${CORTEX_DEPLOY_H
 # Per-chat session generations for the gateway's /new command (archive semantics:
 # a rotation starts a fresh session and KEEPS the previous transcript).
 register "ops/scripts/cortex_gateway/sessions.py"   "${CORTEX_DEPLOY_HOME}/scripts/cortex_gateway/sessions.py"
+# Per-chat model overrides for the gateway's /model command (persisted, so a switch
+# survives the unit's Restart=always).
+register "ops/scripts/cortex_gateway/models.py"     "${CORTEX_DEPLOY_HOME}/scripts/cortex_gateway/models.py"
+# The PI harness adapter: pi's session operations the gateway cannot express as a
+# prompt (`/compact` lives in pi's RPC mode). Declared per host in gateway.yaml under
+# backends[].commands, and run with the stock python3 — stdlib only.
+register "ops/scripts/cortex_gateway/pi_control.py" "${CORTEX_DEPLOY_HOME}/scripts/cortex_gateway/pi_control.py"
 # Re-runnable acceptance check for /new, deployed so it can be re-run ON the host:
 #   python3 ~/.hermes-cortex/scripts/cortex_gateway/new_command_evidence.py
 # The runner .sh beside it is repo-only (like run-cutover-evidence.sh) — a .sh cannot
 # go in the cortex_gateway register, whose entries must be the .py modules.
 register "ops/scripts/cortex_gateway/new_command_evidence.py" "${CORTEX_DEPLOY_HOME}/scripts/cortex_gateway/new_command_evidence.py"
+# Re-runnable acceptance check for /model, /compact, /new and /restart (/help, /status
+# too) against a LIVE agent, on the deployed tree:
+#   python3 ~/.hermes-cortex/scripts/cortex_gateway/slash_parity_evidence.py
+register "ops/scripts/cortex_gateway/slash_parity_evidence.py" "${CORTEX_DEPLOY_HOME}/scripts/cortex_gateway/slash_parity_evidence.py"
 register "ops/scripts/gateway.yaml.example"          "${CORTEX_DEPLOY_HOME}/gateway.yaml.example"
 register "docs/templates/cortex-gateway.service"     "${CORTEX_DEPLOY_HOME}/templates/cortex-gateway.service"
 register "docs/templates/com.hermes.cortex-gateway.plist" "${CORTEX_DEPLOY_HOME}/templates/com.hermes.cortex-gateway.plist"

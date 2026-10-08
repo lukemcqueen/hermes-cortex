@@ -21,7 +21,7 @@ parity suites (11):
   tests/test_cortex_gateway_daemon_slice.py
 
 measured: 126 passed (parity claim, not the surface total)
-pytest summary: ============================= 126 passed in 5.35s ==============================
+pytest summary: ============================= 126 passed in 5.15s ==============================
 
 whole gateway surface (24 files):
   tests/test_cortex_gateway_backend.py
@@ -50,13 +50,14 @@ whole gateway surface (24 files):
   tests/test_telegram_notify_unit.py
 
 measured: 248 passed (whole gateway surface)
-pytest summary: ============================= 248 passed in 12.72s =============================
+pytest summary: ============================= 248 passed in 11.56s =============================
 
 Tail of the parity run (host paths scrubbed):
 ============================= test session starts ==============================
-platform linux -- Python 3.12.13, pytest-9.1.1, pluggy-1.6.0
+platform linux -- Python 3.11.15, pytest-9.1.1, pluggy-1.6.0
 rootdir: $HOME/hermes-cortex
 configfile: pytest.ini
+plugins: anyio-4.12.1
 collected 126 items
 
 tests/test_cortex_gateway_transport.py ........                          [  6%]
@@ -71,14 +72,15 @@ tests/test_telegram_notify_unit.py ............................          [ 87%]
 tests/test_cortex_gateway_parity_matrix.py .....                         [ 91%]
 tests/test_cortex_gateway_daemon_slice.py ...........                    [100%]
 
-============================= 126 passed in 5.35s ==============================
+============================= 126 passed in 5.15s ==============================
 
 
-test names in the files cited by review findings (22):
+test names in the files cited by review findings (23):
   test_review_material_bound.py::test_short_diff_is_returned_unchanged
   test_review_material_bound.py::test_the_tail_survives_the_bound
   test_review_material_bound.py::test_the_omission_is_disclosed_with_true_numbers
   test_review_material_bound.py::test_the_files_in_the_cut_are_named
+  test_review_material_bound.py::test_no_changed_file_is_omitted_entirely
   test_review_material_bound.py::test_the_gate_actually_uses_the_helper
   test_review_material_bound.py::test_docs_only_range_gets_the_larger_budget
   test_review_material_bound.py::test_one_code_file_reverts_to_the_standard_budget

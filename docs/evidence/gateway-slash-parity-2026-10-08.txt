@@ -1,0 +1,149 @@
+gateway slash-command parity — LIVE acceptance evidence (2026-10-08)
+=====================================================================
+
+Host    esther — second bot @Esther0001Bot, hosted by the systemd user unit
+        cortex-gateway-esther0001.service (the LIVE bot the human talks to is the
+        other token, telegrm-gateway; this unit polls only ESTHER0001_BOT_TOKEN).
+Config  ~/.hermes-cortex/gateway-esther0001.yaml, backend kind=command → pi
+Agent   ~/.pi/agent/bin/pi (v1.1.0), model openrouter/moonshotai/kimi-k2.6
+
+WHAT THIS EVIDENCE IS. The transcript below is the DEPLOYED tree exercising every
+slash command the gateway owns, with the REAL CommandBackend and REAL pi processes
+(a real model call in step 4). Only the transport is stubbed: this script cannot be
+the unit's main process, so it must not poll the bot token (a second poller 409s the
+live channel). Regenerate it any time with:
+
+    python3 ~/.hermes-cortex/scripts/cortex_gateway/slash_parity_evidence.py --chat 999120
+
+backend: pi · default model: openrouter/moonshotai/kimi-k2.6 · declared commands: ['check_model', 'compact']
+
+[1] /help and /status are answered by the gateway, not the agent
+  ↳ /help
+   ⤶ gateway commands: /stop · /status · /help · /new · /model · /compact · /restart — anything else is forwarded to the agent
+   PASS  help lists the gateway commands
+  ↳ /status
+   ⤶ gateway ok · backends: pi · in flight: none · queued: 0
+   PASS  status is a gateway line
+
+[2] /model — switch, report, validate, reset (no model call)
+  ↳ /model openrouter/moonshotai/kimi-k2.6
+   ⤶ 🧠 model for this chat set to openrouter/moonshotai/kimi-k2.6 (resolves to 1 model(s): moonshotai/kimi-k2.6).
+Applies from your next message · /model reset restores openrouter/moonshotai/kimi-k2.6.
+   PASS  a valid model is accepted
+  ↳ /model
+   ⤶ 🧠 this chat: openrouter/moonshotai/kimi-k2.6 · default: openrouter/moonshotai/kimi-k2.6
+/model <name> to switch · /model reset for the default
+   PASS  bare /model reports this chat's model
+  ↳ /model definitely/not-a-real-model-xyz
+   ⤶ ❌ definitely/not-a-real-model-xyz is not a model this agent can use.
+no model matches 'definitely/not-a-real-model-xyz'
+   PASS  an unknown model is refused by the agent's own check
+  ↳ /model reset
+   ⤶ ↩️ model reset to the default (openrouter/moonshotai/kimi-k2.6).
+   PASS  reset returns to the default
+
+[3] /new — fresh session id, previous one NAMED and kept
+  ↳ /new
+   ⤶ 🆕 New session (generation 1). Previous conversation archived as `hc-pi-999120`. Your next message starts fresh.
+   PASS  a new generation is announced — 🆕 New session (generation 1). Previous conversation archived as `hc-pi-999120`. Your next message starts fresh.
+   PASS  the archived session is named
+   PASS  transcripts live on disk (archive, not delete)
+
+[4] a real turn through the live agent (pi)
+  ↳ Reply with exactly: PONG
+   ⤶ PONG
+   PASS  the agent answered (a reply arrived for THIS turn) — PONG
+
+[5] /compact against the LIVE session (a real compaction)
+  ↳ /compact
+   ⤶ 🗜️ compacting this chat's context — this can take a minute…
+   ⤶ ⚠️ /compact: Nothing to compact (session too small)
+   PASS  compaction ran, or said why it could not — 🗜️ compacting this chat's context — this can take a minute… | ⚠️ /compact: Nothing to compact (session too small)
+
+[6] /restart supervision check (this script is NOT the unit's main process)
+  ↳ /restart
+   ⤶ ⚠️ This gateway is not running under systemd, so /restart cannot bring it back — stop it and start it by hand instead.
+   PASS  NOT the unit's main process → refuses and names the reason — ⚠️ This gateway is not running under systemd, so /restart cannot bring it back — stop it and start it by hand instead.
+
+[7] an unknown command still belongs to the agent
+  ↳ /totally-unknown-command
+   ⤶ Unknown command: `/totally-unknown-command`.
+   PASS  forwarded — the agent's own answer came back for THIS turn — (no reply: forwarded but the agent said nothing?)
+
+==============================================================
+13/13 checks passed
+
+RED — the gap measured against the DEPLOYED package BEFORE this change
+---------------------------------------------------------------------
+Before the change, /model, /compact and /restart had no gateway handler at all, so
+they were forwarded to pi as prompt text (pi handles its built-in slash commands
+only in the interactive/RPC surfaces, so they became conversation). Measured on the
+deployed copy (~/.hermes-cortex/scripts/cortex_gateway, at the time):
+
+    ModelBook module:              MISSING -> No module named 'cortex_gateway.models'
+    Gateway._handle_model:         False
+    Gateway._handle_compact:       False
+    Gateway._handle_restart:       False
+    AgentSpec(model_args=[...]):   REJECTED -> backend spec has unknown key(s): ['model_args']
+                                   Allowed: [... 'session_args', 'stream', 'subject', 'timeout_s']
+
+GREEN — the same probes on the deployed tree after the deploy: every handler is
+present, `models` imports, and `model_args` is accepted (see the transcript).
+
+
+FINDING (found by this evidence, fixed here): /compact hung ~40% of the time
+---------------------------------------------------------------------------
+Symptom: `pi-control: pi did not answer within 300s`, intermittently, and only when
+the gateway ran the control command (the same command from a shell always answered
+in ~2s). Diagnosis, in order:
+
+  1. Not the session: a not-yet-existing transcript made pi's RPC `compact` never
+     answer at all (45s+, repeated), while `get_state` on the same id answered in
+     1.2s and created it. Fixed in the adapter: `compact` now does a `get_state`
+     round trip first and answers "this chat has no conversation yet" instead of
+     asking blind. Held by test_pi_control_does_not_hang_on_a_chat_that_has_no_session_yet.
+  2. Still ~40% hangs with the real session. Instrumented (CORTEX_PI_CONTROL_DEBUG=1):
+     the pi process was ALIVE and silent for the whole deadline, writing nothing to
+     stdout or stderr — not an EOF/pipe artifact.
+  3. `--no-mcp` fixes it. pi connects its four MCP servers at RPC startup; a CONTROL
+     call (state/compact) uses no MCP tool, so the servers are pure risk. Measured
+     on the trigger sequence (print-mode turn + check_model + compact):
+
+         with MCP:     4 fast, 2 hangs at 25-60s   (earlier runs: 12.5% - 50%)
+         with --no-mcp: 8/8 answered, 1.1-1.2s each
+
+     Held by test_pi_control_runs_its_rpc_calls_without_mcp (asserts the argv).
+  Also hardened: pi is started in its own process group, so a timeout reaps pi AND
+  its MCP children instead of leaving them holding the adapter's pipes.
+
+/restart under real systemd — proven, not asserted
+--------------------------------------------------
+The handler refuses when the daemon is NOT the unit's main process (the transcript
+in step 6 shows exactly that refusal, because this script is not). The accept path
+was proven with a throwaway user unit running the DEPLOYED gateway code with a stub
+transport, `Restart=always`, on this host (unit and probe removed afterwards):
+
+    Oct 08 16:04:03 systemd[1099]: Started cortex-gateway-restart-probe.service …
+    Oct 08 16:04:03 python[3858592]: START pid=3858592 unit='cortex-gateway-restart-probe.service' supervised=True
+    Oct 08 16:04:03 python[3858592]: FIRST_START — invoking the /restart handler now
+    Oct 08 16:04:03 python[3858592]: SENT 🔄 restarting the gateway — back in a few seconds…
+    Oct 08 16:04:08 systemd[1099]: cortex-gateway-restart-probe.service: Scheduled restart job, restart counter is at 1.
+    Oct 08 16:04:08 python[3858740]: START pid=3858740 unit='cortex-gateway-restart-probe.service' supervised=True
+    Oct 08 16:04:08 python[3858740]: SECOND_START_OK — systemd restarted the unit after the /restart exit
+
+So: the reply is delivered, the exit happens, and systemd brings the unit back —
+NRestarts=1 and a fresh MainPID, both observed.
+
+Note on the supervision check: INVOCATION_ID alone is NOT sufficient — systemd
+exports it into the whole process tree, so a daemon started by hand from inside
+another service sees it too. The check therefore also requires our own cgroup to
+name a unit AND our PID to be that unit's MainPID; anything unverifiable refuses.
+
+
+Live-path caveat, stated rather than hidden
+-------------------------------------------
+Every check above runs through the real gateway object with the deployed modules and
+a real pi process; the TELEGRAM leg (a human's message arriving from the Bot API) is
+the one part a script cannot exercise without becoming a second poller. That leg is
+covered separately by docs/design/gateway-reply-path.md (message_id 8 delivered to
+the second bot). A human pressing the buttons in @Esther0001Bot is the last mile.

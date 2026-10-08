@@ -157,8 +157,11 @@ def test_status_is_answered_locally_and_not_dispatched():
 
 def test_unknown_command_is_forwarded_as_a_command_not_prompt_prose():
     gw, tr, be = _gw()
-    _drive(gw, tr, "/model gpt-5")
-    assert be.dispatched[-1]["body"] == "/model gpt-5"
+    # /model used to be the example here — it is now HANDLED by the gateway
+    # (tests/test_gateway_slash_parity.py), so the example has to be a command the
+    # gateway genuinely does not know.
+    _drive(gw, tr, "/totally-unknown gpt-5")
+    assert be.dispatched[-1]["body"] == "/totally-unknown gpt-5"
     assert be.dispatched[-1]["tg_kind"] == "command", \
         "an unhandled command must be marked, not passed as ordinary text"
     print(f"  G5 unknown command forwarded with tg_kind={be.dispatched[-1]['tg_kind']!r}")

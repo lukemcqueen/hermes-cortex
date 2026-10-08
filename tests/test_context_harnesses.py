@@ -188,9 +188,11 @@ def test_pi_extension_uses_the_REAL_event_api():
     assert "systemPrompt:" in code, "before_agent_start must RETURN the injected prompt"
     # Empty states must be SILENT on stderr (no cluttering a TUI prompt).
     # The runbook still verifies "no empty checkpoint" through the executed
-    # guard, not through a stderr marker.
-    assert "CORTEX_CHECKPOINT_EMPTY" not in code, \
-        "empty-turn noise on stderr is gone — stay silent unless genuinely broken"
+    # guard, not through a stderr marker. Routine markers now reach the cortex
+    # LOG (note()), so the assertion is about WHICH write call carries them —
+    # a bare substring check would flag the legitimate log trace.
+    assert not re.search(r"fail\([^)]*CORTEX_CHECKPOINT_EMPTY", code, re.S), \
+        "empty-turn noise is written to stderr — stay silent unless genuinely broken"
 
 
 def test_pi_extension_stderr_is_failure_only():
@@ -209,7 +211,15 @@ def test_pi_extension_stderr_is_failure_only():
               if "process.stderr.write(" in ln]
     assert "CORTEX_FAIL" in src, "a real CLI error must still be reported"
     for marker in ("CORTEX_RESUME", "CORTEX_CHECKPOINT_EMPTY"):
-        assert marker not in code, f"{marker} is not a failure — remove the stderr write"
+        # `note()` sends routine markers to the cortex LOG (and to stderr only under
+        # CORTEX_CONTEXT_DEBUG=1); `fail()` is the stderr path. Asserting the marker
+        # is absent from the FILE would flag the log trace itself — assert instead
+        # that it is never routed through the failure write, and that it still exists
+        # as a log trace (deleting the diagnostics is not the fix either).
+        assert not re.search(rf"fail\([^)]*{marker}", code, re.S), \
+            f"{marker} is not a failure — it must not go to stderr"
+        assert re.search(rf"note\([^)]*{marker}", code, re.S), \
+            f"{marker} must still reach the cortex log via note()"
     assert "recorded" not in writes, "the success path must not announce itself"
 
 
@@ -287,11 +297,15 @@ def _leaky_variant(tmp_path: Path) -> Path:
     (workdir / "extensions").mkdir(parents=True)
     shutil.copy(HARNESS_DIR / "pi" / "verify-extension.mjs", workdir / "verify-extension.mjs")
     source = PI_EXT.read_text()
-    capture = "    const { stdout } = await run("
-    ret = "    return stdout.trim();\n"
+    # The current shape: the child's stderr is CAPTURED and deliberately ignored.
+    # The realistic regression is an edit that "helpfully" forwards it — so the
+    # injection replaces the `void stderr;` no-op with a write.
+    capture = "    void stderr;\n"
+    ret = '    return (stdout ?? "").trim();\n'
     assert capture in source and ret in source, "the guard's injection anchors moved — update this RED case"
-    leaky = source.replace(capture, "    const { stdout, stderr } = await run(", 1)
-    leaky = leaky.replace(ret, "    if (stderr) process.stderr.write(String(stderr));\n" + ret, 1)
+    leaky = source.replace(
+        capture,
+        "    if (stderr) process.stderr.write(String(stderr));\n", 1)
     (workdir / "extensions" / "cortex-context.ts").write_text(leaky)
     return workdir
 

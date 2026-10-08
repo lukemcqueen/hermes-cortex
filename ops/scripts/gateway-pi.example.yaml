@@ -1,15 +1,36 @@
 {
-  "_comment": "Worked example: a Telegram bot answered by the PI coding agent. Copy to ~/.hermes-cortex/gateway.yaml (or a rehearsal config) and set the env vars named below. NO gateway code changes: kind=command runs any CLI agent per turn. Notes measured on the live pi install (2026-10-07): (1) use the ABSOLUTE path to pi ON YOUR HOST — `command` is an argv list, NOT a shell line, so nothing expands `~` or `$HOME`, and pi's launcher is a symlink into a bin dir that is not on a service PATH, so a relative or wrong path is a per-message no-op; (2) output=raw: pi's stdout is EXACTLY the assistant's answer and nothing else — verified with a plain turn and with a turn that used pi's bash tool (the extension's CORTEX_RESUME line and all tool chatter go to its log/stderr, never stdout). `last_line` was a wrong guess and cost every multi-line answer its first lines; (3) timeout_s must cover a real coding turn, not just a chat reply — and a turn that exceeds it now reports the timeout to the human instead of going silent.",
+  "_comment": "Worked example: a Telegram bot answered by the PI coding agent. Copy to ~/.hermes-cortex/gateway.yaml (or a rehearsal config) and set the env vars named below. Notes measured on the live pi install (2026-10-07): (1) use the ABSOLUTE path to pi ON YOUR HOST — `command` is an argv list, NOT a shell line, so nothing expands `~` or `$HOME`, and pi's launcher is a symlink into a bin dir that is not on a service PATH, so a relative or wrong path is a per-message no-op; (2) output=raw: pi's stdout is EXACTLY the assistant's answer and nothing else — verified with a plain turn and with a turn that used pi's bash tool (the extension's CORTEX_RESUME line and all tool chatter go to its log/stderr, never stdout). `last_line` was a wrong guess and cost every multi-line answer its first lines; (3) timeout_s must cover a real coding turn, not just a chat reply — and a turn that exceeds it now reports the timeout to the human instead of going silent. (4) SLASH COMMANDS ARE THE GATEWAY'S (2026-10-08): /new, /model, /compact and /restart cannot be forwarded, because pi handles its built-in slash commands only in the interactive/RPC surfaces — as prompt text they become conversation. `model_args` is where the model flag is declared so `/model <name>` can override it per chat (declare it HERE and never inside `command`: both at once is refused at startup, because a second --model makes the switch a silent no-op). `commands` declares how the gateway may do the operations that are not messages — pi's /compact lives in pi's RPC mode, so the gateway runs pi-control (deployed beside this module) and relays its one-line verdict. Drop `commands` and the gateway still answers /compact, with 'not supported by this agent backend' instead of a silent no-op.",
   "backends": [
     {
       "name": "pi",
       "kind": "command",
-      "command": ["/home/<user>/.pi/agent/bin/pi", "--model", "openrouter/moonshotai/kimi-k2.6"],
+      "command": ["/home/<user>/.pi/agent/bin/pi"],
       "output": "raw",
       "timeout_s": 300,
       "reply_mode": "sync",
-      "capabilities": ["code", "review"],
-      "model": "openrouter/moonshotai/kimi-k2.6"
+      "model": "openrouter/moonshotai/kimi-k2.6",
+      "model_args": ["--model", "{model}"],
+      "session": "per_chat",
+      "session_args": ["--session-id", "{session_id}"],
+      "env": {
+        "CORTEX_SESSION_HARNESS": "pi",
+        "CORTEX_SESSION_KEY": "{session_id}"
+      },
+      "commands": {
+        "compact": {
+          "argv": ["/usr/bin/python3", "/home/<user>/.hermes-cortex/scripts/cortex_gateway/pi_control.py",
+                   "compact", "--session-id", "{session_id}", "--model", "{model}"],
+          "timeout_s": 420,
+          "description": "manual context compaction (pi RPC; an LLM call over the session)"
+        },
+        "check_model": {
+          "argv": ["/usr/bin/python3", "/home/<user>/.hermes-cortex/scripts/cortex_gateway/pi_control.py",
+                   "check-model", "{model}"],
+          "timeout_s": 30,
+          "description": "is this model one pi can resolve? (offline)"
+        }
+      },
+      "capabilities": ["code", "review"]
     }
   ],
   "bots": [

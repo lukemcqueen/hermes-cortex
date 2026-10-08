@@ -28,11 +28,25 @@ Parity slice 2 (G5/G6/G7, 2026-10-02) — the incumbent's daemon-side behaviour:
   - G7 polling recovery: transient poll errors back off exponentially instead of
     spinning; a conflict stands by, and only PERSISTENT conflicts exit (a real
     second poller must not have its updates stolen).
+
+Slash-command parity for a CLI agent (2026-10-08). Four commands are the ones a
+human actually reaches for, and NONE of them can be forwarded to a `kind: command`
+agent: pi handles its built-in slash commands only in the interactive/RPC surfaces,
+so `/new`, `/model`, `/compact` and `/restart` as prompt text become four
+characters of conversation and nothing more. They are therefore gateway-level:
+
+  - `/new`      rotation of the session id (archive, never delete) — sessions.py
+  - `/model`    per-chat model override, published on the envelope the backend
+                builds its argv from — models.py
+  - `/compact`  a session operation, run through the backend's declared control
+                command (`commands.compact` in gateway.yaml) — pi speaks RPC
+  - `/restart`  exit + `Restart=always`, refused when not systemd-supervised
 """
 from __future__ import annotations
 
 import json
 import os
+import subprocess
 import sys
 import threading
 import time
@@ -41,6 +55,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:                      # runtime import stays lazy (pairing is opt-in)
+    from .models import ModelBook
     from .pairing import PairingStore
     from .sessions import SessionBook
 
@@ -166,7 +181,8 @@ class Gateway:
                  routing_overrides: dict | None = None,
                  allowed_users: set | None = None,
                  pairing: "PairingStore | None" = None,
-                 sessions: "SessionBook | None" = None):
+                 sessions: "SessionBook | None" = None,
+                 models: "ModelBook | None" = None):
         self.transport = transport
         self.backends = backends          # agent_name -> BackendAdapter
         self.default_agent = default_agent
@@ -180,6 +196,9 @@ class Gateway:
         # Per-chat session generations (/new). None = rotation not configured, in
         # which case a chat keeps one session forever (the behaviour before /new).
         self.sessions = sessions
+        # Per-chat model overrides (/model). None = switching not configured, in
+        # which case every chat runs the backend's configured default.
+        self.models = models
         # offset tracks the transport's own offset (transport owns the truth).
         self.offset = getattr(transport, "offset", 0)
 
@@ -266,6 +285,11 @@ class Gateway:
         # envelope already queued keeps the one it was sent under.
         if self.sessions is not None:
             envelope["session_generation"] = self.sessions.generation(chat)
+        # Publish the chat's MODEL override the same way, and for the same reason: the
+        # backend builds the argv, so "which model answers this chat" has to travel with
+        # the envelope. Empty string = the backend's configured default.
+        if self.models is not None:
+            envelope["model_override"] = self.models.get(chat)
         # A new human message lifts a previous /stop suppression.
         if envelope.get("tg_kind") == "message":
             self.suppressed.discard(chat)
@@ -313,11 +337,18 @@ class Gateway:
             self._reply(chat, self._status_line())
             return True
         if command == "/help":
-            self._reply(chat, "gateway commands: /stop · /status · /help · /new — "
-                              "anything else is forwarded to the agent")
+            self._reply(chat, "gateway commands: /stop · /status · /help · /new · "
+                              "/model · /compact · /restart — anything else is "
+                              "forwarded to the agent")
             return True
         if command == "/new":
             return self._handle_new(chat, envelope, backend)
+        if command == "/model":
+            return self._handle_model(chat, envelope, backend)
+        if command == "/compact":
+            return self._handle_compact(chat, envelope, backend)
+        if command == "/restart":
+            return self._handle_restart(chat)
         # Unknown command → forward, so the agent (or a later backend) owns it
         # instead of the text silently becoming part of a prompt.
         self._forward(envelope, backend)
@@ -340,6 +371,163 @@ class Gateway:
         queued = sum(len(q) for q in self.queues.values())
         return (f"gateway ok · backends: {','.join(sorted(self.backends))} · "
                 f"in flight: {busy} · queued: {queued}")
+
+    # ── /model: which model answers THIS chat ──────────────────
+    def _handle_model(self, chat, envelope: dict, backend) -> bool:
+        """Show, switch, or clear this chat's model.
+
+        Handled here rather than forwarded, for the same reason as `/new`: the
+        model lives in the argv the BACKEND builds, and the gateway is the only
+        component that persists per-chat state. Forwarded, `/model x` is prompt
+        prose — pi answers it in words (and keeps running the old model), which is
+        exactly the silent no-op this replaces.
+
+        Scope is one chat (the incumbent's session-scoped `/model <name>`): a
+        switch here never moves another chat, and a chat that never switches keeps
+        running the configured default.
+        """
+        if self.models is None:
+            self._reply(chat, "Model switching is not configured on this gateway — "
+                              "this chat uses the backend's default model.")
+            return True
+        args = (envelope.get("body") or "").split()
+        want = " ".join(args[1:]).strip() if len(args) > 1 else ""
+        default = str(getattr(getattr(backend, "spec", None), "model", "") or "").strip()
+        current = self.models.get(chat)
+
+        if not want or want.lower() in ("status", "show"):
+            where = f"this chat: {current}" if current else \
+                    f"this chat: {default or '(backend default)'}"
+            tail = f" · default: {default}" if current and default else ""
+            self._reply(chat, f"🧠 {where}{tail}\n"
+                              "/model <name> to switch · /model reset for the default")
+            return True
+        if want.lower() in ("reset", "default", "clear"):
+            had = self.models.clear(chat)
+            self._reply(chat, (f"↩️ model reset to the default ({default or 'backend default'})."
+                               if had else
+                               "This chat was already on the default model."))
+            return True
+
+        # Optional validation: a spec may declare a `check_model` command. Without
+        # it we accept the name and say so — a typo then surfaces on the next turn
+        # (the backend reports a failed turn rather than going silent).
+        check = None
+        controller = getattr(backend, "control", None)
+        if controller is not None and "check_model" in (getattr(backend.spec, "commands", {}) or {}):
+            rc, out, err = controller("check_model", envelope, model=want)
+            if rc == 1:
+                self._reply(chat, f"❌ {want} is not a model this agent can use.\n"
+                                  f"{err or out}")
+                return True
+            if rc == 3:
+                check = (" (could not verify it against the agent's model list — "
+                         "if the next turn reports a model error, use /model reset)")
+            elif out:
+                check = f" ({out})"
+        self.models.set(chat, want)
+        self._reply(chat, f"🧠 model for this chat set to {want}{check or ''}.\n"
+                          "Applies from your next message · /model reset restores "
+                          f"{default or 'the default'}.")
+        return True
+
+    # ── /compact: ask the agent to compact ITS session ─────────
+    def _handle_compact(self, chat, envelope: dict, backend) -> bool:
+        """Compact this chat's agent-side context.
+
+        Compaction is a session operation, not a message: pi handles `/compact`
+        only in its interactive/RPC surfaces, so forwarding the text would just
+        add the four characters to the conversation. The backend declares HOW
+        (`commands.compact` in gateway.yaml); the gateway only decides WHEN.
+
+        The interim line matters: a real compaction is an LLM call over the whole
+        session (measured ~1m46s on a 71-message pi session) and this call blocks
+        the turn, so silence for two minutes reads as a hung bot.
+        """
+        controller = getattr(backend, "control", None)
+        if controller is None:
+            self._reply(chat, "⚠️ /compact is not supported by this agent backend.")
+            return True
+        self._reply(chat, "🗜️ compacting this chat's context — this can take a minute…")
+        rc, out, err = controller("compact", envelope)
+        if rc == 0:
+            self._reply(chat, f"🗜️ {out or 'context compacted.'}")
+        elif rc == 3:
+            self._reply(chat, f"⚠️ /compact could not run: {err or out}")
+        elif rc == 2:
+            self._reply(chat, "⚠️ /compact is not supported by this agent backend.")
+        else:
+            self._reply(chat, f"⚠️ /compact: {err or out or 'the agent refused it'}")
+        return True
+
+    # ── /restart: bring the gateway back with fresh code ───────
+    RESTART_EXIT_DELAY_S = 1.5
+
+    def _own_unit_name(self) -> str:
+        """The systemd unit THIS process runs under, from its own cgroup, or "".
+
+        INHERITED-ENV TRAP: systemd exports INVOCATION_ID into the unit's whole
+        process tree, so a daemon started by hand from a shell that lives inside
+        another service (an agent session, say) sees it too and would believe a
+        restart was survivable. The cgroup names the unit we are actually in.
+        """
+        try:
+            cgroup = Path("/proc/self/cgroup").read_text()
+        except OSError:
+            return ""
+        for line in cgroup.splitlines():
+            tail = line.rsplit(":", 1)[-1].rstrip("/").rsplit("/", 1)[-1]
+            if tail.endswith(".service"):
+                return tail
+        return ""
+
+    def _supervised_by_systemd(self) -> bool:
+        """Will systemd bring THIS process back if it exits?
+
+        Three checks, because each one alone is fooled: the unit env must be
+        present, our cgroup must name a unit, and OUR PID must be that unit's
+        MainPID (so being a child of someone else's service does not count).
+        Anything unverifiable returns False — refusing costs a manual restart,
+        while a wrong True silently takes the bot down.
+        """
+        if not (os.environ.get("INVOCATION_ID") or os.environ.get("JOURNAL_STREAM")):
+            return False
+        unit = self._own_unit_name()
+        if not unit:
+            return False
+        try:
+            done = subprocess.run(["systemctl", "--user", "show", "--property=MainPID",
+                                   "--value", unit],
+                                  capture_output=True, text=True, timeout=10)
+        except (OSError, subprocess.SubprocessError):
+            return False
+        return done.returncode == 0 and done.stdout.strip() == str(os.getpid())
+
+    def _handle_restart(self, chat) -> bool:
+        """Restart the gateway so a code/config change goes live.
+
+        Exiting is the mechanism, not `systemctl restart`: the daemon runs under
+        `NoNewPrivileges=true`, so it cannot ask systemd to restart it — but it
+        does not have to. `Restart=always` brings the unit back on ANY exit, so
+        replying first and then exiting is both privilege-free and observable.
+
+        Refusing when unsupervised is deliberate: without systemd, exiting is a
+        kill, and a slash command that silently takes the bot down is worse than
+        no command at all.
+        """
+        if not self._supervised_by_systemd():
+            self._reply(chat, "⚠️ This gateway is not running under systemd, so "
+                              "/restart cannot bring it back — stop it and start it "
+                              "by hand instead.")
+            return True
+        self._reply(chat, "🔄 restarting the gateway — back in a few seconds…")
+        threading.Thread(target=self._exit_for_restart, daemon=True).start()
+        return True
+
+    def _exit_for_restart(self) -> None:
+        """Let the reply land, then exit so systemd restarts the unit."""
+        time.sleep(self.RESTART_EXIT_DELAY_S)
+        os._exit(0)
 
     # ── /new: start a fresh session, ARCHIVING the old one ─────
     def _handle_new(self, chat, envelope: dict, backend) -> bool:
@@ -725,6 +913,11 @@ def build_gateway(config_path: Path) -> Gateway:
     # in-memory counter would silently resume the archived conversation.
     from . import sessions as _sessions
     sessions = _sessions.SessionBook(_state_dir / "gateway-sessions.json")
+    # Per-chat model overrides for `/model`, persisted for the same reason: the unit
+    # is Restart=always, and a switch that evaporates on restart is one a human will
+    # (correctly) stop trusting.
+    from . import models as _models
+    models = _models.ModelBook(_state_dir / "gateway-models.json")
     # Pairing is opt-in and its approvals persist NEXT TO the deploy, not in the repo.
     pairing = None
     from . import pairing as _pairing
@@ -736,7 +929,8 @@ def build_gateway(config_path: Path) -> Gateway:
     return Gateway(transport=transport, backends=backends,
                    default_agent=routing.get("default", DEFAULT_BACKEND_AGENT),
                    routing_overrides=routing.get("overrides", {}),
-                   allowed_users=allowed, pairing=pairing, sessions=sessions)
+                   allowed_users=allowed, pairing=pairing, sessions=sessions,
+                   models=models)
 
 
 def main() -> int:

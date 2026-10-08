@@ -59,6 +59,9 @@ Every difference named below is now closed, and the row names the test that hold
 | DM pairing flow | ✅ | ✅ code → owner `/approve` (only an env-allowed user), single-use, TTL-bounded, per-sender rate-limited, persisted across restarts; ON by default as the incumbent is, `TELEGRAM_PAIRING=off` for a silent refusal | `tests/test_gateway_pairing.py` |
 | Per-chat agent sessions | ✅ | ✅ spec `session: per_chat` + `session_args`; deterministic `hc-<agent>-<chat>` id, so continuity survives a restart | `tests/test_gateway_agent_registry.py` |
 | `/new` — start a fresh session (ARCHIVE) | ➖ | ✅ `/new` bumps a PERSISTED per-chat generation → `hc-<agent>-<chat>-g<N>`; the previous transcript stays on disk under its own derivable id and is NAMED in the reply. Generation 0 keeps the unsuffixed id, so an existing conversation never moves | `tests/test_gateway_new_session.py` |
+| `/model <name>` — switch the model for THIS chat | ✅ (session-scoped) | ✅ gateway-level: a PERSISTED per-chat override (`models.py`) published on the envelope as `model_override` and substituted into the backend's `model_args` (`--model {model}`), so the NEXT turn really runs the new model. No argument reports the chat's model and the default; `/model reset` returns to the default. Optional validation: a spec may declare `check_model`, and a name the agent rejects is refused instead of stored | `tests/test_gateway_slash_parity.py` |
+| `/compact` — compact this chat's context | ✅ (in-process agent) | ✅ gateway-level through the backend's DECLARED control command (`commands.compact`): pi's `/compact` lives in pi's RPC mode, so `pi_control.py` drives it and prints one line the gateway relays (measured: 69,980 → 20,267 tokens on a 71-message session, ~1m46s). rc=2 (not declared) and rc=3 (could not run) are reported distinctly, never as success | `tests/test_gateway_slash_parity.py` |
+| `/restart` — reload the gateway | ✅ | ✅ gateway-level: reply, then exit; the unit is `Restart=always`, so systemd brings it back (no privileges needed under `NoNewPrivileges=true`). REFUSED with a message when the daemon is not systemd-supervised — unsupervised, exiting is a kill | `tests/test_gateway_slash_parity.py` |
 | Message edits | ✅ | ✅ `editMessageText` (approval outcomes, streaming updates) | `tests/test_gateway_approvals.py` |
 | Multi-platform (Discord/Slack/… 20+) | ✅ | ❌ Telegram only | accepted by design (anti-bloat); the transport seam is where another platform attaches |
 
@@ -193,6 +196,56 @@ exponential backoff with a conflict fault-tolerance of 3 consecutive cycles befo
   long turn — plus two pre-existing faults in the synchronous path (an unbounded streaming
   read, and `timeout_s: 0` silently defaulting). Fixed with tests named in the table; the
   blocking-turn asymmetry is recorded as still open.
+
+- **2026-10-08, CR5 addendum — slash-command parity for a CLI agent.** The four commands a
+  human actually reaches for on a coding-agent bot were verified against the pi backend, and
+  NONE could work as forwarded text: pi handles its built-in slash commands **only in the
+  interactive/RPC surfaces** (pi's own `docs/rpc-commands.md`: "Built-in TUI commands … would
+  not execute if sent via prompt"), so `/model x`, `/compact` and `/restart` arrived as four
+  characters of conversation. `/new` already had a gateway handler; `/model`, `/compact` and
+  `/restart` did not. The gap was measured against the DEPLOYED package before the change —
+  no `models` module, no `_handle_model`/`_handle_compact`/`_handle_restart` on `Gateway`,
+  and `model_args` rejected as an unknown spec key — and each is now held closed by
+  `tests/test_gateway_slash_parity.py` (32 tests), which drives the REAL gateway and the REAL
+  `CommandBackend` (the agent's command is `/bin/echo`, so the reply body IS the argv built).
+
+  Two design consequences worth naming:
+
+  - **The model is declared exactly once.** `/model` can only override a model the argv does
+    not hardcode, so the model moved out of `command` into `model_args` — and a spec that has
+    both is refused at STARTUP, because two `--model` flags make the switch a silent no-op
+    (the failure mode this field removes). `tests/test_cortex_gateway_daemon_slice.py`'s
+    "unknown command is forwarded" case used `/model gpt-5` as its example; it now uses a
+    genuinely unknown command, because `/model` is handled.
+  - **A control command is declared, not coded.** `/compact` needs pi's RPC mode, so the
+    spec names an argv template (`commands.compact` → `pi_control.py`) and the gateway runs
+    it and relays stdout. No pi flag name appears in gateway code, and a backend that
+    declares nothing answers "not supported" instead of silently doing nothing.
+  - **`/restart` is refused when unsupervised.** Exiting IS the restart under
+    `Restart=always`; without systemd the same exit is a kill, so the handler checks
+    `INVOCATION_ID`/`JOURNAL_STREAM` first and says so instead of taking the bot down.
+
+  Verified live on the second bot (@Esther0001Bot) host: `/status`, `/new`, `/model`
+  (switch + reset + a rejected name), `/compact` and `/restart` each exercised end-to-end
+  through the running systemd unit — see `docs/evidence/gateway-slash-parity-2026-10-08.txt`.
+  13/13 checks, run twice on the deployed tree.
+
+  That live run also earned its keep by finding a REAL defect in `/compact`, which is
+  exactly what a checked-only-in-unit-tests suite would have missed:
+
+  - **pi's RPC `compact` never answers for a session whose transcript does not exist
+    yet** (`get_state` on the same id answers in ~1.2s and creates it). A chat that has
+    just used `/new`, or whose first turn has not run, is that case. The adapter now
+    reads the state first and answers "this chat has no conversation yet" instead of
+    asking blind.
+  - **With its MCP servers connected, pi's RPC startup wedged ~40% of control calls**
+    — process alive, silent, no stderr, for the whole deadline. Measured on the trigger
+    sequence: 4 fast / 2 hangs with MCP, 8/8 answered at ~1.2s with `--no-mcp`. A
+    control call (`compact`, `state`) uses no MCP tool, so the servers are pure risk;
+    the adapter passes `--no-mcp` and starts pi in its own process group so a timeout
+    reaps pi AND its children.
+
+  Both are held by `tests/test_gateway_slash_parity.py`.
 
 ## Evidence
 

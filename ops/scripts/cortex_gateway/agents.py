@@ -66,6 +66,12 @@ def known_kinds() -> list:
 
 REPLY_MODES = ("sync", "bus")
 
+# A control command (``commands:``) may take this long when the spec does not say.
+# Compaction is an LLM call over the whole session, measured at ~1m46s on a
+# 71-message pi session, so the default has to clear a real summarization, not a
+# shell command's runtime.
+DEFAULT_CONTROL_TIMEOUT_S = 300
+
 # Agents differ in what they print. `raw` takes stdout as the reply; `last_line` takes the
 # final non-empty line — for an agent that chats on stdout before the answer. Measured on
 # the live pi install (2026-10-07): pi's stdout IS the answer and nothing else (extension
@@ -87,12 +93,65 @@ def _positive_or_default(raw, default: int) -> int:
 
     ``int(raw or default)`` silently turned an explicit ``0`` into the default, so a
     config saying ``timeout_s: 0`` quietly got 300s while ``validate()``'s "must be
-    positive" never fired — a fail-open in the very field that decides how long a turn
-    may run (and therefore when a turn is reported as timed out).
+    positive" never fired — a fail-open in the very field that decides how long a
+    turn may run (and therefore when a turn is reported as timed out).
     """
     if raw is None or raw == "":
         return default
     return int(raw)
+
+
+def _argv_list(raw) -> list:
+    """A command template as a list of argv strings (a bare string is split).
+
+    Config is JSON, so `command: "pi --model x"` and `command: ["pi", "--model",
+    "x"]` must mean the same thing — the whole file already accepts both shapes.
+    """
+    if raw is None or raw == "":
+        return []
+    if isinstance(raw, str):
+        return shlex.split(raw)
+    if isinstance(raw, (list, tuple)):
+        return [str(x) for x in raw]
+    raise ValueError(f"expected an argv list or string, got {type(raw).__name__}")
+
+
+def _commands_map(raw: dict) -> dict:
+    """`commands:` → {name: {argv, timeout_s, description}}.
+
+    A control command is a NAMED argv template the gateway may run for a slash
+    command the backend cannot answer as a prompt (pi: `compact`). The gateway
+    owns the decision, the spec owns the mechanics — the same split as
+    `session_args`, and it keeps a harness's flag names out of gateway code.
+    """
+    if not isinstance(raw, dict):
+        raise ValueError(f"'commands' must be a mapping of name → argv, "
+                         f"got {type(raw).__name__}")
+    out: dict = {}
+    for name, val in raw.items():
+        key = str(name).strip().lower()
+        if not key:
+            raise ValueError("'commands' has an empty command name")
+        if isinstance(val, dict):
+            unknown = set(val) - {"argv", "timeout_s", "description"}
+            if unknown:
+                raise ValueError(
+                    f"command '{key}' has unknown key(s): {sorted(unknown)}. "
+                    f"Allowed: ['argv', 'description', 'timeout_s']")
+            argv = _argv_list(val.get("argv"))
+            timeout = _positive_or_default(val.get("timeout_s"),
+                                           DEFAULT_CONTROL_TIMEOUT_S)
+            desc = str(val.get("description", "") or "")
+        else:
+            argv = _argv_list(val)
+            timeout = DEFAULT_CONTROL_TIMEOUT_S
+            desc = ""
+        if not argv:
+            raise ValueError(
+                f"command '{key}' has an empty argv — it would run nothing and "
+                "report success")
+        out[key] = {"argv": argv, "timeout_s": timeout, "description": desc}
+    return out
 
 
 @dataclass
@@ -108,6 +167,15 @@ class AgentSpec:
     output: str = "raw"                           # raw | last_line (agents print chatter)
     session: str = "none"                         # none | per_chat (one agent session per chat)
     session_args: list = field(default_factory=lambda: ["--session-id", "{session_id}"])
+    # kind=command: how the MODEL flag is passed, templated on {model}. Declared
+    # separately from `command` because the model can differ per chat (the /model
+    # command): a model baked into `command` cannot be overridden, and a model
+    # declared twice is a config error, not a race.
+    model_args: list = field(default_factory=list)
+    # kind=command: named argv templates the gateway may run for a slash command the
+    # agent cannot answer as a prompt (pi: `compact` needs pi's RPC mode, never a
+    # prompt). Templated on {session_id}, {model}, {agent}, {channel}, {user}.
+    commands: dict = field(default_factory=dict)
     stream: bool = False                          # kind=command: show output as it arrives
     capabilities: list = field(default_factory=list)  # free-form, for operators/health
     model: str = ""
@@ -129,7 +197,7 @@ class AgentSpec:
             raise ValueError(f"backend spec must be a mapping or a name, got {type(d).__name__}")
         allowed = {"name", "kind", "command", "prompt_template", "timeout_s", "reply_mode",
                    "capabilities", "model", "subject", "output", "session", "session_args",
-                   "stream", "env", "extra"}
+                   "model_args", "commands", "stream", "env", "extra"}
         unknown = set(d) - allowed
         if unknown:
             raise ValueError(
@@ -148,6 +216,8 @@ class AgentSpec:
             output=str(d.get("output", "raw")).strip().lower(),
             session=str(d.get("session", "none")).strip().lower(),
             session_args=list(d.get("session_args") or ["--session-id", "{session_id}"]),
+            model_args=_argv_list(d.get("model_args")),
+            commands=_commands_map(d.get("commands") or {}),
             stream=bool(d.get("stream", False)),
             capabilities=list(d.get("capabilities", []) or []),
             model=str(d.get("model", "") or ""),
@@ -199,6 +269,26 @@ class AgentSpec:
         if self.env and self.kind != "command":
             raise ValueError(
                 f"backend '{self.name}': 'env' is only honoured by kind 'command' "
+                f"(got {self.kind!r}) — it would be accepted and silently ignored")
+        # The model must be declared EXACTLY ONCE. `model_args` exists so a chat can
+        # override the model; a flag baked into `command` cannot be overridden, and
+        # having both would append a second --model whose winner depends on the
+        # harness — a "switch" that silently does nothing, which is the failure this
+        # field is meant to remove.
+        if self.model_args:
+            if not any("{model}" in a for a in self.model_args):
+                raise ValueError(
+                    f"backend '{self.name}': model_args must contain '{{model}}' "
+                    f"(got {self.model_args}) — otherwise the flag is passed with no "
+                    "model and the switch is a no-op")
+            if any(str(a) == "--model" for a in self.command):
+                raise ValueError(
+                    f"backend '{self.name}': the model is declared twice — '--model' "
+                    "is in 'command' AND 'model_args' is set. Move it out of 'command' "
+                    "so /model can override it.")
+        if self.commands and self.kind != "command":
+            raise ValueError(
+                f"backend '{self.name}': 'commands' is only honoured by kind 'command' "
                 f"(got {self.kind!r}) — it would be accepted and silently ignored")
 
 
@@ -314,14 +404,15 @@ class CommandBackend:
             return None                       # malformed — DLQ, never crash the loop
         prompt = self._prompt(inbound)
         session_id = self._session_id(inbound)
+        model = self._model(inbound)
         child_env = self._child_env(inbound, session_id)
         # STREAMING (opt-in per spec): report partial output as it is produced, so a long
         # coding turn is visible instead of silent. The sink is the GATEWAY's (it owns
         # formatting and delivery); a backend that can stream advertises supports_stream.
         if sink is not None and self.spec.stream:
-            out, failure = self._run_streaming(prompt, session_id, sink, child_env)
+            out, failure = self._run_streaming(prompt, session_id, sink, child_env, model)
         else:
-            out, failure = self._run(prompt, session_id, child_env)
+            out, failure = self._run(prompt, session_id, child_env, model)
         if failure:
             # The turn could not RUN (in full). Saying nothing here is indistinguishable
             # from a dead gateway — measured live: a pi turn that ran past its timeout
@@ -399,12 +490,82 @@ class CommandBackend:
         """
         return self._session_id(inbound)
 
-    def _argv(self, prompt: str, session_id: str = "") -> list:
+    def _model(self, inbound: dict) -> str:
+        """Which model answers this turn: the chat's override, else the spec default.
+
+        Published by the gateway as `model_override` (its `/model` command). Kept
+        here, not read from a file, so the backend stays a pure function of the
+        envelope it was handed — the gateway owns the store.
+        """
+        override = str(inbound.get("model_override") or "").strip()
+        return override or self.spec.model
+
+    def _argv(self, prompt: str, session_id: str = "", model: str = "") -> list:
         cmd = [*self.spec.command]
         if session_id:
             cmd += [str(a).replace("{session_id}", session_id) for a in self.spec.session_args]
+        if self.spec.model_args:
+            m = str(model or self.spec.model or "")
+            # A chat with no model at all passes the flag with an empty value, which
+            # every coding agent rejects. Say so instead: no model declared and no
+            # override means the agent cannot be started correctly.
+            if not m:
+                raise ValueError(
+                    f"backend '{self.spec.name}': no model to pass "
+                    f"(spec.model is empty and the chat has no override)")
+            cmd += [str(a).replace("{model}", m) for a in self.spec.model_args]
         cmd.append(prompt)
         return cmd
+
+    def control(self, name: str, inbound: dict, model: str = "") -> tuple:
+        """Run one declared control command for this envelope → (rc, stdout, stderr).
+
+        Used by the gateway for a slash command the agent cannot answer as a prompt
+        (pi's `/compact` lives in pi's RPC mode, never in a prompt). The gateway
+        decides WHEN; this decides HOW, from the spec's argv template — so no
+        harness flag name appears in gateway code.
+
+        rc follows the fleet convention: 0 = ok, 2 = not declared (a gateway-level
+        "this backend cannot do that"), 3 = could not run (timeout, missing binary)
+        — which the caller must NOT report as either success or a refusal.
+        """
+        entry = (self.spec.commands or {}).get(str(name).strip().lower())
+        if not entry:
+            return (2, "", f"{self.spec.name} does not declare a '{name}' command")
+        session_id = self._session_id(inbound)
+        vals = {
+            "session_id": session_id,
+            "model": str(model or self._model(inbound) or ""),
+            "agent": self.spec.name,
+            "channel": str(inbound.get("channel", "")),
+            "user": str(inbound.get("channel_user_id", "")),
+            "body": str(inbound.get("body", "")),
+        }
+        argv = []
+        for raw in entry["argv"]:
+            try:
+                argv.append(str(raw).format(**vals))
+            except (KeyError, IndexError):
+                # A bad placeholder is a config error, not a message error: pass it
+                # through and say so rather than running something unintended.
+                log.warning("command backend %s: control %s has an unknown "
+                            "placeholder in %r; passing it verbatim",
+                            self.spec.name, name, raw)
+                argv.append(str(raw))
+        try:
+            proc = subprocess.run(argv, capture_output=True, text=True,
+                                  timeout=entry["timeout_s"],
+                                  env=self._child_env(inbound, session_id))
+        except subprocess.TimeoutExpired:
+            log.warning("command backend %s: control %s timed out after %ss",
+                        self.spec.name, name, entry["timeout_s"])
+            return (3, "", f"timed out after {entry['timeout_s']}s")
+        except (OSError, ValueError, TypeError) as e:
+            log.warning("command backend %s: control %s could not run %r (%s)",
+                        self.spec.name, name, argv[:1], e)
+            return (3, "", f"could not run {argv[:1]} ({e})")
+        return (proc.returncode, (proc.stdout or "").strip(),
+                (proc.stderr or "").strip())
 
     def _child_env(self, inbound: dict, session_id: str = "") -> dict | None:
         """The child's environment: the spec's `env`, templated, over the parent's.
@@ -444,14 +605,20 @@ class CommandBackend:
         return {**os.environ, **overrides}
 
     def _run(self, prompt: str, session_id: str = "",
-             child_env: dict | None = None) -> tuple[str, str]:
+             child_env: dict | None = None, model: str = "") -> tuple[str, str]:
         """Run one turn → ``(reply_text, failure_reason)``.
 
         ``failure_reason`` is "" when the agent RAN. It names the problem when the turn
         could not run at all (timeout, exec error, a crash that printed nothing), which
         the caller turns into a visible reply — a silent failure reads as a dead bot.
         """
-        cmd = self._argv(prompt, session_id)
+        try:
+            cmd = self._argv(prompt, session_id, model)
+        except ValueError as e:
+            # An unusable argv from the spec (e.g. no model to pass) is a config
+            # error: report it, never let it kill the poll loop.
+            log.warning("command backend %s: %s", self.spec.name, e)
+            return "", str(e)
         try:
             proc = subprocess.run(cmd, capture_output=True, text=True,
                                   timeout=self.spec.timeout_s, env=child_env)
@@ -474,14 +641,18 @@ class CommandBackend:
         return out, ""
 
     def _run_streaming(self, prompt: str, session_id: str, sink,
-                       child_env: dict | None = None) -> tuple[str, str]:
+                       child_env: dict | None = None, model: str = "") -> tuple[str, str]:
         """Run the agent, reporting accumulated stdout as it arrives.
 
         Line-buffered reading with a best-effort sink: a sink failure (say, a rate-limited
         edit) must not abort the turn — the final text still comes back through dispatch and
         the gateway delivers it normally. Returns ``(reply_text, failure_reason)``.
         """
-        cmd = self._argv(prompt, session_id)
+        try:
+            cmd = self._argv(prompt, session_id, model)
+        except ValueError as e:
+            log.warning("command backend %s: %s", self.spec.name, e)
+            return "", str(e)
         acc: list = []
         failure = ""
         try:
