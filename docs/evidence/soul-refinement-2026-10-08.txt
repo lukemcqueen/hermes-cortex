@@ -1,8 +1,8 @@
-captured 2026-10-08T23:32:53+09:00
+captured 2026-10-08T23:37:19+09:00 (round 3)
 
 ===== revision =====
-19652047 fix(skills): two lessons from today + save the stranded deployed-only lessons
-HEAD=19652047d7445a4068e3145b4a7976c641dd9b68
+5778f5c1 fix(evidence): address ADV-11698 findings with re-runnable proof
+HEAD=5778f5c17f5b5e1e34fd7eaba51541676d207e8d
 origin/main=19652047d7445a4068e3145b4a7976c641dd9b68
 
 ===== 1. adversarial A2 gate — the two changed skill files =====
@@ -21,7 +21,7 @@ PASS  manifest --check = 0
 PASS  change-validate exit = 0
 
 ===== 4. the drift count claimed in orch-skill-lifecycle: TOTAL commits touching skills/ in 7d =====
-80
+81
 -- narrowed to commits whose message says 'skill' or 'drift':
 45
 -- the 6 SHAs the note itself cites:
@@ -36,8 +36,11 @@ setgid: Operation not permitted
 grep reported ABSENT (command never ran: rc=1)
 
 ===== 6. deployed-only lessons saved for review (count of stranded paths) =====
+parity rc=1
 | Deployed-only files (stranded) | 7 |
 | Files in sync | 832 |
+NOTE  parity rc=1 = stranded files present (expected while the
+      deployed lessons in the saved file have not been copied back yet)
 saved file: 503 lines
 
 ===== done =====

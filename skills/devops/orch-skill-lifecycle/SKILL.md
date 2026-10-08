@@ -384,8 +384,8 @@ Result: 3 skills updated, 1 upstreamed, 1 SOUL.md entry.
   (`~/.hermes/skills/.../SKILL.md`) and commit only the repo side in a separate
   edit, so the next `cortex-update.sh` overwrites the lessons. Treat it as
   routine, not an anomaly: **~7–15 skill-touching commits/DAY** (measured
-  2026-10-08), cited by SHA in the examples below (`badbc960`, `de5f058c`,
-  `56c3a825`, `55173ab5`, `3123e26a`, `8bd82dcb`).
+  2026-10-08). Worked examples are listed by SHA at the end of this bullet
+  (`badbc960`, `de5f058c`, `56c3a825`, `55173ab5`, `3123e26a`, `8bd82dcb`).
   **Count it before you quote it — and say what the command counts.** No single
   `git log` measures "drift-sync commits": on 2026-10-08 the 7-day totals were
   **80** for every commit touching `skills/` and **45** when narrowed to messages

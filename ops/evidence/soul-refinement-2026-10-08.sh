@@ -62,8 +62,19 @@ echo "-- the false-negative shape the note describes:"
   && echo "grep found the marker" || echo "grep reported ABSENT (command never ran: rc=$rc_sg)"
 
 hr "6. deployed-only lessons saved for review (count of stranded paths)"
-python3 ops/scripts/manage/check-skill-drift-parity.py 2>/dev/null \
-  | grep -E '^\| (Deployed-only files|Files in sync)' || true
+# The parity script FAILS (exit 1) while files are stranded -- that is the state
+# being reported, not an error to hide. Capture rc, keep stderr, report both.
+PARITY_OUT=/tmp/parity.out
+python3 ops/scripts/manage/check-skill-drift-parity.py > "$PARITY_OUT" 2>&1
+parity_rc=$?
+printf 'parity rc=%s\n' "$parity_rc"
+grep -E '^\| (Deployed-only files|Files in sync)' "$PARITY_OUT" || echo "  (no measure lines in output)"
+if [[ "$parity_rc" == 0 ]]; then
+  echo "PASS  parity check clean (no stranded files)"
+else
+  echo "NOTE  parity rc=$parity_rc = stranded files present (expected while the"
+  echo "      deployed lessons in the saved file have not been copied back yet)"
+fi
 echo "saved file: $(wc -l < docs/evidence/saved-deployed-skill-lessons-2026-10-08.txt) lines"
 
 hr "done"
