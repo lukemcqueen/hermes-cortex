@@ -304,3 +304,130 @@ def test_rereview_cannot_bypass_the_reviewer(gov):
         "re-review must re-run the same gate, not decide for itself"
     assert "_record_review(" not in src, \
         "re-review must let the gate record the verdict, not record one itself"
+
+
+# ── The pi/CLI path must tag the lock with the CWD repo, not the host-canonical ──
+#
+# A pi / coding-agent session drives governance through `ops/scripts/loop-gov.py`,
+# which calls the server handlers DIRECTLY — it never passes through the
+# gateway's enforcer pre_tool_call hook, so `_inject_session_context` never
+# stamps `repo_path`/`repo_slug` onto the call. `_derive_slug` then falls to
+# Priority 1 (the host-canonical governed repo), which tags the lock
+# `hermes-cortex` whenever `~/hermes-cortex` exists on the host — even though the
+# session is working in a different repo (observed on Titus: a pi session in
+# steadfaste-s1-model locked `hermes-cortex`, the close gate refused forever).
+#
+# The CLI KNOWS its cwd repo (it chdir's to `--repo` or runs in cwd), so it must
+# stamp the payload the way the enforcer does. These tests pin that contract.
+
+import os as _os  # noqa: E402
+import tempfile as _tempfile  # noqa: E402
+
+
+def _mkrepo(path: Path, with_commit: bool = True) -> Path:
+    import time
+    path.mkdir(parents=True, exist_ok=True)
+    def git(*a, **kw):
+        return subprocess.run(["git", "-C", str(path), *a],
+                              capture_output=True, text=True, **kw)
+    git("init", "-q")
+    git("config", "user.email", "agent@hermes.local")
+    git("config", "user.name", "agent")
+    hooks = path / ".nohooks"
+    hooks.mkdir(exist_ok=True)
+    git("config", "core.hooksPath", str(hooks))
+    if with_commit:
+        (path / "work.txt").write_text("x\n")
+        git("add", "work.txt")
+        git("commit", "-q", "-m", "work")
+    return path
+
+
+def _stamp(cli_mod, payload: dict, cwd: Path) -> dict:
+    """Run the CLI's repo-stamping helper (the function under test)."""
+    return cli_mod._stamp_repo_into_payload(dict(payload), cwd)
+
+
+def test_cli_stamps_the_cwd_repo_not_the_host_canonical():
+    """THE BUG (Titus cycle 5742): a CLI/pi begin_change in a non-canonical repo
+    must tag the lock with that repo, not `hermes-cortex` (which exists on the
+    host and won Priority 1 because the enforcer never injected the real repo).
+
+    The helper must resolve the git root of the cwd and stamp BOTH `repo_path`
+    (absolute) and `repo_slug` (name) — the same pair `_derive_slug` Priority 0
+    and `_lock_repo` consume, so a nested checkout resolves correctly."""
+    home = Path(_tempfile.mkdtemp(prefix="cli-stamp-home-"))
+    canonical = _mkrepo(home / "hermes-cortex", with_commit=False)
+    proj = _mkrepo(home / "repos" / "steadfaste-s1-model", with_commit=True)
+    mod = _load(CLI, "loop_gov_cli_stamp")
+
+    stamped = _stamp(mod, {"task_id": "t"}, proj)
+
+    assert stamped.get("repo_path") == str(proj), (
+        f"cwd repo path was not stamped: {stamped.get('repo_path')!r}")
+    assert stamped.get("repo_slug") == "steadfaste-s1-model", (
+        f"cwd repo slug was not stamped: {stamped.get('repo_slug')!r}")
+
+
+def test_cli_stamp_does_not_override_an_injected_path():
+    """If a caller already supplied repo identity (e.g. the enforcer on a gateway
+    path, or an explicit --repo caller), the helper must not clobber it."""
+    home = Path(_tempfile.mkdtemp(prefix="cli-stamp-override-"))
+    proj = _mkrepo(home / "proj", with_commit=True)
+    mod = _load(CLI, "loop_gov_cli_stamp2")
+
+    payload = {"task_id": "t", "repo_path": str(proj), "repo_slug": "proj"}
+    stamped = _stamp(mod, payload, Path("/"))
+
+    assert stamped["repo_path"] == str(proj), "explicit repo_path was clobbered"
+    assert stamped["repo_slug"] == "proj", "explicit repo_slug was clobbered"
+
+
+def test_cli_stamp_is_a_noop_outside_a_git_repo():
+    """No cwd repo → stamp nothing; let the server fall back to its own logic
+    (single-repo hosts / a non-repo cwd). Never invent a path."""
+    tmp = Path(_tempfile.mkdtemp(prefix="cli-stamp-norepo-"))
+    mod = _load(CLI, "loop_gov_cli_stamp3")
+    payload = {"task_id": "t"}
+    stamped = _stamp(mod, payload, tmp)
+    assert "repo_path" not in stamped, f"stamped a repo for a non-repo cwd: {stamped}"
+    assert "repo_slug" not in stamped, f"stamped a slug for a non-repo cwd: {stamped}"
+
+
+def test_cli_begin_change_locks_the_cwd_repo_end_to_end():
+    """End-to-end: a begin_change issued through the CLI from inside a
+    non-canonical repo must produce a lock tagged with that repo, not the
+    host-canonical decoy. This is the exact Titus symptom."""
+    home = Path(_tempfile.mkdtemp(prefix="cli-e2e-home-"))
+    _mkrepo(home / "hermes-cortex", with_commit=False)   # decoy canonical repo
+    proj = _mkrepo(home / "repos" / "steadfaste-s1-model", with_commit=True)
+    mod = _load(CLI, "loop_gov_cli_e2e")
+
+    # Simulate the CLI running with cwd = proj and a sandboxed HOME by invoking
+    # the stamping helper the way main() will, then calling begin_change handler.
+    payload = mod._stamp_repo_into_payload({"task_id": "e2e-task",
+                                            "description": "d"}, proj)
+    server = _load(SERVER, "loop_gov_e2e_server")
+    server.HOME = home
+    server.SESSION_FILE = home / ".hermes" / "session.id"
+    server.GOVERNANCE_STATE_DIR = home / ".hermes-cortex" / "state"
+    server.GOVERNANCE_STATE_DIR.mkdir(parents=True, exist_ok=True)
+    server._PROCESS_SESSION_ID = ""
+
+    r = server._begin_change(payload)
+    text = r.model_dump()["content"][0]["text"]
+    assert "🔒" in text, f"begin_change did not lock: {text[:200]}"
+
+    locks = list(server.GOVERNANCE_STATE_DIR.glob(".governance-*.json"))
+    assert locks, "no lock file written"
+    state = json.loads(locks[0].read_text())
+    try:
+        assert state.get("repo_slug") == "steadfaste-s1-model", (
+            f"lock tagged {state.get('repo_slug')!r}, expected the cwd repo "
+            f"(Titus cycle 5742): {state}")
+        assert state.get("repo_path") == str(proj), (
+            f"lock repo_path {state.get('repo_path')!r} != {proj}")
+    finally:
+        for l in locks:
+            l.unlink(missing_ok=True)
+

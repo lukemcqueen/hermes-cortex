@@ -48,6 +48,7 @@ import asyncio
 import importlib.util
 import json
 import os
+import subprocess
 import sys
 from pathlib import Path
 
@@ -146,6 +147,43 @@ def handler_for(mod, tool: str):
     return getattr(mod, f"_{tool}", None)
 
 
+def _stamp_repo_into_payload(payload: dict, cwd: Path) -> dict:
+    """Stamp the CLI session's actual repo onto a governance payload.
+
+    A coding-agent (pi / Claude Code / Codex / aider / cursor) drives governance
+    through THIS CLI, which calls the server handlers directly — it never passes
+    through the gateway's enforcer pre_tool_call hook, so
+    ``_inject_session_context`` never stamps ``repo_path``/``repo_slug`` onto the
+    call. ``_derive_slug`` then falls to Priority 1 — the host-canonical governed
+    repo — which tags the lock ``hermes-cortex`` whenever ``~/hermes-cortex``
+    exists on the host, even though the session is actually working in another
+    repo (Titus cycle 5742: a pi session in steadfaste-s1-model locked
+    hermes-cortex and the close gate refused forever).
+
+    The CLI KNOWS its cwd repo (it chdir's to ``--repo`` or runs in cwd), so it
+    stamps BOTH ``repo_path`` (absolute git root) and ``repo_slug`` (its name) —
+    the same pair the enforcer injects and ``_derive_slug`` Priority 0 /
+    ``_lock_repo`` consume, so a nested checkout resolves correctly. An existing
+    explicit ``repo_path``/``repo_slug`` (from the enforcer or a caller) is never
+    clobbered, and a non-repo cwd stamps nothing.
+    """
+    out = dict(payload)
+    if out.get("repo_path") or out.get("repo_slug"):
+        return out
+    try:
+        root = subprocess.run(
+            ["git", "-C", str(cwd), "rev-parse", "--show-toplevel"],
+            capture_output=True, text=True, timeout=5,
+        )
+        if root.returncode == 0 and root.stdout.strip():
+            repo = Path(root.stdout.strip())
+            out["repo_path"] = str(repo)
+            out["repo_slug"] = repo.name
+    except (OSError, subprocess.TimeoutExpired):
+        pass
+    return out
+
+
 def is_refusal(payload: dict, text: str) -> bool:
     """Governance decisions arrive as content, not exceptions.
 
@@ -225,6 +263,13 @@ def main() -> int:
     # let a caller be explicit without needing a harness-specific mechanism.
     if a.repo:
         os.chdir(a.repo)
+
+    # Stamp the session's actual repo (the cwd git root) onto the payload, the
+    # way the enforcer does for gateway MCP calls. The CLI transport bypasses
+    # that hook, so WITHOUT this a pi/coding-agent begin_change in a non-canonical
+    # repo locks the host-canonical repo (Titus cycle 5742) and the close gate
+    # refuses forever.
+    payload = _stamp_repo_into_payload(payload, Path.cwd())
 
     handler = handler_for(mod, a.tool)
     if handler is None:
