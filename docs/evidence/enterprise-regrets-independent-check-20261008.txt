@@ -1,0 +1,78 @@
+Independent checker evidence — produced by a separate session (different model) — NOT self-reported
+Date: 2026-10-08 (Asia/Seoul)
+Scope: re-run of adversarial gate + structural validation on the committed enterprise-regrets skill files. All outputs below are real command output captured in this session.
+
+Files verified (read from disk at the repo root):
+- skills/software-development/enterprise-regrets/SKILL.md
+- skills/software-development/enterprise-regrets/references/research-corpus.md
+
+1. ADVERSARIAL GATE (level A2, --gate)
+
+Command: python3 ops/scripts/quality/adversarial-verify.py --file skills/software-development/enterprise-regrets/SKILL.md --level A2 --gate
+
+Output:
+   Level: A2
+   Attack Surface:
+     Inputs: 0 item(s)
+     State: 12 item(s) (warning)
+     Dependencies: 1 item(s) (warning)
+     Concurrency: 0 item(s)
+   Fuzz inputs generated: 0
+
+   Summary: 1 file(s), 0 finding(s)
+   No findings — but standard tests should still pass!
+
+   GATE_PASSED — no critical/high findings
+
+Command: python3 ops/scripts/quality/adversarial-verify.py --file skills/software-development/enterprise-regrets/references/research-corpus.md --level A2 --gate
+
+Output:
+   Level: A2
+   Attack Surface:
+     Inputs: 0 item(s)
+     State: 9 item(s) (warning)
+     Dependencies: 5 item(s) (warning)
+     Concurrency: 0 item(s)
+   Fuzz inputs generated: 0
+
+   Summary: 1 file(s), 0 finding(s)
+   No findings — but standard tests should still pass!
+
+   GATE_PASSED — no critical/high findings
+
+2. FRONTMATTER VALIDATION (SKILL.md)
+- Starts with '---': True
+- Frontmatter parses (scalar key parser; PyYAML not present in this checker's Python kernel): OK
+  keys: name, description, version, author, license, platforms, metadata, related_skills
+- name: enterprise-regrets
+- description: "Check proposals against enterprise regret patterns." — length 51 (<= 60) — ends with a period: True
+- platforms: [linux, macos, windows] — present
+Note: references/research-corpus.md intentionally has no YAML frontmatter (it is a reference document, not a SKILL.md). Adversarial gate on it: PASSED.
+
+3. RELATED_SKILLS RESOLUTION (all resolve to a SKILL.md under skills/software-development/<name>/)
+- code-review                        -> FOUND
+- architecture-review                -> FOUND
+- engineering-approach               -> FOUND
+- data-structure-efficiency-review   -> FOUND
+- root-cause-debugging               -> FOUND
+Result: 5/5 resolve.
+
+4. PII SCAN
+a) bash ops/scripts/secret-leak-detector.sh <both files>  -> exit code 0, no output (clean).
+b) Manual greps (Python re.findall over full file text):
+   - 8-digit runs (regex \\b\\d{8}\\b):               0 hits in either file
+   - the deny-listed family-relation phrase (spelled with a hyphen; NOT restated here per the PII digest gate): 0 hits in either file
+   - the at-sign character:                    0 hits in either file
+   - machine-local /home/<user>/ paths:        0 hits in either file
+Result: NO deny-listed PII found in either file.
+
+5. BYTE + LINE COUNTS
+- SKILL.md            : 15926 bytes, 203 lines
+- research-corpus.md  : 12559 bytes,  78 lines
+
+HONEST STATEMENT
+Verified in this session with real tool output: adversarial gate A2 PASS for both files (GATE_PASSED lines above); SKILL.md frontmatter present, name set, description 51 chars ending with a period, platforms present; all 5 related_skills resolve to SKILL.md files on disk; secret-leak-detector.sh exit 0; zero PII-pattern hits; byte/line counts as listed; no machine-local home-directory paths inside either file.
+
+Could not verify / caveats: (1) PyYAML is not installed in this checker's Python kernel, so frontmatter was parsed with a scalar-key parser rather than yaml.safe_load — the description value was confirmed by direct text inspection, but a full YAML spec parse was not run. (2) This check does not re-run semantic/content quality review of the corpus text, only the structural + gate checks requested. (3) No push performed — the parent session reviews and pushes.
+
+Governance: cycle 4389 under task_id 'enterprise-regrets-independent-check'; evidence committed by this checker only (no skill-file modifications).
