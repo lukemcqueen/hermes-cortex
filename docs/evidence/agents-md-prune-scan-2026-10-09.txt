@@ -1,19 +1,56 @@
 # AGENTS.md Pruning Scan — 2026-10-09
 
 Job: agents-md-prune-apply
-Command:
-  python3 ~/.hermes-cortex/scripts/agents-doc-audit.py --repo ~/hermes-cortex --prune
+Repo: ~/hermes-cortex
 
-Output (exit code 0):
+## Adaptation note
+
+The peer job `agents-md-prune-scan` (context_from) injected NO report context
+for this run, so the pruning analysis was executed directly on the host. Both
+the dry-run AND the full `--prune --apply` were run; because the analysis found
+0 candidates, `--apply` is a no-op (0 sections to move).
+
+## Step 1 — dry-run scan
 
 ```
+$ python3 ~/.hermes-cortex/scripts/agents-doc-audit.py --repo ~/hermes-cortex --prune
 📋 **AGENTS.md Pruning Analysis**
 📂 ~/hermes-cortex
 📊 14 sections, 0 pruning candidates
 
 ✅ No sections flagged for pruning — AGENTS.md is lean.
 ```
+exit code 0
 
-Result: 0 pruning candidates. No sections moved, no changes applied.
-The scan's peer job (agents-md-prune-scan) injected no report context for
-this run; the dry-run above was executed directly to confirm the state.
+## Step 2 — apply (full command per task spec)
+
+```
+$ python3 ~/.hermes-cortex/scripts/agents-doc-audit.py --repo ~/hermes-cortex --prune --apply
+✅ Pruning applied: 0 sections moved to docs/
+
+   Updated: ~/hermes-cortex/AGENTS.md
+```
+exit code 0
+
+The "Updated" line is a byte-identical rewrite: `git status --short AGENTS.md`
+returns EMPTY and `git diff --stat AGENTS.md` is empty — AGENTS.md content is
+unchanged. 0 sections moved because there were 0 candidates.
+
+## Step 3 — push verification
+
+```
+$ git ls-remote origin refs/heads/main
+f3a11e37f962aae4b00079bfa161024d82ca3043	refs/heads/main
+
+$ git rev-parse HEAD origin/main
+f3a11e37f962aae4b00079bfa161024d82ca3043
+f3a11e37f962aae4b00079bfa161024d82ca3043
+
+$ git cat-file -e origin/main:docs/evidence/agents-md-prune-scan-2026-10-09.txt && echo PRESENT
+PRESENT on origin/main
+```
+
+## Result
+
+0 pruning candidates → 0 sections moved → no AGENTS.md change. The cycle's
+only artifact is this evidence record, committed and verified on origin/main.
