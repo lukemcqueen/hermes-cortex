@@ -1,0 +1,54 @@
+# Deploy + verification evidence — raw output
+# captured: 2026-10-08T09:11:55+09:00   host: esther
+# HEAD: c54c46b714163972a6bc96892e80305eea7a48c7
+
+## A. the counts, with the exact commands (ADV-10907-1, ADV-10907-6)
+$ grep -c dirty_at_start <deployed> <repo>
+/home/esther/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py:5
+mcp-servers/loop-gov-mcp.py:5
+$ grep -cE "dirty_at_start|_own_working_tree_paths" <deployed> <repo>
+/home/esther/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py:7
+mcp-servers/loop-gov-mcp.py:7
+# The counts differ because the PATTERNS differ: 5 counts "dirty_at_start" alone,
+# 7 counts both new symbols. The old line "repo copy: 5" was true for its own
+# pattern; what was wrong was the DEPLOYED line, which probed a path that does not
+# exist and let a 2>/dev/null fallback narrate the probe failure as a finding.
+
+## B. deploy run 2 — successful (full log: /home/esther/.hermes/cache/scratch/deploy2.log)
+$ bash ~/.hermes-cortex/scripts/cortex-update.sh > deploy2.log 2>&1 ; echo rc=$?
+rc=0
+$ wc -l deploy2.log
+832
+$ grep -nE "Overall:|Deploy sync" deploy2.log | tail -3
+363:  ✅ Deploy sync
+812:  ⚠️  Overall: WARNING  (432 pass · 11 warn · 0 fail · 7 info)
+$ grep -c "unexpected EOF" deploy2.log
+0
+
+## C. deploy run 1 — failed (transcribed: its stdout was piped to tail, so no log exists)
+rc=2
+  ⚠️  Overall: WARNING  (431 pass · 12 warn · 0 fail · 7 info)
+    REQUIRED: git pull --rebase
+/home/esther/.hermes-cortex/scripts/cortex-update.sh: line 3504: unexpected EOF while looking for matching `"'
+⚠   relock ran on a FAILED exit (rc=2) — enforcement files re-secured
+# "line 3504" is BEYOND the script, and the static parse of both copies passes:
+$ bash -n <deployed> ; bash -n <repo>
+deployed cortex-update.sh: syntax OK
+repo cortex-update.sh: syntax OK
+$ wc -l <deployed> <repo>
+  3497 /home/esther/.hermes-cortex/scripts/cortex-update.sh
+  3494 ops/scripts/cortex-update.sh
+  6991 total
+
+## D. attribution (ADV-10907-7)
+# The sustainability-briefing files in this range are a PEER session's commits (same
+# author identity on this shared checkout), replayed by the rebase. This session
+# authored only the material-scope fix, its tests and its evidence.
+$ git log --format='%h %an %s' <HEAD~3..HEAD>
+c54c46b7 esther-agent docs(evidence): correct the deployed-state section — wrong path, and a fallback that narrated a probe failure
+864a5a9e esther-agent docs(governance): correct the record on which skills/ paths this range contains
+eddb6acf esther-agent fix(loop-gov): re-apply the ADV-10902-1 comment fix that the evidence run reverted
+$ git log --format='%h %an %s' 864a5a9e~6..864a5a9e~3
+801926ec esther-agent fix(loop-gov): the reviewer's material scope is this cycle's work, not the shared tree
+cf4a2620 esther docs(evidence): correct reflexion-check to match committed evidence
+1094b205 esther test(sustainability): add committed URL-provenance check
