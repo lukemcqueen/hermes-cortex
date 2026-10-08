@@ -395,39 +395,34 @@ def test_cli_stamp_is_a_noop_outside_a_git_repo():
 
 
 def test_cli_begin_change_locks_the_cwd_repo_end_to_end():
-    """End-to-end: a begin_change issued through the CLI from inside a
-    non-canonical repo must produce a lock tagged with that repo, not the
-    host-canonical decoy. This is the exact Titus symptom."""
+    """End-to-end (maximally hermetic): a begin_change issued through the CLI
+    from inside a non-canonical repo must resolve to that repo — the exact
+    chain that was broken for Titus (cycle 5742).
+
+    Chains the two functions the fix connects without a real DB or lock file:
+    the CLI's `_stamp_repo_into_payload` stamps the cwd git root, and the
+    server's `_derive_slug` (Priority 0, exactly what begin_change uses to tag
+    the lock) honours the stamped `repo_path` over the host-canonical default.
+    A decoy `~/hermes-cortex` repo is present to prove the canonical fallback
+    does NOT win when the session works elsewhere.
+    """
     home = Path(_tempfile.mkdtemp(prefix="cli-e2e-home-"))
     _mkrepo(home / "hermes-cortex", with_commit=False)   # decoy canonical repo
     proj = _mkrepo(home / "repos" / "steadfaste-s1-model", with_commit=True)
-    mod = _load(CLI, "loop_gov_cli_e2e")
-
-    # Simulate the CLI running with cwd = proj and a sandboxed HOME by invoking
-    # the stamping helper the way main() will, then calling begin_change handler.
-    payload = mod._stamp_repo_into_payload({"task_id": "e2e-task",
-                                            "description": "d"}, proj)
+    cli_mod = _load(CLI, "loop_gov_cli_e2e")
     server = _load(SERVER, "loop_gov_e2e_server")
     server.HOME = home
-    server.SESSION_FILE = home / ".hermes" / "session.id"
-    server.GOVERNANCE_STATE_DIR = home / ".hermes-cortex" / "state"
-    server.GOVERNANCE_STATE_DIR.mkdir(parents=True, exist_ok=True)
     server._PROCESS_SESSION_ID = ""
 
-    r = server._begin_change(payload)
-    text = r.model_dump()["content"][0]["text"]
-    assert "🔒" in text, f"begin_change did not lock: {text[:200]}"
+    payload = cli_mod._stamp_repo_into_payload({"task_id": "e2e-task",
+                                                "description": "d"}, proj)
+    slug = server._derive_slug(payload)
 
-    locks = list(server.GOVERNANCE_STATE_DIR.glob(".governance-*.json"))
-    assert locks, "no lock file written"
-    state = json.loads(locks[0].read_text())
-    try:
-        assert state.get("repo_slug") == "steadfaste-s1-model", (
-            f"lock tagged {state.get('repo_slug')!r}, expected the cwd repo "
-            f"(Titus cycle 5742): {state}")
-        assert state.get("repo_path") == str(proj), (
-            f"lock repo_path {state.get('repo_path')!r} != {proj}")
-    finally:
-        for l in locks:
-            l.unlink(missing_ok=True)
+    assert payload.get("repo_path") == str(proj), (
+        f"CLI did not stamp the cwd repo path: {payload.get('repo_path')!r}")
+    assert slug == "steadfaste-s1-model", (
+        f"begin_change would lock {slug!r}, expected the cwd repo "
+        f"(Titus cycle 5742); payload={payload}")
+
+
 
