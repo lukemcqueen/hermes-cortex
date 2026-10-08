@@ -17,12 +17,13 @@ note summarizes and interprets it.
 ## ACL read-isolation (verified at the HTTP layer)
 
 This agent's read access is restricted by ACL design: a direct
-`_bus_get('/api/pgmq/peek/<queue>')` returns **HTTP 403** for every queue
-**except its own** (`inbox_titus`). Probed queues: broadcast,
-inbox_orchestrator, inbox_health_check, inbox_moses, inbox_esther,
-inbox_fleet, inbox_joseph, inbox_gisu, inbox_kustos, and the DLQ — all
-403-BLOCKED. So the two non-zero peer lanes are genuinely out of scope for
-this cron by ACL, and this agent cannot read their contents.
+`_bus_get('/api/pgmq/peek/<queue>')` returns **HTTP 403** for **every one of
+the 13 queues except its own** (`inbox_titus`) — including `broadcast`,
+`bus-health-probe`, `out_esther`, the peer inboxes (orchestrator,
+health_check, moses, esther, fleet, joseph, gisu, kustos), and the DLQ
+(`inbox_orchestrator_dlq`). Only `inbox_titus` is `PEEK_OK` (0 messages).
+So the non-zero peer lanes are genuinely out of scope for this cron by ACL,
+and this agent cannot read their contents.
 
 > Caveat: `lib.cortex_bus.bus_peek()` silently returns `[]` on a 403 (it
 > catches `ConnectionError`), so it cannot distinguish "empty" from

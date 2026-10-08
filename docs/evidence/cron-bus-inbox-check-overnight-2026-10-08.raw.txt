@@ -1,6 +1,6 @@
-== agent-bus overnight inbox check — 2026-10-08 14:40:52 UTC ==
+== agent-bus overnight inbox check — 2026-10-08 14:44:57 UTC ==
 
-== bus_list_queues (depth / processing / dlq) ==
+== bus_list_queues (all 13 queues: depth / processing / dlq) ==
   broadcast                    depth=0   processing=0 dlq=False
   bus-health-probe             depth=0   processing=0 dlq=False
   inbox_esther                 depth=0   processing=0 dlq=False
@@ -10,25 +10,26 @@
   inbox_joseph                 depth=0   processing=0 dlq=False
   inbox_kustos                 depth=0   processing=0 dlq=False
   inbox_moses                  depth=0   processing=0 dlq=False
-  inbox_orchestrator           depth=4   processing=0 dlq=False
+  inbox_orchestrator           depth=6   processing=0 dlq=False
   inbox_orchestrator_dlq       depth=0   processing=0 dlq=True 
   inbox_titus                  depth=0   processing=0 dlq=False
   out_esther                   depth=0   processing=0 dlq=False
 
-== ACL read-isolation probe (_bus_get on /api/pgmq/peek, NOT bus_peek —
-   bus_peek swallows 403 into [] so we probe at the HTTP layer to
-   distinguish "403-blocked" from "empty". Result per queue: ==
-  inbox_titus                PEEK_OK msgs=0
+== ACL read-isolation probe: _bus_get /api/pgmq/peek/<queue> (HTTP layer;
+   bus_peek swallows 403 into [] so probe here to distinguish blocked vs empty) ==
   broadcast                  403-BLOCKED
-  inbox_orchestrator         403-BLOCKED
-  inbox_health_check         403-BLOCKED
-  inbox_moses                403-BLOCKED
+  bus-health-probe           403-BLOCKED
   inbox_esther               403-BLOCKED
   inbox_fleet                403-BLOCKED
-  inbox_joseph               403-BLOCKED
   inbox_gisu                 403-BLOCKED
+  inbox_health_check         403-BLOCKED
+  inbox_joseph               403-BLOCKED
   inbox_kustos               403-BLOCKED
+  inbox_moses                403-BLOCKED
+  inbox_orchestrator         403-BLOCKED
   inbox_orchestrator_dlq     403-BLOCKED
+  inbox_titus                PEEK_OK msgs=0
+  out_esther                 403-BLOCKED
 
 == bus health ==
-  {"status": "ok", "backend": "pgmq", "queues": 13, "timestamp": "2026-10-08T14:40:54.064586+00:00"}
+  {"status": "ok", "backend": "pgmq", "queues": 13, "timestamp": "2026-10-08T14:44:58.868863+00:00"}
