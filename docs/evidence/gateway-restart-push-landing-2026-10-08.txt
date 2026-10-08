@@ -85,3 +85,49 @@ $ git branch -r --contains 4954ac0f
 5. THE RECEIPT THAT AUTHORISED THE PUSH (minted by the concurrent session's own close
    for its tip, which covered this session's commit too — same branch, same range)
 -rw-rw-r-- 1 esther esther 892 19:15:10 ~/.hermes-cortex/state/.reviewed-hermes-cortex-21ab68ff1920b6ff28750cee673818fc14fe39d8.json
+
+================================================================================
+CORRECTION (added 19:30 KST, after the close review of cycle 11678)
+================================================================================
+
+Section 2 above shows only the TAIL of the doctor output, and section 1's dogfood tail
+shows a PASS line without its warning count. Read together without the numbers below,
+those two sections imply a clean system. They are NOT a clean system, and this file
+must not be read as claiming one. The measured truth:
+
+  cortex-doctor.py --quiet   -> rc=2, 14 warnings (including the skill-drift block)
+  cortex-dogfood.sh --force  -> rc=0, 'DOGFOOD PASSED', but reports 11 warnings and an
+                                unresolved skill-drift section
+  check-skill-drift-parity.py-> Verdict FAIL: 7 deployed-only (stranded) skill files,
+                                833 in sync, 592 skipped
+
+The 7 stranded skills (deployed content the repo does not have):
+  autonomous-ai-agents/pi-coding-agent/SKILL.md
+  devops/governance-closeout/SKILL.md
+  devops/hermes-gateway-operations/SKILL.md
+  devops/psql-automation/SKILL.md
+  devops/shared-repo-push-gates/SKILL.md
+  software-development/change-checklist/SKILL.md
+  software-development/session-manager/SKILL.md
+
+WHAT THIS CYCLE ACTUALLY CLAIMS (and all it claims): that the files this cycle
+changed which are in the deploy map match their deployed copies, and that origin/main
+equals the tip. That narrower claim is what verify-landed (section 4) proves with rc=0.
+The drift is pre-existing fleet state, not produced by this cycle: it is caused by
+lessons written onto the deployed copy that are never copied back to the repo, and one
+of the stranded files (psql-automation) is a concurrent session's in-flight work, which
+this session must not overwrite (SOUL P9).
+
+DECISION (not a deferral): recorded as issue event #62 on task 'push-restart-vis' and
+promoted to a task. Resolution is a content-based superset sync (change-checklist
+Phase 5: diff repo vs deployed with the deploy header stripped, take the deployed side
+only where it is a pure superset), which is a separate reviewed change and must not be
+folded into a push/verify cycle.
+
+RE-RUN THIS CHECK (any host, no arguments):
+  cd <repo> && python3 ops/scripts/manage/check-skill-drift-parity.py   # expect: FAIL, 7 stranded today
+  python3 ops/scripts/manage/cortex-doctor.py --quiet; echo rc=$?            # expect today: rc=2, 14 warnings
+  bash ~/.hermes-cortex/scripts/cortex-dogfood.sh --force                    # expect: rc=0 with warnings
+  python3 ops/scripts/manage/verify-landed.py --repo . --base 6430c1f4      # expect: rc=0
+  The first two are EXPECTED to be non-clean until the stranded-skill task lands; they are
+  recorded here so that a future reader measures them rather than trusting a PASS line.
