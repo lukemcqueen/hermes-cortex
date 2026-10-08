@@ -1,0 +1,19 @@
+# AGENTS.md Pruning Scan — 2026-10-09
+
+Job: agents-md-prune-apply
+Command:
+  python3 ~/.hermes-cortex/scripts/agents-doc-audit.py --repo ~/hermes-cortex --prune
+
+Output (exit code 0):
+
+```
+📋 **AGENTS.md Pruning Analysis**
+📂 ~/hermes-cortex
+📊 14 sections, 0 pruning candidates
+
+✅ No sections flagged for pruning — AGENTS.md is lean.
+```
+
+Result: 0 pruning candidates. No sections moved, no changes applied.
+The scan's peer job (agents-md-prune-scan) injected no report context for
+this run; the dry-run above was executed directly to confirm the state.
