@@ -163,7 +163,18 @@ def main() -> int:
                   f"Pass --base. Nothing was checked.")
             return 2
     else:
-        base = args.base
+        # Canonicalise --base. A receipt records FULL 40-char shas, so a short `--base`
+        # passed through verbatim never matches the receipt's base_sha and a VALID receipt
+        # is reported as not authorising the range (2026-10-08: the push gate, which
+        # resolves merge-base to a full sha, contradicted this tool and allowed the push).
+        # The tip is already canonicalised by the `git rev-parse` above; this is the same
+        # rule for the base, and it is what makes a short rev usable on the command line.
+        rc, resolved, _ = _git(repo, "rev-parse", args.base)
+        if rc != 0:
+            print(f"{_CANNOT}: cannot resolve --base {args.base!r} in {repo}. "
+                  f"Nothing was checked.")
+            return 2
+        base = resolved
     print(f"# range: {base[:12]}..{tip[:12]}  repo: {repo}")
 
     failed = False
@@ -176,8 +187,17 @@ def main() -> int:
     # VERIFY — a false alarm, and the reason this check was fixed. The mirror is also
     # COMPLETE: the receipt is validated by the same script the gate runs, so a receipt
     # earned for a different range is refused here too.
-    _, range_names, _ = _git(repo, "diff", "--name-only", f"{base}..{tip}")
-    changed = [n for n in range_names.splitlines() if n.strip()]
+    _, range_names, range_err = _git(repo, "diff", "--name-only", f"{base}..{tip}")
+    if range_err or _git(repo, "rev-parse", "--verify", f"{base}^{{commit}}")[0] != 0:
+        # A base git cannot resolve makes the diff fail, which would yield an EMPTY range —
+        # and an empty range reads as "no always-review path, receipt not required", i.e. a
+        # silent PASS for a base the caller mistyped. Fail closed instead.
+        unverified.append(f"range: cannot diff {base[:12]}..{tip[:12]} ({range_err or 'bad rev'})")
+        print(f"{_CANNOT}: cannot diff {base[:12]}..{tip[:12]} — {range_err or 'unresolvable rev'}. "
+              f"Nothing was checked.")
+        changed = []
+    else:
+        changed = [n for n in range_names.splitlines() if n.strip()]
     receipt_dir = Path(args.receipt_dir) if args.receipt_dir else Path.home() / ".hermes-cortex" / "state"
     slug = repo.name
     patterns = _always_review_patterns(repo)

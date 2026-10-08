@@ -299,6 +299,43 @@ def test_a_receipt_bound_to_this_range_authorises_it():
         print("  receipt bound to this range -> exit 0 ✓")
 
 
+def test_a_short_base_resolves_to_the_receipts_range():
+    """`--base` may be given short; the comparison must be on CANONICAL revisions.
+
+    Regression (2026-10-08): the tool resolved the TIP through `git rev-parse` but passed
+    `--base` through verbatim, so a short base never matched a receipt's full base_sha and
+    a VALID receipt was reported as not authorising the range. The push gate contradicted
+    it (it resolves merge-base to a full sha and allowed the push), which is what exposed
+    the false FAIL. Every earlier range had been docs-only, so the comparison was never
+    reached: 'receipt: not required' returned first.
+    """
+    with tempfile.TemporaryDirectory() as td:
+        repo, source, base, deployed, manifest, receipt_dir = _fixture(td)
+        source.write_text("v2\n")
+        _git(repo, "commit", "-q", "-am", "change")
+        _git(repo, "push", "-q", "origin", "main")
+        deployed.write_text("v2\n")
+        _receipt(receipt_dir, repo, _tip(repo), base)     # receipt carries FULL shas
+        short = base[:8]
+        assert len(short) < 40, "the fixture must exercise a short rev"
+        result = _run(*_args(repo, short, manifest, receipt_dir))
+        assert result.returncode == 0, result.stdout + result.stderr
+        assert "verdict=CLEAN" in result.stdout, result.stdout
+        # ...and a REAL but different base must still be refused (no over-permission)
+        other = _git(repo, "rev-list", "--max-parents=0", "HEAD").stdout.strip()
+        assert other and other != base, "the control base must be a real, different revision"
+        result_other = _run(*_args(repo, other, manifest, receipt_dir))
+        assert result_other.returncode == 1, result_other.stdout
+        assert "does not authorise" in result_other.stdout, result_other.stdout
+        # ...and a base git cannot resolve is COULD NOT VERIFY, never a pass: an
+        # unresolvable rev makes `git diff` fail, which yields an empty range, and an
+        # empty range would otherwise read as "no always-review path -> not required".
+        result_bogus = _run(*_args(repo, "0" * 40, manifest, receipt_dir))
+        assert result_bogus.returncode == 2, result_bogus.stdout
+        assert "COULD NOT VERIFY" in result_bogus.stdout, result_bogus.stdout
+        print("  short --base resolves ✓; a foreign base is refused ✓; a bogus base cannot verify ✓")
+
+
 def _main():
     """Standalone runner.
 
