@@ -175,12 +175,21 @@ def _stamp_repo_into_payload(payload: dict, cwd: Path) -> dict:
             ["git", "-C", str(cwd), "rev-parse", "--show-toplevel"],
             capture_output=True, text=True, timeout=5,
         )
-        if root.returncode == 0 and root.stdout.strip():
-            repo = Path(root.stdout.strip())
-            out["repo_path"] = str(repo)
-            out["repo_slug"] = repo.name
-    except (OSError, subprocess.TimeoutExpired):
-        pass
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        # Unexpected operational failure (git missing, unreadable, hung) — NOT
+        # the benign "this cwd is not a git repo" case (which returns rc != 0
+        # and no-op's below). A swallowed failure would let begin_change fall
+        # back to the host-canonical repo, recreating the exact wrong-repo lock
+        # (Titus cycle 5742) this stamp exists to prevent. Warn loudly so the
+        # caller sees the stamp did not happen and can fail closed if it must.
+        print(f"loop-gov: could not resolve the cwd repo to stamp ({exc}); "
+              f"governance may fall back to the host-canonical repo — supply a "
+              f"path or run inside the repo before begin_change.", file=sys.stderr)
+        return out
+    if root.returncode == 0 and root.stdout.strip():
+        repo = Path(root.stdout.strip())
+        out["repo_path"] = str(repo)
+        out["repo_slug"] = repo.name
     return out
 
 

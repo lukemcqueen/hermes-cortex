@@ -394,6 +394,40 @@ def test_cli_stamp_is_a_noop_outside_a_git_repo():
     assert "repo_slug" not in stamped, f"stamped a slug for a non-repo cwd: {stamped}"
 
 
+def test_cli_stamp_warns_when_git_is_an_unexpected_failure():
+    """The finding ADV-4479-1: an unexpected operational failure (git missing /
+    hung / unreadable) MUST warn, not silently swallow — a silent no-op would let
+    begin_change fall back to the host-canonical repo and recreate the exact
+    wrong-repo lock this fix exists to prevent. Only a *clean* rc!=0 from git
+    (\"not a repo\") is a benign no-op."""
+    tmp = Path(_tempfile.mkdtemp(prefix="cli-stamp-warn-"))
+    mod = _load(CLI, "loop_gov_cli_stamp_warn")
+    import subprocess as _sp
+
+    raised = []
+    def _boom(*a, **kw):
+        raise _sp.TimeoutExpired(cmd="git", timeout=5)
+    orig = _sp.run
+    _sp.run = _boom
+    try:
+        # Capture the warning on stderr by routing through a callable that
+        # records it, mirroring how main() invokes the helper.
+        import contextlib
+        import io
+        errbuf = io.StringIO()
+        with contextlib.redirect_stderr(errbuf):
+            stamped = mod._stamp_repo_into_payload({"task_id": "t"}, tmp)
+    finally:
+        _sp.run = orig
+
+    assert "could not resolve the cwd repo" in errbuf.getvalue(), (
+        f"unexpected git failure was swallowed silently (no warning): "
+        f"{errbuf.getvalue()!r}")
+    assert "repo_path" not in stamped, (
+        "a failed git probe must not fabricate a repo_path")
+
+
+
 def test_cli_begin_change_locks_the_cwd_repo_end_to_end():
     """End-to-end (maximally hermetic): a begin_change issued through the CLI
     from inside a non-canonical repo must resolve to that repo — the exact
