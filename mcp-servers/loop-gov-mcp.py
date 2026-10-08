@@ -1887,13 +1887,12 @@ REVIEWER_MODEL_DEFAULT = "deepseek/deepseek-v4-pro"  # distinct from worker
 REVIEWER_LIGHT_MODEL_DEFAULT = "deepseek/deepseek-v4-flash-0731"  # fast, verified 200
 REVIEW_TEMPLATE_REL = "docs/templates/adversarial-reviewer-prompt.md"
 
-# Reviewer wait-budget scaling (2026-10-06): the close-gate's reviewer gets a
-# longer wait window when the change is genuinely large, instead of always being
-# cut off at a flat per-backend default. A big diff needs proportional review
-# time; a flat 300s/900s budget would abort a slow-but-legitimate review on a
-# huge change. base + per-file/per-line growth, hard-capped so a hung reviewer
-# still surfaces instead of blocking the server for hours.
-REVIEWER_TIMEOUT_CAP = 1800        # max seconds any single review may run
+# Reviewer wait-budget scaling (2026-10-06; BOUNDED 2026-10-08): the close-gate's
+# reviewer gets a longer wait window when the change is genuinely large, instead
+# of always being cut off at a flat per-backend default. The window is bounded by
+# REVIEWER_TIMEOUT_CEILING below — it had a cap of its own (1800s), and that
+# silently overrode the ceiling, turning a big review into an unobservable hang.
+# See _reviewer_timeout for why the ceiling is the one hard bound.
 REVIEWER_TIMEOUT_PER_FILE = 10     # seconds added per changed file
 REVIEWER_TIMEOUT_PER_100_LINES = 30  # seconds added per 100 added+removed lines
 REVIEW_MARKER = "=== REVIEWED MATERIAL ==="
@@ -2527,19 +2526,27 @@ def _tier(cx: dict) -> str:
 def _reviewer_timeout(cx: Optional[dict], backend: str) -> int:
     """Wait budget for a single review, scaled by the change's measured size.
 
-    base is the backend's configured default: ADVERSARIAL_REVIEW_TIMEOUT (llm)
-    or ADVERSARIAL_REVIEW_AGENT_TIMEOUT (agent). A change that is large (many
-    files / many added+removed lines) gets proportionally more time — a flat
-    budget aborts slow-but-legitimate reviews on big diffs. Growth is per-file
-    and per-100-lines, hard-capped at REVIEWER_TIMEOUT_CAP so a hung reviewer
-    still surfaces instead of blocking the server. A None cx (no measurement)
-    keeps the configured default unchanged.
+    base is the backend's configured default, resolved through
+    _reviewer_env_timeout so an operator override is CLAMPED rather than passed
+    through. A large change then gets a proportionally longer window — but the
+    total never exceeds REVIEWER_TIMEOUT_CEILING.
+
+    Why the ceiling is the one absolute bound (2026-10-08). The MCP CLIENT gives
+    up at 300s, so a budget above the ceiling is not a longer wait: it is an
+    unobservable hang in which the caller sees neither a verdict nor a refusal
+    while the lock stays held. Scaling can therefore only redistribute time
+    INSIDE the observable window — with the shipped defaults (300s llm / 900s
+    agent, both at or above the ceiling) there is no room to grow, and the growth
+    steps apply when a base is configured BELOW the ceiling. To legitimately wait
+    longer, raise the client ceiling itself (mcp_servers.<name>.timeout in
+    config.yaml); the server cannot observe that setting and must not pretend
+    otherwise.
+
+    A None cx (no measurement) keeps the configured default, clamped.
     """
-    base = int(_env_value(
-        "ADVERSARIAL_REVIEW_AGENT_TIMEOUT" if backend == "agent"
-        else "ADVERSARIAL_REVIEW_TIMEOUT",
-        "900" if backend == "agent" else "300",
-    ) or (900 if backend == "agent" else 300))
+    env_name = ("ADVERSARIAL_REVIEW_AGENT_TIMEOUT" if backend == "agent"
+                else "ADVERSARIAL_REVIEW_TIMEOUT")
+    base = _reviewer_env_timeout(env_name, 900 if backend == "agent" else 300)
     # Guard the contract: cx must be a measurement dict or None. A str (the
     # 2026-10-07 collision) is truthy past `if not cx` and would hit cx.get()
     # as the silent "'str' object has no attribute 'get'" crash. Fail fast with
@@ -2554,7 +2561,13 @@ def _reviewer_timeout(cx: Optional[dict], backend: str) -> int:
     lines = int(cx.get("lines", 0) or 0)
     growth = (files * REVIEWER_TIMEOUT_PER_FILE
               + (lines // 100) * REVIEWER_TIMEOUT_PER_100_LINES)
-    return min(base + growth, REVIEWER_TIMEOUT_CAP)
+    wanted = base + growth
+    budget = min(wanted, REVIEWER_TIMEOUT_CEILING)
+    if wanted > REVIEWER_TIMEOUT_CEILING:
+        log.info("reviewer wait for a %s-file/%s-line change would be %ss — held at the "
+                 "%ss client ceiling (a longer budget is an unobservable hang, not a "
+                 "longer wait)", files, lines, wanted, REVIEWER_TIMEOUT_CEILING)
+    return budget
 
 
 def _call_reviewer(prompt: str, author: Optional[str] = None,

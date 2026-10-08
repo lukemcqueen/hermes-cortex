@@ -272,20 +272,29 @@ def test_candidate_scan_finds_a_repo_two_levels_down():
     )
 
 
-def test_secondary_marker_follows_the_absolute_path():
+def test_a_lock_write_never_touches_the_nested_repo():
+    """The lock must not be mirrored into the repo it governs.
+
+    This test asserted the in-repo `.hermes-cortex/.governance-lock` followed the
+    ABSOLUTE repo path. That marker was removed on purpose — inside a repo the name
+    shadows the runtime `~/.hermes-cortex`, and cortex-doctor now FAILS when the
+    directory exists. What matters is that a lock write never lands in the repo,
+    whichever path shape the state carries (2026-10-08).
+    """
     _home, deep = _nested()
     _mkrepo(deep, with_commit=False)
     state = {"task_id": "t", "description": "d", "repo_slug": "foo",
              "repo_path": str(deep), "started_at": mcp._now_iso(),
              "session_id": "N1", "ttl_seconds": 3600, "heartbeat_at": mcp._now_iso()}
     mcp._write_lock(state, {"session_id": "N1"})
-    marker = deep / ".hermes-cortex" / ".governance-lock"
-    assert marker.exists(), (
-        "the in-repo marker did not follow the absolute repo path — it landed "
-        "at HOME/<slug> instead"
+    assert not (deep / ".hermes-cortex").exists(), (
+        "a lock write put governance state inside the governed repo — the name "
+        "shadows the runtime ~/.hermes-cortex directory"
     )
     mcp._release_lock({"session_id": "N1"})
-    assert not marker.exists(), "owner's release left its marker behind"
+    assert not (deep / ".hermes-cortex").exists(), (
+        "releasing a lock wrote repo-local state"
+    )
 
 
 def test_enforcer_records_and_injects_an_absolute_repo_path():

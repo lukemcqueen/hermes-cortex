@@ -298,12 +298,15 @@ def test_tiering():
 
 
 def test_reviewer_timeout():
-    """_reviewer_timeout scales the wait budget by change size and is bounded.
+    """_reviewer_timeout scales the wait budget INSIDE the client ceiling.
 
     A change with measured complexity (files + added/removed lines) gets a
-    proportionally larger reviewer wait window than a flat-config call; a None
-    cx keeps the configured default; growth is hard-capped at
-    REVIEWER_TIMEOUT_CAP so a hung reviewer still surfaces."""
+    proportionally larger reviewer wait window than a flat-config call; a None cx
+    keeps the configured default. The budget can NEVER exceed
+    REVIEWER_TIMEOUT_CEILING: the MCP client gives up at 300s, so a longer budget
+    is not a longer wait but an unobservable hang. It used to have a cap of its
+    own (REVIEWER_TIMEOUT_CAP = 1800), which silently overrode the ceiling —
+    that is the regression this asserts against (2026-10-08)."""
     mcp = _load()
     saved = {k: os.environ.get(k) for k in
              ("ADVERSARIAL_REVIEW_TIMEOUT", "ADVERSARIAL_REVIEW_AGENT_TIMEOUT")}
@@ -311,44 +314,56 @@ def test_reviewer_timeout():
         for k in saved:
             os.environ.pop(k, None)
 
-        # No cx -> configured defaults (300 llm / 900 agent), no scaling.
-        _check("no cx: llm wait stays at its configured default",
-               mcp._reviewer_timeout(None, "llm") == 300,
+        ceil = mcp.REVIEWER_TIMEOUT_CEILING
+        # No cx -> the configured default, CLAMPED. The shipped defaults (300 llm /
+        # 900 agent) are both at or above the ceiling, so both land ON it.
+        _check("no cx: llm wait is clamped to the ceiling",
+               mcp._reviewer_timeout(None, "llm") == ceil,
                mcp._reviewer_timeout(None, "llm"))
-        _check("no cx: agent wait stays at its configured default",
-               mcp._reviewer_timeout(None, "agent") == 900,
+        _check("no cx: agent wait is clamped to the ceiling",
+               mcp._reviewer_timeout(None, "agent") == ceil,
                mcp._reviewer_timeout(None, "agent"))
 
-        # Small light change: base + small growth (2 files, 60 lines).
+        # Growth redistributes time INSIDE the observable window. A default base is
+        # already at the ceiling, so there is no room; it applies to a base an
+        # operator configures BELOW the ceiling.
+        os.environ["ADVERSARIAL_REVIEW_TIMEOUT"] = "60"
         small = {"lines": 60, "files": 2, "always_review": False}
         llm_wait = mcp._reviewer_timeout(small, "llm")
-        _check("small llm change grows the wait above base",
-               llm_wait > 300, llm_wait)
-        _check("small llm change stays far under the cap",
-               llm_wait <= 1800, llm_wait)
+        _check("below the ceiling, a change grows the wait above its base",
+               llm_wait > 60, llm_wait)
+        _check("small change stays inside the window", llm_wait <= ceil, llm_wait)
 
         # Larger change: grows MORE than the small one (22 files, 240 lines).
         big = {"lines": 240, "files": 22, "always_review": False}
-        big_agent = mcp._reviewer_timeout(big, "agent")
-        small_agent = mcp._reviewer_timeout({"lines": 5, "files": 1, "always_review": False}, "agent")
-        _check("bigger change gets a longer agent wait than a small one",
-               big_agent > small_agent, f"{big_agent} vs {small_agent}")
-
-        # Cap: a huge diff cannot drive the budget past REVIEWER_TIMEOUT_CAP.
-        huge = {"lines": 500000, "files": 99999, "always_review": False}
-        _check("huge change is hard-capped at REVIEWER_TIMEOUT_CAP",
-               mcp._reviewer_timeout(huge, "agent") == mcp.REVIEWER_TIMEOUT_CAP,
-               mcp._reviewer_timeout(huge, "agent"))
+        _check("bigger change gets a longer wait than a small one",
+               mcp._reviewer_timeout(big, "llm") > llm_wait,
+               f"{mcp._reviewer_timeout(big, 'llm')} vs {llm_wait}")
 
         # Growth is per-100-lines: 95 lines adds nothing, 105 adds one step.
-        base_agent = mcp._reviewer_timeout({"lines": 0, "files": 0, "always_review": False}, "agent")
-        under_100 = mcp._reviewer_timeout({"lines": 95, "files": 0, "always_review": False}, "agent")
-        over_100 = mcp._reviewer_timeout({"lines": 105, "files": 0, "always_review": False}, "agent")
+        base_0 = mcp._reviewer_timeout({"lines": 0, "files": 0, "always_review": False}, "llm")
+        under_100 = mcp._reviewer_timeout({"lines": 95, "files": 0, "always_review": False}, "llm")
+        over_100 = mcp._reviewer_timeout({"lines": 105, "files": 0, "always_review": False}, "llm")
         _check("per-100-lines growth: 95 lines is same as 0 lines",
-               under_100 == base_agent, f"{under_100} vs {base_agent}")
+               under_100 == base_0, f"{under_100} vs {base_0}")
         _check("per-100-lines growth: 105 lines adds one step",
-               over_100 == base_agent + mcp.REVIEWER_TIMEOUT_PER_100_LINES,
-               f"{over_100} vs {base_agent + mcp.REVIEWER_TIMEOUT_PER_100_LINES}")
+               over_100 == base_0 + mcp.REVIEWER_TIMEOUT_PER_100_LINES,
+               f"{over_100} vs {base_0 + mcp.REVIEWER_TIMEOUT_PER_100_LINES}")
+
+        # THE CEILING IS ABSOLUTE: neither change size nor an operator override can
+        # drive the budget past it. There must be no second, larger cap to bypass it.
+        huge = {"lines": 500000, "files": 99999, "always_review": False}
+        _check("huge change is hard-capped at the ceiling",
+               mcp._reviewer_timeout(huge, "llm") == ceil,
+               mcp._reviewer_timeout(huge, "llm"))
+        _check("no REVIEWER_TIMEOUT_CAP exists to override the ceiling",
+               not hasattr(mcp, "REVIEWER_TIMEOUT_CAP"),
+               "a second, larger cap is exactly how the ceiling was bypassed")
+        for val in ("900", "100000"):
+            os.environ["ADVERSARIAL_REVIEW_AGENT_TIMEOUT"] = val
+            got = mcp._reviewer_timeout(huge, "agent")
+            _check(f"oversized agent override {val}s is clamped to the ceiling",
+                   got == ceil, got)
     finally:
         for k, v in saved.items():
             if v is None:
@@ -487,9 +502,14 @@ def test_reviewer_timeout_signature_contract():
         _check("str cx raises TypeError (fail-fast, not hidden AttributeError)",
                _raises_typeerror(lambda: mcp._reviewer_timeout("ADVERSARIAL_REVIEW_TIMEOUT", 300)),
                "expected TypeError for str cx")
-        # None cx keeps the configured default (no scaling).
-        _check("None cx returns the configured default",
-               mcp._reviewer_timeout(None, "llm") == 300,
+        # None cx keeps the configured default (no scaling) — resolved through the
+        # ceiling clamp, so the shipped 300s llm default lands ON the 240s ceiling.
+        _check("None cx returns the configured default, clamped to the ceiling",
+               mcp._reviewer_timeout(None, "llm") == mcp.REVIEWER_TIMEOUT_CEILING,
+               mcp._reviewer_timeout(None, "llm"))
+        _check("None cx is NOT scaled: it equals the clamped default exactly",
+               mcp._reviewer_timeout(None, "llm")
+               == mcp._reviewer_env_timeout("ADVERSARIAL_REVIEW_TIMEOUT", 300),
                mcp._reviewer_timeout(None, "llm"))
     finally:
         for k, v in saved.items():

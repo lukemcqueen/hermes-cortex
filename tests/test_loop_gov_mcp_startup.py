@@ -14,6 +14,7 @@ importable — it is a model-name lookup with a documented default, not an
 enforcement gate. Missing it should degrade to the default, never crash.
 """
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -24,13 +25,61 @@ SERVER_PATH = Path(
 ).expanduser()
 
 
+def _server_python() -> str:
+    """The interpreter that can actually RUN this server.
+
+    The server imports the `mcp` package at startup. Using whatever `python3`
+    invoked this test is a PROBE BUG: with an interpreter that lacks `mcp` the
+    server exits with "the MCP SDK is not installed" before it can initialize, and
+    the assertion then blames the server for the harness's choice of interpreter.
+    This test passed or failed purely on which python ran it, which is not a test
+    (found 2026-10-08).
+
+    Candidates, most authoritative first: the interpreter the fleet REGISTERS for
+    this server (`mcp_servers.<name>.command` in ~/.hermes/config.yaml — the one
+    actually in use), the Hermes venv, then sys.executable. If none can import
+    `mcp`, FAIL LOUDLY rather than assert against a server that was never allowed
+    to start.
+    """
+    cands = []
+    try:
+        cfg_text = (Path.home() / ".hermes" / "config.yaml").read_text(errors="ignore")
+    except OSError:
+        cfg_text = ""
+    if cfg_text:
+        block = re.search(r"^[ \t]*loop-governance:[ \t]*$(.*?)(?=^\S|\Z)",
+                          cfg_text, re.M | re.S)
+        if block:
+            cmd = re.search(r"^[ \t]*command:[ \t]*(\S+)[ \t]*$", block.group(1), re.M)
+            if cmd:
+                cands.append(cmd.group(1).strip("'\""))
+    cands.append(str(Path.home() / ".hermes" / "hermes-agent" / "venv" / "bin" / "python3"))
+    cands.append(sys.executable)
+
+    tried = []
+    for cand in cands:
+        if not cand or cand in tried or not Path(cand).exists():
+            continue
+        tried.append(cand)
+        try:
+            probe = subprocess.run([cand, "-c", "import mcp"],
+                                   capture_output=True, text=True, timeout=60)
+        except (OSError, subprocess.SubprocessError):
+            continue
+        if probe.returncode == 0:
+            return cand
+    raise AssertionError(
+        "no interpreter with the 'mcp' package is available, so this server cannot "
+        "be started at all. Checked: " + ", ".join(tried or ["(none found)"]))
+
+
 def _run_server_with_home(home_dir: Path) -> subprocess.CompletedProcess:
     """Start the real deployed server under a fake HOME (no symlinks, no
     hermes_models.py) and feed it EOF so it exits promptly."""
     env = {**os.environ, "HOME": str(home_dir)}
     return subprocess.run(
-        [sys.executable, str(SERVER_PATH)],
-        input="", capture_output=True, text=True, timeout=15,
+        [_server_python(), str(SERVER_PATH)],
+        input="", capture_output=True, text=True, timeout=60,
         env=env,
     )
 

@@ -173,6 +173,12 @@ def test_control_legacy_dispatch_still_blocks():
 # ── B: reviewer timeout must fit under the client ceiling ──
 
 def test_reviewer_timeout_clamped_below_client_ceiling():
+    """Every reviewer budget resolves BELOW the MCP client's call ceiling.
+
+    Regression (2026-10-08): a size-scaling cap of 1800s silently overrode the
+    240s ceiling, so a big review ran past the ceiling — where the caller sees
+    neither a verdict nor a refusal while the lock stays held.
+    """
     ceiling = getattr(mcp, "REVIEWER_TIMEOUT_CEILING", None)
     assert ceiling is not None, (
         "REVIEWER_TIMEOUT_CEILING is not defined -- a reviewer timeout longer "
@@ -183,25 +189,27 @@ def test_reviewer_timeout_clamped_below_client_ceiling():
         f"REVIEWER_TIMEOUT_CEILING={ceiling}s is not below the MCP client "
         f"ceiling of {CLIENT_CEILING_S}s"
     )
+    huge = {"files": 99999, "lines": 500000, "always_review": False}
 
-    # 1. No override: the shipped defaults must already fit.
+    # 1. No override: the shipped defaults must already fit -- both backends, with
+    #    and without a measurement, and for a change of any size.
     os.environ.pop("ADVERSARIAL_REVIEW_AGENT_TIMEOUT", None)
     os.environ.pop("ADVERSARIAL_REVIEW_TIMEOUT", None)
-    for env_name, default in (("ADVERSARIAL_REVIEW_AGENT_TIMEOUT", 900),
-                              ("ADVERSARIAL_REVIEW_TIMEOUT", 300)):
-        resolved = mcp._reviewer_timeout(env_name, default)
-        assert resolved <= ceiling, (
-            f"{env_name} default resolved to {resolved}s, above the "
-            f"{ceiling}s ceiling -- the historical default ({default}s) must be "
-            f"brought under the ceiling"
-        )
+    for backend in ("llm", "agent"):
+        for label, cx in (("no measurement", None), ("a huge change", huge)):
+            got = mcp._reviewer_timeout(cx, backend)
+            assert got <= ceiling, (
+                f"{backend}/{label} resolved to {got}s, above the {ceiling}s "
+                f"ceiling -- a longer budget is an unobservable hang, not a wait"
+            )
 
     # 2. An oversized operator override cannot exceed the ceiling.
     os.environ["ADVERSARIAL_REVIEW_AGENT_TIMEOUT"] = "900"
     try:
-        assert mcp._reviewer_timeout("ADVERSARIAL_REVIEW_AGENT_TIMEOUT", 900) <= ceiling, (
-            "an operator override of 900s was honoured -- it must be clamped, "
-            "or the close can never be waited on"
+        resolved = mcp._reviewer_timeout(None, "agent")
+        assert resolved <= ceiling, (
+            f"an operator override of 900s resolved to {resolved}s -- it must be "
+            "clamped, or the close can never be waited on"
         )
     finally:
         os.environ.pop("ADVERSARIAL_REVIEW_AGENT_TIMEOUT", None)
@@ -209,7 +217,7 @@ def test_reviewer_timeout_clamped_below_client_ceiling():
     # 3. A sane override is still honoured (the clamp is a ceiling, not a constant).
     os.environ["ADVERSARIAL_REVIEW_TIMEOUT"] = "120"
     try:
-        assert mcp._reviewer_timeout("ADVERSARIAL_REVIEW_TIMEOUT", 240) == 120, (
+        assert mcp._reviewer_timeout(None, "llm") == 120, (
             "a sub-ceiling operator override was ignored"
         )
     finally:
@@ -217,15 +225,31 @@ def test_reviewer_timeout_clamped_below_client_ceiling():
 
 
 def test_both_reviewer_backends_route_through_the_clamp():
-    """The helper existing is not the fix -- the backends must USE it."""
+    """The helper existing is not the fix -- the DISPATCH must use it.
+
+    `_call_reviewer` is the only place that picks a backend, so it is the only
+    place that resolves the wait budget; the leaves must HONOUR the timeout they
+    are handed and fall back only through the ceiling-clamped
+    `_reviewer_env_timeout` (the renamed original — they must never call the
+    size-scaling `_reviewer_timeout` with a string).
+    """
     src = _MCP_PATH.read_text()
+    assert "def _call_reviewer(" in src, "dispatcher _call_reviewer not found"
+    dispatch = src.split("def _call_reviewer(", 1)[1].split("\ndef ", 1)[0]
+    assert "_reviewer_timeout(" in dispatch, (
+        "_call_reviewer does not resolve its wait through _reviewer_timeout() -- "
+        "the clamp is unwired and a backend can block past the client ceiling"
+    )
     for fn in ("_call_reviewer_llm", "_call_reviewer_agent"):
         assert f"def {fn}" in src, f"{fn} not found in {_MCP_PATH.name}"
-        body = src.split(f"def {fn}", 1)[1][:5000]
-        assert "_reviewer_timeout(" in body, (
-            f"{fn} does not resolve its timeout through _reviewer_timeout() -- "
-            f"the clamp is unwired and the backend can still block past the "
-            f"client ceiling"
+        body = src.split(f"def {fn}", 1)[1].split("\ndef ", 1)[0]
+        assert "_reviewer_env_timeout(" in body, (
+            f"{fn} does not fall back through _reviewer_env_timeout() -- an "
+            f"unclamped default could exceed the client ceiling"
+        )
+        assert "timeout if timeout is not None else" in body, (
+            f"{fn} ignores the timeout it is handed, so the size-scaled budget "
+            f"resolved by _call_reviewer never reaches it"
         )
 
 
@@ -244,7 +268,20 @@ def _lock_state(sid: str) -> dict:
     }
 
 
-def test_secondary_marker_only_owner_removes_it():
+def test_a_lock_write_does_not_touch_the_governed_repo():
+    """A lock write must leave the governed repo untouched.
+
+    The repo-local `.hermes-cortex/.governance-lock` marker was removed ON PURPOSE:
+    inside a governed repo the name shadows the RUNTIME directory
+    `~/.hermes-cortex`, so repo-local governance state was indistinguishable from
+    legitimate state and made the repo a consumer of the deploy it is the source
+    of. cortex-doctor now FAILS when that directory is present for any reason.
+
+    This test used to assert the marker WAS written, and pinned the only-owner rule
+    for it. Both became stale when the marker was deliberately dropped; the
+    guarantee kept is the stronger one — whatever path shape the state carries,
+    writing and releasing a lock never puts state in the repo (2026-10-08).
+    """
     home = _sandbox()
     repo = home / "proj"
     (repo / ".git").mkdir(parents=True)
@@ -253,24 +290,23 @@ def test_secondary_marker_only_owner_removes_it():
 
     mcp._write_lock(_lock_state("A"), {"session_id": "A"})
     mcp._write_lock(_lock_state("B"), {"session_id": "B"})
-
-    marker = repo / ".hermes-cortex" / ".governance-lock"
-    assert marker.exists(), "begin_change did not write the in-repo secondary marker"
-    assert json.loads(marker.read_text()).get("session_id") == "B", (
-        "second writer should own the shared marker"
+    assert not (repo / ".hermes-cortex").exists(), (
+        "a lock write created repo-local governance state -- the name shadows the "
+        "runtime ~/.hermes-cortex directory, and cortex-doctor fails on its presence"
     )
 
-    # A closes while B's lock is still live: the shared marker must survive.
+    # Each session still holds its OWN lock, and a peer's release cannot touch it.
+    a_lock = mcp.GOVERNANCE_STATE_DIR / ".governance-A.json"
+    b_lock = mcp.GOVERNANCE_STATE_DIR / ".governance-B.json"
+    assert a_lock.exists() and b_lock.exists(), "both sessions must hold their own lock"
+
     mcp._release_lock({"session_id": "A"})
-    assert marker.exists(), (
-        "session A's end_change removed the SHARED in-repo marker while session "
-        "B's lock was still active -- B is silently unmarked (the enforcer's "
-        "Phase-3 fallback then sees no lock for the repo)"
-    )
+    assert not a_lock.exists(), "A could not release its own lock"
+    assert b_lock.exists(), "A's release removed B's lock -- sessions couple"
 
-    # B closes: now it may remove its own marker.
     mcp._release_lock({"session_id": "B"})
-    assert not marker.exists(), "the owner's release left its own marker behind"
+    assert not b_lock.exists(), "B could not release its own lock"
+    assert not (repo / ".hermes-cortex").exists(), "a release wrote repo-local state"
 
 
 def test_a_session_can_close_its_own_lock_while_another_holds_one():

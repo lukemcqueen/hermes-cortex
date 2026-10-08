@@ -171,6 +171,19 @@ and the light reviewer can still report FINDINGS that block the close. For a
 heavy change the deep reviewer still takes minutes — the tiering accelerates
 ordinary light changes, it does not decouple heavy ones from the MCP call.
 
+**The wait budget is clamped under the client call ceiling (2026-10-08).** The
+budget scales with the change's measured size, but it can never exceed
+`REVIEWER_TIMEOUT_CEILING` (240s, under the client's 300s call window). A budget
+at or above that window is not a longer wait: the caller gives up before the
+verdict arrives and sees neither a verdict nor a refusal, while the lock stays
+held. Scaling therefore redistributes time *inside* the window — and since the
+shipped defaults (300s `llm` / 900s `agent`) already sit at the ceiling, growth
+applies only when a base is configured *below* it. To legitimately wait longer,
+raise the client's own ceiling (`mcp_servers.<name>.timeout` in
+`~/.hermes/config.yaml`); the server cannot observe that setting and must not
+pretend otherwise. A size-scaling cap of its own (1800s) silently overrode the
+ceiling until this was fixed — do not reintroduce one.
+
 Why an agent at all: an agent can open the repo, run the tests and check the
 claims, which a single completion cannot — and the recurring review finding here
 is *"a self-report is not execution evidence"*. A committed dogfood harness,

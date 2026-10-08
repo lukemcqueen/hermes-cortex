@@ -74,7 +74,7 @@ names are the contract — never invent a new name without checking here first
 | `ADVERSARIAL_REVIEW_API_KEY_ENV` | _llm backend._ NAME of the credential variable to read. When set it is honoured **strictly** — no silent fallback to another credential. Never the value |
 | `ADVERSARIAL_REVIEW_AGENT_CMD` | _agent backend._ The coding-agent CLI invocation for reviews; the prompt is passed on **stdin**. Must put the agent in its read-only mode — a reviewer that can write can fix its own objections |
 | `ADVERSARIAL_REVIEW_AGENT_NAME` | _agent backend._ The agent's identity, used to refuse **self-review** when it matches the change's git author |
-| `ADVERSARIAL_REVIEW_AGENT_TIMEOUT` | _agent backend._ Seconds to wait for the reviewing agent (default 900) |
+| `ADVERSARIAL_REVIEW_AGENT_TIMEOUT` | _agent backend._ Seconds to wait for the reviewing agent (default 900). **Clamped to `REVIEWER_TIMEOUT_CEILING` (240s), like every reviewer budget** — a budget at or above the MCP client's 300s call window is an unobservable hang, not a longer wait. To wait longer, raise the client's own ceiling (`mcp_servers.<name>.timeout`) instead. See `docs/runbooks/review-triage-jev.md` |
 | `EMBEDDING_MODEL` | Embedding model (local Ollama: `nomic-embed-text:v1.5`) |
 | `LLM_CRON_MODEL` | Cron LLM model. Controls **installer pinning only** — an unpinned cron RUNS on the main model (`model.default`), not on this value. Provider-specific id form (`deepseek/deepseek-v4.1-flash` on openrouter) |
 | `LLM_CRON_PROVIDER` | Cron LLM provider (`openrouter`), same scope as above. Never a free tier that can stop resolving — a dead free pin falls through to a PAID route while reporting `ok` |

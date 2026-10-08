@@ -168,7 +168,8 @@ def test_refused_close_visible() -> None:
                 "started_at": datetime.now(timezone.utc).isoformat()}
         cycle = {"id": 999, "outcome_note": "a note"}
 
-        setattr(mcp, "_call_reviewer", lambda prompt, author=None: FINDINGS_JSON)
+        setattr(mcp, "_call_reviewer",
+                lambda prompt, author=None, cx=None, **kw: FINDINGS_JSON)
         block = mcp._adversarial_review_gate(lock, cycle)
         _check("a FINDINGS review blocks the close", block is not None)
         marker = (writes[-1] if writes else {}).get("close_refused")
@@ -184,7 +185,8 @@ def test_refused_close_visible() -> None:
         # pre-seed the marker so CLEARING is genuinely exercised (clearing with no
         # marker correctly writes nothing — that is not a test of anything).
         lock_state["close_refused"] = {"at": "x", "cycle_id": 999, "verdict": "FINDINGS"}
-        setattr(mcp, "_call_reviewer", lambda prompt, author=None: CLEAN_JSON)
+        setattr(mcp, "_call_reviewer",
+                lambda prompt, author=None, cx=None, **kw: CLEAN_JSON)
         block2 = mcp._adversarial_review_gate(lock, cycle, force=True)
         _check("a CLEAN review does not block", block2 is None)
         _check("the marker is CLEARED on CLEAN",
@@ -195,7 +197,7 @@ def test_refused_close_visible() -> None:
         # marker until this test found it).
         writes.clear()
 
-        def _unreachable(prompt, author=None):
+        def _unreachable(prompt, author=None, cx=None, **kw):
             raise RuntimeError("reviewer unreachable (test)")
 
         setattr(mcp, "_call_reviewer", _unreachable)
@@ -237,7 +239,8 @@ def test_tests_do_not_pollute_the_production_log() -> None:
             setattr(mcp, "_record_review", lambda *a, **k: None)
             setattr(mcp, "_refute_findings", lambda findings, material: [])
             setattr(mcp, "_triage_findings", lambda findings, material, **k: findings)
-            setattr(mcp, "_call_reviewer", lambda prompt, author=None: FINDINGS_JSON)
+            setattr(mcp, "_call_reviewer",
+                    lambda prompt, author=None, cx=None, **kw: FINDINGS_JSON)
             lock = {"repo_slug": SLUG, "task_id": "t", "session_id": "s", "description": "d",
                     "started_at": datetime.now(timezone.utc).isoformat()}
             mcp._adversarial_review_gate(lock, {"id": 999, "outcome_note": "a note"})
