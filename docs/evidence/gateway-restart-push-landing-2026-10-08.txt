@@ -1,0 +1,87 @@
+
+(Paths below are shown home-relative: the host-specific prefix in the captured tool output
+has been replaced with ~. Nothing else in the transcripts is altered.)
+   (drift section shown as emitted; the run still ended DOGFOOD PASSED, rc=0)
+1305:            🔶 Suggestion: Resolve each drift entry above
+1312:     ✅ Hook drift: post-commit — deployed matches repo (777fd064)
+1313:     ✅ Hook drift: post-push — deployed matches repo (67b598cb)
+1314:     ✅ Hook drift: pre-commit — deployed matches repo (62ed45c7)
+1315:     ✅ Hook drift: pre-push — deployed matches repo (baad724f)
+1331:     ⚠️  Overall: WARNING  (440 pass · 11 warn · 0 fail · 6 info)
+1340:       Copy the deployed changes to the repo source first, then commit.
+1341:       Copy the deployed changes to the repo source first, then commit.
+1342:       Copy the deployed changes to the repo source first, then commit.
+1343:       Copy the deployed changes to the repo source first, then commit.
+1344:       Copy the deployed changes to the repo source first, then commit.
+1345:       Copy the deployed changes to the repo source first, then commit.
+1346:       Resolve each drift entry above
+1351:✅  DOGFOOD PASSED — deployed state verified clean.
+
+2. DOCTOR
+$ python3 ops/scripts/manage/cortex-doctor.py --quiet
+    Check: cronjob action='list' → find job_id, then hermes cron runs <job_id> --limit 5; 'idle for Ns' TimeoutError = LLM cron inactivity timeout (HERMES_CRON_TIMEOUT), see docs/cron-job-recipes.md §LLM cron inactivity timeout
+    Copy the deployed changes to the repo source first, then commit.
+    Copy the deployed changes to the repo source first, then commit.
+    Copy the deployed changes to the repo source first, then commit.
+    Copy the deployed changes to the repo source first, then commit.
+    Copy the deployed changes to the repo source first, then commit.
+    Copy the deployed changes to the repo source first, then commit.
+    Resolve each drift entry above
+
+  After resolving, run doctor again to confirm.
+  ═══════════════════════════════════════════════════
+
+
+3. THE PUSHED RANGE — every commit, attributed
+$ git log --oneline --stat 6430c1f4..21ab68ff
+21ab68ff test: reproduce the sg-under-NoNewPrivileges store outage executable
+ tests/test_no_new_privs_sg_store.py | 96 +++++++++++++++++++++++++++++++++++++
+ 1 file changed, 96 insertions(+)
+1776f72d evidence+skill: pi backend Esther reports cortex store unreachable (NoNewPrivileges vs sg)
+ .../pi-mycortex-store-unreachable-2026-10-08.txt   | 57 ++++++++++++----------
+ skills/devops/psql-automation/SKILL.md             | 32 ++++++++++++
+ 2 files changed, 64 insertions(+), 25 deletions(-)
+4954ac0f gateway /restart: make the restart observable, and keep the agent honest
+ docs/DOCS-INDEX.md                                 |   3 +-
+ docs/design/cortex-gateway-parity.md               |  20 ++-
+ .../gateway-restart-visibility-2026-10-08.txt      | 135 ++++++++++++++++++++
+ .../gateway-slash-parity-tests-2026-10-08.txt      |  28 ++---
+ ops/scripts/cortex-update.sh                       |   4 +
+ ops/scripts/cortex_gateway/agents.py               |  16 ++-
+ ops/scripts/cortex_gateway/daemon.py               | 117 ++++++++++++++++-
+ ops/scripts/cortex_gateway/restarts.py             | 139 +++++++++++++++++++++
+ tests/test_gateway_slash_parity.py                 | 133 +++++++++++++++++++-
+ 9 files changed, 570 insertions(+), 25 deletions(-)
+5a33c94b evidence: pi backend Esther reports cortex store unreachable (NoNewPrivileges vs sg)
+ .../pi-mycortex-store-unreachable-2026-10-08.txt   | 41 ++++++++++++++++++++++
+ 1 file changed, 41 insertions(+)
+
+   NOTE ON ATTRIBUTION: 5a33c94b, 1776f72d and 21ab68ff are NOT this session's work.
+   They belong to a concurrent background session (loop-governance session id
+   bg_185637_492530, task 'diag-pi-mycortex-unreachable') that was committing to the
+   same branch while this cycle ran. Its commits are left exactly as authored (SOUL P9).
+   This session's commit in the range is 4954ac0f.
+
+4. LANDING VERIFICATION
+$ python3 ops/scripts/manage/verify-landed.py --repo . --base 6430c1f4
+# range: 6430c1f44358..21ab68ff1920  repo: ~/hermes-cortex
+PASS  receipt: .reviewed-hermes-cortex-21ab68ff1920b6ff28750cee673818fc14fe39d8.json verdict=CLEAN (bound to 6430c1f44358..21ab68ff1920)
+PASS  deployed: ops/scripts/cortex-update.sh matches ~/.hermes-cortex/scripts/cortex-update.sh
+PASS  deployed: ops/scripts/cortex_gateway/agents.py matches ~/.hermes-cortex/scripts/cortex_gateway/agents.py
+PASS  deployed: ops/scripts/cortex_gateway/daemon.py matches ~/.hermes-cortex/scripts/cortex_gateway/daemon.py
+PASS  deployed: ops/scripts/cortex_gateway/restarts.py matches ~/.hermes-cortex/scripts/cortex_gateway/restarts.py
+# 4 of 12 changed files are deployed sources; 341 entries in the map
+PASS  remote: origin/main == 21ab68ff1920
+
+All checks passed.
+   rc=0
+
+$ git log --oneline -1 origin/main
+21ab68ff test: reproduce the sg-under-NoNewPrivileges store outage executable
+$ git branch -r --contains 4954ac0f
+  origin/HEAD -> origin/main
+  origin/main
+
+5. THE RECEIPT THAT AUTHORISED THE PUSH (minted by the concurrent session's own close
+   for its tip, which covered this session's commit too — same branch, same range)
+-rw-rw-r-- 1 esther esther 892 19:15:10 ~/.hermes-cortex/state/.reviewed-hermes-cortex-21ab68ff1920b6ff28750cee673818fc14fe39d8.json
