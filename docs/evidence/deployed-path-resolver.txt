@@ -1,0 +1,31 @@
+# deployed-path resolver + deploy run — raw transcript
+# captured: 2026-10-08T09:22:42+09:00  host: esther  HEAD: 348983e9
+
+## 1. registered source
+$ python3 ops/scripts/manage/deployed-path.py mcp-servers/loop-gov-mcp.py
+/home/esther/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py
+rc=0
+
+## 2. unregistered source — refuses, prints no path
+$ python3 ops/scripts/manage/deployed-path.py mcp-servers/not-registered.py
+COULD NOT RESOLVE: 'mcp-servers/not-registered.py' has no entry in /home/esther/.hermes-cortex/deploy-manifest.tsv (335 entries). Nothing was checked.
+rc=2
+
+## 3. missing map
+$ python3 ops/scripts/manage/deployed-path.py mcp-servers/loop-gov-mcp.py --manifest /nonexistent/deploy-manifest.tsv
+COULD NOT RESOLVE: no deploy-manifest.tsv found (looked at CORTEX_DEPLOY_HOME, HERMES_CORTEX_HOME, ~/.hermes-cortex/deploy-manifest.tsv, /nonexistent/deploy-manifest.tsv). Nothing was checked.
+rc=2
+
+## 4. the test suite
+$ uv run --no-project --with pytest python3 -m pytest tests/test_deployed_path_resolver.py -q
+tests/test_deployed_path_resolver.py .....                               [100%]
+
+============================== 5 passed in 0.31s ===============================
+
+## 5. deploy log excerpts (/home/esther/.hermes/cache/scratch/deploy3.log, 819 lines)
+$ grep -nE "Overall:|Deploy sync" deploy3.log
+357:  ✅ Deploy sync
+803:  ⚠️  Overall: WARNING  (433 pass · 7 warn · 0 fail · 7 info)
+$ grep -n "❌" deploy3.log   # the only occurrence, with context
+805-  ═══════════════════════════════════════════════════
+806:  🔧 REQUIRED ACTIONS — resolve each ⚠️  or ❌ above
