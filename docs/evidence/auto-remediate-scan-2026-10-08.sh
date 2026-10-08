@@ -28,7 +28,7 @@ echo "unbalanced=$unbal"
 [ $unbal -eq 0 ] || fail=1
 
 echo "== host gating =="
-is_server=$(grep -i '^IS_SERVER=' "$CORTEX_REPO/.env" 2>/dev/null | tail -1 | cut -d= -f2)
+is_server=$(grep -i '^IS_SERVER=' "$CORTEX_REPO/.env" 2>/dev/null | tail -1 | cut -d= -f2 | tr -d '"' | tr -d '[:space:]')
 echo "IS_SERVER=${is_server:-unset}"
 [ "${is_server:-false}" = "false" ] || fail=1
 
