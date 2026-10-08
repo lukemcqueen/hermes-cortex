@@ -52,9 +52,32 @@ def test_parity_check_discriminates(tmp_path, monkeypatch):
             check=False,
         )
 
-    monkeypatch.setattr(mod, "REPO_SKILLS", _REPO / "skills")
-    stranded_now, _, _ = mod.survey()
-    assert stranded_now == [], f"working tree still stranded: {stranded_now}"
+    # POSITIVE CONTROLS, hermetic. The live tree is deliberately NOT asserted: deployed-vs-
+    # repo drift is a ROUTINE pipeline condition (a lesson written on the deployed copy is
+    # synced back by the lifecycle run — see orch-skill-lifecycle, "Deployed-vs-repo skill
+    # drift is now the MOST COMMON Phase 3 action"), so asserting a clean live tree would
+    # make this REGRESSION gate flap on normal operation. What must hold is that the checker
+    # discriminates — in both directions — and that is testable without the live tree.
+    with tempfile.TemporaryDirectory() as td:
+        dep = Path(td) / "deployed"
+        src = Path(td) / "repo" / "skills"
+        for root in (dep, src):
+            (root / "cat" / "demo").mkdir(parents=True)
+        (dep / "cat" / "demo" / "SKILL.md").write_text("synced body\n")
+        (src / "cat" / "demo" / "SKILL.md").write_text("synced body\n")
+        monkeypatch.setattr(mod, "DEPLOY_SKILLS", dep)
+        monkeypatch.setattr(mod, "REPO_SKILLS", src)
+        monkeypatch.setattr(mod, "ARTIFACT", Path(td) / "artifact.txt")
+
+        clean, in_sync, _ = mod.survey()
+        assert clean == [], f"a SYNCED tree must report nothing; got {clean}"
+        assert in_sync == 1, f"the synced file must count as in sync; got {in_sync}"
+
+        (dep / "cat" / "demo" / "SKILL.md").write_text("deployed-only body\n")
+        drifted, _, _ = mod.survey()
+        assert drifted == ["cat/demo/SKILL.md"], \
+            f"deployed-ONLY content must be reported as stranded; got {drifted}"
+        print("  discriminates: synced -> nothing, deployed-only -> reported ✓")
 
 
 class _Monkeypatch:

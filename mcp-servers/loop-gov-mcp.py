@@ -3209,8 +3209,102 @@ def _range_is_docs_only(diff_text: str) -> bool:
     return True
 
 
+def _split_diff_sections(diff_text: str) -> list:
+    """[(path, section_text)] split on `diff --git a/` boundaries, in order.
+
+    A preamble before the first header is kept as a ("", text) section so nothing is
+    dropped silently; an unparseable diff yields one section, never an empty list.
+    """
+    sections = []
+    path = None
+    buf = []
+    for line in diff_text.splitlines(keepends=True):
+        if line.startswith("diff --git a/"):
+            if path is not None:
+                sections.append((path, "".join(buf)))
+            path = line[len("diff --git a/"):].split(" ")[0]
+            buf = [line]
+        else:
+            buf.append(line)
+    if path is not None:
+        sections.append((path, "".join(buf)))
+    elif buf:
+        sections.append(("", "".join(buf)))
+    return sections
+
+
+def _bound_per_file(sections: list, budget: int, total: int,
+                    docs_only: bool) -> str:
+    """Allocate the budget ACROSS the changed files so no file is invisible.
+
+    Why (2026-10-08): one window over the whole concatenated diff meant that with five
+    changed files the MIDDLE files were dropped entirely — 19509 of 29260 chars — and
+    the adversarial reviewer correctly reported whole files and their tests as absent
+    from the material. Three closes in one session were refused on that basis, and the
+    finding cannot be answered from the worker's side because the content really was
+    absent. A per-file share cannot make a large diff small, but it CAN guarantee that
+    every changed file is represented, which is what the reviewer needs to judge the
+    change at all.
+    """
+    n = len(sections)
+    alloc = [min(len(text), max(1, budget // n)) for _, text in sections]
+    leftover = budget - sum(alloc)
+    truncated = [i for i in range(n) if alloc[i] < len(sections[i][1])]
+    while leftover > 0 and truncated:
+        share = max(1, leftover // len(truncated))
+        progressed = False
+        for i in list(truncated):
+            if leftover <= 0:
+                break
+            want = len(sections[i][1]) - alloc[i]
+            give = min(share, want, leftover)
+            if give > 0:
+                alloc[i] += give
+                leftover -= give
+                progressed = True
+            if alloc[i] >= len(sections[i][1]):
+                truncated.remove(i)
+        if not progressed:
+            break
+
+    parts = []
+    bounded = []
+    omitted_total = 0
+    for (path, text), size in zip(sections, alloc):
+        if size >= len(text):
+            parts.append(text)
+            continue
+        head = size * 2 // 3
+        tail = size - head
+        dropped = len(text) - size
+        omitted_total += dropped
+        bounded.append(path or "(preamble)")
+        parts.append(
+            text[:head]
+            + f"\n...[this file's diff is bounded: {dropped} of {len(text)} chars omitted "
+              f"from its middle — the gate's {budget}-char budget is shared across {n} "
+              f"changed files; the full content is committed]\n"
+            + text[len(text) - tail:]
+        )
+
+    notice = (
+        f"...[MATERIAL LIMIT: the gate's {budget}-char budget is allocated PER FILE across "
+        f"{n} changed files so that no changed file is omitted entirely; {omitted_total} of "
+        f"{total} chars were omitted in total. This is a limit of the gate, not absent "
+        f"evidence; the full content is committed]"
+    )
+    if docs_only:
+        notice += ("\n...[this is a docs-only range and it STILL exceeds the docs budget — "
+                   "split the cycle rather than re-submitting prose]")
+    if bounded:
+        notice += ("\n...[files bounded above (each still shows its head and tail): "
+                   + ", ".join(bounded[:15])
+                   + (f" (+{len(bounded) - 15} more)" if len(bounded) > 15 else "") + "]")
+    return notice + "\n" + "".join(parts)
+
+
 def _bound_diff(diff_text: str, budget: int | None = None) -> str:
-    """Bound the review material to `budget` chars, HEAD+TAIL, disclosing the cut.
+    """Bound the review material to `budget` chars, disclosing the cut.
 
     Why this exists as its own function (2026-10-02): the bound was written as
     head-only while its comment claimed head+tail, so a large implementation diff
@@ -3218,7 +3312,12 @@ def _bound_diff(diff_text: str, budget: int | None = None) -> str:
     was given — reported the implementation and tests as missing. Cycles 10488
     and 10482 were refused that way. A truncation is a limit of THIS GATE, not
     absent evidence, so it must say so, name the files affected, and point at the
-    committed content. Tested by tests/test_review_material_bound.py.
+    committed content.
+
+    Extended 2026-10-08 to allocate the budget PER FILE (`_bound_per_file`): a single
+    window over the whole diff hid entire files, which the reviewer reported as absent
+    evidence, so whole files could never be reviewed. Tested by
+    tests/test_review_material_bound.py.
     """
     docs_only = _range_is_docs_only(diff_text)
     if budget is None:
@@ -3235,6 +3334,10 @@ def _bound_diff(diff_text: str, budget: int | None = None) -> str:
     if len(diff_text) <= budget:
         return policy + diff_text
     total = len(diff_text)
+    sections = _split_diff_sections(diff_text)
+    if len(sections) > 1:
+        return policy + _bound_per_file(sections, budget, total, docs_only)
+    # A single unsplittable section (or an unparseable diff): the original window.
     head = budget * 2 // 3
     tail = budget - head
     dropped = diff_text[head:total - tail]
@@ -3257,7 +3360,7 @@ def _bound_diff(diff_text: str, budget: int | None = None) -> str:
         notice += (f"\n...[files partly hidden in the omitted middle: "
                    f"{', '.join(files[:15])}"
                    + (f" (+{len(files) - 15} more)" if len(files) > 15 else "") + "]")
-    return diff_text[:head] + notice + "\n" + diff_text[total - tail:]
+    return policy + diff_text[:head] + notice + "\n" + diff_text[total - tail:]
 
 
 def _adversarial_review_gate(lock: dict, cycle: dict,

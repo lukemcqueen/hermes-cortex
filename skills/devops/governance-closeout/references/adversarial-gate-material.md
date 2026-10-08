@@ -51,6 +51,21 @@ repo is shared with another session, git cannot tell you whose work is whose —
 uncommitted peer changes before pulling, pushing or deploying, and expect a peer's
 `git add`/commit to be able to sweep your staged edits into its commit.
 
+## Why the change is EMBEDDED, not referenced by path
+
+A path is not evidence for the default reviewer. The `llm` backend is a single
+`POST /chat/completions` carrying one user message (`loop-gov-mcp.py`, `_call_reviewer`):
+the reviewer is a stateless completion with NO tools, so a path in the material is a string
+it cannot open. That is why the diff itself has to be in the material. The `agent` backend
+DOES run a tool-using agent against the checkout, so there a path plus a hash is
+actionable — and the material names the files either way, so a reviewer can cite them.
+
+The bound exists because the constraint is the reviewer's CONTEXT, not disk. It is a budget
+over content the reviewer must READ, so it has to stay spent on the change — and it is
+allocated PER FILE (`_bound_per_file`, 2026-10-08), because a single window over the whole
+diff dropped entire files and the reviewer rightly filed those as absent evidence. Whole
+files being invisible is a material defect; a proportional head+tail per file is not.
+
 ## What the reviewer accepts as evidence
 
 - Raw output: the invocation, the stdout, the exit code. A curated PASS list is scored
@@ -105,6 +120,13 @@ whether the material was truncated — and fix the bound if it was.
 - **When the finding is abstract ("the diff is truncated", "contents absent"), re-review
   rather than rewriting the change.** The fault is in the material, so fix the material
   and submit a new note saying what it now carries.
+- **The note is material, and process commentary in it is a finding.** Explaining the
+  gate's own budget, quoting finding ids from an earlier round, or otherwise justifying the
+  review reads as evaluation-aware self-justification and is filed as a finding (an
+  `injection` one at INFO, a real block when it is the substance of the note). State what
+  changed, the evidence path and the raw command output, then stop. Cost three refusals in
+  one session (2026-10-08): the first was a truncated-material finding, the second and third
+  were the note explaining that truncation.
 - **A truncated diff cannot confirm WHICH revision was tested — pin the artifacts by hash.**
   When the evidence is a generated artifact plus the source file it was produced from, the
   reviewer may see the artifact while the source sits in the cut, so "the file this ran
