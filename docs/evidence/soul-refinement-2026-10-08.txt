@@ -1,5 +1,25 @@
 captured 2026-10-08T23:37:19+09:00 (round 3)
 
+COMMIT TOPOLOGY -- read this before comparing SHAs in this transcript.
+
+  The script prints the HEAD it ran at. That is NOT the tip of the audited
+  range: each round's transcript is captured BEFORE its own commit, so the
+  transcript is committed by the (later) commit whose content it proves.
+
+    1140a8b9   audited range base (peer commit; origin/main is 21ab68ff)
+    19652047   round 1: two skill lessons + saved stranded-lesson material
+    5778f5c1   round 2: re-runnable evidence script + this transcript
+    90d50aa3   round 3: this transcript, refreshed, + SHA/diff corrections
+    c7967cfb   PEER commit (bus-overnight), landed after 90d50aa3 -- not this
+               change's scope, not authored by this cycle, do not attribute
+
+  So the three identifiers a reader will find are all correct and all
+  different on purpose:
+    HEAD=5778f5c1  <- run 1 printed this; it is the commit this file's FIRST
+                      version was captured against (its own parent)
+    HEAD=90d50aa3  <- the commit this file now ships inside (round 3)
+    c7967cfb       <- peer tip on top; unrelated files
+
 ===== revision =====
 5778f5c1 fix(evidence): address ADV-11698 findings with re-runnable proof
 HEAD=5778f5c17f5b5e1e34fd7eaba51541676d207e8d
