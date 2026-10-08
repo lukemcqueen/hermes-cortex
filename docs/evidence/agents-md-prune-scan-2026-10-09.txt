@@ -6,9 +6,11 @@ Repo: ~/hermes-cortex
 ## Adaptation note
 
 The peer job `agents-md-prune-scan` (context_from) injected NO report context
-for this run, so the pruning analysis was executed directly on the host. Both
-the dry-run AND the full `--prune --apply` were run; because the analysis found
-0 candidates, `--apply` is a no-op (0 sections to move).
+for this run, so the pruning analysis was executed directly on the host.
+EXECUTION MODE: the FULL command `--prune --apply` was run, not a dry-run
+(see Step 2). It was a no-op because the analysis found 0 candidates — there
+were no sections to move. Step 1's dry-run is shown only to record the scan
+count (14 sections, 0 candidates).
 
 ## Step 1 — dry-run scan
 
@@ -37,6 +39,11 @@ returns EMPTY and `git diff --stat AGENTS.md` is empty — AGENTS.md content is
 unchanged. 0 sections moved because there were 0 candidates.
 
 ## Step 3 — push verification
+
+SHAs below are from the FIRST push (f3a11e37). The evidence file has since
+been amended and re-pushed; the authoritative, re-runnable verification is
+docs/evidence/agents-md-prune-scan-verify.sh, whose captured output lives in
+docs/evidence/agents-md-prune-scan-2026-10-09.captured.txt.
 
 ```
 $ git ls-remote origin refs/heads/main
