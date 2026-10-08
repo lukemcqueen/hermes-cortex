@@ -45,3 +45,18 @@ FAILED tests/test_loop_gov_review_repo.py::test_secondary_marker_follows_the_abs
 #    gateway restart reloads the MCP server); it is outside this commit's scope.
 grep -c dirty_at_start on the DEPLOYED copy: 0 (deployed copy predates this commit)
 repo copy: 5
+
+## 5. Correction of record — which skills/ paths this range CONTAINS
+
+An earlier message in this range stated that the skills/ paths in the Diff stat are
+pre-existing WIP not contained in these commits. That was true of the two commits it
+described, but the following commit adds a lesson to
+skills/devops/hermes-cortex-repo-deploy/SKILL.md, so it does not hold for the range.
+
+- IN this range (exactly one skills/ path): skills/devops/hermes-cortex-repo-deploy/SKILL.md
+  — the git-checkout lesson, this change's own follow-up.
+- NOT in this range (pre-existing uncommitted WIP in this shared checkout): six modified
+  SKILL.md files (pi-coding-agent, deploy-load-verification, enforcement-change-safety,
+  governance-closeout, shared-repo-push-gates, sweep-verification), one modified references
+  file (deploy-load-verification/references/cron-model-fallback-chain.md), and four
+  untracked references files.
