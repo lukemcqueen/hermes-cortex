@@ -43,3 +43,18 @@ IDENTICAL
   ⚠️  Cron status (agent-nginx-threat-pipeline)
   ⚠️  Overall: WARNING  (420 pass · 2 warn · 0 fail · 10 info)
   🔧 REQUIRED ACTIONS — resolve each ⚠️  or ❌ above
+
+=== housekeeping: stale lock removal (2026-10-08) ===
+Removed per doctor REQUIRED actions (dead session sess_4558b9e75076, no owner process via ps):
+  rm -f /Users/luke/.hermes-cortex/state/.governance-sess_4558b9e75076.json  -> "No such file or directory" (removed)
+  rm -rf /Users/luke/hermes-cortex/.hermes-cortex                             -> "No such file or directory" (removed)
+Post-removal doctor: "✅ Repo-local .hermes-cortex" and "✅ Orphaned locks"
+
+=== housekeeping: orphaned PENDING cycle #5726 ===
+feedback_override(cycle_id=5726, correct_decision=MOVE_ON, note="Orphaned cycle from dead session sess_4558b9e75076 (task phase0-scale-corpus). Lock purged per doctor instruction; no live process owns the task.") -> "⏩ Cycle #5726 overridden → MOVE_ON."
+Post-override doctor: "✅ PENDING cycles" INFO only (active-task cycle #5727 held its lock).
+
+=== final doctor summary (post-housekeeping, committed source of truth) ===
+  ⚠️  Repo clean
+  ⚠️  Cron status (agent-nginx-threat-pipeline)
+  ⚠️  Overall: WARNING  (420 pass · 2 warn · 0 fail · 10 info)
