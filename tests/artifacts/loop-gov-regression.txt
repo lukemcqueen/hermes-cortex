@@ -1,7 +1,7 @@
 loop-governance regression artifact
 ========================================================================
-generated      : 2026-10-08T01:01:28+00:00
-revision       : 1905472e  (branch main)
+generated      : 2026-10-08T01:10:09+00:00
+revision       : 4ea664e4  (branch main)
 interpreter    : Python 3.14.7 (<python-bin>/python3)
 generator      : tests/run_loop_gov_regression.py
 
@@ -24,21 +24,21 @@ TEST SET (15 files)
           - test_secondary_marker_follows_the_absolute_path: the in-repo marker did not follow the absolute repo path — it landed at HOME/<slug> instead
         [mcp-server] DEBUG: Initializing server 'loop-governance'
         [mcp-server] INFO: self-adversarial review: cycle 4243 simple (1 lines, 1 files) — skip
-        [mcp-server] WARNING: _git_capture(('log', '--format=%ct')) exited 128 in ~/.hermes/cache/scratch/nested-repo-awaysgok/hermes-cortex: fatal: your current branch 'master' does not have any commits yet
+        [mcp-server] WARNING: _git_capture(('log', '--format=%ct')) exited 128 in ~/.hermes/cache/scratch/nested-repo-f150fwx8/hermes-cortex: fatal: your current branch 'master' does not have any commits yet
         [mcp-server] INFO: self-adversarial review: cycle 4321 simple (1 lines, 1 files) — skip
-        [mcp-server] WARNING: _git_capture(('rev-list', '-1', '--before=2026-10-08T01:01:41Z', 'HEAD')) exited 128 in ~/.hermes/cache/scratch/loop-gov-review-repo-squwj0yz/hermes-cortex: fatal: ambiguous argument 'HEAD': unknown revision or path not in the working tree.
+        [mcp-server] WARNING: _git_capture(('rev-list', '-1', '--before=2026-10-08T01:10:22Z', 'HEAD')) exited 128 in ~/.hermes/cache/scratch/loop-gov-review-repo-xunvdh3e/hermes-cortex: fatal: ambiguous argument 'HEAD': unknown revision or path not in the working tree.
         Use '--' to separate paths from revisions, like this:
         'git <command> [<revision>...] -- [<file>...]'
-        [mcp-server] WARNING: _git_capture(('log', '--format=%H', '--author=agent@hermes.local', '4b825dc642cb6eb9a060e54bf8d69288fbee4904..HEAD')) exited 128 in ~/.hermes/cache/scratch/loop-gov-review-repo-squwj0yz/hermes-cortex: fatal: ambiguous argument '4b825dc642cb6eb9a060e54bf8d69288fbee4904..HEAD': unknown revision or path not in the working tree.
+        [mcp-server] WARNING: _git_capture(('log', '--format=%H', '--author=agent@hermes.local', '4b825dc642cb6eb9a060e54bf8d69288fbee4904..HEAD')) exited 128 in ~/.hermes/cache/scratch/loop-gov-review-repo-xunvdh3e/hermes-cortex: fatal: ambiguous argument '4b825dc642cb6eb9a060e54bf8d69288fbee4904..HEAD': unknown revision or path not in the working tree.
         Use '--' to separate paths from revisions, like this:
         'git <command> [<revision>...] -- [<file>...]'
-        [mcp-server] WARNING: _git_capture(('diff', '--numstat', '4b825dc642cb6eb9a060e54bf8d69288fbee4904..HEAD')) exited 128 in ~/.hermes/cache/scratch/loop-gov-review-repo-squwj0yz/hermes-cortex: fatal: ambiguous argument '4b825dc642cb6eb9a060e54bf8d69288fbee4904..HEAD': unknown revision or path not in the working tree.
+        [mcp-server] WARNING: _git_capture(('diff', '--numstat', '4b825dc642cb6eb9a060e54bf8d69288fbee4904..HEAD')) exited 128 in ~/.hermes/cache/scratch/loop-gov-review-repo-xunvdh3e/hermes-cortex: fatal: ambiguous argument '4b825dc642cb6eb9a060e54bf8d69288fbee4904..HEAD': unknown revision or path not in the working tree.
         Use '--' to separate paths from revisions, like this:
         'git <command> [<revision>...] -- [<file>...]'
-        [mcp-server] WARNING: _git_capture(('rev-list', '-1', '--before=2026-10-08T01:01:41Z', 'HEAD')) exited 128 in ~/.hermes/cache/scratch/loop-gov-review-repo-squwj0yz/hermes-cortex: fatal: ambiguous argument 'HEAD': unknown revision or path not in the working tree.
+        [mcp-server] WARNING: _git_capture(('rev-list', '-1', '--before=2026-10-08T01:10:22Z', 'HEAD')) exited 128 in ~/.hermes/cache/scratch/loop-gov-review-repo-xunvdh3e/hermes-cortex: fatal: ambiguous argument 'HEAD': unknown revision or path not in the working tree.
         Use '--' to separate paths from revisions, like this:
         'git <command> [<revision>...] -- [<file>...]'
-        [mcp-server] WARNING: _git_capture(('log', '--format=%ct')) exited 128 in ~/.hermes/cache/scratch/loop-gov-review-repo-squwj0yz/hermes-cortex: fatal: your current branch 'master' does not have any commits yet
+        [mcp-server] WARNING: _git_capture(('log', '--format=%ct')) exited 128 in ~/.hermes/cache/scratch/loop-gov-review-repo-xunvdh3e/hermes-cortex: fatal: your current branch 'master' does not have any commits yet
 
 [PASS] tests/test_loop_gov_multi_session.py  rc=0
         PASS — loop-gov multi-session DB (adversarial findings resolved):
@@ -158,6 +158,7 @@ TEST SET (15 files)
         [mcp-server] DEBUG: Initializing server 'loop-governance'
 
 [PASS] tests/test_review_independence.py  rc=0
+        ALL PASS — reviewer independence
 
 [PASS] tests/test_review_material_bound.py  rc=0
           always-review path disqualifies a .md-only range ✓
@@ -175,7 +176,14 @@ TEST SET (15 files)
         [mcp-server] DEBUG: Initializing server 'loop-governance'
 
 [PASS] tests/test_review_material_scope.py  rc=0
+          scoped files=2 vs unscoped files=4: the peer's two paths are excluded only from the scoped measurement ✓
+          no snapshot -> whole tree counted (unchanged behaviour, fail-open) ✓
+          own-paths = exactly what changed since the snapshot ✓
+          unreadable snapshot -> no narrowing; empty own-set -> nothing kept ✓
+          cap exceeded -> snapshot empty -> whole-tree scope (fail toward review) ✓
+        ALL PASS — working-tree scope of the review measurement
         [mcp-server] DEBUG: Initializing server 'loop-governance'
+        [mcp-server] WARNING: dirty snapshot: 2 dirty paths exceed the 1 cap — recording none, so the working tree stays fully in scope
 
 [PASS] tests/test_review_material_consistency.py  rc=0
           peer dirt: measurement counts 2, material names 0, discloses ['peer.txt', 'peer_loose.txt'] ✓
@@ -202,10 +210,10 @@ TEST SET (15 files)
           PASS  the lock records close_refused
           PASS  marker names the cycle
           FAIL  marker names the verdict  
-          FAIL  marker counts blocking findings  {'at': '2026-10-08T01:03:20Z', 'cycle_id': 999, 'verdict': 'REVIEWER_UNAVAILABLE', 'blocking': 0, 'low': 0, 'finding_ids': []}
+          FAIL  marker counts blocking findings  {'at': '2026-10-08T01:12:23Z', 'cycle_id': 999, 'verdict': 'REVIEWER_UNAVAILABLE', 'blocking': 0, 'low': 0, 'finding_ids': []}
           FAIL  marker carries the finding ids  
           FAIL  a CLEAN review does not block  
-          FAIL  the marker is CLEARED on CLEAN  writes=[{'repo_slug': 'hermes-cortex', 'task_id': 'refused-close-visible', 'session_id': 'sess-test', 'description': 'test change', 'close_refused': {'at': '2026-10-08T01:03:20Z', 'cycle_id': 999, 'verdict': 'REVIEWER_UNAVAILABLE', 'blocking': 0, 'low': 0, 'finding_ids': []}}]
+          FAIL  the marker is CLEARED on CLEAN  writes=[{'repo_slug': 'hermes-cortex', 'task_id': 'refused-close-visible', 'session_id': 'sess-test', 'description': 'test change', 'close_refused': {'at': '2026-10-08T01:12:23Z', 'cycle_id': 999, 'verdict': 'REVIEWER_UNAVAILABLE', 'blocking': 0, 'low': 0, 'finding_ids': []}}]
           PASS  an unreachable reviewer refuses the close
           PASS  the outage is recorded on the lock too
         [mcp-server] DEBUG: Initializing server 'loop-governance'
@@ -230,22 +238,23 @@ TEST SET (15 files)
           PASS harness reports LOCK HELD
           PASS DB blocked while harness holds BEGIN IMMEDIATE
           PASS DB still write-blocked after alert-only watchdog (no kill)
-          PASS watchdog report names holder pid 2386542 in: '[2026-10-08 10:03 ] loop-gov-lock-watchdog: lock/anomaly DETECTED — alert-only (no auto-kill): 1 loop-gov daemon(s) in v'
+          PASS watchdog report names holder pid 2423822 in: '[2026-10-08 10:12 ] loop-gov-lock-watchdog: lock/anomaly DETECTED — alert-only (no auto-kill): 1 loop-gov daemon(s) in v'
           PASS holder process still alive after watchdog (alert-only, never kills)
         6 checks, 6 pass
 
 [PASS] tests/test_loop_gov_mcp_startup.py  rc=0
+        ALL PASS — MCP server starts under both HOME shapes
 
 ------------------------------------------------------------------------
 STATIC GATE  mcp-servers/loop-gov-mcp.py  level A4
 ------------------------------------------------------------------------
-[PASS] interim/working revision 1905472e
+[PASS] interim/working revision 4ea664e4
         📊 Summary: 1 file(s), 33 finding(s)
         🟡 Medium: 5
         🔵 Low: 2
         ✅ GATE_PASSED — no critical/high findings
 
-[PASS] PRE-FIX revision HEAD~1 (85653e34)
+[PASS] PRE-FIX revision HEAD~1 (513cc429)
         📊 Summary: 1 file(s), 33 finding(s)
         🟡 Medium: 5
         🔵 Low: 2
