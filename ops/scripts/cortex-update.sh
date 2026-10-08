@@ -514,6 +514,7 @@ register "ops/scripts/lib/toon_parse.py"                 "${CORTEX_DEPLOY_HOME}/
 # nothing about a module, and the old silent fallback to a PyYAML-less python3 made the
 # daily regression gate fail every day. Used by orch-daily-regression-gate.sh.
 register "ops/scripts/lib/python-with-module.sh"          "${CORTEX_DEPLOY_HOME}/scripts/lib/python-with-module.sh"
+register "ops/scripts/lib/cortex-update-mutex.py"         "${CORTEX_DEPLOY_HOME}/scripts/lib/cortex-update-mutex.py"
 register "ops/scripts/manage/orch-task-board-digest.py"  "${CORTEX_DEPLOY_HOME}/scripts/orch-task-board-digest.py"
 register "ops/scripts/manage/apply-repo-efficiency.py"   "${CORTEX_DEPLOY_HOME}/scripts/apply-repo-efficiency.py"
 register "docs/templates/repo-efficiency-block.md"       "${CORTEX_DEPLOY_HOME}/templates/repo-efficiency-block.md"
@@ -2755,6 +2756,43 @@ install_precommit_hook() {
 }
 
 main() {
+  # ── Single-instance mutex (single-instance deploy lock) ──────────────
+  # A concurrent cortex-update on the SAME repo (same CORTEX_DEPLOY_HOME) must
+  # refuse: both would unlock the same immutable enforcement files and race on
+  # the deploy marker (observed: two `cortex-update.sh --force-all` in parallel
+  # on moses). The per-deploy-home lock file means DIFFERENT repos on one server
+  # deploy independently. The guard re-invokes this script as its own child with
+  # CORTEX_UPDATE_INNER=1, holding the flock for the whole run; the inner run
+  # skips this block and does the real work beneath the lock.
+  #
+  # --dry-run / --status never mutate enforcement files, so they are exempt —
+  # an operator inspecting state mid-deploy must not be blocked.
+  if [[ -z "${CORTEX_UPDATE_INNER:-}" ]] && ! $STATUS_ONLY && ! $DRY_RUN; then
+    # Resolve the mutex helper from either the deployed lib dir or the repo
+    # source (dogfood invokes the repo copy directly), so the lock engages from
+    # the first run — not only after the helper has been deployed.
+    local _mutex_py=""
+    for _cand in \
+        "${CORTEX_DEPLOY_HOME}/scripts/lib/cortex-update-mutex.py" \
+        "${REPO_DIR}/ops/scripts/lib/cortex-update-mutex.py"; do
+      if [[ -f "$_cand" ]]; then _mutex_py="$_cand"; break; fi
+    done
+    if [[ -n "$_mutex_py" ]] && [[ -x "${CORTEX_DEPLOY_HOME}/venv/bin/python3" ]]; then
+      local _mutex_rc=0
+      # --guard re-invokes us as its child under the held flock; its exit code IS
+      # ours. `if` (not `|| true`) so we capture the true rc under `set -e`: on a
+      # held lock the wrapper returns 1 and we refuse below; on success it returns
+      # the inner deploy's rc.
+      if "${CORTEX_DEPLOY_HOME}/venv/bin/python3" "$_mutex_py" --guard \
+           "${CORTEX_DEPLOY_HOME}/state/cortex-update.lock" "$0" "$@"; then
+        _mutex_rc=0
+      else
+        _mutex_rc=$?
+      fi
+      exit "$_mutex_rc"
+    fi
+  fi
+
   # Args already parsed at top
   register
 
