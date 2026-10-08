@@ -1,0 +1,77 @@
+orch-daily-regression-gate — PyYAML capability-resolver verification
+Run: 2026-10-08 23:45 KST (esther host), auto-remediation cron e798f3363b33
+Cycle: loop-governance #11704 (task verify-regression-gate)
+
+PURPOSE
+  Reproduce the daily failure this artifact closes and show the resolved path.
+  Original failure (2026-10-08 03:15 KST, job d39c3b3eca5d):
+    RuntimeError: PyYAML is not installed — cannot parse eval definitions
+    (run-evals.py ran under a PyYAML-less python because the old guard tested
+     only `-x` on a path that exists but lacks the module).
+
+COMMAND 1 — resolver selects a module-capable interpreter, not a path that exists
+$ bash ~/.hermes-cortex/scripts/lib/python-with-module.sh --print yaml
+/home/esther/.hermes/hermes-agent/venv/bin/python3
+
+COMMAND 2 — the exact deployed gate command, end to end
+$ bash ~/.hermes-cortex/scripts/orch-daily-regression-gate.sh ; echo RC=$?
+Daily regression gate FAILED (rc=1) — 2026-10-08 23:45 KST
+
+============================================================
+Eval Results: regression-golden
+Golden task suite v1 — bus round-trip, task lifecycle, EXEC round-trip, doctor clean, core skills
+============================================================
+Overall: 83% pass (5/6 tasks)
+
+  PASS: bus-send-read
+      bus_round_trip: send→read→archive OK (msg 205c11ed, correlation regressi…) via lib.cortex_bus
+  PASS: task-lifecycle
+      task_lifecycle: add→list→update→delete OK (probe 6675a5b8… removed)
+  PASS: exec-round-trip
+      exec_round_trip: python3 exec round-trip OK
+  FAIL: doctor-clean
+      doctor_clean: doctor reports 1 failure(s), 15 warn(s) — gate blocked
+  PASS: core-skills
+      core_skills: all 7 always-skills present and loadable
+  PASS: fact-retention
+      fact_retention: compaction fact-retention OK — head 2/2, tail 3/3, user 2/2 verbatim, summary marker present (middle 1/2 (informational))
+RC=1
+
+NOTE ON THE REMAINING rc=1
+  The rc=1 is NOT the PyYAML failure. The suite now executes (it consumed
+  evals/suites/regression.yaml through yaml.safe_load — the exact code path
+  that raised the RuntimeError before). The single failing task is
+  doctor-clean, and the doctor's only failing check is Deploy sync (below) —
+  an in-flight-tree state, not a resolver defect.
+
+COMMAND 3 — doctor's single failure (deploy SHA abbreviated)
+$ python3 ~/.hermes-cortex/scripts/cortex-doctor.py --quiet
+  Deploy sync — HEAD (ca805fa4) ahead of last deploy — 4 commit(s) not deployed
+  Overall: FAILING  (437 pass · 15 warn · 1 fail · 7 info)
+
+COMMAND 4 — why the deploy is intentionally not run here (peer in-flight)
+$ git -C /home/esther/hermes-cortex rev-list --left-right --count origin/main...HEAD
+0	4
+$ git -C /home/esther/hermes-cortex status --porcelain=v1
+ M docs/DOCS-INDEX.md
+ M docs/evidence/skill-drift-parity.txt
+ M ops/services/mycortex-mem/store.py
+ M plugins/mycortex-mem/__init__.py
+ M tests/test_context_harnesses.py
+ M tests/test_mycortex_mem_psql_no_password.py
+?? docs/evidence/pi-memory-store-reach-2026-10-08.txt
+?? tests/test_store_access_under_no_new_privs.py
+
+  ops/services/mycortex-mem/store.py is a deploy-map file
+  (deploy-manifest.txt lists .../services/mycortex-mem/store.py). Running
+  cortex-update.sh now would ship another session's UNCOMMITTED, unreviewed
+  edits. Per SOUL P9 (do not race a peer's in-flight update) the deploy/push is
+  deliberately not performed; the blocker is recorded as loop-governance
+  issue #69 for the owning session to commit + push, after which a deploy
+  clears Deploy sync.
+
+CONCLUSION
+  The daily PyYAML failure is resolved at the resolver level and proven by the
+  suite executing end-to-end (5/6 tasks pass; the yaml-consuming suite parsed
+  without the previous RuntimeError). The remaining gate failure is a
+  concurrent-tree deploy-sync state owned by another session.
