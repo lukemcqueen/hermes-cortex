@@ -13,7 +13,11 @@ right to demand committed evidence, and the fleet's own ordering rules keep dest
 The way out is not a transcript but a RE-RUNNABLE CHECK, committed BEFORE the push, that a
 later reviewer can execute against the state that exists after it. This is that check:
 
-  1. a receipt with verdict CLEAN exists for the tip
+  1. a receipt exists for the tip AND authorises THIS range (tip + base), validated by
+     ops/scripts/lib/review-receipt-check.py — the same script the push gate runs. Only
+     required when the range touches a path in ops/scripts/lib/always-review-paths.txt,
+     exactly as the gate scopes it; a range that touches none reports "not required"
+     rather than a COULD NOT VERIFY that would be a false alarm.
   2. every file the range changed that has a deploy-map entry MATCHES its deployed copy
      (this is what a doctor "Deploy sync" measures, named file by file here)
   3. origin/<branch> equals the tip (unless --no-remote)
@@ -99,6 +103,38 @@ def _sibling(name):
     return module
 
 
+_ALWAYS_REVIEW_REL = "ops/scripts/lib/always-review-paths.txt"
+_RECEIPT_CHECK_REL = "ops/scripts/lib/review-receipt-check.py"
+
+
+def _always_review_patterns(repo):
+    """The gate's OWN list of always-review prefixes. None = unreadable (fail closed)."""
+    try:
+        text = (repo / _ALWAYS_REVIEW_REL).read_text(encoding="utf-8")
+    except OSError:
+        return None
+    return [line.strip() for line in text.splitlines()
+            if line.strip() and not line.strip().startswith("#")]
+
+
+def _receipt_authorises(repo, receipt_path, tip, base):
+    """Validate a receipt through the SAME validator the push gate uses.
+
+    Returns True/False, or None when the validator cannot be run — because a second,
+    looser implementation of this rule is how a receipt earned for one range comes to
+    authorise another.
+    """
+    checker = repo / _RECEIPT_CHECK_REL
+    if not checker.is_file():
+        return None
+    try:
+        proc = subprocess.run([sys.executable, str(checker), str(receipt_path), tip, base],
+                              capture_output=True, text=True, timeout=60)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return proc.stdout.strip() == "1"
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="Verify that a change actually landed.")
     ap.add_argument("--repo", default=".")
@@ -133,26 +169,56 @@ def main() -> int:
     failed = False
     unverified = []
 
-    # ── 1. the review receipt ────────────────────────────────────────────────
+    # ── 1. the review receipt — required only for an ALWAYS-REVIEW range ─────
+    # Mirror the gate (ops/scripts/pre-push-pull): it demands a receipt only when the
+    # range touches a path in ops/scripts/lib/always-review-paths.txt. Demanding one
+    # unconditionally reports a legitimately unreviewed docs-only push as COULD NOT
+    # VERIFY — a false alarm, and the reason this check was fixed. The mirror is also
+    # COMPLETE: the receipt is validated by the same script the gate runs, so a receipt
+    # earned for a different range is refused here too.
+    _, range_names, _ = _git(repo, "diff", "--name-only", f"{base}..{tip}")
+    changed = [n for n in range_names.splitlines() if n.strip()]
     receipt_dir = Path(args.receipt_dir) if args.receipt_dir else Path.home() / ".hermes-cortex" / "state"
     slug = repo.name
-    receipt_path = receipt_dir / f".reviewed-{slug}-{tip}.json"
-    if not receipt_path.is_file():
-        unverified.append(f"receipt: {receipt_path} does not exist (the tip has no receipt)")
-        print(f"{_CANNOT}: receipt {receipt_path} is absent.")
+    patterns = _always_review_patterns(repo)
+    if patterns is None:
+        unverified.append(f"receipt: cannot read {_ALWAYS_REVIEW_REL}, so whether this "
+                          f"range needs one is unknown")
+        print(f"{_CANNOT}: {_ALWAYS_REVIEW_REL} is unreadable; the receipt requirement "
+              f"was NOT evaluated.")
     else:
-        try:
-            receipt = json.loads(receipt_path.read_text())
-        except (OSError, json.JSONDecodeError) as exc:
-            unverified.append(f"receipt: unreadable ({exc})")
-            print(f"{_CANNOT}: receipt {receipt_path} is unreadable: {exc}")
+        always = [n for n in changed if any(p in n for p in patterns)]
+        if not always:
+            print(f"{_PASS} receipt: not required — {base[:12]}..{tip[:12]} touches no "
+                  f"always-review path")
         else:
-            verdict = receipt.get("verdict")
-            if verdict == "CLEAN":
-                print(f"{_PASS} receipt: {receipt_path.name} verdict=CLEAN")
+            receipt_path = receipt_dir / f".reviewed-{slug}-{tip}.json"
+            if not receipt_path.is_file():
+                unverified.append(f"receipt: {receipt_path} does not exist (this range "
+                                  f"touches an always-review path: {', '.join(always)})")
+                print(f"{_CANNOT}: receipt {receipt_path} is absent, and this range "
+                      f"touches an always-review path: {', '.join(always)}")
             else:
-                failed = True
-                print(f"{_FAIL} receipt: {receipt_path.name} verdict={verdict!r} (not CLEAN)")
+                verdict = None
+                try:
+                    verdict = json.loads(receipt_path.read_text()).get("verdict")
+                except (OSError, json.JSONDecodeError) as exc:
+                    unverified.append(f"receipt: unreadable ({exc})")
+                    print(f"{_CANNOT}: receipt {receipt_path} is unreadable: {exc}")
+                else:
+                    authorises = _receipt_authorises(repo, receipt_path, tip, base)
+                    if authorises is None:
+                        unverified.append(f"receipt: cannot run {_RECEIPT_CHECK_REL}")
+                        print(f"{_CANNOT}: {_RECEIPT_CHECK_REL} is unavailable, so the "
+                              f"receipt could NOT be validated.")
+                    elif authorises:
+                        print(f"{_PASS} receipt: {receipt_path.name} verdict=CLEAN "
+                              f"(bound to {base[:12]}..{tip[:12]})")
+                    else:
+                        failed = True
+                        print(f"{_FAIL} receipt: {receipt_path.name} verdict={verdict!r} "
+                              f"does not authorise {base[:12]}..{tip[:12]} "
+                              f"(not CLEAN, or bound to a different range)")
 
     # ── 2. is the DEPLOYED tree current with the range? ──────────────────────
     dp = _sibling("deployed-path.py")
@@ -172,8 +238,6 @@ def main() -> int:
                 print(f"{_CANNOT}: cannot read the deploy map; the deployed tree was NOT checked.")
             else:
                 mapping = read_manifest(manifest)
-                _, names, _ = _git(repo, "diff", "--name-only", f"{base}..{tip}")
-                changed = [n for n in names.splitlines() if n.strip()]
                 registered = [n for n in changed if n in mapping]
                 for name in changed:
                     if name not in mapping:

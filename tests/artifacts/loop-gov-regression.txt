@@ -1,14 +1,14 @@
 loop-governance regression artifact
 ========================================================================
-generated      : 2026-10-08T01:49:26+00:00
-revision       : 08db5f50  (branch main)
+generated      : 2026-10-08T02:19:11+00:00
+revision       : 4c4ae92c  (branch main)
 interpreter    : Python 3.14.7 (<python-bin>/python3)
 generator      : tests/run_loop_gov_regression.py
 
 Re-run with:  python3 tests/run_loop_gov_regression.py
 
 ------------------------------------------------------------------------
-TEST SET (16 files)
+TEST SET (18 files)
 ------------------------------------------------------------------------
 [PASS] tests/test_loop_gov_mcp_nonblocking.py  rc=0
         PASS (6):
@@ -43,14 +43,14 @@ TEST SET (16 files)
         [mcp-server] WARNING: the 'mcp' package is not installed — the stdio server cannot start; the CLI adapter (ops/scripts/loop-gov.py) still works.
         [mcp-server]   ~/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3 -m pip install mcp
         [mcp-server] INFO: self-adversarial review: cycle 4243 simple (1 lines, 1 files) — skip
-        [mcp-server] WARNING: _git_capture(('log', '--format=%ct')) exited 128 in ~/.hermes/cache/scratch/nested-repo-6rhlw4o3/hermes-cortex: fatal: your current branch 'master' does not have any commits yet
+        [mcp-server] WARNING: _git_capture(('log', '--format=%ct')) exited 128 in ~/.hermes/cache/scratch/nested-repo-yocilo12/hermes-cortex: fatal: your current branch 'master' does not have any commits yet
         [mcp-server] INFO: self-adversarial review: cycle 4321 simple (1 lines, 1 files) — skip
-        [mcp-server] WARNING: _git_capture(('rev-list', '-1', '--before=2026-10-08T01:49:37Z', 'HEAD')) exited 128 in ~/.hermes/cache/scratch/loop-gov-review-repo-psdqxjx6/hermes-cortex: fatal: ambiguous argument 'HEAD': unknown revision or path not in the working tree.
+        [mcp-server] WARNING: _git_capture(('rev-list', '-1', '--before=2026-10-08T02:19:22Z', 'HEAD')) exited 128 in ~/.hermes/cache/scratch/loop-gov-review-repo-o2p6bqwh/hermes-cortex: fatal: ambiguous argument 'HEAD': unknown revision or path not in the working tree.
         Use '--' to separate paths from revisions, like this:
         'git <command> [<revision>...] -- [<file>...]'
-        [mcp-server] WARNING: _git_capture(('log', '--format=%H', '--author=agent@hermes.local', '4b825dc642cb6eb9a060e54bf8d69288fbee4904..HEAD')) exited 128 in ~/.hermes/cache/scratch/loop-gov-review-repo-psdqxjx6/hermes-cortex: fatal: ambiguous argument '4b825dc642cb6eb9a060e54bf8d69288fbee4904..HEAD': unknown revision or path not in the working tree.
-        [mcp-server] WARNING: _git_capture(('diff', '--numstat', '4b825dc642cb6eb9a060e54bf8d69288fbee4904..HEAD')) exited 128 in ~/.hermes/cache/scratch/loop-gov-review-repo-psdqxjx6/hermes-cortex: fatal: ambiguous argument '4b825dc642cb6eb9a060e54bf8d69288fbee4904..HEAD': unknown revision or path not in the working tree.
-        [mcp-server] WARNING: _git_capture(('log', '--format=%ct')) exited 128 in ~/.hermes/cache/scratch/loop-gov-review-repo-psdqxjx6/hermes-cortex: fatal: your current branch 'master' does not have any commits yet
+        [mcp-server] WARNING: _git_capture(('log', '--format=%H', '--author=agent@hermes.local', '4b825dc642cb6eb9a060e54bf8d69288fbee4904..HEAD')) exited 128 in ~/.hermes/cache/scratch/loop-gov-review-repo-o2p6bqwh/hermes-cortex: fatal: ambiguous argument '4b825dc642cb6eb9a060e54bf8d69288fbee4904..HEAD': unknown revision or path not in the working tree.
+        [mcp-server] WARNING: _git_capture(('diff', '--numstat', '4b825dc642cb6eb9a060e54bf8d69288fbee4904..HEAD')) exited 128 in ~/.hermes/cache/scratch/loop-gov-review-repo-o2p6bqwh/hermes-cortex: fatal: ambiguous argument '4b825dc642cb6eb9a060e54bf8d69288fbee4904..HEAD': unknown revision or path not in the working tree.
+        [mcp-server] WARNING: _git_capture(('log', '--format=%ct')) exited 128 in ~/.hermes/cache/scratch/loop-gov-review-repo-o2p6bqwh/hermes-cortex: fatal: your current branch 'master' does not have any commits yet
 
 [PASS] tests/test_loop_gov_multi_session.py  rc=0
         PASS — loop-gov multi-session DB (adversarial findings resolved):
@@ -272,7 +272,7 @@ TEST SET (16 files)
           PASS  an unreachable reviewer refuses the close
           PASS  the outage is recorded on the lock too
           PASS  control: handler bound to the real log; 1 record(s) emitted when unsilenced (none written to the file)
-          PASS  silenced, the same run appended 0 bytes (474344 bytes unchanged)
+          PASS  silenced, the same run appended 0 bytes (512749 bytes unchanged)
         B. the pre-commit advisory fires on a refused-close lock, and only then
         A. the gate marks the lock on a refusal and clears it on CLEAN
         ✅ refused-close visibility checks passed
@@ -291,23 +291,56 @@ TEST SET (16 files)
           PASS harness reports LOCK HELD
           PASS DB blocked while harness holds BEGIN IMMEDIATE
           PASS DB still write-blocked after alert-only watchdog (no kill)
-          PASS watchdog report names holder pid 2607770 in: '[2026-10-08 10:52 ] loop-gov-lock-watchdog: lock/anomaly DETECTED — alert-only (no auto-kill): 1 loop-gov daemon(s) in v'
+          PASS watchdog report names holder pid 2809748 in: '[2026-10-08 11:21 ] loop-gov-lock-watchdog: lock/anomaly DETECTED — alert-only (no auto-kill): 2 loop-gov daemon(s) in v'
           PASS holder process still alive after watchdog (alert-only, never kills)
         6 checks, 6 pass
 
 [PASS] tests/test_loop_gov_mcp_startup.py  rc=0
         ALL PASS — MCP server starts under both HOME shapes
 
+[PASS] tests/test_verify_landed.py  rc=0
+        RESULT: ALL PASS (12 tests)
+        running 12 case(s)
+          header after the shebang -> match, not a false FAIL ✓
+        [PASS] test_a_deploy_header_on_the_deployed_copy_is_not_a_mismatch
+          trailing deployed copy -> exit 1, file named ✓
+        [PASS] test_a_deployed_copy_that_trails_the_tip_fails_and_names_the_file
+          missing deploy map -> exit 2, says what was NOT checked ✓
+        [PASS] test_a_missing_map_is_could_not_verify
+          missing receipt -> exit 2, not a pass ✓
+        [PASS] test_a_missing_receipt_is_could_not_verify_not_a_pass
+          docs-only range, no receipt -> exit 0, 'not required' ✓
+        [PASS] test_a_range_that_touches_no_always_review_path_needs_no_receipt
+          receipt bound to this range -> exit 0 ✓
+        [PASS] test_a_receipt_bound_to_this_range_authorises_it
+          receipt bound to another range -> exit 1 ✓
+        [PASS] test_a_receipt_earned_for_another_range_does_not_authorise_this_one
+          non-CLEAN receipt -> exit 1 ✓
+        [PASS] test_a_receipt_that_is_not_clean_fails
+          unpushed tip -> exit 1 ✓
+        [PASS] test_a_tip_that_is_not_on_the_remote_fails
+          always-review range without a receipt -> exit 2, path named ✓
+        [PASS] test_an_always_review_range_still_cannot_verify_without_a_receipt
+          --no-remote isolates the remote check ✓
+        [PASS] test_no_remote_makes_the_other_checks_stand_alone
+          all three checks hold -> exit 0 ✓
+        [PASS] test_passes_when_all_three_checks_hold
+
+[PASS] tests/test_skill_drift_parity.py  rc=0
+        RESULT: ALL PASS (1 tests)
+        running 1 case(s)
+        [PASS] test_parity_check_discriminates
+
 ------------------------------------------------------------------------
 STATIC GATE  mcp-servers/loop-gov-mcp.py  level A4
 ------------------------------------------------------------------------
-[PASS] interim/working revision 08db5f50
+[PASS] interim/working revision 4c4ae92c
         📊 Summary: 1 file(s), 33 finding(s)
         🟡 Medium: 5
         🔵 Low: 2
         ✅ GATE_PASSED — no critical/high findings
 
-[PASS] PRE-FIX revision HEAD~1 (fe520c63)
+[PASS] PRE-FIX revision HEAD~1 (399eda41)
         📊 Summary: 1 file(s), 33 finding(s)
         🟡 Medium: 5
         🔵 Low: 2

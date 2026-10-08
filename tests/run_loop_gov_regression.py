@@ -54,6 +54,13 @@ TESTS = [
     "tests/test_refused_close_visible.py",
     "tests/test_loop_gov_lock_watchdog.py",
     "tests/test_loop_gov_mcp_startup.py",
+    # The two guards added for the always-review receipt gate and skill parity. Both
+    # were OUTSIDE this set: test_verify_landed.py had no __main__ runner (so running it
+    # executed nothing and exited 0 — a vacuous PASS, the class the guard at line 122
+    # rejects), and the parity check that measures skill drift was never exercised here
+    # at all. A guard the harness does not run is a guard nobody notices has rotted.
+    "tests/test_verify_landed.py",
+    "tests/test_skill_drift_parity.py",
 ]
 
 GATE_FILE = "mcp-servers/loop-gov-mcp.py"

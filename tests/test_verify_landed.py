@@ -58,6 +58,19 @@ def _fixture(tmp):
     manifest.write_text(f"mcp-servers/loop-gov-mcp.py\t{deployed}\n")
     receipt_dir = tmp / "state"
     receipt_dir.mkdir()
+    # The always-review list the GATE reads. A receipt is required only for a range that
+    # touches one of these, so the fixture must carry the same list the gate would read.
+    lib = repo / "ops" / "scripts" / "lib"
+    lib.mkdir(parents=True)
+    (lib / "always-review-paths.txt").write_text(
+        "# always-review\nmcp-servers/loop-gov-mcp.py\n")
+    # The shared validator the gate and this tool must BOTH use (one implementation).
+    (lib / "review-receipt-check.py").write_text(
+        (REPO / "ops" / "scripts" / "lib" / "review-receipt-check.py").read_text())
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-q", "-m", "gate inputs")
+    _git(repo, "push", "-q", "origin", "main")
+    base = _git(repo, "rev-parse", "HEAD").stdout.strip()   # the range starts AFTER these
     return repo, source, base, deployed, manifest, receipt_dir
 
 
@@ -65,9 +78,14 @@ def _tip(repo):
     return _git(repo, "rev-parse", "HEAD").stdout.strip()
 
 
-def _receipt(receipt_dir, repo, tip, verdict="CLEAN"):
+def _receipt(receipt_dir, repo, tip, base, verdict="CLEAN"):
+    """A receipt in the shape the WRITER produces, bound to the RANGE (tip AND base).
+
+    Binding matters: a receipt earned for one range must not authorise another, so the
+    fixture has to carry the real fields or it would test a shape the gate never sees.
+    """
     (Path(receipt_dir) / f".reviewed-{repo.name}-{tip}.json").write_text(
-        json.dumps({"verdict": verdict}))
+        json.dumps({"verdict": verdict, "tip_sha": tip, "base_sha": base}))
 
 
 def _args(repo, base, manifest, receipt_dir, extra=()):
@@ -83,7 +101,7 @@ def test_passes_when_all_three_checks_hold():
         _git(repo, "push", "-q", "origin", "main")
         tip = _tip(repo)
         deployed.write_text("v2\n")                      # the deploy caught up
-        _receipt(receipt_dir, repo, tip)
+        _receipt(receipt_dir, repo, tip, base)
 
         result = _run(*_args(repo, base, manifest, receipt_dir))
         assert result.returncode == 0, result.stdout + result.stderr
@@ -98,7 +116,7 @@ def test_a_deployed_copy_that_trails_the_tip_fails_and_names_the_file():
         source.write_text("v2\n")
         _git(repo, "commit", "-q", "-am", "change")
         _git(repo, "push", "-q", "origin", "main")
-        _receipt(receipt_dir, repo, _tip(repo))           # deployed copy left at v1
+        _receipt(receipt_dir, repo, _tip(repo), base)           # deployed copy left at v1
 
         result = _run(*_args(repo, base, manifest, receipt_dir))
         assert result.returncode == 1, result.stdout
@@ -124,7 +142,7 @@ def test_a_deploy_header_on_the_deployed_copy_is_not_a_mismatch():
                             "bash cortex-update.sh\n"
                             "\n"
                             "v2\n")
-        _receipt(receipt_dir, repo, _tip(repo))
+        _receipt(receipt_dir, repo, _tip(repo), base)
 
         result = _run(*_args(repo, base, manifest, receipt_dir))
         assert result.returncode == 0, result.stdout
@@ -138,7 +156,7 @@ def test_a_tip_that_is_not_on_the_remote_fails():
         source.write_text("v2\n")
         _git(repo, "commit", "-q", "-am", "change")       # NOT pushed
         deployed.write_text("v2\n")
-        _receipt(receipt_dir, repo, _tip(repo))
+        _receipt(receipt_dir, repo, _tip(repo), base)
 
         result = _run(*_args(repo, base, manifest, receipt_dir))
         assert result.returncode == 1, result.stdout
@@ -168,7 +186,7 @@ def test_a_receipt_that_is_not_clean_fails():
         _git(repo, "commit", "-q", "-am", "change")
         _git(repo, "push", "-q", "origin", "main")
         deployed.write_text("v2\n")
-        _receipt(receipt_dir, repo, _tip(repo), verdict="FINDINGS")
+        _receipt(receipt_dir, repo, _tip(repo), base, verdict="FINDINGS")
 
         result = _run(*_args(repo, base, manifest, receipt_dir))
         assert result.returncode == 1, result.stdout
@@ -183,7 +201,7 @@ def test_no_remote_makes_the_other_checks_stand_alone():
         source.write_text("v2\n")
         _git(repo, "commit", "-q", "-am", "change")       # never pushed
         deployed.write_text("v2\n")
-        _receipt(receipt_dir, repo, _tip(repo))
+        _receipt(receipt_dir, repo, _tip(repo), base)
 
         with_remote = _run(*_args(repo, base, manifest, receipt_dir))
         without_remote = _run(*_args(repo, base, manifest, receipt_dir, extra=("--no-remote",)))
@@ -199,9 +217,107 @@ def test_a_missing_map_is_could_not_verify():
         source.write_text("v2\n")
         _git(repo, "commit", "-q", "-am", "change")
         _git(repo, "push", "-q", "origin", "main")
-        _receipt(receipt_dir, repo, _tip(repo))
+        _receipt(receipt_dir, repo, _tip(repo), base)
 
         result = _run(*_args(repo, base, Path(td) / "no-such-map.tsv", receipt_dir))
         assert result.returncode == 2, result.stdout
         assert "NOT checked" in result.stdout, result.stdout
         print("  missing deploy map -> exit 2, says what was NOT checked ✓")
+
+
+# ── the receipt rule must MIRROR THE GATE, not approximate it ───────────────────
+# The gate requires a receipt only for a range that touches an always-review path
+# (ops/scripts/lib/always-review-paths.txt). Demanding one unconditionally turns a
+# legitimately unreviewed docs-only push into "COULD NOT VERIFY" — a false alarm that
+# trains the reader to ignore the tool. The mirror also has to be COMPLETE: the gate
+# validates the receipt's tip AND base through the shared validator, so a receipt
+# earned for another range must not satisfy this one.
+
+def test_a_range_that_touches_no_always_review_path_needs_no_receipt():
+    """A docs-only push the gate allows without a receipt must verify CLEAN, not rc=2.
+
+    This is the regression: the tool demanded a receipt unconditionally, so the very
+    push that exposed it (base 399eda41..tip 4c4ae92c, docs and skills only) returned
+    COULD NOT VERIFY while the gate itself had correctly required nothing.
+    """
+    with tempfile.TemporaryDirectory() as td:
+        repo, source, base, deployed, manifest, receipt_dir = _fixture(td)
+        (repo / "docs").mkdir()
+        (repo / "docs" / "notes.md").write_text("a docs-only change\n")
+        _git(repo, "add", "-A")
+        _git(repo, "commit", "-q", "-m", "docs only")
+        _git(repo, "push", "-q", "origin", "main")
+        # deliberately NO receipt: the gate does not need one for this range
+        result = _run(*_args(repo, base, manifest, receipt_dir))
+        assert result.returncode == 0, result.stdout + result.stderr
+        assert "not required" in result.stdout, result.stdout
+        assert "no always-review path" in result.stdout, result.stdout
+        print("  docs-only range, no receipt -> exit 0, 'not required' ✓")
+
+
+def test_an_always_review_range_still_cannot_verify_without_a_receipt():
+    """The mirror must not weaken the gate: an always-review path still needs one."""
+    with tempfile.TemporaryDirectory() as td:
+        repo, source, base, deployed, manifest, receipt_dir = _fixture(td)
+        source.write_text("v2\n")                     # always-review path
+        _git(repo, "commit", "-q", "-am", "enforcement change")
+        _git(repo, "push", "-q", "origin", "main")
+        deployed.write_text("v2\n")                   # only the receipt is missing
+        result = _run(*_args(repo, base, manifest, receipt_dir))
+        assert result.returncode == 2, result.stdout
+        assert "COULD NOT VERIFY" in result.stdout, result.stdout
+        assert "mcp-servers/loop-gov-mcp.py" in result.stdout, result.stdout
+        print("  always-review range without a receipt -> exit 2, path named ✓")
+
+
+def test_a_receipt_earned_for_another_range_does_not_authorise_this_one():
+    """Bound to tip AND base: a receipt for a different range is not CLEAN for this one."""
+    with tempfile.TemporaryDirectory() as td:
+        repo, source, base, deployed, manifest, receipt_dir = _fixture(td)
+        source.write_text("v2\n")
+        _git(repo, "commit", "-q", "-am", "change")
+        _git(repo, "push", "-q", "origin", "main")
+        deployed.write_text("v2\n")
+        _receipt(receipt_dir, repo, _tip(repo), "0" * 40)   # right tip, WRONG base
+        result = _run(*_args(repo, base, manifest, receipt_dir))
+        assert result.returncode == 1, result.stdout
+        assert "FAIL  receipt:" in result.stdout, result.stdout
+        print("  receipt bound to another range -> exit 1 ✓")
+
+
+def test_a_receipt_bound_to_this_range_authorises_it():
+    with tempfile.TemporaryDirectory() as td:
+        repo, source, base, deployed, manifest, receipt_dir = _fixture(td)
+        source.write_text("v2\n")
+        _git(repo, "commit", "-q", "-am", "change")
+        _git(repo, "push", "-q", "origin", "main")
+        deployed.write_text("v2\n")
+        _receipt(receipt_dir, repo, _tip(repo), base)
+        result = _run(*_args(repo, base, manifest, receipt_dir))
+        assert result.returncode == 0, result.stdout + result.stderr
+        assert "verdict=CLEAN" in result.stdout, result.stdout
+        print("  receipt bound to this range -> exit 0 ✓")
+
+
+def _main():
+    """Standalone runner.
+
+    A pytest-style file with no runner imports, executes nothing and exits 0 — so any
+    harness recording `rc=0` scores it PASS. Prove a test RAN by its output, not its
+    exit code: this prints one line per case and fails loudly if a case does not run.
+    """
+    tests = [(n, f) for n, f in sorted(globals().items())
+             if n.startswith("test_") and callable(f)]
+    if not tests:
+        print("NO TESTS RAN — this file executed nothing")
+        return 1
+    print(f"running {len(tests)} case(s)")
+    for name, fn in tests:
+        fn()
+        print(f"[PASS] {name}")
+    print(f"RESULT: ALL PASS ({len(tests)} tests)")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(_main())

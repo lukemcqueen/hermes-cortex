@@ -12,6 +12,8 @@ checkout cannot hide stranded content.
 """
 import importlib.util
 import subprocess
+import sys
+import tempfile
 from pathlib import Path
 
 _REPO = Path(__file__).resolve().parent.parent
@@ -53,3 +55,44 @@ def test_parity_check_discriminates(tmp_path, monkeypatch):
     monkeypatch.setattr(mod, "REPO_SKILLS", _REPO / "skills")
     stranded_now, _, _ = mod.survey()
     assert stranded_now == [], f"working tree still stranded: {stranded_now}"
+
+
+class _Monkeypatch:
+    """Minimal stand-in for pytest's monkeypatch — setattr, with undo.
+
+    This file must run under plain `python3` (the regression harness requires a
+    __main__ runner, and pytest is not on every host), so the two fixtures the case
+    asks for are supplied here.
+    """
+
+    def __init__(self):
+        self._undo = []
+
+    def setattr(self, target, name, value):
+        self._undo.append((target, name, target.__dict__.get(name)))
+        setattr(target, name, value)
+
+    def undo(self):
+        for target, name, old in reversed(self._undo):
+            if old is None:
+                delattr(target, name)
+            else:
+                setattr(target, name, old)
+
+
+def _main():
+    """Standalone runner — without this the file imports, runs nothing, exits 0."""
+    print("running 1 case(s)")
+    monkey = _Monkeypatch()
+    try:
+        with tempfile.TemporaryDirectory() as td:
+            test_parity_check_discriminates(Path(td), monkey)
+    finally:
+        monkey.undo()
+    print("[PASS] test_parity_check_discriminates")
+    print("RESULT: ALL PASS (1 tests)")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(_main())
