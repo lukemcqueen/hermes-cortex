@@ -4,5 +4,5 @@
 ### ollama  (curl http://127.0.0.1:11434/api/tags, status only)
 HTTP 200
 
-### agent bus  (curl -s -o /dev/null -w "<CORTEX_BUS_URL>/health" — auth-gated, 401 expected)
+### agent bus  (curl -s -o /dev/null -w '%{http_code}' "$CORTEX_BUS_URL/health"; CORTEX_BUS_URL from ~/hermes-cortex/.env, host redacted — auth-gated, 401 expected)
 HTTP 401
