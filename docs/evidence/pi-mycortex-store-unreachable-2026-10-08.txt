@@ -1,41 +1,48 @@
 PI-BACKEND ESTHER: cortex store unreachable — evidence log
-captured 2026-10-08T19:04:37 on esther
+captured 2026-10-08T19:08:59 on esther
+Reproduce: each command below is copy-pasteable as shown; re-run it verbatim.
 
-Symptom: a fresh @Esther0001Bot (/new) answered 'memory unavailable — the cortex
-store is not reachable from this host', while Hermes Esther (same host) has memory.
+Symptom: a fresh @Esther0001Bot session (/new) answered 'memory unavailable — the cortex
+store is not reachable from this host', while Hermes Esther on the same host has memory.
 
-== units ==
+== [1] unit hardening: the serving unit vs the working sibling ==
 $ systemctl --user show cortex-gateway-esther0001.service -p NoNewPrivileges -p PrivateTmp
 rc=0
-stdout='PrivateTmp=yes\nNoNewPrivileges=yes'
+stdout:
+  PrivateTmp=yes
+  NoNewPrivileges=yes
 $ systemctl --user show hermes-gateway.service -p NoNewPrivileges -p PrivateTmp
 rc=0
-stdout='PrivateTmp=no\nNoNewPrivileges=no'
+stdout:
+  PrivateTmp=no
+  NoNewPrivileges=no
 
-== store path works in a plain shell ==
-$ ~/.hermes-cortex/scripts/cortex-context.py mem_context {}
+== [2] the store is reachable in a plain shell ==
+$ ~/.hermes-cortex/scripts/cortex-context.py mem_context '{}'
+rc=0   (output redacted: peer card + 5 durable facts returned — a live store answer, not the 'unavailable' string)
+
+== [3] same command under NoNewPrivileges, faithful groups (setpriv keeps them) ==
+$ setpriv --no-new-privs -- ~/.hermes-cortex/scripts/cortex-context.py mem_context '{}'
 rc=0
-first_line='{'
+stdout:
+  memory unavailable — the cortex store is not reachable from this host. This is not an error: continue without memory. Check MYCORTEX_MEM_PASSWORD and that the mycortex-postgres container (or local psql on macOS) is up.
 
-== same command under NoNewPrivileges (faithful: real groups) ==
-$ setpriv --no-new-privs -- ~/.hermes-cortex/scripts/cortex-context.py mem_context {}
+== [4] the failing primitive the store uses on Linux ==
+$ setpriv --no-new-privs -- sg docker -c 'docker exec -i mycortex-postgres psql -U mycortex_mem_reader -d mycortex -w -t -A'
+rc=1   <- sg setgid refused; the store sees this as 'store unreachable'
+stderr:
+  setgid: Operation not permitted
+
+== [5] the fix path: direct docker exec, same hardening, succeeds ==
+$ setpriv --no-new-privs -- docker exec -i mycortex-postgres psql -U mycortex_mem_reader -d mycortex -w -v ON_ERROR_STOP=1 -t -A -c 'SELECT 1;'
 rc=0
-stdout='memory unavailable — the cortex store is not reachable from this host. This is not an error: continue without memory. Check MYCORTEX_MEM_PASSWORD and that the mycortex-postgres container (or local psql on macOS) is up.'
+stdout:
+  1
+  (stdout '1' is the QUERY RESULT of SELECT 1; rc=0 is success.)
 
-== the failing primitive: sg docker ==
-$ setpriv --no-new-privs -- sg docker -c "docker exec -i mycortex-postgres psql ..."
-rc=1
-stdout=''
-stderr='setgid: Operation not permitted'
-
-== the fix path: direct docker exec, same hardening ==
-$ setpriv --no-new-privs -- docker exec ... psql -c "SELECT 1;"
+== [6] the daemon already holds the docker group (gid 986) ==
+$ grep Groups /proc/310766/status
 rc=0
-stdout='1'
-NOTE: stdout '1' is the QUERY RESULT (SELECT 1), rc=0 = success — not an exit code of 1.
-
-== groups of the live gateway daemon ==
-$ grep Groups /proc/<MainPID>/status
-rc=0
-stdout='Groups:\t4 24 27 30 46 100 105 125 986 1000'
+stdout:
+  Groups:	4 24 27 30 46 100 105 125 986 1000
 

@@ -100,6 +100,38 @@ Two safe patterns:
    the script falls back to the sg path. Verified exploitable in todo-db.py
    (2026-08-06 party, Security role, finding B-1).
 
+## `sg docker` dies under systemd hardening — never make it the only path
+
+A harness whose systemd unit sets `NoNewPrivileges=true` (standard hardening)
+cannot reach a dockerized Postgres through the `sg docker -c "docker exec …"`
+path: `sg`/`newgrp` calls `setgroups()`/`setgid()` unconditionally, and
+`NoNewPrivileges` makes those fail — **even when the process already holds the
+docker group**. The store then reports "memory unavailable / store not
+reachable", which reads as a DB outage and is not one.
+
+Reproduce faithfully without systemd (keeps the real group list, unlike
+`systemd-run`, which drops supplementary groups and fails for the wrong reason):
+
+```bash
+setpriv --no-new-privs -- sg docker -c "docker exec -i <c> psql …"
+#   -> setgid: Operation not permitted   (rc 1)
+setpriv --no-new-privs -- docker exec -i <c> psql …
+#   -> works: the process is already in the group, no setgid needed
+```
+
+Diagnosis signature: the unit has `NoNewPrivileges=yes`, the store's Linux
+`_cmd()` returns `["sg", "docker", "-c", …]`, and `Store.available()` returns
+False → the bare "unavailable" string with no `(error)` suffix (the real
+exception is swallowed by `available()`). Check the serving unit, not just your
+shell: a sibling service without hardening keeps working, so "it works for me"
+proves nothing. `systemctl --user show <unit> -p NoNewPrivileges -p PrivateTmp`.
+
+Fix: prefer the direct-`docker exec` path when the process is already in the
+docker group (check `os.getgroups()`), keeping `sg` only as the fallback for
+hosts that genuinely lack the group. Do not "fix" it by dropping
+`NoNewPrivileges` — that trades a security control for a convenience, and the
+`sg` indirection is unnecessary whenever the group is already held.
+
 ## Every harness-invoked psql must be non-interactive: always pass `-w`
 
 `psql` prompts for a password on **/dev/tty** whenever no usable credential is
