@@ -147,50 +147,48 @@ def handler_for(mod, tool: str):
     return getattr(mod, f"_{tool}", None)
 
 
-def _stamp_repo_into_payload(payload: dict, cwd: Path) -> dict:
+def _stamp_repo_into_payload(payload: dict, cwd: Path) -> tuple[dict, str]:
     """Stamp the CLI session's actual repo onto a governance payload.
+
+    Returns ``(out, status)`` where the status is one of:
+
+    * ``"stamped"`` — ``repo_path``/``repo_slug`` resolved from the cwd and set.
+    * ``"no-repo"`` — the cwd is genuinely NOT a git repo (git ran cleanly and
+      returned rc != 0 / empty). Nothing is stamped; this is the benign case and
+      the server's own fallback is fine.
+    * ``"unexpected"`` — git could not be executed / timed out / was unreadable.
+      The caller for a repo-scoped tool (``begin_change``) MUST treat this as
+      fatal (fail closed), not warn-and-continue, or the lock silently falls
+      back to the host-canonical repo — the exact wrong-repo bug (Titus cycle
+      5742) this stamp exists to prevent.
 
     A coding-agent (pi / Claude Code / Codex / aider / cursor) drives governance
     through THIS CLI, which calls the server handlers directly — it never passes
     through the gateway's enforcer pre_tool_call hook, so
     ``_inject_session_context`` never stamps ``repo_path``/``repo_slug`` onto the
     call. ``_derive_slug`` then falls to Priority 1 — the host-canonical governed
-    repo — which tags the lock ``hermes-cortex`` whenever ``~/hermes-cortex``
-    exists on the host, even though the session is actually working in another
-    repo (Titus cycle 5742: a pi session in steadfaste-s1-model locked
-    hermes-cortex and the close gate refused forever).
-
-    The CLI KNOWS its cwd repo (it chdir's to ``--repo`` or runs in cwd), so it
-    stamps BOTH ``repo_path`` (absolute git root) and ``repo_slug`` (its name) —
-    the same pair the enforcer injects and ``_derive_slug`` Priority 0 /
-    ``_lock_repo`` consume, so a nested checkout resolves correctly. An existing
-    explicit ``repo_path``/``repo_slug`` (from the enforcer or a caller) is never
-    clobbered, and a non-repo cwd stamps nothing.
+    repo. An existing explicit ``repo_path``/``repo_slug`` (from the enforcer or a
+    caller) is never clobbered.
     """
     out = dict(payload)
     if out.get("repo_path") or out.get("repo_slug"):
-        return out
+        return out, "stamped"
     try:
         root = subprocess.run(
             ["git", "-C", str(cwd), "rev-parse", "--show-toplevel"],
             capture_output=True, text=True, timeout=5,
         )
     except (OSError, subprocess.TimeoutExpired) as exc:
-        # Unexpected operational failure (git missing, unreadable, hung) — NOT
-        # the benign "this cwd is not a git repo" case (which returns rc != 0
-        # and no-op's below). A swallowed failure would let begin_change fall
-        # back to the host-canonical repo, recreating the exact wrong-repo lock
-        # (Titus cycle 5742) this stamp exists to prevent. Warn loudly so the
-        # caller sees the stamp did not happen and can fail closed if it must.
         print(f"loop-gov: could not resolve the cwd repo to stamp ({exc}); "
-              f"governance may fall back to the host-canonical repo — supply a "
-              f"path or run inside the repo before begin_change.", file=sys.stderr)
-        return out
+              f"a repo-scoped begin_change cannot safely fall back — run inside "
+              f"the repo or pass --repo.", file=sys.stderr)
+        return out, "unexpected"
     if root.returncode == 0 and root.stdout.strip():
         repo = Path(root.stdout.strip())
         out["repo_path"] = str(repo)
         out["repo_slug"] = repo.name
-    return out
+        return out, "stamped"
+    return out, "no-repo"
 
 
 def is_refusal(payload: dict, text: str) -> bool:
@@ -278,7 +276,18 @@ def main() -> int:
     # that hook, so WITHOUT this a pi/coding-agent begin_change in a non-canonical
     # repo locks the host-canonical repo (Titus cycle 5742) and the close gate
     # refuses forever.
-    payload = _stamp_repo_into_payload(payload, Path.cwd())
+    payload, _stamp_status = _stamp_repo_into_payload(payload, Path.cwd())
+    if _stamp_status == "unexpected" and a.tool == "begin_change":
+        # ADV-4479-1: fail CLOSED for the repo-scoped tool. An unresolvable cwd
+        # repo (git missing/hung/unreadable) must not proceed with an unstamped
+        # payload that _derive_slug would tag with the host-canonical repo —
+        # recreating the exact wrong-repo lock. This is a refusal (exit 1), not
+        # a crash (exit 3): the caller did nothing wrong; governance must see a
+        # decision it cannot bypass.
+        print("❌ Cannot begin: the cwd repo could not be resolved to stamp, and "
+              "begin_change cannot safely fall back to the host-canonical repo. "
+              "Run inside the repo or pass --repo <path>.")
+        return 1
 
     handler = handler_for(mod, a.tool)
     if handler is None:

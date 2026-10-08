@@ -344,8 +344,14 @@ def _mkrepo(path: Path, with_commit: bool = True) -> Path:
 
 
 def _stamp(cli_mod, payload: dict, cwd: Path) -> dict:
-    """Run the CLI's repo-stamping helper (the function under test)."""
-    return cli_mod._stamp_repo_into_payload(dict(payload), cwd)
+    """Run the CLI's repo-stamping helper (the function under test); return the
+    (possibly unstamped) payload dict, matching the first tuple element."""
+    return cli_mod._stamp_repo_into_payload(dict(payload), cwd)[0]
+
+
+def _stamp_status(cli_mod, payload: dict, cwd: Path) -> str:
+    """Return the stamp status string (stamped / no-repo / unexpected)."""
+    return cli_mod._stamp_repo_into_payload(dict(payload), cwd)[1]
 
 
 def test_cli_stamps_the_cwd_repo_not_the_host_canonical():
@@ -396,35 +402,59 @@ def test_cli_stamp_is_a_noop_outside_a_git_repo():
 
 def test_cli_stamp_warns_when_git_is_an_unexpected_failure():
     """The finding ADV-4479-1: an unexpected operational failure (git missing /
-    hung / unreadable) MUST warn, not silently swallow — a silent no-op would let
-    begin_change fall back to the host-canonical repo and recreate the exact
-    wrong-repo lock this fix exists to prevent. Only a *clean* rc!=0 from git
-    (\"not a repo\") is a benign no-op."""
+    hung / unreadable) MUST fail closed (return \"unexpected\", never silently
+    swallow) so begin_change cannot fall back to the host-canonical repo and
+    recreate the exact wrong-repo lock this fix exists to prevent."""
     tmp = Path(_tempfile.mkdtemp(prefix="cli-stamp-warn-"))
     mod = _load(CLI, "loop_gov_cli_stamp_warn")
     import subprocess as _sp
 
-    raised = []
     def _boom(*a, **kw):
         raise _sp.TimeoutExpired(cmd="git", timeout=5)
     orig = _sp.run
     _sp.run = _boom
     try:
-        # Capture the warning on stderr by routing through a callable that
-        # records it, mirroring how main() invokes the helper.
         import contextlib
         import io
         errbuf = io.StringIO()
         with contextlib.redirect_stderr(errbuf):
-            stamped = mod._stamp_repo_into_payload({"task_id": "t"}, tmp)
+            stamped, status = mod._stamp_repo_into_payload({"task_id": "t"}, tmp)
     finally:
         _sp.run = orig
 
+    assert status == "unexpected", (
+        f"unexpected git failure did not fail closed (status={status!r}); "
+        f"begin_change would tag the host-canonical repo")
     assert "could not resolve the cwd repo" in errbuf.getvalue(), (
-        f"unexpected git failure was swallowed silently (no warning): "
-        f"{errbuf.getvalue()!r}")
+        f"no warning emitted for the unexpected failure: {errbuf.getvalue()!r}")
     assert "repo_path" not in stamped, (
         "a failed git probe must not fabricate a repo_path")
+
+
+def test_cli_begin_change_fails_closed_when_repo_unresolvable(monkeypatch, capsys):
+    """The ADV-4479-1 end-to-end shape: main() REFUSES begin_change (exit 1,
+    not 3; a decision, not a crash) when the cwd repo cannot be resolved, so an
+    unstamped payload can never reach _begin_change and tag the wrong repo."""
+    mod = _load(CLI, "loop_gov_cli_failclosed")
+    import subprocess as _sp
+    import sys as _sys
+
+    def _boom(*a, **kw):
+        raise _sp.TimeoutExpired(cmd="git", timeout=5)
+    monkeypatch.setattr(_sp, "run", _boom)
+    tmp = str(Path(_tempfile.mkdtemp(prefix="cli-failclosed-")))
+    monkeypatch.chdir(tmp)
+    monkeypatch.setattr(
+        _sys, "argv", ["loop-gov", "begin_change",
+                       '{"task_id":"t","description":"d"}'])
+
+    rc = mod.main()
+    assert rc == 1, f"begin_change did not fail closed (rc={rc})"
+    out = capsys.readouterr().out
+    assert "fall back" in out, (
+        f"refusal did not explain the fail-closed reason: {out[:200]}")
+    assert "Cannot begin" in out, (
+        f"refusal did not name begin_change: {out[:200]}")
 
 
 
@@ -448,8 +478,9 @@ def test_cli_begin_change_locks_the_cwd_repo_end_to_end():
     server.HOME = home
     server._PROCESS_SESSION_ID = ""
 
-    payload = cli_mod._stamp_repo_into_payload({"task_id": "e2e-task",
-                                                "description": "d"}, proj)
+    payload, status = cli_mod._stamp_repo_into_payload(
+        {"task_id": "e2e-task", "description": "d"}, proj)
+    assert status == "stamped", f"cwd repo did not stamp (status={status!r})"
     slug = server._derive_slug(payload)
 
     assert payload.get("repo_path") == str(proj), (
