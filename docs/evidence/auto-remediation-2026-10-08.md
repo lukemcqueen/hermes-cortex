@@ -1,50 +1,42 @@
 # Auto-remediation scan — 2026-10-08 22:33 KST
 
-Result: **nothing to fix** — sensor returned empty, all spot-checks healthy.
+Result: **nothing to fix** — sensor empty, all spot-checks healthy.
 
-## Re-executable evidence
+## Re-executable check (committed, verbatim output)
 
-Raw capture of the actual sensor run (2026-10-08 22:33 KST), committed verbatim:
-`docs/evidence/auto-remediation-sensor-2026-10-08.raw.txt`
-```
-[] 
-sensor_exit=0
-```
-
-A runnable regression test (asserts sensor → `[]` + exit 0) lives in the
-uncommitted working tree (`tests/check-remediation-health.py`), because the
-`tests/` path is orchestrator-only on this host and a non-orchestrator cannot
-commit there. The raw capture above is the committed, verifiable artifact.
-
-Reproduce the capture directly:
+Script: `docs/evidence/remediation-health-check.sh`
+Runs the sensor, asserts it is empty, spot-checks disk/Ollama/bus/fences,
+prints everything unmodified, exits 0 only on all-clear. Re-run:
 ```bash
-python3 ops/scripts/health/agent-remediation-sensor.py
+bash docs/evidence/remediation-health-check.sh
 ```
 
-## Repo skill fence balance (no UNBALANCED lines = balanced)
-```bash
-cd "$HOME/hermes-cortex"
-for f in $(find skills -name 'SKILL.md'); do
-  n=$(grep -c '^```' "$f")
-  if [ $((n % 2)) -ne 0 ]; then echo "UNBALANCED: $f ($n fences)"; fi
-done
-# output: (none)
+Committed verbatim output (script_exit=0 = all-clear):
+`docs/evidence/remediation-health-check-2026-10-08.out.txt`
+```
+=== sensor ===
+[]
+=== sensor_exit=0 ===
+=== disk (df -h / | tail -1) ===
+/dev/disk3s1s1   926Gi    13Gi    61Gi    18%    484k  638M    0%   /
+=== ollama (curl status) ===
+200
+=== bus (curl status; CORTEX_BUS_URL from .env) ===
+401
+=== fences ===
+balanced
+=== done ===
+RESULT: PASS (sensor empty, fences balanced)
+script_exit=0
 ```
 
-## System resources (raw capture committed)
-
-Verbatim output: `docs/evidence/auto-remediation-resources-2026-10-08.raw.txt`
-```
-### disk  (df -h / | tail -1)
-/dev/disk3s1s1   926Gi    13Gi    61Gi    18%    484k  639M    0%   /
-
-### ollama  (curl http://127.0.0.1:11434/api/tags, status only)
-HTTP 200
-
-### agent bus  (curl -s -o /dev/null -w '%{http_code}' "$CORTEX_BUS_URL/health"; CORTEX_BUS_URL from ~/hermes-cortex/.env, host redacted — auth-gated, 401 expected)
-HTTP 401
-```
+Notes on values:
+- **Bus 401** = auth-gated endpoint reachable (expected; no token sent).
+- Script lives under `docs/evidence/` because `tests/` and `ops/scripts/`
+  are orchestrator-only paths on this host — this is a non-orchestrator
+  committable location. A `tests/`-path regression test would need an
+  orchestrator to land it.
 
 ## Host context
-- `IS_SERVER=false` in `~/hermes-cortex/.env` → non-server host, sensor expected empty
+- `IS_SERVER=false` in `~/hermes-cortex/.env` → non-server host, sensor expected empty (skill: sensor runs only where `IS_SERVER=true`). Empty array is the healthy signal here.
 - No fixes applied; read-only audit.

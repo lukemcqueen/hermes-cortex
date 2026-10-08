@@ -1,0 +1,14 @@
+=== sensor ===
+[]
+=== sensor_exit=0 ===
+=== disk (df -h / | tail -1) ===
+/dev/disk3s1s1   926Gi    13Gi    61Gi    18%    484k  638M    0%   /
+=== ollama (curl status) ===
+200
+=== bus (curl status; CORTEX_BUS_URL from .env) ===
+401
+=== fences ===
+balanced
+=== done ===
+RESULT: PASS (sensor empty, fences balanced)
+script_exit=0
