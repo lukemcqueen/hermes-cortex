@@ -1,0 +1,23 @@
+Bus poll — titus (worker) — started 2026-10-08T20:39:04+0900
+url=realgospelmessage.com:13004  auth_user=titus (len 22, value masked)
+=== QUEUES (all depths) ===
+HTTP 200  /api/pgmq/queues
+{"queues":[{"dlq":false,"name":"broadcast","depth":0,"parent":null,"created":"2026-09-09T10:16:40.21976+00:00","processing":0},{"dlq":false,"name":"bus-health-probe","depth":0,"parent":null,"created":"2026-09-03T05:36:08.204545+00:00","processing":0},{"dlq":false,"name":"inbox_esther","depth":0,"parent":null,"created":"2026-08-31T10:41:33.107216+00:00","processing":0},{"dlq":false,"name":"inbox_fleet","depth":0,"parent":null,"created":"2026-09-28T11:51:42.9001+00:00","processing":0},{"dlq":false,"name":"inbox_gisu","depth":0,"parent":null,"created":"2026-08-31T10:41:35.754949+00:00","processing":0},{"dlq":false,"name":"inbox_health_check","depth":2,"parent":null,"created":"2026-08-30T15:05:32.439693+00:00","processing":0},{"dlq":false,"name":"inbox_joseph","depth":0,"parent":null,"created":"2026-08-31T10:41:35.912625+00:00","processing":0},{"dlq":false,"name":"inbox_kustos","depth":0,"parent":null,"created":"2026-08-31T10:41:36.085887+00:00","processing":0},{"dlq":false,"name":"inbox_moses","depth":0,"parent":null,"created":"2026-08-30T13:49:03.763937+00:00","processing":0},{"dlq":false,"name":"inbox_orchestrator","depth":2,"parent":null,"created":"2026-08-30T13:47:18.046651+00:00","processing":0},{"dlq":true,"name":"inbox_orchestrator_dlq","depth":0,"parent":"inbox_orchestrator","created":"2026-08-30T13:47:18.049545+00:00","processing":0},{"dlq":false,"name":"inbox_titus","depth":0,"parent":null,"created":"2026-08-31T10:41:36.245108+00:00","processing":0},{"dlq":false,"name":"out_esther","depth":0,"parent":null,"created":"2026-10-02T08:11:48.820965+00:00","processing":0}],"total":13}
+
+=== WORKFLOWS blocked ===
+HTTP 200  /api/workflows?state=blocked
+{"workflows":[],"total":0}
+
+=== QUEUE inbox_titus ===
+HTTP 200  /api/pgmq/queue/inbox_titus
+{"dlq":false,"name":"inbox_titus","depth":0,"parent":null,"created":"2026-08-31T10:41:36.245108+00:00","processing":0}
+
+=== ACL inbox_health_check ===
+HTTP 403  /api/pgmq/queue/inbox_health_check
+{"detail":"Agent 'titus' does not have read access to queue 'inbox_health_check'"}
+
+=== ACL inbox_orchestrator ===
+HTTP 403  /api/pgmq/queue/inbox_orchestrator
+{"detail":"Agent 'titus' does not have read access to queue 'inbox_orchestrator'"}
+
+finished 2026-10-08T20:39:05+0900
