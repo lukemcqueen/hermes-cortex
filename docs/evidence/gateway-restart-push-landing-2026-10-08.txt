@@ -133,30 +133,46 @@ RE-RUN THIS CHECK (any host, no arguments):
   recorded here so that a future reader measures them rather than trusting a PASS line.
 
 ================================================================================
-ADDENDUM — verifiable disposition of the stranded-skill finding (19:35 KST)
+ADDENDUM — verifiable disposition of the stranded-skill finding (corrected, 19:38 KST)
 ================================================================================
 
-The close review asked for proof of the issue/task disposition, not prose. Captured
-directly from the stores:
+The close review asked for tracker output instead of a prose assertion that the issue was
+recorded and promoted. An earlier version of this addendum was itself wrong — it queried a
+non-existent `events` table and looked for a task store that is not a file DB on this host,
+so it committed a traceback. That version is superseded by the real output below.
 
-$ # loop-governance: the recorded issue for task push-restart-vis
-Traceback (most recent call last):
-  File "<string>", line 7, in <module>
-sqlite3.OperationalError: no such table: events
-events columns: []
+1. LOOP-GOVERNANCE ISSUE EVENT (store: ~/.hermes-cortex/data/loop-governance.db,
+   table task_events — the correct table; it has no `events` table)
+   Row, selected by `SELECT * FROM task_events ORDER BY rowid DESC`:
+     id=62 | timestamp=2026-10-08 10:30:02 | task_id=push-restart-vis
+     | agent=unknown | event_type=issue_recorded
+     | detail=[medium] 7 skill files are STRANDED — ... (the full 7-path finding, listed in
+       the CORRECTION section above)
 
-$ # tasks store: the promoted task (UUID visible in the add confirmation)
+2. TASKS STORE (the promoted task, as the tasks tool returns it)
+   ID                                   Agent   Scope     Status    Pr  Content
+   054aac1e-2208-44c2-956d-371674620023  esther  personal  pending   2   Resolve the 7 stranded
+     skill files (deployed-only content the repo lacks) ... acceptance: check-skill-drift-parity.py
+     verdict PASS and doctor's skill-drift block gone, with the diff for each file shown.
 
-$ python3 ops/scripts/manage/check-skill-drift-parity.py | tail -12   # measured again
+3. FRESH MEASUREMENT OF THE FINDING (re-run from this file, not copied)
+   $ python3 ops/scripts/manage/check-skill-drift-parity.py
+     **Verdict: FAIL**
+     Stranded files:
+     - autonomous-ai-agents/pi-coding-agent/SKILL.md
+     - devops/governance-closeout/SKILL.md
+     - devops/hermes-gateway-operations/SKILL.md
+     - devops/psql-automation/SKILL.md
+     - devops/shared-repo-push-gates/SKILL.md
+     - software-development/change-checklist/SKILL.md
+     - software-development/session-manager/SKILL.md
 
-**Verdict: FAIL**
-
-Stranded files:
-- autonomous-ai-agents/pi-coding-agent/SKILL.md
-- devops/governance-closeout/SKILL.md
-- devops/hermes-gateway-operations/SKILL.md
-- devops/psql-automation/SKILL.md
-- devops/shared-repo-push-gates/SKILL.md
-- software-development/change-checklist/SKILL.md
-- software-development/session-manager/SKILL.md
-
+RELATED, AND WORTH THE NEXT READER'S ATTENTION: the same store shows this class of blocker is
+recurring and unfixed — task_events #60 (2026-10-07 13:49, task bus-inbox-processing) and #61
+(2026-10-07 20:39, task mycortex-dream-nightly) both record ops cycles that could not close
+because the review material folded ANOTHER session's uncommitted or already-committed work
+into an otherwise-empty cycle's diff. #61 names the mechanism: loop-gov-mcp.py's numstat
+folds staged+unstaged diffs into the material (lines ~2152-2157), and prior fixes
+(e7d807c7, c33185ca, 4e2da957) scoped material to AUTHORED COMMITS but did not cover this
+case. Both cycles were left to TTL-release the lock with their substantive work done —
+no override applied. That is the same shape as this cycle: its diff is a peer's commit.
