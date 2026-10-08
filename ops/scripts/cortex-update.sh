@@ -2993,6 +2993,29 @@ main() {
     fi
   fi
 
+  # ── The fleet venv must be able to RUN what we point at it ──
+  # ~/.hermes-cortex/venv is the interpreter the MCP-server registrations below use, and
+  # it is a UV venv (no pip binary). Measured 2026-10-08 on esther: it existed but imported
+  # neither yaml nor mcp — it held only psycopg — so orch-daily-regression-gate.sh failed
+  # EVERY DAY on PyYAML and any MCP server registered against it could not start. A venv
+  # EXISTING proves nothing about what is inside it. Nothing in this repo creates that
+  # venv, so a rebuild can silently strip it again; this says so here, loudly, instead of
+  # letting it surface as an unrelated-looking failure days later.
+  _fleet_venv="${HOME}/.hermes-cortex/venv/bin/python3"
+  if [[ -x "$_fleet_venv" ]]; then
+    _venv_missing=""
+    for _vm in yaml mcp psycopg; do
+      "$_fleet_venv" -c "import ${_vm}" >/dev/null 2>&1 || _venv_missing="${_venv_missing} ${_vm}"
+    done
+    if [[ -n "$_venv_missing" ]]; then
+      error "fleet venv cannot import:${_venv_missing}  (${_fleet_venv/$HOME/~})"
+      info  "  Repair: uv pip install --python ${_fleet_venv/$HOME/~} 'pyyaml==6.0.3' 'mcp==2.0.0'"
+      info  "  It is a uv venv — there is no pip binary. Age-gate first:"
+      info  "  python3 ${CORTEX_DEPLOY_HOME}/scripts/check-package-age.py pip pyyaml"
+      _DEFERRED_FAILURES+=("fleet venv modules:${_venv_missing}")
+    fi
+  fi
+
   # ── Ensure tasks MCP server registered (ALL agents, not orch-only) ──
   # Idempotent hermes mcp add; config points at the repo path (mirrors
   # loop-governance wiring — the doctor's --fix converges the same way).

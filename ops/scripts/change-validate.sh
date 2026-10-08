@@ -92,16 +92,23 @@ for f in $STAGED; do
 done
 
 # ── 3. Registration consistency ─────────────────────────────
-# If a deployable file was added/modified, check it's registered
+# Only NEWLY ADDED deployable files are checked. A MODIFIED file that has lived in
+# ops/scripts/ unregistered for months is a deliberate choice, not a missed step: this
+# repo keeps run-scoped and checkout-only tools (19 of 99 manage scripts at last count,
+# plus ops/scripts/quality/evidence-*.sh). Warning about those on every edit they receive
+# trains the reader to ignore the warning — and an ignored warning is how a genuinely
+# missed registration gets missed. An ADDED file is the case this check exists for.
 if [[ -f "$CORTEX_UPDATE" ]]; then
-  for f in $STAGED; do
+  ADDED_FILES="$(git diff --cached --name-only --diff-filter=A 2>/dev/null || true)"
+  for f in $ADDED_FILES; do
     # Skip files not in deploy/ or ops/scripts/
     case "$f" in
       deploy/*|ops/scripts/*)
         basename_f=$(basename "$f")
         if ! grep -q "$basename_f" "$CORTEX_UPDATE" 2>/dev/null; then
-          warn "File $f is not registered in cortex-update.sh register() —"
+          warn "NEW file $f is not registered in cortex-update.sh register() —"
           info "  Add: register \"$f\" \"\${CORTEX_DEPLOY_HOME}/scripts/$(basename $f)\""
+          info "  Or state why it is checkout-only (a run-scoped evidence tool needs no entry)."
           HAS_ISSUES=1
         fi
         ;;
