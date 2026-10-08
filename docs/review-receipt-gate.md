@@ -58,6 +58,8 @@ close succeeds: review CLEAN, review skipped as simple, and all-LOW findings.
 ```bash
 python3 tests/test_review_receipt_gate.py     # gate logic + deployed hook refusal
 python3 tests/test_review_receipt_writer.py   # the receipt producer
+python3 tests/test_review_material_consistency.py  # Diff stat ⊆ diff body
+python3 tests/test_review_material_scope.py   # working-tree scope of the measurement
 python3 ops/scripts/lib/review-receipt-check.py <receipt.json> <tip> <base>
 ```
 
@@ -153,6 +155,35 @@ began.** `begin_change` snapshots the dirty paths it finds (`path -> content has
 cycle. The anti-dodge property is intact — a worker's own edits change the file *during* the
 cycle, so they are still counted. No snapshot at all (an older lock, or a tree over the cap —
 logged) keeps the previous whole-tree behaviour: the fallback is stricter, never looser.
+
+### The material keeps the same rule — plus one invariant
+
+Scoping the *measurement* was only half the job. The `Diff stat` the reviewer reads was still
+built from that wider set, so it named paths whose diff the material never showed. Cycle 10877
+was charged as **fabrication** for exactly that:
+
+> "The diff stat header claims 11 files changed with 578 lines of changes, but the worker
+> simultaneously asserts no repository edits were made... A diff stat of non-zero changes
+> with an unchanged HEAD is a contradiction." (ADV-10877-1, critical)
+
+It fired two ways: a lock with **no snapshot** (every dirty path, a peer's included), and —
+even with a correct snapshot — the cycle's **own** uncommitted edits, which the measurement
+counts but a commit-built diff body cannot show.
+
+The invariant: **a path is never named in the material without its diff being present.** The
+`Diff stat` is built from the same range as the diff body (`base..HEAD`, the audited commit
+range), and any working-tree path the measurement counted but the material does not show is
+disclosed as `...[OUT OF SCOPE: ...]` — reported, never silently dropped, never named as
+though its diff were there. The header counts are read back from the same rows that are
+printed, so header, stat and diff cannot disagree.
+
+With a clean commit the material is exactly the committed range and the disclosure is empty.
+Leave work uncommitted and the reviewer sees an empty stat plus the disclosure — the honest,
+fail-closed answer, because the commit is the artifact under review.
+
+`tests/test_review_material_consistency.py` asserts the invariant in all three states (peer
+dirt, own uncommitted edit, committed work); the committed case is the positive control, so a
+"fix" that merely blanks the stat cannot pass.
 
 ## Why a repo-local `.hermes-cortex/` can reappear — and what catches it
 

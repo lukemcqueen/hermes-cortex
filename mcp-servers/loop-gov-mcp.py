@@ -2237,19 +2237,26 @@ def _complexity(repo: Path, started_at: str, dirty_at_start=None) -> dict:
     _author = _agent_author(repo)
     _authored = _authored_commits(repo, base, _author)
     if _authored:
-        numstat = _git_capture(repo, "log", "--numstat", "--format=",
-                               "--author=" + _author, base + "..HEAD")
+        range_numstat = _git_capture(repo, "log", "--numstat", "--format=",
+                                     "--author=" + _author, base + "..HEAD")
     else:
         # No positive identity / nothing authored: do NOT narrow (fail open).
-        numstat = _git_capture(repo, "diff", "--numstat", base + "..HEAD")
+        range_numstat = _git_capture(repo, "diff", "--numstat", base + "..HEAD")
+    numstat = range_numstat
     # Working-tree changes: only the paths THIS cycle touched. A peer session sharing this
     # checkout leaves its own dirty files here, and counting them made this cycle look
     # complex while their diff was absent from the material (which is built from commits),
     # so the reviewer was handed a file list it could not see. None = no snapshot, keep the
     # whole-tree behaviour.
     _own_wt = _own_working_tree_paths(repo, dirty_at_start)
-    numstat += _filter_numstat(_git_capture(repo, "diff", "--cached", "--numstat"), _own_wt)  # staged
-    numstat += _filter_numstat(_git_capture(repo, "diff", "--numstat"), _own_wt)              # unstaged
+    _wt_numstat = _filter_numstat(_git_capture(repo, "diff", "--cached", "--numstat"), _own_wt)  # staged
+    _wt_numstat += _filter_numstat(_git_capture(repo, "diff", "--numstat"), _own_wt)             # unstaged
+    numstat += _wt_numstat
+    # The working-tree paths the MEASUREMENT counted. The material cannot show their diff
+    # (it is built from COMMITS), so it discloses them rather than naming them in the Diff
+    # stat — a path named without its diff is a self-contradiction the reviewer is right to
+    # charge as fabrication (cycle 10877). See _material_scope.
+    worktree_files = set(_parse_numstat(_wt_numstat)[0])
 
     files, added, removed = _parse_numstat(numstat)
 
@@ -2278,6 +2285,7 @@ def _complexity(repo: Path, started_at: str, dirty_at_start=None) -> dict:
         if _own_wt is not None and f not in _own_wt:
             continue          # already untracked before this cycle — not this cycle's file
         files.add(f)
+        worktree_files.add(f)
         if not _is_noise(f):
             try:
                 with open(repo / f, encoding="utf-8", errors="ignore") as fh:
@@ -2317,6 +2325,81 @@ def _complexity(repo: Path, started_at: str, dirty_at_start=None) -> dict:
         "always_review": bool(always),
         "always_paths": sorted(set(always)),
         "numstat": numstat.strip(),
+        # The audited range alone — the basis the material's diff body uses, so the
+        # reviewer's "Diff stat" can never name a path whose diff is absent.
+        "range_numstat": range_numstat.strip(),
+        # Working-tree paths the measurement counted (see worktree_files above).
+        "worktree_files": sorted(worktree_files),
+    }
+
+
+def _range_path_set(numstat: str) -> set:
+    """Every path a numstat block concerns, with RENAME rows resolved to the RHS.
+
+    git reports a rename's path field as `old => new` (or `pre{a => b}post`). The
+    path that exists at HEAD — the one a working-tree read sees — is the right-hand
+    side. `_parse_numstat` deliberately keeps the raw field (one row, one file, which
+    is what the MEASUREMENT wants), but scoping the material needs the real path: a
+    committed rename that is ALSO dirty would otherwise be reported as out-of-scope
+    while its diff sits right there in the body.
+    """
+    out = set()
+    for line in numstat.splitlines():
+        parts = line.split("\t")
+        if len(parts) < 3:
+            continue
+        field = parts[2].strip()
+        if not field:
+            continue
+        out.add(field)
+        if " => " in field:
+            head, brace, tail = field.partition("{")
+            if brace and "}" in tail:
+                old_new, _, rest = tail.partition("}")
+                if " => " in old_new:
+                    out.add(head + old_new.split(" => ", 1)[1] + rest)
+            out.add(field.split(" => ", 1)[1].strip())
+    return {p for p in out if p}
+
+
+def _material_scope(repo: Path, base: str, author: str, authored: bool, cx: dict) -> dict:
+    """The Diff stat for the reviewer's MATERIAL — the same range as the diff body.
+
+    `_complexity` deliberately measures a WIDER set than the material can show: it
+    counts the cycle's own uncommitted work so a worker cannot dodge the gate by
+    leaving risky edits uncommitted. The material's diff body, however, is built
+    from COMMITS. Presenting the wider set as the "Diff stat" made the material
+    contradict itself, and the reviewer — correctly — charged it as fabrication:
+
+        "The diff stat header claims 11 files changed with 578 lines of changes,
+         but the worker simultaneously asserts no repository edits were made...
+         A diff stat of non-zero changes with an unchanged HEAD is a
+         contradiction." (ADV-10877-1, critical)
+
+    So the material's stat is the range's own numstat, and every working-tree path
+    the measurement counted but the material does not show is DISCLOSED — never
+    silently dropped, and never named as though its diff were present.
+
+    Returns {"numstat", "files", "lines", "always_paths", "excluded"}.
+    """
+    if authored:
+        range_numstat = _git_capture(repo, "log", "--numstat", "--format=",
+                                     "--author=" + author, base + "..HEAD")
+    else:
+        range_numstat = _git_capture(repo, "diff", "--numstat", base + "..HEAD")
+    range_files, added, removed = _parse_numstat(range_numstat)
+    # Counts are read back from the SAME rows that are printed, so the header can
+    # never disagree with the stat, nor the stat with the diff body.
+    always = sorted(f for f in range_files if any(ap in f for ap in ALWAYS_REVIEW_PATHS))
+    # In-scope for the disclosure test includes a rename's HEAD-side name, so a
+    # committed rename that is also dirty is not falsely reported as out-of-scope.
+    excluded = sorted(set(cx.get("worktree_files") or ()) - _range_path_set(range_numstat))
+    return {
+        "numstat": range_numstat.strip(),
+        "files": len(range_files),
+        "lines": added + removed,
+        "always_paths": always,
+        "excluded": excluded,
     }
 
 
@@ -3302,6 +3385,22 @@ def _adversarial_review_gate(lock: dict, cycle: dict,
         "(commits authored by the agent above)" if _authored
         else "(UNNARROWED — session identity unresolved; authorship per commit below)"
     )
+    # The Diff stat the reviewer reads is built from the SAME range as the diff body
+    # below, so the material can never name a path whose diff is absent (cycle 10877
+    # was charged as fabrication for exactly that). Working-tree paths the complexity
+    # measurement counted are DISCLOSED, never named as though their diff were here.
+    _scope = _material_scope(repo, _base, _author, bool(_authored), cx)
+    _excluded_note = ""
+    if _scope["excluded"]:
+        _names = ", ".join(_scope["excluded"][:15])
+        if len(_scope["excluded"]) > 15:
+            _names += f" (+{len(_scope['excluded']) - 15} more)"
+        # Neutral wording: state the limit, do not direct the reviewer.
+        _excluded_note = (
+            f"...[OUT OF SCOPE: this cycle also has uncommitted working-tree changes in "
+            f"{_names} — they are outside the audited range {_base}..HEAD, so their diff "
+            f"is not part of this material]\n"
+        )
     material = (
         f"Session: {_sid}\n"
         f"Agent (git author): {_author or '(unresolved)'}\n"
@@ -3310,9 +3409,11 @@ def _adversarial_review_gate(lock: dict, cycle: dict,
         f"Cycle ID: {cycle.get('id', 0)}\n"
         f"Task: {task_id}\n"
         f"Description: {description}\n"
-        f"Diff stat (files={cx['files']}, lines={cx['lines']}"
-        + (f", always-review={','.join(cx['always_paths'])}" if cx["always_paths"] else "")
-        + "):\n" + cx["numstat"] + "\n\n"
+        f"Diff stat (files={_scope['files']}, lines={_scope['lines']}"
+        + (f", always-review={','.join(_scope['always_paths'])}"
+           if _scope["always_paths"] else "")
+        + "):\n" + _scope["numstat"] + "\n"
+        + _excluded_note + "\n"
         f"Worker's note (self-report — the thing being reviewed):\n{outcome_note}\n\n"
         f"Full diff:\n{diff_text}\n"
     )
