@@ -1,0 +1,28 @@
+slash-parity test evidence — 2026-10-08 (host esther, repo hermes-cortex)
+
+Interpreter: the hermes-agent venv (the repo's pytest), Python 3.11.15, pytest 9.1.1.
+Commands, in order; output is verbatim.
+
+$ python3 -m pytest tests/test_gateway_slash_parity.py -q   # the NEW suite
+plugins: anyio-4.12.1
+collected 37 items
+
+tests/test_gateway_slash_parity.py ..................................... [100%]
+
+============================== 37 passed in 0.68s ==============================
+
+$ python3 -m pytest tests/test_gateway_slash_parity.py tests/test_gateway_modules_are_deployed.py tests/test_context_harnesses.py tests/test_gateway_new_session.py tests/test_cortex_gateway_daemon_slice.py tests/test_gateway_agent_registry.py tests/test_cortex_gateway_backend.py tests/test_gateway_parity_evidence.py -q
+plugins: anyio-4.12.1
+collected 133 items
+
+tests/test_gateway_slash_parity.py ..................................... [ 27%]
+                                                                         [ 27%]
+tests/test_gateway_modules_are_deployed.py .......                       [ 33%]
+tests/test_context_harnesses.py .............................            [ 54%]
+tests/test_gateway_new_session.py ....................                   [ 69%]
+tests/test_cortex_gateway_daemon_slice.py ...........                    [ 78%]
+tests/test_gateway_agent_registry.py ....................                [ 93%]
+tests/test_cortex_gateway_backend.py ......                              [ 97%]
+tests/test_gateway_parity_evidence.py ...                                [100%]
+
+============================= 133 passed in 25.33s =============================

@@ -1,0 +1,127 @@
+systemd proof for the gateway /restart handler — 2026-10-08 (host esther, v2 fresh run)
+=====================================================================================
+
+CLAIM UNDER TEST: /restart answers the human, exits, and systemd brings the gateway
+back (the unit is Restart=always). The ACCEPT branch cannot be exercised from a script
+— the handler requires OUR pid to be the unit's MainPID — so this ran as the MainPID of
+a throwaway user unit executing the DEPLOYED gateway code with a stub transport.
+
+COMMANDS (verbatim) and CAPTURE:
+
+$ rm -f ~/.hermes/cache/scratch/restart-probe.marker
+$ systemctl --user daemon-reload && systemctl --user start cortex-gateway-restart-probe.service && sleep 12
+$ systemctl --user show cortex-gateway-restart-probe.service -p NRestarts -p MainPID -p ActiveState
+MainPID=4090362
+NRestarts=1
+ActiveState=active
+
+$ journalctl --user -u cortex-gateway-restart-probe.service --no-pager -n 14 --since '10 minutes ago'
+Oct 08 16:45:20 esther systemd[1099]: Started cortex-gateway-restart-probe.service - SCRATCH probe — cortex-gateway /restart supervision check (delete after use).
+Oct 08 16:45:20 esther python[4089998]: START pid=4089998 unit='cortex-gateway-restart-probe.service' supervised=True
+Oct 08 16:45:20 esther python[4089998]: FIRST_START — invoking the real /restart handler now
+Oct 08 16:45:20 esther python[4089998]: SENT 🔄 restarting the gateway — back in a few seconds…
+Oct 08 16:45:25 esther systemd[1099]: cortex-gateway-restart-probe.service: Scheduled restart job, restart counter is at 1.
+Oct 08 16:45:25 esther systemd[1099]: Started cortex-gateway-restart-probe.service - SCRATCH probe — cortex-gateway /restart supervision check (delete after use).
+Oct 08 16:45:25 esther python[4090362]: START pid=4090362 unit='cortex-gateway-restart-probe.service' supervised=True
+Oct 08 16:45:25 esther python[4090362]: SECOND_START_OK — systemd restarted the unit after the /restart exit
+
+READ THE CAPTURE LIKE THIS:
+  * START … supervised=True  — the process IS the unit's main process, so the real
+    handler runs its accept path instead of refusing.
+  * SENT 🔄 restarting …    — the reply reached the transport BEFORE the exit.
+  * 'Scheduled restart job, restart counter is at 1' + a NEW pid — systemd brought the
+    unit back. NRestarts=1 and MainPID changed; that is the restart, not a claim.
+
+The REFUSAL branch (not supervised) is covered by tests/test_gateway_slash_parity.py
+(three cases, incl. 'a daemon inside SOMEONE ELSE's service is not supervised') and by
+the live acceptance run, whose process is never the unit's MainPID.
+
+ARTIFACTS, so this is re-runnable on any host:
+
+--- ~/.config/systemd/user/cortex-gateway-restart-probe.service ---
+[Unit]
+Description=SCRATCH probe — cortex-gateway /restart supervision check (delete after use)
+After=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/.hermes-cortex/scripts
+Environment=PATH=%h/.local/bin:%h/.bun/bin:/usr/local/bin:/usr/bin:/bin
+EnvironmentFile=-%h/hermes-cortex/.env
+ExecStart=%h/.hermes-cortex/venv/bin/python %h/.hermes/cache/scratch/restart_probe.py
+Restart=always
+RestartSec=3
+StandardOutput=journal
+StandardError=journal
+
+--- ~/.hermes/cache/scratch/restart_probe.py ---
+#!/usr/bin/env python3
+"""Scratch probe: does /restart really come back under systemd? (re-runnable)
+
+Run as the MainPID of a throwaway systemd USER unit, this builds the DEPLOYED
+gateway from the live config (stub transport: it must not poll the bot token),
+decides whether it is supervised, and — on the FIRST start only — lets the real
+/restart handler exit the process. If `Restart=always` brings the unit back, the
+second start prints its marker and the mechanism is proven.
+
+Unit file used (throwaway, removed after):
+
+    [Unit]
+    Description=SCRATCH probe — cortex-gateway /restart supervision check
+    [Service]
+    Type=simple
+    WorkingDirectory=%h/.hermes-cortex/scripts
+    EnvironmentFile=-%h/hermes-cortex/.env
+    ExecStart=%h/.hermes-cortex/venv/bin/python %h/.hermes/cache/scratch/restart_probe.py
+    Restart=always
+    RestartSec=3
+"""
+import json
+import os
+import sys
+import time
+from pathlib import Path
+
+sys.path.insert(0, "~/.hermes-cortex/scripts")
+import cortex_gateway.agents as agents      # noqa: E402
+import cortex_gateway.daemon as daemon      # noqa: E402
+import cortex_gateway.models as models      # noqa: E402
+import cortex_gateway.sessions as sessions  # noqa: E402
+
+MARKER = Path("~/.hermes/cache/scratch/restart-probe.marker")
+
+
+class StubTransport:
+    offset = 0
+
+    def parse(self, raw):
+        return dict(raw)
+
+    def send(self, envelope):
+        print(f"SENT {envelope.get('body')}", flush=True)
+        return True
+
+
+cfg = json.loads(Path("~/.hermes-cortex/gateway-esther0001.yaml").read_text())
+backends = agents.build_backends(cfg["backends"], {"bus_url": "", "bus_headers": {},
+                                                    "secret": os.environ.get("GATEWAY_SECRET", "")})
+gw = daemon.Gateway(transport=StubTransport(), backends=backends, default_agent="pi",
+                    allowed_users=None,
+                    sessions=sessions.SessionBook(Path("/tmp/restart-probe-sessions.json")),
+                    models=models.ModelBook(Path("/tmp/restart-probe-models.json")))
+
+print(f"START pid={os.getpid()} unit={gw._own_unit_name()!r} "
+      f"supervised={gw._supervised_by_systemd()}", flush=True)
+
+if MARKER.exists():
+    print("SECOND_START_OK — systemd restarted the unit after the /restart exit",
+          flush=True)
+    time.sleep(15)
+    sys.exit(0)
+
+MARKER.write_text("first start\n")
+print("FIRST_START — invoking the real /restart handler now", flush=True)
+gw._handle_restart(999999)          # replies, then exits(0) via _exit_for_restart
+time.sleep(10)
+print("HANDLER_DID_NOT_EXIT — /restart is broken", flush=True)
+sys.exit(9)
