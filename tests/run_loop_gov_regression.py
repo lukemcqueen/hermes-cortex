@@ -114,6 +114,13 @@ def main() -> int:
             failures.append(f"{rel}: MISSING")
             out.append(f"[FAIL] {rel} -- file does not exist")
             continue
+        # A test file with no __main__ runner imports and exits 0 having executed
+        # NOTHING (pytest is not installed on this host), so the harness would record a
+        # vacuous PASS. Found on test_review_material_scope.py, 2026-10-08 (cycle 10916).
+        if "__main__" not in path.read_text(errors="ignore"):
+            failures.append(f"{rel}: no __main__ runner (vacuous PASS)")
+            out.append(f"[FAIL] {rel} -- no __main__ runner: exits 0 without running a test")
+            continue
         proc = _run([sys.executable, rel])
         ok = proc.returncode == 0
         if not ok:

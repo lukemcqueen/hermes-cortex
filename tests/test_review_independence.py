@@ -58,3 +58,15 @@ def test_material_is_appended_below_the_marker():
         "prompt assembly must be template-then-material (material below the "
         "untrusted marker, never above it)"
     )
+
+
+if __name__ == "__main__":
+    # pytest is not installed on this host and tests/run_loop_gov_regression.py runs
+    # each file as `python3 <file>`: without this runner the file exited 0 having
+    # executed NOTHING, so every committed artifact recorded a vacuous PASS
+    # (found 2026-10-08, cycle 10916).
+    for _fn in (test_template_is_under_an_orchestrator_only_path,
+                test_reviewer_script_reads_prompt_from_committed_template_only,
+                test_material_is_appended_below_the_marker):
+        _fn()
+    print("ALL PASS — reviewer independence")

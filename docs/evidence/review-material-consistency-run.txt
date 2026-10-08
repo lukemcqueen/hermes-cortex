@@ -1,0 +1,52 @@
+Review-material consistency — raw execution output
+========================================================================
+Cycle 10916 (task material-scope-own-paths). Every command below is re-runnable;
+nothing here is a transcription of a past action.
+
+$ python3 tests/test_review_material_consistency.py
+peer dirt: measurement counts 2, material names 0, discloses ['peer.txt', 'peer_loose.txt'] ✓
+  own uncommitted edit: measurement counts 1, material names 0, discloses ['base.txt'] ✓
+  committed work: named with files=1 lines=2, nothing excluded ✓
+  mixed: committed 'base.txt' named, 'leftover.txt' disclosed ✓
+  committed rename: resolved to its HEAD-side name, not disclosed ✓
+  rename forms: bare, braced, braced-with-suffix, empty, malformed ✓
+ALL PASS — the reviewer's material is self-consistent
+[exit 0]
+
+$ python3 tests/test_review_material_scope.py     # the measurement half
+scoped files=2 vs unscoped files=4: the peer's two paths are excluded only from the scoped measurement ✓
+  no snapshot -> whole tree counted (unchanged behaviour, fail-open) ✓
+  own-paths = exactly what changed since the snapshot ✓
+  unreadable snapshot -> no narrowing; empty own-set -> nothing kept ✓
+  cap exceeded -> snapshot empty -> whole-tree scope (fail toward review) ✓
+ALL PASS — working-tree scope of the review measurement
+[exit 0]
+
+$ python3 <the probe below>        # the real checkout, this cycle's real lock
+lock                    : material-scope-own-paths  (dirty_at_start: 11 paths)
+audited range           : 85653e34..HEAD   authored=True author=esther@hermes.local
+  [no snapshot (worst case)]
+     measurement : files=20 lines=1301 is_complex=True
+     diff body   : 51709 chars
+     MATERIAL stat: files=5 lines=633
+     names       : ['docs/review-receipt-gate.md', 'mcp-servers/loop-gov-mcp.py', 'tests/artifacts/loop-gov-regression.txt', 'tests/run_loop_gov_regression.py', 'tests/test_review_material_consistency.py']
+     out-of-scope: 15 path(s)
+     INVARIANT Diff stat subset-of diff body : True
+  [this lock's snapshot]
+     measurement : files=9 lines=723 is_complex=True
+     diff body   : 51709 chars
+     MATERIAL stat: files=5 lines=633
+     names       : ['docs/review-receipt-gate.md', 'mcp-servers/loop-gov-mcp.py', 'tests/artifacts/loop-gov-regression.txt', 'tests/run_loop_gov_regression.py', 'tests/test_review_material_consistency.py']
+     out-of-scope: 4 path(s)
+     INVARIANT Diff stat subset-of diff body : True
+[exit 0]
+
+BEFORE this change the no-snapshot case printed a Diff stat naming every dirty
+path (11 files / 578 lines on cycle 10877) beside a 0-char diff body, because the
+stat was built from the complexity MEASUREMENT while the body is built from
+COMMITS. The reviewer charged it as fabrication - ADV-10877-1, critical:
+  "A diff stat of non-zero changes with an unchanged HEAD is a contradiction."
+After the change the stat is built from the same range as the body, so the
+invariant above holds in both cases and any path the material cannot show is
+disclosed instead of named.
+

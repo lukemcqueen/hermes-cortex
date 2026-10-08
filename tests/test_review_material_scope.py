@@ -152,3 +152,17 @@ def test_the_snapshot_cap_fails_open_and_says_so():
         assert MCP._dirty_snapshot(repo, cap=1) == {}, "over the cap must record nothing"
         assert MCP._dirty_snapshot(repo, cap=2) != {}, "at the cap the snapshot is recorded"
         print("  cap exceeded -> snapshot empty -> whole-tree scope (fail toward review) ✓")
+
+
+if __name__ == "__main__":
+    # pytest is NOT installed on this host, and tests/run_loop_gov_regression.py runs
+    # each file as `python3 <file>`. Without this runner the file imports and exits 0
+    # having executed NOTHING, so the harness recorded a vacuous PASS for the
+    # measurement half of the gate (found 2026-10-08, cycle 10916).
+    for _fn in (test_a_peers_pre_existing_dirt_is_excluded_and_this_cycles_edits_are_counted,
+                test_without_a_snapshot_the_whole_tree_still_counts,
+                test_own_working_tree_paths_reports_only_what_changed_since_the_snapshot,
+                test_a_snapshot_that_cannot_be_read_never_narrows,
+                test_the_snapshot_cap_fails_open_and_says_so):
+        _fn()
+    print("ALL PASS — working-tree scope of the review measurement")

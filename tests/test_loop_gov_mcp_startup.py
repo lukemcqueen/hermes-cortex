@@ -92,3 +92,13 @@ def test_server_starts_with_real_home():
         f"server exited {proc.returncode} under real HOME.\n"
         f"stderr:\n{proc.stderr[:2000]}"
     )
+
+
+if __name__ == "__main__":
+    # pytest is not installed on this host and tests/run_loop_gov_regression.py runs
+    # each file as `python3 <file>`: without this runner the file exited 0 having
+    # executed NOTHING, so every committed artifact recorded a vacuous PASS
+    # (found 2026-10-08, cycle 10916).
+    test_server_starts_without_hermes_models_symlink()
+    test_server_starts_with_real_home()
+    print("ALL PASS — MCP server starts under both HOME shapes")
