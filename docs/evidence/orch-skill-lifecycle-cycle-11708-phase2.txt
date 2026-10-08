@@ -1,0 +1,45 @@
+=== A. Learning reports: staged inventory ===
+  staged reports total: 907
+  newest 5 staged:
+    /home/esther/.hermes-cortex/state/learning-reports/esther-20261009-050015.md
+    /home/esther/.hermes-cortex/state/learning-reports/esther-20261009-045512.md
+    /home/esther/.hermes-cortex/state/learning-reports/moses-20261009-045021.md
+    /home/esther/.hermes-cortex/state/learning-reports/esther-20261009-021012.md
+    /home/esther/.hermes-cortex/state/learning-reports/esther-20261008-232512.md
+  [NEW]/[MOD] skill signals in newest 30 staged reports (deduped):
+    [MOD] adversarial-review-gate-diagnostics (devops)
+    [MOD] change-checklist (software-development)
+    [MOD] deploy-load-verification (devops)
+    [MOD] enforcement-change-safety (devops)
+    [MOD] enforcement-gate-integrity (devops)
+    [MOD] governance-closeout (devops)
+    [MOD] hermes-cortex-repo-deploy (devops)
+    [MOD] mycortex (devops)
+    [MOD] orch-skill-lifecycle (devops)
+    [MOD] package-security (devops)
+    [MOD] pi-coding-agent (autonomous-ai-agents)
+    [MOD] psql-automation (devops)
+    [MOD] shared-repo-push-gates (devops)
+    [MOD] shell-scripting (devops)
+    [MOD] skill-curation (devops)
+    [MOD] sweep-verification (devops)
+
+=== B. Learning ledger: pending items ===
+  No learnings found.
+
+=== C. SOUL.md evaluation (cortex-doctor) ===
+    ✅ SOUL.md canonical 12 (~/.hermes) — all 12 canonical principles present
+    ✅ SOUL.md local principles (~/.hermes) — 4 local principle(s) — allowed (≤12, generic, non-duplicating)
+    ✅ SOUL.md template sync (~/.hermes)
+    ✅ SOUL.md reverse drift (~/.hermes)
+    ✅ Checksum: soul-merge.py — content matches repo source
+    ✅ Checksum: soul-sync-all.sh — content matches repo source
+    ✅ Checksum: SOUL.md (profile: esther) — content matches repo source
+
+=== D. Repo skill inventory ===
+  repo SKILL.md count: 387
+  skill drift (doctor):
+      ✅ Skill drift — 387 skills in sync, 126 Hermes defaults skipped
+  (Full staleness/prune pass runs on Monday deep-eval; today is a daily run.)
+
+exit: 0
