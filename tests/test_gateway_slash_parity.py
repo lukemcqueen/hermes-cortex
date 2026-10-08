@@ -20,6 +20,7 @@ import json
 import os
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 import pytest
@@ -30,6 +31,7 @@ sys.path.insert(0, str(_REPO / "ops" / "scripts"))
 import cortex_gateway.agents as AGENTS      # noqa: E402
 import cortex_gateway.daemon as DAEMON      # noqa: E402
 import cortex_gateway.models as MODELS      # noqa: E402
+import cortex_gateway.restarts as RESTARTS  # noqa: E402
 import cortex_gateway.sessions as SESSIONS  # noqa: E402
 
 CHAT = 12345
@@ -78,6 +80,7 @@ def _gateway(tmp_path, spec=None, **over):
         allowed_users=None,
         sessions=SESSIONS.SessionBook(tmp_path / "sessions.json"),
         models=MODELS.ModelBook(tmp_path / "models.json"),
+        restarts=RESTARTS.RestartBook(tmp_path / "restarts.json"),
     )
     return gw, transport, backend
 
@@ -295,7 +298,7 @@ def test_restart_replies_then_schedules_exit_under_systemd(tmp_path, monkeypatch
     monkeypatch.setattr(DAEMON.Gateway, "_exit_for_restart",
                         lambda self: called.append(True))
     _tell(gw, "/restart")
-    assert "restarting the gateway" in transport.last()
+    assert "estarting the gateway" in transport.last()
     deadline = 2.0
     import time as _t
     t0 = _t.time()
@@ -316,6 +319,134 @@ def test_the_unit_name_is_read_from_our_own_cgroup(tmp_path, monkeypatch):
                         lambda self, *a, **k: "0::/user.slice/user-1000.slice/"
                                               "session-3.scope\n")
     assert gw._own_unit_name() == ""
+
+
+# ── /restart must be OBSERVABLE afterwards (2026-10-08, Luke's report) ───────
+# The restart worked (NRestarts=1) but the chat had no evidence of it, and the
+# agent — whose session deliberately survived — answered "No, I didn't restart.",
+# which is the only answer the human could get. These tests pin the fix.
+
+def test_restart_reply_says_the_conversation_is_kept(tmp_path, monkeypatch):
+    """'restart' reads like 'fresh start'; say what actually happens to the session."""
+    monkeypatch.setattr(DAEMON.Gateway, "_supervised_by_systemd", lambda self: True)
+    monkeypatch.setattr(DAEMON.Gateway, "_exit_for_restart", lambda self: None)
+    gw, transport, _ = _gateway(tmp_path)
+    _tell(gw, "/restart")
+    body = transport.last()
+    assert "continues" in body and "/new" in body
+
+
+def test_a_restart_is_announced_at_STARTUP_with_the_operators_wording(
+        tmp_path, monkeypatch):
+    """The new process tells the chat it is back — no prompt from the human needed.
+
+    Luke's wording, verbatim; the restart must not require the human to speak first
+    (that is what left him asking the agent, and getting "no").
+    """
+    monkeypatch.setattr(DAEMON.Gateway, "_supervised_by_systemd", lambda self: True)
+    monkeypatch.setattr(DAEMON.Gateway, "_exit_for_restart", lambda self: None)
+    gw, transport, _ = _gateway(tmp_path)
+    _tell(gw, "/restart")
+    assert not any("restarted successfully" in b for b in transport.bodies())
+
+    # …the gateway restarts; the NEW process announces before it serves anything
+    restarted, transport2, _ = _gateway(tmp_path)
+    assert restarted.announce_restarts() == 1
+    assert transport2.last() == DAEMON.RESTART_CONFIRMATION
+    assert transport2.last() == "♻ Gateway restarted successfully. Your session continues."
+    # exactly once: a second startup has nothing left to say
+    assert restarted.announce_restarts() == 0
+    assert len(transport2.sent) == 1
+
+
+def test_the_agent_is_still_told_after_the_startup_announcement(tmp_path, monkeypatch):
+    """Announcing to the HUMAN must not silence the agent-side fact.
+
+    The session survived, so an agent asked later "did you restart?" answers from
+    memory and says no — unless its first prompt after the restart carries the fact.
+    The marker therefore outlives the announcement and is consumed by that turn.
+    """
+    monkeypatch.setattr(DAEMON.Gateway, "_supervised_by_systemd", lambda self: True)
+    monkeypatch.setattr(DAEMON.Gateway, "_exit_for_restart", lambda self: None)
+    gw, transport, _ = _gateway(tmp_path)
+    _tell(gw, "/restart")
+
+    gw2, transport2, _ = _gateway(tmp_path)
+    gw2.announce_restarts()
+    _turn(gw2, "did you restart?")
+    reply = transport2.last()
+    assert "[system] The GATEWAY PROCESS restarted" in reply, reply   # the echo shows the prompt
+    assert "restarted successfully" not in reply, \
+        "the human was already told at startup — no second footer"
+
+    # the marker is spent: no note, no footer on later turns
+    _turn(gw2, "and again")
+    assert "[system]" not in transport2.last()
+
+
+def test_the_confirmation_rides_the_first_reply_when_the_announcement_failed(
+        tmp_path, monkeypatch):
+    """A failed startup send must not lose the news — the reply path carries it."""
+    monkeypatch.setattr(DAEMON.Gateway, "_supervised_by_systemd", lambda self: True)
+    monkeypatch.setattr(DAEMON.Gateway, "_exit_for_restart", lambda self: None)
+    gw, transport, _ = _gateway(tmp_path)
+    _tell(gw, "/restart")
+
+    gw2, transport2, _ = _gateway(tmp_path)
+
+    def boom(envelope):
+        raise RuntimeError("telegram unreachable")
+
+    real_send = transport2.send                   # the FakeTransport bound method
+    transport2.send = boom
+    assert gw2.announce_restarts() == 0          # nothing was delivered
+    assert gw2.restarts.pending(CHAT), "the marker must survive a failed announcement"
+
+    transport2.send = real_send                  # …the chat is reachable again
+    _turn(gw2, "hello")
+    assert DAEMON.RESTART_CONFIRMATION in transport2.last()
+    assert not gw2.restarts.pending(CHAT)
+
+
+def test_a_refused_restart_leaves_no_marker(tmp_path, monkeypatch):
+    """Nothing restarted, so nothing may later claim it did."""
+    monkeypatch.setattr(DAEMON.Gateway, "_supervised_by_systemd", lambda self: False)
+    gw, transport, _ = _gateway(tmp_path)
+    _tell(gw, "/restart")
+    assert "not running under systemd" in transport.last()
+    assert RESTARTS.RestartBook(tmp_path / "restarts.json").pending(CHAT) is None
+    _turn(gw, "hello")
+    assert "♻️" not in transport.last()
+
+
+def test_a_stale_restart_marker_is_not_reported_as_news(tmp_path):
+    """A restart nobody came back to ask about must not resurface a day later."""
+    book = RESTARTS.RestartBook(tmp_path / "restarts.json", ttl_s=60)
+    book.mark(CHAT, ts=time.time() - 3600)
+    assert book.pending(CHAT) is None
+    gw, transport, _ = _gateway(tmp_path)
+    gw.restarts = book
+    _turn(gw, "hello")
+    assert "♻️" not in transport.last()
+    # …and the stale entry is gone rather than lingering
+    assert RESTARTS.RestartBook(tmp_path / "restarts.json", ttl_s=60).pending(CHAT) is None
+
+
+def test_the_restart_marker_survives_the_process_that_wrote_it(tmp_path):
+    """It is written by the process that EXITS, so it must live on disk."""
+    book = RESTARTS.RestartBook(tmp_path / "restarts.json")
+    book.mark(CHAT, pid=4321)
+    reread = RESTARTS.RestartBook(tmp_path / "restarts.json")
+    mark = reread.pending(CHAT)
+    assert mark and mark["pid"] == 4321
+    mode = (tmp_path / "restarts.json").stat().st_mode
+    assert not mode & 0o077, "chat ids are personal data — the book must stay 0600"
+
+
+def test_restart_book_fails_open_on_a_corrupt_file(tmp_path):
+    p = tmp_path / "restarts.json"
+    p.write_text("{not json")
+    assert RESTARTS.RestartBook(p).pending(CHAT) is None
 
 
 # ── the spec contract (fail closed at build time) ────────────────────────────

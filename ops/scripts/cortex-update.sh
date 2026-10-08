@@ -775,6 +775,10 @@ register "ops/scripts/cortex_gateway/sessions.py"   "${CORTEX_DEPLOY_HOME}/scrip
 # Per-chat model overrides for the gateway's /model command (persisted, so a switch
 # survives the unit's Restart=always).
 register "ops/scripts/cortex_gateway/models.py"     "${CORTEX_DEPLOY_HOME}/scripts/cortex_gateway/models.py"
+# Unseen "/restart" markers: the gateway cannot tell a chat it restarted AFTER it
+# restarted, so the first reply once it is back carries the confirmation (and the
+# agent is told the same fact, or it answers "no" from a session that survived).
+register "ops/scripts/cortex_gateway/restarts.py"   "${CORTEX_DEPLOY_HOME}/scripts/cortex_gateway/restarts.py"
 # The PI harness adapter: pi's session operations the gateway cannot express as a
 # prompt (`/compact` lives in pi's RPC mode). Declared per host in gateway.yaml under
 # backends[].commands, and run with the stock python3 — stdlib only.

@@ -1,0 +1,135 @@
+restart visibility — "/restart gave no indication it happened" (reported 2026-10-08)
+====================================================================================
+
+WHAT WAS REPORTED. After pressing /restart in the pi-backed bot: no indication that it
+had actually restarted, and the conversation continued unchanged.
+
+WHAT WAS TRUE. The restart HAD happened — systemd restarted the unit (NRestarts=1, new
+MainPID, 5s gap). Nothing was broken in the mechanism. Two things conspired to hide it:
+
+  1. The only message about the restart was sent BEFORE the drop, by the process that
+     then exited. Nothing was said afterwards, so from inside the chat the restart was
+     invisible.
+  2. The conversation is deliberately preserved across a gateway restart (that is what
+     /new is for). Asked afterwards "did you restart?", the AGENT answered "No, I
+     didn't restart. I still have our conversation context…" — true of the session,
+     false about the gateway, and the only answer available to the human.
+
+THE FIX (three parts, each addressable separately):
+
+  * `/restart`'s reply now states what happens to the CONVERSATION ("This conversation
+    continues (send /new for a fresh session); I'll confirm as soon as I'm back."),
+    because "restart" reads like "fresh start" and this is not one.
+  * The NEW process announces itself at startup, BEFORE polling, with the operator's
+    wording: "♻ Gateway restarted successfully. Your session continues." A chat should
+    not have to speak first to learn the gateway is back.
+  * The AGENT is told the same fact on its first prompt after the restart, so it can
+    answer truthfully. The marker outlives the announcement (the human was told at
+    startup; the agent still needs the fact) and is consumed by that turn. If the
+    startup announcement could not be delivered, the marker survives and the first
+    reply carries the confirmation instead — the news is never lost to a failed send.
+
+LIVE PROOF (real systemd, deployed code, a scratch user unit; the live bot's chats and
+state untouched — scratch chat id, scratch books, no polling). Start 1 runs the REAL
+/restart handler; start 2 is the new process mirroring main()'s startup path:
+
+Oct 08 19:03:52 esther systemd[1099]: Started cortex-gateway-restart-probe.service - SCRATCH probe — /restart confirmation end-to-end (delete after use).
+Oct 08 19:03:53 esther python[303342]: START 1 pid=303342 unit='cortex-gateway-restart-probe.service'
+Oct 08 19:03:53 esther python[303342]:   supervised=True
+Oct 08 19:03:53 esther python[303342]: invoking the REAL /restart handler (replies, marks, then exits):
+Oct 08 19:03:53 esther python[303342]:    ⤶ 🔄 Restarting the gateway — back in a few seconds.
+Oct 08 19:03:53 esther python[303342]: This conversation continues (send /new for a fresh session); I'll confirm as soon as I'm back.
+Oct 08 19:03:57 esther systemd[1099]: cortex-gateway-restart-probe.service: Scheduled restart job, restart counter is at 1.
+Oct 08 19:03:57 esther systemd[1099]: Started cortex-gateway-restart-probe.service - SCRATCH probe — /restart confirmation end-to-end (delete after use).
+Oct 08 19:03:57 esther python[303485]: START 2 pid=303485 — the unit came back after the /restart exit
+Oct 08 19:03:57 esther python[303485]:   supervised=True marker_pending=True
+Oct 08 19:03:57 esther python[303485]:    ⤶ ♻ Gateway restarted successfully. Your session continues.
+Oct 08 19:03:57 esther python[303485]: ♻ announced the restart to 1 chat(s)
+Oct 08 19:03:57 esther python[303485]:   startup announcement delivered without the human asking: True
+Oct 08 19:03:57 esther python[303485]:   ↳ Reply with exactly: BACK
+Oct 08 19:04:03 esther python[303485]:    ⤶ BACK
+Oct 08 19:04:03 esther python[303485]:   reply carries NO duplicate confirmation (already told): True
+Oct 08 19:04:03 esther python[303485]:   the AGENT's prompt carried the system note: True
+Oct 08 19:04:03 esther python[303485]:   marker consumed after the turn: True
+Oct 08 19:04:03 esther python[303485]: RESULT: PASS
+
+READING THE CAPTURE: start 1 replies and exits (systemd logs "restart counter is at 1");
+start 2 — a new process — finds the marker, sends the confirmation WITHOUT the human
+saying anything, then serves one real pi turn in which its prompt carries "[system] The
+GATEWAY PROCESS restarted" (read out of the session transcript, since pi does not echo
+the prompt), and the marker is consumed.
+
+HONEST NOTE ON THE PROBE: the capture continues past this point with further restarts
+that report "FAIL announcement: told=0". Those are the PROBE's own artifacts, not the
+product's: its unit is Restart=always and it exits non-zero on the assertion, so it
+restarted itself in a loop, and on every pass after the first the marker had already
+been legitimately consumed — so there was correctly nothing to announce. The first pass
+is the authoritative one. (The probe has no self-stop, which is why it looped; the unit
+was stopped and removed immediately.)
+
+ARTIFACTS (re-runnable): the probe script and the throwaway unit file are reproduced
+below.
+
+--- ~/.config/systemd/user/cortex-gateway-restart-probe.service (throwaway) ---
+[Unit]
+Description=SCRATCH probe — /restart confirmation end-to-end
+
+[Service]
+Type=simple
+WorkingDirectory=%h/.hermes-cortex/scripts
+EnvironmentFile=-%h/hermes-cortex/.env
+ExecStart=%h/.hermes-cortex/venv/bin/python %h/.hermes/cache/scratch/restart_verify2.py
+Restart=always
+RestartSec=3
+
+--- probe logic (the parts that matter) ---
+STATE.mkdir(parents=True, exist_ok=True)
+
+if COUNT.exists():
+    fails = []
+    print(f"START 2 pid={os.getpid()} — the unit came back after the /restart exit",
+          flush=True)
+    gw = build()
+    print(f"  supervised={gw._supervised_by_systemd()} "
+          f"marker_pending={bool(gw.restarts.pending(CHAT))}", flush=True)
+
+    told = gw.announce_restarts()
+    announced = str(gw.transport.sent[-1].get("body")) if gw.transport.sent else ""
+    ok_ann = told == 1 and announced == daemon.RESTART_CONFIRMATION
+    print(f"  startup announcement delivered without the human asking: {ok_ann}",
+          flush=True)
+    if not ok_ann:
+        fails.append(f"announcement: told={told} body={announced!r}")
+
+    replies = turn(gw, "Reply with exactly: BACK")
+    body = " ".join(str(r.get("body", "")) for r in replies)
+    ok_nofooter = "♻" not in body
+    print(f"  reply carries NO duplicate confirmation (already told): {ok_nofooter}",
+          flush=True)
+    if not ok_nofooter:
+        fails.append(f"duplicate footer: {body[:200]!r}")
+
+    hits = [ln for f in Path.home().joinpath(".pi/agent/sessions").rglob(
+        "*hc-pi-999900*.jsonl")
+        for ln in f.read_text(errors="replace").splitlines()
+        if "[system] The GATEWAY PROCESS restarted" in ln]
+    ok_note = bool(hits)
+    print(f"  the AGENT's prompt carried the system note: {ok_note}", flush=True)
+    if not ok_note:
+        fails.append("agent was not told the restart")
+    print(f"  marker consumed after the turn: {not gw.restarts.pending(CHAT)}", flush=True)
+
+    print(f"RESULT: {'PASS' if not fails else 'FAIL ' + '; '.join(fails)}", flush=True)
+    time.sleep(5)
+    sys.exit(0 if not fails else 1)
+
+print(f"START 1 pid={os.getpid()} unit={build()._own_unit_name()!r}", flush=True)
+gw = build()
+print(f"  supervised={gw._supervised_by_systemd()}", flush=True)
+COUNT.write_text("first start\n")
+print("invoking the REAL /restart handler (replies, marks, then exits):", flush=True)
+gw._handle_restart(CHAT)
+time.sleep(10)
+print("HANDLER_DID_NOT_EXIT — /restart is broken", flush=True)
+sys.exit(9)
+

@@ -445,7 +445,7 @@ class CommandBackend:
     # -- internals -------------------------------------------------------------
     def _prompt(self, inbound: dict) -> str:
         try:
-            return self.spec.prompt_template.format(
+            body = self.spec.prompt_template.format(
                 body=inbound.get("body", ""), agent=self.spec.name,
                 channel=inbound.get("channel", ""),
                 user=inbound.get("channel_user_id", ""),
@@ -455,7 +455,19 @@ class CommandBackend:
             # and say so, rather than dropping the human's message.
             log.warning("command backend %s: prompt_template has an unknown placeholder; "
                         "using the raw body", self.spec.name)
-            return str(inbound.get("body", ""))
+            body = str(inbound.get("body", ""))
+        # A gateway restart preserves the SESSION, so an agent asked "did you restart?"
+        # answers from its own memory — which says no, because the conversation is
+        # still there. That is the only answer the human can get, and it is wrong about
+        # the gateway. Tell the agent the fact for the first turn after a restart.
+        notice = inbound.get("restart_notice")
+        if notice:
+            when = time.strftime("%Y-%m-%d %H:%M", time.localtime(float(notice)))
+            return (f"[system] The GATEWAY PROCESS restarted at {when}; your session "
+                    "was preserved, so this conversation continues. If the user asks "
+                    "whether you restarted, say that the gateway restarted and the "
+                    "conversation carried over (a fresh session is /new).\n\n" + body)
+        return body
 
     def _session_id(self, inbound: dict) -> str:
         """Deterministic per-chat session id: stable, no shared state, restart-safe.

@@ -61,7 +61,7 @@ Every difference named below is now closed, and the row names the test that hold
 | `/new` — start a fresh session (ARCHIVE) | ➖ | ✅ `/new` bumps a PERSISTED per-chat generation → `hc-<agent>-<chat>-g<N>`; the previous transcript stays on disk under its own derivable id and is NAMED in the reply. Generation 0 keeps the unsuffixed id, so an existing conversation never moves | `tests/test_gateway_new_session.py` |
 | `/model <name>` — switch the model for THIS chat | ✅ (session-scoped) | ✅ gateway-level: a PERSISTED per-chat override (`models.py`) published on the envelope as `model_override` and substituted into the backend's `model_args` (`--model {model}`), so the NEXT turn really runs the new model. No argument reports the chat's model and the default; `/model reset` returns to the default. Optional validation: a spec may declare `check_model`, and a name the agent rejects is refused instead of stored | `tests/test_gateway_slash_parity.py` |
 | `/compact` — compact this chat's context | ✅ (in-process agent) | ✅ gateway-level through the backend's DECLARED control command (`commands.compact`): pi's `/compact` lives in pi's RPC mode, so `pi_control.py` drives it and prints one line the gateway relays (measured: 69,980 → 20,267 tokens on a 71-message session, ~1m46s). rc=2 (not declared) and rc=3 (could not run) are reported distinctly, never as success | `tests/test_gateway_slash_parity.py` |
-| `/restart` — reload the gateway | ✅ | ✅ gateway-level: reply, then exit; the unit is `Restart=always`, so systemd brings it back (no privileges needed under `NoNewPrivileges=true`). REFUSED with a message when the daemon is not systemd-supervised — unsupervised, exiting is a kill | `tests/test_gateway_slash_parity.py` |
+| `/restart` — reload the gateway | ✅ | ✅ gateway-level: reply, then exit; the unit is `Restart=always`, so systemd brings it back (no privileges needed under `NoNewPrivileges=true`). REFUSED with a message when the daemon is not systemd-supervised — unsupervised, exiting is a kill. **Observable afterwards** (2026-10-08): the new process announces itself at startup — "♻ Gateway restarted successfully. Your session continues." — and the AGENT is told the same fact on its first prompt, because the session deliberately survives and an agent asked "did you restart?" otherwise answers "no" | `tests/test_gateway_slash_parity.py` |
 | Message edits | ✅ | ✅ `editMessageText` (approval outcomes, streaming updates) | `tests/test_gateway_approvals.py` |
 | Multi-platform (Discord/Slack/… 20+) | ✅ | ❌ Telegram only | accepted by design (anti-bloat); the transport seam is where another platform attaches |
 
@@ -246,6 +246,24 @@ exponential backoff with a conflict fault-tolerance of 3 consecutive cycles befo
     reaps pi AND its children.
 
   Both are held by `tests/test_gateway_slash_parity.py`.
+
+- **2026-10-08, same day — "/restart gave no indication it happened".** Reported after a
+  restart that HAD happened: systemd restarted the unit (NRestarts=1, new MainPID), but
+  the only message about it was sent by the process that then exited, and the
+  conversation deliberately continued. Asked "did you restart?", the AGENT answered
+  "No, I didn't restart. I still have our conversation context…" — true of the session,
+  false about the gateway, and the only answer the human could get. Three changes, and
+  the third is the one worth keeping: `/restart`'s reply states what happens to the
+  conversation ("restart" reads like "fresh start" and this is not one); the new process
+  announces itself at startup, before polling, with the operator's wording ("♻ Gateway
+  restarted successfully. Your session continues.") so a chat need not speak first to
+  learn the gateway is back; and the agent is handed the same fact on its first prompt
+  after the restart (the marker outlives the announcement, and is consumed by that turn,
+  so the human is not told twice). If the startup send fails, the marker survives and the
+  first reply carries the confirmation — the news is never lost to a failed send.
+  Evidence: `docs/evidence/gateway-restart-visibility-2026-10-08.txt` (live proof on a
+  scratch systemd unit running the deployed code: start 1 = the real handler; start 2 =
+  the announcement, then a real pi turn whose prompt carries the system note).
 
 ## Evidence
 

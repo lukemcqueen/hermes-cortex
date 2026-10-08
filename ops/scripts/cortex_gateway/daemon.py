@@ -40,7 +40,12 @@ characters of conversation and nothing more. They are therefore gateway-level:
                 builds its argv from — models.py
   - `/compact`  a session operation, run through the backend's declared control
                 command (`commands.compact` in gateway.yaml) — pi speaks RPC
-  - `/restart`  exit + `Restart=always`, refused when not systemd-supervised
+  - `/restart`  exit + `Restart=always`, refused when not systemd-supervised.
+                The chat is MARKED (restarts.py) so the first reply after the
+                restart carries a one-line confirmation and the agent is told the
+                same fact with its prompt — otherwise the only available answer to
+                "did you restart?" comes from an agent whose session survived, and
+                it says no. Measured 2026-10-08.
 """
 from __future__ import annotations
 
@@ -57,6 +62,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:                      # runtime import stays lazy (pairing is opt-in)
     from .models import ModelBook
     from .pairing import PairingStore
+    from .restarts import RestartBook
     from .sessions import SessionBook
 
 if __package__ in (None, ""):
@@ -71,6 +77,25 @@ from .transport import (DEFAULT_POLL_SECONDS, BotConfig, PollingConflict,
                         TransportAdapter, TelegramAdapter)
 
 DEFAULT_BACKEND_AGENT = "hermes"
+
+# The post-restart confirmation. Wording chosen by the operator (Luke, 2026-10-08):
+# short, in the chat's voice, and it answers the two questions the restart raises —
+# did it work, and did I lose the conversation. Sent by the NEW process at startup
+# (so it arrives without the human having to say anything), and used as the footer
+# on the first reply when that send could not be delivered.
+RESTART_CONFIRMATION = "♻ Gateway restarted successfully. Your session continues."
+
+
+def _as_chat_id(chat):
+    """A marker's chat key back to the id type the transport expects.
+
+    The book is JSON, so keys are strings; Telegram wants the int. A non-numeric
+    key is passed through rather than dropped — the transport knows its own ids.
+    """
+    try:
+        return int(str(chat))
+    except ValueError:
+        return chat
 
 
 def _answers_async(backend) -> bool:
@@ -182,7 +207,8 @@ class Gateway:
                  allowed_users: set | None = None,
                  pairing: "PairingStore | None" = None,
                  sessions: "SessionBook | None" = None,
-                 models: "ModelBook | None" = None):
+                 models: "ModelBook | None" = None,
+                 restarts: "RestartBook | None" = None):
         self.transport = transport
         self.backends = backends          # agent_name -> BackendAdapter
         self.default_agent = default_agent
@@ -199,6 +225,9 @@ class Gateway:
         # Per-chat model overrides (/model). None = switching not configured, in
         # which case every chat runs the backend's configured default.
         self.models = models
+        # Unseen /restart markers: the gateway cannot tell a human it restarted
+        # AFTER it restarted, so the first reply once it is back does.
+        self.restarts = restarts
         # offset tracks the transport's own offset (transport owns the truth).
         self.offset = getattr(transport, "offset", 0)
 
@@ -290,6 +319,18 @@ class Gateway:
         # the envelope. Empty string = the backend's configured default.
         if self.models is not None:
             envelope["model_override"] = self.models.get(chat)
+        # If this chat pressed /restart and has not been told yet, hand the FACT to
+        # the agent as well: the session survived the restart, so an agent asked
+        # "did you restart?" otherwise answers "no" — truthfully about the session,
+        # wrongly about the gateway, and it is the only answer the human can get.
+        if self.restarts is not None and envelope.get("tg_kind") == "message":
+            notice = self.restarts.pending(chat)
+            if notice:
+                envelope["restart_notice"] = notice.get("ts")
+                # Only when the gateway could NOT announce it at startup does the
+                # first reply have to carry the news itself.
+                if not notice.get("announced"):
+                    envelope["restart_footer"] = notice.get("ts")
         # A new human message lifts a previous /stop suppression.
         if envelope.get("tg_kind") == "message":
             self.suppressed.discard(chat)
@@ -360,6 +401,51 @@ class Gateway:
         reply = backend.dispatch(envelope)
         if reply is not None:            # synchronous backend answers immediately
             self.transport.send(reply)
+
+    def _annotate_restart(self, reply: dict, chat) -> None:
+        """Fallback path: append the confirmation to the first reply, and consume it.
+
+        The PRIMARY path is `announce_restarts()` at startup, which tells the chat
+        without waiting for it to speak. This runs when that could not happen (the
+        send failed, or the marker was written by a process whose successor could
+        not reach the chat). Either way the marker is consumed here, after the agent
+        has been told the same fact with its prompt.
+        """
+        if self.restarts is None or not isinstance(reply, dict):
+            return
+        notice = self.restarts.pending(chat)
+        if not notice:
+            return
+        if not notice.get("announced"):
+            body = str(reply.get("body") or "")
+            reply["body"] = f"{body}\n\n{RESTART_CONFIRMATION}"
+        self.restarts.clear(chat)
+
+    def announce_restarts(self) -> int:
+        """Tell every chat that waited on a /restart that the gateway is back.
+
+        Called ONCE at startup, before polling: the restart happened while the only
+        process that knew about it was exiting, so a chat has no way to see it —
+        earlier today a genuinely restarted gateway (NRestarts=1) left Luke asking
+        the agent whether it had restarted, and the agent said no. Returns how many
+        chats were told; a failed send leaves the marker so the reply path retries.
+        """
+        if self.restarts is None:
+            return 0
+        told = 0
+        for chat, _mark in self.restarts.unannounced():
+            try:
+                self.transport.send({"channel_user_id": _as_chat_id(chat),
+                                     "body": RESTART_CONFIRMATION})
+            except Exception as e:  # noqa: BLE001 — a notice must never stop startup
+                print(f"⚠️  could not announce the restart to chat {chat}: {e} "
+                      f"(the next reply there will carry it)", file=sys.stderr)
+                continue
+            self.restarts.mark_announced(chat)
+            told += 1
+        if told:
+            print(f"♻ announced the restart to {told} chat(s)", file=sys.stderr)
+        return told
 
     def _reply(self, chat, text: str) -> None:
         if chat is None:
@@ -514,13 +600,25 @@ class Gateway:
         Refusing when unsupervised is deliberate: without systemd, exiting is a
         kill, and a slash command that silently takes the bot down is worse than
         no command at all.
+
+        The reply says what will happen to the CONVERSATION, because "restart" reads
+        like "fresh start" and this is not one: sessions survive (that is `/new`).
+        Without that, a human reasonably concludes nothing restarted when the next
+        answer still remembers everything — measured 2026-10-08, on a restart that
+        had genuinely happened.
         """
         if not self._supervised_by_systemd():
             self._reply(chat, "⚠️ This gateway is not running under systemd, so "
                               "/restart cannot bring it back — stop it and start it "
                               "by hand instead.")
             return True
-        self._reply(chat, "🔄 restarting the gateway — back in a few seconds…")
+        # Mark BEFORE the reply: the reply is the last thing sent by THIS process,
+        # and the marker has to outlive it (it lives in a file, not in memory).
+        if self.restarts is not None:
+            self.restarts.mark(chat, pid=os.getpid())
+        self._reply(chat, "🔄 Restarting the gateway — back in a few seconds.\n"
+                          "This conversation continues (send /new for a fresh "
+                          "session); I'll confirm as soon as I'm back.")
         threading.Thread(target=self._exit_for_restart, daemon=True).start()
         return True
 
@@ -707,6 +805,7 @@ class Gateway:
         else:
             reply = backend.dispatch(envelope)
         if reply is not None:
+            self._annotate_restart(reply, chat)
             if streamer is not None and streamer.finish(reply.get("body") or ""):
                 pass                      # already on screen, updated in place
             else:
@@ -740,6 +839,7 @@ class Gateway:
             if reply is None and _answers_async(backend):
                 return                   # async backend → wait for its reply
             if reply is not None:
+                self._annotate_restart(reply, chat)
                 self.transport.send(reply)   # sync backend → the chat is free again
             self.inflight.pop(chat, None)
 
@@ -756,6 +856,7 @@ class Gateway:
                           file=sys.stderr)
                     self._next_from_queue(chat)
                     continue
+                self._annotate_restart(reply, chat)
                 self.transport.send(reply)
                 self._next_from_queue(chat)
 
@@ -918,6 +1019,10 @@ def build_gateway(config_path: Path) -> Gateway:
     # (correctly) stop trusting.
     from . import models as _models
     models = _models.ModelBook(_state_dir / "gateway-models.json")
+    # Unseen /restart markers, for the confirmation the chat gets once the gateway
+    # is back. Persisted for the same reason: the process that marks it exits.
+    from . import restarts as _restarts
+    restarts = _restarts.RestartBook(_state_dir / "gateway-restarts.json")
     # Pairing is opt-in and its approvals persist NEXT TO the deploy, not in the repo.
     pairing = None
     from . import pairing as _pairing
@@ -930,7 +1035,7 @@ def build_gateway(config_path: Path) -> Gateway:
                    default_agent=routing.get("default", DEFAULT_BACKEND_AGENT),
                    routing_overrides=routing.get("overrides", {}),
                    allowed_users=allowed, pairing=pairing, sessions=sessions,
-                   models=models)
+                   models=models, restarts=restarts)
 
 
 def main() -> int:
@@ -946,6 +1051,10 @@ def main() -> int:
     elif args.outbound_only:
         gw.run_outbound_only()
     else:
+        # Before polling, and only in the serving path: a /restart leaves a marker in
+        # a chat that the process which wrote it cannot tell, because it was exiting.
+        # This is where the chat finally hears "back, and your session continues".
+        gw.announce_restarts()
         gw.run_locked()
     return 0
 
