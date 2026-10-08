@@ -1,0 +1,17 @@
+## 1. digest file exists, non-empty
+OK  /home/esther/brain/esther/dreams/2026-10-09.md present and non-empty
+
+## 2. INDEX carries today's entry
+matches: 1
+  2026-10-09 | The Zero That Had to Prove Itself | A prune that moved nothing and a drift sync that moved everything both closed on runnable proof, not the claim.
+
+## 3. digest references >=1 prior dream (brain remembering its own dreaming)
+  prior-ref: 10-05
+  prior-ref: 10-07
+  prior-ref: 10-08
+  prior-ref: 10-09
+
+## 4. sha256 + size (the claim is the digest below, byte for byte)
+f9549a82c84d52be9c10fba69ff718995099039d0d2a8cd2d4d20c9c9f596c4a  /home/esther/brain/esther/dreams/2026-10-09.md
+6e1edf2301927671569cf4242a836eb21e21e1bf8c0136410d3d631b3548ba2d  /home/esther/brain/esther/dreams/INDEX.md
+-rw-rw-r-- 1 esther esther 2156 Oct  9 05:38 /home/esther/brain/esther/dreams/2026-10-09.md
