@@ -1,0 +1,132 @@
+Reviewer-timeout ceiling + this cycle's gate evidence — raw, re-runnable output
+==============================================================================
+Every block below is a command and its captured output. Re-run each to reproduce
+the claim it backs; nothing here is a transcription of a past action.
+
+## 1. The load-bearing fact: the MCP client gives up at 300s (ADV-11010-1)
+
+$ grep -n _DEFAULT_TOOL_TIMEOUT ~/.hermes/hermes-agent/tools/mcp_tool_common.py
+41:_DEFAULT_TOOL_TIMEOUT = 300      # seconds for tool calls
+53:        resolved = resolve_timeout("mcp.tool_call", default=_DEFAULT_TOOL_TIMEOUT)
+58:    return _DEFAULT_TOOL_TIMEOUT
+[exit 0]
+
+$ sed -n '44,58p' ~/.hermes/hermes-agent/tools/mcp_tool_common.py
+def _resolve_tool_timeout(config: dict) -> float:
+    """Per-server tool-call timeout. Precedence: ``mcp_servers.<name>.timeout`` >
+    ``timeouts.mcp.tool_call`` > the 300s default; values are platform-clamped by
+    ``resolve_timeout``."""
+    per_server = config.get("timeout")
+    if per_server is not None:
+        return per_server
+    try:
+        from agent.deadline import resolve_timeout
+        resolved = resolve_timeout("mcp.tool_call", default=_DEFAULT_TOOL_TIMEOUT)
+        if resolved is not None:
+            return resolved
+    except Exception:
+        logger.debug("mcp.tool_call timeout resolution failed", exc_info=True)
+    return _DEFAULT_TOOL_TIMEOUT
+[exit 0]
+
+$ sed -n '249,254p' ~/.hermes/config.yaml   # the loop-governance server entry
+loop-governance:
+    command: ~/.hermes/hermes-agent/venv/bin/python3
+    args:
+      - ~/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py
+    enabled: true
+  tasks:
+[exit 0]  <- no `timeout:` key, so the per-server override is absent
+
+$ grep -c '^timeouts:' ~/.hermes/config.yaml
+0
+[exit 1]  <- 0 matches: no `timeouts:` section, so resolve_timeout()
+                falls through to its own default of 300
+
+=> resolve_timeout('mcp.tool_call', default=300) == 300 on this host, so
+   REVIEWER_TIMEOUT_CEILING=240 is the correct bound and 1800 was unreachable.
+
+## 2. Static gate on the changed module, level A4 (ADV-11010-2)
+
+$ python3 ~/.hermes-cortex/scripts/adversarial-verify.py --file mcp-servers/loop-gov-mcp.py --level A4 --gate
+── mcp-servers/loop-gov-mcp.py ──
+   Level: A4
+   Attack Surface:
+     ⚠️ Inputs: 112 item(s)
+     ⚠️ State: 75 item(s)
+     ⚠️ Dependencies: 41 item(s)
+     ⚠️ Concurrency: 19 item(s)
+   Functions: 16
+     - __init__(type, text)
+     - __init__(content, is_error)
+     - __init__(tools)
+     - __init__(*args, **kwargs)
+     - stdio_server()
+     ... and 11 more
+   Fuzz inputs generated: 202
+
+📊 Summary: 1 file(s), 33 finding(s)
+   🟡 Medium: 5
+   🔵 Low: 2
+   ⚪ Info: 26
+
+🟡 Medium findings — fix before shipping.
+
+✅ GATE_PASSED — no critical/high findings
+[exit 0]
+
+## 3. The startup test is deterministic under BOTH interpreters (ADV-11010-3)
+
+$ default python3 (NO `mcp`) tests/test_loop_gov_mcp_startup.py
+ALL PASS — MCP server starts under both HOME shapes
+[exit 0]
+
+$ hermes venv python (has `mcp`) tests/test_loop_gov_mcp_startup.py
+ALL PASS — MCP server starts under both HOME shapes
+[exit 0]
+
+$ python3 -c '<load the test module and print the resolved interpreter>'
+resolved interpreter: ~/.hermes/hermes-agent/venv/bin/python3
+[exit 0]
+
+## 4. The regression harness (ADV-11010-4)
+
+The captured output is the COMMITTED artifact, not a restatement here:
+
+    tests/artifacts/loop-gov-regression.txt    full per-test output + RESULT line
+
+$ python3 tests/run_loop_gov_regression.py     # regenerates it (timestamp differs)
+
+## 5. Why a repo-local marker is a FAILURE (ADV-11010-5)
+
+$ grep -n 'Repo-local .hermes-cortex' -A 18 ops/scripts/manage/cortex_doctor/checks.py
+5156:    res.add("Repo-local .hermes-cortex", "PASS", "absent — correct for the Cortex repo")
+5157-    return
+5158-  try:
+5159-    entries = sorted(p.name for p in stray.iterdir())
+5160-  except OSError as e:                                  # unreadable is not "clean"
+5161:    res.add("Repo-local .hermes-cortex", "FAIL",
+5162-            f"exists at {stray} but is unreadable: {e}",
+5163-            "Investigate permissions; treat as present")
+5164-    return
+5165-  marker = stray / ".governance-lock"
+5166-  detail = f"exists at {stray}"
+5167-  detail += f" — contains: {', '.join(entries)}" if entries else " — empty"
+5168-  fix = ("Remove it: `rm -rf " + str(stray) + "`. Then find the writer — a "
+5169-         "repo-local lock means an MCP/enforcer process is still running pre-fix "
+5170-         "code (deploy != load: restart the gateway).")
+5171-  if marker.exists():
+5172-    detail += " — CONTAINS .governance-lock, so governance state is being written inside the repo"
+5173:  res.add("Repo-local .hermes-cortex", "FAIL", detail, fix)
+[exit 0]
+
+$ python3 tests/test_repo_local_cortex_dir_check.py
+PASS  absent directory -> PASS: absent — correct for the Cortex repo
+PASS  empty directory -> FAIL: exists at ~/.hermes/cache/scratch/repo-local-check-vrw3on1c/.hermes-cortex — empty
+PASS  lock marker named -> FAIL: exists at ~/.hermes/cache/scratch/repo-local-check-vrw3on1c/.hermes-cortex — contains: .governance-lock — CONTAINS .governance-lock, so governance state is being written inside the repo
+
+RESULT: ALL PASS - the check fails on presence and names the marker
+[exit 0]
+
+docs/review-receipt-gate.md carries the same rationale (section 'Why a
+repo-local `.hermes-cortex/` can reappear - and what catches it').
