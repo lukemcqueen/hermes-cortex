@@ -297,6 +297,80 @@ def test_tiering():
                 os.environ[k] = v
 
 
+def test_the_reviewer_is_the_canonical_model_on_every_path():
+    """Luke, 2026-10-08: "make sure the reviewer is deepseek v4 pro".
+
+    The light-but-complex tier is a TRANSPORT choice (a fast chat-completions call
+    instead of spawning a coding agent), NOT a depth choice — so with nothing
+    configured it must review with the SAME canonical model as every other path.
+    It used to default to a hardcoded `deepseek/deepseek-v4-flash-0731`, which
+    meant a light-but-complex change was silently judged by a different, cheaper
+    model than the one the fleet documents: the stored row said so, but nothing
+    had chosen it. An explicit ADVERSARIAL_REVIEW_LIGHT_MODEL still wins —
+    reviewing with a different model is allowed, it just has to be CHOSEN.
+    """
+    import unittest.mock as mock
+    mcp = _load()
+    saved = {k: os.environ.get(k) for k in (
+        "ADVERSARIAL_REVIEW_BACKEND", "ADVERSARIAL_REVIEW_AGENT_NAME",
+        "ADVERSARIAL_REVIEW_LIGHT_MODEL", "ADVERSARIAL_REVIEWER_MODEL")}
+    try:
+        for k in saved:
+            os.environ.pop(k, None)
+        canonical = mcp.REVIEWER_MODEL_DEFAULT
+        _check("the canonical reviewer model is deepseek-v4-pro",
+               canonical == "deepseek/deepseek-v4-pro", canonical)
+
+        # With nothing configured, every resolution path agrees.
+        _check("_reviewer_model() is the canonical model",
+               mcp._reviewer_model() == canonical, mcp._reviewer_model())
+        _check("the light tier resolves to the canonical model, not a cheaper one",
+               mcp._light_reviewer_model() == canonical, mcp._light_reviewer_model())
+        _check("the recorded label is the canonical model",
+               mcp._reviewer_label() == canonical, mcp._reviewer_label())
+        _check("no hardcoded cheaper light-model constant remains",
+               not hasattr(mcp, "REVIEWER_LIGHT_MODEL_DEFAULT"),
+               "a hardcoded default is a model nobody chose")
+
+        # The light tier on an AGENT host really reviews with the canonical model —
+        # measured through the dispatch, not by reading the constant.
+        os.environ["ADVERSARIAL_REVIEW_BACKEND"] = "agent"
+        os.environ["ADVERSARIAL_REVIEW_AGENT_NAME"] = "pi"
+        seen = {}
+
+        def fake_llm(prompt, *, model=None, timeout=None):
+            seen["model"] = model
+            return '{"verdict":"CLEAN","findings":[]}'
+
+        def fake_agent(prompt, author=None, timeout=None):
+            seen["agent"] = True
+            return '{"verdict":"CLEAN","findings":[]}'
+
+        cx_light = {"lines": 60, "files": 2, "always_review": False}
+        with mock.patch.object(mcp, "_call_reviewer_llm", side_effect=fake_llm), \
+             mock.patch.object(mcp, "_call_reviewer_agent", side_effect=fake_agent):
+            mcp._call_reviewer("M", author="esther@x", cx=cx_light)
+        _check("a light change on an agent host reviews with the canonical model",
+               seen.get("model") == canonical and "agent" not in seen, str(seen))
+        _check("...and is RECORDED as the canonical model",
+               mcp._reviewer_label(cx=cx_light) == canonical,
+               mcp._reviewer_label(cx=cx_light))
+
+        # An explicit choice still wins: different is allowed, not default.
+        os.environ["ADVERSARIAL_REVIEW_LIGHT_MODEL"] = "chosen/other-model"
+        _check("an explicitly chosen light model still wins",
+               mcp._light_reviewer_model() == "chosen/other-model",
+               mcp._light_reviewer_model())
+        _check("...and does not leak into the deep path",
+               mcp._reviewer_model() == canonical, mcp._reviewer_model())
+    finally:
+        for k, v in saved.items():
+            if v is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
+
+
 def test_reviewer_timeout():
     """_reviewer_timeout scales the wait budget INSIDE the client ceiling.
 
@@ -544,6 +618,9 @@ if __name__ == "__main__":
     print()
     print("Reviewer tiering — depth by measured complexity, enforcement unchanged")
     test_tiering()
+    print()
+    print("Reviewer model — one canonical model on every path (light tier is a transport choice)")
+    test_the_reviewer_is_the_canonical_model_on_every_path()
     print()
     print("Reviewer wait-budget scaling — by change size, hard-capped")
     test_reviewer_timeout()

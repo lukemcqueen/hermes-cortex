@@ -158,9 +158,14 @@ only just started. The gate now tiers reviewer depth on the same `_complexity()`
 measurement it already uses to decide *whether* to review:
 
 - **light-but-complex** — crosses the gate, but NOT an always-review surface and
-  under the heavy bar (`<10` files and `<200` added+removed lines): reviewed by
-  the **fast `llm` model** (`ADVERSARIAL_REVIEW_LIGHT_MODEL`, default
-  `deepseek/deepseek-v4-flash-0731`, ~1s) even when `ADVERSARIAL_REVIEW_BACKEND=agent`.
+  under the heavy bar (`<10` files and `<200` added+removed lines): reviewed over
+  a **fast chat-completions call** rather than spawning the agent, even when
+  `ADVERSARIAL_REVIEW_BACKEND=agent`. The tier changes the **transport, not the
+  model** — it uses `ADVERSARIAL_REVIEWER_MODEL` (the canonical
+  `deepseek/deepseek-v4-pro`), the same reviewer as every other change. Set
+  `ADVERSARIAL_REVIEW_LIGHT_MODEL` to review the light tier with a different
+  model on purpose; before 2026-10-08 this tier silently defaulted to
+  `deepseek/deepseek-v4-flash-0731`.
 - **heavy** — an always-review surface (enforcement/governance paths, incl.
   `loop-gov-mcp.py` and `cortex-update.sh`) or ≥10 files / ≥200 lines: the deep
   configured backend runs unchanged.

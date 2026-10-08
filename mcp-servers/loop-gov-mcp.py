@@ -1884,7 +1884,6 @@ REVIEWER_LIGHT_LINE_THRESHOLD = 200  # added+removed lines that force the deep r
 REVIEWER_LIGHT_FILE_THRESHOLD = 10   # files that force the deep reviewer
 
 REVIEWER_MODEL_DEFAULT = "deepseek/deepseek-v4-pro"  # distinct from worker
-REVIEWER_LIGHT_MODEL_DEFAULT = "deepseek/deepseek-v4-flash-0731"  # fast, verified 200
 REVIEW_TEMPLATE_REL = "docs/templates/adversarial-reviewer-prompt.md"
 
 # Reviewer wait-budget scaling (2026-10-06; BOUNDED 2026-10-08): the close-gate's
@@ -2481,6 +2480,16 @@ def _reviewer_backend() -> str:
     return (_env_value("ADVERSARIAL_REVIEW_BACKEND", "llm") or "llm").strip().lower()
 
 
+def _reviewer_model() -> str:
+    """The model that reviews a change with the ``llm`` backend.
+
+    ONE resolution for it, so what RUNS and what is RECORDED in the review row
+    cannot diverge - including the light-but-complex tier, which used to resolve
+    its own hardcoded default.
+    """
+    return _env_value("ADVERSARIAL_REVIEWER_MODEL", REVIEWER_MODEL_DEFAULT)
+
+
 def _reviewer_label(cx: Optional[dict] = None) -> str:
     """What to RECORD as the reviewer: the model for the llm backend, the agent
     name for the agent backend. A stored review whose reviewer is ambiguous
@@ -2492,14 +2501,26 @@ def _reviewer_label(cx: Optional[dict] = None) -> str:
         if cx is not None and _tier(cx) == "light":
             return _light_reviewer_model()
         return "agent:" + (_env_value("ADVERSARIAL_REVIEW_AGENT_NAME") or "unnamed").strip()
-    return _env_value("ADVERSARIAL_REVIEWER_MODEL", REVIEWER_MODEL_DEFAULT)
+    return _reviewer_model()
 
 
 def _light_reviewer_model() -> str:
-    """Model used for the 'light-but-complex' review tier. Overridable via
-    ADVERSARIAL_REVIEW_LIGHT_MODEL; defaults to a fast chat-completions model
-    so the close-gate returns in ~1s instead of the pi-agent's 100s+."""
-    return _env_value("ADVERSARIAL_REVIEW_LIGHT_MODEL", REVIEWER_LIGHT_MODEL_DEFAULT)
+    """Model for the 'light-but-complex' review tier.
+
+    Defaults to the SAME model as every other review (the canonical reviewer).
+    The tier decides how a review is TRANSPORTED on an `agent`-backend host - a
+    fast chat-completions call instead of a coding agent - NOT how deep it is, so
+    by default the reviewer is the one model the fleet standardised on.
+
+    An operator can still name a different model with
+    ADVERSARIAL_REVIEW_LIGHT_MODEL, which makes "review this one with a cheaper
+    model" an explicit, auditable choice instead of a default nobody picked
+    (Luke, 2026-10-08: the reviewer is deepseek/deepseek-v4-pro). The previous
+    hardcoded flash default meant a light-but-complex change was silently judged
+    by a different, cheaper model than the one the fleet documents - the stored
+    row said so, but nothing chose it.
+    """
+    return (_env_value("ADVERSARIAL_REVIEW_LIGHT_MODEL") or "").strip() or _reviewer_model()
 
 
 def _tier(cx: dict) -> str:
@@ -2611,7 +2632,7 @@ def _call_reviewer_llm(prompt: str, *, model: Optional[str] = None,
     credential to read (never the value). ``model`` overrides the configured
     model (used for the light-but-complex tier); ``timeout`` overrides the
     configured wait budget (used when scaling by change size)."""
-    model = model or _env_value("ADVERSARIAL_REVIEWER_MODEL", REVIEWER_MODEL_DEFAULT)
+    model = model or _reviewer_model()
     base = (_env_value("ADVERSARIAL_REVIEW_BASE_URL") or "https://openrouter.ai/api/v1").rstrip("/")
     key_env = _env_value("ADVERSARIAL_REVIEW_API_KEY_ENV")
     # An EXPLICITLY named credential is honoured strictly: _reviewer_api_key
