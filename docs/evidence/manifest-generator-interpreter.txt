@@ -1,0 +1,126 @@
+Manifest-generator interpreter fix - raw, re-runnable evidence
+==========================================================================
+Every block is a command and its captured output. Re-run each to reproduce the
+claim it backs. Nothing here is a transcription of a past action.
+
+## 1. The three audit branches, end to end (ADV-11051-2)
+
+$ STAGED='skills/devops/skill-curation/SKILL.md' bash ops/scripts/pre-commit-doc-audit.sh
+(silent)
+[exit 0]  <- FRESH manifest: SILENT. The false positive is gone.
+
+$ <corrupt a GENERATED line in the manifest>; bash .../gen-skills-manifest.sh --check
+❌ SKILLS-MANIFEST.md stale — run: bash ops/scripts/manage/gen-skills-manifest.sh
+[exit 1]
+
+$ STAGED='skills/...' bash ops/scripts/pre-commit-doc-audit.sh      # manifest now STALE
+⚠️  DOCS AUDIT: skills/ changed but docs/SKILLS-MANIFEST.md is stale.
+   → Run: bash ops/scripts/manage/gen-skills-manifest.sh  (then stage the result)
+───
+📋 DOCS AUDIT: 1 documentation issue(s) found.
+   Fix them before committing — do NOT use --no-verify (logged & audited).
+[exit 0]
+
+$ git checkout -- docs/SKILLS-MANIFEST.md ; .../gen-skills-manifest.sh --check
+✓ SKILLS-MANIFEST.md fresh (383 skills)
+[exit 0]  <- restored and FRESH again
+
+$ CORTEX_DEPLOY_HOME=/tmp/fakedeploy STAGED='skills/...' bash pre-commit-doc-audit.sh
+  (that deploy home holds a stub wrapper that exits 3)
+⚠️  DOCS AUDIT: COULD NOT VERIFY SKILLS-MANIFEST.md freshness (rc=3).
+   gen-skills-manifest: COULD NOT VERIFY - no interpreter with PyYAML found.
+───
+📋 DOCS AUDIT: 1 documentation issue(s) found.
+   Fix them before committing — do NOT use --no-verify (logged & audited).
+[exit 0]  <- COULD NOT VERIFY, and explicitly NOT 'stale'
+
+## 2. The class guardrail test (ADV-11051-2)
+
+$ python3 tests/test_manifest_generator_interpreter.py
+PASS  ops/scripts/pre-commit-doc-audit.sh does not call the generator with a bare python3
+  PASS  ops/scripts/manage/verify-skill-lifecycle-run.py does not call the generator with a bare python3
+  PASS  ops/scripts/manage/gen-skills-manifest.py does not call the generator with a bare python3
+  PASS  ops/scripts/pre-commit-doc-audit.sh goes through the wrapper
+  PASS  ops/scripts/manage/verify-skill-lifecycle-run.py goes through the wrapper
+  PASS  the wrapper exists
+  PASS  the wrapper is executable
+  PASS  the wrapper is registered for deploy
+  PASS  no PyYAML interpreter -> exit 3 (COULD NOT VERIFY)
+  PASS  the message says COULD NOT VERIFY
+  PASS  it is NOT reported as stale
+  PASS  an interpreter with PyYAML is reachable (rc in 0|1)
+  PASS  the manifest is currently FRESH (rc 0, not stale)
+  PASS  no PyYAML -> exit 3, not a crash
+  PASS  the refusal names the fix (the wrapper)
+  PASS  no bare traceback
+
+ALL PASS — the manifest generator has one interpreter resolver, and 'could not verify' is never read as 'stale'
+[exit 0]
+
+## 3. The lifecycle check and its test (ADV-11051-4, -5)
+
+$ ~/.hermes/hermes-agent/venv/bin/python3 -m pytest tests/test_verify_skill_lifecycle_run.py -q
+============================= test session starts ==============================
+platform linux -- Python 3.11.15, pytest-9.1.1, pluggy-1.6.0
+rootdir: <repo>
+configfile: pytest.ini
+plugins: anyio-4.12.1
+collected 7 items
+
+tests/test_verify_skill_lifecycle_run.py .......                         [100%]
+
+============================== 7 passed in 0.05s ===============================
+[exit 0]
+
+$ .../verify-skill-lifecycle-run.py   (last 8 lines of its JSON)
+    "software-development/hermetic-python-testing",
+    "devops/governance-closeout",
+    "devops/enforcement-gate-migration"
+  ],
+  "base_commit": "b58eaa1d",
+  "failures": [],
+  "ok": true
+}
+[exit 0]
+
+## 4. A4 static gate, all six changed scripts (ADV-11051-1)
+
+$ adversarial-verify.py --file ops/scripts/manage/gen-skills-manifest.sh --level A4 --gate
+  ✅ GATE_PASSED — no critical/high findings
+  [exit 0]
+
+$ adversarial-verify.py --file ops/scripts/manage/gen-skills-manifest.py --level A4 --gate
+  ✅ GATE_PASSED — no critical/high findings
+  [exit 0]
+
+$ adversarial-verify.py --file ops/scripts/pre-commit-doc-audit.sh --level A4 --gate
+  ✅ GATE_PASSED — no critical/high findings
+  [exit 0]
+
+$ adversarial-verify.py --file ops/scripts/manage/verify-skill-lifecycle-run.py --level A4 --gate
+  ✅ GATE_PASSED — no critical/high findings
+  [exit 0]
+
+$ adversarial-verify.py --file ops/scripts/cortex-update.sh --level A4 --gate
+  ✅ GATE_PASSED — no critical/high findings
+  [exit 0]
+
+$ adversarial-verify.py --file tests/test_manifest_generator_interpreter.py --level A4 --gate
+  ✅ GATE_PASSED — no critical/high findings
+  [exit 0]
+
+## 5. The regression harness (ADV-11051-3)
+
+The captured output is the COMMITTED artifact, not a restatement here:
+    tests/artifacts/loop-gov-regression.txt     full per-test output + RESULT
+$ python3 tests/run_loop_gov_regression.py      # regenerates it (timestamp differs)
+
+## 6. Why the regression artifact changed in this commit (ADV-11051-6)
+
+Not drive-by. This cycle added tests/test_manifest_generator_interpreter.py to the
+harness's TESTS set, so the committed artifact would otherwise be STALE - it would
+not list the new file. Regenerating a derived artifact in the same commit that
+invalidates it is the rule this very change enforces for docs/SKILLS-MANIFEST.md:
+
+$ bash ops/scripts/manage/gen-skills-manifest.sh --check   # same rule, other artifact
+
