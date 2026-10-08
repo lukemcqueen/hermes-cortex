@@ -385,6 +385,11 @@ Result: 3 skills updated, 1 upstreamed, 1 SOUL.md entry.
   edit, so the next `cortex-update.sh` overwrites the lessons. 7+ drift-sync
   commits in the 7 days to 2026-10-07 (`badbc960`, `de5f058c`, `56c3a825`,
   `55173ab5`, `3123e26a`, `8bd82dcb` …) — treat it as routine, not an anomaly.
+  **Count it before you trust it:** `git log --format=%h --since=<7d> -- skills/ |
+  wc -l` measured **89** on 2026-10-08, not 7 — the 7+ figure was a sample that had
+  been copied forward for days. The volume is the argument for making the Phase-3
+  drift-sync mechanical instead of manual; a stale count makes a systemic leak look
+  like a rare one.
   **Procedure (verified this run):** (1) `python3 ops/scripts/manage/cortex-doctor.py
   --quiet | grep -i 'skill drift'` names each drifted path; (2) prove the
   deployed copy is a SUPERSET before syncing — `diff <repo> <deployed> | grep '^<'`

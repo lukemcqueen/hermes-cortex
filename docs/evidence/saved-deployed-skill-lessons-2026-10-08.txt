@@ -1,0 +1,484 @@
+SAVED DEPLOYED-ONLY SKILL LESSONS — 2026-10-08 (soul-refinement cron)
+==============================================================================
+
+These are REVIEW MATERIAL. Nothing was copied or committed by the cron.
+Copy each whole-file target over the repo source, delete the legacy
+checklist lines it supersedes, then commit and run the parity check:
+  python3 ops/scripts/manage/check-skill-drift-parity.py
+
+==============================================================================
+### autonomous-ai-agents/pi-coding-agent/SKILL.md   [whole-file]   deployed-only lines: 30
+==============================================================================
+-- WHOLE-FILE SUPERSET (apply the full deployed file):
+--- a/skills/autonomous-ai-agents/pi-coding-agent/SKILL.md
++++ b/skills/autonomous-ai-agents/pi-coding-agent/SKILL.md
+@@ -74,6 +74,39 @@
+   guessed path becomes a silent per-message no-op. Pin the session identity too (e.g. a
+   `CORTEX_SESSION_KEY`): a harness started outside a git repo cannot derive repo/branch and
+   every chat otherwise collapses onto ONE session.
++
++## Driving pi from another process — control calls go over RPC, never a prompt
++
++A wrapper that only sends prompts is missing half the interface, and the missing half
++fails in ways that read as pi being broken (working adapter to copy:
++`ops/scripts/cortex_gateway/pi_control.py` in hermes-cortex).
++
++- **A built-in slash command sent as a prompt is a NO-OP.** `/compact`, `/model`,
++  `/new`, `/restart`, `/settings` are handled only in the interactive/RPC surfaces; as a
++  prompt they become conversation (a forwarded `/new` is answered as prose while every
++  bit of context stays). Session and state operations go over **RPC mode**:
++  `pi --mode rpc` takes one JSON record per line on stdin (`{"type":"get_state"}`,
++  `{"type":"compact"}`, `{"type":"set_model", …}`) and answers with a `response`
++  record on stdout — correlate by the `id` you sent, never by response order.
++- **Pass `--no-mcp` for a control call.** pi connects its MCP servers at RPC startup,
++  and with them enabled the control call sat ALIVE and SILENT (no stdout, no stderr)
++  for the whole deadline on ~40% of runs; the same call answered 8/8 in ~1.2 s with
++  `--no-mcp`. A control call uses no MCP tool, so those servers are pure risk there.
++- **Watch the process EXIT as well as EOF.** EOF is not the only end of an answer:
++  pi's MCP children inherit its stdio, so a lingering grandchild holds the write end of
++  the pipe open — no data, no EOF — and a reader waiting only for EOF blocks for its
++  full deadline. Start pi in its own process group (`start_new_session=True`) and kill
++  the GROUP on timeout, so a wedged control call does not also leak children.
++- **`compact` never answers for a session whose transcript does not exist yet**
++  (45 s+, repeated), while `get_state` on the same id answers in ~1.2 s and creates it.
++  Ask for the state first and answer "no conversation yet" — a chat that has just
++  started a fresh session is exactly this case, and it is the common one.
++- **Give a check three outcomes, not two**: `0` ok · `1` a NEGATIVE answer · `3` could
++  not verify. `--offline --list-models <pattern>` prints `No models matching "x"` and
++  still **exits 0**, so a verdict read off the exit code is wrong in both directions —
++  decide from the OUTPUT, and make "pi cannot be run at all" its own outcome rather
++  than a failed check. The same split lets a caller refuse a bad model name instead of
++  breaking every later turn with it.
+ 
+ ## Extension API (the Jev-hook surface)
+ 
+
+==============================================================================
+### devops/governance-closeout/SKILL.md   [whole-file]   deployed-only lines: 16
+==============================================================================
+-- WHOLE-FILE SUPERSET (apply the full deployed file):
+--- a/skills/devops/governance-closeout/SKILL.md
++++ b/skills/devops/governance-closeout/SKILL.md
+@@ -106,6 +106,22 @@
+  graded `evaluation-awareness`: you are role-playing the reviewer on your own work
+  instead of describing it. Write plainly — what changed, why, and the evidence path —
+  and let the reviewer produce findings.
++- **A refusal whose findings are ALL `unverified-claim` is an evidence gap, not a code
++  defect — commit the artifacts and CLOSE AGAIN.** Every such finding is a true claim
++  whose output lived only on a screen (a test count, a live-run result, a proof about a
++  scratch resource, a fix for a defect the diff does not demonstrate). The remedy is to
++  commit, in the SAME range, the verbatim run output and a re-runnable capture — not to
++  edit code nothing found fault with, and not to rewrite the note. A refusal keeps the
++  lock, so the retry is `end_change` on the SAME cycle: the material changed, so it is
++  judged afresh. Do NOT open a fresh cycle for it — a new cycle's window is empty, its
++  review is skipped as `simple`, and it authorises a range nothing reviewed.
++- **Evidence about an EPHEMERAL resource is captured while it exists, or re-created.**
++  A scratch unit or temporary process is deleted once the proof is taken, and a reading
++  captured as it went away prints `MainPID=0 / NRestarts=0` — a contradiction sitting
++  inside your own artifact. Re-run the proof and capture the reading live, and inline the
++  resource definition and its probe IN the artifact so any host can reproduce it. The
++  unit's JOURNAL survives the cleanup (`journalctl -u <unit>`), which is what makes the
++  capture durable rather than a claim.
+ - **A pasted transcript is NOT accepted evidence, however true it is.** When the
+   load-bearing claim is a measurement (the suite is green, the doctor is clean), the
+   finding will be that nobody can re-run a transcript. Commit a RUNNABLE generator — a
+
+==============================================================================
+### devops/hermes-gateway-operations/SKILL.md   [whole-file]   deployed-only lines: 88
+==============================================================================
+-- WHOLE-FILE SUPERSET (apply the full deployed file):
+--- a/skills/devops/hermes-gateway-operations/SKILL.md
++++ b/skills/devops/hermes-gateway-operations/SKILL.md
+@@ -115,6 +115,114 @@
+ Note: a config value in `~/hermes-cortex/.env` does **not** need a restart once
+ the gate's own resolver is deployed (it re-reads per call); only the code does.
+ 
++### A restart that preserves sessions is INVISIBLE — announce it, and tell the agent
++
++The only message about a restart is sent by the process that then exits; nothing
++follows it. So a human in the chat cannot tell the restart happened, and the agent
++cannot tell them either: sessions survive a gateway restart (starting fresh is
++`/new`), so an agent asked "did you restart?" answers from its own memory —
++"no, I still have our context" — which is true of the SESSION, false about the
++gateway, and the only answer available. Three things fix that, and the third is
++the one usually missed:
++
++1. **The restart command's reply states what happens to the CONVERSATION.**
++   "restart" reads like "fresh start"; a session that carries over otherwise looks
++   like nothing happened.
++2. **The NEW process announces itself at startup, before it serves anything**, in the
++   operator's wording, verbatim: `♻ Gateway restarted successfully. Your session
++   continues.` Keep that phrasing — it answers both questions a restart raises (did it
++   work, did I lose the conversation) in one line, and a longer invented variant is not
++   what the operator wants here. Persist a per-chat marker BEFORE sending the restart
++   reply — the process that writes the marker is the one that exits, so in-memory state
++   cannot carry it. Consume the marker on the first turn, so the human is told once and
++   not on every later reply. If the startup send fails, LEAVE the marker and let the
++   first reply carry the confirmation: a transient send failure must not lose the news.
++3. **Hand the AGENT the same fact on its first prompt after the restart** (a
++   `[system]` note prepended to the turn). Announcing to the human alone leaves the
++   agent still answering "no" — the contradiction the human will notice.
++
++Prove a restart with the unit, not with the chat:
++
++```bash
++systemctl --user show <unit>.service -p NRestarts -p MainPID -p ExecMainStartTimestamp
++```
++
++A NEW `MainPID` plus start timestamp is the proof. `NRestarts` increments only for a
++**policy** restart (`Restart=` firing) — an operator-issued `systemctl restart` does
++not increment it, so a changing `NRestarts` is evidence the unit restarted ITSELF.
++
++- **`Restart=always` is required for restart-on-clean-exit**, the pattern where a
++  service asks systemd to bring it back by exiting on purpose: `Restart=on-failure`
++  does NOT start the unit again after `exit(0)`, so the exit is a plain stop and the
++  bot stays down. Check the policy before trusting the mechanism.
++- **Probing this with a throwaway unit: end the probe with
++  `systemctl --user stop <unit>` and exit 0.** Under `Restart=always`, a probe that
++  exits non-zero restarts itself in a loop — it floods the journal and, if it also
++  touches live state, does so repeatedly. Confirm the unit is gone afterwards
++  (`systemctl --user list-units --all | grep <name>`).
++
++## A non-Hermes backend is a SEPARATE runtime, not a Hermes session
++
++A backend of `kind: command` (a CLI coding agent) is a distinct process with its
++own tooling: it inherits **none** of a Hermes session's memory, skills, or
++governance. "Agent X has no memory" is therefore a property of that backend's
++OWN integration layer, never of the host — establish where its memory comes from
++before touching anything shared:
++
++| Backend | Memory comes from |
++|---|---|
++| Hermes session | the `mycortex-mem` memory-provider plugin, in-process |
++| command/CLI agent | its own MCP server or extension, spawned by the agent CLI |
++
++`hermes mcp list` does not list plugin-provided stores, so its absence proves
++nothing about a Hermes session; a CLI agent's tools appear in ITS agent config
++(its own `mcp.json`/settings), not in `config.yaml`.
++
++### One service-hosted agent reports a store unreachable, a sibling works
++
++Compare the two SERVING UNITS' sandbox flags before blaming the store —
++hardening is invisible in the agent's own output, and the store's availability
++check often swallows the real exception:
++
++```bash
++systemctl --user show <failing>.service -p NoNewPrivileges -p PrivateTmp
++systemctl --user show <working>.service -p NoNewPrivileges -p PrivateTmp
++```
++
++`NoNewPrivileges=true` refuses `sg`/`newgrp` setgid **even when the process
++already holds the target group**, which breaks any store whose only access path
++is `sg docker -c "docker exec …"`. Reproduce faithfully with
++`setpriv --no-new-privs -- <cmd>` — it keeps the real supplementary groups,
++whereas `systemd-run` drops them and fails for the wrong reason. Fix by giving
++the store a direct `docker exec` path when the group is already held; never by
++dropping the hardening flag. Mechanism and store-specific fix: `psql-automation`.
++
++### Slash commands are the GATEWAY's, never the agent's
++
++When a `kind: command` backend (a CLI coding agent) serves a chat, the built-in slash
++commands belong to the GATEWAY: such a backend handles `/new`, `/model`, `/compact`,
++`/restart` only in its interactive/RPC surface, so forwarded as prompt prose they become
++ordinary conversation — a `/new` is answered politely while every bit of context stays.
++Intercept them in the gateway's command dispatcher and never pass them through
++(backend mechanics: `pi-coding-agent`).
++
++- **Each command needs a defined contract, not just a route.** `/new` starts a fresh
++  session; `/model` persists the override per chat — a stateless prompt wrapper has
++  nowhere to keep it, so the GATEWAY owns a small chat→model store, mode 0600 (a chat id
++  is personal data); `/compact` reports what it reclaimed, and "nothing to compact" for a
++  session too small; `/restart` exits so the unit restarts it, and the new process
++  announces itself (above).
++- **Design for the EMPTY chat.** Commands run on chats with no conversation yet, where a
++  backend's session operations hang or refuse (compact on a transcript that does not exist
++  never answers). Probe state first and answer with the specific condition — "this chat has
++  no conversation yet" — never a generic failure.
++- **A control timeout must cover a real turn plus the operation.** Compacting a large
++  session measured ~1m46s; a 30s deadline reports a healthy backend as broken.
++- **Test parity with a STUB transport and an echoing backend** (`/bin/echo` so the reply
++  body IS the argv). A probe that polls with the real bot token starts a second poller and
++  steals the live channel's messages (409); echoing is what lets the assertion check the
++  ARGV the gateway produced — model declared exactly once, no duplicate `--model`.
++
+ ## Adding a New Platform
+ 
+ 1. Obtain the token/secret for the platform (Telegram bot token from
+@@ -145,3 +253,5 @@
+ - `hermes-agent` — general Hermes configuration
+ - `telegram-delivery-diagnostics` — Telegram-specific delivery debugging
+ - `cortex-bus-messaging` — inter-agent messaging (separate from the user gateway)
++- `psql-automation` — the `sg`/`NoNewPrivileges` store-access mechanism behind a
++  "store unreachable" report from a hardened service
+
+==============================================================================
+### devops/mycortex/SKILL.md   [core]   deployed-only lines: 31
+==============================================================================
+-- CORE LESSONS ONLY (deployed-only lines; deploy-time banners and the
+   superseded checklist rows the deployed copy rewrote are omitted --
+**Connection:** direct `docker exec -i mycortex-postgres psql -U <role> -d <db>` on Linux (trust auth inside container) — NOT through `sg docker`, which dies under systemd `NoNewPrivileges=true`; keep `sg` only as the fallback for a host whose user is not in the docker group (`psql-automation` carries the hardening reproduction and the argv-ladder shape). TCP :15432 being open is NOT proof a given harness can reach this — the failure lives in the wrapper, not the port; direct psql reading `~/.legacy-brain/config.json` on macOS. Roles connect WITHOUT passwords inside the container; direct TCP to :15432 from the host requires a password (pg_hba scram for non-localhost).
+## Memory + session are ONE store, two views (S2c)
+`mycortex_mem` holds `peers` / `sessions` / `messages` / `conclusions` / `profiles` /
+`checkpoints`. Session history IS the substrate memory distills from, so `mem_*` (what do I
+know) and `session_*` (where am I) are two tool families over ONE connection and ONE
+identity model — do not split them into two services or two schemas.
+| Surface | Reach |
+| Hermes harness | `plugins/mycortex-mem/` — the plugin adapter |
+| Any other harness (pi, etc.) | `mcp-servers/cortex-context-mcp.py` — one thin MCP adapter over the shared impl in `ops/services/mycortex-mem/`, registered per harness (pi reads `mcpServers` from `~/.pi/agent/mcp.json`) |
+| Checkpoint TIMING | the harness EXTENSION (`turn_end` → `session_checkpoint`), never the model — the session that most needs a checkpoint is the one that got killed, and a killed session cannot call a tool |
+Facts that cost time to find: the checkpoint table is **`checkpoints`**, not
+`session_checkpoints`; it keys on `session_id` with `harness`/`repo`/`branch` copied in, so
+an ad-hoc harness run with no `CORTEX_SESSION_*` env resolves to
+`unknown:<repo>:<branch>` while a supervised run keys correctly. `mycortex_mem_writer` has
+**no DELETE grant** on `checkpoints` (least privilege), so a probe cannot clean up after
+itself: identify test rows by id and leave them rather than escalating to a superuser role.
+**Naming:** say **mycortex** or **memory**. "The store" is ambiguous in this fleet (bus
+store, task store, session state) and the operator rejects it — name the thing.
+### Proving a harness can actually reach it
+Drive the harness's OWN registered command under that harness's sandbox — never a
+hand-rolled invocation, and never only the unhardened path:
+1. Read the command out of the harness config (not from memory), e.g.
+   `~/.pi/agent/mcp.json` → `mcpServers['cortex-context']`.
+2. Spawn exactly that under the hardening the service runs with:
+   `setpriv --no-new-privs -- <command> <args>` (keeps the real group list, unlike
+   `systemd-run`).
+3. Do a real MCP handshake — `tools/list`, then `tools/call` for one read tool — and
+   compare against the unhardened control (same answers both ways).
+4. Finish with ONE real agent turn that uses the tool and echo the tool's own output
+   shape back, so a model answering from guesswork cannot pass as a working tool.
+   Then confirm the write side the same way: a checkpoint row appearing for that turn.
+
+==============================================================================
+### devops/psql-automation/SKILL.md   [core]   deployed-only lines: 49
+==============================================================================
+-- CORE LESSONS ONLY (deployed-only lines; deploy-time banners and the
+   superseded checklist rows the deployed copy rewrote are omitted --
+## Wrapper note: `sg` is not the *rc* problem — stdin mode is
+(Scope: rc PROPAGATION only. `sg` fails totally and differently under systemd
+hardening — see the `sg docker` section below.)
+Fix: an argv LADDER, not a swapped constant — direct `docker exec` FIRST, `sg`
+second, and `-w` on EVERY rung.
+def _attempts(self, role):        # ordered: preferred form first
+    direct = (["docker", "exec", "-i", C, "psql", "-U", role, "-d", DB,
+               "-w", "-v", "ON_ERROR_STOP=1", "-t", "-A"], {})
+    via_sg = (["sg", "docker", "-c",
+               f"docker exec -i {C} psql -U {role} -d {DB} -w -v ON_ERROR_STOP=1 -t -A"], {})
+    return [direct, via_sg]        # the macOS branch returns its own single form
+def _cmd(self, role):              # argv-only callers keep working
+    return self._attempts(role)[0]
+def _run(self, sql, role, timeout):
+    causes = []
+    for cmd, env in self._attempts(role):
+        r = run(cmd, input=sql, ...)
+        if r.returncode == 0:
+            self.last_error = ""; return r
+        causes.append(f"{cmd[0]}: {r.stderr.strip() or r.stdout.strip()}")
+    self.last_error = " | ".join(causes)          # name EVERY cause
+    raise StoreUnavailable(f"psql error: {self.last_error}")
+- **Keep `sg`; do not delete it.** It is the only path on a host whose user is
+  not in the docker group. The bug was the ORDER, not the wrapper — dropping it
+  trades one host's outage for another's. Do not "fix" any of this by dropping
+  `NoNewPrivileges` either; the indirection is unnecessary whenever the group is
+  already held.
+- **A failed rung costs its own timeout**, so an N-rung ladder multiplies the
+  worst-case wall clock. Size the caller's timeout for the ladder, not one rung.
+- **A fail-open availability check must RECORD why it failed.** Returning a bare
+  "unavailable" is what made a hardening flag read as a database outage; keep the
+  joined causes on the connection (`last_error`) while still returning False.
+- **Mirror the change in EVERY copy of the builder.** The same seam is routinely
+  duplicated — a shared service module AND a harness plugin wrapper — and fixing
+  one leaves the other broken for the harness that uses it. Keep the macOS branch
+  (psql directly + a 0600 PGPASSFILE) intact in both.
+- **`wc`-style argv prefixes in the test tree pin the OLD ladder.** A guard written
+  against the previous shape (`cmd[:3] == ["sg", "docker", "-c"]`, or `cmd[3]` read
+  as the inner shell string) fails on your correct change. Grep before shipping
+  (`rg 'sg", *"docker|_cmd\(' tests/`) and rewrite each guard to assert the INTENT
+  across the whole ladder: preferred form first, no group switch in it, `-w` (and the
+  option order) present on EVERY rung, and the fallback still present. Asserting the
+  fallback's existence is load-bearing — it is what stops a later session from
+  "simplifying" away the path other hosts depend on. Run the suites that touch the
+  seam before reporting green; changing one command builder broke three guards.
+A runnable exemplar that drives the detector BOTH ways lives at
+`tests/test_no_new_privs_sg_store.py`: sg refused under `--no-new-privs`, direct
+`docker exec` succeeding under the same hardening, and a control that the plain
+sg path still works without the flag (so it cannot pass for the wrong reason).
+
+==============================================================================
+### devops/shared-repo-push-gates/SKILL.md   [core]   deployed-only lines: 61
+==============================================================================
+-- CORE LESSONS ONLY (deployed-only lines; deploy-time banners and the
+   superseded checklist rows the deployed copy rewrote are omitted --
+- **A receipt is bound to ONE tip, and the gate re-reads `HEAD` on every attempt** — so
+  a peer committing between your close and your push invalidates a receipt that was
+  valid a minute ago, and the refusal names the tip it now wants. Do not answer that by
+  minting receipts in a loop: check whether the peer is still committing
+  (`git log -3 --format='%h %ad %s' --date=iso`) and, if so, stop — your commit is
+  already an ancestor of whatever they push, so it publishes with their push. Report
+  "committed + deployed locally, push rides the peer's next push" with your SHA rather
+  than looping or claiming a push that did not land.
+- **Look for a receipt on the CURRENT tip BEFORE minting one — a peer's recent close may
+  already authorise your push.** A close writes the receipt with BASE = `git merge-base
+  origin/main HEAD`, so a peer session that just closed its own cycle has written a CLEAN
+  receipt covering every unpushed commit behind it, yours included, even though they have
+  not pushed yet. Check before looping: `ls ~/.hermes-cortex/state/.reviewed-hermes-cortex-<tip>*.json`
+  and read its `verdict`/`base_sha`/`tip_sha`. A receipt found this way can let the push
+  through with no new cycle at all.
+- **A claim the reviewer cannot check from the window is a HIGH `unverified-claim` finding
+  that refuses the close — commit the ARTIFACT, never cite it in prose.** The reviewer sees
+  the range's diff plus your note, and nothing else: "ran the suite (N passed)", "dogfood
+  PASSED", "proven on the live unit" are all unverifiable there, and each one comes back as
+  a finding. Put the evidence INSIDE the range as a file — the test-output log, the journal
+  capture, the acceptance transcript — and cite that path. Adding the artifact as a NEW
+  commit to the SAME already-open cycle is the cheapest fix and is NOT the hollow-receipt
+  trick above: the next close re-reads the window with the evidence now in it. Claims about
+  a tool RUN (a deploy, a doctor, a dogfood script) need a committed transcript for the same
+  reason — the reviewer cannot see your terminal.
+- **A peer's commits landing inside your cycle's window are attributed to YOU.** A
+  push/verify cycle whose window picked up a peer's new file is refused as `scope-drift`
+  ("a push-only cycle should not add new test code"), and its diff stat will describe THEIR
+  file as your change. Name the peer's SHAs in the note and state plainly that your cycle
+  changed no source — or wait for the peer's stream to pause so the window holds only your
+  own commit.
+- **The reviewer reads the cycle's DIFF, so a CORRECTIVE commit is judged as ADDING the text
+  it removed.** Deleting an offending passage to fix a finding comes back as the SAME finding
+  ("the file still shows <the removed text>"): the material is the range's diff, so removed
+  lines are in it and the file's UNCHANGED sections — a transcript captured earlier, a count
+  on another line — are invisible to the reviewer. Before burning another round, test the
+  finding against the file rather than the diff: `grep -c '<flagged string>' <file>` (0
+  matches at HEAD while the diff shows the removal = the reviewer is reading the removal),
+  and confirm the evidence it says is missing is actually present (`grep -n '<command>' <file>`
+  shows the captured transcript and its `rc=`).
+- **When findings are demonstrably false, STOP re-reviewing — record the blocker and let the
+  lock expire.** Each re-review returns a variation of the same finding at full cost; the
+  sanctioned exit is to record the issue with the measurement that refutes it, leave the lock
+  to TTL-release, and report the substantive state (committed, deployed, pushed, verified)
+  with SHAs. Never `feedback_override` to get past it and never re-mint a receipt to hide it —
+  an ops/verify cycle whose window is ANOTHER session's commit can be uncloseable by
+  construction, and a TTL-released lock is the documented outcome, not a failure to try
+  harder. Say which commits are yours and which are the peer's in the issue record.
+   the gate. The guard is PATTERN-based, so it also fires on digit-dense
+   identifiers that are not personal data at all — a session key or UUID
+   (`20261008_152408_ab12cd34`) reads as a phone number. Generalize it in the
+   text (`<a real session>`, `10:49Z`) instead of arguing with the gate: a
+   wall-clock time is fine, a long unbroken digit run is not.
+     explain" wastes the cycle — it is always the skill you just edited, OR a
+     peer's in-flight skill work (never `cp` over a skill another session is
+     mid-edit on — it is theirs to land, and its diff is the tell).
+     Quantify it before diagnosing: `python3 ops/scripts/manage/check-skill-drift-parity.py`
+     prints a verdict plus the DEPLOYED-ONLY ("stranded") file list — content that exists
+     only on the deployed copy because a lesson was written there and never copied back —
+     and the doctor exits non-zero while any remain, which blocks every push on the host
+     until it is resolved or explicitly recorded as its own task.
+
+==============================================================================
+### software-development/change-checklist/SKILL.md   [core]   deployed-only lines: 66
+==============================================================================
+-- CORE LESSONS ONLY (deployed-only lines; deploy-time banners and the
+   superseded checklist rows the deployed copy rewrote are omitted --
+- [ ] **A captured check transcript must carry its EXIT CODE and its WARNING COUNT — a bare
+      PASS line is a swallowed error.** A gate that prints `✅ PASSED` while emitting N warnings
+      and an unresolved sub-check reads as a clean system to everyone downstream, including the
+      close reviewer, which files it as exactly that. Capture `rc=$?` beside the command, record
+      the warning count, and write the measured numbers into the evidence — including the ones
+      that are NOT clean ("rc=0 with N warnings and unresolved X" beats a PASS line with the
+      warnings omitted). A transcript with the counts absent is not evidence: the reader cannot
+      tell a clean run from a skipping one, and a summary line claiming cleanliness the
+      transcript contradicts is a fabrication finding.
+- [ ] **Never commit a query's output without first seeing it return rows.** Proof of a
+      disposition ("recorded as this issue", "promoted to a task") must be the store's ACTUAL
+      row: run the query, confirm it returns the row, then commit that. Commit a traceback or an
+      empty section and it proves nothing — and because the reviewer reads the DIFF, a later
+      correction of that same passage can keep reading as the broken version. List the store's
+      tables before writing the query (`SELECT name FROM sqlite_master WHERE type='table'`):
+      store table names are not guessable, and a task store may not be a file DB on the host at
+      all — capture what the tool itself returns instead.
+- [ ] When a component cannot RUN because a dependency is missing, INSTALL it (age-gated via
+      `ops/scripts/health/check-package-age.py <mgr> <pkg>`) rather than teaching every
+      caller to route around it. A workaround fixes the one call site you were looking at
+      and leaves the component broken for the next caller — and the missing dependency is
+      usually why the failure looked unrelated in the first place. Pin and match a version
+      already proven on this fleet.
+- [ ] When a heuristic warning is noisy, tighten its TRIGGER — do not add an exemption list.
+      A check that cannot tell the case it exists for from a deliberate long-standing state
+      fires on every instance of the latter, and the reader learns to scroll past it. Scope
+      the condition to the case itself (`git diff --cached --name-only --diff-filter=A` —
+      only NEWLY ADDED files), which removes the noise and keeps the real case; an
+      allow-list of known-good paths instead drifts out of date and the noise returns with
+      the next legitimate tool.
+- [ ] Test the warning BOTH ways before trusting it: the case it must report, and the case it
+      must now stay silent on. A warning verified only in the reporting direction cannot show
+      that the noise is gone; verify only in the silent direction and you may have deleted the
+      check. (`shell-scripting` has the extraction pattern for driving one block of a large
+      script this way; `tests/test_updater_robustness.py` is a worked exemplar.)
+      (✅ Crons registered / Orch crons / Crons total). Record its EXIT CODE and warning count,
+      not just the ✅ lines: a non-zero rc with warnings is NOT a clean doctor, and reporting it
+      as one is the failure the close review catches.
+- [ ] Deploy, THEN push — that order, with nothing committed in between. The pre-push path
+      itself runs pull → deploy → doctor → verify, and the gate reads `Deploy sync`, so any
+      commit made after a deploy leaves the deployed tree trailing HEAD and blocks the push.
+      Run it as one step: `bash ~/.hermes-cortex/scripts/cortex-dogfood.sh --force` and then
+      `git push origin main`. A close-time review receipt is keyed by BOTH tip and base, so a
+      further commit invalidates it too — the deploy is the LAST step, not a mid-task refresh.
+- [ ] Integrate a peer's work by MERGE, never `git pull --rebase`. A rebase rewrites SHAs,
+      which invalidates the receipt bound to the tip and rewrites the peer's unpushed
+      commits; it also refuses outright when another session holds unstaged files, and you
+      must never stash a peer's files. A merge needs neither and keeps your commit identities.
+- [ ] **Never `git commit --amend` while a peer may be working in the tree.** `--amend`
+      rewrites whatever HEAD is *now*, not "your" commit: a sibling commit that landed since
+      you started becomes the target, folding THEIR files into YOUR message and stripping
+      their authorship. Before amending, assert HEAD is the commit you created
+      (`git log -1 --format='%h %s'`); if it is not, commit your paths as a NEW commit.
+      Recovery if you already amended theirs: `git reflog` to find the peer's SHA,
+      `git reset --soft <peer-sha>` to restore it verbatim (message and all files), then
+      re-commit only your staged paths — never `reset --hard`, which discards their work.
+- [ ] A close-review window is `base..HEAD`, so a **peer's commit landing mid-cycle shows up
+      as scope drift in YOUR range**. Name the peer's SHA in the cycle note and leave their
+      work untouched; reverting another session's commit to green your gate is the same
+      violation as the amend above.
+- [ ] Verify the landing rather than assuming it: `python3 ops/scripts/manage/verify-landed.py
+      --repo . --base <previous tip>` asserts a CLEAN receipt for the tip, that every changed
+      deploy-map file matches its deployed copy, and that `origin/<branch>` equals the tip.
+      Exit 0 / 1 (a real mismatch, named) / 2 COULD NOT VERIFY — a partial check is not a pass.
+- [ ] Pushed — `git log --oneline -1 origin/main` shows your commit.
+
+==============================================================================
+### software-development/session-manager/SKILL.md   [whole-file]   deployed-only lines: 23
+==============================================================================
+-- WHOLE-FILE SUPERSET (apply the full deployed file):
+--- a/skills/software-development/session-manager/SKILL.md
++++ b/skills/software-development/session-manager/SKILL.md
+@@ -30,7 +30,32 @@
+ 
+ ## 1. Checkpoint / Restore
+ 
+-Save a compact snapshot of session state at key milestones. Each checkpoint captures what was accomplished, what's pending, and any critical decisions or blockers.
++Save a compact snapshot of session state at key milestones.
++
++**Use the harness's checkpoint STORE when one exists — files are the fallback, not the
++preference.** On a fleet host the store is the `session_checkpoint` / `session_restore`
++tools: structured facts (done / pending / blockers / decisions), append-only, scoped to
++the harness+repo+branch, and readable by the next session with one call. A markdown file
++nobody reads is worse than no checkpoint, because it looks like continuity. Check the
++checkpoint tool's availability FIRST; if the harness has none, fall back to the file
++shapes below. Two mechanics worth knowing: the store is APPEND-ONLY, so a second call is
++how you add the rest of a long list (pending and decisions in separate calls is fine), and
++the stored facts are what a fresh session actually reads — write them there, not only in
++the chat.
++
++**When the operator asks to "summarize for a new session", do both, in this shape:**
++
++1. Persist it (`session_checkpoint`) — objective, what shipped and where, current live
++   state with SHAs/units/paths, pending items each carrying the EXACT next call or
++   command, blockers, and the decisions that constrain the next worker.
++2. Deliver the same in chat, ordered: **goal → status per deliverable → current state →
++   pending with the exact next step → gotchas**. Include the one step only a human can do
++   (a manual action left unverified) and anything that looks like a contradiction but is
++   expected.
++3. State claims as far as they are VERIFIED — name the artifact that shows it. A summary
++   is where an unverified assertion travels furthest and gets trusted longest.
++4. Prefer the concurrent-session context a fresh worker cannot re-derive cheaply (another
++   session's identity, what it is working on, what it is NOT yours to touch).
+ 
+ ### When to checkpoint
+ 
+

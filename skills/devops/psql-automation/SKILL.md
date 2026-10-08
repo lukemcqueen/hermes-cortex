@@ -132,6 +132,16 @@ hosts that genuinely lack the group. Do not "fix" it by dropping
 `NoNewPrivileges` — that trades a security control for a convenience, and the
 `sg` indirection is unnecessary whenever the group is already held.
 
+**Careful reading, not just careful writing (2026-10-08):** `sg` fails only
+because of `NoNewPrivileges`. Under `setpriv --no-new-privs` the `sg` form exits
+**rc=1** with `setgid: Operation not permitted` — so a piped query reports
+"X absent" for a command that never ran, and a later `|| exit 1` turns a
+capability failure into a false negative on the data itself. Assert on the
+**producer's exit code first**, and only then parse its output. Apply the same
+rule to every wrapper whose failure is silent by design (a swallowed store
+`available()`, a `2>/dev/null`). Reading a failure as absence is how a
+*diagnosis* becomes a wrong *conclusion*.
+
 ## Every harness-invoked psql must be non-interactive: always pass `-w`
 
 `psql` prompts for a password on **/dev/tty** whenever no usable credential is
