@@ -11,8 +11,13 @@ Deploy banners (the 3-line SOURCE header) are not compared.
 
 | Measure | Value |
 |---|---|
-| Deployed-only files (stranded) | 0 |
-| Files in sync | 840 |
-| Skipped (no repo counterpart, or repo ahead) | 595 |
+| Deployed-only files (stranded) | 3 |
+| Files in sync | 829 |
+| Skipped (no repo counterpart, or repo ahead) | 900 |
 
-**Verdict: PASS**
+**Verdict: FAIL**
+
+Stranded files:
+- devops/cortex-deployment-sync/SKILL.md
+- devops/governance-closeout/SKILL.md
+- devops/loop-governance/SKILL.md
