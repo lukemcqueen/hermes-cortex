@@ -14,8 +14,12 @@
 set -uo pipefail
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-INSPECTOR="${REPO}/ops/scripts/orch-bus/bus-inbox-inspect.py"
-[[ -f "${INSPECTOR}" ]] || INSPECTOR="${HOME}/.hermes-cortex/scripts/bus-inbox-inspect.py"
+INSPECTOR_REL="ops/scripts/orch-bus/bus-inbox-inspect.py"
+INSPECTOR="${REPO}/${INSPECTOR_REL}"
+[[ -f "${INSPECTOR}" ]] || {
+  echo "FATAL: ${INSPECTOR_REL} not found under ${REPO}; cannot generate evidence" >&2
+  exit 3
+}
 ARTIFACT="${REPO}/docs/evidence/bus-overnight-2026-10-08.txt"
 
 scrub() {
@@ -37,9 +41,9 @@ RC_FULL=$?
   echo "# generated_at: $(date -u '+%Y-%m-%dT%H:%M:%SZ')"
   echo "# inspector_revision: ${REV}"
   echo "# generator: ops/evidence/bus-overnight-2026-10-08.sh"
-  echo "# inspector: ops/scripts/orch-bus/bus-inbox-inspect.py (committed, read-only, never consumes)"
-  echo "# command: python3 <home>/.hermes-cortex/scripts/bus-inbox-inspect.py esther --issues"
-  echo "# command: python3 <home>/.hermes-cortex/scripts/bus-inbox-inspect.py esther"
+  echo "# inspector: ${INSPECTOR_REL} (committed, read-only, never consumes)"
+  echo "# command: python3 ${INSPECTOR_REL} esther --issues"
+  echo "# command: python3 ${INSPECTOR_REL} esther"
   echo "# scrubbed at source: <home>, <bus-endpoint>, <redacted-id>."
   echo ""
   echo "## --issues (empty stdout + exit 0 == no-action / silent condition)"
