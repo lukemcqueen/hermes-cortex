@@ -1002,6 +1002,59 @@ nor propagated — it is STRANDED on one host and the fleet never receives it.
   reports drift.
 - **Compare every file, not just the entry point.** A check that only compares
   `SKILL.md` cannot see a drifted `references/` or `scripts/` file.
+- **A symbol that exists on ONE host and nowhere in the repo is a local edit, not a
+  source bug.** When a peer reports a defect in enforcement code you own — a duplicate
+  `def` shadowing its caller, a signature their callers cannot satisfy — confirm it
+  exists in the SHARED source before touching anything: `grep -n 'def <name>'` the repo
+  copy, then `git log -S 'def <name>(<distinctive args>'` across all history. Zero hits
+  on both means that definition was never committed on any branch, so the host is
+  running a hand-edited copy: the fix is a clean re-deploy THERE (the deploy overwrites
+  the deployed file from repo source), and diagnosing it as a source regression is
+  wrong. Editing shared enforcement code to "fix" a defect only one host has installs
+  that defect everywhere — and a divergence that never existed in history cannot have
+  come from the repo at all.
+
+## Rule 26: A Gate Is Not Shipped Until Its PRODUCER Is Live in the SAME Deploy
+
+A gate that DEMANDS an artifact — a receipt, a token, a marker, a recorded review —
+is half a mechanism. Ship the receiver without a live producer and every attempt is
+refused. It fails closed, so nothing is corrupted, but the work stops and **nothing
+says why** — which is worse than an outage in one way: it looks exactly like correct
+enforcement working as intended.
+
+- **Deployed file ≠ running process, for the producer TOO.** Long-lived servers (the
+  MCP child, the gateway) hold the revision they started with. The discriminating
+  symptom: the gate refuses while the code that should write the artifact is plainly
+  present in the deployed file. The fix is the reload, not the change.
+- **Point the restart-needed detector at EVERY file whose staleness is silent.** A
+  check that watched only the enforcer produced no banner when the MCP server changed,
+  so the half-shipped gate above had no announcement. When you add a file to a
+  deploy≠load surface, add it to the watcher that fires the banner in the same change —
+  hash the watched SET as one combined value so the existing state file keeps working.
+- **Instrument EVERY bail path in the producer before chasing hypotheses.** A silent
+  early return is a deadlock that looks like correctness: a producer that resolved
+  nothing bailed out of its first check without logging, so the one function capable of
+  explaining the failure was the only one with no voice, and three wrong hypotheses got
+  chased before the real cause appeared. Returning early is usually the RIGHT action;
+  being silent is the defect. Log the values the check actually saw.
+- **Resolve session/identity from the CALL's arguments, never `None`.** A helper that
+  derives a session id from tool-call args returns `None` when handed `None` — silently,
+  so every caller reads it as "no data" rather than "you called this wrong". Pass the
+  args through the whole chain.
+- **Write the verification so it runs with plain `python3` on any host.** A check that
+  only executes under a test runner you cannot run leaves its assertions unverified, and
+  a reviewer is right to refuse them. Standalone-runnable is also what makes the producer
+  testable in isolation: import the DEPLOYED module and call the producer directly.
+- **Test the producer in BOTH directions.** "Writes a receipt when it should" and
+  "refuses when it must" are separate assertions; a producer exercised only on the happy
+  path hides a gate that can be satisfied by an empty or unbound artifact. Point such a
+  test at a TEMP state dir so running it cannot mint a real authorisation.
+- **Relaxing a gate: derive eligibility from the artifact, never accept a claim.** A
+  relaxation the worker can assert about its own work ("this is docs only", "this is
+  trivial") is a bypass with paperwork. Compute it from the material the gate already
+  inspects, disclose which policy applied, and leave an explicit exit for a range that
+  is genuinely too large to review — split it. See Rule 20, and the "Two budgets"
+  section in the **governance-closeout** skill's material reference.
 
 ## References
 

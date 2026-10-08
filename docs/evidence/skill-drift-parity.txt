@@ -11,12 +11,8 @@ Deploy banners (the 3-line SOURCE header) are not compared.
 
 | Measure | Value |
 |---|---|
-| Deployed-only files (stranded) | 2 |
-| Files in sync | 820 |
-| Skipped (no repo counterpart, or repo ahead) | 591 |
+| Deployed-only files (stranded) | 0 |
+| Files in sync | 840 |
+| Skipped (no repo counterpart, or repo ahead) | 589 |
 
-**Verdict: FAIL**
-
-Stranded files:
-- career-document-writing/SKILL.md
-- research/recurring-reports/SKILL.md
+**Verdict: PASS**

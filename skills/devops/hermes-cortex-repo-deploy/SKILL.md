@@ -40,6 +40,55 @@ deploy-order and manifest pitfalls that cost time when missed.
    includes the just-pushed commit (the push gate's internal deploy can trail
    the newest commit).
 
+## The push also runs an always-review RECEIPT gate
+
+`git push` refuses a range that touches an always-review path unless a CLEAN review receipt
+exists for it (`expected receipt: <state>/.reviewed-<slug>-<tip>.json`). The receipt is keyed
+by the TIP SHA, and the range spans origin's tip..HEAD — which has consequences that are not
+obvious:
+
+- **A rebase invalidates it.** `git pull --rebase` rewrites SHAs, so a receipt written for
+  the pre-rebase tip no longer matches the gate's expected filename. On a shared branch the
+  rebase rewrites a PEER's unpushed commits too, so their receipt coverage dies with yours
+  (their content survives; say so explicitly when you report it). Getting back requires a
+  cycle that ENDS at the new tip and returns CLEAN from a real review — the receipt is
+  written at close.
+- **`cortex-dogfood.sh --force` cannot produce a receipt.** It only passes `--force-all` to
+  the deploy (a full re-deploy); it runs no review. There is no sanctioned way to re-review
+  a CLOSED cycle either — `record-review.py` is the raw sink the reviewer writes to, and the
+  review-queue sweep never touches overrides. Never manufacture a receipt and never use an
+  override: that gate is what keeps an enforcement change from shipping unreviewed.
+- **The range includes a peer's commits**, so when they touch an always-review file the
+  review must cover the whole range, not just your own commits.
+
+**Run the deploy as the LAST step before the push.** Any commit made after a deploy leaves
+the deployed marker stale and the gate returns `Deploy sync` ❌ however clean your doctor
+ran minutes earlier. Do both in ONE command, nothing in between:
+`bash ~/.hermes-cortex/scripts/cortex-update.sh > <log> 2>&1; git push origin main`.
+
+## An operational cycle cannot carry evidence of its own success — commit the CHECK
+
+The push is LAST, so a transcript of it can only be written afterwards; that commit changes
+the tip, invalidating the per-tip receipt (above) and leaving the deployed tree trailing so
+`Deploy sync` returns ❌. Reviewers are right to demand committed evidence, and the ordering
+rules keep destroying it — committing more evidence repeats the loop.
+
+Break it by committing a RE-RUNNABLE CHECK before the push, never a transcript:
+
+    python3 ops/scripts/manage/verify-landed.py --repo . [--base <rev>] [--no-remote]
+
+It asserts (1) a CLEAN receipt for the tip, (2) every file the range changed that has a
+deploy-map entry matches its DEPLOYED copy, (3) `origin/<branch> == tip`; it exits 0 / 1 (a
+real mismatch, named) / 2 COULD NOT VERIFY, and prints no path on failure. A later reviewer
+re-runs it against the state that exists AFTER the push, so the evidence cannot go stale and
+needs no second commit.
+
+**Measure the checker before trusting it.** On its first real range this check reported three
+false FAILs: it hashed deployed copies RAW, and the deploy's header (inserted after the
+shebang, closed by a blank line) makes the two sides differ by construction. When a check
+disagrees with an otherwise-green gate, print the FIRST DIFFERING LINE of the two bodies
+instead of assuming either side is wrong, and pin the real shape with a test.
+
 ## A failed deploy: read the log's FIRST line, and check the lock after
 
 `cortex-update.sh` sources the host env early, so a broken env file kills the run
@@ -58,6 +107,14 @@ log's first line, not the exit code:
   newest `.env.bak-*`, leave the rest byte-for-byte, then confirm the key count is
   unchanged and the mode is still `0600`. A corrupt env breaks EVERY deploy on
   that host, so treat it as urgent.
+- **A quote/EOF error naming a line BEYOND the file's length is not a static error in that
+  file.** `bash -n <script>` passes on it — that pass is not a contradiction, it is the
+  tell: bash numbers lines in whatever unit it is reading at that moment, so the reported
+  line can never be the file's own. The failing text is an eval'd or generated fragment, or
+  a file REWRITTEN while it executes (a deploy that syncs the very script it is running).
+  Do not go editing the script to "fix" a syntax error that is not there: capture the run's
+  WHOLE output to a file (never a pipe to `tail`, which destroys the one artifact able to
+  identify the unit) and re-run — a transient rewrite failure does not recur.
 - **`✗ Not a git repository: <path>`** — a git WORKTREE has a `.git` file, not a
   directory, and the script's repo check rejects it. Deploy from the primary
   working tree (or set `REPO_DIR=`); a session worktree can hold the work and
@@ -146,9 +203,15 @@ is the same wrong move whichever way it fails, loudly or silently.
   whichever side would lose. Resolve it by making the REPO carry the change and
   deploying again — never by copying the deployed file over the source, which
   discards the edits already in the source.
-- **Work out which side is ahead before choosing a direction:**
-  `diff <repo path> <(tail -n +4 <deployed path>)` (the deployed copy carries a
-  3-line header, so skip it). Edits only in the deployed copy must be synced INTO
+- **Work out which side is ahead before choosing a direction.** The deployed header is NOT a
+  fixed block at the top: the deploy inserts it AFTER the shebang (`# SOURCE:` then
+  `# Do NOT edit this file`), and the block is closed by a BLANK line. So `tail -n +4`
+  misaligns the comparison — it drops the shebang and keeps the blank, and the diff shows a
+  difference that is not there. Remove the header LINES and compare what remains; better
+  still, do not hand-roll the comparison at all —
+  `python3 ops/scripts/manage/verify-landed.py --repo .` compares every changed
+  deploy-map file against its deployed copy and names any real mismatch.
+  Edits only in the deployed copy must be synced INTO
   the repo; edits only in the repo just need a deploy.
 - **After deploying, confirm the deployed file actually took the repo's version** —
   the same `diff` above returning nothing — before reporting the change as live.
@@ -320,8 +383,13 @@ seizes your half-written edit), then its `pull --rebase`/push meets a tree that 
 under it and fails with `error: Please commit or stash them.` or a non-fast-forward. The
 symptom looks like a remote race, so the cause is easy to misread.
 
-- **Before editing anything, ask the ship:** `pgrep -f "cortex-update.sh|cortex-dogfood.sh"`
-  — if it prints anything, STOP and wait (bounded loop: `for i in $(seq 1 60); do pgrep -q ... || break; sleep 5; done`). Reading is always safe; writing is not.
+- **Before editing anything, ask the ship — with a probe that cannot match itself.**
+  A plain `pgrep -f "cortex-update.sh"` matches the ASKER: the pattern appears in your own
+  command line and in the shell running your wait loop, so it reports "STILL RUNNING" for a
+  ship that already exited, and a bounded wait keyed on it spins its full timeout. Use a
+  pattern that cannot self-match — `pgrep -qf "[c]ortex-update.sh"` — or check the pid you
+  started with `ps -o pid,stat,args -p <pid>`, where "no such pid" ends the wait at once.
+  Reading is always safe; writing is not.
 - **After any ship, verify the landing**: `pgrep` empty, then `git log --oneline -1
   origin/main` and `git log --oneline origin/main..HEAD | wc -l` == 0. A ship that printed
   `deploy rc=0` can still have failed to push.

@@ -27,6 +27,9 @@ the independent verification pass that finds the leftovers the sweep missed.
 8. **~/brain**: lesson files (historical knowledge — keep)
 9. **Tasks DB**: `SELECT ... WHERE content ILIKE '%<token>%' AND status IN ('pending','in_progress')` (active rows should be 0)
 10. **Bus archives** (primary host): count of subjects/bodies mentioning token (historical messages — keep)
+11. **Ignore rules and VCS config**: `grep -n <token> .gitignore` plus `.git/info/exclude`
+    and any tracked ignore file. A rule matching a path you REMOVED is itself a leftover
+    reference, and a worse one than the others — see pitfall 10.
 
 ## Classification — the load-bearing rule
 
@@ -100,6 +103,40 @@ discovering them in a later grep.
    Score the cycle you have (a low completeness score and a factual "inventory only,
    blocked on consent, no files changed" note is honest and correct), release it, and
    take a fresh lock for the actual removal.
+10. **Removing a path but KEEPING its ignore rule makes its return invisible.** When a
+   directory is deleted by design, delete the `.gitignore` rules matching it in the SAME
+   sweep. While those rules remain, the directory can reappear and `git status` stays
+   clean — so the recurrence you are verifying absence of is the one thing the ignore
+   rule conceals, and the sweep reports "clean" over a directory that is back. Leave a
+   one-line comment where the rules were, saying they were removed on purpose, so a
+   future reader does not helpfully restore them. **Name directories by their FULL path
+   when reporting**: a runtime directory and a same-named directory inside the repo
+   differ by one leading dot, so "the directory came back" without the path reads as a
+   claim about the runtime copy — which is correct and expected — and alarms the reader
+   for no reason.
+
+   **A removed directory can survive as an EMPTY SHELL — verify with `find`, not `git
+   status`.** `git rm -r` deletes TRACKED files only, so a directory still holding an
+   untracked file (a lock, a log, a state file) is left standing, and the worktree
+   reports clean because the remainder is untracked — and if an ignore rule is also
+   still in place, invisible on top of that. Confirm the removal with an explicit
+   existence check after the sweep (`test -e <path>`, or the `search_files` tool with
+   `target='files'`); a clean `git status` is not evidence the directory is
+   gone. This is also why "it reappeared" can be the wrong diagnosis: a directory the
+   sweep never actually emptied reads exactly like a directory something recreated.
+
+   **Never wrap the removal in `try: rmdir(d) except OSError: pass`.** That construction
+   swallows precisely the partial removal above: the loop finishes, the report says
+   removed, and the directory is still there. Report what was removed from a POST-STATE
+   check, never from the loop having run to completion.
+
+   **Give the removal a check that FAILS on its return.** A one-off deletion is a
+   snapshot; absence that nothing asserts is absence only until the next process
+   recreates it. Add a check — doctor or CI — that PASSes when the path is absent and
+   FAILs naming the offending entries when it is present (including whether the
+   state/governance file inside it is back), and prove the check CAN fail by driving it
+   against a temp fixture in every state. Then the recurrence reports itself instead of
+   waiting for a hand audit.
 2. **Guard tests must self-exclude.** A `test_no_<token>_refs` test that runs
    `git grep -il <token>` fails on its OWN source. Fix:
    `git grep -il <token> -- . ':(exclude)tests/<guard-file>.py'`.

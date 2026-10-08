@@ -62,6 +62,14 @@ result names) — not just the design doc. Two mechanisms sharing one name is ho
 later session merges the wrong one: sharing the CODE is fine (share the policy,
 keep one implementation), but process, prompt and trigger are what carry
 independence, and a name that hides the difference invites breaking it.
+**Resolve the reviewer's MODEL in one place, and let a tier change the TRANSPORT,
+never the model.** A tier that routes a small change over a faster path is a transport
+decision; if it also silently substitutes a different model, the fleet's documented
+reviewer is not the one that judged — and the stored row faithfully records a model
+nobody chose, so the record cannot be used to notice the drift. Keep ONE resolution
+used by both the caller and the recorder, so what runs and what is written down cannot
+diverge, and make a different model an explicit, auditable opt-in.
+
 **The verdict is durable, and the reviewer is a SAMPLING model** — re-running it on
 byte-identical material can return the OPPOSITE verdict, so the verdict is stored
 once per cycle and pinned by a fingerprint of the exact
@@ -86,8 +94,13 @@ material it judged (note + diff):
   verified in its place. Do not re-argue a claim the material cannot support.
   **Never write a sentence addressed TO the reviewer** — "if the reviewer judges this a
   process finding, I will split future ones" is graded as an injection attempt however
-  transparent it is. A conditional promise, or your own classification of your own
-  finding, belongs in neither the note nor the artifact.
+ transparent it is. A conditional promise, or your own classification of your own
+ finding, belongs in neither the note nor the artifact.
+ **Do not write the note in the REVIEWER's format.** Labelling your own paragraphs
+ `ADV-<cycle>-N (severity) — …`, i.e. assigning yourself finding ids and severities, is
+ graded `evaluation-awareness`: you are role-playing the reviewer on your own work
+ instead of describing it. Write plainly — what changed, why, and the evidence path —
+ and let the reviewer produce findings.
 - **A pasted transcript is NOT accepted evidence, however true it is.** When the
   load-bearing claim is a measurement (the suite is green, the doctor is clean), the
   finding will be that nobody can re-run a transcript. Commit a RUNNABLE generator — a
@@ -106,7 +119,12 @@ material it judged (note + diff):
   revision of the change.** A green artifact produced at an intermediate commit is
   exactly the finding it was meant to answer: the reviewer reads the revision field and
   asks for the run at the head of the change's commits. Generate it after the last code
-  commit — the artifact's own commit may follow, since it is documentation. **The named
+  commit — the artifact's own commit may follow, since it is documentation. **Deploy LAST
+  when the claim is deploy-sync.** A doctor capture taken between the commit and the
+  deploy reads `Deploy sync — HEAD ahead of last deploy` and lands as a FAILING artifact
+  beside a note claiming the tree matches: deploy first, capture, and remember the
+  artifact's own commit moves the tree again — the push gate runs the mandatory dogfood,
+  so deploy is the last step before the push rather than a step before the commit. **The named
   revision must also CONTAIN the generator that produced the artifact**: an artifact whose
   revision field predates the script it claims to come from is `fabrication` on its face,
   and the reviewer is right to file it. And never claim the run happened at the commit
@@ -114,7 +132,9 @@ material it judged (note + diff):
   can never name its own carrying commit. Say which revision it ran at, and that the
   generator is committed, so any reviewer can re-run it at HEAD.
 - **The audited range is every commit since the lock, it is TRUNCATED, and it shows
-  SUPERSEDED hunks.** The gate budgets roughly 12k characters of diff, so a large range
+  SUPERSEDED hunks.** The gate budgets roughly 12k characters of diff for a normal
+  range, and a docs-only range gets several times that (see
+  `references/adversarial-gate-material.md`, "Two budgets") — either way a large range
   reaches the reviewer with its middle omitted — and a range holding SEVERAL commits
   contains the earlier commits' hunks as well as the final ones. The reviewer then reads
   an intermediate state and files `fabrication` against a claim that is true of the
@@ -139,6 +159,13 @@ material it judged (note + diff):
     and describe genuinely-earlier work as out of range in one clause rather than as
     evidence. A clean tree, a green suite or a dogfood pass is context the reviewer
     cannot check — omit it or mark it, never paste it beside a narrow diff as proof.
+  - **When the range is more than one commit, make the NEWEST one the evidence commit.**
+    The window keeps the HEAD and TAIL of the diff text and omits the middle, and
+    `git log -p` emits newest-first — so the newest commit's diff is the part that is
+    always readable, while an older large commit falls into the omitted middle.
+    Evidence folded into the big EARLIER commit is unreviewable by construction; a
+    small commit made LAST is visible. Point at the committed artifact for the full
+    run rather than pasting it.
   - **Collapse UNPUSHED documentation commits before you close.** The artifact's own
     commit may follow the code commit, but a range of three or more commits is what
     truncates: fold the docs commit back with `git reset --soft <last-code-commit>` and
@@ -229,6 +256,19 @@ material it judged (note + diff):
   regenerated, a red suite had to go green), keep it in its OWN commit and state in one
   line why the change required it. An unexplained unrelated commit in the audited range is
   graded `scope-drift` at MEDIUM and blocks the close.
+- **A `fabrication` finding can be about the MATERIAL, not about you.** The gate
+  builds the material's "Diff stat" from the complexity MEASUREMENT while it builds the
+  diff BODY from the cycle's COMMITS, and the measurement deliberately also counts your
+  own uncommitted work. When the checkout is dirty — a peer's files, or an earlier
+  task's WIP sitting in a shared tree — the stat names paths whose diff the material
+  never shows, and the reviewer reads N files beside an unchanged HEAD as a
+  contradiction. It IS one; nothing you wrote is false, and no rewrite of the note
+  fixes it. Diagnose before reworking the change: compare
+  `git diff --name-only <base>..HEAD` (what the stat should count) with
+  `git status --porcelain` (what it did). The durable fix lives in the gate — build
+  the stat from the same range as the diff body, and DISCLOSE a counted working-tree
+  path the material cannot show as out of scope rather than naming it; failing that,
+  COMMIT the work so the two agree.
 - **Answer a false finding with a measurement, not with prose.** Findings can be
   wrong. State the measurement that refutes one and leave the code alone rather than
   "fixing" a non-defect.
@@ -489,6 +529,15 @@ as `.txt` mean the ignored `.log` was the wrong filename, not a missing ignore r
   1-hour session TTL, so the lock may be GONE by the time you get here (see the expired-lock
   pitfall) — take a new one for the leftover work and name the original cycle in its note.
 
+- **`rereview_change` requires an ACTIVE lock, so a mid-task deploy can strand the
+  documented FINDINGS → fix → rereview path.** It answers `Cannot re-review: No active
+  governance lock` once the lock FILE is gone — and re-taking a lock is itself refused
+  while the session is still live ("a governance session is already active … call
+  end_change first"). That three-way state (no lock file, live session, refused rereview)
+  has exactly one exit: `end_change(<task_id>)` on the live session, which judges the
+  CURRENT material. Commit the artifact the finding asked for FIRST — that is the only
+  thing that makes the next verdict differ — then close; do not hunt for a way to re-take
+  the lock.
 - **Score before you investigate.** A cycle left PENDING with no live lock is a doctor
   FAIL that blocks every push, so scoring an orphaned cycle is the first move, not the
   last.

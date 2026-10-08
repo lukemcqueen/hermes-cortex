@@ -100,8 +100,8 @@ hermes chat -q "Reply with exactly: ZEN_OK" -m deepseek-v4-flash --provider open
 
 # Key presence WITHOUT printing the secret:
 python3 - <<'EOF'
-import re
-for line in open('/home/esther/.hermes/.env'):
+import os, re
+for line in open(os.path.expanduser('~/.hermes/.env')):
     if line.strip().startswith('#'): continue
     m = re.match(r'^(OPENCODE_(?:ZEN|GO)_API_KEY)=(.*)$', line.strip())
     if m:

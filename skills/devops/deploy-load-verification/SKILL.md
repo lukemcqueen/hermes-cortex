@@ -106,26 +106,10 @@ and only if the module reads it per turn.
 
 ## Memory-Provider Tool Registration (advertised ≠ routed)
 
-MemoryProvider tools register in TWO passes with different timing:
-
-- **Routing table** (`add_provider` → `get_tool_schemas()`) runs BEFORE
-  `initialize()` in `agent_init.py`. If `get_tool_schemas()` gates on
-  runtime state (e.g. `self._pg`), it returns `[]` at registration time →
-  the executor's routing table stays empty.
-- **System prompt** (`inject_memory_provider_tools` → `get_all_tool_schemas`)
-  runs AFTER `initialize()` — by then `_pg` exists, so the schemas ARE
-  advertised in the prompt.
-
-Result: tools listed in the system prompt but every call fails
-`{"error": "Unknown tool: mem_profile"}`. The gateway log tells the story:
-`Memory provider 'mycortex-mem' registered (0 tools)` while the prompt
-advertises 5.
-
-**Fix:** `get_tool_schemas()` must return static schemas unconditionally
-(only `_cron_skipped` / context-only recall mode suppress them) — never
-gate on connection state that only exists after `initialize()`. Regression
-test: instantiate the provider, call `get_tool_schemas()` BEFORE
-`initialize()`, assert the full tool set (RED → GREEN).
+A memory provider can advertise tools in the system prompt that the executor
+cannot route, because its schemas are collected in two passes on opposite sides of
+`initialize()`. Full diagnosis, fix, and the RED→GREEN regression test:
+`references/memory-provider-tool-registration.md`.
 
 **Plugin modules are cached in `sys.modules`** — `load_memory_provider`
 reuses the cached module (`_load_provider_from_dir` checks `sys.modules`
@@ -245,6 +229,67 @@ and drive its functions, asserting each stage of the pipeline (input learned →
 value injected → value consumed → bad value refused). A green unit test against
 the repo copy says nothing about what the running process loaded, and a
 successful deploy says nothing about which branch it takes.
+
+**…but `spec_from_file_location` fails for a file that lives INSIDE a package.**
+Loading a package member by path executes it while the package's `__init__` still
+needs it, so the import chain re-enters around a half-initialised module and raises
+a misleading error — `cannot import name <X> from <pkg>.<mod>` for a symbol that is
+plainly defined in the file you just opened. That reads as a broken module when the
+module is fine and the LOADER is wrong. Import the package normally instead
+(`sys.path.insert(0, <pkg parent>); import <pkg>.<mod>`), or `importlib.import_module`.
+Reserve path-loading for standalone scripts, which is what the deployed-copy case
+above usually is.
+
+## Deploy ≠ LAST STEP: a commit after the deploy re-stales the tree
+
+The deploy-sync check compares **HEAD against the deployed commit**, so any commit
+made *after* a deploy leaves HEAD ahead of it and the next check reports
+`HEAD ahead of last deploy — N commit(s) not deployed`.
+
+- **Order the work: change → commit → deploy → push.** The deploy is the LAST step
+  before the push, not a mid-task refresh, and it is not idempotent with respect to
+  your own edits: it snapshots HEAD, so committing again re-opens the gap it just
+  closed.
+- **Let the push gate's own dogfood do the deploy.** The pre-push path runs
+  `pull → deploy → doctor → verify` before allowing a push, so the correct final
+  sequence is commit, dogfood, push. A `Deploy sync` failure immediately before a
+  push is usually nothing more than "you committed after deploying" — re-run the
+  dogfood rather than debugging it.
+- **Run the sequence as SEPARATE BOUNDED STEPS, never one long-lived call.** A single
+  cell chaining the test runs, the full deploy and the push outlives a code
+  interpreter's execution ceiling, is killed mid-flight, and takes its variables with
+  it — so a commit it had not yet reached is silently un-landed and the outcome is
+  ambiguous: the failure does not tell you whether the commit, the deploy or the push
+  happened. Deploy work is slow and stateful; issue each phase as its own command with
+  its own timeout, read the result, then continue.
+  - **Name the ceiling and put long deploy work in `terminal`.** The interpreter's
+    per-cell ceiling is a CONFIG VALUE, not a wall: Hermes
+    `tools/code_execution_tool.py` defines `DEFAULT_TIMEOUT = 300` and resolves the
+    live value from `code_execution.timeout` in `config.yaml`. A full
+    pull → deploy → doctor → verify pass costs minutes on its own (several doctor
+    passes), so tests + deploy + push in one cell crosses it — read the knob before
+    blaming the payload. `terminal` is the right container for this work: a longer
+    foreground allowance, and it backgrounds itself past that with a completion
+    notification. A raised ceiling is read at tool discovery, so it may need a new
+    session to take effect — and the same file holds a SEPARATE hard-coded 300s that
+    is the deadline for a NESTED tool call made from inside a cell, which raising the
+    config does not lift. After any killed cell, re-establish
+  the real state (`git status`, `git log -1`) before assuming what took effect, and
+  re-do only the phases that provably did not run.
+- **Never quote a deploy-sync result as evidence without re-deploying first.** An
+  artifact captured between a deploy and a later commit is one commit stale, so
+  filing it as proof that "the deployed tree matches" contradicts your own claim,
+  and a reviewer reading the artifact against the claim files it as fabrication —
+  the artifact disproving its own headline. Either re-deploy and re-capture, or
+  state plainly that the capture precedes the final commit and that the push-time
+  dogfood closes the gap. Say which moment the capture is from; a doctor's exit 1
+  is also a WARNING level, not necessarily a failure, so read the level too.
+- **Expect the gap after every documentation commit.** Docs and skills are deploy
+  targets, so a docs-only commit re-stales the tree exactly like a code change.
+- **An evidence artifact can be committed by definition only after the run it
+  records**, so it will always reflect the pre-commit revision it was taken at.
+  Frame it as "captured at <revision>, before the commit that adds it", never as a
+  claim about the tree at HEAD.
 
 ## Pitfalls
 
@@ -377,3 +422,4 @@ alone is therefore invisible to the fleet AND is **clobbered by the next
 
 - `references/rename-verification-example.md` — worked example: the `agent_bus` → `cortex_bus` fleet rename (2026-08-04)
 - `references/cron-model-fallback-chain.md` — LLM cron model/fallback chain rebuild: manifest-vs-live pin reversion, env-driven fallback chain, opencode free/zen providers, fleet propagation gap (2026-08-31)
+- `references/memory-provider-tool-registration.md` — provider advertises tools the executor cannot route: the two-pass registration timing, the unconditional-schemas fix, and the RED→GREEN regression test

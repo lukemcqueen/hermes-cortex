@@ -54,10 +54,27 @@ Enforced at 3 layers: pre-commit hook (static gate), enforcer (blocks commit unt
 - [ ] A green check is not evidence until you have seen the assertion RUN. A test
       file with no executable entry point (a pytest-style file with no
       `if __name__ == "__main__":` when pytest is absent) imports, runs NOTHING,
-      and exits 0 — so any harness that records `rc=0` scores it PASS. Found
-      2026-10-08 in three files of `tests/run_loop_gov_regression.py`'s set, whose
-      PASS had been in every committed artifact. Prove a test executed by its
-      OUTPUT, not its exit code.
+      and exits 0 — so any harness that records `rc=0` scores it PASS. Prove a test
+      executed by its OUTPUT, not its exit code, and make the harness REJECT any
+      entry it cannot actually run.
+- [ ] A test whose verdict depends on WHO invoked it is not a test. A test that
+      SPAWNS a process to exercise a component (a server, a CLI, a hook) must
+      resolve an interpreter that can actually RUN that component — read it from the
+      component's own registration/config — never `sys.executable`, because the
+      harness's interpreter usually lacks the component's dependencies: the child
+      dies before initialising and the assertion blames the component for the
+      harness's choice. Fall back through known-good candidates and FAIL LOUDLY
+      when none can run it.
+- [ ] A check that CANNOT RUN is a third outcome — not a pass, not a negative
+      result. Give it its own exit code (`3 = could not verify`) and its own message,
+      and make every caller dispatch on the code: a gate shaped
+      `if ! <check>; then <report the bad thing>; fi` reports a crash AS the bad
+      thing, so a host that cannot run the tool is told its artifact is stale.
+      Report "cannot check" as exactly that.
+- [ ] Test the could-not-verify branch by CONSTRUCTING the failure, never by waiting
+      for a host that has it: run the tool with a neutered environment (non-existent
+      PATH, HOME and interpreter) and assert the distinct outcome and message. A
+      branch exercised only on healthy hosts is untested.
 - [ ] Evidence must be self-consistent: a summary line may never name a file,
       path or count that the artifact it accompanies does not show. A stat built
       from a wider set than the diff beside it is a contradiction a reviewer will

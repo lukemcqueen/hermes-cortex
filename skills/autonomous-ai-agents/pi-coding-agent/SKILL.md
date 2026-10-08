@@ -27,7 +27,7 @@ Pi installs itself into its own agent directory and pins each release; there is 
 Consequences that cost time and must not be re-learned:
 
 - **`command -v pi` is NOT a reliable probe.** The entrypoint is a symlink into the
-  user's bin dir (on the esther host: `/home/linuxbrew/.linuxbrew/bin/pi`). When that
+  user's bin dir (a linuxbrew `bin/` on one measured host). When that
   dir is not on PATH, `pi` looks *missing* to every caller while being installed and
   working. Invoke the launcher directly — `~/.pi/agent/bin/pi` — or read
   `~/.pi/agent/install/current-version` without executing anything.
@@ -50,6 +50,30 @@ Consequences that cost time and must not be re-learned:
   `pi list` shows installed extensions.
 - An extension is loaded as `pi -e extensions/<name>.ts --tools read,bash,edit,write[,<jev tools>]`
   — the `--tools` allowlist is explicit; only listed tools are available.
+
+## stdout shape non-interactive — MEASURED, do not guess
+
+A non-interactive pi turn writes EXACTLY the assistant's final answer to stdout and
+nothing else — verified with a plain prompt and with a prompt that used the bash tool:
+
+    $ ~/.pi/agent/bin/pi --model <m> "List three fruits, one per line, numbered 1. 2. 3."
+     1. Apple
+     2. Banana
+     3. Cherry
+
+- **Chatter goes to stderr and pi's own log, never to stdout.** So a wrapper that uses
+  stdout verbatim is CORRECT, and one that takes "the last line" only TRUNCATES every
+  multi-line answer down to its final line — a reply that arrives but is not complete.
+  Verify stdout and stderr separately before choosing any output-shaping mode.
+- **A fresh `--session-id` prints a benign stderr warning** — `Warning: No project session
+  found with id '<id>'; creating a new session with that id.` — and still exits 0. That is
+  how a per-chat session gets created, not a failure to report.
+- **Call the launcher by absolute path from a service or wrapper.** `~/.pi/agent/bin/pi` is
+  the launcher; the `pi` symlink in a user bin dir is not on a service PATH. Wrappers pass
+  an ARGV LIST rather than a shell line, so nothing expands `~`/`$HOME` — a relative or
+  guessed path becomes a silent per-message no-op. Pin the session identity too (e.g. a
+  `CORTEX_SESSION_KEY`): a harness started outside a git repo cannot derive repo/branch and
+  every chat otherwise collapses onto ONE session.
 
 ## Extension API (the Jev-hook surface)
 

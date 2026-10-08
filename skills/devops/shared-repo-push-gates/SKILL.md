@@ -33,6 +33,69 @@ successfully — including a cycle that changed no code (its review is skipped a
 and invalidates the receipt, so push immediately after closing. Full detail:
 `docs/review-receipt-gate.md`.
 
+- **Read the receipt's BASE off the file — it is the PUSH range's base,
+  `git merge-base origin/main HEAD`, not the closing cycle's own start.** So one
+  close authorises every unpushed commit behind it, and a run of cycles closed one
+  after another needs only the LAST close before the push; you do not need one
+  receipt per cycle. Confirm what a receipt actually covers before citing it:
+  `python3 -c "import json,sys;d=json.load(open(sys.argv[1]));print(d['verdict'],d['base_sha'][:8],d['tip_sha'][:8])" <receipt>`.
+- **Integrating a peer's commits moves the tip, so the receipt must be RE-MINTED by
+  another close before the push.** After a rejected push: fetch, confirm your local
+  commit is a fast-forward over `origin/main`, integrate, then take a fresh lock and
+  close a cycle — an empty one is fine, its review is skipped as `simple` and the
+  close still writes the receipt for the new tip — deploy, push. Skipping the
+  re-close leaves a CLEAN receipt that no longer matches, and the gate refuses with
+  no obvious cause.
+- **Prefer MERGE over rebase when a peer's commits land under your unpushed work
+  and the checkout carries a foreign WIP you may not stash.** `git pull --rebase`
+  refuses outright on a dirty tree (*"cannot pull with rebase: You have unstaged
+  changes"*), and every stash variant moves files that are not yours (SOUL P9). A
+  merge needs neither and leaves your commits' identities intact. Check for
+  collisions FIRST — `git diff --name-only HEAD...origin/main` against your own
+  changed paths — because a merge only avoids the WIP it does not touch.
+- **A GENERATED file that both sides regenerated resolves by REGENERATING, never by
+  hand-merging the conflict.** Git can auto-merge such a file into a state that looks
+  merged and is inconsistent — one side's row beside the other side's count. Run the
+  generator over the MERGED source, then confirm with the generator's own `--check`:
+  an auto-merge that reports no conflict is not evidence the file is correct.
+
+**The review material is BOUNDED, and that is what makes a big cycle unshippable.** The
+self-adversarial review sees at most 12,000 characters of the range's diff — 60,000 only
+when EVERY path is `.md`/`.txt`/`.rst` AND no path is always-review, and that relaxation is
+COMPUTED from the diff headers, never granted by a note claiming "docs only". Past the
+budget the omitted middle is reported as unverifiable, which is a MEDIUM-or-above finding,
+which REFUSES the close. The close is also what releases the lock, and a lock is required to
+run `git push` at all — so a refused close blocks the push even when the receipt gate itself
+does not apply.
+
+- **Close a cycle per slice WHILE the work is happening.** The review window is the commits
+  since the cycle started, so work accumulated across many turns lands in ONE oversized
+  window that no reviewer can see and no close can accept. Plan large changes as reviewable
+  slices from the start; once every commit already exists, no new cycle can cover them.
+- **Never "fix" an oversized range by opening a fresh cycle after the work is done.** The
+  new window is empty, the review is skipped as `simple`, and the close writes a CLEAN
+  receipt for a range no cycle ever reviewed — a hollow authorisation, which is exactly what
+  binding a receipt to base AND tip exists to prevent. The documented answer to an
+  unreviewable range is to SPLIT it; if it can no longer be split, report the blocker (and
+  the local SHAs) to the operator instead of manufacturing the receipt.
+- **Splitting a deploy/installer file into its own later commit is legitimate**, not
+  gaming: `ops/scripts/cortex-update.sh` and friends force a receipt for the WHOLE range
+  they sit in, so moving that one file (and its one line) into its own small commit removes
+  the requirement and gives it a range a reviewer can actually read.
+- **A deploy purges the session lock, and without a lock EVERY terminal call fails closed**
+  — including `git status`, `git log` and `systemctl is-active`, which are otherwise
+  lock-free read primitives. So run all read-only verification BEFORE the deploy.
+  - **Do not assume `begin_change()` is the way back from a purge.** The purge removes the
+    lock FILE while the governance SESSION can still be live in loop-governance's own
+    state, so the two disagree: `check_lock` answers `active: false`, and `begin_change`
+    then REFUSES — "a governance session is already active … call end_change first". Read
+    that refusal instead of retrying the re-acquire: the exit is `end_change(<task_id>)`
+    on the live session, which is also what runs its self-adversarial review.
+  - **A lock is required to `git push` at all** (the pre-push hook refuses without one),
+    and `end_change` RELEASES it — so decide the push BEFORE closing. Closing first
+    strands an already-reviewed commit and costs a fresh cycle just to publish it; full
+    order and the refusal semantics live in `governance-closeout`.
+
 1. **Pre-push dogfood gate diffs the WORKING TREE, not the push range.**
    The hook runs `git diff HEAD --name-only`, so a concurrent session's
    unstaged/untracked files (e.g. a peer's in-flight script in
@@ -249,6 +312,16 @@ resolves the lock from tool-call args, and an early version called
 `_read_lock(None)` — which resolves nothing, silently, so no receipt was ever
 written while every code path looked correct.
 
+- **A commit message must not cite a number the artifact it touches contradicts.** A
+  reviewer reads the commit SUBJECT and the diff together: "regenerate the suite results (N
+  passing)" beside a file whose own `measured:` line says something else is a fabrication
+  finding, and while it stands the cycle cannot close. Before writing a count into a commit
+  message, read the number OUT of the file being committed.
+- **A measured count inside a generated artifact must carry its SCOPE.** A "126 passed" line
+  with no scope reads as the total for whatever the artifact is about; the next reader (or
+  reviewer) will disagree with your summary and neither of you is wrong. Label it in the
+  artifact (`parity suites: N`, `whole surface: M`), have the generator measure both, and
+  assert one can never exceed the other so the two lists cannot drift apart.
 - **Editing an always-skill mid-cycle invalidates the skills-loaded marker.**
   The enforcer's marker pins a fingerprint of the 7 always-skill CONTENTS
   (content hash since 2026-09-23; mtimes before that, which fired on
