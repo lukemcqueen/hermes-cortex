@@ -1,0 +1,45 @@
+orch-skill-lifecycle drift-sync evidence — cycle 11708
+sync commit: 365f0604   pre-sync ref: 365f0604^ (de1e0acb)
+
+## 1. SUBSET proof: pre-sync repo content must survive in the synced file
+   (every line removed from repo-pre must appear as a replaced/expanded line;
+    'DIFF 0' on the pre->synced diff for a hunk means pure addition = safe)
+  OK  autonomous-ai-agents/pi-coding-agent: all pre-sync lines present (pure superset extension)
+  OK  devops/governance-closeout: all pre-sync lines present (pure superset extension)
+  OK  devops/hermes-gateway-operations: all pre-sync lines present (pure superset extension)
+  devops/mycortex: 1 pre-sync line(s) not byte-identical in synced file (inspect):
+      | **Connection:** psql via `sg docker -c "docker exec -i mycortex-postgres psql -U <role> -d <db>"` on Linux (trust auth inside container); direct psql reading `~/.legacy-brain/config.json` on macOS. Roles connect WITHOUT passwords inside the container; direct TCP to :15432 from the host requires a password (pg_hba scram for non-localhost).
+  devops/shared-repo-push-gates: 2 pre-sync line(s) not byte-identical in synced file (inspect):
+      |      explain" wastes the cycle — it is always the skill you just edited.
+      |    the gate.
+  software-development/change-checklist: 3 pre-sync line(s) not byte-identical in synced file (inspect):
+      | - [ ] Deployed — bash ops/scripts/cortex-update.sh after push (not before).
+      | - [ ] Doctor clean — python3 ~/hermes-cortex/ops/scripts/manage/cortex-doctor.py --quiet (✅ Crons registered / Orch crons / Crons total).
+      | - [ ] Pushed — git pull --rebase then git push origin main; verify git log --oneline -1 origin/main shows the commit.
+  software-development/session-manager: 1 pre-sync line(s) not byte-identical in synced file (inspect):
+      | Save a compact snapshot of session state at key milestones. Each checkpoint captures what was accomplished, what's pending, and any critical decisions or blockers.
+
+## 2. Fence balance (count of lines starting with triple-backtick; must be EVEN)
+  autonomous-ai-agents/pi-coding-agent: 14 (EVEN)
+  devops/governance-closeout: 8 (EVEN)
+  devops/hermes-gateway-operations: 20 (EVEN)
+  devops/mycortex: 8 (EVEN)
+  devops/shared-repo-push-gates: 2 (EVEN)
+  software-development/change-checklist: 0 (EVEN)
+  software-development/session-manager: 6 (EVEN)
+
+## 3. md5 identity synced repo == deployed
+  OK  autonomous-ai-agents/pi-coding-agent  a04b70fe3f39d218c28d233d56640de2
+  OK  devops/governance-closeout  2efa171b9dd8c92d20072e1ad110f8ea
+  OK  devops/hermes-gateway-operations  4b757e074dd1873dcd481a1cd45befff
+  OK  devops/mycortex  257b93030df1037f380a9e603b05d365
+  OK  devops/shared-repo-push-gates  5878f34f81d379dd135ae2d5f1988559
+  OK  software-development/change-checklist  aaa8c12c200d801da74a94b24f6dce3d
+  OK  software-development/session-manager  482d40cf5821a3cea819da8d4e8a39cf
+
+exit: 0 (0 = all checks passed)
+
+## 4. cortex-doctor.py after deploy (captured 2026-10-09 04:48 KST)
+    ✅ Deploy sync — deployed commit matches HEAD
+    ✅ Skill drift — 387 skills in sync, 126 Hermes defaults skipped
+    ⚠️  Overall: WARNING  (441 pass · 5 warn · 0 fail · 6 info)
