@@ -501,6 +501,10 @@ register "ops/scripts/manage/run-task-queue-evidence.sh" "${CORTEX_DEPLOY_HOME}/
 register "ops/scripts/manage/fleet-hygiene.py"           "${CORTEX_DEPLOY_HOME}/scripts/fleet-hygiene.py"
 register "ops/scripts/manage/fleet-update-check.py"      "${CORTEX_DEPLOY_HOME}/scripts/fleet-update-check.py"
 register "ops/scripts/lib/toon_parse.py"                 "${CORTEX_DEPLOY_HOME}/scripts/lib/toon_parse.py"
+# Interpreter resolver by CAPABILITY (import the module you need) — a path existing says
+# nothing about a module, and the old silent fallback to a PyYAML-less python3 made the
+# daily regression gate fail every day. Used by orch-daily-regression-gate.sh.
+register "ops/scripts/lib/python-with-module.sh"          "${CORTEX_DEPLOY_HOME}/scripts/lib/python-with-module.sh"
 register "ops/scripts/manage/orch-task-board-digest.py"  "${CORTEX_DEPLOY_HOME}/scripts/orch-task-board-digest.py"
 register "ops/scripts/manage/apply-repo-efficiency.py"   "${CORTEX_DEPLOY_HOME}/scripts/apply-repo-efficiency.py"
 register "docs/templates/repo-efficiency-block.md"       "${CORTEX_DEPLOY_HOME}/templates/repo-efficiency-block.md"

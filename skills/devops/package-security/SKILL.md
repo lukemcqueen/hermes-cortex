@@ -56,16 +56,25 @@ You (or a script) says: pip install requests==3.0.0
 
 ## Installation
 
-The checker and wrappers are at:
+The checker and wrappers live IN THE REPO (they are git-tracked tools, not files under
+`~/.hermes/` — a path this section previously named, which sent an agent hunting for a
+file that did not exist):
 
 | File | Purpose |
 |------|---------|
-| `~/.hermes/scripts/check-package-age.py` | Core age checker (PyPI, npm, crates.io, Homebrew) |
-| `~/.hermes/scripts/package-install.sh` | Shell wrapper (symlinked as pip-safe, npm-safe, etc.) |
-| `~/.hermes/scripts/pip-safe` | → symlink to package-install.sh |
-| `~/.hermes/scripts/npm-safe` | → symlink to package-install.sh |
-| `~/.hermes/scripts/brew-safe` | → symlink to package-install.sh |
-| `~/.hermes/scripts/cargo-safe` | → symlink to package-install.sh |
+| `ops/scripts/health/check-package-age.py` | Core age checker (PyPI, npm, crates.io, Homebrew) |
+| `ops/scripts/install/package-install.sh` | Shell wrapper (installable as pip-safe, npm-safe, etc.) |
+
+Run them from a checkout, e.g.:
+
+```bash
+python3 ops/scripts/health/check-package-age.py pip pyyaml
+bash    ops/scripts/install/package-install.sh pip install pyyaml
+```
+
+Where the `*-safe` symlinks are absent, the wrapper's real function — the age check — is
+the same command, so an explicit `check-package-age.py <mgr> <pkg>[==<ver>]` before the
+install is equivalent and is what the wrapper performs.
 
 ## Usage
 

@@ -61,6 +61,10 @@ TESTS = [
     # at all. A guard the harness does not run is a guard nobody notices has rotted.
     "tests/test_verify_landed.py",
     "tests/test_skill_drift_parity.py",
+    # The interpreter resolver every deployed script can reach. Not loop-gov, but it is the
+    # thing that decides WHO runs the other tests: a resolver that falls back to an
+    # interpreter lacking the module makes a gate report a failure it never measured.
+    "tests/test_python_with_module.py",
 ]
 
 GATE_FILE = "mcp-servers/loop-gov-mcp.py"
