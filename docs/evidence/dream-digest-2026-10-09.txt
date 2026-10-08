@@ -1,7 +1,7 @@
 ## 1. digest file exists, non-empty
 OK  /home/esther/brain/esther/dreams/2026-10-09.md present and non-empty
 
-## 2. INDEX carries exactly today's entry
+## 2. INDEX carries today's entry (at least one)
 OK  INDEX matches: 1
   2026-10-09 | The Zero That Had to Prove Itself | A prune that moved nothing and a drift sync that moved everything both closed on runnable proof, not the claim.
 

@@ -20,7 +20,7 @@ else
 fi
 
 echo
-echo "## 2. INDEX carries exactly today's entry"
+echo "## 2. INDEX carries today's entry (at least one)"
 n=$(grep -c "^${TODAY} |" "$INDEX" || true)
 if [ "$n" -ge 1 ]; then
   echo "OK  INDEX matches: $n"
