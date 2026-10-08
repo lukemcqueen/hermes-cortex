@@ -559,7 +559,7 @@ their domain.
 |-------|---------|---------|-----------|
 | `social-media-analyzer` | 1.0.0 | Social media campaign analysis and performance tracking. Calculates engagement rates, ROI, and benchmarks a... | `skill_view(name='social-media-analyzer')` |
 
-## Software Development (66 skills)
+## Software Development (67 skills)
 
 | Skill | Version | Purpose | Load With |
 |-------|---------|---------|-----------|
@@ -593,6 +593,7 @@ their domain.
 | `error-handling` | 1.0.0 | Error handling patterns and idioms: structured exceptions, graceful degradation, retry strategies, circuit... | `skill_view(name='error-handling')` |
 | `fail-closed-design` | 1.0.0 | Use when writing fail-closed security-critical code. | `skill_view(name='fail-closed-design')` |
 | `hermetic-python-testing` | 1.0.0 | Write Python modules with hermetic unit-test seams. Covers sandboxed inputs AND live-side-effect output def... | `skill_view(name='hermetic-python-testing')` |
+| `large-mechanical-refactor` | 1.0.0 | Use when a wide refactor ripples across many files. | `skill_view(name='large-mechanical-refactor')` |
 | `legacy-codebase-navigation` | 1.0.0 | Navigate, understand, and debug large legacy codebases (Rails, Django, early Node). Techniques for tracing... | `skill_view(name='legacy-codebase-navigation')` |
 | `lesson-aware-agent` | 1.0.0 | Universal lesson-aware injection pattern. Makes every agent action memory-aware: search lessons before acti... | `skill_view(name='lesson-aware-agent')` |
 | `lite-product-requirements` | 1.0.0 | Concise 1-page PRD template for lightweight product requirements documentation | `skill_view(name='lite-product-requirements')` |

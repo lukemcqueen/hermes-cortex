@@ -51,6 +51,17 @@ Load this before end_change() on any script, deploy-config, cron, shared-doc, or
 Enforced at 3 layers: pre-commit hook (static gate), enforcer (blocks commit until adversarial-verifier loaded), and this checklist.
 - [ ] Static gate on every changed script: python3 ~/.hermes-cortex/scripts/adversarial-verify.py --file <file> --level A2 --gate. A4 for plugins/, hooks/, mcp-servers/, ops/scripts/manage/, cortex_doctor/, quality/, tests/, and enforcement scripts. Critical/high → block. No --no-verify.
 - [ ] "0 findings" is NOT a pass — execute the changed path with boundary inputs (-1, 0, None, empty, inf/nan, non-ASCII); attack the premise (list implicit assumptions, violate each with a 30s test); verify deployed == loaded (restart/daemon check for guards/hooks/enforcers).
+- [ ] A green check is not evidence until you have seen the assertion RUN. A test
+      file with no executable entry point (a pytest-style file with no
+      `if __name__ == "__main__":` when pytest is absent) imports, runs NOTHING,
+      and exits 0 — so any harness that records `rc=0` scores it PASS. Found
+      2026-10-08 in three files of `tests/run_loop_gov_regression.py`'s set, whose
+      PASS had been in every committed artifact. Prove a test executed by its
+      OUTPUT, not its exit code.
+- [ ] Evidence must be self-consistent: a summary line may never name a file,
+      path or count that the artifact it accompanies does not show. A stat built
+      from a wider set than the diff beside it is a contradiction a reviewer will
+      (correctly) read as fabrication — cite the range you actually show.
 - [ ] Maker/checker split — use a different model for verifier vs implementer where quality is critical.
 - [ ] Record evidence — finding IDs, boundary inputs, assumptions violated, exit codes. Report "checked X, Y, Z" never "verified clean".
 
