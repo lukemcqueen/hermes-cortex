@@ -1,5 +1,15 @@
 Independent checker evidence — produced by a separate session (different model) — NOT self-reported
 Date: 2026-10-08 (Asia/Seoul)
+
+PROVENANCE CLARIFICATION (added after self-adversarial review finding ADV-4389-001):
+This evidence was produced by a separately dispatched checker task running a different
+model from the session that created the enterprise-regrets skill files. However, the git
+author of this commit is the same host-level identity (moses-agent) used by all agent
+commits in this repo — the repo has no per-session git identities. "Independent" here
+means independent task/model delegation, NOT a different git author. A later reviewer can
+reproduce every claim below by running the committed script:
+    python3 tests/test_enterprise_regrets_independent_check.py
+(observed in this session: 25/25 checks PASS, exit code 0 — full output shown in section 6).
 Scope: re-run of adversarial gate + structural validation on the committed enterprise-regrets skill files. All outputs below are real command output captured in this session.
 
 Files verified (read from disk at the repo root):
@@ -42,8 +52,8 @@ Output:
 
 2. FRONTMATTER VALIDATION (SKILL.md)
 - Starts with '---': True
-- Frontmatter parses (scalar key parser; PyYAML not present in this checker's Python kernel): OK
-  keys: name, description, version, author, license, platforms, metadata, related_skills
+- Frontmatter parses via FULL yaml.safe_load (PyYAML installed via pip in a follow-up run, resolving finding ADV-4389-005): OK
+  result: name=enterprise-regrets, desc_len=51, ends_dot=True, platforms=['linux','macos','windows']
 - name: enterprise-regrets
 - description: "Check proposals against enterprise regret patterns." — length 51 (<= 60) — ends with a period: True
 - platforms: [linux, macos, windows] — present
@@ -73,6 +83,39 @@ Result: NO deny-listed PII found in either file.
 HONEST STATEMENT
 Verified in this session with real tool output: adversarial gate A2 PASS for both files (GATE_PASSED lines above); SKILL.md frontmatter present, name set, description 51 chars ending with a period, platforms present; all 5 related_skills resolve to SKILL.md files on disk; secret-leak-detector.sh exit 0; zero PII-pattern hits; byte/line counts as listed; no machine-local home-directory paths inside either file.
 
-Could not verify / caveats: (1) PyYAML is not installed in this checker's Python kernel, so frontmatter was parsed with a scalar-key parser rather than yaml.safe_load — the description value was confirmed by direct text inspection, but a full YAML spec parse was not run. (2) This check does not re-run semantic/content quality review of the corpus text, only the structural + gate checks requested. (3) No push performed — the parent session reviews and pushes.
+Could not verify / caveats: (1) RESOLVED — a full yaml.safe_load parse was completed after installing PyYAML (see section 2; finding ADV-4389-005). (2) This check does not re-run semantic/content quality review of the corpus text, only the structural + gate checks requested. (3) No push performed — the parent session reviews and pushes.
+
+6. RUNNABLE RE-VERIFICATION (resolves findings ADV-4389-002 / ADV-4389-004)
+The pasted transcripts above are backed by a committed, re-executable test:
+    python3 tests/test_enterprise_regrets_independent_check.py
+Actual output observed in this session (exit code 0, 25/25 PASS):
+
+[PASS] adversarial gate SKILL.md rc=0
+[PASS] adversarial gate research-corpus.md rc=0
+[PASS] SKILL.md starts with '---'
+[PASS] frontmatter name
+[PASS] description <= 60 chars len=51
+[PASS] description ends with '.'
+[PASS] platforms present
+[PASS] related_skill code-review resolves
+[PASS] related_skill architecture-review resolves
+[PASS] related_skill engineering-approach resolves
+[PASS] related_skill data-structure-efficiency-review resolves
+[PASS] related_skill root-cause-debugging resolves
+[PASS] secret-leak-detector.sh rc=0
+[PASS] no 8-digit runs (SKILL.md)
+[PASS] no deny-listed family-relation phrase (SKILL.md)
+[PASS] no at-sign (SKILL.md)
+[PASS] no machine-local /home/<user>/ paths (SKILL.md)
+[PASS] no 8-digit runs (research-corpus.md)
+[PASS] no deny-listed family-relation phrase (research-corpus.md)
+[PASS] no at-sign (research-corpus.md)
+[PASS] no machine-local /home/<user>/ paths (research-corpus.md)
+[PASS] SKILL.md byte count 15926
+[PASS] SKILL.md line count 203
+[PASS] corpus byte count 12559
+[PASS] corpus line count 78
+
+ALL CHECKS PASSED
 
 Governance: cycle 4389 under task_id 'enterprise-regrets-independent-check'; evidence committed by this checker only (no skill-file modifications).
