@@ -26,20 +26,31 @@ t= 75s  inbox_health_check=d2p0  inbox_orchestrator=d8p0  inbox_titus=d0p0  inbo
 ## Result
 
 - `inbox_health_check`: **processing=0 throughout the 75s window** — this
-  agent never observes a stuck in-flight item within the window. (The only
-  `processing=1` observation today is a single earlier capture documented in
-  `cron-bus-inbox-check-2026-10-08.raw.txt`; the p1→p0 transition itself was
-  NOT captured in a continuous window, so "drained" is an inference from that
-  earlier single point plus this sustained p0 — consistent with a transient
-  in-flight item recovered by the recover-timeouts cron rather than a
-  permanently stuck workflow.)
+  agent never observes a stuck in-flight item within the window. (A single
+  earlier capture in `cron-bus-inbox-check-2026-10-08.raw.txt` showed
+  `processing=1` once; every continuous window capture here shows sustained
+  `processing=0`, consistent with a transient in-flight item recovered by the
+  recover-timeouts cron rather than a permanently stuck workflow. The observed
+  depth varies across runs (1, 2, 3) while processing stays 0 — a live drained
+  queue, not a stuck one.)
 - `inbox_titus` (this agent's inbox): `d0p0` throughout — **empty**.
 - `inbox_orchestrator_dlq` (the only DLQ): `d0p0` throughout — **empty**.
 - `inbox_orchestrator` (depth varies across runs, processing 0) is the
   **orchestrator's own inbox** — this agent's read returns HTTP 403
   (ACL-isolated), out of scope for a non-orch cron.
 
+## Status of the cycle-5762 finding (honest marking)
+
+The cycle-5762 review finding — "does `inbox_health_check processing=1`
+resolve?" — is **NOT settled** by this window: the p1→p0 transition itself was
+not captured in a continuous run, and `inbox_health_check` is a peer lane this
+agent is 403-ACL-isolated from (cannot read the actual in-flight item). This
+window observes only sustained `processing=0`, so "resolved/drained" is an
+inference, not proof. The finding should be treated as **partially
+unresolved**, not closed.
+
 ## Conclusion
 
-No pending, urgent, critical, or DLQ items in this agent's scope; no stuck
-workflow observable to this agent over the window. Cron decision: `[SILENT]`.
+This agent's scope is empty (`inbox_titus`, `inbox_orchestrator_dlq`),
+independently of the peer-lane `inbox_health_check` question. Cron decision:
+`[SILENT]` for this agent's scope.
