@@ -64,7 +64,10 @@ Enforced at 3 layers: pre-commit hook (static gate), enforcer (blocks commit unt
       harness's interpreter usually lacks the component's dependencies: the child
       dies before initialising and the assertion blames the component for the
       harness's choice. Fall back through known-good candidates and FAIL LOUDLY
-      when none can run it.
+      when none can run it. Do not hand-roll that candidate list — the fleet ships it as
+      `bash ops/scripts/lib/python-with-module.sh <module> <script> [args]` (exit 3 = no
+      interpreter can import the module), and the same capability test applies to any
+      script that picks its own interpreter (`shell-scripting`).
 - [ ] A check that CANNOT RUN is a third outcome — not a pass, not a negative
       result. Give it its own exit code (`3 = could not verify`) and its own message,
       and make every caller dispatch on the code: a gate shaped
@@ -75,6 +78,26 @@ Enforced at 3 layers: pre-commit hook (static gate), enforcer (blocks commit unt
       for a host that has it: run the tool with a neutered environment (non-existent
       PATH, HOME and interpreter) and assert the distinct outcome and message. A
       branch exercised only on healthy hosts is untested.
+- [ ] A checker that re-implements a GATE's rule must mirror it COMPLETELY — the same
+      scope and the same validator — and must never demand an input the gate does not
+      require. A check that refuses a case the gate allows is a false alarm, and an alarm
+      that fires on a clean run teaches its reader to ignore it; a check that validates a
+      WEAKER property than the gate (a verdict string instead of a range binding) passes
+      work the gate would refuse. Re-use the gate's own validator rather than writing a
+      second copy of the rule — a second, looser implementation is how binding stops
+      binding. Before citing the check, run it on a case each way: one the gate allows and
+      one it refuses, and assert the distinct outcome AND message for each.
+      **Canonicalise what you compare before comparing it**: a short revision never equals
+      a full one, so normalise both sides the way the gate does (`git rev-parse`). And when
+      an input CANNOT be resolved, return the could-not-verify code rather than an empty
+      result — an empty range or empty result reads as "nothing to check" and passes
+      silently, which is how a mistyped revision becomes a green tick.
+- [ ] A regression test must exercise the DETECTOR, not a live ambient state. A test that
+      asserts "the tree is clean" / "the deployed copy matches" / "the queue is empty"
+      flaps the moment normal operation dirties it — a pipeline writing a lesson, a peer
+      mid-deploy — and a gate that flaps on healthy systems teaches its readers to ignore
+      it. Drive the detector with controlled inputs in both directions (one it must report,
+      one it must not) and keep the live state out of the assertion.
 - [ ] Evidence must be self-consistent: a summary line may never name a file,
       path or count that the artifact it accompanies does not show. A stat built
       from a wider set than the diff beside it is a contradiction a reviewer will
@@ -103,6 +126,20 @@ Enforced at 3 layers: pre-commit hook (static gate), enforcer (blocks commit unt
 
 ## Phase 5: Final Verification
 
+- [ ] No dangling leftovers — DECIDE, do not defer. A leftover (uncommitted files, an
+      unregistered tool, a stale artifact, an unresolved finding) ends either LANDED or
+      with a stated decision backed by a measurement — how many instances already share
+      the state, what the alternative costs, what the tool reports. "It is not mine" is a
+      description of ownership, an input to the decision, never a resting state: an
+      unexamined leftover is exactly what the user has to come back for. Never land a
+      peer's IN-FLIGHT edits to satisfy this — decide about them, or report them by path.
+      An uncommitted `skills/` (or docs) edit is NOT automatically a leftover to discard:
+      content authored on the DEPLOYED copy and never copied back is a STRANDED lesson,
+      invisible to the fleet because the deploy's guardrail refuses to overwrite it. Decide
+      the direction by CONTENT, never by mtime or `git checkout --`: run
+      `python3 ops/scripts/manage/check-skill-drift-parity.py`, then diff repo against the
+      deployed copy with the deploy header stripped, and take the deployed side only where
+      it is a superset (pure additions, no deletions of repo content).
 - [ ] Symptom proof — the specific error/alert/blocker is gone (not just code compiles + doctor passes). Show evidence in the cycle note.
 - [ ] Stale expected-list cleanup — removed crons also removed from uninstall arrays (doctor reads them as expected list).
 - [ ] Stale bus/state cleanup — delete test bus messages and stale state-file entries before end_change().

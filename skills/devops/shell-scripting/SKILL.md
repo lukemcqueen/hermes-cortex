@@ -575,6 +575,53 @@ STAGED_FILES=$(git diff --cached --name-only | grep -vE '\.(svg|png|jpg)$')
 - Verify portability with a BSD-semantics simulation (`grep -F` treats the pattern literally, mimicking BSD's `\|` behavior) or test on the actual macOS host.
 - When a filter "works on Linux but breaks on macOS," grep the whole tree for sibling instances of the same BRE `\|` class before fixing one.
 
+## Resolving an Interpreter by CAPABILITY, Not by Path
+
+A script that picks its own `python3` must test the **module** it needs. A path says
+nothing about what an interpreter can import, and the usual fallback is the one
+interpreter known to lack it:
+
+```bash
+# ❌ the guard never fires: the FILE exists, the MODULE does not
+PY_CMD="${HOME}/.hermes-cortex/venv/bin/python3"
+[[ -x "$PY_CMD" ]] || PY_CMD="python3"        # and this python3 lacks it too
+```
+
+```bash
+# ✅ test the capability; try candidates in preference order; refuse loudly
+candidates() {
+  [[ -n "${PYTHON:-}" ]] && printf '%s\n' "$PYTHON"
+  [[ -n "${HERMES_VENV:-}" ]] && printf '%s\n' "${HERMES_VENV}/bin/python3"
+  printf '%s\n' "${HOME}/.hermes/hermes-agent/venv/bin/python3"
+  command -v python3 2>/dev/null || true
+}
+tried=""
+while IFS= read -r py || [[ -n "$py" ]]; do
+  command -v "$py" >/dev/null 2>&1 || continue
+  case " ${tried} " in *" ${py} "*) continue ;; esac   # dedupe repeated candidates
+  tried="${tried} ${py}"
+  "$py" -c 'import importlib, sys; importlib.import_module(sys.argv[1])' yaml \
+      >/dev/null 2>&1 && exec "$py" "$@"
+done < <(candidates)
+echo "COULD NOT VERIFY: no interpreter can import yaml; tried:$tried" >&2
+exit 3
+```
+
+- Pass the module name as **ARGV**, never interpolated into the `-c` string.
+- Give "cannot resolve" its **own exit code** (`3`), never a generic failure: a caller that
+  reports it as a failed test blames the payload for a host dependency it never measured.
+- The fleet already ships this as
+  **`ops/scripts/lib/python-with-module.sh <module> <script> [args]`** (add `--print <module>`
+  when a caller only needs the path). Reuse it rather than writing another copy — it is
+  registered in `cortex-update.sh` and deploys to `scripts/lib/`.
+- `PYTHON=` is the escape hatch an operator reaches for; honour it first.
+
+**uv-created venvs have NO `pip` binary.** A uv venv's `bin/` holds only `python*`, so
+`<venv>/bin/pip` does not exist and `<venv>/bin/python3 -m pip` fails too. Install with
+`uv pip install --python <venv>/bin/python3 <pkg>`, then **verify by importing**
+(`<venv>/bin/python3 -c 'import yaml, mcp'`): a venv existing proves nothing about what is
+inside it, and one can hold a single package while every caller expects more.
+
 ## Cross-Platform Paths
 
 ### Finding executables
@@ -752,3 +799,4 @@ Before shipping changes to installer scripts (`install-crons.sh`, `setup.sh`, et
 | **Counter var overlap (dry-run vs real)** | Summary shows misleading counts | Use separate vars: `WOULD_CREATE` vs `CREATED` |
 | **Mixed formatting for positional-arg functions** | Hard to audit — must count empties to understand args | Standardize all calls to multi-line, one field per line |
 | **Missing script existence path** | "Script not found" warning scrolls past silently | Check all possible locations: `scripts/`, repo source, `~/.local/bin/` |
+| **Interpreter chosen by path existence** | `No module named X` although X is installed — under a DIFFERENT interpreter; an `[[ -x $VENV/bin/python3 ]]` guard never fires because the file is there | Test the CAPABILITY (`"$py" -c 'import X'`), try candidates in order, `exit 3` = could not verify; never silently fall back to a `python3` known to lack it |

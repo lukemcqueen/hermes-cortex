@@ -92,6 +92,11 @@ material it judged (note + diff):
   presentation is, and a factual note is also simply shorter. The ONE exception is a
   finding that demands a retraction: retract the claim in one line and state what IS
   verified in its place. Do not re-argue a claim the material cannot support.
+  **Never explain the gate's OWN mechanics in the note — its character budget, a finding
+  id, or what a previous round said.** Describing how the material is assembled or judged,
+  instead of the change and its evidence, is graded `injection`/evaluation-awareness even
+  when every word of it is true, and it blocks the close at MEDIUM. State the change, the
+  commit count, the evidence path and the raw output; nothing about the review process.
   **Never write a sentence addressed TO the reviewer** — "if the reviewer judges this a
   process finding, I will split future ones" is graded as an injection attempt however
  transparent it is. A conditional promise, or your own classification of your own
@@ -231,6 +236,11 @@ material it judged (note + diff):
   same end state by the ordinary path: re-issue `feedback_accept` with the evidence
   note (the verdict is fingerprinted on the material, so a NEW note is judged
   afresh) and call `end_change` again. Do not re-explain in prose; add the output.
+  That fallback holds only while the cycle is still PENDING. Once the cycle has been
+  ACCEPTED — `feedback_accept` already returned MOVE_ON — a second `feedback_accept` is
+  refused with `No PENDING cycle found for task '<task>' in this session`, which reads like
+  a lost lock and is neither: the cycle is scored, and `rereview_change` is the ONLY path
+  back, whatever the note. Do not score twice; re-review once with the new note.
 - **Put the evidence where the reviewer can SEE it — the note IS the material.**
   The reviewer reads the note and the diff and cannot re-run a terminal, so a
   load-bearing claim with no output behind it in the material is graded

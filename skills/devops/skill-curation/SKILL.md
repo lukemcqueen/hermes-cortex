@@ -48,12 +48,13 @@ and a merged skill serves better than two overlapping ones.
 5. **Verify after every merge/delete.** `skill_view` both skills, re-read
    the merged SKILL.md for fence balance, run the doctor, regenerate the
    manifest if skills/ changed.
-6. **The REPO is the source of truth — a deployed-only edit is reverted.**
-   `skill_manage` writes the DEPLOYED copy (`~/.hermes/skills/<...>`), while
-   the next `cortex-update.sh` overwrites that copy from
-   `hermes-cortex/skills/<category>/<name>/`. So any curatorial edit not
-   propagated back to the repo is **silently lost on the next deploy** — the
-   pipeline undoing its own work. The doctor names it: *"Deployed copy is
+6. **The REPO is the source of truth — a curatorial edit made on the DEPLOYED
+   copy is STRANDED, not shipped.** `skill_manage` writes the DEPLOYED copy
+   (`~/.hermes/skills/<...>`), while the fleet receives only
+   `hermes-cortex/skills/<category>/<name>/`. A deploy then either overwrites
+   that copy or — where the drift guardrail is in force — SKIPS it; either way
+   the lesson reaches no other host, and the doctor reports it as skill drift
+   (*"Deployed copy is newer than repo source"*). The doctor names it: *"Deployed copy is
    newer than repo source. Commit the repo source before cortex-update
    overwrites it."* After ANY skill edit, propagate the deployed skill back
    to the repo path (the whole dir, `references/` included) and commit it in
@@ -61,6 +62,23 @@ and a merged skill serves better than two overlapping ones.
    means a previous run's lesson is still unlanded, and re-deriving it instead
    of propagating it duplicates the work. Verify with `diff` — the only
    acceptable difference is the deploy header.
+
+   **Measure drift by CONTENT, never by mtime.**
+   `python3 ops/scripts/manage/check-skill-drift-parity.py` (exit 1 = stranded;
+   regenerates `docs/evidence/skill-drift-parity.txt`). A file is stranded when its
+   DEPLOYED content appears neither in the repo working tree nor in any committed
+   revision of that path. mtime is useless here — a clone or checkout resets every repo
+   mtime to "now", so an mtime comparison reports "repo is newer" while the content
+   exists nowhere in the repo and the drift goes unnoticed. It compares EVERY file under
+   the deployed tree, not just `SKILL.md`, so a drifted `references/` file is visible too.
+
+   **Decide the direction PER FILE by reading the diff — the deployed side is often the
+   CURATED one.** A deployed lesson may have been rewritten to generalise, so it can ADD
+   lines AND REMOVE lines the repo still has: never copy it in blind, and never assume
+   the repo side is the superset. The deploy header sits AFTER the shebang and is closed
+   by a blank line, so a fixed `tail -n +4` misaligns the comparison — strip the header
+   LINES and diff what remains. Copy the canonical content in, re-run the parity check to
+   `PASS`, then deploy to clear the doctor's warnings.
 
 ## Manifest Discipline
 
