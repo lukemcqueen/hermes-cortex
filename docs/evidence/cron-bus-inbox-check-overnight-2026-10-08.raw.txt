@@ -1,0 +1,25 @@
+== agent-bus overnight inbox check — 2026-10-08 14:30:35 UTC ==
+
+== bus_list_queues (depth / processing / dlq) ==
+  broadcast                    depth=0   processing=0 dlq=False
+  bus-health-probe             depth=0   processing=0 dlq=False
+  inbox_esther                 depth=0   processing=0 dlq=False
+  inbox_fleet                  depth=0   processing=0 dlq=False
+  inbox_gisu                   depth=0   processing=0 dlq=False
+  inbox_health_check           depth=1   processing=0 dlq=False
+  inbox_joseph                 depth=0   processing=0 dlq=False
+  inbox_kustos                 depth=0   processing=0 dlq=False
+  inbox_moses                  depth=0   processing=0 dlq=False
+  inbox_orchestrator           depth=3   processing=0 dlq=False
+  inbox_orchestrator_dlq       depth=0   processing=0 dlq=True 
+  inbox_titus                  depth=0   processing=0 dlq=False
+  out_esther                   depth=0   processing=0 dlq=False
+
+== inbox_titus peek (this agent, non-consuming) ==
+  count=0
+
+== bus health ==
+  {"status": "ok", "backend": "pgmq", "queues": 13, "timestamp": "2026-10-08T14:30:35.808532+00:00"}
+
+== peer-queue ACL isolation probe (read inbox_orchestrator) ==
+  UNEXPECTED success count=0 (expected 403-blocked)
