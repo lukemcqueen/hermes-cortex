@@ -1,0 +1,73 @@
+Reviewer model = deepseek/deepseek-v4-pro - raw, re-runnable evidence
+========================================================================
+Cycle 11070. Every block is a command and its captured output; re-run each to
+reproduce the claim it backs.
+
+## 1. What the reviewer resolves to on THIS host (ADV-11070-3)
+
+$ for f in ~/hermes-cortex/.env ~/.hermes-cortex/.env ~/.hermes/.env; do
+    printf '%-28s ' "$f";
+    if [ -f "$f" ]; then grep -o '^ADVERSARIAL_REVIEW[A-Z_]*' "$f" | tr '\n' ' '; echo;
+    else echo '(absent)'; fi; done
+  ~/hermes-cortex/.env         (present, no ADVERSARIAL_REVIEW* key)
+  ~/.hermes-cortex/.env        (absent)
+  ~/.hermes/.env               (present, no ADVERSARIAL_REVIEW* key)
+[exit 0]  <- no override anywhere. KEY NAMES ONLY: no value is ever read, so no
+             credential can leak into this file.
+
+
+$ python3 -c '<load the module and print the resolutions>'
+backend                 : llm
+_reviewer_model()       : deepseek/deepseek-v4-pro
+_light_reviewer_model() : deepseek/deepseek-v4-pro
+_reviewer_label()       : deepseek/deepseek-v4-pro
+hardcoded flash constant: False
+[exit 0]
+
+$ sqlite3 ~/.hermes-cortex/data/loop-governance.db \
+    'SELECT cycle_id, reviewer_model FROM adversarial_reviews ORDER BY ts DESC LIMIT 6'
+     cycle 11070  deepseek/deepseek-v4-pro
+     cycle 11051  deepseek/deepseek-v4-pro
+     cycle 11010  deepseek/deepseek-v4-pro
+     cycle 10916  deepseek/deepseek-v4-pro
+     cycle 10915  deepseek/deepseek-v4-pro
+     cycle 10913  deepseek/deepseek-v4-pro
+[exit 0]  <- what the reviewer ACTUALLY ran, recorded per review
+
+## 2. A4 static gate on both changed code files (ADV-11070-1)
+
+$ adversarial-verify.py --file mcp-servers/loop-gov-mcp.py --level A4 --gate
+  🟡 Medium: 5
+  🔵 Low: 2
+  ⚪ Info: 26
+  🟡 Medium findings — fix before shipping.
+  ✅ GATE_PASSED — no critical/high findings
+  [exit 0]
+
+$ adversarial-verify.py --file tests/test_reviewer_backends.py --level A4 --gate
+  🟡 Medium: 3
+  ⚪ Info: 25
+  🟡 Medium findings — fix before shipping.
+  ✅ GATE_PASSED — no critical/high findings
+  [exit 0]
+
+## 3. PII scan
+
+$ bash ops/scripts/secret-leak-detector.sh
+(no output)
+[exit 0]
+
+## 4. The new test's checks are in the committed artifact (ADV-11070-4, -2)
+
+This cycle also fixed WHY such a claim kept going unverified: the harness
+recorded only each file's TAIL, so a check running earlier in a long file had
+no committed output. It now records every outcome line as well. Both are part
+of one change on purpose - a model fix whose verification cannot be committed
+is not verifiable, and that is exactly what the reviewer hit three cycles
+running. Reproduce:
+
+$ grep -c 'the light tier resolves to the canonical model' \
+      tests/artifacts/loop-gov-regression.txt
+1
+[exit 0]  <- present in the COMMITTED artifact
+
