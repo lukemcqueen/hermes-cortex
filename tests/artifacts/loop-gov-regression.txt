@@ -1,7 +1,7 @@
 loop-governance regression artifact
 ========================================================================
-generated      : 2026-10-08T01:46:02+00:00
-revision       : fe520c63  (branch main)
+generated      : 2026-10-08T01:49:26+00:00
+revision       : 08db5f50  (branch main)
 interpreter    : Python 3.14.7 (<python-bin>/python3)
 generator      : tests/run_loop_gov_regression.py
 
@@ -22,13 +22,8 @@ TEST SET (16 files)
         [mcp-server]   ~/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3 -m pip install mcp
         [mcp-server] DEBUG: Using selector: EpollSelector
         [mcp-server] WARNING: reviewer timeout ADVERSARIAL_REVIEW_TIMEOUT=300s exceeds the 240s client ceiling — clamping (a longer timeout is an unobservable hang, not a longer wait)
-        [mcp-server] WARNING: reviewer timeout ADVERSARIAL_REVIEW_TIMEOUT=300s exceeds the 240s client ceiling — clamping (a longer timeout is an unobservable hang, not a longer wait)
         [mcp-server] INFO: reviewer wait for a 99999-file/500000-line change would be 1150230s — held at the 240s client ceiling (a longer budget is an unobservable hang, not a longer wait)
         [mcp-server] WARNING: reviewer timeout ADVERSARIAL_REVIEW_AGENT_TIMEOUT=900s exceeds the 240s client ceiling — clamping (a longer timeout is an unobservable hang, not a longer wait)
-        [mcp-server] WARNING: reviewer timeout ADVERSARIAL_REVIEW_AGENT_TIMEOUT=900s exceeds the 240s client ceiling — clamping (a longer timeout is an unobservable hang, not a longer wait)
-        [mcp-server] INFO: reviewer wait for a 99999-file/500000-line change would be 1150230s — held at the 240s client ceiling (a longer budget is an unobservable hang, not a longer wait)
-        [mcp-server] WARNING: reviewer timeout ADVERSARIAL_REVIEW_AGENT_TIMEOUT=900s exceeds the 240s client ceiling — clamping (a longer timeout is an unobservable hang, not a longer wait)
-        [mcp-server] DEBUG: Using selector: EpollSelector
 
 [PASS] tests/test_loop_gov_review_repo.py  rc=0
         PASS (13):
@@ -48,21 +43,14 @@ TEST SET (16 files)
         [mcp-server] WARNING: the 'mcp' package is not installed — the stdio server cannot start; the CLI adapter (ops/scripts/loop-gov.py) still works.
         [mcp-server]   ~/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3 -m pip install mcp
         [mcp-server] INFO: self-adversarial review: cycle 4243 simple (1 lines, 1 files) — skip
-        [mcp-server] WARNING: _git_capture(('log', '--format=%ct')) exited 128 in ~/.hermes/cache/scratch/nested-repo-0qcljpg4/hermes-cortex: fatal: your current branch 'master' does not have any commits yet
+        [mcp-server] WARNING: _git_capture(('log', '--format=%ct')) exited 128 in ~/.hermes/cache/scratch/nested-repo-6rhlw4o3/hermes-cortex: fatal: your current branch 'master' does not have any commits yet
         [mcp-server] INFO: self-adversarial review: cycle 4321 simple (1 lines, 1 files) — skip
-        [mcp-server] WARNING: _git_capture(('rev-list', '-1', '--before=2026-10-08T01:46:13Z', 'HEAD')) exited 128 in ~/.hermes/cache/scratch/loop-gov-review-repo-_ug8dx08/hermes-cortex: fatal: ambiguous argument 'HEAD': unknown revision or path not in the working tree.
+        [mcp-server] WARNING: _git_capture(('rev-list', '-1', '--before=2026-10-08T01:49:37Z', 'HEAD')) exited 128 in ~/.hermes/cache/scratch/loop-gov-review-repo-psdqxjx6/hermes-cortex: fatal: ambiguous argument 'HEAD': unknown revision or path not in the working tree.
         Use '--' to separate paths from revisions, like this:
         'git <command> [<revision>...] -- [<file>...]'
-        [mcp-server] WARNING: _git_capture(('log', '--format=%H', '--author=agent@hermes.local', '4b825dc642cb6eb9a060e54bf8d69288fbee4904..HEAD')) exited 128 in ~/.hermes/cache/scratch/loop-gov-review-repo-_ug8dx08/hermes-cortex: fatal: ambiguous argument '4b825dc642cb6eb9a060e54bf8d69288fbee4904..HEAD': unknown revision or path not in the working tree.
-        Use '--' to separate paths from revisions, like this:
-        'git <command> [<revision>...] -- [<file>...]'
-        [mcp-server] WARNING: _git_capture(('diff', '--numstat', '4b825dc642cb6eb9a060e54bf8d69288fbee4904..HEAD')) exited 128 in ~/.hermes/cache/scratch/loop-gov-review-repo-_ug8dx08/hermes-cortex: fatal: ambiguous argument '4b825dc642cb6eb9a060e54bf8d69288fbee4904..HEAD': unknown revision or path not in the working tree.
-        Use '--' to separate paths from revisions, like this:
-        'git <command> [<revision>...] -- [<file>...]'
-        [mcp-server] WARNING: _git_capture(('rev-list', '-1', '--before=2026-10-08T01:46:13Z', 'HEAD')) exited 128 in ~/.hermes/cache/scratch/loop-gov-review-repo-_ug8dx08/hermes-cortex: fatal: ambiguous argument 'HEAD': unknown revision or path not in the working tree.
-        Use '--' to separate paths from revisions, like this:
-        'git <command> [<revision>...] -- [<file>...]'
-        [mcp-server] WARNING: _git_capture(('log', '--format=%ct')) exited 128 in ~/.hermes/cache/scratch/loop-gov-review-repo-_ug8dx08/hermes-cortex: fatal: your current branch 'master' does not have any commits yet
+        [mcp-server] WARNING: _git_capture(('log', '--format=%H', '--author=agent@hermes.local', '4b825dc642cb6eb9a060e54bf8d69288fbee4904..HEAD')) exited 128 in ~/.hermes/cache/scratch/loop-gov-review-repo-psdqxjx6/hermes-cortex: fatal: ambiguous argument '4b825dc642cb6eb9a060e54bf8d69288fbee4904..HEAD': unknown revision or path not in the working tree.
+        [mcp-server] WARNING: _git_capture(('diff', '--numstat', '4b825dc642cb6eb9a060e54bf8d69288fbee4904..HEAD')) exited 128 in ~/.hermes/cache/scratch/loop-gov-review-repo-psdqxjx6/hermes-cortex: fatal: ambiguous argument '4b825dc642cb6eb9a060e54bf8d69288fbee4904..HEAD': unknown revision or path not in the working tree.
+        [mcp-server] WARNING: _git_capture(('log', '--format=%ct')) exited 128 in ~/.hermes/cache/scratch/loop-gov-review-repo-psdqxjx6/hermes-cortex: fatal: your current branch 'master' does not have any commits yet
 
 [PASS] tests/test_loop_gov_multi_session.py  rc=0
         PASS — loop-gov multi-session DB (adversarial findings resolved):
@@ -103,93 +91,112 @@ TEST SET (16 files)
         [mcp-server] WARNING: SQL migration: unscored_reason already exists — expected
 
 [PASS] tests/test_orphan_cycle_resolution.py  rc=0
-        A. honesty — abandoned cycles close unscored, with a recomputable reason
           PASS  reaper closed the abandoned cycle
           PASS  closed (no longer PENDING)
           PASS  NO score invented
           PASS  unscored_reason recorded and tagged
           PASS  reason states recomputable facts (task + TTL)
-        A2. a LIVE task is never reaped
           PASS  live task untouched
-        A3. a cycle YOUNGER than the TTL is never reaped (no racing live work)
           PASS  young cycle untouched
-        B. corroboration — a false abandonment claim FAILS
           PASS  forged claim FAILS
-        B2. a truthful abandonment claim does NOT fail
           PASS  truthful claim does not FAIL
           PASS  reaper-closed count is surfaced
-        C. no drift — writer tag == checker tag
           PASS  tags agree
+        A. honesty — abandoned cycles close unscored, with a recomputable reason
+        A2. a LIVE task is never reaped
+        A3. a cycle YOUNGER than the TTL is never reaped (no racing live work)
+        B. corroboration — a false abandonment claim FAILS
+        B2. a truthful abandonment claim does NOT fail
+        C. no drift — writer tag == checker tag
         ✅ all orphan-cycle resolution checks passed
         [mcp-server] WARNING: the 'mcp' package is not installed — the stdio server cannot start; the CLI adapter (ops/scripts/loop-gov.py) still works.
         [mcp-server]   ~/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3 -m pip install mcp
 
 [PASS] tests/test_reviewer_backends.py  rc=0
+          PASS  default backend is llm
+          PASS  llm records the MODEL as the reviewer
+          PASS  llm backend with no credential raises (close is refused, not skipped)
+          PASS  unknown backend is refused, not guessed
+          PASS  agent backend without a command is refused
+          PASS  agent backend returns the agent's stdout
+          PASS  agent backend records agent:<name> as the reviewer
+          PASS  SELF-REVIEW is refused (agent name matches the change's author)
+          PASS  agent non-zero exit refuses the close
+          PASS  agent silence is refused (silence is never CLEAN)
+          PASS  value is read from the canonical cortex env
+          PASS  quotes are stripped
+          PASS  the cortex file WINS over ~/.hermes/.env, not the reverse
+          PASS  the PROCESS env wins over any file
+          PASS  a missing name returns the default, not an exception
+          PASS  files are re-read per call (a long-lived server is not frozen)
+          PASS  the Hermes env is consulted LAST, not first
+          PASS  plain complex change is light
+          PASS  always-review surface is heavy
+          PASS  >=10 files is heavy
+          PASS  >=200 lines is heavy
+          PASS  below heavy bars stays light
+          PASS  light change routes to the FAST llm reviewer on an agent host
+          PASS  light reviewer is recorded as the fast model
+          PASS  light change carries an llm-scaled wait budget
+          PASS  heavy change still routes to the agent backend
+          PASS  heavy change carries an agent-scaled wait budget
+          PASS  heavy reviewer label records the agent
+          PASS  no cx: configured agent backend used unchanged
+          PASS  no cx: reviewer label is the agent, not a guest light model
+          PASS  the canonical reviewer model is deepseek-v4-pro
+          PASS  _reviewer_model() is the canonical model
+          PASS  the light tier resolves to the canonical model, not a cheaper one
+          PASS  the recorded label is the canonical model
+          PASS  no hardcoded cheaper light-model constant remains
+          PASS  a light change on an agent host reviews with the canonical model
+          PASS  ...and is RECORDED as the canonical model
+          PASS  an explicitly chosen light model still wins
+          PASS  ...and does not leak into the deep path
+          PASS  no cx: llm wait is clamped to the ceiling
+          PASS  no cx: agent wait is clamped to the ceiling
+          PASS  below the ceiling, a change grows the wait above its base
+          PASS  small change stays inside the window
+          PASS  bigger change gets a longer wait than a small one
+          PASS  per-100-lines growth: 95 lines is same as 0 lines
+          PASS  per-100-lines growth: 105 lines adds one step
+          PASS  huge change is hard-capped at the ceiling
+          PASS  no REVIEWER_TIMEOUT_CAP exists to override the ceiling
+          PASS  oversized agent override 900s is clamped to the ceiling
+          PASS  oversized agent override 100000s is clamped to the ceiling
+          PASS  env-clamp helper exists under its own name
+          PASS  size-scaled helper kept its name
+          PASS  passed llm timeout is honored
+          PASS  llm env-fallback callable without a string crash
+          PASS  passed agent timeout is honored
+          PASS  agent env-fallback callable without a string crash
+          PASS  size-scaled _reviewer_timeout exists (takes cx, backend)
+          PASS  env-clamp helper is a DISTINCT name, not a shadow
+          PASS  the two timeout helpers are different functions
+          PASS  size-scaled helper accepts a dict cx
           PASS  str cx raises TypeError (fail-fast, not hidden AttributeError)
           PASS  None cx returns the configured default, clamped to the ceiling
           PASS  None cx is NOT scaled: it equals the clamped default exactly
-        Reviewer tiering dogfood script — real module routing
           PASS  dogfood script exists
           PASS  dogfood script exits 0
           PASS  dogfood reports ALL PASS
         ALL PASS
+        Reviewer tiering dogfood script — real module routing
         [mcp-server] WARNING: the 'mcp' package is not installed — the stdio server cannot start; the CLI adapter (ops/scripts/loop-gov.py) still works.
         [mcp-server]   ~/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3 -m pip install mcp
         [mcp-server] WARNING: reviewer timeout ADVERSARIAL_REVIEW_TIMEOUT=300s exceeds the 240s client ceiling — clamping (a longer timeout is an unobservable hang, not a longer wait)
-        [mcp-server] WARNING: reviewer timeout ADVERSARIAL_REVIEW_TIMEOUT=300s exceeds the 240s client ceiling — clamping (a longer timeout is an unobservable hang, not a longer wait)
         [mcp-server] WARNING: reviewer timeout ADVERSARIAL_REVIEW_AGENT_TIMEOUT=900s exceeds the 240s client ceiling — clamping (a longer timeout is an unobservable hang, not a longer wait)
-        [mcp-server] WARNING: reviewer timeout ADVERSARIAL_REVIEW_AGENT_TIMEOUT=900s exceeds the 240s client ceiling — clamping (a longer timeout is an unobservable hang, not a longer wait)
-        [mcp-server] WARNING: reviewer timeout ADVERSARIAL_REVIEW_AGENT_TIMEOUT=900s exceeds the 240s client ceiling — clamping (a longer timeout is an unobservable hang, not a longer wait)
-        [mcp-server] WARNING: reviewer timeout ADVERSARIAL_REVIEW_AGENT_TIMEOUT=900s exceeds the 240s client ceiling — clamping (a longer timeout is an unobservable hang, not a longer wait)
-        [mcp-server] WARNING: reviewer timeout ADVERSARIAL_REVIEW_AGENT_TIMEOUT=900s exceeds the 240s client ceiling — clamping (a longer timeout is an unobservable hang, not a longer wait)
-        [mcp-server] WARNING: the 'mcp' package is not installed — the stdio server cannot start; the CLI adapter (ops/scripts/loop-gov.py) still works.
-        [mcp-server]   ~/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3 -m pip install mcp
-        [mcp-server] WARNING: the 'mcp' package is not installed — the stdio server cannot start; the CLI adapter (ops/scripts/loop-gov.py) still works.
-        [mcp-server]   ~/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3 -m pip install mcp
-        [mcp-server] WARNING: reviewer timeout ADVERSARIAL_REVIEW_TIMEOUT=300s exceeds the 240s client ceiling — clamping (a longer timeout is an unobservable hang, not a longer wait)
         [mcp-server] INFO: reviewer wait for a 2-file/60-line change would be 260s — held at the 240s client ceiling (a longer budget is an unobservable hang, not a longer wait)
-        [mcp-server] WARNING: reviewer timeout ADVERSARIAL_REVIEW_AGENT_TIMEOUT=900s exceeds the 240s client ceiling — clamping (a longer timeout is an unobservable hang, not a longer wait)
         [mcp-server] INFO: reviewer wait for a 1-file/220-line change would be 310s — held at the 240s client ceiling (a longer budget is an unobservable hang, not a longer wait)
-        [mcp-server] WARNING: reviewer timeout ADVERSARIAL_REVIEW_AGENT_TIMEOUT=900s exceeds the 240s client ceiling — clamping (a longer timeout is an unobservable hang, not a longer wait)
-        [mcp-server] WARNING: the 'mcp' package is not installed — the stdio server cannot start; the CLI adapter (ops/scripts/loop-gov.py) still works.
-        [mcp-server]   ~/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3 -m pip install mcp
-        [mcp-server] WARNING: reviewer timeout ADVERSARIAL_REVIEW_TIMEOUT=300s exceeds the 240s client ceiling — clamping (a longer timeout is an unobservable hang, not a longer wait)
-        [mcp-server] INFO: reviewer wait for a 2-file/60-line change would be 260s — held at the 240s client ceiling (a longer budget is an unobservable hang, not a longer wait)
-        [mcp-server] WARNING: the 'mcp' package is not installed — the stdio server cannot start; the CLI adapter (ops/scripts/loop-gov.py) still works.
-        [mcp-server]   ~/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3 -m pip install mcp
-        [mcp-server] WARNING: reviewer timeout ADVERSARIAL_REVIEW_TIMEOUT=300s exceeds the 240s client ceiling — clamping (a longer timeout is an unobservable hang, not a longer wait)
-        [mcp-server] WARNING: reviewer timeout ADVERSARIAL_REVIEW_TIMEOUT=300s exceeds the 240s client ceiling — clamping (a longer timeout is an unobservable hang, not a longer wait)
-        [mcp-server] WARNING: reviewer timeout ADVERSARIAL_REVIEW_AGENT_TIMEOUT=900s exceeds the 240s client ceiling — clamping (a longer timeout is an unobservable hang, not a longer wait)
-        [mcp-server] WARNING: reviewer timeout ADVERSARIAL_REVIEW_AGENT_TIMEOUT=900s exceeds the 240s client ceiling — clamping (a longer timeout is an unobservable hang, not a longer wait)
-        [mcp-server] INFO: reviewer wait for a 22-file/240-line change would be 340s — held at the 240s client ceiling (a longer budget is an unobservable hang, not a longer wait)
         [mcp-server] INFO: reviewer wait for a 22-file/240-line change would be 340s — held at the 240s client ceiling (a longer budget is an unobservable hang, not a longer wait)
         [mcp-server] INFO: reviewer wait for a 99999-file/500000-line change would be 1150050s — held at the 240s client ceiling (a longer budget is an unobservable hang, not a longer wait)
-        [mcp-server] INFO: reviewer wait for a 99999-file/500000-line change would be 1150050s — held at the 240s client ceiling (a longer budget is an unobservable hang, not a longer wait)
-        [mcp-server] WARNING: reviewer timeout ADVERSARIAL_REVIEW_AGENT_TIMEOUT=900s exceeds the 240s client ceiling — clamping (a longer timeout is an unobservable hang, not a longer wait)
         [mcp-server] INFO: reviewer wait for a 99999-file/500000-line change would be 1150230s — held at the 240s client ceiling (a longer budget is an unobservable hang, not a longer wait)
         [mcp-server] WARNING: reviewer timeout ADVERSARIAL_REVIEW_AGENT_TIMEOUT=100000s exceeds the 240s client ceiling — clamping (a longer timeout is an unobservable hang, not a longer wait)
-        [mcp-server] INFO: reviewer wait for a 99999-file/500000-line change would be 1150230s — held at the 240s client ceiling (a longer budget is an unobservable hang, not a longer wait)
-        [mcp-server] WARNING: the 'mcp' package is not installed — the stdio server cannot start; the CLI adapter (ops/scripts/loop-gov.py) still works.
-        [mcp-server]   ~/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3 -m pip install mcp
-        [mcp-server] WARNING: reviewer timeout ADVERSARIAL_REVIEW_TIMEOUT=300s exceeds the 240s client ceiling — clamping (a longer timeout is an unobservable hang, not a longer wait)
-        [mcp-server] WARNING: reviewer timeout ADVERSARIAL_REVIEW_AGENT_TIMEOUT=900s exceeds the 240s client ceiling — clamping (a longer timeout is an unobservable hang, not a longer wait)
-        [mcp-server] WARNING: the 'mcp' package is not installed — the stdio server cannot start; the CLI adapter (ops/scripts/loop-gov.py) still works.
-        [mcp-server]   ~/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3 -m pip install mcp
-        [mcp-server] WARNING: reviewer timeout ADVERSARIAL_REVIEW_TIMEOUT=300s exceeds the 240s client ceiling — clamping (a longer timeout is an unobservable hang, not a longer wait)
-        [mcp-server] INFO: reviewer wait for a 2-file/60-line change would be 260s — held at the 240s client ceiling (a longer budget is an unobservable hang, not a longer wait)
-        [mcp-server] WARNING: reviewer timeout ADVERSARIAL_REVIEW_TIMEOUT=300s exceeds the 240s client ceiling — clamping (a longer timeout is an unobservable hang, not a longer wait)
-        [mcp-server] INFO: reviewer wait for a 2-file/60-line change would be 260s — held at the 240s client ceiling (a longer budget is an unobservable hang, not a longer wait)
-        [mcp-server] WARNING: reviewer timeout ADVERSARIAL_REVIEW_TIMEOUT=300s exceeds the 240s client ceiling — clamping (a longer timeout is an unobservable hang, not a longer wait)
-        [mcp-server] WARNING: reviewer timeout ADVERSARIAL_REVIEW_TIMEOUT=300s exceeds the 240s client ceiling — clamping (a longer timeout is an unobservable hang, not a longer wait)
-        [mcp-server] WARNING: reviewer timeout ADVERSARIAL_REVIEW_TIMEOUT=300s exceeds the 240s client ceiling — clamping (a longer timeout is an unobservable hang, not a longer wait)
-        [mcp-server] WARNING: reviewer timeout ADVERSARIAL_REVIEW_TIMEOUT=300s exceeds the 240s client ceiling — clamping (a longer timeout is an unobservable hang, not a longer wait)
-        [mcp-server] WARNING: reviewer timeout ADVERSARIAL_REVIEW_TIMEOUT=300s exceeds the 240s client ceiling — clamping (a longer timeout is an unobservable hang, not a longer wait)
-        [mcp-server] WARNING: reviewer timeout ADVERSARIAL_REVIEW_TIMEOUT=300s exceeds the 240s client ceiling — clamping (a longer timeout is an unobservable hang, not a longer wait)
 
 [PASS] tests/test_review_independence.py  rc=0
         ALL PASS — reviewer independence
 
 [PASS] tests/test_review_material_bound.py  rc=0
+        RESULT: ALL PASS (11 tests)
           always-review path disqualifies a .md-only range ✓
           explicit budget override still honoured ✓
           docs-only range (46068 chars) not truncated, policy disclosed ✓
@@ -201,29 +208,28 @@ TEST SET (16 files)
           gate uses _bound_diff; no bare head-only slice remains ✓
           disclosure: 19860 of 21860 chars omitted, stated as a gate limit ✓
           head+tail bound ✓ (tail preserved); control shows the old head-only form lost it
-        RESULT: ALL PASS (11 tests)
         [mcp-server] WARNING: the 'mcp' package is not installed — the stdio server cannot start; the CLI adapter (ops/scripts/loop-gov.py) still works.
         [mcp-server]   ~/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3 -m pip install mcp
 
 [PASS] tests/test_review_material_scope.py  rc=0
+        ALL PASS — working-tree scope of the review measurement
           scoped files=2 vs unscoped files=4: the peer's two paths are excluded only from the scoped measurement ✓
           no snapshot -> whole tree counted (unchanged behaviour, fail-open) ✓
           own-paths = exactly what changed since the snapshot ✓
           unreadable snapshot -> no narrowing; empty own-set -> nothing kept ✓
           cap exceeded -> snapshot empty -> whole-tree scope (fail toward review) ✓
-        ALL PASS — working-tree scope of the review measurement
         [mcp-server] WARNING: the 'mcp' package is not installed — the stdio server cannot start; the CLI adapter (ops/scripts/loop-gov.py) still works.
         [mcp-server]   ~/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3 -m pip install mcp
         [mcp-server] WARNING: dirty snapshot: 2 dirty paths exceed the 1 cap — recording none, so the working tree stays fully in scope
 
 [PASS] tests/test_review_material_consistency.py  rc=0
+        ALL PASS — the reviewer's material is self-consistent
           peer dirt: measurement counts 2, material names 0, discloses ['peer.txt', 'peer_loose.txt'] ✓
           own uncommitted edit: measurement counts 1, material names 0, discloses ['base.txt'] ✓
           committed work: named with files=1 lines=2, nothing excluded ✓
           mixed: committed 'base.txt' named, 'leftover.txt' disclosed ✓
           committed rename: resolved to its HEAD-side name, not disclosed ✓
           rename forms: bare, braced, braced-with-suffix, empty, malformed ✓
-        ALL PASS — the reviewer's material is self-consistent
         [mcp-server] WARNING: the 'mcp' package is not installed — the stdio server cannot start; the CLI adapter (ops/scripts/loop-gov.py) still works.
         [mcp-server]   ~/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3 -m pip install mcp
 
@@ -247,7 +253,6 @@ TEST SET (16 files)
         ALL PASS — the manifest generator has one interpreter resolver, and 'could not verify' is never read as 'stale'
 
 [PASS] tests/test_refused_close_visible.py  rc=0
-        B. the pre-commit advisory fires on a refused-close lock, and only then
           PASS  silent with no lock
           PASS  silent without the marker
           PASS  silent for another repo's lock
@@ -256,7 +261,6 @@ TEST SET (16 files)
           PASS  names the blocking findings
           PASS  offers rereview_change as the exit
           PASS  never blocks (exit 0)
-        A. the gate marks the lock on a refusal and clears it on CLEAN
           PASS  a FINDINGS review blocks the close
           PASS  the lock records close_refused
           PASS  marker names the cycle
@@ -268,24 +272,12 @@ TEST SET (16 files)
           PASS  an unreachable reviewer refuses the close
           PASS  the outage is recorded on the lock too
           PASS  control: handler bound to the real log; 1 record(s) emitted when unsilenced (none written to the file)
-          PASS  silenced, the same run appended 0 bytes (438286 bytes unchanged)
+          PASS  silenced, the same run appended 0 bytes (474344 bytes unchanged)
+        B. the pre-commit advisory fires on a refused-close lock, and only then
+        A. the gate marks the lock on a refusal and clears it on CLEAN
         ✅ refused-close visibility checks passed
         [mcp-server] WARNING: the 'mcp' package is not installed — the stdio server cannot start; the CLI adapter (ops/scripts/loop-gov.py) still works.
         [mcp-server]   ~/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3 -m pip install mcp
-          \033[0;32m✅ change-validate: all checks passed\033[0m
-        🧪  Self-test: orchestrator guard...
-        ✅  Self-test passed: host detected as orchestrator (hostname+home-dir)
-            Env spoof check: ok-still-orch (env ignored)
-        ✅  Adversarial verify: passed on 1 file(s)
-        📊  score-cycle: LOOP 🔄 — keep iterating (task=precommit-hermes-cortex-HEAD
-        unknown/update, pass-pct=100)
-          \033[0;32m✅ change-validate: all checks passed\033[0m
-        🧪  Self-test: orchestrator guard...
-        ✅  Self-test passed: host detected as orchestrator (hostname+home-dir)
-            Env spoof check: ok-still-orch (env ignored)
-        ✅  Adversarial verify: passed on 1 file(s)
-        📊  score-cycle: LOOP 🔄 — keep iterating (task=precommit-hermes-cortex-HEAD
-        unknown/update, pass-pct=100)
           \033[0;32m✅ change-validate: all checks passed\033[0m
         🧪  Self-test: orchestrator guard...
         ✅  Self-test passed: host detected as orchestrator (hostname+home-dir)
@@ -299,7 +291,7 @@ TEST SET (16 files)
           PASS harness reports LOCK HELD
           PASS DB blocked while harness holds BEGIN IMMEDIATE
           PASS DB still write-blocked after alert-only watchdog (no kill)
-          PASS watchdog report names holder pid 2593601 in: '[2026-10-08 10:48 ] loop-gov-lock-watchdog: lock/anomaly DETECTED — alert-only (no auto-kill): 1 loop-gov daemon(s) in v'
+          PASS watchdog report names holder pid 2607770 in: '[2026-10-08 10:52 ] loop-gov-lock-watchdog: lock/anomaly DETECTED — alert-only (no auto-kill): 1 loop-gov daemon(s) in v'
           PASS holder process still alive after watchdog (alert-only, never kills)
         6 checks, 6 pass
 
@@ -309,13 +301,13 @@ TEST SET (16 files)
 ------------------------------------------------------------------------
 STATIC GATE  mcp-servers/loop-gov-mcp.py  level A4
 ------------------------------------------------------------------------
-[PASS] interim/working revision fe520c63
+[PASS] interim/working revision 08db5f50
         📊 Summary: 1 file(s), 33 finding(s)
         🟡 Medium: 5
         🔵 Low: 2
         ✅ GATE_PASSED — no critical/high findings
 
-[PASS] PRE-FIX revision HEAD~1 (2735a24d)
+[PASS] PRE-FIX revision HEAD~1 (fe520c63)
         📊 Summary: 1 file(s), 33 finding(s)
         🟡 Medium: 5
         🔵 Low: 2

@@ -12,6 +12,7 @@ reproduce the measurement.
 
 Usage:  python3 tests/run_loop_gov_regression.py
 """
+import re
 import subprocess
 import sys
 import tempfile
@@ -127,7 +128,20 @@ def main() -> int:
         if not ok:
             failures.append(f"{rel}: rc={proc.returncode}")
         out.append(f"[{'PASS' if ok else 'FAIL'}] {rel}  rc={proc.returncode}")
-        for ln in _tail(proc.stdout + proc.stderr).splitlines():
+        # Record EVERY check's outcome, not just the tail. A tail-only artifact
+        # left an individual check's result uncommitted whenever its file printed
+        # more than 60 lines afterwards, so a claim about it had no committed
+        # evidence to cite -- the reviewer had to report it as unverified, three
+        # cycles running (2026-10-08). Failures and outcomes are the part that must
+        # always survive truncation.
+        combined = proc.stdout + proc.stderr
+        keep = [ln for ln in combined.splitlines()
+                if re.search(r"^\s*(PASS|FAIL)\b|ALL PASS|RESULT:|^PASS \(", ln)]
+        rows = []
+        for ln in [*keep, *_tail(combined).splitlines()]:
+            if ln.strip() and ln not in rows:
+                rows.append(ln)
+        for ln in rows:
             out.append(f"        {ln}")
         out.append("")
 
