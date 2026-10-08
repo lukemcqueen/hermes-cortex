@@ -54,6 +54,12 @@ repo copy,     same pattern:                                                  7
 # => On disk the fix IS deployed. The RUNNING MCP server still executes the pre-fix code
 #    it loaded at start, so the fix takes effect for the next session (or a gateway
 #    restart) — not for the session that made it.
+# The path is RESOLVED, not assumed — the exact method whose absence caused the error above:
+#   $ python3 ops/scripts/manage/deployed-path.py mcp-servers/loop-gov-mcp.py
+#   /home/esther/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py      (rc=0)
+#   $ python3 ops/scripts/manage/deployed-path.py mcp-servers/unregistered.py
+#   COULD NOT RESOLVE: ... has no entry in .../deploy-manifest.tsv (335 entries).
+#   Nothing was checked.                                                    (rc=2)
 
 ## 5. Correction of record — which skills/ paths this range CONTAINS
 

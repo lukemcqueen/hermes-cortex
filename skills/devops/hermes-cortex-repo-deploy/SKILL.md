@@ -95,6 +95,26 @@ finding it addressed came straight back on the next close.
 - Then **grep for the edit** before committing. A clean `git status` proves nothing here:
   a discarded edit leaves the tree cleaner, not dirtier.
 
+## Never ASSUME a deployed path — resolve it; never let a fallback carry a conclusion
+
+The deployed path of a repo file CANNOT be derived from the repo path: 192 of ~289
+`register()` entries follow no rule (see the header of `ops/scripts/cortex_lib/paths.py`).
+A probe that mirrors the repo layout under the deploy home therefore checks NOTHING, and
+paired with `2>/dev/null || echo "<conclusion>"` it prints that failure AS a finding — this
+is how the line "0 (deployed copy predates this commit)" reached a committed evidence file
+while the deployed copy in fact already carried the change.
+
+- **Ask the map, never guess:** `python3 ops/scripts/manage/deployed-path.py <repo-relative-path>`
+  prints the deployed destination (from `deploy-manifest.tsv`, generated from the register()
+  lines) and exits 0 / 2 (no entry) / 3 (entry present, nothing at the destination). On a
+  failure it prints NO path — there is deliberately no fallback value to mistake for an
+  answer.
+- **A repo copy is NOT the deployed copy.** Check the two separately and say which you ran;
+  a green check on the repo side proves nothing about what a host runs.
+- **Never let a fallback string carry a conclusion.** If a check cannot run, print
+  COULD NOT VERIFY and exit non-zero. `|| echo "<something plausible>"` converts a broken
+  probe into durable "evidence", which is worse than having none.
+
 ## Edit the REPO source, never the deployed tree
 
 `cortex-update.sh` copies every `register()` source over its deployed destination,
