@@ -30,6 +30,8 @@ failures = []
 
 
 def check(label, ok, detail=""):
+    label = str(label) if label is not None else "<unlabelled>"
+    detail = "" if detail is None else str(detail)
     print(f"[{'PASS' if ok else 'FAIL'}] {label} {detail}")
     if not ok:
         failures.append(label)
