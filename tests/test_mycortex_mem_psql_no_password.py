@@ -144,6 +144,43 @@ def _psql_standin(tmp_path: Path) -> Path:
     return bindir
 
 
+def test_resolve_mem_password_env_var_wins(store_module, monkeypatch):
+    """A harness-set MYCORTEX_MEM_PASSWORD overrides any .env file value."""
+    monkeypatch.setenv("MYCORTEX_MEM_PASSWORD", "override-from-env")
+    assert store_module.resolve_mem_password(env_paths=[Path("/nonexistent/.env")]) == "override-from-env"
+
+
+def test_resolve_mem_password_falls_back_to_cortex_env(tmp_path, store_module, monkeypatch):
+    """When the env var is unset (the gateway/systemd case — services do not inherit
+    ~/hermes-cortex/.env), the store resolves the password from the canonical cortex
+    .env so the provider is available without any service-specific env injection.
+    """
+    monkeypatch.delenv("MYCORTEX_MEM_PASSWORD", raising=False)
+    cortex_env = tmp_path / ".env"
+    cortex_env.write_text("MYCORTEX_MEM_PASSWORD=secret-from-cortex-env\nOTHER_KEY=1\n")
+
+    assert store_module.resolve_mem_password(env_paths=[cortex_env]) == "secret-from-cortex-env"
+
+
+def test_resolve_mem_password_missing_env_returns_empty(tmp_path, store_module, monkeypatch):
+    """No env var and no reachable .env must yield '' — the psql -w path then fails
+    fast with 'no password supplied' rather than prompting (see the prompt test)."""
+    monkeypatch.delenv("MYCORTEX_MEM_PASSWORD", raising=False)
+    assert store_module.resolve_mem_password(env_paths=[tmp_path / "does-not-exist.env"]) == ""
+
+
+def test_store_macos_cmd_uses_resolved_password_in_pgpass(tmp_path, store_module, monkeypatch):
+    """The macOS branch must write the RESOLVED password (env override) into the
+    PGPASSFILE — an empty password here is exactly the 'provider reports unavailable'
+    failure the gateway saw before the .env fallback existed."""
+    monkeypatch.setenv("MYCORTEX_MEM_PASSWORD", "pgpass-secret")
+    connection = store_module.PgConnection()
+    connection._is_macos = True
+    _cmd, env = connection._cmd("mycortex_mem_reader")
+    pgpass = Path(env["PGPASSFILE"]).read_text()
+    assert pgpass.endswith(":pgpass-secret\n"), pgpass
+
+
 def test_store_fails_fast_and_never_prompts_without_a_password(store_module, tmp_path, monkeypatch):
     """Runtime check, not just a flag check: the store's real code path, run against a
     psql that honours -w exactly as documented, with no usable password must raise

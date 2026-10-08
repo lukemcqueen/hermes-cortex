@@ -56,6 +56,32 @@ _MAX_CARD_FACTS = 50
 
 _LEVEL_ORDER = {"minimal": 0, "low": 1, "medium": 2, "high": 3, "max": 4}
 
+# ── Password resolution (mirror of ops/services/mycortex-mem/store.py) ──────
+# One source of truth for WHERE the memory password comes from; keep in step
+# with self._store's resolve_mem_password. Env override first (a harness may
+# set it), then the canonical cortex .env — the read-from-disk fallback is what
+# makes the provider available in launchd/systemd gateway services that do not
+# inherit ~/hermes-cortex/.env, without any service-specific env injection.
+
+
+def _canonical_mem_env_paths() -> list[Path]:
+    return [Path.home() / "hermes-cortex" / ".env",
+            Path.home() / ".hermes-cortex" / ".env"]
+
+
+def resolve_mem_password(env_paths=None) -> str:
+    from_env = os.environ.get("MYCORTEX_MEM_PASSWORD", "")
+    if from_env:
+        return from_env
+    for candidate in env_paths if env_paths is not None else _canonical_mem_env_paths():
+        try:
+            for line in candidate.read_text().splitlines():
+                if line.startswith("MYCORTEX_MEM_PASSWORD="):
+                    return line.split("=", 1)[1].strip().strip('"').strip("'")
+        except OSError:
+            continue
+    return ""
+
 
 class _PgConnection:
     """Thin psql-based Postgres connection seam. Testable via injection."""
@@ -66,7 +92,7 @@ class _PgConnection:
 
     def _cmd(self, role: str) -> tuple[list[str], dict]:
         if self._is_macos:
-            pw = os.environ.get("MYCORTEX_MEM_PASSWORD", "")
+            pw = resolve_mem_password()
             pgpass = f"localhost:{_DEFAULT_PORT}:{self._db_name}:{role}:{pw}"
             import tempfile
             f = tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".pgpass")

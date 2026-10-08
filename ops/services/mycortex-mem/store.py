@@ -29,6 +29,7 @@ import json
 import os
 import subprocess
 import tempfile
+from pathlib import Path
 from typing import Any, Optional
 
 # ── Constants (mirror plugins/mycortex-mem/__init__.py — one source of truth
@@ -40,6 +41,47 @@ _READER = "mycortex_mem_reader"
 _WRITER = "mycortex_mem_writer"
 
 _MAX_SESSION_KEY = 200
+
+
+def _canonical_mem_env_paths() -> list[Path]:
+    """Canonical cortex config files that may carry MYCORTEX_MEM_PASSWORD.
+
+    `~/hermes-cortex/.env` is the repo/dev secrets file (gitignored); the deployed
+    form is `~/.hermes-cortex/.env`. Resolution order mirrors how every harness
+    reaches the store.
+    """
+    return [Path.home() / "hermes-cortex" / ".env",
+            Path.home() / ".hermes-cortex" / ".env"]
+
+
+def resolve_mem_password(env_paths: Optional[list[Path]] = None) -> str:
+    """MYCORTEX_MEM_PASSWORD — harness-set override first, then the cortex .env.
+
+    Order:
+      1. ``os.environ["MYCORTEX_MEM_PASSWORD"]`` if non-empty — a harness (Hermes CLI,
+         Pi, any future one) sets this to override the shared config.
+      2. The canonical cortex ``.env`` files (pass ``env_paths`` to pin the location,
+         e.g. from a test; defaults to ``_canonical_mem_env_paths()``).
+
+    Returns "" when neither source holds a value; the psql ``-w`` path then fails fast
+    with "no password supplied" instead of prompting (see the fail-open contract).
+
+    Decoupling note: launchd/systemd gateway services do not inherit ~/hermes-cortex/.env,
+    so the read-from-disk fallback is what makes the provider available there WITHOUT any
+    service-specific environment injection. Hermes-specific env wiring is intentionally
+    NOT used — the store resolves its own config from the cortex home.
+    """
+    from_env = os.environ.get("MYCORTEX_MEM_PASSWORD", "")
+    if from_env:
+        return from_env
+    for candidate in env_paths if env_paths is not None else _canonical_mem_env_paths():
+        try:
+            for line in candidate.read_text().splitlines():
+                if line.startswith("MYCORTEX_MEM_PASSWORD="):
+                    return line.split("=", 1)[1].strip().strip('"').strip("'")
+        except OSError:
+            continue
+    return ""
 
 
 class StoreUnavailable(RuntimeError):
@@ -80,7 +122,7 @@ class PgConnection:
 
     def _cmd(self, role: str) -> tuple[list[str], dict]:
         if self._is_macos:
-            pw = os.environ.get("MYCORTEX_MEM_PASSWORD", "")
+            pw = resolve_mem_password()
             pgpass = f"localhost:{self._port}:{self._db_name}:{role}:{pw}"
             f = tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".pgpass")
             f.write(pgpass + "\n")
