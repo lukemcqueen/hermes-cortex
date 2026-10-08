@@ -5,4 +5,5 @@ unbalanced=0
 == host gating ==
 IS_SERVER=false
 SCAN-HEALTHY
-script-exit=0
+== shell exit (wrapper) ==
+wrapper-exit=0
