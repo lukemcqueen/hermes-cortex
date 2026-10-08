@@ -26,11 +26,13 @@ t= 75s  inbox_health_check=d2p0  inbox_orchestrator=d8p0  inbox_titus=d0p0  inbo
 ## Result
 
 - `inbox_health_check`: **processing=0 throughout the 75s window** — this
-  agent never observes a stuck in-flight item within the window. (A single
-  earlier capture in `cron-bus-inbox-check-2026-10-08.raw.txt` showed
-  `processing=1`; the window here shows a sustained `processing=0` over 75s,
-  consistent with a transient in-flight item drained by the recover-timeouts
-  cron rather than a permanently stuck workflow.)
+  agent never observes a stuck in-flight item within the window. (The only
+  `processing=1` observation today is a single earlier capture documented in
+  `cron-bus-inbox-check-2026-10-08.raw.txt`; the p1→p0 transition itself was
+  NOT captured in a continuous window, so "drained" is an inference from that
+  earlier single point plus this sustained p0 — consistent with a transient
+  in-flight item recovered by the recover-timeouts cron rather than a
+  permanently stuck workflow.)
 - `inbox_titus` (this agent's inbox): `d0p0` throughout — **empty**.
 - `inbox_orchestrator_dlq` (the only DLQ): `d0p0` throughout — **empty**.
 - `inbox_orchestrator` depth 8 / processing 0 is the **orchestrator's own
