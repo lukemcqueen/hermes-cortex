@@ -1,0 +1,48 @@
+
+===== ASSERTIONS =====
+PASS  bound test result = RESULT: ALL PASS (12 tests)
+PASS  per-file regression case ran = 1
+PASS  parity test result = RESULT: ALL PASS (1 tests)
+PASS  A4 gate = 1
+PASS  harness artifact says ALL PASS = 1
+PASS  harness artifact covers 18 files = 18
+PASS  harness artifact names this revision = 1
+
+===== revision =====
+named revision: bde4e24d
+bde4e24d review material: budget PER FILE, so no changed file is ever invisible
+HEAD=bde4e24d
+origin/main=82970b4a
+
+===== tested artifacts (sha256) =====
+043457ab05b5db1fdbe5e0617abfe463329ce2b4674ed3b29e645830cf6d808e  mcp-servers/loop-gov-mcp.py
+7db93eb91e4435454a9a1fe341948808f312e92f54aada2ebb33ed6f2065be39  tests/test_review_material_bound.py
+ebad3557210eeef08ce21e2a34bea7bbfa293f17b632364274abd29f5c75cb1c  tests/test_skill_drift_parity.py
+acb8c23f71e3835298dbf713699c452e7ab654b5e668578b6102b46373b9ec17  skills/devops/governance-closeout/references/adversarial-gate-material.md
+7eb415f6df4d8cfa22bb34bc8f77759ac3f38c6f76621b692d2087db559d9837  tests/run_loop_gov_regression.py
+
+===== raw: python3 tests/test_review_material_bound.py =====
+  always-review path disqualifies a .md-only range ✓
+  explicit budget override still honoured ✓
+  docs-only range (46068 chars) not truncated, policy disclosed ✓
+  empty/unparseable diff is NOT docs-only ✓
+  all 24 files present with body ✓ (control: the old window lost 22)
+  over-budget docs notice is neutral and says to split the cycle ✓
+  one .py file reverts the whole range to the standard budget ✓
+  short diff passes through unchanged ✓
+  bounded files are named (20 of 20) ✓
+  gate uses _bound_diff; no bare head-only slice remains ✓
+  disclosure totals match the parts (19860 of 21860) ✓
+  head+tail per file ✓ (last file's tail survives); control lost file19 entirely
+
+RESULT: ALL PASS (12 tests)
+
+===== raw: python3 tests/run_loop_gov_regression.py (committed artifact, tail) =====
+this change introduces no new static findings.
+
+========================================================================
+RESULT: ALL PASS
+========================================================================
+
+===== FINAL =====
+RESULT: all assertions PASS

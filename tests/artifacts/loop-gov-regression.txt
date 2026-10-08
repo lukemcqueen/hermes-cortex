@@ -1,7 +1,7 @@
 loop-governance regression artifact
 ========================================================================
-generated      : 2026-10-08T04:24:16+00:00
-revision       : 82970b4a  (branch main)
+generated      : 2026-10-08T04:32:44+00:00
+revision       : bde4e24d  (branch main)
 interpreter    : Python 3.14.7 (<python-bin>/python3)
 generator      : tests/run_loop_gov_regression.py
 
@@ -43,14 +43,14 @@ TEST SET (18 files)
         [mcp-server] WARNING: the 'mcp' package is not installed — the stdio server cannot start; the CLI adapter (ops/scripts/loop-gov.py) still works.
         [mcp-server]   ~/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3 -m pip install mcp
         [mcp-server] INFO: self-adversarial review: cycle 4243 simple (1 lines, 1 files) — skip
-        [mcp-server] WARNING: _git_capture(('log', '--format=%ct')) exited 128 in ~/.hermes/cache/scratch/nested-repo-1jusxs_8/hermes-cortex: fatal: your current branch 'master' does not have any commits yet
+        [mcp-server] WARNING: _git_capture(('log', '--format=%ct')) exited 128 in ~/.hermes/cache/scratch/nested-repo-jf4bl2yq/hermes-cortex: fatal: your current branch 'master' does not have any commits yet
         [mcp-server] INFO: self-adversarial review: cycle 4321 simple (1 lines, 1 files) — skip
-        [mcp-server] WARNING: _git_capture(('rev-list', '-1', '--before=2026-10-08T04:24:27Z', 'HEAD')) exited 128 in ~/.hermes/cache/scratch/loop-gov-review-repo-fzvqap1b/hermes-cortex: fatal: ambiguous argument 'HEAD': unknown revision or path not in the working tree.
+        [mcp-server] WARNING: _git_capture(('rev-list', '-1', '--before=2026-10-08T04:32:55Z', 'HEAD')) exited 128 in ~/.hermes/cache/scratch/loop-gov-review-repo-n7z_db16/hermes-cortex: fatal: ambiguous argument 'HEAD': unknown revision or path not in the working tree.
         Use '--' to separate paths from revisions, like this:
         'git <command> [<revision>...] -- [<file>...]'
-        [mcp-server] WARNING: _git_capture(('log', '--format=%H', '--author=agent@hermes.local', '4b825dc642cb6eb9a060e54bf8d69288fbee4904..HEAD')) exited 128 in ~/.hermes/cache/scratch/loop-gov-review-repo-fzvqap1b/hermes-cortex: fatal: ambiguous argument '4b825dc642cb6eb9a060e54bf8d69288fbee4904..HEAD': unknown revision or path not in the working tree.
-        [mcp-server] WARNING: _git_capture(('diff', '--numstat', '4b825dc642cb6eb9a060e54bf8d69288fbee4904..HEAD')) exited 128 in ~/.hermes/cache/scratch/loop-gov-review-repo-fzvqap1b/hermes-cortex: fatal: ambiguous argument '4b825dc642cb6eb9a060e54bf8d69288fbee4904..HEAD': unknown revision or path not in the working tree.
-        [mcp-server] WARNING: _git_capture(('log', '--format=%ct')) exited 128 in ~/.hermes/cache/scratch/loop-gov-review-repo-fzvqap1b/hermes-cortex: fatal: your current branch 'master' does not have any commits yet
+        [mcp-server] WARNING: _git_capture(('log', '--format=%H', '--author=agent@hermes.local', '4b825dc642cb6eb9a060e54bf8d69288fbee4904..HEAD')) exited 128 in ~/.hermes/cache/scratch/loop-gov-review-repo-n7z_db16/hermes-cortex: fatal: ambiguous argument '4b825dc642cb6eb9a060e54bf8d69288fbee4904..HEAD': unknown revision or path not in the working tree.
+        [mcp-server] WARNING: _git_capture(('diff', '--numstat', '4b825dc642cb6eb9a060e54bf8d69288fbee4904..HEAD')) exited 128 in ~/.hermes/cache/scratch/loop-gov-review-repo-n7z_db16/hermes-cortex: fatal: ambiguous argument '4b825dc642cb6eb9a060e54bf8d69288fbee4904..HEAD': unknown revision or path not in the working tree.
+        [mcp-server] WARNING: _git_capture(('log', '--format=%ct')) exited 128 in ~/.hermes/cache/scratch/loop-gov-review-repo-n7z_db16/hermes-cortex: fatal: your current branch 'master' does not have any commits yet
 
 [PASS] tests/test_loop_gov_multi_session.py  rc=0
         PASS — loop-gov multi-session DB (adversarial findings resolved):
@@ -273,7 +273,7 @@ TEST SET (18 files)
           PASS  an unreachable reviewer refuses the close
           PASS  the outage is recorded on the lock too
           PASS  control: handler bound to the real log; 1 record(s) emitted when unsilenced (none written to the file)
-          PASS  silenced, the same run appended 0 bytes (587905 bytes unchanged)
+          PASS  silenced, the same run appended 0 bytes (624314 bytes unchanged)
         B. the pre-commit advisory fires on a refused-close lock, and only then
         A. the gate marks the lock on a refusal and clears it on CLEAN
         ✅ refused-close visibility checks passed
@@ -292,7 +292,7 @@ TEST SET (18 files)
           PASS harness reports LOCK HELD
           PASS DB blocked while harness holds BEGIN IMMEDIATE
           PASS DB still write-blocked after alert-only watchdog (no kill)
-          PASS watchdog report names holder pid 3160575 in: '[2026-10-08 13:26 ] loop-gov-lock-watchdog: lock/anomaly DETECTED — alert-only (no auto-kill): 2 loop-gov daemon(s) in v'
+          PASS watchdog report names holder pid 3198143 in: '[2026-10-08 13:35 ] loop-gov-lock-watchdog: lock/anomaly DETECTED — alert-only (no auto-kill): 2 loop-gov daemon(s) in v'
           PASS holder process still alive after watchdog (alert-only, never kills)
         6 checks, 6 pass
 
@@ -336,13 +336,13 @@ TEST SET (18 files)
 ------------------------------------------------------------------------
 STATIC GATE  mcp-servers/loop-gov-mcp.py  level A4
 ------------------------------------------------------------------------
-[PASS] interim/working revision 82970b4a
+[PASS] interim/working revision bde4e24d
         📊 Summary: 1 file(s), 33 finding(s)
         🟡 Medium: 5
         🔵 Low: 2
         ✅ GATE_PASSED — no critical/high findings
 
-[PASS] PRE-FIX revision HEAD~1 (4c4ae92c)
+[PASS] PRE-FIX revision HEAD~1 (82970b4a)
         📊 Summary: 1 file(s), 33 finding(s)
         🟡 Medium: 5
         🔵 Low: 2
