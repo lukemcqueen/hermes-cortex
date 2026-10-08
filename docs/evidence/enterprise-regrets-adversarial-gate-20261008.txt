@@ -1,0 +1,31 @@
+=== adversarial-verify A2 gate: SKILL.md ===
+
+── skills/software-development/enterprise-regrets/SKILL.md ──
+   Level: A2
+   Attack Surface:
+     ✅ Inputs: 0 item(s)
+     ⚠️ State: 12 item(s)
+     ⚠️ Dependencies: 1 item(s)
+     ✅ Concurrency: 0 item(s)
+   Fuzz inputs generated: 0
+
+📊 Summary: 1 file(s), 0 finding(s)
+   ✅ No findings — but standard tests should still pass!
+
+✅ GATE_PASSED — no critical/high findings
+
+=== adversarial-verify A2 gate: references/research-corpus.md ===
+
+── skills/software-development/enterprise-regrets/references/research-corpus.md ──
+   Level: A2
+   Attack Surface:
+     ✅ Inputs: 0 item(s)
+     ⚠️ State: 9 item(s)
+     ⚠️ Dependencies: 5 item(s)
+     ✅ Concurrency: 0 item(s)
+   Fuzz inputs generated: 0
+
+📊 Summary: 1 file(s), 0 finding(s)
+   ✅ No findings — but standard tests should still pass!
+
+✅ GATE_PASSED — no critical/high findings

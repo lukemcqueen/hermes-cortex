@@ -42,6 +42,7 @@ Don't use for: trivial refactors, bug fixes, dependency version bumps that don't
 - The proposal or design under review, in written form (PR description, design doc, or issue body). Verbal proposals should be summarized in writing first.
 - Access to the current system's architecture if evaluating a migration or replacement.
 - For cost claims: itemized estimates that separate infrastructure from headcount from opportunity cost.
+- The source bibliography backing every pattern lives in `references/research-corpus.md` (searchable thread/article titles, recovered via `web_search`); consult it to read a primary source before relying on a pattern's claim.
 
 ## How to Run
 
