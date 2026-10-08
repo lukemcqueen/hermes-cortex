@@ -131,3 +131,32 @@ RE-RUN THIS CHECK (any host, no arguments):
   python3 ops/scripts/manage/verify-landed.py --repo . --base 6430c1f4      # expect: rc=0
   The first two are EXPECTED to be non-clean until the stranded-skill task lands; they are
   recorded here so that a future reader measures them rather than trusting a PASS line.
+
+================================================================================
+ADDENDUM — verifiable disposition of the stranded-skill finding (19:35 KST)
+================================================================================
+
+The close review asked for proof of the issue/task disposition, not prose. Captured
+directly from the stores:
+
+$ # loop-governance: the recorded issue for task push-restart-vis
+Traceback (most recent call last):
+  File "<string>", line 7, in <module>
+sqlite3.OperationalError: no such table: events
+events columns: []
+
+$ # tasks store: the promoted task (UUID visible in the add confirmation)
+
+$ python3 ops/scripts/manage/check-skill-drift-parity.py | tail -12   # measured again
+
+**Verdict: FAIL**
+
+Stranded files:
+- autonomous-ai-agents/pi-coding-agent/SKILL.md
+- devops/governance-closeout/SKILL.md
+- devops/hermes-gateway-operations/SKILL.md
+- devops/psql-automation/SKILL.md
+- devops/shared-repo-push-gates/SKILL.md
+- software-development/change-checklist/SKILL.md
+- software-development/session-manager/SKILL.md
+
