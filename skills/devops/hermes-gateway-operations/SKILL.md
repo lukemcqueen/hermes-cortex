@@ -115,6 +115,114 @@ is still live — regardless of what the restart command printed.
 Note: a config value in `~/hermes-cortex/.env` does **not** need a restart once
 the gate's own resolver is deployed (it re-reads per call); only the code does.
 
+### A restart that preserves sessions is INVISIBLE — announce it, and tell the agent
+
+The only message about a restart is sent by the process that then exits; nothing
+follows it. So a human in the chat cannot tell the restart happened, and the agent
+cannot tell them either: sessions survive a gateway restart (starting fresh is
+`/new`), so an agent asked "did you restart?" answers from its own memory —
+"no, I still have our context" — which is true of the SESSION, false about the
+gateway, and the only answer available. Three things fix that, and the third is
+the one usually missed:
+
+1. **The restart command's reply states what happens to the CONVERSATION.**
+   "restart" reads like "fresh start"; a session that carries over otherwise looks
+   like nothing happened.
+2. **The NEW process announces itself at startup, before it serves anything**, in the
+   operator's wording, verbatim: `♻ Gateway restarted successfully. Your session
+   continues.` Keep that phrasing — it answers both questions a restart raises (did it
+   work, did I lose the conversation) in one line, and a longer invented variant is not
+   what the operator wants here. Persist a per-chat marker BEFORE sending the restart
+   reply — the process that writes the marker is the one that exits, so in-memory state
+   cannot carry it. Consume the marker on the first turn, so the human is told once and
+   not on every later reply. If the startup send fails, LEAVE the marker and let the
+   first reply carry the confirmation: a transient send failure must not lose the news.
+3. **Hand the AGENT the same fact on its first prompt after the restart** (a
+   `[system]` note prepended to the turn). Announcing to the human alone leaves the
+   agent still answering "no" — the contradiction the human will notice.
+
+Prove a restart with the unit, not with the chat:
+
+```bash
+systemctl --user show <unit>.service -p NRestarts -p MainPID -p ExecMainStartTimestamp
+```
+
+A NEW `MainPID` plus start timestamp is the proof. `NRestarts` increments only for a
+**policy** restart (`Restart=` firing) — an operator-issued `systemctl restart` does
+not increment it, so a changing `NRestarts` is evidence the unit restarted ITSELF.
+
+- **`Restart=always` is required for restart-on-clean-exit**, the pattern where a
+  service asks systemd to bring it back by exiting on purpose: `Restart=on-failure`
+  does NOT start the unit again after `exit(0)`, so the exit is a plain stop and the
+  bot stays down. Check the policy before trusting the mechanism.
+- **Probing this with a throwaway unit: end the probe with
+  `systemctl --user stop <unit>` and exit 0.** Under `Restart=always`, a probe that
+  exits non-zero restarts itself in a loop — it floods the journal and, if it also
+  touches live state, does so repeatedly. Confirm the unit is gone afterwards
+  (`systemctl --user list-units --all | grep <name>`).
+
+## A non-Hermes backend is a SEPARATE runtime, not a Hermes session
+
+A backend of `kind: command` (a CLI coding agent) is a distinct process with its
+own tooling: it inherits **none** of a Hermes session's memory, skills, or
+governance. "Agent X has no memory" is therefore a property of that backend's
+OWN integration layer, never of the host — establish where its memory comes from
+before touching anything shared:
+
+| Backend | Memory comes from |
+|---|---|
+| Hermes session | the `mycortex-mem` memory-provider plugin, in-process |
+| command/CLI agent | its own MCP server or extension, spawned by the agent CLI |
+
+`hermes mcp list` does not list plugin-provided stores, so its absence proves
+nothing about a Hermes session; a CLI agent's tools appear in ITS agent config
+(its own `mcp.json`/settings), not in `config.yaml`.
+
+### One service-hosted agent reports a store unreachable, a sibling works
+
+Compare the two SERVING UNITS' sandbox flags before blaming the store —
+hardening is invisible in the agent's own output, and the store's availability
+check often swallows the real exception:
+
+```bash
+systemctl --user show <failing>.service -p NoNewPrivileges -p PrivateTmp
+systemctl --user show <working>.service -p NoNewPrivileges -p PrivateTmp
+```
+
+`NoNewPrivileges=true` refuses `sg`/`newgrp` setgid **even when the process
+already holds the target group**, which breaks any store whose only access path
+is `sg docker -c "docker exec …"`. Reproduce faithfully with
+`setpriv --no-new-privs -- <cmd>` — it keeps the real supplementary groups,
+whereas `systemd-run` drops them and fails for the wrong reason. Fix by giving
+the store a direct `docker exec` path when the group is already held; never by
+dropping the hardening flag. Mechanism and store-specific fix: `psql-automation`.
+
+### Slash commands are the GATEWAY's, never the agent's
+
+When a `kind: command` backend (a CLI coding agent) serves a chat, the built-in slash
+commands belong to the GATEWAY: such a backend handles `/new`, `/model`, `/compact`,
+`/restart` only in its interactive/RPC surface, so forwarded as prompt prose they become
+ordinary conversation — a `/new` is answered politely while every bit of context stays.
+Intercept them in the gateway's command dispatcher and never pass them through
+(backend mechanics: `pi-coding-agent`).
+
+- **Each command needs a defined contract, not just a route.** `/new` starts a fresh
+  session; `/model` persists the override per chat — a stateless prompt wrapper has
+  nowhere to keep it, so the GATEWAY owns a small chat→model store, mode 0600 (a chat id
+  is personal data); `/compact` reports what it reclaimed, and "nothing to compact" for a
+  session too small; `/restart` exits so the unit restarts it, and the new process
+  announces itself (above).
+- **Design for the EMPTY chat.** Commands run on chats with no conversation yet, where a
+  backend's session operations hang or refuse (compact on a transcript that does not exist
+  never answers). Probe state first and answer with the specific condition — "this chat has
+  no conversation yet" — never a generic failure.
+- **A control timeout must cover a real turn plus the operation.** Compacting a large
+  session measured ~1m46s; a 30s deadline reports a healthy backend as broken.
+- **Test parity with a STUB transport and an echoing backend** (`/bin/echo` so the reply
+  body IS the argv). A probe that polls with the real bot token starts a second poller and
+  steals the live channel's messages (409); echoing is what lets the assertion check the
+  ARGV the gateway produced — model declared exactly once, no duplicate `--model`.
+
 ## Adding a New Platform
 
 1. Obtain the token/secret for the platform (Telegram bot token from
@@ -145,3 +253,5 @@ the gate's own resolver is deployed (it re-reads per call); only the code does.
 - `hermes-agent` — general Hermes configuration
 - `telegram-delivery-diagnostics` — Telegram-specific delivery debugging
 - `cortex-bus-messaging` — inter-agent messaging (separate from the user gateway)
+- `psql-automation` — the `sg`/`NoNewPrivileges` store-access mechanism behind a
+  "store unreachable" report from a hardened service

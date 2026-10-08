@@ -104,7 +104,46 @@ Table in `ops/services/mycortex/schema/v005__answers.sql`. Extends the role spli
 - `answer-cache` skill — the agent protocol with step-by-step instructions
 - `docs/design/mycortex-DESIGN.md` — canonical design doc
 
-**Connection:** psql via `sg docker -c "docker exec -i mycortex-postgres psql -U <role> -d <db>"` on Linux (trust auth inside container); direct psql reading `~/.legacy-brain/config.json` on macOS. Roles connect WITHOUT passwords inside the container; direct TCP to :15432 from the host requires a password (pg_hba scram for non-localhost).
+**Connection:** direct `docker exec -i mycortex-postgres psql -U <role> -d <db>` on Linux (trust auth inside container) — NOT through `sg docker`, which dies under systemd `NoNewPrivileges=true`; keep `sg` only as the fallback for a host whose user is not in the docker group (`psql-automation` carries the hardening reproduction and the argv-ladder shape). TCP :15432 being open is NOT proof a given harness can reach this — the failure lives in the wrapper, not the port; direct psql reading `~/.legacy-brain/config.json` on macOS. Roles connect WITHOUT passwords inside the container; direct TCP to :15432 from the host requires a password (pg_hba scram for non-localhost).
+
+## Memory + session are ONE store, two views (S2c)
+
+`mycortex_mem` holds `peers` / `sessions` / `messages` / `conclusions` / `profiles` /
+`checkpoints`. Session history IS the substrate memory distills from, so `mem_*` (what do I
+know) and `session_*` (where am I) are two tool families over ONE connection and ONE
+identity model — do not split them into two services or two schemas.
+
+| Surface | Reach |
+|---|---|
+| Hermes harness | `plugins/mycortex-mem/` — the plugin adapter |
+| Any other harness (pi, etc.) | `mcp-servers/cortex-context-mcp.py` — one thin MCP adapter over the shared impl in `ops/services/mycortex-mem/`, registered per harness (pi reads `mcpServers` from `~/.pi/agent/mcp.json`) |
+| Checkpoint TIMING | the harness EXTENSION (`turn_end` → `session_checkpoint`), never the model — the session that most needs a checkpoint is the one that got killed, and a killed session cannot call a tool |
+
+Facts that cost time to find: the checkpoint table is **`checkpoints`**, not
+`session_checkpoints`; it keys on `session_id` with `harness`/`repo`/`branch` copied in, so
+an ad-hoc harness run with no `CORTEX_SESSION_*` env resolves to
+`unknown:<repo>:<branch>` while a supervised run keys correctly. `mycortex_mem_writer` has
+**no DELETE grant** on `checkpoints` (least privilege), so a probe cannot clean up after
+itself: identify test rows by id and leave them rather than escalating to a superuser role.
+
+**Naming:** say **mycortex** or **memory**. "The store" is ambiguous in this fleet (bus
+store, task store, session state) and the operator rejects it — name the thing.
+
+### Proving a harness can actually reach it
+
+Drive the harness's OWN registered command under that harness's sandbox — never a
+hand-rolled invocation, and never only the unhardened path:
+
+1. Read the command out of the harness config (not from memory), e.g.
+   `~/.pi/agent/mcp.json` → `mcpServers['cortex-context']`.
+2. Spawn exactly that under the hardening the service runs with:
+   `setpriv --no-new-privs -- <command> <args>` (keeps the real group list, unlike
+   `systemd-run`).
+3. Do a real MCP handshake — `tools/list`, then `tools/call` for one read tool — and
+   compare against the unhardened control (same answers both ways).
+4. Finish with ONE real agent turn that uses the tool and echo the tool's own output
+   shape back, so a model answering from guesswork cannot pass as a working tool.
+   Then confirm the write side the same way: a checkpoint row appearing for that turn.
 
 ## Schema Gotchas (found by real CLI testing 2026-08-02 — all fixed in mycortex.sql)
 

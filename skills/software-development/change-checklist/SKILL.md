@@ -57,6 +57,23 @@ Enforced at 3 layers: pre-commit hook (static gate), enforcer (blocks commit unt
       and exits 0 — so any harness that records `rc=0` scores it PASS. Prove a test
       executed by its OUTPUT, not its exit code, and make the harness REJECT any
       entry it cannot actually run.
+- [ ] **A captured check transcript must carry its EXIT CODE and its WARNING COUNT — a bare
+      PASS line is a swallowed error.** A gate that prints `✅ PASSED` while emitting N warnings
+      and an unresolved sub-check reads as a clean system to everyone downstream, including the
+      close reviewer, which files it as exactly that. Capture `rc=$?` beside the command, record
+      the warning count, and write the measured numbers into the evidence — including the ones
+      that are NOT clean ("rc=0 with N warnings and unresolved X" beats a PASS line with the
+      warnings omitted). A transcript with the counts absent is not evidence: the reader cannot
+      tell a clean run from a skipping one, and a summary line claiming cleanliness the
+      transcript contradicts is a fabrication finding.
+- [ ] **Never commit a query's output without first seeing it return rows.** Proof of a
+      disposition ("recorded as this issue", "promoted to a task") must be the store's ACTUAL
+      row: run the query, confirm it returns the row, then commit that. Commit a traceback or an
+      empty section and it proves nothing — and because the reviewer reads the DIFF, a later
+      correction of that same passage can keep reading as the broken version. List the store's
+      tables before writing the query (`SELECT name FROM sqlite_master WHERE type='table'`):
+      store table names are not guessable, and a task store may not be a file DB on the host at
+      all — capture what the tool itself returns instead.
 - [ ] A test whose verdict depends on WHO invoked it is not a test. A test that
       SPAWNS a process to exercise a component (a server, a CLI, a hook) must
       resolve an interpreter that can actually RUN that component — read it from the
@@ -68,6 +85,12 @@ Enforced at 3 layers: pre-commit hook (static gate), enforcer (blocks commit unt
       `bash ops/scripts/lib/python-with-module.sh <module> <script> [args]` (exit 3 = no
       interpreter can import the module), and the same capability test applies to any
       script that picks its own interpreter (`shell-scripting`).
+- [ ] When a component cannot RUN because a dependency is missing, INSTALL it (age-gated via
+      `ops/scripts/health/check-package-age.py <mgr> <pkg>`) rather than teaching every
+      caller to route around it. A workaround fixes the one call site you were looking at
+      and leaves the component broken for the next caller — and the missing dependency is
+      usually why the failure looked unrelated in the first place. Pin and match a version
+      already proven on this fleet.
 - [ ] A check that CANNOT RUN is a third outcome — not a pass, not a negative
       result. Give it its own exit code (`3 = could not verify`) and its own message,
       and make every caller dispatch on the code: a gate shaped
@@ -98,6 +121,18 @@ Enforced at 3 layers: pre-commit hook (static gate), enforcer (blocks commit unt
       mid-deploy — and a gate that flaps on healthy systems teaches its readers to ignore
       it. Drive the detector with controlled inputs in both directions (one it must report,
       one it must not) and keep the live state out of the assertion.
+- [ ] When a heuristic warning is noisy, tighten its TRIGGER — do not add an exemption list.
+      A check that cannot tell the case it exists for from a deliberate long-standing state
+      fires on every instance of the latter, and the reader learns to scroll past it. Scope
+      the condition to the case itself (`git diff --cached --name-only --diff-filter=A` —
+      only NEWLY ADDED files), which removes the noise and keeps the real case; an
+      allow-list of known-good paths instead drifts out of date and the noise returns with
+      the next legitimate tool.
+- [ ] Test the warning BOTH ways before trusting it: the case it must report, and the case it
+      must now stay silent on. A warning verified only in the reporting direction cannot show
+      that the noise is gone; verify only in the silent direction and you may have deleted the
+      check. (`shell-scripting` has the extraction pattern for driving one block of a large
+      script this way; `tests/test_updater_robustness.py` is a worked exemplar.)
 - [ ] Evidence must be self-consistent: a summary line may never name a file,
       path or count that the artifact it accompanies does not show. A stat built
       from a wider set than the diff beside it is a contradiction a reviewer will
@@ -143,11 +178,39 @@ Enforced at 3 layers: pre-commit hook (static gate), enforcer (blocks commit unt
 - [ ] Symptom proof — the specific error/alert/blocker is gone (not just code compiles + doctor passes). Show evidence in the cycle note.
 - [ ] Stale expected-list cleanup — removed crons also removed from uninstall arrays (doctor reads them as expected list).
 - [ ] Stale bus/state cleanup — delete test bus messages and stale state-file entries before end_change().
-- [ ] Doctor clean — python3 ~/hermes-cortex/ops/scripts/manage/cortex-doctor.py --quiet (✅ Crons registered / Orch crons / Crons total).
+- [ ] Doctor clean — python3 ~/hermes-cortex/ops/scripts/manage/cortex-doctor.py --quiet
+      (✅ Crons registered / Orch crons / Crons total). Record its EXIT CODE and warning count,
+      not just the ✅ lines: a non-zero rc with warnings is NOT a clean doctor, and reporting it
+      as one is the failure the close review catches.
 - [ ] Governance scored — feedback_accept() before end_change().
 - [ ] Cron-governance compat — if hooks/plugins/enforcer changed, verify the cycle works in a test cron session, then delete it.
-- [ ] Pushed — git pull --rebase then git push origin main; verify git log --oneline -1 origin/main shows the commit.
-- [ ] Deployed — bash ops/scripts/cortex-update.sh after push (not before).
+- [ ] Deploy, THEN push — that order, with nothing committed in between. The pre-push path
+      itself runs pull → deploy → doctor → verify, and the gate reads `Deploy sync`, so any
+      commit made after a deploy leaves the deployed tree trailing HEAD and blocks the push.
+      Run it as one step: `bash ~/.hermes-cortex/scripts/cortex-dogfood.sh --force` and then
+      `git push origin main`. A close-time review receipt is keyed by BOTH tip and base, so a
+      further commit invalidates it too — the deploy is the LAST step, not a mid-task refresh.
+- [ ] Integrate a peer's work by MERGE, never `git pull --rebase`. A rebase rewrites SHAs,
+      which invalidates the receipt bound to the tip and rewrites the peer's unpushed
+      commits; it also refuses outright when another session holds unstaged files, and you
+      must never stash a peer's files. A merge needs neither and keeps your commit identities.
+- [ ] **Never `git commit --amend` while a peer may be working in the tree.** `--amend`
+      rewrites whatever HEAD is *now*, not "your" commit: a sibling commit that landed since
+      you started becomes the target, folding THEIR files into YOUR message and stripping
+      their authorship. Before amending, assert HEAD is the commit you created
+      (`git log -1 --format='%h %s'`); if it is not, commit your paths as a NEW commit.
+      Recovery if you already amended theirs: `git reflog` to find the peer's SHA,
+      `git reset --soft <peer-sha>` to restore it verbatim (message and all files), then
+      re-commit only your staged paths — never `reset --hard`, which discards their work.
+- [ ] A close-review window is `base..HEAD`, so a **peer's commit landing mid-cycle shows up
+      as scope drift in YOUR range**. Name the peer's SHA in the cycle note and leave their
+      work untouched; reverting another session's commit to green your gate is the same
+      violation as the amend above.
+- [ ] Verify the landing rather than assuming it: `python3 ops/scripts/manage/verify-landed.py
+      --repo . --base <previous tip>` asserts a CLEAN receipt for the tip, that every changed
+      deploy-map file matches its deployed copy, and that `origin/<branch>` equals the tip.
+      Exit 0 / 1 (a real mismatch, named) / 2 COULD NOT VERIFY — a partial check is not a pass.
+- [ ] Pushed — `git log --oneline -1 origin/main` shows your commit.
 - [ ] Cron delivery audit — deliver goes somewhere visible (origin/local deliver nowhere from scripts).
 - [ ] Timeout audit — deadline ≈ 3× expected worst-case completion.
 

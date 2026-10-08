@@ -106,6 +106,22 @@ material it judged (note + diff):
  graded `evaluation-awareness`: you are role-playing the reviewer on your own work
  instead of describing it. Write plainly — what changed, why, and the evidence path —
  and let the reviewer produce findings.
+- **A refusal whose findings are ALL `unverified-claim` is an evidence gap, not a code
+  defect — commit the artifacts and CLOSE AGAIN.** Every such finding is a true claim
+  whose output lived only on a screen (a test count, a live-run result, a proof about a
+  scratch resource, a fix for a defect the diff does not demonstrate). The remedy is to
+  commit, in the SAME range, the verbatim run output and a re-runnable capture — not to
+  edit code nothing found fault with, and not to rewrite the note. A refusal keeps the
+  lock, so the retry is `end_change` on the SAME cycle: the material changed, so it is
+  judged afresh. Do NOT open a fresh cycle for it — a new cycle's window is empty, its
+  review is skipped as `simple`, and it authorises a range nothing reviewed.
+- **Evidence about an EPHEMERAL resource is captured while it exists, or re-created.**
+  A scratch unit or temporary process is deleted once the proof is taken, and a reading
+  captured as it went away prints `MainPID=0 / NRestarts=0` — a contradiction sitting
+  inside your own artifact. Re-run the proof and capture the reading live, and inline the
+  resource definition and its probe IN the artifact so any host can reproduce it. The
+  unit's JOURNAL survives the cleanup (`journalctl -u <unit>`), which is what makes the
+  capture durable rather than a claim.
 - **A pasted transcript is NOT accepted evidence, however true it is.** When the
   load-bearing claim is a measurement (the suite is green, the doctor is clean), the
   finding will be that nobody can re-run a transcript. Commit a RUNNABLE generator — a

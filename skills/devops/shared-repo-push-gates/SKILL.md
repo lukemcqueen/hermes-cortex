@@ -46,6 +46,21 @@ and invalidates the receipt, so push immediately after closing. Full detail:
   close still writes the receipt for the new tip — deploy, push. Skipping the
   re-close leaves a CLEAN receipt that no longer matches, and the gate refuses with
   no obvious cause.
+- **A receipt is bound to ONE tip, and the gate re-reads `HEAD` on every attempt** — so
+  a peer committing between your close and your push invalidates a receipt that was
+  valid a minute ago, and the refusal names the tip it now wants. Do not answer that by
+  minting receipts in a loop: check whether the peer is still committing
+  (`git log -3 --format='%h %ad %s' --date=iso`) and, if so, stop — your commit is
+  already an ancestor of whatever they push, so it publishes with their push. Report
+  "committed + deployed locally, push rides the peer's next push" with your SHA rather
+  than looping or claiming a push that did not land.
+- **Look for a receipt on the CURRENT tip BEFORE minting one — a peer's recent close may
+  already authorise your push.** A close writes the receipt with BASE = `git merge-base
+  origin/main HEAD`, so a peer session that just closed its own cycle has written a CLEAN
+  receipt covering every unpushed commit behind it, yours included, even though they have
+  not pushed yet. Check before looping: `ls ~/.hermes-cortex/state/.reviewed-hermes-cortex-<tip>*.json`
+  and read its `verdict`/`base_sha`/`tip_sha`. A receipt found this way can let the push
+  through with no new cycle at all.
 - **Prefer MERGE over rebase when a peer's commits land under your unpushed work
   and the checkout carries a foreign WIP you may not stash.** `git pull --rebase`
   refuses outright on a dirty tree (*"cannot pull with rebase: You have unstaged
@@ -78,6 +93,39 @@ does not apply.
   binding a receipt to base AND tip exists to prevent. The documented answer to an
   unreviewable range is to SPLIT it; if it can no longer be split, report the blocker (and
   the local SHAs) to the operator instead of manufacturing the receipt.
+- **A claim the reviewer cannot check from the window is a HIGH `unverified-claim` finding
+  that refuses the close — commit the ARTIFACT, never cite it in prose.** The reviewer sees
+  the range's diff plus your note, and nothing else: "ran the suite (N passed)", "dogfood
+  PASSED", "proven on the live unit" are all unverifiable there, and each one comes back as
+  a finding. Put the evidence INSIDE the range as a file — the test-output log, the journal
+  capture, the acceptance transcript — and cite that path. Adding the artifact as a NEW
+  commit to the SAME already-open cycle is the cheapest fix and is NOT the hollow-receipt
+  trick above: the next close re-reads the window with the evidence now in it. Claims about
+  a tool RUN (a deploy, a doctor, a dogfood script) need a committed transcript for the same
+  reason — the reviewer cannot see your terminal.
+- **A peer's commits landing inside your cycle's window are attributed to YOU.** A
+  push/verify cycle whose window picked up a peer's new file is refused as `scope-drift`
+  ("a push-only cycle should not add new test code"), and its diff stat will describe THEIR
+  file as your change. Name the peer's SHAs in the note and state plainly that your cycle
+  changed no source — or wait for the peer's stream to pause so the window holds only your
+  own commit.
+- **The reviewer reads the cycle's DIFF, so a CORRECTIVE commit is judged as ADDING the text
+  it removed.** Deleting an offending passage to fix a finding comes back as the SAME finding
+  ("the file still shows <the removed text>"): the material is the range's diff, so removed
+  lines are in it and the file's UNCHANGED sections — a transcript captured earlier, a count
+  on another line — are invisible to the reviewer. Before burning another round, test the
+  finding against the file rather than the diff: `grep -c '<flagged string>' <file>` (0
+  matches at HEAD while the diff shows the removal = the reviewer is reading the removal),
+  and confirm the evidence it says is missing is actually present (`grep -n '<command>' <file>`
+  shows the captured transcript and its `rc=`).
+- **When findings are demonstrably false, STOP re-reviewing — record the blocker and let the
+  lock expire.** Each re-review returns a variation of the same finding at full cost; the
+  sanctioned exit is to record the issue with the measurement that refutes it, leave the lock
+  to TTL-release, and report the substantive state (committed, deployed, pushed, verified)
+  with SHAs. Never `feedback_override` to get past it and never re-mint a receipt to hide it —
+  an ops/verify cycle whose window is ANOTHER session's commit can be uncloseable by
+  construction, and a TTL-released lock is the documented outcome, not a failure to try
+  harder. Say which commits are yours and which are the peer's in the issue record.
 - **Splitting a deploy/installer file into its own later commit is legitimate**, not
   gaming: `ops/scripts/cortex-update.sh` and friends force a receipt for the WHOLE range
   they sit in, so moving that one file (and its one line) into its own small commit removes
@@ -109,7 +157,11 @@ does not apply.
    doc referencing a new public site was blocked as "non-public server URL
    host"). Workaround: reference the site in prose without the scheme, and
    use allowlisted hosts (github.com) for real links. Never try to bypass
-   the gate.
+   the gate. The guard is PATTERN-based, so it also fires on digit-dense
+   identifiers that are not personal data at all — a session key or UUID
+   (`20261008_152408_ab12cd34`) reads as a phone number. Generalize it in the
+   text (`<a real session>`, `10:49Z`) instead of arguing with the gate: a
+   wall-clock time is fine, a long unbroken digit run is not.
 3. **`adversarial-verifier` skill required for commits** while any
    `ops/scripts/` working-tree change exists — even for docs-only commits.
    Load the skill, run
@@ -162,7 +214,14 @@ does not apply.
      the standing habit are in `references/skill-drift-gate-2026-08-27.md`:
      after ANY `skill_manage` patch in this repo, sync the deployed copy back to
      repo source in the same cycle. Treating it as "pre-existing drift I cannot
-     explain" wastes the cycle — it is always the skill you just edited.
+     explain" wastes the cycle — it is always the skill you just edited, OR a
+     peer's in-flight skill work (never `cp` over a skill another session is
+     mid-edit on — it is theirs to land, and its diff is the tell).
+     Quantify it before diagnosing: `python3 ops/scripts/manage/check-skill-drift-parity.py`
+     prints a verdict plus the DEPLOYED-ONLY ("stranded") file list — content that exists
+     only on the deployed copy because a lesson was written there and never copied back —
+     and the doctor exits non-zero while any remain, which blocks every push on the host
+     until it is resolved or explicitly recorded as its own task.
    - **A `❌ Checksum: <file>` you did not cause by committing late is a RACE:
      you edited a registered file while the deploy was still copying it.** The
      doctor compares repo source to the deployed copy, so an edit that lands

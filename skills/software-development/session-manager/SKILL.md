@@ -30,7 +30,32 @@ Use this skill to manage long-running or interrupted agent sessions. It provides
 
 ## 1. Checkpoint / Restore
 
-Save a compact snapshot of session state at key milestones. Each checkpoint captures what was accomplished, what's pending, and any critical decisions or blockers.
+Save a compact snapshot of session state at key milestones.
+
+**Use the harness's checkpoint STORE when one exists — files are the fallback, not the
+preference.** On a fleet host the store is the `session_checkpoint` / `session_restore`
+tools: structured facts (done / pending / blockers / decisions), append-only, scoped to
+the harness+repo+branch, and readable by the next session with one call. A markdown file
+nobody reads is worse than no checkpoint, because it looks like continuity. Check the
+checkpoint tool's availability FIRST; if the harness has none, fall back to the file
+shapes below. Two mechanics worth knowing: the store is APPEND-ONLY, so a second call is
+how you add the rest of a long list (pending and decisions in separate calls is fine), and
+the stored facts are what a fresh session actually reads — write them there, not only in
+the chat.
+
+**When the operator asks to "summarize for a new session", do both, in this shape:**
+
+1. Persist it (`session_checkpoint`) — objective, what shipped and where, current live
+   state with SHAs/units/paths, pending items each carrying the EXACT next call or
+   command, blockers, and the decisions that constrain the next worker.
+2. Deliver the same in chat, ordered: **goal → status per deliverable → current state →
+   pending with the exact next step → gotchas**. Include the one step only a human can do
+   (a manual action left unverified) and anything that looks like a contradiction but is
+   expected.
+3. State claims as far as they are VERIFIED — name the artifact that shows it. A summary
+   is where an unverified assertion travels furthest and gets trusted longest.
+4. Prefer the concurrent-session context a fresh worker cannot re-derive cheaply (another
+   session's identity, what it is working on, what it is NOT yours to touch).
 
 ### When to checkpoint
 

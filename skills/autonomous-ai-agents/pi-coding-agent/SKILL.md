@@ -75,6 +75,39 @@ nothing else — verified with a plain prompt and with a prompt that used the ba
   `CORTEX_SESSION_KEY`): a harness started outside a git repo cannot derive repo/branch and
   every chat otherwise collapses onto ONE session.
 
+## Driving pi from another process — control calls go over RPC, never a prompt
+
+A wrapper that only sends prompts is missing half the interface, and the missing half
+fails in ways that read as pi being broken (working adapter to copy:
+`ops/scripts/cortex_gateway/pi_control.py` in hermes-cortex).
+
+- **A built-in slash command sent as a prompt is a NO-OP.** `/compact`, `/model`,
+  `/new`, `/restart`, `/settings` are handled only in the interactive/RPC surfaces; as a
+  prompt they become conversation (a forwarded `/new` is answered as prose while every
+  bit of context stays). Session and state operations go over **RPC mode**:
+  `pi --mode rpc` takes one JSON record per line on stdin (`{"type":"get_state"}`,
+  `{"type":"compact"}`, `{"type":"set_model", …}`) and answers with a `response`
+  record on stdout — correlate by the `id` you sent, never by response order.
+- **Pass `--no-mcp` for a control call.** pi connects its MCP servers at RPC startup,
+  and with them enabled the control call sat ALIVE and SILENT (no stdout, no stderr)
+  for the whole deadline on ~40% of runs; the same call answered 8/8 in ~1.2 s with
+  `--no-mcp`. A control call uses no MCP tool, so those servers are pure risk there.
+- **Watch the process EXIT as well as EOF.** EOF is not the only end of an answer:
+  pi's MCP children inherit its stdio, so a lingering grandchild holds the write end of
+  the pipe open — no data, no EOF — and a reader waiting only for EOF blocks for its
+  full deadline. Start pi in its own process group (`start_new_session=True`) and kill
+  the GROUP on timeout, so a wedged control call does not also leak children.
+- **`compact` never answers for a session whose transcript does not exist yet**
+  (45 s+, repeated), while `get_state` on the same id answers in ~1.2 s and creates it.
+  Ask for the state first and answer "no conversation yet" — a chat that has just
+  started a fresh session is exactly this case, and it is the common one.
+- **Give a check three outcomes, not two**: `0` ok · `1` a NEGATIVE answer · `3` could
+  not verify. `--offline --list-models <pattern>` prints `No models matching "x"` and
+  still **exits 0**, so a verdict read off the exit code is wrong in both directions —
+  decide from the OUTPUT, and make "pi cannot be run at all" its own outcome rather
+  than a failed check. The same split lets a caller refuse a bad model name instead of
+  breaking every later turn with it.
+
 ## Extension API (the Jev-hook surface)
 
 **Read the installed type defs before writing a hook — never infer the signature.**
