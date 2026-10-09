@@ -174,8 +174,11 @@ if [[ "$_REPO_TOP" == "$CORTEX_REPO_TOP" && -f "$ALWAYS_REVIEW_LIST" ]]; then
       [[ -f "$_CHECK" ]] || _CHECK="$_REPO_TOP/ops/scripts/lib/review-receipt-check.py"
       _CLEAN=0
       _RECEIPT="$GOVERNANCE_STATE_DIR/.reviewed-${REPO_SLUG}-${_TIP}.json"
+      _ERRLOG="$GOVERNANCE_STATE_DIR/.receipt-check.err"
       if [[ -f "$_RECEIPT" ]]; then
-        _CLEAN=$(python3 "$_CHECK" "$_RECEIPT" "$_TIP" "$_BASE" --repo "$_REPO_TOP" 2>/dev/null || echo 0)
+        # stderr is KEPT (not discarded): a checker that fails to run must be
+        # diagnosable, and `|| echo 0` keeps the gate fail-closed regardless.
+        _CLEAN=$(python3 "$_CHECK" "$_RECEIPT" "$_TIP" "$_BASE" --repo "$_REPO_TOP" 2>>"$_ERRLOG" || echo 0)
       fi
       # CONTENT-coverage fallback (2026-10-09): a rebase rewrites the tip, so the
       # receipt that authorised this content can be named for a tip that no longer
@@ -185,7 +188,7 @@ if [[ "$_REPO_TOP" == "$CORTEX_REPO_TOP" && -f "$ALWAYS_REVIEW_LIST" ]]; then
       if [[ "$_CLEAN" != "1" && -d "$GOVERNANCE_STATE_DIR" ]]; then
         while IFS= read -r _cand; do
           [[ -n "$_cand" ]] || continue
-          _CLEAN=$(python3 "$_CHECK" "$_cand" "$_TIP" "$_BASE" --repo "$_REPO_TOP" 2>/dev/null || echo 0)
+          _CLEAN=$(python3 "$_CHECK" "$_cand" "$_TIP" "$_BASE" --repo "$_REPO_TOP" 2>>"$_ERRLOG" || echo 0)
           if [[ "$_CLEAN" == "1" ]]; then _RECEIPT="$_cand"; break; fi
         done < <(ls -t "$GOVERNANCE_STATE_DIR"/.reviewed-"${REPO_SLUG}"-*.json 2>/dev/null)
       fi

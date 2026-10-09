@@ -183,6 +183,54 @@ def range_coverage_checks():
     shutil.rmtree(tmp, ignore_errors=True)
 
 
+def hook_authorises_by_content():
+    """The COMMITTED hook must pass the gate for a receipt that COVERS the range by
+    content — driven, not described. The fixture receipt deliberately carries wrong
+    tip/base, so only the coverage rule can let it through; it is written to a
+    THROWAWAY state dir (never the live one), so nothing here fabricates a receipt
+    for a real push."""
+    import importlib.util as _ilu
+
+    spec = _ilu.spec_from_file_location("rrc2", CHECK)
+    rrc = _ilu.module_from_spec(spec)
+    spec.loader.exec_module(rrc)
+
+    def git(*args):
+        return subprocess.run(["git", "-C", str(REPO), *args],
+                              capture_output=True, text=True).stdout.strip()
+
+    tip = git("rev-parse", "HEAD")
+    base = git("merge-base", "origin/main", "HEAD") or git("rev-list", "--max-parents=0", "HEAD")
+    blobs = rrc.range_blobs(REPO, base, tip)
+    if not blobs:
+        print("SKIP hook-authorises: could not resolve this repo's range")
+        return
+
+    live = Path.home() / ".hermes-cortex/state"
+    locks = sorted(live.glob(".governance-*.json"))
+    if not locks:
+        print("SKIP hook-authorises: no live lock to copy")
+        return
+
+    tmp = Path(tempfile.mkdtemp(prefix="receipt-allow-"))
+    try:
+        (tmp / locks[-1].name).write_text(locks[-1].read_text())
+        (tmp / ".reviewed-hermes-cortex-fixture.json").write_text(json.dumps({
+            "verdict": "CLEAN",
+            "tip_sha": "0" * 40,          # deliberately NOT the current tip
+            "base_sha": "0" * 40,
+            "reviewed_blobs": blobs,
+        }))
+        r = _hook_under_test(tmp)
+        combined = r.stdout + r.stderr
+        check("hook passes the gate for a receipt covering the range by CONTENT",
+              "carries no clean review receipt" not in combined, True)
+        check("hook did not silently skip the receipt gate at all",
+              "Review receipt gate" in (REPO / "ops/scripts/pre-push-pull").read_text(), True)
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
 def main():
     check("shared checker exists", CHECK.is_file(), True)
     check("always-review list exists", LIST.is_file(), True)
@@ -217,6 +265,7 @@ def main():
 
     integration_checks()
     range_coverage_checks()
+    hook_authorises_by_content()
 
     # AC-5 - runtime-only: the receipt lives in the state dir, never in a repo.
     # (This check lived only in the dead duplicate main() until 2026-10-09.)
