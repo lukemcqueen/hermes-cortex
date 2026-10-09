@@ -1,18 +1,18 @@
 # Agent Bus poll evidence — inbox_titus
 # Cron job: cortex-bus-automation (absorbed into cortex-bus)
 # Queue: inbox_titus (Titus)
-# Date: 2026-10-09 (UTC 13:29:46)
+# Date: 2026-10-09
 # Re-runnable: ./poll-bus-inbox_titus.sh (reads credentials from hermes-inbox.conf)
-# Hardened script fails on any non-2xx (curl --fail-with-body -sS, set -euo pipefail).
+# Script asserts JSON payload shape (count + messages list), NOT count=0; exits 0
+# on any successful 2xx authenticated read. Fails only on connection error/non-2xx.
 
-Final hardened run output:
+Captured script output (2026-10-09 13:37 UTC):
 
-RUN 2026-10-09 13:29:46 UTC
+RUN 2026-10-09 13:37:28 UTC
 == GET <CORTEX_BUS_URL>/api/pgmq/peek/inbox_titus ==
 {"queue":"inbox_titus","messages":[],"count":0}
-== HTTP assertion ==
-queue_read_ok (count=0, non-2xx would have exited nonzero above)
+queue_read_ok count=0 (any 2xx read is success)
 EXIT:0
 
-Interpretation: HTTP 200 (implicit — non-2xx would have aborted via --fail-with-body)
-with count=0. Queue read succeeded; no pending messages this cycle.
+Interpretation: authenticated read of inbox_titus succeeded (2xx), count=0 —
+no pending messages this cycle.
