@@ -4,6 +4,8 @@ Deliverable: ~/brain/titus/dreams/2026-10-10-weekly.md
   bytes 1627, words 268, sha256 pinned in dream-weekly-2026-10-10.raw.txt
   INDEX.md entry appended (grep count=1 for the weekly line).
   canonical copy committed byte-identical (dream-weekly-2026-10-10.canonical.md).
+  byte-identity proof: dream-weekly-2026-10-10.identity.txt (both sha256
+  equal, cmp exit 0).
 
 Verified (verifier verify_dream_weekly_2026-10-10.sh, exit 0, 9/9 PASS):
   1 sha256+size pinned   2 INDEX append   3 prose>=80w (268)

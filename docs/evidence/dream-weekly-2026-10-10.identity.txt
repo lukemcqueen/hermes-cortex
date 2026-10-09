@@ -1,0 +1,7 @@
+canonical vs brain byte-identity (cycle 5877)
+
+brain   sha256: 08e7fc74f34877d99f6b6144fb053a52e66a206e71de95e97137ee0417880edf
+canon   sha256: 08e7fc74f34877d99f6b6144fb053a52e66a206e71de95e97137ee0417880edf
+
+cmp -s canonical brain
+IDENTICAL (exit 0)
