@@ -39,7 +39,15 @@ scrub() {
 # an evidence artifact cannot record the hash of the commit that contains it
 # (amending the commit would self-invalidate the hash it wrote) — a stable,
 # externally-derived revision keeps the artifact reproducible and truthful.
-REV="$(git -C "${REPO}" log -1 --format=%h -- "${INSPECTOR_REL}" 2>/dev/null || echo unknown)"
+# Fail closed: never write an artifact with an unresolved/empty revision.
+if ! REV="$(git -C "${REPO}" log -1 --format=%h -- "${INSPECTOR_REL}")"; then
+  echo "FATAL: git log failed resolving the inspector revision for ${INSPECTOR_REL}" >&2
+  exit 4
+fi
+if [[ -z "${REV}" ]]; then
+  echo "FATAL: inspector revision empty — pathspec ${INSPECTOR_REL} matched no commit" >&2
+  exit 4
+fi
 
 OUT_ISSUES="$(python3 "${INSPECTOR}" esther --issues 2>&1)"
 RC_ISSUES=$?

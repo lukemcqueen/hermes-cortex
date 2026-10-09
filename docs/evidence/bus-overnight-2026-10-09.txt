@@ -1,5 +1,5 @@
 # Bus overnight inspection — GENERATED artifact (not hand-written)
-# generated_at: 2026-10-09T14:49:07Z
+# generated_at: 2026-10-09T14:52:10Z
 # inspector_last_commit: 1140a8b9
 # generator: ops/evidence/bus-overnight-2026-10-09.sh
 # inspector: ops/scripts/orch-bus/bus-inbox-inspect.py (committed, read-only, never consumes)
@@ -15,23 +15,22 @@ issues_exit=0
 ## per-message probe (probe_exit=0)
 == bus local: inspection_error=None queue_total=22
    inbox_orchestrator depth=2 processing=0 peeked=2
-     state=pending subj=DOCTOR_TEST priority=0 retry=0/3 read_ct=None enq=2026-10-09 14:44:06.561446+00
-     state=pending subj=HEALTH_PERSISTENT_ISSUES priority=0 retry=0/3 read_ct=None enq=2026-10-09 14:46:01.613516+00
+     state=pending subj=DOCTOR_TEST priority=0 retry=0/3 read_ct=None enq=2026-10-09 14:50:11.605914+00
+     state=pending subj=HEALTH_PERSISTENT_ISSUES priority=0 retry=0/3 read_ct=None enq=2026-10-09 14:52:06.361868+00
    workflow_step_result depth=0 processing=0
 == bus primary: inspection_error=None queue_total=13
-   inbox_health_check depth=2 processing=0 peeked=2
-     state=pending subj=HEALTH_PERSISTENT_ISSUES priority=0 retry=0/3 read_ct=None enq=2026-10-09 14:40:15.517308+00
-     state=pending subj=HEALTH_PERSISTENT_ISSUES priority=0 retry=0/3 read_ct=None enq=2026-10-09 14:45:18.848922+00
+   inbox_health_check depth=1 processing=0 peeked=1
+     state=pending subj=HEALTH_PERSISTENT_ISSUES priority=0 retry=0/3 read_ct=None enq=2026-10-09 14:50:22.23501+00
    inbox_orchestrator depth=2 processing=0 peeked=2
-     state=pending subj=DOCTOR_TEST priority=0 retry=0/3 read_ct=None enq=2026-10-09 14:45:13.382646+00
-     state=pending subj=HEALTH_PERSISTENT_ISSUES priority=0 retry=0/3 read_ct=None enq=2026-10-09 14:45:18.894461+00
+     state=pending subj=DOCTOR_TEST priority=0 retry=0/3 read_ct=None enq=2026-10-09 14:50:16.537081+00
+     state=pending subj=HEALTH_PERSISTENT_ISSUES priority=0 retry=0/3 read_ct=None enq=2026-10-09 14:50:22.283703+00
    workflow_step_result depth=None processing=None
-SUMMARY pending_peeked=6 stuck(retry>=max)=0 dlq_backlog=0
+SUMMARY pending_peeked=5 stuck(retry>=max)=0 dlq_backlog=0
 
 ## full JSON transcript (inspector output is scrubbed/truncated at source)
 transcript_exit=0
 {
- "ts": "2026-10-09T14:49:05.209672+00:00",
+ "ts": "2026-10-09T14:52:07.991451+00:00",
  "agent": "esther",
  "buses": [
   {
@@ -179,29 +178,29 @@ transcript_exit=0
      "count": 2,
      "messages": [
       {
-       "msg_id": "01d497cb-4701-4c9f-bc18-de525e751df6",
-       "enqueued_at": "2026-10-09 14:44:06.561446+00",
+       "msg_id": "5044dc85-24a4-44e5-8b4e-18fbe80ce4b5",
+       "enqueued_at": "2026-10-09 14:50:11.605914+00",
        "read_ct": null,
        "from": "esther",
        "to": "esther",
        "subject": "DOCTOR_TEST",
-       "correlation_id": "doctor-e2e-1f4b468b",
+       "correlation_id": "doctor-e2e-6e68e7d5",
        "forwarded_from": "esther",
        "mirrored_from_queue": "inbox_esther",
-       "primary_msg_id": "c0e41470-4931-4833-ab93-6151874a9525",
-       "payload": "{\"original_body\": \"{\\\"test\\\": true}\", \"primary_msg_id\": \"c0e41470-4931-4833-ab93-6151874a9525\", \"mirrored_from_queue\": \"inbox_esther\"}"
+       "primary_msg_id": "c5276aaf-a093-4a0a-95b0-1177c860db21",
+       "payload": "{\"original_body\": \"{\\\"test\\\": true}\", \"primary_msg_id\": \"c5276aaf-a093-4a0a-95b0-1177c860db21\", \"mirrored_from_queue\": \"inbox_esther\"}"
       },
       {
-       "msg_id": "91f7771b-7e8b-4b6a-9010-<redacted-id>c7f8",
-       "enqueued_at": "2026-10-09 14:46:01.613516+00",
+       "msg_id": "56e6d11c-14a6-45a9-ae9f-fcd38b59a7b2",
+       "enqueued_at": "2026-10-09 14:52:06.361868+00",
        "read_ct": null,
        "from": "esther",
        "to": "moses",
        "subject": "HEALTH_PERSISTENT_ISSUES",
        "forwarded_from": "esther",
        "mirrored_from_queue": "inbox_health_check",
-       "primary_msg_id": "2a1e15de-ebf3-4b7e-9b8c-15881b085862",
-       "payload": "{\"original_body\": \"{\\\"healthy\\\": false, \\\"topic\\\": \\\"health\\\", \\\"summary\\\": {\\\"pass\\\": 441, \\\"warn\\\": 10, \\\"fail\\\": 1, \\\"info\\\": 7}, \\\"prev_summary\\\": {\\\"pass\\\": 441, \\\"warn\\\": 10, \\\"fail\\\": 1, \\\"info\\\": 7}}\", \"primary_msg_id\": \"2a1e15de-ebf3-4b7e-9b8c-15881b085862\", \"mirrored_from_queue\": \"inbox_he"
+       "primary_msg_id": "ecac3c4f-4b94-4eed-8242-8cfce10d0cb6",
+       "payload": "{\"original_body\": \"{\\\"healthy\\\": false, \\\"topic\\\": \\\"health\\\", \\\"summary\\\": {\\\"pass\\\": 441, \\\"warn\\\": 10, \\\"fail\\\": 1, \\\"info\\\": 7}, \\\"prev_summary\\\": {\\\"pass\\\": 441, \\\"warn\\\": 10, \\\"fail\\\": 1, \\\"info\\\": 7}}\", \"primary_msg_id\": \"ecac3c4f-4b94-4eed-8242-8cfce10d0cb6\", \"mirrored_from_queue\": \"inbox_he"
       }
      ]
     },
@@ -223,7 +222,7 @@ transcript_exit=0
    "nonempty": [
     {
      "name": "inbox_health_check",
-     "depth": 2,
+     "depth": 1,
      "processing": 0,
      "dlq": false,
      "parent": null
@@ -259,29 +258,29 @@ transcript_exit=0
      "count": 2,
      "messages": [
       {
-       "msg_id": "f01ef280-3515-4f88-85e7-0adf7f8100bc",
-       "enqueued_at": "2026-10-09 14:45:13.382646+00",
+       "msg_id": "7d0522ea-2a24-4447-8d5c-bd0632d3c9b1",
+       "enqueued_at": "2026-10-09 14:50:16.537081+00",
        "read_ct": null,
        "from": "esther",
        "to": "esther",
        "subject": "DOCTOR_TEST",
-       "correlation_id": "doctor-e2e-1f4b468b",
+       "correlation_id": "doctor-e2e-6e68e7d5",
        "forwarded_from": "esther",
        "mirrored_from_queue": "inbox_esther",
-       "primary_msg_id": "c0e41470-4931-4833-ab93-6151874a9525",
-       "payload": "{\"original_body\": \"{\\\"test\\\": true}\", \"primary_msg_id\": \"c0e41470-4931-4833-ab93-6151874a9525\", \"mirrored_from_queue\": \"inbox_esther\"}"
+       "primary_msg_id": "c5276aaf-a093-4a0a-95b0-1177c860db21",
+       "payload": "{\"original_body\": \"{\\\"test\\\": true}\", \"primary_msg_id\": \"c5276aaf-a093-4a0a-95b0-1177c860db21\", \"mirrored_from_queue\": \"inbox_esther\"}"
       },
       {
-       "msg_id": "b1bd056d-01c4-4ac8-94af-ae416105c0eb",
-       "enqueued_at": "2026-10-09 14:45:18.894461+00",
+       "msg_id": "33c923d7-88f8-49f9-acfb-bb720a991384",
+       "enqueued_at": "2026-10-09 14:50:22.283703+00",
        "read_ct": null,
        "from": "esther",
        "to": "moses",
        "subject": "HEALTH_PERSISTENT_ISSUES",
        "forwarded_from": "esther",
        "mirrored_from_queue": "inbox_health_check",
-       "primary_msg_id": "2a1e15de-ebf3-4b7e-9b8c-15881b085862",
-       "payload": "{\"original_body\": \"{\\\"healthy\\\": false, \\\"topic\\\": \\\"health\\\", \\\"summary\\\": {\\\"pass\\\": 441, \\\"warn\\\": 10, \\\"fail\\\": 1, \\\"info\\\": 7}, \\\"prev_summary\\\": {\\\"pass\\\": 441, \\\"warn\\\": 10, \\\"fail\\\": 1, \\\"info\\\": 7}}\", \"primary_msg_id\": \"2a1e15de-ebf3-4b7e-9b8c-15881b085862\", \"mirrored_from_queue\": \"inbox_he"
+       "primary_msg_id": "ecac3c4f-4b94-4eed-8242-8cfce10d0cb6",
+       "payload": "{\"original_body\": \"{\\\"healthy\\\": false, \\\"topic\\\": \\\"health\\\", \\\"summary\\\": {\\\"pass\\\": 441, \\\"warn\\\": 10, \\\"fail\\\": 1, \\\"info\\\": 7}, \\\"prev_summary\\\": {\\\"pass\\\": 441, \\\"warn\\\": 10, \\\"fail\\\": 1, \\\"info\\\": 7}}\", \"primary_msg_id\": \"ecac3c4f-4b94-4eed-8242-8cfce10d0cb6\", \"mirrored_from_queue\": \"inbox_he"
       }
      ]
     },
@@ -290,20 +289,11 @@ transcript_exit=0
      "messages": []
     },
     "inbox_health_check": {
-     "count": 2,
+     "count": 1,
      "messages": [
       {
-       "msg_id": "49aaeb88-46a5-46bc-b6ef-27366b7d4870",
-       "enqueued_at": "2026-10-09 14:40:15.517308+00",
-       "read_ct": null,
-       "from": "esther",
-       "to": "moses",
-       "subject": "HEALTH_PERSISTENT_ISSUES",
-       "payload": "{\"healthy\": false, \"topic\": \"health\", \"summary\": {\"pass\": 441, \"warn\": 10, \"fail\": 1, \"info\": 7}, \"prev_summary\": {\"pass\": 441, \"warn\": 10, \"fail\": 1, \"info\": 7}}"
-      },
-      {
-       "msg_id": "2a1e15de-ebf3-4b7e-9b8c-15881b085862",
-       "enqueued_at": "2026-10-09 14:45:18.848922+00",
+       "msg_id": "ecac3c4f-4b94-4eed-8242-8cfce10d0cb6",
+       "enqueued_at": "2026-10-09 14:50:22.23501+00",
        "read_ct": null,
        "from": "esther",
        "to": "moses",
@@ -316,9 +306,9 @@ transcript_exit=0
   }
  ],
  "forwarder": {
-  "last_run": "2026-10-09T14:48:07.337543+00:00",
+  "last_run": "2026-10-09T14:52:07.496793+00:00",
   "total_forwarded": 1,
-  "total_peer_to_local": 23183,
+  "total_peer_to_local": 23185,
   "total_local_to_peer": 10111
  },
  "failover": {
@@ -327,7 +317,7 @@ transcript_exit=0
   "consecutive_successes": 0,
   "failover_active": false,
   "last_status": "idle",
-  "last_check_at": "2026-10-09T14:45:10.786717+00:00"
+  "last_check_at": "2026-10-09T14:50:11.953319+00:00"
  }
 }
 
