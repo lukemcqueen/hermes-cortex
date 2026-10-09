@@ -551,6 +551,7 @@ register "ops/scripts/manage/orch-skill-evaluate.sh"         "${CORTEX_DEPLOY_HO
 
 # Moses bus remediation
 register "ops/scripts/bus/cortex-bus-remediate.sh"  "${CORTEX_DEPLOY_HOME}/scripts/cortex-bus-remediate.sh"
+register_orch "ops/scripts/bus/bus-inbox-survey.sh"  "${CORTEX_DEPLOY_HOME}/scripts/bus-inbox-survey.sh"
 
 # Auto-remediation scripts
 register "ops/scripts/health/cron-auto-remediate.sh"     "${CORTEX_DEPLOY_HOME}/scripts/cron-auto-remediate.sh"
