@@ -1,0 +1,322 @@
+# Bus evening inspection — GENERATED artifact (not hand-written)
+# generated_at: 2026-10-09T11:58:04Z
+# inspector_revision: edde2481
+# generator: ops/evidence/bus-evening-2026-10-09.sh
+# inspector: ops/scripts/orch-bus/bus-inbox-inspect.py (committed, read-only, never consumes)
+# command: python3 ops/scripts/orch-bus/bus-inbox-inspect.py esther --issues
+# command: python3 ops/scripts/orch-bus/bus-inbox-inspect.py esther
+# command: _is_silent_subject() probe over ops/scripts/agent/agent-message-handler.py
+# scrubbed at source: <home>, <bus-endpoint>, <redacted-id>.
+
+## --issues (empty stdout + exit 0 == no-action / silent condition)
+issues_exit=0
+
+
+## handler classification of in-flight subjects (rule_probe_exit=0)
+_is_silent_subject('HEALTH_PERSISTENT_ISSUES') = True
+_is_silent_subject('DOCTOR_TEST') = True
+_is_silent_subject('UPDATE_REQUEST') = False
+
+## full JSON transcript (inspector output is scrubbed/truncated at source)
+transcript_exit=0
+{
+ "ts": "2026-10-09T11:58:03.093463+00:00",
+ "agent": "esther",
+ "buses": [
+  {
+   "label": "local",
+   "base": "<bus-endpoint>",
+   "inspection_error": null,
+   "queue_total": 22,
+   "nonempty": [
+    {
+     "name": "inbox_esther_dlq",
+     "depth": 0,
+     "processing": 0,
+     "dlq": true,
+     "parent": null
+    },
+    {
+     "name": "inbox_gisu_dlq",
+     "depth": 0,
+     "processing": 0,
+     "dlq": true,
+     "parent": null
+    },
+    {
+     "name": "inbox_health_check_dlq",
+     "depth": 0,
+     "processing": 0,
+     "dlq": true,
+     "parent": "inbox_health_check"
+    },
+    {
+     "name": "inbox_joseph_dlq",
+     "depth": 0,
+     "processing": 0,
+     "dlq": true,
+     "parent": null
+    },
+    {
+     "name": "inbox_kustos_dlq",
+     "depth": 0,
+     "processing": 0,
+     "dlq": true,
+     "parent": null
+    },
+    {
+     "name": "inbox_luke_dlq",
+     "depth": 0,
+     "processing": 0,
+     "dlq": true,
+     "parent": null
+    },
+    {
+     "name": "inbox_moses_dlq",
+     "depth": 0,
+     "processing": 0,
+     "dlq": true,
+     "parent": null
+    },
+    {
+     "name": "inbox_orchestrator",
+     "depth": 2,
+     "processing": 0,
+     "dlq": false,
+     "parent": null
+    },
+    {
+     "name": "inbox_orchestrator_dlq",
+     "depth": 0,
+     "processing": 0,
+     "dlq": true,
+     "parent": "inbox_orchestrator"
+    },
+    {
+     "name": "inbox_orchestrator_dlq_dlq",
+     "depth": 0,
+     "processing": 0,
+     "dlq": true,
+     "parent": "inbox_orchestrator_dlq"
+    },
+    {
+     "name": "inbox_titus_dlq",
+     "depth": 0,
+     "processing": 0,
+     "dlq": true,
+     "parent": null
+    }
+   ],
+   "dlq": [
+    {
+     "name": "inbox_esther_dlq",
+     "depth": 0,
+     "processing": 0
+    },
+    {
+     "name": "inbox_gisu_dlq",
+     "depth": 0,
+     "processing": 0
+    },
+    {
+     "name": "inbox_health_check_dlq",
+     "depth": 0,
+     "processing": 0
+    },
+    {
+     "name": "inbox_joseph_dlq",
+     "depth": 0,
+     "processing": 0
+    },
+    {
+     "name": "inbox_kustos_dlq",
+     "depth": 0,
+     "processing": 0
+    },
+    {
+     "name": "inbox_luke_dlq",
+     "depth": 0,
+     "processing": 0
+    },
+    {
+     "name": "inbox_moses_dlq",
+     "depth": 0,
+     "processing": 0
+    },
+    {
+     "name": "inbox_orchestrator_dlq",
+     "depth": 0,
+     "processing": 0
+    },
+    {
+     "name": "inbox_orchestrator_dlq_dlq",
+     "depth": 0,
+     "processing": 0
+    },
+    {
+     "name": "inbox_titus_dlq",
+     "depth": 0,
+     "processing": 0
+    }
+   ],
+   "peeks": {
+    "inbox_esther": {
+     "count": 0,
+     "messages": []
+    },
+    "inbox_orchestrator": {
+     "count": 2,
+     "messages": [
+      {
+       "msg_id": "ed2cf86b-d289-4ec5-a519-1aad28e424dc",
+       "enqueued_at": "2026-10-09 11:52:07.340328+00",
+       "read_ct": null,
+       "from": "esther",
+       "to": "esther",
+       "subject": "DOCTOR_TEST",
+       "correlation_id": "doctor-e2e-56a478bc",
+       "forwarded_from": "esther",
+       "mirrored_from_queue": "inbox_esther",
+       "primary_msg_id": "36a4365b-e1a8-46c3-aea2-dd42c7ccf412",
+       "payload": "{\"original_body\": \"{\\\"test\\\": true}\", \"primary_msg_id\": \"36a4365b-e1a8-46c3-aea2-dd42c7ccf412\", \"mirrored_from_queue\": \"inbox_esther\"}"
+      },
+      {
+       "msg_id": "2003bd33-7587-48c1-8df5-c0fdeda0fe71",
+       "enqueued_at": "2026-10-09 11:56:06.385958+00",
+       "read_ct": null,
+       "from": "esther",
+       "to": "moses",
+       "subject": "HEALTH_PERSISTENT_ISSUES",
+       "forwarded_from": "esther",
+       "mirrored_from_queue": "inbox_health_check",
+       "primary_msg_id": "0ca02226-b605-4ccd-9bbf-5e9eca4ab9d9",
+       "payload": "{\"original_body\": \"{\\\"healthy\\\": false, \\\"topic\\\": \\\"health\\\", \\\"summary\\\": {\\\"pass\\\": 440, \\\"warn\\\": 10, \\\"fail\\\": 1, \\\"info\\\": 6}, \\\"prev_summary\\\": {\\\"pass\\\": 439, \\\"warn\\\": 11, \\\"fail\\\": 1, \\\"info\\\": 7}}\", \"primary_msg_id\": \"0ca02226-b605-4ccd-9bbf-5e9eca4ab9d9\", \"mirrored_from_queue\": \"inbox_he"
+      }
+     ]
+    },
+    "out_esther": {
+     "count": 0,
+     "messages": []
+    },
+    "inbox_health_check": {
+     "count": 0,
+     "messages": []
+    }
+   }
+  },
+  {
+   "label": "primary",
+   "base": "<bus-endpoint>",
+   "inspection_error": null,
+   "queue_total": 13,
+   "nonempty": [
+    {
+     "name": "inbox_health_check",
+     "depth": 2,
+     "processing": 0,
+     "dlq": false,
+     "parent": null
+    },
+    {
+     "name": "inbox_orchestrator",
+     "depth": 2,
+     "processing": 0,
+     "dlq": false,
+     "parent": null
+    },
+    {
+     "name": "inbox_orchestrator_dlq",
+     "depth": 0,
+     "processing": 0,
+     "dlq": true,
+     "parent": "inbox_orchestrator"
+    }
+   ],
+   "dlq": [
+    {
+     "name": "inbox_orchestrator_dlq",
+     "depth": 0,
+     "processing": 0
+    }
+   ],
+   "peeks": {
+    "inbox_esther": {
+     "count": 0,
+     "messages": []
+    },
+    "inbox_orchestrator": {
+     "count": 2,
+     "messages": [
+      {
+       "msg_id": "250a75d7-3bfc-4f44-9573-4725519a69df",
+       "enqueued_at": "2026-10-09 11:55:14.210612+00",
+       "read_ct": null,
+       "from": "esther",
+       "to": "esther",
+       "subject": "DOCTOR_TEST",
+       "correlation_id": "doctor-e2e-56a478bc",
+       "forwarded_from": "esther",
+       "mirrored_from_queue": "inbox_esther",
+       "primary_msg_id": "36a4365b-e1a8-46c3-aea2-dd42c7ccf412",
+       "payload": "{\"original_body\": \"{\\\"test\\\": true}\", \"primary_msg_id\": \"36a4365b-e1a8-46c3-aea2-dd42c7ccf412\", \"mirrored_from_queue\": \"inbox_esther\"}"
+      },
+      {
+       "msg_id": "1172965e-ce40-4833-b1c8-2c34f8356138",
+       "enqueued_at": "2026-10-09 11:55:19.773143+00",
+       "read_ct": null,
+       "from": "esther",
+       "to": "moses",
+       "subject": "HEALTH_PERSISTENT_ISSUES",
+       "forwarded_from": "esther",
+       "mirrored_from_queue": "inbox_health_check",
+       "primary_msg_id": "0ca02226-b605-4ccd-9bbf-5e9eca4ab9d9",
+       "payload": "{\"original_body\": \"{\\\"healthy\\\": false, \\\"topic\\\": \\\"health\\\", \\\"summary\\\": {\\\"pass\\\": 440, \\\"warn\\\": 10, \\\"fail\\\": 1, \\\"info\\\": 6}, \\\"prev_summary\\\": {\\\"pass\\\": 439, \\\"warn\\\": 11, \\\"fail\\\": 1, \\\"info\\\": 7}}\", \"primary_msg_id\": \"0ca02226-b605-4ccd-9bbf-5e9eca4ab9d9\", \"mirrored_from_queue\": \"inbox_he"
+      }
+     ]
+    },
+    "out_esther": {
+     "count": 0,
+     "messages": []
+    },
+    "inbox_health_check": {
+     "count": 2,
+     "messages": [
+      {
+       "msg_id": "db103722-7ea7-43c1-a29c-8db4f51e699b",
+       "enqueued_at": "2026-10-09 11:50:12.883527+00",
+       "read_ct": null,
+       "from": "esther",
+       "to": "moses",
+       "subject": "HEALTH_PERSISTENT_ISSUES",
+       "payload": "{\"healthy\": false, \"topic\": \"health\", \"summary\": {\"pass\": 439, \"warn\": 11, \"fail\": 1, \"info\": 7}, \"prev_summary\": {\"pass\": 441, \"warn\": 11, \"fail\": 0, \"info\": 6}}"
+      },
+      {
+       "msg_id": "0ca02226-b605-4ccd-9bbf-5e9eca4ab9d9",
+       "enqueued_at": "2026-10-09 11:55:14.512755+00",
+       "read_ct": null,
+       "from": "esther",
+       "to": "moses",
+       "subject": "HEALTH_PERSISTENT_ISSUES",
+       "payload": "{\"healthy\": false, \"topic\": \"health\", \"summary\": {\"pass\": 440, \"warn\": 10, \"fail\": 1, \"info\": 6}, \"prev_summary\": {\"pass\": 439, \"warn\": 11, \"fail\": 1, \"info\": 7}}"
+      }
+     ]
+    }
+   }
+  }
+ ],
+ "forwarder": {
+  "last_run": "2026-10-09T11:56:08.377193+00:00",
+  "total_forwarded": 1,
+  "total_peer_to_local": 23044,
+  "total_local_to_peer": 10086
+ },
+ "failover": {
+  "consecutive_failures": 0,
+  "first_failure_at": null,
+  "consecutive_successes": 0,
+  "failover_active": false,
+  "last_status": "idle",
+  "last_check_at": "2026-10-09T11:55:10.195373+00:00"
+ }
+}
+
