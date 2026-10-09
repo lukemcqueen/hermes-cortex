@@ -35,7 +35,11 @@ scrub() {
     -e 's#[0-9]{8,}#<redacted-id>#g'
 }
 
-REV="$(git -C "${REPO}" rev-parse --short HEAD)"
+# Record the revision of the INSPECTOR (its last-touching commit), never HEAD:
+# an evidence artifact cannot record the hash of the commit that contains it
+# (amending the commit would self-invalidate the hash it wrote) — a stable,
+# externally-derived revision keeps the artifact reproducible and truthful.
+REV="$(git -C "${REPO}" log -1 --format=%h -- "${INSPECTOR_REL}" 2>/dev/null || echo unknown)"
 
 OUT_ISSUES="$(python3 "${INSPECTOR}" esther --issues 2>&1)"
 RC_ISSUES=$?
@@ -109,7 +113,7 @@ fi
 {
   echo "# Bus overnight inspection — GENERATED artifact (not hand-written)"
   echo "# generated_at: $(date -u '+%Y-%m-%dT%H:%M:%SZ')"
-  echo "# inspector_revision: ${REV}"
+  echo "# inspector_last_commit: ${REV}"
   echo "# generator: ops/evidence/bus-overnight-2026-10-09.sh"
   echo "# inspector: ${INSPECTOR_REL} (committed, read-only, never consumes)"
   echo "# command: python3 ${INSPECTOR_REL} esther --issues"
