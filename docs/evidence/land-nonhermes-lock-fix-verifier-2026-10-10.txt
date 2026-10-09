@@ -1,0 +1,20 @@
+# Runnable verifier for the land-nonhermes-lock-fix evidence
+# command: python3 -B tests/test_land_nonhermes_lock_fix_evidence.py
+# run at: 2026-10-10T06:43:52+09:00 KST · HEAD 949df473
+
+test_artifacts_are_committed (__main__.LandingEvidence.test_artifacts_are_committed) ... ok
+test_detector_accepts_a_clean_doctor_run (__main__.LandingEvidence.test_detector_accepts_a_clean_doctor_run) ... ok
+test_detector_rejects_a_failing_doctor_run (__main__.LandingEvidence.test_detector_rejects_a_failing_doctor_run)
+The detector must discriminate: a run with failures is NOT clean. ... ok
+test_detector_reports_absent_summary_as_not_clean (__main__.LandingEvidence.test_detector_reports_absent_summary_as_not_clean) ... ok
+test_doctor_exit_code_is_recorded (__main__.LandingEvidence.test_doctor_exit_code_is_recorded) ... ok
+test_doctor_transcript_records_deploy_sync_pass (__main__.LandingEvidence.test_doctor_transcript_records_deploy_sync_pass) ... ok
+test_doctor_transcript_records_zero_failures_and_12_warnings (__main__.LandingEvidence.test_doctor_transcript_records_zero_failures_and_12_warnings) ... ok
+test_dogfood_transcript_records_a_pass (__main__.LandingEvidence.test_dogfood_transcript_records_a_pass) ... ok
+test_summary_disposes_of_every_warning_source (__main__.LandingEvidence.test_summary_disposes_of_every_warning_source) ... ok
+
+----------------------------------------------------------------------
+Ran 9 tests in 0.002s
+
+OK
+VERIFIER_RC=0
