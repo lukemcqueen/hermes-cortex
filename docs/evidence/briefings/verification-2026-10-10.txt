@@ -1,0 +1,31 @@
+=== evidence: sustainability briefing 2026-10-10 ===
+generated: 2026-10-09T21:12:18.565155+00:00
+
+--- command: /home/esther/.hermes/cron/output/.venv-brief/bin/python /home/esther/hermes-cortex/ops/scripts/sustainability/verify_briefing.py 2026-10-10
+[files] sustainability-briefing-2026-10-10.md      size=9591     PASS
+[files] sustainability-briefing-2026-10-10.docx    size=41293    PASS
+[files] sustainability-briefing-2026-10-10.pdf     size=10635    PASS
+[sections] required headings PASS
+[sources] source lines=22 (>= 13) PASS
+[words] count=1193 (600-1200) PASS
+[binary] docx+pdf carry briefing text PASS
+
+RESULT: ALL PASS
+checker_exit=0
+
+--- artifact listing + sha256
+     9591  32b82e25843ebc49125f15e7d3998ee3c0fdc9f00470399f8fd223455e3f2ac7  /home/esther/.hermes/cron/output/sustainability-briefing-2026-10-10.md
+    41293  d024989fa07a343a9cc51a6472825a8b186128228b7ed53e7e2563267fbf58f5  /home/esther/.hermes/cron/output/sustainability-briefing-2026-10-10.docx
+    10635  b1bdf7949e578c8f9c2351d8ae0709d690b841b6ac5b5d5910ca8276c9042f6f  /home/esther/.hermes/cron/output/sustainability-briefing-2026-10-10.pdf
+
+--- distinct source URLs in md: 18
+--- Source: lines: 22
+--- word count: 1193
+
+--- pdf text extraction spot-check (first 6 lines)
+Sustainable Materials & Market Intelligence Briefing
+Saturday, 10 October 2026 — prepared for Amy, KAESA
+
+1. Headline: The PFAS Deadline Is Today — and Korea's Sustainable Leather
+Numbers Just Got Interesting
+Two things land on the same day, and they point the same direction.
