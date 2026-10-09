@@ -74,3 +74,40 @@ command in the same order to reproduce.
   (c975d8f8aa25, every 15m, monitor-gated by the wrapper above) runs
   merge -> cortex-dogfood -> score + end_change (push receipt) -> push ->
   verify-landed.py the moment blockers=0, and reports its own result.
+
+5. The cron job record itself (not a promise in prose)
+-----------------------------------------------------
+Read from the job store (~/.hermes/cron/jobs.json), the decisive fields:
+
+    id              : c975d8f8aa25
+    name            : esther-land-nonhermes-lock-fix
+    schedule        : every 15m (interval, 15 minutes), repeat: forever
+    monitor_script  : local-esther-land-nonhermes-fix-probe.sh
+    workdir         : /home/esther/hermes-cortex
+    deliver         : origin (telegram, chat "Luke")
+    created_at      : 2026-10-09T22:46:58+09:00
+    last_run_at     : 2026-10-09T23:10:22+09:00     last_status: ok
+    monitor_state   : {"last_changed_at": "2026-10-09T23:10:05+09:00",
+                       "last_output_hash": "107ae432…"}   <- the gate is live: the
+                       scheduler hashed the probe's output and suppressed the agent
+                       run while nothing changed
+    next_run_at     : 2026-10-09T23:25:22+09:00
+    enabled         : true                            state: scheduled
+
+Its prompt's binding rails (verbatim from the job): act only when the probe's
+output changes; if blockers != 0 do nothing and reply "not-yet"; on a clean tree
+merge origin/main (MERGE, never rebase) -> cortex-dogfood --force -> score +
+end_change (which writes the pre-push receipt) -> git push origin main ->
+verify-landed; `git merge --abort` on conflict; never stash, never
+commit/revert/edit another session's files, never --no-verify, never force-push;
+stop and report anything unexpected.
+
+Operator authorization (quoted verbatim from the in-session answer, 2026-10-09
+~22:45 KST): "Wait — land automatically once their owner commits them (keeps the
+IP-block list out of my hands)". The earlier answer in the same session was
+"Unstage just those 2 paths (content stays on disk — they're in no commit) and
+land merge → deploy → push now", which was carried out (unstaged; content
+preserved; nothing of theirs committed). The transcript of these answers lives in
+the operator's own chat, not in a file this agent can commit; the exact strings
+are reproduced here, which is the strongest form available to a host-side agent.
+
