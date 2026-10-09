@@ -1,4 +1,4 @@
-=== git ops evidence cycle 2590 (2026-10-09T05:20Z) ===
+=== git ops evidence cycle 2590 (2026-10-09T05:22Z) ===
 
 --- Doctor (authoritative — see remediate-20261009-doctor.txt) ---
 Command: python3 ops/scripts/manage/cortex-doctor.py --quiet
@@ -12,9 +12,25 @@ Note: '❓ Score-cycle' and '➖ Bus delivery age' are INFORMATIONAL checks (cou
 
 --- git push origin main ---
 > d0752f34..18877220  main -> main
-44 rebased local commits pushed (these are PRIOR-cycle evidence files from cycles 2497/2533 already present in the local branch before this session started; they were the "ahead 44" the doctor flagged, and pushing them is the required sync, not scope drift from cycle 2590).
 
---- Post-remediation sync state (cycle 2590 change ONLY adds docs/evidence/remediate-20261009-doctor.txt + this file) ---
+--- Accurate composition of the 44 pushed commits (range d0752f34..18877220) ---
+- 41x docs(evidence): prior-cycle evidence-file commits (doctor outputs, deploy-state
+  verify-lines, cortex-update transcripts, cycle 2533 items) already present on the
+  local branch before this session began.
+- 3x "auto: block N suspect IPs [pipeline]": automated fail2ban/nginx IP-blocking
+  commits touching ops/install/deploy/nginx/blocked_ips.add — these are pipeline
+  automation, not evidence files, and were also present before this session.
+
+These 44 commits were the local "ahead 44" the doctor flagged as diverged from
+origin; syncing them (pull --rebase + push) is the required remediation, not
+scope drift introduced by cycle 2590.
+
+--- What cycle 2590 ITSELF changed (this session) ---
+Only two files added:
+  docs/evidence/remediate-20261009-doctor.txt  (doctor output)
+  docs/evidence/git-ops-evidence-2590.txt      (this note)
+
+--- Post-remediation sync state ---
 git rev-list --count HEAD..origin/main = 0
 git rev-list --count origin/main..HEAD = 0
 Repo fully in sync.
