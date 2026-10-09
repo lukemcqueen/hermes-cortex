@@ -354,6 +354,7 @@ register "ops/scripts/health/heartbeat.py"               "${CORTEX_DEPLOY_HOME}/
 register "ops/scripts/sustainability/verify_briefing.py"  "${CORTEX_DEPLOY_HOME}/scripts/manage/verify_briefing.py"
 register "ops/scripts/sustainability/gen_briefing.py"      "${CORTEX_DEPLOY_HOME}/scripts/manage/gen_briefing.py"
 register "ops/scripts/sustainability/capture_evidence.py"  "${CORTEX_DEPLOY_HOME}/scripts/manage/capture_evidence.py"
+register "ops/scripts/sustainability/write_cycle_evidence.py" "${CORTEX_DEPLOY_HOME}/scripts/manage/write_cycle_evidence.py"
 register "ops/scripts/hermes_models.py"            "${CORTEX_DEPLOY_HOME}/scripts/hermes_models.py"
 register "ops/scripts/hermes_paths.py"             "${CORTEX_DEPLOY_HOME}/scripts/hermes_paths.py"
 register "ops/scripts/install/check-system.sh"             "${CORTEX_DEPLOY_HOME}/scripts/check-system.sh"
