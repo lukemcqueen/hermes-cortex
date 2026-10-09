@@ -1,0 +1,20 @@
+## 0. expected-hash present in committed grounding output
+OK  grounded sha256 available (/Users/luke/hermes-cortex/docs/evidence/dream-weekly-2026-10-10.grounding.out.txt)
+## 1. weekly dream file present, non-empty
+OK  /Users/luke/brain/titus/dreams/2026-10-10-weekly.md present and non-empty
+## 2. pinned sha256 + size (byte for byte)
+OK  size 1627 matches pinned 1627
+OK  sha256 matches grounding-pinned
+## 3. INDEX carries today's weekly entry
+OK  INDEX entry present: 2026-10-10 | Hold fast to the honest close | The bus-healthcheck finding ended partially unresolved, written down as unknown, and 2 Thess 2:15 taught the real thread: constancy, not intensity — the honest-close doctrine (10-08, 09-18) held fast across ten nights, the checker checking itself honest.
+## 4. dream references >=1 PRIOR dream
+OK  prior-ref 09-18
+OK  prior-ref 10-08
+WARN prior-ref 10-09 not found
+OK  >=1 prior dream referenced
+## 5. grounding references (mycortex links) present in prose
+OK  grounding kw 'honest-close'
+OK  grounding kw '2 Thessalonians 2:15'
+OK  grounding kw 'inbox_health_check'
+
+RESULT: PASS (weekly dream verified: 1627 bytes, sha256 grounding-pinned)

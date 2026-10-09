@@ -6,10 +6,20 @@ fail=0
 
 DREAM=/Users/luke/brain/titus/dreams/2026-10-10.md
 INDEX=/Users/luke/brain/titus/dreams/INDEX.md
+GROUNDING=/Users/luke/hermes-cortex/docs/evidence/dream-nightly-2026-10-10.grounding.out.txt
+EXPECTED_SIZE=1027
+EXPECTED_SHA256=$(sed -n 's/^EXPECTED_NIGHTLY_SHA256=//p' "$GROUNDING" 2>/dev/null | head -1)
 
-# [1] dream file present, non-empty, expected size (matches committed evidence)
+# [1] dream file present, non-empty, exact expected byte size and sha256
 if [ -s "$DREAM" ]; then
-  echo "OK  [1] dream file present non-empty: $(wc -c < "$DREAM") bytes  <- $DREAM"
+  size=$(wc -c < "$DREAM" | tr -d ' ')
+  echo "OK  [1] dream file present, size=$size bytes (expect $EXPECTED_SIZE)"
+  if [ "$size" = "$EXPECTED_SIZE" ]; then echo "OK      size matches expected $EXPECTED_SIZE";
+  else echo "FAIL    size mismatch: got $size want $EXPECTED_SIZE"; fail=1; fi
+  got=$(shasum -a 256 "$DREAM" | awk '{print $1}')
+  echo "OK      sha256 present: ${got:0:16}... (len ${#got})"
+  if [ "$got" = "$EXPECTED_SHA256" ]; then echo "OK      sha256 matches expected";
+  else echo "FAIL    sha256 mismatch: got $got"; fail=1; fi
 else
   echo "FAIL[1] dream file missing/empty"; fail=1
 fi
@@ -29,7 +39,6 @@ for t in "The seam that held" "The checker checked itself honest"; do
 done
 
 # [4] grounding: each claimed link is present in the captured real mycortex output
-GROUNDING=/Users/luke/hermes-cortex/docs/evidence/dream-nightly-2026-10-10.grounding.out.txt
 for pat in "session-manager/SKILL.md" "session-manager-v2" "session-state-pattern" "pull-latest-2026-10-10" "SOUL-archive"; do
   if grep -q "$pat" "$GROUNDING" 2>/dev/null; then echo "OK  [4] grounding hit: $pat";
   else echo "FAIL[4] grounding missing: $pat"; fail=1; fi

@@ -41,6 +41,5 @@ Scope note: this commit also carries dream-nightly-2026-10-10.txt, a pre-staged
 sibling artifact from today's nightly dream tier (same ~/brain target, same
 profile), left staged in the working tree from the nightly run. It belongs to
 its own cycle; included here because it was already staged when the weekly
-evidence commit ran. <REVIEW DECISION: keep — it is today's dream-layer pair,
-committed together as one evidence batch for 2026-10-10.> Verified content only;
-no unrelated files swept in.
+evidence commit ran, committed together as one evidence batch for 2026-10-10.
+Verified content only; no unrelated files swept in.

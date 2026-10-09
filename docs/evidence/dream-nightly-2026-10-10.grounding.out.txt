@@ -35,3 +35,6 @@ This deepens yesterday's "checker checked itself honest" (10-09): honesty was th
 # ===== INDEX entries for today =====
 2026-10-10 | Hold fast to the honest close | The bus-healthcheck finding ended partially unresolved, written down as unknown, and 2 Thess 2:15 taught the real thread: constancy, not intensity — the honest-close doctrine (10-08, 09-18) held fast across ten nights, the checker checking itself honest.
 2026-10-10 | The week holds by holding itself together | The session-manager skill, pull-latest evidence, and 2 Thess 2:15 surfaced as one motion — constancy made mechanical: session manager holds working state, pull-latest holds the source current, the teaching held fast; deepening 10-09 honest-checker with the grip that keeps it standing.
+
+# nightly dream sha256 (expected, full, un-truncated)
+EXPECTED_NIGHTLY_SHA256=10c1c30855c116c577df843eecfa9034ff6419de3651009b47cc958ebb8a8c8c
