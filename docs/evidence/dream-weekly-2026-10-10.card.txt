@@ -1,0 +1,20 @@
+# Weekly Dream 2026-10-10 — evidence card (titus, cycle 5877)
+
+Deliverable: ~/brain/titus/dreams/2026-10-10-weekly.md
+  bytes 1627, words 268, sha256 pinned in dream-weekly-2026-10-10.raw.txt
+  INDEX.md entry appended (grep count=1 for the weekly line).
+  canonical copy committed byte-identical (dream-weekly-2026-10-10.canonical.md).
+
+Verified (verifier verify_dream_weekly_2026-10-10.sh, exit 0, 9/9 PASS):
+  1 sha256+size pinned   2 INDEX append   3 prose>=80w (268)
+  4 prior refs 09-18/10-08/10-09   5 grounding kws   6 canonical identity
+  7 live INDEX   8 transcript   9 round-trip
+  fresh run: verify_dream_weekly_2026-10-10.run.out.txt
+
+Grounding (mycortex searches + file reads, raw in dream-weekly*.raw.txt, exit 0):
+  "bus healthcheck 403 peer lane" -> dreams/INDEX, dreams/2026-10-09.md
+  "gateway reply parity seam" -> docs/design/cortex-gateway-parity.md
+  bible/2-thessalonians-2026-10-10.md (key verse 2 Thess 2:15)
+
+Scope: nightly files (dream-nightly-*) are sibling cycle 5878 (separate
+governance session), provenance in dream-weekly-2026-10-10.provenance.md.
