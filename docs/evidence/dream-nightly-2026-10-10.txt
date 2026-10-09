@@ -1,0 +1,14 @@
+RESULT: PASS — nightly dream verified (2026-10-10, profile=titus)
+
+Files:
+  /Users/luke/brain/titus/dreams/2026-10-10.md   975 bytes on disk
+  INDEX.md nightly entry appended (grep count for today's date equals two: weekly + nightly)
+
+Checks:
+  1. dream file present and non-empty on disk: OK
+  2. INDEX carries today's nightly entry: OK
+  3. dream references prior dreams ("The seam that held" on 10-08 and "The checker checked itself honest" on 10-09): OK
+  4. grounding — each claimed link traced to a live mycortex search or mycortex list result this session: OK
+  5. dream target dir is the brain memory dir, BY DESIGN not a git repo per task spec; this evidence file is committed to hermes-cortex instead as the verifiable artifact.
+
+Note: session_search does not exist in this host's tool catalog (only cache_search); grounding used mycortex list and mycortex search CLI output, honoring real connections only.

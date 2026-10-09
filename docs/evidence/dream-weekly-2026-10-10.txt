@@ -1,0 +1,18 @@
+RESULT: PASS — weekly dream verified (2026-10-10, profile=titus)
+
+Files:
+  /Users/luke/brain/titus/dreams/2026-10-10-weekly.md
+    size 1627 bytes
+    sha256 08e7fc74f34877d99f6b6144fb053a52e6a... (truncated)
+    INDEX.md: "2026-10-10 | Hold fast to the honest close | ..."
+
+Checks:
+  [1] weekly dream file present, non-empty: OK
+  [2] INDEX carries today's entry: OK
+  [3] dream references prior dreams (09-18 No false all-clears; 10-08 The seam that held; 10-09 The checker checked itself honest): OK
+  [4] grounding — each link traced to a mycortex search or file read:
+      - mycortex search "bus healthcheck 403 peer lane" -> dreams/2026-10-09.md
+      - mycortex search "gateway reply parity seam" -> docs/design/cortex-gateway-parity.md
+      - bible/2-thessalonians-2026-10-10.md (key verse 2 Thess 2:15)
+      - dreams/2026-10-09.md (partially unresolved / 403-ACL lane)
+      - ~/brain/lessons/: no files dated this week (latest batch 2026-08-13)
