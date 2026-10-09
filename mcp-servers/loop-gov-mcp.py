@@ -337,13 +337,11 @@ def get_session_id(args: dict | None = None) -> str:
     identity instead of getting its own. A per-process id cannot collide.
     """
     # Priority 0: per-call session ID injected by the enforcer plugin
-    if isinstance(args, dict):
-        sid = args.get("session_id", "")
-        if isinstance(sid, str) and sid.strip():
-            sid = sid.strip()
-            SESSION_FILE.parent.mkdir(parents=True, exist_ok=True)
-            SESSION_FILE.write_text(sid)
-            return sid
+    sid = _injected_session_id(args)
+    if sid:
+        SESSION_FILE.parent.mkdir(parents=True, exist_ok=True)
+        SESSION_FILE.write_text(sid)
+        return sid
 
     # Priority 1: process-scoped id for non-Hermes callers — stable per MCP
     # child (per Claude session), disjoint across concurrent sessions, and
@@ -379,7 +377,7 @@ def get_session_id(args: dict | None = None) -> str:
 
 # ── Governance Lock Path ─────────────────────────────────────
 
-def _derive_slug(args: dict | None = None) -> str:
+def _derive_slug(args: dict | None = None, session_repo: Optional[Path] = None) -> str:
     """Derive repo slug matching the enforcer plugin's approach.
 
     The MCP server is a shared daemon spawned by the gateway: its own cwd is
@@ -399,6 +397,14 @@ def _derive_slug(args: dict | None = None) -> str:
     not contain the work (permanent FINDINGS, unclosable cycle). Accepted only
     when it names a real git repo, so a bogus value cannot point the review at
     an arbitrary directory.
+
+    Priority 0c (2026-10-09, ``session_repo``): the NON-Hermes caller's own repo
+    — see ``_session_repo_path``. pi / Claude Code / Codex / the ``loop-gov``
+    CLI inject nothing, so they used to fall through to the host-canonical repo
+    and hit the same unclosable wrong-repo refusal, with no injector available to
+    repair it (titus, 2026-10-09: the lock stayed held and the operator had to
+    delete it by hand). ``_begin_change`` passes ``session_repo`` so the slug and
+    the recorded ``repo_path`` come from ONE resolution and cannot disagree.
     """
     # Priority 0 (2026-10-06; corrected 2026-10-07): a repo the ENFORCER observed
     # for THIS session and injected into the call. The slug is taken from the
@@ -418,6 +424,16 @@ def _derive_slug(args: dict | None = None) -> str:
         injected = str(args.get("repo_slug") or "").strip()
         if injected and (HOME / injected / ".git").exists():
             return injected
+    # Priority 0c (2026-10-09): a NON-Hermes caller's own repo — its
+    # CORTEX_SESSION_REPO identity, else the MCP child's cwd. Deliberately
+    # SKIPPED for a Hermes caller (per-call session_id injected by the enforcer):
+    # the shared gateway daemon's cwd is a launch artifact, so tagging from it is
+    # the hermes-agent/hermes-cortex mismatch this function exists to prevent.
+    own = session_repo
+    if own is None and not _injected_session_id(args):
+        own = _session_repo_env_path() or _cwd_repo_path()
+    if own is not None:
+        return own.name
     # Priority 1: canonical governed repo — the repo the git hooks enforce on.
     for candidate in [HOME / "hermes-cortex", HOME / ".hermes-cortex"]:
         if (candidate / ".git").exists():
@@ -446,6 +462,9 @@ def _derive_repo_path(args: dict | None = None) -> Optional[Path]:
     project repos. The path is never inferred here: it is accepted only when the
     enforcer actually observed it for this session, and only when it is a real
     git repo, so it cannot be used to point a review at an arbitrary directory.
+
+    A non-Hermes caller has no enforcer: its repo comes from
+    ``_session_repo_path``, which is what ``_begin_change`` records.
     """
     if isinstance(args, dict):
         raw = str(args.get("repo_path") or "").strip()
@@ -454,6 +473,87 @@ def _derive_repo_path(args: dict | None = None) -> Optional[Path]:
             if (candidate / ".git").exists():
                 return candidate
     return None
+
+
+# ── Session repo identity for callers with NO injector ──────────────────────
+# Hermes injects the session's repo (governance-enforcer). pi, Claude Code,
+# Codex and the `loop-gov` CLI inject nothing, so before 2026-10-09 they were
+# tagged with the HOST-CANONICAL repo — and a session working in a project repo
+# then hit an unclosable "the lock's repo cannot contain this session's work"
+# refusal whose only prescribed remedy is an injection those callers do not have
+# (titus, pi: the lock stayed held and the operator had to delete it by hand).
+
+def _injected_session_id(args: dict | None) -> str:
+    """The per-call session id the ENFORCER injected, or "" when absent.
+
+    Its presence is ALSO the "this caller is Hermes" signal: the enforcer injects
+    on every mcp__loop_governance__* call (see ``get_session_id`` Priority 0), so
+    a caller without it is a non-Hermes harness or the CLI.
+    """
+    if not isinstance(args, dict):
+        return ""
+    sid = args.get("session_id", "")
+    return sid.strip() if isinstance(sid, str) else ""
+
+
+def _session_repo_env_path() -> Optional[Path]:
+    """The repo named by ``CORTEX_SESSION_REPO`` — the documented per-harness
+    session identity (``docs/runbooks/context-integration.md``).
+
+    Accepts an absolute path or a repo NAME resolved as ``HOME/<name>``. A value
+    that is not a real git repo is rejected, so a bogus one cannot point a review
+    at an arbitrary directory.
+    """
+    raw = (os.environ.get("CORTEX_SESSION_REPO") or "").strip()
+    if not raw:
+        return None
+    candidates = ([Path(raw).expanduser()] if raw.startswith(("/", "~"))
+                  else [HOME / raw])
+    for candidate in candidates:
+        if (candidate / ".git").exists():
+            return candidate
+    return None
+
+
+def _cwd_repo_path() -> Optional[Path]:
+    """The git repo the CALLING process sits in, or None.
+
+    Consulted only for a non-Hermes caller. A harness spawns one MCP child per
+    session in the session's project, so its cwd IS the session's repo; the
+    shared-daemon cwd problem (a launch artifact) is a HERMES property, and
+    Hermes always injects its repo, so it never reaches here.
+    """
+    try:
+        root = subprocess.check_output(  # noqa: S603,S404 — fixed argv; timeout=3 below
+            ["git", "rev-parse", "--show-toplevel"], timeout=3, stderr=subprocess.DEVNULL,
+        ).decode().strip()
+    except Exception:
+        return None
+    if not root:
+        return None
+    candidate = Path(root)
+    if (candidate / ".git").exists():
+        return candidate
+    return None
+
+
+def _session_repo_path(args: dict | None = None) -> Optional[Path]:
+    """The repo THIS session is working in, or None when it cannot be established.
+
+    0. A path the ENFORCER observed for this session and injected (Hermes).
+    1. A non-Hermes caller's own identity: ``CORTEX_SESSION_REPO`` first (explicit
+       — set by a harness or gateway that knows the session's repo), else the MCP
+       child's cwd (the harness's project).
+    2. Never guessed for a Hermes caller: a Hermes session whose repo the enforcer
+       could not learn keeps the canonical default rather than being tagged with
+       whatever checkout the shared daemon happens to sit in.
+    """
+    injected = _derive_repo_path(args)
+    if injected is not None:
+        return injected
+    if _injected_session_id(args):
+        return None
+    return _session_repo_env_path() or _cwd_repo_path()
 
 
 def _lock_repo(lock: dict) -> Optional[Path]:
@@ -1752,12 +1852,13 @@ def _begin_change(args: dict) -> CallToolResult:
     # checkout — the reviewer's material is built from commits, so a peer's dirty paths
     # appearing in the diff stat is material the reviewer cannot see. Empty when the repo
     # cannot be resolved (the close then keeps the previous whole-tree behaviour).
-    _snap_repo = _derive_repo_path(args)
+    _snap_repo = _session_repo_path(args)
     state = {
         "task_id": task_id,
         "description": description,
-        "repo_slug": _derive_slug(args),
-        # Absolute repo root, when the enforcer observed this session's repo.
+        "repo_slug": _derive_slug(args, _snap_repo),
+        # Absolute repo root: injected by the enforcer (Hermes), else the
+        # non-Hermes caller's own repo (CORTEX_SESSION_REPO / MCP-child cwd).
         # repo_slug alone is a NAME resolved as HOME/<slug>, which mis-resolves
         # for a checkout nested deeper than a HOME child (dev hosts holding many
         # project repos) and re-created the wrong-repo review.

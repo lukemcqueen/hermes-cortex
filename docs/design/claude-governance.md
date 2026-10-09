@@ -134,6 +134,24 @@ at the same governance servers:
 | 3 | `docs/design/claude-governance.md` (this) | the equivalence contract | ✅ this file |
 | 4 | `ops/scripts/install/install-claude-governance.sh` | **USER-scope registration** (`~/.claude.json` `mcpServers`) — governance MCP available in EVERY repo Claude opens | ✅ shipped 2026-09-29 |
 | 5 | per-PROJECT session id for non-Hermes callers (`mcp-servers/loop-gov-mcp.py`) | restart-stable, cross-project-disjoint lock identity | ✅ shipped 2026-09-29 |
+| 6 | per-SESSION repo identity for non-Hermes callers (`mcp-servers/loop-gov-mcp.py`) | the lock is tagged with the caller's OWN repo (`CORTEX_SESSION_REPO`, else the MCP child's cwd) instead of the host-canonical `~/hermes-cortex` | ✅ shipped 2026-10-09 |
+
+### 6.1 Shipped 2026-10-09 — the lock that could not be released (titus, pi)
+
+A non-Hermes caller (pi / Claude Code / the CLI) injects no repo, so
+`_derive_slug()` fell through to the host-canonical `~/hermes-cortex`. A session
+working in a project repo was therefore locked as `hermes-cortex`, and the close
+gate refused with *"the lock's repo cannot contain this session's work"* — a
+refusal keeps the lock HELD, and its printed remedy (an enforcer injection) does
+not exist on a non-Hermes harness. Nothing but the operator could release it.
+
+Fix: a caller with no injected repo resolves its OWN repo — `CORTEX_SESSION_REPO`
+first, else the MCP child's working directory (the harness spawns one child per
+session in the session's project). A Hermes caller is deliberately excluded: the
+shared gateway daemon's cwd is a launch artifact, so a Hermes session is never
+re-tagged from it. Evidence:
+`tests/artifacts/non-hermes-repo-identity-repro.txt` (pre-fix vs current
+transcript); regression: `tests/test_non_hermes_repo_identity.py`.
 
 ## 7. Shipped 2026-09-29 — the two bugs that broke Claude on separate repos
 

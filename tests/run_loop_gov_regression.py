@@ -40,6 +40,11 @@ def _scrub(text: str) -> str:
 TESTS = [
     "tests/test_loop_gov_mcp_nonblocking.py",
     "tests/test_loop_gov_review_repo.py",
+    # A non-Hermes caller's repo identity (titus/pi, 2026-10-09). IN SCOPE: this
+    # change alters how a caller WITHOUT an injector resolves its repo, which is
+    # exactly what decides whether end_change can release its lock at all.
+    "tests/test_non_hermes_repo_identity.py",
+    "tests/test_non_hermes_session_id.py",
     "tests/test_loop_gov_multi_session.py",
     "tests/test_loop_gov_stale_purge.py",
     "tests/test_loop_gov_db_lock_recovery.py",

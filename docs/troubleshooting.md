@@ -759,6 +759,54 @@ for row in r:
 # 4. Then end_change() will succeed
 ```
 
+### `end_change` refuses: "the lock's repo cannot contain this session's work"
+
+**Symptom** (titus, pi, 2026-10-09): a session working in a project repo opens a
+lock, and closing is refused with
+
+```
+❌ Cannot close: the lock's repo cannot contain this session's work.
+  Lock repo_slug : 'hermes-cortex'  ->  ~/hermes-cortex
+```
+
+The lock is held by design (a refusal never releases it), so the agent cannot
+close and cannot start a fresh cycle — the operator has to delete
+`~/.hermes-cortex/state/.governance-<session>.json` by hand.
+
+**Root cause — a lock tagged with the host-canonical repo.** The lock's repo is
+resolved by `_derive_slug()` / `_derive_repo_path()` in `mcp-servers/loop-gov-mcp.py`.
+
+- A **Hermes** caller has its repo INJECTED by `plugins/governance-enforcer/`, so
+  it is tagged correctly.
+- A **non-Hermes** caller — pi, Claude Code, Codex, the `loop-gov` CLI — has no
+  injector. It used to fall through to the host-canonical `~/hermes-cortex`, which
+  exists on every dev host, so a session in `~/projects/proj` was locked as
+  `hermes-cortex` and the close gate then looked for the work in a tree that
+  cannot contain it. The refusal's prescribed remedy (an enforcer injection) does
+  not exist on those harnesses, and nothing but an operator could release the lock.
+
+**Fix (deployed 2026-10-09).** A caller with no injected repo works out its OWN
+repo instead: `CORTEX_SESSION_REPO`, else the MCP child's working directory (the
+harness's project). Hermes callers are unaffected — they are never re-tagged from
+the shared daemon's cwd.
+
+```bash
+# The harness runs the DEPLOYED copy, so the fix needs a deploy, not just a pull:
+bash ~/.hermes-cortex/scripts/cortex-update.sh   # deploys tools/loop-governance/loop-gov-mcp.py
+```
+
+- A lock mis-tagged by the OLD code: the deploy purges lock files (stale-lock
+  purge); otherwise remove that one file and re-open the cycle.
+- A harness launched with its cwd outside the project (e.g. a gateway-spawned
+  pi): pin the repo in the harness/MCP `env` block —
+  `CORTEX_SESSION_REPO=<repo-name or absolute path>`.
+- Verify without an LLM turn: `python3 tests/test_non_hermes_repo_identity.py`.
+
+**Known gap:** if a lock's repo genuinely differs from where the work landed (a
+mid-cycle repo switch, or a lock written before this fix), the refusal still has
+no self-service release — re-open the cycle in the correct repo, or remove the
+lock.
+
 ### `begin_change` says lock active but you want to start fresh
 
 A stale lock file can persist if a session was interrupted:

@@ -1,0 +1,49 @@
+Reproduction — end_change on a NON-Hermes host (titus / pi), 2026-10-09
+====================================================================
+Report: a pi session working in a project repo opens a governance lock and the
+lock is NEVER released — the operator must delete
+~/.hermes-cortex/state/.governance-sess_*.json by hand.
+
+Driven scenario: a NON-Hermes caller (no injected repo — pi / Claude Code /
+the CLI) calls begin_change while sitting in a project repo on a host that also
+holds the canonical ~/hermes-cortex; the work lands in the project repo; the
+cycle is scored; end_change is called.
+
+Method: the same scenario executed against BOTH revisions of
+mcp-servers/loop-gov-mcp.py — the pre-fix module read from git (`git show
+<base>:mcp-servers/loop-gov-mcp.py`) and the working tree. Reproduce with
+`python3 tests/run_non_hermes_lock_release_repro.py`; the transcript below is
+that script's stdout, unedited.
+
+pre-fix revision : HEAD (d2efa6fd)
+current          : working tree (mcp-servers/loop-gov-mcp.py)
+
+── PRE-FIX (HEAD) ──
+   lock.repo_slug           : hermes-cortex
+   lock.repo_path           : (empty)
+   end_change verdict       : ❌ Cannot close: the lock's repo cannot contain this session's work.
+   lock file left behind    : ['.governance-sess_03787cf6fe7f.json']
+
+── CURRENT (working tree) ──
+   lock.repo_slug           : proj
+   lock.repo_path           : <HOME>/projects/proj
+   end_change verdict       : 🔓 Governance session 'rg-1' closed.
+   lock file left behind    : none — released
+
+Reading of the transcript
+-------------------------
+PRE-FIX: the lock is tagged with the HOST-CANONICAL repo (`hermes-cortex`)
+because a caller with no injector fell through to Priority 1 in
+`_derive_slug()`. The close gate then looks for this session's work in
+~/hermes-cortex, cannot find it, and REFUSES — a refusal leaves the lock held by
+design, and the remedy it prints (a governance-enforcer injection) does not
+exist on a non-Hermes harness. The lock file is left on disk: exactly the
+reported symptom, and the shape of the file name (`sess_<12 hex>`) matches the
+one the report cites.
+
+CURRENT: the same session resolves its OWN repo (`proj`, absolute path recorded
+in the lock), the close completes, and the lock is released — no operator action.
+
+Regression coverage: tests/test_non_hermes_repo_identity.py (7 cases: tagging,
+the full begin→score→end path, plus controls proving an injected repo still wins
+and that a Hermes caller is never re-tagged from the daemon's cwd).

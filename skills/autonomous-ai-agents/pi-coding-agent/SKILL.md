@@ -194,6 +194,19 @@ The extension registers **NO tools** and wires only the lifecycle:
   Pi session has no recorded evidence and **every commit is refused** no matter how
   well the agent behaved.
 
+- **A Pi session's governance lock is tagged from the SESSION's repo, never from the
+  host's `~/hermes-cortex` (2026-10-09, titus).** Pi injects no repo identity, so
+  `_derive_slug()` resolves it as `CORTEX_SESSION_REPO`, else the MCP child's working
+  directory — the project you launched Pi in. Before that fix a Pi session working in a
+  project repo was locked as `hermes-cortex`, and the close gate refused forever with
+  "the lock's repo cannot contain this session's work": the lock stays HELD on a refusal,
+  and its prescribed remedy (an enforcer injection) does not exist on Pi, so only the
+  operator could delete `~/.hermes-cortex/state/.governance-sess_*.json`. Launch Pi from
+  the project (`cd repo && pi`), or pin `CORTEX_SESSION_REPO` in the MCP `env` block when
+  the cwd is not the project. It needs a DEPLOY, not a pull: the harness runs the
+  deployed copy (`~/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py`). Verify with
+  `python3 tests/test_non_hermes_repo_identity.py`. Full write-up: `docs/troubleshooting.md`.
+
 **Do NOT register the shared tools in the extension.** They used to live there as a
 hand-written `tool()` list with hand-written parameter maps — a SECOND definition of
 tools that already existed in the contract, and the copy that broke silently when pi
