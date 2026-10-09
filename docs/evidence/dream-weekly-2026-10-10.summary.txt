@@ -1,0 +1,15 @@
+WEEKLY DREAM SUMMARY — 2026-10-10 (titus, cycle 5877)
+RESULT: PASS
+verify_dream_weekly_2026-10-10.sh exit=0 -> "RESULT: PASS ... 9 checks all OK"
+(run.out tail: "RESULT: PASS (weekly dream verified: 1627 bytes, sha256
+grounding-pinned, INDEX append confirmed, prose substantial, prior-refs present)")
+
+Artifact ~/brain/titus/dreams/2026-10-10-weekly.md = 1627B, 268 words.
+Canonical committed: docs/evidence/dream-weekly-2026-10-10.canonical.md.
+Identity: identity.txt shows brain sha256 == canon sha256, cmp -s exit 0.
+INDEX: dream-weekly-INDEX.md contains weekly entry; live INDEX tail (raw.txt) exit 0.
+
+Session attribution (provenance.md + sessions.txt):
+  weekly cron_755e...              -> this cycle 5877 commits (weekly-scoped)
+  nightly cron_a28f8be0bc4e...     -> sibling cycle 5878 nightly files
+Both runs on same host; nightly files are not this cycle's deliverable.
