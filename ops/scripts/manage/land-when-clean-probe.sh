@@ -15,15 +15,28 @@
 # fields — or every tick looks changed and the agent runs needlessly.
 #
 # Usage (all paths are relative to the repository root):
-#   land-when-clean-probe.sh [--repo DIR] [--landed-commit SHA] PATH [PATH...]
+#   land-when-clean-probe.sh [--repo DIR] [--landed-commit SHA]
+#                            [--fixed-marker PATH:MARKER:MIN] PATH [PATH...]
 #
 # Output:
-#   blockers=<n> head=<short-sha> origin_tip=<short-sha> origin_integrated=<yes|no> landed=<yes|no|n/a>
+#   blockers=<n> head=<short-sha> origin_tip=<short-sha> origin_integrated=<yes|no>
+#   fix_in_origin=<n> landed=<yes|no|n/a>
 #
 #   blockers          = uncommitted (staged or unstaged) entries among PATH...,
 #                       i.e. exactly the entries that will block an integration
 #   origin_integrated = is origin/<default-branch> already an ancestor of HEAD
-#   landed            = --landed-commit present in origin's default branch
+#   fix_in_origin     = occurrences of MARKER in origin's copy of PATH (0 when
+#                       --fixed-marker is absent)
+#   landed            = yes when EITHER test passes: --landed-commit is present in
+#                       origin's default branch, OR --fixed-marker's marker
+#                       appears at least MIN times in origin's copy of PATH.
+#
+# WHY the content test exists (--fixed-marker): a SHA is rewritten whenever another
+# session rebases a shared branch (observed 2026-10-09: a commit was rewritten
+# 120758c2 -> 09d27193 with byte-identical content), so a SHA test can silently
+# never fire again; and a commit-SUBJECT test can match an unrelated commit with
+# the same message. File CONTENT cannot be rebased away or faked by a message —
+# ask origin's copy of the file whether it actually contains the change.
 #
 # Exit codes: 0 printed a state (always), 2 usage error.
 #
@@ -33,23 +46,29 @@ set -u
 
 REPO=""
 LANDED_COMMIT=""
+FIXED_MARKER_SPEC=""
 PATHS=()
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --repo) REPO="${2:-}"; shift 2 ;;
     --landed-commit) LANDED_COMMIT="${2:-}"; shift 2 ;;
-    -h|--help) sed -n '2,30p' "$0"; exit 0 ;;
+    --fixed-marker) FIXED_MARKER_SPEC="${2:-}"; shift 2 ;;
+    -h|--help) sed -n '2,44p' "$0"; exit 0 ;;
     *) PATHS+=("$1"); shift ;;
   esac
 done
 
+USAGE="usage: $0 [--repo DIR] [--landed-commit SHA] [--fixed-marker PATH:MARKER:MIN] PATH [PATH...]"
 if [[ ${#PATHS[@]} -eq 0 ]]; then
-  echo "usage: $0 [--repo DIR] [--landed-commit SHA] PATH [PATH...]" >&2
+  echo "$USAGE" >&2
   exit 2
 fi
 
 REPO="${REPO:-$PWD}"
-cd "$REPO" 2>/dev/null || { echo "repo=missing blockers=unknown head=unknown origin_tip=unknown origin_integrated=unknown landed=unknown"; exit 0; }
+cd "$REPO" 2>/dev/null || {
+  echo "repo=missing blockers=unknown head=unknown origin_tip=unknown origin_integrated=unknown fix_in_origin=unknown landed=unknown"
+  exit 0
+}
 
 git fetch -q origin 2>/dev/null || true
 
@@ -67,12 +86,40 @@ else
   integrated=no
 fi
 
-if [[ -z "$LANDED_COMMIT" ]]; then
-  landed=n/a
-elif git branch -r --contains "$LANDED_COMMIT" 2>/dev/null | grep -q "^  ${base_branch}\$"; then
-  landed=yes
-else
-  landed=no
+# Test 1 — the commit is on origin (SHA; breaks when a rebase rewrites it).
+sha_landed=no
+if [[ -n "$LANDED_COMMIT" ]]; then
+  if git branch -r --contains "$LANDED_COMMIT" 2>/dev/null | grep -q "^  ${base_branch}\$"; then
+    sha_landed=yes
+  fi
 fi
 
-echo "blockers=${blockers} head=${head} origin_tip=${tip} origin_integrated=${integrated} landed=${landed}"
+# Test 2 — origin's copy of the file CONTAINS the change (content; survives rebases).
+fix_in_origin=0
+marker_landed=no
+if [[ -n "$FIXED_MARKER_SPEC" ]]; then
+  # SPEC is PATH:MARKER:MIN. A malformed spec is a usage error, not a silent "no".
+  mfile="${FIXED_MARKER_SPEC%%:*}"
+  rest="${FIXED_MARKER_SPEC#*:}"
+  mmarker="${rest%%:*}"
+  mmin="${rest#*:}"
+  if [[ -z "$mfile" || -z "$mmarker" || "$mmin" == "$rest" || ! "$mmin" =~ ^[0-9]+$ ]]; then
+    echo "$USAGE (--fixed-marker wants PATH:MARKER:MIN)" >&2
+    exit 2
+  fi
+  fix_in_origin=$(git show "${base_branch}:${mfile}" 2>/dev/null | grep -c "$mmarker")
+  fix_in_origin=${fix_in_origin:-0}
+  if [[ "$fix_in_origin" -ge "$mmin" ]]; then
+    marker_landed=yes
+  fi
+fi
+
+landed=n/a
+if [[ -n "$LANDED_COMMIT" || -n "$FIXED_MARKER_SPEC" ]]; then
+  landed=no
+  if [[ "$sha_landed" == "yes" || "$marker_landed" == "yes" ]]; then
+    landed=yes
+  fi
+fi
+
+echo "blockers=${blockers} head=${head} origin_tip=${tip} origin_integrated=${integrated} fix_in_origin=${fix_in_origin} landed=${landed}"

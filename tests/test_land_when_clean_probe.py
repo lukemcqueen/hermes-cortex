@@ -149,6 +149,81 @@ def test_unreachable_repo_still_reports():
           out.startswith("repo=missing") and out.count("unknown") >= 4, out)
 
 
+# ── the CONTENT landing test (--fixed-marker) ────────────────────────────────
+# A SHA is rewritten when another session rebases a shared branch, and a commit
+# SUBJECT can match unrelated work; file content can do neither. These cases pin
+# that behaviour, including the false-positive control.
+
+MARKER = "_session_repo_path"
+
+
+def _repo_pushing(tmp: Path, content: str, subject: str = "work"):
+    """A repo whose origin/main holds `content` in module.py."""
+    repo, _bare = _mk_repo(tmp, with_remote=True, remote_commit=False)
+    (repo / "module.py").write_text(content)
+    _git(repo, "add", "module.py")
+    _git(repo, "commit", "-q", "-m", subject)
+    _git(repo, "push", "-q", "-u", "origin", "main")
+    return repo
+
+
+def test_content_marker_present_in_origin_lands():
+    tmp = Path(tempfile.mkdtemp(prefix="probe-marker-yes-"))
+    repo = _repo_pushing(tmp, f"def {MARKER}(): pass\n{MARKER}()\n{MARKER}()\n{MARKER}()\n")
+    proc = _probe(repo, "--fixed-marker", f"module.py:{MARKER}:4", "tracked.txt")
+    fields = _fields(proc.stdout)
+    check("marker x4 in origin -> landed=yes", fields.get("landed") == "yes", proc.stdout.strip())
+    check("marker count reported", fields.get("fix_in_origin") == "4", proc.stdout.strip())
+
+
+def test_content_marker_below_minimum_does_not_land():
+    tmp = Path(tempfile.mkdtemp(prefix="probe-marker-low-"))
+    repo = _repo_pushing(tmp, f"def {MARKER}(): pass\n{MARKER}()\n")
+    proc = _probe(repo, "--fixed-marker", f"module.py:{MARKER}:4", "tracked.txt")
+    fields = _fields(proc.stdout)
+    check("marker x2 < min 4 -> landed=no", fields.get("landed") == "no", proc.stdout.strip())
+    check("marker count reported as 2", fields.get("fix_in_origin") == "2", proc.stdout.strip())
+
+
+def test_matching_subject_without_the_marker_does_not_land():
+    """The false positive the content test replaces: a commit whose MESSAGE carries
+    the fix's subject but whose tree does not contain the change."""
+    tmp = Path(tempfile.mkdtemp(prefix="probe-marker-falsepos-"))
+    repo = _repo_pushing(tmp, "def unrelated(): pass\n",
+                         subject="fix(governance): tag a non-Hermes session's lock with its OWN repo")
+    proc = _probe(repo, "--fixed-marker", f"module.py:{MARKER}:4", "tracked.txt")
+    fields = _fields(proc.stdout)
+    check("matching subject, no marker -> landed=no", fields.get("landed") == "no",
+          proc.stdout.strip())
+    check("marker count 0", fields.get("fix_in_origin") == "0", proc.stdout.strip())
+
+
+def test_marker_only_local_is_not_landed():
+    """Origin is the authority: an unpushed fix is not landed."""
+    tmp = Path(tempfile.mkdtemp(prefix="probe-marker-unpushed-"))
+    repo, _bare = _mk_repo(tmp, with_remote=True, remote_commit=True)
+    (repo / "module.py").write_text(f"{MARKER}\n{MARKER}\n{MARKER}\n{MARKER}\n")
+    _git(repo, "add", "module.py")
+    _git(repo, "commit", "-q", "-m", "local fix")
+    proc = _probe(repo, "--fixed-marker", f"module.py:{MARKER}:4", "tracked.txt")
+    fields = _fields(proc.stdout)
+    check("marker only in the local commit -> landed=no", fields.get("landed") == "no",
+          proc.stdout.strip())
+    check("marker count 0 from origin's copy", fields.get("fix_in_origin") == "0",
+          proc.stdout.strip())
+
+
+def test_malformed_fixed_marker_is_a_usage_error():
+    tmp = Path(tempfile.mkdtemp(prefix="probe-marker-bad-"))
+    repo, _ = _mk_repo(tmp)
+    proc = subprocess.run(
+        ["bash", str(PROBE), "--repo", str(repo), "--fixed-marker", "module.py:marker",
+         "tracked.txt"], capture_output=True, text=True)
+    check("spec without MIN -> exit 2", proc.returncode == 2, str(proc.returncode))
+    check("spec without MIN -> usage names the form",
+          "--fixed-marker wants PATH:MARKER:MIN" in proc.stderr, proc.stderr.strip()[:160])
+
+
 def main():
     tests = [v for k, v in sorted(globals().items())
              if k.startswith("test_") and callable(v)]
