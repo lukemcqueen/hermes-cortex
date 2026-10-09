@@ -1,0 +1,76 @@
+Landing automation — measured verification transcripts (esther, 2026-10-09)
+========================================================================
+Every block below is a command plus its ACTUAL output from this session, so the
+claims in the cycle note are re-executable rather than self-reported. Re-run each
+command in the same order to reproduce.
+
+1. The probe's hermetic test (13 cases)
+---------------------------------------
+    $ python3 tests/test_land_when_clean_probe.py
+      ... 13 PASS lines ...
+      ALL PASS (13 cases)
+
+  Cases: dirty path -> blockers=1; staged change -> blockers=1; clean path -> 0;
+  landed=n/a without a landing test; two runs byte-identical; commit pushed to
+  origin -> landed=yes + origin_integrated=yes; unpushed -> no/no; no paths ->
+  exit 2 + usage; unreachable repo -> exit 0 + every field "unknown";
+  marker x4 in origin -> landed=yes (fix_in_origin=4); marker x2 with min 4 ->
+  landed=no (2); marker only in an unpushed local commit -> landed=no (0);
+  matching commit SUBJECT without the marker -> landed=no (0); malformed
+  --fixed-marker -> exit 2 naming PATH:MARKER:MIN.
+
+2. Deploy, and the deployed copy is the one that runs
+----------------------------------------------------
+    $ bash ~/.hermes-cortex/scripts/cortex-dogfood.sh --force
+      ✅  DOGFOOD PASSED — deployed state verified clean.
+
+    $ grep -c "fixed-marker" ~/.hermes-cortex/scripts/land-when-clean-probe.sh
+      7
+
+    $ bash ~/.hermes-cortex/scripts/local-esther-land-nonhermes-fix-probe.sh
+    blockers=2 head=22c69ef4 origin_tip=283be526 origin_integrated=no fix_in_origin=0 landed=no
+    $ bash ~/.hermes-cortex/scripts/local-esther-land-nonhermes-fix-probe.sh
+    blockers=2 head=22c69ef4 origin_tip=283be526 origin_integrated=no fix_in_origin=0 landed=no
+      -> identical across runs (what the cron monitor's suppression depends on),
+         produced by the DEPLOYED probe, not the repo copy.
+
+    $ diff <(tail -n +5 ~/.hermes-cortex/scripts/land-when-clean-probe.sh) \
+           <(tail -n +2 ~/hermes-cortex/ops/scripts/manage/land-when-clean-probe.sh)
+      (no output — the deployed copy equals the repo source; the deployer inserts
+       a banner after the shebang: 3 header lines + a blank line)
+
+3. Doctor after that deploy (exit code and counts, not just ticks)
+-----------------------------------------------------------------
+    $ python3 ops/scripts/manage/cortex-doctor.py --quiet ; echo "rc=$?"
+      ✅ Deploy sync
+      ⚠️  Overall: WARNING  (440 pass · 10 warn · 0 fail · 7 info)
+      rc=1
+  Recorded honestly: the exit code is 1 under the warn policy; there are 0 FAIL
+  checks and 10 warnings, all pre-existing and other-owned (4 deployed-only skill
+  files authored on this host by other sessions, a stale
+  scripts/review-sweep-check.py, /home/esther/proj's AGENTS.md hint, and cron
+  orch-daily-regression-gate last run: error). None references the changed files.
+
+4. Why the merge is still not done, and what closes the gap
+-----------------------------------------------------------
+    $ git status --porcelain -- docs/DOCS-INDEX.md ops/install/deploy/nginx/blocked_ips.add
+     M docs/DOCS-INDEX.md
+     M ops/install/deploy/nginx/blocked_ips.add
+    $ git merge origin/main
+    error: Your local changes to the following files would be overwritten by merge:
+            docs/DOCS-INDEX.md
+            ops/install/deploy/nginx/blocked_ips.add
+
+  Those two paths hold another session's UNCOMMITTED content which origin also
+  changes, so git refuses the merge to protect it. Unstaging cannot help (the
+  content is in the working tree, not the index); committing it would land a
+  peer's in-flight edits, and one of the two is the IP-block security list. The
+  operator was asked and chose: "Wait — land automatically once their owner
+  commits them (keeps the IP-block list out of my hands)" (2026-10-09 ~22:45 KST).
+  That answer is the governing authorization for deferral; it is quoted verbatim
+  in docs/evidence/land-nonhermes-lock-fix-automation-2026-10-09.txt.
+
+  The deferral is automated, not promised: cron `esther-land-nonhermes-lock-fix`
+  (c975d8f8aa25, every 15m, monitor-gated by the wrapper above) runs
+  merge -> cortex-dogfood -> score + end_change (push receipt) -> push ->
+  verify-landed.py the moment blockers=0, and reports its own result.
