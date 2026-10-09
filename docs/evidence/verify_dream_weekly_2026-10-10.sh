@@ -85,9 +85,9 @@ else echo "FAIL brain INDEX missing weekly entry"; CHECKS_OK=0; fi
 
 echo ""
 if [[ "$CHECKS_OK" -eq 1 ]]; then
-  echo "RESULT: PASS (weekly dream verified: $EXPECTED_BYTES bytes, sha256 grounding-pinned, INDEX append confirmed, prose substantial, prior-refs present)"
+  echo "RESULT: PASS — 9/9 checks passed, EXIT=0 (weekly dream verified: $EXPECTED_BYTES bytes, sha256 grounding-pinned, INDEX append confirmed, prose substantial, prior-refs present)"
   exit 0
 else
-  echo "RESULT: FAIL (one or more checks failed)"
+  echo "RESULT: FAIL — not all checks passed, EXIT=1"
   exit 1
 fi

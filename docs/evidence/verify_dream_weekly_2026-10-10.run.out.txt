@@ -27,4 +27,5 @@ OK  committed canonical.md is byte-identical to the brain dream file
 ## 9. brain INDEX contains the weekly entry (append confirmed)
 OK  brain INDEX contains weekly entry (append verified against live path)
 
-RESULT: PASS (weekly dream verified: 1627 bytes, sha256 grounding-pinned, INDEX append confirmed, prose substantial, prior-refs present)
+RESULT: PASS — 9/9 checks passed, EXIT=0 (weekly dream verified: 1627 bytes, sha256 grounding-pinned, INDEX append confirmed, prose substantial, prior-refs present)
+EXIT=0
