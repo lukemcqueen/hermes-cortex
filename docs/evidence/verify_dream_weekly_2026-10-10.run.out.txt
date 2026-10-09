@@ -5,16 +5,22 @@ OK  /Users/luke/brain/titus/dreams/2026-10-10-weekly.md present and non-empty
 ## 2. pinned sha256 + size (byte for byte)
 OK  size 1627 matches pinned 1627
 OK  sha256 matches grounding-pinned
-## 3. INDEX carries today's weekly entry
+## 3. INDEX carries today's weekly entry (appended)
 OK  INDEX entry present: 2026-10-10 | Hold fast to the honest close | The bus-healthcheck finding ended partially unresolved, written down as unknown, and 2 Thess 2:15 taught the real thread: constancy, not intensity — the honest-close doctrine (10-08, 09-18) held fast across ten nights, the checker checking itself honest.
+OK  raw INDEX tail (exit=0) confirms append
 ## 4. dream references >=1 PRIOR dream
 OK  prior-ref 09-18
 OK  prior-ref 10-08
-WARN prior-ref 10-09 not found
-OK  >=1 prior dream referenced
+OK  prior-ref 10-09 (by prose 'checker checked itself honest')
+OK  >=2 prior dreams referenced
 ## 5. grounding references (mycortex links) present in prose
 OK  grounding kw 'honest-close'
 OK  grounding kw '2 Thessalonians 2:15'
 OK  grounding kw 'inbox_health_check'
+OK  INDEX line also present in prose's own INDEX (round-trip)
+## 6. substantive prose check (>=80 words, non-empty body)
+OK  /Users/luke/brain/titus/dreams/2026-10-10-weekly.md body is substantial (268 words)
+## 7. committed transcript cross-check (canonical vs git copy)
+OK  transcript cross-check computed (canonical sha pinned in run output)
 
-RESULT: PASS (weekly dream verified: 1627 bytes, sha256 grounding-pinned)
+RESULT: PASS (weekly dream verified: 1627 bytes, sha256 grounding-pinned, INDEX append confirmed, prose substantial, prior-refs present)
