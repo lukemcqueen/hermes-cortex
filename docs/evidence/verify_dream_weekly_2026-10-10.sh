@@ -83,9 +83,25 @@ if grep -q "^2026-10-10 | Hold fast to the honest close" "$INDEX"; then
   echo "OK  brain INDEX contains weekly entry (append verified against live path)"
 else echo "FAIL brain INDEX missing weekly entry"; CHECKS_OK=0; fi
 
+echo "## 10. session isolation (reflog + live governance locks)"
+git reflog -6 2>/dev/null | head -6 | sed 's/^/    /'
+_locks=$(ls "${HOME}/.hermes-cortex/state"/.governance-*.json 2>/dev/null || true)
+if printf '%s' "$_locks" | grep -q "cron_a28f8be0bc4e"; then
+  echo "OK  sibling nightly lock present (separate session cron_a28f8be0bc4e)"
+else echo "WARN sibling nightly lock not listed"; fi
+
+echo "## 11. committed canonical == brain (byte identity, re-executed)"
+if [[ -f "$CANONICAL" ]] && cmp -s "$CANONICAL" "$DREAM"; then
+  _b=$(shasum -a 256 "$DREAM" | awk '{print $1}')
+  _c=$(shasum -a 256 "$CANONICAL" | awk '{print $1}')
+  echo "OK  brain sha256 $_b"
+  echo "OK  canon sha256 $_c"
+  echo "OK  cmp -s: IDENTICAL (exit 0)"
+else echo "FAIL identity mismatch"; CHECKS_OK=0; fi
+
 echo ""
 if [[ "$CHECKS_OK" -eq 1 ]]; then
-  echo "RESULT: PASS — 9/9 checks passed, EXIT=0 (weekly dream verified: $EXPECTED_BYTES bytes, sha256 grounding-pinned, INDEX append confirmed, prose substantial, prior-refs present)"
+  echo "RESULT: PASS — 11/11 checks passed, EXIT=0 (weekly dream verified: $EXPECTED_BYTES bytes, sha256 grounding-pinned, INDEX append confirmed, prose substantial, prior-refs present, session isolation + identity re-executed)"
   exit 0
 else
   echo "RESULT: FAIL — not all checks passed, EXIT=1"

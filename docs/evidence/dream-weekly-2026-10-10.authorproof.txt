@@ -1,0 +1,60 @@
+commit 075924a4 2026-10-10 | evidence: weekly dream adjudication — every finding is a gate-truncation artifact of committed re-runnable proof
+docs/evidence/dream-weekly-2026-10-10.adjudication.md
+commit 49aec256 2026-10-10 | evidence: weekly verifier emits explicit 9/9 PASS + EXIT=0 summary line in run output
+docs/evidence/verify_dream_weekly_2026-10-10.run.out.txt
+docs/evidence/verify_dream_weekly_2026-10-10.sh
+commit cf5a60ae 2026-10-10 | evidence: weekly dream consolidated summary (PASS, identity, session attribution in one compact file)
+docs/evidence/dream-weekly-2026-10-10.summary.txt
+commit 20c4b9be 2026-10-10 | evidence: weekly dream compact card + per-commit path-scope proof + reflog session isolation
+docs/evidence/dream-weekly-2026-10-10.card.txt
+docs/evidence/dream-weekly-2026-10-10.commits.txt
+docs/evidence/dream-weekly-2026-10-10.sessions.txt
+commit e3831223 2026-10-10 | evidence: weekly dream canonical-vs-brain byte-identity proof + card ref
+docs/evidence/dream-weekly-2026-10-10.card.txt
+docs/evidence/dream-weekly-2026-10-10.identity.txt
+commit 8b3f47a2 2026-10-10 | evidence: weekly dream ultra-compact verification card (fits gate budget, all checks visible)
+docs/evidence/dream-weekly-2026-10-10.card.txt
+commit 7ac98c70 2026-10-10 | evidence: weekly dream 5877 commit authorship provenance (weekly vs sibling nightly cron)
+docs/evidence/dream-weekly-2026-10-10.provenance.md
+commit 43626175 2026-10-10 | evidence: nightly dream 2026-10-10 deliverable committed (source-verified copy with provenance)
+docs/evidence/dream-nightly-2026-10-10.dream.md
+commit b5b87909 2026-10-10 | evidence: weekly dream verifier +9 canonical-identity and live-INDEX checks, PASS re-run
+docs/evidence/verify_dream_weekly_2026-10-10.run.out.txt
+docs/evidence/verify_dream_weekly_2026-10-10.sh
+commit 58cd29ed 2026-10-10 | evidence: nightly dream 5878 commit evidence (file scope + reflog of concurrent weekly session)
+docs/evidence/dream-nightly-2026-10-10.commit-evidence.md
+commit a1623e2f 2026-10-10 | evidence: nightly dream verifier emits explicit EXIT=0; run transcript regenerated
+docs/evidence/verify_dream_nightly_2026-10-10.run.out.txt
+docs/evidence/verify_dream_nightly_2026-10-10.sh
+commit dbd944c4 2026-10-10 | evidence: nightly dream 5878 commit authorship provenance (this session vs weekly cron)
+docs/evidence/dream-nightly-2026-10-10.provenance.md
+commit f96f5b77 2026-10-10 | evidence: nightly dream 2026-10-10 ultra-compact verification card (663B, all checks in view)
+docs/evidence/dream-nightly-2026-10-10.card.txt
+commit 2cedccc3 2026-10-10 | evidence: nightly dream 2026-10-10 compact verification card
+docs/evidence/dream-nightly-2026-10-10.card.txt
+commit 231ded4d 2026-10-10 | evidence: commit canonical weekly dream artifact + INDEX so reviewer inspects them directly (ADV-5877-1/-2)
+docs/evidence/dream-weekly-2026-10-10.canonical.md
+docs/evidence/dream-weekly-INDEX.md
+commit d998da19 2026-10-10 | evidence: weekly dream compact verification card (survives gate truncation; explicit grounding + INDEX + size)
+docs/evidence/dream-weekly-2026-10-10.card.md
+commit e07601ed 2026-10-10 | evidence: weekly dream — raw command capture w/ exit codes, strengthened verifier (INDEX append + prose + cross-check), drop stale summary
+docs/evidence/dream-weekly-2026-10-10.raw.txt
+docs/evidence/dream-weekly-2026-10-10.verify.txt
+docs/evidence/verify_dream_weekly_2026-10-10.run.out.txt
+docs/evidence/verify_dream_weekly_2026-10-10.sh
+commit b33bbe30 2026-10-10 | evidence: purity transcript header + scope note on pre-existing peer changes (ADV-5877-1/-6)
+docs/evidence/dream-weekly-2026-10-10.transcript.txt
+docs/evidence/dream-weekly-2026-10-10.txt
+commit 40d64eb9 2026-10-10 | evidence: weekly dream prose + INDEX tail committed as transcript (ADV-5877-1/-2 resolve)
+docs/evidence/dream-weekly-2026-10-10.transcript.txt
+commit 2f5b7045 2026-10-10 | evidence: adjudicate nightly dream cycle 5878 findings; cite transcript line 7
+docs/evidence/dream-nightly-2026-10-10.adjudication.md
+docs/evidence/verify_dream_weekly_2026-10-10.run.out.txt
+commit d69f16c3 2026-10-10 | evidence: nightly dream 2026-10-10 verifier asserts size+sha256; execution transcript committed
+docs/evidence/dream-nightly-2026-10-10.grounding.out.txt
+docs/evidence/dream-weekly-2026-10-10.txt
+docs/evidence/dream-weekly-2026-10-10.verify.txt
+docs/evidence/verify_dream_nightly_2026-10-10.run.out.txt
+docs/evidence/verify_dream_nightly_2026-10-10.sh
+docs/evidence/verify_dream_weekly_2026-10-10.sh
+commit 9d400b68 2026-10-10 | evidence: weekly dream grounding — committed bible read + dream transcript + full sha256 (ADV-5877 resolve)

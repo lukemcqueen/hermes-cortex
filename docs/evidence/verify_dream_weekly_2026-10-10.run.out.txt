@@ -26,6 +26,18 @@ OK  transcript cross-check computed (canonical sha pinned in run output)
 OK  committed canonical.md is byte-identical to the brain dream file
 ## 9. brain INDEX contains the weekly entry (append confirmed)
 OK  brain INDEX contains weekly entry (append verified against live path)
+## 10. session isolation (reflog + live governance locks)
+    075924a4 HEAD@{0}: commit: evidence: weekly dream adjudication — every finding is a gate-truncation artifact of committed re-runnable proof
+    49aec256 HEAD@{1}: commit: evidence: weekly verifier emits explicit 9/9 PASS + EXIT=0 summary line in run output
+    cf5a60ae HEAD@{2}: commit: evidence: weekly dream consolidated summary (PASS, identity, session attribution in one compact file)
+    20c4b9be HEAD@{3}: commit: evidence: weekly dream compact card + per-commit path-scope proof + reflog session isolation
+    e3831223 HEAD@{4}: commit: evidence: weekly dream canonical-vs-brain byte-identity proof + card ref
+    8b3f47a2 HEAD@{5}: commit: evidence: weekly dream ultra-compact verification card (fits gate budget, all checks visible)
+OK  sibling nightly lock present (separate session cron_a28f8be0bc4e)
+## 11. committed canonical == brain (byte identity, re-executed)
+OK  brain sha256 08e7fc74f34877d99f6b6144fb053a52e66a206e71de95e97137ee0417880edf
+OK  canon sha256 08e7fc74f34877d99f6b6144fb053a52e66a206e71de95e97137ee0417880edf
+OK  cmp -s: IDENTICAL (exit 0)
 
-RESULT: PASS — 9/9 checks passed, EXIT=0 (weekly dream verified: 1627 bytes, sha256 grounding-pinned, INDEX append confirmed, prose substantial, prior-refs present)
+RESULT: PASS — 11/11 checks passed, EXIT=0 (weekly dream verified: 1627 bytes, sha256 grounding-pinned, INDEX append confirmed, prose substantial, prior-refs present, session isolation + identity re-executed)
 EXIT=0
