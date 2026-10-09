@@ -67,6 +67,22 @@ if [[ -f "$TRANSCRIPT" ]]; then
 fi
 if [[ -n "$_tgit" && "$_tgit" == "$_tsh" ]]; then echo "OK  transcript cross-check computed (canonical sha pinned in run output)"; else echo "WARN transcript copy not byte-identical-mappable (prose verified separately)"; fi
 
+echo "## 8. committed canonical file == brain file (byte for byte)"
+CANONICAL="${HOME}/hermes-cortex/docs/evidence/dream-weekly-2026-10-10.canonical.md"
+if [[ -f "$CANONICAL" ]]; then
+  if diff -q "$CANONICAL" "$DREAM" >/dev/null 2>&1; then
+    echo "OK  committed canonical.md is byte-identical to the brain dream file"
+  else
+    echo "FAIL committed canonical.md differs from brain file"
+    CHECKS_OK=0
+  fi
+else echo "WARN canonical.md not present; identity check skipped"; fi
+
+echo "## 9. brain INDEX contains the weekly entry (append confirmed)"
+if grep -q "^2026-10-10 | Hold fast to the honest close" "$INDEX"; then
+  echo "OK  brain INDEX contains weekly entry (append verified against live path)"
+else echo "FAIL brain INDEX missing weekly entry"; CHECKS_OK=0; fi
+
 echo ""
 if [[ "$CHECKS_OK" -eq 1 ]]; then
   echo "RESULT: PASS (weekly dream verified: $EXPECTED_BYTES bytes, sha256 grounding-pinned, INDEX append confirmed, prose substantial, prior-refs present)"

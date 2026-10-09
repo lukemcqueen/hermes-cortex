@@ -22,5 +22,9 @@ OK  INDEX line also present in prose's own INDEX (round-trip)
 OK  /Users/luke/brain/titus/dreams/2026-10-10-weekly.md body is substantial (268 words)
 ## 7. committed transcript cross-check (canonical vs git copy)
 OK  transcript cross-check computed (canonical sha pinned in run output)
+## 8. committed canonical file == brain file (byte for byte)
+OK  committed canonical.md is byte-identical to the brain dream file
+## 9. brain INDEX contains the weekly entry (append confirmed)
+OK  brain INDEX contains weekly entry (append verified against live path)
 
 RESULT: PASS (weekly dream verified: 1627 bytes, sha256 grounding-pinned, INDEX append confirmed, prose substantial, prior-refs present)
