@@ -684,6 +684,28 @@ def _mark_close_refused(cycle_id: int, verdict: str, findings_json: str) -> None
 
 REVIEW_RECEIPT_PREFIX = ".reviewed-"
 
+# The range-blob convention (which paths, and how a deletion is recorded) lives in
+# the shipped checker the push gate runs; this loads THAT file so the writer and
+# the gate can never disagree about what "covered" means.
+_REVIEW_RECEIPT_CHECK_REL = "ops/scripts/lib/review-receipt-check.py"
+
+
+def _range_blobs(repo: Path, base: str, head: str):
+    """{path: blob-sha at head} for base..head, or None when unresolvable."""
+    try:
+        import importlib.util
+        path = Path(__file__).resolve().parent.parent / _REVIEW_RECEIPT_CHECK_REL
+        spec = importlib.util.spec_from_file_location("review_receipt_check", path)
+        if spec is None or spec.loader is None:
+            log.warning("review receipt: cannot load %s — writing no reviewed_blobs", path)
+            return None
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod.range_blobs(repo, base, head)
+    except Exception as e:  # noqa: BLE001 — a missing helper must not lose the receipt
+        log.warning("review receipt: range-blob helper failed (%s) — no reviewed_blobs", e)
+        return None
+
 
 def _write_review_receipt(cycle_id=None, args: dict | None = None) -> None:
     """Write a SHA-bound CLEAN review receipt for the range about to be pushed.
@@ -749,6 +771,12 @@ def _write_review_receipt(cycle_id=None, args: dict | None = None) -> None:
             "tip_sha": head,
             "base_sha": base,
             "reviewed_files": files[:500],
+            # CONTENT identity of the reviewed range (2026-10-09): the push gate
+            # accepts this receipt when these blobs cover every blob the pushed
+            # range changes, so a rebase that rewrites the tip (another session
+            # rebasing the shared branch) no longer invalidates a review of the
+            # same content. Absent/None = the receipt only ever matches tip+base.
+            "reviewed_blobs": _range_blobs(Path(repo), base, head),
             "cycle_id": cycle_id,
             "reviewed_at": _now_iso(),
         }

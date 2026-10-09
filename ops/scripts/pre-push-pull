@@ -170,12 +170,24 @@ if [[ "$_REPO_TOP" == "$CORTEX_REPO_TOP" && -f "$ALWAYS_REVIEW_LIST" ]]; then
     done < "$ALWAYS_REVIEW_LIST"
 
     if [[ "$_NEEDS_RECEIPT" -eq 1 ]]; then
-      _RECEIPT="$GOVERNANCE_STATE_DIR/.reviewed-${REPO_SLUG}-${_TIP}.json"
+      _CHECK="$GOVERNANCE_STATE_REPO/ops/scripts/lib/review-receipt-check.py"
+      [[ -f "$_CHECK" ]] || _CHECK="$_REPO_TOP/ops/scripts/lib/review-receipt-check.py"
       _CLEAN=0
+      _RECEIPT="$GOVERNANCE_STATE_DIR/.reviewed-${REPO_SLUG}-${_TIP}.json"
       if [[ -f "$_RECEIPT" ]]; then
-        _CHECK="$GOVERNANCE_STATE_REPO/ops/scripts/lib/review-receipt-check.py"
-        [[ -f "$_CHECK" ]] || _CHECK="$_REPO_TOP/ops/scripts/lib/review-receipt-check.py"
-        _CLEAN=$(python3 "$_CHECK" "$_RECEIPT" "$_TIP" "$_BASE" 2>/dev/null || echo 0)
+        _CLEAN=$(python3 "$_CHECK" "$_RECEIPT" "$_TIP" "$_BASE" --repo "$_REPO_TOP" 2>/dev/null || echo 0)
+      fi
+      # CONTENT-coverage fallback (2026-10-09): a rebase rewrites the tip, so the
+      # receipt that authorised this content can be named for a tip that no longer
+      # exists. Let the shared validator decide — it accepts a receipt whose
+      # reviewed_blobs cover every blob THIS range changes, and refuses one that
+      # does not (a range that gained an unreviewed file still refuses).
+      if [[ "$_CLEAN" != "1" && -d "$GOVERNANCE_STATE_DIR" ]]; then
+        while IFS= read -r _cand; do
+          [[ -n "$_cand" ]] || continue
+          _CLEAN=$(python3 "$_CHECK" "$_cand" "$_TIP" "$_BASE" --repo "$_REPO_TOP" 2>/dev/null || echo 0)
+          if [[ "$_CLEAN" == "1" ]]; then _RECEIPT="$_cand"; break; fi
+        done < <(ls -t "$GOVERNANCE_STATE_DIR"/.reviewed-"${REPO_SLUG}"-*.json 2>/dev/null)
       fi
       if [[ "$_CLEAN" != "1" ]]; then
         echo ""
@@ -186,7 +198,8 @@ if [[ "$_REPO_TOP" == "$CORTEX_REPO_TOP" && -f "$ALWAYS_REVIEW_LIST" ]]; then
         printf '%s' "$_MATCHED" | sed 's/^/      - /'
         echo "    The self-adversarial review must run and return CLEAN for THIS range"
         echo "    before it can be pushed — close the cycle, then push."
-        echo "    Expected receipt: $_RECEIPT"
+        echo "    Expected receipt: $_RECEIPT  (or any receipt in $GOVERNANCE_STATE_DIR whose"
+        echo "    reviewed_blobs cover every file this range changes)"
         echo ""
         exit 1
       fi

@@ -5,6 +5,11 @@
 
 Exercises the SAME ops/scripts/lib/review-receipt-check.py the pre-push hook
 calls, so these assertions cannot drift from what actually gates a push.
+
+REPAIRED 2026-10-09: this file carried TWO `def main()` blocks (lines 44 and 143).
+Python keeps the LAST definition, so the first — and the AC-5 runtime-only check it
+alone contained — was dead code that had silently stopped running. The two mains
+are merged into one, and the range-coverage cases below were added.
 """
 import json
 import os
@@ -41,43 +46,17 @@ def authorises(receipt, tip, base):
         Path(p).unlink(missing_ok=True)
 
 
-def main():
-    check("shared checker exists", CHECK.is_file(), True)
-    check("always-review list exists", LIST.is_file(), True)
-
-    clean = {"verdict": "CLEAN", "tip_sha": "aaaa111", "base_sha": "bbbb222"}
-
-    # AC-1/AC-2: a matching clean receipt authorises; nothing else does.
-    check("matching range authorises", authorises(clean, "aaaa111", "bbbb222"), "1")
-    check("FINDINGS never authorises",
-          authorises({**clean, "verdict": "FINDINGS"}, "aaaa111", "bbbb222"), "0")
-    check("missing receipt refuses", authorises({}, "aaaa111", "bbbb222"), "0")
-
-    # AC-3 - THE replay guard. A receipt earned for range A must not authorise B.
-    check("different tip refuses (range A vs B)",
-          authorises(clean, "cccc333", "bbbb222"), "0")
-    check("different base refuses (same tip, rebased range)",
-          authorises(clean, "aaaa111", "dddd444"), "0")
-
-    # AC-4 - scope: only always-review paths require a receipt.
-    patterns = [l.strip() for l in LIST.read_text().splitlines()
-                if l.strip() and not l.startswith("#")]
-    check("list is non-empty", len(patterns) > 0, True)
-    ordinary = ["docs/README.md", "skills/devops/example/SKILL.md", "README.md"]
-    check("ordinary files need no receipt",
-          any(p in f for p in patterns for f in ordinary), False)
-    guarded = ["mcp-servers/loop-gov-mcp.py", "ops/scripts/pre-push-pull"]
-    check("always-review files DO need one",
-          any(p in f for p in patterns for f in guarded), True)
-
-    integration_checks()
-
-    # AC-5 - runtime-only: the receipt lives in the state dir, never in a repo.
-    check("no repo-local receipt convention in the hook",
-          ".reviewed-" in (REPO / "ops/scripts/pre-push-pull").read_text()
-          and "$GOVERNANCE_STATE_DIR/.reviewed-" in (REPO / "ops/scripts/pre-push-pull").read_text(),
-          True)
-
+def authorises_in_repo(receipt, tip, base, repo):
+    """Run the shipped helper WITH --repo, so the content-coverage path runs."""
+    with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False) as fh:
+        json.dump(receipt, fh)
+        p = fh.name
+    try:
+        out = subprocess.run([sys.executable, str(CHECK), p, tip, base, "--repo", str(repo)],
+                             capture_output=True, text=True)
+        return (out.stdout.strip() or "0")
+    finally:
+        Path(p).unlink(missing_ok=True)
 
 
 def _hook_under_test(state_dir):
@@ -140,9 +119,76 @@ def integration_checks():
         shutil.rmtree(tmp, ignore_errors=True)
 
 
+def range_coverage_checks():
+    """CONTENT coverage (2026-10-09): a REBASE rewrites the tip but not the content.
+
+    A tip-bound receipt used to become invalid then, blocking a push whose content
+    had in fact been reviewed — observed when another session rebased this shared
+    branch (a commit of ours became 120758c2 -> 09d27193, same content).
+    """
+    import importlib.util as _ilu
+
+    spec = _ilu.spec_from_file_location("rrc", CHECK)
+    rrc = _ilu.module_from_spec(spec)
+    spec.loader.exec_module(rrc)
+
+    tmp = Path(tempfile.mkdtemp(prefix="receipt-range-"))
+    repo = tmp / "repo"
+    (repo / "mcp-servers").mkdir(parents=True)
+
+    def git(*args):
+        return subprocess.run(["git", "-C", str(repo), *args], capture_output=True, text=True)
+
+    git("init", "-q", "-b", "main")
+    git("config", "user.email", "t@t.t")
+    git("config", "user.name", "t")
+    (repo / "mcp-servers" / "loop-gov-mcp.py").write_text("v1\n")
+    git("add", "-A")
+    git("commit", "-q", "-m", "seed")
+    base = git("rev-parse", "HEAD").stdout.strip()
+
+    (repo / "mcp-servers" / "loop-gov-mcp.py").write_text("v2\n")
+    git("add", "-A")
+    git("commit", "-q", "-m", "the reviewed change")
+    tip1 = git("rev-parse", "HEAD").stdout.strip()
+
+    blobs = rrc.range_blobs(repo, base, tip1)
+    check("range blobs are computed", isinstance(blobs, dict) and bool(blobs), True)
+    receipt = {"verdict": "CLEAN", "tip_sha": tip1, "base_sha": base, "reviewed_blobs": blobs}
+    check("exact tip/base still authorises", authorises(receipt, tip1, base), "1")
+
+    # Rebase: rewrite the commit — same content, new SHA.
+    git("commit", "-q", "--amend", "-m", "the reviewed change (rebased)")
+    tip2 = git("rev-parse", "HEAD").stdout.strip()
+    check("rebase really changed the tip", tip2 != tip1, True)
+    check("rebased tip authorises by CONTENT", authorises_in_repo(receipt, tip2, base, repo), "1")
+
+    # Fail-closed: the range GAINS a file the receipt never saw.
+    (repo / "mcp-servers" / "extra.py").write_text("new\n")
+    git("add", "-A")
+    git("commit", "-q", "-m", "an unreviewed addition")
+    tip3 = git("rev-parse", "HEAD").stdout.strip()
+    check("range that gained an uncovered file refuses",
+          authorises_in_repo(receipt, tip3, base, repo), "0")
+
+    # A receipt with no reviewed_blobs is only ever accepted by exact tip/base.
+    legacy = {"verdict": "CLEAN", "tip_sha": tip1, "base_sha": base}
+    check("legacy receipt without blobs does not cover a rebase",
+          authorises_in_repo(legacy, tip2, base, repo), "0")
+
+    # Could-not-verify: an unresolvable range is a refusal, never a pass.
+    check("unresolvable range refuses",
+          authorises_in_repo(receipt, "0" * 40, base, repo), "0")
+
+    shutil.rmtree(tmp, ignore_errors=True)
+
+
 def main():
     check("shared checker exists", CHECK.is_file(), True)
     check("always-review list exists", LIST.is_file(), True)
+    check("this file has exactly ONE main()",
+          (REPO / "tests/test_review_receipt_gate.py").read_text().count("\ndef main():") == 1,
+          True)
 
     clean = {"verdict": "CLEAN", "tip_sha": "aaaa111", "base_sha": "bbbb222"}
     check("matching range authorises", authorises(clean, "aaaa111", "bbbb222"), "1")
@@ -170,6 +216,14 @@ def main():
           any(p in f for p in patterns for f in guarded), True)
 
     integration_checks()
+    range_coverage_checks()
+
+    # AC-5 - runtime-only: the receipt lives in the state dir, never in a repo.
+    # (This check lived only in the dead duplicate main() until 2026-10-09.)
+    hook_src = (REPO / "ops/scripts/pre-push-pull").read_text()
+    check("no repo-local receipt convention in the hook",
+          ".reviewed-" in hook_src and "$GOVERNANCE_STATE_DIR/.reviewed-" in hook_src,
+          True)
 
     print()
     if failures:

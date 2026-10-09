@@ -128,7 +128,8 @@ def _receipt_authorises(repo, receipt_path, tip, base):
     if not checker.is_file():
         return None
     try:
-        proc = subprocess.run([sys.executable, str(checker), str(receipt_path), tip, base],
+        proc = subprocess.run([sys.executable, str(checker), str(receipt_path), tip, base,
+                               "--repo", str(repo)],
                               capture_output=True, text=True, timeout=60)
     except (OSError, subprocess.SubprocessError):
         return None
