@@ -78,6 +78,56 @@ def _read_config_from_bus_conf(key: str) -> str:
   return ""
 
 
+def _deploy_map() -> dict:
+  """repo-relative source path -> deployed absolute path, parsed from cortex-update.sh.
+
+  The register()/register_orch() map is the ONE definition of what a deploy
+  covers; nothing derives it, so the doctor reads it from the same file the
+  deployer does (mirrors check_stale_deploys' parse — orch entries are skipped on
+  a non-orchestrator host because they do not deploy there).
+  """
+  out: dict = {}
+  cortex_update = CORTEX_REPO / "ops" / "scripts" / "cortex-update.sh"
+  if not cortex_update.exists():
+    return out
+  for line in cortex_update.read_text(errors="replace").splitlines():
+    s = line.strip()
+    if s.startswith("#") or not (s.startswith("register ") or s.startswith("register_orch ")):
+      continue
+    m = re.match(r'register(?:_orch)?\s+"([^"]+)"\s+"([^"]+)"', s)
+    if not m:
+      continue
+    if s.startswith("register_orch ") and AGENT_ROLE != "orchestrator":
+      continue
+    dest = (m.group(2).replace("${CORTEX_DEPLOY_HOME}", str(CORTEX_HOME))
+                      .replace("${HOME}", str(Path.home())))
+    out[m.group(1)] = Path(dest)
+  return out
+
+
+def _stripped_md5(data: bytes) -> str:
+  """MD5 of file content with the cortex SOURCE banner stripped.
+
+  The deployer inserts a banner (shebang + 2 header lines + blank), so a RAW
+  comparison of a deployed script against its repo source always differs; the
+  banner is not content. Same strip as the hooks-drift check.
+
+  Trailing newlines are normalized: one side of this comparison comes from a
+  helper that strips its captured output, so without this a file could read as
+  "not deployed" purely because of a final newline (found by the hermetic test
+  the first time it ran, not by inspection).
+  """
+  import hashlib as _hl
+  text = data.decode("utf-8", errors="surrogateescape")
+  lines = text.splitlines(keepends=True)
+  if (len(lines) >= 4 and lines[0].startswith("#!")
+      and lines[1].startswith("# SOURCE:") and "Do NOT edit" in lines[2]):
+    text = "".join([lines[0]] + lines[4:])
+  elif len(lines) >= 3 and lines[0].startswith("# SOURCE:") and "Do NOT edit" in lines[1]:
+    text = "".join(lines[3:])
+  return _hl.md5(text.rstrip("\n").encode("utf-8", errors="surrogateescape")).hexdigest()
+
+
 def check_repo(res: "Results") -> None:
   """1. Repo integrity: on main, clean, up to date."""
   if not CORTEX_REPO.is_dir():
@@ -114,15 +164,61 @@ def check_repo(res: "Results") -> None:
   repo_agents = CORTEX_REPO / "AGENTS.md"
 
   # ── Deploy sync: is git HEAD deployed to runtime? ──
+  # CONTENT-scoped (2026-10-09): when HEAD is ahead of the deployed revision, ask
+  # which DEPLOY-MAP files changed in that range and compare each against its
+  # deployed copy — instead of failing on the revision alone. On a host where
+  # several sessions share one checkout, a peer's commit that touches only
+  # non-deployed paths (docs, evidence, tests) used to FAIL this check and block
+  # an unrelated session's push; measured three times on esther in one session.
+  # Fail-closed is UNCHANGED: a deploy-map file whose deployed copy differs (or is
+  # missing) still FAILs, and the failing files are NAMED. A revision that cannot
+  # be resolved is reported as could-not-verify, never as a pass.
   update_commit_file = CORTEX_HOME / "state" / "update-commit"
   if update_commit_file.exists():
     deployed_commit = update_commit_file.read_text().strip()
     head_commit = run_bg(["git", "-C", str(CORTEX_REPO), "rev-parse", "HEAD"])
     if deployed_commit and head_commit and deployed_commit != head_commit:
-      n_new = run_bg(["git", "-C", str(CORTEX_REPO), "rev-list", "--count", f"{deployed_commit}..HEAD"])
-      res.add("Deploy sync", "FAIL",
-          f"HEAD ({head_commit[:12]}) ahead of last deploy ({deployed_commit[:12]}) — {n_new or '?'} commit(s) not deployed",
-          "REQUIRED: Run: cortex-update.sh ")
+      resolvable = run_bg(["git", "-C", str(CORTEX_REPO), "rev-parse", "--verify", "--quiet",
+                           deployed_commit + "^{commit}"])
+      if not resolvable:
+        res.add("Deploy sync", "WARN",
+            f"deployed revision {deployed_commit[:12]} does not resolve in this repo — "
+            f"could not verify what changed since it",
+            "Run: cortex-update.sh")
+      else:
+        changed = run_bg(["git", "-C", str(CORTEX_REPO), "diff", "--name-only",
+                          f"{deployed_commit}..HEAD"]) or ""
+        dmap = _deploy_map()
+        not_deployed = []
+        checked = 0
+        for rel in [ln.strip() for ln in changed.splitlines() if ln.strip()]:
+          dest = dmap.get(rel)
+          if dest is None:
+            continue                      # not a deployed artifact (docs/evidence/tests)
+          checked += 1
+          src_text = run_bg(["git", "-C", str(CORTEX_REPO), "show", f"HEAD:{rel}"])
+          if not src_text:
+            not_deployed.append(f"{rel} (unreadable at HEAD)")
+            continue
+          try:
+            deployed_bytes = dest.read_bytes()
+          except OSError:
+            not_deployed.append(f"{rel} (deployed copy missing: {dest})")
+            continue
+          if _stripped_md5(deployed_bytes) != _stripped_md5(src_text.encode("utf-8", errors="surrogateescape")):
+            not_deployed.append(rel)
+        if not_deployed:
+          shown = ", ".join(not_deployed[:5])
+          if len(not_deployed) > 5:
+            shown += f" (+{len(not_deployed) - 5} more)"
+          res.add("Deploy sync", "FAIL",
+              f"HEAD ({head_commit[:12]}) is ahead of the last deploy ({deployed_commit[:12]}) and "
+              f"{len(not_deployed)} changed deploy-map file(s) are NOT deployed: {shown}",
+              "REQUIRED: Run: cortex-update.sh ")
+        else:
+          res.add("Deploy sync", "PASS",
+              f"content-current — every deploy-map file changed since the last deploy "
+              f"({deployed_commit[:12]}) matches its deployed copy ({checked} checked)")
     else:
       res.add("Deploy sync", "PASS", "deployed commit matches HEAD")
   else:
