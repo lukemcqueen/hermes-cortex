@@ -1,0 +1,13 @@
+=== state snapshot (cycle 2533 pull+deploy) ===
+-- git status --porcelain --
+(empty)
+-- last-update.json --
+{
+  "before": "b27af197",
+  "after": "b27af197",
+  "files_updated": 233,
+  "files_removed": 0,
+  "dry_run": false
+}
+-- git rev-parse HEAD --
+b27af197

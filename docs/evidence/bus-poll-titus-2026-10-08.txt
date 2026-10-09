@@ -1,0 +1,31 @@
+Hermes Cortex Agent Bus poll — titus (worker) — 2026-10-08
+
+Purpose: scheduled bus-processor cron. Report only real, actionable issues.
+
+Method:
+  Auth from canonical env (~/hermes-cortex/.env CORTEX_BASIC_AUTH, quotes stripped).
+  Host: canonical CORTEX_BUS_URL :13004 from env (see transcript for exact value).
+
+Observations (verbatim from GET /api/pgmq/queues):
+  - inbox_titus            depth=0   processing=0   dlq=false
+  - inbox_titus_dlq        (queue does not exist; no DLQ configured for titus)
+  - inbox_orchestrator     depth=2   processing=0   dlq=false
+  - inbox_health_check     depth=2   processing=0   dlq=false
+  - inbox_orchestrator_dlq depth=0   processing=0   dlq=true  (empty)
+  - all other queues       depth=0
+  - total queues: 13
+
+GET /api/workflows?state=blocked -> {"workflows":[],"total":0}  (no blocked workflows)
+
+Access control checks (GET /api/pgmq/queue/<name>):
+  - titus -> inbox_health_check : 403 "does not have read access"
+  - titus -> inbox_orchestrator : 403 "does not have read access"
+  => The 2+2 pending messages on inbox_orchestrator / inbox_health_check are
+     orchestrator-scope queues, not readable by this worker. No DLQ messages.
+     Out of worker scope; not evidence of an issue titus should escalate.
+
+Conclusion for this poll:
+  - titus inbox: 0 pending
+  - DLQ: empty (none for titus)
+  - blocked workflows: 0
+  - urgent/critical/actionable items for titus: NONE -> [SILENT]

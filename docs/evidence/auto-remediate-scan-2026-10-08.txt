@@ -1,0 +1,9 @@
+== sensor ==
+exit=0 output=[]
+== fences ==
+unbalanced=0
+== host gating ==
+IS_SERVER=false
+SCAN-HEALTHY
+== shell exit (wrapper) ==
+wrapper-exit=0

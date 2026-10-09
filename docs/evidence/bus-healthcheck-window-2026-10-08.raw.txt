@@ -1,0 +1,23 @@
+Sampling every 5s for 75s. Fields: depth/processing
+t=  0s  inbox_health_check=d3p0  inbox_orchestrator=d2p0  inbox_titus=d0p0  inbox_orchestrator_dlq=d0p0
+t=  5s  inbox_health_check=d3p0  inbox_orchestrator=d2p0  inbox_titus=d0p0  inbox_orchestrator_dlq=d0p0
+t= 10s  inbox_health_check=d3p0  inbox_orchestrator=d2p0  inbox_titus=d0p0  inbox_orchestrator_dlq=d0p0
+t= 15s  inbox_health_check=d3p0  inbox_orchestrator=d2p0  inbox_titus=d0p0  inbox_orchestrator_dlq=d0p0
+t= 20s  inbox_health_check=d3p0  inbox_orchestrator=d2p0  inbox_titus=d0p0  inbox_orchestrator_dlq=d0p0
+t= 25s  inbox_health_check=d3p0  inbox_orchestrator=d2p0  inbox_titus=d0p0  inbox_orchestrator_dlq=d0p0
+t= 30s  inbox_health_check=d3p0  inbox_orchestrator=d2p0  inbox_titus=d0p0  inbox_orchestrator_dlq=d0p0
+t= 35s  inbox_health_check=d3p0  inbox_orchestrator=d2p0  inbox_titus=d0p0  inbox_orchestrator_dlq=d0p0
+t= 40s  inbox_health_check=d3p0  inbox_orchestrator=d2p0  inbox_titus=d0p0  inbox_orchestrator_dlq=d0p0
+t= 45s  inbox_health_check=d3p0  inbox_orchestrator=d2p0  inbox_titus=d0p0  inbox_orchestrator_dlq=d0p0
+t= 50s  inbox_health_check=d3p0  inbox_orchestrator=d2p0  inbox_titus=d0p0  inbox_orchestrator_dlq=d0p0
+t= 55s  inbox_health_check=d3p0  inbox_orchestrator=d2p0  inbox_titus=d0p0  inbox_orchestrator_dlq=d0p0
+t= 60s  inbox_health_check=d3p0  inbox_orchestrator=d2p0  inbox_titus=d0p0  inbox_orchestrator_dlq=d0p0
+t= 65s  inbox_health_check=d3p0  inbox_orchestrator=d2p0  inbox_titus=d0p0  inbox_orchestrator_dlq=d0p0
+t= 70s  inbox_health_check=d3p0  inbox_orchestrator=d2p0  inbox_titus=d0p0  inbox_orchestrator_dlq=d0p0
+t= 75s  inbox_health_check=d3p0  inbox_orchestrator=d2p0  inbox_titus=d0p0  inbox_orchestrator_dlq=d0p0
+
+=== unique (depth,processing) states observed per queue ===
+  inbox_health_check: [(3, 0)]
+  inbox_orchestrator: [(2, 0)]
+  inbox_titus: [(0, 0)]
+  inbox_orchestrator_dlq: [(0, 0)]

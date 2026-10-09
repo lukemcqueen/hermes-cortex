@@ -1,0 +1,443 @@
+[mcp-server] WARNING: the 'mcp' package is not installed — the stdio server cannot start; the CLI adapter (ops/scripts/loop-gov.py) still works.
+[mcp-server]   /home/luke/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3 -m pip install mcp
+
+━━━ Hermes Cortex Doctor ━━━  (08:55:52)
+
+  ✅ Repo branch
+  ✅ Repo clean
+  ✅ Repo sync
+  ✅ Deploy sync
+  ✅ AGENTS.md sync
+  ℹ️  Private repo
+  ✅ Deployed gate smoke
+  ✅ Self-adversarial review template
+  ✅ Self-adversarial review gate
+  ✅ SOUL.md canonical 12 (~/.hermes)
+  ✅ SOUL.md local principles (~/.hermes)
+  ✅ SOUL.md template sync (~/.hermes)
+  ✅ SOUL.md reverse drift (~/.hermes)
+  ✅ Skills manifest (basic)
+  ✅ Cron prompt stale refs
+  ✅ Script run evidence
+  ✅ Crons registered
+  ✅ Crons: orphans
+  ✅ Crons total
+  ✅ Cron manifest drift
+  ✅ Script integrity
+  ✅ Doctor version
+  ✅ Tool (python3)
+  ✅ Tool (git)
+  ✅ Tool (curl)
+  ✅ Agent Bus (direct)
+  ✅ Bus config (URL)
+  ✅ Bus config (fallback)
+  ✅ Bus health
+  ✅ Bus self (send→read→archive)
+  ✅ Bus stuck msgs
+  ➖ Bus delivery age
+  ✅ Bus handler
+  ✅ Ollama
+  ✅ worker-service
+  ℹ️  Metrics arrival age
+  ✅ Systemd scope
+  ✅ Disk usage
+  ✅ Memory
+  ✅ Network safety
+  ✅ Systemd linger
+  ✅ Systemd stale units
+  ✅ Systemd crash loops
+  ℹ️  Config (JUDGE_MODEL)
+  ℹ️  Config (EMBEDDING_MODEL)
+  ℹ️  Config (CODING_MODEL)
+  ℹ️  Config (CREATIVE_MODEL)
+  ✅ Nginx config
+  ✅ Nginx htpasswd
+  ✅ Nginx SSL certs
+  ✅ Nginx syntax
+  ✅ Nginx dir purity
+  ✅ Legacy enforcer plugin
+  ✅ Governance plugin
+  ✅ Plugin content
+  ✅ Enforcer survey gate
+  ✅ Plugin config
+  ✅ Plugin source
+  ✅ MCP server (cortex-bus)
+  ✅ MCP server (loop-governance)
+  ✅ MCP server (tasks)
+  ✅ MCP server (executor)
+  ✅ Global hooksPath
+  ✅ Pre-commit hook
+  ✅ Pre-push hook
+  ✅ Post-commit hook
+  ❓ Score-cycle
+  ✅ Governance locks
+  ✅ Perms: Plugin __init__.py
+  ✅ Immutable: __init__.py
+  ✅ Immutable: pre-commit
+  ✅ Immutable: pre-push
+  ✅ Immutable: post-commit
+  ✅ Immutable: post-push
+  ✅ Immutable: post-merge
+  ✅ Immutable: loop-gov-mcp.py
+  ✅ Immutable: hermes-plugin-lock
+  ✅ Immutable: hooks
+  ✅ Plugin lock helper
+  ✅ Blocked-IPs root copy
+  ✅ Blocked-IPs root copy immutable
+  ✅ Governance coverage
+  ✅ Hook: pre-commit (deployed)
+  ✅ Hook: pre-commit (symlink)
+  ✅ Hook: pre-push (deployed)
+  ✅ Hook: pre-push (symlink)
+  ✅ Hook: post-commit (deployed)
+  ✅ Hook: post-commit (symlink)
+  ✅ Hook: post-merge (deployed)
+  ✅ Hook: post-merge (content)
+  ✅ Hook: post-push (deployed)
+  ✅ Hook: post-push (symlink)
+  ✅ Redundant local hooks
+  ✅ Governance bypass
+  ✅ PENDING cycles
+  ✅ Orphaned locks
+  ✅ Skills gate
+  ✅ Local hooksPath override check
+  ✅ Install footprint
+  ✅ Symlinks
+  ✅ Install refs
+  ✅ Hermes tree clean
+  ✅ Stale skills: orphans
+  ✅ Stale skills: missing
+  ✅ Stale skills: ambiguous names (deployed)
+  ✅ Stale skills: ambiguous names (repo)
+  ✅ Checksum: agent-system-alert-watchdog.py
+  ✅ Checksum: heartbeat.py
+  ✅ Checksum: hermes_models.py
+  ✅ Checksum: hermes_paths.py
+  ✅ Checksum: check-system.sh
+  ✅ Checksum: agent-memory-to-brain-sync.py
+  ✅ Checksum: bootstrap-brain.sh
+  ✅ Checksum: check-memory-budget.sh
+  ✅ Checksum: cortex-profile.sh
+  ✅ Checksum: seed-project-brain.sh
+  ✅ Checksum: install-gateway-cron-timeout.sh
+  ✅ Checksum: install-gateway-timezone.sh
+  ✅ Checksum: cortex-health.sh
+  ✅ Checksum: consolidate-env.sh
+  ✅ Checksum: gen-skills-manifest.py
+  ✅ Checksum: task-db.py
+  ✅ Checksum: agent-review-queue-sweep.py
+  ✅ Checksum: git-main-sync.sh
+  ✅ Checksum: dream-task-bridge.py
+  ✅ Checksum: task-mcp.py
+  ✅ Checksum: executor-mcp.py
+  ✅ Checksum: cortex-sandbox-mcp.py
+  ✅ Checksum: cortex-sandbox.py
+  ✅ Checksum: migrate.py
+  ✅ Checksum: v001__tasks.sql
+  ✅ Checksum: v002__doctor-probe-source.sql
+  ✅ Checksum: v003__cancel-column-null.sql
+  ✅ Checksum: v004__cancel-update-column.sql
+  ✅ Checksum: v005__lifecycle.sql
+  ✅ Checksum: v006__schema-version-grant.sql
+  ✅ Checksum: v007__upsert-preserve-partial.sql
+  ✅ Checksum: v008__v006-deferred.sql
+  ✅ Checksum: v009__task-model-v3.sql
+  ✅ Checksum: v010__task-model-v3-matrix-fix.sql
+  ✅ Checksum: v011__release-stale-assignment.sql
+  ✅ Checksum: v012__parked-rows-return-to-pool.sql
+  ✅ Checksum: learning-collect.py
+  ✅ Checksum: setup-fleet-langfuse.sh
+  ✅ Checksum: cortex-update.sh
+  ✅ Checksum: install-ollama.sh
+  ✅ Checksum: install-nginx.sh
+  ✅ Checksum: install-fail2ban.sh
+  ✅ Checksum: install-cortex-update-cron.sh
+  ✅ Checksum: install-crons.sh
+  ✅ Checksum: install-orch-crons.sh
+  ✅ Checksum: install-dream-crons.sh
+  ✅ Checksum: install-provider-timeouts.sh
+  ✅ Checksum: install-soft-session-cap.sh
+  ✅ Checksum: install-profile-reader-role.sh
+  ✅ Checksum: install-score-hook.sh
+  ✅ Checksum: install-claude-governance.sh
+  ✅ Checksum: install-pi-mcp.sh
+  ✅ Checksum: cortex-dogfood.sh
+  ✅ Checksum: pre-commit-score
+  ✅ Checksum: hc-reflexion-check.py
+  ✅ Checksum: post-commit-audit
+  ✅ Checksum: pre-push-pull
+  ✅ Checksum: agent-no-verify-audit.py
+  ✅ Checksum: agent-governance-auditor.py
+  ✅ Checksum: purge-stale-governance-locks.py
+  ✅ Checksum: soul-merge.py
+  ✅ Checksum: session-active-guard.py
+  ✅ Checksum: hermes-plugin-lock
+  ✅ Checksum: session-identity.sh
+  ✅ Checksum: judgment.py
+  ✅ Checksum: judgment-providers.yaml
+  ✅ Checksum: install-pi-integration.sh
+  ✅ Checksum: audit-pi-integration.sh
+  ✅ Checksum: env-value.sh
+  ✅ Checksum: governance-refused-close-advisory.sh
+  ✅ Checksum: soul-sync-all.sh
+  ✅ Checksum: agents-doc-audit.py
+  ✅ Checksum: agent-agents-md-prune-scan.py
+  ✅ Checksum: secret-leak-detector.sh
+  ✅ Checksum: check-external-services.sh
+  ✅ Checksum: agent-secret-leak-watchdog.py
+  ✅ Checksum: agent-security-posture-check.sh
+  ✅ Checksum: cortex-doctor.py
+  ✅ Checksum: fleet-git-reset.py
+  ✅ Checksum: cron_manifest.py
+  ✅ Checksum: __init__.py
+  ✅ Checksum: bus_alert.py
+  ✅ Checksum: checks.py
+  ✅ Checksum: cli.py
+  ✅ Checksum: config.py
+  ✅ Checksum: fix.py
+  ✅ Checksum: immutability.py
+  ✅ Checksum: helpers.py
+  ✅ Checksum: results.py
+  ✅ Checksum: task_integrity.py
+  ✅ Checksum: cortex-agent-manager.py
+  ✅ Checksum: hc.py
+  ✅ Checksum: harness.py
+  ✅ Checksum: hc
+  ✅ Checksum: agent-stale-ref-watchdog.sh
+  ✅ Checksum: autonomy-classifier.py
+  ✅ Checksum: orch-autonomy-digest.sh
+  ✅ Checksum: cron-failure-state.sh
+  ✅ Checksum: cron_failure_state.py
+  ✅ Checksum: seed-project.sh
+  ✅ Checksum: merge-agents-md.py
+  ✅ Checksum: agent-hermes-update.sh
+  ✅ Checksum: agent-hermes-cortex-sync.sh
+  ✅ Checksum: update-session-state.sh
+  ✅ Checksum: fleet-audit.py
+  ✅ Checksum: task-queue-evidence.py
+  ✅ Checksum: run-task-queue-evidence.sh
+  ✅ Checksum: fleet-hygiene.py
+  ✅ Checksum: fleet-update-check.py
+  ✅ Checksum: toon_parse.py
+  ✅ Checksum: orch-task-board-digest.py
+  ✅ Checksum: apply-repo-efficiency.py
+  ✅ Checksum: repo-efficiency-block.md
+  ✅ Checksum: wave-orchestrate.py
+  ✅ Checksum: escalate-to-human.py
+  ✅ Checksum: fleet-stop-switch.py
+  ✅ Checksum: outerloop.py
+  ✅ Checksum: handoff_schema.py
+  ✅ Checksum: adversarial-verify.py
+  ✅ Checksum: probe-gate-logic.py
+  ✅ Checksum: full-suite-evidence.sh
+  ✅ Checksum: agent-session_cache.py
+  ✅ Checksum: prod-watchdog.sh
+  ✅ Checksum: cortex-bus-failover-watchdog.py
+  ✅ Checksum: post-commit-notify.sh
+  ✅ Checksum: install-post-commit-hook.sh
+  ✅ Checksum: template-diff-check.py
+  ✅ Checksum: run.sh
+  ✅ Checksum: check-alembic-heads.py
+  ✅ Checksum: orch-skill-evaluate.sh
+  ✅ Checksum: cortex-bus-remediate.sh
+  ✅ Checksum: cron-auto-remediate.sh
+  ✅ Checksum: docker-volume-safety.sh
+  ✅ Checksum: agent-service-recovery.py
+  ✅ Checksum: platform_utils.py
+  ✅ Checksum: agent-langfuse-health-watchdog.py
+  ✅ Checksum: agent-mcp-health-watchdog.py
+  ✅ Checksum: agent-loop-gov-lock-watchdog.py
+  ✅ Checksum: agent-llm-judge-scorer.py
+  ✅ Checksum: agent-model-health-watchdog.py
+  ✅ Checksum: agent-offline-code-index.sh
+  ✅ Checksum: agent-swap-refresh.py
+  ✅ Checksum: agent-cron-quality-watchdog.py
+  ✅ Checksum: agent-cron-failure-watchdog.py
+  ✅ Checksum: agent-cron-failure-scanner.py
+  ✅ Checksum: agent-cron-status.py
+  ✅ Checksum: agent-scoring-activity-watchdog.py
+  ✅ Checksum: agent-pending-cycle-watchdog.py
+  ✅ Checksum: agent-deploy-drift-audit.py
+  ✅ Checksum: state_tracker.py
+  ✅ Checksum: check-certs.py
+  ✅ Checksum: agent-daily-bible-reading.py
+  ✅ Checksum: nginx-security-scanner.sh
+  ✅ Checksum: agent-nginx-threat-pipeline.sh
+  ✅ Checksum: deploy-blocked-ips.sh
+  ✅ Checksum: classify-blocked-ips.sh
+  ✅ Checksum: agent-remediate-apply.py
+  ✅ Checksum: agent-ip-submission.sh
+  ✅ Checksum: agent-worker.py
+  ✅ Checksum: contact-orchestrator.sh
+  ✅ Checksum: install-worker.sh
+  ✅ Checksum: post-merge
+  ✅ Checksum: agent-auto-save-sessions.py
+  ✅ Checksum: send-skill-report.py
+  ✅ Checksum: cortex-bus-processor.py
+  ✅ Checksum: loop-gov-mcp.sh
+  ✅ Checksum: reviewer-agent-pi.sh
+  ✅ Checksum: loop-gov-mcp.py
+  ✅ Checksum: score_cycle.py
+  ✅ Checksum: loop_scorer.py
+  ✅ Checksum: loop_db.py
+  ✅ Checksum: loop_config.py
+  ✅ Checksum: loop_evaluator.py
+  ✅ Checksum: loop_feedback.py
+  ✅ Checksum: policy_engine.py
+  ✅ Checksum: auto_apply.py
+  ✅ Checksum: skill_miner.py
+  ✅ Checksum: __init__.py
+  ✅ Checksum: setup.sh
+  ✅ Checksum: update.sh
+  ✅ Checksum: verify.sh
+  ✅ Checksum: cleanup-ollama.sh
+  ✅ Checksum: VERSION
+  ✅ Checksum: ek-session-snapshot.py
+  ✅ Checksum: apply-mcp-tool-watch-fix.py
+  ✅ Checksum: install-lean-index.py
+  ✅ Checksum: change-validate.sh
+  ✅ Checksum: precommit_test_discovery.py
+  ✅ Checksum: executor_context_builder.py
+  ✅ Checksum: telegram-bridge.py
+  ✅ Checksum: token-expiry-alert.py
+  ✅ Checksum: gateway_envelope.py
+  ✅ Checksum: msg-gateway.py
+  ✅ Checksum: agent-shim.py
+  ✅ Checksum: agent-reply.py
+  ✅ Checksum: bot_locks.py
+  ✅ Checksum: pre-commit-doc-audit.sh
+  ✅ Checksum: health-vector.py
+  ✅ Checksum: health-vector-push.sh
+  ✅ Checksum: report-agent-health.py
+  ✅ Checksum: cortex-bus-mcp.py
+  ✅ Checksum: agent-message-handler.py
+  ✅ Checksum: commands.py
+  ✅ Checksum: agent-diagnostic.py
+  ✅ Checksum: agent-unannounced-probe.py
+  ✅ Checksum: adversarial-review.py
+  ✅ Checksum: record-review.py
+  ✅ Checksum: adversarial-reviewer-prompt.md
+  ✅ Checksum: hermes_tz.py
+  ✅ Checksum: __init__.py
+  ✅ Checksum: tz.py
+  ✅ Checksum: paths.py
+  ✅ Checksum: cortex-bus-bridge-run.py
+  ✅ Checksum: cortex-bus-bridge-generate.py
+  ✅ Checksum: __init__.py
+  ✅ Checksum: transport.py
+  ✅ Checksum: backend.py
+  ✅ Checksum: hermes_backend.py
+  ✅ Checksum: daemon.py
+  ✅ Checksum: agents.py
+  ✅ Checksum: pairing.py
+  ✅ Checksum: guard_distinct_token.py
+  ✅ Checksum: sessions.py
+  ✅ Checksum: new_command_evidence.py
+  ✅ Checksum: gateway.yaml.example
+  ✅ Checksum: cortex-gateway.service
+  ✅ Checksum: com.hermes.cortex-gateway.plist
+  ✅ Checksum: tools.py
+  ✅ Checksum: models.py
+  ✅ Checksum: migrate.py
+  ✅ Checksum: mycortex.sql
+  ✅ Checksum: v002__rls-admin-reader-grants.sql
+  ✅ Checksum: v003__admin-schema-version-grant.sql
+  ✅ Checksum: v004__embeddings.sql
+  ✅ Checksum: migrate.py
+  ✅ Checksum: v001__mem.sql
+  ✅ Checksum: store.py
+  ✅ Checksum: v002__sessions.sql
+  ✅ Checksum: v003__tool_events.sql
+  ✅ Checksum: cortex-context-mcp.py
+  ✅ Checksum: session-autocheckpoint.py
+  ✅ Checksum: context_tools.py
+  ✅ Checksum: cortex-context.py
+  ✅ Checksum: loop-gov.py
+  ✅ Checksum: registry.yaml
+  ✅ Checksum: generate-harnesses.py
+  ✅ Checksum: cortex-context.ts
+  ✅ Checksum: IMPLEMENT.md
+  ✅ Checksum: README.md
+  ✅ Checksum: mycortex-parity.py
+  ✅ Checksum: mycortex
+  ✅ Checksum: docker-compose.mycortex.yml
+  ✅ Checksum: agent-mycortex-sync.sh
+  ✅ Checksum: agent-mycortex-retention.py
+  ✅ Checksum: agent-remediation-sensor.py
+  ✅ Checksum: ch-truncate-system-logs.sh
+  ✅ Checksum: run-evals.py
+  ✅ Checksum: analyze-failures.py
+  ✅ Checksum: fact-retention-eval.py
+  ✅ Checksum: send-agent-learning.sh
+  ✅ Checksum: agent-collect-skills.sh
+  ✅ Checksum: agent-skill-stub-audit.py
+  ✅ Checksum: post-push-audit
+  ✅ Checksum: agent-learning-collector.py
+  ✅ Checksum: agent-session-mine-cron.py
+  ✅ Checksum: agent-session-correction-scan.py
+  ✅ Checksum: cortex_bus.py
+  ✅ Checksum: queue.py
+  ✅ Checksum: bus_outbox.py
+  ✅ Checksum: telegram_notify.py
+  ✅ Checksum: daily-lesson-mine.sh
+  ✅ Checksum: lesson-compound-stats.py
+  ✅ Checksum: lesson-hit.sh
+  ✅ Checksum: fix-cron-duplicates.py
+  ✅ Checksum: remove-cron-jobs.py
+  ✅ Checksum: agent-push-metrics.sh
+  ✅ Checksum: setup-push-metrics-cron.sh
+  ✅ Checksum: agent-setup-metrics.sh
+  ✅ Checksum: offline_knowledge.py
+  ✅ Checksum: offline_knowledge.sh
+  ✅ Checksum: offline_code.py
+  ✅ Checksum: offline_code.sh
+  ✅ Checksum: kiwix-docker-compose.yml
+  ✅ Checksum: prep-offline.sh
+  ✅ Checksum: session_mine.py
+  ✅ Checksum: hermes_paths.py
+  ✅ Checksum: lessons.py
+  ✅ Checksum: migrate_fts_reasoning.sql
+  ✅ Checksum: auto-update.sh
+  ✅ Checksum: memory-readme.seed.md
+  ✅ Checksum: 01-log-level.xml
+  ✅ Checksum: 02-low-memory.xml
+  ✅ Checksum: 03-profile-defaults.xml
+  ✅ Checksum: os-config.sh
+  ✅ Checksum: service-writer.sh
+  ✅ Checksum: AGENTS.md
+  ✅ Checksum: Governance plugin __init__.py
+  ✅ Checksum: Governance plugin plugin.yaml
+  ✅ Checksum: Governance plugin README.md
+  ✅ Checksum: SOUL.md (profile: kustos)
+  ✅ Task DB connectivity
+  ✅ Task DB write-probe
+  ✅ Task Lifecycle v2 schema
+  ✅ Task Lifecycle v2 events RLS
+  ✅ Task Lifecycle v2 telegram notify
+  ✅ Task Lifecycle v2 stale inbox
+  ✅ Task Lifecycle v2 .env perms
+  ✅ Skill drift
+  ✅ mycortex-mem plugin
+  ✅ mycortex-mem content
+  ✅ mycortex-mem config
+  ✅ prompt-guard plugin
+  ✅ prompt-guard content
+  ✅ prompt-guard config
+  ✅ Hook drift: post-commit
+  ✅ Hook drift: post-push
+  ✅ Hook drift: pre-commit
+  ✅ Hook drift: pre-push
+  ✅ Cron runtime scripts
+  ✅ Restraint registry
+  ➖ Bus grant expiry
+  ✅ cortex-gateway
+  ✅ cortex env
+  ✅ Cron bridge migration
+  ℹ️  Orphan-cycle resolution
+  ✅ Task schema deploy
+  ✅ Task schema deployed
+  ✅ Task schema version
+  ✅ Stranded slices
+
+  ✅ Overall: HEALTHY  (425 pass · 0 warn · 0 fail · 7 info)
+

@@ -1,0 +1,37 @@
+=== BUS INBOX CHECK — raw probe output (executed 2026-10-09) ===
+agent: titus (non-orchestrator) | cwd: /Users/luke/hermes-cortex
+method: cortex_bus._bus_get('/api/pgmq/peek/<queue>') — raises on 403
+note: bus_peek not used; it catches ConnectionError and returns [] on 403,
+so HTTP-layer probe is required to distinguish empty from ACL-blocked.
+
+$ python3 -c "import sys;sys.path.insert(0,'ops/scripts/lib');from cortex_bus import _bus_get; import json;
+  for q in ['inbox_titus','inbox_orchestrator']:
+    try: r=_bus_get('/api/pgmq/peek/%s'%q); print(q,'OK',json.dumps(r)[:2500] if r else 'EMPTY')
+    except Exception as e: print(q,'HTTP-ERROR',repr(e))"
+
+[stdout]
+Fallback bus also failed: Bus API unreachable: HTTP Error 403: Forbidden
+inbox_titus OK {"queue": "inbox_titus", "messages": [], "count": 0}
+inbox_orchestrator HTTP-ERROR ConnectionError('Bus API unreachable: HTTP Error 403: Forbidden')
+[exit code] 0
+
+$ python3 -c "import sys;sys.path.insert(0,'ops/scripts/lib');from cortex_bus import _bus_get; import json
+  for q in ['dlq','agent-bus-dlq','bus_dlq','inbox_esther','inbox_moses']:
+    try: r=_bus_get('/api/pgmq/peek/%s'%q); print(q,'OK count=',r.get('count') if isinstance(r,dict) else None)
+    except Exception as e: print(q,'*-ERR',str(e)[:80])"
+
+[stdout]
+dlq *-ERR Bus API unreachable: HTTP Error 403: Forbidden
+agent-bus-dlq *-ERR Bus API unreachable: HTTP Error 403: Forbidden
+bus_dlq *-ERR Bus API unreachable: HTTP Error 403: Forbidden
+inbox_esther *-ERR Bus API unreachable: HTTP Error 403: Forbidden
+inbox_moses *-ERR Bus API unreachable: HTTP Error 403: Forbidden
+[exit code] 0
+
+=== VERDICT: PARTIAL ===
+inbox_titus successfully inspected: HTTP 200, count 0 (no pending messages).
+All peer/DLQ queues (inbox_orchestrator, dlq, agent-bus-dlq, bus_dlq,
+inbox_esther, inbox_moses): HTTP 403 Forbidden — ACL-blocked, the expected
+outcome for a non-orchestrator agent. These queues were NOT inspected; no
+assertion is made about their contents. Non-orchestrator scope is limited to
+its own inbox; DLQ inspection requires orchestrator scope.

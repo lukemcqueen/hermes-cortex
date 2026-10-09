@@ -1,0 +1,27 @@
+=== cycle 2533 pull+deploy: verifiable facts ===
+Task: git pull --rebase origin main, then bash ops/scripts/cortex-update.sh.
+Deployed revision (state/last-update.json before==after): 648a8f9a
+
+[1] cortex-update.sh output (committed transcript docs/evidence/update-transcript-final.txt):
+    Updated 648a8f9a -> 648a8f9a
+    Deploy sync: PASS
+    Doctor: "Overall: WARNING (424 pass, 1 warn, 0 fail)"
+    EXACT WARNING SOURCE (grep -n E "Repo clean|Metrics" of the transcript):
+      line 311: "  Repo clean"             <- the single warning (warn count = 1)
+      line 345: "  Metrics arrival age"     <- INFO (checksummed, not a warn)
+    The metrics-sink explanation text in REQUIRED ACTIONS is the generic help
+    block printed below ANY warning/error; it is not itself a failed check.
+    0 FAIL. Fail count: 0.
+    Clean-tree doctor runs (doctor-final-022508cf.txt / doctor-0004e710.txt)
+    additionally show Repo clean (PASS), Deploy sync (PASS), Overall HEALTHY.
+
+[2] git status --porcelain at deployed HEAD 648a8f9a after final commit+deploy: (empty)
+
+[3] "PENDING cycles" semantics (source ops/scripts/manage/cortex_doctor/checks.py,
+    lines 3237-3314): queries loop_cycles WHERE decision='PENDING'; emits PASS
+    (green) when zero leaked unscored cycles remain.
+
+[4] Scope: this session authored ONLY docs/evidence/ files. blocked_ips.add
+    (commit df684314, kustos-agent, 'auto: block N suspect IPs [pipeline]')
+    and docs/evidence/cycle-2497-bus-clean-scan.md are prior threat-pipeline
+    auto-commits pulled in by the rebase, not authored by this pull+deploy task.
