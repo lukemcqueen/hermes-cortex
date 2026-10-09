@@ -3,8 +3,9 @@
 # Reads credentials from hermes-inbox.conf; never embeds secrets.
 # Usage: ./poll-bus-inbox_titus.sh
 # Correct behavior: exits 0 on ANY successful authenticated queue read (2xx),
-# regardless of message count. Fails (non-zero) only on connection error or
-# non-2xx. Prints the message count so callers/crons can branch on it.
+# regardless of message count. Fails (non-zero) on connection error, non-2xx,
+# missing/unreadable config, missing URL/AUTH, or malformed JSON payload.
+# Prints the message count so callers/crons can branch on it.
 set -euo pipefail
 CONF="${HC_INBOX_CONF:-$HOME/.hermes-cortex/hermes-inbox.conf}"
 [ -r "$CONF" ] || { echo "ERROR: cannot read $CONF" >&2; exit 1; }
