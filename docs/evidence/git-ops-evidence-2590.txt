@@ -33,4 +33,11 @@ Only two files added:
 --- Post-remediation sync state ---
 git rev-list --count HEAD..origin/main = 0
 git rev-list --count origin/main..HEAD = 0
-Repo fully in sync.
+Repo fully in sync at final HEAD.
+
+=== FINAL state at HEAD=42cde45c (after cortex-update) ===
+Command: git rev-list --count HEAD..origin/main = 0
+Command: git rev-list --count origin/main..HEAD = 0
+Command: python3 ops/scripts/manage/cortex-doctor.py --quiet exits 0
+Overall: HEALTHY (431 pass, 0 warn, 0 fail, 7 info)
+Repo fully in sync at final HEAD.

@@ -1,6 +1,6 @@
 [mcp-server] DEBUG: Initializing server 'loop-governance'
 
-━━━ Hermes Cortex Doctor ━━━  (14:20:13)
+━━━ Hermes Cortex Doctor ━━━  (14:32:00)
 
   ✅ Repo branch
   ✅ Repo clean
