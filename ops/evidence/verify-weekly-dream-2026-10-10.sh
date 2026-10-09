@@ -17,6 +17,24 @@ fi
 test -s "$COMMITTED_CONTENT" || { echo "FAIL: committed artifact is empty"; exit 1; }
 echo "OK: committed artifact present ($(wc -c < "$COMMITTED_CONTENT") bytes)"
 
+echo "== scripted hash assertion: the committed artifact is unmodified =="
+# The expected digest lives in a committed sidecar; the script asserts the
+# artifact against it, so a later reviewer can re-run this and see PASS/FAIL.
+EXPECTED_SHA_FILE="${REPO_ROOT}/docs/evidence/weekly-dream-content-2026-10-10.sha256"
+if [ ! -f "$EXPECTED_SHA_FILE" ]; then
+  echo "FAIL: missing expected-hash sidecar $EXPECTED_SHA_FILE"
+  exit 1
+fi
+EXPECTED_CONTENT_SHA="$(tr -d '[:space:]' < "$EXPECTED_SHA_FILE")"
+ACTUAL_CONTENT_SHA="$(sha256sum "$COMMITTED_CONTENT" | awk '{print $1}')"
+if [ "$ACTUAL_CONTENT_SHA" != "$EXPECTED_CONTENT_SHA" ]; then
+  echo "FAIL: committed artifact hash mismatch"
+  echo "  expected: $EXPECTED_CONTENT_SHA"
+  echo "  actual:   $ACTUAL_CONTENT_SHA"
+  exit 1
+fi
+echo "OK: committed artifact sha256 matches the committed sidecar (unmodified, complete)"
+
 echo "== out-of-repo brain copy (may be absent on a fresh host; then checked structurally) =="
 if [ -f "$BRAIN_DREAM" ]; then
   if cmp -s "$BRAIN_DREAM" "$COMMITTED_CONTENT"; then
