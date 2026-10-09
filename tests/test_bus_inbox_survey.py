@@ -1,7 +1,8 @@
 """Hermetic tests for ops/scripts/bus/bus-inbox-survey.sh.
 
 The survey runs in fixture mode (BUS_SURVEY_FIXTURE=<file>) so the
-pending / urgent / blocked / DLQ logic is exercised without a live bus.
+pending / urgent / blocked / DLQ / truncation logic is exercised
+without a live bus.
 """
 import json
 import os
@@ -19,6 +20,7 @@ def run_survey(tmp_path, fixture):
     fx.write_text(json.dumps(fixture))
     env = dict(os.environ)
     env["BUS_SURVEY_FIXTURE"] = str(fx)
+    env["BUS_SURVEY_PEEK_LIMIT"] = "500"
     env.pop("CORTEX_BUS_TOKEN", None)
     return subprocess.run(
         ["bash", str(SCRIPT)], capture_output=True, text=True, env=env, timeout=30)
@@ -62,6 +64,34 @@ def test_string_urgent_priority_is_actionable(tmp_path):
     assert "RESULT: actionable" in r.stdout
 
 
+def test_numeric_string_priority_is_actionable(tmp_path):
+    r = run_survey(tmp_path, {"queues": [
+        {"name": "inbox_esther", "depth": 1, "processing": 0, "dlq": False},
+    ], "messages": {"inbox_esther": [{"priority": "20", "subject": "EXEC"}]}})
+    assert r.returncode == 0, r.stderr
+    assert "CRITICAL:" in r.stdout
+    assert "RESULT: actionable" in r.stdout
+
+
+def test_unknown_priority_is_flagged_not_downgraded(tmp_path):
+    r = run_survey(tmp_path, {"queues": [
+        {"name": "inbox_esther", "depth": 1, "processing": 0, "dlq": False},
+    ], "messages": {"inbox_esther": [{"priority": "high", "subject": "EXEC"}]}})
+    assert r.returncode == 0, r.stderr
+    assert "WARN:" in r.stdout
+    assert "RESULT: actionable" in r.stdout
+
+
+def test_truncated_queue_is_actionable(tmp_path):
+    # depth 3 but only 1 message visible -> a hidden critical cannot be missed
+    r = run_survey(tmp_path, {"queues": [
+        {"name": "inbox_esther", "depth": 3, "processing": 0, "dlq": False},
+    ], "messages": {"inbox_esther": [{"priority": 0, "subject": "PING"}]}})
+    assert r.returncode == 0, r.stderr
+    assert "TRUNCATED:" in r.stdout
+    assert "RESULT: actionable" in r.stdout
+
+
 def test_dlq_backlog_is_actionable(tmp_path):
     r = run_survey(tmp_path, {"queues": [
         {"name": "inbox_esther_dlq", "depth": 3, "processing": 0, "dlq": True},
@@ -78,3 +108,9 @@ def test_blocked_workflow_is_actionable(tmp_path):
     assert r.returncode == 0, r.stderr
     assert "BLOCKED: workflow_step_result" in r.stdout
     assert "RESULT: actionable" in r.stdout
+
+
+def test_bad_response_shape_fails_closed(tmp_path):
+    r = run_survey(tmp_path, {"queues": "not-a-list"})
+    assert r.returncode == 1
+    assert "FAIL:" in r.stderr
