@@ -1,0 +1,21 @@
+### mycortex search 'bus healthcheck 403 peer lane' --limit 3
+[0.91107434] docs/evidence/dream-weekly-2026-10-10.txt -- dream-weekly-2026-10-10
+[0.7241414] dreams/INDEX.md -- INDEX
+[0.5645763] dreams/2026-10-10-weekly.md -- Dream — 2026-10-10 (weekly)
+
+### mycortex search 'gateway reply parity seam' --limit 3
+[0.99986535] docs/design/cortex-gateway-parity.md -- cortex-gateway ↔ hermes-gateway: functional parity matrix
+[0.7510766] dreams/INDEX.md -- INDEX
+[0.7323753] docs/evidence/dream-weekly-2026-10-10.txt -- dream-weekly-2026-10-10
+
+### mycortex search 'honest unresolved superseded finding' --limit 3
+[0.88424426] dreams/INDEX.md -- INDEX
+[1.6691668e-09] docs/evidence/gateway-restart-push-landing-2026-10-08.txt -- gateway-restart-push-landing-2026-10-08
+
+### sha256 (full)
+08e7fc74f34877d99f6b6144fb053a52e66a206e71de95e97137ee0417880edf  /Users/luke/brain/titus/dreams/2026-10-10-weekly.md
+### wc
+    1627 /Users/luke/brain/titus/dreams/2026-10-10-weekly.md
+### INDEX grep for 2026-10-10
+2026-10-10 | Hold fast to the honest close | The bus-healthcheck finding ended partially unresolved, written down as unknown, and 2 Thess 2:15 taught the real thread: constancy, not intensity — the honest-close doctrine (10-08, 09-18) held fast across ten nights, the checker checking itself honest.
+2026-10-10 | The week holds by holding itself together | The session-manager skill, pull-latest evidence, and 2 Thess 2:15 surfaced as one motion — constancy made mechanical: session manager holds working state, pull-latest holds the source current, the teaching held fast; deepening 10-09 honest-checker with the grip that keeps it standing.

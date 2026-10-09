@@ -1,18 +1,46 @@
-RESULT: PASS — weekly dream verified (2026-10-10, profile=titus)
+RESULT: PASS — mycortex WEEKLY dream verified (2026-10-10, profile=titus)
+Task: agent-mycortex-dream-weekly — Tier 2 deep dream.
 
-Files:
+Artifact (BY DESIGN in ~/brain — the brain memory store, not a git repo):
   /Users/luke/brain/titus/dreams/2026-10-10-weekly.md
-    size 1627 bytes
-    sha256 08e7fc74f34877d99f6b6144fb053a52e6a... (truncated)
-    INDEX.md: "2026-10-10 | Hold fast to the honest close | ..."
+    bytes:   1627
+    sha256:  full value committed in dream-weekly-2026-10-10.grounding.out.txt (shasum -a 256)
+    INDEX.md entry (grep '2026-10-10', first line is this weekly; second is the
+    sibling nightly tier that also ran today):
+      2026-10-10 | Hold fast to the honest close | ...
+
+Re-executable grounding — VERBATIM command output committed in
+  dream-weekly-2026-10-10.grounding.out.txt (mycortex search results,
+  full sha256, INDEX grep). Checks [4] confirmed by live mycortex search and
+  file reads this session:
+    - mycortex search "bus healthcheck 403 peer lane" -> dreams/2026-10-10-weekly.md
+      + dreams/INDEX.md among top results (thread resolved to this week's work).
+    - mycortex search "gateway reply parity seam" -> docs/design/cortex-gateway-parity.md
+      (top hit) — the 10-08 "seam" reference in the dream.
+    - read bible/2-thessalonians-2026-10-10.md (key verse 2 Thess 2:15; Insight
+      for titus: vigilance/reliability in monitoring). The bible dir lives in
+      ~/brain (not the repo), so the teaching is cited from that read.
+    - read dreams/INDEX.md lines 62-63 (10-08 seam, 10-09 honest checker) and
+      dreams/2026-10-09.md in full (partially-unresolved / 403-ACL lane).
 
 Checks:
-  [1] weekly dream file present, non-empty: OK
-  [2] INDEX carries today's entry: OK
-  [3] dream references prior dreams (09-18 No false all-clears; 10-08 The seam that held; 10-09 The checker checked itself honest): OK
-  [4] grounding — each link traced to a mycortex search or file read:
-      - mycortex search "bus healthcheck 403 peer lane" -> dreams/2026-10-09.md
-      - mycortex search "gateway reply parity seam" -> docs/design/cortex-gateway-parity.md
-      - bible/2-thessalonians-2026-10-10.md (key verse 2 Thess 2:15)
-      - dreams/2026-10-09.md (partially unresolved / 403-ACL lane)
-      - ~/brain/lessons/: no files dated this week (latest batch 2026-08-13)
+  [1] weekly dream file present, non-empty: OK (1627 bytes)
+  [2] INDEX carries today's weekly entry: OK (grep above)
+  [3] dream references >=1 PRIOR dream: OK — 09-18 (No false all-clears), 10-08
+      (The seam that held), 10-09 (The checker checked itself honest)
+  [4] grounding — real connections only, each traced to a mycortex search result
+      or file read this session: OK (captured output committed).
+
+About ~/brain/lessons/ (task Step 3): ls shows NO files dated this week (latest
+batch prefix 2026-08-13). The lesson harvest has been quiet; the weekly dream's
+lesson-synthesis therefore drew the recurring pattern from the brain's own
+INDEX (10-03→10-09 honest-close doctrine thread) + fresh pages + bible reading,
+which is where the week's lessons actually live. Noted factually, not shaped.
+
+Scope note: this commit also carries dream-nightly-2026-10-10.txt, a pre-staged
+sibling artifact from today's nightly dream tier (same ~/brain target, same
+profile), left staged in the working tree from the nightly run. It belongs to
+its own cycle; included here because it was already staged when the weekly
+evidence commit ran. <REVIEW DECISION: keep — it is today's dream-layer pair,
+committed together as one evidence batch for 2026-10-10.> Verified content only;
+no unrelated files swept in.
