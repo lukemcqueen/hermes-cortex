@@ -51,6 +51,9 @@ TESTS = [
     # non-zero otherwise, so running it here means a future break in the release
     # path fails this artifact instead of only contradicting a committed prose claim.
     "tests/run_non_hermes_lock_release_repro.py",
+    # The landing automation for that fix (a cron monitor gate), so its hermetic
+    # probe test runs somewhere instead of being a guard nobody executes.
+    "tests/test_land_when_clean_probe.py",
     "tests/test_loop_gov_multi_session.py",
     "tests/test_loop_gov_stale_purge.py",
     "tests/test_loop_gov_db_lock_recovery.py",

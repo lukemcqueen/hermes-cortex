@@ -3,13 +3,30 @@ Landing automation for the non-Hermes lock-repo fix — 2026-10-09 (esther)
 
 Why this exists
 ---------------
-The fix (commits 6c61ef57 + 75deb931) was committed and deployed on esther, but
-its push was blocked: `git merge origin/main` is refused while another session
-holds uncommitted changes to files the merge must update (a peer's
-docs/DOCS-INDEX.md edits and the IP-block pipeline's
-ops/install/deploy/nginx/blocked_ips.add output). That content is a security
-list, and it is not mine to commit, splice or discard — the operator chose to
-WAIT for the owner (2026-10-09, asked and answered in-session).
+The fix (the commit whose subject is "fix(governance): tag a non-Hermes session's
+lock with its OWN repo", plus its findings-fix follow-up) was committed and
+deployed on esther, but its push was blocked: `git merge origin/main` is refused
+while another session holds uncommitted changes to files the merge must update (a
+peer's docs/DOCS-INDEX.md edits and the IP-block pipeline's
+ops/install/deploy/nginx/blocked_ips.add output). That content is a security list,
+and it is not mine to commit, splice or discard.
+
+OPERATOR AUTHORIZATION TO DEFER (the reason the push is not in this cycle)
+-------------------------------------------------------------------------
+Asked in-session whether to unstage the peer's staged files, commit their content
+as a peer-WIP commit, or wait; then asked again once a SECOND, unstretchable
+blocker appeared (the peer's unstaged content in the same two paths). The
+operator answered, at 2026-10-09 ~22:45 KST:
+
+  Q1 (2 staged peer files): "Unstage just those 2 paths (content stays on disk —
+      they're in no commit) and land merge → deploy → push now"
+      -> DONE: unstaged, content preserved (now untracked), no commit of theirs.
+  Q2 (2 peer paths with uncommitted CONTENT the merge must update, one of them
+      the IP-block list): "Wait — land automatically once their owner commits
+      them (keeps the IP-block list out of my hands)"
+      -> the landing was therefore DEFERRED, not abandoned, and automated
+         (cron below). The operator's reply is the authorization for this cycle
+         to close with the push outstanding.
 
 What was built
 --------------
@@ -17,36 +34,105 @@ What was built
    cortex-update.sh, deployed to ~/.hermes-cortex/scripts/) — a deterministic,
    LLM-free probe: it reports how many of the given paths still have uncommitted
    changes, whether origin's default branch is already an ancestor of HEAD, and
-   whether a named commit has landed on origin. Output is stable while nothing
-   changes, which is what lets a cron `monitor:` suppress the agent run entirely
-   (no tokens burned while waiting).
+   whether a named commit has landed on origin. Stable output is the point: it
+   lets a cron `monitor:` suppress the agent run entirely (no tokens while
+   waiting).
 
    Usage:  land-when-clean-probe.sh [--repo DIR] [--landed-commit SHA] PATH [PATH...]
-   Verified on this host:
-     dirty paths  -> blockers=2 head=c833e66f origin_tip=283be526 origin_integrated=no landed=no
-     clean path   -> blockers=0 head=c833e66f origin_tip=283be526 origin_integrated=no landed=n/a
-     no paths     -> exit 2 with usage
-     bad --repo   -> every field "unknown", exit 0 (a probe always reports)
+
+   HERMETIC TEST (re-executable, not prose): `tests/test_land_when_clean_probe.py`
+   builds throwaway repos (including a bare `origin`) and asserts the exact
+   outputs and exit codes. Measured just now:
+
+     $ python3 tests/test_land_when_clean_probe.py
+     ALL PASS (8 cases)
+       dirty path -> blockers=1 ; staged change -> blockers=1 ; clean path -> 0 ;
+       landed=n/a without --landed-commit ; two runs byte-identical ;
+       commit pushed to origin -> landed=yes + origin_integrated=yes ;
+       unpushed commit -> landed=no + origin_integrated=no ;
+       no paths -> exit 2 + usage on stderr ; unreachable repo -> exit 0, fields "unknown"
 
 2. A host-local wrapper for this host's paths —
    ~/.hermes-cortex/scripts/local-esther-land-nonhermes-fix-probe.sh — `local-`
    prefixed so the deployer preserves it and the doctor does not flag it as a
    stale deploy (verified: the doctor's "Stale deploy" count stays at 1, the
-   pre-existing scripts/review-sweep-check.py).
+   pre-existing scripts/review-sweep-check.py). Its landing test is CONTENT, not
+   a SHA and not a subject: a SHA is rewritten when another session rebases this
+   shared branch (observed: a commit of ours was rewritten 120758c2 -> 09d27193
+   with byte-identical content), and a subject can match an unrelated commit. So
+   it asks origin/main's copy of mcp-servers/loop-gov-mcp.py whether it actually
+   CONTAINS the fix (count of `_session_repo_path`), which cannot be rebased away
+   or faked by a message.
 
 3. Cron job `esther-land-nonhermes-lock-fix` (job id c975d8f8aa25, created
    2026-10-09T23:01 KST, every 15m, workdir ~/hermes-cortex, monitor = the
    wrapper above). It wakes only when the probe's output CHANGES and then:
    merge origin/main -> cortex-dogfood.sh --force -> score + end_change (which
    writes the push receipt the pre-push gate demands) -> git push origin main ->
-   verify-landed.py. Rails: MERGE never rebase (the branch holds two other
-   sessions' unpushed commits, 662155bb + d2efa6fd, which a rebase would
-   rewrite), `git merge --abort` on conflict, never stash/commit/revert another
-   session's files, never --no-verify, never force-push. While blockers != 0 it
-   reports "not-yet" and does nothing.
+   verify-landed.py. Rails: MERGE never rebase (the branch holds other sessions'
+   unpushed commits, which a rebase would rewrite), `git merge --abort` on
+   conflict, never stash/commit/revert another session's files, never
+   --no-verify, never force-push. While blockers != 0 it reports "not-yet".
+
+Deployed-artifact parity (the deploy claim, measured)
+-----------------------------------------------------
+The deployer inserts a banner after the shebang (3 header lines + a blank line),
+so alignment matters:
+
+    $ diff <(tail -n +5 ~/.hermes-cortex/scripts/land-when-clean-probe.sh) \
+           <(tail -n +2 ~/hermes-cortex/ops/scripts/manage/land-when-clean-probe.sh)
+    (no output — identical)
+
+    $ sha256sum <(tail -n +5 <deployed probe>) <(tail -n +2 <repo source>)
+    <same digest>  <deployed slice>
+    <same digest>  <repo slice>
+      -> the two slices hash IDENTICALLY (digest c8a2d923…, re-derivable with the
+         command above); the literal digest is omitted here only because this
+         file is committed to a public repo.
+
+    $ bash ~/.hermes-cortex/scripts/local-esther-land-nonhermes-fix-probe.sh   (x2)
+    blockers=2 head=625c0a00 origin_tip=283be526 origin_integrated=no landed=n/a fix_in_origin=0 landed=no
+    blockers=2 head=625c0a00 origin_tip=283be526 origin_integrated=no landed=n/a fix_in_origin=0 landed=no
+      -> identical across runs (the monitor's suppression depends on it), and the
+         wrapper runs the DEPLOYED probe, so the deployed path is what is verified.
+
+Doctor state at this moment (recorded honestly, NOT clean)
+----------------------------------------------------------
+    $ python3 ops/scripts/manage/cortex_doctor.py
+    ❌ Deploy sync — HEAD (625c0a0081ca) ahead of last deploy (120758c20017) — 3 commit(s) not deployed
+    ❌ Overall: FAILING  (439 pass · 10 warn · 1 fail · 7 info)
+
+The single failing check is a consequence of this being a SHARED checkout: peers
+committed after my deploy (c833e66f, 888ee73c, 625c0a00 and counting). My own
+artifacts are deployed — parity proven above, and the wrapper executes the
+deployed copy. Each new peer commit re-opens that check for whoever deploys next;
+the landing cron re-runs the dogfood immediately before its push and reports its
+own result, so this cycle does not claim a clean doctor.
+
+Peer-commit provenance (the scope-drift denial, with its own limitation stated)
+-------------------------------------------------------------------------------
+ADV-11857-1/-8 ask for proof that ops/scripts/bus/bus-inbox-survey.sh (commits
+c833e66f, 888ee73c) is another session's work. The honest limitation first: BOTH
+sessions on this host commit as the same git identity (esther-agent,
+esther@hermes.local), so the commit Author line CANNOT discriminate them — an
+author-based proof would be fabricated. What does discriminate:
+
+  * those commits carry their own pre-commit hook cycles for a different work
+    stream: loop_cycles ids 11860, 11861, 11863, 11865, 11874 with task_ids
+    "precommit-hermes-cortex-main/ops-bus-add-…-bus-inbox-survey-sh…";
+  * this session's declared tasks are the three titus-pi-* cycles only:
+    11741 titus-pi-lock-not-released, 11856 titus-pi-lock-land,
+    11857 titus-pi-lock-land-2 (this host's local session id, omitted from the
+    public repo);
+  * none of this session's cycle notes, review material or evidence lists contains
+    ops/scripts/bus/bus-inbox-survey.sh or tests/test_bus_inbox_survey.py.
+
+So the bus-survey work belongs to another work stream — named here and left
+untouched — and ADV-11857-4 (that script's scope claim) is its author's to resolve.
 
 Verification
 ------------
-    python3 ~/hermes-cortex/ops/scripts/manage/cortex_doctor.py   # deployed, no new warning
-    cronjob action='list'                                          # job c975d8f8aa25 present
+    python3 tests/test_land_when_clean_probe.py                      # 8 cases
     bash ~/.hermes-cortex/scripts/local-esther-land-nonhermes-fix-probe.sh
+    python3 ~/hermes-cortex/ops/scripts/manage/cortex_doctor.py      # record rc + counts
+    cronjob action='list'                                            # job c975d8f8aa25
