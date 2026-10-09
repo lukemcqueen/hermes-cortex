@@ -18,17 +18,11 @@ model glitch). If the repetition-loop error recurs (failure_streak >= 3),
 escalate for a provider/model review.
 
 ## Rerunnable diagnostic
-Query the cron executions DB for this job's history:
-  python3 -c "
-  import sqlite3
-  db=sqlite3.connect('$HOME/.hermes/cron/executions.db')
-  cur=db.cursor()
-  cur.execute(\"SELECT status, started_at, error FROM executions WHERE job_id='cd7ca240d2dc' ORDER BY started_at\")
-  for r in cur.fetchall(): print(r)
-  "
-Observed output (2026-10-09):
-  ('failed', '2026-10-09T20:33:36.120468+09:00', 'RuntimeError: Model output entered a repetition loop and the stream was cut mid-loop; discarding the degenerate response.')
-  ('running', '2026-10-09T22:33:36.078336+09:00', None)
+Query the cron executions DB for this job's history (re-runnable):
+  python3 -c "import sqlite3,os; db=sqlite3.connect(os.path.expanduser('~/.hermes/cron/executions.db')); [print(f'{s} | {t} | {e or chr(39)+chr(39)}') for s,t,e in db.execute(\"SELECT status,started_at,error FROM executions WHERE job_id='cd7ca240d2dc' ORDER BY started_at\")]"
+Expected output (2026-10-09, from the query above):
+  failed | 2026-10-09T20:33:36.120468+09:00 | RuntimeError: Model output entered a repetition loop and the stream was cut mid-loop; discarding the degenerate response.
+  running | 2026-10-09T22:33:36.078336+09:00 |
 
 ## Sibling job + sensor status (from ~/.hermes/cron/jobs.json, 2026-10-09)
   agent-fixer-workday      | ok   | 2026-10-09T20:06:10
@@ -37,11 +31,14 @@ Observed output (2026-10-09):
   agent-service-recovery   | ok   | 2026-10-09T22:35:36
 
 ## Scope note
-This remediation cycle also corrected a documentation-vs-implementation
-discrepancy in poll-bus-inbox_titus.sh and its evidence file, surfaced by the
-governance self-adversarial review during close-out: the script comment and
-evidence claimed the script "fails only on connection error/non-2xx", but it
-also exits non-zero on missing/unreadable config, missing URL/AUTH, and a 2xx
-response with malformed/unexpected JSON payload. The comment and evidence were
-amended to list all failure modes accurately (no behavior change). This is in
-scope because it was a finding of this remediation cycle's governance close.
+This remediation cycle's commits (unpushed, on main):
+  - accurate repetition-loop evidence (no recovery claim; retry in progress)
+  - document poll script failure modes accurately (comment + evidence)
+The poll-bus behavior commits (JSON payload assertion, exec bit, config parsing)
+predate this remediation session and are not part of this cycle's changes. This
+cycle's poll-bus change is documentation-only: the script comment and evidence
+claimed the script "fails only on connection error/non-2xx", but it also exits
+non-zero on missing/unreadable config, missing URL/AUTH, and a 2xx response with
+malformed/unexpected JSON payload. The comment and evidence were amended to list
+all failure modes accurately (no behavior change). This was surfaced by the
+governance self-adversarial review during close-out of this cycle.
