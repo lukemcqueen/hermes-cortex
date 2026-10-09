@@ -1,0 +1,1384 @@
+# cortex-dogfood.sh --force — full transcript
+# run at: 2026-10-10T06:28:16+09:00 KST host=esther
+# HEAD: 91278a67d1c78df808d4948b7bd6718f75fd1a09
+
+━━━ cortex-dogfood ━━━
+  (running under governance task: sustainability-briefing-2026-10-10 — its cycle is scored at end_change)
+▶ 1/4 pull latest
+   (unpushed local commits present — skipping pull; local work is what we verify)
+▶ 2/4 deploy
+   [0;32m✓[0m Agent identity: esther (git author: esther-agent <esther@hermes.local>)
+   
+   [1m━━━ Cortex Update ━━━[0m
+   
+   [0;32m✓[0m Updated: 91278a67 → 91278a67
+   
+   [0;32m✓[0m Force mode — re-checking all mapped files…
+   UNLOCKED: /home/esther/.hermes/plugins/governance-enforcer/__init__.py
+   UNLOCKED: /home/esther/.hermes-cortex/scripts/pre-commit-score
+   UNLOCKED: /home/esther/.hermes-cortex/scripts/pre-push-pull
+   UNLOCKED: /home/esther/.hermes-cortex/scripts/post-commit-audit
+   UNLOCKED: /home/esther/.hermes-cortex/scripts/post-push-audit
+   UNLOCKED: /home/esther/.hermes-cortex/hooks/post-merge
+   UNLOCKED: /home/esther/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py
+   UNLOCKED: /home/esther/.hermes-cortex/hooks
+   UNLOCKED: /home/esther/.hermes-cortex/scripts/hermes-plugin-lock
+   LOCKED: /home/esther/.hermes/plugins/governance-enforcer/__init__.py
+   LOCKED: /home/esther/.hermes-cortex/scripts/pre-commit-score
+   LOCKED: /home/esther/.hermes-cortex/scripts/pre-push-pull
+   LOCKED: /home/esther/.hermes-cortex/scripts/post-commit-audit
+   LOCKED: /home/esther/.hermes-cortex/scripts/post-push-audit
+   LOCKED: /home/esther/.hermes-cortex/hooks/post-merge
+   LOCKED: /home/esther/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py
+   LOCKED: /home/esther/.hermes-cortex/hooks
+   LOCKED: /home/esther/.hermes-cortex/scripts/hermes-plugin-lock
+   [0;32m✓[0m   Symlink: offline_knowledge
+   [0;32m✓[0m   Symlink: prep-offline
+   [0;32m✓[0m   Symlink: offline_code
+   [1;33m⚠[0m   Name collision: research/brand-intelligence — root Hermes default 'brand-intelligence' exists, deploy will shadow it
+   [1;33m⚠[0m   SKILL DRIFT: software-development/change-checklist — deployed copy is newer than repo source!
+   [1;33m⚠[0m     → Repo: /home/esther/hermes-cortex/skills/software-development/change-checklist/SKILL.md
+   [1;33m⚠[0m     → Deployed: /home/esther/.hermes-cortex/skills/software-development/change-checklist/SKILL.md
+   [1;33m⚠[0m     → Copy the deployed changes to the repo source, then cortex-update.sh will sync.
+   [1;33m⚠[0m     → Use --force to override this guardrail.
+   [1;33m⚠[0m   SKILL DRIFT: devops/cron-job-management — deployed copy is newer than repo source!
+   [1;33m⚠[0m     → Repo: /home/esther/hermes-cortex/skills/devops/cron-job-management/SKILL.md
+   [1;33m⚠[0m     → Deployed: /home/esther/.hermes-cortex/skills/devops/cron-job-management/SKILL.md
+   [1;33m⚠[0m     → Copy the deployed changes to the repo source, then cortex-update.sh will sync.
+   [1;33m⚠[0m     → Use --force to override this guardrail.
+   [1;33m⚠[0m   SKILL DRIFT: devops/mycortex — deployed copy is newer than repo source!
+   [1;33m⚠[0m     → Repo: /home/esther/hermes-cortex/skills/devops/mycortex/SKILL.md
+   [1;33m⚠[0m     → Deployed: /home/esther/.hermes-cortex/skills/devops/mycortex/SKILL.md
+   [1;33m⚠[0m     → Copy the deployed changes to the repo source, then cortex-update.sh will sync.
+   [1;33m⚠[0m     → Use --force to override this guardrail.
+   [1;33m⚠[0m   SKILL DRIFT: devops/governance-lock-lifecycle — deployed copy is newer than repo source!
+   [1;33m⚠[0m     → Repo: /home/esther/hermes-cortex/skills/devops/governance-lock-lifecycle/SKILL.md
+   [1;33m⚠[0m     → Deployed: /home/esther/.hermes-cortex/skills/devops/governance-lock-lifecycle/SKILL.md
+   [1;33m⚠[0m     → Copy the deployed changes to the repo source, then cortex-update.sh will sync.
+   [1;33m⚠[0m     → Use --force to override this guardrail.
+   [1;33m⚠[0m   SKILL DRIFT: devops/governance-closeout — deployed copy is newer than repo source!
+   [1;33m⚠[0m     → Repo: /home/esther/hermes-cortex/skills/devops/governance-closeout/SKILL.md
+   [1;33m⚠[0m     → Deployed: /home/esther/.hermes-cortex/skills/devops/governance-closeout/SKILL.md
+   [1;33m⚠[0m     → Copy the deployed changes to the repo source, then cortex-update.sh will sync.
+   [1;33m⚠[0m     → Use --force to override this guardrail.
+   [1;33m⚠[0m   SKILL DRIFT: devops/psql-automation — deployed copy is newer than repo source!
+   [1;33m⚠[0m     → Repo: /home/esther/hermes-cortex/skills/devops/psql-automation/SKILL.md
+   [1;33m⚠[0m     → Deployed: /home/esther/.hermes-cortex/skills/devops/psql-automation/SKILL.md
+   [1;33m⚠[0m     → Copy the deployed changes to the repo source, then cortex-update.sh will sync.
+   [1;33m⚠[0m     → Use --force to override this guardrail.
+   [1;33m⚠[0m   SKILL DRIFT: devops/fleet-commands — deployed copy is newer than repo source!
+   [1;33m⚠[0m     → Repo: /home/esther/hermes-cortex/skills/devops/fleet-commands/SKILL.md
+   [1;33m⚠[0m     → Deployed: /home/esther/.hermes-cortex/skills/devops/fleet-commands/SKILL.md
+   [1;33m⚠[0m     → Copy the deployed changes to the repo source, then cortex-update.sh will sync.
+   [1;33m⚠[0m     → Use --force to override this guardrail.
+   [1;33m⚠[0m   SKILL DRIFT: devops/cortex-deployment-sync — deployed copy is newer than repo source!
+   [1;33m⚠[0m     → Repo: /home/esther/hermes-cortex/skills/devops/cortex-deployment-sync/SKILL.md
+   [1;33m⚠[0m     → Deployed: /home/esther/.hermes-cortex/skills/devops/cortex-deployment-sync/SKILL.md
+   [1;33m⚠[0m     → Copy the deployed changes to the repo source, then cortex-update.sh will sync.
+   [1;33m⚠[0m     → Use --force to override this guardrail.
+   [0;32m✓[0m   Skills: 0 updated, 387 unchanged
+   [1;33m⚠[0m   ⚠️  Deployed-only skill 'brand-brief' (brand-intelligence/skills/brand-brief) is not in the repo.
+   [1;33m⚠[0m       Rename it to local-* (e.g. local-brand-brief) to preserve it,
+   [1;33m⚠[0m       or delete it manually if unused. NOT auto-removed.
+   [1;33m⚠[0m   ⚠️  Deployed-only skill 'watchlist-digest' (brand-intelligence/skills/watchlist-digest) is not in the repo.
+   [1;33m⚠[0m       Rename it to local-* (e.g. local-watchlist-digest) to preserve it,
+   [1;33m⚠[0m       or delete it manually if unused. NOT auto-removed.
+   [1;33m⚠[0m   ⚠️  Deployed-only skill 'compare-brands' (brand-intelligence/skills/compare-brands) is not in the repo.
+   [1;33m⚠[0m       Rename it to local-* (e.g. local-compare-brands) to preserve it,
+   [1;33m⚠[0m       or delete it manually if unused. NOT auto-removed.
+   [0;32m✓[0m   Skills: 0 updated, 387 unchanged, 0 stale removed, 3 preserved (deployed-only, not auto-deleted)
+   [0;32m✓[0m   Code corpus: 0 new/updated, 523 unchanged
+   [0;32m✓[0m Applying mycortex migrations…
+   mycortex schema up to date (version 5) — no-op
+   [0;32m✓[0m Applying mycortex-mem migrations…
+   mycortex_mem schema up to date (version 3) — no-op
+   [0;32m✓[0m Applying tasks schema…
+   tasks schema up to date (version 12) — no-op
+   [0;32m✓[0m Applying learnings schema…
+   learnings schema up to date (version 2) — no-op
+   [0;32m✓[0m   Updated template: /home/esther/hermes-cortex/ops/install/deploy/nginx/hermes-zone-defs.conf
+   [0;32m✓[0m   Deploy with: sudo cp /home/esther/hermes-cortex/ops/install/deploy/nginx/hermes-zone-defs.conf /etc/nginx/hermes-zone-defs.conf
+   [0;32m✓[0m   Preserved SSL cert: /etc/letsencrypt/live/realgospelmessage.com/fullchain.pem
+   [0;32m✓[0m   Config generated: /tmp/hermes-services-processed.conf
+   [0;32m✓[0m   Deploy with:
+   [0;32m✓[0m     sudo cp /tmp/hermes-services-processed.conf /etc/nginx/sites-available/hermes-services.conf
+   [0;32m✓[0m     sudo ln -sf /etc/nginx/sites-available/hermes-services.conf /etc/nginx/sites-enabled/hermes-services.conf
+   [0;32m✓[0m     sudo nginx -t && sudo nginx -s reload
+   [0;32m✓[0m   nginx configs updated — run the deploy commands above to apply
+   [1;33m⚠[0m   Skipped install-nginx-full.sh — sudo not available for /usr/local/sbin/ (add NOPASSWD entry)
+   UNLOCKED: /home/esther/.hermes/plugins/governance-enforcer/__init__.py
+   UNLOCKED: /home/esther/.hermes-cortex/scripts/pre-commit-score
+   UNLOCKED: /home/esther/.hermes-cortex/scripts/pre-push-pull
+   UNLOCKED: /home/esther/.hermes-cortex/scripts/post-commit-audit
+   UNLOCKED: /home/esther/.hermes-cortex/scripts/post-push-audit
+   UNLOCKED: /home/esther/.hermes-cortex/hooks/post-merge
+   UNLOCKED: /home/esther/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py
+   UNLOCKED: /home/esther/.hermes-cortex/hooks
+   UNLOCKED: /home/esther/.hermes-cortex/scripts/hermes-plugin-lock
+   [0;32m✓[0m     Removed immutability: __init__.py
+   [0;32m✓[0m     Copied: __init__.py
+   UNLOCKED: /home/esther/.hermes/plugins/governance-enforcer/__init__.py
+   UNLOCKED: /home/esther/.hermes-cortex/scripts/pre-commit-score
+   UNLOCKED: /home/esther/.hermes-cortex/scripts/pre-push-pull
+   UNLOCKED: /home/esther/.hermes-cortex/scripts/post-commit-audit
+   UNLOCKED: /home/esther/.hermes-cortex/scripts/post-push-audit
+   UNLOCKED: /home/esther/.hermes-cortex/hooks/post-merge
+   UNLOCKED: /home/esther/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py
+   UNLOCKED: /home/esther/.hermes-cortex/hooks
+   UNLOCKED: /home/esther/.hermes-cortex/scripts/hermes-plugin-lock
+   [0;32m✓[0m     Removed immutability: plugin.yaml
+   [0;32m✓[0m     Copied: plugin.yaml
+   UNLOCKED: /home/esther/.hermes/plugins/governance-enforcer/__init__.py
+   UNLOCKED: /home/esther/.hermes-cortex/scripts/pre-commit-score
+   UNLOCKED: /home/esther/.hermes-cortex/scripts/pre-push-pull
+   UNLOCKED: /home/esther/.hermes-cortex/scripts/post-commit-audit
+   UNLOCKED: /home/esther/.hermes-cortex/scripts/post-push-audit
+   UNLOCKED: /home/esther/.hermes-cortex/hooks/post-merge
+   UNLOCKED: /home/esther/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py
+   UNLOCKED: /home/esther/.hermes-cortex/hooks
+   UNLOCKED: /home/esther/.hermes-cortex/scripts/hermes-plugin-lock
+   [0;32m✓[0m     Removed immutability: README.md
+   [0;32m✓[0m     Copied: README.md
+   LOCKED: /home/esther/.hermes/plugins/governance-enforcer/__init__.py
+   LOCKED: /home/esther/.hermes-cortex/scripts/pre-commit-score
+   LOCKED: /home/esther/.hermes-cortex/scripts/pre-push-pull
+   LOCKED: /home/esther/.hermes-cortex/scripts/post-commit-audit
+   LOCKED: /home/esther/.hermes-cortex/scripts/post-push-audit
+   LOCKED: /home/esther/.hermes-cortex/hooks/post-merge
+   LOCKED: /home/esther/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py
+   LOCKED: /home/esther/.hermes-cortex/hooks
+   LOCKED: /home/esther/.hermes-cortex/scripts/hermes-plugin-lock
+   [0;32m✓[0m   chattr +i set on __init__.py
+   [0;32m✓[0m   Plugin deployed: 3 file(s) updated
+   ⊘ Plugin governance-enforcer disabled. Takes effect on next session.
+   ✓ Plugin governance-enforcer enabled. Takes effect on next session.
+   Gateway reloaded plugins — active in the running gateway now: hooks.
+   [1;33m⚠[0m   Restart check: cannot determine gateway start time — UNVERIFIABLE, treating as restart required
+   
+   [1;33m[1m╔══════════════════════════════════════════════════════════════════╗[0m
+   [1;33m[1m║  ⚠  GATEWAY RESTART REQUIRED — enforcement chain redeployed      ║[0m
+   [1;33m[1m╚══════════════════════════════════════════════════════════════════╝[0m
+   [1;33m⚠[0m ⚠ COULD NOT VERIFY restart state (see warnings above) — treat as restart required.
+   [1;33m⚠[0m The new enforcement chain activates ONLY after the gateway process restarts.
+   [1;33m⚠[0m Run the gateway restart from a separate shell outside the gateway process
+   [1;33m⚠[0m (the lifecycle guard shows the exact command if you try it from inside).
+   [1;33m⚠[0m that is a pending restart, not a code bug. Do not loop retrying; do not edit the deployed copy.
+   
+   [0;32m✓[0m     Copied: __init__.py
+   [0;32m✓[0m     Copied: plugin.yaml
+   [0;32m✓[0m   Plugin mycortex-command deployed: 2 file(s) updated
+   ⊘ Plugin mycortex-command disabled. Takes effect on next session.
+   ✓ Plugin mycortex-command enabled. Takes effect on next session.
+   Gateway reloaded plugins — active in the running gateway now: gateway_commands.
+   [0;32m✓[0m   Plugin mycortex-command files deployed (activates after gateway restart)
+   [0;32m✓[0m     Copied: mycortex-mem/__init__.py
+   [0;32m✓[0m     Copied: mycortex-mem/plugin.yaml
+   ⊘ Plugin mycortex-mem disabled. Takes effect on next session.
+   ✓ Plugin mycortex-mem enabled. Takes effect on next session.
+   Gateway reloaded plugins; nothing of this plugin needs a session or restart.
+   [0;32m✓[0m   Plugin mycortex-mem files deployed (activates after gateway restart)
+   [0;32m✓[0m     Copied: prompt-guard/__init__.py
+   [0;32m✓[0m     Copied: prompt-guard/plugin.yaml
+   ⊘ Plugin prompt-guard disabled. Takes effect on next session.
+   ✓ Plugin prompt-guard enabled. Takes effect on next session.
+   Gateway reloaded plugins; nothing of this plugin needs a session or restart.
+   [0;32m✓[0m   Plugin prompt-guard files deployed (activates after gateway restart)
+   [0;32m✓[0m   Memory/guard plugins deployed: 4 file(s) updated
+   ⊘ Plugin hc-lean-index disabled. Takes effect on next session.
+   ✓ Plugin hc-lean-index enabled. Takes effect on next session.
+   Gateway reloaded plugins; nothing of this plugin needs a session or restart.
+   [0;32m✓[0m   hc-lean-index plugin deployed (2 file(s); activates after gateway restart)
+       [mcp-watch-fix] SKIP: mcp_tool.py probe mechanism removed upstream — nothing to fix
+   [0;32m✓[0m Syncing current agent SOUL.md with template...
+       ━━━ soul-sync-local: Syncing current agent SOUL.md with template ━━━
+         → Current agent (esther)...
+           ✅ SOUL.md is up to date with template. No merge needed.
+       
+       ✅ Current agent SOUL.md is up to date with the template.
+   
+   [1m━━━ Restarting affected services ━━━[0m
+   [1;33m⚠[0m Unknown restart command: restart_health_server
+   [0;32m✓[0m Bus code changed — restarting Agent Bus…
+   [0;32m✓[0m   Restarting Agent Bus (systemd)…
+   [0;32m✓[0m State saved: 91278a67
+   
+   [1m━━━ Summary ━━━[0m
+   [0;32m✓[0m 283 file(s) updated
+   
+   [0;32m✓[0m All 0 cortex services managed by systemd (active)
+   [0;32m✓[0m 🧹 Scanning for stale deploy files...
+   [1;33m⚠[0m   ⚠️  Deployed-only script not in repo: /home/esther/.hermes-cortex/scripts/review-sweep-check.py
+   [1;33m⚠[0m       Register it in cortex-update.sh, rename to local-* to keep,
+   [1;33m⚠[0m       or delete manually if unused. NOT auto-removed.
+   [0;32m✓[0m   No stale files removed; 1 deployed-only file(s) preserved (not auto-deleted)
+   
+   [0;36m━━━ Essential Hermes Cron Jobs ━━━[0m
+   
+   [0;32m✓[0m Local Ollama provider custom:ollama-local already configured
+   [0;36m  1. Auto-Remediation Pipeline[0m\n[0;32m✓[0m Staggered LLM cron 'agent-fixer-workday' minute → 49 (schedule: 49 8,14,20 * * 1-5)
+   [0;32m✓[0m Drift detected: cron 'agent-fixer-workday' prompt differs (275 → 1382 chars)
+   Updated job: 418bbf45277d
+     Name: agent-fixer-workday
+     Schedule: 49 8,14,20 * * 1-5
+     Skills: auto-remediation
+     Script: session-active-guard.py
+   [0;32m✓[0m Updated cron: agent-fixer-workday (49 8,14,20 * * 1-5)
+   [0;32m✓[0m Staggered LLM cron 'agent-fixer-evening' minute → 50 (schedule: 50 20,22 * * 1-5)
+   [0;32m✓[0m Drift detected: cron 'agent-fixer-evening' prompt differs (140 → 1105 chars)
+   Updated job: 0677224663a3
+     Name: agent-fixer-evening
+     Schedule: 50 20,22 * * 1-5
+     Skills: auto-remediation
+   [0;32m✓[0m Updated cron: agent-fixer-evening (50 20,22 * * 1-5)
+   [0;32m✓[0m Staggered LLM cron 'agent-fixer-overnight' minute → 42 (schedule: 42 23 * * 1-5)
+   [0;32m✓[0m Drift detected: cron 'agent-fixer-overnight' prompt differs (140 → 1105 chars)
+   Updated job: e798f3363b33
+     Name: agent-fixer-overnight
+     Schedule: 42 23 * * 1-5
+     Skills: auto-remediation
+   [0;32m✓[0m Updated cron: agent-fixer-overnight (42 23 * * 1-5)
+   [0;32m✓[0m Skipping 'agent-remediation-sensor' — owned by the HC cron bridge (systemd timer)
+   
+   [0;36m  2. System Health Monitoring[0m\n[0;32m✓[0m Skipping 'agent-system-alert-watchdog' — owned by the HC cron bridge (systemd timer)
+   [0;32m✓[0m Skipping 'agent-service-recovery' — owned by the HC cron bridge (systemd timer)
+   
+   [0;36m  3. Knowledge & Memory[0m\n[0;32m✓[0m Skipping 'agent-memory-to-brain-sync' — owned by the HC cron bridge (systemd timer)
+   [0;32m✓[0m Skipping 'agent-mycortex-sync' — owned by the HC cron bridge (systemd timer)
+   [0;32m✓[0m Skipping 'agent-mycortex-retention' — owned by the HC cron bridge (systemd timer)
+   \n[0;36m   4. Agent Bus Processing[0m\
+   [0;32m✓[0m Skipping 'agent-message-handler' — owned by the HC cron bridge (systemd timer)
+   [0;32m✓[0m Skipping 'cortex-bus-failover-watchdog' — owned by the HC cron bridge (systemd timer)
+   [0;32m✓[0m Staggered LLM cron 'cortex-bus-workday' minute → 50 (schedule: 50 8,14,20 * * 1-5)
+   [0;32m✓[0m Drift detected: cron 'cortex-bus-workday' prompt differs (319 → 1985 chars)
+   Updated job: f41b7171b9e1
+     Name: cortex-bus-workday
+     Schedule: 50 8,14,20 * * 1-5
+     Skills: cortex-bus-automation
+     Script: session-active-guard.py
+   [0;32m✓[0m Updated cron: cortex-bus-workday (50 8,14,20 * * 1-5)
+   [0;32m✓[0m Staggered LLM cron 'cortex-bus-evening' minute → 41 (schedule: 41 20,22 * * 1-5)
+   [0;32m✓[0m Drift detected: cron 'cortex-bus-evening' prompt differs (173 → 1593 chars)
+   Updated job: e4b77fb053f8
+     Name: cortex-bus-evening
+     Schedule: 41 20,22 * * 1-5
+     Skills: cortex-bus-automation
+   [0;32m✓[0m Updated cron: cortex-bus-evening (41 20,22 * * 1-5)
+   [0;32m✓[0m Staggered LLM cron 'cortex-bus-overnight' minute → 29 (schedule: 29 23 * * 1-5)
+   [0;32m✓[0m Drift detected: cron 'cortex-bus-overnight' prompt differs (156 → 1576 chars)
+   Updated job: 78b32a966223
+     Name: cortex-bus-overnight
+     Schedule: 29 23 * * 1-5
+     Skills: cortex-bus-automation
+   [0;32m✓[0m Updated cron: cortex-bus-overnight (29 23 * * 1-5)
+   [0;32m✓[0m Skipping 'agent-governance-auditor' — owned by the HC cron bridge (systemd timer)
+   
+   [0;36m  7. Universal Agent Crons[0m
+   [0;32m✓[0m Skipping 'agent-llm-judge-scorer-weekday' — owned by the HC cron bridge (systemd timer)
+   [0;32m✓[0m Skipping 'agent-llm-judge-scorer-weekend' — owned by the HC cron bridge (systemd timer)
+   [0;32m✓[0m Skipping 'agent-model-health-watchdog' — owned by the HC cron bridge (systemd timer)
+   [0;32m✓[0m Skipping 'agent-langfuse-health-watchdog' — owned by the HC cron bridge (systemd timer)
+   [0;32m✓[0m Skipping 'agent-mcp-health-watchdog' — owned by the HC cron bridge (systemd timer)
+   [0;32m✓[0m Skipping 'agent-loop-gov-lock-watchdog' — owned by the HC cron bridge (systemd timer)
+   [0;32m✓[0m Skipping 'agent-swap-refresh' — owned by the HC cron bridge (systemd timer)
+   [0;32m✓[0m Skipping 'agent-scoring-activity-watchdog' — owned by the HC cron bridge (systemd timer)
+   [0;32m✓[0m Skipping 'agent-pending-cycle-watchdog' — owned by the HC cron bridge (systemd timer)
+   [0;32m✓[0m Skipping 'agent-deploy-drift-audit' — owned by the HC cron bridge (systemd timer)
+   [0;32m✓[0m Skipping 'agent-review-queue-sweep' — owned by the HC cron bridge (systemd timer)
+   [0;32m✓[0m Skipping 'agent-session-cache-build' — owned by the HC cron bridge (systemd timer)
+   [0;32m✓[0m Skipping 'agent-learning-collector' — owned by the HC cron bridge (systemd timer)
+   [0;32m✓[0m Skipping 'agent-session-mine' — owned by the HC cron bridge (systemd timer)
+   [0;32m✓[0m Skipping 'agent-cron-quality-watchdog' — owned by the HC cron bridge (systemd timer)
+   [0;32m✓[0m Skipping 'agent-cron-failure-watchdog' — owned by the HC cron bridge (systemd timer)
+   [0;36m  8. Deployment-Specific Crons[0m
+   [0;32m✓[0m Skipping 'agent-offline-code-index' — owned by the HC cron bridge (systemd timer)
+   [0;32m✓[0m Skipping 'agent-hermes-cortex-sync' — owned by the HC cron bridge (systemd timer)
+   [0;32m✓[0m Staggered LLM cron 'agent-memory-pruning' minute → 31 (schedule: 31 4 * * 1)
+   [0;32m✓[0m Drift detected: cron 'agent-memory-pruning' prompt differs (210 → 1498 chars)
+   Updated job: 80858f2b1edb
+     Name: agent-memory-pruning
+     Schedule: 31 4 * * 1
+     Skills: none
+   [0;32m✓[0m Updated cron: agent-memory-pruning (31 4 * * 1)
+   [0;32m✓[0m Skipping 'agent-auto-save-sessions' — owned by the HC cron bridge (systemd timer)
+   [0;32m✓[0m Skipping 'agent-nginx-threat-pipeline' — owned by the HC cron bridge (systemd timer)
+   [0;32m✓[0m Skipping 'agent-ip-submission' — owned by the HC cron bridge (systemd timer)
+   [0;32m✓[0m Skipping 'agent-push-metrics' — owned by the HC cron bridge (systemd timer)
+   [0;32m✓[0m Skipping 'agent-agents-md-prune-scan' — owned by the HC cron bridge (systemd timer)
+   [0;32m✓[0m Staggered LLM cron 'agent-agents-md-prune-apply' minute → 40 (schedule: 40 4 * * 1-6)
+   [0;32m✓[0m Drift detected: cron 'agent-agents-md-prune-apply' prompt differs (96 → 1183 chars)
+   Updated job: 550d7c044315
+     Name: agent-agents-md-prune-apply
+     Schedule: 40 4 * * 1-6
+     Skills: documentation-scope
+   [0;32m✓[0m Updated cron: agent-agents-md-prune-apply (40 4 * * 1-6)
+   [0;36m  9. Skill Collection Pipeline[0m
+   
+   [0;36m━━━ Summary ━━━[0m
+   [0;32m✓[0m Created: 8 new cron job(s)
+   [0;32m✓[0m Skipped: 3 existing job(s)
+   
+   [0;32m✓[0m Cron jobs are stored in: /home/esther/.hermes/cron/jobs.json
+   [0;32m✓[0m Verify with: hermes cron list
+   [0;32m✓[0m Skipping 'agent-secret-leak-watchdog' — owned by the HC cron bridge (systemd timer)
+   [0;32m✓[0m Skipping 'agent-security-posture-check' — owned by the HC cron bridge (systemd timer)
+   [0;32m✓[0m Skipping 'agent-stale-ref-watchdog' — owned by the HC cron bridge (systemd timer)
+   [0;32m✓[0m Skipping 'agent-no-verify-audit' — owned by the HC cron bridge (systemd timer)
+   [0;32m✓[0m Skipping 'agent-session-correction-scan' — owned by the HC cron bridge (systemd timer)
+   [0;32m✓[0m Skipping 'agent-unannounced-probe' — owned by the HC cron bridge (systemd timer)
+   [0;32m✓[0m Crons up to date
+   
+   [0;36m━━━ Orchestrator-Only Hermes Cron Jobs ━━━[0m
+   
+   [0;36m  0. Cleaning up old-format cron names[0m
+   [0;36m  1. Orchestrator-Specific Crons[0m
+   [0;32m✓[0m Skipping 'orch-health-report-weekday' — owned by the HC cron bridge (systemd timer)
+   [0;32m✓[0m Skipping 'orch-health-report-saturday' — owned by the HC cron bridge (systemd timer)
+   [0;32m✓[0m Skipping 'orch-fleet-watchdog' — owned by the HC cron bridge (systemd timer)
+   [0;36m  1a. Orchestrator Bus Tools[0m
+   [0;32m✓[0m Skipping 'orch-bus-forwarder-sync' — owned by the HC cron bridge (systemd timer)
+   [0;32m✓[0m Skipping 'orch-bus-inbox-relay' — owned by the HC cron bridge (systemd timer)
+   [0;32m✓[0m Skipping 'orch-bus-audit-watchdog' — owned by the HC cron bridge (systemd timer)
+   [0;32m✓[0m Skipping 'orch-bus-recover-timeouts' — owned by the HC cron bridge (systemd timer)
+   [0;32m✓[0m Skipping 'orch-bus-confirmation-poller' — owned by the HC cron bridge (systemd timer)
+   [0;32m✓[0m Skipping 'orch-bus-confirmation-alert' — owned by the HC cron bridge (systemd timer)
+   [0;32m✓[0m Skipping 'orch-clean-health-queue' — owned by the HC cron bridge (systemd timer)
+   [0;36m  3. Skill Lifecycle Pipeline[0m
+   [0;36m  4. Skill Report Pipeline[0m
+   [0;32m✓[0m Skipping 'orch-skill-report-request' — owned by the HC cron bridge (systemd timer)
+   [0;32m✓[0m Skipping 'orch-autonomy-digest' — owned by the HC cron bridge (systemd timer)
+   [0;32m✓[0m Skipping 'orch-restic-backup' — owned by the HC cron bridge (systemd timer)
+   [0;36m  5. Backlog Driver[0m
+   
+   [0;36m━━━ Summary ━━━[0m
+   [0;36m━━━ Summary ─━━[0m
+     Created: 0  Skipped: 6  Failed: 0
+   
+   [0;32m✓[0m Orch crons up to date
+   [0;32m✓[0m Cron manifest: all in-scope crons already match
+       HERMES_CRON_TIMEOUT=600 already applied (systemd)
+       HERMES_TIMEZONE=Asia/Seoul already applied (systemd)
+       install-provider-timeouts: WARNING — expected 300/300s, read back /s
+         config.yaml may be managed elsewhere; check /home/esther/.hermes/config.yaml providers.deepseek
+       install-profile-reader-role: ensuring mycortex_reader_esther (profile=esther)
+       install-profile-reader-role: mycortex_reader_esther ready (inherits mycortex_reader schema grants; legacy shared-reader grants migrated)
+       install-soft-session-cap: SOFT_SESSION_CAP_TOKENS unset — no-op (control host or value pending)
+   [0;32m✓[0m Locking enforcement files…
+       LOCKED: /home/esther/.hermes/plugins/governance-enforcer/__init__.py
+       LOCKED: /home/esther/.hermes-cortex/scripts/pre-commit-score
+       LOCKED: /home/esther/.hermes-cortex/scripts/pre-push-pull
+       LOCKED: /home/esther/.hermes-cortex/scripts/post-commit-audit
+       LOCKED: /home/esther/.hermes-cortex/scripts/post-push-audit
+       LOCKED: /home/esther/.hermes-cortex/hooks/post-merge
+       LOCKED: /home/esther/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py
+       LOCKED: /home/esther/.hermes-cortex/hooks
+       LOCKED: /home/esther/.hermes-cortex/scripts/hermes-plugin-lock
+   [0;32m✓[0m Clearing stale __pycache__ directories…
+   [0;32m✓[0m Running doctor to verify installation…
+   [mcp-server] DEBUG: Initializing server 'loop-governance'
+   [mcp-server] DEBUG: HTTPError 401 for Bearer auth — trying Basic fallback
+   [mcp-server] DEBUG: HTTPError 401 for Bearer auth — trying Basic fallback
+   [mcp-server] DEBUG: HTTPError 401 for Bearer auth — trying Basic fallback
+   
+   ━━━ Hermes Cortex Doctor ━━━  (06:30:00)
+   
+     ✅ Repo branch
+     ⚠️  Repo clean
+     ✅ Repo sync
+     ✅ Deploy sync
+     ✅ AGENTS.md sync
+     ✅ Deployed gate smoke
+     ✅ Self-adversarial review template
+     ✅ Self-adversarial review gate
+     ✅ Self-adversarial review key
+     ⚠️  AGENTS.md efficiency (proj)
+     ✅ CLAUDE.md (dev repos)
+     ✅ SOUL.md canonical 12 (~/.hermes)
+     ✅ SOUL.md local principles (~/.hermes)
+     ✅ SOUL.md template sync (~/.hermes)
+     ✅ SOUL.md reverse drift (~/.hermes)
+     ✅ Skills manifest (basic)
+     ✅ Cron prompt stale refs
+     ✅ Script run evidence
+     ✅ Crons registered
+     ✅ Crons: orphans
+     ℹ️  Extra cron (esther-land-nonhermes-lock-fix)
+     ✅ Orch crons
+     ✅ Crons total
+     ✅ Cron manifest drift
+     ✅ Script integrity
+     ✅ Doctor version
+     ✅ Tool (python3)
+     ✅ Tool (git)
+     ✅ Tool (curl)
+     ✅ Service (Dashboard)
+     ✅ Service (Langfuse)
+     ✅ Service (Agent Bus)
+     ✅ Agent Bus (direct)
+     ✅ Bus config (URL)
+     ✅ Bus config (fallback)
+     ✅ Bus health
+     ✅ Bus self (send→read→archive)
+     ✅ Bus stuck msgs
+     ✅ Bus delivery age
+     ✅ Bus handler
+     ✅ Ollama
+     ✅ worker-service
+     ✅ Metrics arrival age
+     ✅ Systemd scope
+     ✅ Disk usage
+     ✅ Memory
+     ✅ Network safety
+     ✅ Systemd linger
+     ✅ Systemd stale units
+     ✅ Systemd crash loops
+     ℹ️  Config (JUDGE_MODEL)
+     ℹ️  Config (EMBEDDING_MODEL)
+     ℹ️  Config (CODING_MODEL)
+     ℹ️  Config (CREATIVE_MODEL)
+     ✅ Nginx config
+     ✅ Nginx htpasswd
+     ✅ Nginx SSL certs
+     ✅ Nginx syntax
+     ✅ Nginx dir purity
+     ✅ Legacy enforcer plugin
+     ✅ Governance plugin
+     ✅ Plugin content
+     ✅ Enforcer survey gate
+     ✅ Plugin config
+     ✅ Plugin source
+     ✅ MCP server (cortex-bus)
+     ✅ MCP server (loop-governance)
+     ✅ MCP Python (loop-governance)
+     ✅ MCP server (tasks)
+     ✅ MCP server (executor)
+     ✅ Global hooksPath
+     ✅ Pre-commit hook
+     ✅ Pre-push hook
+     ✅ Post-commit hook
+     ℹ️  Score-cycle
+     ✅ Governance locks
+     ✅ Perms: Plugin __init__.py
+     ✅ Immutable: __init__.py
+     ✅ Immutable: pre-commit
+     ✅ Immutable: pre-push
+     ✅ Immutable: post-commit
+     ✅ Immutable: post-push
+     ✅ Immutable: post-merge
+     ✅ Immutable: loop-gov-mcp.py
+     ✅ Immutable: hermes-plugin-lock
+     ✅ Immutable: hooks
+     ✅ Plugin lock helper
+     ✅ Blocked-IPs root copy
+     ✅ Blocked-IPs root copy immutable
+     ✅ Governance coverage
+     ✅ Hook: pre-commit (deployed)
+     ✅ Hook: pre-commit (symlink)
+     ✅ Hook: pre-push (deployed)
+     ✅ Hook: pre-push (symlink)
+     ✅ Hook: post-commit (deployed)
+     ✅ Hook: post-commit (symlink)
+     ✅ Hook: post-merge (deployed)
+     ✅ Hook: post-push (deployed)
+     ✅ Hook: post-push (symlink)
+     ✅ Redundant local hooks
+     ✅ Governance bypass
+     ✅ PENDING cycles
+     ✅ Orphaned locks
+     ✅ Skills gate
+     ✅ Local hooksPath override check
+     ✅ Install footprint
+     ✅ Symlinks
+     ✅ Install refs
+     ⚠️  Stale deploy: scripts/review-sweep-check.py
+     ✅ Repo-local .hermes-cortex
+     ✅ Stale skills: orphans
+     ✅ Stale skills: missing
+     ✅ Stale skills: ambiguous names (deployed)
+     ✅ Stale skills: ambiguous names (repo)
+     ✅ Checksum: agent-system-alert-watchdog.py
+     ✅ Checksum: heartbeat.py
+     ✅ Checksum: verify_briefing.py
+     ✅ Checksum: gen_briefing.py
+     ✅ Checksum: capture_evidence.py
+     ✅ Checksum: write_cycle_evidence.py
+     ✅ Checksum: write_test_results.py
+     ✅ Checksum: write_closure_note.py
+     ✅ Checksum: hermes_models.py
+     ✅ Checksum: hermes_paths.py
+     ✅ Checksum: check-system.sh
+     ✅ Checksum: agent-memory-to-brain-sync.py
+     ✅ Checksum: bootstrap-brain.sh
+     ✅ Checksum: check-memory-budget.sh
+     ✅ Checksum: cortex-profile.sh
+     ✅ Checksum: seed-project-brain.sh
+     ✅ Checksum: install-gateway-cron-timeout.sh
+     ✅ Checksum: install-gateway-timezone.sh
+     ✅ Checksum: cortex-health.sh
+     ✅ Checksum: consolidate-env.sh
+     ✅ Checksum: gen-skills-manifest.py
+     ✅ Checksum: gen-skills-manifest.sh
+     ✅ Checksum: task-db.py
+     ✅ Checksum: agent-review-queue-sweep.py
+     ✅ Checksum: git-main-sync.sh
+     ✅ Checksum: land-when-clean-probe.sh
+     ✅ Checksum: dream-task-bridge.py
+     ✅ Checksum: task-mcp.py
+     ✅ Checksum: executor-mcp.py
+     ✅ Checksum: cortex-sandbox-mcp.py
+     ✅ Checksum: cortex-sandbox.py
+     ✅ Checksum: migrate.py
+     ✅ Checksum: v001__tasks.sql
+     ✅ Checksum: v002__doctor-probe-source.sql
+     ✅ Checksum: v003__cancel-column-null.sql
+     ✅ Checksum: v004__cancel-update-column.sql
+     ✅ Checksum: v005__lifecycle.sql
+     ✅ Checksum: v006__schema-version-grant.sql
+     ✅ Checksum: v007__upsert-preserve-partial.sql
+     ✅ Checksum: v008__v006-deferred.sql
+     ✅ Checksum: v009__task-model-v3.sql
+     ✅ Checksum: v010__task-model-v3-matrix-fix.sql
+     ✅ Checksum: v011__release-stale-assignment.sql
+     ✅ Checksum: v012__parked-rows-return-to-pool.sql
+     ✅ Checksum: learning-collect.py
+     ✅ Checksum: setup-fleet-langfuse.sh
+     ✅ Checksum: cortex-update.sh
+     ✅ Checksum: install-ollama.sh
+     ✅ Checksum: install-nginx.sh
+     ✅ Checksum: install-fail2ban.sh
+     ✅ Checksum: install-cortex-update-cron.sh
+     ✅ Checksum: install-crons.sh
+     ✅ Checksum: install-orch-crons.sh
+     ✅ Checksum: install-dream-crons.sh
+     ✅ Checksum: install-provider-timeouts.sh
+     ✅ Checksum: install-soft-session-cap.sh
+     ✅ Checksum: install-profile-reader-role.sh
+     ✅ Checksum: install-score-hook.sh
+     ✅ Checksum: install-claude-governance.sh
+     ✅ Checksum: install-pi-mcp.sh
+     ✅ Checksum: cortex-dogfood.sh
+     ✅ Checksum: pre-commit-score
+     ✅ Checksum: hc-reflexion-check.py
+     ✅ Checksum: post-commit-audit
+     ✅ Checksum: pre-push-pull
+     ✅ Checksum: agent-no-verify-audit.py
+     ✅ Checksum: agent-governance-auditor.py
+     ✅ Checksum: purge-stale-governance-locks.py
+     ✅ Checksum: soul-merge.py
+     ✅ Checksum: session-active-guard.py
+     ✅ Checksum: hermes-plugin-lock
+     ✅ Checksum: session-identity.sh
+     ✅ Checksum: judgment.py
+     ✅ Checksum: judgment-providers.yaml
+     ✅ Checksum: install-pi-integration.sh
+     ✅ Checksum: audit-pi-integration.sh
+     ✅ Checksum: env-value.sh
+     ✅ Checksum: governance-refused-close-advisory.sh
+     ✅ Checksum: soul-sync-all.sh
+     ✅ Checksum: agents-doc-audit.py
+     ✅ Checksum: agent-agents-md-prune-scan.py
+     ✅ Checksum: secret-leak-detector.sh
+     ✅ Checksum: check-external-services.sh
+     ✅ Checksum: agent-secret-leak-watchdog.py
+     ✅ Checksum: agent-security-posture-check.sh
+     ✅ Checksum: cortex-doctor.py
+     ✅ Checksum: fleet-git-reset.py
+     ✅ Checksum: cron_manifest.py
+     ✅ Checksum: __init__.py
+     ✅ Checksum: bus_alert.py
+     ✅ Checksum: checks.py
+     ✅ Checksum: cli.py
+     ✅ Checksum: config.py
+     ✅ Checksum: fix.py
+     ✅ Checksum: immutability.py
+     ✅ Checksum: helpers.py
+     ✅ Checksum: results.py
+     ✅ Checksum: task_integrity.py
+     ✅ Checksum: cortex-agent-manager.py
+     ✅ Checksum: hc.py
+     ✅ Checksum: harness.py
+     ✅ Checksum: hc
+     ✅ Checksum: agent-stale-ref-watchdog.sh
+     ✅ Checksum: autonomy-classifier.py
+     ✅ Checksum: orch-autonomy-digest.sh
+     ✅ Checksum: cron-failure-state.sh
+     ✅ Checksum: cron_failure_state.py
+     ✅ Checksum: seed-project.sh
+     ✅ Checksum: merge-agents-md.py
+     ✅ Checksum: agent-hermes-update.sh
+     ✅ Checksum: agent-hermes-cortex-sync.sh
+     ✅ Checksum: update-session-state.sh
+     ✅ Checksum: fleet-audit.py
+     ✅ Checksum: task-queue-evidence.py
+     ✅ Checksum: run-task-queue-evidence.sh
+     ✅ Checksum: fleet-hygiene.py
+     ✅ Checksum: fleet-update-check.py
+     ✅ Checksum: toon_parse.py
+     ✅ Checksum: python-with-module.sh
+     ✅ Checksum: orch-task-board-digest.py
+     ✅ Checksum: apply-repo-efficiency.py
+     ✅ Checksum: repo-efficiency-block.md
+     ✅ Checksum: wave-orchestrate.py
+     ✅ Checksum: escalate-to-human.py
+     ✅ Checksum: fleet-stop-switch.py
+     ✅ Checksum: outerloop.py
+     ✅ Checksum: handoff_schema.py
+     ✅ Checksum: adversarial-verify.py
+     ✅ Checksum: probe-gate-logic.py
+     ✅ Checksum: full-suite-evidence.sh
+     ✅ Checksum: agent-session_cache.py
+     ✅ Checksum: prod-watchdog.sh
+     ✅ Checksum: cortex-bus-failover-watchdog.py
+     ✅ Checksum: post-commit-notify.sh
+     ✅ Checksum: install-post-commit-hook.sh
+     ✅ Checksum: template-diff-check.py
+     ✅ Checksum: run.sh
+     ✅ Checksum: check-alembic-heads.py
+     ✅ Checksum: orch-skill-evaluate.sh
+     ✅ Checksum: cortex-bus-remediate.sh
+     ✅ Checksum: cron-auto-remediate.sh
+     ✅ Checksum: docker-volume-safety.sh
+     ✅ Checksum: agent-service-recovery.py
+     ✅ Checksum: platform_utils.py
+     ✅ Checksum: agent-langfuse-health-watchdog.py
+     ✅ Checksum: agent-mcp-health-watchdog.py
+     ✅ Checksum: agent-loop-gov-lock-watchdog.py
+     ✅ Checksum: agent-llm-judge-scorer.py
+     ✅ Checksum: agent-model-health-watchdog.py
+     ✅ Checksum: agent-offline-code-index.sh
+     ✅ Checksum: agent-swap-refresh.py
+     ✅ Checksum: agent-cron-quality-watchdog.py
+     ✅ Checksum: agent-cron-failure-watchdog.py
+     ✅ Checksum: agent-cron-failure-scanner.py
+     ✅ Checksum: agent-cron-status.py
+     ✅ Checksum: agent-scoring-activity-watchdog.py
+     ✅ Checksum: agent-pending-cycle-watchdog.py
+     ✅ Checksum: agent-deploy-drift-audit.py
+     ✅ Checksum: state_tracker.py
+     ✅ Checksum: check-certs.py
+     ✅ Checksum: agent-daily-bible-reading.py
+     ✅ Checksum: nginx-security-scanner.sh
+     ✅ Checksum: agent-nginx-threat-pipeline.sh
+     ✅ Checksum: deploy-blocked-ips.sh
+     ✅ Checksum: classify-blocked-ips.sh
+     ✅ Checksum: agent-remediate-apply.py
+     ✅ Checksum: agent-ip-submission.sh
+     ✅ Checksum: agent-worker.py
+     ✅ Checksum: contact-orchestrator.sh
+     ✅ Checksum: install-worker.sh
+     ✅ Checksum: post-merge
+     ✅ Checksum: agent-auto-save-sessions.py
+     ✅ Checksum: send-skill-report.py
+     ✅ Checksum: cortex-bus-processor.py
+     ✅ Checksum: loop-gov-mcp.sh
+     ✅ Checksum: reviewer-agent-pi.sh
+     ✅ Checksum: loop-gov-mcp.py
+     ✅ Checksum: score_cycle.py
+     ✅ Checksum: loop_scorer.py
+     ✅ Checksum: loop_db.py
+     ✅ Checksum: loop_config.py
+     ✅ Checksum: loop_evaluator.py
+     ✅ Checksum: loop_feedback.py
+     ✅ Checksum: policy_engine.py
+     ✅ Checksum: auto_apply.py
+     ✅ Checksum: skill_miner.py
+     ✅ Checksum: __init__.py
+     ✅ Checksum: setup.sh
+     ✅ Checksum: update.sh
+     ✅ Checksum: verify.sh
+     ✅ Checksum: cleanup-ollama.sh
+     ✅ Checksum: VERSION
+     ✅ Checksum: ek-session-snapshot.py
+     ✅ Checksum: apply-mcp-tool-watch-fix.py
+     ✅ Checksum: install-lean-index.py
+     ✅ Checksum: change-validate.sh
+     ✅ Checksum: precommit_test_discovery.py
+     ✅ Checksum: executor_context_builder.py
+     ✅ Checksum: telegram-bridge.py
+     ✅ Checksum: token-expiry-alert.py
+     ✅ Checksum: gateway_envelope.py
+     ✅ Checksum: msg-gateway.py
+     ✅ Checksum: agent-shim.py
+     ✅ Checksum: agent-reply.py
+     ✅ Checksum: bot_locks.py
+     ✅ Checksum: pre-commit-doc-audit.sh
+     ✅ Checksum: health-vector.py
+     ✅ Checksum: health-vector-push.sh
+     ✅ Checksum: report-agent-health.py
+     ✅ Checksum: cortex-bus-mcp.py
+     ✅ Checksum: agent-message-handler.py
+     ✅ Checksum: commands.py
+     ✅ Checksum: agent-diagnostic.py
+     ✅ Checksum: agent-unannounced-probe.py
+     ✅ Checksum: adversarial-review.py
+     ✅ Checksum: record-review.py
+     ✅ Checksum: adversarial-reviewer-prompt.md
+     ✅ Checksum: hermes_tz.py
+     ✅ Checksum: __init__.py
+     ✅ Checksum: tz.py
+     ✅ Checksum: paths.py
+     ✅ Checksum: cortex-bus-bridge-run.py
+     ✅ Checksum: cortex-bus-bridge-generate.py
+     ✅ Checksum: __init__.py
+     ✅ Checksum: transport.py
+     ✅ Checksum: backend.py
+     ✅ Checksum: hermes_backend.py
+     ✅ Checksum: daemon.py
+     ✅ Checksum: agents.py
+     ✅ Checksum: pairing.py
+     ✅ Checksum: guard_distinct_token.py
+     ✅ Checksum: sessions.py
+     ✅ Checksum: models.py
+     ✅ Checksum: restarts.py
+     ✅ Checksum: pi_control.py
+     ✅ Checksum: new_command_evidence.py
+     ✅ Checksum: slash_parity_evidence.py
+     ✅ Checksum: gateway.yaml.example
+     ✅ Checksum: cortex-gateway.service
+     ✅ Checksum: com.hermes.cortex-gateway.plist
+     ✅ Checksum: tools.py
+     ✅ Checksum: models.py
+     ✅ Checksum: migrate.py
+     ✅ Checksum: mycortex.sql
+     ✅ Checksum: v002__rls-admin-reader-grants.sql
+     ✅ Checksum: v003__admin-schema-version-grant.sql
+     ✅ Checksum: v004__embeddings.sql
+     ✅ Checksum: migrate.py
+     ✅ Checksum: v001__mem.sql
+     ✅ Checksum: store.py
+     ✅ Checksum: v002__sessions.sql
+     ✅ Checksum: v003__tool_events.sql
+     ✅ Checksum: cortex-context-mcp.py
+     ✅ Checksum: session-autocheckpoint.py
+     ✅ Checksum: context_tools.py
+     ✅ Checksum: cortex-context.py
+     ✅ Checksum: loop-gov.py
+     ✅ Checksum: registry.yaml
+     ✅ Checksum: generate-harnesses.py
+     ✅ Checksum: cortex-context.ts
+     ✅ Checksum: IMPLEMENT.md
+     ✅ Checksum: README.md
+     ✅ Checksum: mycortex-parity.py
+     ✅ Checksum: mycortex
+     ✅ Checksum: docker-compose.mycortex.yml
+     ✅ Checksum: agent-mycortex-sync.sh
+     ✅ Checksum: agent-mycortex-retention.py
+     ✅ Checksum: agent-remediation-sensor.py
+     ✅ Checksum: ch-truncate-system-logs.sh
+     ✅ Checksum: run-evals.py
+     ✅ Checksum: analyze-failures.py
+     ✅ Checksum: fact-retention-eval.py
+     ✅ Checksum: send-agent-learning.sh
+     ✅ Checksum: agent-collect-skills.sh
+     ✅ Checksum: agent-skill-stub-audit.py
+     ✅ Checksum: post-push-audit
+     ✅ Checksum: agent-learning-collector.py
+     ✅ Checksum: agent-session-mine-cron.py
+     ✅ Checksum: agent-session-correction-scan.py
+     ✅ Checksum: cortex_bus.py
+     ✅ Checksum: queue.py
+     ✅ Checksum: bus_outbox.py
+     ✅ Checksum: telegram_notify.py
+     ✅ Checksum: daily-lesson-mine.sh
+     ✅ Checksum: lesson-compound-stats.py
+     ✅ Checksum: lesson-hit.sh
+     ✅ Checksum: fix-cron-duplicates.py
+     ✅ Checksum: remove-cron-jobs.py
+     ✅ Checksum: agent-push-metrics.sh
+     ✅ Checksum: setup-push-metrics-cron.sh
+     ✅ Checksum: agent-setup-metrics.sh
+     ✅ Checksum: offline_knowledge.py
+     ✅ Checksum: offline_knowledge.sh
+     ✅ Checksum: offline_code.py
+     ✅ Checksum: offline_code.sh
+     ✅ Checksum: kiwix-docker-compose.yml
+     ✅ Checksum: prep-offline.sh
+     ✅ Checksum: session_mine.py
+     ✅ Checksum: hermes_paths.py
+     ✅ Checksum: lessons.py
+     ✅ Checksum: migrate_fts_reasoning.sql
+     ✅ Checksum: auto-update.sh
+     ✅ Checksum: memory-readme.seed.md
+     ✅ Checksum: 01-log-level.xml
+     ✅ Checksum: 02-low-memory.xml
+     ✅ Checksum: 03-profile-defaults.xml
+     ✅ Checksum: os-config.sh
+     ✅ Checksum: service-writer.sh
+     ✅ Checksum: AGENTS.md
+     ✅ Checksum: Governance plugin __init__.py
+     ✅ Checksum: Governance plugin plugin.yaml
+     ✅ Checksum: Governance plugin README.md
+     ✅ Checksum: SOUL.md (profile: esther)
+     ✅ Task DB connectivity
+     ✅ Task DB write-probe
+     ✅ Task Lifecycle v2 schema
+     ✅ Task Lifecycle v2 events RLS
+     ✅ Task Lifecycle v2 telegram notify
+     ✅ Task Lifecycle v2 stale inbox
+     ✅ Task Lifecycle v2 .env perms
+     ⚠️  Skill drift: devops/cortex-deployment-sync
+     ⚠️  Skill drift: devops/cron-job-management
+     ⚠️  Skill drift: devops/fleet-commands
+     ⚠️  Skill drift: devops/governance-closeout
+     ⚠️  Skill drift: devops/governance-lock-lifecycle
+     ⚠️  Skill drift: devops/mycortex
+     ⚠️  Skill drift: devops/psql-automation
+     ⚠️  Skill drift: software-development/change-checklist
+     ⚠️  Skill drift
+     ✅ mycortex-mem plugin
+     ✅ mycortex-mem content
+     ✅ mycortex-mem config
+     ✅ prompt-guard plugin
+     ✅ prompt-guard content
+     ✅ prompt-guard config
+     ✅ Hook drift: post-commit
+     ✅ Hook drift: post-push
+     ✅ Hook drift: pre-commit
+     ✅ Hook drift: pre-push
+     ✅ Cron runtime scripts
+     ✅ Langfuse version
+     ✅ Langfuse scoring
+     ✅ ClickHouse system db
+     ✅ Restraint registry
+     ➖ Bus grant expiry
+     ✅ cortex-gateway
+     ✅ cortex env
+     ✅ Cron bridge migration
+     ℹ️  Orphan-cycle resolution
+     ✅ Task schema deploy
+     ✅ Task schema deployed
+     ✅ Task schema version
+     ✅ Stranded slices
+   
+     ⚠️  Overall: WARNING  (447 pass · 12 warn · 0 fail · 7 info)
+   
+     ═══════════════════════════════════════════════════
+     🔧 REQUIRED ACTIONS — resolve each ⚠️  or ❌ above
+   
+       Run: git status to review
+       Run: python3 /home/esther/.hermes-cortex/scripts/apply-repo-efficiency.py /home/esther/proj --commit
+       Remove: rm /home/esther/.hermes-cortex/scripts/review-sweep-check.py
+       Copy the deployed changes to the repo source first, then commit.
+       Copy the deployed changes to the repo source first, then commit.
+       Copy the deployed changes to the repo source first, then commit.
+       Copy the deployed changes to the repo source first, then commit.
+       Copy the deployed changes to the repo source first, then commit.
+       Copy the deployed changes to the repo source first, then commit.
+       Copy the deployed changes to the repo source first, then commit.
+       Copy the deployed changes to the repo source first, then commit.
+       Resolve each drift entry above
+   
+     After resolving, run doctor again to confirm.
+     ═══════════════════════════════════════════════════
+   
+   
+▶ 3/4 doctor
+   [mcp-server] DEBUG: Initializing server 'loop-governance'
+   [mcp-server] DEBUG: HTTPError 401 for Bearer auth — trying Basic fallback
+   [mcp-server] DEBUG: HTTPError 401 for Bearer auth — trying Basic fallback
+   [mcp-server] DEBUG: HTTPError 401 for Bearer auth — trying Basic fallback
+   
+   ━━━ Hermes Cortex Doctor ━━━  (06:30:10)
+   
+     ✅ Repo branch — on 'main'
+     ⚠️  Repo clean — 13 uncommitted change(s)
+            🔶 Suggestion: Run: git status to review
+     ✅ Repo sync — up to date with origin/main
+     ✅ Deploy sync — deployed commit matches HEAD
+     ✅ AGENTS.md sync
+     ✅ Deployed gate smoke — deployed verifier TOON check active (malformed fixture flagged)
+     ✅ Self-adversarial review template — present with REVIEWED MATERIAL marker
+     ✅ Self-adversarial review gate — end_change hard gate helpers present in loop-gov-mcp.py
+     ✅ Self-adversarial review key — OPENROUTER_API_KEY resolvable
+     ⚠️  AGENTS.md efficiency (proj) — dev repo AGENTS.md missing fleet session-efficiency block
+            🔶 Suggestion: Run: python3 /home/esther/.hermes-cortex/scripts/apply-repo-efficiency.py /home/esther/proj --commit
+     ✅ CLAUDE.md (dev repos) — all 1 active dev repo(s) have CLAUDE.md
+     ✅ SOUL.md canonical 12 (~/.hermes) — all 12 canonical principles present
+     ✅ SOUL.md local principles (~/.hermes) — 4 local principle(s) — allowed (≤12, generic, non-duplicating)
+     ✅ SOUL.md template sync (~/.hermes)
+     ✅ SOUL.md reverse drift (~/.hermes)
+     ✅ Skills manifest (basic) — found at /home/esther/.hermes-cortex/skills.yaml
+     ✅ Cron prompt stale refs — no stale bus-target references in live cron prompts
+     ✅ Script run evidence — all 83 changed script(s) have run through the scheduler since their change
+     ✅ Crons registered — all 21 expected crons present and healthy
+     ✅ Crons: orphans — no unexpected crons found
+     ℹ️  Extra cron (esther-land-nonhermes-lock-fix) — not part of Hermes Cortex
+     ✅ Orch crons — all 6 orchestrator crons present (host: esther)
+     ✅ Crons total — 27 jobs registered
+     ✅ Cron manifest drift — all in-scope crons match manifest (0 declared)
+     ✅ Script integrity — all cron scripts found and match repo source
+     ✅ Doctor version — Deployed version matches repo
+     ✅ Tool (python3) — found — runtime scripts (contact-orchestrator.sh, handler, doctor)
+     ✅ Tool (git) — found — repo pull/push, hooks
+     ✅ Tool (curl) — found — bus HTTP client, doctor HTTP checks, health pings
+     ✅ Service (Dashboard) — HTTP 401
+     ✅ Service (Langfuse) — HTTP 401
+     ✅ Service (Agent Bus) — HTTP 401
+     ✅ Agent Bus (direct) — HTTP 200 — bus service healthy via localhost:8903
+     ✅ Bus config (URL) — BUS_URL set
+     ✅ Bus config (fallback) — FALLBACK_URL set
+     ✅ Bus health — Status: ok — backend: pgmq
+     ✅ Bus self (send→read→archive) — correlation_id match — full cycle OK
+     ✅ Bus stuck msgs — No stuck messages — queue empty and healthy
+     ✅ Bus delivery age — no inbox holds a message older than 60m
+     ✅ Bus handler — agent-message-handler.py exists (72310 bytes)
+     ✅ Ollama — 2 model(s) loaded
+     ✅ worker-service — hermes-agent-worker not active
+     ✅ Metrics arrival age — 1 agent(s) pushed within 30m; arrived: Esther; 5 known agent(s) not seen at this sink (Gisu, Joseph, Kustos, Moses, Titus) — expected if they push elsewhere or have no VICTORIA_METRICS_URL
+     ✅ Systemd scope — no system-level Hermes services (all user-level)
+     ✅ Disk usage — 86G used / 783G free (10%)
+     ✅ Memory — 4.7Gi used / 7.7Gi total
+     ✅ Network safety — no services exposed on 0.0.0.0
+     ✅ Systemd linger — enabled — user services survive reboot
+     ✅ Systemd stale units — no unexpected failed units
+     ✅ Systemd crash loops — no units in auto-restart loop
+     ℹ️  Config (JUDGE_MODEL) — defined but zero consumer scripts reference it
+     ℹ️  Config (EMBEDDING_MODEL) — defined but zero consumer scripts reference it
+     ℹ️  Config (CODING_MODEL) — defined but zero consumer scripts reference it
+     ℹ️  Config (CREATIVE_MODEL) — defined but zero consumer scripts reference it
+     ✅ Nginx config — found at /etc/nginx/sites-available/hermes-services.conf
+     ✅ Nginx htpasswd — /etc/nginx/.hermes-htpasswd exists
+     ✅ Nginx SSL certs — 2 cert path(s) resolve
+     ✅ Nginx syntax — config valid (nginx -t)
+     ✅ Nginx dir purity — all confs in ops/install/deploy/nginx/ are nginx configs
+     ✅ Legacy enforcer plugin — no stale legacy enforcer plugins
+     ✅ Governance plugin — installed at ~/.hermes/plugins/governance-enforcer
+     ✅ Plugin content — copy matches repo source
+     ✅ Enforcer survey gate — cronjob(create) requires .cron-survey-done marker
+     ✅ Plugin config — enabled in config.yaml
+     ✅ Plugin source — source in repo at plugins/governance-enforcer
+     ✅ MCP server (cortex-bus) — configured in config.yaml
+     ✅ MCP server (loop-governance) — configured in config.yaml
+     ✅ MCP Python (loop-governance) — uses venv: /home/esther/.hermes/hermes-agent/venv/bin/python3
+     ✅ MCP server (tasks) — configured in config.yaml
+     ✅ MCP server (executor) — configured in config.yaml
+     ✅ Global hooksPath — core.hooksPath → /home/esther/.hermes-cortex/hooks
+     ✅ Pre-commit hook — installed governance + enforcer checks
+     ✅ Pre-push hook — installed with lock-check, syntax-check
+     ✅ Post-commit hook — symlinked to post-commit-audit (executable)
+     ℹ️  Score-cycle — Old score-cycle found at /home/esther/.local/bin/score-cycle — current governance uses MCP tools
+     ✅ Governance locks — 2 lock(s) active, 0 stale
+     ✅ Perms: Plugin __init__.py — 0o444
+     ✅ Immutable: __init__.py — immutable flag set
+     ✅ Immutable: pre-commit — immutable flag set
+     ✅ Immutable: pre-push — immutable flag set
+     ✅ Immutable: post-commit — immutable flag set
+     ✅ Immutable: post-push — immutable flag set
+     ✅ Immutable: post-merge — immutable flag set
+     ✅ Immutable: loop-gov-mcp.py — immutable flag set
+     ✅ Immutable: hermes-plugin-lock — immutable flag set
+     ✅ Immutable: hooks — immutable flag set
+     ✅ Plugin lock helper — helper OK (----i---------e------- /home/esther/.hermes/plugins/governan)
+     ✅ Blocked-IPs root copy — root copy present and matches repo source
+     ✅ Blocked-IPs root copy immutable — immutable flag set
+     ✅ Governance coverage — all bypass closures validated
+     ✅ Hook: pre-commit (deployed) — present at /home/esther/.hermes-cortex/hooks/pre-commit
+     ✅ Hook: pre-commit (symlink) — → /home/esther/.hermes-cortex/scripts/pre-commit-score
+     ✅ Hook: pre-push (deployed) — present at /home/esther/.hermes-cortex/hooks/pre-push
+     ✅ Hook: pre-push (symlink) — → /home/esther/.hermes-cortex/scripts/pre-push-pull
+     ✅ Hook: post-commit (deployed) — present at /home/esther/.hermes-cortex/hooks/post-commit
+     ✅ Hook: post-commit (symlink) — → /home/esther/.hermes-cortex/scripts/post-commit-audit
+     ✅ Hook: post-merge (deployed) — present at /home/esther/.hermes-cortex/hooks/post-merge
+     ✅ Hook: post-push (deployed) — present at /home/esther/.hermes-cortex/hooks/post-push
+     ✅ Hook: post-push (symlink) — → /home/esther/.hermes-cortex/scripts/post-push-audit
+     ✅ Redundant local hooks — no redundant hooks found in local .git/hooks directories
+     ✅ Governance bypass — no bypass markers found
+     ✅ PENDING cycles — no unscored cycles
+     ✅ Orphaned locks — 2 lock(s), MCP server active
+     ✅ Skills gate — enforcer blocks writes without per-session skills markers
+     ✅ Local hooksPath override check — no per-repo overrides — all repos inherit global hooksPath
+     ✅ Install footprint — all core paths present
+     ✅ Symlinks — all symlinks valid
+     ✅ Install refs — install.sh repo path references all resolve
+     ⚠️  Stale deploy: scripts/review-sweep-check.py — 2,264 bytes — not in any register() mapping
+            🔶 Suggestion: Remove: rm /home/esther/.hermes-cortex/scripts/review-sweep-check.py
+     ✅ Repo-local .hermes-cortex — absent — correct for the Cortex repo
+     ✅ Stale skills: orphans — all deployed skills have a repo or Hermes source
+     ✅ Stale skills: missing — all repo skills are deployed
+     ✅ Stale skills: ambiguous names (deployed) — no duplicate skill names
+     ✅ Stale skills: ambiguous names (repo) — no duplicate skill names
+     ✅ Checksum: agent-system-alert-watchdog.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: heartbeat.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: verify_briefing.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: gen_briefing.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: capture_evidence.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: write_cycle_evidence.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: write_test_results.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: write_closure_note.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: hermes_models.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: hermes_paths.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: check-system.sh — content matches (after stripping SOURCE header)
+     ✅ Checksum: agent-memory-to-brain-sync.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: bootstrap-brain.sh — content matches (after stripping SOURCE header)
+     ✅ Checksum: check-memory-budget.sh — content matches (after stripping SOURCE header)
+     ✅ Checksum: cortex-profile.sh — content matches (after stripping SOURCE header)
+     ✅ Checksum: seed-project-brain.sh — content matches (after stripping SOURCE header)
+     ✅ Checksum: install-gateway-cron-timeout.sh — content matches (after stripping SOURCE header)
+     ✅ Checksum: install-gateway-timezone.sh — content matches (after stripping SOURCE header)
+     ✅ Checksum: cortex-health.sh — content matches repo source
+     ✅ Checksum: consolidate-env.sh — content matches (after stripping SOURCE header)
+     ✅ Checksum: gen-skills-manifest.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: gen-skills-manifest.sh — content matches (after stripping SOURCE header)
+     ✅ Checksum: task-db.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: agent-review-queue-sweep.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: git-main-sync.sh — content matches (after stripping SOURCE header)
+     ✅ Checksum: land-when-clean-probe.sh — content matches (after stripping SOURCE header)
+     ✅ Checksum: dream-task-bridge.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: task-mcp.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: executor-mcp.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: cortex-sandbox-mcp.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: cortex-sandbox.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: migrate.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: v001__tasks.sql — content matches repo source
+     ✅ Checksum: v002__doctor-probe-source.sql — content matches repo source
+     ✅ Checksum: v003__cancel-column-null.sql — content matches repo source
+     ✅ Checksum: v004__cancel-update-column.sql — content matches repo source
+     ✅ Checksum: v005__lifecycle.sql — content matches repo source
+     ✅ Checksum: v006__schema-version-grant.sql — content matches repo source
+     ✅ Checksum: v007__upsert-preserve-partial.sql — content matches repo source
+     ✅ Checksum: v008__v006-deferred.sql — content matches repo source
+     ✅ Checksum: v009__task-model-v3.sql — content matches repo source
+     ✅ Checksum: v010__task-model-v3-matrix-fix.sql — content matches repo source
+     ✅ Checksum: v011__release-stale-assignment.sql — content matches repo source
+     ✅ Checksum: v012__parked-rows-return-to-pool.sql — content matches repo source
+     ✅ Checksum: learning-collect.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: setup-fleet-langfuse.sh — content matches (after stripping SOURCE header)
+     ✅ Checksum: cortex-update.sh — content matches (after stripping SOURCE header)
+     ✅ Checksum: install-ollama.sh — content matches (after stripping SOURCE header)
+     ✅ Checksum: install-nginx.sh — content matches (after stripping SOURCE header)
+     ✅ Checksum: install-fail2ban.sh — content matches (after stripping SOURCE header)
+     ✅ Checksum: install-cortex-update-cron.sh — content matches (after stripping SOURCE header)
+     ✅ Checksum: install-crons.sh — content matches (after stripping SOURCE header)
+     ✅ Checksum: install-orch-crons.sh — content matches (after stripping SOURCE header)
+     ✅ Checksum: install-dream-crons.sh — content matches (after stripping SOURCE header)
+     ✅ Checksum: install-provider-timeouts.sh — content matches (after stripping SOURCE header)
+     ✅ Checksum: install-soft-session-cap.sh — content matches (after stripping SOURCE header)
+     ✅ Checksum: install-profile-reader-role.sh — content matches (after stripping SOURCE header)
+     ✅ Checksum: install-score-hook.sh — content matches (after stripping SOURCE header)
+     ✅ Checksum: install-claude-governance.sh — content matches (after stripping SOURCE header)
+     ✅ Checksum: install-pi-mcp.sh — content matches (after stripping SOURCE header)
+     ✅ Checksum: cortex-dogfood.sh — content matches (after stripping SOURCE header)
+     ✅ Checksum: pre-commit-score — content matches repo source
+     ✅ Checksum: hc-reflexion-check.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: post-commit-audit — content matches repo source
+     ✅ Checksum: pre-push-pull — content matches repo source
+     ✅ Checksum: agent-no-verify-audit.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: agent-governance-auditor.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: purge-stale-governance-locks.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: soul-merge.py — content matches repo source
+     ✅ Checksum: session-active-guard.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: hermes-plugin-lock — content matches repo source
+     ✅ Checksum: session-identity.sh — content matches (after stripping SOURCE header)
+     ✅ Checksum: judgment.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: judgment-providers.yaml — content matches repo source
+     ✅ Checksum: install-pi-integration.sh — content matches (after stripping SOURCE header)
+     ✅ Checksum: audit-pi-integration.sh — content matches (after stripping SOURCE header)
+     ✅ Checksum: env-value.sh — content matches (after stripping SOURCE header)
+     ✅ Checksum: governance-refused-close-advisory.sh — content matches (after stripping SOURCE header)
+     ✅ Checksum: soul-sync-all.sh — content matches repo source
+     ✅ Checksum: agents-doc-audit.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: agent-agents-md-prune-scan.py — content matches repo source
+     ✅ Checksum: secret-leak-detector.sh — content matches (after stripping SOURCE header)
+     ✅ Checksum: check-external-services.sh — content matches repo source
+     ✅ Checksum: agent-secret-leak-watchdog.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: agent-security-posture-check.sh — content matches (after stripping SOURCE header)
+     ✅ Checksum: cortex-doctor.py — content matches repo source
+     ✅ Checksum: fleet-git-reset.py — content matches repo source
+     ✅ Checksum: cron_manifest.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: __init__.py — content matches repo source
+     ✅ Checksum: bus_alert.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: checks.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: cli.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: config.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: fix.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: immutability.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: helpers.py — content matches repo source
+     ✅ Checksum: results.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: task_integrity.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: cortex-agent-manager.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: hc.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: harness.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: hc — content matches repo source
+     ✅ Checksum: agent-stale-ref-watchdog.sh — content matches (after stripping SOURCE header)
+     ✅ Checksum: autonomy-classifier.py — content matches repo source
+     ✅ Checksum: orch-autonomy-digest.sh — content matches repo source
+     ✅ Checksum: cron-failure-state.sh — content matches (after stripping SOURCE header)
+     ✅ Checksum: cron_failure_state.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: seed-project.sh — content matches repo source
+     ✅ Checksum: merge-agents-md.py — content matches repo source
+     ✅ Checksum: agent-hermes-update.sh — content matches (after stripping SOURCE header)
+     ✅ Checksum: agent-hermes-cortex-sync.sh — content matches (after stripping SOURCE header)
+     ✅ Checksum: update-session-state.sh — content matches (after stripping SOURCE header)
+     ✅ Checksum: fleet-audit.py — content matches repo source
+     ✅ Checksum: task-queue-evidence.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: run-task-queue-evidence.sh — content matches (after stripping SOURCE header)
+     ✅ Checksum: fleet-hygiene.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: fleet-update-check.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: toon_parse.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: python-with-module.sh — content matches (after stripping SOURCE header)
+     ✅ Checksum: orch-task-board-digest.py — content matches repo source
+     ✅ Checksum: apply-repo-efficiency.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: repo-efficiency-block.md — content matches repo source
+     ✅ Checksum: wave-orchestrate.py — content matches repo source
+     ✅ Checksum: escalate-to-human.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: fleet-stop-switch.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: outerloop.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: handoff_schema.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: adversarial-verify.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: probe-gate-logic.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: full-suite-evidence.sh — content matches (after stripping SOURCE header)
+     ✅ Checksum: agent-session_cache.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: prod-watchdog.sh — content matches repo source
+     ✅ Checksum: cortex-bus-failover-watchdog.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: post-commit-notify.sh — content matches (after stripping SOURCE header)
+     ✅ Checksum: install-post-commit-hook.sh — content matches repo source
+     ✅ Checksum: template-diff-check.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: run.sh — content matches (after stripping SOURCE header)
+     ✅ Checksum: check-alembic-heads.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: orch-skill-evaluate.sh — content matches (after stripping SOURCE header)
+     ✅ Checksum: cortex-bus-remediate.sh — content matches (after stripping SOURCE header)
+     ✅ Checksum: cron-auto-remediate.sh — content matches (after stripping SOURCE header)
+     ✅ Checksum: docker-volume-safety.sh — content matches repo source
+     ✅ Checksum: agent-service-recovery.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: platform_utils.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: agent-langfuse-health-watchdog.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: agent-mcp-health-watchdog.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: agent-loop-gov-lock-watchdog.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: agent-llm-judge-scorer.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: agent-model-health-watchdog.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: agent-offline-code-index.sh — content matches repo source
+     ✅ Checksum: agent-swap-refresh.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: agent-cron-quality-watchdog.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: agent-cron-failure-watchdog.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: agent-cron-failure-scanner.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: agent-cron-status.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: agent-scoring-activity-watchdog.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: agent-pending-cycle-watchdog.py — content matches repo source
+     ✅ Checksum: agent-deploy-drift-audit.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: state_tracker.py — content matches repo source
+     ✅ Checksum: check-certs.py — content matches repo source
+     ✅ Checksum: agent-daily-bible-reading.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: nginx-security-scanner.sh — content matches (after stripping SOURCE header)
+     ✅ Checksum: agent-nginx-threat-pipeline.sh — content matches (after stripping SOURCE header)
+     ✅ Checksum: deploy-blocked-ips.sh — content matches (after stripping SOURCE header)
+     ✅ Checksum: classify-blocked-ips.sh — content matches (after stripping SOURCE header)
+     ✅ Checksum: agent-remediate-apply.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: agent-ip-submission.sh — content matches (after stripping SOURCE header)
+     ✅ Checksum: agent-worker.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: contact-orchestrator.sh — content matches (after stripping SOURCE header)
+     ✅ Checksum: install-worker.sh — content matches (after stripping SOURCE header)
+     ✅ Checksum: post-merge — content matches repo source
+     ✅ Checksum: agent-auto-save-sessions.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: send-skill-report.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: cortex-bus-processor.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: loop-gov-mcp.sh — content matches (after stripping SOURCE header)
+     ✅ Checksum: reviewer-agent-pi.sh — content matches (after stripping SOURCE header)
+     ✅ Checksum: loop-gov-mcp.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: score_cycle.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: loop_scorer.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: loop_db.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: loop_config.py — content matches repo source
+     ✅ Checksum: loop_evaluator.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: loop_feedback.py — content matches repo source
+     ✅ Checksum: policy_engine.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: auto_apply.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: skill_miner.py — content matches repo source
+     ✅ Checksum: __init__.py — content matches repo source
+     ✅ Checksum: setup.sh — content matches (after stripping SOURCE header)
+     ✅ Checksum: update.sh — content matches (after stripping SOURCE header)
+     ✅ Checksum: verify.sh — content matches repo source
+     ✅ Checksum: cleanup-ollama.sh — content matches (after stripping SOURCE header)
+     ✅ Checksum: VERSION — content matches repo source
+     ✅ Checksum: ek-session-snapshot.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: apply-mcp-tool-watch-fix.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: install-lean-index.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: change-validate.sh — content matches (after stripping SOURCE header)
+     ✅ Checksum: precommit_test_discovery.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: executor_context_builder.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: telegram-bridge.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: token-expiry-alert.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: gateway_envelope.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: msg-gateway.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: agent-shim.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: agent-reply.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: bot_locks.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: pre-commit-doc-audit.sh — content matches (after stripping SOURCE header)
+     ✅ Checksum: health-vector.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: health-vector-push.sh — content matches (after stripping SOURCE header)
+     ✅ Checksum: report-agent-health.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: cortex-bus-mcp.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: agent-message-handler.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: commands.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: agent-diagnostic.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: agent-unannounced-probe.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: adversarial-review.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: record-review.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: adversarial-reviewer-prompt.md — content matches repo source
+     ✅ Checksum: hermes_tz.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: __init__.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: tz.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: paths.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: cortex-bus-bridge-run.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: cortex-bus-bridge-generate.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: __init__.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: transport.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: backend.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: hermes_backend.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: daemon.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: agents.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: pairing.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: guard_distinct_token.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: sessions.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: models.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: restarts.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: pi_control.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: new_command_evidence.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: slash_parity_evidence.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: gateway.yaml.example — content matches repo source
+     ✅ Checksum: cortex-gateway.service — content matches repo source
+     ✅ Checksum: com.hermes.cortex-gateway.plist — content matches repo source
+     ✅ Checksum: tools.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: models.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: migrate.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: mycortex.sql — content matches repo source
+     ✅ Checksum: v002__rls-admin-reader-grants.sql — content matches repo source
+     ✅ Checksum: v003__admin-schema-version-grant.sql — content matches repo source
+     ✅ Checksum: v004__embeddings.sql — content matches repo source
+     ✅ Checksum: migrate.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: v001__mem.sql — content matches repo source
+     ✅ Checksum: store.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: v002__sessions.sql — content matches repo source
+     ✅ Checksum: v003__tool_events.sql — content matches repo source
+     ✅ Checksum: cortex-context-mcp.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: session-autocheckpoint.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: context_tools.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: cortex-context.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: loop-gov.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: registry.yaml — content matches repo source
+     ✅ Checksum: generate-harnesses.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: cortex-context.ts — content matches repo source
+     ✅ Checksum: IMPLEMENT.md — content matches repo source
+     ✅ Checksum: README.md — content matches repo source
+     ✅ Checksum: mycortex-parity.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: mycortex — content matches repo source
+     ✅ Checksum: docker-compose.mycortex.yml — content matches repo source
+     ✅ Checksum: agent-mycortex-sync.sh — content matches (after stripping SOURCE header)
+     ✅ Checksum: agent-mycortex-retention.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: agent-remediation-sensor.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: ch-truncate-system-logs.sh — content matches (after stripping SOURCE header)
+     ✅ Checksum: run-evals.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: analyze-failures.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: fact-retention-eval.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: send-agent-learning.sh — content matches (after stripping SOURCE header)
+     ✅ Checksum: agent-collect-skills.sh — content matches (after stripping SOURCE header)
+     ✅ Checksum: agent-skill-stub-audit.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: post-push-audit — content matches repo source
+     ✅ Checksum: agent-learning-collector.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: agent-session-mine-cron.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: agent-session-correction-scan.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: cortex_bus.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: queue.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: bus_outbox.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: telegram_notify.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: daily-lesson-mine.sh — content matches repo source
+     ✅ Checksum: lesson-compound-stats.py — content matches repo source
+     ✅ Checksum: lesson-hit.sh — content matches repo source
+     ✅ Checksum: fix-cron-duplicates.py — content matches repo source
+     ✅ Checksum: remove-cron-jobs.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: agent-push-metrics.sh — content matches (after stripping SOURCE header)
+     ✅ Checksum: setup-push-metrics-cron.sh — content matches repo source
+     ✅ Checksum: agent-setup-metrics.sh — content matches (after stripping SOURCE header)
+     ✅ Checksum: offline_knowledge.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: offline_knowledge.sh — content matches repo source
+     ✅ Checksum: offline_code.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: offline_code.sh — content matches repo source
+     ✅ Checksum: kiwix-docker-compose.yml — content matches repo source
+     ✅ Checksum: prep-offline.sh — content matches (after stripping SOURCE header)
+     ✅ Checksum: session_mine.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: hermes_paths.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: lessons.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: migrate_fts_reasoning.sql — content matches repo source
+     ✅ Checksum: auto-update.sh — content matches repo source
+     ✅ Checksum: memory-readme.seed.md — content matches repo source
+     ✅ Checksum: 01-log-level.xml — content matches repo source
+     ✅ Checksum: 02-low-memory.xml — content matches repo source
+     ✅ Checksum: 03-profile-defaults.xml — content matches repo source
+     ✅ Checksum: os-config.sh — content matches (after stripping SOURCE header)
+     ✅ Checksum: service-writer.sh — content matches repo source
+     ✅ Checksum: AGENTS.md — content matches repo source
+     ✅ Checksum: Governance plugin __init__.py — content matches repo source
+     ✅ Checksum: Governance plugin plugin.yaml — content matches repo source
+     ✅ Checksum: Governance plugin README.md — content matches repo source
+     ✅ Checksum: SOUL.md (profile: esther) — content matches repo source
+     ✅ Task DB connectivity — Postgres reachable, 39 pending item(s)
+     ✅ Task DB write-probe — add → start → complete → archive roundtrip OK
+     ✅ Task Lifecycle v2 schema — tasks schema_version = 12 (v2 lifecycle available)
+     ✅ Task Lifecycle v2 events RLS — RLS=True, reader grants: SELECT
+     ✅ Task Lifecycle v2 telegram notify — sent=2960, failures=0, env_perms_ok=True
+     ✅ Task Lifecycle v2 stale inbox — no stale inbox tasks (sweep healthy)
+     ✅ Task Lifecycle v2 .env perms — .env mode 600 (token protected)
+     ⚠️  Skill drift: devops/cortex-deployment-sync — Deployed copy is newer than repo source (/home/esther/.hermes/skills/devops/cortex-deployment-sync/SKILL.md). Commit the repo source before cortex-update overwrites it.
+            🔶 Suggestion: Copy the deployed changes to the repo source first, then commit.
+     ⚠️  Skill drift: devops/cron-job-management — Deployed copy is newer than repo source (/home/esther/.hermes/skills/devops/cron-job-management/SKILL.md). Commit the repo source before cortex-update overwrites it.
+            🔶 Suggestion: Copy the deployed changes to the repo source first, then commit.
+     ⚠️  Skill drift: devops/fleet-commands — Deployed copy is newer than repo source (/home/esther/.hermes/skills/devops/fleet-commands/SKILL.md). Commit the repo source before cortex-update overwrites it.
+            🔶 Suggestion: Copy the deployed changes to the repo source first, then commit.
+     ⚠️  Skill drift: devops/governance-closeout — Deployed copy is newer than repo source (/home/esther/.hermes/skills/devops/governance-closeout/SKILL.md). Commit the repo source before cortex-update overwrites it.
+            🔶 Suggestion: Copy the deployed changes to the repo source first, then commit.
+     ⚠️  Skill drift: devops/governance-lock-lifecycle — Deployed copy is newer than repo source (/home/esther/.hermes/skills/devops/governance-lock-lifecycle/SKILL.md). Commit the repo source before cortex-update overwrites it.
+            🔶 Suggestion: Copy the deployed changes to the repo source first, then commit.
+     ⚠️  Skill drift: devops/mycortex — Deployed copy is newer than repo source (/home/esther/.hermes/skills/devops/mycortex/SKILL.md). Commit the repo source before cortex-update overwrites it.
+            🔶 Suggestion: Copy the deployed changes to the repo source first, then commit.
+     ⚠️  Skill drift: devops/psql-automation — Deployed copy is newer than repo source (/home/esther/.hermes/skills/devops/psql-automation/SKILL.md). Commit the repo source before cortex-update overwrites it.
+            🔶 Suggestion: Copy the deployed changes to the repo source first, then commit.
+     ⚠️  Skill drift: software-development/change-checklist — Deployed copy is newer than repo source (/home/esther/.hermes/skills/software-development/change-checklist/SKILL.md). Commit the repo source before cortex-update overwrites it.
+            🔶 Suggestion: Copy the deployed changes to the repo source first, then commit.
+     ⚠️  Skill drift — 8 drifted, 379 in sync, 126 Hermes defaults skipped
+            🔶 Suggestion: Resolve each drift entry above
+     ✅ mycortex-mem plugin — installed at ~/.hermes/plugins/mycortex-mem
+     ✅ mycortex-mem content — copy matches repo source
+     ✅ mycortex-mem config — enabled in config.yaml
+     ✅ prompt-guard plugin — installed at ~/.hermes/plugins/prompt-guard
+     ✅ prompt-guard content — copy matches repo source
+     ✅ prompt-guard config — enabled in config.yaml
+     ✅ Hook drift: post-commit — deployed matches repo (777fd064)
+     ✅ Hook drift: post-push — deployed matches repo (67b598cb)
+     ✅ Hook drift: pre-commit — deployed matches repo (62ed45c7)
+     ✅ Hook drift: pre-push — deployed matches repo (17b13aa9)
+     ✅ Cron runtime scripts — scripts → ~/.hermes-cortex/scripts (symlink)
+     ✅ Langfuse version — running langfuse/langfuse:3.225.1 matches compose pin
+     ✅ Langfuse scoring — 1984 scores, newest 2d old, traces newest 3d old
+     ✅ ClickHouse system db — system database is 434 MB
+     ✅ Restraint registry — all 15 classes name a present restraint
+     ➖ Bus grant expiry — bus.permissions not queryable (orchestrator host only?)
+     ✅ cortex-gateway — daemon imports hermetically; config + unit independent of hermes-gateway
+     ✅ cortex env — canonical ~/hermes-cortex/.env present (600); cortex-bus.conf is the sanctioned symlink; no deploy-dir .env
+     ✅ Cron bridge migration — every eligible no_agent job is either bridged or deliberately left on Hermes
+     ℹ️  Orphan-cycle resolution — 5 reaper-closed (unscored, tagged) · 91 agent-declared unscored close(s); 11 legacy row(s) closed by the OLD reaper carry a bare MOVE_ON and are NOT judged: #9836, #9990, #10015, #10022, #10030
+     ✅ Task schema deploy — all 12 task migrations are in the deploy register
+     ✅ Task schema deployed — all 12 migrations present on the deployed tree
+     ✅ Task schema version — tasks schema up to date (version 12) — no-op
+     ✅ Stranded slices — no pending slice is assigned-and-unstarted
+   
+     ⚠️  Overall: WARNING  (447 pass · 12 warn · 0 fail · 7 info)
+   
+     ═══════════════════════════════════════════════════
+     🔧 REQUIRED ACTIONS — resolve each ⚠️  or ❌ above
+   
+       Run: git status to review
+       Run: python3 /home/esther/.hermes-cortex/scripts/apply-repo-efficiency.py /home/esther/proj --commit
+       Remove: rm /home/esther/.hermes-cortex/scripts/review-sweep-check.py
+       Copy the deployed changes to the repo source first, then commit.
+       Copy the deployed changes to the repo source first, then commit.
+       Copy the deployed changes to the repo source first, then commit.
+       Copy the deployed changes to the repo source first, then commit.
+       Copy the deployed changes to the repo source first, then commit.
+       Copy the deployed changes to the repo source first, then commit.
+       Copy the deployed changes to the repo source first, then commit.
+       Copy the deployed changes to the repo source first, then commit.
+       Resolve each drift entry above
+   
+     After resolving, run doctor again to confirm.
+     ═══════════════════════════════════════════════════
+
+✅  DOGFOOD PASSED — deployed state verified clean.
+DOGFOOD_RC=0
