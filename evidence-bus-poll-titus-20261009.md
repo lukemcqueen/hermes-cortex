@@ -2,14 +2,14 @@
 # Cron job: cortex-bus-automation (absorbed into cortex-bus)
 # Queue: inbox_titus (Titus)
 # Date: 2026-10-09 22:21 KST
+# Re-runnable via ./poll-bus-inbox_titus.sh (reads credentials from hermes-inbox.conf)
 
-Probe (read-only HTTP GET, Basic auth from hermes-inbox.conf, CORTEX_BUS_URL / CORTEX_BASIC_AUTH):
+Captured run output (2026-10-09 22:21 KST):
 
-  GET /api/pgmq/peek/inbox_titus
-  Response: HTTP 200
+== GET <CORTEX_BUS_URL>/api/pgmq/peek/inbox_titus ==
+{"queue":"inbox_titus","messages":[],"count":0}
+== HTTP status (curl -w suffix) ==
+HTTP:200
 
-  {"queue":"inbox_titus","messages":[],"count":0}
-
-Result: HTTP 200, count=0 — queue genuinely empty (HTTP-layer probe confirmed the
-read ACL succeeded, so this is not a swallowed 403). Nothing actionable this cycle.
-Governance cycle #5859 accepted (MOVE_ON, unscored).
+Interpretation: HTTP 200 with count=0 — the queue read succeeded (HTTP-layer
+probe, not a swallowed 403). No pending messages this cycle.
