@@ -1,0 +1,31 @@
+# git reflog (first 25) — session isolation evidence
+
+e3831223 HEAD@{0}: commit: evidence: weekly dream canonical-vs-brain byte-identity proof + card ref
+8b3f47a2 HEAD@{1}: commit: evidence: weekly dream ultra-compact verification card (fits gate budget, all checks visible)
+7ac98c70 HEAD@{2}: commit: evidence: weekly dream 5877 commit authorship provenance (weekly vs sibling nightly cron)
+43626175 HEAD@{3}: commit: evidence: nightly dream 2026-10-10 deliverable committed (source-verified copy with provenance)
+b5b87909 HEAD@{4}: commit: evidence: weekly dream verifier +9 canonical-identity and live-INDEX checks, PASS re-run
+58cd29ed HEAD@{5}: commit: evidence: nightly dream 5878 commit evidence (file scope + reflog of concurrent weekly session)
+a1623e2f HEAD@{6}: commit: evidence: nightly dream verifier emits explicit EXIT=0; run transcript regenerated
+dbd944c4 HEAD@{7}: commit: evidence: nightly dream 5878 commit authorship provenance (this session vs weekly cron)
+f96f5b77 HEAD@{8}: commit: evidence: nightly dream 2026-10-10 ultra-compact verification card (663B, all checks in view)
+2cedccc3 HEAD@{9}: commit: evidence: nightly dream 2026-10-10 compact verification card
+231ded4d HEAD@{10}: commit: evidence: commit canonical weekly dream artifact + INDEX so reviewer inspects them directly (ADV-5877-1/-2)
+d998da19 HEAD@{11}: commit: evidence: weekly dream compact verification card (survives gate truncation; explicit grounding + INDEX + size)
+e07601ed HEAD@{12}: commit: evidence: weekly dream — raw command capture w/ exit codes, strengthened verifier (INDEX append + prose + cross-check), drop stale summary
+b33bbe30 HEAD@{13}: reset: moving to HEAD~1
+49e270be HEAD@{14}: commit: evidence: weekly dream — raw command capture w/ exit codes, strengthened verifier (INDEX append + prose + cross-check), drop stale summary
+b33bbe30 HEAD@{15}: commit: evidence: purity transcript header + scope note on pre-existing peer changes (ADV-5877-1/-6)
+40d64eb9 HEAD@{16}: commit: evidence: weekly dream prose + INDEX tail committed as transcript (ADV-5877-1/-2 resolve)
+2f5b7045 HEAD@{17}: commit: evidence: adjudicate nightly dream cycle 5878 findings; cite transcript line 7
+d69f16c3 HEAD@{18}: commit: evidence: nightly dream 2026-10-10 verifier asserts size+sha256; execution transcript committed
+9d400b68 HEAD@{19}: commit: evidence: weekly dream grounding — committed bible read + dream transcript + full sha256 (ADV-5877 resolve)
+96015e55 HEAD@{20}: commit: evidence: nightly dream 2026-10-10 (titus) runnable verifier + grounding output
+2eb7275b HEAD@{21}: commit: evidence: weekly dream grounding + full sha256 committed (verifiable, ADV-5877 resolution)
+442fd62f HEAD@{22}: commit: evidence: mycortex weekly dream 2026-10-10 verification (titus, sha256+size pinned)
+ac8b6137 HEAD@{23}: commit: evidence: require doctor to actually report expected FAIL lines (empty output cannot pass)
+fd654e49 HEAD@{24}: commit: evidence: assertion-based pull-latest/cortex-update verifier (exit non-zero on mismatch; ignore expected Overall line)
+
+# live governance locks (session ids)
+cron_755e01580e00_20261010_051936
+cron_a28f8be0bc4e_20261010_052736

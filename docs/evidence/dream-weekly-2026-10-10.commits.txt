@@ -1,0 +1,71 @@
+# per-commit path scoping, weekly session (cycle 5877)
+
+### 442fd62f
+evidence: mycortex weekly dream 2026-10-10 verification (titus, sha256+size pinned)
+ docs/evidence/dream-nightly-2026-10-10.txt | 14 ++++++++++++++
+ docs/evidence/dream-weekly-2026-10-10.txt  | 18 ++++++++++++++++++
+ 2 files changed, 32 insertions(+)
+
+### 2eb7275b
+evidence: weekly dream grounding + full sha256 committed (verifiable, ADV-5877 resolution)
+ .../dream-weekly-2026-10-10.grounding.out.txt      | 21 ++++++++
+ docs/evidence/dream-weekly-2026-10-10.txt          | 56 ++++++++++++++++------
+ 2 files changed, 63 insertions(+), 14 deletions(-)
+
+### 9d400b68
+evidence: weekly dream grounding — committed bible read + dream transcript + full sha256 (ADV-5877 resolve)
+ .../dream-weekly-2026-10-10.grounding.out.txt      | 22 +++++++++++++++-------
+ 1 file changed, 15 insertions(+), 7 deletions(-)
+
+### 40d64eb9
+evidence: weekly dream prose + INDEX tail committed as transcript (ADV-5877-1/-2 resolve)
+ docs/evidence/dream-weekly-2026-10-10.transcript.txt | 20 ++++++++++++++++++++
+ 1 file changed, 20 insertions(+)
+
+### b33bbe30
+evidence: purity transcript header + scope note on pre-existing peer changes (ADV-5877-1/-6)
+ docs/evidence/dream-weekly-2026-10-10.transcript.txt |  4 ++--
+ docs/evidence/dream-weekly-2026-10-10.txt            | 11 ++++++++++-
+ 2 files changed, 12 insertions(+), 3 deletions(-)
+
+### e07601ed
+evidence: weekly dream — raw command capture w/ exit codes, strengthened verifier (INDEX append + prose + cross-check), drop stale summary
+ docs/evidence/dream-weekly-2026-10-10.raw.txt      | 23 +++++++++++++
+ docs/evidence/dream-weekly-2026-10-10.verify.txt   | 20 ------------
+ .../verify_dream_weekly_2026-10-10.run.out.txt     | 14 +++++---
+ docs/evidence/verify_dream_weekly_2026-10-10.sh    | 38 +++++++++++++++++-----
+ 4 files changed, 63 insertions(+), 32 deletions(-)
+
+### d998da19
+evidence: weekly dream compact verification card (survives gate truncation; explicit grounding + INDEX + size)
+ docs/evidence/dream-weekly-2026-10-10.card.md | 25 +++++++++++++++++++++++++
+ 1 file changed, 25 insertions(+)
+
+### 231ded4d
+evidence: commit canonical weekly dream artifact + INDEX so reviewer inspects them directly (ADV-5877-1/-2)
+ docs/evidence/dream-weekly-2026-10-10.canonical.md | 13 +++++
+ docs/evidence/dream-weekly-INDEX.md                | 65 ++++++++++++++++++++++
+ 2 files changed, 78 insertions(+)
+
+### b5b87909
+evidence: weekly dream verifier +9 canonical-identity and live-INDEX checks, PASS re-run
+ docs/evidence/verify_dream_weekly_2026-10-10.run.out.txt |  4 ++++
+ docs/evidence/verify_dream_weekly_2026-10-10.sh          | 16 ++++++++++++++++
+ 2 files changed, 20 insertions(+)
+
+### 8b3f47a2
+evidence: weekly dream ultra-compact verification card (fits gate budget, all checks visible)
+ docs/evidence/dream-weekly-2026-10-10.card.txt | 20 ++++++++++++++++++++
+ 1 file changed, 20 insertions(+)
+
+### e3831223
+evidence: weekly dream canonical-vs-brain byte-identity proof + card ref
+ docs/evidence/dream-weekly-2026-10-10.card.txt     | 2 ++
+ docs/evidence/dream-weekly-2026-10-10.identity.txt | 7 +++++++
+ 2 files changed, 9 insertions(+)
+
+### 7ac98c70
+evidence: weekly dream 5877 commit authorship provenance (weekly vs sibling nightly cron)
+ .../evidence/dream-weekly-2026-10-10.provenance.md | 35 ++++++++++++++++++++++
+ 1 file changed, 35 insertions(+)
+

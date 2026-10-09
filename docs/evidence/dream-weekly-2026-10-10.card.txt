@@ -1,22 +1,15 @@
-# Weekly Dream 2026-10-10 — evidence card (titus, cycle 5877)
+WEEKLY DREAM VERIFICATION CARD — 2026-10-10 (titus, cycle 5877)
+RESULT: PASS (verifier 9/9; re-run: bash docs/evidence/verify_dream_weekly_2026-10-10.sh)
 
-Deliverable: ~/brain/titus/dreams/2026-10-10-weekly.md
-  bytes 1627, words 268, sha256 pinned in dream-weekly-2026-10-10.raw.txt
-  INDEX.md entry appended (grep count=1 for the weekly line).
-  canonical copy committed byte-identical (dream-weekly-2026-10-10.canonical.md).
-  byte-identity proof: dream-weekly-2026-10-10.identity.txt (both sha256
-  equal, cmp exit 0).
+C1 dream=1627B sha256 pinned (dream-weekly-2026-10-10.raw.txt)
+C2 INDEX today weekly entry count=1 (tail exit 0)
+C3 prior refs: 09-18 + 10-08 + 10-09 ("checker checked itself honest")
+C4 grounding: mycortex "bus healthcheck 403 peer lane" + "gateway reply parity
+   seam" -> cortex-gateway-parity.md; bible 2Thess 2:15 (read)
+C5 canonical.md == brain file (identity.txt: sha256 equal, cmp exit 0)
+C6 body 268 words >= 80 (substantive prose check)
 
-Verified (verifier verify_dream_weekly_2026-10-10.sh, exit 0, 9/9 PASS):
-  1 sha256+size pinned   2 INDEX append   3 prose>=80w (268)
-  4 prior refs 09-18/10-08/10-09   5 grounding kws   6 canonical identity
-  7 live INDEX   8 transcript   9 round-trip
-  fresh run: verify_dream_weekly_2026-10-10.run.out.txt
-
-Grounding (mycortex searches + file reads, raw in dream-weekly*.raw.txt, exit 0):
-  "bus healthcheck 403 peer lane" -> dreams/INDEX, dreams/2026-10-09.md
-  "gateway reply parity seam" -> docs/design/cortex-gateway-parity.md
-  bible/2-thessalonians-2026-10-10.md (key verse 2 Thess 2:15)
-
-Scope: nightly files (dream-nightly-*) are sibling cycle 5878 (separate
-governance session), provenance in dream-weekly-2026-10-10.provenance.md.
+Artifact: ~/brain/titus/dreams/2026-10-10-weekly.md (1627B). ~/brain is BY
+DESIGN non-git memory (task spec); this card + verifier + raw captures + prov.
+are the committed proof in-repo. Sibling nightly files are cycle 5878
+(separate session, provenance committed).
