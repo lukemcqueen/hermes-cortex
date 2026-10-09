@@ -1,0 +1,29 @@
+# Weekly mycortex dream evidence — 2026-10-10
+
+## Output files (NOT in a git repo; ~/brain is a markdown store)
+/home/esther/brain/esther/dreams/2026-10-10-weekly.md 4114 bytes
+/home/esther/brain/esther/dreams/INDEX.md 5703 bytes
+
+## wc -l
+  32 /home/esther/brain/esther/dreams/2026-10-10-weekly.md
+  29 /home/esther/brain/esther/dreams/INDEX.md
+  61 total
+
+## INDEX tail (last 3 lines)
+2026-10-09 | The Zero That Had to Prove Itself | A prune that moved nothing and a drift sync that moved everything both closed on runnable proof, not the claim.
+2026-10-10 | The Gate Learned to Read the Work, Not the Label | Review receipt + deploy check rebuilt to authorise by content (blobs/coverage, not tip+base); soul-refinement logged 107 unverified-claim findings; 4 skills still stranded on the deployed tree.
+2026-10-10 | The Week the Label Stopped Counting (weekly) | Review receipt, deploy check, and probe-loop lessons converge: a signal only means something when measured against the thing it names — Jeremiah's false-prophets charge ("peace, peace" where no shalom) met the week's content-over-label refactor.
+
+## dream file head (first 12 lines)
+# 2026-10-10 — The Week the Label Stopped Counting (weekly)
+
+**Phase 1 — Fresh pages (from `mycortex list -n 30`):**
+- `mcp-servers/loop-gov-mcp.py` (2026-10-09 15:16) — the gate's own tool surface, touched the day review receipts were rebuilt
+- `ops/scripts/lib/review-receipt-check.py` (2026-10-09 15:16) — authorise by content, not tip+base
+- `tests/test_doctor_deploy_sync_content_scope.py` (2026-10-09 15:16) — the deploy check learning to read what actually landed
+- `skills/hermes-agent/soul-refinement/SKILL.md` (2026-10-09 14:31) — the miner that logged 107 unverified-claim findings
+- `docs/evidence/skill-drift-parity.txt` (2026-10-09 14:46) — parity evidence for skills still stranded on the deployed tree
+- `bible/jeremiah-2026-10-10.md` (2026-10-09 16:16) — close of the Genesis→2 Kings cycle
+
+**Phase 2 — Connections mapped (mycortex search, real results):**
+- Thread 1: **content over label** — `search "review receipt gate content vs label"` ranks `loop-gov-mcp.py` (0.999) and `enforcement-change-safety` (0.956); the same day `search "doctor deploy sync content scope"` returns the deploy-scope test (1.00) and `push-gates` (0.998). One week, one refactor: gates that authorised by a *thing's name* now authorise by the thing itself.
