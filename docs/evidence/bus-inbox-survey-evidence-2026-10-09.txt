@@ -1,0 +1,35 @@
+=== bus-inbox-survey evidence — 2026-10-09 ===
+
+--- PROVENANCE: commit 09d27193 is NOT this cycle's change ---
+09d27193860d594342cc0d9277f363ec6a8eea68
+Author: esther-agent <esther@hermes.local>
+Date:   Fri Oct 9 22:53:06 2026 +0900
+Subject: chore(governance): commit the land-when-clean automation for the lock-repo fix
+
+ ...nd-nonhermes-lock-fix-automation-2026-10-09.txt | 52 +++++++++++++++
+ ops/scripts/cortex-update.sh                       |  4 ++
+ ops/scripts/manage/land-when-clean-probe.sh        | 78 ++++++++++++++++++++++
+
+It was created by the in-repo land-when-clean pre-commit automation,
+independently of bus-inbox-process. This cycle's change is commit 888ee73c:
+888ee73cad3a8f26dffd22eb7d9b9c8c3a825e9f ops(bus): add bus-inbox-survey.sh + hermetic test
+
+ ops/scripts/bus/bus-inbox-survey.sh | 114 +++++++++++++++++++++++++++---------
+ tests/test_bus_inbox_survey.py      |  38 +++++++++++-
+ 2 files changed, 124 insertions(+), 28 deletions(-)
+
+--- TEST EXECUTION (fixture mode, direct run; pytest absent on host) ---
+PASS clean rc=0 exp=0 missing=[]
+PASS pending-normal rc=0 exp=0 missing=[]
+PASS int20 rc=0 exp=0 missing=[]
+PASS str20 rc=0 exp=0 missing=[]
+PASS unknown-pri rc=0 exp=0 missing=[]
+PASS truncated rc=0 exp=0 missing=[]
+PASS dlq rc=0 exp=0 missing=[]
+PASS blocked rc=0 exp=0 missing=[]
+PASS badshape rc=1 exp=1 missing=[]
+ALL PASS
+
+--- LIVE RUN ---
+pending: inbox_orchestrator depth=5 processing=0
+RESULT: clean (active_queues=1 dlq=0 blocked=0 urgent=0 truncated=0 unknown=0 checked_at=2026-10-09T13:59:04+00:00)
