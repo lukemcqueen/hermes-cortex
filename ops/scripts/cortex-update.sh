@@ -369,6 +369,10 @@ register "ops/scripts/manage/gen-skills-manifest.sh"      "${CORTEX_DEPLOY_HOME}
 register "ops/scripts/manage/task-db.py"                "${CORTEX_DEPLOY_HOME}/scripts/task-db.py"
 register "ops/scripts/manage/agent-review-queue-sweep.py" "${CORTEX_DEPLOY_HOME}/scripts/agent-review-queue-sweep.py"
 register "ops/scripts/manage/git-main-sync.sh"          "${CORTEX_DEPLOY_HOME}/scripts/git-main-sync.sh"
+# The no-LLM monitor probe for a "land when clean" cron: it reports whether a
+# peer still holds uncommitted changes to the paths an integration must update,
+# so the cron wakes only when they clear (2026-10-09).
+register "ops/scripts/manage/land-when-clean-probe.sh"  "${CORTEX_DEPLOY_HOME}/scripts/land-when-clean-probe.sh"
 register "ops/scripts/manage/dream-task-bridge.py"       "${CORTEX_DEPLOY_HOME}/scripts/dream-task-bridge.py"
 register "mcp-servers/task-mcp.py"                      "${CORTEX_DEPLOY_HOME}/scripts/task-mcp.py"
 register "mcp-servers/executor-mcp.py"                  "${CORTEX_DEPLOY_HOME}/scripts/executor-mcp.py"

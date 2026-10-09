@@ -1,0 +1,52 @@
+Landing automation for the non-Hermes lock-repo fix — 2026-10-09 (esther)
+=======================================================================
+
+Why this exists
+---------------
+The fix (commits 6c61ef57 + 75deb931) was committed and deployed on esther, but
+its push was blocked: `git merge origin/main` is refused while another session
+holds uncommitted changes to files the merge must update (a peer's
+docs/DOCS-INDEX.md edits and the IP-block pipeline's
+ops/install/deploy/nginx/blocked_ips.add output). That content is a security
+list, and it is not mine to commit, splice or discard — the operator chose to
+WAIT for the owner (2026-10-09, asked and answered in-session).
+
+What was built
+--------------
+1. `ops/scripts/manage/land-when-clean-probe.sh` (this repo; registered in
+   cortex-update.sh, deployed to ~/.hermes-cortex/scripts/) — a deterministic,
+   LLM-free probe: it reports how many of the given paths still have uncommitted
+   changes, whether origin's default branch is already an ancestor of HEAD, and
+   whether a named commit has landed on origin. Output is stable while nothing
+   changes, which is what lets a cron `monitor:` suppress the agent run entirely
+   (no tokens burned while waiting).
+
+   Usage:  land-when-clean-probe.sh [--repo DIR] [--landed-commit SHA] PATH [PATH...]
+   Verified on this host:
+     dirty paths  -> blockers=2 head=c833e66f origin_tip=283be526 origin_integrated=no landed=no
+     clean path   -> blockers=0 head=c833e66f origin_tip=283be526 origin_integrated=no landed=n/a
+     no paths     -> exit 2 with usage
+     bad --repo   -> every field "unknown", exit 0 (a probe always reports)
+
+2. A host-local wrapper for this host's paths —
+   ~/.hermes-cortex/scripts/local-esther-land-nonhermes-fix-probe.sh — `local-`
+   prefixed so the deployer preserves it and the doctor does not flag it as a
+   stale deploy (verified: the doctor's "Stale deploy" count stays at 1, the
+   pre-existing scripts/review-sweep-check.py).
+
+3. Cron job `esther-land-nonhermes-lock-fix` (job id c975d8f8aa25, created
+   2026-10-09T23:01 KST, every 15m, workdir ~/hermes-cortex, monitor = the
+   wrapper above). It wakes only when the probe's output CHANGES and then:
+   merge origin/main -> cortex-dogfood.sh --force -> score + end_change (which
+   writes the push receipt the pre-push gate demands) -> git push origin main ->
+   verify-landed.py. Rails: MERGE never rebase (the branch holds two other
+   sessions' unpushed commits, 662155bb + d2efa6fd, which a rebase would
+   rewrite), `git merge --abort` on conflict, never stash/commit/revert another
+   session's files, never --no-verify, never force-push. While blockers != 0 it
+   reports "not-yet" and does nothing.
+
+Verification
+------------
+    python3 ~/hermes-cortex/ops/scripts/manage/cortex_doctor.py   # deployed, no new warning
+    cronjob action='list'                                          # job c975d8f8aa25 present
+    bash ~/.hermes-cortex/scripts/local-esther-land-nonhermes-fix-probe.sh
