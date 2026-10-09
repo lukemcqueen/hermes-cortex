@@ -20,9 +20,10 @@ escalate for a provider/model review.
 ## Rerunnable diagnostic
 Query the cron executions DB for this job's history (re-runnable):
   python3 -c "import sqlite3,os; db=sqlite3.connect(os.path.expanduser('~/.hermes/cron/executions.db')); [print(f'{s} | {t} | {e or chr(39)+chr(39)}') for s,t,e in db.execute(\"SELECT status,started_at,error FROM executions WHERE job_id='cd7ca240d2dc' ORDER BY started_at\")]"
-Expected output (2026-10-09, from the query above):
+
+Observed output (captured 2026-10-09 23:17 KST during this remediation run):
   failed | 2026-10-09T20:33:36.120468+09:00 | RuntimeError: Model output entered a repetition loop and the stream was cut mid-loop; discarding the degenerate response.
-  running | 2026-10-09T22:33:36.078336+09:00 |
+  running | 2026-10-09T22:33:36.078336+09:00 | ''
 
 ## Sibling job + sensor status (from ~/.hermes/cron/jobs.json, 2026-10-09)
   agent-fixer-workday      | ok   | 2026-10-09T20:06:10
