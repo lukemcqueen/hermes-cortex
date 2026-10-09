@@ -52,4 +52,5 @@ done
 
 echo
 if [ "$fail" -eq 0 ]; then echo "RESULT: PASS"; else echo "RESULT: FAIL"; fi
+echo "EXIT=$fail"
 exit "$fail"
