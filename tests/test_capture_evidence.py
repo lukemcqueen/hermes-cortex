@@ -32,6 +32,17 @@ class TestSha256(unittest.TestCase):
             self.assertEqual(c.sha256(str(p)), expected)
 
 
+class TestRelPath(unittest.TestCase):
+    def test_home_path_shortened(self):
+        home = Path.home()
+        out = c._relpath(str(home / "x" / "y.txt"))  # noqa: SLF001
+        self.assertTrue(out.startswith("~"))
+        self.assertNotIn("/home/", out)
+
+    def test_non_home_path_untouched(self):
+        self.assertEqual(c._relpath("/etc/hosts"), "/etc/hosts")  # noqa: SLF001
+
+
 class TestMain(unittest.TestCase):
     def _seed(self, td: Path, date: str, *, with_sources: bool = True):
         base = td / f"sustainability-briefing-{date}"

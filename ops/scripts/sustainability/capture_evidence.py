@@ -19,6 +19,14 @@ CHECKER = os.path.expanduser(
     "~/hermes-cortex/ops/scripts/sustainability/verify_briefing.py")
 
 
+def _relpath(path):
+    """Repo/home-relative form, so committed evidence carries no /home/<user>."""
+    home = os.path.expanduser("~")
+    if path.startswith(home):
+        return "~" + path[len(home):]
+    return path
+
+
 def sha256(path):
     h = hashlib.sha256()
     with open(path, "rb") as fh:
@@ -34,7 +42,7 @@ def main(date_str):
     lines.append(f"generated: {datetime.now(timezone.utc).isoformat()}")
     lines.append("")
 
-    lines.append(f"--- command: {sys.executable} {CHECKER} {date_str}")
+    lines.append(f"--- command: {_relpath(sys.executable)} {_relpath(CHECKER)} {date_str}")
     proc = subprocess.run([sys.executable, CHECKER, date_str],
                           capture_output=True, text=True)
     lines.append(proc.stdout.rstrip())
@@ -48,9 +56,9 @@ def main(date_str):
     for ext in (".md", ".docx", ".pdf"):
         p = base + ext
         if os.path.exists(p):
-            lines.append(f"{os.path.getsize(p):>9}  {sha256(p)}  {p}")
+            lines.append(f"{os.path.getsize(p):>9}  {sha256(p)}  {_relpath(p)}")
         else:
-            lines.append(f"MISSING  {p}")
+            lines.append(f"MISSING  {_relpath(p)}")
     lines.append("")
 
     md_path = base + ".md"
