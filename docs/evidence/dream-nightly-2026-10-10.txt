@@ -1,14 +1,23 @@
 RESULT: PASS — nightly dream verified (2026-10-10, profile=titus)
 
-Files:
-  /Users/luke/brain/titus/dreams/2026-10-10.md   975 bytes on disk
-  INDEX.md nightly entry appended (grep count for today's date equals two: weekly + nightly)
+How to re-verify (runnable):
+  bash docs/evidence/verify_dream_nightly_2026-10-10.sh   -> prints RESULT: PASS
 
-Checks:
-  1. dream file present and non-empty on disk: OK
-  2. INDEX carries today's nightly entry: OK
-  3. dream references prior dreams ("The seam that held" on 10-08 and "The checker checked itself honest" on 10-09): OK
-  4. grounding — each claimed link traced to a live mycortex search or mycortex list result this session: OK
-  5. dream target dir is the brain memory dir, BY DESIGN not a git repo per task spec; this evidence file is committed to hermes-cortex instead as the verifiable artifact.
+Artifacts:
+  - Dream: /Users/luke/brain/titus/dreams/2026-10-10.md  (1027 bytes on disk, ls-verified)
+  - INDEX: ~/brain/titus/dreams/INDEX.md  has today's entry (grep count for today's date == 2)
+  - Grounding: docs/evidence/dream-nightly-2026-10-10.grounding.out.txt
+      -> captured real CLI output: mycortex list -n 20, mycortex search "session manager skill",
+         mycortex search "pull-latest", mycortex search "2 thessalonians stand firm"
+  - Verifier: docs/evidence/verify_dream_nightly_2026-10-10.sh
 
-Note: session_search does not exist in this host's tool catalog (only cache_search); grounding used mycortex list and mycortex search CLI output, honoring real connections only.
+The dream target dir ~/brain/ is BY DESIGN not a git repo (memory, per task spec), so the
+repo carries the runnable verifier + captured mycortex output as the committed proof.
+
+Grounding truth (all real, in grounding.out.txt):
+  - session-manager cluster: SKILL.md, session-manager-v2 design doc, session-state-pattern
+  - pull-latest evidence pages
+  - 2 Thess 2:15 archived in bible/archive/SOUL-archive.md
+
+Note: session_search tool does not exist in this host's catalog (only cache_search);
+grounding used mycortex list + mycortex search CLI, honoring "real connections only."
