@@ -8,8 +8,9 @@
 set -euo pipefail
 CONF="${HC_INBOX_CONF:-$HOME/.hermes-cortex/hermes-inbox.conf}"
 [ -r "$CONF" ] || { echo "ERROR: cannot read $CONF" >&2; exit 1; }
-URL="$(awk -F= '/^CORTEX_BUS_URL=/{print $2}' "$CONF")"
-AUTH="$(awk -F= '/^CORTEX_BASIC_AUTH=/{print $2}' "$CONF")"
+# Parse key=value taking everything after the first '=' (values may contain '=').
+URL="$(awk -F= '/^CORTEX_BUS_URL=/{sub(/^[^=]*=/,""); print}' "$CONF")"
+AUTH="$(awk -F= '/^CORTEX_BASIC_AUTH=/{sub(/^[^=]*=/,""); print}' "$CONF")"
 [ -n "$URL" ] && [ -n "$AUTH" ] || { echo "ERROR: URL/AUTH missing from $CONF" >&2; exit 1; }
 echo "RUN $(date -u +'%Y-%m-%d %H:%M:%S') UTC"
 echo "== GET $URL/api/pgmq/peek/inbox_titus =="
