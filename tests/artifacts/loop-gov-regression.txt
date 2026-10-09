@@ -1,14 +1,18 @@
 loop-governance regression artifact
 ========================================================================
-generated      : 2026-10-09T12:40:00+00:00
-revision       : 662155bb  (branch main)
+generated      : 2026-10-09T12:55:42+00:00
+revision under test : 6c61ef57  (branch main) — HEAD when this ran; the
+                      artifact is committed BY the change it measures, so the
+                      file under test is identical at the carrying commit
+                      (`git diff <carrying-commit> 6c61ef57 -- mcp-servers/loop-gov-mcp.py`).
+pre-fix base        : 662155bb (662155bb)
 interpreter    : Python 3.14.7 (<python-bin>/python3)
 generator      : tests/run_loop_gov_regression.py
 
-Re-run with:  python3 tests/run_loop_gov_regression.py
+Re-run with:  LOOP_GOV_PRE_FIX_REV=662155bb python3 tests/run_loop_gov_regression.py
 
 ------------------------------------------------------------------------
-TEST SET (21 files)
+TEST SET (22 files)
 ------------------------------------------------------------------------
 [PASS] tests/test_loop_gov_mcp_nonblocking.py  rc=0
         PASS (6):
@@ -43,14 +47,14 @@ TEST SET (21 files)
         [mcp-server] WARNING: the 'mcp' package is not installed — the stdio server cannot start; the CLI adapter (ops/scripts/loop-gov.py) still works.
         [mcp-server]   ~/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3 -m pip install mcp
         [mcp-server] INFO: self-adversarial review: cycle 4243 simple (1 lines, 1 files) — skip
-        [mcp-server] WARNING: _git_capture(('log', '--format=%ct')) exited 128 in ~/.hermes/cache/scratch/nested-repo-bs059agr/hermes-cortex: fatal: your current branch 'master' does not have any commits yet
+        [mcp-server] WARNING: _git_capture(('log', '--format=%ct')) exited 128 in ~/.hermes/cache/scratch/nested-repo-x93sli83/hermes-cortex: fatal: your current branch 'master' does not have any commits yet
         [mcp-server] INFO: self-adversarial review: cycle 4321 simple (1 lines, 1 files) — skip
-        [mcp-server] WARNING: _git_capture(('rev-list', '-1', '--before=2026-10-09T12:40:11Z', 'HEAD')) exited 128 in ~/.hermes/cache/scratch/loop-gov-review-repo-askefl0d/hermes-cortex: fatal: ambiguous argument 'HEAD': unknown revision or path not in the working tree.
+        [mcp-server] WARNING: _git_capture(('rev-list', '-1', '--before=2026-10-09T12:55:54Z', 'HEAD')) exited 128 in ~/.hermes/cache/scratch/loop-gov-review-repo-ge8v0jav/hermes-cortex: fatal: ambiguous argument 'HEAD': unknown revision or path not in the working tree.
         Use '--' to separate paths from revisions, like this:
         'git <command> [<revision>...] -- [<file>...]'
-        [mcp-server] WARNING: _git_capture(('log', '--format=%H', '--author=agent@hermes.local', '4b825dc642cb6eb9a060e54bf8d69288fbee4904..HEAD')) exited 128 in ~/.hermes/cache/scratch/loop-gov-review-repo-askefl0d/hermes-cortex: fatal: ambiguous argument '4b825dc642cb6eb9a060e54bf8d69288fbee4904..HEAD': unknown revision or path not in the working tree.
-        [mcp-server] WARNING: _git_capture(('diff', '--numstat', '4b825dc642cb6eb9a060e54bf8d69288fbee4904..HEAD')) exited 128 in ~/.hermes/cache/scratch/loop-gov-review-repo-askefl0d/hermes-cortex: fatal: ambiguous argument '4b825dc642cb6eb9a060e54bf8d69288fbee4904..HEAD': unknown revision or path not in the working tree.
-        [mcp-server] WARNING: _git_capture(('log', '--format=%ct')) exited 128 in ~/.hermes/cache/scratch/loop-gov-review-repo-askefl0d/hermes-cortex: fatal: your current branch 'master' does not have any commits yet
+        [mcp-server] WARNING: _git_capture(('log', '--format=%H', '--author=agent@hermes.local', '4b825dc642cb6eb9a060e54bf8d69288fbee4904..HEAD')) exited 128 in ~/.hermes/cache/scratch/loop-gov-review-repo-ge8v0jav/hermes-cortex: fatal: ambiguous argument '4b825dc642cb6eb9a060e54bf8d69288fbee4904..HEAD': unknown revision or path not in the working tree.
+        [mcp-server] WARNING: _git_capture(('diff', '--numstat', '4b825dc642cb6eb9a060e54bf8d69288fbee4904..HEAD')) exited 128 in ~/.hermes/cache/scratch/loop-gov-review-repo-ge8v0jav/hermes-cortex: fatal: ambiguous argument '4b825dc642cb6eb9a060e54bf8d69288fbee4904..HEAD': unknown revision or path not in the working tree.
+        [mcp-server] WARNING: _git_capture(('log', '--format=%ct')) exited 128 in ~/.hermes/cache/scratch/loop-gov-review-repo-ge8v0jav/hermes-cortex: fatal: your current branch 'master' does not have any commits yet
 
 [PASS] tests/test_non_hermes_repo_identity.py  rc=0
           PASS  lock carries the session's repo slug
@@ -69,8 +73,8 @@ TEST SET (21 files)
         [mcp-server] WARNING: the 'mcp' package is not installed — the stdio server cannot start; the CLI adapter (ops/scripts/loop-gov.py) still works.
         [mcp-server]   ~/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3 -m pip install mcp
         [mcp-server] INFO: self-adversarial review: cycle 1 simple (1 lines, 1 files) — skip
-        [mcp-server] WARNING: _git_capture(('merge-base', 'origin/main', 'HEAD')) exited 128 in ~/.hermes/cache/scratch/non-hermes-repo-id-szp34j9p/projects/proj: fatal: Not a valid object name origin/main
-        [mcp-server] INFO: review receipt written: .reviewed-proj-97508efe464883244455ed74a8fdce0283d83f56.json (tip 97508efe4648, base e7906691a752, 1 files)
+        [mcp-server] WARNING: _git_capture(('merge-base', 'origin/main', 'HEAD')) exited 128 in ~/.hermes/cache/scratch/non-hermes-repo-id-qfl1ig9b/projects/proj: fatal: Not a valid object name origin/main
+        [mcp-server] INFO: review receipt written: .reviewed-proj-34f609779e63ef05855ec327b18697adfcfbe678.json (tip 34f609779e63, base 0c7ac3a0661c, 1 files)
 
 [PASS] tests/test_non_hermes_session_id.py  rc=0
           PASS  hermes: injected id returned verbatim
@@ -96,13 +100,58 @@ TEST SET (21 files)
         [mcp-server] WARNING: the 'mcp' package is not installed — the stdio server cannot start; the CLI adapter (ops/scripts/loop-gov.py) still works.
         [mcp-server]   ~/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3 -m pip install mcp
         [mcp-server] INFO: self-adversarial review: cycle 1 simple (0 lines, 0 files) — skip
-        [mcp-server] WARNING: _git_capture(('merge-base', 'origin/main', 'HEAD')) exited 128 in ~/.hermes/cache/scratch/tmpea25vi4l/sandbox-repo: fatal: Not a valid object name origin/main
-        [mcp-server] WARNING: review receipt NOT written: range ce9501d0c128..ce9501d0c128 lists no files
+        [mcp-server] WARNING: _git_capture(('merge-base', 'origin/main', 'HEAD')) exited 128 in ~/.hermes/cache/scratch/tmpk1as8vl3/sandbox-repo: fatal: Not a valid object name origin/main
+        [mcp-server] WARNING: review receipt NOT written: range 34b3e6792390..34b3e6792390 lists no files
+
+[PASS] tests/run_non_hermes_lock_release_repro.py  rc=0
+        RESULT: ALL PASS
+                                is committed BY the change it measures, so the file under
+                                test at the carrying commit is identical (check with
+                                `git diff <carrying-commit> 6c61ef57 -- mcp-servers/loop-gov-mcp.py`).
+        pre-fix comparison ref: 662155bb (662155bb)
+        re-run with           : python3 tests/run_non_hermes_lock_release_repro.py --write-artifact --include-doctor
+        ── PRE-FIX (git 662155bb (662155bb)) ──
+           lock.repo_slug           : hermes-cortex
+           lock.repo_path           : (empty)
+           end_change verdict       : ❌ Cannot close: the lock's repo cannot contain this session's work.
+           lock file left behind    : ['.governance-sess_1cf6c289b82e.json']
+        ── CURRENT (working tree) ──
+           lock.repo_slug           : proj
+           lock.repo_path           : ~/.hermes/cache/scratch/rg-home-8wio1css/projects/proj
+           end_change verdict       : 🔓 Governance session 'rg-1' closed.
+           lock file left behind    : none — released
+        ── DEPLOYED (harness path) ──
+           lock.repo_path           : ~/.hermes/cache/scratch/rg-home-zo30kwcl/projects/proj
+        Reading of the transcript
+        --------------------------------------------------------------------
+        PRE-FIX: the lock is tagged with the HOST-CANONICAL repo (hermes-cortex) because a
+        caller with no injector fell through to Priority 1 in _derive_slug(). The close gate
+        then looks for this session's work in ~/hermes-cortex, cannot find it, and REFUSES —
+        a refusal leaves the lock held by design, and the remedy it prints (a governance-
+        enforcer injection) does not exist on a non-Hermes harness. The lock file is left on
+        disk: the reported symptom, in the same file-name shape (sess_<12 hex>) the report cites.
+        CURRENT / DEPLOYED: the session resolves its OWN repo (proj, absolute path recorded in
+        the lock), the close completes, and the lock is released — no operator action.
+        [mcp-server] WARNING: the 'mcp' package is not installed — the stdio server cannot start; the CLI adapter (ops/scripts/loop-gov.py) still works.
+        [mcp-server]   ~/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3 -m pip install mcp
+        [mcp-server] WARNING: _git_capture(('rev-list', '-1', '--before=2026-10-09T12:55:57Z', 'HEAD')) exited 128 in ~/.hermes/cache/scratch/rg-home-9yhgqkfe/hermes-cortex: fatal: ambiguous argument 'HEAD': unknown revision or path not in the working tree.
+        Use '--' to separate paths from revisions, like this:
+        'git <command> [<revision>...] -- [<file>...]'
+        [mcp-server] WARNING: _git_capture(('log', '--format=%H', '--author=agent@hermes.local', '4b825dc642cb6eb9a060e54bf8d69288fbee4904..HEAD')) exited 128 in ~/.hermes/cache/scratch/rg-home-9yhgqkfe/hermes-cortex: fatal: ambiguous argument '4b825dc642cb6eb9a060e54bf8d69288fbee4904..HEAD': unknown revision or path not in the working tree.
+        [mcp-server] WARNING: _git_capture(('diff', '--numstat', '4b825dc642cb6eb9a060e54bf8d69288fbee4904..HEAD')) exited 128 in ~/.hermes/cache/scratch/rg-home-9yhgqkfe/hermes-cortex: fatal: ambiguous argument '4b825dc642cb6eb9a060e54bf8d69288fbee4904..HEAD': unknown revision or path not in the working tree.
+        [mcp-server] WARNING: close refused for cycle 1 (WRONG_REPO) — marker written to the lock; new work under this lock will be flagged as a stacked change
+        [mcp-server] WARNING: _git_capture(('log', '--format=%ct')) exited 128 in ~/.hermes/cache/scratch/rg-home-9yhgqkfe/hermes-cortex: fatal: your current branch 'master' does not have any commits yet
+        [mcp-server] WARNING: _git_capture(('log', '--format=%ct')) exited 128 in ~/.hermes/cache/scratch/rg-home-8wio1css/hermes-cortex: fatal: your current branch 'master' does not have any commits yet
+        [mcp-server] INFO: self-adversarial review: cycle 1 simple (0 lines, 0 files) — skip
+        [mcp-server] WARNING: _git_capture(('merge-base', 'origin/main', 'HEAD')) exited 128 in ~/.hermes/cache/scratch/rg-home-8wio1css/projects/proj: fatal: Not a valid object name origin/main
+        [mcp-server] INFO: review receipt written: .reviewed-proj-28da9b3d4c646d30fa6bbd64c2f75f101c525d20.json (tip 28da9b3d4c64, base f1c8af0dc113, 1 files)
+        [mcp-server] WARNING: _git_capture(('log', '--format=%ct')) exited 128 in ~/.hermes/cache/scratch/rg-home-zo30kwcl/hermes-cortex: fatal: your current branch 'master' does not have any commits yet
+        [mcp-server] WARNING: _git_capture(('merge-base', 'origin/main', 'HEAD')) exited 128 in ~/.hermes/cache/scratch/rg-home-zo30kwcl/projects/proj: fatal: Not a valid object name origin/main
 
 [PASS] tests/test_loop_gov_multi_session.py  rc=0
         PASS — loop-gov multi-session DB (adversarial findings resolved):
           A: _db() busy_timeout=30000ms, journal_mode=wal (verified)
-          B: 2 concurrent OS processes both write while lock held 8.0s (writer-b queued 7.74s, no error)
+          B: 2 concurrent OS processes both write while lock held 8.0s (writer-b queued 7.75s, no error)
           C: control with OLD 5s timeout FAILED under same hold — proves fix required: 'database is locked'
         [mcp-server] WARNING: the 'mcp' package is not installed — the stdio server cannot start; the CLI adapter (ops/scripts/loop-gov.py) still works.
         [mcp-server]   ~/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3 -m pip install mcp
@@ -320,7 +369,7 @@ TEST SET (21 files)
           PASS  an unreachable reviewer refuses the close
           PASS  the outage is recorded on the lock too
           PASS  control: handler bound to the real log; 1 record(s) emitted when unsilenced (none written to the file)
-          PASS  silenced, the same run appended 0 bytes (767936 bytes unchanged)
+          PASS  silenced, the same run appended 0 bytes (821236 bytes unchanged)
         B. the pre-commit advisory fires on a refused-close lock, and only then
         A. the gate marks the lock on a refusal and clears it on CLEAN
         ✅ refused-close visibility checks passed
@@ -339,7 +388,7 @@ TEST SET (21 files)
           PASS harness reports LOCK HELD
           PASS DB blocked while harness holds BEGIN IMMEDIATE
           PASS DB still write-blocked after alert-only watchdog (no kill)
-          PASS watchdog report names holder pid 683653 in: '[2026-10-09 21:42 ] loop-gov-lock-watchdog: lock/anomaly DETECTED — alert-only (no auto-kill): 2 loop-gov daemon(s) in v'
+          PASS watchdog report names holder pid 766438 in: '[2026-10-09 21:58 ] loop-gov-lock-watchdog: lock/anomaly DETECTED — alert-only (no auto-kill): 2 loop-gov daemon(s) in v'
           PASS holder process still alive after watchdog (alert-only, never kills)
         6 checks, 6 pass
 
@@ -394,13 +443,13 @@ TEST SET (21 files)
 ------------------------------------------------------------------------
 STATIC GATE  mcp-servers/loop-gov-mcp.py  level A4
 ------------------------------------------------------------------------
-[PASS] interim/working revision 662155bb
+[PASS] interim/working revision 6c61ef57
         📊 Summary: 1 file(s), 33 finding(s)
         🟡 Medium: 5
         🔵 Low: 2
         ✅ GATE_PASSED — no critical/high findings
 
-[PASS] PRE-FIX revision HEAD~1 (662155bb)
+[PASS] PRE-FIX revision 662155bb (662155bb)
         📊 Summary: 1 file(s), 33 finding(s)
         🟡 Medium: 5
         🔵 Low: 2

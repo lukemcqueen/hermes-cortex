@@ -4,46 +4,50 @@ Report: a pi session working in a project repo opens a governance lock and the
 lock is NEVER released — the operator must delete
 ~/.hermes-cortex/state/.governance-sess_*.json by hand.
 
-Driven scenario: a NON-Hermes caller (no injected repo — pi / Claude Code /
-the CLI) calls begin_change while sitting in a project repo on a host that also
-holds the canonical ~/hermes-cortex; the work lands in the project repo; the
-cycle is scored; end_change is called.
+revision under test   : 6c61ef57  (branch main) — HEAD when this ran. The artifact
+                        is committed BY the change it measures, so the file under
+                        test at the carrying commit is identical (check with
+                        `git diff <carrying-commit> 6c61ef57 -- mcp-servers/loop-gov-mcp.py`).
+pre-fix comparison ref: 662155bb (662155bb)
+re-run with           : python3 tests/run_non_hermes_lock_release_repro.py --write-artifact --include-doctor
 
-Method: the same scenario executed against BOTH revisions of
-mcp-servers/loop-gov-mcp.py — the pre-fix module read from git (`git show
-<base>:mcp-servers/loop-gov-mcp.py`) and the working tree. Reproduce with
-`python3 tests/run_non_hermes_lock_release_repro.py`; the transcript below is
-that script's stdout, unedited.
-
-pre-fix revision : HEAD (d2efa6fd)
-current          : working tree (mcp-servers/loop-gov-mcp.py)
-
-── PRE-FIX (HEAD) ──
+── PRE-FIX (git 662155bb (662155bb)) ──
    lock.repo_slug           : hermes-cortex
    lock.repo_path           : (empty)
    end_change verdict       : ❌ Cannot close: the lock's repo cannot contain this session's work.
-   lock file left behind    : ['.governance-sess_03787cf6fe7f.json']
+   lock file left behind    : ['.governance-sess_87239dec3167.json']
 
 ── CURRENT (working tree) ──
    lock.repo_slug           : proj
-   lock.repo_path           : <HOME>/projects/proj
+   lock.repo_path           : /home/esther/.hermes/cache/scratch/rg-home-42dd54ds/projects/proj
+   end_change verdict       : 🔓 Governance session 'rg-1' closed.
+   lock file left behind    : none — released
+
+── DEPLOYED (harness path) ──
+   lock.repo_slug           : proj
+   lock.repo_path           : /home/esther/.hermes/cache/scratch/rg-home-7zmmd0x9/projects/proj
    end_change verdict       : 🔓 Governance session 'rg-1' closed.
    lock file left behind    : none — released
 
 Reading of the transcript
--------------------------
-PRE-FIX: the lock is tagged with the HOST-CANONICAL repo (`hermes-cortex`)
-because a caller with no injector fell through to Priority 1 in
-`_derive_slug()`. The close gate then looks for this session's work in
-~/hermes-cortex, cannot find it, and REFUSES — a refusal leaves the lock held by
-design, and the remedy it prints (a governance-enforcer injection) does not
-exist on a non-Hermes harness. The lock file is left on disk: exactly the
-reported symptom, and the shape of the file name (`sess_<12 hex>`) matches the
-one the report cites.
+--------------------------------------------------------------------
+PRE-FIX: the lock is tagged with the HOST-CANONICAL repo (hermes-cortex) because a
+caller with no injector fell through to Priority 1 in _derive_slug(). The close gate
+then looks for this session's work in ~/hermes-cortex, cannot find it, and REFUSES —
+a refusal leaves the lock held by design, and the remedy it prints (a governance-
+enforcer injection) does not exist on a non-Hermes harness. The lock file is left on
+disk: the reported symptom, in the same file-name shape (sess_<12 hex>) the report cites.
+CURRENT / DEPLOYED: the session resolves its OWN repo (proj, absolute path recorded in
+the lock), the close completes, and the lock is released — no operator action.
 
-CURRENT: the same session resolves its OWN repo (`proj`, absolute path recorded
-in the lock), the close completes, and the lock is released — no operator action.
+Post-deploy doctor (this host, after `cortex-dogfood.sh --force`)
+--------------------------------------------------------------------
+  ═══════════════════════════════════════════════════
+[mcp-server] WARNING: the 'mcp' package is not installed — the stdio server cannot start; the CLI adapter (ops/scripts/loop-gov.py) still works.
+[mcp-server]   /home/esther/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3 -m pip install mcp
+[mcp-server] DEBUG: HTTPError 401 for Bearer auth — trying Basic fallback
+[mcp-server] DEBUG: HTTPError 401 for Bearer auth — trying Basic fallback
+[mcp-server] DEBUG: HTTPError 401 for Bearer auth — trying Basic fallback
+  (exit code 1; 13 warning line(s) in output)
 
-Regression coverage: tests/test_non_hermes_repo_identity.py (7 cases: tagging,
-the full begin→score→end path, plus controls proving an injected repo still wins
-and that a Hermes caller is never re-tagged from the daemon's cwd).
+RESULT: ALL PASS

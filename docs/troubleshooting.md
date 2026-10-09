@@ -800,7 +800,10 @@ bash ~/.hermes-cortex/scripts/cortex-update.sh   # deploys tools/loop-governance
 - A harness launched with its cwd outside the project (e.g. a gateway-spawned
   pi): pin the repo in the harness/MCP `env` block —
   `CORTEX_SESSION_REPO=<repo-name or absolute path>`.
-- Verify without an LLM turn: `python3 tests/test_non_hermes_repo_identity.py`.
+- Verify without an LLM turn: `python3 tests/test_non_hermes_repo_identity.py`
+  (regression) and `python3 tests/run_non_hermes_lock_release_repro.py` (drives the
+  reported flow against the pre-fix, working-tree and DEPLOYED modules; exits
+  non-zero if the lock is not released, so a broken run cannot read as a pass).
 
 **Known gap:** if a lock's repo genuinely differs from where the work landed (a
 mid-cycle repo switch, or a lock written before this fix), the refusal still has

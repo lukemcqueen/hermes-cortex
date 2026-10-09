@@ -205,7 +205,9 @@ The extension registers **NO tools** and wires only the lifecycle:
   the project (`cd repo && pi`), or pin `CORTEX_SESSION_REPO` in the MCP `env` block when
   the cwd is not the project. It needs a DEPLOY, not a pull: the harness runs the
   deployed copy (`~/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py`). Verify with
-  `python3 tests/test_non_hermes_repo_identity.py`. Full write-up: `docs/troubleshooting.md`.
+  `python3 tests/run_non_hermes_lock_release_repro.py` (pre-fix / working-tree / DEPLOYED
+  in one run; it exits non-zero unless the lock is released). Full write-up:
+  `docs/troubleshooting.md`.
 
 **Do NOT register the shared tools in the extension.** They used to live there as a
 hand-written `tool()` list with hand-written parameter maps — a SECOND definition of

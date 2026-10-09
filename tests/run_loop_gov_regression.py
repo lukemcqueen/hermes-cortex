@@ -12,6 +12,7 @@ reproduce the measurement.
 
 Usage:  python3 tests/run_loop_gov_regression.py
 """
+import os
 import re
 import subprocess
 import sys
@@ -45,6 +46,11 @@ TESTS = [
     # exactly what decides whether end_change can release its lock at all.
     "tests/test_non_hermes_repo_identity.py",
     "tests/test_non_hermes_session_id.py",
+    # The re-runnable reproduction behind the fix's evidence artifact. It ASSERTS
+    # (pre-fix must refuse and strand the lock; current must release it) and exits
+    # non-zero otherwise, so running it here means a future break in the release
+    # path fails this artifact instead of only contradicting a committed prose claim.
+    "tests/run_non_hermes_lock_release_repro.py",
     "tests/test_loop_gov_multi_session.py",
     "tests/test_loop_gov_stale_purge.py",
     "tests/test_loop_gov_db_lock_recovery.py",
@@ -74,6 +80,12 @@ TESTS = [
 
 GATE_FILE = "mcp-servers/loop-gov-mcp.py"
 GATE_LEVEL = "A4"
+# The revision the static gate is compared AGAINST. Explicit (not an implicit
+# HEAD~1): when a peer's commit lands while this runs, HEAD~1 stops meaning
+# "the pre-fix revision" and the comparison silently degrades to comparing a
+# revision with itself — which is how the artifact came to print the SAME sha for
+# both (ADV-11741-1, 2026-10-09). Name the base, and the artifact states it.
+PRE_FIX_REV = os.environ.get("LOOP_GOV_PRE_FIX_REV", "HEAD~1")
 
 
 def _run(argv, cwd=REPO, timeout=300):
@@ -115,11 +127,16 @@ def main() -> int:
     out.append("loop-governance regression artifact")
     out.append("=" * 72)
     out.append(f"generated      : {datetime.now(timezone.utc).isoformat(timespec='seconds')}")
-    out.append(f"revision       : {revision}  (branch {branch})")
+    out.append(f"revision under test : {revision}  (branch {branch}) — HEAD when this ran; the")
+    out.append("                      artifact is committed BY the change it measures, so the")
+    out.append(f"                      file under test is identical at the carrying commit")
+    out.append(f"                      (`git diff <carrying-commit> {revision} -- {GATE_FILE}`).")
+    out.append(f"pre-fix base        : {PRE_FIX_REV} ({_git('rev-parse', '--short', PRE_FIX_REV)})")
     out.append(f"interpreter    : Python {sys.version.split()[0]} (<python-bin>/python3)")
     out.append(f"generator      : tests/run_loop_gov_regression.py")
     out.append("")
-    out.append("Re-run with:  python3 tests/run_loop_gov_regression.py")
+    out.append("Re-run with:  LOOP_GOV_PRE_FIX_REV=" + PRE_FIX_REV +
+               " python3 tests/run_loop_gov_regression.py")
     out.append("")
 
     # ── 1. The test set ──
@@ -176,9 +193,10 @@ def main() -> int:
     # ── 3. Same gate on the PRE-FIX revision, so "adds no findings" is checkable ──
     with tempfile.TemporaryDirectory(prefix="loop-gov-prev-") as tmp:
         prev_file = Path(tmp) / "loop-gov-mcp.prev.py"
-        prev_file.write_text(_git("show", "HEAD~1:" + GATE_FILE))
+        prev_file.write_text(_git("show", PRE_FIX_REV + ":" + GATE_FILE))
         ok_prev, lines_prev = _gate(str(prev_file))
-    out.append(f"[{'PASS' if ok_prev else 'FAIL'}] PRE-FIX revision HEAD~1 ({_git('rev-parse', '--short', 'HEAD~1')})")
+    out.append(f"[{'PASS' if ok_prev else 'FAIL'}] PRE-FIX revision {PRE_FIX_REV} "
+               f"({_git('rev-parse', '--short', PRE_FIX_REV)})")
     for ln in lines_prev:
         out.append(f"        {ln}")
     out.append("")
