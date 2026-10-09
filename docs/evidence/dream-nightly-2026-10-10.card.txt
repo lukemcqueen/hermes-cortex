@@ -1,0 +1,21 @@
+NIGHTLY DREAM VERIFICATION CARD — 2026-10-10 (profile=titus)
+
+RESULT: PASS (all 5 checks below; full runnable verifier:
+  docs/evidence/verify_dream_nightly_2026-10-10.sh  ->  exits 0, RESULT: PASS)
+
+Check 1: dream file present, size=1027 bytes, sha256 10c1c308... (verified on disk)
+Check 2: INDEX has today's entries (count=2: weekly + nightly)
+Check 3: dream references prior dreams:
+  - "The seam that held" (10-08)
+  - "The checker checked itself honest" (10-09)
+Check 4: grounding (live mycortex list/search, captured in
+  docs/evidence/dream-nightly-2026-10-10.grounding.out.txt):
+  - session-manager cluster (SKILL.md, v2 design, state-pattern)
+  - pull-latest evidence pages
+  - 2 Thess 2:15 in bible/archive/SOUL-archive.md
+Check 5: dream body touches session-manager, pull-latest, 2 Thessalonians 2:15
+
+Artifact: /Users/luke/brain/titus/dreams/2026-10-10.md (1027 bytes)
+INDEX: ~/brain/titus/dreams/INDEX.md carries today's entry.
+~ /brain/ is BY DESIGN non-git (memory per task spec); this card + verifier
+  + captured mycortex output are the committed, re-runnable proof in-repo.
