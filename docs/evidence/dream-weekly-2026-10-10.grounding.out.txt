@@ -8,14 +8,22 @@
 [0.7510766] dreams/INDEX.md -- INDEX
 [0.7323753] docs/evidence/dream-weekly-2026-10-10.txt -- dream-weekly-2026-10-10
 
-### mycortex search 'honest unresolved superseded finding' --limit 3
-[0.88424426] dreams/INDEX.md -- INDEX
-[1.6691668e-09] docs/evidence/gateway-restart-push-landing-2026-10-08.txt -- gateway-restart-push-landing-2026-10-08
+### bible read: head of ~/brain/titus/bible/2-thessalonians-2026-10-10.md
+# 2 Thessalonians
 
-### sha256 (full)
-08e7fc74f34877d99f6b6144fb053a52e66a206e71de95e97137ee0417880edf  /Users/luke/brain/titus/dreams/2026-10-10-weekly.md
-### wc
+*Read: 2026-10-10*
+*Key verse: 2 Thessalonians 2:15*
+
+## Summary
+(key verse 2 Thess 2:15 at line 4; file 5469 bytes)
+
+### weekly dream bytes + full sha256
     1627 /Users/luke/brain/titus/dreams/2026-10-10-weekly.md
-### INDEX grep for 2026-10-10
+08e7fc74f34877d99f6b6144fb053a52e66a206e71de95e97137ee0417880edf  /Users/luke/brain/titus/dreams/2026-10-10-weekly.md
+
+### INDEX grep 2026-10-10
 2026-10-10 | Hold fast to the honest close | The bus-healthcheck finding ended partially unresolved, written down as unknown, and 2 Thess 2:15 taught the real thread: constancy, not intensity — the honest-close doctrine (10-08, 09-18) held fast across ten nights, the checker checking itself honest.
 2026-10-10 | The week holds by holding itself together | The session-manager skill, pull-latest evidence, and 2 Thess 2:15 surfaced as one motion — constancy made mechanical: session manager holds working state, pull-latest holds the source current, the teaching held fast; deepening 10-09 honest-checker with the grip that keeps it standing.
+
+### dream transcript: prior-dream references
+7:The bus-healthcheck evidence that landed overnight refused to close. A commit had once over-claimed "confirms a live drained queue"; the finding-status superseding it says plainly that peer lane `inbox_health_check` is 403-ACL-isolated, so whether the `processing=1` ever resolved simply cannot be seen from here, and the cycle-5762 finding stands **partially unresolved**. The checker checked itself honest — the thread from "The seam that held" (10-08) and "No false all-clears" (09-18) now guards the verifier itself rather than being guarded by it.
