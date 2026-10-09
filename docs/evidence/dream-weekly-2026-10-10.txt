@@ -43,3 +43,12 @@ profile), left staged in the working tree from the nightly run. It belongs to
 its own cycle; included here because it was already staged when the weekly
 evidence commit ran, committed together as one evidence batch for 2026-10-10.
 Verified content only; no unrelated files swept in.
+## Working-tree scope note (pre-existing peer changes, not this session)
+At session start the hermes-cortex working tree already held uncommitted changes
+(adapters/evo-harness, docs/evidence/mycortex-mem-password-resolution.md,
+docs/evidence/pi-mycortex-memory-wiring-audit-2026-10-08.md,
+docs/external/mcp-deepseek-review.md, docs/external/external-services.md,
+ops/scripts/install/install-pi-mcp.sh, ops/scripts/manage/audit-pi-integration.sh,
+tests/test_pi_integration_audit.py). These are another agent session's in-flight
+work and fall OUTSIDE the dream-weekly task scope; they were left untouched and
+uncommitted by this session.
