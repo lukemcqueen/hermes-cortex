@@ -1,0 +1,25 @@
+{
+  "day": "2026-10-09",
+  "window_epoch": [
+    1791471600.0,
+    1791558000.0
+  ],
+  "user_rows_total": 27,
+  "sessions_with_user_rows": 22,
+  "sessions_with_human_text": {
+    "20261008_152408_1b41c2ae": 1,
+    "20261009_213321_87399e5c": 2
+  },
+  "human_rows_total": 3,
+  "reviewer_techniques": {
+    "unverified-claim": 107,
+    "scope-drift": 18,
+    "fabrication": 15,
+    "swallowed-error": 14,
+    "injection": 4,
+    "evaluation-awareness": 2,
+    "run": 1,
+    "input-fuzzing": 1,
+    "swa": 1
+  }
+}

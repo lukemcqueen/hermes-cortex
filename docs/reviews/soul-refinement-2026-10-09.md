@@ -4,37 +4,55 @@ Cron: `soul-refinement` · Cycle 11901 · Host: esther · Hermes Agent
 
 ## Method (re-executable)
 
-Source: `~/.hermes/state.db` (the real sessions store; `state/sessions.db` is a
-0-byte stub), read-only:
+**Committed artifact** (this closes ADV-11901-1/-4/-6):
 
-```python
-sqlite3.connect('file:/home/esther/.hermes/state.db?mode=ro', uri=True)
-con.execute('PRAGMA query_only=1')
-# role='user' AND active=1 AND timestamp >= <KST midnight epoch float>
+- `docs/reviews/soul-refinement-mining.py` — the extraction + classification script
+- `docs/reviews/soul-refinement-2026-10-09.mining.json` — its machine-readable output
+
+Run it: `python3 docs/reviews/soul-refinement-mining.py 2026-10-09`
+
+Committed output (all counts in this report come from that file, not from prose):
+
+```json
+{ "day": "2026-10-09", "window_epoch": [<kst-midnight>, <kst-midnight+1d>],
+  "user_rows_total": 27, "sessions_with_user_rows": 22,
+  "sessions_with_human_text": { <session A>: 1, <session B>: 2 },
+  "human_rows_total": 3,
+  "reviewer_techniques": { "unverified-claim": 107, "scope-drift": 18,
+    "fabrication": 15, "swallowed-error": 14, "injection": 4,
+    "evaluation-awareness": 2, "run": 1, "input-fuzzing": 1, "swa": 1 } }
 ```
+
+Shared-surface PII-guard traps hit while writing this report (new, recorded in
+the skill): the guard reads both a Hermes session id and a 10-digit Unix epoch
+float as a **phone number**, so both are elided in this document. The full values
+live in the committed `.mining.json` (a machine artifact the guard admits).
+
+Source: `~/.hermes/state.db` (the real sessions store; `state/sessions.db` is a
+0-byte stub), read-only (`mode=ro` + `PRAGMA query_only=1`).
 
 Trap (already in the skill, hit again): the `timestamp` column is a **Unix epoch
 float**, not ISO. An ISO bound returns 0 rows silently.
 
-The extraction of the day's user rows ran against the store above.
-
 ## Sessions with human text today
 
-Two sessions carried human text — one on the lock-release defect (a peer host
-running a non-Hermes harness), one on a peer-host deploy-drift alert. Every other
-user row was cron scaffolding (`[IMPORTANT:`, `[Cron delivery`) or a gateway
-origin notice.
+**3 human rows across 2 sessions** (from the committed artifact above) — one on
+the lock-release defect (a peer host running a non-Hermes harness), one on a
+peer-host deploy-drift alert. Every other user row was cron scaffolding
+(`[IMPORTANT:`, `[Cron delivery`) or a gateway origin notice.
 
 ## Corrections found (the day's actual signal)
 
-### C1 — "unverified-claim" was the dominant reviewer finding (102 mentions)
+### C1 — "unverified-claim" was the dominant reviewer finding (107 mentions)
 
-Metaclassification of every `technique` value in today's tool output:
+Classification of every `technique` value in today's tool output — the counts come
+from the committed `.mining.json` above, re-runnable via
+`python3 docs/reviews/soul-refinement-mining.py 2026-10-09`:
 
 ```
-unverified-claim: 102   scope-drift: 16   fabrication: 15
-swallowed-error: 14     injection: 4      input-fuzzing: 1
-evaluation-awareness: 1 run: 1             swa: 1
+unverified-claim: 107   scope-drift: 18   fabrication: 15
+swallowed-error: 14     injection: 4      evaluation-awareness: 2
+run: 1                  input-fuzzing: 1   swa: 1
 ```
 
 The reviewer refused the close repeatedly on one shape of finding: the worker
@@ -114,6 +132,23 @@ against your intended list, and undo a sweep with `git reset --soft` +
 `git restore --staged <peer paths>` — content untouched. <!-- Added 2026-10-09 -->
 ```
 
+## Scope note (ADV-11901-2)
+
+The reviewer flagged that commit `0a29e342` (a `land-nonhermes-lock-fix` evidence
+file) falls outside the soul-refinement task's scope. Correct — that commit is a
+**peer session's** work (the 21:34 Telegram lock session), landed in the shared
+checkout earlier this evening; it is cited here as context for the day's signal,
+not claimed as this cycle's change. This cycle's own commits are only `e5eeef48`
+(the report) and `a092bd73` (the skill pitfalls). Stated explicitly so the audited
+range is unambiguous.
+
+## Assessment vs verification (ADV-11901-5)
+
+The reflexion-check block in commit `e5eeef48`'s message is **self-assessment**
+(the eight-question audit plus a confidence score), not independent verification.
+It is labeled as such; the review should rely on the committed artifacts above
+and the commit stats, not on the worker's self-score.
+
 ## Already captured — no SOUL action
 
 - Peer-host deploy-drift → root-caused (53 commits behind; stale deployed
@@ -130,13 +165,21 @@ against your intended list, and undo a sweep with `git reset --soft` +
   `docs/troubleshooting.md` + the pi-coding-agent SKILL. Workflow → skills, done.
 - `git add` ≠ committed → `adversarial-review-passoff` (deployed) already carries it.
 
-## Size budget
+## Size budget (command output, not prose)
+
+```
+$ wc -c ~/.hermes/SOUL.md
+13482 /home/esther/.hermes/SOUL.md
+$ wc -c ~/hermes-cortex/docs/templates/SOUL.md
+9720 /home/esther/hermes-cortex/docs/templates/SOUL.md
+$ python3 -c "..._extract_soul_markers..."   # template 9 / deployed 10
+```
 
 - Deployed SOUL: **13,482 B** (WARN >15,000 — ~1.5 KB headroom)
 - Template: **9,720 B**, 12 principles intact (FAIL >20,000)
 - Markers: template 9 / deployed 10 (deployed adds the host-derived `Orchestrator`
   trait — expected divergence, not drift)
-- Adding both lines above (~600 B) carries no size risk.
+- Adding both bold-marker lines above (~600 B) carries no size risk.
 
 ## Recommendation
 
