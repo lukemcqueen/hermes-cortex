@@ -39,9 +39,18 @@ echo "=== 4. DOCTOR FAIL SET ==="
 DOCTOR_OUT=$(python3 "$REPO/ops/scripts/manage/cortex-doctor.py" --quiet 2>&1)
 DOCTOR_RC=$?
 echo "doctor exit code: $DOCTOR_RC"
-echo "$DOCTOR_OUT" | grep -E "❌|⚠️|Overall" || true
-FAILS_LINE=$(echo "$DOCTOR_OUT" | grep "❌ " | grep -vE "AGENTS.md \(steadfaste\)|Overall:|REQUIRED ACTIONS" || true)
-[ -z "$FAILS_LINE" ] && ok "no FAILs other than AGENTS.md (steadfaste)" || bad "unexpected FAIL(s): $FAILS_LINE"
+if [ -z "$DOCTOR_OUT" ]; then
+  bad "doctor produced EMPTY output (did not run or crashed silently)"
+else
+  echo "$DOCTOR_OUT" | grep -E "❌|⚠️|Overall" || true
+  # The doctor must actually report the expected steady state: the only FAIL
+  # is the pre-existing AGENTS.md (steadfaste). Require that line to be present
+  # so an empty/absent run cannot pass.
+  echo "$DOCTOR_OUT" | grep -q "❌ AGENTS.md (steadfaste)" && ok "doctor reports expected AGENTS.md (steadfaste) FAIL" || bad "doctor did not report the expected AGENTS.md (steadfaste) FAIL line"
+  echo "$DOCTOR_OUT" | grep -q "❌ Overall:" && ok "doctor Overall verdict present" || bad "doctor Overall verdict line missing"
+  FAILS_LINE=$(echo "$DOCTOR_OUT" | grep "❌ " | grep -vE "AGENTS.md \(steadfaste\)|Overall:|REQUIRED ACTIONS" || true)
+  [ -z "$FAILS_LINE" ] && ok "no FAILs other than AGENTS.md (steadfaste)" || bad "unexpected FAIL(s): $FAILS_LINE"
+fi
 
 echo
 if [ "$FAILS" -eq 0 ]; then
