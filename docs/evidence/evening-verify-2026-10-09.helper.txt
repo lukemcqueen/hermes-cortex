@@ -1,0 +1,9 @@
+import importlib.util, os, pathlib
+p = pathlib.Path(os.environ.get("TASK_DB", os.path.expanduser("~/.hermes-cortex/scripts/task-db.py")))
+spec = importlib.util.spec_from_file_location("taskdb", p)
+m = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(m)
+q = "SELECT id, coalesce(assignee, created_by), to_char(status_changed_at, $$YYYY-MM-DD HH24:MI$$) FROM tasks.tasks WHERE status = $$review$$ ORDER BY status_changed_at"
+print("rows_in_review:", repr(m.psql(q)))
+q2 = "SELECT count(*) FROM tasks.tasks WHERE status = $$review$$ AND status_changed_at < now() - interval $$24 hours$$"
+print("stale_review_gt_24h:", m.psql(q2))

@@ -1,0 +1,15 @@
+=== evening verification pass 2026-10-09T21:39:21+09:00 ===
+--- board ---
+📋 Task Board
+  in_progress: 1
+  pending (claimable): 16
+  pending (story, not claimable): 3
+  In progress:
+    esther: 1
+  In review: none
+--- review queue ---
+No tasks found.
+--- review rows + explicit stale >24h check (tasks schema) ---
+rows_in_review: ''
+stale_review_gt_24h: 0
+=== end ===
