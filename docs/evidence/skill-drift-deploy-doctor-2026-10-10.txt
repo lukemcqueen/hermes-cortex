@@ -1,0 +1,12 @@
+Deploy + doctor transcript for the drift-reconciliation cycle
+Built: 2026-10-10T10:07:47+09:00
+
+$ bash ~/.hermes-cortex/scripts/cortex-dogfood.sh --force
+rc=0
+   [1;33m⚠[0m   Skipped install-nginx-full.sh — sudo not available for /usr/local/sbin/ (add NOPASSWD entry)
+✅  DOGFOOD PASSED — deployed state verified clean.
+
+$ python3 ops/scripts/manage/cortex-doctor.py
+rc=1
+  ⚠️  Overall: WARNING  (448 pass · 3 warn · 0 fail · 7 info)
+warning count: 5
