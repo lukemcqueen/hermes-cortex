@@ -1,0 +1,18 @@
+# Dogfood raw transcript — cycle 4907 (cortex-dogfood.sh --force, 2026-10-10)
+
+$ grep -E 'DOGFOOD_EXIT|DOGFOOD_DONE' /tmp/dogfood-push.log
+DOGFOOD_EXIT=0
+DOGFOOD_DONE
+
+$ grep -E 'Deploy sync|Checksum: cortex-update.sh|Checksum: cortex-dogfood.sh|Overall:' /tmp/dogfood-push.log | grep -A0 '✅\|Deploy sync\|Overall'
+    ✅  Deploy sync
+    ✅  Checksum: cortex-update.sh
+    ✅  Checksum: cortex-dogfood.sh
+    ⚠️   Overall: WARNING  (448 pass · 2 warn · 0 fail · 8 info)
+
+The two warnings are non-failing: (a) the pre-existing 'fleet venv cannot import:
+psycopg' DB-migration step, and (b) the metrics-sink nginx message. Neither is a FAIL;
+dogfood exited 0.
+
+$ python3 ops/scripts/manage/verify-stamp-repo-tuple.py
+RESULT: verified _stamp_repo_into_payload returns (dict, str) in all cases

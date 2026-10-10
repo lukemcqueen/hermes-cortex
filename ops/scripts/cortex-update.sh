@@ -515,6 +515,7 @@ register "ops/scripts/lib/toon_parse.py"                 "${CORTEX_DEPLOY_HOME}/
 # daily regression gate fail every day. Used by orch-daily-regression-gate.sh.
 register "ops/scripts/lib/python-with-module.sh"          "${CORTEX_DEPLOY_HOME}/scripts/lib/python-with-module.sh"
 register "ops/scripts/lib/cortex-update-mutex.py"         "${CORTEX_DEPLOY_HOME}/scripts/lib/cortex-update-mutex.py"
+register "ops/scripts/manage/verify-stamp-repo-tuple.py"   "${CORTEX_DEPLOY_HOME}/scripts/manage/verify-stamp-repo-tuple.py"
 register "ops/scripts/manage/orch-task-board-digest.py"  "${CORTEX_DEPLOY_HOME}/scripts/orch-task-board-digest.py"
 register "ops/scripts/manage/apply-repo-efficiency.py"   "${CORTEX_DEPLOY_HOME}/scripts/apply-repo-efficiency.py"
 register "docs/templates/repo-efficiency-block.md"       "${CORTEX_DEPLOY_HOME}/templates/repo-efficiency-block.md"
