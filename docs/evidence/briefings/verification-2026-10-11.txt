@@ -1,0 +1,23 @@
+== deliverables present, non-empty ==
+PASS  exists:md :: 
+PASS  exists:docx :: 
+PASS  exists:pdf :: 
+== file types ==
+PASS  type:docx :: 
+PASS  type:pdf :: 
+== pdf is a real document (page count + extractable text) ==
+PASS  pdf:pages :: 5 page
+PASS  pdf:text-pages>1 :: 2200 words
+== docx is a valid OOXML zip with body content ==
+PASS  docx:zip :: zip OK
+PASS  docx:body :: 
+PASS  docx:size :: 35563 bytes
+== markdown content integrity ==
+PASS  md:words :: 2207
+PASS  md:sources :: 26
+PASS  md:sections :: 5
+PASS  md:no-placeholder :: clean
+== source URLs are well-formed (no truncation markers) ==
+PASS  md:no-truncated-url :: none
+
+RESULT: ALL CHECKS PASSED
