@@ -92,12 +92,20 @@ close succeeds: review CLEAN, review skipped as simple, and all-LOW findings.
 ```bash
 python3 tests/test_review_receipt_gate.py     # gate logic + deployed hook refusal
 python3 tests/test_push_receipt_authorises.py # the lock carve-out: hook, enforcer, rule
+python3 tests/test_push_receipt_boundaries.py # boundaries + differential vs the deployed enforcer
+python3 tests/test_push_receipt_hook_live.py  # the SHIPPED hook on the real unpushed range
+PUSH_RECEIPT_E2E=1 python3 tests/test_push_receipt_hook_live.py  # + the allow direction
 python3 tests/test_review_receipt_writer.py   # the receipt producer
 python3 tests/test_review_material_consistency.py  # Diff stat ⊆ diff body
 python3 tests/test_review_material_scope.py   # working-tree scope of the measurement
 python3 ops/scripts/lib/review-receipt-check.py <receipt.json> <tip> <base>
 python3 ops/scripts/lib/review-receipt-check.py --scan <state_dir> <slug> <tip> <base>
 ```
+
+`test_push_receipt_hook_live.py` asserts the refusal direction by default and the
+allow direction only under `PUSH_RECEIPT_E2E=1`, because passing the lock gate lets
+the hook run into its doctor gate and the mandatory dogfood — a real redeploy of the
+host. Both directions skip (and say so) when nothing is unpushed.
 
 ## Pitfalls — all of them cost real time
 

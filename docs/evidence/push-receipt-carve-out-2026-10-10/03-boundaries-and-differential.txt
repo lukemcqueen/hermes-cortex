@@ -1,0 +1,16 @@
+The boundary probe and the Rule-23 differential probe now SHIP AS A TEST:
+  tests/test_push_receipt_boundaries.py
+so every claim below is re-runnable by path — the earlier scratch-only probe is
+superseded by it (the reviewer was right that a scratch harness makes its own
+transcript unverifiable). Boundaries first, then the differential half, which
+takes the DEPLOYED enforcer as the oracle and skips loudly if there is none.
+
+$ python3 tests/test_push_receipt_boundaries.py
+rc=0  PASS=95 FAIL=0 SKIP=0
+
+PASS  differential write_tool(cronjob): got=False want=False
+PASS  differential write_tool(patch): got=True want=True
+PASS  differential: no symbol the deployed enforcer exposes is lost: got=[] want=[]
+      (deployed exposes 141 symbols)
+
+RESULT: ALL PASS — boundaries hold in both directions

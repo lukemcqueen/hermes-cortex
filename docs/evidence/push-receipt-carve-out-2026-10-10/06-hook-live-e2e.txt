@@ -1,13 +1,23 @@
-The real pre-push hook, in the real repo, against the REAL unpushed range
-(f8db7ce7..f6d89f58, 7 files), with a THROWAWAY state dir — so nothing here can
-authorise a live push. A) no lock, no receipt → refused. B) no lock, a receipt
-that covers the range → the lock gate yields and the push path runs to rc=0
-(which also means the doctor gate and the mandatory dogfood after it passed).
+The SHIPPED hook, in the real repo, against the real unpushed range, driven by a
+committed test with a THROWAWAY state dir (GOVERNANCE_STATE_DIR) — so nothing here
+can authorise a live push.
 
-[committed-hook] hook=ops/scripts/pre-push-pull
-[committed-hook] range f8db7ce7ba9f..f6d89f58ce02  files=7
-[committed-hook] A) no lock, NO receipt   -> rc=1 lock-refusal=True
-[committed-hook]    | ❌  Push blocked: no active governance lock for this repository.
-[committed-hook] B) no lock, COVERING receipt -> rc=0 lock-refusal=False receipt-message=True
-[committed-hook]    | ✅  No active governance lock, but a CLEAN review receipt covers this range:
-[committed-hook] VERDICT A_blocks=True B_allows=True
+$ python3 tests/test_push_receipt_hook_live.py            (default: refusal only)
+rc=0
+live range f8db7ce7..1e36ae1b, 15 file(s)
+PASS  A) no lock and no receipt → refused: got=True want=True
+SKIP  B) the allow case (set PUSH_RECEIPT_E2E=1; it runs the mandatory dogfood, i.e. a real deploy) — proved at rule level in tests/test_push_receipt_authorises.py
+RESULT: ALL PASS — the shipped hook refuses without a receipt
+
+$ PUSH_RECEIPT_E2E=1 python3 tests/test_push_receipt_hook_live.py   (adds the allow direction)
+rc=0
+live range f8db7ce7..1e36ae1b, 15 file(s)
+PASS  A) no lock and no receipt → refused: got=True want=True
+PASS  B) no lock, covering receipt → the lock gate yields and the push path runs: got=True want=True
+PASS  B) and the hook says WHY it was allowed: got=True want=True
+RESULT: ALL PASS — the shipped hook refuses without a receipt
+
+Case B passes the lock gate and therefore runs on into the hook's doctor gate and
+the MANDATORY DOGFOOD (a real redeploy of this host, which is why it is opt-in).
+Both passed — that is why case B reaches rc=0; the doctor's own numbers are in
+07-deployed-and-doctor.txt.

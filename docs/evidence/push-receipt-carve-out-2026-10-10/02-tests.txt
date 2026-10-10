@@ -1,0 +1,29 @@
+Every test this change adds or repairs, run on this host, re-runnable by path.
+
+| test | rc | PASS | FAIL | SKIP |
+|---|---|---|---|---|
+| tests/test_push_receipt_authorises.py | 0 | 43 | 0 | 0 |
+| tests/test_review_receipt_gate.py | 0 | 25 | 0 | 0 |
+| tests/test_push_receipt_boundaries.py | 0 | 95 | 0 | 0 |
+| tests/test_push_receipt_hook_live.py | 0 | 1 | 0 | 1 |
+| tests/test_push_receipt_hook_live.py (+E2E) | 0 | 3 | 0 | 0 |
+
+$ python3 tests/test_push_receipt_authorises.py
+rc=0  PASS=43 FAIL=0 SKIP=0
+RESULT: ALL PASS — a CLEAN receipt authorises a lock-free push at all three layers, and every uncovered/compound/--no-verify shape still refuses
+
+$ python3 tests/test_review_receipt_gate.py
+rc=0  PASS=25 FAIL=0 SKIP=0
+RESULT: ALL PASS - receipt bound to the range, scoped, and the deployed hook refuses
+
+$ python3 tests/test_push_receipt_boundaries.py
+rc=0  PASS=95 FAIL=0 SKIP=0
+RESULT: ALL PASS — boundaries hold in both directions
+
+$ python3 tests/test_push_receipt_hook_live.py
+rc=0  PASS=1 FAIL=0 SKIP=1
+RESULT: ALL PASS — the shipped hook refuses without a receipt
+
+$ PUSH_RECEIPT_E2E=1 python3 tests/test_push_receipt_hook_live.py
+rc=0  PASS=3 FAIL=0 SKIP=0
+RESULT: ALL PASS — the shipped hook refuses without a receipt
