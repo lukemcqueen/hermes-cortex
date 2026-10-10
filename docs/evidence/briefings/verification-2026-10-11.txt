@@ -1,8 +1,8 @@
 == location resolution ==
-INFO  script dir : /home/esther/hermes-cortex/docs/evidence/briefings
-INFO  using copy : /home/esther/hermes-cortex/docs/evidence/briefings
-INFO  out dir    : /home/esther/.hermes/cron/output
-INFO  repo dir   : /home/esther/hermes-cortex/docs/evidence/briefings
+INFO  script dir : $HOME/hermes-cortex/docs/evidence/briefings
+INFO  using copy : $HOME/hermes-cortex/docs/evidence/briefings
+INFO  out dir    : $HOME/.hermes/cron/output
+INFO  repo dir   : $HOME/hermes-cortex/docs/evidence/briefings
 == deliverables present in BOTH delivery and repo paths ==
 PASS  exists:output/md :: 
 PASS  exists:output/docx :: 
