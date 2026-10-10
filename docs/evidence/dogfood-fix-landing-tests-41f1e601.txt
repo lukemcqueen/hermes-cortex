@@ -1,0 +1,28 @@
+# Unit + verifier test transcripts — the fixes, runnable proof (ADV-4916-2)
+
+## Full unit suite (the three changed files' tests)
+```
+$ python3 -m pytest -q tests/test_loop_gov_cli.py tests/test_cortex_update_mutex.py tests/test_stamp_repo_returns_tuple.py
+===================== test session starts ============================
+platform linux -- Python 3.14.7, pytest-9.1.1, pluggy-1.6.0
+rootdir: $HOME/hermes-cortex
+configfile: pytest.ini
+collected 30 items
+
+tests/test_loop_gov_cli.py .......................                       [ 76%]
+tests/test_cortex_update_mutex.py .....                                  [ 93%]
+tests/test_stamp_repo_returns_tuple.py ..                                [100%]
+
+============================== 30 passed in 8.04s ===================================
+```
+
+## Dogfood-landing evidence verifier
+```
+$ python3 -B tests/test_dogfood_landing_evidence.py
+RESULT: dogfood-fix-landing evidence verified (deploy-sync=HEAD, zero-fail, EXIT=0,, checksums present))
+VERIFY_RC=0
+```
+
+The fixed tree (loop-gov CLI repo-stamp, single-instance mutex,, fail-closed begin_change,e
+their tests) pass 30/30, and the committed dogfood transcript verifier passes, so the behavior
+being pushed is exercised by real, runnable tests — not prose.
