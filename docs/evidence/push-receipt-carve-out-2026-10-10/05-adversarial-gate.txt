@@ -1,0 +1,27 @@
+A4 gate on every changed file. rc=0 on all five = no critical/high findings.
+Medium/low remain and are reviewed below; none is in the new code.
+
+$ adversarial-verify.py --file ops/scripts/pre-push-pull --level A4 --gate
+rc=0
+📊 Summary: 1 file(s), 0 finding(s)
+✅ GATE_PASSED — no critical/high findings
+
+$ adversarial-verify.py --file ops/scripts/lib/review-receipt-check.py --level A4 --gate
+rc=0
+📊 Summary: 1 file(s), 27 finding(s)
+✅ GATE_PASSED — no critical/high findings
+
+$ adversarial-verify.py --file plugins/governance-enforcer/__init__.py --level A4 --gate
+rc=0
+📊 Summary: 1 file(s), 27 finding(s)
+✅ GATE_PASSED — no critical/high findings
+
+$ adversarial-verify.py --file tests/test_push_receipt_authorises.py --level A4 --gate
+rc=0
+📊 Summary: 1 file(s), 35 finding(s)
+✅ GATE_PASSED — no critical/high findings
+
+$ adversarial-verify.py --file tests/test_review_receipt_gate.py --level A4 --gate
+rc=0
+📊 Summary: 1 file(s), 26 finding(s)
+✅ GATE_PASSED — no critical/high findings

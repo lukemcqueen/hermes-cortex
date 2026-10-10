@@ -1,0 +1,13 @@
+The real pre-push hook, in the real repo, against the REAL unpushed range
+(f8db7ce7..f6d89f58, 7 files), with a THROWAWAY state dir — so nothing here can
+authorise a live push. A) no lock, no receipt → refused. B) no lock, a receipt
+that covers the range → the lock gate yields and the push path runs to rc=0
+(which also means the doctor gate and the mandatory dogfood after it passed).
+
+[committed-hook] hook=ops/scripts/pre-push-pull
+[committed-hook] range f8db7ce7ba9f..f6d89f58ce02  files=7
+[committed-hook] A) no lock, NO receipt   -> rc=1 lock-refusal=True
+[committed-hook]    | ❌  Push blocked: no active governance lock for this repository.
+[committed-hook] B) no lock, COVERING receipt -> rc=0 lock-refusal=False receipt-message=True
+[committed-hook]    | ✅  No active governance lock, but a CLEAN review receipt covers this range:
+[committed-hook] VERDICT A_blocks=True B_allows=True

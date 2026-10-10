@@ -1,0 +1,48 @@
+$ python3 tests/test_push_receipt_authorises.py
+rc=0  PASS lines=44
+
+PASS  shared checker exists: got=True want=True
+PASS  enforcer exists: got=True want=True
+PASS  this file has exactly ONE main(): got=True want=True
+PASS  range blobs resolve: got=True want=True
+PASS  scan_covering has no rule of its own (uses authorises): got=True want=True
+PASS  a covering receipt authorises: got=True want=True
+PASS  scan names the receipt it used: got=True want=True
+PASS  CONTROL: the same call is the one that passed: got=True want=True
+PASS  a receipt for another repo never authorises: got=False want=False
+PASS  no receipt at all refuses: got=False want=False
+PASS  an unresolvable range refuses: got=False want=False
+PASS  a receipt for an EMPTY range never authorises: got=False want=False
+PASS  a range that gained an uncovered file refuses: got=False want=False
+PASS  --scan CLI refuses an uncovered range: got='0' want='0'
+PASS  --scan CLI on an empty state dir refuses: got='0' want='0'
+PASS  CONTROL: uncovered really is uncovered: got=False want=False
+PASS  --scan CLI allows a covering receipt: got='1' want='1'
+PASS  --scan CLI names the receipt it used: got=True want=True
+PASS  hook calls the shared rule, not a second copy of it: got=True want=True
+PASS  hook uses the receipt as a LOCK alternative: got=True want=True
+PASS  hook still blocks with no lock and no receipt: got=True want=True
+PASS  hook still requires the always-review receipt: got=True want=True
+PASS  hook still refuses when neither a lock nor a receipt exists: got=True want=True
+PASS  matcher 'git push': got=True want=True
+PASS  matcher 'git push origin main': got=True want=True
+PASS  matcher 'git -C /srv/repo push origin main': got=True want=True
+PASS  matcher 'cd /srv/repo && git push origin main': got=True want=True
+PASS  matcher 'git push --no-verify': got=False want=False
+PASS  matcher 'git push && rm -rf /tmp/x': got=False want=False
+PASS  matcher 'echo hi && git push': got=False want=False
+PASS  matcher 'git push | tee /tmp/log': got=False want=False
+PASS  matcher 'git push > /tmp/log': got=False want=False
+PASS  matcher "git commit -m 'push the thing'": got=False want=False
+PASS  matcher 'git status': got=False want=False
+PASS  matcher 'git log --grep=push': got=False want=False
+PASS  matcher 'rsync -a . remote:': got=False want=False
+PASS  no receipt → no carve-out: got=False want=False
+PASS  covering receipt → carve-out: got=True want=True
+PASS  FINDINGS verdict → no carve-out: got=False want=False
+PASS  --no-verify push → no carve-out: got=False want=False
+PASS  a non-push command → no carve-out: got=False want=False
+PASS  a receipt for another repo → no carve-out: got=False want=False
+PASS  the carve-out is scoped to a covering receipt, never to the command alone: got=False want=False
+
+RESULT: ALL PASS — a CLEAN receipt authorises a lock-free push at all three layers, and every uncovered/compound/--no-verify shape still refuses

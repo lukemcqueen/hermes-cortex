@@ -1,0 +1,52 @@
+Boundary/adversarial probe (script kept in scratch: it has to hold plausible
+receipts and nested fixtures). Not a static scan — it EXECUTES the new paths.
+$ python3 push_receipt_probe.py
+rc=0  checks=45
+
+PASS  missing state dir refuses: got=(False, None) want=(False, None)
+PASS  state dir that is a FILE refuses: got=(False, None) want=(False, None)
+PASS  empty slug refuses: got=(False, None) want=(False, None)
+PASS  empty tip refuses: got=(False, None) want=(False, None)
+PASS  None base refuses: got=(False, None) want=(False, None)
+PASS  slug '*' does not match another repo's receipt: got=(False, None) want=(False, None)
+PASS  slug with '?' does not match: got=(False, None) want=(False, None)
+PASS  CONTROL: the real slug does match: got=True want=True
+PASS  a receipt path that is a directory is skipped: got=(False, None) want=(False, None)
+PASS  unparseable sibling does not block a valid receipt: got=True want=True
+PASS  a JSON list never authorises: got=False want=False
+PASS  a null verdict never authorises: got=False want=False
+PASS  several covering receipts → newest is used: got=(True, True) want=(True, True)
+PASS  matcher 'git push\n': got=True want=True
+PASS  matcher 'git\tpush': got=True want=True
+PASS  matcher '  git push  ': got=True want=True
+PASS  matcher "git -C '/p a t h' push": got=True want=True
+PASS  matcher 'git push&': got=False want=False
+PASS  matcher 'git push &': got=False want=False
+PASS  matcher 'sudo git push': got=False want=False
+PASS  matcher 'GIT push': got=False want=False
+PASS  matcher 'git push;': got=True want=True
+PASS  matcher 'cd /srv/repo;git push': got=True want=True
+PASS  matcher 'git push --force': got=True want=True
+PASS  matcher 'git -c user.name=x push': got=True want=True
+PASS  matcher 'git push --no-verify': got=False want=False
+PASS  matcher 'echo x && git push': got=False want=False
+PASS  matcher 'git push && echo x': got=False want=False
+PASS  matcher 'git push xxxxxxxxxxxxxxxxxxx': got=True want=True
+PASS  matcher 'git push $(rm -rf /)': got=False want=False
+PASS  matcher 'git push `id`': got=False want=False
+PASS  matcher 'env GIT_DIR=x git push': got=False want=False
+PASS  matcher 'timeout 30 git push': got=False want=False
+PASS  matcher returns '' for a bare push (no dir named): got='' want=''
+PASS  matcher returns the cd dir: got='/srv/repo' want='/srv/repo'
+PASS  matcher returns the -C dir: got='/srv/repo' want='/srv/repo'
+PASS  enforcer: covering receipt permits: got=True want=True
+PASS  enforcer: nonexistent repo refuses: got=False want=False
+PASS  enforcer: empty command refuses: got=False want=False
+PASS  enforcer: non-terminal args refuse: got=False want=False
+PASS  enforcer: state dir that does not exist refuses: got=False want=False
+PASS  enforcer: wrong slug in the state dir refuses: got=False want=False
+PASS  enforcer: empty range refuses even with a receipt: got=False want=False
+PASS  enforcer: a receipt that does not cover a NEWER tip refuses: got=False want=False
+PASS  CONTROL: a receipt for the new tip permits: got=True want=True
+
+PROBE RESULT: ALL PASS — every boundary refuses except a receipt that covers the range

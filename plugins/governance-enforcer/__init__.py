@@ -1302,6 +1302,8 @@ def _git_out(repo: Path, *args: str) -> str:
 
 def _git_subcommand_with_dir(segment: str):
     """(subcommand, -C dir) for a segment that starts with git, else (None, "")."""
+    if not segment:
+        return None, ""
     try:
         toks = shlex.split(segment)
     except ValueError:

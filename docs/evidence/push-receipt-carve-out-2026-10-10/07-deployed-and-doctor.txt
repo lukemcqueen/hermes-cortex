@@ -1,0 +1,25 @@
+DASHBOARD: deployed vs repo, and the doctor.
+
+The pre-commit DOGFOOD and `cortex-dogfood.sh --force` deployed both files, so the
+DEPLOYED copies are byte-identical to the repo source (modulo the deploy's
+`# SOURCE:` header). DEPLOY != LOAD: the running gateway still holds the OLD
+enforcer module in memory, so the ENFORCER half of the carve-out needs a gateway
+restart to be live. The HOOK half is live already — git forks the hook per push, so
+the deployed file is what runs.
+
+$ grep -c 'CLEAN review receipt covers this range' $HOME/.hermes-cortex/scripts/pre-push-pull
+1
+$ grep -c _push_authorised_by_receipt $HOME/.hermes/plugins/governance-enforcer/__init__.py
+2
+$ diff deployed vs repo, SOURCE header stripped   (rc=0)
+IDENTICAL ops/scripts/pre-push-pull
+IDENTICAL plugins/governance-enforcer/__init__.py
+$ deployed enforcer loads the shared rule from its DEPLOYED path   (rc=0)
+deployed enforcer can load the shared rule: True
+rule file it resolved to: $HOME/hermes-cortex/ops/scripts/lib/review-receipt-check.py
+$ python3 ops/scripts/manage/cortex-doctor.py --quiet   (rc=1)
+  ⚠️  Overall: WARNING  (448 pass · 11 warn · 0 fail · 8 info)
+doctor rc=1 (WARNING, not FAIL)  warn-lines=13  fail-lines=0
+UNCHANGED from before this cycle: the same 11 warnings (a peer's 12 uncommitted
+files, a dev-repo AGENTS.md block, one stale deploy of review-sweep-check.py, and 7
+stranded skills). This cycle adds none.
