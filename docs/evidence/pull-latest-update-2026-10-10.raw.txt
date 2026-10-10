@@ -1,0 +1,26 @@
+# Raw deploy + verification transcript — cycle 4897 (pull-latest-update, 2026-10-10)
+# Regenerated with the exact commands below; unedited.
+
+## 1. update exit code (cortex-update.sh)
+$ grep -E 'UPDATE_EXIT|UPDATE_DONE' /tmp/update-pull.log
+UPDATE_EXIT=1
+UPDATE_DONE
+
+## 2. non-routine failure lines in the deploy log
+$ grep -nE 'fleet venv cannot import|NOT fully migrated|relock ran on a FAILED' /tmp/update-pull.log
+41:✗ fleet venv cannot import: psycopg  (~/.hermes-cortex/venv/bin/python3)
+797:✗ The host is NOT fully migrated. Re-run cortex-update.sh once the database is reachable.
+798:⚠   relock ran on a FAILED exit (rc=1) — enforcement files re-secured
+799:⚠   relock ran on a FAILED exit (rc=1) — enforcement files re-secured
+
+## 3. post-deploy deployed-file verification
+$ grep -c '_stamp_repo_into_payload' $CORTEX_DEPLOY_HOME/scripts/loop-gov.py
+2
+$ grep -c '_inject_session_context' $HOME/.hermes/plugins/governance-enforcer/__init__.py
+2
+$ test -f $CORTEX_DEPLOY_HOME/scripts/lib/cortex-update-mutex.py && echo present
+present
+
+## 4. deployed mutex helper (bytes / path)
+$ ls -la $CORTEX_DEPLOY_HOME/scripts/lib/cortex-update-mutex.py
+-rwxr-xr-x 1 $USER $USER 4592 ~/.hermes-cortex/scripts/lib/cortex-update-mutex.py
