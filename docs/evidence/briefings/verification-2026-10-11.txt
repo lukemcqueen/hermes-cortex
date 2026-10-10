@@ -19,23 +19,45 @@ PASS  type:docx ::
 PASS  type:pdf :: 
 == pdf is a real document (page count + extractable text) ==
 PASS  pdf:pages :: 5 page
-PASS  pdf:has-text :: 2200 words
+PASS  pdf:has-text :: 2213 words
 == docx is a valid OOXML zip with body content ==
 PASS  docx:zip :: zip OK
 PASS  docx:body :: 
-PASS  docx:size :: 35563 bytes
+PASS  docx:size :: 35626 bytes
 == markdown content integrity ==
-PASS  md:words :: 2207
+PASS  md:words :: 2220
 PASS  md:urls :: 26
 PASS  md:sections :: 5
 PASS  md:no-placeholder :: clean
 PASS  md:no-truncated-url :: none
 == source URL reachability (CHECK_URLS=1) ==
-WARN  http 403 :: https://hauteliving.com/2026/08/the-real-real-2026-resale-report/795075/
-WARN  http 403 :: https://hk.fashionnetwork.com/news/Themoire-launches-a-proprietary-environmentally-sustainable-material-targeting-the-us-and-asia,1812947.html
-WARN  http 403 :: https://textileexchange.org/knowledge-center/reports/materials-market-report-2026/
-WARN  http 403 :: https://textileexchange.org/leather-call-to-action/
-WARN  http 403 :: https://www.bcg.com/publications/2025/how-fashion-luxury-brands-can-win-secondhand-market
-INFO  checked 26 URLs, 5 non-2xx (403/paywall to bots is expected for some publishers)
+OK   http 200 :: https://content.ellenmacarthurfoundation.org/asset/bead3bc9-2bbf-4e58-9cbb-f68e7aa1f429/ESPR-White-Paper-D-07-26.pdf
+OK   http 200 :: https://economiacircolare.com/textile-ecodesign-espr-requirements/
+OK   http 200 :: https://goodonyou.eco/sustainable-fashion-news-october-2026/
+OK   http 200 :: https://greenerahead.com/blog/empco-applies-which-countries-are-ready
+WARN http 403 :: https://hauteliving.com/2026/08/the-real-real-2026-resale-report/795075/
+WARN http 403 :: https://hk.fashionnetwork.com/news/Themoire-launches-a-proprietary-environmentally-sustainable-material-targeting-the-us-and-asia,1812947.html
+OK   http 200 :: https://textalks.com/korea-confronts-a-fast-fashion-waste-crisis-as-lawmakers-push-for-extended-producer-responsibility/
+WARN http 403 :: https://textileexchange.org/knowledge-center/reports/materials-market-report-2026/
+WARN http 403 :: https://textileexchange.org/leather-call-to-action/
+OK   http 200 :: https://thefabricbrief.com/articles/nike-patagonia-and-lululemon-join-nature-conservancy-microfiber-alliance-a436a070
+OK   http 200 :: https://thefabricbrief.com/articles/parkdale-takes-full-ownership-of-ciclo-biodegradable-fiber-tech-5adda533
+OK   http 200 :: https://thefabricbrief.com/articles/primark-signs-first-multi-year-offtake-with-circ-for-recycled-polyester-952047e7
+OK   http 200 :: https://wwd.com/sourcing-journal/sustainability/rheom-materials-biobased-footwear-bared-shorai-benree-1239301219/
+OK   http 200 :: https://www.ajupress.com/view/20260702120470368
+WARN http 403 :: https://www.bcg.com/publications/2025/how-fashion-luxury-brands-can-win-secondhand-market
+OK   http 200 :: https://www.e-lca.org/archive/view_article?pid=kjlca-27-1-11
+OK   http 200 :: https://www.euromonitor.com/personal-accessories-in-south-korea/report
+OK   http 200 :: https://www.freshfields.com/en/our-thinking/blogs/sustainability/empco-goes-live-what-businesses-need-to-know-as-the-new-rules-take-effect-102o3sq
+OK   http 200 :: https://www.hlc.com/en/publications/stop-the-destruction-of-textiles-how-compliance-changes-from-19-july-2026
+OK   http 200 :: https://www.lw.com/en/insights/eu-empowering-consumers-directive-new-rules-on-green-claims-apply-from-27-september-2026
+OK   http 200 :: https://www.premierevision.com/en/articles/36087eb9-4287-f111-b337-000d3a3a1397/aamati-the-biodegradable-luxury-leather-grown-in-india-s-mango-orchards
+OK   http 200 :: https://www.regenstudio.world/blog/espr-textile-delegated-act/
+OK   http 200 :: https://www.seoulz.com/korea-textile-recycling/
+OK   http 200 :: https://www.textileworld.com/textile-world/2026/10/chloris-strengthens-commercial-readiness-of-claessen-blue-through-an-integrated-verification-framework/
+OK   http 200 :: https://www.textileworld.com/textile-world/knitting-apparel/2026/10/fashion-for-good-launches-the-cotton-reloop-matrix-project-to-unlock-commercial-scale-for-recycled-cotton/
+OK   http 200 :: https://www.vogue.com/article/why-trendsetting-south-korea-remains-a-gem-for-luxury
+INFO  checked 26 URLs: 21 reachable (2xx/3xx), 5 non-2xx
+INFO  (403 from BCG/Textile Exchange/Haute Living/FashionNetwork is bot-blocking, not a dead link)
 
 RESULT: ALL CHECKS PASSED

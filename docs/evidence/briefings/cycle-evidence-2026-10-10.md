@@ -1,15 +1,15 @@
 # Cycle evidence — sustainability briefing 2026-10-10
 
-Generated: 2026-10-09T21:16:53.791961+00:00 by `ops/scripts/sustainability/write_cycle_evidence.py`
+Generated: 2026-10-09T21:20:11.973539+00:00 by `ops/scripts/sustainability/write_cycle_evidence.py`
 
 Every block below is verbatim command output captured on this host, so a reviewer can re-run the same command and diff.
 
 ## 1. Commits touching this cycle
 
 ```
-dd0b8cf4 chore(sustainability): register briefing scripts + index the evidence
-83a4599a evidence(sustainability): briefing 2026-10-10 + re-runnable checker harness
-bd5012f3 evidence(dream): verifier asserts the committed artifact's hash via committed sidecar (cycle 11987)
+abb16607 evidence(sustainability): closure note answering findings with git facts
+013773f9 evidence(sustainability): commit test-run output as an inspectable artifact
+c980a728 evidence(sustainability): self-contained cycle evidence pack
 
 --- commit 83a4599a (artifacts + harness) ---
 83a4599a14de1f53911345a591839139625f09fe
@@ -121,6 +121,8 @@ cortex-update.sh:354: register "ops/scripts/sustainability/verify_briefing.py"  
 cortex-update.sh:355: register "ops/scripts/sustainability/gen_briefing.py"      "${CORTEX_DEPLOY_HOME}/scripts/manage/gen_briefing.py"
 cortex-update.sh:356: register "ops/scripts/sustainability/capture_evidence.py"  "${CORTEX_DEPLOY_HOME}/scripts/manage/capture_evidence.py"
 cortex-update.sh:357: register "ops/scripts/sustainability/write_cycle_evidence.py" "${CORTEX_DEPLOY_HOME}/scripts/manage/write_cycle_evidence.py"
+cortex-update.sh:358: register "ops/scripts/sustainability/write_test_results.py" "${CORTEX_DEPLOY_HOME}/scripts/manage/write_test_results.py"
+cortex-update.sh:359: register "ops/scripts/sustainability/write_closure_note.py" "${CORTEX_DEPLOY_HOME}/scripts/manage/write_closure_note.py"
 
 ## 3. Canonical checker output
 
@@ -143,10 +145,10 @@ RESULT: ALL PASS
 Command: /home/esther/.hermes/cron/output/.venv-brief/bin/python -W error::ResourceWarning tests/test_gen_briefing.py
 
 ```
-.FAIL: missing /home/esther/.hermes/cache/scratch/tmp7a50t3z8/sustainability-briefing-1999-01-01.md
+.FAIL: missing /home/esther/.hermes/cache/scratch/tmpf2kloqhc/sustainability-briefing-1999-01-01.md
 ...........
 ----------------------------------------------------------------------
-Ran 12 tests in 0.231s
+Ran 12 tests in 0.218s
 
 OK
 ```
@@ -154,9 +156,9 @@ OK
 Command: /home/esther/.hermes/cron/output/.venv-brief/bin/python -W error::ResourceWarning tests/test_capture_evidence.py
 
 ```
-wrote /home/esther/.hermes/cache/scratch/tmpizdq_d28/verification-2030-01-03.txt
+wrote /home/esther/.hermes/cache/scratch/tmp3ettz7cq/verification-2030-01-03.txt
 === evidence: sustainability briefing 2030-01-03 ===
-generated: 2026-10-09T21:16:54.279734+00:00
+generated: 2026-10-09T21:20:12.439950+00:00
 
 --- command: ~/.hermes/cron/output/.venv-brief/bin/python ~/hermes-cortex/ops/scripts/sustainability/verify_briefing.py 2030-01-03
 [files] sustainability-briefing-2030-01-03.md      size=-1       FAIL
@@ -174,15 +176,15 @@ FileNotFoundError: [Errno 2] No such file or directory: '/home/esther/.hermes/cr
 checker_exit=1
 
 --- artifact listing + sha256
-MISSING  ~/.hermes/cache/scratch/tmpizdq_d28/sustainability-briefing-2030-01-03.md
-MISSING  ~/.hermes/cache/scratch/tmpizdq_d28/sustainability-briefing-2030-01-03.docx
-MISSING  ~/.hermes/cache/scratch/tmpizdq_d28/sustainability-briefing-2030-01-03.pdf
+MISSING  ~/.hermes/cache/scratch/tmp3ettz7cq/sustainability-briefing-2030-01-03.md
+MISSING  ~/.hermes/cache/scratch/tmp3ettz7cq/sustainability-briefing-2030-01-03.docx
+MISSING  ~/.hermes/cache/scratch/tmp3ettz7cq/sustainability-briefing-2030-01-03.pdf
 
 
 --- pdf text extraction spot-check (first 6 lines)
-wrote /home/esther/.hermes/cache/scratch/tmp6mifli1w/verification-2030-01-02.txt
+wrote /home/esther/.hermes/cache/scratch/tmpq6r7i8mn/verification-2030-01-02.txt
 === evidence: sustainability briefing 2030-01-02 ===
-generated: 2026-10-09T21:16:54.340539+00:00
+generated: 2026-10-09T21:20:12.496006+00:00
 
 --- command: ~/.hermes/cron/output/.venv-brief/bin/python ~/hermes-cortex/ops/scripts/sustainability/verify_briefing.py 2030-01-02
 [files] sustainability-briefing-2030-01-02.md      size=-1       FAIL
@@ -200,18 +202,18 @@ FileNotFoundError: [Errno 2] No such file or directory: '/home/esther/.hermes/cr
 checker_exit=1
 
 --- artifact listing + sha256
-     4068  fb049a12f0f0411a2edad73f897bc0584798cc1758392cf4494aaffb912be3d3  ~/.hermes/cache/scratch/tmp6mifli1w/sustainability-briefing-2030-01-02.md
-     4000  91c9568c40c8d8d1f7a1bd029d124994b3c2a8750c4e4b328ee9b1cf81151d85  ~/.hermes/cache/scratch/tmp6mifli1w/sustainability-briefing-2030-01-02.docx
-MISSING  ~/.hermes/cache/scratch/tmp6mifli1w/sustainability-briefing-2030-01-02.pdf
+     4068  fb049a12f0f0411a2edad73f897bc0584798cc1758392cf4494aaffb912be3d3  ~/.hermes/cache/scratch/tmpq6r7i8mn/sustainability-briefing-2030-01-02.md
+     4000  91c9568c40c8d8d1f7a1bd029d124994b3c2a8750c4e4b328ee9b1cf81151d85  ~/.hermes/cache/scratch/tmpq6r7i8mn/sustainability-briefing-2030-01-02.docx
+MISSING  ~/.hermes/cache/scratch/tmpq6r7i8mn/sustainability-briefing-2030-01-02.pdf
 
 --- distinct source URLs in md: 14
 --- Source: lines: 14
 --- word count: 748
 
 --- pdf text extraction spot-check (first 6 lines)
-wrote /home/esther/.hermes/cache/scratch/tmplgiajdee/verification-2030-01-01.txt
+wrote /home/esther/.hermes/cache/scratch/tmp40op8d92/verification-2030-01-01.txt
 === evidence: sustainability briefing 2030-01-01 ===
-generated: 2026-10-09T21:16:54.404681+00:00
+generated: 2026-10-09T21:20:12.554755+00:00
 
 --- command: ~/.hermes/cron/output/.venv-brief/bin/python ~/hermes-cortex/ops/scripts/sustainability/verify_briefing.py 2030-01-01
 [files] sustainability-briefing-2030-01-01.md      size=-1       FAIL
@@ -229,9 +231,9 @@ FileNotFoundError: [Errno 2] No such file or directory: '/home/esther/.hermes/cr
 checker_exit=1
 
 --- artifact listing + sha256
-     4068  fb049a12f0f0411a2edad73f897bc0584798cc1758392cf4494aaffb912be3d3  ~/.hermes/cache/scratch/tmplgiajdee/sustainability-briefing-2030-01-01.md
-     4000  91c9568c40c8d8d1f7a1bd029d124994b3c2a8750c4e4b328ee9b1cf81151d85  ~/.hermes/cache/scratch/tmplgiajdee/sustainability-briefing-2030-01-01.docx
-     4000  91c9568c40c8d8d1f7a1bd029d124994b3c2a8750c4e4b328ee9b1cf81151d85  ~/.hermes/cache/scratch/tmplgiajdee/sustainability-briefing-2030-01-01.pdf
+     4068  fb049a12f0f0411a2edad73f897bc0584798cc1758392cf4494aaffb912be3d3  ~/.hermes/cache/scratch/tmp40op8d92/sustainability-briefing-2030-01-01.md
+     4000  91c9568c40c8d8d1f7a1bd029d124994b3c2a8750c4e4b328ee9b1cf81151d85  ~/.hermes/cache/scratch/tmp40op8d92/sustainability-briefing-2030-01-01.docx
+     4000  91c9568c40c8d8d1f7a1bd029d124994b3c2a8750c4e4b328ee9b1cf81151d85  ~/.hermes/cache/scratch/tmp40op8d92/sustainability-briefing-2030-01-01.pdf
 
 --- distinct source URLs in md: 14
 --- Source: lines: 14
@@ -240,7 +242,7 @@ checker_exit=1
 --- pdf text extraction spot-check (first 6 lines)
 ......
 ----------------------------------------------------------------------
-Ran 6 tests in 0.188s
+Ran 6 tests in 0.167s
 
 OK
 ```

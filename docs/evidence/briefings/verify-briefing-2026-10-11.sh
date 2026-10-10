@@ -88,17 +88,23 @@ chk "md:no-truncated-url" bash -c "! grep -qE 'https?://[^ )]*\\.\\.\\.' '$BASE.
 if [ "${CHECK_URLS:-0}" = "1" ]; then
   echo "== source URL reachability (CHECK_URLS=1) =="
   urls=$(grep -oE 'https?://[^ )]+' "$BASE.md" | sort -u)
-  n=0; bad=0
+  n=0; ok=0; bad=0
   for u in $urls; do
     n=$((n+1))
     code=$(curl -sS -o /dev/null -w '%{http_code}' -L --max-time 15 \
            -A 'Mozilla/5.0 (compatible; briefing-verifier)' "$u" 2>/dev/null || echo 000)
     case "$code" in
-      2*|3*) : ;;
-      *) printf 'WARN  http %s :: %s\n' "$code" "$u"; bad=$((bad+1)) ;;
+      2*|3*) ok=$((ok+1)); st="OK  " ;;
+      *)     bad=$((bad+1)); st="WARN" ;;
     esac
+    # VERBOSE_URLS=1 prints EVERY url with its code, not just failures, so a
+    # reviewer can see the full population a summary line is drawn from.
+    if [ "${VERBOSE_URLS:-0}" = "1" ] || [ "$st" = "WARN" ]; then
+      printf '%s http %s :: %s\n' "$st" "$code" "$u"
+    fi
   done
-  printf 'INFO  checked %s URLs, %s non-2xx (403/paywall to bots is expected for some publishers)\n' "$n" "$bad"
+  printf 'INFO  checked %s URLs: %s reachable (2xx/3xx), %s non-2xx\n' "$n" "$ok" "$bad"
+  printf 'INFO  (403 from BCG/Textile Exchange/Haute Living/FashionNetwork is bot-blocking, not a dead link)\n'
 else
   echo "== source URL reachability: skipped (set CHECK_URLS=1 to enable) =="
 fi

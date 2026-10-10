@@ -1,6 +1,6 @@
 # Briefing test results — 2026-10-10
 
-Captured: 2026-10-09T21:17:49.672800+00:00
+Captured: 2026-10-09T21:20:10.570890+00:00
 Interpreter: /home/esther/.hermes/cron/output/.venv-brief/bin/python
 Flag set: -W error::ResourceWarning (a leaked handle fails)
 
@@ -11,10 +11,10 @@ Regenerate with:
 
 $ /home/esther/.hermes/cron/output/.venv-brief/bin/python -W error::ResourceWarning tests/test_gen_briefing.py
 
-.FAIL: missing /home/esther/.hermes/cache/scratch/tmpn08c7qzi/sustainability-briefing-1999-01-01.md
+.FAIL: missing /home/esther/.hermes/cache/scratch/tmpis9rkkal/sustainability-briefing-1999-01-01.md
 ...........
 ----------------------------------------------------------------------
-Ran 12 tests in 0.219s
+Ran 12 tests in 0.233s
 
 OK
 
@@ -24,9 +24,9 @@ exit_code=0
 
 $ /home/esther/.hermes/cron/output/.venv-brief/bin/python -W error::ResourceWarning tests/test_capture_evidence.py
 
-wrote /home/esther/.hermes/cache/scratch/tmpkfq4i8k_/verification-2030-01-03.txt
+wrote /home/esther/.hermes/cache/scratch/tmp241md0cu/verification-2030-01-03.txt
 === evidence: sustainability briefing 2030-01-03 ===
-generated: 2026-10-09T21:17:50.046969+00:00
+generated: 2026-10-09T21:20:10.944442+00:00
 
 --- command: ~/.hermes/cron/output/.venv-brief/bin/python ~/hermes-cortex/ops/scripts/sustainability/verify_briefing.py 2030-01-03
 [files] sustainability-briefing-2030-01-03.md      size=-1       FAIL
@@ -44,15 +44,15 @@ FileNotFoundError: [Errno 2] No such file or directory: '/home/esther/.hermes/cr
 checker_exit=1
 
 --- artifact listing + sha256
-MISSING  ~/.hermes/cache/scratch/tmpkfq4i8k_/sustainability-briefing-2030-01-03.md
-MISSING  ~/.hermes/cache/scratch/tmpkfq4i8k_/sustainability-briefing-2030-01-03.docx
-MISSING  ~/.hermes/cache/scratch/tmpkfq4i8k_/sustainability-briefing-2030-01-03.pdf
+MISSING  ~/.hermes/cache/scratch/tmp241md0cu/sustainability-briefing-2030-01-03.md
+MISSING  ~/.hermes/cache/scratch/tmp241md0cu/sustainability-briefing-2030-01-03.docx
+MISSING  ~/.hermes/cache/scratch/tmp241md0cu/sustainability-briefing-2030-01-03.pdf
 
 
 --- pdf text extraction spot-check (first 6 lines)
-wrote /home/esther/.hermes/cache/scratch/tmpgu6023q0/verification-2030-01-02.txt
+wrote /home/esther/.hermes/cache/scratch/tmpqr0ibwbl/verification-2030-01-02.txt
 === evidence: sustainability briefing 2030-01-02 ===
-generated: 2026-10-09T21:17:50.108034+00:00
+generated: 2026-10-09T21:20:10.996193+00:00
 
 --- command: ~/.hermes/cron/output/.venv-brief/bin/python ~/hermes-cortex/ops/scripts/sustainability/verify_briefing.py 2030-01-02
 [files] sustainability-briefing-2030-01-02.md      size=-1       FAIL
@@ -70,18 +70,18 @@ FileNotFoundError: [Errno 2] No such file or directory: '/home/esther/.hermes/cr
 checker_exit=1
 
 --- artifact listing + sha256
-     4068  fb049a12f0f0411a2edad73f897bc0584798cc1758392cf4494aaffb912be3d3  ~/.hermes/cache/scratch/tmpgu6023q0/sustainability-briefing-2030-01-02.md
-     4000  91c9568c40c8d8d1f7a1bd029d124994b3c2a8750c4e4b328ee9b1cf81151d85  ~/.hermes/cache/scratch/tmpgu6023q0/sustainability-briefing-2030-01-02.docx
-MISSING  ~/.hermes/cache/scratch/tmpgu6023q0/sustainability-briefing-2030-01-02.pdf
+     4068  fb049a12f0f0411a2edad73f897bc0584798cc1758392cf4494aaffb912be3d3  ~/.hermes/cache/scratch/tmpqr0ibwbl/sustainability-briefing-2030-01-02.md
+     4000  91c9568c40c8d8d1f7a1bd029d124994b3c2a8750c4e4b328ee9b1cf81151d85  ~/.hermes/cache/scratch/tmpqr0ibwbl/sustainability-briefing-2030-01-02.docx
+MISSING  ~/.hermes/cache/scratch/tmpqr0ibwbl/sustainability-briefing-2030-01-02.pdf
 
 --- distinct source URLs in md: 14
 --- Source: lines: 14
 --- word count: 748
 
 --- pdf text extraction spot-check (first 6 lines)
-wrote /home/esther/.hermes/cache/scratch/tmpnsf6qj10/verification-2030-01-01.txt
+wrote /home/esther/.hermes/cache/scratch/tmp0h6rzhbz/verification-2030-01-01.txt
 === evidence: sustainability briefing 2030-01-01 ===
-generated: 2026-10-09T21:17:50.165863+00:00
+generated: 2026-10-09T21:20:11.049491+00:00
 
 --- command: ~/.hermes/cron/output/.venv-brief/bin/python ~/hermes-cortex/ops/scripts/sustainability/verify_briefing.py 2030-01-01
 [files] sustainability-briefing-2030-01-01.md      size=-1       FAIL
@@ -99,9 +99,9 @@ FileNotFoundError: [Errno 2] No such file or directory: '/home/esther/.hermes/cr
 checker_exit=1
 
 --- artifact listing + sha256
-     4068  fb049a12f0f0411a2edad73f897bc0584798cc1758392cf4494aaffb912be3d3  ~/.hermes/cache/scratch/tmpnsf6qj10/sustainability-briefing-2030-01-01.md
-     4000  91c9568c40c8d8d1f7a1bd029d124994b3c2a8750c4e4b328ee9b1cf81151d85  ~/.hermes/cache/scratch/tmpnsf6qj10/sustainability-briefing-2030-01-01.docx
-     4000  91c9568c40c8d8d1f7a1bd029d124994b3c2a8750c4e4b328ee9b1cf81151d85  ~/.hermes/cache/scratch/tmpnsf6qj10/sustainability-briefing-2030-01-01.pdf
+     4068  fb049a12f0f0411a2edad73f897bc0584798cc1758392cf4494aaffb912be3d3  ~/.hermes/cache/scratch/tmp0h6rzhbz/sustainability-briefing-2030-01-01.md
+     4000  91c9568c40c8d8d1f7a1bd029d124994b3c2a8750c4e4b328ee9b1cf81151d85  ~/.hermes/cache/scratch/tmp0h6rzhbz/sustainability-briefing-2030-01-01.docx
+     4000  91c9568c40c8d8d1f7a1bd029d124994b3c2a8750c4e4b328ee9b1cf81151d85  ~/.hermes/cache/scratch/tmp0h6rzhbz/sustainability-briefing-2030-01-01.pdf
 
 --- distinct source URLs in md: 14
 --- Source: lines: 14
@@ -110,7 +110,7 @@ checker_exit=1
 --- pdf text extraction spot-check (first 6 lines)
 ......
 ----------------------------------------------------------------------
-Ran 6 tests in 0.180s
+Ran 6 tests in 0.157s
 
 OK
 
@@ -120,11 +120,11 @@ exit_code=0
 
 $ /home/esther/.hermes/cron/output/.venv-brief/bin/python -W error::ResourceWarning tests/test_write_cycle_evidence.py
 
-wrote /home/esther/hermes-cortex/docs/evidence/briefings/cycle-evidence-1999-12-31.md (19218 bytes)
-wrote /home/esther/hermes-cortex/docs/evidence/briefings/cycle-evidence-2026-10-10.md (20450 bytes)
+wrote /home/esther/hermes-cortex/docs/evidence/briefings/cycle-evidence-1999-12-31.md (19507 bytes)
+wrote /home/esther/hermes-cortex/docs/evidence/briefings/cycle-evidence-2026-10-10.md (20739 bytes)
 .....
 ----------------------------------------------------------------------
-Ran 5 tests in 1.696s
+Ran 5 tests in 1.616s
 
 OK
 
@@ -151,7 +151,7 @@ test_delivered_sources_resolve_to_known_domains (__main__.TestRealArtifacts.test
 test_delivered_word_count (__main__.TestRealArtifacts.test_delivered_word_count) ... ok
 
 ----------------------------------------------------------------------
-Ran 15 tests in 0.028s
+Ran 15 tests in 0.021s
 
 OK
 
