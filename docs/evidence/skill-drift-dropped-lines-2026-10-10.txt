@@ -1,0 +1,40 @@
+The 3 stranded files whose deployed copy also DROPPED lines — drops and decision
+Re-runnable form of the same content: git show 78b08484 -- <path>
+
+1) devops/fleet-commands/SKILL.md   (+15 / -1)  -> COPIED
+   DROP: - **EXEC bootstrap chicken-egg: a host whose repo is stale can't run tools
+         that only exist in newer commits.** `hc exec titus git-main-sync.sh` ->
+         `Script not found` (exit -1) because the EXEC handler runs
+         `~/.hermes-cortex/scripts/` from the DEPLOYED tree, which predates the new
+         tool. New recovery tooling can't reach the host it's meant to fix.
+         Remediation for a stale-origin/off-main host is a one-liner ON the host
+         (`git remote set-url origin <correct-url>`; `git checkout main; git pull
+         --rebase origin main`) — out of bus reach by design; escalate to Luke.
+   DECISION: substantive lesson, so copied ONLY after confirming the deployed copy
+   still carries the topic. Marker counts in the deployed file: chicken-egg 1,
+   "script not found" 6, bootstrap 1, stale 12 -> reorganised, not lost.
+   NOTE: the deployed wording no longer says `git pull --rebase`, consistent with
+   the fleet's merge-not-rebase rule.
+
+2) devops/governance-closeout/SKILL.md   (+56 / -1)  -> COPIED
+   DROP:   same symptom from a different cause.
+   DECISION: a sentence fragment inside a section the deployed copy rewrites in
+   place; taking the deployed side removes no lesson (read the line and its section).
+
+3) software-development/change-checklist/SKILL.md   (+47 / -8)  -> COPIED
+   DROPs (all fragments of sentences rewritten in the same sections):
+     entry it cannot actually run.
+     silently, which is how a mistyped revision becomes a green tick.
+     `git push origin main`. A close-time review receipt is keyed by BOTH tip and
+     base, so a further commit invalidates it too — the deploy is the LAST step.
+     - [ ] Integrate a peer's work by MERGE, never `git pull --rebase`. A rebase
+     rewrites SHAs, which invalidates the receipt bound to the tip and rewrites the
+     peer's unpushed commits; it also refuses outright when another session holds
+     unstaged files, and you must never stash a peer's files. A merge needs neither
+     and keeps your commit identities.
+   DECISION: the tip-keyed receipt wording is SUPERSEDED by the content-coverage
+   rule shipped in 25691956 + 650ab020; the merge-not-rebase bullet is present in
+   the deployed copy in its updated form.
+
+The other 5 (cortex-deployment-sync, cron-job-management, governance-lock-lifecycle,
+mycortex, psql-automation) dropped NOTHING: pure supersets (+23..+36, -0).

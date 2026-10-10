@@ -1,0 +1,23 @@
+Pull state and the reconcile tool's test run
+Built: 2026-10-10T10:04:55+09:00
+$ git fetch origin --quiet; git rev-list --left-right --count origin/main...HEAD
+0	2
+rc=0
+$ for s in 6c61ef57 75deb931 d2df9fec 25691956 650ab020; do git merge-base --is-ancestor $s origin/main && echo ON; done
+6c61ef57: ON origin/main
+75deb931: ON origin/main
+d2df9fec: ON origin/main
+25691956: ON origin/main
+650ab020: ON origin/main
+NOTE: those five, and origin tip 78d3b9b8 (landing evidence + verifier commits),
+are from the PRIOR session/watcher cron — NOT in this cycle's range.
+
+$ python3 tests/test_reconcile_stranded_skills.py
+rc=0
+PASS lines: 15  FAIL lines: 0
+PASS  report mode does NOT copy: got='base\n' want='base\n'
+PASS  --apply copied the superset: got='base\nadded one\nadded two\n' want='base\nadded one\nadded two\n'
+PASS  rewrite is not applied: got='keep me\nsuperseded line\n' want='keep me\nsuperseded line\n'
+PASS  failing detector exits 3 (not 0): got=3 want=3
+
+RESULT: ALL PASS — report/apply split, superset-only copy, review refusal, and could-not-verify all hold

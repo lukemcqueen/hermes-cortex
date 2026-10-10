@@ -1,0 +1,24 @@
+BEFORE state — re-runnable reproduction (not a label)
+Built: 2026-10-10T10:04:52+09:00
+
+The detector resolves its repo root from its own path, so running the copy
+checked out at the PRE-reconciliation commit measures that tree:
+$ git worktree add /tmp/pre-reconcile 78b08484^
+$ python3 /tmp/pre-reconcile/ops/scripts/manage/check-skill-drift-parity.py
+rc=1
+| Deployed-only files (stranded) | 8 |
+| Files in sync | 832 |
+**Verdict: FAIL**
+Stranded files:
+- devops/cortex-deployment-sync/SKILL.md
+- devops/cron-job-management/SKILL.md
+- devops/fleet-commands/SKILL.md
+- devops/governance-closeout/SKILL.md
+- devops/governance-lock-lifecycle/SKILL.md
+- devops/mycortex/SKILL.md
+- devops/psql-automation/SKILL.md
+- software-development/change-checklist/SKILL.md
+
+
+Authenticity: the tree measured is 78b08484^ (the commit BEFORE the
+reconciliation), reachable by anyone with the repo — no trust in a label needed.

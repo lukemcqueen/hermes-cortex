@@ -1,0 +1,12 @@
+AFTER state — re-runnable
+Built: 2026-10-10T10:04:54+09:00
+$ python3 ops/scripts/manage/check-skill-drift-parity.py
+rc=0
+| Deployed-only files (stranded) | 0 |
+| Files in sync | 840 |
+**Verdict: PASS**
+
+$ python3 ops/scripts/manage/reconcile-stranded-skills.py
+Detector verdict: PASS · stranded: 0
+Nothing stranded: repo and deployed trees agree on content.
+rc=0
