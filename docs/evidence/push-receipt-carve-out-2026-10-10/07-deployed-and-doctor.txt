@@ -3,11 +3,11 @@ DASHBOARD: deployed vs repo, and the doctor.
 The pre-commit DOGFOOD and `cortex-dogfood.sh --force` deployed both files, so the
 DEPLOYED copies are byte-identical to the repo source (modulo the deploy's
 `# SOURCE:` header). DEPLOY != LOAD — but do not assume the direction: MEASURED on
-2026-10-10, the enforcer half was ALREADY live, because a lock-free push was allowed
-by the running enforcer with no gateway restart (see 08-live-lock-free-push.txt).
-The deploy's restart banner is conservative (it fires when it cannot determine the
-gateway start time). The HOOK half is live regardless — git forks the hook per push,
-so the deployed file is what runs.
+2026-10-10, the RUNNING enforcer had the change in force, because a lock-free push was
+permitted by it (see 08-live-lock-free-push.txt, which is explicit about what is
+observed and what is inferred). The deploy's restart banner is not a verdict: it fires
+when the deploy cannot determine the gateway start time. The HOOK half is live
+regardless — git forks the hook per push, so the deployed file is what runs.
 
 $ grep -c 'CLEAN review receipt covers this range' $HOME/.hermes-cortex/scripts/pre-push-pull
 1

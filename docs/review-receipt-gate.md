@@ -59,14 +59,14 @@ refuses when it cannot.
 
 **When it goes live.** The hook half is immediate: `cortex-update.sh` (and the
 pre-commit DOGFOOD) copy it, and git forks the hook on every push, so the deployed
-file is what runs. The enforcer half needs the plugin reloaded in the running
-gateway — and on esther, 2026-10-10, that happened as part of the deploy: with NO
-active lock, the running enforcer allowed the push and the hook's carve-out
-authorised it (`docs/evidence/push-receipt-carve-out-2026-10-10/08-live-lock-free-push.txt`).
-The deploy still prints `GATEWAY RESTART REQUIRED` when it cannot determine the
-gateway's start time — that banner is conservative, not a verdict. Settle the
-question by observation (a lock-free push of a covered range), never by assuming
-either way.
+file is what runs. The enforcer half must be IN FORCE in the running gateway, and
+that is measurable rather than assumed — esther, 2026-10-10: with NO active lock the
+running enforcer permitted the push and the hook's carve-out authorised it
+(`docs/evidence/push-receipt-carve-out-2026-10-10/08-live-lock-free-push.txt`). The
+mechanism that put it in force (a deploy-time plugin reload, or a restart) is not
+part of that observation. The deploy prints `GATEWAY RESTART REQUIRED` when it cannot
+determine the gateway's start time — a banner, not a verdict. Settle the question by
+observation (a lock-free push of a covered range), never by assuming either way.
 
 ## The rule does NOT apply to
 

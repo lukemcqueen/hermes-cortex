@@ -1,8 +1,14 @@
 LIVE PROOF — a push with NO active governance lock, authorised by the receipt alone.
 
-The cycle had just closed (end_change releases the lock; check_lock then returned
-{"active": false, "lock": null}). The next command was a plain push, in the repo,
-with no lock in place:
+WHY THIS IS A TEST, NOT AN ANECDOTE. The enforcer gates the terminal tool call
+BEFORE the hook runs, so a lock-free `git push` reaches the hook ONLY if the RUNNING
+enforcer permitted it. The pre-change module has no carve-out and blocks every
+lock-free write, so a push that completes with no lock and whose range a receipt
+covers can only happen when the carve-out is IN FORCE in the running gateway.
+
+The cycle had just closed — end_change releases the lock, and check_lock then
+returned {"active": false, "lock": null}. The next command was a plain push, in the
+repo, with no lock in place:
 
 $ cd $HOME/hermes-cortex && git push origin main
 ✅  No active governance lock, but a CLEAN review receipt covers this range:
@@ -10,28 +16,33 @@ $ cd $HOME/hermes-cortex && git push origin main
     The range was reviewed and closed — no lock-carrier cycle needed.
 
 🔄  MANDATORY DOGFOOD: push touches enforcement/deploy files.
-    ... (pull → deploy → doctor → verify) ...
+    ... (pull → deploy → doctor → verify; the transcript is long and the doctor's own
+         summary line is quoted verbatim below rather than elided) ...
+    ⚠️  Overall: WARNING  (449 pass · 11 warn · 0 fail · 7 info)
     ✅  DOGFOOD PASSED — deployed state verified clean.
     ✅ Mandatory dogfood passed — deployed state verified clean.
 
 To <origin>   f8db7ce7..081c7fd6  main -> main
 
-What this PROVES
-- The friction is gone for real: the range was pushed with no lock-carrier cycle,
-  and the hook named the receipt that authorised it. The doctor inside the push's
-  own mandatory dogfood: 449 pass · 11 warn · 0 fail — the same 11 warnings as
-  before this cycle (a peer's dirty files, a dev-repo AGENTS.md block, one stale
-  deploy, 7 stranded skills).
-- The RUNNING enforcer already carried the carve-out: it allowed the terminal
-  `git push` tool call with no active lock. No gateway restart happened in this
-  session. The deploy's `GATEWAY RESTART REQUIRED` banner fires when it cannot
-  determine the gateway's start time ("cannot determine gateway start time —
-  UNVERIFIABLE, treating as restart required") — conservative, not a verdict.
+WHAT IS OBSERVED
+- The push completed: `f8db7ce7..081c7fd6  main -> main`.
+- The hook named the receipt that authorised it.
+- The doctor inside that push's own mandatory dogfood printed the summary line quoted
+  above. Re-run it yourself: `python3 ops/scripts/manage/cortex-doctor.py --quiet`
+  (rc=1 on the WARNING line, 0 lines beginning `❌`). 07-deployed-and-doctor.txt
+  records an EARLIER run of the same command at `448 pass` — the pass count moves by
+  one as deploy-map files change, which is why the two files differ by one; each
+  quotes its own run.
+- No lock existed when the push was attempted (check_lock immediately before).
 
-What this does NOT prove
-- Nothing about what ELSE a gateway restart may be needed for. It shows only that
-  the carve-out did not need one here, on this host, on 2026-10-10.
-- It is one observation, not a general law: a host whose deploy genuinely fails to
-  reload the plugin can still be running the old module, so treat a restart banner
-  as a question to settle by observing a lock-free push of a covered range — never
-  by assuming either way.
+WHAT IS INFERRED, NOT OBSERVED
+- That the RUNNING gateway's module carried the carve-out. The inference is
+  structural: the pre-change module blocks every lock-free write before the hook can
+  run, so the completed push above rules out "the deployed copy has the change but the
+  running one does not". It does NOT introspect the loaded module.
+- The sentence "no gateway restart happened in this session" is NOT provable from this
+  file and is REMOVED. Whether a deploy reloaded the plugin, and whether any restart
+  is pending, is a separate question — settle it by observing a lock-free push of a
+  covered range, never by assuming either way.
+- Nothing here is a general law: this is one host, one range, one moment. A host whose
+  deploy genuinely fails to load the plugin still runs the old module.
