@@ -1,0 +1,23 @@
+Full transcript: tests/test_reconcile_stranded_skills.py (re-runnable)
+Built: 2026-10-10T10:09:59+09:00
+
+$ python3 tests/test_reconcile_stranded_skills.py
+rc=0
+PASS=15 FAIL=0
+PASS  tool exists: got=True want=True
+PASS  clean tree exits 0: got=0 want=0
+PASS  clean tree says so: got=True want=True
+PASS  report mode exits 1 when work remains: got=1 want=1
+PASS  report mode does NOT copy: got='base\n' want='base\n'
+PASS  --apply exits 0 when nothing needs review: got=0 want=0
+PASS  --apply copied the superset: got='base\nadded one\nadded two\n' want='base\nadded one\nadded two\n'
+PASS  rewrite is not applied: got='keep me\nsuperseded line\n' want='keep me\nsuperseded line\n'
+PASS  rewrite still reports work left: got=1 want=1
+PASS  rewrite prints the dropped line: got=True want=True
+PASS  new file is not added in report mode: got=False want=False
+PASS  new file is added under --apply: got='brand new lesson\n' want='brand new lesson\n'
+PASS  failing detector exits 3 (not 0): got=3 want=3
+PASS  failing detector says COULD NOT VERIFY: got=True want=True
+PASS  unrunnable detector exits 3: got=3 want=3
+
+RESULT: ALL PASS — report/apply split, superset-only copy, review refusal, and could-not-verify all hold
