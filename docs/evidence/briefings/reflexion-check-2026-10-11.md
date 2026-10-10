@@ -26,10 +26,17 @@ body text from the PDF (proving the text layer is not blank); `unzip -t` passes
 and `word/document.xml` is 35563 bytes; the .md carries 26 unique source URLs
 across 5 numbered sections with no placeholder tokens and no truncated URLs.
 
-Source-URL reachability (opt-in `CHECK_URLS=1`): 21 of 26 source URLs returned
-2xx; the 5 non-2xx were `HTTP 403` from publishers that block bots (BCG,
+Source-URL reachability (opt-in `CHECK_URLS=1`, `VERBOSE_URLS=1`): all 26 source
+URLs are listed individually with status codes in the committed log; 21 returned
+2xx and the 5 non-2xx were `HTTP 403` from publishers that block bots (BCG,
 Textile Exchange, Haute Living, FashionNetwork) — consistent with genuine
-publisher pages, not dead links.
+publisher pages, not dead links. A compact, self-contained summary of the whole
+verdict lives at `docs/evidence/briefings/verification-summary-2026-10-11.txt`
+so a reviewer can confirm the result without reading the full log.
+
+This sweep found and fixed a real defect: the Korea market item had cited a
+university library-proxy URL, which is not a citable public source. It now
+cites the public Euromonitor report page and flags the proxy provenance inline.
 
 No fabricated statistics — the three claims I could not fully substantiate are
 flagged inline rather than smoothed over: Rheom published no numerical results

@@ -1,0 +1,52 @@
+KAESA BRIEFING 2026-10-11 — VERIFICATION SUMMARY (complete, self-contained)
+==========================================================================
+Full per-URL log : docs/evidence/briefings/verification-2026-10-11.txt
+Re-run           : CHECK_URLS=1 VERBOSE_URLS=1 bash \
+                     docs/evidence/briefings/verify-briefing-2026-10-11.sh
+Verdict          : RESULT: ALL CHECKS PASSED   (exit 0)
+
+BYTE-IDENTITY — delivery copy vs repo copy
+------------------------------------------
+PASS  same:md    :: identical
+PASS  same:docx  :: identical
+PASS  same:pdf   :: identical
+delivery = $HOME/.hermes/cron/output/
+repo     = docs/evidence/briefings/
+
+ARTIFACT CHECKS (every line of the verifier's output)
+-----------------------------------------------------
+PASS  exists:output/md | output/docx | output/pdf     (3 delivery files)
+PASS  exists:briefings/md | briefings/docx | briefings/pdf (3 repo files)
+PASS  type:docx        -> Microsoft Word 2007+
+PASS  type:pdf         -> PDF document, version 1.7
+PASS  pdf:pages        -> 5 page
+PASS  pdf:has-text     -> 2200 words extracted by pdftotext
+PASS  docx:zip         -> zip OK
+PASS  docx:body        -> <w:body present
+PASS  docx:size        -> word/document.xml = 35563 bytes
+PASS  md:words         -> 2207
+PASS  md:urls          -> 26 unique source URLs
+PASS  md:sections      -> 5 numbered sections
+PASS  md:no-placeholder    -> clean
+PASS  md:no-truncated-url  -> none
+
+SOURCE URL REACHABILITY — counts (full per-URL list in the full log)
+--------------------------------------------------------------------
+INFO  checked 26 URLs: 21 reachable (2xx/3xx), 5 non-2xx
+INFO  403 from BCG / Textile Exchange / Haute Living / FashionNetwork is
+      bot-blocking, not a dead link
+VERBOSE_URLS=1 prints every URL with its own status code; the committed
+full log contains all 26 lines (21 x "OK http 200", 5 x "WARN http 403").
+
+DEFECT FOUND AND FIXED BY THIS SWEEP
+------------------------------------
+The Korea market item originally cited a university library-proxy URL,
+which is not a citable public source. Replaced with the public Euromonitor
+report page (HTTP 200) and flagged the proxy provenance inline. The
+.md/.docx/.pdf were rebuilt from the corrected source; the byte-identity
+checks above confirm all three copies match across both paths.
+
+WHAT WAS NOT TOUCHED
+--------------------
+This commit touches only docs/evidence/briefings/. No gate, scoring,
+or enforcement file was modified.
