@@ -114,7 +114,11 @@ that returns new findings rather than closure. Two rules follow:
 ### Pitfall 7: "No sanctioned exit" is a claim to TEST, not a conclusion to trust
 
 Before declaring a cycle unrecoverable, enumerate the tools that exist — the answer is often that the
-tool was there all along and a wrong assumption hid it. Verified 2026-10-10, one session:
+tool was there all along and a wrong assumption hid it. Verified 2026-10-10, one session — the four
+claims below are asserted by the committed, re-runnable test
+`tests/test_governance_lock_lifecycle_claims.py` (transcript:
+`docs/evidence/governance-lock-lifecycle-claims/transcript.txt`), which drives the deployed
+`loop-gov-mcp.py` directly:
 
 - **`advance_task_state` retires a mis-framed cycle without an override.** The user asked how to clear
   a cycle that kept being refused for scope drift. Reading the tool list settled it in minutes: the

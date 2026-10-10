@@ -1,0 +1,20 @@
+# Evidence: governance-lock-lifecycle Pitfall 7 claims (2026-10-10)
+
+## Command
+    python3 tests/test_governance_lock_lifecycle_claims.py
+
+## Output (live, deployed module)
+[mcp-server] DEBUG: Initializing server 'loop-governance'
+module: /home/esther/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py
+
+PASS  A. bare _read_lock(None) returns no session (file present on disk)
+PASS  A. lock file genuinely present (the false-inactive premise)
+PASS  B. executing -> cancelled is a VALID transition (no override needed)
+PASS  B. `cancelled` is a TERMINAL_STATE
+PASS  B. the terminal branch calls _release_lock (release half)
+PASS  C. sub-task id is derived by suffixing the parent id
+PASS  D. is_valid_transition refuses OUT of a terminal state
+
+RESULT: ALL PASS — 7 checks
+
+exit code: 0
