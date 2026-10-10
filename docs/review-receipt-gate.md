@@ -57,9 +57,16 @@ a shape the matcher cannot prove is a refusal (`_git_push_repo_hint`). With no r
 named, the enforcer resolves it from the tool args, then the session's repo hint, and
 refuses when it cannot.
 
-**Deploy ≠ load:** the hook change is live on the next `cortex-update.sh`; the enforcer
-change is live only after the **gateway restarts**. Until then the running enforcer
-still blocks a lock-free push — the deployed file is not the running process.
+**When it goes live.** The hook half is immediate: `cortex-update.sh` (and the
+pre-commit DOGFOOD) copy it, and git forks the hook on every push, so the deployed
+file is what runs. The enforcer half needs the plugin reloaded in the running
+gateway — and on esther, 2026-10-10, that happened as part of the deploy: with NO
+active lock, the running enforcer allowed the push and the hook's carve-out
+authorised it (`docs/evidence/push-receipt-carve-out-2026-10-10/08-live-lock-free-push.txt`).
+The deploy still prints `GATEWAY RESTART REQUIRED` when it cannot determine the
+gateway's start time — that banner is conservative, not a verdict. Settle the
+question by observation (a lock-free push of a covered range), never by assuming
+either way.
 
 ## The rule does NOT apply to
 

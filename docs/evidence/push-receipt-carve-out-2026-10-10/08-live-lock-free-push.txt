@@ -1,0 +1,37 @@
+LIVE PROOF — a push with NO active governance lock, authorised by the receipt alone.
+
+The cycle had just closed (end_change releases the lock; check_lock then returned
+{"active": false, "lock": null}). The next command was a plain push, in the repo,
+with no lock in place:
+
+$ cd $HOME/hermes-cortex && git push origin main
+✅  No active governance lock, but a CLEAN review receipt covers this range:
+    $HOME/.hermes-cortex/state/.reviewed-hermes-cortex-<tip>.json
+    The range was reviewed and closed — no lock-carrier cycle needed.
+
+🔄  MANDATORY DOGFOOD: push touches enforcement/deploy files.
+    ... (pull → deploy → doctor → verify) ...
+    ✅  DOGFOOD PASSED — deployed state verified clean.
+    ✅ Mandatory dogfood passed — deployed state verified clean.
+
+To <origin>   f8db7ce7..081c7fd6  main -> main
+
+What this PROVES
+- The friction is gone for real: the range was pushed with no lock-carrier cycle,
+  and the hook named the receipt that authorised it. The doctor inside the push's
+  own mandatory dogfood: 449 pass · 11 warn · 0 fail — the same 11 warnings as
+  before this cycle (a peer's dirty files, a dev-repo AGENTS.md block, one stale
+  deploy, 7 stranded skills).
+- The RUNNING enforcer already carried the carve-out: it allowed the terminal
+  `git push` tool call with no active lock. No gateway restart happened in this
+  session. The deploy's `GATEWAY RESTART REQUIRED` banner fires when it cannot
+  determine the gateway's start time ("cannot determine gateway start time —
+  UNVERIFIABLE, treating as restart required") — conservative, not a verdict.
+
+What this does NOT prove
+- Nothing about what ELSE a gateway restart may be needed for. It shows only that
+  the carve-out did not need one here, on this host, on 2026-10-10.
+- It is one observation, not a general law: a host whose deploy genuinely fails to
+  reload the plugin can still be running the old module, so treat a restart banner
+  as a question to settle by observing a lock-free push of a covered range — never
+  by assuming either way.
