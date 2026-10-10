@@ -1,6 +1,6 @@
 ---
 name: governance-lock-lifecycle
-version: 1.0.0
+version: 1.1.0
 category: devops
 description: "Use when blocked after cortex update or end_change rejects."
 author: Hermes Cortex curator
@@ -110,6 +110,35 @@ that returns new findings rather than closure. Two rules follow:
   way is clean: the doctor's leak check does not fire. But no push receipt was written, so whoever
   performs the push must run its own close to write one. A held lock does not stop a second session
   acquiring its own, so the deferred work can proceed while yours waits.
+
+### Pitfall 7: "No sanctioned exit" is a claim to TEST, not a conclusion to trust
+
+Before declaring a cycle unrecoverable, enumerate the tools that exist — the answer is often that the
+tool was there all along and a wrong assumption hid it. Verified 2026-10-10, one session:
+
+- **`advance_task_state` retires a mis-framed cycle without an override.** The user asked how to clear
+  a cycle that kept being refused for scope drift. Reading the tool list settled it in minutes: the
+  state machine carries `cancelled`/`suspended` and logs the reason in `task_events`, so the mis-framed
+  task was retired through it (no `force`, no `user_overrode`) and the real work reopened under a
+  correctly-named cycle, which closed CLEAN first try. A "no exit" assumption had already cost four
+  refusals and an hour-long TTL wait.
+- **A bare `check_lock()` is not a status check.** Called with no args it cannot resolve the session
+  and returns `{"active": false}` while the lock is live on disk. When the file says active and the
+  no-arg call says inactive, **the file is right** — the close will succeed. Do not re-acquire, do not
+  open a carrier cycle; that false negative manufactures the very extra cycle you were trying to avoid.
+- **`request_interruption` cannot rename a cycle** — it derives the sub-task id by suffixing the
+  parent's, so splitting work with it does not fix a mismatched task id. Renaming needs a NEW
+  `begin_change` under the correct name (a `reframe_change` tool would be the clean fix; until it
+  exists, retire-and-reopen is the sanctioned path).
+- **Order matters: do not `cancel` before interrupting.** `request_interruption` refuses a task already
+  in a terminal state, so a cancel-then-interrupt sequence wedges. Interrupt (or reopen) first; check
+  `TERMINAL_STATES` before sequencing any state transition.
+- **The TTL expiry is a real, usable exit.** After a lock expires, `begin_change` under the
+  correctly-named task opens a fresh cycle. Waiting out the TTL is preferable to forcing a close on a
+  mis-framed one.
+
+General rule: when a gate refuses in a way that looks unbounded, the first move is to re-read the
+available tools and their parameters — not to re-roll the reviewer, and never to override.
 
 ## Verification
 

@@ -1,6 +1,6 @@
 ---
 name: change-checklist
-version: 2.2.0
+version: 2.3.0
 category: software-development
 description: "Mandatory pre-ship verification before calling end_change(). Covers survey, test, adversarial verify, multi-OS, multi-role, docs, final verification, and reflexion. Every governance cycle must run this before closing."
 author: Hermes Cortex
@@ -26,6 +26,7 @@ Load this before end_change() on any script, deploy-config, cron, shared-doc, or
 ## Phase 0: Survey the Change Surface (BEFORE begin_change)
 
 - [ ] Pushback Check (3 questions, BEFORE begin_change) — Is this idea wrong (harm, data loss, wrong scope, better mechanism)? Is there a clearly better alternative? If you raised an objection, do NOT begin_change until the user acknowledges (override is final). Silence is not consent (SOUL P5).
+- [ ] **Name the cycle for the diff it will CONTAIN, not the instruction that started it.** A task id that under-describes the work fails the close on scope drift no matter how good the evidence is: the reviewer sees the real range and refuses a cycle whose name does not cover it. An instructed next step ("pull latest and update", then a follow-on reconciliation the update itself demanded) belongs in its OWN correctly-named cycle — do not fold a derived deliverable into the parent's cycle. Check before begin_change: does `<task_id>` describe every path the range will touch? If not, split it. (Cost of getting this wrong: cycle 12012 was refused four times and held a 60-minute TTL wait; the identical work closed CLEAN on the first attempt under a correctly-named cycle.) Recovery for an already mis-framed cycle: retire it through the state machine (`advance_task_state` → `cancelled`, reason logged, no override) and open a correctly-named one — never `force`/override.
 - [ ] Foreign working-tree check — git status; another session's in-flight edits block the pre-push dogfood gate. Coordinate — never stash/clean/commit a peer's files (SOUL P9).
 - [ ] search_files() for the old name/term across the whole repo.
 - [ ] Live cron prompts — grep ~/.hermes/cron/jobs.json for the old term; source edits don't rewrite existing jobs — update each hit via cronjob action='update'.
@@ -36,7 +37,7 @@ Load this before end_change() on any script, deploy-config, cron, shared-doc, or
 - [ ] Category — orchestrator-only (orch-* in install-orch-crons.sh) vs all-agents (agent-* in install-crons.sh). Update the fleet-reference.md cron table.
 - [ ] Install array sync — create_cron block name must match the uninstall array entry EXACTLY. Run python3 ~/hermes-cortex/ops/scripts/manage/fix-cron-duplicates.py (zero issues = in sync).
 - [ ] Old cron cleanup — crons don't self-destruct; confirm the old name was removed.
-- [ ] Governance lock — after begin_change(), confirm with check_lock.
+- [ ] Governance lock — after begin_change(), confirm with check_lock. **Pass the session context:** a bare `check_lock()` with no args cannot resolve the session and reads a FALSE "inactive" while your lock is live — the enforcer then blocks the very next write. Trust the lock FILE (`ls ~/.hermes-cortex/state/.governance-*.json`) over a no-arg reading, and when the two disagree, the file is right and your close is still permitted. (Observed 2026-10-10: a no-arg `check_lock` reported inactive, the operator-visible file was active, and the close then succeeded — the false reading had nearly cost a needless re-acquire and a second cycle.)
 - [ ] PII scan — bash ~/hermes-cortex/ops/scripts/secret-leak-detector.sh before pushing.
 
 ## Phase 1: Test the Change (no simulated output)
