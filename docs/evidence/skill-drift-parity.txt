@@ -11,17 +11,8 @@ Deploy banners (the 3-line SOURCE header) are not compared.
 
 | Measure | Value |
 |---|---|
-| Deployed-only files (stranded) | 7 |
-| Files in sync | 833 |
-| Skipped (no repo counterpart, or repo ahead) | 592 |
+| Deployed-only files (stranded) | 0 |
+| Files in sync | 840 |
+| Skipped (no repo counterpart, or repo ahead) | 595 |
 
-**Verdict: FAIL**
-
-Stranded files:
-- autonomous-ai-agents/pi-coding-agent/SKILL.md
-- devops/governance-closeout/SKILL.md
-- devops/hermes-gateway-operations/SKILL.md
-- devops/psql-automation/SKILL.md
-- devops/shared-repo-push-gates/SKILL.md
-- software-development/change-checklist/SKILL.md
-- software-development/session-manager/SKILL.md
+**Verdict: PASS**
