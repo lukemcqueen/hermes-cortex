@@ -57,7 +57,7 @@ Source: `ops/scripts/pre-push-pull`
 
   | # | Check | What it does |
   |---|-------|-------------|
-  | 1 | Governance lock | No active `begin_change()` session for this repo |
+  | 1 | Governance lock | No active `begin_change()` session for this repo — **unless** a CLEAN review receipt covers the unpushed range, which is the same accountability (written by a permitted close, bound to the content) and removes the need for a second, no-content lock-carrier cycle. Only a lone `git push` qualifies (never `--no-verify` or a compound). See `docs/review-receipt-gate.md`. |
   | 2 | Review receipt | A range touching an always-review path (`ops/scripts/lib/always-review-paths.txt`) must carry a CLEAN receipt for that exact range — tip AND base. Written automatically when a cycle closes. Verify with `ops/scripts/lib/review-receipt-check.py <receipt> <tip> <base>`. See `docs/review-receipt-gate.md`. |
   | 3 | Syntax check | Parses every changed `.py` (py_compile) and `.sh` (bash -n) file at push time. Cannot be skipped — the hook runs the checker itself. |
   | 4 | Doc coverage | Warns when code/config files change without a corresponding `.md` change. Soft warning — doesn't block, but reminds agents to update docs. |

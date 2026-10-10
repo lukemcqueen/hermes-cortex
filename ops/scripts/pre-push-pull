@@ -133,6 +133,41 @@ if [[ "$LOCK_FOUND" -eq 0 && "$_REPO_TOP" == "$CORTEX_REPO_TOP" ]]; then
   fi
 fi
 
+# ── Review-receipt lock carve-out (2026-10-10) ──────────────
+# Closing a cycle RELEASES the lock and the gate just below demands an ACTIVE one,
+# so every close needed a second, no-content 'push-<what>' cycle purely to carry
+# the lock (cycles 12009, 12010, 12021) — the mis-framed-cycle shape cycle 12012
+# was refused for. A CLEAN review receipt is the SAME accountability, and tighter:
+# the close writes it only after the self-adversarial review of that range returned
+# CLEAN, and it is bound to the reviewed CONTENT (reviewed_blobs), so a commit made
+# after the close stops covering it. Same rule file as the receipt gate below — one
+# implementation, so the two can never disagree about what "covered" means.
+if [[ "$LOCK_FOUND" -eq 0 && "$_REPO_TOP" == "$CORTEX_REPO_TOP" ]]; then
+  _RC_TIP=$(git rev-parse HEAD 2>/dev/null || echo "")
+  _RC_BASE=$(git merge-base origin/main HEAD 2>/dev/null || true)
+  if [[ -z "$_RC_BASE" ]]; then
+    _RC_BASE=$(git rev-list --max-parents=0 HEAD 2>/dev/null | tail -1 || true)
+  fi
+  _RC_CHECK="$GOVERNANCE_STATE_REPO/ops/scripts/lib/review-receipt-check.py"
+  [[ -f "$_RC_CHECK" ]] || _RC_CHECK="$_REPO_TOP/ops/scripts/lib/review-receipt-check.py"
+  _RC_OUT="0"
+  if [[ -n "$_RC_TIP" && -n "$_RC_BASE" && -f "$_RC_CHECK" && -d "$GOVERNANCE_STATE_DIR" ]]; then
+    _RC_OUT=$(python3 "$_RC_CHECK" --scan "$GOVERNANCE_STATE_DIR" "$REPO_SLUG" \
+                "$_RC_TIP" "$_RC_BASE" --repo "$_REPO_TOP" \
+                2>>"$GOVERNANCE_STATE_DIR/.receipt-check.err" || echo 0)
+  fi
+  case "$_RC_OUT" in
+    1\ *)
+      LOCK_FOUND=1
+      echo ""
+      echo "✅  No active governance lock, but a CLEAN review receipt covers this range:"
+      echo "    ${_RC_OUT#1 }"
+      echo "    The range was reviewed and closed — no lock-carrier cycle needed."
+      echo ""
+      ;;
+  esac
+fi
+
 if [[ "$LOCK_FOUND" -eq 0 && "$_REPO_TOP" == "$CORTEX_REPO_TOP" ]]; then
   echo ""
   echo "❌  Push blocked: no active governance lock for this repository."

@@ -34,6 +34,7 @@ import json
 import logging
 import os
 import re
+import shlex
 import sqlite3
 import subprocess
 import threading
@@ -1238,6 +1239,169 @@ def _target_repo_root(args: Dict[str, Any]) -> str:
             if repo is not None:
                 return str(repo)
     return ""
+
+
+# ── Review-receipt lock carve-out (2026-10-10) ─────────────────────────────
+# The lock gate makes a push accountable to a governed cycle. Closing a cycle
+# RELEASES the lock, so every close then needed a second, no-content
+# 'push-<what>' cycle purely to carry the lock again (cycles 12009, 12010,
+# 12021) — the mis-framed-cycle shape cycle 12012 was refused for. A CLEAN
+# review receipt is the SAME accountability, and tighter: the close writes it
+# only after the self-adversarial review of that range returned CLEAN, and it is
+# bound to the reviewed CONTENT (reviewed_blobs), so a commit added after the
+# close is not covered. Nothing is relaxed — a push with neither a lock nor a
+# covering receipt is refused exactly as before.
+_RECEIPT_CHECK_REL = "ops/scripts/lib/review-receipt-check.py"
+_RECEIPT_CHECK_MOD = None
+
+
+def _receipt_checker():
+    """The shipped covering-receipt rule, or None when it cannot be loaded.
+
+    Never re-implemented here: the pre-push hook and this gate must agree on what
+    "covered" means, so both load the one file that defines it. Candidate paths
+    cover the repo layout (running from source) and the deployed layouts — the
+    plugin is deployed OUTSIDE the repo, so a repo-relative path alone is not
+    enough. Failing to load it means no carve-out (fail closed).
+    """
+    global _RECEIPT_CHECK_MOD
+    if _RECEIPT_CHECK_MOD is not None:
+        return _RECEIPT_CHECK_MOD
+    import importlib.util
+
+    here = Path(__file__).resolve()
+    for base in (here.parent.parent, Path.home() / "hermes-cortex",
+                 Path.home() / ".hermes-cortex"):
+        candidate = base / _RECEIPT_CHECK_REL
+        try:
+            if not candidate.is_file():
+                continue
+            spec = importlib.util.spec_from_file_location("review_receipt_check", candidate)
+            if spec is None or spec.loader is None:
+                continue
+            mod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)
+            _RECEIPT_CHECK_MOD = mod
+            log.info("receipt checker loaded from %s", candidate)
+            return mod
+        except Exception:  # noqa: BLE001 — a broken helper must never permit a push
+            log.warning("receipt checker at %s failed to load", candidate)
+    log.warning("receipt checker not found — the lock carve-out stays off")
+    return None
+
+
+def _git_out(repo: Path, *args: str) -> str:
+    """stdout of a git command in `repo`, or "" when it fails — "" is never a pass."""
+    try:
+        proc = subprocess.run(["git", "-C", str(repo), *args],
+                              capture_output=True, text=True, timeout=10)
+    except (OSError, subprocess.TimeoutExpired):
+        return ""
+    return (proc.stdout or "").strip() if proc.returncode == 0 else ""
+
+
+def _git_subcommand_with_dir(segment: str):
+    """(subcommand, -C dir) for a segment that starts with git, else (None, "")."""
+    try:
+        toks = shlex.split(segment)
+    except ValueError:
+        return None, ""
+    if not toks or Path(toks[0]).name != "git":
+        return None, ""
+    i, cdir = 1, ""
+    while i < len(toks):
+        tok = toks[i]
+        if tok in ("-C", "--git-dir", "--work-tree"):
+            if tok == "-C" and i + 1 < len(toks):
+                cdir = toks[i + 1]
+            i += 2
+            continue
+        if tok == "-c":
+            i += 2
+            continue
+        if tok.startswith("-"):
+            i += 1
+            continue
+        return tok, cdir
+    return None, cdir
+
+
+def _git_push_repo_hint(command: str) -> Optional[str]:
+    """The dir named by a LONE ``git push``, "" when it names none; None otherwise.
+
+    None for everything that is not exactly one push: any compound carrying other
+    work, a pipe/redirection/backtick/substitution, a backgrounded push, or a push
+    that skips the hook (--no-verify). The carve-out must never authorise more than
+    the push itself, so a shape this function cannot prove is a refusal.
+    """
+    cmd = (command or "").strip()
+    if not cmd:
+        return None
+    if re.search(r"[|<>`]|\$\(", cmd):
+        return None
+    if re.search(r"(?<!&)&(?!&)", cmd):
+        return None
+    if "--no-verify" in cmd:
+        return None
+    hint, seen_push = "", False
+    for segment in re.split(r"&&|;|\n", cmd):
+        segment = segment.strip()
+        if not segment:
+            continue
+        if segment.startswith("cd "):
+            hint = segment[3:].strip().strip("'\"")
+            continue
+        sub, cdir = _git_subcommand_with_dir(segment)
+        if sub == "push":
+            if seen_push:
+                return None
+            seen_push = True
+            if cdir:
+                hint = cdir
+            continue
+        return None
+    return hint if seen_push else None
+
+
+def _push_authorised_by_receipt(args: Dict[str, Any], session_id: str = "",
+                                state_dir: Optional[Path] = None) -> bool:
+    """True when a lock-free ``git push`` is covered by a CLEAN review receipt.
+
+    Fail-closed: no usable repo or range, a command that is not exactly one push,
+    an unloadable checker, or no covering receipt all return False.
+    """
+    try:
+        hint = _git_push_repo_hint(str((args or {}).get("command", "") or ""))
+        if hint is None:
+            return False
+        root = _git_root_for(Path(hint).expanduser()) if hint else None
+        if root is None:
+            target = _target_repo_root(args or {})
+            if target:
+                root = Path(target)
+        if root is None:
+            root = _session_repo_path(session_id)
+        if root is None:
+            return False
+        tip = _git_out(root, "rev-parse", "HEAD")
+        base = _git_out(root, "merge-base", "origin/main", "HEAD")
+        if not base:
+            roots = _git_out(root, "rev-list", "--max-parents=0", "HEAD").splitlines()
+            base = roots[-1].strip() if roots else ""
+        if not tip or not base:
+            return False
+        checker = _receipt_checker()
+        if checker is None:
+            return False
+        ok, _ = checker.scan_covering(state_dir or GOVERNANCE_STATE_DIR,
+                                      root.name, tip, base, repo=root)
+        if ok:
+            log.info("push of %s..%s in %s authorised by a CLEAN review receipt "
+                     "without a lock", base[:12], tip[:12], root)
+        return bool(ok)
+    except Exception:
+        log.warning("push-receipt carve-out failed closed:\n%s", traceback.format_exc())
+        return False
 
 
 def _has_governance_lock(hermes_session_id: str = "", target_repo: str = "") -> bool:
@@ -2666,6 +2830,13 @@ def register(ctx):
 
             # Check for active governance lock (Phase 1 exact + Phase 2 scan)
             if _has_governance_lock(hermes_session_id, _target_repo_root(args)):
+                return None
+
+            # A CLEAN review receipt covering the pushed range is the same
+            # accountability as a lock (see the carve-out block above) — it is
+            # what removes the no-content 'push-<what>' cycle. Only a LONE
+            # `git push` qualifies, never --no-verify or a compound.
+            if tool_name == "terminal" and _push_authorised_by_receipt(args, hermes_session_id):
                 return None
 
             # BLOCKED

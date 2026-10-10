@@ -5,6 +5,13 @@ Single implementation shared by the pre-push gate, verify-landed.py and the test
 so a test cannot pass against logic that differs from what actually gates a push.
 
 Usage: review-receipt-check.py <receipt.json> <tip_sha> <base_sha> [--repo DIR]
+       review-receipt-check.py --scan <state_dir> <repo_slug> <tip_sha> <base_sha> [--repo DIR]
+
+`--scan` answers the question the PUSH GATES ask — "is there a receipt in the state
+dir that authorises the range I am about to push?" — with the same rule as the
+single-receipt form. It prints `1 <receipt-path>` on authorisation, or `0`. Both the
+pre-push hook and the enforcer's lock carve-out call THIS, so neither can drift into
+a weaker version of "covered".
 
 Two ways to authorise, in order:
 
@@ -25,6 +32,7 @@ not an explicit, matching CLEAN is a no.
 import json
 import subprocess
 import sys
+from pathlib import Path
 
 # Both sides of the comparison use this convention for a path that no longer
 # exists at the tip, so a deletion can never read as "covered by an empty value".
@@ -77,12 +85,69 @@ def authorises(receipt, tip, base, queried_blobs=None):
     # concrete revisions.
     if not tip or not base:
         return False
+    # An EMPTY range (tip == base) is not an authorisation: there is nothing to
+    # push, and a hand-written or legacy receipt naming tip==base would otherwise
+    # validate by the exact-match rule below and open a lock-free push path. The
+    # real writer never mints one — it refuses a range that lists no files — so
+    # this only ever refuses the fabricated case (probe ADV-2026-10-10, empty
+    # range: got True, want False).
+    if tip == base:
+        return False
     if str(receipt.get("tip_sha") or "") == tip and str(receipt.get("base_sha") or "") == base:
         return True
     # Content coverage — only when the caller could resolve the range's blobs.
     if queried_blobs is None:
         return False
     return _covered(receipt.get("reviewed_blobs"), queried_blobs)
+
+
+def scan_covering(state_dir, slug, tip, base, repo=None):
+    """(ok, receipt_path) for the newest receipt in state_dir that authorises tip/base.
+
+    The hook and the enforcer both ask exactly this question, so the scan lives here
+    beside the rule. Ordering mirrors the hook's original two-step: the receipt NAMED
+    for this tip is tried first (it is the one this close wrote), then the rest
+    newest-first — the content-coverage rule is what makes the rest usable after a
+    rebase rewrote the tip.
+
+    Fail-closed: a missing/unreadable dir, an unparseable receipt, an unresolvable
+    range or an uncovered blob are all "no". Returns (False, None) for every one.
+    """
+    if not slug or not tip or not base:
+        return False, None
+    state = Path(state_dir)
+    # Prefix match instead of a glob pattern: the slug comes from a repo directory
+    # name, so a glob would let a name containing `*`/`?` match ANOTHER repo's
+    # receipts. An explicit prefix cannot.
+    prefix = f".reviewed-{slug}-"
+
+    def _mtime(p):
+        try:
+            return p.stat().st_mtime
+        except OSError:
+            return 0.0
+
+    try:
+        candidates = sorted((p for p in state.iterdir()
+                             if p.name.startswith(prefix) and p.name.endswith(".json")),
+                            key=_mtime, reverse=True)
+    except OSError:
+        return False, None
+    preferred = state / f".reviewed-{slug}-{tip}.json"
+    ordered = ([preferred] if preferred.is_file() else []) + \
+              [p for p in candidates if p != preferred]
+    if not ordered:
+        return False, None
+    queried = range_blobs(repo, base, tip) if repo else None
+    for path in ordered:
+        try:
+            with open(path) as fh:
+                receipt = json.load(fh)
+        except (OSError, ValueError):
+            continue
+        if authorises(receipt, tip, base, queried):
+            return True, str(path)
+    return False, None
 
 
 def _split_args(argv):
@@ -100,6 +165,14 @@ def _split_args(argv):
 
 def main(argv):
     args, repo = _split_args(argv)
+    if args and args[0] == "--scan":
+        rest = args[1:]
+        if len(rest) != 4:
+            print(0)
+            return 0
+        ok, path = scan_covering(rest[0], rest[1], rest[2], rest[3], repo=repo)
+        print(f"1 {path}" if ok else "0")
+        return 0
     if len(args) != 3:
         print(0)
         return 0

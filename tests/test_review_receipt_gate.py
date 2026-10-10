@@ -105,6 +105,22 @@ def integration_checks():
     if not locks:
         print("SKIP integration: no live lock to copy (cannot exercise the gate)")
         return
+
+    # The receipt gate only fires for a NON-EMPTY unpushed range (it matches the
+    # range's files against the always-review list). When the repo is level with
+    # origin/main there is no range to gate at all, so asserting a refusal here
+    # fails on a HEALTHY tree — the assertion was reading ambient state, not the
+    # gate (change-checklist: drive the detector with controlled inputs; never
+    # assert live state). Report the skip explicitly instead of passing silently.
+    def _gitq(*a):
+        return subprocess.run(["git", "-C", str(REPO), *a],
+                              capture_output=True, text=True).stdout.strip()
+
+    _tip, _base = _gitq("rev-parse", "HEAD"), _gitq("merge-base", "origin/main", "HEAD")
+    if not _tip or not _base or _tip == _base:
+        print(f"SKIP integration refusal: nothing unpushed (HEAD {_tip[:8]} is level with "
+              f"origin/main) — the gate has no range to refuse")
+        return
     tmp = Path(tempfile.mkdtemp(prefix="receipt-gate-"))
     try:
         shutil.copy2(locks[-1], tmp / locks[-1].name)   # lock present, no receipt

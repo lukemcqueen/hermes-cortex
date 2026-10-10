@@ -21,12 +21,45 @@ could order them correctly, and discipline is not a mechanism.
 | Receipt file | `~/.hermes-cortex/state/.reviewed-<repo_slug>-<tip_sha>.json` |
 | Must say | `verdict: CLEAN`, and `tip_sha` **and** `base_sha` both matching the range being pushed |
 | Checker | `ops/scripts/lib/review-receipt-check.py <receipt> <tip> <base>` → prints `1` or `0` |
+| Scan (any covering receipt) | `review-receipt-check.py --scan <state_dir> <slug> <tip> <base>` → prints `1 <path>` or `0` |
 
 **Bound to the range, not the repo.** Tip *and* base must match, so a receipt
 earned for range A can never authorise range B. That replay is the one failure
-that would make this gate worse than no gate.
+that would make this gate worse than no gate. An **empty range** (`tip == base`,
+nothing to push) never authorises, even when a receipt names it exactly.
 
 **Runtime-only.** Receipts never live inside a repo.
+
+## The receipt also stands in for the LOCK (2026-10-10)
+
+Closing a cycle **releases** the lock, and the lock gate demands an **active** one —
+so every close needed a second, no-content `push-<what>` cycle purely to carry the
+lock back (cycles 12009, 12010, 12021 in one session). That is the mis-framed-cycle
+shape cycle 12012 was refused for.
+
+A push whose unpushed range is covered by a receipt now passes the lock gate too:
+
+| Layer | Where | Question |
+|---|---|---|
+| hook | `ops/scripts/pre-push-pull` | before refusing "no active governance lock", does a receipt cover this range? |
+| enforcer | `plugins/governance-enforcer/__init__.py` → `_push_authorised_by_receipt()` | the same question, before the `git push` call is blocked |
+| the rule | `review-receipt-check.py --scan` | ONE implementation, called by both |
+
+Nothing is relaxed: with neither a lock nor a covering receipt the push is refused
+exactly as before. The receipt is *tighter* than a lock — it is written by a permitted
+close and bound to the reviewed content, so a commit made after the close stops
+covering it, and a peer's commit riding in the range is not covered either.
+
+**What qualifies:** a LONE `git push` (optionally `cd <dir> && …` or `git -C <dir>`).
+`--no-verify` (it skips the hook), a pipe/redirection/backtick/substitution, a
+backgrounded push, two pushes, or any compound carrying other work are all refused —
+a shape the matcher cannot prove is a refusal (`_git_push_repo_hint`). With no repo
+named, the enforcer resolves it from the tool args, then the session's repo hint, and
+refuses when it cannot.
+
+**Deploy ≠ load:** the hook change is live on the next `cortex-update.sh`; the enforcer
+change is live only after the **gateway restarts**. Until then the running enforcer
+still blocks a lock-free push — the deployed file is not the running process.
 
 ## The rule does NOT apply to
 
@@ -38,7 +71,8 @@ no review and no receipt. Do not wait for one.
 1. Do the work, commit.
 2. Close the cycle. The receipt is written automatically when the **close is
    permitted** — not only when a review runs.
-3. Push.
+3. Push. **No second cycle is needed to carry the lock** — the receipt the close
+   just wrote also satisfies the lock gate (see above).
 
 **One trap, by design:** every new commit moves the tip and **invalidates the
 receipt**. Push immediately after closing; if you commit again, re-review.
@@ -57,10 +91,12 @@ close succeeds: review CLEAN, review skipped as simple, and all-LOW findings.
 
 ```bash
 python3 tests/test_review_receipt_gate.py     # gate logic + deployed hook refusal
+python3 tests/test_push_receipt_authorises.py # the lock carve-out: hook, enforcer, rule
 python3 tests/test_review_receipt_writer.py   # the receipt producer
 python3 tests/test_review_material_consistency.py  # Diff stat ⊆ diff body
 python3 tests/test_review_material_scope.py   # working-tree scope of the measurement
 python3 ops/scripts/lib/review-receipt-check.py <receipt.json> <tip> <base>
+python3 ops/scripts/lib/review-receipt-check.py --scan <state_dir> <slug> <tip> <base>
 ```
 
 ## Pitfalls — all of them cost real time
