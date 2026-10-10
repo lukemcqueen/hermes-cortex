@@ -211,7 +211,7 @@ their domain.
 | `governance-closeout` | 1.0.0 | Use when a governed change will not close. | `skill_view(name='governance-closeout')` |
 | `governance-compliance-reporting` | 1.0.0 | Review agent commits for enforcement compliance. | `skill_view(name='governance-compliance-reporting')` |
 | `governance-identity-hardening` | 1.0.0 | Use when hardening orchestrator identity or unlock tokens. | `skill_view(name='governance-identity-hardening')` |
-| `governance-lock-lifecycle` | 1.0.0 | Use when blocked after cortex update or end_change rejects. | `skill_view(name='governance-lock-lifecycle')` |
+| `governance-lock-lifecycle` | 1.1.0 | Use when blocked after cortex update or end_change rejects. | `skill_view(name='governance-lock-lifecycle')` |
 | `governance-sentinel` | 1.0.0 | (no description) | `skill_view(name='governance-sentinel')` |
 | `health-external-verification` | 1.0.0 | Verify your health endpoint is externally reachable by testing the URL end-to-end instead of assuming local... | `skill_view(name='health-external-verification')` |
 | `hermes-agent-regression-triage` | 1.0.0 | Use when hermes-agent breaks after update; audit+pin. | `skill_view(name='hermes-agent-regression-triage')` |
@@ -575,7 +575,7 @@ their domain.
 | `background-job-queue` | 1.0.0 | Add durable background job processing to a FastAPI/asyncpg app using arq. Covers project layout, job functi... | `skill_view(name='background-job-queue')` |
 | `batch-job-optimization` | 1.0.0 | Systematically analyze and optimize database-bound batch processing jobs (imports, exports, ETL, bulk updat... | `skill_view(name='batch-job-optimization')` |
 | `build-check-split` | 1.0.0 | Use when driving a task list tagged BUILD vs CHECK. | `skill_view(name='build-check-split')` |
-| `change-checklist` | 2.2.0 | Mandatory pre-ship verification before calling end_change(). Covers survey, test, adversarial verify, multi... | `skill_view(name='change-checklist')` |
+| `change-checklist` | 2.3.0 | Mandatory pre-ship verification before calling end_change(). Covers survey, test, adversarial verify, multi... | `skill_view(name='change-checklist')` |
 | `change-test-loop` | 1.1.0 | Small changes with real verification, bounded retries, self-healing. | `skill_view(name='change-test-loop')` |
 | `code-review` | 3.0.0 | Two-axis pre-commit review: Standards (documents + code smells) and Spec (requirement compliance) via paral... | `skill_view(name='code-review')` |
 | `code-wiki` | 0.1.0 | Generate wiki docs + Mermaid diagrams for any codebase. | `skill_view(name='code-wiki')` |
