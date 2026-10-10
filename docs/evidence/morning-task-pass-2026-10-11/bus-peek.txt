@@ -1,0 +1,13 @@
+📬 2 pending message(s) in inbox_joseph:
+
+  📩 [07:41:43] esther → TASK_REQUEST
+     {"topic": "general", "text": "TASK_REQUEST slice ca282975: Pre-order landing page + payment flow \u2014 conversion infrastructure. Build the KAESA pre...
+
+  📩 [07:41:48] esther → TASK_REQUEST
+     {"topic": "general", "text": "TASK_REQUEST slice 72dc920b: KAESA 90-Day Content Challenge Phase 1 Foundation (wk 1-2). Deliverable: IG grid strategy (...
+
+---
+📬 No pending messages in inbox_esther.
+---
+   inbox_esther                    depth=0
+   inbox_joseph                    depth=2

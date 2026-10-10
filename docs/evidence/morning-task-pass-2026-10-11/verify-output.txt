@@ -1,0 +1,29 @@
+### 1. self-test: hc send esther TASK_REQUEST (self) ###
+✅ Sent to esther. msg_id=4e8721c9-bfa9-470d-b65e-1721ef4f8fae
+
+### 2. self-test landed in inbox_esther (live bus via mosesaaron) ###
+📬 1 pending message(s) in inbox_esther:
+
+  📩 [07:44:50] esther → TASK_REQUEST
+     {"topic": "general", "text": "EVIDENCE-PROBE 2026-10-11T07:44:49+09:00 morning-task-pass 2026-10-11 self-test replay"}
+
+PASS: probe pending in inbox_esther
+
+### 3. probe msg_id (archive it right after this run to keep the queue clean) ###
+probe msg_id=4e8721c9-bfa9-470d-b65e-1721ef4f8fae
+
+### 4. dispatch delivery: inbox_joseph must hold the pass's 2 TASK_REQUESTs ###
+📬 2 pending message(s) in inbox_joseph:
+
+  📩 [07:41:43] esther → TASK_REQUEST
+     {"topic": "general", "text": "TASK_REQUEST slice ca282975: Pre-order landing page + payment flow \u2014 conversion infrastructure. Build the KAESA pre...
+
+  📩 [07:41:48] esther → TASK_REQUEST
+     {"topic": "general", "text": "TASK_REQUEST slice 72dc920b: KAESA 90-Day Content Challenge Phase 1 Foundation (wk 1-2). Deliverable: IG grid strategy (...
+PASS: 2 TASK_REQUEST(s) pending in inbox_joseph
+
+### 5. queue depths ###
+   inbox_esther                    depth=1
+   inbox_joseph                    depth=2
+
+VERDICT: PASS

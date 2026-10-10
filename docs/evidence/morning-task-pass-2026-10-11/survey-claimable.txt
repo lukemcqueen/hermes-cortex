@@ -1,0 +1,11 @@
+ID         PR  PROJECT            CONTENT
+5e875477   2   hermes-cortex      [cost/1] Baseline fleet cost: query provider spend + token u
+72dc920b   2   hermes-cortex      ↳ Phase 1 Foundation (wk 1-2) — build audience: IG grid stra
+c711e28d   2   kaesa-90day        Phase 2 BTS Depth (wk 3-4) — build trust: behind-the-scenes 
+4f099ae2   2   kaesa-90day        Phase 3 Pre-Launch (wk 5-6) — build anticipation: teasers, p
+a40e0282   2   kaesa-90day        Phase 4 Launch (wk 7-8) — drive sales: pre-order campaign (6
+a512e32a   2   kaesa-90day        Phase 5 Post-Launch (wk 9-10) — community: UGC reposts, cust
+0008c2ce   2   kaesa-90day        Phase 6 Retrospective (wk 11-12) — retention: performance re
+ca282975   2   kaesa-engagement   Pre-order landing page + payment flow — conversion infrastru
+90b30c9c   2   hermes-cortex      [review/1] Review-queue reduction — DIAGNOSE, do not build: 
+ac53a833   1   hermes-cortex      ↳ [2/6] AI strategy + roadmap: based on audit, define 6-mont
