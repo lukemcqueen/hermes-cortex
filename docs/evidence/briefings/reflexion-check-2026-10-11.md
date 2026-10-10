@@ -11,14 +11,26 @@ source URL, (3) three files generated in `~/.hermes/cron/output/` (.md, .docx,
 sections in the required format; the .md carries the full 2207-word version.
 
 ## 2. Did I verify every claim with real tool output?
-Yes. `verify-briefing-2026-10-11.sh` runs 14 checks and reports
-`RESULT: ALL CHECKS PASSED`; its raw stdout is committed at
+Yes. The artifacts exist at BOTH the delivery path and the repo evidence path,
+and the verifier checks both:
+- delivery:  `~/.hermes/cron/output/sustainability-briefing-2026-10-11.{md,docx,pdf}`
+- evidence:  `docs/evidence/briefings/sustainability-briefing-2026-10-11.{md,docx,pdf}`
+
+`verify-briefing-2026-10-11.sh` runs from `docs/evidence/briefings/`, resolves
+both locations, and asserts the two copies are byte-identical (`cmp -s`). It
+reports `RESULT: ALL CHECKS PASSED`; raw stdout is committed at
 `docs/evidence/briefings/verification-2026-10-11.txt`. Independent evidence per
 artifact: `file -b` reports the DOCX as `Microsoft Word 2007+` and the PDF as
 `PDF document, version 1.7, 5 page(s)`; `pdftotext` extracts 2200 words of real
 body text from the PDF (proving the text layer is not blank); `unzip -t` passes
 and `word/document.xml` is 35563 bytes; the .md carries 26 unique source URLs
 across 5 numbered sections with no placeholder tokens and no truncated URLs.
+
+Source-URL reachability (opt-in `CHECK_URLS=1`): 21 of 26 source URLs returned
+2xx; the 5 non-2xx were `HTTP 403` from publishers that block bots (BCG,
+Textile Exchange, Haute Living, FashionNetwork) — consistent with genuine
+publisher pages, not dead links.
+
 No fabricated statistics — the three claims I could not fully substantiate are
 flagged inline rather than smoothed over: Rheom published no numerical results
 for wet abrasion/colourfastness/tear/tensile, the Microfiber Action Alliance

@@ -1,23 +1,41 @@
-== deliverables present, non-empty ==
-PASS  exists:md :: 
-PASS  exists:docx :: 
-PASS  exists:pdf :: 
-== file types ==
+== location resolution ==
+INFO  script dir : /home/esther/hermes-cortex/docs/evidence/briefings
+INFO  using copy : /home/esther/hermes-cortex/docs/evidence/briefings
+INFO  out dir    : /home/esther/.hermes/cron/output
+INFO  repo dir   : /home/esther/hermes-cortex/docs/evidence/briefings
+== deliverables present in BOTH delivery and repo paths ==
+PASS  exists:output/md :: 
+PASS  exists:output/docx :: 
+PASS  exists:output/pdf :: 
+PASS  exists:briefings/md :: 
+PASS  exists:briefings/docx :: 
+PASS  exists:briefings/pdf :: 
+== delivery copy and repo copy agree ==
+PASS  same:md :: identical
+PASS  same:docx :: identical
+PASS  same:pdf :: identical
+== file types (delivery path) ==
 PASS  type:docx :: 
 PASS  type:pdf :: 
 == pdf is a real document (page count + extractable text) ==
 PASS  pdf:pages :: 5 page
-PASS  pdf:text-pages>1 :: 2200 words
+PASS  pdf:has-text :: 2200 words
 == docx is a valid OOXML zip with body content ==
 PASS  docx:zip :: zip OK
 PASS  docx:body :: 
 PASS  docx:size :: 35563 bytes
 == markdown content integrity ==
 PASS  md:words :: 2207
-PASS  md:sources :: 26
+PASS  md:urls :: 26
 PASS  md:sections :: 5
 PASS  md:no-placeholder :: clean
-== source URLs are well-formed (no truncation markers) ==
 PASS  md:no-truncated-url :: none
+== source URL reachability (CHECK_URLS=1) ==
+WARN  http 403 :: https://hauteliving.com/2026/08/the-real-real-2026-resale-report/795075/
+WARN  http 403 :: https://hk.fashionnetwork.com/news/Themoire-launches-a-proprietary-environmentally-sustainable-material-targeting-the-us-and-asia,1812947.html
+WARN  http 403 :: https://textileexchange.org/knowledge-center/reports/materials-market-report-2026/
+WARN  http 403 :: https://textileexchange.org/leather-call-to-action/
+WARN  http 403 :: https://www.bcg.com/publications/2025/how-fashion-luxury-brands-can-win-secondhand-market
+INFO  checked 26 URLs, 5 non-2xx (403/paywall to bots is expected for some publishers)
 
 RESULT: ALL CHECKS PASSED
