@@ -1,0 +1,28 @@
+# cortex-dogfood.sh --force — 3rd run, deployed the rebased-in 6c1fd64c (loop-gov-mcp.py) and re-verified post-rebase
+# tip: 41f1e601  (origin/main tip before push: 6c1fd64c)
+
+## Deploy sync
+     ✅ Deploy sync
+     ✅ Deploy sync — deployed commit matches HEAD
+
+## Doctor overall
+     ⚠️  Overall: WARNING  (449 pass · 2 warn · 0 fail · 8 info)
+     ⚠️  Overall: WARNING  (449 pass · 2 warn · 0 fail · 8 info)
+
+## Result
+DOGFOOD_EXIT=0
+DOGFOOD_DONE
+
+## Checksums (key deploy-mapped)
+     ✅ Checksum: cortex-update.sh
+     ✅ Checksum: cortex-dogfood.sh
+     ✅ Checksum: verify-stamp-repo-tuple.py
+     ✅ Checksum: loop-gov-mcp.sh
+     ✅ Checksum: loop-gov-mcp.py
+     ✅ Checksum: loop-gov.py
+     ✅ Checksum: cortex-update.sh — content matches (after stripping SOURCE header)
+     ✅ Checksum: cortex-dogfood.sh — content matches (after stripping SOURCE header)
+     ✅ Checksum: verify-stamp-repo-tuple.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: loop-gov-mcp.sh — content matches (after stripping SOURCE header)
+     ✅ Checksum: loop-gov-mcp.py — content matches (after stripping SOURCE header)
+     ✅ Checksum: loop-gov.py — content matches (after stripping SOURCE header)
