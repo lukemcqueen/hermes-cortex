@@ -4634,7 +4634,9 @@ def check_skill_drift(res):
     for label, direction, hint in drifted:
         if direction == "deployed-newer":
             res.add(f"Skill drift: {label}", "WARN", hint,
-                "Copy the deployed changes to the repo source first, then commit.")
+                "Recover it with: python3 ops/scripts/manage/reconcile-stranded-skills.py "
+                "(report first; --apply copies pure supersets only) — then commit it as its "
+                "OWN governed change, so the cycle's diff matches its task id.")
         else:
             res.add(f"Skill drift: {label}", "WARN", hint,
                 "Run: cortex-update.sh")
@@ -4644,7 +4646,8 @@ def check_skill_drift(res):
     elif in_sync > 0:
         res.add("Skill drift", "WARN",
             f"{len(drifted)} drifted, {in_sync} in sync, {skipped} Hermes defaults skipped",
-            "Resolve each drift entry above")
+            "Resolve each drift entry above — recovery is its OWN governed change "
+            "(see reconcile-stranded-skills.py), not part of the update cycle")
 
 
 def check_mem_plugins(res):

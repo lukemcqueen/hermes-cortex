@@ -4415,11 +4415,36 @@ def _verify_lock_for_task(task_id: str, args: dict | None = None) -> tuple[dict 
     """Verify the active lock matches the given task_id. Returns (state, error_msg)."""
     state = _read_lock(args)
     if state is None:
+        # No lock file. A TERMINAL task releases its session in the same call that
+        # makes it terminal (see _advance_task_state), so "no lock" for a task whose
+        # last recorded state is terminal means ALREADY RELEASED — not an error.
+        # Without this, end_change after a terminal transition reports "No active
+        # governance lock." and the close (and its review receipt) can never be
+        # written; and request_interruption refuses from a terminal state, so the
+        # session strands until its TTL. Narrow on purpose: only a task whose OWN
+        # event log says terminal is treated this way, never a lost lock.
+        prior = _last_task_state(task_id)
+        if prior in TERMINAL_STATES:
+            return ({"task_id": task_id, "status": prior,
+                     "released_by_terminal_transition": True}, "")
         return None, "No active governance lock."
     stored_task = state.get("task_id", "")
     if stored_task != task_id:
         return None, f"Lock belongs to task '{stored_task}', not '{task_id}'."
     return state, ""
+
+
+def _last_task_state(task_id: str) -> str:
+    """The task's most recently recorded state, or '' when it has no events."""
+    try:
+        conn = _db()
+        row = conn.execute(
+            "SELECT to_state FROM task_events WHERE task_id = ? AND to_state != '' "
+            "ORDER BY rowid DESC LIMIT 1", (task_id,)).fetchone()
+        conn.close()
+        return (row[0] if row else "") or ""
+    except Exception:
+        return ""
 
 
 def _write_lock_and_log(state: dict, event_type: str, detail: str = "", args: dict | None = None) -> None:
@@ -4484,10 +4509,30 @@ def _advance_task_state(args: dict) -> CallToolResult:
         detail += f" — {reason}"
     _write_lock_and_log(state, "state_transition", detail, args)
 
+    # A TERMINAL task has nothing left to hold a lock for, so release the session in
+    # the SAME call that makes it terminal. Otherwise the task is terminal while its
+    # session lives on with no way out: end_change runs the self-adversarial review
+    # (which can refuse indefinitely on a mis-framed cycle) and request_interruption
+    # refuses from a terminal state — so the lock strands until its TTL and the next,
+    # correctly-named cycle cannot even start. That is exactly what cycle 12012 did.
+    # ORDERING FOR CALLERS: interrupt BEFORE cancelling. 'cancelled' is terminal and
+    # cannot be interrupted, so cancelling first is unrecoverable by design — which is
+    # precisely why the release has to happen here, where the state goes terminal.
+    release_note = ""
+    if new_state in TERMINAL_STATES:
+        try:
+            _release_lock(args)
+            release_note = " 🔓 Lock released — a terminal task holds nothing."
+        except Exception as e:  # noqa: BLE001 — cleanup must not lose the transition
+            log.warning("terminal transition: lock release failed: %s", e)
+            release_note = (f" ⚠️ Lock release FAILED ({e}) — it will strand until "
+                            f"its TTL; report this.")
+
     return CallToolResult(content=[TextContent(
         type="text",
         text=f"🔄 Task '{task_id}' state: {old_state} → {new_state}."
         + (f" Reason: {reason}" if reason else "")
+        + release_note
     )])
 
 
