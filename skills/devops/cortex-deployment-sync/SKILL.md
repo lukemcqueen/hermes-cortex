@@ -170,6 +170,42 @@ GIT_EDITOR="true" git rebase --continue
 
 After pulls, local `main` typically carries `auto: block N suspect IPs [pipeline]` commits ahead of origin. This is normal — the threat-pipeline pushes its own commits. During "pull latest" do NOT push them. The doctor's `⚠️ Repo sync` warning reflects this; it's benign.
 
+## Pitfall 12: A host BEHIND origin is silent, and the drift audit certifies it clean
+
+The opposite direction is NOT benign and nothing shouts about it. A host tens of
+commits behind `origin/main` looks healthy: its deployed tree matches its own stale
+repo, so `agent-deploy-drift-audit.py` prints nothing. **The audit compares DEPLOYED vs
+the LOCAL repo — it has no view of origin**, so a stale-but-consistent host passes as
+clean. The doctor's `Repo sync` ⚠️ is the only warning, and a warning is not an alert.
+Never read a silent drift audit as "this host is current".
+
+**Measure it (report-only, changes nothing):**
+
+```bash
+python3 ~/hermes-cortex/ops/scripts/manage/git-main-sync.sh --check   # branch + behind/ahead
+# or, equivalently:  git fetch origin && git rev-list --count HEAD..origin/main
+```
+
+**Check the AUTOMATIC UPDATER before blaming the repo.** Hosts pull on a schedule, not
+continuously, so a paused job stops all pulls and deploys with no error anywhere:
+`~/.hermes/cron/jobs.json` → the managed `agent-hermes-update` job (`install-crons.sh`
+creates it ENABLED, `23 22 * * *`) carrying `"enabled": false, "state": "paused"`.
+A paused cron still counts as "Crons registered" ✅ in the doctor, so read the job's
+state, not the checklist. When the updater is paused, a host is only as current as the
+last UPDATE_REQUEST dispatched to it — so after a run of pushes the whole fleet drifts.
+
+**Remediation depends on the ahead count** — classify first:
+
+- `behind > 0, ahead == 0` → fast-forward. `hc exec <agent> git-main-sync.sh`; its
+  post-merge hook re-runs `cortex-update.sh`, so the stale DEPLOYED tree is repaired in
+  the same pass (verified: 53 behind → `0 behind, 0 ahead`, drift audit 31 items → exit 0).
+- `ahead > 0` → DIVERGENT: a pull is a merge, and the local commits may be someone's
+  work in progress. Do not pull reflexively; escalate with the exact commands.
+
+**Fix the gap, don't just clear the host:** either re-enable the scheduled updater or
+make a post-push fleet dispatch mandatory AND add a behind-origin signal to the drift
+audit — otherwise the audit keeps certifying stale hosts as clean.
+
 ## Pitfall 4: cortex-update cleans stale governance locks
 
 `cortex-update.sh` runs a stale-lock cleanup at the end — it removes `.governance-*.json` locks whose heartbeat exceeded TTL (>1h) plus legacy v1 locks (no `session_id`). A **fresh** session-scoped v2 lock survives a deploy (macOS: before 2026-08-10 the GNU-only `date -d` + `|| echo 0` fallback deleted EVERY lock on every deploy; now portable python3 + fail-safe skip). If your lock is gone after a deploy:

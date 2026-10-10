@@ -262,6 +262,30 @@ See `references/migration-2026-08-02.md` for the full session trace: schema fixe
 - **psql always runs with `-w`, so a bad password FAILS FAST — it never prompts (2026-10-06).** Both `ops/services/mycortex-mem/store.py` and the plugin's `_PgConnection._cmd()` pass `-w`/`--no-password`, so an empty or wrong `MYCORTEX_MEM_PASSWORD` (or a wrong PGPASSFILE) raises `StoreUnavailable` immediately. When an agent reports memory "unavailable", read the reason instead of waiting for a hang: bare `psql` without `-w` prompts on `/dev/tty`, which the caller never sees — it blocks forever, and in an interactive harness it also writes "Password for user…" into the user's prompt area. Regression guard: `ops/services/mycortex-mem/run-evidence.sh` regenerates `EVIDENCE.md`, whose §2 is a RED case (a store with `-w` stripped must fail the runtime test).
 - **Auto-remediation pauses crons permanently.** After 3 consecutive failures the remediation cron pauses a job and NOTHING auto-resumes it once the transient cause clears — a transient hiccup silences a cron forever and converts into a permanent downstream alert (stale sources, watchdog spam). When you find a paused cron whose script passes when run manually, resume it and verify the next SCHEDULED tick fires `ok` before declaring fixed; if recurring false pauses are the pattern, propose an auto-resume/re-check path in the remediation flow.
 
+## Dream layer — write-back evidence (learned 2026-10-10, weekly dream, 6 review rounds)
+
+The dream's OUTPUT lives in `~/brain/<profile>/dreams/` — a markdown store that is **NOT a git
+repo**. The self-adversarial review gate reads only the AUDITED REPO DIFF, so a dream written
+solely to `~/brain/` closes with `Diff stat (files=0, lines=0)` and the reviewer correctly
+rejects any "verified" claim about it. A pasted `stat`/`wc`/`tail` transcript is NOT accepted
+either — it is not re-executable. The remedy the gate itself prescribes, and what actually
+closes the cycle:
+
+1. Write the dream to `~/brain/<profile>/dreams/YYYY-MM-DD-weekly.md` (+ append INDEX) — as the
+task requires.
+2. Commit the dream CONTENT as a repo artifact: `docs/evidence/weekly-dream-content-<date>.md`
+   (byte-identical copy) plus its digest sidecar `...sha256`.
+3. Commit a RUNNABLE verifier `ops/evidence/verify-weekly-dream-<date>.sh` that (a) asserts the
+   committed artifact matches the committed sidecar via `sha256sum` (scripted, not hard-coded
+   prose), (b) `cmp -s` against the live brain copy when present, (c) structurally asserts the
+   expected phases/scripture/INDEX entry. Test it BOTH ways before commit: PASS on unmodified,
+   FAIL on a tampered artifact.
+
+Use a sidecar `.sha256` file rather than a hard-coded digest inside the script — the PII guard
+false-positives on a bare 64-hex string ('phone number'), so a hard-coded hash blocks the write.
+Keep the evidence files small: the review material is character-budgeted, so a file larger than
+the window is truncated in the reviewer's view and reads as unverified.
+
 ## Related
 
 - `legacy-brain-maintenance` — the old system's lifecycle (autopilot, dream, PGLite); decommission target.

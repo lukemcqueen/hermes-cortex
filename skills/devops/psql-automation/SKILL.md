@@ -132,6 +132,31 @@ hosts that genuinely lack the group. Do not "fix" it by dropping
 `NoNewPrivileges` — that trades a security control for a convenience, and the
 `sg` indirection is unnecessary whenever the group is already held.
 
+**Express the fix as an ordered LADDER, not as a swapped-in command.** A single
+`_cmd()` that returns one argv cannot express "try this, then that": give the seam an
+`_attempts(role) -> [(argv, env), …]` in preference order, keep `_cmd()` returning the
+FIRST form so existing callers still work, and have the runner walk the ladder —
+collecting EVERY failure reason and raising them together (`"docker: … | sg: …"`), so
+one line still tells "the container is down" from "the hardening blocks us". Apply it to
+every copy of the seam (store module AND plugin wrapper) in the same change.
+
+**Keep the fail-open contract, but RECORD why.** `available()` must still return False
+rather than raise — but a bare "unavailable" is indistinguishable from a DB outage, so
+store the reason on the instance (`self.last_error`) as the runner walks the ladder, and
+let diagnostics read it. A fail-open that discards its cause turns a misconfiguration
+into an outage report.
+
+**Existing guards that pin the OLD argv shape must be rewritten to intent, not to the
+new literal.** Tests asserting a prefix (`cmd[:3] == ["sg", "docker", "-c"]`, `cmd[3]`
+being the inner shell string) encode one implementation: after the swap they fail on
+correct code. Rewriting them to the NEW prefix is nearly as bad — a prefix assertion
+still cannot see the regression that matters. Re-express each as the properties the guard
+exists for, checked across the whole ladder: the direct form comes first and contains no
+group switch, EVERY form is non-interactive (`-w`), and the `sg` fallback still EXISTS
+(dropping it silently breaks every host whose user is not in the docker group). Grep the
+test tree for the old shape before shipping — the guards are usually in more than one
+file.
+
 **Careful reading, not just careful writing (2026-10-08):** `sg` fails only
 because of `NoNewPrivileges`. Under `setpriv --no-new-privs` the `sg` form exits
 **rc=1** with `setgid: Operation not permitted` — so a piped query reports

@@ -142,6 +142,30 @@ silence isn't enough because every tick produces different output even when
 nothing changed. Instead, track a compact JSON state signature and only fire
 when the signature changes. See `references/state-transition-watchdog.md`.
 
+## Advanced: Monitor-gated deferral — wait on a third-party blocker without spending tokens
+
+When your own work is done but it cannot land until someone else moves (a peer's
+uncommitted files block the push; a finding's remedy needs the operator), do not sit in the
+session polling and never touch their files. Leave a cron that lands it when the tree is
+clean:
+
+- **`monitor_script` gates the run**: while the probe's output is UNCHANGED from the
+  previous tick, the agent run is SKIPPED entirely, so a waiting job costs ~nothing. The job
+  record carries `last_output_hash` / `last_status` — read those to confirm the gate is live
+  rather than asserting it.
+- **The probe must be deterministic, LLM-free, and its output STABLE while the blocker
+  persists** — no timestamps, no drifting counts, no `date`. An unstable probe re-runs the
+  agent every tick, which is the exact cost the gate exists to avoid.
+- **Make the probe answer the landing question in one line** (how many blockers remain,
+  whether the target content is already integrated, whether the landing test passes) and
+  test it BOTH ways — the blocked case and the clean case — as a hermetic case under `tests/`.
+- **Key the "did my work land" test on CONTENT, never a SHA or a commit subject**: a peer's
+  rebase rewrites SHAs, and a subject can match unrelated work. A
+  `--fixed-marker <path>:<marker>:<min-count>` content test is the durable form.
+- **Ship the reusable logic as a registered (deploy-map) script with a hermetic test**, and
+  keep only host-specific values in a thin `local-<host>-…` wrapper — the prefix is what makes
+  the deployer preserve it and keeps the doctor from reading it as a stale deploy.
+
 ## Advanced: Tiered schedule pattern — when a cron needs different polling
 cadences at different times of day, split into multiple time-bounded jobs
 instead of a single compromise schedule. See `references/tiered-schedule-pattern.md`.

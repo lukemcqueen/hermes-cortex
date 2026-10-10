@@ -56,7 +56,11 @@ Enforced at 3 layers: pre-commit hook (static gate), enforcer (blocks commit unt
       `if __name__ == "__main__":` when pytest is absent) imports, runs NOTHING,
       and exits 0 — so any harness that records `rc=0` scores it PASS. Prove a test
       executed by its OUTPUT, not its exit code, and make the harness REJECT any
-      entry it cannot actually run.
+      entry it cannot actually run. **A duplicated definition is a silent disarm**: Python
+      keeps the LAST `def main()`, so a file carrying two of them runs the second and leaves
+      the first — and every check only it contained — dead, with the suite still green.
+      Assert the definition is unique (or assert the property directly) so the duplicate
+      cannot come back.
 - [ ] **A captured check transcript must carry its EXIT CODE and its WARNING COUNT — a bare
       PASS line is a swallowed error.** A gate that prints `✅ PASSED` while emitting N warnings
       and an unresolved sub-check reads as a clean system to everyone downstream, including the
@@ -114,7 +118,9 @@ Enforced at 3 layers: pre-commit hook (static gate), enforcer (blocks commit unt
       a full one, so normalise both sides the way the gate does (`git rev-parse`). And when
       an input CANNOT be resolved, return the could-not-verify code rather than an empty
       result — an empty range or empty result reads as "nothing to check" and passes
-      silently, which is how a mistyped revision becomes a green tick.
+      silently, which is how a mistyped revision becomes a green tick. The same bite hits a
+      CONTENT digest: normalise trailing newlines and whitespace before hashing a file, or a
+      byte-identical copy fails the comparison by one `\n` and looks like real drift.
 - [ ] A regression test must exercise the DETECTOR, not a live ambient state. A test that
       asserts "the tree is clean" / "the deployed copy matches" / "the queue is empty"
       flaps the moment normal operation dirties it — a pipeline writing a lesson, a peer
@@ -188,12 +194,28 @@ Enforced at 3 layers: pre-commit hook (static gate), enforcer (blocks commit unt
       itself runs pull → deploy → doctor → verify, and the gate reads `Deploy sync`, so any
       commit made after a deploy leaves the deployed tree trailing HEAD and blocks the push.
       Run it as one step: `bash ~/.hermes-cortex/scripts/cortex-dogfood.sh --force` and then
-      `git push origin main`. A close-time review receipt is keyed by BOTH tip and base, so a
-      further commit invalidates it too — the deploy is the LAST step, not a mid-task refresh.
-- [ ] Integrate a peer's work by MERGE, never `git pull --rebase`. A rebase rewrites SHAs,
-      which invalidates the receipt bound to the tip and rewrites the peer's unpushed
-      commits; it also refuses outright when another session holds unstaged files, and you
-      must never stash a peer's files. A merge needs neither and keeps your commit identities.
+      `git push origin main`. A close-time review receipt is bound to the
+      RANGE, and the gate accepts it when the receipt's reviewed blobs COVER every blob that
+      range changes — so a rebase that rewrites the tip of identical content no longer
+      invalidates a review of that content (a tip-equality rule is exactly what a shared
+      checkout breaks). A further COMMIT that adds unreviewed content still invalidates it:
+      the deploy is the LAST step, not a mid-task refresh. The Deploy-sync check is scoped the
+      same way — compare only the deploy-map files changed in the range, so a peer's unrelated
+      commit cannot block your push, while an undeployed deploy-map file still FAILs and is named.
+- [ ] Integrate a peer's work by MERGE, never `git pull --rebase`. A rebase rewrites the
+      peer's unpushed commits and their authorship, and it refuses outright when another
+      session holds unstaged files — which you must never stash. A merge needs neither and
+      keeps every commit identity on the shared branch.
+- [ ] **Scope every gate that runs on a shared checkout to CONTENT, not to the tip.** Two
+      gates were tip-coupled and each blocked a push whose content was in fact fine: the
+      review receipt (bound to tip+base) and the Deploy-sync check (keyed on the revision
+      alone). Both now compare what the range CHANGES — receipt blobs, and the deploy-map
+      files touched in the range — with ONE shared implementation of the rule
+      (`review-receipt-check.py`) called by the hook, the verifier and the tests. Coverage,
+      not equality: a range that GAINED an unreviewed file must still refuse, and a receipt
+      with no blob list is only ever accepted by exact tip+base. A peer commit landing inside
+      the pushed range is genuinely unreviewed and still refuses — correct, not a bug to widen
+      away.
 - [ ] **Never `git commit --amend` while a peer may be working in the tree.** `--amend`
       rewrites whatever HEAD is *now*, not "your" commit: a sibling commit that landed since
       you started becomes the target, folding THEIR files into YOUR message and stripping
@@ -202,6 +224,14 @@ Enforced at 3 layers: pre-commit hook (static gate), enforcer (blocks commit unt
       Recovery if you already amended theirs: `git reflog` to find the peer's SHA,
       `git reset --soft <peer-sha>` to restore it verbatim (message and all files), then
       re-commit only your staged paths — never `reset --hard`, which discards their work.
+- [ ] **A plain `git commit` commits the WHOLE index — a peer's already-STAGED files ride into
+      your commit.** `git add <your paths>` does not unstage theirs, so the commit captures
+      whatever is staged at that moment, under YOUR message and authorship. Commit by
+      pathspec every time — `git commit -F <msgfile> -- <your paths...>` — and assert the set
+      first with `git diff --cached --name-only`. Recovery if it already happened:
+      `git reset --soft HEAD~1` (keeps every file and the message), then re-commit with the
+      pathspec. Never `reset --hard`, and never unstage or discard a peer's paths to tidy up:
+      their staged work is theirs to land.
 - [ ] A close-review window is `base..HEAD`, so a **peer's commit landing mid-cycle shows up
       as scope drift in YOUR range**. Name the peer's SHA in the cycle note and leave their
       work untouched; reverting another session's commit to green your gate is the same
@@ -210,6 +240,15 @@ Enforced at 3 layers: pre-commit hook (static gate), enforcer (blocks commit unt
       --repo . --base <previous tip>` asserts a CLEAN receipt for the tip, that every changed
       deploy-map file matches its deployed copy, and that `origin/<branch>` equals the tip.
       Exit 0 / 1 (a real mismatch, named) / 2 COULD NOT VERIFY — a partial check is not a pass.
+- [ ] **Ship the automation and its evidence INSIDE the repo — a host-local script, a cron job, or a
+      session transcript is not a deliverable.** Verification that lives only in the deploy dir, a
+      state dir, or the operator's chat cannot be read or re-run by the next agent or the close
+      reviewer, which correctly files it as an unverified claim and refuses the close. Put the
+      reusable logic in a registered script (deploy-map entry + a hermetic case in a `tests/` runner
+      that actually executes it), keep only the host-specific values in a thin `local-`-prefixed
+      wrapper, and commit the measured transcripts (each command beside its real output, with exit
+      code and warning count) under `docs/evidence/`. When the work is a watcher for a deferred
+      landing, commit its contract too — the automation has to outlive the session that wrote it.
 - [ ] Pushed — `git log --oneline -1 origin/main` shows your commit.
 - [ ] Cron delivery audit — deliver goes somewhere visible (origin/local deliver nowhere from scripts).
 - [ ] Timeout audit — deadline ≈ 3× expected worst-case completion.

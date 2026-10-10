@@ -295,9 +295,37 @@ material it judged (note + diff):
   the stat from the same range as the diff body, and DISCLOSE a counted working-tree
   path the material cannot show as out of scope rather than naming it; failing that,
   COMMIT the work so the two agree.
+- **A quoted PASS line without its warning count reads as a clean system — record the
+  exit code and the COUNTS.** A borderless artifact can say genuinely true things and still
+  mislead by omission: a dogfood/doctor transcript showing `DOGFOOD PASSED` while omitting
+  `11 warn` and the unresolved drift block beside it, or a section tail with no `rc=`, is
+  judged (correctly) as a swallowed error — the reader cannot tell a clean run from a
+  noisy one. Every captured run carries its `rc=` AND its summary counts
+  (pass/warn/fail). **When the run is genuinely NOT clean, say so with the numbers** and
+  state the decision — "doctor rc=2, 14 warnings, the drift is pre-existing and recorded
+  as issue N; this cycle's claim is the narrower one verify-landed proves" — because a
+  narrowed, measured claim survives review where an implied clean bill does not. Record
+  the re-run commands with their EXPECTED non-clean results so a later reader measures
+  instead of trusting a PASS line.
 - **Answer a false finding with a measurement, not with prose.** Findings can be
   wrong. State the measurement that refutes one and leave the code alone rather than
   "fixing" a non-defect.
+  **The corrective commit is the worst case: the diff SHOWS the text it removed.** A
+  commit that deletes a mistake (a traceback pasted into an artifact, a wrong claim)
+  reaches the reviewer as `- <that text>`, and a finding can then assert the artifact
+  "still shows" it — the removed lines are the evidence it cites. The same shape hides
+  the GOOD news: a commit that leaves a section untouched contributes no lines, so a
+  capture sitting in an unchanged section reads as absent ("contains the re-run command
+  but not the captured output"). Before rewriting anything, measure at HEAD:
+  `grep -c '<flagged string>' <artifact>` (0 matches refutes the finding) and
+  `grep -n '<expected evidence>' <artifact>` (line numbers prove what IS there). Put
+  those two numbers in the re-review note — a count and a line number, not an argument —
+  and change the code only if the grep agrees with the reviewer.
+  **Two such findings in a row, both refuted by grep at HEAD, means stop rewriting**: the
+  range is being read through its hunks rather than its content (see the superseded-hunk
+  rule above). Record the refutation, record the issue, and let the lock reach TTL —
+  re-rolling the note cannot fix a material-assembly problem, and the precedent for an
+  ops-only cycle trapped this way is an explicit recorded issue, never `force=True`.
 
 ## Verifying the gate actually RAN — a pass is not evidence of a review
 
@@ -511,7 +539,20 @@ as `.txt` mean the ignored `.log` was the wrong filename, not a missing ignore r
   FROM the same accepted path — one resolution, one repo — never a canonical slug beside an
   observed path. A session repo-hint that merely DRIFTED (it records whichever repo the
   session last touched a path in, so it can name one you are no longer working in) is the
-  same symptom from a different cause.
+  is the same symptom from a different cause.
+
+    **A harness with NO identity injector at all is the third cause, and it hits EVERY
+    non-Hermes caller** (pi, Claude Code, Codex CLI): Hermes injects the session's repo through
+    the enforcer plugin, but a harness that merely spawns the MCP server injects nothing — so a
+    resolver that falls through to the host-canonical repo tags a PROJECT-repo session as the
+    shared cortex checkout. The close gate then refuses with *"the lock's repo cannot contain
+    this session's work"*, there is no injector to repair it, and every `end_change` retry
+    re-runs the whole review; in practice the OPERATOR deletes
+    `~/.hermes-cortex/state/.governance-<session>.json` by hand. The rule: resolve the repo from
+    the CALLER's own evidence — an explicit env hint (`CORTEX_SESSION_REPO`) first, else the MCP
+    child's cwd — and keep the Hermes path excluded from that fallback so an injected identity
+    still wins. Test the matrix both ways: a project-repo caller resolves its OWN tree, and a
+    Hermes caller is never re-tagged from the shared daemon's cwd.
 
   **The tell is a finding that says the diff does not show your change while your own
   `git log` plainly shows it** — including the extreme form where the material's
@@ -574,6 +615,20 @@ as `.txt` mean the ignored `.log` was the wrong filename, not a missing ignore r
   no change made") — an explicit unscored close is an accurate record, while walking
   away from the cycle is a leak. Do not leave it for the reaper, and do not let the
   abandoned cycle stop you from reporting which half of the work is still pending.
+- **`check_lock` can say `active: false` while `begin_change` refuses with "a governance
+  session is already active".** They read different things — the session/lock registry vs
+  the lock file — so a lock the reaper has already reaped, or a session whose TTL has not
+  expired, makes them disagree. Trust the REFUSAL: it names the held `task_id`, its
+  `started_at` and the session id. The exits are `end_change(<that task_id>)` or the TTL;
+  it is never a reason to reach for `force=True`, which releases someone else's cycle to
+  make room for yours.
+- **Probe the schema before you commit a query as evidence.** The governance DB's tables
+  are NOT named after their contents: cycles live in `loop_cycles`, and recorded issues
+  are rows in `task_events` (`id, timestamp, task_id, agent, event_type, from_state,
+  to_state, detail`) — there is no `events` table, and guessing one both fails and, when
+  the guess is committed into an artifact, publishes a traceback where proof was claimed.
+  One `SELECT name FROM sqlite_master WHERE type='table'` first; a query you intend to
+  quote belongs in an artifact only after it has returned a row.
 - **Test a verdict-recording helper BOTH ways.** One exercised only by re-recording an
   existing row never runs its insert path — assert the first record into an EMPTY
   cycle too, or the insert half can be silently broken while the suite is green.

@@ -88,6 +88,29 @@ Consequences for an agent who finds a missing `i` flag: it is a **symptom, not a
 task**. Wait one cycle, or run `sudo -n hermes-plugin-lock lock`. Do NOT hand-lock
 individual files, and never "fix" it by weakening the check.
 
+### Pitfall 6: A cycle whose remaining deliverable is blocked by a THIRD PARTY has no sanctioned exit
+
+The close gate scores complexity over the lock window and refuses to release the lock while a
+sufficiently complex change is unclosed. That is correct when the work is incomplete — but when the
+ONLY thing left is something you are forbidden to do (merge over another session's uncommitted
+files, edit a generated security artifact, or produce an authorization record that lives in the
+operator's own chat), the gate refuses forever, and each `rereview_change` is a fresh sampling call
+that returns new findings rather than closure. Two rules follow:
+
+- **Do not re-roll the reviewer.** Once a finding's remedy is impossible or contradicts the
+  operator's explicit instruction, state that once with the evidence and stop: repeated re-reviews
+  burn tokens and add findings without changing the blocker.
+- **Record the blocker instead of forcing a close.** `record_issue` keeps it tracked (give it a
+  blocker/obstacle category); the work already committed and deployed stays landed. Never reach for
+  a force or replace-lock route to escape it — an override is the operator's call, and asking is
+  cheap.
+- **Know how the lock actually clears: the TTL, not you.** A lock ages out an hour after its last
+  heartbeat, and `check_lock` REFRESHES that heartbeat — so stop calling `check_lock` on a cycle you
+  intend to abandon, or you will keep it alive indefinitely. A scored (non-PENDING) cycle left this
+  way is clean: the doctor's leak check does not fire. But no push receipt was written, so whoever
+  performs the push must run its own close to write one. A held lock does not stop a second session
+  acquiring its own, so the deferred work can proceed while yours waits.
+
 ## Verification
 
 - `check_lock` confirms the purge (active: false) — expect this after every update run
