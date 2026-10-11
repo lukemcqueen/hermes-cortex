@@ -1,0 +1,30 @@
+== 1. Is SOUL.md modified by THIS cycle's range? (expect: no) ==
+  OK   — this cycle's diff (507eea1e..HEAD) contains NO SOUL.md change
+
+== 2. Deployed SOUL.md is unchanged vs its repo source (doctor check) ==
+    ✅ SOUL.md canonical 12 (~/.hermes)
+    ✅ SOUL.md local principles (~/.hermes)
+    ✅ SOUL.md template sync (~/.hermes)
+    ✅ SOUL.md reverse drift (~/.hermes)
+    ✅ Checksum: SOUL.md (profile: esther)
+
+== 3. Local principles currently in the deployed SOUL.md ==
+  224:### 13. Fix Stale References Now
+  232:### 14. Prove It End-to-End Now
+  239:### 15. Worker Mode
+  244:### 16. Intelligence Layer
+
+== 4. The outstanding candidate's own status line (2026-10-11) ==
+  # SOUL.md candidate principle — 2026-10-11
+  
+  **Status: PROPOSED — awaiting operator approval.** Identity documents are operator-owned;
+  this cron records the candidate rather than editing `~/.hermes/SOUL.md`.
+  
+
+== 5. Any NEW soul-refinement artifact dated today? (expect: none) ==
+  (none — no candidate was produced today)
+
+CONCLUSION: SOUL.md upgrade NOT applied because (a) no new candidate exists
+today and (b) the one open candidate is PROPOSED/operator-owned. Applying it
+would be an operator-owned identity edit — declined under the pushback
+contract (SOUL Principle 5). Recorded as issue #90.

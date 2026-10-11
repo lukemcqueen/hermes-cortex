@@ -1,0 +1,49 @@
+== 1. Origin state: is the local tip published? ==
+   HEAD            = 22bbae05097314a17b4528cdf0123e6e4bcd0870
+   origin/main     = 00a314a18aeee96db69f6bf9babc60eeef9d7cd5
+   FAIL — local tip is not published
+
+== 2. The commit the push published (this cycle's tip before evidence) ==
+   82f2d9c1 docs(manifest): regenerate SKILLS-MANIFEST after job-* research merge (383 skills)
+   -- is 82f2d9c1 an ancestor of origin/main? (expected: yes) --
+   OK   — 82f2d9c1 is reachable from origin/main
+
+== 3. This cycle's commit range (files ONLY these commits touched) ==
+   range = 507eea1e..HEAD  (507eea1e = the peer's cycle-12144 commit, the PARENT)
+     docs/SKILLS-MANIFEST.md
+     docs/evidence/skill-lifecycle-2026-10-12.md
+     docs/evidence/verify-skill-lifecycle-2026-10-12.out
+     docs/evidence/verify-skill-lifecycle-2026-10-12.sh
+     docs/evidence/verify-soul-scope-2026-10-12.out
+     docs/evidence/verify-soul-scope-2026-10-12.sh
+     skills/devops/cortex-deployment-sync/SKILL.md
+     skills/devops/cron-job-management/SKILL.md
+     skills/devops/enforcement-change-safety/SKILL.md
+     skills/devops/enforcer-modification-considerations/SKILL.md
+     skills/research/job-board-research/SKILL.md
+     skills/research/job-market-research/SKILL.md
+     skills/software-development/hermetic-python-testing/SKILL.md
+     skills/software-development/session-manager/SKILL.md
+
+   -- does that range contain ANY memory-pruning / stale-check artifact? --
+   OK   — ZERO memory-pruning/stale-check files in this cycle's range
+          (they are 507eea1e, the peer's own commit, BEFORE this range)
+
+== 4. Detector: the exact residual drift and its owner ==
+   this host and never copied back: it is stranded here, and the deploy's
+   | Deployed-only files (stranded) | 1 |
+   | Files in sync | 838 |
+   **Verdict: FAIL**
+
+   -- every drifted skill reported by the doctor --
+       ⚠️  Skill drift: devops/governance-closeout
+
+   -- every repo-vs-deployed diff for those skills is a PURE SUPERSET? --
+     devops/governance-closeout: repo-only lines = 0 (0 = pure superset, no lost content)
+
+== 5. The open peer lock that owns the residual drift ==
+     task_id=memory-pruning-push-12144
+     status =executing
+     scope  =Publish the reviewed memory-pruning evidence committed in cycle #12144 (commit 507eea1e) to origin/main — revi
+
+RESULT: FAIL — see FAIL lines
