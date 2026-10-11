@@ -21,10 +21,12 @@ PASS  test_xml_escape_used_for_docx_body_comparison
 ran=13 passed=13 failed=0 skipped=0
 RESULT: ALL TESTS PASSED
 === suite: test_capture_evidence_1012.py ===
+PASS  test_appendix_blocks_are_non_trivial
 PASS  test_capture_tool_exists
 PASS  test_capture_tool_has_no_hardcoded_home_path
 PASS  test_claim_source_map_covers_every_md_url
 PASS  test_claim_source_map_is_machine_readable_and_complete
+PASS  test_closure_note_contains_verbatim_evidence_appendix
 PASS  test_committed_evidence_is_path_neutral[~/hermes-cortex/docs/evidence/briefings/claim-sources-2026-10-12.tsv]
 PASS  test_committed_evidence_is_path_neutral[~/hermes-cortex/docs/evidence/briefings/test-results-2026-10-12.txt]
 PASS  test_committed_evidence_is_path_neutral[~/hermes-cortex/docs/evidence/briefings/url-check-2026-10-12.txt]
@@ -33,6 +35,8 @@ PASS  test_committed_evidence_records_no_failures
 PASS  test_delivery_check_output_is_path_neutral
 PASS  test_delivery_check_output_reports_verified
 PASS  test_delivery_check_script_and_output_ship
+PASS  test_embed_is_idempotent
+PASS  test_embed_tool_ships
 PASS  test_evidence_file_contains_real_captured_output[~/hermes-cortex/docs/evidence/briefings/test-results-2026-10-12.txt]
 PASS  test_evidence_file_contains_real_captured_output[~/hermes-cortex/docs/evidence/briefings/url-check-2026-10-12.txt]
 PASS  test_evidence_file_contains_real_captured_output[~/hermes-cortex/docs/evidence/briefings/verification-2026-10-12.txt]
@@ -49,7 +53,7 @@ PASS  test_tooling_is_path_neutral[~/hermes-cortex/docs/evidence/briefings/sourc
 PASS  test_tooling_is_path_neutral[~/hermes-cortex/docs/evidence/briefings/verify_briefing_1012.py]
 PASS  test_url_evidence_keeps_both_md_and_pdf_inventory
 
-ran=27 passed=27 failed=0 skipped=0
+ran=31 passed=31 failed=0 skipped=0
 RESULT: ALL TESTS PASSED
 
 RESULT: ALL TESTS PASSED

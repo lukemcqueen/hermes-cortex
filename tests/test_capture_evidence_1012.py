@@ -183,3 +183,49 @@ def test_delivery_check_output_is_path_neutral():
     t = DELIVERY_CHECK.read_text(encoding="utf-8")
     real = re.findall(r"/home/(?!\\w\+/|\\\\w)[a-z][a-z0-9_-]+/", t)
     assert not real, "delivery-path output embeds home paths: %s" % real
+
+
+EMBED_SCRIPT = EVID / "embed_evidence_1012.py"
+NOTE = EVID / ("closure-note-%s.md" % DATE)
+APPENDIX_MARKER = "## Appendix — verbatim committed evidence"
+
+
+def test_embed_tool_ships():
+    assert EMBED_SCRIPT.is_file(), "evidence-embedding tool must ship"
+
+
+def test_closure_note_contains_verbatim_evidence_appendix():
+    """The review material is the diff; the diff must therefore carry the
+    evidence content, not a pointer to it."""
+    assert NOTE.is_file(), "closure note must ship"
+    t = NOTE.read_text(encoding="utf-8")
+    assert APPENDIX_MARKER in t, "closure note lacks the evidence appendix"
+    for name in ("verification-%s.txt" % DATE,
+                 "test-results-%s.txt" % DATE,
+                 "url-check-%s.txt" % DATE,
+                 "delivery-path-check-%s.txt" % DATE,
+                 "claim-sources-%s.tsv" % DATE):
+        assert "### `%s`" % name in t, "appendix omits %s" % name
+
+
+def test_appendix_blocks_are_non_trivial():
+    """An empty fenced block would satisfy the marker check while carrying no
+    evidence. Require real content between the fences."""
+    t = NOTE.read_text(encoding="utf-8")
+    blocks = re.findall(r"```\n(.*?)\n```", t, re.S)
+    assert len(blocks) >= 5, "expected >=5 fenced evidence blocks"
+    for b in blocks:
+        assert len(b.strip()) > 200, \
+            "an evidence block is suspiciously short (%d chars)" % len(b.strip())
+    joined = "\n".join(blocks)
+    assert "RESULT: ALL CHECKS PASSED" in joined
+    assert "RESULT: ALL TESTS PASSED" in joined
+    assert "RESULT: ALL DELIVERABLES VERIFIED" in joined
+
+
+def test_embed_is_idempotent():
+    """Re-running the embedder must not stack duplicate appendices (the tool
+    is invoked repeatedly during a run)."""
+    t = NOTE.read_text(encoding="utf-8")
+    assert t.count(APPENDIX_MARKER) == 1, \
+        "appendix marker appears %d times" % t.count(APPENDIX_MARKER)
