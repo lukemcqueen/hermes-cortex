@@ -24,6 +24,11 @@ TESTS_DIR = Path(__file__).resolve().parent          # tests/
 sys.path.insert(0, str(REPO_ROOT))
 
 TEST_MOD = TESTS_DIR / "test_briefing_verification_1012.py"
+# Additional suites this runner knows how to execute. Kept as a list so the
+# whole briefing evidence family can be checked with one command.
+EXTRA_MODS = [
+    TESTS_DIR / "test_capture_evidence_1012.py",
+]
 
 
 def _load_tests():
@@ -71,7 +76,30 @@ def main() -> int:
     if not TEST_MOD.is_file():
         print("FAIL  test module missing: %s" % TEST_MOD)
         return 1
-    mod = _load_tests()
+
+    total_failed = 0
+    for mod_path in [TEST_MOD] + EXTRA_MODS:
+        if not mod_path.is_file():
+            print("SKIP  missing suite: %s" % mod_path.name)
+            continue
+        print("=== suite: %s ===" % mod_path.name)
+        rc = _run_suite(mod_path)
+        total_failed += rc
+    print()
+    print("RESULT: %s" % ("ALL TESTS PASSED" if total_failed == 0
+                          else "FAILURES"))
+    return 1 if total_failed else 0
+
+
+def _run_suite(mod_path) -> int:
+    """Run one test module; return the number of failures."""
+    global TEST_MOD
+    saved = TEST_MOD
+    TEST_MOD = mod_path
+    try:
+        mod = _load_tests()
+    finally:
+        TEST_MOD = saved
 
     cases = []
     for name in dir(mod):

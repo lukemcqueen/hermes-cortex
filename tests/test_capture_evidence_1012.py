@@ -1,0 +1,106 @@
+#!/usr/bin/env python3
+"""Tests for the briefing evidence-capture tooling (capture_evidence_1012.py).
+
+The realistic failure for an evidence generator is not "it crashes" — it is
+"it writes a file that LOOKS like evidence but contains no captured output",
+which is exactly the self-adversarial finding this script answers. These
+tests assert the evidence files carry real command output, a real exit code,
+and a real claim->source mapping.
+"""
+from __future__ import annotations
+
+import re
+from pathlib import Path
+
+import pytest
+
+REPO = Path(__file__).resolve().parent.parent
+EVID = REPO / "docs" / "evidence" / "briefings"
+CAPTURE = EVID / "capture_evidence_1012.py"
+DATE = "2026-10-12"
+
+EVIDENCE_FILES = [
+    EVID / ("verification-%s.txt" % DATE),
+    EVID / ("test-results-%s.txt" % DATE),
+    EVID / ("url-check-%s.txt" % DATE),
+]
+CLAIM_TSV = EVID / ("claim-sources-%s.tsv" % DATE)
+
+
+def test_capture_tool_exists():
+    assert CAPTURE.is_file(), "the evidence generator must ship with its output"
+
+
+@pytest.mark.parametrize("path", EVIDENCE_FILES)
+def test_evidence_file_records_command_and_exit_code(path):
+    """Captured evidence is only re-executable if it names what was run and
+    what it returned."""
+    assert path.is_file(), "%s missing" % path.name
+    t = path.read_text(encoding="utf-8")
+    assert "command:" in t, "%s does not record the command" % path.name
+    assert re.search(r"exit code: \d+", t), \
+        "%s does not record an exit code" % path.name
+
+
+@pytest.mark.parametrize("path", EVIDENCE_FILES)
+def test_evidence_file_contains_real_captured_output(path):
+    """Guard against the failure mode this whole exercise targets: a file
+    that is framework prose with no actual program output in it."""
+    t = path.read_text(encoding="utf-8")
+    # the real tools emit PASS/FAIL lines or an HTTP code inventory
+    assert re.search(r"^(PASS|FAIL)\s", t, re.M) or "http" in t, \
+        "%s has no captured PASS/FAIL or HTTP output" % path.name
+    assert t.count("\n") > 10, "%s is too short to hold real output" % path.name
+
+
+def test_test_results_evidence_reports_zero_failures():
+    t = (EVID / ("test-results-%s.txt" % DATE)).read_text(encoding="utf-8")
+    m = re.search(r"ran=(\d+) passed=(\d+) failed=(\d+)", t)
+    assert m, "test-results evidence lacks a ran/passed/failed summary"
+    ran, passed, failed = (int(g) for g in m.groups())
+    assert failed == 0, "committed test evidence records failures"
+    assert passed == ran and ran >= 13, \
+        "expected >=13 passing tests, got ran=%d passed=%d" % (ran, passed)
+
+
+def test_url_evidence_keeps_both_md_and_pdf_inventory():
+    t = (EVID / ("url-check-%s.txt" % DATE)).read_text(encoding="utf-8")
+    assert "distinct URLs in .md" in t and "distinct URLs in .pdf" in t, \
+        "url evidence must show both inventories so a PDF-only loss is visible"
+    assert re.search(r"in \.md but NOT in \.pdf:\s*0", t), \
+        "a URL present in the .md is missing from the .pdf"
+
+
+def test_claim_source_map_is_machine_readable_and_complete():
+    assert CLAIM_TSV.is_file(), "claim -> source map must ship"
+    rows = [ln for ln in CLAIM_TSV.read_text(encoding="utf-8").split("\n")
+            if ln and not ln.startswith("#")]
+    assert rows[0].split("\t") == ["claim_anchor", "source_url"], \
+        "TSV header must be claim_anchor<TAB>source_url"
+    body = rows[1:]
+    assert len(body) >= 15, "expected >=15 claim/source rows, got %d" % len(body)
+    for r in body:
+        parts = r.split("\t")
+        assert len(parts) == 2, "row is not two tab-separated fields: %r" % r
+        claim, url = parts
+        assert claim.strip(), "empty claim anchor"
+        assert url.startswith("https://"), "non-absolute source: %r" % url
+
+
+def test_claim_source_map_covers_every_md_url():
+    """Every source URL in the briefing must appear in the map, or the map is
+    a partial picture presented as complete."""
+    md = (EVID / ("sustainability-briefing-%s.md" % DATE)).read_text(encoding="utf-8")
+    md_urls = set(re.findall(r"https?://[^\s)]+", md))
+    with open(CLAIM_TSV, encoding="utf-8") as fh:
+        mapped = {ln.split("\t")[1].strip() for ln in fh
+                  if ln.strip() and not ln.startswith("#")
+                  and "\t" in ln and ln.split("\t")[1].strip().startswith("http")}
+    missing = md_urls - mapped
+    assert not missing, "URLs in the briefing are absent from the map: %s" % missing
+
+
+def test_capture_tool_has_no_hardcoded_home_path():
+    t = CAPTURE.read_text(encoding="utf-8")
+    assert not re.search(r"/home/\w+/", t), \
+        "evidence tool must use ~/Path.home(), not a literal home path"

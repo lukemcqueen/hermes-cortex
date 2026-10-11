@@ -1,0 +1,43 @@
+========================================================================
+STEP 2 — briefing verification test suite (dependency-free runner)
+command: /home/esther/.hermes/installs/483c6efb1d92c950/environments/066f395ed1e845c4b689d874dc676166/venv/bin/python3 tests/run_briefing_tests.py
+exit code: 0
+========================================================================
+=== suite: test_briefing_verification_1012.py ===
+PASS  test_delivered_artifact_present_and_nonempty[docx]
+PASS  test_delivered_artifact_present_and_nonempty[md]
+PASS  test_delivered_artifact_present_and_nonempty[pdf]
+PASS  test_every_md_url_survives_into_the_pdf
+PASS  test_normalisation_catches_a_wrapped_url
+PASS  test_paragraph_counter_matches_ooxml_reality
+PASS  test_pdf_urls_are_not_hyphen_corrupted
+PASS  test_sh_uses_list_form_not_shell
+PASS  test_sha256_manifest_verifies
+PASS  test_sources_manifest_flags_no_dead_domain
+PASS  test_verification_tool_exists
+PASS  test_verify_script_passes_on_the_committed_artifacts
+PASS  test_xml_escape_used_for_docx_body_comparison
+
+ran=13 passed=13 failed=0 skipped=0
+RESULT: ALL TESTS PASSED
+=== suite: test_capture_evidence_1012.py ===
+PASS  test_capture_tool_exists
+PASS  test_capture_tool_has_no_hardcoded_home_path
+PASS  test_claim_source_map_covers_every_md_url
+PASS  test_claim_source_map_is_machine_readable_and_complete
+PASS  test_evidence_file_contains_real_captured_output[/home/esther/hermes-cortex/docs/evidence/briefings/test-results-2026-10-12.txt]
+PASS  test_evidence_file_contains_real_captured_output[/home/esther/hermes-cortex/docs/evidence/briefings/url-check-2026-10-12.txt]
+PASS  test_evidence_file_contains_real_captured_output[/home/esther/hermes-cortex/docs/evidence/briefings/verification-2026-10-12.txt]
+PASS  test_evidence_file_records_command_and_exit_code[/home/esther/hermes-cortex/docs/evidence/briefings/test-results-2026-10-12.txt]
+PASS  test_evidence_file_records_command_and_exit_code[/home/esther/hermes-cortex/docs/evidence/briefings/url-check-2026-10-12.txt]
+PASS  test_evidence_file_records_command_and_exit_code[/home/esther/hermes-cortex/docs/evidence/briefings/verification-2026-10-12.txt]
+PASS  test_test_results_evidence_reports_zero_failures
+PASS  test_url_evidence_keeps_both_md_and_pdf_inventory
+
+ran=12 passed=12 failed=0 skipped=0
+RESULT: ALL TESTS PASSED
+
+RESULT: ALL TESTS PASSED
+
+VERDICT: PASS (exit 0)
+

@@ -1,0 +1,35 @@
+========================================================================
+STEP 1 — structural verification of the delivered artifacts
+command: /home/esther/.hermes/cron/output/.venv-brief/bin/python verify_briefing_1012.py
+exit code: 0
+========================================================================
+=== deliverables exist and are non-empty ===
+PASS  exists:md :: 12975 bytes
+PASS  exists:docx :: 42982 bytes
+PASS  exists:pdf :: 14373 bytes
+=== pdf is a real multi-page document with extractable text ===
+PASS  pdf:type :: PDF document, version 1.4, 4 page(s)
+PASS  pdf:pages :: 4 pages
+PASS  pdf:text :: 1630 words extracted
+PASS  pdf:all-sections-present :: missing=[]
+PASS  pdf:all-urls-present :: 23 urls, missing=[]
+=== docx is a valid OOXML zip with body content ===
+PASS  docx:zip :: testzip OK
+PASS  docx:has-document :: word/document.xml
+PASS  docx:body-tag :: w:body present
+PASS  docx:paragraphs :: 57 paragraphs
+PASS  docx:all-sections-present :: missing=[]
+=== markdown content integrity ===
+PASS  md:words :: 1643 words (target 600-1200 body)
+PASS  md:urls :: 23 unique source URLs
+PASS  md:sections :: 6 H2 sections
+PASS  md:no-placeholder :: clean
+PASS  md:no-truncated-url :: no ellipsized URLs
+PASS  md:no-md-tables :: no pipe tables (cron delivery is chat)
+=== every URL is a well-formed absolute https link ===
+PASS  urls:wellformed :: bad=[]
+
+RESULT: ALL CHECKS PASSED
+
+VERDICT: PASS (exit 0)
+

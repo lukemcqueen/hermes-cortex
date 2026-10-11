@@ -1,0 +1,41 @@
+========================================================================
+STEP 3 — live HTTP check of every source URL
+command: /home/esther/.hermes/cron/output/.venv-brief/bin/python check_urls_1012.py
+exit code: 0
+========================================================================
+=== url inventory ===
+distinct URLs in .md : 23
+distinct URLs in .pdf: 23
+in .md but NOT in .pdf: 0 []
+
+=== live HTTP check (md urls) ===
+OK   http 200  https://avantium.com/products-technologies/pef-and-fdca/
+OK   http 200  https://desserto.com.mx/certified-biobased
+OK   http 200  https://environment.ec.europa.eu/news/ban-destruction-unsold-clothes-and-shoes-enters-application-2026-07-17_en
+OK   http 200  https://environment.ec.europa.eu/news/commission-updates-product-scope-and-tools-support-eudr-2026-07-13_en
+OK   http 200  https://environment.ec.europa.eu/news/revised-waste-framework-directive-enters-force-2025-10-16_en
+OK   http 200  https://envrt.com/insights/empco-banned-environmental-claims-fashion
+OK   http 200  https://eudrcheck.co.uk/guides/eudr-annex-i-changes-2026-2102
+OK   http 200  https://newsroom.avantium.com/avantium-announces-the-start-up-of-its-flagship-plant-with-the-first-batch-of-fdca-produced/
+OK   http 200  https://oeil.europarl.europa.eu/oeil/en/document-summary?id=1845495
+OK   http 200  https://single-market-economy.ec.europa.eu/single-market/digital-product-passport_en
+WARN http 403  https://textileexchange.org/conference-2026/
+WARN http 403  https://textileexchange.org/knowledge-center/reports/materials-market-report-2026/
+OK   http 200  https://textileworldasia.com/textile-world-asia/2026/10/fashion-for-good-launches-the-cotton-reloop-matrix-project-to-unlock-commercial-scale-for-recycled-cotton/
+OK   http 200  https://the-ethos.co/desserto-bottles-a-mexican-chili-harvest-into-its-boldest-leather-yet/
+OK   http 200  https://traceable.digital/regulatory-update/espr-textiles-preparatory-study-third-milestone/
+OK   http 200  https://wwd.com/sustainability/innovation/future-fabrics-expo-post-petro-fashion-economy-brussels-1239032658/
+OK   http 200  https://www.debevoise.com/insights/publications/2026/07/preparing-for-the-empowering-consumers-for-the
+WARN http 403  https://www.everestgrp.com/blogs/future-fabrics-expo-2026-what-the-innovators-showed-and-what-the-teaches-them-next/
+OK   http 200  https://www.hlc.com/en/publications/stop-the-destruction-of-textiles-how-compliance-changes-from-19-july-2026
+OK   http 200  https://www.luxury-leather-good.com/cactus-leather-at-three-checking-in-on-desserto-and-the-plant-based-promise
+OK   http 200  https://www.lw.com/en/insights/eu-empowering-consumers-directive-new-rules-on-green-claims-apply-from-27-september-2026
+OK   http 200  https://www.thefabricbrief.com/articles/lycra-hits-commercial-scale-on-70-plant-based-spandex-cuts-carbon-45-77e2e7ac
+OK   http 200  https://www.thefabricbrief.com/articles/primark-signs-first-multi-year-offtake-with-circ-for-recycled-polyester-952047e7
+
+live: 20 reachable, 3 non-2xx (of 23)
+NOTE: 403/404 from bot-blocking publishers is not a dead link; a 404
+on a URL we render ourselves WOULD be a real defect.
+
+VERDICT: PASS (exit 0)
+
