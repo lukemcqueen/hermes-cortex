@@ -4,8 +4,8 @@ command: ~/.hermes/cron/output/.venv-brief/bin/python check_urls_1012.py
 exit code: 0
 ========================================================================
 === url inventory ===
-distinct URLs in .md : 23
-distinct URLs in .pdf: 23
+distinct URLs in .md : 24
+distinct URLs in .pdf: 24
 in .md but NOT in .pdf: 0 []
 
 === live HTTP check (md urls) ===
@@ -32,8 +32,9 @@ OK   http 200  https://www.luxury-leather-good.com/cactus-leather-at-three-check
 OK   http 200  https://www.lw.com/en/insights/eu-empowering-consumers-directive-new-rules-on-green-claims-apply-from-27-september-2026
 OK   http 200  https://www.thefabricbrief.com/articles/lycra-hits-commercial-scale-on-70-plant-based-spandex-cuts-carbon-45-77e2e7ac
 OK   http 200  https://www.thefabricbrief.com/articles/primark-signs-first-multi-year-offtake-with-circ-for-recycled-polyester-952047e7
+WARN http 000  https://www.tradecommissioner.gc.ca/en/trade-events-training/2026/10/textile-exchange-conference.html
 
-live: 20 reachable, 3 non-2xx (of 23)
+live: 20 reachable, 4 non-2xx (of 24)
 NOTE: 403/404 from bot-blocking publishers is not a dead link; a 404
 on a URL we render ourselves WOULD be a real defect.
 

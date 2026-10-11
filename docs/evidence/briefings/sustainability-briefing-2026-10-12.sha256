@@ -2,6 +2,6 @@
 # Re-verify with:  sha256sum -c sustainability-briefing-2026-10-12.sha256
 # Deliverables live in ~/.hermes/cron/output/ ; repo copies are here.
 
-ce4251dfc4f6557f75602d7d10ffd7a5737cb32781389c98411055c173561c29  sustainability-briefing-2026-10-12.md
-bab4a224ad5c0a4dd73df6cf7d2e000be6292331f4c31901b8bf2430275e7406  sustainability-briefing-2026-10-12.docx
-34bec8d5dc7072b24db91108defdc8b0018d86c2bd9335aa7c275eaed69d86c0  sustainability-briefing-2026-10-12.pdf
+f0bf3a9f53fd3078c835079d55320c8e15ec899867504e3059e8a19bba60cdb0  sustainability-briefing-2026-10-12.md
+da6988c35873e45d1041290c9a6a130353624ce4efe7e2643dcdc9a62a608a9a  sustainability-briefing-2026-10-12.docx
+0548e7a230fbba0430cc831058a6127256fe33383bc87455c3d6779827ce5544  sustainability-briefing-2026-10-12.pdf

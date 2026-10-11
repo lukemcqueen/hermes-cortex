@@ -5,13 +5,11 @@ Runs against the ACTUAL artifacts (md and pdf), not an intermediate, so a
 broken rendered link is caught. Non-2xx is reported, not fatal: publishers
 legitimately return 403/paywall codes to bots.
 """
-import os
 import re
 import subprocess
 
 DATE = "2026-10-12"
-BASE = os.path.join(os.path.expanduser("~"), ".hermes", "cron", "output",
-                      "sustainability-briefing-%s" % DATE)
+BASE = "/home/esther/.hermes/cron/output/sustainability-briefing-%s" % DATE
 UA = "Mozilla/5.0 (compatible; kaesa-briefing-verifier)"
 
 md = open(BASE + ".md", encoding="utf-8").read()
