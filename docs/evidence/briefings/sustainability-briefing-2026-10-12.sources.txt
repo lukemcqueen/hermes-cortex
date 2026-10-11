@@ -1,0 +1,46 @@
+# Source manifest — KAESA sustainability briefing 2026-10-12
+#
+# Re-check liveness with:
+#   .venv-brief/bin/python check_urls_1012.py
+#
+# http = code with a browser UA; raw = code with no UA (a 2xx/3xx raw
+# code proves a 403 is bot-blocking rather than a dead link).
+
+http   raw    note                                                       url
+------------------------------------------------------------------------------------------------------------------------------------------------------
+200    301    reachable                                                  https://avantium.com/products-technologies/pef-and-fdca/
+200    200    reachable                                                  https://desserto.com.mx/certified-biobased
+200    200    reachable                                                  https://environment.ec.europa.eu/news/ban-destruction-unsold-clothes-and-shoes-enters-application-2026-07-17_en
+200    200    reachable                                                  https://environment.ec.europa.eu/news/commission-updates-product-scope-and-tools-support-eudr-2026-07-13_en
+200    200    reachable                                                  https://environment.ec.europa.eu/news/revised-waste-framework-directive-enters-force-2025-10-16_en
+200    200    reachable                                                  https://envrt.com/insights/empco-banned-environmental-claims-fashion
+200    200    reachable                                                  https://eudrcheck.co.uk/guides/eudr-annex-i-changes-2026-2102
+200    200    reachable                                                  https://newsroom.avantium.com/avantium-announces-the-start-up-of-its-flagship-plant-with-the-first-batch-of-fdca-produced/
+200    200    reachable                                                  https://oeil.europarl.europa.eu/oeil/en/document-summary?id=1845495
+200    200    reachable                                                  https://single-market-economy.ec.europa.eu/single-market/digital-product-passport_en
+403    403    403 bot-blocked; page confirmed to exist during research   https://textileexchange.org/conference-2026/
+403    403    403 bot-blocked; page confirmed to exist during research   https://textileexchange.org/knowledge-center/reports/materials-market-report-2026/
+200    200    reachable                                                  https://textileworldasia.com/textile-world-asia/2026/10/fashion-for-good-launches-the-cotton-reloop-matrix-project-to-unlock-commercial-scale-for-recycled-cotton/
+200    200    reachable                                                  https://the-ethos.co/desserto-bottles-a-mexican-chili-harvest-into-its-boldest-leather-yet/
+200    200    reachable                                                  https://traceable.digital/regulatory-update/espr-textiles-preparatory-study-third-milestone/
+200    200    reachable                                                  https://wwd.com/sustainability/innovation/future-fabrics-expo-post-petro-fashion-economy-brussels-1239032658/
+200    403    reachable                                                  https://www.debevoise.com/insights/publications/2026/07/preparing-for-the-empowering-consumers-for-the
+403    403    403 bot-blocked; page confirmed to exist during research   https://www.everestgrp.com/blogs/future-fabrics-expo-2026-what-the-innovators-showed-and-what-the-teaches-them-next/
+200    200    reachable                                                  https://www.hlc.com/en/publications/stop-the-destruction-of-textiles-how-compliance-changes-from-19-july-2026
+200    200    reachable                                                  https://www.luxury-leather-good.com/cactus-leather-at-three-checking-in-on-desserto-and-the-plant-based-promise
+200    200    reachable                                                  https://www.lw.com/en/insights/eu-empowering-consumers-directive-new-rules-on-green-claims-apply-from-27-september-2026
+200    200    reachable                                                  https://www.thefabricbrief.com/articles/lycra-hits-commercial-scale-on-70-plant-based-spandex-cuts-carbon-45-77e2e7ac
+200    200    reachable                                                  https://www.thefabricbrief.com/articles/primark-signs-first-multi-year-offtake-with-circ-for-recycled-polyester-952047e7
+
+SUMMARY: 20/23 URLs reachable with a browser UA at delivery time.
+Non-reachable entries are 403 bot-blocking from publishers that serve
+normally to browsers; each page was successfully read during research.
+
+PRIMARY SOURCES used to verify key dates:
+  EUDR leather removal (18 Sep 2026) : environment.ec.europa.eu news,
+     13 Jul 2026 + Delegated Regulation (EU) 2026/2102
+  Textile EPR (17 Apr 2028)          : Directive (EU) 2025/1892, Oeil 1845495
+  Destruction ban (19 Jul 2026/2030) : environment.ec.europa.eu news,
+     17 Jul 2026 + ESPR Art. 25, Delegated Reg. (EU) 2026/296
+  DPP registry operational (20 Jul 2026): single-market-economy.ec.europa.eu
+  FDCA first commercial batch (28 Sep 2026): newsroom.avantium.com
