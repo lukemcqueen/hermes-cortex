@@ -1,0 +1,24 @@
+== A. dream file: exists, exact size, exact digest ==
+   path=/home/esther/brain/esther/dreams/2026-10-12.md
+   size=4061 (want 4061)
+   md5=3a139c0106f752e546b8459dc7a38e0d (want 3a139c0106f752e546b8459dc7a38e0d)
+
+== B. INDEX.md carries the appended 2026-10-12 row (verbatim) ==
+   OK   - line 31 matches verbatim
+   rows dated 2026-10-12: 1 (want 1)
+
+== C. the mycortex reads the digest cites still return data ==
+   mycortex list -n 20 -> 20 pages
+   mycortex search 'stranded skill drift deployed' -> [0.9999999] docs/evidence/land-nonhermes-lock-fix-dogfood-2026-10-10.txt -- land-nonhermes-lock-fix-dogfood-2026-10-10
+
+== D. the git evidence the digest cites is real ==
+   d2ab1cb6  skill-lifecycle: sync deployed lesson additions to repo (3 skills)
+   d91f3a61  skill-drift: sync 6 deployed-only skills back to repo source (stranded lessons)
+   d8373daa  docs(evidence): cycle 12154 — purge the failure literal from the last two verify scripts
+   1a57f7a0  docs(evidence): cycle 12154 — remove the ambiguous "RESULT: FAIL" literal from verify scripts
+   507eea1e  docs(evidence): memory-pruning run 2026-10-12 (cycle 12144)
+
+== E. the digest's central count: stranded == 0 ==
+   stranded=0 (want 0)
+
+RESULT: PASS - all assertions held
