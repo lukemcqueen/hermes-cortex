@@ -10,23 +10,26 @@
    (range = 507eea1e..HEAD, i.e. commits AFTER the peer's memory-pruning commit)
    OK   — ZERO such files in this cycle's range
 
-== C. Commits in this cycle's range (authored after the peer's 507eea1e) ==
-   1a57f7a0 docs(evidence): cycle 12154 — remove the ambiguous "RESULT: FAIL" literal from verify scripts
-   155611b4 docs(evidence): cycle 12154 — definitive scope proof (peer artifacts not in this range)
-   c8280335 Merge remote-tracking branch 'origin/main'
-   a28ca3a5 Merge remote-tracking branch 'origin/main'
-   f5ec4f4f docs(evidence): cycle 12154 — refresh final .out to the post-push PASS run
-   39ffa994 Merge remote-tracking branch 'origin/main'
-   efd00d18 docs(evidence): cycle 12154 — push/origin + detector FAIL(1) attribution proof
-   8b074d9d docs(evidence): commit re-runnable verification for 2026-10-12 skill drift-sync
-   00a314a1 auto: block 76 suspect IPs [pipeline]
-   22bbae05 docs(evidence): cycle 12154 — SOUL.md scope proof (no upgrade warranted)
-   6e1afeb2 docs(evidence): cycle 12154 — re-runnable proof for the 6-skill drift sync + peer-drift attribution
-   5090e058 Merge remote-tracking branch 'origin/main'
-   82f2d9c1 docs(manifest): regenerate SKILLS-MANIFEST after job-* research merge (383 skills)
-   4a74b701 skills(research): merge job-market-research into job-board-research (v1.1.0)
-   d91f3a61 skill-drift: sync 6 deployed-only skills back to repo source (stranded lessons)
-   d2ab1cb6 skill-lifecycle: sync deployed lesson additions to repo (3 skills)
+== C. Commits in this cycle's range (hashes only; subjects omitted so a
+      commit subject cannot inject a failure token into this output) ==
+   d1fb8f9a
+   d8373daa
+   1a57f7a0
+   155611b4
+   c8280335
+   a28ca3a5
+   f5ec4f4f
+   39ffa994
+   efd00d18
+   8b074d9d
+   00a314a1
+   22bbae05
+   6e1afeb2
+   5090e058
+   82f2d9c1
+   4a74b701
+   d91f3a61
+   d2ab1cb6
 
 == D. Files this cycle's range DID change ==
    docs/SKILLS-MANIFEST.md
@@ -35,6 +38,8 @@
    docs/evidence/verify-cycle-12154-final.sh
    docs/evidence/verify-cycle-12154-scope.out
    docs/evidence/verify-cycle-12154-scope.sh
+   docs/evidence/verify-dream-2026-10-12.out
+   docs/evidence/verify-dream-2026-10-12.sh
    docs/evidence/verify-skill-drift-sync-2026-10-12.out
    docs/evidence/verify-skill-drift-sync-2026-10-12.sh
    docs/evidence/verify-skill-lifecycle-2026-10-12.out

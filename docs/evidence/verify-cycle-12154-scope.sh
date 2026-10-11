@@ -35,8 +35,9 @@ else
 fi
 
 echo
-echo "== C. Commits in this cycle's range (authored after the peer's 507eea1e) =="
-git log --oneline 507eea1e..HEAD | sed 's/^/   /'
+echo "== C. Commits in this cycle's range (hashes only; subjects omitted so a"
+echo "      commit subject cannot inject a failure token into this output) =="
+git log --format='   %h' 507eea1e..HEAD
 
 echo
 echo "== D. Files this cycle's range DID change =="
