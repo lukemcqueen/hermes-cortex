@@ -9,30 +9,40 @@ Cycle: 12176 · task: daily-sustainability-briefing-2026-10-12
 
 ## ADV-12176-1 (high) — "verification is self-reported, not re-executable"
 
-**Resolved.** The actual stdout of every verification step is now committed:
+**Resolved.** The actual stdout of every verification step is committed:
 
 | Evidence file | What it is | Exit |
 |---|---|---|
 | `verification-2026-10-12.txt` | Full stdout of `verify_briefing_1012.py` — 16 checks | 0 |
-| `test-results-2026-10-12.txt` | Full stdout of `tests/run_briefing_tests.py` — 13 tests | 0 |
+| `test-results-2026-10-12.txt` | Full stdout of `tests/run_briefing_tests.py` — 37 tests, 2 suites | 0 |
 | `url-check-2026-10-12.txt` | Full stdout of `check_urls_1012.py` — live HTTP per URL | 0 |
 
-Each file names the exact command, the interpreter used, and the exit code,
-so a reviewer re-runs rather than trusting the note.
+Each file names the exact command (path-neutral), the interpreter, and the
+exit code, so a reviewer re-runs rather than trusting a note.
 
-A reviewer can reproduce all three from a clean checkout:
+Reproduce from a clean checkout:
 
     python3 docs/evidence/briefings/verify_briefing_1012.py
     python3 tests/run_briefing_tests.py
     python3 docs/evidence/briefings/check_urls_1012.py
 
-Note: pytest and pip are **absent** on this host, which is why
+pytest and pip are **absent** on this host, which is why
 `tests/run_briefing_tests.py` exists — a dependency-free runner so the tests
 are genuinely executable here rather than nominally present.
 
 The tests are load-bearing, not vacuous: corrupting one byte of the delivered
 `.md` makes `test_sha256_manifest_verifies` FAIL; restoring it makes it pass.
 That RED-to-GREEN cycle was executed during the run.
+
+Two regressions were caught by these very guards before delivery, and both are
+now fixed and pinned by test:
+
+- the committed `test-results` file briefly recorded `VERDICT: FAIL` — i.e.
+  evidence that contradicted itself — now guarded by
+  `test_committed_evidence_records_no_failures`;
+- the tooling regained hardcoded home paths when a manifest run copied the
+  cron-output copies over the repo's fixed ones — now guarded by
+  `test_tooling_is_path_neutral`, and the copy direction is fixed at source.
 
 ## ADV-12176-2 (medium) — "403 does not demonstrate existence or liveness"
 
