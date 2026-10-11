@@ -119,3 +119,36 @@ def test_committed_evidence_is_path_neutral(path):
     t = path.read_text(encoding="utf-8")
     real = re.findall(r"/home/(?!\\w\+/|\\\\w)[a-z][a-z0-9_-]+/", t)
     assert not real, "%s embeds absolute home paths: %s" % (path.name, real)
+
+
+TOOLING = [
+    EVID / "check_urls_1012.py",
+    EVID / "make_src_1012.py",
+    EVID / "make_briefing_files_1012.py",
+    EVID / "capture_evidence_1012.py",
+    EVID / "manifest_1012.py",
+    EVID / "sources_manifest_1012.py",
+    EVID / "verify_briefing_1012.py",
+]
+
+
+@pytest.mark.parametrize("path", TOOLING)
+def test_tooling_is_path_neutral(path):
+    """Regression guard. A manifest run once copied the cron-output copies of
+    these scripts back over the repo's fixed ones, silently reinstating
+    /home/<user> literals in committed evidence. Assert it cannot recur."""
+    assert path.is_file(), "%s missing" % path.name
+    t = path.read_text(encoding="utf-8")
+    real = re.findall(r"/home/(?!\\w\+/|\\\\w)[a-z][a-z0-9_-]+/", t)
+    assert not real, "%s embeds absolute home paths: %s" % (path.name, real)
+
+
+def test_committed_evidence_records_no_failures():
+    """A committed evidence file that contains a failing test would be
+    self-contradicting. Guard the whole set, not just the summary line."""
+    for path in EVIDENCE_FILES:
+        t = path.read_text(encoding="utf-8")
+        assert "VERDICT: FAIL" not in t, \
+            "%s records a FAIL verdict" % path.name
+        assert not re.search(r"^FAIL\s", t, re.M), \
+            "%s contains a FAIL line" % path.name

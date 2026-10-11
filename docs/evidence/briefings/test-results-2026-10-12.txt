@@ -1,7 +1,7 @@
 ========================================================================
 STEP 2 — briefing verification test suite (dependency-free runner)
 command: ~/.hermes/installs/483c6efb1d92c950/environments/066f395ed1e845c4b689d874dc676166/venv/bin/python3 tests/run_briefing_tests.py
-exit code: 1
+exit code: 0
 ========================================================================
 === suite: test_briefing_verification_1012.py ===
 PASS  test_delivered_artifact_present_and_nonempty[docx]
@@ -23,12 +23,13 @@ RESULT: ALL TESTS PASSED
 === suite: test_capture_evidence_1012.py ===
 PASS  test_capture_tool_exists
 PASS  test_capture_tool_has_no_hardcoded_home_path
-FAIL  test_claim_source_map_covers_every_md_url :: AssertionError: URLs in the briefing are absent from the map: {'https://www.tradecommissioner.gc.ca/en/trade-events-training/2026/10/textile-exchange-conference.html'}
+PASS  test_claim_source_map_covers_every_md_url
 PASS  test_claim_source_map_is_machine_readable_and_complete
 PASS  test_committed_evidence_is_path_neutral[~/hermes-cortex/docs/evidence/briefings/claim-sources-2026-10-12.tsv]
 PASS  test_committed_evidence_is_path_neutral[~/hermes-cortex/docs/evidence/briefings/test-results-2026-10-12.txt]
 PASS  test_committed_evidence_is_path_neutral[~/hermes-cortex/docs/evidence/briefings/url-check-2026-10-12.txt]
 PASS  test_committed_evidence_is_path_neutral[~/hermes-cortex/docs/evidence/briefings/verification-2026-10-12.txt]
+PASS  test_committed_evidence_records_no_failures
 PASS  test_evidence_file_contains_real_captured_output[~/hermes-cortex/docs/evidence/briefings/test-results-2026-10-12.txt]
 PASS  test_evidence_file_contains_real_captured_output[~/hermes-cortex/docs/evidence/briefings/url-check-2026-10-12.txt]
 PASS  test_evidence_file_contains_real_captured_output[~/hermes-cortex/docs/evidence/briefings/verification-2026-10-12.txt]
@@ -36,22 +37,19 @@ PASS  test_evidence_file_records_command_and_exit_code[~/hermes-cortex/docs/evid
 PASS  test_evidence_file_records_command_and_exit_code[~/hermes-cortex/docs/evidence/briefings/url-check-2026-10-12.txt]
 PASS  test_evidence_file_records_command_and_exit_code[~/hermes-cortex/docs/evidence/briefings/verification-2026-10-12.txt]
 PASS  test_test_results_evidence_reports_zero_failures
+PASS  test_tooling_is_path_neutral[~/hermes-cortex/docs/evidence/briefings/capture_evidence_1012.py]
+PASS  test_tooling_is_path_neutral[~/hermes-cortex/docs/evidence/briefings/check_urls_1012.py]
+PASS  test_tooling_is_path_neutral[~/hermes-cortex/docs/evidence/briefings/make_briefing_files_1012.py]
+PASS  test_tooling_is_path_neutral[~/hermes-cortex/docs/evidence/briefings/make_src_1012.py]
+PASS  test_tooling_is_path_neutral[~/hermes-cortex/docs/evidence/briefings/manifest_1012.py]
+PASS  test_tooling_is_path_neutral[~/hermes-cortex/docs/evidence/briefings/sources_manifest_1012.py]
+PASS  test_tooling_is_path_neutral[~/hermes-cortex/docs/evidence/briefings/verify_briefing_1012.py]
 PASS  test_url_evidence_keeps_both_md_and_pdf_inventory
 
-ran=16 passed=15 failed=1 skipped=0
-RESULT: FAILURES
+ran=24 passed=24 failed=0 skipped=0
+RESULT: ALL TESTS PASSED
 
-RESULT: FAILURES
+RESULT: ALL TESTS PASSED
 
---- stderr ---
-Traceback (most recent call last):
-  File "~/hermes-cortex/tests/run_briefing_tests.py", line 142, in _run_suite
-    fn(**kwargs)
-    ~~^^^^^^^^^^
-  File "~/hermes-cortex/tests/test_capture_evidence_1012.py", line 100, in test_claim_source_map_covers_every_md_url
-    assert not missing, "URLs in the briefing are absent from the map: %s" % missing
-           ^^^^^^^^^^^
-AssertionError: URLs in the briefing are absent from the map: {'https://www.tradecommissioner.gc.ca/en/trade-events-training/2026/10/textile-exchange-conference.html'}
-
-VERDICT: FAIL (exit 1)
+VERDICT: PASS (exit 0)
 

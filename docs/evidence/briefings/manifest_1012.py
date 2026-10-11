@@ -38,15 +38,25 @@ for f in FILES:
         dst.write(src.read())
     print("hashed + copied: %s  %s" % (h[:16], f))
 
-# copy the reproducible build/verify tooling alongside
+# copy the reproducible build/verify tooling alongside.
+# NOTE: copy FROM the repo (canonical, path-neutral) TO cron output, not the
+# reverse — an earlier run copied the cron-output copies over the repo's fixed
+# ones and silently reinstated hardcoded /home paths in committed evidence.
 import shutil
-for tool in ("verify_briefing_1012.py", "make_briefing_files_1012.py",
-             "make_src_1012.py", "check_urls_1012.py",
-             "sources_manifest_1012.py", "manifest_1012.py"):
-    src = os.path.join(OUT, tool)
-    if os.path.isfile(src):
-        shutil.copy2(src, os.path.join(EVID, tool))
-        print("copied tool:", tool)
+TOOLS = ("verify_briefing_1012.py", "make_briefing_files_1012.py",
+         "make_src_1012.py", "check_urls_1012.py",
+         "sources_manifest_1012.py", "manifest_1012.py")
+for tool in TOOLS:
+    repo_copy = os.path.join(EVID, tool)
+    if os.path.isfile(repo_copy):
+        # repo is canonical -> refresh cron output from it
+        shutil.copy2(repo_copy, os.path.join(OUT, tool))
+        print("synced cron<-repo:", tool)
+    else:
+        src = os.path.join(OUT, tool)
+        if os.path.isfile(src):
+            shutil.copy2(src, repo_copy)
+            print("seeded repo<-cron:", tool)
 
 mpath = os.path.join(EVID, "sustainability-briefing-%s.sha256" % DATE)
 open(mpath, "w").write("\n".join(lines) + "\n")
