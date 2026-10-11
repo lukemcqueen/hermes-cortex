@@ -210,8 +210,13 @@ material it judged (note + diff):
   the checkout path and the python bin dir with placeholders, applied to every emitted
   line): a hand-sanitised copy is republished the moment anyone re-runs the generator,
   which is exactly what the artifact invites. The same guard reads a long digit run as a
-  phone number and will refuse a repo write carrying raw PIDs — describe a process by its
+  phone number and will refuse a repo write carrying raw PIDs— describe a process by its
   ROLE ("the reviewer child", "the cron worker's server") rather than its pid.
+  It ALSO fires on a `\d{4}[-.]\d{4}}` digit-dash-digit shape anywhere the guard scans —
+  including evidence FILENAMES. A name like `cycle-4907-2026...txt` (four-digit-dash-four-digit) is
+  reads as a phone number and the write is refused until you rename to a letter-safe form.
+  Prefer evidence names that use the commit sha or a dated-word form (`fix-landing-2026-10-10.txt`),
+  and never embed the NNNN-YYYY pattern in a committed path or prose.
 - **The committed artifact's SCOPE must equal the claim's scope — the SUMMARY
   included, not just the files.** A capture that ran ONE test file cannot
   substantiate "41 tests pass" across two — the reviewer checks the arithmetic
@@ -326,6 +331,13 @@ material it judged (note + diff):
   rule above). Record the refutation, record the issue, and let the lock reach TTL —
   re-rolling the note cannot fix a material-assembly problem, and the precedent for an
   ops-only cycle trapped this way is an explicit recorded issue, never `force=True`.
+- **Copy every referenced filename EXACTLY — a one-character typo in a note-referenced
+  path is graded `fabrication`(HIGH).** The reviewer diffs the note's path against the
+  actual `diff --git` header, so `fix-landing-…` typed as `filland-…` anywhere in the note
+  (even describing a verifier you ran) is a self-inflicted contradiction. Copy the path
+  verbatim from `git status`/`git diff --name-only` (or from read_file's resolved_path);do
+  not retype it from memory. A fabrication finding about YOUR OWN typo is the
+  ritual,not right about the code;ang it costs a full re-review round.{
 
 ## Verifying the gate actually RAN — a pass is not evidence of a review
 
