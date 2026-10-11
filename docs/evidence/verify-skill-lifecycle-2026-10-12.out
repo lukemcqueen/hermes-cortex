@@ -1,0 +1,34 @@
+== A. md5 repo == deployed (the 6 synced skills) ==
+  OK   devops/cortex-deployment-sync                        9d757ff45db06e406616431bf9f2c61e
+  OK   devops/cron-job-management                           68bb2415a123a701bcabe24de9186b69
+  OK   devops/enforcement-change-safety                     ba343d3c8f3fe238f817eced1b9910ef
+  OK   devops/enforcer-modification-considerations          9c668007c2786f8d6e26198a7a8bfc9f
+  OK   software-development/hermetic-python-testing         0710816de1976f6f8d985e99d0bac501
+  OK   software-development/session-manager                 b3f3c244e9f3bd15028e10c45c02c364
+
+== B. fence balance EVEN on both sides ==
+  OK   devops/cortex-deployment-sync                        repo=20 deployed=20
+  OK   devops/cron-job-management                           repo=20 deployed=20
+  OK   devops/enforcement-change-safety                     repo=10 deployed=10
+  OK   devops/enforcer-modification-considerations          repo=6 deployed=6
+  OK   software-development/hermetic-python-testing         repo=8 deployed=8
+  OK   software-development/session-manager                 repo=6 deployed=6
+
+== C. detector verdict + attribution of residual drift ==
+  this host and never copied back: it is stranded here, and the deploy's
+  | Deployed-only files (stranded) | 1 |
+  | Files in sync | 838 |
+  **Verdict: FAIL**
+
+  -- residual drift entries (expected: ONLY devops/governance-closeout) --
+     devops/governance-closeout
+
+  -- the peer file is a PURE SUPERSET (0 repo-only lines) --
+     repo-only lines (must be 0): 0
+     deployed-only lines (the peer's additions): 2
+
+  -- the OPEN peer lock that makes it that session's file --
+     task_id=memory-pruning-push-12144
+     status=executing
+
+RESULT: PASS — all assertions held
