@@ -33,8 +33,9 @@ def sha256(p: Path) -> str:
 
 def main() -> int:
     fail = 0
-    print("delivery path: %s" % DELIVERY)
-    print("repo evidence: %s" % REPO)
+    home = str(Path.home())
+    print("delivery path: %s" % str(DELIVERY).replace(home + "/", "~/"))
+    print("repo evidence: %s" % str(REPO).replace(home + "/", "~/"))
     print()
     print("%-6s %-9s %-18s %s" % ("ext", "bytes", "sha256[:16]", "state"))
     print("-" * 68)

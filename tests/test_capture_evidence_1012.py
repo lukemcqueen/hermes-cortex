@@ -176,3 +176,10 @@ def test_delivery_check_output_reports_verified():
             "no size recorded for %s" % ext
     assert not re.search(r"MISSING AT DELIVERY PATH|DIFFERS FROM REPO COPY", t), \
         "committed delivery-path output records a failure"
+
+
+def test_delivery_check_output_is_path_neutral():
+    """Committed evidence must not embed host-specific absolute paths."""
+    t = DELIVERY_CHECK.read_text(encoding="utf-8")
+    real = re.findall(r"/home/(?!\\w\+/|\\\\w)[a-z][a-z0-9_-]+/", t)
+    assert not real, "delivery-path output embeds home paths: %s" % real

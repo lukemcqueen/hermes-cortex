@@ -1,5 +1,5 @@
-delivery path: /home/esther/.hermes/cron/output
-repo evidence: /home/esther/hermes-cortex/docs/evidence/briefings
+delivery path: ~/.hermes/cron/output
+repo evidence: ~/hermes-cortex/docs/evidence/briefings
 
 ext    bytes     sha256[:16]        state
 --------------------------------------------------------------------
