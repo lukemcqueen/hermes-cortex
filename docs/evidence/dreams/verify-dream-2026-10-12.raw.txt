@@ -1,0 +1,23 @@
+OK  brain file exists: /Users/luke/brain/titus/dreams/2026-10-12.md
+OK  byte count == 977
+OK  first line == '# Dream — 2026-10-12'
+OK  INDEX has a 2026-10-12 entry
+OK  mycortex list surfaces bible/2-timothy-2026-10-12.md
+OK  mycortex search returns 2-timothy @ score>=0.9
+OK  INDEX 2026-10-12 entry begins '2026-10-12 | The truth, rightly handled |'
+OK  dream body contains 'rightly handle the word of truth' (2 Tim 2:15)
+OK  mycortex stats reports 0 failed syncs
+---
+INDEX tail -1:
+2026-10-12 | The truth, rightly handled | 2 Timothy 2:15 landed as the honest-close thread written onto the page, the same night my SOUL took "rightly handling the word of truth" as its identity — the brain and the agent reached for the same anchor unprompted; constancy not intensity, 6,428 pages, 0 failed syncs.
+---
+mycortex search 'rightly handle the word of truth' (top hits):
+[0.9999975] docs/evidence/dreams/verify-dream-2026-10-12.sh -- verify-dream-2026-10-12
+[0.999997] bible/2-timothy-2026-10-12.md -- 2 Timothy
+[0.999997] bible/2-timothy.md -- 2 Timothy
+---
+mycortex stats:
+  pages: 6432
+  chunks: 60319
+  failed_syncs: 0
+RESULT: PASS
