@@ -217,7 +217,7 @@ Otherwise the doctor FAILs on "PENDING cycles". Note the lock file path reuses t
 
 ## Pitfall 5: Don't over-fix — follow the repo
 
-Doctor warnings that are NOT failures: `SOUL.md reverse drift` (agent profile differs from template — expected), `Skill drift` (deployed skill has local fix the repo lacks — Moses's job to merge). When the user says "DO NOT UPDATE SOURCE", accept warnings as-is and leave repo files untouched. Only ❌ failures (PENDING cycles, missing governance deploy, hook drift) require action.
+Doctor warnings that are NOT failures: `SOUL.md reverse drift` (agent profile differs from template — expected), `Skill drift` (a deployed skill carries content the repo lacks) is a STRANDED LESSON, not a warning to wave through: `cortex-update.sh` ends by telling you to copy those changes back and ships no tool to do it, and until they land the fleet never gets the lesson. Resolve it — see "When the update reports stranded deployed-only skills" below. When the user says "DO NOT UPDATE SOURCE", accept warnings as-is and leave repo files untouched. Only ❌ failures (PENDING cycles, missing governance deploy, hook drift) require action.
 
 ## Pitfall 6: Stash before pull if you hold uncommitted orchestrator-only edits
 
@@ -261,6 +261,48 @@ rejects "plugins that touch core files"):**
 
 This is a known upstream false positive; if it ever gets fixed upstream it
 will land via `hermes update`, not a local patch.
+
+## When the update reports stranded deployed-only skills
+
+`cortex-update.sh` ends with **"Copy the deployed changes to the repo source first,
+then commit"** for every file the drift detector calls STRANDED: a deployed skill
+whose content appears in neither the repo working tree nor any committed revision — a
+lesson written on this host that the deploy's guardrail refuses to overwrite. The
+update prints the instruction and ships no tool for it, so the reconciliation is the
+next step of the same job.
+
+```bash
+python3 ops/scripts/manage/check-skill-drift-parity.py        # detector: stranded list + verdict
+python3 ops/scripts/manage/reconcile-stranded-skills.py       # report by default
+python3 ops/scripts/manage/reconcile-stranded-skills.py --apply   # copies the SAFE class only
+```
+
+1. **Detector** — exit FAIL with a stranded list means work to do; it also writes
+   `docs/evidence/skill-drift-parity.txt`.
+2. **Reconcile tool (report first)** — diffs each deployed copy against its repo
+   counterpart and splits them: a PURE SUPERSET (nothing dropped) is safe to apply; a
+   copy that also DROPS lines is printed with those lines and never applied silently.
+3. **Decide by CONTENT, never mtime.** Read every dropped line. A drop that is a
+   fragment of a sentence the same section rewrites in place is superseded; a drop of a
+   whole lesson means the deployed copy LOST it — keep the repo side and merge the
+   additions by hand.
+4. `--apply`, then commit by pathspec, deploy, and re-run the detector: it should read
+   `0 stranded / … in sync / Verdict: PASS`.
+5. Exit codes are a three-way outcome, not a boolean: `0` nothing stranded · `1` work
+   left (review or missing) · `3` **could not verify** — the detector itself failed to
+   run, so never read it as a clean tree.
+
+**Never `git checkout --` a deployed-only skill file to silence the warning** — the
+DEPLOYED side is the one carrying the newer lesson, and discarding it destroys the
+only copy. Two of the usual stranded files are ALWAYS-SECTION skills, and that is the
+mechanism behind a session's skill credit going stale mid-work: the enforcer compares
+CONTENT hashes and says so in the block (`the proof is STALE — the CONTENT of these
+skills changed since you loaded them`), so a deploy that installs a different copy of
+an always-section skill invalidates credit already earned. Clearing the drift removes
+the cause instead of re-loading around it.
+
+Recipes, tool pitfalls, and the re-runnable BEFORE reproduction:
+`references/stranded-skill-reconciliation.md`.
 
 ## Verification
 

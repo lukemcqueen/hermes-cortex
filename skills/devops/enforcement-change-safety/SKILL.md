@@ -723,10 +723,16 @@ other conclude the system is broken. When touching either block message:
   --force`) → push.** The push gate fails "Deploy sync / Plugin content"
   until deployed == repo, and only dogfood syncs the deploy. Docs-only
   changes skip dogfood, but an enforcer `.py` change never does.
-- **Deploy ≠ loaded.** cortex-update.sh puts new message text on disk; the
-  running gateway keeps the OLD in-memory enforcer until an operator restarts
-  it from a separate shell — verify the deployed file's content directly
-  (grep the new strings) instead of expecting the live gate to show them.
+- **Deploy ≠ loaded — and do not assume WHICH way.** `cortex-update.sh` puts the new
+  module on disk; whether the RUNNING gateway already carries it is a separate question,
+  and the `GATEWAY RESTART REQUIRED` banner fires when the deploy cannot determine the
+  gateway's start time — a banner, not a verdict. MEASURED counter-example: a freshly
+  deployed enforcer whose new lock carve-out was already IN FORCE (a lock-free push of a
+  receipt-covered range was allowed) while that banner still said restart-required. So
+  grep the deployed file to confirm the CODE landed, and drive the changed path to
+  confirm the PROCESS has it. A prior session's "needs a restart" note is a hypothesis,
+  not evidence — a doc telling the next agent to wait for a restart it does not need is
+  worse than no doc.
 
 ## Rule 17: Essential Gates Are Event-Driven, Never Cron-Swept — and Fail Loud, Never Silent
 
@@ -1055,6 +1061,34 @@ enforcement working as intended.
   inspects, disclose which policy applied, and leave an explicit exit for a range that
   is genuinely too large to review — split it. See Rule 20, and the "Two budgets"
   section in the **governance-closeout** skill's material reference.
+
+## Rule 27: A Close's Receipt Also Authorises the Push — Do Not Re-Gate It
+
+A push with NO active lock is LEGITIMATE when a CLEAN review receipt covers its range. The close
+writes that receipt (`~/.hermes-cortex/state/.reviewed-<repo_slug>-<tip>.json`) and the receipt is
+bound to the reviewed CONTENT — so it authorises exactly the range that was reviewed and closed, and
+nothing else. Treat a lock-free push that names a receipt as the gate working, never as a bypass:
+adding a lock-carrier cycle back, or "fixing" the allowance, re-introduces real friction (one
+no-content cycle per push) for no security gain.
+
+- **One rule, two callers.** `ops/scripts/lib/review-receipt-check.py` holds the covering-receipt
+  rule (`scan_covering` + `--scan`); the pre-push hook and the enforcer both call THAT. Never
+  re-implement "covered" in a third place — a second, looser copy is how binding stops binding.
+- **Fail-closed shapes that must stay refused:** not a lone `git push` (`--no-verify`, pipes,
+  redirections, backticks/substitutions, background, two pushes, any compound with other work), an
+  EMPTY range (`tip == base` — a receipt naming it would otherwise pass the exact-match rule), a
+  receipt for another slug, and any uncovered blob. When a push is refused after a close, the cause
+  is almost always a COMMIT AFTER THE CLOSE, not a broken gate.
+- **Prefix-match a slug, never glob it.** A repo directory named `*` would otherwise match another
+  repo's receipts; list the dir and filter on an explicit prefix.
+- **`check_lock` called with NO args reports `{active: false}` while a lock IS held** — it cannot
+  resolve the session from nothing. Read lock state through `begin_change` (its "already active"
+  error names the holder and heartbeat) or pass the args; do not conclude "the lock is gone" from
+  a no-arg `check_lock`.
+- **The mandatory dogfood trigger reads the WORKING TREE, not the pushed range** (`git diff HEAD`
+  in the hook's `CHANGED_FILES`), so a peer's dirty `.py` forces a full deploy on a docs-only push.
+  Expect a long push whenever the tree is dirty for someone else — and do not read that as your
+  change being non-docs.
 
 ## References
 

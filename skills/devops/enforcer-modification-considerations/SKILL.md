@@ -92,23 +92,31 @@ When modifying hooks or the enforcer, test in a scratch project repo
 (`git init /tmp/t && git config core.hooksPath ~/.hermes-cortex/hooks`)
 before shipping — a cortex-repo-only test proves nothing about project repos.
 
-## 2b. Deploy ≠ Load — Gateway Restart Required to Activate
+## 2b. Deploy ≠ Load — Settle It by OBSERVATION, Not by Assumption
 
 `cortex-update.sh` copies the new enforcer to
-`~/.hermes/plugins/governance-enforcer/` and re-locks it — but the RUNNING
-gateway keeps executing the OLD module from memory. The plugin manager is a
-process-global singleton: `hermes plugins disable/enable` only writes
-`config.yaml`; it does NOT hot-reload loaded modules.
+`~/.hermes/plugins/governance-enforcer/` and re-locks it. Whether the RUNNING
+gateway already executes it is a separate question, and the deploy's own
+`GATEWAY RESTART REQUIRED` banner is emitted when the deploy CANNOT determine the
+gateway's start time — a conservative warning, not a verdict on what is in memory.
+**MEASURED counter-example:** an enforcer whose new lock carve-out was already IN
+FORCE right after a deploy (a lock-free push of a receipt-covered range was
+allowed, with no restart) while the banner still read restart-required.
 
-- **Symptom:** repo == deployed (SHA256 match) yet the sanctioned
+- **Verify by OBSERVATION:** drive the path the change adds and watch the behaviour
+  it is supposed to produce. Grepping the deployed file proves the CODE landed, never
+  that the process loaded it.
+- **The symptom that a restart really IS needed:** repo == deployed (SHA256 match)
+  yet the changed behaviour simply never appears — the sanctioned
   `bash ~/hermes-cortex/ops/scripts/cortex-update.sh --status` still returns
-  `GOVERNANCE LOCK REQUIRED` → pending restart, not a code bug.
-- **Fix:** `hermes gateway restart` — agents cannot run it (lifecycle guard);
-  the host operator (Luke) must. Verify with the positive control (`--status`
-  passes lock-free) and negative control (`... && echo hi` still blocked).
-- **Don't:** re-run cortex-update.sh repeatedly, edit the deployed copy, or
-  disable/enable the plugin to "reload" it — none of these activate the new
-  code. Only a gateway restart does.
+  `GOVERNANCE LOCK REQUIRED`, or a new block-message string never shows.
+- **Fix when it is needed:** `hermes gateway restart` — agents cannot run it
+  (lifecycle guard); the host operator must. Verify with the positive control
+  (`--status` passes lock-free) and a negative control (`... && echo hi` blocked).
+- **Don't** re-run cortex-update.sh repeatedly or hand-edit the deployed copy to
+  force activation, and never write "a restart is required" into a doc, note or issue
+  without the observation behind it: a doc that makes the next agent wait for a restart
+  it does not need costs more than the restart would have.
 
 ---
 
@@ -254,6 +262,11 @@ and governance lock still apply to cron/bg writes.
 
 ## References
 
+- `references/friction-reduction-candidates.md` — the enforcement-friction taxonomy (which gates
+  cost what, measured from logs), the prioritised candidates for reducing that friction, each with
+  what still holds security-wise, and the explicit **do-not-change** list. Read it before touching
+  the write-classifier or a gate's timing: most friction is TIMING (the gate fires at the write
+  while the information needed to satisfy it arrives late), not strictness.
 - `plugins/governance-enforcer/__init__.py` — the enforcer itself
 - `docs/orchestrator-only-paths.txt` — restricted paths
 - `ops/scripts/pre-commit-score` — pre-commit hook with orchestrator guard
