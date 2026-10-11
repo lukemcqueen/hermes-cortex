@@ -209,6 +209,7 @@ repo; this public repo carries only framework docs (PRDs, design, reference).
 
 | Doc | Description |
 |-----|-------------|
+| `docs/reviews/` | Per-run review artifacts — daily soul-refinement candidate principles (operator-owned proposals, e.g. `soul-refinement-2026-10-11.md`) and gate evidence |
 | `docs/prd/` | Product requirements (PRD-001…006) |
 | `docs/design/` | Design documents |
 | `docs/plans/` | Implementation plans — **private** (moved 2026-08-24) |
