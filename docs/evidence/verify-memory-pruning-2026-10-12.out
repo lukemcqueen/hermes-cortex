@@ -1,0 +1,55 @@
+# Captured output — verify-memory-pruning-2026-10-12.sh
+# run 2026-10-12 on host esther (bash); re-runnable from a clean checkout
+## committed snapshots (re-verifiable from a clean checkout)
+PASS  MEMORY.after md5 = 382c5be6cbfaa5dc5093e93e59f68d0c
+PASS  USER.after md5 = 32ead3cb57ddbef16e5322f1b47545ae
+PASS  MEMORY.before md5 = 3735a517c5cc993901dc4c35e6cb0df2
+## BEFORE MEMORY.md state (proves the 2081-byte / 2038-char starting point)
+PASS  MEMORY.before chars = 2038
+PASS  MEMORY.before bytes = 2081
+PASS  MEMORY.before entries = 14
+## final MEMORY.md state (under the 2,200-char memory budget)
+PASS  MEMORY.after chars = 1925
+PASS  MEMORY.after bytes = 1962
+PASS  MEMORY.after entries = 10
+## USER.md unchanged (before snapshot == after snapshot, empty diff)
+PASS  USER.before md5 = 32ead3cb57ddbef16e5322f1b47545ae
+PASS  USER.before md5 == USER.after md5 = 32ead3cb57ddbef16e5322f1b47545ae
+PASS  USER.before == USER.after (diff empty) = 
+## final USER.md state
+PASS  USER.after chars = 1359
+PASS  USER.after bytes = 1373
+PASS  USER.after entries = 7
+PASS  MEMORY.md under 2200-char limit (1925)
+## snapshot vs live (only when the live files exist on this host)
+PASS  live MEMORY.md == snapshot = 382c5be6cbfaa5dc5093e93e59f68d0c
+PASS  live USER.md == snapshot = 32ead3cb57ddbef16e5322f1b47545ae
+## no-facts-dropped check (every distinctive token in BEFORE must be in AFTER)
+KEEP  cortex-update.sh
+KEEP  mosesaaron
+KEEP  192.168.1.24
+KEEP  UPPER_CASE
+KEEP  REPORTS MIRROR
+KEEP  :14005
+KEEP  spotify_user
+KEEP  .asus
+KEEP  status-devices.asp
+KEEP  zero-MAC
+KEEP  nvidia-470
+KEEP  reboot=pci
+KEEP  50-hdmi-1080p.conf
+KEEP  macbook-linux-maintenance
+KEEP  deploy root
+KEEP  NOPASSWD
+KEEP  database is locked
+KEEP  3-strike
+KEEP  steadfaste
+KEEP  deepseek-v4-flash-free
+KEEP  context_tools
+KEEP  agent-interop.md
+KEEP  deploy-manifest.tsv
+KEEP  resolve_repo_resource
+KEEP  pseudonym
+---
+ALL CHECKS PASSED
+EXIT=0

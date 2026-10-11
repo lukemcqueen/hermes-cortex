@@ -38,10 +38,17 @@ tools: structured facts (done / pending / blockers / decisions), append-only, sc
 the harness+repo+branch, and readable by the next session with one call. A markdown file
 nobody reads is worse than no checkpoint, because it looks like continuity. Check the
 checkpoint tool's availability FIRST; if the harness has none, fall back to the file
-shapes below. Two mechanics worth knowing: the store is APPEND-ONLY, so a second call is
-how you add the rest of a long list (pending and decisions in separate calls is fine), and
-the stored facts are what a fresh session actually reads — write them there, not only in
-the chat.
+shapes below. Three mechanics worth knowing: the store is APPEND-ONLY, so a second call is
+how you add the rest of a long list (pending and decisions in separate calls is fine); the
+stored facts are what a fresh session actually reads — write them there, not only in
+the chat; and **a bare `session_restore()` is NOT reliably the newest checkpoint for the work
+you are resuming.** It derives the session key from the environment, and that key is not always
+the key the facts were written under — a repo-scoped session stores them under a repo-derived
+key (e.g. `unknown:<repo>`) that the environment does not reproduce, so the bare call can hand
+back a DIFFERENT session's checkpoint from days earlier as "the latest". Call `session_list`
+first, pick the session whose start time and repo match the work, pass that key explicitly, and
+check the returned `at` timestamp is from today before acting on it — a stale checkpoint
+re-derives a plan that has already been superseded, which reads exactly like fresh guidance.
 
 **When the operator asks to "summarize for a new session", do both, in this shape:**
 

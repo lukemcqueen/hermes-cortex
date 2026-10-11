@@ -1,0 +1,15 @@
+# Captured output — verify-stale-checks-2026-10-12.sh
+# run 2026-10-12 on host esther (bash); re-runnable (live checks SKIP off-host)
+## referenced artifacts still exist (MEMORY entries A4 / A10)
+OK    exists: $HOME/.hermes-cortex/deploy-manifest.tsv
+OK    exists: $HOME/hermes-cortex/docs/design/agent-interop.md
+OK    exists: $HOME/hermes-cortex/ops/scripts/cortex_lib/paths.py
+OK    exists: $HOME/.asus
+OK    exists: $HOME/.spotify_user
+## stored claim 'sudo NOPASSWD ... BROKEN' (entry A7) — expect a password prompt
+OK    sudo -n still prompts -> NOPASSWD still BROKEN (entry A7 accurate, kept)
+## stored claim 'Moses ssh mosesaaron (192.168.1.24)' (entry A2) — expect reachable
+OK    moses 192.168.1.24 reachable (entry A2 accurate, kept)
+---
+RESULT: all applicable stale checks PASS, exit 0
+EXIT=0

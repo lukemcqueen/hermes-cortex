@@ -315,6 +315,13 @@ other test has already opened the first resource.
  correctly, the fault is the harness you wrote, not the code you were about to
  "fixing" it. Re-run the single test 3x first — deterministic vs flaky selects
  completely different fixes, and guessing wrong means rewriting working code.
+- **A git-gate test is an ambient-state test in disguise.** An assertion that a hook
+  (pre-push, pre-commit) REFUSES a range only holds while the repo is ahead of its
+  upstream: it passes while work is in flight and fails the moment the tip is level,
+  which teaches readers to ignore it. Make the range a PRECONDITION — compute
+  `merge-base <upstream> HEAD`, and when it equals HEAD print an explicit SKIP with the
+  reason — then assert the refusal only where a range exists. Asserting into the ambient
+  condition instead is how a gate test turns red on a healthy tree.
  **If the flake stops reproducing, STOP bisecting and bank what you proved.** A
  failure that vanishes after N runs was a WINDOW, not an ordering: further
  bisect rounds buy nothing and cost the session. Record the MECHANISM you
@@ -390,8 +397,24 @@ other test has already opened the first resource.
   the file you are staring at is the symptom, not the cause. Restore on the way
   out whether the body succeeded or raised, and add a regression test in the
   mutating file asserting the attribute is unchanged after the call.
+  **The same trap fires INSIDE one file, across sections.** A test that installs a stub for
+  section A and never puts the real function back leaves every later section asserting against the
+  stub — and because a stub returns plausible values, the red run points at the code under test
+  instead of at the test (a `None` lock returned by the stub made three "must still fail closed"
+  assertions look like the guard had been removed). Save the real attribute before patching and
+  re-install it at the section boundary (`real = m.fn` … `m.fn = real`), or scope the stub to the
+  section that needs it; when a whole block of assertions fails together in a fresh file, suspect
+  the stub before the code.
 - **Finding WHICH test pollutes shared state is a pairing search, not a reading
   exercise.** See `references/order-dependent-failure-bisect.md` for the recipe
   — run the victim alone, pair it with each candidate that touches the module,
   then bisect the failing group — and for what to do when the failure will not
   reproduce at all.
+- **Derive a state-machine test's cases from the module's OWN table, not from your
+  memory of it.** A test that hardcodes "advance X → completed" fails when the
+  machine does not allow that edge, and the red run blames the transition instead
+  of the assumption. Read the permitted set out of the module
+  (`for src, allowed in m.VALID_TRANSITIONS.items()`) and drive a pair it actually
+  allows, skipping with a printed reason when there is none — then assert BOTH
+  directions (the permitted edge behaves, the forbidden one is refused) so the
+  table, not the fixture, decides what is legal.

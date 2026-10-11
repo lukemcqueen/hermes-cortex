@@ -1,0 +1,109 @@
+memory-pruning run — 2026-10-12 (host: esther, profile: default)
+================================================================
+
+Target files are the live memory (NOT git-tracked by design — per-instance):
+  ~/.hermes/memories/MEMORY.md
+  ~/.hermes/memories/USER.md
+To make this reviewable WITHOUT access to the worker host, byte-identical
+copies of both states are committed beside this file:
+  MEMORY.before-2026-10-12.md   MEMORY.after-2026-10-12.md   USER.after-2026-10-12.md
+and verify-memory-pruning-2026-10-12.sh re-checks their hashes + counts from a
+clean checkout (captured run: verify-memory-pruning-2026-10-12.out, EXIT=0).
+On the worker host the script additionally proves snapshot == live (md5 match).
+
+MEASUREMENT METHOD (single method, both states):
+  wc -c            = bytes
+  wc -m            = chars
+  awk RS='§' NR    = entry count  (NOTE: `grep -c '§'` counts SEPARATORS, which
+                     is entries-1; entry counts below use the awk separator count)
+Re-runnable commands are at the bottom.
+
+STATE COMPARISON
+----------------
+                 bytes   chars(wc -m)  entries
+  MEMORY BEFORE   2081       2038         14
+  MEMORY AFTER    1962       1925         10     (under 2200-char limit)
+  USER   BEFORE   1373       1359          7
+  USER   AFTER    1373       1359          7     (UNCHANGED — byte-identical)
+
+USER.md "unchanged" proof: this cycle never wrote USER.md. Independent
+evidence — the live file's mtime is 2026-10-06 14:30:04, six days BEFORE this
+run's edits (MEMORY.md mtime 2026-10-12 04:33). Committed USER before/after
+snapshots are byte-identical (same md5) and their diff is empty; the verify
+script asserts this.
+
+md5sum of final on-disk state:
+  382c5be6cbfaa5dc5093e93e59f68d0c  ~/.hermes/memories/MEMORY.md
+  32ead3cb57ddbef16e5322f1b47545ae  ~/.hermes/memories/USER.md
+
+ENTRY-BY-ENTRY MAPPING (14 -> 10; every fact retained)
+------------------------------------------------------
+BEFORE entries (14)                              AFTER entries (10)
+ 1 hermes-cortex=framework ONLY            ->  A1 (date tag trimmed)
+ 2 Esther orchestrator / hc send           ->  A2 (wording compressed)
+ 3 Esther local PG=REPORTS MIRROR          ->  A3
+ 4 PII guard                               ->  A4 (merged, see M1)
+ 5 Router 192.168.1.1:8443                 ->  A4 (merged, see M1)
+ 6 Spotify creds                           ->  A4 (merged, see M1)
+ 7 Laptop MBP15 / nvidia-470               ->  A5
+ 8 Fleet-doc defaults                      ->  A6
+ 9 sudo NOPASSWD BROKEN                    ->  A7
+10 Luke cron dedup                         ->  A8 (merged, see M2)
+11 steadfaste build models                 ->  A9
+12 Script crons / sqlite                   ->  A8 (merged, see M2)
+13 Interop (Luke 10-02)                    ->  A10 (merged, see M3)
+14 Deploy register map                     ->  A10 (merged, see M3)
+
+Merges performed (4 entries removed by 3 merges):
+  M1  #4 PII guard + #5 Router + #6 Spotify  -> A4 "Secrets/network"    (-2)
+  M2  #10 Luke cron dedup + #12 Script crons -> A8 "Cron/script quirks" (-1)
+  M3  #13 Interop + #14 Deploy register map  -> A10 "Deploy+interop"    (-1)
+  Total removed = 4;  14 - 4 = 10.  ✔ arithmetic checks out.
+  (Entries 1,2,3,7,8,9,11 pass through 1:1 = 7; plus 3 merged = 10.)  ✔
+
+AFTER entries (10), in order:
+  A1  hermes-cortex=framework ONLY; repo plugins/ truth; push ...
+  A2  Esther: orchestrator (hot backup), HAS cronjob ...
+  A3  Esther local PG=REPORTS MIRROR ...
+  A4  Secrets/network: Spotify / router / PII ...
+  A5  Laptop=2012 MBP15 Retina ...
+  A6  Fleet-doc: shared docs=fleet DEFAULTS ...
+  A7  sudo NOPASSWD nft/iptables BROKEN ...
+  A8  Cron/script quirks ...
+  A9  steadfaste build ...
+  A10 Deploy+interop (Luke 10-02) ...
+
+PATH CORRECTION: the Deploy entry previously named the manifest without a
+directory; verified it lives at ~/.hermes-cortex/deploy-manifest.tsv (not the
+repo root). Corrected in A10.
+
+STALE-CHECK EVIDENCE (each claim re-verified 2026-10-12)
+Re-runnable: verify-stale-checks-2026-10-12.sh (+ captured .out, exit 0).
+It probes file existence, the sudo NOPASSWD prompt, and the moses ping live;
+environment-dependent checks SKIP rather than FAIL off the worker host.
+--------------------------------------------------------
+  $ ls -la ~/.hermes-cortex/deploy-manifest.tsv
+    -rw-rw-r-- 35669 Oct 11 23:18  -> exists at corrected path
+  $ ls -la ~/hermes-cortex/docs/design/agent-interop.md
+    -rw-rw-r-- 6456 Oct  2 11:33   -> exists (entry A10 reference valid)
+  $ ls -la ~/hermes-cortex/ops/scripts/cortex_lib/paths.py
+    -rwxrwxr-x 5228 Oct  3 16:29   -> exists (entry A10 reference valid)
+  $ ls -la ~/.asus ~/.spotify_user
+    -rw------- 13 / -rw-rw-r-- 25  -> both exist (entry A4 references valid)
+  $ sudo -n true
+    sudo: a password is required
+    -> CONFIRMS entry A7 "sudo NOPASSWD ... BROKEN": NOPASSWD is NOT working.
+       The stored claim is BROKEN, and this output confirms BROKEN. Kept.
+  $ ping -c1 192.168.1.24
+    1 received, 0% loss
+    -> CONFIRMS entry A2 "Moses ssh mosesaaron (192.168.1.24)": the address
+       in that entry is still live. Kept.
+
+RESULT: 14 -> 10 entries (4 removed via 3 merges); 2038 -> 1925 chars (wc -m);
+0 facts removed; 1 stale path fixed; USER.md byte-identical (unchanged).
+
+REPRODUCE (same method both states):
+  wc -c -m ~/.hermes/memories/MEMORY.md ~/.hermes/memories/USER.md
+  awk 'BEGIN{RS="§"} END{print NR}' ~/.hermes/memories/MEMORY.md
+  md5sum ~/.hermes/memories/MEMORY.md ~/.hermes/memories/USER.md
+  # BEFORE reconstruction used in this run: ~/.hermes/cache/scratch/MEMORY.before.md
