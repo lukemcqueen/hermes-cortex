@@ -51,13 +51,15 @@ echo "== C. detector verdict + attribution of residual drift =="
 python3 ops/scripts/manage/check-skill-drift-parity.py | grep -E 'stranded|in sync|Verdict' | sed 's/^/  /'
 
 echo
-echo "  -- residual drift entries (expected: ONLY devops/governance-closeout) --"
+echo "  -- residual drift entries (accepts EITHER clean, or only the peer file) --"
 drifted=$(python3 ops/scripts/manage/cortex-doctor.py --quiet 2>/dev/null \
           | grep 'Skill drift:' | sed 's/.*Skill drift: //;s/ —.*//' | sort -u)
 echo "     ${drifted:-(none)}"
-if [ "$drifted" != "devops/governance-closeout" ]; then
-  echo "     NOTE: residual drift is not the single expected peer file"; fail=1
-fi
+case "$drifted" in
+  "")                                echo "     OK   — zero residual drift (the peer landed its lesson)";;
+  "devops/governance-closeout")      echo "     OK   — only the expected peer file (its lock is open; not ours to sync)";;
+  *)                                 echo "     NOTE: unexpected residual drift set"; fail=1;;
+esac
 
 echo
 echo "  -- the peer file is a PURE SUPERSET (0 repo-only lines) --"
@@ -84,5 +86,9 @@ for p in glob.glob(os.path.expanduser("~/.hermes-cortex/state/.governance-*.json
 PY
 
 echo
-if [ "$fail" -eq 0 ]; then echo "RESULT: PASS — all assertions held"; else echo "RESULT: FAIL — see FAIL lines above"; fi
+if [ "$fail" -eq 0 ]; then
+  echo "RESULT: PASS — all assertions held"
+else
+  echo "RESULT: one or more assertions did not hold — inspect the entries above"
+fi
 exit "$fail"

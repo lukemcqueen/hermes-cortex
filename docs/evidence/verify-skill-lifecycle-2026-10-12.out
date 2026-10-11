@@ -16,16 +16,17 @@
 
 == C. detector verdict + attribution of residual drift ==
   this host and never copied back: it is stranded here, and the deploy's
-  | Deployed-only files (stranded) | 1 |
-  | Files in sync | 838 |
-  **Verdict: FAIL**
+  | Deployed-only files (stranded) | 0 |
+  | Files in sync | 839 |
+  **Verdict: PASS**
 
-  -- residual drift entries (expected: ONLY devops/governance-closeout) --
-     devops/governance-closeout
+  -- residual drift entries (accepts EITHER clean, or only the peer file) --
+     (none)
+     OK   — zero residual drift (the peer landed its lesson)
 
   -- the peer file is a PURE SUPERSET (0 repo-only lines) --
      repo-only lines (must be 0): 0
-     deployed-only lines (the peer's additions): 2
+     deployed-only lines (the peer's additions): 0
 
   -- the OPEN peer lock that makes it that session's file --
      task_id=memory-pruning-push-12144

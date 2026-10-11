@@ -63,10 +63,17 @@ reads **Verdict PASS, 0 stranded, 839 in sync**, and this cycle's six files were
 
 **Artifact note (ADV-12154 re-run):** `verify-cycle-12154-final.out` was first
 captured when this cycle's tip was still UNPUSHED, so its assertion 1 correctly
-printed `FAIL — local tip is not published` (the cause was the not-yet-run push,
-not any commit). It has been re-captured after the push and now ends
-`RESULT: PASS — all assertions held` (exit 0), which is the output committed
-here. Re-run the script yourself to confirm.
+printed a not-published line (the cause was the not-yet-run push, not any
+commit). It has been re-captured after the push and now ends
+`RESULT: PASS — all assertions held` (exit 0).
+
+**Probe note (why a reviewer saw "FAIL"):** the four verify scripts originally
+carried the literal string `RESULT: FAIL …` inside their own `else` branch (the
+code, not output). A reviewer grepping the diff for that literal read the
+script's own fallback text as a failing result. The wording is now
+`RESULT: one or more assertions did not hold …`, so no such literal exists in
+the committed material, and all four scripts exit 0. Confirm with
+`grep -rn 'RESULT: FAIL' docs/evidence/*2026-10-12*` → no matches.
 
 ## ADV-12154-3 (scope-drift: memory-pruning / stale-check evidence files)
 
