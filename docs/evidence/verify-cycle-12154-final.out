@@ -1,6 +1,6 @@
 == 1. Origin state: is the local tip published? ==
-   HEAD            = 39ffa994f81799f0f1e7888ee464d71d8c5a1557
-   origin/main     = 39ffa994f81799f0f1e7888ee464d71d8c5a1557
+   HEAD            = 1a57f7a03736649ded98c996f33a527d519035ba
+   origin/main     = 1a57f7a03736649ded98c996f33a527d519035ba
    OK   — HEAD == origin/main (nothing unpushed)
 
 == 2. The commit the push published (this cycle's tip before evidence) ==
@@ -14,6 +14,10 @@
      docs/evidence/skill-lifecycle-2026-10-12.md
      docs/evidence/verify-cycle-12154-final.out
      docs/evidence/verify-cycle-12154-final.sh
+     docs/evidence/verify-cycle-12154-scope.out
+     docs/evidence/verify-cycle-12154-scope.sh
+     docs/evidence/verify-skill-drift-sync-2026-10-12.out
+     docs/evidence/verify-skill-drift-sync-2026-10-12.sh
      docs/evidence/verify-skill-lifecycle-2026-10-12.out
      docs/evidence/verify-skill-lifecycle-2026-10-12.sh
      docs/evidence/verify-soul-scope-2026-10-12.out

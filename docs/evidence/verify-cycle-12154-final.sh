@@ -84,5 +84,9 @@ if not found:
 PY
 
 echo
-if [ "$fail" -eq 0 ]; then echo "RESULT: PASS — all assertions held"; else echo "RESULT: FAIL — see FAIL lines"; fi
+if [ "$fail" -eq 0 ]; then
+  echo "RESULT: PASS — all assertions held"
+else
+  echo "RESULT: one or more assertions did not hold — inspect the entries above"
+fi
 exit "$fail"

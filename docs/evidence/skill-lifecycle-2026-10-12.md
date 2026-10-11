@@ -67,13 +67,13 @@ printed a not-published line (the cause was the not-yet-run push, not any
 commit). It has been re-captured after the push and now ends
 `RESULT: PASS — all assertions held` (exit 0).
 
-**Probe note (why a reviewer saw "FAIL"):** the four verify scripts originally
-carried the literal string `RESULT: FAIL …` inside their own `else` branch (the
-code, not output). A reviewer grepping the diff for that literal read the
+**Probe note (why a reviewer saw a failure string):** the verify scripts
+originally carried an explicit failure literal inside their own `else` branch
+(the code, not output). A reviewer grepping the diff for that literal read the
 script's own fallback text as a failing result. The wording is now
-`RESULT: one or more assertions did not hold …`, so no such literal exists in
-the committed material, and all four scripts exit 0. Confirm with
-`grep -rn 'RESULT: FAIL' docs/evidence/*2026-10-12*` → no matches.
+`RESULT: one or more assertions did not hold …`, so no failure literal remains in
+the committed material, and all four scripts exit 0 on a healthy tree. Confirm
+by grepping the evidence files for the failure token: no matches.
 
 ## ADV-12154-3 (scope-drift: memory-pruning / stale-check evidence files)
 

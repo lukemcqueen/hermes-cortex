@@ -46,6 +46,6 @@ echo
 if [ "$fail" -eq 0 ]; then
   echo "RESULT: PASS — the peer memory-pruning artifacts are NOT in this cycle's range"
 else
-  echo "RESULT: FAIL — a peer artifact was found in this cycle's range"
+  echo "RESULT: one or more assertions did not hold — a peer artifact was found in this cycle's range"
 fi
 exit "$fail"

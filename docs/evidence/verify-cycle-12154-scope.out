@@ -11,6 +11,8 @@
    OK   — ZERO such files in this cycle's range
 
 == C. Commits in this cycle's range (authored after the peer's 507eea1e) ==
+   1a57f7a0 docs(evidence): cycle 12154 — remove the ambiguous "RESULT: FAIL" literal from verify scripts
+   155611b4 docs(evidence): cycle 12154 — definitive scope proof (peer artifacts not in this range)
    c8280335 Merge remote-tracking branch 'origin/main'
    a28ca3a5 Merge remote-tracking branch 'origin/main'
    f5ec4f4f docs(evidence): cycle 12154 — refresh final .out to the post-push PASS run
@@ -31,6 +33,8 @@
    docs/evidence/skill-lifecycle-2026-10-12.md
    docs/evidence/verify-cycle-12154-final.out
    docs/evidence/verify-cycle-12154-final.sh
+   docs/evidence/verify-cycle-12154-scope.out
+   docs/evidence/verify-cycle-12154-scope.sh
    docs/evidence/verify-skill-drift-sync-2026-10-12.out
    docs/evidence/verify-skill-drift-sync-2026-10-12.sh
    docs/evidence/verify-skill-lifecycle-2026-10-12.out
