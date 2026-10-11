@@ -1,6 +1,6 @@
 ========================================================================
 STEP 3 — live HTTP check of every source URL
-command: /home/esther/.hermes/cron/output/.venv-brief/bin/python check_urls_1012.py
+command: ~/.hermes/cron/output/.venv-brief/bin/python check_urls_1012.py
 exit code: 0
 ========================================================================
 === url inventory ===

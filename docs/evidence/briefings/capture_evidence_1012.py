@@ -31,17 +31,27 @@ def run(argv, cwd=None, timeout=300):
                           timeout=timeout)
 
 
+def sanitize(text: str) -> str:
+    """Replace absolute home paths with ~ so committed evidence is
+    path-neutral (the secret-leak detector flags /home/<user>/ literals)."""
+    home = str(Path.home())
+    return text.replace(home + "/", "~/")
+
+
 def banner(title, argv, res, outfile):
+    # Record the command in a path-neutral form; the interpreter's absolute
+    # path is host-specific noise in a shared repo.
+    shown = [sanitize(a) if os.path.isabs(a) else a for a in argv]
     lines = [
         "=" * 72,
         title,
-        "command: %s" % " ".join(argv),
+        "command: %s" % " ".join(shown),
         "exit code: %d" % res.returncode,
         "=" * 72,
-        res.stdout.rstrip(),
+        sanitize(res.stdout).rstrip(),
     ]
     if res.stderr.strip():
-        lines += ["", "--- stderr ---", res.stderr.rstrip()]
+        lines += ["", "--- stderr ---", sanitize(res.stderr).rstrip()]
     lines += ["", "VERDICT: %s" % ("PASS (exit 0)" if res.returncode == 0
                                    else "FAIL (exit %d)" % res.returncode), ""]
     outfile.write("\n".join(lines) + "\n")

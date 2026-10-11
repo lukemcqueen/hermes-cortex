@@ -104,3 +104,18 @@ def test_capture_tool_has_no_hardcoded_home_path():
     t = CAPTURE.read_text(encoding="utf-8")
     assert not re.search(r"/home/\w+/", t), \
         "evidence tool must use ~/Path.home(), not a literal home path"
+
+
+@pytest.mark.parametrize("path", EVIDENCE_FILES + [CLAIM_TSV])
+def test_committed_evidence_is_path_neutral(path):
+    """Host-specific absolute paths are noise in a shared repo and trip the
+    secret-leak detector; the capture tool must sanitise them.
+
+    Matches a REAL home path (a literal username segment), not the escaped
+    regex text `\\/home\\/\\\\w+\\/` that appears when a test's own source is
+    echoed into captured output.
+    """
+    assert path.is_file(), "%s missing" % path.name
+    t = path.read_text(encoding="utf-8")
+    real = re.findall(r"/home/(?!\\w\+/|\\\\w)[a-z][a-z0-9_-]+/", t)
+    assert not real, "%s embeds absolute home paths: %s" % (path.name, real)

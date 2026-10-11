@@ -1,6 +1,6 @@
 ========================================================================
 STEP 1 — structural verification of the delivered artifacts
-command: /home/esther/.hermes/cron/output/.venv-brief/bin/python verify_briefing_1012.py
+command: ~/.hermes/cron/output/.venv-brief/bin/python verify_briefing_1012.py
 exit code: 0
 ========================================================================
 === deliverables exist and are non-empty ===
