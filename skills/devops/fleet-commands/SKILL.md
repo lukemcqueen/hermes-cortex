@@ -369,7 +369,10 @@ agent's own handler. When in doubt, peek.
 
 **Local test checklist:**
 1. Send the EXEC/command to `inbox_moses` with a unique `correlation_id`
-2. Run the handler manually: `python3 scripts/agent-message-handler.py --once`
+2. Run the handler manually — use the **DEPLOYED** path,not the repo-relative one:
+   `python3 ~/.hermes-cortex/scripts/agent-message-handler.py --once` (a repo-relative
+   `ops/scripts/agent/...` or bare `scripts/...` path returns `No such file or directory`
+   and leaves the message sitting `pending` until you re-run with the right path.)
 3. Verify handler output shows it consumed and processed the message
 4. Query `inbox_moses` for the EXEC_RESULT with matching correlation_id
 5. Parse the result — confirm exit_code, stdout, success flag all present
