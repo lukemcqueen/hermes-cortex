@@ -30,6 +30,8 @@ PASS  test_committed_evidence_is_path_neutral[~/hermes-cortex/docs/evidence/brie
 PASS  test_committed_evidence_is_path_neutral[~/hermes-cortex/docs/evidence/briefings/url-check-2026-10-12.txt]
 PASS  test_committed_evidence_is_path_neutral[~/hermes-cortex/docs/evidence/briefings/verification-2026-10-12.txt]
 PASS  test_committed_evidence_records_no_failures
+PASS  test_delivery_check_output_reports_verified
+PASS  test_delivery_check_script_and_output_ship
 PASS  test_evidence_file_contains_real_captured_output[~/hermes-cortex/docs/evidence/briefings/test-results-2026-10-12.txt]
 PASS  test_evidence_file_contains_real_captured_output[~/hermes-cortex/docs/evidence/briefings/url-check-2026-10-12.txt]
 PASS  test_evidence_file_contains_real_captured_output[~/hermes-cortex/docs/evidence/briefings/verification-2026-10-12.txt]
@@ -46,7 +48,7 @@ PASS  test_tooling_is_path_neutral[~/hermes-cortex/docs/evidence/briefings/sourc
 PASS  test_tooling_is_path_neutral[~/hermes-cortex/docs/evidence/briefings/verify_briefing_1012.py]
 PASS  test_url_evidence_keeps_both_md_and_pdf_inventory
 
-ran=24 passed=24 failed=0 skipped=0
+ran=26 passed=26 failed=0 skipped=0
 RESULT: ALL TESTS PASSED
 
 RESULT: ALL TESTS PASSED

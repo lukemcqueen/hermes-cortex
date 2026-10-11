@@ -1,0 +1,10 @@
+delivery path: /home/esther/.hermes/cron/output
+repo evidence: /home/esther/hermes-cortex/docs/evidence/briefings
+
+ext    bytes     sha256[:16]        state
+--------------------------------------------------------------------
+md     13663     f0bf3a9f53fd3078   byte-identical to repo copy
+docx   43303     44c60eacb7832192   byte-identical to repo copy
+pdf    14918     f7dda774fd5a6006   byte-identical to repo copy
+
+RESULT: ALL DELIVERABLES VERIFIED

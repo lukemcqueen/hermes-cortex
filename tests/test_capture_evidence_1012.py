@@ -152,3 +152,27 @@ def test_committed_evidence_records_no_failures():
             "%s records a FAIL verdict" % path.name
         assert not re.search(r"^FAIL\s", t, re.M), \
             "%s contains a FAIL line" % path.name
+
+
+DELIVERY_CHECK = EVID / ("delivery-path-check-%s.txt" % DATE)
+DELIVERY_SCRIPT = EVID / "verify_delivery_path_1012.py"
+
+
+def test_delivery_check_script_and_output_ship():
+    """The required output path is outside the repo, so the repo diff cannot
+    show the deliverables exist there. Commit both the check and its output."""
+    assert DELIVERY_SCRIPT.is_file(), "delivery-path check must ship"
+    assert DELIVERY_CHECK.is_file(), "delivery-path check output must ship"
+
+
+def test_delivery_check_output_reports_verified():
+    t = DELIVERY_CHECK.read_text(encoding="utf-8")
+    assert "RESULT: ALL DELIVERABLES VERIFIED" in t, \
+        "committed delivery-path output does not report success"
+    for ext in ("md", "docx", "pdf"):
+        assert "byte-identical to repo copy" in t, \
+            "no byte-identity assertion recorded for %s" % ext
+        assert re.search(r"^%s\s+\d+" % ext, t, re.M), \
+            "no size recorded for %s" % ext
+    assert not re.search(r"MISSING AT DELIVERY PATH|DIFFERS FROM REPO COPY", t), \
+        "committed delivery-path output records a failure"
