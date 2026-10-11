@@ -1,0 +1,27 @@
+=== Superset check: deployed must be SUPERSET of repo (no 'd'-deletions) ===
+fleet-commands deletions-of-repo-content: 0 (want 0)
+governance-closeout deletions-of-repo-content: 0 (want 0)
+loop-governance deletions-of-repo-content: 0 (want 0)
+=== Fence balance (even = balanced), both sides ===
+/home/moses/hermes-cortex/skills/devops/fleet-commands/SKILL.md: fences=32 (want even)
+/home/moses/.hermes/skills/devops/fleet-commands/SKILL.md: fences=32 (want even)
+/home/moses/hermes-cortex/skills/devops/governance-closeout/SKILL.md: fences=8 (want even)
+/home/moses/.hermes/skills/devops/governance-closeout/SKILL.md: fences=8 (want even)
+/home/moses/hermes-cortex/skills/devops/loop-governance/SKILL.md: fences=62 (want even)
+/home/moses/.hermes/skills/devops/loop-governance/SKILL.md: fences=62 (want even)
+=== A2 adversarial gate on repo copies ===
+fleet-commands: 1 GATE_PASSED (want 1)
+governance-closeout: 1 GATE_PASSED (want 1)
+loop-governance: 1 GATE_PASSED (want 1)
+=== Secret-leak detector (expect rc=0) ===
+secret-leak rc=0
+=== md5(matcher): repo == deployed after sync ===
+fleet-commands: MATCH
+governance-closeout: MATCH
+loop-governance: MATCH
+=== Doctor skill-drift section (expect skill drift clear) ===
+  ✅ Skills manifest (basic)
+  ✅ Skills gate
+  ✅ Skill drift
+=== VERDICT ===
+PASS — all checks green
