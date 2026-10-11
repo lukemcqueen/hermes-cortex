@@ -1,0 +1,12 @@
+== check 1: remediation sensor ==
+[]
+sensor rc=0
+PASS: sensor executed (rc=0)
+== check 2: repo skill fence balance ==
+fence-check PASS (0 unbalanced)
+PASS: all repo SKILL.md fences balanced
+== check 3: cron job errors ==
+cron last_status="error" count = 0
+PASS: no cron job in last_status=error
+
+RESULT: 3/3 assertions PASS, exit 0
