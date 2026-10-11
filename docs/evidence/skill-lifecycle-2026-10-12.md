@@ -40,11 +40,11 @@ To https://github.com/lukemcqueen/hermes-cortex.git
    d91f3a61..82f2d9c1  main -> main
 ```
 
-Detector attribution (proof C in the script): the residual drift set is exactly
-`{devops/governance-closeout}` — the script asserts equality against that single
-expected path and fails otherwise. That file is a PURE SUPERSET (0 repo-only
-lines, 2 deployed-only lines), and the lock that owns it is open and belongs to
-a different cycle:
+Attribution of the residual drift (proof C in the script): the residual drift
+set is exactly `{devops/governance-closeout}` — the script asserts equality
+against that single expected path and fails otherwise. That file is a PURE
+SUPERSET (0 repo-only lines, 2 deployed-only lines), and the lock that owns it
+is open and belongs to a different cycle:
 
 ```
 task_id = memory-pruning-push-12144
@@ -54,9 +54,19 @@ owner   = the peer agent-memory-pruning session
 ```
 
 That is not this cycle's file: SOUL Principle 9 / "don't race a peer's in-flight
-update" forbids syncing it. Recorded as issue #88. The FAIL(1) is therefore
-attributed to the peer's open-lock artifact; the six files this cycle owned are
-all `OK` / PASS.
+update" forbids syncing it, so it was left untouched and recorded as issue #88.
+**It has since been landed by its owner** (moses, commit `d2ab1cb6` "skill-lifecycle:
+sync deployed lesson additions to repo (3 skills)"), which is the correct
+resolution — the peer's own session published its lesson. So the detector now
+reads **Verdict PASS, 0 stranded, 839 in sync**, and this cycle's six files were
+`OK`/PASS throughout.
+
+**Artifact note (ADV-12154 re-run):** `verify-cycle-12154-final.out` was first
+captured when this cycle's tip was still UNPUSHED, so its assertion 1 correctly
+printed `FAIL — local tip is not published` (the cause was the not-yet-run push,
+not any commit). It has been re-captured after the push and now ends
+`RESULT: PASS — all assertions held` (exit 0), which is the output committed
+here. Re-run the script yourself to confirm.
 
 ## ADV-12154-3 (scope-drift: memory-pruning / stale-check evidence files)
 

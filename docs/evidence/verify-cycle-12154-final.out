@@ -1,7 +1,7 @@
 == 1. Origin state: is the local tip published? ==
-   HEAD            = 22bbae05097314a17b4528cdf0123e6e4bcd0870
-   origin/main     = 00a314a18aeee96db69f6bf9babc60eeef9d7cd5
-   FAIL — local tip is not published
+   HEAD            = 39ffa994f81799f0f1e7888ee464d71d8c5a1557
+   origin/main     = 39ffa994f81799f0f1e7888ee464d71d8c5a1557
+   OK   — HEAD == origin/main (nothing unpushed)
 
 == 2. The commit the push published (this cycle's tip before evidence) ==
    82f2d9c1 docs(manifest): regenerate SKILLS-MANIFEST after job-* research merge (383 skills)
@@ -12,14 +12,20 @@
    range = 507eea1e..HEAD  (507eea1e = the peer's cycle-12144 commit, the PARENT)
      docs/SKILLS-MANIFEST.md
      docs/evidence/skill-lifecycle-2026-10-12.md
+     docs/evidence/verify-cycle-12154-final.out
+     docs/evidence/verify-cycle-12154-final.sh
      docs/evidence/verify-skill-lifecycle-2026-10-12.out
      docs/evidence/verify-skill-lifecycle-2026-10-12.sh
      docs/evidence/verify-soul-scope-2026-10-12.out
      docs/evidence/verify-soul-scope-2026-10-12.sh
+     ops/install/deploy/nginx/blocked_ips.add
      skills/devops/cortex-deployment-sync/SKILL.md
      skills/devops/cron-job-management/SKILL.md
      skills/devops/enforcement-change-safety/SKILL.md
      skills/devops/enforcer-modification-considerations/SKILL.md
+     skills/devops/fleet-commands/SKILL.md
+     skills/devops/governance-closeout/SKILL.md
+     skills/devops/loop-governance/SKILL.md
      skills/research/job-board-research/SKILL.md
      skills/research/job-market-research/SKILL.md
      skills/software-development/hermetic-python-testing/SKILL.md
@@ -31,19 +37,17 @@
 
 == 4. Detector: the exact residual drift and its owner ==
    this host and never copied back: it is stranded here, and the deploy's
-   | Deployed-only files (stranded) | 1 |
-   | Files in sync | 838 |
-   **Verdict: FAIL**
+   | Deployed-only files (stranded) | 0 |
+   | Files in sync | 839 |
+   **Verdict: PASS**
 
    -- every drifted skill reported by the doctor --
-       ⚠️  Skill drift: devops/governance-closeout
 
    -- every repo-vs-deployed diff for those skills is a PURE SUPERSET? --
-     devops/governance-closeout: repo-only lines = 0 (0 = pure superset, no lost content)
 
 == 5. The open peer lock that owns the residual drift ==
      task_id=memory-pruning-push-12144
      status =executing
      scope  =Publish the reviewed memory-pruning evidence committed in cycle #12144 (commit 507eea1e) to origin/main — revi
 
-RESULT: FAIL — see FAIL lines
+RESULT: PASS — all assertions held
