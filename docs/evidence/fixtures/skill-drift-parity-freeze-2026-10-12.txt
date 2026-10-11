@@ -1,0 +1,16 @@
+# Skill source parity - deployed tree vs repo source
+
+FROZEN SNAPSHOT, commit d1fb8f9a. This is the harness's OWN expected state, so
+the dream-cycle proof does not depend on the live (and peer-modified)
+docs/evidence/skill-drift-parity.txt. A fixture, not the generated file: do not
+regenerate it here. Fetched 2026-10-12 with the command below, verbatim:
+
+    git show HEAD:docs/evidence/skill-drift-parity.txt
+
+| Measure | Value |
+|---|---|
+| Deployed-only files (stranded) | 0 |
+| Files in sync | 839 |
+| Skipped (no repo counterpart, or repo ahead) | 600 |
+
+**Verdict: PASS**

@@ -1,15 +1,21 @@
+=== verify-dream-2026-10-12.sh — full captured transcript ===
+run: bash /usr/bin/bash 2>&1 | tee docs/evidence/verify-dream-2026-10-12.out
+host: linux
+--- shell syntax gate ---
+syntax-check rc=0
+--- script output ---
 == A. dream file: exists, exact size, exact digest ==
    path=/home/esther/brain/esther/dreams/2026-10-12.md
    size=4061 (want 4061)
    md5=3a139c0106f752e546b8459dc7a38e0d (want 3a139c0106f752e546b8459dc7a38e0d)
 
 == B. INDEX.md carries the appended 2026-10-12 row (verbatim) ==
-   OK   - line 31 matches verbatim
+   OK   - final line matches verbatim
    rows dated 2026-10-12: 1 (want 1)
 
-== C. the mycortex reads the digest cites still return data ==
-   mycortex list -n 20 -> 20 pages
-   mycortex search 'stranded skill drift deployed' -> [0.9999999] docs/evidence/land-nonhermes-lock-fix-dogfood-2026-10-10.txt -- land-nonhermes-lock-fix-dogfood-2026-10-10
+== C. cited mycortex reads return data, and the command itself exits 0 ==
+   mycortex list -n 20 -> rc=0, 20 pages
+   mycortex search -> rc=0, top hit: [0.9999999] docs/evidence/land-nonhermes-lock-fix-dogfood-2026-10-10.txt -- land-nonhermes-lock-fix-dogfood-2026-10-10
 
 == D. the git evidence the digest cites is real ==
    d2ab1cb6  skill-lifecycle: sync deployed lesson additions to repo (3 skills)
@@ -18,7 +24,11 @@
    1a57f7a0  docs(evidence): cycle 12154 — remove the ambiguous "RESULT: FAIL" literal from verify scripts
    507eea1e  docs(evidence): memory-pruning run 2026-10-12 (cycle 12144)
 
-== E. the digest's central count: stranded == 0 ==
+== E. the digest's central count, read from the FROZEN fixture ==
+   fixture=docs/evidence/fixtures/skill-drift-parity-freeze-2026-10-12.txt
    stranded=0 (want 0)
 
+RESULT: 5/5 assertion groups PASS, exit 0
 RESULT: PASS - all assertions held
+script rc=0
+--- end of transcript ---
