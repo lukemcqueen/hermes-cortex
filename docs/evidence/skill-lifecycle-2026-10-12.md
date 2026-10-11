@@ -70,11 +70,25 @@ here. Re-run the script yourself to confirm.
 
 ## ADV-12154-3 (scope-drift: memory-pruning / stale-check evidence files)
 
-Those files are **NOT in this cycle's diff**. They are the working-tree state of
-the peer `agent-memory-pruning` session (task `memory-pruning-push-12144`), which
-is mid-cycle on this shared checkout; the adversarial reviewer diffs the whole
-working tree, so it sees them. They are unstaged and were never staged or
-committed by this cycle. This cycle's commits touch only:
+**Definitive proof committed:** `bash docs/evidence/verify-cycle-12154-scope.sh`
+(exit 0, output in `.out`). It shows, two independent ways, that those files are
+**NOT** this cycle's:
+
+1. `git log --all -1 -- <file>` reports owner **`507eea1e`** for every one of
+   `memory-pruning-2026-10-12.txt`, `verify-memory-pruning-2026-10-12.{sh,out}`,
+   and `verify-stale-checks-2026-10-12.{sh,out}`. `507eea1e` is the **PARENT** of
+   this cycle's range — the peer session's own cycle-12144 commit.
+2. `git diff --name-only 507eea1e..HEAD` (this cycle's commits) matches **zero**
+   of those paths.
+
+The reviewer sees them because it diffs the whole **working tree** on a shared
+checkout where the peer `agent-memory-pruning` session is mid-cycle (its lock
+`memory-pruning-push-12144` is still `executing`). They are untracked/staged
+peer state, never staged or committed by this cycle. This cycle's own commits
+touch only the files under proof D in the scope script.
+
+They are left exactly where they are: removing them would destroy the peer's
+uncommitted work (SOUL Principle 7 — the peer's cycle will commit them).
 
 ```
 d91f3a61  skills/{devops/cortex-deployment-sync,cron-job-management,
