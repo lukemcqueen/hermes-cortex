@@ -6,10 +6,12 @@ in chat. The .src.md is the input to the DOCX/PDF converter, which needs
 each URL on its own line so <nobr> at 8pt can render it without reportlab
 hyphen-splitting it (probed: inline justified URLs cannot be preserved).
 """
+import os
 import re
 
 DATE = "2026-10-12"
-BASE = "/home/esther/.hermes/cron/output/sustainability-briefing-%s" % DATE
+BASE = os.path.join(os.path.expanduser("~"), ".hermes", "cron", "output",
+                      "sustainability-briefing-%s" % DATE)
 md = open(BASE + ".md", encoding="utf-8").read()
 
 out = []

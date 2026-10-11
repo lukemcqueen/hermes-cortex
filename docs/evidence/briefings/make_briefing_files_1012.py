@@ -7,6 +7,7 @@ non-breaking hyphen — only splitLongWords=0 kept the hyphen and even then
 the URL split across lines). URLs on their own line at 8pt inside <nobr>
 were verified byte-perfect, so this converter emits them that way.
 """
+import os
 import re
 
 from docx import Document
@@ -19,7 +20,8 @@ from reportlab.lib.units import cm
 from reportlab.platypus import HRFlowable, Paragraph, SimpleDocTemplate
 
 DATE = "2026-10-12"
-SRC = "/home/esther/.hermes/cron/output/sustainability-briefing-%s.src.md" % DATE
+SRC = os.path.join(os.path.expanduser("~"), ".hermes", "cron", "output",
+                   "sustainability-briefing-%s.src.md" % DATE)
 BASE = SRC.replace(".src.md", "")
 text = open(SRC, encoding="utf-8").read()
 
