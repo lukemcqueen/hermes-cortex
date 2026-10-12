@@ -1,6 +1,6 @@
 Running: python3 tests/test_review_material_bound.py
 rc: 0
-when: 2026-10-12T10:06:23Z
+when: 2026-10-12T10:15:52Z
 
 [mcp-server] WARNING: the 'mcp' package is not installed — the stdio server cannot start; the CLI adapter (ops/scripts/loop-gov.py) still works.
 [mcp-server]   /home/esther/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3 -m pip install mcp
@@ -20,8 +20,9 @@ when: 2026-10-12T10:06:23Z
   bounded files are named (20 of 20) ✓
   floor respects the total budget (60 files / 3000 chars -> 10932 chars) ✓
   gate uses _bound_diff; no bare head-only slice remains ✓
+  largest file shown whole ✓
   disclosure totals match the parts (19860 of 21860) ✓
   head+tail per file ✓ (last file's tail survives); control lost file19 entirely
 
-RESULT: ALL PASS (16 tests)
-sha256: 110e2d5a1663d7bab50ef9d52c189cfb5adca30b2768fdafadc85d0f117e360c
+RESULT: ALL PASS (17 tests)
+sha256: c360b0d11cfcf64cc5231a53ca111b15b214ea0f2ae9c99a37f5732966ef8c1e

@@ -3429,30 +3429,43 @@ def _bound_per_file(sections: list, budget: int, total: int,
     # allocation, unchanged — the floor is an improvement, never a regression.
     floor = max(1, REVIEW_MATERIAL_PER_FILE_FLOOR)
     min_slice = max(1, REVIEW_MATERIAL_MIN_SLICE)
-    served = 0
+    if budget < n * min_slice:                      # cannot afford the full guarantee
+        min_slice = max(1, budget // n)             # ...so keep it fair instead
+    reserved = n * min_slice                        # every file IS represented (2026-10-08 contract)
+    floor_budget = max(0, budget - reserved)
+
+    # Pass 1 — the FLOOR within the non-reserved part, smallest first, whole files.
+    r = floor_budget
     for idx in sorted(range(n), key=lambda i: sizes[i]):
-        if sizes[idx] > floor:
-            break
-        reserve = max(0, n - served - 1) * min_slice
-        if remaining - sizes[idx] < reserve:
+        if sizes[idx] > floor or r < sizes[idx]:
             break
         alloc[idx] = sizes[idx]
-        remaining -= sizes[idx]
-        served += 1
+        r -= sizes[idx]
+
+    # Pass 3 — the per-file guarantee, applied to the files still cut, LARGEST explicitly
+    # included. The first floor-first cut could spend the whole budget on small files and
+    # leave the largest file (the always-review code under review) a 1-char sliver, which
+    # a reviewer reported as "6526 of 6526 chars omitted" — i.e. it could not see the code
+    # it was supposed to judge. Reserving the guarantee up front closes that.
+    for idx in range(n):
+        if alloc[idx] < sizes[idx]:
+            give = min(min_slice, sizes[idx] - alloc[idx], r)
+            alloc[idx] += give
+            r -= give
 
     # Pass 2 — the files still cut share what is left, equally and UP FRONT (one slice
     # each before any top-up). Consuming the share sequentially starved the tail of the
     # range — files that appear with a header and no body, which is exactly the condition
     # test_no_changed_file_is_omitted_entirely exists to prevent.
     rest = [i for i in range(n) if alloc[i] < sizes[i]]
-    if rest:
-        share = max(1, remaining // len(rest))
+    if rest and r > 0:
+        share = max(1, r // len(rest))
         for i in rest:
-            give = min(sizes[i], share)
+            give = min(sizes[i] - alloc[i], share, r)
             alloc[i] += give
-            remaining -= give
+            r -= give
 
-    leftover = budget - sum(alloc)
+    leftover = max(0, budget - sum(alloc))
     truncated = [i for i in range(n) if alloc[i] < sizes[i]]
     while leftover > 0 and truncated:
         share = max(1, leftover // len(truncated))

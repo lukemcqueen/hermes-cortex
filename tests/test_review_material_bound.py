@@ -293,6 +293,36 @@ def test_the_floor_never_exceeds_the_budget():
     print(f"  floor respects the total budget (60 files / {budget} chars -> {len(got)} chars) ✓")
 
 
+def test_the_largest_file_is_never_left_with_nothing():
+    """2026-10-12 follow-up: the first floor-first cut could spend the budget on small
+    files and give the largest file (always-review code under review) a 1-char sliver —
+    a reviewer read a 6526-char diff as '6526 of 6526 chars omitted' and could not judge
+    the code. The allocation reserves a whole REVIEW_MATERIAL_MIN_SLICE per file first.
+    """
+    import re
+    small = [
+        f"diff --git a/docs/evidence/e{i}.txt b/docs/evidence/e{i}.txt\n"
+        f"--- a/docs/evidence/e{i}.txt\n+++ b/docs/evidence/e{i}.txt\n@@ -0,0 +1,40 @@\n"
+        + "".join(f"+ line {k}\n" for k in range(40))
+        for i in range(20)]
+    big = ("diff --git a/mcp-servers/loop-gov-mcp.py b/mcp-servers/loop-gov-mcp.py\n"
+           "--- a/mcp-servers/loop-gov-mcp.py\n+++ b/mcp-servers/loop-gov-mcp.py\n@@ -0,0 +1,400 @@\n"
+           + "".join(f"+ def fn_{k}(): return {k}\n" for k in range(400)))
+    d = "\n".join(small + [big]) + "\n"
+    assert len(big) > mcp.REVIEW_MATERIAL_PER_FILE_FLOOR, \
+        "fixture: the biggest file must be above the floor, so this stresses the reserve"
+    got = mcp._bound_diff(d, budget=12000)
+    assert "loop-gov-mcp.py" in got, "the largest (always-review) file must appear in the material"
+    assert "fn_" in got, "it must carry real body, not just its header"
+    # its per-file omission (if any) must leave at least a slice, not everything
+    m = re.search(r"bounded: (\d+) of " + str(len(big)) + r" chars omitted", got)
+    if m:
+        assert int(m.group(1)) < len(big), "a fully-omitted largest file is the bug this test exists to prevent"
+        print(f"  largest file gets a slice ({int(m.group(1))} of {len(big)} omitted) ✓")
+    else:
+        print("  largest file shown whole ✓")
+
+
 def test_deployed_gate_behaves_as_this_file_says():
     """The DEPLOYED gate (what actually reviews closes) bounds evidence the same way.
 
