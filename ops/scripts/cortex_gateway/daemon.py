@@ -252,7 +252,14 @@ class Gateway:
         # menu is a UI decision, and a backend's raw model list can run to hundreds of
         # entries (pi lists every OpenRouter model) — an operator curates the handful
         # worth switching between, in gateway.yaml. Empty = the text-only `/model`.
-        self.model_menu = [str(m).strip() for m in (model_menu or []) if str(m).strip()]
+        raw_menu = list(model_menu or [])
+        self.model_menu = [str(m).strip() for m in raw_menu if str(m).strip()]
+        # Say so when an entry vanishes: a blank line in the YAML config silently
+        # shortening the picker is a config error the operator cannot see otherwise.
+        if len(self.model_menu) != len(raw_menu):
+            print(f"⚠️  gateway.yaml models: {len(raw_menu) - len(self.model_menu)} "
+                  f"blank entr{'y' if len(raw_menu) - len(self.model_menu) == 1 else 'ies'} "
+                  f"ignored ({len(self.model_menu)} usable)", file=sys.stderr)
         self.model_page_size = max(1, int(model_page_size or 6))
         # offset tracks the transport's own offset (transport owns the truth).
         self.offset = getattr(transport, "offset", 0)
