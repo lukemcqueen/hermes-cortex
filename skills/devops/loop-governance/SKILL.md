@@ -572,6 +572,29 @@ them consumes the same window. The preview lists the range's commits — if any 
 don't carry them through your review: land them in their own cycle, or expect the window to
 be shared. (`git status` cannot tell you *who* staged something; the commit list can.)
 
+### Misattributed findings — check the section split before reworking anything
+
+**Symptom:** the reviewer reports content that belongs to file A as if it sat in file B
+("the dogfood transcript contains the skill note's text"), or a per-file bound looks
+structurally unsatisfiable because a section bearing one path is many times the size of
+that file (measured: an 86,318-char section under a 5.8KB path). Findings like these are
+**true of the material and false of the repo** — the tell is that `grep` at HEAD refutes
+them while the finding keeps returning.
+
+**Cause:** the close review composes material from `git log -p` (per-commit patches, so a
+path appears once per commit that touches it), but a splitter that only breaks on
+`diff --git a/` lets each file's section run past its own patch and absorb the **next
+commit's message**. Every per-file bound then pairs a path with text from a different
+commit. Fixed 2026-10-12 by treating `commit <sha>` as a section boundary
+(`_COMMIT_BOUNDARY_RE`).
+
+**Before reworking the change, ask which composition the review uses.** A preview that
+builds with `git diff` is a *different material* than a review built with `git log -p`
+(measured: 133,574 vs 43,407 chars) — so a preview can look clean while the review stays
+broken. `review-material.py` mirrors the review's composition and takes
+`--gate {auto,repo,deployed}` so both copies are measurable. When a finding's numbers match
+nothing your preview produces, suspect the composition path, not your evidence.
+
 ### Evidence budget
 
 Answer a finding by fixing the WINDOW, not by appending another artifact. Each evidence file
