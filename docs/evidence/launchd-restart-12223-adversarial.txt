@@ -1,19 +1,9 @@
-# cycle 12223 — launchd /restart: ADVERSARIAL A4 GATE
-# generated 2026-10-12 by esther; host paths normalized to ~
-# each command's own rc is echoed on the line AFTER it; the trailing rc= is
-# the whole compound's status (a pipe would make it the last stage's)
-$ cd ~/hermes-cortex && git show $(git rev-parse 190aadd7^):ops/scripts/cortex_gateway/daemon.py > /tmp/d-before.py; echo 'baseline: 190aadd7^ (pre-change)'; for f in /tmp/d-before.py ops/scripts/cortex_gateway/daemon.py; do echo "file: $f"; python3 ~/.hermes-cortex/scripts/adversarial-verify.py --file $f --level A4 --gate 2>&1 | grep -E 'Summary|Medium:|Low:|Info:|GATE_PASSED'; done
-baseline: 190aadd7^ (pre-change)
-file: /tmp/d-before.py
-📊 Summary: 1 file(s), 24 finding(s)
-   🟡 Medium: 4
-   🔵 Low: 1
-   ⚪ Info: 19
-✅ GATE_PASSED — no critical/high findings
-file: ops/scripts/cortex_gateway/daemon.py
-📊 Summary: 1 file(s), 25 finding(s)
-   🟡 Medium: 4
-   🔵 Low: 2
-   ⚪ Info: 19
-✅ GATE_PASSED — no critical/high findings
-rc=0
+# 12223 ADVERSARIAL A4 — one claim: no critical/high, and no NEW finding class.
+# Reproduce with section 5 of docs/evidence/launchd-restart-12223-reproduce.sh.
+# BASELINE is 190aadd7^ (the pre-change parent): origin/main already CONTAINS the
+# fix, so comparing against it would compare the change with itself.
+observed 2026-10-12:
+before   Medium 4  Low 1  Info 19      GATE_PASSED
+after    Medium 4  Low 2  Info 19      GATE_PASSED
+# the added LOW is the same first-line-only subprocess-no-timeout detector that
+# already fires on the pre-existing systemd call; both calls carry timeout=10

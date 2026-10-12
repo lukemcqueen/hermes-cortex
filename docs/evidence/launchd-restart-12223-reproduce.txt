@@ -1,0 +1,14 @@
+cycle 12223 — repo=/home/esther/hermes-cortex  interpreter=/home/esther/.hermes/hermes-agent/venv/bin/python3  head=60764d44
+
+1a  rc=0  53 passed in 0.94s    (tests/test_gateway_slash_parity.py)
+1b  rc=0  287 passed, 1438 deselected in 40.25s    (tests/ -k gateway/harness/startup)
+2   rc=0  8 passed, 45 deselected in 0.26s    (launchd + plist-template cases)
+PASS deployed == repo: ops/scripts/cortex_gateway/daemon.py
+PASS deployed == repo: ops/scripts/cortex_gateway/slash_parity_evidence.py
+PASS deployed == repo: docs/templates/com.hermes.cortex-gateway.plist
+4   rc=1  Overall: WARNING  (449 pass · 9 warn · 0 fail · 7 info)
+4   warnings naming a changed path: 0
+5   before.py: Medium: 4 Low: 1 Info: 19  GATE_PASSED
+5   daemon.py: Medium: 4 Low: 2 Info: 19  GATE_PASSED
+
+ALL CLAIMS VERIFIED (0 failures)
