@@ -165,12 +165,21 @@ for f in scripts/task-mcp.py scripts/executor-mcp.py scripts/cortex-bus-mcp.py \
   printf '# mcp server\n' > "$HOME_D/.hermes-cortex/$f"
 done
 PJD="$HOME_D/.pi/agent/mcp.json"
-printf 'not json{\n' > "$PJD"; cp "$PJD" "$PJD.before"
-OUT_D="$(env HOME="$HOME_D" PYTHON="$PY_MCP" bash "$SCRIPT" 2>&1)"; RC_D=$?
-check "D: exits non-zero (rc=$RC_D)" "$([ "$RC_D" -ne 0 ] && echo 1 || echo 0)"
-check "D: says the file is not valid JSON" "$([[ "$OUT_D" == *"not valid JSON"* ]] && echo 1 || echo 0)"
-check "D: no raw Python traceback" "$([[ "$OUT_D" != *"Traceback"* ]] && echo 1 || echo 0)"
-check "D: the unparseable file is left for its owner" "$(cmp -s "$PJD" "$PJD.before" && echo 1 || echo 0)"
+# EVERY malformed SHAPE, not one fixture: an empty file, a truncated object and
+# binary bytes each reach the same handler (UnicodeDecodeError IS a ValueError), and
+# a single fixture only proves the message, not the error path. The file must also
+# survive byte-identical in each case — the installer may never "repair" a file it
+# could not parse.
+D=0
+for variant in 'not json{' '' '{"mcpServers": {' "$(printf '\000\001\002\377')"; do
+  D=$((D + 1))
+  printf '%s' "$variant" > "$PJD"; cp "$PJD" "$PJD.before"
+  OUT_D="$(env HOME="$HOME_D" PYTHON="$PY_MCP" bash "$SCRIPT" 2>&1)"; RC_D=$?
+  check "D$D: exits non-zero (rc=$RC_D)" "$([ "$RC_D" -ne 0 ] && echo 1 || echo 0)"
+  check "D$D: says the file is not valid JSON" "$([[ "$OUT_D" == *"not valid JSON"* ]] && echo 1 || echo 0)"
+  check "D$D: no raw Python traceback" "$([[ "$OUT_D" != *"Traceback"* ]] && echo 1 || echo 0)"
+  check "D$D: the unparseable file is left for its owner" "$(cmp -s "$PJD" "$PJD.before" && echo 1 || echo 0)"
+done
 
 echo
 if [[ "$FAILS" -gt 0 ]]; then echo "$FAILS FAILED"; exit 1; fi

@@ -1,0 +1,12 @@
+pi-mcp landing verify — repo=/home/esther/hermes-cortex  head=b69de246
+
+1  installer suite rc=0  25 checks   ALL PASS
+   D variants exercised: 4 shapes
+2  audit suite rc=0  ✅ Pi integration audit checks passed
+2b foreign-server cases rc=0  ✅ foreign-server scoping checks passed
+3  pytest (gateway slash parity + foreign server) rc=0  56 passed in 3.63s 
+4  generate-harnesses --check rc=0  generate-harnesses: OK — 6 derived file(s) current
+PASS deployed == repo: ops/scripts/cortex_gateway/pi_control.py
+PASS deployed == repo: mcp-servers/cortex-context-mcp.py
+
+ALL CLAIMS VERIFIED (0 failures)
