@@ -1,0 +1,20 @@
+Risk acceptance — the warnings still standing in the strands-landing cycle (2026-10-12)
+Source: docs/evidence/dogfood-strands-landing-2026-10-12.txt
+Status there: 'Overall: WARNING (448 pass · 12 warn · 0 fail · 8 info)'. Its LAST line,
+'✅ DOGFOOD PASSED — deployed state verified clean', is the TOOL's own verdict line.
+It is NOT a claim that the warning set is empty, and this note records each one:
+
+1. Skill drift — 8 drifted, 378 in sync, 130 Hermes defaults skipped. Deployed copies are
+   NEWER than the repo source for 5 named skills (survey-before-action, change-checklist,
+   shell-scripting, shared-repo-push-gates, hermes-gateway-operations). Pre-existing: the
+   drift is content edited on the DEPLOYED copies by other sessions, which this cycle does
+   not touch. The doctor names its own remedy (reconcile-stranded-skills.py, report first).
+2. Repo clean — the tree still holds uncommitted work outside this cycle's paths (the last
+   stranded unstaged edits). Not this cycle's subject; recorded as still-outstanding.
+3. AGENTS.md efficiency (proj) — concerns /home/esther/proj, a different repo entirely.
+4. Stale deploy: scripts/review-sweep-check.py — a DEPLOYED script with no repo source;
+   unrelated to any file this cycle changes, and the doctor names the fix (rm it).
+
+None of the twelve names a file this cycle changes, and the run reports 0 fail.
+Verified claim for this cycle: the deploy+landing checks that DO cover its files —
+verify-landed 'All checks passed' and deployed == repo for each changed deployed source.
