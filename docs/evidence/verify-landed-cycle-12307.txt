@@ -14,3 +14,12 @@ so origin/main is deliberately behind the tip. The line that matters for this cy
 "# 0 of 11 changed files are deployed sources": every file here is docs/evidence or the
 index, so no deployed source can drift. The post-push re-run appears in the cycle that
 performs the push.
+
+=== POST-PUSH RE-RUN (same command, after the push) ===
+# range: 1def90929d5c..5405fa321838  repo: /home/esther/hermes-cortex
+PASS  receipt: not required — 1def90929d5c..5405fa321838 touches no always-review path
+# 0 of 12 changed files are deployed sources; 351 entries in the map
+PASS  remote: origin/main == 5405fa321838
+
+All checks passed.
+rc=0 (PASS on every check, including remote == tip)
