@@ -84,13 +84,22 @@ def resolve_mem_password(env_paths=None) -> str:
 
 
 class _PgConnection:
-    """Thin psql-based Postgres connection seam. Testable via injection."""
+    """Thin psql-based connection seam to mycortex memory. Testable via injection."""
 
     def init(self, db_name: str = _DEFAULT_DB):
         self._db_name = db_name
         self._is_macos = os.uname().sysname == "Darwin"
+        self.last_error = ""
 
-    def _cmd(self, role: str) -> tuple[list[str], dict]:
+    def _attempts(self, role: str) -> list[tuple[list[str], dict]]:
+        """The argv ladder, in order — the ORDER is the fix (mirrors store.py).
+
+        Linux: DIRECT `docker exec` FIRST. It needs no group switch, so it works
+        under `NoNewPrivileges=true` — which the serving unit sets. `sg docker`
+        calls setgroups()/setgid(), which the kernel refuses under that hardening,
+        but it stays as the FALLBACK because it is the only path where the user is
+        not in the docker group.
+        """
         if self._is_macos:
             pw = resolve_mem_password()
             pgpass = f"localhost:{_DEFAULT_PORT}:{self._db_name}:{role}:{pw}"
@@ -99,23 +108,53 @@ class _PgConnection:
             f.write(pgpass + "\n")
             f.close()
             os.chmod(f.name, 0o600)
-            return ["psql", "-h", "localhost", "-p", str(_DEFAULT_PORT), "-U", role, "-d", self._db_name, "-w", "-v", "ON_ERROR_STOP=1", "-t", "-A"], {"PGPASSFILE": f.name}
-        else:
-            return [
-                "sg", "docker", "-c",
-                f"docker exec -i {_DEFAULT_CONTAINER} psql -U {role} -d {self._db_name} -w -v ON_ERROR_STOP=1 -t -A"
-            ], {}
+            return [(
+                ["psql", "-h", "localhost", "-p", str(_DEFAULT_PORT), "-U", role,
+                 "-d", self._db_name, "-w", "-v", "ON_ERROR_STOP=1", "-t", "-A"],
+                {"PGPASSFILE": f.name},
+            )]
+        direct = (
+            ["docker", "exec", "-i", _DEFAULT_CONTAINER, "psql", "-U", role,
+             "-d", self._db_name, "-w", "-v", "ON_ERROR_STOP=1", "-t", "-A"],
+            {},
+        )
+        via_sg = (
+            ["sg", "docker", "-c",
+             f"docker exec -i {_DEFAULT_CONTAINER} psql -U {role} -d {self._db_name} "
+             f"-w -v ON_ERROR_STOP=1 -t -A"],
+            {},
+        )
+        return [direct, via_sg]
+
+    def _cmd(self, role: str) -> tuple[list[str], dict]:
+        """The PREFERRED form (first attempt)."""
+        return self._attempts(role)[0]
+
+    def _run(self, sql: str, role: str, timeout: int):
+        """Run sql over the ladder; return the LAST attempt's CompletedProcess."""
+        causes: list[str] = []
+        r = None
+        for cmd, env in self._attempts(role):
+            r = subprocess.run(cmd, input=sql, capture_output=True, text=True,
+                               timeout=timeout, env={**os.environ, **env})
+            if r.returncode == 0:
+                self.last_error = ""
+                return r
+            causes.append(f"{cmd[0]}: {(r.stderr.strip() or r.stdout.strip())}")
+        if r is None:
+            raise RuntimeError("no psql attempt could be built (empty argv ladder)")
+        self.last_error = " | ".join(causes)
+        # Keep the caller's existing error shape, but name every cause.
+        return subprocess.CompletedProcess(r.args, r.returncode, r.stdout, self.last_error)
 
     def run_sql(self, sql: str, role: str = "mycortex_mem_writer", timeout: int = 10) -> str:
-        cmd, env = self._cmd(role)
-        r = subprocess.run(cmd, input=sql, capture_output=True, text=True, timeout=timeout, env={**os.environ, **env})
+        r = self._run(sql, role, timeout)
         if r.returncode != 0:
             raise RuntimeError(f"psql error: {r.stderr.strip() or r.stdout.strip()}")
         return r.stdout.strip()
 
     def query(self, sql: str, role: str = "mycortex_mem_reader", timeout: int = 10) -> list[list[str]]:
-        cmd, env = self._cmd(role)
-        r = subprocess.run(cmd, input=sql, capture_output=True, text=True, timeout=timeout, env={**os.environ, **env})
+        r = self._run(sql, role, timeout)
         if r.returncode != 0:
             raise RuntimeError(f"psql error: {r.stderr.strip()}")
         out = r.stdout.strip()

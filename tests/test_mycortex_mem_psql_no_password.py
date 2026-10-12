@@ -74,12 +74,6 @@ def _store_macos_cmd(store_module):
     return connection._cmd("mycortex_mem_reader")[0]
 
 
-def _store_linux_cmd(store_module):
-    connection = store_module.PgConnection()
-    connection._is_macos = False
-    return connection._cmd("mycortex_mem_reader")[0]
-
-
 def _plugin_cmd(plugin_module, is_macos: bool):
     connection = plugin_module._PgConnection()
     connection.init("mycortex_mem")
@@ -97,12 +91,24 @@ def test_store_macos_invocation_forbids_password_prompt(store_module):
 
 
 def test_store_linux_invocation_forbids_password_prompt(store_module):
-    cmd = _store_linux_cmd(store_module)
+    """The Linux ladder: DIRECT docker exec first (no group switch, so it survives
+    NoNewPrivileges=true), `sg docker` kept as the fallback for a user who is not
+    in the docker group — and BOTH forms must pass -w so psql never prompts."""
+    connection = store_module.PgConnection()
+    connection._is_macos = False
+    attempts = [argv for argv, _env in connection._attempts("mycortex_mem_reader")]
 
-    assert cmd[:3] == ["sg", "docker", "-c"]
-    docker_exec = cmd[3]
-    assert "psql" in docker_exec
-    assert re.search(r"psql -U \S+ -d \S+ -w -v ON_ERROR_STOP=1", docker_exec), docker_exec
+    direct = attempts[0]
+    assert direct[:2] == ["docker", "exec"], direct
+    assert "sg" not in direct, "the first attempt must not switch groups"
+    assert "psql" in direct
+    assert "-w" in direct
+    assert re.search(r"psql -U \S+ -d \S+ -w -v ON_ERROR_STOP=1", " ".join(direct)), direct
+
+    sg_forms = [a for a in attempts if a[0] == "sg"]
+    assert sg_forms, "the sg fallback was dropped — a user outside the docker group loses memory"
+    inner = sg_forms[0][3]
+    assert re.search(r"psql -U \S+ -d \S+ -w -v ON_ERROR_STOP=1", inner), inner
 
 
 def test_plugin_macos_invocation_forbids_password_prompt(plugin_module):
@@ -113,11 +119,24 @@ def test_plugin_macos_invocation_forbids_password_prompt(plugin_module):
 
 
 def test_plugin_linux_invocation_forbids_password_prompt(plugin_module):
-    cmd = _plugin_cmd(plugin_module, is_macos=False)
+    """Same ladder + same -w contract in the Hermes-side access layer (kept in step
+    with store.py): direct docker exec first, sg fallback, no password prompt."""
+    connection = plugin_module._PgConnection()
+    connection.init("mycortex_mem")
+    connection._is_macos = False
+    attempts = [argv for argv, _env in connection._attempts("mycortex_mem_reader")]
 
-    docker_exec = cmd[3]
-    assert "psql" in docker_exec
-    assert re.search(r"psql -U \S+ -d \S+ -w -v ON_ERROR_STOP=1", docker_exec), docker_exec
+    direct = attempts[0]
+    assert direct[:2] == ["docker", "exec"], direct
+    assert "sg" not in direct
+    assert "psql" in direct
+    assert "-w" in direct
+    assert re.search(r"psql -U \S+ -d \S+ -w -v ON_ERROR_STOP=1", " ".join(direct)), direct
+
+    sg_forms = [a for a in attempts if a[0] == "sg"]
+    assert sg_forms, "the sg fallback was dropped from the plugin"
+    inner = sg_forms[0][3]
+    assert re.search(r"psql -U \S+ -d \S+ -w -v ON_ERROR_STOP=1", inner), inner
 
 
 def _psql_standin(tmp_path: Path) -> Path:

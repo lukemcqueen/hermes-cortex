@@ -1,0 +1,96 @@
+pi has no memory — "the cortex store is not reachable from this host" (fixed 2026-10-08)
+=====================================================================================
+
+WHAT WAS REPORTED. The pi backend of @Esther0001Bot answered "memory unavailable — the
+cortex store is not reachable from this host", while Hermes Esther on the SAME host had
+memory. Same database, same credentials, same container — one harness had memory, the other
+did not.
+
+ROOT CAUSE (diagnosed by the concurrent session bg_185637_492530, whose regression test is
+committed as tests/test_no_new_privs_sg_store.py). Both access layers reached Postgres on
+Linux ONLY through `sg docker -c "docker exec … psql …"`. `sg` calls setgroups()/setgid()
+unconditionally, and the kernel refuses that under `NoNewPrivileges=true` — which the
+serving unit (cortex-gateway-esther0001.service) sets. The process already HELD the docker
+group; the group switch was pure ceremony, and it was what broke. `available()` then
+swallowed the exception and returned a bare "unavailable", so a hardening flag was reported
+as a database outage.
+
+Measured, the two directions (from the committed detector):
+  setpriv --no-new-privs -- sg docker -c "docker exec … psql …"   -> rc=1, "setgid: Operation not permitted"
+  setpriv --no-new-privs --      docker exec … psql …             -> rc=0, returns 1
+
+THE FIX — the ORDER was the bug. `_attempts()` builds an argv LADDER:
+  1. DIRECT `docker exec … psql -w …` — no group switch, survives NoNewPrivileges=true.
+  2. `sg docker -c "docker exec … psql -w …"` — the FALLBACK, kept deliberately: it is the
+     only path on a host whose user is not in the docker group. Dropping it outright would
+     trade one host's outage for another's.
+Applied to BOTH access layers, which are required to stay in step:
+  ops/services/mycortex-mem/store.py        (the shared surface)
+  plugins/mycortex-mem/__init__.py          (the Hermes plugin adapter)
+A failure now names EVERY cause ("docker: … | sg: …") instead of one line, and the reason a
+`available()` returned False is kept in `last_error`, so "memory unavailable" can be told
+apart from "the database is down". `available()` itself stays fail-open (False, never
+raises) — that contract is unchanged.
+
+TESTS
+  tests/test_store_access_under_no_new_privs.py   NEW, 7 tests: the direct form is
+    attempted FIRST and contains no `sg`; `sg` is still tried when the direct form fails;
+    a direct success never runs `sg`; when BOTH fail the error names both causes;
+    `available()` stays fail-open AND records why; plus a LIVE test that the store's own
+    connection answers under `setpriv --no-new-privs` (skips where it cannot run).
+    Driven by an injected runner, so it exercises the seam and cannot flap on live state.
+  tests/test_no_new_privs_sg_store.py             the peer's detector (3 tests) — unchanged.
+  tests/test_mycortex_mem_psql_no_password.py     2 guards updated: they asserted the Linux
+    argv STARTS with ["sg","docker","-c"] — an implementation detail the fix changes. They
+    now assert their real intent across the whole ladder: the direct form comes first, no
+    group switch in it, EVERY form passes -w (psql must never prompt on /dev/tty), and the
+    sg fallback still exists with -w.
+  tests/test_context_harnesses.py                 1 guard updated the same way (macOS
+    parity: the macOS branch still builds no `sg`/`docker` argv).
+  Selected run: 72 passed (the four memory/platform suites plus both new files).
+
+LIVE PROOF 1 — pi's OWN registered command, real MCP handshake. The command is read from
+~/.pi/agent/mcp.json (not hardcoded): the hermes-agent venv's python3 running
+~/.hermes-cortex/scripts/cortex-context-mcp.py, env AGENT_NAME=esther. Same result control
+and hardened:
+
+  control:                                        rc=0
+  setpriv --no-new-privs -- <the same command>:   rc=0
+    [probe] tools/list -> 12 tools: mem_profile, mem_search, mem_context, mem_conclude,
+            session_checkpoint, session_restore...
+    [probe] mem_search -> OK: {"query": "gateway restart", "results": [],
+            "note": "nothing matching in stored history"}
+    [probe] session_list -> OK: {"sessions": [{"session_key": "<a real session>",
+            "started_at": "...", ...
+
+LIVE PROOF 2 — a real pi TURN, under the hardening, using the memory tool:
+
+  setpriv --no-new-privs -- pi --no-session -p "Call the tool
+    mcp__cortex-context__mem_search with {"query": "restart visibility", "limit": 3} …"
+  -> 0
+     nothing matching in stored history
+
+Both lines are the TOOL's own output shape (the note field), so the tool answered; it did
+not error and the agent did not answer from guesswork.
+
+LIVE PROOF 3 — the pi EXTENSION still owns WHEN a checkpoint is written, and it fired on
+real turns under the hardening (the extension writes through the same store, so this path
+was broken too). Rows written by these probes, read back from mycortex memory (ids and
+timestamps are exact; the notes content is what the probe turns replied):
+
+  138 | unknown:hermes-cortex:main | 10:49:20Z |
+  139 | unknown:hermes-cortex:main | 10:49:27Z | 0 / nothing matching in stored history
+  140 | unknown:hermes-cortex:main | 10:49:45Z | CHECKPOINT-PROBE-OK
+
+Note the session_key: an AD-HOC pi run with no CORTEX_SESSION_HARNESS/REPO/BRANCH env
+resolves to "unknown:hermes-cortex:main" (harness unknown). The gateway sets those
+(CORTEX_SESSION_HARNESS=pi), so supervised runs key correctly — this is a property of
+unsupervised runs, not a defect, but it is why stray "unknown:" keys exist in the store.
+
+KNOWN LEFTOVER, NOT HIDDEN: those three checkpoint rows are test artifacts and I did NOT
+remove them. `mycortex_mem_writer` has no DELETE grant on `checkpoints` (least privilege,
+by design) and I did not escalate to a superuser role to delete test rows from shared
+memory. They are identified above by id and timestamp for whoever owns the admin path.
+
+DEPLOYED: cortex-update.sh rc=0; the deployed plugin (~/.hermes/plugins/mycortex-mem/
+__init__.py) and service (…/services/mycortex-mem/store.py) both carry the ladder.

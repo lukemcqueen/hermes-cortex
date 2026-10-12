@@ -16,7 +16,9 @@ Code, or any other harness — can use it. The plugin can be migrated onto this
 module later, which is what makes it deletable rather than a rewrite.
 
 Everything is psql-over-subprocess: the Linux path runs psql inside the
-`mycortex-postgres` container via `sg docker -c`, the macOS path runs psql
+`mycortex-postgres` container via `docker exec` (direct first, `sg docker` as
+fallback — direct needs no group switch, so it survives `NoNewPrivileges=true`),
+the macOS path runs psql
 directly with a 0600 PGPASSFILE. Roles are least-privilege
 (`mycortex_mem_reader` / `mycortex_mem_writer`).
 
@@ -114,13 +116,29 @@ class PgConnection:
     """Thin psql-based connection seam. Testable via injection."""
 
     def __init__(self, db_name: str = _DEFAULT_DB, port: int = _DEFAULT_PORT,
-                 container: str = _DEFAULT_CONTAINER):
+                 container: str = _DEFAULT_CONTAINER, runner=None):
         self._db_name = db_name
         self._port = port
         self._container = container
         self._is_macos = os.uname().sysname == "Darwin"
+        self._runner = runner or subprocess.run
+        # Why the last call failed, when it did. available() must stay fail-open
+        # (False, never raises), but a bare "unavailable" told the reader nothing:
+        # a hardening flag was being reported as a database outage.
+        self.last_error = ""
 
-    def _cmd(self, role: str) -> tuple[list[str], dict]:
+    def _attempts(self, role: str) -> list[tuple[list[str], dict]]:
+        """The argv ladder, in order — the ORDER is the fix.
+
+        macOS: one psql form over localhost with a pgpass file.
+
+        Linux: DIRECT `docker exec` FIRST, because it needs no group switch and
+        therefore survives `NoNewPrivileges=true` (the serving unit sets it).
+        `sg docker` is kept as the FALLBACK — it calls setgroups()/setgid(), which
+        the kernel refuses under that hardening, but it is also the only path on a
+        host where the user is not in the docker group. Dropping it outright would
+        trade one host's outage for another's.
+        """
         if self._is_macos:
             pw = resolve_mem_password()
             pgpass = f"localhost:{self._port}:{self._db_name}:{role}:{pw}"
@@ -128,28 +146,45 @@ class PgConnection:
             f.write(pgpass + "\n")
             f.close()
             os.chmod(f.name, 0o600)
-            return (
+            return [(
                 ["psql", "-h", "localhost", "-p", str(self._port), "-U", role,
                  "-d", self._db_name, "-w", "-v", "ON_ERROR_STOP=1", "-t", "-A"],
                 {"PGPASSFILE": f.name},
-            )
-        return (
+            )]
+        direct = (
+            ["docker", "exec", "-i", self._container, "psql", "-U", role,
+             "-d", self._db_name, "-w", "-v", "ON_ERROR_STOP=1", "-t", "-A"],
+            {},
+        )
+        via_sg = (
             ["sg", "docker", "-c",
              f"docker exec -i {self._container} psql -U {role} -d {self._db_name} "
              f"-w -v ON_ERROR_STOP=1 -t -A"],
             {},
         )
+        return [direct, via_sg]
+
+    def _cmd(self, role: str) -> tuple[list[str], dict]:
+        """The PREFERRED form (first attempt). Kept for callers that only want an argv."""
+        return self._attempts(role)[0]
 
     def _run(self, sql: str, role: str, timeout: int) -> str:
-        cmd, env = self._cmd(role)
-        try:
-            r = subprocess.run(cmd, input=sql, capture_output=True, text=True,
-                               timeout=timeout, env={**os.environ, **env})
-        except (subprocess.TimeoutExpired, OSError) as exc:
-            raise StoreUnavailable(f"psql unavailable: {exc}") from exc
-        if r.returncode != 0:
-            raise StoreUnavailable(f"psql error: {r.stderr.strip() or r.stdout.strip()}")
-        return r.stdout.strip()
+        causes: list[str] = []
+        for cmd, env in self._attempts(role):
+            try:
+                r = self._runner(cmd, input=sql, capture_output=True, text=True,
+                                 timeout=timeout, env={**os.environ, **env})
+            except (subprocess.TimeoutExpired, OSError) as exc:
+                causes.append(f"{cmd[0]}: {exc}")
+                continue
+            if r.returncode == 0:
+                self.last_error = ""
+                return r.stdout.strip()
+            causes.append(f"{cmd[0]}: {(r.stderr.strip() or r.stdout.strip())}")
+        # Report EVERY cause: with the ladder in place, one line is no longer
+        # enough to tell "the container is down" from "the hardening blocks us".
+        self.last_error = " | ".join(causes)
+        raise StoreUnavailable(f"psql error: {self.last_error}")
 
     def run_sql(self, sql: str, role: str = _WRITER, timeout: int = 10) -> str:
         return self._run(sql, role, timeout)
@@ -172,7 +207,12 @@ class PgConnection:
         return rows[0] if rows else None
 
     def available(self, timeout: int = 3) -> bool:
-        """True when the store answers. Never raises — fail-open contract."""
+        """True when the mycortex memory answers. Never raises — fail-open contract.
+
+        The reason for a False is kept in `last_error` (and is in the exception
+        that `_run` raised before this swallowed it), so "memory unavailable" can
+        be told apart from "the database is down".
+        """
         try:
             self.scalar("SELECT 1;", timeout=timeout)
             return True

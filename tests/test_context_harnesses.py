@@ -423,12 +423,17 @@ def test_macos_parity_for_the_context_layers():
     assert cmd[0] == "psql" and "-h" in cmd and "localhost" in cmd, cmd
     assert "-w" in cmd, "macOS psql must be --no-password (-w): it must never prompt on /dev/tty"
     assert "PGPASSFILE" in env and env["PGPASSFILE"].endswith(".pgpass"), env
-    # The Linux branch must still be the docker one.
+    # The Linux branch must still be the docker one — DIRECT first, because it
+    # needs no group switch and therefore survives NoNewPrivileges=true; the sg
+    # form stays as the fallback for a user who is NOT in the docker group.
     pc._is_macos = False
-    cmd_linux, _ = pc._cmd("mycortex_mem_reader")
-    assert cmd_linux[0] == "sg" and "docker" in cmd_linux, cmd_linux
-    assert "-w" in "".join(cmd_linux), \
-        "docker-exec psql must be --no-password (-w): it must never prompt on /dev/tty"
+    attempts = [argv for argv, _env in pc._attempts("mycortex_mem_reader")]
+    assert attempts and attempts[0][:2] == ["docker", "exec"], attempts
+    assert "sg" not in attempts[0], "the first Linux attempt must not switch groups"
+    assert all("-w" in " ".join(a) for a in attempts), \
+        "EVERY docker-exec psql form must be --no-password (-w): it must never prompt on /dev/tty"
+    assert any(a[0] == "sg" for a in attempts), \
+        "the sg fallback is the only path where the user is not in the docker group"
 
     ext = PI_EXT.read_text()
     assert "CORTEX_CONTEXT_PYTHON" in ext, \
