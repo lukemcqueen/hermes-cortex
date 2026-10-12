@@ -15,6 +15,18 @@ FAILS=0
 say() { printf '%s\n' "$*"; }
 bad() { say "FAIL  $1"; FAILS=$((FAILS + 1)); }
 
+say "== 0. the DEPLOY, and its own log (what is actually deployed NOW) =="
+DOG="$HOME/.hermes-cortex/scripts/cortex-dogfood.sh"
+if [ -x "$DOG" ]; then
+  log="$(bash "$DOG" --force 2>&1)"; drc=$?
+  say "  cortex-dogfood --force rc=$drc"
+  printf '%s\n' "$log" | grep -E "DOGFOOD PASSED|DOGFOOD FAILED|Overall:" | tail -2 | sed 's/^/  /'
+  [ "$drc" = 0 ] || bad "0 cortex-dogfood --force exited $drc"
+else
+  say "  SKIP — no cortex-dogfood.sh here (a fresh checkout has nothing to deploy)"
+fi
+
+say
 say "== 1. the picker's tests, BY NAME =="
 "$PY" -m pytest tests/test_gateway_slash_parity.py -v -k "menu or model" --tb=line -q 2>&1 \
   | grep -E "::test_|passed" | sed 's/^/  /'
@@ -65,6 +77,11 @@ if [ -n "${BASE:-4efcb1a3}" ]; then
     done
   fi
 fi
+
+say
+say "== 5. the wider gateway selection (the regression sweep) =="
+"$PY" -m pytest tests/ -q -k "gateway or harness or startup" 2>&1 | tail -1 | sed 's/^/  /'
+[ "${PIPESTATUS[0]}" = 0 ] || bad "5 the gateway selection"
 
 say
 if [ "$FAILS" -eq 0 ]; then say "ALL CLAIMS VERIFIED (0 failures)"; exit 0; fi

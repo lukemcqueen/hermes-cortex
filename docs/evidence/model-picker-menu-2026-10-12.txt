@@ -1,6 +1,11 @@
 Running: bash docs/evidence/verify-model-picker.sh
 rc: 0
-when: 2026-10-12T14:44:33Z
+when: 2026-10-12T14:47:44Z
+
+== 0. the DEPLOY, and its own log (what is actually deployed NOW) ==
+  cortex-dogfood --force rc=0
+       ⚠️  Overall: WARNING  (449 pass · 13 warn · 0 fail · 6 info)
+  ✅  DOGFOOD PASSED — deployed state verified clean.
 
 == 1. the picker's tests, BY NAME ==
   tests/test_gateway_slash_parity.py::test_model_switch_is_stored_persisted_and_used_on_the_next_turn PASSED [  4%]
@@ -45,5 +50,8 @@ when: 2026-10-12T14:44:33Z
   verify-picker-baseline.py: 📊 Summary: 1 file(s), 25 finding(s) 🟡 Medium: 4 🔵 Low: 2 ⚪ Info: 19 ✅ GATE_PASSED — no critical/high findings 
   daemon.py: 📊 Summary: 1 file(s), 26 finding(s) 🟡 Medium: 4 🔵 Low: 2 ⚪ Info: 20 ✅ GATE_PASSED — no critical/high findings 
 
+== 5. the wider gateway selection (the regression sweep) ==
+  ==================== 293 passed, 1453 deselected in 40.46s =====================
+
 ALL CLAIMS VERIFIED (0 failures)
-sha256: 9e325492f8e99523cf3838709cc41c46214b5a6b47fbdc3af3b8f0910adc8516
+sha256: edd82eacacc388d0e04206605e35d066c86cc7c5347ae8fe8e1f652296d82015
