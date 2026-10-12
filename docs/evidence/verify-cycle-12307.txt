@@ -1,11 +1,22 @@
-cycle 12307 verifier — repo=/home/esther/hermes-cortex  head=0cc455b8
+cycle 12307 verifier — repo=/home/esther/hermes-cortex  head=8c26adc7
 
 1  every published checksum, recomputed from HEAD
+   OK    08d213ed9557  bus-inbox-tick-2026-10-12-cycle-12188.sh
+   OK    f34b031c20df  bus-inbox-tick-2026-10-12-cycle-12188.txt
+   OK    5ae707d3726f  bus-inbox-tick-2026-10-12-cycle-12188.json
+   OK    f31447c86402  bus-inbox-tick-2026-10-12-cycle-12188-branches.sh
+   OK    388cd9a8e3e0  bus-inbox-tick-2026-10-12-cycle-12188-branches.txt
+   OK    82b9e118c1db  bus-inbox-tick-2026-10-12-cycle-12188-probes.txt
+   OK    86e186b7ccd0  deploy-drift-joseph-2026-10-09.txt
    OK    79a6afcd8ac1  bus-inbox-tick-2026-10-12-cycle-12188-branches-rerun-2026-10-12.txt
    OK    9afe7ad70e08  verify-landed-cycle-12307.txt
    OK    059cf9c7accb  dogfood-strands-landing-2026-10-12.txt
    OK    620315434dc5  dogfood-warnings-risk-acceptance-2026-10-12.txt
-   (4 checksums parsed from docs/evidence/closeout-cycle-12307-proof.txt)
+   (11 checksums parsed from docs/evidence/closeout-cycle-12307-proof.txt)
+1b DOCS-INDEX rows naming the verifiers
+   OK    indexed: pi-mcp-landing-verify.sh
+   OK    indexed: session-cache-loop-evaluator-verify.sh
+   OK    indexed: launchd-restart-12223-reproduce.sh
 2  negative check: does any verifier reference a drifted skill?
    OK    grep -l over the three verifiers: no output (no match)
 3  the dogfood lines quoted in the material

@@ -1,0 +1,3 @@
+DOCS-INDEX rows that reference the three verifiers (grep capture at 8c26adc7):
+60:| `docs/evidence/launchd-restart-12223-reproduce.sh` (+ `…-reproduce.txt`, `…-tests.txt`, `…-doctor.txt`, `…-adversarial.txt`, `…-dogfood-verify-landed.txt`) | **Reproducible evidence for
+64:| `docs/evidence/*-verify.sh` · `launchd-restart-12223-reproduce.sh` | **Runnable verifiers (2026-10-12 session) — start here to CHECK this work.** Each re-checks one landed change end-to-end an

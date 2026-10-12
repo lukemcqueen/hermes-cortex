@@ -29,9 +29,16 @@ while read -r want name; do
   checked=$((checked + 1))
   if [ "$got" = "$want" ]; then say "   OK    $want  $name"
   else bad "1 $name: published $want, HEAD has $got"; fi
-done < <(sed -n '1,12p' "$PROOF" | awk 'NF>=2 && $1 ~ /^[0-9a-f]+$/ {print $1, $2}')
-[ "$checked" -ge 4 ] || bad "1 expected at least 4 published checksums, parsed $checked"
+done < <(awk 'NF>=2 && $1 ~ /^[0-9a-f]+$/ {print $1, $2}' "$PROOF")
+[ "$checked" -ge 11 ] || bad "1 expected at least 11 published checksums, parsed $checked"
 say "   ($checked checksums parsed from $PROOF)"
+
+# 1b — the index rows that make the verifiers findable
+say "1b DOCS-INDEX rows naming the verifiers"
+for v in pi-mcp-landing-verify.sh session-cache-loop-evaluator-verify.sh launchd-restart-12223-reproduce.sh; do
+  if grep -q "$v" docs/DOCS-INDEX.md; then say "   OK    indexed: $v"
+  else bad "1b $v is not named in docs/DOCS-INDEX.md"; fi
+done
 
 # 2 — the negative check: no verifier invokes a drifted skill
 say "2  negative check: does any verifier reference a drifted skill?"
