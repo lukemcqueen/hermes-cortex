@@ -42,13 +42,20 @@ if [[ -z "$module" ]]; then
 fi
 
 candidates() {
-  # An explicit choice wins, then the fleet venv this host actually runs services with,
-  # then the cortex venv, then whatever is on PATH, then versioned names — a host may
-  # have the module in only one of them.
+  # An explicit choice wins, then the CORTEX venv — the fleet venv this host runs its
+  # services with (cortex-update.sh points every MCP registration at it) — then the Hermes
+  # venv, then whatever is on PATH, then versioned names.
+  #
+  # Measured on esther 2026-10-13: ~/.hermes-cortex/venv imports yaml + mcp (and pytest once
+  # installed there); ~/.hermes/hermes-agent/venv imports all three; the Hermes tools python
+  # imports none. The ORDER only breaks ties — a module only the Hermes venv has still
+  # resolves, because a candidate must import the module to be chosen. Putting the cortex
+  # venv first keeps fleet tooling off the tree we are migrating away from, which is the
+  # whole point of having a cortex venv at all.
   [[ -n "${PYTHON:-}" ]] && printf '%s\n' "$PYTHON"
   [[ -n "${HERMES_VENV:-}" ]] && printf '%s\n' "${HERMES_VENV}/bin/python3"
-  printf '%s\n' "${HOME}/.hermes/hermes-agent/venv/bin/python3"
   printf '%s\n' "${HOME}/.hermes-cortex/venv/bin/python3"
+  printf '%s\n' "${HOME}/.hermes/hermes-agent/venv/bin/python3"
   command -v python3 2>/dev/null || true
   local v
   for v in 3.14 3.13 3.12 3.11 3.10 3.9; do

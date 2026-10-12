@@ -20,8 +20,12 @@ if [ -z "$PY" ]; then
   fi
 fi
 if [ -z "$PY" ]; then
-  for cand in python3 python3.12 python3.11 python3.10 "$HOME/.hermes-cortex/venv/bin/python3" \
-              /opt/homebrew/bin/python3 /usr/local/bin/python3; do
+  # The CORTEX venv is the fleet venv (cortex-update.sh registers every MCP server against
+  # it) and comes first; the Hermes venv is LAST and only when nothing else works, because
+  # fleet tooling should not run under the tree we are migrating away from.
+  for cand in "$HOME/.hermes-cortex/venv/bin/python3" python3 python3.12 python3.11 python3.10 \
+              /opt/homebrew/bin/python3 /usr/local/bin/python3 \
+              "$HOME/.hermes/hermes-agent/venv/bin/python3"; do
     if command -v "$cand" >/dev/null 2>&1 && "$cand" -c 'import pytest' >/dev/null 2>&1; then
       PY="$(command -v "$cand")"; break
     fi

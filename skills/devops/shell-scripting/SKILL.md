@@ -592,7 +592,8 @@ PY_CMD="${HOME}/.hermes-cortex/venv/bin/python3"
 candidates() {
   [[ -n "${PYTHON:-}" ]] && printf '%s\n' "$PYTHON"
   [[ -n "${HERMES_VENV:-}" ]] && printf '%s\n' "${HERMES_VENV}/bin/python3"
-  printf '%s\n' "${HOME}/.hermes/hermes-agent/venv/bin/python3"
+  printf '%s\n' "${HOME}/.hermes-cortex/venv/bin/python3"        # the FLEET venv, first
+  printf '%s\n' "${HOME}/.hermes/hermes-agent/venv/bin/python3" # last resort: migrating away
   command -v python3 2>/dev/null || true
 }
 tried=""
@@ -615,6 +616,17 @@ exit 3
   when a caller only needs the path). Reuse it rather than writing another copy — it is
   registered in `cortex-update.sh` and deploys to `scripts/lib/`.
 - `PYTHON=` is the escape hatch an operator reaches for; honour it first.
+
+**Prefer the CORTEX venv (`~/.hermes-cortex/venv/bin/python3`) — it is the venv the fleet runs
+its services with** (`cortex-update.sh` registers every MCP server against it). The Hermes venv
+is a last resort: fleet tooling should not depend on the tree we are migrating away from.
+Ordering only breaks a *tie* — a candidate must still import the module to be chosen, so a
+module only the Hermes venv has keeps resolving. Measured on esther 2026-10-13: the cortex venv
+imports yaml + mcp (and pytest once installed there); the Hermes venv imports all three; the
+Hermes *tools* python imports none. An undated "the cortex venv has no PyYAML" note lived in
+this skill and in `tests/test_python_with_module.py`, and a deploy had reordered the two venvs
+the other way — a measurement with no date is a claim about the past, so re-measure before
+relying on one.
 
 **uv-created venvs have NO `pip` binary.** A uv venv's `bin/` holds only `python*`, so
 `<venv>/bin/pip` does not exist and `<venv>/bin/python3 -m pip` fails too. Install with
