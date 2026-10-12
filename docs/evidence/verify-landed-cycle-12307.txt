@@ -1,0 +1,10 @@
+verify-landed — strands-evidence cycle (2026-10-12)
+Command: python3 ops/scripts/manage/verify-landed.py --repo . --base 1def9092
+rc is the command's own; output below is complete.
+
+# range: 1def90929d5c..247018fa333c  repo: /home/esther/hermes-cortex
+PASS  receipt: not required — 1def90929d5c..247018fa333c touches no always-review path
+# 0 of 11 changed files are deployed sources; 351 entries in the map
+FAIL  remote: origin/main=977411a72b77 but tip=247018fa333c
+
+FAILED — a check above is false. Fix it and re-run; this is a real mismatch.
