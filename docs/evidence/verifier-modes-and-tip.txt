@@ -1,0 +1,19 @@
+Verifier modes + captured-run provenance (cycle 12307). Commands and their real output:
+
+$ git ls-files -s docs/evidence/*verify*.sh docs/evidence/launchd-restart-12223-reproduce.sh
+100755 6a830e1cfdd60f0c9d1c59a409c886b07bc74bbc 0	docs/evidence/launchd-restart-12223-reproduce.sh
+100755 c20618cfb5ee88f06e6bce60a7823801f5876ece 0	docs/evidence/pi-mcp-landing-verify.sh
+100755 dc4a1236e77953a52955de3e79c02cf3c52934c8 0	docs/evidence/session-cache-loop-evaluator-verify.sh
+100755 bab513ae0e307e1749a1be0be886c25733d2ced4 0	docs/evidence/verify-cycle-12307.sh
+
+  -> all four are mode 100755 at HEAD.
+
+$ git show --stat --oneline dc426b94 | grep '\.sh'
+ docs/evidence/launchd-restart-12223-reproduce.sh     |  0
+ docs/evidence/pi-mcp-landing-verify.sh               |  0
+ docs/evidence/session-cache-loop-evaluator-verify.sh |  0
+  -> the commit that chmod'd them changed THREE, not two.
+
+$ head -1 docs/evidence/verify-cycle-12307.txt
+cycle 12307 verifier — repo=/home/esther/hermes-cortex  head=0cc455b8
+  -> the captured run records the tip it ran at; the script re-runs at any tip.
