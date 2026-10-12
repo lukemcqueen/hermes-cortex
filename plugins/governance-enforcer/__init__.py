@@ -422,6 +422,12 @@ def _tdd_required(tool_name: str, args: dict) -> tuple:
     if not path:
         return False, ""
     low = path.lower()
+    # Verification harnesses under docs/evidence/ are ARTIFACTS, not production code: a
+    # reproducer committed with its captured run is the evidence a close review reads.
+    # Demanding a tests/ file for it blocked a commit for a harness that runs itself
+    # (2026-10-12). Narrow by design: only docs/evidence/, only for this gate.
+    if low.startswith("docs/evidence/") or "/docs/evidence/" in low:
+        return False, ""
     if any(m in low for m in _TDD_TEST_PATH_MARKERS):
         return False, ""
     fname = Path(path).name
@@ -2879,6 +2885,16 @@ def register(ctx):
                     "read_file/search_files tools.\n\n"
                 )
 
+            _push_note = ""
+            if re.search(r"\bgit\s+push\b", _cmd or ""):
+                _push_note = (
+                    "\nYou are pushing. A CLEAN review receipt CAN authorise a push without a new\n"
+                    "cycle — but only for a LONE `git push`: this gate refuses a shape it cannot\n"
+                    "prove (any compound, pipe, redirection, background or separator), because an\n"
+                    "unprovable shape must fail closed. So issue the push ALONE as its own command,\n"
+                    "with nothing after it (no `&& git rev-parse`, no `| tail`).\n\n"
+                )
+
             return {
                 "action": "block",
                 "message": (
@@ -2891,6 +2907,7 @@ def register(ctx):
                         if not hermes_session_id else ""
                     )
                     + _compound_note
+                    + _push_note
                     + "This repo requires an active governance lock.\n"
                     "This is GATE 2 of 2 — gate 1 is the skills gate (all 7 always-section\n"
                     "skills loaded via skill_view). If you just fixed gate 1, a second\n"

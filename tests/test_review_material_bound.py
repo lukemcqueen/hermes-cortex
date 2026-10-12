@@ -323,6 +323,83 @@ def test_the_largest_file_is_never_left_with_nothing():
         print("  largest file shown whole ✓")
 
 
+def test_evidence_files_are_shown_whole_outside_the_budget():
+    """Item 2 (2026-10-12): a worker's own evidence must not consume the window.
+
+    Cycles 12307/12324: the evidence files ate the budget until a 6526-char code diff
+    reviewed as '6526 of 6526 chars omitted'. Artifacts under docs/evidence/ are now shown
+    whole and excluded from the split; the budget belongs to the code under review.
+    """
+    ev = "".join(
+        f"diff --git a/docs/evidence/e{i}.txt b/docs/evidence/e{i}.txt\n"
+        f"--- a/docs/evidence/e{i}.txt\n+++ b/docs/evidence/e{i}.txt\n@@ -0,0 +1,200 @@\n"
+        + "".join(f"+ evidence line {k} of file {i}\n" for k in range(200)) for i in range(4))
+    code = ("diff --git a/ops/scripts/thing.py b/ops/scripts/thing.py\n"
+            "--- a/ops/scripts/thing.py\n+++ b/ops/scripts/thing.py\n@@ -0,0 +1,200 @@\n"
+            + "".join(f"+ code_{k} = {k}\n" for k in range(200)))
+    assert len(ev + code) > mcp.DIFF_CHAR_BUDGET, "fixture must exceed the standard budget to exercise the bound"
+    got = mcp._bound_diff(ev + code, budget=mcp.DIFF_CHAR_BUDGET)
+    assert "EVIDENCE SHOWN WHOLE" in got, "the material must say evidence is not counted against the budget"
+    for i in range(4):
+        assert f"+ evidence line 199 of file {i}" in got, f"evidence file {i} must be shown WHOLE (last line)"
+    assert "code_0 = 0" in got, "the code under review must still show its body"
+    print("  evidence shown whole; the budget is spent on the code under review ✓")
+
+
+def test_material_limit_findings_do_not_block():
+    """Item 6 (2026-10-12): a window complaint is not a change defect.
+
+    The reviewer itself called these 'a gate-transport artifact, not a worker fault' and
+    still blocked. Narrow: only findings that quote the gate's own limit markers AND ask
+    about SEEING the content; fabrication claims always block.
+    """
+    import json as _json
+    win = _json.dumps([{
+        "finding_id": "ADV-X-1", "severity": "high", "technique": "unverified-claim",
+        "target": "docs/evidence/run.txt",
+        "evidence": "the file is bounded: 6000 of 9000 chars omitted from its middle",
+        "recommendation": "commit the full unbounded output so the pass line is visible",
+    }])
+    blocking, annotating = mcp._blocking_findings(win)
+    assert not blocking, "a material-window finding must not block"
+    assert annotating and annotating[0].get("severity_downgraded"), "the downgrade must be recorded"
+
+    fab = _json.dumps([{
+        "finding_id": "ADV-X-2", "severity": "high", "technique": "fabrication",
+        "target": "docs/evidence/run.txt",
+        "evidence": "bounded: 6000 of 9000 chars omitted",
+        "recommendation": "commit the full output so the line is visible",
+    }])
+    blocking, _ = mcp._blocking_findings(fab)
+    assert blocking, "a fabrication claim must still block, whatever it quotes"
+
+    real = _json.dumps([{
+        "finding_id": "ADV-X-3", "severity": "high", "technique": "swallowed-error",
+        "target": "ops/scripts/make-evidence.sh",
+        "evidence": "exit 0 at end of file",
+        "recommendation": "propagate the wrapped command's exit status instead of swallowing it",
+    }])
+    blocking, _ = mcp._blocking_findings(real)
+    assert blocking, "a behavioural finding must still block"
+    print("  window-only findings downgrade (recorded); fabrication and behaviour still block ✓")
+
+
+def test_replayed_findings_have_quotes_stripped():
+    """Item 1 (2026-10-12): a stale quote must not re-anchor a corrected note."""
+    import json as _json
+    payload = _json.dumps([{
+        "finding_id": "ADV-Y-1", "severity": "medium",
+        "evidence": "worker's note: \"this commit carries the mode change for two scripts\"",
+        "recommendation": "reconcile the self-report with the diff",
+    }])
+    out = mcp._replay_safe_findings(payload)
+    assert "this commit carries the mode change for two scripts" not in out, \
+        "a quoted fragment from a superseded note must not be replayed"
+    assert "[quote stripped]" in out, "the strip must be visible in what is replayed"
+    assert "reconcile the self-report" in out, "the finding itself must survive"
+    print("  replay strips quoted fragments; the finding's substance survives ✓")
+
+
 def test_deployed_gate_behaves_as_this_file_says():
     """The DEPLOYED gate (what actually reviews closes) bounds evidence the same way.
 

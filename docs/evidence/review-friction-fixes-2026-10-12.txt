@@ -1,0 +1,16 @@
+Running: bash -c echo "material-window suite:"; python3 tests/test_review_material_bound.py 2>&1 | tail -1; echo "preview suite:"; python3 tests/test_review_material_preview.py 2>&1 | tail -1; echo "enforcer + gate parse:"; python3 -c "import ast; ast.parse(open(\"plugins/governance-enforcer/__init__.py\").read()); ast.parse(open(\"mcp-servers/loop-gov-mcp.py\").read()); print(\"OK\")"; echo "preview on this range:"; python3 ops/scripts/manage/review-material.py 2>/dev/null | sed -n "3,6p"
+rc: 0
+when: 2026-10-12T10:32:36Z
+
+material-window suite:
+RESULT: ALL PASS (20 tests)
+preview suite:
+RESULT: ALL PASS
+enforcer + gate parse:
+OK
+preview on this range:
+  docs/evidence/review-friction-fixes-2026-10-12.txt
+  ops/scripts/manage/review-material.py
+  tests/test_review_material_preview.py
+range 844e9682ee6a..HEAD  (0 commit(s))
+sha256: 79025bc23d15569f31f5e1a8f41d065d65edaa23889785f7bdf570664ce81674

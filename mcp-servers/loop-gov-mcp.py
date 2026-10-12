@@ -2061,6 +2061,15 @@ DOC_ONLY_SUFFIXES = (".md", ".txt", ".rst")
 # can buy itself a bigger window.
 DOC_ONLY_DIR_PREFIXES = ("docs/evidence/",)
 
+# Artifacts under docs/evidence/ are shown WHOLE and OUTSIDE the budget split, up to this
+# cap (2026-10-12). They are what PROVES the change, not the change under review, so a
+# worker's own evidence must not be what consumes the window: in cycles 12307/12324 the
+# evidence files ate the budget until a 6526-char code diff reviewed as "6526 of 6526 chars
+# omitted" — the reviewer could not see the code it was judging. Beyond the cap the normal
+# per-file budget applies again: a 1MB evidence set is a cycle to split, not a window to
+# widen.
+DOC_EVIDENCE_WHOLE_CAP = 30000
+
 # Chars reserved for each changed file BEFORE the remainder is shared out, so a small
 # artifact is shown WHOLE rather than in head+tail slices. The old allocation started
 # from an equal share (budget // n) and only topped up afterwards, which meant the
@@ -2913,12 +2922,54 @@ def _blocking_findings(findings_json):
     for it in items:
         sev = str((it or {}).get("severity", "")).lower() if isinstance(it, dict) else ""
         if sev in BLOCKING_SEVERITIES:
-            blocking.append(it)
+            if _is_material_limit_finding(it):
+                # Window-only complaint: recorded, not blocking (see the helper). Tagged so
+                # an auditor can see the downgrade rather than infer it.
+                it = dict(it)
+                it["technique"] = it.get("technique") or "material-limit"
+                it["severity_downgraded"] = f"{sev} -> low (material-window finding, 2026-10-12)"
+                annotating.append(it)
+            else:
+                blocking.append(it)
         elif sev:
             annotating.append(it)
         else:
             blocking.append(it)          # unknown/absent severity -> fail closed
     return blocking, annotating
+
+
+# ── Material-window findings do not block (2026-10-12) ────────────────────────
+# A finding whose complaint is the GATE'S OWN window — it quotes the disclosure the gate
+# appended ("bounded: N of M chars omitted", "MATERIAL LIMIT") — is a statement about the
+# material's bound, not about the change. The reviewer says so in its own words ("likely a
+# gate-transport artifact, not a worker fault") and then blocks anyway, because it has no
+# verdict class for it. Cycles 12307/12324 were held open for six rounds each on those.
+#
+# NARROW BY CONSTRUCTION, so it cannot mask a real finding:
+#   * the finding must reference the gate's own limit markers, AND
+#   * its recommendation must be about SEEING the content (commit/show/visible/full/
+#     untruncated/bounded/window) — a finding that asks for a behavioural change, a test,
+#     or a value is never matched, AND
+#   * it must NOT accuse fabrication/misrepresentation (those techniques always block).
+# Everything else keeps the reviewer's severity and blocks as before.
+MATERIAL_LIMIT_MARKERS = ("chars omitted", "MATERIAL LIMIT", "bounded:", "EVIDENCE SHOWN WHOLE",
+                          "diff is bounded", "not counted against the")
+_MATERIAL_LIMIT_REC = re.compile(
+    r"(commit|show|shown|visible|visib|full|untruncat|truncat|bounded|window|unredacted|"
+    r"clear enough|too small|split)", re.I)
+_MATERIAL_LIMIT_NEVER = {"fabrication", "injection", "swallowed-error"}
+
+
+def _is_material_limit_finding(finding) -> bool:
+    """True when the finding's complaint IS the material window, nothing more."""
+    if not isinstance(finding, dict):
+        return False
+    if str(finding.get("technique", "")).strip().lower() in _MATERIAL_LIMIT_NEVER:
+        return False
+    text = " ".join(str(finding.get(k, "")) for k in ("target", "evidence", "recommendation"))
+    if not any(m.lower() in text.lower() for m in MATERIAL_LIMIT_MARKERS):
+        return False
+    return bool(_MATERIAL_LIMIT_REC.search(str(finding.get("recommendation", ""))))
 
 
 def _parse_findings_list(findings_json):
@@ -2958,6 +3009,29 @@ _QUOTED_RE = re.compile(r"[`\"\u201c\u201d']([^`\"\u201c\u201d']{12,})[`\"\u201c
 def _quoted_fragments(text):
     """Fragments a finding explicitly quotes (>=12 chars)."""
     return [m.group(1).strip() for m in _QUOTED_RE.finditer(str(text or ""))]
+
+
+def _replay_safe_findings(findings_json):
+    """Findings for REPLAY, with quoted fragments stripped (2026-10-12).
+
+    Why: a stored finding that quoted text from a NOTE was re-presented verbatim on every
+    retry, so a corrected note could never retire it — the quote itself kept re-anchoring
+    the close, and the worker could not edit a past note. Quoted fragments are removed
+    here; the finding's id, severity, target and recommendation survive, and the untouched
+    text stays in the stored review for the record.
+    """
+    items = _parse_findings_list(findings_json)
+    if not items:
+        return str(findings_json)[:400]
+    out = []
+    for f in items:
+        g = dict(f)
+        ev = str(g.get("evidence", ""))
+        for frag in _quoted_fragments(ev):
+            ev = ev.replace(frag, "[quote stripped]")
+        g["evidence"] = ev[:300]
+        out.append(g)
+    return json.dumps(out)
 
 
 def _refute_findings(findings, material):
@@ -3552,6 +3626,21 @@ def _bound_diff(diff_text: str, budget: int | None = None) -> str:
     total = len(diff_text)
     sections = _split_diff_sections(diff_text)
     if len(sections) > 1:
+        # Evidence artifacts are shown WHOLE, outside the per-file budget (2026-10-12) —
+        # see DOC_EVIDENCE_WHOLE_CAP. The budget then belongs to the code under review,
+        # which is the thing a reviewer must actually judge.
+        evidence, code = [], []
+        for path, text in sections:
+            (evidence if any(path.startswith(p) for p in DOC_ONLY_DIR_PREFIXES) else code).append((path, text))
+        ev_bytes = sum(len(t) for _, t in evidence)
+        if evidence and code and ev_bytes <= DOC_EVIDENCE_WHOLE_CAP:
+            code_total = sum(len(t) for _, t in code)
+            note = (f"...[EVIDENCE SHOWN WHOLE: {len(evidence)} file(s) under docs/evidence/ "
+                    f"({ev_bytes} chars) are shown in full and are NOT counted against the "
+                    f"{budget}-char budget, which is spent on the {len(code)} file(s) under "
+                    f"review]\n")
+            return (policy + "".join(t for _, t in evidence) + "\n" + note
+                    + _bound_per_file(code, budget, code_total, False))
         return policy + _bound_per_file(sections, budget, total, docs_only)
     # A single unsplittable section (or an unparseable diff): the original window.
     head = budget * 2 // 3
@@ -3804,9 +3893,13 @@ def _adversarial_review_gate(lock: dict, cycle: dict,
             return CallToolResult(content=[TextContent(type="text", text=(
                 "❌ Self-adversarial review FAILED — this complex change cannot close.\n\n"
                 f"Verdict: {stored_verdict} (already recorded for exactly this material)\n"
-                f"Findings: {stored.get('findings_json') or '[]'}\n\n"
+                f"Findings (replayed): {_replay_safe_findings(stored.get('findings_json') or '[]')}\n\n"
                 "Findings at MEDIUM or above block the close; LOW findings are recorded "
                 "(they remain in the stored review) but do not block.\n"
+                "NOTE (2026-10-12): replayed findings have their QUOTED FRAGMENTS STRIPPED. A "
+                "finding that quoted text from an earlier note cannot re-anchor this close on "
+                "wording you have already superseded — state a correction once in the newest "
+                "note instead of quoting the superseded claim.\n"
                 "Fix the findings, then call rereview_change with a NEW note describing "
                 "what changed and the evidence for it. The lock stays held; nothing "
                 "sufficiently complex ships unreviewed."

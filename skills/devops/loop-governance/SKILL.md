@@ -553,7 +553,42 @@ Evidence that the review's material window could not show is a *window* defect, 
 missing-evidence defect. The material now treats `docs/evidence/**` as documentation
 (whatever the suffix) and allocates floor-first, so a small artifact is shown whole. Keep
 evidence small and structural: state the command, its own `rc`, the decisive lines, and a
-sha256; `ops/scripts/make-evidence.sh` writes exactly that shape and verifies it.
+sha256; `ops/scripts/make-evidence.sh` writes exactly that shape and verifies it. It is
+POSIX-sh portable (Linux and macOS, `sha256sum` or `shasum -a 256`) and works in any repo,
+with or without Hermes or cortex — a Pi / Claude Code / plain-shell session can use it.
+
+### Before you submit — see the window the reviewer sees
+
+Run `python3 ops/scripts/manage/review-material.py` **before** the close. It prints the
+material for `merge-base origin/main..HEAD` file by file, names the budget in force, and
+exits 1 when a changed file would be shown with almost no body. Pass `--note "…"` to see the
+note as the reviewer receives it. One command replaces guessing at the window (cycle 12307
+spent six rounds guessing).
+
+### Same-repo sessions
+
+Another session in the SAME repo can put its commits inside your range, and every one of
+them consumes the same window. The preview lists the range's commits — if any are not yours,
+don't carry them through your review: land them in their own cycle, or expect the window to
+be shared. (`git status` cannot tell you *who* staged something; the commit list can.)
+
+### Evidence budget
+
+Answer a finding by fixing the WINDOW, not by appending another artifact. Each evidence file
+you add shrinks the slice every other file gets, so a spiral of "one more transcript" makes
+the next review worse, not better. Evidence under `docs/evidence/**` is now shown whole
+outside the budget (cap `DOC_EVIDENCE_WHOLE_CAP`), precisely so artifacts cannot crowd out
+the code under review. Put the cycle's evidence in ONE commit before the first close, in the
+`make-evidence.sh` shape.
+
+### Notes: state a correction once
+
+Never quote a superseded claim in a new note — the reviewer re-reads the quote and re-flags
+it. Say "the earlier count was wrong; it is three" and move on. Replayed findings are shown
+with their quoted fragments stripped for exactly this reason, and window-only findings no
+longer block (`_is_material_limit_finding`): a complaint that the material could not SHOW
+something is recorded, not fatal — while fabrication, injection and behavioural findings
+still block.
 
 ### Cron schedule
 
