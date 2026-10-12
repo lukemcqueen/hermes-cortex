@@ -9,7 +9,7 @@ live Mac. The one-block live confirmation for a Mac is printed at the end.
 
 TIP AT WHICH THIS TRANSCRIPT WAS GENERATED
 $ git -C ~/hermes-cortex rev-parse --short HEAD
-0bddaf11
+190aadd7
 rc=0
 
 1. THE TWO DEFECTS (reported by Titus, non-orchestrator macOS host, 2026-10-12)
@@ -21,7 +21,9 @@ rc=0
        matters here it says: 'SuccessfulExit: If true, the job will be restarted as
        long as the program exits and with an exit status of zero. If false, the job
        will be restarted in the inverse condition.'
-       SOURCE (fetched 2026-10-12): https://keith.github.io/xcode-man-pages/launchd.plist.5.html
+       SOURCE (checked 2026-10-12): `man 5 launchd.plist` — the same text is in
+       Apple's published launchd.plist(5); re-read it on the target Mac with:
+         $ man 5 launchd.plist | sed -n '/KeepAlive/,/NetworkState/p'
        CONSEQUENCE: a SuccessfulExit=false job is relaunched after a NON-zero exit,
        so macOS must exit 75 (EX_TEMPFAIL) — the clean exit(0) that systemd's
        Restart=always wants would PARK the job with the bot down.
@@ -44,23 +46,23 @@ collected 53 items
 tests/test_gateway_slash_parity.py ..................................... [ 69%]
 ................                                                         [100%]
 
-============================== 53 passed in 0.91s ==============================
+============================== 53 passed in 0.96s ==============================
 rc=0
 
 4. THE NEW TESTS DISCRIMINATE — the same test file run against the PRE-CHANGE
    daemon at origin/main in a throwaway worktree (RED expected; tree removed).
-$ git -C ~/hermes-cortex worktree add --detach /tmp/launchd-red-3231990 origin/main
+$ git -C ~/hermes-cortex worktree add --detach /tmp/launchd-red-3234996 origin/main
 Preparing worktree (detached HEAD 7b452bed)
 HEAD is now at 7b452bed docs(evidence): land the sibling session's morning-task-pass bundle
 rc=0
 
-$ cp ~/hermes-cortex/tests/test_gateway_slash_parity.py /tmp/launchd-red-3231990/tests/test_gateway_slash_parity.py
+$ cp ~/hermes-cortex/tests/test_gateway_slash_parity.py /tmp/launchd-red-3234996/tests/test_gateway_slash_parity.py
 rc=0
 
-$ cd /tmp/launchd-red-3231990 && ~/.hermes/hermes-agent/venv/bin/python3 -m pytest tests/test_gateway_slash_parity.py -q -k 'launchd or plist_template or not_supervised or SOMEONE_ELSES or derived_from_the_supervisor' --tb=line
+$ cd /tmp/launchd-red-3234996 && ~/.hermes/hermes-agent/venv/bin/python3 -m pytest tests/test_gateway_slash_parity.py -q -k 'launchd or plist_template or not_supervised or SOMEONE_ELSES or derived_from_the_supervisor' --tb=line
 ============================= test session starts ==============================
 platform linux -- Python 3.11.15, pytest-9.1.1, pluggy-1.6.0
-rootdir: /tmp/launchd-red-3231990
+rootdir: /tmp/launchd-red-3234996
 configfile: pytest.ini
 plugins: anyio-4.12.1
 collected 53 items / 45 deselected / 8 selected
@@ -69,27 +71,27 @@ tests/test_gateway_slash_parity.py FFFFFFFF                              [100%]
 
 =================================== FAILURES ===================================
 E   AttributeError: <class 'cortex_gateway.daemon.Gateway'> has no attribute '_launchd_label_for_our_pid'
-/tmp/launchd-red-3231990/tests/test_gateway_slash_parity.py:227: AttributeError: <class 'cortex_gateway.daemon.Gateway'> has no attribute '_launchd_label_for_our_pid'
+/tmp/launchd-red-3234996/tests/test_gateway_slash_parity.py:227: AttributeError: <class 'cortex_gateway.daemon.Gateway'> has no attribute '_launchd_label_for_our_pid'
 E   AssertionError: assert 'not supervised by a service manager' in '⚠️ This gateway is not running under systemd, so /restart cannot bring it back — stop it and start it by hand instead.'
      +  where '⚠️ This gateway is not running under systemd, so /restart cannot bring it back — stop it and start it by hand instead.' = last()
-     +    where last = <test_gateway_slash_parity.FakeTransport object at 0x7958f2aa0a90>.last
-/tmp/launchd-red-3231990/tests/test_gateway_slash_parity.py:260: AssertionError: assert 'not supervised by a service manager' in '⚠️ This gateway is not running under systemd, so /restart cannot bring it back — stop it and start it by hand instead.'
+     +    where last = <test_gateway_slash_parity.FakeTransport object at 0x789d8f047090>.last
+/tmp/launchd-red-3234996/tests/test_gateway_slash_parity.py:260: AssertionError: assert 'not supervised by a service manager' in '⚠️ This gateway is not running under systemd, so /restart cannot bring it back — stop it and start it by hand instead.'
 E   AttributeError: 'Gateway' object has no attribute '_launchd_label_for_our_pid'
-/tmp/launchd-red-3231990/tests/test_gateway_slash_parity.py:750: AttributeError: 'Gateway' object has no attribute '_launchd_label_for_our_pid'
+/tmp/launchd-red-3234996/tests/test_gateway_slash_parity.py:750: AttributeError: 'Gateway' object has no attribute '_launchd_label_for_our_pid'
 E   AttributeError: module 'cortex_gateway.daemon' has no attribute 'LAUNCHD_RELAUNCH_EXIT_CODE'
-/tmp/launchd-red-3231990/tests/test_gateway_slash_parity.py:781: AttributeError: module 'cortex_gateway.daemon' has no attribute 'LAUNCHD_RELAUNCH_EXIT_CODE'
+/tmp/launchd-red-3234996/tests/test_gateway_slash_parity.py:781: AttributeError: module 'cortex_gateway.daemon' has no attribute 'LAUNCHD_RELAUNCH_EXIT_CODE'
 E   AttributeError: 'Gateway' object has no attribute '_restart_exit_code'
-/tmp/launchd-red-3231990/tests/test_gateway_slash_parity.py:832: AttributeError: 'Gateway' object has no attribute '_restart_exit_code'
+/tmp/launchd-red-3234996/tests/test_gateway_slash_parity.py:832: AttributeError: 'Gateway' object has no attribute '_restart_exit_code'
 E   AttributeError: 'Gateway' object has no attribute '_supervised_by_launchd'
-/tmp/launchd-red-3231990/tests/test_gateway_slash_parity.py:848: AttributeError: 'Gateway' object has no attribute '_supervised_by_launchd'
+/tmp/launchd-red-3234996/tests/test_gateway_slash_parity.py:848: AttributeError: 'Gateway' object has no attribute '_supervised_by_launchd'
 E   AssertionError: ⚠️ This gateway is not running under systemd, so /restart cannot bring it back — stop it and start it by hand instead.
     assert ('com.steadfaste.gateway' in '⚠️ This gateway is not running under systemd, so /restart cannot bring it back — stop it and start it by hand instead.')
-/tmp/launchd-red-3231990/tests/test_gateway_slash_parity.py:872: AssertionError: ⚠️ This gateway is not running under systemd, so /restart cannot bring it back — stop it and start it by hand instead.
+/tmp/launchd-red-3234996/tests/test_gateway_slash_parity.py:872: AssertionError: ⚠️ This gateway is not running under systemd, so /restart cannot bring it back — stop it and start it by hand instead.
 E   AssertionError: SuccessfulExit=false is the condition the daemon's exit 75 comes back on
     assert None is False
-     +  where None = <built-in method get of dict object at 0x7958f2a82100>('SuccessfulExit')
-     +    where <built-in method get of dict object at 0x7958f2a82100> = {'CrashedOrAbnormalExit': True}.get
-/tmp/launchd-red-3231990/tests/test_gateway_slash_parity.py:889: AssertionError: SuccessfulExit=false is the condition the daemon's exit 75 comes back on
+     +  where None = <built-in method get of dict object at 0x789d8f016340>('SuccessfulExit')
+     +    where <built-in method get of dict object at 0x789d8f016340> = {'CrashedOrAbnormalExit': True}.get
+/tmp/launchd-red-3234996/tests/test_gateway_slash_parity.py:889: AssertionError: SuccessfulExit=false is the condition the daemon's exit 75 comes back on
 =========================== short test summary info ============================
 FAILED tests/test_gateway_slash_parity.py::test_restart_refuses_when_the_gateway_is_not_supervised
 FAILED tests/test_gateway_slash_parity.py::test_a_daemon_inside_SOMEONE_ELSES_service_is_not_supervised
@@ -102,7 +104,7 @@ FAILED tests/test_gateway_slash_parity.py::test_the_shipped_plist_template_gives
 ======================= 8 failed, 45 deselected in 0.20s =======================
 rc=1
 
-$ git -C ~/hermes-cortex worktree remove --force /tmp/launchd-red-3231990
+$ git -C ~/hermes-cortex worktree remove --force /tmp/launchd-red-3234996
 rc=0
 
 5. ADVERSARIAL GATE — rc per changed file; finding counts BEFORE (origin/main) and
