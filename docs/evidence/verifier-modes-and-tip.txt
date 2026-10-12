@@ -17,3 +17,10 @@ $ git show --stat --oneline dc426b94 | grep '\.sh'
 $ head -1 docs/evidence/verify-cycle-12307.txt
 cycle 12307 verifier — repo=/home/esther/hermes-cortex  head=0cc455b8
   -> the captured run records the tip it ran at; the script re-runs at any tip.
+
+Why this file exists (so the two records do not read as a contradiction): an earlier
+self-report in this cycle said the chmod commit carried mode changes for "pi-mcp-landing-
+verify.sh and session-cache-loop-evaluator-verify.sh" — TWO names. That was a mistake in
+the self-report, and it omitted docs/evidence/launchd-restart-12223-reproduce.sh. The
+count was three, as the diff above shows. This file is the correction, committed with the
+commands that settle it; where the earlier note and this file disagree, this file wins.
