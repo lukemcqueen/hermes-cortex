@@ -382,6 +382,10 @@ register "ops/scripts/manage/dream-task-bridge.py"       "${CORTEX_DEPLOY_HOME}/
 # The /model picker's per-host enabler: it must reach EVERY agent host (Titus's macOS pi
 # included), so it is registered rather than checkout-only like the evidence tooling.
 register "ops/scripts/manage/gateway-model-list.py"      "${CORTEX_DEPLOY_HOME}/scripts/gateway-model-list.py"
+# The venv repairer + the declared dependency set it reads: a host must be able to fix its
+# own ~/.hermes-cortex/venv without anyone reading the source to work out what belongs there.
+register "ops/scripts/manage/fix-cortex-venv.py"          "${CORTEX_DEPLOY_HOME}/scripts/fix-cortex-venv.py"
+register "ops/install/requirements.txt"                   "${CORTEX_DEPLOY_HOME}/install/requirements.txt"
 register "mcp-servers/task-mcp.py"                      "${CORTEX_DEPLOY_HOME}/scripts/task-mcp.py"
 register "mcp-servers/executor-mcp.py"                  "${CORTEX_DEPLOY_HOME}/scripts/executor-mcp.py"
 register "mcp-servers/cortex-sandbox-mcp.py"           "${CORTEX_DEPLOY_HOME}/scripts/cortex-sandbox-mcp.py"
@@ -3568,6 +3572,23 @@ except: print('error')
   # source, producing false-positive checksum mismatches.
   info "Clearing stale __pycache__ directories…"
   find "${CORTEX_DEPLOY_HOME}/scripts" -type d -name "__pycache__" -prune -exec rm -rf {} + 2>/dev/null || true
+
+  # ── Can the fleet venv import what the fleet DECLARES? ──────
+  # ~/.hermes-cortex/venv is the venv the MCP servers and tooling run under, and nothing
+  # used to declare what belongs in it: a host with a partial venv could only be repaired
+  # by someone working the dependency list out of the source. Print the exact repair
+  # command when it cannot import them. Deliberately NOT an automatic install (a surprise
+  # network install is not the deploy's job) and deliberately not a deploy failure — the
+  # venv is tooling, and the host must stay updatable while it is broken.
+  _venv_py="${CORTEX_DEPLOY_HOME}/venv/bin/python3"
+  _venv_fixer="${CORTEX_DEPLOY_HOME}/scripts/fix-cortex-venv.py"
+  if [[ -x "$_venv_py" && -f "$_venv_fixer" ]]; then
+    if ! "$_venv_py" "$_venv_fixer" --check >/dev/null 2>&1; then
+      warn "The fleet venv cannot import the declared dependencies (install/requirements.txt)."
+      info "  report: \"$_venv_py\" \"$_venv_fixer\" --check"
+      info "  repair: \"$_venv_py\" \"$_venv_fixer\""
+    fi
+  fi
 
   # ── Auto-run doctor after update ─────────────────────────
   info "Running doctor to verify installation…"

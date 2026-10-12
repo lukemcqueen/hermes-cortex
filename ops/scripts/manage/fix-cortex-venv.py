@@ -1,0 +1,220 @@
+#!/usr/bin/env python3
+"""Repair ~/.hermes-cortex/venv on ANY host — one command, verified by import.
+
+WHY THIS EXISTS. `~/.hermes-cortex/venv` is the fleet venv (cortex-update.sh registers every
+MCP server against it), but nothing declared what it should CONTAIN, so a host whose venv was
+empty or partial could only be fixed by someone reading the source to work out the
+dependencies. Found the hard way on esther: the venv could not collect a test module (no
+fastapi) and had no pytest, while the resolver quietly used the Hermes venv instead — the
+tree we are migrating away from.
+
+WHAT IT DOES
+  * reads the DECLARED set from ops/install/requirements.txt (this repo, or --requirements);
+  * decides what is missing by IMPORTING it in the target interpreter — never by metadata or
+    exit codes ("PyYAML" is a distribution name; `yaml` is the module);
+  * installs only the missing ones, preferring `uv` and falling back to the venv's own pip
+    (a uv venv has NO pip until `ensurepip` runs — handled);
+  * re-checks by import afterwards and fails loudly if the venv still cannot import them.
+
+USAGE
+  python3 fix-cortex-venv.py                    # repair the default venv
+  python3 fix-cortex-venv.py --check            # report only; exit 3 if anything is missing
+  python3 fix-cortex-venv.py --check --json     # last line is JSON, for a doctor/deploy hook
+  python3 fix-cortex-venv.py --venv /path/to/venv --requirements /path/to/requirements.txt
+
+EXIT CODES
+  0  the venv can import everything declared (repaired if it could not)
+  1  repair attempted and the venv STILL cannot import something (the message says what)
+  2  usage error
+  3  --check found gaps, or the venv is absent/unusable — COULD NOT VERIFY. Never a pass.
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+
+DEFAULT_VENV = "~/.hermes-cortex/venv"
+#: Distribution name -> module name, where they differ. Importing "PyYAML" is not a thing.
+MODULE_ALIASES = {"pyyaml": "yaml", "pillow": "PIL", "psycopg2-binary": "psycopg2",
+                  "python-dateutil": "dateutil", "beautifulsoup4": "bs4"}
+
+#: Import each module in the TARGET interpreter and report per module. Modules arrive as
+#: ARGV (never interpolated into this string).
+PROBE = (
+    "import importlib, json, sys\n"
+    "out = {}\n"
+    "for m in sys.argv[1:]:\n"
+    "    try:\n"
+    "        importlib.import_module(m)\n"
+    "        out[m] = True\n"
+    "    except Exception:\n"
+    "        out[m] = False\n"
+    "print(json.dumps(out))\n"
+)
+
+
+def parse_requirements(text):
+    """Requirement lines, comments and blanks stripped, order kept."""
+    out = []
+    for raw in (text or "").splitlines():
+        line = raw.split("#", 1)[0].strip()
+        if line:
+            out.append(line)
+    return out
+
+
+def dist_name(req):
+    """'psycopg[binary]>=3.1' -> 'psycopg'."""
+    name = req.split("[", 1)[0]
+    for sep in (">=", "<=", "==", "~=", ">", "<", "!", " "):
+        name = name.split(sep, 1)[0]
+    return name.strip()
+
+
+def module_for(req):
+    """The module to import for a requirement ('PyYAML>=6.0' -> 'yaml')."""
+    name = dist_name(req)
+    alias = MODULE_ALIASES.get(name.lower())
+    if alias:
+        return alias
+    return name.replace("-", "_")
+
+
+def venv_state(python, requirements):
+    """{requirement: importable?} using the TARGET interpreter."""
+    modules = {}
+    for req in requirements:
+        modules.setdefault(module_for(req), []).append(req)
+    try:
+        proc = subprocess.run([str(python), "-c", PROBE, *sorted(modules)], capture_output=True,
+                              text=True, timeout=180)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise SystemExit(f"could not run {python}: {exc}") from None
+    try:
+        probed = json.loads(proc.stdout.strip().splitlines()[-1])
+    except (ValueError, IndexError):
+        raise SystemExit(f"{python} produced no probe output:\n{proc.stdout}{proc.stderr}") from None
+    state = {}
+    for module, reqs in modules.items():
+        for req in reqs:
+            state[req] = bool(probed.get(module))
+    return state
+
+
+def find_requirements(start):
+    """The declared set, from the repo layout OR the deployed one.
+
+    Deployed: <deploy-home>/scripts/fix-cortex-venv.py -> <deploy-home>/install/requirements.txt
+    Repo:     ops/scripts/manage/fix-cortex-venv.py    -> ops/install/requirements.txt
+    A fixed number of `..` cannot serve both, so search upward for either shape.
+    """
+    p = Path(start).resolve()
+    for parent in [p.parent, *p.parents]:
+        for cand in (parent / "install" / "requirements.txt",
+                     parent / "ops" / "install" / "requirements.txt"):
+            if cand.is_file():
+                return cand
+    return None
+
+
+def fix_argv(venv, requirements=None):
+    argv = [sys.executable, str(Path(__file__).resolve()), "--venv", str(venv)]
+    if requirements is not None:
+        argv += ["--requirements", str(requirements)]
+    return argv
+
+
+def create_venv_cmd(venv):
+    return f"python3 -m venv {venv}"
+
+
+def _installer(venv_python, reqs):
+    """An install command that works on a host with uv, pip, or NEITHER (ensurepip first)."""
+    if shutil.which("uv"):
+        return ["uv", "pip", "install", "--python", str(venv_python), *reqs]
+    probe = subprocess.run([str(venv_python), "-c", "import pip"], capture_output=True)
+    if probe.returncode != 0:
+        subprocess.run([str(venv_python), "-m", "ensurepip", "--upgrade"], capture_output=True)
+    return [str(venv_python), "-m", "pip", "install", *reqs]
+
+
+def main(argv=None):
+    ap = argparse.ArgumentParser(description="Repair the fleet python venv, verified by import.")
+    ap.add_argument("--venv", default=DEFAULT_VENV, help=f"venv root (default {DEFAULT_VENV})")
+    ap.add_argument("--requirements", default=None,
+                    help="declared dependency set (default: the requirements.txt beside this "
+                         "script's install/ directory, repo or deployed layout)")
+    ap.add_argument("--check", action="store_true", help="report only; change nothing")
+    ap.add_argument("--json", action="store_true", help="last line is machine-readable JSON")
+    args = ap.parse_args(argv)
+
+    venv = Path(args.venv).expanduser()
+    # Resolve the declared set for EITHER layout (repo or deployed) unless told explicitly.
+    reqs_path = (Path(args.requirements).expanduser() if args.requirements
+                 else find_requirements(__file__) or Path("ops/install/requirements.txt"))
+    python = venv / "bin" / "python3"
+    report = {"venv": str(venv), "python": str(python), "venv_ok": venv.is_dir(),
+              "requirements": str(reqs_path), "missing": [], "present": [], "repaired": False}
+
+    def emit(code, human_lines):
+        for line in human_lines:
+            print(line)
+        if args.json:
+            report["fix_argv"] = fix_argv(venv, reqs_path)
+            print(json.dumps(report))
+        return code
+
+    if not reqs_path.is_file():
+        report["venv_ok"] = venv.is_dir()
+        return emit(3, [f"COULD NOT VERIFY — no declared dependency set at {reqs_path}",
+                        "  pass --requirements, or restore ops/install/requirements.txt"])
+    requirements = parse_requirements(reqs_path.read_text())
+    if not requirements:
+        return emit(3, [f"COULD NOT VERIFY — {reqs_path} declares nothing"])
+
+    if not python.exists():
+        return emit(3, [f"the venv is absent or unusable: {python}",
+                        f"  create it:  {create_venv_cmd(venv)}",
+                        f"  then:      {' '.join(fix_argv(venv, reqs_path))}"])
+
+    state = venv_state(python, requirements)
+    report["present"] = [r for r, ok in state.items() if ok]
+    report["missing"] = [r for r, ok in state.items() if not ok]
+    cmd = " ".join(fix_argv(venv, reqs_path))
+
+    if not report["missing"]:
+        return emit(0, [f"ok: {python} imports all {len(requirements)} declared requirements"])
+
+    if args.check:
+        return emit(3, [f"{len(report['missing'])} of {len(requirements)} declared requirements are "
+                        f"missing from {venv}:",
+                        *[f"  missing: {r}" for r in report["missing"]],
+                        f"  fix it:  {cmd}"])
+
+    print(f"installing {len(report['missing'])} missing requirement(s) into {venv}:")
+    for r in report["missing"]:
+        print(f"  + {r}")
+    install = subprocess.run(_installer(python, report["missing"]), capture_output=True, text=True)
+    if install.returncode != 0:
+        tail = (install.stderr or install.stdout or "").strip().splitlines()[-3:]
+        return emit(1, ["the installer failed:", *[f"  {t}" for t in tail],
+                        "  a host without network access must be repaired manually",
+                        f"  retry:   {cmd}"])
+
+    report["repaired"] = True
+    state = venv_state(python, requirements)
+    report["missing"] = [r for r, ok in state.items() if not ok]
+    report["present"] = [r for r, ok in state.items() if ok]
+    if report["missing"]:
+        return emit(1, [f"still cannot import after installing: {', '.join(report['missing'])}",
+                        f"  retry:   {cmd}"])
+    return emit(0, [f"repaired: {python} now imports all {len(requirements)} declared requirements"])
+
+
+if __name__ == "__main__":
+    sys.exit(main())

@@ -1,0 +1,23 @@
+# The fleet's python dependency set for ~/.hermes-cortex/venv — the venv cortex-update.sh
+# registers every MCP server against.
+#
+# Declared because nothing was: the set was only knowable by grepping the repo, so a host
+# with a broken venv had no way to know what "fixed" meant. Measured from what the repo
+# actually imports (2026-10-13):
+#   mcp      -> mcp-servers/*.py, ops/scripts/orch-bus/orch-bus-mcp.py
+#   PyYAML   -> cortex-update.sh, install-*.sh, health watchdogs, core/cortex_bus/workflow/
+#   fastapi  -> core/cortex_bus/server.py
+#   uvicorn  -> core/cortex_bus/server.py (the ASGI server it runs under)
+#   psycopg  -> core/cortex_bus/queue.py, ops/scripts/bus/workflow-inspector.py
+#   pytest   -> the test suite (dev)
+#
+# Repair or install on ANY host with one idempotent command that verifies by import:
+#   python3 ops/scripts/manage/fix-cortex-venv.py
+# Report without changing anything (the shape a doctor check runs):
+#   python3 ops/scripts/manage/fix-cortex-venv.py --check
+mcp>=1.0
+PyYAML>=6.0
+fastapi>=0.100
+uvicorn>=0.23
+psycopg[binary]>=3.1
+pytest>=7.0
