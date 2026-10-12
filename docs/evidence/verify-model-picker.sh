@@ -21,12 +21,21 @@ say "== 1. the picker's tests, BY NAME =="
 [ "${PIPESTATUS[0]}" = 0 ] || bad "1 the model/menu tests"
 
 say
+say "== 1b. the WHOLE file (so a subset claim cannot outrun its evidence) =="
+"$PY" -m pytest tests/test_gateway_slash_parity.py -q 2>&1 | tail -1 | sed 's/^/  /'
+[ "${PIPESTATUS[0]}" = 0 ] || bad "1b the whole parity file"
+
+say
 say "== 2. the DEPLOYED copy this host runs =="
 if [ ! -f "$DEP" ]; then
   say "  SKIP — no deployed gateway here (a fresh checkout): nothing to compare"
 else
+  # The deploy INSERTS a SOURCE banner whose shape differs per file type, so the
+  # comparison strips leading comment AND blank lines on both sides (never a fixed line
+  # count — that mis-reports a script carrying the banner after its shebang). The claim
+  # is therefore "identical modulo the deploy banner and blank lines", not byte-identity.
   if diff <(sed -E '/^#/d; /^$/d' "$SRC") <(sed -E '/^#/d; /^$/d' "$DEP") >/dev/null; then
-    say "  deployed == repo (banner stripped): $DEP"
+    say "  deployed == repo modulo the deploy banner / blank lines: $DEP"
   else
     bad "2 the deployed gateway differs from the repo — the running copy is not this code"
   fi
@@ -40,16 +49,19 @@ out="$(python3 "$AV" --file "$SRC" --level A4 --gate 2>&1)"
 printf '%s\n' "$out" | grep -E "📊 Summary|Medium:|Low:|Info:|GATE_PASSED|GATE_FAILED" | sed 's/^/  /'
 printf '%s\n' "$out" | grep -q "GATE_PASSED" || bad "3 A4 did not pass the gate"
 
-if [ -n "${BASE:-}" ]; then
+if [ -n "${BASE:-4efcb1a3}" ]; then
+  # PINNED by default to the commit the picker branched from (immutable: it is pushed
+  # history), so the before/after delta is reproducible instead of resting on a
+  # transient HEAD. Override with BASE=<rev>, or BASE= to skip.
   say
-  say "== 4. against the pre-change baseline $BASE =="
-  git show "$BASE:$SRC" > /tmp/verify-picker-baseline.py 2>/dev/null \
-    || { bad "4 cannot read $BASE:$SRC"; }
+  say "== 4. against the pinned pre-change baseline ${BASE:-4efcb1a3} =="
+  git show "${BASE:-4efcb1a3}:$SRC" > /tmp/verify-picker-baseline.py 2>/dev/null \
+    || { bad "4 cannot read ${BASE:-4efcb1a3}:$SRC"; }
   if [ -f /tmp/verify-picker-baseline.py ]; then
     for f in /tmp/verify-picker-baseline.py "$SRC"; do
       bout="$(python3 "$AV" --file "$f" --level A4 --gate 2>&1)"
       say "  $(basename "$f"): $(printf '%s\n' "$bout" \
-        | grep -E 'Medium:|Low:|Info:|GATE_PASSED|GATE_FAILED' | tr '\n' ' ' | tr -s ' ')"
+        | grep -E 'Summary:|Medium:|Low:|Info:|GATE_PASSED|GATE_FAILED' | tr '\n' ' ' | tr -s ' ')"
     done
   fi
 fi
