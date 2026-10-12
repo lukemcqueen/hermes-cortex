@@ -1,0 +1,18 @@
+Running: /home/esther/.hermes/hermes-agent/venv/bin/python3 -m pytest tests/test_review_material_bound.py -v -k evidence_paths or under_the_floor or never_exceeds --tb=no -q
+rc: 0
+when: 2026-10-12T09:55:03Z
+
+============================= test session starts ==============================
+platform linux -- Python 3.11.15, pytest-9.1.1, pluggy-1.6.0 -- /home/esther/.hermes/hermes-agent/venv/bin/python3
+cachedir: .pytest_cache
+rootdir: /home/esther/hermes-cortex
+configfile: pytest.ini
+plugins: anyio-4.12.1
+collecting ... collected 15 items / 12 deselected / 3 selected
+
+tests/test_review_material_bound.py::test_evidence_paths_count_as_documentation PASSED [ 33%]
+tests/test_review_material_bound.py::test_every_file_under_the_floor_is_shown_whole PASSED [ 66%]
+tests/test_review_material_bound.py::test_the_floor_never_exceeds_the_budget PASSED [100%]
+
+======================= 3 passed, 12 deselected in 1.23s =======================
+sha256: a15f677f7fa0923bee2109e52ec58737ae26e470850e3b75d14c8c2b62d33e91

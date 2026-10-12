@@ -6,3 +6,7 @@ rc: 0
 3373:        if any(p.startswith(d) for d in DOC_ONLY_DIR_PREFIXES):
 repro/repo same line:
 2062:DOC_ONLY_DIR_PREFIXES = ("docs/evidence/",)
+
+Line-number note: line 2065 here vs 2062 in the repo — dogfood prepends a 3-line
+SOURCE banner to the deployed copy, so every line in the deployed file is +3. Same bytes,
+same constant value.
