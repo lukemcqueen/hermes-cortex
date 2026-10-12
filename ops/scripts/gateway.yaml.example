@@ -16,5 +16,18 @@
   "routing": {
     "default": "hermes",
     "overrides": {}
+  },
+  "models": {
+    "_comment": "The /model PICKER's list (optional). Present -> a bare /model posts an inline menu with prev/next and a tick on the model in force; absent -> /model stays text-only (/model <name> and /model reset keep working either way). Curate it: `pi --list-models` prints hundreds of entries, and a menu of hundreds is worse than a command.",
+    "list": [
+      "openrouter/moonshotai/kimi-k2.6",
+      "openrouter/anthropic/claude-sonnet-4.5",
+      "openrouter/openai/gpt-5",
+      "openrouter/xai/grok-4",
+      "openrouter/deepseek/v4-pro",
+      "openrouter/google/gemini-3-pro",
+      "openrouter/meta/llama-4-70b"
+    ],
+    "page_size": 6
   }
 }

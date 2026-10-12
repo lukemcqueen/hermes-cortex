@@ -226,7 +226,9 @@ class Gateway:
                  pairing: "PairingStore | None" = None,
                  sessions: "SessionBook | None" = None,
                  models: "ModelBook | None" = None,
-                 restarts: "RestartBook | None" = None):
+                 restarts: "RestartBook | None" = None,
+                 model_menu: list | None = None,
+                 model_page_size: int = 6):
         self.transport = transport
         self.backends = backends          # agent_name -> BackendAdapter
         self.default_agent = default_agent
@@ -246,6 +248,12 @@ class Gateway:
         # Unseen /restart markers: the gateway cannot tell a human it restarted
         # AFTER it restarted, so the first reply once it is back does.
         self.restarts = restarts
+        # The `/model` PICKER's list (2026-10-12). Gateway-owned, not backend-owned: a
+        # menu is a UI decision, and a backend's raw model list can run to hundreds of
+        # entries (pi lists every OpenRouter model) — an operator curates the handful
+        # worth switching between, in gateway.yaml. Empty = the text-only `/model`.
+        self.model_menu = [str(m).strip() for m in (model_menu or []) if str(m).strip()]
+        self.model_page_size = max(1, int(model_page_size or 6))
         # offset tracks the transport's own offset (transport owns the truth).
         self.offset = getattr(transport, "offset", 0)
 
@@ -353,9 +361,14 @@ class Gateway:
         if envelope.get("tg_kind") == "message":
             self.suppressed.discard(chat)
         # A button press: clear its spinner immediately. The agent decides what the choice
-        # MEANS; the gateway only acknowledges that it was received (best-effort).
+        # MEANS; the gateway only acknowledges that it was received (best-effort). Ours
+        # (the /model picker) is handled here and never becomes prompt prose — a menu
+        # button forwarded to the agent would arrive as the verbatim string
+        # "[callback: mdl:sel:2]" and be answered in words.
         if envelope.get("tg_kind") == "callback":
             self._answer_callback(envelope)
+            if self._handle_model_callback(chat, envelope):
+                return
         envelope["to_agent"] = self.route(chat)
         backend = self.backends.get(envelope["to_agent"])
         if backend is None:
@@ -500,6 +513,9 @@ class Gateway:
         current = self.models.get(chat)
 
         if not want or want.lower() in ("status", "show"):
+            if self.model_menu:
+                self._send_model_menu(chat, 0)
+                return True
             where = f"this chat: {current}" if current else \
                     f"this chat: {default or '(backend default)'}"
             tail = f" · default: {default}" if current and default else ""
@@ -534,6 +550,115 @@ class Gateway:
                           "Applies from your next message · /model reset restores "
                           f"{default or 'the default'}.")
         return True
+
+    # ── /model picker: the inline menu behind the same command ──
+    # The text form (`/model <name>`, `/model reset`) is unchanged; this is the same
+    # contract with a UI a phone can use. Everything here is re-rendered from current
+    # state, so a stale button can only ever be out of range — never a different model
+    # than the one it showed.
+    PICKER_PREFIX = "mdl:"
+
+    def _backend_default_model(self, chat) -> str:
+        """The model this chat runs with no override — the backend's configured one."""
+        backend = self.backends.get(self.route(chat)) if chat is not None else None
+        spec = getattr(backend, "spec", None)
+        return str(getattr(spec, "model", "") or "").strip()
+
+    def _model_menu_view(self, chat, page: int = 0):
+        """(text, buttons) for one page. Pure: no send, no state change."""
+        names = self.model_menu
+        size = self.model_page_size
+        pages = max(1, (len(names) + size - 1) // size)
+        page = max(0, min(int(page), pages - 1))
+        current = (self.models.get(chat) if self.models is not None else "") or ""
+        default = self._backend_default_model(chat)
+        # The model IN FORCE, which is the backend's default until this chat switches.
+        # Marking only an override would show an unmarked list to every chat that never
+        # switched — i.e. to everyone, most of the time.
+        effective = current or default
+
+        rows = []
+        for idx in range(page * size, min(len(names), (page + 1) * size)):
+            name = names[idx]
+            mark = "✅ " if name == effective else ""
+            rows.append([{"text": f"{mark}{name}",
+                          "data": f"{self.PICKER_PREFIX}sel:{idx}"}])
+        nav = []
+        if page > 0:
+            nav.append({"text": "◀ prev", "data": f"{self.PICKER_PREFIX}pg:{page - 1}"})
+        if page < pages - 1:
+            nav.append({"text": "next ▶", "data": f"{self.PICKER_PREFIX}pg:{page + 1}"})
+        if current:
+            nav.append({"text": "↩︎ default", "data": f"{self.PICKER_PREFIX}rst"})
+        if nav:
+            rows.append(nav)
+
+        head = f"🧠 model for this chat: {current or default or '(backend default)'}"
+        if pages > 1:
+            head += f" · page {page + 1}/{pages}"
+        return head + "\nTap a model to switch · /model <name> still works", rows
+
+    def _send_model_menu(self, chat, page: int = 0) -> None:
+        """Post the picker as a NEW message (what a bare `/model` does)."""
+        if chat is None:
+            return
+        text, buttons = self._model_menu_view(chat, page)
+        self.transport.send({"channel_user_id": chat, "body": text, "buttons": buttons})
+
+    def _handle_model_callback(self, chat, envelope: dict) -> bool:
+        """A press on the picker. True = consumed (never dispatched to the agent).
+
+        The callback data is an INDEX rather than the model name: Telegram caps
+        `callback_data` at 64 bytes and a model id can run to 40+, and re-rendering from
+        current state means an out-of-range button can never apply a model that is no
+        longer in the list.
+        """
+        body = str(envelope.get("body") or "")
+        if not body.startswith(f"[callback: {self.PICKER_PREFIX}"):
+            return False
+        parts = body[len("[callback: "):-1].split(":")
+        action = parts[1] if len(parts) > 1 else ""
+        arg = parts[2] if len(parts) > 2 else ""
+        is_index = arg.isdigit()
+
+        if action == "sel":
+            if not is_index or int(arg) >= len(self.model_menu):
+                # The list moved under the button (config edit, restart). Say so rather
+                # than guess: applying "index N" of a NEW list switches someone to a
+                # model they never picked.
+                self._reply(chat, "⚠️ That model is no longer in the list — send /model again.")
+                return True
+            idx = int(arg)
+            if self.models is not None:
+                self.models.set(chat, self.model_menu[idx])
+            chosen = self.model_menu[idx]
+            text = (f"🧠 model for this chat set to {chosen}.\n"
+                    "Applies from your next message · /model reset restores the default.")
+            page = idx // self.model_page_size
+        elif action == "rst":
+            if self.models is not None:
+                self.models.clear(chat)
+            text = (f"↩︎ model reset to the default "
+                    f"({self._backend_default_model(chat) or 'backend default'}).")
+            page = 0
+        else:                                   # "pg", and anything else under our prefix
+            text, page = "", (int(arg) if is_index else 0)
+
+        menu_text, buttons = self._model_menu_view(chat, page)
+        self._edit_menu(chat, envelope, (text + "\n\n" if text else "") + menu_text, buttons)
+        return True
+
+    def _edit_menu(self, chat, envelope: dict, text: str, buttons) -> None:
+        """Rewrite the picker in place; a transport without edit_message still answers."""
+        edit = getattr(self.transport, "edit_message", None)
+        msg_id = envelope.get("tg_msg_id")
+        if edit is None or msg_id is None or chat is None:
+            self._reply(chat, text)
+            return
+        try:
+            edit(chat, msg_id, text, buttons)
+        except Exception as e:  # noqa: BLE001 — UX must never break the turn
+            print(f"⚠️  could not rewrite the /model menu: {e}", file=sys.stderr)
 
     # ── /compact: ask the agent to compact ITS session ─────────
     def _handle_compact(self, chat, envelope: dict, backend) -> bool:
@@ -1138,6 +1263,19 @@ def build_gateway(config_path: Path) -> Gateway:
     # (correctly) stop trusting.
     from . import models as _models
     models = _models.ModelBook(_state_dir / "gateway-models.json")
+    # The picker's list. Curated on purpose: `pi --list-models` prints hundreds of
+    # entries, and a menu of hundreds is worse than a text command. Either form works:
+    #     "models": ["openrouter/a/b", "openrouter/c/d"]
+    #     "models": {"list": [...], "page_size": 6}
+    # Omitting it keeps `/model` in its text-only form.
+    _menu_cfg = data.get("models") or []
+    if isinstance(_menu_cfg, dict):
+        menu_list = [str(m).strip() for m in (_menu_cfg.get("list") or []) if str(m).strip()]
+        menu_page_size = int(_menu_cfg.get("page_size", 6) or 6)
+    else:
+        menu_list = [str(m).strip() for m in (_menu_cfg if isinstance(_menu_cfg, list) else [])
+                     if str(m).strip()]
+        menu_page_size = 6
     # Unseen /restart markers, for the confirmation the chat gets once the gateway
     # is back. Persisted for the same reason: the process that marks it exits.
     from . import restarts as _restarts
@@ -1154,7 +1292,8 @@ def build_gateway(config_path: Path) -> Gateway:
                    default_agent=routing.get("default", DEFAULT_BACKEND_AGENT),
                    routing_overrides=routing.get("overrides", {}),
                    allowed_users=allowed, pairing=pairing, sessions=sessions,
-                   models=models, restarts=restarts)
+                   models=models, restarts=restarts,
+                   model_menu=menu_list, model_page_size=menu_page_size)
 
 
 def main() -> int:

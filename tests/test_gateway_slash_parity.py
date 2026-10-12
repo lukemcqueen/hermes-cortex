@@ -44,6 +44,8 @@ class FakeTransport:
 
     def __init__(self):
         self.sent = []
+        self.edits = []      # edit_message calls (the /model menu rewrites in place)
+        self.answers = []    # answer_callback calls (spinner cleared)
 
     def parse(self, raw):
         return dict(raw)
@@ -52,11 +54,25 @@ class FakeTransport:
         self.sent.append(envelope)
         return True
 
+    def answer_callback(self, query_id):
+        self.answers.append(query_id)
+
+    def edit_message(self, chat_id, message_id, text, buttons=None, parse_mode=""):
+        self.edits.append({"chat_id": chat_id, "message_id": message_id,
+                           "text": text, "buttons": buttons})
+        return True
+
     def bodies(self):
         return [str(e.get("body", "")) for e in self.sent]
 
     def last(self) -> str:
         return self.bodies()[-1] if self.sent else ""
+
+    def last_env(self) -> dict:
+        return self.sent[-1] if self.sent else {}
+
+    def last_buttons(self) -> list:
+        return self.last_env().get("buttons") or []
 
 
 def _spec(**over) -> AGENTS.AgentSpec:
@@ -186,6 +202,130 @@ def test_model_command_says_so_when_switching_is_not_configured(tmp_path):
                         default_agent="pi", allowed_users=None, models=None)
     _tell(gw, "/model openrouter/x/y")
     assert "not configured" in transport.last()
+
+
+# ── /model inline menu (prev/next picker) ────────────────────────────────────
+# Hermes' `/model` shows a picker; the gateway's `/model` was text-only. The menu is the
+# same CONTRACT as the text form (one chat, persisted, applied through the backend's argv)
+# with a UI a phone can use: a page of models, the one in force marked, prev/next when the
+# list runs past a page, and a way back to the default.
+
+MODELS_CFG = [
+    "openrouter/moonshotai/kimi-k2.6",
+    "openrouter/anthropic/claude-sonnet-4.5",
+    "openrouter/openai/gpt-5",
+    "openrouter/xai/grok-4",
+    "openrouter/deepseek/v4-pro",
+    "openrouter/google/gemini-3-pro",
+    "openrouter/meta/llama-4-70b",          # 7th -> a second page at page_size 6
+]
+
+
+def _menu_gateway(tmp_path, model_menu=None, page_size=6):
+    """A gateway with the picker configured. The list belongs to the GATEWAY (a UI
+    decision), not to the backend spec — a spec only declares how a model reaches argv."""
+    spec = _spec()
+    transport = FakeTransport()
+    gw = DAEMON.Gateway(
+        transport=transport, backends={"pi": AGENTS.CommandBackend(spec)}, default_agent="pi",
+        allowed_users=None,
+        sessions=SESSIONS.SessionBook(tmp_path / "sessions.json"),
+        models=MODELS.ModelBook(tmp_path / "models.json"),
+        restarts=RESTARTS.RestartBook(tmp_path / "restarts.json"),
+        model_menu=MODELS_CFG if model_menu is None else model_menu,
+        model_page_size=page_size,
+    )
+    return gw, transport, spec
+
+
+def _labels(buttons):
+    return [b.get("text", "") for row in (buttons or []) for b in row]
+
+
+def _datas(buttons):
+    return [b.get("data", "") for row in (buttons or []) for b in row]
+
+
+def _callback(gw, data, msg_id=777, chat=CHAT):
+    """A button press, in the shape the transport really produces."""
+    env = _envelope(f"[callback: {data}]", chat)
+    env.update({"tg_kind": "callback", "tg_query_id": "q-1", "tg_msg_id": msg_id})
+    gw._turn(env)
+
+
+def test_model_with_no_argument_sends_an_inline_menu_marking_the_current_model(tmp_path):
+    gw, transport, _ = _menu_gateway(tmp_path)
+    _tell(gw, "/model")
+    buttons = transport.last_buttons()
+    assert buttons, "a configured model list must send an inline keyboard"
+    labels = _labels(buttons)
+    assert any("kimi-k2.6" in l for l in labels), "the configured models must be offered"
+    assert any(l.startswith("✅") for l in labels), "the model in force must be marked"
+    datas = _datas(buttons)
+    assert "mdl:pg:1" in datas, "a list longer than one page must offer next"
+    assert "mdl:pg:-1" not in datas, "there is no page before the first"
+    assert not any(d == "mdl:rst" for d in datas), "a chat on the default has nothing to reset"
+
+
+def test_menu_next_edits_the_message_and_prev_returns_to_the_first_page(tmp_path):
+    gw, transport, _ = _menu_gateway(tmp_path)
+    _tell(gw, "/model")
+    _callback(gw, "mdl:pg:1", msg_id=4242)
+    assert transport.edits, "pressing next must rewrite the menu in place, not post a new message"
+    page2 = transport.edits[-1]
+    assert page2["message_id"] == 4242, "the edit must target the message that carried the buttons"
+    labels = _labels(page2["buttons"])
+    assert any("llama-4-70b" in l for l in labels), "page 2 must offer the 7th model"
+    assert not any("kimi-k2.6" in l for l in labels), "page 2 must not still offer page 1's models"
+    assert "page 2/2" in page2["text"], "the header says which page this is"
+    assert "mdl:pg:0" in _datas(page2["buttons"]), "page 2 must offer prev"
+    assert transport.answers == ["q-1"], "the button's spinner must be cleared"
+
+    _callback(gw, "mdl:pg:0", msg_id=4242)
+    assert any("kimi-k2.6" in l for l in _labels(transport.edits[-1]["buttons"])), \
+        "prev must return to page 1"
+
+
+def test_menu_selection_sets_this_chats_model_and_confirms_in_place(tmp_path):
+    gw, transport, _ = _menu_gateway(tmp_path)
+    _tell(gw, "/model")
+    _callback(gw, "mdl:sel:2", msg_id=55)                      # gpt-5
+    assert MODELS.ModelBook(tmp_path / "models.json").get(CHAT) == MODELS_CFG[2]
+    edited = transport.edits[-1]
+    assert MODELS_CFG[2] in edited["text"], "the confirmation names the choice"
+    assert any(l.startswith("✅") and "gpt-5" in l for l in _labels(edited["buttons"])), \
+        "the re-rendered menu must mark the newly selected model"
+    _turn(gw, "hello")                                          # and it must reach the argv
+    assert f"--model {MODELS_CFG[2]}" in transport.last()
+
+
+def test_menu_reset_returns_the_chat_to_the_default(tmp_path):
+    gw, transport, _ = _menu_gateway(tmp_path)
+    _tell(gw, "/model openrouter/x/y")
+    _tell(gw, "/model")
+    assert "mdl:rst" in _datas(transport.last_buttons()), \
+        "a chat with an override must be offered a way back to the default"
+    _callback(gw, "mdl:rst", msg_id=9)
+    assert MODELS.ModelBook(tmp_path / "models.json").get(CHAT) == ""
+
+
+def test_no_configured_list_keeps_the_text_status_and_sends_no_buttons(tmp_path):
+    gw, transport, _ = _menu_gateway(tmp_path, model_menu=[])
+    _tell(gw, "/model")
+    assert not transport.last_buttons(), "without a configured list there is nothing to pick from"
+    assert "model" in transport.last().lower(), "the text form must still report the current model"
+
+
+def test_a_stale_or_foreign_callback_is_not_treated_as_a_menu_action(tmp_path):
+    gw, transport, _ = _menu_gateway(tmp_path)
+    _tell(gw, "/model")
+    edits = len(transport.edits)
+    _callback(gw, "mdl:sel:99", msg_id=1)      # out of range: the list moved under the button
+    assert len(transport.edits) == edits, "an out-of-range selection must not rewrite the menu"
+    assert MODELS.ModelBook(tmp_path / "models.json").get(CHAT) == "", "and must not set a model"
+    _callback(gw, "approve:1", msg_id=1)       # somebody else's button
+    assert len(transport.edits) == edits, "a foreign callback must not be consumed as a menu action"
+    assert transport.answers, "the spinner is still cleared for every callback"
 
 
 # ── /compact ─────────────────────────────────────────────────────────────────
