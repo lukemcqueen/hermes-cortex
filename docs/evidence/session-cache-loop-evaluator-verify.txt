@@ -1,0 +1,9 @@
+session-cache / loop_evaluator landing verify — repo=/home/esther/hermes-cortex  head=97ae8245
+
+1  metric repro rc=0  RESULT: PASS — metric is consistent with its label
+   
+2  session-cache repro rc=0  RESULT: PASS — all assertions held
+3  agent-session-cache --help rc=0  3 subcommands
+PASS deployed == repo: ops/scripts/manage/agent-session_cache.py
+
+ALL CLAIMS VERIFIED (0 failures)
