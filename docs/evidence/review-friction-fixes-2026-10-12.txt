@@ -1,16 +1,71 @@
-Running: bash -c echo "material-window suite:"; python3 tests/test_review_material_bound.py 2>&1 | tail -1; echo "preview suite:"; python3 tests/test_review_material_preview.py 2>&1 | tail -1; echo "enforcer + gate parse:"; python3 -c "import ast; ast.parse(open(\"plugins/governance-enforcer/__init__.py\").read()); ast.parse(open(\"mcp-servers/loop-gov-mcp.py\").read()); print(\"OK\")"; echo "preview on this range:"; python3 ops/scripts/manage/review-material.py 2>/dev/null | sed -n "3,6p"
+Running: bash -c V=$HOME/.hermes/hermes-agent/venv/bin/python3; echo "== tests, by NAME =="; $V -m pytest tests/test_review_material_bound.py tests/test_review_material_preview.py -v --tb=line -q 2>&1 | grep -E "::test_|passed|failed" | tail -30; echo; echo "== deployed state =="; echo "deployed gate symbols: $(grep -c "DOC_EVIDENCE_WHOLE_CAP\|_is_material_limit_finding\|_replay_safe_findings" $HOME/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py)"; echo "deployed enforcer artifact class: $(grep -c "docs/evidence/" $HOME/.hermes/plugins/governance-enforcer/__init__.py)"; if diff <(sed -E "/^#/d; /^$/d" mcp-servers/loop-gov-mcp.py) <(sed -E "/^#/d; /^$/d" $HOME/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py) >/dev/null; then echo "deployed gate body == repo body"; else echo "deployed gate body DIFFERS"; fi; echo; echo "== implementation of _is_material_limit_finding (repo, in place) =="; grep -n -A6 "^def _is_material_limit_finding" mcp-servers/loop-gov-mcp.py; echo; echo "== preview, FULL output =="; python3 ops/scripts/manage/review-material.py 2>/dev/null
 rc: 0
-when: 2026-10-12T10:32:36Z
+when: 2026-10-12T10:37:40Z
 
-material-window suite:
-RESULT: ALL PASS (20 tests)
-preview suite:
-RESULT: ALL PASS
-enforcer + gate parse:
-OK
-preview on this range:
-  docs/evidence/review-friction-fixes-2026-10-12.txt
-  ops/scripts/manage/review-material.py
-  tests/test_review_material_preview.py
-range 844e9682ee6a..HEAD  (0 commit(s))
-sha256: 79025bc23d15569f31f5e1a8f41d065d65edaa23889785f7bdf570664ce81674
+== tests, by NAME ==
+tests/test_review_material_bound.py::test_short_diff_is_returned_unchanged PASSED [  4%]
+tests/test_review_material_bound.py::test_the_tail_survives_the_bound PASSED [  8%]
+tests/test_review_material_bound.py::test_the_omission_is_disclosed_with_true_numbers PASSED [ 13%]
+tests/test_review_material_bound.py::test_the_files_in_the_cut_are_named PASSED [ 17%]
+tests/test_review_material_bound.py::test_no_changed_file_is_omitted_entirely PASSED [ 21%]
+tests/test_review_material_bound.py::test_the_gate_actually_uses_the_helper PASSED [ 26%]
+tests/test_review_material_bound.py::test_docs_only_range_gets_the_larger_budget PASSED [ 30%]
+tests/test_review_material_bound.py::test_one_code_file_reverts_to_the_standard_budget PASSED [ 34%]
+tests/test_review_material_bound.py::test_always_review_path_disqualifies_even_markdown PASSED [ 39%]
+tests/test_review_material_bound.py::test_empty_diff_is_not_docs_only PASSED [ 43%]
+tests/test_review_material_bound.py::test_notice_states_the_limit_without_directing_the_reviewer PASSED [ 47%]
+tests/test_review_material_bound.py::test_an_explicit_budget_is_still_honoured PASSED [ 52%]
+tests/test_review_material_bound.py::test_evidence_paths_count_as_documentation PASSED [ 56%]
+tests/test_review_material_bound.py::test_every_file_under_the_floor_is_shown_whole PASSED [ 60%]
+tests/test_review_material_bound.py::test_the_floor_never_exceeds_the_budget PASSED [ 65%]
+tests/test_review_material_bound.py::test_the_largest_file_is_never_left_with_nothing PASSED [ 69%]
+tests/test_review_material_bound.py::test_evidence_files_are_shown_whole_outside_the_budget PASSED [ 73%]
+tests/test_review_material_bound.py::test_material_limit_findings_do_not_block PASSED [ 78%]
+tests/test_review_material_bound.py::test_replayed_findings_have_quotes_stripped PASSED [ 82%]
+tests/test_review_material_bound.py::test_deployed_gate_behaves_as_this_file_says PASSED [ 86%]
+tests/test_review_material_preview.py::test_thin_file_exits_nonzero_and_says_so PASSED [ 91%]
+tests/test_review_material_preview.py::test_whole_file_exits_zero PASSED [ 95%]
+tests/test_review_material_preview.py::test_cli_self_test_runs_and_judges_every_file PASSED [100%]
+============================== 23 passed in 2.43s ==============================
+
+== deployed state ==
+deployed gate symbols: 7
+deployed enforcer artifact class: 3
+deployed gate body == repo body
+
+== implementation of _is_material_limit_finding (repo, in place) ==
+2963:def _is_material_limit_finding(finding) -> bool:
+2964-    """True when the finding's complaint IS the material window, nothing more."""
+2965-    if not isinstance(finding, dict):
+2966-        return False
+2967-    if str(finding.get("technique", "")).strip().lower() in _MATERIAL_LIMIT_NEVER:
+2968-        return False
+2969-    text = " ".join(str(finding.get(k, "")) for k in ("target", "evidence", "recommendation"))
+
+== preview, FULL output ==
+gate: /home/esther/hermes-cortex/mcp-servers/loop-gov-mcp.py
+range 844e9682ee6a..HEAD  (1 commit(s))
+  24bf3956 esther-agent fix(review-friction): six root causes, portability included
+changed files: 9   budget: 12000 chars   diff: 38453 chars
+  shown       of  file
+   1399     5753  docs/DOCS-INDEX.md
+   1174     1174  docs/evidence/review-friction-fixes-2026-10-12.txt
+   1399     8257  mcp-servers/loop-gov-mcp.py
+   1399     2639  ops/scripts/make-evidence.sh
+   1399     7754  ops/scripts/manage/review-material.py
+   2210     2210  plugins/governance-enforcer/__init__.py
+   1398     2835  skills/devops/loop-governance/SKILL.md
+   1398     4818  tests/test_review_material_bound.py
+   1398     3013  tests/test_review_material_preview.py
+
+BOUNDED (a reviewer sees head+tail of these):
+  docs/DOCS-INDEX.md: 1399 of 5753 chars
+  mcp-servers/loop-gov-mcp.py: 1399 of 8257 chars
+  ops/scripts/make-evidence.sh: 1399 of 2639 chars
+  ops/scripts/manage/review-material.py: 1399 of 7754 chars
+  skills/devops/loop-governance/SKILL.md: 1398 of 2835 chars
+  tests/test_review_material_bound.py: 1398 of 4818 chars
+  tests/test_review_material_preview.py: 1398 of 3013 chars
+
+Every changed file is shown with a body a reviewer can judge.
+sha256: 542bbe73ee9a6d359177044705c514569c4d3cb2aa51360018d5485a0d9c3118
