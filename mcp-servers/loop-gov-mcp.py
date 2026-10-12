@@ -2068,6 +2068,10 @@ DOC_ONLY_DIR_PREFIXES = ("docs/evidence/",)
 # omitted" — the reviewer could not see the code it was judging. Beyond the cap the normal
 # per-file budget applies again: a 1MB evidence set is a cycle to split, not a window to
 # widen.
+# Cap PER EVIDENCE SECTION (not per range) for the "shown whole" rule below. The review
+# material is `git log -p`-shaped, so one evidence file appears once per commit that touches
+# it; an aggregate cap never fired (measured: 93,304 chars across three sections of a single
+# 5.8KB file), leaving the evidence bounded exactly as before — the fix looked self-refuting.
 DOC_EVIDENCE_WHOLE_CAP = 30000
 
 # Chars reserved for each changed file BEFORE the remainder is shared out, so a small
@@ -3626,20 +3630,27 @@ def _bound_diff(diff_text: str, budget: int | None = None) -> str:
     total = len(diff_text)
     sections = _split_diff_sections(diff_text)
     if len(sections) > 1:
-        # Evidence artifacts are shown WHOLE, outside the per-file budget (2026-10-12) —
-        # see DOC_EVIDENCE_WHOLE_CAP. The budget then belongs to the code under review,
-        # which is the thing a reviewer must actually judge.
-        evidence, code = [], []
+        # Evidence artifacts are shown WHOLE, outside the per-file budget (2026-10-12).
+        # The test is PER SECTION, not per range: the review material is built from
+        # `git log -p`, so a path appears once per commit that touches it. An aggregate
+        # total therefore never fit the cap (measured: three sections of one 5.8KB evidence
+        # file = 93,304 chars), the rule silently did not fire, and the reviewer still saw
+        # the evidence bounded — the fix looking self-refuting. Per-section, a normal
+        # artifact is shown whole and only an outsized one is bounded like anything else.
+        whole, code = [], []
         for path, text in sections:
-            (evidence if any(path.startswith(p) for p in DOC_ONLY_DIR_PREFIXES) else code).append((path, text))
-        ev_bytes = sum(len(t) for _, t in evidence)
-        if evidence and code and ev_bytes <= DOC_EVIDENCE_WHOLE_CAP:
+            if any(path.startswith(p) for p in DOC_ONLY_DIR_PREFIXES) and len(text) <= DOC_EVIDENCE_WHOLE_CAP:
+                whole.append((path, text))
+            else:
+                code.append((path, text))
+        ev_bytes = sum(len(t) for _, t in whole)
+        if whole and code:
             code_total = sum(len(t) for _, t in code)
-            note = (f"...[EVIDENCE SHOWN WHOLE: {len(evidence)} file(s) under docs/evidence/ "
+            note = (f"...[EVIDENCE SHOWN WHOLE: {len(whole)} section(s) under docs/evidence/ "
                     f"({ev_bytes} chars) are shown in full and are NOT counted against the "
-                    f"{budget}-char budget, which is spent on the {len(code)} file(s) under "
-                    f"review]\n")
-            return (policy + "".join(t for _, t in evidence) + "\n" + note
+                    f"{budget}-char budget, which is spent on the {len(code)} section(s) under "
+                    f"review; sections over {DOC_EVIDENCE_WHOLE_CAP} chars are bounded]\n")
+            return (policy + "".join(t for _, t in whole) + "\n" + note
                     + _bound_per_file(code, budget, code_total, False))
         return policy + _bound_per_file(sections, budget, total, docs_only)
     # A single unsplittable section (or an unparseable diff): the original window.

@@ -131,9 +131,20 @@ def main() -> int:
         return rc
 
     base = a.base or _git(repo, "merge-base", "origin/main", "HEAD").strip()
-    # WORKTREE-INCLUSIVE on purpose (2026-10-12): the value of a preview is seeing the
-    # material BEFORE committing, so compare the base against the working tree, not the tip.
-    diff = _git(repo, "diff", "--unified=3", base)
+    # MIRROR THE REVIEW'S COMPOSITION (2026-10-12). The close review does NOT bound a plain
+    # `git diff`: it builds `git log -p` for THIS author (so a path appears once per commit
+    # that touches it) and appends other authors' commits. A preview built with `git diff`
+    # is a different material, and previewing it hid exactly what the reviewer complained
+    # about. Same shape here, minus the provenance prose.
+    author = _git(repo, "log", "-1", "--format=%an", a.tip).strip()
+    mine = _git(repo, "log", "--format=%H", f"--author={author}", f"{base}..{a.tip}").split()
+    diff = _git(repo, "log", "-p", "--no-ext-diff", "-U3", f"--author={author}", f"{base}..{a.tip}")
+    allc = [s for s in _git(repo, "log", "--format=%H", f"{base}..{a.tip}").split() if s.strip()]
+    others = [s for s in allc if s not in set(mine)]
+    if others:
+        print(f"NOTE: {len(others)} commit(s) in this range are NOT yours; they are in the "
+              f"material too (mirrors the review's provenance block).")
+        diff += _git(repo, "show", "-p", "--no-ext-diff", "-U3", *others)
     untracked = [u for u in _git(repo, "ls-files", "--others", "--exclude-standard").splitlines() if u.strip()]
     if not diff.strip():
         print(f"no diff between {base} and the working tree — nothing for a reviewer to see")

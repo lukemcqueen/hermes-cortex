@@ -1,8 +1,7 @@
-Running: bash -c V=$HOME/.hermes/hermes-agent/venv/bin/python3; echo "== tests, by NAME (both suites) =="; $V -m pytest tests/test_review_material_bound.py tests/test_review_material_preview.py -v --tb=line -q 2>&1 | grep -E "::test_|passed"; echo; echo "== EVIDENCE-WHOLE, measured — repo gate =="; python3 ops/scripts/manage/review-material.py --gate repo 2>/dev/null | sed -n "3,14p"; echo; echo "== EVIDENCE-WHOLE, measured — DEPLOYED gate =="; python3 ops/scripts/manage/review-material.py --gate deployed 2>/dev/null | sed -n "7,14p"
+Running: bash -c V=$HOME/.hermes/hermes-agent/venv/bin/python3; $V -m pytest tests/test_review_material_bound.py tests/test_review_material_preview.py -v --tb=line -q 2>&1 | grep -E "::test_|passed"; echo; echo "== evidence-whole measured on the REVIEW composition (log -p), DEPLOYED gate =="; python3 ops/scripts/manage/review-material.py --gate deployed 2>/dev/null | sed -n "5,22p"
 rc: 0
-when: 2026-10-12T10:39:14Z
+when: 2026-10-12T10:42:18Z
 
-== tests, by NAME (both suites) ==
 tests/test_review_material_bound.py::test_short_diff_is_returned_unchanged PASSED [  4%]
 tests/test_review_material_bound.py::test_the_tail_survives_the_bound PASSED [  8%]
 tests/test_review_material_bound.py::test_the_omission_is_disclosed_with_true_numbers PASSED [ 13%]
@@ -26,29 +25,25 @@ tests/test_review_material_bound.py::test_deployed_gate_behaves_as_this_file_say
 tests/test_review_material_preview.py::test_thin_file_exits_nonzero_and_says_so PASSED [ 91%]
 tests/test_review_material_preview.py::test_whole_file_exits_zero PASSED [ 95%]
 tests/test_review_material_preview.py::test_cli_self_test_runs_and_judges_every_file PASSED [100%]
-============================== 23 passed in 2.32s ==============================
+============================== 23 passed in 2.43s ==============================
 
-== EVIDENCE-WHOLE, measured — repo gate ==
-  d112b902 esther-agent docs(evidence): one file, with every claim checkable
+== evidence-whole measured on the REVIEW composition (log -p), DEPLOYED gate ==
   24bf3956 esther-agent fix(review-friction): six root causes, portability included
   ^ if any of those are NOT yours, their files are in your material too:
     land them in their own cycle, or expect the window to be shared
-changed files: 9   budget: 12000 chars   diff: 43407 chars
+changed files: 12   budget: 12000 chars   diff: 133574 chars
   shown       of  file
-   1399     5753  docs/DOCS-INDEX.md
-   5664     5664  docs/evidence/review-friction-fixes-2026-10-12.txt
-   1399     8257  mcp-servers/loop-gov-mcp.py
-   1399     2639  ops/scripts/make-evidence.sh
-   1399     8218  ops/scripts/manage/review-material.py
+   5812     5812  docs/evidence/review-friction-fixes-2026-10-12.txt
+   2209     2209  ops/scripts/manage/review-material.py
+    948    86318  docs/evidence/review-friction-fixes-2026-10-12.txt
+    948     5753  docs/DOCS-INDEX.md
+   1174     1174  docs/evidence/review-friction-fixes-2026-10-12.txt
+    948     8257  mcp-servers/loop-gov-mcp.py
+    948     2639  ops/scripts/make-evidence.sh
+    948     7754  ops/scripts/manage/review-material.py
    2210     2210  plugins/governance-enforcer/__init__.py
+    947     2835  skills/devops/loop-governance/SKILL.md
+    947     4818  tests/test_review_material_bound.py
+    947     3013  tests/test_review_material_preview.py
 
-== EVIDENCE-WHOLE, measured — DEPLOYED gate ==
-changed files: 9   budget: 12000 chars   diff: 43407 chars
-  shown       of  file
-   1399     5753  docs/DOCS-INDEX.md
-   5664     5664  docs/evidence/review-friction-fixes-2026-10-12.txt
-   1399     8257  mcp-servers/loop-gov-mcp.py
-   1399     2639  ops/scripts/make-evidence.sh
-   1399     8218  ops/scripts/manage/review-material.py
-   2210     2210  plugins/governance-enforcer/__init__.py
-sha256: 493ca792a6b00cee2ffaabe968f0463b9de3bf6d606b837f081bbbb8c072e546
+sha256: 055c3756a4a4d3d795a64daa7c655938bb63d0609ab7e3a8050627d9a8a51789
