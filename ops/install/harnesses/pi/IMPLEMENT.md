@@ -261,16 +261,24 @@ Two rules, learned from Hermes:
 **Registered the same way as everything else here — one implementation, a thin
 per-harness way in.**
 
-- **Pi ≥ 0.99 (MCP client):** the four governance servers register at user scope
+- **Pi ≥ 0.99 (MCP client):** the five cortex servers register at user scope
   in `~/.pi/agent/mcp.json`:
 
   ```bash
   bash ~/hermes-cortex/ops/scripts/install/install-pi-mcp.sh
-  pi mcp list          # loop-governance, tasks, executor, agent-bus
+  pi mcp list          # loop-governance, tasks, executor, agent-bus, cortex-context
   ```
 
-  That is the SAME server set Claude Code gets from
-  `install-claude-governance.sh` — not a Pi-specific governance implementation.
+  That is the governance set Claude Code gets from
+  `install-claude-governance.sh`, plus `cortex-context` — not a Pi-specific
+  governance implementation.
+
+  **Host-local add-ons are NOT part of that set.** Some hosts also register a server
+  of their own (e.g. a DeepSeek adversarial-review server named `deepseek`);
+  `install-pi-mcp.sh` neither installs nor removes it, and `audit-pi-integration.sh`
+  reports it as *present, NOT audited here* rather than applying the cortex identity
+  rule to it. Registration shape, the interpreter trap and the verification for that
+  one: [`ADDON-deepseek-mcp.md`](ADDON-deepseek-mcp.md).
 
 - **Older Pi, or no MCP client:** the **commit-time pipeline already covers you**,
   verified on this host. `core.hooksPath` is global, so a `git commit` made from

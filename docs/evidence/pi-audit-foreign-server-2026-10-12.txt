@@ -17,6 +17,11 @@ G. a host-local FOREIGN server (deepseek) is reported, never judged
 G2. a foreign server whose script is missing IS still a failure
   PASS  exit 1
   PASS  names the broken entry
+H. install-pi-mcp.sh add + --remove keep a foreign entry
+  PASS  add rc=0
+  PASS  add registered the five cortex servers
+  PASS  remove rc=0
+  PASS  the foreign entry survives --remove (and the cortex set does not)
 
 ✅ foreign-server scoping checks passed
 $ PI_AUDIT_SCRIPT=<pre-change audit> python3 tests/test_pi_integration_foreign_server.py   rc=0
@@ -27,7 +32,7 @@ $ PI_AUDIT_SCRIPT=<pre-change audit> python3 tests/test_pi_integration_foreign_s
    cannot show who staged it — so the new cases live in their own file)
 $ pytest tests/test_pi_integration_audit.py -q   rc=0
 
-============================== 2 passed in 0.35s ===============================
+============================== 2 passed in 0.36s ===============================
 
 3. THE AUDIT ON THIS REAL HOST (five cortex servers, no foreign entry; rc is its own)
 $ bash ops/scripts/manage/audit-pi-integration.sh   rc=0
@@ -48,7 +53,7 @@ rc=0
 ✅ GATE_PASSED — no critical/high findings
 $ adversarial-verify.py --file tests/test_pi_integration_foreign_server.py --level A4 --gate
 rc=0
-📊 Summary: 1 file(s), 1 finding(s)
+📊 Summary: 1 file(s), 3 finding(s)
 ✅ GATE_PASSED — no critical/high findings
 
 6. THE INSTALLER SUITE (unchanged behaviour, re-run for parity)

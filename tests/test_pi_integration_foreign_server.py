@@ -136,9 +136,41 @@ def test_a_broken_foreign_entry_still_fails() -> None:
         _check("names the broken entry", "deepseek" in r.stdout, r.stdout[-300:])
 
 
+def test_the_installer_leaves_a_foreign_entry_alone() -> None:
+    """H. The doc's claim, as a re-runnable TEST rather than a pasted transcript.
+
+    `PI_MCP_FILE` points at a scratch config and HOME stays REAL: the installer
+    resolves its interpreter from the deployed layout under $HOME, so neutering HOME
+    would make it refuse for the wrong reason (a probe bug, not a finding).
+    """
+    print("H. install-pi-mcp.sh add + --remove keep a foreign entry")
+    installer = REPO / "ops" / "scripts" / "install" / "install-pi-mcp.sh"
+    with tempfile.TemporaryDirectory() as td:
+        cfg = Path(td) / "mcp.json"
+        cfg.write_text(json.dumps({"mcpServers": {
+            "deepseek": {"command": sys.executable,
+                         "args": ["/tmp/mcp_deepseek_server.py"]},
+            "user-owned": {"command": "/bin/true"}}}))
+        env = {**os.environ, "PI_MCP_FILE": str(cfg)}
+        add = subprocess.run(["bash", str(installer)], capture_output=True, text=True, env=env)
+        added = sorted(json.loads(cfg.read_text())["mcpServers"])
+        rm = subprocess.run(["bash", str(installer), "--remove"],
+                            capture_output=True, text=True, env=env)
+        remaining = sorted(json.loads(cfg.read_text())["mcpServers"])
+
+        _check("add rc=0", add.returncode == 0, (add.stdout + add.stderr)[-300:])
+        _check("add registered the five cortex servers",
+               all(s in added for s in ("loop-governance", "tasks", "executor",
+                                        "agent-bus", "cortex-context")), str(added))
+        _check("remove rc=0", rm.returncode == 0, (rm.stdout + rm.stderr)[-300:])
+        _check("the foreign entry survives --remove (and the cortex set does not)",
+               remaining == ["deepseek", "user-owned"], str(remaining))
+
+
 if __name__ == "__main__":
     test_a_foreign_server_is_reported_not_judged()
     test_a_broken_foreign_entry_still_fails()
+    test_the_installer_leaves_a_foreign_entry_alone()
     assert not _F, f"{len(_F)} check(s) failed: {', '.join(_F)}"
     print("\n✅ foreign-server scoping checks passed")
     sys.exit(0)
