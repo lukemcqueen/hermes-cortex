@@ -8,3 +8,9 @@ PASS  receipt: not required — 1def90929d5c..247018fa333c touches no always-rev
 FAIL  remote: origin/main=977411a72b77 but tip=247018fa333c
 
 FAILED — a check above is false. Fix it and re-run; this is a real mismatch.
+
+rc=1 — and it is EXPECTED PRE-PUSH, not a defect: this cycle pushes only after its close,
+so origin/main is deliberately behind the tip. The line that matters for this cycle is
+"# 0 of 11 changed files are deployed sources": every file here is docs/evidence or the
+index, so no deployed source can drift. The post-push re-run appears in the cycle that
+performs the push.
