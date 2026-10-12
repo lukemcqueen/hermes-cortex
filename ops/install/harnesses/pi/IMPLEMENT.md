@@ -197,7 +197,13 @@ a wrong conclusion once already.
 
 A prompt is not the only thing you may need to send, and the difference costs hours
 to rediscover. Measured 2026-10-08 while wiring pi into the cortex gateway
-(`ops/scripts/cortex_gateway/pi_control.py` is the working adapter — read it):
+(`ops/scripts/cortex_gateway/pi_control.py` is the working adapter — read it).
+
+**Setting up the Telegram gateway on macOS?** The host-specific wiring (bot token,
+env vars, launchd plist, the `/restart` KeepAlive pitfall) is in
+[`ADDON-telegram-gateway.md`](ADDON-telegram-gateway.md). This section covers the
+adapter *contract*; the add-on covers the *installation*.
+
 
 - **A built-in slash command sent as a prompt is a no-op.** `/compact`, `/model`,
   `/new`, `/restart` are handled only in the interactive/RPC surfaces; sent as a
