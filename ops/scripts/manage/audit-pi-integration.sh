@@ -4,8 +4,8 @@
 #
 # WHY VERSION-AWARE. The integration has TWO routes and the correct checks differ:
 #
-#   MCP route    Pi >= 0.99 — an MCP client. Four cortex servers (loop-governance,
-#                tasks, executor, agent-bus) via ~/.pi/agent/mcp.json.
+#   MCP route    Pi >= 0.99 — an MCP client. Five cortex servers (loop-governance,
+#                tasks, executor, agent-bus, cortex-context) via ~/.pi/agent/mcp.json.
 #   HOOKS route  Pi <  0.99 (the shipped 0.87.1 has NO MCP client) — governance and
 #                the cortex tools arrive through the git hooks + ops/scripts/loop-gov.py.
 #
@@ -75,8 +75,14 @@ elif [[ "$MCP_CAPABLE" == "1" ]]; then
   if [[ ! -f "$MCP_JSON" ]]; then
     _failed 1 "MCP-capable Pi but $MCP_JSON is missing — run install-pi-mcp.sh"
   else
+    # ONE source of truth for the required set: this loop and the PASS line both
+    # read REQUIRED, so a server can never be required without being reported. The
+    # old "4 servers configured" line outlived cortex-context's 2026-10-03
+    # deployment precisely because the set was written out twice — a loop that
+    # checked four names and a sentence that claimed four of them.
+    REQUIRED="loop-governance tasks executor agent-bus cortex-context"
     missing=""
-    for s in loop-governance tasks executor agent-bus; do
+    for s in $REQUIRED; do
       grep -q "\"$s\"" "$MCP_JSON" || missing="$missing $s"
     done
     if [[ -n "$missing" ]]; then
@@ -84,11 +90,12 @@ elif [[ "$MCP_CAPABLE" == "1" ]]; then
     else
       srv_missing=""
       for f in "$DEPLOY/tools/loop-governance/loop-gov-mcp.py" "$DEPLOY/scripts/task-mcp.py" \
-               "$DEPLOY/scripts/executor-mcp.py" "$DEPLOY/scripts/cortex-bus-mcp.py"; do
+               "$DEPLOY/scripts/executor-mcp.py" "$DEPLOY/scripts/cortex-bus-mcp.py" \
+               "$DEPLOY/scripts/cortex-context-mcp.py"; do
         [[ -f "$f" ]] || srv_missing="$srv_missing $(basename "$f")"
       done
       if [[ -n "$srv_missing" ]]; then
-        _failed 1 "mcp.json lists 4 servers but the deployed files are missing:$srv_missing — run cortex-update.sh"
+        _failed 1 "mcp.json requires ${REQUIRED// /, } but the deployed files are missing:$srv_missing — run cortex-update.sh"
       else
         # Presence of a name is not a working server: verify each entry actually points
         # at a runnable command, an existing script, and THIS agent's name (a stale or
@@ -124,8 +131,14 @@ PY
           _failed 1 "MCP entries are not fully usable: $entry_issues"
         else
           agent_name="$(grep -E '^AGENT_NAME=' "$AGENT_ENV" 2>/dev/null | head -1 | cut -d= -f2)"
-          _line 1 PASS "4 servers configured — command runnable, script present, AGENT_NAME=${agent_name:-?} on every entry"
-          _line 1 PASS "live check (agent, in a Pi session): 'pi mcp list' → 4 servers / 46 tools (17 loop-governance + 13 tasks + 6 executor + 10 agent-bus)"
+          _line 1 PASS "cortex servers present and runnable: ${REQUIRED// /, } — AGENT_NAME=${agent_name:-?} on every entry"
+          # The audit prints only what it MEASURED. It cannot count another server's
+          # tools (that needs a live MCP session), so it asserts no number: the old
+          # "4 servers / 46 tools" line was a hardcoded claim that stayed stale for
+          # weeks — tasks exposes 14, not 13, and cortex-context's 12 were missing
+          # from it entirely. Live counts belong in a transcript, beside the command
+          # that produced them, not in an assertion this script cannot check.
+          _line 1 PASS "live check (agent, in a Pi session): 'pi mcp list' → every cortex server should report 'connected' (no tool count is asserted here: this audit cannot measure one)"
         fi
       fi
     fi

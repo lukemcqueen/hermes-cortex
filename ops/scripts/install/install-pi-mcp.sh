@@ -10,8 +10,9 @@
 #  unreachable from Pi.
 #
 #  Fix: write ~/.pi/agent/mcp.json (user scope — Pi reads it in
-#  EVERY project) with the same four governance servers Claude
-#  Code gets from install-claude-governance.sh. Pi reads
+#  EVERY project) with the governance servers Claude Code gets from
+#  install-claude-governance.sh, PLUS cortex-context (registered here since
+#  2026-10-03 — see the note below). Pi reads
 #  user servers from ~/.pi/agent/mcp.json and project servers from
 #  .pi/mcp.json (trusted project roots only); an entry there
 #  overrides a user-level entry with the same name.
@@ -62,10 +63,6 @@ if [[ -f "${HOME}/.hermes-cortex/agent.env" ]]; then
 fi
 AGENT_NAME="${AGENT_NAME:-${DEFAULT_AGENT:-pi}}"
 
-# Python that has the `mcp` package: prefer the cortex venv, fall back to PATH.
-PY_CMD="${HOME}/.hermes-cortex/venv/bin/python3"
-[[ -x "$PY_CMD" ]] || PY_CMD="${PYTHON}"
-
 for f in "$LOOP_GOV" "$TASK_MCP" "$EXECUTOR_MCP" "$BUS_MCP" "$CONTEXT_MCP"; do
   if [[ ! -f "$f" ]]; then
     echo "Warning: cortex MCP server not found: $f"
@@ -94,6 +91,68 @@ if not d.get('mcpServers'):
     echo "  (no $PI_MCP)"
   fi
   exit 0
+fi
+
+# ── Interpreter that can serve MCP ────────────────────────────
+# The command written into mcp.json MUST be able to `import mcp`: a config that
+# points at an interpreter without it starts every cortex server DEAD
+# (begin_change, tasks, bus and the memory tools unreachable) while the file
+# itself looks complete. Capability is therefore TESTED, never inferred from a
+# file existing — `[[ -x .../venv/bin/python3 ]]` says nothing about what is
+# inside the venv, and the PATH fallback is the interpreter most likely to lack
+# mcp (measured 2026-10-12: `python3 -c 'import mcp'` → ModuleNotFoundError).
+#
+# Order, and why: (1) an interpreter an existing mcp.json ALREADY proves works —
+# never churn a working config; (2) the fleet's capability resolver
+# (ops/scripts/lib/python-with-module.sh --print mcp: honours PYTHON, then the
+# Hermes venv, the cortex venv, PATH and versioned names; exit 3 = none can
+# import it). This runs on the WRITE path only — `--check` must keep working on
+# a host whose interpreter is broken.
+_PY_EXISTING=""
+if [[ -f "$PI_MCP" ]]; then
+  if ! _PY_EXISTING="$("$PYTHON" - "$PI_MCP" <<'PY'
+import json, os, subprocess, sys
+try:
+    data = json.load(open(sys.argv[1]))
+except Exception:
+    sys.exit(0)   # unreadable or malformed: nothing to preserve, and not our failure
+for name in ("loop-governance", "tasks", "executor", "agent-bus", "cortex-context"):
+    cmd = ((data.get("mcpServers") or {}).get(name) or {}).get("command") or ""
+    if cmd and os.access(cmd, os.X_OK) and subprocess.run(
+            [cmd, "-c", "import mcp"], capture_output=True).returncode == 0:
+        print(cmd)
+        break
+PY
+)"; then
+    _PY_EXISTING=""
+    echo "Warning: could not read $PI_MCP to reuse its interpreter — continuing." >&2
+  fi
+fi
+
+PY_CMD="$_PY_EXISTING"
+if [[ -n "$PY_CMD" ]]; then
+  echo "Keeping the interpreter already registered in $PI_MCP (verified: imports mcp):"
+  echo "  $PY_CMD"
+else
+  _here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  _lib=""
+  for _cand in "${_here}/../lib/python-with-module.sh" \
+               "${CORTEX_DEPLOY_HOME:-${HOME}/.hermes-cortex}/scripts/lib/python-with-module.sh"; do
+    if [[ -f "$_cand" ]]; then _lib="$_cand"; break; fi
+  done
+  [[ -n "$_lib" ]] && PY_CMD="$(bash "$_lib" --print mcp)" || PY_CMD=""
+fi
+
+if [[ -z "$PY_CMD" ]]; then
+  {
+    echo "ERROR: no python3 on this host can 'import mcp' — refusing to write $PI_MCP."
+    echo "  A config naming such an interpreter starts every cortex MCP server dead"
+    echo "  (begin_change, tasks, bus and the memory tools unreachable), so your"
+    echo "  existing mcp.json is left exactly as it is. Fix one, then re-run:"
+    echo "    ${PYTHON:-python3} -m pip install mcp"
+    echo "    bash ${HOME}/.hermes-cortex/scripts/cortex-update.sh   # rebuild the cortex venv"
+  } >&2
+  exit 1
 fi
 
 # Back up existing config before touching it.
@@ -150,8 +209,15 @@ GOVERNANCE = {
 
 data = {}
 if os.path.exists(pi_mcp):
-    with open(pi_mcp) as f:
-        data = json.load(f)
+    try:
+        with open(pi_mcp) as f:
+            data = json.load(f)
+    except (OSError, ValueError) as exc:
+        # Fail CLOSED with a sentence: this file can hold a user's own hand-written
+        # servers, and the old shape of this branch dumped a raw JSONDecodeError
+        # traceback (exit 1). Touching nothing is right; the backup is already made.
+        sys.exit(f"ERROR: {pi_mcp} is not valid JSON ({exc}) — refusing to overwrite it.\n"
+                 f"  A backup is at {pi_mcp}.bak.governance. Fix or move the file, then re-run.")
 if not isinstance(data, dict):
     data = {}
 
