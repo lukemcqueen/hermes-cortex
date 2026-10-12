@@ -1,10 +1,10 @@
 Running: bash docs/evidence/verify-interpreter-choice.sh
 rc: 0
-when: 2026-10-12T17:10:55Z
+when: 2026-10-12T17:34:21Z
 
 == 0. the deploy this host runs, and its own log ==
   cortex-dogfood --force rc=0
-       ⚠️  Overall: WARNING  (450 pass · 13 warn · 0 fail · 6 info)
+       ⚠️  Overall: WARNING  (451 pass · 15 warn · 0 fail · 7 info)
   ✅  DOGFOOD PASSED — deployed state verified clean.
 
 == 0b. the dev dependencies the suite needs ==
@@ -28,8 +28,18 @@ when: 2026-10-12T17:10:55Z
   [3 the resolver's own test] rc=0
 
 == 4. the cortex venv can COLLECT the whole suite (a missing dep hides tests) ==
-  ======================== 1767 tests collected in 2.74s =========================
+  ======================== 1777 tests collected in 2.71s =========================
+
+== 5. any agent can REPAIR the venv (the remedy, on the deployed copy) ==
+  ============================== 10 passed in 0.59s ==============================
+  [fixer tests] pytest rc=0
+  ops/scripts/manage/fix-cortex-venv.py --check -> rc=0: ok: /home/esther/.hermes-cortex/venv/bin/python3 imports all 6 declared requirements
+  /home/esther/.hermes-cortex/scripts/fix-cortex-venv.py --check -> rc=0: ok: /home/esther/.hermes-cortex/venv/bin/python3 imports all 6 declared requirements
+  empty venv -> rc=3
+    missing: mcp>=1.0
+    missing: PyYAML>=6.0
+    fix it:  /home/esther/.hermes-cortex/venv/bin/python3 /home/esther/hermes-cortex/ops/scripts/manage/fix-cortex-venv.py --venv /home/esther/.hermes/cache/scratch/tmp.BoRdVzzt1W/empty-venv --requirements /home/esther/hermes-cortex/ops/install/requirements.txt
 
 FAILS: 0 — the verifier's own exit code follows (0 here means every claim held)
 ALL CLAIMS VERIFIED (0 failures)
-sha256: 17e4acfe3841d84173f1a78d389040b3b10c0bbf4bd516f506da93b5fa346928
+sha256: e6bb82798a3c16bc0612044c7b1a80e28c369bcd8e30e900783e34881b9b37e6

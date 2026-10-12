@@ -94,6 +94,36 @@ if [ -x "$CORTEX" ]; then
 fi
 
 say
+say "== 5. any agent can REPAIR the venv (the remedy, on the deployed copy) =="
+# The remedy's own tests, with the command's own rc (not a piped tail).
+tout="$("$CORTEX" -m pytest tests/test_fix_cortex_venv.py -q 2>&1)"; trc=$?
+printf '%s\n' "$tout" | grep -E "^(FAILED|ERROR)|passed|failed|error" | sed 's/^/  /'
+say "  [fixer tests] pytest rc=$trc"
+[ "$trc" = 0 ] || bad "5 the venv fixer's tests"
+FIXER=ops/scripts/manage/fix-cortex-venv.py
+DEP_FIXER="$HOME/.hermes-cortex/scripts/fix-cortex-venv.py"
+for f in "$FIXER" "$DEP_FIXER"; do
+  if [ ! -f "$f" ]; then say "  $f: absent (skip)"; continue; fi
+  fout="$("$CORTEX" "$f" --check 2>&1)"; frc=$?
+  say "  $f --check -> rc=$frc: $(printf '%s' "$fout" | head -1)"
+  case "$frc" in 0|3) ;; *) bad "5 $f --check crashed (rc=$frc)";; esac
+  printf '%s\n' "$fout" | grep -q "Traceback" && bad "5 $f raised a traceback"
+done
+# A throwaway EMPTY venv must produce the diagnosis AND the exact repair command — no
+# installs here (a verifier must not mutate what it measures), so this is the report half.
+tv="$(mktemp -d)/empty-venv"
+if python3 -m venv "$tv" >/dev/null 2>&1; then
+  tout="$("$CORTEX" "$FIXER" --check --venv "$tv" 2>&1)"; trc=$?
+  say "  empty venv -> rc=$trc"
+  printf '%s\n' "$tout" | grep -E "^  missing:" | head -2 | sed 's/^/  /'
+  printf '%s\n' "$tout" | grep -E "fix it:" | sed 's/^/  /'
+  [ "$trc" = 3 ] || bad "5 an empty venv must report rc=3 (gaps), got $trc"
+  printf '%s\n' "$tout" | grep -q "fix-cortex-venv.py" || bad "5 the report must name the fix command"
+else
+  say "  SKIP — python3 -m venv unavailable here"
+fi
+
+say
 say "FAILS: $FAILS — the verifier's own exit code follows (0 here means every claim held)"
 if [ "$FAILS" -eq 0 ]; then say "ALL CLAIMS VERIFIED (0 failures)"; exit 0; fi
 say "$FAILS CLAIM(S) FAILED"; exit 1
