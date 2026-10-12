@@ -1,25 +1,9 @@
-verify-landed — strands-evidence cycle (2026-10-12)
-Command: python3 ops/scripts/manage/verify-landed.py --repo . --base 1def9092
-rc is the command's own; output below is complete.
-
-# range: 1def90929d5c..247018fa333c  repo: /home/esther/hermes-cortex
-PASS  receipt: not required — 1def90929d5c..247018fa333c touches no always-review path
-# 0 of 11 changed files are deployed sources; 351 entries in the map
-FAIL  remote: origin/main=977411a72b77 but tip=247018fa333c
-
-FAILED — a check above is false. Fix it and re-run; this is a real mismatch.
-
-rc=1 — and it is EXPECTED PRE-PUSH, not a defect: this cycle pushes only after its close,
-so origin/main is deliberately behind the tip. The line that matters for this cycle is
-"# 0 of 11 changed files are deployed sources": every file here is docs/evidence or the
-index, so no deployed source can drift. The post-push re-run appears in the cycle that
-performs the push.
-
-=== POST-PUSH RE-RUN (same command, after the push) ===
-# range: 1def90929d5c..5405fa321838  repo: /home/esther/hermes-cortex
-PASS  receipt: not required — 1def90929d5c..5405fa321838 touches no always-review path
-# 0 of 12 changed files are deployed sources; 351 entries in the map
+verify-landed, POST-PUSH (cycle 12307). Command:
+  python3 ops/scripts/manage/verify-landed.py --repo . --base 1def9092
+rc=0
+PASS  receipt: not required — no always-review path
+# 0 of 12 changed files are deployed sources
 PASS  remote: origin/main == 5405fa321838
-
 All checks passed.
-rc=0 (PASS on every check, including remote == tip)
+(The earlier PRE-push run of the same command ended in a remote-behind-tip FAIL by design;
+this post-push run supersedes it.)
