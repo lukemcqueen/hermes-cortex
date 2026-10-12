@@ -1,0 +1,60 @@
+Pi audit vs a host-local FOREIGN MCP server — evidence (cycle 12230, 2026-10-12)
+Measured on esther (Linux). Host paths normalized to ~; rc is each command's own.
+
+THE DEFECT: audit-pi-integration.sh applied its CORTEX AGENT_NAME identity rule to
+EVERY entry in ~/.pi/agent/mcp.json. A host-local add-on (the DeepSeek
+adversarial-review server, hand-registered beside the five cortex servers) has no
+env and no cortex semantics, so a HEALTHY host reported FAIL. Found while verifying
+a doc claim — the claim 'the audit ignores extras' was false.
+
+1. THE CASES: GREEN on the fixed audit, RED on the pre-change copy (both bare rc)
+$ python3 tests/test_pi_integration_foreign_server.py   rc=0
+G. a host-local FOREIGN server (deepseek) is reported, never judged
+  PASS  exit 0
+  PASS  reports RESULT: PASS
+  PASS  names the foreign server as outside the audit
+  PASS  does not blame it for a missing cortex identity
+G2. a foreign server whose script is missing IS still a failure
+  PASS  exit 1
+  PASS  names the broken entry
+
+✅ foreign-server scoping checks passed
+$ PI_AUDIT_SCRIPT=<pre-change audit> python3 tests/test_pi_integration_foreign_server.py   rc=1
+  FAIL  exit 0  t extension present (native mem_*/session_* tools are visible to the agent itself)
+  FAIL  reports RESULT: PASS  > end_change)
+  FAIL  names the foreign server as outside the audit  t extension present (native mem_*/session_* tools are visible to the agent itself)
+  FAIL  does not blame it for a missing cortex identity  t extension present (native mem_*/session_* tools are visible to the agent itself)
+   ^ the same cases FAIL against the audit as it was — they test the change
+
+2. THE SHARED SUITE STILL PASSES (this change does not touch it: another session has
+   staged work in that file, so the new cases live in their own file)
+$ pytest tests/test_pi_integration_audit.py -q   rc=0
+
+============================== 2 passed in 0.37s ===============================
+
+3. THE AUDIT ON THIS REAL HOST (five cortex servers, no foreign entry; rc is its own)
+$ bash ops/scripts/manage/audit-pi-integration.sh   rc=0
+  ✅ PASS      cortex servers present and runnable: loop-governance, tasks, executor, agent-bus, cortex-context — AGENT_NAME=esther on every entry
+  RESULT: PASS (every layer required on this host)
+
+4. THE DOC CLAIMS THAT WERE TESTED, NOT ASSERTED (add then --remove on a scratch config)
+$ PI_MCP_FILE=<scratch>/mcp.json bash ops/scripts/install/install-pi-mcp.sh
+rc=0   servers: ['agent-bus', 'cortex-context', 'deepseek', 'executor', 'loop-governance', 'tasks', 'user-owned']
+$ PI_MCP_FILE=<scratch>/mcp.json bash ops/scripts/install/install-pi-mcp.sh --remove
+rc=0   servers: ['deepseek', 'user-owned']
+   the foreign entry survives both runs — the installer owns the cortex set only
+
+5. ADVERSARIAL A4 GATES ON THE CHANGED FILES (bare rc)
+$ adversarial-verify.py --file ops/scripts/manage/audit-pi-integration.sh --level A4 --gate
+rc=0
+📊 Summary: 1 file(s), 0 finding(s)
+✅ GATE_PASSED — no critical/high findings
+$ adversarial-verify.py --file tests/test_pi_integration_foreign_server.py --level A4 --gate
+rc=0
+📊 Summary: 1 file(s), 1 finding(s)
+✅ GATE_PASSED — no critical/high findings
+
+6. THE INSTALLER SUITE (unchanged behaviour, re-run for parity)
+$ bash tests/test_pi_mcp_installer.sh   rc=0
+
+ALL PASS

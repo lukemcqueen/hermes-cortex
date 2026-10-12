@@ -101,7 +101,7 @@ elif [[ "$MCP_CAPABLE" == "1" ]]; then
         # at a runnable command, an existing script, and THIS agent's name (a stale or
         # copied-in mcp.json can look complete and hand the agent another agent's bus
         # identity).
-        entry_issues="$(MCP_JSON="$MCP_JSON" AGENT_ENV="$AGENT_ENV" python3 - <<'PY' 2>/dev/null
+        entry_issues_raw="$(MCP_JSON="$MCP_JSON" AGENT_ENV="$AGENT_ENV" REQUIRED="$REQUIRED" python3 - <<'PY' 2>/dev/null
 import json, os, shutil
 from pathlib import Path
 d = json.loads(Path(os.environ["MCP_JSON"]).read_text())
@@ -112,7 +112,14 @@ if env_path.exists():
     for ln in env_path.read_text().splitlines():
         if ln.startswith("AGENT_NAME="):
             want = ln.split("=", 1)[1].strip()
-issues = []
+# The AGENT_NAME rule is the CORTEX contract, so it is applied to the servers this
+# audit OWNS and to nothing else: a host-local foreign server (no env, no cortex
+# semantics) judged by it makes a healthy host report FAIL — measured 2026-10-12 on a
+# hand-registered DeepSeek adversarial-review entry sitting beside the five cortex
+# ones. Its command and script ARE still checked: a broken path is a real defect, and
+# scoping the identity rule must not make the audit blind.
+required = set((os.environ.get("REQUIRED") or "").split())
+issues, foreign = [], []
 for name, cfg in srv.items():
     cfg = cfg or {}
     cmd = cfg.get("command", "")
@@ -121,12 +128,19 @@ for name, cfg in srv.items():
         issues.append(f"{name}: command not runnable ({cmd or 'none'})")
     if not args or not Path(str(args[0])).exists():
         issues.append(f"{name}: script missing ({args[0] if args else 'none'})")
+    if name not in required:
+        foreign.append(name)
+        continue
     got = (cfg.get("env") or {}).get("AGENT_NAME", "")
     if want and got != want:
         issues.append(f"{name}: AGENT_NAME={got or 'unset'} (host is {want!r})")
 print("; ".join(issues))
+print(",".join(sorted(foreign)))
 PY
 )"
+        # Line 1 is the issues, line 2 the foreign servers — two facts, one subprocess.
+        entry_issues="${entry_issues_raw%%$'\n'*}"
+        foreign_servers="$(printf '%s\n' "$entry_issues_raw" | sed -n '2p')"
         if [[ -n "$entry_issues" ]]; then
           _failed 1 "MCP entries are not fully usable: $entry_issues"
         else
@@ -139,6 +153,12 @@ PY
           # from it entirely. Live counts belong in a transcript, beside the command
           # that produced them, not in an assertion this script cannot check.
           _line 1 PASS "live check (agent, in a Pi session): 'pi mcp list' → every cortex server should report 'connected' (no tool count is asserted here: this audit cannot measure one)"
+          # A foreign entry is REPORTED, never judged: it is not a cortex server, so
+          # the audit neither requires nor forbids it — but a reader must be able to
+          # tell "not audited" from "audited and fine".
+          if [[ -n "$foreign_servers" ]]; then
+            _line 1 NA "host-local server(s) present, NOT audited here (no cortex identity expected): ${foreign_servers//,/ }"
+          fi
         fi
       fi
     fi
