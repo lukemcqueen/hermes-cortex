@@ -1,0 +1,72 @@
+deploy-drift-audit alert (joseph, 2026-10-09 07:00 KST) — investigation
+=====================================================================
+
+WHAT ALERTED. joseph's daily `agent-deploy-drift-audit` reported 31 drift items — a mix of
+"deployed copy missing" (models.py, restarts.py, pi_control.py, slash_parity_evidence.py,
+python-with-module.sh, gen-skills-manifest.sh, verify_briefing.py) and "content drift"
+(cortex_gateway/*, cortex_doctor/*, loop-gov-mcp.py, task-mcp.py, cortex-update.sh,
+mycortex-mem/store.py, cortex-context-mcp.py, registry.yaml, the pi extension + IMPLEMENT.md).
+
+NOT a register-map gap. Every file named above IS registered in the repo's
+`ops/scripts/cortex-update.sh`, including cortex-update.sh itself. A missing deployed copy
+therefore means the host's DEPLOYED updater is older than the registrations — it cannot know
+about files added after it was last deployed.
+
+METHOD. The audit is per-host (no remote mode). esther's own run was CLEAN, so this is not a
+repo-side defect. joseph is a separate machine (not on the moses host) reachable over the
+bus; all remote checks below went through the documented EXEC path (`hc exec`), self-tested
+on esther first, results read from the bus, not from a shell guess.
+
+MEASURED, 2026-10-09 14:20–14:45 KST (via `git-main-sync.sh --check`, which is report-only):
+
+  host    | HEAD vs origin/main | notes
+  --------|---------------------|---------------------------------------------------------
+  joseph  | 53 behind, 0 ahead  | before fix; ALSO Deploy sync FAIL (the 31 items)
+  joseph  |  0 behind, 0 ahead  | after the fix below
+  esther  | 47 behind, 0 ahead  | and her doctor's Deploy sync is PASS — see the blind spot
+  moses   | 69 behind, 7 ahead  | DIVERGENT (7 local commits) — not a fast-forward
+  titus   | 79 behind, 40 ahead | DIVERGENT (40 local commits), macOS /Users/luke/...
+  gisu    | no answer           | refused as offline; host pings (0% loss) but :13007 times
+          |                     | out from BOTH esther and moses — service down, host up
+  kustos  | no answer           | EXEC delivered (msg_id returned), no EXEC_RESULT after 9+ min
+
+ROOT CAUSE (two, one per symptom):
+  1. Hosts do not pull on their own. esther's `agent-hermes-update` cron — the managed daily
+     job the install script creates ENABLED (`23 22 * * *`) — has been PAUSED since
+     2026-08-25 (`enabled: false`, `state: paused`, last run 2026-08-24). Nothing in the repo
+     documents an intentional pause. So a host is only as current as the last UPDATE_REQUEST
+     dispatched to it, and no dispatch happened after the recent pushes.
+  2. joseph was behind AND undeployed: his working tree lagged his own repo, which is why he
+     alone failed Deploy sync while esther (equally behind, but consistent) passed it.
+
+THE AUDIT'S BLIND SPOT (this is why the alert looked odd and why esther looked healthy).
+`agent-deploy-drift-audit.py` compares the DEPLOYED copy against the REPO WORKING TREE. On a
+host that is 47 commits behind but consistently deployed, both sides agree and the audit is
+silent — a false clean. The doctor's separate `Repo sync` check does catch it (⚠️ on both
+esther and joseph), but that warning is not what alerts. A staleness signal belongs in the
+audit, or the audit will keep certifying stale hosts as clean.
+
+ACTION TAKEN (joseph, the reported host):
+  `hc exec joseph git-main-sync.sh` — the repo's own remediation tool for exactly this
+  ("return a hermes-cortex repo to origin/main and pull latest"; the post-merge hook then
+  auto-deploys). Safe here because joseph was 0 ahead: a pure fast-forward, and the tool
+  exits 1 leaving the tree untouched on any error.
+  Result, verified by re-running the checks rather than trusting the transcript:
+    * `git-main-sync.sh --check` -> "HEAD is 0 behind, 0 ahead ... OK: on main, up to date"
+    * `agent-deploy-drift-audit.py` -> exit 0, NO output (the watchdog is silent when clean)
+  The 31-item condition is resolved.
+
+NOT FIXED — needs a decision, not a reflex:
+  * moses (7 ahead) and titus (40 ahead) are DIVERGENT. A pull there is a merge, not a
+    fast-forward; their local commits may be work in progress. Left untouched.
+  * gisu's service is down (host up) — a service problem, not a deploy problem.
+  * kustos consumed the probe and returned no EXEC_RESULT — the "reads but never responds"
+    pattern; needs its own look.
+  * esther's own tree is 47 behind and her auto-update cron is paused. Both are fixable here,
+    deliberately not done mid-investigation (a pull rewrites the deployed tree and the
+    skills under a live session).
+
+RECOMMENDATION. Either re-enable the daily `agent-hermes-update` cron fleet-wide (it is the
+documented intent of the install script) or make the post-push fleet deploy dispatch
+mandatory; and add a "behind origin/main" signal to the drift audit so a stale-but-consistent
+host cannot pass as clean.

@@ -1,0 +1,12 @@
+SUPERSEDED — see the self-contained branch test
+==============================================
+This file held hand-edited probe transcripts with placeholder paths (<stub>.py,
+<scratch>). Those are not verifiable, so they were replaced by a runnable test
+that builds its own stub checker in a temp dir and asserts every exit code:
+
+  docs/evidence/bus-inbox-tick-2026-10-12-cycle-12188-branches.sh   (test)
+  docs/evidence/bus-inbox-tick-2026-10-12-cycle-12188-branches.txt  (its real captured output)
+
+Run:  bash docs/evidence/bus-inbox-tick-2026-10-12-cycle-12188-branches.sh
+It asserts A real bus -> rc=0 (CLEAN), B unwritable snapshot -> rc=2
+(UNVERIFIABLE), C injected issue -> rc=1 (ISSUES); exits 0 only on 3/3.

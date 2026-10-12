@@ -1,0 +1,258 @@
+{
+ "ts": "2026-10-12T00:11:48.373347+00:00",
+ "agent": "esther",
+ "buses": [
+  {
+   "label": "local",
+   "base": "http://127.0.0.1:8903",
+   "inspection_error": null,
+   "queue_total": 22,
+   "nonempty": [
+    {
+     "name": "inbox_esther_dlq",
+     "depth": 0,
+     "processing": 0,
+     "dlq": true,
+     "parent": null
+    },
+    {
+     "name": "inbox_gisu_dlq",
+     "depth": 0,
+     "processing": 0,
+     "dlq": true,
+     "parent": null
+    },
+    {
+     "name": "inbox_health_check_dlq",
+     "depth": 0,
+     "processing": 0,
+     "dlq": true,
+     "parent": "inbox_health_check"
+    },
+    {
+     "name": "inbox_joseph_dlq",
+     "depth": 0,
+     "processing": 0,
+     "dlq": true,
+     "parent": null
+    },
+    {
+     "name": "inbox_kustos_dlq",
+     "depth": 0,
+     "processing": 0,
+     "dlq": true,
+     "parent": null
+    },
+    {
+     "name": "inbox_luke_dlq",
+     "depth": 0,
+     "processing": 0,
+     "dlq": true,
+     "parent": null
+    },
+    {
+     "name": "inbox_moses_dlq",
+     "depth": 0,
+     "processing": 0,
+     "dlq": true,
+     "parent": null
+    },
+    {
+     "name": "inbox_orchestrator_dlq",
+     "depth": 0,
+     "processing": 0,
+     "dlq": true,
+     "parent": "inbox_orchestrator"
+    },
+    {
+     "name": "inbox_orchestrator_dlq_dlq",
+     "depth": 0,
+     "processing": 0,
+     "dlq": true,
+     "parent": "inbox_orchestrator_dlq"
+    },
+    {
+     "name": "inbox_titus_dlq",
+     "depth": 0,
+     "processing": 0,
+     "dlq": true,
+     "parent": null
+    }
+   ],
+   "dlq": [
+    {
+     "name": "inbox_esther_dlq",
+     "depth": 0,
+     "processing": 0
+    },
+    {
+     "name": "inbox_gisu_dlq",
+     "depth": 0,
+     "processing": 0
+    },
+    {
+     "name": "inbox_health_check_dlq",
+     "depth": 0,
+     "processing": 0
+    },
+    {
+     "name": "inbox_joseph_dlq",
+     "depth": 0,
+     "processing": 0
+    },
+    {
+     "name": "inbox_kustos_dlq",
+     "depth": 0,
+     "processing": 0
+    },
+    {
+     "name": "inbox_luke_dlq",
+     "depth": 0,
+     "processing": 0
+    },
+    {
+     "name": "inbox_moses_dlq",
+     "depth": 0,
+     "processing": 0
+    },
+    {
+     "name": "inbox_orchestrator_dlq",
+     "depth": 0,
+     "processing": 0
+    },
+    {
+     "name": "inbox_orchestrator_dlq_dlq",
+     "depth": 0,
+     "processing": 0
+    },
+    {
+     "name": "inbox_titus_dlq",
+     "depth": 0,
+     "processing": 0
+    }
+   ],
+   "peeks": {
+    "inbox_esther": {
+     "count": 0,
+     "messages": []
+    },
+    "inbox_orchestrator": {
+     "count": 0,
+     "messages": []
+    },
+    "out_esther": {
+     "count": 0,
+     "messages": []
+    },
+    "inbox_health_check": {
+     "count": 0,
+     "messages": []
+    }
+   }
+  },
+  {
+   "label": "primary",
+   "base": "https://realgospelmessage.org:13004",
+   "inspection_error": null,
+   "queue_total": 13,
+   "nonempty": [
+    {
+     "name": "inbox_health_check",
+     "depth": 1,
+     "processing": 0,
+     "dlq": false,
+     "parent": null
+    },
+    {
+     "name": "inbox_orchestrator",
+     "depth": 2,
+     "processing": 0,
+     "dlq": false,
+     "parent": null
+    },
+    {
+     "name": "inbox_orchestrator_dlq",
+     "depth": 0,
+     "processing": 0,
+     "dlq": true,
+     "parent": "inbox_orchestrator"
+    }
+   ],
+   "dlq": [
+    {
+     "name": "inbox_orchestrator_dlq",
+     "depth": 0,
+     "processing": 0
+    }
+   ],
+   "peeks": {
+    "inbox_esther": {
+     "count": 0,
+     "messages": []
+    },
+    "inbox_orchestrator": {
+     "count": 2,
+     "messages": [
+      {
+       "msg_id": "6962dc86-d7f1-4760-acec-d4e743d13068",
+       "enqueued_at": "2026-10-12 00:10:14.64699+00",
+       "read_ct": null,
+       "from": "esther",
+       "to": "esther",
+       "subject": "DOCTOR_TEST",
+       "correlation_id": "doctor-e2e-eab7cf77",
+       "forwarded_from": "esther",
+       "mirrored_from_queue": "inbox_esther",
+       "primary_msg_id": "8a9ad105-b042-4907-9e9f-92bae5bbe192",
+       "payload": "{\"original_body\": \"{\\\"test\\\": true}\", \"primary_msg_id\": \"8a9ad105-b042-4907-9e9f-92bae5bbe192\", \"mirrored_from_queue\": \"inbox_esther\"}"
+      },
+      {
+       "msg_id": "d0318e99-d73e-4374-9518-d22f626a9f07",
+       "enqueued_at": "2026-10-12 00:10:20.258895+00",
+       "read_ct": null,
+       "from": "esther",
+       "to": "moses",
+       "subject": "HEALTH_PERSISTENT_ISSUES",
+       "forwarded_from": "esther",
+       "mirrored_from_queue": "inbox_health_check",
+       "primary_msg_id": "a1317286-25a5-484a-8a8d-aa682984d369",
+       "payload": "{\"original_body\": \"{\\\"healthy\\\": false, \\\"topic\\\": \\\"health\\\", \\\"summary\\\": {\\\"pass\\\": 451, \\\"warn\\\": 4, \\\"fail\\\": 0, \\\"info\\\": 7}, \\\"prev_summary\\\": {\\\"pass\\\": 451, \\\"warn\\\": 4, \\\"fail\\\": 0, \\\"info\\\": 7}}\", \"primary_msg_id\": \"a1317286-25a5-484a-8a8d-aa682984d369\", \"mirrored_from_queue\": \"inbox_heal"
+      }
+     ]
+    },
+    "out_esther": {
+     "count": 0,
+     "messages": []
+    },
+    "inbox_health_check": {
+     "count": 1,
+     "messages": [
+      {
+       "msg_id": "a1317286-25a5-484a-8a8d-aa682984d369",
+       "enqueued_at": "2026-10-12 00:10:14.938089+00",
+       "read_ct": null,
+       "from": "esther",
+       "to": "moses",
+       "subject": "HEALTH_PERSISTENT_ISSUES",
+       "payload": "{\"healthy\": false, \"topic\": \"health\", \"summary\": {\"pass\": 451, \"warn\": 4, \"fail\": 0, \"info\": 7}, \"prev_summary\": {\"pass\": 451, \"warn\": 4, \"fail\": 0, \"info\": 7}}"
+      }
+     ]
+    }
+   }
+  }
+ ],
+ "forwarder": {
+  "last_run": "2026-10-12T00:10:11.822984+00:00",
+  "total_forwarded": 1,
+  "total_peer_to_local": 25059,
+  "total_local_to_peer": 10391
+ },
+ "failover": {
+  "consecutive_failures": 0,
+  "first_failure_at": null,
+  "consecutive_successes": 0,
+  "failover_active": false,
+  "last_status": "idle",
+  "last_check_at": "2026-10-12T00:10:12.119575+00:00"
+ }
+}

@@ -1,0 +1,14 @@
+checker=ops/scripts/orch-bus/bus-inbox-inspect.py
+issues_rc=0
+issues_stdout=<empty>
+issues_count=0
+snapshot=docs/evidence/bus-inbox-tick-2026-10-12-cycle-12188.json
+snapshot_rc=0
+semantic_check=ok
+snapshot_sha256=5ae707d3726f3d01fa1d69dca39ec8d315a114232a7533b9918280666d35b419
+policy STALE_HOURS=24 URGENT_PRIORITY=50 own_inbox=inbox_esther
+trace_fleet_issues_count=0
+  primary inbox_orchestrator from=esther to=esther subject=DOCTOR_TEST priority=None age_h=0.026 stale=False urgent=False is_own_inbox=False
+  primary inbox_orchestrator from=esther to=moses subject=HEALTH_PERSISTENT_ISSUES priority=None age_h=0.025 stale=False urgent=False is_own_inbox=False
+  primary inbox_health_check from=esther to=moses subject=HEALTH_PERSISTENT_ISSUES priority=None age_h=0.026 stale=False urgent=False is_own_inbox=False
+verdict=CLEAN (no actionable bus issue)

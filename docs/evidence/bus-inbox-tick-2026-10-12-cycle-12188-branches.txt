@@ -1,0 +1,46 @@
+### A real bus -> CLEAN (expect rc=0)
+checker=ops/scripts/orch-bus/bus-inbox-inspect.py
+issues_rc=0
+issues_stdout=<empty>
+issues_count=0
+snapshot=~/.hermes/cache/scratch/tmp.zpWGgoljPq/a.json
+snapshot_rc=0
+semantic_check=ok
+snapshot_sha256=615a9a6224aa4c850d0bf9286d1ff0f4474a57821b22aee8db1678084cd917ce
+policy STALE_HOURS=24 URGENT_PRIORITY=50 own_inbox=inbox_esther
+trace_fleet_issues_count=0
+  primary inbox_orchestrator from=esther to=esther subject=DOCTOR_TEST priority=None age_h=0.025 stale=False urgent=False is_own_inbox=False
+  primary inbox_orchestrator from=esther to=moses subject=HEALTH_PERSISTENT_ISSUES priority=None age_h=0.024 stale=False urgent=False is_own_inbox=False
+  primary inbox_health_check from=esther to=moses subject=HEALTH_PERSISTENT_ISSUES priority=None age_h=0.025 stale=False urgent=False is_own_inbox=False
+verdict=CLEAN (no actionable bus issue)
+rc=0
+
+### B unwritable snapshot -> UNVERIFIABLE (expect rc=2)
+mkdir: cannot create directory ‘/proc/nope’: No such file or directory
+docs/evidence/bus-inbox-tick-2026-10-12-cycle-12188.sh: line 43: /proc/nope/x.json: No such file or directory
+checker=ops/scripts/orch-bus/bus-inbox-inspect.py
+issues_rc=0
+issues_stdout=<empty>
+issues_count=0
+snapshot=/proc/nope/x.json
+snapshot_rc=1
+verdict=UNVERIFIABLE (snapshot rc=1, file missing/empty/invalid JSON)
+rc=2
+
+### C injected issue -> ISSUES (expect rc=1)
+checker=~/.hermes/cache/scratch/tmp.zpWGgoljPq/stub_checker_issues.py
+issues_rc=1
+issues_stdout=local: BLOCKED (DLQ) inbox_esther_dlq depth=1 processing=0
+issues_count=1
+snapshot=~/.hermes/cache/scratch/tmp.zpWGgoljPq/c.json
+snapshot_rc=0
+semantic_check=ok
+snapshot_sha256=6cd62e6bf344068ba6b78fec8384a4360b2213d93760542ab01baa167cb15d13
+policy STALE_HOURS=24 URGENT_PRIORITY=50 own_inbox=inbox_esther
+trace_fleet_issues_count=1
+trace_issue: local: BLOCKED (DLQ) inbox_esther_dlq depth=1 processing=0
+verdict=ISSUES
+local: BLOCKED (DLQ) inbox_esther_dlq depth=1 processing=0
+rc=1
+
+branches_ok=3/3
