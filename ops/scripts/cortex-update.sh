@@ -379,6 +379,9 @@ register "ops/scripts/manage/git-main-sync.sh"          "${CORTEX_DEPLOY_HOME}/s
 # so the cron wakes only when they clear (2026-10-09).
 register "ops/scripts/manage/land-when-clean-probe.sh"  "${CORTEX_DEPLOY_HOME}/scripts/land-when-clean-probe.sh"
 register "ops/scripts/manage/dream-task-bridge.py"       "${CORTEX_DEPLOY_HOME}/scripts/dream-task-bridge.py"
+# The /model picker's per-host enabler: it must reach EVERY agent host (Titus's macOS pi
+# included), so it is registered rather than checkout-only like the evidence tooling.
+register "ops/scripts/manage/gateway-model-list.py"      "${CORTEX_DEPLOY_HOME}/scripts/gateway-model-list.py"
 register "mcp-servers/task-mcp.py"                      "${CORTEX_DEPLOY_HOME}/scripts/task-mcp.py"
 register "mcp-servers/executor-mcp.py"                  "${CORTEX_DEPLOY_HOME}/scripts/executor-mcp.py"
 register "mcp-servers/cortex-sandbox-mcp.py"           "${CORTEX_DEPLOY_HOME}/scripts/cortex-sandbox-mcp.py"

@@ -119,8 +119,7 @@ say "== 6. the enabler every OTHER agent host runs (portable, stdlib only) =="
 ENABLER=ops/scripts/manage/gateway-model-list.py
 tmp="$(mktemp -d)"
 printf '{"backends":[{"name":"pi","model_args":["--model","{model}"]}],"routing":{"default":"pi"}}\n' > "$tmp/gw.json"
-printf 'openrouter/openai/gpt-5\nopenrouter/x-ai/grok-4\n' > "$tmp/pi.txt"
-"$PY" "$ENABLER" --config "$tmp/gw.json" --from-file "$tmp/pi.txt" --write >/dev/null 2>&1 \
+"$PY" "$ENABLER" --config "$tmp/gw.json" --models 'openrouter/openai/gpt-5,openrouter/x-ai/grok-4' --write >/dev/null 2>&1 \
   && say "  write rc=0 on a config with other keys" || bad "6 the enabler could not write"
 "$PY" "$ENABLER" --config "$tmp/gw.json" --check 2>&1 | sed 's/^/  /'
 [ "${PIPESTATUS[0]}" = 0 ] || bad "6 --check on what it just wrote"
@@ -133,6 +132,15 @@ print("other keys intact; models:", d["models"])
 PY
 [ "${PIPESTATUS[0]}" = 0 ] || bad "6 the write disturbed other config keys"
 rm -rf "$tmp"
+# Registered in cortex-update.sh, so the deploy above must have carried it to every host.
+DEP_ENABLER="$HOME/.hermes-cortex/scripts/gateway-model-list.py"
+if [ -f "$DEP_ENABLER" ]; then
+  say "  deployed to the host: $DEP_ENABLER"
+  "$PY" "$DEP_ENABLER" --help >/dev/null 2>&1 && say "  and it runs from the DEPLOYED path" \
+    || bad "6 the deployed enabler does not run"
+else
+  say "  SKIP — no deployed copy here (a fresh checkout has no deploy target)"
+fi
 
 say
 if [ "$FAILS" -eq 0 ]; then say "ALL CLAIMS VERIFIED (0 failures)"; exit 0; fi
