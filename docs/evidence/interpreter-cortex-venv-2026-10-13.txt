@@ -1,6 +1,17 @@
 Running: bash docs/evidence/verify-interpreter-choice.sh
 rc: 0
-when: 2026-10-12T16:58:08Z
+when: 2026-10-12T17:10:55Z
+
+== 0. the deploy this host runs, and its own log ==
+  cortex-dogfood --force rc=0
+       ⚠️  Overall: WARNING  (450 pass · 13 warn · 0 fail · 6 info)
+  ✅  DOGFOOD PASSED — deployed state verified clean.
+
+== 0b. the dev dependencies the suite needs ==
+  pytest=9.1.1
+  fastapi=0.143.0
+  mcp=2.0.0
+  PyYAML=6.0.3
 
 == 1. what each candidate can actually import (the measurement, not a memory) ==
   /home/esther/.hermes-cortex/venv/bin/python3  pytest:YES  yaml:YES  mcp:YES  fastapi:YES
@@ -17,8 +28,8 @@ when: 2026-10-12T16:58:08Z
   [3 the resolver's own test] rc=0
 
 == 4. the cortex venv can COLLECT the whole suite (a missing dep hides tests) ==
-  ======================== 1767 tests collected in 2.78s =========================
+  ======================== 1767 tests collected in 2.74s =========================
 
 FAILS: 0 — the verifier's own exit code follows (0 here means every claim held)
 ALL CLAIMS VERIFIED (0 failures)
-sha256: c5f892439727ffe58d5a6b3571c45facdc2e0a6b4c0f9d8ec46cfc461d5a2360
+sha256: 17e4acfe3841d84173f1a78d389040b3b10c0bbf4bd516f506da93b5fa346928

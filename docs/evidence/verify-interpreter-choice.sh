@@ -16,6 +16,40 @@ FAILS=0
 say() { printf '%s\n' "$*"; }
 bad() { say "FAIL  $1"; FAILS=$((FAILS + 1)); }
 
+say "== 0. the deploy this host runs, and its own log =="
+DOG="$HOME/.hermes-cortex/scripts/cortex-dogfood.sh"
+if [ -x "$DOG" ]; then
+  log="$(bash "$DOG" --force 2>&1)"; drc=$?
+  say "  cortex-dogfood --force rc=$drc"
+  printf '%s\n' "$log" | grep -E "DOGFOOD PASSED|DOGFOOD FAILED|Overall:" | tail -2 | sed 's/^/  /'
+  [ "$drc" = 0 ] || bad "0 cortex-dogfood --force exited $drc"
+else
+  say "  SKIP — no cortex-dogfood.sh here (a fresh checkout has nothing to deploy)"
+fi
+
+say
+say "== 0b. the dev dependencies the suite needs =="
+# The INSTALL was a manual operational step on this host, not an automated one:
+#   uv pip install --python ~/.hermes-cortex/venv/bin/python3 pytest fastapi
+# A verifier must not mutate the environment it measures, so this section proves the STATE
+# that step produced — the distributions are really installed there — and says plainly which
+# part is manual.
+if [ -x "$CORTEX" ]; then
+  "$CORTEX" - <<'PY' | sed 's/^/  /'
+import importlib.metadata as m
+for p in ("pytest", "fastapi", "mcp", "PyYAML"):
+    try:
+        print(f"{p}={m.version(p)}")
+    except m.PackageNotFoundError:
+        print(f"{p}=NOT INSTALLED")
+PY
+  "$CORTEX" -c 'import pytest, fastapi' >/dev/null 2>&1 \
+    || bad "0b the cortex venv cannot import pytest + fastapi"
+else
+  say "  SKIP — no cortex venv on this host"
+fi
+
+say
 say "== 1. what each candidate can actually import (the measurement, not a memory) =="
 for p in "$CORTEX" "$HERMES" "$(command -v python3 2>/dev/null || true)"; do
   [ -n "$p" ] && [ -x "$p" ] || { say "  ${p:-<none>}: absent"; continue; }
