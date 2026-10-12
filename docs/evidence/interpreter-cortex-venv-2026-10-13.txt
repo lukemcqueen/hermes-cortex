@@ -1,0 +1,24 @@
+Running: bash docs/evidence/verify-interpreter-choice.sh
+rc: 0
+when: 2026-10-12T16:58:08Z
+
+== 1. what each candidate can actually import (the measurement, not a memory) ==
+  /home/esther/.hermes-cortex/venv/bin/python3  pytest:YES  yaml:YES  mcp:YES  fastapi:YES
+  /home/esther/.hermes/hermes-agent/venv/bin/python3  pytest:YES  yaml:YES  mcp:YES  fastapi:YES
+  /home/esther/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3  pytest:no  yaml:no  mcp:no  fastapi:no
+
+== 2. the resolver's DEFAULT choice (no PYTHON/HERMES_VENV override) ==
+  ops/scripts/lib/python-with-module.sh -> /home/esther/.hermes-cortex/venv/bin/python3
+  /home/esther/.hermes-cortex/scripts/lib/python-with-module.sh -> /home/esther/.hermes-cortex/venv/bin/python3
+
+== 3. the tie-break, pinned by a test that runs UNDER the cortex venv ==
+    yaml: the cortex venv beats the Hermes venv ✓
+  RESULT: ALL PASS (6 tests)
+  [3 the resolver's own test] rc=0
+
+== 4. the cortex venv can COLLECT the whole suite (a missing dep hides tests) ==
+  ======================== 1767 tests collected in 2.78s =========================
+
+FAILS: 0 — the verifier's own exit code follows (0 here means every claim held)
+ALL CLAIMS VERIFIED (0 failures)
+sha256: c5f892439727ffe58d5a6b3571c45facdc2e0a6b4c0f9d8ec46cfc461d5a2360
