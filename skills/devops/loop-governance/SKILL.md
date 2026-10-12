@@ -514,6 +514,14 @@ A weekly analysis pipeline (`loop_evaluator.py`) reads the loop governance DB an
 | **Threshold recommendations** | Suggested threshold adjustments | `Raise STOP to 8.5` |
 | **Weight recommendations** | Correlation-based weight adjustments | `completeness: 40% → 45%` |
 
+**Read the report's units literally — two different averages live in it.** "Avg cycles per task"
+is `COUNT(*) / COUNT(DISTINCT task_id)`: an average over **tasks**, so 2.9 means a task took
+~2.9 cycles. It is NOT `AVG(cycle_num)`, which is the mean **cycle INDEX** and reads ~24 on the
+same week — a much larger number that contradicts the line above it. `AVG(cycle_num)` shipped
+once and an adversarial review filed the mismatch as fabrication; if you touch
+`loop_evaluator.py`'s stats query, keep the task-average and re-run
+`tests/run_loop_evaluator_avg_per_task_repro.py` (rc=0 ⇒ the label and the arithmetic agree).
+
 ### How to run manually
 
 ```bash
