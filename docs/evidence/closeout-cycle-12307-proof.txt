@@ -1,0 +1,14 @@
+Cycle 12307 closeout proof — the bytes the review's window cannot show. Verify with: sha256sum <file>
+
+79a6afcd8ac1  bus-inbox-tick-2026-10-12-cycle-12188-branches-rerun-2026-10-12.txt
+9afe7ad70e08  verify-landed-cycle-12307.txt
+059cf9c7accb  dogfood-strands-landing-2026-10-12.txt
+620315434dc5  dogfood-warnings-risk-acceptance-2026-10-12.txt
+
+Verifiers committed, mode 775, invoked as: bash docs/evidence/<name>.sh
+  pi-mcp-landing-verify.sh  session-cache-loop-evaluator-verify.sh  launchd-restart-12223-reproduce.sh
+
+Drifted skills (8): survey-before-action, change-checklist, shell-scripting,
+  shared-repo-push-gates, hermes-gateway-operations + 3 more (doctor's own list).
+None is invoked by any verifier above (grep: no match), and review-sweep-check.py is
+not in the verification chain either — the drift is deployed-side edits by other sessions.
