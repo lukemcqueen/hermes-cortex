@@ -61,7 +61,7 @@ Every difference named below is now closed, and the row names the test that hold
 | `/new` — start a fresh session (ARCHIVE) | ➖ | ✅ `/new` bumps a PERSISTED per-chat generation → `hc-<agent>-<chat>-g<N>`; the previous transcript stays on disk under its own derivable id and is NAMED in the reply. Generation 0 keeps the unsuffixed id, so an existing conversation never moves | `tests/test_gateway_new_session.py` |
 | `/model <name>` — switch the model for THIS chat | ✅ (session-scoped) | ✅ gateway-level: a PERSISTED per-chat override (`models.py`) published on the envelope as `model_override` and substituted into the backend's `model_args` (`--model {model}`), so the NEXT turn really runs the new model. No argument reports the chat's model and the default; `/model reset` returns to the default. Optional validation: a spec may declare `check_model`, and a name the agent rejects is refused instead of stored | `tests/test_gateway_slash_parity.py` |
 | `/compact` — compact this chat's context | ✅ (in-process agent) | ✅ gateway-level through the backend's DECLARED control command (`commands.compact`): pi's `/compact` lives in pi's RPC mode, so `pi_control.py` drives it and prints one line the gateway relays (measured: 69,980 → 20,267 tokens on a 71-message session, ~1m46s). rc=2 (not declared) and rc=3 (could not run) are reported distinctly, never as success | `tests/test_gateway_slash_parity.py` |
-| `/restart` — reload the gateway | ✅ | ✅ gateway-level: reply, then exit; the unit is `Restart=always`, so systemd brings it back (no privileges needed under `NoNewPrivileges=true`). REFUSED with a message when the daemon is not systemd-supervised — unsupervised, exiting is a kill. **Observable afterwards** (2026-10-08): the new process announces itself at startup — "♻ Gateway restarted successfully. Your session continues." — and the AGENT is told the same fact on its first prompt, because the session deliberately survives and an agent asked "did you restart?" otherwise answers "no" | `tests/test_gateway_slash_parity.py` |
+| `/restart` — reload the gateway | ✅ | ✅ gateway-level: reply, then exit; the EXIT CODE is derived from the supervisor — `Restart=always` brings a systemd unit back on any exit, while a launchd job whose plist says `SuccessfulExit=false` is relaunched only after a NON-zero exit (so macOS exits 75, EX_TEMPFAIL). No privileges needed under `NoNewPrivileges=true`. REFUSED with a message naming the missing half when nothing would bring the process back — unsupervised, exiting is a kill — and, on a launchd host, when the job's own plist gives launchd no restart condition. **Observable afterwards** (2026-10-08): the new process announces itself at startup — "♻ Gateway restarted successfully. Your session continues." — and the AGENT is told the same fact on its first prompt, because the session deliberately survives and an agent asked "did you restart?" otherwise answers "no" | `tests/test_gateway_slash_parity.py` |
 | Message edits | ✅ | ✅ `editMessageText` (approval outcomes, streaming updates) | `tests/test_gateway_approvals.py` |
 | Multi-platform (Discord/Slack/… 20+) | ✅ | ❌ Telegram only | accepted by design (anti-bloat); the transport seam is where another platform attaches |
 
@@ -221,9 +221,16 @@ exponential backoff with a conflict fault-tolerance of 3 consecutive cycles befo
     spec names an argv template (`commands.compact` → `pi_control.py`) and the gateway runs
     it and relays stdout. No pi flag name appears in gateway code, and a backend that
     declares nothing answers "not supported" instead of silently doing nothing.
-  - **`/restart` is refused when unsupervised.** Exiting IS the restart under
-    `Restart=always`; without systemd the same exit is a kill, so the handler checks
-    `INVOCATION_ID`/`JOURNAL_STREAM` first and says so instead of taking the bot down.
+  - **`/restart` is refused when nothing would bring the process back.** Exiting IS the
+    restart under a supervisor; unsupervised the same exit is a kill, so the handler
+    asks the SUPERVISOR which exit code it restarts on and says what is missing instead
+    of taking the bot down. systemd: `INVOCATION_ID`/`JOURNAL_STREAM` plus our own PID
+    as the unit's `MainPID` (`Restart=always` → exit 0). launchd (2026-10-12, Titus):
+    our own PID in `launchctl list`, plus the job's OWN plist — `SuccessfulExit=false`
+    means "restarted in the INVERSE condition of success", so macOS must exit 75
+    (EX_TEMPFAIL); a KeepAlive dict of keys launchd does not define (the
+    `CrashedOrAbnormalExit` these templates used to carry) gives it no reason to
+    restart at all, and that is refused by name.
 
   Verified live on the second bot (@Esther0001Bot) host: `/status`, `/new`, `/model`
   (switch + reset + a rejected name), `/compact` and `/restart` each exercised end-to-end

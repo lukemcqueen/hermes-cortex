@@ -46,10 +46,18 @@
     <key>RunAtLoad</key>
     <true/>
 
+    <!-- Relaunch after a DELIBERATE exit too. launchd.plist(5): with
+         SuccessfulExit=false the job is restarted in the INVERSE condition of
+         success — i.e. after a NON-zero exit. The daemon therefore exits 75
+         (EX_TEMPFAIL) for /restart on macOS; a clean exit(0) is PARKED by this
+         policy (it is the code systemd's Restart=always relaunches instead).
+         NOTE: CrashedOrAbnormalExit is NOT a launchd condition (it appears in no
+         man page); a KeepAlive dict of keys launchd does not define leaves it with
+         no reason to restart the job at all — neither after /restart nor a crash. -->
     <key>KeepAlive</key>
     <dict>
-        <key>CrashedOrAbnormalExit</key>
-        <true/>
+        <key>SuccessfulExit</key>
+        <false/>
     </dict>
 
     <key>ThrottleInterval</key>

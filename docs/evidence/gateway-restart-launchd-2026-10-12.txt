@@ -1,0 +1,253 @@
+Gateway /restart under launchd (macOS) — supervision detection + a KeepAlive
+policy that actually relaunches
+Measured on esther (Linux) 2026-10-12 by esther. Host paths normalized to ~.
+rc is always the COMMAND's own exit status (captured bare, never a pipe's).
+
+PLATFORM HONESTY: no macOS host is reachable from here, so the launchd branch is
+driven with a STUB launchctl and REAL plist parsing (sections 6-7) — not on a
+live Mac. The one-block live confirmation for a Mac is printed at the end.
+
+TIP AT WHICH THIS TRANSCRIPT WAS GENERATED
+$ git -C ~/hermes-cortex rev-parse --short HEAD
+0bddaf11
+rc=0
+
+1. THE TWO DEFECTS (reported by Titus, non-orchestrator macOS host, 2026-10-12)
+   1a. SUPERVISION: _supervised_by_systemd() was the only check, so a launchd host
+       was told 'not running under systemd' and /restart refused.
+   1b. POLICY: the shipped plist's KeepAlive carried CrashedOrAbnormalExit, which
+       is not a launchd condition at all. launchd.plist(5) defines SuccessfulExit,
+       NetworkState, PathState, OtherJobEnabled and Crashed; for the one that
+       matters here it says: 'SuccessfulExit: If true, the job will be restarted as
+       long as the program exits and with an exit status of zero. If false, the job
+       will be restarted in the inverse condition.'
+       SOURCE (fetched 2026-10-12): https://keith.github.io/xcode-man-pages/launchd.plist.5.html
+       CONSEQUENCE: a SuccessfulExit=false job is relaunched after a NON-zero exit,
+       so macOS must exit 75 (EX_TEMPFAIL) — the clean exit(0) that systemd's
+       Restart=always wants would PARK the job with the bot down.
+
+2. THE SHIPPED TEMPLATE, PARSED WITH plistlib (not greped)
+$ ~/.hermes/hermes-agent/venv/bin/python3 -c "import plistlib;d=plistlib.loads(open('~/hermes-cortex/docs/templates/com.hermes.cortex-gateway.plist','rb').read());print('Label:',d['Label']);print('KeepAlive:',d['KeepAlive'])"
+Label: com.hermes.cortex-gateway
+KeepAlive: {'SuccessfulExit': False}
+rc=0
+
+3. THE TESTS (bare: rc is pytest's own)
+$ cd ~/hermes-cortex && ~/.hermes/hermes-agent/venv/bin/python3 -m pytest tests/test_gateway_slash_parity.py -q
+============================= test session starts ==============================
+platform linux -- Python 3.11.15, pytest-9.1.1, pluggy-1.6.0
+rootdir: ~/hermes-cortex
+configfile: pytest.ini
+plugins: anyio-4.12.1
+collected 53 items
+
+tests/test_gateway_slash_parity.py ..................................... [ 69%]
+................                                                         [100%]
+
+============================== 53 passed in 0.91s ==============================
+rc=0
+
+4. THE NEW TESTS DISCRIMINATE — the same test file run against the PRE-CHANGE
+   daemon at origin/main in a throwaway worktree (RED expected; tree removed).
+$ git -C ~/hermes-cortex worktree add --detach /tmp/launchd-red-3231990 origin/main
+Preparing worktree (detached HEAD 7b452bed)
+HEAD is now at 7b452bed docs(evidence): land the sibling session's morning-task-pass bundle
+rc=0
+
+$ cp ~/hermes-cortex/tests/test_gateway_slash_parity.py /tmp/launchd-red-3231990/tests/test_gateway_slash_parity.py
+rc=0
+
+$ cd /tmp/launchd-red-3231990 && ~/.hermes/hermes-agent/venv/bin/python3 -m pytest tests/test_gateway_slash_parity.py -q -k 'launchd or plist_template or not_supervised or SOMEONE_ELSES or derived_from_the_supervisor' --tb=line
+============================= test session starts ==============================
+platform linux -- Python 3.11.15, pytest-9.1.1, pluggy-1.6.0
+rootdir: /tmp/launchd-red-3231990
+configfile: pytest.ini
+plugins: anyio-4.12.1
+collected 53 items / 45 deselected / 8 selected
+
+tests/test_gateway_slash_parity.py FFFFFFFF                              [100%]
+
+=================================== FAILURES ===================================
+E   AttributeError: <class 'cortex_gateway.daemon.Gateway'> has no attribute '_launchd_label_for_our_pid'
+/tmp/launchd-red-3231990/tests/test_gateway_slash_parity.py:227: AttributeError: <class 'cortex_gateway.daemon.Gateway'> has no attribute '_launchd_label_for_our_pid'
+E   AssertionError: assert 'not supervised by a service manager' in '⚠️ This gateway is not running under systemd, so /restart cannot bring it back — stop it and start it by hand instead.'
+     +  where '⚠️ This gateway is not running under systemd, so /restart cannot bring it back — stop it and start it by hand instead.' = last()
+     +    where last = <test_gateway_slash_parity.FakeTransport object at 0x7958f2aa0a90>.last
+/tmp/launchd-red-3231990/tests/test_gateway_slash_parity.py:260: AssertionError: assert 'not supervised by a service manager' in '⚠️ This gateway is not running under systemd, so /restart cannot bring it back — stop it and start it by hand instead.'
+E   AttributeError: 'Gateway' object has no attribute '_launchd_label_for_our_pid'
+/tmp/launchd-red-3231990/tests/test_gateway_slash_parity.py:750: AttributeError: 'Gateway' object has no attribute '_launchd_label_for_our_pid'
+E   AttributeError: module 'cortex_gateway.daemon' has no attribute 'LAUNCHD_RELAUNCH_EXIT_CODE'
+/tmp/launchd-red-3231990/tests/test_gateway_slash_parity.py:781: AttributeError: module 'cortex_gateway.daemon' has no attribute 'LAUNCHD_RELAUNCH_EXIT_CODE'
+E   AttributeError: 'Gateway' object has no attribute '_restart_exit_code'
+/tmp/launchd-red-3231990/tests/test_gateway_slash_parity.py:832: AttributeError: 'Gateway' object has no attribute '_restart_exit_code'
+E   AttributeError: 'Gateway' object has no attribute '_supervised_by_launchd'
+/tmp/launchd-red-3231990/tests/test_gateway_slash_parity.py:848: AttributeError: 'Gateway' object has no attribute '_supervised_by_launchd'
+E   AssertionError: ⚠️ This gateway is not running under systemd, so /restart cannot bring it back — stop it and start it by hand instead.
+    assert ('com.steadfaste.gateway' in '⚠️ This gateway is not running under systemd, so /restart cannot bring it back — stop it and start it by hand instead.')
+/tmp/launchd-red-3231990/tests/test_gateway_slash_parity.py:872: AssertionError: ⚠️ This gateway is not running under systemd, so /restart cannot bring it back — stop it and start it by hand instead.
+E   AssertionError: SuccessfulExit=false is the condition the daemon's exit 75 comes back on
+    assert None is False
+     +  where None = <built-in method get of dict object at 0x7958f2a82100>('SuccessfulExit')
+     +    where <built-in method get of dict object at 0x7958f2a82100> = {'CrashedOrAbnormalExit': True}.get
+/tmp/launchd-red-3231990/tests/test_gateway_slash_parity.py:889: AssertionError: SuccessfulExit=false is the condition the daemon's exit 75 comes back on
+=========================== short test summary info ============================
+FAILED tests/test_gateway_slash_parity.py::test_restart_refuses_when_the_gateway_is_not_supervised
+FAILED tests/test_gateway_slash_parity.py::test_a_daemon_inside_SOMEONE_ELSES_service_is_not_supervised
+FAILED tests/test_gateway_slash_parity.py::test_launchd_supervision_comes_from_the_job_table_not_the_environment
+FAILED tests/test_gateway_slash_parity.py::test_the_plist_keepalive_decides_which_exit_launchd_relaunches
+FAILED tests/test_gateway_slash_parity.py::test_the_restart_exit_code_is_derived_from_the_supervisor
+FAILED tests/test_gateway_slash_parity.py::test_restart_under_launchd_exits_with_the_code_launchd_relaunches
+FAILED tests/test_gateway_slash_parity.py::test_restart_refuses_when_launchd_would_not_start_it_again
+FAILED tests/test_gateway_slash_parity.py::test_the_shipped_plist_template_gives_launchd_a_reason_to_relaunch
+======================= 8 failed, 45 deselected in 0.20s =======================
+rc=1
+
+$ git -C ~/hermes-cortex worktree remove --force /tmp/launchd-red-3231990
+rc=0
+
+5. ADVERSARIAL GATE — rc per changed file; finding counts BEFORE (origin/main) and
+   AFTER, so 'no new findings' is measured rather than asserted.
+$ git -C ~/hermes-cortex show origin/main:ops/scripts/cortex_gateway/daemon.py > /tmp/daemon-before.py
+rc=0
+
+$ cd ~/hermes-cortex && python3 ~/.hermes-cortex/scripts/adversarial-verify.py --file /tmp/daemon-before.py --level A4
+
+── /tmp/daemon-before.py ──
+   Level: A4
+   Attack Surface:
+     ⚠️ Inputs: 65 item(s)
+     ✅ State: 0 item(s)
+     ⚠️ Dependencies: 27 item(s)
+     ⚠️ Concurrency: 11 item(s)
+   Functions: 4
+     - _as_chat_id(chat)
+     - __init__(gateway, interval_s)
+     - __init__(gateway, chat, envelope)
+     - _command_of(envelope)
+   Fuzz inputs generated: 58
+
+📊 Summary: 1 file(s), 24 finding(s)
+   🟡 Medium: 4
+   🔵 Low: 1
+   ⚪ Info: 19
+
+🟡 Medium findings — fix before shipping.
+rc=0
+
+$ cd ~/hermes-cortex && python3 ~/.hermes-cortex/scripts/adversarial-verify.py --file ops/scripts/cortex_gateway/daemon.py --level A4 --gate
+
+── ops/scripts/cortex_gateway/daemon.py ──
+   Level: A4
+   Attack Surface:
+     ⚠️ Inputs: 70 item(s)
+     ✅ State: 0 item(s)
+     ⚠️ Dependencies: 30 item(s)
+     ⚠️ Concurrency: 11 item(s)
+   Functions: 4
+     - _as_chat_id(chat)
+     - __init__(gateway, interval_s)
+     - __init__(gateway, chat, envelope)
+     - _command_of(envelope)
+   Fuzz inputs generated: 58
+
+📊 Summary: 1 file(s), 25 finding(s)
+   🟡 Medium: 4
+   🔵 Low: 2
+   ⚪ Info: 19
+
+🟡 Medium findings — fix before shipping.
+
+✅ GATE_PASSED — no critical/high findings
+rc=0
+
+$ cd ~/hermes-cortex && python3 ~/.hermes-cortex/scripts/adversarial-verify.py --file ops/scripts/cortex_gateway/slash_parity_evidence.py --level A4 --gate
+
+── ops/scripts/cortex_gateway/slash_parity_evidence.py ──
+   Level: A4
+   Attack Surface:
+     ⚠️ Inputs: 11 item(s)
+     ✅ State: 0 item(s)
+     ⚠️ Dependencies: 12 item(s)
+     ✅ Concurrency: 0 item(s)
+   Functions: 4
+     - _load_gateway(config, chat, tmp)
+     - __init__()
+     - parse(raw)
+     - send(envelope)
+   Fuzz inputs generated: 45
+
+📊 Summary: 1 file(s), 21 finding(s)
+   🟡 Medium: 3
+   ⚪ Info: 18
+
+🟡 Medium findings — fix before shipping.
+
+✅ GATE_PASSED — no critical/high findings
+rc=0
+
+$ cd ~/hermes-cortex && python3 ~/.hermes-cortex/scripts/adversarial-verify.py --file tests/test_gateway_slash_parity.py --level A4 --gate
+
+── tests/test_gateway_slash_parity.py ──
+   Level: A4
+   Attack Surface:
+     ⚠️ Inputs: 74 item(s)
+     ⚠️ State: 1 item(s)
+     ⚠️ Dependencies: 24 item(s)
+     ✅ Concurrency: 0 item(s)
+   Functions: 58
+     - __init__()
+     - parse(raw)
+     - send(envelope)
+     - bodies()
+     - _gateway(tmp_path, spec, **over)
+     ... and 53 more
+   Fuzz inputs generated: 612
+
+📊 Summary: 1 file(s), 29 finding(s)
+   🟡 Medium: 3
+   🔵 Low: 6
+   ⚪ Info: 20
+
+🟡 Medium findings — fix before shipping.
+
+✅ GATE_PASSED — no critical/high findings
+rc=0
+
+   Reading: BEFORE {medium 4, low 1, info 19} / AFTER {medium 4, low 2, info 19}.
+   The single extra LOW is 'subprocess-no-timeout' on the new launchctl call — the
+   SAME detector pattern already firing on the systemd call above it, because the
+   detector reads the call's first line only. Both calls carry timeout=10.
+   No critical/high on any changed file.
+
+6. THE LAUNCHD PATH, EXERCISED (stub launchctl printing THIS process's pid via
+   os.getppid(), plus a real plist on disk), including the boundary shapes.
+$ cd ~/hermes-cortex && ~/.hermes/hermes-agent/venv/bin/python3 -m pytest tests/test_gateway_slash_parity.py -k 'launchd or damaged or not_supervised or SOMEONE_ELSES or derived_from_the_supervisor or plist_template' -v --no-header
+============================= test session starts ==============================
+collecting ... collected 53 items / 44 deselected / 9 selected
+
+tests/test_gateway_slash_parity.py::test_restart_refuses_when_the_gateway_is_not_supervised PASSED [ 11%]
+tests/test_gateway_slash_parity.py::test_a_daemon_inside_SOMEONE_ELSES_service_is_not_supervised PASSED [ 22%]
+tests/test_gateway_slash_parity.py::test_launchd_supervision_comes_from_the_job_table_not_the_environment PASSED [ 33%]
+tests/test_gateway_slash_parity.py::test_the_plist_keepalive_decides_which_exit_launchd_relaunches PASSED [ 44%]
+tests/test_gateway_slash_parity.py::test_a_damaged_or_unreadable_plist_never_claims_a_restart PASSED [ 55%]
+tests/test_gateway_slash_parity.py::test_the_restart_exit_code_is_derived_from_the_supervisor PASSED [ 66%]
+tests/test_gateway_slash_parity.py::test_restart_under_launchd_exits_with_the_code_launchd_relaunches PASSED [ 77%]
+tests/test_gateway_slash_parity.py::test_restart_refuses_when_launchd_would_not_start_it_again PASSED [ 88%]
+tests/test_gateway_slash_parity.py::test_the_shipped_plist_template_gives_launchd_a_reason_to_relaunch PASSED [100%]
+
+======================= 9 passed, 44 deselected in 0.25s =======================
+rc=0
+
+7. LIVE CONFIRMATION ON A MAC (Titus's host — one block, run it there)
+   $ cp ~/hermes-cortex/docs/templates/com.hermes.cortex-gateway.plist \
+         ~/Library/LaunchAgents/<your-label>.plist     # then edit the Label/paths
+   $ launchctl unload ~/Library/LaunchAgents/<your-label>.plist
+   $ launchctl load   ~/Library/LaunchAgents/<your-label>.plist
+   $ launchctl list <your-label>            # expect a PID, LastExitStatus empty
+   then send /restart in the chat and expect:
+     - '🔄 Restarting the gateway — back in a few seconds.'
+     - launchd relaunching within ThrottleInterval (15s):
+       $ launchctl list <your-label>        # NEW pid, LastExitStatus 19200 (= 75 << 8)
+     - '♻ Gateway restarted successfully. Your session continues.'
+   If launchctl still runs the OLD policy, /restart now REFUSES and names the
+   KeepAlive fix instead of exiting into silence (that refusal is the guard).

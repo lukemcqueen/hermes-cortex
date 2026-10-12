@@ -40,17 +40,21 @@ characters of conversation and nothing more. They are therefore gateway-level:
                 builds its argv from — models.py
   - `/compact`  a session operation, run through the backend's declared control
                 command (`commands.compact` in gateway.yaml) — pi speaks RPC
-  - `/restart`  exit + `Restart=always`, refused when not systemd-supervised.
-                The chat is MARKED (restarts.py) so the first reply after the
-                restart carries a one-line confirmation and the agent is told the
-                same fact with its prompt — otherwise the only available answer to
-                "did you restart?" comes from an agent whose session survived, and
-                it says no. Measured 2026-10-08.
+  - `/restart`  exit + the SUPERVISOR's own restart policy: `Restart=always` under
+                systemd (exit 0), and a non-zero exit under a launchd job whose plist
+                says `SuccessfulExit=false` — read from the job's own plist, never
+                assumed. Refused when nothing would bring the process back, naming
+                which half is missing. The chat is MARKED (restarts.py) so the
+                first reply after the restart carries a one-line confirmation and the
+                agent is told the same fact with its prompt — otherwise the only
+                available answer to "did you restart?" comes from an agent whose
+                session survived, and it says no. Measured 2026-10-08.
 """
 from __future__ import annotations
 
 import json
 import os
+import plistlib
 import subprocess
 import sys
 import threading
@@ -84,6 +88,20 @@ DEFAULT_BACKEND_AGENT = "hermes"
 # (so it arrives without the human having to say anything), and used as the footer
 # on the first reply when that send could not be delivered.
 RESTART_CONFIRMATION = "♻ Gateway restarted successfully. Your session continues."
+
+# The exit code that makes a launchd job start us again. launchd.plist(5) defines a
+# handful of KeepAlive conditions, and `SuccessfulExit=false` means the job is
+# "restarted in the INVERSE condition" of success — i.e. after a NON-zero exit. So
+# the clean exit(0) that systemd's `Restart=always` wants would PARK a launchd job
+# with the bot down. 75 is EX_TEMPFAIL, the code the Hermes gateway hands off with on
+# macOS (launchd records it as LastExitStatus 19200 = 75 << 8).
+LAUNCHD_RELAUNCH_EXIT_CODE = 75
+
+# The KeepAlive conditions launchd actually defines. Anything else in a KeepAlive
+# dict — e.g. the `CrashedOrAbnormalExit` the fleet's plists used to carry — is not a
+# condition, which leaves launchd with no reason to restart the job at all.
+LAUNCHD_KEEPALIVE_CONDITIONS = frozenset(
+    {"SuccessfulExit", "NetworkState", "PathState", "OtherJobEnabled", "Crashed"})
 
 
 def _as_chat_id(chat):
@@ -589,17 +607,118 @@ class Gateway:
             return False
         return done.returncode == 0 and done.stdout.strip() == str(os.getpid())
 
+    def _launchd_label_for_our_pid(self) -> str:
+        """The launchd job whose RUNNING pid is ours, or "".
+
+        The PID column is the whole point: XPC_SERVICE_NAME is inherited by every
+        child process (exactly as systemd's INVOCATION_ID is), so the environment
+        cannot prove that launchd started THIS process — a daemon hand-started from
+        a shell inside some other job would read it too and believe a restart was
+        survivable. launchd's own table can only name us if launchd is running us.
+        """
+        try:
+            done = subprocess.run(["launchctl", "list"],
+                                  capture_output=True, text=True, timeout=10)
+        except (OSError, subprocess.SubprocessError):
+            return ""
+        if done.returncode != 0:
+            return ""
+        mine = str(os.getpid())
+        for line in done.stdout.splitlines():
+            cols = line.split()          # PID <tab> Status <tab> Label
+            if len(cols) >= 3 and cols[0] == mine:
+                return cols[2]
+        return ""
+
+    def _supervised_by_launchd(self) -> bool:
+        """Is THIS process a launchd job? Whether launchd would RESTART us is the
+        separate question `_launchd_keepalive_exit_code` answers."""
+        return bool(self._launchd_label_for_our_pid())
+
+    def _launchd_keepalive_exit_code(self, label: str) -> int | None:
+        """Which exit this job's plist is RESTARTED after, or None if never.
+
+        The job's OWN plist is read rather than guessed, because the two conditions
+        that cover a deliberate exit disagree about which exit that is: with
+        `SuccessfulExit=false` launchd relaunches on a NON-zero exit, with
+        `KeepAlive=true` or `SuccessfulExit=true` on a clean one. A dict of keys
+        launchd does not define leaves it with no reason at all. An unreadable or
+        unrecognised policy returns None — refusing costs a manual restart, while a
+        wrong exit code silently takes the bot down.
+        """
+        try:
+            home = Path.home()                       # launchd may not set HOME
+        except (RuntimeError, OSError):
+            home = Path("/nonexistent")
+        for path in (home / "Library" / "LaunchAgents" / f"{label}.plist",
+                     Path("/Library/LaunchDaemons") / f"{label}.plist"):
+            try:
+                cfg = plistlib.loads(path.read_bytes())
+            except FileNotFoundError:
+                continue
+            except Exception as e:     # noqa: BLE001 — unreadable != "unsupervised"
+                print(f"⚠️  could not read {path}: {e}", file=sys.stderr)
+                return None
+            keepalive = cfg.get("KeepAlive") if isinstance(cfg, dict) else None
+            if keepalive is True:
+                return 0                             # any exit comes back
+            if not isinstance(keepalive, dict):
+                continue                             # absent/False: no reason
+            unknown = set(keepalive) - LAUNCHD_KEEPALIVE_CONDITIONS
+            if unknown:
+                print(f"⚠️  {path}: KeepAlive keys launchd does not define "
+                      f"({', '.join(sorted(unknown))}) — no restart condition",
+                      file=sys.stderr)
+            if keepalive.get("SuccessfulExit") is True:
+                return 0                             # only a clean exit returns
+            if keepalive.get("SuccessfulExit") is False:
+                return LAUNCHD_RELAUNCH_EXIT_CODE
+            return None
+        return None
+
+    def _restart_exit_code(self) -> int | None:
+        """The exit code that makes OUR supervisor start this process again.
+
+        None means nothing would: exiting is then a kill, not a restart.
+        """
+        if self._supervised_by_systemd():
+            return 0                                 # Restart=always → any exit
+        label = self._launchd_label_for_our_pid()
+        if not label:
+            return None
+        return self._launchd_keepalive_exit_code(label)
+
+    def _restart_refusal(self) -> str:
+        """Name the half that is missing — and never say "systemd" on a Mac.
+
+        Titus reported this from a launchd host (2026-10-12): the daemon WAS
+        supervised, so "not running under systemd" told him nothing about what to
+        fix.
+        """
+        label = self._launchd_label_for_our_pid()
+        if label:
+            return (f"⚠️ launchd runs this gateway as {label}, but its plist gives "
+                    "launchd no reason to start it again — so /restart would only stop "
+                    "it. Set KeepAlive to <key>SuccessfulExit</key><false/> (the "
+                    "daemon then exits 75) or to <true/> (any exit comes back), "
+                    "reload the job, and try /restart again.")
+        return ("⚠️ This gateway is not supervised by a service manager — no systemd "
+                "unit and no launchd job lists this process — so /restart cannot "
+                "bring it back. Stop it and start it by hand instead.")
+
     def _handle_restart(self, chat) -> bool:
         """Restart the gateway so a code/config change goes live.
 
         Exiting is the mechanism, not `systemctl restart`: the daemon runs under
-        `NoNewPrivileges=true`, so it cannot ask systemd to restart it — but it
-        does not have to. `Restart=always` brings the unit back on ANY exit, so
-        replying first and then exiting is both privilege-free and observable.
+        `NoNewPrivileges=true`, so it cannot ask systemd to restart it — but it does
+        not have to. The EXIT CODE is derived from the supervisor
+        (`_restart_exit_code`): `Restart=always` brings the unit back on any exit,
+        while a launchd job with `SuccessfulExit=false` is restarted only after a
+        NON-zero one.
 
-        Refusing when unsupervised is deliberate: without systemd, exiting is a
-        kill, and a slash command that silently takes the bot down is worse than
-        no command at all.
+        Refusing when nothing would bring the process back is deliberate: without a
+        supervisor, exiting is a kill, and a slash command that silently takes the
+        bot down is worse than no command at all.
 
         The reply says what will happen to the CONVERSATION, because "restart" reads
         like "fresh start" and this is not one: sessions survive (that is `/new`).
@@ -607,10 +726,9 @@ class Gateway:
         answer still remembers everything — measured 2026-10-08, on a restart that
         had genuinely happened.
         """
-        if not self._supervised_by_systemd():
-            self._reply(chat, "⚠️ This gateway is not running under systemd, so "
-                              "/restart cannot bring it back — stop it and start it "
-                              "by hand instead.")
+        code = self._restart_exit_code()
+        if code is None:
+            self._reply(chat, self._restart_refusal())
             return True
         # Mark BEFORE the reply: the reply is the last thing sent by THIS process,
         # and the marker has to outlive it (it lives in a file, not in memory).
@@ -619,13 +737,14 @@ class Gateway:
         self._reply(chat, "🔄 Restarting the gateway — back in a few seconds.\n"
                           "This conversation continues (send /new for a fresh "
                           "session); I'll confirm as soon as I'm back.")
-        threading.Thread(target=self._exit_for_restart, daemon=True).start()
+        threading.Thread(target=self._exit_for_restart, args=(code,),
+                         daemon=True).start()
         return True
 
-    def _exit_for_restart(self) -> None:
-        """Let the reply land, then exit so systemd restarts the unit."""
+    def _exit_for_restart(self, code: int = 0) -> None:
+        """Let the reply land, then exit with the code OUR supervisor restarts on."""
         time.sleep(self.RESTART_EXIT_DELAY_S)
-        os._exit(0)
+        os._exit(code)
 
     # ── /new: start a fresh session, ARCHIVING the old one ─────
     def _handle_new(self, chat, envelope: dict, backend) -> bool:

@@ -195,14 +195,22 @@ def main() -> int:
             print("\n[4]/[5] skipped (--no-llm)")
 
         print("\n[6] /restart supervision check (this script is NOT the unit's main process)")
-        supervised = gw._supervised_by_systemd()
+        # The supervisor decides the EXIT CODE, not just a yes/no: systemd's
+        # Restart=always wants a clean exit, while a launchd job whose plist says
+        # SuccessfulExit=false comes back only after a NON-zero one (read from the
+        # job's own plist — never assumed from the platform).
+        systemd = gw._supervised_by_systemd()
+        launchd = gw._launchd_label_for_our_pid()
+        code = gw._restart_exit_code()
         replies = turn(gw, "/restart", chat)
         body = " ".join(str(r.get("body", "")) for r in replies)
-        if supervised:
-            check("supervised → restart announced", "restarting" in body, body[:120])
+        if code is not None:
+            how = "systemd" if systemd else f"launchd ({launchd})"
+            check(f"supervised by {how} → restart announced, exit code {code}",
+                  "restarting" in body, body[:120])
         else:
-            check("NOT the unit's main process → refuses and names the reason",
-                  "not running under systemd" in body, body[:160])
+            check("no supervisor lists this process → refuses and names the reason",
+                  "not supervised by a service manager" in body, body[:160])
 
         print("\n[7] an unknown command still belongs to the agent")
         replies = turn(gw, "/totally-unknown-command", chat)

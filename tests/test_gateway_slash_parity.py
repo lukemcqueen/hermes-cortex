@@ -224,12 +224,14 @@ def test_restart_refuses_when_the_gateway_is_not_supervised(tmp_path, monkeypatc
     """Without systemd, exiting is a KILL — refuse and say why."""
     monkeypatch.delenv("INVOCATION_ID", raising=False)
     monkeypatch.delenv("JOURNAL_STREAM", raising=False)
+    monkeypatch.setattr(DAEMON.Gateway, "_launchd_label_for_our_pid",
+                        lambda self: "")
     gw, transport, _ = _gateway(tmp_path)
     called = []
     monkeypatch.setattr(DAEMON.Gateway, "_exit_for_restart",
-                        lambda self: called.append(True))
+                        lambda self, code=0: called.append(code))
     _tell(gw, "/restart")
-    assert "not running under systemd" in transport.last()
+    assert "not supervised by a service manager" in transport.last()
     assert called == []                                     # nothing exited
 
 
@@ -253,9 +255,9 @@ def test_a_daemon_inside_SOMEONE_ELSES_service_is_not_supervised(tmp_path, monke
     assert gw._supervised_by_systemd() is False
     called = []
     monkeypatch.setattr(DAEMON.Gateway, "_exit_for_restart",
-                        lambda self: called.append(True))
+                        lambda self, code=0: called.append(code))
     _tell(gw, "/restart")
-    assert "not running under systemd" in transport.last()
+    assert "not supervised by a service manager" in transport.last()
     assert called == []
 
 
@@ -296,7 +298,7 @@ def test_restart_replies_then_schedules_exit_under_systemd(tmp_path, monkeypatch
     gw, transport, _ = _gateway(tmp_path)
     called = []
     monkeypatch.setattr(DAEMON.Gateway, "_exit_for_restart",
-                        lambda self: called.append(True))
+                        lambda self, code=0: called.append(code))
     _tell(gw, "/restart")
     assert "estarting the gateway" in transport.last()
     deadline = 2.0
@@ -304,7 +306,7 @@ def test_restart_replies_then_schedules_exit_under_systemd(tmp_path, monkeypatch
     t0 = _t.time()
     while not called and _t.time() - t0 < deadline:
         _t.sleep(0.05)
-    assert called == [True]
+    assert called == [0], "systemd restarts on ANY exit (Restart=always) -> exit 0"
 
 
 def test_the_unit_name_is_read_from_our_own_cgroup(tmp_path, monkeypatch):
@@ -329,7 +331,7 @@ def test_the_unit_name_is_read_from_our_own_cgroup(tmp_path, monkeypatch):
 def test_restart_reply_says_the_conversation_is_kept(tmp_path, monkeypatch):
     """'restart' reads like 'fresh start'; say what actually happens to the session."""
     monkeypatch.setattr(DAEMON.Gateway, "_supervised_by_systemd", lambda self: True)
-    monkeypatch.setattr(DAEMON.Gateway, "_exit_for_restart", lambda self: None)
+    monkeypatch.setattr(DAEMON.Gateway, "_exit_for_restart", lambda self, code=0: None)
     gw, transport, _ = _gateway(tmp_path)
     _tell(gw, "/restart")
     body = transport.last()
@@ -344,7 +346,7 @@ def test_a_restart_is_announced_at_STARTUP_with_the_operators_wording(
     (that is what left him asking the agent, and getting "no").
     """
     monkeypatch.setattr(DAEMON.Gateway, "_supervised_by_systemd", lambda self: True)
-    monkeypatch.setattr(DAEMON.Gateway, "_exit_for_restart", lambda self: None)
+    monkeypatch.setattr(DAEMON.Gateway, "_exit_for_restart", lambda self, code=0: None)
     gw, transport, _ = _gateway(tmp_path)
     _tell(gw, "/restart")
     assert not any("restarted successfully" in b for b in transport.bodies())
@@ -367,7 +369,7 @@ def test_the_agent_is_still_told_after_the_startup_announcement(tmp_path, monkey
     The marker therefore outlives the announcement and is consumed by that turn.
     """
     monkeypatch.setattr(DAEMON.Gateway, "_supervised_by_systemd", lambda self: True)
-    monkeypatch.setattr(DAEMON.Gateway, "_exit_for_restart", lambda self: None)
+    monkeypatch.setattr(DAEMON.Gateway, "_exit_for_restart", lambda self, code=0: None)
     gw, transport, _ = _gateway(tmp_path)
     _tell(gw, "/restart")
 
@@ -388,7 +390,7 @@ def test_the_confirmation_rides_the_first_reply_when_the_announcement_failed(
         tmp_path, monkeypatch):
     """A failed startup send must not lose the news — the reply path carries it."""
     monkeypatch.setattr(DAEMON.Gateway, "_supervised_by_systemd", lambda self: True)
-    monkeypatch.setattr(DAEMON.Gateway, "_exit_for_restart", lambda self: None)
+    monkeypatch.setattr(DAEMON.Gateway, "_exit_for_restart", lambda self, code=0: None)
     gw, transport, _ = _gateway(tmp_path)
     _tell(gw, "/restart")
 
@@ -413,7 +415,7 @@ def test_a_refused_restart_leaves_no_marker(tmp_path, monkeypatch):
     monkeypatch.setattr(DAEMON.Gateway, "_supervised_by_systemd", lambda self: False)
     gw, transport, _ = _gateway(tmp_path)
     _tell(gw, "/restart")
-    assert "not running under systemd" in transport.last()
+    assert "not supervised by a service manager" in transport.last()
     assert RESTARTS.RestartBook(tmp_path / "restarts.json").pending(CHAT) is None
     _turn(gw, "hello")
     assert "♻️" not in transport.last()
@@ -678,3 +680,213 @@ def test_pi_control_runs_its_rpc_calls_without_mcp(tmp_path):
         env={**os.environ, "PI_BIN": str(fake)})
     argv = (tmp_path / "argv.txt").read_text()
     assert "--no-mcp" in argv, f"the control call ran with MCP enabled: {argv}"
+
+
+# ── /restart on macOS: launchd supervision + a plist that ACTUALLY relaunches ─
+# Titus's report (2026-10-12, non-orchestrator macOS host): the daemon answered
+# "not running under systemd" while it WAS supervised — by launchd. Two separate
+# defects, and the second is the dangerous half: even once launchd is detected, a
+# deliberate exit only comes back if the job's plist asks launchd to relaunch on
+# that exit. launchd.plist(5) defines exactly five KeepAlive conditions
+# (SuccessfulExit, NetworkState, PathState, OtherJobEnabled, Crashed) and
+# `SuccessfulExit=false` means "restarted in the INVERSE condition" — a NON-zero
+# exit. The shipped template carried `CrashedOrAbnormalExit`, a key in no man page,
+# so launchd was given no reason to restart the gateway at all.
+
+def _launchctl_stub(tmp_path: Path, label: str, pid_expr: str) -> Path:
+    """A stand-in `launchctl list`: the job table, with a settable PID column.
+
+    `pid_expr` is a Python expression evaluated INSIDE the stub, so "os.getppid()"
+    means "the process that called me" — our own pid, without a test needing to
+    know it. Any other value stands for somebody else's job.
+    """
+    p = tmp_path / "launchctl"
+    p.write_text(
+        "#!/usr/bin/env python3\n"
+        "import os, sys\n"
+        "print('PID', 'Status', 'Label', sep='\\t')\n"
+        f"print({pid_expr}, '0', {label!r}, sep='\\t')\n"
+        "print('-', '0', 'com.example.other', sep='\\t')\n")
+    p.chmod(0o755)
+    return p
+
+
+def _plist_home(tmp_path: Path, label: str, keepalive_xml: str) -> Path:
+    """A HOME whose LaunchAgents holds `label` with the given KeepAlive block."""
+    home = Path(tmp_path) / "home"
+    agents = home / "Library" / "LaunchAgents"
+    agents.mkdir(parents=True, exist_ok=True)
+    (agents / f"{label}.plist").write_text(
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<plist version="1.0"><dict>\n'
+        f'  <key>Label</key><string>{label}</string>\n'
+        f'  <key>KeepAlive</key>{keepalive_xml}\n'
+        '</dict></plist>\n')
+    return home
+
+
+def _launchd_env(tmp_path, monkeypatch, *, pid_expr="os.getppid()",
+                 keepalive_xml="<dict><key>SuccessfulExit</key><false/></dict>"):
+    """Wire the stub `launchctl` + a matching plist, and return the job label."""
+    label = "com.steadfaste.gateway"
+    _launchctl_stub(tmp_path, label, pid_expr)
+    monkeypatch.setenv("PATH", f"{tmp_path}:{os.environ['PATH']}")
+    monkeypatch.setenv("HOME", str(_plist_home(tmp_path, label, keepalive_xml)))
+    monkeypatch.setattr(DAEMON.Gateway, "_supervised_by_systemd", lambda self: False)
+    return label
+
+
+def test_launchd_supervision_comes_from_the_job_table_not_the_environment(
+        tmp_path, monkeypatch):
+    """Our OWN pid in launchd's job table is the proof; the env var is not.
+
+    XPC_SERVICE_NAME is inherited by every child (as INVOCATION_ID is under
+    systemd), so a hand-run daemon inside someone else's job would believe a
+    restart was survivable. The PID column cannot be inherited.
+    """
+    _launchd_env(tmp_path, monkeypatch)
+    monkeypatch.setenv("XPC_SERVICE_NAME", "com.steadfaste.gateway")
+    gw, _, _ = _gateway(tmp_path)
+    assert gw._launchd_label_for_our_pid() == "com.steadfaste.gateway"
+    assert gw._supervised_by_launchd() is True
+
+    # the same label, but the running pid is NOT ours (we are a child, or a
+    # different process entirely) — the inherited env var must not save it
+    _launchctl_stub(tmp_path, "com.steadfaste.gateway", "os.getppid() + 1")
+    assert gw._launchd_label_for_our_pid() == ""
+    assert gw._supervised_by_launchd() is False
+
+
+def test_no_launchctl_on_the_host_is_not_supervision(tmp_path, monkeypatch):
+    """Linux has no launchctl: the probe must fail closed, not raise."""
+    empty = tmp_path / "empty-bin"
+    empty.mkdir()
+    monkeypatch.setenv("PATH", str(empty))
+    gw, _, _ = _gateway(tmp_path)
+    assert gw._launchd_label_for_our_pid() == ""
+    assert gw._supervised_by_launchd() is False
+
+
+def test_the_plist_keepalive_decides_which_exit_launchd_relaunches(
+        tmp_path, monkeypatch):
+    """Only the conditions launchd DEFINES can be relied on — and they differ.
+
+    SuccessfulExit=false → relaunch on a non-zero exit (we exit 75).
+    KeepAlive=true / SuccessfulExit=true → a clean exit is the one that returns.
+    Anything else, including an invented key, gives launchd no reason at all.
+    """
+    label = "com.steadfaste.gateway"
+    cases = [
+        ("<dict><key>SuccessfulExit</key><false/></dict>",
+         DAEMON.LAUNCHD_RELAUNCH_EXIT_CODE),
+        ("<true/>", 0),
+        ("<dict><key>SuccessfulExit</key><true/></dict>", 0),
+        ("<dict><key>CrashedOrAbnormalExit</key><true/></dict>", None),
+        ("<dict/>", None),
+    ]
+    for i, (xml, want) in enumerate(cases):
+        monkeypatch.setenv("HOME", str(_plist_home(tmp_path / f"h{i}", label, xml)))
+        gw, _, _ = _gateway(tmp_path)
+        assert gw._launchd_keepalive_exit_code(label) == want, xml
+
+    # a plist we cannot find is the same as one that will not relaunch
+    monkeypatch.setenv("HOME", str(tmp_path / "nothing-here"))
+    gw, _, _ = _gateway(tmp_path)
+    assert gw._launchd_keepalive_exit_code(label) is None
+
+
+def test_a_damaged_or_unreadable_plist_never_claims_a_restart(tmp_path, monkeypatch):
+    """Boundary: unparseable / non-dict / KeepAlive-false must all mean "no".
+
+    A wrong answer here exits the bot into silence, so every unverifiable shape
+    takes the safe direction (None), not a guess.
+    """
+    label = "com.steadfaste.gateway"
+    home = _plist_home(tmp_path, label, "<true/>")
+    target = home / "Library" / "LaunchAgents" / f"{label}.plist"
+    monkeypatch.setenv("HOME", str(home))
+    gw, _, _ = _gateway(tmp_path)
+
+    target.write_text("{not a plist at all")           # unparseable
+    assert gw._launchd_keepalive_exit_code(label) is None
+
+    target.write_bytes(b"\x00\x01\x02")                # not even text
+    assert gw._launchd_keepalive_exit_code(label) is None
+
+    _plist_home(tmp_path, label, "<false/>")           # parsed, but no reason
+    assert gw._launchd_keepalive_exit_code(label) is None
+
+    _plist_home(tmp_path, label, "<array><string>x</string></array>")
+    assert gw._launchd_keepalive_exit_code(label) is None
+
+    (home / "Library" / "LaunchAgents").mkdir(exist_ok=True)
+    if target.is_file():
+        target.unlink()
+    target.mkdir()                                     # a directory, not a file
+    assert gw._launchd_keepalive_exit_code(label) is None
+
+
+def test_the_restart_exit_code_is_derived_from_the_supervisor(tmp_path, monkeypatch):
+    gw, _, _ = _gateway(tmp_path)
+    monkeypatch.setattr(DAEMON.Gateway, "_supervised_by_systemd", lambda self: True)
+    assert gw._restart_exit_code() == 0                    # Restart=always
+    monkeypatch.setattr(DAEMON.Gateway, "_supervised_by_systemd", lambda self: False)
+    monkeypatch.setattr(DAEMON.Gateway, "_launchd_label_for_our_pid",
+                        lambda self: "com.steadfaste.gateway")
+    monkeypatch.setattr(DAEMON.Gateway, "_launchd_keepalive_exit_code",
+                        lambda self, label: DAEMON.LAUNCHD_RELAUNCH_EXIT_CODE)
+    assert gw._restart_exit_code() == DAEMON.LAUNCHD_RELAUNCH_EXIT_CODE
+    monkeypatch.setattr(DAEMON.Gateway, "_launchd_label_for_our_pid", lambda self: "")
+    assert gw._restart_exit_code() is None                 # no supervisor → do not exit
+
+
+def test_restart_under_launchd_exits_with_the_code_launchd_relaunches(
+        tmp_path, monkeypatch):
+    """The whole macOS path: detected, policy honoured, reply first, then exit 75."""
+    _launchd_env(tmp_path, monkeypatch)
+    gw, transport, _ = _gateway(tmp_path)
+    assert gw._supervised_by_launchd() is True
+    called = []
+    monkeypatch.setattr(DAEMON.Gateway, "_exit_for_restart",
+                        lambda self, code=0: called.append(code))
+    _tell(gw, "/restart")
+    assert "estarting the gateway" in transport.last()
+    deadline = 2.0
+    t0 = time.time()
+    while not called and time.time() - t0 < deadline:
+        time.sleep(0.05)
+    assert called == [DAEMON.LAUNCHD_RELAUNCH_EXIT_CODE], called
+
+
+def test_restart_refuses_when_launchd_would_not_start_it_again(tmp_path, monkeypatch):
+    """A job with no recognised relaunch condition: refuse and name the plist fix."""
+    label = _launchd_env(tmp_path, monkeypatch,
+                         keepalive_xml="<dict><key>CrashedOrAbnormalExit</key><true/></dict>")
+    gw, transport, _ = _gateway(tmp_path)
+    called = []
+    monkeypatch.setattr(DAEMON.Gateway, "_exit_for_restart",
+                        lambda self, code=0: called.append(code))
+    _tell(gw, "/restart")
+    body = transport.last()
+    assert called == [], "exiting here is a kill — launchd has no reason to restart"
+    assert label in body and "KeepAlive" in body, body
+    assert RESTARTS.RestartBook(tmp_path / "restarts.json").pending(CHAT) is None
+
+
+def test_the_shipped_plist_template_gives_launchd_a_reason_to_relaunch():
+    """Guard for root cause 2 — the template must use conditions launchd defines.
+
+    A KeepAlive dict of keys launchd does not know leaves it with no reason to
+    restart the job, so a crash — and every /restart — parks the gateway. The five
+    real conditions come from launchd.plist(5).
+    """
+    import plistlib
+    path = _REPO / "docs" / "templates" / "com.hermes.cortex-gateway.plist"
+    cfg = plistlib.loads(path.read_bytes())
+    assert cfg["Label"] == "com.hermes.cortex-gateway"
+    ka = cfg["KeepAlive"]
+    assert isinstance(ka, dict), ka
+    assert ka.get("SuccessfulExit") is False, \
+        "SuccessfulExit=false is the condition the daemon's exit 75 comes back on"
+    known = {"SuccessfulExit", "NetworkState", "PathState", "OtherJobEnabled", "Crashed"}
+    assert set(ka) <= known, f"not launchd conditions: {sorted(set(ka) - known)}"
