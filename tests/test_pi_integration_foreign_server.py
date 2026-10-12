@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """The Pi audit must judge a host-local FOREIGN mcp.json entry correctly.
 
-WHY THIS IS ITS OWN FILE: `tests/test_pi_integration_audit.py` is a shared file with
-another session's work staged in it (2026-10-12), so adding cases there would land
-their hunks under this change. This file drives the SAME real audit script against
-synthetic hosts, so it needs no shared code.
+WHY THIS IS ITS OWN FILE: `tests/test_pi_integration_audit.py` was left with an
+earlier session's work STAGED but uncommitted in this tree (2026-10-12, same agent —
+`git status` shows staged vs unstaged, never WHO staged it, so this was first
+mis-read as another session's). Adding cases there would fold that stranded work into
+this change; the cases live here until that work is landed on its own.
 
   G.  a host with a hand-registered foreign server (deepseek)   -> exit 0, PASS,
       the foreign entry REPORTED as outside the audit

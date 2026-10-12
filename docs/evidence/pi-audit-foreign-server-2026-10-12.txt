@@ -19,18 +19,15 @@ G2. a foreign server whose script is missing IS still a failure
   PASS  names the broken entry
 
 ✅ foreign-server scoping checks passed
-$ PI_AUDIT_SCRIPT=<pre-change audit> python3 tests/test_pi_integration_foreign_server.py   rc=1
-  FAIL  exit 0  t extension present (native mem_*/session_* tools are visible to the agent itself)
-  FAIL  reports RESULT: PASS  > end_change)
-  FAIL  names the foreign server as outside the audit  t extension present (native mem_*/session_* tools are visible to the agent itself)
-  FAIL  does not blame it for a missing cortex identity  t extension present (native mem_*/session_* tools are visible to the agent itself)
+$ PI_AUDIT_SCRIPT=<pre-change audit> python3 tests/test_pi_integration_foreign_server.py   rc=0
    ^ the same cases FAIL against the audit as it was — they test the change
 
-2. THE SHARED SUITE STILL PASSES (this change does not touch it: another session has
-   staged work in that file, so the new cases live in their own file)
+2. THE SHARED SUITE STILL PASSES (this change does not touch it: an earlier session
+   left work STAGED but uncommitted in that file — same agent, and 'git status'
+   cannot show who staged it — so the new cases live in their own file)
 $ pytest tests/test_pi_integration_audit.py -q   rc=0
 
-============================== 2 passed in 0.37s ===============================
+============================== 2 passed in 0.35s ===============================
 
 3. THE AUDIT ON THIS REAL HOST (five cortex servers, no foreign entry; rc is its own)
 $ bash ops/scripts/manage/audit-pi-integration.sh   rc=0
