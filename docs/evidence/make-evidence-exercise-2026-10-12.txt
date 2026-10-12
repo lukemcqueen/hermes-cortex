@@ -1,0 +1,9 @@
+Running: bash -c cd /tmp && rm -f me.txt && bash /home/esther/hermes-cortex/ops/scripts/make-evidence.sh /tmp/me.txt -- sh -c "echo genesis" && bash /home/esther/hermes-cortex/ops/scripts/make-evidence.sh --verify /tmp/me.txt && sed -i s/genesis/EDITED/ /tmp/me.txt; bash /home/esther/hermes-cortex/ops/scripts/make-evidence.sh --verify /tmp/me.txt; echo tamper_rc=$?; rm -f /tmp/me.txt
+rc: 0
+when: 2026-10-12T09:41:36Z
+
+wrote /tmp/me.txt (143 bytes, sha256 a5e0b1059c3fd1c98c74d06f98aa6349f5fed9b09027dbfaf6a62efe92a0b9a2)
+OK  /tmp/me.txt  (sha256 a5e0b1059c3fd1c98c74d06f98aa6349f5fed9b09027dbfaf6a62efe92a0b9a2)
+FAIL /tmp/me.txt  recorded=a5e0b1059c3fd1c98c74d06f98aa6349f5fed9b09027dbfaf6a62efe92a0b9a2 actual=2422d2318d71b5656383a8ad75cbd6e4eb8d97392a39dbba5a0c1f5588602e91
+tamper_rc=1
+sha256: 3a042044421bd8381ec9bb06d55414842331c4f7cb6c6a044fe979c79f477cb4
