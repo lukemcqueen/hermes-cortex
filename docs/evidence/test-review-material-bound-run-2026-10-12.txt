@@ -1,6 +1,6 @@
 Running: python3 tests/test_review_material_bound.py
 rc: 0
-when: 2026-10-12T09:41:35Z
+when: 2026-10-12T09:48:04Z
 
 [mcp-server] WARNING: the 'mcp' package is not installed — the stdio server cannot start; the CLI adapter (ops/scripts/loop-gov.py) still works.
 [mcp-server]   /home/esther/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3 -m pip install mcp
@@ -21,4 +21,4 @@ when: 2026-10-12T09:41:35Z
   head+tail per file ✓ (last file's tail survives); control lost file19 entirely
 
 RESULT: ALL PASS (15 tests)
-sha256: 88009a172b633e655c1ae07f5a17c54a473dae93f82888668618ae6f8c82d358
+sha256: c9b2712d43efd26aed5ac6ec655dd9ad1e65783243ce190b81fe5a0b465feb24
