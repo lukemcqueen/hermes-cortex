@@ -1,0 +1,3 @@
+📚 Story c579ef95... — STORY: Fleet cost under $10/day avg + halve review queue (HC gaps party 2026-08-21 roadmap)
+   status=pending  priority=3  scope=fleet  by=esther
+   slices: 4 total | 0 done + 0 cancelled (0.0%) | 4 active (0 ip, 0 paused, 0 blocked, 2 waiting, 2 pending)

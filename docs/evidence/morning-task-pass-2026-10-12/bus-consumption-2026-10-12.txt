@@ -1,0 +1,16 @@
+✅ Bus: ok (pgmq) — https://your-bus-host:13004
+
+📊 9 inbox queue(s):
+   inbox_esther                    depth=0
+   inbox_fleet                     depth=0
+   inbox_gisu                      depth=0
+   inbox_health_check              depth=2
+   inbox_joseph                    depth=0
+   inbox_kustos                    depth=0
+   inbox_moses                     depth=0
+   inbox_orchestrator              depth=2
+   inbox_titus                     depth=0
+---joseph---
+📬 No pending messages in inbox_joseph.
+---esther---
+📬 No pending messages in inbox_esther.

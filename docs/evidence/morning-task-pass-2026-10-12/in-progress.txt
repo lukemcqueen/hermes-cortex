@@ -1,0 +1,3 @@
+ID                                     Agent      Scope     Status       Pr  Kind   Content
+-------------------------------------------------------------------------------------------
+1e8737fc-33ec-4a9a-bb59-b4b0d522deee   esther     fleet     in_progress  2   slice    ↳ Case study + client-sales artifacts — documented outcomes, testimonials, sellable proof package

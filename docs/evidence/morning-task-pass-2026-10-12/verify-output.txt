@@ -1,0 +1,21 @@
+### 1. live bus: joseph's queue was drained (messages consumed) ###
+inbox_joseph depth=0
+PASS: inbox_joseph empty -> 2026-10-11 dispatches consumed
+
+### 2. ...but both fleet slice rows are still pending on esther ###
+pending orchestrator rows matching ca282975/72dc920b: 2
+PASS: both slices still pending -> no return path (issue #86)
+
+### 3. claimable pool unchanged (frozen, not draining) ###
+claimable rows (pending, unassigned): 16
+PASS: 16 claimable (same as 2026-10-10 and 2026-10-11)
+
+### 4. dedup gate is PENDING-scoped (mechanism of the thrash) ###
+PASS: hc.py cmd_send refuses only on an ALREADY-PENDING duplicate
+531:                pending = bus_peek(f"inbox_{agent}", limit=50)
+
+### 5. no supported path to mark an existing slice handed-out ###
+PASS: 'update' exposes only --status/--reason -> no post-hoc assignee write
+PASS: no handout/assign function in ops/services/tasks/schema -> slices stay claimable
+
+VERDICT: PASS

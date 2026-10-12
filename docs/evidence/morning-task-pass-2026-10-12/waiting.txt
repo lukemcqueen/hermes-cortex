@@ -1,0 +1,4 @@
+ID                                     Agent      Scope     Status       Pr  Kind   Content
+-------------------------------------------------------------------------------------------
+511ad057-7070-413c-9006-e87eeb639d38   esther     fleet     waiting      3   slice    ↳ [cost/3] Continuous cost monitoring: add per-cron token/spend tag to metrics sink :14005 and a weekly cost-report cron with alert when fleet daily avg exceeds $10; verify alert fires once in test. Depends on [cost/1].
+40cb307d-5dbf-4db8-a1f6-91a381a5c301   esther     fleet     waiting      2   slice    ↳ [cost/2] Reduce top cost drivers: from baseline doc, cut duplicated cron runs / over-spec models per cron; apply provider/pin changes in env vars (single control point), measure delta over 7 days. Output: docs/cost-reduction-2026-09.md with before/after table. Depends on [cost/1].
