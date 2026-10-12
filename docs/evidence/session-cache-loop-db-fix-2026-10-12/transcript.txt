@@ -1,0 +1,131 @@
+# Evidence — session_cache embed_loop_db repair (2026-10-12)
+
+Host: esther (orchestrator). Public repo rules (no home paths/hostnames) apply.
+
+## Revision
+```
+966d8a08
+```
+
+## 1. Reproducible regression (the finding ADV-12197-1 asked for)
+
+```
+$ python3 tests/run_session_cache_loop_db_repro.py
+== session cache loop_db regression ==
+   source: ops/scripts/manage/agent-session_cache.py
+   present: True
+  [PASS] source file exists
+  [PASS] no phantom column code_or_spec
+  [PASS] no phantom column output_text
+  [PASS] no 'expected — silently handled' swallow in loop_db path
+  [PASS] orders by LENGTH(content)
+  [PASS] module imports (hermes_models shim + fail-soft)
+  [PASS] embed_loop_db callable
+  [PASS] JOIN yields rows for resolvable code_hash — got 2, expected 2 (composite<6.0 excluded)
+  [PASS] longest content ordered first — first row len=200
+  [PASS] composite-ordered empties do not starve LIMIT — got 1, expected 1 real row despite a composite-10.0 empty
+  [PASS] empty content_assets -> 0 rows
+  [PASS] NULL content -> 0 rows
+  [PASS] dangling code_hash -> 0 rows
+  [PASS] empty-string content -> 0 rows
+
+RESULT: PASS — all assertions held
+rc=0
+```
+
+## 2. RED — the regression FAILS on the pre-fix revision
+   (proves the test targets the defect, not passing code)
+
+$ (pre-fix copy in temp tree) python3 tests/run_session_cache_loop_db_repro.py
+[FAIL] no phantom column code_or_spec
+[FAIL] no phantom column output_text
+[FAIL] no 'expected — silently handled' swallow in loop_db path
+[FAIL] orders by LENGTH(content)
+[FAIL] module imports (hermes_models shim + fail-soft) — ModuleNotFoundError: No module named 'hermes_models'
+rc=1
+
+## 3. Static adversarial gate on the changed file
+
+$ python3 ops/scripts/quality/adversarial-verify.py --file ops/scripts/manage/agent-session_cache.py --level A2 --gate
+
+📊 Summary: 1 file(s), 21 finding(s)
+   🟡 Medium: 4
+   ⚪ Info: 17
+
+🟡 Medium findings — fix before shipping.
+
+✅ GATE_PASSED — no critical/high findings
+rc=0
+
+## 4. Production proof — the deployed cron command now embeds rows
+   Before: loop_db source held 20 stale rows (zero added per run for months).
+   After the real deployed invocation, +50 rows appear with a fresh timestamp.
+
+$ python3 ~/.hermes-cortex/scripts/agent-session_cache.py   # deployed copy
+$ python3 -c "SELECT source, COUNT(*) FROM embeddings GROUP BY source"
+loop_db: 20 -> 70  (created_at 2026-10-12 00:31)
+session: 4   skill: 113
+
+## 5. Deploy sync — deployed tree equals committed HEAD
+
+$ diff <(tail -n +4 ~/.hermes-cortex/scripts/agent-session_cache.py) <(git show HEAD:ops/scripts/manage/agent-session_cache.py)
+(only the "# SOURCE:" header differs — by design)
+
+## 6. Doctor
+
+$ python3 ops/scripts/manage/cortex-doctor.py --quiet
+✅ Checksum: agent-session_cache.py
+Overall: 448 pass / 4 warn / 0 fail
+  The four warnings, named (none is loop-governance):
+    1. Repo clean        — uncommitted changes (this cycle's work + a sibling session's)
+    2. Repo sync         — behind origin/main (see the push-blocker note)
+    3. AGENTS.md efficiency (proj) — a dev repo lacks the fleet session-efficiency block
+    4. Stale deploy: scripts/review-sweep-check.py — not in any register() mapping
+  All four are pre-existing host/repo hygiene items; the loop-governance checks
+  (Checksum: agent-session_cache.py, Checksum: loop_evaluator.py, Governance
+  locks, PENDING cycles) all pass.
+
+## 7. Follow-up finding from the close review (ADV-12197-1, fabrication)
+   The review caught a real bug in the SAME report I was committing:
+   'Avg cycles per task' printed AVG(cycle_num) — the mean cycle INDEX of a
+   cycle — so a week whose Total/Unique lines implied 2.9 claimed 24.5. Fixed
+   in core/governance/loop_evaluator.py. All figures in this section come from
+   the ONE command below (row counts differ slightly between sections because
+   the DB keeps growing as cycles are scored):
+
+```
+$ python3 tests/run_loop_evaluator_avg_per_task_repro.py     # runnable, self-asserting
+   -> RED on the pre-fix revision (fails "uses COUNT(*)/COUNT(DISTINCT task_id)")
+   -> GREEN on the fix
+
+# sqlite3(1) is not installed on this host; this Python form is the one that
+# actually runs here (sqlite3 means the stdlib module, not the CLI).
+$ python3 -c "import sqlite3; c=sqlite3.connect('/home/esther/.hermes-cortex/data/loop-governance.db'); print(*c.execute(\"SELECT COUNT(*), COUNT(DISTINCT task_id), ROUND(AVG(cycle_num),1), ROUND(1.0*COUNT(*)/MAX(COUNT(DISTINCT task_id),1),1) FROM loop_cycles WHERE timestamp >= datetime('now','-7 days')\"))"
+(1594, 546, 24.5, 2.9)
+   ^ total, unique_tasks, AVG(cycle_num) [the defective metric], true total/unique
+     Note 24.5 != 2.9 in the SAME row: that contradiction is what the review caught.
+```
+
+   Regression: tests/run_loop_evaluator_avg_per_task_repro.py
+   RED on the pre-fix revision (uses COUNT(*)/COUNT(DISTINCT) FAIL), GREEN on the fix.
+
+
+## 8. Follow-up finding ADV-12197-1 (swallowed-error) — resolved by propagation
+   The reviewer noted that printing a warning to stderr is still a swallow:
+   the caller cannot distinguish 'nothing new' from 'the query broke'.
+
+```
+$ python3 ~/.hermes-cortex/scripts/agent-session_cache.py   # happy path
+rc=0
+
+$ # inject the failure: LOOP_DB pointed at a schema with no content_assets
+$ python3 (drive embed_loop_db / cmd_build directly)
+  ERROR: loop_db embedding FAILED: OperationalError: no such table: content_assets
+cmd_build failures: ['loop_db']
+would exit: 1
+```
+
+   embed_loop_db now returns None on failure; cmd_build collects it into a
+   failures list; main() maps a non-empty list to exit 1 with
+   'RESULT: FAILED subsystems: loop_db' on stderr. Both directions are
+   asserted in tests/run_session_cache_loop_db_repro.py (17 assertions).

@@ -30,7 +30,24 @@ LOOP_DB = HOME / ".hermes-cortex" / "data" / "loop-governance.db"
 SESSION_DIR = HOME / ".hermes-cortex" / "sessions"
 SKILLS_DIR = HOME / ".hermes-cortex" / "skills" / "software-development"
 OLLAMA_URL = "http://localhost:11434/api/embeddings"
-from hermes_models import get_model
+
+# hermes_models.py lives in the deployed scripts dir (and ops/scripts in the
+# repo). Relying on it happening to sit beside this file breaks every other
+# copy — e.g. tools/loop-governance/, where module-level import raised
+# ModuleNotFoundError and the whole build died before doing any work.
+for _cand in (
+    Path(__file__).resolve().parent,
+    HOME / ".hermes-cortex" / "scripts",
+    HOME / "hermes-cortex" / "ops" / "scripts",
+):
+    if (_cand / "hermes_models.py").is_file() and str(_cand) not in sys.path:
+        sys.path.insert(0, str(_cand))
+
+try:
+    from hermes_models import get_model
+except ImportError:  # fail-soft: documented default, same as loop_scorer
+    def get_model(env_var: str, default: str) -> str:
+        return os.environ.get(env_var, default)
 
 NOMIC_MODEL = get_model("EMBEDDING_MODEL", "nomic-embed-text:v1.5")
 
@@ -122,14 +139,29 @@ def embed_loop_db(conn):
 
     try:
         src = sqlite3.connect(str(LOOP_DB))
+        # loop_cycles stores only content HASHES; the text lives in
+        # content_assets keyed by hash. A bare SELECT of code/spec columns
+        # raises "no such column" — which an earlier version swallowed whole,
+        # so this source contributed zero embeddings for months.
+        # Join through content_assets and order by CONTENT LENGTH, not just
+        # composite: the top composite scores belong to LLM cron cycles that
+        # store no code at all, so a composite-ordered LIMIT 50 selects only
+        # empty rows and still embeds nothing.
         rows = src.execute(
-            "SELECT id, task_id, code_or_spec, output_text FROM loop_cycles WHERE composite >= 6.0 ORDER BY composite DESC LIMIT 50"
+            """
+            SELECT lc.id, lc.task_id, ca.content
+            FROM loop_cycles lc
+            JOIN content_assets ca ON ca.hash = lc.code_hash
+            WHERE lc.composite >= 6.0 AND LENGTH(ca.content) >= 50
+            ORDER BY LENGTH(ca.content) DESC
+            LIMIT 50
+            """
         ).fetchall()
         src.close()
 
         for row in rows:
-            cycle_id, task_id, code, output = row
-            text = f"{task_id}: {code[:1000]} -> {output[:500]}"
+            cycle_id, task_id, code = row
+            text = f"{task_id}: {code[:1000]}"
             if len(text.strip()) < 50:
                 continue
 
@@ -149,8 +181,15 @@ def embed_loop_db(conn):
                 ("loop_db", str(cycle_id), text[:500], json.dumps(emb), "moses")
             )
             count += 1
-    except Exception:
-        print("expected — silently handled", file=sys.stderr)
+    except Exception as exc:
+        # Do NOT swallow: a broken query here silently starves progress
+        # detection of its known-good reference patterns, which is exactly how
+        # this source contributed zero rows for months. Surface it to the
+        # caller as a distinct failure (count=None) so the run's exit code is
+        # non-zero instead of a plausible 0 that looks like "nothing new".
+        print(f"  ERROR: loop_db embedding FAILED: {type(exc).__name__}: {exc}",
+              file=sys.stderr)
+        return None
     conn.commit()
     return count
 
@@ -231,12 +270,17 @@ def search(query: str, top_k: int = 5) -> list[dict]:
 def cmd_build(quiet=False):
     conn = init_db()
     total = 0
+    failures = []
 
     n = embed_sessions(conn)
     total += n
 
     n = embed_loop_db(conn)
-    total += n
+    if n is None:
+        # Distinct failure surfaced from embed_loop_db — not "0 new rows".
+        failures.append("loop_db")
+    else:
+        total += n
 
     n = embed_skills(conn)
     total += n
@@ -245,6 +289,7 @@ def cmd_build(quiet=False):
         print(f"  Total new embeddings: {total}")
         cmd_status(conn)
     conn.close()
+    return failures
 
 
 def cmd_status(conn=None):
@@ -285,8 +330,11 @@ def main():
 
     if len(sys.argv) < 2 or (quiet and len([a for a in sys.argv[1:] if a not in ("--quiet", "-q")]) == 0):
         # No args (or only --quiet) = default to build in quiet mode (no_agent cron usage)
-        cmd_build(quiet=True)
-        return
+        failures = cmd_build(quiet=True)
+        if failures:
+            print(f"  RESULT: FAILED subsystems: {', '.join(failures)}", file=sys.stderr)
+            return 1
+        return 0
 
     if sys.argv[1] in ("--help", "-h"):
         print("  Usage:")
@@ -294,18 +342,24 @@ def main():
         print("    session-cache-build search   Similarity search")
         print("    session-cache-build status   Show cache stats")
         print()
-        return
+        return 0
 
     cmd = sys.argv[1]
     if cmd == "build":
-        cmd_build()
+        failures = cmd_build()
+        if failures:
+            print(f"  RESULT: FAILED subsystems: {', '.join(failures)}", file=sys.stderr)
+            return 1
+        return 0
     elif cmd == "status":
         cmd_status()
     elif cmd == "search":
         cmd_search()
     else:
-        print(f"  Unknown command: {cmd}")
+        print(f"  Unknown command: {cmd}", file=sys.stderr)
+        return 1
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

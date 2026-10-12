@@ -79,6 +79,16 @@ TESTS = [
     # thing that decides WHO runs the other tests: a resolver that falls back to an
     # interpreter lacking the module makes a gate report a failure it never measured.
     "tests/test_python_with_module.py",
+    # The loop_db embedding source of the session cache. It silently contributed
+    # ZERO rows for months (phantom columns + a swallowed OperationalError), which
+    # starves progress detection of its known-good patterns. This runs the fixed
+    # query against hermetic fixtures and asserts the boundaries, so the next break
+    # fails HERE instead of only contradicting a prose claim (ADV-12197-1).
+    "tests/run_session_cache_loop_db_repro.py",
+    # The weekly report's "Avg cycles per task" metric. It printed AVG(cycle_num)
+    # under that label, contradicting the report's own Total/Unique lines; an
+    # adversarial review read the mismatch as fabrication (ADV-12197-1).
+    "tests/run_loop_evaluator_avg_per_task_repro.py",
 ]
 
 GATE_FILE = "mcp-servers/loop-gov-mcp.py"

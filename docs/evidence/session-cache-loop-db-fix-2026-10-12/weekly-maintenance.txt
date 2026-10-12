@@ -1,0 +1,104 @@
+# Weekly loop-governance evaluation + maintenance — 2026-10-12 (last 7 days)
+
+## Evaluation (loop_evaluator.py --days 7) — post-fix report
+
+```
+# Evaluation Report — last 7 days
+**Generated:** 2026-10-12 00:45 UTC
+
+## Summary
+| Metric | Value |
+|--------|-------|
+| Total cycles | 1592 |
+| Unique tasks | 545 |
+| Avg cycles per task | 2.9 |
+| Avg composite score | 7.04 /10 |
+| Avg completeness | 9.65 /10 |
+| Avg quality | 5.11 /10 |
+| Avg progress | 5.5 /10 |
+| No-progress cycles | 0 |
+| User feedback collected | 821 |
+
+## Decision Distribution
+| Decision | Count |
+|----------|-------|
+| LOOP | 754 |
+| STOP | 585 |
+| OTHER | 253 |
+
+## Score Trends
+| Dimension | First Half | Second Half | Diff | Direction |
+|-----------|-----------|------------|------|-----------|
+| completeness | 9.55 | 9.75 | +0.20 | → stable |
+| quality | 5.06 | 5.15 | +0.09 | → stable |
+| progress | 5.57 | 5.43 | -0.14 | → stable |
+| composite | 7.0 | 7.07 | +0.07 | → stable |
+
+## No-Progress Hotspots
+_No no-progress hotspots detected._
+
+## Decision Accuracy
+**37.7%** correct (3966/10530 decisions)
+
+| Decision | User Accepted | User Overrode |
+|----------|:------------:|:-------------:|
+| LOOP | Overrode | 1 |
+| LOOP 🔄 — keep iterat | Accepted | 99 |
+| MOVE ON → — skip or  | Accepted | 236 |
+| MOVE_ON | Accepted | 3412 |
+| MOVE_ON | Overrode | 10 |
+| STOP ✓ | Overrode | 6199 |
+| STOP ✓ — goal met, q | Accepted | 217 |
+| STOP ✓ — goal met, q | Overrode | 354 |
+| STOP ✗ — hard fail,  | Accepted | 2 |
+
+## Recommendations
+### Threshold Adjustments
+- **STOP (composite ≥ 8.0):** Consider raising STOP threshold to 6.5 or adding quality gate (quality ≥ 6.0) (confidence: medium)
+- **no-progress (progress < 2.0):** Tighten no-progress limit from 3 to 2 consecutive (confidence: medium)
+
+### Weight Adjustments
+| Dimension | Current | Recommended | Rationale |
+|-----------|:-------:|:-----------:|-----------|
+| completeness | 40% | 24% | User acceptance delta: -7.88. Lower scores correlate with ac... |
+| progress | 30% | 30% | User acceptance delta: -3.34. Lower scores correlate with ac... |
+
+```
+
+Note: 'Avg cycles per task' now equals Total/Unique (2.9 = 1592/545).
+It previously printed AVG(cycle_num)=24.5 (the mean cycle INDEX) — a real
+bug the close review caught; see transcript.txt section 7.
+
+## Auto-apply (safety-bound config tuning)
+
+```
+$ auto-apply
+⏭  Auto-apply skipped — Confidence 0.35 below threshold 0.7
+   Patch confidence: 0.35 (threshold: 0.7)
+   Requires review: True
+   Changes proposed: {'thresholds': {'stop': 6.5}, 'weights': {'completeness': 0.2424, 'progress': 0.303}, 'auto_apply': {'no_progress_limit': 2}}
+```
+
+Config unchanged: weights 0.40/0.30/0.30, stop threshold 8.2.
+The patch was correctly SKIPPED — confidence 0.35 is below the 0.70 floor.
+
+## Vacuum / retention (>90 days)
+
+```
+$ python3 (retention: archive -> delete -> prune orphaned assets -> VACUUM)
+cycles older than 90 days: 335
+archived to: ~/.hermes-cortex/data/loop-archive/vacuum-20261012.jsonl
+deleted: 335
+orphaned content_assets deleted: 516
+remaining loop_cycles: 11861
+DB size: 113.2 MB -> 110.4 MB
+```
+
+## Skill miner
+
+```
+$ skill_miner.py collect
+skill-miner: collected 1744 skill files to /tmp/skills-manifest.json
+$ skill_miner.py score
+(no add/remove output = no skill changes detected)
+```

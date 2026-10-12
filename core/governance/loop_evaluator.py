@@ -55,7 +55,12 @@ class LoopEvaluator:
                 SUM(CASE WHEN decision LIKE 'STOP ✗%' THEN 1 ELSE 0 END) AS hard_fail_count,
                 SUM(CASE WHEN no_progress = 1 THEN 1 ELSE 0 END) AS no_progress_count,
                 SUM(CASE WHEN user_overrode IS NOT NULL THEN 1 ELSE 0 END) AS feedback_count,
-                ROUND(AVG(cycle_num), 1) AS avg_cycles_per_task
+                -- Cycles PER TASK — an average over TASKS, not over rows.
+                -- AVG(cycle_num) is the mean cycle INDEX of a cycle (24.5 on a
+                -- week where tasks average 2.9 cycles), which contradicted the
+                -- report's own Total cycles / Unique tasks line; an adversarial
+                -- review filed the mismatch as fabrication (ADV-12197-1).
+                ROUND(1.0 * COUNT(*) / MAX(COUNT(DISTINCT task_id), 1), 1) AS avg_cycles_per_task
             FROM loop_cycles
             WHERE timestamp >= datetime('now', '-' || ? || ' days')
         """, (days,)).fetchone()
