@@ -204,6 +204,95 @@ def test_an_explicit_budget_is_still_honoured():
     print("  explicit budget override still honoured ✓")
 
 
+# ── Per-file floor + evidence-as-documentation (2026-10-12) ───────────────────
+# Cycle 12307 exposed a shape the per-file allocation could not serve: ~12 changed
+# files against the STANDARD 12000 budget because one of them was `docs/evidence/*.sh`
+# (a run transcript, not code), and the budget is applied to each file's DIFF text —
+# headers, `+` prefixes and context included. A 244-BYTE evidence file still produced
+# ~1118 chars of diff, so the reviewer saw "318 of 1118 omitted" no matter how small
+# the worker made the file. Six rounds of findings were produced by that, and every one
+# was unfixable from the worker's side: making the file smaller could not help.
+# These pin the two halves of the fix: evidence paths count as documentation for the
+# budget predicate, and every file gets a FLOOR before the equal share so a small
+# artifact is shown WHOLE.
+
+
+def _evidence_diff_sh(files: int = 3) -> str:
+    """A run-evidence range: docs + `.sh`/`.json` transcripts under docs/evidence/."""
+    out = []
+    for i in range(files):
+        out.append(f"diff --git a/docs/evidence/run{i}.sh b/docs/evidence/run{i}.sh")
+        out.append(f"--- a/docs/evidence/run{i}.sh")
+        out.append(f"+++ b/docs/evidence/run{i}.sh")
+        out.append("@@ -0,0 +1,40 @@")
+        out += [f"+ echo line {n} of run{i}" for n in range(40)]
+    out.append("diff --git a/docs/evidence/capture.json b/docs/evidence/capture.json")
+    out.append("--- a/docs/evidence/capture.json")
+    out.append("+++ b/docs/evidence/capture.json")
+    out.append("@@ -0,0 +1,5 @@")
+    out += ['+ {"rc": 0, "verdict": "PASS"}']
+    return "\n".join(out) + "\n"
+
+
+def test_evidence_paths_count_as_documentation():
+    """A transcript under docs/evidence/ is the artifact under review, not code.
+
+    Same rationale as the docs budget: for an artifact, a truncated diff is not a
+    smaller review — it is no review. Suffix alone must not decide it.
+    """
+    d = _evidence_diff_sh()
+    assert mcp._range_is_docs_only(d) is True, \
+        "docs/evidence/** is documentation whatever its suffix — a .sh transcript is a run artifact"
+    # ...but code is still code, wherever it lives.
+    d2 = d + "diff --git a/ops/scripts/thing.py b/ops/scripts/thing.py\n" + "x" * 100
+    assert mcp._range_is_docs_only(d2) is False, "one real code path must revert the budget"
+    print("  docs/evidence/** (.sh, .json) classified as documentation; a code path reverts it ✓")
+
+
+def test_every_file_under_the_floor_is_shown_whole():
+    """The 12307 defect: a tiny artifact was still cut, because the share was budget//n.
+
+    Measured in that cycle: a 244-BYTE transcript produced 1118 chars of diff text
+    (headers + `+` prefixes + context), against a share of 12000//12 ~ 1000 — so it came
+    back "318 of 1118 omitted" and no amount of shrinking the file could help.
+    """
+    big = _diff(12, 120)                    # 12 files ABOVE the floor (~2.8KB of diff each)
+    body = [f"+evidence line {n} {'.' * 60}" for n in range(16)]   # ~1.1KB artifact
+    tiny = ("diff --git a/docs/evidence/tiny.txt b/docs/evidence/tiny.txt\n"
+            "--- a/docs/evidence/tiny.txt\n"
+            "+++ b/docs/evidence/tiny.txt\n"
+            "@@ -0,0 +1,16 @@\n" + "\n".join(body) + "\n"
+            "+ALL CLAIMS VERIFIED (0 failures)\n"
+            "+sha256 79a6afcd8ac1\n")
+    assert len(tiny) < mcp.REVIEW_MATERIAL_PER_FILE_FLOOR, "fixture: the artifact is UNDER the floor"
+    assert len(tiny) > mcp.DIFF_CHAR_BUDGET // 13, \
+        "the fixture must reproduce the real defect: the artifact's diff exceeds its equal share"
+    got = mcp._bound_diff(big + tiny, budget=mcp.DIFF_CHAR_BUDGET)
+    assert "+ALL CLAIMS VERIFIED (0 failures)" in got, \
+        "a file under the per-file floor must be shown WHOLE — shrinking it further cannot help"
+    assert "+sha256 79a6afcd8ac1" in got, "its last line must survive too"
+    assert "+evidence line 0" in got, "its first body line must survive too"
+    print(f"  under-floor artifact shown whole with 13 changed files "
+          f"(floor={getattr(mcp, 'REVIEW_MATERIAL_PER_FILE_FLOOR', '?')}) ✓")
+
+
+def test_the_floor_never_exceeds_the_budget():
+    """A floor is an allocation preference, never a licence to exceed the budget.
+
+    The per-file disclosure markers are overhead, so the bound is budget + a proportionate
+    per-file allowance — what must never happen is unbounded growth.
+    """
+    d = _diff(60, 40)
+    budget = 3000
+    got = mcp._bound_diff(d, budget=budget)
+    assert "MATERIAL LIMIT" in got, "60 files against 3000 chars must still be bounded"
+    assert len(got) < budget + 150 * 60, \
+        f"the material must stay proportionate to its budget; got {len(got)} for budget {budget}"
+    for i in range(60):
+        assert f"diff --git a/file{i}.py" in got, f"file{i} must still be represented"
+    print(f"  floor respects the total budget (60 files / {budget} chars -> {len(got)} chars) ✓")
+
+
 # ── Standalone runner ─────────────────────────────────────────────────────────
 # pytest is not installed on every fleet host, which left this file unrunnable
 # there and its assertions unverified. Run it directly:

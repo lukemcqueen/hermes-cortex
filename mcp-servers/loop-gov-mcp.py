@@ -2044,6 +2044,35 @@ DIFF_CHAR_BUDGET = 12000
 DIFF_CHAR_BUDGET_DOCS = 60000
 DOC_ONLY_SUFFIXES = (".md", ".txt", ".rst")
 
+# Run artifacts are documentation WHATEVER their suffix (2026-10-12).
+#
+# Cycle 12307: the range was one governed landing whose evidence lived in
+# `docs/evidence/*.sh` (a runnable reproducer), `*.json` (a capture) and `*.txt`. The
+# suffix rule saw a `.sh` and dropped the whole range to the STANDARD budget — 12000
+# chars shared across ~12 files — and because the budget bounds each file's DIFF text
+# (headers, `+` prefixes, context included), even a 244-byte transcript came back
+# "318 of 1118 omitted". The reviewer then filed blocking "content not visible"
+# findings that the worker could not answer by any edit: six rounds, all of them a
+# limit of the window rather than a defect in the change.
+#
+# A transcript or capture under docs/evidence/ is not code under review; it IS the
+# artifact under review, exactly like a `.md`. Only this directory is treated this
+# way, and the always-review check still runs first, so nothing that guards the gate
+# can buy itself a bigger window.
+DOC_ONLY_DIR_PREFIXES = ("docs/evidence/",)
+
+# Chars reserved for each changed file BEFORE the remainder is shared out, so a small
+# artifact is shown WHOLE rather than in head+tail slices. The old allocation started
+# from an equal share (budget // n) and only topped up afterwards, which meant the
+# smallest file in a 12-file range was cut first — the wrong end of the range to cut.
+REVIEW_MATERIAL_PER_FILE_FLOOR = 2500
+
+# The smallest slice a changed file must still get when the floor above completes a
+# small artifact. Without it the floor could show one tidy 1KB evidence file whole and
+# leave twelve code files with a header and 18 characters — trading the reviewer's
+# real need (judge the change) for a cosmetic win.
+REVIEW_MATERIAL_MIN_SLICE = 200
+
 # The MCP CLIENT gives up before we do. Hermes resolves every tool call against
 # _DEFAULT_TOOL_TIMEOUT = 300s (hermes-agent tools/mcp_tool_common.py), so a
 # reviewer timeout at or above that ceiling is not a timeout at all — it is a
@@ -3326,6 +3355,9 @@ def _range_is_docs_only(diff_text: str) -> bool:
     Computed from the diff, so it cannot be claimed from a note. Deliberately
     conservative: an empty or unparseable path list is NOT docs-only, and any
     always-review path disqualifies the range even if it ends in `.md`.
+
+    A path also counts as documentation when it lives under DOC_ONLY_DIR_PREFIXES
+    (run artifacts under docs/evidence/, whatever their suffix) — see the constant.
     """
     paths = _diff_paths(diff_text)
     if not paths:
@@ -3333,8 +3365,11 @@ def _range_is_docs_only(diff_text: str) -> bool:
     for p in paths:
         if any(p.startswith(ap) for ap in ALWAYS_REVIEW_PATHS):
             return False
-        if not p.lower().endswith(DOC_ONLY_SUFFIXES):
-            return False
+        if p.lower().endswith(DOC_ONLY_SUFFIXES):
+            continue
+        if any(p.startswith(d) for d in DOC_ONLY_DIR_PREFIXES):
+            continue
+        return False
     return True
 
 
@@ -3376,9 +3411,49 @@ def _bound_per_file(sections: list, budget: int, total: int,
     change at all.
     """
     n = len(sections)
-    alloc = [min(len(text), max(1, budget // n)) for _, text in sections]
+    sizes = [len(text) for _, text in sections]
+    alloc = [0] * n
+    remaining = budget
+
+    # Pass 1 — the FLOOR (2026-10-12): show every file whose diff fits inside the floor
+    # WHOLE, smallest first, while the budget covers it. The old allocation started from
+    # an equal share and topped up afterwards, so in a 12-file range the SMALLEST file
+    # was bounded first — the wrong end to cut. Cycle 12307 measured the cost: a
+    # 244-byte transcript came back "318 of 1118 omitted" against a ~1000-char share,
+    # and the reviewer filed blocking "content not visible" findings that no edit could
+    # answer, because the defect was the window, not the change.
+    #
+    # The floor never starves the rest: a small artifact is completed only when the
+    # remaining budget still leaves every other changed file a readable slice of
+    # REVIEW_MATERIAL_MIN_SLICE. Otherwise this is the pre-2026-10-12 equal-share
+    # allocation, unchanged — the floor is an improvement, never a regression.
+    floor = max(1, REVIEW_MATERIAL_PER_FILE_FLOOR)
+    min_slice = max(1, REVIEW_MATERIAL_MIN_SLICE)
+    served = 0
+    for idx in sorted(range(n), key=lambda i: sizes[i]):
+        if sizes[idx] > floor:
+            break
+        reserve = max(0, n - served - 1) * min_slice
+        if remaining - sizes[idx] < reserve:
+            break
+        alloc[idx] = sizes[idx]
+        remaining -= sizes[idx]
+        served += 1
+
+    # Pass 2 — the files still cut share what is left, equally and UP FRONT (one slice
+    # each before any top-up). Consuming the share sequentially starved the tail of the
+    # range — files that appear with a header and no body, which is exactly the condition
+    # test_no_changed_file_is_omitted_entirely exists to prevent.
+    rest = [i for i in range(n) if alloc[i] < sizes[i]]
+    if rest:
+        share = max(1, remaining // len(rest))
+        for i in rest:
+            give = min(sizes[i], share)
+            alloc[i] += give
+            remaining -= give
+
     leftover = budget - sum(alloc)
-    truncated = [i for i in range(n) if alloc[i] < len(sections[i][1])]
+    truncated = [i for i in range(n) if alloc[i] < sizes[i]]
     while leftover > 0 and truncated:
         share = max(1, leftover // len(truncated))
         progressed = False
@@ -3410,9 +3485,8 @@ def _bound_per_file(sections: list, budget: int, total: int,
         bounded.append(path or "(preamble)")
         parts.append(
             text[:head]
-            + f"\n...[this file's diff is bounded: {dropped} of {len(text)} chars omitted "
-              f"from its middle — the gate's {budget}-char budget is shared across {n} "
-              f"changed files; the full content is committed]\n"
+            + f"\n...[bounded: {dropped} of {len(text)} chars omitted from its middle — "
+              f"gate budget {budget} across {n} files; the full content is committed]\n"
             + text[len(text) - tail:]
         )
 

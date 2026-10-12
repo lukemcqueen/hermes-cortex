@@ -538,6 +538,23 @@ python3 loop_evaluator.py --config-patch
 python3 loop_evaluator.py --days 30
 ```
 
+### Closing vs pushing — a CLEAN receipt, not a second cycle
+
+Ending a governed change (`end_change`) runs the self-adversarial review and, when it is
+CLEAN, writes a SHA-bound **review receipt** for the reviewed range. Since closing releases
+the lock and pushing normally needs one, it once took a second no-content `push` cycle to
+ship a reviewed range (cycles 12009, 12010, 12021). That is gone (2026-10-10): the enforcer
+has a **lock carve-out** for a push that a CLEAN receipt covers — if `end_change` shows a
+CLEAN close, `git push` right after it is authorisable with no new lock. Do not open a
+second cycle purely to push; only commits added AFTER the close are outside the receipt and
+need their own review.
+
+Evidence that the review's material window could not show is a *window* defect, not a
+missing-evidence defect. The material now treats `docs/evidence/**` as documentation
+(whatever the suffix) and allocates floor-first, so a small artifact is shown whole. Keep
+evidence small and structural: state the command, its own `rc`, the decisive lines, and a
+sha256; `ops/scripts/make-evidence.sh` writes exactly that shape and verifies it.
+
 ### Cron schedule
 
 A weekly evaluation runs via the `local-weekly-loop-eval` cron job. It delivers the report automatically to the chat that created it.
