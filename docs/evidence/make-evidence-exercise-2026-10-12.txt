@@ -1,9 +1,9 @@
-Running: bash -c cd /tmp && rm -f me.txt && B=/home/esther/hermes-cortex/ops/scripts/make-evidence.sh; bash $B /tmp/me.txt -- sh -c "echo genesis" >/dev/null && bash $B --verify /tmp/me.txt >/dev/null; echo write_verify=$?; sed -i s/genesis/EDITED/ /tmp/me.txt; bash $B --verify /tmp/me.txt >/dev/null; echo tamper_rc=$?; sed -i s/EDITED/genesis/ /tmp/me.txt; bash $B --verify /tmp/me.txt >/dev/null; echo restore_rc=$?; rm -f /tmp/me.txt
+Running: sh -c cd /tmp && rm -f me.txt && B=/home/esther/hermes-cortex/ops/scripts/make-evidence.sh; bash $B /tmp/me.txt -- sh -c "echo genesis" >/dev/null && bash $B --verify /tmp/me.txt >/dev/null; echo write_verify=$?; sed -i s/genesis/EDITED/ /tmp/me.txt; bash $B --verify /tmp/me.txt >/dev/null; echo tamper_rc=$?; sed -i s/EDITED/genesis/ /tmp/me.txt; bash $B --verify /tmp/me.txt >/dev/null; echo restore_rc=$?; rm -f /tmp/me.txt
 rc: 0
-when: 2026-10-12T09:50:06Z
+when: 2026-10-12T10:00:36Z
 
 write_verify=0
-FAIL /tmp/me.txt  recorded=583be7e5ae77c5cd6078448c78a81f27ee3e8de6da998e50e9d2999eb885a5e7 actual=6ae0b087e5b61ca1415c36ef5061779b53db92c94bb0996c3a022526007a7365
+FAIL /tmp/me.txt  recorded=b4475b70dc50a84274170554bb5cb0c18646e53a2ba13515595f4af87bf4f356 actual=e5a8b4fe100bc64b3da89077837ff29ff5c99f0d977a886a9a4b82ba5bded5a1
 tamper_rc=1
 restore_rc=0
-sha256: 9823e21f596f8940abff258cb4d2ec4b9c3ce56ce1d8d02f933e04dd374c018d
+sha256: 1debe3a0f6002c8fb290fb123755b94751131e4f570f51f45e6daf6efd1911e1

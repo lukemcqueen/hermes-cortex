@@ -542,8 +542,8 @@ python3 loop_evaluator.py --days 30
 
 Ending a governed change (`end_change`) runs the self-adversarial review and, when it is
 CLEAN, writes a SHA-bound **review receipt** for the reviewed range. Since closing releases
-the lock and pushing normally needs one, it once took a second no-content `push` cycle to
-ship a reviewed range (cycles 12009, 12010, 12021). That is gone (2026-10-10): the enforcer
+the lock and pushing normally needs one, this once took a second no-content `push` cycle to
+ship a reviewed range. That is gone (2026-10-10): the enforcer
 has a **lock carve-out** for a push that a CLEAN receipt covers — if `end_change` shows a
 CLEAN close, `git push` right after it is authorisable with no new lock. Do not open a
 second cycle purely to push; only commits added AFTER the close are outside the receipt and

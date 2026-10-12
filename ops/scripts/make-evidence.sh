@@ -59,6 +59,7 @@ bytes=$(wc -c <"$tmp")
     cat "$tmp"
   fi
 } >"$out"
+[ -s "$out" ] || { echo "make-evidence: failed to write $out" >&2; exit 1; }
 h=$(sha256sum "$out" | cut -d' ' -f1)
 printf 'sha256: %s\n' "$h" >>"$out"
 rm -f "$tmp"
