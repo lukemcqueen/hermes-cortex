@@ -1,0 +1,16 @@
+cycle 12307 verifier — repo=/home/esther/hermes-cortex  head=9c94b0df
+
+1  every published checksum, recomputed from HEAD
+   OK    79a6afcd8ac1  bus-inbox-tick-2026-10-12-cycle-12188-branches-rerun-2026-10-12.txt
+   OK    9afe7ad70e08  verify-landed-cycle-12307.txt
+   OK    059cf9c7accb  dogfood-strands-landing-2026-10-12.txt
+   OK    620315434dc5  dogfood-warnings-risk-acceptance-2026-10-12.txt
+   (4 checksums parsed from docs/evidence/closeout-cycle-12307-proof.txt)
+2  negative check: does any verifier reference a drifted skill?
+   OK    grep -l over the three verifiers: no output (no match)
+3  the dogfood lines quoted in the material
+   OK    carries the Overall line
+   OK    carries the tool's closing line
+   (the file labels itself DECISIVE LINES ONLY — a summary, not a transcript)
+
+ALL CLAIMS VERIFIED (0 failures)
