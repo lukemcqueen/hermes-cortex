@@ -1,6 +1,6 @@
 Running: bash docs/evidence/verify-model-picker.sh
 rc: 0
-when: 2026-10-12T16:44:13Z
+when: 2026-10-12T16:47:29Z
 
 interpreter: /home/esther/.hermes/hermes-agent/venv/bin/python3
 == 0. the DEPLOY, and its own log (what is actually deployed NOW) ==
@@ -30,11 +30,11 @@ interpreter: /home/esther/.hermes/hermes-agent/venv/bin/python3
   tests/test_gateway_slash_parity.py::test_model_command_with_only_whitespace_reports_status PASSED [ 90%]
   tests/test_gateway_slash_parity.py::test_pi_control_treats_no_models_matching_as_a_refusal_despite_rc0 PASSED [ 95%]
   tests/test_gateway_slash_parity.py::test_pi_control_accepts_a_table_of_models PASSED [100%]
-  ====================== 21 passed, 38 deselected in 0.24s =======================
+  ====================== 21 passed, 38 deselected in 0.25s =======================
   [1 the model/menu tests] pytest rc=0
 
 == 1b. the WHOLE file (so a subset claim cannot outrun its evidence) ==
-  ============================== 59 passed in 0.94s ==============================
+  ============================== 59 passed in 0.95s ==============================
   [1b the whole parity file] pytest rc=0
 
 == 2. the DEPLOYED copy this host runs ==
@@ -54,17 +54,18 @@ interpreter: /home/esther/.hermes/hermes-agent/venv/bin/python3
   daemon.py: 📊 Summary: 1 file(s), 26 finding(s) 🟡 Medium: 4 🔵 Low: 2 ⚪ Info: 20 ✅ GATE_PASSED — no critical/high findings 
 
 == 5. the wider gateway selection (the regression sweep) ==
-  ==================== 313 passed, 1453 deselected in 41.76s =====================
+  ==================== 313 passed, 1453 deselected in 40.21s =====================
   [5 the gateway selection] pytest rc=0
 
 == 6. the enabler every OTHER agent host runs (portable, stdlib only) ==
-  ============================== 20 passed in 0.35s ==============================
+  ============================== 20 passed in 0.36s ==============================
   [6 the enabler's tests] pytest rc=0
-  functionally exercising the DEPLOYED enabler: /home/esther/.hermes-cortex/scripts/gateway-model-list.py
+  deployed copy present on this host: /home/esther/.hermes-cortex/scripts/gateway-model-list.py
+  the write/check round trip below runs against THAT copy, not the repo copy
   write rc=0 on a config with other keys
   ok: models: block healthy (2 entries)
   other keys intact; models: {'list': ['openrouter/openai/gpt-5', 'openrouter/x-ai/grok-4'], 'page_size': 6}
 
 FAILS: 0 — the verifier's own exit code follows (0 here means every claim held)
 ALL CLAIMS VERIFIED (0 failures)
-sha256: c90320770d9354168e74f933f61386b1572d7eae4758815a250c376abb7da72e
+sha256: 87b3b60f630e4ba895f9501771a2778d7ea2d13256c86af8d1129590959547f4

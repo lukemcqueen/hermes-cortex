@@ -130,9 +130,10 @@ DEP_ENABLER="$HOME/.hermes-cortex/scripts/gateway-model-list.py"
 FUNC="$ENABLER"
 if [ -f "$DEP_ENABLER" ]; then
   FUNC="$DEP_ENABLER"
-  say "  functionally exercising the DEPLOYED enabler: $DEP_ENABLER"
+  say "  deployed copy present on this host: $DEP_ENABLER"
+  say "  the write/check round trip below runs against THAT copy, not the repo copy"
 else
-  say "  no deployed copy on this host (a fresh checkout): exercising the repo copy"
+  say "  no deployed copy on this host (a fresh checkout): exercising the repo copy instead"
 fi
 tmp="$(mktemp -d)"
 printf '{"backends":[{"name":"pi","model_args":["--model","{model}"]}],"routing":{"default":"pi"}}\n' > "$tmp/gw.json"
