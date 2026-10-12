@@ -18,13 +18,10 @@ def test_ names:
   252:def test_every_file_under_the_floor_is_shown_whole():
   279:def test_the_floor_never_exceeds_the_budget():
 
-the three added by this fix are:
-161:def test_docs_only_range_gets_the_larger_budget():
-171:def test_one_code_file_reverts_to_the_standard_budget():
-200:def test_an_explicit_budget_is_still_honoured():
-237:def test_evidence_paths_count_as_documentation():
-252:def test_every_file_under_the_floor_is_shown_whole():
-279:def test_the_floor_never_exceeds_the_budget():
+the three added by this fix are exactly (lines 237, 252, 279):
+  237:def test_evidence_paths_count_as_documentation():
+  252:def test_every_file_under_the_floor_is_shown_whole():
+  279:def test_the_floor_never_exceeds_the_budget():
 
 summary from make-evidence run:
 sha256: c9b2712d43efd26aed5ac6ec655dd9ad1e65783243ce190b81fe5a0b465feb24
