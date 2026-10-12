@@ -3451,11 +3451,24 @@ def _range_is_docs_only(diff_text: str) -> bool:
     return True
 
 
+_COMMIT_BOUNDARY_RE = re.compile(r"^commit [0-9a-f]{7,40}\s*$")
+
+
 def _split_diff_sections(diff_text: str) -> list:
-    """[(path, section_text)] split on `diff --git a/` boundaries, in order.
+    """[(path, section_text)] split on `diff --git a/` and COMMIT boundaries, in order.
 
     A preamble before the first header is kept as a ("", text) section so nothing is
     dropped silently; an unparseable diff yields one section, never an empty list.
+
+    COMMIT BOUNDARIES (2026-10-12) — a real defect, found by measuring the material the
+    close review actually builds. The review material is `git log -p`-shaped, and this
+    splitter only broke on `diff --git`, so a file's section ran on past the end of that
+    file's patch and ABSORBED THE NEXT COMMIT'S MESSAGE (measured: an 86,318-char section
+    under a 5.8KB path, ending in unrelated commit prose). Every per-file bound therefore
+    showed a path alongside text from a different commit, and reviewers reported text in
+    the wrong file — correctly, because the material really did put it there. Splitting on
+    `commit <sha>` too keeps each section to its own patch, and the inter-commit messages
+    become their own ("", …) preamble sections.
     """
     sections = []
     path = None
@@ -3464,7 +3477,18 @@ def _split_diff_sections(diff_text: str) -> list:
         if line.startswith("diff --git a/"):
             if path is not None:
                 sections.append((path, "".join(buf)))
+            elif buf:
+                sections.append(("", "".join(buf)))
             path = line[len("diff --git a/"):].split(" ")[0]
+            buf = [line]
+        elif _COMMIT_BOUNDARY_RE.match(line):
+            # A new commit's message starts here: close the current section, and hold the
+            # message text as its own unlabelled section rather than attaching it to a file.
+            if path is not None:
+                sections.append((path, "".join(buf)))
+                path = None
+            elif buf:
+                sections.append(("", "".join(buf)))
             buf = [line]
         else:
             buf.append(line)

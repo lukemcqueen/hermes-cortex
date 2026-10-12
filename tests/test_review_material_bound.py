@@ -400,6 +400,32 @@ def test_replayed_findings_have_quotes_stripped():
     print("  replay strips quoted fragments; the finding's substance survives ✓")
 
 
+def test_a_commit_message_is_not_absorbed_into_a_file_section():
+    """2026-10-12, found by measuring the material the review actually builds.
+
+    The material is `git log -p`-shaped. The splitter only broke on `diff --git`, so a
+    file's section ran past its own patch and absorbed the NEXT commit's message —
+    measured as an 86,318-char section under a 5.8KB path, ending in unrelated commit
+    prose. Reviewers then reported text appearing in the wrong file, which was true of
+    the material and false of the repo.
+    """
+    log = ("commit aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n"
+           "Author: x <x@y>\n\n    first subject\n\n"
+           "diff --git a/docs/evidence/e.txt b/docs/evidence/e.txt\n"
+           "--- a/docs/evidence/e.txt\n+++ b/docs/evidence/e.txt\n@@ -0,0 +1,2 @@\n+ one\n+ two\n"
+           "commit bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\n"
+           "Author: x <x@y>\n\n    SECOND SUBJECT that must not land in e.txt\n\n"
+           "diff --git a/ops/scripts/c.py b/ops/scripts/c.py\n"
+           "--- a/ops/scripts/c.py\n+++ b/ops/scripts/c.py\n@@ -0,0 +1,1 @@\n+ code\n")
+    secs = mcp._split_diff_sections(log)
+    e = [t for p, t in secs if p.endswith("docs/evidence/e.txt")][0]
+    assert "SECOND SUBJECT" not in e, "a file section must not absorb the next commit's message"
+    assert "+ two" in e, "its own patch must still be intact"
+    assert any("SECOND SUBJECT" in t for p, t in secs if p == ""), \
+        "the commit message must become its own unlabelled section, not be dropped"
+    print("  a commit message stays out of the preceding file's section ✓")
+
+
 def test_deployed_gate_behaves_as_this_file_says():
     """The DEPLOYED gate (what actually reviews closes) bounds evidence the same way.
 

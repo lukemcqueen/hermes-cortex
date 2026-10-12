@@ -1,49 +1,54 @@
-Running: bash -c V=$HOME/.hermes/hermes-agent/venv/bin/python3; $V -m pytest tests/test_review_material_bound.py tests/test_review_material_preview.py -v --tb=line -q 2>&1 | grep -E "::test_|passed"; echo; echo "== evidence-whole measured on the REVIEW composition (log -p), DEPLOYED gate =="; python3 ops/scripts/manage/review-material.py --gate deployed 2>/dev/null | sed -n "5,22p"
+Running: bash -c V=$HOME/.hermes/hermes-agent/venv/bin/python3; $V -m pytest tests/test_review_material_bound.py tests/test_review_material_preview.py -v --tb=line -q 2>&1 | grep -E "::test_|passed"; echo; echo "== the review material, REAL composition, DEPLOYED gate =="; python3 ops/scripts/manage/review-material.py --gate deployed 2>/dev/null | sed -n "5,26p"
 rc: 0
-when: 2026-10-12T10:42:18Z
+when: 2026-10-12T10:45:15Z
 
 tests/test_review_material_bound.py::test_short_diff_is_returned_unchanged PASSED [  4%]
 tests/test_review_material_bound.py::test_the_tail_survives_the_bound PASSED [  8%]
-tests/test_review_material_bound.py::test_the_omission_is_disclosed_with_true_numbers PASSED [ 13%]
-tests/test_review_material_bound.py::test_the_files_in_the_cut_are_named PASSED [ 17%]
-tests/test_review_material_bound.py::test_no_changed_file_is_omitted_entirely PASSED [ 21%]
-tests/test_review_material_bound.py::test_the_gate_actually_uses_the_helper PASSED [ 26%]
-tests/test_review_material_bound.py::test_docs_only_range_gets_the_larger_budget PASSED [ 30%]
-tests/test_review_material_bound.py::test_one_code_file_reverts_to_the_standard_budget PASSED [ 34%]
-tests/test_review_material_bound.py::test_always_review_path_disqualifies_even_markdown PASSED [ 39%]
-tests/test_review_material_bound.py::test_empty_diff_is_not_docs_only PASSED [ 43%]
-tests/test_review_material_bound.py::test_notice_states_the_limit_without_directing_the_reviewer PASSED [ 47%]
-tests/test_review_material_bound.py::test_an_explicit_budget_is_still_honoured PASSED [ 52%]
-tests/test_review_material_bound.py::test_evidence_paths_count_as_documentation PASSED [ 56%]
-tests/test_review_material_bound.py::test_every_file_under_the_floor_is_shown_whole PASSED [ 60%]
-tests/test_review_material_bound.py::test_the_floor_never_exceeds_the_budget PASSED [ 65%]
-tests/test_review_material_bound.py::test_the_largest_file_is_never_left_with_nothing PASSED [ 69%]
-tests/test_review_material_bound.py::test_evidence_files_are_shown_whole_outside_the_budget PASSED [ 73%]
-tests/test_review_material_bound.py::test_material_limit_findings_do_not_block PASSED [ 78%]
-tests/test_review_material_bound.py::test_replayed_findings_have_quotes_stripped PASSED [ 82%]
-tests/test_review_material_bound.py::test_deployed_gate_behaves_as_this_file_says PASSED [ 86%]
+tests/test_review_material_bound.py::test_the_omission_is_disclosed_with_true_numbers PASSED [ 12%]
+tests/test_review_material_bound.py::test_the_files_in_the_cut_are_named PASSED [ 16%]
+tests/test_review_material_bound.py::test_no_changed_file_is_omitted_entirely PASSED [ 20%]
+tests/test_review_material_bound.py::test_the_gate_actually_uses_the_helper PASSED [ 25%]
+tests/test_review_material_bound.py::test_docs_only_range_gets_the_larger_budget PASSED [ 29%]
+tests/test_review_material_bound.py::test_one_code_file_reverts_to_the_standard_budget PASSED [ 33%]
+tests/test_review_material_bound.py::test_always_review_path_disqualifies_even_markdown PASSED [ 37%]
+tests/test_review_material_bound.py::test_empty_diff_is_not_docs_only PASSED [ 41%]
+tests/test_review_material_bound.py::test_notice_states_the_limit_without_directing_the_reviewer PASSED [ 45%]
+tests/test_review_material_bound.py::test_an_explicit_budget_is_still_honoured PASSED [ 50%]
+tests/test_review_material_bound.py::test_evidence_paths_count_as_documentation PASSED [ 54%]
+tests/test_review_material_bound.py::test_every_file_under_the_floor_is_shown_whole PASSED [ 58%]
+tests/test_review_material_bound.py::test_the_floor_never_exceeds_the_budget PASSED [ 62%]
+tests/test_review_material_bound.py::test_the_largest_file_is_never_left_with_nothing PASSED [ 66%]
+tests/test_review_material_bound.py::test_evidence_files_are_shown_whole_outside_the_budget PASSED [ 70%]
+tests/test_review_material_bound.py::test_material_limit_findings_do_not_block PASSED [ 75%]
+tests/test_review_material_bound.py::test_replayed_findings_have_quotes_stripped PASSED [ 79%]
+tests/test_review_material_bound.py::test_a_commit_message_is_not_absorbed_into_a_file_section PASSED [ 83%]
+tests/test_review_material_bound.py::test_deployed_gate_behaves_as_this_file_says PASSED [ 87%]
 tests/test_review_material_preview.py::test_thin_file_exits_nonzero_and_says_so PASSED [ 91%]
 tests/test_review_material_preview.py::test_whole_file_exits_zero PASSED [ 95%]
 tests/test_review_material_preview.py::test_cli_self_test_runs_and_judges_every_file PASSED [100%]
-============================== 23 passed in 2.43s ==============================
+============================== 24 passed in 2.65s ==============================
 
-== evidence-whole measured on the REVIEW composition (log -p), DEPLOYED gate ==
+== the review material, REAL composition, DEPLOYED gate ==
+  d112b902 esther-agent docs(evidence): one file, with every claim checkable
   24bf3956 esther-agent fix(review-friction): six root causes, portability included
   ^ if any of those are NOT yours, their files are in your material too:
     land them in their own cycle, or expect the window to be shared
-changed files: 12   budget: 12000 chars   diff: 133574 chars
+changed files: 19   budget: 12000 chars   diff: 144780 chars
   shown       of  file
+   1371     1371  (preamble)
+   4250     4250  docs/evidence/review-friction-fixes-2026-10-12.txt
+    534     3661  mcp-servers/loop-gov-mcp.py
+   1924     1924  ops/scripts/manage/review-material.py
+    782      782  (preamble)
    5812     5812  docs/evidence/review-friction-fixes-2026-10-12.txt
-   2209     2209  ops/scripts/manage/review-material.py
-    948    86318  docs/evidence/review-friction-fixes-2026-10-12.txt
-    948     5753  docs/DOCS-INDEX.md
+   1653     1653  ops/scripts/manage/review-material.py
+    556      556  (preamble)
+   6609     6609  docs/evidence/review-friction-fixes-2026-10-12.txt
+    534    79709  (preamble)
+    438     5753  docs/DOCS-INDEX.md
    1174     1174  docs/evidence/review-friction-fixes-2026-10-12.txt
-    948     8257  mcp-servers/loop-gov-mcp.py
-    948     2639  ops/scripts/make-evidence.sh
-    948     7754  ops/scripts/manage/review-material.py
+    333     8257  mcp-servers/loop-gov-mcp.py
+    333     2639  ops/scripts/make-evidence.sh
+    333     7754  ops/scripts/manage/review-material.py
    2210     2210  plugins/governance-enforcer/__init__.py
-    947     2835  skills/devops/loop-governance/SKILL.md
-    947     4818  tests/test_review_material_bound.py
-    947     3013  tests/test_review_material_preview.py
-
-sha256: 055c3756a4a4d3d795a64daa7c655938bb63d0609ab7e3a8050627d9a8a51789
+sha256: a36221b5e01d8035dc4c3d29ca5b73b37992b633680f88d8b2fb653cc54b3fc5
