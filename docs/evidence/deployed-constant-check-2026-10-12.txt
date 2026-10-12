@@ -1,0 +1,13 @@
+Running: bash -c echo "repo file:"; grep -c DOC_ONLY_DIR_PREFIXES mcp-servers/loop-gov-mcp.py; echo "deployed file:"; grep -c DOC_ONLY_DIR_PREFIXES /home/esther/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py; echo "occurrences (one line each):"; grep -n DOC_ONLY_DIR_PREFIXES mcp-servers/loop-gov-mcp.py | cut -c1-90
+rc: 0
+when: 2026-10-12T09:46:47Z
+
+repo file:
+3
+deployed file:
+3
+occurrences (one line each):
+2062:DOC_ONLY_DIR_PREFIXES = ("docs/evidence/",)
+3359:    A path also counts as documentation when it lives under DOC_ONLY_DIR_PREFIXES
+3370:        if any(p.startswith(d) for d in DOC_ONLY_DIR_PREFIXES):
+sha256: 8da2a8d18975c366d6325840dd54f81d2a2cdb4d0c9dac31755f95f691672523
