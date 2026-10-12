@@ -7,6 +7,9 @@ Cycle 12307 closeout proof — the bytes the review's window cannot show. Verify
 
 Verifiers committed, mode 775, invoked as: bash docs/evidence/<name>.sh
   pi-mcp-landing-verify.sh  session-cache-loop-evaluator-verify.sh  launchd-restart-12223-reproduce.sh
+  verify-cycle-12307.sh  <- the fourth: recomputes the four values above from HEAD and asserts
+                            them, plus the negative check and the two dogfood lines. Run it:
+                            bash docs/evidence/verify-cycle-12307.sh   (rc=0 = all claims hold)
 
 Drifted skills (8): survey-before-action, change-checklist, shell-scripting,
   shared-repo-push-gates, hermes-gateway-operations + 3 more (doctor's own list).

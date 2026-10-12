@@ -1,4 +1,4 @@
-cycle 12307 verifier — repo=/home/esther/hermes-cortex  head=9c94b0df
+cycle 12307 verifier — repo=/home/esther/hermes-cortex  head=0cc455b8
 
 1  every published checksum, recomputed from HEAD
    OK    79a6afcd8ac1  bus-inbox-tick-2026-10-12-cycle-12188-branches-rerun-2026-10-12.txt
