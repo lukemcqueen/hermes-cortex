@@ -1,0 +1,64 @@
+Dogfood transcript — the strands-landing cycle (2026-10-12, cycle 12307)
+Command: bash ~/.hermes-cortex/scripts/cortex-dogfood.sh --force
+Host: esther (Linux). rc is the command's own; output below is its tail.
+
+            🔶 Suggestion: Recover it with: python3 ops/scripts/manage/reconcile-stranded-skills.py (report first; --apply copies pure supersets only) — then commit it as its OWN governed change, so the cycle's diff matches its task id.
+     ⚠️  Skill drift: devops/hermes-gateway-operations — Deployed copy is newer than repo source (/home/esther/.hermes/skills/devops/hermes-gateway-operations/SKILL.md). Commit the repo source before cortex-update overwrites it.
+            🔶 Suggestion: Recover it with: python3 ops/scripts/manage/reconcile-stranded-skills.py (report first; --apply copies pure supersets only) — then commit it as its OWN governed change, so the cycle's diff matches its task id.
+     ⚠️  Skill drift: devops/shared-repo-push-gates — Deployed copy is newer than repo source (/home/esther/.hermes/skills/devops/shared-repo-push-gates/SKILL.md). Commit the repo source before cortex-update overwrites it.
+            🔶 Suggestion: Recover it with: python3 ops/scripts/manage/reconcile-stranded-skills.py (report first; --apply copies pure supersets only) — then commit it as its OWN governed change, so the cycle's diff matches its task id.
+     ⚠️  Skill drift: devops/shell-scripting — Deployed copy is newer than repo source (/home/esther/.hermes/skills/devops/shell-scripting/SKILL.md). Commit the repo source before cortex-update overwrites it.
+            🔶 Suggestion: Recover it with: python3 ops/scripts/manage/reconcile-stranded-skills.py (report first; --apply copies pure supersets only) — then commit it as its OWN governed change, so the cycle's diff matches its task id.
+     ⚠️  Skill drift: software-development/change-checklist — Deployed copy is newer than repo source (/home/esther/.hermes/skills/software-development/change-checklist/SKILL.md). Commit the repo source before cortex-update overwrites it.
+            🔶 Suggestion: Recover it with: python3 ops/scripts/manage/reconcile-stranded-skills.py (report first; --apply copies pure supersets only) — then commit it as its OWN governed change, so the cycle's diff matches its task id.
+     ⚠️  Skill drift: software-development/survey-before-action — Deployed copy is newer than repo source (/home/esther/.hermes/skills/software-development/survey-before-action/SKILL.md). Commit the repo source before cortex-update overwrites it.
+            🔶 Suggestion: Recover it with: python3 ops/scripts/manage/reconcile-stranded-skills.py (report first; --apply copies pure supersets only) — then commit it as its OWN governed change, so the cycle's diff matches its task id.
+     ⚠️  Skill drift — 8 drifted, 378 in sync, 130 Hermes defaults skipped
+            🔶 Suggestion: Resolve each drift entry above — recovery is its OWN governed change (see reconcile-stranded-skills.py), not part of the update cycle
+     ✅ mycortex-mem plugin — installed at ~/.hermes/plugins/mycortex-mem
+     ✅ mycortex-mem content — copy matches repo source
+     ✅ mycortex-mem config — enabled in config.yaml
+     ✅ prompt-guard plugin — installed at ~/.hermes/plugins/prompt-guard
+     ✅ prompt-guard content — copy matches repo source
+     ✅ prompt-guard config — enabled in config.yaml
+     ✅ Hook drift: post-commit — deployed matches repo (777fd064)
+     ✅ Hook drift: post-push — deployed matches repo (67b598cb)
+     ✅ Hook drift: pre-commit — deployed matches repo (62ed45c7)
+     ✅ Hook drift: pre-push — deployed matches repo (480e2097)
+     ✅ Cron runtime scripts — scripts → ~/.hermes-cortex/scripts (symlink)
+     ✅ Langfuse version — running langfuse/langfuse:3.225.1 matches compose pin
+     ✅ Langfuse scoring — 1984 scores, newest 5d old, traces newest 6d old
+     ✅ ClickHouse system db — system database is 329 MB
+     ✅ Restraint registry — all 15 classes name a present restraint
+     ➖ Bus grant expiry — bus.permissions not queryable (orchestrator host only?)
+     ✅ cortex-gateway — daemon imports hermetically; config + unit independent of hermes-gateway
+     ✅ cortex env — canonical ~/hermes-cortex/.env present (600); cortex-bus.conf is the sanctioned symlink; no deploy-dir .env
+     ✅ Cron bridge migration — every eligible no_agent job is either bridged or deliberately left on Hermes
+     ℹ️  Orphan-cycle resolution — 6 reaper-closed (unscored, tagged) · 94 agent-declared unscored close(s); 11 legacy row(s) closed by the OLD reaper carry a bare MOVE_ON and are NOT judged: #9836, #9990, #10015, #10022, #10030
+     ✅ Task schema deploy — all 12 task migrations are in the deploy register
+     ✅ Task schema deployed — all 12 migrations present on the deployed tree
+     ✅ Task schema version — tasks schema up to date (version 12) — no-op
+     ✅ Stranded slices — no pending slice is assigned-and-unstarted
+   
+     ⚠️  Overall: WARNING  (448 pass · 12 warn · 0 fail · 8 info)
+   
+     ═══════════════════════════════════════════════════
+     🔧 REQUIRED ACTIONS — resolve each ⚠️  or ❌ above
+   
+       Run: git status to review
+       Run: python3 /home/esther/.hermes-cortex/scripts/apply-repo-efficiency.py /home/esther/proj --commit
+       Remove: rm /home/esther/.hermes-cortex/scripts/review-sweep-check.py
+       Recover it with: python3 ops/scripts/manage/reconcile-stranded-skills.py (report first; --apply copies pure supersets only) — then commit it as its OWN governed change, so the cycle's diff matches its task id.
+       Recover it with: python3 ops/scripts/manage/reconcile-stranded-skills.py (report first; --apply copies pure supersets only) — then commit it as its OWN governed change, so the cycle's diff matches its task id.
+       Recover it with: python3 ops/scripts/manage/reconcile-stranded-skills.py (report first; --apply copies pure supersets only) — then commit it as its OWN governed change, so the cycle's diff matches its task id.
+       Recover it with: python3 ops/scripts/manage/reconcile-stranded-skills.py (report first; --apply copies pure supersets only) — then commit it as its OWN governed change, so the cycle's diff matches its task id.
+       Recover it with: python3 ops/scripts/manage/reconcile-stranded-skills.py (report first; --apply copies pure supersets only) — then commit it as its OWN governed change, so the cycle's diff matches its task id.
+       Recover it with: python3 ops/scripts/manage/reconcile-stranded-skills.py (report first; --apply copies pure supersets only) — then commit it as its OWN governed change, so the cycle's diff matches its task id.
+       Recover it with: python3 ops/scripts/manage/reconcile-stranded-skills.py (report first; --apply copies pure supersets only) — then commit it as its OWN governed change, so the cycle's diff matches its task id.
+       Recover it with: python3 ops/scripts/manage/reconcile-stranded-skills.py (report first; --apply copies pure supersets only) — then commit it as its OWN governed change, so the cycle's diff matches its task id.
+       Resolve each drift entry above — recovery is its OWN governed change (see reconcile-stranded-skills.py), not part of the update cycle
+   
+     After resolving, run doctor again to confirm.
+     ═══════════════════════════════════════════════════
+
+✅  DOGFOOD PASSED — deployed state verified clean.
