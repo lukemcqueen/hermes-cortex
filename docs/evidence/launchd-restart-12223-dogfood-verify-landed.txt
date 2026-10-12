@@ -1,0 +1,17 @@
+# cycle 12223 — launchd /restart: DEPLOY + LANDING
+# generated 2026-10-12 by esther; host paths normalized to ~
+# each command's own rc is echoed on the line AFTER it; the trailing rc= is
+# the whole compound's status (a pipe would make it the last stage's)
+$ cd ~/hermes-cortex && bash ~/.hermes-cortex/scripts/cortex-dogfood.sh --force > /tmp/dog-12223.txt 2>&1; echo "dogfood rc=$?"; tail -n 2 /tmp/dog-12223.txt; echo '--- verify-landed ---'; python3 ops/scripts/manage/verify-landed.py --repo . --base 9c93e0cc; echo "verify-landed rc=$?"
+dogfood rc=0
+
+✅  DOGFOOD PASSED — deployed state verified clean.
+--- verify-landed ---
+# range: 9c93e0cc6557..bec2755113e3  repo: ~/hermes-cortex
+PASS  receipt: not required — 9c93e0cc6557..bec2755113e3 touches no always-review path
+# 0 of 2 changed files are deployed sources; 351 entries in the map
+PASS  remote: origin/main == bec2755113e3
+
+All checks passed.
+verify-landed rc=0
+rc=0

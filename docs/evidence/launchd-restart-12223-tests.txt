@@ -1,0 +1,22 @@
+# cycle 12223 — launchd /restart: TESTS
+# generated 2026-10-12 by esther; host paths normalized to ~
+# each command's own rc is echoed on the line AFTER it; the trailing rc= is
+# the whole compound's status (a pipe would make it the last stage's)
+$ cd ~/hermes-cortex && ~/.hermes/hermes-agent/venv/bin/python3 -m pytest tests/test_gateway_slash_parity.py -q; echo "pytest rc=$?"; echo '--- selection ---'; ~/.hermes/hermes-agent/venv/bin/python3 -m pytest tests/ -q -k 'gateway or harness or startup' > /tmp/sel-12223.txt 2>&1; echo "selection rc=$?"; tail -n 2 /tmp/sel-12223.txt
+============================= test session starts ==============================
+platform linux -- Python 3.11.15, pytest-9.1.1, pluggy-1.6.0
+rootdir: ~/hermes-cortex
+configfile: pytest.ini
+plugins: anyio-4.12.1
+collected 53 items
+
+tests/test_gateway_slash_parity.py ..................................... [ 69%]
+................                                                         [100%]
+
+============================== 53 passed in 0.91s ==============================
+pytest rc=0
+--- selection ---
+selection rc=0
+
+==================== 287 passed, 1438 deselected in 39.79s =====================
+rc=0

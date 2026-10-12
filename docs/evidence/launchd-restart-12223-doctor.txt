@@ -1,0 +1,20 @@
+# cycle 12223 — launchd /restart: DOCTOR (bare rc)
+# generated 2026-10-12 by esther; host paths normalized to ~
+# each command's own rc is echoed on the line AFTER it; the trailing rc= is
+# the whole compound's status (a pipe would make it the last stage's)
+$ cd ~/hermes-cortex && python3 ~/hermes-cortex/ops/scripts/manage/cortex-doctor.py --quiet > /tmp/doc-12223.txt 2>&1; echo "doctor rc=$?"; grep -E 'Overall:' /tmp/doc-12223.txt; grep '⚠️' /tmp/doc-12223.txt; echo -n 'warnings mentioning a changed path: '; grep -E 'gateway|launchd|plist|slash_parity' /tmp/doc-12223.txt | grep -c '⚠️' || true
+doctor rc=1
+  ⚠️  Overall: WARNING  (449 pass · 9 warn · 0 fail · 7 info)
+  ⚠️  Repo clean
+  ⚠️  AGENTS.md efficiency (proj)
+  ⚠️  Stale deploy: scripts/review-sweep-check.py
+  ⚠️  Skill drift: devops/cross-agent-handoff-delivery
+  ⚠️  Skill drift: devops/governance-closeout
+  ⚠️  Skill drift: devops/shared-repo-push-gates
+  ⚠️  Skill drift: devops/shell-scripting
+  ⚠️  Skill drift: software-development/change-checklist
+  ⚠️  Skill drift
+  ⚠️  Overall: WARNING  (449 pass · 9 warn · 0 fail · 7 info)
+  🔧 REQUIRED ACTIONS — resolve each ⚠️  or ❌ above
+warnings mentioning a changed path: 0
+rc=0
