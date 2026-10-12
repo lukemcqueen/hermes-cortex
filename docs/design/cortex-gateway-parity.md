@@ -272,6 +272,43 @@ exponential backoff with a conflict fault-tolerance of 3 consecutive cycles befo
   scratch systemd unit running the deployed code: start 1 = the real handler; start 2 =
   the announcement, then a real pi turn whose prompt carries the system note).
 
+## Enabling the picker on a host (any agent host — Linux or macOS, with or without Hermes)
+
+The picker is gateway code, so it arrives with the deploy. The LIST is per-host: operator
+taste plus whatever models that host's backend can actually reach, kept in that host's own
+gateway config (JSON — the gateway loads it with `json.loads`).
+
+```bash
+# 1. see the block (dry run — writes nothing)
+python3 ops/scripts/manage/gateway-model-list.py --config ~/.hermes-cortex/gateway.yaml \
+    --from-pi 'openrouter/*'
+
+# 2. apply it: merges ONLY the models key, preserves every other key, idempotent
+python3 ops/scripts/manage/gateway-model-list.py --config ~/.hermes-cortex/gateway.yaml \
+    --from-pi 'openrouter/*' --write
+
+# 3. restart the gateway — it reads its config once, at startup
+#    Linux:        systemctl --user restart <unit>
+#    macOS/launchd: launchctl kickstart -k gui/$UID/<label>
+```
+
+- `--models a/b,c/d` — use an explicit list instead of asking pi.
+- `--from-file capture.txt` — a host with no pi on PATH (a worker behind a shim) can apply a
+  list captured elsewhere. The helper exits **3 = COULD NOT VERIFY** rather than pretending
+  the host has no models.
+- `--check` — the fleet sweep: reports blank entries, duplicates and a bad `page_size`, and
+  exits 1. Use it to audit every host's block after an update.
+- Requirements on the host: **python3 only** — stdlib, no PyYAML, no Hermes, no cortex venv.
+
+Worked example — **Titus** (`pi`, macOS):
+
+```bash
+python3 gateway-model-list.py --config ~/.hermes-cortex/gateway.yaml --from-pi 'openrouter/*' --write
+```
+
+A host whose backend cannot take a model at all (a shim, no `model_args`) is warned at
+startup instead of silently serving a menu that stores an override nothing applies.
+
 ## Evidence
 
 - Capability test (executed): `tests/test_cortex_gateway_parity_matrix.py` — golden updates

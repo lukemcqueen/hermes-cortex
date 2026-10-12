@@ -261,6 +261,15 @@ class Gateway:
                   f"blank entr{'y' if len(raw_menu) - len(self.model_menu) == 1 else 'ies'} "
                   f"ignored ({len(self.model_menu)} usable)", file=sys.stderr)
         self.model_page_size = max(1, int(model_page_size or 6))
+        # A menu is only meaningful where a backend can TAKE a model (2026-10-12). On a
+        # host whose backend is a shim — no model_args — a selection would be stored and
+        # never applied, so the menu would look live and do nothing. Say so at startup.
+        if self.model_menu and not any(
+            getattr(getattr(b, "spec", None), "model_args", None) for b in self.backends.values()
+        ):
+            print("⚠️  gateway.yaml configures models: for the /model picker, but no backend "
+                  "declares model_args — a selection would be stored and never applied: the "
+                  "menu is a no-op on this host until a backend takes {model}.", file=sys.stderr)
         # offset tracks the transport's own offset (transport owns the truth).
         self.offset = getattr(transport, "offset", 0)
 
