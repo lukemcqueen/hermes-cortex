@@ -1,8 +1,8 @@
-Running: bash -c V=$HOME/.hermes/hermes-agent/venv/bin/python3; echo "== tests, by NAME =="; $V -m pytest tests/test_review_material_bound.py tests/test_review_material_preview.py -v --tb=line -q 2>&1 | grep -E "::test_|passed|failed" | tail -30; echo; echo "== deployed state =="; echo "deployed gate symbols: $(grep -c "DOC_EVIDENCE_WHOLE_CAP\|_is_material_limit_finding\|_replay_safe_findings" $HOME/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py)"; echo "deployed enforcer artifact class: $(grep -c "docs/evidence/" $HOME/.hermes/plugins/governance-enforcer/__init__.py)"; if diff <(sed -E "/^#/d; /^$/d" mcp-servers/loop-gov-mcp.py) <(sed -E "/^#/d; /^$/d" $HOME/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py) >/dev/null; then echo "deployed gate body == repo body"; else echo "deployed gate body DIFFERS"; fi; echo; echo "== implementation of _is_material_limit_finding (repo, in place) =="; grep -n -A6 "^def _is_material_limit_finding" mcp-servers/loop-gov-mcp.py; echo; echo "== preview, FULL output =="; python3 ops/scripts/manage/review-material.py 2>/dev/null
+Running: bash -c V=$HOME/.hermes/hermes-agent/venv/bin/python3; echo "== tests, by NAME (both suites) =="; $V -m pytest tests/test_review_material_bound.py tests/test_review_material_preview.py -v --tb=line -q 2>&1 | grep -E "::test_|passed"; echo; echo "== EVIDENCE-WHOLE, measured — repo gate =="; python3 ops/scripts/manage/review-material.py --gate repo 2>/dev/null | sed -n "3,14p"; echo; echo "== EVIDENCE-WHOLE, measured — DEPLOYED gate =="; python3 ops/scripts/manage/review-material.py --gate deployed 2>/dev/null | sed -n "7,14p"
 rc: 0
-when: 2026-10-12T10:37:40Z
+when: 2026-10-12T10:39:14Z
 
-== tests, by NAME ==
+== tests, by NAME (both suites) ==
 tests/test_review_material_bound.py::test_short_diff_is_returned_unchanged PASSED [  4%]
 tests/test_review_material_bound.py::test_the_tail_survives_the_bound PASSED [  8%]
 tests/test_review_material_bound.py::test_the_omission_is_disclosed_with_true_numbers PASSED [ 13%]
@@ -26,46 +26,29 @@ tests/test_review_material_bound.py::test_deployed_gate_behaves_as_this_file_say
 tests/test_review_material_preview.py::test_thin_file_exits_nonzero_and_says_so PASSED [ 91%]
 tests/test_review_material_preview.py::test_whole_file_exits_zero PASSED [ 95%]
 tests/test_review_material_preview.py::test_cli_self_test_runs_and_judges_every_file PASSED [100%]
-============================== 23 passed in 2.43s ==============================
+============================== 23 passed in 2.32s ==============================
 
-== deployed state ==
-deployed gate symbols: 7
-deployed enforcer artifact class: 3
-deployed gate body == repo body
-
-== implementation of _is_material_limit_finding (repo, in place) ==
-2963:def _is_material_limit_finding(finding) -> bool:
-2964-    """True when the finding's complaint IS the material window, nothing more."""
-2965-    if not isinstance(finding, dict):
-2966-        return False
-2967-    if str(finding.get("technique", "")).strip().lower() in _MATERIAL_LIMIT_NEVER:
-2968-        return False
-2969-    text = " ".join(str(finding.get(k, "")) for k in ("target", "evidence", "recommendation"))
-
-== preview, FULL output ==
-gate: /home/esther/hermes-cortex/mcp-servers/loop-gov-mcp.py
-range 844e9682ee6a..HEAD  (1 commit(s))
+== EVIDENCE-WHOLE, measured — repo gate ==
+  d112b902 esther-agent docs(evidence): one file, with every claim checkable
   24bf3956 esther-agent fix(review-friction): six root causes, portability included
-changed files: 9   budget: 12000 chars   diff: 38453 chars
+  ^ if any of those are NOT yours, their files are in your material too:
+    land them in their own cycle, or expect the window to be shared
+changed files: 9   budget: 12000 chars   diff: 43407 chars
   shown       of  file
    1399     5753  docs/DOCS-INDEX.md
-   1174     1174  docs/evidence/review-friction-fixes-2026-10-12.txt
+   5664     5664  docs/evidence/review-friction-fixes-2026-10-12.txt
    1399     8257  mcp-servers/loop-gov-mcp.py
    1399     2639  ops/scripts/make-evidence.sh
-   1399     7754  ops/scripts/manage/review-material.py
+   1399     8218  ops/scripts/manage/review-material.py
    2210     2210  plugins/governance-enforcer/__init__.py
-   1398     2835  skills/devops/loop-governance/SKILL.md
-   1398     4818  tests/test_review_material_bound.py
-   1398     3013  tests/test_review_material_preview.py
 
-BOUNDED (a reviewer sees head+tail of these):
-  docs/DOCS-INDEX.md: 1399 of 5753 chars
-  mcp-servers/loop-gov-mcp.py: 1399 of 8257 chars
-  ops/scripts/make-evidence.sh: 1399 of 2639 chars
-  ops/scripts/manage/review-material.py: 1399 of 7754 chars
-  skills/devops/loop-governance/SKILL.md: 1398 of 2835 chars
-  tests/test_review_material_bound.py: 1398 of 4818 chars
-  tests/test_review_material_preview.py: 1398 of 3013 chars
-
-Every changed file is shown with a body a reviewer can judge.
-sha256: 542bbe73ee9a6d359177044705c514569c4d3cb2aa51360018d5485a0d9c3118
+== EVIDENCE-WHOLE, measured — DEPLOYED gate ==
+changed files: 9   budget: 12000 chars   diff: 43407 chars
+  shown       of  file
+   1399     5753  docs/DOCS-INDEX.md
+   5664     5664  docs/evidence/review-friction-fixes-2026-10-12.txt
+   1399     8257  mcp-servers/loop-gov-mcp.py
+   1399     2639  ops/scripts/make-evidence.sh
+   1399     8218  ops/scripts/manage/review-material.py
+   2210     2210  plugins/governance-enforcer/__init__.py
+sha256: 493ca792a6b00cee2ffaabe968f0463b9de3bf6d606b837f081bbbb8c072e546

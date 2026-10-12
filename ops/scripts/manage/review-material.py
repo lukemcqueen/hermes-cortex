@@ -46,10 +46,9 @@ def _git(repo: Path, *args: str) -> str:
 def _load_gate(repo: Path):
     """The gate module, from the repo checkout or the deployed copy. None if absent."""
     for cand in GATE_CANDIDATES:
-        p = Path(cand)
+        p = Path(cand).expanduser()          # expand FIRST: "~/…" joined to a repo is not a path
         if not p.is_absolute():
             p = repo / cand
-        p = p.expanduser()
         if not p.is_file():
             continue
         spec = importlib.util.spec_from_file_location("loop_gov_mcp_preview", p)
@@ -102,9 +101,16 @@ def main() -> int:
     ap.add_argument("--tip", default="HEAD")
     ap.add_argument("--note", default="", help="the note you intend to submit (printed as-is)")
     ap.add_argument("--self-test", action="store_true")
+    ap.add_argument("--gate", choices=("auto", "repo", "deployed"), default="auto",
+                    help="which copy of the bounding code to use (default: repo, then deployed)")
     a = ap.parse_args()
 
     repo = Path(a.repo).expanduser().resolve()
+    global GATE_CANDIDATES
+    if a.gate == "deployed":
+        GATE_CANDIDATES = ("~/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py",)
+    elif a.gate == "repo":
+        GATE_CANDIDATES = ("mcp-servers/loop-gov-mcp.py",)
     gate, gate_path = _load_gate(repo)
     if gate is None:
         print("No gate module found (looked for: " + ", ".join(GATE_CANDIDATES) + ").")
