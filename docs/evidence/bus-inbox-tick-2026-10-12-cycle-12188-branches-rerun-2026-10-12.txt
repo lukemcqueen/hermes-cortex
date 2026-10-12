@@ -1,3 +1,7 @@
+FRESH re-run of the branches probe at tip 247018fa (command below); exit status 0.
+Command: bash docs/evidence/bus-inbox-tick-2026-10-12-cycle-12188-branches.sh
+(the 'rc=1' line inside the output is the script's deliberate failure-branch stub, not its status)
+
 ### A real bus -> CLEAN (expect rc=0)
 checker=ops/scripts/orch-bus/bus-inbox-inspect.py
 issues_rc=0
