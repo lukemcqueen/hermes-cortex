@@ -1,0 +1,30 @@
+All 15 test functions in tests/test_review_material_bound.py; the run transcript's last line is PASS for the whole file.
+rc: 0
+
+def test_ names:
+  41:def test_short_diff_is_returned_unchanged():
+  47:def test_the_tail_survives_the_bound():
+  70:def test_the_omission_is_disclosed_with_true_numbers():
+  95:def test_the_files_in_the_cut_are_named():
+  104:def test_no_changed_file_is_omitted_entirely():
+  131:def test_the_gate_actually_uses_the_helper():
+  161:def test_docs_only_range_gets_the_larger_budget():
+  171:def test_one_code_file_reverts_to_the_standard_budget():
+  179:def test_always_review_path_disqualifies_even_markdown():
+  186:def test_empty_diff_is_not_docs_only():
+  192:def test_notice_states_the_limit_without_directing_the_reviewer():
+  200:def test_an_explicit_budget_is_still_honoured():
+  237:def test_evidence_paths_count_as_documentation():
+  252:def test_every_file_under_the_floor_is_shown_whole():
+  279:def test_the_floor_never_exceeds_the_budget():
+
+the three added by this fix are:
+161:def test_docs_only_range_gets_the_larger_budget():
+171:def test_one_code_file_reverts_to_the_standard_budget():
+200:def test_an_explicit_budget_is_still_honoured():
+237:def test_evidence_paths_count_as_documentation():
+252:def test_every_file_under_the_floor_is_shown_whole():
+279:def test_the_floor_never_exceeds_the_budget():
+
+summary from make-evidence run:
+sha256: c9b2712d43efd26aed5ac6ec655dd9ad1e65783243ce190b81fe5a0b465feb24

@@ -1,0 +1,8 @@
+Deployed constant definition (what's actually running). Command: grep -n 'DOC_ONLY_DIR_PREFIXES' on the deployed file
+rc: 0
+
+2065:DOC_ONLY_DIR_PREFIXES = ("docs/evidence/",)
+3362:    A path also counts as documentation when it lives under DOC_ONLY_DIR_PREFIXES
+3373:        if any(p.startswith(d) for d in DOC_ONLY_DIR_PREFIXES):
+repro/repo same line:
+2062:DOC_ONLY_DIR_PREFIXES = ("docs/evidence/",)
