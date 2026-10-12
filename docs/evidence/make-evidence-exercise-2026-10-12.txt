@@ -1,9 +1,9 @@
-Running: bash -c cd /tmp && rm -f me.txt && bash /home/esther/hermes-cortex/ops/scripts/make-evidence.sh /tmp/me.txt -- sh -c "echo genesis" && bash /home/esther/hermes-cortex/ops/scripts/make-evidence.sh --verify /tmp/me.txt && sed -i s/genesis/EDITED/ /tmp/me.txt; bash /home/esther/hermes-cortex/ops/scripts/make-evidence.sh --verify /tmp/me.txt; echo tamper_rc=$?; rm -f /tmp/me.txt
+Running: bash -c cd /tmp && rm -f me.txt && B=/home/esther/hermes-cortex/ops/scripts/make-evidence.sh; bash $B /tmp/me.txt -- sh -c "echo genesis" >/dev/null && bash $B --verify /tmp/me.txt >/dev/null; echo write_verify=$?; sed -i s/genesis/EDITED/ /tmp/me.txt; bash $B --verify /tmp/me.txt >/dev/null; echo tamper_rc=$?; sed -i s/EDITED/genesis/ /tmp/me.txt; bash $B --verify /tmp/me.txt >/dev/null; echo restore_rc=$?; rm -f /tmp/me.txt
 rc: 0
-when: 2026-10-12T09:41:36Z
+when: 2026-10-12T09:50:06Z
 
-wrote /tmp/me.txt (143 bytes, sha256 a5e0b1059c3fd1c98c74d06f98aa6349f5fed9b09027dbfaf6a62efe92a0b9a2)
-OK  /tmp/me.txt  (sha256 a5e0b1059c3fd1c98c74d06f98aa6349f5fed9b09027dbfaf6a62efe92a0b9a2)
-FAIL /tmp/me.txt  recorded=a5e0b1059c3fd1c98c74d06f98aa6349f5fed9b09027dbfaf6a62efe92a0b9a2 actual=2422d2318d71b5656383a8ad75cbd6e4eb8d97392a39dbba5a0c1f5588602e91
+write_verify=0
+FAIL /tmp/me.txt  recorded=583be7e5ae77c5cd6078448c78a81f27ee3e8de6da998e50e9d2999eb885a5e7 actual=6ae0b087e5b61ca1415c36ef5061779b53db92c94bb0996c3a022526007a7365
 tamper_rc=1
-sha256: 3a042044421bd8381ec9bb06d55414842331c4f7cb6c6a044fe979c79f477cb4
+restore_rc=0
+sha256: 9823e21f596f8940abff258cb4d2ec4b9c3ce56ce1d8d02f933e04dd374c018d

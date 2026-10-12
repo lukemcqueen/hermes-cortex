@@ -1,0 +1,6 @@
+Running (banner-stripped body comparison):
+  diff <(sed -E '/^#/d; /^$/d' mcp-servers/loop-gov-mcp.py) <(sed -E '/^#/d; /^$/d' /home/esther/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py)
+rc: 0
+
+repo == deployed (body, banner+blank stripped)
+sha-stable: verified by make-evidence.sh --verify of this file
