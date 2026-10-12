@@ -37,9 +37,11 @@ if [ "${1:-}" = "--verify" ]; then
   exit 0
 fi
 
-out="${1:?usage: make-evidence.sh <out-file> -- <command...>}"
+out="${1:?usage: make-evidence.sh [-k] <out-file> -- <command...>}"
+keep=0
+[ "$1" = "-k" ] && { keep=1; out="${2:?usage: make-evidence.sh [-k] <out-file> -- <command...>}"; shift; }
 shift
-[ "${1:-}" = "--" ] || { echo "usage: make-evidence.sh <out-file> -- <command...>" >&2; exit 2; }
+[ "${1:-}" = "--" ] || { echo "usage: make-evidence.sh [-k] <out-file> -- <command...>" >&2; exit 2; }
 shift
 [ "$#" -ge 1 ] || { echo "no command given" >&2; exit 2; }
 
@@ -64,4 +66,8 @@ h=$(sha256sum "$out" | cut -d' ' -f1)
 printf 'sha256: %s\n' "$h" >>"$out"
 rm -f "$tmp"
 echo "wrote $out ($(wc -c <"$out") bytes, sha256 $h)"
+if [ "$rc" -ne 0 ] && [ "$keep" -eq 0 ]; then
+  echo "make-evidence: the wrapped command exited $rc; returning it so a broken run is not a clean artifact (use -k to keep a failing-run transcript)" >&2
+  exit "$rc"
+fi
 exit 0

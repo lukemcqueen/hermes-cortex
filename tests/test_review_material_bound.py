@@ -293,6 +293,44 @@ def test_the_floor_never_exceeds_the_budget():
     print(f"  floor respects the total budget (60 files / {budget} chars -> {len(got)} chars) ✓")
 
 
+def test_deployed_gate_behaves_as_this_file_says():
+    """The DEPLOYED gate (what actually reviews closes) bounds evidence the same way.
+
+    Without this, a grep for the constant would prove the deployed file contains the name
+    but not that the FUNCTION behaves as these tests claim. It imports the deployed module
+    and asserts the three load-bearing behaviours. On a host with no deployed gate (fresh
+    checkout, no cortex install) it declares SKIP instead of failing — the repo tests must
+    pass anywhere.
+    """
+    import importlib.util
+    cand = REPO.parent / ".hermes-cortex" / "tools" / "loop-governance" / "loop-gov-mcp.py"
+    if not cand.is_file():
+        print("  SKIP — no deployed gate on this host (expected on a fresh checkout)")
+        return
+    spec = importlib.util.spec_from_file_location("loop_gov_mcp_deployed", cand)
+    assert spec and spec.loader, "cannot load the deployed gate module"
+    depm = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(depm)
+
+    ev = ("diff --git a/docs/evidence/run.sh b/docs/evidence/run.sh\n"
+          "--- a/docs/evidence/run.sh\n+++ b/docs/evidence/run.sh\n@@ -0,0 +1,40 @@\n"
+          + "".join(f"+ echo line {n}\n" for n in range(40)))
+    assert depm._range_is_docs_only(ev) is True, "deployed predicate must treat docs/evidence/*.sh as docs"
+    assert depm.DIFF_CHAR_BUDGET_DOCS > depm.DIFF_CHAR_BUDGET, "docs budget must exceed the standard one"
+
+    big = "".join(
+        f"diff --git a/file{i}.py b/file{i}.py\n--- a/file{i}.py\n+++ b/file{i}.py\n@@ -0,0 +1,120 @@\n"
+        + "".join(f"+ line {n}\n" for n in range(120)) for i in range(12))
+    tiny = ("diff --git a/docs/evidence/tiny.txt b/docs/evidence/tiny.txt\n"
+            "--- a/docs/evidence/tiny.txt\n+++ b/docs/evidence/tiny.txt\n@@ -0,0 +1,3 @@\n"
+            "+rc=0\n+ALL CLAIMS VERIFIED (0 failures)\n+sha256 79a6afcd8ac1\n")
+    got = depm._bound_diff(big + tiny, budget=depm.DIFF_CHAR_BUDGET)
+    assert "sha256 79a6afcd8ac1" in got, "the DEPLOYED bounder must show the under-floor artifact whole"
+    assert "ALL CLAIMS VERIFIED" in got, "the DEPLOYED bounder must show its whole body"
+    print(f"  deployed gate behaves as this file says "
+          f"(docs budget {depm.DIFF_CHAR_BUDGET_DOCS} > {depm.DIFF_CHAR_BUDGET}, floor {depm.REVIEW_MATERIAL_PER_FILE_FLOOR}) ✓")
+
+
 # ── Standalone runner ─────────────────────────────────────────────────────────
 # pytest is not installed on every fleet host, which left this file unrunnable
 # there and its assertions unverified. Run it directly:
