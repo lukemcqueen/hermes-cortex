@@ -1,0 +1,146 @@
+Gateway /restart under launchd — LANDING evidence (cycle 12223)
+The transcript the close review can read: tests, deploy, doctor, verify-landed,
+and the DEPLOYED bytes. Host paths normalized to ~; rc is each COMMAND's own.
+
+COMPANION: docs/evidence/gateway-restart-launchd-2026-10-12.txt (the fix + the
+RED-vs-GREEN proof).
+
+0. WHAT SHIPPED
+$ git -C ~/hermes-cortex log --oneline -4
+9c93e0cc docs(evidence): cite launchd.plist(5) as a man-page source, not a host domain
+190aadd7 fix(gateway): make /restart work under launchd (macOS)
+0bddaf11 docs(evidence): land the sibling session's verify-consumption.sh, hardened
+7b452bed docs(evidence): land the sibling session's morning-task-pass bundle
+rc=0
+
+$ git -C ~/hermes-cortex rev-parse --short HEAD
+9c93e0cc
+rc=0
+
+1. THE TEST SUITE (bare: rc is pytest's own)
+$ cd ~/hermes-cortex && ~/.hermes/hermes-agent/venv/bin/python3 -m pytest tests/test_gateway_slash_parity.py -q
+============================= test session starts ==============================
+platform linux -- Python 3.11.15, pytest-9.1.1, pluggy-1.6.0
+rootdir: ~/hermes-cortex
+configfile: pytest.ini
+plugins: anyio-4.12.1
+collected 53 items
+
+tests/test_gateway_slash_parity.py ..................................... [ 69%]
+................                                                         [100%]
+
+============================== 53 passed in 0.93s ==============================
+rc=0
+
+2. THE SUITE A CHANGED GATEWAY FILE BELONGS TO (regression check)
+$ cd ~/hermes-cortex && ~/.hermes/hermes-agent/venv/bin/python3 -m pytest tests/ -q -k 'gateway or harness or startup'
+   (output is the LAST 6 lines of that run — labelled, not verbatim whole)
+tests/test_gateway_typing.py .......                                     [ 94%]
+tests/test_hc_harness.py .........                                       [ 97%]
+tests/test_loop_gov_mcp_startup.py ..                                    [ 98%]
+tests/test_msg_gateway.py .....                                          [100%]
+
+==================== 287 passed, 1438 deselected in 41.27s =====================
+rc=0
+
+3. DEPLOY-THEN-PUSH: cortex-dogfood.sh --force (deploy → doctor → verify)
+$ cd ~/hermes-cortex && bash ~/.hermes-cortex/scripts/cortex-dogfood.sh --force
+   (output is the LAST 12 lines of that run — labelled, not verbatim whole)
+       Remove: rm ~/.hermes-cortex/scripts/review-sweep-check.py
+       Recover it with: python3 ops/scripts/manage/reconcile-stranded-skills.py (report first; --apply copies pure supersets only) — then commit it as its OWN governed change, so the cycle's diff matches its task id.
+       Recover it with: python3 ops/scripts/manage/reconcile-stranded-skills.py (report first; --apply copies pure supersets only) — then commit it as its OWN governed change, so the cycle's diff matches its task id.
+       Recover it with: python3 ops/scripts/manage/reconcile-stranded-skills.py (report first; --apply copies pure supersets only) — then commit it as its OWN governed change, so the cycle's diff matches its task id.
+       Recover it with: python3 ops/scripts/manage/reconcile-stranded-skills.py (report first; --apply copies pure supersets only) — then commit it as its OWN governed change, so the cycle's diff matches its task id.
+       Recover it with: python3 ops/scripts/manage/reconcile-stranded-skills.py (report first; --apply copies pure supersets only) — then commit it as its OWN governed change, so the cycle's diff matches its task id.
+       Resolve each drift entry above — recovery is its OWN governed change (see reconcile-stranded-skills.py), not part of the update cycle
+   
+     After resolving, run doctor again to confirm.
+     ═══════════════════════════════════════════════════
+
+✅  DOGFOOD PASSED — deployed state verified clean.
+rc=0
+
+4. THE DOCTOR, BARE (rc is the doctor's own — a non-zero rc with warnings is NOT clean)
+$ cd ~/hermes-cortex && python3 ~/hermes-cortex/ops/scripts/manage/cortex-doctor.py --quiet > /tmp/doctor-landing.txt 2>&1; echo "doctor rc=$?"; grep -E 'Overall:' /tmp/doctor-landing.txt; echo 'every warning line:'; grep '⚠️' /tmp/doctor-landing.txt
+doctor rc=1
+  ⚠️  Overall: WARNING  (449 pass · 9 warn · 0 fail · 7 info)
+every warning line:
+  ⚠️  Repo clean
+  ⚠️  AGENTS.md efficiency (proj)
+  ⚠️  Stale deploy: scripts/review-sweep-check.py
+  ⚠️  Skill drift: devops/cross-agent-handoff-delivery
+  ⚠️  Skill drift: devops/governance-closeout
+  ⚠️  Skill drift: devops/shared-repo-push-gates
+  ⚠️  Skill drift: devops/shell-scripting
+  ⚠️  Skill drift: software-development/change-checklist
+  ⚠️  Skill drift
+  ⚠️  Overall: WARNING  (449 pass · 9 warn · 0 fail · 7 info)
+  🔧 REQUIRED ACTIONS — resolve each ⚠️  or ❌ above
+rc=0
+
+$ cd ~/hermes-cortex && echo -n 'warnings mentioning gateway/launchd/plist/slash_parity: '; grep -E 'gateway|launchd|plist|slash_parity' /tmp/doctor-landing.txt | grep -c '⚠️' || true
+warnings mentioning gateway/launchd/plist/slash_parity: 0
+rc=0
+
+5. THE LANDING: verify-landed for the pushed range
+$ cd ~/hermes-cortex && python3 ops/scripts/manage/verify-landed.py --repo . --base 7b452bed
+# range: 7b452bed93ef..9c93e0cc6557  repo: ~/hermes-cortex
+PASS  receipt: not required — 7b452bed93ef..9c93e0cc6557 touches no always-review path
+PASS  deployed: docs/templates/com.hermes.cortex-gateway.plist matches ~/.hermes-cortex/templates/com.hermes.cortex-gateway.plist
+PASS  deployed: ops/scripts/cortex_gateway/daemon.py matches ~/.hermes-cortex/scripts/cortex_gateway/daemon.py
+PASS  deployed: ops/scripts/cortex_gateway/slash_parity_evidence.py matches ~/.hermes-cortex/scripts/cortex_gateway/slash_parity_evidence.py
+# 3 of 8 changed files are deployed sources; 351 entries in the map
+PASS  remote: origin/main == 9c93e0cc6557
+
+All checks passed.
+rc=0
+
+6. DEPLOYED BYTES == REPO BYTES (diff of the code body, not a claim)
+$ cd ~/hermes-cortex && ~/.hermes/hermes-agent/venv/bin/python3 - <<'PYEOF'
+import pathlib
+def body(p):
+    lines = pathlib.Path(p).read_text().splitlines()
+    while lines and (lines[0].startswith('#') or not lines[0].strip()):
+        lines.pop(0)                      # strip the deploy header + blank line
+    return lines
+pairs = [
+    ('daemon.py', pathlib.Path.home()/'.hermes-cortex/scripts/cortex_gateway/daemon.py',
+     pathlib.Path('ops/scripts/cortex_gateway/daemon.py')),
+    ('slash_parity_evidence.py', pathlib.Path.home()/'.hermes-cortex/scripts/cortex_gateway/slash_parity_evidence.py',
+     pathlib.Path('ops/scripts/cortex_gateway/slash_parity_evidence.py')),
+    ('plist template', pathlib.Path.home()/'.hermes-cortex/templates/com.hermes.cortex-gateway.plist',
+     pathlib.Path('docs/templates/com.hermes.cortex-gateway.plist')),
+]
+for name, deployed, repo in pairs:
+    same = body(deployed) == body(repo)
+    print(f'{name}: deployed==repo -> {same}  ({len(body(deployed))} body lines)')
+    assert same, name
+print('ALL THREE IDENTICAL')
+PYEOF
+daemon.py: deployed==repo -> True  (1182 body lines)
+slash_parity_evidence.py: deployed==repo -> True  (229 body lines)
+plist template: deployed==repo -> True  (72 body lines)
+ALL THREE IDENTICAL
+rc=0
+
+7. THE DEPLOYED MODULE ANSWERS (behaviour from the deployed path, not the repo copy)
+$ cd ~/hermes-cortex && ~/.hermes/hermes-agent/venv/bin/python3 - <<'PYEOF'
+import pathlib, sys
+sys.path.insert(0, str(pathlib.Path.home()/'.hermes-cortex/scripts'))
+import cortex_gateway.daemon as d
+print('module file:', d.__file__)
+print('LAUNCHD_RELAUNCH_EXIT_CODE:', d.LAUNCHD_RELAUNCH_EXIT_CODE)
+g = d.Gateway.__new__(d.Gateway)
+print('systemd-supervised (this hand-run process):', g._supervised_by_systemd())
+print('launchd label for our pid:', repr(g._launchd_label_for_our_pid()))
+print('restart exit code:', g._restart_exit_code())
+print('refusal:', g._restart_refusal())
+PYEOF
+module file: ~/.hermes-cortex/scripts/cortex_gateway/daemon.py
+LAUNCHD_RELAUNCH_EXIT_CODE: 75
+systemd-supervised (this hand-run process): False
+launchd label for our pid: ''
+restart exit code: None
+refusal: ⚠️ This gateway is not supervised by a service manager — no systemd unit and no launchd job lists this process — so /restart cannot bring it back. Stop it and start it by hand instead.
+rc=0
+
