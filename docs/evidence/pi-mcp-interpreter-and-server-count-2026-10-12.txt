@@ -1,0 +1,306 @@
+Pi MCP: interpreter-by-capability + cortex-context in the audit
+LANDING NOTE (2026-10-12, cycle 12234): this transcript was measured on the session
+branch whose tip was 440f00ee. The same code, tests and harness docs were left STAGED
+there and never committed, so nothing was on main — an earlier session of mine, not a
+peer's. They are landed on main by this cycle, re-verified at the landing tip before
+pushing: tests/test_pi_mcp_installer.sh ALL PASS (rc=0), tests/test_pi_integration_audit.py
+checks passed (rc=0), and tests/test_gateway_slash_parity.py + the foreign-server cases
+56 passed. Every command below re-runs as shown.
+Measured on esther (Linux) 2026-10-12 by esther. Every block is a real command
+with its real output; re-run any of them as shown.
+NOTE: host paths are normalized to ~ (this repo is public); dates are KST.
+NOTE: where a command was piped for brevity, the rc shown is the COMMAND's own
+exit code, measured with the pipe removed (a piped `rc=$?` is tail's status —
+that is exactly how a transcript ends up showing rc=0 under an error).
+
+TIP AT WHICH THIS TRANSCRIPT WAS GENERATED
+$ git rev-parse --short HEAD
+440f00ee
+
+1. THE DEFECT THE OLD INSTALLER HAD (interpreter chosen by file existence)
+$ python3 -c 'import mcp'        # what the OLD script wrote when the cortex venv was absent
+ModuleNotFoundError: No module named 'mcp'
+rc=1
+$ bash ops/scripts/lib/python-with-module.sh --print mcp   # capability resolver instead
+~/.hermes/hermes-agent/venv/bin/python3
+rc=0
+
+2. LIVE SERVER/TOOL COUNTS (the source of '5 servers / 59 tools')
+$ pi mcp list
+loop-governance: connected, 17 tools (direct, global)
+tasks: connected, 14 tools (direct, global)
+executor: connected, 6 tools (direct, global)
+agent-bus: connected, 10 tools (direct, global)
+cortex-context: connected, 12 tools (direct, global)
+  (17+14+6+10+12 = 59; note tasks exposes 14, not the 13 the old line claimed)
+
+3. SUITES (all four installer cases + all six audit cases)
+$ bash tests/test_pi_mcp_installer.sh
+  PASS  run1: user keys preserved + 5 servers + derived AGENT_NAME + exposure
+  PASS  run2: idempotent (same server set)
+  PASS  --check exits 0
+  PASS  --remove strips cortex only, keeps user's own
+
+B. an interpreter the existing mcp.json PROVES works is kept
+  PASS  B: kept the working shim interpreter (got: ~/.hermes/cache/scratch/tmp.G0xVJJzXC1/shim/python3)
+
+C. nothing can import mcp -> refuse loudly, leave the config untouched
+  PASS  C: exits non-zero instead of writing a dead config (rc=1)
+  PASS  C: says the interpreter cannot import mcp
+  PASS  C: names the remediation
+  PASS  C: existing mcp.json left byte-identical
+
+D. a malformed mcp.json is refused in one sentence, never a traceback
+  PASS  D: exits non-zero (rc=1)
+  PASS  D: says the file is not valid JSON
+  PASS  D: no raw Python traceback
+  PASS  D: the unparseable file is left for its owner
+
+ALL PASS
+rc=0
+
+$ python3 tests/test_pi_integration_audit.py 2>&1 | tail -4
+  PASS  names cortex-context as missing
+  PASS  names the fix in that same line
+
+✅ Pi integration audit checks passed
+rc=0
+
+4. THE AUDIT ON THIS HOST, LIVE
+$ bash ops/scripts/manage/audit-pi-integration.sh
+Pi integration audit — ~/.pi/agent/bin/pi (v1.1.0)
+  ✅ PASS      cortex servers present and runnable: loop-governance, tasks, executor, agent-bus, cortex-context — AGENT_NAME=esther on every entry
+  ✅ PASS      live check (agent, in a Pi session): 'pi mcp list' → 5 servers connected / 59 tools (17 loop-governance + 14 tasks + 6 executor + 10 agent-bus + 12 cortex-context)
+  ✅ PASS      7/7 curated skills linked in ~/.pi/agent/cortex-skills, settings.json carries extensions+skills
+  ✅ PASS      cortex-context extension present (native mem_*/session_* tools are visible to the agent itself)
+  ✅ PASS      loop-governance gate deployed (a cycle test is the agent's own check: begin_change -> feedback_accept -> end_change)
+  ✅ PASS      AGENT_NAME=esther
+  ✅ PASS      cortex venv python present (install-pi-mcp.sh prefers it)
+
+  RESULT: PASS (every layer required on this host)
+rc=0
+
+5. THE AUDIT FROM THE DEPLOYED PATH (not the repo copy)
+$ bash ~/.hermes-cortex/scripts/audit-pi-integration.sh | head -3
+Pi integration audit — ~/.pi/agent/bin/pi (v1.1.0)
+  ✅ PASS      cortex servers present and runnable: loop-governance, tasks, executor, agent-bus, cortex-context — AGENT_NAME=esther on every entry
+  ✅ PASS      live check (agent, in a Pi session): 'pi mcp list' → 5 servers connected / 59 tools (17 loop-governance + 14 tasks + 6 executor + 10 agent-bus + 12 cortex-context)
+
+6. PROPOSAL EVALUATION — the four patches, git apply --check, MEASURED TWICE:
+   left column: base tree (origin/main, files unmodified)  right: this tip (fix landed)
+
+   patch                                      at base                at this tip
+   0001-pi-mcp-preserve-interpreter           rc=128 corrupt patch   rc=128 corrupt patch
+   0002-audit-cortex-context                  rc=0 applies           rc=1 does not apply
+   0003-test-cortex-context                   rc=0 applies           rc=1 does not apply
+   0004-docs-external-deepseek-review         rc=1 does not apply    rc=1 does not apply
+
+   Reading (measured, not inferred): 0001 is corrupt on BOTH trees. Its hunk
+   header declares +58 lines for a body carrying +52 (context 6, added 46,
+   removed 3 — the old-side count 9 does match), so git apply refuses it at
+   line 59 and the proposal's "apply each patch directly" cannot start there.
+   The hard count (49 claimed vs 46 present) is stated in the proposal's own
+   narration, so either the patch was written against a variant of the file or
+   6 added lines were lost in transit; either way it must be re-sent as a patch
+   FILE, not inlined prose. 0002/0003 applied cleanly at base and stop applying
+   once this fix landed (they are superseded, not broken). 0004 never applied,
+   and its link target docs/external/mcp-deepseek-review.md does not exist
+   (0 files match that name anywhere in the repo).
+
+7. RE-RUNNING THE REAL INSTALLER ON A HEALTHY HOST IS A NO-OP
+$ cp ~/.pi/agent/mcp.json /tmp/before && bash ops/scripts/install/install-pi-mcp.sh && diff /tmp/before ~/.pi/agent/mcp.json
+Keeping the interpreter already registered in ~/.pi/agent/mcp.json (verified: imports mcp):
+  ~/.hermes/hermes-agent/venv/bin/python3
+   diff: IDENTICAL (no churn; the working interpreter is kept)
+
+8. ADVERSARIAL GATES (pre-existing finding counts unchanged by this change)
+$ python3 ~/.hermes-cortex/scripts/adversarial-verify.py --file ops/scripts/install/install-pi-mcp.sh --level A4 --gate 2>&1 | tail -3
+🟡 Medium findings — fix before shipping.
+
+✅ GATE_PASSED — no critical/high findings
+rc=0
+  A4 gate ops/scripts/manage/audit-pi-integration.sh: rc=0
+  A4 gate tests/test_pi_mcp_installer.sh: rc=0
+  A4 gate tests/test_pi_integration_audit.py: rc=0
+
+
+=========================================================================
+9. APPENDIX — evidence for the findings of cycle 12205's self-adversarial
+   review (ADV-12205-1..4), plus two corrections to my own earlier claims.
+   Every block is re-runnable; rc is always the COMMAND's, never a pipe's.
+=========================================================================
+
+9a. THE NEW TESTS DISCRIMINATE — run against the PRE-CHANGE scripts at the
+    true base (origin/main = ed0508402724ae8e5af8ac4f8770e42454a1a9a5) in a throwaway worktree.
+$ git worktree add --detach /tmp/pi-red2 ed0508402724ae8e5af8ac4f8770e42454a1a9a5   # then copy ONLY the tests in
+$ (cd /tmp/pi-red2 && bash tests/test_pi_mcp_installer.sh)      # OLD scripts, NEW tests
+rc=1   <- non-zero: the new assertions FAIL against the old installer
+      FAIL  B: kept the working shim interpreter (got: ~/.hermes/hermes-agent/venv/bin/python3)
+      FAIL  C: says the interpreter cannot import mcp
+      FAIL  C: names the remediation
+      FAIL  D: says the file is not valid JSON
+      FAIL  D: no raw Python traceback
+    5 FAILED
+$ (cd /tmp/pi-red2 && python3 tests/test_pi_integration_audit.py)   # OLD audit, NEW tests
+rc=1   <- non-zero: the audit did NOT require cortex-context
+      FAIL  names cortex-context in the servers line  e deployed (a cycle test is the agent's own check: begin_change -> feedback_accept -> end_change)
+      FAIL  exit 1  e deployed (a cycle test is the agent's own check: begin_change -> feedback_accept -> end_change)
+      FAIL  names cortex-context as missing  e deployed (a cycle test is the agent's own check: begin_change -> feedback_accept -> end_change)
+      FAIL  names the fix in that same line  e deployed (a cycle test is the agent's own check: begin_change -> feedback_accept -> end_change)
+        assert not _F, f"{len(_F)} audit check(s) failed: {', '.join(_F)}"
+    AssertionError: 4 audit check(s) failed: names cortex-context in the servers line, exit 1, names cortex-context as missing, names the fix in that same line
+    (worktree removed; the tree that ships this file is unchanged)
+
+9b. BOTH SUITES AT THE TIP, FULL OUTPUT, BARE (rc is the suite's own)
+$ bash tests/test_pi_mcp_installer.sh
+  PASS  run1: user keys preserved + 5 servers + derived AGENT_NAME + exposure
+  PASS  run2: idempotent (same server set)
+  PASS  --check exits 0
+  PASS  --remove strips cortex only, keeps user's own
+
+B. an interpreter the existing mcp.json PROVES works is kept
+  PASS  B: kept the working shim interpreter (got: ~/.hermes/cache/scratch/tmp.qbTEm3nUiz/shim/python3)
+
+C. nothing can import mcp -> refuse loudly, leave the config untouched
+  PASS  C: exits non-zero instead of writing a dead config (rc=1)
+  PASS  C: says the interpreter cannot import mcp
+  PASS  C: names the remediation
+  PASS  C: existing mcp.json left byte-identical
+
+D. a malformed mcp.json is refused in one sentence, never a traceback
+  PASS  D: exits non-zero (rc=1)
+  PASS  D: says the file is not valid JSON
+  PASS  D: no raw Python traceback
+  PASS  D: the unparseable file is left for its owner
+
+ALL PASS
+rc=0
+
+$ python3 tests/test_pi_integration_audit.py
+A. a complete host passes
+  PASS  exit 0
+  PASS  reports RESULT: PASS
+  PASS  names cortex-context in the servers line
+B. missing mcp.json on an MCP-capable Pi fails, with the fix
+  PASS  exit 1
+  PASS  names install-pi-mcp.sh
+C. an entry with a foreign AGENT_NAME fails
+  PASS  exit 1
+  PASS  names the offending entry
+D. a missing curated skill link fails
+  PASS  exit 1
+  PASS  names the missing link
+E. no Pi at all fails, with the install command
+  PASS  exit 1
+  PASS  reports Pi missing
+  PASS  gives the install command
+F. an mcp.json without the cortex-context entry fails, naming it
+  PASS  exit 1
+  PASS  names cortex-context as missing
+  PASS  names the fix in that same line
+
+✅ Pi integration audit checks passed
+rc=0
+
+9c. THE DEPLOYED COPIES (not the repo copies) — ADV-12205-2
+$ bash ~/.hermes-cortex/scripts/audit-pi-integration.sh
+Pi integration audit — ~/.pi/agent/bin/pi (v1.1.0)
+  ✅ PASS      cortex servers present and runnable: loop-governance, tasks, executor, agent-bus, cortex-context — AGENT_NAME=esther on every entry
+  ✅ PASS      live check (agent, in a Pi session): 'pi mcp list' → 5 servers connected / 59 tools (17 loop-governance + 14 tasks + 6 executor + 10 agent-bus + 12 cortex-context)
+  ✅ PASS      7/7 curated skills linked in ~/.pi/agent/cortex-skills, settings.json carries extensions+skills
+  ✅ PASS      cortex-context extension present (native mem_*/session_* tools are visible to the agent itself)
+  ✅ PASS      loop-governance gate deployed (a cycle test is the agent's own check: begin_change -> feedback_accept -> end_change)
+  ✅ PASS      AGENT_NAME=esther
+  ✅ PASS      cortex venv python present (install-pi-mcp.sh prefers it)
+
+  RESULT: PASS (every layer required on this host)
+rc=0
+
+$ # the deployed installer must find the DEPLOYED helper. Real HOME (that is where
+$ # ~/.hermes-cortex lives), with PI_MCP_FILE pointing at a scratch config and an
+$ # mcp.json whose command is dead — so preservation finds nothing and the helper
+$ # must resolve the interpreter.
+Registered cortex MCP servers (user scope): loop-governance, tasks, executor, agent-bus, cortex-context
+  newly added: tasks, executor, agent-bus, cortex-context
+Wrote ~/.hermes/cache/scratch/tmp.6WqY3kdw8Y/mcp.json
+Done. Run 'pi mcp list' to connect and check, or /reload in a session.
+Verify: bash ~/.hermes-cortex/scripts/install-pi-mcp.sh --check
+rc=0
+    servers written : 5 ['agent-bus', 'cortex-context', 'executor', 'loop-governance', 'tasks']
+    interpreter     : ~/.hermes/hermes-agent/venv/bin/python3
+    one interpreter : True
+    live check      : pi mcp list -> (below)
+    loop-governance: connected, 17 tools (direct, global)
+    tasks: connected, 14 tools (direct, global)
+    executor: connected, 6 tools (direct, global)
+    agent-bus: connected, 10 tools (direct, global)
+    cortex-context: connected, 12 tools (direct, global)
+
+9d. ADVERSARIAL GATES — ADV-12205-3. rc per changed file, and the finding
+    counts BEFORE (origin/main) vs AFTER, computed in this block.
+    install-pi-mcp.sh                              gate rc=0
+      before {"critical": 0, "high": 0, "medium": 3, "low": 0, "info": 17}
+      after  {"critical": 0, "high": 0, "medium": 3, "low": 0, "info": 17}
+    audit-pi-integration.sh                        gate rc=0
+      before {"critical": 0, "high": 0, "medium": 0, "low": 0, "info": 0}
+      after  {"critical": 0, "high": 0, "medium": 0, "low": 0, "info": 0}
+    pi_control.py                                  gate rc=0
+      before {"critical": 0, "high": 0, "medium": 1, "low": 2, "info": 0}
+      after  {"critical": 0, "high": 0, "medium": 1, "low": 2, "info": 0}
+    cortex-context-mcp.py                          gate rc=0
+      before {"critical": 0, "high": 0, "medium": 1, "low": 0, "info": 0}
+      after  {"critical": 0, "high": 0, "medium": 1, "low": 0, "info": 0}
+    test_pi_mcp_installer.sh                       gate rc=0
+      before {"critical": 0, "high": 0, "medium": 0, "low": 0, "info": 0}
+      after  {"critical": 0, "high": 0, "medium": 0, "low": 0, "info": 0}
+    test_pi_integration_audit.py                   gate rc=0
+      before {"critical": 0, "high": 0, "medium": 0, "low": 1, "info": 0}
+      after  {"critical": 0, "high": 0, "medium": 0, "low": 1, "info": 0}
+    Reading: rc=0 (no critical/high) on every file and identical counts before/after.
+
+9e. SCOPE — ADV-12205-4. My three commits, by pathspec, and nothing else.
+$ git show --stat --oneline HEAD~2^..HEAD
+cbb84126 docs(evidence): normalize host paths and make every rc truthful
+447aed91 docs(evidence): re-runnable transcript for the Pi MCP interpreter + server-count fix
+440f00ee fix(pi-mcp): select the MCP interpreter by capability, require cortex-context
+ mcp-servers/cortex-context-mcp.py          |   8 ++-
+ ops/install/harnesses/pi/IMPLEMENT.md      |   9 +--
+ ops/install/harnesses/registry.yaml        |   7 +-
+ ops/scripts/cortex_gateway/pi_control.py   |   2 +-
+ ops/scripts/install/install-pi-mcp.sh      |  82 ++++++++++++++++++++---
+ ops/scripts/manage/audit-pi-integration.sh |  24 +++++--
+ tests/test_pi_integration_audit.py         |  37 ++++++++++-
+ tests/test_pi_mcp_installer.sh             | 101 +++++++++++++++++++++++++++--
+ 8 files changed, 237 insertions(+), 33 deletions(-)
+$ git diff --name-only HEAD~3 HEAD -- docs/evidence/morning-task-pass-2026-10-12 docs/DOCS-INDEX.md   # the peer's files
+    (empty = the other session's 16 staged files appear in NONE of my commits)
+
+9f. TWO CORRECTIONS TO MY OWN EARLIER CLAIMS (ADV-12205 note review)
+    (1) BASE: my note said the proposal's "main branch at commit ed050840" was
+        wrong, because my local HEAD read 90eafc4c. That was my error: my
+        remote-tracking ref was STALE at 8fc40d2b, and origin/main was
+        ed050840 (titus-agent, 2026-10-12 08:08 KST) all along. `git fetch` +
+        `git rev-parse origin/main` now shows ed050840, 42 commits ahead of my
+        branch. The proposal's base was RIGHT; that criticism is RETRACTED.
+        Consequence: my patch verdicts were measured on the wrong tree and are
+        re-measured here against ed050840 itself:
+$ git worktree add --detach /tmp/pi-base ed050840 && cd /tmp/pi-base && git apply --check <patch>
+          0001-pi-mcp-preserve-interpreter           rc=128 corrupt patch at line 59   (NOT a stale-base artifact)
+          0002-audit-cortex-context                  rc=0 applies
+          0003-test-cortex-context                   rc=0 applies
+          0004-docs-external-deepseek-review         rc=1 does not apply
+        Same verdicts on the correct base, so the evaluation stands: 0001 cannot
+        be applied at all, 0002/0003 were fine (now superseded), 0004 does not
+        apply and its link target docs/external/mcp-deepseek-review.md does not
+        exist (docs/external holds only external-services.md, pi-skill-bridge.md,
+        README.md).
+    (2) The base tree at ed050840 confirms the two defects the proposal named:
+        install-pi-mcp.sh:66-67 chose PY_CMD by existence, and
+        audit-pi-integration.sh:79/128 still required 4 servers and claimed
+        "4 servers / 46 tools (17+13+6+10)". cortex-context was ALREADY
+        registered by install-pi-mcp.sh there (3 mentions), so the installer's
+        server set was not the problem — the interpreter and the audit were.
+    (3) UNCHANGED and still standing: the proposal's "audit causes false audit
+        failures" premise is wrong — the audit exits 0/PASS with 5 servers
+        configured (section 4). Its real defect is a verification GAP, which is
+        what the fix closes.

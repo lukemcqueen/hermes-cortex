@@ -11,6 +11,13 @@ against synthetic hosts, one thing broken at a time, and asserts BOTH directions
   C. an entry carrying ANOTHER agent's AGENT_NAME  -> exit 1, names it
   D. a curated skill link missing                  -> exit 1
   E. no Pi at all                                  -> exit 1 + the install command
+  F. mcp.json missing cortex-context               -> exit 1, names the server
+
+Case F exists because the audit under-verified for weeks: it required only the
+four original servers, so a host with no cortex-context MCP entry reported PASS
+while mem_*/session_* were unreachable, and its PASS line claimed "4 servers
+configured" even where five were. A required server that is not checked is a
+silent hole, so the check now names every server it requires.
 
 The audit is version-aware on purpose: the MCP route needs an MCP-capable Pi, the hooks
 route (git hooks + loop-gov.py) serves Pi builds without an MCP client, and reporting the
@@ -37,7 +44,8 @@ def _check(name: str, cond: bool, detail: str = "") -> None:
 
 
 def _host(home: Path, *, mcp_json: bool = True, agent_name: str = "testagent",
-          drop_link: str | None = None, pi: bool = True) -> Path:
+          drop_link: str | None = None, pi: bool = True,
+          omit_server: str | None = None) -> Path:
     """Build a synthetic host. CORTEX_DEPLOY_HOME == home/.hermes-cortex."""
     dep = home / ".hermes-cortex"
     agent = home / ".pi" / "agent"
@@ -75,7 +83,8 @@ def _host(home: Path, *, mcp_json: bool = True, agent_name: str = "testagent",
     for name, script in (("loop-governance", dep / "tools" / "loop-governance" / "loop-gov-mcp.py"),
                          ("tasks", dep / "scripts" / "task-mcp.py"),
                          ("executor", dep / "scripts" / "executor-mcp.py"),
-                         ("agent-bus", dep / "scripts" / "cortex-bus-mcp.py")):
+                         ("agent-bus", dep / "scripts" / "cortex-bus-mcp.py"),
+                         ("cortex-context", dep / "scripts" / "cortex-context-mcp.py")):
         script.write_text("# mcp server\n")
     if mcp_json:
         import json
@@ -83,7 +92,10 @@ def _host(home: Path, *, mcp_json: bool = True, agent_name: str = "testagent",
         for name, script in (("loop-governance", dep / "tools" / "loop-governance" / "loop-gov-mcp.py"),
                              ("tasks", dep / "scripts" / "task-mcp.py"),
                              ("executor", dep / "scripts" / "executor-mcp.py"),
-                             ("agent-bus", dep / "scripts" / "cortex-bus-mcp.py")):
+                             ("agent-bus", dep / "scripts" / "cortex-bus-mcp.py"),
+                             ("cortex-context", dep / "scripts" / "cortex-context-mcp.py")):
+            if name == omit_server:
+                continue
             # one entry intentionally carries a foreign identity in the C case
             who = "someone-else" if (agent_name != "testagent" and name == "agent-bus") else agent_name
             entries[name] = {"command": sys.executable, "args": [str(script)],
@@ -155,6 +167,12 @@ def test_pi_integration_audit() -> None:
         r = _run(home, dep)
         _check("exit 0", r.returncode == 0, r.stdout[-400:])
         _check("reports RESULT: PASS", "RESULT: PASS" in r.stdout, r.stdout[-200:])
+        # The required set must be visible in the server line: a PASS line naming
+        # fewer servers than are configured is how "4 servers" survived for weeks.
+        # (Layer 3 also mentions cortex-context, so match the SERVERS line only.)
+        _check("names cortex-context in the servers line",
+               any("cortex-context" in ln and "server" in ln for ln in r.stdout.splitlines()),
+               r.stdout[-300:])
 
     print("B. missing mcp.json on an MCP-capable Pi fails, with the fix")
     with tempfile.TemporaryDirectory() as td:
@@ -194,6 +212,19 @@ def test_pi_integration_audit() -> None:
         _check("reports Pi missing", "not installed" in r.stdout or "FAIL" in r.stdout, why)
         _check("gives the install command", "npm install -g @earendil-works/pi-coding-agent" in r.stdout,
                why + " | " + r.stdout[-300:])
+
+    print("F. an mcp.json without the cortex-context entry fails, naming it")
+    with tempfile.TemporaryDirectory() as td:
+        home = Path(td)
+        dep = _host(home, omit_server="cortex-context")
+        r = _run(home, dep)
+        # Assert on the audit's OWN failure line: "cortex-context" alone also appears
+        # in the Layer 3 extension PASS, so a bare substring match would pass even if
+        # the server were never required (it did, before this case was tightened).
+        line = next((ln for ln in r.stdout.splitlines() if "missing server(s)" in ln), "")
+        _check("exit 1", r.returncode == 1, r.stdout[-300:])
+        _check("names cortex-context as missing", "cortex-context" in line, line or r.stdout[-300:])
+        _check("names the fix in that same line", "install-pi-mcp.sh" in line, line or r.stdout[-300:])
 
     assert not _F, f"{len(_F)} audit check(s) failed: {', '.join(_F)}"
 

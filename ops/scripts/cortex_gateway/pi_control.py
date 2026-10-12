@@ -81,7 +81,7 @@ def _rpc(base_argv: list, command: dict, *, deadline_s: float = 120.0) -> dict:
     """
     proc = subprocess.Popen(
         # --no-mcp: a CONTROL call (state/compact) uses no MCP tool, and pi connects
-        # its four MCP servers at RPC startup — four more processes, each of which
+        # its five MCP servers at RPC startup — five more processes, each of which
         # can be slow or wedged (measured 2026-10-08: pi sat ALIVE and silent for the
         # full deadline on ~40% of /compact calls with MCP enabled, while the same
         # call always answered from a shell). Dropping the servers from a call that

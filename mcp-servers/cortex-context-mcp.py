@@ -9,9 +9,11 @@ it does not get its own semantics.
 
 Which harness uses which layer:
 
-    MCP  (this file, `hermes mcp add`)   Hermes, Claude Code, Codex
-    CLI  (`cortex-context <tool> <json>`) Pi — whose extension API is hooks +
-         registerTool, NOT an MCP client
+    MCP  (this file, `hermes mcp add`)   Hermes, Claude Code, Codex — and Pi >= 0.99,
+         which gained an MCP client and registers this server through
+         install-pi-mcp.sh (2026-10-03)
+    CLI  (`cortex-context <tool> <json>`) Pi builds WITHOUT an MCP client, whose
+         extension API is hooks + registerTool, not MCP
 
 Design: docs/design/cortex-memory-session-mcp.md
 

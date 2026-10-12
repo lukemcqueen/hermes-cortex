@@ -1,0 +1,89 @@
+Cycle 12205 — answers to the self-adversarial review, each as a command + its
+real output. The full transcript (299 lines) is
+docs/evidence/pi-mcp-interpreter-and-server-count-2026-10-12.txt; this file is
+the short version, small enough to be read whole without truncation.
+
+ADV-1: the capability resolver IS invoked
+  (ops/scripts/install/install-pi-mcp.sh)
+$ grep -n 'python-with-module\|_lib=\|--print mcp' ops/scripts/install/install-pi-mcp.sh
+107:# (ops/scripts/lib/python-with-module.sh --print mcp: honours PYTHON, then the
+138:  _lib=""
+139:  for _cand in "${_here}/../lib/python-with-module.sh" \
+140:               "${CORTEX_DEPLOY_HOME:-${HOME}/.hermes-cortex}/scripts/lib/python-with-module.sh"; do
+141:    if [[ -f "$_cand" ]]; then _lib="$_cand"; break; fi
+143:  [[ -n "$_lib" ]] && PY_CMD="$(bash "$_lib" --print mcp)" || PY_CMD=""
+
+$ bash ops/scripts/lib/python-with-module.sh --print mcp
+~/.hermes/hermes-agent/venv/bin/python3
+rc=0
+$ python3 -c 'import mcp'; echo rc=$?     # what the OLD code fell back to
+ModuleNotFoundError: No module named 'mcp'
+rc=1
+
+ADV-2: the audit requires cortex-context from ONE variable
+  (ops/scripts/manage/audit-pi-integration.sh)
+$ grep -n 'REQUIRED=\|for s in $REQUIRED\|cortex-context-mcp.py' ops/scripts/manage/audit-pi-integration.sh
+83:    REQUIRED="loop-governance tasks executor agent-bus cortex-context"
+85:    for s in $REQUIRED; do
+94:               "$DEPLOY/scripts/cortex-context-mcp.py"; do
+
+ADV-3: the tests run, with exit codes (bare — no pipe, so rc is the suite's)
+$ bash tests/test_pi_mcp_installer.sh   # 4 cases
+  PASS  run1: user keys preserved + 5 servers + derived AGENT_NAME + exposure
+  PASS  run2: idempotent (same server set)
+  PASS  --check exits 0
+  PASS  --remove strips cortex only, keeps user's own
+  PASS  B: kept the working shim interpreter (got: ~/.hermes/cache/scratch/tmp.39lShIde8d/shim/python3)
+  PASS  C: exits non-zero instead of writing a dead config (rc=1)
+  PASS  C: says the interpreter cannot import mcp
+  PASS  C: names the remediation
+  PASS  C: existing mcp.json left byte-identical
+  PASS  D: exits non-zero (rc=1)
+  PASS  D: says the file is not valid JSON
+  PASS  D: no raw Python traceback
+  PASS  D: the unparseable file is left for its owner
+ALL PASS
+rc=0
+$ python3 tests/test_pi_integration_audit.py   # 6 cases
+  PASS  exit 0
+  PASS  reports RESULT: PASS
+  PASS  names cortex-context in the servers line
+  PASS  exit 1
+  PASS  names install-pi-mcp.sh
+  PASS  exit 1
+  PASS  names the offending entry
+  PASS  exit 1
+  PASS  names the missing link
+  PASS  exit 1
+  PASS  reports Pi missing
+  PASS  gives the install command
+  PASS  exit 1
+  PASS  names cortex-context as missing
+  PASS  names the fix in that same line
+✅ Pi integration audit checks passed
+rc=0
+
+ADV-3, the RED half: the same tests against the PRE-change scripts fail
+  installer rc=1, 5 FAILED (B; C x2; D x2)
+  audit     rc=1, 4 checks (the servers line; F's exit 1; naming the server;
+            naming the fix)
+  Full output: transcript appendix 9a, from a throwaway worktree at the true
+  base origin/main = ed050840.
+
+ADV-1/2 end to end, on the DEPLOYED copies and the live host
+$ bash ~/.hermes-cortex/scripts/install-pi-mcp.sh   # deployed installer
+Keeping the interpreter already registered in ~/.pi/agent/mcp.json (verified: imports mcp):
+  (all already present — updated in place)
+$ python3 -c '...'   # what every server in ~/.pi/agent/mcp.json now names
+  servers: 5 | interpreter: ~/.hermes/hermes-agent/venv/bin/python3
+  one interpreter across all entries: True
+$ pi mcp list
+  loop-governance: connected, 17 tools (direct, global)
+  tasks: connected, 14 tools (direct, global)
+  executor: connected, 6 tools (direct, global)
+  agent-bus: connected, 10 tools (direct, global)
+  cortex-context: connected, 12 tools (direct, global)
+$ bash ~/.hermes-cortex/scripts/audit-pi-integration.sh | tail -3
+  ✅ PASS      cortex venv python present (install-pi-mcp.sh prefers it)
+
+  RESULT: PASS (every layer required on this host)

@@ -149,14 +149,15 @@ harnesses:
           - python3 ~/.hermes-cortex/scripts/loop-gov.py begin_change '{"task_id":"pi-smoke","description":"probe"}' returns a cycle id and end_change releases it — run this only when you hold no other lock.
         why: |
           Pi >= 0.99 gained an MCP client and reads user-scope servers from
-          ~/.pi/agent/mcp.json, so the four governance servers (loop-governance,
-          tasks, executor, agent-bus) register exactly like Claude Code's — one
+          ~/.pi/agent/mcp.json, so the five cortex servers (loop-governance,
+          tasks, executor, agent-bus, cortex-context) register exactly like Claude
+          Code's — one
           implementation, one way in per harness. On an older Pi with no MCP
           client the commit-time git hooks STILL govern (core.hooksPath is
           global, so a Pi commit runs the same gates as a Hermes one), and
           ops/scripts/loop-gov.py is the CLI way in for the interactive ritual.
         verify:
-          - 'pi mcp list shows loop-governance, tasks, executor, agent-bus.'
+          - 'pi mcp list shows loop-governance, tasks, executor, agent-bus, cortex-context.'
           - 'A commit made from a Pi session passes the hooks (or names the gate it hit).'
     # Built-in tools only: the memory/session surface is NOT a --tools entry any
     # more — it arrives over MCP, so there is no per-harness tool list left to
