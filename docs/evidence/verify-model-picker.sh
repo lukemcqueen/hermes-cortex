@@ -40,6 +40,18 @@ FAILS=0
 say() { printf '%s\n' "$*"; }
 bad() { say "FAIL  $1"; FAILS=$((FAILS + 1)); }
 
+# Run a pytest selection so the CAPTURE proves the result on its own: the command's own
+# exit code, the summary line, and every FAILED/ERROR line. A `| tail -1` cannot show a
+# failure it did not print, and a reviewer reading the artifact should not have to infer
+# the verdict from a count.
+run_pytest() {
+  _label="$1"; shift
+  _out="$("$PY" -m pytest "$@" 2>&1)"; _rc=$?
+  printf '%s\n' "$_out" | grep -E "^tests/.*::|^(FAILED|ERROR)|passed|failed|error" | sed 's/^/  /'
+  say "  [${_label}] pytest rc=${_rc}"
+  [ "$_rc" = 0 ] || bad "$_label"
+}
+
 say "== 0. the DEPLOY, and its own log (what is actually deployed NOW) =="
 DOG="$HOME/.hermes-cortex/scripts/cortex-dogfood.sh"
 if [ -x "$DOG" ]; then
@@ -53,14 +65,11 @@ fi
 
 say
 say "== 1. the picker's tests, BY NAME =="
-"$PY" -m pytest tests/test_gateway_slash_parity.py -v -k "menu or model" --tb=line -q 2>&1 \
-  | grep -E "::test_|passed" | sed 's/^/  /'
-[ "${PIPESTATUS[0]}" = 0 ] || bad "1 the model/menu tests"
+run_pytest "1 the model/menu tests" tests/test_gateway_slash_parity.py -v -k "menu or model" --tb=line -q
 
 say
 say "== 1b. the WHOLE file (so a subset claim cannot outrun its evidence) =="
-"$PY" -m pytest tests/test_gateway_slash_parity.py -q 2>&1 | tail -1 | sed 's/^/  /'
-[ "${PIPESTATUS[0]}" = 0 ] || bad "1b the whole parity file"
+run_pytest "1b the whole parity file" tests/test_gateway_slash_parity.py -q
 
 say
 say "== 2. the DEPLOYED copy this host runs =="
@@ -109,19 +118,27 @@ fi
 
 say
 say "== 5. the wider gateway selection (the regression sweep) =="
-"$PY" -m pytest tests/ -q -k "gateway or harness or startup" 2>&1 | tail -1 | sed 's/^/  /'
-[ "${PIPESTATUS[0]}" = 0 ] || bad "5 the gateway selection"
+run_pytest "5 the gateway selection" tests/ -q -k "gateway or harness or startup"
 
 say
 say "== 6. the enabler every OTHER agent host runs (portable, stdlib only) =="
-"$PY" -m pytest tests/test_gateway_model_list_helper.py -q 2>&1 | tail -1 | sed 's/^/  /'
-[ "${PIPESTATUS[0]}" = 0 ] || bad "6 the enabler's tests"
+run_pytest "6 the enabler's tests" tests/test_gateway_model_list_helper.py -q
 ENABLER=ops/scripts/manage/gateway-model-list.py
+DEP_ENABLER="$HOME/.hermes-cortex/scripts/gateway-model-list.py"
+# Exercise the DEPLOYED copy when this host has one: `--help` proves it starts, not that it
+# works, so the write/check round trip runs against whichever copy is the real one here.
+FUNC="$ENABLER"
+if [ -f "$DEP_ENABLER" ]; then
+  FUNC="$DEP_ENABLER"
+  say "  functionally exercising the DEPLOYED enabler: $DEP_ENABLER"
+else
+  say "  no deployed copy on this host (a fresh checkout): exercising the repo copy"
+fi
 tmp="$(mktemp -d)"
 printf '{"backends":[{"name":"pi","model_args":["--model","{model}"]}],"routing":{"default":"pi"}}\n' > "$tmp/gw.json"
-"$PY" "$ENABLER" --config "$tmp/gw.json" --models 'openrouter/openai/gpt-5,openrouter/x-ai/grok-4' --write >/dev/null 2>&1 \
+"$PY" "$FUNC" --config "$tmp/gw.json" --models 'openrouter/openai/gpt-5,openrouter/x-ai/grok-4' --write >/dev/null 2>&1 \
   && say "  write rc=0 on a config with other keys" || bad "6 the enabler could not write"
-"$PY" "$ENABLER" --config "$tmp/gw.json" --check 2>&1 | sed 's/^/  /'
+"$PY" "$FUNC" --config "$tmp/gw.json" --check 2>&1 | sed 's/^/  /'
 [ "${PIPESTATUS[0]}" = 0 ] || bad "6 --check on what it just wrote"
 "$PY" - "$tmp/gw.json" <<'PY' | sed 's/^/  /'
 import json, sys
@@ -132,16 +149,8 @@ print("other keys intact; models:", d["models"])
 PY
 [ "${PIPESTATUS[0]}" = 0 ] || bad "6 the write disturbed other config keys"
 rm -rf "$tmp"
-# Registered in cortex-update.sh, so the deploy above must have carried it to every host.
-DEP_ENABLER="$HOME/.hermes-cortex/scripts/gateway-model-list.py"
-if [ -f "$DEP_ENABLER" ]; then
-  say "  deployed to the host: $DEP_ENABLER"
-  "$PY" "$DEP_ENABLER" --help >/dev/null 2>&1 && say "  and it runs from the DEPLOYED path" \
-    || bad "6 the deployed enabler does not run"
-else
-  say "  SKIP — no deployed copy here (a fresh checkout has no deploy target)"
-fi
 
 say
+say "FAILS: $FAILS — the verifier's own exit code follows (0 here means every claim held)"
 if [ "$FAILS" -eq 0 ]; then say "ALL CLAIMS VERIFIED (0 failures)"; exit 0; fi
 say "$FAILS CLAIM(S) FAILED"; exit 1

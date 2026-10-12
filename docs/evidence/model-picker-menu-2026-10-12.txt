@@ -1,11 +1,11 @@
 Running: bash docs/evidence/verify-model-picker.sh
 rc: 0
-when: 2026-10-12T16:40:22Z
+when: 2026-10-12T16:44:13Z
 
 interpreter: /home/esther/.hermes/hermes-agent/venv/bin/python3
 == 0. the DEPLOY, and its own log (what is actually deployed NOW) ==
   cortex-dogfood --force rc=0
-       ⚠️  Overall: WARNING  (449 pass · 14 warn · 0 fail · 7 info)
+       ⚠️  Overall: WARNING  (450 pass · 14 warn · 0 fail · 6 info)
   ✅  DOGFOOD PASSED — deployed state verified clean.
 
 == 1. the picker's tests, BY NAME ==
@@ -30,10 +30,12 @@ interpreter: /home/esther/.hermes/hermes-agent/venv/bin/python3
   tests/test_gateway_slash_parity.py::test_model_command_with_only_whitespace_reports_status PASSED [ 90%]
   tests/test_gateway_slash_parity.py::test_pi_control_treats_no_models_matching_as_a_refusal_despite_rc0 PASSED [ 95%]
   tests/test_gateway_slash_parity.py::test_pi_control_accepts_a_table_of_models PASSED [100%]
-  ====================== 21 passed, 38 deselected in 0.23s =======================
+  ====================== 21 passed, 38 deselected in 0.24s =======================
+  [1 the model/menu tests] pytest rc=0
 
 == 1b. the WHOLE file (so a subset claim cannot outrun its evidence) ==
-  ============================== 59 passed in 0.92s ==============================
+  ============================== 59 passed in 0.94s ==============================
+  [1b the whole parity file] pytest rc=0
 
 == 2. the DEPLOYED copy this host runs ==
   deployed == repo modulo the deploy banner / blank lines: /home/esther/.hermes-cortex/scripts/cortex_gateway/daemon.py
@@ -52,15 +54,17 @@ interpreter: /home/esther/.hermes/hermes-agent/venv/bin/python3
   daemon.py: 📊 Summary: 1 file(s), 26 finding(s) 🟡 Medium: 4 🔵 Low: 2 ⚪ Info: 20 ✅ GATE_PASSED — no critical/high findings 
 
 == 5. the wider gateway selection (the regression sweep) ==
-  ==================== 313 passed, 1453 deselected in 42.94s =====================
+  ==================== 313 passed, 1453 deselected in 41.76s =====================
+  [5 the gateway selection] pytest rc=0
 
 == 6. the enabler every OTHER agent host runs (portable, stdlib only) ==
   ============================== 20 passed in 0.35s ==============================
+  [6 the enabler's tests] pytest rc=0
+  functionally exercising the DEPLOYED enabler: /home/esther/.hermes-cortex/scripts/gateway-model-list.py
   write rc=0 on a config with other keys
   ok: models: block healthy (2 entries)
   other keys intact; models: {'list': ['openrouter/openai/gpt-5', 'openrouter/x-ai/grok-4'], 'page_size': 6}
-  deployed to the host: /home/esther/.hermes-cortex/scripts/gateway-model-list.py
-  and it runs from the DEPLOYED path
 
+FAILS: 0 — the verifier's own exit code follows (0 here means every claim held)
 ALL CLAIMS VERIFIED (0 failures)
-sha256: 84e0e9c15ae1edc297fd5be50c774303ce12579bd55103b7b1f75689bdb13e79
+sha256: c90320770d9354168e74f933f61386b1572d7eae4758815a250c376abb7da72e
