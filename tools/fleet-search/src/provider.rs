@@ -20,6 +20,18 @@ pub struct Hit {
     pub snippet: String,
 }
 
+/// What a provider returned: the hits, and which engines could not answer.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct Outcome {
+    pub hits: Vec<Hit>,
+    /// Engine names that were unreachable or refused. SearXNG reports this and it is NOT noise:
+    /// with zero hits it is the difference between "nothing matched" (the query is the problem)
+    /// and "the engines that could answer were blocked" (the host is) — and only one of those is
+    /// worth retrying. Measured 2026-10-13: `brave` and `duckduckgo` are unresponsive from a
+    /// datacenter IP, which is exactly how a search returns zero results while looking healthy.
+    pub unresponsive: Vec<String>,
+}
+
 pub const SEARXNG_ENV: &str = "SEARXNG_URL";
 
 #[derive(Debug, PartialEq)]
@@ -56,14 +68,14 @@ pub fn configured() -> Option<String> {
 /// Parse a SearXNG JSON body. Pure, so the contract is testable without a server: this is the
 /// function to update when the upstream shape changes, and the tests here say exactly what we
 /// depend on.
-pub fn parse_searxng(body: &str, limit: usize) -> Result<Vec<Hit>, ProviderError> {
+pub fn parse_searxng(body: &str, limit: usize) -> Result<Outcome, ProviderError> {
     let value: serde_json::Value = serde_json::from_str(body)
         .map_err(|e| ProviderError::Shape(format!("body is not JSON: {e}")))?;
     let results = value
         .get("results")
         .and_then(|r| r.as_array())
         .ok_or_else(|| ProviderError::Shape("no `results` array in the response".to_string()))?;
-    Ok(results
+    let hits: Vec<Hit> = results
         .iter()
         .take(limit)
         .filter_map(|r| {
@@ -78,10 +90,30 @@ pub fn parse_searxng(body: &str, limit: usize) -> Result<Vec<Hit>, ProviderError
                 snippet: r.get("content").and_then(|c| c.as_str()).unwrap_or("").trim().to_string(),
             })
         })
-        .collect())
+        .collect();
+
+    // `unresponsive_engines` is a list of [engine, reason] pairs (or bare names, by version).
+    let unresponsive = value
+        .get("unresponsive_engines")
+        .and_then(|u| u.as_array())
+        .map(|engines| {
+            engines
+                .iter()
+                .filter_map(|e| match e {
+                    serde_json::Value::Array(pair) => pair.first(),
+                    other => Some(other),
+                })
+                .filter_map(|n| n.as_str())
+                .map(|n| n.trim().to_string())
+                .filter(|n| !n.is_empty())
+                .collect()
+        })
+        .unwrap_or_default();
+
+    Ok(Outcome { hits, unresponsive })
 }
 
-pub fn search(query: &str, limit: usize) -> Result<Vec<Hit>, ProviderError> {
+pub fn search(query: &str, limit: usize) -> Result<Outcome, ProviderError> {
     let Some(base) = configured() else {
         return Err(ProviderError::NotConfigured);
     };
@@ -106,16 +138,36 @@ mod tests {
             {"title":"Empty URL","url":"   "},
             {"title":"Two","url":"https://b.test/2","content":"second"}
         ]}"#;
-        let hits = parse_searxng(body, 10).expect("parse");
+        let out = parse_searxng(body, 10).expect("parse");
+        let hits = out.hits;
         assert_eq!(hits.len(), 2, "results without a usable URL are not results: {hits:?}");
         assert_eq!(hits[0].title, "One");
         assert_eq!(hits[1].url, "https://b.test/2");
     }
 
     #[test]
+    fn unresponsive_engines_are_surfaced_in_both_shapes() {
+        // SearXNG reports [engine, reason] pairs, and bare names in some versions.
+        let body = r#"{"results":[],"unresponsive_engines":[["brave","timeout"],["duckduckgo","403"],"wikidata"]}"#;
+        let out = parse_searxng(body, 10).expect("parse");
+        assert!(out.hits.is_empty());
+        assert_eq!(
+            out.unresponsive,
+            vec!["brave", "duckduckgo", "wikidata"],
+            "an unresponsive engine must survive parsing — it is what separates a blocked host \
+             from a query that found nothing"
+        );
+
+        // A body without the field is simply empty there, never an error.
+        let clean = parse_searxng(r#"{"results":[{"url":"https://a.test/1"}]}"#, 10).expect("parse");
+        assert!(clean.unresponsive.is_empty());
+        assert_eq!(clean.hits.len(), 1);
+    }
+
+    #[test]
     fn respects_the_limit() {
         let body = r#"{"results":[{"url":"1"},{"url":"2"},{"url":"3"}]}"#;
-        assert_eq!(parse_searxng(body, 2).expect("parse").len(), 2);
+        assert_eq!(parse_searxng(body, 2).expect("parse").hits.len(), 2);
     }
 
     #[test]

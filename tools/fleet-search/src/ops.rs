@@ -16,6 +16,9 @@ pub struct SearchOutput {
     pub query: String,
     pub provider: String,
     pub results: Vec<Hit>,
+    /// Engines that could not answer. With zero results this is the ONLY thing separating
+    /// "nothing matched" from "the engines that could answer were blocked" — see provider::Outcome.
+    pub unresponsive: Vec<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -83,11 +86,12 @@ pub fn hints(provider_configured: bool) -> Vec<String> {
 }
 
 pub fn web_search(query: &str, limit: usize) -> Result<SearchOutput, String> {
-    let hits = provider::search(query, limit).map_err(|e| e.message())?;
+    let outcome = provider::search(query, limit).map_err(|e| e.message())?;
     Ok(SearchOutput {
         query: query.to_string(),
         provider: provider::configured().unwrap_or_else(|| "none".to_string()),
-        results: hits,
+        results: outcome.hits,
+        unresponsive: outcome.unresponsive,
     })
 }
 

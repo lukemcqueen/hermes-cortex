@@ -92,8 +92,9 @@ A ready-to-use config, with these numbers beside it, is in
 
 Also learned by running it: SearXNG's JSON reports **`unresponsive_engines`**. With results it is
 informational; with ZERO results it separates *"nothing matched"* from *"the engines that could
-answer were blocked"* — and only one of those is worth retrying. The provider currently ignores
-that field, which is a defect worth fixing before SearXNG becomes a default.
+answer were blocked"* — and only one of those is worth retrying. The provider **surfaces it**
+(`unresponsive` is a first-class field in the JSON, and the CLI names the engines on stderr), which
+was verified against a live instance: `results: 2 | unresponsive: ['brave', 'duckduckgo', 'wikidata']`.
 
 ## The three operations
 
@@ -141,10 +142,10 @@ the adapter — a transport/adapter that invents behavior is the bug the gateway
 
 ## Honest limits (as of this commit)
 
-- **No live SearXNG round trip yet.** The provider's response parsing is pinned by tests and the
-  failure path is exercised as a real process, but no query has been run against a real instance
-  because none is deployed on this host. The claim "web_search works against SearXNG" is therefore
-  NOT yet made.
+- **Live SearXNG round trip: DONE** (2026-10-13). `web_search` was run against a real
+  `searxng/searxng:latest` instance on this host and returned real results; the same run showed the
+  provider surfacing `unresponsive` (`['brave', 'duckduckgo', 'wikidata']`). The instance was then
+  removed — nothing is wired to a running provider yet.
 - **Wiring is pending** in both systems (above). An unwired tool is a library, not a capability.
 - **`web_search_local` corpus is only what `web_fetch` has stored.** It is not an index of the
   fleet's repositories (mycortex owns that) and must not be described as one.

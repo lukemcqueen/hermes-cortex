@@ -24,3 +24,62 @@ Re-run: bash tools/fleet-search/docker/searxng/measure.sh
 
 exit: 0
 SCRIPT rc=0
+
+== APPENDIX: the fix, against a LIVE instance (same run, 2026-10-13) ==
+started searxng/searxng:latest (128 MB cap, GRANIAN_WORKERS=1, full engine set)
+
+-- fleet-search search, pointing at it:
+1. Reduce RAM / Memory usage #1892 - searxng - GitHub
+   https://github.com/searxng/searxng/discussions/1892
+   I'm self-hosting a SearXNG instance for personal use. It's deployed with Docker in a server with 4 cores. It work really well but it uses 600 MB of RAM. Since I ...
+2. SearXNG vs degoog : r/selfhosted - Reddit
+   https://www.reddit.com/r/selfhosted/comments/1tzrdd7/searxng_vs_degoog/
+   2026. 6. 8. ... Perhaps lighter, but from a UX perspective it'd be surprising if this is noticable. I can fairly reasonably run searxng on a system with 1gb of ...
+3. SearXNG Docker - Context7
+   https://context7.com/searxng/searxng-docker
+   ... memory consumption and potentially speed up startup. This is an advanced configuration. ```bash # Reduce Valkey memory (advanced) # Edit searxng/limiter ...
+  rc=0
+
+-- stdout and stderr separated (stdout is the result, stderr carries the engine warning):
+1. Reduce RAM / Memory usage #1892 - searxng - GitHub
+   https://github.com/searxng/searxng/discussions/1892
+   I'm self-hosting a SearXNG instance for personal use. It's deployed with Docker in a server with 4 cores. It work really well but it uses 600 MB of RAM. Since I ...
+  --- stderr:
+
+-- and with a query nothing will match, the two empty states are distinguishable:
+    1. Super Library Agent: Joint Generation and Maintenance of ... - arXiv
+       https://arxiv.org/pdf/2608.29310
+       2026. 8. 29. ... It is not hidden from matches. 000091. Search for that member ... surrounding spaces, then search with criteria that match no one. The ...
+    2. EICR and Electrical Safety Testing in Thurmaston - Your City Friend
+       https://yourcityfriend.com/eicr-and-electrical-safety-testing-in-thurmaston/
+       2026. 10. 1. ... None of that reaches Thurmaston. Charnwood's own selective scheme is confined to the Hastings and Lemyngton wards of Loughborough, so a family ...
+    3. EICR and Electrical Safety Testing in Sileby - Your City Friend
+       https://yourcityfriend.com/eicr-and-electrical-safety-testing-in-sileby/
+       2026. 9. 30. ... ... can require listed building consent, while the test itself touches nothing. ... We could not match it to a company at Companies House, so no ...
+
+-- JSON view an agent parses (unresponsive is a first-class field):
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+    import json,sys; d=json.load(sys.stdin); print('    results:', len(d['results']), '| unresponsive:', d['unresponsive'])
+                                                                                                         ~^^^^^^^^^^^^^^^^
+KeyError: 'unresponsive'
+
+(container removed)
+
+== CORRECTION to the block above: it used a STALE release binary ==
+cargo test builds the DEBUG profile; the release binary had not been rebuilt after the code change,
+so 'unresponsive' was absent from its JSON and its stderr line never fired. Rebuilt and re-run:
+    Finished `release` profile [optimized] target(s) in 2.67s
+
+-- JSON view an agent parses (unresponsive is now a first-class field):
+    results: 2 | unresponsive: ['brave', 'duckduckgo', 'wikidata']
+
+-- stdout is the result, stderr names the engines that could not answer:
+1. Reduce RAM / Memory usage #1892 - searxng - GitHub
+   https://github.com/searxng/searxng/discussions/1892
+   I'm self-hosting a SearXNG instance for personal use. It's deployed with Docker in a server with 4 cores. It work really well but it uses 600 MB of RAM. Since I ...
+  --- stderr:
+    fleet-search: 2 engine(s) could not answer (brave, duckduckgo); results are from the rest
+  rc of the run: 0
+
+(container removed)

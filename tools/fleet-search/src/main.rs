@@ -78,10 +78,29 @@ fn main() -> ExitCode {
                 if cli.json {
                     print_json(&out);
                 } else if out.results.is_empty() {
-                    println!("No results for: {query}");
+                    // An empty result is only "nothing found" if the engines could answer.
+                    if out.unresponsive.is_empty() {
+                        println!("No results for: {query}");
+                    } else {
+                        println!("Nothing matched: {query}");
+                        eprintln!(
+                            "fleet-search: {} engine(s) could NOT answer — {} . This is not proof \
+                             the query found nothing.",
+                            out.unresponsive.len(),
+                            out.unresponsive.join(", ")
+                        );
+                    }
                 } else {
                     for (i, hit) in out.results.iter().enumerate() {
                         println!("{}. {}\n   {}\n   {}", i + 1, hit.title, hit.url, hit.snippet);
+                    }
+                    if !out.unresponsive.is_empty() {
+                        eprintln!(
+                            "fleet-search: {} engine(s) could not answer ({}); results are from \
+                             the rest",
+                            out.unresponsive.len(),
+                            out.unresponsive.join(", ")
+                        );
                     }
                 }
                 ExitCode::from(EXIT_OK)
