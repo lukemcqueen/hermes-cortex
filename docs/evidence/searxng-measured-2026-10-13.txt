@@ -136,3 +136,13 @@ and are marked as such where they appear.
 -- the script that DOES measure the binary rebuilds it first:
     26:cargo build --release >/dev/null 2>&1 || {
    that rebuild precedes the size and RSS measurements below it.
+
+== why TWO 'test result' summaries can follow one command ==
+cargo runs every TEST BINARY in the crate. This crate has two: the unit tests inside src/ and
+the integration binary tests/end_to_end.rs. A filter matches in one and not the other, so a run
+prints one summary per binary - the '0 passed; 4 filtered out' line above is end_to_end.rs
+reporting that its 4 tests did not match the filter. Neither line is noise and neither is a
+pass count for the other's tests.
+
+== the inventory above is now its own artifact, not a block inside this file ==
+tools/fleet-search/test-inventory.txt - regenerate: cargo test -- --list | grep -E ': test$'
