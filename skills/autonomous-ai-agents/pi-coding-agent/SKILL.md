@@ -253,6 +253,62 @@ Harness index: `ops/install/harnesses/INDEX.md` · Adding another harness:
 `registry.yaml` + `generate-harnesses.py` · Runbook:
 `docs/runbooks/context-integration.md`.
 
+## Cortex-gateway — answer a Telegram bot with pi (the `command` backend)
+
+The standalone `cortex-gateway` (a systemd/launchd unit, decoupled from
+`hermes-gateway.service`) serves a Telegram bot with pi as a `kind: command`
+backend. `pi` itself needs no new adapter — it is DECLARED, not coded:
+
+- **Config/example:** `ops/scripts/gateway-pi.example.yaml` → copy to
+  `~/.hermes-cortex/gateway.yaml` (OUTSIDE the repo). `command` is an ARGV LIST,
+  so use the ABSOLUTE pi launcher path (`/home/<user>/.local/bin/pi` etc.) — a
+  relative or `~`-containing path is a per-message silent no-op. Use
+  `output: raw` (pi's stdout is exactly the answer), `session: per_chat` with
+  `CORTEX_SESSION_KEY={session_id}`, and a `timeout_s` that covers a real coding
+  turn (300s+), not a chat reply. Slash commands (`/compact,` `/model` …) are the
+  GATEWAY's to handle via pi RPC (`cortex_gateway/pi_control.py`), never forwarded
+  as prompts.
+- **A second Telegram bot must use a DISTINCT token var — never
+  `TELEGRAM_BOT_TOKEN`.** `cortex-gateway.service` runs
+  `guard_distinct_token.py` as `ExecStartPre`, which REFUSES to start when
+  `gateway.yaml`'s `bots[].token_ref` is the live bot's var/name — two pollers on
+  one bot token get a Telegram **409 Conflict** and the casualty is the LIVE
+  channel. Give the pi bot its own env token (e.g. `MOSESPI_BOT_TOKEN`=
+  `PI_BOT_TOKEN`) and reference that; `guard_distinct_token.py` confirms it is
+  distinct (prints the value's hash, never the value) before the unit starts.
+- **The sender allowlist IS the security perimeter** — a bot answered by pi can
+  execute bash, so set `TELEGRAM_ALLOWED_USERS` (and `TELEGRAM_HOME_CHANNEL`) to
+  the operator's chat id ONLY; likewise `GATEWAY_SECRET` (HMAC signing key) is
+  mandatory — the daemon refuses to start without it, because an empty key makes
+  every bus signature forgeable. The bot+config are assembled per host: env vars
+  into the canonical cortex env (`~/hermes-cortex/.env`), `gateway.yaml` from the
+  example, then `enable --now` the unit. Full reference: `docs/templates/
+  cortex-gateway.service` + `docs/design/cortex-gateway.md` (CR5 pi = the record,
+  live on the second-bot `@Esther0001Bot`).
+- **`TELEGRAM_API_BASE` is required and fails CLOSED — an `active` unit is not a
+  WORKING gateway.** The transport resolves the API base at call time and refuses
+  to build a URL without it (`TELEGRAM_API_BASE is not set — refusing to build a
+  Telegram API URL`), so the unit starts, reports `active`, and then backs off on
+  every poll. Set it in the cortex env (`TELEGRAM_API_BASE=https://api.telegram.org`
+  for the standard API) — Hermes's own gateway supplies this internally, so a
+  migration surfaces it as a NEW requirement. Verify a working gateway from the
+  JOURNAL, not `systemctl is-active`: `journalctl --user -u cortex-gateway.service`
+  must show a real dispatched turn and no recurring `poll error … backing off`.
+  Likewise a pi turn that exits non-zero with `No API key found for openrouter` is
+  the provider key missing, not the gateway — wire `auth.json` via the
+  `env-value.sh` `!command` pattern (see "Configure a provider" below) and prove it
+  with `pi auth check --provider openrouter` + one real turn before blaming the unit.
+- **The unit must run the FLEET VENV python, not `/usr/bin/python3`.** The template's
+  default `ExecStart=/usr/bin/python3 …/daemon.py` crash-loops (`Restart=always`
+  spins it) on `ImportError: psycopg package required` the moment the bot-lock layer
+  tries to reach the PGMQ Postgres — the system python has neither psycopg nor the
+  cortex deps. Repoint both `ExecStartPre`/`ExecStart` at
+  `<host>/.hermes-cortex/venv/bin/python3`, and make sure `psycopg[binary]` is
+  installed in that venv (the fleet venv historically lacks it — the same gap that
+  keeps `cortex-update.sh` from exiting clean). `pg_isready -h 127.0.0.1 -p <pg-port>`
+  confirms the bus Postgres is reachable before blaming psycopg. The venv's dashes
+  `mcp`/`jsonschema`/`idna` are present; psycopg is the usual missing one.
+
 ## Configure a provider (OpenRouter + a model)
 
 Verified against the installed package docs — `docs/providers.md`,

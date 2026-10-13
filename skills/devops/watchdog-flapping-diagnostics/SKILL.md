@@ -99,6 +99,18 @@ non-200/401/403 as **down**, so one throttled probe = false "unreachable".
   nginx -t && sudo systemctl reload nginx`) into the report and flag that the
   change will not take effect until that runs. Shipping the fix and declaring it
   done while /etc/nginx still throttles is exactly how this class recurs.
+- **"On disk and included" ≠ "loaded" — verify the running nginx actually has the fix before
+  concluding anything.** A fix shipped into `/etc/nginx/<conf>` and included from
+  `nginx.conf` can still be inactive in the running process. Decide by the worker, not the
+  master: `nginx -s reload` keeps the master PID and spawns NEW workers, so compare the
+  WORKER's start time against the config file's mtime —
+  `ps -o lstart= -p <worker-pid>` vs `stat -c '%y' /etc/nginx/<conf>`. Worker predates the
+  write ⇒ the fix is not loaded and the reload is still required; worker postdates ⇒ it took.
+  When you cannot read `/var/log/nginx/<access>.log` to check for residual 499/503 (root-log,
+  sudo prompts for a password, no NOPASSWD), the timestamp comparison is the non-sudo way to
+  determine load state. Confirm the include chain in passing (`grep include /etc/nginx/nginx.conf`
+  names `<conf>`, `ls sites-enabled/` links the server block, `systemctl is-active nginx` is
+  active) — those prove it is IN the config, not that it is LOADED.
 - **Compare /etc/nginx against the repo nginx template FIRST**
   (`ops/install/deploy/nginx/` for a cortex install). A drifted/stale deploy can
   carry tighter limits than the source, and a routine `cortex-update --force` will
@@ -128,3 +140,31 @@ today's throttle.
   backend directly) for a truthful status.
 - Throttling that only ever hits your OWN monitoring UAs (Python-urllib, the fleet
   watchdog) is the tell — an attacker would show many unknown/bot UAs.
+- **Distinguish buffer-echo from a still-live fix by reading the TIMESTAMPS of the residual
+  499/503 rows, never their bare count.** After applying a fix, `tail -N <log> | awk '{print $9}'`
+  keeps showing the throttled rows that were already in the buffer before the reload — a large
+  499/503 count in the tail window is NOT proof the fix failed. Compare each residual row's
+  timestamp against the fix's application time:
+  `tail -N <log> | awk '{print $4,$9,$NF}' | grep -E ' (499|503) '` — every row BEFORE the
+  fix time is old buffer (fix worked); any row AFTER it is a genuine recurrence (fix is not
+  covering that source),which usually means the gate-kept IPs differ from the `geo` allowlist.
+- **Quote the `date` format string when slicing a log by clock hour** — `grep -E "$(date +%Y/%m/%d %H)"`
+  (unquoted) splits `%H` off as a second `date` operand, `date` errors, and grep then matches
+  EVERY line — producing all-time counts that read as a still-failing fix. Use
+  `grep -E "$(date '+%Y/%m/%d %H')"` (single-quoted format) so you actually slice the current hour.
+- **A limit-zone KEY change cannot be applied by reload — it is a process-start property.
+  Zones keyed on `$binary_remote_addr` cannot be re-keyed on `$limit_bypass` via
+  `nginx -s reload`: nginx logs an `[emerg]` (`limit_req "general" uses the
+  "$limit_bypass" key while previously it used the "$binary_remote_addr" key`) and
+  silently keeps serving the stale worker — so a perfectly-correct allowlist config
+  applied by reload never actually activates. The empty-key bypass (and any zone KEY
+  change) requires a **full `systemctl restart nginx`**; reload re-parses+re-signals
+  but refuses the key swap. Verify by a **NEW worker PID** (today-dated) after the
+  restart `ps -eo pid,lstart,args | grep 'nginx: worker' — never by `nginx -T`
+  (which re-reads the on-disk files and stays unchanged-true while the worker holds the
+  pre-fix zones). A `systemctl reload` reporting `status=0` is just the signal
+  send, not the application; the worker's start time is the only proof it took.
+- **The allowlist-is-in-place fix failing = the reload was silently rejected.** When the
+  gate-kept IPs are allowlisted, `nginx -T` shows the geo,and 499/503 persist after a
+  "successful reload", suspect the zone-key `[emerg]` — check the worker PID (stale =
+  the reload never landed) and restart,and confirm a fresh worker appeared.

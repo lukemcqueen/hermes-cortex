@@ -291,6 +291,52 @@ Concrete shapes — paths, the callback envelope, callback-data encoding, and th
 4. Restart the gateway
 5. Verify `gateway_state.json` shows `"connected"` and send a test message
 
+## Enabling the decoupled cortex-gateway (a CLI-agent backend)
+
+The repo ships a standalone `cortex-gateway` unit (`docs/templates/cortex-gateway.service`)
+that answers a messaging bot with a pluggable backend, including a `kind: command` CLI
+coding agent (pi, Codex, Claude Code). It is deliberately INDEPENDENT of
+`hermes-gateway.service` — own unit, own config, no `After=`/`Wants=` on the incumbent.
+Enablement is a concrete sequence; books/detail: `pi-coding-agent`, `hermes-cortex`.
+
+1. **Config**: copy `ops/scripts/gateway.yaml.example` (or `gateway-pi.example.yaml` for a
+   CLI backend) to `~/.hermes-cortex/gateway.yaml` — OUTSIDE the repo. A CLI backend entry
+   is `kind: command` with an ABSOLUTE launcher path: `command` is an argv list, so `~`/`$HOME`
+   are NOT expanded and the launcher is often a symlink into a dir not on a service PATH — a
+   relative or guessed path is a silent per-message no-op.
+2. **Env** in the cortex env (`~/hermes-cortex/.env`): the bot's `token_ref` var,
+   `TELEGRAM_ALLOWED_USERS` (sender allowlist — REQUIRED; without it any Telegram user reaches
+   a bot that RUNS CODE), `TELEGRAM_HOME_CHANNEL`, `GATEWAY_SECRET` (HMAC; the daemon refuses to
+   start without it), `TELEGRAM_API_BASE` (the transport fails CLOSED without it — the standard
+   value is `https://api.telegram.org`; a missing base would otherwise build `/bot<token>/method`),
+   plus the bus URL/auth.
+3. **Unit**: copy the template into `~/.config/systemd/user/`, `daemon-reload`, `enable --now`.
+4. **Provider key** for the CLI backend via the `!command` pattern pointing at
+   `env-value.sh <VAR>` — it supplies exactly the one var, so the agent never inherits the whole
+   env file.
+
+Pitfalls that cost a cycle here:
+
+- **One poller per bot token — Telegram 409.** The unit's `ExecStartPre` guard
+  (`guard_distinct_token.py`) REFUSES a config whose `token_ref` IS (or resolves to) the live
+  `TELEGRAM_BOT_TOKEN`. Give the second gateway its OWN bot and its OWN token var
+  (e.g. `MOSESPI_BOT_TOKEN`); two pollers on one token drop the live channel. This is the guard
+  working, not a bug to bypass.
+- **The unit's `ExecStart` interpreter must actually have the deps.** The template defaults to
+  `/usr/bin/python3`; the cortex deps live in the fleet venv `~/.hermes-cortex/venv/bin/python3`.
+  Point BOTH `ExecStartPre` and `ExecStart` at the venv python, and when a dep is missing install
+  it INTO that venv (age-gated) rather than routing around it — a bot-lock
+  `ImportError: psycopg package required` is the daemon's Postgres bus dependency surfacing, not a
+  bad config; and a unit that crash-loops with that traceback is otherwise indistinguishable from
+  a broken install.
+- **`~/.hermes/config.yaml` is Hermes-owned and the patch/write tools REFUSE it** ("Agent cannot
+  modify security-sensitive configuration"). Edit it only through the CLI: `hermes mcp add <name>
+  --command … --args …` / `hermes mcp remove <name>`, or `hermes config`. The `add` flow prompts
+  `Enable all N tools?` and CANCELS with no TTY — pipe `printf 'y\n' |` to accept. Read back with
+  `hermes mcp list`. A doctor FAIL naming an MCP server that is present under a different key is a
+  NAME drift (the fleet-canonical name is what the doctor expects, e.g. `agent-bus` and not a
+  legacy alias) — add the canonical key and remove the legacy one, one server for the script.
+
 ## Common Failure Patterns
 
 | Symptom | Root cause | Fix |

@@ -782,6 +782,19 @@ as `.txt` mean the ignored `.log` was the wrong filename, not a missing ignore r
   no change made") — an explicit unscored close is an accurate record, while walking
   away from the cycle is a leak. Do not leave it for the reaper, and do not let the
   abandoned cycle stop you from reporting which half of the work is still pending.
+- **A cycle whose work is NOT a repo commit cannot close — score it, then let the lock
+  lapse.** A pull+update, a service enable, an env/config change, a bus dispatch: the
+  window is the commits in the lock's repo, so a cycle that authored NONE draws the
+  wrong-repo refusal (*"no commits in the window"* → *"the lock's repo cannot contain
+  this session's work"*) however correct the lock and however real the work. There is
+  no fix to reach for: do NOT `force`, do NOT retry `end_change` in a loop, and never
+  author a throwaway commit to manufacture a window the work does not have. Run
+  `feedback_accept` anyway — a scored `MOVE_ON` cycle is not PENDING, so no doctor FAIL
+  lingers — then let the 1-hour TTL reap the lock. The work itself is finished and
+  verified; report the refusal as an administrative artifact, not a failure. (The
+  inverse trap is the guard's own weakness: it keys on an EMPTY change count, so a
+  single unrelated peer/pipeline commit in the lock's repo makes it pass — such a guard
+  must key on AUTHORSHIP, see the wrong-repo section.)
 - **`check_lock` can say `active: false` while `begin_change` refuses with "a governance
   session is already active".** They read different things — the session/lock registry vs
   the lock file — so a lock the reaper has already reaped, or a session whose TTL has not
