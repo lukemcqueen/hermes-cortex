@@ -49,3 +49,16 @@ Doctor after final merge: **435 pass · 6 warn · 1 fail · 10 info** — same o
 
 ## 7. Outcome
 Pull + deploy complete and verified. Doctor clean except out-of-scope fail (steadfaste) and known/pre-existing warns. **Gateway restart pending (operator action).**
+
+## 8. Peer-commit scope note (for the close review)
+The close-review window `base..HEAD` includes esther's upstream commit **e50938f2** ("fix(governance): a lock must not lie about who holds it, or about which repo it governs"), which entered this branch via the MERGE at step 2. Its files — `docs/enforcer-known-issues.md`, `docs/evidence/foreign_lock_reporting.py`, `docs/evidence/lock-truth-2026-10-13.txt`, `mcp-servers/loop-gov-mcp.py`, `ops/scripts/loop-gov.py`, `tests/test_lock_truth.py` — are **esther's work, NOT this cycle's**. Per change-checklist Phase 5, a peer commit landing mid-cycle shows up as scope drift in the range; the correct response is to name the peer SHA and leave their work untouched (reverting it to green the gate would be the same violation as an amend). This cycle's own changes are limited to: the pull/merge itself + `docs/evidence/pull-latest-cortex-update-2026-10-13.md`, `docs/evidence/verify-pull-latest-cortex-update-2026-10-13.sh`, `docs/evidence/verify-pull-latest-cortex-update-2026-10-13.txt`, and the two `docs/DOCS-INDEX.md` entries.
+
+## 9. How the verify script re-runs every claim
+`verify-pull-latest-cortex-update-2026-10-13.sh` (committed, exits non-zero on any failure) re-runs:
+1. **Git sync** — asserts both upstream commits (e4fd5f7e, e50938f2) are ancestors of HEAD and `behind=0`.
+2. **Deploy sync** — diffs deployed vs repo (SOURCE header stripped) for the 4 deploy-map files the pulled commits changed: `cortex-update.sh`, `mcp_wiring.py`, `cortex_doctor/checks.py`, `cortex_doctor/config.py`.
+3. **Governance immutability** — asserts 9/9 enforcement paths carry `uchg`/`schg` flags after the rc=1 relock wrapper.
+4. **Doctor** — re-runs `cortex-doctor.py --quiet`, asserts its only fail is the out-of-scope `steadfaste` AGENTS.md.
+5. **Enforcer deploy** — asserts the deployed enforcer is present and substantive (>1000 bytes), documenting the deploy≠load gap (gateway restart is the operator step).
+6. **MCP wiring** — asserts the cortex venv has the `mcp` package.
+Captured run: `verify-pull-latest-cortex-update-2026-10-13.txt` — **11 checks, 0 failures, exit 0**.
