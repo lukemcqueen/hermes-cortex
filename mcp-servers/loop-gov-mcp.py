@@ -1446,7 +1446,7 @@ async def list_tools(ctx, params=None) -> ListToolsResult:
         ),
         Tool(
             name="check_lock",
-            description="Check if a governance lock is active. Returns the full lock state including session_id, heartbeat_at, and ttl_seconds if active. On every call, refreshes the heartbeat to prevent staleness. Auto-releases stale locks where heartbeat has exceeded TTL.",
+            description="Check governance lock state. Returns THIS session's lock (active, lock) plus EVERY live lock on disk (locks, live_lock_count: task, session, agent, repo, heartbeat) — a call with no session can only resolve its own lock, so read `locks` to see another session's live lock rather than concluding none exists. On every call, refreshes the heartbeat to prevent staleness. Auto-releases stale locks where heartbeat has exceeded TTL.",
             inputSchema={
                 "type": "object",
                 "properties": {},
@@ -4179,18 +4179,66 @@ def _end_change(args: dict) -> CallToolResult:
     )])
 
 
+def _live_locks() -> list[dict]:
+    """Every LIVE lock on disk, whatever session owns it.
+
+    `_read_lock` is session-scoped, so a bare `check_lock()` answered
+    `active: false` while another session's valid lock — and its PENDING cycle —
+    sat in the state dir: a false "no locks at all" from the one diagnostic an
+    operator reaches for (docs/enforcer-known-issues.md #1). The session-scoped
+    value is kept; this is the full picture reported beside it.
+
+    Stale locks are excluded (they are not live) and an unparseable file is
+    skipped: a mid-write file is not truth, and it is not deleted either (P1-A).
+    """
+    locks: list[dict] = []
+    if not GOVERNANCE_STATE_DIR.exists():
+        return locks
+    for lock_file in sorted(GOVERNANCE_STATE_DIR.glob(".governance-*.json")):
+        try:
+            if lock_file.is_symlink():
+                continue
+            state = json.loads(lock_file.read_text())
+            mtime = lock_file.stat().st_mtime
+        except (json.JSONDecodeError, OSError, ValueError):
+            continue
+        if _is_lock_stale(state, mtime):
+            continue
+        locks.append({
+            "task_id": state.get("task_id", "unknown"),
+            "session_id": state.get("session_id", "unknown"),
+            "agent": state.get("agent", "unknown"),
+            "status": state.get("status"),
+            "repo_slug": state.get("repo_slug"),
+            "repo_path": state.get("repo_path"),
+            "started_at": state.get("started_at"),
+            "heartbeat_at": state.get("heartbeat_at"),
+            "file": lock_file.name,
+        })
+    return locks
+
+
 def _check_lock(args: dict | None = None) -> CallToolResult:
     """Check if a governance lock is active.
 
+    Reports THIS session's lock (``active``/``lock``) AND every live lock on disk
+    (``locks``/``live_lock_count``), so a call with no session — which can only
+    resolve its own lock — can never read as "no locks at all".
     Updates heartbeat on every call to prevent staleness.
     Auto-releases locks whose heartbeat has exceeded TTL.
     Proactively purges stale locks from other sessions (GAP #9).
     """
     _purge_stale_locks()
     state = _read_lock(args)
+    live = _live_locks()
     if state is None:
         return CallToolResult(content=[TextContent(
-            type="text", text=json.dumps({"active": False, "lock": None}, indent=2)
+            type="text", text=json.dumps({
+                "active": False,
+                "lock": None,
+                "live_lock_count": len(live),
+                "locks": live,
+            }, indent=2)
         )])
 
     # Check staleness
@@ -4211,6 +4259,8 @@ def _check_lock(args: dict | None = None) -> CallToolResult:
                 "lock": None,
                 "auto_released": True,
                 "released_lock": stale,
+                "live_lock_count": len(live),
+                "locks": live,
             }, indent=2)
         )])
 
@@ -4224,6 +4274,8 @@ def _check_lock(args: dict | None = None) -> CallToolResult:
             "active": True,
             "lock": state,
             "file": str(_session_lock_path(state.get("session_id", ""))),
+            "live_lock_count": len(live),
+            "locks": live,
         }, indent=2)
     )])
 
