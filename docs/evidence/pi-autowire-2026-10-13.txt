@@ -1,0 +1,145 @@
+Running: bash -c 
+CV="$0"
+echo "== the three new tests, pytest output unfiltered =="
+"$CV" -m pytest tests/test_pi_skills_autowire.py -v --no-header -p no:cacheprovider
+echo
+echo "== the test file inlined, so the window cannot truncate the assertions =="
+cat tests/test_pi_skills_autowire.py
+echo
+echo "== the existing installer suite, FULL output =="
+bash tests/test_pi_registration_installer.sh; echo "rc=$?"
+echo
+echo "== the per-layer audit, FULL output (all 7 layers) =="
+bash "$HOME/.hermes-cortex/scripts/audit-pi-integration.sh"; echo "rc=$?"
+echo
+echo "== the DEPLOYED adapter --check (was rc=1 PyYAML required) =="
+bash "$HOME/.hermes-cortex/scripts/install-pi-integration.sh" --check; echo "rc=$?"
+echo
+echo "== extract from the committed raw deploy log: the Pi step and the verdict =="
+grep -iE "Pi integration|doctor: |DOGFOOD" docs/evidence/pi-autowire-deploy-2026-10-13.raw.txt
+echo
+echo "== extract from the committed raw doctor JSON: its own counts =="
+"$CV" -c "import json; d=json.load(open(\"docs/evidence/pi-autowire-doctor-2026-10-13.raw.json\")); print(\"summary:\", json.dumps(d[\"summary\"])); print(\"healthy:\", d[\"healthy\"]); print([c for c in d[\"checks\"] if c.get(\"name\")==\"Pi integration\"])"
+ /home/esther/.hermes-cortex/venv/bin/python3
+rc: 0
+when: 2026-10-13T04:49:25Z
+
+== the three new tests, pytest output unfiltered ==
+============================= test session starts ==============================
+collecting ... collected 3 items
+
+tests/test_pi_skills_autowire.py::test_the_adapter_resolves_yaml_before_falling_back_to_a_bare_python3 PASSED [ 33%]
+tests/test_pi_skills_autowire.py::test_the_resolver_returns_an_interpreter_that_really_imports_yaml PASSED [ 66%]
+tests/test_pi_skills_autowire.py::test_the_deploy_runs_the_pi_adapters_and_guards_on_pi_being_present PASSED [100%]
+
+============================== 3 passed in 0.18s ===============================
+
+== the test file inlined, so the window cannot truncate the assertions ==
+#!/usr/bin/env python3
+"""The Pi adapter must actually RUN, and the deploy must actually run IT.
+
+  A. `install-pi-integration.sh` needs PyYAML to read the skills manifest, and it
+     picked its interpreter by PATH existence (`command -v python3`) — the
+     interpreter most likely to LACK it. Measured on esther: the deployed adapter
+     answered "PyYAML required (pip install pyyaml)" and exited 1, silently
+     skipping the skills half on a host that had everything it needed. It must
+     resolve an interpreter that can IMPORT yaml, not one that merely exists.
+
+  B. `cortex-update.sh` registered the installer and never ran it, with no
+     Pi-presence check anywhere in the deploy: a host with Pi installed could sit
+     unwired with nothing reporting it. The deploy must run the adapters WHEN PI IS
+     PRESENT, and leave a host without Pi alone.
+
+Hermetic: no Pi config is touched — the resolver is exercised on its own, and the
+deploy assertion is over its source.
+"""
+from __future__ import annotations
+
+import subprocess
+from pathlib import Path
+
+REPO = Path(__file__).resolve().parent.parent
+ADAPTER = REPO / "ops" / "scripts" / "install" / "install-pi-integration.sh"
+DEPLOY = REPO / "ops" / "scripts" / "cortex-update.sh"
+RESOLVER = REPO / "ops" / "scripts" / "lib" / "python-with-module.sh"
+
+
+def test_the_adapter_resolves_yaml_before_falling_back_to_a_bare_python3():
+    """A PATH pick is an allowed LAST RESORT; what broke the host was picking by PATH
+    FIRST. The order is the property, so the order is what is pinned."""
+    src = ADAPTER.read_text()
+    assert "python-with-module.sh" in src, "the adapter must use the shared resolver"
+    assert "--print yaml" in src, "it must ask for an interpreter that imports yaml"
+    assert src.index("python-with-module.sh") < src.index("command -v python3"), (
+        "the yaml-capable resolver must be consulted BEFORE a bare PATH pick — "
+        "picking by PATH first is what answered 'PyYAML required' on a host that had it")
+
+
+def test_the_resolver_returns_an_interpreter_that_really_imports_yaml():
+    """The mechanism the adapter now depends on, exercised rather than assumed."""
+    proc = subprocess.run(["bash", str(RESOLVER), "--print", "yaml"],
+                          capture_output=True, text=True, timeout=120)
+    assert proc.returncode == 0, (proc.returncode, proc.stdout, proc.stderr)
+    interp = proc.stdout.strip()
+    assert interp, "the resolver printed no interpreter"
+    proof = subprocess.run([interp, "-c", "import yaml; print(yaml.__version__)"],
+                           capture_output=True, text=True, timeout=120)
+    assert proof.returncode == 0, (interp, proof.stdout, proof.stderr)
+    assert proof.stdout.strip(), "no PyYAML version reported"
+
+
+def test_the_deploy_runs_the_pi_adapters_and_guards_on_pi_being_present():
+    src = DEPLOY.read_text()
+    assert "install-pi-integration.sh" in src and "install-pi-mcp.sh" in src
+    # The RUNNER, not the register line: the guard block is what makes it happen.
+    i = src.index("Pi harness integration")
+    block = src[i:i + 1800]
+    assert ".pi/agent/bin/pi" in block, "presence of Pi must be what decides"
+    assert "bash \"$_pi_script\"" in block, "the deploy must RUN the installer, not just copy it"
+    assert "install-pi-mcp.sh install-pi-integration.sh" in block, "both halves are run"
+
+== the existing installer suite, FULL output ==
+  PASS  run1: user keys/paths preserved + extension + curated always-set
+  PASS  run2: idempotent (no duplicate entries)
+  PASS  --check exits 0 when registered
+  PASS  --remove strips only ours, keeps user entries
+  PASS  missing manifest → non-zero exit
+  PASS  missing manifest → says why
+
+ALL PASS
+rc=0
+
+== the per-layer audit, FULL output (all 7 layers) ==
+Pi integration audit — /home/esther/.pi/agent/bin/pi (v1.2.0)
+  ✅ PASS      cortex servers present and runnable: loop-governance, tasks, executor, agent-bus, cortex-context — AGENT_NAME=esther on every entry
+  ✅ PASS      live check (agent, in a Pi session): 'pi mcp list' → every cortex server should report 'connected' (no tool count is asserted here: this audit cannot measure one)
+  ✅ PASS      7/7 curated skills linked in /home/esther/.pi/agent/cortex-skills, settings.json carries extensions+skills
+  ✅ PASS      cortex-context extension present (native mem_*/session_* tools are visible to the agent itself)
+  ✅ PASS      loop-governance gate deployed (a cycle test is the agent's own check: begin_change -> feedback_accept -> end_change)
+  ✅ PASS      AGENT_NAME=esther
+  ✅ PASS      cortex venv python present (install-pi-mcp.sh prefers it)
+
+  RESULT: PASS (every layer required on this host)
+rc=0
+
+== the DEPLOYED adapter --check (was rc=1 PyYAML required) ==
+  ✓ extension registered, 7 curated skills present
+install-pi-integration: registered
+rc=0
+
+== extract from the committed raw deploy log: the Pi step and the verdict ==
+━━━ cortex-dogfood ━━━
+   [0;32m✓[0m Pi integration: install-pi-mcp.sh OK
+   [0;32m✓[0m Pi integration: install-pi-integration.sh OK
+       ✅ Pi integration
+       ✅ Checksum: cortex-dogfood.sh
+   [1;33m⚠[0m doctor: warnings only (rc=1) — review the report above when convenient
+     ✅ Pi integration — cortex skills + extension registered (install-pi-integration: registered)
+     ✅ Checksum: cortex-dogfood.sh — content matches (after stripping SOURCE header)
+✅  DOGFOOD PASSED — deployed state verified clean.
+
+== extract from the committed raw doctor JSON: its own counts ==
+summary: {"pass": 455, "warn": 18, "fail": 0, "info": 6}
+healthy: False
+[{'name': 'Pi integration', 'status': 'PASS', 'detail': 'cortex skills + extension registered (install-pi-integration: registered)', 'fix': ''}]
+sha256: 59f9ee6ba38f86755321d8c9d52643c5bb8fa51a72f0d04fc5c9b2b413661f5f

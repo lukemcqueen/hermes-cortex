@@ -1,0 +1,2895 @@
+{
+  "summary": {
+    "pass": 455,
+    "warn": 18,
+    "fail": 0,
+    "info": 6
+  },
+  "checks": [
+    {
+      "name": "Repo branch",
+      "status": "PASS",
+      "detail": "on 'main'",
+      "fix": ""
+    },
+    {
+      "name": "Repo clean",
+      "status": "WARN",
+      "detail": "1 uncommitted change(s)",
+      "fix": "Run: git status to review"
+    },
+    {
+      "name": "Repo sync",
+      "status": "WARN",
+      "detail": "9 commit(s) behind origin/main",
+      "fix": "REQUIRED: git pull --rebase"
+    },
+    {
+      "name": "Deploy sync",
+      "status": "PASS",
+      "detail": "content-current \u2014 every deploy-map file changed since the last deploy (b16cb9f17ecf) matches its deployed copy (0 checked)",
+      "fix": ""
+    },
+    {
+      "name": "AGENTS.md sync",
+      "status": "PASS",
+      "detail": "",
+      "fix": ""
+    },
+    {
+      "name": "Deployed gate smoke",
+      "status": "PASS",
+      "detail": "deployed verifier TOON check active (malformed fixture flagged)",
+      "fix": ""
+    },
+    {
+      "name": "Self-adversarial review template",
+      "status": "PASS",
+      "detail": "present with REVIEWED MATERIAL marker",
+      "fix": ""
+    },
+    {
+      "name": "Self-adversarial review gate",
+      "status": "PASS",
+      "detail": "end_change hard gate helpers present in loop-gov-mcp.py",
+      "fix": ""
+    },
+    {
+      "name": "Self-adversarial review key",
+      "status": "PASS",
+      "detail": "OPENROUTER_API_KEY resolvable",
+      "fix": ""
+    },
+    {
+      "name": "AGENTS.md efficiency (proj)",
+      "status": "WARN",
+      "detail": "dev repo AGENTS.md missing fleet session-efficiency block",
+      "fix": "Run: python3 /home/esther/.hermes-cortex/scripts/apply-repo-efficiency.py /home/esther/proj --commit"
+    },
+    {
+      "name": "CLAUDE.md (dev repos)",
+      "status": "PASS",
+      "detail": "all 1 active dev repo(s) have CLAUDE.md",
+      "fix": ""
+    },
+    {
+      "name": "SOUL.md canonical 12 (~/.hermes)",
+      "status": "PASS",
+      "detail": "all 12 canonical principles present",
+      "fix": ""
+    },
+    {
+      "name": "SOUL.md local principles (~/.hermes)",
+      "status": "PASS",
+      "detail": "4 local principle(s) \u2014 allowed (\u226412, generic, non-duplicating)",
+      "fix": ""
+    },
+    {
+      "name": "SOUL.md template sync (~/.hermes)",
+      "status": "PASS",
+      "detail": "",
+      "fix": ""
+    },
+    {
+      "name": "SOUL.md reverse drift (~/.hermes)",
+      "status": "PASS",
+      "detail": "",
+      "fix": ""
+    },
+    {
+      "name": "Skills manifest: always",
+      "status": "PASS",
+      "detail": "all 7 required skills present",
+      "fix": ""
+    },
+    {
+      "name": "Skills manifest: on_task",
+      "status": "PASS",
+      "detail": "covers debug, review, planning, enterprise",
+      "fix": ""
+    },
+    {
+      "name": "Skills manifest: disk check",
+      "status": "PASS",
+      "detail": "all 15 skills found on disk",
+      "fix": ""
+    },
+    {
+      "name": "Cron prompt stale refs",
+      "status": "PASS",
+      "detail": "no stale bus-target references in live cron prompts",
+      "fix": ""
+    },
+    {
+      "name": "Script run evidence",
+      "status": "PASS",
+      "detail": "all 76 changed script(s) have run through the scheduler since their change",
+      "fix": ""
+    },
+    {
+      "name": "Crons registered",
+      "status": "PASS",
+      "detail": "all 21 expected crons present and healthy",
+      "fix": ""
+    },
+    {
+      "name": "Crons: orphans",
+      "status": "PASS",
+      "detail": "no unexpected crons found",
+      "fix": ""
+    },
+    {
+      "name": "Orch crons",
+      "status": "PASS",
+      "detail": "all 6 orchestrator crons present (host: esther)",
+      "fix": ""
+    },
+    {
+      "name": "Crons total",
+      "status": "PASS",
+      "detail": "26 jobs registered",
+      "fix": ""
+    },
+    {
+      "name": "Cron manifest drift",
+      "status": "PASS",
+      "detail": "all in-scope crons match manifest (72 declared)",
+      "fix": ""
+    },
+    {
+      "name": "Script integrity",
+      "status": "PASS",
+      "detail": "all cron scripts found and match repo source",
+      "fix": ""
+    },
+    {
+      "name": "Doctor version",
+      "status": "PASS",
+      "detail": "Deployed version matches repo",
+      "fix": ""
+    },
+    {
+      "name": "Tool (python3)",
+      "status": "PASS",
+      "detail": "found \u2014 runtime scripts (contact-orchestrator.sh, handler, doctor)",
+      "fix": ""
+    },
+    {
+      "name": "Tool (git)",
+      "status": "PASS",
+      "detail": "found \u2014 repo pull/push, hooks",
+      "fix": ""
+    },
+    {
+      "name": "Tool (curl)",
+      "status": "PASS",
+      "detail": "found \u2014 bus HTTP client, doctor HTTP checks, health pings",
+      "fix": ""
+    },
+    {
+      "name": "Service (Dashboard)",
+      "status": "PASS",
+      "detail": "HTTP 401",
+      "fix": ""
+    },
+    {
+      "name": "Service (Langfuse)",
+      "status": "PASS",
+      "detail": "HTTP 401",
+      "fix": ""
+    },
+    {
+      "name": "Service (Agent Bus)",
+      "status": "PASS",
+      "detail": "HTTP 401",
+      "fix": ""
+    },
+    {
+      "name": "Agent Bus (direct)",
+      "status": "PASS",
+      "detail": "HTTP 200 \u2014 bus service healthy via localhost:8903",
+      "fix": ""
+    },
+    {
+      "name": "Bus config (URL)",
+      "status": "PASS",
+      "detail": "BUS_URL set",
+      "fix": ""
+    },
+    {
+      "name": "Bus config (fallback)",
+      "status": "PASS",
+      "detail": "FALLBACK_URL set",
+      "fix": ""
+    },
+    {
+      "name": "Bus health",
+      "status": "PASS",
+      "detail": "Status: ok \u2014 backend: pgmq",
+      "fix": ""
+    },
+    {
+      "name": "Bus self (send\u2192read\u2192archive)",
+      "status": "PASS",
+      "detail": "correlation_id match \u2014 full cycle OK",
+      "fix": ""
+    },
+    {
+      "name": "Bus stuck msgs",
+      "status": "PASS",
+      "detail": "No stuck messages \u2014 queue empty and healthy",
+      "fix": ""
+    },
+    {
+      "name": "Bus delivery age",
+      "status": "PASS",
+      "detail": "no inbox holds a message older than 60m",
+      "fix": ""
+    },
+    {
+      "name": "Bus handler",
+      "status": "PASS",
+      "detail": "agent-message-handler.py exists (72310 bytes)",
+      "fix": ""
+    },
+    {
+      "name": "Ollama",
+      "status": "PASS",
+      "detail": "2 model(s) loaded",
+      "fix": ""
+    },
+    {
+      "name": "worker-service",
+      "status": "PASS",
+      "detail": "hermes-agent-worker not active",
+      "fix": ""
+    },
+    {
+      "name": "Metrics arrival age",
+      "status": "PASS",
+      "detail": "1 agent(s) pushed within 30m; arrived: Esther; 5 known agent(s) not seen at this sink (Gisu, Joseph, Kustos, Moses, Titus) \u2014 expected if they push elsewhere or have no VICTORIA_METRICS_URL",
+      "fix": ""
+    },
+    {
+      "name": "Systemd scope",
+      "status": "PASS",
+      "detail": "no system-level Hermes services (all user-level)",
+      "fix": ""
+    },
+    {
+      "name": "Disk usage",
+      "status": "PASS",
+      "detail": "88G used / 782G free (11%)",
+      "fix": ""
+    },
+    {
+      "name": "Memory",
+      "status": "PASS",
+      "detail": "3.5Gi used / 7.7Gi total",
+      "fix": ""
+    },
+    {
+      "name": "Network safety",
+      "status": "PASS",
+      "detail": "no services exposed on 0.0.0.0",
+      "fix": ""
+    },
+    {
+      "name": "Systemd linger",
+      "status": "PASS",
+      "detail": "enabled \u2014 user services survive reboot",
+      "fix": ""
+    },
+    {
+      "name": "Systemd stale units",
+      "status": "PASS",
+      "detail": "no unexpected failed units",
+      "fix": ""
+    },
+    {
+      "name": "Systemd crash loops",
+      "status": "PASS",
+      "detail": "no units in auto-restart loop",
+      "fix": ""
+    },
+    {
+      "name": "Config (JUDGE_MODEL)",
+      "status": "INFO",
+      "detail": "defined but zero consumer scripts reference it",
+      "fix": ""
+    },
+    {
+      "name": "Config (EMBEDDING_MODEL)",
+      "status": "INFO",
+      "detail": "defined but zero consumer scripts reference it",
+      "fix": ""
+    },
+    {
+      "name": "Config (CODING_MODEL)",
+      "status": "INFO",
+      "detail": "defined but zero consumer scripts reference it",
+      "fix": ""
+    },
+    {
+      "name": "Config (CREATIVE_MODEL)",
+      "status": "INFO",
+      "detail": "defined but zero consumer scripts reference it",
+      "fix": ""
+    },
+    {
+      "name": "Nginx config",
+      "status": "PASS",
+      "detail": "found at /etc/nginx/sites-available/hermes-services.conf",
+      "fix": ""
+    },
+    {
+      "name": "Nginx htpasswd",
+      "status": "PASS",
+      "detail": "/etc/nginx/.hermes-htpasswd exists",
+      "fix": ""
+    },
+    {
+      "name": "Nginx SSL certs",
+      "status": "PASS",
+      "detail": "2 cert path(s) resolve",
+      "fix": ""
+    },
+    {
+      "name": "Nginx syntax",
+      "status": "PASS",
+      "detail": "config valid (nginx -t)",
+      "fix": ""
+    },
+    {
+      "name": "Nginx dir purity",
+      "status": "PASS",
+      "detail": "all confs in ops/install/deploy/nginx/ are nginx configs",
+      "fix": ""
+    },
+    {
+      "name": "Legacy enforcer plugin",
+      "status": "PASS",
+      "detail": "no stale legacy enforcer plugins",
+      "fix": ""
+    },
+    {
+      "name": "Governance plugin",
+      "status": "PASS",
+      "detail": "installed at ~/.hermes/plugins/governance-enforcer",
+      "fix": ""
+    },
+    {
+      "name": "Plugin content",
+      "status": "PASS",
+      "detail": "copy matches repo source",
+      "fix": ""
+    },
+    {
+      "name": "Enforcer survey gate",
+      "status": "PASS",
+      "detail": "cronjob(create) requires .cron-survey-done marker",
+      "fix": ""
+    },
+    {
+      "name": "Plugin config",
+      "status": "PASS",
+      "detail": "enabled in config.yaml",
+      "fix": ""
+    },
+    {
+      "name": "Plugin source",
+      "status": "PASS",
+      "detail": "source in repo at plugins/governance-enforcer",
+      "fix": ""
+    },
+    {
+      "name": "MCP server (agent-bus)",
+      "status": "PASS",
+      "detail": "configured in config.yaml",
+      "fix": ""
+    },
+    {
+      "name": "MCP wiring (agent-bus)",
+      "status": "WARN",
+      "detail": "registered against the HERMES venv (/home/esther/.hermes/hermes-agent/venv/bin/python3) \u2014 the tree the fleet is migrating off",
+      "fix": "hermes mcp remove agent-bus && hermes mcp add agent-bus --command ~/.hermes-cortex/venv/bin/python3 --args ~/hermes-cortex/cortex-bus-mcp.py   (there is no 'hermes mcp update'; re-add it)"
+    },
+    {
+      "name": "MCP server (loop-governance)",
+      "status": "PASS",
+      "detail": "configured in config.yaml",
+      "fix": ""
+    },
+    {
+      "name": "MCP wiring (loop-governance)",
+      "status": "WARN",
+      "detail": "registered against the HERMES venv (/home/esther/.hermes/hermes-agent/venv/bin/python3) \u2014 the tree the fleet is migrating off",
+      "fix": "hermes mcp remove loop-governance && hermes mcp add loop-governance --command ~/.hermes-cortex/venv/bin/python3 --args ~/hermes-cortex/loop-gov-mcp.py   (there is no 'hermes mcp update'; re-add it)"
+    },
+    {
+      "name": "MCP server (tasks)",
+      "status": "PASS",
+      "detail": "configured in config.yaml",
+      "fix": ""
+    },
+    {
+      "name": "MCP wiring (tasks)",
+      "status": "WARN",
+      "detail": "registered against the HERMES venv (/home/esther/.hermes/hermes-agent/venv/bin/python3) \u2014 the tree the fleet is migrating off",
+      "fix": "hermes mcp remove tasks && hermes mcp add tasks --command ~/.hermes-cortex/venv/bin/python3 --args ~/hermes-cortex/task-mcp.py   (there is no 'hermes mcp update'; re-add it)"
+    },
+    {
+      "name": "MCP server (executor)",
+      "status": "PASS",
+      "detail": "configured in config.yaml",
+      "fix": ""
+    },
+    {
+      "name": "MCP wiring (executor)",
+      "status": "WARN",
+      "detail": "registered against the HERMES venv (/home/esther/.hermes/hermes-agent/venv/bin/python3) \u2014 the tree the fleet is migrating off",
+      "fix": "hermes mcp remove executor && hermes mcp add executor --command ~/.hermes-cortex/venv/bin/python3 --args ~/hermes-cortex/executor-mcp.py   (there is no 'hermes mcp update'; re-add it)"
+    },
+    {
+      "name": "Pi integration",
+      "status": "PASS",
+      "detail": "cortex skills + extension registered (install-pi-integration: registered)",
+      "fix": ""
+    },
+    {
+      "name": "Global hooksPath",
+      "status": "PASS",
+      "detail": "core.hooksPath \u2192 /home/esther/.hermes-cortex/hooks",
+      "fix": ""
+    },
+    {
+      "name": "Pre-commit hook",
+      "status": "PASS",
+      "detail": "installed governance + enforcer checks",
+      "fix": ""
+    },
+    {
+      "name": "Pre-push hook",
+      "status": "PASS",
+      "detail": "installed with lock-check, syntax-check",
+      "fix": ""
+    },
+    {
+      "name": "Post-commit hook",
+      "status": "PASS",
+      "detail": "symlinked to post-commit-audit (executable)",
+      "fix": ""
+    },
+    {
+      "name": "Score-cycle",
+      "status": "INFO",
+      "detail": "Old score-cycle found at /home/esther/.local/bin/score-cycle \u2014 current governance uses MCP tools",
+      "fix": ""
+    },
+    {
+      "name": "Governance locks",
+      "status": "PASS",
+      "detail": "1 lock(s) active, 0 stale",
+      "fix": ""
+    },
+    {
+      "name": "Perms: Plugin __init__.py",
+      "status": "PASS",
+      "detail": "0o444",
+      "fix": ""
+    },
+    {
+      "name": "Immutable: __init__.py",
+      "status": "PASS",
+      "detail": "immutable flag set",
+      "fix": ""
+    },
+    {
+      "name": "Immutable: pre-commit",
+      "status": "PASS",
+      "detail": "immutable flag set",
+      "fix": ""
+    },
+    {
+      "name": "Immutable: pre-push",
+      "status": "PASS",
+      "detail": "immutable flag set",
+      "fix": ""
+    },
+    {
+      "name": "Immutable: post-commit",
+      "status": "PASS",
+      "detail": "immutable flag set",
+      "fix": ""
+    },
+    {
+      "name": "Immutable: post-push",
+      "status": "PASS",
+      "detail": "immutable flag set",
+      "fix": ""
+    },
+    {
+      "name": "Immutable: post-merge",
+      "status": "PASS",
+      "detail": "immutable flag set",
+      "fix": ""
+    },
+    {
+      "name": "Immutable: loop-gov-mcp.py",
+      "status": "PASS",
+      "detail": "immutable flag set",
+      "fix": ""
+    },
+    {
+      "name": "Immutable: hermes-plugin-lock",
+      "status": "PASS",
+      "detail": "immutable flag set",
+      "fix": ""
+    },
+    {
+      "name": "Immutable: hooks",
+      "status": "PASS",
+      "detail": "immutable flag set",
+      "fix": ""
+    },
+    {
+      "name": "Plugin lock helper",
+      "status": "PASS",
+      "detail": "helper OK (----i---------e------- /home/esther/.hermes/plugins/governan)",
+      "fix": ""
+    },
+    {
+      "name": "Blocked-IPs root copy",
+      "status": "PASS",
+      "detail": "root copy present and matches repo source",
+      "fix": ""
+    },
+    {
+      "name": "Blocked-IPs root copy immutable",
+      "status": "PASS",
+      "detail": "immutable flag set",
+      "fix": ""
+    },
+    {
+      "name": "Governance coverage",
+      "status": "PASS",
+      "detail": "all bypass closures validated",
+      "fix": ""
+    },
+    {
+      "name": "Hook: pre-commit (deployed)",
+      "status": "PASS",
+      "detail": "present at /home/esther/.hermes-cortex/hooks/pre-commit",
+      "fix": ""
+    },
+    {
+      "name": "Hook: pre-commit (symlink)",
+      "status": "PASS",
+      "detail": "\u2192 /home/esther/.hermes-cortex/scripts/pre-commit-score",
+      "fix": ""
+    },
+    {
+      "name": "Hook: pre-push (deployed)",
+      "status": "PASS",
+      "detail": "present at /home/esther/.hermes-cortex/hooks/pre-push",
+      "fix": ""
+    },
+    {
+      "name": "Hook: pre-push (symlink)",
+      "status": "PASS",
+      "detail": "\u2192 /home/esther/.hermes-cortex/scripts/pre-push-pull",
+      "fix": ""
+    },
+    {
+      "name": "Hook: post-commit (deployed)",
+      "status": "PASS",
+      "detail": "present at /home/esther/.hermes-cortex/hooks/post-commit",
+      "fix": ""
+    },
+    {
+      "name": "Hook: post-commit (symlink)",
+      "status": "PASS",
+      "detail": "\u2192 /home/esther/.hermes-cortex/scripts/post-commit-audit",
+      "fix": ""
+    },
+    {
+      "name": "Hook: post-merge (deployed)",
+      "status": "PASS",
+      "detail": "present at /home/esther/.hermes-cortex/hooks/post-merge",
+      "fix": ""
+    },
+    {
+      "name": "Hook: post-push (deployed)",
+      "status": "PASS",
+      "detail": "present at /home/esther/.hermes-cortex/hooks/post-push",
+      "fix": ""
+    },
+    {
+      "name": "Hook: post-push (symlink)",
+      "status": "PASS",
+      "detail": "\u2192 /home/esther/.hermes-cortex/scripts/post-push-audit",
+      "fix": ""
+    },
+    {
+      "name": "Redundant local hooks",
+      "status": "PASS",
+      "detail": "no redundant hooks found in local .git/hooks directories",
+      "fix": ""
+    },
+    {
+      "name": "Governance bypass",
+      "status": "PASS",
+      "detail": "no bypass markers found",
+      "fix": ""
+    },
+    {
+      "name": "PENDING cycles",
+      "status": "PASS",
+      "detail": "no unscored cycles",
+      "fix": ""
+    },
+    {
+      "name": "Orphaned locks",
+      "status": "PASS",
+      "detail": "1 lock(s), MCP server active",
+      "fix": ""
+    },
+    {
+      "name": "Skills gate",
+      "status": "PASS",
+      "detail": "enforcer blocks writes without per-session skills markers",
+      "fix": ""
+    },
+    {
+      "name": "Local hooksPath override check",
+      "status": "PASS",
+      "detail": "no per-repo overrides \u2014 all repos inherit global hooksPath",
+      "fix": ""
+    },
+    {
+      "name": "Install footprint",
+      "status": "PASS",
+      "detail": "all core paths present",
+      "fix": ""
+    },
+    {
+      "name": "Symlinks",
+      "status": "PASS",
+      "detail": "all symlinks valid",
+      "fix": ""
+    },
+    {
+      "name": "Install refs",
+      "status": "PASS",
+      "detail": "install.sh repo path references all resolve",
+      "fix": ""
+    },
+    {
+      "name": "Stale deploy: scripts/review-sweep-check.py",
+      "status": "WARN",
+      "detail": "2,264 bytes \u2014 not in any register() mapping",
+      "fix": "Remove: rm /home/esther/.hermes-cortex/scripts/review-sweep-check.py"
+    },
+    {
+      "name": "Repo-local .hermes-cortex",
+      "status": "PASS",
+      "detail": "absent \u2014 correct for the Cortex repo",
+      "fix": ""
+    },
+    {
+      "name": "Stale skills: orphans",
+      "status": "PASS",
+      "detail": "all deployed skills have a repo or Hermes source",
+      "fix": ""
+    },
+    {
+      "name": "Stale skills: missing",
+      "status": "PASS",
+      "detail": "all repo skills are deployed",
+      "fix": ""
+    },
+    {
+      "name": "Stale skills: ambiguous names (deployed)",
+      "status": "PASS",
+      "detail": "no duplicate skill names",
+      "fix": ""
+    },
+    {
+      "name": "Stale skills: ambiguous names (repo)",
+      "status": "PASS",
+      "detail": "no duplicate skill names",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: agent-system-alert-watchdog.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: heartbeat.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: verify_briefing.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: gen_briefing.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: capture_evidence.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: write_cycle_evidence.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: write_test_results.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: write_closure_note.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: hermes_models.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: hermes_paths.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: check-system.sh",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: agent-memory-to-brain-sync.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: bootstrap-brain.sh",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: check-memory-budget.sh",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: cortex-profile.sh",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: seed-project-brain.sh",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: install-gateway-cron-timeout.sh",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: install-gateway-timezone.sh",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: cortex-health.sh",
+      "status": "PASS",
+      "detail": "content matches repo source",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: consolidate-env.sh",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: gen-skills-manifest.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: gen-skills-manifest.sh",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: task-db.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: agent-review-queue-sweep.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: git-main-sync.sh",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: land-when-clean-probe.sh",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: dream-task-bridge.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: gateway-model-list.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: fix-cortex-venv.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: mcp_wiring.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: requirements.txt",
+      "status": "PASS",
+      "detail": "content matches repo source",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: task-mcp.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: executor-mcp.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: cortex-sandbox-mcp.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: cortex-sandbox.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: migrate.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: v001__tasks.sql",
+      "status": "PASS",
+      "detail": "content matches repo source",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: v002__doctor-probe-source.sql",
+      "status": "PASS",
+      "detail": "content matches repo source",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: v003__cancel-column-null.sql",
+      "status": "PASS",
+      "detail": "content matches repo source",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: v004__cancel-update-column.sql",
+      "status": "PASS",
+      "detail": "content matches repo source",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: v005__lifecycle.sql",
+      "status": "PASS",
+      "detail": "content matches repo source",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: v006__schema-version-grant.sql",
+      "status": "PASS",
+      "detail": "content matches repo source",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: v007__upsert-preserve-partial.sql",
+      "status": "PASS",
+      "detail": "content matches repo source",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: v008__v006-deferred.sql",
+      "status": "PASS",
+      "detail": "content matches repo source",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: v009__task-model-v3.sql",
+      "status": "PASS",
+      "detail": "content matches repo source",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: v010__task-model-v3-matrix-fix.sql",
+      "status": "PASS",
+      "detail": "content matches repo source",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: v011__release-stale-assignment.sql",
+      "status": "PASS",
+      "detail": "content matches repo source",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: v012__parked-rows-return-to-pool.sql",
+      "status": "PASS",
+      "detail": "content matches repo source",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: learning-collect.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: setup-fleet-langfuse.sh",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: cortex-update.sh",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: install-ollama.sh",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: install-nginx.sh",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: install-fail2ban.sh",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: install-cortex-update-cron.sh",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: install-crons.sh",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: install-orch-crons.sh",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: install-dream-crons.sh",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: install-provider-timeouts.sh",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: install-soft-session-cap.sh",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: install-profile-reader-role.sh",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: install-score-hook.sh",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: install-claude-governance.sh",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: install-pi-mcp.sh",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: cortex-dogfood.sh",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: pre-commit-score",
+      "status": "PASS",
+      "detail": "content matches repo source",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: hc-reflexion-check.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: post-commit-audit",
+      "status": "PASS",
+      "detail": "content matches repo source",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: pre-push-pull",
+      "status": "PASS",
+      "detail": "content matches repo source",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: agent-no-verify-audit.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: agent-governance-auditor.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: purge-stale-governance-locks.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: soul-merge.py",
+      "status": "PASS",
+      "detail": "content matches repo source",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: session-active-guard.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: hermes-plugin-lock",
+      "status": "PASS",
+      "detail": "content matches repo source",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: session-identity.sh",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: judgment.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: judgment-providers.yaml",
+      "status": "PASS",
+      "detail": "content matches repo source",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: install-pi-integration.sh",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: audit-pi-integration.sh",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: env-value.sh",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: governance-refused-close-advisory.sh",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: soul-sync-all.sh",
+      "status": "PASS",
+      "detail": "content matches repo source",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: agents-doc-audit.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: agent-agents-md-prune-scan.py",
+      "status": "PASS",
+      "detail": "content matches repo source",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: secret-leak-detector.sh",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: check-external-services.sh",
+      "status": "PASS",
+      "detail": "content matches repo source",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: agent-secret-leak-watchdog.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: agent-security-posture-check.sh",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: cortex-doctor.py",
+      "status": "PASS",
+      "detail": "content matches repo source",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: fleet-git-reset.py",
+      "status": "PASS",
+      "detail": "content matches repo source",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: cron_manifest.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: __init__.py",
+      "status": "PASS",
+      "detail": "content matches repo source",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: bus_alert.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: checks.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: cli.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: config.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: fix.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: immutability.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: helpers.py",
+      "status": "PASS",
+      "detail": "content matches repo source",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: results.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: task_integrity.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: cortex-agent-manager.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: hc.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: harness.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: hc",
+      "status": "PASS",
+      "detail": "content matches repo source",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: agent-stale-ref-watchdog.sh",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: autonomy-classifier.py",
+      "status": "PASS",
+      "detail": "content matches repo source",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: orch-autonomy-digest.sh",
+      "status": "PASS",
+      "detail": "content matches repo source",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: cron-failure-state.sh",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: cron_failure_state.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: seed-project.sh",
+      "status": "PASS",
+      "detail": "content matches repo source",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: merge-agents-md.py",
+      "status": "PASS",
+      "detail": "content matches repo source",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: agent-hermes-update.sh",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: agent-hermes-cortex-sync.sh",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: update-session-state.sh",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: fleet-audit.py",
+      "status": "PASS",
+      "detail": "content matches repo source",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: task-queue-evidence.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: run-task-queue-evidence.sh",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: fleet-hygiene.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: fleet-update-check.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: toon_parse.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: python-with-module.sh",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: require-fleet-venv.sh",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: cortex-update-mutex.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: verify-stamp-repo-tuple.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: orch-task-board-digest.py",
+      "status": "PASS",
+      "detail": "content matches repo source",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: apply-repo-efficiency.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: repo-efficiency-block.md",
+      "status": "PASS",
+      "detail": "content matches repo source",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: wave-orchestrate.py",
+      "status": "PASS",
+      "detail": "content matches repo source",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: escalate-to-human.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: fleet-stop-switch.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: outerloop.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: handoff_schema.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: adversarial-verify.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: probe-gate-logic.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: full-suite-evidence.sh",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: agent-session_cache.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: prod-watchdog.sh",
+      "status": "PASS",
+      "detail": "content matches repo source",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: cortex-bus-failover-watchdog.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: post-commit-notify.sh",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: install-post-commit-hook.sh",
+      "status": "PASS",
+      "detail": "content matches repo source",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: template-diff-check.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: run.sh",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: check-alembic-heads.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: orch-skill-evaluate.sh",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: cortex-bus-remediate.sh",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: cron-auto-remediate.sh",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: docker-volume-safety.sh",
+      "status": "PASS",
+      "detail": "content matches repo source",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: agent-service-recovery.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: platform_utils.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: agent-langfuse-health-watchdog.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: agent-mcp-health-watchdog.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: agent-loop-gov-lock-watchdog.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: agent-llm-judge-scorer.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: agent-model-health-watchdog.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: agent-offline-code-index.sh",
+      "status": "PASS",
+      "detail": "content matches repo source",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: agent-swap-refresh.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: agent-cron-quality-watchdog.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: agent-cron-failure-watchdog.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: agent-cron-failure-scanner.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: agent-cron-status.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: agent-scoring-activity-watchdog.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: agent-pending-cycle-watchdog.py",
+      "status": "PASS",
+      "detail": "content matches repo source",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: agent-deploy-drift-audit.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: state_tracker.py",
+      "status": "PASS",
+      "detail": "content matches repo source",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: check-certs.py",
+      "status": "PASS",
+      "detail": "content matches repo source",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: agent-daily-bible-reading.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: nginx-security-scanner.sh",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: agent-nginx-threat-pipeline.sh",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: deploy-blocked-ips.sh",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: classify-blocked-ips.sh",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: agent-remediate-apply.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: agent-ip-submission.sh",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: agent-worker.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: contact-orchestrator.sh",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: install-worker.sh",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: post-merge",
+      "status": "PASS",
+      "detail": "content matches repo source",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: agent-auto-save-sessions.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: send-skill-report.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: cortex-bus-processor.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: loop-gov-mcp.sh",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: reviewer-agent-pi.sh",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: loop-gov-mcp.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: score_cycle.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: loop_scorer.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: loop_db.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: loop_config.py",
+      "status": "PASS",
+      "detail": "content matches repo source",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: loop_evaluator.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: loop_feedback.py",
+      "status": "PASS",
+      "detail": "content matches repo source",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: policy_engine.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: auto_apply.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: skill_miner.py",
+      "status": "PASS",
+      "detail": "content matches repo source",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: __init__.py",
+      "status": "PASS",
+      "detail": "content matches repo source",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: setup.sh",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: update.sh",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: verify.sh",
+      "status": "PASS",
+      "detail": "content matches repo source",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: cleanup-ollama.sh",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: VERSION",
+      "status": "PASS",
+      "detail": "content matches repo source",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: ek-session-snapshot.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: apply-mcp-tool-watch-fix.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: install-lean-index.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: change-validate.sh",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: precommit_test_discovery.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: executor_context_builder.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: telegram-bridge.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: token-expiry-alert.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: gateway_envelope.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: msg-gateway.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: agent-shim.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: agent-reply.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: bot_locks.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: pre-commit-doc-audit.sh",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: health-vector.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: health-vector-push.sh",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: report-agent-health.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: cortex-bus-mcp.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: agent-message-handler.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: commands.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: agent-diagnostic.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: agent-unannounced-probe.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: adversarial-review.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: record-review.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: adversarial-reviewer-prompt.md",
+      "status": "PASS",
+      "detail": "content matches repo source",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: hermes_tz.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: __init__.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: tz.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: paths.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: cortex-bus-bridge-run.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: cortex-bus-bridge-generate.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: __init__.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: transport.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: backend.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: hermes_backend.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: daemon.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: agents.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: pairing.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: guard_distinct_token.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: sessions.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: models.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: restarts.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: pi_control.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: new_command_evidence.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: slash_parity_evidence.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: gateway.yaml.example",
+      "status": "PASS",
+      "detail": "content matches repo source",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: cortex-gateway.service",
+      "status": "PASS",
+      "detail": "content matches repo source",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: com.hermes.cortex-gateway.plist",
+      "status": "PASS",
+      "detail": "content matches repo source",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: tools.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: models.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: migrate.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: mycortex.sql",
+      "status": "PASS",
+      "detail": "content matches repo source",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: v002__rls-admin-reader-grants.sql",
+      "status": "PASS",
+      "detail": "content matches repo source",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: v003__admin-schema-version-grant.sql",
+      "status": "PASS",
+      "detail": "content matches repo source",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: v004__embeddings.sql",
+      "status": "PASS",
+      "detail": "content matches repo source",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: migrate.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: v001__mem.sql",
+      "status": "PASS",
+      "detail": "content matches repo source",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: store.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: v002__sessions.sql",
+      "status": "PASS",
+      "detail": "content matches repo source",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: v003__tool_events.sql",
+      "status": "PASS",
+      "detail": "content matches repo source",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: cortex-context-mcp.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: session-autocheckpoint.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: context_tools.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: cortex-context.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: loop-gov.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: registry.yaml",
+      "status": "PASS",
+      "detail": "content matches repo source",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: generate-harnesses.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: cortex-context.ts",
+      "status": "PASS",
+      "detail": "content matches repo source",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: IMPLEMENT.md",
+      "status": "PASS",
+      "detail": "content matches repo source",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: README.md",
+      "status": "PASS",
+      "detail": "content matches repo source",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: mycortex-parity.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: mycortex",
+      "status": "PASS",
+      "detail": "content matches repo source",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: docker-compose.mycortex.yml",
+      "status": "PASS",
+      "detail": "content matches repo source",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: agent-mycortex-sync.sh",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: agent-mycortex-retention.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: agent-remediation-sensor.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: ch-truncate-system-logs.sh",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: run-evals.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: analyze-failures.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: fact-retention-eval.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: send-agent-learning.sh",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: agent-collect-skills.sh",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: agent-skill-stub-audit.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: post-push-audit",
+      "status": "PASS",
+      "detail": "content matches repo source",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: agent-learning-collector.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: agent-session-mine-cron.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: agent-session-correction-scan.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: cortex_bus.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: queue.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: bus_outbox.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: telegram_notify.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: daily-lesson-mine.sh",
+      "status": "PASS",
+      "detail": "content matches repo source",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: lesson-compound-stats.py",
+      "status": "PASS",
+      "detail": "content matches repo source",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: lesson-hit.sh",
+      "status": "PASS",
+      "detail": "content matches repo source",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: fix-cron-duplicates.py",
+      "status": "PASS",
+      "detail": "content matches repo source",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: remove-cron-jobs.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: agent-push-metrics.sh",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: setup-push-metrics-cron.sh",
+      "status": "PASS",
+      "detail": "content matches repo source",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: agent-setup-metrics.sh",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: offline_knowledge.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: offline_knowledge.sh",
+      "status": "PASS",
+      "detail": "content matches repo source",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: offline_code.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: offline_code.sh",
+      "status": "PASS",
+      "detail": "content matches repo source",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: kiwix-docker-compose.yml",
+      "status": "PASS",
+      "detail": "content matches repo source",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: prep-offline.sh",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: session_mine.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: hermes_paths.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: lessons.py",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: migrate_fts_reasoning.sql",
+      "status": "PASS",
+      "detail": "content matches repo source",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: auto-update.sh",
+      "status": "PASS",
+      "detail": "content matches repo source",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: memory-readme.seed.md",
+      "status": "PASS",
+      "detail": "content matches repo source",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: 01-log-level.xml",
+      "status": "PASS",
+      "detail": "content matches repo source",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: 02-low-memory.xml",
+      "status": "PASS",
+      "detail": "content matches repo source",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: 03-profile-defaults.xml",
+      "status": "PASS",
+      "detail": "content matches repo source",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: os-config.sh",
+      "status": "PASS",
+      "detail": "content matches (after stripping SOURCE header)",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: service-writer.sh",
+      "status": "PASS",
+      "detail": "content matches repo source",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: AGENTS.md",
+      "status": "PASS",
+      "detail": "content matches repo source",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: Governance plugin __init__.py",
+      "status": "PASS",
+      "detail": "content matches repo source",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: Governance plugin plugin.yaml",
+      "status": "PASS",
+      "detail": "content matches repo source",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: Governance plugin README.md",
+      "status": "PASS",
+      "detail": "content matches repo source",
+      "fix": ""
+    },
+    {
+      "name": "Checksum: SOUL.md (profile: esther)",
+      "status": "PASS",
+      "detail": "content matches repo source",
+      "fix": ""
+    },
+    {
+      "name": "Task DB connectivity",
+      "status": "PASS",
+      "detail": "Postgres reachable, 43 pending item(s)",
+      "fix": ""
+    },
+    {
+      "name": "Task DB write-probe",
+      "status": "PASS",
+      "detail": "add \u2192 start \u2192 complete \u2192 archive roundtrip OK",
+      "fix": ""
+    },
+    {
+      "name": "Task Lifecycle v2 schema",
+      "status": "PASS",
+      "detail": "tasks schema_version = 12 (v2 lifecycle available)",
+      "fix": ""
+    },
+    {
+      "name": "Task Lifecycle v2 events RLS",
+      "status": "PASS",
+      "detail": "RLS=True, reader grants: SELECT",
+      "fix": ""
+    },
+    {
+      "name": "Task Lifecycle v2 telegram notify",
+      "status": "PASS",
+      "detail": "sent=3364, failures=0, env_perms_ok=True",
+      "fix": ""
+    },
+    {
+      "name": "Task Lifecycle v2 stale inbox",
+      "status": "PASS",
+      "detail": "no stale inbox tasks (sweep healthy)",
+      "fix": ""
+    },
+    {
+      "name": "Task Lifecycle v2 .env perms",
+      "status": "PASS",
+      "detail": ".env mode 600 (token protected)",
+      "fix": ""
+    },
+    {
+      "name": "Skill drift: autonomous-ai-agents/pi-coding-agent",
+      "status": "WARN",
+      "detail": "Deployed copy is newer than repo source (/home/esther/.hermes/skills/autonomous-ai-agents/pi-coding-agent/SKILL.md). Commit the repo source before cortex-update overwrites it.",
+      "fix": "Recover it with: python3 ops/scripts/manage/reconcile-stranded-skills.py (report first; --apply copies pure supersets only) \u2014 then commit it as its OWN governed change, so the cycle's diff matches its task id."
+    },
+    {
+      "name": "Skill drift: devops/cortex-deployment-sync",
+      "status": "WARN",
+      "detail": "Deployed copy is newer than repo source (/home/esther/.hermes/skills/devops/cortex-deployment-sync/SKILL.md). Commit the repo source before cortex-update overwrites it.",
+      "fix": "Recover it with: python3 ops/scripts/manage/reconcile-stranded-skills.py (report first; --apply copies pure supersets only) \u2014 then commit it as its OWN governed change, so the cycle's diff matches its task id."
+    },
+    {
+      "name": "Skill drift: devops/cross-agent-design",
+      "status": "WARN",
+      "detail": "Deployed copy is newer than repo source (/home/esther/.hermes/skills/devops/cross-agent-design/SKILL.md). Commit the repo source before cortex-update overwrites it.",
+      "fix": "Recover it with: python3 ops/scripts/manage/reconcile-stranded-skills.py (report first; --apply copies pure supersets only) \u2014 then commit it as its OWN governed change, so the cycle's diff matches its task id."
+    },
+    {
+      "name": "Skill drift: devops/governance-lock-lifecycle",
+      "status": "WARN",
+      "detail": "Deployed copy is newer than repo source (/home/esther/.hermes/skills/devops/governance-lock-lifecycle/SKILL.md). Commit the repo source before cortex-update overwrites it.",
+      "fix": "Recover it with: python3 ops/scripts/manage/reconcile-stranded-skills.py (report first; --apply copies pure supersets only) \u2014 then commit it as its OWN governed change, so the cycle's diff matches its task id."
+    },
+    {
+      "name": "Skill drift: devops/loop-governance",
+      "status": "WARN",
+      "detail": "Deployed copy is newer than repo source (/home/esther/.hermes/skills/devops/loop-governance/SKILL.md). Commit the repo source before cortex-update overwrites it.",
+      "fix": "Recover it with: python3 ops/scripts/manage/reconcile-stranded-skills.py (report first; --apply copies pure supersets only) \u2014 then commit it as its OWN governed change, so the cycle's diff matches its task id."
+    },
+    {
+      "name": "Skill drift: devops/mcp-health-monitoring",
+      "status": "WARN",
+      "detail": "Deployed copy is newer than repo source (/home/esther/.hermes/skills/devops/mcp-health-monitoring/SKILL.md). Commit the repo source before cortex-update overwrites it.",
+      "fix": "Recover it with: python3 ops/scripts/manage/reconcile-stranded-skills.py (report first; --apply copies pure supersets only) \u2014 then commit it as its OWN governed change, so the cycle's diff matches its task id."
+    },
+    {
+      "name": "Skill drift: devops/shell-scripting",
+      "status": "WARN",
+      "detail": "Deployed copy is newer than repo source (/home/esther/.hermes/skills/devops/shell-scripting/SKILL.md). Commit the repo source before cortex-update overwrites it.",
+      "fix": "Recover it with: python3 ops/scripts/manage/reconcile-stranded-skills.py (report first; --apply copies pure supersets only) \u2014 then commit it as its OWN governed change, so the cycle's diff matches its task id."
+    },
+    {
+      "name": "Skill drift: software-development/change-checklist",
+      "status": "WARN",
+      "detail": "Deployed copy is newer than repo source (/home/esther/.hermes/skills/software-development/change-checklist/SKILL.md). Commit the repo source before cortex-update overwrites it.",
+      "fix": "Recover it with: python3 ops/scripts/manage/reconcile-stranded-skills.py (report first; --apply copies pure supersets only) \u2014 then commit it as its OWN governed change, so the cycle's diff matches its task id."
+    },
+    {
+      "name": "Skill drift: software-development/fail-closed-design",
+      "status": "WARN",
+      "detail": "Deployed copy is newer than repo source (/home/esther/.hermes/skills/software-development/fail-closed-design/SKILL.md). Commit the repo source before cortex-update overwrites it.",
+      "fix": "Recover it with: python3 ops/scripts/manage/reconcile-stranded-skills.py (report first; --apply copies pure supersets only) \u2014 then commit it as its OWN governed change, so the cycle's diff matches its task id."
+    },
+    {
+      "name": "Skill drift",
+      "status": "WARN",
+      "detail": "9 drifted, 377 in sync, 130 Hermes defaults skipped",
+      "fix": "Resolve each drift entry above \u2014 recovery is its OWN governed change (see reconcile-stranded-skills.py), not part of the update cycle"
+    },
+    {
+      "name": "mycortex-mem plugin",
+      "status": "PASS",
+      "detail": "installed at ~/.hermes/plugins/mycortex-mem",
+      "fix": ""
+    },
+    {
+      "name": "mycortex-mem content",
+      "status": "PASS",
+      "detail": "copy matches repo source",
+      "fix": ""
+    },
+    {
+      "name": "mycortex-mem config",
+      "status": "PASS",
+      "detail": "enabled in config.yaml",
+      "fix": ""
+    },
+    {
+      "name": "prompt-guard plugin",
+      "status": "PASS",
+      "detail": "installed at ~/.hermes/plugins/prompt-guard",
+      "fix": ""
+    },
+    {
+      "name": "prompt-guard content",
+      "status": "PASS",
+      "detail": "copy matches repo source",
+      "fix": ""
+    },
+    {
+      "name": "prompt-guard config",
+      "status": "PASS",
+      "detail": "enabled in config.yaml",
+      "fix": ""
+    },
+    {
+      "name": "Hook drift: post-commit",
+      "status": "PASS",
+      "detail": "deployed matches repo (777fd064)",
+      "fix": ""
+    },
+    {
+      "name": "Hook drift: post-push",
+      "status": "PASS",
+      "detail": "deployed matches repo (67b598cb)",
+      "fix": ""
+    },
+    {
+      "name": "Hook drift: pre-commit",
+      "status": "PASS",
+      "detail": "deployed matches repo (62ed45c7)",
+      "fix": ""
+    },
+    {
+      "name": "Hook drift: pre-push",
+      "status": "PASS",
+      "detail": "deployed matches repo (480e2097)",
+      "fix": ""
+    },
+    {
+      "name": "Cron runtime scripts",
+      "status": "PASS",
+      "detail": "scripts \u2192 ~/.hermes-cortex/scripts (symlink)",
+      "fix": ""
+    },
+    {
+      "name": "Langfuse version",
+      "status": "PASS",
+      "detail": "running langfuse/langfuse:3.225.1 matches compose pin",
+      "fix": ""
+    },
+    {
+      "name": "Langfuse scoring",
+      "status": "PASS",
+      "detail": "1984 scores, newest 6d old, traces newest 7d old",
+      "fix": ""
+    },
+    {
+      "name": "ClickHouse system db",
+      "status": "PASS",
+      "detail": "system database is 352 MB",
+      "fix": ""
+    },
+    {
+      "name": "Restraint registry",
+      "status": "PASS",
+      "detail": "all 15 classes name a present restraint",
+      "fix": ""
+    },
+    {
+      "name": "Bus grant expiry",
+      "status": "SKIP",
+      "detail": "bus.permissions not queryable (orchestrator host only?)",
+      "fix": ""
+    },
+    {
+      "name": "cortex-gateway",
+      "status": "PASS",
+      "detail": "daemon imports hermetically; config + unit independent of hermes-gateway",
+      "fix": ""
+    },
+    {
+      "name": "cortex env",
+      "status": "PASS",
+      "detail": "canonical ~/hermes-cortex/.env present (600); cortex-bus.conf is the sanctioned symlink; no deploy-dir .env",
+      "fix": ""
+    },
+    {
+      "name": "Cron bridge migration",
+      "status": "PASS",
+      "detail": "every eligible no_agent job is either bridged or deliberately left on Hermes",
+      "fix": ""
+    },
+    {
+      "name": "Orphan-cycle resolution",
+      "status": "INFO",
+      "detail": "6 reaper-closed (unscored, tagged) \u00b7 100 agent-declared unscored close(s); 11 legacy row(s) closed by the OLD reaper carry a bare MOVE_ON and are NOT judged: #9836, #9990, #10015, #10022, #10030",
+      "fix": ""
+    },
+    {
+      "name": "Task schema deploy",
+      "status": "PASS",
+      "detail": "all 12 task migrations are in the deploy register",
+      "fix": ""
+    },
+    {
+      "name": "Task schema deployed",
+      "status": "PASS",
+      "detail": "all 12 migrations present on the deployed tree",
+      "fix": ""
+    },
+    {
+      "name": "Task schema version",
+      "status": "PASS",
+      "detail": "tasks schema up to date (version 12) \u2014 no-op",
+      "fix": ""
+    },
+    {
+      "name": "Stranded slices",
+      "status": "PASS",
+      "detail": "no pending slice is assigned-and-unstarted",
+      "fix": ""
+    }
+  ],
+  "agent": "esther",
+  "git_sha": "528c7e2c",
+  "version": "2.0.0",
+  "healthy": false,
+  "timestamp": "2026-10-13T04:05:52.089604+00:00"
+}

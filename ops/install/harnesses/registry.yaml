@@ -114,6 +114,7 @@ harnesses:
         verify:
           - 'bash ops/scripts/install/install-pi-integration.sh --check exits 0.'
           - 'Pi shows the always-skills as /skill:<name> commands (startup diagnostics).'
+          - 'cortex-update.sh runs the installer on any host where Pi is present (~/.pi/agent), and the doctor reports it as `Pi integration` (PASS / WARN / absent). Verification evidence lives in docs/evidence/, not here.'
       governance:
         # VERSION-AWARE (2026-10-02). `adapter: mcp` below is the PREFERRED route, but
         # it needs an MCP-capable Pi — detected from the CLI's own help, not assumed: on Pi 0.87.1 the CLI exposed no

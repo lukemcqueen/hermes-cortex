@@ -1,6 +1,34 @@
 # Pi Skill Bridge — External Agent Skill Loading
 
-**Status:** Reference implementation deployed on `LAM2` (Titus's Mac — the fleet's only macOS host)  
+> **SUPERSEDED 2026-10-13 — do not rebuild this.** The hand-built bridge below (a
+> `/tmp/build-skill-index.py` script, a 341-skill `~/.pi/skills-index.json`, `~/.pi/load-skills`
+> and `~/.pi/skills-activate`) was the 2026-10-02 reference implementation. It is obsolete twice
+> over: the builder lived in `/tmp` and is GONE (nothing could rebuild the index), and it wired
+> the WHOLE library, which is a self-inflicted context wound.
+>
+> **The supported route is the harness registry's Pi `skills` capability** — one implementation,
+> generated and verified, never hand-built:
+>
+> ```bash
+> bash ~/hermes-cortex/ops/scripts/install/install-pi-integration.sh          # wire it
+> bash ~/hermes-cortex/ops/scripts/install/install-pi-integration.sh --check  # prove it (rc 0)
+> bash ~/hermes-cortex/ops/scripts/audit-pi-integration.sh                   # per-layer audit
+> ```
+>
+> It writes USER scope (`~/.pi/agent/settings.json`):
+> `"extensions": [<cortex-context.ts>]` and `"skills": ["~/.pi/agent/cortex-skills"]`, where the
+> curated set is the always-set **derived from the shared `skills.yaml` manifest** (`from:
+> skills.yaml#always` in `ops/install/harnesses/registry.yaml`) — the same definition Hermes
+> loads, so there is nothing to hand-type or drift. `cortex-update.sh` now RUNS the installer on
+> any host where Pi is present, and the doctor reports `Pi integration` (PASS / WARN / absent), so
+> "Pi exists but is unwired" is a reported state instead of a silent one.
+>
+> Verified on esther 2026-10-13 (Pi 1.2.0): `--check` rc 0, "extension registered, 7 curated
+> skills present"; `audit-pi-integration.sh` PASS on every layer.
+>
+> The sections below are kept as the historical record of the file bridge.
+
+**Status:** **SUPERSEDED 2026-10-13 — see the banner above; the supported route is `install-pi-integration.sh`.** What follows is the 2026-10-02 historical record of the file bridge, which was deployed on `LAM2` at the time.  
 **Author:** Pi coding agent (ephemeral), 2026-10-02  
 **Relevant skills:** `devops/docker-management`, `devops/postgres-docker`, `devops/mycortex`
 

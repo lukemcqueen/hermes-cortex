@@ -2991,6 +2991,35 @@ def check_governance(res):
     # CONTRADICTED each other. The presence line stays (it is informational — "the entry exists");
     # the wiring line is the one that judges the interpreter, so nothing disagrees now.
 
+  # ── Pi harness (a coding agent this fleet runs) ──
+  # Pi's PRESENCE decides, never a version in a doc: no Pi on this host is not a fault. A
+  # host WITH Pi whose cortex skills/extension are unwired has silently lost the adapter —
+  # the deploy now RUNS install-pi-integration.sh, and this is the drift guard that says
+  # whether it landed. `--check` is read-only: it reports the registration, it adds none.
+  pi_dir = HOME / ".pi" / "agent"
+  if (pi_dir / "bin" / "pi").exists() or pi_dir.is_dir():
+    pi_check = CORTEX_HOME / "scripts" / "install-pi-integration.sh"
+    if not pi_check.exists():
+      res.add("Pi integration", "WARN",
+              f"Pi is installed but {pi_check} was not deployed — the adapter cannot be wired",
+              "Run: bash ~/hermes-cortex/ops/scripts/cortex-update.sh")
+    else:
+      try:
+        pi_proc = subprocess.run(["bash", str(pi_check), "--check"],
+                                 capture_output=True, text=True, timeout=60)
+      except (OSError, subprocess.TimeoutExpired) as _pi_err:
+        res.add("Pi integration", "WARN", f"could not verify: {_pi_err}",
+                "COULD NOT VERIFY — run install-pi-integration.sh --check by hand")
+      else:
+        _pi_txt = ((pi_proc.stdout or "") + (pi_proc.stderr or "")).strip()
+        _pi_last = _pi_txt.splitlines()[-1] if _pi_txt else f"exit {pi_proc.returncode}"
+        if pi_proc.returncode == 0:
+          res.add("Pi integration", "PASS",
+                  f"cortex skills + extension registered ({_pi_last})")
+        else:
+          res.add("Pi integration", "WARN", _pi_last,
+                  "Run: bash ~/.hermes-cortex/scripts/install-pi-integration.sh   (then re-check)")
+
   # ── Pre-commit hook ──
   expected_hook_path = hooks_dir / "pre-commit"
   expected_hooks_path = str(hooks_dir)

@@ -43,6 +43,19 @@
 # ─────────────────────────────────────────────────────────────
 set -euo pipefail
 
+PYTHON="${PYTHON:-}"
+# Reading the manifest needs PyYAML, and a bare `python3` is usually the interpreter that
+# LACKS it (measured on esther: the Hermes tools python has no yaml, and the fleet venv had
+# none until it was filled). Choosing one by PATH existence and then failing with "PyYAML
+# required" blames the host and skips the skills half — so ask the shared resolver which
+# interpreter can actually import it, and never pick one on the strength of its path.
+_RESOLVER="${HOME}/.hermes-cortex/scripts/lib/python-with-module.sh"
+if [[ ! -f "$_RESOLVER" ]]; then
+  _RESOLVER="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." 2>/dev/null && pwd)/lib/python-with-module.sh"
+fi
+if [[ -z "$PYTHON" && -f "$_RESOLVER" ]]; then
+  PYTHON="$(bash "$_RESOLVER" --print yaml 2>/dev/null || true)"
+fi
 PYTHON="${PYTHON:-$(command -v python3)}"
 AGENT_DIR="${PI_AGENT_DIR:-${HOME}/.pi/agent}"
 SETTINGS="${PI_SETTINGS_FILE:-${AGENT_DIR}/settings.json}"

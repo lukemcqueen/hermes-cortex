@@ -3634,6 +3634,33 @@ except: print('error')
     fi
   fi
 
+  # ── Pi harness integration — only when Pi is on this host ──
+  # The two installers are REGISTERED above (copied into scripts/). Registering is not
+  # executing: until now nothing ran them, so a host with Pi installed could sit unwired
+  # with no signal at all — the skills half (Pi's `skills` setting, pointed at the curated
+  # always-set derived from the shared manifest) would simply never exist, and the only way
+  # to find out was to read the registry and notice the gap. Pi's PRESENCE decides: no Pi
+  # is not a fault, and a host that has Pi must come out of a deploy wired. Idempotent and
+  # reported — the installers preserve every other key in the user's own Pi config.
+  if [[ -e "${HOME}/.pi/agent/bin/pi" || -d "${HOME}/.pi/agent" ]]; then
+    for _pi_installer in install-pi-mcp.sh install-pi-integration.sh; do
+      _pi_script="${CORTEX_DEPLOY_HOME}/scripts/${_pi_installer}"
+      if [[ ! -f "$_pi_script" ]]; then
+        warn "Pi is installed here but ${_pi_installer} was not deployed — cannot wire the integration"
+        continue
+      fi
+      set +e
+      _pi_out="$(bash "$_pi_script" 2>&1)"; _pi_rc=$?
+      set -e
+      if [[ $_pi_rc -eq 0 ]]; then
+        info "Pi integration: ${_pi_installer} OK"
+      else
+        warn "Pi integration: ${_pi_installer} exited ${_pi_rc}"
+        printf '%s\n' "$_pi_out" | sed 's/^/  /'
+      fi
+    done
+  fi
+
   # ── Auto-run doctor after update ─────────────────────────
   info "Running doctor to verify installation…"
   # The doctor's exit code carries meaning: 2 = failures, 1 = warnings only, 0 = clean. A
