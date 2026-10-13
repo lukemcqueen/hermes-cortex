@@ -6,26 +6,34 @@
   Pushes a health vector to the Moses agent inbox every 10 minutes.
   Client-only agents (Titus, Gisu, Joseph) install this on their machine.
 
+  PORTABLE (2026-10-13). This is the plist Titus installs, and it hard-coded
+  /Users/luke/hermes-cortex/... — so on his Mac the health push pointed at a path
+  that does not exist and the service failed silently. The path is now
+  $HOME-expanded by /bin/bash -lc, because launchd expands NOTHING inside plist
+  strings, and the two log paths stay literal (/tmp and /dev/null) on purpose.
+
   Setup:
-    1. Edit AGENT_NAME below (replace 'titus' with your agent name)
+    1. Set AGENT_NAME below to YOUR agent name (titus / gisu / joseph / …)
     2. cp this file to ~/Library/LaunchAgents/com.hermes.health-push.plist
     3. launchctl load ~/Library/LaunchAgents/com.hermes.health-push.plist
 
   Check:
     tail -f /tmp/com.hermes.health-push.err
 
-  ⚠️ Script lives in health/ subdirectory (not scripts/ root).
-     If you move the hermes-cortex repo, update ProgramArguments path.
+  ⚠️ Script lives in health/ (not scripts/ root) and the repo must be at
+     ~/hermes-cortex. If yours is elsewhere, change the $HOME path below.
 -->
 <plist version="1.0">
 <dict>
     <key>Label</key>
     <string>com.hermes.health-push</string>
 
+    <!-- $HOME is expanded by the shell (launchd will not); exec keeps no shell around. -->
     <key>ProgramArguments</key>
     <array>
         <string>/bin/bash</string>
-        <string>/Users/luke/hermes-cortex/ops/scripts/health/health-vector-push.sh</string>
+        <string>-lc</string>
+        <string>exec "$HOME/hermes-cortex/ops/scripts/health/health-vector-push.sh"</string>
     </array>
 
     <key>EnvironmentVariables</key>

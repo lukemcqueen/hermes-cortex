@@ -27,7 +27,10 @@ ALLOW = {
 }
 VENV_REF = re.compile(r"hermes-cortex/venv|fleet_venv_python|FLEET_VENV_DIR")
 EXEC_LINE = re.compile(r"\bexec\b")
-ABS_HOME = re.compile(r"/home/[a-z][a-z0-9_-]*/")
+#: BOTH platform layouts. /Users/<name>/ was missing from this pattern, so the first run of
+#: this test PASSED over a plist that hardcodes /Users/luke — a probe bug, not a clean file.
+#: Check the probe before believing a green result.
+ABS_HOME = re.compile(r"/(?:home|Users)/[A-Za-z][A-Za-z0-9._-]*/")
 SKIP_SUFFIX = (".md", ".txt", ".json", ".yaml", ".yml", ".plist", ".raw")
 
 
@@ -155,6 +158,46 @@ def test_every_plist_template_parses():
         checked += 1
     assert checked, "no plist template was inspected — the check is vacuous"
     print(f"  {checked} plist template(s) parse, with a Label and ProgramArguments ✓")
+
+
+def _load_shipped_shell():
+    """The shell this repo ships for OTHER hosts to run: launchers, the guard, verifiers.
+    (cortex-update.sh is excluded — it re-execs brew bash >=4 on macOS by design.)"""
+    rels = [
+        "ops/scripts/lib/require-fleet-venv.sh",
+        "ops/scripts/lib/python-with-module.sh",
+        "ops/scripts/manage/loop-gov-mcp.sh",
+        "docs/evidence/verify-loop-gov-diagnosable.sh",
+        "docs/evidence/verify-interpreter-choice.sh",
+        "docs/evidence/verify-model-picker.sh",
+    ]
+    return [(r, (REPO / r).read_text(errors="replace")) for r in rels if (REPO / r).is_file()]
+
+
+def test_shipped_shell_is_bash_32_safe():
+    """macOS ships bash 3.2 — Titus's host. A bash-4-only construct (declare -A, mapfile,
+    ${var,,}) dies there with 'invalid option' or 'command not found' on a host we cannot
+    test on. These files are meant to run anywhere, so they stay inside 3.2's language."""
+    patterns = [
+        (re.compile(r"\bdeclare\s+-A\b"), "declare -A (bash 4+)"),
+        (re.compile(r"\b(mapfile|readarray)\b"), "mapfile/readarray (bash 4+)"),
+        (re.compile(r"\$\{[A-Za-z_][A-Za-z0-9_]*,,|\$\{[A-Za-z_][A-Za-z0-9_]*\^\^"),
+         "${var,,} case conversion (bash 4+)"),
+        (re.compile(r"&>>"), "&>> redirect (bash 4+)"),
+    ]
+    checked = _load_shipped_shell()
+    assert checked, "no shipped shell inspected — the check is vacuous"
+    offenders = []
+    for rel, body in checked:
+        for line in body.splitlines():
+            stripped = line.strip()
+            if stripped.startswith("#"):
+                continue
+            for rx, why in patterns:
+                if rx.search(line):
+                    offenders.append(f"{rel}: {why}: {stripped}")
+    assert not offenders, f"bash-4-only construct would break macOS: {offenders}"
+    print(f"  {len(checked)} shipped shell file(s) are bash 3.2 safe ✓")
 
 
 def _main():

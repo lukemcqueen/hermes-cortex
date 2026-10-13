@@ -20,7 +20,12 @@ After=network.target
 [Service]
 Type=simple
 Environment=PATH=%h/.local/bin:%h/.bun/bin:/usr/local/bin:/usr/bin:/bin
-ExecStart=/usr/bin/python3 %h/hermes-cortex/ops/scripts/health/health-vector.py --serve 8905
+# The FLEET venv, not the system python (2026-10-13) — the interpreter
+# cortex-update.sh registers every MCP server against and the one the macOS
+# counterpart (docs/templates/com.hermes.health-push.plist) uses. The shared
+# launcher guard names a missing venv/payload in the journal instead of leaving
+# an unexplained exec failure.
+ExecStart=/bin/bash -lc '. %h/.hermes-cortex/scripts/lib/require-fleet-venv.sh; require_fleet_venv %h/hermes-cortex/ops/scripts/health/health-vector.py; exec "%h/.hermes-cortex/venv/bin/python3" "%h/hermes-cortex/ops/scripts/health/health-vector.py" --serve 8905'
 Restart=always
 RestartSec=5
 StandardOutput=journal

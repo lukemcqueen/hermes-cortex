@@ -51,8 +51,15 @@ EnvironmentFile=-%h/hermes-cortex/.env
 # cannot fail — this refuses to start when the config's token_ref resolves to
 # TELEGRAM_BOT_TOKEN (the bot hermes-gateway.service polls) or names it directly.
 # See ops/scripts/cortex_gateway/guard_distinct_token.py.
-ExecStartPre=/usr/bin/python3 %h/.hermes-cortex/scripts/cortex_gateway/guard_distinct_token.py %h/.hermes-cortex/gateway.yaml
-ExecStart=/usr/bin/python3 %h/.hermes-cortex/scripts/cortex_gateway/daemon.py --config %h/.hermes-cortex/gateway.yaml
+#
+# The FLEET venv, not the system python (2026-10-13): it is the interpreter
+# cortex-update.sh registers every MCP server against, and the one the macOS
+# counterpart (docs/templates/com.hermes.cortex-gateway.plist) execs. The shared
+# launcher guard runs first, so a missing venv or daemon is logged as
+# "NO INTERPRETER at <path> … how to fix it" (rc 78) instead of an unexplained
+# exec failure — the same diagnosis the plist gives on macOS.
+ExecStartPre=/bin/bash -lc '. %h/.hermes-cortex/scripts/lib/require-fleet-venv.sh; require_fleet_venv %h/.hermes-cortex/scripts/cortex_gateway/daemon.py; exec "%h/.hermes-cortex/venv/bin/python3" "%h/.hermes-cortex/scripts/cortex_gateway/guard_distinct_token.py" "%h/.hermes-cortex/gateway.yaml"'
+ExecStart=/bin/bash -lc '. %h/.hermes-cortex/scripts/lib/require-fleet-venv.sh; require_fleet_venv %h/.hermes-cortex/scripts/cortex_gateway/daemon.py; exec "%h/.hermes-cortex/venv/bin/python3" "%h/.hermes-cortex/scripts/cortex_gateway/daemon.py" --config "%h/.hermes-cortex/gateway.yaml"'
 Restart=always
 RestartSec=5
 StandardOutput=journal

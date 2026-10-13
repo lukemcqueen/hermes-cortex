@@ -77,6 +77,16 @@ for want in "Created the fleet venv" "no usable bin/python3"; do
   grep -q "$want" ops/scripts/cortex-update.sh \
     && say "  ✓ cortex-update.sh: $want" || bad "7 cortex-update.sh is missing: $want"
 done
+say "  -- the service-layer maps the audit requires (both platforms) --"
+for doc in docs/macos-service-layer.md docs/linux-service-layer.md; do
+  if [ -f "$doc" ]; then
+    say "  $doc: $(wc -l < "$doc") lines"
+    grep -n "^| \`" "$doc" | head -1 | sed 's/^/    first row: /'
+    grep -c "require-fleet-venv.sh" "$doc" | sed "s/^/    references the guard: /"
+  else
+    bad "7 $doc is missing (CONTRIBUTING and the docs audit both link it)"
+  fi
+done
 say "  -- the sweep's controls, BY NAME (not a tautology) --"
 grep -n "^def test_" tests/test_fleet_venv_launchers.py | sed 's/^/  /'
 grep -q "def test_the_sweep_would_catch_a_bare_exec" tests/test_fleet_venv_launchers.py \
