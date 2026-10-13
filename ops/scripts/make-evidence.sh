@@ -29,7 +29,7 @@ MAX_BODY=12000
 H="$(cd "$(dirname "$0")/.." && pwd)"   # repo root (ops/scripts/..)
 
 # Portable SHA-256: GNU coreutils ships sha256sum; macOS/BSD ships shasum -a 256. This file
-# must work on a Mac (the fleet has macOS hosts) and in any repo (Pi/Claude Code/plain
+# must work on a Mac (Titus's host — the fleet's ONLY macOS machine) and in any repo (Pi/Claude Code/plain
 # shell sessions run it without Hermes or cortex), so nothing here assumes GNU userland.
 _sha256() { if command -v sha256sum >/dev/null 2>&1; then sha256sum; else shasum -a 256; fi; }
 

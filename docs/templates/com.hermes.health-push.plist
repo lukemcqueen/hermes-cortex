@@ -4,7 +4,9 @@
   Hermes Cortex — Health Push Launchd Plist
 
   Pushes a health vector to the Moses agent inbox every 10 minutes.
-  Client-only agents (Titus, Gisu, Joseph) install this on their machine.
+  TITUS installs this: he is the fleet's ONLY macOS host (hostname LAM2, the
+  developer machine). Every other client-only agent is Linux and runs the same
+  script (ops/scripts/health/health-vector-push.sh) from its own scheduler.
 
   PORTABLE (2026-10-13). This is the plist Titus installs, and it hard-coded
   /Users/luke/hermes-cortex/... — so on his Mac the health push pointed at a path

@@ -4,6 +4,11 @@ macOS counterpart of [`docs/linux-service-layer.md`](linux-service-layer.md). Ev
 Cortex service on a Mac is a **user LaunchAgent** in `~/Library/LaunchAgents/`, loaded with
 `launchctl`. There is no systemd on macOS; the templates live in `docs/templates/*.plist`.
 
+> **Titus is the fleet's only macOS host** (hostname `LAM2`, the developer machine — client
+> only, push-only bus). This map therefore describes HIS Mac and any future Mac; every other
+> host in the fleet is Linux and belongs to [`docs/linux-service-layer.md`](linux-service-layer.md).
+> Templates here are still written portably on purpose: a second Mac must work without edits.
+
 **Referenced by** `CONTRIBUTING.md` ("did you add a service or daemon?") and the pre-commit
 docs audit, which both pointed at this file before it existed.
 

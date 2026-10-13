@@ -857,7 +857,7 @@ cortex-update --status
 
 ## 🍎 macOS-Specific Cortex Update Issues
 
-Issues that appear when running `pull latest` + `cortex-update.sh` on a macOS host (all verified on macOS 14, arm64, 2026-07-31). These are distinct from the Linux service-layer differences — they break the update **script itself**.
+Issues that appear when running `pull latest` + `cortex-update.sh` on a macOS host (all verified on macOS 14, arm64, 2026-07-31). **Titus is the fleet's only macOS host** (`LAM2`, the developer machine), so this section is his — every other host is Linux. These are distinct from the Linux service-layer differences — they break the update **script itself**.
 
 ### 20. `cortex-update.sh` aborts: `getent: command not found`
 

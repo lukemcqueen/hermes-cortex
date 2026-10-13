@@ -17,7 +17,7 @@ Every agent in the fleet belongs to one of four roles. The role determines which
 | **Orchestrator** | primary-orch | Linux | Fleet command, bus server, Postgres, skill lifecycle, fleet watchdogs |
 | **Backup Orchestrator** | backup-orch | Linux | Hot standby — same capabilities, takes over if primary is down |
 | **Server Agent** | server-agent-1 | Linux | Production services, health reporting, local remediation |
-| **Dev Agent** | dev-agent-1 | macOS / Linux | Development work, multiple project repos, push-only bus |
+| **Dev Agent** | dev-agent-1 | macOS (Titus only) / Linux | Development work, multiple project repos, push-only bus |
 
 ---
 

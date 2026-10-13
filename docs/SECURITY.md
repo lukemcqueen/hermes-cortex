@@ -51,10 +51,10 @@
 | Rule | Why |
 |------|-----|
 | **Never share your `.env` file** | It contains all your service passwords |
-| **Keep your computer updated** | macOS: System Settings → Software Update |
+| **Keep your computer updated** | macOS: System Settings → Software Update · Linux: `sudo apt update && sudo apt upgrade` |
 | **Don't disable your firewall** | See firewall section below |
-| **Use a strong login password** | Your Mac password protects everything |
-| **Log out when stepping away** | Lock screen: `Ctrl+Cmd+Q` |
+| **Use a strong login password** | Your login password protects everything |
+| **Log out when stepping away** | Lock: macOS `Ctrl+Cmd+Q` · Linux `Super+L` |
 
 ### 🛡️ What NOT to do
 

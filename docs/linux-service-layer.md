@@ -4,6 +4,10 @@ Linux counterpart of [`docs/macos-service-layer.md`](macos-service-layer.md). Ev
 Cortex service on Linux is a **user unit** in `~/.config/systemd/user/`, managed with
 `systemctl --user`. The templates live in `docs/templates/*.service`.
 
+> **Every fleet host except Titus is Linux.** Titus is the only macOS host (hostname `LAM2`,
+> the developer machine) and follows [`docs/macos-service-layer.md`](macos-service-layer.md);
+> orchestrators, server-agents and every other worker are covered here.
+
 **Referenced by** `CONTRIBUTING.md` ("did you add a service or daemon?") and the pre-commit
 docs audit, which both pointed at this file before it existed.
 

@@ -1,6 +1,6 @@
 # Pi Skill Bridge — External Agent Skill Loading
 
-**Status:** Reference implementation deployed on `LAM2` (macOS host)  
+**Status:** Reference implementation deployed on `LAM2` (Titus's Mac — the fleet's only macOS host)  
 **Author:** Pi coding agent (ephemeral), 2026-10-02  
 **Relevant skills:** `devops/docker-management`, `devops/postgres-docker`, `devops/mycortex`
 
