@@ -649,36 +649,45 @@ def _session_worked_since(state: dict, since_iso: str) -> bool:
 LIVENESS_MAX_RENEWALS = 1  # see _refresh_lock_heartbeat
 
 
-def _refresh_lock_heartbeat(state: dict) -> bool:
-    """Record observed activity on the lock file. Best effort; never raises. Returns whether it did.
+RENEWED, EXHAUSTED, ERROR = "renewed", "exhausted", "error"
 
-    BOUNDED on purpose (2026-10-13, deep-model review). A commit by the lock's own agent proves
-    activity, but it is also INFINITELY renewable by anything that keeps committing as that agent — a
-    long-running job, a cron — which would let one lock outlive every TTL forever and starve every
-    other session in the repo. That was named the single most dangerous change of the night, and it is
-    right: the refresh is remotely triggerable and unbounded.
 
-    Bound: at most ONE renewal per acquisition. One covers the real case (a long busy stretch between
-    two governed calls, which is what was measured); a second means the session is not coming back,
-    so the lock ages out like any other.
+def _refresh_lock_heartbeat(state: dict) -> str:
+    """Record observed activity on the lock file: RENEWED, EXHAUSTED or ERROR. Never raises.
 
-    `_write_lock` prefers the session_id carried in the STATE and only falls back to the ambient
-    args when the state has none — so this writes the lock being aged and cannot land on a peer's.
+    THREE outcomes, not a boolean (2026-10-13, deep code review). The first version returned False for
+    BOTH "the renewal budget is spent" and "the write failed", and the caller read every False as
+    *spent* — so a transient disk or permission failure aged out a BUSY lock and recreated the exact
+    deadlock this change set exists to remove. One means the session is gone; the other means we could
+    not say. Collapsing them is how a fix reintroduces its own bug.
+
+    BOUNDED on purpose: a commit by the lock's own agent proves activity, but it is also INFINITELY
+    renewable by anything that keeps committing as that agent — a long-running job, a cron — so one
+    lock could outlive every TTL. At most ONE renewal per acquisition; a second means the session is
+    not coming back and the lock ages out like any other.
+
+    The read-modify-write happens under _STATE_LOCK. Without it a concurrent `_touch_heartbeat`
+    carrying a stale `liveness_renewals=0` could overwrite an increment and reset the budget, making
+    the bound unenforceable — the lost update the same review found.
+
+    `_write_lock` prefers the session_id carried in the STATE and only falls back to the ambient args
+    when the state has none, so this writes the lock being aged and cannot land on a peer's.
     """
     try:
-        used = int(state.get("liveness_renewals", 0))
-        if used >= LIVENESS_MAX_RENEWALS:
-            log.warning("lock %s already renewed %sx — refusing another renewal so it can age out",
-                        state.get("session_id"), used)
-            return False
-        state["heartbeat_at"] = _now_iso()
-        state["liveness_renewals"] = used + 1
-        state["liveness_renewed_at"] = state["heartbeat_at"]
-        _write_lock(state, None)
-        return True
+        with _STATE_LOCK:
+            used = int(state.get("liveness_renewals", 0))
+            if used >= LIVENESS_MAX_RENEWALS:
+                log.warning("lock %s already renewed %sx — refusing another renewal so it can age out",
+                            state.get("session_id"), used)
+                return EXHAUSTED
+            state["heartbeat_at"] = _now_iso()
+            state["liveness_renewals"] = used + 1
+            state["liveness_renewed_at"] = state["heartbeat_at"]
+            _write_lock(state, None)
+            return RENEWED
     except Exception as e:
         log.warning("could not refresh the lock heartbeat from repo activity: %s", e)
-        return False
+        return ERROR
 
 
 def _is_lock_stale(state: dict, mtime_fallback: float | None = None) -> bool:
@@ -718,14 +727,26 @@ def _is_lock_stale(state: dict, mtime_fallback: float | None = None) -> bool:
                 # Busy, not dead: say so on the lock (so the file records when work happened rather
                 # than when someone last asked about the lock) and do not age it out — but only while
                 # the renewal budget lasts. Past it, real activity is no longer enough.
-                if _refresh_lock_heartbeat(state):
+                outcome = _refresh_lock_heartbeat(state)
+                if outcome == RENEWED:
                     log.info("lock %s aged %ss past TTL but its agent has committed since — renewed "
                              "once, not purged", state.get("session_id"), int(age))
                     return False
-                log.info("lock %s: renewal budget spent — ageing out despite recent commits",
-                         state.get("session_id"))
+                if outcome == EXHAUSTED:
+                    log.info("lock %s: renewal budget spent — ageing out despite recent commits",
+                             state.get("session_id"))
+                    return True
+                # ERROR: we could not say. Never age out a lock on our own inability to write it —
+                # fall through to the mtime fallback, so a broken write path still ages out while a
+                # working one is never mistaken for a dead session.
+                log.warning("lock %s: could not renew (write failure) — falling back to mtime ageing",
+                            state.get("session_id"))
+            elif age > ttl:
                 return True
-            return age > ttl
+            else:
+                # Fresh heartbeat: NOT stale, explicitly. Falling through here would let the mtime
+                # fallback below judge a lock whose heartbeat is perfectly current.
+                return False
         except (ValueError, TypeError):
             # Time-only / malformed heartbeat — can't age it in-band.
             # Fall through to mtime if provided (caller has the file).
@@ -784,17 +805,46 @@ _REVIEW_RECEIPT_CHECK_REL = "ops/scripts/lib/review-receipt-check.py"
 
 
 def _range_blobs(repo: Path, base: str, head: str):
-    """{path: blob-sha at head} for base..head, or None when unresolvable."""
+    """{path: blob-sha at head} for base..head, or None when unresolvable.
+
+    Resolution, not a single guess (2026-10-13, deep code review). The old form looked ONLY under
+    `Path(__file__).parent.parent`, correct in the repo and WRONG in the deployed layout (the deployed
+    module lives at <deploy>/tools/loop-governance/, so it looked for <deploy>/tools/ops/scripts/lib/…
+    and never found the file). Measured: every receipt carried `reviewed_blobs: null` and nothing said
+    so beyond one warning.
+
+    What that costs, precisely: the consumer `review-receipt-check.py` accepts a receipt by EXACT
+    tip+base first and by content coverage only when blobs exist — its own contract says "a receipt
+    with no reviewed_blobs is only ever accepted by rule 1", fail-closed by construction. So a null
+    blob set is NOT a weaker authorisation, it is the STRICTER one; the real loss is rebase-tolerance.
+    Worth fixing properly, not worth failing closed over — the gate already is.
+
+    Candidates are tried in order and the winner is logged, so a missing helper can never again be
+    indistinguishable from a working one.
+    """
     try:
         import importlib.util
-        path = Path(__file__).resolve().parent.parent / _REVIEW_RECEIPT_CHECK_REL
+        candidates = [
+            Path(__file__).resolve().parent.parent / _REVIEW_RECEIPT_CHECK_REL,   # repo layout
+            Path(os.environ.get("CORTEX_REPO") or (HOME / "hermes-cortex")) / _REVIEW_RECEIPT_CHECK_REL,
+            Path(os.environ.get("CORTEX_DEPLOY_HOME") or (HOME / ".hermes-cortex")) / _REVIEW_RECEIPT_CHECK_REL,
+        ]
+        path = next((c for c in candidates if c.is_file()), None)
+        if path is None:
+            log.warning("review receipt: helper %s not found in ANY of %s — writing no reviewed_blobs "
+                        "(still valid by exact tip+base, so SAFE, but it will not survive a rebase)",
+                        _REVIEW_RECEIPT_CHECK_REL, [str(c) for c in candidates])
+            return None
         spec = importlib.util.spec_from_file_location("review_receipt_check", path)
         if spec is None or spec.loader is None:
             log.warning("review receipt: cannot load %s — writing no reviewed_blobs", path)
             return None
         mod = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(mod)
-        return mod.range_blobs(repo, base, head)
+        blobs = mod.range_blobs(repo, base, head)
+        log.info("review receipt: blobs from %s (%s entries)", path,
+                 "null" if blobs is None else len(blobs))
+        return blobs
     except Exception as e:  # noqa: BLE001 — a missing helper must not lose the receipt
         log.warning("review receipt: range-blob helper failed (%s) — no reviewed_blobs", e)
         return None
@@ -995,15 +1045,19 @@ def _write_lock(state: dict, args: dict | None = None) -> None:
     session_id = state.get("session_id", get_session_id(args))
     path = _session_lock_path(session_id)
     path.parent.mkdir(parents=True, exist_ok=True)
-    # Atomic write: temp file in same dir + rename (same filesystem)
-    tmp = path.with_suffix(".json.tmp")
-    tmp.write_text(json.dumps(state, indent=2))
-    tmp.rename(path)
+    # BOTH writes under ONE _STATE_LOCK (2026-10-13, deep code review). The primary used to be written
+    # outside it, which raced _release_lock: writer writes primary → release takes the lock and unlinks
+    # both → writer takes the lock and RECREATES the secondary. The session is gone but a marker remains
+    # and can look live to the enforcer.
+    with _STATE_LOCK:
+        # Atomic write: temp file in same dir + rename (same filesystem)
+        tmp = path.with_suffix(".json.tmp")
+        tmp.write_text(json.dumps(state, indent=2))
+        tmp.rename(path)
 
-    # Write secondary marker inside repo for extra safety
-    secondary = _secondary_lock_path(state)
-    if secondary:
-        with _STATE_LOCK:
+        # Write secondary marker inside repo for extra safety
+        secondary = _secondary_lock_path(state)
+        if secondary:
             # One fixed path per repo = shared with every session there, so it is
             # serialized against a peer's _release_lock, which decides by
             # ownership whether the marker may be removed at all.
@@ -1017,9 +1071,11 @@ def _release_lock(args: dict | None = None) -> None:
     """Remove this session's lock file and secondary marker."""
     session_id = get_session_id(args)
     path = _session_lock_path(session_id)
-    if not path.exists():
-        return
     with _STATE_LOCK:
+        # The existence check moved INSIDE the lock (2026-10-13, deep code review): checked outside,
+        # it could miss an in-flight primary write and skip the whole release.
+        if not path.exists():
+            return
         # Read state before unlinking so we know the repo_slug for cleanup
         try:
             state = json.loads(path.read_text())
@@ -1039,9 +1095,15 @@ def _release_lock(args: dict | None = None) -> None:
                 marker_sid = marker.get("session_id") if isinstance(marker, dict) else None
                 if marker_sid is None or marker_sid == session_id:
                     secondary.unlink()
-        except (json.JSONDecodeError, OSError):
-            log.warning("Best-effort operation — expected failure: except (json.JSONDecodeError, OSError)")
-            pass
+        except (json.JSONDecodeError, OSError) as e:
+            # LOUD, not silent (2026-10-13, deep code review). The old handler logged a generic
+            # "best-effort" line and passed, so an unparseable primary meant the secondary marker
+            # could never be identified — and later calls return early because the primary is gone,
+            # so that orphan was never cleaned and nothing ever said so. The marker path cannot be
+            # derived without a repo, so this is the honest report: say it MAY be orphaned.
+            log.warning("lock release: primary %s is unreadable (%s) — the in-repo secondary marker "
+                        "(if any) could NOT be identified and may be ORPHANED; check for a stale "
+                        "marker in the repo before trusting the enforcer's view", path.name, e)
         path.unlink()
 
 

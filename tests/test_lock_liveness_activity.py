@@ -172,6 +172,58 @@ def test_the_first_renewal_still_works(tmp_path, monkeypatch):
     )
 
 
+def test_a_fresh_heartbeat_is_never_stale_with_an_mtime_fallback(tmp_path, monkeypatch):
+    """The restructure that introduced the three-outcome renewal dropped the explicit non-stale
+    return, which would have let the mtime fallback judge a lock whose heartbeat is perfectly
+    current — a fresh lock aged out because the FILE was old."""
+    mod = _load()
+    import time
+    old = time.time() - 10 * 3600
+    assert mod._is_lock_stale(
+        {"heartbeat_at": mod._now_iso(), "ttl_seconds": 3600, "repo_path": str(REPO)},
+        mtime_fallback=old,
+    ) is False, "a current heartbeat must win over an old file mtime"
+
+
+def test_a_write_failure_does_not_age_out_a_busy_lock(monkeypatch):
+    """#2 from the deep code review: 'budget spent' and 'could not write' were the same False, so a
+    transient disk/permission failure aged out a BUSY lock and recreated the deadlock."""
+    mod = _load()
+    state = {
+        "session_id": "test-session",
+        "repo_path": str(REPO),
+        "agent": _git_author(REPO),
+        "started_at": "2020-01-01T00:00:00Z",
+        "heartbeat_at": "2020-01-01T00:00:00Z",
+        "ttl_seconds": 3600,
+    }
+
+    def _boom(*a, **k):
+        raise OSError("disk full")
+
+    monkeypatch.setattr(mod, "_write_lock", _boom)
+    assert mod._refresh_lock_heartbeat(dict(state)) == mod.ERROR, (
+        "a write failure must be reported as ERROR, not as an exhausted budget"
+    )
+
+
+def test_range_blobs_resolves_the_helper_and_refuses_to_guess():
+    """The helper was absent from the deployed tree because resolution looked under ONE root; the
+    winner is logged now, and an unresolvable path returns None instead of raising."""
+    mod = _load()
+    assert mod._range_blobs(REPO, "HEAD~1", "HEAD") is not None, (
+        "with the repo layout present the helper must be found and used"
+    )
+    monkeypatch_rel = mod._REVIEW_RECEIPT_CHECK_REL
+    try:
+        mod._REVIEW_RECEIPT_CHECK_REL = "ops/scripts/lib/definitely-not-here.py"
+        assert mod._range_blobs(REPO, "HEAD~1", "HEAD") is None, (
+            "an unresolvable helper is 'could not verify', never a raised exception"
+        )
+    finally:
+        mod._REVIEW_RECEIPT_CHECK_REL = monkeypatch_rel
+
+
 def test_a_fresh_heartbeat_is_never_stale():
     mod = _load()
     assert mod._is_lock_stale(
