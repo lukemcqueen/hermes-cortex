@@ -6,36 +6,39 @@
 # enforcement. The deployed copy is kept current by cortex-update.sh
 # (register entry) and locked by hermes-plugin-lock.
 #
-# FAIL SPECIFICALLY, NOT WITH BASH'S DEFAULT (2026-10-13). This used to be a bare exec, so a
-# missing interpreter or a missing server surfaced as "line 11: No such file or directory" —
-# naming neither the path nor the cause. On kustos that cost a whole diagnosis: three
-# different causes produce that one message, and they need three different fixes:
-#   1. the fleet venv was never created (TRUE: nothing in this repo creates it);
-#   2. this host's deploy has not run, so the server file is not in the deployed tree;
-#   3. the caller runs with a different $HOME — the paths below are relative to it, so a
-#      present file looks absent.
-# So: say which path is missing, print the HOME seen, and print the fix for that path.
+# The MISSING-PATH diagnosis is SHARED, not local (kustos, 2026-10-13). This was a bare exec,
+# so a missing interpreter or a missing server surfaced as bash's "line 11: No such file or
+# directory" — naming neither the path nor the cause, for three causes needing three fixes
+# (venv never created / deploy never ran / caller has a different $HOME). Every launcher in
+# the fleet hits the same wall, so the guard lives once in scripts/lib/require-fleet-venv.sh
+# and this wrapper only sources it — a per-launcher copy would drift.
 set -u
-_py="${HOME}/.hermes-cortex/venv/bin/python3"
-_srv="${HOME}/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py"
-_venv_dir="${HOME}/.hermes-cortex/venv"
 
-if [[ ! -x "$_py" ]]; then
-  echo "loop-gov-mcp: NO INTERPRETER at $_py" >&2
-  echo "  HOME=${HOME}  (these paths are relative to HOME; a different HOME in the caller is a cause)" >&2
-  echo "  the fleet venv is created by nothing in this repo — create it, then fill it:" >&2
-  echo "    python3 -m venv \"${_venv_dir}\"" >&2
-  echo "    \"${_venv_dir}/bin/python3\" \"${HOME}/.hermes-cortex/scripts/fix-cortex-venv.py\"" >&2
-  echo "  (on a host that has not deployed the fixer: bash ~/hermes-cortex/ops/scripts/cortex-update.sh)" >&2
+_srv="${HOME}/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py"
+
+# Resolve the guard: the deployed location first, then beside this script — the wrapper sits
+# in scripts/ once deployed and in ops/scripts/manage/ in the repo.
+_guard=""
+for _cand in \
+  "${HOME}/.hermes-cortex/scripts/lib/require-fleet-venv.sh" \
+  "$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)/lib/require-fleet-venv.sh" \
+  "$(cd "$(dirname "${BASH_SOURCE[0]}")/../lib" 2>/dev/null && pwd)/require-fleet-venv.sh"
+do
+  [[ -f "$_cand" ]] && { _guard="$_cand"; break; }
+done
+
+if [[ -z "$_guard" ]]; then
+  echo "loop-gov-mcp: the venv guard is NOT DEPLOYED at ${HOME}/.hermes-cortex/scripts/lib/require-fleet-venv.sh" >&2
+  echo "  HOME=${HOME}  (a different HOME in the caller is a cause)" >&2
+  echo "  deploy it: bash ~/hermes-cortex/ops/scripts/cortex-update.sh" >&2
   exit 78   # EX_CONFIG: the configuration this needs is absent
 fi
 
-if [[ ! -f "$_srv" ]]; then
-  echo "loop-gov-mcp: the governance server is NOT DEPLOYED at $_srv" >&2
-  echo "  HOME=${HOME}  (check this FIRST — a different HOME makes a present file look absent)" >&2
-  echo "  deploy it (its register entry lives in cortex-update.sh):" >&2
-  echo "    bash ~/hermes-cortex/ops/scripts/cortex-update.sh" >&2
-  exit 78
-fi
+# shellcheck source=/dev/null
+. "$_guard"
 
-exec "$_py" "$_srv" "$@"
+# Names which piece is missing — the interpreter, the payload, or a different HOME — and
+# prints the fix for that piece, then exits 78.
+require_fleet_venv "$_srv"
+
+exec "$(fleet_venv_python)" "$_srv" "$@"

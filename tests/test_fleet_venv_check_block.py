@@ -1,16 +1,18 @@
 #!/usr/bin/env python3
-"""The deploy's fleet-venv check, exercised with the venv ABSENT and present.
+"""The deploy's fleet-venv check, exercised with the venv ABSENT, pruned, partial, healthy.
 
-The claim is about a branch nobody can see on a healthy host: it fires only when
-~/.hermes-cortex/venv is missing. Waiting for a broken host is not a test, and running the
-whole deploy with the venv renamed is destructive — so the block is EXTRACTED by stable
-comment markers and run against a stubbed HOME, the pattern this repo already uses for hook
-guards:
+The claim is about branches nobody can see on a healthy host, and running the whole deploy
+with the venv renamed is destructive — so the block is EXTRACTED by stable comment markers
+and run against a stubbed HOME, the pattern this repo already uses for hook guards:
 
-  A. venv absent            -> error names it, prints how to create+fill, DEFERS a failure
-                               (a host that cannot run its MCP servers is not "clean");
-  B. venv present, modules missing -> the fallback probe reports it and DEFERS;
-  C. venv present and importable   -> DEFERS NOTHING (control: no false alarm).
+  A.  venv absent, no fixer      -> CREATED (the self-heal starts), then deferred because
+                                    nothing could fill it (a fresh venv has no modules);
+  A2. venv dir but no python3    -> NOT created, warned about (a pruned/half-built venv needs
+                                    a human), reported missing, deferred;
+  A3. venv absent + a fixer      -> CREATED and verified complete: DEFERS NOTHING (this is
+                                    how every host converges on its next update);
+  B.  venv present, imports fail -> reported and deferred;
+  C.  venv present and importable-> DEFERS NOTHING (control: no false alarm).
 
 Run: python3 tests/test_fleet_venv_check_block.py
 """
@@ -39,7 +41,7 @@ EPILOGUE = 'echo "DEFERRED=${#_DEFERRED_FAILURES[@]}"\n'
 def extract_block():
     """By stable markers, never line numbers — they shift on every edit above."""
     text = DEPLOY.read_text()
-    assert START in text, f"marker gone: {START!r} — this test must be updated, not silenced"
+    assert START in text, f"marker gone: {START!r} — update this test, do not silence it"
     assert END in text, f"marker gone: {END!r}"
     i = text.index(START)
     j = text.index(END, i)
@@ -56,6 +58,16 @@ def _stub_venv(home, rc):
     return py
 
 
+def _stub_fixer(deploy_home, rc=0):
+    """A stub FIXER must be valid PYTHON — the block runs it as `<venv python> fixer.py`,
+    so a bash stub fails to parse and the run defers for the wrong reason."""
+    fixer = Path(deploy_home) / "scripts" / "fix-cortex-venv.py"
+    fixer.parent.mkdir(parents=True, exist_ok=True)
+    fixer.write_text(f"import sys\nsys.exit({rc})\n")
+    fixer.chmod(0o755)
+    return fixer
+
+
 def _run_block(home, deploy_home):
     with tempfile.TemporaryDirectory() as td:
         script = Path(td) / "block.sh"
@@ -66,16 +78,40 @@ def _run_block(home, deploy_home):
         )
 
 
-def test_an_absent_venv_is_reported_and_runs_properly():
-    """THE case kustos hit: the venv was never created, and the old check said nothing."""
+def test_an_absent_venv_is_created_then_judged():
+    """THE case kustos hit: the venv was never created. The deploy must CREATE it, not
+    merely complain — and must not call the update clean until it can import."""
     with tempfile.TemporaryDirectory() as home, tempfile.TemporaryDirectory() as dep:
         r = _run_block(home, dep)
         out = r.stdout + r.stderr
-        assert "MISSING" in out, f"an absent venv must be reported: {out}"
-        assert "python3 -m venv" in out, "it must show how to create it"
-        assert "fix-cortex-venv.py" in out, "it must show how to fill it"
-        assert "DEFERRED=1" in out, f"it must be deferred so the update is not called clean: {out}"
-        print("  A: absent venv -> named, create+fill shown, deferred ✓")
+        assert "Created the fleet venv" in out, f"an absent venv must be created: {out}"
+        assert "DEFERRED=1" in out, \
+            f"a venv that could not be filled is not a clean update: {out}"
+        print("  A: absent venv -> created, then deferred (nothing could fill it) ✓")
+
+
+def test_a_pruned_venv_is_not_overwritten_and_is_reported():
+    """A venv DIRECTORY with no bin/python3 is half-built or pruned: leave it to a human."""
+    with tempfile.TemporaryDirectory() as home, tempfile.TemporaryDirectory() as dep:
+        (Path(home) / ".hermes-cortex" / "venv").mkdir(parents=True)
+        r = _run_block(home, dep)
+        out = r.stdout + r.stderr
+        assert "no usable bin/python3" in out, f"a pruned venv must be named, not clobbered: {out}"
+        assert "MISSING" in out, out
+        assert "DEFERRED=1" in out, out
+        print("  A2: pruned venv -> warned, reported, deferred (not overwritten) ✓")
+
+
+def test_an_absent_venv_with_a_fixer_converges_clean():
+    """The self-heal: created AND verified complete -> no deferred failure. This is how a
+    host that never had the venv works again on its next update."""
+    with tempfile.TemporaryDirectory() as home, tempfile.TemporaryDirectory() as dep:
+        _stub_fixer(dep, rc=0)      # the fixer reports success (nothing missing)
+        r = _run_block(home, dep)
+        out = r.stdout + r.stderr
+        assert "Created the fleet venv" in out, out
+        assert "DEFERRED=0" in out, f"a created+filled venv must not defer: {out}"
+        print("  A3: absent venv + fixer -> created, clean ✓")
 
 
 def test_a_partial_venv_without_the_fixer_still_defers():

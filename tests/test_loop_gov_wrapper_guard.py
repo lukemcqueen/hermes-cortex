@@ -81,6 +81,19 @@ def test_the_happy_path_still_execs_with_arguments():
         print("  C: both present -> execs the server ✓")
 
 
+def test_a_missing_guard_is_named_too():
+    """The guard itself is a deployed file: if it is absent, say so rather than die obscurely."""
+    with tempfile.TemporaryDirectory() as td, tempfile.TemporaryDirectory() as home:
+        lone = Path(td) / "loop-gov-mcp.sh"      # nothing beside it, and no deployed copy
+        lone.write_text(WRAPPER.read_text())
+        r = subprocess.run(["bash", str(lone)], capture_output=True, text=True,
+                           env={**os.environ, "HOME": home})
+        assert r.returncode == EX_CONFIG, r.stderr
+        assert "venv guard is NOT DEPLOYED" in r.stderr, r.stderr
+        assert "require-fleet-venv.sh" in r.stderr, "it must name the guard file"
+        print("  D: absent guard -> named, rc=78 ✓")
+
+
 def test_the_wrapper_carries_no_absolute_home():
     """It must resolve through $HOME: a hardcoded /home/<user> is how a fleet script breaks
     on every other host (and reads as PII to the scanners)."""

@@ -521,6 +521,9 @@ register "ops/scripts/lib/toon_parse.py"                 "${CORTEX_DEPLOY_HOME}/
 # nothing about a module, and the old silent fallback to a PyYAML-less python3 made the
 # daily regression gate fail every day. Used by orch-daily-regression-gate.sh.
 register "ops/scripts/lib/python-with-module.sh"          "${CORTEX_DEPLOY_HOME}/scripts/lib/python-with-module.sh"
+# The shared launcher guard: every wrapper that execs the fleet venv sources it, so a
+# missing interpreter/payload is named instead of surfacing as bash's generic exec error.
+register "ops/scripts/lib/require-fleet-venv.sh"          "${CORTEX_DEPLOY_HOME}/scripts/lib/require-fleet-venv.sh"
 register "ops/scripts/lib/cortex-update-mutex.py"         "${CORTEX_DEPLOY_HOME}/scripts/lib/cortex-update-mutex.py"
 register "ops/scripts/manage/verify-stamp-repo-tuple.py"   "${CORTEX_DEPLOY_HOME}/scripts/manage/verify-stamp-repo-tuple.py"
 register "ops/scripts/manage/orch-task-board-digest.py"  "${CORTEX_DEPLOY_HOME}/scripts/orch-task-board-digest.py"
@@ -3084,6 +3087,18 @@ main() {
   _fleet_venv_dir="${HOME}/.hermes-cortex/venv"
   _fleet_venv="${_fleet_venv_dir}/bin/python3"
   _venv_fixer="${CORTEX_DEPLOY_HOME}/scripts/fix-cortex-venv.py"
+  # CREATE it when absent (2026-10-13): nothing in this repo created that venv, so a host
+  # could sit broken indefinitely while every launcher that execs it died with a generic
+  # "No such file or directory". Touches only the venv path, deletes nothing, idempotent.
+  if [[ ! -x "$_fleet_venv" ]]; then
+    if [[ -e "$_fleet_venv_dir" ]]; then
+      warn "the fleet venv exists but has no usable bin/python3 — leaving it alone (a pruned or half-built venv needs a human look)"
+    elif command -v python3 >/dev/null 2>&1 && python3 -m venv "$_fleet_venv_dir" >/dev/null 2>&1; then
+      info "Created the fleet venv (it was absent): ${_fleet_venv_dir/$HOME/~}"
+    else
+      error "could not create the fleet venv at ${_fleet_venv_dir/$HOME/~} (python3 -m venv failed)"
+    fi
+  fi
   if [[ ! -x "$_fleet_venv" ]]; then
     error "the fleet venv is MISSING: ${_fleet_venv_dir/$HOME/~}"
     info  "  HOME=${HOME} — these paths are relative to it (a different HOME in the client is a second cause)"
@@ -3091,11 +3106,16 @@ main() {
     info  "  fill:   \"${_fleet_venv}\" \"${_venv_fixer}\"   # installs the declared set"
     _DEFERRED_FAILURES+=("fleet venv missing")
   elif [[ -f "$_venv_fixer" ]]; then
+    # FILL it: install the declared set when anything is missing. The fixer installs only
+    # what is absent and decides by IMPORT, so re-running it on a healthy host does nothing.
     if ! "$_fleet_venv" "$_venv_fixer" --check >/dev/null 2>&1; then
-      error "the fleet venv cannot import the declared dependencies (install/requirements.txt)"
-      info  "  report: \"${_fleet_venv}\" \"${_venv_fixer}\" --check"
-      info  "  repair: \"${_fleet_venv}\" \"${_venv_fixer}\""
-      _DEFERRED_FAILURES+=("fleet venv cannot import the declared set")
+      info "Installing the declared requirements into the fleet venv…"
+      if ! "$_fleet_venv" "$_venv_fixer" >/dev/null 2>&1; then
+        error "the fleet venv still cannot import the declared dependencies (install/requirements.txt)"
+        info  "  report: \"${_fleet_venv}\" \"${_venv_fixer}\" --check"
+        info  "  repair: \"${_fleet_venv}\" \"${_venv_fixer}\""
+        _DEFERRED_FAILURES+=("fleet venv cannot import the declared set")
+      fi
     fi
   else
     # A checkout too old to carry the fixer: keep the measured probe as the fallback.

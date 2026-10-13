@@ -33,6 +33,13 @@ say "  [fleet venv check block] rc=$rc"
 [ "$rc" = 0 ] || bad "the fleet venv check block tests"
 
 say
+say "== the CLASS: no launcher may bare-exec the fleet venv =="
+out="$("$PY" tests/test_fleet_venv_launchers.py 2>&1)"; rc=$?
+printf '%s\n' "$out" | sed 's/^/  /'
+say "  [fleet launcher sweep] rc=$rc"
+[ "$rc" = 0 ] || bad "the fleet launcher sweep"
+
+say
 say "== the DEPLOYED wrapper, on a HOME with no venv (what kustos saw) =="
 WRAP="$HOME/.hermes-cortex/scripts/loop-gov-mcp.sh"
 if [ -f "$WRAP" ]; then

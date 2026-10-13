@@ -1088,11 +1088,51 @@ Do NOT "fix" this by deleting the check or by relocking during a deploy — relo
 
 ---
 
+## The fleet venv: a launcher dies with "line N: No such file or directory"
+
+**Symptom** (kustos, 2026-10-13): a launcher such as `~/.hermes/scripts/loop-gov-mcp.sh`
+fails on its `exec` line with bash's own `No such file or directory` — naming neither the
+path nor the cause.
+
+**Read the error before you search.** On an `exec` line that message means the **executable**
+is missing: the fleet interpreter `~/.hermes-cortex/venv/bin/python3`, or its
+`python3 → python` symlink target. If the interpreter were fine and only the server script
+were gone, bash would exec python successfully and *python* would complain
+(`can't open file '…': [Errno 2]`) instead.
+
+**Three causes, three fixes** — check in this order (lock-free, read-only):
+
+```bash
+ls -l ~/.hermes-cortex/venv/bin/python3                         # 1. the interpreter
+ls -l ~/.hermes-cortex/venv/bin/                                #    python3 -> python: a dangling target breaks it too
+ls -l ~/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py    # 2. the payload (deploy never ran)
+```
+
+3. **Both present** → it is `$HOME`. Launchers resolve both paths relative to it, so a client
+   started with a different HOME makes a present path look absent. The guard prints the HOME it
+   resolved for exactly this reason.
+
+**Fix**
+
+```bash
+python3 -m venv ~/.hermes-cortex/venv
+~/.hermes-cortex/venv/bin/python3 ~/.hermes-cortex/scripts/fix-cortex-venv.py   # declared set
+```
+If the payload is missing instead, run `cortex-update.sh` (its register entry installs it).
+
+**Why this cannot recur silently.** `cortex-update.sh` now CREATES an absent fleet venv and
+FILLS it from `install/requirements.txt`, deferring a failure if it cannot (a host that cannot
+run its MCP servers is never reported "clean"). Every launcher sources
+`scripts/lib/require-fleet-venv.sh`, which names the missing piece and exits **78 (EX_CONFIG)**
+instead of dying generically, and `tests/test_fleet_venv_launchers.py` fails the suite if a new
+launcher bare-execs the venv path again.
+
 ## Changelog
 
 | Version | Date | Changes |
 |---|---|---|
 | 1.8.0 | 2026-10-03 | Added #24 (governance-auditor immutable-flag false positive inside a deploy's unlock window; deploy-in-progress marker) |
+| 1.9.0 | 2026-10-13 | Added "The fleet venv: a launcher dies with 'line N: No such file or directory'" — bash's exec message means the interpreter is missing; three causes with three fixes; the shared guard `scripts/lib/require-fleet-venv.sh`; the deploy now creates+fills an absent venv |
 | 1.7.0 | 2026-07-13 | Added #23 (scoring-activity-watchdog DB path fix), corrected 17 stale `state/`→`data/` references across docs and core governance scripts, fixed MCP lock file sync to prevent enforcer gaps |
 | 1.5.0 | 2026-06-22 | Added #24 (Alembic migration fork troubleshooting, prevention protocol, diagnostics) |
 | 1.4.0 | 2026-06-10 | Rewrote #23 (Langfuse costs) — fixed schema from `langfuse.models` to `public.models`, corrected INSERT SQL for v3 schema, added opencode-zen/opencode-go provider subsection with deepseek-v4-flash-free pricing SQL |
