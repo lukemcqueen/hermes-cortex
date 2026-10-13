@@ -19,6 +19,12 @@ docs audit, which both pointed at this file before it existed.
 
 ## The three launchd rules (each one cost a broken service)
 
+> **Reference:** `launchd.plist(5)` — `ProgramArguments` is "an array of strings … passed to
+> `execvp(3)`". There is no shell in that path and therefore no variable expansion: a `$HOME`
+> or `CORTEX_HOME` written literally is passed as a literal filename. Apple's TN2083
+> ("Creating Launch Daemons and Agents") describes the same execution model. Expansion
+> requires an interpreter, which is why every rule below uses `/bin/bash -lc`.
+
 1. **launchd expands NOTHING inside plist strings.** `$HOME/...` or `CORTEX_HOME/...` written
    literally is a path that does not exist, and the job simply never starts. Every
    `ProgramArguments` that needs a home path goes through a shell:
