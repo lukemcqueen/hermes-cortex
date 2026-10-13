@@ -113,6 +113,27 @@ for f in tests/test_loop_gov_wrapper_guard.py tests/test_fleet_venv_check_block.
 done
 
 say
+say "== 9. the implementation, printed from the FILES (the diff window truncates) =="
+# A reviewer whose material window cuts the middle of a file sees names without bodies and
+# can reasonably ask whether the implementation exists. It does; print it here so the artifact
+# carries the code, the before/after, and the commit that introduced it — not a claim about it.
+say "  -- the bash-3.2 rule and the path regex, as stored --"
+grep -n "^ABS_HOME" tests/test_fleet_venv_launchers.py | sed 's/^/    /'
+grep -n -A6 "^def _load_shipped_shell" tests/test_fleet_venv_launchers.py | sed 's/^/    /'
+grep -n -A8 "^def test_shipped_shell_is_bash_32_safe" tests/test_fleet_venv_launchers.py | sed 's/^/    /'
+grep -n "^        (re.compile" tests/test_fleet_venv_launchers.py | sed 's/^/    /'
+say "  -- the plist rules, as stored --"
+grep -n "^def test_every_plist_template_parses\|^def test_no_template_hardcodes_a_user_home\|^def test_a_template_using_HOME_goes_through_a_shell" \
+  tests/test_fleet_venv_launchers.py | sed 's/^/    /'
+say "  -- Titus's plist: BEFORE and AFTER (the diff is bounded; this is the change) --"
+_prev="$(git log --format=%H -1 -- docs/templates/com.hermes.health-push.plist)"
+git show "${_prev}~1:docs/templates/com.hermes.health-push.plist" 2>/dev/null \
+  | grep -A3 "<key>ProgramArguments</key>" | sed 's/^/    BEFORE: /'
+grep -A4 "<key>ProgramArguments</key>" docs/templates/com.hermes.health-push.plist | sed 's/^/    AFTER:  /'
+say "  -- why these files are in this range --"
+git log --format='    %h %s' -2 -- tests/test_fleet_venv_launchers.py
+
+say
 say "FAILS: $FAILS — the verifier's own exit code follows (0 here means every claim held)"
 if [ "$FAILS" -eq 0 ]; then say "ALL CLAIMS VERIFIED (0 failures)"; exit 0; fi
 say "$FAILS CLAIM(S) FAILED"; exit 1
