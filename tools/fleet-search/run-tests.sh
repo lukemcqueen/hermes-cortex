@@ -56,4 +56,22 @@ echo "search with no provider        rc=$?   (3 = could not verify)"
 XDG_CACHE_HOME="$(mktemp -d)" ./target/release/fleet-search local "x" >/dev/null 2>&1
 echo "local search, empty cache      rc=$?   (0 = ran, and found nothing)"
 echo
+echo "== the committed test inventory still matches the source =="
+# A name list that has drifted from the tests is worse than no list: it reads as authoritative.
+# Regenerating and diffing means adding or renaming a test fails HERE until the inventory is
+# updated, so the file cannot quietly describe a suite that no longer exists.
+inventory_tmp="$(mktemp)"
+cargo test -- --list 2>/dev/null | grep -E ": test$" > "$inventory_tmp"
+if diff -q test-inventory.txt "$inventory_tmp" >/dev/null 2>&1; then
+  echo "  matches: $(wc -l < test-inventory.txt | tr -d ' ') tests"
+else
+  echo "  DRIFT — test-inventory.txt does not match the source:" >&2
+  diff test-inventory.txt "$inventory_tmp" | sed 's/^/    /' >&2
+  echo "  Fix: cargo test -- --list | grep -E ': test\$' > test-inventory.txt" >&2
+  rm -f "$inventory_tmp"
+  exit 1
+fi
+rm -f "$inventory_tmp"
+
+echo
 echo "exit: 0"
