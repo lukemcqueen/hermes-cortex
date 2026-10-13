@@ -1,0 +1,19 @@
+=== ADV-12503-001 ANSWER: what did doctor-after.txt say at each revision? ===
+
+$ git show c4d2c82d:docs/evidence/lifecycle/2026-10-14/doctor-after.txt | grep -E 'Overall:|Skill drift'
+  ✅ Skill drift
+  ⚠️  Overall: WARNING  (459 pass · 1 warn · 0 fail · 3 info)
+
+$ git show HEAD:...doctor-after.txt | grep -E 'Overall:|Skill drift'
+  ✅ Skill drift
+  ⚠️  Overall: WARNING  (459 pass · 1 warn · 0 fail · 3 info)
+
+CONCLUSION: the file read WARNING (459 pass, 1 warn, 0 fail) at BOTH
+revisions. Only the timestamp line changed (04:44:21 -> 04:47:15).
+The reviewer's hypothesis that c4d2c82d held a HEALTHY transcript is
+REFUTED. The original defect (ADV-12501-001) was purely in the doc's
+prose, which quoted a different doctor run than the committed transcript.
+
+$ git diff c4d2c82d HEAD -- <file>  (complete, non-meta lines)
+-━━━ Hermes Cortex Doctor ━━━  (04:44:21)
++━━━ Hermes Cortex Doctor ━━━  (04:47:15)

@@ -96,7 +96,23 @@ The sync commit contains 23 files, all under `skills/` — verified with
 `commit-contents-proof.txt` — machine output showing the sync commit diffed
 against its parent contains exactly 23 files, 0 outside `skills/`.
 
-## Objection to ADV-12501-002/003/005 (recorded per SOUL Principle 5)
+## ADV-12503 answers
+
+**ADV-12503-001 (high, "fabrication") — REFUTED by git data.** The finding
+hypothesised that `doctor-after.txt` at `c4d2c82d` held a HEALTHY transcript and
+was later swapped. It did not. `adv12503-answer.txt` shows the file read
+`WARNING (459 pass · 1 warn · 0 fail · 3 info)` at BOTH revisions; the only
+changed line is the timestamp (`04:44:21` → `04:47:15`). My narrative was
+accurate: the defect was purely in this document's prose, which quoted a
+different doctor run. The reviewer's inference was a plausible hypothesis, and
+the committed proof answers it — I state this without rancour because that is
+exactly the class of check worth having.
+
+**ADV-12503-004 (info) — file is complete, not truncated.**
+`word-level-diff.txt` covers all 10 of 10 REVIEW-flagged files (161 lines).
+The "unclosed block / ends mid-sentence" appearance is the review gate's own
+window cutting a `>` added-line mid-sentence; the committed file is whole.
+Verified: `grep -c '^## '` returns 10.
 
 These three findings are procedurally unsatisfiable and I record my objection
 rather than chasing them further:
