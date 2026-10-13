@@ -1,0 +1,51 @@
+# env-clean test runner — measured evidence (2026-10-13)
+
+Same command, same host, ONLY the environment differing. The fleet venv interpreter throughout.
+
+## (a) the session's PYTHONPATH inherited — how every agent-run suite has been running
+ERROR tests/test_task_mcp_v3.py
+!!!!!!!!!!!!!!!!!!! Interrupted: 4 errors during collection !!!!!!!!!!!!!!!!!!!!
+=================== 1818 tests collected, 4 errors in 1.93s ====================
+collect-only rc=2
+
+## (b) the same interpreter, PYTHONPATH and PYTHONHOME unset
+
+======================== 1846 tests collected in 2.68s =========================
+collect-only rc=0
+
+## (c) the guard, run BARE in a contaminated session — must FAIL, or it guards nothing
+=========================== short test summary info ============================
+FAILED tests/test_suite_collection_clean.py::test_the_environment_can_collect_the_whole_suite
+============================== 1 failed in 2.65s ===============================
+bare rc=1
+
+## (d) the guard through tests/run-tests.sh — must PASS
+============================== 1 passed in 3.53s ===============================
+---
+run-tests.sh: interpreter=$HOME/.hermes-cortex/venv/bin/python3 rc=0  (PYTHONPATH/PYTHONHOME unset for the run)
+wrapper rc=0
+
+## (e) a gate must be able to FAIL: the wrapper on a path with no tests
+============================ no tests ran in 0.00s =============================
+---
+run-tests.sh: interpreter=$HOME/.hermes-cortex/venv/bin/python3 rc=4  (PYTHONPATH/PYTHONHOME unset for the run)
+wrapper rc=4  (pytest's own 'nothing to run' code, propagated)
+
+## (f) attempt 1 — SUPERSEDED. Kept because it found something (see (f), below).
+##     It did NOT exercise the COULD NOT VERIFY branch: the copy silently fell back to the REAL
+##     deployed resolver, so it ran pytest against a nonexistent `tests/` instead of using the stub
+##     (rc=4, "no tests ran"). That silent fallback is now fixed in the wrapper, and (f) re-tested.
+
+## (f) the COULD NOT VERIFY branch, exercised rather than asserted
+     A copy of the wrapper with NO repo resolver (so it must announce the fallback), and a fake
+     HOME whose deployed resolver exits 3 — the resolver's own 'nothing here can import pytest' code.
+     The earlier attempt at this section did NOT reach this branch: it silently used the real HOME
+     resolver instead of the stub. The fallback now announces itself, which is why this branch is
+     exercised here rather than asserted.
+     note: no executable repo resolver at $REPO/ops/scripts/lib/python-with-module.sh
+           falling back to the deployed one: $HOME/.hermes/cache/scratch/f2verify/home/.hermes-cortex/scripts/lib/python-with-module.sh
+     COULD NOT VERIFY: no interpreter on this host can import pytest.
+       Tried: $HOME/.hermes/cache/scratch/f2verify/home/.hermes-cortex/scripts/lib/python-with-module.sh
+       Fix:   $HOME/.hermes/cache/scratch/f2verify/home/.hermes-cortex/scripts/manage/fix-cortex-venv.py
+       No interpreter means no verdict — this is NOT a pass.
+     wrapper rc=3
