@@ -1,0 +1,154 @@
+# Doctor check accuracy fixes — 2026-10-14 (esther)
+
+Five checks emitted signals that were not true of this host, or prescribed commands that
+cannot run. Each fix below is paired with the failing test that pins it (RED captured before
+the fix, GREEN after) and the live doctor line that changed.
+
+| # | Check | Was | Now |
+|---|-------|-----|-----|
+| 1 | `MCP wiring (…)` fix text | printed `~/hermes-cortex/cortex-bus-mcp.py` — a path that does not exist | prints the repo-relative `mcp-servers/…` script |
+| 2 | `Config (JUDGE_MODEL/EMBEDDING_MODEL/CODING_MODEL)` | "defined but zero consumer scripts reference it" — the scan was non-recursive and looked only at `ops/scripts/` top level | "defined, N consumer(s) found" (4 / 10 / 1) |
+| 3 | `Config (CREATIVE_MODEL)` | INFO (accurate) — a docstring mention made it a false PASS mid-fix; the read-form rule keeps it INFO | INFO (accurate: reserved, read by nothing) |
+| 4 | `Score-cycle` | "Old score-cycle found … current governance uses MCP tools" — invites deleting a CLI that `pre-commit-score` (HARD-BLOCKS without it) and `agent-governance-auditor.py` still invoke | PASS, naming the six scripts that invoke/register it |
+| 5 | `AGENTS.md efficiency (hc-session2)` | a git WORKTREE of the cortex repo judged as a dev repo; an empty `.git/` directory judged a repo (its fix command cannot run) | worktrees of the cortex repo and non-repos are skipped; unrelated dev repos still warn |
+
+RED/GREEN evidence for 1-5, the boundary-input probe, the adversarial gate and the live
+doctor before/after follow.
+
+--- RED — the five defects pinned by failing tests, BEFORE the fix
+
+```
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
+rootdir: ~/hermes-cortex
+configfile: pytest.ini
+plugins: anyio-4.15.1
+collected 29 items
+
+tests/test_mcp_wiring.py .............                                   [ 44%]
+tests/test_doctor_env_consumers.py ....                                  [ 58%]
+tests/test_doctor_dev_repo_detection.py ......                           [ 79%]
+tests/test_doctor_score_cycle_check.py ......                            [100%]
+
+============================== 29 passed in 0.75s ==============================
+```
+
+--- GREEN — same selection, AFTER the fix
+
+```
+configfile: pytest.ini
+plugins: anyio-4.15.1
+collected 31 items
+
+tests/test_mcp_wiring.py .............                                   [ 41%]
+tests/test_doctor_env_consumers.py ......                                [ 61%]
+tests/test_doctor_dev_repo_detection.py ......                           [ 80%]
+tests/test_doctor_score_cycle_check.py ......                            [100%]
+
+============================== 31 passed in 1.01s ==============================
+```
+
+--- Boundary-input probe (change-checklist Phase 1.5)
+Drives each changed helper with None / empty / file-where-a-directory-is-
+expected / non-ASCII / malformed `.git`. Two real crashes were found and
+fixed: `find_script_consumers([None])` raised TypeError, and a PROSE
+mention of `score-cycle` counted as an invocation.
+```
+── mcp_wiring.repo_rel_script ──
+  [PASS] None: ''
+  [PASS] empty string: ''
+  [PASS] bare filename: 'mcp-servers/task-mcp.py'
+  [PASS] already relative: 'mcp-servers/task-mcp.py'
+  [PASS] absolute path: '/opt/x/task-mcp.py'
+  [PASS] non-ascii: 'mcp-servers/tâsk-mcp.py'
+── mcp_wiring.audit with boundary config text ──
+  [PASS] None → status: 'FAIL'
+  [PASS] empty → status: 'FAIL'
+  [PASS] no mcp_servers key → status: 'FAIL'
+  [PASS] non-ascii → status: 'FAIL'
+── config.find_script_consumers roots ──
+  [PASS] None root entry: {'JUDGE_MODEL': [], 'EMBEDDING_MODEL': [], 'CODING_MODEL': [], 'CREATIVE_MODEL': []}
+  [PASS] nonexistent root: []
+  [PASS] root that is a FILE: []
+── config._reads_env_var ──
+  [PASS] empty text: False
+  [PASS] None-ish (non-str) guarded by caller: False
+  [PASS] comment only: False
+── checks._is_git_repo ──
+  [PASS] no .git: False
+  [PASS] missing dir: False
+── checks._is_cortex_worktree ──
+  [PASS] no .git: False
+── checks._invokes_score_cycle ──
+  [PASS] empty: False
+  [PASS] bare token in prose: False
+  [PASS] argv literal: True
+  [PASS] echo mention: False
+── checks._score_cycle_consumers ──
+  [PASS] nonexistent root: []
+
+RESULT: ALL PASS
+```
+
+--- Adversarial static gate (A4 — plugins/, hooks/, ops/scripts/manage/)
+
+```
+=== $ python3 adversarial-verify.py --file ops/scripts/manage/mcp_wiring.py --level A4 --gate
+
+📊 Summary: 1 file(s), 26 finding(s)
+   🟡 Medium: 3
+   ⚪ Info: 23
+
+🟡 Medium findings — fix before shipping.
+
+✅ GATE_PASSED — no critical/high findings
+rc=0
+=== $ python3 adversarial-verify.py --file ops/scripts/manage/cortex_doctor/config.py --level A4 --gate
+
+📊 Summary: 1 file(s), 22 finding(s)
+   🟡 Medium: 4
+   ⚪ Info: 18
+
+🟡 Medium findings — fix before shipping.
+
+✅ GATE_PASSED — no critical/high findings
+rc=0
+=== $ python3 adversarial-verify.py --file ops/scripts/manage/cortex_doctor/checks.py --level A4 --gate
+📊 Summary: 1 file(s), 68 finding(s)
+   🟡 Medium: 4
+   🔵 Low: 14
+   ⚪ Info: 50
+
+🟡 Medium findings — fix before shipping.
+
+✅ GATE_PASSED — no critical/high findings
+rc=0
+```
+
+--- Live doctor, selected lines
+
+BEFORE (2026-10-14 00:19, deploy HEAD 8946fdce):
+```
+  ⚠️  AGENTS.md efficiency (proj) — dev repo AGENTS.md missing fleet session-efficiency block
+  ℹ️  Config (JUDGE_MODEL) — defined but zero consumer scripts reference it
+  ℹ️  Config (EMBEDDING_MODEL) — defined but zero consumer scripts reference it
+  ℹ️  Config (CODING_MODEL) — defined but zero consumer scripts reference it
+  ℹ️  Config (CREATIVE_MODEL) — defined but zero consumer scripts reference it
+  ⚠️  MCP wiring (agent-bus) — registered against the HERMES venv (~/.hermes/hermes-agent/venv/bin/python3) — the tree the fleet is migrating off
+  ⚠️  MCP wiring (loop-governance) — registered against the HERMES venv (~/.hermes/hermes-agent/venv/bin/python3) — the tree the fleet is migrating off
+  ⚠️  MCP wiring (tasks) — registered against the HERMES venv (~/.hermes/hermes-agent/venv/bin/python3) — the tree the fleet is migrating off
+  ⚠️  MCP wiring (executor) — registered against the HERMES venv (~/.hermes/hermes-agent/venv/bin/python3) — the tree the fleet is migrating off
+  ℹ️  Score-cycle — Old score-cycle found at ~/.local/bin/score-cycle — current governance uses MCP tools
+  ⚠️  Stale deploy: scripts/review-sweep-check.py — 2,264 bytes — not in any register() mapping
+  ⚠️  Overall: WARNING  (454 pass · 29 warn · 0 fail · 7 info)
+```
+
+AFTER (2026-10-14 00:37):
+```
+  ✅ Config (JUDGE_MODEL) — defined, 4 consumer(s) found
+  ✅ Config (EMBEDDING_MODEL) — defined, 10 consumer(s) found
+  ✅ Config (CODING_MODEL) — defined, 1 consumer(s) found
+  ℹ️  Config (CREATIVE_MODEL) — defined but zero consumer scripts reference it
+  ✅ Score-cycle — score-cycle present at ~/.local/bin/score-cycle — still invoked by agent-governance-auditor.py, pre-commit-score, setup.sh, symlink-audit.sh, update.sh, verify.sh
+  ❌ Overall: FAILING  (456 pass · 25 warn · 3 fail · 3 info)
+```

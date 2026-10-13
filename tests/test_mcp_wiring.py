@@ -126,21 +126,38 @@ def test_a_bare_command_is_resolved_on_PATH_not_as_a_path():
     print("  a bare command is resolved on PATH, and should be the venv ✓")
 
 
+def test_the_printed_fix_names_a_path_that_resolves():
+    """The doctor calls audit() with a BARE filename ("cortex-bus-mcp.py"), so the printed fix
+    used to render `~/hermes-cortex/cortex-bus-mcp.py` — a path that does not exist, i.e. advice
+    nobody can run. The fix must name the repo-relative script."""
+    m = _load()
+    cfg = ("mcp_servers:\n  tasks:\n    command: /opt/hermes-agent/venv/bin/python3\n"
+           "    args: [/opt/task-mcp.py]\n")
+    res = m.audit(cfg, {"tasks": "task-mcp.py"}, exists=lambda p: True)
+    fix = res[0][3]
+    arg = next(t for t in fix.split() if t.endswith("task-mcp.py"))
+    assert arg.endswith("/mcp-servers/task-mcp.py"), fix
+    print("  the printed fix names the repo-relative script ✓")
+
+
 def test_the_expected_map_agrees_with_the_doctors():
     """One source of truth: this CLI cannot import the doctor's package, so the duplication is
-    enforced by comparing the two files rather than hoped for."""
+    enforced by comparing the two files rather than hoped for. The VALUES must agree too — a
+    key-only check let the doctor pass a bare filename while this module assumed the
+    `mcp-servers/` prefix, which is how the unrunnable fix string shipped."""
     import re as _re
     cfg = (REPO / "ops" / "scripts" / "manage" / "cortex_doctor" / "config.py").read_text()
     block = _re.search(r"EXPECTED_MCP_SERVERS\s*=\s*\{(.*?)\}", cfg, _re.DOTALL)
     assert block, "the doctor's EXPECTED_MCP_SERVERS was not found — update this test"
-    doctor_names = set(_re.findall(r'"([a-z][a-z0-9-]*)":', block.group(1)))
+    doctor_map = dict(_re.findall(r'"([a-z][a-z0-9-]*)":\s*"([^"]*)"', block.group(1)))
     orch = _re.search(r"ORCH_ONLY_MCP_SERVERS\s*=\s*\{([^}]*)\}", cfg)
     assert orch, "the doctor's ORCH_ONLY_MCP_SERVERS was not found — update this test"
     doctor_orch = set(_re.findall(r'"([^"]+)"', orch.group(1)))
     m = _load()
-    assert set(m.DEFAULT_EXPECTED) == doctor_names, (set(m.DEFAULT_EXPECTED), doctor_names)
+    assert set(m.DEFAULT_EXPECTED) == set(doctor_map), (set(m.DEFAULT_EXPECTED), set(doctor_map))
+    assert m.DEFAULT_EXPECTED == doctor_map, (m.DEFAULT_EXPECTED, doctor_map)
     assert m.ORCH_ONLY == doctor_orch, (m.ORCH_ONLY, doctor_orch)
-    print("  the wiring map matches the doctor's map ✓")
+    print("  the wiring map matches the doctor's map (keys AND values) ✓")
 
 
 def test_the_doctor_reports_an_unavailable_audit_instead_of_skipping_it():

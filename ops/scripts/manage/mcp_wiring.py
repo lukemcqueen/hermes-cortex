@@ -31,15 +31,34 @@ from pathlib import Path
 
 #: name -> server script (relative), and whether only an orchestrator host is expected to
 #: carry it. These MUST agree with the doctor's own map (ops/scripts/manage/cortex_doctor/
-#: config.py, EXPECTED_MCP_SERVERS / ORCH_ONLY_MCP_SERVERS) — a test asserts the two match, so
-#: there is one source of truth even though the CLI cannot import the doctor's package.
+#: config.py, EXPECTED_MCP_SERVERS / ORCH_ONLY_MCP_SERVERS) — a test asserts the two match BY
+#: KEY AND BY VALUE, so there is one source of truth even though the CLI cannot import the
+#: doctor's package. The values are BARE filenames (the doctor's convention); the repo-relative
+#: path is built by repo_rel_script() wherever one is printed.
 DEFAULT_EXPECTED = {
-    "agent-bus": "mcp-servers/cortex-bus-mcp.py",
-    "loop-governance": "mcp-servers/loop-gov-mcp.py",
-    "tasks": "mcp-servers/task-mcp.py",
-    "executor": "mcp-servers/executor-mcp.py",
+    "agent-bus": "cortex-bus-mcp.py",
+    "loop-governance": "loop-gov-mcp.py",
+    "tasks": "task-mcp.py",
+    "executor": "executor-mcp.py",
 }
 ORCH_ONLY = {"agent-bus", "executor"}
+
+#: Where the server scripts live under the repo root.
+MCP_SERVERS_REL = "mcp-servers"
+
+
+def repo_rel_script(script):
+    """The server script's path relative to the repo root.
+
+    Callers pass a BARE filename (the doctor's EXPECTED_MCP_SERVERS does), so a fix string built
+    as `~/hermes-cortex/{script}` rendered `~/hermes-cortex/cortex-bus-mcp.py` — a path that does
+    not exist, i.e. a printed command nobody can run. Normalise here so every printed command
+    resolves, whichever convention the caller used.
+    """
+    script = (script or "").strip()
+    if not script or "/" in script:
+        return script
+    return f"{MCP_SERVERS_REL}/{script}"
 
 #: A command inside the HERMES venv works, but it is the tree the fleet is migrating off
 #: (Luke 2026-10-13: use the cortex venv). Worth a warning, not a failure.
@@ -160,7 +179,8 @@ def audit(config_text, expected=None, exists=None, is_orch=True, which=None):
         if block is None:
             results.append((name, "FAIL", "not configured",
                             f"hermes mcp add {name} --command "
-                            f"~/.hermes-cortex/venv/bin/python3 --args ~/hermes-cortex/{script}"))
+                            f"~/.hermes-cortex/venv/bin/python3 "
+                            f"--args ~/hermes-cortex/{repo_rel_script(script)}"))
             continue
 
         gone, bare = _missing_paths(block)
@@ -170,7 +190,7 @@ def audit(config_text, expected=None, exists=None, is_orch=True, which=None):
                             "configured, but these paths do NOT exist: " + ", ".join(gone),
                             f"hermes mcp remove {name} && hermes mcp add {name} "
                             f"--command ~/.hermes-cortex/venv/bin/python3 "
-                            f"--args ~/hermes-cortex/{script}"
+                            f"--args ~/hermes-cortex/{repo_rel_script(script)}"
                             "   (or run cortex-update.sh to deploy the missing pieces)"))
             continue
         cmd = re.search(r"^[ \t]*command:[ \t]*(.+?)[ \t]*$", block, re.MULTILINE)
@@ -180,7 +200,8 @@ def audit(config_text, expected=None, exists=None, is_orch=True, which=None):
                   f"the HERMES venv ({command}) — the tree the fleet is migrating off"
             results.append((name, "WARN", f"registered against {why}",
                             f"hermes mcp remove {name} && hermes mcp add {name} "
-                            f"--command {CORTEX_VENV} --args ~/hermes-cortex/{script}"
+                            f"--command {CORTEX_VENV} "
+                            f"--args ~/hermes-cortex/{repo_rel_script(script)}"
                             f"   (there is no 'hermes mcp update'; re-add it)"))
             continue
         results.append((name, "PASS", "configured and its paths exist", ""))

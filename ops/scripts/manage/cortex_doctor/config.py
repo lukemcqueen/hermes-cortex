@@ -243,20 +243,70 @@ def parse_orch_crons():
     return re.findall(r'^create_cron\s+"([^"]+)"', text, re.MULTILINE)
 
 
-def find_script_consumers():
-    """Scan cortex scripts for .env variable names."""
-    scripts_dir = SCRIPTS_SRC
-    if not scripts_dir.is_dir():
-        return {}
+def _reads_env_var(text, var):
+    """True when a script READS the variable rather than merely naming it.
+
+    A docstring or comment that names a variable is documentation, not a consumer: counting those
+    certified CREATIVE_MODEL — documented as "reserved ... (no default yet)" and read by nothing
+    — as consumed (measured 2026-10-14). The forms that read it:
+      get_model("VAR", …) · os.environ.get("VAR") · os.environ["VAR"] · getenv("VAR") · $VAR
+    """
+    patterns = (
+        rf'get_model\(\s*["\']{var}["\']',
+        rf'os\.environ\.get\(\s*["\']{var}["\']',
+        rf'os\.environ\[\s*["\']{var}["\']',
+        rf'getenv\(\s*["\']{var}["\']',
+        rf'\$\{{{var}\b',
+        rf'\${var}\b',
+    )
+    return any(re.search(p, text) for p in patterns)
+
+
+def find_script_consumers(roots=None):
+    """Scan the repo's script-bearing trees for .env variable names.
+
+    RECURSIVE, and over every tree a consumer can live in. The previous version iterated
+    `CORTEX_REPO/ops/scripts` NON-recursively, while the real consumers sit in
+    `ops/scripts/manage/`, `ops/offline/`, `ops/web-cache/` and `mcp-servers/` — so the doctor
+    reported three HEALTHY model variables (JUDGE_MODEL, EMBEDDING_MODEL, CODING_MODEL) as
+    "defined but zero consumer scripts reference it" (measured 2026-10-14). A check that cannot
+    see its input reports the input as missing.
+
+    Compiled caches and test files are not consumers: a `__pycache__` entry is a copy of a file
+    already counted, and a test that mentions a variable name does not READ it.
+    """
+    if roots is None:
+        roots = [CORTEX_REPO / "ops", CORTEX_REPO / "core", CORTEX_REPO / "mcp-servers"]
     known_vars = ["JUDGE_MODEL", "EMBEDDING_MODEL", "CODING_MODEL", "CREATIVE_MODEL"]
     consumers = {v: [] for v in known_vars}
-    for script in sorted(scripts_dir.iterdir()):
-        if not script.is_file():
+    skip_dirs = {"__pycache__", ".git", "node_modules", "docs", "evidence", "fixtures",
+                 "cortex_doctor"}
+    for root in roots:
+        try:
+            root = Path(root)
+        except TypeError:
+            # A caller that hands in a non-path entry gets it skipped, not a traceback: a check
+            # must not crash on malformed input (found by the boundary probe).
             continue
-        text = script.read_text(errors="replace")
-        for var in known_vars:
-            if var in text:
-                consumers[var].append(script.name)
+        if not root.is_dir():
+            continue
+        for path in sorted(root.rglob("*")):
+            try:
+                if not path.is_file():
+                    continue
+            except OSError:
+                continue
+            if any(part in skip_dirs for part in path.parts):
+                continue
+            if path.name.startswith("test_") or path.suffix not in (".py", ".sh"):
+                continue
+            try:
+                text = path.read_text(errors="replace")
+            except OSError:
+                continue
+            for var in known_vars:
+                if path.name not in consumers[var] and _reads_env_var(text, var):
+                    consumers[var].append(path.name)
     return consumers
 
 

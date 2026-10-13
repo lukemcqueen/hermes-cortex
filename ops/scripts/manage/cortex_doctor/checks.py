@@ -427,6 +427,113 @@ def check_adversarial_review(res: "Results") -> None:
               "Set OPENROUTER_API_KEY in ~/.hermes/.env so the review hard gate can call the model")
 
 
+def _invokes_score_cycle(text):
+  """True when a line puts `score-cycle` in COMMAND position.
+
+  A comment, a help string, an `echo` or PROSE that names the CLI is not wiring: counting those
+  made the doctor report eleven "consumers" of which most merely mention the word, and a
+  docstring sentence ("the score-cycle tool is legacy") counted too (measured 2026-10-14). The
+  accepted forms, each a real invocation or a real registration:
+    quoted literal      ["score-cycle", "--task", …] · TOOLS[...]="score-cycle"
+    command position    for candidate in score-cycle … · | score-cycle · $(score-cycle …)
+    resolved path       "${BIN_DIR}/score-cycle"
+  """
+  for raw in text.splitlines():
+    s = raw.strip()
+    if not s or s.startswith("#") or "score-cycle" not in s:
+      continue
+    head = s.split("score-cycle", 1)[0]
+    if any(tok in head for tok in ("echo", "print", "printf")):
+      continue
+    if re.search(r"""["']score-cycle["']""", s):
+      return True
+    if re.search(r"""(^|[|&;(]|\bin\s|\$\()\s*score-cycle(\s|$)""", s):
+      return True
+    if re.search(r"""/score-cycle["'\s)\]}]""", s):
+      return True
+  return False
+
+
+def _score_cycle_consumers(search_roots=None):
+  """Scripts that still INVOKE the legacy score-cycle CLI.
+
+  The CLI is not a leftover while a live script calls it: `pre-commit-score` resolves score-cycle
+  through `~/.local/bin/` and HARD-BLOCKS when it finds none, `agent-governance-auditor.py` runs
+  it by bare name for auto-remediation, and `core/governance/{setup,update,verify}.sh` create and
+  check the symlink. Calling it "old" invites deleting a wired-in path (measured 2026-10-14).
+  The doctor's own files are excluded — its check text mentions the name without being a
+  consumer.
+  """
+  if search_roots is None:
+    search_roots = [CORTEX_HOME / "scripts", CORTEX_REPO / "ops", CORTEX_REPO / "core"]
+  found = []
+  for root in search_roots:
+    root = Path(root)
+    if not root.is_dir():
+      continue
+    for path in sorted(root.rglob("*")):
+      try:
+        if not path.is_file() or path.name == "score_cycle.py":
+          continue
+      except OSError:
+        continue
+      if any(part in ("__pycache__", ".git", "cortex_doctor") for part in path.parts):
+        continue
+      if path.name.startswith("test_"):
+        continue
+      if path.suffix not in (".py", ".sh") and not path.name.startswith("pre-"):
+        continue
+      try:
+        text = path.read_text(errors="replace")
+      except OSError:
+        continue
+      if path.name not in found and _invokes_score_cycle(text):
+        found.append(path.name)
+  return found
+
+
+def _is_git_repo(repo_dir):
+  """True only for a directory that IS a repository.
+
+  `.git` as a FILE is a worktree/submodule pointer (a real repo); as a DIRECTORY it must hold
+  HEAD. An EMPTY `.git/` is neither — measured 2026-10-14: `~/proj/.git` was an empty directory,
+  the dev-repo scan called it a repo, warned about its AGENTS.md, and printed a fix command
+  (`apply-repo-efficiency.py ~/proj --commit`) that CANNOT run: git answers "not a git
+  repository". A check must not prescribe a command against a repository that does not exist.
+  """
+  git = Path(repo_dir) / ".git"
+  try:
+    if git.is_file():
+      return True
+    return (git / "HEAD").is_file()
+  except OSError:
+    return False
+
+
+def _is_cortex_worktree(repo_dir):
+  """True when repo_dir is a git WORKTREE of the cortex repo itself.
+
+  A worktree carries the CORTEX repo's own AGENTS.md on a session branch, so judging it as a dev
+  repo warns about a block that belongs to the cortex repo (check_repo's job) and points the
+  printed fix at a session branch. Measured 2026-10-14 on ~/hc-session2. The `.git` FILE names
+  the real gitdir, so the common dir decides.
+  """
+  git = Path(repo_dir) / ".git"
+  try:
+    if not git.is_file():
+      return False
+    text = git.read_text(errors="replace").strip()
+  except OSError:
+    return False
+  if not text.startswith("gitdir:"):
+    return False
+  target = text.split(":", 1)[1].strip()
+  try:
+    return Path(target).resolve().is_relative_to((CORTEX_REPO / ".git").resolve())
+  except (OSError, ValueError):
+    return False
+
+
 def check_dev_repo_agents(res: "Results") -> None:
   """1b. Development repos: check each project-level git repo has an AGENTS.md."""
   if not CORTEX_REPO.is_dir():
@@ -434,7 +541,8 @@ def check_dev_repo_agents(res: "Results") -> None:
 
   try:
     raw = subprocess.run(
-      ["find", str(HOME), "-maxdepth", "3", "-name", ".git", "-type", "d"],
+      ["find", str(HOME), "-maxdepth", "3", "-name", ".git",
+       "(", "-type", "d", "-o", "-type", "f", ")"],
       capture_output=True, text=True, timeout=15,
     ).stdout.strip()
   except (subprocess.TimeoutExpired, OSError):
@@ -473,6 +581,13 @@ def check_dev_repo_agents(res: "Results") -> None:
     repo_dir = Path(path).parent.resolve()
     skip = any(str(repo_dir).startswith(str(excl)) for excl in EXCLUDED)
     if skip or repo_dir == CORTEX_REPO:
+      continue
+    if not _is_git_repo(repo_dir):
+      # A bare `.git` DIRECTORY with nothing in it is not a repository. Counting it produced a
+      # warning plus a fix command that cannot run (2026-10-14).
+      continue
+    if _is_cortex_worktree(repo_dir):
+      # A worktree of the cortex repo is the cortex repo on another branch, not a dev repo.
       continue
     found_repos.append(repo_dir)
 
@@ -3142,8 +3257,18 @@ def check_governance(res):
       found_score = p
       break
   if found_score:
-    res.add("Score-cycle", "INFO",
-        f"Old score-cycle found at {found_score} — current governance uses MCP tools")
+    # A CLI is only "old" when nothing invokes it. pre-commit-score resolves it from PATH and
+    # HARD-BLOCKS without it; agent-governance-auditor.py runs it for auto-remediation — so
+    # reporting it as a leftover invites removing a wired-in path (2026-10-14).
+    consumers = _score_cycle_consumers()
+    if consumers:
+      res.add("Score-cycle", "PASS",
+          f"score-cycle present at {found_score} — still invoked by "
+          f"{', '.join(sorted(consumers))}")
+    else:
+      res.add("Score-cycle", "INFO",
+          f"Old score-cycle found at {found_score} — no script invokes it; "
+          "current governance uses MCP tools")
   else:
     res.add("Score-cycle", "OK",
         "Legacy score-cycle not present — MCP-based governance in use")
