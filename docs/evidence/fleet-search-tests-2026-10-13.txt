@@ -1,0 +1,40 @@
+Re-runnable proof: bash tools/fleet-search/run-tests.sh
+Captured 2026-10-13T06:28:34Z on esther. The script's own exit status is the gate.
+
+== cargo test: unit tests plus the end-to-end tests that drive the real binary ==
+test result: ok. 21 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.11s
+
+     Running tests/end_to_end.rs (target/debug/deps/end_to_end-7db5dbae58f8565b)
+
+running 4 tests
+test search_without_a_provider_exits_3_and_says_so_on_stderr ... ok
+test mcp_over_stdio_answers_initialize_and_advertises_three_tools ... ok
+test doctor_works_with_no_external_binary_and_reports_the_engine ... ok
+test fetch_then_local_search_round_trips_over_a_real_http_server ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.09s
+
+cargo test rc=0
+
+== the envelope docs/design/agent-search.md claims, re-measured ==
+    Finished `release` profile [optimized] target(s) in 0.11s
+binary size: 5.9M
+idle RSS: 5.2 MB  VSZ: 8.6 MB
+
+== the two paths an agent takes when search is NOT available (exit codes are contract) ==
+search with no provider        rc=3   (3 = could not verify)
+local search, empty cache      rc=0   (0 = ran, and found nothing)
+
+exit: 0
+SCRIPT rc=0
+
+== and the design's honest-limits section, quoted verbatim from the committed file ==
+## Honest limits (as of this commit)
+
+- **No live SearXNG round trip yet.** The provider's response parsing is pinned by tests and the
+  failure path is exercised as a real process, but no query has been run against a real instance
+  because none is deployed on this host. The claim "web_search works against SearXNG" is therefore
+  NOT yet made.
+- **Wiring is pending** in both systems (above). An unwired tool is a library, not a capability.
+- **`web_search_local` corpus is only what `web_fetch` has stored.** It is not an index of the
+  fleet's repositories (mycortex owns that) and must not be described as one.
