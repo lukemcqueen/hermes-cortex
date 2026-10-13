@@ -36,8 +36,23 @@ if [ -x "$RESOLVER" ]; then
   PY="$(PYTHON= "$RESOLVER" --print pytest 2>/dev/null)" || true
 fi
 if [ -z "$PY" ]; then
+  # Non-cortex repo, or a host with no fleet install: the resolver has nothing to read. Fall back to
+  # a CAPABILITY probe on PATH — still a capability probe, never a bare path (the whole point is
+  # that "python3 exists" is not "pytest is importable"), and still with the environment cleansed
+  # so the answer does not depend on the caller.
+  for _c in python3 python; do
+    if command -v "$_c" >/dev/null 2>&1; then
+      if env -u PYTHONPATH -u PYTHONHOME "$_c" -c 'import pytest' >/dev/null 2>&1; then
+        PY="$(command -v "$_c")"
+        echo "note: no fleet resolver usable here; using $_c from PATH, which CAN import pytest" >&2
+        break
+      fi
+    fi
+  done
+fi
+if [ -z "$PY" ]; then
   echo "COULD NOT VERIFY: no interpreter on this host can import pytest." >&2
-  echo "  Tried: ${RESOLVER}" >&2
+  echo "  Tried: ${RESOLVER} (and the repo copy), then python3/python on PATH" >&2
   echo "  Fix:   ${HOME}/.hermes-cortex/scripts/manage/fix-cortex-venv.py" >&2
   echo "  No interpreter means no verdict — this is NOT a pass." >&2
   exit 3

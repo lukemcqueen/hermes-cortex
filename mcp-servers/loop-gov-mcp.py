@@ -608,6 +608,57 @@ def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
 
 
+def _session_worked_since(state: dict, since_iso: str) -> bool:
+    """Did the lock's own agent author a commit in the lock's own repo since `since_iso`?
+
+    Part 2 of liveness-as-observed-activity (2026-10-13). Refreshing the heartbeat on every governed
+    tool call still freezes it during a long stretch of file work — the exact shape of the deadlock
+    being fixed: hours of editing and committing with no loop-gov call in between, then a write
+    refused and a close refused as though the session had died. A commit authored by this lock's own
+    agent is work its holder demonstrably did, so it counts.
+
+    Scoped TWICE, deliberately: by the lock's OWN `repo_path` (so a peer repo's activity can never
+    keep this lock alive) and by the agent's git author (so a peer's commits in the SAME repo cannot
+    either — that would only delay the peer's own takeover, which is the deadlock again).
+
+    Never raises: a failure here must not decide a lock's fate.
+    """
+    repo = state.get("repo_path")
+    if not repo or not since_iso:
+        return False
+    try:
+        if not Path(repo).is_dir():
+            return False
+        author = (state.get("agent") or "").strip()
+        if author in ("", "unknown"):
+            # Live locks have been observed carrying agent="unknown" — cosmetic, but it would make
+            # the filter match nothing and silently disable this check.
+            author = (_agent_author(Path(repo)) or "").strip()
+        if not author:
+            return False
+        out = subprocess.run(
+            ["git", "-C", repo, "log", "--since=" + since_iso, "--author=" + author,
+             "--format=%H", "-n", "1"],
+            capture_output=True, text=True, timeout=15).stdout.strip()
+        return bool(out)
+    except Exception as e:
+        log.warning("could not check %s for activity since %s: %s", repo, since_iso, e)
+        return False
+
+
+def _refresh_lock_heartbeat(state: dict) -> None:
+    """Record observed activity on the lock file. Best effort; never raises.
+
+    `_write_lock` prefers the session_id carried in the STATE and only falls back to the ambient
+    args when the state has none — so this writes the lock being aged and cannot land on a peer's.
+    """
+    try:
+        state["heartbeat_at"] = _now_iso()
+        _write_lock(state, None)
+    except Exception as e:
+        log.warning("could not refresh the lock heartbeat from repo activity: %s", e)
+
+
 def _is_lock_stale(state: dict, mtime_fallback: float | None = None) -> bool:
     """Check if a lock's heartbeat has exceeded its TTL.
 
@@ -622,6 +673,14 @@ def _is_lock_stale(state: dict, mtime_fallback: float | None = None) -> bool:
     file's mtime (last write). An abandoned lock's mtime is long in the past,
     so it still ages out; a lock mid-write that P1-A protects is a fresh mtime,
     so it is never falsely purged. Naive timestamps are treated as UTC.
+
+    2026-10-13 (liveness, part 2): an aged-out heartbeat is now checked against the lock's OWN repo
+    before being declared stale. Measured cause: `heartbeat_at` still equalled `started_at` after two
+    hours of governed work, because the only writer was `check_lock` — a status tool a working agent
+    never calls — so a plainly busy session was aged out, its writes refused, and its close refused,
+    leaving `force=True` as the only exit. Every governed call now refreshes the heartbeat, and this
+    second check covers the gap that leaves: a long stretch of editing and committing with no
+    loop-gov call in between. A commit authored by this lock's agent in this lock's repo IS activity.
     """
     ttl = state.get("ttl_seconds", DEFAULT_TTL)
     heartbeat_str = state.get("heartbeat_at", state.get("started_at", ""))
@@ -632,7 +691,15 @@ def _is_lock_stale(state: dict, mtime_fallback: float | None = None) -> bool:
             heartbeat = datetime.fromisoformat(hb_str)
             if heartbeat.tzinfo is None:
                 heartbeat = heartbeat.replace(tzinfo=timezone.utc)  # naive = UTC
-            return (now - heartbeat).total_seconds() > ttl
+            age = (now - heartbeat).total_seconds()
+            if age > ttl and _session_worked_since(state, heartbeat_str):
+                # Busy, not dead: say so on the lock (so the file records when work happened rather
+                # than when someone last asked about the lock) and do not age it out.
+                log.info("lock %s aged %ss past TTL but its agent has committed since — refreshing "
+                         "the heartbeat instead of purging", state.get("session_id"), int(age))
+                _refresh_lock_heartbeat(state)
+                return False
+            return age > ttl
         except (ValueError, TypeError):
             # Time-only / malformed heartbeat — can't age it in-band.
             # Fall through to mtime if provided (caller has the file).
@@ -3357,9 +3424,12 @@ def _record_review(cycle_id, reviewer_id, model, verdict, findings_json, summary
     (no history inflation) and is recorded in the governance log, so it stays
     auditable.
 
-    `fingerprint` pins the verdict to the exact material it judged (note + diff).
-    A CLEAN is only reusable while that material is unchanged, so a CLEAN cannot
-    be carried over a later, unreviewed change.
+    `fingerprint` pins the verdict to the exact ARTIFACT it judged — the repo state,
+    the audited range, the task's description, the diff stat, and the diff — but NOT
+    the worker's note. A CLEAN is only reusable while that artifact is unchanged, so a
+    CLEAN cannot be carried over a later, unreviewed change; rereview_change(force=True)
+    is the explicit re-judge. (2026-10-13: keying on note + diff meant re-explaining an
+    unchanged diff bought a whole fresh review, the single largest review cost.)
     """
     conn = _db()
     try:

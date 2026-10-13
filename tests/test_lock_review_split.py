@@ -84,6 +84,25 @@ def test_a_lock_without_an_owner_is_never_released_by_guesswork(gov):
     assert "peer" in note, "and the reason must say why"
 
 
+def test_the_tier_routes_by_surface_and_size():
+    """Spend is a tier decision (2026-10-13). Live evidence that it matters: straight from the fleet's
+    DB, ALL 202 stored verdicts were judged by the deep model, because every one of those cycles
+    touched an always-review path — this session included, since it edits the reviewer's own file.
+    So heavy must stay heavy, and light must be REACHABLE."""
+    mod = _load()
+    assert mod._tier({"always_review": True, "files": 1, "lines": 1}) == "heavy", (
+        "one line of enforcement code is never trivial"
+    )
+    assert mod._tier({"always_review": False, "files": mod.REVIEWER_LIGHT_FILE_THRESHOLD,
+                      "lines": 1}) == "heavy"
+    assert mod._tier({"always_review": False, "files": 1,
+                      "lines": mod.REVIEWER_LIGHT_LINE_THRESHOLD}) == "heavy"
+    assert mod._tier({"always_review": False, "files": 3, "lines": 60}) == "light", (
+        "an ordinary complex change — docs, tests, a new tool — must reach the cheap tier, or the "
+        "tiering saves nothing"
+    )
+
+
 def test_the_light_tier_spends_less_and_the_env_still_wins(monkeypatch):
     """Spend is a tier decision now (2026-10-13): the deep model stays for enforcement/governance
     and unusually large diffs; everything else is judged by the cheap one."""

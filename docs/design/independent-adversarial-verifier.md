@@ -204,7 +204,7 @@ Now separated:
 
 | Job | Mechanism |
 |---|---|
-| liveness | **observed activity** — every governed call refreshes the heartbeat; an agent doing work *is* alive, and it is the same evidence the gate already inspects |
+| liveness | **observed activity, twice over** — every governed call refreshes the heartbeat, *and* an aged-out heartbeat is checked against the lock's OWN repo for a commit by the lock's OWN agent before being declared stale (`_session_worked_since`). Scoped by the lock's `repo_path` and the agent's git author, so neither a peer repo nor a peer's commit in the same repo can keep this lock alive. The gap this closes was measured: refreshing only on governed calls still freezes during a long stretch of editing and committing — the exact shape of the deadlock |
 | mutual exclusion | the lock, aged by no-observed-activity, with the existing mtime fallback unchanged |
 | review | its **own** track: a refusal records the verdict and the findings, releases the LOCK, and the range still cannot be **pushed** without a CLEAN receipt |
 

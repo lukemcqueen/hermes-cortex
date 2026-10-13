@@ -1,0 +1,27 @@
+# Review portability — macOS, multi-repo, non-cortex repos, liveness (2026-10-13)
+Interpreter: the fleet venv, capability-resolved. Each rc is the command's OWN status
+(captured bare, immediately after it, never a pipe's).
+
+## 1. Liveness + wrapper + split + fingerprint suites, run env-clean
+rc=0
+tests/test_review_fingerprint_delta.py ....                              [100%]
+
+============================== 22 passed in 2.07s ==============================
+
+## 2. The suite guard THROUGH the wrapper (must PASS)
+rc=0
+---
+run-tests.sh: interpreter=$HOME/.hermes-cortex/venv/bin/python3 rc=0  (PYTHONPATH/PYTHONHOME unset for the run)
+
+## 3. The suite guard BARE in this contaminated session (must FAIL)
+rc=1
+FAILED tests/test_suite_collection_clean.py::test_the_environment_can_collect_the_whole_suite
+============================== 1 failed in 2.54s ===============================
+
+## 4. Multi-repo: what the LIVE lock says it governs
+{'repo_slug': 'hermes-cortex', 'repo_path': '$HOME/hermes-cortex', 'session_type': 'interactive', 'agent': 'unknown', 'heartbeat_at': '2026-10-13T11:56:38Z', 'started_at': '2026-10-13T11:56:38Z'}
+rc=0
+
+## 5. bash 3.2 / BSD portability scan of the wrapper (as the test performs it)
+none: no bash-4-only or GNU-only construct in the wrapper
+rc=0

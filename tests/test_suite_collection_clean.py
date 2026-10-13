@@ -47,7 +47,12 @@ def test_the_environment_can_collect_the_whole_suite():
 
     collected = re.findall(r"(\d+) tests collected", out)
     assert collected, "pytest reported no collection summary at all:\n" + out[-1500:]
-    assert int(collected[-1]) > 1000, (
-        f"the suite collected only {collected[-1]} tests — a suite that collects (almost) nothing "
-        "is not a pass:\n" + out[-1500:]
+    # Deliberately NOT a repo-specific magic number. An earlier draft asserted > 1000, which is only
+    # true of THIS repo's suite: in a smaller repo, or any non-cortex repo, it would fail a healthy
+    # environment. What must be true anywhere is that pytest collected SOMETHING — a suite that
+    # collects nothing is not a pass, and the errors check above has already ruled out silently
+    # absent modules.
+    assert int(collected[-1]) > 0, (
+        "pytest collected no tests at all — a suite that collects nothing is not a pass:\n"
+        + out[-1500:]
     )
