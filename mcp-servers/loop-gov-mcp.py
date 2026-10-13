@@ -808,6 +808,67 @@ def _clear_close_refused(cycle_id=None) -> None:
     _write_review_receipt(cycle_id)
 
 
+def _touch_heartbeat(args: dict | None = None) -> None:
+    """Refresh this session's heartbeat because it just DID something.
+
+    Part of the 2026-10-13 split. The heartbeat used to move only inside check_lock — a STATUS
+    tool a working agent has no reason to call — so liveness was inferred from a ping that never
+    came. Measured on this session: `heartbeat_at` still equalled `started_at` after two hours of
+    governed work, and the lock aged out while its owner was plainly busy.
+
+    Never raises, and never resurrects a released lock: if the file is gone, this is a no-op.
+    """
+    try:
+        state = _read_lock(args)
+        if not state:
+            return
+        state["heartbeat_at"] = _now_iso()
+        _write_lock(state, args)
+    except Exception as e:
+        log.warning("could not refresh the lock heartbeat: %s", e)
+
+
+def _release_after_refusal(lock: dict | None = None) -> str:
+    """Release the lock on a REFUSED close, and say what the refusal still blocks.
+
+    Part of the 2026-10-13 split. ONE mechanism used to do three jobs: mutual exclusion, session
+    LIVENESS, and the release gate for a review verdict. Because the verdict gated the lock, any
+    outcome the worker could not repair held the whole repo — a truncated window it could not see
+    past, or a finding that was true but about the window itself. Measured: a `medium` finding
+    whose only content was "the diffs are truncated by the gate budget" kept cycle 12443
+    unclosable round after round, and because a PENDING cycle also blocks the next begin_change,
+    the session could neither close nor start — `force` was the only exit, on a change whose real
+    findings had already been resolved.
+
+    The refusal is unchanged where it belongs: the verdict is stored, the findings are recorded,
+    and this range still cannot be PUSHED without a CLEAN review receipt. What is released is the
+    LOCK, because holding it never made a finding get fixed — it only stopped the session that
+    owns it from doing anything else.
+
+    Releases by the LOCK'S OWN session_id, not the ambient one. `get_session_id(None)` resolves a
+    PROCESS-scoped id, and this server is one shared process for every Hermes session, so an
+    ambient fallback could release a peer's lock. The lock being released names its owner.
+
+    Deliberately NOT used for a reviewer OUTAGE (see the unavailable path): an outage is transient
+    and retrying end_change works, so holding the lock there is the shorter wait, not the deadlock.
+    """
+    try:
+        owner = (lock or {}).get("session_id")
+        if not owner:
+            log.warning("refused close but the lock carries no session_id — not guessing which "
+                        "session to release")
+            return ("\n\n(The lock was NOT released: it carries no session_id, and releasing by a "
+                    "process-scoped fallback could drop a peer's lock.)")
+        _release_lock({"session_id": owner})
+        return ("\n\nThe lock is RELEASED. The verdict is recorded and this range still cannot be "
+                "pushed without a CLEAN review receipt, so fix the findings and call "
+                "rereview_change — or start the next change with begin_change. Holding the lock "
+                "was not what stood between you and a fixed finding.")
+    except Exception as e:
+        log.warning("could not release the lock after a refused close: %s", e)
+        return "\n\n(The lock could not be released: %s)" % e
+
+
 def _read_lock(args: dict | None = None) -> dict | None:
     """Read this session's lock file, return state dict or None."""
     session_id = get_session_id(args)
@@ -1664,19 +1725,16 @@ async def call_tool(ctx, params=None) -> CallToolResult:
         }
         handler = handlers.get(name)
         if handler:
-            # OFF the event loop. Handlers block SYNCHRONOUSLY — the adversarial
-            # reviewer alone runs subprocess.run/urllib for minutes — and ONE
-            # server process serves EVERY session of its parent (gateway or cron
-            # worker), because the mcp dispatcher's per-request tasks only
-            # interleave at await points. Dispatched inline, a single end_change
-            # stopped this server answering anyone else (2026-10-06: the
-            # loop-gov daemon was found wedged in poll_schedule_timeout with its
-            # reviewer child running for minutes, while peer sessions hit the
-            # 300s client ceiling on EVERY call — so a session could not close
-            # its own cycle because somebody else's close held the process).
-            # Threading is safe here: _db() opens a connection per call, lock
-            # files are session-scoped and written atomically (tmp + rename),
-            # and the global purge scan is serialized by _STATE_LOCK.
+            # LIVENESS = OBSERVED ACTIVITY (2026-10-13, the split). The heartbeat used to move
+            # only when something called check_lock — a STATUS tool a working agent never calls —
+            # so a lock aged out while its session was provably busy (measured: heartbeat_at still
+            # equalled started_at after two hours of governed work), and the lapse then refused
+            # writes AND the close, deadlocking the repo on `force`.
+            #
+            # Every governed call is now a heartbeat. That is not extra evidence: it is the same
+            # activity the gate already inspects to decide the call is governed, so liveness stops
+            # depending on a ping nobody sends.
+            _touch_heartbeat(args)
             return await asyncio.to_thread(handler, args)
         return CallToolResult(content=[TextContent(type="text", text="Unknown tool: " + name)])
     except Exception as e:
@@ -2013,6 +2071,28 @@ REVIEWER_LIGHT_LINE_THRESHOLD = 200  # added+removed lines that force the deep r
 REVIEWER_LIGHT_FILE_THRESHOLD = 10   # files that force the deep reviewer
 
 REVIEWER_MODEL_DEFAULT = "deepseek/deepseek-v4-pro"  # distinct from worker
+
+# Spend per tier (2026-10-13, Luke: "too expensive for the deepseek pro reviews").
+#
+# The operator's earlier call was ONE reviewer model for everything (2026-10-08), and the LIGHT
+# tier only changed how a review was TRANSPORTED, not how deep it was. That is the expensive shape:
+# every complex close paid pro prices, and a looping cycle paid them repeatedly.
+#
+# Now the tier decides SPEND: an `always_review` surface (enforcement/governance) or an unusually
+# large diff keeps the deep model, everything else is judged by deepseek-v4-flash — $0.14/M in,
+# $0.28/M out, the model this fleet already uses for ordinary work. A cheap judge is a weaker
+# judge, which is why the risky class is NOT downgraded; the saving comes from not paying pro
+# prices to review a documentation change.
+REVIEWER_LIGHT_MODEL_DEFAULT = "deepseek/deepseek-v4-flash"
+
+# Findings are a small JSON object, and the prompt says so. Unbounded output was pure cost: a
+# reviewer that writes an essay about a window it cannot see is charged for every token of it.
+REVIEWER_MAX_TOKENS = 900
+
+# A judge does not need to be creative, and sampling variation between two identical reviews is
+# how the same material got CLEAN and then FINDINGS on different passes.
+REVIEWER_TEMPERATURE = 0
+
 REVIEW_TEMPLATE_REL = "docs/templates/adversarial-reviewer-prompt.md"
 
 # Reviewer wait-budget scaling (2026-10-06; BOUNDED 2026-10-08): the close-gate's
@@ -2691,7 +2771,7 @@ def _light_reviewer_model() -> str:
     by a different, cheaper model than the one the fleet documents - the stored
     row said so, but nothing chose it.
     """
-    return (_env_value("ADVERSARIAL_REVIEW_LIGHT_MODEL") or "").strip() or _reviewer_model()
+    return (_env_value("ADVERSARIAL_REVIEW_LIGHT_MODEL") or "").strip() or REVIEWER_LIGHT_MODEL_DEFAULT
 
 
 def _tier(cx: dict) -> str:
@@ -2815,6 +2895,11 @@ def _call_reviewer_llm(prompt: str, *, model: Optional[str] = None,
     body = json.dumps({
         "model": model,
         "messages": [{"role": "user", "content": prompt}],
+        # Bounded and deterministic, both for cost (2026-10-13): the findings are a small JSON
+        # object, and an unbounded, sampling reviewer is charged for prose nobody reads — and can
+        # return a different verdict on byte-identical material.
+        "max_tokens": REVIEWER_MAX_TOKENS,
+        "temperature": REVIEWER_TEMPERATURE,
     }).encode()
     req = urllib.request.Request(
         f"{base}/chat/completions",
@@ -2824,7 +2909,10 @@ def _call_reviewer_llm(prompt: str, *, model: Optional[str] = None,
             "Content-Type": "application/json",
         },
     )
-    timeout = timeout if timeout is not None else _reviewer_env_timeout("ADVERSARIAL_REVIEW_TIMEOUT", 300)
+    # Shorter default window (300s -> 120s, 2026-10-13). Safe to shorten only because end_change no
+    # longer withholds the lock on a reviewer outcome: a timeout still REFUSES the close
+    # (fail-closed, unchanged), but it no longer strands the session that owns the cycle.
+    timeout = timeout if timeout is not None else _reviewer_env_timeout("ADVERSARIAL_REVIEW_TIMEOUT", 120)
     with urllib.request.urlopen(req, timeout=timeout) as resp:
         data = json.loads(resp.read())
     return data["choices"][0]["message"]["content"]
@@ -3946,6 +4034,7 @@ def _adversarial_review_gate(lock: dict, cycle: dict,
                 return None
             _mark_close_refused(cycle.get("id", 0), stored_verdict,
                                 stored.get("findings_json") or "[]")
+            _note = _release_after_refusal(lock)
             return CallToolResult(content=[TextContent(type="text", text=(
                 "❌ Self-adversarial review FAILED — this complex change cannot close.\n\n"
                 f"Verdict: {stored_verdict} (already recorded for exactly this material)\n"
@@ -4036,6 +4125,7 @@ def _adversarial_review_gate(lock: dict, cycle: dict,
 
     # MEDIUM+ (or unclassifiable): hard-block.
     _mark_close_refused(cycle.get("id", 0), verdict, findings_json)
+    _note = _release_after_refusal(lock)
     return CallToolResult(content=[TextContent(type="text", text=(
         "❌ Self-adversarial review FAILED — this complex change cannot close.\n\n"
         f"Verdict: {verdict}\n"
@@ -4043,8 +4133,9 @@ def _adversarial_review_gate(lock: dict, cycle: dict,
         f"Summary: {reviewer_text[:1200]}\n\n"
         "Findings at MEDIUM or above block the close; LOW findings are recorded but "
         "do not block.\n"
-        "Resolve the findings and retry end_change. The lock stays held; "
-        "nothing sufficiently complex ships unreviewed."
+        "Resolve the findings and retry end_change. Nothing sufficiently complex ships "
+        "unreviewed."
+        + _note
     ))])
 
 

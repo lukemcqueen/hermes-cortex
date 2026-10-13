@@ -180,3 +180,50 @@ layer being a separate context, a fixed prompt, and an orchestrator trigger.
    findings) and is a **follow-up** gated like M8 — orchestrator-only, strong
    model, `enforcement-change-safety` + `enforcer-modification-considerations`
    skills.
+
+---
+
+## 6. The split, and reviewer spend (operator, 2026-10-13)
+
+### 6.1 One mechanism was doing three jobs
+
+The lock was simultaneously **mutual exclusion**, **session liveness**, and the **release gate for a
+review verdict**. Any one failing took the other two down with it, and two failures were measured in
+a single session:
+
+- **Liveness was a ping nobody sends.** `heartbeat_at` moved only inside `check_lock` — a STATUS
+  tool a working agent has no reason to call. Measured: `heartbeat_at` still equalled `started_at`
+  after two hours of governed work, so the lock aged out while its owner was provably busy, and the
+  lapse then refused both writes and the close.
+- **A verdict gated the lock.** A `medium` finding whose entire content was "the diffs are truncated
+  by the gate budget" — true, and about the reviewer's own window — kept a cycle unclosable round
+  after round. Because a PENDING cycle also blocks the next `begin_change`, the session could neither
+  close nor start, and `force` was the only exit.
+
+Now separated:
+
+| Job | Mechanism |
+|---|---|
+| liveness | **observed activity** — every governed call refreshes the heartbeat; an agent doing work *is* alive, and it is the same evidence the gate already inspects |
+| mutual exclusion | the lock, aged by no-observed-activity, with the existing mtime fallback unchanged |
+| review | its **own** track: a refusal records the verdict and the findings, releases the LOCK, and the range still cannot be **pushed** without a CLEAN receipt |
+
+Two deliberate non-changes. A reviewer **outage** still holds the lock: it is transient, retrying
+`end_change` works, and releasing would only cost a re-acquire. And the lock is released **by its own
+`session_id`**, never by the ambient one — this server is a single process shared by every Hermes
+session, so a process-scoped fallback could drop a *peer's* lock.
+
+### 6.2 Spend per tier
+
+The reviewer is the most expensive recurring LLM call in the loop, and a looping cycle paid it
+repeatedly.
+
+| Change | Effect |
+|---|---|
+| light tier → `deepseek/deepseek-v4-flash` | **$0.14/M in, $0.28/M out** instead of pro pricing, for every change that is not `always_review` (enforcement/governance) or an unusually large diff |
+| `max_tokens: 900`, `temperature: 0` | output bounded (findings are a small JSON object) and **deterministic** — a sampling judge returned CLEAN and then FINDINGS on byte-identical material |
+| default window 300s → **120s** | shorter wait, safe only because a timeout no longer strands the lock (6.1) |
+| still open: review the **delta** | a re-worded note currently buys a whole fresh review of unchanged material — the biggest remaining saving |
+
+The heavy tier keeps the deep model on purpose: a cheap judge is a weaker judge, and the class kept
+on it is `always_review` — enforcement and governance code.
