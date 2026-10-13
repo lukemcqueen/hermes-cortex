@@ -1,0 +1,259 @@
+Review-material starvation: the always-review file was the least visible one
+==========================================================================
+Date: 2026-10-13   Host: esther   Repo: hermes-cortex
+Baseline: the tip already on origin/main at this cycle's start (the commit
+`fix(gate): the six defects the deep code review found`). Tip after this change:
+see `git rev-parse HEAD` at close. Both revisions are named in the cycle note.
+
+
+1. The measurement that started this
+------------------------------------
+Today's close reviews produced 34 findings, of which 12 (35%) are findings ABOUT
+the gate's own window rather than about the change. That share is rising:
+
+  2026-10-10   11 findings,  2 budget-limit-caused (18%)
+  2026-10-12   18 findings,  6 budget-limit-caused (33%)
+  2026-10-13   34 findings, 12 budget-limit-caused (35%)
+
+A "finding" whose recommendation is "show me the middle of this file" is not
+answerable by any edit the worker can make. Cycles 12307, 12456, 12460 and 12466
+were each refused on it, at the cost of a full review round every time.
+
+Reproduce the per-day counts (read-only):
+
+  python3 - <<'PY'
+  import sqlite3, json
+  con = sqlite3.connect('file:/home/esther/.hermes-cortex/data/loop-governance.db?mode=ro', uri=True)
+  con.execute('PRAGMA query_only=1')
+  cur = con.cursor()
+  cur.execute("SELECT ts, findings_json FROM adversarial_reviews "
+              "WHERE ts LIKE '2026-10-1%' AND json_array_length(findings_json)>0")
+  tot = {}
+  for ts, fj in cur.fetchall():
+      d = ts[:10]
+      for f in json.loads(fj):
+          ev = str(f.get('evidence','')) + str(f.get('recommendation',''))
+          lim = ('bounded:' in ev or 'omitted' in ev or 'gate budget' in ev
+                 or 'not visible' in ev or 'cannot see' in ev or 'invisible' in ev)
+          tot.setdefault(d, [0, 0])
+          tot[d][0] += 1
+          tot[d][1] += 1 if lim else 0
+  for d in sorted(tot):
+      print(d, f"findings={tot[d][0]} budget-limit-caused={tot[d][1]}")
+  PY
+
+Observed output:
+
+  2026-10-10 findings=11 budget-limit-caused=2
+  2026-10-11 findings=15 budget-limit-caused=1
+  2026-10-12 findings=18 budget-limit-caused=6
+  2026-10-13 findings=34 budget-limit-caused=12
+
+
+2. The defect, isolated
+-----------------------
+`_bound_per_file()` divides a fixed character budget across every changed file so
+that no file is invisible entirely. Its guarantee per file is
+REVIEW_MATERIAL_MIN_SLICE = 200 chars — sized for "the file is represented", not
+for "the file can be judged".
+
+Cycle 12466 was a 9-file change against the 12000-char budget. The file under
+review was mcp-servers/loop-gov-mcp.py — on the ALWAYS_REVIEW surface, i.e. the
+one artifact the review exists to judge. It was shown as 3000 of 49429 chars.
+6.1%.
+
+The reviewer filed seven unverified-claim findings against exactly that, and they
+were all true statements about the material. Measured directly against the old
+code (budget=12000, no priority):
+
+  mcp-servers/loop-gov-mcp.py               3000/49429 shown (6.1%)  BOUNDED
+  tests/test_lock_liveness_activity.py      1750/15015 shown (12%)   BOUNDED
+  tests/test_run_tests_wrapper.py           1750/13365 shown (13%)   BOUNDED
+  docs/DOCS-INDEX.md                        1750/8537  shown (20%)   BOUNDED
+
+Script that measures it (against the CURRENT code):
+
+  python3 - <<'PY'
+  import importlib.util, re
+  spec = importlib.util.spec_from_file_location(
+      "lg", "/home/esther/hermes-cortex/mcp-servers/loop-gov-mcp.py")
+  m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+
+  def sect(path, n):
+      head = f"diff --git a/{path} b/{path}\n--- a/{path}\n+++ b/{path}\n"
+      return head + "".join(f"+line {i} of {path}\n" for i in range(int(n/20)))
+
+  sections = [("mcp-servers/loop-gov-mcp.py", sect("mcp-servers/loop-gov-mcp.py", 24000)),
+              ("tests/test_lock_liveness_activity.py", sect("tests/test_lock_liveness_activity.py", 5981)),
+              ("tests/test_run_tests_wrapper.py", sect("tests/test_run_tests_wrapper.py", 5928)),
+              ("docs/DOCS-INDEX.md", sect("docs/DOCS-INDEX.md", 5359))]
+  out = m._bound_diff("".join(t for _, t in sections))
+  for i, (p, _) in enumerate(sections):
+      a = out.find(f"diff --git a/{p}")
+      b = min([out.find(f"diff --git a/{q}", a) for q, _ in sections[i+1:]] or [len(out)])
+      seg = out[a:b]
+      mm = re.search(r"\[bounded: (\d+) of (\d+) chars omitted", seg)
+      tot = int(mm.group(2)); print(p, f"{tot-int(mm.group(1))}/{tot} shown (BOUNDED)")
+  PY
+
+After this change (same input, DIFF_CHAR_BUDGET=20000, priority 5000):
+
+  mcp-servers/loop-gov-mcp.py               6750/49429 shown (14%)   BOUNDED
+  tests/test_lock_liveness_activity.py      1750/15015 shown (12%)   BOUNDED
+  tests/test_run_tests_wrapper.py           1750/13365 shown (13%)   BOUNDED
+  docs/DOCS-INDEX.md                        1750/8537  shown (20%)   BOUNDED
+
+The always-review file moves 3000 -> 6750 chars: past the reviewable floor, and
+ahead of every auxiliary file rather than behind them.
+
+Note honestly: the after-share is a flat 2x-floor priority (5000) capped by what
+one file may take, not proportional growth. The raw PERCENTAGE on an outsized
+file is not the metric that matters — ABSOLUTE reviewable chars, and the file
+ranking above its auxiliaries, are. The budget raise is what moves the absolute
+number; the priority is what stops the always-review path ranking last.
+
+
+3. Change 1 — always-review priority (_bound_per_file, Pass 0)
+--------------------------------------------------------------
+New constant REVIEW_MATERIAL_ALWAYS_REVIEW_PRIORITY = 2 x
+REVIEW_MATERIAL_PER_FILE_FLOOR (5000).
+
+Pass 0 takes an always-review share FIRST, out of the budget and before the
+floor or the equal-share pass can allocate, so it cannot be eroded; then Pass 1
+is given the remainder minus what Pass 0 took (floor_budget -= sum(alloc)), so
+the floor and the equal share still operate on a consistent pool and no file is
+omitted entirely.
+
+It is a REORDERING of an existing budget, not an increase, and it is
+anti-gaming: `_is_always_review_path()` uses the same ALWAYS_REVIEW_PATHS
+substring predicate as the complexity trigger, so a worker cannot buy a file a
+priority share the trigger list would not always-review anyway.
+
+Verified both directions:
+  - with an always-review path present: that file ranks first (test below)
+  - with no always-review path: priority does not fire, allocation is unchanged
+
+
+4. Change 2 — DIFF_CHAR_BUDGET 12000 -> 20000
+---------------------------------------------
+The budget was sized when the reviewer's context was the binding constraint. The
+binding constraint now is CONTENT, and the budget manufacturing 35% of the day's
+findings costs a full review round each, every time, forever.
+
+REVIEWER_MAX_TOKENS (16000) already bounds the reply, and the raise buys ~8000
+more chars of visible change per round at the same per-round shape. It does not
+loosen the verdict: the reviewer still sees a bounded window, still fail-closes,
+and every bound is still disclosed with true numbers. DIFF_CHAR_BUDGET_DOCS
+stays 60000 and remains strictly larger than the standard budget.
+
+
+5. Change 3 — a wrong-repo guard that refused healthy closes
+------------------------------------------------------------
+Found by running the gate's own regression suite. Pre-existing, NOT introduced
+by this change; reproduced on a clean tree with the change stashed:
+
+  test_gate_skips_simple_change_without_reviewer  FAILED
+  assert CallToolResult(... "Cannot close: the lock's repo cannot contain this
+  ... commit in that repo.") is None
+
+Root cause: `_candidate_repos()` builds the candidate set by walking HOME, then
+UNCONDITIONALLY appends the cwd repo from `git rev-parse --show-toplevel`. When
+HOME and cwd are in different universes (a test fixture, a shared checkout,
+another user's tree) the guard can name a repo the lock could never have been
+about and refuse the close for work that was never there.
+
+Fix: confine the cwd candidate to HOME (`Path(root).resolve().is_relative_to(
+Path(HOME).resolve())`); an unresolvable path is skipped, not a crash.
+
+Before:  tests/test_runtime/test_adversarial_review_gate.py  1 failed, 13 passed
+After:   tests/test_runtime/test_adversarial_review_gate.py  14 passed
+
+
+5b. Change 4 — the degenerate-reply crash, claimed fixed and NOT fixed
+----------------------------------------------------------------------
+A concurrent session on this host committed `fix(review): refuse a degenerate
+reviewer response instead of crashing the close`, whose message states the guard
+was added to `_extract_verdict` so a None reviewer reply refuses rather than
+raising "'NoneType' object has no attribute 'find'". Its own message also records
+"NO TEST SHIPPED".
+
+Re-measured against the committed file, that claim is FALSE — `_extract_verdict`
+still went straight into `text.find("{")`:
+
+  python3 -c "
+  import importlib.util
+  spec=importlib.util.spec_from_file_location('lg','.../mcp-servers/loop-gov-mcp.py')
+  m=importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+  print(m._extract_verdict(None))"   ->  CRASH: AttributeError
+                                          'NoneType' object has no attribute 'find'
+
+This is the recorded "unverified-claim" pattern: a commit message asserting a
+result whose producing artifact was never written. Recorded rather than asserted
+is better than a false claim, but the crash was still live in production, twice
+observed on this host.
+
+Fix (TDD, RED first): four tests added to
+tests/test_runtime/test_adversarial_review_gate.py — None, empty/whitespace, and
+non-string replies must all return ("FINDINGS", "[]"), plus two controls
+asserting the normal parse and the unparseable-prose contract still behave.
+
+  RED:   2 failed, 17 passed  (AttributeError raised from the parse)
+  GREEN: 19 passed
+
+Guarded in the SHARED parse rather than at each caller, so both reviewer backends
+inherit it — the agent backend already refused silence explicitly; the LLM path
+was the weaker one.
+
+
+6. Test evidence
+----------------
+New tests in tests/test_review_material_bound.py:
+
+  test_an_always_review_file_is_not_starved_by_the_files_around_it
+  test_the_priority_never_starves_the_rest_of_the_range
+
+The first pins the property (a reviewable slice, and at least as much as any
+auxiliary file, and no file omitted entirely) and includes a control asserting
+the priority does not fire when no always-review path is in the range.
+
+New tests in tests/test_runtime/test_adversarial_review_gate.py:
+
+  test_a_none_reply_refuses_instead_of_crashing
+  test_empty_and_whitespace_replies_also_refuse
+  test_a_non_string_reply_refuses
+  test_a_well_formed_reply_still_parses
+  test_unparseable_prose_still_refuses
+
+One existing fixture had to be repaired: test_every_file_under_the_floor_is_
+shown_whole asserted a length against a magic copy of the OLD budget. That
+premise silently stopped holding when the budget rose. It is now measured
+against mcp.DIFF_CHAR_BUDGET and the fixture grows to keep the scenario real.
+
+Run (targeted):
+  bash tests/run-tests.sh tests/test_review_material_bound.py \
+      tests/test_lock_liveness_activity.py tests/test_reviewer_tier_wiring.py \
+      tests/test_lock_review_split.py tests/test_review_fingerprint_delta.py -q
+  result: 54 passed
+
+Run (review-material + gate):
+  bash tests/run-tests.sh tests/test_runtime/test_adversarial_review_gate.py \
+      tests/test_review_material_bound.py tests/test_lock_liveness_activity.py \
+      tests/test_reviewer_tier_wiring.py -q
+  result: 62 passed
+
+Run (governance/review/lock/gate subset):
+  bash tests/run-tests.sh tests/ -q -k "review or governance or lock or gate"
+  before: 782 passed, 1 failed
+  after:  783 passed, 1090 deselected, rc=0
+
+
+7. Files changed
+----------------
+  mcp-servers/loop-gov-mcp.py                       Pass 0 priority, budget raise,
+                                                    new constant, HOME-confined
+                                                    cwd candidate, degenerate-reply
+                                                    guard in the shared parse
+  tests/test_review_material_bound.py               2 new tests, 1 stale fixture
+                                                    repaired
+  tests/test_runtime/test_adversarial_review_gate.py 5 new tests
+

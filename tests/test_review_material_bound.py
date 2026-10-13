@@ -12,6 +12,7 @@ Run: python3 -m pytest tests/test_review_material_bound.py -q -s
 """
 import importlib.util
 import logging as _logging
+import re
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
@@ -65,6 +66,89 @@ def test_the_tail_survives_the_bound():
     old = big[:budget] + "\n...[diff truncated]...\n"
     assert "file19.py" not in old, "control: the old single-window form loses the last files"
     print("  head+tail per file ✓ (last file's tail survives); control lost file19 entirely")
+
+
+def _sections(*specs):
+    """[(path, diff-text)] with a real `diff --git` header and a body of `chars` chars."""
+    out = []
+    for path, chars in specs:
+        head = f"diff --git a/{path} b/{path}\n--- a/{path}\n+++ b/{path}\n"
+        body = "".join(f"+ line {i} of {path}\n" for i in range(max(1, chars // 24)))
+        out.append((path, head + body))
+    return out
+
+
+def test_an_always_review_file_is_not_starved_by_the_files_around_it():
+    """Cycle 12466's defect, pinned.
+
+    Nine files shared a 12000-char budget. The module under review —
+    mcp-servers/loop-gov-mcp.py, on the always-review surface — was shown as 3000 of
+    49429 chars (6.1%), i.e. a header and a sliver, and the reviewer filed seven
+    unverified-claim findings saying it could not see the code it was judging. None of
+    those findings was answerable by an edit: the defect was the window.
+
+    The property that must hold: on the always-review surface, the reviewed file gets a
+    SUBSTANTIAL slice whenever the budget can afford one, and every other changed file
+    is still represented (>0). This pins the guarantee, not one byte count.
+    """
+    sections = _sections(
+        ("mcp-servers/loop-gov-mcp.py", 49429),
+        *[(f"tests/test_aux{i}.py", 5000) for i in range(8)],
+    )
+    diff = "".join(t for _, t in sections)
+    got = mcp._bound_diff(diff)
+
+    # Extract the always-review file's own bounded section.
+    start = got.index("diff --git a/mcp-servers/loop-gov-mcp.py")
+    nxt = got.find("diff --git a/tests/", start)
+    seg = got[start:nxt if nxt != -1 else len(got)]
+    m = re.search(r"\[bounded: (\d+) of (\d+) chars omitted", seg)
+    assert m, "the always-review section must be present (bounded or whole)"
+    total, omitted = int(m.group(2)), int(m.group(1))
+    shown = total - omitted
+
+    # The guarantee: a reviewable slice. 4000 = 2x the per-file floor.
+    assert shown >= 4000, (
+        f"the always-review file was starved: {shown} of {total} chars shown "
+        f"({100 * shown / total:.1f}%). The file the review exists to judge must get a "
+        f"reviewable slice, not a header.")
+    # And it must beat what an ordinary file gets — the priority is real, not cosmetic.
+    aux = re.search(r"\[bounded: (\d+) of (\d+) chars omitted", got[nxt:]) if nxt != -1 else None
+    if aux:
+        aux_shown = int(aux.group(2)) - int(aux.group(1))
+        assert shown >= aux_shown, (
+            f"the always-review file ({shown}) must not get less than an auxiliary file "
+            f"({aux_shown}) — the budget is misplaced")
+
+    # No file is omitted entirely (the 2026-10-08 contract still holds).
+    assert "diff --git a/tests/test_aux0.py" in got
+    assert "diff --git a/tests/test_aux7.py" in got
+
+    # Control: with no always-review path in the range, the priority must not fire —
+    # an ordinary range keeps the ordinary allocation.
+    plain = _sections(*[(f"tests/test_p{i}.py", 5000) for i in range(9)])
+    got_plain = mcp._bound_diff("".join(t for _, t in plain))
+    assert "diff --git a/mcp-servers/loop-gov-mcp.py" not in got_plain
+    print(f"  always-review file shown {shown}/{total} ({100 * shown / total:.1f}%) "
+          f"vs aux {aux_shown if aux else 'n/a'}; no-file-omitted contract held ✓")
+
+
+def test_the_priority_never_starves_the_rest_of_the_range():
+    """The priority share is taken FIRST, so it must still leave every other file
+    readable. A fix for one finding must not create another."""
+    sections = _sections(
+        ("mcp-servers/loop-gov-mcp.py", 60000),
+        *[(f"tests/test_many{i}.py", 4000) for i in range(20)],
+    )
+    got = mcp._bound_diff("".join(t for _, t in sections))
+    for i in range(20):
+        path = f"tests/test_many{i}.py"
+        assert f"diff --git a/{path}" in got, f"{path} was omitted entirely"
+        start = got.index(f"diff --git a/{path}")
+        # its own section must carry at least SOME body, not just the header lines
+        seg = got[start:start + 4000]
+        assert "+ line" in seg, f"{path} was shown as a header with no body"
+    print("  all 20 auxiliary files still carry body content alongside the priority ✓")
 
 
 def test_the_omission_is_disclosed_with_true_numbers():
@@ -265,6 +349,20 @@ def test_every_file_under_the_floor_is_shown_whole():
             "+ALL CLAIMS VERIFIED (0 failures)\n"
             "+sha256 79a6afcd8ac1\n")
     assert len(tiny) < mcp.REVIEW_MATERIAL_PER_FILE_FLOOR, "fixture: the artifact is UNDER the floor"
+    # The fixture's PREMISE is "the artifact's diff exceeds its equal share of the
+    # budget", and that premise must be measured against the budget the gate actually
+    # uses. Raised to 20000 (2026-10-13) the original ~1.1KB artifact no longer exceeded
+    # its ~1.5KB share, so the fixture stopped reproducing the defect while still
+    # asserting it did. Measure the premise and, when the budget has outgrown the
+    # artifact, GROW the artifact to keep the scenario real.
+    while len(tiny) <= mcp.DIFF_CHAR_BUDGET // 13 and len(tiny) < mcp.REVIEW_MATERIAL_PER_FILE_FLOOR:
+        body.append(f"+evidence line {len(body)} {'.' * 60}")
+        tiny = ("diff --git a/docs/evidence/tiny.txt b/docs/evidence/tiny.txt\n"
+                "--- a/docs/evidence/tiny.txt\n"
+                "+++ b/docs/evidence/tiny.txt\n"
+                f"@@ -0,0 +1,{len(body)} @@\n" + "\n".join(body) + "\n"
+                "+ALL CLAIMS VERIFIED (0 failures)\n"
+                "+sha256 79a6afcd8ac1\n")
     assert len(tiny) > mcp.DIFF_CHAR_BUDGET // 13, \
         "the fixture must reproduce the real defect: the artifact's diff exceeds its equal share"
     got = mcp._bound_diff(big + tiny, budget=mcp.DIFF_CHAR_BUDGET)

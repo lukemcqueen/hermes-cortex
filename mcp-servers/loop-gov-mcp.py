@@ -3186,7 +3186,22 @@ def _call_reviewer_agent(prompt: str, author: Optional[str] = None,
 
 def _extract_verdict(text: str):
     """(verdict, findings_json) from the reviewer's reply. Fail-closed: an
-    unparseable reply is NEVER trusted as CLEAN — it is FINDINGS."""
+    unparseable reply is NEVER trusted as CLEAN — it is FINDINGS.
+
+    A reply that is not usable text at all (None, empty, whitespace, or a
+    non-string) refuses for the same reason — nothing was judged, so nothing may
+    be treated as clean. (2026-10-13) The guard is HERE, in the shared parse,
+    rather than at each caller: the LLM backend returns
+    `data["choices"][0]["message"]["content"]`, which a reasoning model starved of
+    output budget (or a provider hiccup) hands back as None. The call site used to
+    be reached with no guard, so `text.find` raised "'NoneType' object has no
+    attribute 'find'" out of end_change. A CRASHED close is the worst outcome
+    available: it neither passes nor cleanly refuses, and it leaves the lock HELD
+    with nothing recorded on it. The agent backend already refused silence
+    explicitly; this makes both backends share that behaviour.
+    """
+    if not isinstance(text, str) or not text.strip():
+        return "FINDINGS", "[]"
     start = text.find("{")
     end = text.rfind("}")
     if start != -1 and end > start:

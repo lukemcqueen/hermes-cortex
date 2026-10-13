@@ -141,6 +141,57 @@ def test_uncommitted_change_counts(git_repo):
     assert cx["is_complex"] is True
 
 
+# ── _extract_verdict: silence must REFUSE, never crash ──────────────────────
+
+def test_a_none_reply_refuses_instead_of_crashing():
+    """The close crashed twice in production with "'NoneType' object has no
+    attribute 'find'".
+
+    The LLM reviewer backend returns `data["choices"][0]["message"]["content"]`,
+    which a reasoning model starved of output budget (or a provider hiccup) can
+    hand back as None. `_extract_verdict` went straight into `text.find("{")`, so
+    the exception escaped `end_change` — and a CRASHED close is the worst outcome
+    available: it neither passes nor cleanly refuses, and it leaves the lock HELD.
+
+    Fail-closed semantics say what must happen instead: nothing was judged, so
+    nothing may be treated as CLEAN. Refuse, loudly.
+    """
+    verdict, findings_json = mod._extract_verdict(None)
+    assert verdict == "FINDINGS", (
+        f"a None reply must never be CLEAN (got {verdict!r}) — silence is not approval")
+    assert findings_json == "[]"
+
+
+def test_empty_and_whitespace_replies_also_refuse():
+    """Empty string is the same class as None: no verdict was rendered."""
+    for bad in ("", "   \n\t "):
+        verdict, findings_json = mod._extract_verdict(bad)
+        assert verdict == "FINDINGS", f"{bad!r} must refuse, not pass"
+        assert findings_json == "[]"
+
+
+def test_a_non_string_reply_refuses():
+    """A provider returning a structured object instead of text must not crash
+    the close either."""
+    for bad in (0, [], {}, False):
+        verdict, _ = mod._extract_verdict(bad)
+        assert verdict == "FINDINGS", f"{bad!r} must refuse, not pass"
+
+
+def test_a_well_formed_reply_still_parses():
+    """The guard must not swallow the normal path."""
+    v, f = mod._extract_verdict('{"verdict": "CLEAN", "findings": []}')
+    assert v == "CLEAN" and f == "[]"
+    v, f = mod._extract_verdict('prose before {"verdict":"FINDINGS","findings":[{"a":1}]} after')
+    assert v == "FINDINGS" and json.loads(f) == [{"a": 1}]
+
+
+def test_unparseable_prose_still_refuses():
+    """Pre-existing contract: prose with no JSON is FINDINGS, not CLEAN."""
+    v, f = mod._extract_verdict("I could not complete the review.")
+    assert v == "FINDINGS" and f == "[]"
+
+
 # ── gate: simple skip, no reviewer call ─────────────────────────────────────
 
 def test_gate_skips_simple_change_without_reviewer(tmp_path, monkeypatch):
