@@ -10,10 +10,19 @@
      Create venv: python3 -m venv ~/.hermes-cortex/dashboard/venv
      Install:     ~/.hermes-cortex/dashboard/venv/bin/pip install flask
 
-  2. SHARED VENV (simpler, uses gateway's venv):
-     Uses the Hermes Agent venv to avoid a second venv.
+  2. THE FLEET VENV (~/.hermes-cortex/venv) — for a host that already has it;
+     `fix-cortex-venv.py` fills it from the declared requirements.
 
-  Replace CORTEX_HOME with $HOME (literally, launchd expands it).
+  PORTABLE (2026-10-13). This template used to say "Replace CORTEX_HOME with
+  $HOME (literally, launchd expands it)" and then put $HOME straight into
+  ProgramArguments. launchd does NOT expand $HOME inside plist strings, so the
+  job tried to exec a literal '$HOME/...' and never started — the same class of
+  failure as a missing fleet venv, and a WRONG instruction on top of it. Paths
+  are now expanded by a shell (/bin/bash -lc), and the log redirect lives inside
+  that command because StandardOutPath must be a literal path.
+
+  Option 2 used to point at the HERMES venv, the tree this fleet is moving off.
+
   Copy to: ~/Library/LaunchAgents/com.hermes.cortex-dashboard.plist
   Load:    launchctl load ~/Library/LaunchAgents/com.hermes.cortex-dashboard.plist
 -->
@@ -22,23 +31,14 @@
     <key>Label</key>
     <string>com.hermes.cortex-dashboard</string>
 
-    <!--
-      OPTION A: Dedicated venv (isolated)
-      ProgramArguments:
-        <string>$HOME/.hermes-cortex/dashboard/venv/bin/python3</string>
-
-      OPTION B: Shared gateway venv (simpler)
-      ProgramArguments:
-        <string>$HOME/.hermes/hermes-agent/venv/bin/python3</string>
-    -->
+    <!-- OPTION A: dedicated venv (shown). OPTION B: fleet venv — swap the
+         interpreter for "$HOME/.hermes-cortex/venv/bin/python3" below. -->
     <key>ProgramArguments</key>
     <array>
-        <string>$HOME/.hermes-cortex/dashboard/venv/bin/python3</string>
-        <string>$HOME/.hermes-cortex/dashboard/server.py</string>
+        <string>/bin/bash</string>
+        <string>-lc</string>
+        <string>mkdir -p "$HOME/.hermes-cortex/logs"; cd "$HOME/.hermes-cortex/dashboard" || exit 78; exec "$HOME/.hermes-cortex/dashboard/venv/bin/python3" "$HOME/.hermes-cortex/dashboard/server.py" >>"$HOME/.hermes-cortex/logs/cortex-dashboard.log" 2>&amp;1</string>
     </array>
-
-    <key>WorkingDirectory</key>
-    <string>$HOME/.hermes-cortex/dashboard</string>
 
     <key>RunAtLoad</key>
     <true/>
@@ -52,10 +52,5 @@
         <key>PATH</key>
         <string>/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
     </dict>
-
-    <key>StandardOutPath</key>
-    <string>$HOME/.hermes-cortex/logs/cortex-dashboard.log</string>
-    <key>StandardErrorPath</key>
-    <string>$HOME/.hermes-cortex/logs/cortex-dashboard.log</string>
 </dict>
 </plist>

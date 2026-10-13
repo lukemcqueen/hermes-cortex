@@ -7,10 +7,18 @@
   This is the only persistent long-lived process for agent-based Hermes
   setups — MCP servers (inbox, loop-gov, tirith) are spawned per-session.
 
+  PORTABLE (2026-10-13). This template used to hardcode /Users/luke in four
+  places (the interpreter, WorkingDirectory and both log paths) with a setup
+  step that said "edit username below" — so on any other Mac it launched with a
+  dead interpreter and surfaced as an unexplained "No such file or directory",
+  the same class of failure as a missing fleet venv. launchd does NOT expand
+  $HOME inside plist strings, so the paths are expanded by a shell here
+  (/bin/bash -lc) and the log redirect lives inside that command, because
+  StandardOutPath must be a literal path.
+
   Setup:
-    1. Edit username in ProgramArguments path below
-    2. cp this file to ~/Library/LaunchAgents/com.hermes.gateway.plist
-    3. launchctl load ~/Library/LaunchAgents/com.hermes.gateway.plist
+    1. cp this file to ~/Library/LaunchAgents/com.hermes.gateway.plist
+    2. launchctl load ~/Library/LaunchAgents/com.hermes.gateway.plist
 
   Check:
     launchctl list com.hermes.gateway
@@ -19,17 +27,23 @@
   Remove:
     launchctl unload ~/Library/LaunchAgents/com.hermes.gateway.plist
     rm ~/Library/LaunchAgents/com.hermes.gateway.plist
+
+  NOTE: this runs the HERMES runtime (hermes_agent.gateway.run) from the Hermes
+  venv, the right interpreter for that module. The cortex equivalent, with no
+  Hermes dependency, is docs/templates/com.hermes.cortex-gateway.plist.
 -->
 <plist version="1.0">
 <dict>
     <key>Label</key>
     <string>com.hermes.gateway</string>
 
+    <!-- $HOME is expanded by the shell, never by launchd; logs are appended from
+         the same command so no path here names a user. mkdir -p is idempotent. -->
     <key>ProgramArguments</key>
     <array>
-        <string>/Users/luke/.hermes/hermes-agent/venv/bin/python</string>
-        <string>-m</string>
-        <string>hermes_agent.gateway.run</string>
+        <string>/bin/bash</string>
+        <string>-lc</string>
+        <string>mkdir -p "$HOME/Library/Logs"; exec "$HOME/.hermes/hermes-agent/venv/bin/python" -m hermes_agent.gateway.run >>"$HOME/Library/Logs/com.hermes.gateway.log" 2>&amp;1</string>
     </array>
 
     <key>EnvironmentVariables</key>
@@ -37,9 +51,6 @@
         <key>PATH</key>
         <string>/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/bin:/bin</string>
     </dict>
-
-    <key>WorkingDirectory</key>
-    <string>/Users/luke</string>
 
     <key>RunAtLoad</key>
     <true/>
@@ -52,11 +63,5 @@
 
     <key>ThrottleInterval</key>
     <integer>30</integer>
-
-    <key>StandardOutPath</key>
-    <string>/Users/luke/Library/Logs/com.hermes.gateway.log</string>
-
-    <key>StandardErrorPath</key>
-    <string>/Users/luke/Library/Logs/com.hermes.gateway.log</string>
 </dict>
 </plist>

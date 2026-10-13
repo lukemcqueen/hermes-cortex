@@ -9,8 +9,16 @@
   Copy to: ~/Library/LaunchAgents/com.docker.docker.plist
   Load:    launchctl load ~/Library/LaunchAgents/com.docker.docker.plist
 
-  Note: --unattended suppresses the Docker Desktop UI prompt on launch.
-  Docker manages its own lifecycle after that — KeepAlive is not needed.
+  Note: the unattended flag suppresses the Docker Desktop UI prompt on launch.
+  Docker manages its own lifecycle after that, so KeepAlive is not needed.
+
+  FIXED (2026-10-13), two defects that made this file useless on every host:
+    1. an XML COMMENT CONTAINING A DOUBLE HYPHEN is not well formed XML, so this
+       plist could not be parsed and launchctl would reject it. (Same family as
+       the missing-venv break: the service simply never starts, and says nothing.)
+    2. the log paths were the literal string CORTEX_HOME/... which launchd does
+       not expand. Paths are now $HOME-expanded by /bin/bash -lc, and the redirect
+       lives inside that command because StandardOutPath must be a literal path.
 -->
 <plist version="1.0">
 <dict>
@@ -18,16 +26,13 @@
     <string>com.docker.docker</string>
     <key>ProgramArguments</key>
     <array>
-        <string>/Applications/Docker.app/Contents/MacOS/Docker</string>
-        <string>--unattended</string>
+        <string>/bin/bash</string>
+        <string>-lc</string>
+        <string>mkdir -p "$HOME/.hermes-cortex/logs"; exec /Applications/Docker.app/Contents/MacOS/Docker --unattended >>"$HOME/.hermes-cortex/logs/docker-launch.log" 2>&amp;1</string>
     </array>
     <key>RunAtLoad</key>
     <true/>
     <key>KeepAlive</key>
     <false/>
-    <key>StandardOutPath</key>
-    <string>CORTEX_HOME/.hermes-cortex/logs/docker-launch.log</string>
-    <key>StandardErrorPath</key>
-    <string>CORTEX_HOME/.hermes-cortex/logs/docker-launch.log</string>
 </dict>
 </plist>

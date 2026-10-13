@@ -94,6 +94,69 @@ def test_no_absolute_home_in_launcher_code():
     print("  no absolute home in launcher/guard code ✓")
 
 
+def _strip_plist_comments(text):
+    """Comment text explains the rules and legitimately names /Users/luke — only the
+    STRING VALUES are code."""
+    import re as _re
+    return _re.sub(r"<!--.*?-->", "", text, flags=_re.DOTALL)
+
+
+def _program_arguments(text):
+    import re as _re
+    m = _re.search(r"<key>ProgramArguments</key>\s*<array>(.*?)</array>", text, _re.DOTALL)
+    return _re.findall(r"<string>(.*?)</string>", m.group(1), _re.DOTALL) if m else []
+
+
+def test_no_template_hardcodes_a_user_home():
+    """A launchd template with /Users/<someone>/ in it launches a dead path on every other
+    Mac — and reads as PII. Comments may explain the rule; string values must not break it."""
+    offenders = []
+    for path in sorted((REPO / "docs" / "templates").glob("*.plist")):
+        body = _strip_plist_comments(path.read_text(errors="replace"))
+        for line in body.splitlines():
+            if ABS_HOME.search(line):
+                offenders.append(f"{path.name}: {line.strip()}")
+    assert not offenders, f"hardcoded user home in a template: {offenders}"
+    print("  no template hardcodes /Users/<name>/ or /home/<name>/ ✓")
+
+
+def test_a_template_using_HOME_goes_through_a_shell():
+    """launchd does NOT expand $HOME in plist strings. A $HOME in ProgramArguments is only
+    valid when the first argument is a shell that will expand it — the dashboard template
+    claimed launchd expanded it and the job could never start."""
+    checked = 0
+    for path in sorted((REPO / "docs" / "templates").glob("*.plist")):
+        argv = _program_arguments(_strip_plist_comments(path.read_text(errors="replace")))
+        if not argv or "$HOME" not in " ".join(argv):
+            continue
+        checked += 1
+        assert argv[0] in ("/bin/bash", "/bin/sh"), (
+            f"{path.name} puts $HOME in ProgramArguments but execs {argv[0]!r} — launchd will "
+            f"not expand it; use /bin/bash -lc"
+        )
+    assert checked, "no template was inspected — the check is vacuous"
+    print(f"  {checked} template(s) expand $HOME through a shell ✓")
+
+
+def test_every_plist_template_parses():
+    """A template launchd cannot parse is a service that never starts — and an unescaped '&'
+    in a shell redirect (`2>&1` inside XML) is exactly how that happens. Caught here while
+    rewriting the templates: all three were malformed."""
+    import plistlib
+    checked = 0
+    for path in sorted((REPO / "docs" / "templates").glob("*.plist")):
+        try:
+            data = plistlib.loads(path.read_bytes())
+        except Exception as exc:
+            raise AssertionError(f"{path.name} is not a parseable plist: {exc}") from None
+        assert "Label" in data, f"{path.name} has no Label"
+        argv = data.get("ProgramArguments") or []
+        assert argv, f"{path.name} has no ProgramArguments"
+        checked += 1
+    assert checked, "no plist template was inspected — the check is vacuous"
+    print(f"  {checked} plist template(s) parse, with a Label and ProgramArguments ✓")
+
+
 def _main():
     tests = [(n, f) for n, f in sorted(globals().items())
              if n.startswith("test_") and callable(f)]

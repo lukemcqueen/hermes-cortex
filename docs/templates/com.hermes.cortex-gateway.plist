@@ -11,11 +11,22 @@
   canonical cortex env (~/hermes-cortex/.env) before exec'ing the daemon. That
   is the same file the systemd unit reads — no macOS-specific env name.
 
+  PORTABLE + SELF-DIAGNOSING (2026-10-13). It hardcoded /Users/luke for
+  WorkingDirectory and both log paths (so another Mac's job pointed at a path
+  that does not exist), and it exec'd the SYSTEM python. Now:
+    * every path is $HOME-expanded by /bin/bash -lc (launchd expands nothing);
+    * the interpreter is the FLEET venv, the one cortex-update.sh registers
+      every MCP server against;
+    * the shared launcher guard runs first, so a missing venv or payload lands
+      in the log as "NO INTERPRETER at <path> … how to fix it" (rc 78) instead
+      of an unexplained exec failure.
+
   Setup:
     1. cp this file to ~/Library/LaunchAgents/com.hermes.cortex-gateway.plist
     2. launchctl load ~/Library/LaunchAgents/com.hermes.cortex-gateway.plist
 
   Check:  launchctl list com.hermes.cortex-gateway
+          tail -f ~/Library/Logs/com.hermes.cortex-gateway.log
   Remove: launchctl unload ~/Library/LaunchAgents/com.hermes.cortex-gateway.plist
 
   ⚠️ Only ONE poller per bot token — stop com.hermes.gateway first, or the two
@@ -26,12 +37,14 @@
     <key>Label</key>
     <string>com.hermes.cortex-gateway</string>
 
-    <!-- Source the canonical env, then exec the daemon (no shell left running). -->
+    <!-- Source the canonical env, check the pieces, then exec the daemon (no
+         shell left running). The guard exits 78 with a named path if the venv
+         or the daemon is missing, so the failure is readable in the log. -->
     <key>ProgramArguments</key>
     <array>
         <string>/bin/bash</string>
         <string>-lc</string>
-        <string>set -a; . "$HOME/hermes-cortex/.env"; set +a; exec /usr/bin/python3 "$HOME/.hermes-cortex/scripts/cortex_gateway/daemon.py" --config "$HOME/.hermes-cortex/gateway.yaml"</string>
+        <string>mkdir -p "$HOME/Library/Logs"; exec >>"$HOME/Library/Logs/com.hermes.cortex-gateway.log" 2>&amp;1; set -a; . "$HOME/hermes-cortex/.env"; set +a; . "$HOME/.hermes-cortex/scripts/lib/require-fleet-venv.sh"; require_fleet_venv "$HOME/.hermes-cortex/scripts/cortex_gateway/daemon.py"; exec "$HOME/.hermes-cortex/venv/bin/python3" "$HOME/.hermes-cortex/scripts/cortex_gateway/daemon.py" --config "$HOME/.hermes-cortex/gateway.yaml"</string>
     </array>
 
     <key>EnvironmentVariables</key>
@@ -39,9 +52,6 @@
         <key>PATH</key>
         <string>/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/bin:/bin</string>
     </dict>
-
-    <key>WorkingDirectory</key>
-    <string>/Users/luke/.hermes-cortex/scripts</string>
 
     <key>RunAtLoad</key>
     <true/>
@@ -62,11 +72,5 @@
 
     <key>ThrottleInterval</key>
     <integer>15</integer>
-
-    <key>StandardOutPath</key>
-    <string>/Users/luke/Library/Logs/com.hermes.cortex-gateway.log</string>
-
-    <key>StandardErrorPath</key>
-    <string>/Users/luke/Library/Logs/com.hermes.cortex-gateway.log</string>
 </dict>
 </plist>

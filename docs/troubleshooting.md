@@ -1127,6 +1127,14 @@ run its MCP servers is never reported "clean"). Every launcher sources
 instead of dying generically, and `tests/test_fleet_venv_launchers.py` fails the suite if a new
 launcher bare-execs the venv path again.
 
+**Same class on macOS launchd templates.** `docs/templates/*.plist` cannot rely on either
+expansion: **launchd expands nothing inside plist strings**, so a literal `$HOME/...` or
+`CORTEX_HOME/...` in `ProgramArguments` is a service that never starts, and an XML comment
+containing a double hyphen makes the whole plist unparseable (launchctl rejects it silently).
+Both patterns are now covered by `tests/test_fleet_venv_launchers.py`, which fails the suite on
+a hardcoded `/Users/<name>/` path, on `$HOME` in `ProgramArguments` without `/bin/bash -lc`, or
+on a plist that does not parse.
+
 ## Changelog
 
 | Version | Date | Changes |
