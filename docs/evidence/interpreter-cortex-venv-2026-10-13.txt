@@ -1,10 +1,10 @@
 Running: bash docs/evidence/verify-interpreter-choice.sh
 rc: 0
-when: 2026-10-12T17:34:21Z
+when: 2026-10-13T00:36:45Z
 
 == 0. the deploy this host runs, and its own log ==
   cortex-dogfood --force rc=0
-       ⚠️  Overall: WARNING  (451 pass · 15 warn · 0 fail · 7 info)
+       ⚠️  Overall: WARNING  (452 pass · 3 warn · 0 fail · 7 info)
   ✅  DOGFOOD PASSED — deployed state verified clean.
 
 == 0b. the dev dependencies the suite needs ==
@@ -28,18 +28,25 @@ when: 2026-10-12T17:34:21Z
   [3 the resolver's own test] rc=0
 
 == 4. the cortex venv can COLLECT the whole suite (a missing dep hides tests) ==
-  ======================== 1777 tests collected in 2.71s =========================
+  ======================== 1781 tests collected in 2.83s =========================
 
 == 5. any agent can REPAIR the venv (the remedy, on the deployed copy) ==
-  ============================== 10 passed in 0.59s ==============================
+  ============================== 10 passed in 0.55s ==============================
   [fixer tests] pytest rc=0
   ops/scripts/manage/fix-cortex-venv.py --check -> rc=0: ok: /home/esther/.hermes-cortex/venv/bin/python3 imports all 6 declared requirements
   /home/esther/.hermes-cortex/scripts/fix-cortex-venv.py --check -> rc=0: ok: /home/esther/.hermes-cortex/venv/bin/python3 imports all 6 declared requirements
   empty venv -> rc=3
     missing: mcp>=1.0
     missing: PyYAML>=6.0
-    fix it:  /home/esther/.hermes-cortex/venv/bin/python3 /home/esther/hermes-cortex/ops/scripts/manage/fix-cortex-venv.py --venv /home/esther/.hermes/cache/scratch/tmp.BoRdVzzt1W/empty-venv --requirements /home/esther/hermes-cortex/ops/install/requirements.txt
+    fix it:  /home/esther/.hermes-cortex/venv/bin/python3 /home/esther/hermes-cortex/ops/scripts/manage/fix-cortex-venv.py --venv /home/esther/.hermes/cache/scratch/tmp.cRhUQucmrA/empty-venv --requirements /home/esther/hermes-cortex/ops/install/requirements.txt
+
+== 6. the loop-gov wrapper names WHAT is missing (the kustos failure) ==
+  RESULT: ALL PASS (4 tests)
+  [wrapper guard tests] rc=0
+  deployed wrapper on an empty HOME -> rc=78
+  loop-gov-mcp: NO INTERPRETER at /home/esther/.hermes/cache/scratch/tmp.PifE2oW8Cj/.hermes-cortex/venv/bin/python3
+    HOME=/home/esther/.hermes/cache/scratch/tmp.PifE2oW8Cj  (these paths are relative to HOME; a different HOME in the caller is a cause)
 
 FAILS: 0 — the verifier's own exit code follows (0 here means every claim held)
 ALL CLAIMS VERIFIED (0 failures)
-sha256: e6bb82798a3c16bc0612044c7b1a80e28c369bcd8e30e900783e34881b9b37e6
+sha256: 8a0242c8436f810287b4e9932caf7e443a2477bee55e6929c7a637cdd35ac2c3

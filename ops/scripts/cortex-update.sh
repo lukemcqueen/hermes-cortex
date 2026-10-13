@@ -3069,25 +3069,43 @@ main() {
     fi
   fi
 
-  # ── The fleet venv must be able to RUN what we point at it ──
-  # ~/.hermes-cortex/venv is the interpreter the MCP-server registrations below use, and
-  # it is a UV venv (no pip binary). Measured 2026-10-08 on esther: it existed but imported
-  # neither yaml nor mcp — it held only psycopg — so orch-daily-regression-gate.sh failed
-  # EVERY DAY on PyYAML and any MCP server registered against it could not start. A venv
-  # EXISTING proves nothing about what is inside it. Nothing in this repo creates that
-  # venv, so a rebuild can silently strip it again; this says so here, loudly, instead of
-  # letting it surface as an unrelated-looking failure days later.
-  _fleet_venv="${HOME}/.hermes-cortex/venv/bin/python3"
-  if [[ -x "$_fleet_venv" ]]; then
+  # ── The fleet venv must EXIST and be able to RUN what we point at it ──
+  # ~/.hermes-cortex/venv is the interpreter the MCP-server registrations below use, and it
+  # is a UV venv (no pip binary). A venv EXISTING proves nothing about what is inside it
+  # (2026-10-08: it held only psycopg, so any server registered against it could not start,
+  # and the daily regression gate failed every day on PyYAML).
+  #
+  # THE CASE THE OLD CHECK COULD NOT SEE (2026-10-13): it sat inside `if [[ -x $venv ]]`, so
+  # an ABSENT venv was skipped in silence — and nothing in this repo creates it. That is how
+  # kustos ended up with a loop-governance wrapper dying as "line 11: No such file or
+  # directory": the venv was never there, and the deploy that should have said so said
+  # nothing. Both branches now defer (fail closed): a host that cannot run its MCP servers or
+  # its governance must not report a clean update.
+  _fleet_venv_dir="${HOME}/.hermes-cortex/venv"
+  _fleet_venv="${_fleet_venv_dir}/bin/python3"
+  _venv_fixer="${CORTEX_DEPLOY_HOME}/scripts/fix-cortex-venv.py"
+  if [[ ! -x "$_fleet_venv" ]]; then
+    error "the fleet venv is MISSING: ${_fleet_venv_dir/$HOME/~}"
+    info  "  HOME=${HOME} — these paths are relative to it (a different HOME in the client is a second cause)"
+    info  "  create: python3 -m venv \"${_fleet_venv_dir}\""
+    info  "  fill:   \"${_fleet_venv}\" \"${_venv_fixer}\"   # installs the declared set"
+    _DEFERRED_FAILURES+=("fleet venv missing")
+  elif [[ -f "$_venv_fixer" ]]; then
+    if ! "$_fleet_venv" "$_venv_fixer" --check >/dev/null 2>&1; then
+      error "the fleet venv cannot import the declared dependencies (install/requirements.txt)"
+      info  "  report: \"${_fleet_venv}\" \"${_venv_fixer}\" --check"
+      info  "  repair: \"${_fleet_venv}\" \"${_venv_fixer}\""
+      _DEFERRED_FAILURES+=("fleet venv cannot import the declared set")
+    fi
+  else
+    # A checkout too old to carry the fixer: keep the measured probe as the fallback.
     _venv_missing=""
     for _vm in yaml mcp psycopg; do
       "$_fleet_venv" -c "import ${_vm}" >/dev/null 2>&1 || _venv_missing="${_venv_missing} ${_vm}"
     done
     if [[ -n "$_venv_missing" ]]; then
       error "fleet venv cannot import:${_venv_missing}  (${_fleet_venv/$HOME/~})"
-      info  "  Repair: uv pip install --python ${_fleet_venv/$HOME/~} 'pyyaml==6.0.3' 'mcp==2.0.0'"
-      info  "  It is a uv venv — there is no pip binary. Age-gate first:"
-      info  "  python3 ${CORTEX_DEPLOY_HOME}/scripts/check-package-age.py pip pyyaml"
+      info  "  Repair: uv pip install --python ${_fleet_venv/$HOME/~} 'pyyaml' 'mcp' 'psycopg[binary]'"
       _DEFERRED_FAILURES+=("fleet venv modules:${_venv_missing}")
     fi
   fi
@@ -3572,23 +3590,6 @@ except: print('error')
   # source, producing false-positive checksum mismatches.
   info "Clearing stale __pycache__ directories…"
   find "${CORTEX_DEPLOY_HOME}/scripts" -type d -name "__pycache__" -prune -exec rm -rf {} + 2>/dev/null || true
-
-  # ── Can the fleet venv import what the fleet DECLARES? ──────
-  # ~/.hermes-cortex/venv is the venv the MCP servers and tooling run under, and nothing
-  # used to declare what belongs in it: a host with a partial venv could only be repaired
-  # by someone working the dependency list out of the source. Print the exact repair
-  # command when it cannot import them. Deliberately NOT an automatic install (a surprise
-  # network install is not the deploy's job) and deliberately not a deploy failure — the
-  # venv is tooling, and the host must stay updatable while it is broken.
-  _venv_py="${CORTEX_DEPLOY_HOME}/venv/bin/python3"
-  _venv_fixer="${CORTEX_DEPLOY_HOME}/scripts/fix-cortex-venv.py"
-  if [[ -x "$_venv_py" && -f "$_venv_fixer" ]]; then
-    if ! "$_venv_py" "$_venv_fixer" --check >/dev/null 2>&1; then
-      warn "The fleet venv cannot import the declared dependencies (install/requirements.txt)."
-      info "  report: \"$_venv_py\" \"$_venv_fixer\" --check"
-      info "  repair: \"$_venv_py\" \"$_venv_fixer\""
-    fi
-  fi
 
   # ── Auto-run doctor after update ─────────────────────────
   info "Running doctor to verify installation…"

@@ -124,6 +124,28 @@ else
 fi
 
 say
+say "== 6. the loop-gov wrapper names WHAT is missing (the kustos failure) =="
+WRAP_SRC=ops/scripts/manage/loop-gov-mcp.sh
+WRAP_DEP="$HOME/.hermes-cortex/scripts/loop-gov-mcp.sh"
+_wout="$("$CORTEX" tests/test_loop_gov_wrapper_guard.py 2>&1)"; _wrc=$?
+printf '%s\n' "$_wout" | grep -E "RESULT:|FAIL " | sed 's/^/  /'
+say "  [wrapper guard tests] rc=$_wrc"
+[ "$_wrc" = 0 ] || bad "6 the wrapper guard tests"
+# And the DEPLOYED wrapper, on a HOME where the venv is absent: it must name the path,
+# never bash's "No such file or directory".
+if [ -f "$WRAP_DEP" ]; then
+  _tmp_home="$(mktemp -d)"
+  _wmsg="$(HOME="$_tmp_home" bash "$WRAP_DEP" 2>&1)"; _wmsg_rc=$?
+  say "  deployed wrapper on an empty HOME -> rc=$_wmsg_rc"
+  printf '%s\n' "$_wmsg" | head -2 | sed 's/^/  /'
+  [ "$_wmsg_rc" = 78 ] || bad "6 the deployed wrapper should exit 78 (EX_CONFIG), got $_wmsg_rc"
+  printf '%s\n' "$_wmsg" | grep -q "NO INTERPRETER" || bad "6 it must say which piece is missing"
+  printf '%s\n' "$_wmsg" | grep -q "No such file or directory" && bad "6 it still emits bash's generic error"
+else
+  say "  SKIP — no deployed wrapper here"
+fi
+
+say
 say "FAILS: $FAILS — the verifier's own exit code follows (0 here means every claim held)"
 if [ "$FAILS" -eq 0 ]; then say "ALL CLAIMS VERIFIED (0 failures)"; exit 0; fi
 say "$FAILS CLAIM(S) FAILED"; exit 1
