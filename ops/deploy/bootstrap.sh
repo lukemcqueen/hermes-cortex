@@ -613,12 +613,21 @@ cd "$CORTEX_REPO"
 # python ahead of /usr/bin on PATH. At bootstrap time the fleet venv may not exist yet, so ask
 # the shared resolver; if nothing here can import yaml, say COULD NOT VERIFY instead of letting
 # the doctor die with an ImportError that reads like a broken host (2026-10-13).
-_DOCTOR_PY="$(bash "$CORTEX_REPO/ops/scripts/lib/python-with-module.sh" --print yaml 2>/dev/null || true)"
+_DOCTOR_RC=0
+_DOCTOR_PY="$(bash "$CORTEX_REPO/ops/scripts/lib/python-with-module.sh" --print yaml 2>/dev/null)" || _DOCTOR_RC=$?
 if [[ -n "$_DOCTOR_PY" ]]; then
   sudo -u "$REAL_USER" HOME="$REAL_HOME" "$_DOCTOR_PY" ops/scripts/manage/cortex-doctor.py --quiet 2>&1 | \
     while IFS= read -r line; do printf "    %s\n" "$line"; done
-else
+elif [[ "$_DOCTOR_RC" -eq 3 ]]; then
+  # 3 is the resolver's OWN "no interpreter here can import it" — an honest COULD NOT VERIFY.
   warn "cortex-doctor needs yaml and no interpreter on this host can import it — skipped (COULD NOT VERIFY)"
+else
+  # Any OTHER status means the RESOLVER failed (missing, unreadable, crashed at startup).
+  # Reporting that as "no interpreter can import yaml" would hide a broken script behind a
+  # dependency story — different problem, different fix (self-adversarial ADV-12432-2, 2026-10-13).
+  # Note the `|| _DOCTOR_RC=$?` above is required: this script runs under `set -e`, so a bare
+  # failing substitution in an assignment would abort the bootstrap instead of reaching this line.
+  warn "the interpreter resolver FAILED (rc=${_DOCTOR_RC}) — cortex-doctor was not run; check $CORTEX_REPO/ops/scripts/lib/python-with-module.sh"
 fi
 
 # Check key endpoints

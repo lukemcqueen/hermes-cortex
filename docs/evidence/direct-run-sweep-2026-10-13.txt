@@ -1,6 +1,6 @@
 Running: cat docs/evidence/direct-run-sweep-2026-10-13.raw.txt
 rc: 0
-when: 2026-10-13T06:15:53Z
+when: 2026-10-13T06:16:51Z
 
 ### A. the class sweep: every direct run of a python file in the repo
 
@@ -71,4 +71,11 @@ harness(ok) rc=0
    account). What matters for the branch is that it was TAKEN: the resolver returned a path, so
    _DOCTOR_PY was non-empty and the doctor was invoked instead of the warn. The branch under test
    here is the ELSE branch, exercised above with the stub.
-sha256: dc5495492c3004e7634cc9bfb6f177ab868b35fa37e9971bcadefc887ff5d615
+
+### J. the same branch, now as a COMMITTED RUNNABLE TEST (self-adversarial ADV-12432-1: pasted output is not a test)
+tests/test_bootstrap_doctor_resolution.py extracts the block from the real bootstrap.sh and runs it against three stubbed resolvers:
+tests/test_bootstrap_doctor_resolution.py::test_no_interpreter_says_could_not_verify_and_the_bootstrap_continues PASSED [ 33%]
+tests/test_bootstrap_doctor_resolution.py::test_a_broken_resolver_is_not_reported_as_a_missing_dependency PASSED [ 66%]
+tests/test_bootstrap_doctor_resolution.py::test_a_resolved_interpreter_takes_the_doctor_branch PASSED [100%]
+============================== 3 passed in 0.11s ===============================
+sha256: 8c572ee164b614c90ada772aa78c8df084bd03beadb256edfbc3ce80204d94c9

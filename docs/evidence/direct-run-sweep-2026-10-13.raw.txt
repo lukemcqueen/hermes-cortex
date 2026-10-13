@@ -67,3 +67,10 @@ harness(ok) rc=0
    account). What matters for the branch is that it was TAKEN: the resolver returned a path, so
    _DOCTOR_PY was non-empty and the doctor was invoked instead of the warn. The branch under test
    here is the ELSE branch, exercised above with the stub.
+
+### J. the same branch, now as a COMMITTED RUNNABLE TEST (self-adversarial ADV-12432-1: pasted output is not a test)
+tests/test_bootstrap_doctor_resolution.py extracts the block from the real bootstrap.sh and runs it against three stubbed resolvers:
+tests/test_bootstrap_doctor_resolution.py::test_no_interpreter_says_could_not_verify_and_the_bootstrap_continues PASSED [ 33%]
+tests/test_bootstrap_doctor_resolution.py::test_a_broken_resolver_is_not_reported_as_a_missing_dependency PASSED [ 66%]
+tests/test_bootstrap_doctor_resolution.py::test_a_resolved_interpreter_takes_the_doctor_branch PASSED [100%]
+============================== 3 passed in 0.11s ===============================
