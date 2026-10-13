@@ -634,6 +634,52 @@ relying on one.
 (`<venv>/bin/python3 -c 'import yaml, mcp'`): a venv existing proves nothing about what is
 inside it, and one can hold a single package while every caller expects more.
 
+**After changing WHICH interpreter runs a suite, prove it can COLLECT the suite.** A
+dependency missing from the preferred interpreter does not fail the run: pytest reports
+`collected N items / 1 error` and still prints a pass count for everything else, so the
+suite looks green while an entire module silently contributes no tests. Check the class in
+ONE pass rather than discovering it module by module:
+
+```bash
+"$PY" -m pytest tests/ --collect-only -q 2>&1 | grep -E "ModuleNotFoundError" | sort -u
+```
+
+When a module is missing, install it into the FLEET venv (not a private one) so every caller
+that resolves to that venv gets it — a dev dependency present in one venv and absent in the
+fleet venv is a suite that passes for you and drops tests on a host.
+
+**Do not hand-install module by module — the fleet DECLARES what belongs in the venv and ships
+the repairer.** The declared set is `ops/install/requirements.txt` (measured from the repo's own
+imports; edit THAT to add a dependency, or the next host never learns about it):
+
+```bash
+python3 ops/scripts/manage/fix-cortex-venv.py --check   # what is missing; changes NOTHING (rc=3)
+python3 ops/scripts/manage/fix-cortex-venv.py           # install only the missing, then verify
+```
+
+It decides by **importing** in the TARGET interpreter (a distribution name is not a module
+name: `PyYAML` → `yaml`, `psycopg[binary]` → `psycopg`), prefers `uv`, falls back to the venv's
+own pip, and re-checks by import afterwards rather than trusting the installer's exit code.
+`cortex-update.sh` reports the venv's state on every deploy, so a host that is short says so
+and prints the exact repair command — an agent does not have to discover the gap itself. A
+repair run is a manual operational step: record its command in the evidence and let a verifier
+assert the resulting STATE non-destructively (versions, import check).
+
+### A verifier must not mutate the thing it measures
+
+A check that installs, upgrades, or reconfigures what it inspects reports on a state it just
+changed, and can pass because of its own side effect. Split the two halves:
+
+- The **operational** step (install, migrate, rotate) runs once; record its exact command in
+the artifact and label it as the manual step it is.
+- The **verifier** asserts the resulting STATE non-destructively — distribution versions via
+  `importlib.metadata`, an import check, a collected-test count — and fails when the state is
+  wrong.
+- **Do not hang a check on a `--dry-run` flag.** Coverage varies by tool and version, and an
+  unsupported flag returns non-zero, so a broken-looking check is really an unsupported
+  option. Prefer a command that is idempotent by nature (re-running an install reports
+  nothing to do) or a read-only query.
+
 ## Cross-Platform Paths
 
 ### Finding executables

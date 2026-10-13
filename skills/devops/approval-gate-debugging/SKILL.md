@@ -121,6 +121,36 @@ the scanner too).
   *"DO NOT CHANGE HERMES DEFAULTS OR YOU WILL BE RESET"*, 2026-08-05.)
 - ✅ DO run the resolved binary directly and read its output before deciding anything.
 
+## An escalated command that times out: STOP, do not route around it
+
+Two different blocks wear similar clothes — tell them apart before acting:
+
+| Block | Meaning | Response |
+|---|---|---|
+| `security issue detected (details unavailable)` | the SCANNER crashed — no real finding | debug the scanner (above) |
+| escalation that ended in a timeout (`... did not run`, `Do NOT retry`, `Silence is not consent`) | a REAL approval request nobody answered | stop the workflow; change the design or ask |
+
+A timeout is **not** a failed attempt to try harder. The gate's own words — do not retry the
+command, do not rephrase it, do not reach the same outcome by another route — are the
+instruction, and re-issuing it with different quoting to slip past classification is exactly the
+behaviour it forbids. Treat it as a consent boundary: an unattended or unanswered escalation
+defaults to no-op.
+
+- **Ask, or remove the need.** Either put the question to the user, or change the design so the
+tainted action is not required — do not keep the same outcome in the plan.
+- **Nested shell-in-shell reads as write-class.** A quoted `bash -c "..."` whose payload runs
+  an installer or a redirect cannot be classified from the outer command, so it escalates rather
+  than running. Restructure into a plain single-purpose invocation, or better, drop it (below).
+- **A blocked action inside a CHECK is a design signal, not just a blocker.** If a verifier or
+  report step is what tripped the gate, the shape is wrong: a check that installs, migrates or
+  reconfigures what it inspects reports on a state it just changed. Split it — run the operation
+  once as a recorded manual step, and have the check assert the resulting state read-only
+  (versions, an import, a count). The same split removes the need for the blocked command, so the
+  gate never comes up again.
+- **Never present a blocked command's absence as a pass.** If the work genuinely needs it and you
+  cannot get consent, say so and stop — a silent skip that reads as green is the failure the gate
+  exists to prevent.
+
 ## Survey Before Acting (user correction 2026-08-05)
 
 When the user reports a problem like this ("you never need my permission to update

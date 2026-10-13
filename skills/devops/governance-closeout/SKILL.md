@@ -135,7 +135,23 @@ material it judged (note + diff):
   assertion lines verbatim, then the load-state evidence, and only then the verbose
   transcript. Same discipline for the note — it shares the character budget with the diff,
   so a long note crowds out the very material it points at: name the artifact, the
-  revision and the assertion count, and stop.
+  revision and the assertion count, and stop. **Split the evidence when it is longer than a
+  screen**: one SMALL answers file — the grep line numbers that show the code, the PASS
+  lines, each `rc=` — beside the long transcript it points to, named so it sorts BEFORE that
+  transcript in the diff, because the material keeps the head and tail of a range and proof
+  sitting in the omitted middle is reported as absent however true it is. **"Small" is
+  arithmetic, not a feeling: the per-file share is the range's budget divided by its FILE
+  COUNT** (measured: ~11 files in one docs-only range => ~500-600 characters each, less than
+  this bullet). Size each evidence file to that share, and remember the bound applies to a
+  standalone checksum/proof file too — a hash carrier must sit INSIDE the artifact it pins,
+  because a checksum list arrives truncated and its claim is filed as unverified.
+  **Never answer a completeness finding by adding an artifact**: the range grows, every
+  file's share shrinks, and the new file becomes the next truncation target — the only
+  moves that help REDUCE the range (push earlier commits so `base` advances, collapse
+  unpushed docs commits, fold the proof into the commit whose claim it supports). A
+  `DECISIVE LINES ONLY` label is honest and still scores as a summary, because the demand
+  was for the complete output. Full mechanics: `references/adversarial-gate-material.md`,
+  "Answering a completeness finding".
 - **The artifact must name the revision it ran against, and be run against the FINAL
   revision of the change.** A green artifact produced at an intermediate commit is
   exactly the finding it was meant to answer: the reviewer reads the revision field and
@@ -154,8 +170,16 @@ material it judged (note + diff):
   generator is committed, so any reviewer can re-run it at HEAD.
 - **The audited range is every commit since the lock, it is TRUNCATED, and it shows
   SUPERSEDED hunks.** The gate budgets roughly 12k characters of diff for a normal
-  range, and a docs-only range gets several times that (see
-  `references/adversarial-gate-material.md`, "Two budgets") — either way a large range
+  range and several times that for a docs-only range, and it allocates that budget PER
+  FILE across the range — so a ten-file range gives each file ~1200 chars, less than the
+  diff of one 50-line script, and every file arrives as a sliver. **Measure a candidate
+  range before closing it** rather than estimating: `scripts/measure-review-material.py`
+  imports the gate's own bounder, names each file as `whole` or `CUT`, and exits 1 when
+  the range is over budget (3 = could not verify, never read as "no truncation"). When it
+  says CUT, split the change into PUSHED waves — the range is `base..HEAD` and `base` is
+  what the remote already has, so a wave only shrinks the range once it is pushed
+  (`references/adversarial-gate-material.md`, "Two budgets" and "Delivering a change
+  larger than one range"). Either way a large range
   reaches the reviewer with its middle omitted — and a range holding SEVERAL commits
   contains the earlier commits' hunks as well as the final ones. The reviewer then reads
   an intermediate state and files `fabrication` against a claim that is true of the
@@ -287,6 +311,22 @@ material it judged (note + diff):
   regenerated, a red suite had to go green), keep it in its OWN commit and state in one
   line why the change required it. An unexplained unrelated commit in the audited range is
   graded `scope-drift` at MEDIUM and blocks the close.
+- **A note cannot fix a DESCRIPTION that does not match the diff.** `begin_change`'s
+  description is frozen for the life of the cycle and the reviewer compares it against
+  the range: a description promising an artifact "unchanged from what they staged" beside
+  a diff that edits it is `scope-drift` at MEDIUM, and re-reviewing with a better note
+  cannot resolve it because the contradiction IS the description. Retiring the cycle does
+  not release the lock either — a cancelled task's `end_change` still runs the reviewer on
+  the current material — so the exits are an operator decision or the TTL. When the work
+  is going to exceed what the description promised, say so in the description UP FRONT
+  ("land X, plus the minimum hardening the gate requires") instead of discovering the
+  surplus under review.
+- **Keep execution claims out of the COMMIT MESSAGE — it is material too.** A message
+  line beginning `Verified here before landing: …` produced a HIGH `unverified-claim`
+  finding while the note beside it was clean. Describe what the commit DOES and point at
+  the committed artifact that proves it (`git show <sha>:<path>`); the recorded run
+  belongs in that artifact. See `references/adversarial-gate-material.md`, "The commit
+  message is material too".
 - **A `fabrication` finding can be about the MATERIAL, not about you.** The gate
   builds the material's "Diff stat" from the complexity MEASUREMENT while it builds the
   diff BODY from the cycle's COMMITS, and the measurement deliberately also counts your
@@ -410,6 +450,22 @@ push-then-review complaint, because the review is the CLOSE step and therefore l
 the push by construction. Review first, push second, close last; if you have already
 closed, take a fresh lock naming the original cycle rather than leaving the commit
 unpublished.
+
+**A range touching an always-review path needs the review RECEIPT before it may push**
+(the gate checks both): the push is also refused with *"this range touches an
+always-review path and carries no clean review receipt — close the cycle, then push"*.
+`core/governance/` (e.g. `loop_evaluator.py`) is one of those paths alongside `plugins/`,
+`mcp-servers/`, `cortex-update.sh` and `pre-commit-score`. The receipt is WRITTEN BY the
+review, and the review runs inside the close — so on such a range the workable order is:
+
+```text
+work → commit → close the review CLEAN (rereview_change while the lock is still held)
+     → push (lock still held) → end_change
+```
+
+Closing FIRST on an always-review range is the trap: `end_change` releases the lock and
+its verdict is what would have authorised the push, so the push then needs a carrier
+`begin_change` — one extra cycle whose only content is a push it cannot itself review.
 
 ### Verify an artifact is TRACKED before claiming it is committed
 
@@ -618,6 +674,11 @@ as `.txt` mean the ignored `.log` was the wrong filename, not a missing ignore r
   CURRENT material. Commit the artifact the finding asked for FIRST — that is the only
   thing that makes the next verdict differ — then close; do not hunt for a way to re-take
   the lock.
+- **The task state machine is not fully connected, so a parked cycle needs a two-step
+  resume.** `blocked` transitions only to `cancelled` or `planning`; `blocked →
+  executing` is refused with `Invalid transition: 'blocked' → 'executing'. Allowed:
+  cancelled, planning`. Step `blocked → planning → executing` before closing, or the
+  close refuses for a state reason that has nothing to do with the change.
 - **Score before you investigate.** A cycle left PENDING with no live lock is a doctor
   FAIL that blocks every push, so scoring an orphaned cycle is the first move, not the
   last.

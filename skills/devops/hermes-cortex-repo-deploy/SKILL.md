@@ -253,6 +253,15 @@ test still loads it from the repo — that is what makes a green suite
 uninformative). Then run the DEPLOYED copy before reporting, and say which path
 you exercised.
 
+**The commit-time audit WARNS about a missing register entry — it does not block.** The
+audit prints the exact line to add (`register "<source>" "<destination>"`) beside
+`NEW file … is not registered`, and the commit still lands, so a feature can ship with a
+green suite, a green commit and committed evidence while the tool simply does not exist on
+any other host (the tests load it by REPO path, which is precisely why the suite says
+nothing). Treat that audit line as a gate rather than as noise: add the entry in the same
+cycle it names the file, and after deploying, exercise the DEPLOYED path — not the repo
+copy — before reporting the tool as available to the fleet.
+
 **Guard register-vs-directory agreement, and verify on the DEPLOYED tree.** The repo's
 tests import the REPO tree while the host runs the DEPLOYED tree, so a module that is
 committed, imported by a deployed script, and never registered keeps a GREEN suite while

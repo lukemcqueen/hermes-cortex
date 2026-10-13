@@ -68,6 +68,21 @@ and invalidates the receipt, so push immediately after closing. Full detail:
   merge needs neither and leaves your commits' identities intact. Check for
   collisions FIRST — `git diff --name-only HEAD...origin/main` against your own
   changed paths — because a merge only avoids the WIP it does not touch.
+  **A merge is still REFUSED by a peer's STAGED files, and collision checking does not
+  predict it**: `git merge origin/main` stops with *"Your local changes to the following
+  files would be overwritten by merge"* when another session has entries in the INDEX on
+  any path the merge updates — the INDEX is what blocks it, not the worktree, and it
+  blocks paths a plain `git diff HEAD...origin/main` shows no collision in. The only
+  sanctioned moves are to wait for that session to land its own work, or to report the
+  blocking paths and ask; never unstage, stash or commit theirs to clear it.
+  **Publishing meanwhile is a LANDING BRANCH, which never touches the blocked checkout:**
+  `git worktree add --detach /tmp/land origin/main`, cherry-pick your own SHAs onto it in
+  order, run the suites THERE, then `git push origin HEAD:main` from that clean tree. Give
+  the landing tip a durable ref the moment it exists (`git branch <name> <sha>`) — a
+  detached worktree's commits are reachable only through the reflog, so a `git worktree
+  prune` plus reflog expiry is enough to lose a landing nobody pushed. Check first that
+  your files are untouched upstream (`git log <base>..origin/main -- <your paths>` empty):
+  if a peer edited them the cherry-pick conflicts and the landing branch is the wrong tool.
 - **A GENERATED file that both sides regenerated resolves by REGENERATING, never by
   hand-merging the conflict.** Git can auto-merge such a file into a state that looks
   merged and is inconsistent — one side's row beside the other side's count. Run the

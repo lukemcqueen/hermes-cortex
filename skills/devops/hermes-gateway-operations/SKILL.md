@@ -155,6 +155,17 @@ not increment it, so a changing `NRestarts` is evidence the unit restarted ITSEL
   service asks systemd to bring it back by exiting on purpose: `Restart=on-failure`
   does NOT start the unit again after `exit(0)`, so the exit is a plain stop and the
   bot stays down. Check the policy before trusting the mechanism.
+- **The exit code is the SUPERVISOR's, never a constant — derive it, and refuse when
+  nothing would bring the process back.** systemd (`Restart=always`) relaunches on any
+  exit, so `os._exit(0)` is right; a launchd job whose plist says `SuccessfulExit=false`
+  is relaunched only after a NON-zero exit, so the same handler must exit `75`
+  (EX_TEMPFAIL) on macOS or it PARKS the service silently. Prove who owns the process
+  first — `launchctl list`'s PID column showing OUR pid is the test, because
+  `XPC_SERVICE_NAME` is inherited by children exactly as systemd's `INVOCATION_ID` is —
+  then read the job's own plist for the relaunch condition and exit with the code it
+  wants. When no recognised condition covers a deliberate exit, refuse and name the
+  plist fix instead of exiting into silence. Conditions and the full exit-code table:
+  `macos-service-management`.
 - **Probing this with a throwaway unit: end the probe with
   `systemctl --user stop <unit>` and exit 0.** Under `Restart=always`, a probe that
   exits non-zero restarts itself in a loop — it floods the journal and, if it also
@@ -210,8 +221,11 @@ Intercept them in the gateway's command dispatcher and never pass them through
   session; `/model` persists the override per chat — a stateless prompt wrapper has
   nowhere to keep it, so the GATEWAY owns a small chat→model store, mode 0600 (a chat id
   is personal data); `/compact` reports what it reclaimed, and "nothing to compact" for a
-  session too small; `/restart` exits so the unit restarts it, and the new process
-  announces itself (above).
+  session too small; `/restart` exits WITH THE CODE ITS SUPERVISOR RELAUNCHES ON (`0`
+  under `Restart=always`, `75` under launchd's `SuccessfulExit=false`) so the service
+  comes back by design, and the new process announces itself (above). A refusal must name
+  the half that is missing — "not running under systemd" is a dead end on a host that IS
+  supervised, by launchd.
 - **Design for the EMPTY chat.** Commands run on chats with no conversation yet, where a
   backend's session operations hang or refuse (compact on a transcript that does not exist
   never answers). Probe state first and answer with the specific condition — "this chat has
@@ -222,6 +236,51 @@ Intercept them in the gateway's command dispatcher and never pass them through
   body IS the argv). A probe that polls with the real bot token starts a second poller and
   steals the live channel's messages (409); echoing is what lets the assertion check the
   ARGV the gateway produced — model declared exactly once, no duplicate `--model`.
+
+### Inline menus (buttons) for gateway commands
+
+A slash command that picks a VALUE (a model, a voice, a page) is better served by a menu than a
+free-text argument — but build it on the gateway's plumbing, not beside it:
+
+- **Read the transport before building the UI.** The button markup, edit-in-place and callback
+  routing may already exist. Feature-detect each and degrade to the text form when a platform
+  lacks it, rather than erroring — the command stays usable without buttons.
+- **Carry an INDEX in the callback, never the value.** `callback_data` is capped (64 bytes on
+  Telegram) while a real id runs 40+; re-render the menu from CURRENT state on every press, so a
+  stale button can only ever be out of range. Answer it — never apply a value the menu did not
+  show.
+- **Tick the value IN FORCE, not just an override** — the backend default is what most chats are
+  running, so ticking only overrides leaves every menu unticked; offer the reset entry only when
+  an override exists.
+- **Edit in place** — one message per menu, not one per press — and ANSWER every callback so the
+  client's spinner clears. Consume your own callbacks so a press never reaches the backend as
+  prompt prose.
+- **The list is gateway-owned config.** A backend's raw catalogue is hundreds of entries and a
+  menu of hundreds is worse than a command: curate it in the gateway config so the operator can
+  edit it. Warn on stderr for unusable entries ("N blank entries ignored (M usable)") instead of
+  silently serving a shorter menu.
+- **Enabling the menu is PER-HOST work — ship a deployable enabler, not a procedure.** The
+  list lives in each host's own gateway config, so every host needs a config step and a
+  restart before its menu appears. Make that a script (portable: stdlib only, no YAML
+  dependency, since the gateway reads its config with `json.loads`) that derives the list from
+  that host's own backend catalogue, MERGES only the list key — every other key preserved,
+  idempotent — and offers a `--check` sweep. Then REGISTER it in the deploy map: a helper meant
+  for every host that is not registered exists only in the repo, and tests that load it by repo
+  path stay green while hosts never receive it. Give "cannot derive the list here" its own exit
+  code rather than reporting an empty catalogue, and read the written config back to confirm
+  the other keys survived (a shape mismatch between the producer and the writer silently
+  writes an empty list and reports success).
+- **Warn when the backend cannot TAKE the value at all.** A shim-style backend declares no
+  value flag, so a selection is stored and never applied: the menu looks live and does nothing.
+  At startup, check whether any backend declares the placeholder that consumes the selection
+  and say so on stderr instead of serving a dead menu — the host's operator cannot otherwise
+  tell a working menu from a decorative one.
+- **Test the menu through the stub transport**: a callback arrives as its own KIND with the data
+  in the body. Assert the first page, the tick, a page step, a stale out-of-range press, and that
+  a chat with no configured list still gets the text form.
+
+Concrete shapes — paths, the callback envelope, callback-data encoding, and the test cases:
+`references/inline-menus.md`.
 
 ## Adding a New Platform
 

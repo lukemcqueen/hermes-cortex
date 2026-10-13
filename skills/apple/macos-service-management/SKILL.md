@@ -84,8 +84,47 @@ Validate: `plutil -lint com.example.service.plist`
 A service that exits immediately with 78 means **launchd rejected the plist
 config itself** — the process never ran. Fix the plist, not the program.
 
+## Restart-on-exit: the exit code must match the KeepAlive condition
+
+launchd defines exactly five KeepAlive conditions — `SuccessfulExit`,
+`NetworkState`, `PathState`, `OtherJobEnabled`, `Crashed`. Read them from the man
+page (`man 5 launchd.plist`); **anything else in a KeepAlive dict is not a
+condition**, so launchd finds no reason to restart the job and falls back to
+demand-only launching.
+
+| KeepAlive condition | Relaunches after | A deliberate self-restart must exit |
+|---|---|---|
+| `<true/>` | any exit | `0` |
+| `SuccessfulExit` **true** | exit status 0 only | `0` |
+| `SuccessfulExit` **false** | the INVERSE: exit status **non-zero** | non-zero (`75`, EX_TEMPFAIL) |
+| `Crashed` true | a signal-terminated death only | n/a — a clean exit is not restarted |
+
+- **`SuccessfulExit=false` does NOT mean "restart after a clean exit".** Apple's
+  wording is "restarted in the inverse condition": the job comes back on a NON-zero
+  status and a clean `exit 0` **PARKS** it. A restart command written for systemd
+  (`os._exit(0)` under `Restart=always`) therefore stops the service silently — the
+  exact failure the policy was added to fix. `systemctl`-shaped restart logic ported
+  to launchd without changing the exit code is the trap.
+- **`CrashedOrAbnormalExit` is not a launchd key.** It appears in no man page, so a
+  KeepAlive dict carrying only it gives launchd no reason to restart: the job stays
+  down after any exit. Replace it with `SuccessfulExit=false` + a non-zero exit code,
+  or `<true/>` + exit 0.
+- **Derive the exit code from the supervisor; never assume 0.** One binary may run
+  under systemd (`Restart=always` → 0) or launchd (`SuccessfulExit=false` → 75).
+  Prove which job owns the process with `launchctl list`: its **PID column** showing
+  OUR pid is the test, because `XPC_SERVICE_NAME` is inherited by every child exactly
+  as systemd's `INVOCATION_ID` is. Then read the job's OWN plist (`plutil -p` or
+  `plistlib`) and exit with the code that policy relaunches on; when no recognised
+  condition covers a deliberate exit, refuse and name the plist fix rather than
+  exiting into silence.
+- **Confirm a relaunch with the job, not the chat:** `launchctl list <label>` shows a
+  NEW pid, and `LastExitStatus` is recorded as `exit_code << 8` (75 → 19200).
+
 ## Pitfalls
 
+- ❌ **KeepAlive with unknown keys** — a dict of keys launchd does not define (e.g.
+  `CrashedOrAbnormalExit`) is the same as no KeepAlive at all: no restart, and the
+  supervisor looks configured. `plutil -lint` passes; only the man page can tell you.
 - ❌ **Shell variables in ProgramArguments** — `$(which python3)` does NOT
   expand. Use the absolute path.
 - ❌ **Unloaded vs stopped** — `launchctl unload` removes the service

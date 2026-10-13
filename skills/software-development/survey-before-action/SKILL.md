@@ -89,7 +89,7 @@ cronjob(action="list")
 
 ## Deployment Pitfalls (cortex-update.sh side effects)
 
-1. SOURCE header breaks checksums — deployed .sh/.py get a # SOURCE: header; use the doctor's _content_md5() (strips header), never raw _md5().
+1. SOURCE header breaks checksums — deployed .sh/.py get a # SOURCE: header; use the doctor's _content_md5() (strips header), never raw _md5(). **And the header's SHAPE differs per file type** — a script may carry the SOURCE lines AFTER its shebang, and a plist/template may carry none at all — so a deployed↔repo comparison must strip leading comment/blank lines on BOTH sides, never a fixed line count: a `sed '1,3d'` that eats a shebang reports drift that does not exist, and the "drift" then reads as a failed deploy rather than a probe bug.
 2. Lock purge — cortex-update removes stale locks (>1h TTL). Re-acquire with begin_change(); score PENDING cycles from the purged lock first.
 3. Skills marker survives deploy — write tools keep working after cortex-update.
 4. Hook symlinks — deployed hooks are symlinks to scripts/ sources; a file copy drifts and the doctor flags it.

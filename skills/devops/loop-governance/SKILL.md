@@ -549,6 +549,19 @@ CLEAN close, `git push` right after it is authorisable with no new lock. Do not 
 second cycle purely to push; only commits added AFTER the close are outside the receipt and
 need their own review.
 
+**Issue the push ALONE.** The carve-out authorises a *lone* `git push`: a compound
+(`git push && …`), a pipe, a redirect or a background form is refused even with a CLEAN
+receipt, because only the bare command is recognised as landing the reviewed range. When a
+refusal names this, re-issue the push by itself instead of opening a cycle for it.
+
+**A close that outlives your call still completed.** The review runs server-side to its own
+deadline, so a client-side timeout on `end_change` (the MCP call ceiling) can land while the
+reviewer is still working — the close then finishes and RELEASES the lock, with the receipt
+already written. Do not re-run the review and do not assume failure: the lock file
+(`ls ~/.hermes-cortex/state/.governance-*.json` — gone means released) is the state, and a
+repeated `end_change` answering "no governance session active" is the confirmation it closed.
+The receipt from that close is what then authorises the push.
+
 Evidence that the review's material window could not show is a *window* defect, not a
 missing-evidence defect. The material now treats `docs/evidence/**` as documentation
 (whatever the suffix) and allocates floor-first, so a small artifact is shown whole. Keep
@@ -556,6 +569,39 @@ evidence small and structural: state the command, its own `rc`, the decisive lin
 sha256; `ops/scripts/make-evidence.sh` writes exactly that shape and verifies it. It is
 POSIX-sh portable (Linux and macOS, `sha256sum` or `shasum -a 256`) and works in any repo,
 with or without Hermes or cortex — a Pi / Claude Code / plain-shell session can use it.
+
+**A re-runnable verifier answers a provenance finding only if it proves its OWN claims.** One
+command that re-checks the whole change (deploy, tests, deployed-vs-repo, the adversarial
+sweep) ends a close-review argument that a stack of transcripts cannot; but a verifier is
+itself evidence, so it must not hide its own failure modes:
+
+- **Never let a piped `tail` carry the result.** `cmd | tail -1` prints the last line whatever
+  happened above it, so the artifact cannot distinguish a pass from a failure earlier in the
+  run. Capture the output, then print the command's OWN exit status beside the decisive
+  summary line — and print the FAILED/ERROR lines when there are any.
+- **Print the verifier's own verdict**: the failure count immediately before the exit, so the
+  capture states the outcome instead of leaving it to be inferred from a count.
+- **Name the artifact each check examined.** "The deployed copy" and "the repo copy" differ
+  exactly where the check matters (a wrong deploy-map entry still passes a repo-side run), so
+  say which one was used, and exercise the DEPLOYED path when the host has one. `--help` proves
+  a file starts, not that it works — use the real operation as the check.
+- **Separate the operational step from the verification, and label it.** A verifier that
+  installs, migrates or reconfigures what it inspects can pass because of its own side effect
+  and reports on a state it just changed; a check hung on a `--dry-run` flag also fails as
+  "unsupported option" on tool versions that lack it. Run the operation once, record its exact
+  command in the artifact as the MANUAL step it is, and have the verifier assert the resulting
+  state non-destructively (distribution versions, an import check, a collected-test count). A
+  claim about a manual step is answerable — say which step was manual and show the state it
+  produced.
+
+**Write the response to a finding as the DEFECT, not as agreement with the reviewer.** A note
+or commit message that frames a fix as "the reviewer was right" is filed as
+evaluation-awareness and can block the close: the reviewer is grading the change, not its
+diplomacy. State what was broken and why the new shape is correct ("a piped tail discards the
+failure lines and the exit status, so the artifact cannot tell a pass from a failure earlier in
+the run") — the same sentence with the reviewer left out of it.
+
+Detail on both, plus the rest of the close-review loop: `references/satisfying-the-close-review.md`.
 
 ### Before you submit — see the window the reviewer sees
 

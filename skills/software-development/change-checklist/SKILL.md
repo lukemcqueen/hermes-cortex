@@ -27,7 +27,7 @@ Load this before end_change() on any script, deploy-config, cron, shared-doc, or
 
 - [ ] Pushback Check (3 questions, BEFORE begin_change) — Is this idea wrong (harm, data loss, wrong scope, better mechanism)? Is there a clearly better alternative? If you raised an objection, do NOT begin_change until the user acknowledges (override is final). Silence is not consent (SOUL P5).
 - [ ] **Name the cycle for the diff it will CONTAIN, not the instruction that started it.** A task id that under-describes the work fails the close on scope drift no matter how good the evidence is: the reviewer sees the real range and refuses a cycle whose name does not cover it. An instructed next step ("pull latest and update", then a follow-on reconciliation the update itself demanded) belongs in its OWN correctly-named cycle — do not fold a derived deliverable into the parent's cycle. Check before begin_change: does `<task_id>` describe every path the range will touch? If not, split it. (Cost of getting this wrong: cycle 12012 was refused four times and held a 60-minute TTL wait; the identical work closed CLEAN on the first attempt under a correctly-named cycle.) Recovery for an already mis-framed cycle: retire it through the state machine (`advance_task_state` → `cancelled`, reason logged, no override) and open a correctly-named one — never `force`/override.
-- [ ] Foreign working-tree check — git status; another session's in-flight edits block the pre-push dogfood gate. Coordinate — never stash/clean/commit a peer's files (SOUL P9).
+- [ ] Foreign working-tree check — `git status --short` says WHAT is staged (column 1) vs unstaged (column 2), **never WHO staged it**. Do not infer a concurrent peer from that shape: establish authorship first (`git log --oneline -3 -- <path>`, `git log -1 --format='%an %ae'`, `git reflog`). When you are the only writer on the host — the normal single-agent case — staged-but-uncommitted work is YOUR stranded work from an earlier session: land it in its own correctly-named cycle, or discard it deliberately, but never route around it and never write "another session" into a commit message on that assumption. For genuinely concurrent writers: coordinate, and never stash/clean/commit a peer's files (SOUL P9).
 - [ ] search_files() for the old name/term across the whole repo.
 - [ ] Live cron prompts — grep ~/.hermes/cron/jobs.json for the old term; source edits don't rewrite existing jobs — update each hit via cronjob action='update'.
 - [ ] Cron manifest — install-crons.sh AND install-orch-crons.sh: uninstall arrays, create_cron blocks, guards.
@@ -51,6 +51,12 @@ Load this before end_change() on any script, deploy-config, cron, shared-doc, or
 
 Enforced at 3 layers: pre-commit hook (static gate), enforcer (blocks commit until adversarial-verifier loaded), and this checklist.
 - [ ] Static gate on every changed script: python3 ~/.hermes-cortex/scripts/adversarial-verify.py --file <file> --level A2 --gate. A4 for plugins/, hooks/, mcp-servers/, ops/scripts/manage/, cortex_doctor/, quality/, tests/, and enforcement scripts. Critical/high → block. No --no-verify.
+- [ ] **Pin a before/after comparison to an immutable revision, and name both revisions in the
+      artifact.** A baseline recorded as "HEAD", "the working tree", or a stash is unrepeatable the
+      moment your own commit lands — HEAD then IS the change, so the comparison can never be
+      re-run and the reviewer correctly refuses it. Record the baseline SHA and the tip SHA in the
+      evidence and the cycle note; re-running the tool against those two revisions must reproduce
+      the counts exactly.
 - [ ] "0 findings" is NOT a pass — execute the changed path with boundary inputs (-1, 0, None, empty, inf/nan, non-ASCII); attack the premise (list implicit assumptions, violate each with a 30s test); verify deployed == loaded (restart/daemon check for guards/hooks/enforcers).
 - [ ] A green check is not evidence until you have seen the assertion RUN. A test
       file with no executable entry point (a pytest-style file with no
@@ -71,6 +77,13 @@ Enforced at 3 layers: pre-commit hook (static gate), enforcer (blocks commit unt
       warnings omitted). A transcript with the counts absent is not evidence: the reader cannot
       tell a clean run from a skipping one, and a summary line claiming cleanliness the
       transcript contradicts is a fabrication finding.
+- [ ] **A piped `rc=$?` is the LAST stage's status, so regenerate an artifact rather than
+      hand-patching it.** `cmd | tail -1; echo rc=$?` prints the tail's 0, which can put
+      `rc=0` directly beneath a failure and read as a contradiction: run the command bare, or
+      state in the artifact that the rc shown is the command's own, measured with the pipe
+      removed. Piecemeal edits to a generated transcript (a path fix, a number) soon leave
+      values that no longer match the command above them — re-run the generator and re-read
+      its output; normalize host paths to `~` there, not in the committed copy.
 - [ ] **Never commit a query's output without first seeing it return rows.** Proof of a
       disposition ("recorded as this issue", "promoted to a task") must be the store's ACTUAL
       row: run the query, confirm it returns the row, then commit that. Commit a traceback or an
@@ -122,6 +135,17 @@ Enforced at 3 layers: pre-commit hook (static gate), enforcer (blocks commit unt
       silently, which is how a mistyped revision becomes a green tick. The same bite hits a
       CONTENT digest: normalise trailing newlines and whitespace before hashing a file, or a
       byte-identical copy fails the comparison by one `\n` and looks like real drift.
+- [ ] **A per-item rule belongs ONLY to the items the checker owns.** A validator that
+      loops over a collection (every config entry, every service, every registered host)
+      and applies an ownership-specific rule to each — an identity/agent-name convention,
+      a schema only its own components satisfy — fails a HEALTHY system the moment a
+      legitimate foreign item sits beside its own. Scope the per-item rule to the owned
+      set, keep the generic checks (does the command exist, does the path resolve) for
+      every item, and REPORT the foreign items as outside the check's scope instead of
+      judging them by a contract they never had. Prove all three directions: an owned item
+      breaking the rule still fails, a foreign item does not fail, and a foreign item with
+      a genuinely broken path still fails — otherwise "scoped" and "disarmed" are
+      indistinguishable.
 - [ ] A regression test must exercise the DETECTOR, not a live ambient state. A test that
       asserts "the tree is clean" / "the deployed copy matches" / "the queue is empty"
       flaps the moment normal operation dirties it — a pipeline writing a lesson, a peer
@@ -143,7 +167,12 @@ Enforced at 3 layers: pre-commit hook (static gate), enforcer (blocks commit unt
 - [ ] Evidence must be self-consistent: a summary line may never name a file,
       path or count that the artifact it accompanies does not show. A stat built
       from a wider set than the diff beside it is a contradiction a reviewer will
-      (correctly) read as fabrication — cite the range you actually show.
+      (correctly) read as fabrication — cite the range you actually show. **Counts are MEASURED
+      in the artifact, never recalled**: a line/file total must be the one the artifact's own
+      `wc -l` / `grep -c` printed, at the revision it cites. **And name the comparison's exact
+      strength** — "identical modulo the deploy banner (N leading lines stripped)", never
+      "byte-identical" — because an overclaim the check does not support reads as fabrication
+      even when the check passing was real.
 - [ ] Maker/checker split — use a different model for verifier vs implementer where quality is critical.
 - [ ] Record evidence — finding IDs, boundary inputs, assumptions violated, exit codes. Report "checked X, Y, Z" never "verified clean".
 

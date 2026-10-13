@@ -162,3 +162,16 @@ When fixing template/placeholder paths (e.g., `src/auth/middleware.py` in `task-
 - **Code blocks are actionable.** Even in a migration doc, a ````bash` code block with `bash src/scripts/cortex-update.sh` will **fail** if run. These are High severity.
 - **Line numbers shift between audits.** Files get edited. Search by pattern, not by line number from the previous report. A previous report that says "line 586" may now refer to completely different content.
 - **DOCS-INDEX.md lags behind file deletions.** When a doc file is deleted, the index often keeps its entry.
+- **Your OWN edit can invalidate a claim about the file you just edited — audit the describers
+  in the same pass.** Adding a pointer or section to `X` makes every doc that DESCRIBES `X`
+  stale, and the fragile kind is a NEGATIVE claim (`not documented in X`, `kept out of X`,
+  `X does not cover this`): it was true when written and silently becomes false, so no path
+  check or link check ever catches it. The moment you extend a file, grep the docs for its
+  name and its negative-claim phrasings before you commit:
+
+  ```bash
+  grep -rn --include='*.md' -e "$(basename X)" -e 'kept out of' -e 'not documented' -e 'does not cover' docs/ | head
+  ```
+
+  Fix the describing row in the SAME commit — a stale claim in the index an implementer reads
+  sends them to the wrong place, which is worse than a missing entry.
