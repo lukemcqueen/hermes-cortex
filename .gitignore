@@ -126,3 +126,6 @@ private-data/
 # mycortex DB backups (e.g. pre-migration dumps) — large, PII-heavy, never commit
 ops/services/mycortex/backups/
 laptop/
+
+# External adapter/harness directories (not part of hc)
+adapters/
