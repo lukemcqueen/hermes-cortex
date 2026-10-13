@@ -128,3 +128,11 @@ and are marked as such where they appear.
     test provider::tests::unresponsive_engines_are_surfaced_in_both_shapes ... ok
     test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 21 filtered out; finished in 0.01s
     test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 4 filtered out; finished in 0.00s
+
+== can a STALE binary mislead these measurements? ==
+-- measure.sh never invokes fleet-search or cargo (its 'fleet-search' hit is the usage comment):
+    9:# Usage: bash tools/fleet-search/docker/searxng/measure.sh      (~3-4 min; needs docker)
+   it measures the CONTAINER with docker/curl/python, so there is no binary to go stale.
+-- the script that DOES measure the binary rebuilds it first:
+    26:cargo build --release >/dev/null 2>&1 || {
+   that rebuild precedes the size and RSS measurements below it.
