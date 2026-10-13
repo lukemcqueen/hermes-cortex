@@ -2963,6 +2963,23 @@ _MATERIAL_LIMIT_REC = re.compile(
     r"clear enough|too small|split)", re.I)
 _MATERIAL_LIMIT_NEVER = {"fabrication", "injection", "swallowed-error"}
 
+# Paraphrase tolerance (2026-10-13, cycle 12443).
+#
+# The marker list above is the gate's OWN disclosure wording, and a reviewer does not always quote
+# it. Measured on cycle 12443: the reviewer wrote "the design doc and README diffs are TRUNCATED BY
+# THE GATE BUDGET" — accurate, but matching none of the exact strings — so the exemption missed and
+# a `medium` finding held the cycle open. The worker could not clear it with ANY edit, because the
+# complaint was about the window, not the change. That is the same six-round loop the comments
+# above describe for cycles 12307/12324, reached by a different route.
+#
+# So the wording is matched as a PATTERN now. The class widens by exactly one dimension — phrasing —
+# and every existing guard holds: the recommendation must still be about SEEING the content, and
+# fabrication / injection / swallowed-error are still never exempt. A finding that asks for a
+# behavioural change, a test, or a value does not match here.
+_MATERIAL_LIMIT_PARA = re.compile(
+    r"(truncat|omitt|omitted|bounded|gate budget|review budget|material budget|character budget|"
+    r"char budget|diff budget|not visible|cannot see|can't see|cut off|outside the window)", re.I)
+
 
 def _is_material_limit_finding(finding) -> bool:
     """True when the finding's complaint IS the material window, nothing more."""
@@ -2972,7 +2989,11 @@ def _is_material_limit_finding(finding) -> bool:
         return False
     text = " ".join(str(finding.get(k, "")) for k in ("target", "evidence", "recommendation"))
     if not any(m.lower() in text.lower() for m in MATERIAL_LIMIT_MARKERS):
-        return False
+        # No exact marker: accept a PARAPHRASE of the gate's own bound (see _MATERIAL_LIMIT_PARA),
+        # because a reviewer stating "truncated by the gate budget" is making the same complaint in
+        # its own words. Anything that does not describe a bound still falls through to blocking.
+        if not _MATERIAL_LIMIT_PARA.search(text):
+            return False
     return bool(_MATERIAL_LIMIT_REC.search(str(finding.get("recommendation", ""))))
 
 

@@ -57,6 +57,25 @@ truth of what you can verify from the material itself.
    that commit. Never charge a peer's enforcement edit to this worker, and never
    read such a change as scope drift against this task.
 
+## The material is BOUNDED — and a bound is not a finding
+
+The gate cannot show you everything. When it cuts text it says so inline with a marker of the
+form `bounded: N of M chars omitted`, and the same file may appear once per commit.
+
+A cut is a property of YOUR WINDOW, not of the change under review, and the worker cannot fix it
+with any edit — an earlier cycle was held open for six rounds on exactly that. So when you cannot
+see something:
+
+- report it as **ONE** finding, `severity: "info"`, `technique: "unverified-claim"`, quoting the
+  gate's marker **verbatim** and naming what you could not see;
+- never file it as `high`/`medium`, never as `fabrication`, and never as the reason for a FINDINGS
+  verdict if nothing else is wrong;
+- say in `summary` what you could not check because of it, so the bound is recorded rather than
+  guessed at.
+
+If you believe the OMITTED region contains a real defect, say what you would need shown and why —
+still as `info`. A FINDINGS verdict must rest on something you can actually see.
+
 ## Findings format (emit as JSON, nothing else after it)
 
 ```json

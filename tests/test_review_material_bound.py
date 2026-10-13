@@ -364,6 +364,36 @@ def test_material_limit_findings_do_not_block():
     assert not blocking, "a material-window finding must not block"
     assert annotating and annotating[0].get("severity_downgraded"), "the downgrade must be recorded"
 
+    # THE PARAPHRASE (cycle 12443). The marker list is the gate's own wording, and a reviewer does
+    # not always quote it: the stored finding said "the diffs are truncated by the gate budget" —
+    # accurate, matching none of the exact strings, so it held a cycle open on something no edit
+    # could clear. Same complaint, different words: it must not block either. The evidence and
+    # recommendation below are the VERBATIM stored text from that cycle, not a paraphrase of it:
+    # an invented wording would test my guess about the reviewer's phrasing, not the real one.
+    para = _json.dumps([{
+        "finding_id": "ADV-X-1b", "severity": "medium", "technique": "unverified-claim",
+        "target": "docs/design/x.md",
+        "evidence": ("The design doc and README diffs are truncated by the gate budget. The "
+                     "head/tail shown confirm a mem_limit change from 128m to 192m in compose.yaml, "
+                     "but the steady-state figures are not visible in the material."),
+        "recommendation": ("The figures are committed in the full files. A re-review with a larger "
+                           "gate budget or direct tree access would verify them."),
+    }])
+    blocking, annotating = mcp._blocking_findings(para)
+    assert not blocking, "a PARAPHRASED window complaint must not block"
+    assert annotating and annotating[0].get("severity_downgraded"), "the paraphrase downgrade too"
+
+    # ... and the tolerance must not swallow a finding that asks for WORK. This one mentions
+    # truncation in passing and then asks for a behavioural change and a test: it still blocks.
+    asks_for_work = _json.dumps([{
+        "finding_id": "ADV-X-1c", "severity": "high", "technique": "unverified-claim",
+        "target": "tools/fleet-search/src/ops.rs",
+        "evidence": "the field is truncated nowhere in the material because no caller sets it",
+        "recommendation": "populate the field and add a test that fails when it is empty",
+    }])
+    blocking, _ = mcp._blocking_findings(asks_for_work)
+    assert blocking, "mentioning truncation must not exempt a finding that asks for real work"
+
     fab = _json.dumps([{
         "finding_id": "ADV-X-2", "severity": "high", "technique": "fabrication",
         "target": "docs/evidence/run.txt",
