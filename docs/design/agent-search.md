@@ -62,6 +62,39 @@ subprocess: a local cache that silently reports itself unavailable is indistingu
 That is **below** the 10–30 MB Go estimate and two orders of magnitude under the SearXNG row. The
 design point stands on measurement rather than on the estimate it was proposed from.
 
+### SearXNG, measured the same way (2026-10-13)
+
+The question "can SearXNG be squeezed to ~50 MB so it can be the starting point?" was answered by
+running it, not by reading a sizing table. `searxng/searxng:latest`, one worker, loopback only,
+`limiter`/`public_instance`/`image_proxy` off, no Valkey:
+
+| Configuration | Smallest cap that works | Measured RSS | Results for a real query |
+|---|---|---|---|
+| Default engine set | 128 MB (**96 MB dies — OOMKilled=true**) | **~99 MB** | **20**, with `brave` + `duckduckgo` unresponsive |
+| Pruned to 3 engines (`keep_only`) | **84 MB** | **82.3 MB** | **0** — two of the three engines were blocked |
+| 64 MB cap | — | — | OOMKilled, exit 1 |
+
+**50 MB is not reachable.** The absolute floor is 82.3 MB, and that configuration returns nothing.
+The smallest configuration that actually WORKS is ~99 MB.
+
+Two findings that matter more than the numbers:
+
+- **The current image runs Granian, not uWSGI**, so `UWSGI_WORKERS=1` — the variable most guides
+  (and the maintainers' own memory thread) recommend — has no effect here. The worker count is
+  still the driver (that thread reports 600 MB → 150 MB at `workers=1`), but the lever moved.
+- **Memory and usefulness trade in the same direction.** Pruning engines is the only way under
+  100 MB, and the engines pruned are the coverage lost. On this host `brave` and `duckduckgo` are
+  already unresponsive from a datacenter IP, so a small engine set is a search engine that finds
+  nothing. SearXNG earns ~99 MB by failing over across ~70 engines; pruning removes exactly that.
+
+A ready-to-use config, with these numbers beside it, is in
+`tools/fleet-search/docker/searxng/` (`settings.yml` + `compose.yaml` + README).
+
+Also learned by running it: SearXNG's JSON reports **`unresponsive_engines`**. With results it is
+informational; with ZERO results it separates *"nothing matched"* from *"the engines that could
+answer were blocked"* — and only one of those is worth retrying. The provider currently ignores
+that field, which is a defect worth fixing before SearXNG becomes a default.
+
 ## The three operations
 
 | Operation | Needs a provider | Behaviour when it cannot work |

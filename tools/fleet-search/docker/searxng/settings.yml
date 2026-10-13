@@ -1,0 +1,24 @@
+# Minimal settings for a PRIVATE SearXNG behind a single agent.
+#
+# `use_default_settings: true` keeps the full engine set ON PURPOSE: pruning engines is the only
+# lever that gets the footprint under 100 MB, and the engines you prune are the coverage you lose.
+# Measured here, a 3-engine instance used 82.3 MB and returned ZERO results, because two of its
+# three engines were unresponsive from this IP and SearXNG's value IS failing over across engines.
+use_default_settings: true
+
+server:
+  # Replace with: openssl rand -hex 32
+  secret_key: "CHANGE-ME-openssl-rand-hex-32"
+  limiter: false            # a private instance does not need bot protection
+  public_instance: false    # ... and does not need the features meant for one
+  image_proxy: false        # nothing to proxy for an agent that reads text
+  http_protocol_version: "1.1"
+
+search:
+  formats:
+    - html
+    - json                  # this is the format an agent calls
+
+# No Valkey. It is only needed by the limiter / public-instance features, both off above.
+valkey:
+  url: false

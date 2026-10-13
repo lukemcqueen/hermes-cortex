@@ -1,0 +1,20 @@
+# Private SearXNG for a single agent. Measured floor: ~99 MB RSS for a usable engine set.
+# A 96 MB cap dies; 128 MB is safe. See README.md beside this file for every number and why
+# pruning engines is a trap on this host.
+#
+# Bind to loopback ONLY: this instance has no authentication, and the limiter is deliberately off
+# (it exists to protect public instances, and it needs Valkey — which this config avoids).
+services:
+  searxng:
+    image: searxng/searxng:latest
+    ports:
+      - "127.0.0.1:8888:8080"
+    mem_limit: 128m
+    restart: unless-stopped
+    volumes:
+      - ./settings.yml:/etc/searxng/settings.yml:ro
+    environment:
+      # This image runs GRANIAN, so UWSGI_WORKERS (what most guides tell you to set) does nothing
+      # here. The worker count is the memory driver either way: one worker is the difference
+      # between ~100 MB and the ~600 MB a 4-core default allocates.
+      GRANIAN_WORKERS: "1"
