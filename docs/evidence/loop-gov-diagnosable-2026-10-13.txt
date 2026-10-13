@@ -1,0 +1,28 @@
+Running: bash docs/evidence/verify-loop-gov-diagnosable.sh
+rc: 0
+when: 2026-10-13T00:38:04Z
+
+== the wrapper's guard, case by case ==
+    A: absent interpreter -> named path, HOME, create+fill, rc=78 ✓
+    B: absent server -> named path, deploy command, rc=78 ✓
+    C: both present -> execs the server ✓
+    no absolute /home/ path in executable lines ✓
+  RESULT: ALL PASS (4 tests)
+  [wrapper guard] rc=0
+
+== the deploy's venv check with the venv ABSENT / partial / healthy ==
+    C: healthy venv -> no false alarm ✓
+    B: venv present, imports fail -> reported and deferred ✓
+    A: absent venv -> named, create+fill shown, deferred ✓
+  RESULT: ALL PASS (3 tests)
+  [fleet venv check block] rc=0
+
+== the DEPLOYED wrapper, on a HOME with no venv (what kustos saw) ==
+  loop-gov-mcp: NO INTERPRETER at /home/esther/.hermes/cache/scratch/tmp.NYrWx8oZMu/.hermes-cortex/venv/bin/python3
+    HOME=/home/esther/.hermes/cache/scratch/tmp.NYrWx8oZMu  (these paths are relative to HOME; a different HOME in the caller is a cause)
+    the fleet venv is created by nothing in this repo — create it, then fill it:
+  rc=78 (78 = EX_CONFIG)
+
+FAILS: 0 — the verifier's own exit code follows (0 here means every claim held)
+ALL CLAIMS VERIFIED (0 failures)
+sha256: 641c4b8c3f93f5e04434e365217ab364fe27a5366899444a025ce292744121c7
