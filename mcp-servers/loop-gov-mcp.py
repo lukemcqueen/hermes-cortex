@@ -646,17 +646,39 @@ def _session_worked_since(state: dict, since_iso: str) -> bool:
         return False
 
 
-def _refresh_lock_heartbeat(state: dict) -> None:
-    """Record observed activity on the lock file. Best effort; never raises.
+LIVENESS_MAX_RENEWALS = 1  # see _refresh_lock_heartbeat
+
+
+def _refresh_lock_heartbeat(state: dict) -> bool:
+    """Record observed activity on the lock file. Best effort; never raises. Returns whether it did.
+
+    BOUNDED on purpose (2026-10-13, deep-model review). A commit by the lock's own agent proves
+    activity, but it is also INFINITELY renewable by anything that keeps committing as that agent — a
+    long-running job, a cron — which would let one lock outlive every TTL forever and starve every
+    other session in the repo. That was named the single most dangerous change of the night, and it is
+    right: the refresh is remotely triggerable and unbounded.
+
+    Bound: at most ONE renewal per acquisition. One covers the real case (a long busy stretch between
+    two governed calls, which is what was measured); a second means the session is not coming back,
+    so the lock ages out like any other.
 
     `_write_lock` prefers the session_id carried in the STATE and only falls back to the ambient
     args when the state has none — so this writes the lock being aged and cannot land on a peer's.
     """
     try:
+        used = int(state.get("liveness_renewals", 0))
+        if used >= LIVENESS_MAX_RENEWALS:
+            log.warning("lock %s already renewed %sx — refusing another renewal so it can age out",
+                        state.get("session_id"), used)
+            return False
         state["heartbeat_at"] = _now_iso()
+        state["liveness_renewals"] = used + 1
+        state["liveness_renewed_at"] = state["heartbeat_at"]
         _write_lock(state, None)
+        return True
     except Exception as e:
         log.warning("could not refresh the lock heartbeat from repo activity: %s", e)
+        return False
 
 
 def _is_lock_stale(state: dict, mtime_fallback: float | None = None) -> bool:
@@ -694,11 +716,15 @@ def _is_lock_stale(state: dict, mtime_fallback: float | None = None) -> bool:
             age = (now - heartbeat).total_seconds()
             if age > ttl and _session_worked_since(state, heartbeat_str):
                 # Busy, not dead: say so on the lock (so the file records when work happened rather
-                # than when someone last asked about the lock) and do not age it out.
-                log.info("lock %s aged %ss past TTL but its agent has committed since — refreshing "
-                         "the heartbeat instead of purging", state.get("session_id"), int(age))
-                _refresh_lock_heartbeat(state)
-                return False
+                # than when someone last asked about the lock) and do not age it out — but only while
+                # the renewal budget lasts. Past it, real activity is no longer enough.
+                if _refresh_lock_heartbeat(state):
+                    log.info("lock %s aged %ss past TTL but its agent has committed since — renewed "
+                             "once, not purged", state.get("session_id"), int(age))
+                    return False
+                log.info("lock %s: renewal budget spent — ageing out despite recent commits",
+                         state.get("session_id"))
+                return True
             return age > ttl
         except (ValueError, TypeError):
             # Time-only / malformed heartbeat — can't age it in-band.
@@ -2154,7 +2180,15 @@ REVIEWER_LIGHT_MODEL_DEFAULT = "deepseek/deepseek-v4-flash"
 
 # Findings are a small JSON object, and the prompt says so. Unbounded output was pure cost: a
 # reviewer that writes an essay about a window it cannot see is charged for every token of it.
-REVIEWER_MAX_TOKENS = 900
+#
+# 16000, not 900 and not 3000 (2026-10-13). A small cap is not a tighter leash on a REASONING model:
+# it can spend the whole budget thinking and emit an EMPTY content field, which the gate then reads as
+# "reviewer unavailable" and uses to refuse an otherwise valid close. Measured directly on a long
+# prompt: 900 -> empty, 3000 -> empty (finish_reason='length'), 16000 -> answered, and it used 8952
+# completion tokens. So the cap must clear the reasoning budget, not the answer length; a cap tuned to
+# the size of the JSON it returns guarantees false negatives. Bounded is right; SMALL is a false
+# negative — the one failure mode this gate must never have.
+REVIEWER_MAX_TOKENS = 16000
 
 # A judge does not need to be creative, and sampling variation between two identical reviews is
 # how the same material got CLEAN and then FINDINGS on different passes.

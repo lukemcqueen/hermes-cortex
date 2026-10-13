@@ -120,6 +120,58 @@ def test_an_idle_lock_still_ages_out(tmp_path, monkeypatch):
     )
 
 
+def test_commit_liveness_cannot_be_renewed_forever(tmp_path, monkeypatch):
+    """The deep-model review named THIS the most dangerous change of the night, and the missing test
+    is worth naming too: a commit-based liveness rule is infinitely renewable by anything that keeps
+    committing as this agent — a cron, a long-running job — so one lock could outlive every TTL and
+    starve every other session in the repo. At most ONE renewal per acquisition."""
+    mod = _load()
+    lock = tmp_path / ".governance-test.json"
+    monkeypatch.setattr(mod, "_session_lock_path", lambda sid=None: lock)
+    monkeypatch.setattr(mod, "_secondary_lock_path", lambda state: None)
+    state = {
+        "session_id": "test-session",
+        "repo_path": str(REPO),
+        "agent": _git_author(REPO),
+        "started_at": "2020-01-01T00:00:00Z",
+        "heartbeat_at": "2020-01-01T00:00:00Z",
+        "liveness_renewals": 1,  # its one renewal is already spent
+        "ttl_seconds": 3600,
+    }
+    lock.write_text(json.dumps(state))
+    assert mod._is_lock_stale(state) is True, (
+        "a lock that already used its renewal must age out, however much its agent commits — "
+        "otherwise 'activity' is an unbounded hold-open"
+    )
+    assert json.loads(lock.read_text())["heartbeat_at"] == "2020-01-01T00:00:00Z", (
+        "and it must not be touched on the way out"
+    )
+
+
+def test_the_first_renewal_still_works(tmp_path, monkeypatch):
+    """The bound must not break the case it exists for: a long busy stretch between two governed
+    calls, which is the failure that started all of this."""
+    mod = _load()
+    lock = tmp_path / ".governance-test.json"
+    monkeypatch.setattr(mod, "_session_lock_path", lambda sid=None: lock)
+    monkeypatch.setattr(mod, "_secondary_lock_path", lambda state: None)
+    state = {
+        "session_id": "test-session",
+        "repo_path": str(REPO),
+        "agent": _git_author(REPO),
+        "started_at": "2020-01-01T00:00:00Z",
+        "heartbeat_at": "2020-01-01T00:00:00Z",
+        "ttl_seconds": 3600,
+    }
+    lock.write_text(json.dumps(state))
+    assert mod._is_lock_stale(state) is False, "the first renewal is the whole point of the rule"
+    written = json.loads(lock.read_text())
+    assert written["liveness_renewals"] == 1
+    assert written["liveness_renewed_at"] == written["heartbeat_at"], (
+        "the lock must record that it was renewed by observed activity, not by a status call"
+    )
+
+
 def test_a_fresh_heartbeat_is_never_stale():
     mod = _load()
     assert mod._is_lock_stale(

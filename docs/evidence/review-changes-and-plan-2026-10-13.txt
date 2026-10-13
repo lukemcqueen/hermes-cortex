@@ -1,0 +1,25 @@
+# Deep-model review of the night's changes + the plan (2026-10-13)
+
+Asked deepseek-v4-pro (via OpenRouter) to attack the changes AND the plan. Raw answer below.
+Diagnostic worth keeping: it needed finish_reason=stop at 8952 completion tokens. A 900- or
+3000-token cap returns EMPTY content — which the gate reads as 'reviewer unavailable' and
+would use to refuse a valid close. Bounded is right; small is a false negative.
+
+model=deepseek/deepseek-v4-pro
+endpoint=https://openrouter.ai/api/v1
+key_resolved=True  max_tokens=16000  temperature=0
+finish_reason='stop' completion_tokens=8952
+------------------------------------------------------------------------
+1. **Lock split attack.** Yes, the commit-based liveness check is an unbounded hold-open. `repo_path + git author` is not scoped to the lock’s branch, range, or session. A cron job or background process committing with the agent author keeps refreshing the heartbeat at every stale check, so the lock can survive forever and starve other sessions. One-line bound: *“Only refresh on a commit that touches this lock’s branch/range and contains this lock’s `session_id` in a trailer, and allow at most one such refresh per lock acquisition.”*
+
+   Releasing on a verdict refusal is also an escape hatch. The old lock was the backstop; now a refused range can be kept alive by making a cosmetic commit to change the tip/fingerprint, then re-reviewing. With the cheap light-tier reviewer, this becomes a reviewer-sampling loop until a CLEAN slips through. Release also permits history rewriting/reset before the push gate runs, so the refused tip may disappear. Safer: on medium+ finding, mark the exact tip/range non-closeable and do not release except for an approved remediation review or operator override.
+
+2. **Fingerprint.** Excluding the worker note loses the reviewer’s conditions. The reviewer may have returned CLEAN only because the note said something like “dry-run only; do not deploy” or “manual migration must run first” or “this code path is dead.” The artifact fingerprint records none of that. A note-only change is then the dangerous one: after CLEAN, the worker changes the note to “ready to deploy” without touching the artifact; the receipt still matches and the gate accepts. The note—or at least its hash—must be part of the bound verdict.
+
+3. **Plan B.** “Any failure path” is too broad and breaks the intentional outage behavior. It would release on reviewer timeout or transient failures, when the session may still be alive and mutating. That creates split-brain: the old session continues while a new session takes the lock. Safer formulation: *after a crash, a supervisor must fence the session, durably record a terminal refusal/error bound to the exact tip/range, and only then release.* Genuine reviewer outages or ambiguous failures must hold the lock.
+
+4. **Order/prune.** Do A first, but not merely “re-close”; verify the helper is present and `reviewed_blobs` is non-empty before any close is accepted. For the stuck lock from tonight, release it manually as a terminal non-clean state, not via B. Rework B as fenced terminal release, not blanket release. Drop or defer C: per-file truncation changes what is hidden rather than fixing the budget. A malicious diff can place the dangerous hunk just past each file’s marker; cross-file call chains become unreviewable. Increase real reviewer budget or summarize globally instead.
+
+   Missing entirely: a re-review loop cap/cooldown, fencing tokens on lock release, receipt binding to reviewer model/prompt/version, and a test that commit-based liveness cannot be renewed forever.
+
+5. **Most likely to cause a bad outcome in production.** The commit-based liveness refresh is the most dangerous because it is remotely triggerable and unbounded: any background process with the agent’s git author can hold a lock forever, deadlocking the repo. Replace it with session-bound heartbeat refresh only; if git activity is allowed as evidence, require the lock’s `session_id` in a commit trailer, restrict it to the locked branch/range, and allow only one renewal per acquisition.
