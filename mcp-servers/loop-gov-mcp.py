@@ -2815,20 +2815,29 @@ def _reviewer_label(cx: Optional[dict] = None) -> str:
     routed to the fast chat-completions model (cx passed and tier light on an
     `agent`-backend host), record THAT model so the stored row is truthful.
     """
+    if cx is not None and _tier(cx) == "light":
+        # Checked BEFORE the backend branch so the label matches what _call_reviewer actually runs on
+        # every backend. Previously this was only honoured for the `agent` backend, so on the default
+        # `llm` backend a light change was recorded as — and judged by — the deep model.
+        return _light_reviewer_model()
     if _reviewer_backend() == "agent":
-        if cx is not None and _tier(cx) == "light":
-            return _light_reviewer_model()
         return "agent:" + (_env_value("ADVERSARIAL_REVIEW_AGENT_NAME") or "unnamed").strip()
     return _reviewer_model()
 
 
 def _light_reviewer_model() -> str:
-    """Model for the 'light-but-complex' review tier.
+    """Model for the 'light-but-complex' review tier — the CHEAP reviewer.
 
-    Defaults to the SAME model as every other review (the canonical reviewer).
-    The tier decides how a review is TRANSPORTED on an `agent`-backend host - a
-    fast chat-completions call instead of a coding agent - NOT how deep it is, so
-    by default the reviewer is the one model the fleet standardised on.
+    2026-10-13 (operator cost decision, and a reversal of the original design). The tier used to
+    decide only how a review was TRANSPORTED — a fast chat-completions call instead of a slow coding
+    agent on an `agent`-host, with the SAME model either way — which left the cheap path unreachable
+    on the default `llm` backend. It now also decides DEPTH, because the spend is in repetition: a
+    complex change that is not an always-review surface, and not far above the size thresholds, is
+    judged by the fast model.
+
+    The heavy tier keeps the canonical reviewer deliberately: a cheap judge is a weaker judge, and
+    the class left on it is enforcement and governance code. If the cheap tier ever waves through
+    something real, the answer is to move that CLASS back up, not to trust it more.
 
     An operator can still name a different model with
     ADVERSARIAL_REVIEW_LIGHT_MODEL, which makes "review this one with a cheaper
@@ -2927,9 +2936,16 @@ def _call_reviewer(prompt: str, author: Optional[str] = None,
     proportional review window instead of a flat per-backend cutoff.
     """
     backend = _reviewer_backend()
-    if cx is not None and _tier(cx) == "light" and backend == "agent":
-        # Light-but-complex on an agent host is served by the FAST llm reviewer;
-        # scale its wait budget against the llm backend (not the agent's 900s).
+    if cx is not None and _tier(cx) == "light":
+        # Light-but-complex is served by the CHEAP llm reviewer on EVERY backend: on an `agent` host
+        # because the slow agent hits the 300s client ceiling, and on the default `llm` host because
+        # that is where the spend actually is.
+        #
+        # 2026-10-13: this condition used to require backend == "agent". The consequence was a cheap
+        # tier that was UNREACHABLE on the default configuration while being documented as the cost
+        # saving — dead code that neither a green test suite (which asserted the tier VALUE, never
+        # the wiring) nor 202 stored pro-only review rows revealed, because "all pro" was explained
+        # away as always-review surfaces. Check the wiring, not the constant.
         return _call_reviewer_llm(prompt, model=_light_reviewer_model(),
                                   timeout=_reviewer_timeout(cx, "llm"))
     wait = _reviewer_timeout(cx, backend)
