@@ -1,0 +1,85 @@
+# Threshold consult — the deep reviewer model on our own gates (2026-10-13)
+
+*Not a verdict on a change: a second opinion on the NUMBERS I chose. Asked of the same model the heavy
+tier uses (the canonical reviewer, deepseek-v4-pro), through the fleet's own reviewer call path — so
+the answer arrives over exactly the channel under discussion. The prompt described the real semantics:
+what is measured, what counts, what the reviewer can see, and the fleet's own outcome data (125 of 202
+stored verdicts FINDINGS, most of them `info` and about the reviewer's truncation window).*
+
+`resolved window: 120s` — confirming that the 300s printed during the RED probe earlier was the
+**pre-fix module's default**, not an operator setting.
+
+## What it said (verbatim)
+
+**3 files / 50 lines as review trigger:** Too low. A single-file doc fix or one-test addition (common
+in this fleet) triggers review for changes that are mechanically safe and human-obvious. The
+false-positive rate is high—reviews bought for nothing. The false-negative risk is real but smaller: a
+2-file, 40-line logic change with no always-review path touched escapes review entirely. That’s the gap
+that matters.
+
+**10 files / 200 lines as heavy/light boundary:** Reasonable for cost gating, but the jump from 3→10
+files leaves a wide band where multi-file refactors (4-9 files, 100-180 lines) get only light review. A
+7-file API rename touching callers across modules is more dangerous than a 12-file mechanical sed, yet
+the former gets cheap review and the latter gets expensive. The boundary is right-sized for cost but
+wrong-shaped for risk.
+
+**62% findings rate with mostly truncation findings:** This is a **prompt and interface problem**, not a
+threshold problem. The reviewer cannot see the full diff, knows it, and dutifully reports its own
+blindness as a finding. That inflates the finding rate with non-actionable noise. It’s the expected
+shape of an honest reviewer given a broken observation window, but it’s not useful signal.
+
+### Failure modes it named
+
+1. **Truncation-as-finding spam** — the 12k-char window creates findings that are always info-severity,
+   always about the reviewer's own limitation, never block.
+2. **Uncommitted-work inclusion without diff coherence** — a worker can stage a safe commit and leave
+   dangerous uncommitted edits reviewed as one blob, masking intent.
+3. **No semantic triggers** — a change adding a dependency, modifying a CI pipeline, or altering a
+   serialization format can be 1 file, 20 lines, and pass under the gate entirely.
+4. **Heavy review wasted on mechanical breadth** — 20-file sed refactors hit heavy review; the lowest-risk
+   wide changes. The cost model is inverted.
+
+### Concrete changes it proposed
+
+- **ADD** a semantic trigger: dependency/schema/CI files (`package.json`, `Cargo.toml`,
+  `requirements.txt`, CI workflow files, serialization schemas) force review regardless of size.
+- **ADD** a diff-coherence marker: separate committed from uncommitted, or require a commit/stash first.
+- **RAISE** the file trigger 3 → 5.
+- **REMOVE or raise** the 50-line trigger (to 120) — line count is a poor proxy once noise is filtered.
+- **FIX, not tune:** widen the window to ~24k chars, and truncate **per file** with a per-file marker
+  rather than one global cut. It argues this pays for itself, since truncation findings already waste
+  the reviewer's budget.
+
+## Assessment — what I accept, and what I do not
+
+**ACCEPTED, and it found a real hole. Semantic triggers.** Confirmed directly against the shipped list
+rather than taken on trust: `ALWAYS_REVIEW_PATHS` contains the enforcer, this MCP server,
+`core/governance/`, the pre-commit/pre-push/post-commit/post-push hooks, `cortex-update.sh`,
+`quality/adversarial-verify.py` and `ops/install/hooks/` — and **no CI workflow, no requirements file,
+no schema or migration**. So a one-line edit to the CI pipeline, or adding a dependency to the fleet
+venv's declared requirements, is gated only by the size thresholds. That is the same class of change
+the always-review list exists to catch: high leverage, tiny diff.
+
+**ACCEPTED, and it is the root cause of the noise.** The window. 12k chars spread across files with one
+global marker means the reviewer cannot see the middle of anything large, and — being an honest
+reviewer — says so, once per review. Per-file truncation with a per-file marker is strictly better
+information for the same budget, and it would make the finding stream mean something again. This is the
+change I would do first.
+
+**REJECTED, with reasons.** Raising the file trigger to 5, and removing the line trigger. Both trade
+review coverage for reviewer comfort, and the cost argument behind them is weaker than it looks: the
+light tier already makes the 3-4 file case cheap, so "reviews bought for nothing" now costs cents. The
+pro's own example proves the point against itself — a 2-file, 40-line logic change escaping review is
+called "the gap that matters", and raising the trigger to 5 **widens** that gap rather than closing it.
+Removing the line trigger is worse: it is the only thing that catches a single-file logic change, and
+the pro's fix for that hole is to ADD semantic triggers, which I am doing. Size thresholds are a blunt
+instrument; the answer to a blunt instrument is a second, sharper one, not a blunter primary.
+
+**ALREADY HANDLED.** Diff coherence. The material does not silently merge working-tree edits into the
+committed diff — `_material_scope` **discloses** excluded working-tree paths in the material itself,
+because a path named without its diff is a self-contradiction the reviewer is right to charge as
+fabrication (that was cycle 10877). The reviewer is told what it is not seeing, which is why the pro's
+"masking intent" mode is a disclosure problem here, not a visibility one.
+
+**Correctly diagnosed as a prompt/interface problem, not a threshold problem.** The 62% rate is not the
+thresholds' fault; it is the window's, and it is fixable at the source.

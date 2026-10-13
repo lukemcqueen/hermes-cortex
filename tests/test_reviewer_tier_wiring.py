@@ -109,3 +109,32 @@ def test_the_cheap_and_deep_models_are_actually_different():
     assert mod.REVIEWER_LIGHT_MODEL_DEFAULT != mod.REVIEWER_MODEL_DEFAULT, (
         "a tier that costs the same as the untiered path saves nothing"
     )
+
+
+def test_semantic_triggers_are_always_reviewed():
+    """The deep model's one confirmed finding about our gates: a one-line CI edit, a new dependency or
+    a schema change was gated by SIZE ALONE, so a tiny high-leverage change could cross the gate
+    untouched. This asserts they are listed, AND that the list is actually being LOADED from the
+    shared file — a broken load would leave the in-code literal and silently drop every addition."""
+    mod = _load()
+    listed = " ".join(mod.ALWAYS_REVIEW_PATHS)
+    for needle in ("github/workflows", "requirements.txt", "pyproject.toml", "Cargo.toml",
+                   "docker-compose.yml", "migrations/"):
+        assert needle in listed, (
+            f"{needle} is not always-reviewed: a one-line change there would be gated by size alone"
+        )
+    # And a change touching only one of them must be HEAVY, regardless of how tiny it is.
+    assert mod._tier({"always_review": True, "files": 1, "lines": 1}) == "heavy"
+
+
+def test_the_shared_list_is_the_one_being_used():
+    """The bash hook and this module must not disagree about what needs a clean review."""
+    shared = (REPO / "ops" / "scripts" / "lib" / "always-review-paths.txt")
+    assert shared.is_file(), "the shared list is missing — the hook and the module would diverge"
+    entries = [ln.strip() for ln in shared.read_text().splitlines()
+               if ln.strip() and not ln.strip().startswith("#")]
+    mod = _load()
+    for entry in entries:
+        assert entry in mod.ALWAYS_REVIEW_PATHS, (
+            f"{entry} is in the shared list but the module does not know about it"
+        )
