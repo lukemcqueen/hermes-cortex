@@ -1,30 +1,191 @@
 # Doctor check accuracy fixes — 2026-10-14 (esther)
 
-Baseline revision (before this change): `8946fdce` · tip (this change): `12a0ee41`.
-Every block below is verbatim output captured on this host; re-running the command at the
-revision named beside it reproduces the result.
+Baseline revision (the state BEFORE this change): `8946fdce`.
+Tip revision (the state this artifact describes): `12a0ee41`.
 
-Five checks emitted signals that were not true of this host, or prescribed commands that
-cannot run. Each fix is paired with the failing test that pins it, captured against the
-PRE-FIX revision, and with the live doctor line that changed.
+Every block below is the complete captured output of the command printed immediately above it.
+Re-running that command at the revision named for it reproduces the block.
 
-| # | Check | Was | Now |
-|---|-------|-----|-----|
-| 1 | `MCP wiring (…)` fix text | printed `~/hermes-cortex/cortex-bus-mcp.py` — a path that does not exist | prints the repo-relative `mcp-servers/…` script |
-| 2 | `Config (JUDGE_MODEL/EMBEDDING_MODEL/CODING_MODEL)` | "defined but zero consumer scripts reference it" — the scan was non-recursive, `ops/scripts/` top level only | "defined, N consumer(s) found" (4 / 10 / 1) |
-| 3 | `Config (CREATIVE_MODEL)` | a docstring MENTION made it a false PASS mid-fix | INFO (accurate: reserved, read by nothing) |
-| 4 | `Score-cycle` | "Old score-cycle found …" — invites deleting a CLI `pre-commit-score` HARD-BLOCKS without | PASS, naming the six scripts that invoke/register it |
-| 5 | `AGENTS.md efficiency (…)` | an empty `.git/` dir and a WORKTREE of the cortex repo judged as dev repos; the printed fix cannot run on either | non-repos and our own worktrees are skipped; unrelated dev repos still warn |
+Five checks emitted signals that were not true of this host, or prescribed commands that cannot
+run. The live doctor line that changed, for each:
 
-## RED — the new tests against the PRE-FIX revision `8946fdce`
+| # | Check | Before | After |
+|---|-------|--------|-------|
+| 1 | `MCP wiring (agent-bus/loop-governance/tasks/executor)` | WARN x4: registered against the HERMES venv | PASS x4 (verified by `mcp_wiring.py --orch`, and the doctor's own AFTER block below) |
+| 2 | `Config (JUDGE_MODEL / EMBEDDING_MODEL / CODING_MODEL)` | INFO x3: "defined but zero consumer scripts reference it" | PASS x3: "defined, 4 / 10 / 1 consumer(s) found" |
+| 3 | `Config (CREATIVE_MODEL)` | INFO (accurate) — a docstring mention turned it into a false PASS mid-fix | INFO, unchanged and accurate: reserved, read by nothing |
+| 4 | `Score-cycle` | INFO: "Old score-cycle found at ~/.local/bin/score-cycle" | PASS: "still invoked by agent-governance-auditor.py, pre-commit-score, setup.sh, symlink-audit.sh, update.sh, verify.sh" |
+| 5 | `AGENTS.md efficiency (proj / hc-session2)` | WARN: an empty `.git/` dir and a WORKTREE of the cortex repo were judged dev repos | gone (neither is a dev repo; unrelated dev repos still warn — pinned by test) |
 
-Run in a worktree checked out at `8946fdce` with only the new test files copied in, so the tests
-execute against the pre-fix sources (`git worktree add /tmp/hc-base 8946fdce`):
-
-    cd /tmp/hc-base && python3 -m pytest tests/test_mcp_wiring.py tests/test_doctor_env_consumers.py \
-        tests/test_doctor_dev_repo_detection.py tests/test_doctor_score_cycle_check.py -q
+The host-side items this cycle also cleared, and their evidence:
 
 ```
+$ hermes mcp remove <name> && hermes mcp add <name> --command ~/.hermes-cortex/venv/bin/python3 --args <deployed script>   (x4)
+=== add executor (rc=0) ===
+  ✓ Saved 'executor' to ~/.hermes/config.yaml (6/6 tools enabled)
+
+$ python3 ~/hermes-cortex/ops/scripts/manage/mcp_wiring.py --config ~/.hermes/config.yaml --orch
+config: ~/.hermes/config.yaml
+  PASS agent-bus: configured and its paths exist
+  PASS loop-governance: configured and its paths exist
+  PASS tasks: configured and its paths exist
+  PASS executor: configured and its paths exist
+
+$ rm ~/.hermes-cortex/scripts/review-sweep-check.py
+removed '~/.hermes-cortex/scripts/review-sweep-check.py'      (backed up first; zero consumers)
+
+$ rm ~/.hermes-cortex/state/.governance-20261012_155635_db69f7bf.json
+removed '~/.hermes-cortex/state/.governance-20261012_155635_db69f7bf.json'   (heartbeat expired 4029s ago, TTL 3600)
+```
+
+## RED — the new tests executed against the PRE-FIX sources at `8946fdce`
+
+The worktree `/tmp/hc-base` is checked out at `8946fdce`; only the four NEW test files were copied
+into it, so the tests run against the pre-fix `cortex_doctor` and `mcp_wiring`:
+
+```
+$ git worktree add /tmp/hc-base 8946fdce
+$ cp tests/test_mcp_wiring.py tests/test_doctor_env_consumers.py \
+     tests/test_doctor_dev_repo_detection.py tests/test_doctor_score_cycle_check.py /tmp/hc-base/tests/
+$ cd /tmp/hc-base && ~/.hermes-cortex/venv/bin/python3 -m pytest tests/test_mcp_wiring.py tests/test_doctor_env_consumers.py
+    tests/test_doctor_dev_repo_detection.py tests/test_doctor_score_cycle_check.py -q
+```
+```
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
+rootdir: /tmp/hc-base
+configfile: pytest.ini
+plugins: anyio-4.15.1
+collected 33 items
+
+tests/test_mcp_wiring.py ..........FF.                                   [ 39%]
+tests/test_doctor_env_consumers.py FFFFFFF                               [ 60%]
+tests/test_doctor_dev_repo_detection.py FFF.F.                           [ 78%]
+tests/test_doctor_score_cycle_check.py FFFFFFF                           [100%]
+
+=================================== FAILURES ===================================
+_______________ test_the_printed_fix_names_a_path_that_resolves ________________
+tests/test_mcp_wiring.py:139: in test_the_printed_fix_names_a_path_that_resolves
+    assert arg.endswith("/mcp-servers/task-mcp.py"), fix
+E   AssertionError: hermes mcp remove tasks && hermes mcp add tasks --command ~/.hermes-cortex/venv/bin/python3 --args ~/hermes-cortex/task-mcp.py   (there is no 'hermes mcp update'; re-add it)
+E   assert False
+E    +  where False = <built-in method endswith of str object at 0x7a72c20329c0>('/mcp-servers/task-mcp.py')
+E    +    where <built-in method endswith of str object at 0x7a72c20329c0> = '~/hermes-cortex/task-mcp.py'.endswith
+________________ test_the_expected_map_agrees_with_the_doctors _________________
+tests/test_mcp_wiring.py:158: in test_the_expected_map_agrees_with_the_doctors
+    assert m.DEFAULT_EXPECTED == doctor_map, (m.DEFAULT_EXPECTED, doctor_map)
+E   AssertionError: ({'agent-bus': 'mcp-servers/cortex-bus-mcp.py', 'loop-governance': 'mcp-servers/loop-gov-mcp.py', 'tasks': 'mcp-server...us': 'cortex-bus-mcp.py', 'loop-governance': 'loop-gov-mcp.py', 'tasks': 'task-mcp.py', 'executor': 'executor-mcp.py'})
+E   assert {'agent-bus':...cutor-mcp.py'} == {'agent-bus':...cutor-mcp.py'}
+E     
+E     Differing items:
+E     {'loop-governance': 'mcp-servers/loop-gov-mcp.py'} != {'loop-governance': 'loop-gov-mcp.py'}
+E     {'executor': 'mcp-servers/executor-mcp.py'} != {'executor': 'executor-mcp.py'}
+E     {'tasks': 'mcp-servers/task-mcp.py'} != {'tasks': 'task-mcp.py'}
+E     {'agent-bus': 'mcp-servers/cortex-bus-mcp.py'} != {'agent-bus': 'cortex-bus-mcp.py'}
+E     Use -v to get more diff
+______ test_consumers_are_found_below_the_top_level_and_in_sibling_trees _______
+tests/test_doctor_env_consumers.py:52: in test_consumers_are_found_below_the_top_level_and_in_sibling_trees
+    found = c.find_script_consumers([repo / "ops", repo / "mcp-servers"])
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   TypeError: find_script_consumers() takes 0 positional arguments but 1 was given
+___________________ test_caches_and_tests_are_not_consumers ____________________
+tests/test_doctor_env_consumers.py:62: in test_caches_and_tests_are_not_consumers
+    found = c.find_script_consumers([repo / "ops", repo / "mcp-servers", repo / "tests"])
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   TypeError: find_script_consumers() takes 0 positional arguments but 1 was given
+__________________ test_a_docstring_mention_is_not_a_consumer __________________
+tests/test_doctor_env_consumers.py:76: in test_a_docstring_mention_is_not_a_consumer
+    found = c.find_script_consumers([tree])
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   TypeError: find_script_consumers() takes 0 positional arguments but 1 was given
+__________________ test_shell_and_environ_reads_are_consumers __________________
+tests/test_doctor_env_consumers.py:89: in test_shell_and_environ_reads_are_consumers
+    found = c.find_script_consumers([tree])
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   TypeError: find_script_consumers() takes 0 positional arguments but 1 was given
+_____________ test_the_repo_trees_that_hold_consumers_are_searched _____________
+tests/test_doctor_env_consumers.py:101: in test_the_repo_trees_that_hold_consumers_are_searched
+    found = c.find_script_consumers([_REPO / "ops", _REPO / "core", _REPO / "mcp-servers"])
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   TypeError: find_script_consumers() takes 0 positional arguments but 1 was given
+_______________ test_the_default_roots_are_the_repo_script_trees _______________
+tests/test_doctor_env_consumers.py:117: in test_the_default_roots_are_the_repo_script_trees
+    assert needle in src, f"default roots must include {needle}"
+E   AssertionError: default roots must include CORTEX_REPO / "ops"
+E   assert 'CORTEX_REPO / "ops"' in 'def find_script_consumers():\n    """Scan cortex scripts for .env variable names."""\n    scripts_dir = SCRIPTS_SRC\n...n known_vars:\n            if var in text:\n                consumers[var].append(script.name)\n    return consumers\n'
+_______________ test_the_doctor_package_itself_is_not_a_consumer _______________
+tests/test_doctor_env_consumers.py:125: in test_the_doctor_package_itself_is_not_a_consumer
+    found = c.find_script_consumers([_REPO / "ops", _REPO / "core", _REPO / "mcp-servers"])
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   TypeError: find_script_consumers() takes 0 positional arguments but 1 was given
+_____________________ test_an_empty_git_dir_is_not_a_repo ______________________
+tests/test_doctor_dev_repo_detection.py:30: in test_an_empty_git_dir_is_not_a_repo
+    assert checks._is_git_repo(empty) is False
+           ^^^^^^^^^^^^^^^^^^^
+E   AttributeError: module 'cortex_doctor.checks' has no attribute '_is_git_repo'
+______________ test_a_real_repo_and_a_worktree_pointer_are_repos _______________
+tests/test_doctor_dev_repo_detection.py:38: in test_a_real_repo_and_a_worktree_pointer_are_repos
+    assert checks._is_git_repo(real) is True
+           ^^^^^^^^^^^^^^^^^^^
+E   AttributeError: module 'cortex_doctor.checks' has no attribute '_is_git_repo'
+____________ test_the_dev_repo_scan_does_not_warn_about_a_non_repo _____________
+tests/test_doctor_dev_repo_detection.py:60: in test_the_dev_repo_scan_does_not_warn_about_a_non_repo
+    assert not offenders, f"warned about a non-repo: {offenders}"
+E   AssertionError: warned about a non-repo: [{'name': 'AGENTS.md efficiency (proj)', 'status': 'WARN', 'detail': 'dev repo AGENTS.md missing fleet session-efficiency block', 'fix': 'Run: python3 ~/.hermes-cortex/scripts/apply-repo-efficiency.py ~/.hermes/cache/scratch/pytest-of-esther/pytest-304/test_the_dev_repo_scan_does_no0/proj --commit'}]
+E   assert not [{'name': 'AGENTS.md efficiency (proj)', 'status': 'WARN', 'detail': 'dev repo AGENTS.md missing fleet session-efficie...ency.py ~/.hermes/cache/scratch/pytest-of-esther/pytest-304/test_the_dev_repo_scan_does_no0/proj --commit'}]
+_____________ test_a_worktree_of_another_repo_is_still_a_dev_repo ______________
+tests/test_doctor_dev_repo_detection.py:106: in test_a_worktree_of_another_repo_is_still_a_dev_repo
+    assert offenders, "a non-cortex worktree must still be checked as a dev repo"
+E   AssertionError: a non-cortex worktree must still be checked as a dev repo
+E   assert []
+_________________ test_a_script_invoking_the_cli_is_a_consumer _________________
+tests/test_doctor_score_cycle_check.py:30: in test_a_script_invoking_the_cli_is_a_consumer
+    found = checks._score_cycle_consumers([tree])
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: module 'cortex_doctor.checks' has no attribute '_score_cycle_consumers'
+________________ test_prose_and_echo_mentions_are_not_consumers ________________
+tests/test_doctor_score_cycle_check.py:47: in test_prose_and_echo_mentions_are_not_consumers
+    assert checks._score_cycle_consumers([tree]) == []
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: module 'cortex_doctor.checks' has no attribute '_score_cycle_consumers'
+_____________________ test_real_wiring_forms_are_consumers _____________________
+tests/test_doctor_score_cycle_check.py:61: in test_real_wiring_forms_are_consumers
+    found = checks._score_cycle_consumers([tree])
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: module 'cortex_doctor.checks' has no attribute '_score_cycle_consumers'
+____________________ test_no_consumer_yields_an_empty_list _____________________
+tests/test_doctor_score_cycle_check.py:70: in test_no_consumer_yields_an_empty_list
+    assert checks._score_cycle_consumers([tree]) == []
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: module 'cortex_doctor.checks' has no attribute '_score_cycle_consumers'
+_______________________ test_the_real_repo_has_consumers _______________________
+tests/test_doctor_score_cycle_check.py:78: in test_the_real_repo_has_consumers
+    found = checks._score_cycle_consumers([_REPO / "ops", _REPO / "core"])
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: module 'cortex_doctor.checks' has no attribute '_score_cycle_consumers'
+__________________ test_the_default_roots_are_the_fleet_trees __________________
+tests/test_doctor_score_cycle_check.py:89: in test_the_default_roots_are_the_fleet_trees
+    src = inspect.getsource(checks._score_cycle_consumers)
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: module 'cortex_doctor.checks' has no attribute '_score_cycle_consumers'
+________ test_the_check_branches_on_consumers_instead_of_calling_it_old ________
+tests/test_doctor_score_cycle_check.py:100: in test_the_check_branches_on_consumers_instead_of_calling_it_old
+    assert "_score_cycle_consumers" in block, block[:400]
+E   AssertionError: Score-cycle CLI (old system) ──
+E       score_paths = [
+E         HOME / ".local" / "bin" / "score-cycle",
+E         Path("/usr/local/bin/score-cycle"),
+E         CORTEX_HOME / "scripts" / "score-cycle",
+E       ]
+E       found_score = None
+E       for p in score_paths:
+E         if p.exists():
+E           found_score = p
+E           break
+E       if found_score:
+E         res.add("Score-cycle", "INFO",
+E             f"Old score-cycle found at {found_score} — current govern
+E   assert '_score_cycle_consumers' in 'Score-cycle CLI (old system) ──\n  score_paths = [\n    HOME / ".local" / "bin" / "score-cycle",\n    Path("/usr/loca...econds", 3600)\n          if heartbeat_str:\n            try:\n              hb_clean = heartbeat_str.replace("Z", "+0'
 =========================== short test summary info ============================
 FAILED tests/test_mcp_wiring.py::test_the_printed_fix_names_a_path_that_resolves
 FAILED tests/test_mcp_wiring.py::test_the_expected_map_agrees_with_the_doctors
@@ -49,12 +210,18 @@ FAILED tests/test_doctor_score_cycle_check.py::test_the_check_branches_on_consum
 ======================== 20 failed, 13 passed in 0.70s =========================
 ```
 
-## GREEN — the same selection at the tip `12a0ee41`
-
-    cd ~/hermes-cortex && python3 -m pytest tests/test_mcp_wiring.py tests/test_doctor_env_consumers.py \
-        tests/test_doctor_dev_repo_detection.py tests/test_doctor_score_cycle_check.py -q
+## GREEN — the same four test files at the tip `12a0ee41`
 
 ```
+$ cd ~/hermes-cortex && ~/.hermes-cortex/venv/bin/python3 -m pytest tests/test_mcp_wiring.py tests/test_doctor_env_consumers.py
+    tests/test_doctor_dev_repo_detection.py tests/test_doctor_score_cycle_check.py -q
+```
+```
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
+rootdir: ~/hermes-cortex
+configfile: pytest.ini
+plugins: anyio-4.15.1
 collected 33 items
 
 tests/test_mcp_wiring.py .............                                   [ 39%]
@@ -67,33 +234,68 @@ tests/test_doctor_score_cycle_check.py .......                           [100%]
 
 ## Boundary-input probe (change-checklist Phase 1.5)
 
-Drives each changed helper with None / empty / a FILE where a DIRECTORY is expected / non-ASCII /
-a malformed `.git`. It found two real crashes on the changed paths, both fixed and pinned:
-`find_script_consumers([None])` raised TypeError, and a PROSE mention of `score-cycle` counted as
-an invocation.
-
 ```
-── checks._is_git_repo ──
+$ cd ~/hermes-cortex && ~/.hermes-cortex/venv/bin/python3 tests/run_doctor_fix_boundary_probe.py
+```
+```
+-- mcp_wiring.repo_rel_script --
+  [PASS] None: ''
+  [PASS] empty string: ''
+  [PASS] bare filename: 'mcp-servers/task-mcp.py'
+  [PASS] already relative: 'mcp-servers/task-mcp.py'
+  [PASS] absolute path: '/opt/x/task-mcp.py'
+  [PASS] non-ascii: 'mcp-servers/tâsk-mcp.py'
+-- mcp_wiring.audit with boundary config text --
+  [PASS] None -> status: 'FAIL'
+  [PASS] empty -> status: 'FAIL'
+  [PASS] no mcp_servers key -> status: 'FAIL'
+  [PASS] non-ascii -> status: 'FAIL'
+-- config.find_script_consumers roots --
+  [PASS] None root entry: {'JUDGE_MODEL': [], 'EMBEDDING_MODEL': [], 'CODING_MODEL': [], 'CREATIVE_MODEL': []}
+  [PASS] nonexistent root: []
+  [PASS] root that is a FILE: []
+-- config._reads_env_var --
+  [PASS] empty text: False
+  [PASS] name only, no read: False
+  [PASS] comment only: False
+-- checks._is_git_repo --
   [PASS] no .git: False
   [PASS] missing dir: False
-── checks._is_cortex_worktree ──
+-- checks._is_cortex_worktree --
   [PASS] no .git: False
-── checks._invokes_score_cycle ──
+-- checks._invokes_score_cycle --
   [PASS] empty: False
   [PASS] bare token in prose: False
   [PASS] argv literal: True
   [PASS] echo mention: False
-── checks._score_cycle_consumers ──
+-- checks._score_cycle_consumers --
   [PASS] nonexistent root: []
 
 RESULT: ALL PASS
 ```
 
-## Adversarial static gate (A4 — `ops/scripts/manage/`)
+The probe found two real crashes on the changed paths. Both are fixed, and the rows above show
+the fixed result: the `None root entry` row (which raised `TypeError: argument should be a str or
+an os.PathLike object ... not 'NoneType'` before the fix) and the `bare token in prose` row
+(which returned `True` before the fix, counting a prose sentence as a CLI invocation).
 
-    python3 ~/.hermes-cortex/scripts/adversarial-verify.py --file <changed file> --level A4 --gate
+## Adversarial static gate — A4, per changed file, with the real filename
 
 ```
+=== $ python3 adversarial-verify.py --file ops/scripts/manage/mcp_wiring.py --level A4 --gate
+
+📊 Summary: 1 file(s), 26 finding(s)
+   🟡 Medium: 3
+   ⚪ Info: 23
+
+🟡 Medium findings — fix before shipping.
+
+✅ GATE_PASSED — no critical/high findings
+rc=0
+=== $ python3 adversarial-verify.py --file ops/scripts/manage/cortex_doctor/config.py --level A4 --gate
+
+📊 Summary: 1 file(s), 22 finding(s)
+   🟡 Medium: 4
    ⚪ Info: 18
 
 🟡 Medium findings — fix before shipping.
@@ -112,11 +314,13 @@ rc=0
 rc=0
 ```
 
-## Live doctor, selected lines
-
-BEFORE — captured 2026-10-14 00:19 at `8946fdce`, deploy HEAD `8946fdce`:
+## Live doctor — the two selected-line captures
 
 ```
+$ ~/.hermes-cortex/venv/bin/python3 ~/hermes-cortex/ops/scripts/manage/cortex-doctor.py     (BEFORE, 2026-10-14 00:19, at 8946fdce)
+```
+```
+(selected lines from a 567-line run)
   ⚠️  AGENTS.md efficiency (proj) — dev repo AGENTS.md missing fleet session-efficiency block
   ℹ️  Config (JUDGE_MODEL) — defined but zero consumer scripts reference it
   ℹ️  Config (EMBEDDING_MODEL) — defined but zero consumer scripts reference it
@@ -131,9 +335,12 @@ BEFORE — captured 2026-10-14 00:19 at `8946fdce`, deploy HEAD `8946fdce`:
   ⚠️  Overall: WARNING  (454 pass · 29 warn · 0 fail · 7 info)
 ```
 
-AFTER — captured after the deploy at `12a0ee41` (`cortex-dogfood.sh --force`, rc=0 DOGFOOD PASSED):
-
 ```
+$ bash ~/.hermes-cortex/scripts/cortex-dogfood.sh --force      (rc=0, DOGFOOD PASSED, at 12a0ee41)
+$ ~/.hermes-cortex/venv/bin/python3 ~/hermes-cortex/ops/scripts/manage/cortex-doctor.py     (AFTER, at 12a0ee41)
+```
+```
+(selected lines from a 556-line run)
   ⚠️  Repo clean — 4 uncommitted change(s)
   ✅ Deploy sync — deployed commit matches HEAD
   ✅ Config (JUDGE_MODEL) — defined, 4 consumer(s) found
@@ -148,33 +355,33 @@ AFTER — captured after the deploy at `12a0ee41` (`cortex-dogfood.sh --force`, 
   ⚠️  Overall: WARNING  (460 pass · 25 warn · 0 fail · 3 info)
 ```
 
-## What the remaining doctor items are (so the numbers in any note match this artifact)
+## What the remaining doctor items are
 
 At `12a0ee41` the doctor reports **0 fail · 25 warn · 3 info**. The 25 warns are 23 `Skill drift`
 lines plus `Repo clean` plus the `Overall` summary line; the 3 info are `Config (CREATIVE_MODEL)`,
-`Orphan-cycle resolution` and this cycle's own `PENDING cycles` entry (cleared at close).
+`Orphan-cycle resolution`, and this session's own `PENDING cycles` entry (cleared at close).
 
 - **23 `Skill drift`** — the deploy guardrail refuses to overwrite a deployed skill whose content
-  is newer than the repo source. The doctor itself says recovery "is its OWN governed change";
-  that is the next cycle, not this one.
+  is newer than the repo source. The doctor's own text says that recovery "is its OWN governed
+  change"; it is the next cycle, not this one.
 - **`Repo clean` (4 files)** — `docs/evidence/briefings/cycle-evidence-2026-10-10.md`,
-  `docs/evidence/briefings/test-results-2026-10-10.txt`, `docs/evidence/gateway-suite-results.txt`
-  are regenerated by test runs (the baseline suite reproduced the same dirty set inside a clean
-  worktree), and `docs/evidence/skill-drift-parity.txt` is written by the drift detector. None is
-  in this cycle's range; the drift report is regenerated and committed in the drift cycle.
+  `docs/evidence/briefings/test-results-2026-10-10.txt` and `docs/evidence/gateway-suite-results.txt`
+  are rewritten by test runs (the baseline suite reproduced the same dirty set inside a clean
+  worktree at `8946fdce`), and `docs/evidence/skill-drift-parity.txt` is written by the drift
+  detector. None is in this cycle's range.
 - **`Config (CREATIVE_MODEL)`** — accurate and intentional: the variable is documented as reserved
-  and read by nothing. Removing it from `~/hermes-cortex/.env` would flip the check from INFO to
+  and is read by nothing. Removing it from `~/hermes-cortex/.env` would flip the check from INFO to
   WARN ("Not defined in hermes-cortex.env"), so it stays.
 - **`Orphan-cycle resolution`** — historical: 11 rows closed by the old reaper carry a bare
-  MOVE_ON and are reported as not judged. Re-judging them is not this cycle's call.
+  MOVE_ON and are reported as not judged.
 
 ## Full-suite attribution (measured, not assumed)
 
-`pytest tests/ -q` on this tree at `12a0ee41`: 10 failed, 20 errors. Attribution:
+`pytest tests/ -q` on this tree at `12a0ee41`: 10 failed, 20 errors.
 
-| Failure set | Proof |
+| Failure set | How it was attributed |
 |---|---|
-| `test_updater_robustness` x3, `test_repo_resource_paths` register-count, `test_task_queue_evidence` committed-evidence | reproduce BOTH in a pinned worktree at `8946fdce` (5 failed, 6 passed) AND alone on this tree |
-| `test_bible_verse_guard` (20 errors) | the test reads `REPO/.hermes-cortex/scripts/agent-daily-bible-reading.py`, which is absent from the repo at `8946fdce` (`ls` → No such file) |
+| `test_updater_robustness` x3, `test_repo_resource_paths` register-count, `test_task_queue_evidence` committed-evidence | reproduce BOTH in a worktree pinned at `8946fdce` (`5 failed, 6 passed in 14.80s`) AND alone on this tree |
+| `test_bible_verse_guard` (20 errors) | the test reads `REPO/.hermes-cortex/scripts/agent-daily-bible-reading.py`, which does not exist in the repo at `8946fdce` |
 | `test_gen_briefing` PDF, `test_runtime/test_doctor_pending_cycles` x3 | pass alone on BOTH trees — order-dependent, not attributable to this change |
-| `test_doctor_score_cycle_check::test_the_real_host_still_has_consumers` (MINE) | read the ambient HOME; passed alone, failed in the suite. Fixed to derive paths from the repo and proven both ways: 33 passed normally, and 14 passed under `cd /tmp && HOME=/tmp/fakehome` |
+| `test_doctor_score_cycle_check::test_the_real_host_still_has_consumers` (introduced here) | read the ambient HOME: passed alone, failed inside the suite. Fixed to derive its paths from the repo and proven both ways — `33 passed` normally and `14 passed` under `cd /tmp && HOME=/tmp/fakehome` |
