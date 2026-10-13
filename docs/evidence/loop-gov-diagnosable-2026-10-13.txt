@@ -1,6 +1,6 @@
 Running: bash docs/evidence/verify-loop-gov-diagnosable.sh
 rc: 0
-when: 2026-10-13T00:55:33Z
+when: 2026-10-13T00:56:43Z
 
 == the wrapper's guard, case by case ==
     D: absent guard -> named, rc=78 ✓
@@ -33,8 +33,8 @@ when: 2026-10-13T00:55:33Z
   RESULT: ALL PASS (4 tests)
 
 == the DEPLOYED wrapper, on a HOME with no venv (what kustos saw) ==
-  loop-gov-mcp.sh: NO INTERPRETER at /home/esther/.hermes/cache/scratch/tmp.wQjbQ8P4qq/.hermes-cortex/venv/bin/python3
-    HOME=/home/esther/.hermes/cache/scratch/tmp.wQjbQ8P4qq  (paths are relative to HOME; a different HOME in the caller is a cause)
+  loop-gov-mcp.sh: NO INTERPRETER at /home/esther/.hermes/cache/scratch/tmp.CidNLWPCUM/.hermes-cortex/venv/bin/python3
+    HOME=/home/esther/.hermes/cache/scratch/tmp.CidNLWPCUM  (paths are relative to HOME; a different HOME in the caller is a cause)
     the fleet venv does not exist — nothing in this repo creates it
   rc=78 (78 = EX_CONFIG)
 
@@ -51,7 +51,7 @@ when: 2026-10-13T00:55:33Z
   ✓ cortex-update.sh: Created the fleet venv
   ✓ cortex-update.sh: no usable bin/python3
   -- the service-layer maps the audit requires (both platforms) --
-  docs/macos-service-layer.md: 73 lines
+  docs/macos-service-layer.md: 79 lines
     first row: 14:| `com.hermes.cortex-gateway.plist` | `com.hermes.cortex-gateway` | the decoupled messaging gateway daemon (`cortex_gateway/daemon.py`) | No Hermes dependency. Sources `~/hermes-cortex/.env`, runs the launcher guard, execs the **fleet venv**. Exits **75** for `/restart` on macOS. |
     references the guard: 1
   docs/linux-service-layer.md: 67 lines
@@ -63,8 +63,8 @@ when: 2026-10-13T00:55:33Z
   68:def test_the_sweep_would_catch_a_bare_exec():
   77:def test_no_absolute_home_in_launcher_code():
   -- the guard-missing branch, its actual message --
-  loop-gov-mcp: the venv guard is NOT DEPLOYED at /home/esther/.hermes/cache/scratch/tmp.qMjBhUhMrK/.hermes-cortex/scripts/lib/require-fleet-venv.sh
-    HOME=/home/esther/.hermes/cache/scratch/tmp.qMjBhUhMrK  (a different HOME in the caller is a cause)
+  loop-gov-mcp: the venv guard is NOT DEPLOYED at /home/esther/.hermes/cache/scratch/tmp.PTpoqIcrO4/.hermes-cortex/scripts/lib/require-fleet-venv.sh
+    HOME=/home/esther/.hermes/cache/scratch/tmp.PTpoqIcrO4  (a different HOME in the caller is a cause)
   rc=78
 
 == 8. per-test outcomes (pytest -v), so the artifact is not self-referential ==
@@ -80,13 +80,13 @@ when: 2026-10-13T00:55:33Z
   tests/test_fleet_venv_check_block.py::test_an_absent_venv_with_a_fixer_converges_clean PASSED [ 60%]
   tests/test_fleet_venv_check_block.py::test_a_partial_venv_without_the_fixer_still_defers PASSED [ 80%]
   tests/test_fleet_venv_check_block.py::test_a_healthy_venv_defers_nothing PASSED [100%]
-  ============================== 5 passed in 6.27s ===============================
+  ============================== 5 passed in 6.30s ===============================
   [tests/test_fleet_venv_check_block.py] pytest rc=0
   tests/test_fleet_venv_launchers.py::test_no_launcher_execs_the_fleet_venv_without_the_guard PASSED [ 25%]
   tests/test_fleet_venv_launchers.py::test_the_known_launcher_is_guarded PASSED [ 50%]
   tests/test_fleet_venv_launchers.py::test_the_sweep_would_catch_a_bare_exec PASSED [ 75%]
   tests/test_fleet_venv_launchers.py::test_no_absolute_home_in_launcher_code PASSED [100%]
-  ============================== 4 passed in 0.46s ===============================
+  ============================== 4 passed in 0.47s ===============================
   [tests/test_fleet_venv_launchers.py] pytest rc=0
 
 == 9. the implementation, printed from the FILES (the diff window truncates) ==
@@ -104,9 +104,9 @@ when: 2026-10-13T00:55:33Z
     AFTER:          <string>-lc</string>
     AFTER:          <string>exec "$HOME/hermes-cortex/ops/scripts/health/health-vector-push.sh"</string>
   -- why these files are in this range --
+    4f47943b test(fleet): split the sweep so it fits a review window, and commit a raw pytest transcript
     3f40a4fb fix(macos+linux): both platforms, verified — Titus's plist was the worst of it
-    6c6795d7 fix(templates): portable launchd plists, and a sweep that parses them
 
 FAILS: 0 — the verifier's own exit code follows (0 here means every claim held)
 ALL CLAIMS VERIFIED (0 failures)
-sha256: 2953f96b2ffc2f9e565b57204f81bf4480dbab78412ba2360a1fb72f61050cc7
+sha256: 9b709e44abc284f88d3e8525a7a88498ccc405180456db219bd3bedb40c1dd79
