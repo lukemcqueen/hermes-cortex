@@ -12,6 +12,8 @@ Upstream: origin/main `e4fd5f7e` — "feat(mcp): audit WIRING, not presence — 
 ## 2. Pull
 `git pull --ff-only origin main` → fast-forward to `e4fd5f7e`. Post-merge hook auto-ran cortex-update.sh (exited rc=1 on the relock wrapper only).
 
+A SECOND upstream commit `e50938f2` (esther — "fix(governance): a lock must not lie about who holds it, or about which repo it governs", the check_lock false-inactive fix) landed on origin after the first pull. Per change-checklist, integrated by MERGE (`git merge origin/main --no-edit` → 90abd9b9). The merge was initially blocked by a pre-existing staged-but-uncommitted file `docs/evidence/verify-dream-2026-10-13.sh` (from a prior session, in neither HEAD nor origin) — unstaged non-destructively (file left on disk untouched, now untracked) and merged. Post-merge hook re-deployed the new enforcer.
+
 ## 3. Sanctioned deploy
 `bash ~/hermes-cortex/ops/scripts/cortex-update.sh` (full log: /tmp/cortex-update-full.log)
 - Skills: 0 updated, 386 unchanged, 0 stale removed, 0 preserved
@@ -38,6 +40,9 @@ Exit code 2. 433 pass · 7 warn · 1 fail · 11 info.
 - ⚠️ Cron status (agent-deploy-drift-audit, agent-daily-bible-reading) — pre-existing cron status.
 - ⚠️ MCP wiring (loop-governance, tasks) — NEW check from this commit: servers registered against the HERMES venv (`hermes-agent/venv`), fleet migrating to cortex venv (`~/.hermes-cortex/venv/bin/python3`). WARN not FAIL (documented migration). Wiring is functional (begin_change/cache_search/feedback_accept all worked this session).
 - ✅ Deploy sync, AGENTS.md sync, all governance/hook/immutable/checksum checks PASS.
+
+## 5b. Post-merge re-run (after e50938f2 merge)
+Doctor after final merge: **435 pass · 6 warn · 1 fail · 10 info** — same out-of-scope steadfaste fail; the extra pass is the new governance-lock check. Verify script `verify-pull-latest-cortex-update-2026-10-13.sh` re-checks all claims and exits 0 — captured run in `verify-pull-latest-cortex-update-2026-10-13.txt` (11 checks, 0 failures).
 
 ## 6. Verification of live wiring
 `~/.hermes-cortex/venv/bin/python3 -c "import mcp"` → mcp OK. loop-governance MCP tools used successfully this session.
