@@ -3124,7 +3124,11 @@ main() {
     # A checkout too old to carry the fixer: keep the measured probe as the fallback.
     _venv_missing=""
     for _vm in yaml mcp psycopg; do
-      "$_fleet_venv" -c "import ${_vm}" >/dev/null 2>&1 || _venv_missing="${_venv_missing} ${_vm}"
+      # Clean env: an inherited PYTHONPATH can shadow the fleet venv's own packages, making a
+      # HEALTHY venv report modules it has (measured on esther 2026-10-13 — the same defect that
+      # produced a false "fleet venv cannot import the declared set" from the fixer's probe).
+      env -u PYTHONPATH -u PYTHONHOME "$_fleet_venv" -c "import ${_vm}" >/dev/null 2>&1 \
+        || _venv_missing="${_venv_missing} ${_vm}"
     done
     if [[ -n "$_venv_missing" ]]; then
       error "fleet venv cannot import:${_venv_missing}  (${_fleet_venv/$HOME/~})"

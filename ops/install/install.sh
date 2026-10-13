@@ -202,7 +202,7 @@ find_best_python() {
    local minor="${ver#*.}"
    if [[ "$major" -ge 3 && "$minor" -ge 12 ]] 2>/dev/null; then
     # Verify sqlite3 extension support
-    if "$candidate" -c 'import sqlite3; sqlite3.connect(":memory:").enable_load_extension(True)' 2>/dev/null; then
+    if env -u PYTHONPATH -u PYTHONHOME "$candidate" -c 'import sqlite3; sqlite3.connect(":memory:").enable_load_extension(True)' 2>/dev/null; then
      found="$candidate"
      break
     fi

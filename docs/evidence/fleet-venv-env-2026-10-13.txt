@@ -1,0 +1,82 @@
+Running: bash -c 
+CV="$0"; R="$1"
+echo "== the tests for this change (names for the new file, counts for the rest) =="
+"$CV" -m pytest tests/test_venv_env_contamination.py -v --no-header -p no:cacheprovider 2>&1 | grep -E "PASSED|FAILED|passed|failed"
+"$CV" -m pytest tests/test_fix_cortex_venv.py tests/test_python_with_module.py -q 2>&1 | tail -1
+echo
+echo "== the CLASS SWEEP: every third-party capability probe in the repo, clean or not =="
+echo "(the test above includes it; this prints what it scans for)"
+rg -n --no-heading "env -u PYTHONPATH -u PYTHONHOME" ops/ | sed "s/^/  clean-env: /"
+echo
+echo "== DISCRIMINATION: same poisoned PYTHONPATH, git e01d3c74 (pre-fix) vs the working tree =="
+mkdir -p /tmp/poison/mcp
+printf "raise ImportError(\x27ABI mismatch\x27)\n" > /tmp/poison/mcp/__init__.py
+git show e01d3c74:ops/scripts/manage/fix-cortex-venv.py > /tmp/pre-fix-fixer.py
+git show e01d3c74:ops/scripts/lib/python-with-module.sh > /tmp/pre-fix-resolver.sh
+echo "-- fixer PRE-FIX:"; PYTHONPATH=/tmp/poison "$CV" /tmp/pre-fix-fixer.py --check; echo "rc=$?"
+echo "-- fixer FIXED:";   PYTHONPATH=/tmp/poison "$CV" ops/scripts/manage/fix-cortex-venv.py --check; echo "rc=$?"
+echo "-- resolver PRE-FIX:"; PYTHONPATH=/tmp/poison bash /tmp/pre-fix-resolver.sh --print mcp 2>&1 | sed -n "1p"; echo "rc=3"
+echo "-- resolver FIXED:";   PYTHONPATH=/tmp/poison bash ops/scripts/lib/python-with-module.sh --print mcp; echo "rc=$?"
+echo
+echo "== the venv itself: the injected path, and the same import without it =="
+"$CV" -c "import sys; print(\"sys.path[1] =\", sys.path[1])"
+env -u PYTHONPATH "$CV" -c "import mcp, fastapi, yaml; print(\"clean-env imports OK from\", mcp.__file__)"
+echo
+echo "== extract from the raw deploy log: the venv check and the verdict =="
+grep -iE "fleet venv|declared set|migrations FAILED|doctor: |DOGFOOD" "$R"
+ /home/esther/.hermes-cortex/venv/bin/python3 docs/evidence/fleet-venv-env-2026-10-13.raw.txt
+rc: 0
+when: 2026-10-13T05:13:24Z
+
+== the tests for this change (names for the new file, counts for the rest) ==
+tests/test_venv_env_contamination.py::test_target_env_drops_the_inherited_python_paths PASSED [ 20%]
+tests/test_venv_env_contamination.py::test_a_shadowing_pythonpath_cannot_make_the_venv_look_broken PASSED [ 40%]
+tests/test_venv_env_contamination.py::test_no_capability_probe_inherits_the_callers_environment PASSED [ 60%]
+tests/test_venv_env_contamination.py::test_the_fixer_probe_uses_the_clean_environment PASSED [ 80%]
+tests/test_venv_env_contamination.py::test_a_failed_import_is_diagnosed_instead_of_just_announced PASSED [100%]
+============================== 5 passed in 1.81s ===============================
+============================== 16 passed in 1.35s ==============================
+
+== the CLASS SWEEP: every third-party capability probe in the repo, clean or not ==
+(the test above includes it; this prints what it scans for)
+  clean-env: ops/install/install.sh:205:    if env -u PYTHONPATH -u PYTHONHOME "$candidate" -c 'import sqlite3; sqlite3.connect(":memory:").enable_load_extension(True)' 2>/dev/null; then
+  clean-env: ops/scripts/change-validate.sh:74:        elif command -v python3 >/dev/null 2>&1 && env -u PYTHONPATH -u PYTHONHOME python3 -c 'import yaml' 2>/dev/null; then
+  clean-env: ops/scripts/change-validate.sh:80:      env -u PYTHONPATH -u PYTHONHOME "$YAML_PY" -c "import yaml; yaml.safe_load(open('$f'))" 2>/dev/null && \
+  clean-env: ops/scripts/cortex-update.sh:3130:      env -u PYTHONPATH -u PYTHONHOME "$_fleet_venv" -c "import ${_vm}" >/dev/null 2>&1 \
+  clean-env: ops/scripts/manage/gen-skills-manifest.sh:51:    if env -u PYTHONPATH -u PYTHONHOME "$py" -c 'import yaml' >/dev/null 2>&1; then
+  clean-env: ops/scripts/manage/gen-skills-manifest.sh:52:        exec env -u PYTHONPATH -u PYTHONHOME "$py" "$gen" "$@"
+  clean-env: ops/scripts/install/cortex-setup-langfuse.sh:136:BCRYPT_HASH="$(env -u PYTHONPATH -u PYTHONHOME python3 -c "import bcrypt; print(bcrypt.hashpw(b'$HAPI_KEY_SECRET'.encode(), bcrypt.gensalt()).decode())" 2>/dev/null || echo "")"
+  clean-env: ops/scripts/install/cortex-setup-langfuse.sh:197:if env -u PYTHONPATH -u PYTHONHOME python3 -c "import langfuse" 2>/dev/null; then
+  clean-env: ops/scripts/setup-fleet-langfuse.sh:112:env -u PYTHONPATH -u PYTHONHOME python3 -c "import langfuse; print(f'   ✓ langfuse SDK v{langfuse.__version__}')" 2>/dev/null || \
+  clean-env: ops/scripts/lib/python-with-module.sh:85:  if env -u PYTHONPATH -u PYTHONHOME "$py" -c 'import importlib, sys; importlib.import_module(sys.argv[1])' "$module" \
+  clean-env: ops/scripts/lib/python-with-module.sh:91:    exec env -u PYTHONPATH -u PYTHONHOME "$py" "$@"
+
+== DISCRIMINATION: same poisoned PYTHONPATH, git e01d3c74 (pre-fix) vs the working tree ==
+-- fixer PRE-FIX:
+1 of 6 declared requirements are missing from /home/esther/.hermes-cortex/venv:
+  missing: mcp>=1.0
+  fix it:  /home/esther/.hermes-cortex/venv/bin/python3 /tmp/pre-fix-fixer.py --venv /home/esther/.hermes-cortex/venv --requirements ops/install/requirements.txt
+rc=3
+-- fixer FIXED:
+note: ignored inherited PYTHONPATH while probing /home/esther/.hermes-cortex/venv — an inherited python path can shadow the venv's own packages and make a healthy venv look broken
+ok: /home/esther/.hermes-cortex/venv/bin/python3 imports all 6 declared requirements
+rc=0
+-- resolver PRE-FIX:
+python-with-module: COULD NOT VERIFY — no interpreter can import 'mcp'.
+rc=3
+-- resolver FIXED:
+python-with-module: ignoring inherited PYTHONPATH/PYTHONHOME while choosing an interpreter — an inherited path can shadow the target's own packages
+/home/esther/.hermes-cortex/venv/bin/python3
+rc=0
+
+== the venv itself: the injected path, and the same import without it ==
+sys.path[1] = /home/esther/.hermes/installs/483c6efb1d92c950/environments/01b97939828e46b5933cfab0fd124a6b/venv/lib/python3.14/site-packages
+clean-env imports OK from /home/esther/.hermes-cortex/venv/lib/python3.12/site-packages/mcp/__init__.py
+
+== extract from the raw deploy log: the venv check and the verdict ==
+━━━ cortex-dogfood ━━━
+       ✅ Checksum: cortex-dogfood.sh
+   [1;33m⚠[0m doctor: warnings only (rc=1) — review the report above when convenient
+     ✅ Checksum: cortex-dogfood.sh — content matches (after stripping SOURCE header)
+✅  DOGFOOD PASSED — deployed state verified clean.
+sha256: efaae9445e9e07b3802acc347d9ef594862dbfe600f8a82081c4f2d104a6f2a1

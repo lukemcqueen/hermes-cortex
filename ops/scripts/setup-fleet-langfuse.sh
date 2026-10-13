@@ -109,7 +109,7 @@ pip3 install --break-system-packages langfuse 2>/dev/null || \
     pip3 install langfuse 2>/dev/null || \
     echo "   ⚠️ Could not install langfuse SDK. Hermes will silently skip tracing."
 
-python3 -c "import langfuse; print(f'   ✓ langfuse SDK v{langfuse.__version__}')" 2>/dev/null || \
+env -u PYTHONPATH -u PYTHONHOME python3 -c "import langfuse; print(f'   ✓ langfuse SDK v{langfuse.__version__}')" 2>/dev/null || \
     echo "   ⚠️ langfuse SDK not importable."
 
 # ── Step 4: Enable the plugin ─────────────────────────────────

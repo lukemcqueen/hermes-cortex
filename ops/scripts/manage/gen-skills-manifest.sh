@@ -48,8 +48,8 @@ while IFS= read -r py || [[ -n "$py" ]]; do
     command -v "$py" >/dev/null 2>&1 || continue
     case " ${tried} " in *" ${py} "*) continue ;; esac
     tried="${tried} ${py}"
-    if "$py" -c 'import yaml' >/dev/null 2>&1; then
-        exec "$py" "$gen" "$@"
+    if env -u PYTHONPATH -u PYTHONHOME "$py" -c 'import yaml' >/dev/null 2>&1; then
+        exec env -u PYTHONPATH -u PYTHONHOME "$py" "$gen" "$@"
     fi
 done < <(candidates)
 

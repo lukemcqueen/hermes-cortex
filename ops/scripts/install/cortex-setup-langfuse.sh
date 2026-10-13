@@ -133,7 +133,7 @@ HAPI_KEY_SECRET="sk-lf-$(openssl rand -hex 32)"
 HAPI_KEY_ID="cmqkey-hermes-$(openssl rand -hex 8)"
 
 # Generate bcrypt hash of the secret key
-BCRYPT_HASH="$(python3 -c "import bcrypt; print(bcrypt.hashpw(b'$HAPI_KEY_SECRET'.encode(), bcrypt.gensalt()).decode())" 2>/dev/null || echo "")"
+BCRYPT_HASH="$(env -u PYTHONPATH -u PYTHONHOME python3 -c "import bcrypt; print(bcrypt.hashpw(b'$HAPI_KEY_SECRET'.encode(), bcrypt.gensalt()).decode())" 2>/dev/null || echo "")"
 
 if [[ -z "$BCRYPT_HASH" ]]; then
   warn "Could not generate bcrypt hash, trying alternative method..."
@@ -194,7 +194,7 @@ info "  To make them available to Hermes Agent, add them to ~/.hermes/.env manua
 
 # ── Step 7: Install Langfuse Python SDK ──────────────────────────────
 info "Checking Langfuse Python SDK..."
-if python3 -c "import langfuse" 2>/dev/null; then
+if env -u PYTHONPATH -u PYTHONHOME python3 -c "import langfuse" 2>/dev/null; then
   info "Langfuse Python SDK already installed"
 else
   info "Installing Langfuse Python SDK..."

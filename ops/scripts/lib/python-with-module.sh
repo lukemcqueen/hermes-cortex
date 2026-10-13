@@ -64,19 +64,31 @@ candidates() {
 }
 
 # The module name is passed as ARGV, never interpolated into the code string.
+#
+# EVERY probe and the payload itself run WITHOUT an inherited PYTHONPATH/PYTHONHOME.
+# Measured on esther 2026-10-13: the agent runtime exports a Python 3.14 site-packages from a
+# Hermes-managed install environment, which lands ahead of a venv's own site-packages — so a
+# capability probe can decide on the WRONG packages entirely (a venv that imports `mcp` fine
+# read as broken, and a bare interpreter could look capable because a foreign path supplied the
+# module). Choosing an interpreter is exactly the decision that must not depend on the caller's
+# environment. `env -u` is POSIX, so this holds on Linux and macOS.
+if [[ -n "${PYTHONPATH:-}${PYTHONHOME:-}" ]]; then
+  echo "python-with-module: ignoring inherited PYTHONPATH/PYTHONHOME while choosing an interpreter — an inherited path can shadow the target's own packages" >&2
+fi
+
 tried=""
 while IFS= read -r py || [[ -n "$py" ]]; do
   [[ -n "$py" ]] || continue
   command -v "$py" >/dev/null 2>&1 || continue
   case " ${tried} " in *" ${py} "*) continue ;; esac
   tried="${tried} ${py}"
-  if "$py" -c 'import importlib, sys; importlib.import_module(sys.argv[1])' "$module" \
+  if env -u PYTHONPATH -u PYTHONHOME "$py" -c 'import importlib, sys; importlib.import_module(sys.argv[1])' "$module" \
        >/dev/null 2>&1; then
     if [[ "$print_only" == "1" ]]; then
       printf '%s\n' "$py"
       exit 0
     fi
-    exec "$py" "$@"
+    exec env -u PYTHONPATH -u PYTHONHOME "$py" "$@"
   fi
 done < <(candidates)
 

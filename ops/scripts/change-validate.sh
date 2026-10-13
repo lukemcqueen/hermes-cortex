@@ -40,6 +40,17 @@ fi
 HAS_ISSUES=0
 
 # ── 1. Syntax check ─────────────────────────────────────────
+# A .yaml VALIDATOR must not blame the FILE for its own missing parser. Resolve an interpreter
+# that can IMPORT yaml once (the shared resolver, which probes in a clean environment) and, when
+# none can, say COULD NOT VERIFY — never "parse issue". Measured 2026-10-13: this check reported a
+# parse issue in ops/install/harnesses/registry.yaml while the fleet venv parsed the same file and
+# listed every entry, because the bare `python3` here has no yaml. A checker that cannot read the
+# file has no verdict, and inventing one invites a "fix" to a file that was never wrong.
+_RESOLVER="${HOME}/.hermes-cortex/scripts/lib/python-with-module.sh"
+[[ -f "$_RESOLVER" ]] || _RESOLVER="$(cd "$(dirname "$0")" && pwd)/lib/python-with-module.sh"
+YAML_PY=""
+_yaml_resolved=0
+
 for f in $STAGED; do
   case "$f" in
     *.sh)
@@ -56,9 +67,19 @@ for f in $STAGED; do
       }
       ;;
     *.yaml|*.yml)
-      python3 -c "import yaml; yaml.safe_load(open('$f'))" 2>/dev/null && \
+      if [[ "$_yaml_resolved" == "0" ]]; then
+        _yaml_resolved=1
+        if [[ -f "$_RESOLVER" ]]; then
+          YAML_PY="$(bash "$_RESOLVER" --print yaml 2>/dev/null || true)"
+        elif command -v python3 >/dev/null 2>&1 && env -u PYTHONPATH -u PYTHONHOME python3 -c 'import yaml' 2>/dev/null; then
+          YAML_PY="python3"
+        fi
+        [[ -n "$YAML_PY" ]] || warn "COULD NOT VERIFY: no interpreter on this host can import yaml — .yaml files are NOT being checked"
+      fi
+      [[ -n "$YAML_PY" ]] || continue          # no parser, no verdict, and no fault in the file
+      env -u PYTHONPATH -u PYTHONHOME "$YAML_PY" -c "import yaml; yaml.safe_load(open('$f'))" 2>/dev/null && \
         pass "Syntax OK: $f" || {
-        warn "YAML parse issue in $f (python3 yaml.safe_load failed)"
+        warn "YAML parse issue in $f ($YAML_PY yaml.safe_load failed)"
         HAS_ISSUES=1
       }
       ;;

@@ -1174,6 +1174,34 @@ does not appear until the process restarts.
 is covered by the entry above: it names the missing piece and exits 78 instead of dying with
 bash's generic `No such file or directory`.
 
+## A healthy fleet venv that "cannot import the declared set"
+
+**Symptom** (esther, 2026-10-13): a deploy ends with `✗ fleet venv cannot import the declared set`,
+and `fix-cortex-venv.py` reports requirements missing — while the venv imports them fine.
+
+**Cause: an inherited `PYTHONPATH`, not the venv.** The agent runtime exports a Python 3.14
+site-packages from a Hermes-managed install environment
+(`…/.hermes/installs/<id>/environments/<id>/venv/lib/python3.14/site-packages`). That path lands
+AHEAD of the venv's own, so `import mcp` under a 3.12 interpreter loads 3.14 code and dies with
+`ModuleNotFoundError: No module named 'pydantic_core._pydantic_core'` — an ABI mismatch, not an
+absent package. Every probe the tooling ran inherited it.
+
+**Confirm in two commands** (nothing changes):
+
+```bash
+~/.hermes-cortex/venv/bin/python3 -c "import sys; [print(p) for p in sys.path]"
+env -u PYTHONPATH ~/.hermes-cortex/venv/bin/python3 -c "import mcp, fastapi; print('venv OK')"
+```
+
+If the first lists a `.hermes/installs/…` site-packages and the second prints `venv OK`, the venv
+is healthy and the ENVIRONMENT is at fault. Do not rebuild the venv on that evidence.
+
+**What the tooling does now:** `python-with-module.sh` and `fix-cortex-venv.py` strip
+`PYTHONPATH`/`PYTHONHOME` for both the probe and the payload, and print
+`ignoring inherited PYTHONPATH…`, so a caller's environment can no longer make a healthy venv look
+broken — or make a bare interpreter look capable. A venv's correctness must not depend on the
+environment of whoever called it.
+
 ## Changelog
 
 | Version | Date | Changes |
@@ -1181,6 +1209,7 @@ bash's generic `No such file or directory`.
 | 1.8.0 | 2026-10-03 | Added #24 (governance-auditor immutable-flag false positive inside a deploy's unlock window; deploy-in-progress marker) |
 | 1.9.0 | 2026-10-13 | Added "The fleet venv: a launcher dies with 'line N: No such file or directory'" — bash's exec message means the interpreter is missing; three causes with three fixes; the shared guard `scripts/lib/require-fleet-venv.sh`; the deploy now creates+fills an absent venv |
 | 1.10.0 | 2026-10-13 | Added "An MCP server's tools are missing from the catalog" (kustos: `No loop-governance MCP tools`) — configured is not wired; `mcp_wiring.py` verifies the registered paths and the interpreter, the doctor reports `MCP wiring (<name>)`, and its server map no longer calls `agent-bus` by the wrong name |
+| 1.11.0 | 2026-10-13 | Added "A healthy fleet venv that 'cannot import the declared set'" — an inherited `PYTHONPATH` (a Hermes-managed 3.14 site-packages ahead of the venv's own) made a working venv read as broken, and made the resolver claim no interpreter on the host could import `mcp`; `python-with-module.sh` and `fix-cortex-venv.py` now probe and run with `PYTHONPATH`/`PYTHONHOME` stripped and say what they ignored |
 | 1.7.0 | 2026-07-13 | Added #23 (scoring-activity-watchdog DB path fix), corrected 17 stale `state/`→`data/` references across docs and core governance scripts, fixed MCP lock file sync to prevent enforcer gaps |
 | 1.5.0 | 2026-06-22 | Added #24 (Alembic migration fork troubleshooting, prevention protocol, diagnostics) |
 | 1.4.0 | 2026-06-10 | Rewrote #23 (Langfuse costs) — fixed schema from `langfuse.models` to `public.models`, corrected INSERT SQL for v3 schema, added opencode-zen/opencode-go provider subsection with deepseek-v4-flash-free pricing SQL |

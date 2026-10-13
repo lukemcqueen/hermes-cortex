@@ -609,6 +609,15 @@ exit 3
 ```
 
 - Pass the module name as **ARGV**, never interpolated into the `-c` string.
+- **Probe in a CLEAN environment — an inherited `PYTHONPATH` decides for you.** Measured on esther
+  2026-10-13: the agent runtime exports a Python 3.14 site-packages from a Hermes-managed install
+  environment, and it lands AHEAD of the target venv's own packages. Every capability probe then
+  judged the WRONG packages: the fleet venv — which imports `mcp` perfectly — read as missing it,
+  the deploy reported a false `fleet venv cannot import the declared set`, and the resolver
+  announced `COULD NOT VERIFY — no interpreter can import 'mcp'` about a host that had it in two
+  venvs. Run probes AND payloads as `env -u PYTHONPATH -u PYTHONHOME "$py" …` (POSIX, so Linux +
+  macOS), and SAY what you ignored — a variable silently dropped by the tooling is how the venv
+  took the blame for the caller's environment.
 - Give "cannot resolve" its **own exit code** (`3`), never a generic failure: a caller that
   reports it as a failed test blames the payload for a host dependency it never measured.
 - The fleet already ships this as
@@ -858,3 +867,4 @@ Before shipping changes to installer scripts (`install-crons.sh`, `setup.sh`, et
 | **Mixed formatting for positional-arg functions** | Hard to audit — must count empties to understand args | Standardize all calls to multi-line, one field per line |
 | **Missing script existence path** | "Script not found" warning scrolls past silently | Check all possible locations: `scripts/`, repo source, `~/.local/bin/` |
 | **Interpreter chosen by path existence** | `No module named X` although X is installed — under a DIFFERENT interpreter; an `[[ -x $VENV/bin/python3 ]]` guard never fires because the file is there | Test the CAPABILITY (`"$py" -c 'import X'`), try candidates in order, `exit 3` = could not verify; never silently fall back to a `python3` known to lack it |
+| **An inherited `PYTHONPATH`/`PYTHONHOME` around a capability probe** | A HEALTHY venv reads as broken — or a bare python as capable — because a foreign site-packages shadows the target's own. Measured: the fleet venv (which imports `mcp` fine) reported as missing it, and the resolver claimed no interpreter on the host could import `mcp` at all | Probe and run with `env -u PYTHONPATH -u PYTHONHOME`; print what you ignored. A venv's correctness must not depend on the caller's environment |
