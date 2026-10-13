@@ -33,3 +33,37 @@ bare python3 rc=1
   ModuleNotFoundError: No module named 'yaml'
 fleet venv rc=0
 arbiter-built command rc=0
+
+### H. MATERIAL reproduction of the erroneous capture at section B (so the correction is not just prose)
+the form used at B (pipe, then $?):
+Traceback (most recent call last):
+rc=0   <- this is HEAD's status (0), which is why B printed rc=0 after a traceback
+the same import with NO pipe:
+rc=1   <- the import's own status
+
+### I. exercising bootstrap.sh's COULD NOT VERIFY branch (self-adversarial finding ADV-12432-1)
+-- the block, extracted VERBATIM from ops/deploy/bootstrap.sh (awk on stable markers):
+# Resolve the interpreter by CAPABILITY, not by PATH. cortex-doctor.py imports yaml, and a bare
+# `python3` on a host like this one may not have it — the agent session even puts a Hermes tools
+# python ahead of /usr/bin on PATH. At bootstrap time the fleet venv may not exist yet, so ask
+# the shared resolver; if nothing here can import yaml, say COULD NOT VERIFY instead of letting
+# the doctor die with an ImportError that reads like a broken host (2026-10-13).
+_DOCTOR_PY="$(bash "$CORTEX_REPO/ops/scripts/lib/python-with-module.sh" --print yaml 2>/dev/null || true)"
+if [[ -n "$_DOCTOR_PY" ]]; then
+  sudo -u "$REAL_USER" HOME="$REAL_HOME" "$_DOCTOR_PY" ops/scripts/manage/cortex-doctor.py --quiet 2>&1 | \
+    while IFS= read -r line; do printf "    %s\n" "$line"; done
+else
+  warn "cortex-doctor needs yaml and no interpreter on this host can import it — skipped (COULD NOT VERIFY)"
+fi
+-- run with a resolver STUB that prints nothing and exits 3 (no interpreter can import yaml):
+  WARN: cortex-doctor needs yaml and no interpreter on this host can import it — skipped (COULD NOT VERIFY)
+harness rc=0
+-- and the healthy branch, same harness with the REAL resolver path:
+    sudo: unknown user test
+    sudo: error initializing audit plugin sudoers_audit
+harness(ok) rc=0
+
+-- NOTE on the line above: 'sudo: unknown user test' is the HARNESS stub (REAL_USER=test is not a real
+   account). What matters for the branch is that it was TAKEN: the resolver returned a path, so
+   _DOCTOR_PY was non-empty and the doctor was invoked instead of the warn. The branch under test
+   here is the ELSE branch, exercised above with the stub.
