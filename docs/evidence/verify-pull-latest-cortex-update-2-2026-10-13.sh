@@ -78,6 +78,10 @@ if grep -q '❌ AGENTS.md (steadfaste)' /tmp/doctor-verify-6063.log; then
 else
   bad "doctor fail set differs from expected (see /tmp/doctor-verify-6063.log)"
 fi
+# Assert the warn count is within the reconciled bound (down from 8 pre-reconciliation)
+WARN_CNT=$(echo "$OVERALL" | grep -oE '[0-9]+ warn' | grep -oE '[0-9]+')
+echo "  doctor warn count: $WARN_CNT"
+[ -n "$WARN_CNT" ] && [ "$WARN_CNT" -le 6 ] && ok "doctor warn count <= 6 (skill-drift warns resolved)" || bad "doctor warn count $WARN_CNT exceeds 6"
 
 # --- 5. Skill drift resolved ---
 DRIFT=$(python3 ops/scripts/manage/check-skill-drift-parity.py 2>&1 | grep -E "Verdict|stranded")

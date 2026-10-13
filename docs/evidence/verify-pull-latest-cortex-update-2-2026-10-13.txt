@@ -9,11 +9,13 @@
 ✅ enforcement files re-locked 9/9
   doctor rc=2 — ❌ Overall: FAILING  (435 pass · 6 warn · 1 fail · 10 info)
 ✅ doctor: only out-of-scope fail is steadfaste (different project)
+  doctor warn count: 6
+✅ doctor warn count <= 6 (skill-drift warns resolved)
   drift: this host and never copied back: it is stranded here, and the deploy's
 | Deployed-only files (stranded) | 0 |
 **Verdict: PASS**
 ✅ skill drift parity PASS (0 stranded)
 ✅ cortex venv has mcp package
 
-━━━ RESULT: 9 checks, 0 failures ━━━
+━━━ RESULT: 10 checks, 0 failures ━━━
 ALL CLAIMS VERIFIED
