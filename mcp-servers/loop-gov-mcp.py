@@ -2267,7 +2267,7 @@ REVIEW_TEMPLATE_REL = "docs/templates/adversarial-reviewer-prompt.md"
 REVIEWER_TIMEOUT_PER_FILE = 10     # seconds added per changed file
 REVIEWER_TIMEOUT_PER_100_LINES = 30  # seconds added per 100 added+removed lines
 REVIEW_MARKER = "=== REVIEWED MATERIAL ==="
-DIFF_CHAR_BUDGET = 12000
+DIFF_CHAR_BUDGET = 20000
 
 # Documentation-only ranges get a larger material budget, and here is why it is
 # not a loosening of review.
@@ -2284,6 +2284,23 @@ DIFF_CHAR_BUDGET = 12000
 # EVERY path is documentation qualifies. Self-declaration would be a bypass;
 # a computed predicate is a scope decision. One non-doc path, or any
 # always-review path, reverts to the standard budget.
+#
+# RAISED 12000 -> 20000 (2026-10-13), and the reason is measurements, not comfort.
+# The budget was sized when the reviewer's context was the binding constraint; the
+# binding constraint now is CONTENT, and the budget was manufacturing findings:
+#   Oct 10: 11 findings, 2 budget-limit-caused (18%)
+#   Oct 12: 18 findings, 6 (33%)
+#   Oct 13: 34 findings, 12 (35%)
+# A "finding" whose recommendation is "show me the middle of this file" is not a
+# defect in the change — it is the gate reporting its own window, and it is not
+# answerable by any edit the worker can make (cycles 12307, 12456, 12460, 12466 were
+# each refused on it). Those rounds cost a full review each, every time, forever.
+#
+# 20000 is affordable: a review of this size is billed on DIFF_CHAR_BUDGET chars and
+# REVIEWER_MAX_TOKENS bounds the reply, so the raise buys ~8000 more chars of visible
+# change per round at the same per-round shape. It does NOT loosen the verdict — the
+# reviewer still sees a bounded window, still fail-closes, and every bound is still
+# disclosed. It makes the window wide enough that a normal governance change fits.
 DIFF_CHAR_BUDGET_DOCS = 60000
 DOC_ONLY_SUFFIXES = (".md", ".txt", ".rst")
 
@@ -2328,6 +2345,15 @@ REVIEW_MATERIAL_PER_FILE_FLOOR = 2500
 # leave twelve code files with a header and 18 characters — trading the reviewer's
 # real need (judge the change) for a cosmetic win.
 REVIEW_MATERIAL_MIN_SLICE = 200
+
+# The floor an ALWAYS-REVIEW path (enforcement/governance — the file the review
+# exists to judge) is granted BEFORE anything else allocates, so the files around
+# it cannot starve it down to a header. Measured on cycle 12466: without this, the
+# governance module under review was shown as 3000 of 49429 chars (6.1%) and the
+# reviewer filed seven unverified-claim findings that no edit could answer.
+# A reordering of the same budget, not an increase; capped at twice the per-file
+# floor so a priority file still cannot crowd the range.
+REVIEW_MATERIAL_ALWAYS_REVIEW_PRIORITY = 2 * REVIEW_MATERIAL_PER_FILE_FLOOR
 
 # The MCP CLIENT gives up before we do. Hermes resolves every tool call against
 # _DEFAULT_TOOL_TIMEOUT = 300s (hermes-agent tools/mcp_tool_common.py), so a
@@ -2512,7 +2538,21 @@ def _candidate_repos(max_depth: int = 3) -> list:
             ["git", "rev-parse", "--show-toplevel"], timeout=3, stderr=subprocess.DEVNULL,
         ).decode().strip()
         if root:
-            out.append(Path(root))
+            # HOME-CONFINED (2026-10-13). This list answers "where else could THIS
+            # session's work have landed", so every candidate must be inside the
+            # same universe the walk above covers — HOME. The cwd repo was appended
+            # unconditionally, so on any host whose cwd is outside HOME (a test
+            # fixture, a shared checkout, another user's tree) the guard could name a
+            # repo the lock could never have been about, and refuse the close for
+            # work that was never there. Measured by
+            # test_gate_skips_simple_change_without_reviewer: HOME was a tmp_path
+            # while cwd stayed the real repo, and the gate refused a 1-line change.
+            candidate = Path(root)
+            try:
+                if candidate.resolve().is_relative_to(Path(HOME).resolve()):
+                    out.append(candidate)
+            except (OSError, ValueError):
+                _ = None  # unresolvable path is not a candidate, not a crash
     except Exception:
         log.warning("Expected failure for: candidate repo lookup from cwd")
     seen, uniq = set(), []
@@ -3827,6 +3867,16 @@ def _split_diff_sections(diff_text: str) -> list:
     return sections
 
 
+def _is_always_review_path(path: str) -> bool:
+    """Is this path on the always-review surface (enforcement/governance)?
+
+    Anti-gaming, same predicate the complexity gate uses (`ALWAYS_REVIEW_PATHS`
+    with substring matching), so a worker cannot make a file reviewable-by-share
+    that the trigger list would not always review anyway.
+    """
+    return bool(path) and any(ap in path for ap in ALWAYS_REVIEW_PATHS)
+
+
 def _bound_per_file(sections: list, budget: int, total: int,
                     docs_only: bool) -> str:
     """Allocate the budget ACROSS the changed files so no file is invisible.
@@ -3863,6 +3913,40 @@ def _bound_per_file(sections: list, budget: int, total: int,
         min_slice = max(1, budget // n)             # ...so keep it fair instead
     reserved = n * min_slice                        # every file IS represented (2026-10-08 contract)
     floor_budget = max(0, budget - reserved)
+
+    # Pass 0 — the ALWAYS-REVIEW PRIORITY (2026-10-13): the enforcement/governance
+    # file under review must not be starved by the other files sharing its budget.
+    #
+    # Measured on cycle 12466 (9 files, 12000-char budget): mcp-servers/loop-gov-mcp.py
+    # — the artifact the review exists to judge — got 3000 of 49429 chars (6.1%),
+    # while every test and doc around it was also bounded. The reviewer then filed
+    # seven unverified-claim findings saying exactly that, and NONE of them was
+    # answerable by an edit: the defect was the window, not the change. Pass 3's
+    # `min_slice` guarantee (200 chars) is sized for "the file is represented", not
+    # for "the file can be judged".
+    #
+    # A priority share is taken FIRST, out of the budget, before any other pass
+    # allocates — so it cannot be eroded by the floor or the equal share — and it is
+    # capped at twice the per-file floor. It is a REORDERING of an existing budget,
+    # not an increase: the other files keep the remainder, still every one of them
+    # represented. And it never overloads the reviewer: the priority file is the one
+    # whose defects the cycle is about, so this is exactly where the budget belongs.
+    always_idx = [i for i, (path, _) in enumerate(sections) if _is_always_review_path(path)]
+    priority = 0
+    if always_idx and budget > 0:
+        # Leave every OTHER file at least the min_slice before granting the priority.
+        others = n - len(always_idx)
+        spare = max(0, budget - others * min_slice)
+        priority = min(max(floor, REVIEW_MATERIAL_ALWAYS_REVIEW_PRIORITY),
+                       spare, budget)
+        share = max(1, priority // len(always_idx))
+        for idx in always_idx:
+            if idx >= n:
+                continue
+            give = min(share, sizes[idx], budget - sum(alloc))
+            if give > 0:
+                alloc[idx] = give
+        floor_budget = max(0, floor_budget - sum(alloc))
 
     # Pass 1 — the FLOOR within the non-reserved part, smallest first, whole files.
     r = floor_budget
