@@ -29,3 +29,10 @@ Regenerate: bash tools/fleet-search/docker/searxng/measure.sh
 
 exit: 0
 SCRIPT rc=0
+
+== leftover state after the sweep (the containers this script starts are removed by its own EXIT trap) ==
+-- containers matching srx:
+0
+-- the IMAGE remains, deliberately: it is ~200 MB and re-pulling it on every run would make
+   this measurement slower than the thing it measures. Remove with: docker rmi searxng/searxng:latest
+searxng/searxng:latest	384MB
