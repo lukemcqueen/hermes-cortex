@@ -1,0 +1,19 @@
+━━━ Verify pull-latest + cortex-update (cycle 6063) ━━━
+  behind=0 ahead=0
+✅ repo not behind origin
+✅ deployed == repo: cortex-update.sh
+✅ deployed == repo: mcp_wiring.py
+✅ deployed == repo: checks.py
+✅ deployed == repo: config.py
+  immutable flags present on 9/9 enforcement paths
+✅ enforcement files re-locked 9/9
+  doctor rc=2 — ❌ Overall: FAILING  (435 pass · 6 warn · 1 fail · 10 info)
+✅ doctor: only out-of-scope fail is steadfaste (different project)
+  drift: this host and never copied back: it is stranded here, and the deploy's
+| Deployed-only files (stranded) | 0 |
+**Verdict: PASS**
+✅ skill drift parity PASS (0 stranded)
+✅ cortex venv has mcp package
+
+━━━ RESULT: 9 checks, 0 failures ━━━
+ALL CLAIMS VERIFIED
