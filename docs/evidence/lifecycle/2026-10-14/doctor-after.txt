@@ -3,7 +3,7 @@
 [mcp-server] DEBUG: HTTPError 401 for Bearer auth — trying Basic fallback
 [mcp-server] DEBUG: HTTPError 401 for Bearer auth — trying Basic fallback
 
-━━━ Hermes Cortex Doctor ━━━  (04:44:21)
+━━━ Hermes Cortex Doctor ━━━  (04:47:15)
 
   ✅ Repo branch
   ⚠️  Repo clean

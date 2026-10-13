@@ -1,0 +1,36 @@
+=== PROOF: sync commit 45933910 contains 23 files, all under skills/ (ADV-12501-004) ===
+
+$ git show --stat --oneline 45933910
+45933910 chore(skills): sync 23 drifted skills from deployed tree
+ .../autonomous-ai-agents/pi-coding-agent/SKILL.md  |  33 ++++++
+ skills/devops/agent-ergonomic-cli/SKILL.md         |  19 ++++
+ skills/devops/approval-gate-debugging/SKILL.md     |  27 ++++-
+ skills/devops/cortex-deployment-sync/SKILL.md      |  89 ++++++++++++++++
+ skills/devops/cross-agent-design/SKILL.md          |  38 +++++++
+ skills/devops/docker-management/SKILL.md           |  46 +++++++++
+ .../enforcer-modification-considerations/SKILL.md  |  20 ++++
+ skills/devops/governance-closeout/SKILL.md         | 115 +++++++++++++++++++--
+ skills/devops/governance-lock-lifecycle/SKILL.md   |  20 +++-
+ skills/devops/loop-governance/SKILL.md             |  98 +++++++++++++++++-
+ skills/devops/maintenance-scan/SKILL.md            |  49 ++++++++-
+ skills/devops/mcp-health-monitoring/SKILL.md       |  38 ++++++-
+ skills/devops/shared-repo-push-gates/SKILL.md      |  24 +++++
+ skills/devops/shell-scripting/SKILL.md             |  76 ++++++++++++++
+ skills/hermes-agent/soul-refinement/SKILL.md       |   3 +
+ .../software-development/agent-contract/SKILL.md   |  10 +-
+ .../software-development/change-checklist/SKILL.md |  38 ++++++-
+ .../fail-closed-design/SKILL.md                    |  22 ++++
+ .../hermetic-python-testing/SKILL.md               |  49 ++++++++-
+ .../mcp-server-building/SKILL.md                   |  21 ++++
+ .../prove-before-create/SKILL.md                   |  27 ++++-
+ .../software-development/reflexion-check/SKILL.md  |   6 ++
+ .../test-driven-development/SKILL.md               |  35 +++++++
+ 23 files changed, 876 insertions(+), 27 deletions(-)
+
+$ git diff --name-only 45933910^ 45933910 | grep -vc '^skills/'   # non-skills files:
+0
+$ git diff --name-only 45933910^ 45933910 | grep -c '^skills/'    # skills files:
+23
+
+$ git log --oneline 084cc4ca..45933910
+45933910 chore(skills): sync 23 drifted skills from deployed tree
