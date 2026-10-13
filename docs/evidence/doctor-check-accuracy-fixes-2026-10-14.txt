@@ -1,29 +1,27 @@
 # Doctor check accuracy fixes — 2026-10-14 (esther)
 
-Baseline revision (the state BEFORE this change): `8946fdce`.
-Tip revision (the state this artifact describes): `12a0ee41`.
+Baseline revision, the state BEFORE this change: `8946fdce`.
+Tip revision, the state this artifact describes: `12a0ee41`.
 
-Every block below is the complete captured output of the command printed immediately above it.
-Re-running that command at the revision named for it reproduces the block.
+Provenance: each block is the output of the command printed directly above it. Two blocks are
+marked SELECTED LINES (the doctor runs, which are hundreds of lines); every other block is
+complete. The RED block is a run of the new tests against the PRE-FIX sources; the crash-probe
+and boundary-probe blocks are runs in the pre-fix worktree and at the tip.
 
-Five checks emitted signals that were not true of this host, or prescribed commands that cannot
-run. The live doctor line that changed, for each:
+Five doctor checks emitted signals that were not true of this host, or prescribed commands that
+cannot run:
 
 | # | Check | Before | After |
 |---|-------|--------|-------|
-| 1 | `MCP wiring (agent-bus/loop-governance/tasks/executor)` | WARN x4: registered against the HERMES venv | PASS x4 (verified by `mcp_wiring.py --orch`, and the doctor's own AFTER block below) |
-| 2 | `Config (JUDGE_MODEL / EMBEDDING_MODEL / CODING_MODEL)` | INFO x3: "defined but zero consumer scripts reference it" | PASS x3: "defined, 4 / 10 / 1 consumer(s) found" |
+| 1 | `MCP wiring (agent-bus/loop-governance/tasks/executor)` | WARN x4 — registered against the HERMES venv | PASS x4 (block below) |
+| 2 | `Config (JUDGE_MODEL / EMBEDDING_MODEL / CODING_MODEL)` | INFO x3 — "defined but zero consumer scripts reference it" | PASS x3 — "defined, 4 / 10 / 1 consumer(s) found" |
 | 3 | `Config (CREATIVE_MODEL)` | INFO (accurate) — a docstring mention turned it into a false PASS mid-fix | INFO, unchanged and accurate: reserved, read by nothing |
-| 4 | `Score-cycle` | INFO: "Old score-cycle found at ~/.local/bin/score-cycle" | PASS: "still invoked by agent-governance-auditor.py, pre-commit-score, setup.sh, symlink-audit.sh, update.sh, verify.sh" |
-| 5 | `AGENTS.md efficiency (proj / hc-session2)` | WARN: an empty `.git/` dir and a WORKTREE of the cortex repo were judged dev repos | gone (neither is a dev repo; unrelated dev repos still warn — pinned by test) |
+| 4 | `Score-cycle` | INFO — "Old score-cycle found at ~/.local/bin/score-cycle" | PASS — "still invoked by agent-governance-auditor.py, pre-commit-score, setup.sh, symlink-audit.sh, update.sh, verify.sh" |
+| 5 | `AGENTS.md efficiency (proj / hc-session2)` | WARN — an empty `.git/` directory and a WORKTREE of the cortex repo were judged dev repos | gone (neither is a dev repo; unrelated dev repos still warn, pinned by test) |
 
-The host-side items this cycle also cleared, and their evidence:
+## Host-side items this cycle cleared
 
 ```
-$ hermes mcp remove <name> && hermes mcp add <name> --command ~/.hermes-cortex/venv/bin/python3 --args <deployed script>   (x4)
-=== add executor (rc=0) ===
-  ✓ Saved 'executor' to ~/.hermes/config.yaml (6/6 tools enabled)
-
 $ python3 ~/hermes-cortex/ops/scripts/manage/mcp_wiring.py --config ~/.hermes/config.yaml --orch
 config: ~/.hermes/config.yaml
   PASS agent-bus: configured and its paths exist
@@ -32,23 +30,21 @@ config: ~/.hermes/config.yaml
   PASS executor: configured and its paths exist
 
 $ rm ~/.hermes-cortex/scripts/review-sweep-check.py
-removed '~/.hermes-cortex/scripts/review-sweep-check.py'      (backed up first; zero consumers)
+removed '~/.hermes-cortex/scripts/review-sweep-check.py'
 
 $ rm ~/.hermes-cortex/state/.governance-20261012_155635_db69f7bf.json
-removed '~/.hermes-cortex/state/.governance-20261012_155635_db69f7bf.json'   (heartbeat expired 4029s ago, TTL 3600)
+removed '~/.hermes-cortex/state/.governance-20261012_155635_db69f7bf.json'
 ```
 
-## RED — the new tests executed against the PRE-FIX sources at `8946fdce`
+(The removed script was backed up first, had zero consumers and no register() entry; the lock's
+heartbeat had expired 4029s earlier against a 3600s TTL.)
 
-The worktree `/tmp/hc-base` is checked out at `8946fdce`; only the four NEW test files were copied
-into it, so the tests run against the pre-fix `cortex_doctor` and `mcp_wiring`:
+## RED — the four new test files against the PRE-FIX sources at `8946fdce`
 
 ```
 $ git worktree add /tmp/hc-base 8946fdce
-$ cp tests/test_mcp_wiring.py tests/test_doctor_env_consumers.py \
-     tests/test_doctor_dev_repo_detection.py tests/test_doctor_score_cycle_check.py /tmp/hc-base/tests/
-$ cd /tmp/hc-base && ~/.hermes-cortex/venv/bin/python3 -m pytest tests/test_mcp_wiring.py tests/test_doctor_env_consumers.py
-    tests/test_doctor_dev_repo_detection.py tests/test_doctor_score_cycle_check.py -q
+$ cp tests/test_mcp_wiring.py tests/test_doctor_env_consumers.py tests/test_doctor_dev_repo_detection.py tests/test_doctor_score_cycle_check.py /tmp/hc-base/tests/
+$ cd /tmp/hc-base && ~/.hermes-cortex/venv/bin/python3 -m pytest tests/test_mcp_wiring.py tests/test_doctor_env_consumers.py tests/test_doctor_dev_repo_detection.py tests/test_doctor_score_cycle_check.py -q
 ```
 ```
 ============================= test session starts ==============================
@@ -210,11 +206,10 @@ FAILED tests/test_doctor_score_cycle_check.py::test_the_check_branches_on_consum
 ======================== 20 failed, 13 passed in 0.70s =========================
 ```
 
-## GREEN — the same four test files at the tip `12a0ee41`
+## GREEN — the same four files at the tip `12a0ee41`
 
 ```
-$ cd ~/hermes-cortex && ~/.hermes-cortex/venv/bin/python3 -m pytest tests/test_mcp_wiring.py tests/test_doctor_env_consumers.py
-    tests/test_doctor_dev_repo_detection.py tests/test_doctor_score_cycle_check.py -q
+$ cd ~/hermes-cortex && ~/.hermes-cortex/venv/bin/python3 -m pytest tests/test_mcp_wiring.py tests/test_doctor_env_consumers.py tests/test_doctor_dev_repo_detection.py tests/test_doctor_score_cycle_check.py -q
 ```
 ```
 ============================= test session starts ==============================
@@ -232,7 +227,31 @@ tests/test_doctor_score_cycle_check.py .......                           [100%]
 ============================== 33 passed in 0.88s ==============================
 ```
 
-## Boundary-input probe (change-checklist Phase 1.5)
+## Crash probe — the same script in the pre-fix worktree and at the tip
+
+```
+$ cd /tmp/hc-base && ~/.hermes-cortex/venv/bin/python3 tests/run_doctor_fix_crash_probe.py
+```
+```
+Traceback (most recent call last):
+  File "/tmp/hc-base/tests/run_doctor_fix_crash_probe.py", line 32, in <module>
+    out = dc.find_script_consumers([None])
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: find_script_consumers() takes 0 positional arguments but 1 was given
+revision under test: /tmp/hc-base
+find_script_consumers([None]) RAISED:
+```
+
+```
+$ cd ~/hermes-cortex && ~/.hermes-cortex/venv/bin/python3 tests/run_doctor_fix_crash_probe.py
+```
+```
+revision under test: ~/hermes-cortex
+find_script_consumers([None]) returned: {'JUDGE_MODEL': [], 'EMBEDDING_MODEL': [], 'CODING_MODEL': [], 'CREATIVE_MODEL': []}
+RESULT: handled (no exception)
+```
+
+## Boundary-input probe (change-checklist Phase 1.5) — full output
 
 ```
 $ cd ~/hermes-cortex && ~/.hermes-cortex/venv/bin/python3 tests/run_doctor_fix_boundary_probe.py
@@ -274,13 +293,45 @@ $ cd ~/hermes-cortex && ~/.hermes-cortex/venv/bin/python3 tests/run_doctor_fix_b
 RESULT: ALL PASS
 ```
 
-The probe found two real crashes on the changed paths. Both are fixed, and the rows above show
-the fixed result: the `None root entry` row (which raised `TypeError: argument should be a str or
-an os.PathLike object ... not 'NoneType'` before the fix) and the `bare token in prose` row
-(which returned `True` before the fix, counting a prose sentence as a CLI invocation).
+Two of its rows are regressions it caught in this change, not pre-existing behaviour:
 
-## Adversarial static gate — A4, per changed file, with the real filename
+1. `find_script_consumers([None])` — the guard that skips a non-path root entry. The probe's
+   FIRST run raised, before that guard existed:
 
+```
+Traceback (most recent call last):
+  File "/home/esther/.hermes/cache/scratch/boundary_probe.py", line 49, in <module>
+    check("None root entry", dc.find_script_consumers([None]), {v: [] for v in
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/esther/hermes-cortex/ops/scripts/manage/cortex_doctor/config.py", line 285, in find_script_consumers
+    root = Path(root)
+           ^^^^^^^^^^
+  File "/usr/lib/python3.12/pathlib.py", line 373, in __init__
+    raise TypeError(
+TypeError: argument should be a str or an os.PathLike object where __fspath__ returns a str, not 'NoneType'
+```
+
+   That quote is the session transcript's record of the first run — the capture file was
+   overwritten by the passing re-run, so the pin is now the committed pair: the probe row
+   `[PASS] None root entry` above, and `tests/test_doctor_env_consumers.py::
+   test_a_non_path_root_entry_is_skipped`.
+
+2. A PROSE mention of `score-cycle` counted as an invocation. The pin is the RED block above:
+   `tests/test_doctor_score_cycle_check.py::test_prose_and_echo_mentions_are_not_consumers` is
+   among the 20 failures at `8946fdce` and passes at `12a0ee41`.
+
+## Adversarial static gate — A4, per changed file
+
+All three changed scripts pass the gate; no critical or high findings in any of them:
+`ops/scripts/manage/mcp_wiring.py` 26 findings (3 medium) GATE_PASSED rc=0 ·
+`ops/scripts/manage/cortex_doctor/config.py` 23 findings (4 medium) GATE_PASSED rc=0 ·
+`ops/scripts/manage/cortex_doctor/checks.py` 68 findings (4 medium, 14 low) GATE_PASSED rc=0.
+
+```
+$ python3 adversarial-verify.py --file ops/scripts/manage/mcp_wiring.py --level A4 --gate
+$ python3 adversarial-verify.py --file ops/scripts/manage/cortex_doctor/config.py --level A4 --gate
+$ python3 adversarial-verify.py --file ops/scripts/manage/cortex_doctor/checks.py --level A4 --gate
+```
 ```
 === $ python3 adversarial-verify.py --file ops/scripts/manage/mcp_wiring.py --level A4 --gate
 
@@ -314,13 +365,13 @@ rc=0
 rc=0
 ```
 
-## Live doctor — the two selected-line captures
+## Live doctor — BEFORE and AFTER
 
 ```
-$ ~/.hermes-cortex/venv/bin/python3 ~/hermes-cortex/ops/scripts/manage/cortex-doctor.py     (BEFORE, 2026-10-14 00:19, at 8946fdce)
+$ ~/.hermes-cortex/venv/bin/python3 ~/hermes-cortex/ops/scripts/manage/cortex-doctor.py      # 2026-10-14 00:19, at 8946fdce
 ```
 ```
-(selected lines from a 567-line run)
+(SELECTED LINES from a 567-line run)
   ⚠️  AGENTS.md efficiency (proj) — dev repo AGENTS.md missing fleet session-efficiency block
   ℹ️  Config (JUDGE_MODEL) — defined but zero consumer scripts reference it
   ℹ️  Config (EMBEDDING_MODEL) — defined but zero consumer scripts reference it
@@ -336,11 +387,11 @@ $ ~/.hermes-cortex/venv/bin/python3 ~/hermes-cortex/ops/scripts/manage/cortex-do
 ```
 
 ```
-$ bash ~/.hermes-cortex/scripts/cortex-dogfood.sh --force      (rc=0, DOGFOOD PASSED, at 12a0ee41)
-$ ~/.hermes-cortex/venv/bin/python3 ~/hermes-cortex/ops/scripts/manage/cortex-doctor.py     (AFTER, at 12a0ee41)
+$ bash ~/.hermes-cortex/scripts/cortex-dogfood.sh --force        # rc=0, DOGFOOD PASSED
+$ ~/.hermes-cortex/venv/bin/python3 ~/hermes-cortex/ops/scripts/manage/cortex-doctor.py      # at 12a0ee41
 ```
 ```
-(selected lines from a 556-line run)
+(SELECTED LINES from a 556-line run)
   ⚠️  Repo clean — 4 uncommitted change(s)
   ✅ Deploy sync — deployed commit matches HEAD
   ✅ Config (JUDGE_MODEL) — defined, 4 consumer(s) found
@@ -357,31 +408,31 @@ $ ~/.hermes-cortex/venv/bin/python3 ~/hermes-cortex/ops/scripts/manage/cortex-do
 
 ## What the remaining doctor items are
 
-At `12a0ee41` the doctor reports **0 fail · 25 warn · 3 info**. The 25 warns are 23 `Skill drift`
-lines plus `Repo clean` plus the `Overall` summary line; the 3 info are `Config (CREATIVE_MODEL)`,
-`Orphan-cycle resolution`, and this session's own `PENDING cycles` entry (cleared at close).
+At `12a0ee41` the doctor reports **0 fail · 25 warn · 3 info** (the AFTER block above). The 25 warns
+are 23 `Skill drift` lines plus `Repo clean` plus the `Overall` summary line; the 3 info are
+`Config (CREATIVE_MODEL)`, `Orphan-cycle resolution` and this session's own `PENDING cycles` entry
+(cleared at close).
 
 - **23 `Skill drift`** — the deploy guardrail refuses to overwrite a deployed skill whose content
-  is newer than the repo source. The doctor's own text says that recovery "is its OWN governed
-  change"; it is the next cycle, not this one.
+  is newer than the repo source. The doctor's own text says recovery "is its OWN governed change";
+  it is the next cycle, not this one.
 - **`Repo clean` (4 files)** — `docs/evidence/briefings/cycle-evidence-2026-10-10.md`,
   `docs/evidence/briefings/test-results-2026-10-10.txt` and `docs/evidence/gateway-suite-results.txt`
   are rewritten by test runs (the baseline suite reproduced the same dirty set inside a clean
   worktree at `8946fdce`), and `docs/evidence/skill-drift-parity.txt` is written by the drift
   detector. None is in this cycle's range.
-- **`Config (CREATIVE_MODEL)`** — accurate and intentional: the variable is documented as reserved
-  and is read by nothing. Removing it from `~/hermes-cortex/.env` would flip the check from INFO to
-  WARN ("Not defined in hermes-cortex.env"), so it stays.
+- **`Config (CREATIVE_MODEL)`** — accurate and intentional: documented as reserved, read by
+  nothing. Removing it from `~/hermes-cortex/.env` would flip the check to WARN, so it stays.
 - **`Orphan-cycle resolution`** — historical: 11 rows closed by the old reaper carry a bare
   MOVE_ON and are reported as not judged.
 
-## Full-suite attribution (measured, not assumed)
+## Full-suite attribution
 
 `pytest tests/ -q` on this tree at `12a0ee41`: 10 failed, 20 errors.
 
 | Failure set | How it was attributed |
 |---|---|
 | `test_updater_robustness` x3, `test_repo_resource_paths` register-count, `test_task_queue_evidence` committed-evidence | reproduce BOTH in a worktree pinned at `8946fdce` (`5 failed, 6 passed in 14.80s`) AND alone on this tree |
-| `test_bible_verse_guard` (20 errors) | the test reads `REPO/.hermes-cortex/scripts/agent-daily-bible-reading.py`, which does not exist in the repo at `8946fdce` |
+| `test_bible_verse_guard` (20 errors) | the test reads `REPO/.hermes-cortex/scripts/agent-daily-bible-reading.py`, absent from the repo at `8946fdce` |
 | `test_gen_briefing` PDF, `test_runtime/test_doctor_pending_cycles` x3 | pass alone on BOTH trees — order-dependent, not attributable to this change |
-| `test_doctor_score_cycle_check::test_the_real_host_still_has_consumers` (introduced here) | read the ambient HOME: passed alone, failed inside the suite. Fixed to derive its paths from the repo and proven both ways — `33 passed` normally and `14 passed` under `cd /tmp && HOME=/tmp/fakehome` |
+| `test_doctor_score_cycle_check::test_the_real_host_still_has_consumers` (introduced here) | read the ambient HOME: passed alone, failed inside the suite. Fixed to derive paths from the repo, proven both ways — `33 passed` normally and `14 passed` under `cd /tmp && HOME=/tmp/fakehome` |

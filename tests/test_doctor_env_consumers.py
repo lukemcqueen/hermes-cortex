@@ -118,6 +118,18 @@ def test_the_default_roots_are_the_repo_script_trees():
     print("  the default roots are the repo's ops/core/mcp-servers trees ✓")
 
 
+def test_a_non_path_root_entry_is_skipped(tmp_path):
+    """A malformed root must not crash the check. The boundary probe caught this in the fix as
+    first written — `find_script_consumers([None])` raised
+    `TypeError: argument should be a str or an os.PathLike object where __fspath__ returns a
+    str, not 'NoneType'` — and this pins the guard that skips such an entry."""
+    c = _load()
+    found = c.find_script_consumers([None, 123, tmp_path / "nope"])
+    assert found["JUDGE_MODEL"] == [], found["JUDGE_MODEL"]
+    assert found["EMBEDDING_MODEL"] == [], found["EMBEDDING_MODEL"]
+    print("  a non-path root entry is skipped, not a crash ✓")
+
+
 def test_the_doctor_package_itself_is_not_a_consumer():
     """The doctor's own `known_vars` list MENTIONS every variable — counting it made the check
     certify itself, and turned CREATIVE_MODEL (which has no real consumer) into a PASS."""
