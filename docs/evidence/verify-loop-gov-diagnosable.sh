@@ -101,6 +101,18 @@ printf '%s\n' "$_lmsg" | grep -q "NOT DEPLOYED at" || bad "7 the guard branch mu
 printf '%s\n' "$_lmsg" | grep -q "require-fleet-venv.sh" || bad "7 and name the guard path"
 
 say
+say "== 8. per-test outcomes (pytest -v), so the artifact is not self-referential =="
+for f in tests/test_loop_gov_wrapper_guard.py tests/test_fleet_venv_check_block.py \
+         tests/test_fleet_venv_launchers.py; do
+  if [ ! -f "$f" ]; then bad "8 missing $f"; continue; fi
+  out="$("$PY" -m pytest "$f" -v --tb=line -q 2>&1)"; rc=$?
+  printf '%s\n' "$out" | grep -E "::test_.*(PASSED|FAILED|ERROR)" | sed 's/^/  /'
+  printf '%s\n' "$out" | grep -E "^[0-9]+ (passed|failed)|passed|failed|error" | tail -1 | sed 's/^/  /'
+  say "  [$f] pytest rc=$rc"
+  [ "$rc" = 0 ] || bad "8 pytest $f"
+done
+
+say
 say "FAILS: $FAILS — the verifier's own exit code follows (0 here means every claim held)"
 if [ "$FAILS" -eq 0 ]; then say "ALL CLAIMS VERIFIED (0 failures)"; exit 0; fi
 say "$FAILS CLAIM(S) FAILED"; exit 1
