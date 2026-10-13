@@ -68,14 +68,19 @@ The question "can SearXNG be squeezed to ~50 MB so it can be the starting point?
 running it, not by reading a sizing table. `searxng/searxng:latest`, one worker, loopback only,
 `limiter`/`public_instance`/`image_proxy` off, no Valkey:
 
-| Configuration | Smallest cap that works | Measured RSS | Results for a real query |
-|---|---|---|---|
-| Default engine set | 128 MB (**96 MB dies — OOMKilled=true**) | **~99 MB** | **20**, with `brave` + `duckduckgo` unresponsive |
-| Pruned to 3 engines (`keep_only`) | **84 MB** | **82.3 MB** | **0** — two of the three engines were blocked |
-| 64 MB cap | — | — | OOMKilled, exit 1 |
+| Configuration | Steady RSS | Results for a real query |
+|---|---|---|
+| Default engine set, one worker | **~124 MiB** | **20**, with `brave` + `duckduckgo` unresponsive |
+| Pruned to 3 engines (`keep_only`) | **~92 MiB** | **0** — the engines that could answer were blocked; **not agent-usable** |
+| Default set + `UWSGI_WORKERS=4` | ~124 MiB, still one python process | 20 — the variable is **inert** here |
 
-**50 MB is not reachable.** The absolute floor is 82.3 MB, and that configuration returns nothing.
-The smallest configuration that actually WORKS is ~99 MB.
+Measured in STEADY STATE: after the instance has served queries, and again 20 s later. Earlier
+figures of 99 MB / 82 MB were taken ~25 s after start, before it had served anything, and a cap
+chosen from them would be undersized. A 64 MB cap is OOM-killed outright.
+
+**50 MB is not reachable.** The floor is ~92 MiB and that configuration returns nothing; the
+smallest configuration that actually **works** is **~124 MiB** — about half the "minimal SearXNG"
+figure the sizing table this design started from suggested.
 
 Two findings that matter more than the numbers:
 

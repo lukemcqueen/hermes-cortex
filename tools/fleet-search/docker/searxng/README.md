@@ -7,14 +7,20 @@ and the numbers.**
 
 ## Measured
 
-| Configuration | Smallest cap that works | Measured RSS | Results for a real query |
-|---|---|---|---|
-| Full engine set, one worker | 128 MB (**96 MB is OOM-killed**) | **~99 MB** | **20** — `brave` + `duckduckgo` unresponsive |
-| Pruned to 3 engines (`keep_only`) | **84 MB** | **82.3 MB** | **0** — the engines that could answer were blocked |
-| 64 MB cap | — | — | OOMKilled |
+Steady state (measured after the instance served queries AND again 20 s later — a container that
+only survives startup is not a working provider):
 
-**50 MB is not reachable.** The floor is 82.3 MB and that configuration returns nothing; the
-smallest configuration that actually works is ~99 MB.
+| Configuration | Steady RSS | Usable as a search provider? |
+|---|---|---|
+| Full engine set, one worker | **~124 MiB** | **yes** — 20 results; `brave` + `duckduckgo` unresponsive |
+| Pruned to 3 engines (`keep_only`) | **~92 MiB** | **NO** — 0 results |
+| Full set + `UWSGI_WORKERS=4` | ~124 MiB, still **one** python process | n/a — **the variable is inert** on this image |
+
+**50 MB is not reachable.** The floor is ~92 MiB, and the configuration that fits there returns
+nothing. The smallest configuration that actually **works** is **~124 MiB**.
+
+Earlier numbers in this file said 99 MB / 82 MB; those were taken ~25 s after start, before the
+instance had served anything. The steady-state figures above are the ones to size against.
 
 Two things a sizing table will not tell you:
 

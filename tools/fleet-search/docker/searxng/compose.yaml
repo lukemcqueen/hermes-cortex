@@ -9,7 +9,9 @@ services:
     image: searxng/searxng:latest
     ports:
       - "127.0.0.1:8888:8080"
-    mem_limit: 128m
+    # 192 MB, not 128: measured steady-state RSS is ~124 MiB (after serving queries, not at
+    # startup), so a 128 MB cap leaves nothing for a spike. 64 MB is OOM-killed outright.
+    mem_limit: 192m
     restart: unless-stopped
     volumes:
       - ./settings.yml:/etc/searxng/settings.yml:ro
