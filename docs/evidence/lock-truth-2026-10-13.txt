@@ -1,0 +1,112 @@
+Running: bash -c 
+CV="$0"
+echo "== tests, every case by name =="
+"$CV" -m pytest tests/test_lock_truth.py -v --no-header -p no:cacheprovider 2>&1 | grep -E "PASSED|FAILED|ERROR|passed|failed"
+echo
+echo "== per-suite counts: 13+23+6+13+12 = 67 pytest cases =="
+for f in test_lock_truth test_loop_gov_cli test_loop_gov_mcp_nonblocking test_loop_gov_review_repo test_mcp_wiring; do
+  printf "%-46s " "$f.py"; "$CV" -m pytest "tests/$f.py" -q 2>&1 | tail -1
+done
+printf "%-46s " "test_governance_lock_lifecycle_claims.py"
+"$CV" tests/test_governance_lock_lifecycle_claims.py 2>&1 | tail -2 | tr "\n" " "; echo
+echo
+echo "== live: a bare check_lock, RAW and unfiltered, while this session holds a lock =="
+cd "$HOME"
+"$CV" "$HOME/.hermes-cortex/scripts/loop-gov.py" check_lock "{}" 2>&1
+echo
+echo "== live: the FATAL branch — begin_change from a non-repo cwd with git unavailable =="
+cd "$HOME/.hermes/cache/scratch/nonrepo"
+env PATH=/nonexistent "$CV" "$HOME/.hermes-cortex/scripts/loop-gov.py" begin_change "{\"task_id\": \"must-not-be-created\", \"description\": \"evidence only\"}" 2>&1; echo "rc=$?"
+echo
+echo "== live: the non-fatal branch — the note for a non-repo cwd, and the exit code =="
+"$CV" "$HOME/.hermes-cortex/scripts/loop-gov.py" check_lock "{}" 2>&1 >/dev/null; echo "rc(stderr only above)=$?"
+echo
+echo "== the FOREIGN-lock case: the committed script, re-runnable by any reviewer =="
+cd /home/esther/hermes-cortex
+"$CV" docs/evidence/foreign_lock_reporting.py 2>&1; echo "rc=$?"
+ /home/esther/.hermes-cortex/venv/bin/python3
+rc: 0
+when: 2026-10-13T02:23:30Z
+
+== tests, every case by name ==
+tests/test_lock_truth.py::test_a_foreign_live_lock_is_reported PASSED    [  7%]
+tests/test_lock_truth.py::test_check_lock_no_longer_reads_as_no_locks_at_all PASSED [ 15%]
+tests/test_lock_truth.py::test_stale_and_unparseable_files_are_not_reported_as_truth PASSED [ 23%]
+tests/test_lock_truth.py::test_an_empty_state_dir_is_zero_locks_not_an_error PASSED [ 30%]
+tests/test_lock_truth.py::test_a_non_repo_cwd_is_named_not_silent PASSED [ 38%]
+tests/test_lock_truth.py::test_a_stamped_repo_says_nothing PASSED        [ 46%]
+tests/test_lock_truth.py::test_an_unresolvable_git_is_fatal_for_begin_change PASSED [ 53%]
+tests/test_lock_truth.py::test_an_unresolvable_git_is_reported_for_a_read_tool_too PASSED [ 61%]
+tests/test_lock_truth.py::test_the_tool_description_says_what_it_now_returns PASSED [ 69%]
+tests/test_lock_truth.py::test_the_cli_wires_the_note_and_prints_it PASSED [ 76%]
+tests/test_lock_truth.py::test_a_real_non_repo_cwd_run_warns_on_stderr PASSED [ 84%]
+tests/test_lock_truth.py::test_a_real_broken_git_refuses_begin_change_with_exit_1 PASSED [ 92%]
+tests/test_lock_truth.py::test_a_real_broken_git_is_reported_for_a_read_tool_too PASSED [100%]
+============================== 13 passed in 4.47s ==============================
+
+== per-suite counts: 13+23+6+13+12 = 67 pytest cases ==
+test_lock_truth.py                             ============================== 13 passed in 4.50s ==============================
+test_loop_gov_cli.py                           ============================== 23 passed in 8.34s ==============================
+test_loop_gov_mcp_nonblocking.py               ============================== 6 passed in 7.16s ===============================
+test_loop_gov_review_repo.py                   ============================== 13 passed in 7.43s ==============================
+test_mcp_wiring.py                             ============================== 12 passed in 0.20s ==============================
+test_governance_lock_lifecycle_claims.py        RESULT: ALL PASS — 7 checks 
+
+== live: a bare check_lock, RAW and unfiltered, while this session holds a lock ==
+[mcp-server] DEBUG: Initializing server 'loop-governance'
+loop-gov: /home/esther is not a git repo — nothing was stamped, so a lock opened here is tagged with 'hermes-cortex' and its repo_path stays empty. If you are changing files in this tree, run from inside a repo or pass --repo <path>.
+{
+  "active": false,
+  "lock": null,
+  "live_lock_count": 1,
+  "locks": [
+    {
+      "task_id": "kustos-lock-caveats",
+      "session_id": "20261012_155635_db69f7bf",
+      "agent": "unknown",
+      "status": "executing",
+      "repo_slug": "hermes-cortex",
+      "repo_path": "/home/esther/hermes-cortex",
+      "started_at": "2026-10-13T02:10:12Z",
+      "heartbeat_at": "2026-10-13T02:10:12Z",
+      "file": ".governance-20261012_155635_db69f7bf.json"
+    }
+  ]
+}
+
+== live: the FATAL branch — begin_change from a non-repo cwd with git unavailable ==
+[mcp-server] DEBUG: Initializing server 'loop-governance'
+loop-gov: could not resolve the cwd repo to stamp ([Errno 2] No such file or directory: 'git'); a repo-scoped begin_change cannot safely fall back — run inside the repo or pass --repo.
+❌ Cannot begin: the cwd repo could not be resolved to stamp, and begin_change cannot safely fall back to the host-canonical repo. Run inside the repo or pass --repo <path>.
+rc=1
+
+== live: the non-fatal branch — the note for a non-repo cwd, and the exit code ==
+[mcp-server] DEBUG: Initializing server 'loop-governance'
+loop-gov: /home/esther/.hermes/cache/scratch/nonrepo is not a git repo — nothing was stamped, so a lock opened here is tagged with 'hermes-cortex' and its repo_path stays empty. If you are changing files in this tree, run from inside a repo or pass --repo <path>.
+rc(stderr only above)=0
+
+== the FOREIGN-lock case: the committed script, re-runnable by any reviewer ==
+[mcp-server] DEBUG: Initializing server 'loop-governance'
+module: /home/esther/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py
+a bare check_lock whose own session is NOT the lock's owner:
+{
+  "active": false,
+  "live_lock_count": 1
+}
+locks: [
+  {
+    "task_id": "kustos-some-other-task",
+    "session_id": "sess_FOREIGN",
+    "agent": "kustos",
+    "status": "executing",
+    "repo_slug": "koscap-mwi",
+    "repo_path": "/home/app/mwi/koscap-mwi",
+    "started_at": null,
+    "heartbeat_at": "2099-01-01T00:00:00Z",
+    "file": ".governance-sess_FOREIGN.json"
+  }
+]
+a foreign session's live lock is reported: True
+temp state dir removed — no real lock file was created, read or changed
+rc=0
+sha256: 1e41282454981bfa7d1956b5cbce00e19278e240b0bde7dc877e680eeb4d1cc2

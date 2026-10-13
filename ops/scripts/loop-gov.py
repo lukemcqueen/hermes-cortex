@@ -191,6 +191,52 @@ def _stamp_repo_into_payload(payload: dict, cwd: Path) -> tuple[dict, str]:
     return out, "no-repo"
 
 
+def _canonical_slug(mod) -> str | None:
+    """The repo_slug the server falls back to when nothing is stamped.
+
+    Asked of the server module itself so the warning can NAME the repo the lock
+    will claim instead of describing it in the abstract.
+    """
+    try:
+        return mod._derive_slug({})
+    except Exception:  # noqa: BLE001 — a warning must never crash the CLI
+        return None
+
+
+def _repo_identity_note(status: str, cwd: Path, slug: str | None,
+                        tool: str) -> tuple[str | None, bool]:
+    """What to SAY — and whether to REFUSE — about the repo a lock will claim.
+
+    Governance resolves the repo from the stamped payload. When the cwd is NOT a
+    git repo (``"no-repo"``) nothing is stamped and the server falls back to the
+    host-canonical slug with an empty ``repo_path``. That is benign only while the
+    caller is not changing files in this tree, which the CLI cannot know — so it
+    must not be silent. A lock tagged with another repo while the session worked
+    in a non-repo tree is the wrong-repo bug (Titus cycle 5742) with no signal at
+    all (kustos, 2026-10-13).
+
+    ``"unexpected"`` (git missing/hung/unreadable) stays FAIL-CLOSED for
+    ``begin_change`` — a decision (exit 1), not a crash (ADV-4479-1) — and is
+    reported for every other tool.
+    """
+    where = (f"'{slug}'" if slug
+             else "the host-canonical repo (its name could not be resolved)")
+    if status == "stamped":
+        return None, False
+    if status == "unexpected":
+        if tool == "begin_change":
+            return ("❌ Cannot begin: the cwd repo could not be resolved to stamp, and "
+                    "begin_change cannot safely fall back to the host-canonical repo. "
+                    "Run inside the repo or pass --repo <path>."), True
+        return (f"loop-gov: could not resolve the cwd repo at {cwd} (git missing, hung "
+                f"or unreadable) — nothing was stamped, so anything repo-scoped is "
+                f"tagged with {where}. Run inside the repo or pass --repo <path>."), False
+    return (f"loop-gov: {cwd} is not a git repo — nothing was stamped, so a lock "
+            f"opened here is tagged with {where} and its repo_path stays empty. "
+            f"If you are changing files in this tree, run from inside a repo or "
+            f"pass --repo <path>."), False
+
+
 def is_refusal(payload: dict, text: str) -> bool:
     """Governance decisions arrive as content, not exceptions.
 
@@ -277,16 +323,23 @@ def main() -> int:
     # repo locks the host-canonical repo (Titus cycle 5742) and the close gate
     # refuses forever.
     payload, _stamp_status = _stamp_repo_into_payload(payload, Path.cwd())
-    if _stamp_status == "unexpected" and a.tool == "begin_change":
+    note, fatal = _repo_identity_note(
+        _stamp_status, Path.cwd(), _canonical_slug(mod), a.tool)
+    if note:
+        # A fatal note is the caller-visible DECISION — stdout, the stream it used
+        # before this change. A non-fatal one is a diagnostic about the
+        # environment, so it goes to stderr and leaves stdout as the tool contract.
+        if fatal:
+            print(note)
+        else:
+            print(note, file=sys.stderr)
+    if fatal:
         # ADV-4479-1: fail CLOSED for the repo-scoped tool. An unresolvable cwd
         # repo (git missing/hung/unreadable) must not proceed with an unstamped
         # payload that _derive_slug would tag with the host-canonical repo —
         # recreating the exact wrong-repo lock. This is a refusal (exit 1), not
         # a crash (exit 3): the caller did nothing wrong; governance must see a
         # decision it cannot bypass.
-        print("❌ Cannot begin: the cwd repo could not be resolved to stamp, and "
-              "begin_change cannot safely fall back to the host-canonical repo. "
-              "Run inside the repo or pass --repo <path>.")
         return 1
 
     handler = handler_for(mod, a.tool)

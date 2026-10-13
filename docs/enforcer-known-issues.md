@@ -10,6 +10,15 @@
 
 ## 1. `check_lock` reports "no active lock" while a valid, non-stale lock exists on disk
 
+> **FIXED 2026-10-13** — `_check_lock` now returns **every live lock on disk**
+> (`locks`, `live_lock_count`: task, session, agent, status, repo, heartbeat) beside the
+> session-scoped `active`/`lock`, and the tool description says so. A call with no session can
+> still resolve only its own lock, but it can no longer read as "no locks at all". Stale locks are
+> excluded and an unparseable (mid-write) file is skipped — reported as neither live nor deleted
+> (P1-A). Re-executable evidence: `docs/evidence/lock-truth-2026-10-13.txt` (a bare `check_lock`
+> naming a live foreign lock), tests `tests/test_lock_truth.py`. The diagnosis below is kept for
+> the record.
+
 **Symptom.** `mcp__loop_governance__check_lock` returns `{"active": false, "lock": null}` even
 though a `~/.hermes-cortex/state/.governance-*.json` lock file exists, is non-stale, and its
 task still has a PENDING cycle in the loop-governance DB. An agent (or the operator) reading
@@ -152,7 +161,7 @@ check's 24h rule or the >TTL purge finally classifies it.
 
 | # | Issue | Verified on | Root cause | Blocks writes? |
 |---|-------|-------------|-----------|----------------|
-| 1 | `check_lock` false "no lock" when another session holds a live lock | 2026-09-17 | `_check_lock` reads only this session's lock file | No (read-only diag) |
+| 1 | `check_lock` false "no lock" when another session holds a live lock | 2026-09-17 | `_check_lock` read only this session's lock file | No (read-only diag) — **FIXED 2026-10-13**: reports every live lock (`locks`/`live_lock_count`) |
 | 2 | Fresh orphan (dead session lock + PENDING cycle) invisible for full TTL | 2026-09-17 | Staleness = heartbeat age only; no liveness probe | Partially (silent leak ≥1h) |
 | 3 | Stale PID marker files never GC'd | 2026-09-17 | Legacy bridge written forever, never cleaned | No |
 | 4 | No single tool shows complete lock truth | 2026-09-17 | Observability layer not extended with session-scoped model | No |
@@ -160,6 +169,40 @@ check's 24h rule or the >TTL purge finally classifies it.
 | 6 | Skills gate passed with NO session id if any other session had a marker | 2026-09-23 | `_check_skills_loaded_marker()` no-session branch accepted any marker | Was FAIL-OPEN (now fixed: fails closed) |
 | 7 | Domain/adversarial skill credit vanished after every deploy | 2026-09-23 | Loaded-skill set lived only in process memory; plugin reload wiped it | Yes (re-blocked mid-task) — fixed via the credit journal |
 | 8 | "7/7 loaded ✅ but still blocked" after a deploy that changed no skill text | 2026-09-23 | `_skills_fingerprint()` hashed skill-file MTIMES, so a byte-identical redeploy moved the fingerprint, discarded the credit journal and invalidated the 7/7 marker | Yes — fixed: content-hash fingerprint + per-skill credit; the block message names the skills to reload |
+| 9 | A lock opened from a non-git-repo cwd is tagged with the host-canonical repo, silently | 2026-10-13 (kustos) | `loop-gov.py`'s `"no-repo"` stamp returned without a word | No — **FIXED 2026-10-13**: names the cwd, the repo it will claim, and both ways out (detail below the table) |
+
+---
+
+## 9. A lock opened from a non-git-repo cwd is tagged with the host-canonical repo, SILENTLY
+
+> **FIXED 2026-10-13.** Reported by kustos: his session's cwd `/home/app/mwi/koscap-mwi` is a
+> working copy, not a repo (`git status` is fatal there), and its lock came out with
+> `repo_slug: hermes-cortex` and an empty `repo_path`.
+
+**Symptom.** The lock names a repo the session never touched, and nothing anywhere says so. The
+only clue is the empty `repo_path`.
+
+**What happens.** `_stamp_repo_into_payload()` (ops/scripts/loop-gov.py) resolves the cwd's git
+root with `git rev-parse --show-toplevel` so the lock cannot claim another repo. When the cwd is
+genuinely not a repo the call returns rc≠0 → status `"no-repo"` → **nothing is stamped** → the
+server's `_derive_slug` falls to Priority 1, the host-canonical `~/hermes-cortex`, with
+`repo_path` left empty. The `"unexpected"` case (git missing/hung) already failed closed for
+`begin_change` (ADV-4479-1); the `"no-repo"` case printed **nothing at all**.
+
+**Why it mattered.** Benign only while the session changes nothing in that tree — which is what
+kustos reported, so nothing broke. But it is the wrong-repo bug (Titus cycle 5742) with the
+signal removed: a CLOSE would compose review material from `~/hermes-cortex`, a tree that cannot
+contain the work, and the cycle would be uncloseable — with no earlier indication why.
+
+**Fix (FIXED 2026-10-13).** `_repo_identity_note()` decides what to say and whether to refuse,
+and `main()` prints it: the `"no-repo"` note NAMES the cwd, the repo the lock will be tagged
+with (asked of the server's own `_derive_slug`, so the warning cannot drift from the fallback),
+and both ways out (`--repo <path>`, or run inside a repo). Non-fatal — the documented benign case
+stays usable — and it goes to stderr so the tool's stdout contract is untouched. `"unexpected"`
+still fails closed for `begin_change` (exit 1) and is now reported for every other tool too.
+Evidence: `docs/evidence/lock-truth-2026-10-13.txt` (a real non-repo cwd, git's own "fatal: not a
+git repository", and the note naming both the cwd and `'hermes-cortex'`). Tests:
+`tests/test_lock_truth.py`.
 
 ---
 
@@ -185,6 +228,8 @@ Exit 0 = the enforcer on this host behaves as documented.
 
 1. **`check_lock`** — scan all `.governance-*.json` and report every live lock (task, session,
    repo, age), not just this session's. Keep the session-scoped value but return the full picture.
+   **(DONE 2026-10-13** — `_live_locks()`; session-scoped `active`/`lock` unchanged, `locks` +
+   `live_lock_count` added to all three return shapes; evidence `docs/evidence/lock-truth-2026-10-13.txt`.)
 2. **Liveness probe** — in `_purge_stale_locks()` / `_resolve_orphaned_pending_cycles()`, treat a
    lock whose owning session has no live process/marker as orphanable immediately, instead of
    waiting out the TTL. At minimum, surface the orphan (WARN) rather than silence it.
