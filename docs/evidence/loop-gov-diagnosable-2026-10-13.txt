@@ -1,6 +1,6 @@
 Running: bash docs/evidence/verify-loop-gov-diagnosable.sh
 rc: 0
-when: 2026-10-13T00:44:57Z
+when: 2026-10-13T00:46:15Z
 
 == the wrapper's guard, case by case ==
     D: absent guard -> named, rc=78 ✓
@@ -29,11 +29,33 @@ when: 2026-10-13T00:44:57Z
   [fleet launcher sweep] rc=0
 
 == the DEPLOYED wrapper, on a HOME with no venv (what kustos saw) ==
-  loop-gov-mcp.sh: NO INTERPRETER at /home/esther/.hermes/cache/scratch/tmp.zC7AsRDG3Z/.hermes-cortex/venv/bin/python3
-    HOME=/home/esther/.hermes/cache/scratch/tmp.zC7AsRDG3Z  (paths are relative to HOME; a different HOME in the caller is a cause)
+  loop-gov-mcp.sh: NO INTERPRETER at /home/esther/.hermes/cache/scratch/tmp.LhgLTZPtmK/.hermes-cortex/venv/bin/python3
+    HOME=/home/esther/.hermes/cache/scratch/tmp.LhgLTZPtmK  (paths are relative to HOME; a different HOME in the caller is a cause)
     the fleet venv does not exist — nothing in this repo creates it
   rc=78 (78 = EX_CONFIG)
 
+== 7. the docs and controls a bounded review window cannot see ==
+  -- docs/troubleshooting.md, the lines that matter --
+  1097:**Read the error before you search.** On an `exec` line that message means the **executable**
+  1103:**Three causes, three fixes** — check in this order (lock-free, read-only):
+  1111:3. **Both present** → it is `$HOME`. Launchers resolve both paths relative to it, so a client
+  1126:`scripts/lib/require-fleet-venv.sh`, which names the missing piece and exits **78 (EX_CONFIG)**
+  changelog: 1135:| 1.9.0 | 2026-10-13 | Added "The fleet venv: a launcher dies with 'line N: No such file or directory'" — bash's exec message means the interpreter is missing; three causes with three fixes; the shared guard `scripts/lib/require-fleet-venv.sh`; the deploy now creates+fills an absent venv |
+  ✓ present: python3 -m venv ~/.hermes-cortex/venv
+  ✓ present: 78 (EX_CONFIG)
+  -- the DEPLOY really carries the self-heal (not the doc's word for it) --
+  ✓ cortex-update.sh: Created the fleet venv
+  ✓ cortex-update.sh: no usable bin/python3
+  -- the sweep's controls, BY NAME (not a tautology) --
+  47:def test_no_launcher_execs_the_fleet_venv_without_the_guard():
+  68:def test_the_known_launcher_is_guarded():
+  77:def test_the_sweep_would_catch_a_bare_exec():
+  86:def test_no_absolute_home_in_launcher_code():
+  -- the guard-missing branch, its actual message --
+  loop-gov-mcp: the venv guard is NOT DEPLOYED at /home/esther/.hermes/cache/scratch/tmp.BTTbZ5lAcb/.hermes-cortex/scripts/lib/require-fleet-venv.sh
+    HOME=/home/esther/.hermes/cache/scratch/tmp.BTTbZ5lAcb  (a different HOME in the caller is a cause)
+  rc=78
+
 FAILS: 0 — the verifier's own exit code follows (0 here means every claim held)
 ALL CLAIMS VERIFIED (0 failures)
-sha256: 72d73841847385ffd78bd128f3459a60551b423e1f0665fdb54c8580df49ea08
+sha256: 79d53efc49b6eb1eb287e68575de49055ac7a5e7bc2d878aebedf65c634178ea

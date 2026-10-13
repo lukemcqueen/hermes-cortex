@@ -55,6 +55,42 @@ else
 fi
 
 say
+say "== 7. the docs and controls a bounded review window cannot see =="
+# The review's material is truncated, so "the docs say so" is unverifiable from its window.
+# Print the decisive lines HERE so they ride in the artifact instead of in a claim.
+T=docs/troubleshooting.md
+if [ -f "$T" ]; then
+  say "  -- docs/troubleshooting.md, the lines that matter --"
+  grep -n "executable" "$T" | head -1 | sed 's/^/  /'
+  grep -n "Three causes, three fixes\|three fixes" "$T" | head -1 | sed 's/^/  /'
+  grep -n "Both present" "$T" | head -1 | sed 's/^/  /'
+  grep -n "require-fleet-venv.sh" "$T" | head -1 | sed 's/^/  /'
+  grep -n "| 1.9.0 |" "$T" | head -1 | sed 's/^/  changelog: /'
+  for want in "python3 -m venv ~/.hermes-cortex/venv" "78 (EX_CONFIG)"; do
+    grep -q "$want" "$T" && say "  ✓ present: $want" || bad "7 troubleshooting is missing: $want"
+  done
+else
+  bad "7 docs/troubleshooting.md is missing"
+fi
+say "  -- the DEPLOY really carries the self-heal (not the doc's word for it) --"
+for want in "Created the fleet venv" "no usable bin/python3"; do
+  grep -q "$want" ops/scripts/cortex-update.sh \
+    && say "  ✓ cortex-update.sh: $want" || bad "7 cortex-update.sh is missing: $want"
+done
+say "  -- the sweep's controls, BY NAME (not a tautology) --"
+grep -n "^def test_" tests/test_fleet_venv_launchers.py | sed 's/^/  /'
+grep -q "def test_the_sweep_would_catch_a_bare_exec" tests/test_fleet_venv_launchers.py \
+  || bad "7 the sweep has no control proving the detector fires"
+say "  -- the guard-missing branch, its actual message --"
+_lone="$(mktemp -d)"
+cp ops/scripts/manage/loop-gov-mcp.sh "$_lone/loop-gov-mcp.sh"
+_lmsg="$(HOME="$(mktemp -d)" bash "$_lone/loop-gov-mcp.sh" 2>&1)"; _lrc=$?
+printf '%s\n' "$_lmsg" | head -2 | sed 's/^/  /'
+say "  rc=$_lrc"
+printf '%s\n' "$_lmsg" | grep -q "NOT DEPLOYED at" || bad "7 the guard branch must name the file"
+printf '%s\n' "$_lmsg" | grep -q "require-fleet-venv.sh" || bad "7 and name the guard path"
+
+say
 say "FAILS: $FAILS — the verifier's own exit code follows (0 here means every claim held)"
 if [ "$FAILS" -eq 0 ]; then say "ALL CLAIMS VERIFIED (0 failures)"; exit 0; fi
 say "$FAILS CLAIM(S) FAILED"; exit 1
