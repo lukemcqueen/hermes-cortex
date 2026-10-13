@@ -1,0 +1,49 @@
+Running: bash -c "$0" ops/scripts/manage/mcp_wiring.py --orch; echo "--- deployed CLI (after deploy) ---"; "$0" ~/.hermes-cortex/scripts/mcp_wiring.py --orch; echo "--- doctor (repo copy) ---"; "$0" ops/scripts/manage/cortex-doctor.py 2>&1 | grep -iE "MCP (server|wiring)"; echo "--- tests ---"; "$0" -m pytest tests/test_mcp_wiring.py -q; echo "--- the DEPLOY reporting it (a real dogfood run, filtered) ---"; bash ~/.hermes-cortex/scripts/cortex-dogfood.sh --force 2>&1 | grep -iE "MCP wiring needs attention|doctor: (warnings|clean)|NO MCP|DOGFOOD PASSED" /home/esther/.hermes-cortex/venv/bin/python3
+rc: 0
+when: 2026-10-13T01:54:50Z
+
+config: /home/esther/.hermes/config.yaml
+  WARN agent-bus: registered against the HERMES venv (/home/esther/.hermes/hermes-agent/venv/bin/python3) — the tree the fleet is migrating off
+       fix: hermes mcp remove agent-bus && hermes mcp add agent-bus --command ~/.hermes-cortex/venv/bin/python3 --args ~/hermes-cortex/mcp-servers/cortex-bus-mcp.py   (there is no 'hermes mcp update'; re-add it)
+  WARN loop-governance: registered against the HERMES venv (/home/esther/.hermes/hermes-agent/venv/bin/python3) — the tree the fleet is migrating off
+       fix: hermes mcp remove loop-governance && hermes mcp add loop-governance --command ~/.hermes-cortex/venv/bin/python3 --args ~/hermes-cortex/mcp-servers/loop-gov-mcp.py   (there is no 'hermes mcp update'; re-add it)
+  WARN tasks: registered against the HERMES venv (/home/esther/.hermes/hermes-agent/venv/bin/python3) — the tree the fleet is migrating off
+       fix: hermes mcp remove tasks && hermes mcp add tasks --command ~/.hermes-cortex/venv/bin/python3 --args ~/hermes-cortex/mcp-servers/task-mcp.py   (there is no 'hermes mcp update'; re-add it)
+  WARN executor: registered against the HERMES venv (/home/esther/.hermes/hermes-agent/venv/bin/python3) — the tree the fleet is migrating off
+       fix: hermes mcp remove executor && hermes mcp add executor --command ~/.hermes-cortex/venv/bin/python3 --args ~/hermes-cortex/mcp-servers/executor-mcp.py   (there is no 'hermes mcp update'; re-add it)
+--- deployed CLI (after deploy) ---
+config: /home/esther/.hermes/config.yaml
+  WARN agent-bus: registered against the HERMES venv (/home/esther/.hermes/hermes-agent/venv/bin/python3) — the tree the fleet is migrating off
+       fix: hermes mcp remove agent-bus && hermes mcp add agent-bus --command ~/.hermes-cortex/venv/bin/python3 --args ~/hermes-cortex/mcp-servers/cortex-bus-mcp.py   (there is no 'hermes mcp update'; re-add it)
+  WARN loop-governance: registered against the HERMES venv (/home/esther/.hermes/hermes-agent/venv/bin/python3) — the tree the fleet is migrating off
+       fix: hermes mcp remove loop-governance && hermes mcp add loop-governance --command ~/.hermes-cortex/venv/bin/python3 --args ~/hermes-cortex/mcp-servers/loop-gov-mcp.py   (there is no 'hermes mcp update'; re-add it)
+  WARN tasks: registered against the HERMES venv (/home/esther/.hermes/hermes-agent/venv/bin/python3) — the tree the fleet is migrating off
+       fix: hermes mcp remove tasks && hermes mcp add tasks --command ~/.hermes-cortex/venv/bin/python3 --args ~/hermes-cortex/mcp-servers/task-mcp.py   (there is no 'hermes mcp update'; re-add it)
+  WARN executor: registered against the HERMES venv (/home/esther/.hermes/hermes-agent/venv/bin/python3) — the tree the fleet is migrating off
+       fix: hermes mcp remove executor && hermes mcp add executor --command ~/.hermes-cortex/venv/bin/python3 --args ~/hermes-cortex/mcp-servers/executor-mcp.py   (there is no 'hermes mcp update'; re-add it)
+--- doctor (repo copy) ---
+  ✅ MCP server (agent-bus) — configured in config.yaml
+  ⚠️  MCP wiring (agent-bus) — registered against the HERMES venv (/home/esther/.hermes/hermes-agent/venv/bin/python3) — the tree the fleet is migrating off
+  ✅ MCP server (loop-governance) — configured in config.yaml
+  ⚠️  MCP wiring (loop-governance) — registered against the HERMES venv (/home/esther/.hermes/hermes-agent/venv/bin/python3) — the tree the fleet is migrating off
+  ✅ MCP server (tasks) — configured in config.yaml
+  ⚠️  MCP wiring (tasks) — registered against the HERMES venv (/home/esther/.hermes/hermes-agent/venv/bin/python3) — the tree the fleet is migrating off
+  ✅ MCP server (executor) — configured in config.yaml
+  ⚠️  MCP wiring (executor) — registered against the HERMES venv (/home/esther/.hermes/hermes-agent/venv/bin/python3) — the tree the fleet is migrating off
+  ✅ Orphaned locks — 1 lock(s), MCP server active
+--- tests ---
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
+rootdir: /home/esther/hermes-cortex
+configfile: pytest.ini
+plugins: anyio-4.15.1
+collected 12 items
+
+tests/test_mcp_wiring.py ............                                    [100%]
+
+============================== 12 passed in 0.20s ==============================
+--- the DEPLOY reporting it (a real dogfood run, filtered) ---
+   [1;33m⚠[0m MCP wiring needs attention:
+   [1;33m⚠[0m doctor: warnings only (rc=1) — review the report above when convenient
+✅  DOGFOOD PASSED — deployed state verified clean.
+sha256: f66418a085e7ce8894741f9a2aefd60bbf0540cd3fdec5b401cae72e3948e007

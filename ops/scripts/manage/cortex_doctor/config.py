@@ -125,7 +125,12 @@ try:
 except (FileNotFoundError, OSError, IndexError):
     pass  # expected — silently handled
 EXPECTED_MCP_SERVERS = {
-    "cortex-bus": "cortex-bus-mcp.py",
+    # "agent-bus" is the key the fleet actually REGISTERS (pi's install-pi-mcp.sh and this
+    # host's config.yaml both use it). It was listed here as "cortex-bus" — which happens to
+    # appear in the args PATH (cortex-bus-mcp.py), so the name-in-config check passed for the
+    # wrong reason and `--fix` would have added a SECOND, wrongly-named server for the same
+    # script. 2026-10-13.
+    "agent-bus": "cortex-bus-mcp.py",
     "loop-governance": "loop-gov-mcp.py",
     "tasks": "task-mcp.py",
     "executor": "executor-mcp.py",
@@ -134,7 +139,7 @@ EXPECTED_MCP_SERVERS = {
 # MCP servers deployed only on orchestrator hosts (register_orch in
 # cortex-update.sh). The doctor must not FAIL non-orchestrator hosts for
 # missing these, and must not auto-add them via --fix.
-ORCH_ONLY_MCP_SERVERS = {"cortex-bus", "executor"}
+ORCH_ONLY_MCP_SERVERS = {"agent-bus", "executor"}
 
 # ── External services ───────────────────────────────────────────
 EXTERNAL_SERVICES = [

@@ -385,6 +385,9 @@ register "ops/scripts/manage/gateway-model-list.py"      "${CORTEX_DEPLOY_HOME}/
 # The venv repairer + the declared dependency set it reads: a host must be able to fix its
 # own ~/.hermes-cortex/venv without anyone reading the source to work out what belongs there.
 register "ops/scripts/manage/fix-cortex-venv.py"          "${CORTEX_DEPLOY_HOME}/scripts/fix-cortex-venv.py"
+# The MCP wiring audit: presence is not wiring — a registration pointing at a missing
+# venv/wrapper/script loads nothing and used to read as "configured".
+register "ops/scripts/manage/mcp_wiring.py"               "${CORTEX_DEPLOY_HOME}/scripts/mcp_wiring.py"
 register "ops/install/requirements.txt"                   "${CORTEX_DEPLOY_HOME}/install/requirements.txt"
 register "mcp-servers/task-mcp.py"                      "${CORTEX_DEPLOY_HOME}/scripts/task-mcp.py"
 register "mcp-servers/executor-mcp.py"                  "${CORTEX_DEPLOY_HOME}/scripts/executor-mcp.py"
@@ -3609,11 +3612,45 @@ except: print('error')
   # hashes against stale compiled bytecode instead of fresh
   # source, producing false-positive checksum mismatches.
   info "Clearing stale __pycache__ directories…"
-  find "${CORTEX_DEPLOY_HOME}/scripts" -type d -name "__pycache__" -prune -exec rm -rf {} + 2>/dev/null || true
+  # Report anything the cleanup could not remove instead of discarding stderr: a permission
+  # problem here means stale bytecode survives, which is the very thing this step prevents.
+  _pyc_err="$(find "${CORTEX_DEPLOY_HOME}/scripts" -type d -name "__pycache__" -prune \
+              -exec rm -rf {} + 2>&1 >/dev/null)" || true
+  if [[ -n "$_pyc_err" ]]; then
+    warn "pycache cleanup: ${_pyc_err}"
+  fi
+
+  # ── Are the MCP registrations actually WIRED? ───────────────
+  # Printed, never auto-rewritten: a registration the operator chose is theirs to change, but a
+  # host whose servers point at the Hermes venv (or at paths that no longer exist) must hear it
+  # here rather than discovering it as missing tools. Non-fatal: the deploy's job is to report.
+  _mcp_audit="${CORTEX_DEPLOY_HOME}/scripts/mcp_wiring.py"
+  if [[ -n "${_fleet_venv:-}" && -x "${_fleet_venv:-}" && -f "$_mcp_audit" ]]; then
+    _mcp_out="$("$_fleet_venv" "$_mcp_audit" --orch 2>&1)"; _mcp_rc=$?
+    if [[ $_mcp_rc -ne 0 ]] || printf '%s' "$_mcp_out" | grep -q "WARN"; then
+      warn "MCP wiring needs attention:"
+      printf '%s\n' "$_mcp_out" | sed 's/^/  /'
+      info "  (fixes are printed per server; restart the MCP client afterwards)"
+    fi
+  fi
 
   # ── Auto-run doctor after update ─────────────────────────
   info "Running doctor to verify installation…"
-  python3 "${CORTEX_DEPLOY_HOME}/scripts/cortex-doctor.py" --quiet 2>&1 || true
+  # The doctor's exit code carries meaning: 2 = failures, 1 = warnings only, 0 = clean. A
+  # deploy that ends with failures must not report success, but warnings are the normal state of
+  # a working host, so the code is captured and acted on rather than discarded with `|| true`.
+  set +e
+  python3 "${CORTEX_DEPLOY_HOME}/scripts/cortex-doctor.py" --quiet 2>&1 | sed 's/^/  /'
+  _doc_rc=${PIPESTATUS[0]}
+  set -e
+  if [[ $_doc_rc -eq 2 ]]; then
+    error "doctor reports FAILURES after this update (rc=2) — see the report above"
+    exit 2
+  elif [[ $_doc_rc -eq 1 ]]; then
+    warn "doctor: warnings only (rc=1) — review the report above when convenient"
+  else
+    info "doctor: clean (rc=0)"
+  fi
 
   # ── Deferred DB-migration failures: loud, but AFTER the critical sync ──
   # Everything that keeps the enforcement chain honest (file sync, enforcer

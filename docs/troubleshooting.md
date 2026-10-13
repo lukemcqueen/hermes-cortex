@@ -1135,12 +1135,52 @@ Both patterns are now covered by `tests/test_fleet_venv_launchers.py`, which fai
 a hardcoded `/Users/<name>/` path, on `$HOME` in `ProgramArguments` without `/bin/bash -lc`, or
 on a plist that does not parse.
 
+## An MCP server's tools are missing from the catalog
+
+**Symptom** (kustos, 2026-10-13): the agent has no `loop-governance` tools at all, while
+`config.yaml` looks configured.
+
+**"Configured" is not "working".** A registration starts a server only if the command AND its
+argument script exist, and the command can import `mcp`. The doctor used to check the server's
+NAME only — and a name can match a *filename* in the args, so a dead registration read
+`PASS`. It now reports `MCP wiring (<name>)`, which verifies the paths and the interpreter.
+
+**Check, in this order** (read-only; nothing below changes state):
+
+```bash
+python3 ~/hermes-cortex/ops/scripts/manage/mcp_wiring.py     # paths + interpreter per server
+hermes mcp list                                              # what THIS host registers
+ls -l ~/.hermes-cortex/venv/bin/python3 ~/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py
+```
+
+**Fix by branch**
+
+| What the check says | Fix |
+|---|---|
+| the entry is missing | `hermes mcp add <name> --command ~/.hermes-cortex/venv/bin/python3 --args ~/hermes-cortex/mcp-servers/<script>` |
+| paths do NOT exist | deploy them: `bash ~/hermes-cortex/ops/scripts/cortex-update.sh`, then re-check |
+| the fleet venv cannot import `mcp` | `~/.hermes-cortex/venv/bin/python3 ~/.hermes-cortex/scripts/fix-cortex-venv.py` |
+| command is the HERMES venv or a bare `python3` | `hermes mcp remove <name> && hermes mcp add <name> --command ~/.hermes-cortex/venv/bin/python3 --args ~/hermes-cortex/mcp-servers/<script>` |
+
+There is **no `hermes mcp update`** — `hermes mcp` offers `add`/`remove`/`list`/`test`/
+`configure` (checked 2026-10-13), so a wrong interpreter is fixed by removing and re-adding the
+entry. `hermes mcp test <name>` starts the server and reports whether it connects, which is the
+closest thing to "do its tools appear?" without restarting the client.
+
+Then **restart the MCP client/gateway** — registrations are read at startup, so a repaired entry
+does not appear until the process restarts.
+
+**If the entry points at a wrapper** (e.g. `~/.hermes/scripts/loop-gov-mcp.sh`), the wrapper half
+is covered by the entry above: it names the missing piece and exits 78 instead of dying with
+bash's generic `No such file or directory`.
+
 ## Changelog
 
 | Version | Date | Changes |
 |---|---|---|
 | 1.8.0 | 2026-10-03 | Added #24 (governance-auditor immutable-flag false positive inside a deploy's unlock window; deploy-in-progress marker) |
 | 1.9.0 | 2026-10-13 | Added "The fleet venv: a launcher dies with 'line N: No such file or directory'" — bash's exec message means the interpreter is missing; three causes with three fixes; the shared guard `scripts/lib/require-fleet-venv.sh`; the deploy now creates+fills an absent venv |
+| 1.10.0 | 2026-10-13 | Added "An MCP server's tools are missing from the catalog" (kustos: `No loop-governance MCP tools`) — configured is not wired; `mcp_wiring.py` verifies the registered paths and the interpreter, the doctor reports `MCP wiring (<name>)`, and its server map no longer calls `agent-bus` by the wrong name |
 | 1.7.0 | 2026-07-13 | Added #23 (scoring-activity-watchdog DB path fix), corrected 17 stale `state/`→`data/` references across docs and core governance scripts, fixed MCP lock file sync to prevent enforcer gaps |
 | 1.5.0 | 2026-06-22 | Added #24 (Alembic migration fork troubleshooting, prevention protocol, diagnostics) |
 | 1.4.0 | 2026-06-10 | Rewrote #23 (Langfuse costs) — fixed schema from `langfuse.models` to `public.models`, corrected INSERT SQL for v3 schema, added opencode-zen/opencode-go provider subsection with deepseek-v4-flash-free pricing SQL |

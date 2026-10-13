@@ -2933,6 +2933,24 @@ def check_governance(res):
 
   # ── MCP servers ──
   is_orch = AGENT_ROLE == "orchestrator"
+  # Presence is NOT wiring (2026-10-13, kustos: "No loop-governance MCP tools in catalog"
+  # while this check said PASS — it only looked for the NAME). The wiring audit verifies the
+  # registered command and argument paths exist, and warns when a command still points into
+  # the Hermes venv. Loaded by path, like the loop-gov probe above.
+  try:
+    import importlib.util as _ilu_mw
+    _mw_spec = _ilu_mw.spec_from_file_location(
+        "mcp_wiring_for_doctor", CORTEX_REPO / "ops" / "scripts" / "manage" / "mcp_wiring.py")
+    _mw = _ilu_mw.module_from_spec(_mw_spec)
+    _mw_spec.loader.exec_module(_mw)
+  except Exception as _mw_err:        # a broken audit must not kill the doctor…
+    _mw = None
+    # …but it must NOT be silent either: skipping the check quietly is the same failure mode
+    # this whole audit exists to remove (a check that cannot run reads as "nothing wrong").
+    res.add("MCP wiring audit", "WARN",
+        f"unavailable: {type(_mw_err).__name__}: {str(_mw_err)[:120]}",
+        "COULD NOT VERIFY the MCP wiring — restore ops/scripts/manage/mcp_wiring.py "
+        "(cortex-update.sh deploys it to scripts/mcp_wiring.py)")
   for name, server_script in EXPECTED_MCP_SERVERS.items():
     # Orchestrator-only MCP servers (register_orch in cortex-update.sh) are
     # expected only on orchestrator hosts. On other hosts, absence is correct
@@ -2955,24 +2973,23 @@ def check_governance(res):
 
     res.add(f"MCP server ({name})", "PASS", "configured in config.yaml")
 
-    if name == "loop-governance":
-      cmd_match = re.search(
-        rf"{re.escape(name)}.*?command:\s*(\S+)",
-        config_text, re.DOTALL,
-      )
-      if cmd_match:
-        cmd = cmd_match.group(1)
-        if "venv" in cmd and "python3" in cmd:
-          res.add(f"MCP Python ({name})", "PASS", f"uses venv: {cmd}")
-        elif "python3" in cmd:
-          venv_python = CORTEX_HOME / "venv" / "bin" / "python3"
-          if venv_python.exists():
-            res.add(f"MCP Python ({name})", "WARN",
-                f"uses bare python3 (expected venv)",
-                f"Run: hermes mcp update {name} --command {venv_python}")
-          else:
-            res.add(f"MCP Python ({name})", "WARN",
-                f"uses python3 but venv not found at {venv_python}")
+    # …but is it WIRED? The paths must still exist or the tools never appear.
+    if _mw is not None:
+      for _n, _status, _detail, _fix in _mw.audit(config_text, {name: server_script},
+                                                  is_orch=is_orch):
+        if _status == "FAIL":
+          res.add(f"MCP wiring ({name})",
+                  "FAIL" if (is_orch or name not in ORCH_ONLY_MCP_SERVERS) else "WARN",
+                  _detail, _fix)
+        elif _status == "WARN":
+          res.add(f"MCP wiring ({name})", "WARN", _detail, _fix)
+
+    # The interpreter verdict for every expected server now comes from the wiring audit above
+    # (fleet venv = PASS, bare command or the Hermes venv = WARN with the fix). The old check
+    # here passed ANY command containing "venv" plus "python3" — so it reported the HERMES venv
+    # as "uses venv" while the wiring audit warned about the same line: two lines per server that
+    # CONTRADICTED each other. The presence line stays (it is informational — "the entry exists");
+    # the wiring line is the one that judges the interpreter, so nothing disagrees now.
 
   # ── Pre-commit hook ──
   expected_hook_path = hooks_dir / "pre-commit"

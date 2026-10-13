@@ -1,0 +1,22 @@
+Running: bash -c hermes mcp --help 2>&1 | head -14; echo "--- so the fix for a wrong interpreter is remove+add, NOT update ---"; hermes mcp update loop-governance --command /bin/true 2>&1 | head -3
+rc: 0
+when: 2026-10-13T01:55:42Z
+
+usage: hermes mcp [-h] [--accept-hooks]
+                  {serve,add,remove,rm,list,ls,test,configure,config,login,reauth,picker,catalog,install} ...
+
+Manage MCP server connections and run Hermes as an MCP server. MCP servers
+provide additional tools via the Model Context Protocol. Use 'hermes mcp add'
+to connect to a new server, or 'hermes mcp serve' to expose Hermes
+conversations over MCP.
+
+positional arguments:
+  {serve,add,remove,rm,list,ls,test,configure,config,login,reauth,picker,catalog,install}
+    serve               Run Hermes as an MCP server (expose conversations to
+                        other agents)
+    add                 Add an MCP server (discovery-first install)
+    remove (rm)         Remove an MCP server
+--- so the fix for a wrong interpreter is remove+add, NOT update ---
+hermes mcp: 'update' is not a `hermes mcp` command.
+Run `hermes mcp --help` to see all commands.
+sha256: 867c31007d2b95e0a53ca2b7e657fcea6a59d3410efd12863c9edfa0f2a13cda
