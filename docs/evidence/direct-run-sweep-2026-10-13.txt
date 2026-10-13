@@ -1,0 +1,40 @@
+Running: cat docs/evidence/direct-run-sweep-2026-10-13.raw.txt
+rc: 0
+when: 2026-10-13T06:08:42Z
+
+### A. the class sweep: every direct run of a python file in the repo
+
+============================== 1 passed in 1.12s ===============================
+
+### B. what the bare interpreter IS in this session, and what the arbiter returns
+bash resolves python3 to: /home/esther/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3
+python3 -c "import yaml" -> ModuleNotFoundError: No module named 'yaml'
+  rc=0
+arbiter --print yaml -> /home/esther/.hermes-cortex/venv/bin/python3
+
+### C. the OLD evidence script (HEAD, bare python3) on this session:
+=== C. SOUL.md evaluation (cortex-doctor) ===
+  skill drift (doctor):
+### D. the FIXED evidence script, same session:
+=== C. SOUL.md evaluation (cortex-doctor) ===
+    ✅ SOUL.md canonical 12 (~/.hermes) — all 12 canonical principles present
+    ✅ SOUL.md local principles (~/.hermes) — 4 local principle(s) — allowed (≤12, generic, non-duplicating)
+    ✅ SOUL.md template sync (~/.hermes)
+
+### E. syntax
+bootstrap.sh OK
+evidence script OK
+
+### F. the same import, rc captured BARE (line 8 above was a pipeline tail — its rc is tailrc, not the import)
+# CORRECTED: this line printed head's rc, not the import's — the same mistake in miniature that
+# the whole cycle is about. Superseded by G below, which captures the status without a pipe.
+python3 -c "import yaml": Traceback (most recent call last):
+fleet venv -c "import yaml": rc=0
+
+### G. the status, captured WITHOUT a pipe (no head, no tail, no grep between)
+bare python3 rc=1
+  Traceback (most recent call last):
+  ModuleNotFoundError: No module named 'yaml'
+fleet venv rc=0
+arbiter-built command rc=0
+sha256: 212964905061bb3cf5d158b25bbef8edf5de91b9efb2023cd2496017a229c37c

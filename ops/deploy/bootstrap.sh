@@ -608,9 +608,18 @@ sleep 3
 # Run doctor
 info "Running cortex-doctor.py..."
 cd "$CORTEX_REPO"
-sudo -u "$REAL_USER" HOME="$REAL_HOME" \
-    python3 ops/scripts/manage/cortex-doctor.py --quiet 2>&1 | \
+# Resolve the interpreter by CAPABILITY, not by PATH. cortex-doctor.py imports yaml, and a bare
+# `python3` on a host like this one may not have it — the agent session even puts a Hermes tools
+# python ahead of /usr/bin on PATH. At bootstrap time the fleet venv may not exist yet, so ask
+# the shared resolver; if nothing here can import yaml, say COULD NOT VERIFY instead of letting
+# the doctor die with an ImportError that reads like a broken host (2026-10-13).
+_DOCTOR_PY="$(bash "$CORTEX_REPO/ops/scripts/lib/python-with-module.sh" --print yaml 2>/dev/null || true)"
+if [[ -n "$_DOCTOR_PY" ]]; then
+  sudo -u "$REAL_USER" HOME="$REAL_HOME" "$_DOCTOR_PY" ops/scripts/manage/cortex-doctor.py --quiet 2>&1 | \
     while IFS= read -r line; do printf "    %s\n" "$line"; done
+else
+  warn "cortex-doctor needs yaml and no interpreter on this host can import it — skipped (COULD NOT VERIFY)"
+fi
 
 # Check key endpoints
 echo ""
