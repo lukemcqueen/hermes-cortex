@@ -83,3 +83,48 @@ so 'unresponsive' was absent from its JSON and its stderr line never fired. Rebu
   rc of the run: 0
 
 (container removed)
+
+== PROVENANCE + the test that pins the unresponsive parsing ==
+Sections 1-2 (the sweep and the limiter check) are produced by measure.sh, committed beside
+this file - re-run it to reproduce them. The APPENDIX runs are hand-run against a live instance
+and are marked as such where they appear.
+
+-- the test, in the committed source (line number for cross-checking):
+    149:    fn unresponsive_engines_are_surfaced_in_both_shapes() {
+-- and it runs:
+    test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 22 filtered out; finished in 0.00s
+    test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 4 filtered out; finished in 0.00s
+
+-- the full test inventory (names, not just counts):
+    cache::tests::hostile_page_text_cannot_break_the_cache
+    cache::tests::re_storing_a_url_refreshes_it_instead_of_duplicating_it
+    cache::tests::round_trip_stores_and_finds_a_page
+    cache::tests::the_cache_is_available_with_no_external_binary
+    fetcher::tests::urlencode_handles_the_characters_queries_actually_contain
+    htmltext::tests::an_unterminated_tag_does_not_panic_and_does_not_duplicate_text
+    htmltext::tests::comments_are_dropped
+    htmltext::tests::entities_and_whitespace_are_normalised
+    htmltext::tests::script_and_style_bodies_never_reach_the_text
+    mcp::tests::a_failing_tool_is_an_error_not_an_empty_result
+    mcp::tests::an_unknown_method_is_a_protocol_error_not_a_crash
+    mcp::tests::initialize_announces_the_tools_capability
+    mcp::tests::tools_list_is_generated_from_the_operations_table
+    ops::tests::a_page_with_no_title_gets_none_rather_than_an_empty_string
+    ops::tests::every_operation_is_advertised_once_with_the_args_it_takes
+    ops::tests::extracts_a_title_and_normalises_its_whitespace
+    ops::tests::hints_name_the_variable_that_unlocks_web_search
+    provider::tests::a_wrong_shape_is_reported_as_a_shape_problem_not_an_empty_result
+    provider::tests::no_provider_is_its_own_error
+    provider::tests::parses_a_searxng_response_and_skips_unfollowable_results
+    provider::tests::respects_the_limit
+    provider::tests::unresponsive_engines_are_surfaced_in_both_shapes
+    doctor_works_with_no_external_binary_and_reports_the_engine
+    fetch_then_local_search_round_trips_over_a_real_http_server
+    mcp_over_stdio_answers_initialize_and_advertises_three_tools
+    search_without_a_provider_exits_3_and_says_so_on_stderr
+
+-- CORRECTION: the run above used the BARE name with --exact, which matches nothing (a test's
+   filter needs its FULL path). With the full path:
+    test provider::tests::unresponsive_engines_are_surfaced_in_both_shapes ... ok
+    test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 21 filtered out; finished in 0.01s
+    test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 4 filtered out; finished in 0.00s
