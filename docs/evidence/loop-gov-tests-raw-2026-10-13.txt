@@ -1,0 +1,33 @@
+Running: /home/esther/.hermes-cortex/venv/bin/python3 -m pytest tests/test_loop_gov_wrapper_guard.py tests/test_fleet_venv_check_block.py tests/test_fleet_venv_launchers.py tests/test_fleet_templates.py -v --tb=short
+rc: 0
+when: 2026-10-13T00:55:15Z
+
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0 -- /home/esther/.hermes-cortex/venv/bin/python3
+cachedir: .pytest_cache
+rootdir: /home/esther/hermes-cortex
+configfile: pytest.ini
+plugins: anyio-4.15.1
+collecting ... collected 18 items
+
+tests/test_loop_gov_wrapper_guard.py::test_missing_interpreter_is_named_with_its_home_and_the_fix PASSED [  5%]
+tests/test_loop_gov_wrapper_guard.py::test_missing_server_points_at_the_deploy PASSED [ 11%]
+tests/test_loop_gov_wrapper_guard.py::test_the_happy_path_still_execs_with_arguments PASSED [ 16%]
+tests/test_loop_gov_wrapper_guard.py::test_a_missing_guard_is_named_too PASSED [ 22%]
+tests/test_loop_gov_wrapper_guard.py::test_the_wrapper_carries_no_absolute_home PASSED [ 27%]
+tests/test_fleet_venv_check_block.py::test_an_absent_venv_is_created_then_judged PASSED [ 33%]
+tests/test_fleet_venv_check_block.py::test_a_pruned_venv_is_not_overwritten_and_is_reported PASSED [ 38%]
+tests/test_fleet_venv_check_block.py::test_an_absent_venv_with_a_fixer_converges_clean PASSED [ 44%]
+tests/test_fleet_venv_check_block.py::test_a_partial_venv_without_the_fixer_still_defers PASSED [ 50%]
+tests/test_fleet_venv_check_block.py::test_a_healthy_venv_defers_nothing PASSED [ 55%]
+tests/test_fleet_venv_launchers.py::test_no_launcher_execs_the_fleet_venv_without_the_guard PASSED [ 61%]
+tests/test_fleet_venv_launchers.py::test_the_known_launcher_is_guarded PASSED [ 66%]
+tests/test_fleet_venv_launchers.py::test_the_sweep_would_catch_a_bare_exec PASSED [ 72%]
+tests/test_fleet_venv_launchers.py::test_no_absolute_home_in_launcher_code PASSED [ 77%]
+tests/test_fleet_templates.py::test_no_template_hardcodes_a_user_home PASSED [ 83%]
+tests/test_fleet_templates.py::test_a_template_using_HOME_goes_through_a_shell PASSED [ 88%]
+tests/test_fleet_templates.py::test_every_plist_template_parses PASSED   [ 94%]
+tests/test_fleet_templates.py::test_shipped_shell_is_bash_32_safe PASSED [100%]
+
+============================== 18 passed in 7.51s ==============================
+sha256: e8387ca8c25d1eadaa0cfbf92ed9f0ef4f0882b6822022e21cba9b545a498e94

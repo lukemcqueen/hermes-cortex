@@ -1,6 +1,6 @@
 Running: bash docs/evidence/verify-loop-gov-diagnosable.sh
 rc: 0
-when: 2026-10-13T00:53:46Z
+when: 2026-10-13T00:55:33Z
 
 == the wrapper's guard, case by case ==
     D: absent guard -> named, rc=78 ✓
@@ -21,20 +21,20 @@ when: 2026-10-13T00:53:46Z
   [fleet venv check block] rc=0
 
 == the CLASS: no launcher may bare-exec the fleet venv ==
-    5 template(s) expand $HOME through a shell ✓
-    5 plist template(s) parse, with a Label and ProgramArguments ✓
     no absolute home in launcher/guard code ✓
     every launcher that execs the fleet venv goes through the guard ✓
-    no template hardcodes /Users/<name>/ or /home/<name>/ ✓
-    6 shipped shell file(s) are bash 3.2 safe ✓
     loop-gov-mcp.sh sources and calls the guard ✓
     a bare exec is detected as an offender ✓
-  RESULT: ALL PASS (8 tests)
-  [fleet launcher sweep] rc=0
+  RESULT: ALL PASS (4 tests)
+    5 template(s) expand $HOME through a shell ✓
+    5 plist template(s) parse, with a Label and ProgramArguments ✓
+    no template hardcodes /Users/<name>/ or /home/<name>/ ✓
+    6 shipped shell file(s) are bash 3.2 safe ✓
+  RESULT: ALL PASS (4 tests)
 
 == the DEPLOYED wrapper, on a HOME with no venv (what kustos saw) ==
-  loop-gov-mcp.sh: NO INTERPRETER at /home/esther/.hermes/cache/scratch/tmp.X32PzK6jZy/.hermes-cortex/venv/bin/python3
-    HOME=/home/esther/.hermes/cache/scratch/tmp.X32PzK6jZy  (paths are relative to HOME; a different HOME in the caller is a cause)
+  loop-gov-mcp.sh: NO INTERPRETER at /home/esther/.hermes/cache/scratch/tmp.wQjbQ8P4qq/.hermes-cortex/venv/bin/python3
+    HOME=/home/esther/.hermes/cache/scratch/tmp.wQjbQ8P4qq  (paths are relative to HOME; a different HOME in the caller is a cause)
     the fleet venv does not exist — nothing in this repo creates it
   rc=78 (78 = EX_CONFIG)
 
@@ -58,17 +58,13 @@ when: 2026-10-13T00:53:46Z
     first row: 14:| `cortex-gateway.service` | `cortex-gateway.service` | the decoupled messaging gateway daemon (`cortex_gateway/daemon.py`) | No Hermes dependency and no unit dependency on the Hermes gateway — that independence is the point. `ExecStartPre` runs `guard_distinct_token.py`, which fails CLOSED if the config's token resolves to the live bot token. Config `%h/.hermes-cortex/gateway.yaml`; env from `%h/hermes-cortex/.env`. |
     references the guard: 1
   -- the sweep's controls, BY NAME (not a tautology) --
-  50:def test_no_launcher_execs_the_fleet_venv_without_the_guard():
-  71:def test_the_known_launcher_is_guarded():
-  80:def test_the_sweep_would_catch_a_bare_exec():
-  89:def test_no_absolute_home_in_launcher_code():
-  113:def test_no_template_hardcodes_a_user_home():
-  126:def test_a_template_using_HOME_goes_through_a_shell():
-  144:def test_every_plist_template_parses():
-  177:def test_shipped_shell_is_bash_32_safe():
+  40:def test_no_launcher_execs_the_fleet_venv_without_the_guard():
+  60:def test_the_known_launcher_is_guarded():
+  68:def test_the_sweep_would_catch_a_bare_exec():
+  77:def test_no_absolute_home_in_launcher_code():
   -- the guard-missing branch, its actual message --
-  loop-gov-mcp: the venv guard is NOT DEPLOYED at /home/esther/.hermes/cache/scratch/tmp.EbUpG7am47/.hermes-cortex/scripts/lib/require-fleet-venv.sh
-    HOME=/home/esther/.hermes/cache/scratch/tmp.EbUpG7am47  (a different HOME in the caller is a cause)
+  loop-gov-mcp: the venv guard is NOT DEPLOYED at /home/esther/.hermes/cache/scratch/tmp.qMjBhUhMrK/.hermes-cortex/scripts/lib/require-fleet-venv.sh
+    HOME=/home/esther/.hermes/cache/scratch/tmp.qMjBhUhMrK  (a different HOME in the caller is a cause)
   rc=78
 
 == 8. per-test outcomes (pytest -v), so the artifact is not self-referential ==
@@ -84,46 +80,19 @@ when: 2026-10-13T00:53:46Z
   tests/test_fleet_venv_check_block.py::test_an_absent_venv_with_a_fixer_converges_clean PASSED [ 60%]
   tests/test_fleet_venv_check_block.py::test_a_partial_venv_without_the_fixer_still_defers PASSED [ 80%]
   tests/test_fleet_venv_check_block.py::test_a_healthy_venv_defers_nothing PASSED [100%]
-  ============================== 5 passed in 6.44s ===============================
+  ============================== 5 passed in 6.27s ===============================
   [tests/test_fleet_venv_check_block.py] pytest rc=0
-  tests/test_fleet_venv_launchers.py::test_no_launcher_execs_the_fleet_venv_without_the_guard PASSED [ 12%]
-  tests/test_fleet_venv_launchers.py::test_the_known_launcher_is_guarded PASSED [ 25%]
-  tests/test_fleet_venv_launchers.py::test_the_sweep_would_catch_a_bare_exec PASSED [ 37%]
-  tests/test_fleet_venv_launchers.py::test_no_absolute_home_in_launcher_code PASSED [ 50%]
-  tests/test_fleet_venv_launchers.py::test_no_template_hardcodes_a_user_home PASSED [ 62%]
-  tests/test_fleet_venv_launchers.py::test_a_template_using_HOME_goes_through_a_shell PASSED [ 75%]
-  tests/test_fleet_venv_launchers.py::test_every_plist_template_parses PASSED [ 87%]
-  tests/test_fleet_venv_launchers.py::test_shipped_shell_is_bash_32_safe PASSED [100%]
-  ============================== 8 passed in 0.50s ===============================
+  tests/test_fleet_venv_launchers.py::test_no_launcher_execs_the_fleet_venv_without_the_guard PASSED [ 25%]
+  tests/test_fleet_venv_launchers.py::test_the_known_launcher_is_guarded PASSED [ 50%]
+  tests/test_fleet_venv_launchers.py::test_the_sweep_would_catch_a_bare_exec PASSED [ 75%]
+  tests/test_fleet_venv_launchers.py::test_no_absolute_home_in_launcher_code PASSED [100%]
+  ============================== 4 passed in 0.46s ===============================
   [tests/test_fleet_venv_launchers.py] pytest rc=0
 
 == 9. the implementation, printed from the FILES (the diff window truncates) ==
   -- the bash-3.2 rule and the path regex, as stored --
-    33:ABS_HOME = re.compile(r"/(?:home|Users)/[A-Za-z][A-Za-z0-9._-]*/")
-    163:def _load_shipped_shell():
-    164-    """The shell this repo ships for OTHER hosts to run: launchers, the guard, verifiers.
-    165-    (cortex-update.sh is excluded — it re-execs brew bash >=4 on macOS by design.)"""
-    166-    rels = [
-    167-        "ops/scripts/lib/require-fleet-venv.sh",
-    168-        "ops/scripts/lib/python-with-module.sh",
-    169-        "ops/scripts/manage/loop-gov-mcp.sh",
-    177:def test_shipped_shell_is_bash_32_safe():
-    178-    """macOS ships bash 3.2 — Titus's host. A bash-4-only construct (declare -A, mapfile,
-    179-    ${var,,}) dies there with 'invalid option' or 'command not found' on a host we cannot
-    180-    test on. These files are meant to run anywhere, so they stay inside 3.2's language."""
-    181-    patterns = [
-    182-        (re.compile(r"\bdeclare\s+-A\b"), "declare -A (bash 4+)"),
-    183-        (re.compile(r"\b(mapfile|readarray)\b"), "mapfile/readarray (bash 4+)"),
-    184-        (re.compile(r"\$\{[A-Za-z_][A-Za-z0-9_]*,,|\$\{[A-Za-z_][A-Za-z0-9_]*\^\^"),
-    185-         "${var,,} case conversion (bash 4+)"),
-    182:        (re.compile(r"\bdeclare\s+-A\b"), "declare -A (bash 4+)"),
-    183:        (re.compile(r"\b(mapfile|readarray)\b"), "mapfile/readarray (bash 4+)"),
-    184:        (re.compile(r"\$\{[A-Za-z_][A-Za-z0-9_]*,,|\$\{[A-Za-z_][A-Za-z0-9_]*\^\^"),
-    186:        (re.compile(r"&>>"), "&>> redirect (bash 4+)"),
+    23:ABS_HOME = re.compile(r"/(?:home|Users)/[A-Za-z][A-Za-z0-9._-]*/")
   -- the plist rules, as stored --
-    113:def test_no_template_hardcodes_a_user_home():
-    126:def test_a_template_using_HOME_goes_through_a_shell():
-    144:def test_every_plist_template_parses():
   -- Titus's plist: BEFORE and AFTER (the diff is bounded; this is the change) --
     BEFORE:     <key>ProgramArguments</key>
     BEFORE:     <array>
@@ -140,4 +109,4 @@ when: 2026-10-13T00:53:46Z
 
 FAILS: 0 — the verifier's own exit code follows (0 here means every claim held)
 ALL CLAIMS VERIFIED (0 failures)
-sha256: 67433c9a7f47dcf34ff65146095b06ae18e8433aa5a9f4aeb8c8de224c36f1ec
+sha256: 2953f96b2ffc2f9e565b57204f81bf4480dbab78412ba2360a1fb72f61050cc7

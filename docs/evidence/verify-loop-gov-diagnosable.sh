@@ -34,10 +34,11 @@ say "  [fleet venv check block] rc=$rc"
 
 say
 say "== the CLASS: no launcher may bare-exec the fleet venv =="
-out="$("$PY" tests/test_fleet_venv_launchers.py 2>&1)"; rc=$?
-printf '%s\n' "$out" | sed 's/^/  /'
-say "  [fleet launcher sweep] rc=$rc"
-[ "$rc" = 0 ] || bad "the fleet launcher sweep"
+for f in tests/test_fleet_venv_launchers.py tests/test_fleet_templates.py; do
+  out="$("$PY" "$f" 2>&1)"; rc=$?
+  printf '%s\n' "$out" | sed 's/^/  /'
+  [ "$rc" = 0 ] || bad "the sweep: $f"
+done
 
 say
 say "== the DEPLOYED wrapper, on a HOME with no venv (what kustos saw) =="
