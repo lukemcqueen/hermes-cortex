@@ -3436,6 +3436,43 @@ def _review_fingerprint(material: str) -> str:
     return hashlib.sha256(material.encode("utf-8", "replace")).hexdigest()
 
 
+def _build_review_material(p: dict) -> tuple[str, str]:
+    """``(material_for_the_prompt, artifact_key)`` — and the KEY excludes the worker's note.
+
+    The key decides whether a stored verdict can be reused. When it covered the whole material, a
+    re-worded NOTE bought a fresh review of an unchanged diff — which is the most expensive way to
+    change nothing. Measured 2026-10-13: one cycle paid for 8+ reviews whose diff never moved
+    between them, purely because each retry explained itself differently.
+
+    The ARTIFACT is what a verdict is about: the repo state, the audited range, the task's
+    description (the reviewer probes scope drift against it), the diff stat, and the diff. The NOTE
+    is the worker's commentary on that artifact. Commentary still belongs IN the material — the
+    reviewer is asked to treat it as a self-report and check it against the diff — but it must not
+    re-open judgment of the same artifact. ``rereview_change(force=True)`` stays the explicit
+    re-judge for when the note itself is what changed.
+    """
+    scope = p["scope"]
+    artifact = (
+        f"Repo tree: {p['repo']}  branch={p['branch']}  HEAD={p['head_sha']}\n"
+        f"Audited range: {p['base']}..HEAD {p['range_note']}\n"
+        f"Task: {p['task_id']}\n"
+        f"Description: {p['description']}\n"
+        f"Diff stat (files={scope['files']}, lines={scope['lines']}"
+        + (f", always-review={','.join(scope['always_paths'])}" if scope["always_paths"] else "")
+        + "):\n" + scope["numstat"] + "\n"
+        + p["excluded_note"] + "\n"
+        + f"Full diff:\n{p['diff_text']}\n"
+    )
+    material = (
+        f"Session: {p['sid']}\n"
+        f"Agent (git author): {p['author'] or '(unresolved)'}\n"
+        f"Cycle ID: {p['cycle_id']}\n"
+        + artifact
+        + f"Worker's note (self-report — the thing being reviewed):\n{p['note']}\n"
+    )
+    return material, artifact
+
+
 def _rereview_change(args: dict) -> CallToolResult:
     """Re-judge an OPEN cycle after its findings were fixed.
 
@@ -3987,24 +4024,25 @@ def _adversarial_review_gate(lock: dict, cycle: dict,
             f"{_names} — they are outside the audited range {_base}..HEAD, so their diff "
             f"is not part of this material]\n"
         )
-    material = (
-        f"Session: {_sid}\n"
-        f"Agent (git author): {_author or '(unresolved)'}\n"
-        f"Repo tree: {repo}  branch={_branch}  HEAD={_head_sha}\n"
-        f"Audited range: {_base}..HEAD {_range_note}\n"
-        f"Cycle ID: {cycle.get('id', 0)}\n"
-        f"Task: {task_id}\n"
-        f"Description: {description}\n"
-        f"Diff stat (files={_scope['files']}, lines={_scope['lines']}"
-        + (f", always-review={','.join(_scope['always_paths'])}"
-           if _scope["always_paths"] else "")
-        + "):\n" + _scope["numstat"] + "\n"
-        + _excluded_note + "\n"
-        f"Worker's note (self-report — the thing being reviewed):\n{outcome_note}\n\n"
-        f"Full diff:\n{diff_text}\n"
-    )
+    material, _artifact = _build_review_material({
+        "sid": _sid,
+        "author": _author,
+        "repo": repo,
+        "branch": _branch,
+        "head_sha": _head_sha,
+        "base": _base,
+        "range_note": _range_note,
+        "cycle_id": cycle.get("id", 0),
+        "task_id": task_id,
+        "description": description,
+        "scope": _scope,
+        "excluded_note": _excluded_note,
+        "note": outcome_note,
+        "diff_text": diff_text,
+    })
     prompt = f"{template}\n{material}\n"
-    fingerprint = _review_fingerprint(material)
+    # The verdict is keyed on the ARTIFACT, not the note (2026-10-13) — see _build_review_material.
+    fingerprint = _review_fingerprint(_artifact)
 
     # Honour a verdict already reached on THIS material.
     #
@@ -4023,8 +4061,12 @@ def _adversarial_review_gate(lock: dict, cycle: dict,
         if stored is not None and (stored.get("fingerprint") or "") == fingerprint:
             stored_verdict = str(stored.get("verdict") or "").upper()
             if stored_verdict == "CLEAN":
-                log.info("self-adversarial review: cycle %s CLEAN (stored, material unchanged)",
-                         cycle.get("id"))
+                # Reused across a NOTE change on purpose (2026-10-13): the key covers the artifact,
+                # not the commentary, so re-explaining the same diff no longer buys a review. The
+                # note is still IN the material the verdict was reached on if it was unchanged, and
+                # rereview_change(force=True) is the explicit re-judge when the note is the point.
+                log.info("self-adversarial review: cycle %s CLEAN (stored, artifact unchanged — a "
+                         "note-only change does not re-open it)", cycle.get("id"))
                 _clear_close_refused(cycle.get("id"))
                 return None
             _block, _annot = _blocking_findings(stored.get("findings_json") or "[]")
