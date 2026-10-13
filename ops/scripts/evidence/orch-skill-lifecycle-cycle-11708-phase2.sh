@@ -39,3 +39,5 @@ echo "  (Full staleness/prune pass runs on Monday deep-eval; today is a daily ru
 
 echo
 echo "exit: 0"
+
+# 2026-10-13: the interpreter here is resolved by capability (tests/test_direct_run_interpreter.py)

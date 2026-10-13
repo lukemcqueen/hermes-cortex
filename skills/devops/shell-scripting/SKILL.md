@@ -618,13 +618,57 @@ exit 3
   venvs. Run probes AND payloads as `env -u PYTHONPATH -u PYTHONHOME "$py" …` (POSIX, so Linux +
   macOS), and SAY what you ignored — a variable silently dropped by the tooling is how the venv
   took the blame for the caller's environment.
+- **Fix the CLASS, and pin the enumeration with a committed test.** A probe fixed at one call site
+  is a claim about that site. `rg -n "-c [\"']import" ops/` (and any other interpreter form that
+  makes a DECISION — a `yaml.safe_load` validator counts) before saying the fix is complete; then
+  commit the enumeration as a sweep test that FAILS when a new deciding probe appears without a
+  clean environment, with any exemption stated and justified (stdlib imports are exempt: a foreign
+  site-packages is where THIRD-PARTY packages live, and it cannot change `sys.version`). The sweep
+  earns its keep immediately — it caught the fallback probe written into the fix minutes later.
 - Give "cannot resolve" its **own exit code** (`3`), never a generic failure: a caller that
   reports it as a failed test blames the payload for a host dependency it never measured.
+- **A `python -c 'import X'` probe is only HALF the class: cover `python3 script.py` too.** The
+  other half is a shell script that RUNS a python FILE. Same environment dependency, buried one
+  level deeper, and the probe sweep cannot see it. Rule: the interpreter choice matters only when
+  the file imports a THIRD-PARTY module — a stdlib-only file is interpreter-independent, so
+  flagging it just teaches ceremony. Pin it with a committed sweep that, for every `python3 *.py`
+  in the repo's shell scripts / units / timers, parses the target with `ast` and fails when a
+  non-stdlib import is present without the arbiter. Two things make such a sweep honest: (1)
+  resolve LOCAL modules (they are not third-party) and EXPAND them transitively — the finding in
+  this repo (`yaml`) sat behind a package import, so a check that reads only the entry file calls
+  a yaml-importing program stdlib-only; recognise all three local shapes in use, including a
+  dir-of-modules on `sys.path` with no `__init__.py`. (2) Fix every site rather than
+  allowlisting: a guard with zero exemptions is worth more than one with a list.
+- **A failing run that pipes its output through `grep` fails SILENTLY.** A re-runnable evidence
+  script invoked `cortex-doctor.py 2>&1 | grep -i SOUL`: when the interpreter lacked `yaml` the
+  traceback was filtered away and the section printed EMPTY — which reads as "nothing to report",
+  not as a failure. Prefer a resolved interpreter; and when a pipeline must filter, keep the exit
+  status (`PIPESTATUS[0]`) or capture to a variable so a crash cannot masquerade as an empty
+  result.
+- **Never quote a pipeline's status as the command's.** `cmd | head -1; echo $?` prints head's
+  status. Capture bare (`cmd 2>err; rc=$?; head -1 err`) — a "verified" rc that came from the
+  filter is the same class of false signal as a check that reports on something it never measured.
+- **A comment promising a guard is not a guard.** A pre-commit audit's comment said "only flag NEW
+  scripts" while the code flagged any staged script lacking a `register()` line — every edit to an
+  unregistered (e.g. evidence) script fired a false advisory, which trains readers to ignore the
+  audit. Read the code, not the comment, and exempt by directory with the reason stated.
 - The fleet already ships this as
   **`ops/scripts/lib/python-with-module.sh <module> <script> [args]`** (add `--print <module>`
   when a caller only needs the path). Reuse it rather than writing another copy — it is
   registered in `cortex-update.sh` and deploys to `scripts/lib/`.
 - `PYTHON=` is the escape hatch an operator reaches for; honour it first.
+- **Declare ONE interpreter; never let each caller re-derive a path.** A rule copied into seven
+  scripts is seven chances to write it differently, and the copies WILL disagree — one check calls
+  a venv healthy while another warns about it, and a validator blames a file. Provision a per-host
+  declaration (`CORTEX_PYTHON` in `~/.hermes-cortex/agent.env`; the deploy writes the default) and
+  have the arbiter read it before its built-in order, after `PYTHON=`. Two rules make a declaration
+  safe: **never overwrite an operator's value** (a host may legitimately point elsewhere — a
+  Homebrew python on macOS, a different venv; prove it by deploying twice and asserting the file
+  still holds exactly one such line), and **treat it as a promise** — when the declared interpreter
+  cannot import the module asked for, NAME it in the failure output rather than falling through
+  silently, or a wrong declaration hides exactly as the old PATH-pick hid a missing dependency.
+  Report the declaration as a HOST FACT in the doctor (path + a clean-env import check), so "which
+  python does this host use?" is one line instead of a re-derived path.
 
 **Prefer the CORTEX venv (`~/.hermes-cortex/venv/bin/python3`) — it is the venv the fleet runs
 its services with** (`cortex-update.sh` registers every MCP server against it). The Hermes venv
@@ -868,3 +912,4 @@ Before shipping changes to installer scripts (`install-crons.sh`, `setup.sh`, et
 | **Missing script existence path** | "Script not found" warning scrolls past silently | Check all possible locations: `scripts/`, repo source, `~/.local/bin/` |
 | **Interpreter chosen by path existence** | `No module named X` although X is installed — under a DIFFERENT interpreter; an `[[ -x $VENV/bin/python3 ]]` guard never fires because the file is there | Test the CAPABILITY (`"$py" -c 'import X'`), try candidates in order, `exit 3` = could not verify; never silently fall back to a `python3` known to lack it |
 | **An inherited `PYTHONPATH`/`PYTHONHOME` around a capability probe** | A HEALTHY venv reads as broken — or a bare python as capable — because a foreign site-packages shadows the target's own. Measured: the fleet venv (which imports `mcp` fine) reported as missing it, and the resolver claimed no interpreter on the host could import `mcp` at all | Probe and run with `env -u PYTHONPATH -u PYTHONHOME`; print what you ignored. A venv's correctness must not depend on the caller's environment |
+| **A checker that cannot read its input reports the FILE as broken** | A valid YAML manifest reported as "parse issue" because the validating script used a bare `python3` with no `yaml` — the checker blamed the artifact for its own missing dependency, and a task got filed against a file that was never wrong | A checker with no parser has NO VERDICT. Resolve an interpreter that can import the dependency (the arbiter above), and when none can print `COULD NOT VERIFY … not checked` — never a negative verdict about the artifact. Applies to every lint/validate step that shells out for its parser |

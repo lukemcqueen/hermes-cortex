@@ -116,6 +116,14 @@ if [[ "$SCRIPTS_CHANGED" -gt 0 && "$MAP_CHANGED" -eq 0 ]]; then
     NEW_SCRIPTS=""
     while IFS= read -r path; do
         [[ -z "$path" || "$path" == *__pycache__* ]] && continue
+        # ops/scripts/evidence/ holds records of past runs. They are deliberately NOT deployed, so
+        # registering one would be wrong — and flagging every edit to one trains readers to ignore
+        # this audit, which costs more than the check is worth (2026-10-13).
+        case "$path" in ops/scripts/evidence/*) continue ;; esac
+        # The comment above promises "only flag NEW scripts", so ask git what actually happened:
+        # a file that is merely MODIFIED is not a new script, and the previous version of this
+        # check fired on every edit to any ops/scripts file that had no register() line.
+        [[ "$(git diff --cached --name-status -- "$path" 2>/dev/null | cut -f1)" == A* ]] || continue
         if ! grep -qF "register \"$path\"" ops/scripts/cortex-update.sh \
            && ! grep -qF "register_orch \"$path\"" ops/scripts/cortex-update.sh; then
             NEW_SCRIPTS+="$path"$'\n'

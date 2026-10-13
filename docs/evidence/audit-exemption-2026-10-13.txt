@@ -1,0 +1,17 @@
+Pre-commit docs-audit: the new-script check was wrong in two ways, and the fix was verified
+in BOTH directions (exempt what should be exempt; keep firing on what should fire).
+Re-run: stage any change under ops/scripts/evidence/ (silence), then stage a genuinely new
+unregistered ops/scripts/*.sh (advisory). Raw capture below, from ops/scripts/pre-commit-doc-audit.sh
+invoked directly with the two staged states.
+
+### A. MODIFIED file in ops/scripts/evidence/ (the false advisory this fixes)
+  advisories above? (none expected)
+
+### B. a GENUINELY NEW unregistered script (the guard must STILL fire)
+⚠️  DOCS AUDIT: New scripts staged but cortex-update.sh MAP was not updated.
+   → Register new scripts in ops/scripts/cortex-update.sh using register()
+📋 DOCS AUDIT: 1 documentation issue(s) found.
+
+### C. cleanup
+M  ops/scripts/evidence/orch-skill-lifecycle-cycle-11708-phase2.sh
+ M ops/scripts/pre-commit-doc-audit.sh
