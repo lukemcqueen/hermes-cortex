@@ -1,73 +1,63 @@
-# SearXNG — the measured minimum, and what it costs
+# SearXNG — the measured minimum
 
-Settings for a **private, single-agent** instance. Every number below was measured on esther
-(2026-10-13, `searxng/searxng:latest`) — not taken from a sizing table.
+Settings for a **private, single-agent** instance. Every number here was measured on esther
+(2026-10-13, `searxng/searxng:latest`) by `measure.sh` beside this file — re-run it and you get the
+same table. **The design rationale lives in `docs/design/agent-search.md`; this file is the config
+and the numbers.**
 
 ## Measured
 
-| Configuration | Memory cap that works | Measured RSS | Results for a real query |
+| Configuration | Smallest cap that works | Measured RSS | Results for a real query |
 |---|---|---|---|
-| Default engine set, one worker | 128 MB (**96 MB DIES**) | **~99 MB** | **20** — but `brave` and `duckduckgo` unresponsive |
-| Pruned to 3 engines (`keep_only`) | 96 MB | **82.3 MB** | **0** ❌ — 2 of the 3 were blocked |
-| 64 MB cap | — | — | container exits: `Unexpected exit from worker-1` |
+| Full engine set, one worker | 128 MB (**96 MB is OOM-killed**) | **~99 MB** | **20** — `brave` + `duckduckgo` unresponsive |
+| Pruned to 3 engines (`keep_only`) | **84 MB** | **82.3 MB** | **0** — the engines that could answer were blocked |
+| 64 MB cap | — | — | OOMKilled |
 
-**50 MB is not reachable.** The floor is ~82 MB, and the one configuration that fits under 100 MB
-returns nothing at all on this host.
+**50 MB is not reachable.** The floor is 82.3 MB and that configuration returns nothing; the
+smallest configuration that actually works is ~99 MB.
 
-Two things worth knowing before choosing sizes:
+Two things a sizing table will not tell you:
 
-1. **The current image runs Granian, not uWSGI.** `searxng/searxng:latest` starts Granian, so
-   `UWSGI_WORKERS=1` (the env var most guides recommend) is **ignored**. The worker count is still
-   the memory driver — the maintainers' own thread reports 600 MB → 150 MB going from `workers=%k`
-   to `workers=1` — but on this image the lever moved.
-2. **Memory and usefulness move together.** Pruning engines is the only lever that gets under
-   100 MB, and the engines you prune are the coverage you lose. Here `brave` and `duckduckgo` are
-   already unresponsive from this IP, so a small engine set is a search engine that finds nothing.
-   **~99 MB is the smallest configuration that actually returns results** — SearXNG earns its
-   footprint by failing over across ~70 engines, and pruning removes exactly that.
+- **The image runs Granian, not uWSGI.** `UWSGI_WORKERS=1` — what most guides recommend — does
+  nothing here. One worker is still the difference between ~100 MB and ~600 MB, but the lever is
+  `GRANIAN_WORKERS`.
+- **Pruning engines buys memory with coverage**, and here it buys *nothing usable*: `brave` and
+  `duckduckgo` are unresponsive from a datacenter IP, so a small engine set is a search engine that
+  finds nothing. SearXNG earns its ~99 MB by failing over across ~70 engines.
 
 ## The config these numbers describe
 
-`settings.yml` (all of it is necessary; the defaults for `limiter`/`public_instance`/`image_proxy`
-are already `false`, and `valkey: url: false` is what keeps Valkey out of the deployment):
+`settings.yml` (see the file for the annotated version):
 
 ```yaml
-use_default_settings: true          # keep the full engine set (see above)
+use_default_settings: true          # keep the full engine set on purpose
 server:
-  secret_key: "<generate: openssl rand -hex 32>"
-  limiter: false                    # private instance
+  secret_key: "<openssl rand -hex 32>"
+  limiter: false                    # private instance — and this is what keeps Valkey out
   public_instance: false
   image_proxy: false
 search:
-  formats: [html, json]             # json is what an agent calls
+  formats: [html, json]
 valkey:
-  url: false                        # no Valkey service needed
+  url: false                        # no Valkey service
 ```
 
-`compose.yaml` — cap it at 128 MB, bind to loopback only:
+The `limiter: false` line is load-bearing: with it **on**, SearXNG logs
+`ERROR:searx.limiter: The limiter requires Valkey` — verified by running it. Off, this deployment
+needs no Valkey at all.
 
-```yaml
-services:
-  searxng:
-    image: searxng/searxng:latest
-    ports: ["127.0.0.1:8888:8080"]
-    mem_limit: 128m
-    restart: unless-stopped
-    volumes: ["./settings.yml:/etc/searxng/settings.yml:ro"]
-    environment:
-      GRANIAN_WORKERS: "1"          # NOT UWSGI_WORKERS: this image runs Granian
-```
+`compose.yaml` caps the container at 128 MB and binds it to loopback only (no authentication, so it
+must not be reachable off-host).
 
-Then point any agent at it:
+Then:
 
 ```bash
 export SEARXNG_URL=http://127.0.0.1:8888
 fleet-search search "your query" --json
 ```
 
-## What an agent should be told
+## For whoever wires it up
 
-SearXNG's JSON includes **`unresponsive_engines`**. With results it is informational; with ZERO
-results it is the difference between *"nothing matched"* and *"the engines that could answer were
-blocked"* — and only one of those is worth retrying. Measured here: `brave`, `duckduckgo`, and
-sometimes `wikidata` are unresponsive from a datacenter IP.
+SearXNG's JSON reports **`unresponsive_engines`**. With results it is informational; with zero
+results it separates *"nothing matched"* from *"the engines that could answer were blocked"* — only
+one of which is worth retrying from an agent's point of view.

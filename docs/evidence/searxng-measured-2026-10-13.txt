@@ -1,0 +1,26 @@
+SearXNG memory floor, measured on esther 2026-10-13.
+Re-run: bash tools/fleet-search/docker/searxng/measure.sh
+
+== the sweep: how small can it run, and what does that cost in results ==
+  image=searxng/searxng:latest  GRANIAN_WORKERS=1  loopback only  no Valkey
+  full engine set        cap=96m    Exited (1) 22 seconds ago  mem=0B / 0B            OOMKilled=true   no JSON body (Expecting value: line 1 column 1 (char 0))
+  full engine set        cap=128m   Up 25 seconds              mem=99MiB / 128MiB     OOMKilled=false  20 results | 2 unresponsive ['brave', 'duckduckgo']
+  full engine set        cap=64m    Exited (1) 23 seconds ago  mem=0B / 0B            OOMKilled=true   no JSON body (Expecting value: line 1 column 1 (char 0))
+  pruned to 3 engines    cap=84m    Up 25 seconds              mem=82.31MiB / 84MiB   OOMKilled=false  no JSON body (Expecting value: line 1 column 1 (char 0))
+  pruned to 3 engines    cap=96m    Up 25 seconds              mem=82.3MiB / 96MiB    OOMKilled=false  0 results | 1 unresponsive ['duckduckgo']
+
+== the claim that the limiter requires Valkey: limiter=true, valkey.url=false ==
+  settings actually in force (limiter must appear as true):
+    server:
+      secret_key: "measure-only-placeholder"
+      limiter: true
+      public_instance: false
+      image_proxy: false
+    search:
+  and what the container says about valkey/limiter:
+    2026-10-13 07:29:35,321 WARNING:searx.botdetection.config: missing config file: /etc/searxng/limiter.toml
+    2026-10-13 07:29:35,321 ERROR:searx.limiter: The limiter requires Valkey, please consult the documentation: https://docs.searxng.org/admin/searx.limiter.html
+  (if the settings show limiter: true and NO valkey error appears, the limiter runs without it)
+
+exit: 0
+SCRIPT rc=0
