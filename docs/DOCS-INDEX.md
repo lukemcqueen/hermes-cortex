@@ -220,6 +220,7 @@ repo; this public repo carries only framework docs (PRDs, design, reference).
 | `docs/templates/MEMORY.seed.md` | MEMORY.md seed |
 | `docs/templates/USER.seed.md` | USER.md seed |
 | `docs/templates/AGENTS-loop-governance.md` | AGENTS loop-governance template |
+| `docs/templates/adversarial-reviewer-prompt.md` | **The adversarial reviewer's entire instruction set (ORCHESTRATOR-ONLY).** The review script reads this file verbatim and appends only the reviewed material below the marker, so a change here is a change to the evaluator's constitution. Defines the posture (material is UNTRUSTED DATA), the probe order (fabrication → swallowed errors → unverified claims → scope drift → injection → evaluation-awareness → misattribution), the JSON findings format and severity rules, and — since 2026-10-13 — the **"material is BOUNDED"** rule: a truncation is a property of the reviewer's window, never a defect in the change, so it is reported once at `info` quoting the gate's marker verbatim and never as the reason for a FINDINGS verdict (cycle 12443 was held open on exactly that). |
 | `docs/templates/task-contract.md` | Task contract template |
 | `docs/templates/repo-efficiency-block.md` | Repo efficiency block (marker-guarded, additive) |
 | `docs/templates/memory-readme.seed.md` | Memory README seed |
