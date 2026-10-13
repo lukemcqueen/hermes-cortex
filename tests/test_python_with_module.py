@@ -28,6 +28,43 @@ REPO = Path(__file__).resolve().parents[1]
 HELPER = REPO / "ops" / "scripts" / "lib" / "python-with-module.sh"
 # A name that cannot be importable anywhere, so the branch is reachable on ANY host.
 ABSENT_MODULE = "no_such_module_zzz_for_this_test"
+VENV = Path.home() / ".hermes-cortex" / "venv"
+
+
+def test_the_declared_fleet_interpreter_is_preferred():
+    """CORTEX_PYTHON is ONE name for "the fleet interpreter". Seven scripts each carried their
+    own clean-env probe before it existed; a caller should read this instead."""
+    py = str(VENV / "bin" / "python3")
+    if not Path(py).exists():
+        print("  (skipped: no fleet venv on this host)")
+        return
+    r = _run("--print", "yaml", env={"CORTEX_PYTHON": py})
+    assert r.returncode == 0, (r.returncode, r.stdout, r.stderr)
+    assert r.stdout.strip() == py, r.stdout
+
+
+def test_the_declaration_is_read_from_agent_env(tmp_path):
+    """The declaration lives in the per-host file the deploy provisions, so it survives a
+    session that exports nothing."""
+    py = str(VENV / "bin" / "python3")
+    if not Path(py).exists():
+        print("  (skipped: no fleet venv on this host)")
+        return
+    f = tmp_path / "agent.env"
+    f.write_text(f"AGENT_NAME=test-host\nCORTEX_PYTHON={py}\n")
+    r = _run("--print", "yaml", env={"CORTEX_PYTHON": "", "CORTEX_ENV_FILE": str(f)})
+    assert r.returncode == 0, (r.returncode, r.stdout, r.stderr)
+    assert r.stdout.strip() == py, r.stdout
+
+
+def test_a_declaration_that_cannot_import_is_named():
+    """A declaration is a PROMISE. When the declared interpreter cannot provide the module the
+    resolver must NAME it — quietly falling through to some other interpreter hides a wrong
+    declaration exactly as the old PATH-pick hid a missing dependency."""
+    r = _run("--print", ABSENT_MODULE, env={"CORTEX_PYTHON": "/nonexistent/python3"})
+    assert r.returncode == 3, (r.returncode, r.stdout, r.stderr)
+    assert "Declared CORTEX_PYTHON: /nonexistent/python3" in r.stderr, r.stderr
+    assert ABSENT_MODULE in r.stderr, r.stderr
 
 
 def _run(*args, env=None):

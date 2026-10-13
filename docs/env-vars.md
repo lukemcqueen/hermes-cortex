@@ -27,6 +27,7 @@ bash ~/.hermes-cortex/scripts/consolidate-env.sh
 
 | Variable | Default | Scripts | Purpose |
 |----------|---------|---------|---------|
+| `CORTEX_PYTHON` | `~/.hermes-cortex/venv/bin/python3` (declared in `~/.hermes-cortex/agent.env` by `cortex-update.sh`) | `python-with-module.sh`, every caller that needs "the fleet python" | **The ONE named fleet interpreter.** Callers read this instead of re-deriving a path, so a wrong one is visible in one place instead of seven. `python-with-module.sh` consults it first (after `PYTHON=`) and still requires the CAPABILITY to import the module it was asked for — a declaration that cannot import is NAMED, not silently skipped. Never overwritten by a deploy: an operator may legitimately point a host elsewhere. |
 | `CORTEX_REPO` | `$HOME/hermes-cortex` | `cortex-update.sh`, `hermes-services-apply.py` | Path to the hermec-cortex repo. Multiple scripts source templates and configs from here. |
 || `CORTEX_SKIP_NGINX` | _(unset)_ | `cortex-update.sh`, `hermes-services-apply.py` | When set to any value, skip nginx config deploy, test, and reload. ||
 || `CORTEX_FORCE_DEPLOY` | _(unset)_ | `cortex-update.sh`, `hermes-services-apply.py` | When set to `1`, re-resolve SSL certs and port prefix from env/auto-detect instead of preserving existing values from the live config. |

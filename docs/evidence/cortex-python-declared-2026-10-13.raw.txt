@@ -1,0 +1,11 @@
+### second deploy: an already-declared host takes the 'declared in agent.env' branch and is NOT clobbered
+━━━ cortex-dogfood ━━━
+   [0;32m✓[0m Fleet interpreter: /home/esther/.hermes-cortex/venv/bin/python3 (declared in agent.env)
+       ✅ Checksum: cortex-dogfood.sh
+     ✅ Checksum: cortex-dogfood.sh — content matches (after stripping SOURCE header)
+✅  DOGFOOD PASSED — deployed state verified clean.
+
+### agent.env: how many declarations exist now
+1
+AGENT_NAME=esther
+CORTEX_PYTHON=/home/esther/.hermes-cortex/venv/bin/python3

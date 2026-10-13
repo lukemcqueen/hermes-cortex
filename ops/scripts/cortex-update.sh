@@ -2831,6 +2831,23 @@ main() {
   git config user.email "$(git_author_email)" 2>/dev/null || true
   info "Agent identity: ${AGENT_NAME} (git author: $(git_author_name) <$(git_author_email)>)"
 
+  # ── The fleet interpreter, DECLARED once per host ──
+  # Callers should read ONE name instead of re-deriving a path: on 2026-10-13 seven scripts each
+  # carried their own clean-env probe because the agent session exported a foreign site-packages
+  # and put a 3.14 tools python ahead of /usr/bin. The declaration lives in the same per-host
+  # agent.env as the identity, and an operator's value is NEVER overwritten — a host may
+  # legitimately point elsewhere (a different venv, a Homebrew python on macOS).
+  _agent_env="${HOME}/.hermes-cortex/agent.env"
+  _declared_default="${HOME}/.hermes-cortex/venv/bin/python3"
+  if [[ -f "$_agent_env" ]] && grep -q '^CORTEX_PYTHON=' "$_agent_env" 2>/dev/null; then
+    info "Fleet interpreter: $(grep -E '^CORTEX_PYTHON=' "$_agent_env" | head -1 | cut -d= -f2-) (declared in agent.env)"
+  elif [[ -f "$_agent_env" ]]; then
+    printf 'CORTEX_PYTHON=%s\n' "$_declared_default" >> "$_agent_env"
+    info "Fleet interpreter: declared CORTEX_PYTHON=${_declared_default/$HOME/~} in agent.env"
+  else
+    info "Fleet interpreter: ${_declared_default/$HOME/~} (no agent.env; the built-in order applies)"
+  fi
+
   echo ""
   echo -e "${BOLD}━━━ Cortex Update ━━━${RESET}"
   echo ""

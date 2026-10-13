@@ -41,9 +41,19 @@ if [[ -z "$module" ]]; then
   exit 2
 fi
 
+declared_python() {
+  # ONE name for "the fleet interpreter", declared per host and overridable in the environment.
+  # Callers read this instead of re-deriving a path, so there is one place to be wrong rather
+  # than seven: on 2026-10-13 seven scripts each needed their own clean-env probe because the
+  # agent session exported a foreign site-packages AND put a 3.14 tools python ahead of /usr/bin.
+  [[ -n "${CORTEX_PYTHON:-}" ]] && printf '%s\n' "${CORTEX_PYTHON}"
+  local f="${CORTEX_ENV_FILE:-${HOME}/.hermes-cortex/agent.env}"
+  [[ -f "$f" ]] && sed -n 's/^CORTEX_PYTHON=//p' "$f" | head -1
+}
+
 candidates() {
-  # An explicit choice wins, then the CORTEX venv — the fleet venv this host runs its
-  # services with (cortex-update.sh points every MCP registration at it) — then the Hermes
+  # An explicit choice wins, then the DECLARED fleet interpreter — the fleet venv this host runs
+  # its services with (cortex-update.sh points every MCP registration at it) — then the Hermes
   # venv, then whatever is on PATH, then versioned names.
   #
   # Measured on esther 2026-10-13: ~/.hermes-cortex/venv imports yaml + mcp (and pytest once
@@ -53,6 +63,7 @@ candidates() {
   # venv first keeps fleet tooling off the tree we are migrating away from, which is the
   # whole point of having a cortex venv at all.
   [[ -n "${PYTHON:-}" ]] && printf '%s\n' "$PYTHON"
+  declared_python
   [[ -n "${HERMES_VENV:-}" ]] && printf '%s\n' "${HERMES_VENV}/bin/python3"
   printf '%s\n' "${HOME}/.hermes-cortex/venv/bin/python3"
   printf '%s\n' "${HOME}/.hermes/hermes-agent/venv/bin/python3"
@@ -95,6 +106,12 @@ done < <(candidates)
 {
   echo "python-with-module: COULD NOT VERIFY — no interpreter can import '${module}'."
   echo "  Checked:${tried}"
+  _decl="$(declared_python | head -1)"
+  if [[ -n "$_decl" ]]; then
+    echo "  Declared CORTEX_PYTHON: ${_decl}"
+    echo "    it cannot import '${module}' — a declaration is a promise. Fix it, or unset"
+    echo "    CORTEX_PYTHON in ~/.hermes-cortex/agent.env to fall back to the built-in order."
+  fi
   echo "  Fix one of:"
   echo "    - install ${module} for one of them        (e.g. python3 -m pip install ${module})"
   echo "    - point this wrapper at a capable one:"

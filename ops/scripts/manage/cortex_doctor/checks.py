@@ -3020,6 +3020,37 @@ def check_governance(res):
           res.add("Pi integration", "WARN", _pi_last,
                   "Run: bash ~/.hermes-cortex/scripts/install-pi-integration.sh   (then re-check)")
 
+  # ── The declared fleet interpreter (CORTEX_PYTHON) ──
+  # ONE name for "the fleet python", provisioned per host by the deploy. Reported as a host fact:
+  # the point of declaring it is that a WRONG one is visible in one place instead of seven (every
+  # caller that used to re-derive a path). It is probed WITHOUT an inherited PYTHONPATH, because a
+  # caller's environment must not decide whether the declared interpreter looks healthy.
+  declared_py = os.environ.get("CORTEX_PYTHON", "")
+  _agent_env_file = HOME / ".hermes-cortex" / "agent.env"
+  if not declared_py and _agent_env_file.is_file():
+    for _line in _agent_env_file.read_text(errors="replace").splitlines():
+      if _line.startswith("CORTEX_PYTHON="):
+        declared_py = _line.split("=", 1)[1].strip()
+        break
+  if not declared_py:
+    res.add("Fleet python", "WARN", "no CORTEX_PYTHON declared — the built-in order applies",
+            "Run cortex-update.sh: it declares the fleet venv in ~/.hermes-cortex/agent.env")
+  elif not Path(declared_py).expanduser().exists():
+    res.add("Fleet python", "FAIL", f"CORTEX_PYTHON points at nothing: {declared_py}",
+            "Fix CORTEX_PYTHON in ~/.hermes-cortex/agent.env, or run cortex-update.sh "
+            "(it creates and fills an absent fleet venv)")
+  else:
+    try:
+      _probe = subprocess.run(
+        ["env", "-u", "PYTHONPATH", "-u", "PYTHONHOME", declared_py, "-c", "import yaml, mcp"],
+        capture_output=True, timeout=60)
+      _ok = _probe.returncode == 0
+    except (OSError, subprocess.TimeoutExpired):
+      _ok = False
+    res.add("Fleet python", "PASS" if _ok else "WARN",
+            f"{declared_py} {'imports yaml + mcp' if _ok else 'cannot import yaml/mcp'}",
+            "" if _ok else f"Repair: {CORTEX_HOME}/scripts/fix-cortex-venv.py")
+
   # ── Pre-commit hook ──
   expected_hook_path = hooks_dir / "pre-commit"
   expected_hooks_path = str(hooks_dir)

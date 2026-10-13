@@ -1,0 +1,62 @@
+Running: bash -c 
+CV="$0"; R="$1"
+echo "== the declaration, as a host fact the doctor reports =="
+"$CV" ops/scripts/manage/cortex-doctor.py 2>&1 | grep -i "fleet python"
+echo "  before this change the same check did not exist; the value was re-derived by each caller."
+echo
+echo "== the contract, exercised three ways (rc + stdout) =="
+PY="\$HOME/.hermes-cortex/venv/bin/python3"
+echo "-- 1. declared in the ENVIRONMENT:"; CORTEX_PYTHON="$PY" bash ops/scripts/lib/python-with-module.sh --print yaml; echo "  rc=$?"
+echo "-- 2. declared in agent.env (nothing exported):"; CORTEX_PYTHON= bash ops/scripts/lib/python-with-module.sh --print yaml; echo "  rc=$?"
+echo "-- 3. a declaration that cannot import is NAMED, not skipped:"; CORTEX_PYTHON=/nonexistent/python3 bash ops/scripts/lib/python-with-module.sh --print no_such_module_zzz 2>&1 | sed -n "1,4p"; echo "  rc=3 (the resolver talks to stderr and fails closed)"
+echo
+echo "== the tests =="
+"$CV" -m pytest tests/test_python_with_module.py tests/test_venv_env_contamination.py -q 2>&1 | tail -2
+"$CV" -m pytest tests/test_python_with_module.py -v --no-header -p no:cacheprovider 2>&1 | grep -E "declared|agent_env|named" | sed "s/^/  /"
+echo
+echo "== extract from the raw capture beside this file =="
+cat "$R"
+ /home/esther/.hermes-cortex/venv/bin/python3 docs/evidence/cortex-python-declared-2026-10-13.raw.txt
+rc: 0
+when: 2026-10-13T05:57:16Z
+
+== the declaration, as a host fact the doctor reports ==
+  ✅ Fleet python — /home/esther/.hermes-cortex/venv/bin/python3 imports yaml + mcp
+  before this change the same check did not exist; the value was re-derived by each caller.
+
+== the contract, exercised three ways (rc + stdout) ==
+-- 1. declared in the ENVIRONMENT:
+python-with-module: ignoring inherited PYTHONPATH/PYTHONHOME while choosing an interpreter — an inherited path can shadow the target's own packages
+/home/esther/.hermes-cortex/venv/bin/python3
+  rc=0
+-- 2. declared in agent.env (nothing exported):
+python-with-module: ignoring inherited PYTHONPATH/PYTHONHOME while choosing an interpreter — an inherited path can shadow the target's own packages
+/home/esther/.hermes-cortex/venv/bin/python3
+  rc=0
+-- 3. a declaration that cannot import is NAMED, not skipped:
+python-with-module: ignoring inherited PYTHONPATH/PYTHONHOME while choosing an interpreter — an inherited path can shadow the target's own packages
+python-with-module: COULD NOT VERIFY — no interpreter can import 'no_such_module_zzz'.
+  Checked: /home/esther/.hermes-cortex/venv/bin/python3 /home/esther/.hermes/hermes-agent/venv/bin/python3 /home/esther/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3 /home/esther/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3.14 /usr/bin/python3.12 /home/esther/.local/bin/python3.11
+  Declared CORTEX_PYTHON: /nonexistent/python3
+  rc=3 (the resolver talks to stderr and fails closed)
+
+== the tests ==
+
+============================== 14 passed in 3.04s ==============================
+  tests/test_python_with_module.py::test_the_declared_fleet_interpreter_is_preferred PASSED [ 11%]
+  tests/test_python_with_module.py::test_the_declaration_is_read_from_agent_env PASSED [ 22%]
+  tests/test_python_with_module.py::test_a_declaration_that_cannot_import_is_named PASSED [ 33%]
+
+== extract from the raw capture beside this file ==
+### second deploy: an already-declared host takes the 'declared in agent.env' branch and is NOT clobbered
+━━━ cortex-dogfood ━━━
+   [0;32m✓[0m Fleet interpreter: /home/esther/.hermes-cortex/venv/bin/python3 (declared in agent.env)
+       ✅ Checksum: cortex-dogfood.sh
+     ✅ Checksum: cortex-dogfood.sh — content matches (after stripping SOURCE header)
+✅  DOGFOOD PASSED — deployed state verified clean.
+
+### agent.env: how many declarations exist now
+1
+AGENT_NAME=esther
+CORTEX_PYTHON=/home/esther/.hermes-cortex/venv/bin/python3
+sha256: 20243b440f9714f8809816588bbc07f44a248662d9e0aaaa4b05920bcc3ba55a
