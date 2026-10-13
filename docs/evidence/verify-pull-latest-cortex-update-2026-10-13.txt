@@ -1,0 +1,19 @@
+━━━ Verify pull-latest + cortex-update (cycle 6057) ━━━
+  origin/main = e50938f297258020ce24df477d06ba91a2b13653  behind=0 ahead=3
+✅ upstream governance fix e50938f2 is in HEAD
+✅ upstream mcp-wiring commit e4fd5f7e is in HEAD
+✅ repo not behind origin
+✅ deployed == repo: cortex-update.sh
+✅ deployed == repo: mcp_wiring.py
+✅ deployed == repo: checks.py
+✅ deployed == repo: config.py
+  immutable flags present on 9/9 enforcement paths
+✅ enforcement files re-locked (rc=1 was the wrapper's own exit; files secured)
+  doctor rc=2 — ❌ Overall: FAILING  (435 pass · 6 warn · 1 fail · 10 info)
+✅ doctor: only out-of-scope fail is steadfaste (different project)
+  deployed enforcer size:   142327 bytes
+✅ deployed enforcer present and substantive (deploy≠load: gateway restart is operator step)
+✅ cortex venv has mcp package
+
+━━━ RESULT: 11 checks, 0 failures ━━━
+ALL CLAIMS VERIFIED
