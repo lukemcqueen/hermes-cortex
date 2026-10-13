@@ -1,0 +1,2 @@
+Detector verdict: PASS · stranded: 0
+Nothing stranded: repo and deployed trees agree on content.

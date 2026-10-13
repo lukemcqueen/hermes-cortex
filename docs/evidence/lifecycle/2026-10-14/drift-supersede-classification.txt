@@ -1,0 +1,25 @@
+FILE                                           repo_lines dep_lines     lost    added  VERDICT
+devops/approval-gate-debugging                      182      208        0      130  SUPERSEDE (safe)
+devops/governance-closeout                          716      810        9      221  REVERT RISK -> DO NOT COPY
+devops/governance-lock-lifecycle                    158      171        7       91  REVERT RISK -> DO NOT COPY
+devops/loop-governance                             1109     1205        2      597  REVERT RISK -> DO NOT COPY
+devops/maintenance-scan                             139      187        1      286  REVERT RISK -> DO NOT COPY
+devops/mcp-health-monitoring                        185      218        6      165  REVERT RISK -> DO NOT COPY
+software-development/agent-contract                  66       73        0      179  SUPERSEDE (safe)
+software-development/change-checklist               301      338        0      106  SUPERSEDE (safe)
+software-development/hermetic-python-testing        419      467        0      131  SUPERSEDE (safe)
+software-development/prove-before-create            122      148        1      130  REVERT RISK -> DO NOT COPY
+
+fence balance (repo vs deployed, must both be EVEN):
+  devops/approval-gate-debugging                 repo=6   deployed=6   BALANCED
+  devops/governance-closeout                     repo=10  deployed=10  BALANCED
+  devops/governance-lock-lifecycle               repo=2   deployed=2   BALANCED
+  devops/loop-governance                         repo=62  deployed=62  BALANCED
+  devops/maintenance-scan                        repo=14  deployed=14  BALANCED
+  devops/mcp-health-monitoring                   repo=2   deployed=2   BALANCED
+  software-development/agent-contract            repo=2   deployed=2   BALANCED
+  software-development/change-checklist          repo=0   deployed=0   BALANCED
+  software-development/hermetic-python-testing   repo=8   deployed=8   BALANCED
+  software-development/prove-before-create       repo=4   deployed=4   BALANCED
+
+Exit 1 — 0 means every REVIEW-flagged file was an in-place supersede and no lesson was lost.
