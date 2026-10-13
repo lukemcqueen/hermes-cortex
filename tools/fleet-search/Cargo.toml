@@ -1,0 +1,21 @@
+[package]
+name = "fleet-search"
+version = "0.1.0"
+edition = "2021"
+description = "One search capability for every fleet agent: web search, page fetch, and local corpus search. No daemon, no service, SQLite-backed cache."
+license = "MIT"
+
+[[bin]]
+name = "fleet-search"
+path = "src/main.rs"
+
+[dependencies]
+# Kept deliberately small, and every dependency must already resolve from the local cargo
+# cache so the tool builds with `--offline` on a host that has no crates.io access.
+clap = { version = "4", features = ["derive"] }
+rusqlite = { version = "0.40.2", features = ["bundled"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+# ureq is a BLOCKING http client: no async runtime, which is the whole point of a tool that
+# starts, does one thing, and exits. TLS via rustls avoids an openssl dev dependency.
+ureq = { version = "2", features = ["json"] }
