@@ -46,6 +46,14 @@ reconciled skill drift removed 2 warns.)
 - ❌ AGENTS.md (steadfaste) — DIFFERENT project (~/steadfaste), out of scope.
 - ⚠️ Repo clean, Script run evidence, Cron status (×2), MCP wiring (loop-governance, tasks) — pre-existing / the new fleet venv-migration check (WARN not FAIL).
 
+**Raw evidence committed:** the pre-reconciliation doctor log is
+`doctor-pull-latest-cortex-update-2-pre-reconcile-2026-10-13.txt` (shows
+`Overall: FAILING (433 pass · 8 warn · 1 fail · 11 info)` — the 8-warn state before
+the skill-drift reconcile). The post-reconcile state (435/6) is captured in
+`verify-pull-latest-cortex-update-2-2026-10-13.txt`. The raw deploy transcript is
+`cortex-update-2-2026-10-13.txt` (shows the UNLOCKED→LOCKED enforcement sequence and
+the `relock rc=1` wrapper exit).
+
 ## 6. Verify script (committed, runnable)
 `verify-pull-latest-cortex-update-2-2026-10-13.sh` re-runs every claim and exits
 non-zero on failure: git sync (behind=0), deployed==repo for the 4 deploy-map files,
