@@ -648,6 +648,10 @@ exit 3
 - **Never quote a pipeline's status as the command's.** `cmd | head -1; echo $?` prints head's
   status. Capture bare (`cmd 2>err; rc=$?; head -1 err`) — a "verified" rc that came from the
   filter is the same class of false signal as a check that reports on something it never measured.
+  `PIPESTATUS` looks like the fix and is a second trap: it is reset by EVERY command, so any `echo`
+  between the pipeline and the read leaves it empty — the artifact then prints `rc=` and reads as
+  zero-or-unknown. When the output must also be trimmed, write it to a file and read the status in the
+  very next statement: `cmd > out 2>&1; rc=$?; tail -3 out`.
 - **A comment promising a guard is not a guard.** A pre-commit audit's comment said "only flag NEW
   scripts" while the code flagged any staged script lacking a `register()` line — every edit to an
   unregistered (e.g. evidence) script fired a false advisory, which trains readers to ignore the
@@ -701,6 +705,31 @@ When a module is missing, install it into the FLEET venv (not a private one) so 
 that resolves to that venv gets it — a dev dependency present in one venv and absent in the
 fleet venv is a suite that passes for you and drops tests on a host.
 
+**The runner's own environment can shrink the suite even when the interpreter is right — and
+INSTALLING will not fix that one.** A contaminated `PYTHONPATH` shadows the target's packages
+instead of leaving an import missing, so the failure looks like an ABI mismatch
+(`ModuleNotFoundError: No module named pydantic_core._pydantic_core`) rather than an absent
+package. Measured 2026-10-13, same interpreter, same command, only the environment differing:
+with the agent session's `PYTHONPATH` inherited it collected **1817 tests with 4 errors**; with
+it removed, **1845 with none**. Twenty-eight tests — four whole modules — were absent from every
+"N passed" run, and nothing failed, because pytest still prints a count for everything else.
+
+Check the two halves SEPARATELY and compare the COUNT, not just the error lines:
+
+```bash
+env -u PYTHONPATH -u PYTHONHOME "$PY" -m pytest tests/ --collect-only -q 2>&1 | tail -2
+```
+
+A collected count that changes with the environment IS the finding: the suite is not hermetic,
+so every downstream claim resting on it — a pass count, a coverage figure, a "suite is clean"
+certificate handed to a peer — is a claim about the caller's environment, not about the code.
+Put `env -u PYTHONPATH -u PYTHONHOME` in the test recipe you hand to other agents.
+
+**A guard for this is a decision, not an automatic fix.** A test asserting "the suite collects
+with zero module errors" FAILS on every runner that still inherits the environment, so it turns a
+shared suite red the moment it lands. Fix the runners/recipe first, or land the guard with the
+operator's agreement — never slip a permanently-red test into a repo other agents gate on.
+
 **Do not hand-install module by module — the fleet DECLARES what belongs in the venv and ships
 the repairer.** The declared set is `ops/install/requirements.txt` (measured from the repo's own
 imports; edit THAT to add a dependency, or the next host never learns about it):
@@ -732,6 +761,53 @@ the artifact and label it as the manual step it is.
   unsupported flag returns non-zero, so a broken-looking check is really an unsupported
   option. Prefer a command that is idempotent by nature (re-running an install reports
   nothing to do) or a read-only query.
+
+## Shipping a Portable Script: Scan the Source, Then Drive the Branches
+
+A script that only has to run on your host is not portable, and "it works here" cannot see the
+difference. Before shipping anything other hosts will run — macOS especially, which ships **bash
+3.2** and BSD userland — scan the SOURCE for the constructs that break there, and commit the scan as
+a test so it cannot creep back:
+
+```
+bash 4 only : declare -A, mapfile, readarray, local -n, ${var,,}, ${var^^}, &>>
+GNU only    : readlink -f, date -d, grep -P, sed -i without a suffix, sha256sum (macOS: shasum -a 256)
+```
+
+Also assert the shebang is `#!/usr/bin/env bash` (a hardcoded `/bin/bash` is the other portability
+trap), that the repo root is derived from the script's own location, and that no absolute
+`/home/<user>/` path appears. Referring to a fleet install is fine — REQUIRING one is not: assert any
+such reference goes through `$HOME`, so the script still runs on a host that has none.
+
+Reading the source is not enough on its own. Drive the REAL script in a CONSTRUCTED environment (a
+temp repo, an empty HOME, a stubbed PATH) for the branches your host cannot reach — the absent-tool
+path, the fallback path, the could-not-verify path. An untested branch is untested by definition,
+and these are exactly the branches that only run where you are not.
+
+**A fallback that does not ANNOUNCE itself is a swapped signal.** A resolver/shortcut fallback that
+silently picks a different interpreter makes the run look identical while a different program decides
+— it "passes", against the wrong thing. Print which path was used and why the first choice was
+skipped (`note: no repo resolver at …; falling back to …`). This matters most when the fallback is the
+branch a test was meant to stub: a silent fallback let a stub test exercise the REAL resolver and
+report success, which is how the missing announcement was found.
+
+**A shared guard must not encode one repo's NUMBERS.** A collection guard asserting "more than 1000
+tests" was true only of the repo it was written in; in a smaller or unrelated repo it fails a HEALTHY
+environment, which teaches readers to ignore the guard. Assert the property that must hold anywhere
+(no module errors, more than zero collected) and keep the repo's own size out of it.
+
+**A runner handed only FLAGS tests far more than you asked.** `pytest` with no PATH collects the
+CURRENT DIRECTORY: from a repo root that is `.git`, the deploy trees and every vendored copy, and it
+can sit silent for minutes (measured: past 400 s with no output, killed by a timeout). A wrapper that
+passes `"$@"` through must supply the suite when the caller names no selection, and must still
+propagate the runner's OWN rc so an unresolvable path is a failure rather than a green zero:
+
+```bash
+case " $* " in
+  *" tests"*|*" tests/"*|*"/*"*|*"::"*|*".py"*) : ;;   # a selection was named
+  *) set -- "$@" tests/ ;;                                # flags only: add the suite
+ esac
+```
 
 ## Cross-Platform Paths
 

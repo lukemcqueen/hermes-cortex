@@ -18,11 +18,17 @@ Re-read the original request and check every item — including implicit ones. I
 ### 2. Did I verify every claim with real tool output?
 Every stated fact must be backed by an actual command, file read, or API call. "It should work" is not verification; "curl returned 200" is. If NO: run the verification now and show the output.
 
+**A claim that a suite passes, a script gates, or a check works is a claim about a RUN — commit the run.** A re-runnable script plus its captured output; test SOURCE existing proves tests were written, not that they pass, and a reader cannot re-run your terminal. Capture a status yourself rather than inheriting one from a filter (`cmd | tail` prints tail's), and measure numbers (sizes, RSS) rather than quoting an estimate someone else supplied.
+
+**Name the BUILD, not just the run.** A demonstration that invokes a compiled artifact measures the last build of it, not the source: `cargo test` builds the DEBUG profile, so a demo running `target/release/<bin>` exercises pre-change code and reports the new behaviour as ABSENT — which reads exactly like the feature being unwired. Rebuild the exact artifact you are about to demonstrate, because a green suite and a current binary are two different proofs. The same trap exists wherever an installed copy stands in for the tree: a console-script, a deployed duplicate, a cached module.
+
 ### 3. Did I follow governance for every change?
 Every file created/modified: `begin_change` → work → `feedback_accept` → `end_change`, all scored, no orphans. If NO: score the missing cycle or confess the gap.
 
 ### 4. Did I handle all edge cases and failure paths?
 Error path, empty state, malformed input, sibling call sites for the same bug. If NO: state the gaps honestly.
+
+**Probe the gate itself.** Point the checker at input it must reject and show it failing non-zero — a green run proves the thing works, only a demonstrated failure proves the check would NOTICE a broken one. And probe the PROBE: when a check fails, verify its own assumptions before blaming the artifact (a validator with no parser, a test target that does not exist, a path that does not resolve, a test FILTER that matches nothing — an `--exact` name needs its full path, so a bare name reports `0 passed, N filtered out` and reads like a missing test) — a failure for the wrong reason is not a finding. Fixing a warning by silencing it weakens the guard; verify both directions instead (exempt what should be exempt, still fire on what should fire).
 
 ### 5. Is there anything I would do differently?
 Document it; if recurring, save as a lesson.

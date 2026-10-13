@@ -144,9 +144,30 @@ incident are in `references/otel-skew-incident-2026-10-06.md`.
 - **Verify tool NAMES, not "spawned ok":** a server can import cleanly yet lack
   enforcement-critical tools. Check the required-name list (e.g. for
   loop-governance: `begin_change`, `end_change`, `check_lock`).
-- **Config key ≠ canonical name:** live config uses `agent-bus` while the
-  doctor's expected list uses `cortex-bus`; the doctor's "configured" check
-  passes via the args path, not the key. Parse the LIVE config for probes.
+- **Presence is not wiring — a name can match a FILENAME.** A "configured" check
+  that looks for the server's NAME anywhere in `config.yaml` gives a false PASS:
+  the name also occurs in the args path (`cortex-bus` inside `cortex-bus-mcp.py`),
+  so a registration pointing at a missing venv, wrapper or script reads healthy
+  while its tools never load. Audit by resolving the registered COMMAND and ARGS
+  and checking those paths exist. Keep the expected-name map in ONE place (the
+  doctor's map and the auditor's map are pinned equal by a test) so a rename can
+  never split them — and remember `hermes mcp` has `add/remove/list/test/`, no
+  `update`; a wrong interpreter is fixed by `remove` then `add`. Full decision
+  table: `references/mcp-registration-runbook.md`.
+- **`hermes mcp add` is INTERACTIVE — an unanswered prompt leaves the server UNREGISTERED.**
+  It enumerates the server's tools and asks `Enable all N tools? [Y/n/select]`; with stdin
+  closed (`< /dev/null`, a cron, any non-TTY runner) it reads EOF and prints `Cancelled.`, so
+  the entry is never written — while the `hermes mcp remove` that preceded it already
+  succeeded. A remove-then-add loop run non-interactively therefore strips every server it
+  touches and leaves `mcp_servers:` EMPTY, with both commands exiting 0. Answer the prompt on
+  stdin (`printf 'y\n' | hermes mcp add <name> --command … --args …`), back the config up
+  first, and verify by reading the resulting block plus the wiring audit — never by exit code.
+  Recipe: `references/mcp-registration-runbook.md`.
+- **A check that cannot RUN must not look like a passing check.** If the loader
+  that pulls in the auditor fails (missing file, syntax error), a bare
+  `except: pass` that sets the auditor to `None` removes the check entirely and
+  the run reads green — the same false-pass class. Emit an explicit
+  "unavailable — COULD NOT VERIFY" finding naming the missing piece.
 - **args[0] may be a subcommand, not a script (false-positive loop, 2026-08-18):**
   binary-CLI servers (e.g. `tirith mcp-server`, `python -m module`) have a
   non-`.py` args[0] — treating it as a script path failed with
@@ -161,6 +182,17 @@ incident are in `references/otel-skew-incident-2026-10-06.md`.
   it must NOT false-CRITICAL).
 - **Log-rotation:** a rotated/shrunk mcp-stderr log resets the watermark
   without alerting — the probes cover the gap.
+- **An import failure is not proof of ABSENCE — print the traceback and the resolved path.**
+  A venv can fail `import mcp` while the distribution IS installed: the module resolves out
+  of a DIFFERENT interpreter's `site-packages` sitting on `sys.path` (a managed install
+  environment, a merged namespace package) and dies on an ABI/binary mismatch —
+  `ModuleNotFoundError: No module named 'pydantic_core._pydantic_core'` is this shape, not an
+  uninstalled package. Installing the "missing" requirement then changes nothing, and the
+  operator repeats the same install. A probe or repairer that reports only "cannot import"
+  hides the one decisive fact: emit the exception AND the module's `__file__` / `__path__`, so
+  the wrong-tree resolution is visible in the output. Same family as the otel skew above —
+  two trees answering one import — so reach for that diagnosis first, and check the
+  interpreter's own version against the tree it is loading from.
 
 ## Fail-Loud Design Principles (from the 2026-08-18 party)
 

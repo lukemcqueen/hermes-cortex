@@ -198,6 +198,43 @@ Rules, each of which is a bug that actually happened:
    hooks, crons) belong to the host — "remember to save" is not a mechanism.
 8. **A registry, not per-host prose.** At N hosts the failure mode is N docs that
    disagree; declare hosts in one file and GENERATE their docs from it.
+9. **Registering is not executing.** A deploy that COPIES a per-host adapter into the
+   scripts directory has wired NOTHING — wiring is a step that RUNS. Gate it on the
+   harness's PRESENCE (its agent dir or launcher), run every half of the adapter, and
+   report the outcome per half: a host without the harness is not a fault, while a host
+   that HAS it and comes out of a deploy unwired is. Pair the run with one line in that
+   host's doctor, so "harness present but unwired" is a reported state rather than a
+   silence nobody reads. An installer reaching a host is not evidence that it ever ran.
+
+### Choosing the implementation of a SHARED capability
+
+A capability both systems consume is a design decision before it is a build. Decide in this order,
+and let MEASUREMENT make the call:
+
+10. **Budget the LANGUAGE by measuring, not by preference.** Check the toolchains that actually
+    exist (`cargo --version`, `go version`, the interpreter) and what the systems you are serving
+    are written in. A capability that adds a THIRD language to a two-language fleet costs a
+    toolchain, a build path and a dependency surface on every host — and the "lowest memory" option
+    is worthless if its toolchain is not installed. Prefer the language of the system the capability
+    serves: a binary in that language is also the one its consumers can link in-process.
+11. **Keep the runtime dependency set inside what a constrained host already has.** A build that
+    needs a registry fetch, or a cache that shells out to a tool that may be absent, is unavailable
+    exactly when that host cannot repair it. Prefer dependencies resolvable from the local cache,
+    and where a component can be compiled IN rather than called OUT to (a bundled engine), compile
+    it in: one build-time cost beats an unavailability that renders as "no data".
+12. **Every external provider is OPTIONAL, and its absence is LOUD and NAMED.** An unconfigured
+    provider exits with its OWN status (never a generic failure) and names the variable that unlocks
+    it, so "could not look" cannot render as "found nothing". Say what still works without it — the
+    offline half of a capability is usually the durable half, and it must not depend on the
+    provider being reachable.
+13. **One dispatch, two surfaces.** Expose a CLI and an MCP stdio server over the SAME functions,
+    and generate both surfaces' metadata from ONE table, so no surface can describe an operation
+    differently or drift from the other. A daemon is a third surface nobody asked for: a process
+    that starts, does one thing and exits needs no port, no health check and no listener to secure.
+14. **Measure the envelope on a real host before quoting one.** A sizing table describes someone
+    else's machine; report the binary size and the STEADY-STATE footprint you measured, and when the
+    decision turns on a number the operator named, go and test THAT number instead of arguing from
+    the table.
 
 Checklist before shipping anything agent-facing:
 - [ ] works from **at least two different harnesses** (prove it, don't claim it)
@@ -206,6 +243,7 @@ Checklist before shipping anything agent-facing:
 - [ ] unreachable dependency → **visible message**, never a silent empty
 - [ ] Linux **and macOS**
 - [ ] a **drift guard test**, not just a doc
+- [ ] the deploy **RUNS** the adapter where the harness is present, and the host doctor reports it
 
 Reference: `docs/design/agent-interop.md`.
 

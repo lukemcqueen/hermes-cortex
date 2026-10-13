@@ -106,6 +106,41 @@ Can't check all boxes? You skipped TDD. Start over.
 ## Regression Testing — Not Just the One Test
 After GREEN, run the FULL suite and related tests exercising the same path. One passing test proves the fix; a full suite proves nothing broke.
 
+## Tests in a repo with GATES (file-based gates, process-level tests)
+
+A repo gate that looks for a test FILE does not see tests that live INSIDE the source. In Rust,
+`#[cfg(test)] mod tests` in `src/` satisfies the spirit and not the gate — and adding the file is the
+better answer anyway: an integration test that drives the built artifact AS A PROCESS is the only one
+that can assert the contract a caller actually sees (exit codes, what lands on stdout versus stderr,
+a protocol mode answering over a pipe).
+
+```rust
+// tests/end_to_end.rs — cargo exports the built binary's path to integration tests
+let out = std::process::Command::new(env!("CARGO_BIN_EXE_my-tool"))
+    .args(["doctor"]).output().unwrap();
+assert_eq!(out.status.code(), Some(0));
+```
+
+Rules that each save a round trip:
+
+- **A test filter needs the FULL path.** `<mod>::tests::<name> -- --exact` matches; the bare
+  `<name> --exact` matches NOTHING and prints `0 passed; N filtered out`, which reads exactly like a
+  missing test. Quote a run that actually executed the test you are claiming.
+- **One command, one summary PER TEST BINARY.** A crate with unit tests plus an integration target
+  prints two `test result:` lines; a second one saying `0 passed; N filtered out` is the other binary
+  reporting no match — not a failure, and not a count for the first.
+- **When the claim is about a BUILD ARTIFACT, rebuild it inside the script that measures it.** A test
+  run produces a DEBUG build; a release binary is a separate artifact that a demonstration will
+  happily run stale, silently showing pre-change behaviour. The rebuild belongs at the top of the
+  measuring script, before any size / RSS / behaviour reading.
+- **A list that mirrors the tests must be regenerated and DIFFED by the runner**, never hand-kept: an
+  inventory that has drifted from the suite reads as authoritative. Regenerate it to a temp file and
+  fail on any difference, so adding or renaming a test breaks the runner until the list is updated.
+- **Probe the runner once against a target that cannot succeed** — a suite name that does not exist,
+  run from the SAME directory as the real invocation. A green run proves the tests pass today; only a
+  demonstrated failure proves the runner would notice tomorrow. A probe that fails because the
+  project is missing proves nothing about the suite.
+
 ## When Stuck
 
 | Problem | Solution |

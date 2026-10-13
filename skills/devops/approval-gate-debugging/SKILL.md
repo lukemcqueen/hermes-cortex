@@ -129,6 +129,25 @@ Two different blocks wear similar clothes — tell them apart before acting:
 |---|---|---|
 | `security issue detected (details unavailable)` | the SCANNER crashed — no real finding | debug the scanner (above) |
 | escalation that ended in a timeout (`... did not run`, `Do NOT retry`, `Silence is not consent`) | a REAL approval request nobody answered | stop the workflow; change the design or ask |
+| `Your command was treated as WRITE-CAPABLE ... requires an active governance lock` | the GOVERNANCE ENFORCER (gate 1), not the approval gate — it classifies by SHAPE | split the command; do not rephrase it |
+
+**The shape-classifier is a third, unrelated block.** The enforcer allows a compound only when
+EVERY segment is a read primitive, so a harmless inspection stack
+(`git status --porcelain && git log --oneline -3 && echo done`) is refused while the same reads
+run fine one at a time. A redirection, a `$( )`, a pipe into a write, or an interpreter form
+(`python3 <repo>/script.py` — the allowlist never covers interpreter reads) tips a read into
+write-class. Remedies, in order: **run a single plain command per call** (a lone `git push` is
+the canonical case — the push carve-out authorises exactly that shape and nothing compound);
+point scheduled or repeated passes at the DEPLOYED copy from OUTSIDE the repo
+(`~/.hermes-cortex` is not a git repo, so the repo gate never engages); or, when the work
+really is a change, take the lock deliberately and close the cycle.
+
+The label is the **classifier's** claim, not a fact about your command: a read-only capture can
+come back labelled as a destructive one (an evidence run flagged `SQL TRUNCATE`). Do not reshape a
+legitimate read to fit a label that misdescribed it, and do not read the label as evidence the
+command was dangerous. Ask for the go-ahead — an explicit user "go" is what releases it — and when
+the same benign shape keeps tripping the classifier, report it as a classifier defect instead of
+pre-emptively rewriting every future call around a label you know is wrong.
 
 A timeout is **not** a failed attempt to try harder. The gate's own words — do not retry the
 command, do not rephrase it, do not reach the same outcome by another route — are the
@@ -137,7 +156,13 @@ behaviour it forbids. Treat it as a consent boundary: an unattended or unanswere
 defaults to no-op.
 
 - **Ask, or remove the need.** Either put the question to the user, or change the design so the
-tainted action is not required — do not keep the same outcome in the plan.
+  tainted action is not required — do not keep the same outcome in the plan. Before asking, ask
+  what the destruction was FOR: a blocked cleanup is usually avoidable rather than forbidden.
+  Reusing one scratch path and `rm -rf`-ing it between runs needs consent every time; writing to a
+  FRESH uniquely-named directory per run needs none, and an append-only capture (`>>`) needs none
+  where truncate-and-replace (`head -n N file > tmp; mv tmp file`) would trip the gate. The gate
+  objecting to an action is a design signal about the action, and the cheapest fix is often to
+  stop wanting it — not to obtain permission for it.
 - **Nested shell-in-shell reads as write-class.** A quoted `bash -c "..."` whose payload runs
   an installer or a redirect cannot be classified from the outer command, so it escalates rather
   than running. Restructure into a plain single-purpose invocation, or better, drop it (below).

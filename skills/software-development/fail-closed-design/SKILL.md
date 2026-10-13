@@ -68,6 +68,28 @@ several languages or harnesses, ship the rule as a language-neutral spec plus
 KNOWN-ANSWER vectors rather than a library — a reimplementation is correct iff
 it reproduces the vectors.
 
+## A disabled check and a masked exit code are the same hole
+
+The fail-closed rule applies to the CHECK as much as to the guarded action: an
+enforcement point that silently stops enforcing is indistinguishable from one
+that is satisfied.
+
+- **A loader that cannot bring in the checker must say so.**
+  `try: mod = load(path)` / `except Exception: mod = None` removes the check
+  entirely and the run reads green. Fail LOUD: emit an explicit
+  "unavailable — COULD NOT VERIFY" finding naming the missing file, and keep the
+  rest of the run alive. Silence is the permissive fallback.
+- **Never `|| true` an exit code that carries a verdict.** A wrapper that
+  discards the status of a verifying tool converts a failure into a success at
+  the process level. Capture it (`${PIPESTATUS[0]}` for a pipeline, not `$?`
+  which is the LAST stage's) and dispatch on it. Distinguish warning-only from
+  failure when the tool's codes do (`2` failures, `1` warnings, `0` clean):
+  propagate the failure, report the warning — a deploy that aborts on warnings
+  is unusable, one that ignores failures is a false green.
+- **Do not discard a cleanup's stderr.** `2>/dev/null` on a step whose failure
+  leaves the system in the state the step existed to prevent hides the one
+  signal that explains the next failure; capture it and report it.
+
 ## An empty credential authenticates nothing — guard it explicitly
 
 An unset/empty secret does NOT make the crypto fail: HMAC with an empty key

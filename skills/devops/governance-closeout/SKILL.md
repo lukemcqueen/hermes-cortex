@@ -30,7 +30,15 @@ feedback_accept(cycle_id=…, completeness=…, quality=…, progress=…, note=
 end_change(task_id=…)                          # refuses while the cycle is unscored
 ```
 
-A bare note is refused: pass scores, or an explicit `unscored_reason`. Decisions are
+A bare note is refused: pass scores, or an explicit `unscored_reason`.
+
+**Score a deliberately PARTIAL change honestly, and NAME the gap.** A cycle whose scope was cut
+short — the first of two items landed, a follow-up sweep deferred because it depends on the
+arbiter this change introduces — is RECORDED, not hidden: pass the real numbers and state the
+deferred item in one clause. Completeness 10 beside an unstated gap is a false record, and the
+next session cannot tell a finished change from an abandoned one; a 9 with the gap named is what
+it actually needs. `unscored_reason` is for a cycle where NOTHING could be measured — an approval
+timed out, no change made — never a substitute for scores you can defend. Decisions are
 compared by CLASS, so a `LOOP` result still closes.
 
 ## The adversarial review gate
@@ -62,24 +70,38 @@ result names) — not just the design doc. Two mechanisms sharing one name is ho
 later session merges the wrong one: sharing the CODE is fine (share the policy,
 keep one implementation), but process, prompt and trigger are what carry
 independence, and a name that hides the difference invites breaking it.
-**Resolve the reviewer's MODEL in one place, and let a tier change the TRANSPORT,
-never the model.** A tier that routes a small change over a faster path is a transport
-decision; if it also silently substitutes a different model, the fleet's documented
-reviewer is not the one that judged — and the stored row faithfully records a model
-nobody chose, so the record cannot be used to notice the drift. Keep ONE resolution
-used by both the caller and the recorder, so what runs and what is written down cannot
-diverge, and make a different model an explicit, auditable opt-in.
+**Resolve the reviewer's MODEL in one place, and state what the tier does to it.** ONE
+resolution must feed both the caller and the recorder, so what RUNS and what is WRITTEN
+DOWN cannot diverge — a stored row naming a model nobody chose is a record that cannot be
+used to notice drift. The depth tier is a deliberate operator cost decision: a complex
+change that is neither an always-review surface nor far above the thresholds may be judged
+by a cheaper model, and that is a DEPTH decision (say so where it lives) rather than a
+transport one. Keep the always-review class on the deep model — a cheap judge is a weaker
+judge, so if the cheap tier ever waves something through, move that CLASS back up instead of
+trusting the tier more.
+**Verify the WIRING, not the constant.** A helper that returns the cheap model proves
+nothing about what the gate RUNS. Assert through the DISPATCH, with the configured backend
+set to its DEFAULT, that a light change actually reaches the cheap model: a condition that
+also required a non-default backend left the cheap path unreachable while every unit test
+stayed green, because the tests asserted the tier's VALUE and never that anything consumed
+it. A constant being right is not a feature being on.
 
 **The verdict is durable, and the reviewer is a SAMPLING model** — re-running it on
 byte-identical material can return the OPPOSITE verdict, so the verdict is stored
-once per cycle and pinned by a fingerprint of the exact
-material it judged (note + diff):
+once per cycle and pinned by a fingerprint of the ARTIFACT it judged —
+repo state, audited range, the task's description, the diff stat, and the diff:
 
 - `end_change` honours a stored verdict whose fingerprint matches the current
-  material — CLEAN proceeds, FINDINGS blocks with the recorded findings.
+  artifact — CLEAN proceeds, FINDINGS blocks with the recorded findings.
 - Material that moved after a review is judged again, so a CLEAN cannot be carried
   over a later, unreviewed change.
 - A stored verdict with NO fingerprint is not reused.
+- **The worker's NOTE is deliberately outside the key.** It still travels inside the
+  material (the reviewer is told to treat it as a self-report and check it against the
+  diff), but re-wording it does not re-open judgment of an unchanged diff: keying on
+  note+diff meant every retry bought a whole fresh review of the same artifact, which
+  was the largest recurring review cost. When the note itself is what changed, the
+  explicit re-judge is `rereview_change(force=True)`.
 
 ### Working the findings
 
@@ -216,6 +238,30 @@ material it judged (note + diff):
     truncates: fold the docs commit back with `git reset --soft <last-code-commit>` and
     re-commit once. Do this ONLY for commits you have not pushed — do not rewrite
     published history on a shared repo, and never force-push to make a range smaller.
+  - **A "your material is truncated" finding that quotes NO exact marker is a GATE bug, not a
+    long range — and half the cure is in the reviewer's PROMPT.** The gate already exempts
+    window-only findings from blocking, but it matches the gate's OWN disclosure wording
+    (`chars omitted`, `bounded:`); a reviewer saying the same thing in its own words ("the diffs
+    are truncated by the gate budget") matches nothing, blocks, and cannot be cleared by ANY edit —
+    the complaint is about the window, not the change. Diagnose before shortening the range:
+
+    ```bash
+    sqlite3 ~/.hermes-cortex/data/loop-governance.db \
+      "SELECT findings_json FROM adversarial_reviews WHERE cycle_id=<N>"
+    ```
+
+    then run the gate's own predicate over the stored dicts (`_is_material_limit_finding`,
+    imported from the deployed `loop-gov-mcp.py`). A finding whose marker hits are EMPTY while a
+    sibling's are not is the paraphrase case. Fix BOTH halves: tolerant matching (pattern as well
+    as exact string, keeping the guards — the recommendation must still be about SEEING the
+    content, and fabrication/injection/swallowed-error are never exempt) AND a rule in the
+    reviewer prompt telling it to report a bound as ONE finding at `info`, quoting the marker
+    verbatim. The prompt is the durable half: a reviewer with no verdict class for "I could not see
+    it" reaches for a blocking severity instead, and the predicate can only catch the wording after
+    it has been written. Pin it with a test built from the REAL stored text — an invented wording
+    tests your guess about the reviewer's phrasing, not the one it uses. **A stored verdict is
+    evaluated by the RUNNING daemon's predicate**, so an already-refused cycle keeps refusing until
+    that daemon restarts: the fix is live for the next session, never retroactively.
   - **Same finding, same superseded hunk, two retries = stop re-writing the note.** It
     means the range is too long for the budget, not that your note lacked evidence.
     Shorten the range (one commit per close where the work allows) instead of
@@ -264,6 +310,15 @@ material it judged (note + diff):
   (`git show <pre-fix-sha>:<path>` into a temp tree) and assert it FAILS there,
   then record both directions in the evidence. A guard only ever run against the
   fixed revision is a happy path with a name.
+  **The RUNNER behind a test claim needs the same treatment**: a generator that reports a
+  passing suite must be shown exiting NON-ZERO when the suite fails (point it at a target that
+  cannot exist, or at a deliberately broken copy) — otherwise the artifact proves the tests pass
+  today, not that the runner would notice tomorrow. Run that probe from the same directory as
+  the real invocation: a probe that fails because the project is missing proves nothing about the
+  suite. **An UNEXERCISED branch is the same finding in another shape** — a fallback the change
+  claims to handle with no execution behind it — and the fix is a committed test that drives the
+  branch with the dependency STUBBED, extracting the block by stable markers so the test fails if
+  the logic is edited away (recipe: `shell-scripting` → "Testing a Script Block in Isolation").
 - **When a finding says "you claim X but the diff doesn't show it", add the CHECK.**
   The fix is not a paragraph of justification: make the tool verify X, then commit a
   test that drives it in BOTH directions — a healthy input passes, and one thing broken
@@ -327,6 +382,11 @@ material it judged (note + diff):
   the committed artifact that proves it (`git show <sha>:<path>`); the recorded run
   belongs in that artifact. See `references/adversarial-gate-material.md`, "The commit
   message is material too".
+  **Write it about the PROBLEM, not about the review.** Naming a finding id, quoting what a
+  previous round said, or phrasing the message as an answer to the reviewer ("a reviewer reading a
+  truncated diff could not see the test") is graded `evaluation-awareness` however accurate it is —
+  the same rule that governs the note. State what was wrong and what the commit does about it; the
+  reviewer can see its own findings and does not need them narrated back.
 - **A `fabrication` finding can be about the MATERIAL, not about you.** The gate
   builds the material's "Diff stat" from the complexity MEASUREMENT while it builds the
   diff BODY from the cycle's COMMITS, and the measurement deliberately also counts your
@@ -355,6 +415,14 @@ material it judged (note + diff):
 - **Answer a false finding with a measurement, not with prose.** Findings can be
   wrong. State the measurement that refutes one and leave the code alone rather than
   "fixing" a non-defect.
+  **Refute it empirically, then remove the ambiguity that invited it.** Prove the refutation
+  with a command whose output is self-evident before asserting anything — for a claim about
+  shell statuses, `false | tail` followed by `${PIPESTATUS[@]}` shows index 0 belongs to the
+  LEFT command, which turns "you misread it" into a measurement. Then, where a CORRECT line is
+  what a reader misread, make it undeniable anyway: capture the status on its own line instead
+  of inside a pipeline (identical behaviour, nothing left to argue about), because a gate nobody
+  trusts is a gate nobody uses. Leave the code strictly alone only when no reasonable reading
+  of it was wrong.
   **The corrective commit is the worst case: the diff SHOWS the text it removed.** A
   commit that deletes a mistake (a traceback pasted into an artifact, a wrong claim)
   reaches the reviewer as `- <that text>`, and a finding can then assert the artifact
@@ -524,6 +592,23 @@ as `.txt` mean the ignored `.log` was the wrong filename, not a missing ignore r
   and the lock stays held. Reviewer budgets must be clamped BELOW the client ceiling
   (`REVIEWER_TIMEOUT_CEILING = 240`); prefer a short fail-closed refusal over an
   unobservable hang.
+- **A reasoning reviewer needs an output budget that clears its THINKING, not its answer.**
+  A small `max_tokens` is not a tighter leash on a reasoning model: it spends the whole budget
+  on reasoning and emits EMPTY content with `finish_reason='length'`, which the gate reads as
+  "reviewer unavailable" and uses to refuse an otherwise valid close — a false negative, the one
+  failure mode this gate must never have (measured: the SAME prompt needed ~9000 completion
+  tokens on a long brief, ~1800 on a short one, and returned nothing at 900). Size the cap
+  against the reasoning, treat `length`-with-empty-content as a BUDGET failure and retry once at
+  a larger budget, and never fold it into the unavailable-reviewer message: one means "ask again
+  with more room", the other means the reviewer is down.
+- **`end_change` must REFUSE on a degenerate reviewer return, never trace back.** The parse does
+  `text.find("{")`, so a response with no content makes the text `None` and the close dies with
+  `'NoneType' object has no attribute 'find'` — leaving the cycle PENDING with its lock HELD and
+  every retry crashing identically, so the session can neither close nor start. A reviewer that
+  returns nothing IS an unavailable reviewer; report it as one. Already stuck that way, the exit
+  is NOT `force=True`: `advance_task_state(<task_id>, new_state="cancelled")` on the live session
+  releases the lock — **a terminal task holds nothing** — which is the sanctioned terminal
+  release for a close that cannot complete.
 - **One lock per logical change.** `begin_change`'s description is fixed for the life
   of the cycle and must NEVER be hand-edited (that is fabricated governance state).
   The reviewer diffs the window from the lock's `started_at`, so stacking a second
@@ -546,6 +631,14 @@ as `.txt` mean the ignored `.log` was the wrong filename, not a missing ignore r
     re-review, ask an orchestrator to clear the cycle, or let the TTL reap it.
     `force=True` releases the held cycle to make room, so it is an override, not a
     convenience — never take it to get past your own refusal.
+
+    **That holds when the FIX ITSELF needs the lock.** Diagnosing the gate from inside the stuck
+    session reads like the exception ("I only need a lock to repair what is blocking me") and it is
+    not one: an override to unblock your own repair is still an override. Land what the session can
+    still close, give the operator the ONE action that clears the stuck cycle (a daemon restart, or
+    an orchestrator clearing it), and let the next session's daemon pick the fix up — a day's delay
+    on a gate repair is cheaper than normalising `force`. If you do take it, report it as an
+    override in the same breath as the fix, never as procedure.
 
 - **A timed-out `end_change` may have SUCCEEDED — do not report it as a failure.** The
     call can hit the MCP client's ~300 s ceiling while the reviewer is still working.

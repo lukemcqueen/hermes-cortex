@@ -169,6 +169,39 @@ missing from `mcp.json` on a non-orchestrator host is usually a DEPLOY-SCOPE bug
 (a server registered `register_orch` ships only to orchestrators), not a broken
 installer: `install-pi-mcp.sh` warns and registers the rest, so 3-of-4 looks normal.
 
+### The SKILLS half — the adapter must be RUN, not merely deployed
+
+Pi advertises each skill's NAME + DESCRIPTION at startup and loads the body on demand, so it
+must be pointed at a CURATED set, at USER scope so every project gets it, with the set taken
+from the shared manifest rather than typed by hand:
+
+```bash
+bash ~/hermes-cortex/ops/scripts/install/install-pi-integration.sh           # wire it
+bash ~/hermes-cortex/ops/scripts/install/install-pi-integration.sh --check   # prove it (rc 0)
+bash ~/hermes-cortex/ops/scripts/manage/audit-pi-integration.sh             # per-layer audit
+```
+
+It writes `~/.pi/agent/settings.json` — `"extensions": [<cortex-context.ts>]` and
+`"skills": ["~/.pi/agent/cortex-skills"]` — and the curated set is the manifest's `always:`
+section (`from: skills.yaml#always` in `ops/install/harnesses/registry.yaml`), i.e. the SAME
+definition Hermes loads. Idempotent, and it preserves the user's other keys.
+
+- **Registering is not executing.** A deploy that COPIES an installer into
+  `~/.hermes-cortex/scripts/` has wired nothing, so a host with Pi installed can sit unwired with
+  no signal at all. Gate the run on PRESENCE (`~/.pi/agent/bin/pi` or the `~/.pi/agent` dir), run
+  BOTH halves (`install-pi-mcp.sh`, `install-pi-integration.sh`), and report the outcome: a host
+  without Pi is not a fault; a host with Pi that comes out of a deploy unwired is. The doctor's
+  `Pi integration` line is the drift guard that keeps it from going quiet again.
+- **Never wire the whole library, and never hand-build an index.** Hundreds of skills in the
+  prompt is a self-inflicted context wound, and a bespoke bridge (a `/tmp` builder script, a JSON
+  index, a shell loader) has no owner: not deployed, not verified, gone with the machine. The
+  registry entry plus the shared manifest is the supported route; treat any other as superseded.
+- **The skills half needs PyYAML and must not pick its interpreter by PATH.** `command -v python3`
+  is the interpreter most likely to LACK it, so the installer reports `PyYAML required` and skips
+  the skills half on a host that has everything — resolve through
+  `ops/scripts/lib/python-with-module.sh --print yaml` first and keep a bare PATH pick as the last
+  resort only.
+
 The **memory/session TOOLS** also come from that MCP server — the SAME
 `cortex-context-mcp.py` Claude Code and Codex use, so the schemas are DERIVED
 from the store contract and there is no per-harness tool list left to drift.

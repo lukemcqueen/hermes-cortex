@@ -266,3 +266,24 @@ yes | hermes mcp add server-name --command python3 --args /path/to/server.py
 | `ModuleNotFoundError` | Missing dependency | Install the missing package |
 | `Permission denied` | File not executable | `chmod +x server.py` |
 | `Tool not found` | Wrong tool name in call | Check `hermes mcp test` output for exact names |
+
+---
+
+## 10. Servers in Other Languages, and the Wire Rules That Always Apply
+
+Hand-rolling JSON-RPC over stdio is legitimate for a small tool (three operations, no runtime to
+keep resident). These rules hold regardless of implementation language, and most of them are how a
+stdio server fails WITHOUT a useful error:
+
+| Rule | Why |
+|------|-----|
+| **stdout carries JSON-RPC and nothing else** | One stray banner or `print` corrupts the stream, and the client reports a protocol error that has nothing to do with the real bug. Diagnostics go to stderr, always. |
+| **A failed tool call is an ERROR (`isError: true` / a JSON-RPC error), never a successful empty result** | An agent retries "could not look" and accepts "found nothing". Conflating them makes a misconfigured host look like an empty corpus — and the agent silently gets less than it thinks. Keep the message legible enough to act on (name the variable/path/config that would fix it). |
+| **A notification has no `id` and gets NO response** | Answering one is a protocol error. Branch on the presence of `id`, not on the method name. |
+| **One dispatch, two surfaces** | Generate `tools/list` AND any CLI/`--help` from the same table of operations. Two hand-written descriptions of one tool drift, and the drift is invisible until an agent calls a tool differently from how it is advertised. |
+| **Exit codes are contract for the CLI side** | Distinguish "ran and failed" (1) from "could not verify / not configured" (3). An agent branches on this: one is worth retrying, the other means this host is not set up. |
+| **Test it as a REAL PROCESS over pipes** | A server can pass every unit test on its handlers and still be unusable: spawn it, write `initialize` + `tools/list` + one call that must FAIL, and assert on the parsed JSON (tool names, the error message). Assert the error case explicitly — a server that returns success for everything is the failure mode this catches. |
+
+Minimal wire shapes, for reference: `initialize` → `{protocolVersion, capabilities: {tools: {}}, serverInfo: {name, version}}`;
+`tools/list` → `{tools: [{name, description, inputSchema}]}`;
+`tools/call` → `{content: [{type: "text", text: "…"}], isError: false}`.

@@ -246,6 +246,51 @@ docker system prune -a --volumes       # EVERYTHING — named volumes too
 
 **Warning:** Never run `docker system prune -a --volumes` without confirming with the user. This removes named volumes with potentially important data.
 
+## Measuring a service's memory floor (rightsizing a container)
+
+"How small can this container run?" is a measurement, not a guess. Do it in this order:
+
+1. **Cap it and see if it lives:** `docker run -d --memory=<cap> --memory-swap=<cap> …`. Pass BOTH,
+   or the container reaches for host swap and survives a cap it should have failed.
+2. **Wait for a PARSEABLE answer, not for "Up".** Poll the real endpoint until the body parses; a
+   fixed `sleep` records a startup race as a footprint, and `Up` with no usable response is not a
+   working service whatever its memory says.
+3. **Re-check after it has served traffic (~20 s later).** A managed runtime can answer at 25 s and
+   be dead at 60 s; the startup number is not the footprint. Quote the STEADY-STATE figure and say
+   which one it is.
+4. **Read the numbers:** `docker stats --no-stream --format '{{.MemUsage}}' NAME` for RSS, and
+   `docker inspect NAME --format '{{.State.OOMKilled}}'` to separate an OOM kill from a crash — exit
+   137 alone does not tell you which.
+5. **Make the measuring script EXIT NON-ZERO when a row is not a measurement.** A row that never
+   answered is not a data point: mark it unusable and fail, or a broken run is later quoted as a
+   result. Same for the generator as a whole — a probe script that cannot fail proves nothing.
+6. **Cap above the steady number, with headroom.** Sizing to the startup reading leaves nothing for
+   the service's own growth.
+
+### What produces a plausible WRONG number
+
+**Copy `templates/measure-container-memory.sh`** to run the whole sweep: it polls for a real
+response, re-checks steady state, marks unusable rows, and exits non-zero — edit its CONFIG block
+and the probe endpoint.
+
+- **`-v "$PWD/$path"` when `$path` is already absolute.** Docker silently creates an EMPTY DIRECTORY
+  at a non-existent host path and mounts it over the target file; the entrypoint then fails with exit
+  127 and `OOMKilled=false`, and the row reads like a memory finding. Resolve the source explicitly:
+  `case "$src" in /*) ;; *) src="$PWD/$src" ;; esac`.
+- **Grepping the process list for the server's package name.** A native binary launched from a
+  Python/Node package shows up as `python`/`node`; `ps -eo comm | grep -c <server>` then reports 0 on
+  a healthy container. Inspect `ps -eo comm` before trusting any process count.
+- **Assuming the memory lever is the one the docs name.** Worker-count variables differ per image
+  generation, and a variable the entrypoint never reads is silently inert — the container runs at the
+  default worker count while the config claims otherwise. Prove the lever: run one row with it
+  changed and show the process count and memory are unchanged.
+- **Pruning features to fit a cap, without pricing what the feature was FOR.** Fewer workers, engines,
+  or backends lowers the number and can leave a service that starts, answers a health check, and
+  returns nothing useful. Measure the OUTPUT alongside the memory, and mark a configuration that fits
+  the cap but serves no results as unusable rather than reporting it as the floor.
+- **Keeping the IMAGE is fine** (re-pulling costs more than the measurement); it is the CONTAINER the
+  script must clean up, via an `EXIT` trap — and state that in the artifact instead of asserting it.
+
 ## Pitfalls
 
 | Problem | Cause | Fix |
@@ -258,6 +303,7 @@ docker system prune -a --volumes       # EVERYTHING — named volumes too
 | "permission denied ... /var/run/docker.sock" | User not in docker group (or daemon down) | `sudo usermod -aG docker $USER` then re-login; check `systemctl status docker` if daemon is down |
 | Compose env var empty / not applied after edit | `docker compose restart` does NOT re-read env | Recreate instead: `docker compose up -d --force-recreate <service>` |
 | Container OOM-killed / exits 137 | Memory limit hit | `docker inspect NAME --format '{{.State.OOMKilled}}'`; raise `--memory` or fix the leak |
+| Container exits 127, `OOMKilled=false`, logs show an entrypoint error | A bind-mount source path that did not exist — Docker created an empty DIRECTORY and mounted it over a file | Resolve the mount source before `-v`: prefix `$PWD` only for RELATIVE paths (`case "$src" in /*) ;; *) src="$PWD/$src" ;; esac`) |
 | Container can't write to /exports or shared dir | Non-root user lacks write permission | Create dir + `chmod 777` in Dockerfile BEFORE `USER` switch — entrypoint runs as non-root and can't chmod |
 | Compose services can't reach each other | Wrong network or service name | Services use service name as hostname, check `docker compose config` |
 | Compose fails with "invalid interpolation format" | `***` used to mask credentials in compose.yml | Never mask secrets with `***` in docker-compose.yml — it breaks variable substitution. Use `.env` file or Docker secrets instead |

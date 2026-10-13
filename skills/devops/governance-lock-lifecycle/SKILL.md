@@ -120,16 +120,28 @@ claims below are asserted by the committed, re-runnable test
 `docs/evidence/governance-lock-lifecycle-claims/transcript.txt`), which drives the deployed
 `loop-gov-mcp.py` directly:
 
+- **`advance_task_state` is also the recovery for a lock stranded by a CRASHED close.** A close that raises after `feedback_accept` leaves the cycle scored-but-PENDING with the lock still held, and a repeated `end_change` throws again rather than clearing it. A terminal transition (`new_state="cancelled"`) releases it — the tool reports "a terminal task holds nothing" — and records the reason in `task_events`. Use that instead of a force/override, and say plainly in the reason what crashed, because the range then has no receipt and the next close must mint one.
 - **`advance_task_state` retires a mis-framed cycle without an override.** The user asked how to clear
   a cycle that kept being refused for scope drift. Reading the tool list settled it in minutes: the
   state machine carries `cancelled`/`suspended` and logs the reason in `task_events`, so the mis-framed
   task was retired through it (no `force`, no `user_overrode`) and the real work reopened under a
   correctly-named cycle, which closed CLEAN first try. A "no exit" assumption had already cost four
   refusals and an hour-long TTL wait.
-- **A bare `check_lock()` is not a status check.** Called with no args it cannot resolve the session
-  and returns `{"active": false}` while the lock is live on disk. When the file says active and the
-  no-arg call says inactive, **the file is right** — the close will succeed. Do not re-acquire, do not
-  open a carrier cycle; that false negative manufactures the very extra cycle you were trying to avoid.
+- **Read the lock's FULL picture; `active` alone is only YOUR lock.** A call with no args cannot
+  resolve a session, so `active` reports `false` while another session's lock is live on disk — that
+  field answers "do *I* hold a lock", never "is any lock held". The call also returns `locks` +
+  `live_lock_count` listing every live lock (task, session, agent, repo, heartbeat): read those before
+  concluding none exists, and when the lock FILE says active while `active` says false, **the file is
+  right** — the close will succeed. Do not re-acquire and do not open a carrier cycle; that false
+  negative manufactures the very extra cycle you were trying to avoid.
+- **The lock's repo identity is legible in `repo_path`.** A lock stamped from a git repo carries a
+  NON-EMPTY `repo_path`; one opened where the cwd is NOT a repo (a plain working copy, a deploy dir)
+  has nothing stamped, so it inherits the host-canonical slug with `repo_path` EMPTY. Two locks can
+  name the same slug by opposite routes — read `repo_path` to tell them apart, and treat an empty one
+  as "this lock does not govern the tree I worked in": the close gate composes review material from
+  the named repo, so a mis-tagged lock gets reviewed against a tree that cannot contain the work.
+  `loop-gov.py` prints a note naming the cwd and the repo it will claim when it cannot resolve one;
+  run governance from inside the repo, or pass `--repo <path>`, rather than accepting the fallback.
 - **`request_interruption` cannot rename a cycle** — it derives the sub-task id by suffixing the
   parent's, so splitting work with it does not fix a mismatched task id. Renaming needs a NEW
   `begin_change` under the correct name (a `reframe_change` tool would be the clean fix; until it

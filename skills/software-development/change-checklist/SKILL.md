@@ -103,6 +103,15 @@ Enforced at 3 layers: pre-commit hook (static gate), enforcer (blocks commit unt
       `bash ops/scripts/lib/python-with-module.sh <module> <script> [args]` (exit 3 = no
       interpreter can import the module), and the same capability test applies to any
       script that picks its own interpreter (`shell-scripting`).
+- [ ] **Ambient environment is the same trap one level up: a test that reads HOME, CWD, or an
+      env var another module sets is a test whose verdict depends on who invoked it.** The
+      symptom is a test that passes alone and FAILS inside the full suite, where a sibling
+      module's `HOME` (or a leaked `CORTEX_*` var) is in effect — and it is easy to misread as
+      "my change broke it". Derive paths from the REPO under test (`Path(__file__).parents[1]`)
+      or pass them in explicitly; never from the ambient `HOME`/`CORTEX_REPO`. Prove it both
+      ways before shipping: run the file alone AND from a foreign directory with a foreign HOME
+      (`cd /tmp && HOME=/tmp/fakehome pytest <file>`), then assert the default roots
+      STRUCTURALLY (the source names the trees) rather than by a live lookup.
 - [ ] When a component cannot RUN because a dependency is missing, INSTALL it (age-gated via
       `ops/scripts/health/check-package-age.py <mgr> <pkg>`) rather than teaching every
       caller to route around it. A workaround fixes the one call site you were looking at
@@ -172,7 +181,13 @@ Enforced at 3 layers: pre-commit hook (static gate), enforcer (blocks commit unt
       `wc -l` / `grep -c` printed, at the revision it cites. **And name the comparison's exact
       strength** — "identical modulo the deploy banner (N leading lines stripped)", never
       "byte-identical" — because an overclaim the check does not support reads as fabrication
-      even when the check passing was real.
+      even when the check passing was real. **And state the property your artifact
+      actually shows.** "ONE verdict per server" is refuted by your own evidence the
+      moment the transcript prints two lines per server; write the true, narrower
+      claim ("no CONTRADICTORY verdicts — the presence line is informational, the
+      wiring line judges the interpreter"). An overstated claim sitting beside
+      output that contradicts it is filed as fabrication even when the change is
+      correct, and a reviewer reading a diff sees the wrong claim first.
 - [ ] Maker/checker split — use a different model for verifier vs implementer where quality is critical.
 - [ ] Record evidence — finding IDs, boundary inputs, assumptions violated, exit codes. Report "checked X, Y, Z" never "verified clean".
 
@@ -190,6 +205,19 @@ Enforced at 3 layers: pre-commit hook (static gate), enforcer (blocks commit unt
 
 ## Phase 4: Documentation
 
+- [ ] **Never document or print a command you have not executed.** Fix text, runbooks
+      and changelogs are instructions an operator or another agent runs verbatim:
+      check the subcommand against the tool itself (`<tool> --help`) in the same
+      cycle that adds it. A plausible-but-nonexistent subcommand sends every reader
+      into a dead end and discredits the rest of the doc — verify the WHOLE command,
+      including which tool owns the subcommand.
+      **A CHECK that prints a fix command is held to the same rule.** A doctor/watchdog
+      finding carries `Fix: …` text that a reader (or another agent) pastes verbatim, so a
+      wrong path there is an unrunnable instruction shipped by the very check that exists to
+      catch problems: verify the printed command's paths RESOLVE and its flags exist, and
+      pin it with a test that asserts the rendered fix names a path that exists. The same
+      applies to a suggested action that is a decision (delete this file, add this block) —
+      confirm the subject is what the check claims it is before printing the action.
 - [ ] New script → register in cortex-update.sh; cron → add to install script.
 - [ ] New skill → SKILL.md + docs/skills-manifest-reference.md if auto-loaded.
 - [ ] Path restructure → fix live refs, update ~/.hermes/config.yaml, add compat symlinks, update repo-organization.
@@ -211,6 +239,14 @@ Enforced at 3 layers: pre-commit hook (static gate), enforcer (blocks commit unt
       `python3 ops/scripts/manage/check-skill-drift-parity.py`, then diff repo against the
       deployed copy with the deploy header stripped, and take the deployed side only where
       it is a superset (pure additions, no deletions of repo content).
+      **A file the tool marks REVIEW is not automatically a keep-the-repo case.** The tool's
+      `would drop N line(s)` counts REPO-only lines — the side at risk — so diff BOTH
+      directions and check each such line's CONTENT in the deployed copy by PHRASE, not line
+      by line: a paragraph that was rewritten or condensed drops lines that are still present
+      in another form, and a stale claim the newer copy deliberately removed must not be
+      merged back. Hand-merge only where the deployed copy genuinely lacks the content. A
+      mechanical ratio over whole lines is not enough to decide (a reflowed paragraph scores
+      low while losing nothing); grep the deployed copy for the distinctive phrase instead.
 - [ ] Symptom proof — the specific error/alert/blocker is gone (not just code compiles + doctor passes). Show evidence in the cycle note.
 - [ ] Stale expected-list cleanup — removed crons also removed from uninstall arrays (doctor reads them as expected list).
 - [ ] Stale bus/state cleanup — delete test bus messages and stale state-file entries before end_change().

@@ -70,7 +70,9 @@ If the capability exists but isn't wired, **wire it**:
 | Script has logic but no cron | Wire it as a cron with `cronjob action='create'` |
 | CLI exists but no `--json` flag | Add `--json` to the existing script |
 | Config template exists but no install path | Add a `register()` call to `cortex-update.sh` |
-| Concept exists in one codebase but not another | Port it, don't rewrite it |
+| Capability exists in one codebase but not another | Port it, don't rewrite it |
+| Capability exists only as a SKILL, bound to a system you are moving off | Port the capability to a system-neutral tool; say explicitly what the existing skill covers and what the gap actually is |
+| Capability is blocked by a runtime dependency the target hosts lack | Replace the dependency (e.g. compile the database engine in) rather than requiring a host install |
 
 Adding a flag to an existing system costs 1/10th the debt of a new
 parallel system.
@@ -85,6 +87,29 @@ Document in the commit message:
 Name the file at the **class level**, not after today's session artifact.
 A file called `fix-registry-timeout.py` is wrong (session-specific).
 A file called `circuit-breaker.py` is right (class-level).
+
+## Choose the Implementation Stack by MEASURING the Host
+
+Creating a new tool is also a choice of language, runtime, and dependencies — and that choice is a
+"create" decision with the same debt. **Measure before you pick; never adopt a suggested stack on
+its reputation.**
+
+```bash
+<compiler> --version            # is the suggested language even installed?
+ls ~/.cargo/registry/cache/*/   # can the dependency set resolve OFFLINE?
+command -v <helper>             # does the external binary your design leans on exist?
+```
+
+- **Prefer a language the fleet already ships.** A language nobody builds in today adds a toolchain,
+  a CI path, and a security surface to every host — even when it wins a benchmark.
+- **Prefer zero RUNTIME dependencies over zero BUILD dependencies.** A tool that needs an external
+  binary or interpreter at run time fails on the host that lacks it, silently; a library compiled
+  into the binary costs one build and then works everywhere. Watch for a fallback that degrades
+  quietly (a cache that reports itself unavailable is indistinguishable from an empty one).
+- **Match the consumer's language when a system will link the code**, and expose a CLI/stdio surface
+  so other systems can consume it without importing it.
+- Record the measured facts in the design doc, and re-measure the envelope (binary size, idle RSS)
+  instead of repeating an estimate — a design justified by someone else's number is an assumption.
 
 ## Violation Classification
 

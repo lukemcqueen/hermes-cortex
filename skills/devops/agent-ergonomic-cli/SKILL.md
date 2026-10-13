@@ -121,6 +121,25 @@ explicitly:
    re-implement the semantics locally. Report the dependency as unavailable
    instead — a fallback copy is how two implementations start.
 
+7. **Distinguish "nothing matched" from "could not look", and carry the upstream's
+   DEGRADED-state signal through.** A provider that reports partial failure — which
+   backends, engines, or sources were unreachable — is telling the caller something it
+   cannot infer otherwise: an empty result beside a degraded upstream means the query
+   may be fine and the HOST is not. Surface that field as a first-class output field
+   AND name the degraded parts on stderr, so a human reading the run sees why an empty
+   answer is not proof. Never let a partial failure collapse into an empty list: pair it
+   with the distinct "dependency unavailable" exit code and a message naming the missing
+   configuration or the blocked source. A caller that cannot tell the two apart either
+   retries a query that can never succeed or trusts an answer that was never obtained.
+   The same rule covers absence of configuration: "no provider is configured" is its own
+   outcome with its own code, never an empty result set.
+8. **Results on stdout, everything else on stderr.** Metadata about the result (byte
+   size, cache state, degraded sources, counts) belongs on stderr so stdout stays
+   pipeable: `tool fetch URL > page.txt` must yield the payload alone. In a protocol mode
+   (MCP/JSON-RPC over stdio) stdout carries the protocol and NOTHING else — one stray
+   print corrupts the stream, and the client then reports a protocol error unrelated to
+   the real bug, which is the most expensive way to hide a `println!`.
+
 Sibling rule for the adapter side: one implementation, per-host adapters that add
 no semantics — see the `cross-agent-design` skill.
 

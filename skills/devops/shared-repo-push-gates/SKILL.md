@@ -89,6 +89,30 @@ and invalidates the receipt, so push immediately after closing. Full detail:
   generator over the MERGED source, then confirm with the generator's own `--check`:
   an auto-merge that reports no conflict is not evidence the file is correct.
 
+- **Issue `git push` BARE — a pipe or any compound makes it unprovable.** The carve-out
+  recognises only a lone `git push`: `git push origin main 2>&1 | tail -3` is classified as
+  write-capable needing a lock, and the refusal explains the shape rather than the cause. Do not
+  append a follow-up command (`&& git log`, a redirect) to the same line; run the push alone and
+  read its output in the next call.
+- **A refusal naming `reviewed_blobs` means the receipt carries no blob list.** The receipt
+  writer loads a range-blob helper by a repo-relative path resolved against the DEPLOYED root; if
+  that file was never registered for deploy it is absent there, the receipt is written without
+  `reviewed_blobs`, and the gate refuses because the blob list cannot cover the range. A file
+  present in the repo proves nothing about the deployed tree — make the helper deployable, then
+  re-close so a fresh receipt lists the range's files. **Resolve the helper across candidate
+  roots** (the repo layout, the configured repo, the deploy root) and LOG which one won: a single
+  guessed root is right in the repo and wrong deployed (the module sits under
+  `<deploy>/tools/<server>/`, so a repo-relative path resolves to a directory that never exists),
+  and an absent helper is then indistinguishable from a working one.
+- **A null blob list is the STRICTER authorisation, not a bypass — read the CONSUMER before
+  calling it a hole.** `review-receipt-check.py` is the one implementation both gates call, and its
+  contract is: authorise by EXACT `tip_sha`+`base_sha` first, and by content coverage only when
+  `reviewed_blobs` exist — "a receipt with no reviewed_blobs is only ever accepted by rule 1", and
+  every other case prints 0. So a degraded blob list costs REBASE-TOLERANCE (a rewritten tip stops
+  matching), never enforcement. A review that reads the WRITER and reports its degraded output as a
+  push bypass is a claim about a consumer it never opened; check the acceptance path before
+  believing it, and never "fix" a fail-closed gate into a weaker one to answer it.
+
 **The review material is BOUNDED, and that is what makes a big cycle unshippable.** The
 self-adversarial review sees at most 12,000 characters of the range's diff — 60,000 only
 when EVERY path is `.md`/`.txt`/`.rst` AND no path is always-review, and that relaxation is

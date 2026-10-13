@@ -215,9 +215,46 @@ other test has already opened the first resource.
   failure LIST, not the count: identical list = pre-existing, and "passes in
   isolation, fails in the full run" points at module state, not at you.
 
+### 9. The caller's environment can change WHICH tests exist — not just what they read
+
+Rule 6's family, one level up. An inherited `PYTHONPATH` or `PYTHONHOME` that points at a
+foreign `site-packages` makes some test modules fail to IMPORT, and pytest then reports a
+smaller suite as a clean run. Measured on one host, same command, only the environment
+differing: **1818 collected with 4 collection errors** contaminated vs **1846 with none**
+clean — four whole modules dropped, and the runner printed `N passed` either way. An agent
+shell almost always exports `PYTHONPATH`, so the contaminated case is the DEFAULT case.
+
+- **Run the suite through a wrapper that CLEANSES the environment and resolves the
+  interpreter by CAPABILITY** (never by `PATH` or a bare `python3`): `env -u PYTHONPATH -u
+  PYTHONHOME "$PY" -m pytest …`. Copyable shape: `templates/run-tests.sh`.
+- **The wrapper must not REQUIRE a fleet install.** A repo whose host has no resolver and no fleet
+  venv still needs to run its own suite: probe `python3`/`python` on `PATH` by CAPABILITY (still an
+  import test, never a bare path), ANNOUNCE that you fell back and why, and still exit 3 when nothing
+  can import pytest. A silent fallback is worse than none — it swaps which code decides the interpreter
+  while the run looks identical, and it can make a stub test exercise the real thing and "pass".
+- **Pin the wrapper's portability, not only its behaviour.** A source scan asserting no bash-4-only or
+  BSD-hostile construct (the list lives in `shell-scripting`), plus a run of the REAL wrapper in a
+  constructed environment (temp repo, empty HOME, stubbed PATH) for the branches your host cannot
+  reach. Same for the guard's numbers: assert "more than zero collected", never a count that is only
+  true of one repo — a shared guard that encodes this repo's size fails a healthy smaller repo.
+- **Guard collection, not just results.** A test that runs the suite's collection in a
+  subprocess and FAILS on `N errors during collection` — while also asserting a non-trivial
+  collected count, so “0 collected” cannot read as clean — is what stops a dropped module
+  from being reported behind a green total. A green run that tests less than it claims is
+  worse than a red one.
+- **A collection error is not a missing dependency.** `ModuleNotFoundError` naming a
+  SUBMODULE of an installed package (`pydantic_core._pydantic_core`) is an ABI mismatch from
+  a shadowed `site-packages`, not something to `pip install`: fix the environment, not the
+  package list, and never record it as “dependency X is broken”.
+- **Check the runner's own default before blaming a test.** pytest with FLAGS but no PATH
+  collects the whole current directory — in a repo that means `.git`, deploy trees and the
+  venv, and it hangs. Always supply a path.
+
 ## Verification
 
 - `pytest tests/test_<module>_unit.py -q` → all pass
+- The suite collects the SAME number of tests under your wrapper as with `env -u
+  PYTHONPATH -u PYTHONHOME` (a lower count means modules failed to import)
 - The module's real state dir is clean after the run (no leftover files)
 - `grep -nE "<real-chat-id>|<real-host>|/home/<user>/" tests/` → no hits
 - No network calls happened (fake send patched in; check no real HTTP in log)
@@ -417,4 +454,14 @@ other test has already opened the first resource.
   (`for src, allowed in m.VALID_TRANSITIONS.items()`) and drive a pair it actually
   allows, skipping with a printed reason when there is none — then assert BOTH
   directions (the permitted edge behaves, the forbidden one is refused) so the
-  table, not the fixture, decides what is legal.
+  so the table, not the fixture, decides what is legal.
+  - **Before adding a helper to a test module, grep it for one that already exists — a hand-rolled
+    duplicate SHADOWS the original, and your new tests silently call the wrong signature.** A second
+    `_run()` added to a suite whose first `_run` is `(*args, env=None)` made three new tests pass a
+    dict positionally: they failed with argument-shaped errors that point at the assertions, not at
+    the helper, so the red run reads like a bug in the code under test. Check first
+    (`grep -n "^def " tests/test_<module>.py`), then use the existing seam. Read its semantics too:
+    a helper that merges `{**os.environ, **env}` can ADD or override a variable but cannot REMOVE
+    one, so a VAR-ABSENT branch is only reachable through it by passing an EMPTY value (which a
+    `[[ -n "$VAR" ]]` guard treats as unset) — pass a sentinel and the branch you think you are
+    testing is the VAR-SET one.

@@ -218,6 +218,26 @@ When modifying the enforcer, test these scenarios:
 - [ ] **DOGFOOD sync:** deploy via `cortex-update.sh` — does `begin_change()` work?
 - [ ] **Cross-machine pull:** another agent's enforcer commit arrives via pull — does DOGFOOD handle it?
 
+### Test a gate predicate against the REAL payload, not a fixture you wrote
+
+A predicate that CLASSIFIES material is only as good as its inputs, and a hand-written fixture is
+where it lies to you: build the case from the record the server actually stores — the row in
+`adversarial_reviews`, the cycle's real note, the actual `git log -p` diff the review composes —
+and evaluate the OLD and the NEW predicate side by side on it in the committed test. A fixture that
+spells a marker the way you remember it, rather than the way the producer writes it, passes while
+real material still fails; a length-only diff filter written against a small change lets control
+files through the moment they are large enough. Composition matters too: material built with
+`git diff` differs from material built with `git log -p`, so verify the predicate against the
+composition the review itself uses, not a convenient one.
+
+### Put the durable half of the rule in the PROMPT, and keep the predicate narrow
+
+The reviewer's constitution (`docs/templates/adversarial-reviewer-prompt.md`) is the half that
+survives: it INSTRUCTS the judge, so it applies to material the predicate never sees. The predicate
+only classifies what the judge returns. When a class of finding must not block a close, say so in
+the prompt AND keep the predicate narrow enough that it cannot swallow a genuine finding — a
+classification that quietly stops enforcing is worse than the friction it removed.
+
 **Quick test for per-session markers:**
 ```bash
 echo "session:test" > ~/.hermes-cortex/state/skills-loaded/test-session
