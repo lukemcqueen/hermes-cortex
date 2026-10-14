@@ -11,8 +11,12 @@ Deploy banners (the 3-line SOURCE header) are not compared.
 
 | Measure | Value |
 |---|---|
-| Deployed-only files (stranded) | 0 |
-| Files in sync | 839 |
-| Skipped (no repo counterpart, or repo ahead) | 625 |
+| Deployed-only files (stranded) | 2 |
+| Files in sync | 837 |
+| Skipped (no repo counterpart, or repo ahead) | 627 |
 
-**Verdict: PASS**
+**Verdict: FAIL**
+
+Stranded files:
+- devops/governance-lock-lifecycle/SKILL.md
+- software-development/change-checklist/SKILL.md
