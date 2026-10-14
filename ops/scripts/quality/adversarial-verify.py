@@ -197,6 +197,19 @@ def generate_fuzz_inputs(funcs: list[dict]) -> list[dict]:
     return fuzz_cases
 
 
+def _except_body(lines: list[str], i: int) -> list[str]:
+    """Stripped, non-blank body lines of the ``except`` header on line ``i``."""
+    header_indent = len(lines[i]) - len(lines[i].lstrip())
+    body = []
+    for nxt in lines[i + 1:]:
+        if not nxt.strip():
+            continue
+        if len(nxt) - len(nxt.lstrip()) <= header_indent:
+            break
+        body.append(nxt.strip())
+    return body
+
+
 def detect_cheat_patterns(file_path: str, lines: list[str]) -> list[dict]:
     """Detect known cheat patterns in the code.
 
@@ -219,12 +232,20 @@ def detect_cheat_patterns(file_path: str, lines: list[str]) -> list[dict]:
     findings = []
     content = "".join(lines)
 
-    # Pattern 1: Empty except blocks (multi-line: except:\\n    pass)
-    # Linear: `[^\\n:]*` bounded to the rest of the line — no nested quantifiers.
-    empty_excepts = re.findall(
-        r"except\b[^\n:]*:\s*(?:\n[ \t]*)?(?:pass|#.*)(?:\n|$)",
-        content,
-    )
+    # Pattern 1: an `except` whose body is ONLY comments, or only `pass` — the swallow.
+    # Line-based on purpose: the regex form could not express "and no statement
+    # follows", so an `except` whose FIRST body line was a comment was reported as an
+    # empty except — a documented handler that names the failure and then prints or
+    # raises it counted as a swallow (measured 2026-10-14 on cortex_lib/models.py,
+    # where the handler's only crime was putting its comment before its `print`).
+    empty_excepts = []
+    for i, line in enumerate(lines):
+        if not re.match(r"\s*except\b[^\n:]*:", line):
+            continue
+        body = _except_body(lines, i)
+        statements = [b for b in body if not b.startswith("#")]
+        if not statements or statements == ["pass"]:
+            empty_excepts.append(line.strip())
     # Pattern 1b: Single-line: except: pass  (or _ = None)
     inline_swallows = re.findall(
         r"except\b[^\n:]*:\s*(?:pass|_ = None)\s*(?:#|$)",

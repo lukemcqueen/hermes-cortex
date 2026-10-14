@@ -454,6 +454,7 @@ register "ops/scripts/pre-push-pull" "${CORTEX_DEPLOY_HOME}/scripts/pre-push-pul
 register "ops/scripts/manage/agent-no-verify-audit.py" "${CORTEX_DEPLOY_HOME}/scripts/manage/agent-no-verify-audit.py"
 register "ops/scripts/manage/agent-governance-auditor.py"            "${CORTEX_DEPLOY_HOME}/scripts/agent-governance-auditor.py"
 register "ops/scripts/manage/purge-stale-governance-locks.py" "${CORTEX_DEPLOY_HOME}/scripts/purge-stale-governance-locks.py"
+register "ops/scripts/manage/backfill-legacy-reaper-cycles.py" "${CORTEX_DEPLOY_HOME}/scripts/backfill-legacy-reaper-cycles.py"
 # prune-soul-profiles.py removed — profiles no longer in repo
 register "ops/scripts/manage/soul-merge.py"                    "${CORTEX_DEPLOY_HOME}/scripts/soul-merge.py"
 register "ops/scripts/manage/session-active-guard.py"          "${CORTEX_DEPLOY_HOME}/scripts/session-active-guard.py"

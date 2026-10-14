@@ -29,6 +29,15 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
+# cortex_lib deploys alongside this script (~/.hermes-cortex/scripts/cortex_lib/) and
+# lives at ops/scripts/cortex_lib in the repo, so the script's own directory is the
+# import root. Imported-as-a-module (tests) can put a foreign dir first on sys.path.
+try:
+    from cortex_lib.models import get_model, qualify_model
+except ImportError:
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from cortex_lib.models import get_model, qualify_model
+
 HOME = Path.home()
 SOUL_MD = HOME / ".hermes" / "SOUL.md"
 BRAIN_BIBLE = lambda agent: HOME / "brain" / agent / "bible"
@@ -127,10 +136,17 @@ def commandments_section(book: str) -> str:
 # (deepseek/deepseek-v4-flash not offered there — use deepseek/deepseek-chat as
 # the served equivalent), key from OPENROUTER_API_KEY (verified 200 on 2026-09-14).
 LLM_URL = "https://openrouter.ai/api/v1/chat/completions"
-LLM_MODEL = "deepseek/deepseek-chat"
 LLM_REASONING = "none"
 LLM_KEY_ENV = "OPENROUTER_API_KEY"
 ENV_FILE = HOME / ".hermes" / ".env"
+
+# This is the fleet's CREATIVE-text path, so the model id now comes from the model
+# contract (CREATIVE_MODEL in ~/hermes-cortex/.env) rather than a hardcoded string.
+# qualify_model() falls back LOUDLY to the endpoint's served equivalent when a host's
+# .env carries a bare id the endpoint cannot resolve (cortex_lib/models.py).
+LLM_MODEL_DEFAULT = "deepseek/deepseek-chat"
+LLM_MODEL = qualify_model(get_model("CREATIVE_MODEL", LLM_MODEL_DEFAULT),
+                          LLM_MODEL_DEFAULT, endpoint=LLM_URL)
 
 # Legacy aliases kept for grep compatibility during the provider migration.
 DEEPSEEK_URL = LLM_URL

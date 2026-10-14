@@ -230,7 +230,7 @@ This is the single source of truth for Cortex. ⚠ `~/.hermes/.env` is Hermes Ag
 | `JUDGE_MODEL` | LLM-as-Judge scorer | `qwen2.5:3b` |
 | `EMBEDDING_MODEL` | Text embeddings (mycortex, session cache, loop scorer, offline_code) | `nomic-embed-text:v1.5` |
 | `CODING_MODEL` | Code generation via offline_code | `qwen2.5:3b` (single fleet model, also the judge; honors a pin, prefers an installed model) |
-| `CREATIVE_MODEL` | Reserved for future creative tasks | _(not yet wired)_ |
+| `CREATIVE_MODEL` | Creative/content model | `agent-daily-bible-reading.py` — reads it with `get_model()`, guards it with `cortex_lib.models.qualify_model()` |
 
 Resolution priority (every script follows this):
 1. **Runtime env var** — `JUDGE_MODEL=mannix/qwen:7b python3 script.py`

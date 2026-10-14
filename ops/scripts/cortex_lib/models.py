@@ -22,7 +22,8 @@ Defined env vars (see ~/hermes-cortex/.env for current values):
   JUDGE_MODEL       — LLM-as-judge scorer (default: qwen2.5:3b)
   EMBEDDING_MODEL   — Text embeddings (default: nomic-embed-text)
   CODING_MODEL      — Code generation via offline_code (default: auto-detected)
-  CREATIVE_MODEL    — Reserved for creative/text generation (no default yet)
+  CREATIVE_MODEL    — Creative/text generation (consumer: agent-daily-bible-reading.py,
+                      which reads it with get_model() and guards it with qualify_model())
 
 Usage:
     from cortex_lib.models import get_model
@@ -33,6 +34,7 @@ Usage:
 """
 
 import os
+import sys
 
 _HERMES_CORTEX_ENV = os.path.expanduser("~/hermes-cortex/.env")
 _LEGACY_MODELS_ENV = os.path.expanduser("~/.hermes/models.env")
@@ -53,8 +55,11 @@ def _load_env_file(path: str) -> dict[str, str]:
                 if "=" in line:
                     key, _, val = line.partition("=")
                     result[key.strip()] = val.strip().strip("'\"").strip()
-    except (OSError, IOError):
-        pass  # expected — silently handled
+    except (OSError, IOError) as exc:
+        # The file's ABSENCE is a supported state (handled above); a present-but-unreadable
+        # file is a real problem that would otherwise show up as "every model silently
+        # reverted to its default" — say so rather than returning an empty config.
+        print(f"WARNING: cannot read {path}: {exc}", file=sys.stderr)
     return result
 
 
@@ -89,6 +94,38 @@ def get_model(env_var: str, default: str) -> str:
     """
     models_env = load_models_env()
     return models_env.get(env_var) or os.environ.get(env_var) or default
+
+
+def qualify_model(value: str, default: str, *, endpoint: str = "") -> str:
+    """Guard a model id that an HTTP endpoint addresses as ``provider/model``.
+
+    CREATIVE_MODEL is the fleet's *creative* text path and its consumer reaches a remote
+    OpenAI-compatible endpoint (agent-daily-bible-reading.py). Its value lives in a
+    per-host ``~/hermes-cortex/.env``, so a host may carry a *bare* Ollama-style id
+    (``deepseek-v4-flash``) that the endpoint cannot resolve. Rather than send an
+    unusable id upstream and fail the run, fall back to ``default`` and say so on
+    stderr — a silent substitution would hide a real config mistake.
+
+    Callers read the contract with ``get_model()`` (the form the fleet's consumer scan
+    recognises) and hand the resolved value here.
+
+    Args:
+        value: The resolved model id.
+        default: Provider-qualified fallback (e.g. "deepseek/deepseek-chat").
+        endpoint: Endpoint the id will be sent to (for the warning only).
+
+    Returns:
+        A provider-qualified model id.
+    """
+    if "/" in value:
+        return value
+    print(
+        f"WARNING: {value!r} is not a provider-qualified model id "
+        f"(expected 'provider/model'); using {default!r}"
+        + (f" against {endpoint}" if endpoint else ""),
+        file=sys.stderr,
+    )
+    return default
 
 
 def _clear_cache() -> None:

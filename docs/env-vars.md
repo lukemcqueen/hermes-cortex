@@ -61,7 +61,7 @@ names are the contract — never invent a new name without checking here first
 |---|---|
 | `AGENT_NAME` | Agent identity (esther/moses/titus/…) — identity is env-derived ONLY, never hostname/USER fallback |
 | `CODING_MODEL` | Coding task model |
-| `CREATIVE_MODEL` | Creative/content model |
+| `CREATIVE_MODEL` | Creative/content model | Read by `agent-daily-bible-reading.py` (the fleet's creative-text path), guarded by `cortex_lib.models.qualify_model()` |
 | `JUDGE_MODEL` | Governance judge model |
 | `ADVERSARIAL_TRIAGE_MODEL` | Faster "System One" model for the close-gate's finding triage. **Unset = triage DISABLED** — the gate then behaves exactly as it did before triage existed, with the reviewer's severities unchanged. It is **not** a chat-completions model: see `docs/runbooks/review-triage-jev.md` |
 | `JUDGMENT_CONFIG_PATH` | Optional override for the judgment client's provider/routing config. Default: `judgment-providers.yaml` beside `judgment.py`. Set per host to route triage to your own judge |
