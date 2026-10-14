@@ -337,6 +337,65 @@ Pitfalls that cost a cycle here:
   NAME drift (the fleet-canonical name is what the doctor expects, e.g. `agent-bus` and not a
   legacy alias) — add the canonical key and remove the legacy one, one server for the script.
 
+## A gateway that serves the default profile ONLY — duplicate credential across profiles
+
+`gateway.multiplex_profiles` unset means ON, but not unconditionally: at every boot
+the default gateway runs the same preflight as `hermes gateway migrate --multiplex`
+and multiplexes only when the fold would be safe. A **duplicate bot credential
+between two profiles is a hard blocker** — so the gateway comes up serving the
+default profile only, parks the other profile's adapter, and says so loudly (a
+boxed warning at start; the same text in the `hermes update` summary, in
+`hermes gateway status`, and in the dashboard's `/api/status` as
+`multiplex_standalone_reason`). Log form:
+
+```
+hermes_cli.gateway_multiplex_mode: gateway.multiplex_profiles is unset (default: on)
+but this gateway stays standalone: Profiles 'default' and 'personal' both configure
+<platform> with the same credential ... It serves the default profile only
+```
+
+One token is one poller, so nothing is written on a refusal and neither a restart
+nor `--force` clears it. Diagnose with counts only — never print a token:
+
+```bash
+ls ~/.hermes/profiles/                                     # default profile IS ~/.hermes
+ls -la ~/.hermes/.env ~/.hermes/profiles/<name>/.env       # size/mtime, no content
+grep -c TELEGRAM_BOT_TOKEN ~/.hermes/profiles/<name>/.env  # count, never the value
+```
+
+Before acting, decide whether the OTHER profile is real or vestigial — a profile
+that never served a turn still blocks the fold (structural survey:
+`hermes-home-cleanup`). Then pick one fix:
+
+- **delete it** — `hermes profile delete -y <name>`. Ask the owner first: it prints the
+  skill count it destroys and leaves a `.deleted/` tombstone. Prove nothing is lost
+  BEFORE deleting — a name-only diff of both `.env` files plus a hash of the shared var
+  (exact commands: `hermes-home-cleanup`) — because a strict subset with an identical
+  hash means no backup copy of the credential is needed, and making one only spreads it.
+- **keep the profile, strip just that platform's var** from its `.env` — smallest change.
+- **give it its own bot** and route its chats from the default profile's
+  `config.yaml` (`gateway.profile_routes`).
+
+Then `hermes gateway migrate --multiplex`. **Expect it to be a NO-OP once the duplicate is
+gone, and never read its rc=0 as "the state is fixed":** with one profile left it prints
+"Only one profile exists: nothing to multiplex" and does NOT restart, so the boot-time
+`multiplex_standalone_reason` in `gateway_state.json` keeps naming the deleted profile and
+the dashboard keeps showing it. A restart is what re-runs the preflight:
+`systemctl --user restart hermes-gateway.service`, then verify it LANDED (`MainPID` AND
+`ExecMainStartTimestamp` both change) and read the post-state — the reason becomes
+`only one profile exists (nothing to multiplex)`, `hermes profile list` stops printing the
+warning, and the boot log reads `Cron scheduler will tick N profile(s)` with the stale
+profile absent. Before restarting from inside a session, check your own ancestry: a CLI
+session (`sshd → shell → hermes`) survives it, a session hosted BY the gateway does not
+(`ps -o pid=,cmd= --ppid <gateway-pid>`).
+
+- **Never identify the active profile by listing `profiles/*/`.** Resolve
+  `HERMES_PROFILE` → `AGENT_NAME` (never hostname). A directory under `profiles/`
+  is a second Hermes HOME, not a routing entry, and the alphabetically-first entry
+  is not the active one — every fleet script carries that warning because it bites.
+- **A profile is not "unused" because it is small.** Its `.env` alone is enough to
+  block the whole host's multiplexing; the blocker outlives any single session.
+
 ## Common Failure Patterns
 
 | Symptom | Root cause | Fix |
@@ -346,6 +405,7 @@ Pitfalls that cost a cycle here:
 | Repeated reconnecting | Network / API instability | Check outbound connectivity; verify with `curl` |
 | Connected but no delivery | Wrong chat ID / deliver target | Verify destination chat ID and `deliver` config |
 | Gateway up, platform down | Platform-side outage | Wait + monitor; check platform status page |
+| Serves default only; boxed "stays standalone" warning naming two profiles | Two profiles configure the same platform credential | Strip the credential from the redundant profile (or delete it), then `hermes gateway migrate --multiplex` |
 
 ## Verification
 

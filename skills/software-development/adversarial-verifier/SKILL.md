@@ -398,6 +398,29 @@ argument ran. Each looked exactly like a code defect. Before blaming production
 code, verify the probe's own assumptions — input shape, fixture validity,
 extraction logic — and re-run with the value the system actually expects.
 
+**The probe's ENVIRONMENT is part of the probe — a registry-only verdict is a
+verdict about your process, not the artifact.** A validator that resolves names
+through a registry (plugins, toolsets, entry points, DI containers) returns
+"unknown" for names that are perfectly valid in a real session, because nothing
+ran discovery first. Measured: probing toolset validity in a bare interpreter
+reported BOTH candidate names invalid, which read as "the config is wrong and
+nothing can fix it" — and the "fix" applied on that evidence silently switched
+which set of tools resolved (one name resolved 24 toolsets, the other 5). Call the
+discovery entry point in the probe *before* the assertion, and when a probe says
+two values are equivalent, compare the RESOLVED OUTPUT of each, not a boolean
+exit.
+
+**Before reporting a DIFFERENCE between two copies of a thing, prove your
+extractor on a fixture.** A capture whose anchors are wrong reports its own offset
+as a real delta: a probe comparing a live stored string against the same string in
+a source file claimed a 7-character difference that was entirely its regex starting
+one field too early. Anchor on an unambiguous boundary (a marker you control, not
+"the first quoted line"), parse line-by-line rather than with one nested regex, and
+return None for a malformed input instead of a partial value — a truncated answer
+reads as a finding. Then drive the parser with a fixture BOTH ways (well-formed
+extracts exactly; truncated returns None) and ship that as a committed test; a
+probe you retype each time cannot be re-run by the next reader, a test can.
+
 **Your own test fixture can be the finding — the gate scans the FILE, not the
 intent.** A test that pins a detector by embedding the offending source in a string
 literal (an empty `except` body, a `|| true` line, a swallowed command) is read as a

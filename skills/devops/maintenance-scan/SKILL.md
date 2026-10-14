@@ -154,13 +154,24 @@ looks for will otherwise certify itself.
   `--apply` with a dry-run default, idempotent, its own exit code for "could not verify", an entry
   in the deploy map, and a test that drives it both ways. Prove it live RED→GREEN (the dry run
   names the rows; the apply reports zero remaining), never by deleting or widening the check.
-- **Never rename a config value to silence a warning you have not reproduced.** Confirm the NEW
-  value both stops the warning AND is accepted by the resolver that actually wires the feature.
-  If both candidate names warn in-process, the divergence is in the checker (classically a
-  session-time validator that accepts less than the resolver the feature goes through); the rename
-  buys nothing and diverges from the platform convention, so REVERT it and report the checker.
-  When that checker lives in a tree the operator has excluded from patching, reporting is the
-  whole fix — do not edit code you were told not to touch.
+- **Never silence a config warning by RENAMING the value — and never trust a warning you have
+  only reproduced in a bare interpreter.** Two rules, in this order:
+  1. **Probe in the same discovery state as the consumer.** A validator that resolves names through
+     a registry (plugins, toolsets, entry points) reports *everything* as unknown when nothing ran
+     discovery first, which reads as "the config is broken and nothing can fix it". Call the
+     discovery entry point in the probe before asserting. A verdict from the wrong process is a
+     verdict about your process.
+  2. **Compare the RESOLVED OUTPUT of the two forms, never a boolean accept/reject.** A
+     platform-bundle name and a plugin toolset name can both be accepted while resolving
+     DIFFERENT sets — measured: one form resolved 24 toolsets, the other 5 — so the rename that
+     silences the warning may quietly delete capability. Print both resolved sets and diff them.
+  The behaviour-preserving cure for a noisy platform/override warning is usually to **remove the
+  override** (delete the key) so the default path applies: verify it resolves the IDENTICAL set
+  and the warning no longer fires. Only when a correctly-run probe still shows a divergence
+  between the warning's validator and the resolver that actually wires the feature is the checker
+  itself the defect — and when that checker lives in a tree the operator has excluded from
+  patching, reporting it is the whole fix. Do not edit code you were told not to touch, and do not
+  "fix" a working value into a different one to buy silence.
 - **Prove the tightened warning BOTH ways** — it must still fire on the case it exists for and go
   silent on the case that was noise (see `change-checklist` Phase 1.5).
 

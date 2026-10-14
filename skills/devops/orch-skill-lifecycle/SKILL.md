@@ -382,7 +382,10 @@ Result: 3 skills updated, 1 upstreamed, 1 SOUL.md entry.
 - **Deployed-vs-repo skill drift is now the MOST COMMON Phase 3 action (2026-10-07)** →
   sessions author lessons directly on the DEPLOYED copy
   (`~/.hermes/skills/.../SKILL.md`) and commit only the repo side in a separate
-  edit, so the next `cortex-update.sh` overwrites the lessons. Treat it as
+  edit. The deploy does NOT overwrite them — its drift guardrail SKIPS a deployed
+  file whose content the repo lacks, so the lesson stays on that one host and the
+  fleet NEVER receives it, which is worse than an overwrite: nothing surfaces as
+  lost, and the detector is the only thing that names it. Treat it as
   routine, not an anomaly: **~7–15 skill-touching commits/DAY** (measured
   2026-10-08). Worked examples are listed by SHA at the end of this bullet
   (`badbc960`, `de5f058c`, `56c3a825`, `55173ab5`, `3123e26a`, `8bd82dcb`).
@@ -399,9 +402,18 @@ Result: 3 skills updated, 1 upstreamed, 1 SOUL.md entry.
   must show only MODIFICATIONS of existing lines, never deletions of repo
   content (a `97c109,115` hunk is an extension, safe; a pure `NNd` hunk means
   the repo has content the deployed copy lacks — do NOT blind-copy); (3) fence
-  balance even on BOTH sides; (4) `cp <deployed> <repo source>` verbatim — never
-  retype the lesson; (5) confirm md5s match; (6) adversarial A2 gate +
-  `secret-leak-detector.sh`; (7) commit/push (dogfood gate will fire, see below).
+  balance even on BOTH sides; (4) reconcile with
+  `python3 ops/scripts/manage/reconcile-stranded-skills.py` — it parses the
+  detector's OWN stranded list instead of re-deriving it, `--apply` copies only
+  the pure-superset class, and it prints the dropped lines for the rewrite class
+  so a human decides — rather than hand-copying; fall back to
+  `cp <deployed> <repo source>` verbatim only if you must, never retyping the
+  lesson; (5) confirm md5s match; (6) if you also have content to ADD, land it as
+  a SECOND commit — the detector calls a file stranded when its deployed content
+  appears in NO committed revision, so copying it back in the same commit that
+  adds to it leaves the deployed bytes in no revision and the file stays stranded
+  (`change-checklist` Phase 5); (7) adversarial A2 gate +
+  `secret-leak-detector.sh`; (8) commit/push (dogfood gate will fire, see below).
   Copying WITHOUT the superset check is how a deploy-only edit silently
   REVERTS repo-only content.
 - **Fleet [NEW] skills ARE upstreamable when SSH reaches the reporting host

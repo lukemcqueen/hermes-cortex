@@ -78,6 +78,37 @@ When adding a new cron:
 
 When renaming a cron, update BOTH arrays in the SAME commit. If you only update the create block, the old name stays in the uninstall array (doctor expects it) and no new cron is created with the new name (doctor misses it). This is the root cause of the July 2026 bus-rename bug.
 
+#### 4. Every pause must carry a REASON — `hermes cron pause` takes none
+
+`hermes cron pause <job_id>` has no reason argument, and the `cronjob` MCP tool's
+`paused_reason` is **create-only**: `action='update'` with `paused_reason` is refused
+with "No updates provided". So an auto-pause (a watchdog that pauses a job after N
+consecutive failures) and a hand pause both leave `paused_reason` empty, and nobody
+reading the cron list can tell a deliberate stop from an abandoned job. Record the
+reason in the job's durable notepad — the one store you can write to a LIVE job:
+
+```bash
+hermes cron notepad <job_id> set paused_reason "<why it stopped, and how to resume>"
+hermes cron notepad <job_id> list          # read back
+```
+
+The notepad is per-job key/value in `<hermes home>/cron/notepad.db`, survives
+reinstalls, and is prompt-injected on the job's next run — so the reason travels with
+the job instead of sitting in a log the next reader never opens.
+
+Any watchdog that pauses a job must write that reason itself AT PAUSE TIME (it already
+holds the alert text). The doctor's **`Paused crons: reason`** check accepts either
+store (jobs.json `paused_reason`, or the notepad) and WARNs — naming them — for a paused
+job that has neither; verify with
+`python3 ~/hermes-cortex/ops/scripts/manage/cortex-doctor.py --quiet`.
+
+Do NOT flip a reason-less pause back to running just to close the question. Recover the
+reason from evidence first: the watchdog's state file
+(`~/.hermes-cortex/state/cron-failure-watchdog.json` holds `consecutive`/`alerted` per job
+id) and the job's last output under `~/.hermes/cron/output/<job_id>/`. Then either resume
+it deliberately or record what the evidence shows — a silent resume is a behaviour change
+nobody asked for.
+
 ## Cron rename workflow
 
 When renaming a cron (e.g. `fleet-status-watchdog` → `orch-fleet-watchdog`):

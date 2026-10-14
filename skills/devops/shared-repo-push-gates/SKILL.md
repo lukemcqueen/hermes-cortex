@@ -157,6 +157,26 @@ does not apply.
   trick above: the next close re-reads the window with the evidence now in it. Claims about
   a tool RUN (a deploy, a doctor, a dogfood script) need a committed transcript for the same
   reason — the reviewer cannot see your terminal.
+  - **A REFUSED close releases the lock, so the artifact lands in a NEW cycle — and that
+    cycle's receipt covers the commit the review refused. Say so in the note.** You cannot
+    re-open the refused window: `end_change` refused, the lock is gone, and a fresh
+    `begin_change()` starts a window that excludes the commit under review. Push the
+    artifacts there anyway — the receipt it writes is bound to `git merge-base
+    origin/main HEAD`, so it authorises the WHOLE unpushed range, refused commit included.
+    That is precisely the case where silence would read as laundering, so state it
+    explicitly: name the refused commit, the cycle id and its findings, and say the
+    artifacts are its remedy. Done that way it is a fixed finding, not a manufactured
+    receipt; done silently it is the trick the gate exists to stop.
+  - **Ship the artifacts as a re-runnable CAPTURE SCRIPT plus the transcript it emits**, not
+    as a hand-written log: print each command immediately above its own output, record the
+    command's OWN `rc` (measured bare — a piped `rc=$?` reports the pipe's last stage), and
+    let the reviewer re-run one line to reproduce one block. Include the blocks every claim
+    needs — the doctor run, the checks called directly, the live-vs-committed comparison, the
+    test runs (the file alone AND in the wider selection), one adversarial gate per changed
+    file, and any deploy-vs-load fact. When a block carries a self-inflicted warning (a
+    `Repo clean` warn that is the uncommitted artifact itself), say so in the artifact's
+    header instead of re-capturing to hide it — a re-capture only moves the same warn to the
+    next run, and the disclosure is what makes the rest of the transcript credible.
 - **A peer's commits landing inside your cycle's window are attributed to YOU.** A
   push/verify cycle whose window picked up a peer's new file is refused as `scope-drift`
   ("a push-only cycle should not add new test code"), and its diff stat will describe THEIR

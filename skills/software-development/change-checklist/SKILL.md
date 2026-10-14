@@ -239,6 +239,15 @@ Enforced at 3 layers: pre-commit hook (static gate), enforcer (blocks commit unt
       `python3 ops/scripts/manage/check-skill-drift-parity.py`, then diff repo against the
       deployed copy with the deploy header stripped, and take the deployed side only where
       it is a superset (pure additions, no deletions of repo content).
+      **Land the deployed content as its OWN commit BEFORE adding your own.** The detector
+      calls a file stranded when its deployed content appears in NO committed revision, so a
+      single commit that copies it back AND adds to it leaves the deployed bytes in no
+      revision at all — the file stays stranded and the fleet still never receives it.
+      Commit the byte-identical deployed content first, then your addition on top; the file
+      then reads "repo ahead", which is normal and unreported. Reconcile with
+      `python3 ops/scripts/manage/reconcile-stranded-skills.py` — report by default, `--apply`
+      copies only the pure-superset class and prints the dropped lines for the rewrite class,
+      which needs a decision — rather than copying the file by hand.
       **A file the tool marks REVIEW is not automatically a keep-the-repo case.** The tool's
       `would drop N line(s)` counts REPO-only lines — the side at risk — so diff BOTH
       directions and check each such line's CONTENT in the deployed copy by PHRASE, not line
