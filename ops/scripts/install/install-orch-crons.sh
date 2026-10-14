@@ -150,7 +150,7 @@ if $UNINSTALL; then
     "orch-task-board-digest" \
     "orch-task-morning-pass" \
     "orch-task-evening-pass" \
-    "orch-backlog-driver" \
+    "orch-bus-worker" \
     "orch-autonomy-digest" \
     "orch-restic-backup"; do
     remove_cron "$job" 2>/dev/null || true
@@ -683,9 +683,9 @@ printf "${CYAN}  5. Backlog Driver${RESET}\n"
 # closes them, reports to Telegram. LLM-driven: deciding WHAT to do with a
 # task needs reasoning (dispatch vs self-fix vs escalate vs block).
 # 4 runs/day off-peak (08/14/20/22 KST); minute is per-host hashed by create_cron (Luke 08-07, cost-cut 08-31).
-create_cron "orch-backlog-driver" "0 8,14,20,22 * * *" \
+create_cron "orch-bus-worker" "0 8,14,20,22 * * *" \
   "session-active-guard.py" \
-  "Load the orch-backlog-driver skill and run the backlog loop (F-023).
+  "Load the orch-bus-worker skill and run the backlog loop (F-023).
 
 SESSION GUARD: the session-active guard output is injected as context. If it says ACTIVE, an interactive session is running — skip this run and output exactly [SILENT].
 
@@ -706,7 +706,7 @@ If no actionable work: output exactly [SILENT] (nothing delivered).
 PUSHBACK CONTRACT (SOUL Principle 5): if a pending task's requested action is wrong or harmful, do NOT execute it — record the objection and report it. Default to no-op on destructive steps without explicit instruction.
 
 Never fabricate results. A completed task without verified evidence is a lie — report the blocker honestly instead." \
-  "orch-backlog-driver" \
+  "orch-bus-worker" \
   "terminal,file" \
   "telegram:${TELEGRAM_HOME_CHANNEL}" \
   "" \

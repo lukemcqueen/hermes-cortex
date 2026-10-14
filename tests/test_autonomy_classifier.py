@@ -141,7 +141,7 @@ def main() -> None:
         "precommit-repo-HEAD/update",
         "cortex-doctor.py --once",
         "sustainability-briefing-2026",
-        "orch-backlog-driver-run",
+        "orch-bus-worker-run",
         "agent-cron-status.py --list",
         "git pull --ff-only",
     ]
@@ -173,7 +173,7 @@ def main() -> None:
 
     print("\n5. Shadow replay — metrics vs Luke's decisions")
     db = make_db([
-        ("orch-backlog-driver-run", 0, "routine completed"),
+        ("orch-bus-worker-run", 0, "routine completed"),
         ("sustainability-briefing-2026", 0, "routine completed"),
         ("git-push-force-something", 1, "MOVE_ON: rejected force-push candidate"),  # judgment
         ("inbox-check-20260728", 1, "auto-resolved by health check — >24h stale"),  # hygiene
@@ -204,7 +204,7 @@ def main() -> None:
 
     print("\n8. O4-S2 digest — window filtering + unattended classification")
     db2 = make_db_with_ts([
-        (1,  "orch-backlog-driver-run", 0, "routine completed"),     # in window, auto
+        (1,  "orch-bus-worker-run", 0, "routine completed"),     # in window, auto
         (2,  "sustainability-briefing-2026", 0, "routine completed"),  # in window, auto
         (5,  "git-push-force-something", 1, "rejected force-push"),   # in window, gated+override
         (50, "ancient-unknown-op", 0, "outside window"),              # out of window

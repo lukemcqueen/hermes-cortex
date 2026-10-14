@@ -50,7 +50,7 @@
 | `orch-skill-lifecycle` | `0 4 * * 1,3,5` | LLM | (orch-skill-lifecycle skill) | origin |
 | `orch-skill-report-request` | `0 2 * * 1` | no_agent | `orch-skill-report-request.sh` | origin |
 | `orch-skill-evaluate` | `0 9 * * 2` | LLM | (prompt) | origin |
-| `orch-backlog-driver` | `0 8,14,20,22 * * *` | LLM | `session-active-guard.py` + (orch-backlog-driver skill) | Telegram |
+| `orch-bus-worker` | `0 8,14,20,22 * * *` | LLM | `session-active-guard.py` + (orch-bus-worker skill) | Telegram |
 
 ## All-agent (`agent-*` prefix)
 
@@ -152,7 +152,7 @@ $0.22/M, out $0.66/M).
 
 **Fleet scheduling policy (O3/G-4, 2026-08-25; revised 2026-08-31):**
 LLM crons run off DeepSeek peak (KST 10–13 & 15–19) where function allows.
-Daytime slots moved off-peak: `orch-backlog-driver` 08/14/20/22 KST (UTC
+Daytime slots moved off-peak: `orch-bus-worker` 08/14/20/22 KST (UTC
 23/05/11/13), `agent-fixer-workday`/`cortex-bus-workday` 08/14/20 KST,
 `agent-fixer-evening`/`cortex-bus-evening` 20/22 KST, `orch-task-evening-pass`
 21:00 KST, `orch-skill-lifecycle` 04:00 KST Mon/Wed/Fri (was daily). Overnight

@@ -33,12 +33,12 @@ WATCHDOG_STATE_FILE = HOME / ".hermes-cortex" / "state" / "cron-failure-watchdog
 # its state file. Cover deliberate/operator holds and superseded duplicates:
 #   - agent-hermes-update: fleet-wide pause (see MEMORY) — resume is a
 #     deliberate operator action only
-#   - orch-backlog-driver: paused on Luke's directive (paused_reason)
+#   - orch-bus-worker: resumed 2026-10-14 by operator directive (was paused
+#     as orch-backlog-driver; the fleet skill-improvement loop depends on it)
 #   - the OLD duplicate agent-bus-retry-sweep (d22d6b2a3f47) was superseded by
 #     the live one (80dc43b602a9) — resuming it would double-fire the sweep
 NEVER_RESUME = {
     "195fa856001d",  # agent-hermes-update
-    "dbcdec6bb40d",  # orch-backlog-driver
     "b8c62b635aed",  # check-hermes-upstream-fix
     "d22d6b2a3f47",  # obsolete duplicate agent-bus-retry-sweep
 }

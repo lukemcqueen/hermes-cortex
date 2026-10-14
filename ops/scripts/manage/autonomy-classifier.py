@@ -98,8 +98,8 @@ ROUTINE_PATTERNS: list[str] = [
     r"inbox", r"bus-tick", r"poll", r"status", r"list", r"watch",
     # pulls (non-force) / update coordination
     r"pull", r"update-no-verify", r"cortex-pull", r"update-check",
-    # orchestrator backlog driver (report loop)
-    r"backlog",
+    # orchestrator backlog driver / bus worker (report loop)
+    r"backlog", r"bus-worker",
 ]
 
 KILL_ENV = "AUTONOMY_CLASSIFIER_KILL"

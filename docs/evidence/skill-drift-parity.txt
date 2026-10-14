@@ -11,8 +11,12 @@ Deploy banners (the 3-line SOURCE header) are not compared.
 
 | Measure | Value |
 |---|---|
-| Deployed-only files (stranded) | 0 |
-| Files in sync | 839 |
-| Skipped (no repo counterpart, or repo ahead) | 623 |
+| Deployed-only files (stranded) | 1 |
+| Files in sync | 826 |
+| Skipped (no repo counterpart, or repo ahead) | 899 |
 
-**Verdict: PASS**
+**Verdict: FAIL**
+
+Stranded files:
+- autonomous-ai-agents/hermes-cortex/SKILL.md
+
