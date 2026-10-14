@@ -172,6 +172,45 @@ def test_the_covered_branch_reports_every_unscoped_lock(tmp_path):
     )
 
 
+def test_the_advertised_contract_matches_the_implementation(tmp_path):
+    """The tool DESCRIPTION is a contract an external harness author codes against.
+
+    It once advertised `match='slug-legacy'` — a pre-repo_path lock authorising a
+    write by repo NAME — long after the implementation stopped doing that, so the
+    advertised rule promised permissiveness the code refused. Nothing caught it,
+    because the description and the behaviour are written in two different places.
+
+    This pins them together by parsing the tool registration out of the source.
+    """
+    import ast
+
+    tree = ast.parse(SERVER.read_text(encoding="utf-8"))
+    described = None
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        if getattr(node.func, "id", "") != "Tool":
+            continue
+        kw = {k.arg: k.value for k in node.keywords if k.arg}
+        name = getattr(kw.get("name"), "value", None)
+        if name == "check_repo_lock":
+            described = getattr(kw.get("description"), "value", None)
+            break
+
+    assert described, "check_repo_lock is not registered with a description"
+    assert "slug-legacy" not in described, (
+        "the description still advertises slug-legacy matching, which the "
+        "implementation deliberately removed (a NAME match mixes gates across "
+        "same-named projects)"
+    )
+    assert "unscoped_locks" in described, (
+        "the description does not mention unscoped_locks, the field that makes "
+        "'fail closed' distinguishable from 'no lock exists'"
+    )
+    # The behavioural half of the same contract is asserted by the shared-name
+    # test above, so the words and the behaviour cannot part company silently.
+
+
 if __name__ == "__main__":
     import tempfile as _t
 
@@ -181,6 +220,7 @@ if __name__ == "__main__":
         test_a_lock_for_another_project_never_covers_this_one,
         test_an_unresolvable_repo_is_a_refusal_not_an_unlocked_verdict,
         test_the_covered_branch_reports_every_unscoped_lock,
+        test_the_advertised_contract_matches_the_implementation,
     ):
         with _t.TemporaryDirectory() as td:
             try:
