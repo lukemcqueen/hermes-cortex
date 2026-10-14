@@ -1,10 +1,10 @@
 
 --- 1. contract tests: both directions, the third outcome, and the discriminator's precision
-============================== 12 passed in 0.92s ==============================
+============================== 12 passed in 0.94s ==============================
 PASS  rc=0
 
 --- 2. the gate on THIS tree (must be clean, or the doctor FAILs and blocks every push here)
-OK    docs/evidence/plan-review-enforcement-2026-10-14.md (recorded review_id=9e5fb9af-1455-43f7-9bb6-1417c022933a; reviewer=adv-review-plan-1; model=deepseek/deepseek-v4-pro)
+OK    docs/evidence/plan-review-enforcement-2026-10-14.md (recorded review_id=9e5fb9af-1455-43f7-9bb6-1417c022933a; reviewer=adv-review-70b7c67c; model=deepseek/deepseek-v4-pro)
 OK    docs/evidence/pro-review-2026-10-14.md (declared 'provenance: advisory' — commentary, never citable as verification)
 OK    docs/evidence/pro-review-purge-guards-2026-10-14.md (declared 'provenance: advisory' — commentary, never citable as verification)
 
@@ -19,12 +19,11 @@ planted rc=1 (expect 1)
 PASS  the gate notices an undeclared review
 
 --- 4. the doctor check is WIRED (enforcement point: a FAIL here blocks every push)
-doctor rc=2  (host-wide status; NOT this check's verdict — see the annotated line)
+doctor rc=1  (host-wide status; NOT this check's verdict — see the annotated line)
      ✅ Review provenance
 PASS  the check runs in the doctor
    other:   ⚠️  Repo clean
-   other:   ❌ Checksum: review-provenance-check.py
-   other:   ❌ Overall: FAILING  (463 pass · 1 warn · 1 fail · 3 info)
+   other:   ⚠️  Overall: WARNING  (464 pass · 1 warn · 0 fail · 3 info)
    other:   🔧 REQUIRED ACTIONS — resolve each ⚠️  or ❌ above
 
 ALL CLAIMS RE-VERIFIED (rc=0)
