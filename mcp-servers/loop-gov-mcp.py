@@ -5525,6 +5525,52 @@ def _advance_task_state(args: dict) -> CallToolResult:
             release_note = (f" ⚠️ Lock release FAILED ({e}) — it will strand until "
                             f"its TTL; report this.")
 
+    # 'blocked' STAYS non-terminal (it is a stoppage that can be resumed), but it must
+    # not keep the MUTEX: a blocked task cannot progress by definition, so holding the
+    # lock prevents the session from doing ANY other governed work while other sessions
+    # may also need to close (reported 2026-10-14 — the same dead-end class as a lock
+    # tagged with a repo the session is not working in). The task record remains
+    # 'blocked' for resumption; only the lock is freed.
+    #
+    # ORDER IS LOAD-BEARING: the cycle is closed UNSCORED *before* the lock is dropped.
+    # A released lock beside a still-PENDING cycle is a doctor FAIL (leak) that blocks
+    # the push for EVERY agent on the host — measured 2026-10-14, when exactly one such
+    # row was the sole failure behind a refused push. And no review receipt is written
+    # here, so a blocked change authorises nothing and can never be pushed on this path.
+    elif new_state == "blocked":
+        _cycle_closed = False
+        try:
+            _conn = _db()
+            _row = _conn.execute(
+                "SELECT id FROM loop_cycles WHERE task_id=? AND decision='PENDING' "
+                "AND user_overrode IS NULL ORDER BY id DESC LIMIT 1",
+                (state.get("task_id", ""),),
+            ).fetchone()
+            if _row:
+                _conn.execute(
+                    "UPDATE loop_cycles SET decision='MOVE_ON', unscored_reason=?, "
+                    "outcome_note='task BLOCKED — lock released, nothing reviewed (no receipt)' "
+                    "WHERE id=? AND decision='PENDING' AND user_overrode IS NULL",
+                    (f"task '{state.get('task_id', '')}' moved to 'blocked' (non-terminal) with "
+                     f"reason: {reason or 'none given'} — the session is freed so it can do other "
+                     "work; the task stays resumable and no score is invented because nothing was "
+                     "closed or reviewed", _row[0]),
+                )
+                _conn.commit()
+                _cycle_closed = True
+            _conn.close()
+        except Exception as e:  # noqa: BLE001 — the release below must still happen
+            log.warning("blocked transition: could not close PENDING cycle (%s)", e)
+        try:
+            _release_lock(args)
+            release_note = (" 🔓 Lock released — a blocked task holds no mutex"
+                            + ("" if _cycle_closed else " (⚠️ its PENDING cycle could not be "
+                               "closed — the doctor will fail on it; report this)"))
+        except Exception as e:  # noqa: BLE001 — cleanup must not lose the transition
+            log.warning("blocked transition: lock release failed: %s", e)
+            release_note = (f" ⚠️ Lock release FAILED ({e}) — it will strand until its TTL; "
+                            f"report this.")
+
     return CallToolResult(content=[TextContent(
         type="text",
         text=f"🔄 Task '{task_id}' state: {old_state} → {new_state}."
