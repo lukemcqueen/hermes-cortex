@@ -4593,8 +4593,12 @@ def check_task_db(res):
             "Run: cortex-update.sh to deploy task-db.py")
         return
 
-    # Connectivity — `pending` must return valid JSON
-    out = run_bg(["python3", str(task_script), "pending"], timeout=15)
+    # Connectivity — `pending` must return valid JSON. The repo is named
+    # EXPLICITLY: task queries are repo-scoped (cycle 12593) and this probe runs
+    # from a cron/agent cwd that need not be a git repo — an unresolvable repo
+    # returns [] by design, which would read as "database unreachable".
+    out = run_bg(["python3", str(task_script), "pending",
+                  "--repo", CORTEX_REPO.name], timeout=15)
     if not out:
         res.add("Task DB connectivity", "FAIL",
             "task-db.py pending returned no output",
@@ -4619,7 +4623,10 @@ def check_task_db(res):
             "Schema may be missing/read-only — run cortex-update.sh, check tasks.schema_version")
         return
 
-    list_out = run_bg(["python3", str(task_script), "list", "--status", "pending"], timeout=20)
+    # Read the probe back — same explicit repo as above (the write-probe row is
+    # untagged, and a scoped query includes untagged rows).
+    list_out = run_bg(["python3", str(task_script), "list", "--status", "pending",
+                       "--repo", CORTEX_REPO.name], timeout=20)
     probe_id = None
     for line in (list_out or "").splitlines():
         if probe in line:

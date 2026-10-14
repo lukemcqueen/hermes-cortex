@@ -1071,20 +1071,26 @@ def _note_session_repo(session_id: str, args: Dict[str, Any]) -> None:
 
 
 def _inject_session_context(session_id: str, tool_name: str, args: Dict[str, Any]) -> None:
-    """Stamp the caller's identity and repo onto a governance call.
+    """Stamp the caller's identity and repo onto a governance or TASK call.
 
     session_id is authoritative — the hook runs in the gateway and knows the
     real session. repo_slug is injected ONLY when this session's repo was
-    actually observed, so a governance call never invents a repo; without the
+    actually observed, so a call never invents a repo; without the
     injection begin_change falls back to the host's canonical repo, which is
     exactly the wrong-repo bug. The MCP accepts it only when it names a real
     git repo, and its wrong-repo guard still refuses to review a tree that
     cannot contain the work.
+
+    TASK QUERIES need the same identity (cycle 12593): the tasks MCP server is
+    ONE shared child per host whose cwd is HOME, so a session's own repo is
+    knowable only from here — without it a repo-scoped task query could not
+    resolve its repo at all and would return nothing. Same "never invented"
+    rule as governance: no observed repo, no injection.
     """
     if not isinstance(args, dict):
         return
     args["session_id"] = session_id
-    if tool_name.startswith("mcp__loop_governance__"):
+    if tool_name.startswith(("mcp__loop_governance__", "mcp__tasks__")):
         repo = _session_repo_path(session_id)
         if repo is not None:
             # Absolute path AND the name: the MCP resolves the repo from the

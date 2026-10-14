@@ -62,11 +62,17 @@ task-db.py report <slice-id> --evidence "<test output / measured numbers>"
 task-db.py verify <slice-id> --approve --note "<what was checked>"
 task-db.py verify <slice-id> --reject --note "<the gap>"   # → back to in_progress
 task-db.py list --board                                     # counts + per-agent + review queue
+task-db.py list --board --repo ALL                          # the FLEET view (explicit)
 ```
 
 - **Never trust a self-reported done.** Verify the evidence is real (test
   output, measured numbers) before approving.
 - Reject with the gap named — the slice returns to in_progress for the worker.
+- **Task queries are repo-scoped** (2026-10-14): `list`, `pending`, the
+  claimable/handed-out pools and `--board` show the CALLER's repo plus untagged
+  rows, never another repo's. The orchestrator's fleet-wide view is
+  `--repo ALL` (explicit — omitting it is not the fleet view); a session whose
+  repo cannot be resolved gets NOTHING, by design.
 
 ## Automated layers (no manual action needed)
 

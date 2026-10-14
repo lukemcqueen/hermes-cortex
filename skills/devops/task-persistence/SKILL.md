@@ -75,6 +75,13 @@ instead of silently writing rows as the machine name. Same rule in
 - **MCP server:** `mcp-servers/task-mcp.py`, registered as `todos`
   (tools: task_add, task_list, task_pending, task_update, task_switch,
   task_save_end, task_prune). All agents — not orchestrator-only.
+- **Queries are repo-scoped** (2026-10-14, reported by Titus): `list`, `pending`,
+  `--board`, `--claimable` and `--handed-out` show the CALLER's repo plus
+  untagged rows — another named repo's tasks are never returned. The repo comes
+  from `--repo`, else the repo the enforcer injected for your session, else
+  `CORTEX_SESSION_REPO`, else the git repo at the working directory; if none of
+  those exist the query returns NOTHING (never every repo's tasks). The
+  fleet-wide view is the EXPLICIT `--repo ALL` / `{"repo": "ALL"}`.
 
 ## Commands
 

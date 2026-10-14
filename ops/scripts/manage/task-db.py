@@ -39,11 +39,20 @@ Usage:
                        [--no-notify]
     task-db.py update  --by-correlation <corr> --status <new-status>
     task-db.py switch  <target-id>        # pause current + resume target
-    task-db.py pending             # print pending as JSON (session restore)
+    task-db.py pending [--repo <r>] # print pending as JSON (session restore)
     task-db.py restore <json> [--include-inbox]
     task-db.py save-end            # archive completed/cancelled
     task-db.py prune [--older-than 90d]   # delete archived rows older than N
     task-db.py --apply-schema      # delegate to ops/services/tasks/migrate.py
+
+QUERIES ARE REPO-SCOPED (2026-10-14, reported by Titus): `list`, `pending`,
+`list --board`, `list --claimable` and `list --assigned` return the CALLER's repo
+plus untagged rows, never another named repo's tasks. The repo resolves from
+`--repo`, else the session repo injected by the governance-enforcer, else
+CORTEX_SESSION_REPO, else the git repo at the working directory; when none of
+those exist the query returns NOTHING (operator rule) rather than every repo's
+tasks. `--repo ALL` is the EXPLICIT fleet-wide view (orchestrator callers).
+
 
 Statuses: pending, in_progress, paused, completed, cancelled, blocked,
 waiting (blocked/waiting are v3/v008 — schema v8+).
@@ -72,6 +81,64 @@ from pathlib import Path
 DEFAULT_DB = os.environ.get("TASK_DB_NAME", "mycortex")
 CONTAINER = "mycortex-postgres"
 PG_OPTS = ["-v", "ON_ERROR_STOP=1", "-t", "-A", "-F", "||"]
+
+# ── Repo scoping for task QUERIES (cycle 12593) ───────────────
+# A task query is scoped to the CALLER's own repo: agents were picking up
+# another repo's pending work because these queries returned every repo.
+# One resolver, shared with the rest of the fleet — cortex_lib sits BESIDE this
+# file when deployed (<deploy>/scripts/) and one level up in the repo
+# (ops/scripts/), so locate it from __file__ instead of guessing a depth.
+for _p in (Path(__file__).resolve().parent, Path(__file__).resolve().parent.parent):
+    if (_p / "cortex_lib" / "session_repo.py").is_file():
+        if str(_p) not in sys.path:
+            sys.path.insert(0, str(_p))
+        break
+from cortex_lib.session_repo import (  # noqa: E402
+    FLEET_ALL, ResolvedRepo, resolve_query_repo, unknown_repo_message)
+
+# The repo predicate. SCOPED deliberately includes `repo IS NULL`: rows created
+# before the repo tag existed are visible to every session (migration-safe),
+# while another NAMED repo's rows never are.
+_REPO_CLAUSE_UNFILTERED = "AND (CAST(? AS text) IS NULL OR t.repo = ?)"
+_REPO_CLAUSE_SCOPED = ("AND (CAST(? AS text) IS NULL OR t.repo = ? "
+                       "OR t.repo IS NULL)")
+
+
+def resolve_repo_for_query(flag: str, repo: str | None = None,
+                          repo_path: str | None = None,
+                          repo_slug: str | None = None) -> "ResolvedRepo | None":
+    """Resolve the repo a QUERY is scoped to; None means UNKNOWN -> no tasks.
+
+    `flag` names the CLI/MCP entry point in the message a caller sees. An
+    explicit label is validated here (same allowlist as every other identifier)
+    so a typo is an error, not a silent empty result.
+    """
+    if repo:
+        _check_name(flag, repo)
+    return resolve_query_repo(repo, repo_path, repo_slug)
+
+
+def _repo_clause(resolved) -> str:
+    return _REPO_CLAUSE_UNFILTERED if resolved.fleet else _REPO_CLAUSE_SCOPED
+
+
+def _repo_params(resolved) -> list:
+    return [None, None] if resolved.fleet else [resolved.slug, resolved.slug]
+
+
+def _scoped_or_report(tool: str, empty_line: str, resolved) -> bool:
+    """True when the caller may proceed; False after reporting an unknown repo.
+
+    Operator rule (2026-10-14): an unresolvable repo returns NOTHING — never an
+    all-repos result. The reason goes to stderr so it can never corrupt a
+    machine-readable stdout payload (task_pending is JSON).
+    """
+    if resolved is not None:
+        return True
+    print(empty_line)
+    print(unknown_repo_message(tool), file=sys.stderr)
+    return False
+
 
 # ── Allowlists (party B-1) ────────────────────────────────────
 
@@ -430,13 +497,15 @@ SELECT_COLS = (
 # Same filters as tasks.task_list() but selects the v005 columns too.
 # RLS (tasks_personal) protects this identically to the function.
 # v3: --parent filters to a story's slices (parent_id = story id).
-SELECT_SQL = (
+# The repo predicate is substituted per query (`_repo_clause`): scoped by
+# default (including untagged rows), unfiltered only on an explicit fleet view.
+SELECT_SQL_TEMPLATE = (
     f"SELECT {SELECT_COLS} FROM tasks.tasks t "
     "WHERE (CAST(? AS text) IS NULL OR t.created_by = ?) "
     "AND (CAST(? AS text) IS NULL OR t.status = ?) "
     "AND (CAST(? AS text) IS NULL OR t.scope = ?) "
     "AND (CAST(? AS text) IS NULL OR t.project = ?) "
-    "AND (CAST(? AS text) IS NULL OR t.repo = ?) "
+    "{repo_clause} "
     "AND (CAST(? AS text) IS NULL OR t.assignee = ?) "
     "AND (CAST(? AS text) IS NULL OR ? = ANY(t.tags)) "
     "AND (CAST(? AS uuid) IS NULL OR t.parent_id = ?) "
@@ -444,21 +513,36 @@ SELECT_SQL = (
 )
 
 
+def select_sql(repo_clause: str) -> str:
+    return SELECT_SQL_TEMPLATE.format(repo_clause=repo_clause)
+
+
+SELECT_SQL = select_sql(_REPO_CLAUSE_UNFILTERED)  # unfiltered form (reference)
+
+
 # ── Commands ──────────────────────────────────────────────────
 
 def cmd_list(agent: str | None, status: str | None, project: str | None,
              scope: str | None, repo: str | None, assignee: str | None,
              tag: str | None, due_before: str | None,
-             parent: str | None = None):
+             parent: str | None = None, repo_path: str | None = None,
+             repo_slug: str | None = None):
     """List tasks — union of personal + locally-present fleet rows (B-3).
 
     v3: --parent <story-id> lists that story's slices (story `list --parent`).
+
+    SCOPED to the caller's repo (cycle 12593): an unresolvable repo lists
+    NOTHING rather than every repo's tasks — pass --repo <label>, set
+    CORTEX_SESSION_REPO, or pass repo="ALL" for the deliberate fleet view.
     """
     for flag, val, checker in (
         ("--agent", agent, _check_name), ("--project", project, _check_name),
-        ("--repo", repo, _check_name), ("--assignee", assignee, _check_name),
+        ("--assignee", assignee, _check_name),
     ):
         checker(flag, val)
+    resolved = resolve_repo_for_query("--repo", repo, repo_path, repo_slug)
+    if not _scoped_or_report("task_list", "No tasks found.", resolved):
+        return
     if status:
         _check_enum("--status", status, STATUSES)
         if status in ("blocked", "waiting"):
@@ -469,10 +553,10 @@ def cmd_list(agent: str | None, status: str | None, project: str | None,
         _check_uuid(parent)
         _require_v3("--parent")
 
-    params = [agent, agent, status, status, scope, scope, project, project,
-              repo, repo, assignee, assignee, tag, tag, parent, parent]
-    sql = build_query(SELECT_SQL, params)
-    raw = psql(sql)
+    params = [agent, agent, status, status, scope, scope, project, project]
+    params += _repo_params(resolved)
+    params += [assignee, assignee, tag, tag, parent, parent]
+    raw = psql(select_sql(_repo_clause(resolved)), params)
     if not raw:
         print("No tasks found.")
         return
@@ -722,17 +806,28 @@ def cmd_verify(task_id: str, approve: bool, note: str | None = None,
         sys.exit(1)
 
 
-def cmd_list_claimable(limit: int = 10):
-    """v4: the worker queue view — pending slices with no assignee, by priority."""
+def cmd_list_claimable(limit: int = 10, repo: str | None = None,
+                       repo_path: str | None = None,
+                       repo_slug: str | None = None):
+    """v4: the worker queue view — pending slices with no assignee, by priority.
+
+    Repo-scoped (cycle 12593): the claimable pool is the pool FOR THIS SESSION'S
+    REPO; untagged slices stay visible, another repo's slices never are.
+    """
+    # Repo first: an unknown repo must cost NO database contact at all.
+    resolved = resolve_repo_for_query("--repo", repo, repo_path, repo_slug)
+    if not _scoped_or_report("task_list_claimable",
+                             "(no claimable slices — repo unknown)", resolved):
+        return
     _require_v4("list --claimable")
     rows = psql(
         "SELECT t.id, t.priority, t.project, t.content, "
         "COALESCE(t.plan, '') "
         "FROM tasks.tasks t "
         "WHERE t.status = 'pending' AND t.kind = 'slice' "
-        "AND t.assignee IS NULL "
+        f"AND t.assignee IS NULL {_repo_clause(resolved)} "
         "ORDER BY t.priority DESC, t.status_changed_at ASC LIMIT ?;",
-        [limit],
+        _repo_params(resolved) + [limit],
     )
     if not rows.strip():
         print("(no claimable slices)")
@@ -747,7 +842,9 @@ def cmd_list_claimable(limit: int = 10):
             print(f"{parts[0][:8]:<10} {parts[1]:<3} {parts[2][:60]}")
 
 
-def cmd_list_assigned(limit: int = 20):
+def cmd_list_assigned(limit: int = 20, repo: str | None = None,
+                      repo_path: str | None = None,
+                      repo_slug: str | None = None):
     """v4: pending slices that ALREADY have an assignee — handed out, never started.
 
     These are deliberately excluded from the claimable pool (someone owns them), but
@@ -756,16 +853,23 @@ def cmd_list_assigned(limit: int = 20):
     every board counted them as ordinary pending work.
 
     Release one back to the pool:  task-db.py unclaim <id> --reason "<why>"
+
+    Repo-scoped (cycle 12593), same rule as the claimable pool.
     """
+    # Repo first: an unknown repo must cost NO database contact at all.
+    resolved = resolve_repo_for_query("--repo", repo, repo_path, repo_slug)
+    if not _scoped_or_report("task_list_handed_out",
+                             "(no unstarted hand-offs — repo unknown)", resolved):
+        return
     _require_v4("list --assigned")
     rows = psql(
         "SELECT t.id, t.priority, t.project, t.content, "
         "COALESCE(t.assignee, '') "
         "FROM tasks.tasks t "
         "WHERE t.status = 'pending' AND t.kind = 'slice' "
-        "AND t.assignee IS NOT NULL "
+        f"AND t.assignee IS NOT NULL {_repo_clause(resolved)} "
         "ORDER BY t.priority DESC, t.status_changed_at ASC LIMIT ?;",
-        [limit],
+        _repo_params(resolved) + [limit],
     )
     if not rows.strip():
         print("(no unstarted hand-offs)")
@@ -778,27 +882,44 @@ def cmd_list_assigned(limit: int = 20):
                   f"{parts[2][:16]:<18} {parts[3][:50]}")
 
 
-def cmd_list_board():
+def cmd_list_board(repo: str | None = None, repo_path: str | None = None,
+                   repo_slug: str | None = None):
     """v4: one-view board — open counts + per-agent in_progress + review queue.
 
     The pending count is SPLIT by what it actually means. A bare `pending: 18` was
     misleading: 9 were slice work anyone could claim, 6 were slices handed to someone
     who never started (unclaimable, unwatched) and 3 were stories (never claimable —
     the pool takes slices only). A count an agent cannot act on hides the rot inside it.
+
+    Repo-scoped (cycle 12593): the board counts THIS session's repo (plus untagged
+    rows). An unknown repo prints the reason and queries NOTHING — a board that
+    silently mixed repos is how agents adopted another repo's work. Orchestrator
+    callers that genuinely want the fleet view pass repo="ALL".
     """
+    # Repo first: an unknown repo must cost NO database contact at all.
+    resolved = resolve_repo_for_query("--repo", repo, repo_path, repo_slug)
+    print("📋 Task Board")
+    if not _scoped_or_report(
+            "task_board",
+            "  repo unknown — no board rendered (pass repo=<label> or set "
+            "CORTEX_SESSION_REPO; repo=ALL for the fleet view)", resolved):
+        return
     _require_v4("list --board")
+    _params = _repo_params(resolved)
+    _clause = _repo_clause(resolved)
     counts = psql(
         "SELECT CASE "
-        "         WHEN status <> 'pending' THEN status "
-        "         WHEN kind = 'story' THEN 'pending (story, not claimable)' "
-        "         WHEN assignee IS NOT NULL THEN 'pending (assigned, not started)' "
+        "         WHEN t.status <> 'pending' THEN t.status "
+        "         WHEN t.kind = 'story' THEN 'pending (story, not claimable)' "
+        "         WHEN t.assignee IS NOT NULL THEN 'pending (assigned, not started)' "
         "         ELSE 'pending (claimable)' "
         "       END AS bucket, count(*) "
-        "FROM tasks.tasks "
-        "WHERE status IN ('pending','in_progress','review') "
+        "FROM tasks.tasks t "
+        "WHERE t.status IN ('pending','in_progress','review') "
+        f"{_clause} "
         "GROUP BY bucket ORDER BY bucket;",
+        _params,
     )
-    print("📋 Task Board")
     if counts.strip():
         for line in counts.splitlines():
             parts = line.split("||")
@@ -807,9 +928,11 @@ def cmd_list_board():
     else:
         print("  (no open tasks)")
     by_agent = psql(
-        "SELECT COALESCE(assignee, created_by), count(*) "
-        "FROM tasks.tasks WHERE status = 'in_progress' "
+        "SELECT COALESCE(t.assignee, t.created_by), count(*) "
+        "FROM tasks.tasks t WHERE t.status = 'in_progress' "
+        f"{_clause} "
         "GROUP BY 1 ORDER BY 2 DESC;",
+        _params,
     )
     if by_agent.strip():
         print("  In progress:")
@@ -819,7 +942,10 @@ def cmd_list_board():
                 print(f"    {parts[0]}: {parts[1]}")
     review = psql(
         "SELECT t.id, t.created_by, t.content FROM tasks.tasks t "
-        "WHERE t.status = 'review' ORDER BY t.status_changed_at ASC;",
+        "WHERE t.status = 'review' "
+        f"{_clause} "
+        "ORDER BY t.status_changed_at ASC;",
+        _params,
     )
     if review.strip():
         print("  In review (awaiting orchestrator verify):")
@@ -902,7 +1028,16 @@ def cmd_switch(target_id: str, no_notify: bool = False):
                          overdue=_is_due_overdue(target_row["due"], "in_progress"))
 
 
-def cmd_pending():
+PENDING_SQL_TEMPLATE = (
+    f"SELECT {SELECT_COLS} FROM tasks.tasks t "
+    "WHERE t.status IN ('pending','in_progress','paused','blocked','waiting') "
+    "{repo_clause} "
+    "ORDER BY t.priority DESC, t.created_at ASC LIMIT 500"
+)
+
+
+def cmd_pending(repo: str | None = None, repo_path: str | None = None,
+                repo_slug: str | None = None, explain: bool = True):
     """Print pending/in_progress/paused tasks as JSON for session restore.
 
     v2 (M-9/R-4): paused rows are included with status='paused' (surfaced,
@@ -910,11 +1045,21 @@ def cmd_pending():
     'untrusted': true so restore skips them unless --include-inbox.
     v3 (M-7): blocked/waiting rows are surfaced the same way — restore keeps
     their status (never auto-resumed into in_progress).
+
+    Repo-scoped (cycle 12593). An UNRESOLVABLE repo prints `[]` — the operator
+    rule is that a session with no repo gets NO tasks rather than every repo's
+    tasks. `explain` writes the reason to stderr (the MCP path turns stderr
+    into part of the tool's text, so it passes explain=False to keep stdout a
+    clean JSON array).
     """
-    raw = psql(build_query(
-        f"SELECT {SELECT_COLS} FROM tasks.tasks t "
-        "WHERE t.status IN ('pending','in_progress','paused','blocked','waiting') "
-        "ORDER BY t.priority DESC, t.created_at ASC LIMIT 500;", None))
+    resolved = resolve_repo_for_query("--repo", repo, repo_path, repo_slug)
+    if resolved is None:
+        print("[]")
+        if explain:
+            print(unknown_repo_message("task_pending"), file=sys.stderr)
+        return
+    raw = psql(PENDING_SQL_TEMPLATE.format(repo_clause=_repo_clause(resolved)),
+               _repo_params(resolved))
     items = []
     for line in raw.split("\n"):
         row = parse_row(line)
@@ -1059,12 +1204,12 @@ def main():
     if command == "list":
         if _has("--claimable"):
             limit = int(_flag("--limit", "10") or 10)
-            cmd_list_claimable(limit)
+            cmd_list_claimable(limit, _flag("--repo"))
         elif _has("--assigned"):
             limit = int(_flag("--limit", "20") or 20)
-            cmd_list_assigned(limit)
+            cmd_list_assigned(limit, _flag("--repo"))
         elif _has("--board"):
-            cmd_list_board()
+            cmd_list_board(_flag("--repo"))
         else:
             cmd_list(
                 _flag("--agent"), _flag("--status"), _flag("--project"),
@@ -1154,7 +1299,7 @@ def main():
         cmd_verify(sys.argv[2], approve, _flag("--note"), _has("--no-notify"))
 
     elif command == "pending":
-        cmd_pending()
+        cmd_pending(_flag("--repo"))
 
     elif command == "restore":
         include_inbox = _has("--include-inbox")

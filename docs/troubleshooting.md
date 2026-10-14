@@ -810,6 +810,30 @@ mid-cycle repo switch, or a lock written before this fix), the refusal still has
 no self-service release — re-open the cycle in the correct repo, or remove the
 lock.
 
+### Task queries show me nothing (`task_pending` returned `[]`)
+
+Task QUERIES are repo-scoped (2026-10-14, reported by Titus): `task_pending`,
+`task_list`, `task_board`, `task_list_claimable` and `task_list_handed_out`
+return the CALLER's own repo plus untagged rows — never every repo's tasks —
+and an UNRESOLVABLE repo returns nothing at all. The repo resolves in this
+order: the `repo` argument → the repo the `governance-enforcer` injected for
+this session (it stamps `mcp__tasks__*` calls exactly as it does governance
+calls) → `CORTEX_SESSION_REPO` → the git repo at the process's cwd.
+
+This is not an empty database. Diagnose it in that order:
+
+```bash
+python3 ~/.hermes-cortex/scripts/task-db.py pending --repo <your-repo>   # explicit works?
+echo "$CORTEX_SESSION_REPO"; git -C "$PWD" rev-parse --show-toplevel    # a lever? a git cwd?
+python3 ~/.hermes-cortex/scripts/task-db.py list --status pending --repo ALL   # fleet view
+```
+
+An explicable empty answer is always accompanied by a `repo unknown —` line on
+**stderr** (never on stdout: `task_pending`'s payload is a JSON array session
+restore parses). Scripts and crons that run outside a git checkout must name
+their repo (`--repo <label>`, or `--repo ALL` for an orchestrator fleet view) —
+the doctor's Task-DB probe does exactly that.
+
 ### `begin_change` says lock active but you want to start fresh
 
 A stale lock file can persist if a session was interrupted:
