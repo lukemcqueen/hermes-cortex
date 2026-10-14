@@ -765,6 +765,72 @@ def _is_lock_stale(state: dict, mtime_fallback: float | None = None) -> bool:
     return False
 
 
+def _close_cycle_unscored(cycle_id: int | None, unscored_reason: str, outcome_note: str,
+                          task_id: str = "") -> bool:
+    """Close a PENDING cycle UNSCORED, before its lock is released.
+
+    ONE implementation for every release-first path (metadata refusal, work refusal,
+    blocked transition), because they share ONE invariant: a released lock beside a
+    still-PENDING cycle is a doctor FAIL (leak) that blocks the push for EVERY agent on
+    the host. Measured 2026-10-14: exactly one such row was the sole failure behind a
+    refused push. Each path used to carry its own copy of this UPDATE and the copies
+    drifted — the findings refusal released the lock and never touched the row at all.
+
+    Resolved, not judged. ``MOVE_ON`` so no consumer reads it as pending; the facts go
+    into ``unscored_reason``/``outcome_note`` so an auditor can recompute why; and the
+    UPDATE touches only a still-PENDING, non-overridden row, so a cycle someone already
+    scored or overrode is never rewritten by cleanup. No score is invented here: the
+    reason records that NOTHING was reviewed, and because no review receipt is written on
+    any of these paths, nothing becomes pushable from them.
+
+    Never call this to authorise a push — it removes a leak, it does not review work.
+
+    Failure is REPORTED, never raised, and the connection is closed in ``finally``. Both
+    matter: the caller must still be able to release its lock (a dead DB used to leave the
+    session dead-ended, which is the bug being fixed), and the blocked branch used to close
+    its connection only on the happy path, leaking it whenever the UPDATE raised.
+    """
+    conn = None
+    try:
+        conn = _db()
+        if not cycle_id and task_id:
+            row = conn.execute(
+                "SELECT id FROM loop_cycles WHERE task_id=? AND decision='PENDING' "
+                "AND user_overrode IS NULL ORDER BY id DESC LIMIT 1",
+                (task_id,),
+            ).fetchone()
+            cycle_id = row[0] if row else None
+        if not cycle_id:
+            log.warning("nothing to close unscored: no PENDING cycle found (task_id=%r)",
+                        task_id)
+            return False
+        cur = conn.execute(
+            "UPDATE loop_cycles SET decision='MOVE_ON', unscored_reason=?, outcome_note=? "
+            "WHERE id=? AND decision='PENDING' AND user_overrode IS NULL",
+            (unscored_reason, outcome_note, cycle_id),
+        )
+        conn.commit()
+        # Report what actually happened: the guard (PENDING, not overridden) means a
+        # perfectly valid call can match NO row, and returning True there would tell the
+        # caller "closed" about a cycle that is still open (measured by the probe: a
+        # scored row and an overridden row both left untouched while the call claimed
+        # success). The row's state is never rewritten either way.
+        if cur.rowcount == 0:
+            log.warning("cycle %s NOT closed unscored: no PENDING, non-overridden row "
+                        "matched (already scored, overridden, or absent)", cycle_id)
+            return False
+        return True
+    except Exception as e:
+        log.warning("could not close cycle %s unscored (%s)", cycle_id, e)
+        return False
+    finally:
+        if conn is not None:
+            try:
+                conn.close()
+            except Exception:
+                pass
+
+
 def _release_lock_after_metadata_refusal(cycle_id: int, verdict: str, reason: str,
                                          state: dict | None = None) -> bool:
     """Free the lock when the refusal was about the LOCK'S METADATA, not the work.
@@ -784,45 +850,39 @@ def _release_lock_after_metadata_refusal(cycle_id: int, verdict: str, reason: st
     therefore closed UNSCORED with the facts an auditor can recompute.
 
     Closing unscored must never read as an approved close: no receipt exists for this
-    cycle, nothing is pushable, and the reason records which refusal caused it. The
-    work refusals (findings, reviewer unavailable, template missing) still keep the
-    lock — those are verdicts about the change, and only a re-review may clear them.
+    cycle, nothing is pushable, and the reason records which refusal caused it. The FINDINGS
+    refusal behaves the same way (it releases the lock too, closing its cycle unscored —
+    see _release_after_refusal); only a reviewer OUTAGE still holds the lock, because an
+    outage is transient and retrying end_change is the shorter wait.
     """
+    # Order is load-bearing (same reason as in the blocked branch): the row is closed
+    # BEFORE the lock is dropped, so no crash or interleaving can leave a released lock
+    # beside an unresolved PENDING cycle.
+    note = (
+        f"metadata refusal ({str(verdict or '').upper()}): {reason} — the lock was "
+        "tagged with a repo that cannot contain this session's change, so no diff was "
+        "reviewed, no verdict exists and no receipt was written; the cycle is closed "
+        "unscored and the lock released so the session and other sessions can proceed"
+    )
+    # Release by the LOCK'S OWN session id, never an env-derived one: this server is one
+    # process shared by every Hermes session, so a process-scoped fallback could free a
+    # peer's lock — or none at all. A lock carrying NO session id is therefore not released,
+    # and its cycle is deliberately left PENDING rather than closed: with no session to
+    # release it for, closing the row would strand this session's retry (end_change's own
+    # resolve step would find no PENDING cycle left to close).
+    owner = (state or {}).get("session_id") or ""
+    if not owner:
+        log.warning("metadata-refusal release: the lock carries no session_id — refusing to "
+                    "guess which session to release (cycle %s left PENDING beside its lock)",
+                    cycle_id)
+        return False
+    resolved = _close_cycle_unscored(
+        cycle_id,
+        note,
+        "metadata refusal — lock released, nothing reviewed (no receipt)",
+    )
     try:
-        conn = _db()
-    except Exception as e:
-        log.warning("metadata-refusal release: DB unavailable (%s) — cycle not resolved", e)
-        conn = None
-    resolved = False
-    if conn is not None:
-        try:
-            note = (
-                f"metadata refusal ({str(verdict or '').upper()}): {reason} — the lock was "
-                "tagged with a repo that cannot contain this session's change, so no diff was "
-                "reviewed, no verdict exists and no receipt was written; the cycle is closed "
-                "unscored and the lock released so the session and other sessions can proceed"
-            )
-            conn.execute(
-                "UPDATE loop_cycles SET decision='MOVE_ON', unscored_reason=?, "
-                "outcome_note='metadata refusal — lock released, nothing reviewed (no receipt)' "
-                "WHERE id=? AND decision='PENDING' AND user_overrode IS NULL",
-                (note, cycle_id),
-            )
-            conn.commit()
-            resolved = True
-        except Exception as e:
-            log.warning("metadata-refusal release: could not resolve cycle %s (%s)", cycle_id, e)
-        finally:
-            try:
-                conn.close()
-            except Exception:
-                pass
-    # Release the lock the CALLER resolved, by its own session id: the server is one
-    # process shared by every Hermes session, so an env-derived id could free a peer's
-    # lock — or none — instead of this one.
-    try:
-        sid = (state or {}).get("session_id") or ""
-        _release_lock({"session_id": sid} if sid else None)
+        _release_lock({"session_id": owner})
     except Exception as e:
         log.warning("metadata-refusal release: could not release lock (%s)", e)
         return False
@@ -1084,7 +1144,7 @@ def _touch_heartbeat(args: dict | None = None) -> None:
         log.warning("could not refresh the lock heartbeat: %s", e)
 
 
-def _release_after_refusal(lock: dict | None = None) -> str:
+def _release_after_refusal(lock: dict | None = None, cycle_id: int | None = None) -> str:
     """Release the lock on a REFUSED close, and say what the refusal still blocks.
 
     Part of the 2026-10-13 split. ONE mechanism used to do three jobs: mutual exclusion, session
@@ -1107,6 +1167,13 @@ def _release_after_refusal(lock: dict | None = None) -> str:
 
     Deliberately NOT used for a reviewer OUTAGE (see the unavailable path): an outage is transient
     and retrying end_change works, so holding the lock there is the shorter wait, not the deadlock.
+
+    The cycle is closed UNSCORED before the lock is dropped, and the ORDER is load-bearing.
+    Releasing the lock alone left the row PENDING with no live lock — a doctor FAIL (leak) that
+    blocks the push for EVERY agent on the host — which is the same defect the metadata-refusal
+    path fixed one branch over. Closing unscored records the facts without inventing a score, and
+    since no review receipt is written on this path, nothing is authorised and nothing becomes
+    pushable from it. The finding is NOT discarded: it stays in this cycle's stored review row.
     """
     try:
         owner = (lock or {}).get("session_id")
@@ -1114,12 +1181,27 @@ def _release_after_refusal(lock: dict | None = None) -> str:
             log.warning("refused close but the lock carries no session_id — not guessing which "
                         "session to release")
             return ("\n\n(The lock was NOT released: it carries no session_id, and releasing by a "
-                    "process-scoped fallback could drop a peer's lock.)")
+                    "process-scoped fallback could drop a peer's lock. Its cycle is left PENDING "
+                    "for the same reason — see the cycle note above.)")
+        # Close the cycle UNSCORED *before* the lock is dropped. A released lock beside a
+        # still-PENDING cycle is a doctor FAIL (leak) that blocks the push for every agent on
+        # the host; this path used to release the lock and never touch the row at all.
+        _close_cycle_unscored(
+            cycle_id,
+            "work refusal (review findings): a MEDIUM-or-above finding blocked this close, so "
+            "the change was NOT approved — the finding is recorded against this cycle's review "
+            "row; the cycle is closed unscored and the lock released so the session can act on "
+            "it",
+            "review refusal — lock released, nothing reviewed (no receipt)",
+            task_id=(lock or {}).get("task_id", ""),
+        )
         _release_lock({"session_id": owner})
-        return ("\n\nThe lock is RELEASED. The verdict is recorded and this range still cannot be "
-                "pushed without a CLEAN review receipt, so fix the findings and call "
-                "rereview_change — or start the next change with begin_change. Holding the lock "
-                "was not what stood between you and a fixed finding.")
+        return ("\n\nThe lock is RELEASED and this cycle is closed unscored — the finding itself "
+                "is still recorded against it. Fix the findings, then start the next change with "
+                "begin_change: the review range is the unpushed range, so the fix is re-judged "
+                "against the same content. This range still cannot be pushed without a CLEAN "
+                "review receipt, and holding the lock was never what stood between you and a "
+                "fixed finding.")
     except Exception as e:
         log.warning("could not release the lock after a refused close: %s", e)
         return "\n\n(The lock could not be released: %s)" % e
@@ -4621,7 +4703,7 @@ def _adversarial_review_gate(lock: dict, cycle: dict,
                 return None
             _mark_close_refused(cycle.get("id", 0), stored_verdict,
                                 stored.get("findings_json") or "[]", lock)
-            _note = _release_after_refusal(lock)
+            _note = _release_after_refusal(lock, cycle.get("id"))
             return CallToolResult(content=[TextContent(type="text", text=(
                 "❌ Self-adversarial review FAILED — this complex change cannot close.\n\n"
                 f"Verdict: {stored_verdict} (already recorded for exactly this material)\n"
@@ -4632,9 +4714,11 @@ def _adversarial_review_gate(lock: dict, cycle: dict,
                 "finding that quoted text from an earlier note cannot re-anchor this close on "
                 "wording you have already superseded — state a correction once in the newest "
                 "note instead of quoting the superseded claim.\n"
-                "Fix the findings, then call rereview_change with a NEW note describing "
-                "what changed and the evidence for it. The lock stays held; nothing "
-                "sufficiently complex ships unreviewed."
+                "Fix the findings, then start the next change with begin_change and say in "
+                "its note what changed and the evidence for it. The review range is the "
+                "unpushed range, so the fixed content is re-judged there. The lock is "
+                "RELEASED and this cycle is closed unscored; nothing sufficiently complex "
+                "ships unreviewed."
             ))])
 
     try:
@@ -4729,7 +4813,7 @@ def _adversarial_review_gate(lock: dict, cycle: dict,
 
     # MEDIUM+ (or unclassifiable): hard-block.
     _mark_close_refused(cycle.get("id", 0), verdict, findings_json, lock)
-    _note = _release_after_refusal(lock)
+    _note = _release_after_refusal(lock, cycle.get("id"))
     return CallToolResult(content=[TextContent(type="text", text=(
         "❌ Self-adversarial review FAILED — this complex change cannot close.\n\n"
         f"Verdict: {verdict}\n"
@@ -4737,7 +4821,9 @@ def _adversarial_review_gate(lock: dict, cycle: dict,
         f"Summary: {reviewer_text[:1200]}\n\n"
         "Findings at MEDIUM or above block the close; LOW findings are recorded but "
         "do not block.\n"
-        "Resolve the findings and retry end_change. Nothing sufficiently complex ships "
+        "The lock is RELEASED and this cycle is closed unscored. Fix the findings, then "
+        "start the next change with begin_change — the review range is the unpushed range, "
+        "so the fixed content is judged there. Nothing sufficiently complex ships "
         "unreviewed."
         + _note
     ))])
@@ -5538,29 +5624,17 @@ def _advance_task_state(args: dict) -> CallToolResult:
     # row was the sole failure behind a refused push. And no review receipt is written
     # here, so a blocked change authorises nothing and can never be pushed on this path.
     elif new_state == "blocked":
-        _cycle_closed = False
-        try:
-            _conn = _db()
-            _row = _conn.execute(
-                "SELECT id FROM loop_cycles WHERE task_id=? AND decision='PENDING' "
-                "AND user_overrode IS NULL ORDER BY id DESC LIMIT 1",
-                (state.get("task_id", ""),),
-            ).fetchone()
-            if _row:
-                _conn.execute(
-                    "UPDATE loop_cycles SET decision='MOVE_ON', unscored_reason=?, "
-                    "outcome_note='task BLOCKED — lock released, nothing reviewed (no receipt)' "
-                    "WHERE id=? AND decision='PENDING' AND user_overrode IS NULL",
-                    (f"task '{state.get('task_id', '')}' moved to 'blocked' (non-terminal) with "
-                     f"reason: {reason or 'none given'} — the session is freed so it can do other "
-                     "work; the task stays resumable and no score is invented because nothing was "
-                     "closed or reviewed", _row[0]),
-                )
-                _conn.commit()
-                _cycle_closed = True
-            _conn.close()
-        except Exception as e:  # noqa: BLE001 — the release below must still happen
-            log.warning("blocked transition: could not close PENDING cycle (%s)", e)
+        # Closed UNSCORED before the lock is dropped — see _close_cycle_unscored for why the
+        # order is load-bearing and why no score is invented here.
+        _cycle_closed = _close_cycle_unscored(
+            None,
+            f"task '{(state or {}).get('task_id', '')}' moved to 'blocked' (non-terminal) with "
+            f"reason: {reason or 'none given'} — the session is freed so it can do other "
+            "work; the task stays resumable and no score is invented because nothing was "
+            "closed or reviewed",
+            "task BLOCKED — lock released, nothing reviewed (no receipt)",
+            task_id=(state or {}).get("task_id", ""),
+        )
         try:
             _release_lock(args)
             release_note = (" 🔓 Lock released — a blocked task holds no mutex"

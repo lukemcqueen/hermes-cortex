@@ -11,11 +11,17 @@ lock is dropped. A released lock beside a still-PENDING cycle is a doctor FAIL (
 that blocks the push for EVERY agent on the host — measured 2026-10-14, when exactly
 one such row was the sole failure behind a refused push. No review receipt is written
 on this path, so a blocked change authorises nothing and cannot be pushed from it.
+
+The closing UPDATE itself lives in ONE shared closer, pinned by
+tests/test_release_after_refusal_closes_cycle.py; this file asserts the branch CALLS it,
+in the right order, and never carries its own copy.
 """
 import ast
 from pathlib import Path
 
 SRC = Path(__file__).resolve().parents[1] / "mcp-servers" / "loop-gov-mcp.py"
+CLOSER = "_close_cycle_unscored"
+UPDATE_MARKER = "SET decision='MOVE_ON', unscored_reason=?"
 
 
 def _fn_source(name):
@@ -37,26 +43,34 @@ def _blocked_branch():
 def test_blocked_transition_closes_the_cycle_before_releasing_the_lock():
     branch = _blocked_branch()
 
-    # Closed UNSCORED, and only ever a still-PENDING, non-overridden row.
-    assert "decision='MOVE_ON'" in branch
-    assert "unscored_reason=?" in branch
-    assert "decision='PENDING'" in branch
-    assert "user_overrode IS NULL" in branch
+    assert f"{CLOSER}(" in branch, "the blocked branch must close its cycle through the closer"
+    assert UPDATE_MARKER not in branch, (
+        "the blocked branch carries its own copy of the closing UPDATE — it must delegate "
+        "to the shared closer so the release paths cannot drift apart again"
+    )
 
     # Says plainly that nothing was reviewed, so no reader mistakes it for a close.
     assert "no receipt" in branch
 
     # Order: cycle first, lock second.
-    assert branch.index("decision='MOVE_ON'") < branch.index("_release_lock(args)"), (
+    assert branch.index(f"{CLOSER}(") < branch.index("_release_lock(args)"), (
         "the cycle must be closed unscored BEFORE the lock is released, or the release "
         "leaves a lockless PENDING cycle that fails the doctor for every agent"
     )
 
 
-def test_blocked_still_releases_the_lock_when_the_db_step_fails():
-    """A broken store must not leave the session stuck — that is the dead-end being fixed."""
+def test_blocked_still_releases_the_lock_when_the_store_step_fails():
+    """A broken store must not leave the session stuck — that is the dead-end being fixed.
+
+    The closer reports failure instead of raising, and the branch must not gate the
+    release on its result: the release runs unconditionally after the call.
+    """
     branch = _blocked_branch()
-    assert branch.index("could not close PENDING cycle") < branch.index("_release_lock(args)")
+    assert "if _cycle_closed:" not in branch, (
+        "the closer's result must not guard the release — a store failure would then "
+        "strand the lock, which is the dead-end this branch removes"
+    )
+    assert branch.index(f"{CLOSER}(") < branch.index("_release_lock(args)")
 
 
 def test_blocked_stays_non_terminal_and_is_a_separate_path():

@@ -15,7 +15,7 @@ importing or executing it: importing needs the `mcp` package and a live session
 context, and a test must not execute extracted code (it is also why this file carries
 no exec/compile — the A4 scan blocks that). Both directions are pinned:
   * metadata refusals (WRONG_REPO / NO_REPO) release the lock AND close the cycle
-    unscored, recording a reason an auditor can recompute;
+    unscored through the shared closer, recording a reason an auditor can recompute;
   * work refusals (findings / reviewer unavailable / template missing) keep the lock,
     because only a re-review may clear a verdict about the change.
 """
@@ -24,6 +24,7 @@ from pathlib import Path
 
 SRC = Path(__file__).resolve().parents[1] / "mcp-servers" / "loop-gov-mcp.py"
 HELPER = "_release_lock_after_metadata_refusal"
+CLOSER = "_close_cycle_unscored"
 METADATA_VERDICTS = ("WRONG_REPO", "NO_REPO")
 
 
@@ -32,29 +33,29 @@ def _source():
     return SRC.read_text()
 
 
-def _helper_source():
+def _fn_source(name):
     src = _source()
     for node in ast.parse(src).body:
-        if isinstance(node, ast.FunctionDef) and node.name == HELPER:
+        if isinstance(node, ast.FunctionDef) and node.name == name:
             segment = ast.get_source_segment(src, node)
-            assert segment, f"could not read the source of {HELPER}"
+            assert segment, f"could not read the source of {name}"
             return segment
-    raise AssertionError(f"{HELPER} not found in {SRC}")
+    raise AssertionError(f"{name} not found in {SRC}")
+
+
+def _helper_source():
+    return _fn_source(HELPER)
 
 
 def test_helper_resolves_the_cycle_unscored_then_releases_the_lock():
     body = _helper_source()
 
-    # Resolved, not judged: MOVE_ON so no consumer mistakes it for a pending cycle,
-    # unscored_reason carrying the facts, and only ever applied to a still-PENDING,
-    # non-overridden row.
-    assert "decision='MOVE_ON'" in body
-    assert "unscored_reason=?" in body
-    assert "decision='PENDING'" in body
-    assert "user_overrode IS NULL" in body
-
-    # The reason must say that nothing was reviewed — no receipt exists on this path,
-    # so nothing is authorised and nothing becomes pushable.
+    # The closing UPDATE lives in the ONE shared closer (pinned by
+    # tests/test_release_after_refusal_closes_cycle.py); this path must DELEGATE to it
+    # rather than carry a copy of its own, which is how the copies drifted apart.
+    assert f"{CLOSER}(" in body
+    # The note it passes must say that nothing was reviewed — no receipt exists on this
+    # path, so nothing is authorised and nothing becomes pushable.
     assert "no receipt" in body
 
     # Released by the LOCK'S OWN session id, never an env-derived one: the server is a
@@ -65,21 +66,39 @@ def test_helper_resolves_the_cycle_unscored_then_releases_the_lock():
 
     # Order matters: the cycle is resolved before the lock is dropped, so a crash
     # between the two never leaves a released lock beside an unresolved cycle.
-    assert body.index("decision='MOVE_ON'") < body.index('_release_lock({"session_id"')
+    assert body.index(f"{CLOSER}(") < body.index('_release_lock({"session_id"')
+
+
+def test_helper_refuses_to_guess_which_session_to_release():
+    """A lock with no session_id must NOT be released by a process-scoped fallback.
+
+    Closing its cycle would be just as wrong: with no session to release it for, the
+    row must stay PENDING (the doctor counts that as EXPECTED beside a live lock) or the
+    session's own retry finds nothing left to close.
+    """
+    body = _helper_source()
+    assert "if not owner:" in body
+    assert body.index("if not owner:") < body.index(f"{CLOSER}("), (
+        "the owner guard must come BEFORE the cycle close — no owner means no release, "
+        "and closing the row would strand the retry"
+    )
+    # The old guessing form passed None (a process-scoped id) — it must be gone.
+    assert '_release_lock({"session_id": sid} if sid else None)' not in body
+    assert "_release_lock(None)" not in body
 
 
 def test_lock_release_is_attempted_even_when_the_cycle_cannot_be_resolved():
-    """A dead DB must not leave the lock held — that is the dead-end being fixed.
+    """A dead store must not leave the lock held — that is the dead-end being fixed.
 
-    The DB-only try/except reports and continues; the release must sit AFTER it (i.e.
-    outside that guard) so the failure path still frees the session.
+    The shared closer reports its own failure and never raises, so the release must sit
+    AFTER it unconditionally: gating the release on the closer's result would re-create
+    the dead-end the closer exists to prevent.
     """
     body = _helper_source()
-    i_db_failure = body.index("DB unavailable")
-    i_release = body.index('_release_lock({"session_id"')
-    assert i_db_failure < i_release, (
-        "the cycle-resolution failure path must not skip the lock release"
-    )
+    assert "if resolved" not in body, "the closer's result must not gate the lock release"
+    closer = _fn_source(CLOSER)
+    assert "except Exception" in closer, "the closer must report failure, not raise"
+    assert "finally:" in closer and "conn.close()" in closer
 
 
 def test_only_metadata_refusals_release_the_lock():

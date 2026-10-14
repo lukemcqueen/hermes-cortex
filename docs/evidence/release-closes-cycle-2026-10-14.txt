@@ -1,0 +1,159 @@
+repo: ~/hermes-cortex
+pre-fix ref for the discrimination: origin/main
+module under test: mcp-servers/loop-gov-mcp.py (working copy)
+  sha256 692ba0d3f623a74a28d55796f2b33de26760b467b26a1375043cec284c13d0e3
+NOTE: this host's cron also regenerates docs/evidence/briefings/*, so the working
+      tree may carry that artifact beside this change. It is not part of this change
+      and neither the probe nor the suites read it.
+NOTE: the probe runs under plain python3 on purpose — the module guards its own 'mcp'
+      import, so its warning about the stdio server is expected here and does not
+      affect the checks (all of which are exercised through the module's helpers).
+
+pre-fix module written to: ~/.hermes/cache/scratch/release-closes-cycle.uRSlV5/pre-fix.py
+
+--- 1. behavioural probe (throwaway state + DB) against the working copy
+$ python3 docs/evidence/release-closes-cycle-probe.py ~/hermes-cortex
+[mcp-server] WARNING: the 'mcp' package is not installed — the stdio server cannot start; the CLI adapter (ops/scripts/loop-gov.py) still works.
+[mcp-server]   ~/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3 -m pip install mcp
+[mcp-server] WARNING: cycle 2 NOT closed unscored: no PENDING, non-overridden row matched (already scored, overridden, or absent)
+[mcp-server] WARNING: cycle 3 NOT closed unscored: no PENDING, non-overridden row matched (already scored, overridden, or absent)
+[mcp-server] WARNING: could not close cycle 1001 unscored (probe: store gone)
+[mcp-server] WARNING: refused close but the lock carries no session_id — not guessing which session to release
+module: ~/hermes-cortex/mcp-servers/loop-gov-mcp.py
+throwaway state: ~/.hermes/cache/scratch/release-probe-caw3jo7j
+01. PASS closes a PENDING row unscored — decision=MOVE_ON
+02. PASS records the reason an auditor can recompute
+03. PASS invents no score
+04. PASS leaves a scored row alone
+05. PASS leaves an overridden row alone
+06. PASS reports failure instead of raising
+07. PASS closes the connection on the failure path (no leak) — close() calls=1
+08. PASS findings refusal removed the lock
+09. PASS findings refusal closed the cycle unscored — decision=MOVE_ON
+10. PASS findings refusal says the lock is released
+11. PASS nameless lock is not released
+12. PASS nameless lock leaves its cycle PENDING
+
+failures=0
+rc=0
+
+--- 2a. governance suites (file alone)
+$ bash tests/run-tests.sh tests/test_release_after_refusal_closes_cycle.py tests/test_metadata_refusal_releases_lock.py tests/test_blocked_releases_lock.py -q
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
+rootdir: ~/hermes-cortex
+configfile: pytest.ini
+plugins: anyio-4.15.1
+collected 12 items
+
+tests/test_release_after_refusal_closes_cycle.py .....                   [ 41%]
+tests/test_metadata_refusal_releases_lock.py ....                        [ 75%]
+tests/test_blocked_releases_lock.py ...                                  [100%]
+
+============================== 12 passed in 1.16s ==============================
+---
+run-tests.sh: interpreter=~/.hermes-cortex/venv/bin/python3 rc=0  (PYTHONPATH/PYTHONHOME unset for the run)
+rc=0
+
+--- 2b. wider governance selection (regressions outside the three files)
+$ bash tests/run-tests.sh tests/ -q -k release or lock or govern or mcp or cycle or closeout
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
+rootdir: ~/hermes-cortex
+configfile: pytest.ini
+plugins: anyio-4.15.1
+collected 1972 items / 1474 deselected / 498 selected
+
+tests/test_adversarial_a3a4.py ..                                        [  0%]
+tests/test_adversarial_review.py ..                                      [  0%]
+tests/test_adversarial_static.py ..                                      [  1%]
+tests/test_apply_mcp_tool_watch_fix.py ......                            [  2%]
+tests/test_backfill_legacy_reaper_cycles.py ......                       [  3%]
+tests/test_blocked_releases_lock.py ...                                  [  4%]
+tests/test_bot_locks.py .....                                            [  5%]
+tests/test_bus_inbox_inspect.py .                                        [  5%]
+tests/test_bus_inbox_survey.py .                                         [  5%]
+tests/test_bus_outbox.py .                                               [  5%]
+tests/test_capture_evidence_1012.py .                                    [  6%]
+tests/test_context_harnesses.py .....                                    [  7%]
+tests/test_cortex_context_mcp.py ......................                  [ 11%]
+tests/test_cortex_sandbox.py .....                                       [ 12%]
+tests/test_cortex_update_mutex.py ....                                   [ 13%]
+tests/test_cron_prompt_matches_installer.py .                            [ 13%]
+tests/test_deploy_marker_guard.py .                                      [ 13%]
+tests/test_doctor_dev_repo_detection.py .                                [ 13%]
+tests/test_doctor_score_cycle_check.py .......                           [ 15%]
+tests/test_dogfood_gate_scoping.py .                                     [ 15%]
+tests/test_enforcer_pii_gate.py .......                                  [ 16%]
+tests/test_executor_mcp.py .............                                 [ 19%]
+tests/test_fleet_venv_check_block.py .....                               [ 20%]
+tests/test_gateway_model_list_helper.py ......                           [ 21%]
+tests/test_gateway_slash_parity.py .                                     [ 21%]
+tests/test_gateway_typing.py .                                           [ 22%]
+tests/test_gen_briefing.py .                                             [ 22%]
+tests/test_gov_friction_fixes.py ...                                     [ 22%]
+tests/test_hc_harness.py .                                               [ 23%]
+tests/test_hermes_plugin_lock_status.py ...                              [ 23%]
+tests/test_land_nonhermes_lock_fix_evidence.py .........                 [ 25%]
+tests/test_land_when_clean_probe.py .                                    [ 25%]
+tests/test_lock_liveness_activity.py ............                        [ 28%]
+tests/test_lock_review_split.py .......                                  [ 29%]
+tests/test_lock_truth.py .............                                   [ 32%]
+tests/test_loop_gov_cli.py ...                                           [ 32%]
+tests/test_loop_gov_mcp_nonblocking.py ......                            [ 33%]
+tests/test_loop_gov_mcp_startup.py ..                                    [ 34%]
+tests/test_loop_gov_review_repo.py .....                                 [ 35%]
+tests/test_mcp_schema_per_db.py ..                                       [ 35%]
+tests/test_mcp_servers_deployed.py ...                                   [ 36%]
+tests/test_mcp_wiring.py .............                                   [ 38%]
+tests/test_metadata_refusal_releases_lock.py ....                        [ 39%]
+tests/test_non_hermes_repo_identity.py ..                                [ 40%]
+tests/test_orphan_cycle_resolution.py ..                                 [ 40%]
+tests/test_pi_reply_path_boundaries.py .                                 [ 40%]
+tests/test_receipt_repo_identity.py ....                                 [ 41%]
+tests/test_release_after_refusal_closes_cycle.py .....                   [ 42%]
+tests/test_remediation_state_check.py .                                  [ 42%]
+tests/test_repo_less_lock_handling.py .....                              [ 43%]
+tests/test_repo_resource_paths.py ......                                 [ 44%]
+tests/test_retired_orch_crons.py .                                       [ 45%]
+tests/test_review_material_bound.py .                                    [ 45%]
+tests/test_review_material_consistency.py .                              [ 45%]
+tests/test_review_material_scope.py .                                    [ 45%]
+tests/test_runtime/test_adversarial_review_gate.py .                     [ 45%]
+tests/test_runtime/test_derive_slug_scope.py ...                         [ 46%]
+tests/test_runtime/test_doctor_pending_cycles.py ...                     [ 47%]
+tests/test_runtime/test_feedback_accept_scores.py .                      [ 47%]
+tests/test_runtime/test_governance_bypass.py ........................... [ 52%]
+........................................................................ [ 67%]
+........................................................................ [ 81%]
+...........................................                              [ 90%]
+tests/test_runtime/test_mcp_closeout.py ......                           [ 91%]
+tests/test_runtime/test_metrics_sink_gate.py .                           [ 91%]
+tests/test_runtime/test_score_gate.py .....                              [ 92%]
+tests/test_soul_merge.py ...                                             [ 93%]
+tests/test_task_db_unit.py ....                                          [ 94%]
+tests/test_task_mcp_v3.py .........                                      [ 95%]
+tests/test_task_queue_visibility.py ......                               [ 97%]
+tests/test_toon_parse.py .                                               [ 97%]
+tests/test_updater_robustness.py .                                       [ 97%]
+tests/test_verify_skill_lifecycle_run.py .......                         [ 98%]
+tests/test_write_cycle_evidence.py .....                                 [100%]
+
+=============== 498 passed, 1474 deselected in 86.60s (0:01:26) ================
+---
+run-tests.sh: interpreter=~/.hermes-cortex/venv/bin/python3 rc=0  (PYTHONPATH/PYTHONHOME unset for the run)
+rc=0
+
+--- 3. the other half: the defects ARE present in the pre-fix revision
+$ python3 docs/evidence/release-closes-cycle-prefix-check.py ~/.hermes/cache/scratch/release-closes-cycle.uRSlV5/pre-fix.py
+pre-fix source: ~/.hermes/cache/scratch/release-closes-cycle.uRSlV5/pre-fix.py
+PRESENT no shared cycle closer (_close_cycle_unscored is absent)
+PRESENT the findings refusal releases the lock without closing its cycle
+PRESENT the metadata refusal releases by a possibly-None (process-scoped) session id
+
+all three defects present: this revision is pre-fix
+rc=0
+
+=== VERDICT ===
+failed steps: 0
+ALL CLAIMS RE-VERIFIED (rc=0)
