@@ -5448,14 +5448,17 @@ def _check_repo_lock(args: dict | None = None) -> CallToolResult:
             "absolute path to the session's repo root."))])
 
     live = _live_locks()
-    unscoped = 0
+    # Count ALL unscoped locks UP FRONT. Reporting the count from the matching
+    # branch would only include locks seen before the match, so a covered repo
+    # would understate how many locks could not prove their repo (review finding
+    # ADV-12605-2). The number is the same whichever branch answers.
+    unscoped = sum(1 for lk in live if not str(lk.get("repo_path") or "").strip())
     for lock in live:
         recorded = str(lock.get("repo_path") or "").strip()
         if not recorded:
             # No absolute path => this lock cannot prove WHICH checkout it covers.
             # Skipped rather than matched by name: two projects can share a
             # directory name, and honouring the name would mix their gates.
-            unscoped += 1
             continue
         try:
             if Path(recorded).expanduser().resolve() == resolved.resolve():

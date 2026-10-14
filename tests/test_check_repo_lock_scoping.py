@@ -146,6 +146,32 @@ def test_an_unresolvable_repo_is_a_refusal_not_an_unlocked_verdict(tmp_path):
     assert "Cannot verify" in json.dumps(v), v
 
 
+def test_the_covered_branch_reports_every_unscoped_lock(tmp_path):
+    """A covered repo must still report the unscoped locks it skipped.
+
+    Review finding ADV-12605-2: the covered branch returned the count accumulated
+    only UP TO the matching lock, so an unscoped lock ordered after it vanished
+    from the report. The operator's question ("which gates are mixed?") is
+    answered by this number, so a partial count is a wrong answer, not a detail.
+    """
+    mod = _load_server()
+    mod.GOVERNANCE_STATE_DIR = tmp_path / "state"
+    proj = tmp_path / "covered"
+    proj.mkdir(parents=True)
+    (proj / ".git").mkdir()
+
+    # The matching lock FIRST, then an unscoped one — the order that hid it.
+    _seed_lock(mod.GOVERNANCE_STATE_DIR, "a", repo_path=str(proj), mod=mod)
+    _seed_lock(mod.GOVERNANCE_STATE_DIR, "b", repo_path=None, mod=mod)
+
+    v = _verdict(mod, str(proj))
+    assert v["covered"] is True, v
+    assert v["unscoped_locks"] == 1, (
+        "the covered branch under-reported unscoped locks (an unscoped lock "
+        f"ordered after the match was not counted): {v}"
+    )
+
+
 if __name__ == "__main__":
     import tempfile as _t
 
@@ -154,6 +180,7 @@ if __name__ == "__main__":
         test_two_projects_sharing_a_name_do_not_share_a_gate,
         test_a_lock_for_another_project_never_covers_this_one,
         test_an_unresolvable_repo_is_a_refusal_not_an_unlocked_verdict,
+        test_the_covered_branch_reports_every_unscoped_lock,
     ):
         with _t.TemporaryDirectory() as td:
             try:

@@ -1,6 +1,6 @@
 PI NATIVE-WRITE GATE — LIVE end-to-end proof (generated, not hand-written)
 Produced by: bash hermes-cortex/docs/evidence/pi-native-tool-gate/capture.sh   (every path below is normalised to ~)
-Generated at: 2026-10-14T11:53:26Z
+Generated at: 2026-10-14T12:02:14Z
 
 ═══════ 1. The SHARED predicate, three ways ═══════
 $ loop-gov.py check_repo_lock '{"repo_path":"<repo>"}'
@@ -10,11 +10,11 @@ $ loop-gov.py check_repo_lock '{"repo_path":"<repo>"}'
   "match": "path",
   "repo_path": "~/hermes-cortex",
   "lock": {
-    "task_id": "fix-evidence-transcript-and-scope-lock",
+    "task_id": "fix-prefix-revision-pin-and-unscoped-count",
     "agent": "unknown",
     "session_id": "20261014_195745_cd0e365b",
     "repo_path": "~/hermes-cortex",
-    "heartbeat_at": "2026-10-14T11:49:48Z"
+    "heartbeat_at": "2026-10-14T12:01:27Z"
   },
   "live_lock_count": 1,
   "unscoped_locks": 0
@@ -54,13 +54,19 @@ $ python3 hermes-cortex/tests/test_check_repo_lock_scoping.py
 ✅ test_two_projects_sharing_a_name_do_not_share_a_gate
 ✅ test_a_lock_for_another_project_never_covers_this_one
 ✅ test_an_unresolvable_repo_is_a_refusal_not_an_unlocked_verdict
+✅ test_the_covered_branch_reports_every_unscoped_lock
 rc=0
 
-$ git -C hermes-cortex show HEAD:mcp-servers/loop-gov-mcp.py > /tmp/pre-fix-loop-gov.py
+$ git -C hermes-cortex show c08fbe2d:mcp-servers/loop-gov-mcp.py > /tmp/pre-fix-loop-gov.py
+  (baseline PINNED to c08fbe2d, never 'HEAD': at the reviewed commit HEAD already
+   contains the fix, so extracting from HEAD would silently test the FIXED code
+   and this comparison would prove nothing.)
+$ grep -c 'unscoped_locks' /tmp/pre-fix-loop-gov.py   # 0 proves the extraction is pre-fix
+0
 $ CORTEX_LOOP_GOV_SERVER=/tmp/pre-fix-loop-gov.py python3 hermes-cortex/tests/test_check_repo_lock_scoping.py   # must FAIL
-❌ test_two_projects_sharing_a_name_do_not_share_a_gate: a lock with no recorded repo_path authorised a DIFFERENT project that merely shares its directory name — gates are mixed: {'covered': True, 'match': 'slug-legacy', 'repo_path': '~/.hermes/cache/scratch/tmpsbki3wup/y/shared-name', 'lock': {'task_id': 'task-b', 'agent': 'scoping-test', 'session_id': 'sess-b', 'repo_path': None, 'heartbeat_at': '2026-10-14T11:53:27Z'}, 'live_lock_count': 2}
+❌ test_two_projects_sharing_a_name_do_not_share_a_gate: a lock with no recorded repo_path authorised a DIFFERENT project that merely shares its directory name — gates are mixed: {'covered': True, 'match': 'slug-legacy', 'repo_path': '~/.hermes/cache/scratch/tmpqf9uvypd/y/shared-name', 'lock': {'task_id': 'task-b', 'agent': 'scoping-test', 'session_id': 'sess-b', 'repo_path': None, 'heartbeat_at': '2026-10-14T12:02:14Z'}, 'live_lock_count': 2}
 Traceback (most recent call last):
-  File "~/hermes-cortex/tests/test_check_repo_lock_scoping.py", line 160, in <module>
+  File "~/hermes-cortex/tests/test_check_repo_lock_scoping.py", line 187, in <module>
 rc=1
   -> on the pre-fix server a lock with no repo_path answers covered=true with
      match=slug-legacy for a DIFFERENT project sharing the directory name: the
@@ -129,6 +135,7 @@ GOV_VERDICT tool=write repo=~/.hermes/cache/scratch/pi-gate-repo verdict=refused
 GOV_VERDICT tool=write repo=~/.hermes/cache/scratch/pi-gate-repo verdict=refused
 GOV_VERDICT tool=write repo=~/.hermes/cache/scratch/pi-gate-repo verdict=refused
 GOV_VERDICT tool=write repo=~/.hermes/cache/scratch/pi-gate-repo verdict=refused
+GOV_VERDICT tool=write repo=~/.hermes/cache/scratch/pi-gate-repo verdict=refused
   -> in order: the session's first write was REFUSED; the agent then opened a
      lock of its own and its retry was ALLOWED; the read-only bash was allowed;
      the trailing 'refused' lines are later runs of the §4 probe, which is
@@ -172,7 +179,18 @@ proof.txt
 $ cat ~/.hermes/cache/scratch/pi-gate-repo/proof.txt
 hello from pi
 
-═══════ 8. What this proof does NOT cover ═══════
+═══════ 8. Adversarial gate (A4) on every changed source file ═══════
+$ adversarial-verify.py --file <f> --level A4 --gate   (rc 0 = no critical/high)
+mcp-servers/loop-gov-mcp.py                                ✅ GATE_PASSED — no critical/high findings
+tests/test_check_repo_lock_scoping.py                      ✅ GATE_PASSED — no critical/high findings
+tests/test_pi_governance_gate.py                           ✅ GATE_PASSED — no critical/high findings
+docs/evidence/pi-native-tool-gate/capture.sh               ✅ GATE_PASSED — no critical/high findings
+docs/evidence/pi-native-tool-gate/live-gate-probe.mjs      ✅ GATE_PASSED — no critical/high findings
+  -> NOT reproduced here: the deploy/dogfood run, which MUTATES the host. Its
+     verdict belongs to the deploy tool's own output, and this artifact claims
+     nothing about it.
+
+═══════ 9. What this proof does NOT cover ═══════
 - macOS. The extension shells out to a resolved python3 and is overridable via
   CORTEX_GOVERNANCE_PYTHON for a Homebrew python off pi's PATH; untested here.
 - The live pi turn is not reproducible (§5): only its gate log is. §4 is the
