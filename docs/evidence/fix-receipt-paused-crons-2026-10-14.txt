@@ -10,20 +10,19 @@ other line is reproducible from the same tree. Host identity is redacted here in
 the generator: $HOME for home paths, <host> for the host, <user> for file ownership.
 
 Host: <host>
-Captured: 2026-10-14 02:44:09 UTC
+Captured: 2026-10-14 02:51:49 UTC
 
-HEAD: ccf9ed38c72c5a87f5980c23de718dc9bd9e015b
-HEAD~1: fe795f7bb3aad38a8b33ef5038b441285887f2b8
+HEAD: 3c10e7975383890ae173e5c1f4bb1e6c581e3a20
+HEAD~1: f566efe322ad3a645df81babec02e0001a37baab
 origin/main: a128a8d2f9943fbd3e4f454d9536d21391e37fa3
+a128a8d2: a128a8d2f9943fbd3e4f454d9536d21391e37fa3
 
 === [doctor --quiet] $ python3 $HOME/hermes-cortex/ops/scripts/manage/cortex-doctor.py --quiet
-  ⚠️  Repo clean
   ℹ️  PENDING cycles
   ✅ Orphan-cycle resolution
   ✅ Paused crons: reason
-  ⚠️  Overall: WARNING  (463 pass · 1 warn · 0 fail · 1 info)
-  🔧 REQUIRED ACTIONS — resolve each ⚠️  or ❌ above
---- rc=1
+  ✅ Overall: HEALTHY  (464 pass · 0 warn · 0 fail · 1 info)
+--- rc=0
 
 === [checks in isolation] $ python3 -c import sys; sys.path.insert(0, '$HOME/hermes-cortex/ops/scripts/manage')
 from cortex_doctor.checks import check_paused_cron_reasons, check_orphan_cycle_resolution
@@ -260,9 +259,9 @@ artifact matches the live derivation
 --- rc=0
 
 === [deploy != load (MCP child vs deployed file)] $ bash -c ps -eo pid,lstart,etimes,args | grep -F loop-gov-mcp | grep -v grep; ls -l --time-style=+%Y-%m-%dT%H:%M:%S $HOME/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py
- 131128 Wed Oct 14 11:39:36 2026     325 $HOME/.hermes-cortex/venv/bin/python3 $HOME/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py
-4083224 Wed Oct 14 10:46:58 2026    3483 $HOME/.hermes-cortex/venv/bin/python3 $HOME/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py
--rwxr-xr-x 1 <user> <user> 283073 2026-10-14T11:42:20 $HOME/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py
+ 131128 Wed Oct 14 11:39:36 2026     785 $HOME/.hermes-cortex/venv/bin/python3 $HOME/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py
+4083224 Wed Oct 14 10:46:58 2026    3944 $HOME/.hermes-cortex/venv/bin/python3 $HOME/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py
+-rwxr-xr-x 1 <user> <user> 283073 2026-10-14T11:50:07 $HOME/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py
 --- rc=0
 
 === [live DB: reserved word QUOTED (must return a row)] $ docker exec -i mycortex-postgres psql -U mycortex_reader_esther -d mycortex -c SELECT "column" FROM tasks.tasks LIMIT 1
@@ -277,5 +276,92 @@ ERROR:  syntax error at or near "column"
 LINE 1: SELECT column FROM tasks.tasks LIMIT 1
                ^
 --- rc=1
+
+=== [files in commit fe795f7b] $ git show --stat --oneline --no-renames fe795f7b
+    (cwd: $HOME/hermes-cortex)
+fe795f7b chore(skills): copy 8 deployed skill lessons back to the repo source
+ docs/evidence/skill-drift-parity.txt               |  2 +-
+ skills/devops/cron-job-management/SKILL.md         | 31 +++++++++++
+ skills/devops/hermes-gateway-operations/SKILL.md   | 60 ++++++++++++++++++++++
+ skills/devops/maintenance-scan/SKILL.md            | 25 ++++++---
+ skills/devops/orch-skill-lifecycle/SKILL.md        | 20 ++++++--
+ skills/devops/shared-repo-push-gates/SKILL.md      | 20 ++++++++
+ .../adversarial-verifier/SKILL.md                  | 23 +++++++++
+ .../software-development/agent-contract/SKILL.md   |  1 +
+ .../software-development/change-checklist/SKILL.md |  9 ++++
+ 9 files changed, 179 insertions(+), 12 deletions(-)
+--- rc=0
+
+=== [files in commit ccf9ed38] $ git show --stat --oneline --no-renames ccf9ed38
+    (cwd: $HOME/hermes-cortex)
+ccf9ed38 fix(governance): apply the external v4-pro review findings
+ mcp-servers/loop-gov-mcp.py                        |  38 ++++--
+ ops/scripts/install/install-orch-crons.sh          |   3 +-
+ .../manage/capture-crons-receipt-evidence.py       |  79 ++++++++++---
+ ops/scripts/manage/cortex_doctor/checks.py         |  39 ++++++-
+ .../software-development/change-checklist/SKILL.md |  22 ++++
+ tests/test_agent_cron_failure_watchdog.py          |  25 +++-
+ tests/test_bible_verse_guard.py                    |  22 +++-
+ tests/test_capture_evidence_readonly.py            | 129 +++++++++++++++++++++
+ tests/test_cron_prompt_matches_installer.py        |  13 +++
+ tests/test_doctor_paused_cron_reasons.py           |  32 +++++
+ tests/test_receipt_repo_identity.py                |  98 ++++++++++++++++
+ 11 files changed, 463 insertions(+), 37 deletions(-)
+--- rc=0
+
+=== [files in commit fc5fff6c] $ git show --stat --oneline --no-renames fc5fff6c
+    (cwd: $HOME/hermes-cortex)
+fc5fff6c docs(evidence): regenerate the receipt/paused-cron evidence from the fixed capture
+ .../fix-receipt-paused-crons-2026-10-14.txt        | 171 +++++++++++----------
+ 1 file changed, 90 insertions(+), 81 deletions(-)
+--- rc=0
+
+=== [files in commit f566efe3] $ git show --stat --oneline --no-renames f566efe3
+    (cwd: $HOME/hermes-cortex)
+f566efe3 chore(evidence): refresh the evidence the suite regenerates (durations, interpreter)
+ .../briefings/cycle-evidence-2026-10-10.md         | 44 +++++++++++-----------
+ .../evidence/briefings/test-results-2026-10-10.txt | 44 +++++++++++-----------
+ docs/evidence/gateway-suite-results.txt            | 23 ++++++++---
+ 3 files changed, 61 insertions(+), 50 deletions(-)
+--- rc=0
+
+=== [baseline worktree at the range base (detached)] $ git worktree add --detach $HOME/.hermes/cache/scratch/evidence-baseline-gg3cpspa a128a8d2
+    (cwd: $HOME/hermes-cortex)
+HEAD is now at a128a8d2 docs(skills): add the exercised vestigial-profile deletion procedure
+Preparing worktree (detached HEAD a128a8d2)
+--- rc=0
+
+(baseline pytest interpreter: $HOME/.hermes-cortex/venv/bin/python3)
+
+=== [baseline: the two files this range REPAIRED (must FAIL there)] $ env -u PYTHONPATH -u PYTHONHOME $HOME/.hermes-cortex/venv/bin/python3 -m pytest -q -p no:cacheprovider -rf --tb=no tests/test_agent_cron_failure_watchdog.py tests/test_bible_verse_guard.py
+    (cwd: $HOME/.hermes/cache/scratch/evidence-baseline-gg3cpspa)
+FAILED tests/test_agent_cron_failure_watchdog.py::TestConsecutiveCounting::test_three_consecutive_failures_alert_and_pause
+FAILED tests/test_agent_cron_failure_watchdog.py::TestRecoveryIsSilent::test_recovery_subsequent_failure_realerts
+FAILED tests/test_agent_cron_failure_watchdog.py::TestSelfExclusion::test_other_watchdogs_still_monitored
+FAILED tests/test_agent_cron_failure_watchdog.py::TestPauseAndAlertNoisyProps::test_unique_job_names_in_alert
+==================== 4 failed, 9 passed, 20 errors in <t>s ====================
+--- rc=1
+
+=== [baseline: the failures this range did NOT cause (must FAIL there too)] $ env -u PYTHONPATH -u PYTHONHOME $HOME/.hermes-cortex/venv/bin/python3 -m pytest -q -p no:cacheprovider -rf --tb=no tests/test_updater_robustness.py tests/test_repo_resource_paths.py tests/test_retired_orch_crons.py tests/test_task_queue_evidence.py
+    (cwd: $HOME/.hermes/cache/scratch/evidence-baseline-gg3cpspa)
+FAILED tests/test_updater_robustness.py::test_a_venv_that_cannot_import_the_modules_is_reported
+FAILED tests/test_updater_robustness.py::test_a_capable_venv_is_silent - Asse...
+FAILED tests/test_updater_robustness.py::test_a_missing_venv_is_not_this_check_s_business
+FAILED tests/test_repo_resource_paths.py::test_deploy_registry_doc_counts_match_the_register_map
+FAILED tests/test_retired_orch_crons.py::test_the_manifest_check_accepts_the_retirement
+FAILED tests/test_task_queue_evidence.py::test_the_committed_evidence_is_actual_script_output
+======================== 6 failed, 29 passed in <t>s =========================
+--- rc=1
+
+=== [baseline worktree removed] $ git worktree remove --force $HOME/.hermes/cache/scratch/evidence-baseline-gg3cpspa
+    (cwd: $HOME/hermes-cortex)
+
+--- rc=0
+
+=== [the read-only parity test, output shown] $ env -u PYTHONPATH -u PYTHONHOME $HOME/.hermes-cortex/venv/bin/python3 -m pytest tests/test_capture_evidence_readonly.py -q -s -p no:cacheprovider
+    (cwd: $HOME/hermes-cortex)
+  --check refuses a missing artifact without writing; the write mode still writes OK
+============================== 7 passed in <t>s ===============================
+--- rc=0
 
 END OF EVIDENCE
