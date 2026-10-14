@@ -7,11 +7,13 @@
 ✅ deployed == repo: cortex-update.sh
 ✅ deployed == repo: fix-cortex-venv.py
 ✅ deployed == repo: mcp_wiring.py
-  immutable flags present on 9/9 enforcement paths
-✅ enforcement files re-locked 9/9
+  immutable flags present on 10/10 enforcement paths
+✅ enforcement files re-locked 10/10
   doctor rc=1 — ⚠️  Overall: WARNING  (444 pass · 7 warn · 0 fail · 7 info)
-✅ doctor 0 fail
+  doctor: fail=0 warn=7 rc=1 (accepted criterion: 0 fail and rc<=1; warns are pre-existing/ambient)
+✅ doctor rc=1 (<=1, warnings-only class)
+✅ doctor 0 fail (the actionable criterion)
 ✅ skill drift parity: committed artifact matches live derivation (0 stranded)
 
-━━━ RESULT: 10 checks, 0 failures ━━━
+━━━ RESULT: 11 checks, 0 failures ━━━
 ALL CLAIMS VERIFIED
