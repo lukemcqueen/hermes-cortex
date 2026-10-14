@@ -72,6 +72,49 @@ END
 \$\$;
 EOF
 
+# ── Orchestrator-only fleet-writer grant (task-model-v3, slice ed6055b7) ──
+# v001__tasks.sql grants `todos_fleet_writer` to the esther/moses profile roles
+# ONLY IF those roles already exist at migration time — but cortex-update.sh
+# applies migrations BEFORE this installer creates each profile role, and the
+# installer itself granted only the base mycortex_reader membership. So on any
+# host whose reader role was created by the installer, the fleet-writer
+# membership was never granted: fleet-scoped task writes fail closed with an
+# RLS violation, the orchestrator can't decompose stories into fleet slices,
+# and the worker claim pool stays empty (reported 2026-10-15, slice ed6055b7).
+#
+# Oracle: `IS_ORCHESTRATOR=true` in ~/hermes-cortex/.env is the single source
+# of truth (install.sh bootstraps it; v001 hardcodes moses/esther to match).
+# Mirror that here — granting to a worker profile would quietly break the
+# read-only-on-fleet-rows design (RLS WITH CHECK), so this is a NO-OP for
+# workers. Reader role membership is also fortified for pre-existing roles:
+# GRANT is idempotent and always re-applied so a host that already migrated
+# (v001 ran when the role existed) stays correct after a re-install.
+ORCHESTRATOR_ENV_FILE="${HOME_DIR}/hermes-cortex/.env"
+if [[ -f "${ORCHESTRATOR_ENV_FILE}" ]]; then
+  IS_ORCHESTRATOR="$(grep -E '^IS_ORCHESTRATOR=' "${ORCHESTRATOR_ENV_FILE}" | tail -n1 | cut -d= -f2 | tr -d '"\r' | tr '[:upper:]' '[:lower:]')"
+fi
+if [[ "${IS_ORCHESTRATOR}" == "true" ]]; then
+  GRANT_SQL="GRANT todos_fleet_writer TO ${READER_ROLE};"
+  cat > "$SQL_FILE" <<EOF
+DO \$\$
+BEGIN
+  IF EXISTS (SELECT FROM pg_roles WHERE rolname = 'todos_fleet_writer') THEN
+    ${GRANT_SQL}
+  END IF;
+END
+\$\$;
+EOF
+
+  if [[ "$(uname -s)" == "Darwin" ]]; then
+    docker exec -i mycortex-postgres psql -U mycortex -d mycortex -v ON_ERROR_STOP=1 < "$SQL_FILE" >/dev/null
+  elif command -v sg >/dev/null 2>&1; then
+    sg docker -c "docker exec -i mycortex-postgres psql -U mycortex -d mycortex -v ON_ERROR_STOP=1" < "$SQL_FILE" >/dev/null
+  else
+    docker exec -i mycortex-postgres psql -U mycortex -d mycortex -v ON_ERROR_STOP=1 < "$SQL_FILE" >/dev/null
+  fi
+  echo "install-profile-reader-role: granted todos_fleet_writer to ${READER_ROLE} (IS_ORCHESTRATOR=true)"
+fi
+
 # ── Connect as the `mycortex` superuser INSIDE the container on both OSes ──
 # migrate.py's canonical pattern: `docker exec -i mycortex-postgres psql` (trust
 # auth inside the container — no ~/.pgpass dependency, no bare-socket guess).
