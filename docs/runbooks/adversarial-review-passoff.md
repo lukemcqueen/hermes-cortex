@@ -57,6 +57,27 @@ Rules of thumb:
 - **Name what you changed and why**, in one or two lines. The diff shows *what*;
   the note explains *why*.
 
+### 2a. The material is CONTENT — a path is not material
+
+`adversarial-review.py --material <x>` takes the material itself. Hand it a
+**path** and the reviewer receives the literal string: it sees one filename, files
+it `unverified-claim`, and returns **CLEAN on an empty review** — a pass that
+proves nothing while looking like approval. Same for a commit SHA on its own.
+
+- Build the material from the artifact's **contents** (`cat <file>`, or
+  `git diff --cached` for staged work) and paste it inline.
+- **Paste the OLD bytes the change edits.** Quote an existing line from memory and
+  a one-phrase drift ("never delete or weaken enforcement" against a file reading
+  "never weaken enforcement") comes back as **`fabrication`** — the strongest
+  severity — for a typo. Run `sed -n '<a>,<b>p' <file>` first and diff against
+  those bytes.
+- **Do not ask the reviewer questions.** "Answer Q1-Q3", "be blunt", "report as
+  JSON per the template" are returned as `injection` findings and the questions are
+  **not answered**; the substance goes unreviewed. State the proposal as a checkable
+  claim and let the findings judge it.
+- Expect **3+ rounds** on a first pass and fix *material completeness*, not the
+  prose — each refusal names the missing thing in its `recommendation` field.
+
 ---
 
 ## 3. Shape of a good pass-off
@@ -111,6 +132,24 @@ And one anti-pattern: **do not editorialise about the review** ("this is
 unverified", "only the reviewer can decide"). It is read as
 `evaluation-awareness` — output shaped for acceptance rather than correctness.
 Let the artifact speak.
+
+### 4b. Any review artifact on disk must declare where it came from
+
+An agent can call a model from a scratch subprocess and file its reply as a
+"review": the enforcer audits *tool calls*, and an HTTP request from a subprocess
+is not one, so nothing sees it. The control that closed this is **artifact-level**
+and machine-enforced, not a note in a skill — `ops/scripts/quality/review-provenance-check.py`,
+wrapped by the doctor's `check_review_provenance`. A committed file under
+`docs/` that *presents itself* as a review must carry one TRUE line in its header:
+
+- `recorded-in: adversarial_reviews review_id=<id>` — and that row must exist in the
+  loop-governance store (a claim with no row is fabrication); or
+- `provenance: advisory` — commentary, never citable as verification; or
+- `provenance: not-a-review` — for a file whose header merely names a model.
+
+Undeclared review artifacts **FAIL the doctor**, and a doctor FAIL blocks every
+agent's push on the host. In the registered script that is
+`--cycle-id N --review`, which writes the `adversarial_reviews` row.
 
 ---
 

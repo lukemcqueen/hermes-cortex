@@ -2177,7 +2177,7 @@ async def list_tools(ctx, params=None) -> ListToolsResult:
         ),
         Tool(
             name="check_repo_lock",
-            description="Is a LIVE governance lock covering a SPECIFIC repo? Pass repo_path (absolute path to the repo root). Returns {covered, match, repo_path, lock, live_lock_count}. `covered:false` is a refusal (exit 1 via loop-gov.py) — no live lock covers that repo, so call begin_change() before writing. Cannot-verify (no repo resolvable) is ALSO a refusal: a gate must never read 'could not check' as 'carry on'. Matched on the lock's resolved repo_path; a pre-repo_path lock matches on slug and reports match='slug-legacy'. This is the predicate a harness-native write gate consumes — do not re-implement it per harness.",
+            description="Is a LIVE governance lock covering a SPECIFIC repo? Pass repo_path (absolute path to the repo root). Returns {covered, match, repo_path, lock, live_lock_count, unscoped_locks}. `covered:false` is a refusal (exit 1 via loop-gov.py) — no live lock covers that repo, so call begin_change() before writing. Cannot-verify (no repo resolvable) is ALSO a refusal: a gate must never read 'could not check' as 'carry on'. Matched ONLY on the lock's resolved repo_path, never on the repo NAME — two projects can share a directory basename, and honouring the name would let a lock opened in one authorise a write in the other. A lock that records no repo_path therefore covers NOTHING and is counted in `unscoped_locks`, so 'fail closed' is distinguishable from 'no lock exists'. This is the predicate a harness-native write gate consumes — do not re-implement it per harness.",
             inputSchema={
                 "type": "object",
                 "properties": {
