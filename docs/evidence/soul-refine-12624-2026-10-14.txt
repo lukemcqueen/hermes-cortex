@@ -1,0 +1,20 @@
+SOUL-REFINEMENT CYCLE 12624 — EVIDENCE CAPTURE (regenerated 2026-10-14T14:25:46Z)
+===[B1] review-provenance gate on the live repo
+OK    docs/evidence/pro-review-2026-10-14.md (declared 'provenance: advisory' — commentary, never citable as verification)
+OK    docs/evidence/pro-review-purge-guards-2026-10-14.md (declared 'provenance: advisory' — commentary, never citable as verification)
+
+artifacts presenting a review: 2 of 619 text file(s) under docs/ (617 ignored, 0 recorded claim(s) checked)
+✅ every review artifact declares its provenance
+rc=0
+===[B2] the gate's hermetic test file
+tests/test_review_provenance_check.py ............                       [100%]
+
+============================== 12 passed in 0.83s ==============================
+rc=0
+===[B3] tree and origin
+?? docs/evidence/soul-refine-12624-2026-10-14.txt
+?? ops/scripts/manage/capture-soul-refine-evidence.sh
+rc=0
+e80ff2e043bab9d937962f41d861131be7cc6b42
+5aba7a852de31ea4990d17329266aa3baf7b2cd5
+rc=0
