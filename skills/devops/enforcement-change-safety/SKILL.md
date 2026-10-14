@@ -948,8 +948,29 @@ for case in FIXTURES:
   iterates the bytes into single-byte INTs, so an "allowed digests" set silently
   held 28 one-byte entries instead of one digest and every case it was meant to
   permit was blocked. Nothing about the diff looked wrong.
+- **For a lifecycle or refusal path, the FIXTURE IS THE STORE — repoint it, then drive
+  the helper directly.** Import the module from the REPO under test, then reassign its
+  own globals to a throwaway location BEFORE anything runs (the DB path constant and the
+  lock/state dir), so the probe cannot write live governance state:
+  `mod.LOOP_DB = tmp / "loop-governance.db"`, `mod.GOVERNANCE_STATE_DIR = tmp / "state"`.
+  Seed the rows with the module's OWN schema (`mod._db()` creates it on first use), call
+  the helper, read the row back. Source-text assertions cannot see any of this: this
+  probe caught a closer that reported SUCCESS on a zero-row match, and proved the
+  refusal branch releases what it must and refuses what it must.
+- **Construct the failure path — never wait for a broken store.** Swap the module's DB
+  accessor for a fake whose `execute` raises and whose `close` records that it was
+  called; that asserts "reports failure AND still closes the connection" in one run,
+  which is the branch a healthy host never exercises.
+- **When the fix ADDS the symbol, the pre-fix revision cannot run the probe — assert the
+  defect's SHAPE there instead.** Run the probe against the working copy, and separately
+  extract the pre-fix file (`git show <base>:<path> > /tmp/pre-fix.py`) and assert the
+  defect is PRESENT in it (the new helper absent, the old release call shape in place).
+  Both halves then stay re-runnable from git history, and the second half is what makes
+  "the fix is a real change" checkable rather than asserted.
 - **Keep the probe in the scratch dir.** It has to hold the plaintext and fixtures
   the scanner blocks, so it can never be committed; commit only the derived test.
+  (A read-only probe that only repoints a THROWAWAY store is the exception — it can
+  ship under `docs/evidence/` as the change's re-runnable verifier.)
 - Assert on the VERDICT (blocked / allowed), not on message text, unless the
   message itself is the contract.
 

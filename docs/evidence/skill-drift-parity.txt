@@ -11,12 +11,14 @@ Deploy banners (the 3-line SOURCE header) are not compared.
 
 | Measure | Value |
 |---|---|
-| Deployed-only files (stranded) | 1 |
-| Files in sync | 826 |
-| Skipped (no repo counterpart, or repo ahead) | 899 |
+| Deployed-only files (stranded) | 4 |
+| Files in sync | 835 |
+| Skipped (no repo counterpart, or repo ahead) | 624 |
 
 **Verdict: FAIL**
 
 Stranded files:
-- autonomous-ai-agents/hermes-cortex/SKILL.md
-
+- devops/governance-closeout/SKILL.md
+- devops/governance-lock-lifecycle/SKILL.md
+- devops/shared-repo-push-gates/SKILL.md
+- devops/subagent-delegation/SKILL.md

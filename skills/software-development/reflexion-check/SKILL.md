@@ -30,6 +30,8 @@ Error path, empty state, malformed input, sibling call sites for the same bug. I
 
 **Probe the gate itself.** Point the checker at input it must reject and show it failing non-zero — a green run proves the thing works, only a demonstrated failure proves the check would NOTICE a broken one. And probe the PROBE: when a check fails, verify its own assumptions before blaming the artifact (a validator with no parser, a test target that does not exist, a path that does not resolve, a test FILTER that matches nothing — an `--exact` name needs its full path, so a bare name reports `0 passed, N filtered out` and reads like a missing test) — a failure for the wrong reason is not a finding. Fixing a warning by silencing it weakens the guard; verify both directions instead (exempt what should be exempt, still fire on what should fire).
 
+**A source-level probe must match the CONSTRUCT, never a bare literal.** A search for the string the bug involves also matches the docstring or comment that explains that bug, so the probe reports the explanation as the defect: `find('reviewer_text[:2000]')` hit the docstring quoting it, a line-based scan rejected a legitimately wrapped call, an assertion forbade the redacted value it was asking for, and a regex offset invented a character difference. Match a fragment WITH its neighbouring tokens (`(reviewer_text[:2000] + _ref_note)`), or parse instead of grepping. **Then count the probes that were the bug:** two or more in one session means the probe is no longer evidence — stop refining the assertion and exercise the real path instead (run the tool, read its output).
+
 ### 5. Is there anything I would do differently?
 Document it; if recurring, save as a lesson.
 

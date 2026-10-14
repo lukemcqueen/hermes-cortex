@@ -183,6 +183,12 @@ Enforced at 3 layers: pre-commit hook (static gate), enforcer (blocks commit unt
       mid-deploy — and a gate that flaps on healthy systems teaches its readers to ignore
       it. Drive the detector with controlled inputs in both directions (one it must report,
       one it must not) and keep the live state out of the assertion.
+      **The same rule binds a test of a WRITE tool: never call the real governance writers
+      (`begin_change` / `feedback_accept`) against the live store from a test.** Each call
+      leaves a real row — an unscored PENDING cycle, which the doctor counts as a FAILURE and
+      which therefore blocks the push for every agent on the host until someone finds and
+      scores it. Redirect the store to a temp dir and assert what the tool wrote THERE, or test
+      the helper the tool delegates to; the leak is invisible because the test still passes.
 - [ ] When a heuristic warning is noisy, tighten its TRIGGER — do not add an exemption list.
       A check that cannot tell the case it exists for from a deliberate long-standing state
       fires on every instance of the latter, and the reader learns to scroll past it. Scope
@@ -286,6 +292,15 @@ Enforced at 3 layers: pre-commit hook (static gate), enforcer (blocks commit unt
       not just the ✅ lines: a non-zero rc with warnings is NOT a clean doctor, and reporting it
       as one is the failure the close review catches.
 - [ ] Governance scored — feedback_accept() before end_change().
+- [ ] **Commit the EVIDENCE artifact BEFORE you close — never after the refusal.** The close
+      reviewer reads the DIFF, not your close note: any load-bearing claim that lives only in
+      the note ("6 passed", "A4 GATE_PASSED", "no peer locks exist", "the push succeeded") is
+      filed as unverified-claim and REFUSES the close, every time — measured three times in a
+      single session, each refusal costing a full re-review. So run the checks, capture their
+      real output (each command beside its own exit code, measured unpiped) into
+      `docs/evidence/`, and commit that artifact in the SAME cycle that makes the change; then
+      write the note as a pointer to it. A refusal of this kind is not a technical failure to
+      argue with — commit the proof and call `rereview_change`.
 - [ ] Cron-governance compat — if hooks/plugins/enforcer changed, verify the cycle works in a test cron session, then delete it.
 - [ ] Deploy, THEN push — that order, with nothing committed in between. The pre-push path
       itself runs pull → deploy → doctor → verify, and the gate reads `Deploy sync`, so any
@@ -347,6 +362,11 @@ Enforced at 3 layers: pre-commit hook (static gate), enforcer (blocks commit unt
       code and warning count) under `docs/evidence/`. When the work is a watcher for a deferred
       landing, commit its contract too — the automation has to outlive the session that wrote it.
 - [ ] Pushed — `git log --oneline -1 origin/main` shows your commit.
+      **Load `shared-repo-push-gates` BEFORE the FIRST push attempt of a session, not after
+      the first refusal.** It already carries the command-shape rule (the carve-out accepts
+      only a bare `git push`) and the orphaned-PENDING-cycle recovery, and both are reachable
+      only from that skill — diagnosing a refusal from scratch re-derives rules that were
+      already written down, and costs the cycles the rule exists to save.
 - [ ] Cron delivery audit — deliver goes somewhere visible (origin/local deliver nowhere from scripts).
 - [ ] Timeout audit — deadline ≈ 3× expected worst-case completion.
 
