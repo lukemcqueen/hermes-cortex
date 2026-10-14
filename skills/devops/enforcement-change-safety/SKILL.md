@@ -1090,6 +1090,42 @@ no-content cycle per push) for no security gain.
   Expect a long push whenever the tree is dirty for someone else — and do not read that as your
   change being non-docs.
 
+## Rule 28: Freeing a lock and resolving its cycle are ONE step — through ONE closer
+
+A path that releases the lock without closing its cycle converts one session's
+dead-end into a host-wide block: the doctor counts a PENDING cycle as EXPECTED while
+a live lock exists and as a leak FAIL the moment the lock is gone, and ANY doctor FAIL
+blocks the push for every agent on the host. Three things follow.
+
+- **ONE shared implementation, not one per path.** The release-first paths each
+  carried a copy of the closing UPDATE and the copies drifted — the FINDINGS refusal
+  freed the lock and never touched the row at all, one branch over from a metadata
+  refusal that had already been fixed. Route every such path through a single helper
+  and DELETE the inline copies; adding a fourth copy re-creates the drift.
+- **The closer must be failure-tolerant and HONEST.** Close its connection in a
+  `finally` (a store error must not strand the lock — the caller still has to
+  release), report failure instead of raising, and check the UPDATE's `rowcount`: the
+  guard (only a still-PENDING, non-overridden row) means a valid call can legitimately
+  match nothing, and returning success there tells the caller "closed" about a cycle
+  that is still open. That one was found by a behavioural probe, not by reading.
+- **No owner, no release — and no close either.** A lock carrying no session id must
+  refuse to release: this server is ONE process for every session, so an ambient or
+  process-scoped fallback can free a PEER's lock. Leave its cycle PENDING rather than
+  closing it — with no session to release it for, closing the row strands the owner's
+  own retry, whose resolve step then finds nothing left to close.
+
+**Close-side claims:**
+
+- **The doctor's exit code is NOT the verdict.** It exits non-zero for warnings alone,
+  so an rc-based assertion turns a warnings-only run into a false FAIL and an rc-based
+  "clean" claim is unsupported. Assert the FAIL COUNT out of its summary line and print
+  the warning lines verbatim.
+- **`feedback_accept` can drop arguments through the MCP bridge.** A three-score call
+  came back with only `completeness` recorded and 0.0 for quality/progress (composite
+  3.6, well under any stop threshold). Re-issue with `cycle_id` plus all three scores
+  and confirm the composite in the response — never close on the first reply's number.
+
+
 ## References
 
 - `references/memory-seed-clobber-2026-08-05.md` — the memory-clobber root
