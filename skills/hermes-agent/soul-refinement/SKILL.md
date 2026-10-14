@@ -161,6 +161,43 @@ body are invisible to it. So:
   committing — a truncated deployed copy passes the doctor's marker check
   (markers match) while silently missing half the guardrail.
 
+- **Passing a PATH where the reviewed material must be CONTENT is not a review — it is the same
+  unverified-claim CLASS the reviewer exists to catch** (observed 2026-10-14, cycle 12624).
+  `adversarial-review.py --material` takes the material itself; a path is reviewed as the literal
+  string, the reviewer correctly refuses to judge substance, and a CLEAN verdict on a path proves
+  nothing. Rules, all measured the same day: (1) build the material from the artifact's CONTENTS
+  (or `git diff --cached`) and paste it inline — a pointer to a file or a commit SHA is never
+  material. (2) Do NOT put worker questions or directives in the material — "answer Q1-Q3",
+  "report as JSON" are filed as `injection` findings and the questions are NOT answered; state the
+  proposal as a checkable claim instead. (3) Quote existing text by COPY-PASTE, never from memory:
+  a "from:" line reading "never delete or weaken enforcement" against a file reading "never weaken
+  enforcement" was filed `fabrication` — the strongest severity — for a memory-drift typo. Run
+  `sed -n '<a>,<b>p' <file>` first, then diff against those bytes. Expect 3+ rounds; each refusal
+  explains itself in its `recommendation` field.
+- **A standing rule must land as a GATE, and the repo template is now gated** (observed 2026-10-14,
+  cycle 12624). When the operator says "put in ENFORCEMENT against this move", the deliverable is a
+  machine-enforced control that fires without the agent's cooperation (a doctor FAIL or pre-push
+  block) — a skill note, a memory entry, or the agent's own diligence is not a control. Live
+  exemplar: `ops/scripts/quality/review-provenance-check.py` + `check_review_provenance`, where an
+  undeclared review artifact FAILs the doctor and blocks every push on the host. For the identity
+  document the writer gate has TIGHTENED since the 2026-10-07 probe: writing
+  `docs/templates/SOUL.md` from a cron is REFUSED — "write to protected agent-instruction file(s)
+  (SOUL.md) requires approval but no interactive user or gateway is present to approve it" — while
+  the DEPLOYED `~/.hermes/SOUL.md` remains ungated
+  (`_protected_instruction_reason(deployed,'cron')` -> `None`; the template path -> `SOUL.md`).
+  So an unattended cron CANNOT amend the canonical template: it may update its OWN deployed copy
+  (still requiring operator approval by policy), and it must SUBMIT the exact proposed template
+  wording for approval. Do not route around the refusal — a fresh cycle's lock is NOT authorization.
+  (Correction to the "observed 2026-10-07" note above: that probe's success was real but scoped to
+  the DEPLOYED path — it does not mean the cron can write the template.)
+- **The cron commit gate now blocks on a reflexion check; editing the pre-commit hook is the wrong
+  repair** (observed 2026-10-14, cycle 12624). `git commit` from a cron is refused with "Reflexion
+  check not completed — NOT-LOADED reflexion-check (session <id>)": load the skill with
+  `skill_view(name='reflexion-check')`, answer its questions, then commit. Do NOT edit
+  `ops/scripts/pre-commit-score` — that path and `ops/scripts/pre-push-pull` are both in
+  `ops/scripts/lib/always-review-paths.txt`, so touching them converts a one-line convenience into
+  an always-review change. Note `git commit -F -m <msg> -- <pathspec>` still fires the gate.
+
 ## Pitfalls
 
 - **Cron sessions writing SOUL.md — verify the gate for the EXACT path; do not
