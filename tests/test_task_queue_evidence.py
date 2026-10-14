@@ -114,6 +114,12 @@ def test_the_committed_evidence_is_actual_script_output():
 
     def norm(text: str) -> str:
         text = _re.sub(r"in \d+\.\d+s", "in <t>", text)
+        # The report embeds the revision it was produced under (volatile by
+        # design — like durations, it changes every commit). The IMMUTABLE
+        # pinned baseline (fbfc22b34db2) is NOT normalised here; it is the
+        # load-bearing provenance value and a hand-written or wrong table fails
+        # on it. Only the ephemeral current-HEAD token is scrubbed.
+        text = _re.sub(r"now \([0-9a-f]{7,40}\)", "now (<rev>)", text)
         text = _re.sub(r"\s+", " ", text)
         return text.strip()
 
