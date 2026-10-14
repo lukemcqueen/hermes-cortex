@@ -21,6 +21,7 @@ import re
 import socket
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 HOME = Path.home()
@@ -28,6 +29,15 @@ REPO = HOME / "hermes-cortex"
 DEFAULT_OUT = REPO / "docs" / "evidence" / "fix-receipt-paused-crons-2026-10-14.txt"
 HERMES_VENV = HOME / ".hermes" / "hermes-agent" / "venv" / "bin" / "python3"
 ADV = HOME / ".hermes-cortex" / "scripts" / "adversarial-verify.py"
+
+# The immutable range this artifact covers, pinned by revision so the before/after
+# comparison is repeatable. EVIDENCE_BASE is the revision the range starts from — the
+# PRE-FIX state, which is what makes "this was a regression / this was pre-existing"
+# checkable at all — and EVIDENCE_COMMITS are the commits under review, so a reader sees
+# which commit carried which file instead of inferring it from a whole-range diff.
+# Short revisions here; the FULL resolved hashes are printed in the artifact.
+EVIDENCE_BASE = "a128a8d2"
+EVIDENCE_COMMITS = ("fe795f7b", "ccf9ed38", "fc5fff6c", "f566efe3")
 
 
 def normalise_line(text: str, *, home: Path | None = None, user: str | None = None,
@@ -175,7 +185,7 @@ def main() -> int:
     emit(f"Host: {capture(['hostname', '-s'])}")
     emit(f"Captured: {capture(['date', '-u', '+%Y-%m-%d %H:%M:%S UTC'])}")
     emit("")
-    for rev in ("HEAD", "HEAD~1", "origin/main"):
+    for rev in ("HEAD", "HEAD~1", "origin/main", EVIDENCE_BASE):
         emit(f"{rev}: {capture(['git', '-C', str(REPO), 'rev-parse', rev])}")
     emit("")
 
@@ -257,6 +267,49 @@ def main() -> int:
         block(f"live DB: reserved word {label}",
               ["docker", "exec", "-i", "mycortex-postgres", "psql",
                "-U", "mycortex_reader_esther", "-d", "mycortex", "-c", sql])
+
+    # 11. The commits in this range, ONE AT A TIME. The reviewer reads a RANGE diff, so
+    #     a per-commit file list is what shows which commit carried the skill copy-back
+    #     and which carried the addition on top — the ordering the copy-back rule depends
+    #     on, and the one claim a whole-range diff cannot settle either way.
+    for rev in EVIDENCE_COMMITS:
+        block(f"files in commit {rev}",
+              ["git", "show", "--stat", "--oneline", "--no-renames", rev], cwd=REPO)
+
+    # 12. The PRE-FIX state, materialised from the immutable base revision in a detached
+    #     worktree. A fix proves nothing without the failure it fixed, and that failure no
+    #     longer exists in the working tree — so the two test files this range repaired are
+    #     run where they were still broken, and the files whose failures this range did NOT
+    #     cause are run there too, which is what separates "mine" from "pre-existing".
+    base_wt = Path(tempfile.mkdtemp(prefix="evidence-baseline-"))
+    block("baseline worktree at the range base (detached)",
+          ["git", "worktree", "add", "--detach", str(base_wt), EVIDENCE_BASE], cwd=REPO)
+    wt_pytest = capture(["bash", str(base_wt / "ops/scripts/lib/python-with-module.sh"),
+                         "--print", "pytest"]).strip()
+    emit(f"(baseline pytest interpreter: {wt_pytest})")
+    emit("")
+    if wt_pytest and wt_pytest != "?":
+        wbase = ["env", "-u", "PYTHONPATH", "-u", "PYTHONHOME", wt_pytest,
+                 "-m", "pytest", "-q", "-p", "no:cacheprovider", "-rf", "--tb=no"]
+        block("baseline: the two files this range REPAIRED (must FAIL there)",
+              wbase + ["tests/test_agent_cron_failure_watchdog.py",
+                       "tests/test_bible_verse_guard.py"], cwd=base_wt,
+              keep=r"FAILED|ERROR|passed|failed|error")
+        block("baseline: the failures this range did NOT cause (must FAIL there too)",
+              wbase + ["tests/test_updater_robustness.py", "tests/test_repo_resource_paths.py",
+                       "tests/test_retired_orch_crons.py", "tests/test_task_queue_evidence.py"],
+              cwd=base_wt, keep=r"FAILED|passed|failed")
+    else:
+        emit("COULD NOT RUN: no pytest interpreter resolved from the baseline worktree")
+    block("baseline worktree removed",
+          ["git", "worktree", "remove", "--force", str(base_wt)], cwd=REPO)
+
+    # 13. The read-only property with its OUTPUT VISIBLE (-s). The mode test's value is the
+    #     printed before/after, which -q hides on a passing run: the reader must see that
+    #     --check refused a missing baseline WITHOUT writing, and that the write mode wrote.
+    block("the read-only parity test, output shown",
+          base + ["tests/test_capture_evidence_readonly.py", "-q", "-s", "-p", "no:cacheprovider"],
+          cwd=REPO, keep=r"refuses|write mode|wrote|passed|failed")
 
     emit("END OF EVIDENCE")
     out_path.write_text("\n".join(lines) + "\n")

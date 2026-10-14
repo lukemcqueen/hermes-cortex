@@ -125,5 +125,25 @@ def test_the_committed_artifact_does_not_tell_the_reviewer_what_to_conclude():
     print("  no reviewer-directed directive in the artifact OK")
 
 
+def test_the_capture_materialises_the_pre_fix_state_and_the_commit_split():
+    """A SOURCE guard (like the repo's other source guards) for the two runs a refused
+    close demanded, so they cannot be dropped again by a later tidy-up.
+
+    A fix proves nothing without the failure it fixed, and a RANGE diff cannot show which
+    commit carried which file — so the capture must pin the base revision and materialise
+    the pre-fix state from it, and must list each commit on its own.
+    """
+    src = _CAPTURE.read_text()
+    assert 'EVIDENCE_BASE = "' in src, \
+        "the base revision must be PINNED in the source, not derived from HEAD"
+    assert "EVIDENCE_COMMITS" in src, "the range's commits must be pinned"
+    assert '"worktree", "add", "--detach"' in src, \
+        "the pre-fix failures must be materialised from the pinned base, not remembered"
+    assert '["git", "show", "--stat", "--oneline", "--no-renames", rev]' in src, \
+        "each commit in the range must be listed on its own"
+    assert "-rf" in src, "the baseline run must name the failing tests, not just count them"
+    print("  the pre-fix state and the per-commit split are pinned in the capture OK")
+
+
 if __name__ == "__main__":
     sys.exit(__import__("pytest").main([__file__, "-q"]))
