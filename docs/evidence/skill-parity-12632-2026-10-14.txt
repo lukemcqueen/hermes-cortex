@@ -1,0 +1,26 @@
+SKILL PARITY EVIDENCE — cycle 12632 (fix of ADV-12628-1), regenerated 2026-10-14
+Regenerate with: ops/scripts/quality/skill-parity-check.sh hermes-agent/soul-refinement
+Each block shows the command, its output, then its bare rc. The RED case is intentional:
+a check that can only pass proves nothing.
+
+===[P1] GREEN — repo copy vs deployed copy of the skill this cron owns
+$ bash ops/scripts/quality/skill-parity-check.sh hermes-agent/soul-refinement
+CHECK hermes-agent/soul-refinement — byte-identical (17759 bytes)
+rc=0
+rc=0
+
+===[P2] RED — the same check must NOTICE drift (probe the probe)
+$ printf '\ndrift-probe-line\n' >> ~/.hermes/skills/hermes-agent/soul-refinement/SKILL.md
+$ bash ops/scripts/quality/skill-parity-check.sh hermes-agent/soul-refinement
+DRIFT hermes-agent/soul-refinement — repo 17759 bytes vs deployed 17777 bytes
+260a261,262
+> 
+> drift-probe-line
+rc=1
+rc=1
+
+===[P3] Restored — the deployed copy is put back and the check is green again
+$ bash ops/scripts/quality/skill-parity-check.sh hermes-agent/soul-refinement
+CHECK hermes-agent/soul-refinement — byte-identical (17759 bytes)
+rc=0
+rc=0
