@@ -181,7 +181,7 @@ bash ~/hermes-cortex/ops/scripts/install/install-pi-integration.sh --check   # p
 bash ~/hermes-cortex/ops/scripts/manage/audit-pi-integration.sh             # per-layer audit
 ```
 
-It writes `~/.pi/agent/settings.json` — `"extensions": [<cortex-context.ts>]` and
+It writes `~/.pi/agent/settings.json` — `"extensions": [<cortex-context.ts>, <cortex-governance.ts>]` and
 `"skills": ["~/.pi/agent/cortex-skills"]` — and the curated set is the manifest's `always:`
 section (`from: skills.yaml#always` in `ops/install/harnesses/registry.yaml`), i.e. the SAME
 definition Hermes loads. Idempotent, and it preserves the user's other keys.
@@ -226,6 +226,45 @@ The extension registers **NO tools** and wires only the lifecycle:
   that gate reads HC's store — not the harness's own DB. With no `tool_result` hook a
   Pi session has no recorded evidence and **every commit is refused** no matter how
   well the agent behaved.
+
+### The WRITE GATE — a SECOND extension, because pi's tools are not Hermes' tools
+
+`extensions/cortex-governance.ts` (added 2026-10-14, titus). Its `tool_call` handler
+blocks a write-capable NATIVE tool call when no governance lock covers the session's
+repo. Load it with the harness: `bash install-pi-integration.sh` registers both files.
+
+**Why the existing layers did not cover this — verify before believing either way.**
+
+- The Hermes enforcer plugin (`~/.hermes/plugins/governance-enforcer/`) is a *Hermes
+  plugin*. It runs in the Hermes agent loop, so pi's native `read`/`bash`/`edit`/`write`
+  never cross it. Registering loop-governance over MCP gives pi the *ritual*, not a
+  gate: an MCP server is a tool surface and cannot see the host's own tools.
+- The commit-time hook DOES carry a lock check (`pre-commit-score`, "Level 3"), so a
+  claim that it has none is wrong — but its refusal is scoped
+  `IS_CORTEX_REPO && !LOCK_FOUND`, i.e. `~/hermes-cortex` only, deliberately, so manual
+  human commits in client repos are not blocked. In a PROJECT repo a pi session
+  therefore had no lock gate at write OR commit time.
+
+**It adds no semantics.** The verdict comes from the shared implementation —
+`loop-gov.py check_repo_lock '{"repo_path":"<repo>"}'`, which is `loop-gov-mcp.py`'s
+own `_check_repo_lock` + `_live_locks` (staleness rule included). rc 0 = covered,
+1 = refusal, 3 = unreachable. Never re-implement "does a lock cover this repo" in a
+harness: the git hook already carries one copy and two copies drift.
+
+- **Classify bash by COMMAND, never by shell syntax.** A metachar rule (`;` `|` `>` …)
+  is a bypass: `cp`, `mv`, `rm`, `tee`, `dd`, `mkdir`, `touch` contain none of them.
+  The gate uses a read-only ALLOWLIST with deny-by-default, so anything not on it —
+  and anything compound, pipes included — needs a lock.
+- **Fail CLOSED on every cannot-verify path** (CLI missing, governance unreachable, no
+  repo resolvable), with the cost stated in the block message and NO agent-side
+  override. A gate that reads "could not check" as "carry on" fails open exactly when
+  the host is broken.
+- **Prove it by EXECUTING the extension**: `node ops/install/harnesses/pi/verify-governance-extension.mjs`
+  loads it through pi's own jiti loader, hands it a stub `pi`, fires synthetic
+  `tool_call` events and asserts both directions — plus the no-metacharacter write
+  commands above. `tests/test_pi_governance_gate.py` additionally requires the guard to
+  FAIL when pointed at a gate that blocks nothing (`PI_GOV_EXT=<broken>`); a guard that
+  has never failed is a happy path.
 
 - **A Pi session's governance lock is tagged from the SESSION's repo, never from the
   host's `~/hermes-cortex` (2026-10-09, titus).** Pi injects no repo identity, so

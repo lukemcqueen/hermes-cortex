@@ -46,7 +46,7 @@ harnesses:
   - name: pi
     layer: mcp
     status: shipped
-    surface: 'MCP (cortex-context) + pi.on("turn_end"|"before_agent_start"|"session_before_compact")'
+    surface: 'MCP (cortex-context) + pi.on("tool_call" write gate | "turn_end" | "before_agent_start" | "session_before_compact")'
     why: |
       Pi 1.0.0 HAS an MCP client (verified on the host with `pi mcp list`, which
       lists the connected servers and their tools), so the memory/session TOOLS
@@ -64,7 +64,9 @@ harnesses:
       capability, or one of the two becomes a phantom.
 
       (Governance is a separate capability — see `capabilities.governance`.)
-    artifact: extensions/cortex-context.ts
+    artifact:
+      - extensions/cortex-context.ts
+      - extensions/cortex-governance.ts
     triggers:
       turn_end: checkpoint (the trigger — MCP cannot provide this)
       before_agent_start: restore + inject the checkpoint
@@ -81,6 +83,9 @@ harnesses:
       - copy:
           from: pi/extensions/cortex-context.ts
           to: extensions/cortex-context.ts
+      - copy:
+          from: pi/extensions/cortex-governance.ts
+          to: extensions/cortex-governance.ts
     # A capability is what a harness must be wired to; the layer above is only
     # its CONTEXT half. Declaring skills/governance here is the difference
     # between "registered somewhere" and "registered the same way" — each names
@@ -160,6 +165,38 @@ harnesses:
         verify:
           - 'pi mcp list shows loop-governance, tasks, executor, agent-bus, cortex-context.'
           - 'A commit made from a Pi session passes the hooks (or names the gate it hit).'
+      governance-gate:
+        # THE GAP THIS CLOSES (2026-10-14, titus). Hermes enforces governance at the
+        # TOOL level via its enforcer plugin, which runs inside the Hermes agent
+        # loop. Pi's read/bash/edit/write are pi-NATIVE and never cross it, and the
+        # loop-governance MCP server is a tool SURFACE — it can hand the agent
+        # begin_change but it cannot see a native write. So a Pi session could edit
+        # and write files with NO lock. The commit-time hook IS a second layer, but
+        # its lock check is scoped to the hermes-cortex repo only, so a Pi session
+        # in a PROJECT repo had no lock gate at write OR commit time.
+        #
+        # This is the INTERACTIVE gate (a native tool call); `governance` above is
+        # how the agent REACHES the tools. Both are needed and neither implies the
+        # other — they are separate capabilities for that reason.
+        adapter: extension
+        register: ops/scripts/install/install-pi-integration.sh
+        from: pi/extensions/cortex-governance.ts
+        requires: 'pi whose tool_call hook can block — verified by loading the extension through pi''s own loader, never assumed from a version in a doc'
+        why: |
+          The extension registers ONLY a tool_call handler and adds NO governance
+          semantics: it asks the SHARED implementation (loop-gov.py over
+          loop-gov-mcp.py's `check_repo_lock` predicate) and blocks the call when
+          that refuses. Re-implementing "does a lock cover this repo" per harness
+          is how the rule stops binding — the git hook already carries one copy.
+          Bash is classified by a read-only ALLOWLIST, deny by default, never by
+          shell syntax: `cp`, `mv`, `rm`, `tee`, `dd` contain no metacharacter, so a
+          syntax-based rule let every one of them through. Every cannot-verify path
+          (CLI missing, governance unreachable, no repo resolvable) fails CLOSED,
+          with the cost stated in the message and no agent-side override.
+        verify:
+          - 'node ops/install/harnesses/pi/verify-governance-extension.mjs exits 0 — it EXECUTES the gate, asserts both directions, and includes the no-metacharacter write commands.'
+          - 'loop-gov.py check_repo_lock against the session repo exits 0 while a lock covers it and 1 when none does.'
+          - 'In a Pi session with no lock a write is refused with GOVERNANCE LOCK REQUIRED; after begin_change the same write succeeds.'
     # Built-in tools only: the memory/session surface is NOT a --tools entry any
     # more — it arrives over MCP, so there is no per-harness tool list left to
     # rot when the contract grows.
@@ -171,6 +208,8 @@ harnesses:
       - 'In a Pi session call mem_context — the peer card must come back.'
       - 'Let a turn end with a decision, then: cortex-context session_restore "{}" | grep <marker>'
       - 'Start a second session; the checkpoint must appear unasked (`CORTEX_RESUME` in `~/.hermes-cortex/logs/pi-context.log`).'
+      - 'node ops/install/harnesses/pi/verify-governance-extension.mjs exits 0 — it EXECUTES the write gate and asserts both directions.'
+      - 'In a Pi session, with no lock: writing a file is refused with GOVERNANCE LOCK REQUIRED; after begin_change it succeeds.'
     # The extension's own knobs. Routine markers go to the cortex log, never the
     # prompt area, so a diagnosing agent needs to know where to look.
     env_optional:

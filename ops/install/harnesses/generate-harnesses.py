@@ -101,10 +101,13 @@ def validate(data: dict) -> list[str]:
             if not h.get("verify"):
                 problems.append(f"{where}: missing 'verify' — an unverifiable "
                                 "instruction is how a wiring ships broken")
-        if layer == "cli-extension" and not h.get("artifact"):
+        arts = h.get("artifact") or []
+        if isinstance(arts, str):
+            arts = [arts]
+        if layer == "cli-extension" and not arts:
             problems.append(f"{where}: layer cli-extension needs 'artifact'")
-        if layer == "cli-extension" and h.get("artifact"):
-            p = HERE / name / h["artifact"]
+        for a in arts:
+            p = HERE / name / a
             if not p.is_file():
                 problems.append(f"{where}: artifact missing on disk: {p}")
     return problems
@@ -152,9 +155,19 @@ def render_readme(reg: dict, h: dict) -> str:
     out += [LAYER_NOTES[layer], ""]
     out += ["## Why this layer", "", h["why"].strip(), ""]
 
-    if h.get("artifact"):
+    arts = h.get("artifact") or []
+    if isinstance(arts, str):
+        arts = [arts]
+    if len(arts) == 1:
         out += ["## Shipped artifact", "",
-                f"`ops/install/harnesses/{name}/{h['artifact']}`", ""]
+                f"`ops/install/harnesses/{name}/{arts[0]}`", ""]
+    elif arts:
+        # A harness may ship more than one artifact with different jobs (pi: the
+        # lifecycle triggers AND the native-write gate). Listing them keeps ONE
+        # source — the registry — for what a harness actually ships.
+        out += ["## Shipped artifacts", ""]
+        out += [f"- `ops/install/harnesses/{name}/{a}`" for a in arts]
+        out.append("")
 
     if h.get("triggers"):
         out += ["## Lifecycle triggers (the half MCP cannot provide)", "",

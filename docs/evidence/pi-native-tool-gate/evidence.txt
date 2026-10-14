@@ -1,0 +1,141 @@
+PI NATIVE-TOOL GATE — evidence, captured 2026-10-14T11:14:22Z
+Provenance: commands run on the host in this cycle, output verbatim (host paths normalised to ~).
+No field here is volatile-by-design except timestamps and heartbeat_at.
+
+=== 1. The reported defect: which hooks the INSTALLED pi extension registers ===
+$ grep -n 'pi.on(' ops/install/harnesses/pi/extensions/cortex-context.ts
+177:  pi.on("before_agent_start", async (event: any) => {
+203:  pi.on("turn_end", async (event: any) => {
+222:  pi.on("session_before_compact", async () => {
+239:  pi.on("tool_result", async (event: any) => {
+-> four hooks, NO tool_call: nothing intercepted pi's native read/bash/edit/write.
+
+=== 2. The claim that the hook has no lock check is WRONG; it exists but is repo-scoped ===
+$ grep -n 'Level 3: Governance lock check' ops/scripts/pre-commit-score
+576:# ── Level 3: Governance lock check (secondary - MCP handles this) ───
+$ grep -n 'IS_CORTEX_REPO -eq 1 && "$LOCK_FOUND" -ne 1' ops/scripts/pre-commit-score
+$ grep -n 'IS_CORTEX_REPO=' ops/scripts/pre-commit-score
+467:  IS_CORTEX_REPO=1
+469:  IS_CORTEX_REPO=0
+
+=== 3. The SHARED predicate: covered / not covered / cannot verify ===
+--- repo_path=~/hermes-cortex
+{
+  "covered": true,
+  "match": "path",
+  "repo_path": "~/hermes-cortex",
+  "lock": {
+    "task_id": "pi-native-tool-gate",
+    "agent": "unknown",
+    "session_id": "20261014_195745_cd0e365b",
+    "repo_path": "~/hermes-cortex",
+    "heartbeat_at": "2026-10-14T11:02:18Z"
+  },
+  "live_lock_count": 1
+}
+rc=0
+--- repo_path=~/steadfaste
+{
+  "covered": false,
+  "repo_path": "~/steadfaste",
+  "lock": null,
+  "live_lock_count": 1,
+  "note": "\u274c Not locked: no live governance lock covers this repo. Call begin_change() before writing."
+}
+rc=1
+--- repo_path=/tmp/definitely-not-a-repo
+❌ Cannot verify: no repo could be resolved from repo_path='/tmp/definitely-not-a-repo' (not a git checkout, or git could not be run) — refusing rather than reporting the repo as unlocked. Pass the absolute path to the session's repo root.
+rc=1
+
+=== 4. The gate is EXECUTED (not grepped) and asserts BOTH directions ===
+$ node ops/install/harnesses/pi/verify-governance-extension.mjs
+jiti: ~/.pi/agent/install/releases/1.2.0/node_modules/jiti/lib/jiti.cjs
+ext : ~/hermes-cortex/ops/install/harnesses/pi/extensions/cortex-governance.ts
+
+✅ extension default export is a function (pi registers it)
+✅ the gate registers a `tool_call` handler (this is what pi's native tools were missing)
+✅ covered by a live lock => write ALLOWED
+✅ covered by a live lock => edit ALLOWED
+✅ covered by a live lock => write-classified bash ALLOWED (the lock is the gate, not the classifier)
+✅ NO lock => write BLOCKED
+✅ the block names the gate (GOVERNANCE LOCK REQUIRED)
+✅ the block names the remedy (begin_change) — a block an agent cannot act on is a deadlock
+✅ NO lock => edit BLOCKED
+✅ NO lock => bash WRITE-CLASSIFIED blocked: `cp a b`
+✅ NO lock => bash WRITE-CLASSIFIED blocked: `mv a b`
+✅ NO lock => bash WRITE-CLASSIFIED blocked: `rm -rf /tmp/fake-repo/x`
+✅ NO lock => bash WRITE-CLASSIFIED blocked: `tee /tmp/fake-repo/out`
+✅ NO lock => bash WRITE-CLASSIFIED blocked: `dd if=/dev/zero of=/tmp/fake-repo/blob bs=1 count=1`
+✅ NO lock => bash WRITE-CLASSIFIED blocked: `mkdir /tmp/fake-repo/newdir`
+✅ NO lock => bash WRITE-CLASSIFIED blocked: `touch /tmp/fake-repo/newfile`
+✅ NO lock => bash WRITE-CLASSIFIED blocked: `ln -s a b`
+✅ NO lock => bash WRITE-CLASSIFIED blocked: `truncate -s 0 f`
+✅ NO lock => bash WRITE-CLASSIFIED blocked: `install a b`
+✅ NO lock => bash WRITE-CLASSIFIED blocked: `python3 -c import_os`
+✅ NO lock => bash WRITE-CLASSIFIED blocked: `sh -c echo`
+✅ NO lock => bash WRITE-CLASSIFIED blocked: `git commit -m x`
+✅ NO lock => bash WRITE-CLASSIFIED blocked: `git push`
+✅ NO lock => bash WRITE-CLASSIFIED blocked: `git checkout main`
+✅ NO lock => bash WRITE-CLASSIFIED blocked: `git branch newbranch`
+✅ NO lock => bash WRITE-CLASSIFIED blocked: `git tag v9`
+✅ NO lock => COMPOUND bash blocked: `ls | grep foo`
+✅ NO lock => COMPOUND bash blocked: `cat f > out`
+✅ NO lock => COMPOUND bash blocked: `echo hi; ls`
+✅ NO lock => COMPOUND bash blocked: `ls && rm x`
+✅ read-only bash stays lock-free: `ls -la /tmp/fake-repo`
+✅ read-only bash stays lock-free: `cat /tmp/fake-repo/x`
+✅ read-only bash stays lock-free: `grep -rn TODO .`
+✅ read-only bash stays lock-free: `git status --short`
+✅ read-only bash stays lock-free: `git log --oneline -5`
+✅ read-only bash stays lock-free: `git branch -a`
+✅ read-only bash stays lock-free: `git diff HEAD`
+✅ read-only bash stays lock-free: `find . -name '*.py'`
+✅ read-only tool stays lock-free: read
+✅ read-only tool stays lock-free: grep
+✅ read-only tool stays lock-free: find
+✅ read-only tool stays lock-free: ls
+✅ read-only work never spawned the governance CLI (a lock-free read costs nothing)
+✅ a non-native (MCP/custom) tool passes — this gate covers pi's own write surface
+✅ governance UNAVAILABLE => write BLOCKED (fail CLOSED, never fail open)
+✅ the unavailable block says so explicitly
+✅ the unavailable block states what the refusal costs
+✅ governance CLI missing => write BLOCKED (fail CLOSED, not a silent pass)
+✅ no repo + no CORTEX_SESSION_REPO => write BLOCKED (nothing to govern)
+✅ the unresolved block says which one is missing
+✅ the gate registers ZERO tools (got 0) — it is an adapter over the shared implementation, not a second surface
+
+✅ GOVERNANCE GATE OK — pi's native write tools are gated on the shared lock predicate.
+rc=0
+
+=== 5. The guard DISCRIMINATES: pointed at a gate that blocks nothing, it must FAIL ===
+fixture: a .ts extension whose tool_call handler returns without blocking
+rc=1 (non-zero required)
+jiti: ~/.pi/agent/install/releases/1.2.0/node_modules/jiti/lib/jiti.cjs
+ext : ~/.hermes/cache/scratch/broken-gate.ts
+
+...
+failed assertions: 31
+
+=== 6. Committed test ===
+$ python3 tests/test_pi_governance_gate.py
+✅ test_the_gate_is_executed_and_correct
+✅ test_the_verifier_discriminates
+rc=0
+
+=== 7. Derived harness docs are current (no drift) ===
+generate-harnesses: OK — 6 derived file(s) current
+rc=0
+
+=== 8. A4 adversarial gate on every changed file ===
+mcp-servers/loop-gov-mcp.py: 📊 Summary: 1 file(s), 36 finding(s)
+mcp-servers/loop-gov-mcp.py: ✅ GATE_PASSED — no critical/high findings
+ops/install/harnesses/pi/extensions/cortex-governance.ts: 📊 Summary: 1 file(s), 0 finding(s)
+ops/install/harnesses/pi/extensions/cortex-governance.ts: ✅ GATE_PASSED — no critical/high findings
+ops/install/harnesses/pi/verify-governance-extension.mjs: 📊 Summary: 1 file(s), 0 finding(s)
+ops/install/harnesses/pi/verify-governance-extension.mjs: ✅ GATE_PASSED — no critical/high findings
+ops/scripts/install/install-pi-integration.sh: 📊 Summary: 1 file(s), 20 finding(s)
+ops/scripts/install/install-pi-integration.sh: ✅ GATE_PASSED — no critical/high findings
+tests/test_pi_governance_gate.py: 📊 Summary: 1 file(s), 19 finding(s)
+tests/test_pi_governance_gate.py: ✅ GATE_PASSED — no critical/high findings
+ops/install/harnesses/generate-harnesses.py: 📊 Summary: 1 file(s), 0 finding(s)
+ops/install/harnesses/generate-harnesses.py: ✅ GATE_PASSED — no critical/high findings

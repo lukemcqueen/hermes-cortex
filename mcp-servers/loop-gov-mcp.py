@@ -2176,6 +2176,17 @@ async def list_tools(ctx, params=None) -> ListToolsResult:
             },
         ),
         Tool(
+            name="check_repo_lock",
+            description="Is a LIVE governance lock covering a SPECIFIC repo? Pass repo_path (absolute path to the repo root). Returns {covered, match, repo_path, lock, live_lock_count}. `covered:false` is a refusal (exit 1 via loop-gov.py) — no live lock covers that repo, so call begin_change() before writing. Cannot-verify (no repo resolvable) is ALSO a refusal: a gate must never read 'could not check' as 'carry on'. Matched on the lock's resolved repo_path; a pre-repo_path lock matches on slug and reports match='slug-legacy'. This is the predicate a harness-native write gate consumes — do not re-implement it per harness.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "repo_path": {"type": "string", "description": "Absolute path to the session's repo root (the tree the caller is about to write in)"},
+                },
+                "required": ["repo_path"],
+            },
+        ),
+        Tool(
             name="cycle_query",
             description="Query scored cycles. Filter by task_id, min_score, max_score, limit.",
             inputSchema={
@@ -2400,6 +2411,7 @@ async def call_tool(ctx, params=None) -> CallToolResult:
             "begin_change": _begin_change,
             "end_change": _end_change,
             "check_lock": _check_lock,
+            "check_repo_lock": _check_repo_lock,
             "cycle_query": _cycle_query,
             "cycle_stats": _cycle_stats,
             "config_show": _config_show,
@@ -5375,6 +5387,101 @@ def _live_locks() -> list[dict]:
             "file": lock_file.name,
         })
     return locks
+
+
+def _check_repo_lock(args: dict | None = None) -> CallToolResult:
+    """Is a LIVE governance lock covering a specific REPO?
+
+    The question a harness-native write gate has to ask. Hermes gets this for
+    free — the enforcer plugin sits inside the tool path — but a coding agent
+    whose tools are its OWN (pi's read/bash/edit/write, Claude Code's, Codex's)
+    never crosses that plugin, so nothing blocks a write while no lock exists.
+
+    The harness must not answer this itself: a second implementation of "does a
+    lock cover this repo" is how the rule stops binding (the pre-commit hook
+    already carries its own copy, and two copies drift). So the predicate lives
+    HERE, beside ``_live_locks`` and its staleness rule, and a harness consumes
+    the verdict.
+
+    Repo scope is matched on the lock's RESOLVED PATH — never on the repo NAME.
+    ``repo_slug`` alone is a name resolved as ``HOME/<slug>``, so two different
+    checkouts can share a name and a name-only match would let a lock in one repo
+    authorise writes in another. A lock that records NO ``repo_path`` (written
+    before that field existed) is accepted on a slug match — the same
+    upgrade-compat rule the git hook uses — and reported as ``slug-legacy`` so
+    the weaker evidence is visible rather than silent.
+
+    CANNOT-VERIFY IS A REFUSAL. If no repo can be resolved there is no verdict to
+    give, and a gate reading "could not check" as "carry on" fails open exactly
+    when the host is misconfigured. The text carries a refusal marker, so
+    ``loop-gov.py`` exits 1 and a caller gating on the exit code sees a decision,
+    not a crash.
+    """
+    args = args or {}
+    raw = str(args.get("repo_path") or args.get("repo") or "").strip()
+    resolved: Optional[Path] = None
+    if raw:
+        candidate = Path(raw).expanduser()
+        if (candidate / ".git").exists():
+            resolved = candidate
+        else:
+            # Not a plain clone root — let git name the toplevel (worktrees,
+            # subdirectories, a path handed over by a wrapper).
+            try:
+                out = subprocess.check_output(  # noqa: S603,S404 — fixed argv, timeout below
+                    ["git", "-C", str(candidate), "rev-parse", "--show-toplevel"],
+                    timeout=5, stderr=subprocess.DEVNULL, text=True,
+                ).strip()
+            except Exception:  # noqa: BLE001 — unresolvable is a verdict, below
+                out = ""
+            if out:
+                resolved = Path(out)
+
+    if resolved is None:
+        return CallToolResult(content=[TextContent(type="text", text=(
+            "❌ Cannot verify: no repo could be resolved from "
+            f"repo_path={raw!r} (not a git checkout, or git could not be run) — "
+            "refusing rather than reporting the repo as unlocked. Pass the "
+            "absolute path to the session's repo root."))])
+
+    slug = resolved.name
+    live = _live_locks()
+    for lock in live:
+        recorded = str(lock.get("repo_path") or "").strip()
+        match = None
+        if recorded:
+            try:
+                if Path(recorded).expanduser().resolve() == resolved.resolve():
+                    match = "path"
+            except OSError:
+                match = None
+        elif lock.get("repo_slug") == slug:
+            # Upgrade compat: a lock from before repo_path existed. Weaker
+            # evidence, so it is NAMED in the result instead of hidden.
+            match = "slug-legacy"
+        if match:
+            return CallToolResult(content=[TextContent(type="text", text=json.dumps({
+                "covered": True,
+                "match": match,
+                "repo_path": str(resolved),
+                "lock": {
+                    "task_id": lock.get("task_id"),
+                    "agent": lock.get("agent"),
+                    "session_id": lock.get("session_id"),
+                    "repo_path": lock.get("repo_path"),
+                    "heartbeat_at": lock.get("heartbeat_at"),
+                },
+                "live_lock_count": len(live),
+            }, indent=2))])
+
+    return CallToolResult(content=[TextContent(type="text", text=json.dumps({
+        "covered": False,
+        "repo_path": str(resolved),
+        "lock": None,
+        "live_lock_count": len(live),
+        "note": ("❌ Not locked: no live governance lock covers this repo. "
+                 "Call begin_change() before writing."),
+    }, indent=2))])
 
 
 def _check_lock(args: dict | None = None) -> CallToolResult:

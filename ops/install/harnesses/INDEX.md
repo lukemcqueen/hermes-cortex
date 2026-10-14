@@ -9,7 +9,7 @@ Declared harnesses: **5**
 | Harness | Layer | Status | Surface |
 |---|---|---|---|
 | `hermes` | `mcp` | shipped | `hermes mcp add` |
-| `pi` | `mcp` | shipped | `MCP (cortex-context) + pi.on("turn_end"|"before_agent_start"|"session_before_compact")` |
+| `pi` | `mcp` | shipped | `MCP (cortex-context) + pi.on("tool_call" write gate | "turn_end" | "before_agent_start" | "session_before_compact")` |
 | `claude-code` | `mcp` | documented | `.mcp.json` |
 | `codex` | `mcp` | documented | `~/.codex/config.toml [mcp_servers]` |
 | `steadfaste-tui` | `none` | blocked | `unknown` |

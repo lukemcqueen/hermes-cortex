@@ -62,14 +62,27 @@ SETTINGS="${PI_SETTINGS_FILE:-${AGENT_DIR}/settings.json}"
 CURATED_DIR="${PI_CORTEX_SKILLS_DIR:-${AGENT_DIR}/cortex-skills}"
 HERMES_SKILLS="${HERMES_SKILLS_DIR:-${HOME}/.hermes/skills}"
 
-# The deployed extension is the thing Pi loads; fall back to the repo copy
+# The deployed extensions are the thing Pi loads; fall back to the repo copies
 # when this host has not deployed yet (the warning below names the fix).
-EXTENSION=""
-for candidate in \
-    "${HOME}/.hermes-cortex/harnesses/pi/extensions/cortex-context.ts" \
-    "${HOME}/hermes-cortex/ops/install/harnesses/pi/extensions/cortex-context.ts"; do
-  if [[ -f "$candidate" ]]; then EXTENSION="$candidate"; break; fi
-done
+#
+# TWO extensions, and they do different jobs:
+#   cortex-context.ts    — the LIFECYCLE triggers (checkpoint/restore/evidence)
+#   cortex-governance.ts — the WRITE GATE for pi's NATIVE tools. Hermes enforces
+#                          at the tool level via its enforcer plugin; pi's
+#                          read/bash/edit/write never cross that plugin, so
+#                          without this file a pi session could edit and write
+#                          with no governance lock at all (titus, 2026-10-14).
+# Resolve each by name; a missing one is a wiring fault, never a silent skip.
+resolve_ext() {
+  for candidate in \
+      "${HOME}/.hermes-cortex/harnesses/pi/extensions/$1" \
+      "${HOME}/hermes-cortex/ops/install/harnesses/pi/extensions/$1"; do
+    if [[ -f "$candidate" ]]; then printf '%s' "$candidate"; return 0; fi
+  done
+  return 1
+}
+EXTENSION="$(resolve_ext cortex-context.ts || true)"
+GOVERNANCE_EXTENSION="$(resolve_ext cortex-governance.ts || true)"
 
 # The skills manifest is the ONE source of the always-set.
 MANIFEST=""
@@ -98,8 +111,12 @@ if [[ -z "$MANIFEST" ]]; then
   exit 1
 fi
 
-if [[ "$MODE" != "remove" && -z "$EXTENSION" ]]; then
-  echo "install-pi-integration: cortex-context.ts not found (deployed or repo)." >&2
+if [[ "$MODE" != "remove" && ( -z "$EXTENSION" || -z "$GOVERNANCE_EXTENSION" ) ]]; then
+  echo "install-pi-integration: a cortex extension was not found (deployed or repo)." >&2
+  echo "  cortex-context.ts    : ${EXTENSION:-MISSING}" >&2
+  echo "  cortex-governance.ts : ${GOVERNANCE_EXTENSION:-MISSING}" >&2
+  echo "  Both are required — the second is what gates pi's native write tools," >&2
+  echo "  and registering only one would look wired while leaving writes open." >&2
   echo "  Fix: run cortex-update.sh, then this script." >&2
   exit 1
 fi
@@ -109,10 +126,16 @@ if [[ "$MODE" != "check" ]]; then
   [[ -f "$SETTINGS" ]] && cp -p "$SETTINGS" "${SETTINGS}.bak.cortex"
 fi
 
-"$PYTHON" - "$MODE" "$SETTINGS" "$CURATED_DIR" "$MANIFEST" "$HERMES_SKILLS" "${EXTENSION:-}" <<'PYEOF'
+"$PYTHON" - "$MODE" "$SETTINGS" "$CURATED_DIR" "$MANIFEST" "$HERMES_SKILLS" "${EXTENSION:-}" "${GOVERNANCE_EXTENSION:-}" <<'PYEOF'
 import json, os, sys
 
-mode, settings_path, curated_dir, manifest_path, skills_root, extension = sys.argv[1:7]
+mode, settings_path, curated_dir, manifest_path, skills_root, extension, governance_extension = sys.argv[1:8]
+
+# Every cortex-owned extension, by basename. ONE list: registration, the
+# strip/replace path and the check all read it, so a new extension cannot be
+# added to one and forgotten in another (the pre-2026-10-14 bug: the check
+# asserted one filename, so a second extension looked wired and was not).
+OURS = ("cortex-context.ts", "cortex-governance.ts")
 
 try:
     import yaml
@@ -169,7 +192,7 @@ def write_settings(data):
 def strip_ours(entries):
     return [e for e in entries
             if not (isinstance(e, str) and (e.startswith(curated_dir)
-                                            or e.endswith("cortex-context.ts")))]
+                                            or e.endswith(OURS)))]
 
 
 names = load_manifest()
@@ -179,8 +202,9 @@ skills = [e for e in data.get("skills", []) if isinstance(e, str)]
 
 if mode == "check":
     problems = []
-    if not any(e.endswith("cortex-context.ts") for e in exts):
-        problems.append("extension not registered in settings.json")
+    for wanted in OURS:
+        if not any(e.endswith(wanted) for e in exts):
+            problems.append(f"extension not registered in settings.json: {wanted}")
     if not any(e.startswith(curated_dir) for e in skills):
         problems.append("curated skills dir not registered in settings.json")
     if not os.path.isdir(curated_dir):
@@ -195,7 +219,8 @@ if mode == "check":
             print(f"  ✗ {p}")
         print("install-pi-integration: NOT registered")
         sys.exit(1)
-    print(f"  ✓ extension registered, {len(names)} curated skills present")
+    print(f"  ✓ extensions registered ({', '.join(OURS)}), "
+          f"{len(names)} curated skills present")
     print("install-pi-integration: registered")
     sys.exit(0)
 
@@ -247,15 +272,22 @@ for entry in os.scandir(curated_dir):
     if entry.is_symlink() and entry.name not in names:
         os.unlink(entry.path)
 
-exts = [e for e in strip_ours(exts) if e != extension]
-exts.append(extension)
+exts = strip_ours(exts)
+for ext in (extension, governance_extension):
+    # Idempotent: replace the entry for this path if present, else append. Both
+    # extensions are registered in ONE pass so a second one cannot be dropped.
+    exts = [e for e in exts if e != ext]
+    if ext:
+        exts.append(ext)
 skills = [e for e in strip_ours(skills) if e != curated_dir]
 skills.append(curated_dir)
 data["extensions"] = exts
 data["skills"] = skills
 write_settings(data)
 print(f"Registered in {settings_path} (user scope — applies to EVERY Pi project):")
-print(f"  extension: {extension}")
+for ext in (extension, governance_extension):
+    if ext:
+        print(f"  extension: {ext}")
 print(f"  skills:    {curated_dir}  ({len(names)} skills from {manifest_path})")
 print("Restart any running Pi session (or /reload) to pick this up.")
 PYEOF

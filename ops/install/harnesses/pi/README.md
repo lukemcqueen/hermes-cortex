@@ -2,7 +2,7 @@
 
 # pi — cortex context integration
 
-**Layer:** `mcp`  ·  **Status:** `shipped`  ·  **Surface:** `MCP (cortex-context) + pi.on("turn_end"|"before_agent_start"|"session_before_compact")`
+**Layer:** `mcp`  ·  **Status:** `shipped`  ·  **Surface:** `MCP (cortex-context) + pi.on("tool_call" write gate | "turn_end" | "before_agent_start" | "session_before_compact")`
 
 This harness reads MCP servers from its own configuration, so its TOOL surface needs **no shim** — registration is a config entry. (MCP has no lifecycle, so a harness may still ship a small trigger artifact; see *Shipped artifact*.)
 
@@ -25,9 +25,10 @@ capability, or one of the two becomes a phantom.
 
 (Governance is a separate capability — see `capabilities.governance`.)
 
-## Shipped artifact
+## Shipped artifacts
 
-`ops/install/harnesses/pi/extensions/cortex-context.ts`
+- `ops/install/harnesses/pi/extensions/cortex-context.ts`
+- `ops/install/harnesses/pi/extensions/cortex-governance.ts`
 
 ## Lifecycle triggers (the half MCP cannot provide)
 
@@ -60,6 +61,8 @@ pi   # tools come from ~/.pi/agent/mcp.json (install-pi-mcp.sh)
 2. In a Pi session call mem_context — the peer card must come back.
 3. Let a turn end with a decision, then: cortex-context session_restore "{}" | grep <marker>
 4. Start a second session; the checkpoint must appear unasked (`CORTEX_RESUME` in `~/.hermes-cortex/logs/pi-context.log`).
+5. node ops/install/harnesses/pi/verify-governance-extension.mjs exits 0 — it EXECUTES the write gate and asserts both directions.
+6. In a Pi session, with no lock: writing a file is refused with GOVERNANCE LOCK REQUIRED; after begin_change it succeeds.
 
 ## Session identity
 

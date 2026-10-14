@@ -867,6 +867,13 @@ register "ops/scripts/loop-gov.py"                         "${CORTEX_DEPLOY_HOME
 register "ops/install/harnesses/registry.yaml"             "${CORTEX_DEPLOY_HOME}/harnesses/registry.yaml"
 register "ops/install/harnesses/generate-harnesses.py"     "${CORTEX_DEPLOY_HOME}/harnesses/generate-harnesses.py"
 register "ops/install/harnesses/pi/extensions/cortex-context.ts" "${CORTEX_DEPLOY_HOME}/harnesses/pi/extensions/cortex-context.ts"
+# The pi NATIVE-WRITE gate (2026-10-14, titus): pi's own read/bash/edit/write never
+# cross the Hermes enforcer plugin, and the commit hook's lock check is scoped to
+# hermes-cortex only — so in a PROJECT repo a pi session had no lock gate at write
+# OR commit time. This extension blocks a write-capable native tool call when no
+# lock covers the session's repo, asking the SHARED predicate
+# (loop-gov.py check_repo_lock) rather than parsing lock files itself.
+register "ops/install/harnesses/pi/extensions/cortex-governance.ts" "${CORTEX_DEPLOY_HOME}/harnesses/pi/extensions/cortex-governance.ts"
 # The self-contained implementation guide for the Pi agent (hand-written).
 register "ops/install/harnesses/pi/IMPLEMENT.md"           "${CORTEX_DEPLOY_HOME}/harnesses/pi/IMPLEMENT.md"
 register "ops/install/harnesses/README.md"                 "${CORTEX_DEPLOY_HOME}/harnesses/README.md"
