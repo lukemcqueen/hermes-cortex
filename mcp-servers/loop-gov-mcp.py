@@ -2345,6 +2345,12 @@ REVIEWER_LIGHT_MODEL_DEFAULT = "deepseek/deepseek-v4-flash"
 # negative — the one failure mode this gate must never have.
 REVIEWER_MAX_TOKENS = 16000
 
+# The hard ceiling for REVIEWER_MAX_TOKENS (2026-10-14). The knob exists so an operator can
+# clear a reviewer whose reply is being cut short; it is not a licence to ask for an
+# arbitrarily expensive completion. 128000 is the largest context any model exposed by this
+# reviewer's providers accepts, so a value above it is a typo by definition.
+REVIEWER_MAX_TOKENS_CEILING = 128000
+
 # A judge does not need to be creative, and sampling variation between two identical reviews is
 # how the same material got CLEAN and then FINDINGS on different passes.
 REVIEWER_TEMPERATURE = 0
@@ -3227,7 +3233,20 @@ def _call_reviewer_llm(prompt: str, *, model: Optional[str] = None,
     timeout = timeout if timeout is not None else _reviewer_env_timeout("ADVERSARIAL_REVIEW_TIMEOUT", 120)
     with urllib.request.urlopen(req, timeout=timeout) as resp:
         data = json.loads(resp.read())
-    return data["choices"][0]["message"]["content"]
+    choices = data.get("choices") or []
+    content = ((choices[0].get("message") or {}) if choices else {}).get("content")
+    if not isinstance(content, str) or not content.strip():
+        # FAIL CLOSED AT THE LEAF, not only in the gate (2026-10-14). A reasoning model
+        # that spends its output budget thinking answers 200 with `content: null`; this
+        # function used to return that None, so its own contract ("Return its text") was
+        # broken and only the ONE caller that remembered to check survived. Any sibling
+        # consumer — a future re-review path, a script — would crash on the first slice.
+        finish = (choices[0].get("finish_reason") if choices else None) or "no choices"
+        raise RuntimeError(
+            f"reviewer returned NO usable content (finish_reason={finish}, "
+            f"max_tokens={_reviewer_max_tokens()}) — a reasoning model may have exhausted "
+            "its thinking budget; raise REVIEWER_MAX_TOKENS")
+    return content
 
 
 def _call_reviewer_agent(prompt: str, author: Optional[str] = None,
@@ -3304,6 +3323,14 @@ def _reviewer_max_tokens() -> int:
         log.warning("REVIEWER_MAX_TOKENS=%r is not positive — using %d",
                     raw, REVIEWER_MAX_TOKENS)
         return REVIEWER_MAX_TOKENS
+    if val > REVIEWER_MAX_TOKENS_CEILING:
+        # An upper bound, for the same reason the lower one exists: a typo that clears the
+        # reasoning budget by three orders of magnitude is not a fix, it is a bill. The
+        # ceiling is the largest context any model on this reviewer's providers exposes.
+        log.warning("REVIEWER_MAX_TOKENS=%r exceeds the ceiling %d — clamped (a cap this "
+                    "size cannot be what you meant, and the provider would reject or bill it)",
+                    raw, REVIEWER_MAX_TOKENS_CEILING)
+        return REVIEWER_MAX_TOKENS_CEILING
     return val
 
 
@@ -4757,7 +4784,7 @@ def _end_change(args: dict) -> CallToolResult:
     # The close being PERMITTED is the authorisation event. A CLEAN review is one
     # way to reach it, not the only one — so the receipt is written at the point
     # the gate stops objecting, whichever path got us there.
-    receipt_fail = _write_review_receipt(task_id, args)
+    receipt_fail = _write_review_receipt(task_id, args, state=lock)
 
     # Step 4: Release the lock
     _release_lock(args)
