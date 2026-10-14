@@ -1130,9 +1130,22 @@ def _derive_repo_slug() -> str:
 
 
 def _is_lock_stale(state: dict, max_age: int = 7200) -> bool:
-    """Check if a lock has exceeded its TTL and should be considered stale."""
+    """Check if a lock has exceeded its TTL and should be considered stale.
+
+    The lock's OWN TTL is authoritative (2026-10-14). This used to floor it at 7200s
+    (``max(ttl, max_age)``) while the MCP server applied the lock's ttl directly, so the
+    two components disagreed about when the same file stopped counting: "TTL: 3600s" — the
+    number the operator is shown — was not the blocking horizon, and a lock could be
+    expired to the server that owns it while still authorising writes at the enforcer.
+    One rule, and it is the one on the file. ``max_age`` is only the fallback for a lock
+    that declares no TTL at all.
+    """
     ttl = state.get("ttl_seconds", 3600)
-    effective_ttl = max(ttl, max_age)
+    try:
+        ttl = int(ttl)
+    except (TypeError, ValueError):
+        ttl = 3600
+    effective_ttl = ttl if ttl > 0 else max_age
     heartbeat = state.get("heartbeat_at", "")
     if heartbeat:
         try:
@@ -1205,6 +1218,19 @@ def _bypass_debt_count() -> int:
     except Exception:
         pass
     return 0
+
+
+def _lock_names_a_repo(state: dict) -> bool:
+    """True when the lock records WHICH repo it covers (a slug or an absolute path).
+
+    A lock that names no repo must never authorise writes in a repository it does not
+    name (2026-10-14). The session match proves WHO is working, not WHAT they may write
+    to, so a repo-less lock used to hand its session write access to every repo on the
+    host — through Phase 1 (exact filename, which returns before any repo check) as much
+    as through Phase 2 (where a None slug matched the current repo).
+    """
+    return bool(str(state.get("repo_slug") or "").strip()
+                or str(state.get("repo_path") or "").strip())
 
 
 def _lock_is_target_repo(state: dict, target_repo: str) -> bool:
@@ -1457,7 +1483,15 @@ def _has_governance_lock(hermes_session_id: str = "", target_repo: str = "") -> 
             try:
                 state = json.loads(lock_path.read_text())
                 if state.get("task_id", "") and not _is_lock_stale(state):
-                    return True
+                    # The exact filename proves the SESSION, not the SCOPE: a lock that
+                    # names NO repo authorises nothing beyond a caller with no repo
+                    # context at all (2026-10-14 — this path returned before any repo
+                    # check, so a repo-less lock granted writes in every repo).
+                    if _lock_names_a_repo(state) or not (target_repo or current_slug):
+                        return True
+                    log.warning("governance lock %s names NO repo — refusing to authorise "
+                                "writes in %r; re-run begin_change with the repo declared",
+                                lock_path.name, target_repo or current_slug)
                 if state.get("task_id", ""):
                     lock_path.unlink(missing_ok=True)
             except (json.JSONDecodeError, OSError):
@@ -1510,12 +1544,18 @@ def _has_governance_lock(hermes_session_id: str = "", target_repo: str = "") -> 
             # false block (see _lock_is_target_repo); it cannot widen access,
             # because path equality cannot match a different repository.
             if current_slug:
-                if (state.get("repo_slug") is not None
-                        and state.get("repo_slug") != current_slug
+                if not _lock_names_a_repo(state):
+                    # A lock that names NO repo is not evidence of a lock on THIS repo.
+                    # This used to fall through to `return True`: with a matching session
+                    # id, any repo-less lock authorised writes in whatever repository the
+                    # session touched next (latent fail-open, found 2026-10-14). Session
+                    # match alone is not repo scope.
+                    continue
+                if (state.get("repo_slug") != current_slug
                         and not _lock_is_target_repo(state, target_repo)):
                     continue
             else:
-                if (state.get("repo_slug") is None
+                if (not _lock_names_a_repo(state)
                         and not _lock_is_target_repo(state, target_repo)):
                     continue
             if _is_lock_stale(state):

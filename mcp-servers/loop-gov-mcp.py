@@ -1945,6 +1945,43 @@ async def call_tool(ctx, params=None) -> CallToolResult:
 
 # ── Tool Implementations ─────────────────────────────────────
 
+def _active_lock_refusal_text(existing: dict) -> str:
+    """The message a session reads when it tries to begin while a lock is already active.
+
+    Split out (2026-10-14) so the GUIDANCE can be tested without standing up the
+    preconditions that run before it (the dogfood check and the unscored-PENDING-cycle
+    check both fire first and query live state) — a test that has to defeat two unrelated
+    gates to read one message has a verdict that depends on the host, not on the message.
+
+    A lock that names NO repo cannot be closed by end_change (it refuses to measure
+    complexity without a governed repo), so "call end_change" is advice that cannot work
+    for it. Name the release that DOES: a TERMINAL task state releases the lock and does
+    not consult repo identity.
+    """
+    t = existing.get("task_id")
+    if existing.get("repo_path") or existing.get("repo_slug"):
+        how_out = f"Call end_change('{t}') first, or use force=True to override."
+    else:
+        how_out = (
+            "This lock names NO repo, so end_change CANNOT close it ('no governed repo to "
+            "measure complexity'). Release it with a TERMINAL task state, which does not "
+            "consult repo identity:\n"
+            f"  mcp__loop_governance__advance_task_state(task_id='{t}', "
+            "new_state='cancelled', reason='<why>')\n"
+            "Waiting does not help: this session's own writes refresh the lock's "
+            "heartbeat, so it never goes stale while you are working.")
+    return (
+        f"Error: A governance session is already active:\n"
+        f"  task_id:     {existing.get('task_id')}\n"
+        f"  description: {existing.get('description')}\n"
+        f"  session_id:  {existing.get('session_id', 'unknown')}\n"
+        f"  started_at:  {existing.get('started_at')}\n"
+        f"  heartbeat:   {existing.get('heartbeat_at')}\n"
+        f"  agent:       {existing.get('agent')}\n\n"
+        + how_out
+    )
+
+
 def _begin_change(args: dict) -> CallToolResult:
     """Create a governance lock file AND a pending cycle in the loop-governance DB."""
     task_id = args.get("task_id", "").strip()
@@ -2039,18 +2076,7 @@ def _begin_change(args: dict) -> CallToolResult:
     if existing is not None:
         if not force:
             return CallToolResult(content=[TextContent(
-                type="text",
-                text=(
-                    f"Error: A governance session is already active:\n"
-                    f"  task_id:     {existing.get('task_id')}\n"
-                    f"  description: {existing.get('description')}\n"
-                    f"  session_id:  {existing.get('session_id', 'unknown')}\n"
-                    f"  started_at:  {existing.get('started_at')}\n"
-                    f"  heartbeat:   {existing.get('heartbeat_at')}\n"
-                    f"  agent:       {existing.get('agent')}\n\n"
-                    f"Call end_change('{existing.get('task_id')}') first, or use force=True to override."
-                )
-            )])
+                type="text", text=_active_lock_refusal_text(existing))])
         # Force override: build audit note and release old lock
         released_task = existing.get("task_id", "unknown")
         released_session = existing.get("session_id", "unknown")
@@ -2318,6 +2344,12 @@ REVIEWER_LIGHT_MODEL_DEFAULT = "deepseek/deepseek-v4-flash"
 # the size of the JSON it returns guarantees false negatives. Bounded is right; SMALL is a false
 # negative — the one failure mode this gate must never have.
 REVIEWER_MAX_TOKENS = 16000
+
+# The hard ceiling for REVIEWER_MAX_TOKENS (2026-10-14). The knob exists so an operator can
+# clear a reviewer whose reply is being cut short; it is not a licence to ask for an
+# arbitrarily expensive completion. 128000 is the largest context any model exposed by this
+# reviewer's providers accepts, so a value above it is a typo by definition.
+REVIEWER_MAX_TOKENS_CEILING = 128000
 
 # A judge does not need to be creative, and sampling variation between two identical reviews is
 # how the same material got CLEAN and then FINDINGS on different passes.
@@ -3201,7 +3233,20 @@ def _call_reviewer_llm(prompt: str, *, model: Optional[str] = None,
     timeout = timeout if timeout is not None else _reviewer_env_timeout("ADVERSARIAL_REVIEW_TIMEOUT", 120)
     with urllib.request.urlopen(req, timeout=timeout) as resp:
         data = json.loads(resp.read())
-    return data["choices"][0]["message"]["content"]
+    choices = data.get("choices") or []
+    content = ((choices[0].get("message") or {}) if choices else {}).get("content")
+    if not isinstance(content, str) or not content.strip():
+        # FAIL CLOSED AT THE LEAF, not only in the gate (2026-10-14). A reasoning model
+        # that spends its output budget thinking answers 200 with `content: null`; this
+        # function used to return that None, so its own contract ("Return its text") was
+        # broken and only the ONE caller that remembered to check survived. Any sibling
+        # consumer — a future re-review path, a script — would crash on the first slice.
+        finish = (choices[0].get("finish_reason") if choices else None) or "no choices"
+        raise RuntimeError(
+            f"reviewer returned NO usable content (finish_reason={finish}, "
+            f"max_tokens={_reviewer_max_tokens()}) — a reasoning model may have exhausted "
+            "its thinking budget; raise REVIEWER_MAX_TOKENS")
+    return content
 
 
 def _call_reviewer_agent(prompt: str, author: Optional[str] = None,
@@ -3278,6 +3323,14 @@ def _reviewer_max_tokens() -> int:
         log.warning("REVIEWER_MAX_TOKENS=%r is not positive — using %d",
                     raw, REVIEWER_MAX_TOKENS)
         return REVIEWER_MAX_TOKENS
+    if val > REVIEWER_MAX_TOKENS_CEILING:
+        # An upper bound, for the same reason the lower one exists: a typo that clears the
+        # reasoning budget by three orders of magnitude is not a fix, it is a bill. The
+        # ceiling is the largest context any model on this reviewer's providers exposes.
+        log.warning("REVIEWER_MAX_TOKENS=%r exceeds the ceiling %d — clamped (a cap this "
+                    "size cannot be what you meant, and the provider would reject or bill it)",
+                    raw, REVIEWER_MAX_TOKENS_CEILING)
+        return REVIEWER_MAX_TOKENS_CEILING
     return val
 
 
@@ -4731,7 +4784,7 @@ def _end_change(args: dict) -> CallToolResult:
     # The close being PERMITTED is the authorisation event. A CLEAN review is one
     # way to reach it, not the only one — so the receipt is written at the point
     # the gate stops objecting, whichever path got us there.
-    receipt_fail = _write_review_receipt(task_id, args)
+    receipt_fail = _write_review_receipt(task_id, args, state=lock)
 
     # Step 4: Release the lock
     _release_lock(args)
@@ -5645,9 +5698,16 @@ def _promote_issue_to_task(args: dict) -> CallToolResult:
         except Exception:
             detail = f"{description} (issue #{issue_event_id}: lookup failed)"
 
+    # Repo identity, resolved EXACTLY as _begin_change does (2026-10-14). Without it the
+    # lock names no repo, end_change refuses it ("no governed repo to measure complexity")
+    # and the cycle it creates can never be closed by the normal path — the tool that
+    # exists to hand an operator work instead handed them a dead end.
+    _snap_repo = _session_repo_path(args)
     state = {
         "task_id": task_id,
         "description": description,
+        "repo_slug": _derive_slug(args, _snap_repo),
+        "repo_path": str(_snap_repo or ""),
         "started_at": now_iso,
         "agent": os.environ.get("AGENT_NAME", "unknown"),
         "session_id": session_id,
@@ -5702,9 +5762,14 @@ def _promote_issue_to_task(args: dict) -> CallToolResult:
     return CallToolResult(content=[TextContent(
         type="text",
         text=(
-            f"📌 Issue promoted to task '{task_id}': {description}\\n"
-            f"  Lock created with TTL: {ttl}s{cycle_msg}\\n"
-            f"  Use end_change('{task_id}') when done."
+            f"📌 Issue promoted to task '{task_id}': {description}\n"
+            f"  Lock created with TTL: {ttl}s{cycle_msg}\n"
+            + ("" if _snap_repo else
+               "  ⚠️  NO repo identity resolved for this lock: end_change cannot close this\n"
+               "     cycle ('no governed repo to measure complexity'). Declare one\n"
+               "     (CORTEX_SESSION_REPO) or retire it with advance_task_state(\n"
+               "     new_state='cancelled').\n")
+            + f"  Use end_change('{task_id}') when done."
         )
     )])
 

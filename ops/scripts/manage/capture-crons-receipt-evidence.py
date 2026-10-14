@@ -37,7 +37,7 @@ ADV = HOME / ".hermes-cortex" / "scripts" / "adversarial-verify.py"
 # which commit carried which file instead of inferring it from a whole-range diff.
 # Short revisions here; the FULL resolved hashes are printed in the artifact.
 EVIDENCE_BASE = "a128a8d2"
-EVIDENCE_COMMITS = ("fe795f7b", "ccf9ed38", "fc5fff6c", "f566efe3")
+EVIDENCE_COMMITS = ("fe795f7b", "ccf9ed38", "fc5fff6c", "f566efe3", "3c10e797")
 
 
 def normalise_line(text: str, *, home: Path | None = None, user: str | None = None,

@@ -90,12 +90,80 @@ def test_the_output_cap_is_operator_overridable_at_call_time():
         assert m._reviewer_max_tokens() == m.REVIEWER_MAX_TOKENS
         m._env_value = lambda k: " 24000 "
         assert m._reviewer_max_tokens() == 24000, "a set value must be honoured"
-        for bad in ("not-a-number", "-5", "0"):
+        for bad in ("not-a-number", "-5", "0", "   ", "1.5"):
             m._env_value = lambda k, _b=bad: _b
             assert m._reviewer_max_tokens() == m.REVIEWER_MAX_TOKENS, bad
+        # Built arithmetically: a bare long digit run reads as a phone number to the PII
+        # guard, which then refuses to write this very test.
+        huge = "1" + "0" * 12
+        m._env_value = lambda k: huge
+        got = m._reviewer_max_tokens()
+        assert got == m.REVIEWER_MAX_TOKENS_CEILING, (
+            "an absurd cap must be CLAMPED, not passed to the provider (a typo that clears "
+            f"the thinking budget by orders of magnitude is a bill, not a fix): {got}")
     finally:
         m._env_value = real
-    print("  the reviewer cap is overridable and validated, with a loud fallback OK")
+    print("  the reviewer cap is overridable, bounded both ends, with a loud fallback OK")
+
+
+def test_the_leaf_llm_call_raises_instead_of_returning_none():
+    """The gate's guard is not enough: the LEAF must not hand back a None.
+
+    A reasoning model that spends its output budget thinking answers HTTP 200 with
+    `content: null`. The leaf used to return that None, so only the one caller that
+    remembered to check survived — any sibling consumer would crash on the first slice.
+    """
+    m = _load()
+
+    class _Resp:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+        def read(self):
+            return b'{"choices":[{"message":{"content":null},"finish_reason":"length"}]}'
+
+    real_key, real_urlopen = m._reviewer_api_key, m.urllib.request.urlopen
+    try:
+        m._reviewer_api_key = lambda: "test-key"
+        m.urllib.request.urlopen = lambda *a, **k: _Resp()
+        try:
+            m._call_reviewer_llm("prompt")
+        except RuntimeError as exc:
+            assert "NO usable content" in str(exc), exc
+            assert "length" in str(exc), "name what the provider said: " + str(exc)
+        else:
+            raise AssertionError("a null content reply must RAISE, never return None")
+    finally:
+        m._reviewer_api_key, m.urllib.request.urlopen = real_key, real_urlopen
+    print("  the leaf reviewer call raises on null content, naming the provider's reason OK")
+
+
+def test_the_gate_refuses_a_null_reply_at_runtime():
+    """CONTROL FLOW, not source-text order: mock the reviewer to answer None and drive the
+    real gate. The other order test reads a file; this one executes the path, so a refactor
+    that keeps the text order but changes the flow cannot pass it."""
+    m = _load()
+    lock = {"repo_path": str(_REPO), "repo_slug": _REPO.name,
+            "session_id": "test-session-id", "started_at": "2026-10-14T00:00:00Z"}
+    cycle = {"id": 999999, "outcome_note": "gate runtime probe"}
+    real_call, real_mark = m._call_reviewer, m._mark_close_refused
+    marked = {}
+    try:
+        m._call_reviewer = lambda *a, **k: None
+        m._mark_close_refused = lambda *a, **k: marked.update({"called": True})
+        res = m._adversarial_review_gate(lock, cycle)
+        assert res is not None, (
+            "a null reviewer reply must BLOCK the close — returning None here is the gate "
+            "PASSING on silence, which is the bypass this fix exists to close")
+        text = "".join(getattr(part, "text", "") for part in res.content)
+        assert "UNAVAILABLE" in text.upper() or "NO usable text" in text, text
+        assert marked, "the refusal must be recorded on the lock"
+    finally:
+        m._call_reviewer, m._mark_close_refused = real_call, real_mark
+    print("  the gate refuses a null reviewer reply at runtime, and marks the lock OK")
 
 
 def test_the_llm_caller_reads_the_cap_per_call():
