@@ -141,7 +141,8 @@ def notify_telegram(message: str, subject: str = ""):
 # and NO notify. The `Task:`/`TASK:` prefix form normalizes to TASK_REQUEST
 # before this check (poll_once does that).
 TASK_CREATING_SUBJECTS = ("EXEC", "UPDATE_REQUEST", "TASK_REQUEST",
-                          "PROPOSAL", "ISSUES", "IMPROVEMENTS")
+                          "PROPOSAL", "ISSUES", "IMPROVEMENTS",
+                          "STRANDED_SKILL_LAND")
 
 
 def _is_silent_subject(subject: str) -> bool:
@@ -184,7 +185,8 @@ def _should_skip_pickup_notify(subject) -> bool:
 # send-a599fb202e60, 2026-08-28).
 SUBJECT_PREFIX_NORMALIZATIONS = (("PROPOSAL:", "PROPOSAL"),
                                  ("ISSUES:", "ISSUES"),
-                                 ("IMPROVEMENTS:", "IMPROVEMENTS"))
+                                 ("IMPROVEMENTS:", "IMPROVEMENTS"),
+                                 ("STRANDED_SKILL_LAND", "STRANDED_SKILL_LAND"))
 
 
 def normalize_tracked_subject(subject: str) -> str:
@@ -1475,7 +1477,8 @@ def main():
       # ("Unknown subject 'PROPOSAL' from esther"), silently dropping a
       # legitimate fleet report. Treat the bare form exactly like the prefixed
       # one — leave it queued for the orchestrator, notify, never error.
-      _bare_report_subjects = ("PROPOSAL", "ISSUES", "IMPROVEMENTS")
+      _bare_report_subjects = ("PROPOSAL", "ISSUES", "IMPROVEMENTS",
+                               "STRANDED_SKILL_LAND")
       if subject.startswith(_issue_prefixes) or subject in _bare_report_subjects:
         log(f"📋 Issue report '{subject}' from {body.get('from', '?')} — left in queue for orchestrator")
         notify_telegram(

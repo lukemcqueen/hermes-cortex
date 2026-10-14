@@ -8,7 +8,7 @@ platforms: [linux, macos]
 metadata:
   hermes:
     tags: [tasks, task-model-v3, orchestrator, worker, claim, verify, review, board]
-    related_skills: [orch-backlog-driver, postgres-schema-design, loop-governance, change-test-loop]
+    related_skills: [orch-bus-worker, postgres-schema-design, loop-governance, change-test-loop]
 ---
 
 # Task Queue Workflow — Task Model v3 (orchestrator-intelligence / worker-execution)

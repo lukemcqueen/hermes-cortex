@@ -1,5 +1,5 @@
 ---
-name: orch-backlog-driver
+name: orch-bus-worker
 version: 1.0.0
 category: devops
 description: >-
@@ -19,7 +19,7 @@ metadata:
 
 ## When to Use
 
-- This is the **orchestrator's daily work driver** (cron `orch-backlog-driver`,
+- This is the **orchestrator's daily work driver** (cron `orch-bus-worker`,
   LLM-driven, ~hourly). It answers: *"What is the most important pending task,
   and can I make progress on it right now?"*
 - Also load it when Luke asks "what's outstanding?" or "work the backlog".
