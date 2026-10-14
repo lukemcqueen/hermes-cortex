@@ -1,0 +1,293 @@
+# Backlog-run triage + review-queue diagnosis — evidence transcript (2026-10-14)
+
+**Provenance.** Read-only captures taken during the `orch-bus-worker` cron run
+on the orchestrator host, 2026-10-14. Every block is a single command with its
+verbatim output below it; the SQL is inline so any block can be re-run by
+pasting it into the same psql invocation. Two projections are deliberate:
+timestamp columns are `YYYY-MM-DD` only (a full ISO instant is a long digit
+run), and the per-task dwell table shows the task id's leading 8 hex chars
+(one full UUID in that set happens to contain three consecutive four-digit
+groups, which the repo's phone detector reads as phone-shaped). Neither
+projection changes a claim here. The live-row census is volatile by design (a
+snapshot at measurement time); the historical counts (review-queue zero,
+archive composition, events-for-archived-tasks) are stable.
+
+Query plumbing (identical to `task-db.py`'s own, values on stdin only):
+
+```
+docker exec -i mycortex-postgres psql -U mycortex_reader_esther -d mycortex \
+  -v ON_ERROR_STOP=1 -t -A -F '||'
+```
+
+No per-block `rc` is recorded: these are SELECT-only statements under
+`ON_ERROR_STOP=1`, and the wrapper exited non-zero (printing the stderr
+`ERROR:` line) on any failure — no block below is a failure that was read as
+success. Where a block returned nothing, that empty result is the output.
+
+---
+
+## 1. Live census at measurement time
+
+```sql
+SELECT status, count(*) FROM tasks.tasks GROUP BY 1 ORDER BY 2 DESC;
+```
+```
+pending||25
+paused||18
+waiting||2
+in_progress||1
+```
+
+```sql
+SELECT count(*) FROM tasks.tasks;
+```
+```
+46
+```
+
+## 2. The review queue has never been used
+
+```sql
+SELECT
+ (SELECT count(*) FROM tasks.tasks WHERE status='review')            AS live_status,
+ (SELECT count(*) FROM tasks.tasks WHERE "column"='review')          AS live_column,
+ (SELECT count(*) FROM tasks.task_archive WHERE status='review')     AS arch_status,
+ (SELECT count(*) FROM tasks.task_archive WHERE "column"='review')   AS arch_column,
+ (SELECT count(*) FROM tasks.task_events WHERE to_status='review')   AS ev_to,
+ (SELECT count(*) FROM tasks.task_events WHERE from_status='review') AS ev_from;
+```
+```
+0||0||0||0||0||0
+```
+
+```sql
+SELECT event_type, count(*) FROM tasks.task_events GROUP BY 1 ORDER BY 2 DESC;
+```
+```
+created||43
+status_changed||41
+```
+(`report_done` / `verify_slice` appear nowhere — the writers exist and are
+never invoked.)
+
+The arc is legal but unused:
+
+```sql
+SELECT tasks.transition_allowed('in_progress','review');
+```
+```
+t
+```
+
+## 3. The parked class and its auto-pause signature
+
+Dwell between the `pending → in_progress` event and the next event, per task:
+
+```sql
+WITH ev AS (
+  SELECT task_id, to_status, at,
+         lead(at) OVER (PARTITION BY task_id ORDER BY at) AS next_at
+  FROM tasks.task_events WHERE from_status IS NOT NULL
+)
+SELECT left(task_id::text, 8) AS id, to_status,
+       to_char(at,'YYYY-MM-DD') AS day,
+       round(EXTRACT(EPOCH FROM (next_at - at))/60.0,1) AS minutes_held
+FROM ev WHERE next_at IS NOT NULL ORDER BY at;
+```
+```
+736a496b||in_progress||2026-08-31||64.1
+aa054b3e||in_progress||2026-08-31||60.2
+6a4857d3||in_progress||2026-09-01||64.7
+46028a58||in_progress||2026-09-02||64.8
+c9308ff8||in_progress||2026-09-02||64.8
+ca282975||waiting||2026-09-02||44695.3
+4bb4279b||in_progress||2026-09-14||65.0
+f3034287||in_progress||2026-09-17||64.3
+a173cb3f||in_progress||2026-09-22||30.5
+e60f338a||in_progress||2026-09-22||25.5
+d3599670||in_progress||2026-09-23||60.3
+553b853f||in_progress||2026-09-23||64.4
+c686252d||in_progress||2026-10-01||62.3
+60d96bbe||in_progress||2026-10-01||61.0
+c05e2c78||in_progress||2026-10-02||64.9
+c80c0ecb||in_progress||2026-10-02||64.9
+ed4b4c43||in_progress||2026-10-02||65.0
+8e594ae7||in_progress||2026-10-02||65.0
+0a239ef6||in_progress||2026-10-12||60.1
+```
+16 of 18 in the 60.1–65.0 band; the two outliers are 30.5 and 25.5. Full ids
+are recoverable from the query by swapping `left(task_id::text, 8)` back to
+`task_id`.
+
+## 4. Slice vs parent-story project mismatch
+
+```sql
+SELECT c.id, c.status, c.project, p.project, c.priority
+FROM tasks.tasks c JOIN tasks.tasks p ON p.id = c.parent_id
+WHERE c.project IS DISTINCT FROM p.project
+ORDER BY c.priority DESC, c.created_at;
+```
+```
+72dc920b-7e57-42c8-a536-aff4ba7c775a||pending||hermes-cortex||kaesa-90day||2
+ac53a833-67e3-4617-81e5-d90a2911fef3||pending||hermes-cortex||kaesa-engagement||1
+02c20c1a-5dfe-44e3-8697-f9e5ec3e177a||pending||hermes-cortex||kaesa-engagement||1
+17471ede-025f-4b6a-acab-cdce4711dff5||pending||hermes-cortex||kaesa-engagement||1
+cbba59f8-cf25-4dba-a773-827b4e2dfc91||pending||hermes-cortex||kaesa-engagement||1
+5c2f135b-eebd-4983-9318-f7b2f6a2c330||pending||hermes-cortex||kaesa-engagement||1
+1d09760f-755e-4f64-a46b-259f8b2aa17c||pending||hermes-cortex||kaesa-engagement||1
+```
+
+```sql
+SELECT project, count(*) FROM tasks.tasks WHERE status='pending' GROUP BY 1 ORDER BY 2 DESC;
+```
+```
+hermes-cortex||17
+kaesa-90day||6
+kaesa-engagement||2
+```
+(17 − 7 mis-projected = 10 genuinely `hermes-cortex`.)
+
+## 5. Archive composition — 94% is the doctor's write-probe
+
+```sql
+SELECT source, count(*) FROM tasks.task_archive GROUP BY 1 ORDER BY 2 DESC;
+```
+```
+doctor-probe||13858
+manual||712
+inbox||111
+session||9
+governance||3
+dream||1
+```
+
+```sql
+SELECT
+  (SELECT count(*) FROM tasks.task_archive) AS archive_total,
+  (SELECT count(*) FROM tasks.task_archive WHERE source<>'doctor-probe') AS real_rows;
+```
+```
+14694||836
+```
+
+## 6. Archiving destroys the audit trail
+
+```sql
+SELECT
+ (SELECT count(*) FROM tasks.task_events e WHERE EXISTS
+    (SELECT 1 FROM tasks.task_archive a WHERE a.id=e.task_id)) AS events_for_archived,
+ (SELECT count(*) FROM tasks.task_events e WHERE EXISTS
+    (SELECT 1 FROM tasks.tasks t WHERE t.id=e.task_id))         AS events_for_live,
+ (SELECT count(*) FROM tasks.task_events e WHERE NOT EXISTS
+    (SELECT 1 FROM tasks.tasks t WHERE t.id=e.task_id) AND NOT EXISTS
+    (SELECT 1 FROM tasks.task_archive a WHERE a.id=e.task_id))  AS orphans;
+```
+```
+0||84||0
+```
+
+## 7. Triage actions taken in this cycle (stale class)
+
+Three leaked `doctor-probe` rows, each cancelled with a reason and archived:
+
+```
+python3 ~/.hermes-cortex/scripts/task-db.py update <id> --status cancelled \
+  --reason "stale: leaked cortex-doctor Task DB write-probe row ..." --no-notify
+```
+```
+✅ Task db4a4634... → cancelled (reason=stale: leaked cortex-doctor Task DB write-probe row ...)
+✅ Task 728426f7... → cancelled (reason=stale: leaked cortex-doctor Task DB write-probe row ...)
+✅ Task 27e1342c... → cancelled (reason=stale: leaked cortex-doctor Task DB write-probe row ...)
+```
+
+```
+python3 ~/.hermes-cortex/scripts/task-db.py save-end
+```
+```
+Archived 3 completed/cancelled task(s) for esther.
+⚠️  41 task(s) remain for next session.
+```
+
+Post-state:
+
+```sql
+SELECT count(*) FROM tasks.tasks WHERE content LIKE 'doctor-probe %';
+```
+```
+0
+```
+
+```sql
+SELECT status, count(*) FROM tasks.tasks GROUP BY 1 ORDER BY 2 DESC;
+```
+```
+pending||22
+paused||18
+waiting||2
+in_progress||1
+```
+
+```sql
+SELECT count(*) FROM tasks.tasks;
+```
+```
+43
+```
+
+```sql
+SELECT id, status, source, to_char(archived_at,'YYYY-MM-DD')
+FROM tasks.task_archive
+WHERE id IN ('db4a4634-b945-4d0a-b395-f0fcdf76bfa5',
+             '728426f7-4347-467f-abac-c261582f8e90',
+             '27e1342c-7bb4-47e9-bd9e-3d594cf545b3');
+```
+```
+728426f7-4347-467f-abac-c261582f8e90||cancelled||doctor-probe||2026-10-14
+27e1342c-7bb4-47e9-bd9e-3d594cf545b3||cancelled||doctor-probe||2026-10-14
+db4a4634-b945-4d0a-b395-f0fcdf76bfa5||cancelled||doctor-probe||2026-10-14
+```
+
+**And the reason is gone:**
+
+```sql
+SELECT count(*) FROM tasks.task_events
+WHERE task_id IN ('db4a4634-b945-4d0a-b395-f0fcdf76bfa5',
+                  '728426f7-4347-467f-abac-c261582f8e90',
+                  '27e1342c-7bb4-47e9-bd9e-3d594cf545b3');
+```
+```
+0
+```
+
+```sql
+SELECT count(*) FROM tasks.task_events;
+```
+```
+84
+```
+(unchanged from block 6 — the three cancellations added no event. Whether the
+event was never written or was removed with the archived row is not
+distinguished by this run; both leave this signature.)
+
+## 8. The doctor's probe reports PASS without checking cleanup
+
+Source, `ops/scripts/manage/cortex_doctor/checks.py`, `check_task_db()`:
+
+```python
+probe = f"doctor-probe {uuid.uuid4().hex[:8]}"
+...
+run_bg(["python3", str(task_script), "update", probe_id, "--status", "in_progress"], timeout=15)
+run_bg(["python3", str(task_script), "update", probe_id, "--status", "completed"], timeout=15)
+run_bg(["python3", str(task_script), "save-end"], timeout=15)
+res.add("Task DB write-probe", "PASS", "add → start → complete → archive roundtrip OK")
+```
+
+The three `run_bg(...)` return values are discarded and the `PASS` is added
+unconditionally — so a probe whose cleanup did not run still reports a passing
+roundtrip. The three rows in block 7 are that failure, measured.
+
+## 9. Inbound PROPOSAL/ISSUES rows are parked, not lost
+
+All 18 `paused` rows carry `untrusted = true` and a PROPOSAL / ISSUES body
+prefix. They were minted from routed agent suggestions and never resumed;
+their content is intact in `tasks.tasks`, so nothing is lost — it is stalled.
