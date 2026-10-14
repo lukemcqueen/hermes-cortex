@@ -1,0 +1,24 @@
+repo: ~/hermes-cortex
+deploy manifest: ~/.hermes-cortex/deploy-manifest.tsv
+deployed copy: ~/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py
+
+--- 1. repo source == deployed copy (deploy banner stripped on both sides)
+identical modulo the deploy banner: True
+rc=0
+
+--- 2. the deployed file carries the release-path closer
+1
+PRESENT in the deployed copy
+
+--- 3. the RUNNING MCP server started AFTER that revision was written
+deployed file mtime : 1791959615 (2026-10-14 15:33:35 KST)
+pid 1046261 started: 1791959920 (2026-10-14 15:38:40 KST), etime=65s
+PASS  pid 1046261 started at/after the deployed revision — this process loaded it
+
+--- 4. git state (informational)
+d41873922f22568f75eb61b86b2fb88729f48de8
+d41873922f22568f75eb61b86b2fb88729f48de8
+
+=== VERDICT ===
+failed checks: 0
+LIVE SERVER HOLDS THE DEPLOYED REVISION (rc=0)
