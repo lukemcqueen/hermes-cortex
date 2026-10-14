@@ -35,6 +35,7 @@ import os
 import sqlite3
 import subprocess
 import sys
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -145,16 +146,35 @@ def _close_pending_cycle(task_id: str) -> bool:
             conn.close()
 
 
-def purge() -> int:
-    """Remove stale lock files and old session markers. Returns count removed."""
-    removed = 0
+@dataclass
+class SweepResult:
+    """What a sweep did, INCLUDING what it deliberately did not do.
+
+    A bare count cannot express the two outcomes that need an operator (2026-10-14 review): locks
+    kept because their cycle could not be resolved, and lock files too corrupt to age at all. Both
+    are invisible in "removed=0", and silence on a broken store is how a repairable state becomes a
+    permanent one.
+    """
+    removed: int = 0
+    kept_busy: int = 0          # kept: the lock's agent has committed since (a busy session)
+    kept_unresolved: int = 0    # kept: its PENDING cycle could not be resolved (fail closed)
+    corrupt: list = field(default_factory=list)   # unparseable AND older than 2x TTL
+
+
+def sweep() -> SweepResult:
+    """One sweep: remove what is provably dead, keep what cannot be safely removed."""
+    result = SweepResult()
     if not STATE_DIR.exists():
-        return 0
+        return result
 
     # Phase 1: Remove stale real files
     # P1-A: NEVER delete unparseable files — an unparseable lock is a lock
     # being written right now (non-atomic write). Deleting it steals another
     # session's fresh lock. Only parseable-and-stale locks are removed.
+    # …but an unparseable file whose mtime is well past the TTL is not a race any more, it is a
+    # corrupted artifact: it can never be aged, so it and any cycle behind it sit forever. Those
+    # are COLLECTED for the operator (a distinct, loud outcome) rather than silently skipped
+    # forever (2026-10-14 review, finding 7).
     for lock_file in sorted(STATE_DIR.glob(".governance-*.json")):
         try:
             if lock_file.is_symlink():
@@ -167,26 +187,32 @@ def purge() -> int:
             if _is_lock_stale(state, mtime):
                 # (1) A stale-LOOKING lock is not a dead session — see _agent_worked_since.
                 if _agent_worked_since(state):
-                    print(f"keeping stale-looking lock {lock_file.name}: its agent has committed "
-                          f"since the heartbeat — a busy session, not a dead one")
+                    result.kept_busy += 1
                     continue
                 # (2) Never remove the lock of a task whose PENDING cycle cannot be resolved
                 # (#125): the removal is what turns an abandoned session into a leak that blocks
                 # every push on this host. Fail closed — keep the lock, retry next sweep.
                 task_id = (state.get("task_id") or "").strip()
                 if task_id and not _close_pending_cycle(task_id):
-                    print(f"keeping stale lock {lock_file.name}: the PENDING cycle for task "
-                          f"'{task_id}' could not be resolved — removing the lock would leave a "
-                          f"lockless PENDING cycle, which fails the doctor for every agent here")
+                    result.kept_unresolved += 1
                     continue
                 lock_file.unlink()
-                removed += 1
+                result.removed += 1
         except (json.JSONDecodeError, OSError, ValueError):
-            print(f"skipping unparseable lock file (mid-write?): {lock_file.name}", file=sys.stderr)
+            try:
+                age = datetime.now().timestamp() - lock_file.stat().st_mtime
+            except OSError:
+                age = 0
+            if age > 2 * DEFAULT_TTL:
+                result.corrupt.append(f"{lock_file.name} (unparseable, untouched for "
+                                      f"{int(age / 3600)}h)")
+            else:
+                print(f"skipping unparseable lock file (mid-write?): {lock_file.name}",
+                      file=sys.stderr)
         try:
             if lock_file.is_symlink() and not lock_file.exists():
                 lock_file.unlink()
-                removed += 1
+                result.removed += 1
         except OSError:
             print("expected — silently handled", file=sys.stderr)
 
@@ -199,19 +225,45 @@ def purge() -> int:
             age = (datetime.now().timestamp() - mtime)
             if age > MARKER_MAX_AGE:  # 24 hours
                 marker.unlink()
-                removed += 1
+                result.removed += 1
         except OSError:
             print("expected — silently handled", file=sys.stderr)
 
-    return removed
+    return result
+
+
+def purge() -> int:
+    """Backwards-compatible count-only view of one sweep. Returns count removed."""
+    return sweep().removed
 
 
 def main() -> int:
-    """Entrypoint. Silent when clean — a no_agent cron with empty stdout delivers nothing."""
-    count = purge()
-    if count > 0:
-        print(f"🧹 Purged {count} stale governance lock file(s)")
-    return 0
+    """Entrypoint. Silent when clean — a no_agent cron with empty stdout delivers nothing.
+
+    Exit 2 when the sweep could not do its job for a reason a human must act on (an unresolvable
+    store, or lock files too corrupt to age). A cron that only ever exits 0 turns a broken
+    governance store into background noise, which is exactly how a repairable host becomes a
+    permanent one.
+    """
+    result = sweep()
+    if result.removed:
+        print(f"🧹 Purged {result.removed} stale governance lock file(s)")
+    if result.kept_busy:
+        print(f"⏳ Kept {result.kept_busy} stale-looking lock(s): their agents have committed since "
+              f"the heartbeat — busy sessions, not dead ones")
+    if result.corrupt:
+        print("⚠️ CORRUPT governance lock file(s) — unparseable and untouched for more than "
+              "2x TTL, so they can never be aged and any cycle behind them is stuck. "
+              "OPERATOR ACTION: inspect and remove, then re-run the doctor:")
+        for item in result.corrupt:
+            print(f"     {item}")
+    if result.kept_unresolved:
+        print(f"❌ Kept {result.kept_unresolved} stale lock(s) whose PENDING cycles could not be "
+              f"resolved — the governance store is unreadable or unwritable. Removing them would "
+              f"leave lockless PENDING cycles, which fail the doctor for EVERY agent on this host. "
+              f"OPERATOR ACTION: repair the store, then re-run this sweep.")
+        return 2
+    return 2 if result.corrupt else 0
 
 
 if __name__ == "__main__":

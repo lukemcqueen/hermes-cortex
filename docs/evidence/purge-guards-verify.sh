@@ -17,9 +17,10 @@ exec > >(sed "s|$HOME|~|g") 2>&1
 
 step() { echo; echo "--- $*"; }
 
-step "1. contract tests: both guards, both directions, plus parity with the MCP"
+step "1. contract tests: both guards, both directions, behavioural closer parity, escalation"
 out=$(bash tests/run-tests.sh tests/test_purge_resolves_orphaned_cycles.py \
-        tests/test_liveness_anywhere.py tests/test_purge_script_import_safety.py 2>&1); rc=$?
+        tests/test_liveness_anywhere.py tests/test_purge_script_import_safety.py \
+        tests/test_closer_parity_and_escalation.py 2>&1); rc=$?
 printf '%s\n' "$out" | grep -E "passed|failed" | tail -2
 [ "$rc" -eq 0 ] && echo "PASS  rc=0" || { echo "FAIL  rc=$rc"; FAILED=1; }
 
@@ -101,7 +102,7 @@ rm -rf "$T" "$T2"
 step "4. syntax + the A4 gate on every changed source file"
 python3 -m py_compile "$SCRIPT" mcp-servers/loop-gov-mcp.py && echo "COMPILE_OK" || FAILED=1
 for f in "$SCRIPT" mcp-servers/loop-gov-mcp.py tests/test_purge_resolves_orphaned_cycles.py \
-         tests/test_liveness_anywhere.py; do
+         tests/test_liveness_anywhere.py tests/test_closer_parity_and_escalation.py; do
   v=$(python3 ops/scripts/quality/adversarial-verify.py --file "$f" --level A4 --gate 2>&1); vrc=$?
   printf '   %s rc=%s : %s\n' "$f" "$vrc" "$(printf '%s\n' "$v" | tail -1)"
   [ "$vrc" -eq 0 ] || FAILED=1

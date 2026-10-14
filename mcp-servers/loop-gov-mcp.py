@@ -682,6 +682,16 @@ def _session_worked_anywhere_since(state: dict, since_iso: str) -> bool:
     allows at most one renewal per acquisition, so an agent that keeps committing elsewhere
     indefinitely cannot hold a lock forever.
 
+    THE TRADE-OFF, STATED PLAINLY (2026-10-14 review, finding 3). Authorship is not identity: a cron
+    or daemon committing AS this agent, or an operator using `--author=`, is indistinguishable from
+    the session itself and will read as proof of life for its lock. So the failure mode is a lock
+    kept alive for a session that is gone — bounded to ONE renewal past the TTL, after which it ages
+    out like any other, which is why the budget is the backstop that makes this acceptable rather
+    than the widening being harmless. A stronger signal would be a per-session token the enforcer
+    injects (unforgeable, unlike a git author); until then, a same-remote check was considered and
+    rejected — it would re-narrow the ordinary case (#124's whole point) because a session doing a
+    long stretch in another project has a different remote by definition.
+
     Never raises: a failure here must not decide a lock's fate.
     """
     if not since_iso:
@@ -737,6 +747,13 @@ def _refresh_lock_heartbeat(state: dict) -> str:
 
     `_write_lock` prefers the session_id carried in the STATE and only falls back to the ambient args
     when the state has none, so this writes the lock being aged and cannot land on a peer's.
+
+    The budget is PER ACQUISITION, and that dependency is load-bearing (2026-10-14 review, which
+    correctly refused to take it on trust): `begin_change` builds a FRESH lock state dict, so a new
+    acquisition carries no `liveness_renewals` and starts the budget at 0. Without that, a
+    release/re-acquire cycle by the same author would leave the counter at its ceiling forever and
+    the bound would be a one-time gate rather than a per-session limit. Asserted in
+    tests/test_liveness_anywhere.py.
     """
     try:
         with _STATE_LOCK:
@@ -846,17 +863,51 @@ def _close_cycle_unscored(cycle_id: int | None, unscored_reason: str, outcome_no
     matter: the caller must still be able to release its lock (a dead DB used to leave the
     session dead-ended, which is the bug being fixed), and the blocked branch used to close
     its connection only on the happy path, leaking it whenever the UPDATE raised.
+
+    RETURN VALUE: ``True`` means "this task now has nothing PENDING" — the contract the callers
+    need, not "an UPDATE matched a row". ``False`` means either nothing was pending (fine, nothing
+    to do) or the store could not be written. Do not read a ``False`` as a failed release and do
+    not retry on it.
+
+    THE DISPOSITION WHEN THE STORE IS UNREADABLE IS DELIBERATELY NOT THE SAME AS THE SWEEP'S
+    (2026-10-14 review, finding on caller integration). This function's callers RELEASE the lock
+    even on failure: a live session must not be dead-ended by a broken store (that was the original
+    bug — no release, no path forward, ``force=True`` the only exit), so the leak this leaves is
+    repaired by the resolver, by ``reclaim_dead_locks``, or by the >24h auto-resolve, and the
+    failure is logged loudly. The standalone sweep goes the other way — it KEEPS the lock — because
+    nothing is waiting on it: there, a stale lock on disk costs nothing while the lockless PENDING
+    cycle it would create blocks every push on the host. Same failure, opposite dispositions, and
+    the reason is what each caller's alternative costs.
     """
     conn = None
     try:
         conn = _db()
         if not cycle_id and task_id:
-            row = conn.execute(
-                "SELECT id FROM loop_cycles WHERE task_id=? AND decision='PENDING' "
-                "AND user_overrode IS NULL ORDER BY id DESC LIMIT 1",
-                (task_id,),
-            ).fetchone()
-            cycle_id = row[0] if row else None
+            # Close EVERY still-PENDING, non-overridden row for the task, not just the newest.
+            # A DeepSeek Pro review (2026-10-14) found the divergence the earlier token-parity
+            # test could not see: this branch selected ONE row (ORDER BY id DESC LIMIT 1) while the
+            # sweep's closer resolves them all — so a task carrying two PENDING rows would keep
+            # one behind, and THAT is the doctor leak this function exists to remove. Resolving by
+            # task (when no explicit cycle id is given) means "leave this task with nothing
+            # pending", which is what every caller here means.
+            cur = conn.execute(
+                "UPDATE loop_cycles SET decision='MOVE_ON', unscored_reason=?, outcome_note=? "
+                "WHERE task_id=? AND decision='PENDING' AND user_overrode IS NULL",
+                (unscored_reason, outcome_note, task_id),
+            )
+            conn.commit()
+            closed = cur.rowcount
+            left = conn.execute(
+                "SELECT COUNT(*) FROM loop_cycles WHERE task_id=? AND decision='PENDING'",
+                (task_id,)).fetchone()[0]
+            if closed == 0:
+                log.warning("nothing to close unscored for task_id=%r: no PENDING, non-overridden "
+                            "row matched", task_id)
+            if left:
+                log.warning("task_id=%r still has %s PENDING cycle(s) after closing %s unscored — "
+                            "the gap between them is a doctor leak", task_id, left, closed)
+                return False
+            return closed > 0
         if not cycle_id:
             log.warning("nothing to close unscored: no PENDING cycle found (task_id=%r)",
                         task_id)

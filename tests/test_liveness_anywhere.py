@@ -160,3 +160,39 @@ def test_the_renewal_budget_still_bounds_the_rescue():
             "past the renewal budget a commit elsewhere must no longer keep the lock alive — "
             "otherwise an agent (or a cron committing as it) holds a lock forever"
         )
+
+
+def test_a_new_acquisition_starts_the_renewal_budget_over():
+    """The budget is PER ACQUISITION — a claim the review refused to take on trust.
+
+    `begin_change` builds a FRESH lock state dict, so a release/re-acquire by the same author gets
+    a full budget again. If that were false the bound would be a one-time gate and an agent could
+    keep a lock forever; this asserts the reset the docstring depends on.
+    """
+    mod = _load()
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp_path = Path(tmp)
+        home = tmp_path / "home"
+        own = _repo(home / "own-repo", "someone-else")
+        _repo(home / "other-repo", "locked-agent")
+        state_dir = tmp_path / "state"
+        state_dir.mkdir()
+        mod.HOME = home
+        mod.GOVERNANCE_STATE_DIR = state_dir
+        mod.LOOP_DB = tmp_path / "loop-governance.db"
+        stale_hb = _iso(120)
+        first = {"session_id": "acq-1", "task_id": "t", "agent": "locked-agent",
+                 "status": "executing", "repo_path": str(own), "repo_slug": "own-repo",
+                 "started_at": stale_hb, "heartbeat_at": stale_hb, "ttl_seconds": 3600}
+        assert mod._is_lock_stale(first) is False
+        assert first["liveness_renewals"] == 1, "first acquisition: one renewal used"
+
+        # A NEW acquisition = a new lock state dict, exactly as begin_change builds one.
+        second = {"session_id": "acq-2", "task_id": "t", "agent": "locked-agent",
+                  "status": "executing", "repo_path": str(own), "repo_slug": "own-repo",
+                  "started_at": stale_hb, "heartbeat_at": stale_hb, "ttl_seconds": 3600}
+        assert "liveness_renewals" not in second, "a fresh acquisition carries no budget state"
+        assert mod._is_lock_stale(second) is False, (
+            "a new acquisition must get a full budget — the bound is per acquisition, not per host"
+        )
+        assert second["liveness_renewals"] == 1

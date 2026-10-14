@@ -1,20 +1,20 @@
 
---- 1. contract tests: both guards, both directions, plus parity with the MCP
-============================== 18 passed in 3.10s ==============================
+--- 1. contract tests: both guards, both directions, behavioural closer parity, escalation
+============================== 24 passed in 3.96s ==============================
 PASS  rc=0
 
 --- 2. the SHIPPED CLI on a throwaway tree — three locks, three different correct outcomes
    rc=0
-   keeping stale-looking lock .governance-task-c.json: its agent has committed since the heartbeat — a busy session, not a dead one
    🧹 Purged 2 stale governance lock file(s)
+   ⏳ Kept 1 stale-looking lock(s): their agents have committed since the heartbeat — busy sessions, not dead ones
    task-a lock removed=True cycle=MOVE_ON  (must be True / MOVE_ON)
    task-b lock removed=True cycle=MOVE_ON  (must be True / MOVE_ON)
    task-c lock kept=True cycle=PENDING     (must be True / PENDING: busy agent)
 PASS  the sweep resolved what it orphaned, kept the busy session's lock
 
 --- 3. the FAIL-CLOSED direction: no store, so the lock must be KEPT
-   cannot resolve cycles: no governance store at ~/.hermes/cache/scratch/tmp.tglBvDtIiE/.hermes-cortex/data/loop-governance.db
-   keeping stale lock .governance-nostore.json: the PENDING cycle for task 'nostore' could not be resolved — removing the lock would leave a lockless PENDING cycle, which fails the doctor for every agent here
+   cannot resolve cycles: no governance store at ~/.hermes/cache/scratch/tmp.ob0Cirg0Rz/.hermes-cortex/data/loop-governance.db
+   ❌ Kept 1 stale lock(s) whose PENDING cycles could not be resolved — the governance store is unreadable or unwritable. Removing them would leave lockless PENDING cycles, which fail the doctor for EVERY agent on this host. OPERATOR ACTION: repair the store, then re-run this sweep.
 PASS  the lock was kept (a lockless PENDING cycle would block every push here)
 
 --- 4. syntax + the A4 gate on every changed source file
@@ -23,5 +23,6 @@ COMPILE_OK
    mcp-servers/loop-gov-mcp.py rc=0 : ✅ GATE_PASSED — no critical/high findings
    tests/test_purge_resolves_orphaned_cycles.py rc=0 : ✅ GATE_PASSED — no critical/high findings
    tests/test_liveness_anywhere.py rc=0 : ✅ GATE_PASSED — no critical/high findings
+   tests/test_closer_parity_and_escalation.py rc=0 : ✅ GATE_PASSED — no critical/high findings
 
 ALL CLAIMS RE-VERIFIED (rc=0)

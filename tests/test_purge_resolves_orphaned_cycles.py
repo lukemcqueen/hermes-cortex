@@ -187,7 +187,13 @@ def test_the_sweep_removes_a_lock_whose_agent_committed_only_before_the_heartbea
 
 
 def test_the_rescue_and_the_closer_match_the_fleet_implementations():
-    """Parity: two copies of a rule drift. Assert the SAME tokens on both sides."""
+    """DRIFT SMOKE TEST — tokens only, and deliberately not the real parity check.
+
+    A DeepSeek Pro review (2026-10-14) pointed out that token comparison is false comfort: the two
+    closers already disagreed in BEHAVIOUR (one resolved a single PENDING row per task, the other
+    resolved them all) while agreeing on every token compared here. That behavioural parity is now
+    pinned in tests/test_closer_parity_and_escalation.py, which drives both implementations against
+    the same fixtures. This test stays only to catch a wholesale rewrite of either query cheaply."""
     script = SCRIPT.read_text(encoding="utf-8")
     mcp = MOD.read_text(encoding="utf-8")
     # the closer: same guard, same target decision, same two fact columns
