@@ -118,7 +118,12 @@ docker exec -i mycortex-postgres psql -U mycortex_reader_<profile> -d mycortex \
 - **Live work just untouched** (in_progress with an assignee on an active
   workstream, stale 1–3 weeks) → poke/re-claim the owner, never cancel their work.
 - **Sequential backlog** (slices gated on a prerequisite phase completing) →
-  normal backlog, not cruft.
+  normal backlog, not cruft. This binds the WORKER too: before claiming a slice, check that its
+  inputs EXIST — if every prerequisite slice is still `pending`, the deliverable can only be
+  invented, so `unclaim` with the gap named and let the queue advance in order. Do not author the
+  artifact from imagination to look productive (that is fabrication), and do not `cancel` a
+  client-facing deliverable to clear your board (the owner's call, and it destroys real work):
+  release the claim and name the prerequisite that unblocks it.
 - **Exact duplicates** (two slices describing the same deliverable) → the only
   safe dedupe: keep the fuller plan, cancel the other, with explicit go.
 - **Scope-crossing work — CANCEL, don't improvise** (standing Luke rule). A

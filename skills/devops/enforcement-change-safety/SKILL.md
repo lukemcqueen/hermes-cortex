@@ -1231,6 +1231,16 @@ believes governance covers the filesystem.
   same-named projects must not share authority, a scoped record must still cover its own
   repo, and the skipped count must appear in BOTH branches.
 
+- **The gate's ADVERTISED contract is part of the enforcement surface — pin it to the behaviour.**
+  The prose every caller reads (a tool `description`, a `--help` line, a block message) is what an
+  outside harness author codes against, and it is written somewhere other than the rule it
+  describes, so it drifts silently: a predicate narrowed to match on the RESOLVED path went on
+  advertising a name-match fallback for a full cycle after the code stopped honouring it, which
+  makes the gate read as MORE permissive than it is — the direction callers rely on. Re-read the
+  description in the same change that changes the rule, and pin the pair with a test that parses
+  the registration out of the source and asserts the description cannot advertise a removed
+  behaviour (mechanism in `mcp-server-building` §10).
+
 Worked example, including the block-capable `tool_call` hook shape: the `pi-coding-agent`
 skill's write-gate section.
 

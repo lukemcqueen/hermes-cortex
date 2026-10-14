@@ -307,7 +307,10 @@ Enforced at 3 layers: pre-commit hook (static gate), enforcer (blocks commit unt
       from a wider set than the diff beside it is a contradiction a reviewer will
       (correctly) read as fabrication — cite the range you actually show. **Counts are MEASURED
       in the artifact, never recalled**: a line/file total must be the one the artifact's own
-      `wc -l` / `grep -c` printed, at the revision it cites. **And name the comparison's exact
+      `wc -l` / `grep -c` printed, at the revision it cites — and NEVER a count read off
+      `git show --stat`: it TRUNCATES long paths behind a leading `...`, so a file list taken from
+      it is silently SHORT (four paths shown for eight files changed) while looking complete. Use
+      `--name-only` whenever the FILE SET is the claim; `--stat` is for shape only. **And name the comparison's exact
       strength** — "identical modulo the deploy banner (N leading lines stripped)", never
       "byte-identical" — because an overclaim the check does not support reads as fabrication
       even when the check passing was real. **And state the property your artifact
