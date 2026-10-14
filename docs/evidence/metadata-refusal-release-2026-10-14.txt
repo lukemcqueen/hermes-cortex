@@ -1,0 +1,69 @@
+PROVENANCE — what produced this file, and which revisions it compares.
+Captured 2026-10-14 on the esther host by the agent that made the change, in the
+same cycle, by running each command and writing its output here. NOTHING is
+repaired by this capture: it is read-only (no --apply, no writes).
+Range under review: base 92cedd1d -> tip 7d4e895c (the fix), plus this evidence
+commit on top. Where a command is piped into sed for path normalisation the rc
+shown is the COMMAND'S OWN status (PIPESTATUS[0]), never the pipe's last stage.
+Host paths are normalised to ~ at the generator.
+
+== [1] adversarial-verify A4, gate mode — mcp-servers/loop-gov-mcp.py ==
+$ python3 ~/.hermes-cortex/scripts/adversarial-verify.py --file mcp-servers/loop-gov-mcp.py --level A4 --gate
+
+── mcp-servers/loop-gov-mcp.py ──
+   Level: A4
+   Attack Surface:
+     ⚠️ Inputs: 135 item(s)
+     ⚠️ State: 80 item(s)
+     ⚠️ Dependencies: 44 item(s)
+     ⚠️ Concurrency: 17 item(s)
+   Functions: 18
+     - __init__(type, text)
+     - __init__(content, is_error)
+     - __init__(tools)
+     - __init__(*args, **kwargs)
+     - stdio_server()
+     ... and 13 more
+   Fuzz inputs generated: 242
+
+📊 Summary: 1 file(s), 35 finding(s)
+   🟡 Medium: 5
+   🔵 Low: 3
+   ⚪ Info: 27
+
+🟡 Medium findings — fix before shipping.
+
+✅ GATE_PASSED — no critical/high findings
+rc(a4-mcp)=0
+
+== [2] pytest — tests/test_metadata_refusal_releases_lock.py (UNPIPED, own rc) ==
+$ env -u PYTHONPATH -u PYTHONHOME <fleet pytest> -m pytest tests/test_metadata_refusal_releases_lock.py -q -p no:cacheprovider
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
+rootdir: ~/hermes-cortex
+configfile: pytest.ini
+plugins: anyio-4.15.1
+collected 3 items
+
+tests/test_metadata_refusal_releases_lock.py ...                         [100%]
+
+============================== 3 passed in 0.21s ===============================
+rc(pytest)=0
+
+== [3] before/after, pinned to immutable revisions (not 'HEAD'/'working tree') ==
+$ git show --stat --oneline 7d4e895c
+7d4e895c fix(governance): a metadata refusal frees the lock and closes the cycle unscored
+ mcp-servers/loop-gov-mcp.py                  | 100 +++++++++++++++++++++++-
+ tests/test_metadata_refusal_releases_lock.py | 109 +++++++++++++++++++++++++++
+ 2 files changed, 207 insertions(+), 2 deletions(-)
+
+$ git show 92cedd1d:mcp-servers/loop-gov-mcp.py | grep -c _release_lock_after_metadata_refusal
+0
+rc(grep-base)=0  (0 matches at base = the helper does not exist there)
+$ git show 7d4e895c:mcp-servers/loop-gov-mcp.py | grep -c _release_lock_after_metadata_refusal
+4
+rc(grep-tip)=0  (0 at tip too: the helper is CALLED, so the call sites are what move)
+
+$ git show 92cedd1d:tests/test_metadata_refusal_releases_lock.py 2>&1 | head -2
+fatal: path 'tests/test_metadata_refusal_releases_lock.py' exists on disk, but not in '92cedd1d'
+rc(show-base-test)=128  (non-zero = the test does not exist at base, i.e. it is new)
