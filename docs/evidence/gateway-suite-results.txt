@@ -21,7 +21,7 @@ parity suites (11):
   tests/test_cortex_gateway_daemon_slice.py
 
 measured: 126 passed (parity claim, not the surface total)
-pytest summary: ============================= 126 passed in 5.15s ==============================
+pytest summary: ============================= 126 passed in 6.13s ==============================
 
 whole gateway surface (24 files):
   tests/test_cortex_gateway_backend.py
@@ -50,14 +50,14 @@ whole gateway surface (24 files):
   tests/test_telegram_notify_unit.py
 
 measured: 248 passed (whole gateway surface)
-pytest summary: ============================= 248 passed in 11.56s =============================
+pytest summary: ============================= 248 passed in 12.97s =============================
 
 Tail of the parity run (host paths scrubbed):
 ============================= test session starts ==============================
-platform linux -- Python 3.11.15, pytest-9.1.1, pluggy-1.6.0
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
 rootdir: $HOME/hermes-cortex
 configfile: pytest.ini
-plugins: anyio-4.12.1
+plugins: anyio-4.15.1
 collected 126 items
 
 tests/test_cortex_gateway_transport.py ........                          [  6%]
@@ -72,12 +72,14 @@ tests/test_telegram_notify_unit.py ............................          [ 87%]
 tests/test_cortex_gateway_parity_matrix.py .....                         [ 91%]
 tests/test_cortex_gateway_daemon_slice.py ...........                    [100%]
 
-============================= 126 passed in 5.15s ==============================
+============================= 126 passed in 6.13s ==============================
 
 
-test names in the files cited by review findings (23):
+test names in the files cited by review findings (34):
   test_review_material_bound.py::test_short_diff_is_returned_unchanged
   test_review_material_bound.py::test_the_tail_survives_the_bound
+  test_review_material_bound.py::test_an_always_review_file_is_not_starved_by_the_files_around_it
+  test_review_material_bound.py::test_the_priority_never_starves_the_rest_of_the_range
   test_review_material_bound.py::test_the_omission_is_disclosed_with_true_numbers
   test_review_material_bound.py::test_the_files_in_the_cut_are_named
   test_review_material_bound.py::test_no_changed_file_is_omitted_entirely
@@ -88,6 +90,15 @@ test names in the files cited by review findings (23):
   test_review_material_bound.py::test_empty_diff_is_not_docs_only
   test_review_material_bound.py::test_notice_states_the_limit_without_directing_the_reviewer
   test_review_material_bound.py::test_an_explicit_budget_is_still_honoured
+  test_review_material_bound.py::test_evidence_paths_count_as_documentation
+  test_review_material_bound.py::test_every_file_under_the_floor_is_shown_whole
+  test_review_material_bound.py::test_the_floor_never_exceeds_the_budget
+  test_review_material_bound.py::test_the_largest_file_is_never_left_with_nothing
+  test_review_material_bound.py::test_evidence_files_are_shown_whole_outside_the_budget
+  test_review_material_bound.py::test_material_limit_findings_do_not_block
+  test_review_material_bound.py::test_replayed_findings_have_quotes_stripped
+  test_review_material_bound.py::test_a_commit_message_is_not_absorbed_into_a_file_section
+  test_review_material_bound.py::test_deployed_gate_behaves_as_this_file_says
   test_cortex_gateway_daemon_slice.py::test_one_turn_in_flight_per_chat_and_the_rest_queue
   test_cortex_gateway_daemon_slice.py::test_queue_is_bounded
   test_cortex_gateway_daemon_slice.py::test_slash_stop_interrupts_forwarding_and_suppresses_the_pending_reply
