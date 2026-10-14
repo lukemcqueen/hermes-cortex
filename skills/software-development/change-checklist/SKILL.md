@@ -64,6 +64,13 @@ Enforced at 3 layers: pre-commit hook (static gate), enforcer (blocks commit unt
       explicitly and once ("the earlier count came from a live report, is not artifact-backed, and is
       withdrawn — the artifact's own numbers are these") — re-explaining it appends a second copy of a
       claim the artifact beside it contradicts.
+      **The baseline belongs INSIDE the check's DEFAULT, not only in how you invoked it.** A
+      discrimination check whose default baseline is a branch ref (`origin/main`) stops
+      discriminating the moment the change is pushed: the ref then IS the change, the check
+      reports "the pre-fix revision already carries it", and a tautology wears a PASS. Pin the
+      exact revision in the script's own default with a comment naming which revision it is and
+      why — a baseline you must remember to override on every run is a check that will silently
+      stop testing what it claims. Re-run it after pinning and show the discriminating line.
 - [ ] "0 findings" is NOT a pass — execute the changed path with boundary inputs (-1, 0, None, empty, inf/nan, non-ASCII); attack the premise (list implicit assumptions, violate each with a 30s test); verify deployed == loaded (restart/daemon check for guards/hooks/enforcers).
 - [ ] A green check is not evidence until you have seen the assertion RUN. A test
       file with no executable entry point (a pytest-style file with no
@@ -106,6 +113,18 @@ Enforced at 3 layers: pre-commit hook (static gate), enforcer (blocks commit unt
       lookup it replaced: the refusal-marker writer one function away had the identical
       `_read_lock(None)` defect, so the state it exists to make visible was never written for
       exactly the sessions that reach it.
+- [ ] **A CLASS defect is fixed by a SWEEP, not by the next instance.** When a finding is really a
+      rule that must hold at EVERY call site ("anything that drops a lock must first resolve the
+      cycle"), enumerating the call sites is the fix: grep each one, fix those that violate it, and
+      then pin the rule as a test that FAILS on any NEW call site which omits the paired action.
+      Fixing today's instances and walking away leaves the class free to return with the next
+      feature — and the reviewer who found it found it by enumeration, not by reading your patch.
+      Two properties make the sweep durable: exemptions must be DECLARED in the test with the
+      reason the release is already safe there, and each exemption's justifying gate must be
+      ASSERTED against the source, so an exemption cannot rot into a false one when the gate moves.
+      Expect the sweep to earn its keep immediately — the first run failed on an exemption whose
+      claimed gate phrase was wrong, which forced reading the real gate instead of trusting the
+      claim.
 - [ ] **A piped `rc=$?` is the LAST stage's status, so regenerate an artifact rather than
       hand-patching it.** `cmd | tail -1; echo rc=$?` prints the tail's 0, which can put
       `rc=0` directly beneath a failure and read as a contradiction: run the command bare, or
@@ -358,6 +377,11 @@ Enforced at 3 layers: pre-commit hook (static gate), enforcer (blocks commit unt
       Recovery if you already amended theirs: `git reflog` to find the peer's SHA,
       `git reset --soft <peer-sha>` to restore it verbatim (message and all files), then
       re-commit only your staged paths — never `reset --hard`, which discards their work.
+      **Never reuse a previous commit's message file for a different commit.** It records work the
+      diff does not contain, and an inaccurate commit record is worse than a stale one because the
+      next reader trusts it: an operator reading that message would believe a fix landed that never
+      was written. Write the message from the actual diff — and when it is already wrong, correct
+      it by amending while HEAD is verified as yours, not by explaining the discrepancy later.
 - [ ] **A plain `git commit` commits the WHOLE index — a peer's already-STAGED files ride into
       your commit.** `git add <your paths>` does not unstage theirs, so the commit captures
       whatever is staged at that moment, under YOUR message and authorship. Commit by

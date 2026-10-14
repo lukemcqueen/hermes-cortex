@@ -250,6 +250,32 @@ shell almost always exports `PYTHONPATH`, so the contaminated case is the DEFAUL
   collects the whole current directory — in a repo that means `.git`, deploy trees and the
   venv, and it hangs. Always supply a path.
 
+### 10. A module-level ENTRYPOINT makes a script un-importable — and the importer cannot defend itself
+
+Rules 6 and 7 are about a module's side effects at import; this is that family one step further:
+the module's whole JOB runs at module scope. `count = purge()` + `sys.exit(0)` at the bottom of a
+script means importing it to exercise its shipped logic fires the work against the LIVE resource,
+and the importer cannot prevent it — repointing the module's path constant after `exec_module` is
+already too late. Observed: a probe importing a purge script removed 780 files from the live state
+directory before it could repoint anything. The importer is then left reporting a side effect it
+caused while measuring something else.
+
+- **Fix the MODULE, not the importer:** `def main() -> int: ...` plus
+  `if __name__ == "__main__": sys.exit(main())`. Import becomes inert; only running the file has
+  effects — and the function stays drivable with its path constant repointed.
+- **Check BEFORE importing a file you do not own.** Read the end of the file (or `ast`-walk its
+  module body) for a bare call, a `print`, or `sys.exit` outside a def or the `__main__` guard.
+  If one is there, fix the guard first — do not import it "just to see".
+- **Prove the guard in THREE directions**, because "it did not purge" also passes when the function
+  is simply broken: (a) with the home directory patched into a temp tree, importing leaves the
+  stale fixture untouched AND the module's path constant really resolves into that temp tree —
+  without that second half, (a) asserts only that the probe aimed somewhere harmless; (b) calling
+  the function DOES remove the fixture; (c) running the file as a SUBPROCESS with `HOME` redirected
+  removes it and reports — the real cron/systemd path, which an import test never exercises.
+- **Pin the shape source-level too:** walk the module body with `ast` and assert every top-level
+  statement is an import, an assignment, a def, or the `__main__` guard, so a future edit cannot
+  quietly reintroduce the side effect.
+
 ## Verification
 
 - `pytest tests/test_<module>_unit.py -q` → all pass
