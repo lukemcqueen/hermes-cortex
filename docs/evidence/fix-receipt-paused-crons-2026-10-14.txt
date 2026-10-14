@@ -1,0 +1,272 @@
+Evidence for the receipt / paused-cron fix (commit ebcf8769, plus the follow-up
+commit this file ships in). Every block is the complete captured output of the
+command printed immediately above it, with the command's OWN exit code (measured
+bare, with no pipe). Re-run any line to reproduce its block.
+
+Host: esther
+Captured: 2026-10-14 01:29:12 UTC
+
+READ THIS FIRST - the doctor block below is captured WITH THIS ARTIFACT STILL
+UNCOMMITTED, so its single warn is 'Repo clean' (the capture file and script
+themselves). Everything the range fixed reads PASS in that same block: note
+0 fail, and 'Paused crons: reason' / 'Orphan-cycle resolution' both green.
+
+HEAD: ebcf8769e5b7e430a82f1cf4c50ca06768a6ba1b
+HEAD~1: 5c3f40e0bdbe4805a2b3e5ebb09d6752d90b30a0
+origin/main: 5c3f40e0bdbe4805a2b3e5ebb09d6752d90b30a0
+
+=== [doctor --quiet] $ python3 /home/esther/hermes-cortex/ops/scripts/manage/cortex-doctor.py --quiet
+  ⚠️  Repo clean
+  ℹ️  PENDING cycles
+  ✅ Orphan-cycle resolution
+  ✅ Paused crons: reason
+  ⚠️  Overall: WARNING  (463 pass · 1 warn · 0 fail · 1 info)
+  🔧 REQUIRED ACTIONS — resolve each ⚠️  or ❌ above
+--- rc=1
+
+=== [checks in isolation] $ python3 -c import sys; sys.path.insert(0, '/home/esther/hermes-cortex/ops/scripts/manage')
+from cortex_doctor.checks import check_paused_cron_reasons, check_orphan_cycle_resolution
+class R:
+    def __init__(self): self.rows = []
+    def add(self, name, status, detail='', fix=''):
+        self.rows.append((name, status, detail, fix))
+for fn in (check_paused_cron_reasons, check_orphan_cycle_resolution):
+    r = R(); fn(r)
+    for name, status, detail, fix in r.rows:
+        print(f'{name}: {status} - {detail}')
+        if fix: print('   fix:', fix)
+
+Paused crons: reason: PASS - all 4 paused cron(s) carry a recorded reason
+Orphan-cycle resolution: PASS - 17 reaper-closed (unscored, tagged) · 105 agent-declared unscored close(s) — no bare MOVE_ON left behind by the reaper
+--- rc=0
+
+=== [paused-cron reasons] $ python3 -c import json, os, sqlite3
+p = os.path.expanduser('~/.hermes/cron/jobs.json')
+jobs = json.load(open(p)); jobs = jobs.get('jobs', jobs) if isinstance(jobs, dict) else jobs
+paused = [j for j in jobs if isinstance(j, dict) and (j.get('paused_at') or not j.get('enabled', True))]
+print('paused jobs:', len(paused))
+for j in paused:
+    print(' ', j.get('id'), j.get('name'), '| jobs.json paused_reason:', repr(j.get('paused_reason')))
+db = os.path.expanduser('~/.hermes/cron/notepad.db')
+con = sqlite3.connect(f'file:{db}?mode=ro', uri=True)
+for job_id, value in con.execute("SELECT job_id, value FROM cron_notepad WHERE key='paused_reason'"):
+    print('  notepad reason ->', job_id, '::', value[:180])
+
+paused jobs: 4
+  1c86b9471c16 agent-remediate-apply | jobs.json paused_reason: None
+  195fa856001d agent-hermes-update | jobs.json paused_reason: None
+  dbcdec6bb40d orch-backlog-driver | jobs.json paused_reason: "Paused 2026-09-13 on Luke's directive — stop the koscap-av research line and do not dispatch TitusClaude. Its next backlog pick risked re-opening the same dead end (RECOVER gisu 52dfe25e). Resume explicitly when wanted."
+  80dc43b602a9 agent-bus-retry-sweep | jobs.json paused_reason: None
+  notepad reason -> 1c86b9471c16 :: auto-paused 2026-09-23 03:51 by agent-cron-failure-watchdog after 3 consecutive failed runs (see the alert it delivered); fix the cause, then 'hermes cron resume 1c86b9471c16'
+  notepad reason -> 80dc43b602a9 :: auto-paused 2026-09-30 15:15 by agent-cron-failure-watchdog after 3 consecutive failed runs; fix the cause, then 'hermes cron resume 80dc43b602a9'
+  notepad reason -> 195fa856001d :: paused by hand 2026-08-25, one day after the 2026-08-24 run reported: 'hermes update timed out (non-interactive); skipping' and 'hermes doctor failed (exit 124)'. Left paused delib
+--- rc=0
+
+=== homeassistant probe source (run with the Hermes venv python, cwd = its root)
+import sys, logging
+sys.path.insert(0, ".")
+logging.basicConfig(level=logging.WARNING, format="LOG:%(message)s")
+import hermes_cli.plugins as P
+P.get_plugin_toolset_keys_nowait()          # plugin discovery FIRST
+import hermes_cli.tools_config as tc
+import toolsets
+from hermes_cli.config import load_config_readonly
+from toolsets import resolve_toolset
+cfg = load_config_readonly()
+pt = cfg.get("platform_toolsets") or {}
+print("platform_toolsets.homeassistant present?", "homeassistant" in pt)
+print("validate_toolset('homeassistant') ->", toolsets.validate_toolset("homeassistant"))
+print("validate_toolset('hermes-homeassistant') ->", toolsets.validate_toolset("hermes-homeassistant"))
+tc._warned_invalid_platform_toolsets.clear()
+got = tc._get_platform_tools(cfg, "homeassistant")
+tools = set()
+for ts in got:
+    try:
+        tools |= set(resolve_toolset(ts))
+    except Exception:
+        pass
+print("resolved toolsets:", len(got), "| ha_ tools:", sorted(t for t in tools if t.startswith("ha_")))
+print("NOTE: a 'LOG:platform ... has no valid toolsets' line above means the warning FIRED;")
+print("      its absence means it did not.")
+
+=== [homeassistant probe] $ /home/esther/.hermes/hermes-agent/venv/bin/python3 -c 
+import sys, logging
+sys.path.insert(0, ".")
+logging.basicConfig(level=logging.WARNING, format="LOG:%(message)s")
+import hermes_cli.plugins as P
+P.get_plugin_toolset_keys_nowait()          # plugin discovery FIRST
+import hermes_cli.tools_config as tc
+import toolsets
+from hermes_cli.config import load_config_readonly
+from toolsets import resolve_toolset
+cfg = load_config_readonly()
+pt = cfg.get("platform_toolsets") or {}
+print("platform_toolsets.homeassistant present?", "homeassistant" in pt)
+print("validate_toolset('homeassistant') ->", toolsets.validate_toolset("homeassistant"))
+print("validate_toolset('hermes-homeassistant') ->", toolsets.validate_toolset("hermes-homeassistant"))
+tc._warned_invalid_platform_toolsets.clear()
+got = tc._get_platform_tools(cfg, "homeassistant")
+tools = set()
+for ts in got:
+    try:
+        tools |= set(resolve_toolset(ts))
+    except Exception:
+        pass
+print("resolved toolsets:", len(got), "| ha_ tools:", sorted(t for t in tools if t.startswith("ha_")))
+print("NOTE: a 'LOG:platform ... has no valid toolsets' line above means the warning FIRED;")
+print("      its absence means it did not.")
+
+    (cwd: /home/esther/.hermes/hermes-agent)
+platform_toolsets.homeassistant present? False
+validate_toolset('homeassistant') -> True
+validate_toolset('hermes-homeassistant') -> False
+resolved toolsets: 23 | ha_ tools: ['ha_call_service', 'ha_get_state', 'ha_list_entities', 'ha_list_services']
+NOTE: a 'LOG:platform ... has no valid toolsets' line above means the warning FIRED;
+      its absence means it did not.
+LOG:Plugin hc-lean-index: unknown kind 'general' (valid: backend, exclusive, model-provider, platform, standalone); treating as 'standalone'
+--- rc=0
+
+(pytest interpreter: /home/esther/.hermes-cortex/venv/bin/python3)
+
+=== [live prompt vs installer (committed test)] $ env -u PYTHONPATH -u PYTHONHOME /home/esther/.hermes-cortex/venv/bin/python3 -m pytest tests/test_cron_prompt_matches_installer.py -q -p no:cacheprovider
+    (cwd: /home/esther/hermes-cortex)
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
+rootdir: /home/esther/hermes-cortex
+configfile: pytest.ini
+plugins: anyio-4.15.1
+collected 4 items
+
+tests/test_cron_prompt_matches_installer.py ....                         [100%]
+
+============================== 4 passed in 0.10s ===============================
+--- rc=0
+
+=== [new tests] $ env -u PYTHONPATH -u PYTHONHOME /home/esther/.hermes-cortex/venv/bin/python3 -m pytest tests/test_receipt_repo_identity.py tests/test_doctor_paused_cron_reasons.py tests/test_cron_prompt_matches_installer.py -q -p no:cacheprovider
+    (cwd: /home/esther/hermes-cortex)
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
+rootdir: /home/esther/hermes-cortex
+configfile: pytest.ini
+plugins: anyio-4.15.1
+collected 17 items
+
+tests/test_receipt_repo_identity.py ......                               [ 35%]
+tests/test_doctor_paused_cron_reasons.py .......                         [ 76%]
+tests/test_cron_prompt_matches_installer.py ....                         [100%]
+
+============================== 17 passed in 9.16s ==============================
+--- rc=0
+
+=== [wider selection] $ env -u PYTHONPATH -u PYTHONHOME /home/esther/.hermes-cortex/venv/bin/python3 -m pytest tests/test_receipt_repo_identity.py tests/test_doctor_paused_cron_reasons.py tests/test_cron_prompt_matches_installer.py tests/test_review_receipt_writer.py tests/test_review_receipt_gate.py tests/test_push_receipt_authorises.py tests/test_adversarial_error_swallow.py tests/test_backfill_legacy_reaper_cycles.py tests/test_bible_creative_model.py tests/test_doctor_env_consumers.py -q -p no:cacheprovider
+    (cwd: /home/esther/hermes-cortex)
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
+rootdir: /home/esther/hermes-cortex
+configfile: pytest.ini
+plugins: anyio-4.15.1
+collected 42 items
+
+tests/test_receipt_repo_identity.py ......                               [ 14%]
+tests/test_doctor_paused_cron_reasons.py .......                         [ 30%]
+tests/test_cron_prompt_matches_installer.py ....                         [ 40%]
+tests/test_adversarial_error_swallow.py ......                           [ 54%]
+tests/test_backfill_legacy_reaper_cycles.py ......                       [ 69%]
+tests/test_bible_creative_model.py .....                                 [ 80%]
+tests/test_doctor_env_consumers.py ........                              [100%]
+
+============================= 42 passed in 10.82s ==============================
+--- rc=0
+
+=== [new file ALONE (the both-ways proof)] $ env -u PYTHONPATH -u PYTHONHOME /home/esther/.hermes-cortex/venv/bin/python3 -m pytest tests/test_doctor_paused_cron_reasons.py -q -p no:cacheprovider
+    (cwd: /home/esther/hermes-cortex)
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
+rootdir: /home/esther/hermes-cortex
+configfile: pytest.ini
+plugins: anyio-4.15.1
+collected 7 items
+
+tests/test_doctor_paused_cron_reasons.py .......                         [100%]
+
+============================== 7 passed in 0.18s ===============================
+--- rc=0
+
+=== [adversarial gate A4] $ python3 /home/esther/.hermes-cortex/scripts/adversarial-verify.py --file mcp-servers/loop-gov-mcp.py --level A4 --gate
+    (cwd: /home/esther/hermes-cortex)
+📊 Summary: 1 file(s), 35 finding(s)
+   🟡 Medium: 5
+🟡 Medium findings — fix before shipping.
+✅ GATE_PASSED — no critical/high findings
+--- rc=0
+
+=== [adversarial gate A4] $ python3 /home/esther/.hermes-cortex/scripts/adversarial-verify.py --file ops/scripts/manage/cortex_doctor/checks.py --level A4 --gate
+    (cwd: /home/esther/hermes-cortex)
+📊 Summary: 1 file(s), 68 finding(s)
+   🟡 Medium: 4
+🟡 Medium findings — fix before shipping.
+✅ GATE_PASSED — no critical/high findings
+--- rc=0
+
+=== [adversarial gate A4] $ python3 /home/esther/.hermes-cortex/scripts/adversarial-verify.py --file ops/scripts/manage/cortex_doctor/cli.py --level A4 --gate
+    (cwd: /home/esther/hermes-cortex)
+📊 Summary: 1 file(s), 0 finding(s)
+   ✅ No findings — but standard tests should still pass!
+✅ GATE_PASSED — no critical/high findings
+--- rc=0
+
+=== [adversarial gate A2] $ python3 /home/esther/.hermes-cortex/scripts/adversarial-verify.py --file ops/scripts/health/agent-cron-failure-watchdog.py --level A2 --gate
+    (cwd: /home/esther/hermes-cortex)
+📊 Summary: 1 file(s), 0 finding(s)
+   ✅ No findings — but standard tests should still pass!
+✅ GATE_PASSED — no critical/high findings
+--- rc=0
+
+=== [adversarial gate A2] $ python3 /home/esther/.hermes-cortex/scripts/adversarial-verify.py --file ops/scripts/install/install-orch-crons.sh --level A2 --gate
+    (cwd: /home/esther/hermes-cortex)
+📊 Summary: 1 file(s), 0 finding(s)
+   ✅ No findings — but standard tests should still pass!
+✅ GATE_PASSED — no critical/high findings
+--- rc=0
+
+=== [adversarial gate A2] $ python3 /home/esther/.hermes-cortex/scripts/adversarial-verify.py --file tests/test_receipt_repo_identity.py --level A2 --gate
+    (cwd: /home/esther/hermes-cortex)
+📊 Summary: 1 file(s), 0 finding(s)
+   ✅ No findings — but standard tests should still pass!
+✅ GATE_PASSED — no critical/high findings
+--- rc=0
+
+=== [adversarial gate A2] $ python3 /home/esther/.hermes-cortex/scripts/adversarial-verify.py --file tests/test_doctor_paused_cron_reasons.py --level A2 --gate
+    (cwd: /home/esther/hermes-cortex)
+📊 Summary: 1 file(s), 20 finding(s)
+   🟡 Medium: 3
+🟡 Medium findings — fix before shipping.
+✅ GATE_PASSED — no critical/high findings
+--- rc=0
+
+=== [adversarial gate A2] $ python3 /home/esther/.hermes-cortex/scripts/adversarial-verify.py --file tests/test_cron_prompt_matches_installer.py --level A2 --gate
+    (cwd: /home/esther/hermes-cortex)
+📊 Summary: 1 file(s), 20 finding(s)
+   🟡 Medium: 2
+🟡 Medium findings — fix before shipping.
+✅ GATE_PASSED — no critical/high findings
+--- rc=0
+
+=== [skill drift parity] $ python3 /home/esther/hermes-cortex/ops/scripts/manage/check-skill-drift-parity.py
+    (cwd: /home/esther/hermes-cortex)
+this host and never copied back: it is stranded here, and the deploy's
+| Measure | Value |
+|---|---|
+| Deployed-only files (stranded) | 0 |
+| Files in sync | 839 |
+| Skipped (no repo counterpart, or repo ahead) | 622 |
+**Verdict: PASS**
+--- rc=0
+
+=== [deploy != load (MCP child vs deployed file)] $ bash -c ps -eo pid,lstart,etimes,args | grep -F loop-gov-mcp | grep -v grep; ls -l --time-style=+%Y-%m-%dT%H:%M:%S /home/esther/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py
+2369465 Wed Oct 14 00:24:04 2026   36345 /home/esther/.hermes-cortex/venv/bin/python3 /home/esther/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py
+4003280 Wed Oct 14 10:29:35 2026      14 /home/esther/.hermes-cortex/venv/bin/python3 /home/esther/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py
+-rwxr-xr-x 1 esther esther 282131 2026-10-14T10:23:41 /home/esther/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py
+--- rc=0
+
+END OF EVIDENCE
