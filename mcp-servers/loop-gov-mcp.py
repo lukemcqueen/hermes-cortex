@@ -5403,13 +5403,16 @@ def _check_repo_lock(args: dict | None = None) -> CallToolResult:
     HERE, beside ``_live_locks`` and its staleness rule, and a harness consumes
     the verdict.
 
-    Repo scope is matched on the lock's RESOLVED PATH — never on the repo NAME.
+    Repo scope is matched on the lock's RESOLVED PATH, never on the repo NAME.
     ``repo_slug`` alone is a name resolved as ``HOME/<slug>``, so two different
-    checkouts can share a name and a name-only match would let a lock in one repo
-    authorise writes in another. A lock that records NO ``repo_path`` (written
-    before that field existed) is accepted on a slug match — the same
-    upgrade-compat rule the git hook uses — and reported as ``slug-legacy`` so
-    the weaker evidence is visible rather than silent.
+    checkouts can share a name — and a name-only match would let a lock opened in
+    one project authorise writes in another. Operator directive (2026-10-14):
+    "cover every project on the server, but do not mix gates. Each session has
+    its own." A lock that records no ``repo_path`` therefore covers NOTHING here:
+    it is skipped and counted in ``unscoped_locks``, so the reason is visible
+    instead of guessed. Failing closed costs a legacy lock's usefulness on the
+    interactive write path; failing open costs a cross-project write, which is
+    the thing this gate exists to prevent.
 
     CANNOT-VERIFY IS A REFUSAL. If no repo can be resolved there is no verdict to
     give, and a gate reading "could not check" as "carry on" fails open exactly
@@ -5444,41 +5447,41 @@ def _check_repo_lock(args: dict | None = None) -> CallToolResult:
             "refusing rather than reporting the repo as unlocked. Pass the "
             "absolute path to the session's repo root."))])
 
-    slug = resolved.name
     live = _live_locks()
+    unscoped = 0
     for lock in live:
         recorded = str(lock.get("repo_path") or "").strip()
-        match = None
-        if recorded:
-            try:
-                if Path(recorded).expanduser().resolve() == resolved.resolve():
-                    match = "path"
-            except OSError:
-                match = None
-        elif lock.get("repo_slug") == slug:
-            # Upgrade compat: a lock from before repo_path existed. Weaker
-            # evidence, so it is NAMED in the result instead of hidden.
-            match = "slug-legacy"
-        if match:
-            return CallToolResult(content=[TextContent(type="text", text=json.dumps({
-                "covered": True,
-                "match": match,
-                "repo_path": str(resolved),
-                "lock": {
-                    "task_id": lock.get("task_id"),
-                    "agent": lock.get("agent"),
-                    "session_id": lock.get("session_id"),
-                    "repo_path": lock.get("repo_path"),
-                    "heartbeat_at": lock.get("heartbeat_at"),
-                },
-                "live_lock_count": len(live),
-            }, indent=2))])
+        if not recorded:
+            # No absolute path => this lock cannot prove WHICH checkout it covers.
+            # Skipped rather than matched by name: two projects can share a
+            # directory name, and honouring the name would mix their gates.
+            unscoped += 1
+            continue
+        try:
+            if Path(recorded).expanduser().resolve() == resolved.resolve():
+                return CallToolResult(content=[TextContent(type="text", text=json.dumps({
+                    "covered": True,
+                    "match": "path",
+                    "repo_path": str(resolved),
+                    "lock": {
+                        "task_id": lock.get("task_id"),
+                        "agent": lock.get("agent"),
+                        "session_id": lock.get("session_id"),
+                        "repo_path": lock.get("repo_path"),
+                        "heartbeat_at": lock.get("heartbeat_at"),
+                    },
+                    "live_lock_count": len(live),
+                    "unscoped_locks": unscoped,
+                }, indent=2))])
+        except OSError:
+            continue
 
     return CallToolResult(content=[TextContent(type="text", text=json.dumps({
         "covered": False,
         "repo_path": str(resolved),
         "lock": None,
         "live_lock_count": len(live),
+        "unscoped_locks": unscoped,
         "note": ("❌ Not locked: no live governance lock covers this repo. "
                  "Call begin_change() before writing."),
     }, indent=2))])

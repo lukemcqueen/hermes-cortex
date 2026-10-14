@@ -1,73 +1,86 @@
-PI NATIVE-WRITE GATE — LIVE end-to-end proof, captured 2026-10-14
-Provenance: a REAL pi 1.2.0 session in a scratch PROJECT repo, plus the extension
-driving the REAL deployed loop-gov.py (no stub). Host paths are normalised to ~
-and no ownership columns are printed (public repo). Commands appear beside their
-own output and rc.
+PI NATIVE-WRITE GATE — LIVE end-to-end proof (generated, not hand-written)
+Produced by: bash hermes-cortex/docs/evidence/pi-native-tool-gate/capture.sh   (every path below is normalised to ~)
+Generated at: 2026-10-14T11:53:26Z
 
-=== 1. The scratch project repo (the case that previously had NO gate at all) ===
-$ git init ~/.hermes/cache/scratch/pi-gate-repo
--> a plain project repo, not hermes-cortex. The commit-time Level 3 lock check is
-   scoped IS_CORTEX_REPO, so this repo previously had no lock gate at write OR
-   commit time.
+═══════ 1. The SHARED predicate, three ways ═══════
+$ loop-gov.py check_repo_lock '{"repo_path":"<repo>"}'
+--- repo_path=~/hermes-cortex
+{
+  "covered": true,
+  "match": "path",
+  "repo_path": "~/hermes-cortex",
+  "lock": {
+    "task_id": "fix-evidence-transcript-and-scope-lock",
+    "agent": "unknown",
+    "session_id": "20261014_195745_cd0e365b",
+    "repo_path": "~/hermes-cortex",
+    "heartbeat_at": "2026-10-14T11:49:48Z"
+  },
+  "live_lock_count": 1,
+  "unscoped_locks": 0
+}
+rc=0
 
-=== 2. Before the session: no lock covers this repo — and another repo's lock does not count ===
-$ loop-gov.py check_repo_lock '{"repo_path":"~/.hermes/cache/scratch/pi-gate-repo"}'
+--- repo_path=~/steadfaste
+{
+  "covered": false,
+  "repo_path": "~/steadfaste",
+  "lock": null,
+  "live_lock_count": 1,
+  "unscoped_locks": 0,
+  "note": "\u274c Not locked: no live governance lock covers this repo. Call begin_change() before writing."
+}
+rc=1
+
+--- repo_path=~/.hermes/cache/scratch/pi-gate-repo
 {
   "covered": false,
   "repo_path": "~/.hermes/cache/scratch/pi-gate-repo",
   "lock": null,
   "live_lock_count": 1,
-  "note": "❌ Not locked: no live governance lock covers this repo. Call begin_change() before writing."
+  "unscoped_locks": 0,
+  "note": "\u274c Not locked: no live governance lock covers this repo. Call begin_change() before writing."
 }
 rc=1
 
-NOTE THE PAIR: live_lock_count=1 (a lock IS live on the host, for hermes-cortex)
-while covered=false. A different repo's lock does not authorise this repo — that
-is the "do not mix gates / each session has its own" property, OBSERVED here
-rather than asserted.
+NOTE: a repo with its OWN lock answers covered=true (match=path); one without
+answers covered=false with rc=1; an unresolvable path is a REFUSAL, never an
+'unlocked' verdict. Where live_lock_count>0 sits beside covered=false, that is
+the 'do not mix gates' property: another repo's live lock does not authorise
+this one.
 
-=== 3. REAL pi session, asked to write a file ===
-$ ~/.pi/agent/bin/pi --model moonshotai/kimi-k2.6 \
-    "Create a file named proof.txt in the current directory containing exactly: hello from pi."
+═══════ 2. Repo scoping is pinned by a test that FAILS on the old behaviour ═══════
+$ python3 hermes-cortex/tests/test_check_repo_lock_scoping.py
+✅ test_two_projects_sharing_a_name_do_not_share_a_gate
+✅ test_a_lock_for_another_project_never_covers_this_one
+✅ test_an_unresolvable_repo_is_a_refusal_not_an_unlocked_verdict
 rc=0
 
---- the session's final answer (stdout). This is a SELF-REPORT; §4 and §6 assert it. ---
-File `proof.txt` created in the current directory with the exact content requested.
+$ git -C hermes-cortex show HEAD:mcp-servers/loop-gov-mcp.py > /tmp/pre-fix-loop-gov.py
+$ CORTEX_LOOP_GOV_SERVER=/tmp/pre-fix-loop-gov.py python3 hermes-cortex/tests/test_check_repo_lock_scoping.py   # must FAIL
+❌ test_two_projects_sharing_a_name_do_not_share_a_gate: a lock with no recorded repo_path authorised a DIFFERENT project that merely shares its directory name — gates are mixed: {'covered': True, 'match': 'slug-legacy', 'repo_path': '~/.hermes/cache/scratch/tmpsbki3wup/y/shared-name', 'lock': {'task_id': 'task-b', 'agent': 'scoping-test', 'session_id': 'sess-b', 'repo_path': None, 'heartbeat_at': '2026-10-14T11:53:27Z'}, 'live_lock_count': 2}
+Traceback (most recent call last):
+  File "~/hermes-cortex/tests/test_check_repo_lock_scoping.py", line 160, in <module>
+rc=1
+  -> on the pre-fix server a lock with no repo_path answers covered=true with
+     match=slug-legacy for a DIFFERENT project sharing the directory name: the
+     gate-mixing case this change removes.
 
-=== 4. What the gate actually DID — the extension's own log (the decisive evidence) ===
-$ tail ~/.hermes-cortex/logs/pi-governance.log
-GOV_VERDICT tool=write repo=~/.hermes/cache/scratch/pi-gate-repo verdict=refused
-GOV_VERDICT tool=write repo=~/.hermes/cache/scratch/pi-gate-repo verdict=allowed
-GOV_VERDICT tool=bash repo=~/.hermes/cache/scratch/pi-gate-repo verdict=allowed
+═══════ 3. The extension, EXECUTED both directions (stubbed CLI, hermetic) ═══════
+$ node hermes-cortex/ops/install/harnesses/pi/verify-governance-extension.mjs
+✅ the gate registers ZERO tools (got 0) — it is an adapter over the shared implementation, not a second surface
 
-Reading: the FIRST write was REFUSED. The agent then opened a lock of its own
-(§5) and the retry was ALLOWED. That is the gate working as designed — it fails
-closed, names the remedy, and the remedy is the sanctioned begin_change(), not a
-bypass. A gate that blocked forever would be a deadlock, not enforcement.
+✅ GOVERNANCE GATE OK — pi's native write tools are gated on the shared lock predicate.
+rc=0
 
-=== 5. The lock the agent opened, and the cycle it produced ===
-$ python3 -c "SELECT id, task_id, decision, session_id FROM loop_cycles WHERE timestamp > now-20min"
-{'id': 12603, 'task_id': 'create-proof-txt', 'decision': 'MOVE_ON', 'session_id': 'sess_c7b8c1b8d41f'}
+$ python3 hermes-cortex/tests/test_pi_governance_gate.py
+✅ test_the_gate_is_executed_and_correct
+✅ test_the_verifier_discriminates
+rc=0
 
--> pi's OWN session id (sess_c7b8c1b8d41f) created its OWN cycle. It is scored
-   (MOVE_ON, not PENDING) and no lock file for the scratch repo remains, so the
-   agent closed out — nothing leaked.
+═══════ 4. Composition: the extension driving the REAL loop-gov.py ═══════
+$ node hermes-cortex/docs/evidence/pi-native-tool-gate/live-gate-probe.mjs ~/.hermes/cache/scratch/pi-gate-repo
 
-=== 6. The file really exists (the assertion, not the agent's claim) ===
-$ ls -1 ~/.hermes/cache/scratch/pi-gate-repo
-.git
-proof.txt
-
-$ cat ~/.hermes/cache/scratch/pi-gate-repo/proof.txt
-hello from pi
-
-=== 7. Composition proof: the extension driving the REAL loop-gov.py, not a stub ===
-verify-governance-extension.mjs stubs the CLI BY DESIGN (hermetic), so on its own
-it proves the extension and the predicate separately, never the two together. This
-scratch probe loads the SAME extension against the real deployed CLI and prints the
-reason it returns.
-
-$ node ~/.hermes/cache/scratch/live-gate-probe.mjs ~/.hermes/cache/scratch/pi-gate-repo
 ──── unlocked repo, write tool  (tool=write)
 DECISION: BLOCKED
 🛑 GOVERNANCE LOCK REQUIRED — this pi tool call writes, and no live lock covers this repo.
@@ -86,6 +99,16 @@ Read-only work needs no lock: use the read/grep/find/ls tools, or a SINGLE
 simple read-only command (ls, cat, grep, git status, ...). Anything compound
 — a pipe, a redirect, a second command — counts as a write here.
 
+Governance said:
+{
+  "covered": false,
+  "repo_path": "~/.hermes/cache/scratch/pi-gate-repo",
+  "lock": null,
+  "live_lock_count": 1,
+  "unscoped_locks": 0,
+  "note": "\u274c Not locked: no live governance lock covers this repo. Call begin_change() before writing."
+}
+
 ──── unlocked repo, read-only bash  (tool=bash)
 DECISION: allowed
 
@@ -94,11 +117,66 @@ write blocked when unlocked : true
 read  allowed when unlocked : true
 rc=0
 
-=== 8. What this proof does NOT cover ===
+═══════ 5. The REAL pi session that ran this gate (pi 1.2.0) ═══════
+NOT reproducible by re-running this script: the turn is an LLM call. The
+evidence is the gate's OWN log, which records the decision it reached then.
+The WHOLE log is printed (it is short) so nothing is trimmed into a story:
+$ cat ~/.hermes-cortex/logs/pi-governance.log
+GOV_VERDICT tool=write repo=~/.hermes/cache/scratch/pi-gate-repo verdict=refused
+GOV_VERDICT tool=write repo=~/.hermes/cache/scratch/pi-gate-repo verdict=allowed
+GOV_VERDICT tool=bash repo=~/.hermes/cache/scratch/pi-gate-repo verdict=allowed
+GOV_VERDICT tool=write repo=~/.hermes/cache/scratch/pi-gate-repo verdict=refused
+GOV_VERDICT tool=write repo=~/.hermes/cache/scratch/pi-gate-repo verdict=refused
+GOV_VERDICT tool=write repo=~/.hermes/cache/scratch/pi-gate-repo verdict=refused
+GOV_VERDICT tool=write repo=~/.hermes/cache/scratch/pi-gate-repo verdict=refused
+  -> in order: the session's first write was REFUSED; the agent then opened a
+     lock of its own and its retry was ALLOWED; the read-only bash was allowed;
+     the trailing 'refused' lines are later runs of the §4 probe, which is
+     pointed at the same unlocked repo. Fail closed, name the remedy, comply
+     through the sanctioned path — a gate that only ever blocked is a deadlock.
+
+═══════ 6. The cycle the pi session created for itself ═══════
+$ loop-gov.py cycle_query '{"task_id":"create-proof-txt"}'
+[
+  {
+    "id": 12603,
+    "timestamp": "2026-10-14 11:46:19",
+    "task_id": "create-proof-txt",
+    "cycle_num": 1,
+    "spec_hash": null,
+    "code_hash": null,
+    "test_output_hash": null,
+    "completeness": 10.0,
+    "quality": 10.0,
+    "progress": 10.0,
+    "composite": 10.0,
+    "no_progress": 0,
+    "decision": "MOVE_ON",
+    "user_overrode": 0,
+    "outcome_note": "File created successfully with exact content, verified via ls and cat",
+    "schema_version": 1,
+    "model_name": "nomic-embed-text:v1.5",
+    "session_id": "sess_c7b8c1b8d41f",
+    "unscored_reason": null
+  }
+]
+rc=0
+  -> pi's OWN session id created its OWN cycle, and it is scored (not PENDING),
+     so it is not a leak. No lock file for the scratch repo remains. Read through
+     the shared CLI, not raw SQL, so this stays one implementation.
+
+═══════ 7. The file the session created (the assertion, not its claim) ═══════
+$ ls -1 ~/.hermes/cache/scratch/pi-gate-repo    # no ownership column: public repo
+proof.txt
+
+$ cat ~/.hermes/cache/scratch/pi-gate-repo/proof.txt
+hello from pi
+
+═══════ 8. What this proof does NOT cover ═══════
 - macOS. The extension shells out to a resolved python3 and is overridable via
-  CORTEX_GOVERNANCE_PYTHON for a Homebrew python off pi's PATH; that path is
-  untested here.
-- Only one direction of the repo-scoping rule is exercised LIVE above (a peer's
-  lock does not cover us). The same-NAME / different-project case is pinned by a
-  committed unit test rather than live, because constructing it needs a lock with
-  no recorded repo_path, and hand-writing a lock file is a governance violation.
+  CORTEX_GOVERNANCE_PYTHON for a Homebrew python off pi's PATH; untested here.
+- The live pi turn is not reproducible (§5): only its gate log is. §4 is the
+  reproducible composition proof.
+- The same-NAME/different-project case is pinned by §2 rather than driven live,
+  because constructing it needs a lock with no repo_path, and hand-writing a
+  lock file is a governance violation.
