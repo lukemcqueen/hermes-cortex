@@ -205,6 +205,56 @@ dead-end into a host-wide block. Before "recovering" a cycle you believe is PEND
 score reports: `MOVE_ON → MOVE_ON` means something already resolved it, so your scoring was a no-op
 rather than the fix, and the remaining problem is elsewhere.
 
+**There are TWO lock-removers, and each needs its own audit.** The MCP releases locks on refusals;
+the standalone `purge-stale-governance-locks.py` (run by every deploy and by a cron) unlinks stale
+files. Fixing one does not fix the class — grep both files for every site that unlinks a lock or
+makes a task terminal, and check each against the invariant above. The sweep also had a SECOND
+divergence: its staleness rule was TTL-only, with none of the liveness rescue the MCP predicate
+gained, so it would happily remove a *busy* session's lock (heartbeat frozen through hours of
+editing, no governed call) and that session's next write was refused — the deadlock the rescue exists
+to remove. **A second copy of a predicate is a second rule**: when you touch either path, compare the
+PREDICATE (not just the removal) against the fleet's, and pin the comparison with a test.
+
+### The sweep's disposition differs from the MCP's ON PURPOSE — do not "unify" them
+
+When the cycle cannot be resolved, the MCP still releases the lock and the sweep KEEPS it. Both are
+right, and the reason is what each caller's alternative costs:
+
+- **MCP release paths release anyway** — a live session must never be dead-ended by a broken store
+  (no release, no path forward, `force=True` the only exit was the original bug). The leak this can
+  leave is repaired by the resolver, by `reclaim_dead_locks`, or by the >24h auto-resolve.
+- **The unattended sweep keeps the lock** — nothing is waiting on it, so a stale file on disk costs
+  nothing while the lockless PENDING cycle it would create blocks every push on the host. It
+  escalates instead: exit code 2 with an `OPERATOR ACTION` line, never a silent `kept`.
+- **A permanently failing fail-closed path needs an exit code, not a log line.** Silence on a broken
+  store is how a repairable host becomes permanent: a cron that always exits 0 turns a dead DB into
+  background noise. Give the could-not-do-my-job outcome its own non-zero code and say who must act.
+- **A lock file that is unparseable AND well past the TTL is corruption, not a mid-write race.**
+  The mid-write guard (never delete an unparseable file) is right, but a file in that state for
+  hours can never be aged, so it and any cycle behind it sit forever. COLLECT those and report them
+  for cleanup rather than skipping them silently every run.
+
+### Judging a lock dead
+
+The predicate is "heartbeat past the lock's own TTL **AND** no evidence the agent is working". Three
+rules make the second half safe, and all three are load-bearing:
+
+- **Scope the liveness evidence by AUTHOR, not by repo.** A commit authored by the lock's own agent
+  counts; a peer's commit in the same repo does not (that would only delay the peer's own takeover,
+  which is the deadlock again). Scoping by repo ALONE is the trap: a session doing a long stretch in
+  a DIFFERENT checkout authors nothing in the lock's repo, so it gets judged dead while it is holding
+  the lock right now. Look across the candidate repos under HOME for that author.
+- **The widening is safe only because the renewal budget bounds it** (`LIVENESS_MAX_RENEWALS`) — do
+  not report the widening as harmless on its own. The budget is PER ACQUISITION, which is a dependency
+  you must verify, not assume: a new acquisition builds a FRESH lock state, so the counter starts at
+  0. If a release/re-acquire cycle left the counter at its ceiling, the bound would be a one-time
+  gate instead of a per-session limit.
+- **Authorship is not identity.** A cron or daemon committing AS that agent (or `--author=`) is
+  indistinguishable from the session and reads as proof of life. The failure mode is a lock kept
+  alive for a session that is gone, bounded to ONE renewal past the TTL — say that trade-off in the
+  docstring rather than claiming the check is sound, and name the stronger signal you would want
+  (a per-session token the enforcer injects, which cannot be forged like a git author).
+
 ### Testing governance helpers
 
 - **Never drive an entry point whose PRECONDITIONS consult live state to assert one branch.**

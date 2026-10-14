@@ -91,7 +91,7 @@ def test_an_advisory_declaration_passes_and_is_not_evidence():
                                   "> provenance: advisory\n\n# Supplementary opinion, not evidence\n"})
         proc = _run(tmp, db)
         assert proc.returncode == 0, proc.stdout
-        assert "not evidence" in proc.stdout, proc.stdout
+        assert "never citable as verification" in proc.stdout, proc.stdout
 
 
 def test_an_unreadable_store_is_could_not_verify_not_a_pass():
@@ -159,3 +159,35 @@ def test_the_real_repo_declares_provenance_today():
     proc = subprocess.run([sys.executable, str(CHECKER), "--repo", str(REPO)],
                           capture_output=True, text=True, timeout=120)
     assert proc.returncode == 0, f"rc={proc.returncode}\n{proc.stdout}"
+
+
+def test_a_design_doc_naming_a_model_can_declare_itself_not_a_review():
+    """The plan review's finding 3: the `model:` trigger is weak, so a design doc about a model can
+    trip it. The remedy must be a TRUTHFUL statement, not a false one — hence a second declaration."""
+    with tempfile.TemporaryDirectory() as t:
+        tmp, db = _tree(Path(t), {"docs/plans/encoder-choice.md":
+                                  "# Encoder choice\n\nmodel: a 395M ModernBERT encoder\n\n"
+                                  "provenance: not-a-review\n"})
+        proc = _run(tmp, db)
+        assert proc.returncode == 0, proc.stdout
+        assert "not-a-review" in proc.stdout, proc.stdout
+
+
+def test_the_ok_line_names_who_recorded_a_claimed_review():
+    """The plan review's finding 4: a row proves a review EXISTS, not that it was independent —
+    the same agent can run --review on its own cycle. So the reader gets the recorder's identity."""
+    with tempfile.TemporaryDirectory() as t:
+        tmp, db = _tree(Path(t), {"pro-review-x.md":
+                                  "> recorded-in: adversarial_reviews review_id=rev-cccc\n"},
+                        reviews=["rev-cccc"])
+        proc = _run(tmp, db)
+        assert proc.returncode == 0, proc.stdout
+        assert "reviewer=" in proc.stdout and "model=" in proc.stdout, proc.stdout
+
+
+def test_the_declaration_can_lie_and_that_is_documented_not_hidden():
+    """The residual the plan review pressed on: a file can declare 'advisory' and lie. The gate
+    cannot detect that, and the source says so instead of implying coverage it does not have."""
+    src = CHECKER.read_text(encoding="utf-8")
+    assert "a declaration can be a LIE" in src
+    assert "does not verify" not in src.lower() or "can be a LIE" in src

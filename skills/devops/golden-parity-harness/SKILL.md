@@ -100,6 +100,29 @@ sandbox any config hypothesis. It includes the failure taxonomy table so you
 can map a failure count to its class and fix without re-deriving the whole
 diagnostic chain.
 
+## Parity between two IMPLEMENTATIONS of one rule
+
+The same discipline applies when the two sides are not two SYSTEMS but two copies
+of one rule — a helper duplicated because one caller cannot import the other
+(a standalone cron vs the daemon; a plugin vs its host). Those copies drift, and
+the drift is invisible to the cheapest test you can write:
+
+- **Compare BEHAVIOUR on shared fixtures, never source TEXT.** A test that asserts
+  both files contain the same SQL/keys/tokens is false comfort: measured once, two
+  closers agreed on every token while one resolved a SINGLE matching row and the
+  other resolved them all — so the residue the rule exists to remove stayed behind,
+  and the token test passed. Drive both implementations against the same fixture
+  set and assert the OUTCOME each produces.
+- **Enumerate the axes before you write the fixtures** — count of matching rows,
+  ordering/limit, already-resolved rows, explicitly-overridden rows, the
+  not-found case, and the return value for each. Two implementations differ in
+  behaviour far more often than they differ in text.
+- **Keep a token check only as a labelled drift smoke test** (it catches a
+  wholesale rewrite cheaply), and say in its docstring that the behavioural test is
+  the real parity check — otherwise the next reader trusts the cheap one.
+- **Prefer reuse to parity tests where you can.** A shared helper with a parameter
+  (a cap, a mode) is stronger than two copies kept in step by a test.
+
 ## Pitfalls
 
 - 28 subprocess searches exceed a 60s foreground terminal — run baseline in

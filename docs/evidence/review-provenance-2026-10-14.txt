@@ -1,20 +1,21 @@
 
 --- 1. contract tests: both directions, the third outcome, and the discriminator's precision
-============================== 9 passed in 0.92s ===============================
+============================== 12 passed in 0.92s ==============================
 PASS  rc=0
 
 --- 2. the gate on THIS tree (must be clean, or the doctor FAILs and blocks every push here)
-OK    docs/evidence/pro-review-2026-10-14.md (declared advisory — not evidence, never citable as verification)
-OK    docs/evidence/pro-review-purge-guards-2026-10-14.md (declared advisory — not evidence, never citable as verification)
+OK    docs/evidence/plan-review-enforcement-2026-10-14.md (recorded review_id=9e5fb9af-1455-43f7-9bb6-1417c022933a; reviewer=adv-review-plan-1; model=deepseek/deepseek-v4-pro)
+OK    docs/evidence/pro-review-2026-10-14.md (declared 'provenance: advisory' — commentary, never citable as verification)
+OK    docs/evidence/pro-review-purge-guards-2026-10-14.md (declared 'provenance: advisory' — commentary, never citable as verification)
 
-artifacts presenting a review: 2 of 601 text file(s) under docs/ (599 ignored, 0 recorded claim(s) checked)
+artifacts presenting a review: 2 of 602 text file(s) under docs/ (599 ignored, 1 recorded claim(s) checked)
 ✅ every review artifact declares its provenance
 gate rc=0
 PASS
 
 --- 3. a PLANTED violation must be caught (probing the gate, not just reading it)
 planted rc=1 (expect 1)
-      docs/evidence/notes-without-provenance.md: presents a review with no provenance — add either 'provenance: advisory' or 'recorded-in: adversarial_reviews review_id=<id>' in the first 10 lines
+      docs/evidence/notes-without-provenance.md: presents a review with no provenance — declare one of 'provenance: advisory' or 'provenance: not-a-review' or 'recorded-in: adversarial_reviews review_id=<id>' in the first 10 lines
 PASS  the gate notices an undeclared review
 
 --- 4. the doctor check is WIRED (enforcement point: a FAIL here blocks every push)
@@ -22,9 +23,8 @@ doctor rc=2  (host-wide status; NOT this check's verdict — see the annotated l
      ✅ Review provenance
 PASS  the check runs in the doctor
    other:   ⚠️  Repo clean
-   other:   ❌ Deploy sync
-   other:   ❌ Checksum: cortex-update.sh
-   other:   ❌ Checksum: checks.py
-   other:   ❌ Checksum: cli.py
+   other:   ❌ Checksum: review-provenance-check.py
+   other:   ❌ Overall: FAILING  (463 pass · 1 warn · 1 fail · 3 info)
+   other:   🔧 REQUIRED ACTIONS — resolve each ⚠️  or ❌ above
 
 ALL CLAIMS RE-VERIFIED (rc=0)

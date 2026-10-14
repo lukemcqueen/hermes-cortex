@@ -81,7 +81,12 @@ Enforced at 3 layers: pre-commit hook (static gate), enforcer (blocks commit unt
       keeps the LAST `def main()`, so a file carrying two of them runs the second and leaves
       the first — and every check only it contained — dead, with the suite still green.
       Assert the definition is unique (or assert the property directly) so the duplicate
-      cannot come back.
+      cannot come back. **Grep the module for the symbol BEFORE you add a helper to it.** In a
+      shared module a re-used name is the same disarm one level up: a new local `_candidate_repos`
+      beside an existing one leaves the LATER definition live, so your new code calls the old
+      one — or yours sits dead — and the suite stays green either way. Grep first; if a helper
+      already does the walk/predicate/parse you need, REUSE it (cap or wrap it) instead of
+      writing a second copy, and assert uniqueness where the two could collide.
 - [ ] **A captured check transcript must carry its EXIT CODE and its WARNING COUNT — a bare
       PASS line is a swallowed error.** A gate that prints `✅ PASSED` while emitting N warnings
       and an unresolved sub-check reads as a clean system to everyone downstream, including the
@@ -97,6 +102,29 @@ Enforced at 3 layers: pre-commit hook (static gate), enforcer (blocks commit unt
       was comparing — so the run rewrote its own baseline and could never report it stale; the
       flag existed and was documented. Prove the mode both ways (a missing baseline must exit
       non-zero WITHOUT writing anything) rather than trusting the help text.
+- [ ] **Read a script's TAIL before importing it to exercise it — a module-level entrypoint runs on
+      IMPORT.** An import is not a load if the file ends in `count = work(); sys.exit(0)`: importing
+      it performs the work, and repointing its paths after the import is too late. Measured: a probe
+      importing a purge script to drive its shipped logic removed 780 files from the LIVE state dir
+      before it could repoint anything. Check the tail first; if it has a module-level entrypoint,
+      either fix it (`main()` behind `if __name__ == "__main__"` — inert on import, unchanged when
+      run) or load a COPY with the entrypoint stripped. Then verify the fix in both directions: an
+      import changes nothing, and running the file still does the work (redirect HOME/CORTEX_HOME in
+      a subprocess and assert the effect landed THERE). Import-must-be-inert is the same rule as
+      read-only evidence, applied to the module instead of the tool.
+- [ ] **An outbound call you make from a scratch script is outside the audited tool path — say so.**
+      Calling a model endpoint (a review, a summary, a classification) from a helper under the
+      scratch dir does not appear in the enforcer's log, because the enforcer audits TOOL CALLS and
+      an HTTP request from a subprocess is not one. That is not automatically wrong — an independent
+      review is worth having — but it must not be presented as the sanctioned reviewer, and the
+      operator will ask. Make it auditable instead of hidden: commit the material that went OUT
+      (extract it with `ast`/from the real file, never retype it) and the response that came back
+      VERBATIM, with your accept/reject judgement after a marker, under `docs/evidence/`; resolve
+      any credential through the component's own config helpers so it is never printed or passed by
+      hand; state plainly in the artifact that it is advisory and authorises nothing (the push
+      receipt comes from `end_change`'s own reviewer). When the repo already ships a registered
+      review script, prefer adding a mode to it over a new scratch helper — a deliverable that lives
+      only in the scratch dir cannot be read or re-run by the next agent.
 - [ ] **Redact at the GENERATOR, and keep the redaction narrow.** A transcript committed to a
       PUBLIC repo must not carry `/home/<user>` paths, the host name, or `ls -l` ownership. Apply
       ONE normaliser to every emitted line — never hand-patch the committed copy, which soon
@@ -344,8 +372,14 @@ Enforced at 3 layers: pre-commit hook (static gate), enforcer (blocks commit unt
       argue with — commit the proof and call `rereview_change`.
 - [ ] Cron-governance compat — if hooks/plugins/enforcer changed, verify the cycle works in a test cron session, then delete it.
 - [ ] Deploy, THEN push — that order, with nothing committed in between. The pre-push path
-      itself runs pull → deploy → doctor → verify, and the gate reads `Deploy sync`, so any
-      commit made after a deploy leaves the deployed tree trailing HEAD and blocks the push.
+      itself runs pull → deploy → doctor → verify, and the gate reads `Deploy sync`, so a
+      commit that changes a DEPLOY-MAP file after a deploy leaves the deployed tree trailing HEAD
+      and blocks the push. **The check is scoped to the deploy-map files the range changes**, so a
+      commit after the deploy that touches only non-deployed paths (an `docs/evidence/` artifact,
+      a regenerated report, a skill already landed by the reconciler) does NOT block the push and
+      does NOT need another deploy — re-deploying for it multiplies deploy windows on a shared
+      tree for no gain. Confirm which side you are on before deploying again: the gate names the
+      undeployed file when it does refuse.
       Run it as one step: `bash ~/.hermes-cortex/scripts/cortex-dogfood.sh --force` and then
       `git push origin main`. A close-time review receipt is bound to the
       RANGE, and the gate accepts it when the receipt's reviewed blobs COVER every blob that

@@ -90,6 +90,36 @@ that is satisfied.
   leaves the system in the state the step existed to prevent hides the one
   signal that explains the next failure; capture it and report it.
 
+## Fail closed WITHOUT dead-ending anyone — pick the disposition per caller
+
+"Fail closed" is not one behaviour: the SAFE direction depends on who is waiting on
+the resource when the decision cannot be made. Two callers of the same cleanup can
+therefore need OPPOSITE dispositions, and unifying them breaks one of them.
+
+- **A caller with a live user waiting must not be dead-ended.** If the guard cannot
+  be satisfied (the store is unreadable), the operation still completes and the
+  residue is reported loudly, because a refusal the caller cannot get past pushes
+  them to a force/bypass route — the worst outcome. The residue is repaired by the
+  recovery tooling, not by refusing.
+- **An unattended sweeper should keep the resource.** Nothing is waiting on it, so
+  leaving a stale item in place costs nothing while a forced removal creates the
+  broken state the guard exists to prevent. Retry next sweep.
+- **Justify each by what its alternative costs, and write the reason down** at both
+  sites — otherwise the next agent reads the pair as an inconsistency and "fixes"
+  it into a bug.
+
+### A fail-closed outcome needs a distinct exit code, or it is just noise
+
+A path that keeps/refuses and only prints a line has no operator interface: a cron
+that always exits 0 turns a permanently broken store into background noise, which is
+how a repairable state becomes permanent. Give "I could not do my job" its own
+non-zero code with an explicit operator-action message, and reserve the codes so a
+caller can dispatch (0 clean, non-zero = act). The same applies to a retry-safe
+default that stops being safe once it persists: a state excused as "a race in
+progress" (an unparseable file, a half-written record) must be AGE-BOUNDED — past a
+small multiple of its expected window it is corruption, and it must be surfaced for
+cleanup rather than skipped silently on every run forever.
+
 ## An empty credential authenticates nothing — guard it explicitly
 
 An unset/empty secret does NOT make the crypto fail: HMAC with an empty key

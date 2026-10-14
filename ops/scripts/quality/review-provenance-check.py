@@ -34,6 +34,11 @@ from pathlib import Path
 
 DEFAULT_DB = Path.home() / ".hermes-cortex" / "data" / "loop-governance.db"
 ADVISORY = "provenance: advisory"
+# A file can legitimately present a model-ish header without being a review at all (a design doc
+# whose header names the model it is about — measured on docs/older/plans/…decision-model.md). The
+# gate must let that be declared TRUTHFULLY, or its only remedy is a false statement:
+NOT_A_REVIEW = "provenance: not-a-review"
+DECLARATIONS = (ADVISORY, NOT_A_REVIEW)
 RECORDED_RE = re.compile(r"recorded-in:\s*adversarial_reviews\s+review_id=([A-Za-z0-9._-]+)",
                          re.IGNORECASE)
 HEADER_LINES = 10          # the declaration belongs at the TOP; a buried one is not a declaration
@@ -51,10 +56,18 @@ HEADER_LINES = 10          # the declaration belongs at the TOP; a buried one is
 #   1. a header CLAIM (`recorded-in: adversarial_reviews review_id=…`) — verified against the store;
 #   2. the repo's own review-write-up convention (`pro-review*`);
 #   3. a `model:` line in the header — a model review names its model up front.
-# The honest limit, stated rather than papered over: a review written into an innocently-named file
-# that names no model is indistinguishable from commentary by these rules. Commentary is not
-# evidence — the push receipt comes from `end_change`'s reviewer, never from a file — so what this
-# gate guarantees is that nothing can CLAIM to be a recorded review without a row to back it.
+# The honest limits, stated rather than papered over (a plan review by the governed reviewer asked
+# for exactly this instead of a promise of coverage):
+#   * a review written into an innocently-named file that names no model is indistinguishable from
+#     commentary by these rules — commentary is not evidence, and the push receipt comes from
+#     `end_change`'s reviewer, never from a file;
+#   * a declaration can be a LIE: nothing verifies that a file declaring `advisory` is not really a
+#     review. What the gate guarantees is the other direction — nothing can CLAIM a recorded review
+#     without a row to back it, and the row's recorder is printed so a reader can judge it;
+#   * a row PROVES a review exists in the sink, not that it was independent: the same agent can run
+#     `--review` on its own cycle. That is why the OK line names the reviewer_id and model;
+#   * a review delivered as a URL, or quoted into a cycle note / commit message / chat, is not a
+#     file here and is not covered at all.
 MODEL_LINE_RE = re.compile(r"^\s*>?\s*model:\s*\S+", re.IGNORECASE | re.MULTILINE)
 
 
@@ -92,15 +105,16 @@ def _header(path: Path) -> str:
         return ""
 
 
-def _recorded_ids(db_path: Path) -> set[str] | None:
-    """Review ids present in the store, or None when the store cannot be read."""
+def _recorded_ids(db_path: Path) -> dict[str, tuple[str, str]] | None:
+    """review_id → (reviewer_id, model) for rows in the store, or None when it cannot be read."""
     if not db_path.exists():
         return None
     try:
         conn = sqlite3.connect(str(db_path), timeout=10)
         try:
-            rows = conn.execute("SELECT review_id FROM adversarial_reviews").fetchall()
-            return {str(r[0]) for r in rows}
+            rows = conn.execute("SELECT review_id, reviewer_id, reviewer_model "
+                                "FROM adversarial_reviews").fetchall()
+            return {str(r[0]): (str(r[1] or "?"), str(r[2] or "?")) for r in rows}
         finally:
             conn.close()
     except sqlite3.Error:
@@ -115,7 +129,7 @@ def check(repo: Path, db_path: Path) -> int:
         return 0
 
     violations, unverifiable, checked, presenting, ignored = [], [], 0, 0, 0
-    cached_ids: set[str] | None | bool = False     # False = not loaded yet
+    cached_ids: dict[str, tuple[str, str]] | None | bool = False   # False = not loaded yet
     for path in artifacts:
         rel = path.relative_to(repo)
         header = _header(path)
@@ -130,21 +144,28 @@ def check(repo: Path, db_path: Path) -> int:
                 unverifiable.append(f"{rel} claims review_id={declared_recorded.group(1)} but the "
                                     f"store at {db_path} could not be read")
                 continue
-            if declared_recorded.group(1) not in cached_ids:
-                violations.append(f"{rel}: claims review_id={declared_recorded.group(1)}, which is "
-                                  f"NOT in adversarial_reviews — a review that was never recorded")
+            rid = declared_recorded.group(1)
+            if rid not in cached_ids:
+                violations.append(f"{rel}: claims review_id={rid}, which is NOT in "
+                                  f"adversarial_reviews — a review that was never recorded")
                 continue
-            print(f"OK    {rel} (recorded review_id={declared_recorded.group(1)})")
+            # Name the row's recorder: a row PROVES a review exists in the sink, not that anyone
+            # independent wrote it (the same agent can run --review on its own cycle), so the
+            # reader gets the reviewer identity to judge, instead of a bare OK.
+            who, model = cached_ids[rid]
+            print(f"OK    {rel} (recorded review_id={rid}; reviewer={who}; model={model})")
             continue
         if not _presents_a_review(path, header):
             ignored += 1
             continue
         presenting += 1
-        if ADVISORY in header.lower():
-            print(f"OK    {rel} (declared advisory — not evidence, never citable as verification)")
+        declared = next((d for d in DECLARATIONS if d in header.lower()), None)
+        if declared:
+            print(f"OK    {rel} (declared '{declared}' — commentary, never citable as verification)")
             continue
-        violations.append(f"{rel}: presents a review with no provenance — add either "
-                          f"'{ADVISORY}' or 'recorded-in: adversarial_reviews review_id=<id>' "
+        violations.append(f"{rel}: presents a review with no provenance — declare one of "
+                          f"{' or '.join(repr(d) for d in DECLARATIONS)} or "
+                          f"'recorded-in: adversarial_reviews review_id=<id>' "
                           f"in the first {HEADER_LINES} lines")
 
     print(f"\nartifacts presenting a review: {presenting} of {len(artifacts)} text file(s) under "
