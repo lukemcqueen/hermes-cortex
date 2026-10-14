@@ -89,9 +89,16 @@ echo "  doctor rc=$DRC — $OVERALL"
 FAIL_CNT=$(echo "$OVERALL" | grep -oE '[0-9]+ fail' | grep -oE '[0-9]+')
 WARN_CNT=$(echo "$OVERALL" | grep -oE '[0-9]+ warn' | grep -oE '[0-9]+')
 echo "  doctor: fail=$FAIL_CNT warn=$WARN_CNT rc=$DRC"
-# Honest doctor accounting: rc>=2 means failures (bad). rc=1 = WARNING (pre-existing
-# warns) — that is NOT a clean doctor and is reported as such, never claimed as a pass.
-[ "$DRC" -ge 2 ] && bad "doctor rc=$DRC (>=2: failures present)" || ok "doctor rc=$DRC (no failures: rc<=1, NOTE if rc=1 this is WARNING not clean)"
+# Honest doctor accounting: a clean doctor is rc==0. Any nonzero rc is NOT clean
+# (rc=1 = WARNING with pre-existing warns; rc>=2 = failures). We report it and FAIL
+# the check — never claim a WARNING doctor as a pass.
+if [ "$DRC" -eq 0 ]; then
+  ok "doctor clean (rc=0, 0 fail, $WARN_CNT warn)"
+elif [ "$DRC" -eq 1 ]; then
+  bad "doctor NOT clean (rc=1 WARNING: 0 fail, $WARN_CNT pre-existing warns)"
+else
+  bad "doctor FAILED (rc=$DRC, $FAIL_CNT fail)"
+fi
 [ "$FAIL_CNT" = "0" ] && ok "doctor 0 fail (no failure introduced)" || bad "doctor has $FAIL_CNT fail(s)"
 
 # --- 6. Skill drift parity PASS (read-only: --check compares against the committed artifact, no write) ---

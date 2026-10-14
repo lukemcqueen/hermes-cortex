@@ -10,10 +10,10 @@
   immutable flags present on 10/10 enforcement paths
 ✅ enforcement files re-locked 10/10
   doctor rc=1 — ⚠️  Overall: WARNING  (444 pass · 7 warn · 0 fail · 7 info)
-  doctor: fail=0 warn=7 rc=1 (accepted criterion: 0 fail and rc<=1; warns are pre-existing/ambient)
-✅ doctor rc=1 (<=1, warnings-only class)
-✅ doctor 0 fail (the actionable criterion)
+  doctor: fail=0 warn=7 rc=1
+❌ doctor NOT clean (rc=1 WARNING: 0 fail, 7 pre-existing warns)
+✅ doctor 0 fail (no failure introduced)
 ✅ skill drift parity: committed artifact matches live derivation (0 stranded)
 
-━━━ RESULT: 11 checks, 0 failures ━━━
-ALL CLAIMS VERIFIED
+━━━ RESULT: 11 checks, 1 failures ━━━
+FAILURES PRESENT
