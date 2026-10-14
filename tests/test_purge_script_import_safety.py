@@ -119,13 +119,23 @@ def test_no_module_level_executable_statements_beyond_the_guard():
     """Source-level belt-and-braces: the module body is definitions, constants and the __main__
     guard — nothing that runs a purge at import, now or after a future edit."""
     tree = ast.parse(SCRIPT.read_text(encoding="utf-8"))
-    allowed = (ast.Import, ast.ImportFrom, ast.FunctionDef, ast.Assign, ast.AnnAssign, ast.Expr)
+    allowed = (ast.Import, ast.ImportFrom, ast.FunctionDef, ast.ClassDef, ast.Assign,
+               ast.AnnAssign, ast.Expr)
     offenders = []
     for node in tree.body:
         if isinstance(node, ast.If):
             # the only permissible top-level `if` is the __main__ guard
             guard = ast.dump(node.test)
             assert "__main__" in guard, f"a module-level if runs on import: {ast.dump(node.test)}"
+            continue
+        if isinstance(node, ast.ClassDef):
+            # A class definition is inert, but its DECORATOR executes at import — so only a
+            # side-effect-free one is acceptable here (dataclass just rewrites the class).
+            for deco in node.decorator_list:
+                name = ast.dump(deco)
+                assert "dataclass" in name or "field" in name, (
+                    f"a module-level decorator runs at import: {name[:60]}"
+                )
             continue
         if isinstance(node, allowed):
             # a bare docstring/constant is fine; any CALL is not
