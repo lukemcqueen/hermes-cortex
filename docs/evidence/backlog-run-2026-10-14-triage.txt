@@ -79,20 +79,56 @@ SELECT tasks.transition_allowed('in_progress','review');
 t
 ```
 
+The status is admitted by the LIVE constraints, the arc is permitted by the
+live transition function, and both writers exist — so the zero above is
+UNUSED, not unreachable (review finding ADV-12614-2):
+
+```sql
+SELECT conname, pg_get_constraintdef(oid) FROM pg_constraint
+WHERE conrelid='tasks.tasks'::regclass
+  AND conname IN ('tasks_status_check','tasks_column_check');
+```
+```
+tasks_column_check||CHECK (((("column" IS NULL) OR ((("column" = ANY (ARRAY['backlog'::text, 'todo'::text])) AND (status = 'pending'::text)) OR (("column" = 'in_progress'::text) AND (status = 'in_progress'::text)) OR (("column" = 'done'::text) AND (status = 'completed'::text)) OR (("column" = 'review'::text) AND (status = ANY (ARRAY['pending'::text, 'in_progress'::text, 'review'::text]))))))
+tasks_status_check||CHECK ((status = ANY (ARRAY['pending'::text, 'in_progress'::text, 'completed'::text, 'cancelled'::text, 'paused'::text, 'blocked'::text, 'waiting'::text, 'review'::text])))
+```
+
+```sql
+SELECT 'in_progress->review' AS arc, tasks.transition_allowed('in_progress','review')
+UNION ALL SELECT 'review->completed', tasks.transition_allowed('review','completed')
+UNION ALL SELECT 'review->in_progress', tasks.transition_allowed('review','in_progress');
+```
+```
+in_progress->review||t
+review->completed||t
+review->in_progress||t
+```
+
+```sql
+SELECT p.proname FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
+WHERE n.nspname='tasks' AND p.proname IN ('report_done','verify_slice') ORDER BY 1;
+```
+```
+report_done
+verify_slice
+```
+
 ## 3. The parked class and its auto-pause signature
 
 Dwell between the `pending → in_progress` event and the next event, per task:
 
 ```sql
 WITH ev AS (
-  SELECT task_id, to_status, at,
+  SELECT task_id, from_status, to_status, at,
          lead(at) OVER (PARTITION BY task_id ORDER BY at) AS next_at
   FROM tasks.task_events WHERE from_status IS NOT NULL
 )
 SELECT left(task_id::text, 8) AS id, to_status,
        to_char(at,'YYYY-MM-DD') AS day,
        round(EXTRACT(EPOCH FROM (next_at - at))/60.0,1) AS minutes_held
-FROM ev WHERE next_at IS NOT NULL ORDER BY at;
+FROM ev
+WHERE from_status='pending' AND to_status='in_progress' AND next_at IS NOT NULL
+ORDER BY at;
 ```
 ```
 736a496b||in_progress||2026-08-31||64.1
@@ -100,7 +136,6 @@ aa054b3e||in_progress||2026-08-31||60.2
 6a4857d3||in_progress||2026-09-01||64.7
 46028a58||in_progress||2026-09-02||64.8
 c9308ff8||in_progress||2026-09-02||64.8
-ca282975||waiting||2026-09-02||44695.3
 4bb4279b||in_progress||2026-09-14||65.0
 f3034287||in_progress||2026-09-17||64.3
 a173cb3f||in_progress||2026-09-22||30.5
@@ -115,9 +150,28 @@ ed4b4c43||in_progress||2026-10-02||65.0
 8e594ae7||in_progress||2026-10-02||65.0
 0a239ef6||in_progress||2026-10-12||60.1
 ```
-16 of 18 in the 60.1–65.0 band; the two outliers are 30.5 and 25.5. Full ids
-are recoverable from the query by swapping `left(task_id::text, 8)` back to
-`task_id`.
+Derived from exactly this transition — review finding ADV-12614-3, which
+correctly objected that the earlier form scanned every event row and admitted
+one unrelated `waiting` row:
+
+```sql
+WITH ev AS (
+  SELECT task_id, from_status, to_status, at,
+         lead(at) OVER (PARTITION BY task_id ORDER BY at) AS next_at
+  FROM tasks.task_events WHERE from_status IS NOT NULL
+), d AS (
+  SELECT round(EXTRACT(EPOCH FROM (next_at - at))/60.0,1) AS m
+  FROM ev WHERE from_status='pending' AND to_status='in_progress' AND next_at IS NOT NULL
+)
+SELECT count(*) AS total, count(*) FILTER (WHERE m BETWEEN 60.1 AND 65.0) AS in_band,
+       min(m), max(m) FROM d;
+```
+```
+18||16||25.5||65.0
+```
+
+16 of the 18 sit in the 60.1–65.0 band; the two outliers are 30.5 and 25.5.
+Full ids are recoverable by swapping `left(task_id::text, 8)` back to `task_id`.
 
 ## 4. Slice vs parent-story project mismatch
 

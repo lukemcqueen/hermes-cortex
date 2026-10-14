@@ -17,6 +17,34 @@ census is a point-in-time snapshot, so re-running the queries later will
 produce different counts for the *live* rows — the historical facts (the
 review-queue zero, the archive composition) are stable.
 
+## Run scope (what this cycle did and did not do)
+
+This was a backlog-run cycle whose top actionable task was a LOCAL DIAGNOSIS
+(`[review/1]`), not a fleet action:
+
+- **Done:** pulled pending + in_progress; classified every live row; worked the
+  top actionable slice; cancelled and archived the 3 stale `doctor-probe` rows;
+  delivered this document and its evidence artifact.
+- **Not done, deliberately: no `EXEC` was dispatched over the bus.** No pending
+  task had an `EXEC <script>` / diagnostic-on-a-remote-host shape, and the
+  orchestrator contract forbids dispatching fleet commands no task asks for.
+  An unsolicited EXEC sent to satisfy a cycle description would be traffic,
+  not work.
+- **Not done, per the slice's own bound:** no review-pipeline automation. The
+  fix paths below are proposed, not implemented.
+- **Blocked, needs the operator:** the 51-day stale claim `1e8737fc`, the KAESA
+  duplicate-ownership decision, and the store-level archive/audit-trail change.
+
+**Prior attempt, stated rather than left silent.** Cycle 12614 was REFUSED at
+close as scope-drift — its task id claimed the F-023 backlog-driver deliverable
+while the change was a diagnose-only doc — plus two evidence gaps. Those gaps
+are fixed in the evidence artifact (the dwell query is now constrained to the
+`pending → in_progress` transition; the "legal but unused status" claim is
+evidenced from the live constraints), and the work was re-framed under this
+correctly-named cycle. The refused commit is inside this range. That is a fixed
+finding, not a laundered one: a refused cycle whose work reappears under a new
+name is exactly what a hollow receipt looks like, so it is named here.
+
 ## The headline: there is no review queue to halve
 
 The slice asks for slices that "sat in `review` >24h". **No row on this host
