@@ -159,5 +159,103 @@ def test_the_clean_branch_passes_the_lock_it_holds():
     print("  the CLEAN branch forwards its lock instead of re-reading it with None ✓")
 
 
+def _call_arguments(src: str, fn: str) -> list[str]:
+    """The ARGUMENT TEXT of every ``fn(...)`` call in ``src``, definition excluded.
+
+    Parenthesis-balanced rather than line-based: a legitimately wrapped call would
+    otherwise read as a violation, and this guard exists to catch a MISSING argument,
+    not a formatting choice.
+    """
+    out, needle = [], fn + "("
+    i = src.find(needle)
+    while i != -1:
+        start = i + len(needle)
+        if src[max(0, i - 4):i] != "def ":
+            depth, j = 1, start
+            while j < len(src) and depth:
+                if src[j] == "(":
+                    depth += 1
+                elif src[j] == ")":
+                    depth -= 1
+                j += 1
+            out.append(src[start:j - 1])
+        i = src.find(needle, i + len(needle))
+    return out
+
+
+def test_every_refusal_marker_site_passes_the_resolved_lock():
+    """The SAME bug class, one function away (found by an external review 2026-10-14).
+
+    `_mark_close_refused` also called `_read_lock(None)`, so the marker that tells the
+    next change "you are committing on top of a REFUSED close" was never written for a
+    Hermes session — the one state the design exists to make visible. Every call site
+    already holds the lock, so every call site must pass it.
+    """
+    src = _SRC.read_text()
+    calls = _call_arguments(src, "_mark_close_refused")
+    assert calls, "expected the refusal marker call sites to exist"
+    bad = [c for c in calls if not c.replace("\n", " ").strip().endswith("lock")]
+    assert not bad, f"these sites would fall back to _read_lock(None): {bad}"
+    print(f"  all {len(calls)} refusal-marker sites pass the resolved lock ✓")
+
+
+def test_the_refusal_marker_lands_in_the_callers_lock(tmp_path):
+    """Behavioural, not source-level: the marker must be written to the lock the caller
+    resolved, and must NOT create governance state inside the repo."""
+    m = _load()
+    real = m.GOVERNANCE_STATE_DIR
+    try:
+        state_dir = tmp_path / "state"
+        state_dir.mkdir()
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        m.GOVERNANCE_STATE_DIR = state_dir
+        lock = {"session_id": "test-session-id", "repo_path": str(repo), "repo_slug": "r"}
+        m._mark_close_refused(999, "FINDINGS", json.dumps([{"finding_id": "f1"}]), state=lock)
+        made = sorted(state_dir.glob(".governance-*.json"))
+        assert len(made) == 1, f"the marker must be written to the resolved lock: {made}"
+        d = json.loads(made[0].read_text())
+        assert d["close_refused"]["cycle_id"] == 999, d
+        assert d["close_refused"]["verdict"] == "FINDINGS", d
+        assert not list(repo.rglob("*")), "no governance state may be created inside a repo"
+    finally:
+        m.GOVERNANCE_STATE_DIR = real
+    print("  the refusal marker lands in the caller's lock, and never in the repo ✓")
+
+
+def test_the_clean_branch_reports_a_bail_instead_of_swallowing_it():
+    """`_clear_close_refused` discarding the writer's return value is the same silence
+    the report-and-remedy work removed everywhere else: a CLEAN close whose receipt
+    could not be written must say so."""
+    m = _load()
+    got = m._clear_close_refused(999, state={"session_id": "test-session-id"})
+    assert got, "the CLEAN branch must not discard the receipt writer's bail reason"
+    assert "no repo identity" in got, got
+    print("  the CLEAN branch returns the bail reason instead of discarding it ✓")
+
+
+def test_the_receipt_shape_is_unchanged_by_a_second_write(tmp_path):
+    """Idempotence: the CLEAN branch and the close path both write a receipt for the
+    same range, so the second write must not corrupt or double the first."""
+    m = _load()
+    real = m.GOVERNANCE_STATE_DIR
+    try:
+        repo, head = _fixture_repo(tmp_path)
+        state_dir = tmp_path / "state"
+        state_dir.mkdir()
+        m.GOVERNANCE_STATE_DIR = state_dir
+        lock = {"repo_path": str(repo), "repo_slug": repo.name,
+                "session_id": "test-session-id"}
+        assert m._write_review_receipt("t", None, state=lock) is None
+        assert m._write_review_receipt("t", None, state=lock) is None
+        made = sorted(state_dir.glob(".reviewed-*.json"))
+        assert len(made) == 1, f"one range must produce ONE receipt file, got {made}"
+        assert json.loads(made[0].read_text())["tip_sha"] == head
+    finally:
+        m.GOVERNANCE_STATE_DIR = real
+        shutil.rmtree(tmp_path, ignore_errors=True)
+    print("  a second receipt write for the same range is idempotent ✓")
+
+
 if __name__ == "__main__":
     sys.exit(__import__("pytest").main([__file__, "-q"]))

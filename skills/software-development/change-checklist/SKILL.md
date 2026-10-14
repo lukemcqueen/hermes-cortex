@@ -77,6 +77,28 @@ Enforced at 3 layers: pre-commit hook (static gate), enforcer (blocks commit unt
       warnings omitted). A transcript with the counts absent is not evidence: the reader cannot
       tell a clean run from a skipping one, and a summary line claiming cleanliness the
       transcript contradicts is a fabrication finding.
+- [ ] **An evidence script must be READ-ONLY: never repair what it measures.** Invoke every tool
+      it runs in its non-mutating mode. Measured 2026-10-14: a capture ran
+      `check-skill-drift-parity.py` WITHOUT `--check`, which REGENERATES the tracked artifact it
+      was comparing — so the run rewrote its own baseline and could never report it stale; the
+      flag existed and was documented. Prove the mode both ways (a missing baseline must exit
+      non-zero WITHOUT writing anything) rather than trusting the help text.
+- [ ] **Redact at the GENERATOR, and keep the redaction narrow.** A transcript committed to a
+      PUBLIC repo must not carry `/home/<user>` paths, the host name, or `ls -l` ownership. Apply
+      ONE normaliser to every emitted line — never hand-patch the committed copy, which soon
+      disagrees with the command printed above it. Redact the host only in host CONTEXTS (`Host:`,
+      `@host`): a bare replace of the host's name also mangles legitimate identifiers that share
+      it (a DB role, an agent's own name).
+- [ ] **An artifact must not tell the reviewer what to conclude.** A `READ THIS FIRST` block
+      asserting the verdict ("note 0 fail ... both green") is injection, and it reads as
+      fabrication the moment the output beside it contradicts it — the same artifact it described
+      exited 1 in that very block. State PROVENANCE instead: what produced the file, which
+      revisions it compares, which fields are volatile by design.
+- [ ] **A silent-bail bug class comes in PAIRS — grep the siblings.** When a fix starts passing a
+      resolved value (a lock, a session, a repo) into one helper, grep every call site of the bare
+      lookup it replaced: the refusal-marker writer one function away had the identical
+      `_read_lock(None)` defect, so the state it exists to make visible was never written for
+      exactly the sessions that reach it.
 - [ ] **A piped `rc=$?` is the LAST stage's status, so regenerate an artifact rather than
       hand-patching it.** `cmd | tail -1; echo rc=$?` prints the tail's 0, which can put
       `rc=0` directly beneath a failure and read as a contradiction: run the command bare, or

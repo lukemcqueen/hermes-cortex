@@ -124,5 +124,18 @@ def test_the_live_prompt_matches_the_installer():
     print(f"  live prompt == installer paste ({len(live)} chars) ✓")
 
 
+def test_the_prompt_quotes_the_reserved_word_column():
+    """`column` is a RESERVED word in PostgreSQL: an unquoted `SELECT ... column ...`
+    handed to the cron's reader role is a syntax error, and the prompt's whole purpose
+    is to stop the agent guessing column names."""
+    p = extract_prompt(_INSTALLER.read_text(), _JOB_NAME)
+    assert p, "the installer block must parse"
+    assert '"column"' in p, "the tasks.tasks column list must quote the reserved word column"
+    assert "reserved" in p.lower(), "the prompt must say WHY it is quoted"
+    assert "column," not in p.replace('"column",', ""), \
+        "the unquoted form must not appear alongside the quoted one"
+    print("  the reserved word `column` is quoted, with the reason stated ✓")
+
+
 if __name__ == "__main__":
     sys.exit(__import__("pytest").main([__file__, "-q"]))

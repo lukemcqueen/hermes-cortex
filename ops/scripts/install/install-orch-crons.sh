@@ -446,7 +446,8 @@ task-db.py lives at ~/hermes-cortex/ops/scripts/manage/task-db.py (NOT tools/). 
 
 READ-ONLY SQL, if you need it (schema VERIFIED 2026-10-14 — do NOT guess column names):
   docker exec -i mycortex-postgres psql -U mycortex_reader_esther -d mycortex -c '<sql>'
-  tasks.tasks: id, content, created_by, assignee, project, repo, target, scope, status, column, position, priority, due, tags, source, depends_on, session_id, created_at, updated_at, status_changed_at, completed_at, parent_id, kind, correlation_id, plan
+  tasks.tasks: id, content, created_by, assignee, project, repo, target, scope, status, "column", position, priority, due, tags, source, depends_on, session_id, created_at, updated_at, status_changed_at, completed_at, parent_id, kind, correlation_id, plan
+    ^ "column" is a RESERVED word in PostgreSQL — it MUST be written with the double quotes exactly like that in any SELECT, or the query fails with a syntax error.
   tasks.task_events: id, task_id, event_type, from_status, to_status, reason, by, session_id, correlation_id, at   <- the timestamp is 'at', NOT created_at
   Always qualify columns in a join (t.id, e.task_id): an unqualified id is ambiguous.
   The bus schema is NOT readable by this role (permission denied BY DESIGN) — use the bus API or hc.py, never raw SQL on bus.*.

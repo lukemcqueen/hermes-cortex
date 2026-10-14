@@ -5379,6 +5379,24 @@ def check_paused_cron_reasons(res) -> None:
     return
 
   notepad_reasons = _notepad_paused_reasons({str(j.get("id") or "") for j in paused})
+  if notepad_reasons is None:
+    # COULD NOT VERIFY is a THIRD outcome (2026-10-14, external review): swallowing the
+    # read error made the helper return an empty set, so a corrupt or locked store
+    # reported EVERY paused job as unexplained — a flood of false WARNs pointing the
+    # reader at `hermes cron notepad` for reasons that are recorded and merely
+    # unreadable. Name the store and stop; the store is the thing to fix.
+    res.add(
+      "Paused crons: reason", "WARN",
+      f"COULD NOT VERIFY the reason for {len(paused)} paused cron(s): the durable "
+      f"notepad store at {_notepad_db()} could not be read (corrupt, locked, or not a "
+      f"database). jobs.json was readable, so any paused_reason recorded there still "
+      f"counts — this says the OTHER store is unverified, not that the pauses are wrong.",
+      fix=f"Inspect or repair the store: sqlite3 {_notepad_db()} '.tables' — a readable "
+          f"store with no cron_notepad rows means the reasons were never recorded, which "
+          f"the next run of this check will report as unexplained.",
+    )
+    return
+
   unexplained = []
   for job in paused:
     if str(job.get("paused_reason") or "").strip():
@@ -5403,14 +5421,23 @@ def check_paused_cron_reasons(res) -> None:
           f"all {len(paused)} paused cron(s) carry a recorded reason")
 
 
-def _notepad_paused_reasons(job_ids: set[str]) -> set[str]:
+def _notepad_db() -> Path:
+  """The cron notepad store this host uses."""
+  return HERMES_HOME / "cron" / "notepad.db"
+
+
+def _notepad_paused_reasons(job_ids: set[str]) -> set[str] | None:
   """Job ids whose durable notepad holds a ``paused_reason``.
 
-  Reads the cron notepad DB read-only. An ABSENT db is treated as "no reasons
-  recorded" (the caller then reports those jobs as unexplained) — never as an error,
-  because a host that has never written a notepad legitimately has none.
+  Reads the cron notepad DB read-only. Returns:
+
+    * a set - the store was READ (possibly empty; an absent db legitimately means
+      "no reasons recorded", because a host that never wrote a notepad has none);
+    * ``None`` - the store could NOT be read, which is a DIFFERENT outcome from
+      "no reasons". The caller reports it as COULD NOT VERIFY instead of letting a
+      corrupt store turn every paused job into a false "no recorded reason" WARN.
   """
-  db = HERMES_HOME / "cron" / "notepad.db"
+  db = _notepad_db()
   if not db.exists() or not job_ids:
     return set()
   out: set[str] = set()
@@ -5424,7 +5451,7 @@ def _notepad_paused_reasons(job_ids: set[str]) -> set[str]:
     finally:
       con.close()
   except Exception:
-    return set()
+    return None
   for (job_id,) in rows:
     if str(job_id) in job_ids:
       out.add(str(job_id))

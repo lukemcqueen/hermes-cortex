@@ -765,7 +765,8 @@ def _is_lock_stale(state: dict, mtime_fallback: float | None = None) -> bool:
     return False
 
 
-def _mark_close_refused(cycle_id: int, verdict: str, findings_json: str) -> None:
+def _mark_close_refused(cycle_id: int, verdict: str, findings_json: str,
+                        state: dict | None = None) -> None:
     """Record ON THE LOCK that the adversarial review refused this close.
 
     Why this exists (2026-10-02, Luke: "will your lock issue be a continual
@@ -776,20 +777,26 @@ def _mark_close_refused(cycle_id: int, verdict: str, findings_json: str) -> None
     cycle 10445, and the fix is to make the state visible at the moment it occurs
     instead of after the fact.
 
+    ``state`` is the lock the CALLER already resolved, for the same reason as in
+    ``_clear_close_refused``: a bare ``_read_lock(None)`` cannot identify this session
+    (the server is one process shared by every Hermes session), so the marker was
+    silently never written for exactly the sessions that reach this path — the state
+    this marker exists to make visible. Every call site holds the lock already.
+
     The marker is written by the GATE, so a worker cannot forge it, and the
     pre-commit advisory reads it to warn when new work is committed under a
     refused close. Advisory only: the review that refused the close is unchanged.
     """
     try:
-        state = _read_lock(None)
-        if not state:
+        lock_state = state if state is not None else _read_lock(None)
+        if not lock_state:
             return
         try:
             found = json.loads(findings_json or "[]")
         except (ValueError, TypeError):
             found = []
         _block, _annot = _blocking_findings(findings_json or "[]")
-        state["close_refused"] = {
+        lock_state["close_refused"] = {
             "at": _now_iso(),
             "cycle_id": cycle_id,
             "verdict": str(verdict or "").upper(),
@@ -797,7 +804,7 @@ def _mark_close_refused(cycle_id: int, verdict: str, findings_json: str) -> None
             "low": len(_annot),
             "finding_ids": [str((f or {}).get("finding_id", "?")) for f in (found or [])][:12],
         }
-        _write_lock(state, None)
+        _write_lock(lock_state, None)
         log.warning("close refused for cycle %s (%s) — marker written to the lock; "
                     "new work under this lock will be flagged as a stacked change",
                     cycle_id, verdict or "FINDINGS")
@@ -959,7 +966,7 @@ def _write_review_receipt(cycle_id=None, args: dict | None = None,
         return _receipt_bail(f"could not write review receipt: {e}")
 
 
-def _clear_close_refused(cycle_id=None, state: dict | None = None) -> None:
+def _clear_close_refused(cycle_id=None, state: dict | None = None) -> str | None:
     """Drop the refusal marker AND write the push receipt — this is the CLEAN point.
 
     Both CLEAN paths (fresh verdict, and a stored verdict whose fingerprint still
@@ -973,6 +980,10 @@ def _clear_close_refused(cycle_id=None, state: dict | None = None) -> None:
     while some LATER call site also wrote a receipt; the moment the lock itself
     lacked a repo (a Hermes session the enforcer never learned a repo for) both
     paths bailed and the push gate was unsatisfiable with nothing reported.
+
+    RETURNS the writer's bail reason (None when a receipt was written). Discarding it
+    was the same silence the caller now reports on: a CLEAN close whose receipt could
+    not be written must be visible in the log, not inferred from a later failed push.
     """
     try:
         lock_state = state if state is not None else _read_lock(None)
@@ -981,7 +992,10 @@ def _clear_close_refused(cycle_id=None, state: dict | None = None) -> None:
             log.info("close no longer refused — marker cleared from the lock")
     except Exception as e:
         log.warning("could not clear close_refused on the lock: %s", e)
-    _write_review_receipt(cycle_id, None, state=state)
+    bail = _write_review_receipt(cycle_id, None, state=state)
+    if bail:
+        log.warning("CLEAN close for cycle %s wrote NO push receipt: %s", cycle_id, bail)
+    return bail
 
 
 def _touch_heartbeat(args: dict | None = None) -> None:
@@ -4240,7 +4254,7 @@ def _adversarial_review_gate(lock: dict, cycle: dict,
         if _elsewhere:
             _other = _elsewhere[0]
             try:
-                _mark_close_refused(cycle.get("id", 0), "WRONG_REPO", "[]")
+                _mark_close_refused(cycle.get("id", 0), "WRONG_REPO", "[]", lock)
             except Exception:
                 log.warning("Could not mark refusal on the lock (non-critical)")
             _why = (
@@ -4320,7 +4334,7 @@ def _adversarial_review_gate(lock: dict, cycle: dict,
     if not template or REVIEW_MARKER not in template:
         # A refusal is a refusal — this one also leaves the lock held, so record it
         # on the lock like every other refusal (same stacking risk).
-        _mark_close_refused(cycle.get("id", 0), "TEMPLATE_MISSING", "[]")
+        _mark_close_refused(cycle.get("id", 0), "TEMPLATE_MISSING", "[]", lock)
         return CallToolResult(content=[TextContent(type="text", text=(
             "❌ Cannot close: self-adversarial reviewer prompt template is missing or "
             "corrupt. Run cortex-update.sh, then retry end_change."
@@ -4409,7 +4423,7 @@ def _adversarial_review_gate(lock: dict, cycle: dict,
                          cycle.get("id"), stored_verdict, len(_annot))
                 return None
             _mark_close_refused(cycle.get("id", 0), stored_verdict,
-                                stored.get("findings_json") or "[]")
+                                stored.get("findings_json") or "[]", lock)
             _note = _release_after_refusal(lock)
             return CallToolResult(content=[TextContent(type="text", text=(
                 "❌ Self-adversarial review FAILED — this complex change cannot close.\n\n"
@@ -4435,7 +4449,7 @@ def _adversarial_review_gate(lock: dict, cycle: dict,
         # otherwise an outage silently looks like a live cycle and the next change
         # gets stacked under it. (Found by test_refused_close_visible: the outage
         # path had no marker at all.)
-        _mark_close_refused(cycle.get("id", 0), "REVIEWER_UNAVAILABLE", "[]")
+        _mark_close_refused(cycle.get("id", 0), "REVIEWER_UNAVAILABLE", "[]", lock)
         return CallToolResult(content=[TextContent(type="text", text=(
             "❌ Cannot close: self-adversarial reviewer is UNAVAILABLE. "
             "Governance requires review before this complex change ships — "
@@ -4500,7 +4514,7 @@ def _adversarial_review_gate(lock: dict, cycle: dict,
         return None
 
     # MEDIUM+ (or unclassifiable): hard-block.
-    _mark_close_refused(cycle.get("id", 0), verdict, findings_json)
+    _mark_close_refused(cycle.get("id", 0), verdict, findings_json, lock)
     _note = _release_after_refusal(lock)
     return CallToolResult(content=[TextContent(type="text", text=(
         "❌ Self-adversarial review FAILED — this complex change cannot close.\n\n"

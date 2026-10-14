@@ -15,8 +15,10 @@ Usage: python3 ops/scripts/manage/capture-crons-receipt-evidence.py [output-path
 
 from __future__ import annotations
 
+import getpass  # noqa: F401  (kept: normalise_line reads the user for ownership redaction)
 import json  # noqa: F401  (kept: the probes below are quoted commands, not imports)
 import re
+import socket
 import subprocess
 import sys
 from pathlib import Path
@@ -26,6 +28,42 @@ REPO = HOME / "hermes-cortex"
 DEFAULT_OUT = REPO / "docs" / "evidence" / "fix-receipt-paused-crons-2026-10-14.txt"
 HERMES_VENV = HOME / ".hermes" / "hermes-agent" / "venv" / "bin" / "python3"
 ADV = HOME / ".hermes-cortex" / "scripts" / "adversarial-verify.py"
+
+
+def normalise_line(text: str, *, home: Path | None = None, user: str | None = None,
+                   host: str | None = None) -> str:
+    """Redact host identity and wall-clock noise from ONE emitted line.
+
+    This runs in the GENERATOR, on every line, for two reasons: the transcript is
+    committed to a PUBLIC repo (so home paths, the host name and `ls -l` ownership must
+    not travel with it), and a hand-patched committed copy soon disagrees with the
+    command printed above it.
+
+    Deliberately narrow, so redaction cannot corrupt evidence:
+
+    * the home directory becomes ``$HOME`` (and any *other* host's ``/home/<name>``
+      becomes ``/home/<user>``), which keeps every command copy-pasteable;
+    * ``Host: <name>`` becomes ``Host: <host>`` and ``@<host>`` becomes ``@<host>`` --
+      NOT a bare replace of the host's name, which would mangle legitimate identifiers
+      that share it (a DB role such as a reader account, or an agent's own name);
+    * ``<user> <user>`` (the `ls -l` ownership column) becomes ``<user> <user>``;
+    * pytest DURATIONS become ``<t>s``, because a wall-clock duration is noise no
+      re-run can reproduce -- the verdict on that same line is the evidence.
+    """
+    home = HOME if home is None else home
+    user = getpass.getuser() if user is None else user
+    host = socket.gethostname() if host is None else host
+    out = str(text)
+    if home:
+        out = out.replace(str(home), "$HOME")
+    out = re.sub(r"/home/[A-Za-z0-9_.-]+", "/home/<user>", out)
+    if user:
+        out = re.sub(rf"\b{re.escape(user)}\s+{re.escape(user)}\b", "<user> <user>", out)
+    out = re.sub(r"(?m)^(\s*)Host: \S+", r"\1Host: <host>", out)
+    if host:
+        out = re.sub(rf"@{re.escape(host)}\b", "@<host>", out)
+    out = re.sub(r"\bin \d+(?:\.\d+)?s\b", "in <t>s", out)
+    return out
 
 # The homeassistant probe, run with the HERMES venv from its own root. It must call
 # plugin discovery FIRST: a probe that skips it reports BOTH candidate toolset names
@@ -94,7 +132,7 @@ def main() -> int:
     lines: list[str] = []
 
     def emit(text: str) -> None:
-        lines.append(text)
+        lines.append(normalise_line(text))
 
     def block(label: str, argv: list[str], cwd: Path | None = None, keep: str | None = None) -> None:
         """Run argv; print the command, its output and its BARE rc.
@@ -123,18 +161,19 @@ def main() -> int:
         except Exception:
             return "?"
 
-    emit("Evidence for the receipt / paused-cron fix (commit ebcf8769, plus the follow-up")
-    emit("commit this file ships in). Every block is the complete captured output of the")
-    emit("command printed immediately above it, with the command's OWN exit code (measured")
-    emit("bare, with no pipe). Re-run any line to reproduce its block.")
+    emit("Evidence for the receipt / paused-cron fix. Captured by")
+    emit("ops/scripts/manage/capture-crons-receipt-evidence.py - re-run that script (with an")
+    emit("output path) to reproduce this file. Each block prints the command immediately")
+    emit("above its output, then that command's OWN exit code, measured bare with no pipe.")
+    emit("")
+    emit("PROVENANCE: the revision range this run compares is named by the rev-parse block")
+    emit("below. Volatile by design, and not claims about the change: the capture time, the")
+    emit("pids in the process listing, and the pytest durations (normalised to <t>s). Every")
+    emit("other line is reproducible from the same tree. Host identity is redacted here in")
+    emit("the generator: $HOME for home paths, <host> for the host, <user> for file ownership.")
     emit("")
     emit(f"Host: {capture(['hostname', '-s'])}")
     emit(f"Captured: {capture(['date', '-u', '+%Y-%m-%d %H:%M:%S UTC'])}")
-    emit("")
-    emit("READ THIS FIRST - the doctor block below is captured WITH THIS ARTIFACT STILL")
-    emit("UNCOMMITTED, so its single warn is 'Repo clean' (the capture file and script")
-    emit("themselves). Everything the range fixed reads PASS in that same block: note")
-    emit("0 fail, and 'Paused crons: reason' / 'Orphan-cycle resolution' both green.")
     emit("")
     for rev in ("HEAD", "HEAD~1", "origin/main"):
         emit(f"{rev}: {capture(['git', '-C', str(REPO), 'rev-parse', rev])}")
@@ -195,15 +234,29 @@ def main() -> int:
               ["python3", str(ADV), "--file", rel, "--level", level, "--gate"], cwd=REPO,
               keep=r"Summary:|GATE_|finding|CRITICAL|HIGH|MEDIUM")
 
-    # 8. Skill-drift parity: 0 stranded.
-    block("skill drift parity", ["python3", str(REPO / "ops/scripts/manage/check-skill-drift-parity.py")],
-          cwd=REPO, keep=r"stranded|in sync|Verdict|^\|")
+    # 8. Skill-drift parity: 0 stranded. --check COMPARES against the committed
+    #    artifact and never writes it - without the flag this tool regenerates
+    #    docs/evidence/skill-drift-parity.txt, so an evidence run would rewrite the
+    #    tracked file it is measuring.
+    block("skill drift parity (--check: compares, never writes)",
+          ["python3", str(REPO / "ops/scripts/manage/check-skill-drift-parity.py"), "--check"],
+          cwd=REPO, keep=r"stranded|in sync|Ver|artifact|^\-")
 
     # 9. deploy != load: the running MCP child predates the deployed file.
     block("deploy != load (MCP child vs deployed file)",
           ["bash", "-c", "ps -eo pid,lstart,etimes,args | grep -F loop-gov-mcp | grep -v grep; "
                          "ls -l --time-style=+%Y-%m-%dT%H:%M:%S "
                          f"{HOME}/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py"])
+
+    # 10. The reserved word `column`, measured against the LIVE database with the
+    #     prompt's OWN command form: quoted returns a row, unquoted must FAIL. Run
+    #     both ways on purpose - an instruction "quote it" is only worth shipping if
+    #     the unquoted form demonstrably breaks.
+    for label, sql in (("QUOTED (must return a row)", 'SELECT "column" FROM tasks.tasks LIMIT 1'),
+                       ("UNQUOTED (must fail)", "SELECT column FROM tasks.tasks LIMIT 1")):
+        block(f"live DB: reserved word {label}",
+              ["docker", "exec", "-i", "mycortex-postgres", "psql",
+               "-U", "mycortex_reader_esther", "-d", "mycortex", "-c", sql])
 
     emit("END OF EVIDENCE")
     out_path.write_text("\n".join(lines) + "\n")

@@ -46,6 +46,18 @@ def _job(jid, status, name="test-job", enabled=True, paused=False):
     }
 
 
+def _ids(pause_pairs) -> list[str]:
+    """The job ids from ``_evaluate``'s pause list.
+
+    ``_evaluate`` returns ``(job_id, reason)`` PAIRS, not bare ids: the pause is only
+    useful if the reason travels with it, because `hermes cron pause` cannot record one
+    and the watchdog is the only thing that knows WHY it stopped a job (2026-10-14).
+    These four assertions were left on the old bare-id contract when that changed, which
+    is why the file was red; they now assert the id AND the reason's content.
+    """
+    return [p[0] for p in pause_pairs]
+
+
 class TestConsecutiveCounting:
     def test_first_failure_counts_one_no_alert(self, wd):
         # One error tick is transient tolerance — count, but no alert/pause.
@@ -62,7 +74,11 @@ class TestConsecutiveCounting:
         wd._evaluate([j])
         wd._evaluate([j])
         alerts, to_pause = wd._evaluate([j])
-        assert to_pause == ["a1"]
+        assert _ids(to_pause) == ["a1"]
+        # The reason must identify the job, the cause, and the way back.
+        reason = to_pause[0][1]
+        assert "3 consecutive" in reason, reason
+        assert "hermes cron resume a1" in reason, reason
         assert len(alerts) == 1
         assert "3 consecutive" in alerts[0]
 
@@ -117,7 +133,7 @@ class TestRecoveryIsSilent:
         alerts, to_pause = wd._evaluate([j])    # new streak crosses threshold
         assert len(alerts) == 1
         assert "3 consecutive" in alerts[0]
-        assert to_pause == ["a1"]
+        assert _ids(to_pause) == ["a1"]
 
 
 class TestSelfExclusion:
@@ -139,7 +155,7 @@ class TestSelfExclusion:
         sibling = _job("sib", "error", name="agent-other-watchdog")
         wd._evaluate([sibling]); wd._evaluate([sibling])
         alerts, to_pause = wd._evaluate([sibling])
-        assert to_pause == ["sib"]
+        assert _ids(to_pause) == ["sib"]
         assert any("other-watchdog" in a for a in alerts)
 
 
@@ -152,7 +168,8 @@ class TestPauseAndAlertNoisyProps:
         wd._evaluate([j])
         alerts, to_pause = wd._evaluate([j])
         assert "agent-push-metrics" in alerts[0]
-        assert to_pause == ["x"]
+        assert _ids(to_pause) == ["x"]
+        assert "agent-push-metrics" in to_pause[0][1], to_pause[0][1]
 
     def test_no_repeat_alert_until_reset(self, wd):
         # After pausing, remaining ticks must not re-alert (would spam).

@@ -26,7 +26,27 @@ from pathlib import Path
 import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-SRC = REPO_ROOT / ".hermes-cortex" / "scripts" / "agent-daily-bible-reading.py"
+
+
+def _source_path() -> Path:
+    """The script under test, preferring the REPO source.
+
+    The deployed tree is HOST-LOCAL (``~/.hermes-cortex/scripts/``), so resolving it as
+    ``<repo>/.hermes-cortex/scripts/`` finds nothing on any host: all 20 setup errors in
+    this file were the probe's own path bug, not a defect in the guard (2026-10-14).
+    Prefer the committed source — present in every checkout, so the verdict no longer
+    depends on whether THIS host happens to have deployed — and fall back to the deployed
+    copy for a host that has no checkout.
+    """
+    for candidate in (REPO_ROOT / "ops" / "scripts" / "agent-daily-bible-reading.py",
+                      Path.home() / ".hermes-cortex" / "scripts" / "agent-daily-bible-reading.py"):
+        if candidate.is_file():
+            return candidate
+    raise FileNotFoundError(
+        "agent-daily-bible-reading.py not found in the repo or the deployed tree")
+
+
+SRC = _source_path()
 
 
 def _load():

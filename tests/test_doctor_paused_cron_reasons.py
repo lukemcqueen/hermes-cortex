@@ -143,6 +143,38 @@ def test_a_blank_reason_does_not_count(tmp_path):
     print("  a whitespace-only reason does not count as an explanation ✓")
 
 
+def test_an_unreadable_store_is_could_not_verify_not_a_reasonless_warn(tmp_path):
+    """A store this check cannot READ is neither a pass nor a reasonless pause.
+
+    Swallowing the read error returns an empty set, which makes every paused job look
+    unexplained — the check then floods false WARNs and points the reader at
+    `hermes cron notepad` for jobs whose reason is recorded and merely unreadable.
+    Report the could-not-verify outcome and name the store.
+    """
+    c = _host(tmp_path, [_paused(job_id="job-u", name="agent-unverifiable")])
+    (c.HERMES_HOME / "cron" / "notepad.db").write_text("not a sqlite database\n")
+    res = _Result()
+    c.check_paused_cron_reasons(res)
+    assert res.status() == "WARN", res.rows
+    assert "COULD NOT VERIFY" in res.detail(), res.detail()
+    assert "NO recorded reason" not in res.detail(), (
+        "an unreadable store must not be reported as a reasonless pause: " + res.detail()
+    )
+    print("  an unreadable notepad is reported as COULD NOT VERIFY, not as a silence ✓")
+
+
+def test_an_empty_notepad_db_still_means_no_reasons(tmp_path):
+    """The both-ways half: a readable store with no rows IS the reasonless case, so the
+    could-not-verify branch must not swallow it."""
+    c = _host(tmp_path, [_paused(job_id="job-e", name="agent-empty-store")],
+              notepad_rows=[("other-job", "paused_reason", "unrelated", "now")])
+    res = _Result()
+    c.check_paused_cron_reasons(res)
+    assert res.status() == "WARN", res.rows
+    assert "NO recorded reason" in res.detail(), res.detail()
+    print("  a readable store without a reason still reports the reasonless pause ✓")
+
+
 def test_the_live_host_reports_a_status_without_crashing():
     """The real check reads the real stores — smoke only, no assertion on the verdict
     (a WARN here is a finding about the host, not a test failure)."""
