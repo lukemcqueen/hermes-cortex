@@ -54,6 +54,7 @@ from .checks import (
     check_orphan_cycle_resolution,
     check_paused_cron_reasons,
     check_review_provenance,
+    check_stale_loop_gov_daemon,
 )
 from .fix import apply_fixes
 from .bus_alert import dispatch_bus_alerts
@@ -116,6 +117,7 @@ def main():
         check_paused_cron_reasons,
         check_review_provenance,
         check_task_model_integrity,
+        check_stale_loop_gov_daemon,
         ]
 
     if do_quick:

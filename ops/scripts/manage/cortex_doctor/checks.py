@@ -427,6 +427,98 @@ def check_adversarial_review(res: "Results") -> None:
               "Set OPENROUTER_API_KEY in ~/.hermes/.env so the review hard gate can call the model")
 
 
+def _daemon_start_epoch(pid: str) -> float | None:
+    """Epoch at which a process started, via `ps -o lstart`. Cross-platform."""
+    try:
+        out = subprocess.run(["ps", "-o", "lstart=", "-p", str(pid)],
+                             capture_output=True, text=True, timeout=5).stdout.strip()
+    except (subprocess.TimeoutExpired, OSError):
+        return None
+    if not out:
+        return None
+    for fmt in ("%a %b %d %H:%M:%S %Y", "%a %b %e %H:%M:%S %Y"):
+        try:
+            return datetime.strptime(out, fmt).timestamp()
+        except (ValueError, TypeError):
+            continue
+    return None
+
+
+def check_stale_loop_gov_daemon(res: "Results") -> None:
+    """Warn when the running loop-governance MCP daemon serves a STALE module.
+
+    The daemon loads loop-gov-mcp.py ONCE at startup and keeps running that code
+    until a real restart — so a deploy that replaces the module (cortex-update
+    registers mcp-servers/loop-gov-mcp.py -> ~/.hermes-cortex/tools/...) leaves the
+    daemon serving the OLD logic from the file that is now newer on disk. Measured
+    symptom (Titus/pi, 2026-10-14, recurring): feedback_accept writes MOVE_ON and
+    reports success, but the first end_change() still reads the cycle as PENDING —
+    a `cycle_query` round-trip (a fresh DB read) happens to make a retry succeed, so
+    every close needs a declaration + a retry + an investigation.
+
+    Signal: process start time vs the mtime of the module file that process actually
+    loads (parsed from its argv). If the file changed after the daemon started, the
+    daemon cannot be running the current code. Fix is an operator restart, so this is
+    a WARN (nothing is broken, the new code simply is not loaded yet) — the same shape
+    as the restart-pending marker, applied to the loop-gov daemon instead of the
+    Hermes scheduler.
+    """
+    try:
+        ps = subprocess.run(["ps", "-eo", "pid,args"], capture_output=True,
+                            text=True, timeout=10).stdout
+    except (subprocess.TimeoutExpired, OSError) as e:
+        res.add("loop-gov daemon", "SKIP",
+                f"could not scan processes: {type(e).__name__}")
+        return
+    daemons = []
+    for line in ps.splitlines():
+        if "loop-gov-mcp.py" not in line:
+            continue
+        stripped = line.strip()
+        if stripped.startswith(("grep", "PID")):
+            continue
+        parts = line.split(None, 1)
+        if len(parts) != 2:
+            continue
+        pid, args = parts[0], parts[1]
+        # The module that process LOADS is the .py path in its argv.
+        mod_path = None
+        for tok in args.split():
+            if tok.endswith("loop-gov-mcp.py") and Path(tok).is_file():
+                mod_path = Path(tok)
+                break
+        if mod_path is None:
+            continue
+        try:
+            mod_mtime = mod_path.stat().st_mtime
+        except OSError:
+            continue
+        start = _daemon_start_epoch(pid)
+        if start is None:
+            continue
+        daemons.append((pid, mod_path, start, mod_mtime))
+    if not daemons:
+        # No daemon running is a different problem the MCP-server check handles.
+        res.add("loop-gov daemon", "SKIP",
+                "no running loop-gov-mcp.py daemon found to compare")
+        return
+    stale = []
+    for pid, mod_path, start, mod_mtime in daemons:
+        if mod_mtime > start + 1e-6:
+            stale.append(f"pid {pid} ({mod_path.name} changed after daemon start)")
+    if stale:
+        res.add("loop-gov daemon", "WARN",
+                "running stale code — the module changed after the daemon started: "
+                + "; ".join(stale),
+                "Restart the gateway to load the new loop-governance module: "
+                "hermes gateway restart. Until then end_change may read a cycle as "
+                "PENDING right after it was scored — a retry after a cycle_query is "
+                "the workaround, not the fix.")
+    else:
+        res.add("loop-gov daemon", "PASS",
+                f"running module is current ({len(daemons)} daemon(s) loaded after their file)")
+
+
 def _invokes_score_cycle(text):
   """True when a line puts `score-cycle` in COMMAND position.
 

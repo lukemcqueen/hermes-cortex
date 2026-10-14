@@ -1,4 +1,6 @@
-> `recorded-in: adversarial_reviews review_id=9e5fb9af-1455-43f7-9bb6-1417c022933a`
+> `provenance: advisory`
+
+> Note: the reviewing row this plan review originally cited (review_id 9e5fb9af, cycle 12589) is not present in this host's loop-governance store, so the claim was not verifiable on every host that shares this repo. Declared advisory here so it reads as commentary, never as citable verification.
 
 # Plan review — the review-provenance enforcement (operator standing directive)
 
