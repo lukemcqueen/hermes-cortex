@@ -87,6 +87,30 @@ grep -rn '<name>' ~/.hermes-cortex/scripts/install*.sh ~/hermes-cortex/ops/scrip
 | `~/.hermes-cortex/state/.hermes-session-*.id` | Auto-managed: `purge-stale-governance-locks.py` Phase 2 removes markers older than 24 h. Run that script, don't hand-delete |
 | `~/.hermes/models_dev_cache.json` | Regenerable cache BUT `hermes-backup` skill copies it — part of backup surface. Tiny (3 MB); optional |
 
+## Vestigial Profiles — `~/.hermes/profiles/<name>/`
+
+A named profile is a whole second Hermes home (its own `.env`, `config.yaml`,
+`SOUL.md`, skills, memories, sessions, cron), so it appears in NONE of the grep
+tables above. Its evidence is STRUCTURAL, and the question is not "who references
+it" but "did it ever serve a turn":
+
+| Evidence | What it means |
+|---|---|
+| no `config.yaml`; `memories/` and `sessions/` holding no files; no `cron/jobs.json`; a stock `SOUL.md` rather than the agent's edited identity | created and never configured — no turn ever ran there |
+| zero hits in `~/.config/systemd/user/`, `~/.hermes/cron/jobs.json`, `~/hermes-cortex` | nothing serves it — not a unit, not a cron, not a deploy step |
+| a file whose mtime PREDATES the directory containing it | the home was populated by an mtime-preserving copy, not written in place (`--clone` copies `config.yaml`, `.env`, `SOUL.md`, `skills/`, `memories/MEMORY.md`, `memories/USER.md`) |
+
+- **A copied profile carries a copy of `.env`, token included — that is not inert.**
+  A duplicate platform credential blocks the host gateway from multiplexing
+  (`hermes-gateway-operations` → the standalone-only section). A dead profile is
+  therefore never merely dead weight: decide it — delete, or strip the shared
+  credential — rather than leaving it in place.
+- **`onboarding.seen.profile_build_offered` is NOT evidence a profile was built.**
+  That flag records the offer to build a USER MEMORY profile; it has nothing to do
+  with a Hermes profile directory.
+- **Deletion is the owner's call.** Present the structural evidence plus the fix
+  options; never `rm -rf` a profile directory on your own judgement.
+
 ## Procedure
 
 1. **Survey** — `du -sh ~/.hermes/* ~/.hermes-cortex/* | sort -rh`; identify top consumers
@@ -104,6 +128,10 @@ grep -rn '<name>' ~/.hermes-cortex/scripts/install*.sh ~/hermes-cortex/ops/scrip
 - **`~/.hermes/hooks/` ≠ git hooks** — it's the agent's event-hook dir. Git hooks live under `~/.hermes-cortex/hooks/` (core.hooksPath).
 - **Grep the agent source, not just cortex** — the false-stale items all had agent-side consumers.
 - **Never delete while the gateway is writing** — `state.db` needs WAL checkpoint first if copied; never deleted.
+- **A profile directory shows up in none of the four greps — and still blocks the host.**
+  Verify it STRUCTURALLY (missing `config.yaml`, file-less `memories/`+`sessions/`, no
+  `cron/jobs.json`, zero unit/cron/repo references), because "zero references" alone reads
+  as a green light while its copied `.env` keeps the gateway standalone.
 - **cortex-update.sh purges governance locks mid-run** — if you run it during a cleanup session, re-acquire `begin_change` before continuing.
 
 ## Related
