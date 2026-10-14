@@ -1,0 +1,17 @@
+━━━ Verify pull-latest + cortex-update (cycle 6261) ━━━
+  behind=0
+✅ repo not behind origin
+✅ fleet venv interpreter runs: Python 3.12.13
+✅ fleet venv imports all 6 declared requirements
+✅ uv-managed python 3.12.13 restored
+✅ deployed == repo: cortex-update.sh
+✅ deployed == repo: fix-cortex-venv.py
+✅ deployed == repo: mcp_wiring.py
+  immutable flags present on 9/9 enforcement paths
+✅ enforcement files re-locked 9/9
+  doctor rc=1 — ⚠️  Overall: WARNING  (444 pass · 7 warn · 0 fail · 7 info)
+✅ doctor 0 fail
+✅ skill drift parity: committed artifact matches live derivation (0 stranded)
+
+━━━ RESULT: 10 checks, 0 failures ━━━
+ALL CLAIMS VERIFIED
