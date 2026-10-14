@@ -1,0 +1,41 @@
+
+--- 1. import-safety contract tests (both directions: inert import, working purge)
+---
+run-tests.sh: interpreter=~/.hermes-cortex/venv/bin/python3 rc=0  (PYTHONPATH/PYTHONHOME unset for the run)
+PASS  rc=0
+
+--- 2. the three-session probe: throwaway state dir + DB, real purge/release/repair paths
+[mcp-server] WARNING: the 'mcp' package is not installed — the stdio server cannot start; the CLI adapter (ops/scripts/loop-gov.py) still works.
+[mcp-server]   ~/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3 -m pip install mcp
+[mcp-server] WARNING: Orphan-cycle reaper: closed 1 abandoned PENDING cycle(s) unscored — #4(s4-task)
+module: ~/hermes-cortex/mcp-servers/loop-gov-mcp.py
+throwaway state: ~/.hermes/cache/scratch/three-session-probe-albmssly/state
+01. PASS deploy purge removes the genuinely abandoned lock — removed=1
+02. PASS deploy purge leaves the live deployer's own lock untouched
+03. PASS deploy purge leaves the other repo's live lock untouched
+04. PASS deploy purge leaves the pushing session's live lock untouched
+05. PASS the three live locks are byte-identical after the purge
+06. PASS deploy purge closed NO cycle — the abandoned session's cycle is still PENDING — decision=PENDING
+07. PASS S3's release removes S3's own lock — was 2e7923b912d8eb8a
+08. PASS S3's release leaves S1's deploy lock untouched
+09. PASS S3's release leaves S2's other-repo lock untouched
+10. PASS S3's release closed no peer's cycle
+11. PASS S3 closing its own cycle leaves every peer cycle alone
+12. PASS the MCP purge is also just a file remover — it resolves no cycle by itself — decision=PENDING
+13. PASS the sanctioned repair closes the orphaned cycle the purge left — resolved=1 decision=MOVE_ON
+14. PASS the repair still touched no live session's cycle
+15. PASS the reclaim finds nothing once the stale lock file is already gone (by design) — ✅ reclaim_dead_locks (report): no dead locks — every lock on disk is this session's own, live, or be
+
+failures=0
+PASS  every check held
+
+--- 3. the script still compiles and still runs as a script (the cron's path)
+COMPILE_OK
+   🧹 Purged 1 stale governance lock file(s) (rc=0)
+PASS  the CLI removed the stale lock and reported it
+
+--- 4. the defect's exact signature on the LIVE state dir: an import must change nothing
+   imported; STATE_DIR resolves to ~/.hermes-cortex/state
+PASS  live state dir unchanged by the import (102 entries before and after)
+
+ALL CLAIMS RE-VERIFIED (rc=0)

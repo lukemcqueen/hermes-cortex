@@ -101,10 +101,19 @@ def purge() -> int:
     return removed
 
 
-count = purge()
-if count > 0:
-    print(f"🧹 Purged {count} stale governance lock file(s)")
-else:
-    # Silent — no_agent cron with empty stdout = no delivery
-    pass
-sys.exit(0)
+def main() -> int:
+    """Entrypoint. Silent when clean — a no_agent cron with empty stdout delivers nothing."""
+    count = purge()
+    if count > 0:
+        print(f"🧹 Purged {count} stale governance lock file(s)")
+    return 0
+
+
+if __name__ == "__main__":
+    # NEVER at module level (fixed 2026-10-14): `count = purge()` + `sys.exit(0)` used to run on
+    # IMPORT, so any tool that imported this module to exercise its shipped logic — a test, a
+    # probe, a doctor check — purged the LIVE state directory as a side effect of loading it, and
+    # the importer could not prevent it (repointing STATE_DIR after the import is too late).
+    # Observed for real: a probe importing this file removed 780 abandoned lock files before it
+    # could repoint anything. Import must be inert; only running the file has effects.
+    sys.exit(main())
