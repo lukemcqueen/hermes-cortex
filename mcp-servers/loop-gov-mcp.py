@@ -854,6 +854,12 @@ def _release_lock_after_metadata_refusal(cycle_id: int, verdict: str, reason: st
     refusal behaves the same way (it releases the lock too, closing its cycle unscored —
     see _release_after_refusal); only a reviewer OUTAGE still holds the lock, because an
     outage is transient and retrying end_change is the shorter wait.
+
+    RETURN VALUE, precisely (2026-10-14 deep review, finding D1): it answers "was the CYCLE
+    resolved by this call?" — NOT "did the release happen". ``False`` means either the row was
+    already scored/overridden (nothing to do, nothing wrong) or the store could not be written;
+    the lock is still released afterwards unless the caller had no session id. Do not read a
+    ``False`` as a failed release, and do not retry on it.
     """
     # Order is load-bearing (same reason as in the blocked branch): the row is closed
     # BEFORE the lock is dropped, so no crash or interleaving can leave a released lock
@@ -1181,8 +1187,9 @@ def _release_after_refusal(lock: dict | None = None, cycle_id: int | None = None
             log.warning("refused close but the lock carries no session_id — not guessing which "
                         "session to release")
             return ("\n\n(The lock was NOT released: it carries no session_id, and releasing by a "
-                    "process-scoped fallback could drop a peer's lock. Its cycle is left PENDING "
-                    "for the same reason — see the cycle note above.)")
+                    "process-scoped fallback could drop a peer's lock. Its cycle is likewise left "
+                    "PENDING — there is no session to release it for, and closing the row would "
+                    "leave your own retry with nothing to close. Report this if it persists.)")
         # Close the cycle UNSCORED *before* the lock is dropped. A released lock beside a
         # still-PENDING cycle is a doctor FAIL (leak) that blocks the push for every agent on
         # the host; this path used to release the lock and never touch the row at all.
@@ -1426,6 +1433,36 @@ def _purge_stale_locks_unlocked() -> int:
     return removed
 
 
+def _still_pending(task_ids: set[str]) -> int:
+    """How many of these tasks still hold a PENDING cycle: a COUNT, or -1 = could not check.
+
+    ``_resolve_orphaned_pending_cycles`` returns a count for BOTH "nothing to close" and "the
+    store could not be written" (2026-10-14 review, finding D5), so a caller that needs to
+    report the difference has to MEASURE it. Reading the rows back is the honest way to say
+    "the doctor will fail on this" — and the -1 is the fleet's third outcome (could not
+    verify), never a silent zero.
+    """
+    if not task_ids:
+        return 0
+    conn = None
+    try:
+        conn = _db()
+        ph = ",".join("?" * len(task_ids))
+        row = conn.execute(
+            f"SELECT COUNT(*) FROM loop_cycles WHERE decision='PENDING' AND user_overrode IS NULL "
+            f"AND task_id IN ({ph})", tuple(task_ids)).fetchone()
+        return int(row[0]) if row else 0
+    except Exception as e:
+        log.warning("reclaim: could not count still-pending cycles (%s)", e)
+        return -1
+    finally:
+        if conn is not None:
+            try:
+                conn.close()
+            except Exception:
+                pass
+
+
 def _reclaim_dead_locks(args: dict) -> CallToolResult:
     """Report — or END — locks whose owner is provably dead.
 
@@ -1503,31 +1540,94 @@ def _reclaim_dead_locks(args: dict) -> CallToolResult:
             )
         lines.append("Call again with apply=true to remove these lock files and close their "
                      "PENDING cycles unscored. A live owner's lock is never listed.")
+        lines.append("NOTE: this read can RENEW a lock whose agent has committed since (the "
+                     "liveness rescue), so a lock you expected to see listed may have been kept "
+                     "alive rather than declared dead — that is the resolver working, not a miss.")
         return CallToolResult(content=[TextContent(type="text", text="\n".join(lines))])
 
-    ended, failed = 0, 0
-    task_ids: set[str] = set()
+    # ── OUTSIDE the state lock: close the cycles FIRST ────────────────────────────────
+    # ORDER IS LOAD-BEARING (2026-10-14 review, finding A2). The first version unlinked the
+    # lock files first and closed the cycles after, so a crash in between left a lockless
+    # PENDING cycle — the very leak this thread exists to remove. Closing first costs nothing
+    # if the process dies instead: a DEAD LOCK beside a MOVE_ON cycle is harmless to the
+    # doctor, and the next reclaim or purge removes the file.
+    #
+    # It uses the SHARED closer per task, not the orphan resolver: the resolver refuses to
+    # touch a cycle whose task still has a non-terminal lock ON DISK, which is exactly the
+    # state at this point (the files are still there), so routing through it closed NOTHING
+    # and left the leak — measured on the probe the first time this ordering was tried.
+    own_label = own or "unknown"
+    task_ids = {d["task_id"] for d in dead if d["task_id"]}
+    closed, unclosed = 0, []
+    for tid in sorted(task_ids):
+        if _close_cycle_unscored(
+            None,
+            f"lock reclaimed as DEAD by {own_label}: no live owner (heartbeat past the lock's own "
+            "TTL, and no commit by that agent in that repo since) — the cycle is closed unscored "
+            "and nothing was reviewed, so nothing is pushable from it",
+            "lock reclaimed (dead owner) — nothing reviewed (no receipt)",
+            task_id=tid,
+        ):
+            closed += 1
+        else:
+            unclosed.append(tid)
+    # Distinguish "nothing to close" from "the store could not be written" (finding D5): the
+    # outcome is MEASURED — whatever is still PENDING for these tasks is exactly what the
+    # doctor will FAIL on.
+    leftovers = _still_pending(task_ids)
+
+    # ── INSIDE the state lock: re-verify, then remove ────────────────────────────────
+    # The staleness decision above was made from a read taken before this lock, so an owner
+    # that woke up and refreshed its heartbeat in the gap could have a LIVE lock removed
+    # (finding B3). Both the ownership and the staleness are re-checked here, and an
+    # unreadable file is skipped rather than unlinked (P1-A: it may be mid-write).
+    ended, failed, skipped = 0, 0, 0
     with _STATE_LOCK:
         for d in dead:
             try:
+                fresh = json.loads(d["file"].read_text())
+                mtime = d["file"].stat().st_mtime
+            except (OSError, ValueError):
+                skipped += 1
+                continue
+            if (fresh.get("session_id") != d["session_id"]
+                    or not _is_lock_stale(fresh, mtime)):
+                skipped += 1
+                log.info("reclaim: %s became live or changed hands between the scan and the "
+                         "unlink — left alone", d["file"].name)
+                continue
+            try:
                 d["file"].unlink()
                 ended += 1
-                if d["task_id"]:
-                    task_ids.add(d["task_id"])
             except OSError as e:
                 failed += 1
                 log.warning("reclaim: could not remove %s (%s)", d["file"].name, e)
-    closed = _resolve_orphaned_pending_cycles(task_ids) if task_ids else 0
-    log.warning("reclaim: ended %d dead lock(s) (%d failed), closed %d PENDING cycle(s) unscored",
-                ended, failed, closed)
-    text = (f"🪦 reclaim_dead_locks (applied): ended {ended} dead lock(s), {failed} could not be "
-            f"removed, closed {closed} PENDING cycle(s) UNSCORED — no score invented, no review "
-            f"receipt written, so nothing became pushable from them.\n"
-            "Take over any of that work with your OWN begin_change: this ends a dead session's "
-            "lock, it never inherits their scope.")
+
+    log.warning("reclaim: ended %d dead lock(s) (%d failed, %d skipped), closed %d PENDING "
+                "cycle(s) unscored, %d left PENDING", ended, failed, skipped, closed, leftovers)
+    text = (f"🪦 reclaim_dead_locks (applied): {len(dead)} dead lock(s) found — ended {ended}, "
+            f"{failed} could not be removed, {skipped} changed hands and were left alone; "
+            f"{closed} PENDING cycle(s) closed UNSCORED and {leftovers} still PENDING.\n"
+            "No score is invented and no review receipt is written, so nothing became pushable "
+            "from them. Take over any of that work with your OWN begin_change: this ends a dead "
+            "session's lock, it never inherits their scope.")
+    if leftovers < 0:
+        text += ("\n⚠️ COULD NOT VERIFY whether those tasks' cycles were closed — the store could "
+                 "not be read. Run the doctor before relying on this; a lockless PENDING cycle "
+                 "blocks every push on this host.")
+    elif leftovers:
+        text += (f"\n❌ {leftovers} PENDING cycle(s) could NOT be closed"
+                 + (f" (tasks: {', '.join(unclosed)})" if unclosed else "")
+                 + " — the store may be unavailable, and the doctor FAILs on a lockless PENDING "
+                   "cycle, which blocks every push on this host. Report this; do not retry blindly.")
     if failed:
         text += "\n⚠️ Some lock files could not be removed — they will age out or need the operator."
-    return CallToolResult(content=[TextContent(type="text", text=text)])
+    return CallToolResult(
+        content=[TextContent(type="text", text=text)],
+        # A partial outcome is not a success (finding D4) — and a count we could not verify is
+        # not a zero.
+        is_error=bool(failed or leftovers != 0),
+    )
 
 
 def _resolve_orphaned_pending_cycles(task_ids: set[str] | None = None) -> int:
@@ -2106,7 +2206,9 @@ async def list_tools(ctx, params=None) -> ListToolsResult:
                 "touched. apply=true removes those lock files and closes their PENDING cycles UNSCORED "
                 "(no score invented, no review receipt written). It ENDS a dead session's lock; it does "
                 "NOT take the task over — a takeover is a fresh begin_change under your own name, never "
-                "an inherited scope."
+                "an inherited scope. NOTE ON TRUST: every agent on a host shares one state directory "
+                "and one unix user, so this is ONE trust domain by construction and the tool is not "
+                "an isolation boundary between mutually distrusting agents."
             ),
             inputSchema={
                 "type": "object",
@@ -5200,6 +5302,17 @@ def _check_lock(args: dict | None = None) -> CallToolResult:
             "heartbeat_at": state.get("heartbeat_at"),
             "ttl_seconds": state.get("ttl_seconds", DEFAULT_TTL),
         }
+        # Resolve THIS session's cycle before dropping its lock, for the same reason as every
+        # other release path (2026-10-14 deep review, finding A3): a released lock beside a
+        # PENDING cycle is a doctor leak that blocks the host's pushes. The purge above covers
+        # OTHER sessions' aged-out locks; this branch owns the case it leaves.
+        task_id_closed = _close_cycle_unscored(
+            None,
+            f"lock auto-released as stale by check_lock (heartbeat {stale['heartbeat_at']} "
+            f"older than its own ttl {stale['ttl_seconds']}s) — nothing was closed or reviewed",
+            "stale lock auto-released — nothing reviewed (no receipt)",
+            task_id=stale["task_id"],
+        )
         _release_lock(args)
         return CallToolResult(content=[TextContent(
             type="text",
@@ -5207,6 +5320,7 @@ def _check_lock(args: dict | None = None) -> CallToolResult:
                 "active": False,
                 "lock": None,
                 "auto_released": True,
+                "cycle_closed_unscored": bool(task_id_closed),
                 "released_lock": stale,
                 "live_lock_count": len(live),
                 "locks": live,
@@ -5736,9 +5850,30 @@ def _advance_task_state(args: dict) -> CallToolResult:
     # precisely why the release has to happen here, where the state goes terminal.
     release_note = ""
     if new_state in TERMINAL_STATES:
+        # Resolve the cycle BEFORE the lock goes (2026-10-14 deep review, finding A3 — the
+        # terminal branch carried the SAME leak the blocked branch was fixed for). The doctor
+        # treats a PENDING cycle whose task holds no NON-TERMINAL lock as a LEAK, and this branch
+        # makes the lock terminal and then removes it — so a task cancelled with an unscored
+        # cycle left exactly one failure that blocks every push on the host. A cycle already
+        # scored by feedback_accept is untouched (the closer only matches a PENDING row), so the
+        # documented score-then-cancel flow is unchanged.
+        _cycle_closed = _close_cycle_unscored(
+            None,
+            f"task '{(state or {}).get('task_id', '')}' moved to terminal state "
+            f"'{new_state}' with reason: {reason or 'none given'} — the session is released, no "
+            "score is invented because nothing was closed or reviewed",
+            f"terminal transition ({new_state}) — lock released, nothing reviewed (no receipt)",
+            task_id=(state or {}).get("task_id", ""),
+        )
         try:
-            _release_lock(args)
-            release_note = " 🔓 Lock released — a terminal task holds nothing."
+            # Release the lock this session OWNS, named explicitly (finding A1): the ambient
+            # resolver falls back to a process-scoped id when the call carries no session, and
+            # this server is one process for every session.
+            owner = (state or {}).get("session_id")
+            _release_lock({"session_id": owner} if owner else args)
+            release_note = (" 🔓 Lock released — a terminal task holds nothing."
+                            + ("" if _cycle_closed else " (⚠️ no PENDING cycle was matched — "
+                               "already scored, or the store was unreachable; run the doctor)"))
         except Exception as e:  # noqa: BLE001 — cleanup must not lose the transition
             log.warning("terminal transition: lock release failed: %s", e)
             release_note = (f" ⚠️ Lock release FAILED ({e}) — it will strand until "
@@ -5766,10 +5901,14 @@ def _advance_task_state(args: dict) -> CallToolResult:
             "work; the task stays resumable and no score is invented because nothing was "
             "closed or reviewed",
             "task BLOCKED — lock released, nothing reviewed (no receipt)",
-            task_id=(state or {}).get("task_id", ""),
+            (state or {}).get("task_id", ""),
         )
         try:
-            _release_lock(args)
+            # Name the owner explicitly (finding A1) rather than handing the ambient resolver a
+            # dict it may not carry a session in: this server is one process for every session,
+            # so a process-scoped fallback could free a PEER's lock.
+            owner = (state or {}).get("session_id")
+            _release_lock({"session_id": owner} if owner else args)
             release_note = (" 🔓 Lock released — a blocked task holds no mutex"
                             + ("" if _cycle_closed else " (⚠️ its PENDING cycle could not be "
                                "closed — the doctor will fail on it; report this)"))

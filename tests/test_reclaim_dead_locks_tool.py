@@ -82,14 +82,20 @@ def test_it_never_touches_this_sessions_own_lock():
     )
 
 
-def test_it_closes_cycles_through_the_existing_resolver():
-    """No second copy of the closing SQL — the release paths already share ONE closer."""
+def test_it_closes_cycles_through_the_shared_closer():
+    """One closer, not a second copy of the closing SQL — and NOT the orphan resolver, which
+    refuses a task whose lock is still on disk (that is the state here, and routing through it
+    closed nothing)."""
     body = _fn_source(HANDLER)
-    assert "_resolve_orphaned_pending_cycles(" in body
+    assert "_close_cycle_unscored(" in body
     assert "loop_cycles" not in body, (
-        "the reclaim writes its own cycle SQL instead of reusing the orphan resolver"
+        "the reclaim writes its own cycle SQL instead of reusing the shared closer"
     )
     assert "decision='MOVE_ON'" not in body, "the closing UPDATE belongs to the shared closer"
+    assert "_resolve_orphaned_pending_cycles(" not in body, (
+        "the orphan resolver skips any task whose lock file still exists — the dead locks are "
+        "still on disk at this point, so it would close nothing"
+    )
 
 
 def test_the_docstring_says_what_it_is_NOT():

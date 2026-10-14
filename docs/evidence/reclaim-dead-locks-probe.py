@@ -113,8 +113,13 @@ def main():
     check("report closed no cycle", cycle_row(mod, dead_cycle)["decision"] == "PENDING")
 
     # ── apply mode: ends the dead lock, closes only its cycle ─────────────────────────
-    applied = body(mod._reclaim_dead_locks({**args, "apply": True}))
-    check("apply reports one dead lock ended", "ended 1 dead lock" in applied)
+    res = mod._reclaim_dead_locks({**args, "apply": True})
+    applied = body(res)
+    check("apply reports one dead lock ended", "ended 1," in applied, applied.splitlines()[0][:120])
+    check("apply reports the cycle it closed", "1 PENDING cycle(s) closed UNSCORED" in applied)
+    check("apply reports nothing left PENDING", "still PENDING" in applied)
+    check("a clean apply is NOT flagged as an error",
+          not getattr(res, "is_error", False), f"is_error={getattr(res, 'is_error', None)}")
     check("apply removed the dead lock file", not dead_lock.exists())
     check("apply left the live owner's lock alone", fresh_lock.exists())
     check("apply left this session's own lock alone", own_lock.exists())

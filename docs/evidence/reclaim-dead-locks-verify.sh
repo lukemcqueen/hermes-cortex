@@ -16,7 +16,11 @@
 set -uo pipefail
 
 REPO="${1:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
-PREFIX_REF="${2:-origin/main}"
+# PINNED, not "origin/main" (2026-10-14): the baseline must be a revision BEFORE the change.
+# origin/main moves — once this change was pushed it BECAME origin/main, and the check then
+# reported "the pre-fix revision already carries the tool", which is a moving baseline turning
+# a discrimination into a tautology. e8874f49 is the commit immediately before the tool landed.
+PREFIX_REF="${2:-e8874f49}"
 cd "$REPO" || { echo "no such repo: $REPO"; exit 2; }
 
 FAILED=0

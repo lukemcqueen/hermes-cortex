@@ -53,7 +53,7 @@ def test_blocked_transition_closes_the_cycle_before_releasing_the_lock():
     assert "no receipt" in branch
 
     # Order: cycle first, lock second.
-    assert branch.index(f"{CLOSER}(") < branch.index("_release_lock(args)"), (
+    assert branch.index(f"{CLOSER}(") < branch.index("_release_lock("), (
         "the cycle must be closed unscored BEFORE the lock is released, or the release "
         "leaves a lockless PENDING cycle that fails the doctor for every agent"
     )
@@ -70,7 +70,7 @@ def test_blocked_still_releases_the_lock_when_the_store_step_fails():
         "the closer's result must not guard the release — a store failure would then "
         "strand the lock, which is the dead-end this branch removes"
     )
-    assert branch.index(f"{CLOSER}(") < branch.index("_release_lock(args)")
+    assert branch.index(f"{CLOSER}(") < branch.index("_release_lock(")
 
 
 def test_blocked_stays_non_terminal_and_is_a_separate_path():
