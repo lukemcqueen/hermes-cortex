@@ -1,0 +1,135 @@
+# Task-query repo scoping — measured evidence (2026-10-14, cycle 12593)
+
+Every command below was run in this session; each line quotes the run's own
+output. Commands are bare (no `| head`) so the exit code shown is the command's,
+not a filter's. Host: esther (Linux). Revision tip = `aa293f41`.
+
+## 1. Change under test
+
+```
+$ git log --oneline -1
+aa293f41 fix(tasks): scope every task query to the caller's own repo
+
+$ git diff --name-only aa293f41^ aa293f41        # 14 files
+docs/design/task-workflow.md · docs/evidence/task-query-repo-scope-2026-10-14/plan.md
+docs/troubleshooting.md · mcp-servers/task-mcp.py · ops/scripts/cortex-update.sh
+ops/scripts/cortex_lib/session_repo.py (new) · ops/scripts/manage/cortex_doctor/checks.py
+ops/scripts/manage/task-db.py · plugins/governance-enforcer/__init__.py
+skills/devops/task-persistence/SKILL.md · skills/devops/task-queue-workflow/SKILL.md
+tests/run_task_query_repo_scope_repro.py (new) · tests/test_runtime/test_task_query_repo_injection.py (new)
+tests/test_task_query_repo_scope.py (new)
+```
+
+## 2. Discriminating before/after — `tests/run_task_query_repo_scope_repro.py`
+
+Pinned baseline `55887b47` (the commit before the fix) vs tip `aa293f41`; real
+scratch Postgres (`tasks_repo_scope_test`, live rows untouched) and the REAL MCP
+server driven over stdio. Full transcript committed at
+`tests/artifacts/task-query-repo-scope-repro.txt`.
+
+```
+$ env -u PYTHONPATH -u PYTHONHOME ~/.hermes-cortex/venv/bin/python3 tests/run_task_query_repo_scope_repro.py --write-artifact
+  ✅ PRE-FIX leaks the other repo's task (the reported bug) — repo=steadfaste pending -> repos ['None', 'steadfaste', 'steadfaste-s1-model']
+  ✅ scoped pending returns the caller's own repo's task — seen=['probe-own', 'probe-untagged']
+  ✅ scoped pending still returns legacy untagged rows — seen=['probe-own', 'probe-untagged']
+  ✅ scoped pending NEVER returns another repo's task — seen=['probe-own', 'probe-untagged']
+  ✅ unresolvable repo returns NO tasks (never all repos) — stdout=[] stderr=task_pending: repo unknown — ...
+  ✅ explicit repo=ALL is the deliberate fleet view — seen=['probe-other', 'probe-own', 'probe-untagged']
+  ✅ MCP initialize handshake — {'name': 'task-mcp', 'version': ''}
+  ✅ tools/list: task_pending exposes repo   (… task_list, task_board, task_list_claimable, task_list_handed_out: all ✅)
+  ✅ MCP task_pending(repo=steadfaste) is scoped — seen=['probe-own', 'probe-untagged']
+  ✅ MCP task_pending() with no resolvable repo returns [] — text=[]
+  ✅ DEPLOYED engine is scoped — seen=['probe-own', 'probe-untagged']
+  ✅ DEPLOYED MCP task_pending is scoped — seen=['probe-own', 'probe-untagged']
+
+20 passed, 0 failed (base 55887b47f vs tip aa293f41a)          rc=0
+```
+
+## 3. Unit / integration suites
+
+```
+$ env -u PYTHONPATH -u PYTHONHOME ~/.hermes-cortex/venv/bin/python3 -m pytest \
+    tests/test_task_db_unit.py tests/test_task_mcp_v3.py tests/test_task_db_v4.py \
+    tests/test_task_queue_visibility.py tests/test_doctor_task_integrity.py \
+    tests/test_mcp_schema_per_db.py tests/test_task_query_repo_scope.py \
+    tests/test_runtime/test_task_query_repo_injection.py tests/test_runtime/test_score_gate.py -q
+145 passed in 3.22s                                            rc=0
+```
+
+Wider sweep run pre-deploy (`tests/test_runtime` + task/doctor/structure modules):
+`435 passed, 2 failed` — both failures were deploy-order artifacts and are green
+above after the deploy: `test_registered_sources_are_tracked` (the new file was
+untracked until it was committed) and
+`test_runtime/test_score_gate.py::test_begin_change_refuses_on_decorated_pending_cycle`
+(the repo enforcer differed from the deployed one, so begin_change returned
+DOGFOOD REQUIRED).
+
+## 4. Adversarial static gate (A4; A2 for the shell script)
+
+```
+$ for f in session_repo.py task-db.py task-mcp.py governance-enforcer/__init__.py checks.py \
+           test_task_query_repo_scope.py run_task_query_repo_scope_repro.py \
+           test_task_query_repo_injection.py; do
+    python3 ~/.hermes-cortex/scripts/adversarial-verify.py --file "$f" --level A4 --gate; done
+== ops/scripts/cortex_lib/session_repo.py        rc=0  GATE_PASSED (1 finding: 1 low)
+== ops/scripts/manage/task-db.py                 rc=0  GATE_PASSED (27 findings: 4 medium / 3 low / 20 info)
+== mcp-servers/task-mcp.py                       rc=0  GATE_PASSED (1 finding: 1 medium)
+== plugins/governance-enforcer/__init__.py       rc=0  GATE_PASSED
+== ops/scripts/manage/cortex_doctor/checks.py    rc=0  GATE_PASSED
+== tests/test_task_query_repo_scope.py           rc=0  GATE_PASSED
+== tests/run_task_query_repo_scope_repro.py      rc=0  GATE_PASSED
+== tests/test_runtime/test_task_query_repo_injection.py  rc=0  GATE_PASSED
+$ python3 ~/.hermes-cortex/scripts/adversarial-verify.py --file ops/scripts/cortex-update.sh --level A2 --gate
+rc=0  GATE_PASSED — no critical/high findings (0 findings)
+```
+
+The medium/low findings are generic input-fuzzing entries on long-standing
+helpers (`task-db.py:_int()` fuzzed with `None`/`-1`/`''`) — none are on a changed
+line, and the gate (critical/high) passes on every file.
+
+## 5. Deploy + doctor
+
+```
+$ bash ~/hermes-cortex/ops/scripts/cortex-update.sh          rc=0
+  ⚠ doctor: warnings only (rc=1) — review the report above when convenient
+```
+Deployed copies present after the deploy (repo → deploy):
+
+```
+$ ls -l ~/.hermes-cortex/scripts/cortex_lib/session_repo.py ~/.hermes-cortex/scripts/task-db.py ~/.hermes-cortex/scripts/task-mcp.py
+-rwxr-xr-x 5846  ~/.hermes-cortex/scripts/cortex_lib/session_repo.py
+-rwxr-xr-x 56384 ~/.hermes-cortex/scripts/task-db.py
+-rwxr-xr-x 26341 ~/.hermes-cortex/scripts/task-mcp.py
+```
+
+```
+$ env -u PYTHONPATH -u PYTHONHOME ~/.hermes-cortex/venv/bin/python3 ops/scripts/manage/cortex-doctor.py --quiet
+  ❌ Cron manifest drift (orch-bus-worker)      — model 'deepseek/deepseek-v4.1-flash' → ''; provider 'openrouter' → ''
+  ❌ Cron manifest drift (orch-task-morning-pass) — prompt differs (1974 → 873 chars)
+  ⚠️  Repo clean / Skill drift ×3 (all pre-existing)
+  ❌ Overall: FAILING  (465 pass · 4 warn · 2 fail · 3 info)
+rc=2
+```
+
+**The two doctor FAILs are NOT from this change** — measured, not assumed:
+
+```
+$ git diff --name-only aa293f41^ aa293f41 | grep -cE "cron|install-orch|jobs.json"
+0
+$ git log --oneline -1 -- ops/install/cron-manifest.yaml
+3c8dec70 feat(orch): rename orch-backlog-driver → orch-bus-worker and resume the fleet skill loop
+```
+A peer commit renamed the cron and the LIVE jobs were never reconciled with the
+manifest; my cycle touches no cron file. Recorded as a governance issue
+(`record_issue` → task_events event #127) instead of widening this cycle's diff,
+because repairing it rewrites live cron prompts and the absent model/provider pin
+may be deliberate (operator directive: env vars over per-cron pins).
+`⚠️ Repo clean` and the three `Skill drift` warnings pre-date this cycle (they are
+the routine stranded-skill maintenance the deploy's own report describes).
+
+## 6. Leftover decision
+
+`docs/evidence/skill-drift-parity.txt` was regenerated (625 → 626 "repo ahead")
+by running the test suite mid-change, before the deploy. It is a GENERATED report
+owned by the skill-drift pipeline; it is not part of this change and is left
+uncommitted here — the post-deploy pipeline/doctor refresh owns its numbers.

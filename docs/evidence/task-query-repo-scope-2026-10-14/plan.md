@@ -1,5 +1,18 @@
 # PLAN — repo-scoped task queries (cycle 12593, task `task-query-repo-scope`)
 
+> **REVIEW OUTCOME (governed reviewer, deepseek-v4-pro, cycle 12593,
+> review_id recorded in `adversarial_reviews`, verdict FINDINGS):**
+> - **ADV-12593-1 (HIGH, scope-drift) — OBEYED, CUT.** The reviewer refused the
+>   canonical-repo fallback (step 5 below): for an unresolved repo the query must
+>   return ZERO tasks, full stop. The shipped ladder therefore has NO canonical
+>   fallback — `explicit -> injected -> CORTEX_SESSION_REPO -> cwd git repo -> None
+>   -> no tasks`. Step 5 survives in this document only as the rejected proposal.
+> - **ADV-12593-2 (INFO, unverified-claim)** — expected of a plan: the test code and
+>   the measured evidence are committed in the same cycle
+>   (`tests/test_task_query_repo_scope.py`, `tests/test_runtime/test_task_query_repo_injection.py`,
+>   `tests/run_task_query_repo_scope_repro.py` + `tests/artifacts/task-query-repo-scope-repro.txt`,
+>   `docs/evidence/task-query-repo-scope-2026-10-14/green.txt`).
+
 Reported by Titus: `mcp__tasks__task_pending` (and `task_list`, `task_board`, …) return
 ALL pending tasks for an agent across every repo/project; no repo filter, no cwd
 awareness. Agents then work and report tasks belonging to another repo.
@@ -120,9 +133,11 @@ receive `repo_path` while an unobserved-repo session does not.
 `skills/devops/task-persistence` + `skills/devops/task-queue-workflow` (one line each:
 queries are repo-scoped; pass `repo=`).
 
-**G. Evidence + deploy** — `docs/evidence/task-query-repo-scope-2026-10-14/{plan.md,red.txt,green.txt,scope-transcript.txt}`
-committed IN this cycle; register the new cortex_lib entry, deploy
-(`cortex-update.sh`), verify the DEPLOYED copies load, then push.
+**G. Evidence + deploy** — `docs/evidence/task-query-repo-scope-2026-10-14/{plan.md, green.txt}` plus
+`tests/artifacts/task-query-repo-scope-repro.txt` committed IN this cycle; register the new cortex_lib
+entry, deploy (`cortex-update.sh`), verify the DEPLOYED copies load, then push.
+(`red.txt` was dropped: the build-time RED observation has no committed transcript, so no number from it
+is quoted — the pinned-baseline comparison in the repro artifact is the before/after of record.)
 
 ## Deliberately out of scope (stated, not silently dropped)
 

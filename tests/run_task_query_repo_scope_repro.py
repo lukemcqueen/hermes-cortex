@@ -45,6 +45,15 @@ SCRATCH_DB = os.environ.get("TASK_REPO_SCOPE_TEST_DB", "tasks_repo_scope_test")
 READER_ROLE = "mycortex_reader"
 CONTAINER = "mycortex-postgres"
 
+# The PRE-FIX revision, PINNED. 55887b47 = the commit before the repo-scoping
+# change (`fix(tasks): scope every task query to the caller's own repo`,
+# aa293f41). Pinned HERE, in the script's own default, because a baseline that
+# defaults to HEAD stops discriminating the moment the change lands: HEAD then
+# IS the fix, `git show HEAD:` materialises the FIXED engine, and the PRE-FIX
+# expectation fails for the wrong reason (measured 2026-10-14). Override with
+# --base only to compare a different revision deliberately.
+DEFAULT_BASE = "55887b47f0fd1f7d689931a292e2997fa4d0b10f"
+
 # Seeded rows: the session repo, a DIFFERENT repo (the leak), and an untagged row.
 OWN_REPO = "steadfaste"
 OTHER_REPO = "steadfaste-s1-model"
@@ -173,9 +182,7 @@ def main() -> int:
     args = ap.parse_args()
 
     signal.signal(signal.SIGALRM, _timeout)
-    base = args.base or subprocess.run(
-        ["git", "-C", str(REPO), "rev-parse", "HEAD"],
-        capture_output=True, text=True).stdout.strip()
+    base = args.base or DEFAULT_BASE
     tip = subprocess.run(["git", "-C", str(REPO), "rev-parse", "HEAD"],
                          capture_output=True, text=True).stdout.strip()
 
