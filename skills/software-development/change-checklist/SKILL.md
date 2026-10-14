@@ -291,6 +291,21 @@ Enforced at 3 layers: pre-commit hook (static gate), enforcer (blocks commit unt
       merged back. Hand-merge only where the deployed copy genuinely lacks the content. A
       mechanical ratio over whole lines is not enough to decide (a reflowed paragraph scores
       low while losing nothing); grep the deployed copy for the distinctive phrase instead.
+      **Collapse whitespace before you search, or the probe invents the loss it reports.** A
+      paragraph that was REWRAPPED keeps every word while every line differs, so a
+      line-by-line "is this repo line present in the deployed copy?" check flags all of it as
+      missing — read the deletion hunks with `difflib` and match phrases against the
+      whitespace-collapsed TEXT of both sides. Then decide per hunk, and expect the answer to
+      be "superseded in place": a newer copy that CORRECTS a wrong claim (say, which call
+      refreshes a heartbeat) must be landed as-is, and merging the old wording back restores
+      the error. Land by copying the deployed file over the repo copy and ASSERTING the sha256
+      on both sides (`shutil.copy2` + equality check, or the reconciler's `--apply` for the
+      superset class) — never retype content by hand.
+      **This is routine maintenance, not a one-off, so do not read a repeat as failure.** The
+      lesson pipeline writes to the DEPLOYED copies continuously: a reconciliation can finish
+      with 0 stranded and the same file reads stranded again within the hour. Re-run
+      `python3 ops/scripts/manage/reconcile-stranded-skills.py` on a schedule (report first;
+      `--apply` only ever touches the pure-superset class).
 - [ ] Symptom proof — the specific error/alert/blocker is gone (not just code compiles + doctor passes). Show evidence in the cycle note.
 - [ ] Stale expected-list cleanup — removed crons also removed from uninstall arrays (doctor reads them as expected list).
 - [ ] Stale bus/state cleanup — delete test bus messages and stale state-file entries before end_change().

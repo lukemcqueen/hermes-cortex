@@ -733,6 +733,15 @@ other conclude the system is broken. When touching either block message:
   confirm the PROCESS has it. A prior session's "needs a restart" note is a hypothesis,
   not evidence — a doc telling the next agent to wait for a restart it does not need is
   worse than no doc.
+- **The decisive check is TIME, and it needs no cooperation from the running process:** the
+  process's START must be at or after the DEPLOYED file's mtime. Resolve the deployed path from
+  the deploy manifest (`~/.hermes-cortex/deploy-manifest.tsv`) rather than guessing it, then
+  compare `ps -o lstart= -p $(pgrep -f <server>.py)` (or `etimes`) against `stat -c %y
+  <deployed>`. Start ≥ mtime ⇒ that process loaded the new revision; start < mtime ⇒ it did not,
+  and the banner is telling the truth. Re-run that comparison after every later deploy: a module
+  edited AFTER the last restart needs ANOTHER restart, so "verified loaded" is a property of a
+  moment, never of a host. Ship it as a scripted capture (module content parity + the process
+  start vs mtime) so the next agent proves it in one command instead of re-deriving it.
 
 ## Rule 17: Essential Gates Are Event-Driven, Never Cron-Swept — and Fail Loud, Never Silent
 
@@ -837,6 +846,16 @@ for the wrong one because it is quicker:
   gate off a local file onto a shared store adds a dependency; state it plainly
   (a store outage now blocks every commit) and let the user overrule it, rather
   than quietly failing open.
+- **A convenience tool that reaches ANOTHER session's live state is a control removal
+  wearing a tool name.** A review recommendation to expose something like
+  `release_lock()` to agents reads as friction-reduction; what it actually grants is the
+  ability to drop a peer's LIVE lock (or cancel their cycle) — the exact harm the lock
+  exists to prevent. Decline it, say why, and ship the NARROW capability that covers the
+  real complaint: release only what is provably dead by the SAME predicate the TTL purge
+  already uses (no second staleness rule), keep the report mode first and the mutation
+  opt-in, and make the message say the takeover is a fresh `begin_change` under the
+  caller's own name so no one inherits a dead session's scope. Widening a surface costs a
+  peer's lock; narrowing it buys the same relief.
 
 **Transitional bridge — how to ship a gate re-point without an outage.** When the
 new writer cannot be live yet (it needs a gateway restart, an operator, or a fleet

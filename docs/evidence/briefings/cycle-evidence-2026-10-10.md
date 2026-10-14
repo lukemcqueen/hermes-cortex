@@ -1,15 +1,15 @@
 # Cycle evidence — sustainability briefing 2026-10-10
 
-Generated: 2026-10-14T07:03:29.348956+00:00 by `ops/scripts/sustainability/write_cycle_evidence.py`
+Generated: 2026-10-14T07:25:36.617942+00:00 by `ops/scripts/sustainability/write_cycle_evidence.py`
 
 Every block below is verbatim command output captured on this host, so a reviewer can re-run the same command and diff.
 
 ## 1. Commits touching this cycle
 
 ```
+5c76af52 chore(skills): land the review-class stranded copies — parity now 0 stranded
+64aa0f6a fix(sustainability): the cycle-evidence pack carries no absolute host path
 fafa54dc feat(governance): reclaim_dead_locks — end a dead owner's lock, report-first
-e8874f49 test(evidence): commit the proof cycle 12562's refusal asked for
-1a0646d5 chore(skills): land the deployed skill content the fleet never received
 
 --- commit 83a4599a (artifacts + harness) ---
 83a4599a14de1f53911345a591839139625f09fe
@@ -145,10 +145,10 @@ RESULT: ALL PASS
 Command: ~/.hermes/cron/output/.venv-brief/bin/python -W error::ResourceWarning tests/test_gen_briefing.py
 
 ```
-.FAIL: missing ~/.hermes/cache/scratch/tmpmabk10zt/sustainability-briefing-1999-01-01.md
+.FAIL: missing ~/.hermes/cache/scratch/tmpt5ly7fz7/sustainability-briefing-1999-01-01.md
 ...........
 ----------------------------------------------------------------------
-Ran 12 tests in 0.220s
+Ran 12 tests in 0.208s
 
 OK
 ```
@@ -156,9 +156,9 @@ OK
 Command: ~/.hermes/cron/output/.venv-brief/bin/python -W error::ResourceWarning tests/test_capture_evidence.py
 
 ```
-wrote ~/.hermes/cache/scratch/tmpl4z4b34f/verification-2030-01-03.txt
+wrote ~/.hermes/cache/scratch/tmpqudxuxr3/verification-2030-01-03.txt
 === evidence: sustainability briefing 2030-01-03 ===
-generated: 2026-10-14T07:03:29.822301+00:00
+generated: 2026-10-14T07:25:37.075887+00:00
 
 --- command: ~/.hermes/cron/output/.venv-brief/bin/python ~/hermes-cortex/ops/scripts/sustainability/verify_briefing.py 2030-01-03
 [files] sustainability-briefing-2030-01-03.md      size=-1       FAIL
@@ -176,15 +176,15 @@ FileNotFoundError: [Errno 2] No such file or directory: '~/.hermes/cron/output/s
 checker_exit=1
 
 --- artifact listing + sha256
-MISSING  ~/.hermes/cache/scratch/tmpl4z4b34f/sustainability-briefing-2030-01-03.md
-MISSING  ~/.hermes/cache/scratch/tmpl4z4b34f/sustainability-briefing-2030-01-03.docx
-MISSING  ~/.hermes/cache/scratch/tmpl4z4b34f/sustainability-briefing-2030-01-03.pdf
+MISSING  ~/.hermes/cache/scratch/tmpqudxuxr3/sustainability-briefing-2030-01-03.md
+MISSING  ~/.hermes/cache/scratch/tmpqudxuxr3/sustainability-briefing-2030-01-03.docx
+MISSING  ~/.hermes/cache/scratch/tmpqudxuxr3/sustainability-briefing-2030-01-03.pdf
 
 
 --- pdf text extraction spot-check (first 6 lines)
-wrote ~/.hermes/cache/scratch/tmpanf9k2kj/verification-2030-01-02.txt
+wrote ~/.hermes/cache/scratch/tmp6aps9rt6/verification-2030-01-02.txt
 === evidence: sustainability briefing 2030-01-02 ===
-generated: 2026-10-14T07:03:29.882186+00:00
+generated: 2026-10-14T07:25:37.128692+00:00
 
 --- command: ~/.hermes/cron/output/.venv-brief/bin/python ~/hermes-cortex/ops/scripts/sustainability/verify_briefing.py 2030-01-02
 [files] sustainability-briefing-2030-01-02.md      size=-1       FAIL
@@ -202,18 +202,18 @@ FileNotFoundError: [Errno 2] No such file or directory: '~/.hermes/cron/output/s
 checker_exit=1
 
 --- artifact listing + sha256
-     4068  fb049a12f0f0411a2edad73f897bc0584798cc1758392cf4494aaffb912be3d3  ~/.hermes/cache/scratch/tmpanf9k2kj/sustainability-briefing-2030-01-02.md
-     4000  91c9568c40c8d8d1f7a1bd029d124994b3c2a8750c4e4b328ee9b1cf81151d85  ~/.hermes/cache/scratch/tmpanf9k2kj/sustainability-briefing-2030-01-02.docx
-MISSING  ~/.hermes/cache/scratch/tmpanf9k2kj/sustainability-briefing-2030-01-02.pdf
+     4068  fb049a12f0f0411a2edad73f897bc0584798cc1758392cf4494aaffb912be3d3  ~/.hermes/cache/scratch/tmp6aps9rt6/sustainability-briefing-2030-01-02.md
+     4000  91c9568c40c8d8d1f7a1bd029d124994b3c2a8750c4e4b328ee9b1cf81151d85  ~/.hermes/cache/scratch/tmp6aps9rt6/sustainability-briefing-2030-01-02.docx
+MISSING  ~/.hermes/cache/scratch/tmp6aps9rt6/sustainability-briefing-2030-01-02.pdf
 
 --- distinct source URLs in md: 14
 --- Source: lines: 14
 --- word count: 748
 
 --- pdf text extraction spot-check (first 6 lines)
-wrote ~/.hermes/cache/scratch/tmpozdhd257/verification-2030-01-01.txt
+wrote ~/.hermes/cache/scratch/tmp6qde26ec/verification-2030-01-01.txt
 === evidence: sustainability briefing 2030-01-01 ===
-generated: 2026-10-14T07:03:29.939805+00:00
+generated: 2026-10-14T07:25:37.186066+00:00
 
 --- command: ~/.hermes/cron/output/.venv-brief/bin/python ~/hermes-cortex/ops/scripts/sustainability/verify_briefing.py 2030-01-01
 [files] sustainability-briefing-2030-01-01.md      size=-1       FAIL
@@ -231,9 +231,9 @@ FileNotFoundError: [Errno 2] No such file or directory: '~/.hermes/cron/output/s
 checker_exit=1
 
 --- artifact listing + sha256
-     4068  fb049a12f0f0411a2edad73f897bc0584798cc1758392cf4494aaffb912be3d3  ~/.hermes/cache/scratch/tmpozdhd257/sustainability-briefing-2030-01-01.md
-     4000  91c9568c40c8d8d1f7a1bd029d124994b3c2a8750c4e4b328ee9b1cf81151d85  ~/.hermes/cache/scratch/tmpozdhd257/sustainability-briefing-2030-01-01.docx
-     4000  91c9568c40c8d8d1f7a1bd029d124994b3c2a8750c4e4b328ee9b1cf81151d85  ~/.hermes/cache/scratch/tmpozdhd257/sustainability-briefing-2030-01-01.pdf
+     4068  fb049a12f0f0411a2edad73f897bc0584798cc1758392cf4494aaffb912be3d3  ~/.hermes/cache/scratch/tmp6qde26ec/sustainability-briefing-2030-01-01.md
+     4000  91c9568c40c8d8d1f7a1bd029d124994b3c2a8750c4e4b328ee9b1cf81151d85  ~/.hermes/cache/scratch/tmp6qde26ec/sustainability-briefing-2030-01-01.docx
+     4000  91c9568c40c8d8d1f7a1bd029d124994b3c2a8750c4e4b328ee9b1cf81151d85  ~/.hermes/cache/scratch/tmp6qde26ec/sustainability-briefing-2030-01-01.pdf
 
 --- distinct source URLs in md: 14
 --- Source: lines: 14
@@ -242,7 +242,7 @@ checker_exit=1
 --- pdf text extraction spot-check (first 6 lines)
 ......
 ----------------------------------------------------------------------
-Ran 6 tests in 0.181s
+Ran 6 tests in 0.172s
 
 OK
 ```
