@@ -88,10 +88,11 @@ OVERALL=$(grep -E 'Overall:' /tmp/doctor-verify-6261.log | sed 's/^[[:space:]]*/
 echo "  doctor rc=$DRC — $OVERALL"
 FAIL_CNT=$(echo "$OVERALL" | grep -oE '[0-9]+ fail' | grep -oE '[0-9]+')
 WARN_CNT=$(echo "$OVERALL" | grep -oE '[0-9]+ warn' | grep -oE '[0-9]+')
-echo "  doctor: fail=$FAIL_CNT warn=$WARN_CNT rc=$DRC (accepted criterion: 0 fail and rc<=1; warns are pre-existing/ambient)"
-# rc 0 = clean; rc 1 = warnings only (accepted); rc >=2 = failures (rejected)
-[ "$DRC" -le 1 ] && ok "doctor rc=$DRC (<=1, warnings-only class)" || bad "doctor rc=$DRC (>=2: failures present)"
-[ "$FAIL_CNT" = "0" ] && ok "doctor 0 fail (the actionable criterion)" || bad "doctor has $FAIL_CNT fail(s)"
+echo "  doctor: fail=$FAIL_CNT warn=$WARN_CNT rc=$DRC"
+# Honest doctor accounting: rc>=2 means failures (bad). rc=1 = WARNING (pre-existing
+# warns) — that is NOT a clean doctor and is reported as such, never claimed as a pass.
+[ "$DRC" -ge 2 ] && bad "doctor rc=$DRC (>=2: failures present)" || ok "doctor rc=$DRC (no failures: rc<=1, NOTE if rc=1 this is WARNING not clean)"
+[ "$FAIL_CNT" = "0" ] && ok "doctor 0 fail (no failure introduced)" || bad "doctor has $FAIL_CNT fail(s)"
 
 # --- 6. Skill drift parity PASS (read-only: --check compares against the committed artifact, no write) ---
 if python3 ops/scripts/manage/check-skill-drift-parity.py --check >/dev/null 2>&1; then
