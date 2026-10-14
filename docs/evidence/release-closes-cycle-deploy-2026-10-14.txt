@@ -1,0 +1,42 @@
+repo: ~/hermes-cortex
+deploy manifest: ~/.hermes-cortex/deploy-manifest.tsv
+SELF-INFLICTED WARNING: this capture is written before it is committed, so the doctor
+  run below carries 'Repo clean — N uncommitted change(s)' — that is THIS artifact.
+  Disclosed rather than hidden: re-capturing would only move the same warning along.
+deployed target (from the manifest): ~/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py
+
+--- 1. deployed copy matches repo source (deploy banner stripped on both sides)
+repo   lines: 5409
+deployed lines: 5409
+identical modulo the deploy banner: True
+rc=0
+
+--- 2. the DEPLOYED file carries the new code (deploy != load, see the note below)
+PRESENT  def _close_cycle_unscored( in the deployed copy
+NOTE: this host must restart its gateway for the RUNNING MCP daemon to load this
+      module; until then the live close still runs the old revision. Deploy is not
+      load, and no restart was performed by this script.
+
+--- 3. doctor (warnings listed verbatim; failures are the verdict, not the exit code)
+  ⚠️  Repo clean — 3 uncommitted change(s)
+  ⚠️  Skill drift: devops/governance-closeout — Deployed copy is newer than repo source (~/.hermes/skills/devops/governance-closeout/SKILL.md). Commit the repo source before cortex-update overwrites it.
+  ⚠️  Skill drift: devops/governance-lock-lifecycle — Deployed copy is newer than repo source (~/.hermes/skills/devops/governance-lock-lifecycle/SKILL.md). Commit the repo source before cortex-update overwrites it.
+  ⚠️  Skill drift: devops/shared-repo-push-gates — Deployed copy is newer than repo source (~/.hermes/skills/devops/shared-repo-push-gates/SKILL.md). Commit the repo source before cortex-update overwrites it.
+  ⚠️  Skill drift: devops/subagent-delegation — Deployed copy is newer than repo source (~/.hermes/skills/devops/subagent-delegation/SKILL.md). Commit the repo source before cortex-update overwrites it.
+  ⚠️  Skill drift: software-development/change-checklist — Deployed copy is newer than repo source (~/.hermes/skills/software-development/change-checklist/SKILL.md). Commit the repo source before cortex-update overwrites it.
+  ⚠️  Skill drift: software-development/reflexion-check — Deployed copy is newer than repo source (~/.hermes/skills/software-development/reflexion-check/SKILL.md). Commit the repo source before cortex-update overwrites it.
+  ⚠️  Skill drift — 6 drifted, 380 in sync, 131 Hermes defaults skipped
+  ⚠️  Overall: WARNING  (461 pass · 8 warn · 0 fail · 3 info)
+doctor rc=1
+NOTE: this doctor exits NON-ZERO for warnings alone (its own convention), so the rc is
+      not the verdict here — the fail COUNT is. The verdict is asserted below.
+PASS  doctor reports 0 failures — every FAIL blocks the push; warnings are disclosed above
+
+--- 4. git state (informational)
+f2da41e80d19ce589a01fab4ea1064a47220a7c3
+cac78711d125f172cfcb3159bc5f1166b2f3297a
+0	3
+
+=== VERDICT ===
+failed checks: 0
+DEPLOY SIDE VERIFIED (rc=0)
