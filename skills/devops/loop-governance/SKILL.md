@@ -840,7 +840,7 @@ lets any agent find the tools regardless of which Hermes profile or project it's
 ├── src/
 │   ├── loop-governance/                        ← Scoring, DB, CLI tools (detailed below)
 │   ├── mcp-servers/                            ← MCP servers (registered with Hermes)
-│   │   ├── loop-gov-mcp.py                    Loop governance tools (7)
+│   │   ├── loop-gov-mcp.py                    Loop governance tools (18)
 │   │   └── inbox-mcp.py                       Agent inbox tools (3)
 │   ├── agent-inbox/                            ← Inbox web server (FastAPI)
 │   ├── agent-registry.json                     ← Agent roles, hostnames, is_orchestrator flag
@@ -881,6 +881,16 @@ lets any agent find the tools regardless of which Hermes profile or project it's
 | `agent-inbox` | `src/mcp-servers/inbox-mcp.py` | inbox_send, inbox_read, inbox_watch | `hermes mcp add agent-inbox --command python3 --args src/mcp-servers/inbox-mcp.py` |
 
 See `references/mcp-servers.md` for full tool descriptions and usage examples.
+
+**`reclaim_dead_locks` — end a dead peer's lock instead of burning its TTL.** Report-first
+(`apply=false` is the default and changes nothing): it lists every lock that is neither this
+session's own nor live. The predicate is the SAME staleness rule the TTL purge uses
+(`_is_lock_stale`: heartbeat past the lock's own TTL **and** no commit by that agent in that
+repo since), so it can never reclaim a lock the purge would keep, and a LIVE owner's lock is
+never listed. `apply=true` removes those lock files and closes their PENDING cycles UNSCORED
+through the orphan resolver — no score invented, no review receipt written, so nothing becomes
+pushable from them. It ENDS the dead session's lock; it does **not** take the task over:
+a takeover is a fresh `begin_change` under your own name, with your own cycle and review.
 ```
 
 **Installation:** Loop governance is installed automatically by `cortex-update.sh` (MCP server + plugin). The old CLI tools (`score-cycle`, `loop-feedback`) are deprecated.

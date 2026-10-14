@@ -1426,6 +1426,110 @@ def _purge_stale_locks_unlocked() -> int:
     return removed
 
 
+def _reclaim_dead_locks(args: dict) -> CallToolResult:
+    """Report — or END — locks whose owner is provably dead.
+
+    Luke 2026-10-14: "a lock whose owner cannot progress should be ended or taken over
+    rather than left to burn its TTL." The TTL purge already ends dead locks, but only
+    IMPLICITLY (it fires on begin_change / startup), so a session blocked by a dead peer's
+    lock had no way to ask "is anything dead right now?" and no way to act on the answer.
+
+    REPORT by default: ``apply=false`` changes NOTHING. The predicate is the fleet's ONE
+    staleness rule (``_is_lock_stale``), so this can never reclaim a lock the purge would
+    keep — a second age rule here is how two callers start disagreeing about which locks
+    are dead. Two consequences worth stating rather than discovering: the shared predicate
+    may RENEW a lock whose agent has committed since (the liveness rescue), so a report can
+    legitimately list fewer locks than there are old-looking files; and a session that is
+    idle past its TTL with no commits is dead BY THE SAME DEFINITION the purge already uses,
+    so this path is no more aggressive than the sweep that runs anyway.
+
+    It ENDS a dead session's lock; it does NOT TAKE OVER the task. Nothing inherits the dead
+    session's scope — a takeover is a fresh ``begin_change`` under your own name, with its
+    own cycle and its own review. A LIVE owner's lock is never reclaimed (its heartbeat is
+    current, so the predicate says live), and THIS session's own lock is skipped outright.
+    """
+    apply = bool(args.get("apply"))
+    only_task = str(args.get("task_id") or "").strip()
+    own = get_session_id(args)
+    dead: list[dict] = []
+    if not GOVERNANCE_STATE_DIR.is_dir():
+        return CallToolResult(content=[TextContent(type="text", text=(
+            f"No governance state directory on this host ({GOVERNANCE_STATE_DIR}) — "
+            "nothing to reclaim."))])
+    for lock_file in sorted(GOVERNANCE_STATE_DIR.glob(".governance-*.json")):
+        try:
+            if lock_file.is_symlink():
+                continue
+            state = json.loads(lock_file.read_text())
+        except (OSError, ValueError) as e:
+            # P1-A: unparseable = possibly mid-write. Never delete it, never judge it.
+            log.warning("reclaim: skipping unparseable lock file (mid-write?): %s (%s)",
+                        lock_file.name, e)
+            continue
+        if state.get("session_id") == own:
+            continue                    # our own lock: never reclaimed, live or not
+        if only_task and state.get("task_id") != only_task:
+            continue
+        try:
+            mtime = lock_file.stat().st_mtime
+        except OSError:
+            mtime = None
+        if not _is_lock_stale(state, mtime):
+            continue                    # live (or rescued by the liveness check) — not ours
+        dead.append({
+            "file": lock_file,
+            "session_id": state.get("session_id"),
+            "task_id": state.get("task_id"),
+            "agent": state.get("agent"),
+            "repo_slug": state.get("repo_slug", ""),
+            "heartbeat_at": state.get("heartbeat_at") or state.get("started_at"),
+            "ttl_seconds": state.get("ttl_seconds", DEFAULT_TTL),
+            "status": state.get("status"),
+        })
+
+    if not apply:
+        if not dead:
+            return CallToolResult(content=[TextContent(type="text", text=(
+                "✅ reclaim_dead_locks (report): no dead locks — every lock on disk is this "
+                "session's own, live, or being written right now. Nothing to reclaim; pass "
+                "apply=true to act when there is."))])
+        lines = [f"🪦 {len(dead)} dead lock(s) — REPORT ONLY, nothing was changed:"]
+        for d in dead:
+            lines.append(
+                f"  • task '{d['task_id']}' session {d['session_id']} agent {d['agent']} "
+                f"repo {d['repo_slug'] or '(none)'} status {d['status']} "
+                f"heartbeat {d['heartbeat_at']} ttl {d['ttl_seconds']}s\n"
+                f"    {d['file'].name}"
+            )
+        lines.append("Call again with apply=true to remove these lock files and close their "
+                     "PENDING cycles unscored. A live owner's lock is never listed.")
+        return CallToolResult(content=[TextContent(type="text", text="\n".join(lines))])
+
+    ended, failed = 0, 0
+    task_ids: set[str] = set()
+    with _STATE_LOCK:
+        for d in dead:
+            try:
+                d["file"].unlink()
+                ended += 1
+                if d["task_id"]:
+                    task_ids.add(d["task_id"])
+            except OSError as e:
+                failed += 1
+                log.warning("reclaim: could not remove %s (%s)", d["file"].name, e)
+    closed = _resolve_orphaned_pending_cycles(task_ids) if task_ids else 0
+    log.warning("reclaim: ended %d dead lock(s) (%d failed), closed %d PENDING cycle(s) unscored",
+                ended, failed, closed)
+    text = (f"🪦 reclaim_dead_locks (applied): ended {ended} dead lock(s), {failed} could not be "
+            f"removed, closed {closed} PENDING cycle(s) UNSCORED — no score invented, no review "
+            f"receipt written, so nothing became pushable from them.\n"
+            "Take over any of that work with your OWN begin_change: this ends a dead session's "
+            "lock, it never inherits their scope.")
+    if failed:
+        text += "\n⚠️ Some lock files could not be removed — they will age out or need the operator."
+    return CallToolResult(content=[TextContent(type="text", text=text)])
+
+
 def _resolve_orphaned_pending_cycles(task_ids: set[str] | None = None) -> int:
     """Close PENDING cycles whose task holds no live lock (leaked/abandoned)
     as UNSCORED, with a recomputable reason — never as a judged MOVE_ON.
@@ -1993,6 +2097,34 @@ async def list_tools(ctx, params=None) -> ListToolsResult:
             },
         ),
         Tool(
+            name="reclaim_dead_locks",
+            description=(
+                "Report — or END — governance locks whose owner is provably dead. REPORT by default "
+                "(apply=false changes nothing). The predicate is the SAME staleness rule the TTL purge "
+                "uses (heartbeat past the lock's own TTL AND no commit by that agent in that repo since), "
+                "so this can never reclaim a lock the purge would keep, and a LIVE owner's lock is never "
+                "touched. apply=true removes those lock files and closes their PENDING cycles UNSCORED "
+                "(no score invented, no review receipt written). It ENDS a dead session's lock; it does "
+                "NOT take the task over — a takeover is a fresh begin_change under your own name, never "
+                "an inherited scope."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "apply": {
+                        "type": "boolean",
+                        "description": "false (default) reports only; true removes the dead locks and resolves their cycles",
+                        "default": False,
+                    },
+                    "task_id": {
+                        "type": "string",
+                        "description": "Optional: consider only this task's lock (still must be provably dead)",
+                    },
+                },
+                "required": [],
+            },
+        ),
+        Tool(
             name="request_interruption",
             description="Push the current task onto the task_stack and create a new sub-task. The original task can be resumed later with resume_from_interrupt.",
             inputSchema={
@@ -2068,6 +2200,7 @@ async def call_tool(ctx, params=None) -> CallToolResult:
             "record_issue": _record_issue,
             "rereview_change": _rereview_change,
             "advance_task_state": _advance_task_state,
+            "reclaim_dead_locks": _reclaim_dead_locks,
             "request_interruption": _request_interruption,
             "resume_from_interrupt": _resume_from_interrupt,
             "request_completion": _request_completion,

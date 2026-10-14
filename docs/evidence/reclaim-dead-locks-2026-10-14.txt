@@ -1,0 +1,154 @@
+repo: ~/hermes-cortex
+pre-fix ref for the discrimination: origin/main
+NOTE: the probe runs under plain python3 on purpose — the module guards its own 'mcp'
+      import, so its stdio-server warning is expected here and does not affect the checks.
+
+--- 1. behavioural probe (throwaway state dir + DB) against the working copy
+$ python3 docs/evidence/reclaim-dead-locks-probe.py ~/hermes-cortex
+[mcp-server] WARNING: the 'mcp' package is not installed — the stdio server cannot start; the CLI adapter (ops/scripts/loop-gov.py) still works.
+[mcp-server]   ~/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3 -m pip install mcp
+[mcp-server] WARNING: Orphan-cycle reaper: closed 1 abandoned PENDING cycle(s) unscored — #1(probe-dead-task)
+[mcp-server] WARNING: reclaim: ended 1 dead lock(s) (0 failed), closed 1 PENDING cycle(s) unscored
+module: ~/hermes-cortex/mcp-servers/loop-gov-mcp.py
+throwaway state: ~/.hermes/cache/scratch/reclaim-probe-9qjvuntz
+01. PASS report names the dead lock
+02. PASS report does NOT name the live owner's lock
+03. PASS report does NOT name this session's own lock
+04. PASS report says it changed nothing
+05. PASS report removed no lock file
+06. PASS report closed no cycle
+07. PASS apply reports one dead lock ended
+08. PASS apply removed the dead lock file
+09. PASS apply left the live owner's lock alone
+10. PASS apply left this session's own lock alone
+11. PASS apply closed the dead task's cycle UNSCORED — decision=MOVE_ON
+12. PASS apply invented no score
+13. PASS apply left the live owner's cycle PENDING
+14. PASS apply left this session's own cycle PENDING
+15. PASS apply does not inherit the dead session's scope
+16. PASS second report finds no dead locks
+
+failures=0
+rc=0
+
+--- 2. source-level contract tests
+$ bash tests/run-tests.sh tests/test_reclaim_dead_locks_tool.py -q
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
+rootdir: ~/hermes-cortex
+configfile: pytest.ini
+plugins: anyio-4.15.1
+collected 6 items
+
+tests/test_reclaim_dead_locks_tool.py ......                             [100%]
+
+============================== 6 passed in 0.36s ===============================
+---
+run-tests.sh: interpreter=~/.hermes-cortex/venv/bin/python3 rc=0  (PYTHONPATH/PYTHONHOME unset for the run)
+rc=0
+
+--- 3. wider governance selection
+$ bash tests/run-tests.sh tests/ -q -k reclaim or lock or govern or cycle or mcp or closeout
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
+rootdir: ~/hermes-cortex
+configfile: pytest.ini
+plugins: anyio-4.15.1
+collected 1978 items / 1479 deselected / 499 selected
+
+tests/test_adversarial_a3a4.py ..                                        [  0%]
+tests/test_adversarial_review.py ..                                      [  0%]
+tests/test_adversarial_static.py ..                                      [  1%]
+tests/test_apply_mcp_tool_watch_fix.py ......                            [  2%]
+tests/test_backfill_legacy_reaper_cycles.py ......                       [  3%]
+tests/test_blocked_releases_lock.py ...                                  [  4%]
+tests/test_bot_locks.py .....                                            [  5%]
+tests/test_bus_inbox_inspect.py .                                        [  5%]
+tests/test_bus_inbox_survey.py .                                         [  5%]
+tests/test_bus_outbox.py .                                               [  5%]
+tests/test_capture_evidence_1012.py .                                    [  6%]
+tests/test_context_harnesses.py .....                                    [  7%]
+tests/test_cortex_context_mcp.py ......................                  [ 11%]
+tests/test_cortex_sandbox.py .....                                       [ 12%]
+tests/test_cortex_update_mutex.py ...                                    [ 13%]
+tests/test_cron_prompt_matches_installer.py .                            [ 13%]
+tests/test_deploy_marker_guard.py .                                      [ 13%]
+tests/test_doctor_dev_repo_detection.py .                                [ 13%]
+tests/test_doctor_score_cycle_check.py .......                           [ 15%]
+tests/test_dogfood_gate_scoping.py .                                     [ 15%]
+tests/test_enforcer_pii_gate.py .......                                  [ 16%]
+tests/test_executor_mcp.py .............                                 [ 19%]
+tests/test_fleet_venv_check_block.py .....                               [ 20%]
+tests/test_gateway_model_list_helper.py ......                           [ 21%]
+tests/test_gateway_slash_parity.py .                                     [ 21%]
+tests/test_gateway_typing.py .                                           [ 21%]
+tests/test_gen_briefing.py .                                             [ 22%]
+tests/test_gov_friction_fixes.py ...                                     [ 22%]
+tests/test_hc_harness.py .                                               [ 22%]
+tests/test_hermes_plugin_lock_status.py ...                              [ 23%]
+tests/test_land_nonhermes_lock_fix_evidence.py .........                 [ 25%]
+tests/test_land_when_clean_probe.py .                                    [ 25%]
+tests/test_lock_liveness_activity.py ............                        [ 27%]
+tests/test_lock_review_split.py .......                                  [ 29%]
+tests/test_lock_truth.py .............                                   [ 31%]
+tests/test_loop_gov_cli.py ...                                           [ 32%]
+tests/test_loop_gov_mcp_nonblocking.py ......                            [ 33%]
+tests/test_loop_gov_mcp_startup.py ..                                    [ 34%]
+tests/test_loop_gov_review_repo.py .....                                 [ 35%]
+tests/test_mcp_schema_per_db.py ..                                       [ 35%]
+tests/test_mcp_servers_deployed.py ...                                   [ 36%]
+tests/test_mcp_wiring.py .............                                   [ 38%]
+tests/test_metadata_refusal_releases_lock.py ....                        [ 39%]
+tests/test_non_hermes_repo_identity.py ..                                [ 39%]
+tests/test_orphan_cycle_resolution.py ..                                 [ 40%]
+tests/test_pi_reply_path_boundaries.py .                                 [ 40%]
+tests/test_receipt_repo_identity.py ....                                 [ 41%]
+tests/test_reclaim_dead_locks_tool.py ......                             [ 42%]
+tests/test_release_after_refusal_closes_cycle.py .....                   [ 43%]
+tests/test_remediation_state_check.py .                                  [ 43%]
+tests/test_repo_less_lock_handling.py .....                              [ 44%]
+tests/test_repo_resource_paths.py ......                                 [ 45%]
+tests/test_retired_orch_crons.py .                                       [ 46%]
+tests/test_review_material_bound.py .                                    [ 46%]
+tests/test_review_material_consistency.py .                              [ 46%]
+tests/test_review_material_scope.py .                                    [ 46%]
+tests/test_runtime/test_adversarial_review_gate.py .                     [ 46%]
+tests/test_runtime/test_derive_slug_scope.py ...                         [ 47%]
+tests/test_runtime/test_doctor_pending_cycles.py ...                     [ 48%]
+tests/test_runtime/test_feedback_accept_scores.py .                      [ 48%]
+tests/test_runtime/test_governance_bypass.py ........................... [ 53%]
+........................................................................ [ 68%]
+........................................................................ [ 82%]
+...........................................                              [ 91%]
+tests/test_runtime/test_mcp_closeout.py ......                           [ 92%]
+tests/test_runtime/test_metrics_sink_gate.py .                           [ 92%]
+tests/test_runtime/test_score_gate.py .....                              [ 93%]
+tests/test_soul_merge.py ...                                             [ 94%]
+tests/test_task_db_unit.py ....                                          [ 94%]
+tests/test_task_mcp_v3.py .........                                      [ 96%]
+tests/test_task_queue_visibility.py ..                                   [ 97%]
+tests/test_toon_parse.py .                                               [ 97%]
+tests/test_updater_robustness.py .                                       [ 97%]
+tests/test_verify_skill_lifecycle_run.py .......                         [ 98%]
+tests/test_write_cycle_evidence.py .....                                 [100%]
+
+=============== 499 passed, 1479 deselected in 86.51s (0:01:26) ================
+---
+run-tests.sh: interpreter=~/.hermes-cortex/venv/bin/python3 rc=0  (PYTHONPATH/PYTHONHOME unset for the run)
+rc=0
+
+--- 4. LIVE report on this host (apply=false — read-only)
+$ python3 - <repo> <scratch>/pre-fix.py   # inline program below: imports the module
+  from the repo under test and calls _reclaim_dead_locks({"apply": False}) — report
+  mode mutates nothing, so running it against the live state dir is safe.
+[mcp-server] WARNING: the 'mcp' package is not installed — the stdio server cannot start; the CLI adapter (ops/scripts/loop-gov.py) still works.
+[mcp-server]   ~/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3 -m pip install mcp
+✅ reclaim_dead_locks (report): no dead locks — every lock on disk is this session's own, live, or being written right now. Nothing to reclaim; pass apply=true to act when there is.
+rc=0
+
+--- 5. the other half: the capability is ABSENT in the pre-fix revision
+PASS  def _reclaim_dead_locks( is ABSENT from origin/main — this is a new capability
+
+=== VERDICT ===
+failed steps: 0
+ALL CLAIMS RE-VERIFIED (rc=0)
