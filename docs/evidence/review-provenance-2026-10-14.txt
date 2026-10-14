@@ -1,20 +1,20 @@
 
 --- 1. contract tests: both directions, the third outcome, and the discriminator's precision
-============================== 8 passed in 0.59s ===============================
+============================== 9 passed in 0.92s ===============================
 PASS  rc=0
 
 --- 2. the gate on THIS tree (must be clean, or the doctor FAILs and blocks every push here)
 OK    docs/evidence/pro-review-2026-10-14.md (declared advisory — not evidence, never citable as verification)
 OK    docs/evidence/pro-review-purge-guards-2026-10-14.md (declared advisory — not evidence, never citable as verification)
 
-artifacts presenting a review: 2 of 61 evidence file(s) (recorded claims checked: 0)
+artifacts presenting a review: 2 of 601 text file(s) under docs/ (599 ignored, 0 recorded claim(s) checked)
 ✅ every review artifact declares its provenance
 gate rc=0
 PASS
 
 --- 3. a PLANTED violation must be caught (probing the gate, not just reading it)
 planted rc=1 (expect 1)
-      docs/evidence/notes-without-provenance.md: presents a review with no provenance — add either 'provenance: advisory' or 'recorded-in: adversarial_reviews review_id=<id>'
+      docs/evidence/notes-without-provenance.md: presents a review with no provenance — add either 'provenance: advisory' or 'recorded-in: adversarial_reviews review_id=<id>' in the first 10 lines
 PASS  the gate notices an undeclared review
 
 --- 4. the doctor check is WIRED (enforcement point: a FAIL here blocks every push)
@@ -22,9 +22,9 @@ doctor rc=2  (host-wide status; NOT this check's verdict — see the annotated l
      ✅ Review provenance
 PASS  the check runs in the doctor
    other:   ⚠️  Repo clean
+   other:   ❌ Deploy sync
    other:   ❌ Checksum: cortex-update.sh
    other:   ❌ Checksum: checks.py
    other:   ❌ Checksum: cli.py
-   other:   ⚠️  Checksum: review-provenance-check.py
 
 ALL CLAIMS RE-VERIFIED (rc=0)

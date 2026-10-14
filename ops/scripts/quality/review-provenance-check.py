@@ -36,37 +36,52 @@ DEFAULT_DB = Path.home() / ".hermes-cortex" / "data" / "loop-governance.db"
 ADVISORY = "provenance: advisory"
 RECORDED_RE = re.compile(r"recorded-in:\s*adversarial_reviews\s+review_id=([A-Za-z0-9._-]+)",
                          re.IGNORECASE)
-HEADER_LINES = 40          # the declaration is part of the artifact's header, not its small print
+HEADER_LINES = 10          # the declaration belongs at the TOP; a buried one is not a declaration
 
-# What counts as "presenting a review". Two earlier discriminators were measured against the LIVE
-# tree and both were wrong, which is why this one is narrow:
-#   * FILENAME (`*review*`) flagged evidence notes that merely had the word in their name
-#     (`orch-skill-lifecycle-cycle-11708-close-review.md`) — and would have missed a review in an
-#     innocently-named file;
-#   * PHRASES ("adversarial review", "independent review", …) fired on 8 briefings and cycle notes
-#     that DISCUSS reviews without being one (`reflexion-check-*.md`, `cycle-2938-evidence.md`).
-# A gate that fires on the healthy majority teaches its reader to ignore it. What a model review
-# actually carries is the MODEL — so that is the discriminator, plus this repo's own filename
-# convention for these write-ups.
+# DETECTION — four candidate discriminators were measured against the live tree, and three were
+# wrong. Recording the failures is the point: each was plausible and each was refuted by data.
+#   * filename alone (`*review*`) flagged evidence notes whose names merely contained "review";
+#   * phrases ("adversarial review", "independent review") fired on 8 briefings that DISCUSS reviews;
+#   * a `model:` line searched through 40 lines flagged a design PLAN whose line 38 read "model: a
+#     395M ModernBERT encoder" (docs/older/plans/…decision-model.md);
+#   * a `reviews/` PATH rule flagged 10 files under docs/reviews/ — soul-refinement mining outputs,
+#     including a `.py` and a `.json`, none of them a model review.
+# What survives is the union of STRUCTURAL facts on a 10-line header, over every text file under
+# docs/ in any extension, so renaming, changing extension or moving directory does not evade it:
+#   1. a header CLAIM (`recorded-in: adversarial_reviews review_id=…`) — verified against the store;
+#   2. the repo's own review-write-up convention (`pro-review*`);
+#   3. a `model:` line in the header — a model review names its model up front.
+# The honest limit, stated rather than papered over: a review written into an innocently-named file
+# that names no model is indistinguishable from commentary by these rules. Commentary is not
+# evidence — the push receipt comes from `end_change`'s reviewer, never from a file — so what this
+# gate guarantees is that nothing can CLAIM to be a recorded review without a row to back it.
 MODEL_LINE_RE = re.compile(r"^\s*>?\s*model:\s*\S+", re.IGNORECASE | re.MULTILINE)
 
 
 def _presents_a_review(path: Path, header: str) -> bool:
-    return bool(MODEL_LINE_RE.search(header)) or path.name.lower().startswith("pro-review")
+    if path.name.lower().startswith("pro-review"):
+        return True
+    return bool(MODEL_LINE_RE.search(header))
 
 
-def review_artifacts(evidence_dir: Path) -> list[Path]:
-    """Every markdown artifact under docs/evidence/ — the CLAIM decides, not the filename.
+def review_artifacts(docs_dir: Path) -> list[Path]:
+    """Every text artifact under docs/ — any directory, any extension. The CLAIM decides, not the name.
 
-    Scanning by name (`*review*`) was the first version and it was wrong in BOTH directions: it
-    flagged evidence notes that merely had the word in their name, and it would have missed a model
-    review written into innocently-named file — a one-word evasion of the whole gate. Reading a
-    header per file is cheap; the discriminator belongs on content.
+    Narrowing this to `docs/evidence/*.md` was a loophole two ways: a review written into a `.txt`
+    (the repo's own transcripts are .txt) or into `docs/reviews/` or the repo root would never be
+    read at all, which is a one-move evasion of the whole gate. Reading a 10-line header per file is
+    cheap; the scope belongs on the tree, not on a name pattern.
     """
-    if not evidence_dir.is_dir():
+    if not docs_dir.is_dir():
         return []
-    return sorted(p for p in evidence_dir.rglob("*")
-                  if p.is_file() and p.suffix.lower() == ".md")
+    out = []
+    for path in sorted(docs_dir.rglob("*")):
+        if not path.is_file() or path.name.startswith("."):
+            continue
+        if path.suffix.lower() in {".pdf", ".png", ".jpg", ".jpeg", ".webp", ".gz", ".zip"}:
+            continue                                   # not text; nothing to declare
+        out.append(path)
+    return out
 
 
 def _header(path: Path) -> str:
@@ -93,21 +108,21 @@ def _recorded_ids(db_path: Path) -> set[str] | None:
 
 
 def check(repo: Path, db_path: Path) -> int:
-    evidence = repo / "docs" / "evidence"
-    artifacts = review_artifacts(evidence)
-    presenting = [p for p in artifacts if _presents_a_review(p, _header(p))]
-    if not presenting:
-        print(f"nothing to check: {len(artifacts)} evidence file(s) under {evidence} present no "
-              f"model review (an evidence note is not a review — only a claim is gated)")
+    docs = repo / "docs"
+    artifacts = review_artifacts(docs)
+    if not artifacts:
+        print(f"nothing to check: no text artifacts under {docs}")
         return 0
 
-    violations, unverifiable, checked = [], [], 0
+    violations, unverifiable, checked, presenting, ignored = [], [], 0, 0, 0
     cached_ids: set[str] | None | bool = False     # False = not loaded yet
-    for path in presenting:
+    for path in artifacts:
         rel = path.relative_to(repo)
         header = _header(path)
         declared_recorded = RECORDED_RE.search(header)
         if declared_recorded:
+            # A CLAIM is checked wherever it appears — filename, directory and extension are
+            # irrelevant to whether the row it names actually exists.
             checked += 1
             if cached_ids is False:
                 cached_ids = _recorded_ids(db_path)
@@ -121,14 +136,19 @@ def check(repo: Path, db_path: Path) -> int:
                 continue
             print(f"OK    {rel} (recorded review_id={declared_recorded.group(1)})")
             continue
+        if not _presents_a_review(path, header):
+            ignored += 1
+            continue
+        presenting += 1
         if ADVISORY in header.lower():
             print(f"OK    {rel} (declared advisory — not evidence, never citable as verification)")
             continue
         violations.append(f"{rel}: presents a review with no provenance — add either "
-                          f"'{ADVISORY}' or 'recorded-in: adversarial_reviews review_id=<id>'")
+                          f"'{ADVISORY}' or 'recorded-in: adversarial_reviews review_id=<id>' "
+                          f"in the first {HEADER_LINES} lines")
 
-    print(f"\nartifacts presenting a review: {len(presenting)} of {len(artifacts)} evidence file(s) "
-          f"(recorded claims checked: {checked})")
+    print(f"\nartifacts presenting a review: {presenting} of {len(artifacts)} text file(s) under "
+          f"docs/ ({ignored} ignored, {checked} recorded claim(s) checked)")
     if violations:
         print(f"\n❌ {len(violations)} undeclared or unbacked review artifact(s):")
         for v in violations:

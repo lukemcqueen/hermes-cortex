@@ -33,10 +33,12 @@ def _load():
 
 
 def _tree(tmp: Path, artifacts: dict, reviews: list[str] | None = None) -> tuple[Path, Path]:
-    ev = tmp / "docs" / "evidence"
-    ev.mkdir(parents=True, exist_ok=True)
+    """Plant artifacts. A key starting `docs/` is repo-root-relative; any other key lands in
+    docs/evidence/ (the common case, which is why the shorter form is the default)."""
     for name, text in artifacts.items():
-        (ev / name).write_text(text, encoding="utf-8")
+        path = (tmp / name) if name.startswith("docs/") else (tmp / "docs" / "evidence" / name)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text, encoding="utf-8")
     db = tmp / "loop-governance.db"
     conn = sqlite3.connect(str(db))
     try:
@@ -106,22 +108,39 @@ def test_an_unreadable_store_is_could_not_verify_not_a_pass():
 
 
 def test_non_review_artifacts_are_ignored():
-    """Scope check: the gate must not demand provenance from every document in docs/evidence.
+    """Scope check: the gate must not demand provenance from documents that are not reviews.
 
-    Includes the two real cases the first version false-positived on: a close-out EVIDENCE note and
-    a task-named file. Both names contain 'review'; neither presents a model review."""
+    These are the real files the earlier, wrong discriminators flagged — a close-out EVIDENCE note,
+    a task-named file, and the soul-refinement artefacts under docs/reviews/ (including a .py and a
+    .json). Reading a 10-line header is cheap; demanding a declaration from all of them is not."""
     with tempfile.TemporaryDirectory() as t:
         tmp, db = _tree(Path(t), {
             "purge-guards-2026-10-14.txt": "a transcript",
             "notes.md": "x",
-            "orch-skill-lifecycle-cycle-11708-close-review.md":
+            "docs/reviews/soul-refinement-2026-10-07.md": "# Soul refinement\n\nSession notes.\n",
+            "docs/reviews/user_msgs.json": '{"messages": []}',
+            "docs/reviews/extract.py": "print('hi')\n",
+            "docs/evidence/orch-skill-lifecycle-cycle-11708-close-review.md":
                 "# orch-skill-lifecycle cycle 11708 — evidence notes\n\n## What this run changed\n",
-            "reviewer-tiering-cycle-3877.md":
+            "docs/evidence/reviewer-tiering-cycle-3877.md":
                 "# Reviewer tiering — evidence (cycle 3877)\n\nThis file backs the claims in the note.\n",
         })
         proc = _run(tmp, db)
         assert proc.returncode == 0, proc.stdout
-        assert "present no model review" in proc.stdout, proc.stdout
+        assert "0\n" not in proc.stdout.split("artifacts presenting")[0]
+        assert "artifacts presenting a review: 0" in proc.stdout, proc.stdout
+
+
+def test_a_model_line_buried_deep_does_not_flag_a_design_document():
+    """Measured case: docs/older/plans/…-decision-model.md has 'model:' at line 38 and is a PLAN.
+    The header window is 10 lines precisely so a design document is not read as a review."""
+    with tempfile.TemporaryDirectory() as t:
+        tmp, db = _tree(Path(t), {"plan.md":
+                                  "# Plan\n\n" + "\n".join(f"line {i}" for i in range(30))
+                                  + "\nmodel: a 395M ModernBERT encoder\n"})
+        proc = _run(tmp, db)
+        assert proc.returncode == 0, proc.stdout
+        assert "artifacts presenting a review: 0" in proc.stdout
 
 
 def test_an_artifact_that_names_a_model_is_gated_even_if_the_filename_is_innocent():
