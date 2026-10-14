@@ -541,19 +541,28 @@ def _session_repo_path(args: dict | None = None) -> Optional[Path]:
     """The repo THIS session is working in, or None when it cannot be established.
 
     0. A path the ENFORCER observed for this session and injected (Hermes).
-    1. A non-Hermes caller's own identity: ``CORTEX_SESSION_REPO`` first (explicit
-       — set by a harness or gateway that knows the session's repo), else the MCP
-       child's cwd (the harness's project).
-    2. Never guessed for a Hermes caller: a Hermes session whose repo the enforcer
+    1. ``CORTEX_SESSION_REPO`` — the documented per-harness session identity
+       (``docs/runbooks/context-integration.md``). Explicit, so it is honoured for a
+       Hermes caller too: it is a DECLARATION, not a guess, and it is the one lever a
+       host has when the enforcer never learned the session's repo.
+    2. A non-Hermes caller's own identity: the MCP child's cwd (the harness's project).
+    3. Never GUESSED for a Hermes caller: a Hermes session whose repo the enforcer
        could not learn keeps the canonical default rather than being tagged with
-       whatever checkout the shared daemon happens to sit in.
+       whatever checkout the shared daemon happens to sit in. That also means its
+       lock carries no ``repo_path``, so ``_write_review_receipt`` cannot bind a
+       receipt — both begin_change (warns) and end_change (reports) say so, because
+       the consequence is a push gate that cannot be satisfied until the session
+       re-acquires a lock that resolves a repo.
     """
     injected = _derive_repo_path(args)
     if injected is not None:
         return injected
+    declared = _session_repo_env_path()
+    if declared is not None:
+        return declared
     if _injected_session_id(args):
         return None
-    return _session_repo_env_path() or _cwd_repo_path()
+    return _cwd_repo_path()
 
 
 def _lock_repo(lock: dict) -> Optional[Path]:
@@ -850,8 +859,25 @@ def _range_blobs(repo: Path, base: str, head: str):
         return None
 
 
-def _write_review_receipt(cycle_id=None, args: dict | None = None) -> None:
+def _receipt_bail(reason: str) -> str:
+    """Log a receipt-writer bail and return the reason to the caller.
+
+    EVERY bail path logs AND returns. These returns used to be silent, which cost a
+    real debugging window on 2026-10-07 (cycle 10828 returned CLEAN, no receipt
+    appeared, and nothing said why). Returning the reason is the second half of that
+    fix: the close path now reports it to the agent, which otherwise only discovers
+    the problem when the push gate refuses — after the lock that could re-mint the
+    receipt has already been released.
+    """
+    log.warning("review receipt NOT written: %s", reason)
+    return reason
+
+
+def _write_review_receipt(cycle_id=None, args: dict | None = None,
+                          state: dict | None = None) -> Optional[str]:
     """Write a SHA-bound CLEAN review receipt for the range about to be pushed.
+
+    Returns None when a receipt was written, else the REASON it could not be.
 
     WHY this exists: the self-adversarial review runs at CLOSE, and closing is
     what releases the lock the push requires — so the review landed AFTER the
@@ -866,30 +892,31 @@ def _write_review_receipt(cycle_id=None, args: dict | None = None) -> None:
     Runtime-only (~/.hermes-cortex/state/): no governance state inside a repo.
     Mirrors the lock writer's temp-file + rename so a concurrent reader never
     sees a partial receipt.
+
+    ``state`` is the already-resolved lock, for callers that HOLD one (the CLEAN
+    branch of the review gate). Without it they had to recover the lock from
+    args, which they do not have — every such call bailed at "no repo identity",
+    the same silent-bail shape this function was already fixed for once.
     """
     try:
         # args is REQUIRED in practice: _read_lock(None) cannot resolve this
         # session's id, so it returned None and every receipt write bailed
         # silently at the next check. The writer must resolve the lock exactly
         # as the close path does - from the tool-call args.
-        state = _read_lock(args) or {}
+        if state is None:
+            state = _read_lock(args) or {}
         repo = str(state.get("repo_path") or "").strip()
         slug = str(state.get("repo_slug") or "").strip()
-        # EVERY bail path logs. These two returns were silent, which cost a real
-        # debugging window on 2026-10-07: cycle 10828 returned CLEAN, no receipt
-        # appeared, and NOTHING in the log said why — the one function that could
-        # explain the failure was the only one with no voice. A silent return is
-        # a swallowed error even when returning is the correct action.
         if not repo or not slug:
-            log.warning("review receipt NOT written: lock has no repo identity "
-                        "(repo_path=%r repo_slug=%r) — cannot bind a receipt to a range",
-                        repo, slug)
-            return
+            return _receipt_bail(
+                f"lock has no repo identity (repo_path={repo!r} repo_slug={slug!r}) — "
+                "cannot bind a receipt to a range; re-run begin_change() once this "
+                "session's repo is known (or set CORTEX_SESSION_REPO), then close again"
+            )
         head = _git_capture(Path(repo), "rev-parse", "HEAD").strip()
         if not head:
-            log.warning("review receipt NOT written: could not resolve HEAD in %s "
-                        "(git failed or produced no output)", repo)
-            return
+            return _receipt_bail(
+                f"could not resolve HEAD in {repo} (git failed or produced no output)")
         base = _git_capture(Path(repo), "merge-base", "origin/main", "HEAD").strip()
         if not base:
             base = _git_capture(Path(repo), "rev-list", "--max-parents=0", "HEAD").strip()
@@ -898,15 +925,12 @@ def _write_review_receipt(cycle_id=None, args: dict | None = None) -> None:
         # "" from _git_capture now means "could not determine", not "no commits",
         # so refuse to write rather than emit a half-filled authorisation.
         if not base:
-            log.warning("review receipt NOT written: could not determine base for %s "
-                        "(head=%s) — an empty base would be a hollow authorisation",
-                        repo, head[:12] or "?")
-            return
+            return _receipt_bail(
+                f"could not determine base for {repo} (head={head[:12] or '?'}) — an "
+                "empty base would be a hollow authorisation")
         files = [f for f in _git_capture(Path(repo), "diff", "--name-only", base + ".." + head).splitlines() if f.strip()]
         if not files:
-            log.warning("review receipt NOT written: range %s..%s lists no files",
-                        base[:12], head[:12])
-            return
+            return _receipt_bail(f"range {base[:12]}..{head[:12]} lists no files")
         receipt = {
             "verdict": "CLEAN",
             "repo_slug": slug,
@@ -930,25 +954,34 @@ def _write_review_receipt(cycle_id=None, args: dict | None = None) -> None:
         tmp.replace(path)
         log.info("review receipt written: %s (tip %s, base %s, %d files)",
                  path.name, head[:12], (base or "?")[:12], len(files))
+        return None
     except Exception as e:
-        log.warning("could not write review receipt: %s", e)
+        return _receipt_bail(f"could not write review receipt: {e}")
 
 
-def _clear_close_refused(cycle_id=None) -> None:
+def _clear_close_refused(cycle_id=None, state: dict | None = None) -> None:
     """Drop the refusal marker AND write the push receipt — this is the CLEAN point.
 
     Both CLEAN paths (fresh verdict, and a stored verdict whose fingerprint still
     matches the material) funnel through here, so it is the one place that must
     observe "the review is clean for this range".
+
+    ``state`` is the lock the CALLER already resolved. Passing it matters: this
+    function has no tool-call args, so without it the receipt writer had to call
+    ``_read_lock(None)`` — which cannot identify a session, so every CLEAN-path
+    write bailed at "no repo identity" and returned without a word. Harmless only
+    while some LATER call site also wrote a receipt; the moment the lock itself
+    lacked a repo (a Hermes session the enforcer never learned a repo for) both
+    paths bailed and the push gate was unsatisfiable with nothing reported.
     """
     try:
-        state = _read_lock(None)
-        if state and state.pop("close_refused", None) is not None:
-            _write_lock(state, None)
+        lock_state = state if state is not None else _read_lock(None)
+        if lock_state and lock_state.pop("close_refused", None) is not None:
+            _write_lock(lock_state, None)
             log.info("close no longer refused — marker cleared from the lock")
     except Exception as e:
         log.warning("could not clear close_refused on the lock: %s", e)
-    _write_review_receipt(cycle_id)
+    _write_review_receipt(cycle_id, None, state=state)
 
 
 def _touch_heartbeat(args: dict | None = None) -> None:
@@ -2131,6 +2164,25 @@ def _begin_change(args: dict) -> CallToolResult:
 
     prefix = "🔒 " if not force else "🔓⚠️ "
     force_msg = f" (forced — replaced session {released_session})" if force else ""
+
+    # Warn EARLY when this lock cannot identify a repo. The consequence does not
+    # appear until the close: _write_review_receipt cannot bind a push receipt, and
+    # a range touching an always-review path is then unpushable until the session
+    # re-acquires a lock that resolves one. Saying it at begin_change costs one line
+    # and turns a late, confusing refusal into an instruction (measured 2026-10-14:
+    # a Hermes session whose enforcer had not yet learned a repo paid a whole extra
+    # cycle for this).
+    repo_note = ""
+    if not state["repo_path"]:
+        repo_note = (
+            "\n⚠️  No repo identity for this lock (session_repo=%r, injected=%r).\n"
+            "    The close will not be able to write a review receipt for an\n"
+            "    always-review range, and the push gate will refuse it. If this session\n"
+            "    works in a git repo, run ONE more begin_change() after that repo is\n"
+            "    known (or set CORTEX_SESSION_REPO) before you push.\n"
+            % (_snap_repo, _injected_session_id(args))
+        )
+
     return CallToolResult(content=[TextContent(
         type="text",
         text=(
@@ -2140,6 +2192,7 @@ def _begin_change(args: dict) -> CallToolResult:
             f"TTL: {ttl}s\n"
             f"Use end_change('{task_id}') when done."
             + pending_msg
+            + repo_note
         )
     )])
 
@@ -4348,7 +4401,7 @@ def _adversarial_review_gate(lock: dict, cycle: dict,
                 # rereview_change(force=True) is the explicit re-judge when the note is the point.
                 log.info("self-adversarial review: cycle %s CLEAN (stored, artifact unchanged — a "
                          "note-only change does not re-open it)", cycle.get("id"))
-                _clear_close_refused(cycle.get("id"))
+                _clear_close_refused(cycle.get("id"), lock)
                 return None
             _block, _annot = _blocking_findings(stored.get("findings_json") or "[]")
             if not _block:
@@ -4431,7 +4484,7 @@ def _adversarial_review_gate(lock: dict, cycle: dict,
 
     if verdict == "CLEAN":
         log.info("self-adversarial review: cycle %s CLEAN", cycle.get("id"))
-        _clear_close_refused(cycle.get("id"))
+        _clear_close_refused(cycle.get("id"), lock)
         return None
 
     # Severity policy: MEDIUM and above block; LOW annotates. LOW findings are NOT
@@ -4599,10 +4652,23 @@ def _end_change(args: dict) -> CallToolResult:
     # The close being PERMITTED is the authorisation event. A CLEAN review is one
     # way to reach it, not the only one — so the receipt is written at the point
     # the gate stops objecting, whichever path got us there.
-    _write_review_receipt(task_id, args)
+    receipt_fail = _write_review_receipt(task_id, args)
 
     # Step 4: Release the lock
     _release_lock(args)
+
+    # Report a receipt that could not be written. Silence here is what made the
+    # 2026-10-14 failure cost a second cycle: the close succeeded, the lock was
+    # released, and the agent only learned the receipt was missing when `git push`
+    # refused — by which point the lock that could re-mint it was gone.
+    receipt_note = ""
+    if receipt_fail:
+        receipt_note = (
+            "\n⚠️  Review receipt NOT written — " + receipt_fail + "\n"
+            "    If the range you are about to push touches an always-review path, the\n"
+            "    push gate will refuse it. Resolve the cause and close again BEFORE\n"
+            "    pushing (begin_change() re-reads the session's repo).\n"
+        )
 
     return CallToolResult(content=[TextContent(
         type="text",
@@ -4610,6 +4676,7 @@ def _end_change(args: dict) -> CallToolResult:
             f"🔓 Governance session '{task_id}' closed.\n"
             f"{cycle_info}\n"
             f"Lock released. You can start a new change with begin_change()."
+            f"{receipt_note}"
         )
     )])
 

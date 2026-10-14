@@ -61,6 +61,21 @@ and invalidates the receipt, so push immediately after closing. Full detail:
   not pushed yet. Check before looping: `ls ~/.hermes-cortex/state/.reviewed-hermes-cortex-<tip>*.json`
   and read its `verdict`/`base_sha`/`tip_sha`. A receipt found this way can let the push
   through with no new cycle at all.
+- **A PERMITTED close that writes NO receipt means the lock had no repo identity — re-take
+  the lock in the SAME session and close again.** The receipt writer bails silently when the
+  lock's `repo_path` is empty, which is what the FIRST `begin_change()` of an interactive
+  agent session produces; a LATER `begin_change()` in that same session resolves the repo
+  from cwd. Symptom: `end_change` reports success and releases the lock, the push refuses
+  with "touches an always-review path and carries no clean review receipt", and NO
+  `.reviewed-<slug>-<tip>.json` exists for the tip. Diagnose before looping on the push: read
+  the lock file (`repo_slug` / `repo_path`) and the `adversarial_reviews` row for the closing
+  cycle — a review that RAN and returned only `info` findings is a permitted close, so the
+  range was reviewed and only the receipt is missing. Recovery: `begin_change()` again (the
+  new lock carries the repo), close, then check the receipt exists before pushing. Re-taking
+  a lock to make a missing receipt WRITE is legitimate; it is NOT the prohibited "empty cycle
+  after the work is done" trick, which manufactures coverage for a range no cycle ever
+  reviewed — say which of the two you are doing in the cycle note, and name the plumbing bug
+  in an issue record instead of pushing around it.
 - **Prefer MERGE over rebase when a peer's commits land under your unpushed work
   and the checkout carries a foreign WIP you may not stash.** `git pull --rebase`
   refuses outright on a dirty tree (*"cannot pull with rebase: You have unstaged
@@ -172,6 +187,13 @@ does not apply.
 - **A deploy purges the session lock, and without a lock EVERY terminal call fails closed**
   — including `git status`, `git log` and `systemctl is-active`, which are otherwise
   lock-free read primitives. So run all read-only verification BEFORE the deploy.
+  - **`end_change()` releases the lock too, so capture the doctor/verify transcripts BEFORE
+    closing** — immediately after a close, commands that look read-only are refused as
+    write-capable: `python3 <script>` (even a pure reporter like the doctor), anything
+    compound (`cd <dir> && …`), and `git log` with a `-C <dir>` prefix. The push itself is
+    the exception (the receipt authorises it), so land the push FIRST and treat the
+    post-push state as unverifiable from the session rather than re-acquiring a lock just
+    to re-read it.
   - **Do not assume `begin_change()` is the way back from a purge.** The purge removes the
     lock FILE while the governance SESSION can still be live in loop-governance's own
     state, so the two disagree: `check_lock` answers `active: false`, and `begin_change`

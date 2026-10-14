@@ -394,6 +394,27 @@ session, and the code was right each time.** A failing assertion usually means t
 harness measures the wrong thing. All three were mine: a session id truncated by
 splitting on `_`; an epoch integer where the parser expected an ISO timestamp; and
 a fixture missing `ttl_seconds`, so the stale-lock purge deleted it before the
-assertion ran. Each looked exactly like a code defect. Before blaming production
+argument ran. Each looked exactly like a code defect. Before blaming production
 code, verify the probe's own assumptions — input shape, fixture validity,
 extraction logic — and re-run with the value the system actually expects.
+
+**Your own test fixture can be the finding — the gate scans the FILE, not the
+intent.** A test that pins a detector by embedding the offending source in a string
+literal (an empty `except` body, a `|| true` line, a swallowed command) is read as a
+real occurrence and blocks its own commit at HIGH. Assemble the fixture instead of
+writing it literally — split the keyword across a concatenation, or build the source
+from a line list — so the scanner has nothing to misread while the assertion stays
+faithful. Reach for `# adversarial-ignore: <pattern>` only for genuine code, not for
+a fixture you can simply stop spelling out.
+
+**A detector that matches on the FIRST body line is a false-positive factory — fix
+the detector, not the artifact.** A pattern like `except …: \s*(?:pass|#.*)` cannot
+express "and nothing else follows", so a handler whose first line is a comment is
+reported as a swallow; moving the comment below the `print` silences the finding and
+leaves the rule wrong for the next correct handler. Replace it with a scan that reads
+the WHOLE body — walk the block until the indent dedents, then require comment-only
+or `pass` — and prove it BOTH ways: the form you removed must still match under the
+old rule, comment-only / pass-only / bare-except cases must still fire, and a
+re-raising bare handler must stay silent. That is the same evidence shape the static
+scan needs for any tightened pattern: a green run proves nothing; only a
+demonstrated failure proves the check would notice.

@@ -81,7 +81,7 @@ cronjob(action="list")
 
 1. Check git for missing files — search_files() scans disk only; a file may exist in git but not deployed. git show HEAD:<path>; deploy with cortex-update.sh.
 2. Governance files — orchestrators only — hooks, enforcer plugin, skills: fix the REPO SOURCE in ~/hermes-cortex/ first, commit/push, then cortex-update.sh. A fix to the deployed copy is overwritten on next update.
-3. Hermes boundary — in ~/hermes-cortex/ → ours; in ~/.hermes/ AND repo skills/ → edit repo copy + deploy; in ~/.hermes/ NOT in repo → Hermes default, don't touch; ~/.hermes-cortex/state/* and ~/.hermes/config.yaml → live config, edit directly.
+3. Hermes boundary — in ~/hermes-cortex/ → ours; in ~/.hermes/ AND repo skills/ → edit repo copy + deploy; in ~/.hermes/ NOT in repo → Hermes default, don't touch; ~/.hermes-cortex/state/* → live state, edit directly. `~/.hermes/config.yaml` is live config but the file-writing tools REFUSE it as security-sensitive ("Agent cannot modify security-sensitive configuration") — change it with `hermes config set <dotted.key> <value>` / `hermes config unset <key>` (list values as JSON: `'["name"]'`) and read it back with `hermes config get <key>`. Never fall back to a raw shell write to that path.
 4. Verify deployed == repo — grep -n "register.*<script>" cortex-update.sh; deploy if missing.
 5. Agent type — orchestrator (Moses/Esther): fleet/bus/skill-lifecycle; server-agent (Joseph/Kustos/Gisu): local maintenance; dev-agent (Titus): local reports, push-only bus.
 6. Stale deploy references — before rename/removal, grep every location (ops/scripts/, ops/install/, cortex_doctor/, hooks/, config/, state/, manage/). A rename touches updater, install arrays, doctor, check-system, service-recovery, cron-schedules.

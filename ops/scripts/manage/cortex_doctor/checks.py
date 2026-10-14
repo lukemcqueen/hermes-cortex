@@ -5343,6 +5343,94 @@ def check_cortex_env(res: "Results") -> None:
                 "the sanctioned symlink; no deploy-dir .env")
 
 
+def check_paused_cron_reasons(res) -> None:
+  """Every paused cron must say WHY it is paused.
+
+  ``hermes cron pause <id>`` takes no reason, so an auto-pause left ``paused_reason``
+  empty and an operator reading the cron list could not tell a deliberate stop from
+  an abandoned job (measured 2026-10-14: three paused jobs on this host, none with a
+  reason, two of them auto-paused by the failure watchdog). The reason may live in
+  either of the two sanctioned places:
+
+    * ``jobs.json`` ``paused_reason`` — written by ``cronjob create paused=true``
+    * the job's durable notepad (``<hermes home>/cron/notepad.db``, key
+      ``paused_reason``) — where ``agent-cron-failure-watchdog`` records the alert it
+      delivered, and which the CLI writes via
+      ``hermes cron notepad <job_id> set paused_reason "<why>"``
+
+  A paused job with NEITHER is a WARN: the pause is real and the explanation is
+  missing. Reporting it is the point — the state exists either way, so the check is
+  not inventing a problem, it is refusing to let an unexplained pause read as normal.
+  """
+  if not JOBS_FILE.exists():
+    res.add("Paused crons: reason", "INFO", f"no cron file at {JOBS_FILE}")
+    return
+  try:
+    data = json.loads(JOBS_FILE.read_text())
+  except (json.JSONDecodeError, OSError) as e:
+    res.add("Paused crons: reason", "WARN", f"could not read {JOBS_FILE.name}: {e}")
+    return
+
+  jobs = data.get("jobs", []) if isinstance(data, dict) else data
+  paused = [j for j in jobs if isinstance(j, dict)
+            and (j.get("paused_at") or not j.get("enabled", True))]
+  if not paused:
+    res.add("Paused crons: reason", "PASS", "no paused crons")
+    return
+
+  notepad_reasons = _notepad_paused_reasons({str(j.get("id") or "") for j in paused})
+  unexplained = []
+  for job in paused:
+    if str(job.get("paused_reason") or "").strip():
+      continue
+    if str(job.get("id") or "") in notepad_reasons:
+      continue
+    unexplained.append(str(job.get("name") or job.get("id") or "?"))
+
+  if unexplained:
+    shown = ", ".join(unexplained[:5])
+    more = f" (+{len(unexplained) - 5} more)" if len(unexplained) > 5 else ""
+    res.add(
+      "Paused crons: reason", "WARN",
+      f"{len(paused)} paused cron(s), {len(unexplained)} with NO recorded reason: {shown}{more}",
+      fix='Record why, so a deliberate stop is distinguishable from an abandoned job: '
+          'hermes cron notepad <job_id> set paused_reason "<why, and how to resume>" '
+          '— or resume it with: hermes cron resume <job_id>',
+    )
+    return
+
+  res.add("Paused crons: reason", "PASS",
+          f"all {len(paused)} paused cron(s) carry a recorded reason")
+
+
+def _notepad_paused_reasons(job_ids: set[str]) -> set[str]:
+  """Job ids whose durable notepad holds a ``paused_reason``.
+
+  Reads the cron notepad DB read-only. An ABSENT db is treated as "no reasons
+  recorded" (the caller then reports those jobs as unexplained) — never as an error,
+  because a host that has never written a notepad legitimately has none.
+  """
+  db = HERMES_HOME / "cron" / "notepad.db"
+  if not db.exists() or not job_ids:
+    return set()
+  out: set[str] = set()
+  try:
+    import sqlite3
+    con = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
+    try:
+      rows = con.execute(
+        "SELECT job_id FROM cron_notepad WHERE key='paused_reason' "
+        "AND value IS NOT NULL AND trim(value)<>''").fetchall()
+    finally:
+      con.close()
+  except Exception:
+    return set()
+  for (job_id,) in rows:
+    if str(job_id) in job_ids:
+      out.add(str(job_id))
+  return out
+
+
 def check_orphan_cycle_resolution(res) -> None:
   """Orphan-cycle resolution (2026-10-02, Luke): "there should be no open cycles
   ... i want honesty and doing things the right way".

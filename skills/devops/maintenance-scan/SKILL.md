@@ -140,7 +140,27 @@ looks for will otherwise certify itself.
 - **Never manufacture a fix for a true finding.** "Defined but unused" can be accurate for a
   documented reserved variable, and removing the definition flips the check to a WARN (not
   defined) — report it as a true positive and name the two real options (wire a consumer, or drop
-  it from the config) instead of silencing it.
+  it from the config) instead of silencing it. When you DO wire the consumer, it must read the
+  variable in a form the scan recognises (`get_model("VAR", …)`, `os.environ["VAR"]`, `getenv`,
+  `$VAR`): hiding the read inside a new helper of your own (`my_resolver("VAR", …)`) leaves the
+  finding intact because the scanner sees only the helper's name — have the consumer call the
+  established read form and hand the resolved value to the guard. Same class, one level up: a
+  value that must satisfy an HTTP endpoint (`provider/model`) needs a guard that falls back to the
+  served default LOUDLY on a bare id, because the variable is per-host `.env` and another host
+  still carries the old shape.
+- **An INFO that the check can only ever REPORT is a finding nobody can act on — resolve the
+  underlying DATA, not the message.** Where the condition is rows in a store (cycles closed by
+  an older code path, records with no reason recorded), ship a committed tool that fixes the data:
+  `--apply` with a dry-run default, idempotent, its own exit code for "could not verify", an entry
+  in the deploy map, and a test that drives it both ways. Prove it live RED→GREEN (the dry run
+  names the rows; the apply reports zero remaining), never by deleting or widening the check.
+- **Never rename a config value to silence a warning you have not reproduced.** Confirm the NEW
+  value both stops the warning AND is accepted by the resolver that actually wires the feature.
+  If both candidate names warn in-process, the divergence is in the checker (classically a
+  session-time validator that accepts less than the resolver the feature goes through); the rename
+  buys nothing and diverges from the platform convention, so REVERT it and report the checker.
+  When that checker lives in a tree the operator has excluded from patching, reporting is the
+  whole fix — do not edit code you were told not to touch.
 - **Prove the tightened warning BOTH ways** — it must still fire on the case it exists for and go
   silent on the case that was noise (see `change-checklist` Phase 1.5).
 

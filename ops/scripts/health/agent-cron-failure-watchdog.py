@@ -58,21 +58,41 @@ def _save_state(state: dict) -> None:
     STATE_FILE.write_text(json.dumps(state, indent=2), encoding="utf-8")
 
 
-def _pause_job(job_id: str) -> bool:
-    """Pause the cron via the hermes CLI. Returns True on success."""
+def _pause_job(job_id: str, reason: str = "") -> bool:
+    """Pause the cron via the hermes CLI, recording WHY in its durable notepad.
+
+    ``hermes cron pause`` takes no reason, so an auto-pause used to leave
+    ``paused_reason`` empty — and an operator reading the cron list could not tell a
+    deliberate stop from an abandoned job (measured 2026-10-14: three paused jobs on
+    this host, none with a reason). The notepad is the sanctioned durable per-job
+    store and is prompt-injected on the job's next run, so the reason travels with
+    the job. The doctor's `Paused crons: reason` check reads both places.
+    """
     try:
         r = subprocess.run(
             ["hermes", "cron", "pause", job_id],
             capture_output=True, text=True, timeout=30,
         )
-        return r.returncode == 0
+        paused = r.returncode == 0
     except Exception as exc:
         print(f"⚠️  Failed to pause cron {job_id}: {exc}", file=sys.stderr)
         return False
+    if paused and reason:
+        try:
+            subprocess.run(
+                ["hermes", "cron", "notepad", job_id, "set", "paused_reason", reason],
+                capture_output=True, text=True, timeout=30,
+            )
+        except Exception as exc:
+            # Never let bookkeeping undo the pause — but say so; a reason-less pause
+            # is the state this call exists to prevent.
+            print(f"⚠️  Paused {job_id} but could not record the reason: {exc}",
+                  file=sys.stderr)
+    return paused
 
 
-def _evaluate(jobs: list[dict], limit: int = CONSECUTIVE_FAILURE_LIMIT) -> tuple[list[str], list[str]]:
-    """Count consecutive errors per job; return (alerts, job_ids_to_pause).
+def _evaluate(jobs: list[dict], limit: int = CONSECUTIVE_FAILURE_LIMIT) -> tuple[list[str], list[tuple[str, str]]]:
+    """Count consecutive errors per job; return (alerts, [(job_id, reason)] to pause).
 
     Rules:
       - paused or disabled jobs are skipped entirely (not counted)
@@ -80,10 +100,12 @@ def _evaluate(jobs: list[dict], limit: int = CONSECUTIVE_FAILURE_LIMIT) -> tuple
       - any other last_status (ok, None, ...) resets it to 0
       - crossing the limit: one alert + one pause request per incident
       - already-alerted incidents stay silent until the counter resets
+      - each pause carries the ALERT TEXT as its reason, so the job's notepad says
+        why it stopped (see _pause_job)
     """
     state = _load_state()
     alerts: list[str] = []
-    to_pause: list[str] = []
+    to_pause: list[tuple[str, str]] = []
     now = _now_iso()
 
     for job in jobs:
@@ -114,7 +136,7 @@ def _evaluate(jobs: list[dict], limit: int = CONSECUTIVE_FAILURE_LIMIT) -> tuple
                     f"{job_id}`."
                 )
                 entry["alerted"] = True
-                to_pause.append(str(job_id))
+                to_pause.append((str(job_id), alerts[-1]))
         else:
             # Any non-error status (ok, None, ...) = the cron is healthy now.
             # Reset the counter/alarm so a NEW failure streak re-alerts. This is
@@ -140,8 +162,8 @@ def run_once() -> int:
 
     alerts, to_pause = _evaluate(jobs)
 
-    for job_id in to_pause:
-        _pause_job(job_id)
+    for job_id, why in to_pause:
+        _pause_job(job_id, why)
 
     if alerts:
         print("\n\n".join(alerts))
