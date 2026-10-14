@@ -3184,7 +3184,7 @@ def _call_reviewer_llm(prompt: str, *, model: Optional[str] = None,
         # Bounded and deterministic, both for cost (2026-10-13): the findings are a small JSON
         # object, and an unbounded, sampling reviewer is charged for prose nobody reads — and can
         # return a different verdict on byte-identical material.
-        "max_tokens": REVIEWER_MAX_TOKENS,
+        "max_tokens": _reviewer_max_tokens(),
         "temperature": REVIEWER_TEMPERATURE,
     }).encode()
     req = urllib.request.Request(
@@ -3249,6 +3249,54 @@ def _call_reviewer_agent(prompt: str, author: Optional[str] = None,
     if not out:
         raise RuntimeError("review agent produced no output — refusing to treat silence as CLEAN")
     return out
+
+
+def _reviewer_max_tokens() -> int:
+    """The reviewer's output cap, overridable per call via REVIEWER_MAX_TOKENS.
+
+    A cap that does not clear a REASONING model's thinking budget is a FALSE NEGATIVE on
+    a valid change: the model spends the whole budget thinking and returns a null/empty
+    content field, and the gate must read that as unavailability — so the close is refused
+    for a reason that has nothing to do with the change.
+
+    Read at CALL time, from the cortex .env like every other reviewer setting, and NOT as
+    an import-time constant only: the failure above used to be fixable only by a code
+    change plus a daemon restart, which is not a knob an operator can turn when a close is
+    blocked. Validated rather than trusted — a non-integer or non-positive value falls back
+    to the constant and SAYS SO, because silently clamping would hide the typo.
+    """
+    raw = (_env_value("REVIEWER_MAX_TOKENS") or "").strip()
+    if not raw:
+        return REVIEWER_MAX_TOKENS
+    try:
+        val = int(raw)
+    except ValueError:
+        log.warning("REVIEWER_MAX_TOKENS=%r is not an integer — using %d",
+                    raw, REVIEWER_MAX_TOKENS)
+        return REVIEWER_MAX_TOKENS
+    if val <= 0:
+        log.warning("REVIEWER_MAX_TOKENS=%r is not positive — using %d",
+                    raw, REVIEWER_MAX_TOKENS)
+        return REVIEWER_MAX_TOKENS
+    return val
+
+
+def _reviewer_reply_is_usable(text) -> bool:
+    """True only for a reply that actually SAYS something.
+
+    Extracted as a predicate (2026-10-14) so the gate can ask the question ONCE, before
+    any consumer touches the raw reply. `_extract_verdict` already refuses to call silence
+    CLEAN — but the review row records ``reviewer_text[:2000]``, and slicing None crashed
+    end_change with "'NoneType' object is not subscriptable", leaving the lock HELD with
+    nothing recorded on it: neither a pass nor a clean refusal, which is the worst outcome
+    this gate can produce.
+
+    Defaulting the text to "" instead would be strictly worse than the crash: FINDINGS
+    with an empty findings list is the "only LOW severity" path, which ANNOTATES and lets
+    the close through — so a reviewer answering with silence would PASS the gate. Silence
+    is unavailability, and unavailability REFUSES.
+    """
+    return isinstance(text, str) and bool(text.strip())
 
 
 def _extract_verdict(text: str):
@@ -4455,6 +4503,23 @@ def _adversarial_review_gate(lock: dict, cycle: dict,
             "Governance requires review before this complex change ships — "
             f"the close is refused, not skipped. (error: {e})\n\n"
             "Retry end_change when the reviewer is reachable."
+        ))])
+
+    if not _reviewer_reply_is_usable(reviewer_text):
+        # FAIL CLOSED on silence (2026-10-14, cycle 12530): a null/empty reply means
+        # nothing was judged. Letting it continue would either crash the close (the slice
+        # below) or, once the slice is guarded, sail through the "no blockers" path.
+        log.error("self-adversarial review: cycle %s — reviewer returned NO usable text "
+                  "(null/empty content); refusing the close",
+                  cycle.get("id"))
+        _mark_close_refused(cycle.get("id", 0), "REVIEWER_UNAVAILABLE", "[]", lock)
+        return CallToolResult(content=[TextContent(type="text", text=(
+            "❌ Cannot close: the self-adversarial reviewer returned NO usable text "
+            "(a reasoning model starved of output budget hands back a null content "
+            "field). Nothing was judged, so the close is REFUSED, not skipped.\n\n"
+            "Retry end_change. If it repeats on a large change the review is being cut "
+            "short — raise the reviewer's output cap (REVIEWER_MAX_TOKENS) or lower the "
+            "material so the reply fits."
         ))])
 
     verdict, findings_json = _extract_verdict(reviewer_text)
