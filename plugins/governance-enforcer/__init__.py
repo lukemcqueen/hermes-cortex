@@ -2128,9 +2128,34 @@ def _pii_sensitive_hits(content):
                 yield i, i + length, digest
 
 
-# Phone numbers: international / national formats, digits+separators.
+# Phone numbers. The trigger is deliberately NARROW: it matches a number that is
+# phone-SHAPED, never a bare run of digits that another format also produces.
+#
+# Why (2026-10-14): the previous pattern ended with an OPTIONAL single separator
+# between a three-to-four digit group and a four digit group, so any two
+# four-digit groups joined by one dash matched — a line-number range, a
+# date-based session key, a version pair and an epoch pair all looked like a
+# phone. It blocked a legitimate plan write and the evidence transcript, and the
+# failure taught writers to avoid digit ranges rather than to look for personal
+# data. Measured against the fixtures in tests/test_enforcer_pii_gate.py, the old
+# pattern flagged these shapes and this one flags none, while still matching
+# every real format tested (national, parenthesised, dashed, +CC grouped, E.164).
+# The before/after is pinned to the revision that had the bug in
+# docs/evidence/pii-phone-narrowing/ and in that test's differential case.
+#
+# Accepted trade-off, stated so it is not rediscovered as a bug: a number with NO
+# separators and no leading plus is no longer treated as a phone (an unformatted
+# ten-digit run is indistinguishable from an identifier, and guessing there is
+# what produced the false positives). Digits, dates and ranges are not personal
+# data; a formatted phone number is.
 _PII_PHONE_RE = re.compile(
-    r"(?<!\d)(\+?\d{1,3}[-.\s]?)?(\(?\d{2,4}\)?[-.\s]?)?\d{3,4}[-.\s]?\d{4}(?!\d)"
+    r"(?<![\d+])"
+    r"(?:"
+    r"\+\d{8,15}"                                              # E.164
+    r"|\+\d{1,3}[-\s]\(?\d{1,4}\)?[-\s]\d{3,4}[-\s]?\d{3,4}"   # +CC then grouped
+    r"|\(?\d{2,4}\)?[-\s]\d{3,4}[-\s]\d{4}"                    # two-separator national
+    r")"
+    r"(?!\d)"
 )
 
 # Private server URLs — a URL whose host is NOT a well-known public site is

@@ -62,8 +62,22 @@ _SYNTH_DIGEST = hashlib.sha256(_SYNTH_TERM.encode()).digest()
 # PII-shaped fixtures, assembled from parts so no literal trips the gate.
 _FAKE_EMAIL = "luke" + "@" + "somewhere" + "-not-a-placeholder.org"
 _PHONE = "010-" + "1234" + "-5678"
+_PHONE_INTL = "+" + "82" + " " + "10-" + "1234" + "-5678"
 _PRIVATE_HOST = "https" + "://my-secret-server" + ".internal:8443"
 _LAN_HOST = "https" + "://192.168." + "1.10/admin"
+
+# NOT phones, but the pre-2026-10-14 pattern flagged them: it ended with an
+# OPTIONAL single separator between a three-to-four digit group and a four digit
+# group, so two four-digit groups joined by one dash matched. These are the real
+# shapes that blocked a legitimate plan write and the evidence transcript.
+# Assembled from parts and with every long digit run SPLIT, so this file carries
+# no literal the gate it is testing would block (Rule: a scanner that scans its
+# own source cannot restate its fixtures).
+_DASH = "-"
+_LINE_RANGE = "5341" + _DASH + "5377"
+_SESSION_KEY = "20" + "26" + "10" + "14" + "_" + "195745" + "_" + "cd0e365b"
+_VERSION_PAIR = "v1.2.0" + _DASH + "20" + "26" + "10" + "14"
+_EPOCH_RANGE = "12000" + _DASH + "16000"
 
 
 def gate(text: str) -> bool:
@@ -132,6 +146,7 @@ def test_the_public_owner_handle_is_blocked_outside_the_repo_url():
 BLOCKED = [
     _FAKE_EMAIL,
     f"call {_PHONE}",
+    f"ring {_PHONE_INTL}",
     f"connect to {_PRIVATE_HOST}",
     f"panel at {_LAN_HOST}",
 ]
@@ -144,6 +159,12 @@ ALLOWED = [
     "admin@client-domain.com",
     "the fleet operates six agents autonomously",
     "docs at https://hermes-agent.nousresearch.com/docs",
+    # two four-digit groups joined by ONE dash are not a phone number — the
+    # shapes that used to be blocked (see the differential test below).
+    f"lines {_LINE_RANGE}",
+    f"session {_SESSION_KEY}",
+    f"tag {_VERSION_PAIR}",
+    f"budget {_EPOCH_RANGE} tokens",
 ]
 
 
@@ -155,6 +176,79 @@ def test_pii_blocked(text):
 @pytest.mark.parametrize("text", ALLOWED)
 def test_non_pii_allowed(text):
     assert not gate(text), f"should NOT have blocked: {text[:50]}"
+
+
+# ── the phone narrowing, pinned to the revision it replaced ────────────────
+
+# The enforcer revision BEFORE the phone narrowing, pinned by SHA — never 'HEAD':
+# the fix is committed in the same change as this test, so HEAD would resolve to
+# the FIXED module and the before/after comparison would be a tautology.
+_PRE_NARROWING_REV = "31699baa"
+
+
+def _load_enforcer_at(rev):
+    """Extract the enforcer at <rev> and load it; None when it cannot be read.
+
+    'Could not verify' is its own outcome — the caller SKIPS loudly rather than
+    letting an unreadable revision read as a passing comparison.
+    """
+    import subprocess
+    import tempfile
+
+    try:
+        out = subprocess.run(
+            ["git", "-C", str(_REPO), "show",
+             f"{rev}:plugins/governance-enforcer/__init__.py"],
+            capture_output=True, text=True, timeout=30,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    if out.returncode != 0 or not out.stdout.strip():
+        return None
+    path = Path(tempfile.mkdtemp()) / "enforcer_at_rev.py"
+    path.write_text(out.stdout, encoding="utf-8")
+    spec = importlib.util.spec_from_file_location("enforcer_at_rev", path)
+    if spec is None or spec.loader is None:
+        return None
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def test_the_phone_narrowing_drops_the_false_positives_and_keeps_phones():
+    """Asserted against the revision that HAD the bug, not against a claim."""
+    prev = _load_enforcer_at(_PRE_NARROWING_REV)
+    if prev is None:
+        pytest.skip(
+            f"could not extract {_PRE_NARROWING_REV} — the before/after cannot be "
+            "verified here, so this is NOT a pass"
+        )
+
+    non_phones = [
+        _LINE_RANGE,
+        _SESSION_KEY,
+        _VERSION_PAIR,
+        _EPOCH_RANGE,
+        f"lines {_LINE_RANGE}, more {_EPOCH_RANGE}",
+    ]
+
+    # 1. The baseline must REPRODUCE the bug, or the comparison below proves
+    #    nothing. A baseline that already passes is the tautology trap.
+    reproduced = [s for s in non_phones if prev._PII_PHONE_RE.search(s)]
+    assert len(reproduced) >= 3, (
+        "the pre-narrowing revision does not reproduce the false positives this "
+        f"change removes ({len(reproduced)}/{len(non_phones)}) — the comparison "
+        "would be vacuous"
+    )
+
+    # 2. The fix drops them...
+    still = [s for s in non_phones if enf._PII_PHONE_RE.search(s)]
+    assert not still, f"still treated as phones after the narrowing: {still}"
+
+    # 3. ...while real phone formats fire in BOTH revisions.
+    for p in (_PHONE, _PHONE_INTL):
+        assert prev._PII_PHONE_RE.search(p), f"baseline did not match a phone: {p}"
+        assert enf._PII_PHONE_RE.search(p), f"the narrowing lost a phone: {p}"
 
 
 # ── the regression guard for the whole design ──────────────────────────────

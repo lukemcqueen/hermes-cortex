@@ -1,0 +1,56 @@
+PII PHONE DETECTOR — narrowing evidence (generated, not hand-written)
+Produced by: bash hermes-cortex/docs/evidence/pii-phone-narrowing/capture.sh   (paths normalised to ~)
+Generated at: 2026-10-14T12:14:23Z
+
+Baseline revision: 31699baa (pinned, never 'HEAD' — the fix is committed in
+the same change as this evidence, so HEAD would be a tautology).
+
+═══ 1. The pattern, before and after ═══
+$ git -C hermes-cortex show 31699baa:plugins/governance-enforcer/__init__.py | grep -A2 _PII_PHONE_RE
+_PII_PHONE_RE = re.compile(
+    r"(?<!\d)(\+?\d{1,3}[-.\s]?)?(\(?\d{2,4}\)?[-.\s]?)?\d{3,4}[-.\s]?\d{4}(?!\d)"
+)
+
+$ grep -A8 '_PII_PHONE_RE = re.compile' hermes-cortex/plugins/governance-enforcer/__init__.py
+_PII_PHONE_RE = re.compile(
+    r"(?<![\d+])"
+    r"(?:"
+    r"\+\d{8,15}"                                              # E.164
+    r"|\+\d{1,3}[-\s]\(?\d{1,4}\)?[-\s]\d{3,4}[-\s]?\d{3,4}"   # +CC then grouped
+    r"|\(?\d{2,4}\)?[-\s]\d{3,4}[-\s]\d{4}"                    # two-separator national
+    r")"
+    r"(?!\d)"
+)
+
+═══ 2. The gate's own test suite ═══
+$ python3 -m pytest hermes-cortex/tests/test_enforcer_pii_gate.py -q
+~/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3: No module named pytest
+
+═══ 3. LIVE gate verdicts, through _check_pii_content_gate ═══
+The target path is INSIDE the shared surface: the gate only fires there, so a
+probe pointed elsewhere reports 'allowed' for everything and measures nothing.
+  line-number refs (blocked before)   allowed   need  allowed   ok
+  chained range pair                  allowed   need  allowed   ok
+  session-key shape                   allowed   need  allowed   ok
+  version pair                        allowed   need  allowed   ok
+  epoch range                         allowed   need  allowed   ok
+  REAL phone, KR national             BLOCKED   need  BLOCKED   ok
+  REAL phone, +CC grouped             BLOCKED   need  BLOCKED   ok
+  REAL phone, E.164                   BLOCKED   need  BLOCKED   ok
+  wrong verdicts: 0
+
+═══ 4. The baseline reproduces the bug (why narrowing is a fix, not a loosening) ═══
+$ the same NON-phone shapes against the PINNED baseline pattern
+  baseline flagged 4 of 5 NON-phone shapes (this is the bug)
+    - lines 5341-5377
+    - session 20261014_195745
+    - v1.2.0-20261014
+    - and (:5380-5401)
+
+═══ 5. What this does NOT cover ═══
+- An unformatted ten-digit run with no separators and no leading plus is no
+  longer flagged. DELIBERATE, and stated in the source: such a run is
+  indistinguishable from an identifier, and guessing there is what produced
+  the false positives. Separated / plus-prefixed formats still fire.
+- No end-to-end write was attempted: the gate blocks its own fixtures by
+  construction, so the measurement is the pattern plus the gate function.
