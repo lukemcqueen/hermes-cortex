@@ -106,9 +106,14 @@ and invalidates the receipt, so push immediately after closing. Full detail:
 
 - **Issue `git push` BARE — a pipe or any compound makes it unprovable.** The carve-out
   recognises only a lone `git push`: `git push origin main 2>&1 | tail -3` is classified as
-  write-capable needing a lock, and the refusal explains the shape rather than the cause. Do not
+  write-capable needing a lock. Do not
   append a follow-up command (`&& git log`, a redirect) to the same line; run the push alone and
-  read its output in the next call.
+  read its output in the next call. **CHECK THE COMMAND SHAPE BEFORE YOU DIAGNOSE A LOCK BUG: the
+  refusal for a compound push is the GENERIC gate-2 text ("GOVERNANCE LOCK REQUIRED"), with no
+  mention of the compound, so a piped push is indistinguishable from a genuinely missing lock.**
+  Read your own command's shape first — that check takes seconds, while trusting the message
+  sends you to edit the enforcer for a bug it never had (and every attempted fix is measured
+  against a push that keeps failing for the unchanged reason).
 - **A refusal naming `reviewed_blobs` means the receipt carries no blob list.** The receipt
   writer loads a range-blob helper by a repo-relative path resolved against the DEPLOYED root; if
   that file was never registered for deploy it is absent there, the receipt is written without
@@ -248,16 +253,39 @@ does not apply.
    Load the skill, run
    `python3 ~/.hermes-cortex/scripts/adversarial-verify.py --file <your-staged-files> --level A2 --gate`,
    then commit.
+   - **A TEST file is scanned at A4 too, and dynamic code in it BLOCKS the commit.** A test that
+     loads the module under test by building its source (`exec(compile(...))`, a string-eval seam)
+     comes back as Medium findings and the commit is refused with a bare `❌ Adversarial scan
+     blocked: 1 file(s) have findings` — the *file-level* `--gate` run can pass while the hook's
+     staged-file scan still blocks, so a green explicit run is not the hook's verdict. Assert
+     against the real source instead of executing it
+     (`ast.parse` + `ast.get_source_segment` for the properties you care about; note in the
+     docstring that the helper is pinned by source assertions because importing the server needs a
+     live session), or drive an importable seam. Do not answer it with a bypass flag — the scan is
+     right, and a test that executes generated code is the thing it exists to catch.
 4. **Orphaned PENDING cycles block push** (verified 2026-08-27, again 2026-09-02). The doctor
    FAILs on PENDING cycles from FINISHED tasks (no active lock) — e.g. a
    cycle created by `begin_change` in a session whose lock was later purged
    by restart/cortex-update, OR a cycle created by a BACKGROUND/delegation
-   session (`bg_*` session id) that finished without scoring. Symptom: push blocked with "doctor reports N
+   session (`bg_*` session id) that finished without scoring.
+   - **A THIRD source is your OWN test suite: a test that calls the real `begin_change` /
+     `feedback_accept` writes a row into the LIVE store.** Tests are run casually and
+     repeatedly, and because the doctor counts an unscored PENDING cycle as a FAILURE the
+     leak blocks the push for EVERY agent on the host until someone finds the row and scores
+     it. Point such a test at a temp state dir (and assert what the tool wrote THERE) or drive
+     the extracted helper, never the tool; a fixture written to a path the reader does not
+     read is exactly how the live store gets written while the test still looks hermetic. Symptom: push blocked with "doctor reports N
    failure" + `❌ PENDING cycles`, even after dogfood passes. Fix: query
    `mcp__loop_governance__cycle_query(unreviewed=true)`, `feedback_accept`
    (or `feedback_override`) every orphaned PENDING cycle, re-run doctor to
    0 fail, then push. The current task's own cycle (lock held) is INFO, not
    a blocker.
+   - **Score a foreign row BY ID, not by task id.** `feedback_accept(task_id='<another task>')`
+     is REFUSED — the resolver only reaches YOUR session's own PENDING cycle, so the row the
+     doctor named looks unreachable. Read the id from the doctor's own line
+     (`<task>#<cycle_num>`) or from `cycle_query`, then pass `cycle_id=<id>` plus an
+     `unscored_reason` that says where the row came from and why it holds no work. Without that
+     you loop on the same FAIL, and the push stays blocked for every agent on the host.
    - **Per-task `cycle_query(task_id=...)` does NOT show other tasks' leaked
      cycles** — if the doctor still reports PENDING after scoring your own,
      find the leak directly:
@@ -283,6 +311,29 @@ does not apply.
    Order is always commit → cortex-update → push. For the full dogfood
    (pull → deploy → doctor → verify):
    `bash ~/.hermes-cortex/scripts/cortex-dogfood.sh --force`.
+   - **Deploy yourself — a push that LANDED is not evidence the deploy ran.** A push
+     made with an active lock went through with no deploy at all: the output was only
+     the ref update, and the deployed copy of a changed skill was still the previous
+     revision afterwards (deployed != repo, content compared with the deploy banner
+     stripped from both sides). The gate's dogfood step is not guaranteed for every
+     push shape, and the omission surfaces later as `❌ Deploy sync — HEAD ahead of
+     last deploy` on the NEXT push. So after any push that touches a deploy-map file,
+     compare the deployed copy against repo source and run
+     `bash ops/scripts/cortex-update.sh` when they differ — report the deployed state
+     from that comparison, never from the push having succeeded.
+   - **A tracked GENERATED file that keeps getting rewritten is committed as its OWN
+     commit, naming the generator in the message.** This is what keeps the tree clean
+     for the doctor and for the gate's working-tree diff while keeping generated churn
+     out of the change under review. Leaving it dirty is not neutral: the doctor's
+     `Repo clean` warning fires, the dogfood gate diffs the working tree, and its pull
+     step can refuse on an unstaged file. Say which generator wrote it and that it is
+     not part of the cycle's diff, so a reviewer does not read it as scope drift.
+   - **A merge/pull IS a deploy in this repo, so do not deploy twice.** `git pull --no-rebase`
+     fires the `post-merge` hook, which runs the deploy and then the doctor — its output (framed
+     `post-merge: auto-deploying to match new HEAD` … `post-merge: deploy complete`) is your
+     Deploy-sync evidence, and a further dogfood run on top of it is redundant. Redirect that
+     pull to a file: the doctor's overall line inside it is what tells you whether the gate will
+     pass, and re-reading a 3-line summary beats a second 30-minute deploy.
    A mid-push deploy may itself report cost-tracking marker FAILs inside
    scheduler/cronjob files; re-run `cortex-dogfood.sh` — if it ends with
    `✅ DOGFOOD PASSED`, the deploy is clean and the push succeeds on retry.
@@ -303,6 +354,13 @@ does not apply.
      only on the deployed copy because a lesson was written there and never copied back —
      and the doctor exits non-zero while any remain, which blocks every push on the host
      until it is resolved or explicitly recorded as its own task.
+     **Before editing ANY skill in this repo, check the target is currently IN SYNC** —
+     pick a skill whose deployed and repo copies already match, or reconcile the drift
+     first in its own cycle. Editing an already-DRIFTED skill compounds the strand: the
+     repo copy falls further behind, and a plain deploy cannot repair it (the drift
+     guardrail skips a deployed file that is newer than its source), so the lesson never
+     reaches the fleet. Run `check-skill-drift-parity.py` and choose your target from its
+     output before writing.
    - **A `❌ Checksum: <file>` you did not cause by committing late is a RACE:
      you edited a registered file while the deploy was still copying it.** The
      doctor compares repo source to the deployed copy, so an edit that lands

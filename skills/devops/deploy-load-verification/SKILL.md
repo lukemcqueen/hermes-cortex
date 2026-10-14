@@ -45,6 +45,25 @@ ps -eo pid,lstart,cmd | grep uvicorn | grep -v grep
 **Rule of thumb:** process start > file mtime → new code loaded. Start < mtime
 → old code still in memory; restart required.
 
+**Compare the DEPLOYED copy's mtime, and resolve that path from the deploy map — never a
+guessed path.** The repo copy's mtime says nothing about what a process loaded: the deploy
+writes the file somewhere else, and the deploy map (`~/.hermes-cortex/deploy-manifest.tsv`)
+is the only per-file answer to "where does this land on this host" — read the row for the
+source path and use its destination; a missing row is a refusal, not a guess. Then assert
+the two facts TOGETHER, because either alone is weak:
+  * repo source == deployed copy with the deploy banner stripped on BOTH sides (content, not
+    mtime: a deploy rewrites an unchanged file and moves its mtime, so mtime parity is not
+    evidence of anything);
+  * the RUNNING process FOR THAT FILE started at/after the deployed mtime — match the process
+    by its argv script path, since several long-lived children can be serving one host.
+Keep the comparison numeric and portable instead of parsing `lstart` in prose:
+`start_epoch=$(( $(date +%s) - $(ps -o etimes= -p <pid> | tr -d ' ') ))`, compared against
+`stat -c %Y <deployed file>`. (macOS `ps` has no `etimes`; use `lstart` there.)
+**Ship it as a read-only verifier under `docs/evidence/` plus its captured run**, so
+"deployed AND loaded" is a claim the next reader re-runs rather than trusts. A deploy-side
+capture that stops at "the file on disk is current" leaves the load half unproven, and that
+gap is exactly where a half-live fix hides.
+
 **MCP children are ground truth:** each `mcp_stdio_watchdog` child carries the
 exact script path the gateway spawned at startup. An old path in the child argv
 (e.g. `agent-bus-mcp.py` while config now says `cortex-bus-mcp.py`) means the

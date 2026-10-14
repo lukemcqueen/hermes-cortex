@@ -55,8 +55,15 @@ Enforced at 3 layers: pre-commit hook (static gate), enforcer (blocks commit unt
       artifact.** A baseline recorded as "HEAD", "the working tree", or a stash is unrepeatable the
       moment your own commit lands — HEAD then IS the change, so the comparison can never be
       re-run and the reviewer correctly refuses it. Record the baseline SHA and the tip SHA in the
-      evidence and the cycle note; re-running the tool against those two revisions must reproduce
-      the counts exactly.
+      evidence and the cycle note; re-running the tool against those two revisions must reproduce the
+      counts exactly. **Quote only numbers a COMMITTED artifact prints** — a count read off a live
+      tool run and never committed is itself an unverified claim, and it is filed as one at HIGH even
+      though the run really happened: the reviewer reads the diff and cannot see your terminal. Before
+      writing a before/after into a note, commit the capture that shows BOTH sides. When a committed
+      artifact's numbers turn out to disagree with a figure you already stated, WITHDRAW the figure
+      explicitly and once ("the earlier count came from a live report, is not artifact-backed, and is
+      withdrawn — the artifact's own numbers are these") — re-explaining it appends a second copy of a
+      claim the artifact beside it contradicts.
 - [ ] "0 findings" is NOT a pass — execute the changed path with boundary inputs (-1, 0, None, empty, inf/nan, non-ASCII); attack the premise (list implicit assumptions, violate each with a 30s test); verify deployed == loaded (restart/daemon check for guards/hooks/enforcers).
 - [ ] A green check is not evidence until you have seen the assertion RUN. A test
       file with no executable entry point (a pytest-style file with no

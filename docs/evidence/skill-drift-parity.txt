@@ -11,14 +11,8 @@ Deploy banners (the 3-line SOURCE header) are not compared.
 
 | Measure | Value |
 |---|---|
-| Deployed-only files (stranded) | 4 |
-| Files in sync | 835 |
+| Deployed-only files (stranded) | 0 |
+| Files in sync | 839 |
 | Skipped (no repo counterpart, or repo ahead) | 624 |
 
-**Verdict: FAIL**
-
-Stranded files:
-- devops/governance-closeout/SKILL.md
-- devops/governance-lock-lifecycle/SKILL.md
-- devops/shared-repo-push-gates/SKILL.md
-- devops/subagent-delegation/SKILL.md
+**Verdict: PASS**

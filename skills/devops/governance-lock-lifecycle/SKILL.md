@@ -104,9 +104,11 @@ that returns new findings rather than closure. Two rules follow:
   blocker/obstacle category); the work already committed and deployed stays landed. Never reach for
   a force or replace-lock route to escape it — an override is the operator's call, and asking is
   cheap.
-- **Know how the lock actually clears: the TTL, not you.** A lock ages out an hour after its last
-  heartbeat, and `check_lock` REFRESHES that heartbeat — so stop calling `check_lock` on a cycle you
-  intend to abandon, or you will keep it alive indefinitely. A scored (non-PENDING) cycle left this
+- **Know how the lock actually clears: the TTL, not you — and only once you STOP WORKING.** A lock
+  ages out an hour after its last heartbeat, and ANY write-class tool call refreshes that heartbeat
+  (`_touch_heartbeat` runs on writes), not just `check_lock`. So "wait out the TTL" is not available
+  to the session still holding the lock: while it keeps working the lock never goes stale, and the
+  wait the docs suggest can never arrive. Reach for a terminal state (Pitfall 8) instead of waiting. A scored (non-PENDING) cycle left this
   way is clean: the doctor's leak check does not fire. But no push receipt was written, so whoever
   performs the push must run its own close to write one. A held lock does not stop a second session
   acquiring its own, so the deferred work can proceed while yours waits.
@@ -155,6 +157,65 @@ claims below are asserted by the committed, re-runnable test
 
 General rule: when a gate refuses in a way that looks unbounded, the first move is to re-read the
 available tools and their parameters — not to re-roll the reviewer, and never to override.
+
+### Pitfall 8: A lock minted WITHOUT repo identity cannot be closed — only a TERMINAL state clears it
+
+`end_change` refuses such a cycle with "Cannot close: no governed repo to measure complexity — the
+self-adversarial review cannot run", because the close composes its review material from the repo the
+lock names and this lock names none. Nothing ages it out (Pitfall 6: the owner's own work keeps it
+alive), so the lock outlives every retry. Releases:
+
+- **`advance_task_state(task_id=..., new_state="cancelled", reason=...)`** — terminal, and it reports
+  "a terminal task holds nothing" because `_release_lock` does not consult repo identity. Name the
+  cause in the reason; the range is left without a receipt, so whoever pushes must close something.
+- **`blocked` is NOT a release.** It is non-terminal, so it keeps holding the lock — parking a lock
+  you cannot close with `blocked` is what turns a stuck cycle into a stuck repo. From `blocked` the
+  way out is `cancelled` (or `planning`).
+- **A zero-diff placeholder cycle is closed by SCORING it.** `feedback_accept` with an
+  `unscored_reason` takes it PENDING → MOVE_ON; "it can never close" is true of `end_change` only, and
+  the remaining work is just the lock release above.
+- **A different session cannot release it.** Locks are session-scoped, so a later session cannot
+  end_change or advance the lock a dead session left; only the TTL purge (or the operator's `rm` of
+  the file) clears it. Say so rather than leaving the next agent hunting for a tool.
+
+Diagnose before concluding: read the lock FILE and check `repo_path` / `repo_slug`; empty or absent
+identifies this class in one read.
+
+Mint sites: any writer that builds a FRESH lock state instead of re-writing one that already carries
+the repo. Re-writers inherit the repo fields, so all 14 other lock-write call sites are unaffected —
+and when you fix one fresh-state writer, pin it with a test asserting the state it hands to the writer
+carries `repo_path` AND `repo_slug`. Such a lock also creates no claimable task row, so a promotion
+that mints one leaves a lock, a cycle and an event but nothing to claim.
+
+**Which refusals free you — and why a freed lock must come with a resolved cycle.** A refusal about
+the LOCK'S METADATA (the lock names no repo, or names a repo this session is not working in) judged
+nothing: no diff was read, no verdict exists, and **no receipt is written on that path**, so holding
+the lock authorises nothing while dead-ending the session that holds it — and the sessions queued
+behind it. Current builds RELEASE the lock on those refusals and close the cycle UNSCORED
+(`MOVE_ON` plus a reason naming the refusal), which makes the terminal-state route above the path
+for a lock left by an older build or a crashed close rather than the only way out. A verdict about
+the WORK (findings, reviewer unavailable) is different in kind: the close is refused and the lock is
+released so you are not trapped, but the range still needs a CLEAN receipt before it can be pushed —
+so re-check the receipt, do not re-close to "clear" it.
+
+Any change that frees a lock must resolve its cycle in the same step. The doctor counts a PENDING
+cycle as EXPECTED while a live lock exists and as a leak FAIL the moment the lock is gone, and ANY
+doctor FAIL blocks the push for every agent on the host — so releasing alone converts one session's
+dead-end into a host-wide block. Before "recovering" a cycle you believe is PENDING, read what the
+score reports: `MOVE_ON → MOVE_ON` means something already resolved it, so your scoring was a no-op
+rather than the fix, and the remaining problem is elsewhere.
+
+### Testing governance helpers
+
+- **Never drive an entry point whose PRECONDITIONS consult live state to assert one branch.**
+  `begin_change` runs the dogfood check and the unscored-PENDING-cycle check before the refusal you
+  want to test, so the assertion ends up measuring the host (a dirty tree or an open cycle fails a
+  message test). Extract the decision/message into its own function and drive that — and assert BOTH
+  directions: the repo-less lock gets the terminal-state guidance, a normal lock still gets the
+  ordinary "call end_change".
+- **Write lock fixtures with the module's OWN writer** (`_write_lock(state, {"session_id": sid})`),
+  never a hand-built path: the path helper need not share the global you swapped, so the entry point
+  starts a NEW session and the test passes while measuring the wrong subject.
 
 ## Verification
 

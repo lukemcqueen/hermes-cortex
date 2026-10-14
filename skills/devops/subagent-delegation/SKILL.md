@@ -83,5 +83,28 @@ three extra rules apply:
   "N tests pass" is a claim, not a fact. After it returns: `git log` for the
   commits, run the test suite yourself, read the key diffs. Catch what a weak
   model misses — a script that violates a repo naming convention (the doctor
-  flags it), a graceful-SKIP that is actually an unverified check, a decision the
+  flags it),  a graceful-SKIP that is actually an unverified check, a decision the
   child made because a slice left it open.
+
+## Using children as external reviewers (their findings are CLAIMS)
+
+A review child sees a bounded window — its own context, a truncated diff, no terminal — so its
+findings are claims to verify, not conclusions to act on:
+
+- **One concern per child, exact read paths in, one scratch output file out.** Two focused roles
+  beat one general reviewer (e.g. the process/evidence side and the technical-correctness side),
+  and each must be told explicitly not to duplicate the other's mandate. Write review output under
+  the scratch dir, never into the repo: a child that writes repo files needs a governance lock it
+  cannot see, and a child that edits can also fix its own objections.
+- **Classify every finding before acting: confirmed / refuted-by-measurement / environment.** Fix
+  only the confirmed ones; for a refutation state the measurement and change no code, because
+  "fixing" a non-defect to appease a finding is a defect in itself. A finding about the
+  reviewer's own transport or credentials is environment — fix the setup, not the change.
+- **Refute with the smallest decisive artifact, not with prose.** A finding that misreads material
+  the child could only partly see ("the range diff puts the copy-back in the wrong commit") is
+  settled by the per-commit listing — `git show --stat <sha>` for each commit in the range — which
+  also disproves it for the NEXT reviewer. Commit that listing as evidence; re-explaining it in the
+  note is what the gate grades as an unverified claim.
+- **A child's probe can be the bug.** When a finding's evidence is a count, a path or a regex the
+  child wrote, verify the probe before rewriting the code it accuses — a wrong finding belongs to
+  the check, and the same discipline applies to a child's claims as to your own.
