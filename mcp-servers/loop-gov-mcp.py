@@ -1945,6 +1945,43 @@ async def call_tool(ctx, params=None) -> CallToolResult:
 
 # ── Tool Implementations ─────────────────────────────────────
 
+def _active_lock_refusal_text(existing: dict) -> str:
+    """The message a session reads when it tries to begin while a lock is already active.
+
+    Split out (2026-10-14) so the GUIDANCE can be tested without standing up the
+    preconditions that run before it (the dogfood check and the unscored-PENDING-cycle
+    check both fire first and query live state) — a test that has to defeat two unrelated
+    gates to read one message has a verdict that depends on the host, not on the message.
+
+    A lock that names NO repo cannot be closed by end_change (it refuses to measure
+    complexity without a governed repo), so "call end_change" is advice that cannot work
+    for it. Name the release that DOES: a TERMINAL task state releases the lock and does
+    not consult repo identity.
+    """
+    t = existing.get("task_id")
+    if existing.get("repo_path") or existing.get("repo_slug"):
+        how_out = f"Call end_change('{t}') first, or use force=True to override."
+    else:
+        how_out = (
+            "This lock names NO repo, so end_change CANNOT close it ('no governed repo to "
+            "measure complexity'). Release it with a TERMINAL task state, which does not "
+            "consult repo identity:\n"
+            f"  mcp__loop_governance__advance_task_state(task_id='{t}', "
+            "new_state='cancelled', reason='<why>')\n"
+            "Waiting does not help: this session's own writes refresh the lock's "
+            "heartbeat, so it never goes stale while you are working.")
+    return (
+        f"Error: A governance session is already active:\n"
+        f"  task_id:     {existing.get('task_id')}\n"
+        f"  description: {existing.get('description')}\n"
+        f"  session_id:  {existing.get('session_id', 'unknown')}\n"
+        f"  started_at:  {existing.get('started_at')}\n"
+        f"  heartbeat:   {existing.get('heartbeat_at')}\n"
+        f"  agent:       {existing.get('agent')}\n\n"
+        + how_out
+    )
+
+
 def _begin_change(args: dict) -> CallToolResult:
     """Create a governance lock file AND a pending cycle in the loop-governance DB."""
     task_id = args.get("task_id", "").strip()
@@ -2039,18 +2076,7 @@ def _begin_change(args: dict) -> CallToolResult:
     if existing is not None:
         if not force:
             return CallToolResult(content=[TextContent(
-                type="text",
-                text=(
-                    f"Error: A governance session is already active:\n"
-                    f"  task_id:     {existing.get('task_id')}\n"
-                    f"  description: {existing.get('description')}\n"
-                    f"  session_id:  {existing.get('session_id', 'unknown')}\n"
-                    f"  started_at:  {existing.get('started_at')}\n"
-                    f"  heartbeat:   {existing.get('heartbeat_at')}\n"
-                    f"  agent:       {existing.get('agent')}\n\n"
-                    f"Call end_change('{existing.get('task_id')}') first, or use force=True to override."
-                )
-            )])
+                type="text", text=_active_lock_refusal_text(existing))])
         # Force override: build audit note and release old lock
         released_task = existing.get("task_id", "unknown")
         released_session = existing.get("session_id", "unknown")
@@ -5645,9 +5671,16 @@ def _promote_issue_to_task(args: dict) -> CallToolResult:
         except Exception:
             detail = f"{description} (issue #{issue_event_id}: lookup failed)"
 
+    # Repo identity, resolved EXACTLY as _begin_change does (2026-10-14). Without it the
+    # lock names no repo, end_change refuses it ("no governed repo to measure complexity")
+    # and the cycle it creates can never be closed by the normal path — the tool that
+    # exists to hand an operator work instead handed them a dead end.
+    _snap_repo = _session_repo_path(args)
     state = {
         "task_id": task_id,
         "description": description,
+        "repo_slug": _derive_slug(args, _snap_repo),
+        "repo_path": str(_snap_repo or ""),
         "started_at": now_iso,
         "agent": os.environ.get("AGENT_NAME", "unknown"),
         "session_id": session_id,
@@ -5702,9 +5735,14 @@ def _promote_issue_to_task(args: dict) -> CallToolResult:
     return CallToolResult(content=[TextContent(
         type="text",
         text=(
-            f"📌 Issue promoted to task '{task_id}': {description}\\n"
-            f"  Lock created with TTL: {ttl}s{cycle_msg}\\n"
-            f"  Use end_change('{task_id}') when done."
+            f"📌 Issue promoted to task '{task_id}': {description}\n"
+            f"  Lock created with TTL: {ttl}s{cycle_msg}\n"
+            + ("" if _snap_repo else
+               "  ⚠️  NO repo identity resolved for this lock: end_change cannot close this\n"
+               "     cycle ('no governed repo to measure complexity'). Declare one\n"
+               "     (CORTEX_SESSION_REPO) or retire it with advance_task_state(\n"
+               "     new_state='cancelled').\n")
+            + f"  Use end_change('{task_id}') when done."
         )
     )])
 
