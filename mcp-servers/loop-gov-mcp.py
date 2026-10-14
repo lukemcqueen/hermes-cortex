@@ -657,6 +657,62 @@ def _session_worked_since(state: dict, since_iso: str) -> bool:
 
 LIVENESS_MAX_RENEWALS = 1  # see _refresh_lock_heartbeat
 
+# Bounded reuse for the anywhere-activity check below. The walk itself is SHARED with the
+# wrong-repo guard (`_candidate_repos`, which owns the depth and the skip set) — deliberately not
+# re-implemented: a second copy would drift, and a duplicate def name is a silent disarm because
+# Python keeps the LAST one. What this adds is the CAP, because the check below runs inside a
+# staleness judgement inside a purge sweep, and the guard's own use is a one-shot at close time.
+LIVENESS_SCAN_MAX_REPOS = 25
+LIVENESS_GIT_TIMEOUT = 8
+
+
+def _session_worked_anywhere_since(state: dict, since_iso: str) -> bool:
+    """Did the lock's own agent author a commit in ANY repo under HOME since `since_iso`?
+
+    2026-10-14 (#124). `_session_worked_since` scopes its check to the lock's OWN repo, which is
+    right for keeping a PEER repo's activity from holding this lock — but it makes a blind spot of
+    the ordinary case it was written for: a session doing a long governed stretch in a DIFFERENT
+    repo (an own-repo session, a nested checkout) authors no commit in the lock's repo, so after
+    its TTL plus one renewal budget it is judged provably dead and can lose a lock it is holding
+    RIGHT NOW. Nothing about "this agent committed elsewhere seconds ago" is evidence of death.
+
+    Scoped by AUTHOR, exactly as the repo-local check is, so a peer's commits in another repo
+    cannot keep this lock alive — the property the original narrow scope protected is preserved,
+    not traded away. Widening is safe because the RENEWAL BUDGET bounds it: `_refresh_lock_heartbeat`
+    allows at most one renewal per acquisition, so an agent that keeps committing elsewhere
+    indefinitely cannot hold a lock forever.
+
+    Never raises: a failure here must not decide a lock's fate.
+    """
+    if not since_iso:
+        return False
+    try:
+        own_repo = str(state.get("repo_path") or "")
+        author = (state.get("agent") or "").strip()
+        for repo in _candidate_repos()[:LIVENESS_SCAN_MAX_REPOS]:
+            if own_repo and str(repo) == own_repo:
+                continue          # already covered by _session_worked_since
+            try:
+                who = author if author not in ("", "unknown") else (
+                    _agent_author(repo) or "").strip()
+                if not who:
+                    continue
+                out = subprocess.run(
+                    ["git", "-C", str(repo), "log", "--since=" + since_iso, "--author=" + who,
+                     "--format=%H", "-n", "1"],
+                    capture_output=True, text=True, timeout=LIVENESS_GIT_TIMEOUT).stdout.strip()
+                if out:
+                    log.info("lock %s: agent %s committed in %s since %s — activity seen",
+                             state.get("session_id"), who, repo, since_iso)
+                    return True
+            except Exception as e:
+                log.warning("could not check %s for %s activity: %s", repo, author, e)
+        return False
+    except Exception as e:
+        log.warning("anywhere-activity scan failed: %s", e)
+        return False
+
+
 
 RENEWED, EXHAUSTED, ERROR = "renewed", "exhausted", "error"
 
@@ -732,7 +788,8 @@ def _is_lock_stale(state: dict, mtime_fallback: float | None = None) -> bool:
             if heartbeat.tzinfo is None:
                 heartbeat = heartbeat.replace(tzinfo=timezone.utc)  # naive = UTC
             age = (now - heartbeat).total_seconds()
-            if age > ttl and _session_worked_since(state, heartbeat_str):
+            if age > ttl and (_session_worked_since(state, heartbeat_str)
+                              or _session_worked_anywhere_since(state, heartbeat_str)):
                 # Busy, not dead: say so on the lock (so the file records when work happened rather
                 # than when someone last asked about the lock) and do not age it out — but only while
                 # the renewal budget lasts. Past it, real activity is no longer enough.

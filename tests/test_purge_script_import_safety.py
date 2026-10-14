@@ -26,7 +26,26 @@ SCRIPT = REPO / "ops" / "scripts" / "manage" / "purge-stale-governance-locks.py"
 
 
 def _stale_lock(state_dir: Path, name=".governance-stale-probe.json") -> Path:
+    """A stale lock that CAN be swept: its cycle is already resolved (MOVE_ON).
+
+    The sweep keeps a stale lock when its task's PENDING cycle cannot be resolved (#125) — that
+    guard is proven in tests/test_purge_resolves_orphaned_cycles.py; here the point is the
+    entrypoint, so the store is set up to let the removal proceed and the check stays focused.
+    """
+    import sqlite3
     state_dir.mkdir(parents=True, exist_ok=True)
+    data = state_dir.parent / "data"
+    data.mkdir(parents=True, exist_ok=True)
+    conn = sqlite3.connect(str(data / "loop-governance.db"))
+    try:
+        conn.execute("CREATE TABLE IF NOT EXISTS loop_cycles (id INTEGER PRIMARY KEY, task_id TEXT,"
+                     " decision TEXT, user_overrode INTEGER, unscored_reason TEXT,"
+                     " outcome_note TEXT, timestamp TEXT)")
+        conn.execute("INSERT INTO loop_cycles (task_id, decision) VALUES (?,?)",
+                     ("stale-probe-task", "MOVE_ON"))
+        conn.commit()
+    finally:
+        conn.close()
     old = (datetime.now(timezone.utc) - timedelta(hours=3)).strftime("%Y-%m-%dT%H:%M:%SZ")
     p = state_dir / name
     p.write_text(json.dumps({
