@@ -21,6 +21,20 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[3]
 OUTDIR = Path.home() / ".hermes" / "cron" / "output"
 EVID = REPO / "docs" / "evidence" / "briefings"
+HOME_STR = str(Path.home())
+
+
+def _redact(text: str) -> str:
+    """One normaliser for every emitted line: this host's home prefix becomes ``~``.
+
+    The pack is COMMITTED to a public repo, so an absolute /home/<user>/ path in it is both
+    noise the secret-leak detector flags on every refresh AND a command the next reader cannot
+    re-run. Redacting at the GENERATOR keeps the committed copy consistent with the command
+    printed above it — a hand-patched copy soon disagrees with the output it claims to show.
+    Narrow by design: only the home PREFIX is rewritten, so a bare agent or host name that is
+    also a legitimate identifier elsewhere survives untouched.
+    """
+    return (text or "").replace(HOME_STR, "~")
 
 
 def sh(*args: str) -> str:
@@ -38,7 +52,10 @@ def sha256(p: Path) -> str:
 
 def main(date_str: str) -> int:
     lines: list[str] = []
-    add = lines.append
+
+    def add(line: str = "") -> None:
+        lines.append(_redact(line))
+
     add(f"# Cycle evidence — sustainability briefing {date_str}")
     add("")
     add(f"Generated: {datetime.now(timezone.utc).isoformat()} "

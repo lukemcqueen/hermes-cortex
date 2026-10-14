@@ -82,5 +82,48 @@ class TestMain(unittest.TestCase):
             dest.unlink(missing_ok=True)  # never leave junk for a fake date
 
 
+class TestRedaction(unittest.TestCase):
+    """The pack is COMMITTED to a public repo: an absolute home path in it is both noise the
+    secret-leak detector flags on every refresh and a command the next reader cannot re-run.
+    Redaction happens at the GENERATOR, so the committed copy always agrees with the command
+    printed above it — a hand-patched copy drifts from the output it claims to show."""
+
+    def test_redact_replaces_the_home_prefix(self):
+        home = str(Path.home())
+        self.assertEqual(w._redact(f"{home}/.hermes/cron/output/.venv/bin/python"), "~/.hermes/cron/output/.venv/bin/python")
+
+    def test_redact_leaves_other_text_untouched(self):
+        for text in ("plain output", "a relative/path.py", "/usr/bin/python3", ""):
+            self.assertEqual(w._redact(text), text)
+
+    def test_redact_keeps_a_bare_agent_name(self):
+        # Narrow by design: only the HOME PREFIX is rewritten. A host name that is also a
+        # legitimate identifier elsewhere must survive, or redaction mangles real content.
+        self.assertIn("esther", w._redact("agent esther reported this"))
+
+    def test_the_written_pack_carries_no_absolute_home_path(self):
+        date = "2026-10-10"
+        art = REPO / "docs" / "evidence" / "briefings" / f"sustainability-briefing-{date}.md"
+        if not art.exists():
+            self.skipTest(f"no committed artifact for {date}")
+        self.assertEqual(w.main(date), 0)
+        text = (REPO / "docs" / "evidence" / "briefings" /
+                f"cycle-evidence-{date}.md").read_text(encoding="utf-8")
+        self.assertNotIn(str(Path.home()), text,
+                         "the committed pack carries this host's absolute home path")
+
+    def test_the_emitted_command_still_names_the_interpreter_used(self):
+        # Redaction must not delete the fact: the reader still learns WHICH interpreter ran
+        # the tests, just not which host's home it lived under.
+        date = "2026-10-10"
+        art = REPO / "docs" / "evidence" / "briefings" / f"sustainability-briefing-{date}.md"
+        if not art.exists():
+            self.skipTest(f"no committed artifact for {date}")
+        self.assertEqual(w.main(date), 0)
+        text = (REPO / "docs" / "evidence" / "briefings" /
+                f"cycle-evidence-{date}.md").read_text(encoding="utf-8")
+        self.assertRegex(text, r"Command: (~/?[^\s]*python[^\s]*) -W error::ResourceWarning")
+
+
 if __name__ == "__main__":
     unittest.main()
