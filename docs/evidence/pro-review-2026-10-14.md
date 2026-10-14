@@ -1,3 +1,5 @@
+> `provenance: advisory`
+
 > Provenance: an OPERATOR-REQUESTED advisory review of this session's governance work, not the
 > close gate. The reviewer is the fleet's heavy model, called through the same cortex config the
 > governance reviewer uses (key resolved by the module's own helper, never seen or passed here).

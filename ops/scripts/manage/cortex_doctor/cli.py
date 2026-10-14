@@ -53,6 +53,7 @@ from .checks import (
     check_cron_bridge_migration,
     check_orphan_cycle_resolution,
     check_paused_cron_reasons,
+    check_review_provenance,
 )
 from .fix import apply_fixes
 from .bus_alert import dispatch_bus_alerts
@@ -113,6 +114,7 @@ def main():
         check_cron_bridge_migration,
         check_orphan_cycle_resolution,
         check_paused_cron_reasons,
+        check_review_provenance,
         check_task_model_integrity,
         ]
 

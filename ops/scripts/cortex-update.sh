@@ -543,6 +543,7 @@ register "ops/scripts/quality/probe-gate-logic.py"      "${CORTEX_DEPLOY_HOME}/s
 # Regenerates docs/evidence/full-suite-results.txt so "the suite is green" is a
 # reproducible artifact with a named revision, not a pasted transcript.
 register "ops/scripts/quality/full-suite-evidence.sh"   "${CORTEX_DEPLOY_HOME}/scripts/full-suite-evidence.sh"
+register "ops/scripts/quality/review-provenance-check.py" "${CORTEX_DEPLOY_HOME}/scripts/review-provenance-check.py"
 register_orch "ops/scripts/orch-bus/orch-bus-fleet-dispatch.py" "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-fleet-dispatch.py"
 
 

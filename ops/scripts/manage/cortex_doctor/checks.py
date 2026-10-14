@@ -5587,3 +5587,53 @@ def check_repo_local_cortex_dir(res):
   if marker.exists():
     detail += " — CONTAINS .governance-lock, so governance state is being written inside the repo"
   res.add("Repo-local .hermes-cortex", "FAIL", detail, fix)
+
+
+def check_review_provenance(res) -> None:
+  """Every review artifact must declare provenance; an unrecorded review is not evidence.
+
+  Operator-directed enforcement (2026-10-14). An agent can call a model from a scratch script and
+  write the reply up as a review — the enforcer audits tool calls, and an HTTP request from a
+  subprocess is not one. The rule enforced here is about the ARTIFACT: a docs/evidence file that
+  presents itself as a review must either point at a row in `adversarial_reviews` (and that row must
+  exist) or declare `provenance: advisory`. Undeclared ones FAIL, which blocks the push for every
+  agent on this host — the doctor is the enforcement point, not a note in a skill.
+
+  The rule lives in ops/scripts/quality/review-provenance-check.py so it can be run standalone
+  before committing and exercised hermetically by tests; this check is the enforcement wrapper.
+  """
+  import subprocess
+  name = "Review provenance"
+  candidates = [
+      Path.home() / ".hermes-cortex" / "scripts" / "review-provenance-check.py",
+      Path(__file__).resolve().parents[3] / "scripts" / "quality" / "review-provenance-check.py",
+  ]
+  script = next((c for c in candidates if c.is_file()), None)
+  if script is None:
+    res.add(name, "WARN",
+            "COULD NOT VERIFY — review-provenance-check.py is not deployed on this host",
+            "Deploy it (cortex-update.sh registers it) so review artifacts are checked")
+    return
+  repo = Path(__file__).resolve().parents[4]     # ops/scripts/manage/cortex_doctor -> repo root
+  try:
+    proc = subprocess.run([sys.executable, str(script), "--repo", str(repo)],
+                          capture_output=True, text=True, timeout=60)
+  except Exception as e:                         # never let the checker crash the doctor
+    res.add(name, "WARN", f"COULD NOT VERIFY — checker failed to run: {e}")
+    return
+  out = (proc.stdout or "").strip().splitlines()
+  tail = out[-1] if out else ""
+  if proc.returncode == 0:
+    res.add(name, "PASS", tail or "every review artifact declares its provenance")
+  elif proc.returncode == 1:
+    offenders = [l.strip() for l in out if l.strip().startswith(("docs/", "/"))]
+    res.add(name, "FAIL",
+            f"{len(offenders) or 'some'} review artifact(s) present a review with no provenance: "
+            + "; ".join(offenders[:3]),
+            "Add 'provenance: advisory' (not evidence) or "
+            "'recorded-in: adversarial_reviews review_id=<id>' from a RECORDED review "
+            "(ops/scripts/orch-bus/adversarial-review.py --cycle-id N --review)")
+  else:
+    res.add(name, "WARN",
+            f"COULD NOT VERIFY ({proc.returncode}) — {tail}",
+            "Resolve the reported cause; an unverified provenance check is not a pass")
