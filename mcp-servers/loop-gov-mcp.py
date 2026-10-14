@@ -765,6 +765,72 @@ def _is_lock_stale(state: dict, mtime_fallback: float | None = None) -> bool:
     return False
 
 
+def _release_lock_after_metadata_refusal(cycle_id: int, verdict: str, reason: str,
+                                         state: dict | None = None) -> bool:
+    """Free the lock when the refusal was about the LOCK'S METADATA, not the work.
+
+    WRONG_REPO / NO_REPO mean the reviewer never judged anything: no diff was read,
+    no verdict exists, and NO review receipt is written on this path — so a held lock
+    authorises nothing while dead-ending the session that holds it. Measured
+    2026-10-14 (reported by Titus): a lock tagged with a repo the session was not
+    working in made end_change refuse, the lock stayed held, and other sessions that
+    needed to close could not, until a human operator cleared it.
+
+    Releasing alone is NOT enough, and this is the trap the first fix walked into:
+    the doctor counts a PENDING cycle as EXPECTED while a non-terminal lock exists,
+    and as a FAIL (leak) the moment the lock is gone — so a released lock beside an
+    unresolved cycle blocks the push for EVERY agent on the host (measured: one such
+    row, cycle 12538, was the sole doctor failure behind a refused push). The cycle is
+    therefore closed UNSCORED with the facts an auditor can recompute.
+
+    Closing unscored must never read as an approved close: no receipt exists for this
+    cycle, nothing is pushable, and the reason records which refusal caused it. The
+    work refusals (findings, reviewer unavailable, template missing) still keep the
+    lock — those are verdicts about the change, and only a re-review may clear them.
+    """
+    try:
+        conn = _db()
+    except Exception as e:
+        log.warning("metadata-refusal release: DB unavailable (%s) — cycle not resolved", e)
+        conn = None
+    resolved = False
+    if conn is not None:
+        try:
+            note = (
+                f"metadata refusal ({str(verdict or '').upper()}): {reason} — the lock was "
+                "tagged with a repo that cannot contain this session's change, so no diff was "
+                "reviewed, no verdict exists and no receipt was written; the cycle is closed "
+                "unscored and the lock released so the session and other sessions can proceed"
+            )
+            conn.execute(
+                "UPDATE loop_cycles SET decision='MOVE_ON', unscored_reason=?, "
+                "outcome_note='metadata refusal — lock released, nothing reviewed (no receipt)' "
+                "WHERE id=? AND decision='PENDING' AND user_overrode IS NULL",
+                (note, cycle_id),
+            )
+            conn.commit()
+            resolved = True
+        except Exception as e:
+            log.warning("metadata-refusal release: could not resolve cycle %s (%s)", cycle_id, e)
+        finally:
+            try:
+                conn.close()
+            except Exception:
+                pass
+    # Release the lock the CALLER resolved, by its own session id: the server is one
+    # process shared by every Hermes session, so an env-derived id could free a peer's
+    # lock — or none — instead of this one.
+    try:
+        sid = (state or {}).get("session_id") or ""
+        _release_lock({"session_id": sid} if sid else None)
+    except Exception as e:
+        log.warning("metadata-refusal release: could not release lock (%s)", e)
+        return False
+    log.warning("cycle %s closed UNSCORED after %s refusal and its lock released "
+                "(no receipt: nothing was reviewed)", cycle_id, str(verdict or "").upper())
+    return resolved
+
+
 def _mark_close_refused(cycle_id: int, verdict: str, findings_json: str,
                         state: dict | None = None) -> None:
     """Record ON THE LOCK that the adversarial review refused this close.
@@ -4314,9 +4380,28 @@ def _adversarial_review_gate(lock: dict, cycle: dict,
     if repo is None:
         # No governed repo to diff — cannot measure complexity. Fail CLOSED:
         # an unmeasurable close is a complex close, and it must be reviewed.
+        # This is a METADATA refusal (the lock names no repo at all): nothing was
+        # reviewed and no receipt exists, so also free the session — see
+        # _release_lock_after_metadata_refusal for why holding it dead-ends the host.
+        try:
+            _mark_close_refused(cycle.get("id", 0), "NO_REPO", "[]", lock)
+        except Exception:
+            log.warning("Could not mark refusal on the lock (non-critical)")
+        _release_lock_after_metadata_refusal(
+            cycle.get("id", 0), "NO_REPO",
+            "the lock names no repo, so no tree could be reviewed",
+            lock,
+        )
         return CallToolResult(content=[TextContent(type="text", text=(
             "❌ Cannot close: no governed repo to measure complexity — "
-            "self-adversarial review cannot run. Report to the orchestrator."
+            "self-adversarial review cannot run.\n\n"
+            "  The lock has been RELEASED and this cycle closed UNSCORED (measured\n"
+            "  2026-10-14: a repo-less lock dead-ended the session that held it while\n"
+            "  other sessions needed to close). Nothing was reviewed, so no receipt\n"
+            "  exists and nothing is authorised by this.\n\n"
+            "  Open a FRESH cycle with begin_change from inside the repo that holds\n"
+            "  the work, so the lock is tagged with a repo this session can be\n"
+            "  reviewed against."
         ))])
 
     cx = _complexity(repo, lock.get("started_at", ""), lock.get("dirty_at_start"))
@@ -4358,6 +4443,14 @@ def _adversarial_review_gate(lock: dict, cycle: dict,
                 _mark_close_refused(cycle.get("id", 0), "WRONG_REPO", "[]", lock)
             except Exception:
                 log.warning("Could not mark refusal on the lock (non-critical)")
+            # APPEASEMENT-FREE (2026-10-14): this refusal is about the LOCK, not the
+            # work — no diff was reviewed and no receipt is written — so the lock is
+            # released here rather than left to dead-end the session (Titus' case).
+            _release_lock_after_metadata_refusal(
+                cycle.get("id", 0), "WRONG_REPO",
+                f"work was found in {_elsewhere[0]} while the lock names {lock.get('repo_slug', '')!r}",
+                lock,
+            )
             _why = (
                 "no commits in the window"
                 if _window_commit_count(repo, _started) == 0
@@ -4373,7 +4466,10 @@ def _adversarial_review_gate(lock: dict, cycle: dict,
                 "adversarial review would judge a tree that cannot contain the change.\n"
                 "Refusing rather than returning permanent findings for work the reviewer\n"
                 "cannot see.\n\n"
-                "  Report this to the orchestrator. Do NOT retry end_change in a loop\n"
+                "  The lock has been RELEASED and this cycle closed UNSCORED — nothing\n"
+                "  was reviewed, so no receipt exists and nothing is authorised by it.\n"
+                "  Fix the tag, then open a FRESH cycle in the repo that holds the work.\n\n"
+                "  Do NOT retry end_change in a loop\n"
                 "  (each retry re-runs a full review) and do NOT force the close.\n"
                 "  Remedy: the governance-enforcer injects the session's real repo\n"
                 "  into mcp__loop_governance__* calls, and begin_change derives BOTH the\n"
