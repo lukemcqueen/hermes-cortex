@@ -111,6 +111,26 @@ it" but "did it ever serve a turn":
 - **Deletion is the owner's call.** Present the structural evidence plus the fix
   options; never `rm -rf` a profile directory on your own judgement.
 
+### Deleting one (exercised 2026-10-14)
+
+```bash
+# 1. Prove nothing is lost — compare key NAMES only, then the shared credential's hash:
+diff <(grep -oE '^[A-Za-z_][A-Za-z0-9_]*=' ~/.hermes/.env | sort -u) \
+     <(grep -oE '^[A-Za-z_][A-Za-z0-9_]*=' ~/.hermes/profiles/<name>/.env | sort -u)
+grep '^TELEGRAM_BOT_TOKEN' <each file> | tail -1 | sha256sum    # same digest on both sides
+
+# 2. Delete (owner-approved), then confirm:
+hermes profile delete -y <name>
+hermes profile list        # the duplicate-credential warning must be gone
+```
+
+- A right-only diff (every line prefixed `<`) means the copied `.env` is a strict
+  SUBSET — no key is unique to the profile, so no secret is destroyed. The hash line
+  proves the shared credential is byte-identical without ever printing it.
+- `hermes profile delete -y <name>` prints the skill count it is about to destroy, then
+  removes the tree; a `.deleted/` tombstone directory stays under `profiles/`, and the
+  profile is never enumerated again.
+
 ## Procedure
 
 1. **Survey** — `du -sh ~/.hermes/* ~/.hermes-cortex/* | sort -rh`; identify top consumers
@@ -132,6 +152,21 @@ it" but "did it ever serve a turn":
   Verify it STRUCTURALLY (missing `config.yaml`, file-less `memories/`+`sessions/`, no
   `cron/jobs.json`, zero unit/cron/repo references), because "zero references" alone reads
   as a green light while its copied `.env` keeps the gateway standalone.
+- **`hermes gateway migrate --multiplex` is a NO-OP that does NOT restart on a
+  one-profile host.** It exits 0 with "Only one profile exists: nothing to multiplex" and
+  leaves `MainPID` unchanged — so the STALE boot-time `multiplex_standalone_reason` in
+  `gateway_state.json` keeps naming the deleted profile, and the dashboard keeps showing
+  it. Clear it with `systemctl --user restart hermes-gateway.service`, then verify the
+  restart LANDED (`systemctl --user show <unit> -p MainPID -p ExecMainStartTimestamp` —
+  both must change). The new boot log then reads `Cron scheduler will tick 1 profile(s):
+  ['default']` where it previously said 2.
+- **A stranded deployed skill needs its content COMMITTED before a deploy can move it.**
+  `check-skill-drift-parity.py` calls a file stranded when its deployed content appears
+  in no committed revision; copying the deployed content into the repo does NOT clear it
+  while you also add to it in the same commit, because no revision then holds the
+  deployed bytes verbatim. Land the deployed content as its own commit first, then add
+  your lesson on top. Use `ops/scripts/manage/reconcile-stranded-skills.py` (reports by
+  default, `--apply` copies only the pure-superset class) rather than copying by hand.
 - **cortex-update.sh purges governance locks mid-run** — if you run it during a cleanup session, re-acquire `begin_change` before continuing.
 
 ## Related
