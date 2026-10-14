@@ -215,6 +215,27 @@ editing, no governed call) and that session's next write was refused — the dea
 to remove. **A second copy of a predicate is a second rule**: when you touch either path, compare the
 PREDICATE (not just the removal) against the fleet's, and pin the comparison with a test.
 
+### Removing a lock and resolving its cycle are ONE step — and two details of the ORDER trap you
+
+- **Resolve the cycle BEFORE unlinking the file.** A crash between the two must leave a DEAD lock
+  beside a `MOVE_ON` cycle (harmless, and the next sweep removes the file) and never a lockless
+  PENDING cycle, which blocks every push on the host with no owner left to clear it.
+- **Close through the PER-TASK closer, never through an orphan-cycle resolver.** The resolver's own
+  precondition is "this task holds no live lock", and at the moment you are about to unlink, the file
+  is still on disk — so routing the close through it closes NOTHING and the leak you set out to
+  remove survives, while the code reads as if it did the work. Prove it with a probe on a throwaway
+  state dir; do not accept the call site by inspection.
+- **A cycle whose work was CANCELLED is closed with no score invented.** `feedback_override`
+  (→ `MOVE_ON`) records that nothing landed; scoring it would claim work that does not exist. Then
+  `end_change` — if the lock is already released it answers "nothing to release", which is fine.
+- **The cheapest leak check is the gate itself:** `begin_change` REFUSES while an unscored PENDING
+  cycle exists and NAMES it, so a successful `begin_change` is proof the host is clear and a refusal
+  is proof it is not. `cycle_query` names them directly.
+- **When a release path is added, add it to the sweep test's enumeration.** A class-level rule
+  ("every site that drops a lock also resolves its cycle") is held by a test that FAILS on any NEW
+  call site which omits the paired action, with each exemption declared and its justifying gate
+  asserted against the source.
+
 ### The sweep's disposition differs from the MCP's ON PURPOSE — do not "unify" them
 
 When the cycle cannot be resolved, the MCP still releases the lock and the sweep KEEPS it. Both are

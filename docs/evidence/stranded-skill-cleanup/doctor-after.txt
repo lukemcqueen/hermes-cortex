@@ -1,0 +1,19 @@
+DOCTOR / DOGFOOD — captured during the stranded-skill cleanup deploy
+Provenance: excerpted verbatim from the cortex-dogfood.sh run for commit 5d09a6a2.
+NOT reproduced by capture.sh: that run MUTATES the host (it deploys). This is a
+transcript of the run itself, which is why it is a separate file.
+Path fields are normalised to ~.
+
+$ grep -E 'Skill drift|Stranded|Overall|DOGFOOD' <dogfood run output>
+       ✅ Skill drift
+       ✅ Stranded slices
+       ⚠️  Overall: WARNING  (467 pass · 1 warn · 0 fail · 3 info)
+     ✅ Skill drift — 386 skills in sync, 131 Hermes defaults skipped
+     ✅ Stranded slices — no pending slice is assigned-and-unstarted
+     ⚠️  Overall: WARNING  (467 pass · 1 warn · 0 fail · 3 info)
+✅  DOGFOOD PASSED — deployed state verified clean.
+
+BEFORE this commit the same doctor reported 10 warnings, five of them skill-drift
+recoveries ('Recover it with: reconcile-stranded-skills.py'). Both counts come
+from run output, not from a claim: the BEFORE run is the /tmp log of the previous
+cycle and is no longer durable, so the 10 is offered as context, NOT as evidence.

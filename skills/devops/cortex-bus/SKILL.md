@@ -643,6 +643,59 @@ orchestrator traffic:
 `ops/services/cortex-bus/server.py`) is **deleted**. If a 403 appears, check
 the agent's `can_write` array, not boolean flags.
 
+## Bus tokens silently expire at T+90d — rotation does NOT refresh `expires_at` (2026-10-14)
+
+**Symptom:** every authenticated endpoint on the LOCAL bus returns
+`401 {"detail":"Invalid or expired token"}` for a token that is correct, while
+`GET /health` still returns 200 (it is unauthenticated). Downstream: the
+orch-bus-forwarder's LOCAL leg silently returns 0 messages (`_peek_bus` maps a
+non-200 to `[]`), so LOCAL→PEER never drains and the mirror looks idle;
+`bus-inbox-inspect.py` reports `inspection_error: queue fetch failed: 401` for
+the local bus; the bridge runner still exits 0 (it ignores the script's exit
+code), so systemd shows `success`.
+
+**Diagnosis:** query the token table, not the HTTP layer — `expires_at` is the
+usual culprit and `is_active` stays true:
+```bash
+# psycopg from the bus venv is the reliable route when `docker exec` is
+# blocked in cron mode and the host port refuses a raw psql connection.
+/home/esther/.hermes/hermes-agent/venv/bin/python3 - <<'PY'
+import psycopg
+c=psycopg.connect(host='127.0.0.1',port=15432,dbname='mycortex',user='mycortex',password='<CORTEX_BUS_PG_PASS>')
+with c.cursor() as cur:
+    cur.execute("SELECT agent_name,is_active,rotated_at,expires_at,(expires_at<=now()) FROM bus.tokens ORDER BY expires_at")
+    [print(r) for r in cur.fetchall()]
+PY
+```
+Compare `hash_token(<CORTEX_BUS_TOKEN>)` (`core/cortex_bus/auth.py`) with the
+row's `token_hash` to confirm the secret is right and only the expiry is stale.
+
+**Root cause (two layers):**
+1. `issue_token_for_agent()`'s `ON CONFLICT (agent_name) DO UPDATE` refreshes
+   `token_hash`/`rotated_at` but **not** `expires_at` — a row inserted
+   2026-07-16 (default `now() + INTERVAL '90 days'`) keeps that original expiry
+   forever, so every rotation silently inherits the first row's deadline. All
+   rows seeded on the same day expire at the same instant.
+2. `ops/scripts/token-expiry-alert.py` exists but was never wired to a cron or
+   timer, so the pre-expiry warning never fired — the first signal is the T+90d
+   hard failure.
+
+**Fix (restore, per agent):**
+```sql
+UPDATE bus.tokens SET expires_at = GREATEST(rotated_at, created_at) + INTERVAL '90 days'
+WHERE agent_name = '<agent>' RETURNING agent_name, expires_at;
+```
+Verify: Bearer `GET /api/pgmq/queues` → 200, then run the deployed forwarder via
+`cortex-bus-bridge-run.py --name orch-bus-forwarder-sync --script
+orch-bus-forwarder.py --deliver local` and confirm `total_local_to_peer`
+advances in `~/.hermes-cortex/state/bus-forwarder-state.json` (proves the LOCAL
+write path, not just the DB row). Real fix for the class: add
+`expires_at = now() + INTERVAL '90 days'` to the `ON CONFLICT` clause, and
+schedule `token-expiry-alert.py` daily.
+
+**Do not "fix" this by deleting `CORTEX_BUS_TOKEN`** — the local bus legitimately
+requires it; extend/rotate instead.
+
 ## References
 
 - `references/forwarder-peer-resolution.md` — role-aware PEER fix detail (2026-08-03)

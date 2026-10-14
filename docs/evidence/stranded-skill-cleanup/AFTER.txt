@@ -1,0 +1,48 @@
+STRANDED SKILL FILES — cleanup evidence (generated, not hand-written)
+Produced by: bash hermes-cortex/docs/evidence/stranded-skill-cleanup/capture.sh   (paths normalised to ~)
+Generated at: 2026-10-14T14:01:52Z
+
+═══ 1. The tracked artifact's BEFORE value, read from git (not from a run) ═══
+$ git -C hermes-cortex show 5d09a6a2^:docs/evidence/skill-drift-parity.txt | grep -E 'stranded|in sync|Verdict'
+this host and never copied back: it is stranded here, and the deploy's
+| Deployed-only files (stranded) | 2 |
+| Files in sync | 837 |
+**Verdict: FAIL**
+  -> the tracked artifact recorded 2 stranded at its last regeneration. It is
+     STALE: the checker rewrites it on every run without --check, so it is a
+     point-in-time capture rather than a live count.
+
+═══ 2. What the cleanup commit actually landed (its own file list) ═══
+$ git -C hermes-cortex show --name-only --format= 5d09a6a2 | grep -c 'SKILL.md'
+8
+$ git -C hermes-cortex show --name-only --format= 5d09a6a2 | grep 'SKILL.md'
+skills/autonomous-ai-agents/pi-coding-agent/SKILL.md
+skills/devops/cortex-bus/SKILL.md
+skills/devops/cross-agent-handoff-delivery/SKILL.md
+skills/devops/enforcement-change-safety/SKILL.md
+skills/devops/governance-lock-lifecycle/SKILL.md
+skills/devops/shared-repo-push-gates/SKILL.md
+skills/software-development/change-checklist/SKILL.md
+skills/software-development/mcp-server-building/SKILL.md
+  (--name-only, not --stat: git TRUNCATES long paths in --stat with a leading
+   '...', so a stat-based count silently under-reports and a claim read off it
+   is unsupported — which is the same class of error section 5 disclaims.)
+
+═══ 3. The AFTER state, from the checker's READ-ONLY mode ═══
+(--check compares against the committed artifact and WRITES NOTHING. Running
+ it without --check is what rewrote the artifact mid-cycle last time.)
+$ python3 hermes-cortex/ops/scripts/manage/check-skill-drift-parity.py --check
+artifact matches the live derivation
+rc=0
+
+═══ 4. The artifact was not rewritten by the read-only run ═══
+$ git -C hermes-cortex status --short -- docs/evidence/skill-drift-parity.txt
+(clean — the read-only mode left the tracked artifact untouched)
+
+═══ 5. What this does NOT establish ═══
+- It does NOT claim 8 files were stranded. The live reconcile count at the
+  start of the cleanup cycle was 8, which is higher than the tracked
+  artifact's 2 because more files strand between runs; that reading is not
+  reproducible now the cleanup is done, so it is offered as nothing.
+- The parity reading is a snapshot: the lesson pipeline keeps writing to
+  deployed copies, so files can strand again after this run. Re-run section 3.

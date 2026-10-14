@@ -216,9 +216,15 @@ does not apply.
     closing** — immediately after a close, commands that look read-only are refused as
     write-capable: `python3 <script>` (even a pure reporter like the doctor), anything
     compound (`cd <dir> && …`), and `git log` with a `-C <dir>` prefix. The push itself is
-    the exception (the receipt authorises it), so land the push FIRST and treat the
+    the    exception (the receipt authorises it), so land the push FIRST and treat the
     post-push state as unverifiable from the session rather than re-acquiring a lock just
     to re-read it.
+  - **Inspecting state after a close: `read_file`/`search_files` still work with no lock —
+    but `search_files` does NOT match a glob whose pattern starts with `.`.** Query the name
+    WITHOUT the dot (`*governance*`, not `.governance-*`) or it returns zero files, which
+    reads as "no state exists" rather than "the probe cannot see it". And keep the call a
+    SINGLE clean command: `ls <dir>; echo ---; ls <other>` is a compound and is refused as
+    write-capable, so combine nothing.
   - **Do not assume `begin_change()` is the way back from a purge.** The purge removes the
     lock FILE while the governance SESSION can still be live in loop-governance's own
     state, so the two disagree: `check_lock` answers `active: false`, and `begin_change`
@@ -229,6 +235,35 @@ does not apply.
     and `end_change` RELEASES it — so decide the push BEFORE closing. Closing first
     strands an already-reviewed commit and costs a fresh cycle just to publish it; full
     order and the refusal semantics live in `governance-closeout`.
+    - **A CLEAN receipt authorises the push on its own, so close-then-push is the normal
+      order for a cycle that closed once.** After `end_change` the push succeeds with NO
+      active lock — it prints `✅ No active governance lock, but a CLEAN review receipt
+      covers this range: .reviewed-<slug>-<tip>.json`. Do not re-take a lock just to push.
+    - **Pushing from outside the repo: use the terminal tool's `workdir`, never `cd … &&`.**
+      `cd /path/to/repo && git push` is refused as a compound (write-class) command, and the
+      refusal is the generic gate-2 text, so it reads like a missing lock. Set the tool's
+      `workdir` to the repo and issue a BARE `git push` — that is the shape the carve-out
+      recognises.
+  - **`end_change` refused as REVIEWER-UNAVAILABLE is infrastructure, not a finding — fix the
+    cause and RETRY `end_change`, do not open a new cycle.** The tell is a refusal that says
+    the reviewer returned no usable content (`finish_reason=length`, `max_tokens=16000`): a
+    reasoning model spent the whole output budget thinking. The documented knob is
+    `REVIEWER_MAX_TOKENS`, read at CALL time (never at import), so raising it takes effect on
+    the retry with no restart: append `REVIEWER_MAX_TOKENS=<n>` to the cortex `.env`
+    (`$HOME/hermes-cortex/.env`, or `$CORTEX_ENV_FILE`; the reader also checks the deploy
+    root and `~/.hermes/.env`). Ceiling is 128000 — a value above it is clamped and warned.
+    Then call `end_change` again on the SAME session: the refused close leaves the lock FILE
+    removed while the governance SESSION stays live, so `begin_change` refuses with "A
+    governance session is already active … call end_change first" — that refusal names the
+    exit, it does not mean the close was lost.    Retrying on the live session closed the cycle
+    and wrote a CLEAN receipt covering the whole unpushed range.
+  - **A TIMEOUT on `end_change` is NOT a failure — the close may have completed.**
+    The call can exceed the MCP client's deadline while the server is still running the
+    review; the lock is released and the receipt written on the server side. Do not
+    re-call it, and do not assume the close was lost. Determine the OUTCOME instead: if
+    the session lock file is gone the lock was released, and the decisive test is a bare
+    `git push` — a receipt written by that close authorises the range and prints
+    `✅ No active governance lock, but a CLEAN review receipt covers this range`.
 
 1. **Pre-push dogfood gate diffs the WORKING TREE, not the push range.**
    The hook runs `git diff HEAD --name-only`, so a concurrent session's
@@ -247,7 +282,12 @@ does not apply.
    identifiers that are not personal data at all — a session key or UUID
    (`20261008_152408_ab12cd34`) reads as a phone number. Generalize it in the
    text (`<a real session>`, `10:49Z`) instead of arguing with the gate: a
-   wall-clock time is fine, a long unbroken digit run is not.
+   wall-clock time is fine, a long unbroken digit run is not. **A row of
+   LINE-NUMBER references trips it identically** — the guard ignores separators
+   (colons, dashes, commas), so `path:L-NNN` entries cited back to back
+   concatenate into one long digit run and the write is refused as a phone
+   number. Cite code by SYMBOL or function name rather than by line: it reads
+   better, and it does not rot when the file shifts.
 3. **`adversarial-verifier` skill required for commits** while any
    `ops/scripts/` working-tree change exists — even for docs-only commits.
    Load the skill, run

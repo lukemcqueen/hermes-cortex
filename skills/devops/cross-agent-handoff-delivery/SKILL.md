@@ -84,6 +84,25 @@ After any write, verify the content itself was pushable/attachable:
   names is invisible to the recipient.
 - `git diff --cached | wc -l` — the actual size of what you attached.
 
+### When the queue cannot be inspected, commit the handoff text and say so
+
+Content check > delivery check, and the content check is the one you can always
+run. If the queue side is unverifiable from your host — peek returns 401, the
+recipient's health endpoint is unregistered, the bus ACL is send-only — do NOT
+downgrade to "sent, so it's done" and do NOT re-send in a loop:
+
+1. **Land the handoff TEXT as a committed artifact** (e.g.
+   `docs/evidence/<cycle>/<peer>-handoff.md`) in the same cycle. It is then
+   readable by the recipient from the shared repo, re-runnable by anyone, and
+   visible to the close reviewer — a bus message is NOT in the diff, so a
+   handoff you only sent is an unverifiable claim at close time.
+2. **Report the delivery LEVEL explicitly**: "send returned msg_id/status ok;
+   queue-level receipt for the recipient's inbox NOT verifiable from this host
+   (peek 401 / recipient unreachable)" — never "delivered", never "verified".
+3. **Put the recipient's decision in the handoff** (which lever they must set,
+   which repo/file the remaining work lives in, and how they prove it) so the
+   message is actionable even if it is read once, out of order, days later.
+
 ### Read your OWN inbox for the peer's follow-up before declaring done
 The blocker often shows up as a pending/critical message in YOUR inbox
 (`inbox_titus`), not in any Send log. Before telling the user "handoff sent /

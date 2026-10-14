@@ -40,7 +40,10 @@ Consequences that cost time and must not be re-learned:
   `$HOME/.pi/agent/install/releases/$V/node_modules/@earendil-works/pi-coding-agent/dist/...`
 - **Never infer the version from a doc or a package name** — read `current-version`
   (or the launcher's `--version`). A harness registry claiming a shipped version can
-  be stale on any given host: these hosts run 1.0.0 while the registry said 0.87.1.
+  be stale on any given host — MEASURE it: one host read 1.2.0 (with both 1.1.0 and
+  1.2.0 present under `releases/`) while the registry's own `why:` prose still
+  described 1.0.0. Read the type defs from the release you just measured, never from
+  the prose about it.
 - Verify: `~/.pi/agent/bin/pi --version` and `--help` (read/bash/edit/write tools, plus
   the `pi install/remove/list/config/auth` extension commands).
 
@@ -265,6 +268,16 @@ harness: the git hook already carries one copy and two copies drift.
   commands above. `tests/test_pi_governance_gate.py` additionally requires the guard to
   FAIL when pointed at a gate that blocks nothing (`PI_GOV_EXT=<broken>`); a guard that
   has never failed is a happy path.
+- **A stub proves the HANDLER; only a real session proves the WIRING.** The guard above
+  hands the extension a synthetic `pi`, so it passes green even on a gate pi never
+  calls — those are two separate claims, and the second is the one that matters. Run one
+  real turn in a scratch project repo and read the gate's OWN log
+  (`~/.hermes-cortex/logs/pi-governance.log`, one `GOV_VERDICT` line per decision) rather
+  than the agent's prose summary. Expect `refused` on the first write and then `allowed`,
+  because the block names `begin_change` as the remedy and the agent simply complies —
+  self-remediation is the gate working, not the gate failing. A gate that only ever
+  blocked would be a deadlock. Watch the log, not the file listing: the turn's stdout is
+  the agent's SELF-REPORT, and the write it claims may have been refused and retried.
 
 - **A Pi session's governance lock is tagged from the SESSION's repo, never from the
   host's `~/hermes-cortex` (2026-10-09, titus).** Pi injects no repo identity, so

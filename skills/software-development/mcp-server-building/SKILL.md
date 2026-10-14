@@ -284,6 +284,63 @@ stdio server fails WITHOUT a useful error:
 | **Exit codes are contract for the CLI side** | Distinguish "ran and failed" (1) from "could not verify / not configured" (3). An agent branches on this: one is worth retrying, the other means this host is not set up. |
 | **Test it as a REAL PROCESS over pipes** | A server can pass every unit test on its handlers and still be unusable: spawn it, write `initialize` + `tools/list` + one call that must FAIL, and assert on the parsed JSON (tool names, the error message). Assert the error case explicitly — a server that returns success for everything is the failure mode this catches. |
 
-Minimal wire shapes, for reference: `initialize` → `{protocolVersion, capabilities: {tools: {}}, serverInfo: {name, version}}`;
+## 11. Scope Every Query to the Caller's Own Identity — and FAIL CLOSED
+
+A tool that returns records OWNED by a repo, tenant, project or user must resolve
+the CALLER's own scope and never widen it. Widening is the expensive failure: an
+agent acts on and reports another owner's work, and nothing in the response says
+so. (Reported class: task tools returning every repo's rows, so a session in repo
+A picked up repo B's work.)
+
+**Resolution ladder — first hit wins, and the last rung returns NOTHING:**
+
+1. an explicit argument the caller passes (`repo`, `tenant`, `project`);
+2. the identity the HARNESS/FRAMEWORK injected for this call;
+3. the documented env lever (see the naming rule below);
+4. the process's own cwd repository/directory;
+5. otherwise → **zero rows**, with the reason on stderr. Never "all".
+
+- **An unresolvable scope is a COULD-NOT-VERIFY, not a licence to widen.** Answer
+  with an empty result and name the lever that would fix it (the argument, the
+  injected identity, the env var). An operator rule that says "if the scope is
+  unknown, return nothing" outranks any backward-compatibility default of
+  "return everything" — say in the description and the docs that the fleet-wide
+  view is an EXPLICIT opt-in (`scope="ALL"`), never the default.
+- **Include untagged legacy rows in the predicate: `scope = ? OR scope IS NULL`.**
+  A plain `scope = ?` silently hides every row created before the tag existed, so
+  scoping looks like data loss; with the NULL arm the change is migration-safe and
+  cannot hide untagged work while still never leaking a NAMED other tenant.
+- **A SHARED server process cannot discover the session from its cwd — the
+  identity must be injected.** When one child serves every session on the host
+  (spawned by a daemon), its cwd is a launch artifact (e.g. `$HOME`) and its env
+  has no session scope. Extend the injection mechanism the framework already uses
+  for its other namespaces rather than adding a second env name, and inject ONLY
+  an identity that was actually observed — an invented scope is the same bug one
+  level up.
+- **NEVER invent a config/env name for the lever.** Reuse the one the fleet
+  already documents and tests; a second name for one concept means half the hosts
+  set the one nobody reads.
+- **Do not let the diagnostic corrupt a machine-readable payload.** A wrapper that
+  merges a tool's stderr INTO its text will break a JSON-array payload; give the
+  engine an `explain` flag and pass `explain=False` from the server path (or say
+  the reason in the tool description), keeping stdout parseable.
+- **A changed server is not a loaded server.** The RUNNING child keeps the
+  revision it started with; a deploy only changes the file on disk. Verify by
+  BEHAVIOUR (one call whose correct answer differs from the old build — compare
+  the process start time against the file mtime to explain a stale answer) and
+  tell the operator a restart is required. Report the fix as deployed, not as live,
+  until that call returns the new behaviour.
+- **Test it as a real process, with foreign-scope fixtures.** Seed one row per
+  scope (own, another named scope, untagged) against a scratch store, drive the
+  real server over stdio, and assert the other scope's row is ABSENT while the
+  untagged row is present. Drive a PINNED pre-fix revision of the engine side by
+  side and assert it still LEAKS — a check whose baseline moves with HEAD stops
+  discriminating the moment you commit.
+
+---
+
+## Protocol reference — minimal wire shapes
+
+`initialize` → `{protocolVersion, capabilities: {tools: {}}, serverInfo: {name, version}};
 `tools/list` → `{tools: [{name, description, inputSchema}]}`;
 `tools/call` → `{content: [{type: "text", text: "…"}], isError: false}`.

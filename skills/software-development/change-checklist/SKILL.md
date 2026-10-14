@@ -26,6 +26,16 @@ Load this before end_change() on any script, deploy-config, cron, shared-doc, or
 ## Phase 0: Survey the Change Surface (BEFORE begin_change)
 
 - [ ] Pushback Check (3 questions, BEFORE begin_change) — Is this idea wrong (harm, data loss, wrong scope, better mechanism)? Is there a clearly better alternative? If you raised an objection, do NOT begin_change until the user acknowledges (override is final). Silence is not consent (SOUL P5).
+- [ ] **Plan review before building (operator standing rule).** For any non-trivial build, get the
+      PLAN independently reviewed BEFORE writing the code — the operator's words: *"have deepseek pro
+      ALWAYS review your plan before building"*. Submit it through the GOVERNED path
+      (`ops/scripts/orch-bus/adversarial-review.py --cycle-id <new-cycle> --material <plan>
+      --review --reviewer-id <id>`), which records a row, then act on its findings before coding.
+      Include the material it must judge — the source, the tests, the measured output — because a
+      plan submitted as prose comes back as nothing but `unverified-claim` findings; that is the
+      reviewer working correctly, not a reason to re-run it. Expect it to CUT scope: obey the cut
+      instead of defending the step (a planned documentation edit was refused as "notes instead of
+      controls" — the operator's own standing objection).
 - [ ] **Name the cycle for the diff it will CONTAIN, not the instruction that started it.** A task id that under-describes the work fails the close on scope drift no matter how good the evidence is: the reviewer sees the real range and refuses a cycle whose name does not cover it. An instructed next step ("pull latest and update", then a follow-on reconciliation the update itself demanded) belongs in its OWN correctly-named cycle — do not fold a derived deliverable into the parent's cycle. Check before begin_change: does `<task_id>` describe every path the range will touch? If not, split it. (Cost of getting this wrong: cycle 12012 was refused four times and held a 60-minute TTL wait; the identical work closed CLEAN on the first attempt under a correctly-named cycle.) Recovery for an already mis-framed cycle: retire it through the state machine (`advance_task_state` → `cancelled`, reason logged, no override) and open a correctly-named one — never `force`/override.
 - [ ] Foreign working-tree check — `git status --short` says WHAT is staged (column 1) vs unstaged (column 2), **never WHO staged it**. Do not infer a concurrent peer from that shape: establish authorship first (`git log --oneline -3 -- <path>`, `git log -1 --format='%an %ae'`, `git reflog`). When you are the only writer on the host — the normal single-agent case — staged-but-uncommitted work is YOUR stranded work from an earlier session: land it in its own correctly-named cycle, or discard it deliberately, but never route around it and never write "another session" into a commit message on that assumption. For genuinely concurrent writers: coordinate, and never stash/clean/commit a peer's files (SOUL P9).
 - [ ] search_files() for the old name/term across the whole repo.
@@ -64,6 +74,15 @@ Enforced at 3 layers: pre-commit hook (static gate), enforcer (blocks commit unt
       explicitly and once ("the earlier count came from a live report, is not artifact-backed, and is
       withdrawn — the artifact's own numbers are these") — re-explaining it appends a second copy of a
       claim the artifact beside it contradicts.
+      **ONE note, ONE run.** Every number in a close note must come from the SAME run as the committed
+      artefact beside it. A deploy log and a pre-deploy transcript are two different runs: quoting the
+      deploy's `N pass / 0 fail` while the committed transcript reads `FAILING (N-1 pass, 1 fail)` is
+      filed as FABRICATION at critical, and rightly — the reviewer reads the diff, sees both, and
+      cannot tell which run you meant. When the run you want to quote is not the committed one,
+      RE-GENERATE the artefact after the deploy rather than quoting the other run's numbers. And when
+      a claim is about a FILE, name the commit that actually carries it (`git log --oneline -- <path>`):
+      "committed in this range" about a file that landed in an earlier, already-pushed commit is the
+      same finding.
       **The baseline belongs INSIDE the check's DEFAULT, not only in how you invoked it.** A
       discrimination check whose default baseline is a branch ref (`origin/main`) stops
       discriminating the moment the change is pushed: the ref then IS the change, the check
@@ -71,6 +90,16 @@ Enforced at 3 layers: pre-commit hook (static gate), enforcer (blocks commit unt
       exact revision in the script's own default with a comment naming which revision it is and
       why — a baseline you must remember to override on every run is a check that will silently
       stop testing what it claims. Re-run it after pinning and show the discriminating line.
+      **And ASSERT the baseline reproduces the defect, or the comparison proves nothing.** Pinning
+      a revision is only half the rule: a baseline that already passes is a tautology wearing a
+      PASS, and it is filed as fabrication even when every command really ran. Make the failing
+      side an assertion inside the check — the pre-change revision must flag the OLD behaviour,
+      and detail that asserted state in the artifact so a future reader can see the baseline was
+      exercised, not merely named. An artifact that EXTRACTS its baseline from git needs the same
+      proof one level down: grep the extracted copy for a symbol the fix INTRODUCED (absent ⇒ the
+      extraction really is the pre-change revision). That assertion is what catches the drift this
+      bullet warns about — without it, a baseline that silently starts resolving to the fixed code
+      keeps printing success, and the reader has no way to tell.
 - [ ] "0 findings" is NOT a pass — execute the changed path with boundary inputs (-1, 0, None, empty, inf/nan, non-ASCII); attack the premise (list implicit assumptions, violate each with a 30s test); verify deployed == loaded (restart/daemon check for guards/hooks/enforcers).
 - [ ] A green check is not evidence until you have seen the assertion RUN. A test
       file with no executable entry point (a pytest-style file with no
@@ -122,9 +151,20 @@ Enforced at 3 layers: pre-commit hook (static gate), enforcer (blocks commit unt
       VERBATIM, with your accept/reject judgement after a marker, under `docs/evidence/`; resolve
       any credential through the component's own config helpers so it is never printed or passed by
       hand; state plainly in the artifact that it is advisory and authorises nothing (the push
-      receipt comes from `end_change`'s own reviewer). When the repo already ships a registered
-      review script, prefer adding a mode to it over a new scratch helper — a deliverable that lives
-      only in the scratch dir cannot be read or re-run by the next agent.
+      receipt comes from `end_change`'s own reviewer).
+      **Do not build a parallel review path AT ALL — not a scratch helper, and not a convenient new
+      mode on the registered script either.** A second convenience interface legitimises a capability
+      the operator rejected outright ("if you can do this, why wouldn't other agents do this, but for
+      nefarious purposes?"): the payoff for doing it badly is manufactured evidence of verification,
+      which is the thing governance exists to prevent. Delete the shadow path and use the RECORDED
+      one — `ops/scripts/orch-bus/adversarial-review.py --cycle-id <cycle> --review`, which writes a
+      row into `adversarial_reviews` — because a review a future reader can re-run is the only
+      deliverable; the close-time reviewer's receipt is the review of record either way.
+      Any artefact you keep from an ad-hoc call must DECLARE itself: a committed file that presents a
+      review carries `provenance: advisory` (commentary, never citable as verification) or
+      `recorded-in: adversarial_reviews review_id=<id>` whose row EXISTS — a claimed id with no row is
+      treated as fabrication. Enforcement for that lives in the ARTEFACT plus a blocking check (a
+      doctor FAIL), never in prose: `references/detection-gate-design.md`.
 - [ ] **Redact at the GENERATOR, and keep the redaction narrow.** A transcript committed to a
       PUBLIC repo must not carry `/home/<user>` paths, the host name, or `ls -l` ownership. Apply
       ONE normaliser to every emitted line — never hand-patch the committed copy, which soon
@@ -250,6 +290,13 @@ Enforced at 3 layers: pre-commit hook (static gate), enforcer (blocks commit unt
       only NEWLY ADDED files), which removes the noise and keeps the real case; an
       allow-list of known-good paths instead drifts out of date and the noise returns with
       the next legitimate tool.
+      **Pick the new trigger by MEASUREMENT, once — do not iterate it in the operator's view.**
+      Enumerate the candidate signals, count what each would flag on the LIVE corpus in a single pass,
+      decide from that output, and record the refuted candidates in the source so nobody re-tries
+      them. Repeatedly widening and narrowing a rule across turns reads as churn and spends real
+      budget for no extra correctness; the fix is one measured decision, not a faster loop. Reach for
+      claim-verification (the artefact says it points at a record — make the record prove it) before
+      pattern-matching prose.
 - [ ] Test the warning BOTH ways before trusting it: the case it must report, and the case it
       must now stay silent on. A warning verified only in the reporting direction cannot show
       that the noise is gone; verify only in the silent direction and you may have deleted the

@@ -1015,6 +1015,15 @@ scanner it implements.
   handle out of the README's own URL) over restating it — that keeps end-to-end
   coverage of the real deny-list with no new literal, and the same technique lets the
   write itself pass the gate.
+- **The FIX is subject to the scanner too — expect your own edit to be refused.** Two
+  shapes bite every time: (a) a COMMENT that explains the false positive by restating it
+  is refused exactly as the data was, so describe the shape in prose ("two four-digit
+  groups joined by one dash") instead of quoting an example; (b) a fixture assembled
+  from parts still fails when any ONE part is a literal run the pattern catches — split
+  EVERY long digit run, not just the joined one. Neither is a reason to weaken the gate:
+  the refusal is the scanner working, and the fix is to write the artifact so it never
+  restates what it blocks. Budget for one refused write here rather than treating it as
+  evidence the gate is broken.
 - **Never echo the matched term into the block message.** That message is written
   into logs and transcripts, so name the CLASS ("personal identifier"), never the value.
 - **Behaviour-preserving refactors of a deny-list are testable without the terms.**
@@ -1165,6 +1174,65 @@ blocks the push for every agent on the host. Three things follow.
   3.6, well under any stop threshold). Re-issue with `cycle_id` plus all three scores
   and confirm the composite in the response — never close on the first reply's number.
 
+
+## Rule 29: A Plugin Enforcer Only Covers Its Own Harness — Gate the TOOL PATH, Not the Framework
+
+An enforcement layer that ships as a plugin of ONE agent framework governs exactly that
+framework. The enforcer plugin (`~/.hermes/plugins/governance-enforcer/`) gates tool calls
+made through the Hermes agent loop; a coding agent whose tools are its OWN — pi's
+`read`/`bash`/`edit`/`write`, Claude Code's, Codex's — never crosses it, so those writes are
+ungated however well the gate works for Hermes. A harness-side gap like this produces no
+error and no warning: the agent simply edits files with no lock, and everyone downstream
+believes governance covers the filesystem.
+
+- **An MCP server is a TOOL SURFACE, not an interception point.** Registering the governance
+  server with another harness hands that agent the ritual (`begin_change` and friends) and
+  never a gate — a server cannot see the host's own tools. Do not report "governance is
+  available there" on the strength of an MCP registration; name which layer actually
+  REFUSES a write.
+- **Verify a hook's SCOPE before crediting it with coverage.** "The commit hook has no lock
+  check" is a claim to check, not to repeat: the check may exist and be deliberately scoped
+  (e.g. refusing only inside the canonical repo, so manual human commits in client repos are
+  not blocked). Read the refusal's own condition. An unscoped read of a scoped gate either
+  claims coverage that does not exist, or proposes widening a guard that was narrowed on
+  purpose — the second is the worse error.
+- **Ship the gate as a thin adapter over the SHARED predicate — never a second
+  implementation.** The harness hook asks the existing implementation (a CLI/MCP predicate
+  that resolves the repo and applies the staleness rule) and blocks on its refusal. A
+  per-harness re-implementation of "is this allowed" is how the rule stops binding — and the
+  git hook already carries one copy, so a second copy drifts from it silently.
+- **Classify a shell command by its COMMAND NAME, never by shell syntax.** A metachar rule
+  (`;`, `|`, `>`, backtick, `$()`, newline) is a bypass with a friendly name: `cp`, `mv`,
+  `rm`, `tee`, `dd`, `mkdir`, `touch` contain none of them. Use a read-only ALLOWLIST with
+  deny-by-default, so anything not on it — and anything compound, pipes included — requires
+  the lock. This is the inverse of the terminal gate's own conservative rule, and both are
+  correct for their layer.
+- **Fail CLOSED on every cannot-verify path** (interpreter missing, governance unreachable,
+  no repo resolvable) and state the cost in the block message. A gate that reads "could not
+  check" as "carry on" fails open precisely when the host is broken. Give no agent-side
+  override; the escape is the operator uninstalling the adapter, which is visible.
+- **Prove the adapter by EXECUTING it, both directions, with the harness's own loader.** Load
+  the real adapter against a stub host object, fire the real event shape, and assert the
+  DECISION — blocked while ungoverned, allowed while governed, and the read-only path taking
+  no governance call at all. Then prove the guard DISCRIMINATES: add a seam (an env var naming
+  the artifact under test) so a committed test can point it at a copy that blocks nothing, and
+  require a failure whose reason is a failed ASSERTION — a load error would "fail" for the
+  wrong reason and prove nothing about the assertions.
+
+- **An authorisation predicate matches on IDENTITY, never on a NAME.** The standing rule is
+  to cover every project while keeping each session's gate its own — and a directory name is
+  not an identity, so a name-only match lets a record opened in ONE project authorise a write
+  in a DIFFERENT project that happens to share the name. Match the resolved path. A record
+  that cannot name what it authorises authorises NOTHING (fail closed), and REPORT how many
+  were skipped for that reason, so "refused because nothing covers this" stays distinguishable
+  from "refused because coverage could not be proved". Count ALL of them before answering:
+  a tally accumulated only up to the first match under-reports in the very branch that
+  already succeeded. Pin it with a test that repoints the store to a throwaway location —
+  same-named projects must not share authority, a scoped record must still cover its own
+  repo, and the skipped count must appear in BOTH branches.
+
+Worked example, including the block-capable `tool_call` hook shape: the `pi-coding-agent`
+skill's write-gate section.
 
 ## References
 
