@@ -68,7 +68,8 @@ $HOME/.hermes-cortex/scripts/post-commit-audit
 $HOME/.hermes-cortex/scripts/post-push-audit
 $HOME/.hermes-cortex/hooks/post-merge
 $HOME/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py
-$HOME/.hermes-cortex/scripts/hermes-plugin-lock"
+$HOME/.hermes-cortex/scripts/hermes-plugin-lock
+/usr/local/bin/hermes-plugin-lock"
 nlock=0
 for f in $LOCKED_FILES; do
   if [ -f "$f" ] || [ -d "$f" ]; then
@@ -77,16 +78,20 @@ for f in $LOCKED_FILES; do
   fi
 done
 if ls -ldO "$HOME/.hermes-cortex/hooks" 2>/dev/null | grep -q 'uchg'; then nlock=$((nlock+1)); fi
-echo "  immutable flags present on $nlock/9 enforcement paths"
-[ "$nlock" -ge 9 ] && ok "enforcement files re-locked 9/9" || bad "only $nlock/9 enforcement paths immutable"
+echo "  immutable flags present on $nlock/10 enforcement paths"
+[ "$nlock" -ge 10 ] && ok "enforcement files re-locked 10/10" || bad "only $nlock/10 enforcement paths immutable"
 
-# --- 5. Doctor: 0 fail ---
+# --- 5. Doctor: 0 fail. rc=1 (WARNING, pre-existing warns) is the accepted state; rc>=2 is a failure ---
 python3 "$REPO/ops/scripts/manage/cortex-doctor.py" --quiet > /tmp/doctor-verify-6261.log 2>&1
 DRC=$?
 OVERALL=$(grep -E 'Overall:' /tmp/doctor-verify-6261.log | sed 's/^[[:space:]]*//')
 echo "  doctor rc=$DRC — $OVERALL"
 FAIL_CNT=$(echo "$OVERALL" | grep -oE '[0-9]+ fail' | grep -oE '[0-9]+')
-[ "$FAIL_CNT" = "0" ] && ok "doctor 0 fail" || bad "doctor has $FAIL_CNT fail(s)"
+WARN_CNT=$(echo "$OVERALL" | grep -oE '[0-9]+ warn' | grep -oE '[0-9]+')
+echo "  doctor: fail=$FAIL_CNT warn=$WARN_CNT rc=$DRC (accepted criterion: 0 fail and rc<=1; warns are pre-existing/ambient)"
+# rc 0 = clean; rc 1 = warnings only (accepted); rc >=2 = failures (rejected)
+[ "$DRC" -le 1 ] && ok "doctor rc=$DRC (<=1, warnings-only class)" || bad "doctor rc=$DRC (>=2: failures present)"
+[ "$FAIL_CNT" = "0" ] && ok "doctor 0 fail (the actionable criterion)" || bad "doctor has $FAIL_CNT fail(s)"
 
 # --- 6. Skill drift parity PASS (read-only: --check compares against the committed artifact, no write) ---
 if python3 ops/scripts/manage/check-skill-drift-parity.py --check >/dev/null 2>&1; then

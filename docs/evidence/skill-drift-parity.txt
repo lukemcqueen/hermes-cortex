@@ -13,6 +13,6 @@ Deploy banners (the 3-line SOURCE header) are not compared.
 |---|---|
 | Deployed-only files (stranded) | 0 |
 | Files in sync | 837 |
-| Skipped (no repo counterpart, or repo ahead) | 663 |
+| Skipped (no repo counterpart, or repo ahead) | 664 |
 
 **Verdict: PASS**
