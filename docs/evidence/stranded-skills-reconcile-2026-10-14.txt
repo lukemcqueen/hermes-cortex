@@ -1,0 +1,49 @@
+repo: ~/hermes-cortex
+before-revision for the parity comparison: 6a243890
+
+--- 1. BEFORE: the committed parity artifact at 6a243890
+$ git show 6a243890:docs/evidence/skill-drift-parity.txt
+| Deployed-only files (stranded) | 1 |
+| Files in sync | 826 |
+**Verdict: FAIL**
+rc=0
+
+--- 2. AFTER: the committed parity artifact at HEAD (read, never regenerated)
+$ cat ~/hermes-cortex/docs/evidence/skill-drift-parity.txt
+| Deployed-only files (stranded) | 4 |
+| Files in sync | 835 |
+**Verdict: FAIL**
+rc=0
+
+--- 3. the three applied skills: repo copy == deployed copy (deploy banner stripped)
+MATCH  skills/devops/enforcement-change-safety/SKILL.md
+        normalised sha256  repo=55ca7ab1721c279a  deployed=55ca7ab1721c279a  lines=1038
+MATCH  skills/software-development/change-checklist/SKILL.md
+        normalised sha256  repo=72d8bb4e6092f071  deployed=72d8bb4e6092f071  lines=365
+MATCH  skills/software-development/reflexion-check/SKILL.md
+        normalised sha256  repo=a603d96728d7612e  deployed=a603d96728d7612e  lines=44
+rc=0
+
+--- 4. doctor (warning lines verbatim; the FAIL COUNT is the verdict, not the rc)
+  ⚠️  Repo clean — 2 uncommitted change(s)
+  ⚠️  Skill drift: devops/governance-closeout — Deployed copy is newer than repo source (~/.hermes/skills/devops/governance-closeout/SKILL.md). Commit the repo source before cortex-update overwrites it.
+  ⚠️  Skill drift: devops/governance-lock-lifecycle — Deployed copy is newer than repo source (~/.hermes/skills/devops/governance-lock-lifecycle/SKILL.md). Commit the repo source before cortex-update overwrites it.
+  ⚠️  Skill drift: devops/shared-repo-push-gates — Deployed copy is newer than repo source (~/.hermes/skills/devops/shared-repo-push-gates/SKILL.md). Commit the repo source before cortex-update overwrites it.
+  ⚠️  Skill drift: devops/subagent-delegation — Deployed copy is newer than repo source (~/.hermes/skills/devops/subagent-delegation/SKILL.md). Commit the repo source before cortex-update overwrites it.
+  ⚠️  Skill drift — 4 drifted, 382 in sync, 131 Hermes defaults skipped
+  ⚠️  Overall: WARNING  (461 pass · 6 warn · 0 fail · 3 info)
+doctor rc=1 (this doctor exits non-zero for warnings alone)
+PASS  doctor reports 0 failures
+
+--- 5. push landing
+$ git rev-parse HEAD origin/main
+1a0646d53487d6359b5764b9b3509c4c1cdc4722
+1a0646d53487d6359b5764b9b3509c4c1cdc4722
+$ git branch -r --contains 1a0646d5
+  origin/HEAD -> origin/main
+  origin/main
+PASS  HEAD == origin/main (the reconciliation commit is on the remote)
+
+=== VERDICT ===
+failed checks: 0
+RECONCILIATION VERIFIED (rc=0)
