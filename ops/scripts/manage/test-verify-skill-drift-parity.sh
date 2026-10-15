@@ -87,6 +87,33 @@ expect_fail "doctor rc=2 with junk output" "$TMP/c1a.sh" "COULD NOT VERIFY"
 variant "$TMP/c1b.sh" "s|ops/scripts/manage/cortex-doctor.py|$TMP/doctor-nolines.py|"
 expect_fail "doctor prints no check lines" "$TMP/c1b.sh" "COULD NOT VERIFY"
 
+echo "== C1 scope: drift on a RECOVERED skill fails; drift elsewhere does not =="
+cat > "$TMP/doctor-mydrift.py" <<'PYEOF'
+import sys
+for i in range(1, 471):
+    print("  \u2705 check %d" % i)
+print("  \u26a0\ufe0f  Skill drift: devops/shell-scripting")   # one of ours
+sys.exit(1)
+PYEOF
+variant "$TMP/c1c.sh" "s|ops/scripts/manage/cortex-doctor.py|$TMP/doctor-mydrift.py|"
+expect_fail "drift on a recovered skill -> C1 fires" "$TMP/c1c.sh" "drift present on a skill this change recovered"
+cat > "$TMP/doctor-otherdrift.py" <<'PYEOF'
+import sys
+for i in range(1, 471):
+    print("  \u2705 check %d" % i)
+print("  \u26a0\ufe0f  Skill drift: devops/someone-elses-skill")  # not ours
+sys.exit(1)
+PYEOF
+variant "$TMP/c1d.sh" "s|ops/scripts/manage/cortex-doctor.py|$TMP/doctor-otherdrift.py|"
+out="$(cd "$REPO" && bash "$TMP/c1d.sh" 2>&1)"; rc=$?
+if [ "$rc" -eq 0 ] && printf '%s' "$out" | grep -q 'unrelated skill drift present'; then
+  echo "OK   unrelated drift -> C1 passes but reports it (rc=$rc)"
+  pass=$((pass+1))
+else
+  echo "BAD  unrelated drift wrongly failed the check -> rc=$rc"
+  printf '%s\n' "$out" | head -6; fail=$((fail+1))
+fi
+
 echo "== C2: reconcile could not run =="
 variant "$TMP/c2.sh" "s|python3 ops/scripts/manage/reconcile-stranded-skills.py 2>&1|printf 'gibberish\\\\n'|"
 expect_fail "reconcile prints no verdict line" "$TMP/c2.sh" "printed no verdict line"
