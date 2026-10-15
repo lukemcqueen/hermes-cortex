@@ -1,0 +1,182 @@
+task-db.py no-op honesty gate — evidence transcript (2026-10-15)
+==============================================================
+
+Produced by: an orch-bus-worker (F-023) backlog run on host `esther`, KST.
+Baseline revision: 40151607 (origin/main tip before this change).
+Range: working tree vs 40151607 — ops/scripts/manage/task-db.py,
+tests/test_task_db_unit.py, this file.
+Volatile by design: task UUIDs, event ids and the doctor's timestamp.
+Host paths normalised to `~`.
+
+Defect addressed (task 546f5f3a): `task-db.py update <id> --status <same>`
+printed its success checkmark unconditionally while the database recorded
+nothing. `tasks.event_after_update()` early-returns when OLD.status IS NOT
+DISTINCT FROM NEW.status (ops/services/tasks/schema/v005__lifecycle.sql:309),
+so the `--reason` text was discarded. Measured 2026-10-14: two
+dispatch-history notes written with `update --status pending` touched
+updated_at and produced no task_events row.
+
+METHOD
+------
+A. Unit tests, hermetic (psql mocked), run through the repo runner.
+B. Live probes against the real tasks DB, via the CLI.
+C. Static adversarial gate on the changed script.
+D. Governed adversarial review of the change (row recorded).
+
+A. UNIT TESTS — three revisions of the same file
+------------------------------------------------
+
+A1. BASELINE — the file at revision 40151607, run from a detached worktree
+    (~/.hermes/cache/scratch/head-check), pinning what was ALREADY red.
+
+    command: bash <worktree>/tests/run-tests.sh <worktree>/tests/test_task_db_unit.py -q
+    result:  7 failed, 50 passed in 1.49s        rc=1
+    failures (all pre-existing, none in cmd_update):
+      test_pending_json_shape
+      test_pending_inbox_rows_marked_untrusted
+      test_pending_includes_paused
+      test_pending_filters_completed
+      test_pending_includes_blocked_waiting
+      test_list_parent_requires_v3_schema
+      test_list_parent_bad_uuid_rejected
+
+A2. RED — the first three new tests, before the source change (WATCHED FAILING):
+    command: bash ~/hermes-cortex/tests/run-tests.sh <repo>/tests/test_task_db_unit.py -q
+    result:  11 failed, 49 passed in 1.71s        rc=1
+    the four that FAILED for the new behaviour (7 pre-existing + 4):
+      test_update_same_status_with_reason_refused
+      test_update_same_status_without_reason_reports_no_change
+      test_update_changed_status_still_succeeds
+      test_update_by_correlation_resolves_id   (call index moved — assertion
+                                                extended, not weakened)
+
+A3. GREEN — after the change, including the two findings-driven tests:
+    command: bash ~/hermes-cortex/tests/run-tests.sh <repo>/tests/test_task_db_unit.py -q
+    result:  7 failed, 55 passed in 1.40s        rc=1
+    (50 baseline passes + 5 new/changed update-path tests.)
+    The same 7 pre-existing failures, unchanged. This run is NOT clean and is
+    not claimed clean: those 7 are recorded as a separate finding, not fixed
+    here. The 4 assertions that flipped RED→GREEN are named in A2.
+
+    additional static check:
+    command: python3 -m py_compile <repo>/ops/scripts/manage/task-db.py \
+               <repo>/tests/test_task_db_unit.py
+    rc=0
+
+B. LIVE PROBES — real tasks DB, real CLI
+----------------------------------------
+Target 1: task 546f5f3a (this run's own task; status was `pending`).
+
+B1. Same status + --reason → REFUSED, exit non-zero, nothing written:
+    command: python3 ~/hermes-cortex/ops/scripts/manage/task-db.py update \
+               546f5f3a-3e99-420c-a1f1-c830d5b365cb --status pending \
+               --reason "noop probe (expect refusal)"
+    stdout+stderr: ❌ Task 546f5f3a... is already pending — refusing the no-op:
+                   --reason would NOT be recorded as an event (the trigger skips
+                   same-status updates). Record the note as a governance issue
+                   event instead.
+    rc=1
+
+B2. Same status, no reason → honest no-change line, exit 0, no UPDATE issued:
+    command: python3 ~/hermes-cortex/ops/scripts/manage/task-db.py update \
+               546f5f3a-3e99-420c-a1f1-c830d5b365cb --status pending --no-notify
+    output:  • Task 546f5f3a... already pending — no change
+    rc=0
+
+B3. Real transition → unchanged behaviour, reason IS recorded:
+    command: python3 ~/hermes-cortex/ops/scripts/manage/task-db.py update \
+               546f5f3a-3e99-420c-a1f1-c830d5b365cb --status in_progress \
+               --reason start --no-notify
+    output:  ✅ Task 546f5f3a... → in_progress (reason=start)
+    rc=0
+
+B4. The resulting event rows, read back from the store:
+    command: docker exec -i mycortex-postgres psql -U <reader-role> \
+               -d mycortex -F'||' -c "SELECT id, event_type, from_status, to_status, \
+               reason FROM tasks.task_events WHERE task_id='546f5f3a-...' \
+               ORDER BY id DESC LIMIT 4"
+    output:
+      id   | event_type     | from_status |  to_status  | reason
+      -----+----------------+-------------+-------------+--------
+      1628 | status_changed | pending     | in_progress | start
+      1580 | created        |             | pending     |
+      (2 rows)
+
+    id 1628 is the B3 transition: a REAL status change records the reason,
+    which is the behaviour the no-op path could not provide.
+
+Target 2: a throwaway probe task, exercising the post-write RECHECK that the
+governed reviewer's finding ADV-12676-1 asked for (a real transition path,
+created and then self-cancelled so the board is left as found).
+
+B5. create → transition → read back → cancel:
+    python3 ~/hermes-cortex/ops/scripts/manage/task-db.py add \
+      "probe: live verification of the task-db no-op honesty gate ..." --no-notify
+      -> ✅ Task added: bd6a1f4a...   rc=0
+    python3 ~/hermes-cortex/ops/scripts/manage/task-db.py update \
+      bd6a1f4a-c9f9-4e48-b048-9e957fba39cb --status in_progress \
+      --reason "live-recheck probe" --no-notify
+      -> ✅ Task bd6a1f4a... → in_progress (reason=live-recheck probe)   rc=0
+      (the new recheck fired here: a missing matching event would have made
+      this exit 1 with "the reason was NOT recorded")
+    psql read back:
+      1630 | status_changed | pending | in_progress | live-recheck probe
+      1629 | created        |         | pending     |
+    python3 ~/hermes-cortex/ops/scripts/manage/task-db.py update \
+      bd6a1f4a-c9f9-4e48-b048-9e957fba39cb --status cancelled \
+      --reason "self-cleaning probe — verification complete" --no-notify
+      -> ✅ Task bd6a1f4a... → cancelled    rc=0
+
+    Note on B1/B2: both probes exited before the upsert, so the absence of a
+    new event row for them is structural, not measured. The DATABASE-side
+    no-op gate itself (v005__lifecycle.sql:309) is not re-measured here; it is
+    cited from the source line and the 2026-10-14 measurement on the task.
+
+C. STATIC ADVERSARIAL GATE (A4 — ops/scripts/manage/)
+-----------------------------------------------------
+    command: python3 ~/.hermes-cortex/scripts/adversarial-verify.py \
+               --file ~/hermes-cortex/ops/scripts/manage/task-db.py --level A4 --gate
+    output tail:
+      📊 Summary: 1 file(s), 27 finding(s)
+         🟡 Medium: 4   🔵 Low: 3   ⚪ Info: 20
+      ✅ GATE_PASSED — no critical/high findings
+    rc=0
+
+D. GOVERNED REVIEW (operator standing rule: review before shipping)
+-------------------------------------------------------------------
+    command: python3 ~/hermes-cortex/ops/scripts/orch-bus/adversarial-review.py \
+               --cycle-id 12676 --reviewer-id <reviewer> --material <plan+diff+
+               measured output> --review
+    rc=0
+    recorded-in: adversarial_reviews review_id=09061a2c-074a-4a55-a2bb-fff316d61716
+                 (cycle 12676, reviewer_model deepseek/deepseek-v4-pro,
+                  verdict FINDINGS)
+
+    Findings and dispositions:
+      ADV-12676-1 (medium, swallowed-error) — the status probe and the upsert
+        are two round trips, so a concurrent status change in between can make
+        the trigger discard --reason while the CLI prints success.
+        ACCEPTED — a post-write RECHECK now reads the recorded
+        status_changed event back (reason + to_status) and exits non-zero when
+        it does not match; covered by
+        test_update_reason_not_recorded_is_reported and exercised live in B5.
+        Residual, stated rather than implied away: the check is
+        detect-and-report, not a row lock — a concurrent update still produces
+        one failed command instead of a silently dropped note.
+      ADV-12676-2 (info, unverified-claim) — no runnable evidence that exit 1
+        is acceptable for an at-least-once re-delivery of a bus command.
+        ACCEPTED — test_update_by_correlation_same_status_is_idempotent pins
+        the documented bus path (--by-correlation, no --reason): same status →
+        `already completed — no change`, exit 0, no upsert. Only a
+        reason-bearing no-op refuses.
+
+E. DOCTOR — measured BEFORE deploy (expected red on the changed file)
+--------------------------------------------------------------------
+    command: python3 ~/hermes-cortex/ops/scripts/manage/cortex-doctor.py --quiet; echo rc=$?
+    output tail: ❌ Overall: FAILING  (463 pass · 6 warn · 1 fail · 3 info)
+    rc=2
+    The single fail is `Checksum: task-db.py` — the deployed copy still holds
+    the pre-change script. Expected to clear after the deploy step.
+    Warnings present in the same run (pre-existing, not caused by this change):
+      Repo clean (working tree has this change), Skill drift x2,
+      Stranded slices, loop-gov daemon, Orphan crons / Extra cron (info).
