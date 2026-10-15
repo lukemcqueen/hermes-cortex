@@ -1,80 +1,61 @@
-skill-drift parity verification — captured run
-=============================================
+skill-drift parity verification — how to re-run it
+==================================================
 
-Subject : ops/scripts/manage/verify-skill-drift-parity.sh (re-runnable evidence)
-Range   : ac2bc27e fix(skills): land 2 stranded deployed skill lessons into the repo
-          b53a16b8 chore(evidence): refresh skill-drift parity report to PASS
-          d80eb336 test(evidence): add re-runnable parity check
-          146f78e4 fix(evidence): stop the parity check swallowing tool errors
-Host    : esther (orchestrator, hot backup)
-When    : 2026-10-16 05:3x KST   (run under cycle #12698)
+Rather than a transcript of somebody's terminal, the verification for the
+orch-skill-lifecycle drift reconciliation is two COMMITTED, RUNNABLE scripts.
+Run them; do not read assertions about them.
 
-Command
--------
-  bash ops/scripts/manage/verify-skill-drift-parity.sh ; echo "EXIT=$?"
+  bash ops/scripts/manage/verify-skill-drift-parity.sh        # the check (C1..C6)
+  bash ops/scripts/manage/test-verify-skill-drift-parity.sh   # negative tests
 
-Clean run (verbatim)
---------------------
-== C1: cortex-doctor ran, and reports no skill drift ==
-PASS: no drift warning (doctor rc=1, 470 check lines)
-== C2: stranded parity ==
-PASS: Detector verdict: PASS · stranded: 0
-== C3: repo vs deployed md5 ==
-PASS: autonomous-ai-agents/pi-coding-agent 12fcdb891e0196f52f97c2325a087ab4
-PASS: devops/shell-scripting 789f3f87561f28cd27ace33983009b28
-== C4: no repo-only line dropped by the recovery ==
-PASS: autonomous-ai-agents/pi-coding-agent no repo-only lines (pure superset)
-PASS: devops/shell-scripting no repo-only lines (pure superset)
-== C5: fence balance (even) ==
-PASS: autonomous-ai-agents/pi-coding-agent fences=16 (even)
-PASS: devops/shell-scripting fences=78 (even)
-== C6: secret-leak-detector ran, and finds nothing blocking ==
-PASS: scanner rc=0, silent (no leak report)
+Both exit non-zero when a claim stops holding, so either can gate CI.
 
-ALL CHECKS PASSED
-EXIT=0
+Subject range
+-------------
+  ac2bc27e  fix(skills): land 2 stranded deployed skill lessons into the repo
+  b53a16b8  chore(evidence): refresh skill-drift parity report to PASS
+  d80eb336  test(evidence): add re-runnable parity check
+  146f78e4  fix(evidence): stop the parity check swallowing tool errors
+  86bf601b  fix(evidence): make every parity check prove its tool actually ran
+  <this>    test(evidence): commit the negative-test harness
 
-Error policy — exactly what the script does
--------------------------------------------
-A dependency whose run is not EVIDENT is a FAILED check, never a pass
-(SOUL Principle 12). Exit codes alone are ambiguous for these tools, so each
-check states its own run-evidence test:
+What the check proves (C1..C6)
+------------------------------
+  C1 cortex-doctor ran AND reports no skill drift
+  C2 reconcile-stranded-skills.py ran AND reports 0 stranded (repo == deployed)
+  C3 repo and deployed copies of both recovered skills are byte-identical
+  C4 the two recovered files dropped no repo content (diff ^< empty)
+  C5 both files keep an even triple-backtick fence count (FENCE-SAFETY RULE)
+  C6 secret-leak-detector ran AND finds nothing blocking
 
-  C1 cortex-doctor — exits 1 whenever ANY warning exists, so rc cannot separate
-     "ran fine, warnings present" from "crashed". The check requires the tool to
-     have emitted >= 100 per-check lines (measured: 470) or it reports
-     COULD NOT VERIFY. It then fails only on a drift line carrying the warning
-     glyph.
-  C2 reconcile-stranded-skills.py — must print a line matching
-     `verdict: (PASS|FAIL)`; anything else is COULD NOT VERIFY. FAIL is a real
-     finding (stranded files exist), not a tool failure.
-  C3/C4/C5 — an explicit `[ ! -f ... ]` guard for BOTH the repo and the deployed
-     copy precedes any diff/awk, so a missing file cannot make an empty result
-     read as "nothing wrong". C4 additionally inspects diff's own exit code
-     (>1 means diff could not run -> COULD NOT VERIFY).
-  C6 secret-leak-detector — measured behaviour: rc=0 with EMPTY output is the
-     clean case; rc=0 with a report is judged on the blocking count; ANY
-     non-zero rc or an unrecognised report is COULD NOT VERIFY.
+Error policy (SOUL Principle 12 — never swallow errors)
+-------------------------------------------------------
+A dependency whose run is not EVIDENT is a FAILED check, never a pass. Exit
+codes alone are ambiguous for these tools, so each check states its own
+run-evidence test:
 
-Negative tests (prove the checks NOTICE a broken dependency)
-------------------------------------------------------------
-Each failure mode was induced and the script re-run; every case exited non-zero:
+  C1 cortex-doctor exits 1 whenever ANY warning exists, so rc cannot separate
+     "ran fine, warnings present" from "crashed": require >= 100 per-check lines
+     (measured 470) or report COULD NOT VERIFY.
+  C2 require a line matching `verdict: (PASS|FAIL)`, not the bare substring.
+  C3/C4/C5 guard BOTH repo and deployed paths with [ ! -f ] before any diff or
+     awk, so a missing file cannot read as "nothing wrong"; C4 also inspects
+     diff's exit code (>1 means diff could not run).
+  C6 measured clean case is rc=0 with EMPTY output; any non-zero rc or an
+     unrecognised rc=0 report is COULD NOT VERIFY.
 
-  doctor path missing ............... FAIL: cortex-doctor emitted only 0 check
-                                      lines (rc=2) - COULD NOT VERIFY
-  doctor non-zero WITH output ....... FAIL: cortex-doctor emitted only 0 check
-                                      lines (rc=3) - COULD NOT VERIFY
-  repo copy missing (ADV-12696-1) ... FAIL: <skill> repo copy missing: skills/...
-  scanner non-zero WITH output ...... FAIL: secret-leak-detector exited 7 -
-                                      COULD NOT VERIFY: scanner exploded
-  scanner rc=0, unrecognised report . FAIL: secret-leak-detector rc=0 but
-                                      printed an unrecognised report - COULD NOT
-                                      VERIFY
-  reconcile prints no verdict ....... FAIL: reconcile script (rc=0) printed no
-                                      verdict line - COULD NOT VERIFY
+Negative tests — run `test-verify-skill-drift-parity.sh`
+--------------------------------------------------------
+That script induces each failure mode in a temp-dir copy of the verifier (never
+touching the repo) and asserts a non-zero exit plus the named reason. Last run:
+9 probes, 0 blind spots, exit 0. Cases covered: stock verifier passes; a
+stubbed-doctor baseline still passes (proving isolation); doctor rc=2 with junk
+output; doctor printing no check lines; reconcile printing no verdict; repo copy
+missing; deployed copy missing (HOME pointed at an empty dir); scanner non-zero
+WITH output; scanner rc=0 with an unrecognised report.
 
 A green run alone proves the checks work; only a demonstrated failure proves
-they would catch a regression.
+they would catch a regression — which is why the second script exists.
 
 Superset proof for the two recovered files (now C4)
 ---------------------------------------------------
