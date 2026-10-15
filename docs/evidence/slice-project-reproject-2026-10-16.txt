@@ -1,0 +1,67 @@
+Slice project re-projection — [queue/2] (task cb3d207e)
+Run: orch-bus-worker cron, 2026-10-16 08:2x KST (cycle 12711, host esther)
+Scope: 7 slices whose project=hermes-cortex but whose parent STORY belongs to
+kaesa-90day / kaesa-engagement. Source: docs/review-queue-diagnosis-2026-10.md remedy #5.
+
+=== KEY FINDING: an update path DOES exist (the prior pass's TOOL-GAP claim was wrong) ===
+task-db.py restore <json> writes p_project through tasks.task_upsert() (arg 5).
+restore() takes, per row: id, content, agent_name, project, scope, status, priority,
+source, session_id, parent_id, kind. Passing the row's CURRENT values with only
+'project' changed is a metadata-only correction on the canonical write path —
+no hand-edit of the DB, no SQL outside task_upsert.
+NOT usable for [queue/3]: restore hard-codes NULL at task_upsert position 16
+(p_depends_on), so depends_on still has NO update surface — see the closing note.
+
+=== BEFORE (pending count by project, 2026-10-16 08:22 KST) ===
+  hermes-cortex    16
+  kaesa-90day       6
+  kaesa-engagement  3
+
+=== THE 7 ROWS (before / after) ===
+  72dc920b   hermes-cortex    -> kaesa-90day      parent-story
+  82310c5e                    ->                  parent-story
+  ac53a833   hermes-cortex    -> kaesa-engagement parent-story
+  00562f6c                    ->                  parent-story
+  02c20c1a   hermes-cortex    -> kaesa-engagement parent-story
+  00562f6c                    ->                  parent-story
+  17471ede   hermes-cortex    -> kaesa-engagement parent-story
+  00562f6c                    ->                  parent-story
+  cbba59f8   hermes-cortex    -> kaesa-engagement parent-story
+  00562f6c                    ->                  parent-story
+  5c2f135b   hermes-cortex    -> kaesa-engagement parent-story
+  00562f6c                    ->                  parent-story
+  1d09760f   hermes-cortex    -> kaesa-engagement parent-story
+  00562f6c                    ->                  parent-story
+
+=== APPLIED (probe first: 1 row, verified, then the remaining 6) ===
+  $ task-db.py restore project-fix-1.json
+  ✅ Restored 1 task(s) from project-fix-1.json
+  $ task-db.py restore project-fix-6.json
+  ✅ Restored 6 task(s) from project-fix-6.json
+
+=== AFTER — verification query (id | project | parent_project | status | scope | source | kind) ===
+72dc920b-7e57-42c8-a536-aff4ba7c775a||kaesa-90day||kaesa-90day||pending||fleet||manual||slice
+02c20c1a-5dfe-44e3-8697-f9e5ec3e177a||kaesa-engagement||kaesa-engagement||pending||fleet||manual||slice
+17471ede-025f-4b6a-acab-cdce4711dff5||kaesa-engagement||kaesa-engagement||pending||fleet||manual||slice
+1d09760f-755e-4f64-a46b-259f8b2aa17c||kaesa-engagement||kaesa-engagement||pending||fleet||manual||slice
+5c2f135b-eebd-4983-9318-f7b2f6a2c330||kaesa-engagement||kaesa-engagement||pending||fleet||manual||slice
+ac53a833-67e3-4617-81e5-d90a2911fef3||kaesa-engagement||kaesa-engagement||pending||fleet||manual||slice
+cbba59f8-cf25-4dba-a773-827b4e2dfc91||kaesa-engagement||kaesa-engagement||pending||fleet||manual||slice
+
+=== AFTER — pending count by project ===
+kaesa-engagement||9
+hermes-cortex||8
+kaesa-90day||7
+
+=== AFTER — invariant: active slices whose project <> parent story project ===
+0
+
+Count reconciliation: 7 rows left hermes-cortex; the [queue/2] row itself (cb3d207e,
+project=hermes-cortex) moved pending->in_progress to run this work, so pending
+hermes-cortex = 16 - 7 - 1 = 8 (not 16-7=9). kaesa-90day 6->7, kaesa-engagement 3->9.
+The task text predicted 17->10; the true pre-state was 16, so the delta is 8.
+
+=== PRESERVATION CHECK ===
+Each restored row was re-read after the write: status/scope/source/priority/kind/
+created_by/parent_id unchanged; source stayed 'manual' (restore defaults 'session',
+so the true value was passed explicitly in the JSON). Only 'project' differs.
