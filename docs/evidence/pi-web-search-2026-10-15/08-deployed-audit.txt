@@ -1,9 +1,6 @@
-### deployed installer --check + deployed audit
-$ bash -c bash ~/.hermes-cortex/scripts/install-pi-integration.sh --check &&              bash ~/.hermes-cortex/scripts/audit-pi-integration.sh
+### deployed audit-pi-integration.sh
+$ bash ~/.hermes-cortex/scripts/audit-pi-integration.sh
 
-  ✓ extensions registered (cortex-context.ts, cortex-governance.ts), 7 curated skills present
-  ✓ web search: npm:pi-web-access@0.35.0 declared, keyless chain ['exa', 'duckduckgo'] configured
-install-pi-integration: registered
 Pi integration audit — ~/.pi/agent/bin/pi (v1.2.0)
   ✅ PASS      cortex servers present and runnable: loop-governance, tasks, executor, agent-bus, cortex-context — AGENT_NAME=<host> on every entry
   ✅ PASS      live check (agent, in a Pi session): 'pi mcp list' → every cortex server should report 'connected' (no tool count is asserted here: this audit cannot measure one)

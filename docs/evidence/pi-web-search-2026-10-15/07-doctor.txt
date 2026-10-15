@@ -7,7 +7,7 @@ $ python3 ~/hermes-cortex/ops/scripts/manage/cortex-doctor.py --quiet
 [mcp-server] DEBUG: HTTPError 401 for Bearer auth — trying Basic fallback
 [mcp-server] DEBUG: HTTPError 401 for Bearer auth — trying Basic fallback
 
-━━━ Hermes Cortex Doctor ━━━  (15:59:56)
+━━━ Hermes Cortex Doctor ━━━  (16:04:48)
 
   ✅ Repo branch
   ⚠️  Repo clean

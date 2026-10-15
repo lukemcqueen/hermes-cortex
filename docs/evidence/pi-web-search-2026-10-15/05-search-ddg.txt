@@ -1,8 +1,15 @@
 ### pi turn: DuckDuckGo search + fetch_content
-$ env CORTEX_SESSION_REPO=~/.hermes/cache/scratch/pi-web-search-evidence CORTEX_SESSION_KEY=evidence-ddg ~/.pi/agent/bin/pi --model openrouter/moonshotai/kimi-k2.6 Set provider to duckduckgo on web_search and query 'python asyncio taskgroup'; then fetch_content https://raw.githubusercontent.com/earendil-works/pi/main/README.md and report its first markdown heading. Be brief.
+# provenance: a real pi turn on ~/.pi/agent/bin/pi (model openrouter/moonshotai/kimi-k2.6), scratch repo ~/.hermes/cache/scratch/pi-web-search-evidence.
+# The PROVIDER named and the URLs returned are the stable facts; the
+# surrounding prose is model-generated and differs between runs.
+$ env CORTEX_SESSION_REPO=... CORTEX_SESSION_KEY=evidence-ddg ~/.pi/agent/bin/pi --model openrouter/moonshotai/kimi-k2.6 "<prompt>"
 
-**web_search** (duckduckgo): Found 5 results on `python asyncio taskgroup`, including Python docs, GeeksforGeeks, SuperFastPython, and Real Python.
+**Search:** DuckDuckGo returned results for `python asyncio taskgroup` from Python docs, GeeksforGeeks, SuperFastPython, and Stack Overflow, covering `asyncio.TaskGroup` introduced in Python 3.11.
 
-**fetch_content** first heading: `# Pi`
+**README heading:** The first markdown heading is:
+
+```
+# Pi
+```
 
 rc=0
