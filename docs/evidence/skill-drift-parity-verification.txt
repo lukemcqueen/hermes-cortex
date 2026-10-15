@@ -4,8 +4,9 @@ skill-drift parity verification — captured run
 Subject : ops/scripts/manage/verify-skill-drift-parity.sh (re-runnable evidence)
 Range   : ac2bc27e fix(skills): land 2 stranded deployed skill lessons into the repo
           b53a16b8 chore(evidence): refresh skill-drift parity report to PASS
+          d80eb336 test(evidence): add re-runnable parity check
 Host    : esther (orchestrator, hot backup)
-When    : 2026-10-16 05:0x KST   (run under cycle #12694)
+When    : 2026-10-16 05:2x KST   (run under cycle #12696)
 
 Command
 -------
@@ -14,17 +15,20 @@ Command
 Output (verbatim)
 ------------------
 == C1: cortex-doctor skill drift ==
-PASS: no drift warning
+PASS: no drift warning (doctor rc=1)
 == C2: stranded parity ==
 PASS: Detector verdict: PASS · stranded: 0
 == C3: repo vs deployed md5 ==
 PASS: autonomous-ai-agents/pi-coding-agent 12fcdb891e0196f52f97c2325a087ab4
 PASS: devops/shell-scripting 789f3f87561f28cd27ace33983009b28
-== C4: fence balance (even) ==
+== C4: no repo-only line dropped by the recovery ==
+PASS: autonomous-ai-agents/pi-coding-agent no repo-only lines (pure superset)
+PASS: devops/shell-scripting no repo-only lines (pure superset)
+== C5: fence balance (even) ==
 PASS: autonomous-ai-agents/pi-coding-agent fences=16 (even)
 PASS: devops/shell-scripting fences=78 (even)
-== C5: secret-leak-detector ==
-PASS: scanner produced no blocking report
+== C6: secret-leak-detector ==
+PASS: scanner rc=0, no blocking report:
 
 ALL CHECKS PASSED
 EXIT=0
@@ -32,12 +36,29 @@ EXIT=0
 What this retires
 -----------------
 ADV-12689-1 (technique: unverified-claim) asked that the verification outputs be
-committed as re-runnable evidence rather than left as prose in a self-report.
-C1-C5 above are now executed by a committed script; a reviewer re-runs one
-command and gets the same exit status.
+committed as re-runnable evidence rather than prose in a self-report. C1-C6 are
+now executed by the committed script; a reviewer re-runs one command.
 
-Superset proof for the two recovered files (the pre-sync check)
----------------------------------------------------------------
+ADV-12694-1/-2 (technique: swallowed-error) — the first version of the script
+ran its dependencies as `cmd ... || true`, so a crashed doctor or scanner fell
+into the PASS branch and could read as green. Every dependency's exit status is
+now checked explicitly and a failure reports "COULD NOT VERIFY" plus a non-zero
+exit (SOUL Principle 12: never swallow errors).
+
+Negative test (proves the check NOTICES a broken dependency)
+------------------------------------------------------------
+The doctor path was rewritten to a nonexistent file and the script re-run:
+
+  FAIL: cortex-doctor exited 2 and printed no drift line - COULD NOT VERIFY
+  FAIL: reconcile script exited 2 with no verdict - COULD NOT VERIFY
+  ...
+  neg exit=1
+
+A green run alone proves the checks work; only a demonstrated failure proves
+they would catch a regression.
+
+Superset proof for the two recovered files (the pre-sync check, now C4)
+-----------------------------------------------------------------------
   diff skills/<s>/SKILL.md ~/.hermes/skills/<s>/SKILL.md | grep '^<'
 produced no output for either path (no repo-only lines — pure superset, so the
 reconcile could not drop repo content):
