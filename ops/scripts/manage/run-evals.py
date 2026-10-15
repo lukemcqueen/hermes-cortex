@@ -265,8 +265,16 @@ def _task_lifecycle() -> tuple[bool, str]:
         if rc != 0:
             return False, f"add failed (rc={rc}): {out.strip()[-200:]}"
 
-        # 2. List — confirm the probe is visible
-        rc, out = _run(["python3", str(TASK_DB), "list", "--tag", "regression-gate"])
+        # 2. List — confirm the probe is visible. aa293f41 made every task query
+        #    fail closed (return NOTHING) when no repo resolves: this subprocess
+        #    has no session repo injected and its cwd is not a git repo, so the
+        #    bare list returned the unknown-repo message + 'No tasks found' with
+        #    rc 0 and the probe id was never parsed (gate went RED 2026-10-15).
+        #    Scope it explicitly to a hermetic label; the scoped clause includes
+        #    repo-NULL rows, so the probe (created without --repo, repo NULL) is
+        #    still returned. Reference: commit aa293f41, slice 758ee911.
+        rc, out = _run(["python3", str(TASK_DB), "list",
+                        "--repo", "regression-gate", "--tag", "regression-gate"])
         if rc != 0:
             return False, f"list failed (rc={rc}): {out.strip()[-200:]}"
         probe_id = _find_probe_id(out)
@@ -300,12 +308,18 @@ def _task_lifecycle() -> tuple[bool, str]:
         return True, f"add→list→update→delete OK (probe {probe_id[:8]}… removed)"
     finally:
         # Safety net: if anything above failed after add, remove the probe now.
+        # Deletes by id when known; when the id was never parsed (list-scoping
+        # regression on aa293f41) delete by content+creator so NO residue can
+        # survive a failed run — the grader's zero-residue contract (slice 758ee911).
+        probe_role, probe_creator = _task_db_identity()
         if probe_id:
-            probe_role, _ = _task_db_identity()
-            _run(["docker", "exec", "-i", "mycortex-postgres", "psql",
-                  "-U", probe_role, "-d", "mycortex",
-                  "-v", "ON_ERROR_STOP=1", "-t", "-A", "-c",
-                  f"DELETE FROM tasks.tasks WHERE id = '{probe_id}';"])
+            where = f"id = '{probe_id}' AND created_by = '{probe_creator}'"
+        else:
+            where = f"content = '{probe_content}' AND created_by = '{probe_creator}'"
+        _run(["docker", "exec", "-i", "mycortex-postgres", "psql",
+              "-U", probe_role, "-d", "mycortex",
+              "-v", "ON_ERROR_STOP=1", "-t", "-A", "-c",
+              f"DELETE FROM tasks.tasks WHERE {where};"])
 
 
 @grader("exec_round_trip")
