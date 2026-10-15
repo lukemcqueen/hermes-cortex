@@ -3,8 +3,9 @@ $ env CORTEX_SESSION_REPO=~/.hermes/cache/scratch/pi-web-search-evidence CORTEX_
 
  **Provider:** exa
 
+**Top 3:**
 1. **Pi Coding Agent** — https://pi.dev/
-2. **earendil-works/pi** — https://github.com/earendil-works/pi
+2. **earendil-works/pi** (GitHub) — https://github.com/earendil-works/pi
 3. **Pi Documentation** — https://pi.dev/docs
 
 rc=0

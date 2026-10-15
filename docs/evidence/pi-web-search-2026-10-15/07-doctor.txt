@@ -7,7 +7,7 @@ $ python3 ~/hermes-cortex/ops/scripts/manage/cortex-doctor.py --quiet
 [mcp-server] DEBUG: HTTPError 401 for Bearer auth — trying Basic fallback
 [mcp-server] DEBUG: HTTPError 401 for Bearer auth — trying Basic fallback
 
-━━━ Hermes Cortex Doctor ━━━  (15:57:07)
+━━━ Hermes Cortex Doctor ━━━  (15:59:56)
 
   ✅ Repo branch
   ⚠️  Repo clean
@@ -201,7 +201,7 @@ $ python3 ~/hermes-cortex/ops/scripts/manage/cortex-doctor.py --quiet
   ✅ Checksum: session-identity.sh
   ✅ Checksum: judgment.py
   ✅ Checksum: judgment-providers.yaml
-  ❌ Checksum: install-pi-integration.sh
+  ✅ Checksum: install-pi-integration.sh
   ✅ Checksum: audit-pi-integration.sh
   ✅ Checksum: env-value.sh
   ✅ Checksum: governance-refused-close-advisory.sh
@@ -482,7 +482,7 @@ $ python3 ~/hermes-cortex/ops/scripts/manage/cortex-doctor.py --quiet
   ✅ Stranded slices
   ⚠️  loop-gov daemon
 
-  ❌ Overall: FAILING  (464 pass · 3 warn · 1 fail · 3 info)
+  ⚠️  Overall: WARNING  (465 pass · 3 warn · 0 fail · 3 info)
 
   ═══════════════════════════════════════════════════
   🔧 REQUIRED ACTIONS — resolve each ⚠️  or ❌ above
@@ -490,11 +490,10 @@ $ python3 ~/hermes-cortex/ops/scripts/manage/cortex-doctor.py --quiet
     Run: git status to review
     Check: cronjob action='list' → find job_id, then hermes cron runs <job_id> --limit 5; 'idle for Ns' TimeoutError = LLM cron inactivity timeout (HERMES_CRON_TIMEOUT), see docs/cron-job-recipes.md §LLM cron inactivity timeout
     Rename to local-<name> to opt a cron out of doctor checks
-    REQUIRED: Run: cortex-update.sh to resync
     Restart the gateway to load the new loop-governance module: hermes gateway restart. Until then end_change may read a cycle as PENDING right after it was scored — a retry after a cycle_query is the workaround, not the fix.
 
   After resolving, run doctor again to confirm.
   ═══════════════════════════════════════════════════
 
 
-rc=2
+rc=1

@@ -1,5 +1,5 @@
 ### deployed installer --check + deployed audit
-$ bash ~/.hermes-cortex/scripts/install-pi-integration.sh --check && bash ~/.hermes-cortex/scripts/audit-pi-integration.sh
+$ bash -c bash ~/.hermes-cortex/scripts/install-pi-integration.sh --check &&              bash ~/.hermes-cortex/scripts/audit-pi-integration.sh
 
   ✓ extensions registered (cortex-context.ts, cortex-governance.ts), 7 curated skills present
   ✓ web search: npm:pi-web-access@0.35.0 declared, keyless chain ['exa', 'duckduckgo'] configured
