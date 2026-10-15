@@ -107,6 +107,25 @@ def _lit(value: Any) -> str:
     return f"'{text}'"
 
 
+def _like_escape(value: Any) -> str:
+    """Escape LIKE metacharacters in a VALUE that will be interpolated into a pattern.
+
+    Returns a bare (unquoted) string; SQL-quote it with `_lit()` afterwards. Escape
+    ONLY the interpolated value, never the whole pattern: the pattern's own `%`
+    wildcards are intentional, and escaping them turns the predicate into a literal
+    match that can never succeed (measured — the first cut of this helper escaped
+    the pattern and both predicates stopped matching anything).
+
+    LIKE reads `%` and `_` as wildcards and `\\` as the escape character, so a raw
+    skill name silently matches MORE than it should: `a_b` matches `axb`. The
+    gate's answer is a permission ("this session loaded the skill"), so an
+    over-match reports a load that never happened. Backslash is escaped FIRST, or
+    the escapes added next would themselves be escaped.
+    """
+    return (str(value).replace("\\", "\\\\")
+            .replace("%", "\\%").replace("_", "\\_"))
+
+
 def _json_lit(value: Any) -> str:
     """A JSONB literal (list/dict → jsonb). Always cast, never implicit."""
     return _lit(json.dumps(value if value is not None else [])) + "::jsonb"
@@ -466,14 +485,35 @@ class SessionStore:
         #       must not pass on an unrelated event that merely says "file");
         #   (2) raw-content suffix `/%<skill>"` — matches the prefixed form,
         #       which lexes to `/name` and so is invisible to (1).
-        suffix = f'%/{skill}"%'
+        #
+        # Both LIKE patterns go through _like_lit(), not _lit(): LIKE reads `%`
+        # and `_` as wildcards, so a skill name interpolated raw over-matches
+        # (`a_b` would match `axb`) — and an over-match here reports a skill load
+        # that never happened, which is a permission, not a cosmetic bug.
+        #
+        # (3) PI'S MECHANISM (2026-10-15). Pi has no `skill_view` tool: its OWN
+        #     system prompt instructs the model to load a skill by READING the
+        #     skill's file (`createReadToolDefinition` exposes `{path, ...}`, and
+        #     the Pi bundle contains no `skill_view` at all). A Pi session's
+        #     commit was therefore refused no matter what the agent did. The read
+        #     is matched on the skill's OWN DIRECTORY, so a read of an unrelated
+        #     file cannot satisfy it. The match is `%/<skill>/SKILL.md%` with no
+        #     trailing quote: the stored JSON is the read tool's own input
+        #     (`{"path": ".../SKILL.md"}`, and further keys once offset/limit are
+        #     used), so the path value is NOT necessarily last in the text — a
+        #     trailing `"` would only match one of those shapes. The % on both
+        #     sides still requires the full `/SKILL.md` segment.
+        suffix = f'%/{_like_escape(skill)}"%'
+        pi_suffix = f'%/{_like_escape(skill)}/SKILL.md%'
         row = self.pg.row(
             "SELECT 1 FROM mycortex_mem.tool_events e "
             "JOIN mycortex_mem.sessions s ON s.id = e.session_id "
-            f"WHERE s.session_key = {_lit(key)} AND e.tool_name = 'skill_view' "
-            f"AND e.role = 'tool' AND (e.content_text_tsv @@ "
-            f"to_tsquery('simple', {_lit(skill)}) OR e.content::text LIKE {_lit(suffix)}) "
-            "LIMIT 1;"
+            f"WHERE s.session_key = {_lit(key)} AND e.role = 'tool' AND ("
+            "   (e.tool_name = 'skill_view' AND (e.content_text_tsv @@ "
+            f"    to_tsquery('simple', {_lit(skill)}) OR e.content::text LIKE {_lit(suffix)}))"
+            "   OR (e.tool_name = 'read' AND e.content::text LIKE "
+            f"    {_lit(pi_suffix)})"
+            ") LIMIT 1;"
         )
         return row is not None
 

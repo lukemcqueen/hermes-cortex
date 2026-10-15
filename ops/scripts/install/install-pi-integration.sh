@@ -19,10 +19,13 @@
 #  What each half buys:
 #    * extensions — cortex-context.ts owns the LIFECYCLE triggers
 #      (turn_end checkpoint, before_agent_start restore) AND records
-#      skill_view as gate evidence. The pre-commit reflexion gate asks
+#      skill loads as gate evidence. The pre-commit reflexion gate asks
 #      HC's store "did this session load skill X?"; with no writer a
 #      Pi commit is REFUSED no matter how well the agent behaved.
-#      MCP cannot provide either half (it is tool-call shaped).
+#      The load it records is Pi's OWN mechanism — a `read` of the
+#      skill's SKILL.md — not `skill_view`, which Pi does not have
+#      (Pi's system prompt: "Use the read tool to load a skill's
+#      file..."). MCP cannot provide either half (it is tool-call shaped).
 #    * skills — Pi advertises name + description at startup and loads
 #      the body on demand, so it must be pointed at a CURATED set.
 #      The set is DERIVED from the skills manifest's `always:` section

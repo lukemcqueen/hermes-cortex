@@ -31,7 +31,13 @@ import path from "node:path";
 
 const require = createRequire(import.meta.url);
 const HERE = path.dirname(fileURLToPath(import.meta.url));
-const EXT = path.join(HERE, "extensions", "cortex-context.ts");
+// PI_EXTENSION_UNDER_TEST is the DISCRIMINATION SEAM: point it at a PRE-FIX copy
+// (git show <rev>:ops/install/harnesses/pi/extensions/cortex-context.ts) and this
+// guard MUST fail on the skill-load cases. A guard that has never failed on the
+// broken revision proves nothing about the fix.
+const EXT =
+  process.env.PI_EXTENSION_UNDER_TEST ??
+  path.join(HERE, "extensions", "cortex-context.ts");
 
 const failures = [];
 const note = (ok, msg) => {
@@ -92,6 +98,32 @@ else:
 process.env.CORTEX_CONTEXT_CLI = stubCli;
 process.env.CORTEX_CONTEXT_PYTHON = process.env.CORTEX_CONTEXT_PYTHON || "python3";
 process.env.CORTEX_STUB_LOG = callsLog;
+
+// ── a stub GOVERNANCE CLI, for the session id the evidence must be keyed to ──
+// The extension reads CORTEX_GOVERNANCE_CLI at MODULE LOAD, so it is set before
+// the import below. The stub reads its mode from the environment at RUN time, so
+// the failure modes (missing key, malformed output, non-zero exit) are exercised
+// in one process instead of three.
+const govStub = path.join(tmp, "stub-gov.py");
+const govLog = path.join(tmp, "gov-calls.jsonl");
+fs.writeFileSync(govStub, `import json, os, sys
+mode = os.environ.get("CORTEX_GOV_STUB_MODE", "ok")
+tool = sys.argv[1] if len(sys.argv) > 1 else ""
+with open(os.environ["CORTEX_GOV_STUB_LOG"], "a") as fh:
+    fh.write(json.dumps({"tool": tool}) + "\\n")
+if mode == "fail":
+    sys.stderr.write("governance unreachable\\n"); sys.exit(3)
+if mode == "badjson":
+    print("not json at all"); sys.exit(0)
+if mode == "nokey":
+    print(json.dumps({"session_id": "", "effective_session_id": ""})); sys.exit(0)
+if tool == "session_identity":
+    print(json.dumps({"session_id": "sess_own", "effective_session_id": "sess_test_govkey"}))
+else:
+    print(json.dumps({"ok": True, "tool": tool}))
+`);
+process.env.CORTEX_GOVERNANCE_CLI = govStub;
+process.env.CORTEX_GOV_STUB_LOG = govLog;
 
 // ── load the REAL extension through pi's loader ─────────────────────────────
 const createJiti = require(jitiPath).createJiti || require(jitiPath);
@@ -183,6 +215,86 @@ if (typeof hooks["turn_end"] === "function") {
   const after = readCalls().filter((c) => c.tool === "session_checkpoint").length;
   note(after === before,
        "an empty turn writes NO checkpoint (a checkpoint that looks like continuity and carries none is worse than none)");
+}
+
+// ── 4. DRIVE tool_result: the reflexion gate's skill-load evidence ──────────
+//
+// Pi has NO `skill_view` tool (verified against the installed package: the bundle
+// contains no such identifier, `createReadToolDefinition` exposes {path,...}, and
+// Pi's own prompt says "Use the read tool to load a skill's file"). The handler keyed
+// on `skill_view` therefore recorded NOTHING, so the pre-commit reflexion gate refused
+// every Pi commit. These cases execute the real handler and assert what it asked the
+// store to record — a grep could not tell a registered hook from a working one.
+const evts = () => readCalls().filter((c) => c.tool === "session_tool_event");
+
+if (typeof hooks["tool_result"] === "function") {
+  const skillPath = "/skills/software-development/reflexion-check/SKILL.md";
+
+  // (a) Pi's mechanism: a read of the skill's own file.
+  let before = evts().length;
+  await hooks["tool_result"]({ toolName: "read", input: { path: skillPath } });
+  let got = evts().slice(before);
+  note(got.length === 1,
+       `a read of a SKILL.md records skill-load evidence (recorded ${got.length})`);
+  if (got.length === 1) {
+    note(got[0].args?.tool_name === "read",
+         `…under its TRUE tool name 'read', never a fabricated skill_view (got ${JSON.stringify(got[0].args?.tool_name)})`);
+    note(got[0].args?.content?.path === skillPath,
+         `…carrying the read's own input (got ${JSON.stringify(got[0].args?.content?.path)})`);
+    note(got[0].args?.session_key === "sess_test_govkey",
+         `…keyed to the session the GATE queries, not CORTEX_SESSION_KEY (got ${JSON.stringify(got[0].args?.session_key)})`);
+  }
+
+  // (b) a read of something that is NOT a skill must record nothing.
+  before = evts().length;
+  await hooks["tool_result"]({ toolName: "read", input: { path: "/etc/hostname" } });
+  note(evts().length === before,
+       "a read of a NON-skill file records nothing (the store is evidence, not a transcript)");
+
+  // (c) a harness that DOES have skill_view still records, unchanged.
+  before = evts().length;
+  await hooks["tool_result"]({ toolName: "skill_view", input: { name: "reflexion-check" } });
+  got = evts().slice(before);
+  note(got.length === 1 && got[0].args?.tool_name === "skill_view",
+       "skill_view still records (the Hermes mechanism is untouched)");
+
+  // (d) the skill name is derived from the PATH, not hardcoded.
+  before = evts().length;
+  await hooks["tool_result"]({
+    toolName: "read",
+    input: { path: "/skills/devops/shell-scripting/SKILL.md", limit: 200 },
+  });
+  got = evts().slice(before);
+  note(got.length === 1 && String(got[0].args?.content?.path).includes("shell-scripting/SKILL.md"),
+       "the recorded path is the one actually read (no hardcoded skill) — offset/limit keys do not confuse it");
+
+  // (e) EVERY failure to resolve the session id must record nothing AND not throw.
+  //     A silently-invented key is the original bug; a thrown error would break the
+  //     harness's tool call, which this extension must never do.
+  for (const mode of ["fail", "badjson", "nokey"]) {
+    process.env.CORTEX_GOV_STUB_MODE = mode;
+    before = evts().length;
+    let threw = "";
+    try {
+      await hooks["tool_result"]({ toolName: "read", input: { path: skillPath } });
+    } catch (err) {
+      threw = String(err);
+    }
+    note(!threw, `governance CLI mode '${mode}': the handler does not throw (${threw || "no throw"})`);
+    note(evts().length === before,
+         `governance CLI mode '${mode}': NO evidence recorded under an invented key`);
+    process.env.CORTEX_GOV_STUB_MODE = "ok";
+  }
+
+  // The extension must have ASKED the shared implementation for the id rather
+  // than deriving one — that question is the whole reason the writer and the
+  // checker can no longer disagree.
+  const govAsked = fs.existsSync(govLog)
+    ? fs.readFileSync(govLog, "utf8").includes("session_identity")
+    : false;
+  note(govAsked, "the extension asked the SHARED governance CLI for the session id (session_identity)");
+} else {
+  note(false, "tool_result hook is NOT registered — Pi skill loads would go unrecorded");
 }
 
 // ── cleanup + verdict ───────────────────────────────────────────────────────
