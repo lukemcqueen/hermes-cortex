@@ -1,0 +1,19 @@
+### deployed installer --check + deployed audit
+$ bash ~/.hermes-cortex/scripts/install-pi-integration.sh --check && bash ~/.hermes-cortex/scripts/audit-pi-integration.sh
+
+  ✓ extensions registered (cortex-context.ts, cortex-governance.ts), 7 curated skills present
+  ✓ web search: npm:pi-web-access@0.35.0 declared, keyless chain ['exa', 'duckduckgo'] configured
+install-pi-integration: registered
+Pi integration audit — ~/.pi/agent/bin/pi (v1.2.0)
+  ✅ PASS      cortex servers present and runnable: loop-governance, tasks, executor, agent-bus, cortex-context — AGENT_NAME=<host> on every entry
+  ✅ PASS      live check (agent, in a Pi session): 'pi mcp list' → every cortex server should report 'connected' (no tool count is asserted here: this audit cannot measure one)
+  ✅ PASS      7/7 curated skills linked in ~/.pi/agent/cortex-skills, settings.json carries extensions+skills
+  ✅ PASS      cortex-context extension present (native mem_*/session_* tools are visible to the agent itself)
+  ✅ PASS      loop-governance gate deployed (a cycle test is the agent's own check: begin_change -> feedback_accept -> end_change)
+  ✅ PASS      AGENT_NAME=<host>
+  ✅ PASS      cortex venv python present (install-pi-mcp.sh prefers it)
+  ✅ PASS      pi-web-access installed; keyless search path exa,duckduckgo (no API key needed)
+
+  RESULT: PASS (every layer required on this host)
+
+rc=0
