@@ -426,8 +426,27 @@ if [[ "$MODE" == "add" ]]; then
     # re-run the whole thing to find out what the script already knew.
     INSTALL_LOG="$(mktemp "${TMPDIR:-/tmp}/pi-web-search-install.XXXXXX")"
     if "$PI_LAUNCHER" install "$PI_WEB_SEARCH_PACKAGE" >"$INSTALL_LOG" 2>&1; then
-      echo "  ✓ installed $PI_WEB_SEARCH_PACKAGE"
-      rm -f "$INSTALL_LOG"
+      # rc=0 is not success — the package must be ON DISK. `pi install` writes
+      # the declaration and fetches separately, so a launcher that exits 0
+      # while installing nothing is exactly the "declared is not installed"
+      # trap, and a bare ✓ over it is a false green.
+      if [[ -d "$PKG_DIR" ]]; then
+        echo "  ✓ installed $PI_WEB_SEARCH_PACKAGE"
+        last_line="$(tail -n 1 "$INSTALL_LOG")"
+        # `[[ -n x ]] && echo` is a set -e trap: an empty last line returns 1
+        # and kills the script right after a SUCCESSFUL install.
+        if [[ -n "$last_line" ]]; then
+          echo "    launcher: $last_line"
+        fi
+        rm -f "$INSTALL_LOG"
+      else
+        echo "install-pi-integration: $PI_LAUNCHER exited 0 but $PKG_DIR is absent" >&2
+        echo "  --- $PI_LAUNCHER said (last 20 lines) ---" >&2
+        tail -n 20 "$INSTALL_LOG" >&2
+        echo "  --- end of installer output ---" >&2
+        rm -f "$INSTALL_LOG"
+        exit 1
+      fi
     else
       rc_install=$?
       echo "install-pi-integration: package install FAILED for $PI_WEB_SEARCH_PACKAGE (rc=$rc_install)" >&2

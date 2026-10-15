@@ -223,6 +223,51 @@ check "failed package install → non-zero exit" "$([ "$RC_FAIL" -ne 0 ] && echo
 check "failed package install → the launcher's own output is surfaced" \
     "$(grep -q '404 Not Found' "$FAIL_OUT" && echo 1 || echo 0)"
 
+# The assertions above must DISCRIMINATE: a pattern that matches anything makes
+# every "output is surfaced" check pass unconditionally, and a check that cannot
+# fail is not a check. Prove the pattern both ways before trusting the verdict.
+printf 'npm ERR! 404 Not Found\n' > "$TD/pattern-hit.txt"
+printf 'nothing to see here\n' > "$TD/pattern-miss.txt"
+check "assertion self-test: pattern matches when present" \
+    "$(grep -q '404 Not Found' "$TD/pattern-hit.txt" && echo 1 || echo 0)"
+check "assertion self-test: pattern refuses when absent" \
+    "$([ "$(grep -q '404 Not Found' "$TD/pattern-miss.txt" && echo 1 || echo 0)" = "0" ] && echo 1 || echo 0)"
+
+# rc=0 from the launcher is NOT success — the package must be ON DISK. A
+# launcher that exits 0 while installing nothing is exactly the "declared is not
+# installed" trap, and printing a bare ✓ over it is the false green this whole
+# check exists to prevent.
+cat > "$TD/lying-pi" <<'EOF'
+#!/usr/bin/env bash
+echo "installed npm:pi-web-access@0.35.0"
+exit 0
+EOF
+chmod +x "$TD/lying-pi"
+rm -rf "$HOME/.pi/agent/npm"
+PI_LAUNCHER="$TD/lying-pi" bash "$SCRIPT" >"$TD/lying.out" 2>&1
+RC_LIE=$?
+check "launcher exits 0 but installs nothing → installer fails" \
+    "$([ "$RC_LIE" -ne 0 ] && echo 1 || echo 0)"
+check "…and names the missing package directory" \
+    "$(grep -q 'node_modules/pi-web-access' "$TD/lying.out" && echo 1 || echo 0)"
+
+# The honest case: the launcher puts the package on disk → rc 0, and the run
+# reports what the launcher itself said rather than a bare ✓.
+cat > "$TD/good-pi" <<'EOF'
+#!/usr/bin/env bash
+mkdir -p "$HOME/.pi/agent/npm/node_modules/pi-web-access"
+echo "added 210 packages, and audited 211 packages in 6s"
+echo "Installed npm:pi-web-access@0.35.0"
+exit 0
+EOF
+chmod +x "$TD/good-pi"
+rm -rf "$HOME/.pi/agent/npm"
+PI_LAUNCHER="$TD/good-pi" bash "$SCRIPT" >"$TD/good.out" 2>&1
+RC_GOOD=$?
+check "launcher installs the package → rc 0" "$([ "$RC_GOOD" -eq 0 ] && echo 1 || echo 0)"
+check "…and reports the launcher's own last line" \
+    "$(grep -q 'Installed npm:pi-web-access' "$TD/good.out" && echo 1 || echo 0)"
+
 # Fail loudly, never silently-half-register: break the manifest.
 mv "$HOME/.hermes-cortex/skills.yaml" "$HOME/.hermes-cortex/skills.yaml.bak"
 set +e
