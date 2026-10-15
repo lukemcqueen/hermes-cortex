@@ -2,22 +2,23 @@
 # bus-inbox-tick-2026-10-15-cycle-12668.sh — re-runnable capture of the
 # 2026-10-15 20:50 KST Agent-Bus inbox tick (governance cycle 12668/12671).
 #
-# Sections, in order:
+# Sections, in order — each label matches the order the script actually runs:
 #   1. bus-inbox-inspect.py --issues        (the tick's own silent-policy gate)
 #   2. queue / DLQ / forwarder state, both buses (pending grouped, not per-row)
-#   3. enabled cron jobs with last_status != ok — CAPTURED AFTER remediation
-#   4. the remediation itself: the scheduler invocation and its output, then
-#      the job's durable run history (which still holds the pre-fix failure)
+#   3. the remediation itself: the scheduler invocation and its output, then the
+#      job's durable run history (which still holds the pre-fix failure)
+#   4. enabled cron jobs with last_status != ok — captured here, i.e. AFTER the
+#      remediation in section 3
 #   5. daily regression gate re-run (the command the cron's script runs)
 #   6. scheduler status for the job AFTER the re-run
 #   7. health vector AFTER the re-run (index 2 = no_errored_crons)
 #   8. doctor overall line + rc
 #
-# Read-only except 4/5, which re-run an existing cron job's own script (no new
+# Read-only except 3/5, which re-run an existing cron job's own script (no new
 # artifacts). Every emitted line passes through ONE normaliser applied at
 # generation time (`bash <this> | sed "s|$HOME|~|g" > <this>.txt`); no committed
-# line is hand-patched. The gaps in the tool output are verbatim (the tools
-# print progress dots); nothing is elided by this script.
+# line is hand-patched. The transcript's ONLY elision is the labelled 20-line cap
+# on the run history in section 3b; nothing else is dropped.
 set -uo pipefail
 
 SCRIPTS="$HOME/.hermes-cortex/scripts"
@@ -58,7 +59,19 @@ PY
 echo "rc=$?"
 
 echo
-echo "=== 3. enabled cron jobs with last_status != ok (CAPTURED AFTER remediation) ==="
+echo "=== 3. the remediation: scheduler invocation, output, then durable run history ==="
+echo "--- 3a. command: hermes cron run $JOB"
+cron_out="$(hermes cron run "$JOB" 2>&1)"; cron_rc=$?
+printf '%s\n' "$cron_out"
+echo "rc=$cron_rc"
+echo "--- 3b. durable run history (newest first): the 03:15 builtin FAILURE, then the direct runs"
+runs_out="$(hermes cron runs "$JOB" 2>&1)"; runs_rc=$?
+printf '%s\n' "$runs_out" | sed -n '1,20p'
+echo "... (THIS is the transcript's only elision: the run history is capped at 20 lines by sed -n 1,20p)"
+echo "rc=$runs_rc"
+
+echo
+echo "=== 4. enabled cron jobs with last_status != ok (captured here, i.e. after section 3) ==="
 python3 - <<'PY'
 import json, os
 j = json.load(open(os.path.expanduser("~/.hermes/cron/jobs.json")))
@@ -71,18 +84,6 @@ print("enabled jobs total:", len(j))
 print("enabled non-ok jobs (at this capture):", len(bad), bad)
 PY
 echo "rc=$?"
-
-echo
-echo "=== 4. the remediation: scheduler invocation, output, then durable run history ==="
-echo "--- 4a. command: hermes cron run $JOB"
-cron_out="$(hermes cron run "$JOB" 2>&1)"; cron_rc=$?
-printf '%s\n' "$cron_out"
-echo "rc=$cron_rc"
-echo "--- 4b. durable run history (newest first): the 03:15 builtin FAILURE, then the direct runs"
-runs_out="$(hermes cron runs "$JOB" 2>&1)"; runs_rc=$?
-printf '%s\n' "$runs_out" | sed -n '1,20p'
-echo "... (history truncated here by the generator: sed -n 1,20p)"
-echo "rc=$runs_rc"
 
 echo
 echo "=== 5. daily regression gate re-run (same command the cron's script runs) ==="
