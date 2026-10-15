@@ -70,5 +70,13 @@ run "$OUT/05-search-ddg.txt" "pi turn: DuckDuckGo search + fetch_content" \
         "$PI" --model "$MODEL" \
         "Set provider to duckduckgo on web_search and query 'python asyncio taskgroup'; then fetch_content https://raw.githubusercontent.com/earendil-works/pi/main/README.md and report its first markdown heading. Be brief."
 
+# The DEPLOYED copies (flat under ~/.hermes-cortex/scripts/), not the repo
+# paths: the fleet runs the deployed tree, and a green check on the source
+# stand-in is a false green.
+DEPLOY="${CORTEX_DEPLOY_HOME:-$HOME/.hermes-cortex}"
+run "$OUT/06-deployed.txt" "deployed installer --check + deployed audit" \
+    bash -c "bash $DEPLOY/scripts/install-pi-integration.sh --check && \
+             bash $DEPLOY/scripts/audit-pi-integration.sh"
+
 echo
 if [[ "$FAILS" -eq 0 ]]; then echo "ALL STEPS rc=0"; exit 0; else echo "$FAILS STEP(S) NON-ZERO"; exit 1; fi
