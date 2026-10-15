@@ -205,6 +205,24 @@ else
 fi
 rm -f "$MARKER"
 
+# A FAILED package install must be DIAGNOSABLE. The launcher's own output is
+# the only thing that says why (npm 404, no network, a yanked version), so a
+# script that swallows it with >/dev/null 2>&1 exits 1 while telling the
+# operator nothing — and the next person re-runs it by hand to find out.
+FAIL_OUT="$TD/failing-install.out"
+cat > "$TD/failing-pi" <<'EOF'
+#!/usr/bin/env bash
+echo "npm ERR! 404 Not Found - GET https://registry.npmjs.org/pi-web-access" >&2
+exit 1
+EOF
+chmod +x "$TD/failing-pi"
+rm -rf "$HOME/.pi/agent/npm"          # force the install path, not the already-installed skip
+PI_LAUNCHER="$TD/failing-pi" bash "$SCRIPT" >"$FAIL_OUT" 2>&1
+RC_FAIL=$?
+check "failed package install → non-zero exit" "$([ "$RC_FAIL" -ne 0 ] && echo 1 || echo 0)"
+check "failed package install → the launcher's own output is surfaced" \
+    "$(grep -q '404 Not Found' "$FAIL_OUT" && echo 1 || echo 0)"
+
 # Fail loudly, never silently-half-register: break the manifest.
 mv "$HOME/.hermes-cortex/skills.yaml" "$HOME/.hermes-cortex/skills.yaml.bak"
 set +e

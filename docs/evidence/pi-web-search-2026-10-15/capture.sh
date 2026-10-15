@@ -78,5 +78,31 @@ run "$OUT/06-deployed.txt" "deployed installer --check + deployed audit" \
     bash -c "bash $DEPLOY/scripts/install-pi-integration.sh --check && \
              bash $DEPLOY/scripts/audit-pi-integration.sh"
 
+# Same emitter, but a non-zero rc is RECORDED without failing the capture: the
+# doctor exits 1 on warnings, which are pre-existing on this host and not a
+# property of the change under test.
+run_soft() {
+  local out="$1" label="$2"; shift 2
+  local rc
+  {
+    echo "### $label"
+    echo "\$ $*"
+    echo
+    "$@" 2>&1
+    rc=$?
+    echo
+    echo "rc=$rc"
+  } | norm > "$out"
+  rc="$(sed -n 's/^rc=//p' "$out" | tail -1)"
+  printf '  %-38s rc=%s -> %s (warn-only allowed)\n' "$label" "${rc:-?}" "${out##*/}"
+}
+
+# The doctor's own counts + rc. Claimed in a note it is an unverified claim;
+# committed beside the command that produced it, it is evidence. Run BARE — no
+# pipe, no `|| true`: a piped rc is the last stage's status, so `doctor | grep`
+# would record grep's 0 and print a green line under a failing doctor.
+run_soft "$OUT/07-doctor.txt" "cortex-doctor.py (counts + rc)" \
+    python3 "$REPO/ops/scripts/manage/cortex-doctor.py" --quiet
+
 echo
 if [[ "$FAILS" -eq 0 ]]; then echo "ALL STEPS rc=0"; exit 0; else echo "$FAILS STEP(S) NON-ZERO"; exit 1; fi

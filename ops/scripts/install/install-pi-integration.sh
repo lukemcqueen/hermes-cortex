@@ -420,12 +420,22 @@ if [[ "$MODE" == "add" ]]; then
     echo "  package already installed: $PKG_DIR"
   elif [[ -n "$PI_LAUNCHER" && -x "$PI_LAUNCHER" ]]; then
     echo "  installing $PI_WEB_SEARCH_PACKAGE via $PI_LAUNCHER ..."
-    if "$PI_LAUNCHER" install "$PI_WEB_SEARCH_PACKAGE" >/dev/null 2>&1; then
+    # Capture the launcher's output instead of discarding it. It is the only
+    # thing that says WHY an install failed (npm 404, no network, a yanked
+    # version), and a bare "run it by hand to see why" makes the operator
+    # re-run the whole thing to find out what the script already knew.
+    INSTALL_LOG="$(mktemp "${TMPDIR:-/tmp}/pi-web-search-install.XXXXXX")"
+    if "$PI_LAUNCHER" install "$PI_WEB_SEARCH_PACKAGE" >"$INSTALL_LOG" 2>&1; then
       echo "  ✓ installed $PI_WEB_SEARCH_PACKAGE"
+      rm -f "$INSTALL_LOG"
     else
-      echo "install-pi-integration: package install FAILED for $PI_WEB_SEARCH_PACKAGE" >&2
-      echo "  Run it by hand to see why: $PI_LAUNCHER install $PI_WEB_SEARCH_PACKAGE" >&2
+      rc_install=$?
+      echo "install-pi-integration: package install FAILED for $PI_WEB_SEARCH_PACKAGE (rc=$rc_install)" >&2
+      echo "  --- $PI_LAUNCHER said (last 20 lines) ---" >&2
+      tail -n 20 "$INSTALL_LOG" >&2
+      echo "  --- end of installer output ---" >&2
       echo "  The declaration stays in ${SETTINGS}; re-run this script to retry." >&2
+      rm -f "$INSTALL_LOG"
       exit 1
     fi
   else
