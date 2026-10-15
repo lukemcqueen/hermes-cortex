@@ -180,3 +180,30 @@ E. DOCTOR — measured BEFORE deploy (expected red on the changed file)
     Warnings present in the same run (pre-existing, not caused by this change):
       Repo clean (working tree has this change), Skill drift x2,
       Stranded slices, loop-gov daemon, Orphan crons / Extra cron (info).
+
+F. POST-DEPLOY VERIFICATION (deploy = cortex-dogfood.sh --force, commit 74631bc0)
+-------------------------------------------------------------------------------
+F1. deploy/dogfood:
+    command: bash ~/.hermes-cortex/scripts/cortex-dogfood.sh --force; echo rc=$?
+    result:  ✅ DOGFOOD PASSED — deployed state verified clean.   rc=0
+    (its embedded doctor run ends: "⚠️ Overall: WARNING (466 pass · 4 warn ·
+     0 fail · 3 info)" — the pre-deploy fail `Checksum: task-db.py` is gone.
+     The 4 remaining warnings are the pre-existing skill drift x2, the
+     loop-gov daemon's stale module, and one cron-rename notice. The deploy
+     also announced GATEWAY RESTART REQUIRED for the enforcement chain — a
+     pending restart, not a code bug; this cycle changed no enforcement file.)
+
+F2. DEPLOYED-PATH probe — the same refusal, run through the deployed copy
+    rather than the repo tree (change-checklist "test the deployed path"):
+    command: python3 ~/.hermes-cortex/scripts/task-db.py update \
+               546f5f3a-3e99-420c-a1f1-c830d5b365cb --status in_progress \
+               --reason "deployed-path probe (expect refusal)"
+    output:  ❌ Task 546f5f3a... is already in_progress — refusing the no-op:
+             --reason would NOT be recorded as an event (the trigger skips
+             same-status updates). Record the note as a governance issue event
+             instead.
+    rc=1
+
+    Deploy is the LAST step before the push; nothing was committed between the
+    deploy and this probe.
+
