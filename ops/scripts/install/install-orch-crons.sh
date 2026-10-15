@@ -606,7 +606,7 @@ PUSHBACK CONTRACT (SOUL Principle 5): before pruning/deleting a skill, rewriting
 
 If nothing changed: output exactly [SILENT]" \
   "orch-skill-lifecycle" "terminal,file,web" "origin" "" "false" \
-  "$LLM_CRON_MODEL" "$LLM_CRON_PROVIDER" "none"
+  "" "" "none"
 
 # ── 4. Skill Report Pipeline ──────────────────────────────
 printf "${CYAN}  4. Skill Report Pipeline${RESET}\n"
@@ -635,7 +635,7 @@ Your job is to:
   "origin" \
   "" \
   "false" \
-  "$LLM_CRON_MODEL" "$LLM_CRON_PROVIDER" "none"
+  "" "" "none"
 
 # Autonomy digest (O4-S2) — daily "what ran unattended" shadow digest 07:30
 # (no_agent: runs autonomy-classifier.py --digest --ledger for last 24h;
@@ -683,6 +683,10 @@ printf "${CYAN}  5. Backlog Driver${RESET}\n"
 # closes them, reports to Telegram. LLM-driven: deciding WHAT to do with a
 # task needs reasoning (dispatch vs self-fix vs escalate vs block).
 # 4 runs/day off-peak (08/14/20/22 KST); minute is per-host hashed by create_cron (Luke 08-07, cost-cut 08-31).
+# Model/provider deliberately NOT passed: an unpinned cron inherits the LLM_CRON_*
+# env chain (the fleet's single model control point), which is what
+# ops/install/cron-manifest.yaml declares (model/provider '') and what the doctor's
+# Cron-manifest-drift check enforces.
 create_cron "orch-bus-worker" "0 8,14,20,22 * * *" \
   "session-active-guard.py" \
   "Load the orch-bus-worker skill and run the backlog loop (F-023).
@@ -710,8 +714,7 @@ Never fabricate results. A completed task without verified evidence is a lie —
   "terminal,file" \
   "telegram:${TELEGRAM_HOME_CHANNEL}" \
   "" \
-  "false" \
-  "$LLM_CRON_MODEL" "$LLM_CRON_PROVIDER"
+  "false"
 
 echo ""
 printf "${CYAN}━━━ Summary ━━━${RESET}\n"
