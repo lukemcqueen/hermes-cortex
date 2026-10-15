@@ -1,0 +1,16 @@
+### installer (add, then --check)
+$ bash -c bash ~/hermes-cortex/ops/scripts/install/install-pi-integration.sh &&              bash ~/hermes-cortex/ops/scripts/install/install-pi-integration.sh --check
+
+Registered in ~/.pi/agent/settings.json (user scope — applies to EVERY Pi project):
+  extension: ~/.hermes-cortex/harnesses/pi/extensions/cortex-context.ts
+  extension: ~/.hermes-cortex/harnesses/pi/extensions/cortex-governance.ts
+  skills:    ~/.pi/agent/cortex-skills  (7 skills from ~/.hermes-cortex/skills.yaml)
+  package:   npm:pi-web-access@0.35.0
+  web search config: ~/.pi/agent/web-search.json — already present (left untouched)
+Restart any running Pi session (or /reload) to pick this up.
+  package already installed: ~/.pi/agent/npm/node_modules/pi-web-access
+  ✓ extensions registered (cortex-context.ts, cortex-governance.ts), 7 curated skills present
+  ✓ web search: npm:pi-web-access@0.35.0 declared, keyless chain ['exa', 'duckduckgo'] configured
+install-pi-integration: registered
+
+rc=0

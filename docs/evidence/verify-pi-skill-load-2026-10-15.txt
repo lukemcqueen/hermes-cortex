@@ -1,0 +1,119 @@
+repo:      ~/hermes-cortex
+base rev:  3605acb8ebee4d1e15d5baa1e0b1ad182d89af9e  (the extension revision this change starts from)
+date:      2026-10-15T04:33:21Z
+
+=== 1. Pi's installed package: no skill_view, read loads a skill file ===
+pi release: ~/.pi/agent/install/releases/1.2.0
+driven via: createReadToolDefinition
+base tools: read
+read.parameters: {"type":"object","required":["path"],"properties":{"path":{"type":"string","description":"Path to the file to read (relative or absolute)"},"offset":{"type":"number","description":"Line number to start reading from (1-indexed)"},"limit":{"type":"number","description":"Maximum number of lines to read"}}}
+read parameter keys: path, offset, limit
+--- formatSkillsForPrompt(skills, 'read') ---
+The following skills provide specialized instructions for specific tasks.
+Use the read tool to load a skill's file when the task matches its description.
+When a skill file references a relative path, resolve it against the skill directory (parent of SKILL.md / dirname of the path) and use that absolute path in tool commands.
+
+<available_skills>
+  <skill>
+    <name>reflexion-check</name>
+    <description>Pre-delivery self-critique</description>
+    <location>/skills/software-development/reflexion-check/SKILL.md</location>
+  </skill>
+</available_skills>
+pi bundle mentions skill_view: false
+probe rc=0
+PASS  the probe RAN (rc 0) — a probe that could not run is not a negative result
+PASS  Pi's read tool takes 'path' (the parameter the handler must read)
+PASS  Pi's own prompt says the READ tool loads a skill's file
+PASS  the installed Pi bundle mentions skill_view: false (NO such tool)
+
+=== 2. The real extension records Pi's mechanism ===
+✅ hook registered: tool_result
+✅ before_agent_start returns { systemPrompt } built on the event's prompt (injection IS the return value)
+✅ the restored checkpoint is INJECTED (done + pending present)
+✅ the injection names the session key it restored
+✅ turn_end WROTE a checkpoint (the trigger fired without the model asking)
+✅ the checkpoint carries the turn's tool names: ["read","edit"]
+✅ the checkpoint carries the turn's note text
+✅ an empty turn writes NO checkpoint (a checkpoint that looks like continuity and carries none is worse than none)
+✅ a read of a SKILL.md records skill-load evidence (recorded 1)
+✅ …under its TRUE tool name 'read', never a fabricated skill_view (got "read")
+✅ …carrying the read's own input (got "/skills/software-development/reflexion-check/SKILL.md")
+✅ …keyed to the session the GATE queries, not CORTEX_SESSION_KEY (got "sess_test_govkey")
+✅ a read of a NON-skill file records nothing (the store is evidence, not a transcript)
+✅ skill_view still records (the Hermes mechanism is untouched)
+✅ the recorded path is the one actually read (no hardcoded skill) — offset/limit keys do not confuse it
+CORTEX_GOV_SESSION unavailable (Error: Command failed: python3 ~/.hermes/cache/scratch/cortex-verify-r3dg7N/stub-gov.py session_identity {})
+CORTEX_TOOL_EVENT read NOT RECORDED — could not resolve the governance session id (see the CORTEX_GOV_SESSION line above); the reflexion gate will report this skill as NOT-LOADED.
+✅ governance CLI mode 'fail': the handler does not throw (no throw)
+✅ governance CLI mode 'fail': NO evidence recorded under an invented key
+CORTEX_GOV_SESSION unavailable (SyntaxError: Unexpected token 'o', "not json at all" is not valid JSON)
+CORTEX_TOOL_EVENT read NOT RECORDED — could not resolve the governance session id (see the CORTEX_GOV_SESSION line above); the reflexion gate will report this skill as NOT-LOADED.
+✅ governance CLI mode 'badjson': the handler does not throw (no throw)
+✅ governance CLI mode 'badjson': NO evidence recorded under an invented key
+CORTEX_GOV_SESSION no effective_session_id in the CLI's answer
+CORTEX_TOOL_EVENT read NOT RECORDED — could not resolve the governance session id (see the CORTEX_GOV_SESSION line above); the reflexion gate will report this skill as NOT-LOADED.
+✅ governance CLI mode 'nokey': the handler does not throw (no throw)
+✅ governance CLI mode 'nokey': NO evidence recorded under an invented key
+✅ the extension asked the SHARED governance CLI for the session id (session_identity)
+
+✅ EXTENSION OK — registers no tools (MCP owns them) and its lifecycle hooks execute.
+post-fix guard rc=0
+PASS  post-fix: the extension guard PASSES (rc 0)
+PASS  post-fix: a read of a SKILL.md recorded evidence
+PASS  post-fix: it recorded the TRUE tool name 'read'
+PASS  post-fix: it was keyed to the session the gate queries
+PASS  post-fix: a non-skill read records nothing
+
+=== 3. The same guard against the PRE-FIX extension must FAIL ===
+PASS  the pre-fix revision was extracted (non-empty)
+PASS  the extracted file really IS pre-change (no session_identity)
+✅ extension default export is a function (pi registers it)
+✅ extension registers ZERO tools (got 0) — the tools come from the shared cortex-context MCP server, so a second definition here is the phantom bug
+✅ hook registered: before_agent_start
+✅ hook registered: turn_end
+✅ hook registered: session_before_compact
+✅ hook registered: tool_result
+✅ before_agent_start returns { systemPrompt } built on the event's prompt (injection IS the return value)
+✅ the restored checkpoint is INJECTED (done + pending present)
+✅ the injection names the session key it restored
+✅ turn_end WROTE a checkpoint (the trigger fired without the model asking)
+✅ the checkpoint carries the turn's tool names: ["read","edit"]
+✅ the checkpoint carries the turn's note text
+✅ an empty turn writes NO checkpoint (a checkpoint that looks like continuity and carries none is worse than none)
+❌ a read of a SKILL.md records skill-load evidence (recorded 0)
+✅ a read of a NON-skill file records nothing (the store is evidence, not a transcript)
+✅ skill_view still records (the Hermes mechanism is untouched)
+❌ the recorded path is the one actually read (no hardcoded skill) — offset/limit keys do not confuse it
+✅ governance CLI mode 'fail': the handler does not throw (no throw)
+✅ governance CLI mode 'fail': NO evidence recorded under an invented key
+✅ governance CLI mode 'badjson': the handler does not throw (no throw)
+✅ governance CLI mode 'badjson': NO evidence recorded under an invented key
+✅ governance CLI mode 'nokey': the handler does not throw (no throw)
+✅ governance CLI mode 'nokey': NO evidence recorded under an invented key
+❌ the extension asked the SHARED governance CLI for the session id (session_identity)
+❌ EXTENSION BROKEN — 3 check(s) failed:
+pre-fix guard rc=1
+PASS  pre-fix: the guard FAILS (rc non-zero) — the defect is real and the guard sees it
+PASS  pre-fix: it fails on the load-recording case specifically
+
+=== 4. Checker: both mechanisms, the seam, and the real store round trip ===
+✅ test_identity_matches_the_lock_the_gate_will_query
+✅ test_identity_before_begin_change_uses_the_id_the_lock_will_carry
+✅ test_identity_prefers_an_interactive_lock_over_a_cron_one
+✅ test_the_predicate_accepts_both_mechanisms_and_demands_the_own_directory
+✅ test_a_like_wildcard_in_a_skill_name_cannot_over_match
+✅ test_a_skill_name_containing_a_like_wildcard_does_not_over_match
+✅ test_a_loaded_row_is_reported_loaded_both_ways
+✅ test_real_store_round_trip_accepts_a_pi_read_and_refuses_an_unrelated_read
+✅ test_the_extension_asks_the_shared_cli_for_the_session_id
+
+✅ ALL TESTS PASSED
+checker rc=0
+PASS  checker suite PASSES (rc 0)
+PASS  checker: a Pi read is honoured by the REAL store
+PASS  checker: no fixture debris left behind
+
+=== Summary ===
+step groups failed: 0
+RESULT: ALL PASS

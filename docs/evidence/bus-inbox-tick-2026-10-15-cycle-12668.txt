@@ -1,0 +1,92 @@
+=== 1. bus-inbox-inspect.py --issues (empty output + rc=0 == tick silent policy) ===
+rc=0
+
+=== 2. queue / DLQ / forwarder state (pending grouped by queue+from+subject) ===
+inspect rc=0
+local: queue_total=22 inspection_error=None
+  non-DLQ non-empty (name,depth,processing): [('inbox_orchestrator', 5, 0)]
+  DLQ non-empty: []
+  pending inbox_orchestrator from=esther  subject=DOCTOR_TEST                priority=None n=2 oldest=2026-10-15 12:00:21.107948+00 newest=2026-10-15 12:02:06.374875+00
+  pending inbox_orchestrator from=esther  subject=HEALTH_PERSISTENT_ISSUES   priority=None n=2 oldest=2026-10-15 12:02:06.52174+00 newest=2026-10-15 12:04:05.517185+00
+  pending inbox_orchestrator from=moses   subject=HEALTH_PERSISTENT_ISSUES   priority=None n=1 oldest=2026-10-15 12:02:07.962263+00 newest=2026-10-15 12:02:07.962263+00
+primary: queue_total=13 inspection_error=None
+  non-DLQ non-empty (name,depth,processing): [('inbox_health_check', 2, 0), ('inbox_orchestrator', 6, 0)]
+  DLQ non-empty: []
+  pending inbox_orchestrator from=esther  subject=DOCTOR_TEST                priority=None n=1 oldest=2026-10-15 12:00:24.502404+00 newest=2026-10-15 12:00:24.502404+00
+  pending inbox_orchestrator from=moses   subject=DOCTOR_TEST                priority=None n=1 oldest=2026-10-15 12:00:28.311876+00 newest=2026-10-15 12:00:28.311876+00
+  pending inbox_health_check from=esther  subject=HEALTH_PERSISTENT_ISSUES   priority=None n=1 oldest=2026-10-15 12:00:32.580134+00 newest=2026-10-15 12:00:32.580134+00
+  pending inbox_orchestrator from=esther  subject=HEALTH_PERSISTENT_ISSUES   priority=None n=3 oldest=2026-10-15 12:00:32.626384+00 newest=2026-10-15 12:04:05.534782+00
+  pending inbox_health_check from=moses   subject=HEALTH_PERSISTENT_ISSUES   priority=None n=1 oldest=2026-10-15 12:00:48.705705+00 newest=2026-10-15 12:00:48.705705+00
+  pending inbox_orchestrator from=moses   subject=HEALTH_PERSISTENT_ISSUES   priority=None n=1 oldest=2026-10-15 12:00:48.754861+00 newest=2026-10-15 12:00:48.754861+00
+forwarder: last_run=2026-10-15T12:04:07.725840+00:00 peer_to_local=28262 local_to_peer=11110
+failover: active=False last_status=idle
+rc=0
+
+=== 3. the remediation: scheduler invocation, output, then durable run history ===
+--- 3a. command: hermes cron run d39c3b3eca5d
+Triggered job: orch-daily-regression-gate (d39c3b3eca5d)
+  Next run: 2026-10-16T03:15:00+09:00
+  Ran now: succeeded.
+rc=0
+--- 3b. durable run history (newest first): the 03:15 builtin FAILURE, then the direct runs
+2404d3b56112426784a2d36bf337a706  completed  job=d39c3b3eca5d  source=direct  2026-10-15T21:04:42.205824+09:00
+155356cc93694fa483a0e5def05eed36  completed  job=d39c3b3eca5d  source=direct  2026-10-15T20:58:27.871158+09:00
+df323485080b4912b328556faff28f46  completed  job=d39c3b3eca5d  source=direct  2026-10-15T20:53:07.423718+09:00
+8d76c1c9d563460fa17db62e6c8ecaf0  failed     job=d39c3b3eca5d  source=builtin  2026-10-15T03:15:44.314586+09:00
+    Script exited with code 1
+stdout:
+❌ Daily regression gate FAILED (rc=1) — 2026-10-15 03:16 KST
+
+============================================================
+Eval Results: regression-golden
+Golden task suite v1 — bus round-trip, task lifecycle, EXEC round-trip, doctor clean, core skills
+============================================================
+Overall: 83% pass (5/6 tasks)
+
+  ✓ PASS: bus-send-read
+      bus_round_trip: send→read→archive OK (msg c64cb5fd, correlation regressi…) via lib.cortex_bus
+  ✗ FAIL: task-lifecycle
+      task_lifecycle: probe task not found in list output
+  ✓ PASS: exec-round-trip
+      exec_round_trip: python3 exec round-trip OK
+... (THIS is the transcript's only elision: the run history is capped at 20 lines by sed -n 1,20p)
+rc=0
+
+=== 4. enabled cron jobs with last_status != ok (captured here, i.e. after section 3) ===
+enabled jobs total: 27
+enabled non-ok jobs (at this capture): 0 []
+rc=0
+
+=== 5. daily regression gate re-run (same command the cron's script runs) ===
+============================================================
+Eval Results: regression-golden
+Golden task suite v1 — bus round-trip, task lifecycle, EXEC round-trip, doctor clean, core skills
+============================================================
+Overall: 100% pass (6/6 tasks)
+
+  ✓ PASS: bus-send-read
+      bus_round_trip: send→read→archive OK (msg 7066a639, correlation regressi…) via lib.cortex_bus
+  ✓ PASS: task-lifecycle
+      task_lifecycle: add→list→update→delete OK (probe 9a0a9f7e… removed)
+  ✓ PASS: exec-round-trip
+      exec_round_trip: python3 exec round-trip OK
+  ✓ PASS: doctor-clean
+      doctor_clean: doctor clean (pass 461, warn 6, fail 0)
+  ✓ PASS: core-skills
+      core_skills: all 7 always-skills present and loadable
+  ✓ PASS: fact-retention
+      fact_retention: compaction fact-retention OK — head 2/2, tail 3/3, user 2/2 verbatim, summary marker present (middle 1/2 (informational))
+
+rc=0
+
+=== 6. scheduler status for the job AFTER the re-run ===
+last_status=ok failure_streak=0 last_run_at=2026-10-15T21:04:58.354833+09:00
+rc=0
+
+=== 7. health vector AFTER the re-run (index 2 == no_errored_crons) ===
+{"v": [1, 1, 1, 1, 1, 1, 1, 1, 1], "h": "e", "t": 1792065921}
+rc=0
+
+=== 8. doctor overall line ===
+  ⚠️  Overall: WARNING  (464 pass · 6 warn · 0 fail · 3 info)
+rc=1  (warnings do not block; the push gate blocks on FAIL only)

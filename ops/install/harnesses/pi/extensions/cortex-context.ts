@@ -60,6 +60,16 @@ const CLI =
   `${process.env.HOME}/.hermes-cortex/scripts/cortex-context.py`;
 
 /**
+ * The GOVERNANCE CLI. The reflexion gate keys its question to the ACTIVE
+ * GOVERNANCE LOCK's session id, so the writer has to ask the same implementation
+ * for that id (`session_identity`) instead of inventing a second key. Same rule
+ * the write gate follows: one implementation, asked, never re-derived.
+ */
+const GOV_CLI =
+  process.env.CORTEX_GOVERNANCE_CLI ??
+  `${process.env.HOME}/.hermes-cortex/scripts/loop-gov.py`;
+
+/**
  * The interpreter. macOS matters here: `python3` may not be on Pi's PATH (a
  * Homebrew python is at /opt/homebrew/bin on Apple Silicon, /usr/local/bin on
  * Intel), and a GUI-launched Pi sees a narrower PATH than your shell. Override
@@ -172,6 +182,45 @@ const fail = (message: string) => {
   appendBounded(message);
 };
 
+/**
+ * The session id the reflexion gate will query, asked of the SHARED governance
+ * implementation (`loop-gov.py session_identity` → loop-gov-mcp.py's predicate).
+ *
+ * The gate answers from the active lock's session id, so the writer must use that
+ * same id. It is deliberately NOT read out of a file or out of CORTEX_SESSION_KEY:
+ * either would be a second derivation of "which session is this", and a second
+ * derivation is how the writer and the checker come to disagree — which is the
+ * defect this replaces (every Pi commit was refused because the evidence landed
+ * under `hc-pi-<chat>` while the gate asked about `sess_<hex>`).
+ *
+ * Returns "" when the id cannot be resolved. The caller REPORTS that failure and
+ * records nothing: inventing a key would recreate the disagreement silently.
+ * Read-only and side-effect-free apart from the CLI's own id file.
+ */
+async function gateSessionKey(): Promise<string> {
+  try {
+    const { stdout } = await run(PYTHON, [GOV_CLI, "session_identity", "{}"], {
+      timeout: 20_000,
+      maxBuffer: 1 * 1024 * 1024,
+      encoding: "utf8",
+    });
+    const parsed = JSON.parse((stdout ?? "").trim() || "{}");
+    const key = typeof parsed?.effective_session_id === "string"
+      ? parsed.effective_session_id.trim()
+      : "";
+    if (!key) {
+      fail("CORTEX_GOV_SESSION no effective_session_id in the CLI's answer\n");
+    }
+    return key;
+  } catch (err) {
+    // Missing CLI, a non-zero exit, a timeout, or malformed JSON all land here.
+    // They are the SAME outcome for this writer — no key, so no evidence — and
+    // they are reported with the reason rather than swallowed.
+    fail(`CORTEX_GOV_SESSION unavailable (${String(err).split("\n")[0]})\n`);
+    return "";
+  }
+}
+
 export default function (pi: any) {
   // ── 1. Session start: RESUME, injected via the return value ──────
   pi.on("before_agent_start", async (event: any) => {
@@ -225,25 +274,59 @@ export default function (pi: any) {
     });
   });
 
-  // ── 4. Record tool events: the pre-commit reflexion gate's evidence ──────
+  // ── 4. Record skill loads: the pre-commit reflexion gate's evidence ──────
   //
   // A Pi commit is gated by the same global git hook as a Hermes one, and that gate
-  // asks HC's own store "did this session load skill X?". Nothing recorded it for
-  // Pi, so a Pi session's commit was REFUSED no matter what the agent did — the
-  // gate was satisfiable only by a harness that had a writer. Measured before this
-  // hook existed: `hc-reflexion-check.py --session pi:<repo>:<branch>` => NOT-LOADED.
+  // asks HC's own store "did this session load skill X?".
   //
-  // Only gate-relevant tools are recorded, not every call: the store is evidence,
-  // not a transcript. A failure is reported, never silent — a silent failure here is
-  // indistinguishable from an agent that loaded nothing.
+  // HERMES loads a skill with `skill_view`. PI HAS NO SUCH TOOL — verified by
+  // driving the installed Pi package through its own factory, 2026-10-15:
+  // `createReadToolDefinition(...).parameters` is `{path, offset, limit}`, the Pi
+  // bundle contains no `skill_view` at all, and Pi's OWN system prompt says "Use
+  // the read tool to load a skill's file when the task matches its description".
+  //
+  // Keying this handler on `toolName === "skill_view"` therefore recorded NOTHING
+  // for a Pi session: the reflexion gate refused every Pi commit no matter how
+  // well the agent behaved, and an agent that read a skill the only way its
+  // harness allows was indistinguishable from one that loaded nothing. Both
+  // mechanisms are recorded now, each under its TRUE tool name — the store must
+  // never claim a `skill_view` that did not happen.
+  //
+  // The event is keyed to the session the GATE will query (`session_identity`),
+  // not to CORTEX_SESSION_KEY: the gate asks about the governance lock's session
+  // id, so a second key can only ever disagree with it.
+  //
+  // Only gate-relevant tool calls are recorded, not every call: the store is
+  // evidence, not a transcript. A failure is reported, never silent — a silent
+  // failure here is indistinguishable from an agent that loaded nothing, which is
+  // exactly the bug this handler exists to remove.
   pi.on("tool_result", async (event: any) => {
     // The base ToolResultEvent has no toolName; the concrete variants do, so read
     // it defensively rather than assuming the general shape.
     const toolName = typeof event?.toolName === "string" ? event.toolName : "";
-    if (toolName !== "skill_view") return;
+    const input = event?.input ?? {};
+    const readPath = typeof input?.path === "string" ? input.path : "";
+
+    // Pi's mechanism: a read of the skill's own file (<dir>/<skill>/SKILL.md).
+    const skillFromPath = readPath.endsWith("/SKILL.md")
+      ? readPath.slice(0, -"/SKILL.md".length).split("/").pop() ?? ""
+      : "";
+    const isPiSkillLoad = toolName === "read" && skillFromPath !== "";
+    if (toolName !== "skill_view" && !isPiSkillLoad) return;
+
+    const sessionKey = await gateSessionKey();
+    if (!sessionKey) {
+      fail(
+        `CORTEX_TOOL_EVENT ${toolName} NOT RECORDED — could not resolve the ` +
+          `governance session id (see the CORTEX_GOV_SESSION line above); the ` +
+          `reflexion gate will report this skill as NOT-LOADED.\n`
+      );
+      return;
+    }
     const raw = await cortex("session_tool_event", {
       tool_name: toolName,
-      content: event?.input ?? {},
+      content: input,
+      session_key: sessionKey,
     });
     if (raw) note(`CORTEX_TOOL_EVENT ${toolName} recorded\n`);
     else fail(`CORTEX_TOOL_EVENT ${toolName} FAILED\n`);

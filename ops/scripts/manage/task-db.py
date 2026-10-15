@@ -701,6 +701,27 @@ def cmd_update(task_id: str, new_status: str, reason: str | None = None,
     else:
         _check_uuid(task_id)
 
+    # ── No-op honesty gate (2026-10-15) ──────────────────────────────
+    # tasks.event_after_update() returns early when OLD.status IS NOT
+    # DISTINCT FROM NEW.status (v005__lifecycle.sql), so a same-status
+    # update records NO task_events row and the --reason text is DISCARDED.
+    # The checkmark used to print regardless — a false success that lost
+    # two orchestrator dispatch notes on 2026-10-14. Resolve the current
+    # status first and report what the database will actually do.
+    current = psql(
+        "SELECT status FROM tasks.tasks WHERE id = ?::uuid;", [task_id],
+    ).split("\n")[0].strip()
+    if current and current == new_status:
+        if reason:
+            print(
+                f"❌ Task {task_id[:8]}... is already {new_status} — refusing "
+                f"the no-op: --reason would NOT be recorded as an event (the "
+                f"trigger skips same-status updates). Record the note as a "
+                f"governance issue event instead.", file=sys.stderr)
+            sys.exit(1)
+        print(f"• Task {task_id[:8]}... already {new_status} — no change")
+        return
+
     if reason:
         _require_v2("--reason")
         # Set the session GUC that the transition/event triggers read.
@@ -712,6 +733,25 @@ def cmd_update(task_id: str, new_status: str, reason: str | None = None,
             "NULL, NULL, NULL);",
             [reason, task_id, new_status],
         )
+        # Recheck after the write (adversarial finding ADV-12676-1): the probe
+        # above and this upsert are two round trips, so a concurrent status
+        # change in between can make the trigger discard the reason while the
+        # CLI still prints success. Read the recorded event back and report a
+        # mismatch instead of assuming.
+        recorded = psql(
+            "SELECT reason FROM tasks.task_events WHERE task_id = ?::uuid "
+            "AND event_type = 'status_changed' AND to_status = ? "
+            "ORDER BY id DESC LIMIT 1;",
+            [task_id, new_status],
+        ).split("\n")[0].strip()
+        if recorded != reason:
+            print(
+                f"❌ Task {task_id[:8]}... → {new_status} was written, but the "
+                f"event trail shows no matching status_changed event "
+                f"(recorded={recorded or 'none'}) — the reason was NOT "
+                f"recorded. This is the concurrent-update path; re-run the "
+                f"command.", file=sys.stderr)
+            sys.exit(1)
     else:
         psql(
             "SELECT tasks.task_upsert(?::uuid, NULL, NULL, NULL, NULL, NULL, "

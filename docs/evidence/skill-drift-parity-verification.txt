@@ -1,0 +1,46 @@
+skill-drift parity verification — captured run
+=============================================
+
+Subject : ops/scripts/manage/verify-skill-drift-parity.sh (re-runnable evidence)
+Range   : ac2bc27e fix(skills): land 2 stranded deployed skill lessons into the repo
+          b53a16b8 chore(evidence): refresh skill-drift parity report to PASS
+Host    : esther (orchestrator, hot backup)
+When    : 2026-10-16 05:0x KST   (run under cycle #12694)
+
+Command
+-------
+  bash ops/scripts/manage/verify-skill-drift-parity.sh ; echo "EXIT=$?"
+
+Output (verbatim)
+------------------
+== C1: cortex-doctor skill drift ==
+PASS: no drift warning
+== C2: stranded parity ==
+PASS: Detector verdict: PASS · stranded: 0
+== C3: repo vs deployed md5 ==
+PASS: autonomous-ai-agents/pi-coding-agent 12fcdb891e0196f52f97c2325a087ab4
+PASS: devops/shell-scripting 789f3f87561f28cd27ace33983009b28
+== C4: fence balance (even) ==
+PASS: autonomous-ai-agents/pi-coding-agent fences=16 (even)
+PASS: devops/shell-scripting fences=78 (even)
+== C5: secret-leak-detector ==
+PASS: scanner produced no blocking report
+
+ALL CHECKS PASSED
+EXIT=0
+
+What this retires
+-----------------
+ADV-12689-1 (technique: unverified-claim) asked that the verification outputs be
+committed as re-runnable evidence rather than left as prose in a self-report.
+C1-C5 above are now executed by a committed script; a reviewer re-runs one
+command and gets the same exit status.
+
+Superset proof for the two recovered files (the pre-sync check)
+---------------------------------------------------------------
+  diff skills/<s>/SKILL.md ~/.hermes/skills/<s>/SKILL.md | grep '^<'
+produced no output for either path (no repo-only lines — pure superset, so the
+reconcile could not drop repo content):
+  autonomous-ai-agents/pi-coding-agent  -> +29 -0  (pure superset)
+  devops/shell-scripting                -> +27 -0  (pure superset)
+reconcile-stranded-skills.py --apply reported applied=2 need-review=0 missing=0.

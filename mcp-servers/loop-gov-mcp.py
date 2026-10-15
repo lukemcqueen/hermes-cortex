@@ -2187,6 +2187,16 @@ async def list_tools(ctx, params=None) -> ListToolsResult:
             },
         ),
         Tool(
+            name="session_identity",
+            description="Which governance session id must EVIDENCE be recorded under? READ-ONLY. Returns {session_id (this caller's own), repo_path, repo_slug, lock_session_id, covering_locks, effective_session_id, note}. A harness that records evidence the pre-commit reflexion gate reads (e.g. the Pi extension, on a skill load) must key it to `effective_session_id`, because the gate answers from the ACTIVE LOCK's session_id — resolving a second key is how the writer and the checker come to disagree and every commit is refused. `effective_session_id` is the covering lock's session id when one exists, else this caller's own per-repo id (the value begin_change will stamp on the lock), so a skill load made BEFORE begin_change is still recorded under the id the gate will later ask about. Resolves the repo through the same predicate as check_repo_lock; never refuses.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "repo_path": {"type": "string", "description": "Absolute path to the session's repo root (default: the cwd)"},
+                },
+            },
+        ),
+        Tool(
             name="cycle_query",
             description="Query scored cycles. Filter by task_id, min_score, max_score, limit.",
             inputSchema={
@@ -2412,6 +2422,7 @@ async def call_tool(ctx, params=None) -> CallToolResult:
             "end_change": _end_change,
             "check_lock": _check_lock,
             "check_repo_lock": _check_repo_lock,
+            "session_identity": _session_identity,
             "cycle_query": _cycle_query,
             "cycle_stats": _cycle_stats,
             "config_show": _config_show,
@@ -5387,6 +5398,82 @@ def _live_locks() -> list[dict]:
             "file": lock_file.name,
         })
     return locks
+
+
+def _session_identity(args: dict | None = None) -> CallToolResult:
+    """Which governance session id must EVIDENCE be recorded under? (READ-ONLY)
+
+    The pre-commit reflexion gate answers its question from the session/memory
+    store, keyed by the ACTIVE GOVERNANCE LOCK's ``session_id``. A harness that
+    RECORDS evidence (the Pi extension) must therefore resolve the SAME id, and
+    until now it invented a second key — ``CORTEX_SESSION_KEY``, e.g.
+    ``hc-pi-<chat>`` — so the writer and the checker could never agree and every
+    Pi commit was refused no matter what the agent did. Measured 2026-10-15:
+    the gate asked ``sess_58607c4834b3`` (the per-repo id non-Hermes callers get,
+    persisted at ``state/.session-<slug>.id``) while the store held zero real-Pi
+    rows under any such key.
+
+    The rule, and why it converges in BOTH timing cases:
+
+    * A live lock covers this repo -> its ``session_id`` is what the gate will
+      query, so that is the answer (``effective_session_id`` = the lock's).
+    * No lock yet -> skills are loaded BEFORE ``begin_change`` (task-start does
+      exactly that), so the writer must use the id the lock WILL carry. For a
+      non-Hermes caller that is ``get_session_id()``'s per-repo persisted id —
+      the same value ``begin_change`` stamps on the lock a moment later.
+
+    Scoping is NOT re-implemented here: the covering verdict and the resolved repo
+    come from ``_check_repo_lock``. Only the CHOICE among locks that all cover the
+    same repo is made here, and it mirrors the gate's own preference for an
+    interactive lock over a cron/bg one — otherwise two live locks on one repo
+    would let the writer and the checker pick differently, which is the very
+    disagreement this tool exists to remove.
+
+    Never raises and never refuses: an unresolvable repo, or an unreachable
+    predicate, still leaves an answer (the caller's own id) plus the reason.
+    """
+    args = args or {}
+    repo = str(args.get("repo_path") or args.get("repo") or Path.cwd())
+    own = get_session_id(args)
+
+    covering_ids: list[str] = []
+    resolved = ""
+    lock_sid = ""
+    note = ""
+    try:
+        verdict = json.loads(_check_repo_lock({"repo_path": repo}).content[0].text)
+        resolved = str(verdict.get("repo_path") or "")
+        for lock in _live_locks():
+            recorded = str(lock.get("repo_path") or "").strip()
+            if not recorded or not resolved:
+                continue
+            try:
+                if Path(recorded).expanduser().resolve() != Path(resolved).resolve():
+                    continue
+            except OSError:
+                continue
+            sid = str(lock.get("session_id") or "")
+            if sid:
+                covering_ids.append(sid)
+        # Same preference the gate applies: an interactive lock outranks cron/bg.
+        for sid in covering_ids:
+            if not sid.startswith(("cron_", "bg_")):
+                lock_sid = sid
+                break
+        if not lock_sid and covering_ids:
+            lock_sid = covering_ids[0]
+    except Exception as exc:  # noqa: BLE001 — an answer is required, never a crash
+        note = f"could not read the lock state ({exc}); using this caller's own id"
+
+    return CallToolResult(content=[TextContent(type="text", text=json.dumps({
+        "session_id": own,
+        "repo_path": resolved,
+        "repo_slug": _derive_slug(args),
+        "lock_session_id": lock_sid or None,
+        "covering_locks": covering_ids,
+        "effective_session_id": lock_sid or own,
+        "note": note,
+    }, indent=2))])
 
 
 def _check_repo_lock(args: dict | None = None) -> CallToolResult:

@@ -104,6 +104,14 @@ task-db.py update <id> --status paused                 # v2: pause
 task-db.py update <id> --status in_progress --reason reopen   # reopen a done task
 task-db.py update --by-correlation <corr> --status completed  # bus-linked task
 
+# NO-OP RULE: a same-status update records nothing (the event trigger skips
+# it — v005__lifecycle.sql). So `--reason` with an unchanged status is
+# REFUSED (exit 1) rather than silently dropped, and a bare same-status update
+# prints "already <status> — no change" and issues no UPDATE. After a real
+# transition with --reason the CLI re-reads the event trail and fails if the
+# reason did not land. To record a note that is not a status change, use a
+# governance issue event — do not pass it as `update --reason`.
+
 # Switch: pause current in_progress + resume target (one atomic command)
 task-db.py switch <target-id>
 

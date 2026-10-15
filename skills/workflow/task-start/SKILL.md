@@ -51,6 +51,14 @@ mcp__loop_governance__feedback_accept(task_id="<short-name>", note="verified: <e
 mcp__loop_governance__end_change(task_id="<short-name>")
 ```
 
+**Harness note — `skill_view` is a HERMES tool.** A Pi session has no `skill_view`
+at all (verified 2026-10-15 against the installed Pi package: its bundle contains no
+such identifier, and Pi's OWN system prompt says *"Use the read tool to load a
+skill's file when the task matches its description"*). On Pi the load IS a `read` of
+the skill's `SKILL.md`, and the reflexion gate accepts that — so do not go hunting
+for a tool your harness does not have, and do not conclude skills are unloadable. An
+agent that read the skill the only way its harness allows HAS loaded it.
+
 Loads already made count and never need repeating. If a write tool blocks, the
 block message states which gate is unmet (GATE 1 of 2 / GATE 2 of 2) and what to
 call — read it and do exactly that. **Do not go reading

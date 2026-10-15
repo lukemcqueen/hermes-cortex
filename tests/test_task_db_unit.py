@@ -498,13 +498,13 @@ def test_update_by_correlation_resolves_id():
     corr = "corr-test-1"
     resolved_id = "88888888-8888-8888-8888-888888888888"
     with patch.object(task_db, "psql",
-                      side_effect=[resolved_id, ""]) as mock_psql, \
+                      side_effect=[resolved_id, "", ""]) as mock_psql, \
          patch.object(task_db, "schema_version", return_value=5):
         out, _err, exc = _run_stdin_capture(
             task_db.cmd_update, "", "in_progress", None, corr, True)
     assert exc is None
-    # first call: lookup by correlation; second: the upsert with resolved id
-    assert mock_psql.call_args_list[1][0][1][0] == resolved_id
+    # first call: lookup by correlation; 2nd: no-op status probe; 3rd: upsert
+    assert mock_psql.call_args_list[2][0][1][0] == resolved_id
 
 
 def test_update_by_correlation_not_found():
@@ -514,6 +514,80 @@ def test_update_by_correlation_not_found():
             task_db.cmd_update, "", "completed", None, "corr-missing", True)
     assert exc is not None and exc.code == 1
     assert "no inbox task" in err.lower()
+
+
+# ── no-op honesty gate (regression 2026-10-15) ────────────────
+# A same-status update records NO task_events row (event_after_update
+# early-returns when OLD.status IS NOT DISTINCT FROM NEW.status,
+# v005__lifecycle.sql), yet cmd_update printed its checkmark
+# unconditionally — two dispatch notes were silently lost 2026-10-14.
+# The CLI must report what the database actually did.
+
+NOOP_ID = "abcdefab-cdef-4abc-8def-abcdefabcdef"
+
+
+def test_update_same_status_with_reason_refused():
+    """Same status + --reason → refuse: the reason cannot be recorded."""
+    with patch.object(task_db, "psql", side_effect=["pending"]) as mock_psql, \
+         patch.object(task_db, "schema_version", return_value=5):
+        out, err, exc = _run_stdin_capture(
+            task_db.cmd_update, NOOP_ID, "pending", "dispatch note")
+    assert exc is not None and exc.code == 1
+    assert "not be recorded" in err.lower()
+    assert "✅" not in out
+    assert mock_psql.call_count == 1  # status probe only — no upsert
+
+
+def test_update_same_status_without_reason_reports_no_change():
+    """Same status, no reason → honest no-change line, still exit 0."""
+    with patch.object(task_db, "psql", side_effect=["pending"]) as mock_psql, \
+         patch.object(task_db, "schema_version", return_value=5):
+        out, _err, exc = _run_stdin_capture(
+            task_db.cmd_update, NOOP_ID, "pending")
+    assert exc is None
+    assert "already pending" in out
+    assert "✅" not in out
+    assert mock_psql.call_count == 1
+
+
+def test_update_changed_status_still_succeeds():
+    """A real transition keeps its checkmark and the reason GUC."""
+    with patch.object(task_db, "psql",
+                      side_effect=["pending", "", "start"]) as mock_psql, \
+         patch.object(task_db, "schema_version", return_value=5):
+        out, _err, exc = _run_stdin_capture(
+            task_db.cmd_update, NOOP_ID, "in_progress", "start", None, True)
+    assert exc is None
+    assert "✅" in out
+    upsert_sql = mock_psql.call_args_list[1][0][0]
+    assert "transition_reason" in upsert_sql
+
+
+def test_update_reason_not_recorded_is_reported():  # ADV-12676-1
+    """Post-write recheck: a written update whose event is missing FAILS."""
+    with patch.object(task_db, "psql",
+                      side_effect=["pending", "", ""]) as mock_psql, \
+         patch.object(task_db, "schema_version", return_value=5):
+        out, err, exc = _run_stdin_capture(
+            task_db.cmd_update, NOOP_ID, "in_progress", "start", None, True)
+    assert exc is not None and exc.code == 1
+    assert "not recorded" in err.lower()
+    assert "✅" not in out
+    assert "task_events" in mock_psql.call_args_list[2][0][0]
+
+
+def test_update_by_correlation_same_status_is_idempotent():  # ADV-12676-2
+    """A re-delivered bus command (no --reason) is a no-op, not an error."""
+    corr = "corr-redelivery-1"
+    resolved_id = "abcdefab-cdef-4abc-8def-abcdefabcdef"
+    with patch.object(task_db, "psql",
+                      side_effect=[resolved_id, "completed"]) as mock_psql, \
+         patch.object(task_db, "schema_version", return_value=5):
+        out, _err, exc = _run_stdin_capture(
+            task_db.cmd_update, "", "completed", None, corr, True)
+    assert exc is None
+    assert "already completed" in out
+    assert mock_psql.call_count == 2  # correlation lookup + status probe
 
 
 # ── schema probe graceful degradation (R-11) ──────────────────
@@ -600,15 +674,15 @@ def test_add_defaults_project_scope_source():
 
 
 def test_add_with_parent_kind():
-    story = "99999999-9999-9999-9999-999999999999"
+    NOOP_ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
     with patch.object(task_db, "psql") as mock_psql, \
          patch.object(task_db, "schema_version", return_value=5):
         _out, _err, exc = _run_stdin_capture(
             task_db.cmd_add, "slice task", None, 0, None, None, None, None,
-            None, None, [], "manual", story, "slice")
+            None, None, [], "manual", NOOP_ID, "slice")
     assert exc is None
     params = mock_psql.call_args[0][1]
-    assert params[14] == story  # parent
+    assert params[14] == NOOP_ID  # parent
     assert params[15] == "slice"  # kind
 
 

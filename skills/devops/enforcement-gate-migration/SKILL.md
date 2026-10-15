@@ -30,22 +30,36 @@ and getting a change like that through adversarial review.
    writer -> checker -> gate re-point. Flipping the gate before anything writes the
    new store refuses every commit fleet-wide, which is an outage dressed up as
    enforcement.
-2. **Make the writer automatic, and key it to the identity the gate already uses.**
-   Resolve the session from the governance lock rather than inventing a second key —
-   a harness and a subprocess must agree on what "this session" means, or the gate
-   asks a question nothing can answer.
-3. **Build the checker as a small program with an explicit exit-code contract.**
+2. **Prove the writer's TRIGGER exists in that harness BEFORE you write it.** A
+   writer keyed on another harness's vocabulary is unreachable dead code that looks
+   wired: the hook registers, the guard reports `hook registered ✅`, and NOTHING is
+   ever recorded. Establish the harness's real mechanism by driving its OWN installed
+   package — its exported tool factories, and the instruction its own system prompt
+   emits — never from a skill, a doc, or the other harness's tool name. Record the
+   mechanism the harness actually performs, under its TRUE tool name: a row claiming
+   a load that never happened is worse than a missing one, because the store is
+   evidence. Recipe: `references/multi-harness-evidence-writer.md`.
+3. **Key the writer to the identity the gate already uses — and ASK for it.** Resolve
+   the session from the governance lock rather than inventing a second key: a harness
+   and a subprocess must agree on what "this session" means, or the gate asks a
+   question nothing can answer. Ask the SHARED implementation (a read-only verb over
+   the same predicate the gate consumes) instead of reading the state file or an env
+   var yourself — a second derivation drifts, and the drift is invisible until a
+   commit is refused. Resolve the id the lock WILL carry when none exists yet:
+   capabilities are often loaded BEFORE the lock is opened, so requiring a lock
+   silently drops the ordinary case.
+4. **Build the checker as a small program with an explicit exit-code contract.**
    See `templates/fail-closed-checker.py`. Codes: `0` verified, `1` refused, `3`
    cannot verify (store missing / unreachable / raising).
-4. **The gate delegates and fails closed.** If the verifier is missing, refuse and
+5. **The gate delegates and fails closed.** If the verifier is missing, refuse and
    name the fix. A gate that passes when it cannot verify is not a gate.
-5. **Register the checker and any migration in the deploy map.** An unregistered
+6. **Register the checker and any migration in the deploy map.** An unregistered
    file is never deployed, and a repo that applies cleanly proves nothing about any
    other host — the runner discovers migrations by file.
-6. **Prove it on the DEPLOYED path.** The hook that actually runs is whatever
+7. **Prove it on the DEPLOYED path.** The hook that actually runs is whatever
    `core.hooksPath` points at, usually a symlink to a deployed copy — not the repo
    source you just edited.
-7. **Delete any transitional bridge once the writer is live, and pin its absence.**
+8. **Delete any transitional bridge once the writer is live, and pin its absence.**
    A bridge that outlives its window quietly becomes the authoritative source again.
 
 ## Rules
@@ -68,6 +82,22 @@ and getting a change like that through adversarial review.
   reading and fail only at run time.
 - **A transitional bridge must use evidence you already own.** Bridging to another
   system's artifact reintroduces exactly the coupling being removed.
+- **Escape LIKE metacharacters in the interpolated VALUE, never in the pattern.** A
+  capability/skill name containing `_` or `%` over-matches when interpolated raw into
+  a LIKE pattern (`a_b` matches `axb`), and the gate's answer is a permission — an
+  over-match reports evidence that was never recorded. But escaping the WHOLE pattern
+  escapes your own intentional `%` wildcards and turns the predicate into a literal
+  match that can never succeed, silently zeroing every branch. Escape backslash, then
+  `%`, then `_`, on the value only, and SQL-quote the assembled pattern afterwards.
+- **Never require a stored value to sit at a fixed position in JSON text.** A pattern
+  anchored to a closing quote matches the one payload shape you have in hand and fails
+  the moment the writer stores an extra key or the tool's own input
+  (`{"path": ..., "limit": ...}`). Anchor on the discriminating segment and leave the
+  tail open. Same rule for matching the thing's OWN location: a bare filename match
+  lets an unrelated artifact satisfy the question.
+- **One predicate per real mechanism, none of them laundered into another.** Two
+  OR'd branches are correct; writing an event under a name the harness never emits is
+  not — the store would assert something that did not happen.
 
 ## Closing Out Under Adversarial Review
 
@@ -109,6 +139,14 @@ procedure, not an afterthought.
 - **`rereview_change` may be missing from the MCP tool list** while the generic CLI
   reaches it. A CLI subprocess has no harness session, so it cannot resolve the
   governance lock by itself — pass the lock's session id explicitly.
+- **Exercise the gate's REAL question, not a convenience override.** A verification
+  that passes a session/skill/flag override the gate itself never sets proves a path
+  the gate does not use: the first cut of a harness writer was "verified" with an
+  explicit session argument while the gate derives its session from the lock, so the
+  guard passed and the real path stayed broken for every commit. Run the checker the
+  way the gate invokes it — no extra arguments — and show red/green on that form.
+  Prove the guard DISCRIMINATES too: point it at the PRE-FIX revision and require it
+  to fail on the case that names the defect.
 
 ## Pitfalls
 
@@ -138,6 +176,9 @@ procedure, not an afterthought.
 
 ## Related
 
+- `references/multi-harness-evidence-writer.md` — writing evidence for one gate
+  across harnesses with different mechanisms (probe recipe, predicates, identity,
+  fixture cleanup)
 - `templates/fail-closed-checker.py` — starter checker with the exit-code contract
 - `loop-governance` — the review mechanism the close-out section works within
 - `postgres-schema-design` — migration-runner and scratch-DB battery patterns

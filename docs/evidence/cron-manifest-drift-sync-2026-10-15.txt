@@ -1,0 +1,76 @@
+# cron-manifest drift sync — GENERATED artifact (not hand-written)
+# generated_at: 2026-10-15T14:40:37Z
+# generator: ops/evidence/cron-manifest-drift-sync-2026-10-15.sh
+# revisions: parent=64eb9dc2 tip=1c754cca
+# redacted at source: $HOME for home paths (sed -e 's|$HOME|~|g').
+
+## 1. the baseline REVISION reproduces the defect, the tip does not
+# the manifest prompt is compared to the prompt install-orch-crons.sh creates,
+# parsed with the repo test's own line-based extractor.
+manifest@HEAD~1: 873 chars | installer: 1974 chars | equal=False
+manifest@HEAD: 1974 chars | installer: 1974 chars | equal=True
+assert baseline(HEAD~1) != installer: True
+assert tip(HEAD) == installer:            True
+--- rc=0
+
+=== [2. drift check (the doctor's own reader)] $ ~/.hermes/hermes-agent/venv/bin/python3 ~/hermes-cortex/ops/scripts/manage/cron_manifest.py --check
+ORPHAN orch-backlog-driver
+--- rc=1
+
+=== [2b] $ cron_manifest.py --json | python3 -c (drifted/missing names)
+--- manifest json rc=0
+drifted: []
+missing: []
+--- rc=0
+
+=== [3. installer syntax] $ bash -n ops/scripts/install/install-orch-crons.sh
+--- rc=0
+
+=== [4. prompt parity test (live == installer)] $ ~/.hermes/hermes-agent/venv/bin/python3 -m pytest tests/test_cron_prompt_matches_installer.py -q
+============================= test session starts ==============================
+platform linux -- Python 3.11.15, pytest-9.1.1, pluggy-1.6.0
+rootdir: ~/hermes-cortex
+configfile: pytest.ini
+plugins: anyio-4.12.1
+collected 5 items
+
+tests/test_cron_prompt_matches_installer.py .....                        [100%]
+
+============================== 5 passed in 0.06s ===============================
+--- rc=0
+
+=== [5. static adversarial gate on the changed script] $ ~/.hermes/hermes-agent/venv/bin/python3 ~/.hermes-cortex/scripts/adversarial-verify.py --file ops/scripts/install/install-orch-crons.sh --level A2 --gate
+
+── ops/scripts/install/install-orch-crons.sh ──
+   Level: A2
+   Attack Surface:
+     ⚠️ Inputs: 13 item(s)
+     ⚠️ State: 16 item(s)
+     ⚠️ Dependencies: 3 item(s)
+     ⚠️ Concurrency: 1 item(s)
+   Fuzz inputs generated: 0
+
+📊 Summary: 1 file(s), 0 finding(s)
+   ✅ No findings — but standard tests should still pass!
+
+✅ GATE_PASSED — no critical/high findings
+--- rc=0
+
+=== [6] $ live job pin state (orch-bus-worker must be unpinned)
+model='' provider=''
+--- rc=0
+
+## 7. doctor (post-deploy) — date + overall line + rc
+=== [7] $ date
+Thu Oct 15 11:40:39 PM KST 2026
+--- rc=0
+
+--- doctor rc=1
+  ✅ Cron manifest drift
+  ⚠️  Overall: WARNING  (467 pass · 5 warn · 0 fail · 3 info)
+
+# NOTE (disclosed, not hidden): the doctor's rc is 1 because it emits WARNINGS;
+# the push gate blocks on FAIL only, and fail=0 above. cron_manifest --check exits 1
+# on the ORPHAN 'orch-backlog-driver' — a disabled leftover live job from the
+# 2026-10-14 rename, reported by the doctor as INFO, not a FAIL. Not touched by this
+# change (an unattended run leaves a live-state deletion to a human decision).

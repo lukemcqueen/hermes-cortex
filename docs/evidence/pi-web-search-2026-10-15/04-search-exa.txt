@@ -1,0 +1,14 @@
+### pi turn: keyless Exa search
+# provenance: a real pi turn on ~/.pi/agent/bin/pi (model openrouter/moonshotai/kimi-k2.6), scratch repo ~/.hermes/cache/scratch/pi-web-search-evidence.
+# The PROVIDER named and the URLs returned are the stable facts; the
+# surrounding prose is model-generated and differs between runs.
+$ env CORTEX_SESSION_REPO=... CORTEX_SESSION_KEY=evidence-exa ~/.pi/agent/bin/pi --model openrouter/moonshotai/kimi-k2.6 "<prompt>"
+
+**Provider:** exa
+
+**Top 3 results:**
+1. **Pi Coding Agent** — https://pi.dev/
+2. **earendil-works/pi** — https://github.com/earendil-works/pi
+3. **Pi Documentation** — https://pi.dev/docs
+
+rc=0

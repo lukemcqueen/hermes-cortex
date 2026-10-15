@@ -1,0 +1,8 @@
+### deployed installer --check
+$ bash ~/.hermes-cortex/scripts/install-pi-integration.sh --check
+
+  ✓ extensions registered (cortex-context.ts, cortex-governance.ts), 7 curated skills present
+  ✓ web search: npm:pi-web-access@0.35.0 declared, keyless chain ['exa', 'duckduckgo'] configured
+install-pi-integration: registered
+
+rc=0
