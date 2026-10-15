@@ -224,7 +224,11 @@ does not apply.
     WITHOUT the dot (`*governance*`, not `.governance-*`) or it returns zero files, which
     reads as "no state exists" rather than "the probe cannot see it". And keep the call a
     SINGLE clean command: `ls <dir>; echo ---; ls <other>` is a compound and is refused as
-    write-capable, so combine nothing.
+    write-capable, so combine nothing. **The dotfiles in that dir are also invisible to a
+    shell listing** — `ls` omits dotfiles, so a `grep` over plain `ls` output prints NOTHING
+    and reads as "no receipt exists", which sends you to mint one you did not need. Use
+    `search_files(target="files", pattern="*<name>*")`, which lists absolutely; if you must
+    probe from the shell, `ls -a` and keep any leading dot OUT of the grep pattern.
   - **Do not assume `begin_change()` is the way back from a purge.** The purge removes the
     lock FILE while the governance SESSION can still be live in loop-governance's own
     state, so the two disagree: `check_lock` answers `active: false`, and `begin_change`

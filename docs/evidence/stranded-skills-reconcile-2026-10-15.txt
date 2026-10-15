@@ -1,0 +1,255 @@
+Stranded-skill reconciliation — deployed tree vs repo source
+========================================================================
+
+Each block below is ONE command and its real output, with that command's
+own exit code measured UNPIPED. Host paths are normalised to ~ by the
+generator (never hand-patched afterwards). Embedded scripts are printed
+with their output so each check can be re-run verbatim.
+Repo: ~/hermes-cortex    Cycle: 12652 (orch-bus-worker-backlog-run)
+Baseline for the 'removed lines' comparison: the commit in block 1 (HEAD
+at capture time); the landed copies are the working tree of this cycle.
+
+--- 1) baseline revision ---
+$ git log --oneline -1
+rc=0
+10155570 chore(evidence): regenerate skill-drift-parity.txt (generated)
+
+
+--- 2) per-file line counts (index vs HEAD) ---
+$ git diff --cached --numstat -- skills/devops/cross-agent-design/SKILL.md skills/devops/enforcement-gate-migration/SKILL.md skills/devops/enforcement-gate-migration/references/multi-harness-evidence-writer.md skills/devops/enforcement-gate-migration/templates/fail-closed-checker.py skills/devops/shared-repo-push-gates/SKILL.md
+rc=0
+28	0	skills/devops/cross-agent-design/SKILL.md
+50	9	skills/devops/enforcement-gate-migration/SKILL.md
+119	0	skills/devops/enforcement-gate-migration/references/multi-harness-evidence-writer.md
+123	0	skills/devops/enforcement-gate-migration/templates/fail-closed-checker.py
+5	1	skills/devops/shared-repo-push-gates/SKILL.md
+
+
+--- 3) are the removed lines superseded in place? ---
+embedded script (re-runnable):
+```python
+#!/usr/bin/env python3
+"""Categorise every line git removes from a landed skill file.
+
+Exact-substring matching flags REWORDING as loss; this compares at phrase
+level (numbering stripped, whitespace collapsed, emphasis dropped, trailing
+punctuation neutralised) and reports PRESERVED / PARTIAL / ABSENT per line.
+Read-only. Run from the repo root."""
+import re, subprocess
+from pathlib import Path
+
+FILES = ["skills/devops/enforcement-gate-migration/SKILL.md",
+         "skills/devops/shared-repo-push-gates/SKILL.md"]
+NUM = re.compile(r"^\s*(?:\d+\.|[-*])\s+")
+EMPH = re.compile(r"[*`]")
+
+def norm(s):
+    s = NUM.sub("", s)
+    s = EMPH.sub("", s)
+    s = s.replace("\u2014", ": ").replace("\u2013", ": ")
+    s = re.sub(r"\s+", " ", s).strip()
+    return s.rstrip(".:;,-").strip()
+
+for path in FILES:
+    old = subprocess.run(["git", "show", "HEAD:" + path],
+                         capture_output=True, text=True).stdout
+    new = Path(path).read_text()
+    cn = norm(new)
+    new_set = set(new.splitlines())
+    removed = [l for l in old.splitlines() if l not in new_set and l.strip()]
+    print("== " + path)
+    print("   removed lines (raw text diff): %d" % len(removed))
+    absent = []
+    for line in removed:
+        n = norm(line)
+        if len(n) < 4:
+            continue
+        if n in cn:
+            verdict = "PRESERVED (renumbered/reflowed only)"
+        else:
+            frags = [f.strip() for f in re.split(r"(?<=[.!?])\s+", n) if len(f.strip()) >= 12]
+            gone = [f for f in frags if norm(f) not in cn]
+            absent += gone
+            verdict = ("PARTIAL" if len(gone) < len(frags) else "ABSENT")
+            if gone:
+                verdict += " -- not verbatim: " + repr(gone)
+        print("   - " + verdict)
+        print("       old: " + n[:110])
+    print("   fragments not verbatim: %d" % len(absent))
+    for g in absent:
+        print("       NOT VERBATIM: " + g[:140])
+    print()
+```
+output (rc=0):
+== skills/devops/enforcement-gate-migration/SKILL.md
+   removed lines (raw text diff): 9
+   - ABSENT -- not verbatim: ['Make the writer automatic, and key it to the identity the gate already uses']
+       old: Make the writer automatic, and key it to the identity the gate already uses
+   - PRESERVED (renumbered/reflowed only)
+       old: Resolve the session from the governance lock rather than inventing a second key
+   - PRESERVED (renumbered/reflowed only)
+       old: a harness and a subprocess must agree on what "this session" means, or the gate
+   - PRESERVED (renumbered/reflowed only)
+       old: asks a question nothing can answer
+   - PRESERVED (renumbered/reflowed only)
+       old: Build the checker as a small program with an explicit exit-code contract
+   - PRESERVED (renumbered/reflowed only)
+       old: The gate delegates and fails closed. If the verifier is missing, refuse and
+   - PRESERVED (renumbered/reflowed only)
+       old: Register the checker and any migration in the deploy map. An unregistered
+   - PRESERVED (renumbered/reflowed only)
+       old: Prove it on the DEPLOYED path. The hook that actually runs is whatever
+   - PRESERVED (renumbered/reflowed only)
+       old: Delete any transitional bridge once the writer is live, and pin its absence
+   fragments not verbatim: 1
+       NOT VERBATIM: Make the writer automatic, and key it to the identity the gate already uses
+
+== skills/devops/shared-repo-push-gates/SKILL.md
+   removed lines (raw text diff): 1
+   - PRESERVED (renumbered/reflowed only)
+       old: write-capable, so combine nothing
+   fragments not verbatim: 0
+
+--- 3b) is the single non-verbatim clause restated anywhere? ---
+--- grep for the dropped clause's key word ---
+$ grep -n -i automatic skills/devops/enforcement-gate-migration/SKILL.md
+rc=1
+
+
+rc=1 with no output means the word does not occur in the landed copy.
+
+--- 4) landing assertion (deployed copy -> repo, sha256 both sides) ---
+embedded script (re-runnable):
+```python
+#!/usr/bin/env python3
+"""Land deployed skill content into the repo, asserting byte-identity per file."""
+import hashlib, shutil
+from pathlib import Path
+REPO = Path("~/hermes-cortex".replace("~", __import__("os").path.expanduser("~")))
+DEPLOYED = Path("~/.hermes".replace("~", __import__("os").path.expanduser("~")))
+PAIRS = ['skills/devops/cross-agent-design/SKILL.md', 'skills/devops/enforcement-gate-migration/SKILL.md', 'skills/devops/enforcement-gate-migration/references/multi-harness-evidence-writer.md', 'skills/devops/enforcement-gate-migration/templates/fail-closed-checker.py', 'skills/devops/shared-repo-push-gates/SKILL.md']
+def sha(p): return hashlib.sha256(p.read_bytes()).hexdigest()
+bad = []
+for rel in PAIRS:
+    s, d = DEPLOYED / rel, REPO / rel
+    d.parent.mkdir(parents=True, exist_ok=True)
+    before = sha(s)
+    shutil.copy2(s, d)
+    ok = sha(s) == sha(d) == before
+    print("%s %s  sha256=%s  (%d bytes)" % ("OK  " if ok else "FAIL", rel, sha(d)[:16], s.stat().st_size))
+    if not ok:
+        bad.append(rel)
+print()
+print("copied=%d failures=%d" % (len(PAIRS) - len(bad), len(bad)))
+raise SystemExit(1 if bad else 0)
+```
+output (rc=0):
+OK   skills/devops/cross-agent-design/SKILL.md  sha256=34439117b939deae  (21338 bytes)
+OK   skills/devops/enforcement-gate-migration/SKILL.md  sha256=6af654de0ad2293e  (11863 bytes)
+OK   skills/devops/enforcement-gate-migration/references/multi-harness-evidence-writer.md  sha256=4c4f15800e5d9dea  (6645 bytes)
+OK   skills/devops/enforcement-gate-migration/templates/fail-closed-checker.py  sha256=a311ebcee32e3c9b  (4698 bytes)
+OK   skills/devops/shared-repo-push-gates/SKILL.md  sha256=4a6c0c2e06cb012a  (47114 bytes)
+
+copied=5 failures=0
+--- 5) parity after landing (regenerates the tracked artifact) ---
+$ python3 ops/scripts/manage/check-skill-drift-parity.py
+rc=0
+# Skill source parity - deployed tree vs repo source
+
+Regenerate with: `python3 ops/scripts/manage/check-skill-drift-parity.py`
+
+A deployed skill file whose content appears in neither the repo working
+tree nor any committed revision of that path means a lesson was written on
+this host and never copied back: it is stranded here, and the deploy's
+drift guardrail refuses to overwrite it, so it never reaches the fleet.
+Direction is decided by content, not mtime, so a fresh clone cannot hide it.
+Deploy banners (the 3-line SOURCE header) are not compared.
+
+| Measure | Value |
+|---|---|
+| Deployed-only files (stranded) | 0 |
+| Files in sync | 841 |
+| Skipped (no repo counterpart, or repo ahead) | 627 |
+
+**Verdict: PASS**
+
+--- 6) tracked artifact matches the live derivation ---
+$ python3 ops/scripts/manage/check-skill-drift-parity.py --check
+rc=0
+artifact matches the live derivation
+
+
+--- 7) doctor (single unpiped run; rc is the doctor's own) ---
+$ python3 ops/scripts/manage/cortex-doctor.py --quiet
+rc=1
+lines extracted from that same single run:
+  ✅ Skill drift
+  ⚠️  Overall: WARNING  (465 pass · 4 warn · 0 fail · 3 info)
+--- 8) adversarial-verify static gate on the one changed script ---
+$ python3 ~/.hermes-cortex/scripts/adversarial-verify.py --file skills/devops/enforcement-gate-migration/templates/fail-closed-checker.py --level A4 --gate
+rc=0
+
+── skills/devops/enforcement-gate-migration/templates/fail-closed-checker.py ──
+   Level: A4
+   Attack Surface:
+     ⚠️ Inputs: 7 item(s)
+     ⚠️ State: 5 item(s)
+     ⚠️ Dependencies: 10 item(s)
+     ✅ Concurrency: 0 item(s)
+   Functions: 2
+     - _import_module(path)
+     - load_store_module()
+   Fuzz inputs generated: 9
+
+📊 Summary: 1 file(s), 11 finding(s)
+   🟡 Medium: 2
+   🔵 Low: 1
+   ⚪ Info: 8
+
+🟡 Medium findings — fix before shipping.
+
+✅ GATE_PASSED — no critical/high findings
+
+--- 9) the test added with the template: both runners ---
+Same assertions, driven deliberately: the file has a __main__ entry
+point AND a pytest entry point, because a collected-but-empty module
+scores PASS while running nothing.
+--- 9a) standalone run ---
+$ python3 tests/test_fail_closed_checker_template.py
+rc=0
+PASS  template exists: got=True want=True
+PASS  EXIT_VERIFIED: got=0 want=0
+PASS  EXIT_REFUSED: got=1 want=1
+PASS  EXIT_USAGE: got=2 want=2
+PASS  EXIT_CANNOT_VERIFY: got=3 want=3
+PASS  every non-zero code refuses: got=True want=True
+PASS  import is inert (rc): got=0 want=0
+PASS  import is inert (silent): got='' want=''
+PASS  empty question exits 2: got=2 want=2
+PASS  empty question names the usage fault: got=True want=True
+PASS  missing session exits 1: got=1 want=1
+PASS  missing session says REFUSED: got=True want=True
+PASS  unreachable store exits 3: got=3 want=3
+PASS  unreachable store says COULD NOT VERIFY: got=True want=True
+PASS  unreachable store does not claim success: got=False want=False
+PASS  mutation applied to the fail-closed branch: got=True want=True
+PASS  mutant returns the success code (so assertion 5 would fail): got=0 want=0
+
+RESULT: ALL PASS — exit-code contract, inert import, usage/refused/could-not-verify branches, and the mutated copy that must not pass
+
+--- 9b) pytest run through the repo runner ---
+$ bash tests/run-tests.sh tests/test_fail_closed_checker_template.py
+rc=0
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0 -- ~/.hermes-cortex/venv/bin/python3
+rootdir: ~/hermes-cortex
+configfile: pytest.ini
+plugins: anyio-4.15.1
+collecting ... collected 1 item
+
+tests/test_fail_closed_checker_template.py::test_fail_closed_checker_template_contract PASSED [100%]
+
+============================== 1 passed in 0.33s ===============================
+---
+run-tests.sh: interpreter=~/.hermes-cortex/venv/bin/python3 rc=0  (PYTHONPATH/PYTHONHOME unset for the run)
+

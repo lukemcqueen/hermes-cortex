@@ -206,6 +206,32 @@ Rules, each of which is a bug that actually happened:
    host's doctor, so "harness present but unwired" is a reported state rather than a
    silence nobody reads. An installer reaching a host is not evidence that it ever ran.
 
+### The GATE half of a capability
+
+A capability a host must satisfy is not only code the host RUNS — it is often also a gate
+the host must PASS (a pre-commit check, an evidence record, a policy its commits are judged
+by). Design that gate for the host's REAL mechanism, or the host is refused forever while
+nothing anywhere reports a fault:
+
+- **A gate keyed on another host's tool NAME is unsatisfiable here.** Establish what the
+  host actually does by driving the host's own package — its exported tool factories and
+  the instruction its own system prompt emits. A name that is ordinary vocabulary in one
+  harness may appear NOWHERE in another's bundle; grep the bundle and treat zero matches as
+  the measurement it is.
+- **Record what the host actually did, under its true name**, and give the checker one
+  predicate per real mechanism. Never normalise a host's action into another host's verb:
+  the store is evidence, so a row asserting an action that never happened is worse than a
+  missing row.
+- **Ask the shared implementation for the identity the gate queries** rather than deriving a
+  second key from an env var or a state file — and resolve it for the timing case where the
+  host acts BEFORE the gate's context exists.
+- **A host refused for a reason it cannot observe looks broken to its operator.** When a
+  host reports "I cannot do X", check FIRST whether the gate demands a mechanism that host
+  does not have: the agent's behaviour is often correct and the gate is the defect.
+
+Procedure, predicates and the probe recipe:
+`enforcement-gate-migration > references/multi-harness-evidence-writer.md`.
+
 ### Choosing the implementation of a SHARED capability
 
 A capability both systems consume is a design decision before it is a build. Decide in this order,
@@ -238,6 +264,8 @@ and let MEASUREMENT make the call:
 
 Checklist before shipping anything agent-facing:
 - [ ] works from **at least two different harnesses** (prove it, don't claim it)
+- [ ] any gate the host must PASS keys on something that host **has** — proven by driving
+      the host's own package, never inferred from a doc or from another harness's vocabulary
 - [ ] semantics in **one** place; adapters add none
 - [ ] metadata **derived**, not duplicated
 - [ ] unreachable dependency → **visible message**, never a silent empty
