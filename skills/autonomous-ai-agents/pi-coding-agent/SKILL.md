@@ -415,6 +415,44 @@ steadfaste `docs/design/coding-cost-routing.md`:
 4. cheap file reads (judge a file without reading it into context — $0.00049 vs $0.091)
 5. output-type screening (after an LLM response)
 
+## Web search — pi has NO online tool until a package supplies one
+
+Measured 2026-10-15 (pi 1.2.0): the built-ins are `read`, `bash`, `powershell`,
+`edit`, `write`, `grep`, `find`, `ls`, plus `codemode`/`tool_search` — and
+`tool_search` ranks the LOCAL tool registry (deferred/MCP tools), never the
+network. The five cortex MCP servers expose no search either. So "research
+this" and "review this repo" had no online path at all, and the gateway-served
+agent is no exception: the gateway only spawns this same pi.
+
+- **Install (pinned + age-gated):** `pi install npm:pi-web-access@<version>`.
+  It registers `web_search`, `source_check`, `fetch_content` and
+  `get_search_content` — search, URL/PDF/YouTube fetching, and GitHub URLs are
+  CLONED locally so the agent reads real files instead of rendered HTML.
+- **Free path, no API key:** Exa's keyless MCP free tier plus DuckDuckGo's
+  keyless HTML endpoint. `~/.pi/agent/web-search.json`:
+  ```json
+  {"searchRouting": {"providers": ["exa", "duckduckgo"],
+                     "fallbackOn": ["unsupported", "transient", "quota", "network", "invalid-response"]}}
+  ```
+- **`auto` is NOT the free path.** With no config the tool answers
+  `No search provider available …` and lists only KEYED providers — an agent
+  reads that as a broken tool rather than a missing config. Keyless DuckDuckGo
+  is explicit-only (never chosen by `auto`, never in `provider: "all"`), so
+  name it in `searchRouting` instead of relying on the default chain.
+- **`pi install` writes a package declaration, not a working tool.** Pi manages
+  its own npm root (`~/.pi/agent/npm/node_modules/<pkg>`); a declaration with
+  nothing on disk loads no extension. Check both halves — the declaration in
+  `settings.json` AND the directory.
+- **A web tool needs NO governance lock.** `cortex-governance.ts` gates only
+  `write`/`edit` and non-read-only `bash`; every non-native tool (extension or
+  MCP) passes by design, so search/fetch work in an unlocked session.
+- **Wiring:** `ops/scripts/install/install-pi-integration.sh` declares the
+  package, installs it when the directory is absent, and writes
+  `web-search.json` only when no config exists (an operator's keyed file is
+  never clobbered). `ops/scripts/manage/audit-pi-integration.sh` Layer 6
+  FAILs when either half is missing or the chain has no keyless provider;
+  `tests/test_pi_registration_installer.sh` covers it.
+
 ## Pitfalls
 - **A presence probe can be wrong about a managed install.** `command -v pi` reports
   "missing" on a host where Pi is installed and working, because the entrypoint is a

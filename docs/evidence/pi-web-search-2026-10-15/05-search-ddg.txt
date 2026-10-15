@@ -1,0 +1,8 @@
+### pi turn: DuckDuckGo search + fetch_content
+$ env CORTEX_SESSION_REPO=~/.hermes/cache/scratch/pi-web-search-evidence CORTEX_SESSION_KEY=evidence-ddg ~/.pi/agent/bin/pi --model openrouter/moonshotai/kimi-k2.6 Set provider to duckduckgo on web_search and query 'python asyncio taskgroup'; then fetch_content https://raw.githubusercontent.com/earendil-works/pi/main/README.md and report its first markdown heading. Be brief.
+
+**Search results** (DuckDuckGo, 5 results): Python docs on asyncio TaskGroup, GeeksforGeeks guide, SuperFastPython tutorial, asyncio overview, and a Stack Overflow thread on consuming TaskGroup responses.
+
+**README first heading:** `# Pi`
+
+rc=0

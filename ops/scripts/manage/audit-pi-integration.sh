@@ -241,6 +241,62 @@ else
   _line 5 NA "no cortex venv — install-pi-mcp.sh falls back to python3 on PATH (fine if 'mcp' is importable there)"
 fi
 
+# ── Layer 6: web search (free providers) ──
+# Without this the pi agent has NO online path at all: pi's built-in tools are
+# local (read/bash/edit/write/grep/find/ls) and the five cortex MCP servers
+# expose no search, so "research this" / "review this repo" fails with an error
+# that reads like a broken tool instead of a missing package. Both halves are
+# checked because either alone is inert: a DECLARATION with nothing on disk
+# loads no extension, and an INSTALL with no config finds no provider.
+# Required only where pi is — a host with no coding agent is not a fault.
+if [[ -z "$PI_BIN" ]]; then
+  _line 6 NA "no pi on this host — web search not applicable"
+elif [[ ! -f "$SETTINGS" ]]; then
+  _failed 6 "$SETTINGS missing — run install-pi-integration.sh"
+else
+  WS_JSON="$HOME/.pi/agent/web-search.json"
+  PKG_INSTALLED="$HOME/.pi/agent/npm/node_modules/pi-web-access"
+  if ! grep -q '"npm:pi-web-access' "$SETTINGS"; then
+    _failed 6 "no pi-web-access package declared in $SETTINGS — the agent has no web tool. Run install-pi-integration.sh"
+  elif [[ ! -d "$PKG_INSTALLED" ]]; then
+    _failed 6 "pi-web-access declared but NOT installed ($PKG_INSTALLED absent) — pi loads no extension. Run install-pi-integration.sh"
+  else
+    # The verdict comes from the CONFIG, parsed rather than grepped: a keyed-only
+    # chain is valid for its owner and useless on a host with no keys, and a
+    # substring match cannot tell the two apart.
+    ws_verdict="$(WS_JSON="$WS_JSON" python3 - <<'PY' 2>/dev/null
+import json, os
+p = os.environ["WS_JSON"]
+if not os.path.exists(p):
+    print("missing"); raise SystemExit
+try:
+    cfg = json.load(open(p))
+except Exception:
+    print("invalid"); raise SystemExit
+routing = cfg.get("searchRouting") if isinstance(cfg, dict) else None
+route = routing.get("providers", []) if isinstance(routing, dict) else []
+chosen = [x for x in route if isinstance(x, str)] or [cfg.get("provider")]
+keyless = [x for x in chosen if x in ("exa", "duckduckgo")]
+print("keyless:" + ",".join(keyless) if keyless else "keyed-only")
+PY
+)"
+    case "$ws_verdict" in
+      keyless:*)
+        _line 6 PASS "pi-web-access installed; keyless search path ${ws_verdict#keyless:} (no API key needed)"
+        ;;
+      keyed-only)
+        _failed 6 "$WS_JSON names no keyless provider (exa/duckduckgo) — every search fails on a host with no API key. Fix: install-pi-integration.sh writes the keyless chain when the file is absent; keep a keyed chain only if you intend to pay for it"
+        ;;
+      invalid)
+        _failed 6 "$WS_JSON is not valid JSON — the search tool cannot read its own config"
+        ;;
+      *)
+        _failed 6 "$WS_JSON missing — the search tool has no provider chain. Run install-pi-integration.sh"
+        ;;
+    esac
+  fi
+fi
+
 [[ "$JSON_MODE" == "1" ]] && printf '{"layer_failures":%s}\n' "$_fail"
 [[ "$JSON_MODE" == "1" ]] || {
   echo

@@ -65,6 +65,30 @@ SETTINGS="${PI_SETTINGS_FILE:-${AGENT_DIR}/settings.json}"
 CURATED_DIR="${PI_CORTEX_SKILLS_DIR:-${AGENT_DIR}/cortex-skills}"
 HERMES_SKILLS="${HERMES_SKILLS_DIR:-${HOME}/.hermes/skills}"
 
+# ── WEB SEARCH — the pi agent must be able to look things up online ────────
+# Measured 2026-10-15: pi ships read/bash/edit/write/grep/find/ls and the five
+# cortex MCP servers expose no search, so "research this" or "review this repo"
+# had NO online path at all — the gateway-served agent included, because the
+# gateway only spawns this same pi. pi-web-access adds web_search,
+# source_check, fetch_content and get_search_content (URL/GitHub/PDF/YouTube).
+#
+# FREE, no API key: Exa's keyless MCP free tier first, DuckDuckGo's keyless
+# HTML endpoint as the fallback. Both were reachability-probed from this host
+# (mcp.exa.ai answered an MCP initialize; html.duckduckgo.com answered 202) and
+# a real search returned real URLs. Version-PINNED because a pi package
+# executes inside the agent: bumps go through the 14-day age gate
+# (ops/scripts/health/check-package-age.py npm pi-web-access==<version>).
+PI_WEB_SEARCH_PACKAGE="${PI_WEB_SEARCH_PACKAGE:-npm:pi-web-access@0.35.0}"
+WEB_SEARCH_FILE="${PI_WEB_SEARCH_FILE:-${AGENT_DIR}/web-search.json}"
+# The launcher is a symlink into a bin dir that need not be on PATH, so it is
+# resolved by path (never `command -v` alone) — see the pi skill's "presence
+# probe can be wrong about a managed install".
+PI_LAUNCHER="${PI_LAUNCHER:-}"
+if [[ -z "$PI_LAUNCHER" ]]; then
+  if [[ -x "${AGENT_DIR}/bin/pi" ]]; then PI_LAUNCHER="${AGENT_DIR}/bin/pi"
+  else PI_LAUNCHER="$(command -v pi 2>/dev/null || true)"; fi
+fi
+
 # The deployed extensions are the thing Pi loads; fall back to the repo copies
 # when this host has not deployed yet (the warning below names the fix).
 #
@@ -129,16 +153,27 @@ if [[ "$MODE" != "check" ]]; then
   [[ -f "$SETTINGS" ]] && cp -p "$SETTINGS" "${SETTINGS}.bak.cortex"
 fi
 
-"$PYTHON" - "$MODE" "$SETTINGS" "$CURATED_DIR" "$MANIFEST" "$HERMES_SKILLS" "${EXTENSION:-}" "${GOVERNANCE_EXTENSION:-}" <<'PYEOF'
+"$PYTHON" - "$MODE" "$SETTINGS" "$CURATED_DIR" "$MANIFEST" "$HERMES_SKILLS" "${EXTENSION:-}" "${GOVERNANCE_EXTENSION:-}" "$PI_WEB_SEARCH_PACKAGE" "$WEB_SEARCH_FILE" <<'PYEOF'
 import json, os, sys
 
-mode, settings_path, curated_dir, manifest_path, skills_root, extension, governance_extension = sys.argv[1:8]
+(mode, settings_path, curated_dir, manifest_path, skills_root, extension,
+ governance_extension, package_spec, web_search_file) = sys.argv[1:10]
 
 # Every cortex-owned extension, by basename. ONE list: registration, the
 # strip/replace path and the check all read it, so a new extension cannot be
 # added to one and forgotten in another (the pre-2026-10-14 bug: the check
 # asserted one filename, so a second extension looked wired and was not).
 OURS = ("cortex-context.ts", "cortex-governance.ts")
+
+# The pi package that gives the agent web_search/fetch_content. Matched by
+# NAME, not by the pinned spec, so bumping the pin does not leave the old
+# declaration behind (that is how a host ends up loading two versions).
+OUR_PACKAGE_PREFIX = "npm:pi-web-access"
+
+# The keyless provider chain written when the operator has no config of their
+# own. Ordered: Exa's keyless MCP free tier, then DuckDuckGo's keyless HTML
+# endpoint — both verified reachable and key-free on this fleet.
+KEYLESS_PROVIDERS = ["exa", "duckduckgo"]
 
 try:
     import yaml
@@ -202,6 +237,35 @@ names = load_manifest()
 data = read_settings()
 exts = [e for e in data.get("extensions", []) if isinstance(e, str)]
 skills = [e for e in data.get("skills", []) if isinstance(e, str)]
+packages = [p for p in data.get("packages", []) if isinstance(p, str)]
+
+
+def read_web_search():
+    """Parse web-search.json; None when absent, 'INVALID' when unparseable."""
+    if not os.path.exists(web_search_file):
+        return None
+    try:
+        with open(web_search_file) as fh:
+            return json.load(fh)
+    except (OSError, json.JSONDecodeError):
+        return "INVALID"
+
+
+def keyless_route_ok(cfg) -> bool:
+    """Does this config give the agent a KEYLESS search path?
+
+    Either an explicit chain naming at least one keyless provider, or a
+    top-level provider that is keyless. A config that names only keyed
+    providers is valid for its owner but is NOT a free setup, and on a host
+    with no keys it fails at the first search — which is the failure this
+    check exists to catch.
+    """
+    if not isinstance(cfg, dict):
+        return False
+    route = cfg.get("searchRouting", {}).get("providers", []) if isinstance(cfg.get("searchRouting"), dict) else []
+    chosen = [p for p in route if isinstance(p, str)] or [cfg.get("provider")]
+    return any(p in KEYLESS_PROVIDERS for p in chosen if isinstance(p, str))
+
 
 if mode == "check":
     problems = []
@@ -217,6 +281,19 @@ if mode == "check":
         missing = [n for n in names if n not in present]
         if missing:
             problems.append(f"skills not registered: {', '.join(missing)}")
+    if not any(p.startswith(OUR_PACKAGE_PREFIX) for p in packages):
+        problems.append(f"web search package not declared in settings.json "
+                        f"(expected {package_spec}) — the agent has no web tool")
+    cfg = read_web_search()
+    if cfg is None:
+        problems.append(f"web search not configured: {web_search_file} is missing "
+                        f"(keyless chain {KEYLESS_PROVIDERS})")
+    elif cfg == "INVALID":
+        problems.append(f"web search config is not valid JSON: {web_search_file}")
+    elif not keyless_route_ok(cfg):
+        problems.append(f"web search has no keyless provider: {web_search_file} "
+                        f"names none of {KEYLESS_PROVIDERS} — every search will "
+                        f"fail on a host with no API key")
     if problems:
         for p in problems:
             print(f"  ✗ {p}")
@@ -224,12 +301,16 @@ if mode == "check":
         sys.exit(1)
     print(f"  ✓ extensions registered ({', '.join(OURS)}), "
           f"{len(names)} curated skills present")
+    print(f"  ✓ web search: {package_spec} declared, "
+          f"keyless chain {KEYLESS_PROVIDERS} configured")
     print("install-pi-integration: registered")
     sys.exit(0)
 
 if mode == "remove":
     data["extensions"] = strip_ours(exts)
     data["skills"] = strip_ours(skills)
+    # Only OUR declaration goes; the operator's own packages are theirs.
+    data["packages"] = [p for p in packages if not p.startswith(OUR_PACKAGE_PREFIX)]
     write_settings(data)
     removed_dir = False
     if os.path.isdir(curated_dir):
@@ -286,11 +367,69 @@ skills = [e for e in strip_ours(skills) if e != curated_dir]
 skills.append(curated_dir)
 data["extensions"] = exts
 data["skills"] = skills
+# Replace any earlier declaration of the SAME package (a pinned spec bumps by
+# being written over, not appended beside) and keep the operator's own.
+data["packages"] = [p for p in packages if not p.startswith(OUR_PACKAGE_PREFIX)]
+data["packages"].append(package_spec)
 write_settings(data)
+
+# web-search.json: WRITE ONLY WHEN ABSENT. An operator's own file may carry a
+# paid key, an internal SearXNG endpoint or a curated provider order — silently
+# replacing it would change what their agent searches with (and could cost
+# money). Reporting the gap instead leaves that decision with the operator.
+web_search_state = "already present (left untouched)"
+if read_web_search() is None:
+    os.makedirs(os.path.dirname(web_search_file), exist_ok=True)
+    with open(web_search_file, "w") as fh:
+        json.dump({
+            "_comment": ("Free-tier web search for pi — written by "
+                         "ops/scripts/install/install-pi-integration.sh when no "
+                         "config existed. No API keys: Exa's keyless MCP free "
+                         "tier, then DuckDuckGo's keyless HTML endpoint. Edit "
+                         "the installer, not this file, if it should hold for "
+                         "every host."),
+            "searchRouting": {"providers": KEYLESS_PROVIDERS,
+                              "fallbackOn": ["unsupported", "transient", "quota",
+                                             "network", "invalid-response"]},
+            "workflow": "none",
+        }, fh, indent=2)
+        fh.write("\n")
+    os.chmod(web_search_file, 0o600)
+    web_search_state = "written (keyless chain)"
 print(f"Registered in {settings_path} (user scope — applies to EVERY Pi project):")
 for ext in (extension, governance_extension):
     if ext:
         print(f"  extension: {ext}")
 print(f"  skills:    {curated_dir}  ({len(names)} skills from {manifest_path})")
+print(f"  package:   {package_spec}")
+print(f"  web search config: {web_search_file} — {web_search_state}")
 print("Restart any running Pi session (or /reload) to pick this up.")
 PYEOF
+
+# ── install the package itself (the declaration above only DECLARES it) ────
+# A declaration in settings.json with nothing on disk is exactly the
+# "registered is not executed" failure: pi would load no extension and the
+# agent would report a missing web tool. Pi manages its own npm tree, so the
+# install goes through pi's launcher; a host with no pi SKIPS (rc 0) — a
+# missing coding agent is not a fault, and it must not look like a failed run.
+if [[ "$MODE" == "add" ]]; then
+  PKG_NAME="${PI_WEB_SEARCH_PACKAGE#npm:}"
+  PKG_NAME="${PKG_NAME%@*}"
+  PKG_DIR="${AGENT_DIR}/npm/node_modules/${PKG_NAME}"
+  if [[ -d "$PKG_DIR" ]]; then
+    echo "  package already installed: $PKG_DIR"
+  elif [[ -n "$PI_LAUNCHER" && -x "$PI_LAUNCHER" ]]; then
+    echo "  installing $PI_WEB_SEARCH_PACKAGE via $PI_LAUNCHER ..."
+    if "$PI_LAUNCHER" install "$PI_WEB_SEARCH_PACKAGE" >/dev/null 2>&1; then
+      echo "  ✓ installed $PI_WEB_SEARCH_PACKAGE"
+    else
+      echo "install-pi-integration: package install FAILED for $PI_WEB_SEARCH_PACKAGE" >&2
+      echo "  Run it by hand to see why: $PI_LAUNCHER install $PI_WEB_SEARCH_PACKAGE" >&2
+      echo "  The declaration stays in ${SETTINGS}; re-run this script to retry." >&2
+      exit 1
+    fi
+  else
+    echo "  no pi launcher on this host — declared only, nothing installed"
+    echo "  (a host without pi is not a fault; re-run after pi is installed)"
+  fi
+fi

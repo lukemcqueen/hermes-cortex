@@ -1,0 +1,6 @@
+### package age gate (pinned version)
+$ python3 ~/hermes-cortex/ops/scripts/health/check-package-age.py npm pi-web-access==0.35.0
+
+✅ OK: pi-web-access==0.35.0 is 14.4d old (≥14d)
+
+rc=0
