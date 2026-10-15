@@ -428,6 +428,35 @@ agent is no exception: the gateway only spawns this same pi.
   It registers `web_search`, `source_check`, `fetch_content` and
   `get_search_content` — search, URL/PDF/YouTube fetching, and GitHub URLs are
   CLONED locally so the agent reads real files instead of rendered HTML.
+  **Free is the requirement, not a nicety** — build the keyless chain first and
+  treat a keyed provider as an opt-in upgrade; never introduce a paid dependency
+  for a capability the fleet already gets for nothing.
+- **Pick the pin by MEASUREMENT, never from the README.** The latest release is
+  usually days old and fails the 14-day package age gate, and the gate is not
+  bypassed for convenience: enumerate the versions, sort them as SEMVER (a
+  lexical sort puts `0.5.1` after `0.41.0` and hands you a six-month-old build),
+  and take the newest one that passes.
+  ```bash
+  python3 -c "import json,urllib.request,datetime,sys;\
+  d=json.load(urllib.request.urlopen('https://registry.npmjs.org/pi-web-access'));\
+  now=datetime.datetime.now(datetime.timezone.utc);\
+  k=lambda v: tuple(int(x) for x in v.split('.') if x.isdigit());\
+  rows=[(k(v),v,ts,(now-datetime.datetime.fromisoformat(ts.replace('Z','+00:00'))).days) \
+        for v,ts in d['time'].items() if v not in ('created','modified')];\
+  rows.sort();\
+  print([(v,a) for _,v,_,a in rows if a>=14][-3:])"
+  python3 ops/scripts/health/check-package-age.py npm pi-web-access==<chosen>   # rc 0 = allowed
+  ```
+  Then bump later through the same gate — the pinned spec is a variable in
+  `install-pi-integration.sh` (`PI_WEB_SEARCH_PACKAGE=...`), so a bump is one
+  env-overridable value, not an edit scattered through the script.
+- **Prove it with a REAL turn, not `pi list`.** A registered extension and a
+  working search are two different claims: run one turn in a scratch repo and
+  read which PROVIDER answered and the URLs it returned
+  (`04-search-exa.txt` / `05-search-ddg.txt` under `docs/evidence/` are the
+  captured shape). Run it from the contract's own cwd too when the consumer is a
+  service — the gateway spawns pi from its deploy dir, so a probe that only works
+  in a project directory proves nothing about the gateway-served agent.
 - **Free path, no API key:** Exa's keyless MCP free tier plus DuckDuckGo's
   keyless HTML endpoint. `~/.pi/agent/web-search.json`:
   ```json

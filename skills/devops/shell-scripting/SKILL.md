@@ -958,6 +958,31 @@ Before shipping changes to installer scripts (`install-crons.sh`, `setup.sh`, et
 
 6. **Script exists check coverage** — The `script_exists` helper typically checks `~/.hermes-cortex/scripts/` and the repo source. If the script could also be a CLI wrapper symlink in `~/.local/bin/`, add that path. Missing paths produce "Script not found" warnings silently — no delivery, no alert, just a scroll-past in the output.
 
+7. **The exit code of a subprocess is not evidence the thing landed.** An installer that runs `pi install … >/dev/null 2>&1`, `npm i … >/dev/null`, or any fetcher and then keys success on `$?` reports a green line for a no-op: the declaration can be written while nothing arrives. Two rules, both cheap:
+
+   ```bash
+   # ❌ output discarded, success read off rc alone
+   if "$LAUNCHER" install "$PKG" >/dev/null 2>&1; then echo "✓ installed $PKG"; fi
+
+   # ✅ capture the output, assert the ARTIFACT, report what the tool said
+   LOG="$(mktemp "${TMPDIR:-/tmp}/install.XXXXXX")"
+   if "$LAUNCHER" install "$PKG" >"$LOG" 2>&1; then
+     if [[ -d "$PKG_DIR" ]]; then                # the effect, not the rc
+       echo "  ✓ installed $PKG"; last="$(tail -n 1 "$LOG")"
+       if [[ -n "$last" ]]; then echo "    launcher: $last"; fi
+     else
+       echo "install: $LAUNCHER exited 0 but $PKG_DIR is absent" >&2
+       tail -n 20 "$LOG" >&2; exit 1
+     fi
+   else
+     rc=$?; echo "install FAILED (rc=$rc)" >&2; tail -n 20 "$LOG" >&2; exit 1
+   fi
+   ```
+
+   - **Discarding a subprocess's output in its failure path is a swallowed error**: the message the operator needs (npm 404, auth failure, a yanked version) is exactly what got thrown away, and the script exits 1 telling them to re-run it by hand to find out.
+   - **`[[ -n "$x" ]] && echo …` as a bare statement is a `set -e` trap** — an empty value makes the whole AND-list return 1 and kills the script right after a *successful* install. Use `if [[ -n "$x" ]]; then …; fi`.
+   - Assert the artifact for the same reason the doctor's checksum fails: a declaration in a config file and the thing on disk are two different facts, and only the second one makes the capability work.
+
 ### Real findings from this checklist applied to `install-crons.sh` (870 lines)
 
 | Check | Finding |
@@ -990,3 +1015,5 @@ Before shipping changes to installer scripts (`install-crons.sh`, `setup.sh`, et
 | **Interpreter chosen by path existence** | `No module named X` although X is installed — under a DIFFERENT interpreter; an `[[ -x $VENV/bin/python3 ]]` guard never fires because the file is there | Test the CAPABILITY (`"$py" -c 'import X'`), try candidates in order, `exit 3` = could not verify; never silently fall back to a `python3` known to lack it |
 | **An inherited `PYTHONPATH`/`PYTHONHOME` around a capability probe** | A HEALTHY venv reads as broken — or a bare python as capable — because a foreign site-packages shadows the target's own. Measured: the fleet venv (which imports `mcp` fine) reported as missing it, and the resolver claimed no interpreter on the host could import `mcp` at all | Probe and run with `env -u PYTHONPATH -u PYTHONHOME`; print what you ignored. A venv's correctness must not depend on the caller's environment |
 | **A checker that cannot read its input reports the FILE as broken** | A valid YAML manifest reported as "parse issue" because the validating script used a bare `python3` with no `yaml` — the checker blamed the artifact for its own missing dependency, and a task got filed against a file that was never wrong | A checker with no parser has NO VERDICT. Resolve an interpreter that can import the dependency (the arbiter above), and when none can print `COULD NOT VERIFY … not checked` — never a negative verdict about the artifact. Applies to every lint/validate step that shells out for its parser |
+| **`[[ -n "$x" ]] && cmd` as a bare statement under `set -e`** | The script exits 1 at that line whenever the test is false — e.g. right after a successful install whose last output line is empty, so the failure reads as "the install broke" | Use `if [[ -n "$x" ]]; then cmd; fi`. The `&&` form is only safe inside a condition (`if [[ … ]] && cmd; then`) or with `|| true` |
+| **Subprocess output discarded in the failure path** | `cmd >/dev/null 2>&1` under an `if` reports "FAILED" with the reason (npm 404, auth, yanked version) thrown away; the operator must re-run it by hand to learn what the script already knew | Capture to `mktemp` and print `tail -n 20` plus the rc on failure; on success print the tool's own last line and assert the ARTIFACT exists (see installer audit item 7) |
