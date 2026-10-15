@@ -58,6 +58,18 @@ Fleet agents run `agent-message-handler.py` as a cron (`*/5 * * * *`). Source: `
 | `EXEC` | Run script under `~/.hermes-cortex/scripts/` | `EXEC_RESULT` | `command`, `params[]`, `timeout` |
 | `UPDATE_REQUEST` | Run `cortex-update.sh` | `UPDATE_RESULT` | `target_sha`, `target_version`, `run_doctor` |
 
+> **`target_sha` in an UPDATE_REQUEST is a LOG LABEL, not a checkout pin.**
+> The handler reads it only to report `Processing UPDATE_REQUEST: SHA=…` and
+> echo it in the result — it is never `git checkout`-ed or enforced. The update
+> runs `cortex-update.sh`, which pulls and deploys the LATEST `origin/main`
+> regardless of what `target_sha` says. Consequences: (a) a wrong, abbreviated,
+> or stale SHA in the dispatch does NOT break the update or land the wrong
+> commit — don't re-send a corrected dispatch for a cosmetic label; (b) do not
+> read `UPDATE_RESULT.git_sha_after` against `target_sha` as an install check
+> for a specific commit — compare against the actual `origin/main` tip you
+> pushed, and use `RUN doctor`/doctor `Deploy sync` for a real pin check
+> (ROLLBACK_REQUEST is the only subject that actually checks out a SHA).
+
 > **UPDATE_REQUEST processing is now DETACHED (2026-08-18).** The fleet
 > handler no longer runs pull+cortex-update+doctor synchronously inside its
 > cron tick: on slow hosts the combined runtime (~390s worst case) exceeded

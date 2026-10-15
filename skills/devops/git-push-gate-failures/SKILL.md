@@ -193,6 +193,48 @@ all of them in one pass, then grep the set clean before continuing.
 
 **Hermetic repro for a purge fix** (no real state touched): repoint the module's `GOVERNANCE_STATE_DIR` / `LOOP_DB` at a temp dir, write a stale time-only-heartbeat lock, seed a PENDING cycle for its task, run `_purge_stale_locks()`, assert the lock is gone AND the cycle flipped to `MOVE_ON`. Proving the cycle resolution is what unblocks the gate — deleting the lock alone demonstrably does not.
 
+## 6. Push blocked by "❌ Review provenance" — an unbacked `recorded-in` claim
+**Symptom:** the doctor FAILs `❌ Review provenance` naming a docs/evidence file
+that presents itself as a recorded review, and the pre-push gate blocks every
+push on the host — regardless of how unrelated your diff is.
+
+**Mechanism:** `check_review_provenance` (cortex_doctor) shells out to
+`ops/scripts/quality/review-provenance-check.py`, which scans every text file
+under `docs/` for a `recorded-in: adversarial_reviews review_id=…` CLAIM in
+its header. A claim is verified against the host's LOCAL loop-governance DB
+(`~/.hermes-cortex/data/loop-governance.db`); if no row carries that id, the
+file is an unbacked claim → FAIL. A review row lives on the host where
+`adversarial-review.py --cycle-id N --review` RAN, so a docs file committed to
+the shared repo carries a claim only one host can truthfully verify — every
+other host FAILs on it. It is often another session's (or a merged
+upstream's) artifact, not yours — but it still blocks you, and you own it.
+
+**Verify before touching it** (never mark an unbacked claim as if it were
+verifiable):
+```
+sqlite3 ~/.hermes-cortex/data/loop-governance.db \
+  "SELECT review_id, cycle_id FROM adversarial_reviews WHERE review_id LIKE '<id>%';"
+```
+A query with rows = the claim is valid on this host; empty = the row is
+elsewhere or fabricated. Then run the checker standalone to see the
+enumeration and the offending line:
+```
+~/.hermes-cortex/venv/bin/python3 ops/scripts/quality/review-provenance-check.py --repo .
+```
+
+**Legal fixes (the checker accepts exactly these; both are exact strings —
+`check_review_provenance` matches the literal constant, so a trailing
+explanation on the declaration line breaks the match and re-FAILs):**
+- `> \`provenance: advisory\`` at the top of the file — truthful when the
+  row is not verifiable on this host; move any explanation of WHY to the
+  body below the declaration, never on the declaration line.
+- `> \`provenance: not-a-review\`` — for a model-named header that is
+  not a review at all.
+Do NOT graft a `recorded-in` id that does not exist in the local store just to
+satisfy the gate — that makes the file a fabricated claim and is the exact
+defect the check exists to stop. Say plainly in the note whether the row is
+present or absent.
+
 ## Verification checklist
 
 - [ ] `stat` the update-commit mtime before debugging your diff

@@ -421,6 +421,32 @@ launchctl list com.legacy-brain.sync-watch | grep PID # should be different from
 grep "skip default" ~/.legacy-brain/sync-watch.sh # confirm --skip default is present
 ```
 
+### cortex-update.sh appending to agent.env — a missing trailing newline concatenates vars
+
+**PROBLEM:** `cortex-update.sh`'s env step PROVISIONs/append `CORTEX_PYTHON=...` to
+`~/.hermes-cortex/agent.env` via `>>`. If the existing file does not end in a newline,
+the append lands on the SAME line as the prior var (e.g. `AGENT_NAME=mosesCORTEX_PYTHON=...`).
+`task-db.py`'s `_env_agent_name()` reads `line.split("=",1)[1]` and returns the whole
+concatenated garbage as the profile, so `CRUD_ROLE` resolves to
+`mycortex_reader_mosesCORTEX_PYTHON=...` and EVERY task-db/RLS probe fails with
+`role "..." does not exist` — surfacing as doctor `❌ Task DB connectivity` and
+`❌ Task Lifecycle v2 events RLS`, which look unrelated to the real cause.
+
+**DIAGNOSE:** grep the file for a concatenated line —
+`grep -nE '=' ~/.hermes-cortex/agent.env` shows one line carrying two `=`; the
+second var has no leading newline. The garbled profile also appears verbatim in the
+psql error's role name.
+
+**FIX:** Rewrite `agent.env` with each var on its OWN newline-terminated line (so a
+subsequent `>>` append has a clean anchor). There is no harm in scripting the fix
+rather than editing (a 2-3 line file). After fixing, `task-db.py list --board` reads
+clean and the doctor's task-DB/RLS checks pass.
+
+**PREVENT:** when any script appends to a live env/identity file, either (a) ensure
+the file always has a trailing newline before appending, or (b) write the vars as a
+whole block rather than `>>`-appending one line — an append that can silently join
+lines is a corruption waiting for a fix, not a cosmetic style choice.
+
 ### nginx zone-defs duplicate after
 
 **PROBLEM:** Running `cortex-update.sh ` deploys `hermes-zone-defs.conf`
