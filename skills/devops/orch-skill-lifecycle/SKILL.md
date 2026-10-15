@@ -426,6 +426,36 @@ Result: 3 skills updated, 1 upstreamed, 1 SOUL.md entry.
   scripts/ + templates/ together, so a skill upstreamed without its references/
   deploys partial. Stub guard still applies: read the body first, refuse if it
   holds `(content unavailable)` / `[SKILL_PRUNED]`.
+- **Verification evidence must be a COMMITTED RUNNABLE SCRIPT, not prose (2026-10-16)** →
+  the self-adversarial reviewer refuses a close whose evidence is a self-report:
+  it flagged three times in one run (ADV-12689-1, then -12694, then -12698) until
+  the verification existed as a committed script instead of a paragraph. The
+  durable shape is a PAIR: `verify-<thing>.sh` (the check, non-zero when a claim
+  stops holding) plus `test-verify-<thing>.sh` (the negative harness that induces
+  ONE failure per case and asserts the check NOTICES). Commit both, and have the
+  evidence doc POINT AT the scripts rather than transcribe a terminal — a
+  transcript is unreproducible and is read as fabrication.
+- **A check that swallows a tool error is not a check (2026-10-16)** → the first
+  two iterations of the parity verifier ran dependencies as `cmd ... || true` and
+  fell through to PASS when a tool crashed: `rc != 0` with non-empty output was
+  treated as fine, and a missing repo file made an empty diff read as "nothing
+  wrong". Exit codes are AMBIGUOUS here — `cortex-doctor` exits 1 whenever any
+  warning exists, so rc alone cannot separate "ran with warnings" from "crashed".
+  State each tool's run-evidence test explicitly (>=100 per-check lines for the
+  doctor; a `verdict: (PASS|FAIL)` line for the reconciler; `[ ! -f ]` guards on
+  BOTH repo and deployed paths before any diff; measured `rc=0 + empty output` as
+  the scanner's clean case). Then PROBE THE PROBE: rewrite each dependency to a
+  stub in a temp dir, break one thing, and prove the check exits non-zero with a
+  named reason (11 probes, 0 blind spots, is the bar).
+- **Scope a verification check to what the change OWNS (2026-10-16)** → a check
+  that fails on ANY drift is not self-contained: while this pipeline ran, a peer
+  (moses) landed two merges mid-run and four UNRELATED skills went adrift, turning
+  the verifier red for files it does not own. Match drift against the change's own
+  file set — FAIL on yours, PASS with an explicit "unrelated skill drift present
+  (NOT this change's scope)" note otherwise. Relatedly: when a peer's in-flight
+  update is the cause, SOUL Principle 9 forbids fixing it — record it
+  (`record_issue`, high) and stand down; the peer's own reconciliation resolved
+  all four within the run.
 - **Don't patch the same skill twice in one run** — deduplicate before acting
 - **Don't upstream fleet skills that already exist** — check repo + Hermes bundle
 - **Don't modify SOUL.md for workflow lessons** — skills are for workflow, SOUL.md is for principles

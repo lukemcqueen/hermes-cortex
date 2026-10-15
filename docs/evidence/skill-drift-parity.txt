@@ -11,8 +11,11 @@ Deploy banners (the 3-line SOURCE header) are not compared.
 
 | Measure | Value |
 |---|---|
-| Deployed-only files (stranded) | 0 |
-| Files in sync | 841 |
+| Deployed-only files (stranded) | 1 |
+| Files in sync | 840 |
 | Skipped (no repo counterpart, or repo ahead) | 627 |
 
-**Verdict: PASS**
+**Verdict: FAIL**
+
+Stranded files:
+- devops/orch-skill-lifecycle/SKILL.md
