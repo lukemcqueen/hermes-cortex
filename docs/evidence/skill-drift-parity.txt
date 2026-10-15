@@ -11,12 +11,8 @@ Deploy banners (the 3-line SOURCE header) are not compared.
 
 | Measure | Value |
 |---|---|
-| Deployed-only files (stranded) | 2 |
-| Files in sync | 839 |
+| Deployed-only files (stranded) | 0 |
+| Files in sync | 841 |
 | Skipped (no repo counterpart, or repo ahead) | 627 |
 
-**Verdict: FAIL**
-
-Stranded files:
-- autonomous-ai-agents/pi-coding-agent/SKILL.md
-- devops/shell-scripting/SKILL.md
+**Verdict: PASS**
