@@ -1,0 +1,26 @@
+[mcp-server] WARNING: the 'mcp' package is not installed — the stdio server cannot start; the CLI adapter (ops/scripts/loop-gov.py) still works.
+[mcp-server]   ~/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3 -m pip install mcp
+module      : ~/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py  (the DEPLOYED copy the close loads)
+model       : deepseek/deepseek-v4-pro
+effort      : medium
+ceiling     : 240s for this caller (mcp)
+
+[mcp-server] WARNING: reviewer timeout ADVERSARIAL_REVIEW_TIMEOUT=300s exceeds the 240s ceiling for this caller (caller=mcp) — clamping (a timeout past the caller's own patience is an unobservable hang, not a longer wait)
+control (trivial prompt)          2.9s   2 chars back, not a findings object (contents NOT printed)
+[mcp-server] INFO: review receipt: blobs from ~/hermes-cortex/ops/scripts/lib/review-receipt-check.py (7 entries)
+[mcp-server] WARNING: SQL migration: column already exists — expected
+[mcp-server] WARNING: SQL migration: unscored_reason already exists — expected
+range       : 4e5112df1b4f..HEAD, 7 blob(s), 5 without a verdict
+blob        : docs/evidence/review-bounded/live-proof.txt  (prompt 17734 chars)
+scaling     : none (cx={}) — this measures the BASE wait, the budget the ceiling clamps
+
+[mcp-server] WARNING: reviewer timeout ADVERSARIAL_REVIEW_TIMEOUT=300s exceeds the 240s ceiling for this caller (caller=mcp) — clamping (a timeout past the caller's own patience is an unobservable hang, not a longer wait)
+  sample 1                         240.0s   TimeoutError: reviewer exceeded the 240s wall-clock deadline
+[mcp-server] WARNING: reviewer timeout ADVERSARIAL_REVIEW_TIMEOUT=300s exceeds the 240s ceiling for this caller (caller=mcp) — clamping (a timeout past the caller's own patience is an unobservable hang, not a longer wait)
+  sample 2                          47.2s   948 chars back, contents NOT printed
+[mcp-server] WARNING: reviewer timeout ADVERSARIAL_REVIEW_TIMEOUT=300s exceeds the 240s ceiling for this caller (caller=mcp) — clamping (a timeout past the caller's own patience is an unobservable hang, not a longer wait)
+  sample 3                          41.9s   556 chars back, contents NOT printed
+  spread: min 41.9s / max 240.0s across 3 calls of the SAME prompt
+
+Advisory: timings only. No verdict is recorded here and no receipt depends on it.
+probe rc=0  (printed by the probe; the sed normaliser that follows only rewrites $HOME to ~)

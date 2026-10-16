@@ -85,10 +85,37 @@ def main() -> int:
     prompt = (f"{mod._review_template_text(REPO)}\n"
               f"{mod._blob_material(REPO, base, path, ctx)}\n")
     print(f"blob        : {path}  (prompt {len(prompt)} chars)")
-    timed("one real blob review", lambda: mod._call_reviewer(
-        prompt, author="latency-probe", cx=mod._complexity(REPO, None, None)))
+    print("scaling     : none (cx={}) — this measures the BASE wait, the budget the ceiling"
+          " clamps")
+    print()
+    # THREE samples, not one: the same prompt measured 57.7s on one run and 200.9s on
+    # another (2026-10-16), so a single sample cannot tell a reader whether a 240s ceiling
+    # is comfortable or marginal. The SPREAD is the load-bearing number: it is why a fixed
+    # ceiling intermittently refused a range whose blobs normally fit.
+    elapsed = []
+
+    def sample(i: int) -> None:
+        started = time.monotonic()
+        try:
+            text = mod._call_reviewer(prompt, author="latency-probe", cx={})
+            note = f"{len(text)} chars back, contents NOT printed"
+        except Exception as exc:  # noqa: BLE001 — a failure is a measurement too
+            note = f"{type(exc).__name__}: {str(exc)[:120]}"
+        took = time.monotonic() - started
+        elapsed.append(took)
+        print(f"  sample {i:<22} {took:8.1f}s   {note}")
+
+    for i in (1, 2, 3):
+        sample(i)
+    if elapsed:
+        print(f"  spread: min {min(elapsed):.1f}s / max {max(elapsed):.1f}s "
+              f"across {len(elapsed)} calls of the SAME prompt")
     print()
     print("Advisory: timings only. No verdict is recorded here and no receipt depends on it.")
+    # Print the probe's OWN status: a `cmd | sed` pipeline's rc is the sed stage's, and a
+    # shell variable read after the fact did not survive the caller's wrapper. This line
+    # comes from the process whose exit code it describes.
+    print("probe rc=0  (printed by the probe; the sed normaliser that follows only rewrites $HOME to ~)")
     return 0
 
 
