@@ -1,6 +1,6 @@
 REVIEWER BOUNDS — LIVE proof (generated, not hand-written)
 Produced by: bash hermes-cortex/docs/evidence/review-bounded/capture.sh   (every path below is normalised to ~)
-Generated at: 2026-10-16T08:33:57Z
+Generated at: 2026-10-16T08:41:56Z
 
 ═══════ 1. The baseline is genuinely PRE-change ═══════
 $ git -C hermes-cortex show 119e6006:mcp-servers/loop-gov-mcp.py > /tmp/pre-review-bounds-loop-gov.py
@@ -28,15 +28,16 @@ $ python3 hermes-cortex/tests/test_review_per_blob.py
 ✅ test_the_cap_reports_progress_instead_of_deadlocking
 ✅ test_a_changed_blob_is_re_reviewed
 ✅ test_only_judged_blobs_are_uncovered
+✅ test_the_per_blob_pass_has_exactly_one_call_site
 SKIP: this is the discrimination case — run it with CORTEX_LOOP_GOV_SERVER=<pre-change copy>
 ✅ test_the_pre_change_revision_has_no_per_blob_surface
 rc=0
 
 ═══════ 3. The baseline FAILS the same checks (discrimination) ═══════
 $ CORTEX_LOOP_GOV_SERVER=/tmp/pre-review-bounds-loop-gov.py python3 hermes-cortex/tests/test_reviewer_budget.py
-❌ test_the_request_carries_a_bounded_reasoning_budget: the request must bound the THINKING budget: max_tokens alone lets a reasoning model spend the whole reply thinking: {'model': 'deepseek/deepseek-v4-pro', 'messages': [{'role': 'user', 'content': 'judge this'}], 'max_tokens': 96000, 'temperature': 0}
+❌ test_the_request_carries_a_bounded_reasoning_budget: the request must bound the THINKING budget: max_tokens alone lets a reasoning model spend the whole reply thinking: {'model': 'deepseek/deepseek-v4-pro', 'messages': [{'role': 'user', 'content': 'judge this'}], 'max_tokens': 32000, 'temperature': 0}
 ❌ test_an_invalid_effort_falls_back_rather_than_becoming_a_400: KeyError: 'reasoning'
-❌ test_the_floor_reports_the_measurement_not_a_remedy_already_tried: the failure must carry the measurement that explains it: reviewer returned NO usable content (finish_reason=length, max_tokens=96000) — a reasoning model may have exhausted its thinking budget; raise REVIEWER_MAX_TOKENS
+❌ test_the_floor_reports_the_measurement_not_a_remedy_already_tried: the failure must carry the measurement that explains it: reviewer returned NO usable content (finish_reason=length, max_tokens=32000) — a reasoning model may have exhausted its thinking budget; raise REVIEWER_MAX_TOKENS
 ❌ test_the_call_has_a_hard_wall_clock_deadline: the deadline must fire PROMPTLY against a trickling peer — without a hard deadline the socket timeout never fires (took 22.6s)
 ✅ test_the_pre_change_revision_is_unbounded
 rc=1
@@ -52,6 +53,7 @@ $ CORTEX_LOOP_GOV_SERVER=/tmp/pre-review-bounds-loop-gov.py python3 hermes-corte
 ❌ test_the_cap_reports_progress_instead_of_deadlocking: AttributeError: module 'loop_gov_per_blob_under_test' has no attribute '_review_uncovered_blobs'
 ❌ test_a_changed_blob_is_re_reviewed: AttributeError: module 'loop_gov_per_blob_under_test' has no attribute '_review_uncovered_blobs'
 ❌ test_only_judged_blobs_are_uncovered: AttributeError: module 'loop_gov_per_blob_under_test' has no attribute '_review_uncovered_blobs'
+❌ test_the_per_blob_pass_has_exactly_one_call_site: the per-blob close pass must be defined exactly once, found 0
 ✅ test_the_pre_change_revision_has_no_per_blob_surface
 rc=1
 

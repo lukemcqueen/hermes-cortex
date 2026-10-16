@@ -1252,6 +1252,71 @@ def _complete_blob_reviews(repo: Path, template: str, ctx: dict, run_reviewer,
         cap=cap, budget_s=budget_s)
 
 
+def _complete_push_range_blobs(lock: dict, cycle: dict,
+                               cx: Optional[dict] = None) -> Optional[CallToolResult]:
+    """Judge the push range's unreviewed blobs at the CLOSE. None means carry on.
+
+    ONE call site, at the single point every permitted close passes through. The
+    first version wired this into two of the gate's four CLEAN exits, and the close
+    that took a third (findings that were all LOW) wrote a receipt with an EMPTY
+    ``reviewed_blobs`` — a range authorised by tip+base alone while the per-blob
+    machinery sat unused. A per-exit wiring is the bug; this function is called once,
+    from the close, so a new exit path cannot silently skip it again.
+    """
+    repo = _lock_repo(lock)
+    if repo is None:
+        return None                      # the gate already refused a repo-less close
+    if not _range_touches_always_review(repo):
+        # Only an always-review range needs a receipt bound to blob CONTENT; anywhere
+        # else a receipt without blobs is equivalent (exact tip+base), so a trivial
+        # change still costs NO reviewer call.
+        return None
+    template = _review_template_text(repo)
+    if not template or REVIEW_MARKER not in template:
+        return None                      # the gate's own template refusal covers this
+    author = _agent_author(repo)
+    ctx = {
+        "sid": lock.get("session_id", ""),
+        "author": author,
+        "branch": _git_capture(repo, "rev-parse", "--abbrev-ref", "HEAD").strip(),
+        "head_sha": _git_capture(repo, "rev-parse", "--short", "HEAD").strip(),
+        "cycle_id": cycle.get("id", 0),
+        "task_id": lock.get("task_id", ""),
+        "description": lock.get("description", ""),
+    }
+    pb = _complete_blob_reviews(
+        repo, template, ctx, lambda p: _call_reviewer(p, author=author, cx=cx or {}))
+    remaining = pb.get("remaining") or []
+    if pb.get("calls"):
+        log.info("per-blob close pass: reviewed %d blob(s) of the push range "
+                 "(%d still unreviewed)", pb["calls"], len(remaining))
+    if pb.get("blocking"):
+        _fj = json.dumps(pb["blocking"])
+        log.error("per-blob close pass: %d blocking finding(s) — refusing the close",
+                  len(pb["blocking"]))
+        _mark_close_refused(cycle.get("id", 0), "FINDINGS", _fj, lock)
+        return CallToolResult(content=[TextContent(type="text", text=(
+            "❌ Self-adversarial review FAILED on a per-blob verdict — this change cannot "
+            "close.\n\n"
+            f"Blocking findings ({len(pb['blocking'])}): {_replay_safe_findings(_fj)}\n\n"
+            "Verdicts are stored against the blob's CONTENT, so fixing a file and committing "
+            "it produces a new blob judged on its own. The lock is HELD and nothing is "
+            "authorised; no receipt is written for a range with blocking findings."
+        ))])
+    if remaining:
+        _mark_close_refused(cycle.get("id", 0), "REVIEW_PENDING", "[]", lock)
+        return CallToolResult(content=[TextContent(type="text", text=(
+            f"⏳ Cannot close yet: {len(remaining)} blob(s) of the push range still carry no "
+            "review verdict.\n\n"
+            f"  reviewed this pass : {pb.get('calls')} blob(s)\n"
+            f"  verdicts cached    : {len(pb.get('verdicts') or {})}\n\n"
+            "Verdicts are keyed by blob CONTENT, so closing again continues from here "
+            "instead of redoing what is already judged (the per-close budget is "
+            f"{BLOB_REVIEW_CAP_PER_CLOSE} blobs / {int(BLOB_REVIEW_BUDGET_S)}s)."
+        ))])
+    return None
+
+
 def _receipt_blobs(repo: Path, base: str, head: str):
     """The range's blobs that carry a stored CLEAN verdict; everything else OMITTED.
 
@@ -5157,69 +5222,6 @@ def _adversarial_review_gate(lock: dict, cycle: dict,
 
     cx = _complexity(repo, lock.get("started_at", ""), lock.get("dirty_at_start"))
 
-    def _finish_blobs() -> Optional[CallToolResult]:
-        """Complete per-blob coverage for the PUSH range. None means carry on.
-
-        The receipt authorises the PUSH range, so that is the set that must carry a
-        verdict — and the receipt may name ONLY judged blobs. This is also the path
-        that makes a WIDE range shippable: the same judgement is earned as a series
-        of small calls instead of one that a reasoning model cannot finish.
-        """
-        _t = _review_template_text(repo)
-        if not _t or REVIEW_MARKER not in _t:
-            _mark_close_refused(cycle.get("id", 0), "TEMPLATE_MISSING", "[]", lock)
-            return CallToolResult(content=[TextContent(type="text", text=(
-                "❌ Cannot close: self-adversarial reviewer prompt template is missing or "
-                "corrupt. Run cortex-update.sh, then retry end_change."
-            ))])
-        _ctx = {
-            "sid": lock.get("session_id", ""),
-            "author": _agent_author(repo),
-            "branch": _git_capture(repo, "rev-parse", "--abbrev-ref", "HEAD").strip(),
-            "head_sha": _git_capture(repo, "rev-parse", "--short", "HEAD").strip(),
-            "cycle_id": cycle.get("id", 0),
-            "task_id": lock.get("task_id", ""),
-            "description": lock.get("description", ""),
-        }
-        _pb = _complete_blob_reviews(
-            repo, _t, _ctx,
-            lambda p: _call_reviewer(p, author=_ctx["author"], cx=cx))
-        _remaining = _pb.get("remaining") or []
-        if _pb.get("calls"):
-            log.info("self-adversarial review: cycle %s per-blob pass reviewed %d blob(s) "
-                     "of the push range (%d still unreviewed)",
-                     cycle.get("id"), _pb["calls"], len(_remaining))
-        if _pb.get("blocking"):
-            _fj = json.dumps(_pb["blocking"])
-            log.error("self-adversarial review: cycle %s — %d blocking finding(s) from the "
-                      "per-blob pass", cycle.get("id"), len(_pb["blocking"]))
-            _mark_close_refused(cycle.get("id", 0), "FINDINGS", _fj, lock)
-            _release_after_refusal(lock, cycle.get("id"))
-            return CallToolResult(content=[TextContent(type="text", text=(
-                "❌ Self-adversarial review FAILED on a per-blob verdict — this change cannot "
-                "close.\n\n"
-                f"Blocking findings ({len(_pb['blocking'])}): "
-                f"{_replay_safe_findings(_fj)}\n\n"
-                "Each verdict is stored against the blob's CONTENT, so fixing a file and "
-                "committing it produces a new blob judged on its own. The lock is RELEASED "
-                "and this cycle is closed unscored; the push receipt names only judged "
-                "blobs, so nothing here is authorised."
-            ))])
-        if _remaining:
-            _mark_close_refused(cycle.get("id", 0), "REVIEW_PENDING", "[]", lock)
-            _release_after_refusal(lock, cycle.get("id"))
-            return CallToolResult(content=[TextContent(type="text", text=(
-                f"⏳ Cannot close yet: {len(_remaining)} blob(s) of the push range still carry "
-                "no review verdict.\n\n"
-                f"  reviewed this pass : {_pb.get('calls')} blob(s)\n"
-                f"  verdicts cached    : {len(_pb.get('verdicts') or {})}\n\n"
-                "Verdicts are keyed by blob CONTENT, so a further close continues from here "
-                "instead of redoing what is already judged. Open the next cycle and close "
-                "again to finish; the push gate names any blob it cannot cover."
-            ))])
-        return None
-
-
     # ── Wrong-repo guard (part 1 of the right-repo fix) ──
     # The lock's repo_slug comes from _derive_slug(), whose canonical-repo
     # preference is a property of the HOST rather than the session — so on a
@@ -5296,14 +5298,6 @@ def _adversarial_review_gate(lock: dict, cycle: dict,
     if not cx["is_complex"]:
         log.info("self-adversarial review: cycle %s simple (%s lines, %s files) — skip",
                  cycle.get("id"), cx["lines"], cx["files"])
-        # A simple cycle still owes a REAL receipt when the push range touches an
-        # always-review path — the receipt may name only judged blobs, so the
-        # coverage is completed here rather than claimed. Trivial ranges with no
-        # always-review path stay free (no reviewer call at all).
-        if _range_touches_always_review(repo):
-            _blk = _finish_blobs()
-            if _blk is not None:
-                return _blk
         return None
 
     # Complex: build the review material and run the reviewer.
@@ -5536,16 +5530,6 @@ def _adversarial_review_gate(lock: dict, cycle: dict,
 
     if verdict == "CLEAN":
         log.info("self-adversarial review: cycle %s CLEAN", cycle.get("id"))
-        # A range verdict covers the blobs it judged: spread it over the reviewed
-        # window, then finish the PUSH range per blob so the receipt names only
-        # content that was actually judged.
-        _record_blob_reviews(
-            _range_blobs(repo, _base, _git_capture(repo, "rev-parse", "HEAD").strip()) or {},
-            "CLEAN", summary="whole-range verdict CLEAN",
-            reviewer_id=reviewer_id, model=_reviewer_label(cx))
-        _blk = _finish_blobs()
-        if _blk is not None:
-            return _blk
         _clear_close_refused(cycle.get("id"), lock)
         return None
 
@@ -5702,6 +5686,18 @@ def _end_change(args: dict) -> CallToolResult:
     review_block = _adversarial_review_gate(lock, cycle_data or {})
     if review_block is not None:
         return review_block
+
+    # Step 3b: complete per-blob coverage for the push range.
+    #
+    # ONE call site, on the single path every permitted close takes. The receipt may
+    # name only JUDGED blobs, so this is what makes the receipt's coverage real — and
+    # it is also what makes a WIDE range shippable, because the judgement is earned as
+    # a series of small calls instead of one a reasoning model cannot finish. Wiring it
+    # into the review gate's own exits was the bug: the exit that writes no receipt
+    # skipped it entirely (measured — a receipt with an EMPTY reviewed_blobs).
+    blob_block = _complete_push_range_blobs(lock, cycle_data or {})
+    if blob_block is not None:
+        return blob_block
 
     # Step 3c: write the push receipt.
     #

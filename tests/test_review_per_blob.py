@@ -193,6 +193,43 @@ def test_the_pre_change_revision_has_no_per_blob_surface(tmp_path):
         )
 
 
+def test_the_per_blob_pass_has_exactly_one_call_site(tmp_path):
+    """The pass belongs at the CLOSE, not per review-gate exit.
+
+    Measured failure: the first version was wired into two of the gate's CLEAN
+    exits, so a close that took a third (findings that were all LOW) wrote a
+    receipt with an EMPTY reviewed_blobs — tip+base authorisation while the
+    per-blob machinery sat unused. One call site makes a new exit path unable to
+    skip it silently.
+    """
+    import ast
+
+    src = SERVER.read_text()
+    tree = ast.parse(src)
+    defs = [n for n in ast.walk(tree)
+            if isinstance(n, ast.FunctionDef) and n.name == "_complete_push_range_blobs"]
+    assert len(defs) == 1, (
+        f"the per-blob close pass must be defined exactly once, found {len(defs)}"
+    )
+    callers = []
+    for fn in ast.walk(tree):
+        if not isinstance(fn, ast.FunctionDef):
+            continue
+        for call in ast.walk(fn):
+            if isinstance(call, ast.Call) and \
+                    getattr(call.func, "id", "") == "_complete_push_range_blobs":
+                callers.append(fn.name)
+    assert callers == ["_end_change"], (
+        "the per-blob pass must be called from ONE place — the close — because wiring "
+        "it per review-gate exit silently skipped it on the exit that writes the "
+        f"receipt: {callers}"
+    )
+    assert "_finish_blobs" not in src, (
+        "the per-exit wiring was deleted on purpose: a second copy of the pass is how "
+        "the exits drifted apart in the first place"
+    )
+
+
 if __name__ == "__main__":
     CASES = (
         test_a_clean_blob_is_reviewed_once_then_cached,
@@ -201,6 +238,7 @@ if __name__ == "__main__":
         test_the_cap_reports_progress_instead_of_deadlocking,
         test_a_changed_blob_is_re_reviewed,
         test_only_judged_blobs_are_uncovered,
+        test_the_per_blob_pass_has_exactly_one_call_site,
         test_the_pre_change_revision_has_no_per_blob_surface,
     )
     failures = 0
