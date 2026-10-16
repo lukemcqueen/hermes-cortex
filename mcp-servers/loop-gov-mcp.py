@@ -5473,33 +5473,19 @@ def _adversarial_review_gate(lock: dict, cycle: dict,
     try:
         reviewer_text = _call_reviewer(prompt, author=_author, cx=cx)
     except Exception as e:
-        _no_content = "NO usable content" in str(e)
         log.error("self-adversarial review: reviewer call failed: %s", e)
-        if _no_content:
-            # A whole-range review that cannot FINISH is exactly the case the per-blob
-            # path exists for: the material is too big for one reasoning budget, not
-            # wrong. Hand the range to the close's per-blob pass, which REQUIRES full
-            # coverage — so this is a re-route, never a relaxation: a range whose blobs
-            # cannot all be judged still cannot close (and no receipt is written for
-            # blobs nobody read). The marker tells the close to require that coverage
-            # even for a range with no always-review path.
-            _mark_close_refused(cycle.get("id", 0), "REVIEW_INCOMPLETE", "[]", lock)
-            log.warning("self-adversarial review: cycle %s — whole-range review could not "
-                        "finish; falling back to REQUIRED per-blob coverage",
-                        cycle.get("id"))
-            return None
-        # A refusal is a refusal: the reviewer being unreachable leaves the lock
-        # HELD exactly like a MEDIUM+ verdict does, so record it on the lock too —
-        # otherwise an outage silently looks like a live cycle and the next change
-        # gets stacked under it. (Found by test_refused_close_visible: the outage
-        # path had no marker at all.)
-        _mark_close_refused(cycle.get("id", 0), "REVIEWER_UNAVAILABLE", "[]", lock)
-        return CallToolResult(content=[TextContent(type="text", text=(
-            "❌ Cannot close: self-adversarial reviewer is UNAVAILABLE. "
-            "Governance requires review before this complex change ships — "
-            f"the close is refused, not skipped. (error: {e})\n\n"
-            "Retry end_change when the reviewer is reachable."
-        ))])
+        # RE-ROUTE, do not deadlock. A whole-range call that could not FINISH — the
+        # reply exhausted its reasoning budget, or the call hit the wall-clock deadline
+        # (both measured on a wide window) — is the case the per-blob path exists for:
+        # the material is too big for ONE call, not wrong. The close then REQUIRES full
+        # per-blob coverage, so this is never a relaxation: if the reviewer is genuinely
+        # unreachable, the first blob call fails too, the pass stops immediately and the
+        # close refuses with every blob still unjudged. No receipt is written for blobs
+        # nobody read either way.
+        _mark_close_refused(cycle.get("id", 0), "REVIEW_INCOMPLETE", "[]", lock)
+        log.warning("self-adversarial review: cycle %s — whole-range review could not "
+                    "finish; falling back to REQUIRED per-blob coverage", cycle.get("id"))
+        return None
 
     if not _reviewer_reply_is_usable(reviewer_text):
         # FAIL CLOSED on silence (2026-10-14, cycle 12530): a null/empty reply means
