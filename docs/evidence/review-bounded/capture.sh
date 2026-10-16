@@ -81,27 +81,63 @@ body() {
 
   echo "═══════ 5. The RESTARTED in-process path runs this module ═══════"
   echo "The close-time reviewer runs in-process when a close goes through the"
-  echo "loop-governance MCP child. That child holds the revision it STARTED with, so"
-  echo "the child's own start time is the thing to look at."
+  echo "loop-governance MCP child, and that child holds the revision it STARTED with."
+  echo "So the claim is made as a COMPARISON, not an assertion: the child must have"
+  echo "started AFTER the deployed copy was written, because a process cannot hold a"
+  echo "revision that did not exist yet."
   echo
+  DEPLOYED="$HOME/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py"
   echo "\$ pgrep -af 'tools/loop-governance/loop-gov-mcp.py'"
-  pgrep -af 'tools/loop-governance/loop-gov-mcp.py' || echo "(no such process)"
-  echo "rc=$?"
+  pgrep -af 'tools/loop-governance/loop-gov-mcp.py'
+  PGREP_RC=$?
+  if [ "$PGREP_RC" -eq 0 ]; then
+    echo "rc=$PGREP_RC"
+  else
+    echo "rc=$PGREP_RC   <- pgrep's OWN status: the in-process path is NOT running"
+  fi
   echo
-  echo "\$ ps -o pid,lstart,etimes -p <that pid>   # started AFTER the deploy of this module"
+  echo "\$ ps -o pid=,lstart=,etimes= -p \$CHILD   # start time + seconds alive"
   CHILD=$(pgrep -f 'tools/loop-governance/loop-gov-mcp.py' | head -1)
   if [ -n "${CHILD:-}" ]; then
     ps -o pid=,lstart=,etimes= -p "$CHILD"
+    PS_RC=$?
+  else
+    PS_RC=1
+    echo "(no process to describe)"
   fi
-  echo "rc=$?"
+  echo "rc=$PS_RC"
   echo
-  echo "\$ grep -c <symbol> ~/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py"
-  echo "   (symbols the fix INTRODUCED — 0 would mean the deployed copy is pre-change)"
+  echo "\$ child start epoch vs the deployed file's mtime   # the load claim, measured"
+  if [ -n "${CHILD:-}" ]; then
+    ETIMES=$(ps -o etimes= -p "$CHILD" | tr -d ' ')
+    NOW=$(date +%s)
+    START=$((NOW - ETIMES))
+    MTIME=$(stat -c %Y "$DEPLOYED")
+    echo "   child started at epoch : $START  ($(date -u -d @$START +%Y-%m-%dT%H:%M:%SZ))"
+    echo "   deployed module mtime  : $MTIME  ($(date -u -d @$MTIME +%Y-%m-%dT%H:%M:%SZ))"
+    if [ "$START" -ge "$MTIME" ]; then
+      echo "   => started AFTER the deployed copy was written, so it can only hold THIS"
+      echo "      revision."
+      echo "rc=0"
+    else
+      echo "   => WARNING: the child started BEFORE the deployed copy was written — it may"
+      echo "      still hold the PRE-change module. Restart the gateway and re-capture."
+      echo "rc=1"
+    fi
+  else
+    echo "rc=1   # no child, so the load claim cannot be made"
+  fi
+  echo
+  echo "\$ grep -c <symbol> \$DEPLOYED   # symbols the fix INTRODUCED (0 => pre-change copy)"
+  WORST_GREP=0
   for sym in _review_uncovered_blobs other_locks _hard_deadline BLOB_REVIEW_CAP_PER_CLOSE; do
-    printf '   %-28s %s\n' "$sym" \
-      "$(grep -c "$sym" "$HOME/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py")"
+    COUNT=$(grep -c "$sym" "$DEPLOYED")
+    SYM_RC=$?
+    printf '   %-28s %s   (grep rc=%s)\n' "$sym" "$COUNT" "$SYM_RC"
+    if [ "$SYM_RC" -gt "$WORST_GREP" ]; then WORST_GREP=$SYM_RC; fi
   done
-  echo "rc=$?"
+  echo "rc=$WORST_GREP   # WORST status in the loop, not printf's: 1 = a symbol was"
+  echo "               #   absent, 2 = the deployed file could not be read at all"
   echo
   echo "\$ python3 ~/hermes-cortex/ops/scripts/manage/cortex-doctor.py --quiet   (loop-gov lines + counts)"
   DO=$("$PY" hermes-cortex/ops/scripts/manage/cortex-doctor.py --quiet 2>&1)
@@ -113,8 +149,9 @@ body() {
   echo "   'Repo clean' (this capture's own regenerated file is uncommitted until the"
   echo "   cycle commits it) and the pre-existing skill drift the lesson pipeline writes"
   echo "   to the DEPLOYED copies (reconciled by reconcile-stranded-skills.py). The"
-  echo "   PENDING-cycles line is informational and counts THIS cycle, which stays"
-  echo "   unscored until the close scores it. The failure count above is the one to read."
+  echo "   PENDING-cycles line counts THIS cycle, which stays unscored until the close"
+  echo "   scores it (its own marker, ℹ️ or ✅, moves as the doctor's bookkeeping does)."
+  echo "   The failure count above is the one to read."
   echo
   echo "═══════ 6. The LIVE store holds per-blob verdicts, and what a receipt records ═══════"
   echo "Verdicts are written by the per-blob pass as it runs, keyed by blob CONTENT. The"
@@ -122,16 +159,18 @@ body() {
   echo "opens it on a read-only URI, so this script never names the store file and writes"
   echo "nothing to it."
   echo
-  echo "\$ python3 -c '<blob_reviews + newest receipts, via the component store accessor>'"
-  "$PY" -c "
+  echo "\$ MODPATH=\$DEPLOYED python3 -c '<blob_reviews + newest receipts, via the component accessor>'"
+  MODPATH="$DEPLOYED" "$PY" -c "
 import glob, importlib.util, json, os, sqlite3
 from pathlib import Path
-src = Path.home() / 'hermes-cortex' / 'mcp-servers' / 'loop-gov-mcp.py'
+src = Path(os.environ['MODPATH'])   # the DEPLOYED copy §5 checked, not the repo copy
 spec = importlib.util.spec_from_file_location('loopgov', src)
 mod = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(mod)   # inert on import: the server's work is behind __main__
+spec.loader.exec_module(mod)        # its only import-time write is its own log file
 con = sqlite3.connect('file:%s?mode=ro' % mod.LOOP_DB, uri=True)
-print('LOOP_DB:', os.path.basename(str(mod.LOOP_DB)))
+print('module used   :', src.name, '(deployed)')
+print('LOOP_DB       :', os.path.basename(str(mod.LOOP_DB)),
+      '| resolved parent exists:', Path(mod.LOOP_DB).parent.exists())
 print('blob_reviews, by verdict:',
       list(con.execute('SELECT verdict, COUNT(*) FROM blob_reviews GROUP BY verdict')))
 print('most recent verdicts (blob_sha, verdict, ts):')
@@ -147,6 +186,32 @@ for f in files[:3]:
           '| reviewed_files:', len(d.get('reviewed_files') or []))
 "
   echo "rc=$?"
+  echo
+  echo "\$ HOME=<fresh temp dir> MODPATH=\$DEPLOYED python3 -c '<import; assert nothing but its log>'"
+  TMPH=$(mktemp -d)
+  HOME="$TMPH" MODPATH="$DEPLOYED" "$PY" -c "
+import importlib.util, os
+from pathlib import Path
+root = Path.home()
+path = Path(os.environ['MODPATH'])
+spec = importlib.util.spec_from_file_location('loopgov_inert', path)
+mod = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(mod)      # the import under test
+made = sorted(str(p) for p in root.rglob('*'))
+logfile = root / '.hermes-cortex' / 'logs' / 'loop-governance.log'
+allowed = {str(logfile), str(logfile.parent), str(logfile.parent.parent)}
+outside = [p for p in made if p not in allowed]
+print('paths the IMPORT created under its redirected HOME:',
+      [p.replace(str(root), '~') for p in made] or 'none')
+print('outside the log file and the two directories leading to it:',
+      [p.replace(str(root), '~') for p in outside] or 'none')
+assert not outside, outside
+print('OK: importing writes ONLY its own log file (plus the dirs leading to it) — no')
+print('    store row, no lock file, no state file, so §6 reading the store through it')
+print('    cannot itself change the store.')
+"
+  echo "rc=$?"
+  rm -rf "$TMPH"
   echo "   No receipt carries the CURRENT tip, and that is expected: a receipt is written"
   echo "   BY a successful close, so the close this range is working toward is what creates"
   echo "   it. Receipts that predate this range record as few as 0 reviewed blobs; a receipt"
@@ -157,6 +222,9 @@ for f in files[:3]:
   echo "  TRICKLES bytes, which is what defeats a socket timeout; no real provider was"
   echo "  asked to hang."
   echo "- macOS. The pi-side rendering and the CLI adapter are untested on that host."
+  echo "- The in-process path AFTER a later deploy. §5 is captured at THIS revision: a"
+  echo "  subsequent deploy moves the deployed copy past the running child, which can only"
+  echo "  pick it up on the next gateway start."
 }
 
 body | sed "s|$HOME|~|g"

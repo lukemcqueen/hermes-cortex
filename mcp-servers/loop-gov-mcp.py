@@ -1067,6 +1067,15 @@ _REVIEW_RECEIPT_CHECK_REL = "ops/scripts/lib/review-receipt-check.py"
 # here, above the helpers that use them as defaults (a default is evaluated at DEF time).
 BLOB_REVIEW_CAP_PER_CLOSE = 15
 BLOB_REVIEW_BUDGET_S = 600.0
+# A single blob the reviewer was too SLOW to answer is not an outage. Measured
+# 2026-10-16: blob calls ran 180-220s against a 240s wall-clock ceiling, so the
+# slowest blob of a range timed out while its neighbours would have answered — and
+# the pass, which stopped on the FIRST failure, made zero progress on every attempt
+# (a range that can never close). One failure now SKIPS that blob and continues;
+# two consecutive failures are treated as the reviewer being DOWN and stop the pass.
+# Neither case credits anything: a skipped blob is unjudged, the receipt omits it,
+# and the push gate refuses for it.
+BLOB_REVIEW_MAX_CONSECUTIVE_FAILURES = 2
 
 
 def _record_blob_review(blob_sha: str, verdict: str, findings_json: str = "[]",
@@ -1157,7 +1166,9 @@ def _review_uncovered_blobs(blobs: dict, *, reviewer, material_for,
     verdicts: dict[str, str] = {}
     blocking: list = []
     remaining: list[str] = []
+    failed: list[str] = []
     calls = 0
+    consecutive_failures = 0
     started = time.monotonic()
     cached = _blobs_with_clean_verdict(blobs, conn=conn)
     for path, sha in sorted((blobs or {}).items()):
@@ -1171,15 +1182,25 @@ def _review_uncovered_blobs(blobs: dict, *, reviewer, material_for,
         try:
             text = reviewer(sha, path, material)
         except Exception as exc:  # noqa: BLE001 — an outage is a refusal, never a pass
-            # Stop the pass and REPORT the rest: a reviewer that is unreachable or
-            # over-budget judges nothing, so the close must refuse with what is left
-            # rather than crash (or worse, credit an unjudged blob).
-            log.error("per-blob review: reviewer failed on %s (%s: %s) — stopping the pass",
-                      path, type(exc).__name__, exc)
+            # A failure NEVER credits the blob: it is reported unjudged, so the close
+            # refuses and the push gate still names it as uncovered. What it does not
+            # do is end the pass on the first one — a blob the reviewer was too slow
+            # for is not the reviewer being down, and the old stop-on-first made ZERO
+            # progress on every attempt. Consecutive failures are the outage signal.
+            consecutive_failures += 1
+            failed.append(sha)
             remaining.append(sha)
-            remaining.extend(s for _, s in sorted((blobs or {}).items())
-                             if s != sha and s not in verdicts and s not in cached)
-            break
+            log.error("per-blob review: reviewer failed on %s (%s: %s) — %d consecutive "
+                      "failure(s)", path, type(exc).__name__, exc, consecutive_failures)
+            if consecutive_failures >= BLOB_REVIEW_MAX_CONSECUTIVE_FAILURES:
+                log.error("per-blob review: %d consecutive failures — treating the reviewer "
+                          "as DOWN and stopping the pass", consecutive_failures)
+                remaining.extend(s for _, s in sorted((blobs or {}).items())
+                                 if s != sha and s not in verdicts and s not in cached
+                                 and s not in remaining)
+                break
+            continue
+        consecutive_failures = 0
         calls += 1
         verdict, findings_json = _extract_verdict(text)
         verdict = (verdict or "FINDINGS").upper()
@@ -1190,7 +1211,7 @@ def _review_uncovered_blobs(blobs: dict, *, reviewer, material_for,
             _block, _annot = _blocking_findings(findings_json or "[]")
             blocking.extend(_block or [])
     return {"verdicts": verdicts, "remaining": remaining, "calls": calls,
-            "blocking": blocking}
+            "blocking": blocking, "failed": failed}
 
 
 def _push_base(repo: Path) -> str:
@@ -1334,11 +1355,21 @@ def _complete_push_range_blobs(lock: dict, cycle: dict, cx: Optional[dict] = Non
         ))])
     if remaining:
         _mark_close_refused(cycle.get("id", 0), "REVIEW_PENDING", "[]", lock)
+        # Name a reviewer FAILURE separately from a blob nobody has got to yet: the
+        # first is a call that ran out of wall clock (latency, retryable), the second
+        # is work still queued. Collapsing them hides which one is happening.
+        failed_line = ""
+        if pb.get("failed"):
+            failed_line = (
+                f"  reviewer timed out on: {len(pb['failed'])} blob(s) — not judged, so not"
+                " credited; the pass continues with the blobs that DO answer\n"
+            )
         return CallToolResult(content=[TextContent(type="text", text=(
             f"⏳ Cannot close yet: {len(remaining)} blob(s) of the push range still carry no "
             "review verdict.\n\n"
             f"  reviewed this pass : {pb.get('calls')} blob(s)\n"
-            f"  verdicts cached    : {len(pb.get('verdicts') or {})}\n\n"
+            f"  verdicts cached    : {len(pb.get('verdicts') or {})}\n"
+            f"{failed_line}\n"
             "Verdicts are keyed by blob CONTENT, so closing again continues from here "
             "instead of redoing what is already judged (the per-close budget is "
             f"{BLOB_REVIEW_CAP_PER_CLOSE} blobs / {int(BLOB_REVIEW_BUDGET_S)}s)."

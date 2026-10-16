@@ -8,7 +8,8 @@ Contract under test:
   * one pass is bounded by a cap and a wall-clock budget, and what it does not reach
     is REPORTED so the next close continues;
   * the receipt may claim only blobs that carry a verdict;
-  * a reviewer failure judges nothing and credits nothing;
+  * a reviewer failure judges nothing and credits nothing — one slow blob is skipped
+    and reported, two CONSECUTIVE failures mean the reviewer is down and end the pass;
   * the pass is defined once and asked for once, from the close.
 
 Hermetic: the store is repointed to a throwaway DB and the reviewer is an injected
@@ -213,6 +214,60 @@ def test_a_reviewer_outage_judges_nothing_and_reports_the_rest(tmp_path):
     )
 
 
+def test_one_slow_blob_does_not_cost_the_whole_pass(tmp_path):
+    """A blob the reviewer was too SLOW for is skipped; the pass carries on.
+
+    Measured 2026-10-16: blob calls ran 180-220s against a 240s wall-clock ceiling, so
+    the slowest blob of a range timed out while its neighbours would have answered — and
+    a pass that stopped on the FIRST failure made ZERO progress on every attempt, so the
+    range could never close. Skipping does not credit anything: the blob stays unjudged.
+    """
+    mod = _load_server(tmp_path)
+
+    class FirstIsSlow:
+        """Times out on the first blob only (sorted() reviews a.py first)."""
+
+        def __call__(self, blob_sha: str, path: str, material: str) -> str:
+            if blob_sha == "sha-a":
+                raise TimeoutError("reviewer exceeded the 240s wall-clock deadline")
+            return _clean()
+
+    res = _drive(mod, {"a.py": "sha-a", "b.py": "sha-b", "c.py": "sha-c"}, FirstIsSlow())
+    assert res["calls"] == 2 and sorted(res["verdicts"]) == ["sha-b", "sha-c"], (
+        f"one slow blob must not cost the whole pass: {res}"
+    )
+    assert res["remaining"] == ["sha-a"], (
+        f"the timed-out blob must be REPORTED unjudged, not credited: {res}"
+    )
+    assert res["failed"] == ["sha-a"], (
+        f"a timeout must be named as a reviewer FAILURE, not as work still queued: {res}"
+    )
+    assert mod._blobs_with_clean_verdict({"a.py": "sha-a"}) == set(), (
+        "a call that timed out judged nothing and must credit nothing"
+    )
+
+
+def test_only_consecutive_failures_stop_the_pass(tmp_path):
+    """TWO consecutive failures mean the reviewer is DOWN; a single one does not."""
+    mod = _load_server(tmp_path)
+
+    class FailsAroundSuccess:
+        """a.py fails, b.py answers, c.py fails — never two in a row."""
+
+        def __call__(self, blob_sha: str, path: str, material: str) -> str:
+            if blob_sha in ("sha-a", "sha-c"):
+                raise RuntimeError("reviewer unavailable")
+            return _clean()
+
+    res = _drive(mod, {"a.py": "sha-a", "b.py": "sha-b", "c.py": "sha-c"},
+                 FailsAroundSuccess())
+    assert sorted(res["verdicts"]) == ["sha-b"], (
+        "a failure that is not followed by another is not an outage and must not end "
+        f"the pass: {res}"
+    )
+    assert sorted(res["remaining"]) == ["sha-a", "sha-c"], res
+
+
 def test_the_pass_is_asked_for_on_every_required_path(tmp_path):
     """DYNAMIC sweep of the pass's own decision, at the module seam.
 
@@ -310,6 +365,8 @@ if __name__ == "__main__":
         test_a_changed_blob_is_re_reviewed,
         test_only_judged_blobs_are_uncovered,
         test_a_reviewer_outage_judges_nothing_and_reports_the_rest,
+        test_one_slow_blob_does_not_cost_the_whole_pass,
+        test_only_consecutive_failures_stop_the_pass,
         test_the_pass_is_asked_for_on_every_required_path,
         test_a_required_pass_refuses_when_the_template_is_missing,
         test_the_per_blob_pass_has_exactly_one_call_site,

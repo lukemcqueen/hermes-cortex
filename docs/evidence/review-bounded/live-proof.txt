@@ -1,6 +1,6 @@
 REVIEWER BOUNDS — LIVE proof (generated, not hand-written)
 Produced by: bash hermes-cortex/docs/evidence/review-bounded/capture.sh   (every path below is normalised to ~)
-Generated at: 2026-10-16T09:44:02Z
+Generated at: 2026-10-16T10:17:17Z
 
 ═══════ 1. The baseline is genuinely PRE-change ═══════
 $ git -C hermes-cortex show 119e6006:mcp-servers/loop-gov-mcp.py > /tmp/pre-review-bounds-loop-gov.py
@@ -29,6 +29,8 @@ $ python3 hermes-cortex/tests/test_review_per_blob.py
 ✅ test_a_changed_blob_is_re_reviewed
 ✅ test_only_judged_blobs_are_uncovered
 ✅ test_a_reviewer_outage_judges_nothing_and_reports_the_rest
+✅ test_one_slow_blob_does_not_cost_the_whole_pass
+✅ test_only_consecutive_failures_stop_the_pass
 ✅ test_the_pass_is_asked_for_on_every_required_path
 ✅ test_a_required_pass_refuses_when_the_template_is_missing
 ✅ test_the_per_blob_pass_has_exactly_one_call_site
@@ -53,12 +55,12 @@ $ CORTEX_LOOP_GOV_SERVER=/tmp/pre-review-bounds-loop-gov.py python3 hermes-corte
 ❌ test_a_clean_blob_is_reviewed_once_then_cached: AttributeError: module 'loop_gov_per_blob_under_test' has no attribute '_review_uncovered_blobs'
 ❌ test_one_non_clean_blob_makes_the_range_not_clean: AttributeError: module 'loop_gov_per_blob_under_test' has no attribute '_review_uncovered_blobs'
 ❌ test_a_low_finding_annotates_and_does_not_block: AttributeError: module 'loop_gov_per_blob_under_test' has no attribute '_review_uncovered_blobs'
-❌ test_the_cap_reports_progress_instead_of_deadlocking: AttributeError: module 'loop_gov_per_blob_under_test' has no attribute '_review[mcp-server] WARNING: the 'mcp' package is not installed — the stdio server cannot start; the CLI adapter (ops/scripts/loop-gov.py) still works.
-[mcp-server]   /home/esther/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3 -m pip install mcp
-_uncovered_blobs'
+❌ test_the_cap_reports_progress_instead_of_deadlocking: AttributeError: module 'loop_gov_per_blob_under_test' has no attribute '_review_uncovered_blobs'
 ❌ test_a_changed_blob_is_re_reviewed: AttributeError: module 'loop_gov_per_blob_under_test' has no attribute '_review_uncovered_blobs'
 ❌ test_only_judged_blobs_are_uncovered: AttributeError: module 'loop_gov_per_blob_under_test' has no attribute '_review_uncovered_blobs'
 ❌ test_a_reviewer_outage_judges_nothing_and_reports_the_rest: AttributeError: module 'loop_gov_per_blob_under_test' has no attribute '_review_uncovered_blobs'
+❌ test_one_slow_blob_does_not_cost_the_whole_pass: AttributeError: module 'loop_gov_per_blob_under_test' has no attribute '_review_uncovered_blobs'
+❌ test_only_consecutive_failures_stop_the_pass: AttributeError: module 'loop_gov_per_blob_under_test' has no attribute '_review_uncovered_blobs'
 ❌ test_the_pass_is_asked_for_on_every_required_path: AttributeError: module 'loop_gov_per_blob_under_test' has no attribute '_complete_push_range_blobs'
 ❌ test_a_required_pass_refuses_when_the_template_is_missing: AttributeError: module 'loop_gov_per_blob_under_test' has no attribute '_complete_push_range_blobs'
 ❌ test_the_per_blob_pass_has_exactly_one_call_site: the per-blob close pass must be defined exactly once, found 0
@@ -74,24 +76,33 @@ hermes-cortex/docs/evidence/review-bounded/capture.sh    ✅ GATE_PASSED — no 
 
 ═══════ 5. The RESTARTED in-process path runs this module ═══════
 The close-time reviewer runs in-process when a close goes through the
-loop-governance MCP child. That child holds the revision it STARTED with, so
-the child's own start time is the thing to look at.
+loop-governance MCP child, and that child holds the revision it STARTED with.
+So the claim is made as a COMPARISON, not an assertion: the child must have
+started AFTER the deployed copy was written, because a process cannot hold a
+revision that did not exist yet.
 
 $ pgrep -af 'tools/loop-governance/loop-gov-mcp.py'
 953098 ~/.hermes-cortex/venv/bin/python3 ~/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py
 rc=0
 
-$ ps -o pid,lstart,etimes -p <that pid>   # started AFTER the deploy of this module
- 953098 Fri Oct 16 18:27:19 2026    1031
+$ ps -o pid=,lstart=,etimes= -p $CHILD   # start time + seconds alive
+ 953098 Fri Oct 16 18:27:19 2026    3026
 rc=0
 
-$ grep -c <symbol> ~/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py
-   (symbols the fix INTRODUCED — 0 would mean the deployed copy is pre-change)
-   _review_uncovered_blobs      2
-   other_locks                  3
-   _hard_deadline               2
-   BLOB_REVIEW_CAP_PER_CLOSE    4
+$ child start epoch vs the deployed file's mtime   # the load claim, measured
+   child started at epoch : 1792142840  (2026-10-16T09:27:20Z)
+   deployed module mtime  : 1792142378  (2026-10-16T09:19:38Z)
+   => started AFTER the deployed copy was written, so it can only hold THIS
+      revision.
 rc=0
+
+$ grep -c <symbol> $DEPLOYED   # symbols the fix INTRODUCED (0 => pre-change copy)
+   _review_uncovered_blobs      2   (grep rc=0)
+   other_locks                  3   (grep rc=0)
+   _hard_deadline               2   (grep rc=0)
+   BLOB_REVIEW_CAP_PER_CLOSE    4   (grep rc=0)
+rc=0   # WORST status in the loop, not printf's: 1 = a symbol was
+               #   absent, 2 = the deployed file could not be read at all
 
 $ python3 ~/hermes-cortex/ops/scripts/manage/cortex-doctor.py --quiet   (loop-gov lines + counts)
 [mcp-server] WARNING: the 'mcp' package is not installed — the stdio server cannot start; the CLI adapter (ops/scripts/loop-gov.py) still works.
@@ -99,17 +110,23 @@ $ python3 ~/hermes-cortex/ops/scripts/manage/cortex-doctor.py --quiet   (loop-go
   ✅ Immutable: loop-gov-mcp.py
   ✅ Checksum: agent-loop-gov-lock-watchdog.py
   ✅ Checksum: loop-gov-mcp.sh
-  ✅ Checksum: loop-gov-mcp.py
+  ❌ Checksum: loop-gov-mcp.py
   ✅ Checksum: loop-gov.py
   ✅ loop-gov daemon
-  ℹ️  PENDING cycles
-doctor rc=1   warnings=8   failures=0
+  ✅ PENDING cycles
+doctor rc=2   warnings=8   failures=2
    A non-zero rc here is not a hidden failure: the doctor's warnings include
    'Repo clean' (this capture's own regenerated file is uncommitted until the
-   cycle commits it) and the pre-existing skill drift the lesson pipeline writes
+   cycle commits it) and the pre-existing skill drift [mcp-server] WARNING: the 'mcp' package is not installed — the stdio server cannot start; the CLI adapter (ops/scripts/loop-gov.py) still works.
+[mcp-server]   /home/esther/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3 -m pip install mcp
+[mcp-server] WARNING: hermes_models.py not importable (ModuleNotFoundError: No module named 'hermes_models') — using default embedding model 'nomic-embed-text:v1.5'
+[mcp-server] WARNING: the 'mcp' package is not installed — the stdio server cannot start; the CLI adapter (ops/scripts/loop-gov.py) still works.
+[mcp-server]   /home/esther/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3 -m pip install mcp
+the lesson pipeline writes
    to the DEPLOYED copies (reconciled by reconcile-stranded-skills.py). The
-   PENDING-cycles line is informational and counts THIS cycle, which stays
-   unscored until the close scores it. The failure count above is the one to read.
+   PENDING-cycles line counts THIS cycle, which stays unscored until the close
+   scores it (its own marker, ℹ️ or ✅, moves as the doctor's bookkeeping does).
+   The failure count above is the one to read.
 
 ═══════ 6. The LIVE store holds per-blob verdicts, and what a receipt records ═══════
 Verdicts are written by the per-blob pass as it runs, keyed by blob CONTENT. The
@@ -117,8 +134,9 @@ query resolves the store through the component's OWN module-level LOOP_DB and
 opens it on a read-only URI, so this script never names the store file and writes
 nothing to it.
 
-$ python3 -c '<blob_reviews + newest receipts, via the component store accessor>'
-LOOP_DB: loop-governance.db
+$ MODPATH=$DEPLOYED python3 -c '<blob_reviews + newest receipts, via the component accessor>'
+module used   : loop-gov-mcp.py (deployed)
+LOOP_DB       : loop-governance.db | resolved parent exists: True
 blob_reviews, by verdict: [('CLEAN', 1), ('FINDINGS', 2)]
 most recent verdicts (blob_sha, verdict, ts):
    ('aa05486e33bf4b51dede8d01cabfbd23edaec269', 'FINDINGS', '2026-10-16T09:13:45Z')
@@ -128,6 +146,14 @@ receipts on disk: 100
    .reviewed-hermes-cortex-423cade3690e9db6112fa52fadb4cffa1be59697.json | verdict: CLEAN | reviewed_blobs: 0 | reviewed_files: 3
    .reviewed-hermes-cortex-4e5112df1b4f9fb9ee0077e427aa5f65def909f1.json | verdict: CLEAN | reviewed_blobs: 0 | reviewed_files: 12
    .reviewed-hermes-cortex-2668cffa13bc509b187f869644aed2697f241019.json | verdict: CLEAN | reviewed_blobs: 6 | reviewed_files: 6
+rc=0
+
+$ HOME=<fresh temp dir> MODPATH=$DEPLOYED python3 -c '<import; assert nothing but its log>'
+paths the IMPORT created under its redirected HOME: ['~/.hermes-cortex', '~/.hermes-cortex/logs', '~/.hermes-cortex/logs/loop-governance.log']
+outside the log file and the two directories leading to it: none
+OK: importing writes ONLY its own log file (plus the dirs leading to it) — no
+    store row, no lock file, no state file, so §6 reading the store through it
+    cannot itself change the store.
 rc=0
    No receipt carries the CURRENT tip, and that is expected: a receipt is written
    BY a successful close, so the close this range is working toward is what creates
@@ -139,3 +165,6 @@ rc=0
   TRICKLES bytes, which is what defeats a socket timeout; no real provider was
   asked to hang.
 - macOS. The pi-side rendering and the CLI adapter are untested on that host.
+- The in-process path AFTER a later deploy. §5 is captured at THIS revision: a
+  subsequent deploy moves the deployed copy past the running child, which can only
+  pick it up on the next gateway start.
