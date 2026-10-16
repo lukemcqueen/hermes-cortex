@@ -1,16 +1,18 @@
 #!/usr/bin/env python3
-"""Per-blob review: a wide range must stop being unshippable.
+"""Per-blob review: the close judges a range one blob at a time.
 
-The close-time reviewer is ONE call over the whole range, and a reasoning model
-starved of output budget answers with null content — measured twice on an
-8-file/381-line range at `max_tokens=48000` and again at `96000`. The contract
-here is that the same judgement is earned in UNITS THE RECEIPT ALREADY SPEAKS:
-one verdict per BLOB, keyed by blob sha, so a big range is a series of small
-reviews, a re-review of identical content is free, and the receipt's
-`reviewed_blobs` names only blobs that were actually judged.
+Contract under test:
+  * a blob with a stored CLEAN verdict is never re-reviewed (the cache is keyed by
+    blob CONTENT, so an edited file is a new blob);
+  * any non-CLEAN verdict makes the pass non-clean, and only MEDIUM+ findings block;
+  * one pass is bounded by a cap and a wall-clock budget, and what it does not reach
+    is REPORTED so the next close continues;
+  * the receipt may claim only blobs that carry a verdict;
+  * a reviewer failure judges nothing and credits nothing;
+  * the pass is defined once and asked for once, from the close.
 
-Hermetic: the store is repointed to a throwaway DB and the reviewer is an
-injected callable. No git, no network, no live governance state.
+Hermetic: the store is repointed to a throwaway DB and the reviewer is an injected
+callable. No git, no network, no live governance state.
 
 Run:  python3 tests/test_review_per_blob.py
    or: pytest tests/test_review_per_blob.py
@@ -211,14 +213,66 @@ def test_a_reviewer_outage_judges_nothing_and_reports_the_rest(tmp_path):
     )
 
 
-def test_the_per_blob_pass_has_exactly_one_call_site(tmp_path):
-    """The pass belongs at the CLOSE, not per review-gate exit.
+def test_the_pass_is_asked_for_on_every_required_path(tmp_path):
+    """DYNAMIC sweep of the pass's own decision, at the module seam.
 
-    Measured failure: the first version was wired into two of the gate's CLEAN
-    exits, so a close that took a third (findings that were all LOW) wrote a
-    receipt with an EMPTY reviewed_blobs — tip+base authorisation while the
-    per-blob machinery sat unused. One call site makes a new exit path unable to
-    skip it silently.
+    Drives `_complete_push_range_blobs` for each case that must (or must not) ask for
+    coverage, observing the call rather than reading the source:
+
+      * required pass (a whole-range review that could not finish) -> ASKED, even
+        though the range has no always-review path;
+      * optional pass on an always-review range -> ASKED;
+      * optional pass with no always-review path -> NOT asked (a trivial change costs
+        no reviewer call).
+    """
+    mod = _load_server(tmp_path)
+    calls: list = []
+    mod._lock_repo = lambda lock: tmp_path
+    mod._review_template_text = lambda repo: "TEMPLATE\n" + mod.REVIEW_MARKER
+    mod._agent_author = lambda repo: "tester"
+    mod._git_capture = lambda *a, **k: "x"
+    mod._complexity = lambda *a, **k: {"lines": 1, "files": 1, "is_complex": True,
+                                       "always_review": False}
+    mod._complete_blob_reviews = lambda *a, **k: (
+        calls.append("asked") or {"verdicts": {}, "remaining": [], "calls": 0,
+                                  "blocking": []})
+    lock = {"session_id": "s", "repo_path": str(tmp_path), "task_id": "t"}
+
+    mod._range_touches_always_review = lambda repo: False
+    calls.clear()
+    assert mod._complete_push_range_blobs(lock, {"id": 1}, require_full=True) is None
+    assert calls == ["asked"], "a REQUIRED pass must ask for coverage on ANY range"
+
+    calls.clear()
+    assert mod._complete_push_range_blobs(lock, {"id": 1}) is None
+    assert calls == [], "an optional pass on a non-always-review range costs nothing"
+
+    calls.clear()
+    mod._range_touches_always_review = lambda repo: True
+    assert mod._complete_push_range_blobs(lock, {"id": 1}) is None
+    assert calls == ["asked"], "an always-review range must ask for coverage"
+
+
+def test_a_required_pass_refuses_when_the_template_is_missing(tmp_path):
+    """A required pass with no reviewer template refuses; it does not close blind."""
+    mod = _load_server(tmp_path)
+    mod._lock_repo = lambda lock: tmp_path
+    mod._review_template_text = lambda repo: ""
+    mod._range_touches_always_review = lambda repo: False
+    refused = {}
+    mod._mark_close_refused = lambda cycle_id, verdict, fj, lock=None: refused.update(
+        {"verdict": verdict})
+    lock = {"session_id": "s", "repo_path": str(tmp_path), "task_id": "t"}
+    res = mod._complete_push_range_blobs(lock, {"id": 1}, require_full=True)
+    assert res is not None, "a required pass must REFUSE without a template"
+    assert refused.get("verdict") == "TEMPLATE_MISSING", refused
+
+
+def test_the_per_blob_pass_has_exactly_one_call_site(tmp_path):
+    """The pass is defined once and asked for once, from the close.
+
+    A pass wired into several call sites is one that some path will skip; the
+    receipt then names fewer blobs than the range changes, or none at all.
     """
     import ast
 
@@ -238,9 +292,8 @@ def test_the_per_blob_pass_has_exactly_one_call_site(tmp_path):
                     getattr(call.func, "id", "") == "_complete_push_range_blobs":
                 callers.append(fn.name)
     assert callers == ["_end_change"], (
-        "the per-blob pass must be called from ONE place — the close — because wiring "
-        "it per review-gate exit silently skipped it on the exit that writes the "
-        f"receipt: {callers}"
+        "the per-blob pass must be asked for from ONE place — the close — so no "
+        f"close path can skip it: {callers}"
     )
     assert "_finish_blobs" not in src, (
         "the per-exit wiring was deleted on purpose: a second copy of the pass is how "
@@ -257,6 +310,8 @@ if __name__ == "__main__":
         test_a_changed_blob_is_re_reviewed,
         test_only_judged_blobs_are_uncovered,
         test_a_reviewer_outage_judges_nothing_and_reports_the_rest,
+        test_the_pass_is_asked_for_on_every_required_path,
+        test_a_required_pass_refuses_when_the_template_is_missing,
         test_the_per_blob_pass_has_exactly_one_call_site,
         test_the_pre_change_revision_has_no_per_blob_surface,
     )
