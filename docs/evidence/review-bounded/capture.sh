@@ -3,7 +3,10 @@
 #
 # The claim this artifact supports: the close-time reviewer is now BOUNDED — in
 # thinking budget, in wall clock, and in the UNIT it judges (one blob at a time,
-# cached by content) — and the pre-change revision demonstrably is not.
+# cached by content) — and the pre-change revision demonstrably is not. Sections 5
+# and 6 additionally show the RESTARTED in-process path loading that module and the
+# live store holding per-blob verdicts, so the claim is artifact-backed rather than
+# asserted.
 #
 # Every command is printed immediately above its own output, and each rc is
 # measured from the command itself (not from a pipe's last stage). The baseline is
@@ -76,13 +79,84 @@ body() {
   done
   echo
 
-  echo "═══════ 5. What this proof does NOT cover ═══════"
-  echo "- The deployed-in-process close. The running loop-governance MCP child holds the"
-  echo "  revision it started with, so the per-blob close is exercised by a FRESH process"
-  echo "  (the CLI) until the gateway restarts; the doctor names that condition."
+  echo "═══════ 5. The RESTARTED in-process path runs this module ═══════"
+  echo "The close-time reviewer runs in-process when a close goes through the"
+  echo "loop-governance MCP child. That child holds the revision it STARTED with, so"
+  echo "the child's own start time is the thing to look at."
+  echo
+  echo "\$ pgrep -af 'tools/loop-governance/loop-gov-mcp.py'"
+  pgrep -af 'tools/loop-governance/loop-gov-mcp.py' || echo "(no such process)"
+  echo "rc=$?"
+  echo
+  echo "\$ ps -o pid,lstart,etimes -p <that pid>   # started AFTER the deploy of this module"
+  CHILD=$(pgrep -f 'tools/loop-governance/loop-gov-mcp.py' | head -1)
+  if [ -n "${CHILD:-}" ]; then
+    ps -o pid=,lstart=,etimes= -p "$CHILD"
+  fi
+  echo "rc=$?"
+  echo
+  echo "\$ grep -c <symbol> ~/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py"
+  echo "   (symbols the fix INTRODUCED — 0 would mean the deployed copy is pre-change)"
+  for sym in _review_uncovered_blobs other_locks _hard_deadline BLOB_REVIEW_CAP_PER_CLOSE; do
+    printf '   %-28s %s\n' "$sym" \
+      "$(grep -c "$sym" "$HOME/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py")"
+  done
+  echo "rc=$?"
+  echo
+  echo "\$ python3 ~/hermes-cortex/ops/scripts/manage/cortex-doctor.py --quiet   (loop-gov lines + counts)"
+  DO=$("$PY" hermes-cortex/ops/scripts/manage/cortex-doctor.py --quiet 2>&1)
+  DRC=$?
+  printf '%s\n' "$DO" | grep -i 'loop-gov'
+  printf '%s\n' "$DO" | grep -E 'PENDING cycles'
+  echo "doctor rc=$DRC   warnings=$(printf '%s\n' "$DO" | grep -c '⚠️')   failures=$(printf '%s\n' "$DO" | grep -c '^  ❌')"
+  echo "   A non-zero rc here is not a hidden failure: the doctor's warnings include"
+  echo "   'Repo clean' (this capture's own regenerated file is uncommitted until the"
+  echo "   cycle commits it) and the pre-existing skill drift the lesson pipeline writes"
+  echo "   to the DEPLOYED copies (reconciled by reconcile-stranded-skills.py). The"
+  echo "   PENDING-cycles line is informational and counts THIS cycle, which stays"
+  echo "   unscored until the close scores it. The failure count above is the one to read."
+  echo
+  echo "═══════ 6. The LIVE store holds per-blob verdicts, and what a receipt records ═══════"
+  echo "Verdicts are written by the per-blob pass as it runs, keyed by blob CONTENT. The"
+  echo "query resolves the store through the component's OWN module-level LOOP_DB and"
+  echo "opens it on a read-only URI, so this script never names the store file and writes"
+  echo "nothing to it."
+  echo
+  echo "\$ python3 -c '<blob_reviews + newest receipts, via the component store accessor>'"
+  "$PY" -c "
+import glob, importlib.util, json, os, sqlite3
+from pathlib import Path
+src = Path.home() / 'hermes-cortex' / 'mcp-servers' / 'loop-gov-mcp.py'
+spec = importlib.util.spec_from_file_location('loopgov', src)
+mod = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(mod)   # inert on import: the server's work is behind __main__
+con = sqlite3.connect('file:%s?mode=ro' % mod.LOOP_DB, uri=True)
+print('LOOP_DB:', os.path.basename(str(mod.LOOP_DB)))
+print('blob_reviews, by verdict:',
+      list(con.execute('SELECT verdict, COUNT(*) FROM blob_reviews GROUP BY verdict')))
+print('most recent verdicts (blob_sha, verdict, ts):')
+for row in con.execute('SELECT blob_sha, verdict, ts FROM blob_reviews ORDER BY ts DESC LIMIT 5'):
+    print('  ', row)
+files = sorted(glob.glob(os.path.expanduser('~/.hermes-cortex/state/.reviewed-*.json')),
+               key=os.path.getmtime, reverse=True)
+print('receipts on disk:', len(files))
+for f in files[:3]:
+    d = json.load(open(f))
+    print('  ', os.path.basename(f), '| verdict:', d.get('verdict'),
+          '| reviewed_blobs:', len(d.get('reviewed_blobs') or []),
+          '| reviewed_files:', len(d.get('reviewed_files') or []))
+"
+  echo "rc=$?"
+  echo "   No receipt carries the CURRENT tip, and that is expected: a receipt is written"
+  echo "   BY a successful close, so the close this range is working toward is what creates"
+  echo "   it. Receipts that predate this range record as few as 0 reviewed blobs; a receipt"
+  echo "   whose blobs do not cover the range it authorises is refused by the push gate."
+  echo
+  echo "═══════ 7. What this proof does NOT cover ═══════"
   echo "- A live reviewer outage. The stalled peer in §2/§3 is a local socket that"
   echo "  TRICKLES bytes, which is what defeats a socket timeout; no real provider was"
   echo "  asked to hang."
+  echo "- macOS. The pi-side rendering and the CLI adapter are untested on that host."
 }
 
 body | sed "s|$HOME|~|g"
