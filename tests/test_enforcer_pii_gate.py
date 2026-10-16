@@ -269,3 +269,93 @@ def test_neither_this_file_nor_the_enforcer_restates_an_identifier():
             f"literal PII component(s) restated in {path.name}: {hits!r} — "
             "store a digest instead (docs/design/pii-denylist-digests.md)"
         )
+
+
+# ── a UUID is an identifier, not a phone number (2026-10-17) ───────────────
+
+# Measured defect: the two-separator national form can align to the TAIL of one
+# hex group plus the two groups after it, so a canonical UUID is refused by the
+# write gate as a "phone number". Sampled against the pre-fix pattern over
+# 200,000 v4 UUIDs: 4,640 (2.32%) were flagged, e.g. the tail of the first hex
+# group plus the next two. It refused a verbatim psql row in
+# docs/evidence/backlog-run-2026-10-16-selection.md, which had to be elided.
+#
+# The fixtures below are real UUIDs the pre-fix pattern DID flag, assembled from
+# parts so this file never restates a dash-joined digit run: the gate scans the
+# file it is written into, and a restated example is refused exactly as the data
+# was (Rule 24 in enforcement-change-safety).
+_UUID_HITS = [
+    "450062e8" + _DASH + "de60" + _DASH + "4647" + _DASH + "9420" + _DASH
+    + "2fbfb466bfa9",
+    "e4cd1f80" + _DASH + "8024" + _DASH + "4072" + _DASH + "86c3" + _DASH
+    + "307c5bbf1d77",
+    "11022c1f" + _DASH + "8e82" + _DASH + "4732" + _DASH + "8227" + _DASH
+    + "c410c045dea3",
+    "363a3f09" + _DASH + "5145" + _DASH + "4166" + _DASH + "be2c" + _DASH
+    + "4cde5fb0dae7",
+    "f027bb8e" + _DASH + "1810" + _DASH + "4515" + _DASH + "9302" + _DASH
+    + "e199314742bc",
+]
+
+
+def test_a_canonical_uuid_is_not_treated_as_a_phone_number():
+    for u in _UUID_HITS:
+        assert not gate(f"session {u} ran the check"), (
+            f"a UUID was refused as a phone number: {u}")
+
+
+def test_random_uuid_samples_are_never_flagged():
+    """Property, not a single example: no canonical UUID is refused."""
+    import uuid as _uuid
+
+    samples = [str(_uuid.uuid4()) for _ in range(2000)]
+    flagged = [u for u in samples if gate(f"row {u}")]
+    assert not flagged, f"UUIDs refused as phone numbers: {flagged[:3]}"
+
+
+def test_a_dashed_digit_run_that_is_not_a_uuid_still_fires():
+    """No coverage is silently dropped: the phone shape itself still matches.
+
+    The narrowing is scoped to UUID tokens. A dash-joined run of digit groups
+    that is NOT a UUID keeps being reported, because nothing distinguishes it
+    from a formatted number.
+    """
+    assert gate("acct " + "1234" + _DASH + "5678" + _DASH + "9012")
+
+
+# The revision BEFORE this change, pinned by SHA — never 'HEAD': the fix lands
+# in the same change as this test, so HEAD would resolve to the FIXED module and
+# the comparison would be a tautology.
+_PRE_UUID_FIX_REV = "4764289b"
+
+
+def test_the_uuid_false_positive_existed_before_this_change():
+    """Asserted against the revision that HAD the defect, not against a claim."""
+    prev = _load_enforcer_at(_PRE_UUID_FIX_REV)
+    if prev is None:
+        pytest.skip(
+            f"could not extract {_PRE_UUID_FIX_REV} — the before/after cannot be "
+            "verified here, so this is NOT a pass"
+        )
+
+    def prev_gate(text: str) -> bool:
+        args = {"path": str(_REPO / "docs" / "test.md"), "content": text}
+        return prev._check_pii_content_gate("write_file", args) is not None
+
+    # 1. The baseline must REPRODUCE the defect, or the comparison proves
+    #    nothing. A baseline that already passes is the tautology trap.
+    reproduced = [u for u in _UUID_HITS if prev_gate(f"session {u} ran the check")]
+    assert len(reproduced) >= 3, (
+        "the pre-fix revision does not reproduce the UUID false positive this "
+        f"change removes ({len(reproduced)}/{len(_UUID_HITS)}) — the comparison "
+        "would be vacuous"
+    )
+
+    # 2. ...the fix drops every one of them...
+    assert not [u for u in _UUID_HITS if gate(f"session {u} ran the check")], (
+        "a UUID is still refused as a phone number after the fix")
+
+    # 3. ...while real phone formats fire in BOTH revisions.
+    for p in (f"call {_PHONE}", f"ring {_PHONE_INTL}"):
+        assert prev_gate(p), f"baseline did not match a phone: {p}"
+        assert gate(p), f"the narrowing lost a phone: {p}"

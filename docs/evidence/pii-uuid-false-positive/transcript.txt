@@ -1,0 +1,24 @@
+pre-fix revision : 4764289b
+module under test: $HOME/hermes-cortex/plugins/governance-enforcer/__init__.py
+
+# 1. pre-fix phone pattern vs canonical UUIDs
+v4 UUIDs sampled          : 200000
+matched as a phone        : 4749 (2.37%)
+
+# 2. gate verdicts over the same UUID inputs
+UUIDs sampled             : 20000
+refused by pre-fix module : 460  (sha256 handles of the first two: bef6d1c0,e2dd73a4)
+refused by module under test: 0
+
+# 3. real phone formats and the non-UUID dashed run (must fire in BOTH)
+  national phone               pre-fix=True  under-test=True
+  +CC grouped phone            pre-fix=True  under-test=True
+  non-UUID dashed digit run    pre-fix=True  under-test=True
+
+# 4. target test file
+rc=0
+============================== 30 passed in <t> ==============================
+
+**Verdict: PASS**
+
+probe rc=0 (the probe process own exit status, captured unpiped)

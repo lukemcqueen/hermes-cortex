@@ -2158,6 +2158,23 @@ _PII_PHONE_RE = re.compile(
     r"(?!\d)"
 )
 
+# Canonical UUIDs are IDENTIFIERS, not phone numbers, and they are removed
+# before the phone scan. Why (2026-10-17): the two-separator national form can
+# align to the TAIL of one hex group plus the two groups after it, so a UUID was
+# refused by the write gate as a "phone number" — measured against 200,000 v4
+# UUIDs, 4,640 (2.32%) matched, and it forced the elision of a verbatim psql row
+# in docs/evidence/backlog-run-2026-10-16-selection.md. The narrowing is scoped
+# to UUID tokens: no other shape changes, and a dash-joined run of digit groups
+# that is NOT a UUID keeps firing, because nothing distinguishes it from a
+# formatted number. Pinned to the pre-fix revision (4764289b) in
+# tests/test_enforcer_pii_gate.py, which asserts the baseline reproduces the
+# defect before asserting the fix removes it.
+_PII_UUID_RE = re.compile(
+    r"(?<![0-9a-fA-F])"
+    r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
+    r"(?![0-9a-fA-F])"
+)
+
 # Private server URLs — a URL whose host is NOT a well-known public site is
 # flagged as personal-infra exposure. Well-known public hosts pass.
 _PII_SERVER_URL_RE = re.compile(r"https?://([a-z0-9.-]+)", re.IGNORECASE)
@@ -2256,8 +2273,9 @@ def _check_pii_content_gate(tool_name: str, args: dict) -> Optional[dict]:
         violations.append("personal identifier (deny-list entry)")
         break  # one report per class is enough
 
-    # Phone numbers
-    if _PII_PHONE_RE.search(content):
+    # Phone numbers. Canonical UUIDs are removed first: they are identifiers, and
+    # their hex groups can align to this shape by chance (see _PII_UUID_RE).
+    if _PII_PHONE_RE.search(_PII_UUID_RE.sub(" ", content)):
         violations.append("phone number")
 
     # Private server URLs (host not on the public allowlist). NOTE: the
