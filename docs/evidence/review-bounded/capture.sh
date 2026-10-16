@@ -79,12 +79,12 @@ body() {
   done
   echo
 
-  echo "═══════ 5. The RESTARTED in-process path runs this module ═══════"
-  echo "The close-time reviewer runs in-process when a close goes through the"
-  echo "loop-governance MCP child, and that child holds the revision it STARTED with."
-  echo "So the claim is made as a COMPARISON, not an assertion: the child must have"
-  echo "started AFTER the deployed copy was written, because a process cannot hold a"
-  echo "revision that did not exist yet."
+  echo "═══════ 5. In-process path vs the DEPLOYED module — the comparison, measured ═══════"
+  echo "This section does not assert that the running child carries the change: it COMPUTES"
+  echo "the comparison and prints which way it came out. The close-time reviewer runs"
+  echo "in-process when a close goes through the loop-governance MCP child, and that child"
+  echo "holds the revision it STARTED with — so a child started BEFORE the deployed copy was"
+  echo "written can only hold an OLDER module, and the branch below says so."
   echo
   DEPLOYED="$HOME/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py"
   echo "\$ pgrep -af 'tools/loop-governance/loop-gov-mcp.py'"
