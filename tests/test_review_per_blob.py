@@ -193,6 +193,24 @@ def test_the_pre_change_revision_has_no_per_blob_surface(tmp_path):
         )
 
 
+def test_a_reviewer_outage_judges_nothing_and_reports_the_rest(tmp_path):
+    """An unreachable reviewer is a REFUSAL — never a silent pass or a crash."""
+    mod = _load_server(tmp_path)
+
+    class Boom:
+        def __call__(self, sha, path, material):
+            raise TimeoutError("reviewer exceeded the 3s wall-clock deadline")
+
+    res = _drive(mod, {"a.py": "sha-a", "b.py": "sha-b"}, Boom())
+    assert res["calls"] == 0 and res["blocking"] == [], res
+    assert sorted(res["remaining"]) == ["sha-a", "sha-b"], (
+        f"an outage must leave every blob unjudged and REPORTED: {res}"
+    )
+    assert mod._blobs_with_clean_verdict({"a.py": "sha-a"}) == set(), (
+        "a reviewer outage must never credit a blob with a verdict it did not give"
+    )
+
+
 def test_the_per_blob_pass_has_exactly_one_call_site(tmp_path):
     """The pass belongs at the CLOSE, not per review-gate exit.
 
@@ -238,6 +256,7 @@ if __name__ == "__main__":
         test_the_cap_reports_progress_instead_of_deadlocking,
         test_a_changed_blob_is_re_reviewed,
         test_only_judged_blobs_are_uncovered,
+        test_a_reviewer_outage_judges_nothing_and_reports_the_rest,
         test_the_per_blob_pass_has_exactly_one_call_site,
         test_the_pre_change_revision_has_no_per_blob_surface,
     )

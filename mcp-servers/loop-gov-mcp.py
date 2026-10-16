@@ -1168,7 +1168,18 @@ def _review_uncovered_blobs(blobs: dict, *, reviewer, material_for,
             remaining.append(sha)
             continue
         material = material_for(sha, path)
-        text = reviewer(sha, path, material)   # raising is a refusal, never a pass
+        try:
+            text = reviewer(sha, path, material)
+        except Exception as exc:  # noqa: BLE001 — an outage is a refusal, never a pass
+            # Stop the pass and REPORT the rest: a reviewer that is unreachable or
+            # over-budget judges nothing, so the close must refuse with what is left
+            # rather than crash (or worse, credit an unjudged blob).
+            log.error("per-blob review: reviewer failed on %s (%s: %s) — stopping the pass",
+                      path, type(exc).__name__, exc)
+            remaining.append(sha)
+            remaining.extend(s for _, s in sorted((blobs or {}).items())
+                             if s != sha and s not in verdicts and s not in cached)
+            break
         calls += 1
         verdict, findings_json = _extract_verdict(text)
         verdict = (verdict or "FINDINGS").upper()
@@ -1252,8 +1263,8 @@ def _complete_blob_reviews(repo: Path, template: str, ctx: dict, run_reviewer,
         cap=cap, budget_s=budget_s)
 
 
-def _complete_push_range_blobs(lock: dict, cycle: dict,
-                               cx: Optional[dict] = None) -> Optional[CallToolResult]:
+def _complete_push_range_blobs(lock: dict, cycle: dict, cx: Optional[dict] = None,
+                               require_full: bool = False) -> Optional[CallToolResult]:
     """Judge the push range's unreviewed blobs at the CLOSE. None means carry on.
 
     ONE call site, at the single point every permitted close passes through. The
@@ -1262,11 +1273,15 @@ def _complete_push_range_blobs(lock: dict, cycle: dict,
     ``reviewed_blobs`` — a range authorised by tip+base alone while the per-blob
     machinery sat unused. A per-exit wiring is the bug; this function is called once,
     from the close, so a new exit path cannot silently skip it again.
+
+    ``require_full`` is set when the whole-range review could NOT finish (its material
+    exceeded one reasoning budget): then every blob must be judged, not only the ones
+    in an always-review range, because no whole-range verdict exists to stand behind.
     """
     repo = _lock_repo(lock)
     if repo is None:
         return None                      # the gate already refused a repo-less close
-    if not _range_touches_always_review(repo):
+    if not require_full and not _range_touches_always_review(repo):
         # Only an always-review range needs a receipt bound to blob CONTENT; anywhere
         # else a receipt without blobs is equivalent (exact tip+base), so a trivial
         # change still costs NO reviewer call.
@@ -5458,7 +5473,21 @@ def _adversarial_review_gate(lock: dict, cycle: dict,
     try:
         reviewer_text = _call_reviewer(prompt, author=_author, cx=cx)
     except Exception as e:
+        _no_content = "NO usable content" in str(e)
         log.error("self-adversarial review: reviewer call failed: %s", e)
+        if _no_content:
+            # A whole-range review that cannot FINISH is exactly the case the per-blob
+            # path exists for: the material is too big for one reasoning budget, not
+            # wrong. Hand the range to the close's per-blob pass, which REQUIRES full
+            # coverage — so this is a re-route, never a relaxation: a range whose blobs
+            # cannot all be judged still cannot close (and no receipt is written for
+            # blobs nobody read). The marker tells the close to require that coverage
+            # even for a range with no always-review path.
+            _mark_close_refused(cycle.get("id", 0), "REVIEW_INCOMPLETE", "[]", lock)
+            log.warning("self-adversarial review: cycle %s — whole-range review could not "
+                        "finish; falling back to REQUIRED per-blob coverage",
+                        cycle.get("id"))
+            return None
         # A refusal is a refusal: the reviewer being unreachable leaves the lock
         # HELD exactly like a MEDIUM+ verdict does, so record it on the lock too —
         # otherwise an outage silently looks like a live cycle and the next change
@@ -5695,7 +5724,10 @@ def _end_change(args: dict) -> CallToolResult:
     # a series of small calls instead of one a reasoning model cannot finish. Wiring it
     # into the review gate's own exits was the bug: the exit that writes no receipt
     # skipped it entirely (measured — a receipt with an EMPTY reviewed_blobs).
-    blob_block = _complete_push_range_blobs(lock, cycle_data or {})
+    blob_block = _complete_push_range_blobs(
+        lock, cycle_data or {},
+        require_full=str(((_read_lock(args) or {}).get("close_refused") or {})
+                         .get("verdict", "")) == "REVIEW_INCOMPLETE")
     if blob_block is not None:
         return blob_block
 

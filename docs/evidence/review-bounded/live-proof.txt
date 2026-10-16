@@ -1,6 +1,6 @@
 REVIEWER BOUNDS — LIVE proof (generated, not hand-written)
 Produced by: bash hermes-cortex/docs/evidence/review-bounded/capture.sh   (every path below is normalised to ~)
-Generated at: 2026-10-16T08:41:56Z
+Generated at: 2026-10-16T08:49:38Z
 
 ═══════ 1. The baseline is genuinely PRE-change ═══════
 $ git -C hermes-cortex show 119e6006:mcp-servers/loop-gov-mcp.py > /tmp/pre-review-bounds-loop-gov.py
@@ -28,6 +28,7 @@ $ python3 hermes-cortex/tests/test_review_per_blob.py
 ✅ test_the_cap_reports_progress_instead_of_deadlocking
 ✅ test_a_changed_blob_is_re_reviewed
 ✅ test_only_judged_blobs_are_uncovered
+✅ test_a_reviewer_outage_judges_nothing_and_reports_the_rest
 ✅ test_the_per_blob_pass_has_exactly_one_call_site
 SKIP: this is the discrimination case — run it with CORTEX_LOOP_GOV_SERVER=<pre-change copy>
 ✅ test_the_pre_change_revision_has_no_per_blob_surface
@@ -53,6 +54,7 @@ $ CORTEX_LOOP_GOV_SERVER=/tmp/pre-review-bounds-loop-gov.py python3 hermes-corte
 ❌ test_the_cap_reports_progress_instead_of_deadlocking: AttributeError: module 'loop_gov_per_blob_under_test' has no attribute '_review_uncovered_blobs'
 ❌ test_a_changed_blob_is_re_reviewed: AttributeError: module 'loop_gov_per_blob_under_test' has no attribute '_review_uncovered_blobs'
 ❌ test_only_judged_blobs_are_uncovered: AttributeError: module 'loop_gov_per_blob_under_test' has no attribute '_review_uncovered_blobs'
+❌ test_a_reviewer_outage_judges_nothing_and_reports_the_rest: AttributeError: module 'loop_gov_per_blob_under_test' has no attribute '_review_uncovered_blobs'
 ❌ test_the_per_blob_pass_has_exactly_one_call_site: the per-blob close pass must be defined exactly once, found 0
 ✅ test_the_pre_change_revision_has_no_per_blob_surface
 rc=1
