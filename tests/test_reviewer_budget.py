@@ -215,6 +215,73 @@ def test_the_call_has_a_hard_wall_clock_deadline(tmp_path):
         srv.close()
 
 
+def test_the_ceiling_follows_the_caller_not_the_reviewer(tmp_path):
+    """The clamp answers "when does MY caller give up?", so it differs by caller.
+
+    The MCP path is bounded by its 300s client; the CLI adapter waits on the PROCESS and
+    is not. Measured 2026-10-16: one blob call ran 180-250s — past the MCP ceiling — so
+    with a single global number the heaviest blob of a range was never judged and the
+    range could not close. A ceiling that ignores who is waiting is a deadlock, not a
+    bound.
+    """
+    mod = _load_server(tmp_path)
+    os.environ.pop(mod.CLIENT_MARKER_ENV, None)
+    try:
+        assert mod._reviewer_timeout_ceiling() == mod.REVIEWER_TIMEOUT_CEILING, (
+            "without the marker the budget must stay under the 300s MCP client: "
+            f"{mod._reviewer_timeout_ceiling()}"
+        )
+        os.environ[mod.CLIENT_MARKER_ENV] = "cli"
+        assert mod._reviewer_timeout_ceiling() == mod.REVIEWER_TIMEOUT_CEILING_CLI, (
+            "the CLI adapter waits on the process and must get its own ceiling: "
+            f"{mod._reviewer_timeout_ceiling()}"
+        )
+        assert mod.REVIEWER_TIMEOUT_CEILING_CLI > mod.REVIEWER_TIMEOUT_CEILING, (
+            "the point of the split is that the CLI budget is LARGER than the MCP one"
+        )
+        os.environ["ADVERSARIAL_REVIEW_TIMEOUT"] = str(mod.REVIEWER_TIMEOUT_CEILING_CLI + 500)
+        assert mod._reviewer_env_timeout("ADVERSARIAL_REVIEW_TIMEOUT", 300) == \
+            mod.REVIEWER_TIMEOUT_CEILING_CLI, "an override clamps to THIS caller's ceiling"
+        os.environ.pop(mod.CLIENT_MARKER_ENV, None)
+        assert mod._reviewer_env_timeout("ADVERSARIAL_REVIEW_TIMEOUT", 300) == \
+            mod.REVIEWER_TIMEOUT_CEILING, "and to the MCP ceiling without the marker"
+    finally:
+        os.environ.pop(mod.CLIENT_MARKER_ENV, None)
+        os.environ.pop("ADVERSARIAL_REVIEW_TIMEOUT", None)
+
+
+def test_the_cli_adapter_marks_itself_so_the_budget_is_not_clamped(tmp_path):
+    """The split only works if the ADAPTER sets the marker — drive it, don't read it.
+
+    Importing the adapter is safe (its entrypoint is guarded) and it loads the same
+    server module the CLI drives, so this asserts the end the fleet actually runs:
+    load_governance() → the module resolves the CLI ceiling, not the MCP one.
+    """
+    adapter = REPO / "ops" / "scripts" / "loop-gov.py"
+    saved = os.environ.pop("CORTEX_LOOP_GOV_CLIENT", None)
+    try:
+        spec = importlib.util.spec_from_file_location("loop_gov_adapter_under_test", adapter)
+        assert spec is not None and spec.loader is not None, f"cannot load {adapter}"
+        adapter_mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(adapter_mod)
+        try:
+            gov = adapter_mod.load_governance()
+        except SystemExit as exc:            # the adapter exits 3 when it cannot find it
+            raise AssertionError(
+                f"the CLI adapter could not load the governance module (exit {exc.code})"
+            ) from exc
+        assert gov._reviewer_timeout_ceiling() == gov.REVIEWER_TIMEOUT_CEILING_CLI, (
+            "load_governance() must mark itself as the CLI client, or every CLI close "
+            "is clamped to the MCP ceiling — measured too short for the heaviest blob of "
+            f"a range: {gov._reviewer_timeout_ceiling()}"
+        )
+    finally:
+        if saved is not None:
+            os.environ["CORTEX_LOOP_GOV_CLIENT"] = saved
+        else:
+            os.environ.pop("CORTEX_LOOP_GOV_CLIENT", None)
+
+
 def test_the_pre_change_revision_is_unbounded(tmp_path):
     """Discrimination: the baseline must FAIL these same checks."""
     if SERVER == REPO / "mcp-servers" / "loop-gov-mcp.py":
@@ -239,6 +306,8 @@ if __name__ == "__main__":
         test_an_invalid_effort_falls_back_rather_than_becoming_a_400,
         test_the_floor_reports_the_measurement_not_a_remedy_already_tried,
         test_the_call_has_a_hard_wall_clock_deadline,
+        test_the_ceiling_follows_the_caller_not_the_reviewer,
+        test_the_cli_adapter_marks_itself_so_the_budget_is_not_clamped,
         test_the_pre_change_revision_is_unbounded,
     )
     failures = 0

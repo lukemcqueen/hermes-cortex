@@ -3331,29 +3331,56 @@ REVIEW_MATERIAL_ALWAYS_REVIEW_PRIORITY = 2 * REVIEW_MATERIAL_PER_FILE_FLOOR
 # hang the caller can never observe, and the close it guards is neither
 # confirmed nor refused. Reviewer budgets are therefore CLAMPED under it.
 REVIEWER_TIMEOUT_CEILING = 240      # seconds; must stay < the 300s client ceiling
+# ...but only the MCP path has that client. The generic CLI adapter
+# (ops/scripts/loop-gov.py) waits on the PROCESS, so its budget stays observable at any
+# length. Measured 2026-10-16: a close driven through the CLI had a single blob call run
+# 180-250s, so the heaviest blob of the range was never judged and the range could not
+# close at all — the clamp, not the reviewer, was the deadlock. The boundary must follow
+# the CALLER's patience: the adapter marks itself in CLIENT_MARKER_ENV and gets the
+# larger bound, while the MCP path keeps the clamp that keeps its budget observable.
+REVIEWER_TIMEOUT_CEILING_CLI = 600
+CLIENT_MARKER_ENV = "CORTEX_LOOP_GOV_CLIENT"
+
+
+def _reviewer_timeout_ceiling() -> int:
+    """The hard bound on ONE reviewer call, chosen by WHO is waiting for it.
+
+    A caller that gives up before the reviewer answers cannot observe the refusal —
+    that is the whole reason for a ceiling — so the ceiling is a property of the
+    caller, not of the reviewer.
+    """
+    if (_env_value(CLIENT_MARKER_ENV) or "").strip().lower() == "cli":
+        return REVIEWER_TIMEOUT_CEILING_CLI
+    return REVIEWER_TIMEOUT_CEILING
 
 
 def _reviewer_env_timeout(env_name: str, default: int) -> int:
-    """Resolve a reviewer timeout, clamped below the MCP client ceiling.
+    """Resolve a reviewer timeout, clamped below the CALLER's patience.
 
     An operator override under the ceiling is honoured; one above it is clamped
     with a warning rather than passed through. Passing it through would convert
     a fail-closed refusal into an unobservable hang, which is strictly worse
     than a short refusal: the worker learns nothing and the lock stays held.
+    The ceiling itself depends on the caller (see _reviewer_timeout_ceiling):
+    the MCP path is bounded by its 300s client, the CLI path by the process the
+    operator is watching.
     """
+    ceiling = _reviewer_timeout_ceiling()
     raw = _env_value(env_name, str(default)) or str(default)
     try:
         requested = int(raw)
     except (TypeError, ValueError):
         log.warning("reviewer timeout %s=%r is not an integer — using the %ss ceiling",
-                    env_name, raw, REVIEWER_TIMEOUT_CEILING)
-        return REVIEWER_TIMEOUT_CEILING
-    if requested > REVIEWER_TIMEOUT_CEILING:
+                    env_name, raw, ceiling)
+        return ceiling
+    if requested > ceiling:
         log.warning(
-            "reviewer timeout %s=%ss exceeds the %ss client ceiling — clamping "
-            "(a longer timeout is an unobservable hang, not a longer wait)",
-            env_name, requested, REVIEWER_TIMEOUT_CEILING)
-        return REVIEWER_TIMEOUT_CEILING
+            "reviewer timeout %s=%ss exceeds the %ss ceiling for this caller "
+            "(caller=%s) — clamping (a timeout past the caller's own patience is an "
+            "unobservable hang, not a longer wait)",
+            env_name, requested, ceiling,
+            "cli" if ceiling == REVIEWER_TIMEOUT_CEILING_CLI else "mcp")
+        return ceiling
     return max(1, requested)
 
 
@@ -4016,11 +4043,12 @@ def _reviewer_timeout(cx: Optional[dict], backend: str) -> int:
     growth = (files * REVIEWER_TIMEOUT_PER_FILE
               + (lines // 100) * REVIEWER_TIMEOUT_PER_100_LINES)
     wanted = base + growth
-    budget = min(wanted, REVIEWER_TIMEOUT_CEILING)
-    if wanted > REVIEWER_TIMEOUT_CEILING:
+    ceiling = _reviewer_timeout_ceiling()
+    budget = min(wanted, ceiling)
+    if wanted > ceiling:
         log.info("reviewer wait for a %s-file/%s-line change would be %ss — held at the "
-                 "%ss client ceiling (a longer budget is an unobservable hang, not a "
-                 "longer wait)", files, lines, wanted, REVIEWER_TIMEOUT_CEILING)
+                 "%ss ceiling for this caller (past it the wait is unobservable, not "
+                 "longer)", files, lines, wanted, ceiling)
     return budget
 
 

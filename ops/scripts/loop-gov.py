@@ -92,6 +92,12 @@ def load_governance():
     Works with or without the MCP SDK: the server guards its SDK import so an
     MCP-less host can still drive the handlers (that is the whole point).
     """
+    # Tell the server WHO is waiting: this adapter waits on the process, so its
+    # reviewer budget stays observable well past the 300s an MCP client allows.
+    # Without the marker the server clamps to the MCP ceiling, which measured
+    # 2026-10-16 was short enough that the heaviest blob of a range was never
+    # judged — the clamp, not the reviewer, was the deadlock.
+    os.environ.setdefault("CORTEX_LOOP_GOV_CLIENT", "cli")
     path = _server_path()
     if path is None:
         print("loop-gov: the governance server module was not found "
