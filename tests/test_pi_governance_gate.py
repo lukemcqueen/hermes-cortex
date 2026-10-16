@@ -75,6 +75,41 @@ def test_the_gate_is_executed_and_correct(tmp_path):
         assert f"blocked: `{cmd}" in out, f"the verifier does not cover `{cmd}...`:\n{out}"
     # And read-only must NOT be gated, or the gate is friction without security.
     assert "read-only bash stays lock-free" in out, out
+    # The block must name the live lock that does NOT cover this repo — the
+    # check exists in the verifier and must keep running.
+    assert "the refusal names the locks that do NOT cover this repo" in out, out
+
+
+def test_the_verifier_discriminates_on_the_named_lock_section(tmp_path):
+    """A gate that blocks but names nothing must FAIL the verifier.
+
+    The discrimination seam is the REAL extension with exactly the rendering
+    line removed — the mutation the report is about (a refusal that says "no
+    lock covers this repo" while a live lock sits beside it, unnamed).
+    """
+    node = _node()
+    if node is None:
+        print("SKIP: node is not installed")
+        return
+    source = EXTENSION.read_text()
+    spread = "    ...foreignLockSection(detail),\n"
+    assert spread in source, (
+        "the mutation target is gone — update this test rather than letting it "
+        "mutate nothing and pass"
+    )
+    mutant = tmp_path / "no-named-locks.ts"
+    mutant.write_text(source.replace(spread, ""))
+    proc = _run(node, {"PI_GOV_EXT": str(mutant)})
+    out = proc.stdout + proc.stderr
+    if "EXTENSION SKIPPED" in out:
+        print("SKIP: this host's pi ships no jiti loader")
+        return
+    assert proc.returncode != 0, (
+        "the verifier PASSED a gate whose refusal names no lock — the named-lock "
+        f"check is a happy path:\n{out}"
+    )
+    assert "failed to LOAD" not in out, f"the mutant did not even load:\n{out}"
+    assert "the refusal names the locks that do NOT cover this repo" in out, out
 
 
 def test_the_verifier_discriminates(tmp_path):
@@ -106,7 +141,11 @@ if __name__ == "__main__":
     import tempfile
 
     failures = 0
-    for fn in (test_the_gate_is_executed_and_correct, test_the_verifier_discriminates):
+    for fn in (
+        test_the_gate_is_executed_and_correct,
+        test_the_verifier_discriminates,
+        test_the_verifier_discriminates_on_the_named_lock_section,
+    ):
         with tempfile.TemporaryDirectory() as td:
             try:
                 fn(Path(td))

@@ -2177,7 +2177,7 @@ async def list_tools(ctx, params=None) -> ListToolsResult:
         ),
         Tool(
             name="check_repo_lock",
-            description="Is a LIVE governance lock covering a SPECIFIC repo? Pass repo_path (absolute path to the repo root). Returns {covered, match, repo_path, lock, live_lock_count, unscoped_locks}. `covered:false` is a refusal (exit 1 via loop-gov.py) — no live lock covers that repo, so call begin_change() before writing. Cannot-verify (no repo resolvable) is ALSO a refusal: a gate must never read 'could not check' as 'carry on'. Matched ONLY on the lock's resolved repo_path, never on the repo NAME — two projects can share a directory basename, and honouring the name would let a lock opened in one authorise a write in the other. A lock that records no repo_path therefore covers NOTHING and is counted in `unscoped_locks`, so 'fail closed' is distinguishable from 'no lock exists'. This is the predicate a harness-native write gate consumes — do not re-implement it per harness.",
+            description="Is a LIVE governance lock covering a SPECIFIC repo? Pass repo_path (absolute path to the repo root). Returns {covered, match, repo_path, lock, other_locks, live_lock_count, unscoped_locks}. `covered:false` is a refusal (exit 1 via loop-gov.py) — no live lock covers that repo, so call begin_change() before writing. `other_locks` names the live locks that do NOT cover this repo (task_id, agent, session_id, repo_path, status, heartbeat_at): a refusal carrying `live_lock_count:1` and no name leaves the reader hunting the state dir for a lock it can never match, so the predicate — which already holds them — hands them over and a harness only RENDERS them. Cannot-verify (no repo resolvable) is ALSO a refusal: a gate must never read 'could not check' as 'carry on'. Matched ONLY on the lock's resolved repo_path, never on the repo NAME — two projects can share a directory basename, and honouring the name would let a lock opened in one authorise a write in the other. A lock that records no repo_path therefore covers NOTHING and is counted in `unscoped_locks`, so 'fail closed' is distinguishable from 'no lock exists'. This is the predicate a harness-native write gate consumes — do not re-implement it per harness.",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -5400,6 +5400,24 @@ def _live_locks() -> list[dict]:
     return locks
 
 
+def _lock_summary(lk: dict) -> dict:
+    """A live lock, stripped to what a REFUSAL has to be able to say about it.
+
+    ``_live_locks()`` also carries the lock FILE name, which means nothing
+    outside the state dir. What a blocked writer needs is WHOSE lock it is and
+    which repo it covers, so the refusal can distinguish "nothing is locked"
+    from "someone else's lock is live, and it is not mine".
+    """
+    return {
+        "task_id": lk.get("task_id"),
+        "agent": lk.get("agent"),
+        "session_id": lk.get("session_id"),
+        "repo_path": lk.get("repo_path"),
+        "status": lk.get("status"),
+        "heartbeat_at": lk.get("heartbeat_at"),
+    }
+
+
 def _session_identity(args: dict | None = None) -> CallToolResult:
     """Which governance session id must EVIDENCE be recorded under? (READ-ONLY)
 
@@ -5562,6 +5580,9 @@ def _check_repo_lock(args: dict | None = None) -> CallToolResult:
                     },
                     "live_lock_count": len(live),
                     "unscoped_locks": unscoped,
+                    # Everything this scan did NOT match: the locks whose
+                    # existence `live_lock_count` reports but cannot name.
+                    "other_locks": [_lock_summary(lk) for lk in live if lk is not lock],
                 }, indent=2))])
         except OSError:
             continue
@@ -5572,6 +5593,10 @@ def _check_repo_lock(args: dict | None = None) -> CallToolResult:
         "lock": None,
         "live_lock_count": len(live),
         "unscoped_locks": unscoped,
+        # No lock covered this repo — so EVERY live lock is an "other", and the
+        # refusal can name them instead of leaving the reader to hunt the state
+        # dir for a lock the gate will never match.
+        "other_locks": [_lock_summary(lk) for lk in live],
         "note": ("❌ Not locked: no live governance lock covers this repo. "
                  "Call begin_change() before writing."),
     }, indent=2))])

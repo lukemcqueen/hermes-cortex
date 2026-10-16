@@ -136,6 +136,40 @@ def test_a_lock_for_another_project_never_covers_this_one(tmp_path):
     assert _verdict(mod, str(proj_b))["unscoped_locks"] == 0
 
 
+def test_the_refusal_names_the_locks_it_checked(tmp_path):
+    """A refusal reporting live_lock_count>0 must say WHOSE lock it is.
+
+    The predicate holds the locks it skipped; a refusal that reports how many
+    exist without naming them leaves the reader unable to tell a broken gate
+    from someone else's live lock, so the predicate must hand them over and a
+    harness renders them.
+    """
+    mod = _load_server()
+    mod.GOVERNANCE_STATE_DIR = tmp_path / "state"
+    proj_a = tmp_path / "alpha"
+    proj_b = tmp_path / "beta"
+    for p in (proj_a, proj_b):
+        p.mkdir(parents=True)
+        (p / ".git").mkdir()
+    _seed_lock(mod.GOVERNANCE_STATE_DIR, "a", repo_path=str(proj_a), mod=mod)
+
+    b = _verdict(mod, str(proj_b))
+    assert b["covered"] is False, b
+    others = b.get("other_locks")
+    assert isinstance(others, list) and len(others) == 1, (
+        f"the refusal must name the live lock that does not cover this repo: {b}"
+    )
+    assert others[0]["repo_path"] == str(proj_a), others[0]
+    assert others[0]["task_id"] == "task-a", others[0]
+
+    a = _verdict(mod, str(proj_a))
+    assert a["covered"] is True, a
+    assert a.get("other_locks") == [], (
+        "the covering lock is not an 'other': the field must mean the locks that "
+        f"do NOT cover this repo, or a reader cannot tell whose lock is blocking: {a}"
+    )
+
+
 def test_an_unresolvable_repo_is_a_refusal_not_an_unlocked_verdict(tmp_path):
     """Cannot-verify must never read as 'fine, no lock needed'."""
     mod = _load_server()
@@ -207,6 +241,11 @@ def test_the_advertised_contract_matches_the_implementation(tmp_path):
         "the description does not mention unscoped_locks, the field that makes "
         "'fail closed' distinguishable from 'no lock exists'"
     )
+    assert "other_locks" in described, (
+        "the description does not mention other_locks, the field that names the "
+        "live locks NOT covering this repo — a block message is only as "
+        "informative as the contract it is rendered from"
+    )
     # The behavioural half of the same contract is asserted by the shared-name
     # test above, so the words and the behaviour cannot part company silently.
 
@@ -218,6 +257,7 @@ if __name__ == "__main__":
     for fn in (
         test_two_projects_sharing_a_name_do_not_share_a_gate,
         test_a_lock_for_another_project_never_covers_this_one,
+        test_the_refusal_names_the_locks_it_checked,
         test_an_unresolvable_repo_is_a_refusal_not_an_unlocked_verdict,
         test_the_covered_branch_reports_every_unscoped_lock,
         test_the_advertised_contract_matches_the_implementation,

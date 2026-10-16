@@ -266,8 +266,16 @@ harness: the git hook already carries one copy and two copies drift.
   loads it through pi's own jiti loader, hands it a stub `pi`, fires synthetic
   `tool_call` events and asserts both directions — plus the no-metacharacter write
   commands above. `tests/test_pi_governance_gate.py` additionally requires the guard to
-  FAIL when pointed at a gate that blocks nothing (`PI_GOV_EXT=<broken>`); a guard that
+  FAIL when pointed at a gate that blocks nothing (`PI_GOV_EXT=<broken>`), and at the
+  REAL extension with only the named-lock rendering removed; a guard that
   has never failed is a happy path.
+- **A refusal names the live locks it did NOT match.** `check_repo_lock` returns
+  `other_locks` (task_id, agent, session_id, repo_path, status, heartbeat_at) beside
+  `live_lock_count`, and the block message renders the first three as
+  "Live locks on this host — none covers this repo:" with a `… and N more` remainder.
+  A lock that records no `repo_path` is named as covering nothing rather than dropped.
+  The harness only RENDERS what the predicate reported — it must never parse lock
+  files to work out whose lock is blocking.
 - **A stub proves the HANDLER; only a real session proves the WIRING.** The guard above
   hands the extension a synthetic `pi`, so it passes green even on a gate pi never
   calls — those are two separate claims, and the second is the one that matters. Run one

@@ -23,6 +23,10 @@ PROBE="$EV/live-gate-probe.mjs"
 # resolve to the FIXED server and the before/after comparison would be a
 # tautology (review finding ADV-12605-1).
 PRE_FIX="c08fbe2d"
+# The revision BEFORE the named-lock change — the previous tip, so the before/after
+# comparison for `other_locks` runs against a tree that genuinely lacks it. Same
+# rule as PRE_FIX: never 'HEAD', which already carries the fix.
+PRE_NAMED_LOCK="2668cffa"
 
 body() {
   cd "$HOME" || exit 1
@@ -46,7 +50,9 @@ body() {
   echo "answers covered=false with rc=1; an unresolvable path is a REFUSAL, never an"
   echo "'unlocked' verdict. Where live_lock_count>0 sits beside covered=false, that is"
   echo "the 'do not mix gates' property: another repo's live lock does not authorise"
-  echo "this one."
+  echo "this one. other_locks is what makes that readable: it NAMES each live lock the"
+  echo "scan did not match (repo_path, task_id, agent), so a refusal says whose lock is"
+  echo "blocking instead of only how many exist."
   echo
 
   echo "═══════ 2. Repo scoping is pinned by a test that FAILS on the old behaviour ═══════"
@@ -70,14 +76,32 @@ body() {
   echo "     gate-mixing case this change removes."
   echo
 
+  echo "═══════ 2b. The NAMED-LOCK field is pinned against its OWN baseline ═══════"
+  echo "The scoping baseline above predates unscoped_locks, so the named-lock change gets"
+  echo "its own pinned revision rather than sharing one."
+  echo "\$ git -C hermes-cortex show $PRE_NAMED_LOCK:mcp-servers/loop-gov-mcp.py > /tmp/pre-named-lock-loop-gov.py"
+  git -C hermes-cortex show "$PRE_NAMED_LOCK:mcp-servers/loop-gov-mcp.py" > /tmp/pre-named-lock-loop-gov.py
+  echo "\$ grep -c 'other_locks' /tmp/pre-named-lock-loop-gov.py   # 0 proves the extraction is pre-change"
+  grep -c 'other_locks' /tmp/pre-named-lock-loop-gov.py || true
+  echo "\$ CORTEX_LOOP_GOV_SERVER=/tmp/pre-named-lock-loop-gov.py python3 hermes-cortex/tests/test_check_repo_lock_scoping.py   # must FAIL"
+  CORTEX_LOOP_GOV_SERVER=/tmp/pre-named-lock-loop-gov.py "$PY" hermes-cortex/tests/test_check_repo_lock_scoping.py 2>&1 \
+    | grep -v '^\[mcp-server\]'
+  echo "rc=${PIPESTATUS[0]}"
+  echo "  -> on that revision the refusal reports live_lock_count and names nothing, so"
+  echo "     the reader cannot tell a broken gate from someone else's live lock."
+  echo
+
   echo "═══════ 3. The extension, EXECUTED both directions (stubbed CLI, hermetic) ═══════"
   echo "\$ node hermes-cortex/ops/install/harnesses/pi/verify-governance-extension.mjs"
   node hermes-cortex/ops/install/harnesses/pi/verify-governance-extension.mjs 2>&1 | tail -3
   echo "rc=${PIPESTATUS[0]}"
   echo
   echo "\$ python3 hermes-cortex/tests/test_pi_governance_gate.py"
-  "$PY" hermes-cortex/tests/test_pi_governance_gate.py 2>&1 | tail -2
+  "$PY" hermes-cortex/tests/test_pi_governance_gate.py 2>&1 | tail -4
   echo "rc=${PIPESTATUS[0]}"
+  echo "  -> the third case points the verifier at the REAL extension with ONLY the"
+  echo "     named-lock rendering removed, and requires it to FAIL: a guard that has"
+  echo "     never failed on the broken artifact is a happy path, not a guard."
   echo
 
   echo "═══════ 4. Composition: the extension driving the REAL loop-gov.py ═══════"
@@ -139,6 +163,10 @@ body() {
   echo "- The same-NAME/different-project case is pinned by §2 rather than driven live,"
   echo "  because constructing it needs a lock with no repo_path, and hand-writing a"
   echo "  lock file is a governance violation."
+  echo "- The named-lock change is pinned by §2b against 2668cffa (the tip before it), so"
+  echo "  the before/after is a real comparison rather than a tautology at HEAD. §4 drives"
+  echo "  the DEPLOYED extension beside the DEPLOYED CLI, so its transcript shows the"
+  echo "  named-lock section only once that deploy has run."
 }
 
 body | sed "s|$HOME|~|g"

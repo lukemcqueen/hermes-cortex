@@ -88,7 +88,20 @@ if mode == "allowed":
 if mode == "unavailable":
     print("governance is unavailable", file=sys.stderr)
     sys.exit(3)
-print(json.dumps({"covered": False, "note": "\\u274c Not locked"}))
+others = [{"task_id": "other-project-task", "agent": "peer-agent",
+           "session_id": "sess-other", "repo_path": "/tmp/some-other-repo",
+           "status": "executing", "heartbeat_at": "2026-10-16T06:00:00Z"}]
+if mode == "refused-no-others":
+    others = []
+if mode == "refused-unscoped":
+    others = [{"task_id": "legacy-task", "agent": "legacy-agent",
+               "session_id": "sess-legacy", "repo_path": None,
+               "status": "executing", "heartbeat_at": "2026-10-16T06:00:00Z"}]
+print(json.dumps({"covered": False, "repo_path": "/tmp/fake-repo", "lock": None,
+                  "live_lock_count": len(others),
+                  "unscoped_locks": 1 if mode == "refused-unscoped" else 0,
+                  "other_locks": others,
+                  "note": "Not locked: no live governance lock covers this repo."}))
 sys.exit(1)
 `);
 
@@ -170,6 +183,30 @@ note(r.reason.includes("begin_change"),
 
 r = await call("edit", { file_path: "/tmp/fake-repo/x.txt" });
 note(r.blocked, "NO lock => edit BLOCKED");
+
+// ── 2b. the refusal NAMES the live lock that does not cover this repo ───────
+// A block that prints `live_lock_count: 1` beside `covered: false` and names
+// nothing leaves the reader unable to tell a broken gate from someone else's
+// lock. Asserted on the RENDERED line (a format the raw JSON cannot produce),
+// not merely on the path appearing somewhere.
+note(r.reason.includes("Live locks on this host — none covers this repo:"),
+     "the refusal names the locks that do NOT cover this repo");
+note(r.reason.includes("  - /tmp/some-other-repo  (task: other-project-task, agent: peer-agent)"),
+     "each named lock shows its repo, task and agent — the reader learns whose lock it is");
+
+// nothing to name => no section (a section that always prints is noise)
+process.env.GOV_STUB_MODE = "refused-no-others";
+r = await call("write", { file_path: "/tmp/fake-repo/x.txt" });
+note(r.blocked, "NO lock and no other live lock => write still BLOCKED");
+note(!r.reason.includes("none covers this repo"),
+     "no live locks exist => the named-lock section is ABSENT");
+
+// a legacy lock that records no repo_path is named as covering nothing
+process.env.GOV_STUB_MODE = "refused-unscoped";
+r = await call("write", { file_path: "/tmp/fake-repo/x.txt" });
+note(r.reason.includes("(records no repo_path — covers nothing)"),
+     "a lock with no repo_path is named as covering NOTHING, not silently dropped");
+process.env.GOV_STUB_MODE = "refused";
 
 // ── 3. the ADV-1 case: write commands with NO metacharacter ─────────────────
 // A gate that classified by shell syntax let every one of these through.

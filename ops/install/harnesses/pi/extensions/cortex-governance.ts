@@ -227,6 +227,34 @@ function toolNeedsLock(toolName: string, input: any): boolean {
 }
 
 // ── the block messages ─────────────────────────────────────────────────────
+/** Name the live locks the predicate reported as NOT covering this repo.
+
+ *  A refusal that prints `live_lock_count: 1` and names nothing leaves the
+ *  reader unable to tell a broken gate from someone else's live lock. The
+ *  predicate already answers which locks did not match, so this only RENDERS
+ *  its `other_locks` — it does not open the state dir, test staleness, or
+ *  compare repos. An unparseable detail yields no section, never an invented one.
+ */
+function foreignLockSection(detail: string): string[] {
+  let parsed: any;
+  try {
+    parsed = JSON.parse(detail);
+  } catch {
+    return [];
+  }
+  const others = Array.isArray(parsed?.other_locks) ? parsed.other_locks : [];
+  if (!others.length) return [];
+  const MAX_NAMED = 3;
+  const lines = ["Live locks on this host — none covers this repo:"];
+  for (const lk of others.slice(0, MAX_NAMED)) {
+    const repo =
+      String(lk?.repo_path ?? "").trim() || "(records no repo_path — covers nothing)";
+    lines.push(`  - ${repo}  (task: ${lk?.task_id ?? "unknown"}, agent: ${lk?.agent ?? "unknown"})`);
+  }
+  if (others.length > MAX_NAMED) lines.push(`  … and ${others.length - MAX_NAMED} more`);
+  return lines.concat([""]);
+}
+
 function refusedMessage(repo: string, detail: string): string {
   return [
     "🛑 GOVERNANCE LOCK REQUIRED — this pi tool call writes, and no live lock covers this repo.",
@@ -237,6 +265,7 @@ function refusedMessage(repo: string, detail: string): string {
     "plugin, so this gate asks the shared governance implementation instead.",
     "It answered: no lock.",
     "",
+    ...foreignLockSection(detail),
     "Open one (any of these reaches the SAME implementation):",
     "  pi's loop-governance MCP tool:  begin_change(task_id=\"...\", description=\"...\")",
     `  the generic CLI:                python3 ${CLI} begin_change '{"task_id":"...","description":"..."}'`,
