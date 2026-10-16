@@ -1,0 +1,298 @@
+Backlog run evidence — orch-bus-worker (F-023), cycle 12745, host esther
+=======================================================================
+
+Produced by: an orch-bus-worker (F-023) backlog run, governance session
+cron_1954deb5ad76_20261016_222141, 2026-10-16 22:21 KST. Every command below was
+run in that session; each is shown with its own output. Host paths normalised to
+`~`. Volatile by design: task UUIDs, cycle ids, timestamps.
+
+Range: working tree vs 2e51c4ff — tests/test_task_db_unit.py, this file.
+
+This pass closed two pending task rows on measured evidence and made the
+justification of the second one RE-RUNNABLE, in answer to the plan review
+(ADV-12745-1, §4).
+
+
+1. Queue census (verbatim)
+--------------------------
+
+$ cd ~/hermes-cortex && python3 ops/scripts/manage/task-db.py list --status in_progress
+No tasks found.
+
+$ python3 ops/scripts/manage/task-db.py list --status pending
+45 rows, ordered by (priority desc, created_at). Top three:
+
+  c579ef95  priority 3  story  STORY: Fleet cost under $10/day avg + halve review queue
+  5e875477  priority 2  slice  [cost/1] Baseline fleet cost ... docs/cost-baseline-2026-09.md
+  0a092364  priority 2  -      Pre-commit YAML check false alarm ...
+
+The top row is a story (a container, not work) and its only unblocked slice,
+[cost/1], asks for 14 days of provider spend that has had no live source since the
+cost stack was retired on 2026-10-06 — producing docs/cost-baseline-2026-09.md
+would mean inventing numbers. It stays pending; §6 reports it. The next two rows
+are actioned below. The census is this host's store only: task-db.py holds the
+rows minted here, so this is not a fleet-wide claim.
+
+
+2. Row 0a092364 — CLOSED: already fixed, verified in three directions
+--------------------------------------------------------------------
+
+The row described a false alarm from the pre-commit YAML check: a valid manifest
+reported as a parse issue because the bare python3 on the gate PATH has no PyYAML.
+That fix already landed on 2026-10-13 in commit bf9f92d5, whose message names the
+row ("This is task 0a092364, closed by the same fix rather than left as a filed
+remark") — the ROW was simply never updated. Verified this pass:
+
+$ git log --oneline -S "COULD NOT VERIFY: no interpreter on this host can import yaml" \
+      -- ops/scripts/change-validate.sh
+bf9f92d5 fix(venv): an inherited PYTHONPATH was making a healthy fleet venv read as broken
+
+$ python3 -c "import yaml; print('bare python3 HAS yaml')"
+ModuleNotFoundError: No module named 'yaml'          <-- the original trigger, still present on this host
+
+$ bash ~/.hermes-cortex/scripts/lib/python-with-module.sh --print yaml
+~/.hermes-cortex/venv/bin/python3
+rc=0
+
+Deployed copy == repo copy (modulo the deploy SOURCE header), asserted by
+stripping leading blank/comment lines from both and comparing:
+  change-validate.sh:         True
+  lib/python-with-module.sh:  True
+
+The three outcomes, exercised on a scratch git repo with the DEPLOYED script:
+
+A. VALID yaml staged, resolver present      -> no false alarm
+   $ bash ./cv.sh | grep -i yaml
+   ✅ Syntax OK: good.yaml
+
+B. INVALID yaml staged, resolver present    -> still catches the real thing
+   $ bash ./cv.sh | grep -i yaml
+   ⚠ YAML parse issue in bad.yaml (~/.hermes-cortex/venv/bin/python3 yaml.safe_load failed)
+
+C. NO parser obtainable (resolver absent + bare python3 has no yaml)
+   $ HOME=/tmp/fakehome-xyz bash ./cv.sh | grep -i "yaml\|COULD NOT"
+   ⚠ COULD NOT VERIFY: no interpreter on this host can import yaml — .yaml files are NOT being checked
+
+C is the outcome the fix exists for: a checker that cannot read the file reports
+"cannot verify", never a parse issue in a file that was never wrong. Note
+change-validate.sh is advisory by design (its last line exits 0); the verdict is
+the printed line, not the exit code.
+
+Closed: task-db.py update 0a092364 --status completed.
+
+
+3. Row ebe4e9d8 — the recorded RED does not reproduce; it is an invoker-dependent probe
+---------------------------------------------------------------------------------------
+
+The row recorded "7 failures on cmd_pending/cmd_list paths ... pinned at baseline
+revision 40151607 (detached worktree run: 7 failed / 50 passed)" and asked the
+next reader to "check whether the PROBE or cmd_pending's shape is wrong before
+changing code". Measured, that premise does not reproduce from a git directory:
+
+$ cd ~/hermes-cortex && ~/.hermes-cortex/venv/bin/python3 -m pytest tests/test_task_db_unit.py -q
+64 passed (was 62 passed before this change)
+
+$ git worktree add --detach ~/.hermes/cache/scratch/taskdb-baseline 40151607
+$ cd ~/.hermes/cache/scratch/taskdb-baseline && bash tests/run-tests.sh tests/test_task_db_unit.py -q
+57 passed in 1.14s            <-- at the ROW'S OWN pinned baseline
+
+It reproduces exactly — same revision, same file — from a directory that is not a
+git repo:
+
+$ cd ~/.hermes/cache/scratch        # not a git repo
+$ ~/.hermes-cortex/venv/bin/python3 -m pytest ~/hermes-cortex/tests/test_task_db_unit.py -q
+FAILED ...::test_pending_json_shape
+FAILED ...::test_pending_inbox_rows_marked_untrusted
+FAILED ...::test_pending_includes_paused
+FAILED ...::test_pending_filters_completed
+FAILED ...::test_pending_includes_blocked_waiting
+FAILED ...::test_list_parent_requires_v3_schema
+FAILED ...::test_list_parent_bad_uuid_rejected
+7 failed, 55 passed in 1.27s
+
+$ ... -k test_pending_json_shape
+tests/test_task_db_unit.py:269: in test_pending_json_shape
+    assert items[0]["id"] == "uuid1"
+E   IndexError: list index out of range
+
+Mechanism (read, not guessed): cmd_pending (ops/scripts/manage/task-db.py:1095)
+and cmd_list both call resolve_repo_for_query ->
+ops/scripts/cortex_lib/session_repo.py:87 resolve_query_repo, which resolves an
+explicit arg, then an injected repo path, then repo_slug, then CORTEX_SESSION_REPO,
+then a git repo at the cwd, then None. On None cmd_pending prints "[]" and returns
+(operator rule 2026-10-14: an unresolvable repo returns NOTHING). The tests declared
+no repo, so their verdict was decided by the cwd pytest happened to run in.
+
+Verdict: the PROBE was wrong, not cmd_pending. The product behaviour is intentional
+and is unchanged by this cycle.
+
+
+4. Plan review (governed, recorded) and how its finding was answered
+--------------------------------------------------------------------
+
+$ python3 ops/scripts/orch-bus/adversarial-review.py --cycle-id 12745 \
+      --material "$(cat plan file)" --review --reviewer-id esther-plan-review-12745
+(reviewer_model deepseek/deepseek-v4-pro; row id 3b9ebc8b-40c2-4afa-bd78-a9255cde35e9
+ in adversarial_reviews; verdict FINDINGS)
+
+ADV-12745-1 (high, unverified-claim): the plan's justification rested on pasted
+terminal output that a later reviewer cannot re-execute, and it recommended
+committing a runnable test that demonstrates the pre-fix failure and the post-fix
+success.
+
+Answer (in the diff, not in prose): test_pending_payload_follows_the_declared_repo_not_the_invoker
+drives the REAL cmd_pending path with a mocked psql from a non-git tmp cwd and
+asserts both halves — no declared repo yields "[]", a declared repo yields the row.
+The demonstration is now re-runnable by anyone, at any revision.
+
+
+5. The change, and its verification
+-----------------------------------
+
+tests/test_task_db_unit.py only. No production file is touched:
+
+$ git diff --stat -- tests/test_task_db_unit.py
+ tests/test_task_db_unit.py | 95 ++++++++++++++++++++++++++++++++++++++++++----
+ 1 file changed, 87 insertions(+), 8 deletions(-)
+
+a. REPO_SLUG = "testrepo" — one declared repo for every scoped-query test, with the
+   mechanism recorded in the source.
+b. Eight call sites (5 x cmd_pending, 3 x cmd_list) now declare repo_slug=REPO_SLUG.
+c. A class guard, test_scoped_query_calls_declare_their_repo, with an ast sweep
+   (_unpinned_scoped_queries) that reports any scoped-query call site declaring no
+   repo. The sweep matches the file's actual CONSTRUCT — here the command is passed
+   as a Call ARGUMENT to the capture helper, so a sweep that only inspected the
+   callee reported 0 sites on the pre-fix revision and proved nothing; that first
+   version was discarded, not shipped.
+d. One exemption is DECLARED with its justification and re-asserted against the
+   source on every run: the new mechanism test deliberately omits the repo, and the
+   assertion `assert json.loads(out) == []` in its own body is what makes that safe.
+   Delete that assertion and the site is reported again (proved below).
+
+Verification, both invocation directions:
+
+$ cd ~/hermes-cortex && ~/.hermes-cortex/venv/bin/python3 -m pytest tests/test_task_db_unit.py -q
+64 passed in 1.33s            rc=0
+
+$ cd ~/.hermes/cache/scratch && ~/.hermes-cortex/venv/bin/python3 -m pytest ~/hermes-cortex/tests/test_task_db_unit.py -q
+64 passed in 1.21s            rc=0
+
+The sweep, three inputs (probe: ~/.hermes/cache/scratch/probe-e704-sweep.py):
+
+A FIXED   ~/hermes-cortex/tests/test_task_db_unit.py: 0 unpinned
+B PRE-FIX ~/.hermes/cache/scratch/taskdb-baseline/tests/test_task_db_unit.py: 8 unpinned
+     line  85: cmd_list
+     line 266: cmd_pending
+     line 280: cmd_pending
+     line 294: cmd_pending
+     line 307: cmd_pending
+     line 322: cmd_pending
+     line 346: cmd_list
+     line 355: cmd_list
+C DECOY   (fixed file with the exemption's justification assertion deleted): 1 unpinned
+     line 384: cmd_pending
+DISCRIMINATES BOTH WAYS: yes
+
+B shows the sweep would have caught all eight historical sites; C shows the
+exemption is live and cannot rot. Re-run the discrimination with no worktree — the
+pre-fix revision comes straight out of git:
+
+  $ cd ~/hermes-cortex && git show 40151607:tests/test_task_db_unit.py > ~/.hermes/cache/scratch/prefix-tests.py
+  $ ~/.hermes-cortex/venv/bin/python3   # import HEAD's test module, then ask it about both files
+      pre-fix sites on 40151607: 8 ['line 85: cmd_list', 'line 266: cmd_pending', 'line 280: cmd_pending',
+                                    'line 294: cmd_pending', 'line 307: cmd_pending', 'line 322: cmd_pending',
+                                    'line 346: cmd_list', 'line 355: cmd_list']
+      fixed sites on HEAD      : 0
+
+Regression runs: §7.
+
+One incidental edit, disclosed: in test_list_parent_requires_v3_schema the parent
+argument's value was changed from an all-digit dashed UUID to a letter-hex UUID
+(aaaa…). The value is arbitrary — at schema v5 the test exits on the schema check
+before any UUID is examined — and the all-digit form cannot be written to the repo
+at all: the write-time PII gate matches three dashed digit groups as a "phone
+number" and refuses. That is row cf8f8e8d, reproduced live in this cycle (the gate
+blocks the new content only; the same literal in the search side of the edit was
+accepted).
+
+Adversarial static gate — A4, the level the checklist requires for tests/:
+
+  $ python3 ~/.hermes-cortex/scripts/adversarial-verify.py --file tests/test_task_db_unit.py --level A4 --gate
+  📊 Summary: 1 file(s), 24 finding(s)
+     🟡 Medium: 3
+     ⚪ Info: 21
+  ✅ GATE_PASSED — no critical/high findings                 rc=0
+
+The three mediums are properties of a TEST module, not of shipped code, and are
+left alone: ADV-2026-10-16-005 and -012 (input-fuzzing) fuzz the parameters of the
+module's own _load() helper, and -021 (cheat-detection) reports "Empty except
+block(s) detected: 3 occurrence(s)" — the deliberate `except ValueError: pass`
+blocks that assert build_query rejects a mismatched parameter count. No critical or
+high finding; nothing is swallowed on a real error path.
+
+
+6. Reported, not silently dropped
+---------------------------------
+
+- c579ef95 / 5e875477 [cost/1]: blocked. The slice asks for 14 days of provider
+  spend and token usage across all agents; the cost stack was retired 2026-10-06
+  (docs/evidence/cost-removal-2026-10-06.md) and no cost script, cron or store
+  exists. Producing the named document would mean inventing numbers. Needs a
+  decision from the operator: retire the story, or restate the slice against a
+  source that exists.
+- 66914fe1 [queue/1], the 18 paused rows: still exactly 18, all source=inbox,
+  untrusted=true, bodies minting artefacts ("ISSUES"/"PROPOSAL"). The slice forbids
+  unattended cancellation of the junk batch, so it stays escalated to the operator
+  — unchanged this pass, by design.
+- 762379ca, cf8f8e8d, f97dcffe, 8369bc52, 2fc4d871, 482de205, 3cc049e8: pending
+  orchestrator-local items, none actioned this pass. cf8f8e8d re-confirmed live
+  above (§5), which strengthens it from report to reproduction.
+
+
+7. Regression runs — what was run, and what was not
+---------------------------------------------------
+
+FULL SUITE: NOT COMPLETED, and no result is claimed for it. `bash
+tests/run-tests.sh tests/ -q` was started from ~/hermes-cortex; the first attempt
+hit the session's 180s foreground cap and the second was killed at 22:38 KST having
+reached 9% after roughly ten minutes. Recording it because the attempt has a side
+effect a future reader will meet: the run REWRITES the tracked file
+docs/evidence/gateway-suite-results.txt (3 lines, a result/timestamp refresh),
+which dirtied the working tree mid-cycle. It was restored with `git checkout --`
+and is not part of this range.
+
+BOUNDED REGRESSION SUBSET — every task/session/repo-scoped suite in tests/, through
+the runner:
+
+$ bash tests/run-tests.sh tests/test_task_db_unit.py tests/test_task_db_v4.py \
+    tests/test_task_mcp_v3.py tests/test_task_query_repo_scope.py \
+    tests/test_task_queue_evidence.py tests/test_task_queue_visibility.py \
+    tests/test_doctor_task_integrity.py tests/test_orch_task_board_digest.py \
+    tests/test_repo_less_lock_handling.py tests/test_non_hermes_repo_identity.py \
+    tests/test_receipt_repo_identity.py tests/test_check_repo_lock_scoping.py -q
+1 failed, 165 passed in 20.43s
+run-tests.sh: interpreter=~/.hermes-cortex/venv/bin/python3 rc=1
+
+The single failure is NOT this change. It fails identically at the pre-change
+revision — same test, run in the detached 40151607 worktree:
+
+$ cd ~/.hermes/cache/scratch/taskdb-baseline && bash tests/run-tests.sh tests/test_task_queue_evidence.py -q
+1 failed, 8 passed in 1.71s
+
+  tests/test_task_queue_evidence.py::test_the_committed_evidence_is_actual_script_output
+
+It is the ambient-interpreter class once more: the test spawns
+`python3 ops/scripts/manage/task-queue-evidence.py`, that `python3` is the agent
+runtime's interpreter with no pytest, and the script's output then differs from the
+committed evidence. Filed as its own row (a6bb2da4, below) rather than fixed in
+this cycle — one change per cycle.
+
+
+8. New row filed
+
+a6bb2da4 (esther, personal, priority 2): test_task_queue_evidence.py::
+test_the_committed_evidence_is_actual_script_output is RED and invoker-dependent —
+resolve the interpreter by CAPABILITY (ops/scripts/lib/python-with-module.sh pytest)
+inside the test's subprocess call, or make the evidence script independent of the
+caller's python3.
+

@@ -14,6 +14,7 @@ every test here is pure or mocks psql.
 """
 from __future__ import annotations
 
+import ast
 import importlib.util
 import io
 import json
@@ -27,6 +28,16 @@ from unittest.mock import patch
 REPO = Path(__file__).resolve().parent.parent
 TASK_DB_PATH = REPO / "ops" / "scripts" / "manage" / "task-db.py"
 TASK_MCP_PATH = REPO / "mcp-servers" / "task-mcp.py"
+
+# The repo every scoped-query test DECLARES, so its verdict cannot come from the invoker.
+# cmd_pending/cmd_list resolve the repo from: explicit arg -> injected repo_path -> repo_slug ->
+# CORTEX_SESSION_REPO -> a git repo at the cwd -> None (cortex_lib/session_repo.py:87). On None
+# they print `[]` (operator rule 2026-10-14: an unresolvable repo returns NOTHING), so a test that
+# declares none of them reads `[]` and fails on items[0] wherever pytest is invoked from a
+# non-git cwd — measured 2026-10-16: 7 failed / 55 passed, `IndexError: list index out of range`.
+# That is the anti-pattern "a test whose verdict depends on WHO invoked it is not a test"
+# (change-checklist Phase 1.5); declaring the repo here is what makes the probe hermetic.
+REPO_SLUG = "testrepo"
 
 
 def _load(name: str, path: Path):
@@ -83,7 +94,8 @@ def test_build_query_param_count_mismatch():
 def test_injection_agent_rejected():
     """--agent \"x' OR 1=1--\" must be rejected by the allowlist, not executed."""
     _out, err, exc = _run_stdin_capture(
-        task_db.cmd_list, "x' OR 1=1--", None, None, None, None, None, None, None)
+        task_db.cmd_list, "x' OR 1=1--", None, None, None, None, None, None, None,
+        repo_slug=REPO_SLUG)
     assert exc is not None and exc.code == 2
     assert "invalid" in err.lower()
 
@@ -263,7 +275,7 @@ def test_parse_row_non_ascii_and_percent():
 def test_pending_json_shape():
     fake = _row_line(id="uuid1", status="pending")
     with patch.object(task_db, "psql", return_value=fake):
-        out, _err, exc = _run_stdin_capture(task_db.cmd_pending)
+        out, _err, exc = _run_stdin_capture(task_db.cmd_pending, repo_slug=REPO_SLUG)
     assert exc is None
     items = json.loads(out)
     assert items[0]["id"] == "uuid1"
@@ -277,7 +289,7 @@ def test_pending_json_shape():
 def test_pending_inbox_rows_marked_untrusted():
     fake = _row_line(id="uuid9", source="inbox", correlation_id="corr-x")
     with patch.object(task_db, "psql", return_value=fake):
-        out, _err, _exc = _run_stdin_capture(task_db.cmd_pending)
+        out, _err, _exc = _run_stdin_capture(task_db.cmd_pending, repo_slug=REPO_SLUG)
     items = json.loads(out)
     assert items[0]["untrusted"] is True
     assert items[0]["status"] == "pending"
@@ -291,7 +303,7 @@ def test_pending_includes_paused():
         _row_line(id="u4", status="completed"),
     ])
     with patch.object(task_db, "psql", return_value=fake):
-        out, _err, exc = _run_stdin_capture(task_db.cmd_pending)
+        out, _err, exc = _run_stdin_capture(task_db.cmd_pending, repo_slug=REPO_SLUG)
     items = json.loads(out)
     statuses = {i["id"]: i["status"] for i in items}
     assert statuses == {"u1": "pending", "u2": "in_progress", "u3": "paused"}
@@ -304,7 +316,7 @@ def test_pending_filters_completed():
         _row_line(id="u3", status="in_progress"),
     ])
     with patch.object(task_db, "psql", return_value=fake):
-        out, _err, exc = _run_stdin_capture(task_db.cmd_pending)
+        out, _err, exc = _run_stdin_capture(task_db.cmd_pending, repo_slug=REPO_SLUG)
     items = json.loads(out)
     ids = {i["id"] for i in items}
     assert ids == {"u1", "u3"}
@@ -319,7 +331,7 @@ def test_pending_includes_blocked_waiting():
         _row_line(id="u3", status="completed"),
     ])
     with patch.object(task_db, "psql", return_value=fake):
-        out, _err, exc = _run_stdin_capture(task_db.cmd_pending)
+        out, _err, exc = _run_stdin_capture(task_db.cmd_pending, repo_slug=REPO_SLUG)
     items = json.loads(out)
     statuses = {i["id"]: i["status"] for i in items}
     assert statuses == {"u1": "blocked", "u2": "waiting"}
@@ -345,7 +357,7 @@ def test_list_parent_requires_v3_schema():
     with patch.object(task_db, "schema_version", return_value=5):
         _out, err, exc = _run_stdin_capture(
             task_db.cmd_list, None, None, None, None, None, None, None, None,
-            "00000000-0000-0000-0000-000000000000")
+            "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", repo_slug=REPO_SLUG)
     assert exc is not None and exc.code == 2
     assert "v8" in err
 
@@ -354,8 +366,75 @@ def test_list_parent_bad_uuid_rejected():
     with patch.object(task_db, "schema_version", return_value=8):
         _out, err, exc = _run_stdin_capture(
             task_db.cmd_list, None, None, None, None, None, None, None, None,
-            "not-a-uuid")
+            "not-a-uuid", repo_slug=REPO_SLUG)
     assert exc is not None and exc.code == 2
+
+
+# ── hermetic scoped queries (task ebe4e9d8) ───────────────────
+# Re-runnable, not a pasted transcript: both tests below drive the REAL cmd_pending path
+# with a mocked psql from a directory that is NOT a git repo — the condition that made 7
+# tests of this file fail on 2026-10-15 and get filed as "pre-existing RED" in cmd_pending.
+
+def test_pending_payload_follows_the_declared_repo_not_the_invoker(tmp_path, monkeypatch):
+    """No declared repo -> no tasks; a declared repo -> the row. From any cwd."""
+    monkeypatch.chdir(tmp_path)                       # tmp_path is not a git repo
+    monkeypatch.delenv("CORTEX_SESSION_REPO", raising=False)
+    fake = _row_line(id="uuid1")
+    with patch.object(task_db, "psql", return_value=fake):
+        out, _err, _exc = _run_stdin_capture(task_db.cmd_pending, explain=False)
+    assert json.loads(out) == []          # unresolvable repo -> NOTHING (operator rule 2026-10-14)
+    with patch.object(task_db, "psql", return_value=fake):
+        out, _err, _exc = _run_stdin_capture(task_db.cmd_pending, repo_slug=REPO_SLUG)
+    assert [i["id"] for i in json.loads(out)] == ["uuid1"]
+
+
+def _unpinned_scoped_queries(path: Path) -> list[str]:
+    """Scoped-query call sites in `path` that DECLARE no repo.
+
+    Matches the file's actual CONSTRUCT, parsed rather than grepped: here a scoped query
+    is passed as a VALUE to the capture helper (`_run_stdin_capture(task_db.cmd_pending,
+    ...)`), so the command name is a Call ARGUMENT, not the callee — a sweep that only
+    looked at `node.func` would report 0 sites on the pre-fix revision and prove nothing.
+    The declaration is checked in its KEYWORD form (repo / repo_path / repo_slug), which is
+    how every call site here declares it.
+
+    An exemption must carry its justification IN THE SOURCE and is re-asserted on every
+    run: if the assertion that explains it is edited away, the site is reported again
+    instead of the exemption rotting into a false one.
+    """
+    source = path.read_text()
+    tree = ast.parse(source)
+    unpinned = []
+    for fn in [n for n in ast.walk(tree)
+               if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))]:
+        body_src = ast.get_source_segment(source, fn) or ""
+        justification = _EXEMPT.get(fn.name)
+        if justification is not None and justification in body_src:
+            continue
+        for node in ast.walk(fn):
+            if not isinstance(node, ast.Call):
+                continue
+            names = {a.attr for a in node.args if isinstance(a, ast.Attribute)}
+            callee = getattr(node.func, "attr", None)
+            if callee:
+                names.add(callee)
+            hit = names & {"cmd_pending", "cmd_list"}
+            if hit and not {k.arg for k in node.keywords} & {"repo", "repo_path", "repo_slug"}:
+                unpinned.append(f"line {node.lineno}: {sorted(hit)[0]}")
+    return unpinned
+
+
+# Names of tests whose scoped query is DELIBERATELY undeclared, and the assertion in that
+# test's own body that makes it safe. Asserted against the source by the sweep above.
+_EXEMPT = {
+    "test_pending_payload_follows_the_declared_repo_not_the_invoker":
+        "assert json.loads(out) == []",
+}
+
+
+def test_scoped_query_calls_declare_their_repo():
+    """A new scoped-query test that declares no repo re-creates the invoker-dependence."""
+    assert _unpinned_scoped_queries(Path(__file__)) == []
 
 
 def test_summary_requires_story_and_v3():
