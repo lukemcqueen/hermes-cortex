@@ -1,6 +1,6 @@
 REVIEWER BOUNDS — LIVE proof (generated, not hand-written)
 Produced by: bash hermes-cortex/docs/evidence/review-bounded/capture.sh   (every path below is normalised to ~)
-Generated at: 2026-10-16T10:17:17Z
+Generated at: 2026-10-16T10:24:35Z
 
 ═══════ 1. The baseline is genuinely PRE-change ═══════
 $ git -C hermes-cortex show 119e6006:mcp-servers/loop-gov-mcp.py > /tmp/pre-review-bounds-loop-gov.py
@@ -86,15 +86,15 @@ $ pgrep -af 'tools/loop-governance/loop-gov-mcp.py'
 rc=0
 
 $ ps -o pid=,lstart=,etimes= -p $CHILD   # start time + seconds alive
- 953098 Fri Oct 16 18:27:19 2026    3026
+ 953098 Fri Oct 16 18:27:19 2026    3464
 rc=0
 
 $ child start epoch vs the deployed file's mtime   # the load claim, measured
    child started at epoch : 1792142840  (2026-10-16T09:27:20Z)
-   deployed module mtime  : 1792142378  (2026-10-16T09:19:38Z)
-   => started AFTER the deployed copy was written, so it can only hold THIS
-      revision.
-rc=0
+   deployed module mtime  : 1792145944  (2026-10-16T10:19:04Z)
+   => WARNING: the child started BEFORE the deployed copy was written — it may
+      still hold the PRE-change module. Restart the gateway and re-capture.
+rc=1
 
 $ grep -c <symbol> $DEPLOYED   # symbols the fix INTRODUCED (0 => pre-change copy)
    _review_uncovered_blobs      2   (grep rc=0)
@@ -110,19 +110,20 @@ $ python3 ~/hermes-cortex/ops/scripts/manage/cortex-doctor.py --quiet   (loop-go
   ✅ Immutable: loop-gov-mcp.py
   ✅ Checksum: agent-loop-gov-lock-watchdog.py
   ✅ Checksum: loop-gov-mcp.sh
-  ❌ Checksum: loop-gov-mcp.py
+  ✅ Checksum: loop-gov-mcp.py
   ✅ Checksum: loop-gov.py
-  ✅ loop-gov daemon
-  ✅ PENDING cycles
-doctor rc=2   warnings=8   failures=2
-   A non-zero rc here is not a hidden failure: the doctor's warnings include
-   'Repo clean' (this capture's own regenerated file is uncommitted until the
-   cycle commits it) and the pre-existing skill drift [mcp-server] WARNING: the 'mcp' package is not installed — the stdio server cannot start; the CLI adapter (ops/scripts/loop-gov.py) still works.
+  ⚠️  loop-gov daemon
+    Restart the gateway to load the new loop-governance module: hermes gateway restart. Until then end_change may read a cycle as PENDING right after it was scored — a retry after a cycle_query is [mcp-server] WARNING: the 'mcp' package is not installed — the stdio server cannot start; the CLI adapter (ops/scripts/loop-gov.py) still works.
 [mcp-server]   /home/esther/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3 -m pip install mcp
 [mcp-server] WARNING: hermes_models.py not importable (ModuleNotFoundError: No module named 'hermes_models') — using default embedding model 'nomic-embed-text:v1.5'
 [mcp-server] WARNING: the 'mcp' package is not installed — the stdio server cannot start; the CLI adapter (ops/scripts/loop-gov.py) still works.
 [mcp-server]   /home/esther/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3 -m pip install mcp
-the lesson pipeline writes
+the workaround, not the fix.
+  ℹ️  PENDING cycles
+doctor rc=1   warnings=10   failures=0
+   A non-zero rc here is not a hidden failure: the doctor's warnings include
+   'Repo clean' (this capture's own regenerated file is uncommitted until the
+   cycle commits it) and the pre-existing skill drift the lesson pipeline writes
    to the DEPLOYED copies (reconciled by reconcile-stranded-skills.py). The
    PENDING-cycles line counts THIS cycle, which stays unscored until the close
    scores it (its own marker, ℹ️ or ✅, moves as the doctor's bookkeeping does).
