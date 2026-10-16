@@ -1,0 +1,29 @@
+=== SUSTAINABILITY BRIEFING VERIFICATION — 2026-10-16 ===
+2026-10-15T21:15:09Z
+
+--- canonical checker (re-runnable) ---
+[files] sustainability-briefing-2026-10-16.md      size=10011    PASS
+[files] sustainability-briefing-2026-10-16.docx    size=41680    PASS
+[files] sustainability-briefing-2026-10-16.pdf     size=10430    PASS
+[sections] required headings PASS
+[sources] source lines=19 (>= 13) PASS
+[words] count=1199 (600-1200) PASS
+[binary] docx+pdf carry briefing text PASS
+
+RESULT: ALL PASS
+
+--- NEGATIVE PROBE: checker must FAIL a malformed briefing ---
+[sections] required headings PASS
+[sources] source lines=0 (>= 13) FAIL
+[words] count=1199 (600-1200) PASS
+[binary] docx+pdf carry briefing text PASS
+
+RESULT: FAILURES PRESENT
+
+--- artifact hashes + sizes ---
+eed1bec2c8e716c795391a62145c9f9270816d136cc76891b67fb9ea26882a0c  /home/esther/.hermes/cron/output/sustainability-briefing-2026-10-16.md
+25617cbe1cdf057f574ca38acb6ed3b3f9b27121be9aa7a1b82463e7c79c26d3  /home/esther/.hermes/cron/output/sustainability-briefing-2026-10-16.docx
+bb8db56b81253378deb62080270162320d56614e290e23837c5be07b1c4a85c0  /home/esther/.hermes/cron/output/sustainability-briefing-2026-10-16.pdf
+/home/esther/.hermes/cron/output/sustainability-briefing-2026-10-16.docx 41680 bytes
+/home/esther/.hermes/cron/output/sustainability-briefing-2026-10-16.md 10011 bytes
+/home/esther/.hermes/cron/output/sustainability-briefing-2026-10-16.pdf 10430 bytes

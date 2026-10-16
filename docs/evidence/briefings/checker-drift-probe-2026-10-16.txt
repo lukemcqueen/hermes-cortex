@@ -1,0 +1,22 @@
+=== PROBE: does the canonical checker pass HISTORICAL accepted briefings? ===
+Command: python3 hermes-cortex/ops/scripts/sustainability/verify_briefing.py <date> [--dir <bundle>]
+
+--- 2026-10-08 (repo evidence bundle, the canonical reference) ---
+[sources] source lines=16 (>= 13) PASS
+[words] count=902 (600-1200) PASS
+RESULT: ALL PASS
+
+--- 2026-10-09 (~/.hermes/cron/output) ---
+[sources] source lines=0 (>= 13) FAIL
+[words] count=1469 (600-1200) FAIL
+RESULT: FAILURES PRESENT
+
+--- 2026-10-12 (~/.hermes/cron/output) ---
+[sources] source lines=0 (>= 13) FAIL
+[words] count=1728 (600-1200) FAIL
+RESULT: FAILURES PRESENT
+
+--- 2026-10-16 (this run) ---
+[sources] source lines=19 (>= 13) PASS
+[words] count=1199 (600-1200) PASS
+RESULT: ALL PASS
