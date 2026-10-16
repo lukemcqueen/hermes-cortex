@@ -88,6 +88,9 @@ if mode == "allowed":
 if mode == "unavailable":
     print("governance is unavailable", file=sys.stderr)
     sys.exit(3)
+if mode == "refused-garbage":
+    print("this is not json at all")
+    sys.exit(1)
 others = [{"task_id": "other-project-task", "agent": "peer-agent",
            "session_id": "sess-other", "repo_path": "/tmp/some-other-repo",
            "status": "executing", "heartbeat_at": "2026-10-16T06:00:00Z"}]
@@ -97,11 +100,16 @@ if mode == "refused-unscoped":
     others = [{"task_id": "legacy-task", "agent": "legacy-agent",
                "session_id": "sess-legacy", "repo_path": None,
                "status": "executing", "heartbeat_at": "2026-10-16T06:00:00Z"}]
+if mode == "refused-long":
+    others = [{"task_id": f"other-task-{i}", "agent": "peer-agent",
+               "session_id": f"sess-{i}", "repo_path": f"/tmp/some-other-repo-{i}",
+               "status": "executing", "heartbeat_at": "2026-10-16T06:00:00Z"}
+              for i in range(6)]
 print(json.dumps({"covered": False, "repo_path": "/tmp/fake-repo", "lock": None,
                   "live_lock_count": len(others),
                   "unscoped_locks": 1 if mode == "refused-unscoped" else 0,
                   "other_locks": others,
-                  "note": "Not locked: no live governance lock covers this repo."}))
+                  "note": "Not locked: no live governance lock covers this repo."}, indent=2))
 sys.exit(1)
 `);
 
@@ -206,6 +214,27 @@ process.env.GOV_STUB_MODE = "refused-unscoped";
 r = await call("write", { file_path: "/tmp/fake-repo/x.txt" });
 note(r.reason.includes("(records no repo_path — covers nothing)"),
      "a lock with no repo_path is named as covering NOTHING, not silently dropped");
+
+// ── 2c. many locks: the list is capped AND the raw JSON says what it cut ─────
+// A silently truncated JSON block reads as a whole one; the block that follows
+// the named locks is bounded, so the bound must be disclosed.
+process.env.GOV_STUB_MODE = "refused-no-others";
+r = await call("write", { file_path: "/tmp/fake-repo/x.txt" });
+note(!r.reason.includes("more line(s) omitted"),
+     "a short detail carries no omission notice (the notice means something)");
+process.env.GOV_STUB_MODE = "refused-long";
+r = await call("write", { file_path: "/tmp/fake-repo/x.txt" });
+note(r.reason.includes("… and 3 more"),
+     "six live locks => three named plus an explicit remainder, not a wall of paths");
+note(r.reason.includes("more line(s) omitted"),
+     "a bounded JSON block discloses what it cut — a silent cut reads as a whole block");
+
+// an unparseable detail must neither crash the gate nor invent a section
+process.env.GOV_STUB_MODE = "refused-garbage";
+r = await call("write", { file_path: "/tmp/fake-repo/x.txt" });
+note(r.blocked, "unparseable governance detail => write still BLOCKED (fail closed)");
+note(r.reason.includes("GOVERNANCE LOCK REQUIRED") && !r.reason.includes("none covers this repo"),
+     "unparseable detail => no named-lock section is invented, and the refusal still reads");
 process.env.GOV_STUB_MODE = "refused";
 
 // ── 3. the ADV-1 case: write commands with NO metacharacter ─────────────────

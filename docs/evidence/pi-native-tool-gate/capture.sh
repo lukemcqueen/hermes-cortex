@@ -33,6 +33,15 @@ body() {
   local PY
   PY=$(command -v python3)
 
+  # §1 and §4 point at a scratch project repo, and the scratch dir is pruned 24h
+  # after capture. Without it the predicate answers CANNOT-VERIFY, which is a
+  # DIFFERENT transcript from "unlocked repo" — so recreate it rather than let the
+  # artifact degrade into a different case than it claims to show.
+  if [ ! -d "$HOME/$SCRATCH/.git" ]; then
+    mkdir -p "$HOME/$SCRATCH"
+    git -C "$HOME/$SCRATCH" init -q
+  fi
+
   echo "PI NATIVE-WRITE GATE — LIVE end-to-end proof (generated, not hand-written)"
   echo "Produced by: bash $EV/capture.sh   (every path below is normalised to ~)"
   echo "Generated at: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
@@ -132,13 +141,13 @@ body() {
   echo "     the shared CLI, not raw SQL, so this stays one implementation."
   echo
 
-  echo "═══════ 7. The file the session created (the assertion, not its claim) ═══════"
+  echo "═══════ 7. The scratch repo §1 and §4 point at ═══════"
   echo "\$ ls -1 ~/.hermes/cache/scratch/pi-gate-repo    # no ownership column: public repo"
   ls -1 "$HOME/$SCRATCH"
-  echo
-  echo "\$ cat ~/.hermes/cache/scratch/pi-gate-repo/proof.txt"
-  cat "$HOME/$SCRATCH/proof.txt"
-  echo
+  echo "  -> recreated by this script when absent (the scratch dir is pruned after 24h,"
+  echo "     and a missing repo would answer CANNOT-VERIFY instead of 'unlocked'). The"
+  echo "     proof.txt the pi session wrote there was pruned with the scratch dir: it is"
+  echo "     not reproducible and no command here claims to show it."
   echo
 
   echo "═══════ 8. Adversarial gate (A4) on every changed source file ═══════"

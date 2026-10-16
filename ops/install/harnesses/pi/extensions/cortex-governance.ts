@@ -255,6 +255,22 @@ function foreignLockSection(detail: string): string[] {
   return lines.concat([""]);
 }
 
+/** The predicate's own JSON, bounded — and the bound DISCLOSED.
+
+ *  A silently cut block reads as a whole one: the reader cannot tell an omitted
+ *  lock from a field that was never returned. Bump this only with the note.
+ */
+function boundedDetail(detail: string): string {
+  if (!detail) return "(no detail)";
+  const RAW_LINES = 16;
+  const lines = detail.split("\n");
+  if (lines.length <= RAW_LINES) return detail;
+  return (
+    lines.slice(0, RAW_LINES).join("\n") +
+    `\n… ${lines.length - RAW_LINES} more line(s) omitted`
+  );
+}
+
 function refusedMessage(repo: string, detail: string): string {
   return [
     "🛑 GOVERNANCE LOCK REQUIRED — this pi tool call writes, and no live lock covers this repo.",
@@ -275,7 +291,7 @@ function refusedMessage(repo: string, detail: string): string {
     "— a pipe, a redirect, a second command — counts as a write here.",
     "",
     "Governance said:",
-    detail ? detail.split("\n").slice(0, 12).join("\n") : "(no detail)",
+    boundedDetail(detail),
   ].join("\n");
 }
 
