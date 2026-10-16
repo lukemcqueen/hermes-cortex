@@ -1,19 +1,13 @@
 #!/usr/bin/env python3
-"""Advisory diagnostic: how long ONE reviewer call takes, control vs a real blob.
+"""Diagnostic: how long one close-time reviewer call takes, control vs a real blob.
 
-WHY THIS IS COMMITTED: the close machinery's bounds are argued from a measured number —
-"one blob review runs 180-250s against the 240s wall-clock ceiling, so the heaviest blob of
-a range was never judged". A number a reviewer cannot re-run is an unverified claim, so the
-measurement ships as this script plus the transcript it produced
-(docs/evidence/review-bounded/reviewer-latency.txt).
+Purpose: tell an operator whether the close-time reviewer's wait budget is comfortable or
+marginal for the material it is actually given. It prints TIMINGS ONLY and never the
+model's reply, so it is not a review and records no verdict — the governed close pass
+(`end_change`) is still the only thing that judges a change. Re-run it whenever a close
+refuses with a reviewer timeout to see the current latency for this host.
 
-WHAT IT IS NOT: not a review, not verification, and it authorises nothing. The governed
-close pass (`end_change`) is the review of record; this prints TIMINGS ONLY and deliberately
-does not print the model's reply — a helper that emitted verdicts would be a second, unaudited
-review path, which is exactly what governance refuses. It resolves its credential through the
-component's own config helper and never names or prints a key.
-
-Run:  python3 docs/evidence/review-bounded/measure-reviewer-latency.py
+Usage:  python3 docs/evidence/review-bounded/measure-reviewer-latency.py
 """
 from __future__ import annotations
 
@@ -88,10 +82,8 @@ def main() -> int:
     print("scaling     : none (cx={}) — this measures the BASE wait, the budget the ceiling"
           " clamps")
     print()
-    # THREE samples, not one: the same prompt measured 57.7s on one run and 200.9s on
-    # another (2026-10-16), so a single sample cannot tell a reader whether a 240s ceiling
-    # is comfortable or marginal. The SPREAD is the load-bearing number: it is why a fixed
-    # ceiling intermittently refused a range whose blobs normally fit.
+    # Three samples: one reading cannot distinguish "usually fast" from "usually fast with
+    # an occasional timeout", which is the question an operator is asking here.
     elapsed = []
 
     def sample(i: int) -> None:

@@ -216,13 +216,9 @@ def test_the_call_has_a_hard_wall_clock_deadline(tmp_path):
 
 
 def test_the_ceiling_follows_the_caller_not_the_reviewer(tmp_path):
-    """The clamp answers "when does MY caller give up?", so it differs by caller.
-
-    The MCP path is bounded by its 300s client; the CLI adapter waits on the PROCESS and
-    is not. Measured 2026-10-16: one blob call ran 180-250s — past the MCP ceiling — so
-    with a single global number the heaviest blob of a range was never judged and the
-    range could not close. A ceiling that ignores who is waiting is a deadlock, not a
-    bound.
+    """Verifies the wait ceiling is resolved per CALLER: 240s with no marker, the CLI
+    ceiling when CORTEX_LOOP_GOV_CLIENT=cli, and that an env override clamps to whichever
+    caller's ceiling applies.
     """
     mod = _load_server(tmp_path)
     os.environ.pop(mod.CLIENT_MARKER_ENV, None)
@@ -251,11 +247,10 @@ def test_the_ceiling_follows_the_caller_not_the_reviewer(tmp_path):
 
 
 def test_the_cli_adapter_marks_itself_so_the_budget_is_not_clamped(tmp_path):
-    """The split only works if the ADAPTER sets the marker — drive it, don't read it.
-
-    Importing the adapter is safe (its entrypoint is guarded) and it loads the same
-    server module the CLI drives, so this asserts the end the fleet actually runs:
-    load_governance() → the module resolves the CLI ceiling, not the MCP one.
+    """Drives the adapter's load_governance() and asserts the governance module it returns
+    resolves the CLI ceiling — the marker verified at the end the fleet runs, not by
+    reading source. The adapter exits 3 when it cannot find the server module, which this
+    reports as a failure rather than as a passing skip.
     """
     adapter = REPO / "ops" / "scripts" / "loop-gov.py"
     saved = os.environ.pop("CORTEX_LOOP_GOV_CLIENT", None)
