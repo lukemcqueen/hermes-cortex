@@ -1,6 +1,6 @@
 PI NATIVE-WRITE GATE — LIVE end-to-end proof (generated, not hand-written)
 Produced by: bash hermes-cortex/docs/evidence/pi-native-tool-gate/capture.sh   (every path below is normalised to ~)
-Generated at: 2026-10-14T12:02:14Z
+Generated at: 2026-10-16T06:25:56Z
 
 ═══════ 1. The SHARED predicate, three ways ═══════
 $ loop-gov.py check_repo_lock '{"repo_path":"<repo>"}'
@@ -10,14 +10,15 @@ $ loop-gov.py check_repo_lock '{"repo_path":"<repo>"}'
   "match": "path",
   "repo_path": "~/hermes-cortex",
   "lock": {
-    "task_id": "fix-prefix-revision-pin-and-unscoped-count",
+    "task_id": "pi-gate-names-foreign-lock",
     "agent": "unknown",
-    "session_id": "20261014_195745_cd0e365b",
+    "session_id": "20261016_151017_6a5ef096",
     "repo_path": "~/hermes-cortex",
-    "heartbeat_at": "2026-10-14T12:01:27Z"
+    "heartbeat_at": "2026-10-16T06:13:18Z"
   },
   "live_lock_count": 1,
-  "unscoped_locks": 0
+  "unscoped_locks": 0,
+  "other_locks": []
 }
 rc=0
 
@@ -28,6 +29,16 @@ rc=0
   "lock": null,
   "live_lock_count": 1,
   "unscoped_locks": 0,
+  "other_locks": [
+    {
+      "task_id": "pi-gate-names-foreign-lock",
+      "agent": "unknown",
+      "session_id": "20261016_151017_6a5ef096",
+      "repo_path": "~/hermes-cortex",
+      "status": "executing",
+      "heartbeat_at": "2026-10-16T06:13:18Z"
+    }
+  ],
   "note": "\u274c Not locked: no live governance lock covers this repo. Call begin_change() before writing."
 }
 rc=1
@@ -39,6 +50,16 @@ rc=1
   "lock": null,
   "live_lock_count": 1,
   "unscoped_locks": 0,
+  "other_locks": [
+    {
+      "task_id": "pi-gate-names-foreign-lock",
+      "agent": "unknown",
+      "session_id": "20261016_151017_6a5ef096",
+      "repo_path": "~/hermes-cortex",
+      "status": "executing",
+      "heartbeat_at": "2026-10-16T06:13:18Z"
+    }
+  ],
   "note": "\u274c Not locked: no live governance lock covers this repo. Call begin_change() before writing."
 }
 rc=1
@@ -47,14 +68,18 @@ NOTE: a repo with its OWN lock answers covered=true (match=path); one without
 answers covered=false with rc=1; an unresolvable path is a REFUSAL, never an
 'unlocked' verdict. Where live_lock_count>0 sits beside covered=false, that is
 the 'do not mix gates' property: another repo's live lock does not authorise
-this one.
+this one. other_locks is what makes that readable: it NAMES each live lock the
+scan did not match (repo_path, task_id, agent), so a refusal says whose lock is
+blocking instead of only how many exist.
 
 ═══════ 2. Repo scoping is pinned by a test that FAILS on the old behaviour ═══════
 $ python3 hermes-cortex/tests/test_check_repo_lock_scoping.py
 ✅ test_two_projects_sharing_a_name_do_not_share_a_gate
 ✅ test_a_lock_for_another_project_never_covers_this_one
+✅ test_the_refusal_names_the_locks_it_checked
 ✅ test_an_unresolvable_repo_is_a_refusal_not_an_unlocked_verdict
 ✅ test_the_covered_branch_reports_every_unscoped_lock
+✅ test_the_advertised_contract_matches_the_implementation
 rc=0
 
 $ git -C hermes-cortex show c08fbe2d:mcp-servers/loop-gov-mcp.py > /tmp/pre-fix-loop-gov.py
@@ -64,13 +89,30 @@ $ git -C hermes-cortex show c08fbe2d:mcp-servers/loop-gov-mcp.py > /tmp/pre-fix-
 $ grep -c 'unscoped_locks' /tmp/pre-fix-loop-gov.py   # 0 proves the extraction is pre-fix
 0
 $ CORTEX_LOOP_GOV_SERVER=/tmp/pre-fix-loop-gov.py python3 hermes-cortex/tests/test_check_repo_lock_scoping.py   # must FAIL
-❌ test_two_projects_sharing_a_name_do_not_share_a_gate: a lock with no recorded repo_path authorised a DIFFERENT project that merely shares its directory name — gates are mixed: {'covered': True, 'match': 'slug-legacy', 'repo_path': '~/.hermes/cache/scratch/tmpqf9uvypd/y/shared-name', 'lock': {'task_id': 'task-b', 'agent': 'scoping-test', 'session_id': 'sess-b', 'repo_path': None, 'heartbeat_at': '2026-10-14T12:02:14Z'}, 'live_lock_count': 2}
+❌ test_two_projects_sharing_a_name_do_not_share_a_gate: a lock with no recorded repo_path authorised a DIFFERENT project that merely shares its directory name — gates are mixed: {'covered': True, 'match': 'slug-legacy', 'repo_path': '~/.hermes/cache/scratch/tmphsdow0zt/y/shared-name', 'lock': {'task_id': 'task-b', 'agent': 'scoping-test', 'session_id': 'sess-b', 'repo_path': None, 'heartbeat_at': '2026-10-16T06:25:57Z'}, 'live_lock_count': 2}
 Traceback (most recent call last):
-  File "~/hermes-cortex/tests/test_check_repo_lock_scoping.py", line 187, in <module>
+  File "~/hermes-cortex/tests/test_check_repo_lock_scoping.py", line 267, in <module>
 rc=1
   -> on the pre-fix server a lock with no repo_path answers covered=true with
      match=slug-legacy for a DIFFERENT project sharing the directory name: the
      gate-mixing case this change removes.
+
+═══════ 2b. The NAMED-LOCK field is pinned against its OWN baseline ═══════
+The scoping baseline above predates unscoped_locks, so the named-lock change gets
+its own pinned revision rather than sharing one.
+$ git -C hermes-cortex show 2668cffa:mcp-servers/loop-gov-mcp.py > /tmp/pre-named-lock-loop-gov.py
+$ grep -c 'other_locks' /tmp/pre-named-lock-loop-gov.py   # 0 proves the extraction is pre-change
+0
+$ CORTEX_LOOP_GOV_SERVER=/tmp/pre-named-lock-loop-gov.py python3 hermes-cortex/tests/test_check_repo_lock_scoping.py   # must FAIL
+✅ test_two_projects_sharing_a_name_do_not_share_a_gate
+✅ test_a_lock_for_another_project_never_covers_this_one
+❌ test_the_refusal_names_the_locks_it_checked: the refusal must name the live lock that does not cover this repo: {'covered': False, 'repo_path': '~/.hermes/cache/scratch/tmpl__432xd/beta', 'lock': None, 'live_lock_count': 1, 'unscoped_locks': 0, 'note': '❌ Not locked: no live governance lock covers this repo. Call begin_change() before writing.'}
+✅ test_an_unresolvable_repo_is_a_refusal_not_an_unlocked_verdict
+✅ test_the_covered_branch_reports_every_unscoped_lock
+❌ test_the_advertised_contract_matches_the_implementation: the description does not mention other_locks, the field that names the live locks NOT covering this repo — a block message is only as informative as the contract it is rendered from
+rc=1
+  -> on that revision the refusal reports live_lock_count and names nothing, so
+     the reader cannot tell a broken gate from someone else's live lock.
 
 ═══════ 3. The extension, EXECUTED both directions (stubbed CLI, hermetic) ═══════
 $ node hermes-cortex/ops/install/harnesses/pi/verify-governance-extension.mjs
@@ -82,7 +124,11 @@ rc=0
 $ python3 hermes-cortex/tests/test_pi_governance_gate.py
 ✅ test_the_gate_is_executed_and_correct
 ✅ test_the_verifier_discriminates
+✅ test_the_verifier_discriminates_on_the_named_lock_section
 rc=0
+  -> the third case points the verifier at the REAL extension with ONLY the
+     named-lock rendering removed, and requires it to FAIL: a guard that has
+     never failed on the broken artifact is a happy path, not a guard.
 
 ═══════ 4. Composition: the extension driving the REAL loop-gov.py ═══════
 $ node hermes-cortex/docs/evidence/pi-native-tool-gate/live-gate-probe.mjs ~/.hermes/cache/scratch/pi-gate-repo
@@ -96,6 +142,9 @@ Repo: ~/.hermes/cache/scratch/pi-gate-repo
 Pi's native edit/write/bash tools do not pass through the Hermes enforcer
 plugin, so this gate asks the shared governance implementation instead.
 It answered: no lock.
+
+Live locks on this host — none covers this repo:
+  - ~/hermes-cortex  (task: pi-gate-names-foreign-lock, agent: unknown)
 
 Open one (any of these reaches the SAME implementation):
   pi's loop-governance MCP tool:  begin_change(task_id="...", description="...")
@@ -112,8 +161,17 @@ Governance said:
   "lock": null,
   "live_lock_count": 1,
   "unscoped_locks": 0,
-  "note": "\u274c Not locked: no live governance lock covers this repo. Call begin_change() before writing."
-}
+  "other_locks": [
+    {
+      "task_id": "pi-gate-names-foreign-lock",
+      "agent": "unknown",
+      "session_id": "20261016_151017_6a5ef096",
+      "repo_path": "~/hermes-cortex",
+      "status": "executing",
+      "heartbeat_at": "2026-10-16T06:13:18Z"
+    }
+  ],
+… 2 more line(s) omitted
 
 ──── unlocked repo, read-only bash  (tool=bash)
 DECISION: allowed
@@ -131,6 +189,9 @@ $ cat ~/.hermes-cortex/logs/pi-governance.log
 GOV_VERDICT tool=write repo=~/.hermes/cache/scratch/pi-gate-repo verdict=refused
 GOV_VERDICT tool=write repo=~/.hermes/cache/scratch/pi-gate-repo verdict=allowed
 GOV_VERDICT tool=bash repo=~/.hermes/cache/scratch/pi-gate-repo verdict=allowed
+GOV_VERDICT tool=write repo=~/.hermes/cache/scratch/pi-gate-repo verdict=refused
+GOV_VERDICT tool=write repo=~/.hermes/cache/scratch/pi-gate-repo verdict=refused
+GOV_VERDICT tool=write repo=~/.hermes/cache/scratch/pi-gate-repo verdict=refused
 GOV_VERDICT tool=write repo=~/.hermes/cache/scratch/pi-gate-repo verdict=refused
 GOV_VERDICT tool=write repo=~/.hermes/cache/scratch/pi-gate-repo verdict=refused
 GOV_VERDICT tool=write repo=~/.hermes/cache/scratch/pi-gate-repo verdict=refused
@@ -172,12 +233,12 @@ rc=0
      so it is not a leak. No lock file for the scratch repo remains. Read through
      the shared CLI, not raw SQL, so this stays one implementation.
 
-═══════ 7. The file the session created (the assertion, not its claim) ═══════
+═══════ 7. The scratch repo §1 and §4 point at ═══════
 $ ls -1 ~/.hermes/cache/scratch/pi-gate-repo    # no ownership column: public repo
-proof.txt
-
-$ cat ~/.hermes/cache/scratch/pi-gate-repo/proof.txt
-hello from pi
+  -> recreated by this script when absent (the scratch dir is pruned after 24h,
+     and a missing repo would answer CANNOT-VERIFY instead of 'unlocked'). The
+     proof.txt the pi session wrote there was pruned with the scratch dir: it is
+     not reproducible and no command here claims to show it.
 
 ═══════ 8. Adversarial gate (A4) on every changed source file ═══════
 $ adversarial-verify.py --file <f> --level A4 --gate   (rc 0 = no critical/high)
@@ -198,3 +259,7 @@ docs/evidence/pi-native-tool-gate/live-gate-probe.mjs      ✅ GATE_PASSED — n
 - The same-NAME/different-project case is pinned by §2 rather than driven live,
   because constructing it needs a lock with no repo_path, and hand-writing a
   lock file is a governance violation.
+- The named-lock change is pinned by §2b against 2668cffa (the tip before it), so
+  the before/after is a real comparison rather than a tautology at HEAD. §4 drives
+  the DEPLOYED extension beside the DEPLOYED CLI, so its transcript shows the
+  named-lock section only once that deploy has run.
