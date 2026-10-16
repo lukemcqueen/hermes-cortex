@@ -132,7 +132,7 @@ def test_stranded_slices_are_flagged(monkeypatch, tmp_path):
     runner.parent.mkdir(parents=True)
     runner.write_text("# stub\n")
 
-    def fake_run(cmd, timeout=25):
+    def fake_run(cmd, timeout=25, cwd=None):
         if "--assigned" in cmd:
             return ("ID         PR  ASSIGNEE   PROJECT            CONTENT\n"
                     "72dc920b   2   joseph     hermes-cortex      Phase 1 Foundation\n")
@@ -156,7 +156,7 @@ def test_no_stranded_slices_passes(monkeypatch, tmp_path):
     runner = tmp_path / "scripts" / "task-db.py"
     runner.parent.mkdir(parents=True)
     runner.write_text("# stub\n")
-    monkeypatch.setattr(ti, "_run", lambda cmd, timeout=25:
+    monkeypatch.setattr(ti, "_run", lambda cmd, timeout=25, cwd=None:
                         "(no unstarted hand-offs)\n" if "--assigned" in cmd
                         else "tasks schema: current=12, no pending migrations\n")
     res = FakeResults()
@@ -173,8 +173,64 @@ def test_an_unverifiable_check_says_so_rather_than_passing(monkeypatch, tmp_path
     runner = tmp_path / "scripts" / "task-db.py"
     runner.parent.mkdir(parents=True)
     runner.write_text("# stub\n")
-    monkeypatch.setattr(ti, "_run", lambda cmd, timeout=25: "")     # DB unreachable
+    monkeypatch.setattr(ti, "_run", lambda cmd, timeout=25, cwd=None: "")     # DB unreachable
     res = FakeResults()
     ti.check_task_model_integrity(res)
     assert res.status_of("Stranded slices") == "WARN"
     assert "COULD NOT VERIFY" in res.by_name("Stranded slices")[0]["detail"]
+
+
+# ── the invoker-dependence that made the check lie ─────────────────────────
+
+def _stub_runner(monkeypatch, tmp_path):
+    """A deployed-looking runner + registered/deployed schema, so the probe runs."""
+    schema_dir = _REPO / "ops" / "services" / "tasks" / "schema"
+    all_names = {p.name for p in schema_dir.glob("v0*.sql")}
+    monkeypatch.setattr(ti, "_registered_schema", lambda: set(all_names))
+    monkeypatch.setattr(ti, "_deploy", lambda: tmp_path)
+    runner = tmp_path / "scripts" / "task-db.py"
+    runner.parent.mkdir(parents=True)
+    runner.write_text("# stub\n")
+
+
+def test_the_repo_unknown_advisory_is_not_counted_as_a_stranded_slice(
+        monkeypatch, tmp_path):
+    """The regression: the probe's own advisory line read as one stranded slice.
+
+    `list --assigned` prints an empty-result line to stdout and a reason to
+    stderr; the probe concatenates both. With no repo resolvable from the
+    invoker's cwd the reason line became the ONLY non-header line, so it was
+    counted as a task and the doctor reported a phantom stranded slice on every
+    run. Advisory text is not a task row.
+    """
+    _stub_runner(monkeypatch, tmp_path)
+    monkeypatch.setattr(ti, "_run", lambda cmd, timeout=25, cwd=None:
+                        "task_list_handed_out: repo unknown — none of: an explicit "
+                        "repo argument, an injected session repo, "
+                        "CORTEX_SESSION_REPO, or a git repo at the current "
+                        "directory.\n"
+                        "(no unstarted hand-offs — repo unknown)\n")
+    res = FakeResults()
+    ti.check_task_model_integrity(res)
+    detail = res.by_name("Stranded slices")[0]["detail"]
+    assert "COULD NOT VERIFY" in detail, (
+        f"an unresolved repo is 'cannot look', not a phantom slice: {detail!r}")
+    assert "slice(s) are pending WITH an assignee" not in detail
+
+
+def test_the_probe_runs_task_db_inside_the_repo_working_copy(monkeypatch, tmp_path):
+    """The verdict must not depend on the invoker's cwd — the probe sets it."""
+    _stub_runner(monkeypatch, tmp_path)
+    seen = {}
+
+    def fake_run(cmd, timeout=25, cwd=None):
+        if "--assigned" in cmd:
+            seen["cwd"] = cwd
+            return "(no unstarted hand-offs)\n"
+        return "tasks schema: current=12, no pending migrations\n"
+
+    monkeypatch.setattr(ti, "_run", fake_run)
+    ti.check_task_model_integrity(FakeResults())
+    assert seen.get("cwd") == str(ti._repo()), (
+        "the probe must resolve the repo itself, not inherit whatever cwd the "
+        "invoker happened to have")

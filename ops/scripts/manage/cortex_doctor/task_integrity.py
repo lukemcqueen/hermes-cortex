@@ -26,6 +26,10 @@ from pathlib import Path
 
 _SCHEMA_GLOB = "v0*.sql"
 
+# A `list --assigned` task row starts with the 8-char task-id prefix. Advisory
+# lines name the tool that produced them instead, so they never match.
+_ROW_ID = re.compile(r"^[0-9a-f]{8}\s")
+
 
 def _repo() -> Path:
     return Path(os.environ.get("CORTEX_REPO", Path.home() / "hermes-cortex"))
@@ -49,9 +53,10 @@ def _registered_schema() -> set:
     return out
 
 
-def _run(cmd: list, timeout: int = 25) -> str:
+def _run(cmd: list, timeout: int = 25, cwd=None) -> str:
     try:
-        p = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+        p = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout,
+                           cwd=cwd)
         return (p.stdout or "") + (p.stderr or "")
     except (OSError, subprocess.SubprocessError):
         return ""
@@ -124,22 +129,40 @@ def check_task_model_integrity(res: "Results") -> None:            # noqa: F821
                 res.add("Task schema version", "PASS", raw.strip().splitlines()[-1][:70])
 
     # ── (2) no slice may be pending-with-an-assignee (unclaimable AND unwatched) ──
+    # `list --assigned` is repo-scoped and answers "repo unknown" when it cannot
+    # resolve one — which is what it did on EVERY doctor run, because the probe
+    # left the resolution to the invoker's cwd. Pass the repo root as the
+    # subprocess cwd so the check can actually look, and read any advisory as
+    # "could not verify" instead of letting its text count as a task row.
     if runner.is_file():
-        raw = _run(["python3", str(runner), "list", "--assigned"])
+        raw = _run(["python3", str(runner), "list", "--assigned"],
+                   cwd=str(_repo()))
         if not raw.strip():
             res.add("Stranded slices", "WARN",
                     "COULD NOT VERIFY: task-db list --assigned returned nothing",
                     "Check psql/docker access, then re-run the doctor")
-        elif "(no unstarted hand-offs)" in raw:
+        elif "repo unknown" in raw:
+            res.add("Stranded slices", "WARN",
+                    "COULD NOT VERIFY: task-db could not resolve a repo, so the "
+                    "assigned-and-unstarted slice list was never checked (the "
+                    "verdict would otherwise depend on the invoker's cwd)",
+                    "Run the doctor from a repo working copy, or set "
+                    "CORTEX_SESSION_REPO; then re-run the doctor")
+        elif "(no unstarted hand-offs" in raw:
             res.add("Stranded slices", "PASS", "no pending slice is assigned-and-unstarted")
         else:
-            rows = [ln for ln in raw.splitlines()
-                    if ln.strip() and not ln.startswith(("ID", "("))]
-            res.add(
-                "Stranded slices", "WARN",
-                f"{len(rows)} slice(s) are pending WITH an assignee: unclaimable "
-                f"(the pool needs assignee IS NULL) and not in_progress, so nothing "
-                f"is working them",
-                "Release them to the pool: task-db.py unclaim <id> --reason '<why>' "
-                "(or list them with: task-db.py list --assigned)",
-            )
+            rows = [ln for ln in raw.splitlines() if _ROW_ID.match(ln)]
+            if not rows:
+                res.add("Stranded slices", "WARN",
+                        "COULD NOT VERIFY: task-db printed neither rows nor a "
+                        "no-hand-offs marker — its output format may have changed",
+                        f"Inspect: python3 {runner} list --assigned")
+            else:
+                res.add(
+                    "Stranded slices", "WARN",
+                    f"{len(rows)} slice(s) are pending WITH an assignee: unclaimable "
+                    f"(the pool needs assignee IS NULL) and not in_progress, so nothing "
+                    f"is working them",
+                    "Release them to the pool: task-db.py unclaim <id> --reason '<why>' "
+                    "(or list them with: task-db.py list --assigned)",
+                )
