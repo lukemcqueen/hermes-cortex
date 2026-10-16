@@ -1288,8 +1288,22 @@ def _complete_push_range_blobs(lock: dict, cycle: dict, cx: Optional[dict] = Non
         return None
     template = _review_template_text(repo)
     if not template or REVIEW_MARKER not in template:
-        return None                      # the gate's own template refusal covers this
+        if require_full:
+            # A simple cycle skips the gate's own template check, so a REQUIRED pass
+            # must refuse here rather than close without coverage (ADV-12726-2).
+            _mark_close_refused(cycle.get("id", 0), "TEMPLATE_MISSING", "[]", lock)
+            return CallToolResult(content=[TextContent(type="text", text=(
+                "❌ Cannot close: the per-blob review pass needs the reviewer prompt "
+                "template and it is missing or corrupt. Run cortex-update.sh, then "
+                "retry end_change."
+            ))])
+        return None                      # an optional pass: the gate's own refusal covers this
     author = _agent_author(repo)
+    # The complexity context drives model/tier selection and the wait budget, so the
+    # per-blob calls get the SAME context the whole-range call used — dropping it
+    # changed how the reviewer is invoked (review finding ADV-12726-1).
+    cx = cx or _complexity(repo, lock.get("started_at", ""),
+                           lock.get("dirty_at_start"))
     ctx = {
         "sid": lock.get("session_id", ""),
         "author": author,
@@ -1300,7 +1314,7 @@ def _complete_push_range_blobs(lock: dict, cycle: dict, cx: Optional[dict] = Non
         "description": lock.get("description", ""),
     }
     pb = _complete_blob_reviews(
-        repo, template, ctx, lambda p: _call_reviewer(p, author=author, cx=cx or {}))
+        repo, template, ctx, lambda p: _call_reviewer(p, author=author, cx=cx))
     remaining = pb.get("remaining") or []
     if pb.get("calls"):
         log.info("per-blob close pass: reviewed %d blob(s) of the push range "
