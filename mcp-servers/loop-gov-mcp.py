@@ -26,6 +26,7 @@ import logging
 import os
 import re
 import shlex
+import signal
 import sqlite3
 import subprocess
 import sys
@@ -1060,6 +1061,211 @@ REVIEW_RECEIPT_PREFIX = ".reviewed-"
 _REVIEW_RECEIPT_CHECK_REL = "ops/scripts/lib/review-receipt-check.py"
 
 
+# One close's per-blob budget. A blob review is a SMALL call, so the cap is generous
+# while the wall-clock budget is what actually bounds the close: past it the pass stops,
+# REPORTING what is left so the next close continues rather than deadlocking. Defined
+# here, above the helpers that use them as defaults (a default is evaluated at DEF time).
+BLOB_REVIEW_CAP_PER_CLOSE = 15
+BLOB_REVIEW_BUDGET_S = 600.0
+
+
+def _record_blob_review(blob_sha: str, verdict: str, findings_json: str = "[]",
+                        summary: str = "", reviewer_id: str = "", model: str = "",
+                        conn: sqlite3.Connection | None = None) -> None:
+    """Store ONE blob's verdict, keyed by CONTENT (the blob sha, never the path).
+
+    Content keying is what makes the cache honest: an edited file is a new blob
+    and is judged again, while byte-identical content reviewed once is never
+    re-bought — including across a rebase, which rewrites the tip and nothing else.
+    """
+    own = conn if conn is not None else _db()
+    try:
+        own.execute(
+            "INSERT OR REPLACE INTO blob_reviews"
+            " (blob_sha, verdict, findings_json, summary, reviewer_id,"
+            "  reviewer_model, ts) VALUES (?,?,?,?,?,?,?)",
+            (blob_sha, str(verdict).upper(), findings_json or "[]",
+             (summary or "")[:2000], reviewer_id, model, _now_iso()),
+        )
+        own.commit()
+    finally:
+        if conn is None:
+            own.close()
+
+
+def _record_blob_reviews(blobs: dict, verdict: str, findings_json: str = "[]",
+                         summary: str = "", reviewer_id: str = "",
+                         model: str = "", conn: sqlite3.Connection | None = None) -> None:
+    """Mark EVERY blob in ``{path: sha}`` with one verdict.
+
+    A whole-range judgement covers its own blobs, so a CLEAN range verdict may be
+    spread across them: that is what bootstraps the cache for small ranges, which
+    keep the single-review path.
+    """
+    own = conn if conn is not None else _db()
+    try:
+        for sha in (blobs or {}).values():
+            _record_blob_review(sha, verdict, findings_json, summary,
+                                reviewer_id, model, conn=own)
+    finally:
+        if conn is None:
+            own.close()
+
+
+def _blobs_with_clean_verdict(blobs: dict,
+                              conn: sqlite3.Connection | None = None) -> set[str]:
+    """The blob SHAs in ``{path: sha}`` that already carry a stored CLEAN verdict.
+
+    Fail CLOSED: an unreadable cache covers nothing, so the caller reviews rather
+    than crediting a verdict it could not read.
+    """
+    if not blobs:
+        return set()
+    own = conn if conn is not None else _db()
+    try:
+        out: set[str] = set()
+        for sha in blobs.values():
+            row = own.execute("SELECT verdict FROM blob_reviews WHERE blob_sha=?",
+                              (sha,)).fetchone()
+            if row and str(row[0]).upper() == "CLEAN":
+                out.add(sha)
+        return out
+    except sqlite3.Error:
+        return set()
+    finally:
+        if conn is None:
+            own.close()
+
+
+def _review_uncovered_blobs(blobs: dict, *, reviewer, material_for,
+                            cap: int = BLOB_REVIEW_CAP_PER_CLOSE,
+                            budget_s: float = BLOB_REVIEW_BUDGET_S,
+                            conn: sqlite3.Connection | None = None) -> dict:
+    """Judge every blob in ``{path: sha}`` that has no CLEAN verdict yet.
+
+    The close-time reviewer judges one range in one call, and a reasoning model
+    starved of output budget answers with null content — measured twice on an
+    8-file/381-line range, at ``max_tokens=48000`` and again at ``96000``. This
+    path earns the same judgement in the units the receipt already speaks
+    (``reviewed_blobs``), so a wide range is a series of SMALL reviews.
+
+    ``cap`` and ``budget_s`` bound ONE close's work; whatever is left is REPORTED
+    in ``remaining`` rather than dropped, so the next close continues instead of
+    deadlocking. ``reviewer(sha, path, material)`` returns the reviewer's text and
+    is injected, so this is testable without a store, git, or network.
+    """
+    verdicts: dict[str, str] = {}
+    blocking: list = []
+    remaining: list[str] = []
+    calls = 0
+    started = time.monotonic()
+    cached = _blobs_with_clean_verdict(blobs, conn=conn)
+    for path, sha in sorted((blobs or {}).items()):
+        if sha in cached:
+            verdicts[sha] = "CLEAN"
+            continue
+        if calls >= cap or (time.monotonic() - started) > budget_s:
+            remaining.append(sha)
+            continue
+        material = material_for(sha, path)
+        text = reviewer(sha, path, material)   # raising is a refusal, never a pass
+        calls += 1
+        verdict, findings_json = _extract_verdict(text)
+        verdict = (verdict or "FINDINGS").upper()
+        verdicts[sha] = verdict
+        _record_blob_review(sha, verdict, findings_json, (text or "")[:2000],
+                            conn=conn)
+        if verdict != "CLEAN":
+            _block, _annot = _blocking_findings(findings_json or "[]")
+            blocking.extend(_block or [])
+    return {"verdicts": verdicts, "remaining": remaining, "calls": calls,
+            "blocking": blocking}
+
+
+def _push_base(repo: Path) -> str:
+    """The base of the range a PUSH would carry — the receipt's own base."""
+    base = _git_capture(repo, "merge-base", "origin/main", "HEAD").strip()
+    if not base:
+        base = _git_capture(repo, "rev-list", "--max-parents=0", "HEAD").strip()
+    return base
+
+
+def _push_range_blobs(repo: Path) -> dict:
+    """{path: blob sha} for the range a push would carry (push-base..HEAD)."""
+    head = _git_capture(repo, "rev-parse", "HEAD").strip()
+    base = _push_base(repo)
+    if not head or not base:
+        return {}
+    return _range_blobs(repo, base, head) or {}
+
+
+def _range_touches_always_review(repo: Path) -> bool:
+    """Does the PUSH range change a path the receipt gate always reviews?
+
+    The push gate demands a CLEAN receipt for exactly these ranges, so this is the
+    set that must be judged per blob even when the cycle's own window measures as
+    simple (a no-op cycle in front of an unreviewed range).
+    """
+    blobs = _push_range_blobs(repo)
+    return any(any(ap in p for ap in ALWAYS_REVIEW_PATHS) for p in blobs)
+
+
+def _blob_material(repo: Path, base: str, path: str, ctx: dict) -> str:
+    """The material for ONE blob: its own diff, bounded, plus the range it sits in.
+
+    Self-describing on purpose: material that does not say it is one file of a
+    range invites findings about the files it cannot show.
+    """
+    diff_text = _bound_diff(_git_capture(repo, "diff", "--no-ext-diff", "-U3",
+                                         base + "..HEAD", "--", path))
+    return (
+        "=== BLOB REVIEW — ONE FILE OF A RANGE ===\n"
+        f"session: {ctx.get('sid', '')}\nauthor: {ctx.get('author', '')}\n"
+        f"repo: {repo}\nbranch: {ctx.get('branch', '')}\n"
+        f"range: {base}..{ctx.get('head_sha', '')}\n"
+        f"cycle: {ctx.get('cycle_id', 0)}\ntask: {ctx.get('task_id', '')}\n"
+        f"description: {ctx.get('description', '')}\nfile: {path}\n"
+        "scope: ONE file of this range; the other files are judged on their own\n"
+        "blobs, so answer for THIS file only.\n\n"
+        f"{diff_text}\n"
+    )
+
+
+def _complete_blob_reviews(repo: Path, template: str, ctx: dict, run_reviewer,
+                           cap: int = BLOB_REVIEW_CAP_PER_CLOSE,
+                           budget_s: float = BLOB_REVIEW_BUDGET_S) -> dict:
+    """Judge the PUSH range's blobs that have no CLEAN verdict yet.
+
+    The receipt authorises the PUSH range, so that is the set that must be judged —
+    a range verdict alone covers only the cycle's own window, and a receipt that
+    claimed the rest would be a claim about files nobody read.
+    """
+    base = _push_base(repo)
+    blobs = _push_range_blobs(repo) if base else {}
+    if not blobs:
+        return {"verdicts": {}, "remaining": [], "calls": 0, "blocking": []}
+    ctx = dict(ctx, base=base)
+    return _review_uncovered_blobs(
+        blobs,
+        reviewer=lambda sha, path, material: run_reviewer(f"{template}\n{material}\n"),
+        material_for=lambda sha, path: _blob_material(repo, base, path, ctx),
+        cap=cap, budget_s=budget_s)
+
+
+def _receipt_blobs(repo: Path, base: str, head: str):
+    """The range's blobs that carry a stored CLEAN verdict; everything else OMITTED.
+
+    The receipt IS the authorisation, so it may name only content that was JUDGED.
+    An unjudged blob is left out and the push gate then NAMES it as uncovered —
+    the honest failure, instead of a receipt that claims a file nobody read.
+    """
+    blobs = _range_blobs(repo, base, head)
+    if not blobs:
+        return blobs          # None/{} → the gate falls back to exact tip+base
+    clean = _blobs_with_clean_verdict(blobs)
+    return {p: s for p, s in blobs.items() if s in clean}
+
+
 def _range_blobs(repo: Path, base: str, head: str):
     """{path: blob-sha at head} for base..head, or None when unresolvable.
 
@@ -1190,7 +1396,7 @@ def _write_review_receipt(cycle_id=None, args: dict | None = None,
             # range changes, so a rebase that rewrites the tip (another session
             # rebasing the shared branch) no longer invalidates a review of the
             # same content. Absent/None = the receipt only ever matches tip+base.
-            "reviewed_blobs": _range_blobs(Path(repo), base, head),
+            "reviewed_blobs": _receipt_blobs(Path(repo), base, head),
             "cycle_id": cycle_id,
             "reviewed_at": _now_iso(),
         }
@@ -1988,6 +2194,22 @@ def _ensure_schema(conn: sqlite3.Connection) -> None:
         log.warning("SQL migration: unscored_reason already exists — expected")
         pass
 
+    # Add per-blob review verdicts (2026-10-16): the ONE whole-range verdict made a
+    # wide range unshippable — the reviewer is a single call, so an 8-file/381-line
+    # range exhausted a reasoning model's output budget and the close could not
+    # complete, which blocked the push (a CLEAN receipt is required). Verdicts are
+    # keyed by BLOB SHA: the unit the receipt already authorises in.
+    conn.execute(
+        """CREATE TABLE IF NOT EXISTS blob_reviews (
+            blob_sha       TEXT PRIMARY KEY,
+            verdict        TEXT NOT NULL,
+            findings_json  TEXT NOT NULL,
+            summary        TEXT,
+            reviewer_id    TEXT,
+            reviewer_model TEXT,
+            ts             TEXT NOT NULL
+        )"""
+    )
     # Task events table (harness v3)
     conn.execute(
         """CREATE TABLE IF NOT EXISTS task_events (
@@ -2865,6 +3087,16 @@ REVIEWER_MAX_TOKENS = 16000
 # reviewer's providers accepts, so a value above it is a typo by definition.
 REVIEWER_MAX_TOKENS_CEILING = 128000
 
+# The reasoning budget the reviewer is ASKED for (2026-10-16). `max_tokens` pays for
+# reasoning AND the answer together, so an unbounded thinking model returns
+# `finish_reason=length` with empty content — measured on an 8-file/381-line range at
+# max_tokens=48000 AND again at 96000, i.e. raising the cap buys more thinking, not an
+# answer. Effort is a DELIBERATE, operator-visible setting (never a silent default):
+# the failing case is bounded to "medium" while a reviewer that must reason deeply can
+# be raised, and `none`/`minimal` are available for a mechanical re-judge.
+REVIEWER_REASONING_EFFORT_DEFAULT = "medium"
+REVIEWER_REASONING_EFFORTS = ("none", "minimal", "low", "medium", "high", "xhigh", "max")
+
 # A judge does not need to be creative, and sampling variation between two identical reviews is
 # how the same material got CLEAN and then FINDINGS on different passes.
 REVIEWER_TEMPERATURE = 0
@@ -3707,6 +3939,62 @@ def _call_reviewer(prompt: str, author: Optional[str] = None,
         "refusing to guess a reviewer")
 
 
+def _reviewer_reasoning_effort() -> str:
+    """The reasoning budget the reviewer is ASKED for (REVIEWER_REASONING_EFFORT).
+
+    Validated against the provider's own vocabulary rather than passed through: an
+    unknown value would be a 400 at review time, i.e. the gate refusing for a typo,
+    which reads exactly like a reviewer outage. An invalid value falls back LOUDLY.
+    """
+    raw = (_env_value("REVIEWER_REASONING_EFFORT") or "").strip().lower()
+    if not raw:
+        return REVIEWER_REASONING_EFFORT_DEFAULT
+    if raw not in REVIEWER_REASONING_EFFORTS:
+        log.warning("REVIEWER_REASONING_EFFORT=%r is not one of %s — using %r",
+                    raw, list(REVIEWER_REASONING_EFFORTS),
+                    REVIEWER_REASONING_EFFORT_DEFAULT)
+        return REVIEWER_REASONING_EFFORT_DEFAULT
+    return raw
+
+
+def _hard_deadline(seconds: float, what: str):
+    """A HARD wall-clock deadline for a blocking call, in the main thread.
+
+    urllib's ``timeout`` bounds a single socket operation, so a response that
+    arrives slowly outlives it — measured 15 and 26 MINUTES in flight against a
+    240s clamp, with the MCP client giving up at 300s and the lock left held (so
+    no receipt, and an always-review push refused with nothing to blame).
+    SIGALRM interrupts the blocking read instead of waiting for it.
+
+    NOT a total-duration guarantee off the main thread (signal handlers only run
+    there): that case logs and falls back to the socket timeout, because a silent
+    no-op deadline is worse than a disclosed one.
+    """
+    import contextlib
+
+    @contextlib.contextmanager
+    def _cm():
+        if threading.current_thread() is not threading.main_thread():
+            log.warning("%s deadline: not the main thread — SIGALRM cannot fire; "
+                        "falling back to the socket timeout", what)
+            yield
+            return
+        prev = signal.getsignal(signal.SIGALRM)
+
+        def _fire(signum, frame):  # noqa: ARG001 — signal handler signature
+            raise TimeoutError(f"{what} exceeded the {int(seconds)}s wall-clock deadline")
+
+        signal.signal(signal.SIGALRM, _fire)
+        signal.setitimer(signal.ITIMER_REAL, seconds)
+        try:
+            yield
+        finally:
+            signal.setitimer(signal.ITIMER_REAL, 0)
+            signal.signal(signal.SIGALRM, prev)
+
+    return _cm()
+
+
 def _call_reviewer_llm(prompt: str, *, model: Optional[str] = None,
                        timeout: Optional[int] = None) -> str:
     """Review via a chat-completions model. Provider-agnostic: the default is
@@ -3731,6 +4019,12 @@ def _call_reviewer_llm(prompt: str, *, model: Optional[str] = None,
         # object, and an unbounded, sampling reviewer is charged for prose nobody reads — and can
         # return a different verdict on byte-identical material.
         "max_tokens": _reviewer_max_tokens(),
+        # Bound the THINKING, not only the answer. `max_tokens` pays for reasoning and
+        # visible output TOGETHER on most providers, so an unbounded judge spends the
+        # whole budget thinking and answers with empty content (finish_reason=length) —
+        # measured on an 8-file/381-line range at 48000 and again at 96000, i.e. a
+        # bigger cap buys MORE THINKING, not an answer.
+        "reasoning": {"effort": _reviewer_reasoning_effort()},
         "temperature": REVIEWER_TEMPERATURE,
     }).encode()
     req = urllib.request.Request(
@@ -3745,8 +4039,9 @@ def _call_reviewer_llm(prompt: str, *, model: Optional[str] = None,
     # longer withholds the lock on a reviewer outcome: a timeout still REFUSES the close
     # (fail-closed, unchanged), but it no longer strands the session that owns the cycle.
     timeout = timeout if timeout is not None else _reviewer_env_timeout("ADVERSARIAL_REVIEW_TIMEOUT", 120)
-    with urllib.request.urlopen(req, timeout=timeout) as resp:
-        data = json.loads(resp.read())
+    with _hard_deadline(timeout, "reviewer"):
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            data = json.loads(resp.read())
     choices = data.get("choices") or []
     content = ((choices[0].get("message") or {}) if choices else {}).get("content")
     if not isinstance(content, str) or not content.strip():
@@ -3756,10 +4051,18 @@ def _call_reviewer_llm(prompt: str, *, model: Optional[str] = None,
         # broken and only the ONE caller that remembered to check survived. Any sibling
         # consumer — a future re-review path, a script — would crash on the first slice.
         finish = (choices[0].get("finish_reason") if choices else None) or "no choices"
+        # Report the MEASUREMENT, not a remedy that was already tried: reasoning tokens
+        # are what consumed the budget, and raising max_tokens demonstrably does not help
+        # on a wide range (48k and 96k both exhausted).
+        _usage = data.get("usage") or {}
+        _rtok = ((_usage.get("completion_tokens_details") or {})
+                 .get("reasoning_tokens"))
         raise RuntimeError(
             f"reviewer returned NO usable content (finish_reason={finish}, "
-            f"max_tokens={_reviewer_max_tokens()}) — a reasoning model may have exhausted "
-            "its thinking budget; raise REVIEWER_MAX_TOKENS")
+            f"max_tokens={_reviewer_max_tokens()}, reasoning_tokens={_rtok}) — the "
+            "thinking budget consumed the whole reply. Lower REVIEWER_REASONING_EFFORT, "
+            "or let the range be judged in smaller units: raising REVIEWER_MAX_TOKENS "
+            "was measured NOT to help on a wide range (exhausted at 48000 and 96000).")
     return content
 
 
@@ -4854,6 +5157,69 @@ def _adversarial_review_gate(lock: dict, cycle: dict,
 
     cx = _complexity(repo, lock.get("started_at", ""), lock.get("dirty_at_start"))
 
+    def _finish_blobs() -> Optional[CallToolResult]:
+        """Complete per-blob coverage for the PUSH range. None means carry on.
+
+        The receipt authorises the PUSH range, so that is the set that must carry a
+        verdict — and the receipt may name ONLY judged blobs. This is also the path
+        that makes a WIDE range shippable: the same judgement is earned as a series
+        of small calls instead of one that a reasoning model cannot finish.
+        """
+        _t = _review_template_text(repo)
+        if not _t or REVIEW_MARKER not in _t:
+            _mark_close_refused(cycle.get("id", 0), "TEMPLATE_MISSING", "[]", lock)
+            return CallToolResult(content=[TextContent(type="text", text=(
+                "❌ Cannot close: self-adversarial reviewer prompt template is missing or "
+                "corrupt. Run cortex-update.sh, then retry end_change."
+            ))])
+        _ctx = {
+            "sid": lock.get("session_id", ""),
+            "author": _agent_author(repo),
+            "branch": _git_capture(repo, "rev-parse", "--abbrev-ref", "HEAD").strip(),
+            "head_sha": _git_capture(repo, "rev-parse", "--short", "HEAD").strip(),
+            "cycle_id": cycle.get("id", 0),
+            "task_id": lock.get("task_id", ""),
+            "description": lock.get("description", ""),
+        }
+        _pb = _complete_blob_reviews(
+            repo, _t, _ctx,
+            lambda p: _call_reviewer(p, author=_ctx["author"], cx=cx))
+        _remaining = _pb.get("remaining") or []
+        if _pb.get("calls"):
+            log.info("self-adversarial review: cycle %s per-blob pass reviewed %d blob(s) "
+                     "of the push range (%d still unreviewed)",
+                     cycle.get("id"), _pb["calls"], len(_remaining))
+        if _pb.get("blocking"):
+            _fj = json.dumps(_pb["blocking"])
+            log.error("self-adversarial review: cycle %s — %d blocking finding(s) from the "
+                      "per-blob pass", cycle.get("id"), len(_pb["blocking"]))
+            _mark_close_refused(cycle.get("id", 0), "FINDINGS", _fj, lock)
+            _release_after_refusal(lock, cycle.get("id"))
+            return CallToolResult(content=[TextContent(type="text", text=(
+                "❌ Self-adversarial review FAILED on a per-blob verdict — this change cannot "
+                "close.\n\n"
+                f"Blocking findings ({len(_pb['blocking'])}): "
+                f"{_replay_safe_findings(_fj)}\n\n"
+                "Each verdict is stored against the blob's CONTENT, so fixing a file and "
+                "committing it produces a new blob judged on its own. The lock is RELEASED "
+                "and this cycle is closed unscored; the push receipt names only judged "
+                "blobs, so nothing here is authorised."
+            ))])
+        if _remaining:
+            _mark_close_refused(cycle.get("id", 0), "REVIEW_PENDING", "[]", lock)
+            _release_after_refusal(lock, cycle.get("id"))
+            return CallToolResult(content=[TextContent(type="text", text=(
+                f"⏳ Cannot close yet: {len(_remaining)} blob(s) of the push range still carry "
+                "no review verdict.\n\n"
+                f"  reviewed this pass : {_pb.get('calls')} blob(s)\n"
+                f"  verdicts cached    : {len(_pb.get('verdicts') or {})}\n\n"
+                "Verdicts are keyed by blob CONTENT, so a further close continues from here "
+                "instead of redoing what is already judged. Open the next cycle and close "
+                "again to finish; the push gate names any blob it cannot cover."
+            ))])
+        return None
+
+
     # ── Wrong-repo guard (part 1 of the right-repo fix) ──
     # The lock's repo_slug comes from _derive_slug(), whose canonical-repo
     # preference is a property of the HOST rather than the session — so on a
@@ -4930,6 +5296,14 @@ def _adversarial_review_gate(lock: dict, cycle: dict,
     if not cx["is_complex"]:
         log.info("self-adversarial review: cycle %s simple (%s lines, %s files) — skip",
                  cycle.get("id"), cx["lines"], cx["files"])
+        # A simple cycle still owes a REAL receipt when the push range touches an
+        # always-review path — the receipt may name only judged blobs, so the
+        # coverage is completed here rather than claimed. Trivial ranges with no
+        # always-review path stay free (no reviewer call at all).
+        if _range_touches_always_review(repo):
+            _blk = _finish_blobs()
+            if _blk is not None:
+                return _blk
         return None
 
     # Complex: build the review material and run the reviewer.
@@ -5162,6 +5536,16 @@ def _adversarial_review_gate(lock: dict, cycle: dict,
 
     if verdict == "CLEAN":
         log.info("self-adversarial review: cycle %s CLEAN", cycle.get("id"))
+        # A range verdict covers the blobs it judged: spread it over the reviewed
+        # window, then finish the PUSH range per blob so the receipt names only
+        # content that was actually judged.
+        _record_blob_reviews(
+            _range_blobs(repo, _base, _git_capture(repo, "rev-parse", "HEAD").strip()) or {},
+            "CLEAN", summary="whole-range verdict CLEAN",
+            reviewer_id=reviewer_id, model=_reviewer_label(cx))
+        _blk = _finish_blobs()
+        if _blk is not None:
+            return _blk
         _clear_close_refused(cycle.get("id"), lock)
         return None
 
