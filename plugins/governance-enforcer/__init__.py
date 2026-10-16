@@ -2162,7 +2162,7 @@ _PII_PHONE_RE = re.compile(
 # before the phone scan. Why (2026-10-17): the two-separator national form can
 # align to the TAIL of one hex group plus the two groups after it, so a UUID was
 # refused by the write gate as a "phone number" — measured against 200,000 v4
-# UUIDs, 4,640 (2.32%) matched, and it forced the elision of a verbatim psql row
+# UUIDs, 4,749 (2.37%) matched, and it forced the elision of a verbatim psql row
 # in docs/evidence/backlog-run-2026-10-16-selection.md. The narrowing is scoped
 # to UUID tokens: no other shape changes, and a dash-joined run of digit groups
 # that is NOT a UUID keeps firing, because nothing distinguishes it from a

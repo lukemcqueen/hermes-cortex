@@ -27,6 +27,16 @@ the raw stdout of `probe.py`, and that is where the verdict lives.
   each command beside its own exit status — the run evidence for the test counts
   this directory's README and the cycle note point at.
 
+## The numbers
+
+An earlier ad-hoc probe of this defect reported 4,640 (2.32%). That figure came
+from a run whose UUID sample was generated fresh with `uuid4()` and is **not**
+artifact-backed — it is **withdrawn**. The numbers of record are the ones
+`transcript.txt` prints from the seeded sample: **4,749 of 200,000 (2.37%)** at
+the pattern level, and 460 of 20,000 at the gate level. The enforcer comment and
+the regression-test comment were corrected to those in the follow-up commit that
+records this withdrawal.
+
 ## The defect this pins
 
 The write-time PII gate's phone pattern includes a two-separator national form.

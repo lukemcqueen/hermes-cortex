@@ -276,7 +276,7 @@ def test_neither_this_file_nor_the_enforcer_restates_an_identifier():
 # Measured defect: the two-separator national form can align to the TAIL of one
 # hex group plus the two groups after it, so a canonical UUID is refused by the
 # write gate as a "phone number". Sampled against the pre-fix pattern over
-# 200,000 v4 UUIDs: 4,640 (2.32%) were flagged, e.g. the tail of the first hex
+# 200,000 v4 UUIDs: 4,749 (2.37%) were flagged, e.g. the tail of the first hex
 # group plus the next two. It refused a verbatim psql row in
 # docs/evidence/backlog-run-2026-10-16-selection.md, which had to be elided.
 #
