@@ -84,6 +84,11 @@ def main() -> int:
     old = prev_module()
     new = load(newpath)
 
+    print("producer : docs/evidence/pii-uuid-false-positive/probe.py")
+    print("re-run   : python3 docs/evidence/pii-uuid-false-positive/probe.py"
+          "   (MODPATH overrides the module under test)")
+    print("this file is that script's stdout, captured verbatim — the counts below"
+          " are re-derivable by re-running it")
     print(f"pre-fix revision : {PRE_FIX_REV}")
     print(f"module under test: {_red(newpath)}")
     print()
