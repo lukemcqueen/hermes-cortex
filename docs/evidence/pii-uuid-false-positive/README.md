@@ -22,6 +22,10 @@ the raw stdout of `probe.py`, and that is where the verdict lives.
   instead of the UUIDs it found, labels instead of the assembled phone fixtures,
   and `$HOME` instead of host paths. The fixtures themselves are assembled at
   runtime from parts, because the gate scans the file it is written into.
+- **`gates.txt`** is the verbatim capture of the static adversarial gates (A4 on
+  the enforcer module, A2 on the test file) and of the two pytest selections,
+  each command beside its own exit status — the run evidence for the test counts
+  this directory's README and the cycle note point at.
 
 ## The defect this pins
 

@@ -1,0 +1,81 @@
+# Captures for the PII-gate UUID narrowing (cycle 12758)
+
+Every command below is followed by its OWN exit status, measured without a pipe.
+Volatile by design: the pytest duration lines below (they change on every run and
+are not part of any claim). The static-scan medium/info items are its advisory
+inventory, not findings against this change; `--gate` fails only on critical/high.
+
+## A4 static gate — plugins/governance-enforcer/__init__.py
+
+── plugins/governance-enforcer/__init__.py ──
+   Level: A4
+   Attack Surface:
+     ⚠️ Inputs: 72 item(s)
+     ⚠️ State: 18 item(s)
+     ⚠️ Dependencies: 34 item(s)
+     ⚠️ Concurrency: 15 item(s)
+   Functions: 8
+     - _hc_store_module()
+     - _skill_file(name)
+     - _receipt_checker()
+     - _git_subcommand_with_dir(segment)
+     - _pii_sensitive_hits(content)
+     ... and 3 more
+   Fuzz inputs generated: 69
+
+📊 Summary: 1 file(s), 27 finding(s)
+   🟡 Medium: 4
+   🔵 Low: 2
+   ⚪ Info: 21
+
+🟡 Medium findings — fix before shipping.
+
+✅ GATE_PASSED — no critical/high findings
+rc=0
+
+## A2 static gate — tests/test_enforcer_pii_gate.py
+
+── tests/test_enforcer_pii_gate.py ──
+   Level: A2
+   Attack Surface:
+     ⚠️ Inputs: 20 item(s)
+     ✅ State: 0 item(s)
+     ⚠️ Dependencies: 10 item(s)
+     ✅ Concurrency: 0 item(s)
+   Functions: 18
+     - synthetic_denylist(monkeypatch)
+     - test_synthetic_term_is_blocked_in_prose(synthetic_denylist)
+     - test_synthetic_term_is_allowed_inside_the_repo_url(synthetic_denylist)
+     - test_synthetic_term_is_blocked_outside_the_url(synthetic_denylist)
+     - test_a_term_embedded_in_a_longer_token_is_still_found(synthetic_denylist)
+     ... and 13 more
+   Fuzz inputs generated: 72
+
+📊 Summary: 1 file(s), 20 finding(s)
+   🟡 Medium: 3
+   ⚪ Info: 17
+
+🟡 Medium findings — fix before shipping.
+
+✅ GATE_PASSED — no critical/high findings
+rc=0
+
+## pytest — tests/test_enforcer_pii_gate.py
+============================= test session starts ==============================
+collected 30 items
+
+tests/test_enforcer_pii_gate.py ..............................           [100%]
+
+============================== 30 passed in 0.80s ==============================
+rc=0
+
+## pytest — the three suites this change touches
+============================= test session starts ==============================
+collected 39 items
+
+tests/test_enforcer_pii_gate.py ..............................           [ 76%]
+tests/test_pii_gate_evidence.py ...                                      [ 84%]
+tests/test_refusal_log.py ......                                         [100%]
+
+============================== 39 passed in 2.40s ==============================
+rc=0
