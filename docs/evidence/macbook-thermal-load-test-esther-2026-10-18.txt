@@ -1,0 +1,79 @@
+thermal-load-test start 2026-10-18T00:26:08+09:00 host=esther
+workers=8 load_secs=120 abort_at_pkg=99000
+powerclamp_loaded=1 idle_inject_threads=8
+--- baseline (no load) ---
+00:26:08 baseline f1=5527 f2=5179 pkg=92000 hs=89750 load=1.05 mhz=3391979 psi=avg10=3.84
+avg10=0.00
+00:26:13 baseline f1=5633 f2=5208 pkg=75000 hs=90750 load=1.12 mhz=2498935 psi=avg10=4.81
+avg10=0.00
+00:26:18 baseline f1=4202 f2=3870 pkg=69000 hs=88250 load=1.11 mhz=1574985 psi=avg10=4.51
+avg10=0.00
+--- load phase ---
+00:26:23 load     f1=3550 f2=3264 pkg=67000 hs=85750 load=1.19 mhz=3392012 psi=avg10=2.47
+avg10=0.00
+00:26:28 load     f1=4981 f2=4576 pkg=87000 hs=86250 load=1.97 mhz=3392012 psi=avg10=6.00
+avg10=0.00
+00:26:33 load     f1=5919 f2=5486 pkg=87000 hs=88000 load=2.62 mhz=3392058 psi=avg10=16.18
+avg10=0.00
+00:26:38 load     f1=5945 f2=5495 pkg=87000 hs=88750 load=3.29 mhz=3392036 psi=avg10=17.11
+avg10=0.00
+00:26:43 load     f1=5942 f2=5502 pkg=87000 hs=89000 load=3.90 mhz=3392039 psi=avg10=18.26
+avg10=0.00
+00:26:48 load     f1=5945 f2=5499 pkg=88000 hs=89000 load=4.47 mhz=3392051 psi=avg10=19.29
+avg10=0.00
+00:26:53 load     f1=5941 f2=5501 pkg=89000 hs=89000 load=4.84 mhz=3391824 psi=avg10=18.73
+avg10=0.00
+00:26:58 load     f1=5941 f2=5500 pkg=89000 hs=89250 load=5.33 mhz=3392041 psi=avg10=19.33
+avg10=0.00
+00:27:04 load     f1=5940 f2=5502 pkg=89000 hs=89500 load=5.70 mhz=3392030 psi=avg10=19.35
+avg10=0.00
+00:27:09 load     f1=5942 f2=5501 pkg=90000 hs=89750 load=6.13 mhz=3392232 psi=avg10=19.78
+avg10=0.00
+00:27:14 load     f1=5941 f2=5498 pkg=90000 hs=90000 load=6.52 mhz=3391986 psi=avg10=29.63
+avg10=0.00
+00:27:19 load     f1=5941 f2=5498 pkg=90000 hs=90250 load=6.88 mhz=3392033 psi=avg10=28.84
+avg10=0.00
+00:27:24 load     f1=5944 f2=5497 pkg=90000 hs=90500 load=7.29 mhz=3392005 psi=avg10=25.94
+avg10=0.00
+00:27:29 load     f1=5942 f2=5500 pkg=90000 hs=90500 load=7.83 mhz=3392011 psi=avg10=24.79
+avg10=0.00
+00:27:34 load     f1=5938 f2=5502 pkg=90000 hs=90750 load=7.92 mhz=3392008 psi=avg10=23.56
+avg10=0.00
+00:27:39 load     f1=5937 f2=5504 pkg=91000 hs=90750 load=8.25 mhz=3392057 psi=avg10=21.88
+avg10=0.00
+00:27:44 load     f1=5944 f2=5497 pkg=90000 hs=91000 load=8.31 mhz=3392005 psi=avg10=20.70
+avg10=0.00
+00:27:49 load     f1=5936 f2=5496 pkg=90000 hs=91250 load=8.52 mhz=3392044 psi=avg10=21.77
+avg10=0.00
+00:27:54 load     f1=5941 f2=5496 pkg=90000 hs=91250 load=8.64 mhz=3392032 psi=avg10=20.89
+avg10=0.00
+00:27:59 load     f1=5938 f2=5502 pkg=91000 hs=91500 load=8.91 mhz=3392044 psi=avg10=20.43
+avg10=0.00
+00:28:04 load     f1=5941 f2=5497 pkg=92000 hs=91500 load=9.08 mhz=3392065 psi=avg10=19.66
+avg10=0.00
+00:28:09 load     f1=5941 f2=5495 pkg=90000 hs=91500 load=9.23 mhz=3392047 psi=avg10=19.85
+avg10=0.00
+00:28:14 load     f1=5939 f2=5497 pkg=91000 hs=91750 load=9.61 mhz=3392001 psi=avg10=19.24
+avg10=0.00
+00:28:19 load     f1=5934 f2=5497 pkg=91000 hs=91750 load=9.73 mhz=3392012 psi=avg10=21.42
+avg10=0.00
+--- recovery (load removed) ---
+00:28:24 recovery f1=5941 f2=5501 pkg=92000 hs=92000 load=9.75 mhz=3392034 psi=avg10=22.10
+avg10=0.00
+00:28:29 recovery f1=5808 f2=5380 pkg=86000 hs=90750 load=9.21 mhz=3392050 psi=avg10=18.35
+avg10=0.00
+00:28:34 recovery f1=5313 f2=4891 pkg=79000 hs=89250 load=8.55 mhz=3392229 psi=avg10=12.30
+avg10=0.00
+00:28:39 recovery f1=5011 f2=4628 pkg=83000 hs=87750 load=8.10 mhz=3392009 psi=avg10=6.75
+avg10=0.00
+00:28:44 recovery f1=4927 f2=4559 pkg=79000 hs=86500 load=7.62 mhz=2394389 psi=avg10=4.52
+avg10=0.00
+00:28:49 recovery f1=4924 f2=4564 pkg=75000 hs=85250 load=7.25 mhz=3427530 psi=avg10=2.63
+avg10=0.00
+00:28:54 recovery f1=4460 f2=4109 pkg=77000 hs=84250 load=6.75 mhz=3093743 psi=avg10=1.76
+avg10=0.00
+00:28:59 recovery f1=4379 f2=4060 pkg=74000 hs=83000 load=6.37 mhz=3391854 psi=avg10=0.96
+avg10=0.00
+00:29:04 recovery f1=4314 f2=4018 pkg=70000 hs=82000 load=5.94 mhz=2701055 psi=avg10=0.79
+avg10=0.00
+thermal-load-test end 2026-10-18T00:29:09+09:00
