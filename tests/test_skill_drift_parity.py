@@ -9,6 +9,10 @@ against the working tree, using a throwaway git worktree.
 The worktree's files carry FRESH mtimes from the checkout, and the check still
 reports the drift — direction is decided by content, not mtime, so a clone or
 checkout cannot hide stranded content.
+
+Both reported classes are exercised in both directions: content stranded in
+place, and a path the repo does not carry at all while a repo-owned skill dir
+owns it (reported), versus a file under a skill the repo does not own (skipped).
 """
 import importlib.util
 import subprocess
@@ -41,7 +45,7 @@ def test_parity_check_discriminates(tmp_path, monkeypatch):
     )
     try:
         monkeypatch.setattr(mod, "REPO_SKILLS", worktree / "skills")
-        stranded, _, _ = mod.survey()
+        stranded, _, _, _ = mod.survey()
         assert _KNOWN_STRANDED in stranded, (
             f"pre-sync revision should report {_KNOWN_STRANDED} as stranded; "
             f"got {stranded}"
@@ -69,15 +73,38 @@ def test_parity_check_discriminates(tmp_path, monkeypatch):
         monkeypatch.setattr(mod, "REPO_SKILLS", src)
         monkeypatch.setattr(mod, "ARTIFACT", Path(td) / "artifact.txt")
 
-        clean, in_sync, _ = mod.survey()
+        clean, absent, in_sync, _ = mod.survey()
         assert clean == [], f"a SYNCED tree must report nothing; got {clean}"
+        assert absent == [], f"a SYNCED tree must report nothing absent; got {absent}"
         assert in_sync == 1, f"the synced file must count as in sync; got {in_sync}"
 
         (dep / "cat" / "demo" / "SKILL.md").write_text("deployed-only body\n")
-        drifted, _, _ = mod.survey()
+        drifted, _, _, _ = mod.survey()
         assert drifted == ["cat/demo/SKILL.md"], \
             f"deployed-ONLY content must be reported as stranded; got {drifted}"
         print("  discriminates: synced -> nothing, deployed-only -> reported ✓")
+
+        # The SECOND class: the repo does not carry the path at all, while a
+        # repo-owned skill dir owns it. `cat/demo` carries a repo SKILL.md, so a
+        # support file only the deployed tree holds is a dangling route — it must
+        # be REPORTED, not filed as a Hermes default and forgotten.
+        (dep / "cat" / "demo" / "references").mkdir()
+        (dep / "cat" / "demo" / "references" / "only-deployed.md").write_text("x\n")
+        _, absent, _, _ = mod.survey()
+        assert ("cat/demo/references/only-deployed.md", "never-committed") in absent, \
+            f"a support file absent from a repo-owned skill must be reported; got {absent}"
+
+        # ...and the other direction: under a skill dir the repo does NOT own it
+        # stays a Hermes default (skipped), so the new class cannot swallow them.
+        (dep / "other" / "skill" / "references").mkdir(parents=True)
+        (dep / "other" / "skill" / "SKILL.md").write_text("hermes default\n")
+        (dep / "other" / "skill" / "references" / "x.md").write_text("y\n")
+        _, absent2, _, skipped2 = mod.survey()
+        assert not any(p.startswith("other/") for p, _ in absent2), \
+            f"a non-repo-owned skill must stay skipped; got {absent2}"
+        assert skipped2 >= 2, f"the default skill and its support file skip; got {skipped2}"
+        print("  discriminates: repo-owned support -> reported, "
+              "non-repo-owned -> skipped ✓")
 
 
 class _Monkeypatch:

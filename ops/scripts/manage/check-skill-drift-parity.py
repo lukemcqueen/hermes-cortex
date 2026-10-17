@@ -27,6 +27,21 @@ Compares every file under the deployed skills tree that has a repo counterpart,
 not just SKILL.md: the doctor's check only looks at SKILL.md, so a drifted
 reference or script is invisible to it. Deploy banners are not compared —
 deployed copies get a 3-line SOURCE header the repo copy does not carry.
+
+TWO classes are reported, because "the repo is missing this file" is not the
+same condition as "the repo has the path but not the content":
+
+  STRANDED IN PLACE — the repo carries the path, the deployed content appears in
+    neither the working tree nor any committed revision (a lesson written on the
+    deployed copy and never copied back).
+  ABSENT FROM THE REPO — the repo does not carry the path AT ALL while a
+    repo-owned skill dir owns it (an ancestor directory carries a repo
+    SKILL.md). Measured by PATH: a repo SKILL.md that routes to
+    `references/foo.md` which only the deployed tree holds is a dangling route
+    the fleet never receives. Each entry is marked `dropped-from-repo` (the path
+    is in repo history, so the file was deleted while the deployed copy stayed)
+    or `never-committed`. A file under no repo-owned skill dir is genuinely a
+    Hermes default and stays skipped.
 """
 from __future__ import annotations
 
@@ -83,9 +98,47 @@ def _content_in_history(rel_to_root: str, content: str) -> bool:
     return False
 
 
-def survey() -> tuple[list[str], int, int]:
-    """Return (stranded_labels, in_sync_count, skipped_count)."""
+def _repo_owned_skill_dir(rel: Path) -> Path | None:
+    """The repo-owned skill dir that owns this deployed file, if any.
+
+    A deployed file counts as OURS when an ancestor directory carries a repo
+    SKILL.md: the repo owns the skill, so a missing repo counterpart is a
+    divergence, not a Hermes default. Walks up from the file, so it covers
+    references/, scripts/, templates/ and any other support subdirectory.
+    """
+    for cand in rel.parents:
+        if cand == Path("."):
+            break
+        if (REPO_SKILLS / cand / "SKILL.md").is_file():
+            return cand
+    return None
+
+
+def _path_in_history(rel_to_root: str) -> bool:
+    """True when the repo committed this path at some point (later dropped).
+
+    Distinguishes a file the repo deleted while the deployed copy stayed from a
+    path the repo never carried. Cheap: one `git log` naming revisions, no blobs.
+    """
+    try:
+        out = _git(REPO_SKILLS.parent, "log", "--format=%H", "-n1", "--",
+                   rel_to_root)
+    except RuntimeError:
+        return False
+    return bool(out.strip())
+
+
+def survey() -> tuple[list[str], list[tuple[str, str]], int, int]:
+    """Return (stranded, absent, in_sync_count, skipped_count).
+
+    `stranded` — the repo carries the path but the deployed content appears in
+    neither the working tree nor any committed revision.
+    `absent`   — the repo does not carry the path at all although a repo-owned
+    skill dir owns it; each entry is (label, reason) with reason
+    "dropped-from-repo" or "never-committed".
+    """
     stranded: list[str] = []
+    absent: list[tuple[str, str]] = []
     in_sync = 0
     skipped = 0
     for dep in sorted(DEPLOY_SKILLS.rglob("*")):
@@ -96,7 +149,14 @@ def survey() -> tuple[list[str], int, int]:
             continue
         repo = REPO_SKILLS / rel
         if not repo.is_file():
-            skipped += 1  # Hermes default — not ours
+            # No repo counterpart. It is still ours when a repo-owned skill dir
+            # owns it — the repo ships the SKILL.md but not this file.
+            if _repo_owned_skill_dir(rel) is None:
+                skipped += 1  # Hermes default — not ours
+                continue
+            reason = ("dropped-from-repo" if _path_in_history(f"skills/{rel}")
+                      else "never-committed")
+            absent.append((str(rel), reason))
             continue
         try:
             deployed = _strip_banner(dep.read_text(encoding="utf-8"))
@@ -111,12 +171,14 @@ def survey() -> tuple[list[str], int, int]:
             skipped += 1  # an older committed revision: deploy pending, not stranding
             continue
         stranded.append(str(rel))
-    return stranded, in_sync, skipped
+    return stranded, absent, in_sync, skipped
 
 
 def build() -> tuple[str, bool]:
-    stranded, in_sync, skipped = survey()
-    ok = not stranded
+    stranded, absent, in_sync, skipped = survey()
+    ok = not stranded and not absent
+    dropped = [p for p, r in absent if r == "dropped-from-repo"]
+    never = [p for p, r in absent if r == "never-committed"]
     lines = [
         "# Skill source parity - deployed tree vs repo source",
         "",
@@ -129,16 +191,30 @@ def build() -> tuple[str, bool]:
         "Direction is decided by content, not mtime, so a fresh clone cannot hide it.",
         "Deploy banners (the 3-line SOURCE header) are not compared.",
         "",
+        "A second class is a file the repo does not carry AT ALL while a repo-owned",
+        "skill dir owns it (an ancestor directory carries a repo SKILL.md). That is",
+        "measured by PATH: a repo SKILL.md routing to `references/foo.md` which only",
+        "the deployed tree holds is a dangling route the fleet never receives. Each",
+        "entry is marked `dropped-from-repo` (the path is in repo history, so the",
+        "file was deleted while the deployed copy stayed) or `never-committed`.",
+        "A file under no repo-owned skill dir is a Hermes default and stays skipped.",
+        "",
         "| Measure | Value |",
         "|---|---|",
-        f"| Deployed-only files (stranded) | {len(stranded)} |",
+        f"| Stranded in place (path in repo, content only deployed) | {len(stranded)} |",
+        f"| Absent from the repo (deployed under a repo-owned skill) | {len(absent)} |",
+        f"|   ↳ path dropped from repo history | {len(dropped)} |",
+        f"|   ↳ path never committed | {len(never)} |",
         f"| Files in sync | {in_sync} |",
-        f"| Skipped (no repo counterpart, or repo ahead) | {skipped} |",
+        f"| Skipped (Hermes defaults, or repo ahead) | {skipped} |",
         "",
         f"**Verdict: {'PASS' if ok else 'FAIL'}**",
     ]
     if stranded:
-        lines += ["", "Stranded files:"] + [f"- {p}" for p in stranded]
+        lines += ["", "Stranded in place:"] + [f"- {p}" for p in stranded]
+    if absent:
+        lines += ["", "Absent from the repo (deployed under a repo-owned skill):"]
+        lines += [f"- {p} ({r})" for p, r in absent]
     return "\n".join(lines) + "\n", ok
 
 

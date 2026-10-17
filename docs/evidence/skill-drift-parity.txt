@@ -9,13 +9,162 @@ drift guardrail refuses to overwrite it, so it never reaches the fleet.
 Direction is decided by content, not mtime, so a fresh clone cannot hide it.
 Deploy banners (the 3-line SOURCE header) are not compared.
 
+A second class is a file the repo does not carry AT ALL while a repo-owned
+skill dir owns it (an ancestor directory carries a repo SKILL.md). That is
+measured by PATH: a repo SKILL.md routing to `references/foo.md` which only
+the deployed tree holds is a dangling route the fleet never receives. Each
+entry is marked `dropped-from-repo` (the path is in repo history, so the
+file was deleted while the deployed copy stayed) or `never-committed`.
+A file under no repo-owned skill dir is a Hermes default and stays skipped.
+
 | Measure | Value |
 |---|---|
-| Deployed-only files (stranded) | 1 |
-| Files in sync | 840 |
-| Skipped (no repo counterpart, or repo ahead) | 627 |
+| Stranded in place (path in repo, content only deployed) | 6 |
+| Absent from the repo (deployed under a repo-owned skill) | 131 |
+|   ↳ path dropped from repo history | 6 |
+|   ↳ path never committed | 125 |
+| Files in sync | 835 |
+| Skipped (Hermes defaults, or repo ahead) | 498 |
 
 **Verdict: FAIL**
 
-Stranded files:
-- devops/orch-skill-lifecycle/SKILL.md
+Stranded in place:
+- devops/enforcement-change-safety/SKILL.md
+- devops/governance-closeout/SKILL.md
+- devops/governance-lock-lifecycle/SKILL.md
+- devops/loop-governance/SKILL.md
+- devops/shared-repo-push-gates/SKILL.md
+- software-development/change-checklist/SKILL.md
+
+Absent from the repo (deployed under a repo-owned skill):
+- ads/references/abm-playbook.md (never-committed)
+- ads/references/ad-copy-templates.md (never-committed)
+- ads/references/audience-targeting.md (never-committed)
+- ads/references/b2b-paid-playbook.md (never-committed)
+- ads/references/conversion-tracking.md (never-committed)
+- ads/references/google-search-playbook.md (never-committed)
+- ads/references/linkedin-b2b-playbook.md (never-committed)
+- ads/references/meta-decision-system.md (never-committed)
+- ads/references/platform-setup-checklists.md (never-committed)
+- ads/references/rsa-output-spec.md (never-committed)
+- campaign-analytics/assets/sample_campaign_data.json (never-committed)
+- campaign-analytics/references/attribution-models-guide.md (never-committed)
+- campaign-analytics/references/campaign-metrics-benchmarks.md (never-committed)
+- campaign-analytics/references/funnel-optimization-framework.md (never-committed)
+- campaign-analytics/scripts/attribution_analyzer.py (never-committed)
+- campaign-analytics/scripts/campaign_roi_calculator.py (never-committed)
+- campaign-analytics/scripts/funnel_analyzer.py (never-committed)
+- content-humanizer/references/ai-tells-checklist.md (never-committed)
+- content-humanizer/references/voice-techniques.md (never-committed)
+- content-humanizer/scripts/humanizer_scorer.py (never-committed)
+- content-production/references/content-brief-guide.md (never-committed)
+- content-production/references/optimization-checklist.md (never-committed)
+- content-production/scripts/brand_voice_analyzer.py (never-committed)
+- content-production/scripts/content_quality_gates.py (never-committed)
+- content-production/scripts/content_scorer.py (never-committed)
+- content-production/scripts/seo_optimizer.py (never-committed)
+- content-production/templates/content-brief-template.md (never-committed)
+- content-strategy/references/headless-cms.md (never-committed)
+- devops/auto-remediation/references/bus-false-positive-detection.md (never-committed)
+- devops/auto-remediation/references/config-partially-set-guard-bypass.md (never-committed)
+- devops/auto-remediation/references/cortex-inbox-url.md (never-committed)
+- devops/auto-remediation/references/cron-mode-job-diagnosis.md (never-committed)
+- devops/auto-remediation/references/cron-selfref-symlinks.md (never-committed)
+- devops/auto-remediation/references/docker-container-oom.md (never-committed)
+- devops/auto-remediation/references/docker-group-inheritance.md (never-committed)
+- devops/auto-remediation/references/false-positive-watchdog-patch.md (never-committed)
+- devops/auto-remediation/references/gbrain-migration-recovery.md (never-committed)
+- devops/auto-remediation/references/hardcoded-api-key-placeholder.md (never-committed)
+- devops/auto-remediation/references/judge-model-cloud-vs-local.md (never-committed)
+- devops/auto-remediation/references/langfuse-project-keys.md (never-committed)
+- devops/auto-remediation/references/latent-nameerror-patch.md (never-committed)
+- devops/auto-remediation/references/mcp-server-diagnostics.md (never-committed)
+- devops/auto-remediation/references/missing-source-scripts.md (never-committed)
+- devops/auto-remediation/references/module-resolution-symlink.md (never-committed)
+- devops/auto-remediation/references/remediation-pipeline-scripts.md (never-committed)
+- devops/auto-remediation/references/stale-required-scripts.md (never-committed)
+- devops/auto-remediation/references/stale-sensor-state-files.md (never-committed)
+- devops/auto-remediation/references/verify-shell-scripts.md (never-committed)
+- devops/auto-remediation/references/watchdog-silent-on-success.md (never-committed)
+- devops/codebase-portability/references/gbrain-wrapper-crossplatform.md (dropped-from-repo)
+- devops/cortex-deployment-sync/references/stranded-skill-reconciliation.md (never-committed)
+- devops/doc-size-budget/references/agents-md-prune-2026-08-27.md (never-committed)
+- devops/docker-management/templates/measure-container-memory.sh (never-committed)
+- devops/enforcement-change-safety/references/adversarial-verify-regex-traps-2026-08-25.md (never-committed)
+- devops/enforcement-change-safety/references/deployed-only-governance-2026-08-24.md (never-committed)
+- devops/enforcement-change-safety/references/fleet-governance-lessons-2026-08-18.md (never-committed)
+- devops/enforcement-change-safety/references/guard-content-scan-false-positive-2026-08-24.md (never-committed)
+- devops/enforcement-change-safety/references/heredoc-ampersand-backgrounding-trap-2026-08-25.md (never-committed)
+- devops/enforcement-change-safety/references/macos-case-insensitive-apfs-2026-08-25.md (never-committed)
+- devops/enforcement-change-safety/references/mcp-sdk-v2-outage-2026-08-18.md (never-committed)
+- devops/enforcement-change-safety/references/pii-loopback-exemption-2026-08-27.md (never-committed)
+- devops/enforcement-change-safety/references/pii-repo-url-exception-2026-08-25.md (never-committed)
+- devops/enforcement-change-safety/references/tdd-iron-law-gate-2026-08-20.md (never-committed)
+- devops/enforcer-modification-considerations/references/friction-reduction-candidates.md (never-committed)
+- devops/governance-closeout/references/verdict-store-diagnostics.md (never-committed)
+- devops/governance-closeout/scripts/measure-review-material.py (never-committed)
+- devops/governance-lock-lifecycle/references/publishing-a-reviewed-range.md (never-committed)
+- devops/hermes-gateway-operations/references/inline-menus.md (never-committed)
+- devops/inbox-remediation/references/bus-api-address-patterns.md (never-committed)
+- devops/llm-cost-optimization/references/fleet-cost-data-sources.md (dropped-from-repo)
+- devops/llm-cost-optimization/references/interactive-session-cost-state-db.md (dropped-from-repo)
+- devops/llm-cost-optimization/references/openrouter-model-catalogue.md (never-committed)
+- devops/llm-cost-optimization/references/redactor-tokens-label-masking.md (never-committed)
+- devops/llm-cost-optimization/references/session-telemetry-reporting.md (dropped-from-repo)
+- devops/loop-governance/references/agents-md-pruning.md (never-committed)
+- devops/loop-governance/references/db-maintenance.md (never-committed)
+- devops/loop-governance/references/first-time-bootstrap.md (never-committed)
+- devops/loop-governance/references/governance-integrity-rules.md (never-committed)
+- devops/loop-governance/references/governance-setup-verification.md (never-committed)
+- devops/loop-governance/references/satisfying-the-close-review.md (never-committed)
+- devops/loop-governance/references/session-cache-path-fixes.md (never-committed)
+- devops/loop-governance/templates/verify-change.sh (never-committed)
+- devops/mcp-health-monitoring/references/client-side-otel-skew.md (never-committed)
+- devops/mcp-health-monitoring/references/mcp-registration-runbook.md (never-committed)
+- devops/sensor-false-positive-remediation/references/gbrain-health-false-positive.md (dropped-from-repo)
+- devops/shared-repo-push-gates/references/close-review-bounds.md (never-committed)
+- devops/shell-scripting/references/service-templates-launchd-systemd.md (never-committed)
+- devops/skill-curation/references/always-section-consolidation.md (never-committed)
+- devops/skill-curation/references/discovery-sources.md (never-committed)
+- devops/skill-curation/references/skill-evaluation-pipeline.md (never-committed)
+- email-sequence/_meta.json (never-committed)
+- email-sequence/skill-card.md (never-committed)
+- launch-strategy/references/launch-frameworks-and-checklists.md (never-committed)
+- launch-strategy/scripts/launch_readiness_scorer.py (never-committed)
+- marketing-psychology/_meta.json (never-committed)
+- marketing-psychology/evals/evals.json (never-committed)
+- marketing-psychology/skill-card.md (never-committed)
+- paid-ads/references/ad-copy-templates.md (never-committed)
+- paid-ads/references/audience-targeting.md (never-committed)
+- paid-ads/references/platform-setup-checklists.md (never-committed)
+- paid-ads/references/scoring-system.md (never-committed)
+- paid-ads/scripts/ad_health_scorer.py (never-committed)
+- paid-ads/scripts/roas_calculator.py (never-committed)
+- productivity/pdf-template-match/assets/pdf-design.csv (never-committed)
+- programmatic-seo/_meta.json (never-committed)
+- programmatic-seo/evals/evals.json (never-committed)
+- programmatic-seo/skill-card.md (never-committed)
+- research/brand-intelligence/references/shopify-curl-analysis.md (never-committed)
+- schema-markup/README.md (never-committed)
+- schema-markup/_meta.json (never-committed)
+- schema-markup/skill-card.md (never-committed)
+- seo-audit/references/ai-writing-detection.md (never-committed)
+- seo-audit/references/international-seo.md (never-committed)
+- skill-vetting/references/external-skill-evaluation-example.md (never-committed)
+- social-content/_meta.json (never-committed)
+- social-content/skill-card.md (never-committed)
+- social-media-analyzer/assets/expected_output.json (never-committed)
+- social-media-analyzer/assets/sample_input.json (never-committed)
+- social-media-analyzer/references/platform-benchmarks.md (never-committed)
+- social-media-analyzer/scripts/analyze_performance.py (never-committed)
+- social-media-analyzer/scripts/calculate_metrics.py (never-committed)
+- software-development/change-checklist/references/close-review-evidence.md (never-committed)
+- software-development/change-checklist/references/detection-gate-design.md (never-committed)
+- software-development/hermetic-python-testing/references/order-dependent-failure-bisect.md (never-committed)
+- software-development/hermetic-python-testing/templates/run-tests.sh (never-committed)
+- software-development/role-gating-and-public-moderation/references/rgm-fastapi-example.md (dropped-from-repo)
+- x-twitter-growth/scripts/competitor_analyzer.py (never-committed)
+- x-twitter-growth/scripts/content_planner.py (never-committed)
+- x-twitter-growth/scripts/growth_tracker.py (never-committed)
+- x-twitter-growth/scripts/profile_auditor.py (never-committed)
+- x-twitter-growth/scripts/tweet_composer.py (never-committed)

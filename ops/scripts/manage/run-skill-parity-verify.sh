@@ -29,7 +29,7 @@ rc=0
   echo
   echo "Regenerate with: \`bash ops/scripts/manage/run-skill-parity-verify.sh\`"
   echo
-  echo "Verifier: ${VERIFY}"
+  echo "Verifier: ${VERIFY/#$HOME/\$HOME}"
   echo "Revision: $(git -C "${REPO}" rev-parse HEAD)"
   echo
 } > "${OUT}"
@@ -37,9 +37,14 @@ rc=0
 for target in "${TARGETS[@]}"; do
   echo "## ${target}" >> "${OUT}"
   echo '```' >> "${OUT}"
-  if ! python3 "${VERIFY}" --file "${REPO}/${target}" --level A4 --gate >> "${OUT}" 2>&1; then
+  tmp="$(mktemp)"
+  if ! python3 "${VERIFY}" --file "${REPO}/${target}" --level A4 --gate > "${tmp}" 2>&1; then
     rc=1
   fi
+  # Redact home paths in the verifier's own output (it prints absolute file
+  # paths) — redaction in the generator, never by hand-editing the artifact.
+  sed "s|${HOME}|\$HOME|g" "${tmp}" >> "${OUT}"
+  rm -f "${tmp}"
   echo '```' >> "${OUT}"
   echo >> "${OUT}"
 done
