@@ -5,19 +5,34 @@
 
 ## 1. The problem, measured
 
-Four read-only questions to one agent (00:08–01:35 KST, 2026-10-18) cost **3 governance
-cycles, 4 `end_change` attempts, 2 refusals and 3 calls that hit the 300 s ceiling with no
-verdict at all** — plus an operator-authorized `force=True` to unwedge the session.
+Four read-only questions to one agent (00:08–01:35 KST, 2026-10-18) cost **6 governance cycles.
+Every one of them either refused or returned nothing: six calls hit the 300 s ceiling with no verdict
+at all, two closes were refused on findings, and two sessions had to be force-cleared by the
+operator.** Five of the six cycles were closes on documentation-only commits.
+
+> **Cycle accounting corrected 2026-10-18** (reviewer finding on this document: §1 listed 3 cycles
+> while §2 referenced a later one, so the totals did not reconcile). The table below is the complete
+> set; 12792/12795/12797 are the later ones §2 referred to.
 
 | Cycle | What it was | Result |
 |---|---|---|
 | 12777 | read-only fan/temp sampling, empty diff | refused — "prose-only claim"; remedy: commit the transcript |
 | 12779 | 79-line evidence transcript, 1 file | refused — 3 findings, **all on a peer's commit** |
 | 12782 | re-close of the same 79-line artifact | **3 × 300 s timeouts, no verdict**, lock stranded |
+| 12792 | 3-file docs plan, 153 lines, no code | 300 s timeout, no verdict (later re-reviewed: FINDINGS) |
+| 12795 | 1-file docs commit, 41 lines | 300 s timeout, no verdict |
+| 12797 | 1-file docs commit, 52 lines | 300 s timeout, no verdict |
 
 Verdicts and timeouts both traced to one thing: **the close reviewed a window that was
 two-thirds someone else's work.** The refused range was 11 files / 448 lines across three
 sessions (soul-refinement cron, a stalled-rebase session, and mine at 79 lines).
+
+**Provenance of the citations below** (reviewer finding on this document, 2026-10-18): every
+`file:line` reference in §2, §3 and §5 was read from `mcp-servers/loop-gov-mcp.py` and
+`ops/scripts/manage/review-material.py` at the revision current when this was written, but the
+citations themselves are NOT part of this document's diff and are therefore UNVERIFIED in it — the
+line numbers may drift as the file changes. Treat them as a map, and re-grep before relying on a
+line number. The plan's claims about behaviour are separately pinned by the tests it names.
 
 ## 2. Root cause (code, not opinion)
 

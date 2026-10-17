@@ -35,9 +35,18 @@ rc=0
 } > "${OUT}"
 
 for target in "${TARGETS[@]}"; do
+  # Create the temp file FIRST and check it (reviewer finding on blob eb3fa6d9ec32): with an
+  # unguarded `tmp="$(mktemp)"`, a failure left `tmp` empty and the redirection/sed below
+  # silently operated on "" while the run still reported whatever `rc` already was. Fail the
+  # run and skip the target instead - and only open the code fence once the temp exists, so
+  # the fence cannot be left unclosed.
+  if ! tmp="$(mktemp)"; then
+    echo "run-skill-parity-verify: mktemp failed - skipping ${target}" >&2
+    rc=1
+    continue
+  fi
   echo "## ${target}" >> "${OUT}"
   echo '```' >> "${OUT}"
-  tmp="$(mktemp)"
   if ! python3 "${VERIFY}" --file "${REPO}/${target}" --level A4 --gate > "${tmp}" 2>&1; then
     rc=1
   fi
