@@ -41,15 +41,19 @@ I will [one-line behavioral commitment for a system operator].
 
 ### Channel B — Session Mining (recommended cron: 23:00 daily)
 
-Reviews today's sessions for user corrections and distill lessons into principle updates.
+Reviews the sessions since the last run for user corrections and distills lessons into principle updates. **The window is a bounded lookback from RUN TIME, never a calendar date** — see Pitfalls.
 
 **Setup (do once):**
 ```bash
-hermes cron create --name "agent-daily-soul-refinement" \
-  --schedule "0 23 * * *" \
+hermes cron create --name "local-daily-soul-refinement" \
+  --schedule "14 23 * * *" \
   --skill "soul-refinement" \
-  --prompt "Load the soul-refinement skill. Search today's sessions for user corrections. Distill into principle patches. Report summary or stay silent if nothing changed."
+  --prompt "Load the soul-refinement skill. Mine the last 24 hours of sessions (run-time window, not the calendar date) for user corrections and lessons. Distill into principle or skill patches. Report the window and its row counts; stay silent only if the window is non-empty and nothing changed."
 ```
+
+The fleet's live per-host job runs `14 23 * * *` (`docs/cron-jobs-reference.md`); any evening
+slot works, but a late dispatch can land after midnight — so the window must never be derived
+from the date.
 
 ## Decision Rules
 
@@ -220,6 +224,7 @@ body are invisible to it. So:
 - **Don't append the same lesson twice.** If a principle already covers the gap, strengthen it rather than adding another.
 - **Don't treat skills as identity.** Workflow discoveries go in SKILL.md, not SOUL.md.
 - **Bible insights must be genuine.** Don't force-fit a lesson. If the day's book has nothing obvious for the agent's role, say so honestly.
+- **Resolve the mining window from RUN TIME, never from the calendar date** (observed 2026-10-18). This job's dispatch can slip past midnight: on esther `hermes cron list` recorded the `14 23 * * *` slot dispatching at `00:03` (49 min late), and `~/.hermes/cron/usage_audit.jsonl` holds two earlier after-midnight runs (`00:03` and `00:26`) among its 63 logged runs. A literal reading of "today's sessions" at 00:03 is a three-minute-old day: the pass finds nothing, reports `[SILENT]`, and the PREVIOUS day's corrections are lost with no signal — a zero-row window and a genuinely quiet day look identical in the output. So compute a bounded lookback ending at NOW (the last ~30 h, as an epoch-float bound — `timestamp` is a float, not ISO), print the resolved window and the row counts it returned, and never report "nothing to refine" for a window you have not first shown to be non-empty.
 - **Silence is better than forced growth.** If no corrections or lessons exist for a given day, produce nothing.
 - **Watchdog scripts must update their state/timestamp file BEFORE checking for work**, to avoid stale state readings.
 - **Mining large sessions via session_search:** the scroll shape ignores `role_filter` (discovery-only), and windows >100KB spill to `~/.hermes/cache/spillover/*.txt` — extract user messages from the spilled JSON with one terminal `python3` pass instead of re-requesting. `execute_code` is blocked in cron mode; terminal under a governance lock is the path (observed 2026-09-28). (observed 2026-09-29) Skip discovery of the store itself: the real sessions store is `~/.hermes/state.db` (1GB WAL) — `~/.hermes/state/sessions.db` is a 0-byte stub, and there is no `sqlite3` CLI on esther. One read-only pass: `python3` heredoc with `sqlite3.connect('file:…state.db?mode=ro', uri=True)` + `PRAGMA query_only=1`, select `role='user' AND active=1` rows for the day's session ids, dump JSON to scratch, then triage previews. (Gate behavior: in a cron session an active lock sufficed — no skills gate; the 7-always-skills gate was observed in an interactive session, 2026-09-29.) (observed 2026-10-09) `timestamp` is a **Unix epoch float**, not ISO — an ISO `>=` bound silently returns 0 rows; compute the day's midnight as a float.

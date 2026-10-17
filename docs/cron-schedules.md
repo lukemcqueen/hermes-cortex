@@ -132,7 +132,7 @@
 | `local-agent-daily-finance-brief` | `0 18 * * 1-5` | LLM | Telegram |
 | `local-agent-agents-doc-audit` | `0 7 * * 1` | LLM | origin |
 | `job-opportunity-scanner` | `0 7 * * *` | LLM | Telegram |
-| `local-daily-soul-refinement` | `0 23 * * *` | LLM | origin | *(live name — created without `agent-` infix; per-host variant)* |
+| `local-daily-soul-refinement` | `14 23 * * *` | LLM | origin | *(live name — created without `agent-` infix; per-host variant. Schedule corrected 2026-10-18 from `0 23 * * *` to the live value; verify per host.)* |
 | `local-agent-weekly-loop-eval` | `0 9 * * 1` | LLM | origin |
 | `local-orch-fleet-command-verifier` | `every 10m` | no_agent | Telegram |
 
