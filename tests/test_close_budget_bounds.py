@@ -121,10 +121,47 @@ def test_per_blob_pass_accounts_for_every_blob() -> None:
            f"{len(got2['verdicts'])}+{len(got2['remaining'])} != {len(blobs2)}")
 
 
+def test_close_hands_its_remaining_window_to_the_blob_pass() -> None:
+    """The close's clock must REACH the blob pass — the wiring, not just the constants.
+
+    The reviewer of cycle 12800 filed a HIGH against the first version of this change for
+    exactly this: the constants and the helper existed but nothing on the close path used
+    them, so the claimed hand-off of remaining time was not implemented. This drives
+    _complete_push_range_blobs with injected collaborators and asserts the two directions:
+    a close passes its cap + remaining budget through, and a sweep/CLI caller (no knobs)
+    leaves the module defaults untouched.
+    """
+    print("D. the close hands its remaining window to the blob pass")
+    seen: list = []
+
+    mcp._lock_repo = lambda lock: Path("/tmp/repo")            # no git needed
+    mcp._range_touches_always_review = lambda repo: True       # do not take the early exit
+    mcp._review_template_text = lambda repo: mcp.REVIEW_MARKER + "\n"
+    mcp._git_capture = lambda *a, **k: ""
+    mcp._agent_author = lambda repo: "the-agent"
+    mcp._call_reviewer = lambda *a, **k: "{}"
+
+    def _fake_complete_blob_reviews(repo, template, ctx, run_reviewer, **kw):
+        seen.append(kw)
+        return {"verdicts": {}, "remaining": [], "calls": 0, "blocking": []}
+
+    mcp._complete_blob_reviews = _fake_complete_blob_reviews
+
+    lock = {"session_id": "test-session", "task_id": "t", "description": "d"}
+    mcp._complete_push_range_blobs(lock, {"id": 1}, require_full=True, cap=1, budget_s=123.5)
+    _check("the close's cap reaches the pass", bool(seen) and seen[-1].get("cap") == 1, str(seen[-1:]))
+    _check("the close's REMAINING budget reaches the pass",
+           bool(seen) and seen[-1].get("budget_s") == 123.5, str(seen[-1:]))
+    mcp._complete_push_range_blobs(lock, {"id": 1}, require_full=True)
+    _check("a caller with no knobs forwards NOTHING (defaults preserved)",
+           bool(seen) and "cap" not in seen[-1] and "budget_s" not in seen[-1], str(seen[-1:]))
+
+
 if __name__ == "__main__":
     test_budgets_nest_under_the_client_window()
     test_budget_left_helper()
     test_per_blob_pass_accounts_for_every_blob()
+    test_close_hands_its_remaining_window_to_the_blob_pass()
     if _F:
         print(f"\n❌ {len(_F)} close-budget check(s) failed: {', '.join(_F)}")
         sys.exit(1)

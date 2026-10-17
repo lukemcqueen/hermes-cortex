@@ -1,9 +1,11 @@
-# provenance: regenerated 2026-10-18 02:38 KST in the esther agent session by the commands
-# below, run in this order from the repo root; each rc is that command's own (PIPESTATUS[0] where a
-# normaliser is in the chain). ONE normaliser is applied to EVERY line at the block level: host
-# paths are rewritten to <home> so this public-repo artifact carries no /home/<user> path.
-# change: mcp-servers/loop-gov-mcp.py - ONE close, ONE client window: CLOSE_TOTAL_BUDGET_S=240,
-# CLOSE_BLOBS_PER_WINDOW=1, CLOSE_SPLIT_OWN_LINES=50, _close_budget_left(), split-before-call.
+# provenance: regenerated 2026-10-18 02:46 KST in the esther agent session by the commands
+# below, run in this order from the repo root; each rc is that command's own (PIPESTATUS[0]
+# where a normaliser is in the chain). ONE normaliser rewrites host paths to <home> so this
+# public-repo artifact carries no /home/<user> path.
+# change: mcp-servers/loop-gov-mcp.py - ONE close, ONE client window. Constants
+# (CLOSE_TOTAL_BUDGET_S=240, CLOSE_BLOBS_PER_WINDOW=1, CLOSE_SPLIT_OWN_LINES=50), the
+# _close_budget_left() helper, the split-before-the-range-call rule, AND the hand-off:
+# the close's clock starts above the gate and the per-blob pass is given what is LEFT.
 
 $ python3 -m py_compile mcp-servers/loop-gov-mcp.py
 rc=0
@@ -29,15 +31,17 @@ C. the per-blob pass stops at its budget and accounts for every blob
   PASS  a bounded pass returns early
   PASS  unreached blobs are REPORTED
   PASS  judged + remaining accounts for every blob
+D. the close hands its remaining window to the blob pass
+  PASS  the close's cap reaches the pass
+  PASS  the close's REMAINING budget reaches the pass
+  PASS  a caller with no knobs forwards NOTHING (defaults preserved)
 
 ✅ close-budget checks passed
 rc=0
 
-# DIFFERENTIAL gate: the same A4 scan on the PRE-CHANGE revision (git show HEAD~1:<path>), so the
-# finding count of the changed file is ATTRIBUTED rather than assumed. Both files get the same
-# command; only the totals below are compared.
+# DIFFERENTIAL gate: the same A4 scan on the PRE-CHANGE revision (git show HEAD:<path>), so the
+# finding count is ATTRIBUTED rather than assumed. Only the totals are compared.
 $ python3 ~/.hermes-cortex/scripts/adversarial-verify.py --file <scratch>/pre-change-loop-gov-mcp.py --level A4 --gate
-   🟡 Medium: 5
    🔵 Low: 4
    ⚪ Info: 29
 
@@ -47,7 +51,6 @@ $ python3 ~/.hermes-cortex/scripts/adversarial-verify.py --file <scratch>/pre-ch
 rc=0 (PRE-CHANGE)
 
 $ python3 ~/.hermes-cortex/scripts/adversarial-verify.py --file mcp-servers/loop-gov-mcp.py --level A4 --gate
-   🟡 Medium: 5
    🔵 Low: 4
    ⚪ Info: 29
 
@@ -56,5 +59,5 @@ $ python3 ~/.hermes-cortex/scripts/adversarial-verify.py --file mcp-servers/loop
 ✅ GATE_PASSED — no critical/high findings
 rc=0 (POST-CHANGE)
 
-$ timeout 180 python3 tests/run_loop_gov_regression.py
-rc=124 (124 = did not finish inside 180s)
+$ timeout 120 python3 tests/run_loop_gov_regression.py
+rc=124 (124 = did not finish inside 120s; unverified, not passing)

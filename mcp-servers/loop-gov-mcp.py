@@ -1315,7 +1315,8 @@ def _complete_blob_reviews(repo: Path, template: str, ctx: dict, run_reviewer,
 
 
 def _complete_push_range_blobs(lock: dict, cycle: dict, cx: Optional[dict] = None,
-                               require_full: bool = False) -> Optional[CallToolResult]:
+                               require_full: bool = False, cap: Optional[int] = None,
+                               budget_s: Optional[float] = None) -> Optional[CallToolResult]:
     """Judge the push range's unreviewed blobs at the CLOSE. None means carry on.
 
     ONE call site, at the single point every permitted close passes through. The
@@ -1364,8 +1365,13 @@ def _complete_push_range_blobs(lock: dict, cycle: dict, cx: Optional[dict] = Non
         "task_id": lock.get("task_id", ""),
         "description": lock.get("description", ""),
     }
+    # The CLOSE hands this pass the REMAINDER of its one window and a per-window cap; a
+    # sweep/CLI caller passes neither and keeps the module defaults exactly (no behaviour
+    # change off the close path). See the ONE CLOCK note at the close's call site.
     pb = _complete_blob_reviews(
-        repo, template, ctx, lambda p: _call_reviewer(p, author=author, cx=cx))
+        repo, template, ctx, lambda p: _call_reviewer(p, author=author, cx=cx),
+        **({"cap": int(cap)} if cap is not None else {}),
+        **({"budget_s": budget_s} if budget_s is not None else {}))
     remaining = pb.get("remaining") or []
     if pb.get("calls"):
         log.info("per-blob close pass: reviewed %d blob(s) of the push range "
@@ -5815,6 +5821,14 @@ def _end_change(args: dict) -> CallToolResult:
     # reviewer returns CLEAN. Trivial changes skip. Reviewer outage refuses
     # the close (fail loudly). Runs AFTER the scored-cycle requirement and
     # BEFORE the lock release, so a blocked review keeps the lock held.
+    # ONE CLOCK FOR THIS CLOSE (2026-10-18; reviewer findings ADV-12800-2/3 on cycle 12800).
+    # The gate above and the per-blob pass below are two passes of the SAME close, and the
+    # caller waits on ONE window. The clock starts here, above both, and the blob pass is
+    # handed only what is LEFT of it — capped at CLOSE_BLOBS_PER_WINDOW blob calls, since a
+    # blob call measures 180-220s and one window fits exactly one. Without this, a close
+    # could spend its whole range budget AND a full blob budget, which is what produced six
+    # 300s stalls with no verdict (cycles 12777/12779/12782/12792/12795/12797).
+    close_started = time.monotonic()
     review_block = _adversarial_review_gate(lock, cycle_data or {})
     if review_block is not None:
         return review_block
@@ -5830,7 +5844,10 @@ def _end_change(args: dict) -> CallToolResult:
     blob_block = _complete_push_range_blobs(
         lock, cycle_data or {},
         require_full=str(((_read_lock(args) or {}).get("close_refused") or {})
-                         .get("verdict", "")) == "REVIEW_INCOMPLETE")
+                         .get("verdict", "")) == "REVIEW_INCOMPLETE",
+        # What is LEFT of this close's window, and at most one blob call within it.
+        cap=CLOSE_BLOBS_PER_WINDOW,
+        budget_s=_close_budget_left(close_started))
     if blob_block is not None:
         return blob_block
 
