@@ -178,6 +178,9 @@ repo; this public repo carries only framework docs (PRDs, design, reference).
 | `docs/knowledge-isolation-architecture.md` | Knowledge isolation design |
 | `docs/design/DESIGN.md` | Design principles |
 | `docs/design/adversarial-review-cost-reduction.md` | Plan (levers A/B/C) to scope the close review to the session's own blobs, unify tier+material bases, and add a local pre-close pre-flight — measured against cycles 12777/12779/12782 |
+| `docs/evidence/adversarial-review-solution-request-2026-10-18.md` | The design request put to the governed reviewer: keep adversarial review strong but stop the close-time stall; states the one-window budget arithmetic, the shared-author attribution problem and the options already rejected |
+| `docs/evidence/adversarial-review-solution-2026-10-18.txt` | The reviewer's verdict on that request (FINDINGS: 2 HIGH, 1 MEDIUM, 1 INFO), read live from the store |
+| `docs/evidence/adversarial-review-cost-plan-review-2026-10-18.txt` | Correction notice: the capture that reported a plan-review CLEAN was VACUOUS (a file path was passed where the material TEXT was expected); regenerated to show the stored row |
 | `docs/design/task-workflow.md` | Task workflow design (task model v1/v2) |
 | `docs/design/task-lifecycle-v2.md` | Task lifecycle v2 — statuses, transitions, stale sweep |
 | `docs/design/task-model-v3.md` | **Task model v3** — orchestrator-intelligence / worker-execution, claim/report/verify, compete mode |
