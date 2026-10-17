@@ -151,6 +151,7 @@ def test_close_hands_its_remaining_window_to_the_blob_pass() -> None:
         seen.append(kw)
         return {"verdicts": {}, "remaining": [], "calls": 0, "blocking": []}
 
+    _real_complete_blob_reviews = mcp._complete_blob_reviews   # section E needs the REAL one
     mcp._complete_blob_reviews = _fake_complete_blob_reviews
 
     lock = {"session_id": "test-session", "task_id": "t", "description": "d"}
@@ -161,6 +162,9 @@ def test_close_hands_its_remaining_window_to_the_blob_pass() -> None:
     mcp._complete_push_range_blobs(lock, {"id": 1}, require_full=True)
     _check("a caller with no knobs forwards NOTHING (defaults preserved)",
            bool(seen) and "cap" not in seen[-1] and "budget_s" not in seen[-1], str(seen[-1:]))
+    # Leave the module as we found it: section E drives the REAL wrapper, and an unrestored
+    # fake made E fail against its own double (caught by running the file, 2026-10-18).
+    mcp._complete_blob_reviews = _real_complete_blob_reviews
 
 
 def test_real_wrapper_enforces_the_cap() -> None:
