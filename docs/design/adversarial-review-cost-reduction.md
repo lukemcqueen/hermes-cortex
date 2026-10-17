@@ -58,11 +58,31 @@ The audit already separates authorship — but only for **presentation**, not fo
 
 Partition the window into own vs peer **blobs**, and let the verdict see only its own.
 
-1. New `_own_blobs(repo, base, author) -> dict[path, sha]`: walk `base..HEAD`
-   (`git log --format=%H%x00%ae --name-only`), attribute each path to the commit that last
-   touched it in the window, keep the paths whose author resolves to this session. Uncommitted
-   (staged/unstaged) paths are **always own** — that preserves today's anti-gaming rule
-   ("uncommitted work counts", 3118) and fails closed toward review.
+**A0 — the discriminator A needs does not exist yet (measured 2026-10-18).** Author-based
+attribution cannot separate sessions on this host: every session commits under ONE identity.
+
+```
+6e98166b esther-agent docs(design): reviews must fit inside 300s…        ← this session
+f23f4316 esther-agent docs(evidence): commit the run's gate transcript…  ← cron session
+d58006f2 esther-agent fix(review): the window capture must measure…      ← cron session
+b291764e esther-agent fix(review): capture the abort's own status…       ← cron session
+```
+
+Evidence: `git log --format='%h %an %s'` on this repo. `_authored_commits(repo, base, _author)`
+with `--author=esther-agent` matches all four, so **A as first drafted would fail closed into
+today's whole-window behaviour and save nothing.** A therefore needs a session discriminator
+first:
+
+1. **A1 — a `Cortex-Session: <session_id>` commit trailer, derived from the LIVE governance
+   lock.** The `prepare-commit-msg` hook appends the trailer using the session id from the lock
+   file the enforcer already required for that commit. It is read from governance state — never
+   from an env var the agent exports — so it cannot be forged from prose or spoofed.
+2. **A2 — scope the verdict.** `_own_blobs` = blobs whose commit trailer names THIS session.
+   Uncommitted (staged/unstaged) paths are **always own** (preserves "uncommitted work counts",
+   3118). Fail-closed in the exclusion direction: **no trailer, an unknown session, or an
+   unresolvable git state ⇒ the blob STAYS in scope**; only a trailer naming a *different* live
+   session excludes. A2 depends on A1 — without it A2 degenerates to today's behaviour (safe, and
+   useless).
 2. **Material uses own blobs only.** `_theirs` drops from `git show -p` to *names + authors* in
    the provenance block (still disclosed, no longer presented as reviewable content).
 3. **Complexity/tier use own blobs.** `_complexity()` keys its line/file counts and the
@@ -150,17 +170,23 @@ path AT ALL"); this only evaluates known refusal conditions locally.
 
 ## 8. Slices (one cycle each — ranges stay reviewable)
 
-1. **A** — `mcp-servers/loop-gov-mcp.py`. Always-review path, heavy tier, change-safety path.
-2. **B** — same file. Tier/base unification + empty-own-diff class.
-3. **C** — `ops/scripts/manage/review-material.py` + doctor + docs. Ordinary.
+0. **D + C** — the bounded close (§4a) and the local pre-flight. Neither needs a discriminator,
+   and D is now REQUIRED by §4a rather than deferred, so these two pay off first.
+1. **A1** — the discriminator: `ops/install/hooks/` (the `prepare-commit-msg` trailer) plus
+   trailer parsing in `mcp-servers/loop-gov-mcp.py`. Enforcement surface, heavy tier, needs the
+   change-safety path.
+2. **A2 + B** — same file. Own-blob scoping (depends on A1), tier/base unification and the
+   empty-own-diff class.
 
 ## 9. Risks and open questions
 
-- **Attribution depends on git identity resolving.** Tonight's peer commit was distinguishable
-  in the material (that is how the findings were *attributable* at all), so the mechanism
-  exists — but if a peer session commits under the *same* author email, lever A degenerates to
-  today's behaviour via the fail-closed path. Worth verifying with the cron's committer
-  identity before building; the lock's `session_id` is the fallback discriminator.
+- **Attribution: MEASURED, and it does not work today.** Every commit on this host is authored
+  `esther-agent` (evidence in §3), so the author-based path counts a peer's commits as this
+  session's own. Verified 2026-10-18 by reading `git log --format='%h %an %s'` after the fifth
+  300 s hang. **A1 is therefore a prerequisite, not a refinement.** Its benefit also starts with
+  the first commit that CARRIES a trailer: history cannot be retro-fixed, so a cycle closing over
+  pre-trailer commits still sees the whole window — safe, just not faster. Until A1 ships, **D and
+  C are the only levers that pay off immediately**.
 - **Resolved by requirement:** the 300 s ceiling is **not** to be raised (operator, §4a). Which
   ceiling fired first is still unknown and no longer matters — fitting inside it is now the
   design constraint, and lever A removes the cause rather than buying headroom.
