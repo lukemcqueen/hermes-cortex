@@ -151,7 +151,13 @@ fi
 # since the 2026-10 refactor, so a legacy host must be consolidated before
 # anything reads the env. Uses $HOME + bash only — identical on Linux and macOS.
 if [[ -f "${REPO_DIR}/ops/scripts/manage/consolidate-env.sh" ]]; then
-  bash "${REPO_DIR}/ops/scripts/manage/consolidate-env.sh" >/dev/null 2>&1 || true
+  if ! _ce_out="$(bash "${REPO_DIR}/ops/scripts/manage/consolidate-env.sh" 2>&1)"; then
+    # A failed consolidation must not silently pass — surface it. The deploy
+    # still proceeds (fail-open) so the rest of the update is not blocked,
+    # but the operator sees the consolidation error instead of a clean run.
+    warn "consolidate-env.sh FAILED:"
+    printf '    %s\n' "$_ce_out" | sed 's/^/    /' >&2 || warn "    (no output captured)"
+  fi
 fi
 if [[ -f "${REPO_DIR}/.env" ]]; then
   set -a; source "${REPO_DIR}/.env"; set +a
