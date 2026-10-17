@@ -59,6 +59,14 @@ bash ~/.hermes-cortex/scripts/consolidate-env.sh --check    # dry check; exit 1 
 
 ## Verify
 
+The behaviours this runbook documents are pinned by committed tests, runnable in
+the repo: `tests/test_doctor_cortex_env.py` drives `check_cortex_env` both ways
+(sanctioned symlink PASS, real-file FAIL, missing-symlink FAIL, leftover
+`cortex-bus.conf` FAIL) and `tests/test-consolidate-env.sh` drives
+`consolidate-env.sh`'s migration / idempotence / real-file refusal / `--check`
+against an isolated temp HOME. Run them to reproduce the claims rather than
+trusting this prose.
+
 ```bash
 # 1. the doctor's own check (FAILs on a missing/misplaced env, with the fix)
 python3 ~/.hermes-cortex/scripts/cortex-doctor.py 2>&1 | grep -i "cortex env"
