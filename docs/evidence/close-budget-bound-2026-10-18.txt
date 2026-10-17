@@ -77,12 +77,19 @@ Resolver's note (this replaces an earlier line that recorded `timeout 120 … rc
 TIMEOUT and therefore not a result at all — an adversarial finding was right to refuse it):
   1. EXECUTED, not labelled. 465 s is the measured wall clock for a 25-test runner, so the 120 s
      bound was simply too short; the honest outcome is rc=1, and it is recorded as such.
-  2. NOT introduced by this change. Attribution measured rather than assumed: the same five files
-     were run in a worktree of the PREVIOUS revision (f158b487) and in the working tree (33a1518f)
-     — all five exit rc=1 in BOTH, so every one of them predates this range.
-  3. Not silently swallowed. They are recorded as issues (record_issue, 2026-10-18) instead of being
-     fixed here, because each is a separate change needing its own evidence. The one worth naming:
-     tests/test_reviewer_backends.py asserts the light tier must resolve to the CANONICAL reviewer
-     model, while mcp-servers/loop-gov-mcp.py hardcodes a cheaper one — that disagreement is the
-     design question behind tonight's empty per-blob reviews.
+  2. NOT introduced by this change, and RE-RUNNABLE (this is the part an earlier version of this
+     note left as an unverifiable claim, and an adversarial finding was right to refuse it):
+        bash tests/verify_preexisting_failures.sh f158b487
+     measured 2026-10-18 -> every file 'SAME (pre-existing)': rc=1 at BOTH f158b487 and the
+     then-HEAD 9d2e1a7f, SCRIPT_RC=0. The script checks the PARENT revision out into a throwaway
+     git worktree and runs the same five files at BOTH revisions, printing per file whether the
+     exit codes AGREE. It exits non-zero if any file DIFFERS, so it cannot wave a real regression
+     away, and a later reviewer can re-run the same one line to confirm the attribution.
+  3. Not silently swallowed. Recorded as loop-governance events #156 (the light-tier model
+     disagreement, high) and #157 (the four other pre-existing failures, medium) for task
+     'drain-push-range-coverage' instead of being fixed here, because each is a separate change
+     needing its own evidence. The one worth naming: tests/test_reviewer_backends.py asserts the
+     light tier must resolve to the CANONICAL reviewer model, while mcp-servers/loop-gov-mcp.py
+     hardcodes a cheaper one — that disagreement is the design question behind tonight's empty
+     per-blob reviews.
   4. The 20 tests that DO pass still pass; nothing here claims a green suite.
