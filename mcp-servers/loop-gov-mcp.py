@@ -1176,6 +1176,40 @@ def _blobs_with_clean_verdict(blobs: dict,
             own.close()
 
 
+def _blobs_with_recorded_verdict(blobs: dict,
+                                 conn: sqlite3.Connection | None = None) -> dict[str, str]:
+    """{sha: verdict} for every blob in ``{path: sha}`` that has ANY stored verdict.
+
+    Why this exists (2026-10-18): the per-blob pass skipped only CLEAN blobs, so the
+    first blob judged FINDINGS was re-sent to the reviewer on EVERY close. Verdicts are
+    keyed by blob CONTENT, so re-reviewing identical bytes cannot change the answer: the
+    call is pure waste, and under a per-close cap of one blob it also starved every blob
+    sorted after it. Measured on a 38-blob drain: two closes in a row each reported
+    ``reviewed this pass : 1`` / ``still carry no review verdict: 10`` while the SAME
+    content was judged again and ten blobs had never been judged at all.
+
+    Fail OPEN here in the narrow sense only: an unreadable store returns {} so the
+    caller reviews (a re-review is waste, never a pass) — the opposite of the CLEAN
+    cache, which must fail closed because it CREDITS coverage.
+    """
+    if not blobs:
+        return {}
+    own = conn if conn is not None else _db()
+    try:
+        out: dict[str, str] = {}
+        for sha in blobs.values():
+            row = own.execute("SELECT verdict FROM blob_reviews WHERE blob_sha=?",
+                              (sha,)).fetchone()
+            if row is not None:
+                out[sha] = str(row[0]).upper()
+        return out
+    except sqlite3.Error:
+        return {}
+    finally:
+        if conn is None:
+            own.close()
+
+
 def _review_uncovered_blobs(blobs: dict, *, reviewer, material_for,
                             cap: int = BLOB_REVIEW_CAP_PER_CLOSE,
                             budget_s: float = BLOB_REVIEW_BUDGET_S,
@@ -1197,13 +1231,23 @@ def _review_uncovered_blobs(blobs: dict, *, reviewer, material_for,
     blocking: list = []
     remaining: list[str] = []
     failed: list[str] = []
+    judged: list[str] = []
     calls = 0
     consecutive_failures = 0
     started = time.monotonic()
     cached = _blobs_with_clean_verdict(blobs, conn=conn)
+    # A blob with a recorded NON-clean verdict has already been read. Identical content
+    # cannot produce a different verdict, so spend the cap on blobs nobody has judged
+    # (see _blobs_with_recorded_verdict for the measured starvation this fixes). It stays
+    # in `remaining`, so the close still refuses and the receipt still names it uncovered.
+    recorded = _blobs_with_recorded_verdict(blobs, conn=conn)
     for path, sha in sorted((blobs or {}).items()):
         if sha in cached:
             verdicts[sha] = "CLEAN"
+            continue
+        if recorded.get(sha):
+            judged.append(sha)
+            remaining.append(sha)
             continue
         if calls >= cap or (time.monotonic() - started) > budget_s:
             remaining.append(sha)
@@ -1241,7 +1285,7 @@ def _review_uncovered_blobs(blobs: dict, *, reviewer, material_for,
             _block, _annot = _blocking_findings(findings_json or "[]")
             blocking.extend(_block or [])
     return {"verdicts": verdicts, "remaining": remaining, "calls": calls,
-            "blocking": blocking, "failed": failed}
+            "blocking": blocking, "failed": failed, "judged": judged}
 
 
 def _push_base(repo: Path) -> str:
@@ -1400,12 +1444,24 @@ def _complete_push_range_blobs(lock: dict, cycle: dict, cx: Optional[dict] = Non
                 f"  reviewer timed out on: {len(pb['failed'])} blob(s) — not judged, so not"
                 " credited; the pass continues with the blobs that DO answer\n"
             )
+        # Say what to DO about a blob that was judged and did not come back clean. Re-running
+        # the close on identical content cannot change its verdict, so the only move is to fix
+        # the file (which produces a NEW blob) — and the counter that said "verdicts cached"
+        # under-reported while the pass stopped early, so name this set explicitly.
+        judged_line = ""
+        if pb.get("judged"):
+            judged_line = (
+                f"  already judged, not clean: {len(pb['judged'])} blob(s) — re-reviewing "
+                "identical content cannot change the verdict; fix the file and commit it "
+                "(the fix is a new blob) instead of closing again\n"
+            )
         return CallToolResult(content=[TextContent(type="text", text=(
             f"⏳ Cannot close yet: {len(remaining)} blob(s) of the push range still carry no "
             "review verdict.\n\n"
             f"  reviewed this pass : {pb.get('calls')} blob(s)\n"
             f"  verdicts cached    : {len(pb.get('verdicts') or {})}\n"
-            f"{failed_line}\n"
+            f"{failed_line}"
+            f"{judged_line}\n"
             "Verdicts are keyed by blob CONTENT, so closing again continues from here "
             "instead of redoing what is already judged (the per-close budget is "
             f"{BLOB_REVIEW_CAP_PER_CLOSE} blobs / {int(BLOB_REVIEW_BUDGET_S)}s)."
