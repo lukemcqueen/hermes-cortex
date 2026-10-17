@@ -177,6 +177,7 @@ repo; this public repo carries only framework docs (PRDs, design, reference).
 | `docs/agent-memory-pointer-pattern.md` | Pointer-memory pattern (MEMORY.md → mycortex) |
 | `docs/knowledge-isolation-architecture.md` | Knowledge isolation design |
 | `docs/design/DESIGN.md` | Design principles |
+| `docs/evidence/close-budget-bound-2026-10-18.txt` | ONE close, ONE client window: the six 300 s stalls, the design bound that removes them (240 s window, one blob call per window, split before the range call) and the differential A4 result — 38 findings before the change, 38 after |
 | `docs/design/adversarial-review-cost-reduction.md` | Plan (levers A/B/C) to scope the close review to the session's own blobs, unify tier+material bases, and add a local pre-close pre-flight — measured against cycles 12777/12779/12782 |
 | `docs/evidence/adversarial-review-solution-request-2026-10-18.md` | The design request put to the governed reviewer: keep adversarial review strong but stop the close-time stall; states the one-window budget arithmetic, the shared-author attribution problem and the options already rejected |
 | `docs/evidence/adversarial-review-solution-2026-10-18.txt` | The reviewer's verdict on that request (FINDINGS: 2 HIGH, 1 MEDIUM, 1 INFO), read live from the store |

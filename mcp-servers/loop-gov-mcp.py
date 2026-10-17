@@ -1066,7 +1066,37 @@ _REVIEW_RECEIPT_CHECK_REL = "ops/scripts/lib/review-receipt-check.py"
 # REPORTING what is left so the next close continues rather than deadlocking. Defined
 # here, above the helpers that use them as defaults (a default is evaluated at DEF time).
 BLOB_REVIEW_CAP_PER_CLOSE = 15
-BLOB_REVIEW_BUDGET_S = 600.0
+# ONE close, ONE client window (2026-10-18). Six end_change calls in one session each hit
+# the Hermes MCP client ceiling (300s) with NO verdict — not CLEAN, not FINDINGS, not an
+# error the caller could read (cycles 12777/12779/12782/12792/12795/12797; the last three
+# were documentation-only commits). Cause: a close spent a whole-range review budget and
+# THEN a per-blob pass with a budget of its own, so the SUM could exceed the window and
+# the caller gave up while the server was still working.
+#
+# The bound is a DESIGN bound, not a longer timeout (the module measures a blob call at
+# 180-220s, below). One window fits ONE blob call, so a close spends its window on ONE
+# thing and REPORTS what it did not reach; the next close continues from the blob-verdict
+# cache (_blobs_with_clean_verdict) instead of re-doing it. Operator requirement
+# (2026-10-18): "the reviews should be shorter than 300s" — the window is never raised.
+# Asserted, with the arithmetic, by tests/test_close_budget_bounds.py.
+CLOSE_TOTAL_BUDGET_S = 240.0                  # must stay < the 300s MCP client window
+BLOB_REVIEW_BUDGET_S = CLOSE_TOTAL_BUDGET_S   # a pass may use the whole window ...
+CLOSE_BLOBS_PER_WINDOW = 1                    # ... which fits exactly ONE blob call
+# Above this own-diff size the range call is NOT attempted: it cannot answer inside the
+# window, and attempting it starves the per-blob pass that would have progressed. Below
+# it the light reviewer answers in seconds, leaving room for blob work behind it.
+CLOSE_SPLIT_OWN_LINES = 50
+
+
+def _close_budget_left(started: float, total: float = CLOSE_TOTAL_BUDGET_S) -> float:
+    """Seconds left in ONE close's client window — never negative.
+
+    Handed to whichever pass a close runs, so two passes can never stack past the window
+    the caller waits on (see CLOSE_TOTAL_BUDGET_S).
+    """
+    return max(0.0, total - (time.monotonic() - started))
+
+
 # A single blob the reviewer was too SLOW to answer is not an outage. Measured
 # 2026-10-16: blob calls ran 180-220s against a 240s wall-clock ceiling, so the
 # slowest blob of a range timed out while its neighbours would have answered — and
@@ -5542,6 +5572,20 @@ def _adversarial_review_gate(lock: dict, cycle: dict,
                 "RELEASED and this cycle is closed unscored; nothing sufficiently complex "
                 "ships unreviewed."
             ))])
+
+    # SPLIT BEFORE THE FIRST CALL (2026-10-18, reviewer finding ADV-12799-1: name the
+    # clock/hand-off rule and whether to split before the call). Above CLOSE_SPLIT_OWN_LINES
+    # the range call cannot answer inside the client window, and attempting it starves the
+    # per-blob pass that WOULD have made progress — so the window goes to the blob pass,
+    # which is bounded, resumable and REQUIRED by the caller anyway (the marker below makes
+    # coverage full). Below the threshold the light reviewer answers in seconds, leaving
+    # room for blob work behind it.
+    if cx["lines"] > CLOSE_SPLIT_OWN_LINES:
+        log.info("self-adversarial review: cycle %s own diff is wide (%s lines > %s) — "
+                 "splitting to REQUIRED per-blob coverage instead of one range call",
+                 cycle.get("id"), cx["lines"], CLOSE_SPLIT_OWN_LINES)
+        _mark_close_refused(cycle.get("id", 0), "REVIEW_INCOMPLETE", "[]", lock)
+        return None
 
     try:
         reviewer_text = _call_reviewer(prompt, author=_author, cx=cx)
