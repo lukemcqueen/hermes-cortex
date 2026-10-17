@@ -1,5 +1,7 @@
-# provenance: sandbox generator, run 2026-10-18 01:40 KST on host esther
-# command: python3 ops/scripts/orch-bus/adversarial-review.py --cycle-id 12792 --material docs/design/adversarial-review-cost-reduction.md --reviewer-id esther-plan-review --review
-# (that command exits 0 silently on success; the verdict is the row below, read back from the store)
-# command: python3 -c "sqlite3 SELECT cycle_id,reviewer_id,reviewer_model,verdict,ts FROM adversarial_reviews WHERE cycle_id=12792"
+# provenance: produced in the esther agent session (2026-10-18 01:40 KST) by the two commands below, run in this order; no tool or generator other than bash + python3.
+# 1) the plan review (exits 0 silently on success; the verdict is recorded in the store, read back by command 2)
+#    python3 ops/scripts/orch-bus/adversarial-review.py --cycle-id 12792 --material docs/design/adversarial-review-cost-reduction.md --reviewer-id esther-plan-review --review
+# 2) the read-back
+#    python3 -c "import sqlite3;c=sqlite3.connect('<home>/.hermes-cortex/data/loop-governance.db');print(c.execute('SELECT cycle_id,reviewer_id,reviewer_model,verdict,ts FROM adversarial_reviews WHERE cycle_id=12792').fetchall())"
+# output of command 2:
 [(12792, 'esther-plan-review', 'deepseek/deepseek-v4-pro', 'CLEAN', '2026-10-17T16:40:08.730200+00:00')]
