@@ -8,8 +8,12 @@
 # entire host is blocked by one failed pull, with no signal other than the refusal.
 #
 # `abort_stalled_rebase` restores the PRE-PULL state: `git rebase --abort` returns the
-# branch to its original tip and preserves every local commit, so a failed sync is
-# inert instead of host-wide blocking.
+# branch to the ORIGINAL local tip, so every local commit that existed before the pull is
+# preserved. The in-progress rebase work is DISCARDED — an upstream commit that was being
+# applied is NOT carried onto this branch by the abort. (Adversarial finding ADV-12971-2,
+# 2026-10-18: the earlier wording, "preserves every local commit", read as if nothing were
+# lost. Both halves are asserted in tests/test_stalled_rebase_abort.py.) A failed sync is
+# thereby inert instead of host-wide blocking.
 #
 # Usage:
 #   source .../git-stalled-rebase.sh
@@ -26,10 +30,16 @@ abort_stalled_rebase() {
   if [ ! -d "$git_dir/rebase-merge" ] && [ ! -d "$git_dir/rebase-apply" ]; then
     return 0
   fi
-  if git rebase --abort >/dev/null 2>&1; then
+  # Capture the abort's OWN output instead of discarding it (adversarial finding
+  # ADV-12971-1, 2026-10-18): `>/dev/null 2>&1` meant a failed abort told the operator
+  # nothing about WHY it failed — the one case where the reason is the actionable part.
+  # stdout is captured too, which also keeps the silence contract below intact.
+  local abort_output
+  if abort_output="$(git rebase --abort 2>&1)"; then
     echo "aborted a stopped rebase — pre-pull state restored (local commits preserved)"
     return 0
   fi
-  echo "could NOT abort the stopped rebase — the repository needs manual attention" >&2
+  local first_line="${abort_output%%$'\n'*}"
+  echo "could NOT abort the stopped rebase — the repository needs manual attention${first_line:+ — ${first_line}}" >&2
   return 1
 }

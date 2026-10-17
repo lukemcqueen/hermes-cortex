@@ -134,6 +134,19 @@ def case_conflicted_rebase_is_recovered(root: Path) -> None:
         "the local commit is still in the log by subject",
         "local work" in git(repo, "log", "--oneline").stdout,
     )
+    # The DISCARD half of the contract (adversarial finding ADV-12971-2, 2026-10-18). The
+    # docstring used to say only that local commits are "preserved", which reads as if nothing
+    # were lost: the in-progress rebase IS lost, so assert that too rather than leaving the
+    # claim half-stated. Both are asserted BEFORE the extra commit below changes the graph.
+    check(
+        "the in-progress upstream commit is DISCARDED (not an ancestor of HEAD)",
+        git(repo, "merge-base", "--is-ancestor", "upstream", "HEAD", check_rc=False).returncode != 0,
+    )
+    check(
+        "main's post-abort graph is exactly base + local work",
+        [ln for ln in git(repo, "log", "--format=%s").stdout.splitlines() if ln.strip()]
+        == ["local work", "base"],
+    )
     now_ok = git(repo, "commit", "-q", "--allow-empty", "-m", "after abort", check_rc=False)
     check("a commit now SUCCEEDS", now_ok.returncode == 0, f"rc={now_ok.returncode}")
 
