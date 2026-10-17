@@ -36,6 +36,12 @@ LOCKEOF
 }
 
 CORTEX_REPO="${CORTEX_REPO:-${HOME}/hermes-cortex}"
+
+# Fail-safe cleanup for an interrupted rebase (added 2026-10-18): a `git pull --rebase`
+# that conflicts leaves the repository stopped mid-rebase, refusing every commit and push
+# on the host until someone cleans it up by hand.
+# shellcheck source=ops/scripts/lib/git-stalled-rebase.sh
+source "$CORTEX_REPO/ops/scripts/lib/git-stalled-rebase.sh"
 SUBMIT_FILE="${CORTEX_REPO}/ops/install/deploy/nginx/blocked_ips.submit"
 ADD_FILE="${CORTEX_REPO}/ops/install/deploy/nginx/blocked_ips.add"
 NEW_IPS=false
@@ -115,6 +121,10 @@ else
       if [ $push_attempt -eq 1 ]; then
         log "  ⚠ Push failed (code ${PUSH_EXIT}) — pulling and retrying"
         git pull --rebase origin main 2>&1 || true
+        # The pull above can leave the rebase STOPPED (conflict/timeout) and the
+        # `|| true` hides it: clear it so a failed retry is inert rather than
+        # host-wide blocking.
+        abort_stalled_rebase 2>&1 | while IFS= read -r line; do log "$line"; done || true
       else
         PIPELINE_OUTPUT+="  ⚠ Push failed after retry"$'\n'
       fi

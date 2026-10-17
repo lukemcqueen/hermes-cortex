@@ -37,6 +37,15 @@ fi
 
 cd "$CORTEX_REPO"
 
+# Fail-safe cleanup for an interrupted rebase (added 2026-10-18). A `git pull
+# --rebase` that hits a conflict leaves the repository STOPPED MID-REBASE; every
+# commit and push on the host is then refused ("Committing is not possible
+# because you have unmerged files") until someone cleans it up by hand. Sourced,
+# not required-if-present: a deploy that ships one without the other must fail
+# loudly here rather than silently drop the guard.
+# shellcheck source=ops/scripts/lib/git-stalled-rebase.sh
+source "$CORTEX_REPO/ops/scripts/lib/git-stalled-rebase.sh"
+
 # Use the same strategy as the working monitor script - assert repo exists and log what's happening
 log()  { echo "[$(ts) cortex-sync] $*"; }
 stash_pop() { if $STASHED; then git stash pop 2>&1 | while IFS= read -r line; do echo "[$(ts) cortex-sync] $line"; done || true; fi }
@@ -82,6 +91,10 @@ fi
 PULL_OUTPUT=$(GIT_EDITOR=true SKIP_POST_MERGE=1 "$TIMEOUT_CMD" 20 git pull --rebase origin main 2>&1) || {
     PULL_EXIT=$?
     CTS=$(ts)
+    # Both failure shapes below (timeout mid-rebase, conflict) can leave the
+    # rebase STOPPED. Clear it first so the failure is inert: `git rebase --abort`
+    # restores the pre-pull state and preserves every local commit.
+    abort_stalled_rebase 2>&1 | while IFS= read -r line; do log "$line"; done || true
     if [ "$PULL_EXIT" -eq 124 ]; then
         echo "[$CTS cortex-sync] git pull --rebase timed out after 20s, will retry next cycle"
         stash_pop
