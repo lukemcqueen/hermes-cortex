@@ -277,7 +277,12 @@ def test_neither_this_file_nor_the_enforcer_restates_an_identifier():
 # hex group plus the two groups after it, so a canonical UUID is refused by the
 # write gate as a "phone number". Sampled against the pre-fix pattern over
 # 200,000 v4 UUIDs: 4,749 (2.37%) were flagged, e.g. the tail of the first hex
-# group plus the next two. It refused a verbatim psql row in
+# group plus the next two. The raw output of that sampling is committed beside
+# it, at docs/evidence/pii-uuid-false-positive/transcript.txt, produced by
+# probe.py in the same directory (commit 3f225c69) and re-runnable as
+# `python3 docs/evidence/pii-uuid-false-positive/probe.py`.
+#
+# It refused a verbatim psql row in
 # docs/evidence/backlog-run-2026-10-16-selection.md, which had to be elided.
 #
 # The fixtures below are real UUIDs the pre-fix pattern DID flag, assembled from
