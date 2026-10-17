@@ -9,10 +9,12 @@ and related scripts. New variables should be added here with all fields.
 
 The env file lives at `~/hermes-cortex/.env` (gitignored) — the single source of truth
 for all Cortex environment variables. It's auto-sourced by deploy scripts and `cortex-update.sh`.
-Every reference now points here: the old `~/.hermes-cortex/cortex-bus.conf` name was
-migrated into this one file (`consolidate-env.sh` performed the merge; the deploy dir
-holds no `.env`). `~/.hermes/.env` is **Hermes-owned** — provider keys, Telegram,
-browser/terminal settings — and is never merged here.
+Every reference now points here. The deploy dir carries a **sanctioned back-compat symlink**,
+`~/.hermes-cortex/.env → ~/hermes-cortex/.env`, so legacy readers resolving the deploy-dir
+path keep working; the old `~/.hermes-cortex/cortex-bus.conf` name was retired 2026-10-17
+(`consolidate-env.sh` migrates it to the `.env` symlink). A **real file** (not a symlink) at
+`~/.hermes-cortex/.env` is unowned — a doctor FAIL. `~/.hermes/.env` is **Hermes-owned** —
+provider keys, Telegram, browser/terminal settings — and is never merged here.
 
 ```bash
 # Copy the template, then edit

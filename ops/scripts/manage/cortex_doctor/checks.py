@@ -5402,10 +5402,12 @@ def check_cortex_env(res: "Results") -> None:
     """The ONE canonical cortex env: ~/hermes-cortex/.env.
 
     Since the 2026-10 single-env refactor every script reads that file, so a
-    missing or misplaced env silently degrades the whole host. Catches the two
-    historical traps: a stray `.env` in the DEPLOYED dir (~/.hermes-cortex — it
-    was a symlink to ~/langfuse/.env), and a legacy cortex-bus.conf that is not
-    the sanctioned symlink to the canonical env.
+    missing or misplaced env silently degrades the whole host. The deploy dir
+    holds a SANCTIONED back-compat symlink (~/.hermes-cortex/.env → the
+    canonical) so legacy readers keep resolving the same file. Catches the two
+    historical traps: a REAL file (not a symlink) at the deploy-dir .env path —
+    once a stray symlink to ~/langfuse/.env — and a leftover retired
+    cortex-bus.conf that is not the sanctioned symlink.
     """
     canon = HOME / "hermes-cortex" / ".env"
     deploy_env = CORTEX_HOME / ".env"
@@ -5416,21 +5418,35 @@ def check_cortex_env(res: "Results") -> None:
         return
 
     problems = []
-    if deploy_env.exists():
-        problems.append("stray ~/.hermes-cortex/.env (the deployed dir holds no .env)")
     if not canon.exists():
         problems.append("canonical ~/hermes-cortex/.env is MISSING")
     elif (canon.stat().st_mode & 0o777) != 0o600:
         problems.append(
             f"~/hermes-cortex/.env perms {oct(canon.stat().st_mode & 0o777)} (want 600)")
+    # The deploy-dir .env is the sanctioned back-compat symlink. A real file at
+    # that path is unowned (historically a stray symlink to ~/langfuse/.env).
+    if deploy_env.exists() and not deploy_env.is_symlink():
+        problems.append("~/.hermes-cortex/.env is a REAL file, not the sanctioned symlink")
+    elif deploy_env.is_symlink():
+        try:
+            if deploy_env.resolve() != canon.resolve():
+                problems.append("~/.hermes-cortex/.env symlink points elsewhere")
+        except OSError:
+            problems.append("~/.hermes-cortex/.env symlink is broken")
+    elif canon.exists():
+        problems.append("~/.hermes-cortex/.env symlink is MISSING (run consolidate-env.sh)")
+    # cortex-bus.conf is retired (2026-10-17 rename to .env). A leftover real
+    # file is a conflict; a leftover symlink to the canonical is inert-but-stale.
     if legacy.exists() and not legacy.is_symlink():
-        problems.append("~/.hermes-cortex/cortex-bus.conf is a real file, not the symlink")
+        problems.append("retired ~/.hermes-cortex/cortex-bus.conf is a real file — remove it")
     elif legacy.is_symlink():
         try:
             if legacy.resolve() != canon.resolve():
-                problems.append("cortex-bus.conf symlink points elsewhere")
+                problems.append("retired cortex-bus.conf symlink points elsewhere")
+            else:
+                problems.append("retired cortex-bus.conf symlink remains — remove it")
         except OSError:
-            problems.append("cortex-bus.conf symlink is broken")
+            problems.append("retired cortex-bus.conf symlink is broken")
 
     if problems:
         res.add("cortex env", "FAIL", "; ".join(problems),
@@ -5438,8 +5454,8 @@ def check_cortex_env(res: "Results") -> None:
                 "bash ~/.hermes-cortex/scripts/consolidate-env.sh")
     else:
         res.add("cortex env", "PASS",
-                "canonical ~/hermes-cortex/.env present (600); cortex-bus.conf is "
-                "the sanctioned symlink; no deploy-dir .env")
+                "canonical ~/hermes-cortex/.env present (600); "
+                "~/.hermes-cortex/.env is the sanctioned symlink; cortex-bus.conf retired")
 
 
 def check_paused_cron_reasons(res) -> None:

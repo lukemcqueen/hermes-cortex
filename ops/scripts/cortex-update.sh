@@ -144,10 +144,12 @@ fi
 # ── Cortex environment — single source of truth ──────────────
 # ~/hermes-cortex/.env is the gitignored per-machine config.
 # ⚠ ~/.hermes/.env is Hermes Agent's own config — never write to it.
-# Migrate the legacy bus conf into the canonical env FIRST (idempotent). Every
-# script reads ~/hermes-cortex/.env since the 2026-10 refactor, so a host with
-# only ~/.hermes-cortex/cortex-bus.conf must be migrated before anything reads
-# the env. Uses $HOME + bash only — identical on Linux and macOS.
+# Migrate the legacy bus conf into the canonical env FIRST (idempotent).
+# consolidate-env.sh seeds/migrates the canonical ~/hermes-cortex/.env and
+# creates the sanctioned back-compat symlink ~/.hermes-cortex/.env → canonical,
+# retiring the old cortex-bus.conf name. Every script reads ~/hermes-cortex/.env
+# since the 2026-10 refactor, so a legacy host must be consolidated before
+# anything reads the env. Uses $HOME + bash only — identical on Linux and macOS.
 if [[ -f "${REPO_DIR}/ops/scripts/manage/consolidate-env.sh" ]]; then
   bash "${REPO_DIR}/ops/scripts/manage/consolidate-env.sh" >/dev/null 2>&1 || true
 fi
