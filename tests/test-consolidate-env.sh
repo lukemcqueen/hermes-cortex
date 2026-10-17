@@ -67,15 +67,34 @@ else
   fi
 fi
 
-# ── Case 4: --check is a dry check (exit 1 on missing vars) ──────────────
-plan "--check reports missing confrontation vars"
+# ── Case 4: --check is a dry check, asserted both ways ───────────────────
+# Complete: every legacy var is already in the canonical env → exit 0.
+plan "--check exits 0 when every legacy var is represented in the canonical env"
 TOP3="$(mktemp -d)"
 make_host "$TOP3"
+printf 'CORTEX_BUS_URL=http://localhost\n' > "$HOME/hermes-cortex/.env"
 printf 'CORTEX_BUS_URL=http://localhost\n' > "$HOME/.hermes-cortex/cortex-bus.conf"
 if bash "$SCRIPT" --check >/dev/null 2>&1; then
-  ok   "--check passed (all vars represented)"
+  ok   "--check exited 0 (all vars represented)"
+  [[ ! -L "$HOME/.hermes-cortex/.env" ]] \
+    && ok   "--check left no symlink behind (dry)" \
+    || bad  "--check created a symlink (not dry)"
 else
-  ok   "--check returned non-zero as expected (missing vars detected)"
+  bad  "--check exited non-zero although every var is represented (rc=$?)"
+fi
+
+# Missing: a legacy var is NOT in the canonical env → exit 1 + names it.
+plan "--check exits 1 and names the missing var"
+printf 'CORTEX_BUS_TOKEN=abc\n' >> "$HOME/.hermes-cortex/cortex-bus.conf"
+CHECK_OUT="${TMPDIR:-/tmp}/check-missing.out"
+if bash "$SCRIPT" --check > "$CHECK_OUT" 2>&1; then
+  bad  "--check exited 0 although CORTEX_BUS_TOKEN is missing from the canonical env"
+else
+  if grep -q "CORTEX_BUS_TOKEN" "$CHECK_OUT"; then
+    ok   "--check exited non-zero and named CORTEX_BUS_TOKEN"
+  else
+    bad  "--check exited non-zero but did not name the missing var"
+  fi
 fi
 
 # ── cleanup ──────────────────────────────────────────────────────────────
