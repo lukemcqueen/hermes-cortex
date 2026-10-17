@@ -328,6 +328,35 @@ def test_a_dashed_digit_run_that_is_not_a_uuid_still_fires():
     assert gate("acct " + "1234" + _DASH + "5678" + _DASH + "9012")
 
 
+def test_the_committed_transcript_records_the_numbers_this_file_claims():
+    """Bind the comment's measurement to the committed artifact, not to prose.
+
+    The numbers in the comment above are load-bearing (they are the corrected
+    figure), so they are asserted against the raw output committed at
+    docs/evidence/pii-uuid-false-positive/transcript.txt rather than trusted as
+    text. If the probe is re-run with different results, this test and the
+    comment must move together.
+    """
+    transcript = (
+        _REPO / "docs" / "evidence" / "pii-uuid-false-positive" / "transcript.txt"
+    ).read_text(encoding="utf-8")
+    for recorded in (
+        "v4 UUIDs sampled          : 200000",
+        "matched as a phone        : 4749 (2.37%)",
+        "refused by pre-fix module : 460",
+        "refused by module under test: 0",
+        "**Verdict: PASS**",
+    ):
+        assert recorded in transcript, (
+            f"the committed transcript no longer records {recorded!r} — the "
+            "comment above and the artifact have drifted apart"
+        )
+    # The artifact must also be the thing that names its own producer and the
+    # script that re-derives it, or a reader cannot check any of the above.
+    assert "probe.py" in transcript
+    assert "re-run   :" in transcript
+
+
 # The revision BEFORE this change, pinned by SHA — never 'HEAD': the fix lands
 # in the same change as this test, so HEAD would resolve to the FIXED module and
 # the comparison would be a tautology.
