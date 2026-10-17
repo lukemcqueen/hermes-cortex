@@ -93,8 +93,18 @@ PULL_OUTPUT=$(GIT_EDITOR=true SKIP_POST_MERGE=1 "$TIMEOUT_CMD" 20 git pull --reb
     CTS=$(ts)
     # Both failure shapes below (timeout mid-rebase, conflict) can leave the
     # rebase STOPPED. Clear it first so the failure is inert: `git rebase --abort`
-    # restores the pre-pull state and preserves every local commit.
-    abort_stalled_rebase 2>&1 | while IFS= read -r line; do log "$line"; done || true
+    # restores the pre-pull state and preserves every local commit. The status is
+    # captured EXPLICITLY — a piped helper reports the pipe's status, so a failed
+    # abort would read as success while the host stayed blocked.
+    abort_out=$(abort_stalled_rebase 2>&1) && abort_rc=0 || abort_rc=$?
+    if [ -n "$abort_out" ]; then
+        printf '%s\n' "$abort_out" | while IFS= read -r line; do log "$line"; done
+    fi
+    if [ "$abort_rc" -ne 0 ]; then
+        log "FATAL: a rebase is stopped in $CORTEX_REPO and could not be aborted — commits and pushes stay blocked until it is cleared by hand"
+        stash_pop
+        exit 1
+    fi
     if [ "$PULL_EXIT" -eq 124 ]; then
         echo "[$CTS cortex-sync] git pull --rebase timed out after 20s, will retry next cycle"
         stash_pop

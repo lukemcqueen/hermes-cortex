@@ -122,9 +122,17 @@ else
         log "  ⚠ Push failed (code ${PUSH_EXIT}) — pulling and retrying"
         git pull --rebase origin main 2>&1 || true
         # The pull above can leave the rebase STOPPED (conflict/timeout) and the
-        # `|| true` hides it: clear it so a failed retry is inert rather than
-        # host-wide blocking.
-        abort_stalled_rebase 2>&1 | while IFS= read -r line; do log "$line"; done || true
+        # `|| true` hides it. Capture the helper's OWN status explicitly: a piped
+        # helper would report the pipe's status, so a failed abort would read as
+        # success while the host stayed blocked.
+        abort_out=$(abort_stalled_rebase 2>&1) && abort_rc=0 || abort_rc=$?
+        if [ -n "$abort_out" ]; then
+          printf '%s\n' "$abort_out" | while IFS= read -r line; do log "$line"; done
+        fi
+        if [ "$abort_rc" -ne 0 ]; then
+          PIPELINE_OUTPUT+="  ❌ A rebase is stopped in ${CORTEX_REPO} and could not be aborted — commits and pushes stay blocked until it is cleared by hand"$'\n'
+          break
+        fi
       else
         PIPELINE_OUTPUT+="  ⚠ Push failed after retry"$'\n'
       fi

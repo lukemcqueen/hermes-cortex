@@ -24,7 +24,10 @@ import tempfile
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
-LIB = REPO / "ops" / "scripts" / "lib" / "git-stalled-rebase.sh"
+# Default is the SHIPPED helper. REBASE_LIB exists so the discrimination is
+# demonstrable against a mutated COPY (a test that cannot be pointed at the
+# pre-fix/mutated revision is not evidence that it detects the difference).
+LIB = Path(os.environ.get("REBASE_LIB") or (REPO / "ops" / "scripts" / "lib" / "git-stalled-rebase.sh"))
 
 FAILURES: list[str] = []
 
@@ -152,6 +155,36 @@ def case_clean_repo_is_a_noop(root: Path) -> None:
     check("HEAD unchanged", git(repo, "rev-parse", "HEAD").stdout.strip() == before)
 
 
+def case_failed_abort_is_reported(root: Path) -> None:
+    """The callers branch on the helper's rc, so rc must distinguish 'usable'
+    from 'a rebase is stopped and could not be cleared'."""
+    print("\nCASE 3 — a rebase that CANNOT be aborted reports failure, never silence")
+    repo = root / "badstate"
+    repo.mkdir()
+    git(repo, "init", "-q", "-b", "main")
+    (repo / "f.txt").write_text("base\n")
+    git(repo, "add", "f.txt")
+    git(repo, "commit", "-q", "-m", "base")
+    gd = Path(git(repo, "rev-parse", "--absolute-git-dir").stdout.strip())
+    # A rebase-merge marker with no rebase behind it: the helper detects the
+    # stopped state, and `git rebase --abort` cannot clear it.
+    (gd / "rebase-merge").mkdir()
+
+    done = run_helper(repo)
+
+    check(
+        "helper rc 1 — a failed abort is NOT reported as success",
+        done.returncode == 1,
+        f"rc={done.returncode}",
+    )
+    check("stderr names the condition", "could NOT abort" in done.stderr, done.stderr.strip()[:110])
+    check(
+        "stdout stays empty (the abort-success line is not emitted)",
+        done.stdout == "",
+        repr(done.stdout),
+    )
+
+
 def main() -> int:
     if not LIB.is_file():
         print(f"FAIL: the shipped helper is missing: {LIB}")
@@ -163,6 +196,7 @@ def main() -> int:
     try:
         case_conflicted_rebase_is_recovered(root)
         case_clean_repo_is_a_noop(root)
+        case_failed_abort_is_reported(root)
     finally:
         shutil.rmtree(root, ignore_errors=True)
     print(f"\n{'ALL PASS' if not FAILURES else 'FAILURES: ' + ', '.join(FAILURES)}")
