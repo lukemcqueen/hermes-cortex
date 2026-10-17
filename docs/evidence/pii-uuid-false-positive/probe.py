@@ -87,6 +87,8 @@ def main() -> int:
     print("producer : docs/evidence/pii-uuid-false-positive/probe.py")
     print("re-run   : python3 docs/evidence/pii-uuid-false-positive/probe.py"
           "   (MODPATH overrides the module under test)")
+    print("regression test that pins this, by node id:"
+          " tests/test_enforcer_pii_gate.py::test_the_uuid_false_positive_existed_before_this_change")
     print("this file is that script's stdout, captured verbatim — the counts below"
           " are re-derivable by re-running it")
     print(f"pre-fix revision : {PRE_FIX_REV}")

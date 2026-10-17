@@ -1,5 +1,6 @@
 producer : docs/evidence/pii-uuid-false-positive/probe.py
 re-run   : python3 docs/evidence/pii-uuid-false-positive/probe.py   (MODPATH overrides the module under test)
+regression test that pins this, by node id: tests/test_enforcer_pii_gate.py::test_the_uuid_false_positive_existed_before_this_change
 this file is that script's stdout, captured verbatim — the counts below are re-derivable by re-running it
 pre-fix revision : 4764289b
 module under test: $HOME/hermes-cortex/plugins/governance-enforcer/__init__.py

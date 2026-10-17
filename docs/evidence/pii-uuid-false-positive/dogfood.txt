@@ -2,7 +2,7 @@
 
 Command: `bash ~/.hermes-cortex/scripts/cortex-dogfood.sh --force`
 Exit status: rc=0 (captured unpiped)
-Doctor summary line: ⚠️  Overall: WARNING  (465 pass · 9 warn · 0 fail · 3 info)
+Doctor summary line: ⚠️  Overall: WARNING  (466 pass · 9 warn · 0 fail · 2 info)
 
 Redacted at the generator: `/home/<user>` -> `$HOME`, host name -> `$HOST`.
 This is the deployed-state check that must pass before the range may push;
@@ -20,7 +20,7 @@ it is what ADV-12758-3 asked for rather than a self-reported claim.
    
    [1m━━━ Cortex Update ━━━[0m
    
-   [0;32m✓[0m Updated: 80cbe477 → 80cbe477
+   [0;32m✓[0m Updated: 10003715 → 10003715
    
    [0;32m✓[0m Force mode — re-checking all mapped files…
    UNLOCKED: $HOME/.hermes/plugins/governance-enforcer/__init__.py
@@ -32,6 +32,8 @@ it is what ADV-12758-3 asked for rather than a self-reported claim.
    UNLOCKED: $HOME/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py
    UNLOCKED: $HOME/.hermes-cortex/hooks
    UNLOCKED: $HOME/.hermes-cortex/scripts/hermes-plugin-lock
+   [0;32m✓[0m Cleared stale pycache: plugins/governance-enforcer
+   [1;33m⚠[0m ⚠️  Run /reset to load the updated enforcer plugin in your current session
    LOCKED: $HOME/.hermes/plugins/governance-enforcer/__init__.py
    LOCKED: $HOME/.hermes-cortex/scripts/pre-commit-score
    LOCKED: $HOME/.hermes-cortex/scripts/pre-push-pull
@@ -199,7 +201,7 @@ it is what ADV-12758-3 asked for rather than a self-reported claim.
    [1;33m⚠[0m Unknown restart command: restart_health_server
    [0;32m✓[0m Bus code changed — restarting Agent Bus…
    [0;32m✓[0m   Restarting Agent Bus (systemd)…
-   [0;32m✓[0m State saved: 80cbe477
+   [0;32m✓[0m State saved: 10003715
    
    [1m━━━ Summary ━━━[0m
    [0;32m✓[0m 294 file(s) updated
@@ -380,7 +382,7 @@ it is what ADV-12758-3 asked for rather than a self-reported claim.
      [mcp-server] DEBUG: HTTPError 401 for Bearer auth — trying Basic fallback
      [mcp-server] DEBUG: HTTPError 401 for Bearer auth — trying Basic fallback
      
-     ━━━ Hermes Cortex Doctor ━━━  (08:43:50)
+     ━━━ Hermes Cortex Doctor ━━━  (09:02:47)
      
        ✅ Repo branch
        ⚠️  Repo clean
@@ -483,7 +485,7 @@ it is what ADV-12758-3 asked for rather than a self-reported claim.
        ✅ Hook: post-push (symlink)
        ✅ Redundant local hooks
        ✅ Governance bypass
-       ℹ️  PENDING cycles
+       ✅ PENDING cycles
        ✅ Orphaned locks
        ✅ Skills gate
        ✅ Local hooksPath override check
@@ -861,7 +863,7 @@ it is what ADV-12758-3 asked for rather than a self-reported claim.
        ✅ Stranded slices
        ⚠️  loop-gov daemon
      
-       ⚠️  Overall: WARNING  (465 pass · 9 warn · 0 fail · 3 info)
+       ⚠️  Overall: WARNING  (466 pass · 9 warn · 0 fail · 2 info)
      
        ═══════════════════════════════════════════════════
        🔧 REQUIRED ACTIONS — resolve each ⚠️  or ❌ above
@@ -888,10 +890,10 @@ it is what ADV-12758-3 asked for rather than a self-reported claim.
    [mcp-server] DEBUG: HTTPError 401 for Bearer auth — trying Basic fallback
    [mcp-server] DEBUG: HTTPError 401 for Bearer auth — trying Basic fallback
    
-   ━━━ Hermes Cortex Doctor ━━━  (08:44:01)
+   ━━━ Hermes Cortex Doctor ━━━  (09:02:58)
    
      ✅ Repo branch — on 'main'
-     ⚠️  Repo clean — 3 uncommitted change(s)
+     ⚠️  Repo clean — 4 uncommitted change(s)
             🔶 Suggestion: Run: git status to review
      ✅ Repo sync — up to date with origin/main
      ✅ Deploy sync — deployed commit matches HEAD
@@ -907,7 +909,7 @@ it is what ADV-12758-3 asked for rather than a self-reported claim.
      ✅ SOUL.md reverse drift (~/.hermes)
      ✅ Skills manifest (basic) — found at $HOME/.hermes-cortex/skills.yaml
      ✅ Cron prompt stale refs — no stale bus-target references in live cron prompts
-     ✅ Script run evidence — all 54 changed script(s) have run through the scheduler since their change
+     ✅ Script run evidence — all 55 changed script(s) have run through the scheduler since their change
      ✅ Crons registered — all 21 expected crons present and healthy
      ℹ️  Orphan crons: 1 — Not in expected list: orch-backlog-driver
             🔶 Suggestion: Rename to local-<name> to opt a cron out of doctor checks
@@ -936,7 +938,7 @@ it is what ADV-12758-3 asked for rather than a self-reported claim.
      ✅ Metrics arrival age — 1 agent(s) pushed within 30m; arrived: Esther; 5 known agent(s) not seen at this sink (Gisu, Joseph, Kustos, Moses, Titus) — expected if they push elsewhere or have no VICTORIA_METRICS_URL
      ✅ Systemd scope — no system-level Hermes services (all user-level)
      ✅ Disk usage — 81G used / 789G free (10%)
-     ✅ Memory — 4.3Gi used / 7.7Gi total
+     ✅ Memory — 4.4Gi used / 7.7Gi total
      ✅ Network safety — no services exposed on 0.0.0.0
      ✅ Systemd linger — enabled — user services survive reboot
      ✅ Systemd stale units — no unexpected failed units
@@ -993,7 +995,7 @@ it is what ADV-12758-3 asked for rather than a self-reported claim.
      ✅ Hook: post-push (symlink) — → $HOME/.hermes-cortex/scripts/post-push-audit
      ✅ Redundant local hooks — no redundant hooks found in local .git/hooks directories
      ✅ Governance bypass — no bypass markers found
-     ℹ️  PENDING cycles — 1 active-task cycle(s) (lock held): pii-gate-uuid-measurement-consistency#1 — score at end_change
+     ✅ PENDING cycles — no unscored cycles
      ✅ Orphaned locks — 1 lock(s), MCP server active
      ✅ Skills gate — enforcer blocks writes without per-session skills markers
      ✅ Local hooksPath override check — no per-repo overrides — all repos inherit global hooksPath
@@ -1333,7 +1335,7 @@ it is what ADV-12758-3 asked for rather than a self-reported claim.
      ✅ Task DB write-probe — add → start → complete → archive roundtrip OK
      ✅ Task Lifecycle v2 schema — tasks schema_version = 12 (v2 lifecycle available)
      ✅ Task Lifecycle v2 events RLS — RLS=True, reader grants: SELECT
-     ✅ Task Lifecycle v2 telegram notify — sent=3960, failures=0, env_perms_ok=True
+     ✅ Task Lifecycle v2 telegram notify — sent=3962, failures=0, env_perms_ok=True
      ✅ Task Lifecycle v2 stale inbox — no stale inbox tasks (sweep healthy)
      ✅ Task Lifecycle v2 .env perms — .env mode 600 (token protected)
      ⚠️  Skill drift: devops/enforcement-change-safety — Deployed copy is newer than repo source ($HOME/.hermes/skills/devops/enforcement-change-safety/SKILL.md). Commit the repo source before cortex-update overwrites it.
@@ -1362,8 +1364,8 @@ it is what ADV-12758-3 asked for rather than a self-reported claim.
      ✅ Hook drift: pre-push — deployed matches repo (480e2097)
      ✅ Cron runtime scripts — scripts → ~/.hermes-cortex/scripts (symlink)
      ✅ Langfuse version — running langfuse/langfuse:3.225.1 matches compose pin
-     ✅ Langfuse scoring — 2112 scores, newest 0d old, traces newest 0d old
-     ✅ ClickHouse system db — system database is 464 MB
+     ✅ Langfuse scoring — 2112 scores, newest 1d old, traces newest 1d old
+     ✅ ClickHouse system db — system database is 469 MB
      ✅ Restraint registry — all 15 classes name a present restraint
      ➖ Bus grant expiry — bus.permissions not queryable (orchestrator host only?)
      ✅ cortex-gateway — daemon imports hermetically; config + unit independent of hermes-gateway
@@ -1379,7 +1381,7 @@ it is what ADV-12758-3 asked for rather than a self-reported claim.
      ⚠️  loop-gov daemon — running stale code — the module changed after the daemon started: pid 953098 (loop-gov-mcp.py changed after daemon start); pid 3052198 (loop-gov-mcp.py changed after daemon start)
             🔶 Suggestion: Restart the gateway to load the new loop-governance module: hermes gateway restart. Until then end_change may read a cycle as PENDING right after it was scored — a retry after a cycle_query is the workaround, not the fix.
    
-     ⚠️  Overall: WARNING  (465 pass · 9 warn · 0 fail · 3 info)
+     ⚠️  Overall: WARNING  (466 pass · 9 warn · 0 fail · 2 info)
    
      ═══════════════════════════════════════════════════
      🔧 REQUIRED ACTIONS — resolve each ⚠️  or ❌ above

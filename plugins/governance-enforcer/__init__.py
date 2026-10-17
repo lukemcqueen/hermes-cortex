@@ -2166,9 +2166,11 @@ _PII_PHONE_RE = re.compile(
 # in docs/evidence/backlog-run-2026-10-16-selection.md. The narrowing is scoped
 # to UUID tokens: no other shape changes, and a dash-joined run of digit groups
 # that is NOT a UUID keeps firing, because nothing distinguishes it from a
-# formatted number. Pinned to the pre-fix revision (4764289b) in
-# tests/test_enforcer_pii_gate.py, which asserts the baseline reproduces the
-# defect before asserting the fix removes it.
+# formatted number. Pinned to the pre-fix revision (4764289b) by the regression
+# test tests/test_enforcer_pii_gate.py::
+# test_the_uuid_false_positive_existed_before_this_change, which asserts the
+# baseline reproduces the defect before asserting the fix removes it; the
+# re-runnable measurement is docs/evidence/pii-uuid-false-positive/probe.py.
 _PII_UUID_RE = re.compile(
     r"(?<![0-9a-fA-F])"
     r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"

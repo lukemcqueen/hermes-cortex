@@ -33,9 +33,22 @@ An earlier ad-hoc probe of this defect reported 4,640 (2.32%). That figure came
 from a run whose UUID sample was generated fresh with `uuid4()` and is **not**
 artifact-backed — it is **withdrawn**. The numbers of record are the ones
 `transcript.txt` prints from the seeded sample: **4,749 of 200,000 (2.37%)** at
-the pattern level, and 460 of 20,000 at the gate level. The enforcer comment and
-the regression-test comment were corrected to those in the follow-up commit that
-records this withdrawal.
+the pattern level, and 460 of 20,000 at the gate level.
+
+Where those artifacts live, by path and commit — all three committed on this
+branch, each re-runnable:
+
+* `docs/evidence/pii-uuid-false-positive/probe.py` — the read-only script, added
+  in commit `3f225c69`.
+* `docs/evidence/pii-uuid-false-positive/transcript.txt` — that script's raw
+  stdout, the numbers above, added in `3f225c69` and re-generated in `10003715`.
+* `tests/test_enforcer_pii_gate.py::test_the_uuid_false_positive_existed_before_this_change`
+  — the regression test, added in `3f225c69`. Run it with
+  `bash ops/scripts/lib/python-with-module.sh pytest -m pytest -q
+  tests/test_enforcer_pii_gate.py`.
+
+The enforcer comment and the regression-test comment were corrected to the
+artifact's numbers in `315014c1`, the commit that records this withdrawal.
 
 ## The defect this pins
 
