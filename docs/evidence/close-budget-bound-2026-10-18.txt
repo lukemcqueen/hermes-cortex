@@ -64,5 +64,25 @@ $ python3 ~/.hermes-cortex/scripts/adversarial-verify.py --file mcp-servers/loop
 ✅ GATE_PASSED — no critical/high findings
 rc=0 (POST-CHANGE, working tree)
 
-$ timeout 120 python3 tests/run_loop_gov_regression.py
-rc=124 (124 = did not finish inside 120s; UNVERIFIED, not passing)
+$ python3 tests/run_loop_gov_regression.py        # 2026-10-18, revision 33a1518f
+RESULT: FAIL — rc=1    WALL=465.26 s    tests: 25
+  - tests/run_non_hermes_lock_release_repro.py: rc=1
+  - tests/test_loop_gov_stale_purge.py: rc=1
+  - tests/test_reviewer_backends.py: rc=1
+  - tests/test_refused_close_visible.py: rc=1
+  - tests/test_python_with_module.py: rc=1
+(transcript written by the runner itself: tests/artifacts/loop-gov-regression.txt)
+
+Resolver's note (this replaces an earlier line that recorded `timeout 120 … rc=124`, which was a
+TIMEOUT and therefore not a result at all — an adversarial finding was right to refuse it):
+  1. EXECUTED, not labelled. 465 s is the measured wall clock for a 25-test runner, so the 120 s
+     bound was simply too short; the honest outcome is rc=1, and it is recorded as such.
+  2. NOT introduced by this change. Attribution measured rather than assumed: the same five files
+     were run in a worktree of the PREVIOUS revision (f158b487) and in the working tree (33a1518f)
+     — all five exit rc=1 in BOTH, so every one of them predates this range.
+  3. Not silently swallowed. They are recorded as issues (record_issue, 2026-10-18) instead of being
+     fixed here, because each is a separate change needing its own evidence. The one worth naming:
+     tests/test_reviewer_backends.py asserts the light tier must resolve to the CANONICAL reviewer
+     model, while mcp-servers/loop-gov-mcp.py hardcodes a cheaper one — that disagreement is the
+     design question behind tonight's empty per-blob reviews.
+  4. The 20 tests that DO pass still pass; nothing here claims a green suite.
