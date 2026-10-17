@@ -177,6 +177,7 @@ repo; this public repo carries only framework docs (PRDs, design, reference).
 | `docs/agent-memory-pointer-pattern.md` | Pointer-memory pattern (MEMORY.md → mycortex) |
 | `docs/knowledge-isolation-architecture.md` | Knowledge isolation design |
 | `docs/design/DESIGN.md` | Design principles |
+| `docs/design/adversarial-review-cost-reduction.md` | Plan (levers A/B/C) to scope the close review to the session's own blobs, unify tier+material bases, and add a local pre-close pre-flight — measured against cycles 12777/12779/12782 |
 | `docs/design/task-workflow.md` | Task workflow design (task model v1/v2) |
 | `docs/design/task-lifecycle-v2.md` | Task lifecycle v2 — statuses, transitions, stale sweep |
 | `docs/design/task-model-v3.md` | **Task model v3** — orchestrator-intelligence / worker-execution, claim/report/verify, compete mode |

@@ -1,0 +1,5 @@
+# provenance: sandbox generator, run 2026-10-18 01:40 KST on host esther
+# command: python3 ops/scripts/orch-bus/adversarial-review.py --cycle-id 12792 --material docs/design/adversarial-review-cost-reduction.md --reviewer-id esther-plan-review --review
+# (that command exits 0 silently on success; the verdict is the row below, read back from the store)
+# command: python3 -c "sqlite3 SELECT cycle_id,reviewer_id,reviewer_model,verdict,ts FROM adversarial_reviews WHERE cycle_id=12792"
+[(12792, 'esther-plan-review', 'deepseek/deepseek-v4-pro', 'CLEAN', '2026-10-17T16:40:08.730200+00:00')]
