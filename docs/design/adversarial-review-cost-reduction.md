@@ -41,8 +41,10 @@ The audit already separates authorship — but only for **presentation**, not fo
   **heavy/deep** tier — a deep review of someone else's enforcement diff.
 - **3179 `REVIEWER_LIGHT_LINE_THRESHOLD`**, `providers.deepseek.request_timeout_seconds: 300`
   — heavy tier + a wide enforcement diff + a 300 s ceiling = the three hang-with-no-verdict
-  closes. (Hypothesis, not yet proven: which of the two 300 s ceilings fires first is untested.
-  Testing it is one config value, listed as an open question below.)
+  closes. Which of the two 300 s ceilings fires first is untested — and the operator has settled
+  it from the other side (§4a): the reviews must finish INSIDE the ceiling, never be given more
+  time. A docs-only 3-file cycle (153 lines, no code) hung at the same ceiling later that
+  session, so this is not about the change being risky.
 
 **Three different scopes are in play for one close:**
 
@@ -84,6 +86,31 @@ Partition the window into own vs peer **blobs**, and let the verdict see only it
   reviewer's own stated remedy and is now in `change-checklist`.
 - Fail-closed: uncommitted changes present ⇒ never the empty class. Unknown path ⇒
   always-review.
+
+## 4a. Latency requirement (operator, 2026-10-18)
+
+> "900 seconds is ridiculous. the reviews should be shorter than 300s"
+
+Every close review must **complete inside the existing 300 s ceiling** — target p95 **< 120 s**.
+**No timeout is raised anywhere**; a slow review is a design defect, not a budget shortfall.
+Consequences for the slices above:
+
+1. **Material is the own-blob set (A) with a per-file character budget.** Tonight's refused
+   range was 11 files / 448 lines and never returned; bounding what one review must read is the
+   fix, and A does it by construction.
+2. **Overflow SHRINKS the review, never extends it.** When a whole-range pass would overshoot
+   the budget, the existing per-blob re-route (`BLOB_REVIEW_CAP_PER_CLOSE`,
+   `BLOB_REVIEW_BUDGET_S`) is the required path — not a longer wait.
+3. **A hang is a forbidden outcome.** A review that cannot finish inside the budget must return
+   `incomplete: N blobs unreviewed` plus a receipt for the blobs it did judge, and let the
+   retry continue from the blob cache. This is lever **D**, deferred in the first draft;
+   §4a promotes it to required, because a 300 s hang with no verdict is exactly the failure the
+   operator named.
+4. **The requirement is measured, not aspirational.** Each close records its review duration
+   (seconds) in the store, so a regression becomes visible instead of being felt as friction.
+
+Test: assert every recorded close carries a duration, and that an oversized material routes to
+the per-blob path rather than the whole-range call.
 
 ## 5. Lever C — local pre-flight before `end_change` *(ordinary work)*
 
@@ -134,9 +161,9 @@ path AT ALL"); this only evaluates known refusal conditions locally.
   exists — but if a peer session commits under the *same* author email, lever A degenerates to
   today's behaviour via the fail-closed path. Worth verifying with the cron's committer
   identity before building; the lock's `session_id` is the fallback discriminator.
-- **Open:** which 300 s ceiling produced tonight's three hangs (MCP client vs
-  `providers.deepseek.request_timeout_seconds`). One config value tests it; lever A should
-  remove the cause either way.
+- **Resolved by requirement:** the 300 s ceiling is **not** to be raised (operator, §4a). Which
+  ceiling fired first is still unknown and no longer matters — fitting inside it is now the
+  design constraint, and lever A removes the cause rather than buying headroom.
 - **Cost of being wrong:** if A narrows too far, a genuinely malicious change could ride in a
   peer-attributed blob. Mitigated by union coverage (invariant 1) — that blob cannot be pushed
   without a receipt from its own session, and its diff is still named to the reviewer.
@@ -144,4 +171,6 @@ path AT ALL"); this only evaluates known refusal conditions locally.
 ## 10. What this plan is not
 
 Not implemented. Not a reduction in what gets reviewed — a change in **whose work each close
-is accountable for**. Enforcement surface, coverage requirement and disclosure all stay.
+is accountable for**. Enforcement surface, coverage requirement and disclosure all stay. And it
+buys no headroom: **no timeout is raised anywhere** (§4a); the review gets smaller and faster
+instead.
