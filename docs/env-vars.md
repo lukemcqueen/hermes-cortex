@@ -16,6 +16,11 @@ path keep working; the old `~/.hermes-cortex/cortex-bus.conf` name was retired 2
 `~/.hermes-cortex/.env` is unowned — a doctor FAIL. `~/.hermes/.env` is **Hermes-owned** —
 provider keys, Telegram, browser/terminal settings — and is never merged here.
 
+These claims are pinned by committed tests (run them to verify): the doctor check's
+sanctioned-symlink / real-file-FAIL / missing-symlink behaviour is exercised by
+`tests/test_doctor_cortex_env.py`; the migration / idempotence / real-file-refusal /
+`--check` behaviours of `consolidate-env.sh` by `tests/test-consolidate-env.sh`.
+
 ```bash
 # Copy the template, then edit
 cp ~/hermes-cortex/.env.example ~/hermes-cortex/.env
