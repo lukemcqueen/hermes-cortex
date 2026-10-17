@@ -1,0 +1,28 @@
+# provenance: produced 2026-10-18 02:25 KST by a python heredoc in the esther agent session; values read live
+# from the store. Material submitted = the CONTENT of
+#   docs/evidence/adversarial-review-solution-request-2026-10-18.md (the design request)
+#   + docs/design/adversarial-review-cost-reduction.md (the plan)
+# command: python3 ops/scripts/orch-bus/adversarial-review.py --cycle-id 12800 \
+#            --material "$(cat <both files, concatenated>)" --reviewer-id esther-solution-v2 --review
+# reviewer: esther-solution-v2  model: deepseek/deepseek-v4-pro  verdict: FINDINGS
+# findings: 4
+
+--- ADV-12799-1 [high] unverified-claim
+target: docs/design/adversarial-review-cost-reduction.md:§4a/§8 (Lever D)
+evidence: "This is lever **D**, deferred in the first draft; §4a promotes it to required, because a 300 s hang with no verdict is exactly the failure the operator named." Also: "0. **D + C** — the bounded close (§4a) and the local pre-flight. ... D is now REQUIRED by §4a rather than deferred, so these two pay off first."
+recommendation: Commit a concrete D specification before treating it as required: name the single clock owner among `_review_or_refuse` / `_review_uncovered_blobs`; define `remaining = <deadline> - elapsed` and pass it to every sub-pass; define the exact incomplete result shape (`verdict`, `receipts`, `remaining` blob list) and how `_blobs_with_clean_verdict` resumes; specify whether to split the range before the first call and under what threshold.
+
+--- ADV-12799-2 [high] unverified-claim
+target: docs/design/adversarial-review-cost-reduction.md:§3 A1/A2
+evidence: "It is read from governance state — never from an env var the agent exports — so it cannot be forged from prose or spoofed."
+recommendation: Do not rely on append-only use of a commit-message trailer as secure session attribution. Specify that `prepare-commit-msg`/`commit-msg` rejects or overwrites any pre-existing `Cortex-Session` trailer, and that the parser chooses exactly one trailer and fails closed on ambiguity. Add an adversarial test that creates a commit with a forged `Cortex-Session: <other-live-session>` trailer and proves it is not excluded from the real session's own blobs unless the governance-sourced trailer is unambiguously authoritative.
+
+--- ADV-12799-3 [medium] unverified-claim
+target: docs/design/adversarial-review-cost-reduction.md:§4 B2 / constraint 3
+evidence: "Own blobs empty ⇒ **no reviewer call**, because an empty diff has exactly one available finding (\"your prose is unverified\") and so is a guaranteed 5-minute refusal (cycle 12777)."
+recommendation: Define the terminal state for the empty-own-diff path precisely. If this path closes the cycle, state that it cannot produce a CLEAN verdict or satisfy push coverage for any blob; otherwise it conflicts with the fail-closed constraint (\"material that cannot be judged must refuse — never pass silently\"). Specify the return code/status and whether the committed transcript is independently checked or merely recorded.
+
+--- ADV-12799-4 [info] unverified-claim
+target: docs/design/adversarial-review-cost-reduction.md:§2/§4a line and latency claims
+evidence: "`REVIEWER_TIMEOUT_CEILING = 240` (line ~3333)" ... "`BLOB_REVIEW_BUDGET_S = 600.0` (line ~1069)" ... "blob calls ran 180–220 s".
+recommendation: Commit a reproducible measurement script or test that dumps these constants and records close durations/tier decisions, so the load-bearing timing claims can be re-executed rather than taken from plan prose.
