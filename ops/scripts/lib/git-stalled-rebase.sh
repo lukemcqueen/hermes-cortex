@@ -7,13 +7,12 @@
 # unmerged files") AND every push on the host until someone cleans it up by hand — an
 # entire host is blocked by one failed pull, with no signal other than the refusal.
 #
-# `abort_stalled_rebase` restores the PRE-PULL state: `git rebase --abort` returns the
-# branch to the ORIGINAL local tip, so every local commit that existed before the pull is
-# preserved. The in-progress rebase work is DISCARDED — an upstream commit that was being
-# applied is NOT carried onto this branch by the abort. (Adversarial finding ADV-12971-2,
-# 2026-10-18: the earlier wording, "preserves every local commit", read as if nothing were
-# lost. Both halves are asserted in tests/test_stalled_rebase_abort.py.) A failed sync is
-# thereby inert instead of host-wide blocking.
+# `abort_stalled_rebase` restores the PRE-PULL state. The contract has two halves, and the
+# second one is the easy one to forget: `git rebase --abort` returns the branch to its
+# ORIGINAL local tip, so every local commit that existed before the pull is preserved, while
+# the in-progress rebase is DISCARDED — an upstream commit that was being applied is NOT
+# carried onto this branch by the abort. A failed sync is thereby inert instead of host-wide
+# blocking.
 #
 # Usage:
 #   source .../git-stalled-rebase.sh
@@ -30,10 +29,10 @@ abort_stalled_rebase() {
   if [ ! -d "$git_dir/rebase-merge" ] && [ ! -d "$git_dir/rebase-apply" ]; then
     return 0
   fi
-  # Capture the abort's OWN output instead of discarding it (adversarial finding
-  # ADV-12971-1, 2026-10-18): `>/dev/null 2>&1` meant a failed abort told the operator
-  # nothing about WHY it failed — the one case where the reason is the actionable part.
-  # stdout is captured too, which also keeps the silence contract below intact.
+  # Capture the abort's OWN output instead of discarding it: with `>/dev/null 2>&1` a FAILED
+  # abort told the operator nothing about why — the one case where the reason is the
+  # actionable part. stdout is captured as well, which leaves the silence contract below
+  # intact (the abort-success line is still the only thing ever written to stdout).
   local abort_output
   if abort_output="$(git rebase --abort 2>&1)"; then
     echo "aborted a stopped rebase — pre-pull state restored (local commits preserved)"
