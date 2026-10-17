@@ -1,11 +1,11 @@
-# provenance: regenerated 2026-10-18 02:46 KST in the esther agent session by the commands
+# provenance: regenerated 2026-10-18 02:55 KST in the esther agent session by the commands
 # below, run in this order from the repo root; each rc is that command's own (PIPESTATUS[0]
 # where a normaliser is in the chain). ONE normaliser rewrites host paths to <home> so this
 # public-repo artifact carries no /home/<user> path.
-# change: mcp-servers/loop-gov-mcp.py - ONE close, ONE client window. Constants
-# (CLOSE_TOTAL_BUDGET_S=240, CLOSE_BLOBS_PER_WINDOW=1, CLOSE_SPLIT_OWN_LINES=50), the
-# _close_budget_left() helper, the split-before-the-range-call rule, AND the hand-off:
-# the close's clock starts above the gate and the per-blob pass is given what is LEFT.
+#
+# PRE-CHANGE REVISION IS NAMED BY SHA, not by a moving ref (reviewer finding ADV-12913-3):
+#   git show 2cb6b068:mcp-servers/loop-gov-mcp.py  ->  <scratch>/pre-change-loop-gov-mcp.py
+#   2cb6b068 is the commit immediately before the loop-gov budget change.
 
 $ python3 -m py_compile mcp-servers/loop-gov-mcp.py
 rc=0
@@ -35,29 +35,33 @@ D. the close hands its remaining window to the blob pass
   PASS  the close's cap reaches the pass
   PASS  the close's REMAINING budget reaches the pass
   PASS  a caller with no knobs forwards NOTHING (defaults preserved)
+E. the real wrapper enforces the cap it is handed
+  FAIL  cap=1 judges exactly one blob  {}
+  FAIL  cap=1 reports the other as remaining  []
+  FAIL  cap=2 judges both blobs  {}
 
-✅ close-budget checks passed
-rc=0
+❌ 3 close-budget check(s) failed: cap=1 judges exactly one blob, cap=1 reports the other as remaining, cap=2 judges both blobs
+rc=1
 
-# DIFFERENTIAL gate: the same A4 scan on the PRE-CHANGE revision (git show HEAD:<path>), so the
-# finding count is ATTRIBUTED rather than assumed. Only the totals are compared.
+# DIFFERENTIAL A4: identical command on both revisions; the SUMMARY LINES are shown for both
+# so the medium/low/info counts can be compared directly (a truncated tail hid one before).
 $ python3 ~/.hermes-cortex/scripts/adversarial-verify.py --file <scratch>/pre-change-loop-gov-mcp.py --level A4 --gate
+📊 Summary: 1 file(s), 38 finding(s)
+   🟡 Medium: 5
    🔵 Low: 4
    ⚪ Info: 29
-
 🟡 Medium findings — fix before shipping.
-
 ✅ GATE_PASSED — no critical/high findings
-rc=0 (PRE-CHANGE)
+rc=0 (PRE-CHANGE 2cb6b068)
 
 $ python3 ~/.hermes-cortex/scripts/adversarial-verify.py --file mcp-servers/loop-gov-mcp.py --level A4 --gate
+📊 Summary: 1 file(s), 38 finding(s)
+   🟡 Medium: 5
    🔵 Low: 4
    ⚪ Info: 29
-
 🟡 Medium findings — fix before shipping.
-
 ✅ GATE_PASSED — no critical/high findings
-rc=0 (POST-CHANGE)
+rc=0 (POST-CHANGE, working tree)
 
 $ timeout 120 python3 tests/run_loop_gov_regression.py
-rc=124 (124 = did not finish inside 120s; unverified, not passing)
+rc=124 (124 = did not finish inside 120s; UNVERIFIED, not passing)

@@ -130,6 +130,12 @@ def test_close_hands_its_remaining_window_to_the_blob_pass() -> None:
     _complete_push_range_blobs with injected collaborators and asserts the two directions:
     a close passes its cap + remaining budget through, and a sweep/CLI caller (no knobs)
     leaves the module defaults untouched.
+
+    SCOPE OF THIS CLAIM (withdrawn wording, reviewer finding ADV-12913-2): this proves
+    FORWARDING of the values the close supplies — it does NOT exercise end_change itself,
+    so it does not prove the close computes its remainder from its own clock. Section E
+    proves the real wrapper enforces the cap; a behavioural close-path test that drives
+    end_change and asserts the remainder is OWED, not done.
     """
     print("D. the close hands its remaining window to the blob pass")
     seen: list = []
@@ -157,11 +163,37 @@ def test_close_hands_its_remaining_window_to_the_blob_pass() -> None:
            bool(seen) and "cap" not in seen[-1] and "budget_s" not in seen[-1], str(seen[-1:]))
 
 
+def test_real_wrapper_enforces_the_cap() -> None:
+    """The REAL _complete_blob_reviews must ENFORCE cap/budget, not merely accept them.
+
+    Reviewer finding ADV-12913-4: the wiring test below replaces _complete_blob_reviews
+    with a fake, so nothing showed the real function accepting and enforcing the knobs.
+    This drives the REAL wrapper with git stubbed out and two blobs pending: cap=1 judges
+    exactly one and reports the other remaining; cap=2 judges both.
+    """
+    print("E. the real wrapper enforces the cap it is handed")
+    mcp._blobs_with_clean_verdict = lambda blobs, conn=None: set()
+    mcp._record_blob_review = lambda sha, *a, **k: None
+    mcp._push_base = lambda repo: "base-sha"
+    mcp._push_range_blobs = lambda repo: {"a.txt": "sha-a", "b.txt": "sha-b"}
+    mcp._blob_material = lambda repo, base, path, ctx: f"material {path}"
+
+    def _ok(prompt):
+        return '{"verdict": "CLEAN", "findings": []}'
+
+    got1 = mcp._complete_blob_reviews(Path("/tmp/repo"), "T\n", {}, _ok, cap=1, budget_s=60.0)
+    _check("cap=1 judges exactly one blob", len(got1["verdicts"]) == 1, str(got1["verdicts"]))
+    _check("cap=1 reports the other as remaining", len(got1["remaining"]) == 1, str(got1["remaining"]))
+    got2 = mcp._complete_blob_reviews(Path("/tmp/repo"), "T\n", {}, _ok, cap=2, budget_s=60.0)
+    _check("cap=2 judges both blobs", len(got2["verdicts"]) == 2, str(got2["verdicts"]))
+
+
 if __name__ == "__main__":
     test_budgets_nest_under_the_client_window()
     test_budget_left_helper()
     test_per_blob_pass_accounts_for_every_blob()
     test_close_hands_its_remaining_window_to_the_blob_pass()
+    test_real_wrapper_enforces_the_cap()
     if _F:
         print(f"\n❌ {len(_F)} close-budget check(s) failed: {', '.join(_F)}")
         sys.exit(1)
