@@ -1,5 +1,7 @@
-# provenance: regenerated 2026-10-18 02:32 KST in the esther agent session by the commands
-# below, run in this order from the repo root; each rc is that command's own (no pipe between).
+# provenance: regenerated 2026-10-18 02:38 KST in the esther agent session by the commands
+# below, run in this order from the repo root; each rc is that command's own (PIPESTATUS[0] where a
+# normaliser is in the chain). ONE normaliser is applied to EVERY line at the block level: host
+# paths are rewritten to <home> so this public-repo artifact carries no /home/<user> path.
 # change: mcp-servers/loop-gov-mcp.py - ONE close, ONE client window: CLOSE_TOTAL_BUDGET_S=240,
 # CLOSE_BLOBS_PER_WINDOW=1, CLOSE_SPLIT_OWN_LINES=50, _close_budget_left(), split-before-call.
 
@@ -8,7 +10,7 @@ rc=0
 
 $ python3 tests/test_close_budget_bounds.py
 [mcp-server] WARNING: the 'mcp' package is not installed — the stdio server cannot start; the CLI adapter (ops/scripts/loop-gov.py) still works.
-[mcp-server]   /home/esther/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3 -m pip install mcp
+[mcp-server]   <home>/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3 -m pip install mcp
 A. the budgets nest under the client window
   PASS  a single constant states the close's total budget
   PASS  total < client window
@@ -31,11 +33,10 @@ C. the per-blob pass stops at its budget and accounts for every blob
 ✅ close-budget checks passed
 rc=0
 
-# DIFFERENTIAL gate: the same A4 scan on the PRE-CHANGE revision (git show HEAD:<path>), so the
-# finding count of the changed file can be attributed rather than assumed. Both files run the
-# same command; only the finding TOTALS are compared below.
-$ python3 ~/.hermes-cortex/scripts/adversarial-verify.py --file /home/esther/.hermes/cache/scratch/pre-change-loop-gov-mcp.py --level A4 --gate
-📊 Summary: 1 file(s), 38 finding(s)
+# DIFFERENTIAL gate: the same A4 scan on the PRE-CHANGE revision (git show HEAD~1:<path>), so the
+# finding count of the changed file is ATTRIBUTED rather than assumed. Both files get the same
+# command; only the totals below are compared.
+$ python3 ~/.hermes-cortex/scripts/adversarial-verify.py --file <scratch>/pre-change-loop-gov-mcp.py --level A4 --gate
    🟡 Medium: 5
    🔵 Low: 4
    ⚪ Info: 29
@@ -46,7 +47,6 @@ $ python3 ~/.hermes-cortex/scripts/adversarial-verify.py --file /home/esther/.he
 rc=0 (PRE-CHANGE)
 
 $ python3 ~/.hermes-cortex/scripts/adversarial-verify.py --file mcp-servers/loop-gov-mcp.py --level A4 --gate
-📊 Summary: 1 file(s), 38 finding(s)
    🟡 Medium: 5
    🔵 Low: 4
    ⚪ Info: 29
@@ -56,5 +56,5 @@ $ python3 ~/.hermes-cortex/scripts/adversarial-verify.py --file mcp-servers/loop
 ✅ GATE_PASSED — no critical/high findings
 rc=0 (POST-CHANGE)
 
-$ timeout 300 python3 tests/run_loop_gov_regression.py
-rc=124 (124 = the suite did not finish inside 300s)
+$ timeout 180 python3 tests/run_loop_gov_regression.py
+rc=124 (124 = did not finish inside 180s)
