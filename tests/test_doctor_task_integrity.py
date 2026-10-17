@@ -234,3 +234,40 @@ def test_the_probe_runs_task_db_inside_the_repo_working_copy(monkeypatch, tmp_pa
     assert seen.get("cwd") == str(ti._repo()), (
         "the probe must resolve the repo itself, not inherit whatever cwd the "
         "invoker happened to have")
+
+
+def test_orchestrator_uses_the_fleet_view(monkeypatch, tmp_path):
+    """An orchestrator runs `--assigned --repo ALL` to see stranded slices on
+    every host, not just its own repo."""
+    _stub_runner(monkeypatch, tmp_path)
+    seen = {}
+    monkeypatch.setattr(ti, "_is_orchestrator", lambda: True)
+
+    def fake_run(cmd, timeout=25, cwd=None):
+        if "--assigned" in cmd:
+            seen["cmd"] = cmd
+            return "(no unstarted hand-offs)\n"
+        return "tasks schema: current=12, no pending migrations\n"
+
+    monkeypatch.setattr(ti, "_run", fake_run)
+    ti.check_task_model_integrity(FakeResults())
+    assert "--repo" in seen.get("cmd", []) and "ALL" in seen.get("cmd", []), (
+        f"an orchestrator must query the fleet view, got {seen.get('cmd')!r}")
+
+
+def test_worker_keeps_the_repo_scoped_view(monkeypatch, tmp_path):
+    """A non-orchestrator must NOT gain the fleet view — only its own repo."""
+    _stub_runner(monkeypatch, tmp_path)
+    seen = {}
+    monkeypatch.setattr(ti, "_is_orchestrator", lambda: False)
+
+    def fake_run(cmd, timeout=25, cwd=None):
+        if "--assigned" in cmd:
+            seen["cmd"] = cmd
+            return "(no unstarted hand-offs)\n"
+        return "tasks schema: current=12, no pending migrations\n"
+
+    monkeypatch.setattr(ti, "_run", fake_run)
+    ti.check_task_model_integrity(FakeResults())
+    assert "--repo" not in seen.get("cmd", []) and "ALL" not in seen.get("cmd", []), (
+        f"a worker must stay repo-scoped, got {seen.get('cmd')!r}")

@@ -31,6 +31,21 @@ _SCHEMA_GLOB = "v0*.sql"
 _ROW_ID = re.compile(r"^[0-9a-f]{8}\s")
 
 
+def _is_orchestrator() -> bool:
+    """Host-derived role, same rule as cortex_doctor.config.AGENT_ROLE.
+
+    The probe uses the fleet view (`--repo ALL`) ONLY for an orchestrator so it
+    can see stranded slices on every host; a worker keeps its repo-scoped view
+    (it has no right to fleet-wide visibility).
+    """
+    agent_type = os.environ.get("AGENT_TYPE", "").lower().strip()
+    if agent_type in ("orchestrator", "server", "dev"):
+        return agent_type == "orchestrator"
+    if os.environ.get("IS_ORCHESTRATOR", "").lower() in ("true", "1", "yes"):
+        return True
+    return os.uname().nodename.split(".")[0] in ("moses", "esther")
+
+
 def _repo() -> Path:
     return Path(os.environ.get("CORTEX_REPO", Path.home() / "hermes-cortex"))
 
@@ -135,8 +150,13 @@ def check_task_model_integrity(res: "Results") -> None:            # noqa: F821
     # subprocess cwd so the check can actually look, and read any advisory as
     # "could not verify" instead of letting its text count as a task row.
     if runner.is_file():
-        raw = _run(["python3", str(runner), "list", "--assigned"],
-                   cwd=str(_repo()))
+        # An orchestrator sees the whole fleet (--repo ALL); a worker only its
+        # own repo (resolved from the repo root the probe passes as cwd — the
+        # verdict must never depend on the invoker's cwd).
+        cmd = ["python3", str(runner), "list", "--assigned"]
+        if _is_orchestrator():
+            cmd += ["--repo", "ALL"]
+        raw = _run(cmd, cwd=str(_repo()))
         if not raw.strip():
             res.add("Stranded slices", "WARN",
                     "COULD NOT VERIFY: task-db list --assigned returned nothing",
