@@ -2930,8 +2930,15 @@ def register(ctx):
                         ),
                     }
 
+            # WHICH REPO IS THIS CALL BOUND TO? Path arguments first, then the repo this SESSION
+            # already resolved. A call like `git commit -m ...` carries no path at all, so
+            # path-only resolution left it with no repo and fell back to slug matching alone. The
+            # session hint is not a new permission: it is the same repo the session has been
+            # working in, recorded from an earlier call's own arguments by _note_session_repo.
+            _repo_for_gate = _target_repo_root(args) or str(
+                _session_repo_path(hermes_session_id) or "")
             # Check for active governance lock (Phase 1 exact + Phase 2 scan)
-            if _has_governance_lock(hermes_session_id, _target_repo_root(args)):
+            if _has_governance_lock(hermes_session_id, _repo_for_gate):
                 return None
 
             # A CLEAN review receipt covering the pushed range is the same
@@ -2940,6 +2947,29 @@ def register(ctx):
             # `git push` qualifies, never --no-verify or a compound.
             if tool_name == "terminal" and _push_authorised_by_receipt(args, hermes_session_id):
                 return None
+
+            # A session that resolves NO repo is not "in the wrong repo" — it has no repo for
+            # governance to bind to, so no lock could ever match and the generic refusal reads as an
+            # impossible demand. Measured on a macOS host (titus, 2026-10-18): an agent outside a
+            # checkout was blocked from every compound command, including the `cd <repo> && ls` it
+            # needed to FIND the repo, and the refusal told it to acquire a lock it could not mint.
+            # Name the escapes that actually work instead of restating the lock rule.
+            if not _repo_for_gate:
+                return {
+                    "decision": "block",
+                    "reason": (
+                        "🛑 No governed repo could be resolved for this call — and governance is\n"
+                        "   scoped to a git repo, so no lock could authorise it.\n\n"
+                        "  This is NOT the 'acquire a lock' case. Fix it in one step:\n"
+                        "    1. pass the repo on the call:  terminal(..., workdir=\"/path/to/repo\")\n"
+                        "    2. or make the command's own path point inside the checkout\n"
+                        "    3. or begin_change() while working in the repo, and keep using it\n\n"
+                        "  Read-only commands (ls, cat, grep, find, git status/log/diff) NEVER need\n"
+                        "  a lock, so use them to locate the checkout — `ls` and `grep` reach any\n"
+                        "  directory. Only write-class commands are refused here.\n\n"
+                        "  This enforcement comes from ~/.hermes/plugins/governance-enforcer/."
+                    ),
+                }
 
             # BLOCKED
             if tool_name == "terminal":

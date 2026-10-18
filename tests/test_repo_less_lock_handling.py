@@ -64,6 +64,11 @@ def test_the_promotion_lock_records_the_repo(monkeypatch):
     captured = {}
     m._write_lock = lambda state, args=None: captured.update(state)
     m._db = lambda: _Dead()
+    # The promotion now creates its cycle BEFORE the lock and REFUSES if it cannot (fixed
+    # 2026-10-18: a promotion that failed between the two left a live lock whose task had no
+    # scorable cycle — unclosable by end_change). This fixture has a dead DB, so the create is
+    # stubbed here; the refusal itself is pinned by the next test.
+    m._create_pending_cycle = lambda task_id, session_id, note: 4242
     saved = os.environ.get("CORTEX_SESSION_REPO")
     os.environ["CORTEX_SESSION_REPO"] = str(_REPO)
     try:
@@ -81,6 +86,27 @@ def test_the_promotion_lock_records_the_repo(monkeypatch):
     assert captured.get("repo_slug"), (
         "a repo-less lock matches ANY repo in the enforcer's Phase 2: " + repr(captured))
     print("  the promotion lock records the repo it belongs to OK")
+
+
+def test_the_promotion_is_refused_when_its_cycle_cannot_be_created():
+    """NO CYCLE, NO LOCK. A live lock whose task has no scorable cycle cannot be closed by
+    end_change and cannot be superseded by begin_change — the deadlock that stranded a session on
+    2026-10-18. So a promotion that cannot create the cycle must refuse and write NOTHING."""
+    m = _load(_GOV, "gov_promote_refuse")
+    wrote = []
+    m._write_lock = lambda state, args=None: wrote.append(state)
+
+    def _boom(*_a, **_k):
+        raise RuntimeError("cannot create the cycle")
+
+    m._create_pending_cycle = _boom
+    res = m._promote_issue_to_task({"task_id": "promoted-x", "description": "d",
+                                    "issue_event_id": None, "ttl": 3600})
+    text = res.content[0].text if hasattr(res, "content") else str(res)
+    assert "Cannot promote issue" in text, text[:200]
+    assert not wrote, (
+        "a promotion that could not create its cycle must NOT write a lock: " + repr(wrote))
+    print("  no cycle ⇒ no lock OK")
 
 
 def test_the_enforcer_uses_the_locks_own_ttl():
