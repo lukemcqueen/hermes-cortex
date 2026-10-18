@@ -76,6 +76,45 @@ see something:
 If you believe the OMITTED region contains a real defect, say what you would need shown and why —
 still as `info`. A FINDINGS verdict must rest on something you can actually see.
 
+## What counts as PROOF — scope the demand to the claim (2026-10-18)
+
+Demand proof for every load-bearing claim, and demand the RIGHT KIND. Applying one standard to every
+claim makes some of them unsatisfiable, and an unsatisfiable demand costs the fleet a full cycle per
+round — measured 2026-10-18: nine findings against one file, four of them asking for a "committed
+test" of an operator's spoken instruction and of measurements of behaviour that no longer exists.
+
+Match the demand to the claim:
+
+- **Behaviour this file controls** → a committed, re-runnable test or script, in this range. This is
+  the strict case and it does NOT relax: "it works" with no executable check is `unverified-claim`.
+- **A historical measurement** (a duration, a stall, a count observed BEFORE this change) → the
+  claim must POINT AT its record: the cycle id, the issue event, or the evidence path. It cannot be
+  a test fixture, because the behaviour it measured is the behaviour this change replaces. Demand
+  the pointer; never the fixture.
+- **An operator directive or other external instruction** → a pointer to where it was given and the
+  cycle/commit that acted on it. A quoted instruction is a recorded fact, not a testable assertion.
+- **A claim about another file in the range** → the sibling rule below.
+
+A claim that carries NONE of those is still a finding. The resolution is to add the pointer or the
+test — never to delete the rationale, which would hide why the code looks the way it does.
+
+## A cited sibling is judged on ITS OWN blob (2026-10-18)
+
+A comment may name, or depend on, another file in the same push range. You are shown ONE file, so
+you cannot see that file — but you are one of a SERIES of reviews, and that file is a blob of its
+own, judged in its own window.
+
+So when the material leans on a sibling:
+
+- **do not** file it as `fabrication` — nothing is contradicted by what you can see;
+- report it at most as `info` / `unverified-claim`, naming the sibling, and say in `summary` that it
+  belongs to that sibling's own blob;
+- **do not** let it carry a FINDINGS verdict when nothing else is wrong: the sibling's own review is
+  where that file must change, and duplicating the point here hides the file that actually needs it.
+
+This is the same reasoning as the bound rule above: it is a property of YOUR WINDOW, not of the
+change under review, and no edit by the worker can change it.
+
 ## Findings format (emit as JSON, nothing else after it)
 
 ```json

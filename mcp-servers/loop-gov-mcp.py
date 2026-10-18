@@ -1408,6 +1408,24 @@ def _blob_material(repo: Path, base: str, path: str, ctx: dict) -> str:
     """
     diff_text = _bound_diff(_git_capture(repo, "diff", "--no-ext-diff", "-U3",
                                          base + "..HEAD", "--", path))
+    # Name the range's files so the SIBLING RULE is actionable (2026-10-18): a comment may lean on
+    # another file in the range, and the reviewer can only judge that as a sibling (to be reviewed
+    # in its own window) if it knows which paths the range contains. Sorted, and capped, so a wide
+    # range cannot flood the material.
+    try:
+        range_paths = sorted((_push_range_blobs(repo) or {}).keys())
+    except Exception:  # noqa: BLE001 — material must never fail on a git hiccup
+        range_paths = []
+    others = [p for p in range_paths if p != path][:REVIEW_SCOPE_MAX_PATHS]
+    scope_lines = ("scope: ONE file of this range; the other files are judged on their own blobs,\n"
+                   "so answer for THIS file only.\n")
+    if others:
+        scope_lines += (
+            f"range files ({len(range_paths)}) — the others are judged as their own blobs:\n"
+            f"  {', '.join(others)}\n"
+            "a claim this file makes about one of those is a SIBLING claim: report it at most as\n"
+            "info, and leave the resolution to that file's own review.\n"
+        )
     return (
         "=== BLOB REVIEW — ONE FILE OF A RANGE ===\n"
         f"session: {ctx.get('sid', '')}\nauthor: {ctx.get('author', '')}\n"
@@ -1415,8 +1433,7 @@ def _blob_material(repo: Path, base: str, path: str, ctx: dict) -> str:
         f"range: {base}..{ctx.get('head_sha', '')}\n"
         f"cycle: {ctx.get('cycle_id', 0)}\ntask: {ctx.get('task_id', '')}\n"
         f"description: {ctx.get('description', '')}\nfile: {path}\n"
-        "scope: ONE file of this range; the other files are judged on their own\n"
-        "blobs, so answer for THIS file only.\n\n"
+        f"{scope_lines}\n"
         f"{diff_text}\n"
     )
 
