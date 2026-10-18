@@ -46,15 +46,11 @@ if _spec is None or _spec.loader is None:                        # pragma: no co
 mcp = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(mcp)
 
-if not hasattr(mcp, "_review_uncovered_blobs"):
-    raise SystemExit("PRECONDITION FAILED: mcp._review_uncovered_blobs is missing, so the behaviour "
-                     "this file exists to pin is not present")
-
-_SIG = inspect.signature(mcp._review_uncovered_blobs)
-for _needed in ("blobs", "reviewer", "material_for", "cap", "budget_s", "conn"):
-    if _needed not in _SIG.parameters:
-        raise SystemExit(f"PRECONDITION FAILED: _review_uncovered_blobs has no '{_needed}' "
-                         f"parameter; its signature is {_SIG}")
+# The preconditions are a TEST, not import-time code (finding: checks that run at import raise
+# SystemExit, which kills the runner before any test can report, so a renamed collaborator reads as
+# a crashed file rather than a named failure). The runner below sorts test names, so `test_00_`
+# runs first and a broken precondition is attributed to it.
+REQUIRED_PARAMS = ("blobs", "reviewer", "material_for", "cap", "budget_s", "conn")
 
 # The gate's logger is where the production audit trail goes, so a test must not write to it. That
 # silence is only real if the module logs to THIS logger — asserted in test D, not assumed, because
@@ -92,8 +88,23 @@ def _run(blobs, conn):
     return out, seen
 
 
-def test_module_logs_to_the_logger_this_test_silences():
-    """D. The suppression above must cover the module's OWN logger, not just a name we picked."""
+def test_00_preconditions():
+    """D. Everything this file calls must exist — and the module must log to the logger we silence.
+
+    Runs FIRST (the runner sorts by name). Asserted rather than raised so a renamed collaborator
+    fails as THIS test's named assertion instead of an AttributeError from the first behavioural
+    test, or a SystemExit that kills the runner with no test attributed.
+    """
+    fn = getattr(mcp, "_review_uncovered_blobs", None)
+    assert fn is not None, (
+        "mcp._review_uncovered_blobs is missing, so the behaviour this file pins is not present")
+    sig = inspect.signature(fn)
+    missing = [p for p in REQUIRED_PARAMS if p not in sig.parameters]
+    assert not missing, (
+        f"_review_uncovered_blobs has no {missing} parameter(s); its signature is {sig}")
+
+    # Silencing the gate logger only silences the production audit trail if the module logs to THAT
+    # logger: a rename would otherwise make the suppression decorative and let test noise through.
     mod_logger = getattr(mcp, "log", None)
     assert mod_logger is not None, (
         "the module exposes no module-level logger, so this test cannot silence its output and its "
