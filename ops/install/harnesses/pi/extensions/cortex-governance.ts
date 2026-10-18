@@ -111,17 +111,68 @@ const note = (message: string) => {
 // 2026-10-18): `cd /Users/luke/Developer/AI/steadfaste-s1-model && pwd && git rev-parse
 // --show-toplevel` was refused with "CANNOT DETERMINE THE REPO" — a dead end, because the one
 // command that would have proven the repo was itself the write being blocked.
-function gitRootOf(target: string): string | null {
+/**
+ * Where a repo lookup FAILED, in words. A fail-closed gate that discards the reason it refused is
+ * unfixable from the outside: the operator sees "cannot determine the repo" and cannot tell a
+ * missing `git` on PATH (ENOENT) from a genuinely non-repo folder from a dubious-ownership
+ * refusal. Measured on a macOS host (pi, titus, 2026-10-18): pi WAS started inside the checkout and
+ * the gate still said "not in a git repo", and nothing in the message could distinguish the causes.
+ */
+let repoDiagnostics: string[] = [];
+
+type RootLookup = { root: string | null; why: string };
+
+/**
+ * The repo root found by WALKING UP for a `.git` entry — no subprocess, no PATH, no git binary.
+ * #2 of the titus fix: the whole lookup used to depend on `git` being callable from THIS process,
+ * and a launcher with a stripped PATH (macOS apps and services routinely lack /opt/homebrew/bin)
+ * made every lookup fail while git worked fine in the operator's own shell. Finding where a repo
+ * STARTS needs no git; only READING it does. A `.git` FILE counts too — that is a worktree or a
+ * submodule — and the nearest enclosing one is exactly what `git rev-parse --show-toplevel` answers.
+ */
+function repoRootByWalk(startPath: string): string | null {
+  let dir = startPath;
+  try {
+    if (!fs.statSync(dir).isDirectory()) dir = path.dirname(dir);
+  } catch {
+    dir = path.dirname(dir);
+  }
+  for (let hops = 0; hops < 64; hops++) {
+    try {
+      fs.statSync(path.join(dir, ".git"));
+      return dir;
+    } catch {
+      /* not here — keep walking up */
+    }
+    const parent = path.dirname(dir);
+    if (parent === dir) return null;   // filesystem root
+    dir = parent;
+  }
+  return null;
+}
+
+function gitRootOf(target: string): RootLookup {
+  const byWalk = repoRootByWalk(target);
+  if (byWalk) return { root: byWalk, why: "" };
+  // No `.git` anywhere above: ask git itself, in case of a layout the walk cannot see (a bare repo,
+  // GIT_DIR/GIT_WORK_TREE in the environment). If THAT fails too, its words are the explanation.
   try {
     const out = execFileSync("git", ["rev-parse", "--show-toplevel"], {
       cwd: target,
       encoding: "utf8",
       timeout: 5000,
-      stdio: ["ignore", "pipe", "ignore"],
+      stdio: ["ignore", "pipe", "pipe"],
     }).trim();
-    return out ? path.resolve(out) : null;
-  } catch {
-    return null;
+    if (!out) return { root: null, why: `${target}: no .git above it; git printed nothing` };
+    return { root: path.resolve(out), why: "" };
+  } catch (e: any) {
+    const stderr = String(e?.stderr ?? "").trim().split("\n")[0] ?? "";
+    const code = e?.code ?? e?.status ?? "?";
+    const msg = String(e?.message ?? "").split("\n")[0];
+    return {
+      root: null,
+      why: `${target}: no .git above it, and git said ${code} — ${stderr || msg || "no output"}`,
+    };
   }
 }
 
@@ -144,18 +195,28 @@ function repoFromToolInput(input: any): string | null {
   }
   for (const c of candidates) {
     // A FILE path is not a git cwd: try the path itself, then its directory.
-    const root = gitRootOf(c) ?? gitRootOf(path.dirname(c));
-    if (root) return root;
+    const look = gitRootOf(c);
+    if (look.root) return look.root;
+    const dirLook = gitRootOf(path.dirname(c));
+    if (dirLook.root) return dirLook.root;
+    repoDiagnostics.push(look.why);
   }
   return null;
 }
 
 function sessionRepo(input?: any): string | null {
+  repoDiagnostics = [];
   const fromArgs = repoFromToolInput(input);                       // 1. what THIS call touches
   if (fromArgs) return fromArgs;
   const pinned = (process.env.CORTEX_SESSION_REPO ?? "").trim();   // 2. explicit pin
-  if (pinned) return path.resolve(pinned);
-  return gitRootOf(process.cwd());                                 // 3. pi's own cwd
+  if (pinned) {
+    repoDiagnostics.push(`CORTEX_SESSION_REPO=${pinned} (used as given, never checked)`);
+    return path.resolve(pinned);
+  }
+  const look = gitRootOf(process.cwd());                          // 3. pi's own cwd
+  if (look.root) return look.root;
+  repoDiagnostics.push(`cwd ${look.why}`);
+  return null;
 }
 
 type Verdict = "allowed" | "refused" | "unavailable" | "unresolved";
@@ -354,13 +415,23 @@ function unavailableMessage(repo: string, detail: string): string {
   ].join("\n");
 }
 
-function unresolvedMessage(): string {
+function unresolvedMessage(diagnostics: string[] = []): string {
   return [
     "🛑 GOVERNANCE CANNOT DETERMINE THE REPO — refusing this write (fail CLOSED).",
     "",
     "Pi is not in a git repo and CORTEX_SESSION_REPO is unset, so there is no",
     "tree to govern. Run pi from inside the repo you are working in, or set",
     "CORTEX_SESSION_REPO to its absolute path, then retry.",
+    "",
+    "WHAT WAS TRIED (this part used to be swallowed, which made the refusal",
+    "impossible to act on):",
+    ...(diagnostics.length
+      ? diagnostics.map((d) => `  - ${d}`)
+      : ["  - no lookup ran: the call named no usable path"]),
+    "",
+    "  A line ending in ENOENT means git is not on THIS PROCESS's PATH — the",
+    "  folder may well be a repo. Give pi a PATH that includes git, or set",
+    "  CORTEX_SESSION_REPO to the checkout. Anything else quotes git's own words.",
   ].join("\n");
 }
 
@@ -375,7 +446,7 @@ export default function (pi: any) {
     const repo = sessionRepo(event?.input);
     if (!repo) {
       note(`GOV_UNRESOLVED tool=${toolName}\n`);
-      return { block: true, reason: unresolvedMessage() };
+      return { block: true, reason: unresolvedMessage(repoDiagnostics) };
     }
 
     const { verdict, detail } = await askGovernance(repo);

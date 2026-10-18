@@ -316,6 +316,26 @@ note(!String(r.reason || "").includes("CANNOT DETERMINE THE REPO"),
      "(env unset, cwd outside the repo)");
 try { fs.rmSync(argsRepo, { recursive: true, force: true }); } catch { /* best effort */ }
 
+// ── 9c. git NOT on PATH: the repo is still found (#2) ─────────────────────
+// The lookup used to depend entirely on git being callable from THIS process; a launcher with a
+// stripped PATH made every lookup fail while git worked in the operator's own shell. Finding where
+// a repo STARTS needs no git — only READING it does — so the walk upward must carry it alone.
+const fsRepo = fs.mkdtempSync(path.join(os.tmpdir(), "fs-walk-repo-"));
+fs.mkdirSync(path.join(fsRepo, ".git"));       // .git present, no git binary required
+const savedPath = process.env.PATH;
+delete process.env.CORTEX_SESSION_REPO;
+process.env.PATH = "/nonexistent-bin";          // git cannot be executed at all
+try {
+  process.chdir(nonRepo);
+  r = await call("write", { file_path: `${fsRepo}/nested/file.txt` });
+} finally {
+  process.env.PATH = savedPath;
+  process.chdir(cwdBefore);
+}
+note(!String(r.reason || "").includes("CANNOT DETERMINE THE REPO"),
+     "with git absent from PATH, a repo is STILL found by walking up for .git");
+try { fs.rmSync(fsRepo, { recursive: true, force: true }); } catch { /* best effort */ }
+
 // ── 10. the gate registers no tools (one way in per capability) ───────────
 note(tools.length === 0,
      `the gate registers ZERO tools (got ${tools.length}) — it is an adapter over the shared implementation, not a second surface`);
