@@ -3417,6 +3417,42 @@ def _active_lock_refusal_text(existing: dict) -> str:
     )
 
 
+def _create_pending_cycle(task_id: str, session_id: str, outcome: str) -> int:
+    """Create the PENDING cycle a governed task is SCORED against. Returns its id.
+
+    ONE implementation, because there are TWO ways a task starts (2026-10-18): `begin_change`
+    starts one, and `request_interruption` starts a SUB-task. The second created no cycle at all —
+    it stacked the parent and renamed the lock's task_id to `<parent>_sub1`, so the session was left
+    holding a LIVE lock that nothing could score: `end_change` refused with "Cannot release lock: no
+    governance cycle found for this task", `begin_change` refused with "A governance session is
+    already active: task_id ..._sub1 ... or use force=True", `feedback_accept` found no PENDING
+    cycle, and `resume_from_interrupt` answered "No active governance lock". The only named exit was
+    an override, which the operator rejects outright. Measured deadlock, task events #167 and #168.
+
+    Ordering is load-bearing in BOTH callers: create the cycle BEFORE writing the lock, so a DB
+    write failure cannot leave a lock whose task has no scorable cycle — exactly the state that
+    deadlocked the session.
+    """
+    conn = _db()
+    try:
+        row = conn.execute(
+            "SELECT COALESCE(MAX(cycle_num), 0) + 1 FROM loop_cycles WHERE task_id = ?",
+            (task_id,)
+        ).fetchone()
+        cycle_num = row[0] if row else 1
+        conn.execute(
+            """INSERT INTO loop_cycles
+               (task_id, cycle_num, completeness, quality, progress, composite,
+                no_progress, decision, user_overrode, outcome_note, session_id)
+               VALUES (?, ?, 0, 0, 0, 0, 0, 'PENDING', NULL, ?, ?)""",
+            (task_id, cycle_num, outcome, session_id)
+        )
+        conn.commit()
+        return int(conn.execute("SELECT last_insert_rowid()").fetchone()[0])
+    finally:
+        conn.close()
+
+
 def _begin_change(args: dict) -> CallToolResult:
     """Create a governance lock file AND a pending cycle in the loop-governance DB."""
     task_id = args.get("task_id", "").strip()
@@ -3554,27 +3590,10 @@ def _begin_change(args: dict) -> CallToolResult:
     # preventing orphaned locks. For force=True, the old lock is already released
     # but no NEW lock exists yet — the DB write must succeed to proceed.
     try:
-        conn = _db()
-        row = conn.execute(
-            "SELECT COALESCE(MAX(cycle_num), 0) + 1 FROM loop_cycles WHERE task_id = ?",
-            (task_id,)
-        ).fetchone()
-        cycle_num = row[0] if row else 1
-
         outcome = "Created by begin_change — call feedback_accept to score"
         if force:
             outcome = audit_note
-
-        conn.execute(
-            """INSERT INTO loop_cycles
-               (task_id, cycle_num, completeness, quality, progress, composite,
-                no_progress, decision, user_overrode, outcome_note, session_id)
-               VALUES (?, ?, 0, 0, 0, 0, 0, 'PENDING', NULL, ?, ?)""",
-            (task_id, cycle_num, outcome, session_id)
-        )
-        conn.commit()
-        cycle_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
-        conn.close()
+        cycle_id = _create_pending_cycle(task_id, session_id, outcome)
 
         pending_msg = (
             f"\n📝 Pending cycle #{cycle_id} created in loop-governance DB.\n"
@@ -7476,6 +7495,24 @@ def _request_interruption(args: dict) -> CallToolResult:
     detail = f"Interrupted by: {sub_task_id} — {description}"
     if reason:
         detail += f" (reason: {reason})"
+
+    # The sub-task is a GOVERNED TASK and needs its own PENDING cycle, created BEFORE the lock
+    # names it — mirroring begin_change's ordering. Without this the session ends up holding a
+    # live lock that nothing can score (see _create_pending_cycle for the measured deadlock), and
+    # a failure HERE must refuse the interruption rather than half-create it: a refused
+    # interruption costs a retry, whereas a lock with no scorable cycle costs the session.
+    try:
+        sub_cycle_id = _create_pending_cycle(
+            sub_task_id, (state or {}).get("session_id", ""),
+            "Created by request_interruption — call feedback_accept to score")
+    except Exception as e:
+        log.error("interruption: could not create the sub-task cycle for %s: %s", sub_task_id, e)
+        return CallToolResult(content=[TextContent(type="text", text=(
+            f"Cannot interrupt: could not create the sub-task's governance cycle ({e}).\n"
+            "  Refusing the interruption — a sub-task lock with no scorable cycle cannot be\n"
+            "  closed or superseded, which strands the session (measured: events #167/#168)."
+        ))])
+
     _write_lock_and_log(state, "interruption_requested", detail, args)
 
     return CallToolResult(content=[TextContent(
@@ -7483,6 +7520,8 @@ def _request_interruption(args: dict) -> CallToolResult:
         text=f"⏸️ Interruption: '{stacked['task_id']}' suspended. New sub-task '{sub_task_id}' started.\n"
              f"  Stack depth: {len(stack)}\n"
              f"  Max depth: {MAX_STACK_DEPTH}\n"
+             f"  Sub-task cycle #{sub_cycle_id} created as PENDING — score it with\n"
+             f"  feedback_accept(task_id='{sub_task_id}') when the sub-task is done.\n"
              f"  Use resume_from_interrupt to restore '{stacked['task_id']}' when done."
     )])
 
