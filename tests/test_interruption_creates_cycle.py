@@ -219,15 +219,32 @@ def test_begin_change_uses_the_SAME_implementation():
 
 def test_the_sandbox_never_touches_the_live_store():
     """A regression test must exercise the DETECTOR, not live ambient state — and a leaked PENDING
-    cycle is a host-wide doctor failure, not a local inconvenience."""
+    cycle is a host-wide doctor failure, not a local inconvenience.
+
+    Compared by ROW COUNT and asserted BOTH ways, because the previous version was vacuous: it
+    compared the live file's mtime before and after, so on a host with no live store both sides
+    were None and the assert passed while proving only that a path had been redirected.
+    """
     mod = _mod()
     _sandbox(mod)
-    assert Path(mod.LOOP_DB) != LIVE_DB, "the test must not point at the live store"
-    before = LIVE_DB.stat().st_mtime if LIVE_DB.exists() else None
+
+    def _live_cycles():
+        if not LIVE_DB.exists():
+            return None
+        conn = sqlite3.connect(f"file:{LIVE_DB}?mode=ro", uri=True)
+        try:
+            return conn.execute("SELECT COUNT(*) FROM loop_cycles").fetchone()[0]
+        finally:
+            conn.close()
+
+    before = _live_cycles()
     mod._create_pending_cycle("sandboxed-task", SID, "must not reach the live DB")
-    after = LIVE_DB.stat().st_mtime if LIVE_DB.exists() else None
-    assert before == after, "the live store was written by a sandboxed test"
-    print("  live store untouched (mtime unchanged) ✓")
+    after = _live_cycles()
+    assert before == after, f"a sandboxed test changed the live store ({before} -> {after} rows)"
+    # AND the write must have landed somewhere — otherwise "the live store did not change" is
+    # satisfied by a create that did nothing at all.
+    assert _rows(mod, "sandboxed-task"), "the create wrote nowhere, so the check above is vacuous"
+    print(f"  sandbox wrote its own row; live store unchanged (cycles: {before}) ✓")
 
 
 def _main():

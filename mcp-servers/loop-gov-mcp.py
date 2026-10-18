@@ -7738,30 +7738,27 @@ def _promote_issue_to_task(args: dict) -> CallToolResult:
         "task_stack": [],
         "status": "executing",
     }
-    _write_lock(state, args)
-
-    # Fix GAP #4: Create a cycle in loop-governance DB so promoted-issue
-    # tasks are traceable and have a cycle record for end_change.
+    # THE CYCLE IS CREATED BEFORE THE LOCK NAMES IT, and the promotion is REFUSED if it cannot be.
+    # This path had the identical ordering bug that deadlocked a session on 2026-10-18: it wrote
+    # the lock, then inserted its own copy of the cycle inside a try/except that swallowed the
+    # failure, so a DB error left a LIVE lock whose task had no scorable cycle — `end_change`
+    # answered "no governance cycle found for this task", `begin_change` answered "a governance
+    # session is already active ... use force=True", and the only named exit was an override. It was
+    # also the SECOND copy of the create (the fix for `request_interruption` exists to have one), so
+    # the two could drift. Same shape as `_request_interruption`: create first, refuse on failure.
     try:
-        conn = _db()
-        row = conn.execute(
-            "SELECT COALESCE(MAX(cycle_num), 0) + 1 FROM loop_cycles WHERE task_id = ?",
-            (task_id,)
-        ).fetchone()
-        cycle_num = row[0] if row else 1
-        conn.execute(
-            """INSERT INTO loop_cycles
-               (task_id, cycle_num, completeness, quality, progress, composite,
-                no_progress, decision, user_overrode, outcome_note, session_id)
-               VALUES (?, ?, 0, 0, 0, 0, 0, 'PENDING', NULL, ?, ?)""",
-            (task_id, cycle_num, f"Promoted from issue: {description}", session_id)
-        )
-        conn.commit()
-        cycle_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
-        conn.close()
-        cycle_msg = f"\n  Pending cycle #{cycle_id} created."
-    except Exception:
-        cycle_msg = "\n  (note: no cycle record — DB unavailable)"
+        cycle_id = _create_pending_cycle(task_id, session_id,
+                                         f"Promoted from issue: {description}")
+    except Exception as e:
+        log.error("promote_issue_to_task: could not create the cycle for %s: %s", task_id, e)
+        return CallToolResult(content=[TextContent(type="text", text=(
+            f"Cannot promote issue: could not create the governance cycle ({e}).\n"
+            "  Refusing — a lock whose task has no scorable cycle cannot be closed or\n"
+            "  superseded, which strands the session (measured: events #167/#168)."
+        ))])
+
+    _write_lock(state, args)
+    cycle_msg = f"\n  Pending cycle #{cycle_id} created."
 
     # Log as task event
     try:

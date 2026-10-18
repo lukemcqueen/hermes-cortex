@@ -55,20 +55,29 @@ def _conn():
     return conn
 
 
-def test_the_ordinary_case_is_not_judged_by_flash(monkeypatch=None):
+def test_the_ordinary_case_is_not_judged_by_flash():
     """THE directive. An ordinary complex change is tier "light" — and must still get the canonical
-    reviewer, because the tier is about transport and depth-of-wait, not about who judges."""
+    reviewer, because the tier is about transport and depth-of-wait, not about who judges.
+
+    Both env vars are SAVED and RESTORED: popping them unconditionally would silently discard an
+    operator's own ADVERSARIAL_REVIEWER_MODEL for every later test in this process.
+    """
     mod = _mod()
-    os.environ.pop("ADVERSARIAL_REVIEW_LIGHT_MODEL", None)
-    os.environ.pop("ADVERSARIAL_REVIEWER_MODEL", None)
-    assert mod._tier(_light_cx()) == "light", "precondition: this is the catch-all tier"
-    chosen = mod._light_reviewer_model()
-    label = mod._reviewer_label(_light_cx())
-    assert "flash" not in chosen.lower(), f"flash is still the light-tier default: {chosen}"
-    assert "flash" not in label.lower(), f"the recorded label would name flash: {label}"
-    assert chosen == mod.REVIEWER_MODEL_DEFAULT, (chosen, mod.REVIEWER_MODEL_DEFAULT)
-    assert label == mod.REVIEWER_MODEL_DEFAULT, (label, mod.REVIEWER_MODEL_DEFAULT)
-    print(f"  ordinary change -> tier {mod._tier(_light_cx())}, judge {chosen} ✓")
+    saved = {k: os.environ.pop(k, None) for k in
+             ("ADVERSARIAL_REVIEW_LIGHT_MODEL", "ADVERSARIAL_REVIEWER_MODEL")}
+    try:
+        assert mod._tier(_light_cx()) == "light", "precondition: this is the catch-all tier"
+        chosen = mod._light_reviewer_model()
+        label = mod._reviewer_label(_light_cx())
+        assert "flash" not in chosen.lower(), f"flash is still the light-tier default: {chosen}"
+        assert "flash" not in label.lower(), f"the recorded label would name flash: {label}"
+        assert chosen == mod.REVIEWER_MODEL_DEFAULT, (chosen, mod.REVIEWER_MODEL_DEFAULT)
+        assert label == mod.REVIEWER_MODEL_DEFAULT, (label, mod.REVIEWER_MODEL_DEFAULT)
+        print(f"  ordinary change -> tier {mod._tier(_light_cx())}, judge {chosen} ✓")
+    finally:
+        for _k, _v in saved.items():
+            if _v is not None:
+                os.environ[_k] = _v
 
 
 def test_the_cheaper_judge_is_still_reachable_by_an_explicit_operator_choice():

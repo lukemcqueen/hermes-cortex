@@ -99,14 +99,27 @@ def test_the_harness_names_no_interpreter_path_this_repo_does_not_create():
     print("  no venv path in code; resolver + repair are named ✓ (probe fires on the old line)")
 
 
+class NotRun(Exception):
+    """Raised by a test that could not EXECUTE its subject on this host.
+
+    The hand-rolled runner scores "no exception" as PASS, so a test that prints a skip and
+    RETURNS is recorded as a pass while having verified nothing — the exact defect this whole
+    harness exists to catch (a file that ran nothing proves nothing either way, ADV-13116-1).
+    NOT RUN is its own outcome here: the runner counts it separately and names it, so it can
+    never read as a pass and can never read as a failure of the code under test.
+    """
+
+
 def test_a_resolved_interpreter_is_a_python_that_can_actually_run_pytest():
     """`<interpreter> -m pytest` is the command shape, so the resolved path must be a PYTHON — hand
     back the `pytest` console script and the command silently becomes `pytest -m pytest`, which
     collects nothing and is then reported as a test defect."""
     py = _harness()._find_pytest()
     if py is None:
-        print("  (no interpreter here can import pytest — NOT RUN is the correct verdict; skipping)")
-        return
+        # NOT a pass and NOT a failure: nothing was exercised, so this host cannot answer the
+        # question. Raised as its own outcome rather than returned, so the runner cannot score it
+        # as PASS (measured: it did).
+        raise NotRun("no interpreter on this host can import pytest — the subject could not run")
     assert Path(py).is_file(), py
     assert Path(py).name.startswith("python"), f"must resolve a python, not a console script: {py}"
     r = subprocess.run([py, "-m", "pytest", "--version"], capture_output=True, text=True)
@@ -166,18 +179,28 @@ def _main():
     print("harness:", HARNESS)
     assert HARNESS.is_file(), f"missing harness: {HARNESS}"
     failed = []
+    not_run = []
     for name, fn in tests:
         try:
             fn()
+        except NotRun as exc:
+            not_run.append(f"{name}: {exc}")
+            print(f"NOT RUN  {name}")
         except Exception:
             import traceback
             failed.append(name)
             print(f"FAIL  {name}")
             traceback.print_exc()
+    # Three outcomes, named apart. A NOT RUN is not a pass (nothing was exercised) and not a
+    # failure (the code under test is not implicated), so it gets its own line and its own list.
+    if not_run:
+        print(f"NOT RUN ({len(not_run)}) — ran nothing here, so they are not evidence either way:")
+        for entry in not_run:
+            print(f"  - {entry}")
     if failed:
         print(f"RESULT: FAIL ({len(failed)}/{len(tests)}): {failed}")
         return 1
-    print(f"RESULT: ALL PASS ({len(tests)} tests)")
+    print(f"RESULT: ALL PASS ({len(tests)} tests)" + (f" ({len(not_run)} NOT RUN)" if not_run else ""))
     return 0
 
 
