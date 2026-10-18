@@ -48,7 +48,21 @@ source "$CORTEX_REPO/ops/scripts/lib/git-stalled-rebase.sh"
 
 # Use the same strategy as the working monitor script - assert repo exists and log what's happening
 log()  { echo "[$(ts) cortex-sync] $*"; }
-stash_pop() { if $STASHED; then git stash pop 2>&1 | while IFS= read -r line; do echo "[$(ts) cortex-sync] $line"; done || true; fi }
+stash_pop() {
+    if $STASHED; then
+        # `... | while ...; done || true` used to swallow a FAILED `git stash pop` — a conflict
+        # leaves the changes STASHED — so a restore that never happened looked identical to one
+        # that did (adversarial finding ADV-12971-4, 2026-10-18). `set -o pipefail` is on above,
+        # so the status captured here is the pop's own. It is REPORTED loudly, and deliberately
+        # NOT returned: every caller is already on a failure path that ends in its own `exit 1`,
+        # and `set -e` would turn a non-zero return into an abort that skips their message.
+        local rc=0
+        git stash pop 2>&1 | while IFS= read -r line; do echo "[$(ts) cortex-sync] $line"; done || rc=$?
+        if [ "$rc" -ne 0 ]; then
+            log "WARNING: 'git stash pop' FAILED (rc=$rc) — the stashed changes are probably STILL in 'git stash list'"
+        fi
+    fi
+}
 
 # Stash any uncommitted changes before fetch/rebase
 STASHED=false
