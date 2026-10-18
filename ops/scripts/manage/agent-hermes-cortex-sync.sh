@@ -92,11 +92,24 @@ PULL_OUTPUT=$(GIT_EDITOR=true SKIP_POST_MERGE=1 "$TIMEOUT_CMD" 20 git pull --reb
     PULL_EXIT=$?
     CTS=$(ts)
     # Both failure shapes below (timeout mid-rebase, conflict) can leave the
-    # rebase STOPPED. Clear it first so the failure is inert: `git rebase --abort`
-    # restores the pre-pull state and preserves every local commit. The status is
-    # captured EXPLICITLY — a piped helper reports the pipe's status, so a failed
+    # rebase STOPPED. Clear it first so the failure is inert: the helper's
+    # `git rebase --abort` returns the branch to its original tip — the original
+    # local commits are preserved and the in-progress rebase is discarded — and it
+    # reports its own failure rather than succeeding silently. The status is
+    # captured EXPLICITLY: a piped helper reports the PIPE's status, so a failed
     # abort would read as success while the host stayed blocked.
-    abort_out=$(abort_stalled_rebase 2>&1) && abort_rc=0 || abort_rc=$?
+    #
+    # Written as an explicit if/else rather than `... && rc=0 || rc=$?` so the status
+    # capture cannot be MISREAD as the classic `A && B || C` bug. An adversarial review
+    # claimed `$?` in that one-liner was always 0, i.e. that this exit path was dead; it
+    # was measured FALSE on 2026-10-18 (`f() { return 3; }; out=$(f 2>&1) && rc=0 || rc=$?`
+    # yields rc=3), so the one-liner was correct and this rewrite is a CLARITY change, not
+    # a bug fix.
+    if abort_out=$(abort_stalled_rebase 2>&1); then
+        abort_rc=0
+    else
+        abort_rc=$?
+    fi
     if [ -n "$abort_out" ]; then
         printf '%s\n' "$abort_out" | while IFS= read -r line; do log "$line"; done
     fi
