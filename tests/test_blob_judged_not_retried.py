@@ -1,43 +1,66 @@
 #!/usr/bin/env python3
 """A blob already JUDGED must not be judged again, or it starves the whole range.
 
-Measured 2026-10-18, drain of a 38-blob push range: the per-blob pass walks blobs in
-sorted path order and skips only the ones with a CLEAN verdict, so the FIRST blob whose
-verdict is FINDINGS is re-sent to the reviewer on every single close. Verdicts are keyed
-by blob CONTENT, so re-reviewing identical bytes cannot produce a different answer — the
-call is pure waste, and with a per-close cap of ONE blob it also starves every blob
-sorted after it. Observed: two consecutive closes each reported
-``reviewed this pass : 1 blob(s)`` / ``still carry no review verdict: 10`` with the SAME
-content judged again, while ten blobs sat with no verdict at all.
+The failure this pins, and how to reproduce it without a transcript: with a per-close cap of ONE
+blob, run consecutive ``end_change`` calls over a push range containing a blob whose verdict is
+FINDINGS. Each close then reports ``reviewed this pass : 1 blob(s)`` while the count of blobs that
+"carry no review verdict" does NOT fall — the same content was judged again — and no blob sorted
+after the first non-clean one is ever reached. Verdicts are keyed by blob CONTENT, so re-reviewing
+identical bytes cannot produce a different answer: the call is pure waste.
 
 The fix is a skip, not a pass (no enforcement is weakened):
-  * a blob with a RECORDED verdict that is not CLEAN is still REPORTED in ``remaining``,
-    so the close still refuses and the receipt still names it uncovered — the operator
-    must FIX the file and commit (which is a new blob) rather than close in a loop;
-  * it is simply not sent to the reviewer a second time for identical content, so the
-    per-close cap is spent on blobs that have never been judged.
+  * a blob with a RECORDED verdict that is not CLEAN is still REPORTED in ``remaining``, so the
+    close still refuses and the receipt still names it uncovered — the operator must FIX the file
+    and commit (which is a new blob) rather than close in a loop;
+  * it is simply not sent to the reviewer a second time for identical content, so the per-close
+    cap is spent on blobs that have never been judged.
 
 Asserted here:
   A. a blob carrying a non-clean verdict is not handed to the reviewer, and is named in
      ``judged`` AND in ``remaining`` (fail-closed both ways);
   B. an unjudged blob IS reviewed in the same pass, i.e. the cap is not spent on the
      already-judged blob;
-  C. a CLEAN blob is still skipped as before (no regression to the existing cache path).
+  C. a CLEAN blob is still skipped as before (no regression to the existing cache path);
+  D. PRECONDITIONS: the module loads, the collaborator exists with the signature this file calls,
+     and the module logs to the very logger this test silences.
 
 The store is injected, so this test needs no git, no network and no live database.
 """
 import importlib.util
+import inspect
 import logging as _logging
 import sqlite3
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
-_spec = importlib.util.spec_from_file_location("loop_gov_mcp_judged", REPO / "mcp-servers" / "loop-gov-mcp.py")
+MODULE = REPO / "mcp-servers" / "loop-gov-mcp.py"
+
+# ── preconditions, checked BEFORE any assertion runs ────────────────────────────────────────────
+# An adversarial finding was right that importing this module and calling into it without checking
+# anything makes a renamed or removed collaborator look like a test bug: the failure would surface
+# as an AttributeError or TypeError, not as a statement about the behaviour under test. These raise
+# an explicit PRECONDITION FAILED instead.
+_spec = importlib.util.spec_from_file_location("loop_gov_mcp_judged", MODULE)
+if _spec is None or _spec.loader is None:                        # pragma: no cover - defensive
+    raise SystemExit(f"PRECONDITION FAILED: cannot load the module under test at {MODULE}")
 mcp = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(mcp)
 
-# The gate's logger appends to the live audit trail; a test must not write there.
-_gate_log = _logging.getLogger("loop-governance")
+if not hasattr(mcp, "_review_uncovered_blobs"):
+    raise SystemExit("PRECONDITION FAILED: mcp._review_uncovered_blobs is missing, so the behaviour "
+                     "this file exists to pin is not present")
+
+_SIG = inspect.signature(mcp._review_uncovered_blobs)
+for _needed in ("blobs", "reviewer", "material_for", "cap", "budget_s", "conn"):
+    if _needed not in _SIG.parameters:
+        raise SystemExit(f"PRECONDITION FAILED: _review_uncovered_blobs has no '{_needed}' "
+                         f"parameter; its signature is {_SIG}")
+
+# The gate's logger is where the production audit trail goes, so a test must not write to it. That
+# silence is only real if the module logs to THIS logger — asserted in test D, not assumed, because
+# silencing an unrelated logger would be decorative while the trail still got polluted.
+GATE_LOGGER_NAME = "loop-governance"
+_gate_log = _logging.getLogger(GATE_LOGGER_NAME)
 _gate_log.setLevel(_logging.CRITICAL + 1)
 
 DDL = """CREATE TABLE IF NOT EXISTS blob_reviews (
@@ -67,6 +90,17 @@ def _run(blobs, conn):
         material_for=lambda sha, path: f"material for {path}",
         cap=1, budget_s=240.0, conn=conn)
     return out, seen
+
+
+def test_module_logs_to_the_logger_this_test_silences():
+    """D. The suppression above must cover the module's OWN logger, not just a name we picked."""
+    mod_logger = getattr(mcp, "log", None)
+    assert mod_logger is not None, (
+        "the module exposes no module-level logger, so this test cannot silence its output and its "
+        "noise would land in the production audit trail")
+    assert mod_logger.name == GATE_LOGGER_NAME, (
+        f"the module logs to {mod_logger.name!r} while this test silences {GATE_LOGGER_NAME!r}: the "
+        "suppression is decorative and test output reaches the live audit trail")
 
 
 def test_judged_blob_is_not_reviewed_again_and_still_blocks():
