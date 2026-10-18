@@ -20,7 +20,11 @@
 -- relaxation ONLY widens WHO may parent a fleet slice, never what a fleet row
 -- may contain. Non-orchestrator personal parents remain refused (coherence).
 --
--- Test: tests/test-tasks-schema.sh AC-L1-11c (RED → GREEN).
+-- Test: re-runnable golden-master (committed, NOT a bare claim) —
+--   tests/run_fleet_slice_orch_parent_repro.py  -> rc=0 ALL EXPECTATIONS HELD
+--   raw output: tests/artifacts/v013-fleet-slice-schema-battery.txt
+--   battery check AC-L1-11c: 'fleet slice under orchestrator personal story
+--   stored scope=fleet' (pre-fix schema refused it: RED).
 -- Additive CREATE OR REPLACE, version-gated. Single transaction.
 -- ============================================================================
 
