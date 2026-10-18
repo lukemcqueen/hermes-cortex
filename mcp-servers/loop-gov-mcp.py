@@ -1220,6 +1220,58 @@ def _blobs_with_recorded_verdict(blobs: dict,
             own.close()
 
 
+def _blobs_with_covered_verdict(blobs: dict,
+                                conn: sqlite3.Connection | None = None) -> set[str]:
+    """Blobs that were JUDGED and need no fix: CLEAN, or findings that all landed below blocking.
+
+    Why this exists (2026-10-18, found by draining the unpushed range): coverage demanded a CLEAN
+    verdict while the close's own gate refused only on BLOCKING findings. A blob judged with six
+    INFO observations therefore read as "0 blocking findings" to the close and as "carries no
+    review verdict" to the receipt at the same time — it could never be covered and the range could
+    never close. That is not strictness, it is a contradiction, and it is what made a drain look
+    infinite.
+
+    The two sets answer different questions and are deliberately NOT merged:
+      * BLOCKING  — decided by _blocking_findings (high/critical and whatever else it rates as
+        blocking). Unchanged: a blocking finding still refuses the close exactly as before.
+      * COVERED   — "was this content read, and does anything need fixing?" CLEAN, or a FINDINGS
+        verdict whose reported findings are all non-blocking.
+
+    Fail CLOSED on anything ambiguous, because this set WIDENS what a receipt may name: a missing
+    verdict, an unparseable findings_json, or a FINDINGS verdict carrying an empty findings list is
+    NOT covered. An UNJUDGED blob stays uncovered — the protection that actually matters.
+    """
+    if not blobs:
+        return set()
+    own = conn if conn is not None else _db()
+    try:
+        out: set[str] = set()
+        for sha in blobs.values():
+            row = own.execute("SELECT verdict, findings_json FROM blob_reviews WHERE blob_sha=?",
+                              (sha,)).fetchone()
+            if row is None:
+                continue
+            verdict = str(row[0]).upper()
+            if verdict == "CLEAN":
+                out.add(sha)
+                continue
+            raw = row[1] or ""
+            try:
+                findings = json.loads(raw)
+            except (ValueError, TypeError):
+                continue                      # unparseable: not evidence of a clean judgement
+            if not isinstance(findings, list) or not findings:
+                continue                      # silence is never CLEAN (same rule as the gate)
+            if not _blocking_findings(raw)[0]:
+                out.add(sha)
+        return out
+    except sqlite3.Error:
+        return set()
+    finally:
+        if conn is None:
+            own.close()
+
+
 def _review_uncovered_blobs(blobs: dict, *, reviewer, material_for,
                             cap: int = BLOB_REVIEW_CAP_PER_CLOSE,
                             budget_s: float = BLOB_REVIEW_BUDGET_S,
@@ -1245,15 +1297,18 @@ def _review_uncovered_blobs(blobs: dict, *, reviewer, material_for,
     calls = 0
     consecutive_failures = 0
     started = time.monotonic()
-    cached = _blobs_with_clean_verdict(blobs, conn=conn)
+    # A blob that was JUDGED and needs no fix is covered: CLEAN, or findings that all landed below
+    # blocking (see _blobs_with_covered_verdict — demanding a bare CLEAN here was the contradiction
+    # that made a six-INFO-finding blob uncovrable forever).
+    covered = _blobs_with_covered_verdict(blobs, conn=conn)
     # A blob with a recorded NON-clean verdict has already been read. Identical content
     # cannot produce a different verdict, so spend the cap on blobs nobody has judged
     # (see _blobs_with_recorded_verdict for the measured starvation this fixes). It stays
     # in `remaining`, so the close still refuses and the receipt still names it uncovered.
     recorded = _blobs_with_recorded_verdict(blobs, conn=conn)
     for path, sha in sorted((blobs or {}).items()):
-        if sha in cached:
-            verdicts[sha] = "CLEAN"
+        if sha in covered:
+            verdicts[sha] = "CLEAN"           # covered: judged, nothing outstanding
             continue
         if recorded.get(sha):
             # Deliberately in BOTH lists, and they mean different things: `already_judged` answers
@@ -1286,7 +1341,7 @@ def _review_uncovered_blobs(blobs: dict, *, reviewer, material_for,
                 log.error("per-blob review: %d consecutive failures — treating the reviewer "
                           "as DOWN and stopping the pass", consecutive_failures)
                 remaining.extend(s for _, s in sorted((blobs or {}).items())
-                                 if s != sha and s not in verdicts and s not in cached
+                                 if s != sha and s not in verdicts and s not in covered
                                  and s not in remaining)
                 break
             continue
@@ -1360,8 +1415,8 @@ def _unreviewed_paths(repo: Optional[Path]) -> list[str]:
         blobs = _push_range_blobs(repo)
         if not blobs:
             return []
-        clean = _blobs_with_clean_verdict(blobs)
-        return sorted(p for p, sha in blobs.items() if sha not in clean)
+        covered = _blobs_with_covered_verdict(blobs)
+        return sorted(p for p, sha in blobs.items() if sha not in covered)
     except Exception:  # noqa: BLE001 — a scope note must never be able to break a session opening
         log.warning("review scope note: could not resolve the unreviewed blobs", exc_info=True)
         return []
@@ -1570,7 +1625,7 @@ def _complete_push_range_blobs(lock: dict, cycle: dict, cx: Optional[dict] = Non
         # and therefore under-reported whenever the pass stopped early (found while draining).
         remaining_paths = _blob_paths_for(repo, remaining)
         judged_paths = _blob_paths_for(repo, pb.get("already_judged") or [])
-        clean_count = len(_blobs_with_clean_verdict(_push_range_blobs(repo) or {}))
+        clean_count = len(_blobs_with_covered_verdict(_push_range_blobs(repo) or {}))
         paths_line = ("  unreviewed paths:\n" + _path_list(remaining_paths)) if remaining_paths else ""
         judged_paths_line = (
             "  judged and NOT clean — fix these, the fix is a NEW blob:\n" + _path_list(judged_paths)
@@ -1592,17 +1647,19 @@ def _complete_push_range_blobs(lock: dict, cycle: dict, cx: Optional[dict] = Non
 
 
 def _receipt_blobs(repo: Path, base: str, head: str):
-    """The range's blobs that carry a stored CLEAN verdict; everything else OMITTED.
+    """The range's blobs that are COVERED; everything else OMITTED.
 
-    The receipt IS the authorisation, so it may name only content that was JUDGED.
-    An unjudged blob is left out and the push gate then NAMES it as uncovered —
-    the honest failure, instead of a receipt that claims a file nobody read.
+    The receipt IS the authorisation, so it may name only content that was JUDGED — CLEAN, or
+    judged with findings that all landed below blocking (see _blobs_with_covered_verdict; a
+    blocking finding still refuses the whole close before a receipt is ever written). An unjudged
+    blob is left out and the push gate then NAMES it as uncovered — the honest failure, instead of
+    a receipt that claims a file nobody read.
     """
     blobs = _range_blobs(repo, base, head)
     if not blobs:
         return blobs          # None/{} → the gate falls back to exact tip+base
-    clean = _blobs_with_clean_verdict(blobs)
-    return {p: s for p, s in blobs.items() if s in clean}
+    covered = _blobs_with_covered_verdict(blobs)
+    return {p: s for p, s in blobs.items() if s in covered}
 
 
 def _range_blobs(repo: Path, base: str, head: str):
