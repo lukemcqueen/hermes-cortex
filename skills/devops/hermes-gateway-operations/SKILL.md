@@ -108,12 +108,26 @@ attempt that left both unchanged at the previous start time — the unit never
 re-activated, so the MCP child still held pre-change code while everything
 *looked* restarted.
 
-Then confirm the child post-dates the deploy:
+Then confirm WHAT THE CHILD LOADED — by content, not by a timestamp:
 
 ```bash
-ps -o lstart= -p $(pgrep -f loop-governance/loop-gov-mcp.py)
-date -r ~/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py '+%e %H:%M:%S'
+python3 - <<'EOF'
+import hashlib, json, pathlib
+stamp = pathlib.Path.home() / ".hermes-cortex" / "state" / "loop-gov-daemon.json"
+mod = pathlib.Path.home() / ".hermes-cortex" / "tools" / "loop-governance" / "loop-gov-mcp.py"
+rec = json.loads(stamp.read_text())            # written by the daemon itself at startup
+now = hashlib.sha256(mod.read_bytes()).hexdigest()
+print("daemon loaded:", rec["sha256"][:12], "pid", rec["pid"])
+print("on disk now :", now[:12])
+print("CURRENT" if rec["sha256"] == now else "STALE — the loaded code differs from the file")
+EOF
 ```
+
+> **Portability — do NOT check this with `date -r <path>`.** That is GNU syntax; on macOS (BSD)
+> `date -r` takes SECONDS since the epoch, so the same command silently means something else
+> instead of failing loudly. macOS also has no `sha256sum` (it ships `shasum -a 256`), which is
+> why the snippet hashes in Python rather than shelling out. `ps -o lstart=` is portable when you
+> only want the start time.
 
 An older child start is a HINT that the old code is live — but mtime alone cannot settle it: the
 restart command's own machinery (a dogfood/doctor pass) RE-DEPLOYS, and a deploy rewrites files
