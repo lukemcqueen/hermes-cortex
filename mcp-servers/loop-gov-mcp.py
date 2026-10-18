@@ -1428,10 +1428,22 @@ def _push_base_is_root_fallback(repo: Path) -> bool:
 
 
 def _push_range_blobs(repo: Path) -> dict:
-    """{path: blob sha} for the range a push would carry (push-base..HEAD)."""
+    """{path: blob sha} for the range a push would carry (push-base..HEAD).
+
+    EMPTY when the range cannot be resolved: no repo data to work with at all, or a base that had to
+    fall back to the repository ROOT. That last case used to be treated as a real range, which made
+    the range the ENTIRE HISTORY — every path listed in the session-opening note, a verdict demanded
+    per blob for the whole repository, a receipt that would have to cover all of it. There is no push
+    range to authorise in that state, so the honest answer is "none", and the review falls back to its
+    GENERIC checks (operator rule, 2026-10-18: no repo data to work with means generic feedback, not a
+    per-file demand list). This is not a weaker authorisation: a receipt with no blobs is accepted
+    only by exact tip+base — see _range_blobs.
+    """
     head = _git_capture(repo, "rev-parse", "HEAD").strip()
     base = _push_base(repo)
     if not head or not base:
+        return {}
+    if _push_base_is_root_fallback(repo):
         return {}
     return _range_blobs(repo, base, head) or {}
 
@@ -1512,6 +1524,17 @@ def _review_scope_note(repo: Optional[Path]) -> str:
     """
     paths = _unreviewed_paths(repo)
     if not paths:
+        # Nothing outstanding — but do NOT be silent when there is also no range at all. An agent in a
+        # repo whose base cannot be resolved still needs the GENERIC expectations, because there is
+        # nothing file-specific to tell it (operator rule, 2026-10-18).
+        if repo is not None and _push_base_is_root_fallback(repo):
+            return (
+                "\n📋 NO RESOLVABLE PUSH RANGE — no remote base could be determined for this repo "
+                "(no remote\n   configured, or a base that fell back to the root commit). There is no "
+                "range to authorise\n   per file here, so the review applies its GENERIC checks only.\n"
+                "   Say in your change notes what you ran and what it returned:\n"
+                + "".join(f"     • {e}\n" for e in REVIEW_EXPECTATIONS)
+            )
         return ""
     advice = _preflight_advice(repo)
     advice_block = (
@@ -1845,6 +1868,8 @@ def _receipt_blobs(repo: Path, base: str, head: str):
     blob is left out and the push gate then NAMES it as uncovered — the honest failure, instead of
     a receipt that claims a file nobody read.
     """
+    if _push_base_is_root_fallback(repo):
+        return {}             # no resolvable range: bind by tip+base only (the stricter path)
     blobs = _range_blobs(repo, base, head)
     if not blobs:
         return blobs          # None/{} → the gate falls back to exact tip+base

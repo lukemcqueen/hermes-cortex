@@ -135,13 +135,16 @@ def test_covered_blob_is_not_re_reviewed_and_not_outstanding():
 
 def test_receipt_names_only_covered_blobs():
     """ADV-0-6: a receipt may name only blobs that were JUDGED and need no fix."""
-    saved = (mcp._range_blobs, mcp._blobs_with_covered_verdict)
+    saved = (mcp._range_blobs, mcp._blobs_with_covered_verdict, mcp._push_base_is_root_fallback)
     mcp._range_blobs = lambda repo, base, head: {"a.py": _sha("a"), "b.py": _sha("b")}
     mcp._blobs_with_covered_verdict = lambda blobs, conn=None: {_sha("a")}
+    # A resolvable range is what this test is about; the unresolvable case has its own test.
+    mcp._push_base_is_root_fallback = lambda repo: False
     try:
         got = mcp._receipt_blobs(Path("/tmp"), "base", "head")
     finally:
-        mcp._range_blobs, mcp._blobs_with_covered_verdict = saved
+        (mcp._range_blobs, mcp._blobs_with_covered_verdict,
+         mcp._push_base_is_root_fallback) = saved
     assert got == {"a.py": _sha("a")}, f"the receipt must omit anything not covered: {got}"
 
 
@@ -203,6 +206,31 @@ def test_coverage_is_recomputed_per_call_not_cached():
     assert mcp._blobs_with_covered_verdict(blobs, conn=conn) == {_sha("a")}, (
         "a verdict recorded by another session between two calls must be seen by the second call — "
         "the coverage path must not cache")
+
+
+def test_unresolvable_range_yields_no_blobs_and_generic_guidance():
+    """Operator rule (event #159): no repo data to work with means GENERIC feedback, never a
+    per-file demand list over the entire history."""
+    saved = (mcp._git_capture, mcp._push_base, mcp._push_base_is_root_fallback, mcp._unreviewed_paths)
+    mcp._push_base_is_root_fallback = lambda repo: True
+    mcp._push_base = lambda repo: "root-sha"
+    mcp._git_capture = lambda repo, *a, **k: "head-sha"
+    mcp._unreviewed_paths = lambda repo: []
+    try:
+        blobs = mcp._push_range_blobs(Path("/tmp"))
+        note = mcp._review_scope_note(Path("/tmp"))
+    finally:
+        (mcp._git_capture, mcp._push_base, mcp._push_base_is_root_fallback,
+         mcp._unreviewed_paths) = saved
+    assert blobs == {}, (
+        "an unresolvable range must yield NO blobs — otherwise every file in the whole history is "
+        "demanded a verdict, which is the failure this resolves")
+    assert "NO RESOLVABLE PUSH RANGE" in note, f"generic guidance expected instead: {note!r}"
+    assert "GENERIC checks" in note, f"the note must say the review degrades to generic: {note!r}"
+    assert mcp.REVIEW_EXPECTATIONS[0] in note, (
+        f"the generic expectations must still be given: {note!r}")
+    assert "- " not in note.split("NO RESOLVABLE")[1], (
+        "there is no range, so there must be no per-file list: " + note)
 
 
 if __name__ == "__main__":
