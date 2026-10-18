@@ -132,6 +132,22 @@ def test_an_invalid_effort_falls_back_rather_than_becoming_a_400(tmp_path):
         os.environ.pop("REVIEWER_REASONING_EFFORT", None)
 
 
+def test_the_default_effort_is_none_because_low_was_measured_to_answer_nothing(tmp_path):
+    """Operator instruction 2026-10-18: the FALLBACK must be 'low or none'.
+
+    It is 'none', and the measurement chose between the two: effort=low returned NO usable content on
+    a single blob at max_tokens 16000, 32000 AND 128000 (reasoning_tokens 16550 / 35977 / 130836),
+    while effort=none returned a verdict in 3.4 s on that same blob. A regression to a higher default
+    restores the failure that cost six closes in one night, so the value is pinned here.
+    """
+    mod = _load_server(tmp_path)
+    assert mod.REVIEWER_REASONING_EFFORT_DEFAULT == "none", (
+        "the fallback must be the effort MEASURED to answer ('none'); 'low' returned no usable "
+        "content at every cap tried, so anything higher re-creates the stall")
+    assert "none" in mod.REVIEWER_REASONING_EFFORTS, (
+        "the fallback must be a value the provider actually accepts, or every review 400s")
+
+
 def test_the_floor_reports_the_measurement_not_a_remedy_already_tried(tmp_path):
     mod = _load_server(tmp_path)
     mod.urllib = _FakeUrllib(_stub_urlopen(

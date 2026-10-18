@@ -3784,10 +3784,19 @@ REVIEWER_MAX_TOKENS_CEILING = 128000
 # reasoning AND the answer together, so an unbounded thinking model returns
 # `finish_reason=length` with empty content — measured on an 8-file/381-line range at
 # max_tokens=48000 AND again at 96000, i.e. raising the cap buys more thinking, not an
-# answer. Effort is a DELIBERATE, operator-visible setting (never a silent default):
-# the failing case is bounded to "medium" while a reviewer that must reason deeply can
-# be raised, and `none`/`minimal` are available for a mechanical re-judge.
-REVIEWER_REASONING_EFFORT_DEFAULT = "medium"
+# answer.
+#
+# The FALLBACK is "none" (operator instruction, 2026-10-18: "please fallback to low or
+# none"). The measurement chose BETWEEN those two options, not preference: effort=low is
+# exactly the setting that returned NO usable content on a single blob at max_tokens 16000,
+# 32000 AND 128000 (reasoning_tokens 16550 / 35977 / 130836), while effort=none returned a
+# verdict in 3.4 s on that same blob (deepseek-v4-pro: 15.6 s). "low" would have preserved
+# the failure that cost six closes in one night; "none" is the option that answers.
+#
+# It is a FALLBACK, not a ceiling: a host wanting more thinking sets REVIEWER_REASONING_EFFORT
+# explicitly (an unrecognised value falls back here LOUDLY), and the reviews run at "none" on
+# 2026-10-18 still returned sharp, actionable findings.
+REVIEWER_REASONING_EFFORT_DEFAULT = "none"
 REVIEWER_REASONING_EFFORTS = ("none", "minimal", "low", "medium", "high", "xhigh", "max")
 
 # A judge does not need to be creative, and sampling variation between two identical reviews is
