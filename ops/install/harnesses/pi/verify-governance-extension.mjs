@@ -299,6 +299,23 @@ note(r.blocked, "no repo + no CORTEX_SESSION_REPO => write BLOCKED (nothing to g
 note(r.reason.includes("CANNOT DETERMINE THE REPO"), "the unresolved block says which one is missing");
 process.env.CORTEX_SESSION_REPO = "/tmp/fake-repo";
 
+// ── 9b. a call that NAMES a path inside a repo RESOLVES it (the args leg) ──
+// Measured on a macOS host (pi, titus, 2026-10-18): the gate consulted only the env var and
+// pi's own cwd, so a session launched outside the checkout was refused with "CANNOT DETERMINE
+// THE REPO" — a dead end, because the one command that would have proven the repo was itself
+// the write being blocked. The repo must be found from the CALL's own arguments.
+delete process.env.CORTEX_SESSION_REPO;
+// This verifier needs no real repo elsewhere (its CLI is stubbed), so the case makes its own.
+const argsRepo = fs.mkdtempSync(path.join(os.tmpdir(), "args-leg-repo-"));
+require("node:child_process").execFileSync("git", ["init", "-q", argsRepo]);
+process.chdir(nonRepo);
+r = await call("write", { file_path: `${argsRepo}/address-args-leg.txt` });
+process.chdir(cwdBefore);
+note(!String(r.reason || "").includes("CANNOT DETERMINE THE REPO"),
+     "a write that NAMES a path inside a repo resolves that repo from the call's own args " +
+     "(env unset, cwd outside the repo)");
+try { fs.rmSync(argsRepo, { recursive: true, force: true }); } catch { /* best effort */ }
+
 // ── 10. the gate registers no tools (one way in per capability) ───────────
 note(tools.length === 0,
      `the gate registers ZERO tools (got ${tools.length}) — it is an adapter over the shared implementation, not a second surface`);

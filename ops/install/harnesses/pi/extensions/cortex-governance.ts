@@ -105,15 +105,16 @@ const note = (message: string) => {
 };
 
 // ── the repo this session is governing ──────────────────────────────────────
-// Precedence matches every other cortex layer (args → env → git): an explicit
-// CORTEX_SESSION_REPO wins, else pi's own cwd resolved through git. A pi session
-// launched outside a repo has no governed tree and is refused, not guessed at.
-function sessionRepo(): string | null {
-  const pinned = (process.env.CORTEX_SESSION_REPO ?? "").trim();
-  if (pinned) return path.resolve(pinned);
+// Precedence matches every other cortex layer (args → env → git) — and it really does now:
+// the ARGS leg was missing, so a session whose process cwd is not the checkout could never
+// resolve the repo even when the command itself NAMED it. Measured on a macOS host (pi, titus,
+// 2026-10-18): `cd /Users/luke/Developer/AI/steadfaste-s1-model && pwd && git rev-parse
+// --show-toplevel` was refused with "CANNOT DETERMINE THE REPO" — a dead end, because the one
+// command that would have proven the repo was itself the write being blocked.
+function gitRootOf(target: string): string | null {
   try {
     const out = execFileSync("git", ["rev-parse", "--show-toplevel"], {
-      cwd: process.cwd(),
+      cwd: target,
       encoding: "utf8",
       timeout: 5000,
       stdio: ["ignore", "pipe", "ignore"],
@@ -122,6 +123,39 @@ function sessionRepo(): string | null {
   } catch {
     return null;
   }
+}
+
+/** The repo this CALL touches, taken from the tool's own input. */
+function repoFromToolInput(input: any): string | null {
+  if (!input || typeof input !== "object") return null;
+  const candidates: string[] = [];
+  // File-shaped tools name the file they will touch.
+  for (const key of ["path", "file_path", "filePath", "filename", "target"]) {
+    const v = input[key];
+    if (typeof v === "string" && v.trim()) {
+      const expanded = v.trim().replace(/^~(?=\/|$)/, process.env.HOME ?? "~");
+      candidates.push(path.resolve(process.cwd(), expanded));
+    }
+  }
+  // A shell command may name the checkout itself — `cd <abs> && ...`, or any absolute path.
+  const cmd = typeof input.command === "string" ? input.command : "";
+  for (const m of cmd.matchAll(/\/[^\s"'`;&|()<>]+/g)) {
+    candidates.push(m[0]);
+  }
+  for (const c of candidates) {
+    // A FILE path is not a git cwd: try the path itself, then its directory.
+    const root = gitRootOf(c) ?? gitRootOf(path.dirname(c));
+    if (root) return root;
+  }
+  return null;
+}
+
+function sessionRepo(input?: any): string | null {
+  const fromArgs = repoFromToolInput(input);                       // 1. what THIS call touches
+  if (fromArgs) return fromArgs;
+  const pinned = (process.env.CORTEX_SESSION_REPO ?? "").trim();   // 2. explicit pin
+  if (pinned) return path.resolve(pinned);
+  return gitRootOf(process.cwd());                                 // 3. pi's own cwd
 }
 
 type Verdict = "allowed" | "refused" | "unavailable" | "unresolved";
@@ -338,7 +372,7 @@ export default function (pi: any) {
     const toolName = typeof event?.toolName === "string" ? event.toolName : "";
     if (!toolNeedsLock(toolName, event?.input)) return; // read-only pass-through
 
-    const repo = sessionRepo();
+    const repo = sessionRepo(event?.input);
     if (!repo) {
       note(`GOV_UNRESOLVED tool=${toolName}\n`);
       return { block: true, reason: unresolvedMessage() };
