@@ -26,12 +26,25 @@ This system has **two domains** with different ownership:
 | **Our repo** | `~/hermes-cortex/` | Us | **Yes** — this is our codebase |
 | **Deployed runtime** | `~/.hermes-cortex/` | Us (deployed from repo) | Edit repo source, then deploy |
 | **State/config** | `~/.hermes-cortex/state/*`, `~/.hermes/config.yaml` | Per-machine | Yes — direct modification OK |
+| **Hermes runtime env** | `~/.hermes/.env` | Hermes Agent runtime | **No** — do not move, merge, or relocate |
 
 ## The Core Rule
 
 **Only create and modify files that have a source in our repo (`~/hermes-cortex/`).**
 
 If a file only exists in `~/.hermes/` and not in the repo: **do not touch it.**
+
+### `~/.hermes/.env` (and `.op.env`) — never move into the repo
+
+`~/.hermes/.env` is the **Hermes runtime env** (provider API keys, Telegram token, terminal/browser settings). It is load-bearing and path-anchored, so a request to "consolidate / move .env into hermes-cortex" is a boundary violation, not a refactor. Refuse it by surveying, not by complying:
+
+1. **Hermes hardcodes the path.** The upstream loader resolves the env file as `HERMES_HOME/.env` (`hermes_cli/env_loader.py`, `cli.py`). Relocating it breaks every gateway/cron startup. There is no config to repoint it.
+2. **hermes-cortex is a public MIT repo.** The file holds real keys; moving or committing secrets there is a PII/secret leak. A gitignored `~/hermes-cortex/.env` exists only for cortex vars, and the secret-leak/pre-commit detectors enforce the separation.
+3. **The split is already canonical.** Cortex vars live in `~/hermes-cortex/.env` (gitignored, mode 600, symlinked from the legacy `~/.hermes-cortex/cortex-bus.conf`); the runtime env stays where Hermes reads it. `~/.hermes-cortex/.env` as a deploy-dir file must NOT exist.
+
+Before concluding "move", run the survey: `find ~/.hermes -maxdepth 3 -name '.env*'` (excluding `hermes-agent/` and venv `environments/`) will show only `.env`, `.env.lock` (0-byte lock), and `.env.bak-*` backups — none is a second config to consolidate. Offer the safe equivalent instead: versioning the **key schema** as a `.env.example`, never the secret values.
+
+Companion: `pii-scrubbing` (`.env` handling, `.env.example` templates, gitignore negation) and `survey-before-action` (phase-0a `.env` → credential-handling skills).
 
 ### Hard boundary: upstream Hermes files are NEVER modified
 
@@ -109,6 +122,7 @@ If you need a capability that a Hermes default skill provides but it's missing s
 - ❌ Creating a new file in `~/.hermes/skills/` — fleet can't get it; put it in the repo
 - ✅ Creating `task-persistence` skill in our repo — correct: all agents get it, Hermes doesn't overwrite
 - ❌ **Creating a new file when an existing one can be extended.** Search 3+ different terms before concluding nothing exists. The most expensive mistake is building a parallel system because a single search missed the existing one.
+- ❌ **Moving `~/.hermes/.env` into hermes-cortex because the user asked to "consolidate .env".** The runtime env is hardcoded-loaded from HERMES_HOME, holds real secrets the public repo must not see, and its schema is already mirrored by the gitignored `~/hermes-cortex/.env`. Survey first, then refuse the physical move and offer a `.env.example` schema instead.
 
 ## The Sharing Filter
 

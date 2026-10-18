@@ -61,6 +61,37 @@ date) — investigate those warnings; do not assume the enforcer is current.
 
 **Do NOT push** during pull-latest. Local pipeline auto-commits stay local (see Pitfall 3).
 
+## Invoke the deploy so it survives the terminal timeout — background + log redirect
+
+A foreground `bash ~/hermes-cortex/ops/scripts/cortex-update.sh | tail -60`
+can be KILLED by the terminal tool's foreground timeout (300s) mid-deploy: a real
+cortex-update run lasts roughly 5–8 minutes (cron registration + several doctor
+passes), so it crosses the cap long before finishing. The process dies, the `| tail`
+swallows whatever the deploy had printed, and the state — did it finish? are the
+enforcement files re-locked? — is ambiguous. That is not a deploy bug and a clean
+re-run resolves it, but you lose the whole run.
+
+Run it as a **background** process with `notify=true`, redirect the FULL output to
+scratch, and append a real rc so you can read the verdict from the log:
+
+```bash
+# background=true, notify=true
+bash ~/hermes-cortex/ops/scripts/cortex-update.sh \
+  > ~/.hermes/cache/scratch/cortex-update-<stamp>.log 2>&1
+echo "EXIT=$?" >> ~/.hermes/cache/scratch/cortex-update-<stamp>.log
+```
+
+- The redirect plus `echo "EXIT=$?"` captures the transcript AND the exit code;
+  never judge the run from a `tail` of a pipe that already truncated it.
+- Poll with `ps -p <pid>` / `tail` on the log; do not start a second run while the
+  mutex is held (Pitfall 13) — wait for the background one.
+- After it finishes, verify rather than assume: `lsattr` confirms the `i` flag is
+  re-applied on the enforcement files, `git rev-parse HEAD` == `origin/main` for
+  Deploy sync, and the doctor's `Overall:` line names the real verdict (0 fail =
+  clean; warnings listed are pre-existing, not this deploy's failures). A deploy
+  killed by the timeout re-locks when it dies (fail-safe), but confirm by reading
+  `lsattr`, not by assuming.
+
 ## Pitfall 1: Governance files are immutable — cortex-update is the ONLY deploy path
 
 Deployed governance files carry `chattr +i` (Linux) / `chflags uchg` (macOS):
