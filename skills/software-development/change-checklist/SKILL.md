@@ -79,6 +79,15 @@ Load this before end_change() on any script, deploy-config, cron, shared-doc, or
 - [ ] Scripts — run with real inputs, verify real output. ⚠️ DOGFOOD (enforced): the deployed copy must run its real scheduler invocation — cortex-update.sh then cronjob action='run' job_id=<id>. Manual python3 script.py does NOT update the scheduler's last_status (the doctor reads scheduler status). Run the full command, not an imported function.
 - [ ] Config — diff generated vs deployed; only intended changes.
 - [ ] Syntax — .sh bash -n; .py py_compile; .yaml yaml.safe_load (hook catches staged files; verify unstaged too). **A patch tool that reported a NON-EXACT match has verified nothing by definition** — a fuzzy match can drop a keyword or the quoting around a block (each `echo "…"` line collapsing to bare text, which then parses as a command) while still reporting success, so re-read the returned diff and run the syntax check for that file in the same step rather than at the end of the task.
+- [ ] **A scripted bulk edit must ASSERT its match count, then be scanned for artefacts.** Replacing
+      one string across many files (a `python3 -` heredoc walking `rglob`) reports success whatever it
+      did: a silent 0 leaves a file unfixed while a silent 2 corrupts the second site. Assert the count
+      per file before writing (`assert text.count(old) == 1`, or the number you expect) and fail loudly
+      on a mismatch, then grep the tree for what a blind replacement leaves behind — unbalanced
+      backticks in inline code, escape residue such as `[0m`, a truncated path — and re-read the
+      returned diff. Splicing a parenthetical INTO a line that already delimits inline code is the
+      reliable way to break the delimiters: rewrite the whole sentence, or check the rendered line,
+      before committing. A file of prose has no compiler to catch this; the scan IS its syntax check.
 - [ ] nginx — sudo nginx -t.
 - [ ] **Run the sibling tests that exercise the seams you CHANGED — a green regression harness does
       not cover them.** A curated harness runs its own file list, so an older test that drives a

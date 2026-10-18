@@ -313,6 +313,31 @@ are correct about different stores — the LOCK exists, the CYCLE does not — a
 of this class, not a scoring problem. Re-score nothing; check whether the lock's task has a cycle row at
 all, then free the lock (a terminal transition) and fix the ordering in the code that minted it.
 
+### A session that resolves NO repo is UNGOVERNED, not lock-blocked — say so, and make recovery one step
+
+Governance is REPO-SCOPED: a lock binds to a repo, so a call that resolves no repo cannot be
+authorised by ANY lock. When the gate refuses such a call by telling the agent to "acquire a lock",
+that is an impossible demand, and it becomes a LOCKOUT: the agent cannot mint the lock, and it cannot
+run the compound it needs to find the checkout, because a compound is write-class. Read-only
+primitives stay free, so orienting is still possible — the failure is the refusal's framing, not the
+rule.
+
+- **Resolve the repo from the SESSION, not only from the call's arguments.** A command like
+  `git commit -m …` carries no path of its own, so path-argument resolution returns nothing and the
+  call falls through to slug matching alone. Fall back to the repo the session already recorded from
+  an earlier call's arguments — the same repo it has been working in, not a new permission — before
+  concluding there is none.
+- **With no repo, refuse in its OWN words.** Say that governance is repo-scoped so no lock could
+  authorise the call, then name the escapes that actually work: pass the repo on the call
+  (`workdir=<path>`), make the command's own path point inside the checkout, or `begin_change` while
+  working in it. Add that read-only commands never need a lock, so they can be used to find the
+  checkout. A generic "this repo requires an active governance lock" when there IS no repo makes a
+dead end look like policy — and the agent loops on the same blocked command.
+- **A gate/plugin fix is not live until the process that LOADS it restarts.** Handing a fleet fix
+  over means naming BOTH steps for the affected host: update (pull the file) and restart (load it).
+  A corrected enforcer on disk changes nothing in a running gateway, and the host stays blocked while
+everything looks fixed.
+
 ### A wide close judges a WAVE of blobs per pass — concurrency, never a longer window
 
 A close refused with **"N blob(s) of the push range still carry no review verdict"** names the exact

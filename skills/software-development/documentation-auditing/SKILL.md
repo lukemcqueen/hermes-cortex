@@ -153,8 +153,37 @@ After fixing stale paths, update the audit report itself (create `docs/stale-pat
 
 When fixing template/placeholder paths (e.g., `src/auth/middleware.py` in `task-contract.md`), prefer using the `ops/` prefix as the updated example path rather than leaving them stale. Even conceptual examples benefit from being technically accurate.
 
+## Bulk sweeps across many docs (a deprecated construct, a stale claim, a rename)
+
+A sweep applies the same small edit to many files, and the damage a bad sweep does is SILENT: a
+half-applied replacement leaves a doc that still renders, still passes every path and link check,
+and now teaches something broken or wrong.
+
+- **Script the sweep; never hand-edit file by file.** Enumerate `(file, exact-old, exact-new)`
+triples and apply them with a matcher that ASSERTS the old string occurs **exactly once** in that
+file before writing, failing loudly on 0 (already fixed, or the wrong text) and on >1 (ambiguous —
+pick a longer unique anchor). A fuzzy or context-inferring edit will half-match a line and move on
+without telling you.
+- **Inline code spans are the fragile case.** When the replacement inserts a parenthetical or a
+second command INSIDE backticks, both the opening and the closing mark must survive. A substitution
+that adds one backtick and no closing one leaves unbalanced markup that renders as literal garbage
+while every automated check still passes. Re-read every changed line whose replacement contains a
+backtick, a quote, or a line continuation — before committing, not after review finds it.
+- **Leave the WARNINGS alone.** In a sweep for a deprecated construct, the hits that exist to TEACH
+the hazard — a portability table, a "do not use X, it silently no-ops here" note, a pitfall list —
+are not instances of the problem. Rewriting them "for consistency" deletes the lesson, and it is the
+most common way a correct sweep produces a worse document. Classify every hit as RECIPE (fix it) or
+WARNING (keep it) before editing a single one.
+- **Prove it by re-grepping for the pattern and reporting the count.** A sweep you did not re-grep
+is a claim, not a fix: say "zero remaining" only when a fresh search says so, and quote the count.
+- **When the sweep corrects a CLAIM that a shipped change made false, put the measurement in the
+same edit.** One clause is enough — why the old sentence was wrong (what was measured, what it
+showed) — otherwise the next reader reintroduces it as "obviously true".
+
 ## Pitfalls
 
+- **A "consistency" sweep that rewrites the warnings is worse than no sweep** — see Bulk sweeps
+  above: teaching text is not an instance of the problem it teaches about.
 - **The `deploy/` symlink may be gone.** Don't assume `deploy/nginx/hermes-services-apply.py` works via symlink unless you've confirmed the symlink exists. Check it every audit.
 - **`src/` may still partially exist** (e.g., `src/loop-governance/` kept as backward compat, `src/cortex_bus/__pycache__/` as stale cache). A stale path pointing to a still-extant file is less urgent than one pointing to a deleted file, but it's still stale — the backward-compat copy is unsupported and may be removed. Always verify the **actual source file** exists, not just the directory.
 - **Check whether `src/` root exists** — it may be a hollow shell with only `__pycache__` and `.pytest_cache` dirs. `test -d src/` returning true doesn't mean source files are there.

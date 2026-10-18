@@ -20,11 +20,11 @@ A file under no repo-owned skill dir is a Hermes default and stays skipped.
 | Measure | Value |
 |---|---|
 | Stranded in place (path in repo, content only deployed) | 0 |
-| Absent from the repo (deployed under a repo-owned skill) | 135 |
+| Absent from the repo (deployed under a repo-owned skill) | 136 |
 |   ↳ path dropped from repo history | 6 |
-|   ↳ path never committed | 129 |
-| Files in sync | 841 |
-| Skipped (Hermes defaults, or repo ahead) | 499 |
+|   ↳ path never committed | 130 |
+| Files in sync | 842 |
+| Skipped (Hermes defaults, or repo ahead) | 500 |
 
 **Verdict: FAIL**
 
@@ -97,6 +97,7 @@ Absent from the repo (deployed under a repo-owned skill):
 - devops/governance-closeout/references/verdict-store-diagnostics.md (never-committed)
 - devops/governance-closeout/scripts/measure-review-material.py (never-committed)
 - devops/governance-closeout/templates/reviewer-policy-guard.py (never-committed)
+- devops/governance-lock-lifecycle/references/gate-command-classification.md (never-committed)
 - devops/governance-lock-lifecycle/references/publishing-a-reviewed-range.md (never-committed)
 - devops/hermes-gateway-operations/references/inline-menus.md (never-committed)
 - devops/inbox-remediation/references/bus-api-address-patterns.md (never-committed)
