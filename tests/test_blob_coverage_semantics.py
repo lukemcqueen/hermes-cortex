@@ -295,7 +295,13 @@ def test_the_old_findings_with_no_findings_row_is_what_wedged_the_range():
     """Proof the wedge was REAL, not asserted: the old parse recorded FINDINGS with an EMPTY findings
     list for silence, and `_blobs_with_recorded_verdict` skips that content on every later close —
     so the blob sat in `remaining` forever and the range could never close. UNJUDGED is the row that
-    is NOT skipped, which is what keeps the content retryable."""
+    is NOT skipped, which is what keeps the content retryable.
+
+    DEPENDENCY, stated because this blob cannot demonstrate it alone: both functions under test live in
+    mcp-servers/loop-gov-mcp.py, a sibling blob of this same push range. This test is the EVIDENCE for
+    that sibling's claim that UNJUDGED removes the wedge; it passes only when the production code
+    carries the UNJUDGED filter, and it fails immediately if that filter is removed.
+    """
     import sqlite3
     conn = sqlite3.connect(":memory:")
     conn.execute("CREATE TABLE blob_reviews (blob_sha TEXT PRIMARY KEY, verdict TEXT, findings_json TEXT)")

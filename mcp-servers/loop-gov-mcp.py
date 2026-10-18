@@ -4857,9 +4857,15 @@ def _extract_verdict(text: str):
     asserted in tests/test_blob_coverage_semantics.py (a sibling blob of the same push range):
     `test_silent_reply_leaves_no_verdict_and_keeps_the_blob_retryable` — an unusable reply leaves NO
     row, the blob is reported in `failed` AND still in `remaining`;
-    `test_a_stored_unjudged_row_neither_covers_nor_skips` — defence in depth for a stored row; and
+    `test_a_stored_unjudged_row_neither_covers_nor_skips` — defence in depth for a stored row;
     `test_the_old_findings_with_no_findings_row_is_what_wedged_the_range` — the FINDINGS/[] row the
-    OLD parse wrote IS skipped by `_blobs_with_recorded_verdict`, which is the wedge this removes.
+    OLD parse wrote IS skipped by `_blobs_with_recorded_verdict`, which is the wedge this removes;
+    `test_leaf_raises_on_empty_content_so_silence_is_a_failure` — this docstring's claim that
+    `_call_reviewer_llm` raises at the leaf, exercised with the HTTP layer stubbed to the measured
+    shape (content null, finish_reason=length); and
+    `test_unparseable_reply_is_retried_on_the_next_pass_and_never_skipped` — the RETRY property, which
+    spans two facts no single earlier test joined (nothing is recorded, therefore the skip list does
+    not hide the content) and runs the pass twice to prove the content is sent again.
 
     A reply that is not usable text at all (None, empty, whitespace, or a non-string) is the same
     case. (2026-10-13) The guard is HERE, in the shared parse, rather than at each caller: the LLM
