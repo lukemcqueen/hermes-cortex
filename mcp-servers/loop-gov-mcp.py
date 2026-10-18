@@ -1237,7 +1237,7 @@ def _review_uncovered_blobs(blobs: dict, *, reviewer, material_for,
     blocking: list = []
     remaining: list[str] = []
     failed: list[str] = []
-    judged: list[str] = []
+    already_judged: list[str] = []
     calls = 0
     consecutive_failures = 0
     started = time.monotonic()
@@ -1252,7 +1252,13 @@ def _review_uncovered_blobs(blobs: dict, *, reviewer, material_for,
             verdicts[sha] = "CLEAN"
             continue
         if recorded.get(sha):
-            judged.append(sha)
+            # Deliberately in BOTH lists, and they mean different things: `already_judged` answers
+            # "why was this content not sent to the reviewer again" while `remaining` answers "is
+            # this blob COVERED for the receipt". A skipped blob is not covered, so it must stay in
+            # remaining or the receipt would claim a file nobody vouched for. (A review read the old
+            # key name `judged` as "judged THIS pass" and called the pair contradictory — the name
+            # was the defect, hence `already_judged`.)
+            already_judged.append(sha)
             remaining.append(sha)
             continue
         if calls >= cap or (time.monotonic() - started) > budget_s:
@@ -1291,7 +1297,7 @@ def _review_uncovered_blobs(blobs: dict, *, reviewer, material_for,
             _block, _annot = _blocking_findings(findings_json or "[]")
             blocking.extend(_block or [])
     return {"verdicts": verdicts, "remaining": remaining, "calls": calls,
-            "blocking": blocking, "failed": failed, "judged": judged}
+            "blocking": blocking, "failed": failed, "already_judged": already_judged}
 
 
 def _push_base(repo: Path) -> str:
@@ -1527,9 +1533,9 @@ def _complete_push_range_blobs(lock: dict, cycle: dict, cx: Optional[dict] = Non
         # the file (which produces a NEW blob) — and the counter that said "verdicts cached"
         # under-reported while the pass stopped early, so name this set explicitly.
         judged_line = ""
-        if pb.get("judged"):
+        if pb.get("already_judged"):
             judged_line = (
-                f"  already judged, not clean: {len(pb['judged'])} blob(s) — re-reviewing "
+                f"  already judged, not clean: {len(pb['already_judged'])} blob(s) — re-reviewing "
                 "identical content cannot change the verdict; fix the file and commit it "
                 "(the fix is a new blob) instead of closing again\n"
             )
@@ -1539,7 +1545,7 @@ def _complete_push_range_blobs(lock: dict, cycle: dict, cx: Optional[dict] = Non
         # "verdicts cached" printed len(pb["verdicts"]), which only counts blobs the pass VISITED
         # and therefore under-reported whenever the pass stopped early (found while draining).
         remaining_paths = _blob_paths_for(repo, remaining)
-        judged_paths = _blob_paths_for(repo, pb.get("judged") or [])
+        judged_paths = _blob_paths_for(repo, pb.get("already_judged") or [])
         clean_count = len(_blobs_with_clean_verdict(_push_range_blobs(repo) or {}))
         paths_line = ("  unreviewed paths:\n" + _path_list(remaining_paths)) if remaining_paths else ""
         judged_paths_line = (

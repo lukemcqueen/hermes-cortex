@@ -17,7 +17,10 @@ The fix is a skip, not a pass (no enforcement is weakened):
 
 Asserted here:
   A. a blob carrying a non-clean verdict is not handed to the reviewer, and is named in
-     ``judged`` AND in ``remaining`` (fail-closed both ways);
+     ``already_judged`` AND in ``remaining`` — two lists answering two different questions, so a
+     blob belonging to BOTH is expected, not contradictory: ``already_judged`` = "why was this
+     content not sent again", ``remaining`` = "is it COVERED for the receipt" (it is not, or the
+     receipt would claim a file nobody vouched for);
   B. an unjudged blob IS reviewed in the same pass, i.e. the cap is not spent on the
      already-judged blob;
   C. a CLEAN blob is still skipped as before (no regression to the existing cache path);
@@ -123,8 +126,9 @@ def test_judged_blob_is_not_reviewed_again_and_still_blocks():
     assert already not in [s for _, s in seen], (
         "a blob that already carries a verdict must not be re-sent: identical content "
         f"cannot produce a different verdict. reviewer saw {seen}")
-    assert already in out["judged"], (
-        f"the already-judged blob must be REPORTED so the close can name it: {out}")
+    assert already in out["already_judged"], (
+        "the already-judged blob must be REPORTED (as already_judged) so the close can name it: "
+        f"{out}")
     assert already in out["remaining"], (
         "a non-clean verdict is NOT coverage: the blob must still count as uncovered "
         f"so the receipt cannot claim it: {out}")
