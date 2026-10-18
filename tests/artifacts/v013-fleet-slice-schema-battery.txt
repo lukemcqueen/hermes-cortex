@@ -1,8 +1,8 @@
 ===== schema battery: tests/test-tasks-schema.sh (raw) ====
 % b: rc=2
 % 
-═══ Setup: scratch DB tasks_fleetslice_repro5 ═══
-  created tasks_fleetslice_repro5
+═══ Setup: scratch DB tasks_fleetslice_repro ═══
+  created tasks_fleetslice_repro
 
 ═══ AC-L1-1: Fresh DB → migrate.py applies v001–v004; schema exists ═══
   ✅ migrate.py applies migrations on fresh DB
@@ -23,7 +23,7 @@
   ✅ mycortex_reader has DML on tasks.tasks
 
 ═══ AC-L1-5: task_upsert — status→column derivation + completed_at ═══
-  ✅ task_upsert inserts (id=17886f3f-3bcb-4588-85ed-d74a1cdd2e31)
+  ✅ task_upsert inserts (id=9781160c-dc41-4199-90ba-c2f32a0c0c70)
   ✅ pending → column='todo' (derived)
   ✅ pending → completed rejected (v005 matrix — must start first)
   ✅ completed → column='done' (derived)
@@ -65,16 +65,16 @@
   ✅ migration re-run is an idempotent no-op
 
 ═══ AC-L1-11: hierarchy — story/slice coherence + tenant checks ═══
-  ✅ story created (id=214cb463-d0e7-4ea3-b8a8-5bf9c086b4c0)
-  ✅ slice under story created (id=564cef27-baab-49a3-815c-df4dccb30acd)
+  ✅ story created (id=47c9f945-52d2-4ad5-8ccd-70db737c733c)
+  ✅ slice under story created (id=94351970-a9f9-457e-a515-e28ebd396f71)
   ✅ slice without parent rejected (coherence CHECK)
   ✅ story with parent rejected (coherence CHECK)
   ✅ slice under slice rejected (tenant trigger: parent must be story)
   ✅ story delete blocked while slices exist (FK NO ACTION)
   ✅ legacy flat rows legal (kind NULL, n=3)
-  ✅ orchestrator personal story created (id=06da8aae-0075-43fa-81fa-d41a2259ce7d)
+  ✅ orchestrator personal story created (id=f792c879-00b4-4226-b63c-7d579dc16825)
   ✅ fleet slice under orchestrator personal story stored scope=fleet
-  ✅ non-orchestrator personal story created (id=b0ebc728-a243-4b8c-8e75-6eec3380f359)
+  ✅ non-orchestrator personal story created (id=e3fa1545-e19f-40fd-9602-18061876e8c0)
   ✅ fleet slice under non-orchestrator personal story still refused (coherence — 'exceeds parent scope')
 
 ═══ AC-L1-12: paused status + switching arc ═══
@@ -161,11 +161,7 @@ collected 64 items
 tests/test_task_db_unit.py ............................................. [ 70%]
 ...................                                                      [100%]
 
-============================== 64 passed in 4.22s ==============================
+============================== 64 passed in 4.05s ==============================
 ---
 run-tests.sh: interpreter=/home/moses/.hermes-cortex/venv/bin/python3 rc=0  (PYTHONPATH/PYTHONHOME unset for the run)
 
-
-===== deployed runner: python3 ~/.hermes-cortex/scripts/task-db.py --apply-schema ====
-% d: rc=0
-% tasks schema up to date (version 13) — no-op
