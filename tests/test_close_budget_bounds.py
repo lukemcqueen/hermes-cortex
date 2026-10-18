@@ -26,6 +26,7 @@ The store is injected as a collaborator (the store is not what this file judges)
 the test needs no git, no network, no live database, and never calls a governance writer.
 """
 import importlib.util
+import inspect
 import logging as _logging
 import sys
 import time
@@ -64,9 +65,12 @@ def test_budgets_nest_under_the_client_window() -> None:
     _check("total < client window", total < CLIENT_WINDOW_S, f"{total} >= {CLIENT_WINDOW_S}")
     _check("per-blob budget <= total", mcp.BLOB_REVIEW_BUDGET_S <= total,
            f"{mcp.BLOB_REVIEW_BUDGET_S} > {total}")
-    _check("the two passes cannot both run to their maximum in one window",
+    _check("the two passes' MAXIMA together exceed one window (which is WHY the split rule exists)",
            mcp.REVIEWER_TIMEOUT_CEILING + mcp.BLOB_REVIEW_BUDGET_S >= CLIENT_WINDOW_S,
-           "if they fit, the split rule is unnecessary — re-derive the design")
+           "if their sum fit inside one window the split rule would be unnecessary — re-derive "
+           "the design. `>=` is correct here and not a typo: at EQUALITY the first pass can still "
+           "consume the whole remainder of the window, so the two still cannot BOTH run to "
+           "maximum. This check asserts non-fit, not nesting.")
     cap = getattr(mcp, "CLOSE_BLOBS_PER_WINDOW", None)
     _check("a per-window blob cap is stated", cap is not None, "CLOSE_BLOBS_PER_WINDOW missing")
     if cap is not None:
@@ -131,11 +135,13 @@ def test_close_hands_its_remaining_window_to_the_blob_pass() -> None:
     a close passes its cap + remaining budget through, and a sweep/CLI caller (no knobs)
     leaves the module defaults untouched.
 
-    SCOPE OF THIS CLAIM (withdrawn wording, reviewer finding ADV-12913-2): this proves
-    FORWARDING of the values the close supplies — it does NOT exercise end_change itself,
-    so it does not prove the close computes its remainder from its own clock. Section E
-    proves the real wrapper enforces the cap; a behavioural close-path test that drives
-    end_change and asserts the remainder is OWED, not done.
+    SCOPE (reviewer findings ADV-12913-2 and ADV-13059-2): this proves FORWARDING of the values
+    the close supplies. The REAL close's own clock read is asserted separately, on its source, by
+    test_real_close_reads_its_own_clock_before_handing_the_remainder — which checks that
+    _end_change captures a monotonic clock and that the capture PRECEDES the hand-off, since a
+    remainder measured from a clock started after the review work would be a larger budget, i.e.
+    the original bug. Driving _end_change itself is not attempted here: it needs a live lock and
+    a store, and a test that faked both would prove only the fakes.
     """
     print("D. the close hands its remaining window to the blob pass")
     seen: list = []
@@ -192,12 +198,36 @@ def test_real_wrapper_enforces_the_cap() -> None:
     _check("cap=2 judges both blobs", len(got2["verdicts"]) == 2, str(got2["verdicts"]))
 
 
+def test_real_close_reads_its_own_clock_before_handing_the_remainder() -> None:
+    """The REAL close wires the clock, and in the right ORDER — asserted on its shipped source.
+
+    The forwarding test above proves _complete_push_range_blobs passes through what it is given;
+    it cannot prove the close measures its remainder, because driving _end_change needs a live
+    lock and a store. This closes that gap honestly rather than by pretending: it reads the
+    shipped function and asserts the capture EXISTS and PRECEDES the hand-off. Order is the whole
+    point — a remainder computed from a clock started AFTER the review work is a larger budget,
+    which is the original defect.
+    """
+    print("F. the real close reads its own clock, before it hands over the remainder")
+    src = inspect.getsource(mcp._end_change)
+    capture = "close_started = time.monotonic()"
+    handoff = "budget_s=_close_budget_left(close_started)"
+    _check("the close captures a monotonic clock", capture in src,
+           f"{capture!r} is absent from _end_change — the remainder would be a full window")
+    _check("the close hands that remainder to the completion call", handoff in src,
+           f"{handoff!r} is absent from _end_change — the clock never reaches the blob pass")
+    if capture in src and handoff in src:
+        _check("the capture PRECEDES the hand-off", src.index(capture) < src.index(handoff),
+               "the clock is read after the hand-off, so what is passed is not a remainder")
+
+
 if __name__ == "__main__":
     test_budgets_nest_under_the_client_window()
     test_budget_left_helper()
     test_per_blob_pass_accounts_for_every_blob()
     test_close_hands_its_remaining_window_to_the_blob_pass()
     test_real_wrapper_enforces_the_cap()
+    test_real_close_reads_its_own_clock_before_handing_the_remainder()
     if _F:
         print(f"\n❌ {len(_F)} close-budget check(s) failed: {', '.join(_F)}")
         sys.exit(1)
