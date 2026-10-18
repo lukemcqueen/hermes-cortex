@@ -416,6 +416,8 @@ register "ops/services/tasks/schema/v009__task-model-v3.sql" "${CORTEX_DEPLOY_HO
 register "ops/services/tasks/schema/v010__task-model-v3-matrix-fix.sql" "${CORTEX_DEPLOY_HOME}/services/tasks/schema/v010__task-model-v3-matrix-fix.sql"
 register "ops/services/tasks/schema/v011__release-stale-assignment.sql" "${CORTEX_DEPLOY_HOME}/services/tasks/schema/v011__release-stale-assignment.sql"
 register "ops/services/tasks/schema/v012__parked-rows-return-to-pool.sql" "${CORTEX_DEPLOY_HOME}/services/tasks/schema/v012__parked-rows-return-to-pool.sql"
+# v013: fleet slice under orchestrator-owned personal story (check_tenant relax) — backlog f0c6afbf 2026-10-18
+register "ops/services/tasks/schema/v013__fleet-slice-orch-parent.sql" "${CORTEX_DEPLOY_HOME}/services/tasks/schema/v013__fleet-slice-orch-parent.sql"
 # learnings ledger (F-001) — schema + version-gated runner, orchestrator-only
 # (the bus Postgres that hosts learnings exists only on Moses/Esther; workers
 # write via the HTTP collector path and never need this schema locally).

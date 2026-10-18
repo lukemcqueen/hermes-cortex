@@ -315,6 +315,31 @@ fi
 FLAT_OK=$($PSQL -c "SELECT count(*) FROM tasks.tasks WHERE kind IS NULL AND parent_id IS NULL AND status IN ('pending','in_progress');" 2>/dev/null)
 [ "$FLAT_OK" -ge 1 ] && pass "legacy flat rows legal (kind NULL, n=$FLAT_OK)" || fail "no legacy flat rows found"
 
+# ── AC-L1-11c: fleet slice under a personal orchestrator-owned story ──
+# Regression (2026-10-18, backlog f0c6afbf): the pass protocol creates a path-citing
+# fleet story + a PII-clean fleet slice. The path-citing STORY necessarily degrades to
+# personal (B-5 scrub keeps PII out of fleet rows — correct, gate never weakened), so a
+# fleet slice would then be refused by check_tenant ("slice scope (fleet) exceeds parent
+# scope (personal)"). Fix (v013): relax check_tenant ONLY for orchestrator-owned
+# personal parents (created_by IN moses/esther); the slice's OWN content is still
+# enforced PII-clean by RLS WITH CHECK + fleet-writer role, so no leak.
+ORCH_STORY=$($PSQL -c "SELECT tasks.task_upsert(p_content=>'L1 orchestrator story', p_created_by=>'esther', p_kind=>'story');" 2>/dev/null | head -1)
+[ -n "$ORCH_STORY" ] && pass "orchestrator personal story created (id=$ORCH_STORY)" || fail "orchestrator story insert failed"
+ORCH_SLICE=$($PSQL -c "SELECT tasks.task_upsert(p_content=>'L1 PII-clean fleet slice', p_created_by=>'esther', p_kind=>'slice', p_parent_id=>'${ORCH_STORY}', p_scope=>'fleet');" 2>/dev/null | head -1)
+if [ -n "$ORCH_SLICE" ]; then
+  ORCH_SLICE_SCOPE=$($PSQL -c "SELECT scope FROM tasks.tasks WHERE id='${ORCH_SLICE}';" 2>/dev/null)
+  [ "$ORCH_SLICE_SCOPE" = "fleet" ] && pass "fleet slice under orchestrator personal story stored scope=fleet" || fail "fleet slice stored scope=$ORCH_SLICE_SCOPE (want fleet)"
+else
+  fail "fleet slice under orchestrator personal story refused — check_tenant over-strict"
+fi
+# coherence preserved: a fleet slice under a NON-orchestrator personal story stays refused
+USER_STORY=$($PSQL -c "SELECT tasks.task_upsert(p_content=>'L1 worker story', p_created_by=>'alice', p_kind=>'story');" 2>/dev/null | head -1)
+if $PSQL -c "SELECT tasks.task_upsert(p_content=>'L1 worker fleet slice', p_created_by=>'alice', p_kind=>'slice', p_parent_id=>'${USER_STORY}', p_scope=>'fleet');" >/dev/null 2>&1; then
+  fail "fleet slice under non-orchestrator personal story accepted — relaxation too broad"
+else
+  pass "fleet slice under non-orchestrator personal story still refused (scope coherence)"
+fi
+
 echo ""
 echo "═══ AC-L1-12: paused status + switching arc ═══"
 PAUSED_ID=$($PSQL -c "SELECT tasks.task_upsert(p_content=>'L1 pause arc', p_created_by=>'esther');" 2>/dev/null | head -1)
