@@ -42,8 +42,27 @@ ps -eo pid,lstart,cmd | grep mcp_stdio_watchdog | grep -v grep
 ps -eo pid,lstart,cmd | grep uvicorn | grep -v grep
 ```
 
-**Rule of thumb:** process start > file mtime → new code loaded. Start < mtime
-→ old code still in memory; restart required.
+**Rule of thumb — compare CONTENT, not the clock.** A process is current when the bytes it LOADED
+equal the bytes on disk. `start > mtime` is a weak first look and, used alone, is WRONG in the
+common case: the deploy rewrites files whose content did not change, so the mtime moves and a
+perfectly current process reads as stale. Measured: a long-lived daemon's deployed module was
+byte-for-byte identical to its repo source (`diff` empty once the deploy banner was stripped) while
+its mtime sat 2m41s newer than the process start — and the check reported "running stale code" on
+EVERY deploy, a warning clearable only by restarting a process already running the right code.
+Prefer, in order:
+
+1. a **liveness witness** the new revision alone can produce (next section);
+2. a **startup stamp** — have the process record `pid` + the sha256 of the file it loaded, at start,
+   then compare that hash with the file's hash NOW. Equal = current; different = genuinely stale
+   (name both hashes in the message); a process predating the stamp is **COULD NOT VERIFY**, never
+   "stale". Write the stamp best-effort: refusing to serve because a diagnostics file could not be
+   written is the worse failure, so log and continue.
+3. mtime **last**, and only as a hint that prompts 1 or 2.
+
+**The CHECKER can be what re-stales its own subject.** A doctor/dogfood command that re-deploys
+before verifying rewrites the very files it then compares against process start times, so running
+the checker GUARANTEES the warning and running it twice never converges. Reach for case 2 above;
+do not chase the warning with restarts.
 
 **Compare the DEPLOYED copy's mtime, and resolve that path from the deploy map — never a
 guessed path.** The repo copy's mtime says nothing about what a process loaded: the deploy
@@ -446,6 +465,27 @@ alone is therefore invisible to the fleet AND is **clobbered by the next
   commit, push, and re-run until it reports `<N> skills in sync, 0 drifted`. Trust the
   check's content comparison, not mtime: a deploy in the same session rewrites the
   deployed copy and makes mtime alone ambiguous.
+- **A tracked, machine-generated artifact left uncommitted makes the repo assert a state that no
+  longer exists.** Regenerate it through its OWN generator (a no-flag run writes; `--check` compares
+  without writing) and commit it in the same change, then read the new verdict out of the file — the
+  artifact IS the evidence, so a stale committed copy is worse than none. If its scope no longer
+  matches its claim (a list of "known failures" where all five now pass), say so in the commit rather
+  than leaving the claim standing.
+- **Re-verify with hashes immediately BEFORE the commit, not when you start.** The writer keeps
+  writing while you work: a skill reconciled early in a session was 2,129 bytes LARGER, carrying new
+  lessons, by the time the parity check ran minutes later. Copy → verify by sha256 → commit as one
+  uninterrupted step, then re-run the check to confirm zero drifted.
+- **The recovery tool the drift warning names does not cover this case.** The hint points operators
+  at `reconcile-stranded-skills.py`, whose definition of stranded is a file the repo does NOT have
+  AT ALL. For the present-in-both-but-deployed-newer case it prints an all-clear ("stranded: 0 ·
+  Nothing stranded") while the doctor reports N drifted, so an operator following the hint concludes
+  there is nothing to do. `check-skill-drift-parity.py` counts both classes and disagrees with it;
+  trust the checker and do the copy yourself with a hash check.
+- **Keep the two classes separate when acting.** The parity checker reports (a) present-in-both-but-
+  deployed-newer — a lesson to copy back — and (b) absent-from-the-repo entirely (references,
+  templates, scripts under a repo-owned skill dir). Class (b) includes vendor-shaped files
+  (`_meta.json`, `skill-card.md`, `evals/evals.json`); never bulk-copy it into a repo or you import
+  third-party content under your own licence. Classify before you move anything.
 
 ## References
 

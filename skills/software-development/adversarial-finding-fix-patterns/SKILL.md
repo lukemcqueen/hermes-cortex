@@ -329,6 +329,27 @@ A cycle whose blob verdicts exist but whose cycle row is missing cannot be
 re-reviewed; write the cycle verdict on the per-blob refusal path itself, with
 replacement semantics so a re-judge keeps exactly ONE verdict per cycle.
 
+### A per-blob reviewer reads ONE file — a demand about a SIBLING cannot be met from there
+
+The reviewer's material is the single blob it was handed, so it cannot see a test, helper or doc
+that exists in the same range, and it will demand one that is already committed. This deadlocks the
+close, because identical content is never re-judged: the demand is unsatisfiable from the blob's
+material and the blob cannot change without a new commit. Handle it in two moves, and the second is
+the one that lasts:
+
+1. Record the measurement that refutes it (the file and test that already satisfy it) and resolve
+the CYCLE with `rereview_change` — not by editing working code to satisfy a claim you can prove
+false.
+2. NAMING THE COVERAGE INSIDE THE BLOB. Add the pointer at the site under review — "covered by
+   `<test file>::<test name>`<one clause of what it asserts>" — so the requirement is answerable
+   from the material that will be judged next time. Adding a comment is not satisfying a wrong
+   finding by editing code: the finding's MECHANISM was wrong, but the visibility gap it stumbled
+   into is real, and the pointer closes it.
+
+State the gap in the delivery too: a per-blob review is structurally unable to confirm anything
+about files it was not given, so a demand for coverage located in another file is not evidence that
+the coverage is missing.
+
 ### Keep GENERATED output out of the review range
 
 A committed generated report — a test-suite transcript, a coverage dump, a

@@ -88,9 +88,15 @@ If the gateway is connected but messages don't reach the user:
 The gateway **holds the MCP servers it spawned**, so new governance/enforcer code
 is not loaded until the gateway restarts. Two independent failure modes:
 
-1. **Restarting from inside the gateway is blocked by design.** A restart issued
-   from inside a Hermes session (a tool call) is refused — the gateway would
-   SIGTERM the command before it completed. Restart from a **separate shell**.
+1. **Restarting from inside the gateway is blocked by design — and the block matches the COMMAND,
+   so deferring it is not an escape.** A restart issued from inside a Hermes session (a tool call) is
+   refused because the gateway would SIGTERM the command before it completed. Wrapping it to run
+   later (`systemd-run --on-active`, `nohup … &`, `at`) is refused as well: the guard inspects the
+   command and the script it references, not merely the timing, and attempting the workaround IS the
+   violation. Restart from a **separate shell**, or hand the operator the gateway's own `/restart`
+   command — which exits with the code its supervisor relaunches on, so the service comes back by
+   design and announces itself. Name which one you are asking for, and hand it over once; do not
+   loop-retry.
 2. **A restart can report success and still not land.** Verify; do not assume:
 
 ```bash
@@ -109,8 +115,12 @@ ps -o lstart= -p $(pgrep -f loop-governance/loop-gov-mcp.py)
 date -r ~/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py '+%e %H:%M:%S'
 ```
 
-If the child's start time is older than the deployed file's mtime, the old code
-is still live — regardless of what the restart command printed.
+An older child start is a HINT that the old code is live — but mtime alone cannot settle it: the
+restart command's own machinery (a dogfood/doctor pass) RE-DEPLOYS, and a deploy rewrites files
+whose bytes did not change, so the mtime moves while a current process reads as stale. Settle it by
+CONTENT — a startup hash stamp the process writes, or a witness only the new revision can produce —
+and never chase the resulting warning with another restart. Rule and mechanism:
+`deploy-load-verification`.
 
 Note: a config value in `~/hermes-cortex/.env` does **not** need a restart once
 the gate's own resolver is deployed (it re-reads per call); only the code does.

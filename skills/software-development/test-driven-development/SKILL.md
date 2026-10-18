@@ -204,7 +204,15 @@ sections, which creates three failure modes a pytest suite never shows you:
 - **A limit-based probe must actually TRIP the limit.** Timing out at `timeout 1` measured nothing
   when the subject finished in under a second — the probe silently exercised the passing happy path
   instead of the branch it names. Pick a value the subject demonstrably cannot meet, and confirm the
-  branch by forcing it once.
+  branch by forcing it once. The mirror-image defect is a budget SMALLER than the probe's own cheap
+  setup work: the pass spends the budget on lookups before reaching the branch, defers everything,
+  and the test then asserts failures that cannot occur. Size the limit past the setup and well short
+  of the subject.
+- **Assert the DESIGN's guarantee, not a count you imagined.** Where a consecutive-failure cap or a
+  short-circuit exists, the subject legitimately stops early — so "all N inputs are marked failed"
+  is the wrong assertion and fails on correct code. Assert the property that must hold in every
+  ordering (something was recorded failed, NOTHING was credited) and let the cap own how many were
+  reached.
 
 ## When Stuck
 
