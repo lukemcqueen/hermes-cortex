@@ -23,6 +23,23 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[1]
 ARTIFACT = REPO / "tests" / "artifacts" / "loop-gov-regression.txt"
 
+# pytest is NOT installed for the interpreter this harness runs under, so a pytest-style file used to
+# be indistinguishable from a FAILURE. An ISOLATED venv is used when one exists — never the Hermes
+# runtime python, whose site-packages the agent itself imports.
+def _find_pytest() -> str | None:
+    # The VENV PYTHON only: the command shape below is `<interpreter> -m pytest`, so returning the
+    # `pytest` console script here would silently run `pytest -m pytest` and collect nothing.
+    cand = Path.home() / ".hermes" / "tools" / "pytest-venv" / "bin" / "python"
+    return str(cand) if cand.is_file() else None
+
+
+PYTEST = _find_pytest()
+
+# Files this run could not JUDGE (no runner, or pytest collected nothing). Deliberately separate from
+# `failures`: a file nothing ran is not evidence of a defect, and reporting it as one is how five
+# files came to be called "pre-existing failures" on 2026-10-18 when four of them were never run.
+not_run: list[str] = []
+
 _HOME = str(Path.home())
 _REPO = str(REPO)
 _PY_BIN = str(Path(sys.executable).parent)
@@ -162,14 +179,29 @@ def main() -> int:
             failures.append(f"{rel}: MISSING")
             out.append(f"[FAIL] {rel} -- file does not exist")
             continue
-        # A test file with no __main__ runner imports and exits 0 having executed
-        # NOTHING (pytest is not installed on this host), so the harness would record a
-        # vacuous PASS. Found on test_review_material_scope.py, 2026-10-08 (cycle 10916).
-        if "__main__" not in path.read_text(errors="ignore"):
-            failures.append(f"{rel}: no __main__ runner (vacuous PASS)")
-            out.append(f"[FAIL] {rel} -- no __main__ runner: exits 0 without running a test")
+        text = path.read_text(errors="ignore")
+        # THREE outcomes, not two (2026-10-18). `python3 <file>` cannot judge a pytest-style file:
+        # it imports and exits 0 having run NOTHING, so reporting that as a PASS is vacuous — and
+        # reporting it as a FAILURE is equally wrong, because nothing FAILED. That missing
+        # distinction made this harness report FIVE files as "pre-existing failures" which were
+        # really files it had never run: under a real pytest, two passed, two collected no tests at
+        # all, and only ONE was a genuine failure. A mis-attributed failure is worse than an
+        # unknown one — it costs a full investigation (worktree comparison, recorded issue, a
+        # committed script "proving" the claim) and it discredits the changes nearest to it.
+        if "__main__" in text:
+            cmd = [sys.executable, rel]
+        elif PYTEST:
+            cmd = [PYTEST, "-m", "pytest", "-q", rel]
+        else:
+            not_run.append(f"{rel}: no __main__ runner, and no pytest to judge it")
+            out.append(f"[NOT RUN] {rel} -- no __main__ runner; install pytest to judge it")
             continue
-        proc = _run([sys.executable, rel])
+        proc = _run(cmd)
+        if proc.returncode == 5:
+            # pytest's "no tests collected" — the file ran nothing, so it proves nothing either way.
+            not_run.append(f"{rel}: pytest collected no tests (rc=5)")
+            out.append(f"[NOT RUN] {rel} -- pytest collected no tests (rc=5)")
+            continue
         ok = proc.returncode == 0
         if not ok:
             failures.append(f"{rel}: rc={proc.returncode}")
