@@ -220,7 +220,7 @@ repeatedly.
 
 | Change | Effect |
 |---|---|
-| light tier → `deepseek/deepseek-v4-flash` | **$0.14/M in, $0.28/M out** instead of pro pricing, for every change that is not `always_review` (enforcement/governance) or an unusually large diff |
+| light tier → the canonical reviewer by default | The tier decides transport and wait, **not who judges**: a cheap judge is a weaker judge, and the light tier's catch-all is the ORDINARY case, not just risky code. A downgrade requires an explicit `ADVERSARIAL_REVIEW_LIGHT_MODEL` (operator directive 2026-10-18: *"FLASH SHOULD NOT BE THE REVIEWER DEFAULT"*), and every stored verdict now names its judge |
 | `max_tokens: 900`, `temperature: 0` | output bounded (findings are a small JSON object) and **deterministic** — a sampling judge returned CLEAN and then FINDINGS on byte-identical material |
 | default window 300s → **120s** | shorter wait, safe only because a timeout no longer strands the lock (6.1) |
 | still open: review the **delta** | a re-worded note currently buys a whole fresh review of unchanged material — the biggest remaining saving |

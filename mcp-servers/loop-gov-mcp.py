@@ -1291,6 +1291,7 @@ def _blobs_with_covered_verdict(blobs: dict,
 def _review_uncovered_blobs(blobs: dict, *, reviewer, material_for,
                             cap: int = BLOB_REVIEW_CAP_PER_CLOSE,
                             budget_s: float = BLOB_REVIEW_BUDGET_S,
+                            reviewer_label: str = "",
                             conn: sqlite3.Connection | None = None) -> dict:
     """Judge every blob in ``{path: sha}`` that has no CLEAN verdict yet.
 
@@ -1376,7 +1377,13 @@ def _review_uncovered_blobs(blobs: dict, *, reviewer, material_for,
         verdict, findings_json = _v, _f
         verdict = (verdict or "UNJUDGED").upper()
         verdicts[sha] = verdict
+        # NAME THE JUDGE. The columns existed and the writer accepted them, but this call site
+        # passed neither, so every stored blob verdict read back with an EMPTY reviewer_model and no
+        # record could show which model produced it — which is how a reviewer DEFAULT of flash went
+        # unnoticed on this fleet (operator directive 2026-10-18). A verdict whose judge is
+        # unrecorded cannot be audited, and a default cannot be verified from the record.
         _record_blob_review(sha, verdict, findings_json, (text or "")[:2000],
+                            reviewer_id=reviewer_label, model=reviewer_label,
                             conn=conn)
         if verdict != "CLEAN":
             _block, _annot = _blocking_findings(findings_json or "[]")
@@ -1785,7 +1792,8 @@ def _blob_material(repo: Path, base: str, path: str, ctx: dict) -> str:
 
 def _complete_blob_reviews(repo: Path, template: str, ctx: dict, run_reviewer,
                            cap: int = BLOB_REVIEW_CAP_PER_CLOSE,
-                           budget_s: float = BLOB_REVIEW_BUDGET_S) -> dict:
+                           budget_s: float = BLOB_REVIEW_BUDGET_S,
+                           reviewer_label: str = "") -> dict:
     """Judge the PUSH range's blobs that have no CLEAN verdict yet.
 
     The receipt authorises the PUSH range, so that is the set that must be judged —
@@ -1801,7 +1809,7 @@ def _complete_blob_reviews(repo: Path, template: str, ctx: dict, run_reviewer,
         blobs,
         reviewer=lambda sha, path, material: run_reviewer(f"{template}\n{material}\n"),
         material_for=lambda sha, path: _blob_material(repo, base, path, ctx),
-        cap=cap, budget_s=budget_s)
+        cap=cap, budget_s=budget_s, reviewer_label=reviewer_label)
 
 
 def _complete_push_range_blobs(lock: dict, cycle: dict, cx: Optional[dict] = None,
@@ -1860,6 +1868,10 @@ def _complete_push_range_blobs(lock: dict, cycle: dict, cx: Optional[dict] = Non
     # change off the close path). See the ONE CLOCK note at the close's call site.
     pb = _complete_blob_reviews(
         repo, template, ctx, lambda p: _call_reviewer(p, author=author, cx=cx),
+        # The label of the reviewer THIS close dispatched, handed to the store so every verdict
+        # names its judge. `cx` is what the tier was computed from, so this is the same resolution
+        # the call itself used — the record cannot disagree with what ran.
+        reviewer_label=_reviewer_label(cx),
         **({"cap": int(cap)} if cap is not None else {}),
         **({"budget_s": budget_s} if budget_s is not None else {}))
     remaining = pb.get("remaining") or []
@@ -3756,11 +3768,17 @@ REVIEWER_MODEL_DEFAULT = "deepseek/deepseek-v4-pro"  # distinct from worker
 # every complex close paid pro prices, and a looping cycle paid them repeatedly.
 #
 # Now the tier decides SPEND: an `always_review` surface (enforcement/governance) or an unusually
-# large diff keeps the deep model, everything else is judged by deepseek-v4-flash — $0.14/M in,
-# $0.28/M out, the model this fleet already uses for ordinary work. A cheap judge is a weaker
-# judge, which is why the risky class is NOT downgraded; the saving comes from not paying pro
-# prices to review a documentation change.
-REVIEWER_LIGHT_MODEL_DEFAULT = "deepseek/deepseek-v4-flash"
+# large diff keeps the deep model; everything else USED to be judged by deepseek-v4-flash.
+#
+# REVERSED 2026-10-18 (operator directive, verbatim): "FLASH SHOULD NOT BE THE REVIEWER DEFAULT."
+# The tier decides TRANSPORT and depth-of-wait, never WHO JUDGES: a cheap judge is a weaker judge,
+# and the class that silently landed on it was not risky code at all — it was ORDINARY code, since
+# `_tier`'s catch-all is "light". So the light tier's default JUDGE is now the canonical reviewer.
+# The cheaper model stays reachable, but only as an explicit operator decision recorded in the
+# environment (ADVERSARIAL_REVIEW_LIGHT_MODEL=deepseek/deepseek-v4-flash) instead of a default
+# nobody chose — and the stored verdict now names whichever model was used, so a downgrade cannot
+# hide in the record.
+REVIEWER_LIGHT_MODEL_DEFAULT = REVIEWER_MODEL_DEFAULT
 
 # Findings are a small JSON object, and the prompt says so. Unbounded output was pure cost: a
 # reviewer that writes an essay about a window it cannot see is charged for every token of it.
@@ -4536,26 +4554,24 @@ def _reviewer_label(cx: Optional[dict] = None) -> str:
 
 
 def _light_reviewer_model() -> str:
-    """Model for the 'light-but-complex' review tier — the CHEAP reviewer.
+    """Model for the 'light-but-complex' review tier.
 
-    2026-10-13 (operator cost decision, and a reversal of the original design). The tier used to
-    decide only how a review was TRANSPORTED — a fast chat-completions call instead of a slow coding
-    agent on an `agent`-host, with the SAME model either way — which left the cheap path unreachable
-    on the default `llm` backend. It now also decides DEPTH, because the spend is in repetition: a
-    complex change that is not an always-review surface, and not far above the size thresholds, is
-    judged by the fast model.
+    2026-10-13: the tier used to decide only how a review was TRANSPORTED (a fast chat-completions
+    call instead of a slow coding agent on an `agent`-host, with the SAME model either way), which
+    left the cheap path unreachable on the default `llm` backend. It was then made to decide DEPTH
+    as well, with flash as the light-tier default.
 
-    The heavy tier keeps the canonical reviewer deliberately: a cheap judge is a weaker judge, and
-    the class left on it is enforcement and governance code. If the cheap tier ever waves through
-    something real, the answer is to move that CLASS back up, not to trust it more.
+    REVERSED 2026-10-18 (operator directive: "FLASH SHOULD NOT BE THE REVIEWER DEFAULT"). A cheap
+    judge is a weaker judge, and the class on the light tier is not risky code — it is ORDINARY
+    code, because `_tier`'s catch-all is "light". So the light tier now resolves the CANONICAL
+    reviewer by default, and the tier again decides transport and wait, not who judges.
 
-    An operator can still name a different model with
-    ADVERSARIAL_REVIEW_LIGHT_MODEL, which makes "review this one with a cheaper
-    model" an explicit, auditable choice instead of a default nobody picked
-    (Luke, 2026-10-08: the reviewer is deepseek/deepseek-v4-pro). The previous
-    hardcoded flash default meant a light-but-complex change was silently judged
-    by a different, cheaper model than the one the fleet documents - the stored
-    row said so, but nothing chose it.
+    An operator can still name a different model with ADVERSARIAL_REVIEW_LIGHT_MODEL, which makes
+    "review this one with a cheaper model" an explicit, auditable choice instead of a default
+    nobody picked. Corrected in the same change: the previous wording here claimed the stored row
+    "said so" — it did not, because the per-blob call site passed no model at all, so all 144 rows
+    in blob_reviews carried an empty reviewer_model. That is why a flash default went unnoticed
+    until the operator named it: the record could not show which judge produced a verdict.
     """
     return (_env_value("ADVERSARIAL_REVIEW_LIGHT_MODEL") or "").strip() or REVIEWER_LIGHT_MODEL_DEFAULT
 

@@ -166,6 +166,14 @@ measurement it already uses to decide *whether* to review:
   `ADVERSARIAL_REVIEW_LIGHT_MODEL` to review the light tier with a different
   model on purpose; before 2026-10-08 this tier silently defaulted to
   `deepseek/deepseek-v4-flash-0731`.
+  **Re-broken 2026-10-13 and restored 2026-10-18** (operator directive:
+  *"FLASH SHOULD NOT BE THE REVIEWER DEFAULT"*): a cost change made
+  `REVIEWER_LIGHT_MODEL_DEFAULT` flash again, so this paragraph described the
+  intended behaviour while the shipped constant contradicted it — and it stayed
+  invisible because the per-blob verdict writer passed no model, leaving
+  `reviewer_model` empty in every stored row. The code now resolves the
+  canonical reviewer for the light tier, and every recorded verdict names the
+  model that judged it, so this page and the record cannot diverge silently again.
 - **heavy** — an always-review surface (enforcement/governance paths, incl.
   `loop-gov-mcp.py` and `cortex-update.sh`) or ≥10 files / ≥200 lines: the deep
   configured backend runs unchanged.
