@@ -62,6 +62,16 @@ changed a blob sha and nothing else. A 3-blob range cost ~10 closes that way.
 So when a review asks where the proof is, check the material first — it is probably in that block — and
 do **not** adopt "when the fix is in another file, touch both" as a habit: it codifies the symptom.
 
+**When the proof is a WHOLE sibling the block cannot carry — a test file, not a line — NAME the
+coverage inside the file under review.** The block carries added LINES under a bound (6 files, 12
+lines each, 60 total), so a reviewer reading `mcp-servers/x.py` still cannot see that
+`tests/test_x.py::test_<property>` exists. Measured: it demanded "commit a test that injects a
+reviewer sleeping longer than the remaining budget" while that exact test was already committed in
+the same range — and because identical content is never re-judged, no note could clear it. The fix
+that works is a comment in the judged file naming the covering tests beside the code they cover
+(`COVERED BY tests/test_x.py::test_a, ::test_b`), which makes the demand answerable from the material
+alone. Prefer that to touching the sibling: touching it changes a blob sha and nothing else.
+
 ## A blocking verdict is keyed to blob CONTENT — a file whose fix landed in a SIBLING must change
 
 `_blobs_with_recorded_verdict` skips content that already has a verdict, and the reasoning is sound
@@ -115,6 +125,23 @@ next session cannot tell a finished change from an abandoned one; a 9 with the g
 it actually needs. `unscored_reason` is for a cycle where NOTHING could be measured — an approval
 timed out, no change made — never a substitute for scores you can defend. Decisions are
 compared by CLASS, so a `LOOP` result still closes.
+
+## A close judges a WAVE of blobs per pass — count the passes before you start
+
+The per-blob pass judges up to `CLOSE_BLOBS_PER_WINDOW` blobs per close, CONCURRENTLY, inside one
+bounded window (the window stays below the MCP client ceiling and is never raised). Verdicts are keyed
+by blob CONTENT, so each further `end_change` continues from the cache instead of redoing work: a
+15-file range is a handful of passes, not 15 sequential reviews. Design for that budget — a range
+whose every file needs its own verdict costs passes in proportion to its file count, so prefer ONE
+commit per close and fold unpushed docs commits rather than growing the range.
+
+When a pass hits its window, the blobs it could not read are FAILED and reported in `remaining` —
+never credited — so re-calling `end_change` is the correct move, not a re-roll. Concurrency does not
+change the window: elapsed time is the SLOWEST call, not the sum, which is why N calls fit where N
+sequential ones would not. And the window must be ENFORCED, not merely checked before the wave: each
+call is awaited only until the deadline the pass was given, the pool is not waited on, and a worker
+only CALLS the reviewer (every write happens in the pass, for outcomes it collected), so a straggler
+leaves no trace.
 
 ## The adversarial review gate
 
@@ -416,6 +443,15 @@ repo state, audited range, the task's description, the diff stat, and the diff:
   MATERIAL has to change, not the note: commit the artifact the finding asked for FIRST,
   then call `rereview_change`. Re-submitting the same material a third time is not a
   re-roll, it is a wasted cycle.
+  A refused cycle whose findings are a FALSE POSITIVE is cleared by the same move and needs NO code
+  change: re-review with a note carrying the measurement that refutes each one (a grep count at HEAD,
+  a line number, the covering test's name and its measured output). Measured in one session: an
+  `end_change` on unchanged material replays the stored verdict verbatim, while `rereview_change`
+  with the refutation re-judges at cycle level and returns CLEAN — twice, on the same cycle. Note the
+  asymmetry before you reach for an edit: a finding that is WRONG about the code but RIGHT about the
+  evidence is fixed by committing the evidence, and only a finding that is right about the code is
+  fixed by editing it. Editing working code purely to unblock a refuted finding is the habit this
+  avoids — the diff then carries a change nobody asked for and the note has to explain it.
   **If `rereview_change` is not in the running daemon** (it answers `Unknown tool:`
   because the MCP server predates the deploy — see Pitfalls), the recovery is the
   same end state by the ordinary path: re-issue `feedback_accept` with the evidence

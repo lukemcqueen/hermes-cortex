@@ -816,7 +816,11 @@ a test so it cannot creep back:
 
 ```
 bash 4 only : declare -A, mapfile, readarray, local -n, ${var,,}, ${var^^}, &>>
-GNU only    : readlink -f, date -d, grep -P, sed -i without a suffix, sha256sum (macOS: shasum -a 256),
+GNU only    : readlink -f, date -d, date -r <file> (BSD `date -r` takes SECONDS since the epoch, so
+              the same command silently means something else rather than failing loudly),
+              stat -c (BSD/macOS: stat -f — the portable form is `stat -c FMT f 2>/dev/null ||
+              stat -f FMT f`, or hash/compare in Python), grep -P, sed -i without a suffix,
+              sha256sum (macOS: shasum -a 256),
               timeout (macOS: gtimeout — never call `timeout` unconditionally: the script then does not
               run AT ALL on macOS, rather than degrading)
 ```
