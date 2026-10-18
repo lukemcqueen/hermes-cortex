@@ -33,6 +33,30 @@ import sys
 
 DRIFT = pathlib.Path(__file__).resolve().parent / "check-skill-drift-parity.py"
 
+# The detector's section header, plus the historical name so an older detector's
+# output still parses.
+SECTION_HEADERS = ("Stranded in place:", "Stranded files:")
+# The detector emits this metrics row ALWAYS (0 included) while the section below is
+# emitted only when non-empty. The count is therefore the only thing that can tell a
+# genuinely clean tree from a parser that has stopped recognising the detector's
+# output — and a rename of that section is exactly how this tool once reported
+# "Nothing stranded" on a tree with two stranded skills (2026-10-18).
+COUNT_ROW = "| Stranded in place (path in repo, content only deployed) |"
+
+
+def default_deployed_root():
+    """The deployed skills tree, resolved the way the DETECTOR resolves it.
+
+    check-skill-drift-parity.py reads `~/.hermes/skills`; some builds keep the tree
+    at `~/.hermes-cortex/skills`. Prefer whichever exists so both tools measure the
+    same tree instead of this one silently reading a directory that holds nothing.
+    """
+    for cand in (pathlib.Path.home() / ".hermes" / "skills",
+                 pathlib.Path.home() / ".hermes-cortex" / "skills"):
+        if cand.is_dir():
+            return cand
+    return pathlib.Path.home() / ".hermes" / "skills"
+
 
 def stranded_files(repo, drift_script=None):
     """The detector's stranded list + verdict, via its own output.
@@ -53,18 +77,36 @@ def stranded_files(repo, drift_script=None):
         return None, f"{pathlib.Path(script).name} exited {r.returncode}: {r.stderr.strip()[:200]}", None
     out = r.stdout
     verdict = "PASS" if "Verdict: PASS" in out else ("FAIL" if "Verdict: FAIL" in out else "?")
+
+    stated = None
+    for line in out.splitlines():
+        if line.startswith(COUNT_ROW):
+            digits = line[len(COUNT_ROW):].strip().strip("|").strip()
+            stated = int(digits) if digits.isdigit() else None
+            break
+    if stated is None:
+        return None, ("detector printed no " + repr(COUNT_ROW) + " metrics row, so its "
+                      "stranded count cannot be cross-checked — refusing to call an "
+                      "unrecognised output shape clean"), None
+
     files, collecting = [], False
     for line in out.splitlines():
-        if line.startswith("Stranded files:"):
+        if line.strip() in SECTION_HEADERS:
             collecting = True
             continue
-        if collecting:
-            if line.startswith("- "):
-                files.append(line[2:].strip())
-            elif line.strip() == "":
-                continue
-            else:
-                collecting = False
+        if not collecting:
+            continue
+        if line.startswith("- "):
+            files.append(line[2:].strip())
+        else:
+            # A blank line or the next section's header ends the list. Stopping on the
+            # blank also keeps a following section's bullets out of this one.
+            collecting = False
+    if len(files) != stated:
+        return None, (f"detector states {stated} stranded file(s) but its list yielded "
+                      f"{len(files)} — the section header it prints is not the one this "
+                      f"parser looks for (accepted: {', '.join(SECTION_HEADERS)}); "
+                      "treating this as unverifiable rather than clean"), None
     return files, None, verdict
 
 
@@ -80,7 +122,10 @@ def classify(deployed_text, repo_text):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--repo", default=str(pathlib.Path.home() / "hermes-cortex"))
-    ap.add_argument("--deployed", default=str(pathlib.Path.home() / ".hermes-cortex/skills"))
+    ap.add_argument("--deployed", default=str(default_deployed_root()),
+                    help="the deployed skills tree (default: the detector's root, "
+                         "~/.hermes/skills, or ~/.hermes-cortex/skills where that is "
+                         "what exists)")
     ap.add_argument("--apply", action="store_true",
                     help="copy the pure-superset class only (never a rewrite)")
     ap.add_argument("--drift-script", default=str(DRIFT),

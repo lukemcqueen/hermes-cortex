@@ -17,6 +17,13 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[1]
 TOOL = REPO / "ops/scripts/manage/reconcile-stranded-skills.py"
 
+# The DETECTOR's real contract, copied from check-skill-drift-parity.py: the metrics
+# row is emitted ALWAYS (0 included) and the section is emitted only when non-empty.
+# A stub that models a header the detector no longer prints makes every case pass for
+# the wrong reason — which is how the rename below went unnoticed.
+METRICS_ROW = "print('| Stranded in place (path in repo, content only deployed) | %d |')\n"
+SECTION_HEADER = "Stranded in place:"
+
 failures = []
 
 
@@ -55,12 +62,11 @@ def make_trees(stranded_superset=(), stranded_rewrite=(), stranded_new=()):
         (deployed / rel).write_text("brand new lesson\n")
 
     stub = tmp / "stub-drift.py"
-    listing = "\n".join(f"- {r}" for r in rels)
     stub.write_text(
-        "print('| Deployed-only files (stranded) | %d |')\n" % len(rels)
+        METRICS_ROW % len(rels)
         + "print('| Files in sync | 1 |')\n"
         + "print('**Verdict: %s**')\n" % ("FAIL" if rels else "PASS")
-        + "print('Stranded files:')\n"
+        + ("print(%r)\n" % SECTION_HEADER if rels else "")
         + "".join(f"print('- {r}')\n" for r in rels)
         + "raise SystemExit(1 if %r else 0)\n" % bool(rels)
     )
@@ -125,6 +131,36 @@ def main():
     missing = repo / "does-not-exist.py"
     r = run(repo, deployed, missing)
     check("unrunnable detector exits 3", r.returncode, 3)
+
+    # 8. THE REGRESSION THIS FILE NOW GUARDS: the detector renames its section header
+    #    (it did: 'Stranded files:' -> 'Stranded in place:'), so the parser finds no
+    #    list while the metrics row still says 2. Silence here is the bug: it must be
+    #    could-not-verify, never "Nothing stranded".
+    repo, deployed, _ = make_trees(stranded_superset=("devops/d/SKILL.md", "devops/e/SKILL.md"))
+    renamed = repo / "renamed-drift.py"
+    renamed.write_text(
+        METRICS_ROW % 2
+        + "print('| Files in sync | 1 |')\n"
+        + "print('**Verdict: FAIL**')\n"
+        + "print('Deployed-only:')\n"
+        + "print('- devops/d/SKILL.md')\n"
+        + "print('- devops/e/SKILL.md')\n"
+        + "raise SystemExit(1)\n"
+    )
+    r = run(repo, deployed, renamed)
+    check("renamed section header exits 3 (not 0)", r.returncode, 3)
+    check("renamed section header says COULD NOT VERIFY",
+          "COULD NOT VERIFY" in r.stdout, True)
+    check("renamed section header names both counts", "2" in r.stdout and "0" in r.stdout, True)
+    check("renamed section header does NOT claim agreement",
+          "agree on content" in r.stdout, False)
+
+    # 9. No metrics row to cross-check against -> still could-not-verify, not clean.
+    repo, deployed, _ = make_trees()
+    norow = repo / "norow-drift.py"
+    norow.write_text("print('**Verdict: PASS**')\nraise SystemExit(0)\n")
+    r = run(repo, deployed, norow)
+    check("missing metrics row exits 3", r.returncode, 3)
 
     print()
     if failures:
