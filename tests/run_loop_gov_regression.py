@@ -24,13 +24,48 @@ REPO = Path(__file__).resolve().parents[1]
 ARTIFACT = REPO / "tests" / "artifacts" / "loop-gov-regression.txt"
 
 # pytest is NOT installed for the interpreter this harness runs under, so a pytest-style file used to
-# be indistinguishable from a FAILURE. An ISOLATED venv is used when one exists — never the Hermes
-# runtime python, whose site-packages the agent itself imports.
+# be indistinguishable from a FAILURE. The interpreter is resolved BY CAPABILITY through the resolver
+# every deployed script already uses (`ops/scripts/lib/python-with-module.sh`) — never from a
+# hardcoded venv path. A path this repo does not create (measured: $HOME/.hermes/tools/pytest-venv,
+# built by hand on one host) resolves on exactly that host and degrades silently everywhere else,
+# where every pytest-style file then reports NOT RUN — which reads as a clean run to anyone who
+# reads only the summary (adversarial finding ADV-13116-1, 2026-10-18).
+#
+# So the no-pytest case is not a silent downgrade: it names the repair that is ITSELF committed.
+# `ops/scripts/manage/fix-cortex-venv.py` installs the declared set in
+# `ops/install/requirements.txt` (pytest is declared there) into the fleet venv, and the resolver
+# knows about every capable interpreter on the host.
+RESOLVER = REPO / "ops" / "scripts" / "lib" / "python-with-module.sh"
+NO_PYTEST_HINT = (
+    "no interpreter can import pytest — repair with: "
+    "python3 ops/scripts/manage/fix-cortex-venv.py (installs ops/install/requirements.txt, which "
+    "declares pytest); or resolve one directly: "
+    "bash ops/scripts/lib/python-with-module.sh --print pytest"
+)
+
+
 def _find_pytest() -> str | None:
-    # The VENV PYTHON only: the command shape below is `<interpreter> -m pytest`, so returning the
-    # `pytest` console script here would silently run `pytest -m pytest` and collect nothing.
-    cand = Path.home() / ".hermes" / "tools" / "pytest-venv" / "bin" / "python"
-    return str(cand) if cand.is_file() else None
+    """The PYTHON only: the command shape below is `<interpreter> -m pytest`, so returning the
+    `pytest` console script here would silently run `pytest -m pytest` and collect nothing.
+
+    `PYTEST=<path>` is the documented escape hatch for a host that keeps an isolated venv. An
+    override that is not a real file resolves to None rather than being handed back: a non-existent
+    binary would surface the shell's own 126/127 as the test's result.
+    """
+    override = os.environ.get("PYTEST", "").strip()
+    if override:
+        return override if Path(override).is_file() else None
+    if not RESOLVER.is_file():
+        return None
+    try:
+        proc = subprocess.run(["bash", str(RESOLVER), "--print", "pytest"],
+                              capture_output=True, text=True, timeout=120)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if proc.returncode != 0:
+        return None
+    resolved = proc.stdout.strip()
+    return resolved if resolved and Path(resolved).is_file() else None
 
 
 PYTEST = _find_pytest()
@@ -96,6 +131,13 @@ TESTS = [
     # thing that decides WHO runs the other tests: a resolver that falls back to an
     # interpreter lacking the module makes a gate report a failure it never measured.
     "tests/test_python_with_module.py",
+    # The guard on THIS harness. It pins the three facts the fix above depends on: pytest is
+    # resolved through the committed resolver and never from a venv path this repo does not
+    # create; the no-pytest case names a repair that is itself committed; and NOT RUN is printed
+    # apart from RESULT, so a file that ran nothing cannot read as a clean pass (ADV-13116-1).
+    # Its hermetic probe belongs here for the same reason as the resolver's: a guard nobody runs
+    # is a guard nobody notices has rotted.
+    "tests/test_run_loop_gov_regression_harness.py",
     # The loop_db embedding source of the session cache. It silently contributed
     # ZERO rows for months (phantom columns + a swallowed OperationalError), which
     # starves progress detection of its known-good patterns. This runs the fixed
@@ -148,6 +190,17 @@ def _gate(path: str) -> tuple:
     return proc.returncode == 0, lines
 
 
+def _result_block(failures: list, not_run: list) -> list:
+    """The summary must separate the THREE outcomes: a file that ran nothing is not a pass and not
+    a failure. Printing only `RESULT: ALL PASS` while files executed nothing is how five of them came
+    to be called "pre-existing failures" on a host where four never ran."""
+    block = [f"RESULT: {'ALL PASS' if not failures else 'FAILURES: ' + '; '.join(failures)}"]
+    if not_run:
+        block.append(f"NOT RUN ({len(not_run)}) — ran nothing, so they prove nothing either way:")
+        block.extend(f"  - {entry}" for entry in not_run)
+    return block
+
+
 def main() -> int:
     revision = _git("rev-parse", "--short", "HEAD")
     branch = _git("rev-parse", "--abbrev-ref", "HEAD")
@@ -198,8 +251,8 @@ def main() -> int:
         elif PYTEST:
             cmd = [PYTEST, "-m", "pytest", "-q", rel]
         else:
-            not_run.append(f"{rel}: no __main__ runner, and no pytest to judge it")
-            out.append(f"[NOT RUN] {rel} -- no __main__ runner; install pytest to judge it")
+            not_run.append(f"{rel}: no __main__ runner, and {NO_PYTEST_HINT}")
+            out.append(f"[NOT RUN] {rel} -- no __main__ runner; {NO_PYTEST_HINT}")
             continue
         proc = _run(cmd)
         if proc.returncode == 5:
@@ -256,7 +309,7 @@ def main() -> int:
     out.append("")
 
     out.append("=" * 72)
-    out.append(f"RESULT: {'ALL PASS' if not failures else 'FAILURES: ' + '; '.join(failures)}")
+    out.extend(_result_block(failures, not_run))
     out.append("=" * 72)
 
     ARTIFACT.parent.mkdir(parents=True, exist_ok=True)
@@ -264,6 +317,10 @@ def main() -> int:
 
     print(f"artifact: {ARTIFACT}")
     print(f"revision: {revision}   tests: {len(TESTS)}")
+    if not_run:
+        print(f"NOT RUN ({len(not_run)}) — ran nothing here, so they are NOT evidence either way:")
+        for entry in not_run:
+            print(f"  - {entry}")
     if failures:
         print("RESULT: FAIL")
         for f in failures:

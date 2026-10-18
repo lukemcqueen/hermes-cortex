@@ -1,152 +1,90 @@
 loop-governance regression artifact
 ========================================================================
-generated      : 2026-10-09T12:55:42+00:00
-revision under test : 6c61ef57  (branch main) — HEAD when this ran; the
+generated      : 2026-10-18T07:42:37+00:00
+revision under test : beeabecd  (branch main) — HEAD when this ran; the
                       artifact is committed BY the change it measures, so the
                       file under test is identical at the carrying commit
-                      (`git diff <carrying-commit> 6c61ef57 -- mcp-servers/loop-gov-mcp.py`).
-pre-fix base        : 662155bb (662155bb)
+                      (`git diff <carrying-commit> beeabecd -- mcp-servers/loop-gov-mcp.py`).
+pre-fix base        : HEAD~1 (bbd80f92)
 interpreter    : Python 3.14.7 (<python-bin>/python3)
 generator      : tests/run_loop_gov_regression.py
 
-Re-run with:  LOOP_GOV_PRE_FIX_REV=662155bb python3 tests/run_loop_gov_regression.py
+Re-run with:  LOOP_GOV_PRE_FIX_REV=HEAD~1 python3 tests/run_loop_gov_regression.py
 
 ------------------------------------------------------------------------
-TEST SET (22 files)
+TEST SET (26 files)
 ------------------------------------------------------------------------
 [PASS] tests/test_loop_gov_mcp_nonblocking.py  rc=0
-        PASS (6):
-          - test_a_lock_write_does_not_touch_the_governed_repo
-          - test_a_session_can_close_its_own_lock_while_another_holds_one
-          - test_both_reviewer_backends_route_through_the_clamp
-          - test_control_legacy_dispatch_still_blocks
-          - test_reviewer_timeout_clamped_below_client_ceiling
-          - test_slow_handler_does_not_block_concurrent_call
-        [mcp-server] WARNING: the 'mcp' package is not installed — the stdio server cannot start; the CLI adapter (ops/scripts/loop-gov.py) still works.
-        [mcp-server]   ~/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3 -m pip install mcp
-        [mcp-server] DEBUG: Using selector: EpollSelector
-        [mcp-server] WARNING: reviewer timeout ADVERSARIAL_REVIEW_TIMEOUT=300s exceeds the 240s client ceiling — clamping (a longer timeout is an unobservable hang, not a longer wait)
-        [mcp-server] INFO: reviewer wait for a 99999-file/500000-line change would be 1150230s — held at the 240s client ceiling (a longer budget is an unobservable hang, not a longer wait)
-        [mcp-server] WARNING: reviewer timeout ADVERSARIAL_REVIEW_AGENT_TIMEOUT=900s exceeds the 240s client ceiling — clamping (a longer timeout is an unobservable hang, not a longer wait)
+        ============================= test session starts ==============================
+        platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
+        rootdir: <repo>
+        configfile: pytest.ini
+        plugins: anyio-4.15.1
+        collected 6 items
+        tests/test_loop_gov_mcp_nonblocking.py ......                            [100%]
+        ============================== 6 passed in 7.18s ===============================
 
 [PASS] tests/test_loop_gov_review_repo.py  rc=0
-        PASS (13):
-          - test_a_lock_write_never_touches_the_nested_repo
-          - test_candidate_scan_finds_a_repo_two_levels_down
-          - test_derive_repo_path_honours_the_injected_path
-          - test_derive_slug_ignores_an_injected_slug_that_is_not_a_repo
-          - test_derive_slug_prefers_the_injected_repo
-          - test_enforcer_does_not_inject_a_repo_it_never_learned
-          - test_enforcer_injects_recorded_repo_into_governance_calls
-          - test_enforcer_records_and_injects_an_absolute_repo_path
-          - test_enforcer_records_session_repo_from_touched_paths
-          - test_guard_does_not_fire_when_lock_repo_holds_the_work
-          - test_lock_repo_prefers_the_absolute_path_over_the_slug
-          - test_nested_repo_holding_the_work_is_not_refused
-          - test_review_refuses_when_lock_repo_cannot_contain_the_work
-        [mcp-server] WARNING: the 'mcp' package is not installed — the stdio server cannot start; the CLI adapter (ops/scripts/loop-gov.py) still works.
-        [mcp-server]   ~/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3 -m pip install mcp
-        [mcp-server] INFO: self-adversarial review: cycle 4243 simple (1 lines, 1 files) — skip
-        [mcp-server] WARNING: _git_capture(('log', '--format=%ct')) exited 128 in ~/.hermes/cache/scratch/nested-repo-x93sli83/hermes-cortex: fatal: your current branch 'master' does not have any commits yet
-        [mcp-server] INFO: self-adversarial review: cycle 4321 simple (1 lines, 1 files) — skip
-        [mcp-server] WARNING: _git_capture(('rev-list', '-1', '--before=2026-10-09T12:55:54Z', 'HEAD')) exited 128 in ~/.hermes/cache/scratch/loop-gov-review-repo-ge8v0jav/hermes-cortex: fatal: ambiguous argument 'HEAD': unknown revision or path not in the working tree.
-        Use '--' to separate paths from revisions, like this:
-        'git <command> [<revision>...] -- [<file>...]'
-        [mcp-server] WARNING: _git_capture(('log', '--format=%H', '--author=agent@hermes.local', '4b825dc642cb6eb9a060e54bf8d69288fbee4904..HEAD')) exited 128 in ~/.hermes/cache/scratch/loop-gov-review-repo-ge8v0jav/hermes-cortex: fatal: ambiguous argument '4b825dc642cb6eb9a060e54bf8d69288fbee4904..HEAD': unknown revision or path not in the working tree.
-        [mcp-server] WARNING: _git_capture(('diff', '--numstat', '4b825dc642cb6eb9a060e54bf8d69288fbee4904..HEAD')) exited 128 in ~/.hermes/cache/scratch/loop-gov-review-repo-ge8v0jav/hermes-cortex: fatal: ambiguous argument '4b825dc642cb6eb9a060e54bf8d69288fbee4904..HEAD': unknown revision or path not in the working tree.
-        [mcp-server] WARNING: _git_capture(('log', '--format=%ct')) exited 128 in ~/.hermes/cache/scratch/loop-gov-review-repo-ge8v0jav/hermes-cortex: fatal: your current branch 'master' does not have any commits yet
+        ============================= test session starts ==============================
+        platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
+        rootdir: <repo>
+        configfile: pytest.ini
+        plugins: anyio-4.15.1
+        collected 13 items
+        tests/test_loop_gov_review_repo.py .............                         [100%]
+        ============================== 13 passed in 7.26s ==============================
 
 [PASS] tests/test_non_hermes_repo_identity.py  rc=0
-          PASS  lock carries the session's repo slug
-          PASS  lock carries the session's absolute repo path
-          PASS  CORTEX_SESSION_REPO absolute path is honoured
-          PASS  CORTEX_SESSION_REPO name form is honoured
-          PASS  a bogus CORTEX_SESSION_REPO falls back to the canonical default
-          PASS  begin_change wrote a lock
-          PASS  close was not refused as a wrong repo
-          PASS  close succeeded
-          PASS  lock released (no manual removal needed)
-          PASS  Hermes caller without a repo hint keeps the canonical default
-          PASS  no repo path is inferred for a Hermes caller
-        ALL PASS
-        A. tagging — the session's own repo, not the host-canonical default
-        [mcp-server] WARNING: the 'mcp' package is not installed — the stdio server cannot start; the CLI adapter (ops/scripts/loop-gov.py) still works.
-        [mcp-server]   ~/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3 -m pip install mcp
-        [mcp-server] INFO: self-adversarial review: cycle 1 simple (1 lines, 1 files) — skip
-        [mcp-server] WARNING: _git_capture(('merge-base', 'origin/main', 'HEAD')) exited 128 in ~/.hermes/cache/scratch/non-hermes-repo-id-qfl1ig9b/projects/proj: fatal: Not a valid object name origin/main
-        [mcp-server] INFO: review receipt written: .reviewed-proj-34f609779e63ef05855ec327b18697adfcfbe678.json (tip 34f609779e63, base 0c7ac3a0661c, 1 files)
+        ============================= test session starts ==============================
+        platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
+        rootdir: <repo>
+        configfile: pytest.ini
+        plugins: anyio-4.15.1
+        collected 7 items
+        tests/test_non_hermes_repo_identity.py .......                           [100%]
+        ============================== 7 passed in 1.83s ===============================
 
 [PASS] tests/test_non_hermes_session_id.py  rc=0
-          PASS  hermes: injected id returned verbatim
-          PASS  hermes: a new injected id wins on the next call
-          PASS  non-hermes: id is stable across calls in one process
-          PASS  non-hermes: does NOT adopt the stale Hermes marker
-          PASS  non-hermes: does NOT adopt the shared host cache
-          PASS  non-hermes: id has the sess_ prefix
-          PASS  non-hermes: persisted per project
-          PASS  restart in same project keeps the SAME id (lock survives)
-          PASS  different project gets a DISJOINT id
-          PASS  per-project session file written
-          PASS  same-repo sessions share the project id
-          PASS  session A begin_change succeeds
-          PASS  session B begin_change REFUSED (serialized, not stolen)
-          PASS  session A end_change releases
-          PASS  session B can begin after A closed
-        ALL PASS
-        A. Hermes per-call injection (unchanged)
-        B. Non-Hermes caller isolation
-        C. Process disjointness + restart stability
-        D. Same-repo concurrent sessions serialize
-        [mcp-server] WARNING: the 'mcp' package is not installed — the stdio server cannot start; the CLI adapter (ops/scripts/loop-gov.py) still works.
-        [mcp-server]   ~/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3 -m pip install mcp
-        [mcp-server] INFO: self-adversarial review: cycle 1 simple (0 lines, 0 files) — skip
-        [mcp-server] WARNING: _git_capture(('merge-base', 'origin/main', 'HEAD')) exited 128 in ~/.hermes/cache/scratch/tmpk1as8vl3/sandbox-repo: fatal: Not a valid object name origin/main
-        [mcp-server] WARNING: review receipt NOT written: range 34b3e6792390..34b3e6792390 lists no files
+        ============================= test session starts ==============================
+        platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
+        rootdir: <repo>
+        configfile: pytest.ini
+        plugins: anyio-4.15.1
+        collected 4 items
+        tests/test_non_hermes_session_id.py ....                                 [100%]
+        ============================== 4 passed in 1.65s ===============================
 
-[PASS] tests/run_non_hermes_lock_release_repro.py  rc=0
-        RESULT: ALL PASS
-                                is committed BY the change it measures, so the file under
-                                test at the carrying commit is identical (check with
-                                `git diff <carrying-commit> 6c61ef57 -- mcp-servers/loop-gov-mcp.py`).
-        pre-fix comparison ref: 662155bb (662155bb)
-        re-run with           : python3 tests/run_non_hermes_lock_release_repro.py --write-artifact --include-doctor
-        ── PRE-FIX (git 662155bb (662155bb)) ──
-           lock.repo_slug           : hermes-cortex
-           lock.repo_path           : (empty)
-           end_change verdict       : ❌ Cannot close: the lock's repo cannot contain this session's work.
-           lock file left behind    : ['.governance-sess_1cf6c289b82e.json']
-        ── CURRENT (working tree) ──
-           lock.repo_slug           : proj
-           lock.repo_path           : ~/.hermes/cache/scratch/rg-home-8wio1css/projects/proj
-           end_change verdict       : 🔓 Governance session 'rg-1' closed.
-           lock file left behind    : none — released
-        ── DEPLOYED (harness path) ──
-           lock.repo_path           : ~/.hermes/cache/scratch/rg-home-zo30kwcl/projects/proj
-        Reading of the transcript
-        --------------------------------------------------------------------
-        PRE-FIX: the lock is tagged with the HOST-CANONICAL repo (hermes-cortex) because a
-        caller with no injector fell through to Priority 1 in _derive_slug(). The close gate
-        then looks for this session's work in ~/hermes-cortex, cannot find it, and REFUSES —
-        a refusal leaves the lock held by design, and the remedy it prints (a governance-
-        enforcer injection) does not exist on a non-Hermes harness. The lock file is left on
-        disk: the reported symptom, in the same file-name shape (sess_<12 hex>) the report cites.
-        CURRENT / DEPLOYED: the session resolves its OWN repo (proj, absolute path recorded in
-        the lock), the close completes, and the lock is released — no operator action.
+[FAIL] tests/run_non_hermes_lock_release_repro.py  rc=1
+        RESULT: FAILURES: PRE-FIX: expected the pre-fix refusal WITH the lock left behind, got released=True refused=False
+        RESULT: FAIL
+        [mcp-server] WARNING: _git_capture(('merge-base', 'origin/main', 'HEAD')) exited 128 in ~/.hermes/cache/scratch/rg-home-s3n_p_x0/projects/proj: fatal: Not a valid object name origin/main
+        [mcp-server] WARNING: _git_capture(('merge-base', 'origin/master', 'HEAD')) exited 128 in ~/.hermes/cache/scratch/rg-home-s3n_p_x0/projects/proj: fatal: Not a valid object name origin/master
+        [mcp-server] WARNING: _git_capture(('merge-base', 'main', 'HEAD')) exited 128 in ~/.hermes/cache/scratch/rg-home-s3n_p_x0/projects/proj: fatal: Not a valid object name main
+        [mcp-server] WARNING: _git_capture(('symbolic-ref', '--quiet', '--short', 'refs/remotes/origin/HEAD')) exited 1 in ~/.hermes/cache/scratch/rg-home-s3n_p_x0/projects/proj: 
+        [mcp-server] WARNING: _git_capture(('log', '--format=%ct')) exited 128 in ~/.hermes/cache/scratch/rg-home-s3n_p_x0/hermes-cortex: fatal: your current branch 'master' does not have any commits yet
+        [mcp-server] INFO: self-adversarial review: cycle 1 simple (0 lines, 0 files) — skip
+        [mcp-server] INFO: review receipt: blobs from <repo>/ops/scripts/lib/review-receipt-check.py (0 entries)
+        [mcp-server] INFO: review receipt: blobs from <repo>/ops/scripts/lib/review-receipt-check.py (1 entries)
+        [mcp-server] INFO: review receipt written: .reviewed-proj-564762f8ab5512a9f2e1e0dc8e7fab230ddae8b2.json (tip 564762f8ab55, base e3e5de01b970, 1 files)
         [mcp-server] WARNING: the 'mcp' package is not installed — the stdio server cannot start; the CLI adapter (ops/scripts/loop-gov.py) still works.
         [mcp-server]   ~/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3 -m pip install mcp
-        [mcp-server] WARNING: _git_capture(('rev-list', '-1', '--before=2026-10-09T12:55:57Z', 'HEAD')) exited 128 in ~/.hermes/cache/scratch/rg-home-9yhgqkfe/hermes-cortex: fatal: ambiguous argument 'HEAD': unknown revision or path not in the working tree.
-        Use '--' to separate paths from revisions, like this:
-        'git <command> [<revision>...] -- [<file>...]'
-        [mcp-server] WARNING: _git_capture(('log', '--format=%H', '--author=agent@hermes.local', '4b825dc642cb6eb9a060e54bf8d69288fbee4904..HEAD')) exited 128 in ~/.hermes/cache/scratch/rg-home-9yhgqkfe/hermes-cortex: fatal: ambiguous argument '4b825dc642cb6eb9a060e54bf8d69288fbee4904..HEAD': unknown revision or path not in the working tree.
-        [mcp-server] WARNING: _git_capture(('diff', '--numstat', '4b825dc642cb6eb9a060e54bf8d69288fbee4904..HEAD')) exited 128 in ~/.hermes/cache/scratch/rg-home-9yhgqkfe/hermes-cortex: fatal: ambiguous argument '4b825dc642cb6eb9a060e54bf8d69288fbee4904..HEAD': unknown revision or path not in the working tree.
-        [mcp-server] WARNING: close refused for cycle 1 (WRONG_REPO) — marker written to the lock; new work under this lock will be flagged as a stacked change
-        [mcp-server] WARNING: _git_capture(('log', '--format=%ct')) exited 128 in ~/.hermes/cache/scratch/rg-home-9yhgqkfe/hermes-cortex: fatal: your current branch 'master' does not have any commits yet
-        [mcp-server] WARNING: _git_capture(('log', '--format=%ct')) exited 128 in ~/.hermes/cache/scratch/rg-home-8wio1css/hermes-cortex: fatal: your current branch 'master' does not have any commits yet
-        [mcp-server] INFO: self-adversarial review: cycle 1 simple (0 lines, 0 files) — skip
-        [mcp-server] WARNING: _git_capture(('merge-base', 'origin/main', 'HEAD')) exited 128 in ~/.hermes/cache/scratch/rg-home-8wio1css/projects/proj: fatal: Not a valid object name origin/main
-        [mcp-server] INFO: review receipt written: .reviewed-proj-28da9b3d4c646d30fa6bbd64c2f75f101c525d20.json (tip 28da9b3d4c64, base f1c8af0dc113, 1 files)
-        [mcp-server] WARNING: _git_capture(('log', '--format=%ct')) exited 128 in ~/.hermes/cache/scratch/rg-home-zo30kwcl/hermes-cortex: fatal: your current branch 'master' does not have any commits yet
-        [mcp-server] WARNING: _git_capture(('merge-base', 'origin/main', 'HEAD')) exited 128 in ~/.hermes/cache/scratch/rg-home-zo30kwcl/projects/proj: fatal: Not a valid object name origin/main
+        [mcp-server] WARNING: _git_capture(('symbolic-ref', '--quiet', '--short', 'refs/remotes/origin/HEAD')) exited 1 in ~/.hermes/cache/scratch/rg-home-tuotgmqp/projects/proj: 
+        [mcp-server] WARNING: _git_capture(('merge-base', 'origin/main', 'HEAD')) exited 128 in ~/.hermes/cache/scratch/rg-home-tuotgmqp/projects/proj: fatal: Not a valid object name origin/main
+        [mcp-server] WARNING: _git_capture(('merge-base', 'origin/master', 'HEAD')) exited 128 in ~/.hermes/cache/scratch/rg-home-tuotgmqp/projects/proj: fatal: Not a valid object name origin/master
+        [mcp-server] WARNING: _git_capture(('merge-base', 'main', 'HEAD')) exited 128 in ~/.hermes/cache/scratch/rg-home-tuotgmqp/projects/proj: fatal: Not a valid object name main
+        [mcp-server] INFO: self-adversarial review: cycle 1 simple (1 lines, 1 files) — skip
+        [mcp-server] WARNING: review receipt: helper ops/scripts/lib/review-receipt-check.py not found in ANY of ['~/.hermes-cortex/tools/ops/scripts/lib/review-receipt-check.py', '~/.hermes/cache/scratch/rg-home-tuotgmqp/hermes-cortex/ops/scripts/lib/review-receipt-check.py', '~/.hermes/cache/scratch/rg-home-tuotgmqp/.hermes-cortex/ops/scripts/lib/review-receipt-check.py'] — writing no reviewed_blobs (still valid by exact tip+base, so SAFE, but it will not survive a rebase)
+        [mcp-server] INFO: review receipt written: .reviewed-proj-478c7dd68b91082ab5c0fc74802b5e673704ebb0.json (tip 478c7dd68b91, base e3e5de01b970, 1 files)
+
+[PASS] tests/test_land_when_clean_probe.py  rc=0
+        ============================= test session starts ==============================
+        platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
+        rootdir: <repo>
+        configfile: pytest.ini
+        plugins: anyio-4.15.1
+        collected 13 items
+        tests/test_land_when_clean_probe.py .............                        [100%]
+        ======================== 13 passed in 65.20s (0:01:05) =========================
 
 [PASS] tests/test_loop_gov_multi_session.py  rc=0
         PASS — loop-gov multi-session DB (adversarial findings resolved):
@@ -157,10 +95,13 @@ TEST SET (22 files)
         [mcp-server]   ~/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3 -m pip install mcp
         [mcp-server] WARNING: SQL migration: column already exists — expected
 
-[PASS] tests/test_loop_gov_stale_purge.py  rc=0
-        PASS — loop-gov stale purge: A(time-only) B(naive) C(fresh) D(purge+resolve) E(sweep-all) all green
+[FAIL] tests/test_loop_gov_stale_purge.py  rc=1
+        FAIL (1):
+          - A/B naive: stale heartbeat not aged stale
         [mcp-server] WARNING: the 'mcp' package is not installed — the stdio server cannot start; the CLI adapter (ops/scripts/loop-gov.py) still works.
         [mcp-server]   ~/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3 -m pip install mcp
+        [mcp-server] INFO: lock None: agent esther+2@hermes.local committed in ~/hc-session2 since 2026-09-17T08:00:00 — activity seen
+        [mcp-server] INFO: lock None aged 2677461s past TTL but its agent has committed since — renewed once, not purged
         [mcp-server] WARNING: Orphan-cycle reaper: closed 1 abandoned PENDING cycle(s) unscored — #1(snapshot-capture-chunked-commit)
         [mcp-server] WARNING: Purge: resolved 1 orphaned PENDING cycle(s) for purged tasks
         [mcp-server] WARNING: Orphan-cycle reaper: closed 1 abandoned PENDING cycle(s) unscored — #2(orphan-no-lock)
@@ -187,169 +128,76 @@ TEST SET (22 files)
         [mcp-server] WARNING: SQL migration: unscored_reason already exists — expected
 
 [PASS] tests/test_orphan_cycle_resolution.py  rc=0
-          PASS  reaper closed the abandoned cycle
-          PASS  closed (no longer PENDING)
-          PASS  NO score invented
-          PASS  unscored_reason recorded and tagged
-          PASS  reason states recomputable facts (task + TTL)
-          PASS  live task untouched
-          PASS  young cycle untouched
-          PASS  forged claim FAILS
-          PASS  truthful claim does not FAIL
-          PASS  reaper-closed count is surfaced
-          PASS  tags agree
-        A. honesty — abandoned cycles close unscored, with a recomputable reason
-        A2. a LIVE task is never reaped
-        A3. a cycle YOUNGER than the TTL is never reaped (no racing live work)
-        B. corroboration — a false abandonment claim FAILS
-        B2. a truthful abandonment claim does NOT fail
-        C. no drift — writer tag == checker tag
-        ✅ all orphan-cycle resolution checks passed
-        [mcp-server] WARNING: the 'mcp' package is not installed — the stdio server cannot start; the CLI adapter (ops/scripts/loop-gov.py) still works.
-        [mcp-server]   ~/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3 -m pip install mcp
+        ============================= test session starts ==============================
+        platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
+        rootdir: <repo>
+        configfile: pytest.ini
+        plugins: anyio-4.15.1
+        collected 2 items
+        tests/test_orphan_cycle_resolution.py ..                                 [100%]
+        ============================== 2 passed in 1.48s ===============================
 
 [PASS] tests/test_reviewer_backends.py  rc=0
-          PASS  default backend is llm
-          PASS  llm records the MODEL as the reviewer
-          PASS  llm backend with no credential raises (close is refused, not skipped)
-          PASS  unknown backend is refused, not guessed
-          PASS  agent backend without a command is refused
-          PASS  agent backend returns the agent's stdout
-          PASS  agent backend records agent:<name> as the reviewer
-          PASS  SELF-REVIEW is refused (agent name matches the change's author)
-          PASS  agent non-zero exit refuses the close
-          PASS  agent silence is refused (silence is never CLEAN)
-          PASS  value is read from the canonical cortex env
-          PASS  quotes are stripped
-          PASS  the cortex file WINS over ~/.hermes/.env, not the reverse
-          PASS  the PROCESS env wins over any file
-          PASS  a missing name returns the default, not an exception
-          PASS  files are re-read per call (a long-lived server is not frozen)
-          PASS  the Hermes env is consulted LAST, not first
-          PASS  plain complex change is light
-          PASS  always-review surface is heavy
-          PASS  >=10 files is heavy
-          PASS  >=200 lines is heavy
-          PASS  below heavy bars stays light
-          PASS  light change routes to the FAST llm reviewer on an agent host
-          PASS  light reviewer is recorded as the fast model
-          PASS  light change carries an llm-scaled wait budget
-          PASS  heavy change still routes to the agent backend
-          PASS  heavy change carries an agent-scaled wait budget
-          PASS  heavy reviewer label records the agent
-          PASS  no cx: configured agent backend used unchanged
-          PASS  no cx: reviewer label is the agent, not a guest light model
-          PASS  the canonical reviewer model is deepseek-v4-pro
-          PASS  _reviewer_model() is the canonical model
-          PASS  the light tier resolves to the canonical model, not a cheaper one
-          PASS  the recorded label is the canonical model
-          PASS  no hardcoded cheaper light-model constant remains
-          PASS  a light change on an agent host reviews with the canonical model
-          PASS  ...and is RECORDED as the canonical model
-          PASS  an explicitly chosen light model still wins
-          PASS  ...and does not leak into the deep path
-          PASS  no cx: llm wait is clamped to the ceiling
-          PASS  no cx: agent wait is clamped to the ceiling
-          PASS  below the ceiling, a change grows the wait above its base
-          PASS  small change stays inside the window
-          PASS  bigger change gets a longer wait than a small one
-          PASS  per-100-lines growth: 95 lines is same as 0 lines
-          PASS  per-100-lines growth: 105 lines adds one step
-          PASS  huge change is hard-capped at the ceiling
-          PASS  no REVIEWER_TIMEOUT_CAP exists to override the ceiling
-          PASS  oversized agent override 900s is clamped to the ceiling
-          PASS  oversized agent override 100000s is clamped to the ceiling
-          PASS  env-clamp helper exists under its own name
-          PASS  size-scaled helper kept its name
-          PASS  passed llm timeout is honored
-          PASS  llm env-fallback callable without a string crash
-          PASS  passed agent timeout is honored
-          PASS  agent env-fallback callable without a string crash
-          PASS  size-scaled _reviewer_timeout exists (takes cx, backend)
-          PASS  env-clamp helper is a DISTINCT name, not a shadow
-          PASS  the two timeout helpers are different functions
-          PASS  size-scaled helper accepts a dict cx
-          PASS  str cx raises TypeError (fail-fast, not hidden AttributeError)
-          PASS  None cx returns the configured default, clamped to the ceiling
-          PASS  None cx is NOT scaled: it equals the clamped default exactly
-          PASS  dogfood script exists
-          PASS  dogfood script exits 0
-          PASS  dogfood reports ALL PASS
-        ALL PASS
-        Reviewer tiering dogfood script — real module routing
-        [mcp-server] WARNING: the 'mcp' package is not installed — the stdio server cannot start; the CLI adapter (ops/scripts/loop-gov.py) still works.
-        [mcp-server]   ~/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3 -m pip install mcp
-        [mcp-server] WARNING: reviewer timeout ADVERSARIAL_REVIEW_TIMEOUT=300s exceeds the 240s client ceiling — clamping (a longer timeout is an unobservable hang, not a longer wait)
-        [mcp-server] WARNING: reviewer timeout ADVERSARIAL_REVIEW_AGENT_TIMEOUT=900s exceeds the 240s client ceiling — clamping (a longer timeout is an unobservable hang, not a longer wait)
-        [mcp-server] INFO: reviewer wait for a 2-file/60-line change would be 260s — held at the 240s client ceiling (a longer budget is an unobservable hang, not a longer wait)
-        [mcp-server] INFO: reviewer wait for a 1-file/220-line change would be 310s — held at the 240s client ceiling (a longer budget is an unobservable hang, not a longer wait)
-        [mcp-server] INFO: reviewer wait for a 22-file/240-line change would be 340s — held at the 240s client ceiling (a longer budget is an unobservable hang, not a longer wait)
-        [mcp-server] INFO: reviewer wait for a 99999-file/500000-line change would be 1150050s — held at the 240s client ceiling (a longer budget is an unobservable hang, not a longer wait)
-        [mcp-server] INFO: reviewer wait for a 99999-file/500000-line change would be 1150230s — held at the 240s client ceiling (a longer budget is an unobservable hang, not a longer wait)
-        [mcp-server] WARNING: reviewer timeout ADVERSARIAL_REVIEW_AGENT_TIMEOUT=100000s exceeds the 240s client ceiling — clamping (a longer timeout is an unobservable hang, not a longer wait)
+        ============================= test session starts ==============================
+        platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
+        rootdir: <repo>
+        configfile: pytest.ini
+        plugins: anyio-4.15.1
+        collected 8 items
+        tests/test_reviewer_backends.py ........                                 [100%]
+        ============================== 8 passed in 2.35s ===============================
 
 [PASS] tests/test_review_independence.py  rc=0
-        ALL PASS — reviewer independence
+        ============================= test session starts ==============================
+        platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
+        rootdir: <repo>
+        configfile: pytest.ini
+        plugins: anyio-4.15.1
+        collected 3 items
+        tests/test_review_independence.py ...                                    [100%]
+        ============================== 3 passed in 0.09s ===============================
 
 [PASS] tests/test_review_material_bound.py  rc=0
-        RESULT: ALL PASS (12 tests)
-          always-review path disqualifies a .md-only range ✓
-          explicit budget override still honoured ✓
-          docs-only range (46068 chars) not truncated, policy disclosed ✓
-          empty/unparseable diff is NOT docs-only ✓
-          all 24 files present with body ✓ (control: the old window lost 22)
-          over-budget docs notice is neutral and says to split the cycle ✓
-          one .py file reverts the whole range to the standard budget ✓
-          short diff passes through unchanged ✓
-          bounded files are named (20 of 20) ✓
-          gate uses _bound_diff; no bare head-only slice remains ✓
-          disclosure totals match the parts (19860 of 21860) ✓
-          head+tail per file ✓ (last file's tail survives); control lost file19 entirely
-        [mcp-server] WARNING: the 'mcp' package is not installed — the stdio server cannot start; the CLI adapter (ops/scripts/loop-gov.py) still works.
-        [mcp-server]   ~/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3 -m pip install mcp
+        ============================= test session starts ==============================
+        platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
+        rootdir: <repo>
+        configfile: pytest.ini
+        plugins: anyio-4.15.1
+        collected 23 items
+        tests/test_review_material_bound.py .......................              [100%]
+        ============================== 23 passed in 1.12s ==============================
 
 [PASS] tests/test_review_material_scope.py  rc=0
-        ALL PASS — working-tree scope of the review measurement
-          scoped files=2 vs unscoped files=4: the peer's two paths are excluded only from the scoped measurement ✓
-          no snapshot -> whole tree counted (unchanged behaviour, fail-open) ✓
-          own-paths = exactly what changed since the snapshot ✓
-          unreadable snapshot -> no narrowing; empty own-set -> nothing kept ✓
-          cap exceeded -> snapshot empty -> whole-tree scope (fail toward review) ✓
-        [mcp-server] WARNING: the 'mcp' package is not installed — the stdio server cannot start; the CLI adapter (ops/scripts/loop-gov.py) still works.
-        [mcp-server]   ~/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3 -m pip install mcp
-        [mcp-server] WARNING: dirty snapshot: 2 dirty paths exceed the 1 cap — recording none, so the working tree stays fully in scope
+        ============================= test session starts ==============================
+        platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
+        rootdir: <repo>
+        configfile: pytest.ini
+        plugins: anyio-4.15.1
+        collected 5 items
+        tests/test_review_material_scope.py .....                                [100%]
+        ============================== 5 passed in 23.26s ==============================
 
 [PASS] tests/test_review_material_consistency.py  rc=0
-        ALL PASS — the reviewer's material is self-consistent
-          peer dirt: measurement counts 2, material names 0, discloses ['peer.txt', 'peer_loose.txt'] ✓
-          own uncommitted edit: measurement counts 1, material names 0, discloses ['base.txt'] ✓
-          committed work: named with files=1 lines=2, nothing excluded ✓
-          mixed: committed 'base.txt' named, 'leftover.txt' disclosed ✓
-          committed rename: resolved to its HEAD-side name, not disclosed ✓
-          rename forms: bare, braced, braced-with-suffix, empty, malformed ✓
-        [mcp-server] WARNING: the 'mcp' package is not installed — the stdio server cannot start; the CLI adapter (ops/scripts/loop-gov.py) still works.
-        [mcp-server]   ~/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3 -m pip install mcp
+        ============================= test session starts ==============================
+        platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
+        rootdir: <repo>
+        configfile: pytest.ini
+        plugins: anyio-4.15.1
+        collected 6 items
+        tests/test_review_material_consistency.py ......                         [100%]
+        ============================== 6 passed in 34.29s ==============================
 
 [PASS] tests/test_manifest_generator_interpreter.py  rc=0
-          PASS  ops/scripts/pre-commit-doc-audit.sh does not call the generator with a bare python3
-          PASS  ops/scripts/manage/verify-skill-lifecycle-run.py does not call the generator with a bare python3
-          PASS  ops/scripts/manage/gen-skills-manifest.py does not call the generator with a bare python3
-          PASS  ops/scripts/pre-commit-doc-audit.sh goes through the wrapper
-          PASS  ops/scripts/manage/verify-skill-lifecycle-run.py goes through the wrapper
-          PASS  the wrapper exists
-          PASS  the wrapper is executable
-          PASS  the wrapper is registered for deploy
-          PASS  no PyYAML interpreter -> exit 3 (COULD NOT VERIFY)
-          PASS  the message says COULD NOT VERIFY
-          PASS  it is NOT reported as stale
-          PASS  an interpreter with PyYAML is reachable (rc in 0|1)
-          PASS  the manifest is currently FRESH (rc 0, not stale)
-          PASS  no PyYAML -> exit 3, not a crash
-          PASS  the refusal names the fix (the wrapper)
-          PASS  no bare traceback
-        ALL PASS — the manifest generator has one interpreter resolver, and 'could not verify' is never read as 'stale'
+        ============================= test session starts ==============================
+        platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
+        rootdir: <repo>
+        configfile: pytest.ini
+        plugins: anyio-4.15.1
+        collected 5 items
+        tests/test_manifest_generator_interpreter.py .....                       [100%]
+        ============================== 5 passed in 1.19s ===============================
 
-[PASS] tests/test_refused_close_visible.py  rc=0
+[FAIL] tests/test_refused_close_visible.py  rc=1
           PASS  silent with no lock
           PASS  silent without the marker
           PASS  silent for another repo's lock
@@ -358,23 +206,41 @@ TEST SET (22 files)
           PASS  names the blocking findings
           PASS  offers rereview_change as the exit
           PASS  never blocks (exit 0)
-          PASS  a FINDINGS review blocks the close
+          FAIL  a FINDINGS review blocks the close  
           PASS  the lock records close_refused
           PASS  marker names the cycle
-          PASS  marker names the verdict
-          PASS  marker counts blocking findings
-          PASS  marker carries the finding ids
+          FAIL  marker names the verdict  
+          FAIL  marker counts blocking findings  {'at': '2026-10-18T07:46:15Z', 'cycle_id': 999, 'verdict': 'REVIEW_INCOMPLETE', 'blocking': 0, 'low': 0, 'finding_ids': []}
+          FAIL  marker carries the finding ids  
           PASS  a CLEAN review does not block
-          PASS  the marker is CLEARED on CLEAN
-          PASS  an unreachable reviewer refuses the close
-          PASS  the outage is recorded on the lock too
-          PASS  control: handler bound to the real log; 1 record(s) emitted when unsilenced (none written to the file)
-          PASS  silenced, the same run appended 0 bytes (821236 bytes unchanged)
+          FAIL  the marker is CLEARED on CLEAN  writes=[{'repo_slug': 'hermes-cortex', 'task_id': 'refused-close-visible', 'session_id': 'sess-test', 'description': 'test change', 'started_at': '2026-10-18T07:46:15.067499+00:00', 'close_refused': {'at': '2026-10-18T07:46:15Z', 'cycle_id': 999, 'verdict': 'REVIEW_INCOMPLETE', 'blocking': 0, 'low': 0, 'finding_ids': []}}]
+          FAIL  an unreachable reviewer refuses the close  
+          FAIL  the outage is recorded on the lock too  marker={'at': '2026-10-18T07:46:15Z', 'cycle_id': 999, 'verdict': 'REVIEW_INCOMPLETE', 'blocking': 0, 'low': 0, 'finding_ids': []}
+        ============================= test session starts ==============================
+        platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
+        rootdir: <repo>
+        configfile: pytest.ini
+        plugins: anyio-4.15.1
+        collected 2 items
+        tests/test_refused_close_visible.py F.                                   [100%]
+        =================================== FAILURES ===================================
+        __________________________ test_refused_close_visible __________________________
+        tests/test_refused_close_visible.py:210: in test_refused_close_visible
+            assert not _F, f"{len(_F)} refused-close check(s) failed: {', '.join(_F)}"
+        E   AssertionError: 7 refused-close check(s) failed: a FINDINGS review blocks the close, marker names the verdict, marker counts blocking findings, marker carries the finding ids, the marker is CLEARED on CLEAN, an unreachable reviewer refuses the close, the outage is recorded on the lock too
+        E   assert not ['a FINDINGS review blocks the close', 'marker names the verdict', 'marker counts blocking findings', 'marker carries the finding ids', 'the marker is CLEARED on CLEAN', 'an unreachable reviewer refuses the close', ...]
+        ----------------------------- Captured stdout call -----------------------------
         B. the pre-commit advisory fires on a refused-close lock, and only then
         A. the gate marks the lock on a refusal and clears it on CLEAN
-        ✅ refused-close visibility checks passed
-        [mcp-server] WARNING: the 'mcp' package is not installed — the stdio server cannot start; the CLI adapter (ops/scripts/loop-gov.py) still works.
-        [mcp-server]   ~/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3 -m pip install mcp
+        ----------------------------- Captured stderr call -----------------------------
+        ⚠️  ADVISORY — your close for cycle 13116 was REFUSED by the review
+            (FINDINGS, 2 blocking finding(s): ADV-13116-1,ADV-13116-2; refused at 2026-10-18T07:30:46Z).
+            The lock is still held, so what you commit now is STACKED under it: the
+            reviewer will later read a description that no longer matches the diff,
+            which is unclosable by a worker. Legitimate exits:
+              1. fix the findings, then rereview_change with a NEW note (not end_change)
+              2. or ask an orchestrator to clear the cycle (it is already scored)
+            Nothing is blocked by this message.
           \033[0;32m✅ change-validate: all checks passed\033[0m
         🧪  Self-test: orchestrator guard...
         ✅  Self-test passed: host detected as orchestrator (hostname+home-dir)
@@ -382,77 +248,118 @@ TEST SET (22 files)
         ✅  Adversarial verify: passed on 1 file(s)
         📊  score-cycle: LOOP 🔄 — keep iterating (task=precommit-hermes-cortex-HEAD
         unknown/update, pass-pct=100)
+        =========================== short test summary info ============================
+        FAILED tests/test_refused_close_visible.py::test_refused_close_visible - Asse...
+        ========================= 1 failed, 1 passed in 13.14s =========================
 
 [PASS] tests/test_loop_gov_lock_watchdog.py  rc=0
           PASS baseline DB writable
           PASS harness reports LOCK HELD
           PASS DB blocked while harness holds BEGIN IMMEDIATE
           PASS DB still write-blocked after alert-only watchdog (no kill)
-          PASS watchdog report names holder pid 766438 in: '[2026-10-09 21:58 ] loop-gov-lock-watchdog: lock/anomaly DETECTED — alert-only (no auto-kill): 2 loop-gov daemon(s) in v'
+          PASS watchdog report names holder pid 2985361 in: '[2026-10-18 16:46 ] loop-gov-lock-watchdog: lock/anomaly DETECTED — alert-only (no auto-kill): 2 loop-gov daemon(s) in v'
           PASS holder process still alive after watchdog (alert-only, never kills)
         6 checks, 6 pass
 
 [PASS] tests/test_loop_gov_mcp_startup.py  rc=0
-        ALL PASS — MCP server starts under both HOME shapes
+        ============================= test session starts ==============================
+        platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
+        rootdir: <repo>
+        configfile: pytest.ini
+        plugins: anyio-4.15.1
+        collected 2 items
+        tests/test_loop_gov_mcp_startup.py ..                                    [100%]
+        ============================== 2 passed in 4.77s ===============================
 
 [PASS] tests/test_verify_landed.py  rc=0
-        RESULT: ALL PASS (13 tests)
-        running 13 case(s)
-          header after the shebang -> match, not a false FAIL ✓
-        [PASS] test_a_deploy_header_on_the_deployed_copy_is_not_a_mismatch
-          trailing deployed copy -> exit 1, file named ✓
-        [PASS] test_a_deployed_copy_that_trails_the_tip_fails_and_names_the_file
-          missing deploy map -> exit 2, says what was NOT checked ✓
-        [PASS] test_a_missing_map_is_could_not_verify
-          missing receipt -> exit 2, not a pass ✓
-        [PASS] test_a_missing_receipt_is_could_not_verify_not_a_pass
-          docs-only range, no receipt -> exit 0, 'not required' ✓
-        [PASS] test_a_range_that_touches_no_always_review_path_needs_no_receipt
-          receipt bound to this range -> exit 0 ✓
-        [PASS] test_a_receipt_bound_to_this_range_authorises_it
-          receipt bound to another range -> exit 1 ✓
-        [PASS] test_a_receipt_earned_for_another_range_does_not_authorise_this_one
-          non-CLEAN receipt -> exit 1 ✓
-        [PASS] test_a_receipt_that_is_not_clean_fails
-          short --base resolves ✓; a foreign base is refused ✓; a bogus base cannot verify ✓
-        [PASS] test_a_short_base_resolves_to_the_receipts_range
-          unpushed tip -> exit 1 ✓
-        [PASS] test_a_tip_that_is_not_on_the_remote_fails
-          always-review range without a receipt -> exit 2, path named ✓
-        [PASS] test_an_always_review_range_still_cannot_verify_without_a_receipt
-          --no-remote isolates the remote check ✓
-        [PASS] test_no_remote_makes_the_other_checks_stand_alone
-          all three checks hold -> exit 0 ✓
-        [PASS] test_passes_when_all_three_checks_hold
+        ============================= test session starts ==============================
+        platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
+        rootdir: <repo>
+        configfile: pytest.ini
+        plugins: anyio-4.15.1
+        collected 13 items
+        tests/test_verify_landed.py .............                                [100%]
+        ======================== 13 passed in 236.17s (0:03:56) ========================
 
 [PASS] tests/test_skill_drift_parity.py  rc=0
-        RESULT: ALL PASS (1 tests)
-        running 1 case(s)
-          discriminates: synced -> nothing, deployed-only -> reported ✓
-        [PASS] test_parity_check_discriminates
+        ============================= test session starts ==============================
+        platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
+        rootdir: <repo>
+        configfile: pytest.ini
+        plugins: anyio-4.15.1
+        collected 1 item
+        tests/test_skill_drift_parity.py .                                       [100%]
+        ============================== 1 passed in 10.03s ==============================
 
 [PASS] tests/test_python_with_module.py  rc=0
-        RESULT: ALL PASS (5 tests)
-        helper: <repo>/ops/scripts/lib/python-with-module.sh
-          no module argument -> rc=2 usage ✓
-          absent module -> rc=3, names the module, prints no path ✓
-          PYTHON=... is honoured first ✓
-          exec mode runs the child under a capable interpreter ✓
-          --print json -> ~/.hermes/hermes-agent/venv/bin/python3 ✓
+        ============================= test session starts ==============================
+        platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
+        rootdir: <repo>
+        configfile: pytest.ini
+        plugins: anyio-4.15.1
+        collected 9 items
+        tests/test_python_with_module.py .........                               [100%]
+        ============================== 9 passed in 1.20s ===============================
+
+[PASS] tests/test_run_loop_gov_regression_harness.py  rc=0
+        ============================= test session starts ==============================
+        platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
+        rootdir: <repo>
+        configfile: pytest.ini
+        plugins: anyio-4.15.1
+        collected 5 items
+        tests/test_run_loop_gov_regression_harness.py .....                      [100%]
+        ============================== 5 passed in 1.10s ===============================
+
+[PASS] tests/run_session_cache_loop_db_repro.py  rc=0
+        RESULT: PASS — all assertions held
+        == session cache loop_db regression ==
+           source: ops/scripts/manage/agent-session_cache.py
+           present: True
+          [PASS] source file exists
+          [PASS] no phantom column code_or_spec
+          [PASS] no phantom column output_text
+          [PASS] no 'expected — silently handled' swallow in loop_db path
+          [PASS] orders by LENGTH(content)
+          [PASS] module imports (hermes_models shim + fail-soft)
+          [PASS] embed_loop_db callable
+          [PASS] JOIN yields rows for resolvable code_hash — got 2, expected 2 (composite<6.0 excluded)
+          [PASS] longest content ordered first — first row len=200
+          [PASS] composite-ordered empties do not starve LIMIT — got 1, expected 1 real row despite a composite-10.0 empty
+          [PASS] empty content_assets -> 0 rows
+          [PASS] NULL content -> 0 rows
+          [PASS] dangling code_hash -> 0 rows
+          [PASS] empty-string content -> 0 rows
+          [PASS] broken query surfaces as None (not a silent 0) — got None
+          [PASS] cmd_build reports the failed subsystem — got ['loop_db']
+          [PASS] failure maps to a non-zero exit code
+          ERROR: loop_db embedding FAILED: OperationalError: no such table: content_assets
+
+[PASS] tests/run_loop_evaluator_avg_per_task_repro.py  rc=0
+        RESULT: PASS — metric is consistent with its label
+        == loop_evaluator avg-cycles-per-task regression ==
+           source: core/governance/loop_evaluator.py
+          [PASS] source exists
+          [PASS] no AVG(cycle_num) AS avg_cycles_per_task
+          [PASS] uses COUNT(*)/COUNT(DISTINCT task_id)
+          [PASS] report still prints 'Avg cycles per task'
+           fixture: total=6 uniq=2  fixed=3.0  old(AVG(cycle_num))=2.7
+          [PASS] label matches arithmetic (fixed == total/unique) — 3.0 vs 6/2=3.0
+          [PASS] fixture distinguishes the two formulas — AVG(cycle_num)=2.7 would differ from 3.0
 
 ------------------------------------------------------------------------
 STATIC GATE  mcp-servers/loop-gov-mcp.py  level A4
 ------------------------------------------------------------------------
-[PASS] interim/working revision 6c61ef57
-        📊 Summary: 1 file(s), 33 finding(s)
+[PASS] interim/working revision beeabecd
+        📊 Summary: 1 file(s), 38 finding(s)
         🟡 Medium: 5
-        🔵 Low: 2
+        🔵 Low: 4
         ✅ GATE_PASSED — no critical/high findings
 
-[PASS] PRE-FIX revision 662155bb (662155bb)
-        📊 Summary: 1 file(s), 33 finding(s)
+[PASS] PRE-FIX revision HEAD~1 (bbd80f92)
+        📊 Summary: 1 file(s), 38 finding(s)
         🟡 Medium: 5
-        🔵 Low: 2
+        🔵 Low: 4
         ✅ GATE_PASSED — no critical/high findings
 
 Comparison: the two summaries above must agree on their finding
@@ -460,5 +367,5 @@ counts (same total / medium / low / info), which is the claim that
 this change introduces no new static findings.
 
 ========================================================================
-RESULT: ALL PASS
+RESULT: FAILURES: tests/run_non_hermes_lock_release_repro.py: rc=1; tests/test_loop_gov_stale_purge.py: rc=1; tests/test_refused_close_visible.py: rc=1
 ========================================================================
