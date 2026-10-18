@@ -127,7 +127,13 @@ def main() -> int:
                     help="append the cortex-doctor transcript to the artifact")
     args = ap.parse_args()
 
-    base_rev = os.environ.get("LOOP_GOV_PRE_FIX_REV", "HEAD~1")
+    # PINNED, not `HEAD~1`. A relative base is right only until the next commit lands: the fix
+    # this repro discriminates was 607 commits back, so `HEAD~1` already carried it and the
+    # PRE-FIX half compared fixed code with itself — a tautology wearing a PASS, then failing with
+    # "expected the pre-fix refusal WITH the lock left behind, got released=True refused=False".
+    # d2efa6fd is the PARENT of 6c61ef57 (the fix): at it, `_derive_slug(None)` returns
+    # hermes-cortex, end_change refuses and the lock is left behind.
+    base_rev = os.environ.get("LOOP_GOV_PRE_FIX_REV", "d2efa6fd")
     out: list = []
     failures: list = []
 
@@ -145,6 +151,14 @@ def main() -> int:
     tmp = Path(tempfile.mkdtemp(prefix="rg-prefix-"))
     pre_file = tmp / "loop-gov-mcp.prefix.py"
     pre_file.write_text(pre_src)
+
+    # The extracted copy must PROVE it is pre-change, or the comparison degrades to a tautology
+    # when the baseline drifts forward (which is exactly what happened here). `_session_repo_path`
+    # is a symbol the fix INTRODUCED: its presence means the "pre-fix" extract is post-fix code.
+    if "_session_repo_path" in pre_src:
+        print(f"BASELINE DRIFT: {base_rev} ({pre_sha}) already contains _session_repo_path, a "
+              f"symbol the fix introduced — the PRE-FIX half would compare fixed code with itself.")
+        return 2
 
     targets = [
         ("PRE-FIX", f"git {base_rev} ({pre_sha})", pre_file, "refuse"),

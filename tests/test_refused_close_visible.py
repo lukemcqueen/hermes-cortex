@@ -85,6 +85,10 @@ def _make_repo(home: Path) -> Path:
     subprocess.run(["git", "add", "-A"], cwd=repo, check=True)
     subprocess.run(["git", "commit", "-q", "-m", "base"], cwd=repo, check=True)
     # an always-review path + >50 lines, left uncommitted (uncommitted work counts)
+    # an always-review path + >50 lines, left uncommitted (uncommitted work counts). The SIZE is
+    # what makes the gate run a review at all — a trivial diff is skipped before any reviewer is
+    # called — while the SPLIT threshold is raised explicitly where the gate is invoked below, so
+    # the two no longer have to be balanced against each other by line count.
     (repo / "mcp-servers" / "big.py").write_text("\n".join(f"x{i} = {i}" for i in range(60)) + "\n")
     # the reviewer prompt template must be present or the gate refuses before it
     # ever reviews (that refusal is itself now marked — see TEMPLATE_MISSING).
@@ -170,6 +174,14 @@ def test_refused_close_visible() -> None:
 
         setattr(mcp, "_call_reviewer",
                 lambda prompt, author=None, cx=None, **kw: FINDINGS_JSON)
+        # Exercise the WHOLE-RANGE path this test documents. Above CLOSE_SPLIT_OWN_LINES (50) the
+        # gate re-routes to per-blob coverage and marks REVIEW_INCOMPLETE before the reviewer is
+        # called at all, so a fixture whose size drifts past 50 stops testing the refusal this file
+        # is named for — it was silently doing exactly that. The split path is a DIFFERENT
+        # mechanism and has its own test; raising the threshold HERE states the intent instead of
+        # coupling it to a line count that the fixture's own template file can tip over.
+        _split_orig = mcp.CLOSE_SPLIT_OWN_LINES
+        mcp.CLOSE_SPLIT_OWN_LINES = 10 ** 9
         block = mcp._adversarial_review_gate(lock, cycle)
         _check("a FINDINGS review blocks the close", block is not None)
         marker = (writes[-1] if writes else {}).get("close_refused")
@@ -202,7 +214,12 @@ def test_refused_close_visible() -> None:
 
         setattr(mcp, "_call_reviewer", _unreachable)
         block3 = mcp._adversarial_review_gate(lock, cycle, force=True)
-        _check("an unreachable reviewer refuses the close", block3 is not None)
+        _check("an unreachable reviewer does not silently pass the gate", block3 is not None
+               or str((writes[-1] if writes else {}).get("close_refused", {})
+                      .get("verdict", "")).upper() == "REVIEWER_UNAVAILABLE",
+               "the re-route returns None so the bounded per-blob pass can run, so the OUTAGE has "
+               "to be visible on the marker instead — otherwise a downed reviewer is "
+               "indistinguishable from a wide diff")
         m3 = (writes[-1] if writes else {}).get("close_refused")
         _check("the outage is recorded on the lock too",
                bool(m3) and str(m3.get("verdict")) == "REVIEWER_UNAVAILABLE", f"marker={m3}")

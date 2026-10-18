@@ -47,7 +47,14 @@ def _reset(home: Path):
 
 
 def _stale_state(heartbeat: str, mtime_age_s=7200):
-    """Lock state with an old mtime (to fall back on for time-only hb)."""
+    """Lock state with an old mtime (to fall back on for time-only hb).
+
+    The `agent` is SET, and that is load-bearing: without it the liveness rescue reads
+    `agent=""`, falls back to the repo's real author, and counts THIS HOST's own commits as proof
+    of life for a lock the test believes is dead — so the renewal fired and the naive-heartbeat
+    case could never age stale. A state that leaks the host's git history is a fixture defect, not
+    a liveness bug: naming an author that no repo has ever been committed under isolates it.
+    """
     now = datetime.now(timezone.utc)
     started = (now - timedelta(days=2)).isoformat()
     return {
@@ -56,6 +63,7 @@ def _stale_state(heartbeat: str, mtime_age_s=7200):
         "heartbeat_at": heartbeat,
         "started_at": started,
         "ttl_seconds": 3600,
+        "agent": "stale-test-agent",
     }, mtime_age_s
 
 

@@ -6214,7 +6214,13 @@ def _adversarial_review_gate(lock: dict, cycle: dict,
         # unreachable, the first blob call fails too, the pass stops immediately and the
         # close refuses with every blob still unjudged. No receipt is written for blobs
         # nobody read either way.
-        _mark_close_refused(cycle.get("id", 0), "REVIEW_INCOMPLETE", "[]", lock)
+        # The OUTAGE is recorded as an OUTAGE, not as incompleteness. The re-route below still
+        # happens (returning None lets the bounded per-blob pass run, and the close is refused
+        # either way because the blobs stay uncovered) — but the marker is what an operator reads,
+        # and REVIEW_INCOMPLETE is also what a WIDE DIFF writes. Marking a failed call with the
+        # same word as "not yet judged" hides a downed reviewer behind a message that says "try
+        # again": two different states must never share one name (2026-10-18).
+        _mark_close_refused(cycle.get("id", 0), "REVIEWER_UNAVAILABLE", "[]", lock)
         log.warning("self-adversarial review: cycle %s — whole-range review could not "
                     "finish; falling back to REQUIRED per-blob coverage", cycle.get("id"))
         return None
