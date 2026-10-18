@@ -1453,13 +1453,83 @@ def _review_scope_note(repo: Optional[Path]) -> str:
     paths = _unreviewed_paths(repo)
     if not paths:
         return ""
+    advice = _preflight_advice(repo)
+    advice_block = (
+        "   WHAT THIS RANGE'S OWN DIFF WILL BE ASKED ABOUT (computed from the diff now, so a fix\n"
+        "   does not become another round trip):\n"
+        + "".join(f"     • {a}\n" for a in advice)
+    ) if advice else ""
     return (
         f"\n📋 REVIEW SCOPE — {len(paths)} file(s) of the push range carry no verdict yet.\n"
         "   Each is judged on its OWN file, one per close, so what you write must stand alone:\n"
         + _path_list(paths)
         + "   WHAT THE REVIEW WILL REQUIRE (it has refused blobs for every line here):\n"
         + "".join(f"     • {e}\n" for e in REVIEW_EXPECTATIONS)
+        + advice_block
     )
+
+
+# What the per-blob review has ACTUALLY asked about, as patterns over a file's ADDED lines. Each
+# entry is (regex, what the review will want). These are derived from findings raised against this
+# repo, not from theory. Saying them BEFORE the close is the whole point: a requirement discovered
+# by a refused close costs a full cycle (operator directive, 2026-10-18).
+_PREFLIGHT_PATTERNS = (
+    (re.compile(r"\bmeasur\w*d\b|\bobserved\b", re.I),
+     "cites a measurement — add a pointer to its record (cycle id, event number, evidence path); "
+     "a past measurement cannot be a test fixture"),
+    (re.compile(r"\b20\d{2}-\d{2}-\d{2}\b"),
+     "carries a date — point at where the fact is recorded instead of asserting it"),
+    (re.compile(r"rc=12[0-9]|timeout \d+ python3"),
+     "records a TIMEOUT — run it to completion and record the number; a timeout is not a result"),
+    (re.compile(r"^\s*(?:def test_|assert |import |from )"),
+     "test code — if it calls into another file of this range, name that file AND the commit that "
+     "provides it (a dependency pointer)"),
+    (re.compile(r"ops/scripts/|mcp-servers/|tests/|docs/templates/"),
+     "names another file — that sibling is judged in its own window; state the contract here"),
+)
+
+PREFLIGHT_MAX_ITEMS = 6
+
+
+def _preflight_advice(repo: Optional[Path], limit: int = PREFLIGHT_MAX_ITEMS) -> list[str]:
+    """What the review will ASK FOR, computed from the range's own added lines.
+
+    Printed at session open so the evidence the reviewer expects is supplied the FIRST time rather
+    than discovered one refused close at a time. Advisory by construction: it never blocks, never
+    changes coverage, and a miss costs nothing but the round trip it was meant to save.
+    """
+    if repo is None:
+        return []
+    try:
+        base = _push_base(repo)
+    except Exception:  # noqa: BLE001 — advice must never be able to break a session opening
+        return []
+    if not base:
+        return []
+    found: list[str] = []
+    for path in _unreviewed_paths(repo):
+        try:
+            diff = _git_capture(repo, "diff", "--no-ext-diff", "-U0", f"{base}..HEAD", "--", path)
+        except Exception:  # noqa: BLE001 — same
+            continue
+        added = [ln[1:] for ln in diff.splitlines()
+                 if ln.startswith("+") and not ln.startswith("+++")]
+        for line in added:
+            for pattern, advice in _PREFLIGHT_PATTERNS:
+                if pattern.search(line):
+                    found.append(f"{path} — {advice}")
+                    break
+            if len(found) >= limit:
+                break
+        if len(found) >= limit:
+            break
+    seen: set[str] = set()
+    uniq: list[str] = []
+    for item in found:                      # the same advice repeated per line is noise
+        if item not in seen:
+            seen.add(item)
+            uniq.append(item)
+    return uniq[:limit]
 
 
 def _blob_material(repo: Path, base: str, path: str, ctx: dict) -> str:

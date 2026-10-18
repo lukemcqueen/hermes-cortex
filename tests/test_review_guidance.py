@@ -114,6 +114,42 @@ def test_material_states_each_siblings_own_verdict():
         f"the sibling's own verdict must be named with its coverage state: {material[-500:]}")
 
 
+def test_preflight_advice_names_the_evidence_the_review_will_want():
+    """The advice is computed from the range's OWN added lines, at session open — not after a refusal."""
+    saved = (mcp._push_base, mcp._push_range_blobs, mcp._blobs_with_covered_verdict, mcp._git_capture)
+    mcp._push_base = lambda repo: "base"
+    mcp._push_range_blobs = lambda repo: {"a/one.py": SA}
+    mcp._blobs_with_covered_verdict = lambda blobs, conn=None: set()
+    mcp._git_capture = lambda repo, *a, **k: (
+        "+++ b/a/one.py\n"
+        "+# measured 2026-10-18: the call took 200s\n"
+        "+def test_thing():\n"
+    )
+    try:
+        advice = mcp._preflight_advice(Path("/tmp"), limit=4)
+    finally:
+        (mcp._push_base, mcp._push_range_blobs,
+         mcp._blobs_with_covered_verdict, mcp._git_capture) = saved
+    joined = " | ".join(advice)
+    assert advice, "the advice must fire for a cited measurement in the range's own diff"
+    assert any("pointer" in a for a in advice), (
+        f"a cited measurement must ask for a pointer to its record: {joined}")
+    assert all(a.startswith("a/one.py — ") for a in advice), (
+        f"every item must name the file it applies to: {joined}")
+
+
+def test_preflight_advice_is_empty_when_nothing_is_outstanding():
+    saved = (mcp._push_base, mcp._push_range_blobs, mcp._blobs_with_covered_verdict)
+    mcp._push_base = lambda repo: "base"
+    mcp._push_range_blobs = lambda repo: {"a/one.py": SA}
+    mcp._blobs_with_covered_verdict = lambda blobs, conn=None: {SA}
+    try:
+        assert mcp._preflight_advice(Path("/tmp")) == [], (
+            "a fully covered range must produce no advice — the opener stays quiet")
+    finally:
+        (mcp._push_base, mcp._push_range_blobs, mcp._blobs_with_covered_verdict) = saved
+
+
 def test_shas_map_back_to_paths():
     with _InjectedRange({"a/one.py": SA, "b/two.py": SB}):
         assert mcp._blob_paths_for(Path("/tmp/x"), [SB]) == ["b/two.py"]
