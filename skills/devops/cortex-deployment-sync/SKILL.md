@@ -372,9 +372,35 @@ Rules for anything a deploy adds beyond copying files:
   one it was. The same applies to any check the deploy shells out to: an exit code read as
   decoration is a check nobody has.
 
+## Verifying that a deploy LANDED — compare the BODY, not the raw file
+
+A plain `diff`/`md5sum` between repo source and the deployed copy is ALWAYS non-empty for the
+files the deploy wraps: it prepends a provenance header (`# SOURCE: <repo path>`, a do-not-edit
+line, and a rewritten interpreter line) before copying. So a checksum mismatch on its own proves
+NOTHING either way, and the doctor's `Checksum: <file> — MD5 mismatch … Run: cortex-update.sh to
+resync` line cannot be told from a real pending resync by eye. Compare the body, after stripping
+the header:
+
+```bash
+# strip the deployed header (its own line count) and the repo shebang, then diff
+diff <(tail -n +2 <repo-source>) <(tail -n +5 <deployed-copy>) && echo IDENTICAL
+```
+
+Also establish WHAT the mismatch belongs to before acting on it: a mismatch is expected while your
+change is committed-but-not-yet-deployed, and `grep -c` for a distinctive line from your commit in
+the deployed copy is the cheap positive proof that it DID land.
+
+**A failing deploy log or background completion notice can be STALE — re-verify before re-fixing.**
+Deploy/doctor output from a run that started BEFORE a later successful update still reports the old
+state (notably the deploy-sync + checksum pair, which is ONE staleness counted twice, not two
+problems). Order the evidence by when each run STARTED, not when its notification arrived, and
+re-read the CURRENT state before treating any reported failure as live. A notification is an event
+log, not a status.
+
 ## Verification
 
-- `diff <repo-source> <deployed-copy>` empty for governance files
+- Body-compare repo source vs deployed copy (above) — the wrapped files differ by their header, so
+  a raw `diff` is never the right check
 - `hermes plugins list | grep governance` → enabled
 - `lsattr` shows `i` re-applied after deploy
 - Doctor: no ❌ (warnings OK): `python3 ~/hermes-cortex/ops/scripts/manage/cortex-doctor.py --quiet`
