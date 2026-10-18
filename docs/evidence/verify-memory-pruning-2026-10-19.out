@@ -1,0 +1,52 @@
+## committed snapshots exist (re-verifiable from a clean checkout)
+PASS  present: MEMORY.before-2026-10-19.md
+PASS  present: MEMORY.after-2026-10-19.md
+PASS  present: USER.before-2026-10-19.md
+PASS  present: USER.after-2026-10-19.md
+## final MEMORY.md state (under the 2,200-char memory budget)
+PASS  MEMORY.after chars = 2126
+PASS  MEMORY.after bytes = 2160
+PASS  MEMORY.after entries = 11
+## final USER.md state (under the 1,375-char profile budget)
+PASS  USER.after chars = 1359
+PASS  USER.after bytes = 1373
+PASS  USER.after entries = 7
+## NO-CHANGE claim: before == after on both files (byte-identical)
+PASS  MEMORY md5 before == after = 6d1b7b5b56bb94a99a0d33bd6160b731
+PASS  USER   md5 before == after = 32ead3cb57ddbef16e5322f1b47545ae
+PASS  MEMORY diff empty = 
+PASS  USER   diff empty = 
+PASS  MEMORY.md under 2200-char limit (2126)
+PASS  USER.md under 1375-char limit (1359)
+## snapshot vs live (only when the live files exist on this host)
+PASS  live MEMORY.md == snapshot = 6d1b7b5b56bb94a99a0d33bd6160b731
+PASS  live USER.md == snapshot = 32ead3cb57ddbef16e5322f1b47545ae
+## no-facts-dropped check (every distinctive token in BEFORE must be in AFTER)
+KEEP  cortex-update.sh
+KEEP  mosesaaron
+KEEP  192.168.1.24
+KEEP  UPPER_CASE
+KEEP  REPORTS MIRROR
+KEEP  :14005
+KEEP  spotify_user
+KEEP  .asus
+KEEP  status-devices.asp
+KEEP  zero-MAC
+KEEP  nvidia-470
+KEEP  reboot=pci
+KEEP  50-hdmi-1080p.conf
+KEEP  macbook-linux-maintenance
+KEEP  deploy root
+KEEP  NOPASSWD
+KEEP  database is locked
+KEEP  steadfaste
+KEEP  deepseek-v4-flash-free
+KEEP  agent-interop.md
+KEEP  deploy-manifest.tsv
+KEEP  resolve_repo_resource
+KEEP  pseudonym
+KEEP  reflexion-check
+KEEP  adversarial-review.py
+KEEP  adversarial_reviews
+---
+ALL CHECKS PASSED
