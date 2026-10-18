@@ -1386,6 +1386,7 @@ def _review_uncovered_blobs(blobs: dict, *, reviewer, material_for,
             # blob that does not answer by then is FAILED (never credited) so the close still
             # refuses and the next pass picks it up.
             pool = ThreadPoolExecutor(max_workers=min(workers, len(wave)))
+            futures: dict = {}
             try:
                 futures = {pool.submit(_judge, path, sha): sha for path, sha in wave}
                 deadline = time.monotonic() + max(1.0, budget_s - (time.monotonic() - started))
@@ -1398,8 +1399,22 @@ def _review_uncovered_blobs(blobs: dict, *, reviewer, material_for,
                     except BaseException as exc:  # noqa: BLE001 — result() must never abort the pass
                         outcomes[futures[fut]] = ("", exc)
             finally:
-                # Never wait past the window for a straggler: its verdict is not needed, and the
-                # pass must RETURN so the receipt is written inside the client's ceiling.
+                # WHY wait=False IS SAFE (review finding ADV-13296-2). A straggler thread outlives
+                # this pass, so the three things that could make that dangerous are ruled out:
+                #   * NO STATE CHANGE — the worker only CALLS the reviewer. Every write (the
+                #     verdict row, the blocking findings) happens in the pass loop below, for the
+                #     outcomes it COLLECTED. An outcome nobody collected is recorded nowhere, so an
+                #     uncredited blob leaves no trace at all (pinned by test).
+                #   * BOUNDED LIFETIME — the reviewer call carries its own timeout (the module's
+                #     per-call ceiling, beneath the client window), so a straggler ends by itself;
+                #     nothing waits on it and no thread pool is reused.
+                #   * NOTHING DEPENDS ON IT — its result is discarded, and the blob is reported in
+                #     `failed`/`remaining`, so the close refuses and the next pass re-reads it from
+                #     the reviewer rather than from a claim this pass did not verify.
+                # The alternative — waiting — is strictly worse: it holds the close past the
+                # window the client kills at, which means NO receipt and a lost pass.
+                for _f in futures:
+                    _f.cancel()          # free anything that never started
                 pool.shutdown(wait=False)
 
     # Process the wave in SORTED PATH ORDER whatever order the calls finished in, so the verdicts,

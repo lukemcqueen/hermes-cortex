@@ -133,6 +133,26 @@ def test_a_wave_cannot_outrun_its_window():
     print(f"  a wave cannot outrun the window ({elapsed:.2f}s, 0 credited) ✓")
 
 
+def test_a_straggler_that_outlives_the_pass_leaves_no_trace():
+    """Review finding ADV-13296-2. The pool is shut down without waiting, so a worker can outlive
+    the pass — that is safe only because the worker CALLS the reviewer and nothing more: every write
+    happens in the pass, for outcomes it collected. Prove it: after the stragglers finish, a blob
+    that was never credited has NO row in the verdict store."""
+    mod = _mod()
+    db = _sandbox(mod)
+    out = _run(mod, 2, workers=2, cap=2, responder=_slower_than_the_window, budget=1.5)
+    assert out["calls"] == 0, f"nothing may be credited past the window: {out['calls']}"
+    assert not out["verdicts"], out["verdicts"]
+    time.sleep(2.6)                      # let the 3s stragglers finish
+    conn = sqlite3.connect(str(db))
+    try:
+        rows = conn.execute("SELECT COUNT(*) FROM blob_reviews").fetchone()[0]
+    finally:
+        conn.close()
+    assert rows == 0, f"a straggler must not record a verdict: {rows} row(s)"
+    print("  a straggler that outlives the pass leaves no verdict ✓")
+
+
 def test_the_cap_still_bounds_a_pass_and_reports_the_rest():
     """Nothing is dropped: the remainder is REPORTED so the close refuses and the next pass
     continues."""
