@@ -57,6 +57,13 @@ a recorded `rc=124` wants a completed run; a test calling into a sibling wants a
 It is silent when nothing is outstanding. The close names the unreviewed paths and reports the true
 covered count — never a bare count, which forces a database query per round trip.
 
+## Requesting a review: read docs/templates/adversarial-review-brief.md first
+
+That template is for whoever ASKS for a review. Its measured lesson: a brief that led with its
+author's five suspicions came back with six findings that merely restated them, so it now leads with
+open questions and the code, and it carries a table of what a reviewer cannot see (siblings, your
+terminal, the store, the past, a helper present at both range ends) with what to supply instead.
+
 # Governance Close-out
 
 **Class of task:** closing a governed change — `feedback_accept` then `end_change` —

@@ -94,6 +94,10 @@ Match the demand to the claim:
 - **An operator directive or other external instruction** → a pointer to where it was given and the
   cycle/commit that acted on it. A quoted instruction is a recorded fact, not a testable assertion.
 - **A claim about another file in the range** → the sibling rule below.
+- **A helper that exists at BOTH ends of the range** (used by this change but not introduced by it) →
+  context, not a claim. You cannot see its definition, but the range did not add or alter it, so
+  "commit it so I can verify" is unsatisfiable — it is already committed, in the file under review,
+  once. Say what you would check about it if you could, at most as `info`.
 
 A claim that carries NONE of those is still a finding. The resolution is to add the pointer or the
 test — never to delete the rationale, which would hide why the code looks the way it does.
