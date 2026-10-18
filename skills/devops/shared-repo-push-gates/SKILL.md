@@ -13,6 +13,35 @@ metadata:
 
 # Shared-Repo Push Gates
 
+## Two gates that block AFTER a clean close — each names its own remedy
+
+**A rebase invalidates the receipt.** The receipt binds tip+base, so any history rewrite
+(`git pull --rebase`, an amend) moves both and the gate answers "no clean review receipt for THIS
+range". Re-close the cycle after the rebase: per-blob verdicts are keyed by CONTENT, so they survive
+and only the blobs the rebase brought in need judging. An index conflict (`docs/*INDEX*`) is usually
+two sides adding rows — resolve to the UNION, then `GIT_EDITOR=true git rebase --continue`.
+
+**The deploy-sync check runs before the push.** `Deploy sync ❌` with several `Checksum: <file>`
+lines means the deployed tree is behind the repo — typical after a rebase pulled in a peer's edits.
+The gate prints its own remedy (`bash ~/.hermes-cortex/scripts/cortex-dogfood.sh --force`); run it,
+never hand-copy files into the deploy tree.
+
+**A stale MCP daemon answers closes with OLD rules.** Compare its start time against the deployed
+module's mtime:
+
+    ps -o lstart= -p $(pgrep -f tools/loop-governance/loop-gov-mcp.py)
+    stat -c %y ~/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py
+
+A daemon started BEFORE your deploy keeps refusing on rules you have already fixed, and the refusal
+reads as authoritative. Only a gateway restart replaces it, and you cannot restart the gateway from
+inside it. `ops/scripts/loop-gov.py` is NOT a substitute: it resolves its own session id and answers
+"No governance session active".
+
+**Skill edits do not reach the repo by themselves.** `skill_manage` writes the DEPLOYED tree
+(`~/.hermes-cortex/skills/...`), which is what agents load — the repo copy is untouched, so a lesson
+that is not explicitly committed and pushed stays on one host. Verify with
+`diff skills/... ~/.hermes-cortex/skills/...` and commit the repo side yourself.
+
 The shared fleet repo enforces commit/push gates. Know how they behave
 BEFORE pushing — most rejections are environmental (another session's
 working tree), not a problem with your diff.

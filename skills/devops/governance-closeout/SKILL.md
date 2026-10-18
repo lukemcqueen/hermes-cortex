@@ -12,6 +12,51 @@ metadata:
     related_skills: [loop-governance, governance-lock-lifecycle, two-hard-rules]
 ---
 
+## No resolvable push range means GENERIC feedback, never a whole-history demand
+
+When the push base cannot be resolved — no repo, no remote, or a base that fell back to the root
+commit — the range is NOT "all history". Enumerating it would list every path in the session opener
+and demand a verdict per blob for the entire repository. The gate instead treats the range as absent:
+no blobs are enumerated, the receipt binds by exact tip+base only (the STRICTER authorisation — the
+consumer accepts a blob-less receipt only under that rule), and the session opener prints
+`NO RESOLVABLE PUSH RANGE` plus the generic expectations (operator rule, 2026-10-18: "no repo data to
+work with" means generic feedback). Two traps when testing this: a fake repo path like `/tmp` has no
+git, so the unresolvable branch fires in tests that meant to exercise the NORMAL path — stub the
+fallback predicate explicitly and say which case each test describes.
+
+## Coverage is "judged and nothing outstanding", not CLEAN
+
+A blob is COVERED when its stored verdict is CLEAN **or** its findings are all below blocking.
+Demanding a bare CLEAN made an `info`-only review uncoverable forever — the close reported
+"0 blocking findings" and "carries no review verdict" for the SAME blob at once, so the range could
+never close. Widening coverage this way is not weaker severity gating: a blocking finding still
+refuses the close, and an UNJUDGED blob is still uncovered. When a range looks unclosable, check
+whether a judged blob is being held to CLEAN by mistake.
+
+## An empty reviewer reply is the FIRST thing to check when a close hangs or refuses
+
+`REVIEWER_REASONING_EFFORT` is the lever, not `REVIEWER_MAX_TOKENS`. A reasoning model thinks to
+whatever cap it is given and returns EMPTY content (`finish_reason=length`), so no blob is ever
+credited and every close burns the whole client window: measured, effort `low` returned nothing at
+caps 16k, 32k and 128k, while effort `none` returned a verdict in seconds on the same material. Both
+values are read at CALL time from the cortex `.env`, so no restart is needed to change them.
+
+## The reviewer's demands are scoped by claim type
+
+Behaviour a file controls → a committed, re-runnable test. A historical measurement or an operator
+directive → a POINTER to its record (cycle id, event number, evidence path); neither can be a test
+fixture, because the measured behaviour is the one being replaced and a quoted instruction is a fact.
+A cited sibling → judged on its own blob, never as fabrication. A pre-existing helper used by new
+code is context, not a claim.
+
+## Tell the agent BEFORE the close, with content the reviewer expects
+
+`begin_change` prints the review scope (the paths that will be judged), the standing expectations,
+AND preflight advice computed from the range's own added lines (a cited measurement wants a pointer;
+a recorded `rc=124` wants a completed run; a test calling into a sibling wants a dependency pointer).
+It is silent when nothing is outstanding. The close names the unreviewed paths and reports the true
+covered count — never a bare count, which forces a database query per round trip.
+
 # Governance Close-out
 
 **Class of task:** closing a governed change — `feedback_accept` then `end_change` —
