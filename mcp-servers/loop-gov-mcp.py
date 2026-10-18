@@ -1369,6 +1369,12 @@ def _review_uncovered_blobs(blobs: dict, *, reviewer, material_for,
 def _push_base_candidates(repo: Path) -> list[str]:
     """Refs to try as the push base, MOST canonical first.
 
+    `_git_capture(repo, *args)` is a PRE-EXISTING helper in this module, not part of this change: it
+    runs git with those args, returns stdout as text, and returns "" on ANY failure (non-zero exit,
+    no repo, no arg support) — it never raises. Every lookup below therefore treats "" as "this ref
+    did not resolve" and moves on, which is what makes the candidate list safe on an old git, a
+    shallow clone, or a repo with a different remote name.
+
     The remote's own default branch wins (`refs/remotes/origin/HEAD`), then the configured remote's
     main/master, then a local main/master. Hardcoding `origin/main` meant a repo whose default is
     `master`, or whose remote is not called `origin`, resolved NO base at all and fell through to the
@@ -1393,10 +1399,11 @@ def _push_base_candidates(repo: Path) -> list[str]:
 def _push_base(repo: Path) -> str:
     """The base of the range a PUSH would carry — the receipt's own base.
 
-    Falls back to the repository ROOT when no remote/default branch resolves. That fallback stays
-    (an unresolvable base must remain fail-closed) but it is now DISCLOSED by
-    :func:`_push_base_is_root_fallback` rather than being silent, because the range it produces is
-    the whole history.
+    Returns "" when nothing resolves (git failures surface as "" through `_git_capture`, a
+    pre-existing helper that never raises). Falls back to the repository ROOT when no remote/default
+    branch resolves. That fallback stays (an unresolvable base must remain fail-closed) but it is now
+    DISCLOSED by :func:`_push_base_is_root_fallback` rather than being silent, because the range it
+    produces is the whole history.
     """
     for ref in _push_base_candidates(repo):
         base = _git_capture(repo, "merge-base", ref, "HEAD").strip()
@@ -1406,9 +1413,18 @@ def _push_base(repo: Path) -> str:
 
 
 def _push_base_is_root_fallback(repo: Path) -> bool:
-    """True when the push base had to fall back to the repo's root commit (range = all history)."""
+    """True when there is no resolvable push range and the base is the repo's root commit.
+
+    Two cases report True, and deliberately so (review finding ADV-13076-3): the base EQUALS the root
+    commit (the range really is all history), or the base is EMPTY — `_git_capture` returns "" when
+    git cannot answer at all, and "I could not determine a range" is not a range either. A caller that
+    warns about one must warn about the other.
+    """
     root = _git_capture(repo, "rev-list", "--max-parents=0", "HEAD").strip()
-    return bool(root) and _push_base(repo) == root
+    base = _push_base(repo)
+    if not root:
+        return True
+    return base == root or not base
 
 
 def _push_range_blobs(repo: Path) -> dict:
