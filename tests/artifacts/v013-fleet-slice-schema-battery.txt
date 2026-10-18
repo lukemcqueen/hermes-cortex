@@ -1,0 +1,170 @@
+===== schema battery: tests/test-tasks-schema.sh (raw) ====
+% b: rc=2
+% 
+═══ Setup: scratch DB tasks_fleetslice_repro ═══
+  created tasks_fleetslice_repro
+
+═══ AC-L1-1: Fresh DB → migrate.py applies v001–v004; schema exists ═══
+  ✅ migrate.py applies migrations on fresh DB
+  ✅ tasks schema exists
+  ✅ tasks.tasks table exists
+  ✅ schema_version = 13
+
+═══ AC-L1-2: Re-run is a no-op (version-gated) ═══
+  ✅ re-run reports no-op
+
+═══ AC-L1-3: RLS enabled + policies exist ═══
+  ✅ RLS ENABLED on tasks.tasks
+  ✅ 2 RLS policy exists
+
+═══ AC-L1-4: Roles + grants — mycortex_reader has schema usage ═══
+  ✅ todos_fleet_writer role exists
+  ✅ mycortex_reader has USAGE on tasks schema
+  ✅ mycortex_reader has DML on tasks.tasks
+
+═══ AC-L1-5: task_upsert — status→column derivation + completed_at ═══
+  ✅ task_upsert inserts (id=75c11ce4-86d9-452a-8911-c09a8dd9efe2)
+  ✅ pending → column='todo' (derived)
+  ✅ pending → completed rejected (v005 matrix — must start first)
+  ✅ completed → column='done' (derived)
+  ✅ completed_at set on completion
+  ✅ completed → cancelled rejected (v005 matrix)
+  ✅ completed → in_progress rejected without reopen reason
+  ✅ completed → in_progress accepted with reason='reopen'
+  ✅ update→cancelled derives column=NULL (regression v004)
+
+═══ AC-L1-6: CHECK constraints reject incoherent state ═══
+  ✅ invalid status rejected by CHECK
+  ✅ invalid scope rejected by CHECK
+  ✅ incoherent column/status rejected by CHECK (B-4)
+
+═══ AC-L1-7: RLS isolation — reader cannot see esther's personal rows ═══
+  ✅ mycortex_reader sees zero personal rows (isolation)
+
+═══ AC-L1-8: Fleet writes — writer CAN, plain reader CANNOT ═══
+  ✅ plain reader scope=fleet insert rejected (WITH CHECK)
+  ✅ mycortex_reader_moses inserted scope=fleet (fleet writer)
+  ✅ fleet × client- project rejected (B-5 PII gate)
+  ✅ fleet content abs path rejected (scrub gate)
+  ✅ fleet content email rejected (scrub gate)
+  ✅ plain reader sees fleet row (got 1)
+
+═══ AC-L1-9: archive + prune behave ═══
+  ✅ task_archive_old archived 1 row(s)
+  ✅ archive table has 1 row(s)
+  ✅ task_prune removed 1 archived row(s)
+
+═══ AC-L1-10: Guarded migration — seed bus.todos → migrate → parity → drop ═══
+  seeded 3 bus.todos rows (incl. completed + NULL-session_id)
+  ✅ seed present (3 rows)
+  ✅ migrate-bus-todos.py ran clean
+  ✅ count parity: 3 rows in tasks.tasks
+  ✅ bus.todos dropped (table-scoped)
+  ✅ bus schema intact (never DROP SCHEMA)
+  ✅ marker written to redirected dir (no real-state pollution)
+  ✅ migration re-run is an idempotent no-op
+
+═══ AC-L1-11: hierarchy — story/slice coherence + tenant checks ═══
+  ✅ story created (id=a9ce443a-d76f-442e-b884-7695beb0b393)
+  ✅ slice under story created (id=b10ccbab-79fe-49be-ad9f-614606b9bb9c)
+  ✅ slice without parent rejected (coherence CHECK)
+  ✅ story with parent rejected (coherence CHECK)
+  ✅ slice under slice rejected (tenant trigger: parent must be story)
+  ✅ story delete blocked while slices exist (FK NO ACTION)
+  ✅ legacy flat rows legal (kind NULL, n=3)
+  ✅ orchestrator personal story created (id=64a004a6-903d-4479-8d96-4c1c17e3ec49)
+  ✅ fleet slice under orchestrator personal story stored scope=fleet
+  ✅ fleet slice under non-orchestrator personal story still refused (scope coherence)
+
+═══ AC-L1-12: paused status + switching arc ═══
+  ✅ pending → paused rejected (matrix — must start first)
+  ✅ paused derives column=NULL
+  ✅ paused → in_progress resume ✓
+  ✅ paused status persisted (n=1)
+
+═══ AC-L1-13: transition matrix — spot checks ═══
+  ✅ in_progress → pending accepted (v009 unclaim arc)
+  ✅ cancelled → in_progress rejected (terminal)
+  ✅ paused → completed legal
+  ✅ story with active slice rejected (gate)
+  ✅ story completes when all slices done
+  ✅ story completes when slices cancelled
+
+═══ AC-L1-14: task_events — capture, no-op gate, suppression, RLS ═══
+  ✅ story created event recorded
+  ✅ slice created event recorded
+  ✅ no-op status update emits no event (1)
+  ✅ doctor-probe creates no event (suppression M-5)
+  ✅ status_changed event records pending->in_progress
+  ✅ reader sees zero personal events (isolation)
+  ✅ reader sees fleet events (n=2)
+  ✅ reader direct INSERT into task_events denied (no grant)
+  ✅ reader UPDATE task_events denied (no grant)
+
+═══ AC-L1-15: correlation_id — 1 task per inbox message ═══
+  ✅ inbox task created with correlation_id
+  ✅ duplicate inbox correlation rejected (partial unique)
+
+═══ AC-L1-16: 17-arg task_upsert legacy compatibility ═══
+  ✅ 17-arg positional call resolves via trailing defaults
+
+═══ AC-L1-17: poisoned migration — single-transaction rollback ═══
+  ✅ poisoned migration failed and version stayed 13 (rollback)
+  ✅ migration re-run after poison removal is a no-op
+
+═══ AC-L1-18: v008 — blocked/waiting status (M-7) ═══
+  ✅ blocked status accepted
+  ✅ blocked derives column=NULL
+  ✅ waiting status accepted
+  ✅ waiting derives column=NULL
+  ✅ blocked → in_progress resume ✓
+  ❌ blocked → pending accepted
+  ✅ waiting → blocked ✓
+  ✅ blocked → completed legal
+
+═══ AC-L1-19: v008 — task_story_summary() (M-7 tooling) ═══
+  ✅ summary total_slices=2
+  ✅ summary completed=1
+  ✅ summary blocked=1
+  ✅ summary active=1
+  ✅ summary done_ratio=50
+  ✅ summary on a slice returns NULL
+
+═══ AC-L1-20: v008 — story auto-complete (R-3 polish) ═══
+  ✅ story stays pending after first slice done
+  ✅ story auto-completes when last slice done
+  ✅ story_auto_complete event recorded (n=1)
+  ✅ story auto-completes when last slice cancelled
+  ✅ manual story completion with active slice still rejected (gate)
+  ✅ doctor-probe slice does not auto-complete story (M-5)
+
+═══ AC-L1-21: v008 — archive children-first (M-4) ═══
+  ✅ story + slice both terminal before archive (n=2)
+  ✅ archive_old archived rows (n=18)
+  ✅ story + slices archived children-first (no FK error)
+
+═══ AC-L1-22: v009 — task model v3 (claim/report/verify) ═══
+  ✅ plan column exists
+  ✅ status CHECK constraint present
+  ✅ superuser claim refused (self-only guard: profile=mycortex)
+
+===== unit suite: tests/run-tests.sh tests/test_task_db_unit.py (raw) ====
+% u: rc=0
+% ============================= test session starts ==============================
+platform linux -- Python 3.14.7, pytest-9.1.1, pluggy-1.6.0
+rootdir: /home/moses/hermes-cortex
+configfile: pytest.ini
+plugins: anyio-4.15.1
+collected 64 items
+
+tests/test_task_db_unit.py ............................................. [ 70%]
+...................                                                      [100%]
+
+============================== 64 passed in 4.07s ==============================
+---
+run-tests.sh: interpreter=/home/moses/.hermes-cortex/venv/bin/python3 rc=0  (PYTHONPATH/PYTHONHOME unset for the run)
+
+
+===== deployed runner: python3 ~/.hermes-cortex/scripts/task-db.py --apply-schema ====
+% d: rc=0
+% tasks schema up to date (version 13) — no-op
