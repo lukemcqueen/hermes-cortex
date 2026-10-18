@@ -416,19 +416,33 @@ def test_blob_material_shows_sibling_added_lines_so_evidence_is_visible():
 
 
 def test_sibling_added_lines_are_bounded_per_file_and_in_total():
-    """A wide range must not flood one blob's window."""
+    """A wide range must not flood one blob's window.
+
+    Isolation is made EXPLICIT here rather than inherited: `_sibling_added_lines` must not consult the
+    store or the range lookup at all, so those three are replaced with poisoned stubs that fail if it
+    touches them. (The sibling test above restores everything it patches in a `finally`, but no test
+    should have to depend on another test's cleanup to be deterministic.)
+    """
     import pathlib
-    saved = mcp._git_capture
+    saved = (mcp._git_capture, mcp._push_range_blobs, mcp._blobs_with_covered_verdict,
+             mcp._blobs_with_recorded_verdict)
 
     def fake_git(repo, *args):
         return "+++ b/x\n" + "".join(f"+sib{i}\n" for i in range(500))
 
+    def _poison(*a, **k):
+        raise AssertionError("_sibling_added_lines must not call the store/range helpers")
+
     mcp._git_capture = fake_git
+    mcp._push_range_blobs = _poison
+    mcp._blobs_with_covered_verdict = _poison
+    mcp._blobs_with_recorded_verdict = _poison
     try:
         block = mcp._sibling_added_lines(pathlib.Path("/tmp"), "base",
                                          [f"s{i}.py" for i in range(20)])
     finally:
-        mcp._git_capture = saved
+        (mcp._git_capture, mcp._push_range_blobs, mcp._blobs_with_covered_verdict,
+         mcp._blobs_with_recorded_verdict) = saved
     assert block.count("+sib") <= mcp.RANGE_CONTEXT_TOTAL_LINES, (
         f"the block must respect the TOTAL cap: {block.count('+sib')} lines")
     assert block.count("(+500 added line(s)") <= mcp.RANGE_CONTEXT_SIBLINGS, (
