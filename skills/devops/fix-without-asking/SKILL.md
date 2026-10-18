@@ -4,7 +4,7 @@ description: |-
   When you discover an issue mid-task, the correct response is begin_change — not a question.
   Covers the litmus test, the failure pattern, and the concrete "never ask" guardrail.
   Triggers: 'should I fix', 'want me to', discovered anything wrong mid-task, user says 'fix it'
-version: 1.2.0
+version: 1.3.0
 author: Hermes Cortex
 license: MIT
 platforms: [linux, macos]
@@ -160,6 +160,44 @@ fix → verify → summarize → "want me to also fix X?"
 ```
 
 If X is clearly broken and you know the fix, **do not include it as a question** in your summary. Execute it before reporting done. The work is not complete until all clear follow-ups are executed.
+
+## Found-and-Listed Is Not Found-and-Fixed
+
+A verification run that names N issues owes N fixes. Presenting them as a ranked list —
+with root causes, owners and a "what's left" section — is a HANDBACK, and the operator
+reads it as one. Measured 2026-10-18, one session, 80 minutes, four escalations:
+
+```
+19:23  agent reports the issues it still had   → "Seriously? CLEAN UP/FIX ANY ISSUES.
+                                                    stop telling me about them on this
+                                                    NEVERENDING TURN"
+20:02  agent: "Two warnings remain, and I'm     → "so you have no issues left?"
+       not going to pretend otherwise"             "fix it!!!!"
+20:20  agent lists the stale-daemon item        → "PLEASE FIX THINGS. Example: 1. …"
+20:40  agent lists the per-blob close cost      → "Anyhow FIX IT!!!!"
+```
+
+Every one of those items was fixable by the agent that named it. The list did not buy
+accuracy — it bought four escalations, and trust pays for them, not the clock.
+
+**The rule:** before an item goes into a summary, ask *"is a GATE refusing me?"* — and if
+it is, quote the refusal.
+
+- **A gate refusal you personally hit is the ONE thing worth listing.** Paste it verbatim
+  (`Blocked: … cannot restart, stop, or uninstall the gateway from inside the gateway
+  process`), name the sanctioned operator path, and stop there. That is an authority
+  boundary, not a preference, and saying so plainly is correct.
+- **Not knowing how is not blocked.** "The fix is identified but not implemented" belongs
+  in the same turn as the implementation, never in a report about it.
+- **A "known structural cost" is still work.** Calling something arithmetic ("one blob per
+  window, by design") is not a licence to file it — the concurrency change that fixes it is
+  a change you can make (see `loop-governance` → close cost).
+- **Only once the fixing has stopped** does a list belong in the report — as a record of
+  what you found *and fixed*, not a queue handed to the operator.
+
+This does not override the Scope Boundary above. An out-of-scope fix still gets NOTED and
+left alone. The distinction is whether the item is a *separate change the operator must
+choose to fund* (note it) or *your own current work left unfinished* (finish it).
 
 ## Recovery When Caught
 

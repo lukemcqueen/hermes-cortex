@@ -200,7 +200,7 @@ their domain.
 | `env-aware-compose-wrapper` | 2 | Build an env-aware `_compose()` wrapper for `./run` CLI scripts that requires an explicit environment varia... | `skill_view(name='env-aware-compose-wrapper')` |
 | `eval-harness` | 1.0.0 | Systematic evaluation framework for agent capabilities — capability tests, regression suites, failure analysis | `skill_view(name='eval-harness')` |
 | `file-ownership-boundaries` | 1.0.0 | Know which files are yours to modify vs Hermes defaults. Covers the two-domain split (Hermes Agent vs herme... | `skill_view(name='file-ownership-boundaries')` |
-| `fix-without-asking` | 1.2.0 | When you discover an issue mid-task, the correct response is begin_change — not a question. | `skill_view(name='fix-without-asking')` |
+| `fix-without-asking` | 1.3.0 | When you discover an issue mid-task, the correct response is begin_change — not a question. | `skill_view(name='fix-without-asking')` |
 | `fleet-commands` | 1.6.0 | Send operational commands to fleet agents via the PGMQ bus — message format, delivery verification, bus_acc... | `skill_view(name='fleet-commands')` |
 | `fleet-management` | 1.0.0 | Fleet-level agent management for Hermes Cortex — agent registry, fleet ready score, fleet-audit CLI, adding... | `skill_view(name='fleet-management')` |
 | `fresh-tomato-router` | 1.0.0 | Interact with FreshTomato/DD-WRT routers programmatically via curl — authentication, nvram access, port for... | `skill_view(name='fresh-tomato-router')` |
