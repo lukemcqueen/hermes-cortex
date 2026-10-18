@@ -31,15 +31,18 @@ ARTIFACT = REPO / "tests" / "artifacts" / "loop-gov-regression.txt"
 # where every pytest-style file then reports NOT RUN — which reads as a clean run to anyone who
 # reads only the summary (adversarial finding ADV-13116-1, 2026-10-18).
 #
-# So the no-pytest case is not a silent downgrade: it names the repair that is ITSELF committed.
-# `ops/scripts/manage/fix-cortex-venv.py` installs the declared set in
-# `ops/install/requirements.txt` (pytest is declared there) into the fleet venv, and the resolver
-# knows about every capable interpreter on the host.
+# So the no-pytest case is not a silent downgrade: it names the create step that is ITSELF
+# committed. `ops/scripts/lib/ensure-pytest.sh` is that step — idempotent, verified by import, and
+# age-gated through `ops/scripts/health/check-package-age.py` — and it installs the declared set in
+# `ops/install/requirements.txt` (pytest is declared there) into the fleet venv, which is the venv
+# cortex-update.sh registers every MCP server against. The resolver knows about every other capable
+# interpreter on the host.
 RESOLVER = REPO / "ops" / "scripts" / "lib" / "python-with-module.sh"
+ENSURE_PYTEST = "ops/scripts/lib/ensure-pytest.sh"
 NO_PYTEST_HINT = (
-    "no interpreter can import pytest — repair with: "
-    "python3 ops/scripts/manage/fix-cortex-venv.py (installs ops/install/requirements.txt, which "
-    "declares pytest); or resolve one directly: "
+    "no interpreter can import pytest — create one with: "
+    f"bash {ENSURE_PYTEST} (idempotent, age-gated: installs ops/install/requirements.txt, which "
+    "declares pytest, into ~/.hermes-cortex/venv); or resolve an existing one with: "
     "bash ops/scripts/lib/python-with-module.sh --print pytest"
 )
 
@@ -138,6 +141,10 @@ TESTS = [
     # Its hermetic probe belongs here for the same reason as the resolver's: a guard nobody runs
     # is a guard nobody notices has rotted.
     "tests/test_run_loop_gov_regression_harness.py",
+    # The CREATE step the resolution above depends on: idempotent, verified by import, age-gated.
+    # Drives every branch (age gate refusing, a repair that leaves pytest unimportable, a missing
+    # prerequisite) against a FABRICATED repo, so no branch is only exercised on a healthy host.
+    "tests/test_ensure_pytest.py",
     # The loop_db embedding source of the session cache. It silently contributed
     # ZERO rows for months (phantom columns + a swallowed OperationalError), which
     # starves progress detection of its known-good patterns. This runs the fixed

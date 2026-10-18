@@ -533,6 +533,10 @@ register "ops/scripts/lib/toon_parse.py"                 "${CORTEX_DEPLOY_HOME}/
 # nothing about a module, and the old silent fallback to a PyYAML-less python3 made the
 # daily regression gate fail every day. Used by orch-daily-regression-gate.sh.
 register "ops/scripts/lib/python-with-module.sh"          "${CORTEX_DEPLOY_HOME}/scripts/lib/python-with-module.sh"
+# The CREATE step that pytest resolution depends on: idempotent, verified by import, age-gated
+# through ops/scripts/health/check-package-age.py. A harness that names a command a peer host does
+# not have has only moved the gap (ADV-13116-1 / ADV-13253-1).
+register "ops/scripts/lib/ensure-pytest.sh"               "${CORTEX_DEPLOY_HOME}/scripts/lib/ensure-pytest.sh"
 # The shared launcher guard: every wrapper that execs the fleet venv sources it, so a
 # missing interpreter/payload is named instead of surfacing as bash's generic exec error.
 register "ops/scripts/lib/require-fleet-venv.sh"          "${CORTEX_DEPLOY_HOME}/scripts/lib/require-fleet-venv.sh"

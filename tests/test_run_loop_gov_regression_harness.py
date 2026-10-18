@@ -89,7 +89,7 @@ def test_the_harness_names_no_interpreter_path_this_repo_does_not_create():
     assert not offenders, \
         f"the harness must not resolve a venv path nothing creates (ADV-13116-1): {offenders}"
     assert "python-with-module.sh" in src, "pytest must be resolved through the committed resolver"
-    assert "fix-cortex-venv" in src, "the no-pytest case must name the committed repair"
+    assert "ensure-pytest.sh" in src, "the no-pytest case must name the committed create step"
     # CONTROL — the probe must still FIRE on the construct it forbids, or "no offenders" means
     # nothing. Same predicate, a fabricated source carrying the removed resolution.
     control = '        cand = Path.home() / ".hermes" / "tools" / "pytest-venv" / "bin" / "python"\n'
@@ -122,9 +122,9 @@ def test_a_missing_pytest_is_could_not_verify_and_says_so():
     assert got is None, f"a non-existent override must resolve to None, got {got!r}"
     mod = _harness()
     hint = getattr(mod, "NO_PYTEST_HINT", "")
-    assert "fix-cortex-venv" in hint, f"the NOT RUN message must name the repair: {hint!r}"
-    assert "requirements.txt" in hint, f"the hint must name what the repair installs: {hint!r}"
-    print("  absent pytest -> None, and the hint names the committed repair ✓")
+    assert "ensure-pytest.sh" in hint, f"the NOT RUN message must name the create step: {hint!r}"
+    assert "requirements.txt" in hint, f"the hint must name what gets installed: {hint!r}"
+    print("  absent pytest -> None, and the hint names the committed create step ✓")
 
 
 def test_the_three_outcomes_are_distinct_in_the_summary():
