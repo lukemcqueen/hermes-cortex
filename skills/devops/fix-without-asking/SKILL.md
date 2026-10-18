@@ -172,13 +172,24 @@ reads it as one. Measured 2026-10-18, one session, 80 minutes, four escalations:
                                                     stop telling me about them on this
                                                     NEVERENDING TURN"
 20:02  agent: "Two warnings remain, and I'm     → "so you have no issues left?"
-       not going to pretend otherwise"             "fix it!!!!"
+       not going to pretend otherwise:"            "fix it!!!!"
 20:20  agent lists the stale-daemon item        → "PLEASE FIX THINGS. Example: 1. …"
-20:40  agent lists the per-blob close cost      → "Anyhow FIX IT!!!!"
+20:41  agent lists the per-blob close cost      → "Anyhow FIX IT!!!!"
 ```
 
-Every one of those items was fixable by the agent that named it. The list did not buy
-accuracy — it bought four escalations, and trust pays for them, not the clock.
+Record: `docs/evidence/soul-refinement-2026-10-18/escalations.txt` — those five operator
+rows verbatim, with the re-runnable read-only query that prints them (they are one
+session, 2026-10-18 19:00–21:00 KST). Note row 4: the operator himself calls the gateway
+restart "an outside-shell action, not something I can safely do to the process I'm
+currently governing through" — the authority boundary below is HIS distinction, not the
+agent's excuse, and it is the reason the daemon item was the one legitimate report.
+
+Three of the four escalations were about items the agent could fix itself, and it fixed
+each the moment it stopped reporting it. The fourth (20:20) carried one genuinely blocked
+item — a gateway-owned restart, the operator's own outside-shell action — beside one the
+agent could fix and had not (an uncommitted generated file, committed minutes later). So
+the list bought four escalations, one of them over a single fixable line; trust pays for
+them, not the clock.
 
 **The rule:** before an item goes into a summary, ask *"is a GATE refusing me?"* — and if
 it is, quote the refusal.

@@ -1,0 +1,52 @@
+Operator escalations of 2026-10-18 that the fix-without-asking lesson cites
+==========================================================================
+
+Skills/devops/fix-without-asking/SKILL.md (v1.3.0, section "Found-and-Listed Is
+Not Found-and-Fixed") cites a measurement: four escalations inside one 80-minute
+stretch, each about a list of issues that were fixable by the agent that named
+them. This file is that measurement's record - the rows, verbatim.
+
+REPRODUCE (read-only; bound the window, the store is ~1.4 GB):
+
+  python3 - <<'EOF'
+  import sqlite3, os, time
+  W0 = time.mktime(time.strptime('2026-10-18 19:00','%Y-%m-%d %H:%M'))
+  W1 = time.mktime(time.strptime('2026-10-18 21:00','%Y-%m-%d %H:%M'))
+  KEYS = ('NEVERENDING TURN','fix it!!!!','PLEASE FIX THINGS','FIX IT!!!!')
+  db = os.path.expanduser('~/.hermes/state.db')
+  c = sqlite3.connect('file:%s?mode=ro' % db, uri=True).cursor()
+  for sid, ts, txt in c.execute("select session_id, timestamp, content from"
+      " messages where role='user' and active=1 and timestamp between ? and ?"
+      " order by timestamp", (W0, W1)):
+      if any(k in (txt or '') for k in KEYS):
+          print(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(ts)), repr(txt.strip()))
+  EOF
+
+`timestamp` is a Unix epoch FLOAT - an ISO bound silently returns 0 rows here.
+Session identifiers are generalised: the shared-surface PII guard rejects the
+8+6-digit session-id pattern, so the rows are located by their KST timestamps.
+All 5 rows are the SAME session (it started 2026-10-18 16:36 KST, working in
+~/hermes-cortex); the operator is the fleet owner.
+
+--------------------------------------------------------------------------
+
+[1] 2026-10-18 19:23:47 KST
+    'Seriously? CLEAN UP/FIX ANY ISSUES. stop telling me about them on this NEVERENDING TURN'
+
+[2] 2026-10-18 20:02:08 KST
+    'so you have no issues left?'
+
+[3] 2026-10-18 20:02:45 KST
+    'fix it!!!!'
+
+[4] 2026-10-18 20:20:46 KST
+    "PLEASE FIX THINGS. Example: 1. The loop-gov daemon is running stale code — pid 3300221 started before tonight's commits. Tonight's fixes (the deadlock path, the per-blob cycle record, the alias removal) are deployed on disk but not live in the running process until the gateway restarts. That's an outside-shell action, not something I can safely do to the process I'm currently governing through.\n2. One uncommitted generated file (docs/evidence/skill-drift-parity.txt, machine output)."
+
+[5] 2026-10-18 20:41:49 KST
+    'Anyhow FIX IT!!!!'
+
+--------------------------------------------------------------------------
+
+Rows: 5. Distinct sessions: 1. The skill groups these as four escalations
+(19:23, 20:02 x2, 20:20, 20:41); each one follows a report that named issues
+the agent could fix, and each ends with the agent fixing them.
