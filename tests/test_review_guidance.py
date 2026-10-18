@@ -50,7 +50,8 @@ class _InjectedRange:
 
     def __enter__(self):
         self._saved = (mcp._push_range_blobs, mcp._blobs_with_covered_verdict,
-                       mcp._blobs_with_recorded_verdict, mcp._git_capture)
+                       mcp._blobs_with_recorded_verdict, mcp._git_capture,
+                       mcp._push_base_is_root_fallback)
         mcp._push_range_blobs = lambda repo: dict(self.blobs)
         # Coverage is decided by _blobs_with_covered_verdict (2026-10-18): CLEAN, or findings that
         # all landed below blocking. This stub injects the COVERED set for the same reason the old
@@ -62,11 +63,15 @@ class _InjectedRange:
         mcp._blobs_with_recorded_verdict = lambda blobs, conn=None: {
             sha: ("CLEAN" if sha in self.clean else "FINDINGS") for sha in blobs.values()}
         mcp._git_capture = lambda repo, *a: ""
+        # These tests describe a RESOLVABLE range (an injected one). Without this stub the new
+        # unresolvable-range branch would fire, because the fake "repo" is /tmp — which has no git.
+        mcp._push_base_is_root_fallback = lambda repo: False
         return self
 
     def __exit__(self, *exc):
         (mcp._push_range_blobs, mcp._blobs_with_covered_verdict,
-         mcp._blobs_with_recorded_verdict, mcp._git_capture) = self._saved
+         mcp._blobs_with_recorded_verdict, mcp._git_capture,
+         mcp._push_base_is_root_fallback) = self._saved
         return False
 
 
