@@ -45,13 +45,17 @@ class _InjectedRange:
         self.blobs, self.clean = dict(blobs), set(clean)
 
     def __enter__(self):
-        self._saved = (mcp._push_range_blobs, mcp._blobs_with_clean_verdict)
+        self._saved = (mcp._push_range_blobs, mcp._blobs_with_covered_verdict)
         mcp._push_range_blobs = lambda repo: dict(self.blobs)
-        mcp._blobs_with_clean_verdict = lambda blobs, conn=None: set(self.clean)
+        # Coverage is decided by _blobs_with_covered_verdict (2026-10-18): CLEAN, or findings that
+        # all landed below blocking. This stub injects the COVERED set for the same reason the old
+        # one injected the CLEAN set — the message text is what is under test here, and the blob
+        # lookup must not need a store.
+        mcp._blobs_with_covered_verdict = lambda blobs, conn=None: set(self.clean)
         return self
 
     def __exit__(self, *exc):
-        mcp._push_range_blobs, mcp._blobs_with_clean_verdict = self._saved
+        mcp._push_range_blobs, mcp._blobs_with_covered_verdict = self._saved
         return False
 
 
