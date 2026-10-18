@@ -1488,6 +1488,27 @@ def _blob_material(repo: Path, base: str, path: str, ctx: dict) -> str:
             "a claim this file makes about one of those is a SIBLING claim: report it at most as\n"
             "info, and leave the resolution to that file's own review.\n"
         )
+        # SIBLING REVIEW STATUS (2026-10-18): the per-blob reviewer repeatedly filed "this file
+        # depends on a sibling I cannot see" as a HIGH unverified-claim, even after the sibling rule
+        # told it not to. The question is answerable with DATA — every sibling has its own recorded
+        # verdict — so state it here rather than leaving it to be re-litigated file after file.
+        try:
+            _blobs = _push_range_blobs(repo) or {}
+            _covered = _blobs_with_covered_verdict(_blobs)
+            _verdicts = _blobs_with_recorded_verdict(_blobs)
+            scope_lines += "sibling review status (each sibling is judged in its own window):\n"
+            for _p in others:
+                _sha = _blobs.get(_p)
+                _v = _verdicts.get(_sha)
+                if not _v:
+                    _tag = "no verdict recorded yet"
+                elif _sha in _covered:
+                    _tag = f"{_v} — covered (no blocking findings)"
+                else:
+                    _tag = f"{_v} — NOT covered (blocking findings outstanding)"
+                scope_lines += f"  {_p}: {_tag}\n"
+        except Exception:  # noqa: BLE001 — material must never fail on a store hiccup
+            pass
     return (
         "=== BLOB REVIEW — ONE FILE OF A RANGE ===\n"
         f"session: {ctx.get('sid', '')}\nauthor: {ctx.get('author', '')}\n"

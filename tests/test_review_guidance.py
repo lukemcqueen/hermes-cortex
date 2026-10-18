@@ -37,6 +37,10 @@ SB = "b" * 40
 SA = "a" * 40
 SC = "c" * 40
 
+# A minimal review context, so _blob_material can be exercised without a session.
+CTX = {"sid": "s", "author": "a", "branch": "b", "head_sha": "h", "cycle_id": 1,
+       "task_id": "t", "description": "d"}
+
 
 class _InjectedRange:
     """Pin the push-range lookups so the message text can be judged without a repository."""
@@ -45,17 +49,24 @@ class _InjectedRange:
         self.blobs, self.clean = dict(blobs), set(clean)
 
     def __enter__(self):
-        self._saved = (mcp._push_range_blobs, mcp._blobs_with_covered_verdict)
+        self._saved = (mcp._push_range_blobs, mcp._blobs_with_covered_verdict,
+                       mcp._blobs_with_recorded_verdict, mcp._git_capture)
         mcp._push_range_blobs = lambda repo: dict(self.blobs)
         # Coverage is decided by _blobs_with_covered_verdict (2026-10-18): CLEAN, or findings that
         # all landed below blocking. This stub injects the COVERED set for the same reason the old
         # one injected the CLEAN set — the message text is what is under test here, and the blob
         # lookup must not need a store.
         mcp._blobs_with_covered_verdict = lambda blobs, conn=None: set(self.clean)
+        # Every blob in the fake range has a recorded verdict: CLEAN when it is in `clean`, else
+        # FINDINGS. The material states these so a sibling dependency is answerable with data.
+        mcp._blobs_with_recorded_verdict = lambda blobs, conn=None: {
+            sha: ("CLEAN" if sha in self.clean else "FINDINGS") for sha in blobs.values()}
+        mcp._git_capture = lambda repo, *a: ""
         return self
 
     def __exit__(self, *exc):
-        mcp._push_range_blobs, mcp._blobs_with_covered_verdict = self._saved
+        (mcp._push_range_blobs, mcp._blobs_with_covered_verdict,
+         mcp._blobs_with_recorded_verdict, mcp._git_capture) = self._saved
         return False
 
 
@@ -90,6 +101,17 @@ def test_long_lists_are_capped_and_summarised():
     assert "... and 3 more" in rendered, f"the overflow must be summarised: {rendered!r}"
     assert rendered.count("- f/") == mcp.REVIEW_SCOPE_MAX_PATHS, "the cap was not applied"
     assert "f/012.py" not in rendered, "a path beyond the cap leaked into the list"
+
+
+def test_material_states_each_siblings_own_verdict():
+    """A sibling dependency must be answerable with DATA, not with 'I cannot see it'."""
+    with _InjectedRange({"a/one.py": SA, "b/two.py": SB}, clean={SA}):
+        material = mcp._blob_material(Path("/tmp"), "base", "b/two.py", CTX)
+    assert "sibling review status" in material, (
+        "the material must state each sibling's own recorded verdict — the per-blob reviewer "
+        "otherwise files the dependency as a HIGH unverified-claim it cannot resolve")
+    assert "a/one.py: CLEAN — covered" in material, (
+        f"the sibling's own verdict must be named with its coverage state: {material[-500:]}")
 
 
 def test_shas_map_back_to_paths():
