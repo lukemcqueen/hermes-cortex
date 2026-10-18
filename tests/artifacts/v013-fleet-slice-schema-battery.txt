@@ -1,8 +1,8 @@
 ===== schema battery: tests/test-tasks-schema.sh (raw) ====
 % b: rc=2
 % 
-═══ Setup: scratch DB tasks_fleetslice_repro ═══
-  created tasks_fleetslice_repro
+═══ Setup: scratch DB tasks_fleetslice_repro2 ═══
+  created tasks_fleetslice_repro2
 
 ═══ AC-L1-1: Fresh DB → migrate.py applies v001–v004; schema exists ═══
   ✅ migrate.py applies migrations on fresh DB
@@ -23,7 +23,7 @@
   ✅ mycortex_reader has DML on tasks.tasks
 
 ═══ AC-L1-5: task_upsert — status→column derivation + completed_at ═══
-  ✅ task_upsert inserts (id=75c11ce4-86d9-452a-8911-c09a8dd9efe2)
+  ✅ task_upsert inserts (id=a7ba7fd9-54c5-4e6b-9218-e8120d159795)
   ✅ pending → column='todo' (derived)
   ✅ pending → completed rejected (v005 matrix — must start first)
   ✅ completed → column='done' (derived)
@@ -65,14 +65,14 @@
   ✅ migration re-run is an idempotent no-op
 
 ═══ AC-L1-11: hierarchy — story/slice coherence + tenant checks ═══
-  ✅ story created (id=a9ce443a-d76f-442e-b884-7695beb0b393)
-  ✅ slice under story created (id=b10ccbab-79fe-49be-ad9f-614606b9bb9c)
+  ✅ story created (id=8a2533fa-8900-4b2d-99c1-33bfd534751e)
+  ✅ slice under story created (id=962422cd-aa0c-45a3-a88c-e380452bf7bb)
   ✅ slice without parent rejected (coherence CHECK)
   ✅ story with parent rejected (coherence CHECK)
   ✅ slice under slice rejected (tenant trigger: parent must be story)
   ✅ story delete blocked while slices exist (FK NO ACTION)
   ✅ legacy flat rows legal (kind NULL, n=3)
-  ✅ orchestrator personal story created (id=64a004a6-903d-4479-8d96-4c1c17e3ec49)
+  ✅ orchestrator personal story created (id=e61daeba-8dd3-4d36-b8d7-88db5a72e1ed)
   ✅ fleet slice under orchestrator personal story stored scope=fleet
   ✅ fleet slice under non-orchestrator personal story still refused (scope coherence)
 
@@ -160,7 +160,7 @@ collected 64 items
 tests/test_task_db_unit.py ............................................. [ 70%]
 ...................                                                      [100%]
 
-============================== 64 passed in 4.07s ==============================
+============================== 64 passed in 4.11s ==============================
 ---
 run-tests.sh: interpreter=/home/moses/.hermes-cortex/venv/bin/python3 rc=0  (PYTHONPATH/PYTHONHOME unset for the run)
 

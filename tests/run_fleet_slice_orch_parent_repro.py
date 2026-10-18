@@ -22,12 +22,14 @@ What it asserts (all from raw output, no filtering of pass/fail):
 
 Usage:
   python3 tests/run_fleet_slice_orch_parent_repro.py [--write-artifact] [--db <name>]
+               [--check-live]
 Exit: 0 all expectations held; 1 an expectation was violated; 2 could not verify.
 """
 from __future__ import annotations
 
 import argparse
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -42,8 +44,13 @@ PASS_MARKERS = [
     "fleet slice under orchestrator personal story stored scope=fleet",
     "fleet slice under non-orchestrator personal story still refused (scope coherence)",
 ]
-KNOWN_PREEXISTING_FAIL = "blocked → pending accepted"
 EXPECTED_PASS_COUNT = 98
+# The battery's ONLY failure in a healthy run is the KNOWN pre-existing
+# blocked→pending transition-matrix case (AC-L1-18, untouched by v013; present
+# in the pre-change baseline). We pin that there is exactly ONE ❌ line and that
+# it is this specific case, using a robust 'blocked … pending accepted' match
+# that tolerates arrow-encoding differences (-, >, →).
+PREEXISTING_FAIL_RE = re.compile(r"blocked\s*[-–—>→]*\s*pending\s+accepted")
 
 
 def _clean_env() -> dict:
@@ -67,6 +74,12 @@ def main() -> int:
                     help="write the raw battery+unit output to %s" % ARTIFACT_REL)
     ap.add_argument("--db", default="tasks_fleetslice_repro",
                     help="scratch DB name (must NOT be 'mycortex')")
+    ap.add_argument("--check-live", action="store_true",
+                    help="also run the local ~/.hermes-cortex/scripts/task-db.py "
+                         "--apply-schema check (environment-dependent: does not "
+                         "apply on another host and is not needed to re-verify "
+                         "the committed artifact; self-contained runs should "
+                         "omit it)")
     args = ap.parse_args()
 
     if args.db == "mycortex":
@@ -88,15 +101,24 @@ def main() -> int:
     )
     passes = sum(1 for line in battery_body.splitlines()
                  if line.strip().startswith("✅"))
+    fails = sum(1 for line in battery_body.splitlines()
+                if line.strip().startswith("❌"))
     for m in PASS_MARKERS:
         ok = m in battery_body
         print(f"  {'✅' if ok else '❌'} battery contains: {m}")
         failed_any = failed_any or (not ok)
     ok = passes == EXPECTED_PASS_COUNT
-    print(f"  {'✅' if ok else '❌'} battery pass count == {EXPECTED_PASS_COUNT} (got {passes})")
+    print(f"  {'✅' if ok else '❌'} battery pass count == {EXPECTED_PASS_COUNT} "
+          f"(got {passes}; DB-down would give ~0 and fail here)")
     failed_any = failed_any or (not ok)
-    ok = KNOWN_PREEXISTING_FAIL in battery_body
-    print(f"  {'✅' if ok else '❌'} known pre-existing failure still present: '{KNOWN_PREEXISTING_FAIL}'")
+    # Exactly one ❌ and it is the pre-existing AC-L1-18 case. Fails==0 would
+    # mean either a DB-connection failure (0 passes too, already caught) or a
+    # regression in whatever normally fails; Fails>1 means a new failure.
+    preexisting = [l for l in battery_body.splitlines()
+                   if l.strip().startswith("❌") and PREEXISTING_FAIL_RE.search(l)]
+    ok = fails == 1 and len(preexisting) == 1
+    print(f"  {'✅' if ok else '❌'} battery has exactly 1 ❌ and it is the "
+          f"known 'blocked → pending accepted' (fails={fails}, preexisting={len(preexisting)})")
     failed_any = failed_any or (not ok)
 
     # --- 3: unit suite (raw) -------------------------------------------------
@@ -111,17 +133,23 @@ def main() -> int:
     print(f"  {'✅' if ok else '❌'} unit suite reports 64 passed")
     failed_any = failed_any or (not ok)
 
-    # --- 4: deployed runner converges on v13 ----------------------------------
-    applied = _run(["python3", str(Path.home() / ".hermes-cortex/scripts/task-db.py"),
-                    "--apply-schema"], env)
-    applied_body = (applied.stdout or "") + (applied.stderr or "")
-    chunks.append(
-        "\n===== deployed runner: python3 ~/.hermes-cortex/scripts/task-db.py --apply-schema ====\n"
-        f"% d: rc={applied.returncode}\n% {applied_body}"
-    )
-    ok = "version 13" in applied_body and "no-op" in applied_body
-    print(f"  {'✅' if ok else '❌'} deployed runner reports schema version 13 (no-op)")
-    failed_any = failed_any or (not ok)
+    # --- 4 (optional): deployed runner converges on v13 -----------------------
+    if args.check_live:
+        applied = _run(["python3",
+                        str(Path.home() / ".hermes-cortex/scripts/task-db.py"),
+                        "--apply-schema"], env)
+        applied_body = (applied.stdout or "") + (applied.stderr or "")
+        chunks.append(
+            "\n===== deployed runner: python3 ~/.hermes-cortex/scripts/task-db.py "
+            "--apply-schema ====\n"
+            f"% d: rc={applied.returncode}\n% {applied_body}"
+        )
+        ok = "version 13" in applied_body and "no-op" in applied_body
+        print(f"  {'✅' if ok else '❌'} deployed runner reports schema version 13 (no-op)")
+        failed_any = failed_any or (not ok)
+    else:
+        print("  - live schema check skipped (--check-live not passed; "
+              "self-contained re-verification needs only the committed artifact)")
 
     if args.write_artifact:
         ARTIFACT.parent.mkdir(parents=True, exist_ok=True)
