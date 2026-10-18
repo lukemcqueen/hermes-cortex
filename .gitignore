@@ -129,3 +129,4 @@ laptop/
 
 # External adapter/harness directories (not part of hc)
 adapters/
+tests/artifacts/

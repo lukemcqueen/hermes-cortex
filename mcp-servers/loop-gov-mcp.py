@@ -1882,6 +1882,18 @@ def _complete_push_range_blobs(lock: dict, cycle: dict, cx: Optional[dict] = Non
         _fj = json.dumps(pb["blocking"])
         log.error("per-blob close pass: %d blocking finding(s) — refusing the close",
                   len(pb["blocking"]))
+        # ALSO record the CYCLE-level verdict. The per-blob findings live in `blob_reviews`, keyed
+        # by blob sha, so `adversarial_reviews` — the table `rereview_change` reads — had NO row for
+        # a cycle refused this way. Measured: cycle 13253 was refused on per-blob findings three
+        # times and `rereview_change` answered "Cycle #13253 has no recorded review — nothing to
+        # re-review", so the DOCUMENTED exit from a FINDINGS verdict was unreachable exactly when
+        # the findings came from a per-blob pass — which is now most closes. Two stores describing
+        # one decision must not disagree about whether it exists. `replace=True` keeps ONE verdict
+        # per cycle; the blobs keep their own content-keyed rows.
+        _record_review(cycle.get("id", 0), "per-blob", _reviewer_label(cx), "FINDINGS", _fj,
+                       f"per-blob pass: {len(pb['blocking'])} blocking finding(s) over the push "
+                       f"range; {len(remaining)} blob(s) still unreviewed",
+                       replace=True)
         _mark_close_refused(cycle.get("id", 0), "FINDINGS", _fj, lock)
         return CallToolResult(content=[TextContent(type="text", text=(
             "❌ Self-adversarial review FAILED on a per-blob verdict — this change cannot "
