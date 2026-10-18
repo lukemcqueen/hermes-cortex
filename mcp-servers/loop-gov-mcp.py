@@ -1084,7 +1084,14 @@ BLOB_REVIEW_CAP_PER_CLOSE = 15
 # "the reviews should be shorter than 300s" — the window is never raised.
 CLOSE_TOTAL_BUDGET_S = 240.0                  # must stay < the 300s MCP client window
 BLOB_REVIEW_BUDGET_S = CLOSE_TOTAL_BUDGET_S   # a pass may use the whole window ...
-CLOSE_BLOBS_PER_WINDOW = 1                    # ... which fits exactly ONE blob call
+# ... and a WAVE of BLOB_REVIEW_CONCURRENCY calls fits inside it, because they run CONCURRENTLY.
+# Duration is not elapsed time: four reviewer calls issued together each take ~200s and ALL FOUR
+# land inside the same 240s window, where four issued one-after-another take ~800s and only the
+# first fits. The window the operator bounded ("reviews should be shorter than 300s") is therefore
+# untouched; what changes is how many blobs earn a verdict per pass. Measured before this change:
+# closing a 15-file range (cycle 13287) took 15 end_change round trips, one blob judged each.
+BLOB_REVIEW_CONCURRENCY = 4                   # reviewer calls issued together in one window
+CLOSE_BLOBS_PER_WINDOW = BLOB_REVIEW_CONCURRENCY   # one wave per close pass
 # Above this own-diff size the range call is NOT attempted: it cannot answer inside the
 # window, and attempting it starves the per-blob pass that would have progressed. Below
 # it the light reviewer answers in seconds, leaving room for blob work behind it.
@@ -1292,6 +1299,7 @@ def _review_uncovered_blobs(blobs: dict, *, reviewer, material_for,
                             cap: int = BLOB_REVIEW_CAP_PER_CLOSE,
                             budget_s: float = BLOB_REVIEW_BUDGET_S,
                             reviewer_label: str = "",
+                            workers: int = BLOB_REVIEW_CONCURRENCY,
                             conn: sqlite3.Connection | None = None) -> dict:
     """Judge every blob in ``{path: sha}`` that has no CLEAN verdict yet.
 
@@ -1323,6 +1331,14 @@ def _review_uncovered_blobs(blobs: dict, *, reviewer, material_for,
     # (see _blobs_with_recorded_verdict for the measured starvation this fixes). It stays
     # in `remaining`, so the close still refuses and the receipt still names it uncovered.
     recorded = _blobs_with_recorded_verdict(blobs, conn=conn)
+    # ── ONE WINDOW, A WAVE OF BLOBS (2026-10-18) ─────────────────────────────────
+    # A blob call measures 180-220s and the close's window is 240s, so a SEQUENTIAL pass judges
+    # exactly one blob and a 15-file range costs 15 round trips (measured: cycle 13287, the
+    # unreviewed count walked 14 -> 13 -> ... -> 1). The calls are independent I/O waits, so the
+    # pass issues a WAVE of `workers` of them together: elapsed time is the SLOWEST call, not the
+    # sum, and the window the operator bounded is untouched. `workers=1` reproduces the previous
+    # one-at-a-time behaviour, which is what the regression guard pins.
+    eligible: list[tuple[str, str]] = []
     for path, sha in sorted((blobs or {}).items()):
         if sha in covered:
             verdicts[sha] = "CLEAN"           # covered: judged, nothing outstanding
@@ -1337,28 +1353,43 @@ def _review_uncovered_blobs(blobs: dict, *, reviewer, material_for,
             already_judged.append(sha)
             remaining.append(sha)
             continue
-        if calls >= cap or (time.monotonic() - started) > budget_s:
-            remaining.append(sha)
-            continue
-        material = material_for(sha, path)
+        eligible.append((path, sha))
+    # ONE WAVE per pass, bounded by the cap and by whatever is left of the window. Everything the
+    # wave does not take is REPORTED in `remaining`, so the close still refuses and the next pass
+    # continues from the verdict cache rather than from the beginning.
+    room = max(0, cap) - calls
+    wave = ([] if (time.monotonic() - started) > budget_s else eligible[:room])
+    remaining.extend(sha for _, sha in eligible[len(wave):])
+
+    def _judge(_path: str, _sha: str) -> tuple[str, Optional[BaseException]]:
+        """One reviewer call, its failure CAPTURED: a parallel wave must never raise out of a
+        worker, because one blob the reviewer was too slow for is not the reviewer being down."""
         try:
-            text = reviewer(sha, path, material)
-            _v, _f = _extract_verdict(text)
-            if (_v or "UNJUDGED").upper() == "UNJUDGED":
-                # The reviewer ANSWERED but judged NOTHING (unparseable prose, or JSON carrying no
-                # verdict key). Raised into the outage path deliberately rather than recorded as
-                # FINDINGS: a recorded row would place this content on the already-judged skip list
-                # and it could never be re-sent, so the range could never close. Unavailability
-                # REFUSES, and here it is also RETRIED. Every branch below this except exits, so
-                # `_v`/`_f` are always bound when reached.
-                raise RuntimeError(
-                    "reviewer judged nothing (unparseable or verdict-less reply)")
-        except Exception as exc:  # noqa: BLE001 — an outage is a refusal, never a pass
-            # A failure NEVER credits the blob: it is reported unjudged, so the close
-            # refuses and the push gate still names it as uncovered. What it does not
-            # do is end the pass on the first one — a blob the reviewer was too slow
-            # for is not the reviewer being down, and the old stop-on-first made ZERO
-            # progress on every attempt. Consecutive failures are the outage signal.
+            return reviewer(_sha, _path, material_for(_sha, _path)), None
+        except BaseException as exc:  # noqa: BLE001
+            return "", exc
+
+    outcomes: dict[str, tuple[str, Optional[BaseException]]] = {}
+    if wave:
+        if workers <= 1:
+            for path, sha in wave:
+                outcomes[sha] = _judge(path, sha)
+        else:
+            from concurrent.futures import ThreadPoolExecutor
+            with ThreadPoolExecutor(max_workers=min(workers, len(wave))) as pool:
+                futures = {pool.submit(_judge, path, sha): sha for path, sha in wave}
+                for fut in futures:
+                    outcomes[futures[fut]] = fut.result()
+
+    # Process the wave in SORTED PATH ORDER whatever order the calls finished in, so the verdicts,
+    # the log lines and the outage decision do not depend on which reviewer answered first.
+    reviewer_down = False
+    for path, sha in wave:
+        text, exc = outcomes.get(sha, ("", RuntimeError("the wave produced no outcome")))
+        if exc is not None:
+            # A failure NEVER credits the blob: it is reported unjudged, so the close refuses and
+            # the push gate still names it uncovered. What it does not do is end the pass on the
+            # first one — the old stop-on-first made ZERO progress on every attempt.
             consecutive_failures += 1
             failed.append(sha)
             remaining.append(sha)
@@ -1367,15 +1398,32 @@ def _review_uncovered_blobs(blobs: dict, *, reviewer, material_for,
             if consecutive_failures >= BLOB_REVIEW_MAX_CONSECUTIVE_FAILURES:
                 log.error("per-blob review: %d consecutive failures — treating the reviewer "
                           "as DOWN and stopping the pass", consecutive_failures)
-                remaining.extend(s for _, s in sorted((blobs or {}).items())
-                                 if s != sha and s not in verdicts and s not in covered
-                                 and s not in remaining)
+                reviewer_down = True
+                break
+            continue
+        _v, _f = _extract_verdict(text)
+        if (_v or "UNJUDGED").upper() == "UNJUDGED":
+            # The reviewer ANSWERED but judged NOTHING (unparseable prose, or JSON carrying no
+            # verdict key). Routed into the outage path deliberately rather than recorded as
+            # FINDINGS: a recorded row would place this content on the already-judged skip list and
+            # it could never be re-sent, so the range could never close. Unavailability REFUSES —
+            # and here it is also RETRIED, which is why it counts as a failure like an outage.
+            consecutive_failures += 1
+            failed.append(sha)
+            remaining.append(sha)
+            log.error("per-blob review: %s answered and judged nothing (unparseable or "
+                      "verdict-less reply) — %d consecutive failure(s)",
+                      path, consecutive_failures)
+            if consecutive_failures >= BLOB_REVIEW_MAX_CONSECUTIVE_FAILURES:
+                log.error("per-blob review: %d consecutive failures — treating the reviewer "
+                          "as DOWN and stopping the pass", consecutive_failures)
+                reviewer_down = True
                 break
             continue
         consecutive_failures = 0
         calls += 1
-        verdict, findings_json = _v, _f
-        verdict = (verdict or "UNJUDGED").upper()
+        verdict = (_v or "UNJUDGED").upper()
+        findings_json = _f
         verdicts[sha] = verdict
         # NAME THE JUDGE. The columns existed and the writer accepted them, but this call site
         # passed neither, so every stored blob verdict read back with an EMPTY reviewer_model and no
@@ -1388,6 +1436,11 @@ def _review_uncovered_blobs(blobs: dict, *, reviewer, material_for,
         if verdict != "CLEAN":
             _block, _annot = _blocking_findings(findings_json or "[]")
             blocking.extend(_block or [])
+    if reviewer_down:
+        # The reviewer is DOWN: everything this pass did not reach is deferred BY NAME, so the
+        # close refuses and the next pass picks up exactly what is left instead of restarting.
+        remaining.extend(s for _, s in sorted((blobs or {}).items())
+                         if s not in verdicts and s not in covered and s not in remaining)
     return {"verdicts": verdicts, "remaining": remaining, "calls": calls,
             "blocking": blocking, "failed": failed, "already_judged": already_judged}
 
