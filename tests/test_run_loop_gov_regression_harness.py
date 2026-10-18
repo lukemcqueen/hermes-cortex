@@ -143,6 +143,20 @@ def test_the_three_outcomes_are_distinct_in_the_summary():
     print("  ALL PASS + NOT RUN are separate lines; a clean run adds neither ✓")
 
 
+def test_attribution_distinguishes_reproduced_from_introduced():
+    """A failure count is not an attribution: "3 failed" cannot say whether THIS range caused them,
+    which is exactly the claim a reviewer has to refuse. The three outcomes must be readable apart."""
+    mod = _harness()
+    assert "REPRODUCED" in mod._attribution_verdict(1, 1), mod._attribution_verdict(1, 1)
+    assert "DIFFERS" in mod._attribution_verdict(0, 1), mod._attribution_verdict(0, 1)
+    assert "DIFFERS" in mod._attribution_verdict(1, 0), mod._attribution_verdict(1, 0)
+    assert "COULD NOT VERIFY" in mod._attribution_verdict(None, 1), mod._attribution_verdict(None, 1)
+    # CONTROL both ways: agreement must never read as a regression, and a difference must never
+    # read as agreement.
+    assert mod._attribution_verdict(1, 1) != mod._attribution_verdict(0, 1)
+    print("  attribution: reproduced / differs / could-not-verify are distinct ✓")
+
+
 def _main():
     tests = [(n, f) for n, f in sorted(globals().items())
              if n.startswith("test_") and callable(f)]

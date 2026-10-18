@@ -159,12 +159,25 @@ TESTS = [
 
 GATE_FILE = "mcp-servers/loop-gov-mcp.py"
 GATE_LEVEL = "A4"
-# The revision the static gate is compared AGAINST. Explicit (not an implicit
-# HEAD~1): when a peer's commit lands while this runs, HEAD~1 stops meaning
-# "the pre-fix revision" and the comparison silently degrades to comparing a
-# revision with itself — which is how the artifact came to print the SAME sha for
-# both (ADV-11741-1, 2026-10-09). Name the base, and the artifact states it.
-PRE_FIX_REV = os.environ.get("LOOP_GOV_PRE_FIX_REV", "HEAD~1")
+# The revision everything in this artifact is compared AGAINST: the base of the range being
+# reviewed, not `HEAD~1`. A relative revision degrades silently the moment another commit of your
+# own lands — the artifact then compares a revision with ITSELF (which is how it once printed the
+# same sha for both sides, ADV-11741-1) — and after the change is committed, `HEAD~1` is your own
+# previous commit rather than the pre-fix tree. `merge-base origin/main HEAD` is the range base: it
+# does not move as you commit, and it is the revision the close review diffs from.
+def _range_base() -> str:
+    """The base of the range under review. Resolved via git directly so this constant can be
+    defined before the helpers below use it; falls back to HEAD~1 (the old behaviour) only when git
+    cannot answer, and the artifact always prints the resolved sha."""
+    try:
+        proc = subprocess.run(["git", "merge-base", "origin/main", "HEAD"],
+                              cwd=str(REPO), capture_output=True, text=True, timeout=60)
+    except (OSError, subprocess.SubprocessError):
+        return "HEAD~1"
+    return proc.stdout.strip() or "HEAD~1"
+
+
+PRE_FIX_REV = os.environ.get("LOOP_GOV_PRE_FIX_REV") or _range_base()
 
 
 def _run(argv, cwd=REPO, timeout=300):
@@ -197,6 +210,51 @@ def _gate(path: str) -> tuple:
     return proc.returncode == 0, lines
 
 
+def _attribution_verdict(base_rc, cur_rc) -> str:
+    """What a matching pair of exit codes MEANS. A result that reports a failure without saying
+    whether the range introduced it is the claim a reviewer has to refuse; this is the sentence
+    that answers it."""
+    if base_rc is None:
+        return "COULD NOT VERIFY — the file could not be run at the base revision"
+    if base_rc == cur_rc:
+        return "REPRODUCED at the base revision — this range did not introduce it"
+    return "*** DIFFERS from the base revision — this range is implicated ***"
+
+
+def _run_failing_at_base(base_rev: str, rels: list) -> tuple:
+    """Run the FAILING files at `base_rev` in a throwaway worktree, with the SAME classification
+    used above, and return ({rel: rc|None}, note). A failure the base reproduces is not this
+    change's; a failure that DIFFERS is, and saying so is the whole point.
+
+    A worktree that cannot be created yields None for every file, which `_attribution_verdict`
+    reports as COULD NOT VERIFY — never as agreement.
+    """
+    results: dict = {rel: None for rel in rels}
+    with tempfile.TemporaryDirectory(prefix="loop-gov-base-") as tmp:
+        wt = Path(tmp) / "base"
+        added = _run(["git", "worktree", "add", "-q", str(wt), base_rev], timeout=180)
+        if added.returncode != 0:
+            return results, f"could not create a worktree at {base_rev}: {added.stdout}{added.stderr}"
+        try:
+            for rel in rels:
+                path = wt / rel
+                if not path.is_file():
+                    continue
+                text = path.read_text(errors="ignore")
+                if re.search(r"(?m)^def test_", text) and PYTEST:
+                    cmd = [PYTEST, "-m", "pytest", "-q", str(path)]
+                elif "__main__" in text:
+                    cmd = [sys.executable, str(path)]
+                elif PYTEST:
+                    cmd = [PYTEST, "-m", "pytest", "-q", str(path)]
+                else:
+                    continue
+                results[rel] = _run(cmd, cwd=wt).returncode
+        finally:
+            _run(["git", "worktree", "remove", "--force", str(wt)], timeout=180)
+    return results, ""
+
+
 def _result_block(failures: list, not_run: list) -> list:
     """The summary must separate the THREE outcomes: a file that ran nothing is not a pass and not
     a failure. Printing only `RESULT: ALL PASS` while files executed nothing is how five of them came
@@ -213,6 +271,8 @@ def main() -> int:
     branch = _git("rev-parse", "--abbrev-ref", "HEAD")
     out = []
     failures = []
+    current_rc: dict = {}
+    base_attribution: dict = {}
 
     out.append("loop-governance regression artifact")
     out.append("=" * 72)
@@ -268,6 +328,7 @@ def main() -> int:
             out.append(f"[NOT RUN] {rel} -- pytest collected no tests (rc=5)")
             continue
         ok = proc.returncode == 0
+        current_rc[rel] = proc.returncode
         if not ok:
             failures.append(f"{rel}: rc={proc.returncode}")
         out.append(f"[{'PASS' if ok else 'FAIL'}] {rel}  rc={proc.returncode}")
@@ -315,6 +376,28 @@ def main() -> int:
     out.append("this change introduces no new static findings.")
     out.append("")
 
+    # ── 4. Attribution: does a failure belong to THIS range? ──
+    # A failure count without an attribution is a claim a reviewer must refuse — "3 failed" cannot
+    # say whether the range caused them. So every failure is re-run at the recorded base with the
+    # SAME classification, and the pair of exit codes is what gets committed.
+    if failures:
+        rels = [f.split(":", 1)[0] for f in failures]
+        base_rcs, note = _run_failing_at_base(PRE_FIX_REV, rels)
+        base_attribution = base_rcs
+        out.append("-" * 72)
+        out.append(f"FAILURE ATTRIBUTION  base {PRE_FIX_REV} ({_git('rev-parse', '--short', PRE_FIX_REV)})"
+                   f" vs this tree — same classification both sides")
+        out.append("-" * 72)
+        if note:
+            out.append(f"  {note}")
+        for rel in rels:
+            verdict = _attribution_verdict(base_rcs.get(rel), current_rc.get(rel))
+            out.append(f"  {rel}")
+            out.append(f"        base rc={base_rcs.get(rel)}   this tree rc={current_rc.get(rel)}   {verdict}")
+        out.append("")
+        out.append("  A DIFFERS row is a regression from this range and must be treated as one.")
+        out.append("")
+
     out.append("=" * 72)
     out.extend(_result_block(failures, not_run))
     out.append("=" * 72)
@@ -324,6 +407,11 @@ def main() -> int:
 
     print(f"artifact: {ARTIFACT}")
     print(f"revision: {revision}   tests: {len(TESTS)}")
+    if failures:
+        print(f"FAILURE ATTRIBUTION vs base {PRE_FIX_REV}:")
+        for rel, base_rc in base_attribution.items():
+            print(f"  {rel}: base rc={base_rc}  this tree rc={current_rc.get(rel)}"
+                  f"  {_attribution_verdict(base_rc, current_rc.get(rel))}")
     if not_run:
         print(f"NOT RUN ({len(not_run)}) — ran nothing here, so they are NOT evidence either way:")
         for entry in not_run:

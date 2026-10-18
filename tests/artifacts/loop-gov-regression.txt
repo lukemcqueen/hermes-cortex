@@ -1,15 +1,15 @@
 loop-governance regression artifact
 ========================================================================
-generated      : 2026-10-18T07:58:39+00:00
-revision under test : 42c998dd  (branch main) — HEAD when this ran; the
+generated      : 2026-10-18T08:30:57+00:00
+revision under test : 42eb4334  (branch main) — HEAD when this ran; the
                       artifact is committed BY the change it measures, so the
                       file under test is identical at the carrying commit
-                      (`git diff <carrying-commit> 42c998dd -- mcp-servers/loop-gov-mcp.py`).
-pre-fix base        : HEAD~1 (beeabecd)
+                      (`git diff <carrying-commit> 42eb4334 -- mcp-servers/loop-gov-mcp.py`).
+pre-fix base        : 548e429f3af36f88ca2945bb09e5f27bccaa9a92 (548e429f)
 interpreter    : Python 3.14.7 (<python-bin>/python3)
 generator      : tests/run_loop_gov_regression.py
 
-Re-run with:  LOOP_GOV_PRE_FIX_REV=HEAD~1 python3 tests/run_loop_gov_regression.py
+Re-run with:  LOOP_GOV_PRE_FIX_REV=548e429f3af36f88ca2945bb09e5f27bccaa9a92 python3 tests/run_loop_gov_regression.py
 
 ------------------------------------------------------------------------
 TEST SET (27 files)
@@ -22,7 +22,7 @@ TEST SET (27 files)
         plugins: anyio-4.15.1
         collected 6 items
         tests/test_loop_gov_mcp_nonblocking.py ......                            [100%]
-        ============================== 6 passed in 7.16s ===============================
+        ============================== 6 passed in 7.15s ===============================
 
 [PASS] tests/test_loop_gov_review_repo.py  rc=0
         ============================= test session starts ==============================
@@ -32,7 +32,7 @@ TEST SET (27 files)
         plugins: anyio-4.15.1
         collected 13 items
         tests/test_loop_gov_review_repo.py .............                         [100%]
-        ============================== 13 passed in 7.25s ==============================
+        ============================== 13 passed in 7.05s ==============================
 
 [PASS] tests/test_non_hermes_repo_identity.py  rc=0
         ============================= test session starts ==============================
@@ -42,7 +42,7 @@ TEST SET (27 files)
         plugins: anyio-4.15.1
         collected 7 items
         tests/test_non_hermes_repo_identity.py .......                           [100%]
-        ============================== 7 passed in 1.87s ===============================
+        ============================== 7 passed in 1.80s ===============================
 
 [PASS] tests/test_non_hermes_session_id.py  rc=0
         ============================= test session starts ==============================
@@ -52,28 +52,28 @@ TEST SET (27 files)
         plugins: anyio-4.15.1
         collected 4 items
         tests/test_non_hermes_session_id.py ....                                 [100%]
-        ============================== 4 passed in 1.65s ===============================
+        ============================== 4 passed in 1.55s ===============================
 
 [FAIL] tests/run_non_hermes_lock_release_repro.py  rc=1
         RESULT: FAILURES: PRE-FIX: expected the pre-fix refusal WITH the lock left behind, got released=True refused=False
         RESULT: FAIL
-        [mcp-server] WARNING: _git_capture(('merge-base', 'origin/master', 'HEAD')) exited 128 in ~/.hermes/cache/scratch/rg-home-5ntq06fz/projects/proj: fatal: Not a valid object name origin/master
-        [mcp-server] WARNING: _git_capture(('merge-base', 'main', 'HEAD')) exited 128 in ~/.hermes/cache/scratch/rg-home-5ntq06fz/projects/proj: fatal: Not a valid object name main
-        [mcp-server] WARNING: _git_capture(('symbolic-ref', '--quiet', '--short', 'refs/remotes/origin/HEAD')) exited 1 in ~/.hermes/cache/scratch/rg-home-5ntq06fz/projects/proj: 
-        [mcp-server] WARNING: _git_capture(('merge-base', 'origin/main', 'HEAD')) exited 128 in ~/.hermes/cache/scratch/rg-home-5ntq06fz/projects/proj: fatal: Not a valid object name origin/main
-        [mcp-server] WARNING: _git_capture(('log', '--format=%ct')) exited 128 in ~/.hermes/cache/scratch/rg-home-5ntq06fz/hermes-cortex: fatal: your current branch 'master' does not have any commits yet
+        [mcp-server] WARNING: _git_capture(('merge-base', 'origin/master', 'HEAD')) exited 128 in ~/.hermes/cache/scratch/rg-home-2ppwz0dd/projects/proj: fatal: Not a valid object name origin/master
+        [mcp-server] WARNING: _git_capture(('merge-base', 'main', 'HEAD')) exited 128 in ~/.hermes/cache/scratch/rg-home-2ppwz0dd/projects/proj: fatal: Not a valid object name main
+        [mcp-server] WARNING: _git_capture(('symbolic-ref', '--quiet', '--short', 'refs/remotes/origin/HEAD')) exited 1 in ~/.hermes/cache/scratch/rg-home-2ppwz0dd/projects/proj: 
+        [mcp-server] WARNING: _git_capture(('merge-base', 'origin/main', 'HEAD')) exited 128 in ~/.hermes/cache/scratch/rg-home-2ppwz0dd/projects/proj: fatal: Not a valid object name origin/main
+        [mcp-server] WARNING: _git_capture(('log', '--format=%ct')) exited 128 in ~/.hermes/cache/scratch/rg-home-2ppwz0dd/hermes-cortex: fatal: your current branch 'master' does not have any commits yet
         [mcp-server] INFO: self-adversarial review: cycle 1 simple (0 lines, 0 files) — skip
         [mcp-server] INFO: review receipt: blobs from <repo>/ops/scripts/lib/review-receipt-check.py (0 entries)
         [mcp-server] INFO: review receipt: blobs from <repo>/ops/scripts/lib/review-receipt-check.py (1 entries)
-        [mcp-server] INFO: review receipt written: .reviewed-proj-2864f6ef7da0970600a757f3c62ba9bb63d7dbdb.json (tip 2864f6ef7da0, base 7a62265439ba, 1 files)
+        [mcp-server] INFO: review receipt written: .reviewed-proj-8247d6f295ced012a09f4184d17224df1fee5e92.json (tip 8247d6f295ce, base c8f3305d42eb, 1 files)
         [mcp-server] WARNING: the 'mcp' package is not installed — the stdio server cannot start; the CLI adapter (ops/scripts/loop-gov.py) still works.
         [mcp-server]   ~/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3 -m pip install mcp
-        [mcp-server] WARNING: _git_capture(('symbolic-ref', '--quiet', '--short', 'refs/remotes/origin/HEAD')) exited 1 in ~/.hermes/cache/scratch/rg-home-8_eet222/projects/proj: 
-        [mcp-server] WARNING: _git_capture(('merge-base', 'origin/main', 'HEAD')) exited 128 in ~/.hermes/cache/scratch/rg-home-8_eet222/projects/proj: fatal: Not a valid object name origin/main
-        [mcp-server] WARNING: _git_capture(('merge-base', 'origin/master', 'HEAD')) exited 128 in ~/.hermes/cache/scratch/rg-home-8_eet222/projects/proj: fatal: Not a valid object name origin/master
-        [mcp-server] WARNING: _git_capture(('merge-base', 'main', 'HEAD')) exited 128 in ~/.hermes/cache/scratch/rg-home-8_eet222/projects/proj: fatal: Not a valid object name main
-        [mcp-server] WARNING: _git_capture(('log', '--format=%ct')) exited 128 in ~/.hermes/cache/scratch/rg-home-8_eet222/hermes-cortex: fatal: your current branch 'master' does not have any commits yet
-        [mcp-server] WARNING: review receipt: helper ops/scripts/lib/review-receipt-check.py not found in ANY of ['~/.hermes-cortex/tools/ops/scripts/lib/review-receipt-check.py', '~/.hermes/cache/scratch/rg-home-8_eet222/hermes-cortex/ops/scripts/lib/review-receipt-check.py', '~/.hermes/cache/scratch/rg-home-8_eet222/.hermes-cortex/ops/scripts/lib/review-receipt-check.py'] — writing no reviewed_blobs (still valid by exact tip+base, so SAFE, but it will not survive a rebase)
+        [mcp-server] WARNING: _git_capture(('symbolic-ref', '--quiet', '--short', 'refs/remotes/origin/HEAD')) exited 1 in ~/.hermes/cache/scratch/rg-home-4ck32sky/projects/proj: 
+        [mcp-server] WARNING: _git_capture(('merge-base', 'origin/main', 'HEAD')) exited 128 in ~/.hermes/cache/scratch/rg-home-4ck32sky/projects/proj: fatal: Not a valid object name origin/main
+        [mcp-server] WARNING: _git_capture(('merge-base', 'origin/master', 'HEAD')) exited 128 in ~/.hermes/cache/scratch/rg-home-4ck32sky/projects/proj: fatal: Not a valid object name origin/master
+        [mcp-server] WARNING: _git_capture(('merge-base', 'main', 'HEAD')) exited 128 in ~/.hermes/cache/scratch/rg-home-4ck32sky/projects/proj: fatal: Not a valid object name main
+        [mcp-server] WARNING: _git_capture(('log', '--format=%ct')) exited 128 in ~/.hermes/cache/scratch/rg-home-4ck32sky/hermes-cortex: fatal: your current branch 'master' does not have any commits yet
+        [mcp-server] WARNING: review receipt: helper ops/scripts/lib/review-receipt-check.py not found in ANY of ['~/.hermes-cortex/tools/ops/scripts/lib/review-receipt-check.py', '~/.hermes/cache/scratch/rg-home-4ck32sky/hermes-cortex/ops/scripts/lib/review-receipt-check.py', '~/.hermes/cache/scratch/rg-home-4ck32sky/.hermes-cortex/ops/scripts/lib/review-receipt-check.py'] — writing no reviewed_blobs (still valid by exact tip+base, so SAFE, but it will not survive a rebase)
 
 [PASS] tests/test_land_when_clean_probe.py  rc=0
         ============================= test session starts ==============================
@@ -83,7 +83,7 @@ TEST SET (27 files)
         plugins: anyio-4.15.1
         collected 13 items
         tests/test_land_when_clean_probe.py .............                        [100%]
-        ======================== 13 passed in 65.48s (0:01:05) =========================
+        ======================== 13 passed in 65.32s (0:01:05) =========================
 
 [PASS] tests/test_loop_gov_multi_session.py  rc=0
         PASS — loop-gov multi-session DB (adversarial findings resolved):
@@ -100,7 +100,7 @@ TEST SET (27 files)
         [mcp-server] WARNING: the 'mcp' package is not installed — the stdio server cannot start; the CLI adapter (ops/scripts/loop-gov.py) still works.
         [mcp-server]   ~/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3 -m pip install mcp
         [mcp-server] INFO: lock None: agent esther+2@hermes.local committed in ~/hc-session2 since 2026-09-17T08:00:00 — activity seen
-        [mcp-server] INFO: lock None aged 2678423s past TTL but its agent has committed since — renewed once, not purged
+        [mcp-server] INFO: lock None aged 2680360s past TTL but its agent has committed since — renewed once, not purged
         [mcp-server] WARNING: Orphan-cycle reaper: closed 1 abandoned PENDING cycle(s) unscored — #1(snapshot-capture-chunked-commit)
         [mcp-server] WARNING: Purge: resolved 1 orphaned PENDING cycle(s) for purged tasks
         [mcp-server] WARNING: Orphan-cycle reaper: closed 1 abandoned PENDING cycle(s) unscored — #2(orphan-no-lock)
@@ -134,7 +134,7 @@ TEST SET (27 files)
         plugins: anyio-4.15.1
         collected 2 items
         tests/test_orphan_cycle_resolution.py ..                                 [100%]
-        ============================== 2 passed in 1.51s ===============================
+        ============================== 2 passed in 1.45s ===============================
 
 [PASS] tests/test_reviewer_backends.py  rc=0
         ============================= test session starts ==============================
@@ -164,7 +164,7 @@ TEST SET (27 files)
         plugins: anyio-4.15.1
         collected 23 items
         tests/test_review_material_bound.py .......................              [100%]
-        ============================== 23 passed in 1.17s ==============================
+        ============================== 23 passed in 1.13s ==============================
 
 [PASS] tests/test_review_material_scope.py  rc=0
         ============================= test session starts ==============================
@@ -174,7 +174,7 @@ TEST SET (27 files)
         plugins: anyio-4.15.1
         collected 5 items
         tests/test_review_material_scope.py .....                                [100%]
-        ============================== 5 passed in 22.94s ==============================
+        ============================== 5 passed in 23.09s ==============================
 
 [PASS] tests/test_review_material_consistency.py  rc=0
         ============================= test session starts ==============================
@@ -184,7 +184,7 @@ TEST SET (27 files)
         plugins: anyio-4.15.1
         collected 6 items
         tests/test_review_material_consistency.py ......                         [100%]
-        ============================== 6 passed in 34.37s ==============================
+        ============================== 6 passed in 34.49s ==============================
 
 [PASS] tests/test_manifest_generator_interpreter.py  rc=0
         ============================= test session starts ==============================
@@ -209,12 +209,12 @@ TEST SET (27 files)
           PASS  the lock records close_refused
           PASS  marker names the cycle
           FAIL  marker names the verdict  
-          FAIL  marker counts blocking findings  {'at': '2026-10-18T08:02:07Z', 'cycle_id': 999, 'verdict': 'REVIEW_INCOMPLETE', 'blocking': 0, 'low': 0, 'finding_ids': []}
+          FAIL  marker counts blocking findings  {'at': '2026-10-18T08:34:24Z', 'cycle_id': 999, 'verdict': 'REVIEW_INCOMPLETE', 'blocking': 0, 'low': 0, 'finding_ids': []}
           FAIL  marker carries the finding ids  
           PASS  a CLEAN review does not block
-          FAIL  the marker is CLEARED on CLEAN  writes=[{'repo_slug': 'hermes-cortex', 'task_id': 'refused-close-visible', 'session_id': 'sess-test', 'description': 'test change', 'started_at': '2026-10-18T08:02:07.087575+00:00', 'close_refused': {'at': '2026-10-18T08:02:07Z', 'cycle_id': 999, 'verdict': 'REVIEW_INCOMPLETE', 'blocking': 0, 'low': 0, 'finding_ids': []}}]
+          FAIL  the marker is CLEARED on CLEAN  writes=[{'repo_slug': 'hermes-cortex', 'task_id': 'refused-close-visible', 'session_id': 'sess-test', 'description': 'test change', 'started_at': '2026-10-18T08:34:24.519020+00:00', 'close_refused': {'at': '2026-10-18T08:34:24Z', 'cycle_id': 999, 'verdict': 'REVIEW_INCOMPLETE', 'blocking': 0, 'low': 0, 'finding_ids': []}}]
           FAIL  an unreachable reviewer refuses the close  
-          FAIL  the outage is recorded on the lock too  marker={'at': '2026-10-18T08:02:07Z', 'cycle_id': 999, 'verdict': 'REVIEW_INCOMPLETE', 'blocking': 0, 'low': 0, 'finding_ids': []}
+          FAIL  the outage is recorded on the lock too  marker={'at': '2026-10-18T08:34:24Z', 'cycle_id': 999, 'verdict': 'REVIEW_INCOMPLETE', 'blocking': 0, 'low': 0, 'finding_ids': []}
         ============================= test session starts ==============================
         platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
         rootdir: <repo>
@@ -249,14 +249,14 @@ TEST SET (27 files)
         unknown/update, pass-pct=100)
         =========================== short test summary info ============================
         FAILED tests/test_refused_close_visible.py::test_refused_close_visible - Asse...
-        ========================= 1 failed, 1 passed in 13.34s =========================
+        ========================= 1 failed, 1 passed in 13.57s =========================
 
 [PASS] tests/test_loop_gov_lock_watchdog.py  rc=0
           PASS baseline DB writable
           PASS harness reports LOCK HELD
           PASS DB blocked while harness holds BEGIN IMMEDIATE
           PASS DB still write-blocked after alert-only watchdog (no kill)
-          PASS watchdog report names holder pid 3048663 in: '[2026-10-18 17:02 ] loop-gov-lock-watchdog: lock/anomaly DETECTED — alert-only (no auto-kill): 2 loop-gov daemon(s) in v'
+          PASS watchdog report names holder pid 3177957 in: '[2026-10-18 17:34 ] loop-gov-lock-watchdog: lock/anomaly DETECTED — alert-only (no auto-kill): 2 loop-gov daemon(s) in v'
           PASS holder process still alive after watchdog (alert-only, never kills)
         6 checks, 6 pass
 
@@ -268,7 +268,7 @@ TEST SET (27 files)
         plugins: anyio-4.15.1
         collected 2 items
         tests/test_loop_gov_mcp_startup.py ..                                    [100%]
-        ============================== 2 passed in 4.88s ===============================
+        ============================== 2 passed in 4.64s ===============================
 
 [PASS] tests/test_verify_landed.py  rc=0
         ============================= test session starts ==============================
@@ -278,7 +278,7 @@ TEST SET (27 files)
         plugins: anyio-4.15.1
         collected 13 items
         tests/test_verify_landed.py .............                                [100%]
-        ======================== 13 passed in 233.73s (0:03:53) ========================
+        ======================== 13 passed in 233.21s (0:03:53) ========================
 
 [PASS] tests/test_skill_drift_parity.py  rc=0
         ============================= test session starts ==============================
@@ -288,7 +288,7 @@ TEST SET (27 files)
         plugins: anyio-4.15.1
         collected 1 item
         tests/test_skill_drift_parity.py .                                       [100%]
-        ============================== 1 passed in 10.37s ==============================
+        ============================== 1 passed in 9.83s ===============================
 
 [PASS] tests/test_python_with_module.py  rc=0
         ============================= test session starts ==============================
@@ -298,7 +298,7 @@ TEST SET (27 files)
         plugins: anyio-4.15.1
         collected 9 items
         tests/test_python_with_module.py .........                               [100%]
-        ============================== 9 passed in 1.22s ===============================
+        ============================== 9 passed in 1.19s ===============================
 
 [PASS] tests/test_run_loop_gov_regression_harness.py  rc=0
         ============================= test session starts ==============================
@@ -306,9 +306,9 @@ TEST SET (27 files)
         rootdir: <repo>
         configfile: pytest.ini
         plugins: anyio-4.15.1
-        collected 5 items
-        tests/test_run_loop_gov_regression_harness.py .....                      [100%]
-        ============================== 5 passed in 1.09s ===============================
+        collected 6 items
+        tests/test_run_loop_gov_regression_harness.py ......                     [100%]
+        ============================== 6 passed in 1.34s ===============================
 
 [PASS] tests/test_ensure_pytest.py  rc=0
         ============================= test session starts ==============================
@@ -318,7 +318,7 @@ TEST SET (27 files)
         plugins: anyio-4.15.1
         collected 7 items
         tests/test_ensure_pytest.py .......                                      [100%]
-        ============================== 7 passed in 0.30s ===============================
+        ============================== 7 passed in 0.28s ===============================
 
 [PASS] tests/run_session_cache_loop_db_repro.py  rc=0
         RESULT: PASS — all assertions held
@@ -359,13 +359,13 @@ TEST SET (27 files)
 ------------------------------------------------------------------------
 STATIC GATE  mcp-servers/loop-gov-mcp.py  level A4
 ------------------------------------------------------------------------
-[PASS] interim/working revision 42c998dd
+[PASS] interim/working revision 42eb4334
         📊 Summary: 1 file(s), 38 finding(s)
         🟡 Medium: 5
         🔵 Low: 4
         ✅ GATE_PASSED — no critical/high findings
 
-[PASS] PRE-FIX revision HEAD~1 (beeabecd)
+[PASS] PRE-FIX revision 548e429f3af36f88ca2945bb09e5f27bccaa9a92 (548e429f)
         📊 Summary: 1 file(s), 38 finding(s)
         🟡 Medium: 5
         🔵 Low: 4
@@ -374,6 +374,18 @@ STATIC GATE  mcp-servers/loop-gov-mcp.py  level A4
 Comparison: the two summaries above must agree on their finding
 counts (same total / medium / low / info), which is the claim that
 this change introduces no new static findings.
+
+------------------------------------------------------------------------
+FAILURE ATTRIBUTION  base 548e429f3af36f88ca2945bb09e5f27bccaa9a92 (548e429f) vs this tree — same classification both sides
+------------------------------------------------------------------------
+  tests/run_non_hermes_lock_release_repro.py
+        base rc=1   this tree rc=1   REPRODUCED at the base revision — this range did not introduce it
+  tests/test_loop_gov_stale_purge.py
+        base rc=1   this tree rc=1   REPRODUCED at the base revision — this range did not introduce it
+  tests/test_refused_close_visible.py
+        base rc=1   this tree rc=1   REPRODUCED at the base revision — this range did not introduce it
+
+  A DIFFERS row is a regression from this range and must be treated as one.
 
 ========================================================================
 RESULT: FAILURES: tests/run_non_hermes_lock_release_repro.py: rc=1; tests/test_loop_gov_stale_purge.py: rc=1; tests/test_refused_close_visible.py: rc=1
