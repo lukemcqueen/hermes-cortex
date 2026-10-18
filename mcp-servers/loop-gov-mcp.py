@@ -1415,10 +1415,10 @@ def _push_base(repo: Path) -> str:
 def _push_base_is_root_fallback(repo: Path) -> bool:
     """True when there is no resolvable push range and the base is the repo's root commit.
 
-    Two cases report True, and deliberately so (review finding ADV-13076-3): the base EQUALS the root
-    commit (the range really is all history), or the base is EMPTY — `_git_capture` returns "" when
-    git cannot answer at all, and "I could not determine a range" is not a range either. A caller that
-    warns about one must warn about the other.
+    Two cases report True. The base EQUALS the root commit, so the range really is all history; or
+    the base is EMPTY, because `_git_capture` returns "" when git cannot answer at all and "I could
+    not determine a range" is not a range either. Both leave the caller with the same thing to say —
+    there is no push range to authorise here — so both report True.
     """
     root = _git_capture(repo, "rev-list", "--max-parents=0", "HEAD").strip()
     base = _push_base(repo)

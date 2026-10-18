@@ -175,6 +175,36 @@ def test_layout_hints_are_configurable():
         "the configured layout must compile into a pattern")
 
 
+def test_db_connection_is_wal_with_a_busy_timeout():
+    """The multi-session claim, asserted rather than asserted-in-a-comment.
+
+    `_blobs_with_covered_verdict`'s docstring rests on the connection factory setting WAL and a
+    busy_timeout, so a concurrent writer blocks instead of failing. This is the runnable proof.
+    """
+    conn = mcp._db()
+    try:
+        journal = conn.execute("PRAGMA journal_mode").fetchone()[0]
+        timeout = conn.execute("PRAGMA busy_timeout").fetchone()[0]
+    finally:
+        conn.close()
+    assert str(journal).lower() == "wal", f"_db() journal_mode is {journal!r}, not WAL"
+    assert int(timeout) > 0, f"_db() busy_timeout is {timeout!r}; a concurrent writer would fail"
+
+
+def test_coverage_is_recomputed_per_call_not_cached():
+    """A peer's newly recorded verdict must be picked up on the NEXT call, not after a restart."""
+    conn = _store([])
+    blobs = {"a.py": _sha("a")}
+    assert mcp._blobs_with_covered_verdict(blobs, conn=conn) == set(), (
+        "an unjudged blob must start uncovered")
+    conn.execute("INSERT OR REPLACE INTO blob_reviews (blob_sha, verdict, findings_json, ts) "
+                 "VALUES (?,?,?,?)", (_sha("a"), "CLEAN", "[]", "2026-10-18T00:00:00Z"))
+    conn.commit()
+    assert mcp._blobs_with_covered_verdict(blobs, conn=conn) == {_sha("a")}, (
+        "a verdict recorded by another session between two calls must be seen by the second call — "
+        "the coverage path must not cache")
+
+
 if __name__ == "__main__":
     fails = 0
     for name, fn in sorted(globals().items()):
