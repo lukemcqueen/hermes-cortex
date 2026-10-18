@@ -347,12 +347,17 @@ def test_leaf_raises_on_empty_content_so_silence_is_a_failure():
     saved = urllib.request.urlopen
     urllib.request.urlopen = fake_urlopen
     try:
+        # Captured with BaseException on purpose (this file runs under its own runner, so pytest's
+        # raises() is not assumed): an UNEXPECTED exception type must surface as a failure here, not
+        # be swallowed by a narrow `except`.
+        err = None
         try:
             mcp._call_reviewer_llm("prompt")
-        except RuntimeError as exc:
-            assert "NO usable content" in str(exc), f"unexpected failure message: {exc}"
-        else:
-            raise AssertionError("an empty reviewer reply must RAISE, never return None")
+        except BaseException as exc:  # noqa: BLE001 — any exception is captured and asserted below
+            err = exc
+        assert isinstance(err, RuntimeError), (
+            f"an empty reviewer reply must RAISE RuntimeError, got {type(err).__name__}: {err}")
+        assert "NO usable content" in str(err), f"unexpected failure message: {err}"
     finally:
         urllib.request.urlopen = saved
 
@@ -378,6 +383,8 @@ def test_unparseable_reply_is_retried_on_the_next_pass_and_never_skipped():
     out2 = mcp._review_uncovered_blobs(blobs, reviewer=reviewer,
                                        material_for=lambda s, p: "material", conn=conn)
     assert len(seen) == 2, "the SAME content must be sent again on the next pass (the retry property)"
+    assert seen[0] == seen[1] == sha, (
+        f"it must be the SAME blob sent twice, not two different ones: {seen}")
     assert sha in out2["remaining"], f"and still be reported unjudged: {out2}"
 
 
