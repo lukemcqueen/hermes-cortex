@@ -1361,11 +1361,13 @@ def _review_uncovered_blobs(blobs: dict, *, reviewer, material_for,
     wave = ([] if (time.monotonic() - started) > budget_s else eligible[:room])
     remaining.extend(sha for _, sha in eligible[len(wave):])
 
-    def _judge(_path: str, _sha: str) -> tuple[str, Optional[BaseException]]:
+    def _judge(path: str, sha: str) -> tuple[str, Optional[BaseException]]:
         """One reviewer call, its failure CAPTURED: a parallel wave must never raise out of a
-        worker, because one blob the reviewer was too slow for is not the reviewer being down."""
+        worker, because one blob the reviewer was too slow for is not the reviewer being down.
+        `material_for` is inside the try too — assembling the material can fail on a store
+        hiccup, and that must not take the whole close down with it."""
         try:
-            return reviewer(_sha, _path, material_for(_sha, _path)), None
+            return reviewer(sha, path, material_for(sha, path)), None
         except BaseException as exc:  # noqa: BLE001
             return "", exc
 
@@ -1376,10 +1378,29 @@ def _review_uncovered_blobs(blobs: dict, *, reviewer, material_for,
                 outcomes[sha] = _judge(path, sha)
         else:
             from concurrent.futures import ThreadPoolExecutor
-            with ThreadPoolExecutor(max_workers=min(workers, len(wave))) as pool:
+            # ENFORCE THE WINDOW, do not merely check it before the wave (review finding
+            # ADV-13296-1): the check above runs ONCE, and a wave's elapsed time is the slowest
+            # call — so a wave issued with 60s left could still take 200s and the close would be
+            # killed by the MCP client at its ceiling, writing NO receipt and losing the pass.
+            # Each future is therefore awaited only until the deadline the pass was given, and a
+            # blob that does not answer by then is FAILED (never credited) so the close still
+            # refuses and the next pass picks it up.
+            pool = ThreadPoolExecutor(max_workers=min(workers, len(wave)))
+            try:
                 futures = {pool.submit(_judge, path, sha): sha for path, sha in wave}
+                deadline = time.monotonic() + max(1.0, budget_s - (time.monotonic() - started))
                 for fut in futures:
-                    outcomes[futures[fut]] = fut.result()
+                    left = deadline - time.monotonic()
+                    try:
+                        outcomes[futures[fut]] = (fut.result(timeout=left) if left > 0.0
+                                                  else ("", TimeoutError(
+                                                      "the close window was exhausted")))
+                    except BaseException as exc:  # noqa: BLE001 — result() must never abort the pass
+                        outcomes[futures[fut]] = ("", exc)
+            finally:
+                # Never wait past the window for a straggler: its verdict is not needed, and the
+                # pass must RETURN so the receipt is written inside the client's ceiling.
+                pool.shutdown(wait=False)
 
     # Process the wave in SORTED PATH ORDER whatever order the calls finished in, so the verdicts,
     # the log lines and the outage decision do not depend on which reviewer answered first.

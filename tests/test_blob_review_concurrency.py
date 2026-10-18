@@ -56,16 +56,22 @@ def _blobs(n):
     return {f"f{i}.py": f"sha{i}" for i in range(n)}
 
 
-def _run(mod, n, workers, cap, responder):
+def _run(mod, n, workers, cap, responder, budget=240.0):
     return mod._review_uncovered_blobs(
         _blobs(n),
         reviewer=lambda sha, path, material: responder(sha, path),
         material_for=lambda sha, path: f"material for {path}",
-        cap=cap, budget_s=240.0, workers=workers, reviewer_label="test/judge")
+        cap=cap, budget_s=budget, workers=workers, reviewer_label="test/judge")
 
 
 def _clean(sha, path):
     time.sleep(SLEEP)
+    return '{"verdict": "CLEAN", "findings": []}'
+
+
+def _slower_than_the_window(sha, path):
+    # Long enough to outlast the 1.5s budget the test grants, short enough to keep the suite quick.
+    time.sleep(3.0)
     return '{"verdict": "CLEAN", "findings": []}'
 
 
@@ -97,6 +103,34 @@ def test_workers_1_reproduces_the_previous_sequential_behaviour():
     assert elapsed >= 3 * SLEEP * 0.8, (
         f"workers=1 must still run one at a time: {elapsed:.2f}s for 3 sleeps")
     print(f"  workers=1 stays sequential ({elapsed:.2f}s) ✓")
+
+
+def test_a_wave_cannot_outrun_its_window():
+    """Review finding ADV-13296-1 (high). The budget was checked ONCE, before the wave — so a wave
+    issued with little of the window left could still take a full call's time, and the close would
+    be killed by the MCP client at its ceiling: NO receipt, the pass lost. The wave is now awaited
+    only until the deadline the pass was given, and a blob that does not answer by then is FAILED,
+    never credited, so the close refuses and the next pass picks it up."""
+    mod = _mod()
+    _sandbox(mod)
+    started = time.monotonic()
+    # 1.5s, not 0.3s: a budget smaller than the coverage lookups means the pass never reaches the
+    # wave at all (measured — the first version of this test asserted failures that could not
+    # happen because the gate deferred everything first). This budget is comfortably past the
+    # gate and far short of the 3s call.
+    out = _run(mod, 4, workers=4, cap=4, responder=_slower_than_the_window, budget=1.5)
+    elapsed = time.monotonic() - started
+    assert out["calls"] == 0, f"nothing may be credited past the window: {out['calls']}"
+    assert len(out["remaining"]) == 4, out["remaining"]
+    # NOT all four are in `failed`: BLOB_REVIEW_MAX_CONSECUTIVE_FAILURES (2) is the outage signal,
+    # so the wave stops early and the rest are deferred by name. That is the designed behaviour —
+    # the assertion is that SOMETHING was recorded as failed and NOTHING was credited as read.
+    assert out["failed"], f"an unread blob is a failure, never a pass: {out}"
+    assert not out["verdicts"] or all(v != "CLEAN" for v in out["verdicts"].values()), \
+        "a blob that did not answer must never be recorded CLEAN"
+    assert elapsed < 2.5, (
+        f"the pass must RETURN near its deadline, not wait out the calls: {elapsed:.2f}s")
+    print(f"  a wave cannot outrun the window ({elapsed:.2f}s, 0 credited) ✓")
 
 
 def test_the_cap_still_bounds_a_pass_and_reports_the_rest():
