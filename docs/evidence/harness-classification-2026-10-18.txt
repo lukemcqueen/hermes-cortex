@@ -1,0 +1,141 @@
+loop-governance regression artifact
+========================================================================
+generated      : 2026-10-18T07:29:38+00:00
+revision under test : bbd80f92  (branch main) — HEAD when this ran; the
+                      artifact is committed BY the change it measures, so the
+                      file under test is identical at the carrying commit
+                      (`git diff <carrying-commit> bbd80f92 -- mcp-servers/loop-gov-mcp.py`).
+pre-fix base        : HEAD~1 (548e429f)
+interpreter    : Python 3.14.7 (<python-bin>/python3)
+generator      : tests/run_loop_gov_regression.py
+
+Re-run with:  LOOP_GOV_PRE_FIX_REV=HEAD~1 python3 tests/run_loop_gov_regression.py
+
+------------------------------------------------------------------------
+TEST SET (5 files)
+------------------------------------------------------------------------
+[FAIL] tests/run_non_hermes_lock_release_repro.py  rc=1
+        RESULT: FAILURES: PRE-FIX: expected the pre-fix refusal WITH the lock left behind, got released=True refused=False
+        RESULT: FAIL
+        [mcp-server] WARNING: _git_capture(('merge-base', 'origin/main', 'HEAD')) exited 128 in ~/.hermes/cache/scratch/rg-home-sjnk2ww0/projects/proj: fatal: Not a valid object name origin/main
+        [mcp-server] WARNING: _git_capture(('merge-base', 'origin/master', 'HEAD')) exited 128 in ~/.hermes/cache/scratch/rg-home-sjnk2ww0/projects/proj: fatal: Not a valid object name origin/master
+        [mcp-server] WARNING: _git_capture(('merge-base', 'main', 'HEAD')) exited 128 in ~/.hermes/cache/scratch/rg-home-sjnk2ww0/projects/proj: fatal: Not a valid object name main
+        [mcp-server] WARNING: _git_capture(('symbolic-ref', '--quiet', '--short', 'refs/remotes/origin/HEAD')) exited 1 in ~/.hermes/cache/scratch/rg-home-sjnk2ww0/projects/proj: 
+        [mcp-server] INFO: self-adversarial review: cycle 1 simple (1 lines, 1 files) — skip
+        [mcp-server] INFO: review receipt: blobs from <repo>/ops/scripts/lib/review-receipt-check.py (0 entries)
+        [mcp-server] INFO: review receipt: blobs from <repo>/ops/scripts/lib/review-receipt-check.py (1 entries)
+        [mcp-server] INFO: review receipt written: .reviewed-proj-450c25446928871975d0586cd715d176f181dc75.json (tip 450c25446928, base a6ac0e178ce1, 1 files)
+        [mcp-server] WARNING: the 'mcp' package is not installed — the stdio server cannot start; the CLI adapter (ops/scripts/loop-gov.py) still works.
+        [mcp-server]   ~/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3 -m pip install mcp
+        [mcp-server] WARNING: _git_capture(('symbolic-ref', '--quiet', '--short', 'refs/remotes/origin/HEAD')) exited 1 in ~/.hermes/cache/scratch/rg-home-_nq9buh8/projects/proj: 
+        [mcp-server] WARNING: _git_capture(('merge-base', 'origin/main', 'HEAD')) exited 128 in ~/.hermes/cache/scratch/rg-home-_nq9buh8/projects/proj: fatal: Not a valid object name origin/main
+        [mcp-server] WARNING: _git_capture(('merge-base', 'origin/master', 'HEAD')) exited 128 in ~/.hermes/cache/scratch/rg-home-_nq9buh8/projects/proj: fatal: Not a valid object name origin/master
+        [mcp-server] WARNING: _git_capture(('merge-base', 'main', 'HEAD')) exited 128 in ~/.hermes/cache/scratch/rg-home-_nq9buh8/projects/proj: fatal: Not a valid object name main
+        [mcp-server] WARNING: _git_capture(('log', '--format=%ct')) exited 128 in ~/.hermes/cache/scratch/rg-home-_nq9buh8/hermes-cortex: fatal: your current branch 'master' does not have any commits yet
+        [mcp-server] INFO: self-adversarial review: cycle 1 simple (0 lines, 0 files) — skip
+        [mcp-server] WARNING: review receipt: helper ops/scripts/lib/review-receipt-check.py not found in ANY of ['~/.hermes-cortex/tools/ops/scripts/lib/review-receipt-check.py', '~/.hermes/cache/scratch/rg-home-_nq9buh8/hermes-cortex/ops/scripts/lib/review-receipt-check.py', '~/.hermes/cache/scratch/rg-home-_nq9buh8/.hermes-cortex/ops/scripts/lib/review-receipt-check.py'] — writing no reviewed_blobs (still valid by exact tip+base, so SAFE, but it will not survive a rebase)
+        [mcp-server] INFO: review receipt written: .reviewed-proj-4b8ad717cc9e063f9f396a194422212ce5aad9f5.json (tip 4b8ad717cc9e, base 2da8c5e86072, 1 files)
+
+[FAIL] tests/test_loop_gov_stale_purge.py  rc=1
+        FAIL (1):
+          - A/B naive: stale heartbeat not aged stale
+        [mcp-server] WARNING: the 'mcp' package is not installed — the stdio server cannot start; the CLI adapter (ops/scripts/loop-gov.py) still works.
+        [mcp-server]   ~/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3 -m pip install mcp
+        [mcp-server] INFO: lock None: agent esther+2@hermes.local committed in ~/hc-session2 since 2026-09-17T08:00:00 — activity seen
+        [mcp-server] INFO: lock None aged 2676579s past TTL but its agent has committed since — renewed once, not purged
+        [mcp-server] WARNING: Orphan-cycle reaper: closed 1 abandoned PENDING cycle(s) unscored — #1(snapshot-capture-chunked-commit)
+        [mcp-server] WARNING: Purge: resolved 1 orphaned PENDING cycle(s) for purged tasks
+        [mcp-server] WARNING: Orphan-cycle reaper: closed 1 abandoned PENDING cycle(s) unscored — #2(orphan-no-lock)
+
+[PASS] tests/test_reviewer_backends.py  rc=0
+        ============================= test session starts ==============================
+        platform linux -- Python 3.14.7, pytest-9.1.1, pluggy-1.7.0
+        rootdir: <repo>
+        configfile: pytest.ini
+        collected 8 items
+        tests/test_reviewer_backends.py ........                                 [100%]
+        ============================== 8 passed in 0.36s ===============================
+
+[FAIL] tests/test_refused_close_visible.py  rc=1
+          PASS  silent with no lock
+          PASS  silent without the marker
+          PASS  silent for another repo's lock
+          PASS  warns on a refused close
+          PASS  names the refused cycle
+          PASS  names the blocking findings
+          PASS  offers rereview_change as the exit
+          PASS  never blocks (exit 0)
+          FAIL  a FINDINGS review blocks the close  
+          PASS  the lock records close_refused
+          PASS  marker names the cycle
+          FAIL  marker names the verdict  
+          FAIL  marker counts blocking findings  {'at': '2026-10-18T07:29:45Z', 'cycle_id': 999, 'verdict': 'REVIEW_INCOMPLETE', 'blocking': 0, 'low': 0, 'finding_ids': []}
+          FAIL  marker carries the finding ids  
+          PASS  a CLEAN review does not block
+          FAIL  the marker is CLEARED on CLEAN  writes=[{'repo_slug': 'hermes-cortex', 'task_id': 'refused-close-visible', 'session_id': 'sess-test', 'description': 'test change', 'started_at': '2026-10-18T07:29:45.479076+00:00', 'close_refused': {'at': '2026-10-18T07:29:45Z', 'cycle_id': 999, 'verdict': 'REVIEW_INCOMPLETE', 'blocking': 0, 'low': 0, 'finding_ids': []}}]
+          FAIL  an unreachable reviewer refuses the close  
+          FAIL  the outage is recorded on the lock too  marker={'at': '2026-10-18T07:29:45Z', 'cycle_id': 999, 'verdict': 'REVIEW_INCOMPLETE', 'blocking': 0, 'low': 0, 'finding_ids': []}
+        ============================= test session starts ==============================
+        platform linux -- Python 3.14.7, pytest-9.1.1, pluggy-1.7.0
+        rootdir: <repo>
+        configfile: pytest.ini
+        collected 2 items
+        tests/test_refused_close_visible.py F.                                   [100%]
+        =================================== FAILURES ===================================
+        __________________________ test_refused_close_visible __________________________
+        tests/test_refused_close_visible.py:210: in test_refused_close_visible
+            assert not _F, f"{len(_F)} refused-close check(s) failed: {', '.join(_F)}"
+        E   AssertionError: 7 refused-close check(s) failed: a FINDINGS review blocks the close, marker names the verdict, marker counts blocking findings, marker carries the finding ids, the marker is CLEARED on CLEAN, an unreachable reviewer refuses the close, the outage is recorded on the lock too
+        E   assert not ['a FINDINGS review blocks the close', 'marker names the verdict', 'marker counts blocking findings', 'marker carries the finding ids', 'the marker is CLEARED on CLEAN', 'an unreachable reviewer refuses the close', ...]
+        ----------------------------- Captured stdout call -----------------------------
+        B. the pre-commit advisory fires on a refused-close lock, and only then
+        A. the gate marks the lock on a refusal and clears it on CLEAN
+        ----------------------------- Captured stderr call -----------------------------
+          \033[0;32m✅ change-validate: all checks passed\033[0m
+        🧪  Self-test: orchestrator guard...
+        ✅  Self-test passed: host detected as orchestrator (hostname+home-dir)
+            Env spoof check: ok-still-orch (env ignored)
+        ✅  Adversarial verify: passed on 1 file(s)
+        📊  score-cycle: LOOP 🔄 — keep iterating (task=precommit-hermes-cortex-HEAD
+        unknown/update, pass-pct=100)
+        =========================== short test summary info ============================
+        FAILED tests/test_refused_close_visible.py::test_refused_close_visible - Asse...
+        ========================= 1 failed, 1 passed in 11.65s =========================
+
+[PASS] tests/test_python_with_module.py  rc=0
+        ============================= test session starts ==============================
+        platform linux -- Python 3.14.7, pytest-9.1.1, pluggy-1.7.0
+        rootdir: <repo>
+        configfile: pytest.ini
+        collected 9 items
+        tests/test_python_with_module.py .........                               [100%]
+        ============================== 9 passed in 1.43s ===============================
+
+------------------------------------------------------------------------
+STATIC GATE  mcp-servers/loop-gov-mcp.py  level A4
+------------------------------------------------------------------------
+[PASS] interim/working revision bbd80f92
+        📊 Summary: 1 file(s), 38 finding(s)
+        🟡 Medium: 5
+        🔵 Low: 4
+        ✅ GATE_PASSED — no critical/high findings
+
+[PASS] PRE-FIX revision HEAD~1 (548e429f)
+        📊 Summary: 1 file(s), 38 finding(s)
+        🟡 Medium: 5
+        🔵 Low: 4
+        ✅ GATE_PASSED — no critical/high findings
+
+Comparison: the two summaries above must agree on their finding
+counts (same total / medium / low / info), which is the claim that
+this change introduces no new static findings.
+
+========================================================================
+RESULT: FAILURES: tests/run_non_hermes_lock_release_repro.py: rc=1; tests/test_loop_gov_stale_purge.py: rc=1; tests/test_refused_close_visible.py: rc=1
+========================================================================
+
+--- classification of the five files this harness had mis-called failures ---
+2 PASS that were reported FAIL (test_reviewer_backends, test_python_with_module)
+3 FAIL that are genuine (2 scripts run directly, 1 stale test)
+0 NOT RUN
+Before this change all five were reported FAIL, and two of them had a passing test suite.

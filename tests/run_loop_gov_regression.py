@@ -180,15 +180,20 @@ def main() -> int:
             out.append(f"[FAIL] {rel} -- file does not exist")
             continue
         text = path.read_text(errors="ignore")
-        # THREE outcomes, not two (2026-10-18). `python3 <file>` cannot judge a pytest-style file:
-        # it imports and exits 0 having run NOTHING, so reporting that as a PASS is vacuous — and
-        # reporting it as a FAILURE is equally wrong, because nothing FAILED. That missing
-        # distinction made this harness report FIVE files as "pre-existing failures" which were
-        # really files it had never run: under a real pytest, two passed, two collected no tests at
-        # all, and only ONE was a genuine failure. A mis-attributed failure is worse than an
-        # unknown one — it costs a full investigation (worktree comparison, recorded issue, a
-        # committed script "proving" the claim) and it discredits the changes nearest to it.
-        if "__main__" in text:
+        # WHAT the file IS decides HOW to run it (2026-10-18, measured on the five files this
+        # harness had mis-called "pre-existing failures"):
+        #   * a file with `def test_` functions is PYTEST-STYLE. Running it directly is invalid even
+        #     when it carries a legacy __main__ block: `test_python_with_module.py` needs tmp_path
+        #     fixtures and `test_reviewer_backends.py` has a __main__ that fails while its 8 tests
+        #     all pass. Under the old rule both read as FAILURES of the code, and they are not.
+        #   * a file with NO test functions is a SCRIPT (`run_non_hermes_lock_release_repro`,
+        #     `test_loop_gov_stale_purge`): direct execution is the only way to run it, so its rc is
+        #     its real result — and pytest's rc=5 on it means "collected nothing", not "passed".
+        # A mis-attributed failure discredits the changes nearest it, so the three outcomes are named.
+        is_pytest_style = re.search(r"(?m)^def test_", text) is not None
+        if is_pytest_style and PYTEST:
+            cmd = [PYTEST, "-m", "pytest", "-q", rel]
+        elif "__main__" in text:
             cmd = [sys.executable, rel]
         elif PYTEST:
             cmd = [PYTEST, "-m", "pytest", "-q", rel]
