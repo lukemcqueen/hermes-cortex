@@ -32,8 +32,10 @@ files changed, and inspect what the process ACTUALLY spawned.
 
 ```bash
 # 1. When did the process start vs when did the files change?
+#    stat -c is GNU; macOS (BSD) needs stat -f. Use the fallback so this runs on both.
 ps -eo pid,lstart,cmd | grep 'hermes_cli.main gateway' | grep -v grep
-stat -c '%y %n' ~/.hermes/plugins/governance-enforcer/__init__.py ~/.hermes/config.yaml
+stat -c '%y %n' ~/.hermes/plugins/governance-enforcer/__init__.py ~/.hermes/config.yaml 2>/dev/null \
+  || stat -f '%Sm %N' ~/.hermes/plugins/governance-enforcer/__init__.py ~/.hermes/config.yaml
 
 # 2. What did the running process ACTUALLY spawn? (ground truth)
 ps -eo pid,lstart,cmd | grep mcp_stdio_watchdog | grep -v grep
