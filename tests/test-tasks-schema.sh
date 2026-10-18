@@ -334,10 +334,20 @@ else
 fi
 # coherence preserved: a fleet slice under a NON-orchestrator personal story stays refused
 USER_STORY=$($PSQL -c "SELECT tasks.task_upsert(p_content=>'L1 worker story', p_created_by=>'alice', p_kind=>'story');" 2>/dev/null | head -1)
-if $PSQL -c "SELECT tasks.task_upsert(p_content=>'L1 worker fleet slice', p_created_by=>'alice', p_kind=>'slice', p_parent_id=>'${USER_STORY}', p_scope=>'fleet');" >/dev/null 2>&1; then
-  fail "fleet slice under non-orchestrator personal story accepted — relaxation too broad"
+[ -n "$USER_STORY" ] && pass "non-orchestrator personal story created (id=$USER_STORY)" || fail "worker story insert failed"
+# Connectivity/health pre-check: if psql cannot reach the DB at all, the refusal
+# branch below would pass for the WRONG reason. Prove psql answers first.
+if $PSQL -c "SELECT 1;" >/dev/null 2>&1; then
+  WRK_ERR=$( { $PSQL -c "SELECT tasks.task_upsert(p_content=>'L1 worker fleet slice', p_created_by=>'alice', p_kind=>'slice', p_parent_id=>'${USER_STORY}', p_scope=>'fleet');"; } 2>&1 || true )
+  if [ -z "$WRK_ERR" ]; then
+    fail "fleet slice under non-orchestrator personal story accepted — relaxation too broad"
+  elif echo "$WRK_ERR" | grep -q "exceeds parent scope"; then
+    pass "fleet slice under non-orchestrator personal story still refused (coherence — 'exceeds parent scope')"
+  else
+    fail "non-orchestrator fleet slice refused for an UNEXPECTED reason (not scope coherence): $(echo "$WRK_ERR" | head -c 120)"
+  fi
 else
-  pass "fleet slice under non-orchestrator personal story still refused (scope coherence)"
+  fail "psql connectivity pre-check failed — cannot distinguish policy refusal from DB-down"
 fi
 
 echo ""

@@ -13,7 +13,7 @@ What it asserts (all from raw output, no filtering of pass/fail):
        'fleet slice under orchestrator personal story stored scope=fleet'
        'fleet slice under non-orchestrator personal story still refused'
   2. The battery overall still reaches the expected pass count (pre-existing
-     baseline was 95; the 3 new checks bring it to 98).
+     baseline was 95; the 4 AC-L1-11c checks bring it to 99).
   3. The KNOWN pre-existing failure (unrelated, in baseline before v013) is
      still present and NAMED so a reader knows it is not this change:
        'blocked -> pending accepted'
@@ -42,9 +42,9 @@ ARTIFACT = REPO / ARTIFACT_REL
 PASS_MARKERS = [
     "orchestrator personal story created",
     "fleet slice under orchestrator personal story stored scope=fleet",
-    "fleet slice under non-orchestrator personal story still refused (scope coherence)",
+    "fleet slice under non-orchestrator personal story still refused",
 ]
-EXPECTED_PASS_COUNT = 98
+EXPECTED_PASS_COUNT = 99
 # The battery's ONLY failure in a healthy run is the KNOWN pre-existing
 # blocked→pending transition-matrix case (AC-L1-18, untouched by v013; present
 # in the pre-change baseline). We pin that there is exactly ONE ❌ line and that

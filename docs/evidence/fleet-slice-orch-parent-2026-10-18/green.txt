@@ -74,8 +74,8 @@ unit suite and writes raw output to the committed artifact. Its own output:
 $ env -u PYTHONPATH -u PYTHONHOME python3 tests/run_fleet_slice_orch_parent_repro.py --write-artifact --db tasks_fleetslice_repro
   ✅ battery contains: orchestrator personal story created
   ✅ battery contains: fleet slice under orchestrator personal story stored scope=fleet
-  ✅ battery contains: fleet slice under non-orchestrator personal story still refused (scope coherence)
-  ✅ battery pass count == 98 (got 98)
+  ✅ battery contains: fleet slice under non-orchestrator personal story still refused
+  ✅ battery pass count == 99 (got 99)
   ✅ known pre-existing failure still present: 'blocked → pending accepted'
   ✅ unit suite reports 64 passed
   ✅ deployed runner reports schema version 13 (no-op)

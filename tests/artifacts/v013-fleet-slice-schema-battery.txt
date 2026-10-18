@@ -1,8 +1,8 @@
 ===== schema battery: tests/test-tasks-schema.sh (raw) ====
 % b: rc=2
 % 
-═══ Setup: scratch DB tasks_fleetslice_repro2 ═══
-  created tasks_fleetslice_repro2
+═══ Setup: scratch DB tasks_fleetslice_repro5 ═══
+  created tasks_fleetslice_repro5
 
 ═══ AC-L1-1: Fresh DB → migrate.py applies v001–v004; schema exists ═══
   ✅ migrate.py applies migrations on fresh DB
@@ -23,7 +23,7 @@
   ✅ mycortex_reader has DML on tasks.tasks
 
 ═══ AC-L1-5: task_upsert — status→column derivation + completed_at ═══
-  ✅ task_upsert inserts (id=a7ba7fd9-54c5-4e6b-9218-e8120d159795)
+  ✅ task_upsert inserts (id=17886f3f-3bcb-4588-85ed-d74a1cdd2e31)
   ✅ pending → column='todo' (derived)
   ✅ pending → completed rejected (v005 matrix — must start first)
   ✅ completed → column='done' (derived)
@@ -65,16 +65,17 @@
   ✅ migration re-run is an idempotent no-op
 
 ═══ AC-L1-11: hierarchy — story/slice coherence + tenant checks ═══
-  ✅ story created (id=8a2533fa-8900-4b2d-99c1-33bfd534751e)
-  ✅ slice under story created (id=962422cd-aa0c-45a3-a88c-e380452bf7bb)
+  ✅ story created (id=214cb463-d0e7-4ea3-b8a8-5bf9c086b4c0)
+  ✅ slice under story created (id=564cef27-baab-49a3-815c-df4dccb30acd)
   ✅ slice without parent rejected (coherence CHECK)
   ✅ story with parent rejected (coherence CHECK)
   ✅ slice under slice rejected (tenant trigger: parent must be story)
   ✅ story delete blocked while slices exist (FK NO ACTION)
   ✅ legacy flat rows legal (kind NULL, n=3)
-  ✅ orchestrator personal story created (id=e61daeba-8dd3-4d36-b8d7-88db5a72e1ed)
+  ✅ orchestrator personal story created (id=06da8aae-0075-43fa-81fa-d41a2259ce7d)
   ✅ fleet slice under orchestrator personal story stored scope=fleet
-  ✅ fleet slice under non-orchestrator personal story still refused (scope coherence)
+  ✅ non-orchestrator personal story created (id=b0ebc728-a243-4b8c-8e75-6eec3380f359)
+  ✅ fleet slice under non-orchestrator personal story still refused (coherence — 'exceeds parent scope')
 
 ═══ AC-L1-12: paused status + switching arc ═══
   ✅ pending → paused rejected (matrix — must start first)
@@ -160,7 +161,7 @@ collected 64 items
 tests/test_task_db_unit.py ............................................. [ 70%]
 ...................                                                      [100%]
 
-============================== 64 passed in 4.11s ==============================
+============================== 64 passed in 4.22s ==============================
 ---
 run-tests.sh: interpreter=/home/moses/.hermes-cortex/venv/bin/python3 rc=0  (PYTHONPATH/PYTHONHOME unset for the run)
 
