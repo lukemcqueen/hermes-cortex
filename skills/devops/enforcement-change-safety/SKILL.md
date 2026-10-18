@@ -733,15 +733,21 @@ other conclude the system is broken. When touching either block message:
   confirm the PROCESS has it. A prior session's "needs a restart" note is a hypothesis,
   not evidence — a doc telling the next agent to wait for a restart it does not need is
   worse than no doc.
-- **The decisive check is TIME, and it needs no cooperation from the running process:** the
-  process's START must be at or after the DEPLOYED file's mtime. Resolve the deployed path from
-  the deploy manifest (`~/.hermes-cortex/deploy-manifest.tsv`) rather than guessing it, then
-  compare `ps -o lstart= -p $(pgrep -f <server>.py)` (or `etimes`) against `stat -c %y` (macOS: `stat -f %Sm)
-  <deployed>`. Start ≥ mtime ⇒ that process loaded the new revision; start < mtime ⇒ it did not,
-  and the banner is telling the truth. Re-run that comparison after every later deploy: a module
-  edited AFTER the last restart needs ANOTHER restart, so "verified loaded" is a property of a
-  moment, never of a host. Ship it as a scripted capture (module content parity + the process
-  start vs mtime) so the next agent proves it in one command instead of re-deriving it.
+- **The decisive check is CONTENT, not time.** A process's START against the deployed file's MTIME is
+  at best a HINT: a deploy rewrites files whose bytes did not change, so the mtime moves while a
+  CURRENT process reads as stale — measured, a deployed module's mtime advanced 2m41s past the daemon
+  start while its body was byte-identical to the repo source (`diff` empty after stripping the
+  provenance header). That false positive fires on every deploy and can only be "cleared" by a
+  restart that changes nothing. Compare what the process LOADED with what is on disk instead: the
+  loop-governance daemon writes a startup stamp (`~/.hermes-cortex/state/loop-gov-daemon.json`) with
+  its pid and the sha256 of its own module, and the doctor's `loop-gov daemon` check compares that
+  hash with the file's hash NOW. For a process that records nothing about itself, `ps -o lstart=` vs
+  the file's mtime is the FALLBACK — report it as COULD NOT VERIFY by content, never as proof.
+  Resolve the deployed path from the deploy manifest (`~/.hermes-cortex/deploy-manifest.tsv`) rather
+  than guessing it. Re-run after every later deploy: a module edited AFTER the last restart needs
+  ANOTHER restart, so "verified loaded" is a property of a moment, never of a host. Ship it as a
+  scripted capture (content parity + the process's own recorded hash) so the next agent proves it in
+  one command instead of re-deriving it.
 
 ## Rule 17: Essential Gates Are Event-Driven, Never Cron-Swept — and Fail Loud, Never Silent
 
