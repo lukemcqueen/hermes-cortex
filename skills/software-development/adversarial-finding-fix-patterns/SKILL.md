@@ -233,6 +233,30 @@ gap is not a finding; a confident guess is.
   reviewer can decide"). It is read as `evaluation-awareness` — output shaped for
   acceptance rather than correctness.
 
+### A finding can be confidently WRONG — measure before you "fix" code
+
+An LLM review finding is a judgement, and a judgement can be wrong. When one claims
+an idiom is broken — an `A && B || C` that "leaves `$?` always 0", a pattern that
+"can never trigger", a branch that is "dead" — probe the minimal case FIRST, before
+touching the code:
+
+```bash
+f() { return 3; }; out=$(f 2>&1) && rc=0 || rc=$?; echo "$rc"   # prints 3, not 0
+```
+
+- If the probe shows the code is CORRECT, do not edit working code to satisfy the
+  finding, and never write a commit message implying you fixed a bug that was never
+  there. This is the same discipline as the false-positive and inherited-baseline
+  patterns above: verify the claim, do not contort the code around it.
+- A false finding still BLOCKS the close, so there are two sanctioned ways forward.
+  Either record the measurement that refutes it as an issue and let the lock TTL out
+  (the documented exit for a demonstrably false finding), or — when the cycle must
+  land — rewrite the flagged line into the unambiguous form the reviewer can read
+  (`if out=$(cmd 2>&1); then rc=0; else rc=$?; fi`). Prove the rewrite
+  SEMANTICS-PRESERVING by running BOTH forms, and label it a CLARITY change in the
+  commit body, naming the false claim and the measurement. The next reader must not
+  be left concluding the old code was broken.
+
 ### A FINDINGS verdict is per cycle — re-review, do not override
 
 The verdict is stored under a UNIQUE cycle id, so FINDINGS is otherwise
@@ -258,6 +282,109 @@ practice:
   the material it judged (note + diff) and reuse it while that material is
   unchanged; a verdict with no or mismatched fingerprint must be re-judged, so a
   CLEAN can never be carried over a later, unreviewed change.
+
+### The gate judges CLAIMS — an ask is INJECTION, so it cannot be a design service
+
+This gate reviews a diff and the claims made about it. It is **not** a design
+review, and the operator's standing rule ("have a strong model review the plan
+before building") cannot be satisfied by pointing it at prose. Measured both
+ways on the same material:
+
+- Submit a question or an instruction — "Judge the CODE below", "Identify the
+  GAPS and the smallest changes" — and the framing is filed as **`injection` at
+  high**, and the reviewer explicitly declines to engage with the substance.
+- Submit the same content as claims only, and it returns **CLEAN**, because
+  there is nothing about a diff to judge; it also volunteers that it cannot see
+  files outside its window even when you cite them by path and line.
+
+So: put the payload in the diff (code under review plus real artifacts) and
+keep the instruction to a sentence about what changed. For a genuine DESIGN
+review, use an independent reviewer outside this gate — a delegated subagent
+panel (see `subagent-architecture-party`), which can be handed the extracted
+code and asked to attack it — and label its output advisory: it authorises
+nothing, and the push receipt still comes from this gate.
+
+### Per-blob findings live in a DIFFERENT store from the cycle verdict
+
+The per-blob pass writes each verdict into `blob_reviews`, **keyed by blob sha**.
+The cycle-level verdict lives in `adversarial_reviews`, **keyed by cycle id** —
+and that is the table `rereview_change` reads. When a close is refused on a
+per-blob pass, the second row must exist too, or the two stores disagree about
+whether the decision happened at all and the documented re-review exit answers
+"this cycle has no recorded review — nothing to re-review". The same defect
+makes the judge invisible: if the per-blob writer does not pass the model, every
+row reads back with an empty `reviewer_model` and nothing in the record says
+which model produced a verdict.
+
+When a refusal says "N blob(s) of the push range still carry no review verdict"
+(or names per-blob findings) rather than quoting a range verdict, check the
+CYCLE store before assuming re-review is available:
+
+```bash
+# read-only; the store is sqlite even when the CLI is absent
+python3 -c "import sqlite3,os; c=sqlite3.connect('file:'+os.path.expanduser('~/.hermes-cortex/data/loop-governance.db')+'?mode=ro',uri=True); print(c.execute('SELECT cycle_id,verdict,reviewer_model FROM adversarial_reviews ORDER BY cycle_id DESC LIMIT 5').fetchall())"
+```
+
+A cycle whose blob verdicts exist but whose cycle row is missing cannot be
+re-reviewed; write the cycle verdict on the per-blob refusal path itself, with
+replacement semantics so a re-judge keeps exactly ONE verdict per cycle.
+
+### Keep GENERATED output out of the review range
+
+A committed generated report — a test-suite transcript, a coverage dump, a
+regenerated manifest — becomes a blob in every range that regenerates it. The
+reviewer then judges the REPORT: it files findings about failures in files the
+change never touched, and the push is blocked on output rather than on the
+change. Teaching the report to attribute its own failures does not fix it; the
+reviewer still refuses, because the artifact's summary says FAILURES while the
+task claimed a working change.
+
+Keep such files ignored and untracked, produced on every run and read by
+documentation (`docs/evidence/**` is shown whole and outside the material
+budget), and let the committed GUARD be what the review judges. This is not a
+relaxation of the gate — the same reviewer still reads the same range; it simply
+stops reading your build output as if it were your change.
+
+### After fixing a bug CLASS, dispatch a review that ENUMERATES the class — and one that attacks your TESTS
+
+A confirmation-shaped prompt ("is this fix good?") returns confirmation. Two prompt shapes return
+findings that a self-review structurally cannot produce, and both are worth one dispatch each:
+
+- **Class closure, not instance verification.** "Prove whether the CLASS is closed, not just the
+  instance: enumerate every remaining path to <bad state>, with the exact sequence, file:line and the
+  minimal fix for each." Answering it requires walking every entry point, and it finds the sibling
+  function the fix commit did not touch — the same defect class usually has a second copy in a path the
+  bug report never mentioned.
+- **Adversarial review of your OWN test files.** "Find assertions that cannot fail, missing edge cases,
+  ambient-state dependence, leaked state, and anything that would still pass if the fix were reverted."
+  The vacuous pass is the commonest defect in a fresh guardian test — a test that returns instead of
+  asserting, or a check that passes when its prerequisite is missing. Ask the revert question explicitly:
+  it separates genuine regression discriminators from sanity checks that would pass on the old code.
+
+Both are advisory: the reviewer's PROPOSED MECHANISM can be wrong while the gap it points at is real.
+Take the gap, verify the mechanism yourself, and record a measured false positive (with the quoted code)
+rather than editing working code to satisfy a wrong claim.
+
+### A failing GUARD is usually right — fix the product, and satisfy its INTENT not its letter
+
+A guardian test that fails after your change is reporting the property you were supposed to preserve,
+not an obstacle. Never edit the guard to match your implementation, and do not satisfy it by
+RENAMING the thing it forbids: a guard asserting an attribute is ABSENT (`not hasattr(mod, X)`) still
+fails if you keep the name and point it at the correct value — and that second name is exactly where
+the wrong value creeps back. Remove the name and read the good value directly, so the property holds
+by construction rather than by two constants someone must keep in step. Then re-run the guard and say
+so in the commit body: a guard that was right about your own fix is worth quoting.
+
+### Correcting a record a later measurement proved wrong
+
+An issue/event record that a later measurement refutes must be CORRECTED, not deleted and not left
+standing — a wrong record reads as authoritative to every later session, including the reviewer you
+are about to hand the same material to. Mark it in place: prepend a `[SUPERSEDED — <one-line reason>]`
+marker, state the refuting measurement with the command or query that produced it, and keep the
+ORIGINAL text verbatim beneath a clear divider for audit. Then READ THE ROW BACK and quote its new
+head in your delivery — an update you did not read back is a claim about a write, not a write. This
+is the durable version of "record a measured false positive": the record is what the next session
+actually trusts.
 
 Full pass-off contract: `docs/runbooks/adversarial-review-passoff.md`.
 

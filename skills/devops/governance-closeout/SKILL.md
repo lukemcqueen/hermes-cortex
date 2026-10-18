@@ -147,13 +147,20 @@ keep one implementation), but process, prompt and trigger are what carry
 independence, and a name that hides the difference invites breaking it.
 **Resolve the reviewer's MODEL in one place, and state what the tier does to it.** ONE
 resolution must feed both the caller and the recorder, so what RUNS and what is WRITTEN
-DOWN cannot diverge — a stored row naming a model nobody chose is a record that cannot be
-used to notice drift. The depth tier is a deliberate operator cost decision: a complex
-change that is neither an always-review surface nor far above the thresholds may be judged
-by a cheaper model, and that is a DEPTH decision (say so where it lives) rather than a
-transport one. Keep the always-review class on the deep model — a cheap judge is a weaker
-judge, so if the cheap tier ever waves something through, move that CLASS back up instead of
-trusting the tier more.
+DOWN cannot diverge. The depth tier decides TRANSPORT and how long the gate waits — **never
+WHO JUDGES**: a cheap judge is a weaker judge, and the light tier is the CATCH-ALL (every
+complex change that is not an always-review surface or unusually large), so a cheaper model
+there silently judges ORDINARY work, not merely risky work. A downgrade is therefore an
+explicit operator decision recorded in the environment (`ADVERSARIAL_REVIEW_LIGHT_MODEL`),
+never a default; if the cheap tier ever waves something through, move that CLASS back up
+instead of trusting the tier more.
+**And make the judge READABLE, or the default cannot be checked.** Every recorded verdict
+must name the model that produced it — the per-blob store ships the column and the writer
+already accepts it, so a call site that passes neither leaves every row blank and a wrong
+default survives indefinitely, because no query can show what judged a blob. When you change
+a reviewer default, verify it in the RECORD (a stored row naming the model), never in the
+constant; and a blocking verdict's judge matters most of all, because that is the finding a
+worker has to contest.
 **Verify the WIRING, not the constant.** A helper that returns the cheap model proves
 nothing about what the gate RUNS. Assert through the DISPATCH, with the configured backend
 set to its DEFAULT, that a light change actually reaches the cheap model: a condition that
@@ -918,6 +925,23 @@ as `.txt` mean the ignored `.log` was the wrong filename, not a missing ignore r
   terminal task holds nothing"* and releases the file immediately, because `_release_lock` does not
   consult repo identity. `cancelled` is reachable straight from `executing`, so there is no need to
   park a cycle you cannot close — parking it is how a stuck cycle becomes a stuck repo.
+- **A tool that RENAMES the lock's task must create that task's cycle FIRST — and fail
+  closed if it cannot.** An interruption suspends the parent and rewrites the lock's
+  `task_id` to `<parent>_subN`; with no cycle created for the new id, the session holds a
+  LIVE lock that nothing can score: `end_change` refuses (*"no governance cycle found for
+  this task"*), `begin_change` refuses (*"a governance session is already active … use
+  force=True"*), `feedback_accept` finds no PENDING cycle, and `resume_from_interrupt`
+  answers *"No active governance lock"* while the lock file is live. The instruction inside
+  the first refusal — that a cycle *"must be created via any write tool under this lock"* —
+  is FALSE as shipped: writes made under that lock create nothing, because cycles come from
+  `begin_change`. The only exit the system names is the override the operator rejects, so an
+  operator-directed interruption could be neither closed, superseded, nor resumed. Two
+  durable rules: (1) ONE shared create path, called by every entry point that starts a task,
+  ordered BEFORE the lock is written so a failed write cannot leave a task with no scorable
+  cycle; (2) if the cycle cannot be created, REFUSE the operation rather than half-create it
+  — a refused interruption costs a retry, a lock with no scorable cycle costs the session.
+  Diagnose the state from the lock's own `task_id` and query cycles for THAT id, not for the
+  session.
 - **`check_lock` can say `active: false` while `begin_change` refuses with "a governance
   session is already active".** They read different things — the session/lock registry vs
   the lock file — so a lock the reaper has already reaped, or a session whose TTL has not

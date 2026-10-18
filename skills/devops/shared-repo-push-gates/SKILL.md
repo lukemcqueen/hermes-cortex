@@ -37,11 +37,6 @@ reads as authoritative. Only a gateway restart replaces it, and you cannot resta
 inside it. `ops/scripts/loop-gov.py` is NOT a substitute: it resolves its own session id and answers
 "No governance session active".
 
-**Skill edits do not reach the repo by themselves.** `skill_manage` writes the DEPLOYED tree
-(`~/.hermes-cortex/skills/...`), which is what agents load — the repo copy is untouched, so a lesson
-that is not explicitly committed and pushed stays on one host. Verify with
-`diff skills/... ~/.hermes-cortex/skills/...` and commit the repo side yourself.
-
 The shared fleet repo enforces commit/push gates. Know how they behave
 BEFORE pushing — most rejections are environmental (another session's
 working tree), not a problem with your diff.
@@ -412,7 +407,11 @@ does not apply.
    `✅ DOGFOOD PASSED`, the deploy is clean and the push succeeds on retry.
    - **A `❌ Deploy sync` with NO code change you can account for is usually
      SKILL DRIFT: a deployed skill copy is newer than its repo source, because
-     `skill_manage` writes only the deployed copy.** The deploy's own
+     `skill_manage` writes ONLY the deployed copy (`~/.hermes-cortex/skills/...`) and leaves the repo
+     file untouched — so a lesson that is not copied back and committed stays on one host, and a commit
+     message claiming it rode along is false while the diff shows nothing. Verify with
+     `diff skills/<cat>/<name>/SKILL.md ~/.hermes-cortex/skills/<cat>/<name>/SKILL.md` before believing
+     a lesson shipped.** The deploy's own
      `⚠ SKILL DRIFT: <skill>` warning is the tell, and the cure is to `cp` the
      deployed SKILL.md back to `skills/<cat>/<name>/SKILL.md` and commit it
      BEFORE the deploy+push — never to re-deploy on top of it. Symptom, fix and

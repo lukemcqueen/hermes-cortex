@@ -335,6 +335,12 @@ so the test silently tests the wrong path. Compute from the actual script
 path (`SCRIPT=/abs/path/script.sh; dirname "$SCRIPT"`) or run the script
 itself.
 
+**Assert the depth from the script's own test.** Copy the real script into a
+fabricated repo tree (`<tmp>/ops/scripts/lib/<name>.sh` plus stub
+prerequisites) and run it there: a root resolved one level short immediately
+builds paths like `<tmp>/ops/ops/install/requirements.txt` and fails, instead
+of surviving to a peer host where the doubled segment is the only symptom.
+
 ## `: "${VAR:-$HOME}"` Validates but Does NOT Assign
 
 A bare `:` with parameter expansion is a validate-only idiom — it expands
@@ -508,6 +514,25 @@ sed 's/^/deny /; s/$/;/' "$NEW_IPS" >> "$BLOCK_FILE"
 
 **Cost for a 2000-line file:** 5 process spawns total + O(n) file scan for dedup ≈ < 1 second.
 
+### Bound the ITEM COUNT, not just the per-item cost
+
+Replacing a loop with a pipeline fixes the cost PER ITEM; it does nothing about an UNBOUNDED item
+list. A step that runs one command per entry (a `git diff` per changed path, a probe per row, a
+`stat` per file) is fine at five items and takes minutes at a thousand — and the list is usually
+not yours to bound: a push range, a directory listing, a remote's file list, a table's row count.
+Cap it explicitly and say so:
+
+```bash
+MAX_ITEMS=20
+for p in "${items[@]:0:$MAX_ITEMS}"; do ... done   # and disclose "checked N of M"
+```
+
+Two rules that keep the bound honest: the cap must be DISCLOSED in the output (a silent truncation
+reads as coverage of everything), and the branch that consumes the capped list must be ADVISORY — a
+scan that can only see the first N items must never be the thing that authorises or blocks an
+action. A bound is a product decision, not an optimisation: if the full list really must be
+processed, batch it into ONE command instead of enlarging N.
+
 ### When to Apply
 
 | Signal | Replacement |
@@ -674,6 +699,26 @@ exit 3
   Report the declaration as a HOST FACT in the doctor (path + a clean-env import check), so "which
   python does this host use?" is one line instead of a re-derived path.
 
+**Resolving an interpreter is half the job — commit the CREATE step too.** A capability resolver
+finds a dependency that ALREADY exists somewhere; if nothing in the repo provisions it, the resolver
+is correct on the one host where somebody built it by hand and silently degrades everywhere else
+(every file needing that capability then reports NOT RUN, which reads as a clean run). So pair every
+resolver with a committed, deploy-registered other half:
+
+- a command that CREATES what the resolver looks for — idempotent **by import**, not by metadata or
+  by an installer's exit code — running the repo's DECLARED dependency set, the canonical venv, and
+  the repo's supply-chain age gate;
+- an exit-code contract that keeps the outcomes apart: `0` usable (print the interpreter path on
+  stdout), `1` refused or installed-but-still-unusable, `3` COULD NOT VERIFY (a prerequisite is
+  missing);
+- the resolver's failure branch NAMING that command, never just "install X" — a hint that names a
+  command the peer host does not have has only moved the gap.
+
+Drive its branches against a FABRICATED repo tree (a copy of the real script beside stub
+prerequisites, `HOME` redirected to a temp dir) so the age-gate-refused, unusable-install and
+missing-prerequisite paths are exercised on any host. That an age gate ran BEFORE the installer is
+provable only from the installer stub's own log — source order is not evidence.
+
 **Prefer the CORTEX venv (`~/.hermes-cortex/venv/bin/python3`) — it is the venv the fleet runs
 its services with** (`cortex-update.sh` registers every MCP server against it). The Hermes venv
 is a last resort: fleet tooling should not depend on the tree we are migrating away from.
@@ -771,7 +816,9 @@ a test so it cannot creep back:
 
 ```
 bash 4 only : declare -A, mapfile, readarray, local -n, ${var,,}, ${var^^}, &>>
-GNU only    : readlink -f, date -d, grep -P, sed -i without a suffix, sha256sum (macOS: shasum -a 256)
+GNU only    : readlink -f, date -d, grep -P, sed -i without a suffix, sha256sum (macOS: shasum -a 256),
+              timeout (macOS: gtimeout — never call `timeout` unconditionally: the script then does not
+              run AT ALL on macOS, rather than degrading)
 ```
 
 Also assert the shebang is `#!/usr/bin/env bash` (a hardcoded `/bin/bash` is the other portability
@@ -788,8 +835,35 @@ and these are exactly the branches that only run where you are not.
 silently picks a different interpreter makes the run look identical while a different program decides
 — it "passes", against the wrong thing. Print which path was used and why the first choice was
 skipped (`note: no repo resolver at …; falling back to …`). This matters most when the fallback is the
-branch a test was meant to stub: a silent fallback let a stub test exercise the REAL resolver and
-report success, which is how the missing announcement was found.
+fallback is the branch a test was meant to stub: a silent fallback let a stub test exercise the REAL
+resolver and report success, which is how the missing announcement was found.
+
+**Prove the BRANCH was taken, not just that the script ran.** Driving a constructed environment is
+evidence only if the fallback really is the branch under test, and the usual failure is SILENT: a
+shim placed first on `PATH` still loses to the real binary, so the run exercises the very path it was
+meant to avoid and reports green. Assert the precondition in the same recipe:
+
+```bash
+d=/tmp/shim; rm -rf "$d"; mkdir -p "$d"
+for t in bash sh git python3 mktemp rm dirname basename; do ln -s "$(command -v $t)" "$d/$t"; done
+printf '#!/bin/sh\nexec /usr/bin/timeout "$@"\n' > "$d/gtimeout"; chmod +x "$d/gtimeout"
+env PATH="$d" bash -c 'command -v timeout || echo NO-timeout'   # MUST print NO-timeout
+env PATH="$d" bash ./script.sh <args>                            # now the fallback IS the branch
+```
+
+Two rules make it honest. The narrowed `PATH` must ALSO carry the tools the script itself needs
+(dropping one makes it fail for an unrelated reason — a different finding wearing the same red), and
+the recipe belongs BESIDE the claim, with the claim scoped to what it proves: "the fallback branch
+works" is provable this way on any host; "it works on macOS" is NOT, and asserting that from a Linux
+run is the over-claim a reviewer will file. State the un-run platform as unverified rather than
+covered by a shim.
+
+**An exit-code comparison must pre-check every binary the wrapper invokes.** A loop that runs
+`timeout N python3 <file>` with its output discarded turns a MISSING interpreter into exit 126/127,
+which the caller then reads as the file's OWN result — so two shell errors get compared and reported
+as agreement or as a difference. Resolve both the timeout binary and the interpreter up front and
+refuse loudly when either is absent (`exit 2`, named); then every code the loop sees can only have
+come from the payload, and "no difference" means something.
 
 **A shared guard must not encode one repo's NUMBERS.** A collection guard asserting "more than 1000
 tests" was true only of the repo it was written in; in a smaller or unrelated repo it fails a HEALTHY
@@ -1004,6 +1078,8 @@ Before shipping changes to installer scripts (`install-crons.sh`, `setup.sh`, et
 | `\$` in double-quoted strings | Literal string `$HOME` passed instead of expanded path | Remove `\` before `$`: `"$HOME"` not `"\$HOME"` |
 | Bare `if` in mawk | `awk: line 2: syntax error at or near if` on Ubuntu | Wrap awk body in `{ }` |
 | Missing `timeout` on macOS | `command not found: timeout` | Fall back to `gtimeout`, then no timeout |
+| **`A && B \|\| C` — the `$?` seen by `C` is the FAILED command's status, not the assignment's** | A review or an agent reads the one-liner as "always 0, so the guard is dead" and rewrites working code | `f() { return 3; }; out=$(f 2>&1) && r=0 \|\| r=$?; echo $r` prints `3`. TEST the idiom before editing code a claim contradicts; an explicit `if/else` rewrite is fine as a clarity change, but call it that instead of a bug fix |
+| **A wrapper's exit code read as the payload's** | `timeout N python3 file` with output discarded: a missing interpreter returns 126/127, which the tooling reports as the test's own result | Resolve the timeout binary AND the interpreter before the loop, refuse loudly if either is absent, then the codes can only be the payload's |
 | `grep -P` on macOS | `grep: invalid option -- P` | macOS grep doesn't support Perl regex; use `grep -E` or install `ggrep` |
 | **BRE `\|` alternation on macOS** | Filter silently matches NOTHING on BSD grep — exclusions never apply, binary bytes reach scanners (pre-commit-score image filter, 2026-08-12) | Use `grep -E` ERE alternation `(a|b)` — POSIX, works on GNU + BSD |
 | **Per-item loop with grep inside** | Script takes minutes for 2000 items | Replace with batch pipeline — 5 grep calls total |

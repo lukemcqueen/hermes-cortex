@@ -31,12 +31,36 @@ Load this before end_change() on any script, deploy-config, cron, shared-doc, or
       ALWAYS review your plan before building"*. Submit it through the GOVERNED path
       (`ops/scripts/orch-bus/adversarial-review.py --cycle-id <new-cycle> --material <plan>
       --review --reviewer-id <id>`), which records a row, then act on its findings before coding.
+      **`--material` is the material TEXT, not a path — pass the CONTENT (`--material
+      "$(cat <plan>)"`).** Hand it a filename and the reviewer receives that filename and
+      nothing else: it reports that there is nothing to evaluate, records `CLEAN` with a single
+      `info` finding quoting the path back, and the script still exits 0. That row is a review
+      that judged NOTHING, and it is indistinguishable from a pass until you read the stored
+      `summary` — the exact shape of a "reviewed CLEAN" claim built on no review. Before
+      treated as a review, read the row back and confirm its summary describes
+      judging content (`governance-closeout` has the vacuity check and the store path).
+      **It is a FINDINGS gate, not a design service — expect no prose proposal even when you
+      asked for one.** What comes back IS the spec: name the seam that owns the decision, the exact
+      result shape, the threshold — so put the CODE MAP (`file:function:line`), the hard
+      constraints and the options you already rejected INTO the material, and its findings arrive
+      as actionable requirements instead of `unverified-claim`. A request that states the problem
+      and asks for a design without that context gets told its own claims are unsupported.
       Include the material it must judge — the source, the tests, the measured output — because a
       plan submitted as prose comes back as nothing but `unverified-claim` findings; that is the
       reviewer working correctly, not a reason to re-run it. Expect it to CUT scope: obey the cut
       instead of defending the step (a planned documentation edit was refused as "notes instead of
       controls" — the operator's own standing objection).
-- [ ] **Name the cycle for the diff it will CONTAIN, not the instruction that started it.** A task id that under-describes the work fails the close on scope drift no matter how good the evidence is: the reviewer sees the real range and refuses a cycle whose name does not cover it. An instructed next step ("pull latest and update", then a follow-on reconciliation the update itself demanded) belongs in its OWN correctly-named cycle — do not fold a derived deliverable into the parent's cycle. Check before begin_change: does `<task_id>` describe every path the range will touch? If not, split it. (Cost of getting this wrong: cycle 12012 was refused four times and held a 60-minute TTL wait; the identical work closed CLEAN on the first attempt under a correctly-named cycle.) Recovery for an already mis-framed cycle: retire it through the state machine (`advance_task_state` → `cancelled`, reason logged, no override) and open a correctly-named one — never `force`/override.
+      **Never phrase the material as a REQUEST — an imperative addressed to the reviewer is filed
+      as a HIGH `injection` finding.** "Judge the CODE below", "Identify the gaps and the smallest
+      changes": the reviewer's input is DATA, so any ask reads as an attempt to redirect it, and the
+      whole submission is refused without engagement. The identical material with no ask comes back
+      CLEAN while saying nothing, because there is nothing to falsify. Read that pair as the gate's
+      actual contract: it answers *"are these claims sound?"*, never *"what should I build?"*. For a
+      genuine design or architecture question, hand `subagent-architecture-party` the measured facts
+      and a `file:function:line` map and let its roles attack the design — do not invent a third
+      review channel, and do not keep re-phrasing the same ask at the governed gate.
+- [ ] **Name the cycle for the diff it will CONTAIN, not the instruction that started it.** A task id that under-describes the work fails the close on scope drift no matter how good the evidence is: the reviewer sees the real range and refuses a cycle whose name does not cover it. An instructed next step ("pull latest and update", then a follow-on reconciliation the update itself demanded) belongs in its OWN correctly-named cycle — do not fold a derived deliverable into the parent's cycle.      Check before begin_change: does `<task_id>` describe every path the range will touch? If not, split it. (Cost of getting this wrong: cycle 12012 was refused four times and held a 60-minute TTL wait; the identical work closed CLEAN on the first attempt under a correctly-named cycle.) Recovery for an already mis-framed cycle: retire it through the state machine (`advance_task_state` → `cancelled`, reason logged, no override) and open a correctly-named one — never `force`/override.
+- [ ] **Size the range so the CLOSE review can read it, and decide that before the last commit.** A wide range (measured: 8 files / 381 lines) exhausts a reasoning reviewer's output budget — it returns no usable content at `max_tokens=48000` and again at `96000` — and raising the cap does not help, because that budget pays for thinking and answer together. Narrow ranges close normally, so plan the work as reviewable slices up front; once every commit exists, no new cycle can cover them and re-slicing means rewriting your own history. **A wide range is no longer a dead end**: an unfinished whole-range review RE-ROUTES to a per-blob pass (verdicts cached by blob CONTENT, bounded per close by a blob cap and a wall-clock budget), so the range closes over SEVERAL attempts with each attempt continuing from the cache. Drive that with a loop whose stop condition is a receipt for the CURRENT tip instead of treating the first partial pass as a blocker — and expect the partial pass to REPORT the coverage it did not reach rather than judge nothing. Sizing remains the cheap lever: the fallback costs several close rounds on a slow reviewer.
 - [ ] Foreign working-tree check — `git status --short` says WHAT is staged (column 1) vs unstaged (column 2), **never WHO staged it**. Do not infer a concurrent peer from that shape: establish authorship first (`git log --oneline -3 -- <path>`, `git log -1 --format='%an %ae'`, `git reflog`). When you are the only writer on the host — the normal single-agent case — staged-but-uncommitted work is YOUR stranded work from an earlier session: land it in its own correctly-named cycle, or discard it deliberately, but never route around it and never write "another session" into a commit message on that assumption. For genuinely concurrent writers: coordinate, and never stash/clean/commit a peer's files (SOUL P9).
 - [ ] search_files() for the old name/term across the whole repo.
 - [ ] Live cron prompts — grep ~/.hermes/cron/jobs.json for the old term; source edits don't rewrite existing jobs — update each hit via cronjob action='update'.
@@ -54,8 +78,17 @@ Load this before end_change() on any script, deploy-config, cron, shared-doc, or
 
 - [ ] Scripts — run with real inputs, verify real output. ⚠️ DOGFOOD (enforced): the deployed copy must run its real scheduler invocation — cortex-update.sh then cronjob action='run' job_id=<id>. Manual python3 script.py does NOT update the scheduler's last_status (the doctor reads scheduler status). Run the full command, not an imported function.
 - [ ] Config — diff generated vs deployed; only intended changes.
-- [ ] Syntax — .sh bash -n; .py py_compile; .yaml yaml.safe_load (hook catches staged files; verify unstaged too).
+- [ ] Syntax — .sh bash -n; .py py_compile; .yaml yaml.safe_load (hook catches staged files; verify unstaged too). **A patch tool that reported a NON-EXACT match has verified nothing by definition** — a fuzzy match can drop a keyword or the quoting around a block (each `echo "…"` line collapsing to bare text, which then parses as a command) while still reporting success, so re-read the returned diff and run the syntax check for that file in the same step rather than at the end of the task.
 - [ ] nginx — sudo nginx -t.
+- [ ] **Run the sibling tests that exercise the seams you CHANGED — a green regression harness does
+      not cover them.** A curated harness runs its own file list, so an older test that drives a
+      helper whose signature, verdict writer or contract you moved can be left RED while the harness
+      everyone trusts stays green. Grep the test tree for the symbols you touched
+      (`rg -l "<function>" tests/`) and run those files in the same step as the syntax check. Then,
+      before blaming your change, prove pre-existence: run the failing file at the RANGE BASE in a
+      worktree (`git worktree add <dir> $(git merge-base origin/main HEAD)`) — an identical exit code
+      there means it predates you, and a red test nobody runs is a finding to RECORD, not a
+      regression to absorb or quietly fix inside someone else's cycle.
 
 ## Phase 1.5: Adversarial Verification (MANDATORY — no bypass)
 
@@ -66,7 +99,15 @@ Enforced at 3 layers: pre-commit hook (static gate), enforcer (blocks commit unt
       moment your own commit lands — HEAD then IS the change, so the comparison can never be
       re-run and the reviewer correctly refuses it. Record the baseline SHA and the tip SHA in the
       evidence and the cycle note; re-running the tool against those two revisions must reproduce the
-      counts exactly. **Quote only numbers a COMMITTED artifact prints** — a count read off a live
+      counts exactly. **Resolve the baseline as the RANGE BASE — `git merge-base origin/main HEAD` —
+      never a relative `HEAD~1`.** A relative base is right only until the next commit of your own
+      lands; after that the "before" side already contains half the fix and the comparison silently
+      stops testing what it claims (regenerating the artifact then compares a revision with ITSELF).
+      Print the resolved sha in the artifact so a reader can re-run it. **And a committed artifact
+      that reports FAILING items must ATTRIBUTE them**: re-run each failing item at the range base
+      with the SAME runner and print both exit codes beside a verdict (`REPRODUCED` / `DIFFERS` /
+      `COULD NOT VERIFY`), because a bare failure list says nothing about whether the range caused
+      it and is filed as unverified-claim. **Quote only numbers a COMMITTED artifact prints** — a count read off a live
       tool run and never committed is itself an unverified claim, and it is filed as one at HIGH even
       though the run really happened: the reviewer reads the diff and cannot see your terminal. Before
       writing a before/after into a note, commit the capture that shows BOTH sides. When a committed
@@ -140,7 +181,13 @@ Enforced at 3 layers: pre-commit hook (static gate), enforcer (blocks commit unt
       run) or load a COPY with the entrypoint stripped. Then verify the fix in both directions: an
       import changes nothing, and running the file still does the work (redirect HOME/CORTEX_HOME in
       a subprocess and assert the effect landed THERE). Import-must-be-inert is the same rule as
-      read-only evidence, applied to the module instead of the tool.
+      read-only evidence, applied to the module instead of the tool. **A COMMENT claiming inertness
+      is not evidence — assert it, and expect the assertion to refute the comment.** Run the import
+      under a redirected HOME and assert on EXACTLY what may appear there (the module's own log file
+      plus the directories leading to it, and nothing on the store/state side): an `# inert on
+      import: the work is behind __main__` note beside a bare `exec_module` is a claim to check, and
+      a module that writes its log at import is normal — the artifact should carry the true, narrower
+      statement rather than the tidy one.
 - [ ] **An outbound call you make from a scratch script is outside the audited tool path — say so.**
       Calling a model endpoint (a review, a summary, a classification) from a helper under the
       scratch dir does not appear in the enforcer's log, because the enforcer audits TOOL CALLS and
@@ -176,6 +223,12 @@ Enforced at 3 layers: pre-commit hook (static gate), enforcer (blocks commit unt
       fabrication the moment the output beside it contradicts it — the same artifact it described
       exited 1 in that very block. State PROVENANCE instead: what produced the file, which
       revisions it compares, which fields are volatile by design.
+      **The same binds a SECTION HEADING, and that is the sharper case.** Rewriting a section's
+      body to report a measured branch while its title keeps asserting the old conclusion is
+      filed as fabrication: the heading is the reader's first impression and the output that
+      disproves it sits two lines below. When a section becomes a COMPARISON ("does the running
+      process carry this change?"), retitle it to name the comparison — never the outcome it used
+      to claim — and let the branch print the verdict.
 - [ ] **A silent-bail bug class comes in PAIRS — grep the siblings.** When a fix starts passing a
       resolved value (a lock, a session, a repo) into one helper, grep every call site of the bare
       lookup it replaced: the refusal-marker writer one function away had the identical
@@ -192,7 +245,12 @@ Enforced at 3 layers: pre-commit hook (static gate), enforcer (blocks commit unt
       ASSERTED against the source, so an exemption cannot rot into a false one when the gate moves.
       Expect the sweep to earn its keep immediately — the first run failed on an exemption whose
       claimed gate phrase was wrong, which forced reading the real gate instead of trusting the
-      claim.
+      claim. **Place the sweep's action where every path CONVERGES, and pin it with a DYNAMIC test.**
+      When the class is a set of EXITS (every branch that finishes the task), wire the paired action
+      at the single point they all funnel through rather than at each exit — an exit added later
+      then cannot skip it — and drive the decisions with injected collaborators, observing the call,
+      because a test that only PARSES the source to prove the call exists verifies no behaviour and
+      is filed as scope drift. The source check supplements that test; it never replaces it.
 - [ ] **A piped `rc=$?` is the LAST stage's status, so regenerate an artifact rather than
       hand-patching it.** `cmd | tail -1; echo rc=$?` prints the tail's 0, which can put
       `rc=0` directly beneath a failure and read as a contradiction: run the command bare, or
@@ -200,6 +258,26 @@ Enforced at 3 layers: pre-commit hook (static gate), enforcer (blocks commit unt
       removed. Piecemeal edits to a generated transcript (a path fix, a number) soon leave
       values that no longer match the command above them — re-run the generator and re-read
       its output; normalize host paths to `~` there, not in the committed copy.
+      **The same swallow has two more shapes, and a reviewer files both as swallowed errors.**
+      (a) A FALLBACK: `cmd || echo "(none found)"; echo "rc=$?"` prints the ECHO's status, so the
+      command's own failure path reports success — capture the status first
+      (`cmd; RC=$?`), then print the fallback only when `RC` is non-zero.
+      (b) A LOOP: a `for`/`while` body ending in `printf` makes the trailing `rc=$?` printf's, so
+      every inner command is unchecked — track the WORST status inside the loop and print THAT,
+      and say in the artifact what the number means (`1` = a symbol was absent, `2` = the file
+      could not be read). A claim of the form "X started after the deploy" is the same defect in
+      prose: make it an assertion that COMPUTES the comparison and carries its own rc, instead of
+      a comment sitting beside a timestamp the reader has to interpret.
+- [ ] **Point a probe at the copy the artifact is ABOUT — deployed, not repo.** A transcript that
+      resolves a store or module through the REPO path while its neighbouring section checks the
+      DEPLOYED path proves nothing about what actually runs, and the inconsistency is visible in
+      the diff. Pass the deployed path in (an env var such as `MODPATH=<deployed copy>`) and print
+      which copy was used, so the two sections cannot disagree silently. When the store the probe
+      reads is too large for the execution guard to scan, do not name it by path at all: resolve it
+      through the component's own accessor (`mod.LOOP_DB`, the shipped path helper) and open it
+      read-only (`sqlite3.connect('file:…?mode=ro', uri=True)`) — the accessor is both the
+      sanctioned route and the one that runs, since a script naming a file the guard cannot scan is
+      refused execution outright.
 - [ ] **Never commit a query's output without first seeing it return rows.** Proof of a
       disposition ("recorded as this issue", "promoted to a task") must be the store's ACTUAL
       row: run the query, confirm it returns the row, then commit that. Commit a traceback or an
@@ -410,7 +488,13 @@ Enforced at 3 layers: pre-commit hook (static gate), enforcer (blocks commit unt
       (✅ Crons registered / Orch crons / Crons total). Record its EXIT CODE and warning count,
       not just the ✅ lines: a non-zero rc with warnings is NOT a clean doctor, and reporting it
       as one is the failure the close review catches.
-- [ ] Governance scored — feedback_accept() before end_change().
+- [ ] Governance scored — feedback_accept() before end_change(). **When the close is driven by a
+      retry loop (a wide range closes over several rounds), SCORE BEFORE STARTING THAT LOOP.**
+      Launching it in the same turn as `feedback_accept` races: the rounds execute first and each
+      refuses instantly with "this task's cycle is NOT scored", so the loop spends every attempt on
+      the race instead of the review. Score, then launch — and note the record cannot settle the
+      ordering afterwards, because a cycle row's `timestamp` is its CREATION time (the scoring
+      UPDATE does not touch it).
 - [ ] **Commit the EVIDENCE artifact BEFORE you close — never after the refusal.** The close
       reviewer reads the DIFF, not your close note: any load-bearing claim that lives only in
       the note ("6 passed", "A4 GATE_PASSED", "no peer locks exist", "the push succeeded") is
@@ -420,6 +504,16 @@ Enforced at 3 layers: pre-commit hook (static gate), enforcer (blocks commit unt
       `docs/evidence/`, and commit that artifact in the SAME cycle that makes the change; then
       write the note as a pointer to it. A refusal of this kind is not a technical failure to
       argue with — commit the proof and call `rereview_change`.
+      **This binds a READ-ONLY / DIAGNOSTIC cycle hardest, because the diff is EMPTY.** A
+      measurement task (a thermal probe, a latency sample, a queue audit) changes no files, so
+      the reviewer has nothing to read but your prose and files every number in it as
+      unverified-claim; the remedy it names is the RAW LOG. So commit the generator's transcript
+      UNMODIFIED — byte-identical md5 against the run's own output, never retyped from memory,
+      never hand-patched — under `docs/evidence/` in the same cycle, and say in the note what
+      produced it. A `docs/evidence/` path is not a deploy-map file, so it needs no deploy and
+      cannot block the push; the same does NOT hold for a probe you had to add under `ops/scripts/`.
+      Never cite a number from an earlier live run you did not save: that claim is unverifiable
+      however real the run was — re-run the generator, or withdraw the figure.
 - [ ] Cron-governance compat — if hooks/plugins/enforcer changed, verify the cycle works in a test cron session, then delete it.
 - [ ] Deploy, THEN push — that order, with nothing committed in between. The pre-push path
       itself runs pull → deploy → doctor → verify, and the gate reads `Deploy sync`, so a

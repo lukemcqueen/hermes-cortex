@@ -127,7 +127,21 @@ its gate (GATE 1 of 2 / GATE 2 of 2).
 Terminal nuance: any command with compound metacharacters (`; | & > < \` $() or
 a newline — including `python3 -c "..."`) is treated as write-capable even when
 it only reads, so it requires BOTH gates. For lock-free inspection use a single
-clean command (`ls`, `grep`, `git status`) or read_file/search_files.
+clean command or read_file/search_files: `ls`, `cat`, `grep <pattern> <file>`,
+`git status`, and a PIPE joining two read primitives (`journalctl -b -1 -k
+--no-pager -n 40`, `dmesg -T | tail -60`, `ps aux --sort=-%cpu | head -15`) all
+run without a lock.
+
+Two measured traps in that classifier, each of which costs a turn when hit:
+- **A metacharacter INSIDE quotes still counts.** `grep -iE "thermal|fan|critical"
+  file` is refused as write-capable because the alternation bar reads as a pipe;
+  use repeated patterns instead (`grep -i -e thermal -e fan -e critical file`).
+- **A command outside the read-primitive list is write-class even with no
+  arguments and no metacharacter** (a bare `sensors` is refused on its own).
+  Read the underlying node with a listed primitive — `cat /sys/...` — or use
+  read_file/search_files.
+When a read is blocked, change the MECHANISM (listed primitive or read_file) —
+never re-run the same shape reworded and expect the classifier to agree.
 
 ## Quick Reference
 

@@ -141,6 +141,71 @@ Rules that each save a round trip:
   demonstrated failure proves the runner would notice tomorrow. A probe that fails because the
   project is missing proves nothing about the suite.
 
+## Single-file test runners with injected collaborators
+
+A hand-rolled runner (a `main` that calls each `test_*` in order) shares ONE module object across
+sections, which creates three failure modes a pytest suite never shows you:
+
+- **Restore every injected double before the next section.** A section that replaces a module
+  attribute and walks away leaves the fake in place for everything after it, so a later section
+  asserts against its own double: the symptom is the code under test returning the fake's empty
+  result, which reads as a defect in the shipped function. Save the real attribute and put it back
+  at the end of the section that swapped it.
+- **Run the FILE before every commit — a green commit hook is not a green test.** Pre-commit hooks
+  check syntax, secrets and static scans; they do not execute your tests. A failing suite can
+  therefore be committed behind a passing hook and only surfaces when someone runs the file.
+- **Assert on OUTCOME, not on the double's wiring alone.** Driving a wrapper with a fake proves the
+  arguments are forwarded; it does not prove the real function honours them. Add one section that
+  drives the REAL function with its dependencies stubbed and asserts the behaviour (a cap of one
+  judges exactly one unit and reports the rest), so the contract is pinned at the seam that ships.
+- **Sections are ordered, so a passing section can be the reason a later one fails.** Run the whole
+  file after every edit rather than re-running the section you just touched.
+- **A fixture that OMITS a field the code falls back on tests the AMBIENT environment, not the rule.**
+  A fixture built a lock state without the identity field, and the liveness check — finding it absent —
+  fell back to the repository's real git author and counted the HOST's own recent commits as proof of
+  life for a lock the test believed was dead. The branch under test was therefore unreachable and the
+  assertion could never pass, whatever the rule said. When a fixture stubbornly fails to exercise the
+  behaviour it names, look for a field you LEFT OUT, not only at the fields you set: unset means "let
+  the code decide", and the code decides from wherever it can reach. Name a value that cannot exist in
+  the ambient world (an author no repository has) so the fallback has nothing to find.
+- **A new test that fails for the WRONG reason is not evidence — read the failure before the code.**
+  A refusal test first failed on a missing TABLE, because the collaborator it stubbed out was also what
+  initialised the schema: the assertion was measuring its own setup, not the refusal. Confirm the
+  failing line is the assertion you wrote, and fix the prerequisite before concluding anything about
+  the  code — a probe that cannot reach its subject reports the wrong verdict in both directions.
+- **A test that cannot EXECUTE its subject must report a DISTINCT outcome — never `print` a skip and
+  `return`.** A hand-rolled runner scores "no exception" as PASS, so a self-skipping test is recorded
+  as a pass while having verified nothing: a file that ran nothing proves nothing either way. Raise a
+  dedicated exception (`class NotRun(Exception)`), catch it BEFORE the general handler, and print it on
+  its own line beside the result (`ALL PASS (6 tests) (1 NOT RUN)`). Prove the branch by FORCING the
+  condition once (`PYTEST=/nonexistent python3 tests/x.py`) — an unexercised skip path is how the
+  vacuous pass survives review.
+- **A check whose prerequisite is ABSENT passes vacuously.** Comparing a live store's mtime before and
+  after a sandboxed write passes when the store does not exist, because `None == None`. Compare a COUNT
+  (or assert existence) AND assert the opposite direction — the write must have LANDED somewhere — or
+  "nothing changed" is satisfied by code that did nothing at all.
+- **Save and restore every environment variable a test mutates.** `os.environ.pop(k, None)` without
+  saving silently discards an operator's own setting for every later section of the same process; use
+  `saved = {k: os.environ.pop(k, None) for k in (...)}` and put them back in a `finally`.
+- **A test file executed by a hand-rolled runner must take NO pytest fixtures.** The runner calls
+  `fn()` with no arguments, so a `tmp_path`/`monkeypatch` parameter arrives as an undefined name and
+  the test dies with `NameError` — which then reads as a defect in the code under test. Build the
+  temp path inside the test with `tempfile` (and clean it up) so the file runs correctly under BOTH
+  the standalone runner and pytest. Check this on any test whose failure reason you have not read:
+  a probe that never reached its subject reports a verdict in both directions.
+- **Proving "these failures predate my change" must classify the OUTCOME, never compare bare exit
+  codes.** A file that cannot execute at all (no interpreter, a timeout, a crash before the first
+  assertion) returns the SAME code on both revisions, so a code-only comparison reports agreement —
+  a regression claim manufactured from two runs that measured nothing. Read each run's output and
+  name three outcomes: PASS, FAIL only when the output NAMES a failure, and NOT RUN otherwise. Two
+  unmeasured runs are COULD NOT VERIFY (its own non-zero exit), not agreement; a listed file that now
+  PASSES is LIST DRIFT (its own non-zero exit), so the artifact's scope cannot drift from its claim.
+  Make the classifier drivable on its own (`--classify-only <rc> <output-file>`) so a test can pin it.
+- **A limit-based probe must actually TRIP the limit.** Timing out at `timeout 1` measured nothing
+  when the subject finished in under a second — the probe silently exercised the passing happy path
+  instead of the branch it names. Pick a value the subject demonstrably cannot meet, and confirm the
+  branch by forcing it once.
+
 ## When Stuck
 
 | Problem | Solution |

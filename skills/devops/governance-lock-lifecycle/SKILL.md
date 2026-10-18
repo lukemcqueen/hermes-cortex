@@ -58,6 +58,36 @@ The update's output embeds the full doctor run (475+ lines: 268 pass · 9 warn �
 
 `end_change(task_id)` rejects with "no scored cycle" if ANY cycle for that task is still PENDING. `cycle_query(task_id)` returns them all — iterate and `feedback_accept` each ID before closing. This is the #1 cause of the "end_change rejected" confession.
 
+**But a refusal that says the cycle is NOT scored while the ROW reads `MOVE_ON` is a stale
+module, not a missing score.** The tell is in the refusal itself: it names the SAME cycle id
+you just scored, and `cycle_query` or the DB row shows `decision=MOVE_ON` with a non-zero
+composite and no `unscored_reason`. The close's scored-cycle precondition reads the store
+through the LOADED loop-governance module, and the in-process MCP child holds the revision
+it STARTED with — so a DISAGREEMENT between what the store says and what the close reports
+is a deploy-≠-load failure, and the doctor says so in its own REQUIRED ACTIONS: *"Restart
+the gateway to load the new loop-governance module. Until then end_change may read a cycle
+as PENDING right after it was scored — a retry after a cycle_query is the workaround, not
+the fix."* Exits, in order: run the close through the CLI adapter (it imports the module
+fresh on every call, so it reads current code right now), or respawn the MCP child and
+confirm a NEW pid before trusting the reload. Do NOT re-score the cycle, do not open a
+carrier cycle, and never `force=True` — all three treat a transport staleness as a store
+problem and leave the real cause in place. Corollary for diagnosis: the cycle row's
+`timestamp` is its CREATION time (the scoring UPDATE does not touch it), so a timestamp
+that predates your close attempts proves nothing about when the score landed — compare
+`decision`/`composite`, and keep the number of close attempts you spend on this to one.
+
+### Pitfall 3b: An `end_change` that TIMES OUT is not a verdict — read the store before reacting
+
+The MCP call carries a 300 s client timeout, and a close that runs the self-adversarial review
+can exceed it. The timeout is client-side only: the scoring you did beforehand may already be in
+the store, the review may still be running, and the lock may still be held — so `TimeoutError`
+tells you NOTHING about the outcome. Read both before reacting: `cycle_query(task_id=...)` for the
+cycle's `decision`/`composite`, and `check_lock` for the lock. Measured: after a timeout the cycle
+row already read `MOVE_ON` with its composite recorded while the lock was still live and stamped
+`executing`; re-issuing `end_change` then returned the review's ACTUAL verdict (findings), which
+the timeout had swallowed. So do not re-score, do not open a carrier cycle, and do not treat the
+timeout as a refusal or as a success — re-issue `end_change` once and read the verdict it returns.
+
 ### Pitfall 4: Doctor remediation hints may not match the real CLI
 
 The doctor's REQUIRED ACTIONS print commands like `Check: hermes cron logs --name agent-...` — but `logs` is NOT a valid `hermes cron` subcommand and `runs` rejects `--name`. Valid subcommands: `list, create, add, edit, pause, resume, run, remove, rm, delete, status, runs, history, tick`. Pass the cron name **positionally** (`hermes cron runs <name>`), no `--name` flag. Don't burn cycles re-trying the doctor's literal suggestion.
@@ -254,6 +284,50 @@ right, and the reason is what each caller's alternative costs:
   The mid-write guard (never delete an unparseable file) is right, but a file in that state for
   hours can never be aged, so it and any cycle behind it sit forever. COLLECT those and report them
   for cleanup rather than skipping them silently every run.
+
+### Minting a lock is the MIRROR of removing one — the cycle must exist FIRST
+
+The removal rule ("removing a lock and resolving its cycle are ONE step") has a twin that is easier to
+miss because it lives on the happy path: **a lock is only ever written AFTER the cycle it names exists
+in the store.** Get the order wrong and the failure is the worst kind — the operation reports SUCCESS
+while leaving a live lock whose task has no scorable cycle, which is unclosable, unfreeable by
+`begin_change`, and escapable only by an override.
+
+- **Create the cycle first, then write the lock; REFUSE the operation if the create fails.** A refusal
+  is recoverable in seconds; a lock with no cycle costs the session and everything queued behind it.
+- **Never let the cycle create fail SILENTLY.** An inline `INSERT INTO loop_cycles` inside a
+  `try/except` whose fallback is a note like "(note: no cycle record — DB unavailable)" is the bug: on a
+  transient DB error the caller gets a lock AND a success message. The create must raise into a refusal.
+- **A second copy of the CREATE is a second rule.** Hunting the class means grepping every lock-writing
+  path for its OWN inline cycle insert — fixing one writer leaves the identical ordering bug in a sibling
+  tool (an ISSUE-PROMOTION path is the classic second copy, because it builds a fresh task outside the
+  normal `begin_change` flow). Prefer ONE shared `_create_pending_cycle(task_id, session_id, outcome)`
+  helper called by every mint site; two implementations drift.
+- **Pin the invariant per mint site, not once for the file.** The test should assert the cycle-create
+  call appears BEFORE the lock write in EACH function that mints, so a NEW call site that omits it fails
+  the suite. A class-level rule held by one site's test protects one site.
+
+The tell, for diagnosis in the field: `end_change` answers **"no governance cycle found for this task"**
+while `begin_change` answers **"a governance session is already active … use force=True"**. Both messages
+are correct about different stores — the LOCK exists, the CYCLE does not — and that pair is the signature
+of this class, not a scoring problem. Re-score nothing; check whether the lock's task has a cycle row at
+all, then free the lock (a terminal transition) and fix the ordering in the code that minted it.
+
+### A wide close costs one blob per pass — that is TRANSPORT, not the review's depth
+
+A close refused with **"N blob(s) of the push range still carry no review verdict"** names the exact
+remaining files: the per-blob pass judges ONE blob per invocation and verdicts are keyed by blob
+CONTENT, so each pass resumes from where the last stopped instead of redoing judged work. A single
+review call measures 180–220 s against a ~240 s per-close window, so a four-file change genuinely needs
+four passes. Re-issue `end_change` until it reports the session closed — the counter must strictly
+decrease, and a repeat that does NOT decrease is the real signal something is wrong. Do not read the
+repetition as a broken loop, and do not widen the review range to shorten it.
+
+The lever that actually shortens it: raising a THRESHOLD (blobs per window, the wide-diff split line
+count) buys passes by reviewing less and is a governance reduction. Raising the **CLIENT ceiling** — the
+MCP call's own timeout, which the close code itself documents as what to raise "to legitimately wait
+longer" — fits several blobs into one round trip with the same reviewer, same prompt, same verdict.
+More per call, never less per blob.
 
 ### Judging a lock dead
 

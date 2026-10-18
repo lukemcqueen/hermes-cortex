@@ -450,6 +450,17 @@ caused while measuring something else.
   green in a bare CI shell and red on a real host. Keep the real-resource assertion
   as ONE explicitly-labelled case. Clearing unrelated state is the cheapest way to
   discover tests that were passing by accident.
+- **A fake path standing in for a real resource silently selects the FALLBACK branch.** Pointing the
+  code under test at `/tmp` (or any path holding no repository, no config, no service) is not a
+  neutral stand-in once the code gains an environment-derived branch: a probe like "is there a git
+  repo here? a remote? a resolvable base?" answers NO at that path, so the test that meant to drive
+  the NORMAL path drives the newly added fallback instead — green, and asserting about the wrong
+  branch. It bites hardest immediately after adding such a branch, and it surfaces in several
+  unrelated files at once (the same new predicate was reached by two different suites). Stub the
+  predicate explicitly in every test that describes the normal case (`m._is_fallback = lambda repo:
+  False`), give the fallback its OWN test asserting the fallback-specific behaviour, and name in the
+  docstring which case the file is about — otherwise the next environment branch added reaches in
+  again.
 - **A test that repoints a SHARED module attribute (a module it does not own)
   must restore it in `finally`.** `setattr(doctor_checks, "HOME", tmp)` looks
   like ordinary fixture setup and is not: the value outlives the test, survives
@@ -466,8 +477,22 @@ caused while measuring something else.
   instead of at the test (a `None` lock returned by the stub made three "must still fail closed"
   assertions look like the guard had been removed). Save the real attribute before patching and
   re-install it at the section boundary (`real = m.fn` … `m.fn = real`), or scope the stub to the
-  section that needs it; when a whole block of assertions fails together in a fresh file, suspect
+  section that needs it;  when a whole block of assertions fails together in a fresh file, suspect
   the stub before the code.
+- **POISON the collaborators the unit must NOT touch, rather than only restoring the ones it patches.**
+  Restoring in `finally` protects LATER tests; it does not protect THIS one from depending on an
+  earlier test's teardown, or on a patch it never made. For every module attribute the function under
+  test is not supposed to consult, install a stub that RAISES:
+  ```python
+  def _poison(*a, **k):
+      raise AssertionError("must not call the store/range helpers")
+  ```
+  Two things come out of it: the test becomes deterministic under any ordering (a leaked or
+  not-yet-restored patch fails LOUDLY and names the offending call instead of returning a plausible
+  value that makes the assertions point at the code under test), and the unit's real dependency set
+  is asserted rather than assumed. Restore EVERY attribute the test set in `finally` — the poisoned
+  ones included, since a poison left behind breaks the next test exactly as a leak does. Prefer a
+  `with`-scoped helper that saves and restores them together when a file has several such tests.
 - **Finding WHICH test pollutes shared state is a pairing search, not a reading
   exercise.** See `references/order-dependent-failure-bisect.md` for the recipe
   — run the victim alone, pair it with each candidate that touches the module,
@@ -486,8 +511,20 @@ caused while measuring something else.
     `_run()` added to a suite whose first `_run` is `(*args, env=None)` made three new tests pass a
     dict positionally: they failed with argument-shaped errors that point at the assertions, not at
     the helper, so the red run reads like a bug in the code under test. Check first
-    (`grep -n "^def " tests/test_<module>.py`), then use the existing seam. Read its semantics too:
+    (`grep -n "^def " tests/test_<module>.py`), then use the existing seam. Read    its semantics too:
     a helper that merges `{**os.environ, **env}` can ADD or override a variable but cannot REMOVE
     one, so a VAR-ABSENT branch is only reachable through it by passing an EMPTY value (which a
     `[[ -n "$VAR" ]]` guard treats as unset) — pass a sentinel and the branch you think you are
     testing is the VAR-SET one.
+- **A standalone test that loads its collaborator by path must check it AS A TEST, never at
+  import.** Script-style suites that are each run directly (`python3 tests/test_<name>.py`, no
+  framework) make a module-scope precondition (`if not hasattr(mod, "fn"): raise SystemExit(...)`)
+  fatal: the run dies before any test reports, the failure names no test, and a reader — including
+  an automated reviewer of the diff — files it as a crash rather than as a guard, which is the
+  opposite of what a precondition is for. Put the checks in a function the runner reaches FIRST
+  (a name-sorted runner reaches `test_00_preconditions` before any behaviour test) and ASSERT
+  rather than raise: the collaborator exists, it carries the parameters this file calls it with
+  (`inspect.signature`), and any module-level fact the test depends on is real — e.g. the logger it
+  silences is the logger the module actually uses, otherwise the silencing is decorative and test
+  output reaches production state. A genuine import failure stays an import error; a MISSING
+  CAPABILITY becomes a named failing test.

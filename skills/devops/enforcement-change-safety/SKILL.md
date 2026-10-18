@@ -1231,6 +1231,22 @@ believes governance covers the filesystem.
   same-named projects must not share authority, a scoped record must still cover its own
   repo, and the skipped count must appear in BOTH branches.
 
+- **A refusal that reports a COUNT must also NAME the objects, and the PREDICATE supplies the
+  names.** `live_lock_count: 1` printed beside a refusal is a half-answer: the reader cannot tell a
+  broken gate from another project's record, and the cheapest wrong conclusion is to go and edit the
+  gate. Return the identity fields of the records the scan did NOT match (task, agent, repo path,
+  status, heartbeat) from the SAME predicate that decided them, render them in the harness — a
+  harness must never open the state dir to work out whose record is blocking — and cap the list with
+  an explicit remainder. Any message block you bound must DISCLOSE the cut ("… N more line(s)
+  omitted"): a silently truncated block reads as a whole one, so an omitted record looks like a
+  field that was never returned.
+- **Mutate the REAL artifact to prove a guard discriminates.** The strongest cheap mutant is the
+  shipped file with exactly the line under test removed, pointed at through the guard's own
+  env seam — every other assertion in the guard stays live, so a failure cannot be explained by the
+  mutant being a different program. Require a failure whose reason is a failed ASSERTION (a load
+  error "fails" for the wrong reason), and assert the mutation TARGET still exists so the test
+  cannot silently mutate nothing and pass.
+
 - **The gate's ADVERTISED contract is part of the enforcement surface — pin it to the behaviour.**
   The prose every caller reads (a tool `description`, a `--help` line, a block message) is what an
   outside harness author codes against, and it is written somewhere other than the rule it

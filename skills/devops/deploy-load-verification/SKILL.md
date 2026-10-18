@@ -200,6 +200,16 @@ have:**
     operator, and never describe a host-shared child's staleness as if it were only your
     own session's: "my session needs a reload" and "every session on this host is
     affected" call for different decisions.
+  - **A host can have SEVERAL live servers for the same script, and which one answers decides what
+    you see.** Enumerate every process matching the server's script path before concluding anything.
+    After a deploy, an older child that predates it can stay alive beside a freshly spawned one, and
+    the two then DISAGREE: each call is served by one of them, so the same operation alternately
+    reports the OLD and the NEW behaviour. That reads as a flaky gate, a heisenbug, or a fix that
+    works half the time — it is a stale process. List each pid with its start time beside the
+    deployed file's mtime and name the stale one explicitly; never average two readings, and never
+    re-derive the intended semantics from the pair. Until the stale pid is replaced, every observation
+    of the changed code is a coin flip, so hand over the one restart command and re-read the state
+    after it is gone.
   - **EXCEPTION — never restart the child that is serving your OWN active
     governance lock mid-cycle.** The lock persists in
     `~/.hermes-cortex/state/` and is read through that same MCP server, so
