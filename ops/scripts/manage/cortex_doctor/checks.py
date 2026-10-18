@@ -493,30 +493,59 @@ def check_stale_loop_gov_daemon(res: "Results") -> None:
             mod_mtime = mod_path.stat().st_mtime
         except OSError:
             continue
+        try:
+            mod_sha = hashlib.sha256(mod_path.read_bytes()).hexdigest()
+        except OSError:
+            mod_sha = None
         start = _daemon_start_epoch(pid)
         if start is None:
             continue
-        daemons.append((pid, mod_path, start, mod_mtime))
+        daemons.append((pid, mod_path, start, mod_mtime, mod_sha))
     if not daemons:
         # No daemon running is a different problem the MCP-server check handles.
         res.add("loop-gov daemon", "SKIP",
                 "no running loop-gov-mcp.py daemon found to compare")
         return
-    stale = []
-    for pid, mod_path, start, mod_mtime in daemons:
+    # CONTENT FIRST. The daemon records the sha256 of the file it LOADED (see _write_daemon_stamp
+    # in loop-gov-mcp.py), so staleness is a content question. mtime cannot answer it: measured
+    # 2026-10-18, a deploy advanced the deployed module's mtime while its body stayed byte-identical
+    # to the repo source, and this check called a CURRENT daemon stale — a warning that fired on
+    # every deploy and could only be "fixed" by a restart that changed nothing.
+    import json as _json
+    stamp = {}
+    try:
+        stamp = _json.loads((Path.home() / ".hermes-cortex" / "state"
+                             / "loop-gov-daemon.json").read_text())
+    except Exception:
+        stamp = {}
+    stale, unverified = [], []
+    for pid, mod_path, start, mod_mtime, mod_sha in daemons:
+        rec_sha = stamp.get("sha256") if str(stamp.get("pid")) == str(pid) else None
+        if rec_sha and mod_sha:
+            if rec_sha != mod_sha:
+                stale.append(f"pid {pid} loaded {rec_sha[:12]}, the file is now {mod_sha[:12]}")
+            continue
         if mod_mtime > start + 1e-6:
-            stale.append(f"pid {pid} ({mod_path.name} changed after daemon start)")
+            # No stamp to compare against — say so instead of asserting staleness from a timestamp.
+            unverified.append(f"pid {pid} ({mod_path.name} is newer than the daemon start, and "
+                              f"this daemon wrote no startup stamp)")
     if stale:
         res.add("loop-gov daemon", "WARN",
-                "running stale code — the module changed after the daemon started: "
+                "running stale code — the module LOADED differs from the file on disk: "
                 + "; ".join(stale),
                 "Restart the gateway to load the new loop-governance module: "
                 "hermes gateway restart. Until then end_change may read a cycle as "
                 "PENDING right after it was scored — a retry after a cycle_query is "
                 "the workaround, not the fix.")
+    elif unverified:
+        res.add("loop-gov daemon", "WARN",
+                "COULD NOT VERIFY by content — " + "; ".join(unverified),
+                "This daemon predates the startup stamp, so its loaded code can only be judged by "
+                "timestamp. After the next gateway restart the check compares CONTENT, and a deploy "
+                "that changed nothing will no longer read as stale.")
     else:
         res.add("loop-gov daemon", "PASS",
-                f"running module is current ({len(daemons)} daemon(s) loaded after their file)")
+                f"running module is current ({len(daemons)} daemon(s) verified by content hash)")
 
 
 def _invokes_score_cycle(text):

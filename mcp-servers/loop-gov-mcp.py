@@ -7802,12 +7802,40 @@ server = Server("loop-governance", on_list_tools=list_tools, on_call_tool=call_t
 
 # ── Main ─────────────────────────────────────────────────────
 
+DAEMON_STAMP = Path.home() / ".hermes-cortex" / "state" / "loop-gov-daemon.json"
+
+
+def _write_daemon_stamp() -> None:
+    """Record WHAT this process loaded, so "is the daemon stale?" is answerable by CONTENT.
+
+    The doctor answered it by MTIME, and mtime cannot tell a redeploy that rewrote identical bytes
+    from one that changed the code. Measured 2026-10-18: the deployed module's mtime advanced while
+    its body stayed byte-identical to the repo source, and the check reported "running stale code"
+    for a daemon that was current — so the warning fired on every deploy and could only be cleared
+    by a restart that changed nothing. That is unfixable from outside the process (nothing knows
+    what was loaded), so the process records it itself: pid + the sha256 of the file it is running.
+    The doctor compares that hash with the file's hash NOW — content, not timestamps.
+    """
+    try:
+        DAEMON_STAMP.parent.mkdir(parents=True, exist_ok=True)
+        DAEMON_STAMP.write_text(json.dumps({
+            "pid": os.getpid(),
+            "started": time.time(),
+            "module": str(Path(__file__).resolve()),
+            "sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+        }, indent=2) + "\n")
+    except Exception as e:  # never fatal: the doctor falls back to mtime and says so
+        print(f"loop-governance: could not write the daemon stamp ({type(e).__name__}: {e}); "
+              f"the doctor will fall back to mtime", file=sys.stderr)
+
+
 async def main():
     if not MCP_AVAILABLE:
         print("loop-governance: the MCP SDK is not installed. Use the CLI adapter "
               "(ops/scripts/loop-gov.py) or run this with a python that has 'mcp'.",
               file=sys.stderr)
         sys.exit(1)
+    _write_daemon_stamp()
     async with stdio_server() as (read_stream, write_stream):
         await server.run(read_stream, write_stream, server.create_initialization_options())
 
