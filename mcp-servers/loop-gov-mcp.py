@@ -1316,6 +1316,78 @@ def _range_touches_always_review(repo: Path) -> bool:
     return any(any(ap in p for ap in ALWAYS_REVIEW_PATHS) for p in blobs)
 
 
+# What a per-blob review will REQUIRE, stated in ONE place and surfaced when a session OPENS.
+# Operator directive (Luke, 2026-10-18): "let the agent know exactly what they need to provide
+# earlier" — the alternative is what actually happened, an agent taught one requirement per refused
+# cycle. Every line below is a requirement the reviewer has REFUSED a blob for; this is not advice,
+# it is what the gate will ask for.
+REVIEW_EXPECTATIONS = (
+    "a claim of measurement needs a COMMITTED, re-runnable proof (test or script), not prose",
+    "a file must not lean on a sibling the review window cannot see: state the contract in the file",
+    "rc!=0 is a result, a timeout (124) is NOT: run the check to completion and record the number",
+    "preconditions (the module loads, the collaborator exists) belong in a test, not at import",
+    "the task description must cover every path in the range, or that file reads as scope drift",
+)
+
+# How many paths a message will name before summarising. A single review window judges ONE blob, so
+# naming them costs nothing and saves the agent a database query per round trip.
+REVIEW_SCOPE_MAX_PATHS = 12
+
+
+def _unreviewed_paths(repo: Optional[Path]) -> list[str]:
+    """Paths in the push range with no CLEAN verdict — the review's real scope, sorted."""
+    if repo is None:
+        return []
+    try:
+        blobs = _push_range_blobs(repo)
+        if not blobs:
+            return []
+        clean = _blobs_with_clean_verdict(blobs)
+        return sorted(p for p, sha in blobs.items() if sha not in clean)
+    except Exception:  # noqa: BLE001 — a scope note must never be able to break a session opening
+        log.warning("review scope note: could not resolve the unreviewed blobs", exc_info=True)
+        return []
+
+
+def _blob_paths_for(repo: Optional[Path], shas) -> list[str]:
+    """Map blob SHAs (what the pass reports) back to PATHS (what a human acts on)."""
+    if repo is None:
+        return []
+    want = set(shas or ())
+    try:
+        return sorted(p for p, sha in (_push_range_blobs(repo) or {}).items() if sha in want)
+    except Exception:  # noqa: BLE001 — a message must never fail on a git hiccup
+        return []
+
+
+def _path_list(paths: list[str], indent: str = "     ") -> str:
+    shown = list(paths)[:REVIEW_SCOPE_MAX_PATHS]
+    out = "".join(f"{indent}- {p}\n" for p in shown)
+    extra = len(paths) - len(shown)
+    if extra > 0:
+        out += f"{indent}... and {extra} more\n"
+    return out
+
+
+def _review_scope_note(repo: Optional[Path]) -> str:
+    """The review's scope AND its standing requirements, said when a session OPENS.
+
+    Empty when there is nothing left to judge, so a solved range is not nagged about. This exists
+    because the requirements were otherwise discovered one refusal at a time, and each discovery
+    cost a full cycle (operator directive, 2026-10-18).
+    """
+    paths = _unreviewed_paths(repo)
+    if not paths:
+        return ""
+    return (
+        f"\n📋 REVIEW SCOPE — {len(paths)} file(s) of the push range carry no verdict yet.\n"
+        "   Each is judged on its OWN file, one per close, so what you write must stand alone:\n"
+        + _path_list(paths)
+        + "   WHAT THE REVIEW WILL REQUIRE (it has refused blobs for every line here):\n"
+        + "".join(f"     • {e}\n" for e in REVIEW_EXPECTATIONS)
+    )
+
+
 def _blob_material(repo: Path, base: str, path: str, ctx: dict) -> str:
     """The material for ONE blob: its own diff, bounded, plus the range it sits in.
 
@@ -1455,13 +1527,27 @@ def _complete_push_range_blobs(lock: dict, cycle: dict, cx: Optional[dict] = Non
                 "identical content cannot change the verdict; fix the file and commit it "
                 "(the fix is a new blob) instead of closing again\n"
             )
+        # NAME THE PATHS, not just a count: the agent's next action is to fix a file, and one
+        # review window judges ONE blob, so a count forces a database query per round trip
+        # (operator directive, 2026-10-18). Also report the CLEAN count honestly — the previous
+        # "verdicts cached" printed len(pb["verdicts"]), which only counts blobs the pass VISITED
+        # and therefore under-reported whenever the pass stopped early (found while draining).
+        remaining_paths = _blob_paths_for(repo, remaining)
+        judged_paths = _blob_paths_for(repo, pb.get("judged") or [])
+        clean_count = len(_blobs_with_clean_verdict(_push_range_blobs(repo) or {}))
+        paths_line = ("  unreviewed paths:\n" + _path_list(remaining_paths)) if remaining_paths else ""
+        judged_paths_line = (
+            "  judged and NOT clean — fix these, the fix is a NEW blob:\n" + _path_list(judged_paths)
+        ) if judged_paths else ""
         return CallToolResult(content=[TextContent(type="text", text=(
             f"⏳ Cannot close yet: {len(remaining)} blob(s) of the push range still carry no "
             "review verdict.\n\n"
             f"  reviewed this pass : {pb.get('calls')} blob(s)\n"
-            f"  verdicts cached    : {len(pb.get('verdicts') or {})}\n"
+            f"  CLEAN in the range : {clean_count} blob(s)\n"
             f"{failed_line}"
-            f"{judged_line}\n"
+            f"{judged_line}"
+            f"{paths_line}"
+            f"{judged_paths_line}\n"
             "Verdicts are keyed by blob CONTENT, so closing again continues from here "
             "instead of redoing what is already judged (the per-close budget is "
             f"{BLOB_REVIEW_CAP_PER_CLOSE} blobs / {int(BLOB_REVIEW_BUDGET_S)}s)."
@@ -3176,6 +3262,11 @@ def _begin_change(args: dict) -> CallToolResult:
             % (_snap_repo, _injected_session_id(args))
         )
 
+    # Say the review's scope and its requirements NOW, not one refusal at a time (operator
+    # directive, 2026-10-18). Same reasoning as the repo warning below: a late surprise costs a
+    # cycle, an early sentence costs a line.
+    scope_note = _review_scope_note(Path(state["repo_path"]) if state.get("repo_path") else None)
+
     return CallToolResult(content=[TextContent(
         type="text",
         text=(
@@ -3185,6 +3276,7 @@ def _begin_change(args: dict) -> CallToolResult:
             f"TTL: {ttl}s\n"
             f"Use end_change('{task_id}') when done."
             + pending_msg
+            + scope_note
             + repo_note
         )
     )])
