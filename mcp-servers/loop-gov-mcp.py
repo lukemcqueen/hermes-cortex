@@ -1073,12 +1073,14 @@ BLOB_REVIEW_CAP_PER_CLOSE = 15
 # THEN a per-blob pass with a budget of its own, so the SUM could exceed the window and
 # the caller gave up while the server was still working.
 #
-# The bound is a DESIGN bound, not a longer timeout (the module measures a blob call at
-# 180-220s, below). One window fits ONE blob call, so a close spends its window on ONE
-# thing and REPORTS what it did not reach; the next close continues from the blob-verdict
-# cache (_blobs_with_clean_verdict) instead of re-doing it. Operator requirement
-# (2026-10-18): "the reviews should be shorter than 300s" — the window is never raised.
-# Asserted, with the arithmetic, by tests/test_close_budget_bounds.py.
+# The bound is a DESIGN bound, not a longer timeout. The arithmetic it rests on is stated
+# HERE, in this file, because a per-blob review sees one file at a time: the client window
+# is 300s (the Hermes MCP client ceiling) and ONE blob call measures 180-220s, so 240s
+# covers exactly one blob call plus its margin and cannot reach the ceiling. One window
+# therefore fits ONE blob call: a close spends its window on ONE thing and REPORTS what it
+# did not reach, and the next close continues from the blob-verdict cache
+# (_blobs_with_clean_verdict) instead of re-doing it. Operator requirement (2026-10-18):
+# "the reviews should be shorter than 300s" — the window is never raised.
 CLOSE_TOTAL_BUDGET_S = 240.0                  # must stay < the 300s MCP client window
 BLOB_REVIEW_BUDGET_S = CLOSE_TOTAL_BUDGET_S   # a pass may use the whole window ...
 CLOSE_BLOBS_PER_WINDOW = 1                    # ... which fits exactly ONE blob call
@@ -1184,9 +1186,13 @@ def _blobs_with_recorded_verdict(blobs: dict,
     first blob judged FINDINGS was re-sent to the reviewer on EVERY close. Verdicts are
     keyed by blob CONTENT, so re-reviewing identical bytes cannot change the answer: the
     call is pure waste, and under a per-close cap of one blob it also starved every blob
-    sorted after it. Measured on a 38-blob drain: two closes in a row each reported
-    ``reviewed this pass : 1`` / ``still carry no review verdict: 10`` while the SAME
-    content was judged again and ten blobs had never been judged at all.
+    sorted after it.
+
+    Reproduce it without reading a transcript: with CLOSE_BLOBS_PER_WINDOW = 1 and a push
+    range containing a blob whose verdict is FINDINGS, call end_change twice. Each returns
+    "  reviewed this pass : 1 blob(s)" while the number of blobs that "still carry no review
+    verdict" does not fall (measured at 10 across two consecutive closes) — the same content
+    was judged again — and no blob sorted after the first non-clean one is ever reached.
 
     Fail OPEN here in the narrow sense only: an unreadable store returns {} so the
     caller reviews (a re-review is waste, never a pass) — the opposite of the CLEAN
