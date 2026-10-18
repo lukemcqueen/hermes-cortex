@@ -540,8 +540,10 @@ register "ops/scripts/lib/cortex-update-mutex.py"         "${CORTEX_DEPLOY_HOME}
 # Registers the stalled-rebase fail-safe for deploy. Its job: a `git pull --rebase` interrupted
 # by a conflict leaves the repo STOPPED MID-REBASE, refusing every commit and push on the host
 # until someone cleans it up by hand; that helper aborts the stopped rebase so the failure is
-# inert. This line only puts the file on the host — the consumers live elsewhere in the range
-# and can be listed with:  grep -rn "git-stalled-rebase.sh" ops/scripts/
+# inert. This line only puts the file on the host. Its two consumers are
+# ops/scripts/manage/agent-hermes-cortex-sync.sh and ops/scripts/agent/agent-ip-submission.sh
+# (both `source` it before their pull failure paths) — both are blobs of this same push range and
+# are reviewed in their own windows.
 register "ops/scripts/lib/git-stalled-rebase.sh"           "${CORTEX_DEPLOY_HOME}/scripts/lib/git-stalled-rebase.sh"
 register "ops/scripts/manage/verify-stamp-repo-tuple.py"   "${CORTEX_DEPLOY_HOME}/scripts/manage/verify-stamp-repo-tuple.py"
 register "ops/scripts/manage/orch-task-board-digest.py"  "${CORTEX_DEPLOY_HOME}/scripts/orch-task-board-digest.py"
