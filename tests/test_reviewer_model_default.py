@@ -21,6 +21,7 @@ Two properties are pinned here, and both must hold together:
 Run: python3 tests/test_reviewer_model_default.py
 """
 import importlib.util
+import json
 import os
 import sqlite3
 import sys
@@ -112,6 +113,62 @@ def test_the_close_call_site_PASSES_the_label_down():
     assert "reviewer_label=_reviewer_label(cx)" in src, \
         "the close's per-blob call must pass the reviewer label it dispatched"
     print("  the close hands the dispatched reviewer's label to the store ✓")
+
+
+def test_a_whitespace_override_falls_back_to_the_canonical_reviewer():
+    """An env var set to spaces is not an operator choice. It must resolve to the canonical
+    reviewer — not to nothing, and not to the cheaper judge."""
+    mod = _mod()
+    os.environ["ADVERSARIAL_REVIEW_LIGHT_MODEL"] = "   "
+    try:
+        assert mod._light_reviewer_model() == mod.REVIEWER_MODEL_DEFAULT, \
+            mod._light_reviewer_model()
+    finally:
+        os.environ.pop("ADVERSARIAL_REVIEW_LIGHT_MODEL", None)
+    print("  whitespace override -> canonical reviewer ✓")
+
+
+def test_a_BLOCKING_verdict_also_records_its_judge():
+    """The judge matters MOST when it blocks: a worker contesting a FINDINGS verdict has to be able
+    to name which model produced it, and how strong it was."""
+    mod = _mod()
+    conn = _conn()
+    try:
+        mod._review_uncovered_blobs(
+            {"b.py": "shaB"},
+            reviewer=lambda sha, path, material: json.dumps(
+                {"verdict": "FINDINGS", "findings": [
+                    {"finding_id": "F-1", "severity": "high", "evidence": "quoted fragment"}]}),
+            material_for=lambda sha, path: "material", reviewer_label="deepseek/deepseek-v4-pro",
+            conn=conn)
+        row = conn.execute("SELECT verdict, reviewer_model FROM blob_reviews "
+                           "WHERE blob_sha='shaB'").fetchone()
+        assert row is not None and str(row[0]).upper() == "FINDINGS", row
+        assert row[1] == "deepseek/deepseek-v4-pro", f"a blocking verdict must name its judge: {row}"
+    finally:
+        conn.close()
+    print("  a blocking verdict records its judge too ✓")
+
+
+def test_an_EMPTY_label_still_records_the_verdict_and_flags_the_gap():
+    """A caller that passes no label must not lose the VERDICT — an unrecorded verdict is a blob
+    that gets re-bought on every close. The row is written with the empty value it was given, so
+    the gap is visible in the record rather than silently absent."""
+    mod = _mod()
+    conn = _conn()
+    try:
+        mod._review_uncovered_blobs(
+            {"c.py": "shaC"},
+            reviewer=lambda sha, path, material: '{"verdict": "CLEAN", "findings": []}',
+            material_for=lambda sha, path: "material", conn=conn)
+        row = conn.execute("SELECT verdict, reviewer_model FROM blob_reviews "
+                           "WHERE blob_sha='shaC'").fetchone()
+        assert row is not None, "the verdict was dropped when no label was given"
+        assert str(row[0]).upper() == "CLEAN", row
+        assert (row[1] or "") == "", f"nothing may be invented for the judge: {row[1]!r}"
+    finally:
+        conn.close()
+    print("  empty label still records the verdict, judge left visibly blank ✓")
 
 
 def _main():
