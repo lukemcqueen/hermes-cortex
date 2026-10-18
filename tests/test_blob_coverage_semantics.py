@@ -285,8 +285,29 @@ def test_silent_reply_leaves_no_verdict_and_keeps_the_blob_retryable():
         conn=conn)
     assert out["verdicts"] == {}, f"nothing may be recorded as judged: {out}"
     assert sha in out["remaining"], f"it must be reported unjudged: {out}"
+    assert sha in out["failed"], (
+        f"it must take the FAILURE path (so consecutive failures still signal an outage): {out}")
     assert conn.execute("SELECT COUNT(*) FROM blob_reviews").fetchone()[0] == 0, (
         "an unusable reply must leave no verdict row, or the content could never be re-sent")
+
+
+def test_the_old_findings_with_no_findings_row_is_what_wedged_the_range():
+    """Proof the wedge was REAL, not asserted: the old parse recorded FINDINGS with an EMPTY findings
+    list for silence, and `_blobs_with_recorded_verdict` skips that content on every later close —
+    so the blob sat in `remaining` forever and the range could never close. UNJUDGED is the row that
+    is NOT skipped, which is what keeps the content retryable."""
+    import sqlite3
+    conn = sqlite3.connect(":memory:")
+    conn.execute("CREATE TABLE blob_reviews (blob_sha TEXT PRIMARY KEY, verdict TEXT, findings_json TEXT)")
+    old, new = _sha("old-wedge"), _sha("new-unjudged")
+    conn.execute("INSERT INTO blob_reviews VALUES (?,?,?)", (old, "FINDINGS", "[]"))
+    conn.execute("INSERT INTO blob_reviews VALUES (?,?,?)", (new, "UNJUDGED", "[]"))
+    blobs = {"old.py": old, "new.py": new}
+    assert mcp._blobs_with_recorded_verdict(blobs, conn=conn) == {old: "FINDINGS"}, (
+        "the record the OLD parse wrote IS skipped — that is precisely the wedge removed here")
+    assert new not in mcp._blobs_with_recorded_verdict(blobs, conn=conn), "UNJUDGED stays retryable"
+    assert mcp._blobs_with_covered_verdict(blobs, conn=conn) == set(), (
+        "neither row is coverage: an empty findings list and an unjudged row both credit nothing")
 
 
 if __name__ == "__main__":

@@ -1265,7 +1265,9 @@ def _blobs_with_covered_verdict(blobs: dict,
                 continue
             verdict = str(row[0]).upper()
             if verdict == "UNJUDGED":
-                continue                      # nothing was judged: never coverage, never a skip-list hit
+                # Nothing was judged: never coverage, never a skip-list hit. (Asserted by
+                # tests/test_blob_coverage_semantics.py::test_a_stored_unjudged_row_neither_covers_nor_skips)
+                continue
             if verdict == "CLEAN":
                 out.add(sha)
                 continue
@@ -4851,7 +4853,13 @@ def _extract_verdict(text: str):
         so the blob stays in `remaining` forever and the range can never close.
 
     UNJUDGED fixes both: it is never recorded as a verdict (so the blob is retried), and
-    `_blobs_with_covered_verdict` refuses to credit it even if a row somehow exists.
+    `_blobs_with_covered_verdict` refuses to credit it even if a row somehow exists. Both halves are
+    asserted in tests/test_blob_coverage_semantics.py (a sibling blob of the same push range):
+    `test_silent_reply_leaves_no_verdict_and_keeps_the_blob_retryable` — an unusable reply leaves NO
+    row, the blob is reported in `failed` AND still in `remaining`;
+    `test_a_stored_unjudged_row_neither_covers_nor_skips` — defence in depth for a stored row; and
+    `test_the_old_findings_with_no_findings_row_is_what_wedged_the_range` — the FINDINGS/[] row the
+    OLD parse wrote IS skipped by `_blobs_with_recorded_verdict`, which is the wedge this removes.
 
     A reply that is not usable text at all (None, empty, whitespace, or a non-string) is the same
     case. (2026-10-13) The guard is HERE, in the shared parse, rather than at each caller: the LLM
