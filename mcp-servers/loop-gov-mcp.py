@@ -3809,7 +3809,12 @@ REVIEWER_MODEL_DEFAULT = "deepseek/deepseek-v4-pro"  # distinct from worker
 # environment (ADVERSARIAL_REVIEW_LIGHT_MODEL=deepseek/deepseek-v4-flash) instead of a default
 # nobody chose — and the stored verdict now names whichever model was used, so a downgrade cannot
 # hide in the record.
-REVIEWER_LIGHT_MODEL_DEFAULT = REVIEWER_MODEL_DEFAULT
+#
+# There is deliberately NO `REVIEWER_LIGHT_MODEL_DEFAULT` name. A second constant is where a
+# cheaper default creeps back, and `_light_reviewer_model()` reading `REVIEWER_MODEL_DEFAULT`
+# directly is what makes "the light tier judges with the canonical model" true by construction
+# rather than by two values someone has to keep in step. (An earlier revision of this fix aliased
+# the name instead of removing it, which broke that guard — the guard was right.)
 
 # Findings are a small JSON object, and the prompt says so. Unbounded output was pure cost: a
 # reviewer that writes an essay about a window it cannot see is charged for every token of it.
@@ -4604,7 +4609,7 @@ def _light_reviewer_model() -> str:
     in blob_reviews carried an empty reviewer_model. That is why a flash default went unnoticed
     until the operator named it: the record could not show which judge produced a verdict.
     """
-    return (_env_value("ADVERSARIAL_REVIEW_LIGHT_MODEL") or "").strip() or REVIEWER_LIGHT_MODEL_DEFAULT
+    return (_env_value("ADVERSARIAL_REVIEW_LIGHT_MODEL") or "").strip() or REVIEWER_MODEL_DEFAULT
 
 
 def _tier(cx: dict) -> str:

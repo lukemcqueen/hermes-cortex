@@ -31,30 +31,45 @@ ABSENT_MODULE = "no_such_module_zzz_for_this_test"
 VENV = Path.home() / ".hermes-cortex" / "venv"
 
 
+class NotRun(Exception):
+    """The subject could not be EXECUTED on this host, so nothing was verified.
+
+    The runner scores "no exception" as PASS, so a test that prints a skip and RETURNS reads as a
+    pass while having tested nothing. NOT RUN is its own outcome: named separately, counted
+    separately, never a pass and never a failure of the code under test.
+    """
+
+
 def test_the_declared_fleet_interpreter_is_preferred():
     """CORTEX_PYTHON is ONE name for "the fleet interpreter". Seven scripts each carried their
     own clean-env probe before it existed; a caller should read this instead."""
     py = str(VENV / "bin" / "python3")
     if not Path(py).exists():
-        print("  (skipped: no fleet venv on this host)")
-        return
+        raise NotRun("no fleet venv on this host — nothing to resolve against")
     r = _run("--print", "yaml", env={"CORTEX_PYTHON": py})
     assert r.returncode == 0, (r.returncode, r.stdout, r.stderr)
     assert r.stdout.strip() == py, r.stdout
 
 
-def test_the_declaration_is_read_from_agent_env(tmp_path):
+def test_the_declaration_is_read_from_agent_env():
     """The declaration lives in the per-host file the deploy provisions, so it survives a
-    session that exports nothing."""
+    session that exports nothing.
+
+    NO `tmp_path`: this file is run by the standalone runner in `_main()`, which calls each test
+    with no arguments, so a pytest fixture arrives as an undefined name — the test failed with a
+    NameError and read as a defect in the resolver. Build the file here with `tempfile` so it runs
+    under the standalone runner AND under pytest.
+    """
     py = str(VENV / "bin" / "python3")
     if not Path(py).exists():
-        print("  (skipped: no fleet venv on this host)")
-        return
-    f = tmp_path / "agent.env"
+        raise NotRun("no fleet venv on this host — no declaration to read")
+    d = Path(tempfile.mkdtemp(prefix="pwm-declaration-"))
+    f = d / "agent.env"
     f.write_text(f"AGENT_NAME=test-host\nCORTEX_PYTHON={py}\n")
     r = _run("--print", "yaml", env={"CORTEX_PYTHON": "", "CORTEX_ENV_FILE": str(f)})
     assert r.returncode == 0, (r.returncode, r.stdout, r.stderr)
     assert r.stdout.strip() == py, r.stdout
+    print("  the declaration in agent.env was read ✓")
 
 
 def test_a_declaration_that_cannot_import_is_named():
@@ -157,18 +172,26 @@ def _main():
     print("helper:", HELPER)
     assert HELPER.is_file(), f"missing helper: {HELPER}"
     failed = []
+    not_run = []
     for name, fn in tests:
         try:
             fn()
+        except NotRun as exc:
+            not_run.append(f"{name}: {exc}")
+            print(f"NOT RUN  {name}")
         except Exception:
             import traceback
             failed.append(name)
             print(f"FAIL  {name}")
             traceback.print_exc()
+    if not_run:
+        print(f"NOT RUN ({len(not_run)}) — ran nothing here, so they are not evidence either way:")
+        for entry in not_run:
+            print(f"  - {entry}")
     if failed:
         print(f"RESULT: FAIL ({len(failed)}/{len(tests)}): {failed}")
         return 1
-    print(f"RESULT: ALL PASS ({len(tests)} tests)")
+    print(f"RESULT: ALL PASS ({len(tests)} tests)" + (f" ({len(not_run)} NOT RUN)" if not_run else ""))
     return 0
 
 
