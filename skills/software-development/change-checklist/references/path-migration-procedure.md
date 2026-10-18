@@ -67,13 +67,13 @@ For mass fixes across deployed files, `sed` is faster than individual `patch()` 
 
 ```bash
 # Fix paths across ALL deployed skills
-find ~/.hermes/skills/ -name '*.md' -exec sed -i 's|old-path|new-path|g' {} \;
+find ~/.hermes/skills/ -name '*.md' -exec sed -i.bak 's|old-path|new-path|g' {} \;
 
 # Fix specific files
-sed -i 's|hermes-cortex/a2a/|hermes-cortex/bus/|g' ~/.hermes-cortex/scripts/*.py
+sed -i.bak 's|hermes-cortex/a2a/|hermes-cortex/bus/|g' ~/.hermes-cortex/scripts/*.py
 
 # Fix cron prompt embedded paths (inside JSON — be careful with escaping)
-sed -i 's|skills/|skills/|g' ~/.hermes/cron/jobs.json
+sed -i.bak 's|skills/|skills/|g' ~/.hermes/cron/jobs.json
 ```
 
 **After bulk sed: always verify** — run a verification grep to confirm.

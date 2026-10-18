@@ -40,7 +40,7 @@ finds no dying step because none ran. Fix: `bash ops/scripts/cortex-update.sh
 **Diagnosis (the tell):**
 
 ```bash
-stat -c '%y' ~/.hermes-cortex/state/update-commit   # mtime BEFORE your changes?
+stat -c '%y' ~/.hermes-cortex/state/update-commit 2>/dev/null || stat -f '%Sm' ~/.hermes-cortex/state/update-commit   # mtime BEFORE your changes? (GNU first, BSD fallback)
 ```
 
 An old mtime while deploys "run clean" = the deploy is dying before the

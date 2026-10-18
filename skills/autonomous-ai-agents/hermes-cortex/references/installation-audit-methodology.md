@@ -86,7 +86,7 @@ cp ~/hermes-cortex/scripts/heartbeat.py ~/.hermes/scripts/heartbeat.py
 cp ~/hermes-cortex/scripts/memory-to-brain-sync.py ~/.hermes/scripts/memory-to-brain-sync.py
 
 # 2. Fix sync daemon (add --skip default)
-sed -i '' 's/sync --all --no-pull/sync --all --no-pull --skip default/' ~/.legacy-brain/sync-watch.sh
+sed -i.bak '' 's/sync --all --no-pull/sync --all --no-pull --skip default/' ~/.legacy-brain/sync-watch.sh
 launchctl unload ~/Library/LaunchAgents/com.legacy-brain.sync-watch.plist
 launchctl load ~/Library/LaunchAgents/com.legacy-brain.sync-watch.plist
 

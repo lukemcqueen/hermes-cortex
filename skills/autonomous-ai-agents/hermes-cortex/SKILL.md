@@ -465,8 +465,8 @@ grep limit_req_zone /opt/homebrew/etc/nginx/nginx.conf /opt/homebrew/etc/nginx/h
 **FIX:** Comment out the zone definitions in `nginx.conf` — `hermes-zone-defs.conf` is the
 canonical source (included by `hermes-services.conf`):
 ```bash
-sed -i '' 's/^  limit_req_zone /  #limit_req_zone /' /opt/homebrew/etc/nginx/nginx.conf
-sed -i '' 's/^  limit_conn_zone /  #limit_conn_zone /' /opt/homebrew/etc/nginx/nginx.conf
+sed -i.bak '' 's/^  limit_req_zone /  #limit_req_zone /' /opt/homebrew/etc/nginx/nginx.conf
+sed -i.bak '' 's/^  limit_conn_zone /  #limit_conn_zone /' /opt/homebrew/etc/nginx/nginx.conf
 nginx -t && nginx -s reload
 ```
 
@@ -581,7 +581,7 @@ ls ~/.local/bin/python3.12
 ls ~/.pyenv/versions/ | grep '^3\\.1[2-9]'
 
 # Update shebang:
-sed -i '' '1s|#!/usr/bin/env python3|#!/Users/\$(whoami)/.local/bin/python3.12|' \\
+sed -i.bak '' '1s|#!/usr/bin/env python3|#!/Users/\$(whoami)/.local/bin/python3.12|' \\
  ~/hermes-cortex/core/governance/score_cycle.py \
  ~/hermes-cortex/core/governance/loop_feedback.py
 ```
@@ -1534,14 +1534,14 @@ sed -n '/DATABASE_URL/p' ~/langfuse/docker-compose.yml | xxd
 
 ```bash
 # Update docker-compose.yml to use variable reference
-sed -i '' 's/postgresql:\\/\\/postgres:\\*\\*\\*@postgres/postgresql:\\/\\/postgres:***@postgres/' ~/langfuse/docker-compose.yml
+sed -i.bak '' 's/postgresql:\\/\\/postgres:\\*\\*\\*@postgres/postgresql:\\/\\/postgres:***@postgres/' ~/langfuse/docker-compose.yml
 # Force-recreate BOTH web and worker
 docker compose -f ~/langfuse/docker-compose.yml up -d --force-recreate langfuse-web langfuse-worker
 ```
 
 **Also fix the repo source:**
 ```bash
-sed -i '' 's/postgresql:\\/\\/postgres:\\*\\*\\*@postgres/postgresql:\\/\\/postgres:***@postgres/' ~/hermes-cortex/ops/install/deploy/docker-compose.langfuse.yml
+sed -i.bak '' 's/postgresql:\\/\\/postgres:\\*\\*\\*@postgres/postgresql:\\/\\/postgres:***@postgres/' ~/hermes-cortex/ops/install/deploy/docker-compose.langfuse.yml
 ```
 
 ### Langfuse Web Container Cycles After Init

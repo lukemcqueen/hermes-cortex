@@ -79,7 +79,7 @@ the two facts TOGETHER, because either alone is weak:
     by its argv script path, since several long-lived children can be serving one host.
 Keep the comparison numeric and portable instead of parsing `lstart` in prose:
 `start_epoch=$(( $(date +%s) - $(ps -o etimes= -p <pid> | tr -d ' ') ))`, compared against
-`stat -c %Y <deployed file>`. (macOS `ps` has no `etimes`; use `lstart` there.)
+`stat -c %Y <deployed file>` (`stat -f %m` on macOS). (macOS `ps` has no `etimes`; use `lstart` there.)
 **Ship it as a read-only verifier under `docs/evidence/` plus its captured run**, so
 "deployed AND loaded" is a claim the next reader re-runs rather than trusts. A deploy-side
 capture that stops at "the file on disk is current" leaves the load half unproven, and that

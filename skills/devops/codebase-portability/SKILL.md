@@ -335,7 +335,7 @@ from cortex_bus.workflow.sla_watchdog import main
 
 The repo source comes first (upstream before one-off). If the deployed
 copy and repo share the same inode (hard-linked), the first edit already
-covers both — verify with `stat -c '%i' <path1> <path2>`.
+covers both — compare inodes (`stat -c '%i'` on GNU, `stat -f '%i'` on macOS).
 
 **Required post-fix steps for cron scripts:**
 
@@ -574,7 +574,8 @@ share the same inode (hard-linked copies). Editing one modifies both
 automatically — no need to patch separately. Verify with:
 
 ```bash
-stat -c '%i' ~/.hermes/scripts/some-script.sh ~/.hermes-cortex/scripts/some-script.sh
+stat -c '%i' ~/.hermes/scripts/some-script.sh ~/.hermes-cortex/scripts/some-script.sh 2>/dev/null \
+  || stat -f '%i' ~/.hermes/scripts/some-script.sh ~/.hermes-cortex/scripts/some-script.sh
 # Same inode → same file
 ```
 

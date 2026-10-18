@@ -36,7 +36,7 @@ grep -rn "personal-domain\.com" .
 Use `patch` tool or `sed`:
 ```bash
 # sed approach (macOS requires -i '')
-sed -i '' 's/personal-domain\.com/example.com/g' file1 file2 ...
+sed -i.bak '' 's/personal-domain\.com/example.com/g' file1 file2 ...
 
 # Or use patch tool for targeted replacements
 ```

@@ -736,7 +736,7 @@ other conclude the system is broken. When touching either block message:
 - **The decisive check is TIME, and it needs no cooperation from the running process:** the
   process's START must be at or after the DEPLOYED file's mtime. Resolve the deployed path from
   the deploy manifest (`~/.hermes-cortex/deploy-manifest.tsv`) rather than guessing it, then
-  compare `ps -o lstart= -p $(pgrep -f <server>.py)` (or `etimes`) against `stat -c %y
+  compare `ps -o lstart= -p $(pgrep -f <server>.py)` (or `etimes`) against `stat -c %y` (macOS: `stat -f %Sm)
   <deployed>`. Start ≥ mtime ⇒ that process loaded the new revision; start < mtime ⇒ it did not,
   and the banner is telling the truth. Re-run that comparison after every later deploy: a module
   edited AFTER the last restart needs ANOTHER restart, so "verified loaded" is a property of a

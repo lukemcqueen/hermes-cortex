@@ -79,7 +79,7 @@ Edit `~/langfuse/clickhouse-config.d/03-profile-defaults.xml`:
 
 ```bash
 # Change the max_memory_usage value
-sed -i 's|<max_memory_usage>[0-9]*</max_memory_usage>|<max_memory_usage>1500000000</max_memory_usage>|' \
+sed -i.bak 's|<max_memory_usage>[0-9]*</max_memory_usage>|<max_memory_usage>1500000000</max_memory_usage>|' \
   ~/langfuse/clickhouse-config.d/03-profile-defaults.xml
 ```
 

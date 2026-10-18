@@ -28,7 +28,8 @@ two of the four "renamed" surfaces still old.
 ```bash
 ps -eo pid,lstart,cmd | grep 'hermes_cli.main gateway' | grep -v grep
 ps -eo pid,lstart,cmd | grep mcp_stdio_watchdog | grep -v grep
-stat -c '%y %n' ~/.hermes/plugins/governance-enforcer/__init__.py ~/.hermes/config.yaml
+stat -c '%y %n' ~/.hermes/plugins/governance-enforcer/__init__.py ~/.hermes/config.yaml 2>/dev/null \
+  || stat -f '%Sm %N' ~/.hermes/plugins/governance-enforcer/__init__.py ~/.hermes/config.yaml
 grep -n -iE 'agent-bus|cortex-bus' ~/.hermes/config.yaml   # HYPHENS, not underscores
 ```
 

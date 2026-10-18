@@ -313,20 +313,25 @@ are correct about different stores — the LOCK exists, the CYCLE does not — a
 of this class, not a scoring problem. Re-score nothing; check whether the lock's task has a cycle row at
 all, then free the lock (a terminal transition) and fix the ordering in the code that minted it.
 
-### A wide close costs one blob per pass — that is TRANSPORT, not the review's depth
+### A wide close judges a WAVE of blobs per pass — concurrency, never a longer window
 
 A close refused with **"N blob(s) of the push range still carry no review verdict"** names the exact
-remaining files: the per-blob pass judges ONE blob per invocation and verdicts are keyed by blob
-CONTENT, so each pass resumes from where the last stopped instead of redoing judged work. A single
-review call measures 180–220 s against a ~240 s per-close window, so a four-file change genuinely needs
-four passes. Re-issue `end_change` until it reports the session closed — the counter must strictly
-decrease, and a repeat that does NOT decrease is the real signal something is wrong. Do not read the
+remaining files. The per-blob pass now issues a **wave** of `BLOB_REVIEW_CONCURRENCY` (4) reviewer
+calls CONCURRENTLY, and because elapsed time is the SLOWEST call rather than their sum, four calls of
+180–220 s land inside the same ~240 s window. Measured: a four-file change closes in ONE pass, and a
+15-file range in four round trips where it previously took fifteen. Verdicts are keyed by blob
+CONTENT, so each pass resumes from where the last stopped instead of redoing judged work. Re-issue
+`end_change` until it reports the session closed — the counter must decrease (by up to the wave
+size), and a repeat that does NOT decrease is the real signal something is wrong. Do not read the
 repetition as a broken loop, and do not widen the review range to shorten it.
 
-The lever that actually shortens it: raising a THRESHOLD (blobs per window, the wide-diff split line
-count) buys passes by reviewing less and is a governance reduction. Raising the **CLIENT ceiling** — the
-MCP call's own timeout, which the close code itself documents as what to raise "to legitimately wait
-longer" — fits several blobs into one round trip with the same reviewer, same prompt, same verdict.
+**Do NOT raise the MCP client ceiling to shorten it.** This skill used to call that "the lever that
+actually shortens it", and that is wrong twice over: the operator's standing requirement is that
+reviews stay under 300 s — the module records it verbatim, "the window is never raised" — and it
+would not have helped anyway, because a sequential pass already spent its whole window on ONE call.
+Concurrency is what fits several blobs per round trip, with the same reviewer, the same prompt and
+the same verdict. Raising a THRESHOLD (blobs per window, the wide-diff split line count) buys passes
+by reviewing less and is a governance reduction.
 More per call, never less per blob.
 
 ### Judging a lock dead

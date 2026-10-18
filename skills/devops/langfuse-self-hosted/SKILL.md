@@ -545,9 +545,9 @@ WHERE email = 'old@email.com';
 The `.env` file (`~/langfuse/.env`) controls initial user creation on first launch. Sync it after updating the database:
 
 ```bash
-sed -i 's/^LANGFUSE_INIT_USER_EMAIL=.*/LANGFUSE_INIT_USER_EMAIL=new@email.com/' ~/langfuse/.env
-sed -i 's/^LANGFUSE_INIT_USER_NAME=.*/LANGFUSE_INIT_USER_NAME=New Name/' ~/langfuse/.env
-sed -i 's/^LANGFUSE_INIT_USER_PASSWORD=.*/LANGFUSE_INIT_USER_PASSWORD=new_password/' ~/langfuse/.env
+sed -i.bak 's/^LANGFUSE_INIT_USER_EMAIL=.*/LANGFUSE_INIT_USER_EMAIL=new@email.com/' ~/langfuse/.env
+sed -i.bak 's/^LANGFUSE_INIT_USER_NAME=.*/LANGFUSE_INIT_USER_NAME=New Name/' ~/langfuse/.env
+sed -i.bak 's/^LANGFUSE_INIT_USER_PASSWORD=.*/LANGFUSE_INIT_USER_PASSWORD=new_password/' ~/langfuse/.env
 ```
 
 ## References

@@ -30,7 +30,8 @@ never hand-copy files into the deploy tree.
 module's mtime:
 
     ps -o lstart= -p $(pgrep -f tools/loop-governance/loop-gov-mcp.py)
-    stat -c %y ~/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py
+    stat -c %y ~/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py 2>/dev/null \
+      || stat -f '%Sm' ~/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py   # GNU, else BSD
 
 A daemon started BEFORE your deploy keeps refusing on rules you have already fixed, and the refusal
 reads as authoritative. Only a gateway restart replaces it, and you cannot restart the gateway from

@@ -175,7 +175,7 @@ route. Verify a provider/model pair resolves before adding it — see
 **Important:** `hermes config set` saves lists/objects as YAML quoted strings, which may corrupt structured fallback config. Verify with `grep -A5 fallback_providers ~/.hermes/config.yaml` — if it's a single quoted line, fix with `sed`:
 
 ```bash
-sed -i 's/fallback_providers:.*/fallback_providers:\n  - provider: openrouter\n    model: deepseek\/deepseek-v4.1-flash\n    base_url: https:\/\/openrouter.ai\/api\/v1\n    api_mode: chat_completions/' ~/.hermes/config.yaml
+sed -i.bak 's/fallback_providers:.*/fallback_providers:\n  - provider: openrouter\n    model: deepseek\/deepseek-v4.1-flash\n    base_url: https:\/\/openrouter.ai\/api\/v1\n    api_mode: chat_completions/' ~/.hermes/config.yaml
 ```
 
 ### Model selection in session

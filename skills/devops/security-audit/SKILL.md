@@ -44,8 +44,8 @@ For every 🔴/🟡 finding, produce the exact remediation command, its impact
 
 ```bash
 # SSH hardening
-sed -i 's/^#*PermitRootLogin.*/PermitRootLogin no/' /etc/ssh/sshd_config
-sed -i 's/^#*PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/sshd_config
+sed -i.bak 's/^#*PermitRootLogin.*/PermitRootLogin no/' /etc/ssh/sshd_config
+sed -i.bak 's/^#*PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/sshd_config
 systemctl reload ssh
 
 # Kernel hardening (apply to /etc/sysctl.conf for persistence)

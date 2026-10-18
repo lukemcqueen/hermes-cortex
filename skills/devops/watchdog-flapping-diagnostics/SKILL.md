@@ -104,7 +104,7 @@ non-200/401/403 as **down**, so one throttled probe = false "unreachable".
   `nginx.conf` can still be inactive in the running process. Decide by the worker, not the
   master: `nginx -s reload` keeps the master PID and spawns NEW workers, so compare the
   WORKER's start time against the config file's mtime —
-  `ps -o lstart= -p <worker-pid>` vs `stat -c '%y' /etc/nginx/<conf>`. Worker predates the
+  `ps -o lstart= -p <worker-pid>` vs the config's mtime (`stat -c '%y'` on GNU, `stat -f '%Sm'` on macOS). Worker predates the
   write ⇒ the fix is not loaded and the reload is still required; worker postdates ⇒ it took.
   When you cannot read `/var/log/nginx/<access>.log` to check for residual 499/503 (root-log,
   sudo prompts for a password, no NOPASSWD), the timestamp comparison is the non-sudo way to
