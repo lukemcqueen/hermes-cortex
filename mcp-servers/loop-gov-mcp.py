@@ -1472,7 +1472,9 @@ def _review_scope_note(repo: Optional[Path]) -> str:
 # What the per-blob review has ACTUALLY asked about, as patterns over a file's ADDED lines. Each
 # entry is (regex, what the review will want). These are derived from findings raised against this
 # repo, not from theory. Saying them BEFORE the close is the whole point: a requirement discovered
-# by a refused close costs a full cycle (operator directive, 2026-10-18).
+# by a refused close costs a full cycle. Record of that directive and of the refusals it responds
+# to: cycle 13071's description (task preflight-advice-and-lessons) and the issue events recorded
+# for these tasks (#156-#158), not this comment.
 _PREFLIGHT_PATTERNS = (
     (re.compile(r"\bmeasur\w*d\b|\bobserved\b", re.I),
      "cites a measurement — add a pointer to its record (cycle id, event number, evidence path); "
@@ -1482,7 +1484,8 @@ _PREFLIGHT_PATTERNS = (
     # 124 is the observed timeout code (`timeout N cmd` reports 124). Deliberately NOT a range like
     # 12[0-9]: 125 is git's own failure, 126 permission denied, 127 command not found and 128 an
     # invalid exit argument — flagging those as timeouts would advise "run it to completion" about
-    # something that never started (adversarial finding ADV-13071-1).
+    # something that never started. Record of that finding: cycle 13071's per-blob review, stored as
+    # ADV-13071-1 in the blob_reviews row for this file's blob (the review of this same range).
     (re.compile(r"rc=124\b|timeout \d+ python3"),
      "records a TIMEOUT — run it to completion and record the number; a timeout is not a result"),
     (re.compile(r"^\s*(?:def test_|assert |import |from )"),
