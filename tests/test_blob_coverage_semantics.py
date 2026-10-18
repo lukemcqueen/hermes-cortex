@@ -388,6 +388,53 @@ def test_unparseable_reply_is_retried_on_the_next_pass_and_never_skipped():
     assert sha in out2["remaining"], f"and still be reported unjudged: {out2}"
 
 
+def test_blob_material_shows_sibling_added_lines_so_evidence_is_visible():
+    """The churn this fixes: a fix PROVED in a sibling blob cost an extra round trip per file, because
+    the reviewer could see the sibling's path and verdict but never its content — so it demanded the
+    evidence be duplicated into the file under review, or produced as committed output."""
+    import pathlib
+    saved = (mcp._git_capture, mcp._push_range_blobs, mcp._blobs_with_covered_verdict,
+             mcp._blobs_with_recorded_verdict)
+
+    def fake_git(repo, *args):
+        return f"+++ b/{args[-1]}\n+{args[-1]}: added by this range\n"
+
+    mcp._git_capture = fake_git
+    mcp._push_range_blobs = lambda repo: {"a.py": "shaA", "tests/t.py": "shaT"}
+    mcp._blobs_with_covered_verdict = lambda blobs, conn=None: set()
+    mcp._blobs_with_recorded_verdict = lambda blobs, conn=None: {}
+    try:
+        md = mcp._blob_material(pathlib.Path("/tmp"), "base", "a.py", {"head_sha": "head"})
+    finally:
+        (mcp._git_capture, mcp._push_range_blobs, mcp._blobs_with_covered_verdict,
+         mcp._blobs_with_recorded_verdict) = saved
+    assert "sibling ADDED lines" in md, md
+    assert "tests/t.py: added by this range" in md, (
+        "the sibling's added line must be VISIBLE in this file's window: " + md)
+    assert "do NOT ask for it to be duplicated into the file under review" in md, (
+        "the material must say where to verify it: " + md)
+
+
+def test_sibling_added_lines_are_bounded_per_file_and_in_total():
+    """A wide range must not flood one blob's window."""
+    import pathlib
+    saved = mcp._git_capture
+
+    def fake_git(repo, *args):
+        return "+++ b/x\n" + "".join(f"+sib{i}\n" for i in range(500))
+
+    mcp._git_capture = fake_git
+    try:
+        block = mcp._sibling_added_lines(pathlib.Path("/tmp"), "base",
+                                         [f"s{i}.py" for i in range(20)])
+    finally:
+        mcp._git_capture = saved
+    assert block.count("+sib") <= mcp.RANGE_CONTEXT_TOTAL_LINES, (
+        f"the block must respect the TOTAL cap: {block.count('+sib')} lines")
+    assert block.count("(+500 added line(s)") <= mcp.RANGE_CONTEXT_SIBLINGS, (
+        "and it must stop after the sibling cap")
+
+
 if __name__ == "__main__":
     fails = 0
     for name, fn in sorted(globals().items()):

@@ -94,6 +94,10 @@ Match the demand to the claim:
 - **An operator directive or other external instruction** → a pointer to where it was given and the
   cycle/commit that acted on it. A quoted instruction is a recorded fact, not a testable assertion.
 - **A claim about another file in the range** → the sibling rule below.
+- **A claim proved by another file in the range** → its added lines are shown to you under
+  `sibling ADDED lines`. Verify the claim THERE. Do not demand the evidence be duplicated into the
+  file under review, and do not ask for it as separate committed output: that list exists precisely so
+  one window settles the question, and asking anyway costs an extra round trip per file.
 - **A helper that exists at BOTH ends of the range** (used by this change but not introduced by it) →
   context, not a claim. You cannot see its definition, but the range did not add or alter it, so
   "commit it so I can verify" is unsatisfiable — it is already committed, in the file under review,

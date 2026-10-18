@@ -1673,6 +1673,56 @@ def _preflight_advice(repo: Optional[Path], limit: int = PREFLIGHT_MAX_ITEMS) ->
     return uniq[:limit]
 
 
+# How much of the range's OTHER files a per-blob review is shown. Bounded on purpose: enough for a
+# test, a pointer or a guard written to answer a finding to be VISIBLE, without letting a wide range
+# flood one window.
+RANGE_CONTEXT_SIBLINGS = 6                # at most this many sibling files contribute
+RANGE_CONTEXT_LINES_PER_FILE = 12         # added lines shown per sibling
+RANGE_CONTEXT_TOTAL_LINES = 60            # hard cap on the whole sibling block
+
+
+def _sibling_added_lines(repo: Path, base: str, others: list[str]) -> str:
+    """The ADDED lines of the range's OTHER files, bounded — so a claim proved in a sibling is
+    verifiable in THIS window.
+
+    Why (measured 2026-10-18, the highest-cost churn of the night): a file whose evidence lives in
+    another file of the range — "the test that asserts this is in tests/…" — cost an extra round trip
+    PER FILE. The reviewer could see the sibling's PATH and its recorded verdict but never its
+    CONTENT, so it repeatedly asked for the evidence to be duplicated into the file under review or
+    produced as "committed output". The only way to satisfy that was to TOUCH the sibling as well,
+    which changed nothing: a working fix bought a fresh blob, not a new fact.
+
+    Added lines are what a fix WRITES (a test, a pointer, a guard), so showing them answers the
+    question without duplicating anything. Nothing is weakened by this: the sibling is still judged on
+    its own blob, on its own merits, and this list shows only what the range itself added.
+    """
+    if not others:
+        return ""
+    out: list[str] = []
+    total = 0
+    for p in others[:RANGE_CONTEXT_SIBLINGS]:
+        try:
+            d = _git_capture(repo, "diff", "--no-ext-diff", "-U0", f"{base}..HEAD", "--", p)
+        except Exception:  # noqa: BLE001 — material must never fail on a git hiccup
+            continue
+        added = [ln for ln in (d or "").splitlines()
+                 if ln.startswith("+") and not ln.startswith("+++")]
+        if not added:
+            continue                                  # a pure deletion shows nothing to verify
+        room = RANGE_CONTEXT_TOTAL_LINES - total
+        if room <= 0:
+            break
+        show = added[:min(RANGE_CONTEXT_LINES_PER_FILE, room)]
+        total += len(show)
+        out.append(f"  {p} (+{len(added)} added line(s); first {len(show)} shown):")
+        out += [f"    {ln}" for ln in show]
+    if not out:
+        return ""
+    return ("sibling ADDED lines — evidence for a claim about another file may live HERE. Verify it in\n"
+            "this list; do NOT ask for it to be duplicated into the file under review, and do NOT ask\n"
+            "for it as separate committed output:\n" + "\n".join(out) + "\n")
+
+
 def _blob_material(repo: Path, base: str, path: str, ctx: dict) -> str:
     """The material for ONE blob: its own diff, bounded, plus the range it sits in.
 
@@ -1720,6 +1770,7 @@ def _blob_material(repo: Path, base: str, path: str, ctx: dict) -> str:
                 scope_lines += f"  {_p}: {_tag}\n"
         except Exception:  # noqa: BLE001 — material must never fail on a store hiccup
             pass
+        scope_lines += _sibling_added_lines(repo, base, others)
     return (
         "=== BLOB REVIEW — ONE FILE OF A RANGE ===\n"
         f"session: {ctx.get('sid', '')}\nauthor: {ctx.get('author', '')}\n"
