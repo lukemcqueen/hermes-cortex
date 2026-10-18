@@ -310,6 +310,71 @@ def test_the_old_findings_with_no_findings_row_is_what_wedged_the_range():
         "neither row is coverage: an empty findings list and an unjudged row both credit nothing")
 
 
+def test_leaf_raises_on_empty_content_so_silence_is_a_failure():
+    """`_extract_verdict`'s docstring claims `_call_reviewer_llm` raises AT THE LEAF on empty content,
+    i.e. a starved reply becomes a FAILURE before any recorder sees it. The claim is load-bearing for
+    the UNJUDGED backstop, so it is exercised here with the HTTP layer stubbed (no network, no key)."""
+    import json as _json
+    import os
+    import urllib.request
+
+    class _Resp:
+        def __init__(self, payload):
+            self._b = _json.dumps(payload).encode()
+
+        def read(self):
+            return self._b
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+    os.environ.setdefault("OPENROUTER_API_KEY", "test-presence-only")  # never printed
+
+    def fake_urlopen(req, timeout=None):
+        # The measured shape: a reasoning model that spent its output budget thinking.
+        return _Resp({"choices": [{"message": {"content": None}, "finish_reason": "length"}],
+                      "usage": {"completion_tokens_details": {"reasoning_tokens": 130836}}})
+
+    saved = urllib.request.urlopen
+    urllib.request.urlopen = fake_urlopen
+    try:
+        try:
+            mcp._call_reviewer_llm("prompt")
+        except RuntimeError as exc:
+            assert "NO usable content" in str(exc), f"unexpected failure message: {exc}"
+        else:
+            raise AssertionError("an empty reviewer reply must RAISE, never return None")
+    finally:
+        urllib.request.urlopen = saved
+
+
+def test_unparseable_reply_is_retried_on_the_next_pass_and_never_skipped():
+    """Stitches the raise to the skip list: an unusable reply must leave the content sendable AGAIN."""
+    import sqlite3
+    conn = sqlite3.connect(":memory:")
+    conn.execute("CREATE TABLE blob_reviews (blob_sha TEXT PRIMARY KEY, verdict TEXT, findings_json TEXT)")
+    sha = _sha("stitched")
+    blobs = {"z.py": sha}
+    seen: list = []
+
+    def reviewer(s, p, m):
+        seen.append(s)
+        return "I reviewed it and it looks fine"          # non-empty, but judges NOTHING
+
+    out1 = mcp._review_uncovered_blobs(blobs, reviewer=reviewer,
+                                       material_for=lambda s, p: "material", conn=conn)
+    assert sha in out1["failed"] and sha in out1["remaining"], f"unjudged, not credited: {out1}"
+    assert mcp._blobs_with_recorded_verdict(blobs, conn=conn) == {}, (
+        "nothing may be recorded, or the skip list would hide the content from every later pass")
+    out2 = mcp._review_uncovered_blobs(blobs, reviewer=reviewer,
+                                       material_for=lambda s, p: "material", conn=conn)
+    assert len(seen) == 2, "the SAME content must be sent again on the next pass (the retry property)"
+    assert sha in out2["remaining"], f"and still be reported unjudged: {out2}"
+
+
 if __name__ == "__main__":
     fails = 0
     for name, fn in sorted(globals().items()):
