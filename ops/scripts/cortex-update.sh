@@ -537,9 +537,11 @@ register "ops/scripts/lib/python-with-module.sh"          "${CORTEX_DEPLOY_HOME}
 # missing interpreter/payload is named instead of surfacing as bash's generic exec error.
 register "ops/scripts/lib/require-fleet-venv.sh"          "${CORTEX_DEPLOY_HOME}/scripts/lib/require-fleet-venv.sh"
 register "ops/scripts/lib/cortex-update-mutex.py"         "${CORTEX_DEPLOY_HOME}/scripts/lib/cortex-update-mutex.py"
-# Fail-safe cleanup for an interrupted `git pull --rebase`: a conflicted pull leaves the
-# repo stopped mid-rebase, refusing every commit and push on the host. Sourced by
-# agent-hermes-cortex-sync.sh and agent-ip-submission.sh before their pull failure paths.
+# Registers the stalled-rebase fail-safe for deploy. Its job: a `git pull --rebase` interrupted
+# by a conflict leaves the repo STOPPED MID-REBASE, refusing every commit and push on the host
+# until someone cleans it up by hand; that helper aborts the stopped rebase so the failure is
+# inert. This line only puts the file on the host — the consumers live elsewhere in the range
+# and can be listed with:  grep -rn "git-stalled-rebase.sh" ops/scripts/
 register "ops/scripts/lib/git-stalled-rebase.sh"           "${CORTEX_DEPLOY_HOME}/scripts/lib/git-stalled-rebase.sh"
 register "ops/scripts/manage/verify-stamp-repo-tuple.py"   "${CORTEX_DEPLOY_HOME}/scripts/manage/verify-stamp-repo-tuple.py"
 register "ops/scripts/manage/orch-task-board-digest.py"  "${CORTEX_DEPLOY_HOME}/scripts/orch-task-board-digest.py"
