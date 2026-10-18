@@ -138,6 +138,26 @@ def test_preflight_advice_names_the_evidence_the_review_will_want():
         f"every item must name the file it applies to: {joined}")
 
 
+def test_preflight_does_not_call_a_non_timeout_exit_a_timeout():
+    """ADV-13071-1: 127 is command-not-found, not a timeout — do not advise 'run it to completion'."""
+    saved = (mcp._push_base, mcp._push_range_blobs, mcp._blobs_with_covered_verdict, mcp._git_capture)
+    mcp._push_base = lambda repo: "base"
+    mcp._push_range_blobs = lambda repo: {"a/one.py": SA}
+    mcp._blobs_with_covered_verdict = lambda blobs, conn=None: set()
+    try:
+        for code in ("120", "125", "126", "127", "128"):
+            mcp._git_capture = (lambda c: lambda repo, *a, **k: f"+++ b/a/one.py\n+rc={c}\n")(code)
+            got = mcp._preflight_advice(Path("/tmp"), limit=2)
+            assert not any("TIMEOUT" in a for a in got), (
+                f"rc={code} is not a timeout, but the advice called it one: {got}")
+        mcp._git_capture = lambda repo, *a, **k: "+++ b/a/one.py\n+rc=124\n"
+        got = mcp._preflight_advice(Path("/tmp"), limit=2)
+    finally:
+        (mcp._push_base, mcp._push_range_blobs,
+         mcp._blobs_with_covered_verdict, mcp._git_capture) = saved
+    assert any("TIMEOUT" in a for a in got), f"rc=124 IS the timeout code: {got}"
+
+
 def test_preflight_advice_is_empty_when_nothing_is_outstanding():
     saved = (mcp._push_base, mcp._push_range_blobs, mcp._blobs_with_covered_verdict)
     mcp._push_base = lambda repo: "base"

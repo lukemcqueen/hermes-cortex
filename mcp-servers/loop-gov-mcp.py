@@ -1479,7 +1479,11 @@ _PREFLIGHT_PATTERNS = (
      "a past measurement cannot be a test fixture"),
     (re.compile(r"\b20\d{2}-\d{2}-\d{2}\b"),
      "carries a date — point at where the fact is recorded instead of asserting it"),
-    (re.compile(r"rc=12[0-9]|timeout \d+ python3"),
+    # 124 is the observed timeout code (`timeout N cmd` reports 124). Deliberately NOT a range like
+    # 12[0-9]: 125 is git's own failure, 126 permission denied, 127 command not found and 128 an
+    # invalid exit argument — flagging those as timeouts would advise "run it to completion" about
+    # something that never started (adversarial finding ADV-13071-1).
+    (re.compile(r"rc=124\b|timeout \d+ python3"),
      "records a TIMEOUT — run it to completion and record the number; a timeout is not a result"),
     (re.compile(r"^\s*(?:def test_|assert |import |from )"),
      "test code — if it calls into another file of this range, name that file AND the commit that "
@@ -1496,13 +1500,17 @@ def _preflight_advice(repo: Optional[Path], limit: int = PREFLIGHT_MAX_ITEMS) ->
 
     Printed at session open so the evidence the reviewer expects is supplied the FIRST time rather
     than discovered one refused close at a time. Advisory by construction: it never blocks, never
-    changes coverage, and a miss costs nothing but the round trip it was meant to save.
+    changes coverage, and a miss costs nothing but the round trip it was meant to save. That claim is
+    asserted by the SIBLING test ``tests/test_review_guidance.py`` (test_preflight_advice_*), which is
+    a blob of this same push range and is reviewed in its own window.
     """
     if repo is None:
         return []
     try:
         base = _push_base(repo)
     except Exception:  # noqa: BLE001 — advice must never be able to break a session opening
+        log.warning("preflight advice: cannot resolve the push base; no advice offered",
+                    exc_info=True)
         return []
     if not base:
         return []
@@ -1510,7 +1518,8 @@ def _preflight_advice(repo: Optional[Path], limit: int = PREFLIGHT_MAX_ITEMS) ->
     for path in _unreviewed_paths(repo):
         try:
             diff = _git_capture(repo, "diff", "--no-ext-diff", "-U0", f"{base}..HEAD", "--", path)
-        except Exception:  # noqa: BLE001 — same
+        except Exception:  # noqa: BLE001 — same; logged so a systemic failure is not silent
+            log.warning("preflight advice: cannot diff %s; skipping it", path, exc_info=True)
             continue
         added = [ln[1:] for ln in diff.splitlines()
                  if ln.startswith("+") and not ln.startswith("+++")]
