@@ -59,6 +59,14 @@ if [ -z "$TIMEOUT_CMD" ]; then
   exit 2
 fi
 
+# The interpreter is checked for the same reason the timeout binary is. Both are invoked through a
+# `timeout N python3 <file>` pipeline whose output is discarded, so a missing binary would surface as
+# a 126/127 exit code that this script would read as THE TEST'S OWN RESULT — and the comparison that
+# is the entire point of the file would then be comparing two shell errors. Verified up front, the
+# exit codes below can only come from the tests themselves.
+command -v python3 >/dev/null 2>&1 || {
+  echo "verify_preexisting_failures: python3 not found on PATH" >&2; exit 2; }
+
 git -C "$REPO" rev-parse --verify --quiet "$PARENT" >/dev/null || {
   echo "cannot resolve revision '$PARENT' in $REPO" >&2; exit 2; }
 PARENT_SHA="$(git -C "$REPO" rev-parse --short "$PARENT")"
