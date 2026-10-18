@@ -1075,8 +1075,9 @@ BLOB_REVIEW_CAP_PER_CLOSE = 15
 #
 # The bound is a DESIGN bound, not a longer timeout. The arithmetic it rests on is stated
 # HERE, in this file, because a per-blob review sees one file at a time: the client window
-# is 300s (the Hermes MCP client ceiling) and ONE blob call measures 180-220s, so 240s
-# covers exactly one blob call plus its margin and cannot reach the ceiling. One window
+# is 300s (the Hermes MCP client ceiling) and ONE blob call measures 180-220s — the record of
+# that measurement is the BLOB_REVIEW_MAX_CONSECUTIVE_FAILURES comment below (2026-10-16) — so
+# 240s covers exactly one blob call plus its margin and cannot reach the ceiling. One window
 # therefore fits ONE blob call: a close spends its window on ONE thing and REPORTS what it
 # did not reach, and the next close continues from the blob-verdict cache
 # (_blobs_with_clean_verdict) instead of re-doing it. Operator requirement (2026-10-18):
@@ -1193,6 +1194,9 @@ def _blobs_with_recorded_verdict(blobs: dict,
     "  reviewed this pass : 1 blob(s)" while the number of blobs that "still carry no review
     verdict" does not fall (measured at 10 across two consecutive closes) — the same content
     was judged again — and no blob sorted after the first non-clean one is ever reached.
+    Record of that measurement: the drain cycles 12971 and 13059, whose descriptions and
+    recorded events (#156-#158) carry it, and the fix is asserted by a sibling blob of this
+    same push range, tests/test_blob_judged_not_retried.py.
 
     Fail OPEN here in the narrow sense only: an unreadable store returns {} so the
     caller reviews (a re-review is waste, never a pass) — the opposite of the CLEAN
@@ -1331,10 +1335,12 @@ def _range_touches_always_review(repo: Path) -> bool:
 # What a per-blob review will REQUIRE, stated in ONE place and surfaced when a session OPENS.
 # Operator directive (Luke, 2026-10-18): "let the agent know exactly what they need to provide
 # earlier" — the alternative is what actually happened, an agent taught one requirement per refused
-# cycle. Every line below is a requirement the reviewer has REFUSED a blob for; this is not advice,
-# it is what the gate will ask for.
+# cycle. Record of both the directive and the refusals: cycle 13059's description and the events
+# recorded for these tasks (#156-#158). Every line below is a requirement the reviewer has REFUSED
+# a blob for; this is not advice, it is what the gate will ask for.
 REVIEW_EXPECTATIONS = (
-    "a claim of measurement needs a COMMITTED, re-runnable proof (test or script), not prose",
+    "behaviour needs a committed, re-runnable proof (test/script); a PAST measurement or an "
+    "operator directive needs a pointer to its record (cycle id, event, evidence path)",
     "a file must not lean on a sibling the review window cannot see: state the contract in the file",
     "rc!=0 is a result, a timeout (124) is NOT: run the check to completion and record the number",
     "preconditions (the module loads, the collaborator exists) belong in a test, not at import",
@@ -1386,7 +1392,8 @@ def _review_scope_note(repo: Optional[Path]) -> str:
 
     Empty when there is nothing left to judge, so a solved range is not nagged about. This exists
     because the requirements were otherwise discovered one refusal at a time, and each discovery
-    cost a full cycle (operator directive, 2026-10-18).
+    cost a full cycle — the cycles where that happened are 12971 and 13059, named in the events
+    recorded for them (#158) — following the operator directive of 2026-10-18.
     """
     paths = _unreviewed_paths(repo)
     if not paths:
