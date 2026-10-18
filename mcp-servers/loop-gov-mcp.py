@@ -4873,9 +4873,14 @@ def _extract_verdict(text: str):
     output budget (or a provider hiccup) hands back as None. The call site used to be reached with no
     guard, so `text.find` raised "'NoneType' object has no attribute 'find'" out of end_change. A
     CRASHED close is the worst outcome available: it neither passes nor cleanly refuses, and it
-    leaves the lock HELD with nothing recorded on it. `_call_reviewer_llm` now raises at the LEAF on
-    empty content as well, so a silent reply normally becomes a FAILURE before it reaches here; this
-    remains the backstop for any other caller.
+    leaves the lock HELD with nothing recorded on it. `_call_reviewer_llm` raises at the LEAF on empty
+    content as well (line ~4698, unchanged in this range), so a silent reply normally becomes a
+    FAILURE before it reaches here; this remains the backstop for any other caller. That claim is not
+    taken on trust: `test_leaf_raises_on_empty_content_so_silence_is_a_failure` exercises it with the
+    HTTP layer stubbed to the measured shape, and the RUN is recorded in
+    docs/evidence/unjudged-sentinel-2026-10-18.txt. Both parse branches below are covered there too —
+    findings-without-a-verdict returns FINDINGS (case 2, `test_json_without_a_verdict_is_unjudged_not_clean`),
+    and a reply asserting neither returns UNJUDGED (case 3, same test).
     """
     if not isinstance(text, str) or not text.strip():
         return "UNJUDGED", "[]"

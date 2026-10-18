@@ -1,0 +1,32 @@
+UNJUDGED SENTINEL — committed evidence for the claims in _extract_verdict's docstring
+Recorded 2026-10-18T06:44:53Z by esther (host esther)
+
+$ python3 tests/test_blob_coverage_semantics.py
+  PASS test_00_preconditions
+  PASS test_a_stored_unjudged_row_neither_covers_nor_skips
+  PASS test_ambiguity_fails_closed
+  PASS test_blocking_findings_are_not_covered
+  PASS test_clean_is_covered
+  PASS test_coverage_is_recomputed_per_call_not_cached
+  PASS test_covered_blob_is_not_re_reviewed_and_not_outstanding
+  PASS test_db_connection_is_wal_with_a_busy_timeout
+  PASS test_json_without_a_verdict_is_unjudged_not_clean
+  PASS test_layout_hints_are_configurable
+  PASS test_leaf_raises_on_empty_content_so_silence_is_a_failure
+  PASS test_non_blocking_findings_are_covered
+  PASS test_push_base_candidates_handle_a_master_default_and_another_remote
+  PASS test_receipt_names_only_covered_blobs
+  PASS test_reply_that_judged_nothing_is_unjudged_not_findings
+  PASS test_silent_reply_leaves_no_verdict_and_keeps_the_blob_retryable
+  PASS test_the_old_findings_with_no_findings_row_is_what_wedged_the_range
+  PASS test_unjudged_is_not_covered
+  PASS test_unparseable_reply_is_retried_on_the_next_pass_and_never_skipped
+  PASS test_unresolvable_range_yields_no_blobs_and_generic_guidance
+OK — 0 failure(s)
+
+--- the five tests that back the docstring's claims ---
+test_leaf_raises_on_empty_content_so_silence_is_a_failure  -> _call_reviewer_llm RAISES on empty content (HTTP layer stubbed to content=null, finish_reason=length, reasoning_tokens=130836)
+test_json_without_a_verdict_is_unjudged_not_clean          -> case (2) findings-only JSON returns FINDINGS; case (3) JSON asserting nothing returns UNJUDGED
+test_reply_that_judged_nothing_is_unjudged_not_findings     -> None / '' / whitespace / non-string / prose all UNJUDGED
+test_unparseable_reply_is_retried_on_the_next_pass_and_never_skipped -> the pass sends the SAME content again (reviewer called twice)
+test_the_old_findings_with_no_findings_row_is_what_wedged_the_range -> the OLD FINDINGS/[] row IS skipped by _blobs_with_recorded_verdict (the wedge), UNJUDGED is not
