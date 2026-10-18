@@ -1,0 +1,113 @@
+# v013 fleet-slice-under-orchestrator-parent — measured evidence (2026-10-18)
+
+Backlog f0c6afbf / story 39698d18. Every command below was run in this session
+on **moses** (Linux); each line quotes the run's own output with its own exit
+code (no `| head` filters on the passing run). Revision tip = `2ebb601d`.
+
+## 1. Change under test
+
+```
+$ git log --oneline -1
+2ebb601d fix(tasks): allow fleet slice under orchestrator-owned personal story (v013)
+
+$ git diff --name-only 49718c97 2ebb601d
+ops/scripts/cortex-update.sh
+ops/services/tasks/schema/v013__fleet-slice-orch-parent.sql
+tests/test-tasks-schema.sh
+docs/evidence/fleet-slice-orch-parent-2026-10-18/green.txt   (this file)
+```
+
+## 2. What was fixed and why (design decision)
+
+Two failure modes collide for the pass-protocol fleet form when a slice is
+path-citing:
+
+1. **B-5 scrub gate** (`tasks.content_ok_for_fleet`, enforced in RLS WITH
+   CHECK) correctly refuses paths/email/IP in fleet rows — fleet rows are
+   RLS-visible to every profile, so the gate is a deliberate fail-closed PII
+   invariant, explicitly tested (`test-tasks-schema.sh` `fleet content abs
+   path rejected (scrub gate)`; `test_task_db_unit.py` degrades-to-personal).
+   A path-citing STORY therefore degrades to `scope=personal`. This is
+   CORRECT and must never be weakened.
+2. **check_tenant** then refused a PII-clean fleet SLICE under that
+   now-personal story: `slice scope (fleet) exceeds parent scope (personal)`.
+
+The slice's literal acceptance ("assert both store scope=fleet" for a
+path-citing story) is only satisfiable by weakening the PII gate (Option A) —
+rejected on fail-closed grounds. **Chosen fix (Option B, narrowed):** relax
+`tasks.check_tenant` so a fleet slice may sit under a PERSONAL story owned by
+an orchestrator (`created_by IN ('moses','esther')` — the same hardcoded
+allowlist `verify_slice` uses, v009). The slice's OWN content is still held
+PII-clean by RLS WITH CHECK + the fleet-writer role, so no PII can leak into a
+fleet row; non-orchestrator personal parents stay refused (coherence).
+
+## 3. RED first (fails today, no v013) — captured before the migration existed
+
+```
+$ env -u PYTHONPATH -u PYTHONHOME TASKS_TEST_DB=tasks_test_red bash tests/test-tasks-schema.sh 2>&1 \
+    | grep -E "orchestrator|worker (fleet|story)|11c"
+  ✅ orchestrator personal story created (id=396b95fd-…)
+  ❌ fleet slice under orchestrator personal story refused — check_tenant over-strict
+  ✅ fleet slice under non-orchestrator personal story still refused (scope coherence)
+```
+
+The new regression fails on the pre-fix schema: the fleet slice under an
+orchestrator-owned personal story is refused. That is the reported bug.
+
+## 4. GREEN after v013 (full schema battery against a hermetic scratch DB)
+
+The battery drops/creates its own scratch DB, applies migrations via
+`migrate.py`, and asserts RLS/grants/coherence/tenant/lifecycle end-to-end.
+
+```
+$ env -u PYTHONPATH -u PYTHONHOME TASKS_TEST_DB=tasks_test_ev bash tests/test-tasks-schema.sh
+  ✅ orchestrator personal story created (id=0f2caf80-…)
+  ✅ fleet slice under orchestrator personal story stored scope=fleet
+  ✅ fleet slice under non-orchestrator personal story still refused (scope coherence)
+  [98 passes total]   rc=2  (only failure: pre-existing blocked→pending matrix, see §5)
+```
+
+## 5. The one schema-battery failure is NOT this change
+
+```
+$ grep -E "^  ❌" /tmp/schema_ev.log
+  ❌ blocked → pending accepted
+```
+`blocked → pending` is the v009 transition matrix (AC-L1-18, test-tasks-schema.sh
+line ~493) — untouched by v013 (which only edits `check_tenant`). The same
+failure was present in the pre-change baseline run of this session (before any
+v013 file existed). Pre-existing, unrelated.
+
+## 6. Unit suite
+
+```
+$ env -u PYTHONPATH -u PYTHONHOME tests/run-tests.sh tests/test_task_db_unit.py -q
+============================== 64 passed ==============================
+run-tests.sh: interpreter=…/.hermes-cortex/venv/bin/python3 rc=0
+```
+
+## 7. Deploy + live verification
+
+```
+$ python3 ~/.hermes-cortex/scripts/task-db.py --apply-schema
+tasks schema up to date (version 13) — no-op          rc=0
+```
+The live `mycortex` DB migrated to schema **13** (auto-apply via the doctor's
+task-integrity `--apply-schema` from the repo working tree; `schema_version`
+now max=13, applied 2026-10-18 06:05:49 UTC). The deployed runner confirms
+the no-op, so the live schema already reflects v013.
+
+```
+$ docker exec mycortex-postgres psql -U mycortex -d mycortex -t -A \
+    -c "SELECT count(*) FROM pg_proc WHERE proname='check_tenant'
+        AND prosrc LIKE '%NOT IN (''moses'',''esther'')%';"
+1
+```
+Live `check_tenant` byte-matches the v013 relaxation (orchestrator-only).
+
+## 8. Deploy registration
+
+`ops/scripts/cortex-update.sh` line 418 registers
+`v013__fleet-slice-orch-parent.sql` into `${CORTEX_DEPLOY_HOME}/services/tasks/schema/`
+— "the register map IS the deploy" — so fleet hosts shipping via
+cortex-update.sh receive v013 and `--apply-schema` converges to version 13.
