@@ -233,6 +233,62 @@ def test_unresolvable_range_yields_no_blobs_and_generic_guidance():
         "there is no range, so there must be no per-file list: " + note)
 
 
+def test_reply_that_judged_nothing_is_unjudged_not_findings():
+    """An unparseable or silent reply is UNJUDGED, never FINDINGS with an empty list.
+
+    FINDINGS/[] was not a pass (coverage already excludes an empty findings list) but it was a WEDGE:
+    the per-blob pass recorded it, `_blobs_with_recorded_verdict` then skipped that content on every
+    later close, and the blob stayed in `remaining` forever — a range that can never close.
+    """
+    for text in (None, "", "   ", 42, "the material looks fine to me, no issues found"):
+        assert mcp._extract_verdict(text)[0] == "UNJUDGED", f"{text!r} must be UNJUDGED"
+
+
+def test_json_without_a_verdict_is_unjudged_not_clean():
+    """A reply that asserts NOTHING must not credit the blob.
+
+    `obj.get("verdict", "FINDINGS" if findings else "CLEAN")` returned CLEAN for any JSON object with
+    no verdict key, so `{"summary": "all good"}` was a PASS for material nobody had judged.
+    """
+    assert mcp._extract_verdict('{"summary": "all good"}')[0] == "UNJUDGED"
+    assert mcp._extract_verdict('{"verdict": "CLEAN", "findings": []}')[0] == "CLEAN"
+    assert mcp._extract_verdict(
+        '{"verdict": "FINDINGS", "findings": [{"severity": "high"}]}')[0] == "FINDINGS"
+    # Findings but no verdict key is still an assertion of something to look at.
+    assert mcp._extract_verdict('{"findings": [{"severity": "low"}]}')[0] == "FINDINGS"
+
+
+def test_a_stored_unjudged_row_neither_covers_nor_skips():
+    """Defence in depth: even if an UNJUDGED row exists, it credits nothing and skips nothing."""
+    import sqlite3
+    conn = sqlite3.connect(":memory:")
+    conn.execute("CREATE TABLE blob_reviews (blob_sha TEXT PRIMARY KEY, verdict TEXT, findings_json TEXT)")
+    sha = _sha("unjudged")
+    conn.execute("INSERT INTO blob_reviews VALUES (?,?,?)", (sha, "UNJUDGED", "[]"))
+    blobs = {"x.py": sha}
+    assert mcp._blobs_with_covered_verdict(blobs, conn=conn) == set(), "UNJUDGED is not coverage"
+    assert mcp._blobs_with_recorded_verdict(blobs, conn=conn) == {}, (
+        "UNJUDGED must not put content on the already-judged skip list, or it is never retried")
+
+
+def test_silent_reply_leaves_no_verdict_and_keeps_the_blob_retryable():
+    """End to end on the pass: an unusable reply records NOTHING and reports the blob unjudged, so the
+    next close sends the same content again instead of wedging the range."""
+    import sqlite3
+    conn = sqlite3.connect(":memory:")
+    conn.execute("CREATE TABLE blob_reviews (blob_sha TEXT PRIMARY KEY, verdict TEXT, findings_json TEXT)")
+    sha = _sha("retry")
+    out = mcp._review_uncovered_blobs(
+        {"y.py": sha},
+        reviewer=lambda s, p, m: "no json here at all",
+        material_for=lambda s, p: "material",
+        conn=conn)
+    assert out["verdicts"] == {}, f"nothing may be recorded as judged: {out}"
+    assert sha in out["remaining"], f"it must be reported unjudged: {out}"
+    assert conn.execute("SELECT COUNT(*) FROM blob_reviews").fetchone()[0] == 0, (
+        "an unusable reply must leave no verdict row, or the content could never be re-sent")
+
+
 if __name__ == "__main__":
     fails = 0
     for name, fn in sorted(globals().items()):

@@ -1211,7 +1211,12 @@ def _blobs_with_recorded_verdict(blobs: dict,
             row = own.execute("SELECT verdict FROM blob_reviews WHERE blob_sha=?",
                               (sha,)).fetchone()
             if row is not None:
-                out[sha] = str(row[0]).upper()
+                _v = str(row[0]).upper()
+                # UNJUDGED is not a verdict: an unparseable or verdict-less reply must not put its
+                # content on the skip list, or the same bytes would never be sent again and the
+                # blob would sit in `remaining` forever.
+                if _v != "UNJUDGED":
+                    out[sha] = _v
         return out
     except sqlite3.Error:
         return {}
@@ -1259,6 +1264,8 @@ def _blobs_with_covered_verdict(blobs: dict,
             if row is None:
                 continue
             verdict = str(row[0]).upper()
+            if verdict == "UNJUDGED":
+                continue                      # nothing was judged: never coverage, never a skip-list hit
             if verdict == "CLEAN":
                 out.add(sha)
                 continue
@@ -1333,6 +1340,16 @@ def _review_uncovered_blobs(blobs: dict, *, reviewer, material_for,
         material = material_for(sha, path)
         try:
             text = reviewer(sha, path, material)
+            _v, _f = _extract_verdict(text)
+            if (_v or "UNJUDGED").upper() == "UNJUDGED":
+                # The reviewer ANSWERED but judged NOTHING (unparseable prose, or JSON carrying no
+                # verdict key). Raised into the outage path deliberately rather than recorded as
+                # FINDINGS: a recorded row would place this content on the already-judged skip list
+                # and it could never be re-sent, so the range could never close. Unavailability
+                # REFUSES, and here it is also RETRIED. Every branch below this except exits, so
+                # `_v`/`_f` are always bound when reached.
+                raise RuntimeError(
+                    "reviewer judged nothing (unparseable or verdict-less reply)")
         except Exception as exc:  # noqa: BLE001 — an outage is a refusal, never a pass
             # A failure NEVER credits the blob: it is reported unjudged, so the close
             # refuses and the push gate still names it as uncovered. What it does not
@@ -1354,8 +1371,8 @@ def _review_uncovered_blobs(blobs: dict, *, reviewer, material_for,
             continue
         consecutive_failures = 0
         calls += 1
-        verdict, findings_json = _extract_verdict(text)
-        verdict = (verdict or "FINDINGS").upper()
+        verdict, findings_json = _v, _f
+        verdict = (verdict or "UNJUDGED").upper()
         verdicts[sha] = verdict
         _record_blob_review(sha, verdict, findings_json, (text or "")[:2000],
                             conn=conn)
@@ -4821,23 +4838,33 @@ def _reviewer_reply_is_usable(text) -> bool:
 
 
 def _extract_verdict(text: str):
-    """(verdict, findings_json) from the reviewer's reply. Fail-closed: an
-    unparseable reply is NEVER trusted as CLEAN — it is FINDINGS.
+    """(verdict, findings_json) from the reviewer's reply.
 
-    A reply that is not usable text at all (None, empty, whitespace, or a
-    non-string) refuses for the same reason — nothing was judged, so nothing may
-    be treated as clean. (2026-10-13) The guard is HERE, in the shared parse,
-    rather than at each caller: the LLM backend returns
-    `data["choices"][0]["message"]["content"]`, which a reasoning model starved of
-    output budget (or a provider hiccup) hands back as None. The call site used to
-    be reached with no guard, so `text.find` raised "'NoneType' object has no
-    attribute 'find'" out of end_change. A CRASHED close is the worst outcome
-    available: it neither passes nor cleanly refuses, and it leaves the lock HELD
-    with nothing recorded on it. The agent backend already refused silence
-    explicitly; this makes both backends share that behaviour.
+    Fail-closed in the STRONGEST sense available: a reply that judged nothing is neither CLEAN nor
+    FINDINGS, it is **UNJUDGED** — the content was not assessed, so no caller may treat the blob as
+    read. Both older behaviours were wrong in opposite directions and each caused a real incident:
+
+      * returning CLEAN → a pass for material nobody read;
+      * returning FINDINGS with an empty findings list → not a pass, but a WEDGE: the per-blob pass
+        records it, and `_blobs_with_recorded_verdict` then skips that content on every later close
+        ("identical bytes cannot produce a different verdict" — true of a VERDICT, false of silence),
+        so the blob stays in `remaining` forever and the range can never close.
+
+    UNJUDGED fixes both: it is never recorded as a verdict (so the blob is retried), and
+    `_blobs_with_covered_verdict` refuses to credit it even if a row somehow exists.
+
+    A reply that is not usable text at all (None, empty, whitespace, or a non-string) is the same
+    case. (2026-10-13) The guard is HERE, in the shared parse, rather than at each caller: the LLM
+    backend returns `data["choices"][0]["message"]["content"]`, which a reasoning model starved of
+    output budget (or a provider hiccup) hands back as None. The call site used to be reached with no
+    guard, so `text.find` raised "'NoneType' object has no attribute 'find'" out of end_change. A
+    CRASHED close is the worst outcome available: it neither passes nor cleanly refuses, and it
+    leaves the lock HELD with nothing recorded on it. `_call_reviewer_llm` now raises at the LEAF on
+    empty content as well, so a silent reply normally becomes a FAILURE before it reaches here; this
+    remains the backstop for any other caller.
     """
     if not isinstance(text, str) or not text.strip():
-        return "FINDINGS", "[]"
+        return "UNJUDGED", "[]"
     start = text.find("{")
     end = text.rfind("}")
     if start != -1 and end > start:
@@ -4846,11 +4873,17 @@ def _extract_verdict(text: str):
             findings = obj.get("findings", [])
             if not isinstance(findings, list):
                 findings = []
-            verdict = obj.get("verdict", "FINDINGS" if findings else "CLEAN")
-            return str(verdict).upper(), json.dumps(findings)
+            if "verdict" in obj:
+                return str(obj["verdict"]).upper(), json.dumps(findings)
+            # No verdict key. Findings are an assertion of SOMETHING to look at; their absence means
+            # the reply asserted nothing — which is not CLEAN. (A reply carrying only a summary used
+            # to parse as CLEAN here, i.e. any JSON object without a verdict key credited a blob.)
+            if findings:
+                return "FINDINGS", json.dumps(findings)
+            return "UNJUDGED", "[]"
         except json.JSONDecodeError:
             pass
-    return "FINDINGS", "[]"
+    return "UNJUDGED", "[]"
 
 
 # Severity policy (operator, 2026-10-02): MEDIUM and above BLOCK a close; LOW is
@@ -6090,6 +6123,24 @@ def _adversarial_review_gate(lock: dict, cycle: dict,
         ))])
 
     verdict, findings_json = _extract_verdict(reviewer_text)
+
+    if verdict == "UNJUDGED":
+        # Nothing was judged: the reply was unparseable, or JSON carrying no verdict. This is NOT a
+        # pass and NOT an annotation — the same treatment the silence guard above gives a null reply,
+        # for the same reason. Without it, an unparseable reply fell through to the severity policy
+        # with an empty findings list (no blockers) and the close proceeded on a review that judged
+        # nothing. `_reviewer_reply_is_usable` cannot catch this one: the text is non-empty.
+        log.error("self-adversarial review: cycle %s — reply carried NO VERDICT "
+                  "(unparseable/verdict-less); refusing the close", cycle.get("id"))
+        _mark_close_refused(cycle.get("id", 0), "REVIEWER_UNAVAILABLE", "[]", lock)
+        return CallToolResult(content=[TextContent(type="text", text=(
+            "❌ Cannot close: the self-adversarial reviewer's reply carried NO VERDICT — it was "
+            "unparseable, or a JSON object with neither a verdict nor findings. Nothing was "
+            "judged, so the close is REFUSED rather than annotated.\n\n"
+            "Retry end_change. If it repeats, the reviewer is not answering in the required JSON "
+            "shape: check REVIEWER_REASONING_EFFORT and the reviewer model."
+        ))])
+
     reviewer_id = f"adv-review-{uuid.uuid4().hex[:8]}"
 
     # Layer 1 — deterministic refutation; Layer 2 — optional fast-model triage.
