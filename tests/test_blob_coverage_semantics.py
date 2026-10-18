@@ -11,6 +11,12 @@ The two sets answer different questions and must NOT be merged:
   * BLOCKING — unchanged; a blocking finding still refuses the close.
   * COVERED  — "was this content read, and does anything need fixing?"
 
+DEPENDENCY POINTER (so the reviewer does not have to take this file's word for it): the helper this
+file exercises, ``_blobs_with_covered_verdict``, and the blocking classifier it asserts the boundary
+of, ``_blocking_findings``, live in ``mcp-servers/loop-gov-mcp.py``, added by commit ``d7175073`` on
+this push range. That file is a SIBLING blob of this range and is reviewed in its own window; this
+file is test-side proof that the semantics hold, not a copy of them.
+
 Asserted here — A and B are the fix, C to E are the protection that must not move:
   A. a CLEAN verdict is covered;
   B. a FINDINGS verdict whose findings are all below blocking is covered, and is therefore NOT
