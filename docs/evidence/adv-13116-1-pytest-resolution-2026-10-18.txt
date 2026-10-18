@@ -1,13 +1,15 @@
 Running: bash docs/evidence/adv-13116-1-capture.sh
 rc: 0
-when: 2026-10-18T07:43:53Z
+when: 2026-10-18T08:20:31Z
 
 ### 1. the blobs under test (content-addressed) and the revision the FAILING half came from
-f7436a7f54f569cd55428717ebdbe33a615f95bc4a4302d194b4ed2414b8ec2e  tests/run_loop_gov_regression.py
-a5c1a2b52fc4e7ff28f139a115134ea92511bba88fd9a5c71982bed8b513df15  tests/test_run_loop_gov_regression_harness.py
-pre-fix half : beeabecd8eed18cafa57c15f208160d997c1867b (full sha of the revision whose harness carried the hardcoded venv path)
-the two sha256 lines above are the working-tree blobs this cycle commits; a reader verifies them
-with: git show <tip>:<path> | sha256sum
+162f9267d6a7fe184906ab5909a48fb0f51ced12c9810ec9cdfe9f611d302e8f  tests/run_loop_gov_regression.py
+0a34e6486855f49acfc057d584a5e0877c99c8bc40c5278dd9f4a215a03c2c6f  tests/test_run_loop_gov_regression_harness.py
+8ff3dfcf287a2902ac32179e7c9e091a61695bfbbfd12b9cb60571aac77e82cc  tests/test_ensure_pytest.py
+53d14263b36647a7c6814e16cfa378db596efec39d27c94176a55c6e967ad7c3  ops/scripts/lib/ensure-pytest.sh
+pre-fix half : beeabecd8eed18cafa57c15f208160d997c1867b (the revision whose harness carried the hardcoded venv path)
+the sha256 lines above are the blobs this change carries; verify with:
+  git show <tip>:<path> | sha256sum
 
 ### 2. DISCRIMINATION — the guard must fail on the pre-fix harness and pass on the working copy
 pre-fix harness  rc=1
@@ -19,22 +21,43 @@ working copy     rc=0
 RESULT: ALL PASS (5 tests)
 asserted: rc=1 before the fix (non-zero), rc=0 after
 
-### 3. the resolver a PEER runs — resolved through the repo, never a host-local path
+### 3. the CREATE step is committed, and pytest is DECLARED for it (ADV-13253-1)
+100644 blob d0c512ff3cc58965069c9a3a148d269148977d3e	ops/install/requirements.txt
+100755 blob cd6b8ab0615fbd07270e858ca056765ad1eecd28	ops/scripts/cortex-update.sh
+100755 blob 6514a800e9a27b6db3d9b719af406d1c676dbe11	ops/scripts/health/check-package-age.py
+100755 blob 043247f3a2e1b24590c099b7a1182ab63c12cd10	ops/scripts/lib/ensure-pytest.sh
+100644 blob b3f7d67f34f1288e42acfd807142655e859b3a87	ops/scripts/manage/fix-cortex-venv.py
+git ls-tree rc=0 (each row above is a blob at the reviewed tip)
+23:pytest>=7.0
+539:register "ops/scripts/lib/ensure-pytest.sh"               "${CORTEX_DEPLOY_HOME}/scripts/lib/ensure-pytest.sh"
+
+### 4. the age gate is real — it queries the registry for pytest TODAY
+check-package-age.py pip pytest -> rc=0
+✅ OK: pytest==9.1.1 is 120.9d old (≥14d)
+
+### 5. the CREATE step, run for real on this host and run AGAIN (idempotent by import)
+run 1 rc=0 -> ~/.hermes-cortex/venv/bin/python3
+run 2 rc=0 -> ~/.hermes-cortex/venv/bin/python3
+stderr (run 1, must be empty when pytest is already present): 
+asserted: same interpreter on both runs, rc=0
+
+### 6. the CREATE step's branches, CONSTRUCTED (never waited for) against a fabricated repo
+tests/test_ensure_pytest.py rc=0
+  missing age checker -> rc=3 COULD NOT VERIFY ✓
+  repair ran, import still fails -> rc=1, no path printed ✓
+  --check reports only ✓
+  created and verified: ~/.hermes/cache/scratch/ensure-pytest-io7fv9qn/home/.hermes-cortex/venv/bin/python3 ✓
+  second run is a no-op (repairer invoked once) ✓
+  age gate refuses -> rc=1, repair never invoked ✓
+  hint + deploy registration both name it ✓
+RESULT: ALL PASS (7 tests)
+
+### 7. the resolver finds pytest through the fleet venv the create step provisions
 python-with-module.sh --print pytest -> rc=0  ~/.hermes-cortex/venv/bin/python3
 pytest 9.1.1
 pytest 9.1.1 for ~/.hermes-cortex/venv/bin/python3
 
-### 4. CONSTRUCTED no-pytest host — the branch is exercised, not waited for
+### 8. CONSTRUCTED no-pytest host — the branch is exercised, not waited for
 with nothing on PATH -> rc=3 (3 = COULD NOT VERIFY, never a pass)
-ops/scripts/lib/python-with-module.sh: line 51: sed: command not found
-ops/scripts/lib/python-with-module.sh: line 51: head: command not found
 python-with-module: COULD NOT VERIFY — no interpreter can import 'pytest'.
-
-### 5. the repair the harness names is committed, and pytest is DECLARED for it
-repair + declared set present: rc=0
-23:pytest>=7.0
-
-### 6. deployment: tests/ is not in the deploy map, so this change needs no deploy step
-register() lines matching tests/ : 0
-(tests/ and docs/evidence/ are not deploy-map files; only the repo tree changes)
-sha256: f8f16a49b8b5c4e191f01d04909374f43eb762525086da1556d6f107e1048b58
+sha256: 8ecedeffba372626d829460fd4a9e73d0f08989946cb8371d5949a92576368d8
