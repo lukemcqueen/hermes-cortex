@@ -407,7 +407,7 @@ does not apply.
    `✅ DOGFOOD PASSED`, the deploy is clean and the push succeeds on retry.
    - **A `❌ Deploy sync` with NO code change you can account for is usually
      SKILL DRIFT: a deployed skill copy is newer than its repo source, because
-     `skill_manage` writes ONLY the deployed copy (`~/.hermes-cortex/skills/...`) and leaves the repo
+     `skill_manage` — and the skill/lesson pipeline, with you running nothing at all — writes ONLY the deployed copy (`$HOME/.hermes/skills/...`; confirm the root from the doctor's own paths rather than assuming, some builds use `~/.hermes-cortex/skills`) and leaves the repo
      file untouched — so a lesson that is not copied back and committed stays on one host, and a commit
      message claiming it rode along is false while the diff shows nothing. Verify with
      `diff skills/<cat>/<name>/SKILL.md ~/.hermes-cortex/skills/<cat>/<name>/SKILL.md` before believing
@@ -433,6 +433,27 @@ does not apply.
      guardrail skips a deployed file that is newer than its source), so the lesson never
      reaches the fleet. Run `check-skill-drift-parity.py` and choose your target from its
      output before writing.
+   - **The strand/parity tools only see a file the repo LACKS ENTIRELY — they are BLIND to the
+     common case, where both copies exist and the deployed one is a SUPERSET.** Measured: the tool
+     the doctor's own hint names printed `Detector verdict: FAIL · stranded: 0 — Nothing stranded:
+     repo and deployed trees agree on content` while the doctor simultaneously reported 14 drifted
+     skills. That all-clear reads as "nothing to do", so the operator stops, and every lesson stays
+     on one host until a deploy overwrites it. The doctor's check is CONTENT-based (it compares file
+     hashes; direction — deployed-newer vs repo-newer — comes from mtime with a ~1-minute tolerance),
+     so when the two disagree, believe the DOCTOR, not the tool its hint points at. Diagnose the
+     doctor's list yourself, one skill at a time:
+     `cmp -s skills/<cat>/<n>/SKILL.md "$HOME/.hermes/skills/<cat>/<n>/SKILL.md"`. Then propagate
+     DEPLOYED → repo (that is the direction the doctor prescribes, "commit the repo source before
+     cortex-update overwrites it"), and VERIFY each copy in the same pass by comparing `sha256sum`
+     of both sides — a copy you did not verify is a claim, not a fix. A deploy cannot repair this
+     drift: the deploy itself runs repo → deployed.
+   - **Diff a superset before copying it; its removals are usually REWRITES, not losses.** A
+     deployed copy that is larger still REPLACES lines — the pipeline consolidates as it appends.
+     Read the removals (`difflib`/`diff` on the two files) and confirm each is a stale lesson being
+     replaced, not information being dropped. The ones worth catching are substantive corrections: a
+     skill still teaching a rule the operator has since overturned, or a rule dropped from one file
+     in favour of a better home. Say which removals were rewrites in the commit message, so a
+     reviewer reading a `-30` diff does not read it as loss.
    - **A `❌ Checksum: <file>` you did not cause by committing late is a RACE:
      you edited a registered file while the deploy was still copying it.** The
      doctor compares repo source to the deployed copy, so an edit that lands

@@ -19,22 +19,14 @@ A file under no repo-owned skill dir is a Hermes default and stays skipped.
 
 | Measure | Value |
 |---|---|
-| Stranded in place (path in repo, content only deployed) | 6 |
-| Absent from the repo (deployed under a repo-owned skill) | 131 |
+| Stranded in place (path in repo, content only deployed) | 0 |
+| Absent from the repo (deployed under a repo-owned skill) | 135 |
 |   ↳ path dropped from repo history | 6 |
-|   ↳ path never committed | 125 |
-| Files in sync | 835 |
-| Skipped (Hermes defaults, or repo ahead) | 498 |
+|   ↳ path never committed | 129 |
+| Files in sync | 841 |
+| Skipped (Hermes defaults, or repo ahead) | 499 |
 
 **Verdict: FAIL**
-
-Stranded in place:
-- devops/enforcement-change-safety/SKILL.md
-- devops/governance-closeout/SKILL.md
-- devops/governance-lock-lifecycle/SKILL.md
-- devops/loop-governance/SKILL.md
-- devops/shared-repo-push-gates/SKILL.md
-- software-development/change-checklist/SKILL.md
 
 Absent from the repo (deployed under a repo-owned skill):
 - ads/references/abm-playbook.md (never-committed)
@@ -101,8 +93,10 @@ Absent from the repo (deployed under a repo-owned skill):
 - devops/enforcement-change-safety/references/pii-repo-url-exception-2026-08-25.md (never-committed)
 - devops/enforcement-change-safety/references/tdd-iron-law-gate-2026-08-20.md (never-committed)
 - devops/enforcer-modification-considerations/references/friction-reduction-candidates.md (never-committed)
+- devops/governance-closeout/references/reviewer-policy-scoping.md (never-committed)
 - devops/governance-closeout/references/verdict-store-diagnostics.md (never-committed)
 - devops/governance-closeout/scripts/measure-review-material.py (never-committed)
+- devops/governance-closeout/templates/reviewer-policy-guard.py (never-committed)
 - devops/governance-lock-lifecycle/references/publishing-a-reviewed-range.md (never-committed)
 - devops/hermes-gateway-operations/references/inline-menus.md (never-committed)
 - devops/inbox-remediation/references/bus-api-address-patterns.md (never-committed)
@@ -112,6 +106,7 @@ Absent from the repo (deployed under a repo-owned skill):
 - devops/llm-cost-optimization/references/redactor-tokens-label-masking.md (never-committed)
 - devops/llm-cost-optimization/references/session-telemetry-reporting.md (dropped-from-repo)
 - devops/loop-governance/references/agents-md-pruning.md (never-committed)
+- devops/loop-governance/references/close-cost-and-recovery.md (never-committed)
 - devops/loop-governance/references/db-maintenance.md (never-committed)
 - devops/loop-governance/references/first-time-bootstrap.md (never-committed)
 - devops/loop-governance/references/governance-integrity-rules.md (never-committed)
@@ -162,6 +157,7 @@ Absent from the repo (deployed under a repo-owned skill):
 - software-development/change-checklist/references/detection-gate-design.md (never-committed)
 - software-development/hermetic-python-testing/references/order-dependent-failure-bisect.md (never-committed)
 - software-development/hermetic-python-testing/templates/run-tests.sh (never-committed)
+- software-development/reflexion-check/references/evidence-recipes.md (never-committed)
 - software-development/role-gating-and-public-moderation/references/rgm-fastapi-example.md (dropped-from-repo)
 - x-twitter-growth/scripts/competitor_analyzer.py (never-committed)
 - x-twitter-growth/scripts/content_planner.py (never-committed)
