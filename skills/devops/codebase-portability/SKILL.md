@@ -539,6 +539,23 @@ race on the inode. When batching across files, batch the independent ones.
 **Reference file:** references/terminology-rename-agent-inbox-to-bus.md in
 this skill's directory has the full worked example — 17 files, 60+ patches.
 
+## Scan Phase 2: GNU-only COMMANDS, not just GNU-only paths
+
+Path assumptions are half the portability surface; the other half is a command whose FLAG or
+semantics differ on BSD/macOS, or that does not exist there — and those failures are worse, because
+several are SILENT (`grep -P` reports "no matches" when it never ran; `date -r <path>` reads the path
+as a number and means something else). Run the command scan with the same parallel-grep discipline as
+the path scan: `stat -c`, `date -r`, bare `sed -i` (BSD needs a suffix), `sha256sum`, `readlink -f`,
+`grep -P`, `timeout` (it is `gtimeout` on macOS), `nproc`.
+
+**A doc or a skill is a recipe an agent EXECUTES on the target platform** — a GNU-only command in a
+SKILL.md breaks the agent following it, so recipes are Tier 1 for this class, not Tier 3. Inline the
+portable form at the recipe, and treat a recipe teaching a STALE METHOD (an mtime comparison after
+the method became a content hash) as the same defect: it answers confidently and wrongly.
+
+Inventory, portable forms, safe-sweep mechanics (assert `count == 1` per edit, never hand-craft a
+parenthetical inside inline code, re-grep to prove zero): `references/gnu-only-commands-macos.md`.
+
 ## Verification
 
 After each fix, confirm with targeted grep that the old pattern is gone:

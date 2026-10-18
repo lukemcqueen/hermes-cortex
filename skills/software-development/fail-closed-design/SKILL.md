@@ -108,6 +108,50 @@ therefore need OPPOSITE dispositions, and unifying them breaks one of them.
   sites — otherwise the next agent reads the pair as an inconsistency and "fixes"
   it into a bug.
 
+### A gate that cannot resolve its SCOPE must not become a lockout
+
+The dead-ending above also happens one level earlier: a gate that governs "the repo",
+"the tree", "the project" must first DECIDE which one, and a refusal at that step is a
+lockout, not enforcement. Resolve scope from the CALL's own arguments FIRST — the path-shaped
+fields of the tool input, and any absolute path named inside a shell command (a `cd <tree> && ...`
+prefix is the caller telling you exactly what it means) — then an explicit env pin, then the
+process cwd. A gate that consults only env + cwd deadlocks every session launched outside the
+tree, and the command that would PROVE the scope is itself the write being blocked, so there is
+no way out of it from inside.
+
+- **A doc comment stating the precedence is not the implementation.** A comment reading
+  "args → env → git" sat above a function that implemented only env → git, and the missing leg
+  was the whole bug. Read the function against the comment whenever the contract is a resolution
+  ORDER, and make the order explicit in the code so it cannot drift again.
+- **The refusal must name a REACHABLE escape** — the parameter that works (`workdir=<tree>`), the
+  env var to set, or the read-only command that locates the tree. "Acquire a lock" is an
+  impossible demand when no scope resolves, and impossible demands are what train an operator to
+  reach for force/bypass.
+- **Keep the ORIENTATION path open.** Read-only primitives must pass unconditionally: they are how
+  the caller discovers the scope it is required to name. A gate that blocks a plain directory
+  listing because it could not resolve a scope has blocked its own remedy.
+- **The same concept implemented per harness WILL drift.** A rule enforced by both a host plugin
+  and a CLI-agent extension is two independent scope resolvers; fixing one leaves the other
+  deadlocked for that harness's users. Fix both, and check the second against the first.
+
+### A resolution failure must carry its own diagnosis
+
+A gate that refuses because it could not DETERMINE something owes the caller the evidence, not only
+the verdict: "not found" is a dead end when the truth may be "the detector itself is missing".
+
+- **"Could not run the detector" and "the answer is no" are opposite diagnoses — never collapse
+  them.** One needs a PATH/binary fix, the other a different folder. Keep the subprocess's stderr,
+  exit code and message, and print every path the lookup tried, so the next attempt says which it
+  was (an ENOENT means the tool is unreachable, NOT that the answer is negative).
+- **`catch { return null }` around a lookup is the same hole as a masked exit code.** Discarding the
+  error makes a fail-closed refusal unfixable from the outside — the caller cannot act on it and
+  reaches for a bypass — and it guarantees the same report arrives again unchanged.
+- **Do not depend on the tool you are DETECTING with.** Find where a repo or tree STARTS by walking
+  up for its marker entry (`.git`, a project file) with filesystem calls; shelling out makes the gate
+  depend on exactly the binary a stripped PATH removes from launchers and services, so the lookup
+  fails while the tool works in the operator's own shell. Use the external tool only for layouts a
+  walk cannot see, and only for READING the tree.
+
 ### A fail-closed outcome needs a distinct exit code, or it is just noise
 
 A path that keeps/refuses and only prints a line has no operator interface: a cron

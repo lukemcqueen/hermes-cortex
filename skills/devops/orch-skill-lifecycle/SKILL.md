@@ -456,6 +456,32 @@ Result: 3 skills updated, 1 upstreamed, 1 SOUL.md entry.
   update is the cause, SOUL Principle 9 forbids fixing it — record it
   (`record_issue`, high) and stand down; the peer's own reconciliation resolved
   all four within the run.
+- **A parity check must judge the STRANDED COUNT, not the reconciler's verdict line (2026-10-19)** →
+  `reconcile-stranded-skills.py` prints `Detector verdict: FAIL · stranded: N` whenever ANY
+  file is stranded — that line describes the REPO TREE, not the run. A verifier that greps for
+  the literal `verdict: PASS` therefore reddens on a fully-clean reconciliation and, once
+  "fixed" by someone who trusts it, would be relaxed into meaninglessness. The pass condition is
+  `stranded: 0` (the count is what the change owns). Relatedly, a drift verifier whose skill list
+  is HARDCODED proves nothing about later runs — take the set from the run (or make it an
+  overridable `SKILLS=`), or the check silently measures a previous day's work. Probed with a stub
+  returning `stranded: 6` (must exit non-zero), a crash (rc=3) and malformed output (must both
+  read COULD NOT VERIFY): 3 probes, 0 blind spots. Fixed in `6a99be19`.
+- **Staged report bodies are JSON envelopes — a naive `Generated:` parse returns a silent 0 (2026-10-19)** →
+  files under `learning-reports/` hold `{"text": "..."}` with the report newlines ESCAPED, so
+  `Generated:` sits mid-line and a `\S+` capture swallows the trailing `\nType:` — `fromisoformat`
+  then throws on EVERY file and the scan reports "0 reports in window", which reads exactly like
+  "the fleet is silent" (the very confusion this skill warns about). Parse the JSON and take the
+  `text` field first, anchor the timestamp as `[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9:.\-+]+`, and PRINT
+  the skipped-file count so a total parse failure cannot look like a clean empty result: measured
+  1325 files → 66 unique reports/48h with 0 skipped, versus a fictitious 0 with 1325 skipped.
+- **High cross-agent counts are usually ONE change reported N times, not convergence (2026-10-19)** →
+  a 48h scan ranked `governance-closeout` in 20 distinct reports, `deploy-load-verification` 14,
+  `shared-repo-push-gates` 13 — but each entry was a repeated `[MOD]` notice of the SAME
+  already-committed drift-sync (the collector re-reports a hash-delta until it settles), not three
+  agents independently discovering one lesson. Consolidating on that signal would double-patch a
+  skill the repo already carries. Before treating a name as a consolidation candidate, check
+  whether its reports are RECURRENCES of one commit (`git log -- <path>`) rather than independent
+  proposals — and if the content is already committed, there is nothing to merge.
 - **Don't patch the same skill twice in one run** — deduplicate before acting
 - **Don't upstream fleet skills that already exist** — check repo + Hermes bundle
 - **Don't modify SOUL.md for workflow lessons** — skills are for workflow, SOUL.md is for principles

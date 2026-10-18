@@ -11,8 +11,10 @@
 #
 # Claims proven:
 #   C1 cortex-doctor ran AND reports no skill drift
-#   C2 reconcile-stranded-skills.py ran AND reports 0 stranded (repo == deployed)
-#   C3 repo and deployed copies of both recovered skills are byte-identical
+# C2 reconcile-stranded-skills.py ran AND reports 0 stranded (repo == deployed).
+#    NOTE: the reconciler's own "Detector verdict: FAIL" line is NOT the pass
+#    signal — it describes the repo tree, not this run. Judge `stranded: N`.
+#   C3 repo and deployed copies of the recovered skills are byte-identical
 #   C4 the two recovered files dropped no repo content (diff ^< empty)
 #   C5 both files keep an even triple-backtick fence count (FENCE-SAFETY RULE)
 #   C6 secret-leak-detector ran AND finds nothing blocking
@@ -29,7 +31,9 @@
 set -uo pipefail
 cd "$(dirname "$0")/../../.." || { echo "FAIL: cannot locate repo root"; exit 1; }
 rc=0
-SKILLS="autonomous-ai-agents/pi-coding-agent devops/shell-scripting"
+# Skills this run reconciled. Default is the class recovered 2026-10-19;
+# override with SKILLS="cat/name cat/name" to re-scope for another run.
+SKILLS="${SKILLS:-devops/codebase-portability devops/governance-lock-lifecycle software-development/agent-contract software-development/change-checklist software-development/documentation-auditing software-development/fail-closed-design}"
 MIN_DOCTOR_LINES=100
 
 fail() { echo "FAIL: $*"; rc=1; }
@@ -61,12 +65,16 @@ fi
 echo "== C2: stranded parity =="
 parity_out="$(python3 ops/scripts/manage/reconcile-stranded-skills.py 2>&1)"
 parity_rc=$?
-if ! printf '%s' "$parity_out" | grep -qE 'verdict: (PASS|FAIL)'; then
-  fail "reconcile script (rc=$parity_rc) printed no verdict line - COULD NOT VERIFY"
-elif printf '%s' "$parity_out" | grep -q 'verdict: PASS'; then
+# NOTE: the reconciler's own "Detector verdict: FAIL" describes the REPO TREE
+# (any stranded file at all), not this run's outcome — it prints exactly that
+# line on a fully-clean tree that happens to contain other stranded files.
+# The pass condition is the STRANDED COUNT, which is what this change owns.
+if ! printf '%s' "$parity_out" | grep -qE 'stranded: [0-9]+'; then
+  fail "reconcile script (rc=$parity_rc) printed no stranded count - COULD NOT VERIFY: $(printf '%s' "$parity_out" | head -2 | tr '\n' ' ')"
+elif printf '%s' "$parity_out" | grep -qE 'stranded: 0'; then
   echo "PASS: $(printf '%s' "$parity_out" | head -1)"
 else
-  fail "parity not PASS: $(printf '%s' "$parity_out" | head -3 | tr '\n' ' ')"
+  fail "still stranded: $(printf '%s' "$parity_out" | head -3 | tr '\n' ' ')"
 fi
 
 echo "== C3: repo vs deployed md5 =="
