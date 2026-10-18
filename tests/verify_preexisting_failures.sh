@@ -36,8 +36,19 @@ cleanup() { git -C "$REPO" worktree remove --force "$tmp" >/dev/null 2>&1 || rm 
 trap cleanup EXIT
 
 # macOS ships GNU coreutils as `gtimeout` (brew coreutils); Linux ships `timeout`. Never assume the
-# binary exists — name the gap instead of failing with a cryptic 127. (Review finding ADV-0-1: this
-# script called `timeout` unconditionally, so it did not run on macOS at all.)
+# binary exists — name the gap instead of failing with a cryptic 127.
+#
+# SCOPE OF THE CLAIM, stated narrowly on purpose. What is PROVEN is that the fallback branch works:
+# it was exercised on Linux with a PATH that contains NO `timeout` at all, only a `gtimeout` shim —
+#
+#   d=/tmp/gtimeout-shim; rm -rf "$d"; mkdir -p "$d"
+#   for t in bash sh git python3 mktemp rm dirname basename; do ln -s "$(command -v $t)" "$d/$t"; done
+#   printf '#!/bin/sh\nexec /usr/bin/timeout "$@"\n' > "$d/gtimeout"; chmod +x "$d/gtimeout"
+#   env PATH="$d" bash tests/verify_preexisting_failures.sh <rev>      # rc=0, all rows SAME
+#
+# (`env PATH=<dir> ... command -v timeout` must print nothing — otherwise the shim is not the branch
+# being taken, which is how a first attempt at this "proof" silently tested the GNU path instead.)
+# A run on ACTUAL macOS is NOT claimed: none has been performed. If one is, record its output here.
 TIMEOUT_CMD=""
 for _c in timeout gtimeout; do
   if command -v "$_c" >/dev/null 2>&1; then TIMEOUT_CMD="$_c"; break; fi
