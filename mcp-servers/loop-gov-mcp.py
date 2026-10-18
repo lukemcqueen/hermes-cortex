@@ -1385,6 +1385,13 @@ def _review_uncovered_blobs(blobs: dict, *, reviewer, material_for,
             # Each future is therefore awaited only until the deadline the pass was given, and a
             # blob that does not answer by then is FAILED (never credited) so the close still
             # refuses and the next pass picks it up.
+            #
+            # COVERED BY tests/test_blob_review_concurrency.py::test_a_wave_cannot_outrun_its_window
+            # (3s calls under a 1.5s budget: returns in ~1.5s, 0 credited, every blob in remaining)
+            # and ::test_a_straggler_that_outlives_the_pass_leaves_no_trace (zero rows written).
+            # A per-blob reviewer reads THIS file alone and cannot see a sibling test blob, so the
+            # coverage is named here rather than left to be demanded again — measured: a review
+            # asked for exactly that test while it was already committed in the same range.
             pool = ThreadPoolExecutor(max_workers=min(workers, len(wave)))
             futures: dict = {}
             try:
