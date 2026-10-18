@@ -1869,7 +1869,13 @@ def _receipt_blobs(repo: Path, base: str, head: str):
     a receipt that claims a file nobody read.
     """
     if _push_base_is_root_fallback(repo):
-        return {}             # no resolvable range: bind by tip+base only (the stricter path)
+        # No resolvable range: bind by tip+base only. That is the STRICTER authorisation, not a
+        # weaker one, and the enforcement is not in this file — it is in the consumer
+        # ops/scripts/lib/review-receipt-check.py, which accepts a receipt with no reviewed_blobs
+        # ONLY under its rule 1 (an exact tip+base match); listing blobs is the ALTERNATIVE path it
+        # offers for receipts that carry them. Stated as a pointer because this module cannot
+        # demonstrate the consumer's behaviour by itself.
+        return {}
     blobs = _range_blobs(repo, base, head)
     if not blobs:
         return blobs          # None/{} → the gate falls back to exact tip+base
