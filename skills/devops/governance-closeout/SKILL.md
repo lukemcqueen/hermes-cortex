@@ -49,6 +49,29 @@ fixture, because the measured behaviour is the one being replaced and a quoted i
 A cited sibling → judged on its own blob, never as fabrication. A pre-existing helper used by new
 code is context, not a claim.
 
+## A blob's material now SHOWS the range siblings' added lines
+
+Every per-blob material carries `sibling ADDED lines`: the *added* lines of the range's other files,
+bounded to 6 files / 12 lines each / 60 total. This exists because of the highest-cost churn measured
+(2026-10-18): a file whose evidence is proved in another file — "the test that asserts this is in
+tests/…" — could not be cleared in one round trip. The reviewer saw the sibling's PATH and its verdict
+but never its CONTENT, so it kept demanding the evidence be duplicated into the file under review or
+produced as committed output; the only thing that satisfied it was TOUCHING the sibling too, which
+changed a blob sha and nothing else. A 3-blob range cost ~10 closes that way.
+
+So when a review asks where the proof is, check the material first — it is probably in that block — and
+do **not** adopt "when the fix is in another file, touch both" as a habit: it codifies the symptom.
+
+## A blocking verdict is keyed to blob CONTENT — a file whose fix landed in a SIBLING must change
+
+`_blobs_with_recorded_verdict` skips content that already has a verdict, and the reasoning is sound
+("identical bytes cannot produce a different verdict"). The consequence: a blob that came back with
+BLOCKING findings keeps that verdict, is reported in `remaining`, and is **never re-judged** — so if
+you answered its finding by editing ANOTHER file, the blamed file still carries the old refusal and the
+range cannot close. Touch **both** when the fix genuinely lives elsewhere (the sibling block above is
+what makes that rare). An `UNJUDGED` reply is deliberately NOT recorded, precisely so this cannot
+happen to content nobody judged.
+
 ## Tell the agent BEFORE the close, with content the reviewer expects
 
 `begin_change` prints the review scope (the paths that will be judged), the standing expectations,
