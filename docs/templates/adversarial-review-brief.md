@@ -15,6 +15,13 @@ back with **six findings, every one of them a restatement of those five** — th
 literally began *"Author's own suspicions: …"*. The review confirmed and sharpened the list and
 **discovered nothing new**. That is what leading with your own conclusions buys you: an expensive echo.
 
+**Open questions are necessary but NOT sufficient: the material must contain a DIFF.** Measured the
+same night — the same open-questions format, applied to a *design* (a code sketch plus measured
+numbers), returned **CLEAN with 0 findings**, and the reviewer said so itself: *"This material is an
+analytical brief, not a code change."* It probes an artefact; given prose about code it can only judge
+the prose, so a plan, a design note or a sketch yields CLEAN **by construction**. To have a design
+attacked, implement it (behind a flag if it is risky) and send the committed diff.
+
 Write it in this order:
 
 1. **What changed**, with the code inline.
