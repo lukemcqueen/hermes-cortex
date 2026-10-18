@@ -1240,6 +1240,13 @@ def _blobs_with_covered_verdict(blobs: dict,
     Fail CLOSED on anything ambiguous, because this set WIDENS what a receipt may name: a missing
     verdict, an unparseable findings_json, or a FINDINGS verdict carrying an empty findings list is
     NOT covered. An UNJUDGED blob stays uncovered — the protection that actually matters.
+
+    Multi-session safety (review finding ADV-0-3): reads go through the same `_db()` connection
+    factory as every other blob lookup, which sets WAL journal mode and a busy_timeout, so a verdict
+    written by ANOTHER session's close is either visible or not — never half-read — and a concurrent
+    writer blocks rather than failing. Nothing here caches: coverage is recomputed per call, so a
+    peer's newly recorded verdict is picked up on the next close. The blast radius of a read failure
+    is bounded by the same fail-closed rule above: an unreadable store covers nothing.
     """
     if not blobs:
         return set()
@@ -1359,12 +1366,49 @@ def _review_uncovered_blobs(blobs: dict, *, reviewer, material_for,
             "blocking": blocking, "failed": failed, "already_judged": already_judged}
 
 
+def _push_base_candidates(repo: Path) -> list[str]:
+    """Refs to try as the push base, MOST canonical first.
+
+    The remote's own default branch wins (`refs/remotes/origin/HEAD`), then the configured remote's
+    main/master, then a local main/master. Hardcoding `origin/main` meant a repo whose default is
+    `master`, or whose remote is not called `origin`, resolved NO base at all and fell through to the
+    root commit — which turns the "push range" into the ENTIRE history (review finding ADV-0-2).
+    """
+    cands: list[str] = []
+    default = _git_capture(repo, "symbolic-ref", "--quiet", "--short",
+                           "refs/remotes/origin/HEAD").strip()
+    if default:
+        cands.append(default)
+    remote = (_env_value("CORTEX_PUSH_REMOTE") or "origin").strip() or "origin"
+    cands += [f"{remote}/main", f"{remote}/master", "main", "master"]
+    seen: set[str] = set()
+    out: list[str] = []
+    for c in cands:
+        if c and c not in seen:
+            seen.add(c)
+            out.append(c)
+    return out
+
+
 def _push_base(repo: Path) -> str:
-    """The base of the range a PUSH would carry — the receipt's own base."""
-    base = _git_capture(repo, "merge-base", "origin/main", "HEAD").strip()
-    if not base:
-        base = _git_capture(repo, "rev-list", "--max-parents=0", "HEAD").strip()
-    return base
+    """The base of the range a PUSH would carry — the receipt's own base.
+
+    Falls back to the repository ROOT when no remote/default branch resolves. That fallback stays
+    (an unresolvable base must remain fail-closed) but it is now DISCLOSED by
+    :func:`_push_base_is_root_fallback` rather than being silent, because the range it produces is
+    the whole history.
+    """
+    for ref in _push_base_candidates(repo):
+        base = _git_capture(repo, "merge-base", ref, "HEAD").strip()
+        if base:
+            return base
+    return _git_capture(repo, "rev-list", "--max-parents=0", "HEAD").strip()
+
+
+def _push_base_is_root_fallback(repo: Path) -> bool:
+    """True when the push base had to fall back to the repo's root commit (range = all history)."""
+    root = _git_capture(repo, "rev-list", "--max-parents=0", "HEAD").strip()
+    return bool(root) and _push_base(repo) == root
 
 
 def _push_range_blobs(repo: Path) -> dict:
@@ -1491,11 +1535,34 @@ _PREFLIGHT_PATTERNS = (
     (re.compile(r"^\s*(?:def test_|assert |import |from )"),
      "test code — if it calls into another file of this range, name that file AND the commit that "
      "provides it (a dependency pointer)"),
-    (re.compile(r"ops/scripts/|mcp-servers/|tests/|docs/templates/"),
-     "names another file — that sibling is judged in its own window; state the contract here"),
 )
 
 PREFLIGHT_MAX_ITEMS = 6
+PREFLIGHT_MAX_PATHS = 20      # the scan is one `git diff` per path; a range can hold hundreds
+
+
+def _layout_prefixes() -> tuple[str, ...]:
+    """Directory hints for the 'names another file' advice.
+
+    Cortex's own layout by default, overridable with CORTEX_REVIEW_LAYOUT_PREFIXES (comma-separated)
+    for a repo that lays its code out differently — the hardcoded list was correct only for this repo
+    (review finding ADV-0-4).
+    """
+    raw = (_env_value("CORTEX_REVIEW_LAYOUT_PREFIXES") or "").strip()
+    if raw:
+        return tuple(p.strip() for p in raw.split(",") if p.strip())
+    return ("ops/scripts/", "mcp-servers/", "tests/", "docs/templates/")
+
+
+def _preflight_patterns() -> tuple:
+    """The static patterns plus the (configurable) layout hint, compiled once per call."""
+    prefixes = _layout_prefixes()
+    if not prefixes:
+        return _PREFLIGHT_PATTERNS
+    layout = "|".join(re.escape(p) for p in prefixes)
+    return _PREFLIGHT_PATTERNS + ((re.compile(layout),
+                                   "names another file — that sibling is judged in its own window; "
+                                   "state the contract here"),)
 
 
 def _preflight_advice(repo: Optional[Path], limit: int = PREFLIGHT_MAX_ITEMS) -> list[str]:
@@ -1506,6 +1573,9 @@ def _preflight_advice(repo: Optional[Path], limit: int = PREFLIGHT_MAX_ITEMS) ->
     changes coverage, and a miss costs nothing but the round trip it was meant to save. That claim is
     asserted by the SIBLING test ``tests/test_review_guidance.py`` (test_preflight_advice_*), which is
     a blob of this same push range and is reviewed in its own window.
+
+    Bounded on purpose: at most PREFLIGHT_MAX_PATHS files are scanned, because the scan is one
+    `git diff` per path and a range can hold hundreds of blobs (review finding ADV-0-5).
     """
     if repo is None:
         return []
@@ -1517,8 +1587,9 @@ def _preflight_advice(repo: Optional[Path], limit: int = PREFLIGHT_MAX_ITEMS) ->
         return []
     if not base:
         return []
+    patterns = _preflight_patterns()
     found: list[str] = []
-    for path in _unreviewed_paths(repo):
+    for path in _unreviewed_paths(repo)[:PREFLIGHT_MAX_PATHS]:
         try:
             diff = _git_capture(repo, "diff", "--no-ext-diff", "-U0", f"{base}..HEAD", "--", path)
         except Exception:  # noqa: BLE001 — same; logged so a systemic failure is not silent
@@ -1527,7 +1598,7 @@ def _preflight_advice(repo: Optional[Path], limit: int = PREFLIGHT_MAX_ITEMS) ->
         added = [ln[1:] for ln in diff.splitlines()
                  if ln.startswith("+") and not ln.startswith("+++")]
         for line in added:
-            for pattern, advice in _PREFLIGHT_PATTERNS:
+            for pattern, advice in patterns:
                 if pattern.search(line):
                     found.append(f"{path} — {advice}")
                     break

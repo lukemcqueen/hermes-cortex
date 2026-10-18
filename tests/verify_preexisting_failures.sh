@@ -35,6 +35,19 @@ tmp="$(mktemp -d)" || exit 2
 cleanup() { git -C "$REPO" worktree remove --force "$tmp" >/dev/null 2>&1 || rm -rf "$tmp"; }
 trap cleanup EXIT
 
+# macOS ships GNU coreutils as `gtimeout` (brew coreutils); Linux ships `timeout`. Never assume the
+# binary exists — name the gap instead of failing with a cryptic 127. (Review finding ADV-0-1: this
+# script called `timeout` unconditionally, so it did not run on macOS at all.)
+TIMEOUT_CMD=""
+for _c in timeout gtimeout; do
+  if command -v "$_c" >/dev/null 2>&1; then TIMEOUT_CMD="$_c"; break; fi
+done
+if [ -z "$TIMEOUT_CMD" ]; then
+  echo "verify_preexisting_failures: neither 'timeout' nor 'gtimeout' on PATH" >&2
+  echo "  (macOS: brew install coreutils — it provides gtimeout)" >&2
+  exit 2
+fi
+
 git -C "$REPO" rev-parse --verify --quiet "$PARENT" >/dev/null || {
   echo "cannot resolve revision '$PARENT' in $REPO" >&2; exit 2; }
 PARENT_SHA="$(git -C "$REPO" rev-parse --short "$PARENT")"
@@ -50,8 +63,8 @@ printf '%-48s %-10s %-10s %s\n' "test file" "parent" "current" "verdict"
 
 differ=0
 for t in "${TESTS[@]}"; do
-  ( cd "$REPO" && timeout "$PER_TEST_TIMEOUT" python3 "$t" >/dev/null 2>&1 ); cur=$?
-  ( cd "$tmp"  && timeout "$PER_TEST_TIMEOUT" python3 "$t" >/dev/null 2>&1 ); par=$?
+  ( cd "$REPO" && "$TIMEOUT_CMD" "$PER_TEST_TIMEOUT" python3 "$t" >/dev/null 2>&1 ); cur=$?
+  ( cd "$tmp"  && "$TIMEOUT_CMD" "$PER_TEST_TIMEOUT" python3 "$t" >/dev/null 2>&1 ); par=$?
   if [ "$par" = "$cur" ]; then
     verdict="SAME (pre-existing)"
   else

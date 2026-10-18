@@ -133,6 +133,48 @@ def test_covered_blob_is_not_re_reviewed_and_not_outstanding():
     assert "z/pending.py" in seen, "the cap must go to the blob that is genuinely outstanding"
 
 
+def test_receipt_names_only_covered_blobs():
+    """ADV-0-6: a receipt may name only blobs that were JUDGED and need no fix."""
+    saved = (mcp._range_blobs, mcp._blobs_with_covered_verdict)
+    mcp._range_blobs = lambda repo, base, head: {"a.py": _sha("a"), "b.py": _sha("b")}
+    mcp._blobs_with_covered_verdict = lambda blobs, conn=None: {_sha("a")}
+    try:
+        got = mcp._receipt_blobs(Path("/tmp"), "base", "head")
+    finally:
+        mcp._range_blobs, mcp._blobs_with_covered_verdict = saved
+    assert got == {"a.py": _sha("a")}, f"the receipt must omit anything not covered: {got}"
+
+
+def test_push_base_candidates_handle_a_master_default_and_another_remote():
+    """ADV-0-2: hardcoding origin/main made a master-default repo fall back to ALL history."""
+    saved = (mcp._git_capture, mcp._env_value)
+    mcp._env_value = lambda name, default="": "upstream" if name == "CORTEX_PUSH_REMOTE" else ""
+    mcp._git_capture = (lambda repo, *a, **k:
+                        "origin/develop" if a and a[0] == "symbolic-ref" else "")
+    try:
+        got = mcp._push_base_candidates(Path("/tmp"))
+    finally:
+        mcp._git_capture, mcp._env_value = saved
+    assert got[0] == "origin/develop", f"the remote's own default branch must win: {got}"
+    assert "upstream/main" in got and "upstream/master" in got, (
+        f"a differently named remote must still be tried: {got}")
+
+
+def test_layout_hints_are_configurable():
+    """ADV-0-4: the layout list was correct only for this repo."""
+    saved = mcp._env_value
+    mcp._env_value = (lambda name, default="":
+                      "src/,lib/" if name == "CORTEX_REVIEW_LAYOUT_PREFIXES" else "")
+    try:
+        prefixes = mcp._layout_prefixes()
+        pats = mcp._preflight_patterns()
+    finally:
+        mcp._env_value = saved
+    assert prefixes == ("src/", "lib/"), prefixes
+    assert any(p.search("touches src/thing.py") for p, _ in pats), (
+        "the configured layout must compile into a pattern")
+
+
 if __name__ == "__main__":
     fails = 0
     for name, fn in sorted(globals().items()):
