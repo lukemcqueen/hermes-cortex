@@ -514,6 +514,28 @@ A weekly analysis pipeline (`loop_evaluator.py`) reads the loop governance DB an
 | **Threshold recommendations** | Suggested threshold adjustments | `Raise STOP to 8.5` |
 | **Weight recommendations** | Correlation-based weight adjustments | `completeness: 40% → 45%` |
 
+**A report window is only real where EVERY query binds it.** `generate_report(days)`
+threads `days` into the stats it renders, but three methods ignored it entirely —
+`get_decision_accuracy`, `get_threshold_recommendations`, `get_weight_recommendations`
+all queried `user_overrode` with no `timestamp` filter. A `--days 7` report therefore
+printed all-time accuracy (38.7% over 11,037 labelled rows) under a "last 7 days"
+heading, when the 7-day truth was 55.3% over 642 — and that stale mass set the
+tuning advice: completeness 40%->26% on all-time data versus quality 30%->35%
+(+3.78) on the 7-day window. When you audit a report, grep every feedback query
+for its window and confirm the CALL SITE passes it; the header label proves nothing.
+The fix is scoped signature + filtered WHERE + `days` at each call site, pinned by an
+AST sweep (`tests/run_loop_evaluator_accuracy_window_repro.py`) that fails if any
+`.execute()` reading `user_overrode` lacks a timestamp predicate OR carries a `?`
+placeholder with no parameter. Fix the CLASS in one pass — three methods in one file
+shared the defect, and repairing the two the report happened to show would have left
+the third setting the fleet's scoring weights.
+
+**A recommendation's direction word must be derived, never written.** The STOP advice
+hardcoded `"raising ... to {proposed}"` against `proposed = min(9.0, avg+0.5)`; with
+an all-time average of 6.0 that yields 6.5 against a live threshold of 8.2 — a
+*lowering* announced as a raising, quoting "8.0" while config carried 8.2. Compute
+the direction from the comparison and read the current value from `loop_config`.
+
 **Read the report's units literally — two different averages live in it.** "Avg cycles per task"
 is `COUNT(*) / COUNT(DISTINCT task_id)`: an average over **tasks**, so 2.9 means a task took
 ~2.9 cycles. It is NOT `AVG(cycle_num)`, which is the mean **cycle INDEX** and reads ~24 on the
