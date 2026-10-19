@@ -4735,17 +4735,23 @@ def check_task_db(res):
         return
     res.add("Task DB connectivity", "PASS", f"Postgres reachable, {count} pending item(s)")
 
-    # Write-probe — the actual roundtrip proof
+    # Write-probe — the actual roundtrip proof. The repo is named EXPLICITLY on
+    # BOTH sides: the row is therefore tagged with the canonical repo AND the
+    # read-back is scoped to that same repo. Since 2026-10-19 a scoped query is
+    # STRICT (own repo only, untagged rows excluded), so an untagged probe row
+    # read back with a scoped list would now be invisible and the doctor would
+    # report a broken write path that is in fact healthy.
     probe = f"doctor-probe {uuid.uuid4().hex[:8]}"
-    add_out = run_bg(["python3", str(task_script), "add", probe, "--source", "doctor-probe"], timeout=20)
+    add_out = run_bg(["python3", str(task_script), "add", probe,
+                      "--source", "doctor-probe",
+                      "--repo", CORTEX_REPO.name], timeout=20)
     if not add_out or "added" not in add_out.lower():
         res.add("Task DB write-probe", "FAIL",
             f"task-db.py add did not confirm: {add_out[:200] or '(no output)'}",
             "Schema may be missing/read-only — run cortex-update.sh, check tasks.schema_version")
         return
 
-    # Read the probe back — same explicit repo as above (the write-probe row is
-    # untagged, and a scoped query includes untagged rows).
+    # Read the probe back — same explicit repo as the add above.
     list_out = run_bg(["python3", str(task_script), "list", "--status", "pending",
                        "--repo", CORTEX_REPO.name], timeout=20)
     probe_id = None

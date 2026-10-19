@@ -74,8 +74,15 @@ def _task_db(args: list[str]) -> str:
 
 
 def _pending_contents(agent: str | None) -> list[str]:
-    """Return list of pending task contents (lowercased) via `pending` JSON."""
-    args = ["pending"]
+    """Return list of pending task contents (lowercased) via `pending` JSON.
+
+    `--repo ALL` is deliberate: the dedup guard asks "does this agent already
+    have a pending task about this?", and the agent's rows live across repos (and
+    the legacy untagged ones). A bare `pending` would be BOTH unresolvable from a
+    cron cwd (fail-closed -> []) and, since 2026-10-19, repo-strict anyway — either
+    way the guard would compare against an empty set and stop guarding.
+    """
+    args = ["pending", "--repo", "ALL"]
     out = _task_db(args)
     if not out:
         return []

@@ -12,8 +12,10 @@ the REAL MCP server over stdio:
             on the command line (default: the last commit that touched the file
             BEFORE the fix). It must LEAK: `pending` returns all repos' rows.
   CURRENT   the working-tree engine + the working-tree MCP server. It must SCOPE:
-            repo=steadfaste sees its own rows + untagged rows, never the
-            `steadfaste-s1-model` row; an unresolvable repo returns [].
+            repo=steadfaste sees its OWN rows only — never the
+            `steadfaste-s1-model` row and, since 2026-10-19, never the untagged
+            row either (that one needs the explicit `--include-untagged` /
+            `include_untagged` switch); an unresolvable repo returns [].
   DEPLOYED  the deployed copies (<deploy>/scripts/task-db.py + task-mcp.py) — a
             green check on the repo copy proves nothing about what agents run.
 
@@ -214,11 +216,14 @@ def main() -> int:
         mcp_server = REPO / TASK_MCP_REL
 
         # ── 1. seed three rows through the CURRENT engine ────────
+        # Run with a NON-GIT cwd: a row minted with no --repo now INHERITS the
+        # session repo, so the untagged seed must come from a session that has
+        # none (that is exactly how a legacy untagged row is minted today).
         for content, repo in SEEDS:
             cmd = ["add", content, "--source", "manual", "--no-notify"]
             if repo:
                 cmd += ["--repo", repo]
-            rc, out, err = _run_engine(current_engine, cmd, REPO)
+            rc, out, err = _run_engine(current_engine, cmd, nongit)
             if not check(rc == 0, f"seed '{content}'",
                          (out + err).strip().splitlines()[0] if (out or err) else ""):
                 print("COULD NOT VERIFY: seeding failed")
@@ -247,10 +252,26 @@ def main() -> int:
         seen = {i.get("content") for i in items}
         check(rc == 0 and "probe-own" in seen,
               "scoped pending returns the caller's own repo's task", f"seen={sorted(seen)}")
-        check("probe-untagged" in seen,
-              "scoped pending still returns legacy untagged rows", f"seen={sorted(seen)}")
+        check("probe-untagged" not in seen,
+              "STRICT scoped pending EXCLUDES untagged rows (operator rule 2026-10-19)",
+              f"seen={sorted(seen)}")
         check("probe-other" not in seen,
               "scoped pending NEVER returns another repo's task", f"seen={sorted(seen)}")
+
+        # ── 3b. the broad view is opt-in, one flag ───────────────
+        signal.alarm(120)
+        rc, out, _err = _run_engine(
+            current_engine,
+            ["pending", "--repo", OWN_REPO, "--include-untagged"], nongit)
+        signal.alarm(0)
+        items = json.loads(out) if out.strip() else []
+        seen = {i.get("content") for i in items}
+        check(rc == 0 and "probe-untagged" in seen and "probe-own" in seen,
+              "--include-untagged adds the untagged rows back (opt-in broad view)",
+              f"seen={sorted(seen)}")
+        check("probe-other" not in seen,
+              "--include-untagged still never returns another named repo's task",
+              f"seen={sorted(seen)}")
 
         # ── 4. unknown repo -> NO tasks (operator rule) ──────────
         signal.alarm(120)
@@ -290,12 +311,25 @@ def main() -> int:
                          "task_list_claimable", "task_list_handed_out"):
                 props = by_name[name]["inputSchema"].get("properties", {})
                 check("repo" in props, f"tools/list: {name} exposes repo")
+                check("include_untagged" in props,
+                      f"tools/list: {name} exposes the include_untagged switch")
 
             text = _call_tool(client, "task_pending", {"repo": OWN_REPO})
             items = json.loads(text) if text.strip().startswith("[") else []
             seen = {i.get("content") for i in items}
             check("probe-other" not in seen and "probe-own" in seen,
                   "MCP task_pending(repo=steadfaste) is scoped", f"seen={sorted(seen)}")
+            check("probe-untagged" not in seen,
+                  "MCP task_pending(repo=...) excludes untagged by default",
+                  f"seen={sorted(seen)}")
+
+            text = _call_tool(client, "task_pending",
+                              {"repo": OWN_REPO, "include_untagged": True})
+            items = json.loads(text) if text.strip().startswith("[") else []
+            seen = {i.get("content") for i in items}
+            check("probe-untagged" in seen and "probe-other" not in seen,
+                  "MCP task_pending(include_untagged=true) adds untagged rows only",
+                  f"seen={sorted(seen)}")
         finally:
             client.close()
             signal.alarm(0)
@@ -330,8 +364,10 @@ def main() -> int:
             signal.alarm(0)
             items = json.loads(out) if out.strip() else []
             seen = {i.get("content") for i in items}
-            check(rc == 0 and "probe-other" not in seen and "probe-own" in seen,
-                  "DEPLOYED engine is scoped", f"seen={sorted(seen)}")
+            check(rc == 0 and "probe-other" not in seen and "probe-own" in seen
+                  and "probe-untagged" not in seen,
+                  "DEPLOYED engine carries the STRICT scope (own repo only)",
+                  f"seen={sorted(seen)}")
         else:
             check(False, "DEPLOYED engine present", "not deployed on this host")
         if deployed_mcp.is_file():
@@ -348,8 +384,10 @@ def main() -> int:
                 text = _call_tool(client, "task_pending", {"repo": OWN_REPO})
                 items = json.loads(text) if text.strip().startswith("[") else []
                 seen = {i.get("content") for i in items}
-                check("probe-other" not in seen and "probe-own" in seen,
-                      "DEPLOYED MCP task_pending is scoped", f"seen={sorted(seen)}")
+                check("probe-other" not in seen and "probe-own" in seen
+                      and "probe-untagged" not in seen,
+                      "DEPLOYED MCP task_pending carries the STRICT scope",
+                      f"seen={sorted(seen)}")
             finally:
                 client.close()
                 signal.alarm(0)

@@ -68,11 +68,17 @@ task-db.py list --board --repo ALL                          # the FLEET view (ex
 - **Never trust a self-reported done.** Verify the evidence is real (test
   output, measured numbers) before approving.
 - Reject with the gap named — the slice returns to in_progress for the worker.
-- **Task queries are repo-scoped** (2026-10-14): `list`, `pending`, the
-  claimable/handed-out pools and `--board` show the CALLER's repo plus untagged
-  rows, never another repo's. The orchestrator's fleet-wide view is
-  `--repo ALL` (explicit — omitting it is not the fleet view); a session whose
-  repo cannot be resolved gets NOTHING, by design.
+- **Task queries are repo-scoped, STRICT by default** (2026-10-19): `list`,
+  `pending`, the claimable/handed-out pools and `--board` show the CALLER's repo
+  and NOTHING else — untagged (pre-tag) rows are excluded, because when the store
+  is mostly untagged a scoped query returned the whole fleet backlog (the "too
+  broad" report from a pi session). Two explicit switches widen it:
+  `--include-untagged` (your repo + the untagged rows — use this when you are
+  scanning the pool for untagged FLEET slices) and `--repo ALL` (the
+  orchestrator's fleet-wide view; omitting the parameter is never the fleet
+  view). A session whose repo cannot be resolved gets NOTHING, by design.
+  A task you ADD with no `--repo` inherits your session repo, so it stays
+  visible in your own strict view.
 
 ## Automated layers (no manual action needed)
 

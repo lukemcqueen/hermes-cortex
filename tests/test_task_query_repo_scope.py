@@ -10,9 +10,12 @@ reported work belonging to another repository. This file pins the contract:
     MCP child's cwd git repo);
   * an UNRESOLVABLE repo returns NO tasks (operator rule, 2026-10-14) — never
     "all repos";
-  * a scoped query includes `repo = ? OR repo IS NULL` so legacy untagged rows
-    stay visible while another named repo's rows never leak in;
-  * the fleet-wide view exists ONLY as an explicit opt-in (`repo="ALL"`).
+  * a scoped query returns ONLY the caller's own repo (`repo = ?`); untagged
+    (legacy) rows are NOT included — they are opt-in via `include_untagged`
+    (CLI `--include-untagged`), and a NAMED repo's rows never leak in;
+  * the fleet-wide view exists ONLY as an explicit opt-in (`repo="ALL"`);
+  * a task MINTED with no `--repo` from a session whose repo resolves inherits
+    that repo, so a strict default never hides the caller's own new work.
 
 Run: python3 -m pytest tests/test_task_query_repo_scope.py -q
 Hermetic: no DB contact — psql is mocked at the module boundary.
@@ -203,29 +206,53 @@ def test_board_fail_closed_reports_unknown_repo(tmp_path, monkeypatch):
     mock_psql.assert_not_called()
 
 
-# ── scoped SQL: repo = ? OR repo IS NULL ────────────────────────
+# ── scoped SQL: strict by default, untagged is opt-in ──────────
 
-def test_pending_scoped_sql_binds_repo_and_includes_null():
+def test_pending_scoped_sql_binds_repo_and_excludes_null():
+    """DEFAULT: the caller's own repo ONLY. Untagged rows are opt-in."""
     with patch.object(task_db, "psql", return_value=_row_line()) as mock_psql:
         out, _err, exc = _run_capture(task_db.cmd_pending, "steadfaste")
     assert exc is None
     assert json.loads(out)[0]["id"] == "uuid1"
     sql, params = mock_psql.call_args[0][0], mock_psql.call_args[0][1]
-    assert "t.repo = " in sql and "t.repo IS NULL" in sql
+    assert "t.repo = " in sql
+    assert "t.repo IS NULL" not in sql, \
+        "the default scope must not include untagged rows (reported 'too broad')"
     assert params == ["steadfaste", "steadfaste"]
 
 
-def test_list_scoped_sql_includes_null_repo():
+def test_pending_include_untagged_is_opt_in():
+    with patch.object(task_db, "psql", return_value=_row_line()) as mock_psql:
+        out, _err, exc = _run_capture(task_db.cmd_pending, "steadfaste",
+                                      None, None, False, True)
+    assert exc is None
+    sql, params = mock_psql.call_args[0][0], mock_psql.call_args[0][1]
+    assert "t.repo IS NULL" in sql
+    assert params == ["steadfaste", "steadfaste"]
+
+
+def test_list_scoped_sql_excludes_null_repo_by_default():
     with patch.object(task_db, "psql", return_value=_row_line()) as mock_psql:
         _out, _err, exc = _run_capture(
             task_db.cmd_list, None, None, None, None, "steadfaste", None, None, None)
     assert exc is None
     sql, params = mock_psql.call_args[0][0], mock_psql.call_args[0][1]
-    assert "t.repo IS NULL" in sql
+    assert "t.repo IS NULL" not in sql
     assert params[8:10] == ["steadfaste", "steadfaste"]
 
 
-def test_board_scoped_sql_includes_null_repo():
+def test_list_scoped_sql_includes_null_repo_when_asked():
+    with patch.object(task_db, "psql", return_value=_row_line()) as mock_psql:
+        _out, _err, exc = _run_capture(
+            task_db.cmd_list, None, None, None, None, "steadfaste", None, None, None,
+            None, None, None, True)
+    assert exc is None
+    sql = mock_psql.call_args[0][0]
+    assert "t.repo IS NULL" in sql
+    assert "t.repo = " in sql
+
+
+def test_board_scoped_sql_excludes_null_repo_by_default():
     with patch.object(task_db, "schema_version", return_value=9), \
          patch.object(task_db, "psql", return_value="") as mock_psql:
         _out, _err, exc = _run_capture(task_db.cmd_list_board, "steadfaste")
@@ -233,10 +260,20 @@ def test_board_scoped_sql_includes_null_repo():
     for call in mock_psql.call_args_list:
         sql = call[0][0] if call[0] else ""
         if "tasks.tasks" in sql and "repo" in sql:
-            assert "t.repo IS NULL" in sql
+            assert "t.repo IS NULL" not in sql, sql
     assert any("steadfaste" in (c[0][1] if len(c[0]) > 1 else [])
                or "steadfaste" in str(c[0]) for c in mock_psql.call_args_list), \
         "board queries must carry the repo filter"
+
+
+def test_board_include_untagged_is_opt_in():
+    with patch.object(task_db, "schema_version", return_value=9), \
+         patch.object(task_db, "psql", return_value="") as mock_psql:
+        _out, _err, exc = _run_capture(task_db.cmd_list_board, "steadfaste",
+                                      None, None, True)
+    assert exc is None
+    joined = " ".join(str(c[0]) for c in mock_psql.call_args_list)
+    assert "t.repo IS NULL" in joined
 
 
 def test_claimable_and_assigned_are_scoped():
@@ -247,7 +284,43 @@ def test_claimable_and_assigned_are_scoped():
         assert exc is None
         joined = " ".join(str(c[0]) for c in mock_psql.call_args_list)
         assert "steadfaste" in joined, fn.__name__
-        assert "IS NULL" in joined, fn.__name__
+        assert "t.repo IS NULL" not in joined, fn.__name__
+
+
+# ── mint path: a new row inherits the session repo ──────────────
+
+def _add_capture(repo_arg, tmp_path, monkeypatch):
+    monkeypatch.delenv("CORTEX_SESSION_REPO", raising=False)
+    root = _git_init(tmp_path / "project-mint")
+    monkeypatch.chdir(root)
+    with patch.object(task_db, "psql", return_value="") as mock_psql:
+        _out, _err, exc = _run_capture(
+            task_db.cmd_add, "content", None, 0, None, repo_arg, None, None,
+            None, None, [], None, None, None, True, None)
+    assert exc is None
+    return mock_psql.call_args[0][1]
+
+
+def test_add_defaults_repo_to_the_session_repo(tmp_path, monkeypatch):
+    params = _add_capture(None, tmp_path, monkeypatch)
+    assert params[5] == "project-mint", \
+        "a row minted inside a repo must not be untagged (strict default would hide it)"
+
+
+def test_add_explicit_repo_wins(tmp_path, monkeypatch):
+    params = _add_capture("explicit-repo", tmp_path, monkeypatch)
+    assert params[5] == "explicit-repo"
+
+
+def test_add_without_a_resolvable_repo_stays_untagged(tmp_path, monkeypatch):
+    monkeypatch.delenv("CORTEX_SESSION_REPO", raising=False)
+    monkeypatch.chdir(tmp_path)  # not a git repo
+    with patch.object(task_db, "psql", return_value="") as mock_psql:
+        _out, _err, exc = _run_capture(
+            task_db.cmd_add, "content", None, 0, None, None, None, None,
+            None, None, [], None, None, None, True, None)
+    assert exc is None
+    assert mock_psql.call_args[0][1][5] is None
 
 
 def test_fail_closed_costs_no_db_contact_even_for_v4_views(tmp_path, monkeypatch):
@@ -264,7 +337,11 @@ def test_fail_closed_costs_no_db_contact_even_for_v4_views(tmp_path, monkeypatch
 
 
 def test_pending_repo_all_is_unfiltered():
-    """`repo="ALL"` is the ONLY way to ask for every repo — explicit, never default."""
+    """`repo="ALL"` is the ONLY way to ask for every repo — explicit, never default.
+
+    The fleet view is the WIDER of the two: it is unfiltered, so untagged rows
+    are included there by construction (no `OR t.repo IS NULL` clause needed).
+    """
     with patch.object(task_db, "psql", return_value=_row_line()) as mock_psql:
         _out, _err, exc = _run_capture(task_db.cmd_pending, "ALL")
     assert exc is None
@@ -307,6 +384,45 @@ def test_scoped_tools_expose_repo_parameter():
         props = schema.get("properties", {})
         assert "repo" in props, f"{name} has no repo parameter"
         assert "repo" not in schema.get("required", []), name
+
+
+def test_scoped_tools_expose_the_untagged_switch():
+    """The broad view (own repo + untagged) must be reachable from MCP, not only
+    from the CLI: without it the worker pool for untagged fleet slices is gone."""
+    tm = _mcp()
+    if tm is None:
+        return
+    import asyncio
+    tools = {t.name: t for t in asyncio.run(tm.list_tools(None)).tools}
+    for name in SCOPED_TOOLS:
+        props = _schema(tools[name]).get("properties", {})
+        assert "include_untagged" in props, f"{name} has no include_untagged switch"
+        assert props["include_untagged"].get("type") == "boolean", name
+
+
+def test_mcp_forwards_include_untagged_to_the_engine(monkeypatch):
+    tm = _mcp()
+    if tm is None:
+        return
+    seen = {}
+
+    def fake_pending(*a, **kw):
+        seen["args"], seen["kw"] = a, kw
+
+    monkeypatch.setattr(tm.task_db, "cmd_pending", fake_pending)
+    tm._task_pending({"repo": "steadfaste", "include_untagged": True})
+    assert seen["kw"].get("include_untagged") is True, \
+        "include_untagged must reach cmd_pending"
+
+    seen.clear()
+
+    def fake_list(*a, **kw):
+        seen["args"], seen["kw"] = a, kw
+
+    monkeypatch.setattr(tm.task_db, "cmd_list", fake_list)
+    tm._task_list({"repo": "steadfaste", "include_untagged": True})
+    assert seen["kw"].get("include_untagged") is True, \
+        "include_untagged must reach cmd_list"
 
 
 def test_scoped_tool_descriptions_state_the_contract():

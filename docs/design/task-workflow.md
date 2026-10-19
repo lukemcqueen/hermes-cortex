@@ -306,9 +306,19 @@ scoping and governance-lock identity agree:
 
 Two consequences worth knowing:
 
-- **`repo = ? OR repo IS NULL`** — untagged (legacy) rows stay visible to every
-  session, while another NAMED repo's rows never leak in. A scoped query is
-  therefore migration-safe: it cannot hide work that was never tagged.
+- **Strict by default (2026-10-19, operator).** A scoped query is
+  `repo = ?` — the caller's OWN repo and nothing else. Untagged (pre-tag) rows
+  are NOT mixed in: the earlier `repo = ? OR repo IS NULL` form made the scope
+  meaningless once the store was mostly untagged (measured 2026-10-19: 49 of 50
+  rows untagged, so a session inside one project repo received the entire fleet
+  backlog — the "too broad" report from a pi session). The broad view is one
+  explicit switch: `--include-untagged` / `{"include_untagged": true}` returns
+  the caller's repo PLUS the untagged rows (which is what a worker scanning for
+  untagged fleet slices wants).
+- **A task ADDED with no `--repo` inherits the caller's resolved session repo.**
+  Without that, a strict default would hide the task the caller just minted
+  inside its own repo. With no resolvable repo the row stays untagged, exactly
+  as before — which is also how a legacy untagged row comes into existence.
 - **The fleet view is explicit.** `--repo ALL` / `{"repo": "ALL"}` is the only
   way to ask for every repo (orchestrator views), and it must be asked for.
   Omitting the parameter is NOT the fleet view.

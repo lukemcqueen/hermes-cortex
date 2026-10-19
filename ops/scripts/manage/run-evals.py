@@ -259,9 +259,14 @@ def _task_lifecycle() -> tuple[bool, str]:
         return m.group(1) if m else None
 
     try:
-        # 1. Add
+        # 1. Add — the repo is named EXPLICITLY so the row is TAGGED with the same
+        #    label step 2 reads back. Since 2026-10-19 a scoped query is STRICT
+        #    (own repo only) and no longer returns untagged rows, so an untagged
+        #    probe would be invisible to the scoped list and this gate would go
+        #    RED for a healthy write path.
         rc, out = _run(["python3", str(TASK_DB), "add", probe_content,
-                        "--tag", "regression-gate", "--source", "manual"])
+                        "--tag", "regression-gate", "--source", "manual",
+                        "--repo", "regression-gate"])
         if rc != 0:
             return False, f"add failed (rc={rc}): {out.strip()[-200:]}"
 
@@ -270,9 +275,9 @@ def _task_lifecycle() -> tuple[bool, str]:
         #    has no session repo injected and its cwd is not a git repo, so the
         #    bare list returned the unknown-repo message + 'No tasks found' with
         #    rc 0 and the probe id was never parsed (gate went RED 2026-10-15).
-        #    Scope it explicitly to a hermetic label; the scoped clause includes
-        #    repo-NULL rows, so the probe (created without --repo, repo NULL) is
-        #    still returned. Reference: commit aa293f41, slice 758ee911.
+        #    Scope it explicitly to a hermetic label — the SAME label the add used,
+        #    because the row is now repo-tagged rather than repo-NULL.
+        #    References: commit aa293f41, slice 758ee911; strict-scope change 2026-10-19.
         rc, out = _run(["python3", str(TASK_DB), "list",
                         "--repo", "regression-gate", "--tag", "regression-gate"])
         if rc != 0:

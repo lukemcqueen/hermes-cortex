@@ -46,12 +46,18 @@ Usage:
     task-db.py --apply-schema      # delegate to ops/services/tasks/migrate.py
 
 QUERIES ARE REPO-SCOPED (2026-10-14, reported by Titus): `list`, `pending`,
-`list --board`, `list --claimable` and `list --assigned` return the CALLER's repo
-plus untagged rows, never another named repo's tasks. The repo resolves from
+`list --board`, `list --claimable` and `list --assigned` return the CALLER's repo,
+never another named repo's tasks. The repo resolves from
 `--repo`, else the session repo injected by the governance-enforcer, else
 CORTEX_SESSION_REPO, else the git repo at the working directory; when none of
 those exist the query returns NOTHING (operator rule) rather than every repo's
 tasks. `--repo ALL` is the EXPLICIT fleet-wide view (orchestrator callers).
+
+STRICT BY DEFAULT (2026-10-19, operator): "we should only see tasks for that
+repo alone when inside a repo". Untagged (pre-tag) rows are NOT mixed in —
+`--include-untagged` adds them back, which is what a worker scanning the pool for
+untagged fleet slices wants. A task ADDED with no `--repo` inherits the caller's
+resolved session repo, so a strict default never hides the task you just minted.
 
 
 Statuses: pending, in_progress, paused, completed, cancelled, blocked,
@@ -96,12 +102,15 @@ for _p in (Path(__file__).resolve().parent, Path(__file__).resolve().parent.pare
 from cortex_lib.session_repo import (  # noqa: E402
     FLEET_ALL, ResolvedRepo, resolve_query_repo, unknown_repo_message)
 
-# The repo predicate. SCOPED deliberately includes `repo IS NULL`: rows created
-# before the repo tag existed are visible to every session (migration-safe),
-# while another NAMED repo's rows never are.
+# The repo predicate. SCOPED is STRICT — the caller's own repo and nothing else
+# (operator rule 2026-10-19: "we should only see tasks for that repo alone when
+# inside a repo"). Untagged (legacy) rows are NOT mixed in by default; a caller
+# that needs them — the worker pool for untagged fleet slices, or pre-tag rows —
+# asks for them explicitly with `include_untagged` / `--include-untagged`.
 _REPO_CLAUSE_UNFILTERED = "AND (CAST(? AS text) IS NULL OR t.repo = ?)"
-_REPO_CLAUSE_SCOPED = ("AND (CAST(? AS text) IS NULL OR t.repo = ? "
-                       "OR t.repo IS NULL)")
+_REPO_CLAUSE_SCOPED = "AND (CAST(? AS text) IS NULL OR t.repo = ?)"
+_REPO_CLAUSE_SCOPED_WITH_UNTAGGED = ("AND (CAST(? AS text) IS NULL OR t.repo = ? "
+                                     "OR t.repo IS NULL)")
 
 
 def resolve_repo_for_query(flag: str, repo: str | None = None,
@@ -118,8 +127,19 @@ def resolve_repo_for_query(flag: str, repo: str | None = None,
     return resolve_query_repo(repo, repo_path, repo_slug)
 
 
-def _repo_clause(resolved) -> str:
-    return _REPO_CLAUSE_UNFILTERED if resolved.fleet else _REPO_CLAUSE_SCOPED
+def _repo_clause(resolved, include_untagged: bool = False) -> str:
+    """The SQL predicate for a resolved repo.
+
+    Three shapes, one rule each:
+      * `repo="ALL"` (fleet)      -> unfiltered: every repo PLUS untagged rows.
+      * scoped, default           -> the caller's own repo ONLY.
+      * scoped, include_untagged  -> the caller's own repo + untagged legacy rows.
+    """
+    if resolved.fleet:
+        return _REPO_CLAUSE_UNFILTERED
+    if include_untagged:
+        return _REPO_CLAUSE_SCOPED_WITH_UNTAGGED
+    return _REPO_CLAUSE_SCOPED
 
 
 def _repo_params(resolved) -> list:
@@ -526,7 +546,7 @@ def cmd_list(agent: str | None, status: str | None, project: str | None,
              scope: str | None, repo: str | None, assignee: str | None,
              tag: str | None, due_before: str | None,
              parent: str | None = None, repo_path: str | None = None,
-             repo_slug: str | None = None):
+             repo_slug: str | None = None, include_untagged: bool = False):
     """List tasks — union of personal + locally-present fleet rows (B-3).
 
     v3: --parent <story-id> lists that story's slices (story `list --parent`).
@@ -534,6 +554,10 @@ def cmd_list(agent: str | None, status: str | None, project: str | None,
     SCOPED to the caller's repo (cycle 12593): an unresolvable repo lists
     NOTHING rather than every repo's tasks — pass --repo <label>, set
     CORTEX_SESSION_REPO, or pass repo="ALL" for the deliberate fleet view.
+
+    STRICT by default (2026-10-19, operator): the caller's own repo only.
+    `include_untagged` adds the untagged (pre-tag) rows back, which is what the
+    old default did and what a worker scanning for untagged fleet slices wants.
     """
     for flag, val, checker in (
         ("--agent", agent, _check_name), ("--project", project, _check_name),
@@ -556,7 +580,7 @@ def cmd_list(agent: str | None, status: str | None, project: str | None,
     params = [agent, agent, status, status, scope, scope, project, project]
     params += _repo_params(resolved)
     params += [assignee, assignee, tag, tag, parent, parent]
-    raw = psql(select_sql(_repo_clause(resolved)), params)
+    raw = psql(select_sql(_repo_clause(resolved, include_untagged)), params)
     if not raw:
         print("No tasks found.")
         return
@@ -607,9 +631,21 @@ def cmd_add(content: str, agent: str | None, priority: int, project: str | None,
             assignee: str | None, due: str | None, tags: list[str],
             source: str | None, parent: str | None = None,
             kind: str | None = None, no_notify: bool = False,
-            correlation_id: str | None = None):
-    """Add a new task (v2: story/slice hierarchy + notify + bus correlation)."""
+            correlation_id: str | None = None,
+            repo_path: str | None = None, repo_slug: str | None = None):
+    """Add a new task (v2: story/slice hierarchy + notify + bus correlation).
+
+    REPO TAG (2026-10-19, operator): when `--repo` is omitted, the new row
+    inherits the caller's RESOLVED session repo (same ladder as the queries).
+    Query scoping is strict by default, so a row minted inside a repo must carry
+    that repo or the caller cannot see its own new task. With no resolvable repo
+    the row stays untagged, exactly as before.
+    """
     agent = agent or PROFILE
+    if not repo:
+        _resolved = resolve_repo_for_query("--repo", None, repo_path, repo_slug)
+        if _resolved is not None and not _resolved.fleet:
+            repo = _resolved.slug
     for flag, val, checker in (
         ("--agent", agent, _check_name), ("--project", project, _check_name),
         ("--repo", repo, _check_name), ("--target", target, _check_name),
@@ -848,11 +884,14 @@ def cmd_verify(task_id: str, approve: bool, note: str | None = None,
 
 def cmd_list_claimable(limit: int = 10, repo: str | None = None,
                        repo_path: str | None = None,
-                       repo_slug: str | None = None):
+                       repo_slug: str | None = None,
+                       include_untagged: bool = False):
     """v4: the worker queue view — pending slices with no assignee, by priority.
 
     Repo-scoped (cycle 12593): the claimable pool is the pool FOR THIS SESSION'S
-    REPO; untagged slices stay visible, another repo's slices never are.
+    REPO; another repo's slices never appear. STRICT by default (2026-10-19):
+    the fleet's untagged slices are opt-in via `include_untagged` /
+    `--include-untagged` — the worker scanning for fleet work asks for them.
     """
     # Repo first: an unknown repo must cost NO database contact at all.
     resolved = resolve_repo_for_query("--repo", repo, repo_path, repo_slug)
@@ -865,7 +904,7 @@ def cmd_list_claimable(limit: int = 10, repo: str | None = None,
         "COALESCE(t.plan, '') "
         "FROM tasks.tasks t "
         "WHERE t.status = 'pending' AND t.kind = 'slice' "
-        f"AND t.assignee IS NULL {_repo_clause(resolved)} "
+        f"AND t.assignee IS NULL {_repo_clause(resolved, include_untagged)} "
         "ORDER BY t.priority DESC, t.status_changed_at ASC LIMIT ?;",
         _repo_params(resolved) + [limit],
     )
@@ -884,7 +923,8 @@ def cmd_list_claimable(limit: int = 10, repo: str | None = None,
 
 def cmd_list_assigned(limit: int = 20, repo: str | None = None,
                       repo_path: str | None = None,
-                      repo_slug: str | None = None):
+                      repo_slug: str | None = None,
+                      include_untagged: bool = False):
     """v4: pending slices that ALREADY have an assignee — handed out, never started.
 
     These are deliberately excluded from the claimable pool (someone owns them), but
@@ -907,7 +947,7 @@ def cmd_list_assigned(limit: int = 20, repo: str | None = None,
         "COALESCE(t.assignee, '') "
         "FROM tasks.tasks t "
         "WHERE t.status = 'pending' AND t.kind = 'slice' "
-        f"AND t.assignee IS NOT NULL {_repo_clause(resolved)} "
+        f"AND t.assignee IS NOT NULL {_repo_clause(resolved, include_untagged)} "
         "ORDER BY t.priority DESC, t.status_changed_at ASC LIMIT ?;",
         _repo_params(resolved) + [limit],
     )
@@ -923,7 +963,8 @@ def cmd_list_assigned(limit: int = 20, repo: str | None = None,
 
 
 def cmd_list_board(repo: str | None = None, repo_path: str | None = None,
-                   repo_slug: str | None = None):
+                   repo_slug: str | None = None,
+                   include_untagged: bool = False):
     """v4: one-view board — open counts + per-agent in_progress + review queue.
 
     The pending count is SPLIT by what it actually means. A bare `pending: 18` was
@@ -946,7 +987,7 @@ def cmd_list_board(repo: str | None = None, repo_path: str | None = None,
         return
     _require_v4("list --board")
     _params = _repo_params(resolved)
-    _clause = _repo_clause(resolved)
+    _clause = _repo_clause(resolved, include_untagged)
     counts = psql(
         "SELECT CASE "
         "         WHEN t.status <> 'pending' THEN t.status "
@@ -1077,7 +1118,8 @@ PENDING_SQL_TEMPLATE = (
 
 
 def cmd_pending(repo: str | None = None, repo_path: str | None = None,
-                repo_slug: str | None = None, explain: bool = True):
+                repo_slug: str | None = None, explain: bool = True,
+                include_untagged: bool = False):
     """Print pending/in_progress/paused tasks as JSON for session restore.
 
     v2 (M-9/R-4): paused rows are included with status='paused' (surfaced,
@@ -1098,7 +1140,8 @@ def cmd_pending(repo: str | None = None, repo_path: str | None = None,
         if explain:
             print(unknown_repo_message("task_pending"), file=sys.stderr)
         return
-    raw = psql(PENDING_SQL_TEMPLATE.format(repo_clause=_repo_clause(resolved)),
+    raw = psql(PENDING_SQL_TEMPLATE.format(
+                   repo_clause=_repo_clause(resolved, include_untagged)),
                _repo_params(resolved))
     items = []
     for line in raw.split("\n"):
@@ -1242,19 +1285,25 @@ def main():
         return name in sys.argv
 
     if command == "list":
+        # --include-untagged: add the untagged (pre-tag) rows back to the scope.
+        # STRICT (own repo only) is the default since 2026-10-19.
+        untagged = _has("--include-untagged")
         if _has("--claimable"):
             limit = int(_flag("--limit", "10") or 10)
-            cmd_list_claimable(limit, _flag("--repo"))
+            cmd_list_claimable(limit, _flag("--repo"),
+                               include_untagged=untagged)
         elif _has("--assigned"):
             limit = int(_flag("--limit", "20") or 20)
-            cmd_list_assigned(limit, _flag("--repo"))
+            cmd_list_assigned(limit, _flag("--repo"),
+                              include_untagged=untagged)
         elif _has("--board"):
-            cmd_list_board(_flag("--repo"))
+            cmd_list_board(_flag("--repo"), include_untagged=untagged)
         else:
             cmd_list(
                 _flag("--agent"), _flag("--status"), _flag("--project"),
                 _flag("--scope"), _flag("--repo"), _flag("--assignee"),
                 _flag("--tag"), _flag("--due-before"), _flag("--parent"),
+                include_untagged=untagged,
             )
 
     elif command == "summary":
@@ -1339,7 +1388,8 @@ def main():
         cmd_verify(sys.argv[2], approve, _flag("--note"), _has("--no-notify"))
 
     elif command == "pending":
-        cmd_pending(_flag("--repo"))
+        cmd_pending(_flag("--repo"), None, None, True,
+                    _has("--include-untagged"))
 
     elif command == "restore":
         include_inbox = _has("--include-inbox")
