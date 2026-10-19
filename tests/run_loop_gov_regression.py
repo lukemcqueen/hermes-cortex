@@ -110,6 +110,13 @@ TESTS = [
     # probe test runs somewhere instead of being a guard nobody executes.
     "tests/test_land_when_clean_probe.py",
     "tests/test_loop_gov_multi_session.py",
+    # The release path for a TERMINAL task transition. It PASSES standalone (10 checks, including
+    # "another task's lock is still refused" and "non-terminal with no lock: still fails closed")
+    # but was ABSENT from this list, so nothing ever ran it — a green test nobody runs, which is
+    # worth the same as no test (found 2026-10-18 while auditing multi-session operation).
+    # Every entry here is a FILE the runner executes as a script, so this must stay in step with
+    # the tree: a rename or a dropped line silently shrinks coverage with the suite still green.
+    "tests/test_terminal_transition_releases_session.py",
     "tests/test_loop_gov_stale_purge.py",
     "tests/test_loop_gov_db_lock_recovery.py",
     "tests/test_loop_gov_review_leak.py",
