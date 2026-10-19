@@ -29,7 +29,9 @@ from __future__ import annotations
 import importlib.util
 import json
 import logging as _logging
+import os
 import subprocess
+import time
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
@@ -305,3 +307,76 @@ def test_hook_ignores_a_lock_for_a_different_repo(tmp_path):
     body = msg.read_text()
     assert f"Cortex-Session: {MY_SESSION}" in body
     assert OTHER_SESSION not in body
+
+
+def _write_lock(state: Path, name: str, repo: Path, sid: str, age_s: float = 0.0) -> Path:
+    path = state / f".governance-{name}.json"
+    path.write_text(json.dumps({"session_id": sid, "repo_path": str(repo),
+                                "repo_slug": repo.name, "started_at": "2026-10-19T04:30:21Z"}))
+    if age_s:
+        old = time.time() - age_s
+        os.utime(path, (old, old))
+    return path
+
+
+def _run_hook_env(repo: Path, deploy_home: Path, message: str = "feat: something"):
+    msg = repo.parent / "COMMIT_EDITMSG"
+    msg.write_text(message)
+    r = subprocess.run(["bash", str(HOOK), str(msg), "message"], cwd=str(repo),
+                       capture_output=True, text=True,
+                       env={"PATH": "/usr/bin:/bin", "HOME": str(repo.parent / "home"),
+                            "CORTEX_DEPLOY_HOME": str(deploy_home)})
+    assert r.returncode == 0, r.stderr
+    return msg.read_text()
+
+
+def test_hook_attributes_to_the_freshly_active_session(tmp_path):
+    """Two sessions in ONE repo: the one ACTIVE now (its lock was refreshed by a governed call)
+    is stamped; the idle one's commits are not re-attributed to it.
+
+    The lock file is rewritten on every governed call, so its mtime is that session's last governed
+    activity — the only per-session signal git leaves at commit time.
+    """
+    repo = _init_repo(tmp_path)
+    state = tmp_path / "deploy" / "state"
+    state.mkdir(parents=True, exist_ok=True)
+    _write_lock(state, "mine", repo, MY_SESSION)              # fresh: just touched
+    _write_lock(state, "peer", repo, OTHER_SESSION, age_s=600)  # idle for 10 minutes
+    body = _run_hook_env(repo, tmp_path / "deploy")
+    assert body.count("Cortex-Session:") == 1
+    assert f"Cortex-Session: {MY_SESSION}" in body
+    assert OTHER_SESSION not in body
+
+
+def test_hook_is_silent_when_two_sessions_are_both_fresh(tmp_path):
+    """Both active in one repo ⇒ the hook cannot tell whose commit this is ⇒ NO trailer.
+
+    A pick would be a mis-attribution, which is invisible and silently wrong; an absent trailer
+    keeps the commit in scope for everyone (fail-closed).
+    """
+    repo = _init_repo(tmp_path)
+    state = tmp_path / "deploy" / "state"
+    state.mkdir(parents=True, exist_ok=True)
+    _write_lock(state, "a", repo, MY_SESSION)
+    _write_lock(state, "b", repo, OTHER_SESSION)
+    assert _run_hook_env(repo, tmp_path / "deploy") == "feat: something"
+
+
+def test_hook_falls_back_to_a_single_stale_candidate(tmp_path):
+    """One lock, idle for a long time (a long edit before the commit): still the only claimant."""
+    repo = _init_repo(tmp_path)
+    state = tmp_path / "deploy" / "state"
+    state.mkdir(parents=True, exist_ok=True)
+    _write_lock(state, "only", repo, MY_SESSION, age_s=3600)
+    body = _run_hook_env(repo, tmp_path / "deploy")
+    assert f"Cortex-Session: {MY_SESSION}" in body
+
+
+def test_hook_ignores_a_stale_peer_when_two_lock_the_repo(tmp_path):
+    """Two claims, neither fresh ⇒ no trailer (neither session can be shown to be the author)."""
+    repo = _init_repo(tmp_path)
+    state = tmp_path / "deploy" / "state"
+    state.mkdir(parents=True, exist_ok=True)
+    _write_lock(state, "a", repo, MY_SESSION, age_s=3600)
+    _write_lock(state, "b", repo, OTHER_SESSION, age_s=3600)
+    assert _run_hook_env(repo, tmp_path / "deploy") == "feat: something"
