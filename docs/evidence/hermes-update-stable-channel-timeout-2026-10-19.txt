@@ -1,0 +1,163 @@
+# hermes update: "Could not resolve the stable source channel ... timed out after 10 seconds"
+
+Provenance: captured 2026-10-19 on the host running the affected Hermes checkout.
+Commands were run against the live checkout; outputs below are verbatim (host home
+paths normalised to `~`). Nothing here is a proposal — it is what the tools printed.
+
+## Symptom (from ~/.hermes/logs/update.log, lines 6898-6917)
+
+    === hermes update started 2026-10-18T02:42:00 ===
+    → Fleet: 1 running service(s) across profiles: default
+    → Update channel: stable
+    ✗ Could not resolve the stable source channel: Command '['git', 'merge-base',
+      '--is-ancestor', 'd923a5eb487a17c0a68801bba9ef0f56c81040a8',
+      '427d605d4985c2d49a795493ef6c5d66413057d1']' timed out after 10 seconds.
+      No update was applied.
+
+The same three lines repeat for runs at 2026-10-19T10:09:10 and 2026-10-19T16:22:34 —
+3/3 identical, same two SHAs.
+
+`427d605d49` is HEAD. `d923a5eb` is the stable release commit (v0.22.2).
+
+## Call sites
+
+- `hermes_cli/update_cmd_check.py:224` — `resolve_source_target(selected, git_cmd, root, forward_only=...)`
+  inside `retrying_reads()`; a `SubprocessError` (TimeoutExpired is one) prints the
+  error and `sys.exit(1)`.
+- `hermes_cli/source_releases.py:115` — `run("merge-base", "--is-ancestor", commit, head)`
+- `hermes_cli/source_releases.py:110` — that `run()` passes `timeout=10`
+- `hermes_cli/source_check.py:35-53` — `source_git_env()`, which sets
+  `GIT_NO_LAZY_FETCH=1` (via `NO_LAZY_FETCH_ENV`) and `GIT_OPTIONAL_LOCKS=0`
+- `hermes_cli/_subprocess_compat.py:282` — `NO_LAZY_FETCH_ENV = {"GIT_NO_LAZY_FETCH": "1"}`
+
+## Environment measured
+
+    $ git --version
+    git version 2.43.0
+
+    $ git config --get remote.origin.promisor
+    true
+    $ git config --get remote.origin.partialclonefilter
+    blob:none
+    $ git config --get-all remote.origin.fetch
+    +refs/heads/main:refs/remotes/origin/main      # before the fix
+    $ git tag --list | wc -l
+    179
+    $ ls .git/objects/pack/*.pack | wc -l
+    34
+    $ ls .git/objects/info/
+    packs            # no commit-graph
+    $ git config --get maintenance.commit-graph.enabled
+    false
+
+## The probe itself is not slow
+
+    $ time git merge-base --is-ancestor d923a5eb... 427d605d...
+    real    0m0.220s   rc=1   (not an ancestor)
+
+Cold page cache, evicting all 769.8 MiB of pack files with
+`posix_fadvise(DONTNEED)` first:
+
+    pack files: 137
+    warm (page cache)            rc=1          0.23s
+    evicted 769.8 MiB of pack files from page cache
+    cold (post-fadvise)          rc=1          0.32s
+
+`/usr/bin/time -v` reported `File system inputs: 0` for the warm run.
+Same command under the updater's own env (`source_git_env()`):
+`rc=1  0.22s`.
+
+No missing commits — the walk needs no fetch:
+
+    $ git rev-list --missing=print HEAD | grep -c '^?'
+    0
+    $ git rev-list --objects --missing=print HEAD | grep -c '^?'
+    66993        # blobs, expected for blob:none
+
+## What makes it take 50 seconds: a commit that is not present locally
+
+    $ time timeout 120 env GIT_NO_LAZY_FETCH=1 git merge-base --is-ancestor \
+        1111111111111111111111111111111111111111 HEAD
+    warning: lazy fetching disabled; some objects may not be available
+    fatal: Not a valid commit name 1111111111111111111111111111111111111111
+
+    real    0m50.733s
+    user    0m50.447s     # CPU-bound, not network-bound
+    sys     0m0.280s
+    rc=128
+
+With `GIT_TRACE=1` the trace stops after the lazy-fetch warning; no further trace
+events are emitted while it burns the CPU. Removing the promisor did not change it
+(`git -c remote.origin.promisor=false ...` → still 51s, rc=128 with the guard;
+60s+ timeout without it).
+
+50s > the call's `timeout=10` → `subprocess.TimeoutExpired` → the reported error.
+
+## Why the release commit was not present
+
+    $ git branch -a --contains d923a5eb...
+    (empty)
+    $ git tag --contains d923a5eb...        # before the fix
+    (empty)
+    $ git ls-remote origin | grep d923a5eb...
+    d923a5eb...   refs/heads/release/0.22.2
+    d923a5eb...   refs/tags/abandoned-rc.1-v0.22.2^{}
+    d923a5eb...   refs/tags/rc.1-v0.22.2^{}
+    d923a5eb...   refs/tags/rc.2-v0.22.2^{}
+    d923a5eb...   refs/tags/v0.22.2^{}
+
+The clone fetches only `refs/heads/main`, and local tags were stale — so the
+release commit could only arrive by lazy fetch. `git rev-parse --verify
+refs/tags/v0.22.2` printed ABSENT before the fix.
+
+The guard that suppresses the lazy fetch landed 2026-09-23:
+
+    $ git log --format='%h %ad %s' --date=short -S GIT_NO_LAZY_FETCH -- hermes_cli/_subprocess_compat.py
+    58f3bf10c0 2026-09-23 fix: startup update check no longer lazy-fetches history in partial clones
+
+The update flow fetches the target ref only AFTER channel resolution
+(`hermes_cli/update_cmd.py:1899`), so it cannot help the probe that runs first.
+
+## Fix applied
+
+`refs/tags/v*:refs/tags/v*` is the shape hermes itself already uses
+(`hermes_cli/gitlock.py:685`); the same refspec was added to this clone's
+`remote.origin.fetch` and the tags fetched:
+
+    $ git config --add remote.origin.fetch '+refs/tags/v*:refs/tags/v*'
+    $ time git fetch --no-tags origin 'refs/tags/v*:refs/tags/v*'
+     * [new tag]  v0.22.2 -> v0.22.2
+     * [new tag]  v0.22.2+canary.20261016T065950Z -> ...
+     * [new tag]  v0.22.2+canary.20261019T071120Z -> ...
+    real 0m4.7s
+
+## Verification after the fix
+
+    $ git tag --contains d923a5eb...
+    v0.22.2
+    v0.22.2+canary.20261017T065512Z
+    v0.22.2+canary.20261018T065527Z
+
+    $ time git merge-base --is-ancestor d923a5eb... 427d605d...
+    real    0m0.220s   rc=1
+
+    $ time env GIT_NO_LAZY_FETCH=1 GIT_OPTIONAL_LOCKS=0 git merge-base --is-ancestor d923a5eb... 427d605d...
+    real    0m0.236s   rc=1
+
+    $ hermes update --check
+    → Update channel: stable
+    → Selected release available: stable v0.22.2 (d923a5eb487a)
+    rc=0
+
+`hermes update --check` wall time before the fix (release commit already pulled in
+by an unguarded probe): 51.6s. After: 10.4s and 23.7s on two runs — the residual
+varies with the release-manifest network call.
+
+## Residual / not covered
+
+- `rc != 0` is handled as "not an ancestor" by `source_releases.py:116-122`; only
+  the TIMEOUT is fatal. A fast failure would let the update continue.
+- The release commit for a future release is again absent until a fetch lands, and
+  the probe runs before the update's own fetch. The added refspec means any future
+  `git fetch` in this clone pulls new `v*` tags; nothing in the probe path fetches.
+- Not tested: any host other than this one, and any git newer than 2.43.0.
