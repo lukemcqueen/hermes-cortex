@@ -47,7 +47,11 @@ Behaviour a file controls → a committed, re-runnable test. A historical measur
 directive → a POINTER to its record (cycle id, event number, evidence path); neither can be a test
 fixture, because the measured behaviour is the one being replaced and a quoted instruction is a fact.
 A cited sibling → judged on its own blob, never as fabrication. A pre-existing helper used by new
-code is context, not a claim.
+code is context, not a claim. A repo-internal REFERENCE (`see CURRENT_STATE.md`, a cross-reference
+between docs) is a POINTER: its evidence is that the target exists at the reviewed tip, which the
+reviewer cannot see from the diff alone — so it is a PROMPT gap (flag only a target that does not
+exist), not a defect in the docs and never a case for an override. Answering it by editing every
+referenced file is a loop: those files reference yet more files.
 
 ## A blob's material now SHOWS the range siblings' added lines
 
@@ -482,6 +486,67 @@ repo state, audited range, the task's description, the diff stat, and the diff:
   diff. Name YOUR OWN shas in the re-review note (the material states authorship, so
   the reviewer can check them against git) and re-review — do not "fix" a peer's
   change to appease a finding aimed at the wrong worker.
+  **Authorship ALONE cannot separate two sessions, and the close now scopes to the session.**
+  One host has ONE git identity, so a PEER SESSION's commits satisfy the author filter and their
+  diffs land in the material, the Diff stat and the tier — the shape where a close is refused on
+  a file you cannot see in `git status --short` and cannot fix. The discriminator is a
+  `Cortex-Session: <id>` commit trailer, written by the `prepare-commit-msg` hook from the LIVE
+  lock; commits carrying a DIFFERENT session's trailer leave the material and appear instead as
+  `[OTHER SESSIONS' COMMITS … DISCLOSED, NOT REVIEWED]` (names, subjects and changed paths —
+  never their diff). It is fail-CLOSED by construction: no trailer (a cron, or a session with no
+  lock), an ambiguous trailer, an empty own session id, or a git error leaves the commit IN
+  scope. So when a peer's file is still being reviewed, check the trailer before re-arguing
+  authorship — `git log --format='%h %s %(trailers:key=Cortex-Session,valueonly)' <base>..HEAD` —
+  and never hand-write a trailer: the hook REPLACES whatever is there with the live lock's id,
+  and a body carrying two different trailers reads as ambiguous and is deliberately not excluded.
+  **Check the trailer VALUES, not just their presence — identical ids are not "a different session".**
+  Two live locks matching ONE repo means the hook cannot know which session is committing, so a hook
+  that PICKS one of them stamps every commit with that same id: the consumer's "different session"
+  filter goes inert and each session can read the other's commits as its own — a wrong attribution,
+  strictly worse than no trailer. A hook must therefore stamp only when EXACTLY ONE live lock matches
+  the repo, and write NOTHING when zero or several do (the window then fails closed). Read the range
+  before re-arguing authorship:
+  `git log --format='%h %s%(trailers:key=Cortex-Session,valueonly)' <base>..HEAD` — when every commit
+  carries the SAME id across two sessions, no consumer or prompt change can separate them and the fix
+  is structural: stop sharing a lock namespace (one worktree per session,
+  `concurrent-session-isolation`). Never "clean the range" by stashing or reverting the peer's files:
+  committed files stay in the range regardless, and uncommitted ones are the other session's live work.
+  A lock whose `repo_path` is recorded in a different FORM than `git rev-parse --show-toplevel`
+  returns (a `/private/...` vs `/Users/...` checkout on macOS, or a symlinked checkout) matches
+  nothing, so the hook stamps NOTHING and every commit reads as untagged — compare `os.path.realpath`
+  on BOTH sides, and diagnose a silent no-stamp by diffing the lock's `repo_path` against the tree's
+  toplevel before touching the consumer.
+
+  **ONE lock is enough for the same symptom: a peer session that holds NO lock for the repo gets
+  stamped with YOURS.** Lock files are unique per SESSION (`.governance-<sid>.json`), but the write
+  gate is per REPO — "this repo has a lock" is satisfied by anyone's — so a second session can
+  commit in the tree without ever calling `begin_change`. The hook then finds exactly ONE matching
+  lock, stamps that id on every commit, and the consumer's "is it a different session?" test passes
+  for both sessions' work at once. Diagnose from the lock inventory before re-arguing authorship:
+
+  ```bash
+  ls -1 <state>/.governance-*.json
+  grep -H -e '"repo_path"' -e '"session_id"' <state>/.governance-*.json
+  ```
+
+  Two locks for DIFFERENT repos means the hook faces no ambiguity — so an all-commits-one-id range
+  whose id belongs to the repo's single lock is the caller being judged on an ungoverned
+  neighbour's work, not a hook choosing badly. Fix shape, N-safe: stamp a commit only for the SINGLE
+  claimant whose lock was refreshed recently — the server rewrites the lock on every governed call,
+  so its mtime IS that session's last activity — and write NO trailer when zero or several claimants
+  are equally fresh. Never "pick the matching lock": an ABSENT trailer keeps the commit in scope for
+  everyone (fail-closed, visible), while a WRONG one silently credits it to one session and makes
+  the peer's files yours to answer for.
+
+  **The per-blob DEMAND is the whole UNPUSHED range — scope it to the session that WROTE each blob.**
+  The demand list is built from `push-base..HEAD`, so in a shared repo it asks you for a verdict on
+  a neighbour's committed files: a close refused on work you never touched, fixable only by editing
+  someone else's files or by an override. Scope it the way the diff's material is scoped — walk the
+  range NEWEST-FIRST, attribute each path to the commit that produced its CURRENT content, and leave
+  out the paths whose author is another session. The receipt then covers only your own blobs, so the
+  push gate still refuses that range until the OWNER of the work closes it: that is the honest
+  resolution, not "review the neighbour's work for them". Fail-closed as everywhere else — no own
+  session id, no trailer, or an ambiguous trailer ⇒ the path STAYS demanded.
 - **A fix that was merely REQUIRED to keep the tree green reads as `scope-drift` if it
   rides in the same range.** When the change forced a side-fix (a generated file had to be
   regenerated, a red suite had to go green), keep it in its OWN commit and state in one
@@ -636,9 +701,10 @@ work → commit → review CLEAN → push (lock still held) → end_change
 
 Do not treat "push then close" as the natural sequence. It is the shape that produces the
 push-then-review complaint, because the review is the CLOSE step and therefore lands after
-the push by construction. Review first, push second, close last; if you have already
-closed, take a fresh lock naming the original cycle rather than leaving the commit
-unpublished.
+the push by construction. Review first, push second, close last. If you have already closed,
+that is not a dead end: the close WROTE the receipt, and the receipt alone authorises the
+push (check for `state/.reviewed-<slug>-<tip>.json`). Take a fresh lock naming the original
+cycle only when the close said it could not write a receipt.
 
 **A range touching an always-review path needs the review RECEIPT before it may push**
 (the gate checks both): the push is also refused with *"this range touches an
@@ -652,9 +718,29 @@ work → commit → close the review CLEAN (rereview_change while the lock is st
      → push (lock still held) → end_change
 ```
 
-Closing FIRST on an always-review range is the trap: `end_change` releases the lock and
-its verdict is what would have authorised the push, so the push then needs a carrier
-`begin_change` — one extra cycle whose only content is a push it cannot itself review.
+**Closing FIRST is a supported order: the CLOSE writes the receipt — the close IS the
+authorisation event.** `end_change` runs the review and writes the range's receipt (step 3c)
+BEFORE it releases the lock, so `commit → end_change (CLEAN) → push` works, and the push then
+prints `No active governance lock, but a CLEAN review receipt covers this range`. Closing first
+strands a push only when the close itself REPORTS that it wrote no receipt
+(`⚠️ Review receipt NOT written — <reason>`); that is the state that needs a carrier
+`begin_change`. So let the steps decide: close once the review is your last step, and push once
+the receipt proves the range — never reorder because "push must precede close".
+
+**DEPLOY BEFORE the close whenever the range touches a deploy-synced file.** The pre-push doctor compares DEPLOYED state with repo source and fails the push on drift (`Checksum: <file>`) until `cortex-dogfood.sh --force` has run — and that deploy is write-class, so it needs the very repo lock `end_change` RELEASES. Close first and the deploy is refused (`GOVERNANCE LOCK REQUIRED`), leaving a second, EMPTY cycle taken purely to hold a lock for a range already reviewed. So the order is:
+
+```text
+commit → dogfood (lock still held) → end_change (CLEAN, receipt written) → push (receipt)
+```
+
+Reach for a carrier cycle (`begin_change` whose DESCRIPTION says plainly that it is deploy-only and changes no source) only when the close itself reported it wrote no receipt, or when the deploy became necessary only AFTER the close (a peer's commit moved the deployed file). The carrier cycle is not an override — say in its description that it changes nothing, close it with the deploy's measured result, and expect `Review receipt NOT written — range … lists no files` when the range was already pushed; that warning is benign there.
+
+**Issue the push ALONE — a compound or piped push is refused by shape, not by lock.** The gate
+answers any unprovable shape (compound, pipe, redirection, background job, separator around
+`git push`) with `GOVERNANCE LOCK REQUIRED` and its own instruction to *"issue the push ALONE as
+its own command, with nothing after it (no `&& git rev-parse`, no `| tail`)"* — even when a valid
+CLEAN receipt is sitting there. Read that as a SHAPE rule: re-taking a lock to "fix" it is wrong.
+Run `git push` as the entire command and inspect the result in a separate call.
 
 ### Verify an artifact is TRACKED before claiming it is committed
 

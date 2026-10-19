@@ -235,6 +235,52 @@ satisfy the gate — that makes the file a fabricated claim and is the exact
 defect the check exists to stop. Say plainly in the note whether the row is
 present or absent.
 
+## 7. Push blocked by the REVIEW RECEIPT gate — and the deploy it then demands
+
+**Symptom:** `❌ Push blocked: this range touches an always-review path and carries no clean
+review receipt.` followed by `Expected receipt: <state>/.reviewed-<slug>-<tip>.json`.
+
+**Mechanism:** the receipt is written by the GOVERNANCE SERVER at a PERMITTED close
+(`end_change` → review gate → `_write_review_receipt`), never by `ops/scripts/orch-bus/adversarial-review.py`
+(which only records an LLM verdict row). So the order is **close, then push** — backwards from
+intuition, and by design: the review that used to land after the push now gates it.
+
+- **The per-blob pass has a budget (~15 blobs / 240s per close) and verdicts are keyed by blob
+  CONTENT.** A partial close is RESUMED by calling `end_change` again — it says "closing again
+  continues from here" — so on a multi-file range expect 2-3 calls rather than one. Fixing a file
+  after a FINDINGS verdict produces a NEW blob, judged on its own; re-close after every commit.
+- The receipt is bound to the RANGE (base…tip), but the gate also accepts ANY receipt whose
+  `reviewed_blobs` cover every file the range changes — which is how a rebase that rewrote the tip
+  can still push.
+- **`adversarial_reviews` has one row per cycle.** A second `--review` for the same `--cycle-id`
+  answers "already reviewed (UNIQUE constraint)" and does NOT re-judge; a fresh judgement needs
+  `rereview_change` (opens the cycle's verdict again, requires a note stating what changed plus its
+  evidence). Read the recorded row (verdict + findings_json) from
+  `~/.hermes-cortex/data/loop-governance.db` — note this is NOT `state/loop-governance.db`.
+- **A review whose material was a PATH, not content, returns a hollow CLEAN** — the reviewer reports
+  `unverified-claim` on the path itself ("the window contains only this path"). Pass the plan/diff
+  CONTENT as material, and treat a CLEAN that names an unreadable window as no approval at all.
+- **Push as a LONE `git push`.** The enforcer refuses a compound push (`git push && git rev-parse …`,
+  `git push | tail`, `cd X && git push`) because it cannot prove the shape; a CLEAN receipt can
+  authorise a push with no active lock, but only for the bare command. Verify in a separate call.
+
+**The deploy chicken-and-egg — use a lock-carrier cycle, never an override.** The push gate also
+requires a doctor-clean DEPLOYED state, while the deploy (`cortex-dogfood.sh`) is a WRITE-class
+command that itself needs a repo lock. Once you have closed the cycle, the lock is gone and the
+deploy is blocked, so the two gates appear to deadlock. The sanctioned exit is a deploy-only cycle:
+
+```
+begin_change(task_id="deploy-<thing>",
+             description="Lock-carrier cycle for a DEPLOY-ONLY action: deploy and push the "
+                         "already-reviewed range <sha> (cycle N, closed CLEAN with a receipt). "
+                         "No source change is made on this cycle.")
+# then: dogfood --force → lone `git push` → feedback_accept → end_change
+```
+
+State plainly in the description that no source changes — that is what the cycle's own review needs
+to agree with — and expect the close to warn `receipt NOT written … lists no files` once the range is
+already pushed (benign: an empty range has nothing to authorise).
+
 ## Verification checklist
 
 - [ ] `stat` the update-commit mtime before debugging your diff

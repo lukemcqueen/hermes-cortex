@@ -214,7 +214,7 @@ their domain.
 | `governance-lock-lifecycle` | 1.1.0 | Use when blocked after cortex update or end_change rejects. | `skill_view(name='governance-lock-lifecycle')` |
 | `governance-sentinel` | 1.0.0 | (no description) | `skill_view(name='governance-sentinel')` |
 | `health-external-verification` | 1.0.0 | Verify your health endpoint is externally reachable by testing the URL end-to-end instead of assuming local... | `skill_view(name='health-external-verification')` |
-| `hermes-agent-regression-triage` | 1.0.0 | Use when hermes-agent breaks after update; audit+pin. | `skill_view(name='hermes-agent-regression-triage')` |
+| `hermes-agent-regression-triage` | 1.0.0 | Use when hermes-agent breaks after update or won't update. | `skill_view(name='hermes-agent-regression-triage')` |
 | `hermes-backup` | 1.0.0 | Use when performing a full-system backup of a Hermes Agent server — survey, clean up caches, checkpoint dat... | `skill_view(name='hermes-backup')` |
 | `hermes-cortex-maintenance` | 1.36.0 | Maintain an installed Hermes Cortex instance — update both the upstream Hermes Agent and the cortex repo la... | `skill_view(name='hermes-cortex-maintenance')` |
 | `hermes-cortex-repo-deploy` | 1.0.0 | Use when committing to the hermes-cortex repo. | `skill_view(name='hermes-cortex-repo-deploy')` |

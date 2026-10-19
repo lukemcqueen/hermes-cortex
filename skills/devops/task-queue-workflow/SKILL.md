@@ -144,6 +144,39 @@ docker exec -i mycortex-postgres psql -U mycortex_reader_<profile> -d mycortex \
   rather than building. Pure business research (a brand audit, a competitor
   gap analysis) is safe to do inline — zero Hermes code.
 
+## Metadata correction — retagging a row (repo / project / tags / assignee)
+
+`update` carries status/reason only, so the ONE sanctioned surface for changing a
+row's metadata is:
+
+```bash
+task-db.py restore <json>   # per row: the row's CURRENT values, with only the
+                            # field(s) you are correcting changed
+```
+
+It writes through `tasks.task_upsert()` — the single write path. Never
+`UPDATE tasks.tasks SET repo = ...` by raw SQL: that bypasses the function's
+derivation CHECK and RLS path, and every orchestrator plan restates the rule.
+
+- **Restore PRESERVES the columns it does not carry.** `repo`, `assignee`,
+  `target`, `due`, `tags` and `correlation_id` are read back from the store and
+  re-written when your JSON omits the key; only an explicit empty value
+  (`"tags": []`, `"repo": null`) clears one. This is load-bearing: a restore
+  written for an unrelated correction used to NULL all six, so "retag one column"
+  was a data-loss operation and a tag could not be set after the fact at all.
+- **Read every field you DO carry out of the store; never retype it** — `source`
+  especially, because restore defaults it to `session` and a stored `manual` then
+  becomes a false statement about the row's provenance.
+- **Snapshot → probe → batch → re-read.** Snapshot the ids' full row state to a
+  file, apply ONE row and read it back, then the rest, then re-read all of them and
+  assert that no field outside the one you meant to change differs. The probe also
+  costs one row if the statement is wrong.
+- **Group legacy/untagged rows by what the ROW says, not by who wrote it.** A tag is
+  a claim about where the work lands: rows naming a file, migration, cron or doc of
+  repo X are `repo=X`; client/content deliverables whose output is a document belong
+  to no repo; mint-residue rows are cancels, not tags. Tagging by the writer's own
+  session repo is the false-claim version of the same mistake.
+
 ## Pitfalls
 
 - **verify is orchestrator-only** — the function checks
@@ -185,6 +218,24 @@ docker exec -i mycortex-postgres psql -U mycortex_reader_<profile> -d mycortex \
   narrower than `STATUSES` makes those rows unqueryable through MCP: they exist, are
   counted nowhere, and cannot be asked for. Extend the tool enums in the same change
   that adds a status.
+- **Changing what a QUERY returns is a CLASS change — sweep the writers and the
+  read-backs, not just the query.** Consumers that WRITE with one scope and then
+  READ with a filter break silently when the filter is tightened: a probe/doctor
+  check that added its row untagged and read it back through a scoped list reports
+  a broken write path that is healthy, and a dedup guard that relied on seeing
+  those rows compares against an EMPTY set and stops guarding while still
+  "passing". Before shipping a scope change: grep for the add path (`cmd_add`, the
+  inbox/dream mints, every `add` invocation) and for each reader that filters, fix
+  them in the SAME cycle, and give a probe row the SAME label on the write and the
+  read-back side. A unit test on the query alone cannot see any of it.
+- **A mocked `psql` proves the call's SHAPE, not the SQL — exercise the real store
+  once before committing.** Casts and column types are invisible to a mock:
+  `p_session_id` is TEXT while `p_parent_id` is uuid in the SAME call, and an id
+  list needs `= ANY(ARRAY[?]::uuid[])` or the store answers `operator does not
+  exist: uuid = text`. Hand-writing a second copy of an existing upsert call is how
+  such a mistake happens — share ONE SQL constant across the writers, pin the casts
+  in a test that renders the SQL with sentinel values, and make the first real write
+  a probe on a single row.
 - **Unclaim/claim/report work on YOUR OWN rows** — `created_by` must match the
   caller; you can't unclaim or report someone else's work.
 - **Schema v009+ required** — these commands `_require_v4` (schema 9). On an

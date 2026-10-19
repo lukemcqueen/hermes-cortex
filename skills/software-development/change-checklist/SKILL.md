@@ -95,8 +95,9 @@ Load this before end_change() on any script, deploy-config, cron, shared-doc, or
       everyone trusts stays green. Grep the test tree for the symbols you touched
       (`rg -l "<function>" tests/`) and run those files in the same step as the syntax check. Then,
       before blaming your change, prove pre-existence: run the failing file at the RANGE BASE in a
-      worktree (`git worktree add <dir> $(git merge-base origin/main HEAD)`) — an identical exit code
-      there means it predates you, and a red test nobody runs is a finding to RECORD, not a
+      worktree (`git worktree add <dir> $(git merge-base origin/main HEAD)`) and compare the OUTCOME
+      — a named failing test on both sides — not the bare exit code, which two runs that measured
+      nothing share (`references/close-review-evidence.md`). An identical failure predates you, and a red test nobody runs is a finding to RECORD, not a
       regression to absorb or quietly fix inside someone else's cycle.
 
 ## Phase 1.5: Adversarial Verification (MANDATORY — no bypass)
@@ -573,7 +574,15 @@ Enforced at 3 layers: pre-commit hook (static gate), enforcer (blocks commit unt
       your commit.** `git add <your paths>` does not unstage theirs, so the commit captures
       whatever is staged at that moment, under YOUR message and authorship. Commit by
       pathspec every time — `git commit -F <msgfile> -- <your paths...>` — and assert the set
-      first with `git diff --cached --name-only`. Recovery if it already happened:
+      first with `git diff --cached --name-only`. **Then compare that printed set against the
+      pathspec you are about to type — the two drift in the OTHER direction too.** A file you
+      staged but left out of the pathspec silently stays staged: the cycle's reviewed range is
+      missing a file the change claims, and it lands in the NEXT commit under a message that
+      does not mention it. When that happens, commit it in its own correctly-described commit
+      (and say so in the message) — never paper over it with prose later. Two mechanics that
+      bite in the same step: `git add a b` where one path is gitignored (even when the file is
+      TRACKED and `git status` shows it modified) exits non-zero, so do not assume the rest of
+      the batch landed — stage it alone with `-f`. Recovery if a wrong set already landed:
       `git reset --soft HEAD~1` (keeps every file and the message), then re-commit with the
       pathspec. Never `reset --hard`, and never unstage or discard a peer's paths to tidy up:
       their staged work is theirs to land.

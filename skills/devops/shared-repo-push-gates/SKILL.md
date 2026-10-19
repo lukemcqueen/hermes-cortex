@@ -213,6 +213,18 @@ does not apply.
   file as your change. Name the peer's SHAs in the note and state plainly that your cycle
   changed no source — or wait for the peer's stream to pause so the window holds only your
   own commit.
+  **A peer SESSION on the same host is not separable by authorship** (one host, one git
+  identity), so the close scopes by a `Cortex-Session:` commit trailer instead: commits
+  carrying a DIFFERENT session's trailer stay out of the material and are disclosed as
+  `[OTHER SESSIONS' COMMITS … DISCLOSED, NOT REVIEWED]`. Check the trailer before re-arguing
+  authorship — `git log --format='%h %s %(trailers:key=Cortex-Session,valueonly)' <base>..HEAD`
+  — and note it fails CLOSED: a commit with no trailer (a cron, an ungoverned committer) is
+  still judged as yours.
+  **The trailer's PRODUCER must read the LIVE lock, never an env var the agent can export** — a
+  value settable from prose is not a discriminator. The `prepare-commit-msg` hook resolves the
+  session from the repo's live lock file, REPLACES any hand-written trailer (so a forged one
+  cannot survive a governed commit), and exits 0 on every path: it runs in EVERY repo on the
+  host, so a hook that can block a commit is a fleet-wide outage.
 - **The reviewer reads the cycle's DIFF, so a CORRECTIVE commit is judged as ADDING the text
   it removed.** Deleting an offending passage to fix a finding comes back as the SAME finding
   ("the file still shows <the removed text>"): the material is the range's diff, so removed
@@ -545,6 +557,18 @@ May need several rounds on active days; each round's dogfood re-runs clean.
   untracked file already exists in the deployed dir; the next host or the
   doctor then fails with `ModuleNotFoundError`. After adding any file to a
   deployed package, grep its package siblings in the register block.
+  - **A NEW HOOK also needs its SYMLINK, and the hooks dir is IMMUTABLE.** Registering the
+    source script is only half the deploy: the global `core.hooksPath` directory carries
+    `chattr +i`, so `ln -sf` into it fails (*Operation not permitted*) while the deploy still
+    reports success for the script — the file lands in `scripts/` and is NEVER invoked. Create
+    the link in the same deploy step as unlock → link → relock, and resolve the lock helper the
+    way the rest of the deploy does (`command -v hermes-plugin-lock` first, the deploy-home copy
+    only as a fallback — they are different paths and are not equally permitted to unlock).
+    VERIFY the resulting link (`readlink`, not the command's exit status), and report a failed
+    unlock and a failed RELOCK as separate warnings: a left-open hooks dir weakens every hook on
+    the host, and a missing link silently leaves the fleet without the new behaviour. Nothing in
+    a no-op branch will catch this — the other hooks are already correct, so only a NEW one ever
+    exercises it.
 
 ## Concurrent-Session Discipline
 

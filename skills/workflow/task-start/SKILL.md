@@ -140,6 +140,14 @@ Two measured traps in that classifier, each of which costs a turn when hit:
   arguments and no metacharacter** (a bare `sensors` is refused on its own).
   Read the underlying node with a listed primitive — `cat /sys/...` — or use
   read_file/search_files.
+- **An INTERPRETER pointed at a file is write-class, metacharacters or not.**
+  `python3 <script>.py --flag` and `bash <script>.sh` are refused even as a single
+  clean command, because the classifier cannot see what the file does. So any
+  verification that must RUN a script (a CLI under test, a doctor/probe, the
+  deployed copy of a tool) has to happen INSIDE the cycle while the lock is held:
+  after `end_change()` releases it, that check is no longer available to you. Plan
+  those runs into the work, or read the result through `grep`/`cat`,
+  read_file/search_files, or the MCP surface instead.
 When a read is blocked, change the MECHANISM (listed primitive or read_file) —
 never re-run the same shape reworded and expect the classifier to agree.
 

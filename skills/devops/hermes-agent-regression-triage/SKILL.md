@@ -2,7 +2,7 @@
 name: hermes-agent-regression-triage
 version: 1.0.0
 category: devops
-description: "Use when hermes-agent breaks after update; audit+pin."
+description: "Use when hermes-agent breaks after update or won't update."
 metadata:
   hermes:
     tags: [hermes-agent, upstream, regression, mcp, pin, fleet, git]
@@ -11,10 +11,11 @@ metadata:
 # Hermes-Agent Regression Triage
 
 Use when a host's Hermes tools (especially MCP-backed tools like
-loop-governance) break after a hermes-agent update, or when asked "did
-something change with X?" across the fleet. The failure is usually NOT in
-the user's governance/config — it's an upstream hermes-agent commit the
-host pulled.
+loop-governance) break after a hermes-agent update, when `hermes update`
+itself refuses to run, or when asked "did something change with X?" across
+the fleet. The failure is usually NOT in the user's governance/config —
+it's an upstream hermes-agent commit the host pulled, or the state of the
+checkout's own git clone.
 
 ## The three traps that waste hours
 
@@ -35,6 +36,70 @@ host pulled.
    can be *committed* after it, pulling the bug into its tree. Always check
    BOTH dates (`git show -s --format="%h author=%ad committer=%cd"`) before
    declaring a commit "predates" a bug.
+
+## `hermes update` aborts at channel resolution (`merge-base` timed out)
+
+Symptom: the update prints `→ Update channel: stable` and then
+`✗ Could not resolve the stable source channel: Command '['git', 'merge-base',
+'--is-ancestor', ...]' timed out after 10 seconds. No update was applied.`
+
+The probe is not slow by nature and the release commit is not missing upstream.
+Reproduce the exact command by hand before theorising:
+
+```bash
+cd ~/.hermes/hermes-agent
+time git merge-base --is-ancestor <release-sha> HEAD
+```
+
+- **Commit present locally → ~0.2s, rc=1.** Then the failure was a *missing
+  object*, not a slow repo — stop looking for a slow-history cause.
+- **Commit absent locally → ~50s of CPU, then `fatal: Not a valid commit name`.**
+  It does not fail fast, and the call site allows only `timeout=10`
+  (`hermes_cli/source_releases.py`), so the hang is what aborts the update.
+
+Rules:
+
+- **`GIT_NO_LAZY_FETCH=1` does NOT make an absent object fail fast.** git prints
+  `lazy fetching disabled; some objects may not be available` and then burns the
+  same ~50s. The guard turns a slow lazy fetch into a slow spin; both exceed the
+  timeout. Never assume the guard already fails closed.
+- **A partial clone can never see a release commit.** Check
+  `git config --get remote.origin.promisor` (`true`) and
+  `--get remote.origin.partialclonefilter` (`blob:none`). Release commits live on
+  release TAGS/branches, so a refspec of only `+refs/heads/main:...` never
+  fetches them. Confirm where the commit actually lives with
+  `git ls-remote origin | grep <sha>`, and whether it is local with
+  `git tag --contains <sha>` — **`git branch -a --contains` alone is not enough,
+  it misses tags.** Empty output from both = not local.
+- **A non-zero exit from the probe is BENIGN; only the TIMEOUT is fatal.** The
+  caller treats any non-zero rc as "not an ancestor" and continues. So "make the
+  missing object fail fast" is a valid fix direction, while "hang" cannot be
+  recovered from — do not read the timeout as a git error.
+- **Fix the environment, never the checkout source.** This fleet does not patch
+  `~/.hermes/hermes-agent` (it is overwritten on update). Add the refspec hermes
+  itself already uses (`+refs/tags/v*:refs/tags/v*`, see `hermes_cli/gitlock.py`)
+  and fetch:
+
+```bash
+git config --add remote.origin.fetch '+refs/tags/v*:refs/tags/v*'
+git fetch --no-tags origin 'refs/tags/v*:refs/tags/v*'
+```
+
+  Verify in this order: `git tag --contains <release-sha>` now lists the tag;
+  the probe returns in ~0.2s (bare AND under `GIT_NO_LAZY_FETCH=1`);
+  `hermes update --check` exits 0.
+- **It recurs on the next release, so report a remedy, not a permanent fix.**
+  The update flow fetches the target ref only AFTER channel resolution
+  (`hermes_cli/update_cmd.py`), so a brand-new release commit is again absent
+  when the probe runs. The added refspec only helps if something fetches — tell
+  the operator the one-liner (`git fetch --tags` before updating) or wire a
+  pre-fetch into the update path.
+- **Do NOT run `hermes update` yourself to "prove" the fix in an interactive
+  session** — it restarts the gateway and kills the session mid-turn. The
+  read-only proofs are `hermes update --check` and `hermes update --plan`.
+
+Diagnostic recipe plus the measurements that rule out I/O, pack count and
+missing commits: `references/update-channel-resolution-timeout.md`.
 
 ## Diagnostic workflow
 
@@ -143,4 +208,6 @@ It self-cleans via the silent `*_RESULT` handling.
 - `deployed-component-verification` — deployed-vs-repo matching (complementary)
 - `fleet-commands` — full bus dispatch protocol
 - `cortex-deployment-sync` — cortex update mechanics
+- `references/update-channel-resolution-timeout.md` — `hermes update` dies at
+  channel resolution: partial-clone probe recipe and ruling-out measurements
 - Reference: `references/2026-08-25-stdio-children-dead-inversion.md` — full case study

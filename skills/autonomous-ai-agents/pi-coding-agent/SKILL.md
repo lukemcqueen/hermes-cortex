@@ -262,6 +262,29 @@ harness: the git hook already carries one copy and two copies drift.
   repo resolvable), with the cost stated in the block message and NO agent-side
   override. A gate that reads "could not check" as "carry on" fails open exactly when
   the host is broken.
+- **Resolve the governed repo from the CALL's own arguments first**, then
+  `CORTEX_SESSION_REPO`, then the process cwd. A `tool_call` hook is handed the tool input
+  and no session cwd, so path-args-only resolution leaves every path-less command
+  (`git commit -m …`, a bare compound) with no repo — and a session launched outside the
+  checkout can never name the tree its call touches, including the `cd <repo> && git
+  rev-parse --show-toplevel` an agent would use to PROVE it. The measured failure is a
+  total deadlock: every write refused with "cannot determine the repo" while the agent was
+  standing in the repo, and the one command that would have settled it was itself the
+  blocked write. Take the repo from file-shaped inputs (`path`, `file_path`, `filePath`,
+  `filename`, `target`) and from absolute paths named inside a shell command, trying the
+  path and then its directory — a FILE is not a git cwd.
+- **Find the repo root by WALKING UP for a `.git` entry; never require the `git` binary to
+  find it.** A macOS launcher (app, service, GUI) commonly runs with a PATH that lacks
+  `/opt/homebrew/bin`, so `execFileSync("git", …)` raises ENOENT while git works fine in
+  the operator's own shell — and the gate then reports "not in a git repo" about a folder
+  that is one. Walk with `fs.statSync(path.join(dir, ".git"))` (a `.git` FILE counts:
+  worktree or submodule) and hand git only what a walk cannot see (bare repo, `GIT_DIR`).
+  Finding where a repo STARTS needs no git; only reading it does.
+- **A fail-closed refusal must CARRY the reason it could not verify.** Keep stderr, the
+  exit code and the path tried, and print them in the block. That is the difference
+  between "git is not on this process's PATH (ENOENT)" and "this folder is not a repo" —
+  without it the operator is told the wrong thing and cannot fix it, and the next
+  diagnostic re-derives what the code already knew.
 - **Prove it by EXECUTING the extension**: `node ops/install/harnesses/pi/verify-governance-extension.mjs`
   loads it through pi's own jiti loader, hands it a stub `pi`, fires synthetic
   `tool_call` events and asserts both directions — plus the no-metacharacter write
@@ -489,6 +512,34 @@ agent is no exception: the gateway only spawns this same pi.
   never clobbered). `ops/scripts/manage/audit-pi-integration.sh` Layer 6
   FAILs when either half is missing or the chain has no keyless provider;
   `tests/test_pi_registration_installer.sh` covers it.
+
+## Several pi agents in ONE repo — project-scoped state, and the commit sweep
+
+pi keeps USER scope in `~/.pi/agent`, but for a TRUSTED PROJECT it also writes
+`.pi/settings.json` and `.pi/mcp.json` **inside the checkout**, and the cortex extensions add
+to that (the context extension checkpoints at `turn_end`, so those writes happen every turn).
+Hermes keeps all of it in `~/.hermes`, so this hazard does not exist for Hermes agents and
+nobody who has only run Hermes will expect it.
+
+With more than one pi session in the same repo:
+
+- each session's `.pi/` files appear as untracked files under the other's feet;
+- the first agent to run a broad add (`git add -A`, `git add .`) or `git commit -a` sweeps up
+  files it never wrote — which the operator reports as "a sweep of the peer's files when the
+  first one tries to commit", and reasonably blames on governance.
+
+Rules:
+
+- **Ignore `.pi/` in every repo pi runs in**, and prove it: `git check-ignore -v
+  .pi/settings.json` must name the rule, and `git ls-files .pi` must be empty — a `.pi` path
+  already committed defeats a new ignore and needs `git rm -r --cached .pi`.
+- **Never `git commit -a` on a tree another session may be editing.** Commit by pathspec and
+  assert the staged set first (`git diff --cached --name-only`). No `.gitignore` prevents
+  sweeping a peer's SOURCE edits; only the pathspec does.
+- **When commits on a host keep carrying files nobody wrote, measure what the HARNESS writes
+  into the tree before suspecting the git hooks.** The Hermes hooks stage nothing (no
+  `git add`, `stash`, `checkout --`, `reset`, and no `commit -a` in the commit path), so a
+  sweep on a pi host points at pi's own project state, not at the gate.
 
 ## Pitfalls
 - **A presence probe can be wrong about a managed install.** `command -v pi` reports

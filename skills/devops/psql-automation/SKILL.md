@@ -300,6 +300,22 @@ through `head` when checking rc (head's rc masks psql's).
   `mycortex`), not a dedicated admin role, or the migration fails with
   "permission denied to create role". Granting CREATEROLE to a non-owner role
   is cluster-wide surface — prefer owner-run DDL.
+- **Read a function's argument list from the DATABASE before hand-writing a
+  positional call.** `SELECT pg_get_function_arguments('tasks.task_upsert'::regproc)`
+  prints the real order and TYPES in one line; the call sites you are copying from
+  do not. Two casts in that signature look interchangeable and are not: `p_id` and
+  `p_parent_id` are `uuid` while `p_session_id` is `TEXT` (fleet session ids look
+  like `cron_1954deb5ad76_20261015_142148`), so a uuid cast one slot early fails the
+  whole write with `invalid input syntax for type uuid` — and a mocked psql cannot
+  see it. Give the writers ONE shared SQL constant once a second caller appears.
+- **An id list in `= ANY(...)` needs its element type cast.** `id = ANY(ARRAY[?])`
+  dies with `operator does not exist: uuid = text` when the param builder renders
+  text literals; write `id = ANY(ARRAY[?]::uuid[])` — the array literal is the
+  builder's job, the cast is yours.
+- **Round-trip a `text[]` column through a non-comma separator.** `||`-delimited row
+  output splits fields on the delimiter, so read tags as
+  `array_to_string(tags, chr(31))` and split on `"\x1f"` — a comma corrupts any tag
+  that contains one.
 - **`--source`-style filters never grant access** — RLS is the enforcement; a filter is just a filter.
 - **Idempotent schema files are your friend** — `IF NOT EXISTS` + `CREATE OR REPLACE` means you can apply on every deploy/update; wire it into the update script so Linux (docker exec) and macOS (direct psql via config URL) both converge.
 - **When a path-hardcoding bug is fixed in ONE of two sibling files, grep for the sibling.** 2026-08-06: `session_mine.py` was fixed to write `~/brain/lessons/`, but `lessons.py` (the module the index/search imports) still hardcoded `~/brain/kustos/lessons/` — offline search read a stale 241-file dir while 631 live lessons sat elsewhere. `git log -S '<bad-string>'` finds every file that ever contained it.

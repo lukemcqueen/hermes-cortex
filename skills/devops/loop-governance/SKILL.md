@@ -767,6 +767,41 @@ longer block (`_is_material_limit_finding`): a complaint that the material could
 something is recorded, not fatal — while fabrication, injection and behavioural findings
 still block.
 
+### A demand your window cannot satisfy is a TEMPLATE defect, not a finding to fight
+
+When a close loops on a finding whose only possible resolution is something the worker cannot do
+— because the demand describes a property of YOUR WINDOW, not of the change — the defect is in
+the reviewer's constitution. Fix it THERE and pin it; never answer it with an operator clear or
+an override: a clear unblocks one cycle and leaves every other agent's next docs cycle in the
+same loop. The three rules, each added after a measured cycle loss:
+
+| Rule | The demand it forbids | Why it is unsatisfiable |
+|---|---|---|
+| **Proof scoping** | one proof standard for every claim — e.g. asking for a committed test of an operator's spoken instruction, or of behaviour the change replaces | a historical measurement cannot be a fixture and a quoted directive is a recorded fact: demand a POINTER for those, a re-runnable test only for behaviour this file controls |
+| **Sibling rule** | `fabrication` because the file leans on another file in the same range | the reviewer is shown ONE blob; that sibling is judged in its own window |
+| **Reference rule** | `unverified-claim` for a doc's cross-reference to a repo file outside the range ("see `OTHER.md`") | the demand it implies — "add the referenced file to the range" — is unsatisfiable AND RECURSIVE: that file names further files, so the range never closes |
+
+How to make the fix stick, in this order:
+
+1. Edit `docs/templates/adversarial-reviewer-prompt.md` — the file the gate actually reads — and
+   state WHY the demand is unsatisfiable, not merely that it is discouraged. A rule that reads as
+   a preference is dropped by the next edit.
+2. Keep the CHECKABLE case as a real finding: a reference or sibling THIS range invalidates (the
+   diff renames, moves, deletes or changes the referenced path/symbol) must still be filed at the
+   severity the break costs. Scoping a demand is not relaxing it — the strict case (behaviour needs
+   a committed, re-runnable test IN the range) is asserted verbatim by the same test file.
+3. Pin it in `tests/test_review_policy_scope.py`, which reads the SHIPPED template — a rule stated
+   without a test disappears on the next rewrite, and the test is also the record of the strict
+   case surviving.
+4. Redeploy: the template is a checked file, so a stale deployed copy trips the doctor's checksum
+   gate on the NEXT push (see `shared-repo-push-gates`).
+
+**A template change does NOT re-judge a blob already found wanting.** Verdicts are keyed by blob
+CONTENT, so the flagged file must become a NEW blob (any content change) or the cycle re-judged
+via `rereview_change` where a whole-range row exists. Say that plainly to the blocked peer instead
+of clearing their cycle — and never "fix" the loop by editing the referenced files to drag them
+into the range.
+
 ### Cron schedule
 
 A weekly evaluation runs via the `local-weekly-loop-eval` cron job. It delivers the report automatically to the chat that created it.

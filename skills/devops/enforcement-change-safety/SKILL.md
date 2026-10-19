@@ -828,6 +828,17 @@ is NO.
   copy the function that decides eligibility, so the check and the tool can
   never disagree about what is in scope; a hand-written second definition drifts
   from the first one silently.
+- **A check that never RUNS is not a check — place it on a path that always executes,
+  and prove BOTH directions.** A new doctor check dropped into a function that can return
+  early (a repo crawl that finds nothing, a platform gate, a flag-only section) is silently
+  absent: the deploy is clean, the doctor is green, and the gap it was written for stays
+  invisible — measured, a multi-lock-repo check shipped into an early-returning function and
+  never printed once, while the same run happily reported every neighbouring check. Confirm it
+  by EXECUTING the doctor and grepping the check's OWN label, never by reading the diff. Then
+  drive the failing branch too — seed the condition it looks for (a throwaway record for the
+  store it reads), watch the WARN name the objects it found, and remove the seed in the SAME
+  command — because a check that can only ever PASS is the same defect with better colour.
+  Report both outputs as the evidence; the pass direction alone proves nothing.
 
 Same family as Rules 17 and 18: enforcement that is invisible, or that arrives
 as prose rather than as a check, is not enforcement.
