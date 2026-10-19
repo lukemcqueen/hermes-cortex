@@ -2813,16 +2813,34 @@ install_precommit_hook() {
         _prepmsg_lp="sudo -n"
       fi
       rm -f "$prepmsg_dest" 2>/dev/null || true
-      if ! ln -sf "$prepmsg_src" "$prepmsg_dest" 2>/dev/null; then
-        ${_prepmsg_lp} "$_prepmsg_helper" unlock --cortex-update 2>/dev/null || true
-        rm -f "$prepmsg_dest" 2>/dev/null || true
-        ln -sf "$prepmsg_src" "$prepmsg_dest" 2>/dev/null \
-          || warn "  Could not symlink the prepare-commit-msg hook (hooks/ immutable?) — run: ${_prepmsg_lp} ${_prepmsg_helper} unlock --cortex-update"
-        # Relock unconditionally: a leftover unlocked hooks dir is worse than a missing symlink.
-        ${_prepmsg_lp} "$_prepmsg_helper" lock 2>/dev/null || true
+      if ln -sf "$prepmsg_src" "$prepmsg_dest" 2>/dev/null; then
+        chmod +x "$prepmsg_src"
+        info "Symlinked shared prepare-commit-msg hook → ${prepmsg_src/$HOME/\\~}"
+      else
+        # hooks/ is immutable (hermes-plugin-lock target): unlock, link, relock — and REPORT every
+        # failure. Each one silently swallowed here leaves the host with either no trailer (every
+        # close stays whole-window) or a WRITABLE enforcement dir; both must be visible.
+        if ! ${_prepmsg_lp} "$_prepmsg_helper" unlock --cortex-update; then
+          warn "  prepare-commit-msg hook NOT deployed: '${_prepmsg_lp} ${_prepmsg_helper} unlock --cortex-update' failed —"
+          warn "    commits in this repo will carry NO Cortex-Session trailer (closes stay whole-window)"
+        else
+          rm -f "$prepmsg_dest" 2>/dev/null || true
+          ln -sf "$prepmsg_src" "$prepmsg_dest" 2>/dev/null || true
+          # Verify the LINK, not the command: a link that does not resolve is not a deployed hook.
+          if [[ -L "$prepmsg_dest" ]] && [[ "$(readlink "$prepmsg_dest")" == "$prepmsg_src" ]]; then
+            chmod +x "$prepmsg_src"
+            info "Symlinked shared prepare-commit-msg hook → ${prepmsg_src/$HOME/\\~}"
+          else
+            warn "  prepare-commit-msg hook NOT deployed: no symlink at ${prepmsg_dest} after unlock —"
+            warn "    commits in this repo will carry NO Cortex-Session trailer (closes stay whole-window)"
+          fi
+          # Relock and report failure: a left-open hooks dir weakens EVERY cortex hook on the host.
+          if ! ${_prepmsg_lp} "$_prepmsg_helper" lock; then
+            warn "  ⚠️  hooks/ could NOT be relocked — it is currently WRITABLE. Run:"
+            warn "      ${_prepmsg_lp} ${_prepmsg_helper} lock"
+          fi
+        fi
       fi
-      chmod +x "$prepmsg_src"
-      info "Symlinked shared prepare-commit-msg hook → ${prepmsg_src/$HOME/\\~}"
     fi
   fi
 
