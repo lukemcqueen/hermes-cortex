@@ -1,0 +1,45 @@
+=== reviewer REFERENCE rule — evidence (cycle 13359) ===
+date: 2026-10-19T17:35:26+09:00
+
+--- 1. the rule, as shipped in the template the gate reads ---
+## A reference to another file is a POINTER, not an unverified claim (2026-10-19)
+
+A doc, comment or README may name a repo file that is NOT in this range at all — "see
+`CURRENT_STATE.md`", "the registry lives in `corpus_registry.py`", a relative link. You have no file
+access and that file is not a blob of this range, so its absence from your window proves nothing
+about it. Treat the reference as DISCLOSURE:
+
+- **do not** report it as `unverified-claim` at `medium`/`high`, and never as `fabrication` — nothing
+  in the material contradicts it;
+- the resolution is **not** "add the referenced file to the range". That demand is unsatisfiable AND
+  RECURSIVE: the referenced file names further files, so satisfying it means editing every one of
+  them, and then every file those name. A finding whose only possible resolution is an unbounded
+  edit is a finding against your WINDOW, not against the change — measured 2026-10-19, when exactly
+  this loop left a docs cycle unable to close without an operator override;
+- what IS checkable, and therefore a real finding, is a reference this SAME range invalidates: the
+  diff renames, moves or deletes the target, or shows the referenced path or symbol changed. File
+  THAT, at the severity the break actually costs.
+
+If the reviewed file is a doc whose purpose is to point at other files, its references are the
+CONTENT, not claims about them: judge whether each pointer is accurate against the diff, not whether
+its target is in your window. At most `info` when you cannot tell, and never as the sole reason for
+a FINDINGS verdict.
+
+## Findings format (emit as JSON, nothing else after it)
+
+--- 2. the pinned tests (incl. the no-relaxation assertions) ---
+tests/test_review_policy_scope.py .......                                [100%]
+
+============================== 7 passed in 1.21s ===============================
+
+--- 3. the strict case is still present verbatim (no lessening) ---
+89:  the strict case and it does NOT relax: "it works" with no executable check is `unverified-claim`.
+88:- **Behaviour this file controls** → a committed, re-runnable test or script, in this range. This is
+
+--- 4. the rule's teeth: what is still a REAL finding ---
+140:- what IS checkable, and therefore a real finding, is a reference this SAME range invalidates: the
+
+--- 5. where the policy is documented ---
+242:| **Reference rule** (2026-10-19) | `unverified-claim` for a doc's cross-reference to a repo file outside the range — "see `CURRENT_STATE.md`" | the demand is "add the referenced file to the range", which is RECURSIVE: that file names further files. Measured on a docs cycle that could not close without an operator clear |
+
+=== end ===

@@ -14,7 +14,11 @@ what makes that condition checkable rather than a promise:
   C. the per-blob material NAMES the range's other files, so the sibling rule is actionable;
   D. the material is unchanged when the file has no siblings (no stray block);
   E. NO RELAXATION: the strict requirements are still present verbatim, so a later edit cannot
-     quietly drop behavioural proof while citing this policy.
+     quietly drop behavioural proof while citing this policy;
+  F. the reviewer prompt states the REFERENCE rule — a doc naming a repo file that is not in the
+     range is a pointer, not a claim: reported at most as info, never as fabrication, never as the
+     sole reason for a FINDINGS verdict, and never with the (recursive, unsatisfiable) resolution
+     "add the referenced file to the range".
 
 Everything is read from the shipped files, so a future edit that removes a rule fails here.
 """
@@ -63,6 +67,26 @@ def test_sibling_rule_is_stated_and_forbids_fabrication():
     assert "as `fabrication`" in TEXT and "do not" in TEXT, (
         "the sibling rule must explicitly forbid a fabrication finding")
     assert "YOUR WINDOW" in TEXT, "the sibling rule must say it is a property of the window"
+
+
+def test_reference_rule_is_stated_and_forbids_a_findings_verdict():
+    """F. A doc pointing at a repo file outside the range is a POINTER, not a claim.
+
+    Reported by the fleet (2026-10-19): a docs cycle could not close because the reviewer filed
+    every `see OTHER_FILE.md` cross-reference as `unverified-claim` — a demand whose only
+    resolution is to edit the referenced file, which references others, recursively. The rule
+    must be stated, must name the recursive unsatisfiability, and must still leave the CHECKABLE
+    case (a reference this same range invalidates) as a real finding.
+    """
+    assert "POINTER, not an unverified claim" in TEXT, "the reference rule is absent"
+    assert "RECURSIVE" in TEXT, (
+        "the rule must name WHY the demand is unsatisfiable, or it reads as a mere preference")
+    assert "ADD it to the range" in TEXT or "add the referenced file to the range" in TEXT, (
+        "the rule must name the demand it forbids, verbatim")
+    assert "invalidates" in TEXT, (
+        "the rule must keep the checkable case (a reference the same range breaks) as a finding")
+    assert "never as the sole reason for" in TEXT, (
+        "an un-seeable reference must not carry a FINDINGS verdict on its own")
 
 
 class _FakeRange:

@@ -123,6 +123,29 @@ So when the material leans on a sibling:
 This is the same reasoning as the bound rule above: it is a property of YOUR WINDOW, not of the
 change under review, and no edit by the worker can change it.
 
+## A reference to another file is a POINTER, not an unverified claim (2026-10-19)
+
+A doc, comment or README may name a repo file that is NOT in this range at all — "see
+`CURRENT_STATE.md`", "the registry lives in `corpus_registry.py`", a relative link. You have no file
+access and that file is not a blob of this range, so its absence from your window proves nothing
+about it. Treat the reference as DISCLOSURE:
+
+- **do not** report it as `unverified-claim` at `medium`/`high`, and never as `fabrication` — nothing
+  in the material contradicts it;
+- the resolution is **not** "add the referenced file to the range". That demand is unsatisfiable AND
+  RECURSIVE: the referenced file names further files, so satisfying it means editing every one of
+  them, and then every file those name. A finding whose only possible resolution is an unbounded
+  edit is a finding against your WINDOW, not against the change — measured 2026-10-19, when exactly
+  this loop left a docs cycle unable to close without an operator override;
+- what IS checkable, and therefore a real finding, is a reference this SAME range invalidates: the
+  diff renames, moves or deletes the target, or shows the referenced path or symbol changed. File
+  THAT, at the severity the break actually costs.
+
+If the reviewed file is a doc whose purpose is to point at other files, its references are the
+CONTENT, not claims about them: judge whether each pointer is accurate against the diff, not whether
+its target is in your window. At most `info` when you cannot tell, and never as the sole reason for
+a FINDINGS verdict.
+
 ## Findings format (emit as JSON, nothing else after it)
 
 ```json

@@ -227,3 +227,21 @@ repeatedly.
 
 The heavy tier keeps the deep model on purpose: a cheap judge is a weaker judge, and the class kept
 on it is `always_review` — enforcement and governance code.
+
+## 7. Reviewer demands are scoped to the review's window (2026-10-18/19)
+
+Three rules in the reviewer's constitution, each added after a measured cycle loss and each pinned
+by a test in `tests/test_review_policy_scope.py`. The pattern is the same every time: a finding whose
+only possible resolution is something the worker CANNOT do — because it is a property of the
+reviewer's window, not of the change — loops forever and ends in an override.
+
+| Rule | The demand it forbids | Why it is unsatisfiable |
+|---|---|---|
+| **Proof scoping** (2026-10-18) | one standard for every claim — nine findings against one file, four asking for a "committed test" of an operator's spoken instruction and of behaviour that no longer exists | a historical measurement cannot be a test fixture; a quoted directive is a recorded fact. Demand the right KIND of proof: a pointer for those, a re-runnable test for behaviour this file controls |
+| **Sibling rule** (2026-10-18) | `fabrication` because the material leans on another file in the same range | the reviewer is shown ONE blob; the sibling is judged in its own window. At most `info` |
+| **Reference rule** (2026-10-19) | `unverified-claim` for a doc's cross-reference to a repo file outside the range — "see `CURRENT_STATE.md`" | the demand is "add the referenced file to the range", which is RECURSIVE: that file names further files. Measured on a docs cycle that could not close without an operator clear |
+
+The reference rule deliberately keeps the checkable case as a real finding: a reference this SAME
+range invalidates (the diff renames, moves or deletes the target) must still be filed at the severity
+the break costs. Scoping a demand is not relaxing it — behavioural claims still require a committed,
+re-runnable test, and that requirement is asserted verbatim by the same test file.
