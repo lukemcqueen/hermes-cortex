@@ -80,25 +80,23 @@ def build_fixture(path):
 
 
 def run_evaluator(db_path, days):
-    """Import the evaluator against the fixture and return (accuracy, recs)."""
+    """Import the evaluator against the fixture and return (accuracy, recs).
+
+    The windowed call is made DIRECTLY: a module without the `days` parameter
+    raises TypeError here and the caller records that as a hard failure. It
+    must not fall back to the no-argument form, because that fallback would
+    let this regression adapt to the exact pre-fix signature it exists to
+    catch (an adapted run returns all-time numbers and can drift through the
+    remaining checks).
+    """
     code = f"""
 import sys, json
 sys.path.insert(0, {str(SRC.parent)!r})
 import loop_evaluator as ev_mod
 
 ev = ev_mod.LoopEvaluator({db_path!r})
-
-# The PRE-FIX module exposes these with no window parameter. Fall back to the
-# no-arg form so that artifact is still exercised BEHAVIOURALLY (returning
-# all-time numbers) instead of dying on a TypeError, which would prove only
-# that the signature changed and not that the window works.
-try:
-    acc = ev.get_decision_accuracy({days})
-    recs = ev.get_threshold_recommendations({days})
-except TypeError:
-    acc = ev.get_decision_accuracy()
-    recs = ev.get_threshold_recommendations()
-
+acc = ev.get_decision_accuracy({days})
+recs = ev.get_threshold_recommendations({days})
 print(json.dumps({{"accuracy": acc, "recs": recs}}))
 ev.db.close()
 """
@@ -186,30 +184,65 @@ def main():
 
     print()
     # ── Class sweep: no feedback query may be unscoped ────────────────────
-    # Fixing the three call sites fixes those sites. This asserts the CLASS:
-    # every query in the evaluator that reads user_overrode must carry a
-    # timestamp bound, so the next unscoped one added fails here.
-    src = SRC.read_text()
-    imports = [ln for ln in src.splitlines() if ln.startswith(("import ", "from "))]
-    body = "\n".join(ln for ln in src.splitlines() if ln not in imports)
-    # Split on def to examine each method's query text.
-    chunks = body.split("\n    def ")
-    unscoped = []
-    for chunk in chunks:
-        name = chunk.split("(")[0].strip()
-        if "user_overrode" not in chunk:
-            continue
-        # Aggregate/report-only reads are exempt: they consume already-scoped
-        # rows, or they are the accuracy/weight functions we scoped above.
-        for stmt in chunk.split('"""'):
-            if "user_overrode" in stmt and "SELECT" in stmt.upper():
-                has_bound = "timestamp >=" in stmt or "timestamp >" in stmt
+    # Fixing the three call sites fixes those sites. This asserts the CLASS by
+    # PARSING the module: every `.execute(<sql>, <params>)` whose SQL reads
+    # user_overrode must bind a timestamp predicate. An AST walk is used rather
+    # than a text search so a name in a docstring/comment cannot create a false
+    # positive, a wrapped call cannot be missed, and the params tuple is
+    # inspected (a `%s`/`?` placeholder in the SQL with no matching parameter is
+    # reported as unbound rather than assumed correct).
+    import ast
+
+    tree = ast.parse(SRC.read_text())
+    unscoped, unbound = [], []
+
+    def _sql_and_params(node):
+        """Return (sql, params_node) for an .execute(...) call, else (None, None)."""
+        if not isinstance(node, ast.Call):
+            return None, None
+        fn = node.func
+        if not (isinstance(fn, ast.Attribute) and fn.attr == "execute"):
+            return None, None
+        if not node.args:
+            return None, None
+        sql_node = node.args[0]
+        if isinstance(sql_node, ast.Constant) and isinstance(sql_node.value, str):
+            params = node.args[1] if len(node.args) > 1 else None
+            return sql_node.value, params
+        return None, None
+
+    class MethodVisitor(ast.NodeVisitor):
+        def __init__(self):
+            self.current = "<module>"
+
+        def visit_FunctionDef(self, node):
+            prev, self.current = self.current, node.name
+            self.generic_visit(node)
+            self.current = prev
+
+        def visit_Call(self, node):
+            sql, params = _sql_and_params(node)
+            if sql and "user_overrode" in sql:
+                has_bound = "timestamp >=" in sql or "timestamp >" in sql
                 if not has_bound:
-                    unscoped.append(name or "<module>")
+                    unscoped.append(self.current)
+                elif "?" in sql and params is None:
+                    # Bound in text but no parameter supplied -> the predicate
+                    # cannot actually constrain anything.
+                    unbound.append(self.current)
+            self.generic_visit(node)
+
+    MethodVisitor().visit(tree)
+
     check(
-        "no method reads user_overrode without a timestamp bound (class sweep)",
+        "no method reads user_overrode without a timestamp predicate (AST sweep)",
         not unscoped,
         f"unscoped: {sorted(set(unscoped))}" if unscoped else "all feedback queries scoped",
+    )
+    check(
+        "every timestamp predicate also binds its parameter",
+        not unbound,
+        f"placeholder without params: {sorted(set(unbound))}" if unbound else "all bound",
     )
 
     if FAILURES:
