@@ -644,6 +644,33 @@ def cmd_summary(story_id: str):
           f"{data['pending']} pending)")
 
 
+def _parent_project(parent_id: str) -> str | None:
+    """The parent STORY's project — for `--project` inheritance ([queue/2]).
+
+    `cmd_add` used to hardcode the 'hermes-cortex' default for ANY add that
+    omitted `--project`, so a slice minted with `--parent <story>` landed in
+    the orchestrator's own project even when its story belonged to another one
+    (root cause of the mis-projection class; 7 such rows corrected 2026-10-16,
+    evidence: docs/evidence/slice-project-reproject-2026-10-16.txt).
+
+    Returns None when the parent is not visible, carries no project, or the
+    probe is unusable — the caller then keeps the historical default. The probe
+    is a READ of the same RLS-scoped table the queries use, so it can never see
+    a parent the caller could not list.
+    """
+    try:
+        raw = psql(
+            "SELECT project FROM tasks.tasks WHERE id = ?::uuid "
+            "AND kind = 'story' LIMIT 1;",
+            [parent_id],
+        )
+    except SystemExit:
+        return None
+    if not isinstance(raw, str) or not raw.strip():
+        return None
+    return raw.strip().splitlines()[0].strip() or None
+
+
 def cmd_add(content: str, agent: str | None, priority: int, project: str | None,
             repo: str | None, target: str | None, scope: str | None,
             assignee: str | None, due: str | None, tags: list[str],
@@ -658,6 +685,12 @@ def cmd_add(content: str, agent: str | None, priority: int, project: str | None,
     Query scoping is strict by default, so a row minted inside a repo must carry
     that repo or the caller cannot see its own new task. With no resolvable repo
     the row stays untagged, exactly as before.
+
+    PROJECT INHERITANCE (2026-10-20, [queue/2]): when `--parent <story-id>` is
+    given and `--project` is omitted, the new row inherits the PARENT row's
+    project instead of the hardcoded 'hermes-cortex' default. The default is
+    kept only for parentless rows (and as the fallback when the parent is not
+    visible or carries no project). An explicit `--project` always wins.
     """
     agent = agent or PROFILE
     if not repo:
@@ -689,6 +722,12 @@ def cmd_add(content: str, agent: str | None, priority: int, project: str | None,
             print(f"ERROR: --due '{due}' not ISO 8601 (e.g. 2026-08-10 or 2026-08-10T14:00Z)",
                   file=sys.stderr)
             sys.exit(2)
+
+    # [queue/2] 2026-10-20: inherit the STORY's project when --project is
+    # omitted; the hardcoded default is kept only for parentless rows (and
+    # when the parent is not visible / carries no project).
+    if project is None and parent:
+        project = _parent_project(parent)
 
     new_id = str(uuid.uuid4())
     session_id = os.environ.get("HERMES_SESSION_ID", "")

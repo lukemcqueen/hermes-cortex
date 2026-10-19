@@ -771,6 +771,71 @@ def test_add_with_parent_kind():
     assert params[15] == "slice"  # kind
 
 
+# ── [queue/2] project inheritance from the parent story (2026-10-20) ──
+
+def _add_child(project=None, parent: str | None = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+               parent_project=""):
+    """Run cmd_add for a slice under `parent`, recording every psql call.
+
+    The fake answers the parent-project probe with `parent_project` and
+    everything else with ''. Returns the recorded (sql, params) pairs.
+    """
+    seen = []
+
+    def fake_psql(sql, params=None):
+        seen.append((sql, params))
+        if "SELECT project FROM tasks.tasks" in sql:
+            return parent_project
+        return ""
+
+    with patch.object(task_db, "psql", side_effect=fake_psql), \
+         patch.object(task_db, "schema_version", return_value=5):
+        out, err, exc = _run_stdin_capture(
+            task_db.cmd_add, "slice task", None, 0, project, None, None, None,
+            None, None, [], "manual", parent, "slice")
+    assert exc is None, err
+    return seen
+
+
+def _add_write_params(seen):
+    rows = [(s, p) for s, p in seen if "task_upsert" in s]
+    assert len(rows) == 1, f"expected exactly one write, saw {len(rows)}"
+    return rows[0][1]
+
+
+def test_add_child_inherits_parent_story_project():
+    """[queue/2] root cause: a slice minted with --parent but no --project must
+    land in the PARENT story's project, not the 'hermes-cortex' default (which
+    put 7 kaesa slices in the orchestrator's project, corrected 2026-10-16)."""
+    seen = _add_child(parent_project="kaesa-90day")
+    assert any("SELECT project FROM tasks.tasks" in s for s, _ in seen), \
+        "the parent-project probe never ran"
+    assert _add_write_params(seen)[4] == "kaesa-90day"
+
+
+def test_add_child_keeps_default_when_parent_project_unavailable():
+    """An invisible/blank parent keeps the historical default — the inheritance
+    must never invent a project."""
+    seen = _add_child(parent_project="")
+    assert any("SELECT project FROM tasks.tasks" in s for s, _ in seen)
+    assert _add_write_params(seen)[4] == "hermes-cortex"
+
+
+def test_add_explicit_project_beats_parent_inheritance():
+    """An explicit --project always wins and short-circuits the probe."""
+    seen = _add_child(project="explicit-proj")
+    assert not any("SELECT project FROM tasks.tasks" in s for s, _ in seen), \
+        "probe ran despite an explicit --project"
+    assert _add_write_params(seen)[4] == "explicit-proj"
+
+
+def test_add_parentless_keeps_default_without_probe():
+    """The default still applies to parentless rows, and no probe is issued."""
+    seen = _add_child(parent=None)
+    assert not any("SELECT project FROM tasks.tasks" in s for s, _ in seen)
+    assert _add_write_params(seen)[4] == "hermes-cortex"
+
+
 def test_priority_bounds():
     _out, err, exc = _run_stdin_capture(
         task_db.cmd_add, "x", None, 9, None, None, None, None, None, None, [], "manual")
