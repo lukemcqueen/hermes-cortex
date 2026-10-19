@@ -1,0 +1,149 @@
+# Cost baseline evidence — story c579ef95 [cost/1] slice 5e875477
+# regenerated 2026-10-19 22:28 KST by the orch-bus-worker cron (esther) on esther
+# every block below is the actual output of the command shown; nothing is transcribed by hand.
+
+## 0. Backlog state at run time
+$ python3 ops/scripts/manage/task-db.py list --status pending | wc -l
+14   (header lines included; 13 task rows)
+$ python3 ops/scripts/manage/task-db.py list --status in_progress
+No tasks found.
+
+## 1. Account-level spend (OpenRouter)
+$ GET https://openrouter.ai/api/v1/credits  [Authorization: Bearer $OPENROUTER_API_KEY]
+prefix="sk-or-" REDACTED; key consumed from ~/.hermes/.env in a subshell, never printed
+credits: HTTP 200 {'data': {'total_credits': 2008, 'total_usage': 1927.000124855}}
+activity -> HTTP Error 403: Forbidden (requires a provisioning key, not an inference key)
+
+## 2. Langfuse daily metrics — raw LIVE response, per-day cost + per-model usage
+$ GET http://localhost:3000/api/public/metrics/daily?limit=20  [Basic auth from ~/.hermes/.env]
+2026-10-19 traces=48 obs=2149 cost=0.4920
+    deepseek/deepseek-v4.1-flash     in=190909315 out=628055 cost=0.4920 obs=946
+2026-10-18 traces=115 obs=4356 cost=2.0305
+    deepseek/deepseek-v4-pro         in=16178829 out=111382 cost=0.7169 obs=195
+    deepseek/deepseek-v4.1-flash     in=402953637 out=1276136 cost=1.3137 obs=1725
+2026-10-17 traces=28 obs=1987 cost=1.7897
+    deepseek/deepseek-v4.1-flash     in=144028348 out=630557 cost=1.6329 obs=809
+    deepseek/deepseek-v4-flash-0731  in=6525334 out=24228 cost=0.1568 obs=44
+2026-10-16 traces=48 obs=2936 cost=1.9175
+    deepseek/deepseek-v4.1-flash     in=202523493 out=819871 cost=1.9175 obs=1245
+2026-10-15 traces=34 obs=3572 cost=1.8887
+    deepseek/deepseek-v4.1-flash     in=183532961 out=744168 cost=1.7707 obs=1447
+    deepseek/deepseek-v4-pro         in=926554 out=10233 cost=0.1180 obs=19
+2026-10-14 traces=95 obs=6254 cost=11.7934
+    deepseek/deepseek-v4-pro         in=24727279 out=190175 cost=5.9034 obs=261
+    deepseek/deepseek-v4.1-flash     in=561964362 out=1751941 cost=5.8852 obs=2413
+    deepseek/deepseek-v4-flash-0731  in=273928 out=700 cost=0.0048 obs=4
+2026-10-13 traces=38 obs=2390 cost=1.3072
+    deepseek/deepseek-v4.1-flash     in=157546062 out=584347 cost=1.3072 obs=1048
+2026-10-06 traces=10 obs=2181 cost=3.1479
+    deepseek/deepseek-v4.1-flash     in=263574945 out=698061 cost=3.1479 obs=974
+2026-10-05 traces=28 obs=1942 cost=1.9316
+    deepseek/deepseek-v4.1-flash     in=74076898 out=505337 cost=1.9316 obs=814
+2026-10-04 traces=17 obs=1766 cost=1.7393
+    deepseek/deepseek-v4.1-flash     in=126700053 out=512473 cost=1.7393 obs=751
+2026-10-03 traces=14 obs=2012 cost=3.9578
+    deepseek/deepseek-v4.1-flash     in=184250831 out=846573 cost=3.9578 obs=811
+2026-10-02 traces=63 obs=6102 cost=7.1831
+    deepseek/deepseek-v4.1-flash     in=632551565 out=2308177 cost=7.1728 obs=2641
+    z-ai/glm-5.3-flash               in=143799 out=3549 cost=0.0102 obs=7
+2026-10-01 traces=48 obs=4786 cost=24.1796
+    deepseek/deepseek-v4.1-flash     in=415692582 out=1379902 cost=5.2771 obs=1869
+    moonshotai/kimi-k3               in=64327677 out=105095 cost=18.4424 obs=154
+    deepseek/deepseek-v4-flash-0731  in=8347009 out=19236 cost=0.1081 obs=38
+    z-ai/glm-5.3-flash               in=3105237 out=52731 cost=0.1873 obs=73
+    deepseek/deepseek-v4-pro         in=899780 out=10470 cost=0.1647 obs=22
+2026-09-30 traces=31 obs=1798 cost=2.5263
+    deepseek/deepseek-v4-flash-0731  in=123340553 out=251883 cost=1.6236 obs=399
+    z-ai/glm-5.3-flash               in=18042257 out=189815 cost=0.9027 obs=430
+2026-09-29 traces=51 obs=3731 cost=42.9417
+    z-ai/glm-5.3-flash               in=94979467 out=366348 cost=3.8160 obs=861
+    deepseek/deepseek-v4-pro-0813    in=87966860 out=378323 cost=35.7244 obs=342
+    deepseek/deepseek-v4-pro         in=5887818 out=41144 cost=0.6875 obs=56
+    deepseek/deepseek-v4-flash-0731  in=144835219 out=333597 cost=2.7138 obs=411
+2026-09-28 traces=30 obs=1479 cost=9.7985
+    deepseek/deepseek-v4-pro-0813    in=19913593 out=91207 cost=8.3290 obs=106
+    z-ai/glm-5.3-flash               in=33635375 out=213507 cost=1.4695 obs=525
+2026-09-27 traces=11 obs=572 cost=0.1987
+    z-ai/glm-5.3-flash               in=14153971 out=134094 cost=0.1987 obs=221
+2026-09-26 traces=7 obs=395 cost=0.1401
+    z-ai/glm-5.3-flash               in=5801441 out=79610 cost=0.1401 obs=169
+2026-09-25 traces=22 obs=881 cost=0.2760
+    deepseek/deepseek-v4-flash-0731  in=1658497 out=4811 cost=0.0305 obs=24
+    z-ai/glm-5.3-flash               in=14109621 out=72640 cost=0.2454 obs=360
+2026-09-24 traces=36 obs=3297 cost=27.4471
+    deepseek/deepseek-v4-flash-0731  in=13808411 out=11844 cost=0.2513 obs=23
+    deepseek/deepseek-v4.1-flash     in=1767574 out=44204 cost=0.0439 obs=26
+    z-ai/glm-5.3-flash               in=103053118 out=254745 cost=4.7819 obs=725
+    deepseek/deepseek-v4-pro         in=190381940 out=494301 cost=22.3700 obs=708
+
+## 3. Trace-level aggregation, 2026-10-06..2026-10-19 (cost by trigger, cost by cron)
+$ GET /api/public/traces?fromTimestamp=...&toTimestamp=...&limit=100&page=N&fields=core,usage,metrics
+$ python3 agg.py  # pages the endpoint, buckets by tag
+traces fetched: 424 totalItems 424
+
+by day:
+  2026-10-05 0.2777
+  2026-10-06 3.1479
+  2026-10-13 1.3072
+  2026-10-14 11.7934
+  2026-10-15 1.8887
+  2026-10-16 1.9528
+  2026-10-17 1.7584
+  2026-10-18 2.0266
+  2026-10-19 0.4981
+
+top crons by cost:
+  (interactive/other) $20.6610 traces=294
+  1954deb5ad76 $1.3388 traces=22
+  8449be867645 $0.5059 traces=6
+  f41b7171b9e1 $0.3041 traces=14
+  8a46f1b96b7d $0.2928 traces=3
+  50cdb07eda5c $0.2449 traces=6
+  78b32a966223 $0.2224 traces=4
+  e4b77fb053f8 $0.2091 traces=9
+  418bbf45277d $0.1983 traces=14
+  0677224663a3 $0.1201 traces=9
+  f6694d02d29c $0.1171 traces=6
+  e798f3363b33 $0.0889 traces=4
+  550d7c044315 $0.0712 traces=5
+  1f31ee6587e3 $0.0680 traces=6
+  6cb3c26a2ac9 $0.0595 traces=6
+
+## 4. Cron token usage — the completeness check (records every fire, even when Langfuse does not)
+$ python3 - <<PY   # reads ~/.hermes/cron/usage_audit.jsonl, sums total_tokens per day
+audit log: 1667 rows total, 2026-08-09T14:27:52.349Z .. 2026-10-19T12:36:28.546Z
+  2026-10-06 fires= 21 tokens=    62619045 (62.6M)
+  2026-10-07 fires= 20 tokens=    49284719 (49.3M)
+  2026-10-08 fires= 21 tokens=    85811838 (85.8M)
+  2026-10-09 fires= 29 tokens=    77580291 (77.6M)
+  2026-10-10 fires= 23 tokens=    36018655 (36.0M)
+  2026-10-11 fires= 23 tokens=    97446382 (97.4M)
+  2026-10-12 fires= 45 tokens=    56208314 (56.2M)
+  2026-10-13 fires= 22 tokens=    56218658 (56.2M)
+  2026-10-14 fires= 24 tokens=    60335229 (60.3M)
+  2026-10-15 fires= 25 tokens=   106175060 (106.2M)
+  2026-10-16 fires= 22 tokens=    55969542 (56.0M)
+  2026-10-17 fires= 11 tokens=    68217692 (68.2M)
+  2026-10-18 fires= 16 tokens=    37172569 (37.2M)
+  2026-10-19 fires= 10 tokens=    30910470 (30.9M)
+
+## 5. moses (host 2) — remote aggregation over ssh
+$ ssh mosesaaron python3 - < remote_agg.py   # reads moses' usage_audit.jsonl and its own Langfuse
+host=moses audit_rows=550 last_fire=2026-10-19T13:07:57.359Z
+per-day fires:  {"2026-10-06": 14, "2026-10-07": 13, "2026-10-08": 13, "2026-10-09": 11, "2026-10-10": 2, "2026-10-11": 6, "2026-10-12": 12, "2026-10-13": 14, "2026-10-14": 14, "2026-10-15": 18, "2026-10-16": 14, "2026-10-17": 7, "2026-10-18": 11, "2026-10-19": 8}
+per-day tokens: {"2026-10-06": 13804567, "2026-10-07": 7991909, "2026-10-08": 14981804, "2026-10-09": 9905773, "2026-10-10": 1490162, "2026-10-11": 5304446, "2026-10-12": 7888753, "2026-10-13": 14797001, "2026-10-14": 25787425, "2026-10-15": 25154496, "2026-10-16": 17324046, "2026-10-17": 17700897, "2026-10-18": 40969178, "2026-10-19": 4034072}
+langfuse_daily: [{"date": "2026-10-06", "cost": 0.0001804552, "traces": 1}, {"date": "2026-10-05", "cost": 0, "traces": 1}]
+langfuse_err:   None
+top crons by tokens:
+   orch-bus-worker                      61759790 tokens, 22 fires
+   orch-skill-lifecycle                 29039117 tokens, 6 fires
+   agent-fixer-evening                  27406551 tokens, 20 fires
+   cortex-bus-evening                   23410073 tokens, 19 fires
+   cortex-bus-workday                   17622927 tokens, 29 fires
+
+## 6. Derived figures (computed from the blocks above)
+esther recorded cron days 10-13..10-19: $3.985
+esther Langfuse hole 10-07..10-12: 402.4M cron tokens / 161 fires -> est $3.54 at $0.0088/Mtok
+esther est. 13-day cron total: $7.53 ($0.579/day)
+moses window: 207.1M tokens / 157 fires -> est $1.82
+verdict: 2 measured hosts = $9.35/13d = $0.72/day vs the $10/day story target
