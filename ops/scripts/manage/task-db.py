@@ -542,6 +542,24 @@ SELECT_SQL = select_sql(_REPO_CLAUSE_UNFILTERED)  # unfiltered form (reference)
 
 # ── Commands ──────────────────────────────────────────────────
 
+#: The ONE `tasks.task_upsert()` call shape, shared by every writer (add, restore).
+#: Argument order mirrors the function signature, read from the database on
+#: 2026-10-19 (`pg_get_function_arguments('tasks.task_upsert')`):
+#:   p_id uuid, p_content, p_created_by, p_assignee, p_project, p_repo, p_target,
+#:   p_scope, p_status, p_column, p_position, p_priority, p_due timestamptz,
+#:   p_tags text[], p_source, p_depends_on uuid[], p_session_id TEXT,
+#:   p_parent_id UUID, p_kind, p_correlation_id
+#: The two casts are load-bearing: p_id and p_PARENT_ID are uuid, while
+#: p_session_id is TEXT (fleet session ids look like
+#: `cron_1954deb5ad76_20261015_142148`, so a uuid cast there fails the whole write
+#: with `invalid input syntax for type uuid`). Writing the SQL a second time by hand
+#: is how that happens — the first draft of the restore rewrite put the cast on
+#: session_id and only the REAL store caught it, because a mocked psql cannot.
+#: Sharing the constant is what stops the two writers drifting again.
+#: `p_depends_on` is a literal NULL: no writer sets it yet (tracked on 2fc4d871).
+UPSERT_SQL = ("SELECT tasks.task_upsert(?::uuid, ?, ?, ?, ?, ?, ?, ?, ?, "
+              "NULL, NULL, ?, ?::timestamptz, ?, ?, NULL, ?, ?::uuid, ?, ?);")
+
 def cmd_list(agent: str | None, status: str | None, project: str | None,
              scope: str | None, repo: str | None, assignee: str | None,
              tag: str | None, due_before: str | None,
@@ -692,11 +710,10 @@ def cmd_add(content: str, agent: str | None, priority: int, project: str | None,
                   "(path/email/IP smell) — stored scope=personal",
                   file=sys.stderr)
     psql(
-        "SELECT tasks.task_upsert(?::uuid, ?, ?, ?, ?, ?, ?, ?, 'pending', "
-        "NULL, NULL, ?, ?::timestamptz, ?, ?, ?, ?, ?::uuid, ?, ?);",
+        UPSERT_SQL,
         [new_id, content, agent, assignee, project or "hermes-cortex",
-         repo, target, effective_scope, priority, due or None,
-         tags or None, source or "manual", None, session_id or None,
+         repo, target, effective_scope, "pending", priority, due or None,
+         tags or None, source or "manual", session_id or None,
          parent, kind, correlation_id],
     )
     print(f"✅ Task added: {new_id[:8]}... — {content}")
@@ -1161,11 +1178,65 @@ def cmd_pending(repo: str | None = None, repo_path: str | None = None,
     print(json.dumps(items, indent=2))
 
 
+#: Columns that a restore must not silently drop. `restore` writes through
+#: tasks.task_upsert(), which takes all of these; before 2026-10-19 it passed a
+#: hard-wired NULL for every one of them, so re-writing a row for ANY reason
+#: cleared its repo, assignee, target, due date, tags and bus correlation — and a
+#: retag through the canonical write path was impossible. Measured 2026-10-19: 8 of
+#: 18 rows queued for a repo tag carried tags/target/correlation_id that the write
+#: would have wiped. Preserve-by-default: a key absent from the JSON means "leave
+#: it as it is", never "clear it".
+_PRESERVED_COLUMNS = ("repo", "assignee", "target", "due", "tags", "correlation_id")
+
+#: Separator for round-tripping a text[] column through one delimited row. A comma
+#: would corrupt any tag that contains one.
+_ARRAY_SEP = "\x1f"
+
+
+def _current_row_meta(ids: list[str]) -> dict[str, dict]:
+    """Stored values for the preserved columns, per task id. ONE batched read."""
+    if not ids:
+        return {}
+    raw = psql(
+        "SELECT t.id, COALESCE(t.repo, ''), COALESCE(t.assignee, ''), "
+        "COALESCE(t.target, ''), COALESCE(t.due::text, ''), "
+        f"COALESCE(array_to_string(t.tags, chr(31)), ''), "
+        "COALESCE(t.correlation_id::text, '') "
+        "FROM tasks.tasks t WHERE t.id = ANY(ARRAY[?]::uuid[]);", [ids])
+    meta: dict[str, dict] = {}
+    for line in (raw or "").splitlines():
+        parts = line.split("||")
+        if len(parts) != 1 + len(_PRESERVED_COLUMNS):
+            continue
+        raw_row = dict(zip(_PRESERVED_COLUMNS, parts[1:]))
+        tags_raw = raw_row.pop("tags")
+        row: dict = {c: (v or None) for c, v in raw_row.items()}
+        row["tags"] = ([t for t in tags_raw.split(_ARRAY_SEP) if t]
+                       if tags_raw else None)
+        meta[parts[0].strip()] = row
+    return meta
+
+
+def _check_repo_tag(value: str) -> None:
+    """A repo TAG is a label — never the query scope word."""
+    _check_name("--repo", value)
+    if value.strip().upper() == FLEET_ALL:
+        print(f"ERROR: --repo '{value}' is a QUERY scope, not a tag — "
+              f"refusing to write it (no session can match it).",
+              file=sys.stderr)
+        sys.exit(2)
+
+
 def cmd_restore(json_file: str, include_inbox: bool = False):
     """Bulk-restore tasks from a JSON file (session start).
 
     v2 (R-4): skips 'untrusted' (inbox-derived) rows unless --include-inbox;
     paused rows restore as paused — never auto-resumed (M-9).
+
+    PRESERVE-BY-DEFAULT (2026-10-19): 'repo', 'assignee', 'target', 'due', 'tags'
+    and 'correlation_id' are written when the row's JSON carries the key, and the
+    row's STORED value is kept when it does not. Passing an explicit empty value
+    (`"tags": []`, `"repo": null`) is the only way to clear one.
     """
     if not os.path.exists(json_file):
         print(f"No restore file: {json_file} — starting fresh.")
@@ -1176,28 +1247,44 @@ def cmd_restore(json_file: str, include_inbox: bool = False):
         print("No pending tasks to restore.")
         return
 
-    count = 0
+    # Validate EVERY row before touching the database: a bad label must cost no
+    # write at all.
+    rows = []
     skipped = 0
     for item in items:
         if item.get("untrusted") and not include_inbox:
             skipped += 1
             continue
         _check_uuid(item["id"])
+        if item.get("repo") is not None:
+            _check_repo_tag(str(item["repo"]))
+        rows.append(item)
+
+    stored = _current_row_meta([item["id"] for item in rows])
+
+    count = 0
+    changed = 0
+    for item in rows:
         status = item.get("status", "pending")
         if status not in STATUSES:
             status = "pending"
+        keep = stored.get(item["id"], {})
+        vals = {c: (item[c] if c in item else keep.get(c))
+                for c in _PRESERVED_COLUMNS}
+        if (vals["repo"] or "") != (keep.get("repo") or ""):
+            changed += 1
         psql(
-            "SELECT tasks.task_upsert(?::uuid, ?, ?, NULL, ?, NULL, NULL, ?, ?, "
-            "NULL, NULL, ?, NULL, NULL, ?, NULL, ?, ?::uuid, ?, NULL);",
+            UPSERT_SQL,
             [item["id"], item["content"], item.get("agent_name", PROFILE),
-             item.get("project", "hermes-cortex"),
-             item.get("scope", "personal"), status,
-             item.get("priority", 0), item.get("source", "session"),
-             item.get("session_id"), item.get("parent_id"),
-             item.get("kind")],
+             vals["assignee"], item.get("project", "hermes-cortex"),
+             vals["repo"], vals["target"], item.get("scope", "personal"), status,
+             item.get("priority", 0), vals["due"], vals["tags"],
+             item.get("source", "session"), item.get("session_id"),
+             item.get("parent_id"), item.get("kind"), vals["correlation_id"]],
         )
         count += 1
-    msg = f"✅ Restored {count} task(s) from {json_file}"
+    msg = (f"✅ Restored {count} task(s) from {json_file} "
+           f"(repo: {changed} changed, {count - changed} preserved)")
     if skipped:
         msg += f" (skipped {skipped} untrusted inbox-derived row(s) — use --include-inbox to force)"
     print(msg)

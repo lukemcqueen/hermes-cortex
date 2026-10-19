@@ -1,0 +1,16 @@
+[
+  {
+    "id": "f97dcffe-3acd-454d-a7d1-b767ab53d3da",
+    "content": "Detector gap: stranded-skill detection covers SKILL.md only - extend check-skill-drift-parity.py to SUPPORT files under repo-owned skill dirs. Measured 2026-10-15 by the orch-bus-worker pass: 131 deployed-only files across 386 repo-owned skill dirs (e.g. devops/enforcement-gate-migration/references+//templates, devops/auto-remediation/references/, devops/loop-governance/references/, software-development/change-checklist/references/). The deploy guardrail refuses to overwrite deployed copies, so these never reach the fleet. Fix direction: walk references/, templates/, scripts/ under repo-owned skill dirs with the same content-not-mtime direction rule, then decide the 131 by content (many may be deliberately repo-ahead). Evidence: docs/evidence/stranded-skills-reconcile-2026-10-15.txt (cycle 12652).",
+    "agent_name": "esther",
+    "project": "hermes-cortex",
+    "repo": "hermes-cortex",
+    "scope": "personal",
+    "status": "pending",
+    "priority": 2,
+    "source": "manual",
+    "session_id": "cron_1954deb5ad76_20261015_142148",
+    "parent_id": null,
+    "kind": null
+  }
+]

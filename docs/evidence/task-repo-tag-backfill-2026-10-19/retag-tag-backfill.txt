@@ -1,0 +1,72 @@
+captured: 2026-10-19T05:22:28Z  host: Linux 7.0.0-38-generic
+captured-by: esther (orchestrator), session 20261019_133021_41df6e34
+cycle: 13350 task-repo-tag-backfill
+
+=== revisions
+base (pre-change) : 3c63e879f82d662907bdc2b6220bef8826292913
+tip  (this cycle) : 3c63e879f82d662907bdc2b6220bef8826292913
+
+=== DEPLOYED task-db.py carries the preserve-by-default restore
+1192:_PRESERVED_COLUMNS = ("repo", "assignee", "target", "due", "tags", "correlation_id")
+UPSERT_SQL = ("SELECT tasks.task_upsert(?::uuid, ?, ?, ?, ?, ?, ?, ?, ?, "
+
+=== the retag: 18 rows whose repo is derivable from the row itself
+input : ~/hermes-cortex/docs/evidence/task-repo-tag-backfill-2026-10-19/retag.json (18 rows)
+census + per-row diff (verify-retag.py, re-read every row)
+rows in retag.json: 18
+
+=== census AFTER (repo | count) ===
+  (untagged)  32
+  hermes-cortex  18
+
+=== per-row diff (only `repo` may differ) ===
+  9fb2ddb6  repo (null) -> hermes-cortex
+  cf8f8e8d  repo (null) -> hermes-cortex
+  c579ef95  repo (null) -> hermes-cortex
+  66914fe1  repo (null) -> hermes-cortex
+  482de205  repo (null) -> hermes-cortex
+  8369bc52  repo (null) -> hermes-cortex
+  736a496b  repo (null) -> hermes-cortex
+  caed9076  repo (null) -> hermes-cortex
+  3cc049e8  repo (null) -> hermes-cortex
+  40cb307d  repo (null) -> hermes-cortex
+  aa054b3e  repo (null) -> hermes-cortex
+  5e875477  repo (null) -> hermes-cortex
+  2fc4d871  repo (null) -> hermes-cortex
+  a6bb2da4  repo (null) -> hermes-cortex
+  762379ca  repo (null) -> hermes-cortex
+  511ad057  repo (null) -> hermes-cortex
+  0f727dfd  repo UNCHANGED (hermes-cortex)
+  f97dcffe  repo UNCHANGED (hermes-cortex)
+
+rows re-read: 18
+PASS: every row re-read; no field outside `repo` changed
+verify rc=0
+
+=== DEPLOYED copy: a restore that does NOT mention repo must not clear it
+  wrote ~/.hermes/cache/scratch/tmp.gwww04Zbew/noop.json for f97dcffe WITHOUT a repo key
+  repo BEFORE: hermes-cortex
+✅ Restored 1 task(s) from ~/.hermes/cache/scratch/tmp.gwww04Zbew/noop.json (repo: 0 changed, 1 preserved)
+  restore rc=0
+  repo AFTER : hermes-cortex tags=skill-drift,detector-gap
+  (the pre-change build wrote NULL here — a passed row would have read '(null)')
+
+=== hermetic suite — tests/test_task_db_unit.py (restore + shared-upsert pins)
+pytest rc=0
+
+============================== 73 passed in 1.43s ==============================
+
+=== sibling suites that exercise the same write path
+sibling pytest rc=1  (1 = the pre-existing failures below)
+=========================== short test summary info ============================
+FAILED tests/test_task_queue_visibility.py::test_a_parked_row_can_return_to_the_pull_pool
+FAILED tests/test_task_queue_visibility.py::test_the_parked_arc_guard_would_notice_a_missing_arc
+FAILED tests/test_task_queue_evidence.py::test_the_committed_evidence_is_actual_script_output
+========================= 3 failed, 60 passed in 3.14s =========================
+
+=== doctor (DEPLOYED tree)
+doctor rc=1
+Overall: WARNING  (468 pass · 8 warn · 0 fail · 3 info)
+note: 'Repo clean' warns while this transcript is uncommitted; re-run at the tip.
+
+=== end of capture

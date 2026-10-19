@@ -492,13 +492,14 @@ def test_restore_skips_untrusted_by_default(tmp_path):
     ]
     f = tmp_path / "pending.json"
     f.write_text(json.dumps(data))
-    with patch.object(task_db, "psql") as mock_psql:
+    with patch.object(task_db, "psql", side_effect=["", ""]) as mock_psql:
         out, _err, _exc = _run_stdin_capture(task_db.cmd_restore, str(f))
     assert "Restored 1 task(s)" in out
     assert "skipped 1 untrusted" in out
-    # Only the manual row reached task_upsert
-    assert mock_psql.call_count == 1
-    assert mock_psql.call_args[0][1][1] == "manual row"
+    # Only the manual row reached task_upsert. Since 2026-10-19 restore makes TWO
+    # calls: one batched read of the stored row metadata, then the upsert per row.
+    assert mock_psql.call_count == 2
+    assert mock_psql.call_args_list[-1][0][1][1] == "manual row"
 
 
 def test_restore_include_inbox(tmp_path):
@@ -509,12 +510,13 @@ def test_restore_include_inbox(tmp_path):
     ]
     f = tmp_path / "pending.json"
     f.write_text(json.dumps(data))
-    with patch.object(task_db, "psql") as mock_psql:
+    with patch.object(task_db, "psql", side_effect=["", ""]) as mock_psql:
         out, _err, _exc = _run_stdin_capture(
             task_db.cmd_restore, str(f), True)
     assert "Restored 1 task(s)" in out
     assert "skipped" not in out
-    assert mock_psql.call_count == 1
+    # 2 = the batched repo-tag read + the upsert (2026-10-19)
+    assert mock_psql.call_count == 2
 
 
 # ── switch edge cases (M-8) ───────────────────────────────────
@@ -745,11 +747,14 @@ def test_add_defaults_project_scope_source():
             None, None, [], None)
     assert exc is None
     params = mock_psql.call_args[0][1]
-    # params: [id, content, agent, assignee, project, repo, target, scope,
-    #          priority, due, tags, source, depends_on, session_id, parent, kind, corr]
+    # params: [id, content, agent, assignee, project, repo, target, scope, status,
+    #          priority, due, tags, source, session_id, parent, kind, corr]
+    # (`status` became a bound param on 2026-10-19 when both writers started
+    # sharing UPSERT_SQL; p_depends_on is the literal NULL in that SQL.)
     assert params[4] == "hermes-cortex"
     assert params[7] == "personal"
-    assert params[11] == "manual"
+    assert params[8] == "pending"
+    assert params[12] == "manual"
 
 
 def test_add_with_parent_kind():
@@ -867,3 +872,147 @@ def test_due_overdue_missing_or_malformed():
 def test_due_overdue_naive_datetime_utc():
     # naive timestamps (psql -t -A prints "YYYY-MM-DD HH:MM:SS+00") parse
     assert task_db._is_due_overdue("2020-01-01 00:00:00+00", "in_progress") is True
+
+
+# ── restore carries the repo tag (cycle 13350 task-repo-tag-backfill) ──
+# `repo` had NO update surface: restore hard-wired NULL at task_upsert's p_repo
+# slot, so restoring a row that HAD a repo silently CLEARED it — which is also
+# why the untagged backlog could not be retagged through the canonical write
+# path. Restore now takes an optional per-row "repo" (same allowlist as every
+# other identifier) and PRESERVES the stored value when the key is absent.
+
+RESTORE_ID = "11111111-1111-1111-1111-111111111111"
+
+
+def _meta_line(repo="", assignee="", target="", due="", tags=None, corr=""):
+    """One `_current_row_meta` row: id then the six preserved columns."""
+    sep = task_db._ARRAY_SEP
+    return "||".join([RESTORE_ID, repo, assignee, target, due,
+                      sep.join(tags) if tags else "", corr])
+
+
+def _restore(tmp_path, item, meta_line):
+    """Drive cmd_restore with psql mocked: [read of stored meta, upsert]."""
+    path = tmp_path / "restore.json"
+    path.write_text(json.dumps([item]))
+    with patch.object(task_db, "psql", side_effect=[meta_line, ""]) as mock_psql:
+        out, err, exc = _run_stdin_capture(task_db.cmd_restore, str(path), True)
+    return out, err, exc, mock_psql
+
+
+def test_shared_upsert_sql_casts_parent_not_session():
+    """One SQL for every writer, with the casts pinned.
+
+    Rendered with sentinels: the uuid cast must land on p_ID and p_PARENT, never on
+    p_SESSION (TEXT — `cron_1954deb5ad76_20261015_142148` is a real session id, and
+    a uuid cast there fails the whole write). A mocked psql cannot catch a cast
+    mistake, which is exactly how the first draft of the restore rewrite shipped one.
+    """
+    sql = task_db.build_query(task_db.UPSERT_SQL, [
+        "ID", "CONTENT", "AGENT", "ASSIGNEE", "PROJECT", "REPO", "TARGET",
+        "SCOPE", "STATUS", "PRIORITY", "DUE", "TAGS", "SOURCE", "SESSION",
+        "PARENT", "KIND", "CORR"])
+    assert "'ID'::uuid" in sql
+    assert "'PARENT'::uuid" in sql, "the parent id is uuid-typed"
+    assert "'SESSION'::uuid" not in sql, "p_session_id is TEXT"
+    # exactly two casts, on id and parent
+    assert sql.count("::uuid") == 2
+
+
+def test_restore_repo_read_casts_the_uuid_array():
+    """The batched read must cast: `id = ANY(ARRAY[...])` with text elements dies
+    with `operator does not exist: uuid = text` against the real store — a mocked
+    psql cannot catch that, so pin the cast in the SQL itself."""
+    import inspect
+    src = inspect.getsource(task_db._current_row_meta)
+    assert "::uuid[]" in src, "the id array must be cast to uuid[]"
+
+
+def _restore_row(**over):
+    row = {"id": RESTORE_ID, "content": "c", "agent_name": "the-agent",
+           "project": "hermes-cortex", "scope": "personal", "status": "pending",
+           "priority": 1, "source": "manual"}
+    row.update(over)
+    return row
+
+
+def _upsert_params(mock_psql):
+    """The task_upsert call is the LAST one; its params list is arg 1.
+
+    Positions (mirrors cmd_add): 0 id, 1 content, 2 agent, 3 assignee,
+    4 project, 5 repo, 6 target, 7 scope, 8 status, 9 priority, 10 due,
+    11 tags, 12 source, 13 session_id, 14 parent, 15 kind, 16 correlation_id.
+    """
+    return mock_psql.call_args_list[-1][0][1]
+
+
+def test_restore_writes_an_explicit_repo(tmp_path):
+    out, _err, exc, mock_psql = _restore(
+        tmp_path, _restore_row(repo="hermes-cortex"), _meta_line())
+    assert exc is None, out
+    assert _upsert_params(mock_psql)[5] == "hermes-cortex", \
+        "an explicit repo key must be written (this is the retag surface)"
+    assert "1 changed" in out
+
+
+def test_restore_preserves_the_stored_repo_when_the_key_is_absent(tmp_path):
+    """The data-loss guard: no key is NOT a request to clear the tag."""
+    out, _err, exc, mock_psql = _restore(
+        tmp_path, _restore_row(), _meta_line(repo="stored-repo"))
+    assert exc is None, out
+    assert _upsert_params(mock_psql)[5] == "stored-repo", \
+        "restore must not clear a tag the JSON did not mention"
+    assert "0 changed" in out and "1 preserved" in out
+    assert mock_psql.call_count == 2, "one batched read of the current rows"
+
+
+def test_restore_preserves_tags_target_and_correlation(tmp_path):
+    """The same rule for every column restore does not carry by default.
+
+    8 of the 18 rows queued for a repo tag on 2026-10-19 held tags/target/
+    correlation_id — the old restore would have wiped all of them."""
+    _out, _err, exc, mock_psql = _restore(
+        tmp_path, _restore_row(),
+        _meta_line(tags=["fleet", "cost"], target="moses-host",
+                   corr="aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"))
+    assert exc is None
+    params = _upsert_params(mock_psql)
+    assert params[6] == "moses-host", "target must survive"
+    assert params[11] == ["fleet", "cost"], "tags must survive, as a list"
+    assert params[16] == "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+
+
+def test_restore_can_clear_a_column_explicitly(tmp_path):
+    """Clearing stays possible — it just has to be asked for."""
+    _out, _err, exc, mock_psql = _restore(
+        tmp_path, _restore_row(tags=[]), _meta_line(tags=["fleet"]))
+    assert exc is None
+    assert _upsert_params(mock_psql)[11] == []
+
+
+def test_restore_leaves_an_untagged_row_untagged(tmp_path):
+    _out, _err, exc, mock_psql = _restore(tmp_path, _restore_row(), _meta_line())
+    assert exc is None
+    assert _upsert_params(mock_psql)[5] is None
+
+
+def test_restore_rejects_an_invalid_repo_label(tmp_path):
+    path = tmp_path / "restore.json"
+    path.write_text(json.dumps([_restore_row(repo="../etc")]))
+    with patch.object(task_db, "psql", side_effect=["", ""]) as mock_psql:
+        _out, err, exc = _run_stdin_capture(task_db.cmd_restore, str(path), True)
+    assert exc is not None and exc.code == 2
+    assert "repo" in err and "invalid" in err
+    mock_psql.assert_not_called()  # refused before any write
+
+
+def test_restore_rejects_the_fleet_all_label(tmp_path):
+    """'ALL' is a QUERY scope, never a tag — writing it would create a repo
+    label no session can ever match."""
+    path = tmp_path / "restore.json"
+    path.write_text(json.dumps([_restore_row(repo="ALL")]))
+    with patch.object(task_db, "psql", side_effect=["", ""]):
+        _out, err, exc = _run_stdin_capture(task_db.cmd_restore, str(path), True)
+    assert exc is not None and exc.code == 2
+    assert "ALL" in err or "invalid" in err
+
