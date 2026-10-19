@@ -1,0 +1,79 @@
+captured: 2026-10-19T04:45:03Z  host: Linux 7.0.0-38-generic
+captured-by: esther (orchestrator), session 20261019_133021_41df6e34
+cycle: 13347 task-scope-default-own-repo
+
+=== revisions
+base (pre-change) : 06460cea8cd908755c0726310858982a95caab33
+tip  (this cycle) : 18e904ed776d2d30dd9c3873ae1ae63145955fb6
+
+=== DEPLOYED copy carries the strict predicate
+114:_REPO_CLAUSE_SCOPED = "AND (CAST(? AS text) IS NULL OR t.repo = ?)"
+115:_REPO_CLAUSE_SCOPED_WITH_UNTAGGED = ("AND (CAST(? AS text) IS NULL OR t.repo = ? "
+
+=== DEPLOYED copy: _repo_clause (the three shapes)
+def _repo_clause(resolved, include_untagged: bool = False) -> str:
+    """The SQL predicate for a resolved repo.
+
+    Three shapes, one rule each:
+      * `repo="ALL"` (fleet)      -> unfiltered: every repo PLUS untagged rows.
+      * scoped, default           -> the caller's own repo ONLY.
+      * scoped, include_untagged  -> the caller's own repo + untagged legacy rows.
+    """
+    if resolved.fleet:
+        return _REPO_CLAUSE_UNFILTERED
+    if include_untagged:
+        return _REPO_CLAUSE_SCOPED_WITH_UNTAGGED
+    return _REPO_CLAUSE_SCOPED
+
+
+def _repo_params(resolved) -> list:
+
+=== live store, LINE COUNTS only, DEPLOYED engine
+  rc=0  lines=3  [list --repo hermes-cortex --status pending]
+  rc=0  lines=37  [list --repo hermes-cortex --status pending --include-untagged]
+  rc=0  lines=37  [list --repo ALL --status pending]
+  rc=0  lines=3  [list --repo hermes-cortex --board]
+  (strict own-repo view is the NARROWEST; --include-untagged and --repo ALL are the wide views)
+
+=== hermetic suite — tests/test_task_query_repo_scope.py
+pytest rc=0
+
+============================== 33 passed in 1.19s ==============================
+
+=== sibling suites that exercise the changed seams
+sibling pytest rc=1  (1 = a failure below)
+=========================== short test summary info ============================
+FAILED tests/test_task_queue_visibility.py::test_a_parked_row_can_return_to_the_pull_pool
+FAILED tests/test_task_queue_visibility.py::test_the_parked_arc_guard_would_notice_a_missing_arc
+========================= 2 failed, 93 passed in 1.76s =========================
+
+=== real path — run_task_query_repo_scope_repro.py (real Postgres + real MCP over stdio)
+  PASS  MCP task_pending() with no resolvable repo returns [] — text=[]
+  PASS  DEPLOYED engine carries the STRICT scope (own repo only) — seen=['probe-own']
+  PASS  DEPLOYED MCP task_pending carries the STRICT scope — seen=['probe-own']
+
+29 passed, 0 failed
+
+=== doctor (DEPLOYED tree) — exit code and warning count, not just the ticks
+doctor rc=1   (1 = WARNING or FAIL overall; read the summary line below)
+Overall: WARNING  (469 pass · 4 warn · 0 fail · 3 info)
+non-pass status lines (excludes the 'REQUIRED ACTIONS' legend):
+10:  ⚠️  Repo clean
+456:  ⚠️  Skill drift: autonomous-ai-agents/pi-coding-agent
+457:  ⚠️  Skill drift: software-development/agent-contract
+458:  ⚠️  Skill drift
+487:  ⚠️  Overall: WARNING  (469 pass · 4 warn · 0 fail · 3 info)
+note: the 'Repo clean' warning is THIS transcript being written while
+      uncommitted; re-run the doctor at the pushed tip and it clears.
+
+=== the 2 sibling failures, ATTRIBUTED against the range base (same runner)
+range base 06460cea8cd908755c0726310858982a95caab33  rc=1  -> ========================= 2 failed, 10 passed in 0.16s =========================
+range tip  18e904ed776d2d30dd9c3873ae1ae63145955fb6  rc=1  -> ========================= 2 failed, 10 passed in 0.19s =========================
+same failing node IDs at both revisions:
+    test_a_parked_row_can_return_to_the_pull_pool
+    test_the_parked_arc_guard_would_notice_a_missing_arc
+VERDICT: REPRODUCED — the same failures, at both revisions => PRE-EXISTING,
+         not caused by this range (they concern the v013 migration's
+         transition_allowed arm, a file this range does not touch).
+
+=== end of capture

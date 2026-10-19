@@ -1,30 +1,39 @@
 base 55887b47f0fd1f7d689931a292e2997fa4d0b10f
-tip  aa293f41aa8734c43985d98b2d38688388328560
+tip  18e904ed776d2d30dd9c3873ae1ae63145955fb6
 scratch-db tasks_repo_scope_test
-host Linux 7.0.0-31-generic
+host Linux 7.0.0-38-generic
 
-  PASS  scratch DB schema applied — 11)
-  applying v012 (v012__parked-rows-return-to-pool.sql) …
-  ✓ v012 (v012__parked-rows-return-to-pool.sql) applied (version 12)
-tasks schema now at version 12
-  PASS  seed 'probe-own' — ✅ Task added: 904b2b53... — probe-own
-  PASS  seed 'probe-other' — ✅ Task added: e7012d22... — probe-other
-  PASS  seed 'probe-untagged' — ✅ Task added: 15cea9b5... — probe-untagged
+  PASS  scratch DB schema applied — rsion 12)
+  applying v013 (v013__fleet-slice-orch-parent.sql) …
+  ✓ v013 (v013__fleet-slice-orch-parent.sql) applied (version 13)
+tasks schema now at version 13
+  PASS  seed 'probe-own' — ✅ Task added: 0b9c54c7... — probe-own
+  PASS  seed 'probe-other' — ✅ Task added: ddfdba1c... — probe-other
+  PASS  seed 'probe-untagged' — ✅ Task added: 44edf16c... — probe-untagged
   PASS  PRE-FIX leaks the other repo's task (the reported bug) — repo=steadfaste pending -> repos ['None', 'steadfaste', 'steadfaste-s1-model']
-  PASS  scoped pending returns the caller's own repo's task — seen=['probe-own', 'probe-untagged']
-  PASS  scoped pending still returns legacy untagged rows — seen=['probe-own', 'probe-untagged']
-  PASS  scoped pending NEVER returns another repo's task — seen=['probe-own', 'probe-untagged']
+  PASS  scoped pending returns the caller's own repo's task — seen=['probe-own']
+  PASS  STRICT scoped pending EXCLUDES untagged rows (operator rule 2026-10-19) — seen=['probe-own']
+  PASS  scoped pending NEVER returns another repo's task — seen=['probe-own']
+  PASS  --include-untagged adds the untagged rows back (opt-in broad view) — seen=['probe-own', 'probe-untagged']
+  PASS  --include-untagged still never returns another named repo's task — seen=['probe-own', 'probe-untagged']
   PASS  unresolvable repo returns NO tasks (never all repos) — stdout=[] stderr=task_pending: repo unknown — none of: an explicit repo argument, an injected session repo, CORTEX_SESSION_REPO, or a git
   PASS  explicit repo=ALL is the deliberate fleet view — seen=['probe-other', 'probe-own', 'probe-untagged']
   PASS  MCP initialize handshake — {'name': 'task-mcp', 'version': ''}
   PASS  tools/list: task_pending exposes repo
+  PASS  tools/list: task_pending exposes the include_untagged switch
   PASS  tools/list: task_list exposes repo
+  PASS  tools/list: task_list exposes the include_untagged switch
   PASS  tools/list: task_board exposes repo
+  PASS  tools/list: task_board exposes the include_untagged switch
   PASS  tools/list: task_list_claimable exposes repo
+  PASS  tools/list: task_list_claimable exposes the include_untagged switch
   PASS  tools/list: task_list_handed_out exposes repo
-  PASS  MCP task_pending(repo=steadfaste) is scoped — seen=['probe-own', 'probe-untagged']
+  PASS  tools/list: task_list_handed_out exposes the include_untagged switch
+  PASS  MCP task_pending(repo=steadfaste) is scoped — seen=['probe-own']
+  PASS  MCP task_pending(repo=...) excludes untagged by default — seen=['probe-own']
+  PASS  MCP task_pending(include_untagged=true) adds untagged rows only — seen=['probe-own', 'probe-untagged']
   PASS  MCP task_pending() with no resolvable repo returns [] — text=[]
-  PASS  DEPLOYED engine is scoped — seen=['probe-own', 'probe-untagged']
-  PASS  DEPLOYED MCP task_pending is scoped — seen=['probe-own', 'probe-untagged']
+  PASS  DEPLOYED engine carries the STRICT scope (own repo only) — seen=['probe-own']
+  PASS  DEPLOYED MCP task_pending carries the STRICT scope — seen=['probe-own']
 
-20 passed, 0 failed
+29 passed, 0 failed

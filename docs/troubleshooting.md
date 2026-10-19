@@ -814,17 +814,27 @@ lock.
 
 Task QUERIES are repo-scoped (2026-10-14, reported by Titus): `task_pending`,
 `task_list`, `task_board`, `task_list_claimable` and `task_list_handed_out`
-return the CALLER's own repo plus untagged rows — never every repo's tasks —
-and an UNRESOLVABLE repo returns nothing at all. The repo resolves in this
+return the CALLER's own repo ONLY (strict since 2026-10-19) — never every repo's
+tasks — and an UNRESOLVABLE repo returns nothing at all. The repo resolves in this
 order: the `repo` argument → the repo the `governance-enforcer` injected for
 this session (it stamps `mcp__tasks__*` calls exactly as it does governance
 calls) → `CORTEX_SESSION_REPO` → the git repo at the process's cwd.
+
+**Two empty answers that are not the same problem:**
+
+- Your repo resolved and it genuinely has no rows — the store is meanwhile full
+  of UNTAGGED (pre-tag) rows, which a scoped query no longer includes. That is
+  the intended default, not a bug: ask for them with
+  `--include-untagged` / `{"include_untagged": true}`.
+- Your repo could NOT be resolved — the answer is `[]` and a `repo unknown —`
+  line goes to **stderr**.
 
 This is not an empty database. Diagnose it in that order:
 
 ```bash
 python3 ~/.hermes-cortex/scripts/task-db.py pending --repo <your-repo>   # explicit works?
 echo "$CORTEX_SESSION_REPO"; git -C "$PWD" rev-parse --show-toplevel    # a lever? a git cwd?
+python3 ~/.hermes-cortex/scripts/task-db.py list --status pending --repo <your-repo> --include-untagged
 python3 ~/.hermes-cortex/scripts/task-db.py list --status pending --repo ALL   # fleet view
 ```
 
@@ -833,6 +843,11 @@ An explicable empty answer is always accompanied by a `repo unknown —` line on
 restore parses). Scripts and crons that run outside a git checkout must name
 their repo (`--repo <label>`, or `--repo ALL` for an orchestrator fleet view) —
 the doctor's Task-DB probe does exactly that.
+
+**A task you just created is missing from your list** means it was minted before
+the repo tag: a task ADDED with no `--repo` now inherits the caller's resolved
+session repo, but rows written earlier stayed untagged — they show up under
+`--include-untagged`.
 
 ### `begin_change` says lock active but you want to start fresh
 
