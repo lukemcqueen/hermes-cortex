@@ -1199,7 +1199,7 @@ crons:
       The bus schema is NOT readable by this role (permission denied BY DESIGN) — use the bus API or hc.py, never raw SQL on bus.*.
       Status changes follow the legal arc pending -> in_progress -> completed; a direct pending -> completed is refused by the trigger.
 
-    1. task-db.py list --repo ALL --status pending --kind story, then task-db.py list --repo ALL --claimable. (--repo ALL is REQUIRED on every read — bare reads from the agent home return repo-unknown and an empty board.)
+    1. task-db.py list --repo ALL --status pending --kind story, then task-db.py list --repo ALL --claimable --limit 50. (--repo ALL is REQUIRED on every read — bare reads from the agent home return repo-unknown and an empty board. --limit 50 is REQUIRED too — the claimable view defaults to 10 rows and a short list under-reports the pool.)
     2. Decompose unsliced stories: task-db.py add '<slice>' --parent <story-id> --kind slice --scope fleet. Write executable plans into each slice.
     3. Dispatch urgent slices (priority 2-3) via bus TASK_REQUEST to capable workers.
     4. Do NOT claim intelligence-only work yourself (strategy/research/verification/case-study authoring are orchestrator work).

@@ -899,6 +899,19 @@ def cmd_verify(task_id: str, approve: bool, note: str | None = None,
         sys.exit(1)
 
 
+def _count_or_none(raw) -> int | None:
+    """Parse a COUNT(*) result, or None when the store gave no usable number.
+
+    None is the could-not-verify outcome: the caller must SAY it could not verify
+    rather than print a 0 the store never reported.
+    """
+    try:
+        first = str(raw).strip().splitlines()[0].strip()
+        return int(first)
+    except (AttributeError, IndexError, TypeError, ValueError):
+        return None
+
+
 def cmd_list_claimable(limit: int = 10, repo: str | None = None,
                        repo_path: str | None = None,
                        repo_slug: str | None = None,
@@ -916,26 +929,45 @@ def cmd_list_claimable(limit: int = 10, repo: str | None = None,
                              "(no claimable slices — repo unknown)", resolved):
         return
     _require_v4("list --claimable")
+    # The pool predicate is ONE string: the row query and the COUNT must agree, or
+    # the reported total is about a different set than the rows below it.
+    pool = ("t.status = 'pending' AND t.kind = 'slice' "
+            f"AND t.assignee IS NULL {_repo_clause(resolved, include_untagged)} ")
+    params = _repo_params(resolved)
     rows = psql(
         "SELECT t.id, t.priority, t.project, t.content, "
         "COALESCE(t.plan, '') "
         "FROM tasks.tasks t "
-        "WHERE t.status = 'pending' AND t.kind = 'slice' "
-        f"AND t.assignee IS NULL {_repo_clause(resolved, include_untagged)} "
+        f"WHERE {pool}"
         "ORDER BY t.priority DESC, t.status_changed_at ASC LIMIT ?;",
-        _repo_params(resolved) + [limit],
+        params + [limit],
     )
+    total = _count_or_none(
+        psql(f"SELECT count(*) FROM tasks.tasks t WHERE {pool};", params))
     if not rows.strip():
         print("(no claimable slices)")
         return
     print(f"{'ID':<10} {'PR':<3} {'PROJECT':<18} CONTENT")
+    shown = 0
     for line in rows.splitlines():
         parts = line.split("||")
         if len(parts) >= 4:
             print(f"{parts[0][:8]:<10} {parts[1]:<3} {parts[2][:16]:<18} "
                   f"{parts[3][:60]}")
+            shown += 1
         elif len(parts) >= 3:
             print(f"{parts[0][:8]:<10} {parts[1]:<3} {parts[2][:60]}")
+            shown += 1
+    # A short list must ANNOUNCE that it is short: the default limit is 10, and a
+    # bare row list was read as the pool size by the 2026-10-19 morning pass (its
+    # report quoted 10, the pool held 16 — the discrepancy that never surfaced).
+    if total is None:
+        print(f"claimable: COULD NOT VERIFY (count query returned no number; "
+              f"showing {shown})")
+    else:
+        print(f"claimable: {total} (showing {shown})")
+        if total > shown:
+            print(f"... {total - shown} more — raise --limit")
 
 
 def cmd_list_assigned(limit: int = 20, repo: str | None = None,
@@ -993,6 +1025,12 @@ def cmd_list_board(repo: str | None = None, repo_path: str | None = None,
     rows). An unknown repo prints the reason and queries NOTHING — a board that
     silently mixed repos is how agents adopted another repo's work. Orchestrator
     callers that genuinely want the fleet view pass repo="ALL".
+
+    The claimable bucket is the SAME predicate as `list --claimable` (`kind='slice'`
+    AND `assignee IS NULL`); every other pending row is labelled with the reason it
+    is not claimable, and a catch-all covers any kind that is neither slice nor
+    story. A pending row whose kind is unset used to land in the claimable bucket
+    (measured 2026-10-19: board 31 vs pool 16), so the board overstated the pool.
     """
     # Repo first: an unknown repo must cost NO database contact at all.
     resolved = resolve_repo_for_query("--repo", repo, repo_path, repo_slug)
@@ -1008,9 +1046,12 @@ def cmd_list_board(repo: str | None = None, repo_path: str | None = None,
     counts = psql(
         "SELECT CASE "
         "         WHEN t.status <> 'pending' THEN t.status "
+        "         WHEN t.kind = 'slice' AND t.assignee IS NULL "
+        "              THEN 'pending (claimable)' "
         "         WHEN t.kind = 'story' THEN 'pending (story, not claimable)' "
-        "         WHEN t.assignee IS NOT NULL THEN 'pending (assigned, not started)' "
-        "         ELSE 'pending (claimable)' "
+        "         WHEN t.kind = 'slice' AND t.assignee IS NOT NULL "
+        "              THEN 'pending (assigned, not started)' "
+        "         ELSE 'pending (not claimable, other kind)' "
         "       END AS bucket, count(*) "
         "FROM tasks.tasks t "
         "WHERE t.status IN ('pending','in_progress','review') "

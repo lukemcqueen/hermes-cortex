@@ -20,6 +20,7 @@ import io
 import json
 import os
 import platform
+import re
 from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 from types import SimpleNamespace
@@ -1015,4 +1016,82 @@ def test_restore_rejects_the_fleet_all_label(tmp_path):
         _out, err, exc = _run_stdin_capture(task_db.cmd_restore, str(path), True)
     assert exc is not None and exc.code == 2
     assert "ALL" in err or "invalid" in err
+
+
+# ── Pool-size honesty (backlog row 0f727dfd) ───────────────────────────────
+# Measured 2026-10-19: ONE task store produced three different "claimable"
+# numbers — the board said 31, `list --claimable` said 16 at --limit 50, and 10
+# at the default limit. The view is the pool a worker acts on, so its number must
+# be the pool's real size, and a short list must ANNOUNCE that it is short
+# (Axi principle 3/4: never silently omit, pre-compute the aggregate).
+
+_CLAIM_ROW = "{id:08d}||2||testrepo||slice content {id}||"
+
+
+def _claimable_capture(limit: int, total: int, shown: int):
+    """Drive cmd_list_claimable with psql stubbed: the row query returns `shown`
+    rows, the COUNT query returns `total`. No DB contact; repo and schema declared
+    so the verdict cannot depend on the invoker."""
+    rows = "\n".join(_CLAIM_ROW.format(id=i) for i in range(shown))
+
+    def fake_psql(sql, params=None, *args, **kwargs):
+        return str(total) if "count(*)" in sql.lower() else rows
+
+    with patch.object(task_db, "schema_version", return_value=9), \
+         patch.object(task_db, "psql", side_effect=fake_psql):
+        return _run_stdin_capture(
+            task_db.cmd_list_claimable, limit, None, None, REPO_SLUG)
+
+
+def test_claimable_view_reports_the_true_total_when_truncated():
+    out, err, exc = _claimable_capture(limit=10, total=16, shown=10)
+    assert exc is None, err
+    assert "claimable: 16" in out, out
+    assert "6 more" in out, out
+
+
+def test_claimable_view_is_quiet_when_the_pool_fits():
+    out, err, exc = _claimable_capture(limit=10, total=3, shown=3)
+    assert exc is None, err
+    assert "claimable: 3" in out, out
+    assert "more" not in out, out
+
+
+def _board_sql(bucket_rows: str = ""):
+    with patch.object(task_db, "schema_version", return_value=9), \
+         patch.object(task_db, "psql", return_value=bucket_rows) as mock_psql:
+        out, err, exc = _run_stdin_capture(
+            task_db.cmd_list_board, None, None, REPO_SLUG)
+    assert exc is None, err
+    joined = " ".join(str(c[0][0]) for c in mock_psql.call_args_list)
+    return joined, out
+
+
+def _bucket_body(sql: str) -> str:
+    """The board's bucket CASE, as SQL text."""
+    assert "CASE" in sql and "END AS bucket" in sql, \
+        f"the board's bucket CASE did not parse — fix the test's parser: {sql[:400]}"
+    return sql[sql.index("CASE"):sql.index("END AS bucket")]
+
+
+def test_board_puts_only_the_pool_predicate_in_the_claimable_bucket():
+    """A pending row of ANY other kind (kind unset, 'epic', anything that is not a
+    slice) is not in the v3 pool, so no such row may land in a bucket labelled
+    claimable. The board is what the morning and evening passes quote."""
+    sql, _out = _board_sql()
+    body = _bucket_body(sql)
+    m = re.search(r"WHEN (.+?)\s+THEN\s+'pending \(claimable\)'", body, re.S)
+    assert m, (
+        "no arm labelled 'pending (claimable)' — either the label consumers read "
+        f"(check-remediation-state.py) is gone, or more than one arm sets it: {body!r}")
+    cond = re.sub(r"\s+", " ", m.group(1)).strip()
+    assert "kind = 'slice'" in cond and "assignee IS NULL" in cond, (
+        f"the claimable arm is not the v3 pool predicate: {cond!r}")
+    assert len(re.findall(r"'pending \(claimable\)'", body)) == 1, (
+        f"more than one arm sets the claimable label: {body!r}")
+    m_else = re.search(r"ELSE\s+'([^']*)'", body, re.S)
+    assert m_else, ("the bucket CASE has no catch-all ELSE arm — a pending row whose "
+                    f"kind is neither slice nor story falls out of the board: {body!r}")
+    assert m_else.group(1) != "pending (claimable)", (
+        f"the ELSE arm labels every other kind claimable: {m_else.group(1)!r}")
 
