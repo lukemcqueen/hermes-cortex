@@ -173,14 +173,20 @@ class LoopEvaluator:
 
     # ── Decision Accuracy ───────────────────────────────────────────────────
 
-    def get_decision_accuracy(self) -> Dict[str, Any]:
-        """How often user feedback agreed with the loop decision."""
+    def get_decision_accuracy(self, days: int = 7) -> Dict[str, Any]:
+        """How often user feedback agreed with the loop decision.
+
+        Scoped to `days` so the accuracy printed in a "--days 7" report is the
+        7-day figure. Unscoped, a 7-day report printed all-time accuracy
+        (38.7% over 11,037 rows) instead of the 7-day 55.3% over 642 rows.
+        """
         rows = self.db.conn.execute("""
             SELECT decision, user_overrode, COUNT(*) AS count
             FROM loop_cycles
             WHERE user_overrode IS NOT NULL
+              AND timestamp >= datetime('now', '-' || ? || ' days')
             GROUP BY decision, user_overrode
-        """).fetchall()
+        """, (days,)).fetchall()
 
         total = sum(r["count"] for r in rows)
         if total == 0:
@@ -201,8 +207,25 @@ class LoopEvaluator:
 
     # ── Recommendations ──────────────────────────────────────────────────────
 
-    def get_threshold_recommendations(self) -> List[Dict[str, Any]]:
+    def _current_stop_threshold(self) -> float:
+        """Read the live STOP threshold from config, not a hardcoded literal.
+
+        The recommendation text used to print "composite ≥ 8.0" while the
+        runtime config carried 8.2, so the advice quoted a threshold the fleet
+        does not run.
+        """
+        try:
+            from loop_config import get_config
+            return float(get_config().get("thresholds", {}).get("stop", 8.0))
+        except Exception:
+            return 8.0
+
+    def get_threshold_recommendations(self, days: int = 7) -> List[Dict[str, Any]]:
         """Analyze user feedback to recommend threshold adjustments.
+
+        Scoped to `days`: an unscoped query mixes years of superseded feedback
+        into one average (measured: 6,485 overridden STOPs averaging 6.0 across
+        all time, vs 642 labelled rows in the 7-day window).
 
         Returns structured recommendations with 'proposed_value' for auto-apply.
         """
@@ -213,19 +236,26 @@ class LoopEvaluator:
             SELECT composite, user_overrode
             FROM loop_cycles
             WHERE decision = 'STOP ✓' AND user_overrode = 1
-        """).fetchall()
+              AND timestamp >= datetime('now', '-' || ? || ' days')
+        """, (days,)).fetchall()
 
         if overridden_stops:
             avg_composite = round(sum(r["composite"] for r in overridden_stops) / len(overridden_stops), 2)
             proposed = round(min(9.0, avg_composite + 0.5), 1)
+            current = self._current_stop_threshold()
+            # Say what the arithmetic does. avg+0.5 lands BELOW a healthy
+            # current threshold (measured: 6.0+0.5=6.5 vs current 8.2), so
+            # calling that "raising" contradicted the proposed value.
+            direction = "raising" if proposed > current else "lowering"
             recs.append({
-                "threshold": "STOP (composite ≥ 8.0)",
+                "threshold": f"STOP (composite ≥ {current})",
                 "config_key": "stop",
                 "issue": f"{len(overridden_stops)} STOP decisions were overridden by user",
                 "avg_composite_when_overridden": avg_composite,
+                "current_value": current,
                 "proposed_value": proposed,
-                "recommendation": f"Consider raising STOP threshold to {proposed} "
-                                  f"or adding quality gate (quality ≥ 6.0)",
+                "recommendation": f"Consider {direction} STOP threshold to {proposed} "
+                                  f"(currently {current}) or adding quality gate (quality ≥ 6.0)",
                 "confidence": "medium" if len(overridden_stops) >= 3 else "low",
             })
 
@@ -234,7 +264,8 @@ class LoopEvaluator:
             SELECT composite, user_overrode
             FROM loop_cycles
             WHERE decision LIKE 'MOVE ON%' AND user_overrode = 1
-        """).fetchall()
+              AND timestamp >= datetime('now', '-' || ? || ' days')
+        """, (days,)).fetchall()
 
         if moved_on_but_failed:
             avg_comp = round(sum(r["composite"] for r in moved_on_but_failed) / len(moved_on_but_failed), 2)
@@ -271,14 +302,21 @@ class LoopEvaluator:
 
         return recs
 
-    def get_weight_recommendations(self) -> List[Dict[str, Any]]:
-        """Analyze which score dimensions correlate best with user satisfaction."""
+    def get_weight_recommendations(self, days: int = 7) -> List[Dict[str, Any]]:
+        """Analyze which score dimensions correlate best with user satisfaction.
+
+        Scoped to `days` for the same reason as get_decision_accuracy: unscoped,
+        a 7-day report derived weight advice from every labelled row ever
+        recorded (11,037), so months of superseded feedback set the fleet's
+        scoring weights.
+        """
         rows = self.db.conn.execute("""
             SELECT completeness, quality, progress, composite,
                    CASE WHEN user_overrode = 0 THEN 1 ELSE 0 END AS accepted
             FROM loop_cycles
             WHERE user_overrode IS NOT NULL
-        """).fetchall()
+              AND timestamp >= datetime('now', '-' || ? || ' days')
+        """, (days,)).fetchall()
 
         if len(rows) < 5:
             return []  # not enough data
@@ -348,9 +386,9 @@ class LoopEvaluator:
         trends = self.get_score_trends(days)
         hotspots = self.get_no_progress_hotspots(days)
         spinning = self.get_spinning_tasks(days)
-        accuracy = self.get_decision_accuracy()
-        threshold_recs = self.get_threshold_recommendations()
-        weight_recs = self.get_weight_recommendations()
+        accuracy = self.get_decision_accuracy(days)
+        threshold_recs = self.get_threshold_recommendations(days)
+        weight_recs = self.get_weight_recommendations(days)
 
         period = f"last {days} days" if days != 365 else "all time"
 
@@ -483,7 +521,7 @@ class LoopEvaluator:
         evidence_count = 0
 
         # Structured threshold recommendations (with config_key + proposed_value)
-        threshold_recs = self.get_threshold_recommendations()
+        threshold_recs = self.get_threshold_recommendations(days)
         for r in threshold_recs:
             ck = r.get("config_key", "")
             pv = r.get("proposed_value")
@@ -507,7 +545,7 @@ class LoopEvaluator:
                     confidence += 0.3 if conf == "medium" else 0.15
 
         # Structured weight recommendations (with recommended_weight)
-        weight_recs = self.get_weight_recommendations()
+        weight_recs = self.get_weight_recommendations(days)
         for r in weight_recs:
             w = r.get("recommended_weight")
             if w is not None:
@@ -556,9 +594,9 @@ if __name__ == "__main__":
             "trends": ev.get_score_trends(days),
             "hotspots": ev.get_no_progress_hotspots(days),
             "spinning": ev.get_spinning_tasks(days),
-            "accuracy": ev.get_decision_accuracy(),
-            "threshold_recs": ev.get_threshold_recommendations(),
-            "weight_recs": ev.get_weight_recommendations(),
+            "accuracy": ev.get_decision_accuracy(days),
+            "threshold_recs": ev.get_threshold_recommendations(days),
+            "weight_recs": ev.get_weight_recommendations(days),
             "config_patch": ev.generate_config_patch(),
         }
         print(json.dumps(result, indent=2))
