@@ -38,6 +38,18 @@ logs/
 *.log
 *.pid
 
+# pi (coding-agent) PROJECT-scoped state. pi keeps user scope in ~/.pi/agent, but for a TRUSTED
+# PROJECT it also writes .pi/settings.json and .pi/mcp.json INSIDE the checkout, plus its own
+# session/checkpoint state. Hermes keeps such state in ~/.hermes, so this class of stray file is
+# pi-only — and with several pi agents working in ONE repo, each one's .pi/ files land in the tree
+# and the first agent to run a broad add or `git commit -a` sweeps up files it never touched
+# (measured shape: "a sweep of the peers files when the first one tries to commit", titus,
+# 2026-10-18). Ignored so no commit can ever carry another session's agent state.
+#
+# NOTE: this does NOT stop a broad add from sweeping a peer's SOURCE edits — that is the
+# commit-by-pathspec rule, and no .gitignore can enforce it.
+.pi/
+
 # Auth secrets
 .htpasswd
 
