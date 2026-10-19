@@ -1057,6 +1057,24 @@ def test_claimable_view_is_quiet_when_the_pool_fits():
     assert "more" not in out, out
 
 
+def test_claimable_view_says_could_not_verify_when_the_count_is_unusable():
+    """A count the store did not return is NOT a zero: the view must say it could
+    not verify rather than print a number nobody measured (a check that cannot run
+    is its own outcome — never a pass)."""
+    rows = "\n".join(_CLAIM_ROW.format(id=i) for i in range(2))
+
+    def fake_psql(sql, params=None, *args, **kwargs):
+        return "" if "count(*)" in sql.lower() else rows
+
+    with patch.object(task_db, "schema_version", return_value=9), \
+         patch.object(task_db, "psql", side_effect=fake_psql):
+        out, err, exc = _run_stdin_capture(
+            task_db.cmd_list_claimable, 10, None, None, REPO_SLUG)
+    assert exc is None, err
+    assert "COULD NOT VERIFY" in out, out
+    assert "claimable: 0" not in out, out
+
+
 def _board_sql(bucket_rows: str = ""):
     with patch.object(task_db, "schema_version", return_value=9), \
          patch.object(task_db, "psql", return_value=bucket_rows) as mock_psql:

@@ -1,7 +1,7 @@
 
 ===== 0) revisions this evidence compares =====
 $ git -C ~/hermes-cortex log -1 --format=repo tip   %H %s
-repo tip   d35a1c3aac49e015a3bb94c15ea1e891e7c11329 fix(task-db): report the true claimable-pool size, stop labelling other kinds claimable
+repo tip   b15ecadac168d87c222c8c2b206aa8788f922507 docs(evidence): pool-count truth transcript for cycle 13372
 rc=0
 $ git -C ~/.hermes/cache/scratch/base-10172740 log -1 --format=base tree  %H %s
 base tree  10172740fdb55fa30f4381e6d5c559468d34bf6c fix(doctor): the multi-session check must run on every doctor invocation
@@ -16,9 +16,9 @@ platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
 rootdir: ~/.hermes/cache/scratch/base-10172740
 configfile: pytest.ini
 plugins: anyio-4.15.1
-collected 76 items / 73 deselected / 3 selected
+collected 77 items / 73 deselected / 4 selected
 
-../.hermes/cache/scratch/base-10172740/tests/test_task_db_unit.py FFF    [100%]
+../.hermes/cache/scratch/base-10172740/tests/test_task_db_unit.py FFFF   [100%]
 
 =================================== FAILURES ===================================
 __________ test_claimable_view_reports_the_true_total_when_truncated ___________
@@ -46,16 +46,25 @@ E     00000001   2   testrepo           slice content 1
 E     00000002   2   testrepo           slice content 2
 E     
 E   assert 'claimable: 3' in 'ID         PR  PROJECT            CONTENT\n00000000   2   testrepo           slice content 0\n00000001   2   testrepo           slice content 1\n00000002   2   testrepo           slice content 2\n'
+_____ test_claimable_view_says_could_not_verify_when_the_count_is_unusable _____
+../.hermes/cache/scratch/base-10172740/tests/test_task_db_unit.py:1074: in test_claimable_view_says_could_not_verify_when_the_count_is_unusable
+    assert "COULD NOT VERIFY" in out, out
+E   AssertionError: ID         PR  PROJECT            CONTENT
+E     00000000   2   testrepo           slice content 0
+E     00000001   2   testrepo           slice content 1
+E     
+E   assert 'COULD NOT VERIFY' in 'ID         PR  PROJECT            CONTENT\n00000000   2   testrepo           slice content 0\n00000001   2   testrepo           slice content 1\n'
 _______ test_board_puts_only_the_pool_predicate_in_the_claimable_bucket ________
-../.hermes/cache/scratch/base-10172740/tests/test_task_db_unit.py:1084: in test_board_puts_only_the_pool_predicate_in_the_claimable_bucket
+../.hermes/cache/scratch/base-10172740/tests/test_task_db_unit.py:1102: in test_board_puts_only_the_pool_predicate_in_the_claimable_bucket
     assert m, (
 E   AssertionError: no arm labelled 'pending (claimable)' — either the label consumers read (check-remediation-state.py) is gone, or more than one arm sets it: "CASE          WHEN t.status <> 'pending' THEN t.status          WHEN t.kind = 'story' THEN 'pending (story, not claimable)'          WHEN t.assignee IS NOT NULL THEN 'pending (assigned, not started)'          ELSE 'pending (claimable)'        "
 E   assert None
 =========================== short test summary info ============================
 FAILED ../.hermes/cache/scratch/base-10172740/tests/test_task_db_unit.py::test_claimable_view_reports_the_true_total_when_truncated
 FAILED ../.hermes/cache/scratch/base-10172740/tests/test_task_db_unit.py::test_claimable_view_is_quiet_when_the_pool_fits
+FAILED ../.hermes/cache/scratch/base-10172740/tests/test_task_db_unit.py::test_claimable_view_says_could_not_verify_when_the_count_is_unusable
 FAILED ../.hermes/cache/scratch/base-10172740/tests/test_task_db_unit.py::test_board_puts_only_the_pool_predicate_in_the_claimable_bucket
-======================= 3 failed, 73 deselected in 0.41s =======================
+======================= 4 failed, 73 deselected in 0.44s =======================
 rc=1
 rc=1 (pytest's own, measured before the filter)
 
@@ -66,11 +75,11 @@ platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
 rootdir: ~/hermes-cortex
 configfile: pytest.ini
 plugins: anyio-4.15.1
-collected 76 items / 73 deselected / 3 selected
+collected 77 items / 73 deselected / 4 selected
 
-tests/test_task_db_unit.py ...                                           [100%]
+tests/test_task_db_unit.py ....                                          [100%]
 
-======================= 3 passed, 73 deselected in 0.13s =======================
+======================= 4 passed, 73 deselected in 0.29s =======================
 rc=0
 rc=0 (pytest's own, measured before the filter)
 
@@ -81,12 +90,12 @@ platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
 rootdir: ~/hermes-cortex
 configfile: pytest.ini
 plugins: anyio-4.15.1
-collected 76 items
+collected 77 items
 
-tests/test_task_db_unit.py ............................................. [ 59%]
-...............................                                          [100%]
+tests/test_task_db_unit.py ............................................. [ 58%]
+................................                                         [100%]
 
-============================== 76 passed in 1.33s ==============================
+============================== 77 passed in 1.38s ==============================
 rc=0
 rc=0 (pytest's own, measured before the filter)
 
@@ -104,7 +113,7 @@ tests/test_task_query_repo_scope.py .................................    [ 75%]
 tests/test_task_mcp_v3.py .........                                      [ 92%]
 tests/test_orch_task_board_digest.py ....                                [100%]
 
-============================== 53 passed in 1.53s ==============================
+============================== 53 passed in 1.58s ==============================
 rc=0
 rc=0 (pytest's own, measured before the filter)
 
@@ -163,7 +172,7 @@ E   assert None
 =========================== short test summary info ============================
 FAILED ../.hermes/cache/scratch/base-10172740/tests/test_task_queue_visibility.py::test_a_parked_row_can_return_to_the_pull_pool
 FAILED ../.hermes/cache/scratch/base-10172740/tests/test_task_queue_visibility.py::test_the_parked_arc_guard_would_notice_a_missing_arc
-========================= 2 failed, 10 passed in 0.16s =========================
+========================= 2 failed, 10 passed in 0.15s =========================
 rc=1
 rc=1
 VERDICT: the same two tests fail identically on both sides (REPRODUCED) —
@@ -227,22 +236,22 @@ $ python3 ~/.hermes-cortex/scripts/adversarial-verify.py --file tests/test_task_
 ── tests/test_task_db_unit.py ──
    Level: A4
    Attack Surface:
-     ⚠️ Inputs: 92 item(s)
-     ⚠️ State: 93 item(s)
+     ⚠️ Inputs: 94 item(s)
+     ⚠️ State: 94 item(s)
      ⚠️ Dependencies: 15 item(s)
      ⚠️ Concurrency: 1 item(s)
-   Functions: 86
+   Functions: 88
      - _load(name, path)
      - _run_stdin_capture(fn, *args, **kwargs)
      - test_build_query_quote_doubling()
      - test_build_query_params_types()
      - test_build_query_param_count_mismatch()
-     ... and 81 more
-   Fuzz inputs generated: 326
+     ... and 83 more
+   Fuzz inputs generated: 362
 
-📊 Summary: 1 file(s), 31 finding(s)
+📊 Summary: 1 file(s), 32 finding(s)
    🟡 Medium: 3
-   ⚪ Info: 28
+   ⚪ Info: 29
 
 🟡 Medium findings — fix before shipping.
 
@@ -257,7 +266,7 @@ $ python3 ~/.hermes-cortex/scripts/cortex-doctor.py --quiet
 [mcp-server] DEBUG: HTTPError 401 for Bearer auth — trying Basic fallback
 [mcp-server] DEBUG: HTTPError 401 for Bearer auth — trying Basic fallback
 
-━━━ Hermes Cortex Doctor ━━━  (20:42:38)
+━━━ Hermes Cortex Doctor ━━━  (20:43:55)
 
   ✅ Repo branch
   ⚠️  Repo clean
