@@ -35,12 +35,22 @@ fi
 REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || exit 0
 [ -n "$REPO_ROOT" ] || exit 0
 
-# The live lock for THIS repo. Several locks can be live at once (one per repo), so the match is
-# on the RESOLVED repo path, never on the file name or the slug alone.
+# The live lock for THIS repo. Several locks can be live at once (one per repo, and — the case that
+# broke attribution — TWO sessions in ONE repo), so the match is on the RESOLVED repo path, never on
+# the file name or the slug alone.
+#
+# FAIL CLOSED ON AMBIGUITY: with two live locks for this repo the hook cannot know which session is
+# committing — git carries no session identity, and picking one of them is a WRONG attribution, not a
+# guess: every commit gets stamped with the same id, so the close's session filter (which excludes a
+# DIFFERENT id) becomes inert, and the OTHER session could read these commits as its own. Measured
+# 2026-10-19 on a host running two sessions in one repo, where five consecutive commits all carried
+# the same trailer. So: exactly ONE matching lock ⇒ stamp it; zero or several ⇒ write NOTHING, and
+# let the review window fail closed (a missing trailer keeps a commit IN scope).
 SESSION="$(python3 - "$STATE_DIR" "$REPO_ROOT" <<'PY' 2>/dev/null || true
 import glob, json, os, sys
 
 state_dir, repo = sys.argv[1], os.path.realpath(sys.argv[2])
+matches = set()
 for path in sorted(glob.glob(os.path.join(state_dir, ".governance-*.json"))):
     try:
         with open(path, encoding="utf-8", errors="replace") as fh:
@@ -54,8 +64,9 @@ for path in sorted(glob.glob(os.path.join(state_dir, ".governance-*.json"))):
         continue
     session = str(rec.get("session_id") or "").strip()
     if session:
-        print(session)
-        break
+        matches.add(session)
+if len(matches) == 1:
+    print(matches.pop())
 PY
 )"
 SESSION="$(printf '%s' "$SESSION" | sed -n '1p' | tr -d '[:space:]')"

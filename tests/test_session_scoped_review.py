@@ -251,3 +251,57 @@ def test_hook_never_blocks_a_commit(tmp_path):
                        env={"PATH": "/usr/bin:/bin", "HOME": str(tmp_path / "home"),
                             "CORTEX_DEPLOY_HOME": str(deploy_home)})
     assert r.returncode == 0, r.stderr
+
+
+def test_hook_writes_nothing_when_two_locks_share_this_repo(tmp_path):
+    """TWO live locks for ONE repo ⇒ NO trailer. A pick would be a wrong attribution.
+
+    Measured 2026-10-19 (two sessions in one repo): every commit carried the SAME id, so the close's
+    session filter — which excludes a DIFFERENT id — went inert, and each session could read the
+    other's commits as its own. Silence is the honest answer: the window then fails closed.
+    """
+    repo = _init_repo(tmp_path)
+    deploy_home = tmp_path / "deploy"
+    state = deploy_home / "state"
+    state.mkdir(parents=True, exist_ok=True)
+    for name, sid in (("a", MY_SESSION), ("b", OTHER_SESSION)):
+        (state / f".governance-{name}.json").write_text(json.dumps({
+            "session_id": sid, "repo_path": str(repo), "repo_slug": repo.name,
+            "started_at": "2026-10-19T04:30:21Z",
+        }))
+    msg = tmp_path / "COMMIT_EDITMSG"
+    msg.write_text("feat: something")
+    r = subprocess.run(["bash", str(HOOK), str(msg), "message"], cwd=str(repo),
+                       capture_output=True, text=True,
+                       env={"PATH": "/usr/bin:/bin", "HOME": str(tmp_path / "home"),
+                            "CORTEX_DEPLOY_HOME": str(deploy_home)})
+    assert r.returncode == 0, r.stderr
+    assert msg.read_text() == "feat: something", "an ambiguous repo must not be stamped at all"
+
+
+def test_hook_ignores_a_lock_for_a_different_repo(tmp_path):
+    """A lock for another repo is not a match — the single match is still the right one."""
+    repo = _init_repo(tmp_path)
+    other = tmp_path / "elsewhere"
+    other.mkdir()
+    deploy_home = tmp_path / "deploy"
+    state = deploy_home / "state"
+    state.mkdir(parents=True, exist_ok=True)
+    (state / ".governance-other.json").write_text(json.dumps({
+        "session_id": OTHER_SESSION, "repo_path": str(other), "repo_slug": "elsewhere",
+        "started_at": "2026-10-19T04:30:21Z",
+    }))
+    (state / ".governance-mine.json").write_text(json.dumps({
+        "session_id": MY_SESSION, "repo_path": str(repo), "repo_slug": repo.name,
+        "started_at": "2026-10-19T04:30:21Z",
+    }))
+    msg = tmp_path / "COMMIT_EDITMSG"
+    msg.write_text("feat: something")
+    r = subprocess.run(["bash", str(HOOK), str(msg), "message"], cwd=str(repo),
+                       capture_output=True, text=True,
+                       env={"PATH": "/usr/bin:/bin", "HOME": str(tmp_path / "home"),
+                            "CORTEX_DEPLOY_HOME": str(deploy_home)})
+    assert r.returncode == 0, r.stderr
+    body = msg.read_text()
+    assert f"Cortex-Session: {MY_SESSION}" in body
+    assert OTHER_SESSION not in body
