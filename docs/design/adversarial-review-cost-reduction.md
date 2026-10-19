@@ -1,6 +1,11 @@
 # Adversarial-review cost reduction — plan
 
-**Status: PLAN ONLY. Nothing here is implemented.** Cycle: `adversarial-review-cost-plan`
+**Status: A1 + A2 of Lever A are IMPLEMENTED** (cycle `session-scoped-review-window`, 2026-10-19):
+a `Cortex-Session:` commit trailer written by the `prepare-commit-msg` hook from the live lock,
+and a close-review scope that excludes commits whose trailer names another session (fail-closed:
+no trailer / ambiguous / no session id ⇒ the commit stays in scope). Levers B (diff-derived
+tiers) and D (bounded close) below remain PLAN ONLY.
+Cycle: `adversarial-review-cost-plan`
 (12792). Operator: Luke, 2026-10-18. Scope agreed: levers **A + B + C**.
 
 ## 1. The problem, measured

@@ -460,6 +460,7 @@ register "ops/scripts/pre-commit-score"            "${CORTEX_DEPLOY_HOME}/script
 # this is missing, so an unregistered verifier would block every commit.
 register "ops/scripts/hc-reflexion-check.py"       "${CORTEX_DEPLOY_HOME}/scripts/hc-reflexion-check.py"
 register "ops/scripts/post-commit-audit" "${CORTEX_DEPLOY_HOME}/scripts/post-commit-audit"
+register "ops/scripts/prepare-commit-msg-session" "${CORTEX_DEPLOY_HOME}/scripts/prepare-commit-msg-session"
 register "ops/scripts/pre-push-pull" "${CORTEX_DEPLOY_HOME}/scripts/pre-push-pull"
 register "ops/scripts/manage/agent-no-verify-audit.py" "${CORTEX_DEPLOY_HOME}/scripts/manage/agent-no-verify-audit.py"
 register "ops/scripts/manage/agent-governance-auditor.py"            "${CORTEX_DEPLOY_HOME}/scripts/agent-governance-auditor.py"
@@ -2609,8 +2610,8 @@ refresh_pinned_hook_files() {
   local hook_file hook_src
 
   # hook name → deployed source script
-  local -a hook_names=(pre-commit pre-push post-commit post-push)
-  local -a hook_srcs=(pre-commit-score pre-push-pull post-commit-audit post-push-audit)
+  local -a hook_names=(pre-commit pre-push post-commit post-push prepare-commit-msg)
+  local -a hook_srcs=(pre-commit-score pre-push-pull post-commit-audit post-push-audit prepare-commit-msg-session)
   local i
 
   for i in "${!hook_names[@]}"; do
@@ -2785,6 +2786,48 @@ install_precommit_hook() {
       info "Symlinked shared post-push hook → ${postpush_src/$HOME/\\~}"
     fi
   fi
+
+  # Deploy prepare-commit-msg-session to shared hooks dir (symlink to prevent drift).
+  # A1 of the session-scoped review window: it stamps each commit with the session that made
+  # it (read from the LIVE lock), which is the only discriminator between two sessions of one
+  # agent sharing a git identity. NEVER blocks a commit — the hook exits 0 on every path.
+  local prepmsg_src="${CORTEX_DEPLOY_HOME}/scripts/prepare-commit-msg-session"
+  if [[ -f "$prepmsg_src" ]]; then
+    local prepmsg_dest="${hooks_dir}/prepare-commit-msg"
+    if [[ -L "$prepmsg_dest" ]] && [[ "$(readlink "$prepmsg_dest")" == "$prepmsg_src" ]]; then
+      : # symlink already correct
+    else
+      # hooks/ itself carries chattr +i (it is one of hermes-plugin-lock's targets), so creating
+      # a NEW symlink needs the sanctioned unlock window. The existing four need none — their
+      # symlinks are already correct — which is why this only shows up for a new hook.
+      # Resolve the helper the way the rest of the deploy does: the SYSTEM copy first (it is the
+      # only path in sudoers NOPASSWD — the deploy-home copy needs a password and would fail
+      # silently), then the deploy-home copy.
+      local _prepmsg_helper=""
+      _prepmsg_helper="$(command -v hermes-plugin-lock 2>/dev/null || true)"
+      if [[ -z "$_prepmsg_helper" ]]; then
+        _prepmsg_helper="${CORTEX_DEPLOY_HOME}/scripts/hermes-plugin-lock"
+      fi
+      local _prepmsg_lp=""
+      if [[ "$(uname -s)" != "Darwin" ]] && [[ -n "$_prepmsg_helper" ]]; then
+        _prepmsg_lp="sudo -n"
+      fi
+      rm -f "$prepmsg_dest" 2>/dev/null || true
+      if ! ln -sf "$prepmsg_src" "$prepmsg_dest" 2>/dev/null; then
+        ${_prepmsg_lp} "$_prepmsg_helper" unlock --cortex-update 2>/dev/null || true
+        rm -f "$prepmsg_dest" 2>/dev/null || true
+        ln -sf "$prepmsg_src" "$prepmsg_dest" 2>/dev/null \
+          || warn "  Could not symlink the prepare-commit-msg hook (hooks/ immutable?) — run: ${_prepmsg_lp} ${_prepmsg_helper} unlock --cortex-update"
+        # Relock unconditionally: a leftover unlocked hooks dir is worse than a missing symlink.
+        ${_prepmsg_lp} "$_prepmsg_helper" lock 2>/dev/null || true
+      fi
+      chmod +x "$prepmsg_src"
+      info "Symlinked shared prepare-commit-msg hook → ${prepmsg_src/$HOME/\\~}"
+    fi
+  fi
+
+  # Pinned-repo hooks carry no prepare-commit-msg unless the refresh list includes it, and a
+  # pinned repo's commits then never receive a trailer (the window cannot be session-scoped).
 
   # Set global hooksPath — this makes ALL git repos on this machine
   # use the shared hooks dir. Per-repo .git/hooks/ is overridden.

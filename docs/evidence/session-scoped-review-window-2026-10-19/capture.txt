@@ -1,0 +1,45 @@
+=== session-scoped review window — evidence (cycle 13355) ===
+date: 2026-10-19T17:19:04+09:00
+repo: ~/hermes-cortex
+
+--- 1. hermetic assertions (real git repos, tmp_path) ---
+tests/test_session_scoped_review.py ...............                      [100%]
+
+======================== 15 passed in 65.57s (0:01:05) =========================
+
+--- 2. the DEPLOYED hook ---
+lrwxrwxrwx 1 esther esther 62 Oct 19 17:17 ~/.hermes-cortex/hooks/prepare-commit-msg -> ~/.hermes-cortex/scripts/prepare-commit-msg-session
+sha256 (deployed)  3e9c5b45fcb9f042
+sha256 (repo src)  3e9c5b45fcb9f042
+hooks dir immutable: ----i---------e-------
+
+--- 3. A1 LIVE: the trailer on this cycle's commit ---
+dfce9e45645ea9a4ff8faeb56890e0b401f4d40d docs(evidence): capture hermes update stable-channel timeout diagnosis
+11808f3320db7a11dcb8dbc189fef4cd25169013 fix(tasks): restore preserves the columns it does not carry; retag 18 rows
+3c63e879f82d662907bdc2b6220bef8826292913 docs(tasks): troubleshooting entry, evidence, regenerated repro (cycle 13347)
+HEAD trailer: (none on HEAD)
+second-parent check — trailer count in HEAD body: 0
+
+--- 4. A2 LIVE: which commits the close scope would exclude ---
+own session id: <not read from state/.governance-session>
+window (author=this host's identity, last 10):
+  dfce9e45 docs(evidence): capture hermes update stable-channel timeout diagnosis  [author=esther-agent]
+  11808f33 fix(tasks): restore preserves the columns it does not carry; retag 18 rows  [author=esther-agent]
+  3c63e879 docs(tasks): troubleshooting entry, evidence, regenerated repro (cycle 13347)  [author=esther-agent]
+  18e904ed fix(tasks): default task queries to the caller's OWN repo (strict scope)  [author=esther-agent]
+  06460cea chore(gitignore): ignore pi's PROJECT-scoped state so a commit cannot sweep a peer's agent files  [author=esther-agent]
+  4af65225 test(loop-gov): run the session-release test that nothing was running  [author=esther-agent]
+  71fd4648 skills: sync loop-governance report-window and direction-word lessons from deployed copy  [author=esther-agent]
+  8d3a5b42 loop-evaluator-test: drop the signature fallback, parse the sweep with AST  [author=esther-agent]
+  83575b31 loop-evaluator: scope accuracy + threshold recs to the report window  [author=esther-agent]
+  82d88d85 auto: block 62 suspect IPs [pipeline]  [author=joseph-agent]
+trailers present in window:
+dfce9e45 docs(evidence): capture hermes update stable-channel timeout diagnosis	  	11808f33 fix(tasks): restore preserves the columns it does not carry; retag 18 rows
+  	3c63e879 docs(tasks): troubleshooting entry, evidence, regenerated repro (cycle 13347)	  
+18e904ed fix(tasks): default task queries to the caller's OWN repo (strict scope)	  	06460cea chore(gitignore): ignore pi's PROJECT-scoped state so a commit cannot sweep a peer's agent files
+  	4af65225 test(loop-gov): run the session-release test that nothing was running	  
+71fd4648 skills: sync loop-governance report-window and direction-word lessons from deployed copy	  	8d3a5b42 loop-evaluator-test: drop the signature fallback, parse the sweep with AST
+  	83575b31 loop-evaluator: scope accuracy + threshold recs to the report window	  
+82d88d85 auto: block 62 suspect IPs [pipeline]	  	
+
+=== end ===

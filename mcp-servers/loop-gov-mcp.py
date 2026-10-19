@@ -1949,7 +1949,7 @@ def _complete_push_range_blobs(lock: dict, cycle: dict, cx: Optional[dict] = Non
     # per-blob calls get the SAME context the whole-range call used — dropping it
     # changed how the reviewer is invoked (review finding ADV-12726-1).
     cx = cx or _complexity(repo, lock.get("started_at", ""),
-                           lock.get("dirty_at_start"))
+                           lock.get("dirty_at_start"), lock.get("session_id", ""))
     ctx = {
         "sid": lock.get("session_id", ""),
         "author": author,
@@ -4187,6 +4187,105 @@ def _authored_commits(repo: Path, base: str, author: str) -> list:
     return [ln.strip() for ln in out.splitlines() if ln.strip()]
 
 
+#: Commit trailer that names the SESSION that made a commit. Written by the
+#: `prepare-commit-msg` hook from the live governance lock (never from an env var), and the only
+#: discriminator between two sessions of one agent on one host — they share a git identity.
+CORTEX_SESSION_TRAILER = "Cortex-Session"
+
+#: How many of an excluded commit's file names the disclosure lists before summarising the rest.
+#: Bounded because a peer's commit can touch hundreds of files, and the block is DISCLOSURE —
+#: the names are what a reader needs, and the count is never silently truncated.
+PEER_SESSION_FILES_SHOWN = 20
+
+
+def _commit_session(repo: Path, sha: str) -> str:
+    """The commit's ``Cortex-Session:`` trailer, or "" when absent or AMBIGUOUS.
+
+    The trailer is written by the `prepare-commit-msg` hook from the LIVE governance lock — not
+    from any env var an agent can export — so it is the one discriminator that separates two
+    SESSIONS of the same agent on one host (both commit under one git identity, so the author
+    filter cannot).
+
+    Ambiguity returns "" (unknown): two DIFFERENT values, or a malformed line, is a forged or
+    corrupted trailer, and a guess here would let a worker drop a peer's commit from its window.
+    """
+    if not sha:
+        return ""
+    body = _git_capture(repo, "log", "-1", "--format=%B", sha)
+    values = []
+    for line in (body or "").splitlines():
+        stripped = line.strip()
+        if stripped.lower().startswith(CORTEX_SESSION_TRAILER.lower() + ":"):
+            values.append(stripped.split(":", 1)[1].strip())
+    if len(set(values)) != 1:
+        return ""
+    return values[0]
+
+
+def _excluded_session_commits(repo: Path, base: str, my_session_id: str) -> list:
+    """SHAs in ``base..HEAD`` that belong to a DIFFERENT session. Fail-closed: [] on any doubt.
+
+    This is the narrowing that ``_authored_commits`` cannot do: one host has ONE git identity, so
+    a peer session's commit satisfies the author filter and its diff otherwise lands in my
+    material, my Diff stat and my tier (Titus, 2026-10-19: a close refused on
+    `scripts/archive/…` that the session never touched).
+
+    Only a trailer naming a DIFFERENT session excludes. No trailer (ungoverned committer — a cron,
+    or a session with no lock), an ambiguous trailer, an empty own session id, or any git error
+    leaves the commit IN SCOPE, because the alternative is a worker silently dropping work.
+    """
+    if not base or base == "HEAD" or not my_session_id:
+        return []
+    shas = [s for s in _git_capture(repo, "log", "--format=%H", base + "..HEAD").split() if s]
+    excluded = []
+    for sha in shas:
+        other = _commit_session(repo, sha)
+        if other and other != my_session_id:
+            excluded.append(sha)
+    return excluded
+
+
+def _own_commit_shas(repo: Path, base: str, author: str,
+                     my_session_id: str = "") -> list:
+    """This cycle's own commits: the agent's, minus a peer SESSION's.
+
+    Returns [] when the agent's identity does not resolve — the caller then keeps the whole-window
+    behaviour (never a silent narrowing without a positive identity).
+    """
+    owned = _authored_commits(repo, base, author)
+    if not owned:
+        return []
+    excluded = set(_excluded_session_commits(repo, base, my_session_id))
+    return [s for s in owned if s not in excluded]
+
+
+def _peer_session_block(repo: Path, shas: list) -> str:
+    """Disclosure for commits EXCLUDED because their trailer names another session.
+
+    Named, with their subject line, and deliberately WITHOUT their diff: these are another
+    session's work. Presenting the diff made a peer's enforcement edits read as this worker's
+    (the reported refusal), and omitting them entirely would hide what the window contains.
+    """
+    if not shas:
+        return ""
+    lines = ["\n[OTHER SESSIONS' COMMITS in this window — DISCLOSED, NOT REVIEWED. They carry a "
+             "Cortex-Session trailer naming a different session, so they are outside the audited "
+             "change; their diffs are omitted by design.]\n"]
+    for sha in shas:
+        subject = _git_capture(repo, "log", "-1", "--format=%h %s", sha).strip()
+        session = _commit_session(repo, sha)
+        lines.append(f"  {subject}   [Cortex-Session: {session}]\n")
+        # The FILE NAMES, so a reader can see what was excluded — never the diff.
+        names = [p for p in _git_capture(repo, "show", "--name-only", "--format=",
+                                         sha).splitlines() if p.strip()]
+        for path in names[:PEER_SESSION_FILES_SHOWN]:
+            lines.append(f"      {path}\n")
+        if len(names) > PEER_SESSION_FILES_SHOWN:
+            lines.append(f"      … {len(names) - PEER_SESSION_FILES_SHOWN} more file(s) "
+                         f"omitted from this list\n")
+    return "".join(lines)
+
+
 def _provenance_block(repo: Path, base: str, own_author: str) -> str:
     """Authorship disclosure appended to the reviewed diff — never narrow silently.
 
@@ -4391,7 +4490,8 @@ def _filter_numstat(numstat: str, own: Optional[set]) -> str:
     return ("\n".join(keep) + "\n") if keep else ""
 
 
-def _complexity(repo: Path, started_at: str, dirty_at_start=None) -> dict:
+def _complexity(repo: Path, started_at: str, dirty_at_start=None,
+                session_id: str = "") -> dict:
     """Measured complexity of the change under the current cycle.
 
     Considers committed work since `started_at` PLUS the cycle's OWN staged and unstaged
@@ -4411,10 +4511,11 @@ def _complexity(repo: Path, started_at: str, dirty_at_start=None) -> dict:
     # work — and counting those misattributes complexity and re-reports changes
     # that are not part of this cycle (and may already be gone at HEAD).
     _author = _agent_author(repo)
-    _authored = _authored_commits(repo, base, _author)
+    _authored = _own_commit_shas(repo, base, _author, session_id)
     if _authored:
-        range_numstat = _git_capture(repo, "log", "--numstat", "--format=",
-                                     "--author=" + _author, base + "..HEAD")
+        # The cycle's OWN commits, by sha — the author filter alone matches a PEER SESSION too
+        # (one identity per host), which is how a peer's file entered this cycle's tier.
+        range_numstat = _git_capture(repo, "show", "--numstat", "--format=", *_authored)
     else:
         # No positive identity / nothing authored: do NOT narrow (fail open).
         range_numstat = _git_capture(repo, "diff", "--numstat", base + "..HEAD")
@@ -4538,7 +4639,8 @@ def _range_path_set(numstat: str) -> set:
     return {p for p in out if p}
 
 
-def _material_scope(repo: Path, base: str, author: str, authored: bool, cx: dict) -> dict:
+def _material_scope(repo: Path, base: str, author: str, authored: bool, cx: dict,
+                    own_shas: list | None = None) -> dict:
     """The Diff stat for the reviewer's MATERIAL — the same range as the diff body.
 
     `_complexity` deliberately measures a WIDER set than the material can show: it
@@ -4558,7 +4660,11 @@ def _material_scope(repo: Path, base: str, author: str, authored: bool, cx: dict
 
     Returns {"numstat", "files", "lines", "always_paths", "excluded"}.
     """
-    if authored:
+    if own_shas:
+        # The cycle's OWN commits, by sha: the author filter matches a peer SESSION too, and a
+        # peer's file in MY Diff stat is material I cannot see or fix (Titus, 2026-10-19).
+        range_numstat = _git_capture(repo, "show", "--numstat", "--format=", *own_shas)
+    elif authored:
         range_numstat = _git_capture(repo, "log", "--numstat", "--format=",
                                      "--author=" + author, base + "..HEAD")
     else:
@@ -6066,7 +6172,8 @@ def _adversarial_review_gate(lock: dict, cycle: dict,
             "  reviewed against."
         ))])
 
-    cx = _complexity(repo, lock.get("started_at", ""), lock.get("dirty_at_start"))
+    cx = _complexity(repo, lock.get("started_at", ""), lock.get("dirty_at_start"),
+                     lock.get("session_id", ""))
 
     # ── Wrong-repo guard (part 1 of the right-repo fix) ──
     # The lock's repo_slug comes from _derive_slug(), whose canonical-repo
@@ -6155,22 +6262,25 @@ def _adversarial_review_gate(lock: dict, cycle: dict,
         or "HEAD"
     )
     _author = _agent_author(repo)
-    _authored = _authored_commits(repo, _base, _author)
+    # SESSION scope (2026-10-19). The author filter cannot separate two sessions on one host —
+    # they share a git identity — so a peer session's commit entered this cycle's material, its
+    # Diff stat and its tier (Titus: a close refused on scripts/archive/… it never touched).
+    _scope_sid = lock.get("session_id", "") or get_session_id(None)
+    _peer_shas = _excluded_session_commits(repo, _base, _scope_sid)
+    _authored = _own_commit_shas(repo, _base, _author, _scope_sid)
     if _authored:
-        # AUDIT this session's own commits; show the rest of the window as
-        # labelled CONTEXT so nothing is hidden from the reviewer. The window
-        # also contains commits pulled in by a rebase (other agents' work, or an
-        # automated pipeline) — reviewing those as the worker's change reports
-        # work outside this cycle, which is what blocked cycles 10337 (esther)
-        # and 2936 (moses).
-        diff_text = _git_capture(repo, "log", "-p", "--no-ext-diff", "-U3",
-                                 "--author=" + _author, _base + "..HEAD")
+        # AUDIT this session's own commits; the rest of the window stays disclosed below.
+        diff_text = _git_capture(repo, "show", "-p", "--no-ext-diff", "-U3", *_authored)
         _mine = set(_authored)
+        _peer = set(_peer_shas)
         _theirs = [s for s in _git_capture(repo, "log", "--format=%H", _base + "..HEAD").split()
-                   if s and s not in _mine]
+                   if s and s not in _mine and s not in _peer]
         if _theirs:
             diff_text += _provenance_block(repo, _base, _author)
             diff_text += _git_capture(repo, "show", "-p", "--no-ext-diff", "-U3", *_theirs)
+        if _peer_shas:
+            # Another SESSION's work: named, and deliberately not presented as reviewable content.
+            diff_text += _peer_session_block(repo, _peer_shas)
     else:
         # No positive identity / nothing authored: review the whole window —
         # but NEVER unlabelled. On a host where the session's git identity does
@@ -6212,14 +6322,17 @@ def _adversarial_review_gate(lock: dict, cycle: dict,
     # Never claim the range is narrowed when it is not: an unresolved identity
     # means the window holds whatever a pull brought in.
     _range_note = (
-        "(commits authored by the agent above)" if _authored
+        "(commits authored by the agent above"
+        + (f", minus {len(_peer_shas)} commit(s) belonging to another SESSION — named below, "
+           f"not reviewed)" if _peer_shas else ")")
+        if _authored
         else "(UNNARROWED — session identity unresolved; authorship per commit below)"
     )
     # The Diff stat the reviewer reads is built from the SAME range as the diff body
     # below, so the material can never name a path whose diff is absent (cycle 10877
     # was charged as fabrication for exactly that). Working-tree paths the complexity
     # measurement counted are DISCLOSED, never named as though their diff were here.
-    _scope = _material_scope(repo, _base, _author, bool(_authored), cx)
+    _scope = _material_scope(repo, _base, _author, bool(_authored), cx, own_shas=_authored)
     _excluded_note = ""
     if _scope["excluded"]:
         _names = ", ".join(_scope["excluded"][:15])

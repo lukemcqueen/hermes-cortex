@@ -3800,13 +3800,20 @@ def check_hook_drift(res):
         "pre-push": "pre-push-pull",
         "post-commit": "post-commit-audit",
         "post-push": "post-push-audit",
+        "prepare-commit-msg": "prepare-commit-msg-session",
         # post-merge is standalone — not checked here
     }
+    # A missing hook here is a ROLLOUT gap, not a broken host: without it no commit is stamped
+    # with a Cortex-Session trailer, so the close review stays whole-window (today's behaviour)
+    # instead of scoping itself. WARN — a FAIL would block every push on a host whose only sin is
+    # not having run the deploy yet (Rule 19).
+    OPTIONAL_HOOKS = {"prepare-commit-msg"}
 
     for hook_name, repo_name in sorted(HOOK_MAP.items()):
         hook_path = HOOKS_DIR / hook_name
         if not hook_path.exists():
-            res.add(f"Hook drift: {hook_name}", "FAIL",
+            severity = "WARN" if hook_name in OPTIONAL_HOOKS else "FAIL"
+            res.add(f"Hook drift: {hook_name}", severity,
                     f"hook not found at {hook_path}",
                     f"Run: cortex-update.sh to deploy hooks")
             continue
@@ -4023,6 +4030,7 @@ def check_pinned_hooks_fresh(res):
         "pre-push": "pre-push-pull",
         "post-commit": "post-commit-audit",
         "post-push": "post-push-audit",
+        "prepare-commit-msg": "prepare-commit-msg-session",
     }
 
     stale = []

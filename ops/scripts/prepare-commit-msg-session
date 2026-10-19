@@ -1,0 +1,84 @@
+#!/usr/bin/env bash
+# Git prepare-commit-msg hook — Cortex SESSION trailer (A1 of the session-scoped review window).
+#
+# WHY: the close review's window is time-based (`lock.started_at`..HEAD) and narrowed by git
+# AUTHOR — but one host has ONE git identity, so two sessions of the same agent cannot be told
+# apart: a peer session's commit landed in the review material and refused its neighbour's close on
+# files it never touched (Titus, 2026-10-19). This hook stamps the commit with the session that
+# MADE it, read from the LIVE governance lock file — never from an env var the agent can export,
+# so the trailer cannot be forged from prose.
+#
+# CONTRACT (deliberate):
+#   * NEVER blocks a commit — every path ends `exit 0`. This hook runs in EVERY repo on the host
+#     (global core.hooksPath), including repos with no cortex tree and no lock.
+#   * No lock for THIS repo, no python3, no writable message file ⇒ do nothing.
+#   * ANY pre-existing `Cortex-Session:` line is REMOVED and exactly one authoritative trailer is
+#     appended, so a hand-written trailer cannot survive a governed commit.
+#   * Idempotent: re-running (amend, retry) produces a byte-identical message.
+#
+# args: $1 = message file, $2 = source (message|template|merge|squash|commit), $3 = sha (amend)
+set -uo pipefail
+
+MSG_FILE="${1:-}"
+if [ -z "$MSG_FILE" ] || [ ! -f "$MSG_FILE" ] || [ ! -w "$MSG_FILE" ]; then
+  exit 0
+fi
+
+DEPLOY_HOME="${CORTEX_DEPLOY_HOME:-$HOME/.hermes-cortex}"
+STATE_DIR="$DEPLOY_HOME/state"
+[ -d "$STATE_DIR" ] || exit 0
+
+if ! command -v git >/dev/null 2>&1 || ! command -v python3 >/dev/null 2>&1; then
+  exit 0
+fi
+
+REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || exit 0
+[ -n "$REPO_ROOT" ] || exit 0
+
+# The live lock for THIS repo. Several locks can be live at once (one per repo), so the match is
+# on the RESOLVED repo path, never on the file name or the slug alone.
+SESSION="$(python3 - "$STATE_DIR" "$REPO_ROOT" <<'PY' 2>/dev/null || true
+import glob, json, os, sys
+
+state_dir, repo = sys.argv[1], os.path.realpath(sys.argv[2])
+for path in sorted(glob.glob(os.path.join(state_dir, ".governance-*.json"))):
+    try:
+        with open(path, encoding="utf-8", errors="replace") as fh:
+            rec = json.load(fh)
+    except Exception:
+        continue
+    if not isinstance(rec, dict):
+        continue
+    lock_repo = rec.get("repo_path") or ""
+    if not lock_repo or os.path.realpath(lock_repo) != repo:
+        continue
+    session = str(rec.get("session_id") or "").strip()
+    if session:
+        print(session)
+        break
+PY
+)"
+SESSION="$(printf '%s' "$SESSION" | sed -n '1p' | tr -d '[:space:]')"
+[ -n "$SESSION" ] || exit 0
+
+python3 - "$MSG_FILE" "$SESSION" <<'PY' 2>/dev/null || true
+import re, sys
+
+path, session = sys.argv[1], sys.argv[2]
+try:
+    with open(path, encoding="utf-8", errors="replace") as fh:
+        text = fh.read()
+except OSError:
+    sys.exit(0)
+body = "\n".join(
+    line for line in text.splitlines()
+    if not re.match(r"^\s*Cortex-Session\s*:", line, re.IGNORECASE)
+).rstrip()
+try:
+    with open(path, "w", encoding="utf-8") as fh:
+        fh.write(f"{body}\n\nCortex-Session: {session}\n")
+except OSError:
+    pass
+PY
+
+exit 0
