@@ -4033,6 +4033,38 @@ def check_pinned_hooks_fresh(res):
         "prepare-commit-msg": "prepare-commit-msg-session",
     }
 
+    # ── Multi-session repos (2026-10-19) ──
+    # Two sessions in ONE repo cannot be told apart by git: the lock is per session (unique file),
+    # but the write gate is per repo, so a second session can ride the first one's lock and its
+    # commits get stamped with the wrong id. That is invisible and silently wrong, so it is
+    # SURFACED here rather than discovered later by reading git logs (operator report, 2026-10-19).
+    try:
+        import glob as _glob
+        _hooks_dir = Path(os.environ.get("CORTEX_DEPLOY_HOME")
+                          or (Path.home() / ".hermes-cortex")) / "hooks"
+        _by_repo: dict[str, list[str]] = {}
+        for _lp in _glob.glob(str(_hooks_dir.parent / "state" / ".governance-*.json")):
+            try:
+                with open(_lp, encoding="utf-8", errors="replace") as _fh:
+                    _rec = json.load(_fh)
+            except Exception:
+                continue
+            if isinstance(_rec, dict) and _rec.get("repo_path"):
+                _by_repo.setdefault(str(_rec["repo_path"]), []).append(
+                    str(_rec.get("session_id") or "?"))
+        _shared = {r: s for r, s in _by_repo.items() if len(s) > 1}
+        if _shared:
+            for _repo, _sids in sorted(_shared.items()):
+                res.add("Multi-session repo", "WARN",
+                        f"{len(_sids)} live locks for {_repo}: {', '.join(sorted(_sids))}",
+                        "Commits in this repo can be attributed to the wrong session; give each "
+                        "session its own worktree, or serialise them")
+        else:
+            res.add("Multi-session repo", "PASS",
+                    f"no repo has more than one live lock ({len(_by_repo)} repo(s) locked)")
+    except Exception as _ms_err:
+        res.add("Multi-session repo", "INFO", f"could not read locks: {_ms_err}")
+
     stale = []
     checked = 0
     for path in raw.split("\n"):

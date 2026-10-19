@@ -1886,6 +1886,40 @@ def _blob_material(repo: Path, base: str, path: str, ctx: dict) -> str:
     )
 
 
+def _peer_session_range_paths(repo: Path, base: str, my_session_id: str) -> set:
+    """Paths in ``base..HEAD`` whose CURRENT content was committed by a DIFFERENT session.
+
+    The per-blob demand judges the PUSH RANGE, and in a repo shared by 2-3 sessions that range
+    carries a peer's commits too. Demanding a verdict for those asks this session to answer for work
+    it never did — measured 2026-10-19: a close was refused on files the caller had never touched,
+    and the only exits were "modify someone else's files" or an override.
+
+    Attribution is by trailer (see `_commit_session`), walked newest-first so the FIRST commit that
+    names a path owns its current content. Fail-closed, like every other rule here: no own session
+    id, an absent or ambiguous trailer, or a path with no attribution stays DEMANDED.
+    """
+    if not base or not my_session_id:
+        return set()
+    out = set()
+    seen = set()
+    current = ""
+    for line in _git_capture(repo, "log", "--format=%H", "--name-only",
+                             base + "..HEAD").splitlines():
+        entry = line.strip()
+        if not entry:
+            continue
+        if len(entry) == 40 and all(c in "0123456789abcdef" for c in entry):
+            current = entry
+            continue
+        if entry in seen:
+            continue
+        seen.add(entry)
+        other = _commit_session(repo, current)
+        if other and other != my_session_id:
+            out.add(entry)
+    return out
+
+
 def _complete_blob_reviews(repo: Path, template: str, ctx: dict, run_reviewer,
                            cap: int = BLOB_REVIEW_CAP_PER_CLOSE,
                            budget_s: float = BLOB_REVIEW_BUDGET_S,
@@ -1895,17 +1929,36 @@ def _complete_blob_reviews(repo: Path, template: str, ctx: dict, run_reviewer,
     The receipt authorises the PUSH range, so that is the set that must be judged —
     a range verdict alone covers only the cycle's own window, and a receipt that
     claimed the rest would be a claim about files nobody read.
+
+    SESSION SCOPE (2026-10-19): a shared repo means the range also carries a peer session's
+    commits, and a verdict demanded for those makes this session answer for work it never did. Blobs
+    attributed to another session are therefore NOT demanded here — only this session's own. The
+    receipt consequently covers only these blobs, so the push gate still refuses the range until the
+    PEER closes its own cycle: the honest resolution is not "review someone else's work", it is
+    "the owner of that work closes it".
     """
     base = _push_base(repo)
     blobs = _push_range_blobs(repo) if base else {}
+    my_sid = str(ctx.get("sid") or "")
+    peers = _peer_session_range_paths(repo, base, my_sid) if blobs else set()
+    if peers:
+        dropped = sorted(p for p in blobs if p in peers)
+        for path in dropped:
+            blobs.pop(path, None)
+        if dropped:
+            log.info("per-blob pass: %d blob(s) belong to another SESSION and are not demanded "
+                     "of this one: %s", len(dropped), ", ".join(dropped[:8]))
     if not blobs:
-        return {"verdicts": {}, "remaining": [], "calls": 0, "blocking": []}
+        return {"verdicts": {}, "remaining": [], "calls": 0, "blocking": [],
+                "peer_session_paths": sorted(peers)}
     ctx = dict(ctx, base=base)
-    return _review_uncovered_blobs(
+    result = _review_uncovered_blobs(
         blobs,
         reviewer=lambda sha, path, material: run_reviewer(f"{template}\n{material}\n"),
         material_for=lambda sha, path: _blob_material(repo, base, path, ctx),
         cap=cap, budget_s=budget_s, reviewer_label=reviewer_label)
+    result["peer_session_paths"] = sorted(peers)
+    return result
 
 
 def _complete_push_range_blobs(lock: dict, cycle: dict, cx: Optional[dict] = None,

@@ -63,10 +63,11 @@ def _init_repo(tmp_path: Path) -> Path:
     return repo
 
 
-def _commit(repo: Path, path: str, body: str, trailer: str | None = None) -> str:
+def _commit(repo: Path, path: str, body: str, trailer: str | None = None,
+            content: str = "x\n") -> str:
     f = repo / path
     f.parent.mkdir(parents=True, exist_ok=True)
-    f.write_text("x\n")
+    f.write_text(content)
     _git(repo, "add", path)
     msg = body + (f"\n\nCortex-Session: {trailer}" if trailer else "")
     _git(repo, "commit", "-q", "-m", msg)
@@ -380,3 +381,36 @@ def test_hook_ignores_a_stale_peer_when_two_lock_the_repo(tmp_path):
     _write_lock(state, "a", repo, MY_SESSION, age_s=3600)
     _write_lock(state, "b", repo, OTHER_SESSION, age_s=3600)
     assert _run_hook_env(repo, tmp_path / "deploy") == "feat: something"
+
+
+# ── 6. the per-blob DEMAND list (D3) ───────────────────────────
+
+def test_peer_session_paths_are_not_demanded_of_this_session(tmp_path):
+    """A path whose current content a PEER committed is attributed to the peer, not to me."""
+    repo = _init_repo(tmp_path)
+    base = _commit(repo, "base.txt", "chore: base")
+    _commit(repo, "peer/thing.py", "feat: peer", trailer=OTHER_SESSION)
+    _commit(repo, "mine.py", "feat: mine", trailer=MY_SESSION)
+    peers = mcp._peer_session_range_paths(repo, base, MY_SESSION)
+    assert peers == {"peer/thing.py"}
+    assert "mine.py" not in peers
+
+
+def test_a_path_i_touched_last_is_mine_again(tmp_path):
+    """Newest-first: if MY commit is the one that produced the current content, it is not a peer's."""
+    repo = _init_repo(tmp_path)
+    base = _commit(repo, "base.txt", "chore: base")
+    _commit(repo, "shared/thing.py", "feat: peer", trailer=OTHER_SESSION)
+    _commit(repo, "shared/thing.py", "fix: mine now", trailer=MY_SESSION, content="y\n")
+    assert mcp._peer_session_range_paths(repo, base, MY_SESSION) == set()
+
+
+def test_untrailed_or_sessionless_paths_stay_demanded(tmp_path):
+    """Fail-closed: no own session id, or no trailer on the commit, ⇒ nothing is excluded."""
+    repo = _init_repo(tmp_path)
+    base = _commit(repo, "base.txt", "chore: base")
+    _commit(repo, "peer/thing.py", "feat: peer", trailer=OTHER_SESSION)
+    _commit(repo, "untrailed.py", "feat: legacy")
+    assert mcp._peer_session_range_paths(repo, base, "") == set()
+    peers = mcp._peer_session_range_paths(repo, base, MY_SESSION)
+    assert peers == {"peer/thing.py"}, "an untrailed commit stays in scope for everyone"

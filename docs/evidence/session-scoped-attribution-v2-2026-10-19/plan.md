@@ -9,8 +9,11 @@ sessions cannot be told apart the commit stays in scope for everyone (fail-close
 silently credited to the wrong one. Deviation from D1 as drafted: no new `.active-*` file is written —
 the existing lock's mtime carries the same signal, so nothing new can be forgotten or drift.
 
-**Still to build:** D3 (scope the per-blob DEMAND list to the attributed session) and D4 (doctor
-surfaces a multi-lock repo / an untrailed range commit).
+**Still to build:** nothing — D3 and D4 shipped in cycle 13368:
+D3 scopes the per-blob DEMAND list to the session that authored each blob's current content
+(`_peer_session_range_paths`; peer-attributed paths are dropped from the demand and the receipt, so
+the push gate still refuses the range until the OWNER closes its own cycle); D4 adds a doctor check
+that WARNS when a repo has more than one live lock.
 
 Operator: Luke, 2026-10-19: *"you should fix this so that it is truly session scoped! you can
 assume 2 or 3 sessions in one repo"*.
