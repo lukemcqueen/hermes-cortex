@@ -98,6 +98,20 @@ metadata:
 
 ## Pitfalls
 
+- **Task-status writes are REFUSED by the enforcer without a governance
+  lock**, and the `terminal` tool classifies most CLI invocations
+  (`python3 … | head`, compound `;` chains) as write-capable even for a plain
+  `task-db.py list`. Use the **`mcp__tasks__task_update` / `task_list`** MCP
+  tools for status reads and writes outside a lock, and `read_file` /
+  `search_files` for inspection. Only call `begin_change()` around a real code
+  change — not around a status flip.
+- **Push after an auto-commit pipeline may be rejected as non-fast-forward** —
+  the fleet pushes `auto: block N suspect IPs` commits to `main`. Run
+  `git fetch && git pull --rebase` before `git push`; verify with
+  `git rev-parse --short origin/main` == `HEAD`.
+- **A repo-change cycle needs a real score** —
+  `feedback_accept` refuses a bare note; pass `completeness`/`quality`/
+  `progress`, or `unscored_reason`.
 - **Don't spam the fleet.** Batch related EXECs, respect quiet hours
   (`TASKS_NOTIFY_QUIET`), and don't dispatch the same task twice — the
   correlation_id partial-unique index protects the DB, but your sends should
