@@ -1920,6 +1920,31 @@ def _peer_session_range_paths(repo: Path, base: str, my_session_id: str) -> set:
     return out
 
 
+#: The sentinel `review-receipt-check.range_blobs` uses for a path that the range changed but that
+#: does not EXIST at the tip (a deletion, or a file renamed away by a base that predates the rename).
+#: Mirrored here because loop-gov must treat such a path differently from reviewable content.
+BLOB_DELETED = "deleted"
+
+
+def _split_deleted_blobs(blobs: dict):
+    """(reviewable, deleted) — a path with no content at tip cannot be judged, ever.
+
+    Measured 2026-10-19 (Titus): a stored base predating a `generator_v4 -> generator` rename left
+    153 absent-at-tip paths in the range. Each one was DEMANDED a verdict that no diff can ever
+    supply — the reviewer's own demand ("prove from within this file's diff that…") is unsatisfiable
+    for a path that has no diff — and because a non-clean verdict for it is never re-sent, the pass
+    reported `reviewed this pass: 0` with the same paths pending on every close. Not strictness:
+    a demand that cannot be met by any action.
+
+    A deletion is the ABSENCE of content, not unreviewed content: the range verdict still sees the
+    deletion in the diff, and the receipt records each deleted path individually so the push gate's
+    per-path coverage check still holds for every one of them.
+    """
+    reviewable = {p: s for p, s in (blobs or {}).items() if s != BLOB_DELETED}
+    deleted = sorted(p for p, s in (blobs or {}).items() if s == BLOB_DELETED)
+    return reviewable, deleted
+
+
 def _complete_blob_reviews(repo: Path, template: str, ctx: dict, run_reviewer,
                            cap: int = BLOB_REVIEW_CAP_PER_CLOSE,
                            budget_s: float = BLOB_REVIEW_BUDGET_S,
@@ -1938,7 +1963,10 @@ def _complete_blob_reviews(repo: Path, template: str, ctx: dict, run_reviewer,
     "the owner of that work closes it".
     """
     base = _push_base(repo)
-    blobs = _push_range_blobs(repo) if base else {}
+    blobs, deleted = _split_deleted_blobs(_push_range_blobs(repo) if base else {})
+    if deleted:
+        log.info("per-blob pass: %d path(s) do not exist at this tip — not demanded (a deletion has "
+                 "no diff to judge): %s", len(deleted), ", ".join(deleted[:8]))
     my_sid = str(ctx.get("sid") or "")
     peers = _peer_session_range_paths(repo, base, my_sid) if blobs else set()
     if peers:
@@ -1950,7 +1978,7 @@ def _complete_blob_reviews(repo: Path, template: str, ctx: dict, run_reviewer,
                      "of this one: %s", len(dropped), ", ".join(dropped[:8]))
     if not blobs:
         return {"verdicts": {}, "remaining": [], "calls": 0, "blocking": [],
-                "peer_session_paths": sorted(peers)}
+                "peer_session_paths": sorted(peers), "deleted_paths": deleted}
     ctx = dict(ctx, base=base)
     result = _review_uncovered_blobs(
         blobs,
@@ -1958,6 +1986,7 @@ def _complete_blob_reviews(repo: Path, template: str, ctx: dict, run_reviewer,
         material_for=lambda sha, path: _blob_material(repo, base, path, ctx),
         cap=cap, budget_s=budget_s, reviewer_label=reviewer_label)
     result["peer_session_paths"] = sorted(peers)
+    result["deleted_paths"] = deleted
     return result
 
 
@@ -2123,7 +2152,19 @@ def _receipt_blobs(repo: Path, base: str, head: str):
     if not blobs:
         return blobs          # None/{} → the gate falls back to exact tip+base
     covered = _blobs_with_covered_verdict(blobs)
-    return {p: s for p, s in blobs.items() if s in covered}
+    out = {p: s for p, s in blobs.items() if s in covered}
+    # A path that does NOT EXIST at this tip has no content to judge, so it can never be covered by a
+    # verdict — and leaving it out would make the push gate (which queries the same range, sentinel
+    # included) refuse the range for ever: the deadlock would simply move one step later. It is
+    # recorded here as COVERED BY DELETION, PER PATH: the consumer compares (path, value) pairs, so
+    # each deletion is named and checked on its own — one entry cannot authorise a different path.
+    # Contingent on the range review by construction: a receipt is written ONLY from a permitted
+    # close, and for an always-review range that close already required the range verdict which saw
+    # this deletion in the diff (`_complete_push_range_blobs` → `_write_review_receipt`).
+    for p, s in blobs.items():
+        if s == BLOB_DELETED:
+            out[p] = s
+    return out
 
 
 def _range_blobs(repo: Path, base: str, head: str):
