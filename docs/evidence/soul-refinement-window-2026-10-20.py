@@ -25,8 +25,6 @@ DB = os.path.expanduser('~/.hermes/state.db')
 NOW = time.time()
 START = NOW - WINDOW_HOURS * 3600
 
-WARNINGS = 0
-
 
 def redact(text):
     """Mask what the PII guard would reject, and host paths."""
@@ -61,6 +59,21 @@ def classify(content):
     if c.startswith('Gateway message origin'):
         return 'gateway_origin_wrapper'
     return 'unclassified_human_session_prose'
+
+
+def looks_machine_shaped(content):
+    """A row classified as PROSE that still has a machine shape.
+
+    The six prefixes above are not provably exhaustive, so exclusivity is
+    CHECKED rather than claimed: anything the prefixes missed shows up here and
+    raises the warning count, instead of silently inflating the prose tally the
+    whole artifact is built on.
+    """
+    c = (content or '').lstrip()
+    if c.startswith('[') or c.startswith('{'):
+        return True
+    head = c[:120].upper()
+    return 'NOTIFICATION' in head or 'CRON DELIVERY' in head or 'GATEWAY MESSAGE' in head
 
 
 def main():
@@ -147,9 +160,24 @@ def main():
             i, time.strftime('%Y-%m-%d %H:%M', time.localtime(first)), n))
     print()
 
+    prose_rows = buckets.get('unclassified_human_session_prose', [])
     print('--- prose rows, redacted preview (the material to READ) ---')
-    for i, r in enumerate(buckets.get('unclassified_human_session_prose', []), 1):
+    for i, r in enumerate(prose_rows, 1):
         print('  [%s] %s' % (time.strftime('%m-%d %H:%M', time.localtime(r['ts'])), preview(r['content'])))
+    print()
+
+    # Exclusivity is CHECKED, not asserted: a row called prose that still looks
+    # machine-generated is printed and counted as a warning, so a prefix the six
+    # rules miss cannot quietly inflate the prose tally.
+    suspects = [r for r in prose_rows if looks_machine_shaped(r['content'])]
+    warnings = len(suspects)
+    print('--- SUSPECT rows: classified prose but machine-shaped ---')
+    if suspects:
+        for r in suspects:
+            print('  [%s] %s' % (time.strftime('%m-%d %H:%M', time.localtime(r['ts'])), preview(r['content'])))
+    else:
+        print('  (none - every machine-shaped row was caught by a literal prefix)')
+    print('  count : %d' % warnings)
     print()
 
     print('--- verbatim window provenance ---')
@@ -161,7 +189,7 @@ def main():
     print('WINDOW IS NON-EMPTY: %d active user rows across %d sessions.' % (len(rows), len(human_sessions) + len(cron_sessions)))
     print('command : python3 <this script>   (read-only; no writes to the store)')
     print('rc      : 0')
-    print('warnings: %d' % WARNINGS)
+    print('warnings: %d' % warnings)
 
 
 def _rev():

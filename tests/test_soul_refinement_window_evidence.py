@@ -35,9 +35,9 @@ import subprocess
 import sys
 from pathlib import Path
 
-_REPO = Path(__file__).resolve().parents[1]
-_GENERATOR = _REPO / "docs" / "evidence" / "soul-refinement-window-2026-10-20.py"
-_ARTIFACT = _REPO / "docs" / "evidence" / "soul-refinement-window-2026-10-20.txt"
+_REPO_ROOT = Path(__file__).resolve().parents[1]
+_GENERATOR = _REPO_ROOT / "docs" / "evidence" / "soul-refinement-window-2026-10-20.py"
+_ARTIFACT = _REPO_ROOT / "docs" / "evidence" / "soul-refinement-window-2026-10-20.txt"
 
 
 def _gen_module():
@@ -161,7 +161,13 @@ def test_leading_whitespace_does_not_defeat_a_real_marker():
 # -------------------------------------------------------- 3. read-only contract
 
 def test_the_generator_opens_the_store_read_only():
-    src = _GENERATOR.read_text()
+    """Read the GENERATOR's own source and assert the read-only property on it.
+
+    The path is resolved from this file's own root, never a bare absolute
+    string, so the claim is about the artefact the diff carries."""
+    root = _REPO_ROOT
+    gen = root / "docs" / "evidence" / "soul-refinement-window-2026-10-20.py"
+    src = gen.read_text()
     assert "mode=ro" in src, "the store must be opened with mode=ro"
     assert "PRAGMA query_only=1" in src, "query_only must be set"
     assert "sqlite3.connect('file:%s?mode=ro' % DB, uri=True" in src, (
@@ -174,7 +180,7 @@ def test_running_the_generator_is_a_read_only_measurement():
     window. If it ever writes to the store it measures, this fails."""
     proc = subprocess.run(
         [sys.executable, str(_GENERATOR)],
-        cwd=str(_REPO), capture_output=True, text=True, timeout=180,
+        cwd=str(_REPO_ROOT), capture_output=True, text=True, timeout=180,
     )
     assert proc.returncode == 0, proc.stderr[-2000:]
     out = proc.stdout
@@ -182,6 +188,24 @@ def test_running_the_generator_is_a_read_only_measurement():
     assert "--- row counts by role, inside the window ---" in out
     assert "active=1" in out, "the active=1 filter's effect must be reported"
     assert "rc      : 0" in out
+    # The exclusivity of the six prefixes is REPORTED, not assumed.
+    assert "SUSPECT rows: classified prose but machine-shaped" in out
+    assert "count : " in out
+
+
+def test_a_machine_shaped_row_called_prose_is_flagged_not_hidden():
+    """The prose tally is the number the whole artifact rests on, and the six
+    prefixes are not provably exhaustive. So a row the classifier called prose
+    but which still LOOKS machine-generated must be reported as a warning rather
+    than quietly counted as operator prose."""
+    mod = _gen_module()
+    assert mod.looks_machine_shaped("[UNSEEN MARKER] some gateway line") is True
+    assert mod.looks_machine_shaped('{"platform": "telegram"}') is True
+    assert mod.looks_machine_shaped("   [INTERNAL NOTIFICATION - x") is True
+    # A genuine operator message must NOT be swept into the warning bucket, or
+    # the warning fires on every run and its reader learns to ignore it.
+    assert mod.looks_machine_shaped("esther, why is there no learning report from titus?") is False
+    assert mod.looks_machine_shaped("Clean up the HC docs. Organize, merge, prune.") is False
 
 
 # ------------------------------------------------- 4. the artifact stays verbatim

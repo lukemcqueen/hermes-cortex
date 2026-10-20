@@ -1,7 +1,11 @@
 # Soul-refinement mining pass - window and row counts
 
 Cycle: soul-refine-window-20261020 (run-time window ending 2026-10-20 23:17 KST)
-Tip revision at capture: b3a94824
+Revision at run time: 8bfff1b7
+
+This is the revision the generator ran against, which is the parent of the
+commit that carries this capture - an artifact committed WITH its change cannot
+name its own commit hash. A re-run prints the then-current revision instead.
 
 ## What produced this
 
@@ -28,6 +32,11 @@ Everything between the BEGIN/END markers below is the generator's own stdout,
 copied programmatically (not retyped). The `rc` and `warnings` figures are the
 generator's own, printed by the generator itself at the end of its output.
 
+The `warnings` count is not decorative: it is the number of rows the classifier
+called PROSE that still look machine-generated. The six literal prefixes are not
+provably exhaustive, so the prose tally - the number this whole artifact rests
+on - carries its own falsifier rather than an assertion of exclusivity.
+
 ## A separate check run in the same cycle, recorded because it FAILED
 
 `python3 ops/scripts/manage/check-skill-drift-parity.py --check`
@@ -47,19 +56,19 @@ SOUL-REFINEMENT MINING PASS — window + row counts (read-only)
 ==========================================================================
 generator : ops-independent scratch measurement; re-run the same
             script to reproduce every count below
-revisions : working tree b3a94824
+revisions : working tree 8bfff1b7
 volatile  : row COUNTS (the store is append-only and grows)
 
 WINDOW resolved from RUN TIME, not the calendar date
-  now    : 2026-10-20 23:17:41 KST   epoch=1792505861.521
-  start  : 2026-10-19 23:17:41 KST   epoch=1792419461.521
+  now    : 2026-10-20 23:27:26 KST   epoch=1792506446.094
+  start  : 2026-10-19 23:27:26 KST   epoch=1792420046.094
   hours  : 24
   store  : ~/.hermes/state.db
 
 --- row counts by role, inside the window ---
   user           52
-  assistant    2041
-  tool         2590
+  assistant    2073
+  tool         2625
   system          0
 
 --- the active=1 filter matters ---
@@ -107,6 +116,10 @@ WINDOW resolved from RUN TIME, not the calendar date
   [10-20 17:59] I'm getting tired of seeing agents just gloss over the warnings after 
   [10-20 18:32] Issue with pi agent on gisu: The exact issue Chain: cortex-governance.
   [10-20 19:48] mcp-servers/ is an orchestrator-only domain, so this goes as a 📝 PROPO
+
+--- SUSPECT rows: classified prose but machine-shaped ---
+  (none - every machine-shaped row was caught by a literal prefix)
+  count : 0
 
 --- verbatim window provenance ---
   sha256 of the session-id list (stable across re-runs of the
