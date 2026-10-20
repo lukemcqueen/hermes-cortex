@@ -115,6 +115,52 @@ leaves rows no classifier can group. The doctor reports any residue as `Task-id 
 this tool, so no host has to notice by itself. The normaliser is deliberately NOT run by the
 deploy: a doctor is not authorised to migrate an audit trail, and neither is a deploy.
 
+### A heredoc inside `$( )` breaks bash 3.2 — the apostrophe is only the trigger
+
+`X="$(python3 - "$a" <<'PY' ... PY )"` is a **bash 3.2 parser trap**. The body is
+data, so quote counting inside it should not matter — but 3.2 mis-counts and refuses
+to parse the *whole file*, so the script dies before its first line runs. Any apostrophe
+in the body triggers it, including one in a comment: `this session's activity`.
+
+Measured 2026-10-20 on the fleet's `prepare-commit-msg` hook (which runs in every repo
+on every host, and whose whole contract is "never block a commit"):
+
+```console
+$ docker run --rm -v /tmp:/w bash:3.2 bash -n /w/old.sh   # the macOS shell
+/w/old.sh: line 86: unexpected EOF while looking for matching `''
+/w/old.sh: line 107: syntax error: unexpected end of file   → rc=2   EVERY commit blocked
+$ bash -n /tmp/old.sh                                     # bash 5.2, this Linux host
+   → rc=0                                                (why it shipped green)
+```
+
+**The fix is to take the heredoc OUT of the substitution — never to delete the apostrophe**
+(deleting it leaves the identical landmine armed for the next editor):
+
+```bash
+# ✅ plain redirect, then read the file: no heredoc inside $( ) at all
+_T="$(mktemp "${TMPDIR:-/tmp}/x.XXXXXX" 2>/dev/null || echo "${TMPDIR:-/tmp}/x.$$")"
+python3 - "$a" <<'PY' >"$_T" 2>/dev/null || true
+...body with apostrophes is now harmless...
+PY
+X="$(cat "$_T" 2>/dev/null)"
+rm -f "$_T"
+```
+
+- **Prove it, don't reason about it.** `docker run --rm -v "$PWD:/repo:ro" bash:3.2 bash -n /repo/<script>`
+  is the authority — the image is ~10 MB and needs no network once pulled. `bash -n` under 3.2 also
+  catches unbalanced quotes (`if [[ $X -eq 1 && -d "$DIR ]]; then` — bash 5 tolerates the missing
+  quote, 3.2 errors) and bash-4-only syntax the static rule cannot see.
+- **`tests/test_shell_portability.py` guards the class**: a static rule for heredoc-inside-`$( )`
+  across every script the deploy map ships plus the hooks, a self-check that the detector SEES the
+  known-bad shape (a blind detector passes forever), and the 3.2 parse gate (SKIPs loudly with
+  `docker pull bash:3.2` when docker is absent).
+- **Scope the rule to code that can run on a Mac** (deploy map + hooks), not every shebang'd file in
+  the repo: repo-only evidence tools never reach a macOS parser, and flagging them trains readers to
+  ignore the guard. **Comments are exempt** — a comment cannot change parsing, and the guard must not
+  flag its own explanatory prose.
+- An unbalanced quote is the same blast radius: `[[ ... -d "$DIR ]]` parses on 5.x and hard-errors on
+  3.2. When you find one, grep the rest of the file for the sibling shape and fix all of them.
+
 ### `| head -N` under `set -euo pipefail` = silent SIGPIPE abort
 
 **A silent-kill trap that only fires on LARGE outputs:** truncating a pipeline with `head -N` makes `head` exit after N lines; the producer then gets SIGPIPE (exit 141). With `pipefail`, the pipeline status becomes 141, and with `set -e` the whole script aborts — **silently, mid-deploy, exit 141** (or exit 0 if the caller pipes the script's output without checking `PIPESTATUS`).

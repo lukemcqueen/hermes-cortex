@@ -76,9 +76,13 @@ hermes_config_value() {
     fi
   fi
   # 2. Raw read via the cortex venv (PyYAML present), no hermes dependency.
+  # PLAIN REDIRECT, never `$( ... <<PY )`: a heredoc inside a command substitution is
+  # a bash 3.2 parser trap that breaks this whole script on macOS.
+  # tests/test_shell_portability.py enforces the rule.
   probe="${HERMES_HOME:-$HOME/.hermes}/config.yaml"
   if [[ -f "$probe" ]] && [[ -x "$CORTEX_DEPLOY_HOME/venv/bin/python3" ]]; then
-    value="$("$CORTEX_DEPLOY_HOME/venv/bin/python3" - "$key" "$probe" <<'PY' 2>/dev/null || true
+    _CFG_TMP="$(mktemp "${TMPDIR:-/tmp}/cortex-cfgkey.XXXXXX" 2>/dev/null || echo "${TMPDIR:-/tmp}/cortex-cfgkey.$$")"
+    "$CORTEX_DEPLOY_HOME/venv/bin/python3" - "$key" "$probe" <<'PY' >"$_CFG_TMP" 2>/dev/null || true
 import json, os, sys
 key, path = sys.argv[1], sys.argv[2]
 try:
@@ -92,7 +96,8 @@ try:
 except Exception:
     pass
 PY
-)"
+    value="$(cat "$_CFG_TMP" 2>/dev/null)"
+    rm -f "$_CFG_TMP"
     if [[ -n "$value" ]]; then
       [[ "$value" == \"*\" ]] && value="${value%\"}" && value="${value#\"}"
       echo "$value"

@@ -101,7 +101,10 @@ elif [[ "$MCP_CAPABLE" == "1" ]]; then
         # at a runnable command, an existing script, and THIS agent's name (a stale or
         # copied-in mcp.json can look complete and hand the agent another agent's bus
         # identity).
-        entry_issues_raw="$(MCP_JSON="$MCP_JSON" AGENT_ENV="$AGENT_ENV" REQUIRED="$REQUIRED" python3 - <<'PY' 2>/dev/null
+        # PLAIN REDIRECT, never `$( ... <<PY )`: a heredoc inside a command
+        # substitution is a bash 3.2 parser trap (macOS).
+        _ENTRY_ISSUES_RAW_TMP="$(mktemp "${TMPDIR:-/tmp}/cortex-audit.XXXXXX" 2>/dev/null || echo "${TMPDIR:-/tmp}/cortex-audit.$$")"
+        MCP_JSON="$MCP_JSON" AGENT_ENV="$AGENT_ENV" REQUIRED="$REQUIRED" python3 - <<'PY' >"$_ENTRY_ISSUES_RAW_TMP" 2>/dev/null
 import json, os, shutil
 from pathlib import Path
 d = json.loads(Path(os.environ["MCP_JSON"]).read_text())
@@ -137,7 +140,8 @@ for name, cfg in srv.items():
 print("; ".join(issues))
 print(",".join(sorted(foreign)))
 PY
-)"
+        entry_issues_raw="$(cat "$_ENTRY_ISSUES_RAW_TMP" 2>/dev/null)"
+        rm -f "$_ENTRY_ISSUES_RAW_TMP"
         # Line 1 is the issues, line 2 the foreign servers — two facts, one subprocess.
         entry_issues="${entry_issues_raw%%$'\n'*}"
         foreign_servers="$(printf '%s\n' "$entry_issues_raw" | sed -n '2p')"
@@ -264,7 +268,10 @@ else
     # The verdict comes from the CONFIG, parsed rather than grepped: a keyed-only
     # chain is valid for its owner and useless on a host with no keys, and a
     # substring match cannot tell the two apart.
-    ws_verdict="$(WS_JSON="$WS_JSON" python3 - <<'PY' 2>/dev/null
+    # PLAIN REDIRECT, never `$( ... <<PY )`: a heredoc inside a command
+    # substitution is a bash 3.2 parser trap (macOS).
+    _WS_VERDICT_TMP="$(mktemp "${TMPDIR:-/tmp}/cortex-audit.XXXXXX" 2>/dev/null || echo "${TMPDIR:-/tmp}/cortex-audit.$$")"
+    WS_JSON="$WS_JSON" python3 - <<'PY' >"$_WS_VERDICT_TMP" 2>/dev/null
 import json, os
 p = os.environ["WS_JSON"]
 if not os.path.exists(p):
@@ -279,7 +286,8 @@ chosen = [x for x in route if isinstance(x, str)] or [cfg.get("provider")]
 keyless = [x for x in chosen if x in ("exa", "duckduckgo")]
 print("keyless:" + ",".join(keyless) if keyless else "keyed-only")
 PY
-)"
+    ws_verdict="$(cat "$_WS_VERDICT_TMP" 2>/dev/null)"
+    rm -f "$_WS_VERDICT_TMP"
     case "$ws_verdict" in
       keyless:*)
         _line 6 PASS "pi-web-access installed; keyless search path ${ws_verdict#keyless:} (no API key needed)"

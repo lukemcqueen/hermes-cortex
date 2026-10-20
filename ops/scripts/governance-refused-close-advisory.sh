@@ -25,7 +25,10 @@ REPO_SLUG="${1:-$(basename "$(git rev-parse --show-toplevel 2>/dev/null || echo 
 
 for lock_file in "$STATE_DIR"/.governance-*.json; do
   [[ -f "$lock_file" ]] || continue
-  REFUSED=$(REPO_SLUG="$REPO_SLUG" LOCK_FILE="$lock_file" python3 - <<'PY' 2>/dev/null
+  # PLAIN REDIRECT, never `$( ... <<PY )`: a heredoc inside a command substitution is
+  # a bash 3.2 parser trap (macOS) that breaks this whole script.
+  _ADV_TMP="$(mktemp "${TMPDIR:-/tmp}/cortex-refused.XXXXXX" 2>/dev/null || echo "${TMPDIR:-/tmp}/cortex-refused.$$")"
+  REPO_SLUG="$REPO_SLUG" LOCK_FILE="$lock_file" python3 - <<'PY' >"$_ADV_TMP" 2>/dev/null || true
 import json, os
 try:
     with open(os.environ["LOCK_FILE"]) as fh:
@@ -42,7 +45,8 @@ ids = ",".join(str(x) for x in (r.get("finding_ids") or [])[:4])
 print("|".join([str(r.get("cycle_id", "?")), str(r.get("verdict", "?")),
                 str(r.get("blocking", "?")), ids, str(r.get("at", "?"))]))
 PY
-)
+  REFUSED="$(cat "$_ADV_TMP" 2>/dev/null)"
+  rm -f "$_ADV_TMP"
   [[ -n "$REFUSED" ]] || continue
   IFS='|' read -r _cid _verdict _blocking _ids _at <<< "$REFUSED"
   echo ""

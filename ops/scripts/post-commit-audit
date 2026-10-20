@@ -116,7 +116,12 @@ with open('$NO_VERIFY_LOG', 'w') as f:
 # EXHAUSTED: pre-push blocks the commit's push and the enforcer
 # blocks further --no-verify git commands until a verified commit
 # (sentinel written → counter reset to 0) lands.
-DEBT_OUT=$(python3 - "$DEBT_FILE" <<'PYEOF' 2>/dev/null || true
+# The debt JSON is produced with a PLAIN REDIRECT, never inside `$( ... )` — a
+# heredoc nested in a command substitution is a bash 3.2 parser trap (an apostrophe
+# anywhere in the body breaks the whole hook on macOS, where this runs in every repo).
+# tests/test_shell_portability.py enforces the rule.
+_DEBT_TMP="$(mktemp "${TMPDIR:-/tmp}/cortex-debt.XXXXXX" 2>/dev/null || echo "${TMPDIR:-/tmp}/cortex-debt.$$")"
+python3 - "$DEBT_FILE" <<'PYEOF' >"$_DEBT_TMP" 2>/dev/null || true
 import json, os, sys, datetime
 debt_file = sys.argv[1]
 now = datetime.datetime.now(datetime.timezone.utc).isoformat()
@@ -134,7 +139,8 @@ with open(debt_file, "w") as f:
     json.dump(debt, f, indent=2)
 print(debt["consecutive_no_verify"])
 PYEOF
-)
+DEBT_OUT="$(cat "$_DEBT_TMP" 2>/dev/null)"
+rm -f "$_DEBT_TMP"
 DEBT="${DEBT_OUT:-1}"
 
 echo "⚠️  WARNING: Commit bypassed governance (--no-verify was used)"

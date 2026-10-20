@@ -287,7 +287,7 @@ fi
 #  ZIM REFERENCE UPDATE (optional, bandwidth-heavy)
 # ═══════════════════════════════════════════════════════════
 
-if [[ $DO_ZIM -eq 1 && -d "$ZIM_DIR ]]; then
+if [[ $DO_ZIM -eq 1 && -d "$ZIM_DIR" ]]; then
     zim_changes=0
 
     # For each .zim file, check if a newer version exists on the kiwix mirror
@@ -296,16 +296,16 @@ if [[ $DO_ZIM -eq 1 && -d "$ZIM_DIR ]]; then
 
     for zim in "$ZIM_DIR"/*.zim; do
         [[ -f "$zim" ]] || continue
-        local name=$(basename "$zim")
-        local size=$(stat -f%z "$zim" 2>/dev/null || stat -c%s "$zim" 2>/dev/null || echo 0)
+        name=$(basename "$zim")
+        size=$(stat -f%z "$zim" 2>/dev/null || stat -c%s "$zim" 2>/dev/null || echo 0)
         
         # Extract the base topic (e.g. wikipedia_en_all_mini from ..._2026-02.zim)
         # Most ZIMs follow: <project>_<lang>_<type>_<date>.zim
         if [[ "$name" =~ ^(.+)_[0-9]{4}-[0-9]{2}\.zim$ ]]; then
-            local base="${BASH_REMATCH[1]}"
+            base="${BASH_REMATCH[1]}"
             # Check the kiwix directory listing for newer dates
             # Build the directory path from the ZIM name
-            local project=""
+            project=""
             if [[ "$name" == wikipedia_* ]]; then project="wikipedia"
             elif [[ "$name" == wikivoyage_* ]]; then project="wikivoyage"
             elif [[ "$name" == wikibooks_* ]]; then project="wikibooks"
@@ -313,7 +313,7 @@ if [[ $DO_ZIM -eq 1 && -d "$ZIM_DIR ]]; then
             else project="wikipedia"  # guess
             fi
             
-            local dir_url="https://download.kiwix.org/zim/$project/"
+            dir_url="https://download.kiwix.org/zim/$project/"
             if [[ $CHECK_ONLY -eq 1 ]]; then
                 # Just note we could check
                 [[ $VERBOSE -eq 1 ]] && detail "Would check: $project mirror for $name"

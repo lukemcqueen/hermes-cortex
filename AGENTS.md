@@ -58,6 +58,27 @@ Every session: read the skills manifest — `$HOME/.hermes-cortex/skills.yaml` (
 
 Before: `survey-before-action` (search_files → map scope → skill_view). After: [`docs/reference/after-completing-work-6-questions.md`](docs/reference/after-completing-work-6-questions.md)
 
+## Three Reach Dimensions — Check All Three Before Shipping
+
+Your change runs in more places than your session. Name all three before calling it done:
+
+1. **macOS** — fleet hosts run **bash 3.2** and BSD userland. Run `python3 tests/test_shell_portability.py`
+   (static rule + `bash -n` under a real bash 3.2). **Never put a heredoc inside `$( )`**: one
+   apostrophe in the body makes 3.2 refuse to parse the WHOLE script while bash 5 parses it happily,
+   so it ships green on Linux and blocks every commit on a Mac (measured 2026-10-20: the
+   prepare-commit-msg hook — rc=2 under 3.2, rc=0 under 5.2). Also avoid `grep -P`, `declare -A`,
+   `mapfile`, `${var,,}`, `sed -i` with no suffix, `date -d`, `readlink -f`, bare `sha256sum`, bare
+   `timeout`. Never "fix" this by deleting the apostrophe — take the heredoc out of the substitution.
+2. **Two sessions in ONE repo** — a host has ONE git identity, so `git log --author` cannot tell
+   sessions apart. Never blanket-stage (`git add -A`), revert, reset, or deploy beside a peer's
+   uncommitted work; when a peer holds an open cycle, stand down rather than race it. Attribute
+   commits with the `Cortex-Session:` trailer the prepare-commit-msg hook writes, and treat a commit
+   with NO trailer as in-scope (fail closed), never as someone else's.
+3. **Repos that are not hermes-cortex** — `core.hooksPath` is global, so your hook runs in every repo
+   on the host, client projects included. Scope cortex-only gates to the cortex repo, resolve tools
+   repo-local FIRST then `$HOME/.hermes-cortex/scripts/`, and keep a shared hook's every degradation
+   path ending in `exit 0` unless it is a genuine universal gate.
+
 ## Loop Governance
 
 **Every change:** `cache_search` → `begin_change` → work → `change-checklist` → `cycle_query` → `feedback_accept/override` → `end_change` → `git push`. MCP blocks writes without lock. Pre-commit scores every commit.

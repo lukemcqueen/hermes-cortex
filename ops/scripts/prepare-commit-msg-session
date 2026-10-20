@@ -46,7 +46,17 @@ REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || exit 0
 # 2026-10-19 on a host running two sessions in one repo, where five consecutive commits all carried
 # the same trailer. So: exactly ONE matching lock ⇒ stamp it; zero or several ⇒ write NOTHING, and
 # let the review window fail closed (a missing trailer keeps a commit IN scope).
-SESSION="$(python3 - "$STATE_DIR" "$REPO_ROOT" "${CORTEX_SESSION_ACTIVE_TTL:-90}" <<'PY' 2>/dev/null || true
+# The selection python runs with a PLAIN REDIRECT, never inside `$( ... )`.
+#
+# A heredoc nested inside a command substitution is a bash 3.2 parser trap: an
+# apostrophe anywhere in the body (a comment saying "this session's activity" is
+# enough) makes 3.2 mis-count the quotes and fail to parse the WHOLE hook — syntax
+# error, non-zero exit, and `git commit` aborts. bash 5.x on Linux parses it fine,
+# so it shipped clean here and broke every commit on macOS (Titus, 2026-10-20).
+# Removing the apostrophe would have left the landmine armed; the fix is to not put
+# a heredoc inside `$()` at all. tests/test_shell_portability.py enforces that rule.
+_SESSION_OUT="$(mktemp "${TMPDIR:-/tmp}/cortex-session.XXXXXX" 2>/dev/null)" || exit 0
+python3 - "$STATE_DIR" "$REPO_ROOT" "${CORTEX_SESSION_ACTIVE_TTL:-90}" <<'PY' >"$_SESSION_OUT" 2>/dev/null || true
 import glob, json, os, sys, time
 
 state_dir, repo, ttl = sys.argv[1], os.path.realpath(sys.argv[2]), float(sys.argv[3])
@@ -66,9 +76,10 @@ for path in sorted(glob.glob(os.path.join(state_dir, ".governance-*.json"))):
     if not session:
         continue
     candidates.add(session)
-    # The lock file is REWRITTEN by the server on every governed call (heartbeat refresh), so its
-    # mtime is this session's last governed activity — the only per-session signal available at
-    # commit time. It DISAMBIGUATES, it does not decide on its own.
+    # The lock file is REWRITTEN by the server on every governed call (heartbeat
+    # refresh), so its mtime is the last governed activity for that session — the only
+    # per-session signal available at commit time. It DISAMBIGUATES, it does not decide
+    # on its own.
     try:
         if (time.time() - os.path.getmtime(path)) <= ttl:
             fresh.add(session)
@@ -79,8 +90,8 @@ if len(fresh) == 1:
 elif not fresh and len(candidates) == 1:
     print(candidates.pop())
 PY
-)"
-SESSION="$(printf '%s' "$SESSION" | sed -n '1p' | tr -d '[:space:]')"
+SESSION="$(sed -n '1p' "$_SESSION_OUT" 2>/dev/null | tr -d '[:space:]')"
+rm -f "$_SESSION_OUT"
 [ -n "$SESSION" ] || exit 0
 
 python3 - "$MSG_FILE" "$SESSION" <<'PY' 2>/dev/null || true
