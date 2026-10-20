@@ -162,3 +162,48 @@ sanctioned recovery:
 - If you see `AttributeError: 'Server' object has no attribute 'list_tools'`
   in `~/.hermes/logs/mcp-stderr.log`, the mcp SDK moved again — migrate the
   servers (this doc) before restarting the gateway.
+
+## The OTHER skew: an SDK OLDER than this code (gisu, 2026-10-20)
+
+The migration above moved the servers FORWARD onto the 2.0 constructor API. The inverse
+failure is a host whose interpreter still has a PRE-2.0 mcp, and it is worth recognising by
+its message, because that message reads as the opposite of what it is:
+
+```
+Server.__init__() got an unexpected keyword argument 'on_list_tools'
+```
+
+`on_list_tools` IS the 2.0 API (see the table above), so "unexpected keyword argument"
+means the SDK is TOO OLD — never too new. On gisu it surfaced as
+`loop-gov.py: governance is unavailable: …` with **exit 3**, blocking every
+write/edit/non-readonly bash in a Pi session, because `ops/scripts/loop-gov.py` loads this
+module by `exec_module`: an import-time exception kills the CLI adapter too, even though the
+CLI never SERVES MCP. (The MCP route kept working — the registered interpreter,
+`~/.hermes-cortex/venv/bin/python3`, had 2.0 — which is why the daemon looked healthy while
+the write gate was dead.)
+
+Two changes make this class unable to take the gate down again:
+
+1. `mcp-servers/loop-gov-mcp.py` **PROBES the constructor API at import** — a throwaway
+   `Server("loop-governance/sdk-capability-probe", on_list_tools=None, on_call_tool=None)`. A failure is
+   handled exactly like a missing SDK: the module stays importable, the handlers stay
+   drivable, the CLI keeps working, and a WARNING on stderr names the interpreter and the
+   API that is required. It is a warning and not a silent degrade because a gate that
+   quietly disables itself is how the wrong interpreter stays invisible.
+2. The declared floor in `ops/install/requirements.txt` is **`mcp>=2.0`** (it was `>=1.0`,
+   which admitted the very version that cannot construct the handlers), and
+   `ops/scripts/manage/fix-cortex-venv.py` **probes that capability** instead of only
+   importing the module. That matters because `cortex-update.sh` gates its repair on
+   `fix-cortex-venv.py --check`: with an import-only check it printed
+   `ok: … imports all 6 declared requirements` on the broken host and repaired nothing.
+
+Checking a host by hand — the CLI works under any interpreter now (absent SDK → its own
+stand-ins; too old → warn + stand-ins; 2.0 → used), but which mcp an interpreter has still
+decides whether the stdio SERVER can run:
+
+```bash
+env -u PYTHONPATH -u PYTHONHOME <interpreter> -c \
+  "import mcp, importlib.metadata as m; print(m.version('mcp'), mcp.__file__)"
+```
+
+On this fleet: the fleet venv (`~/.hermes-cortex/venv/bin/python3`) carries mcp 2.0.0.

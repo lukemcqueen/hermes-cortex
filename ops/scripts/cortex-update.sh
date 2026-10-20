@@ -3230,8 +3230,11 @@ main() {
     info  "  fill:   \"${_fleet_venv}\" \"${_venv_fixer}\"   # installs the declared set"
     _DEFERRED_FAILURES+=("fleet venv missing")
   elif [[ -f "$_venv_fixer" ]]; then
-    # FILL it: install the declared set when anything is missing. The fixer installs only
-    # what is absent and decides by IMPORT, so re-running it on a healthy host does nothing.
+    # FILL it: install the declared set when anything is missing. The fixer installs only what
+    # is absent and decides by IMPORT *and* by CAPABILITY, so re-running it on a healthy host
+    # does nothing — and an mcp that imports but is too old for the 2.0 constructor API (gisu,
+    # 2026-10-20) is a gap HERE rather than an "ok" that repaired nothing while that host's
+    # governance CLI exited 3 on every write gate.
     if ! "$_fleet_venv" "$_venv_fixer" --check >/dev/null 2>&1; then
       info "Installing the declared requirements into the fleet venv…"
       if ! "$_fleet_venv" "$_venv_fixer" >/dev/null 2>&1; then

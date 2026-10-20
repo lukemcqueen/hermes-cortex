@@ -155,8 +155,100 @@ def test_the_json_report_has_the_fields_a_hook_needs(tmp_path):
     assert r.returncode == 3
     data = json.loads(r.stdout.strip().split("\n")[-1])
     assert data["venv_ok"] is True
-    assert set(data["missing"]) == {"mcp>=1.0", "PyYAML>=6.0", "fastapi>=0.100",
+    assert set(data["missing"]) == {"mcp>=2.0", "PyYAML>=6.0", "fastapi>=0.100",
                                     "uvicorn>=0.23", "psycopg[binary]>=3.1", "pytest>=7.0"}
     assert any(a.endswith("fix-cortex-venv.py") for a in data["fix_argv"]), \
         f"the report must name the command that fixes it: {data['fix_argv']}"
     assert str(py.parent.parent) in data["fix_argv"], "the report must name the venv it measured"
+
+
+# --- an IMPORTABLE module can still be UNUSABLE ---------------------------------------
+#
+# THE GAP THIS CLOSES (gisu, 2026-10-20): this checker decided by IMPORT, and an mcp SDK
+# that imports perfectly well can still be too old for the call sites that use it — the
+# fleet's MCP servers construct `Server(name, on_list_tools=..., on_call_tool=...)`, the
+# 2.0 constructor API. On such a host `--check` printed
+#     ok: <python> imports all 6 declared requirements
+# while the governance CLI exited 3 on every write gate, and cortex-update.sh — which
+# gates its install on exactly this check (line ~3235) — therefore silently left the venv
+# alone. Importability is necessary and NOT sufficient, so a declared requirement may
+# carry a CAPABILITY probe too.
+
+def _stub_sdk(root: Path, accepts_constructor_handlers: bool) -> Path:
+    """A stub `mcp` package: importable either way; the flag picks the API generation.
+    Only `mcp.server.Server` is needed — the capability probe imports exactly that, and
+    keeping the stub this small is the point: it proves the probe, nothing else."""
+    (root / "mcp" / "server").mkdir(parents=True, exist_ok=True)
+    (root / "mcp" / "__init__.py").write_text("")
+    if accepts_constructor_handlers:
+        body = ("class Server:\n"
+                "    def __init__(self, name, *, on_list_tools=None,\n"
+                "                 on_call_tool=None, **kw):\n"
+                "        self.name = name\n")
+    else:
+        body = ("class Server:\n"          # the decorator-era signature: kwargs rejected
+                "    def __init__(self, name):\n"
+                "        self.name = name\n")
+    (root / "mcp" / "server" / "__init__.py").write_text(body)
+    return root
+
+
+def _venv_pointing_at(tmp_path: Path, sdk_root: Path) -> Path:
+    """A venv-shaped dir whose bin/python3 WRAPS the real interpreter with the stub on
+    PYTHONPATH. The fixer strips PYTHONPATH from the target's environment ON PURPOSE (an
+    inherited path must not be able to make a healthy venv look broken, or vice versa),
+    so the stub is injected by the interpreter wrapper itself — which is what a real
+    venv's site-packages supplies."""
+    root = tmp_path / "stubvenv"
+    (root / "bin").mkdir(parents=True)
+    py = root / "bin" / "python3"
+    py.write_text(f'#!/bin/sh\nPYTHONPATH="{sdk_root}" exec "{sys.executable}" "$@"\n')
+    py.chmod(0o755)
+    return root
+
+
+def _run_check(venv_root: Path, requirements: Path):
+    return subprocess.run(
+        [sys.executable, str(FIXER), "--check", "--venv", str(venv_root),
+         "--requirements", str(requirements)],
+        capture_output=True, text=True,
+    )
+
+
+def _mcp_requirements(tmp_path: Path) -> Path:
+    reqs = tmp_path / "requirements.txt"
+    reqs.write_text("mcp>=2.0\n")
+    return reqs
+
+
+def test_check_flags_an_importable_but_incompatible_sdk(tmp_path):
+    """A too-old-but-importable SDK must be reported as a GAP (rc=3), not as ok — this is
+    the check cortex-update.sh gates its repair on."""
+    sdk = _stub_sdk(tmp_path / "old-sdk", accepts_constructor_handlers=False)
+    venv_root = _venv_pointing_at(tmp_path, sdk)
+
+    r = _run_check(venv_root, _mcp_requirements(tmp_path))
+    out = r.stdout + r.stderr
+
+    assert r.returncode == 3, (
+        f"an incompatible SDK must be a gap (rc=3), got rc={r.returncode}:\n{out}")
+    assert "incompatible" in out.lower(), (
+        f"the report must name the real cause, not 'missing':\n{out}")
+    assert "mcp>=2.0" in out, f"the report must name the requirement:\n{out}"
+    assert "fix-cortex-venv.py" in out, f"the report must name the fix command:\n{out}"
+    assert "Traceback" not in out, f"a gap is not a crash:\n{out}"
+
+
+def test_check_passes_when_the_sdk_accepts_the_constructor_handlers(tmp_path):
+    """Control: the capability probe must NOT flag a usable SDK, or the check becomes a
+    permanent false repairee and every deploy reinstalls the venv."""
+    sdk = _stub_sdk(tmp_path / "new-sdk", accepts_constructor_handlers=True)
+    venv_root = _venv_pointing_at(tmp_path, sdk)
+
+    r = _run_check(venv_root, _mcp_requirements(tmp_path))
+    out = r.stdout + r.stderr
+
+    assert r.returncode == 0, (
+        f"a usable SDK must pass the check, got rc={r.returncode}:\n{out}")
+    assert "incompatible" not in out.lower(), (
+        f"a usable SDK was reported incompatible:\n{out}")

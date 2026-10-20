@@ -1,0 +1,87 @@
+MCP-SDK version-skew guard — re-runnable verification
+=====================================================
+interpreter        : ~/.hermes-cortex/venv/bin/python3 (3.12.3)
+range base         : 1c92f36ef49df68ec70724bb731fe0dcc2bd71a4 (1c92f36e)
+tip (this tree)    : 1c92f36e
+command            : bash docs/evidence/verify-mcp-sdk-guard.sh
+generated          : 2026-10-20T09:46:12Z
+
+== baseline extraction ==
+  pre-fix server : <work>/base/loop-gov-mcp.prefix.py (8357 lines)
+  pre-fix fixer  : <work>/base/fix-cortex-venv.prefix.py (287 lines)
+  ok    the extracted baseline carries the OLD ImportError-only guard
+  ok    the extracted baseline does NOT contain the capability probe
+
+== fabricated SDKs (both generations, built here) ==
+  old: <work>/sdk-old  (Server(name) — rejects the 2.0 handler kwargs)
+  new: <work>/sdk-new  (Server(name, on_list_tools=..., on_call_tool=...))
+
+== case 1: PRE-FIX server + OLD SDK (the gisu failure, reproduced) ==
+  | Traceback (most recent call last):
+  |   File "<work>/load-server.py", line 4, in <module>
+  |     spec.loader.exec_module(mod)
+  |   File "<frozen importlib._bootstrap_external>", line 995, in exec_module
+  |   File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  |   File "<work>/base/loop-gov-mcp.prefix.py", line 8309, in <module>
+  |     server = Server("loop-governance", on_list_tools=list_tools, on_call_tool=call_tool) if MCP_AVAILABLE else None
+  |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  | TypeError: Server.__init__() got an unexpected keyword argument 'on_list_tools'
+  rc=1
+  ok    the pre-change module dies at import with exactly the reported TypeError
+  ok    no output at all before the crash — the CLI adapter would exit 3
+
+== case 2: THIS TREE's server + OLD SDK (guard engaged, CLI still drivable) ==
+  | [mcp-server] WARNING: the installed MCP SDK cannot serve this module (TypeError: Server.__init__() got an unexpected keyword argument 'on_list_tools') — stdio serving is DISABLED; the CLI adapter (ops/scripts/loop-gov.py) still works.
+  | [mcp-server] This server needs the mcp 2.0 constructor API (Server(name, on_list_tools=..., on_call_tool=...)).
+  | [mcp-server] Interpreter: ~/.hermes-cortex/venv/bin/python3
+  | [mcp-server] Fix: run this with an interpreter that has mcp>=2.0 (ops/install/requirements.txt), e.g. ~/.hermes-cortex/venv/bin/python3 — or repair that venv with ops/scripts/manage/fix-cortex-venv.py
+  | SDK_FILE=<work>/sdk-old/mcp/__init__.py
+  | FAKE_GEN=old
+  | MCP_AVAILABLE=False
+  | HANDLER_OK=True
+  rc=0
+  ok    the module imports cleanly
+  ok    MCP_AVAILABLE=False (stdio serving declined)
+  ok    the handlers still work — the CLI adapter is usable
+  ok    a warning names the cause on stderr
+
+== case 3: THIS TREE's server + NEW SDK (the guard must NOT fire) ==
+  | SDK_FILE=<work>/sdk-new/mcp/__init__.py
+  | FAKE_GEN=new
+  | MCP_AVAILABLE=True
+  | HANDLER_OK=True
+  rc=0
+  ok    the SDK is used, not degraded
+  ok    no warning on a usable SDK
+
+== case 4: PRE-FIX fixer --check against an importable-but-too-old mcp (the gap) ==
+  | ok: <work>/venv-old/bin/python3 imports all 1 declared requirements
+  rc=0
+  ok    the OLD check reported a broken venv as healthy (this is the defect)
+  ok    it claimed 'imports all … declared requirements'
+
+== case 5: THIS TREE's fixer --check, same venv (must be a GAP, rc=3) ==
+  | 1 of 1 declared requirements are not usable from <work>/venv-old:
+  |   incompatible: mcp>=2.0 — needs the 2.0 constructor API (Server(name, on_list_tools=..., on_call_tool=...)) — TypeError: Server.__init__() got an unexpected keyword argument 'on_list_tools'
+  |   fix it:  ~/.hermes-cortex/venv/bin/python3 ~/hermes-cortex/ops/scripts/manage/fix-cortex-venv.py --venv <work>/venv-old --requirements <work>/reqs.txt
+  rc=3
+  ok    rc=3 — cortex-update.sh's repair gate now sees it
+  ok    reported as INCOMPATIBLE, not as missing
+  ok    the report names the API the SDK lacks
+
+== case 6: THIS TREE's fixer --check against a usable mcp (must pass, rc=0) ==
+  | ok: <work>/venv-new/bin/python3 imports all 1 declared requirements and satisfies their capability probes
+  rc=0
+  ok    rc=0 — no false repairee, so a deploy does not reinstall a healthy venv
+
+== case 7: this host's interpreters and the deployed CLI ==
+  ~/.hermes-cortex/venv/bin/python3 -> 2.0.0 | on_list_tools accepted: True
+  ~/.hermes/installs/483c6efb1d92c950/environments/b5932aae9bbb4617a29160b66fbed402/venv/bin/python3 -> 2.0.0 | on_list_tools accepted: True
+  loop-gov.py --list under 'python3': rc=0, begin/end_change lines=2
+  ok    the deployed CLI answers under python3
+  loop-gov.py --list under '~/.hermes-cortex/venv/bin/python3': rc=0, begin/end_change lines=2
+  ok    the deployed CLI answers under ~/.hermes-cortex/venv/bin/python3
+
+=====================================================
+exit code          : 0
+RESULT: ALL CLAIMS HOLD

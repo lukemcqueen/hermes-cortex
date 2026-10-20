@@ -177,14 +177,51 @@ try:
     from mcp.server import Server
     from mcp.server.stdio import stdio_server
     from mcp.types import Tool, TextContent, CallToolResult, ListToolsResult
+
+    # A PRESENT SDK IS NOT A USABLE ONE (measured on gisu, 2026-10-20).
+    #
+    # The guard below already survives a MISSING SDK. It did not survive an
+    # INCOMPATIBLE one: an mcp old enough to lack the 2.0 constructor API imports
+    # perfectly and then rejects the handlers this module is built on, so the
+    # construction at the bottom of this file raised
+    #   TypeError: Server.__init__() got an unexpected keyword argument 'on_list_tools'
+    # AT MODULE IMPORT. That killed the whole module, and with it the CLI adapter
+    # (ops/scripts/loop-gov.py), which loads this file by exec_module — so a version
+    # skew in a dependency the CLI never needs to SERVE took down the write gate on
+    # every edit ("governance is unavailable", exit 3), while the running MCP daemon,
+    # on a different interpreter, stayed healthy. The failure was also read BACKWARDS
+    # (as an SDK "too new"); the constructor kwargs ARE the 2.0 API and the decorator
+    # style they replaced is older — see docs/older/reference/mcp-sdk-v2-migration.md.
+    #
+    # So the capability is PROBED rather than assumed: constructing a throwaway server
+    # with no handlers proves the API accepts them. A failure is treated exactly like a
+    # missing SDK — the module stays importable and drivable (its stated design) and
+    # says WHY, naming the interpreter, instead of crashing.
+    Server("loop-governance/sdk-capability-probe", on_list_tools=None, on_call_tool=None)
     MCP_AVAILABLE = True
-except ImportError:  # pragma: no cover — governance without the MCP SDK
+except (ImportError, TypeError) as _sdk_err:  # pragma: no cover — no SDK, or an unusable one
     # Governance must be usable by a host with no MCP client (Pi). Rather than
     # fork the implementation, this module stays importable without the SDK: the
     # handlers below build CallToolResult/TextContent objects, so minimal
     # stand-ins keep the SAME code path working. The CLI is then an adapter over
     # this file, not a second implementation of it.
     MCP_AVAILABLE = False
+    if not isinstance(_sdk_err, ImportError):
+        # Silent for the documented case (no SDK). An INCOMPATIBLE SDK is a
+        # misconfiguration someone must fix, so it is reported: a gate that silently
+        # degrades is how the wrong interpreter stays invisible.
+        print(
+            f"[mcp-server] WARNING: the installed MCP SDK cannot serve this module "
+            f"({type(_sdk_err).__name__}: {_sdk_err}) — stdio serving is DISABLED; the CLI "
+            f"adapter (ops/scripts/loop-gov.py) still works.\n"
+            f"[mcp-server] This server needs the mcp 2.0 constructor API "
+            f"(Server(name, on_list_tools=..., on_call_tool=...)).\n"
+            f"[mcp-server] Interpreter: {sys.executable}\n"
+            f"[mcp-server] Fix: run this with an interpreter that has mcp>=2.0 "
+            f"(ops/install/requirements.txt), e.g. ~/.hermes-cortex/venv/bin/python3 — or "
+            f"repair that venv with ops/scripts/manage/fix-cortex-venv.py",
+            file=sys.stderr,
+        )
 
     class TextContent:  # type: ignore[no-redef]
         def __init__(self, type: str = "text", text: str = ""):
@@ -8340,8 +8377,11 @@ def _write_daemon_stamp() -> None:
 
 async def main():
     if not MCP_AVAILABLE:
-        print("loop-governance: the MCP SDK is not installed. Use the CLI adapter "
-              "(ops/scripts/loop-gov.py) or run this with a python that has 'mcp'.",
+        print("loop-governance: this interpreter has no USABLE MCP SDK — it is absent, or too "
+              "old for the 2.0 constructor API (the warning above says which, and names the "
+              "interpreter). Stdio serving is unavailable. Drive governance through the CLI "
+              "adapter instead (ops/scripts/loop-gov.py — SDK-independent by design), or run "
+              "this with a python that has mcp>=2.0.",
               file=sys.stderr)
         sys.exit(1)
     _write_daemon_stamp()
