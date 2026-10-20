@@ -63,6 +63,22 @@ for f in tests/test_close_budget_bounds.py tests/test_review_per_blob.py; do
     || echo "      the named failures DIFFER — investigate before shipping"
 done
 echo
+echo "=== 5. the DEPLOYED copy carries the change (read-only grep) ==="
+# Resolve the deployed path from the deploy manifest rather than guessing it: the manifest is
+# what the deploy itself uses, so a probe that hardcodes a path can silently read the wrong copy.
+DEPLOYED="$(awk -F'\t' '$1 ~ /mcp-servers\/loop-gov-mcp\.py$/ {print $2; exit}' \
+            "$HOME/.hermes-cortex/deploy-manifest.tsv" 2>/dev/null)"
+if [ -z "$DEPLOYED" ] || [ ! -f "$DEPLOYED" ]; then
+  echo "  COULD NOT VERIFY: no deployed copy named by the deploy manifest"
+else
+  echo "  path: ~${DEPLOYED#$HOME}"
+  for sym in _rules_rev _admissible "ALTER TABLE blob_reviews ADD COLUMN rules_rev" rules_rev; do
+    printf "  %-48s %s occurrence(s)\n" "$sym" "$(grep -c "$sym" "$DEPLOYED")"
+  done
+  echo "  NB: the RUNNING MCP daemon keeps the revision it loaded at startup, so the change takes"
+  echo "      effect for a host after its gateway restarts — a deployed file is not a live process."
+fi
+echo
 echo "NOTES"
 echo "  - Section 2 is the RED half: at $PRE_FIX_SHA the blob is NOT re-sent (calls=[]), which is"
 echo "    the deadlock a peer host reported. Section 1 is the GREEN half at the same assertions."

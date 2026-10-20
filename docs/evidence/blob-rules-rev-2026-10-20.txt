@@ -1,5 +1,5 @@
 blob-verdict rules revision — capture
-generated: 2026-10-20T07:46:04Z
+generated: 2026-10-20T08:02:28Z
 repo:      ~/hermes-cortex
 pre-fix:   fab9388b
 
@@ -32,6 +32,15 @@ rc=1   checks passed=12  failed=14
       now : 0 named FAIL line(s); 1 SKIP (NOT RUN is its own outcome, never a pass)
       base: 0 named FAIL line(s); 1 SKIP
       the named failures are IDENTICAL on both sides
+
+=== 5. the DEPLOYED copy carries the change (read-only grep) ===
+  path: ~/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py
+  _rules_rev                                       2 occurrence(s)
+  _admissible                                      7 occurrence(s)
+  ALTER TABLE blob_reviews ADD COLUMN rules_rev    1 occurrence(s)
+  rules_rev                                        29 occurrence(s)
+  NB: the RUNNING MCP daemon keeps the revision it loaded at startup, so the change takes
+      effect for a host after its gateway restarts — a deployed file is not a live process.
 
 NOTES
   - Section 2 is the RED half: at fab9388b the blob is NOT re-sent (calls=[]), which is
