@@ -33,6 +33,30 @@ never close. Widening coverage this way is not weaker severity gating: a blockin
 refuses the close, and an UNJUDGED blob is still uncovered. When a range looks unclosable, check
 whether a judged blob is being held to CLEAN by mistake.
 
+## A path that does not exist at the tip is NOT reviewable — demanding it is a deadlock
+
+`range_blobs` records a path the range changed but that is ABSENT at the tip with the sentinel
+`"deleted"` — a deletion, or every old path of a file that was RENAMED while the stored base
+predates the rename. Such a path has no diff, so no verdict can EVER satisfy the demand, and a blob
+already carrying a non-clean verdict is never re-sent. The result is a deadlock, not strictness:
+`reviewed this pass: 0` with the same paths pending on every close, for ever — and the reviewer's
+finding form gives it away ("prove, from within this file's diff, that …" for a file with no diff).
+The only exit is an override, so treat it as the bug it is. Two halves, and shipping one alone just
+moves the deadlock:
+
+- the DEMAND excludes any path with no content at tip, and REPORTS the exclusion (count + sample) —
+  silently dropping it is the same defect class;
+- the RECEIPT still names each such path PER PATH (value = the sentinel), or the push gate — which
+  queries the same range, sentinel included — refuses that range for ever instead.
+
+Diagnose from the symptom pair: `reviewed this pass: 0` while paths stay pending, PLUS a stored base
+that predates a rename. Confirm with `git log --oneline <base>..HEAD` (find the rename commit) and
+`git log --diff-filter=D --name-only <base>..HEAD` (list what vanished). A fresh base also clears it,
+but the base is computed by `begin_change`, so it is not something the worker picks mid-cycle.
+Note the residual that this does NOT fix: a path that STILL EXISTS and whose recorded verdict is
+non-clean keeps its verdict and stays pending — that is a JUDGEMENT problem, and its exits are a new
+blob (edit and re-commit), `rereview_change`, or a fresh base, never a silent override.
+
 ## An empty reviewer reply is the FIRST thing to check when a close hangs or refuses
 
 `REVIEWER_REASONING_EFFORT` is the lever, not `REVIEWER_MAX_TOKENS`. A reasoning model thinks to
@@ -100,6 +124,21 @@ That template is for whoever ASKS for a review. Its measured lesson: a brief tha
 author's five suspicions came back with six findings that merely restated them, so it now leads with
 open questions and the code, and it carries a table of what a reviewer cannot see (siblings, your
 terminal, the store, the past, a helper present at both range ends) with what to supply instead.
+
+## Read a review's FINDINGS, not its verdict token
+
+A CLEAN from a review request is an approval only if its findings are empty or trivial. A CLEAN whose
+single finding is `info` `unverified-claim` saying the window held only a path is the tell of
+`--material <path>` instead of the file's CONTENTS — it verified nothing, and citing it as an approval
+means quoting a paid pass on an empty review. Read the stored row before relying on it:
+
+```bash
+sqlite3 ~/.hermes-cortex/data/loop-governance.db \
+  "SELECT reviewer_model, verdict, findings_json FROM adversarial_reviews WHERE cycle_id=<N>"
+```
+
+The material and pass-off rules live in `adversarial-review-passoff`; this is the close-out side of the
+same rule — and the same instinct that says "the gate passed" is the one to distrust here.
 
 # Governance Close-out
 
@@ -392,9 +431,13 @@ repo state, audited range, the task's description, the diff stat, and the diff:
   shared repo. Put the scrub INSIDE the generator (one function replacing the home dir,
   the checkout path and the python bin dir with placeholders, applied to every emitted
   line): a hand-sanitised copy is republished the moment anyone re-runs the generator,
-  which is exactly what the artifact invites. The same guard reads a long digit run as a
+  which is exactly what the artifact invites.  The same guard reads a long digit run as a
   phone number and will refuse a repo write carrying raw PIDs— describe a process by its
-  ROLE ("the reviewer child", "the cron worker's server") rather than its pid. A large NUMBER in
+  ROLE ("the reviewer child", "the cron worker's server") rather than its pid. **An email address
+  in a fixture counts as personal data unless its domain is the reserved placeholder** — a test
+  helper writing `someone@some-invalid-host` is refused outright and the whole file write fails, so
+  use `example.com` (or drop the address) and keep the fixture's SHAPE rather than a plausible
+  address. A large NUMBER in
   a test fixture trips the same guard, and the fix is not to weaken the fixture: build the value
   arithmetically (`"1" + "0" * 12`) so no bare digit run exists in the source for the guard to read,
   which keeps the assertion's strength while the write goes through.
@@ -726,6 +769,14 @@ strands a push only when the close itself REPORTS that it wrote no receipt
 (`⚠️ Review receipt NOT written — <reason>`); that is the state that needs a carrier
 `begin_change`. So let the steps decide: close once the review is your last step, and push once
 the receipt proves the range — never reorder because "push must precede close".
+**A commit made AFTER a close is NOT covered by that receipt.** The receipt is bound to the range
+(`base..HEAD`) it was minted for, so one more commit — including a docs or evidence commit, and
+including one the pre-commit hook itself created — leaves the tip unauthorised and the push gate
+answers `this range touches an always-review path and carries no clean review receipt`, naming the
+expected receipt path. That is not a lock problem: close AGAIN (a new cycle whose description says it
+authorises the new tip, or `end_change` while the lock is still held) so the receipt names the current
+HEAD, then push. Batch the evidence commit INTO the reviewed range where the work allows, because the
+range's per-file material share shrinks with every added file.
 
 **DEPLOY BEFORE the close whenever the range touches a deploy-synced file.** The pre-push doctor compares DEPLOYED state with repo source and fails the push on drift (`Checksum: <file>`) until `cortex-dogfood.sh --force` has run — and that deploy is write-class, so it needs the very repo lock `end_change` RELEASES. Close first and the deploy is refused (`GOVERNANCE LOCK REQUIRED`), leaving a second, EMPTY cycle taken purely to hold a lock for a range already reviewed. So the order is:
 

@@ -835,6 +835,28 @@ temp repo, an empty HOME, a stubbed PATH) for the branches your host cannot reac
 path, the fallback path, the could-not-verify path. An untested branch is untested by definition,
 and these are exactly the branches that only run where you are not.
 
+**A git hook installed into a shared `core.hooksPath` has an INVERTED failure model: it must exit 0
+on every path.** It runs in EVERY repo on the host, for EVERY session, including repos where its
+state does not exist — so it is not a gate and a non-zero exit blocks a commit it knows nothing
+about. Three consequences, all of them load-bearing for such a script:
+
+- **Every degradation means "do nothing and exit 0"**: no interpreter, no state file, an unparseable
+  record, an unwritable message file. Test each one, and keep the exit status out of the failure
+  path entirely (`exit 0` at the end, never a bare `[[ ]]` that can return 1).
+- **It must be IDEMPOTENT and touch ONE file.** Re-running it (amend, retry) must produce
+  byte-identical content, so normalise before appending: strip any prior copy of what you add, trim
+  trailing blank lines, then write. The only path it may modify is the message file passed as `$1`;
+  any other write makes it a side-effect in someone else's repo.
+- **Its silent no-op is the hazard, so give it a checkable symptom.** "The hook is installed" and
+  "the hook did something" are different facts: a hook that quietly does nothing when its
+  interpreter is missing looks deployed forever. Have it write one inspectable value (a trailer, a
+  marker) and verify THAT on the host, not the symlink.
+
+Resolve its own dependencies explicitly too: a hook inherits the environment of whatever process ran
+`git`, not the session's, so pass a minimal `PATH` in tests (`env -i PATH=/usr/bin:/bin`) and resolve
+tools with `command -v` instead of assuming the interactive shell's PATH.
+
+
 **A fallback that does not ANNOUNCE itself is a swapped signal.** A resolver/shortcut fallback that
 silently picks a different interpreter makes the run look identical while a different program decides
 — it "passes", against the wrong thing. Print which path was used and why the first choice was
