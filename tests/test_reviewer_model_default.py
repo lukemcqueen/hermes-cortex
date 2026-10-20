@@ -51,7 +51,7 @@ def _conn():
     conn = sqlite3.connect(":memory:")
     conn.execute("CREATE TABLE blob_reviews (blob_sha TEXT PRIMARY KEY, verdict TEXT,"
                  " findings_json TEXT, summary TEXT, reviewer_id TEXT, reviewer_model TEXT,"
-                 " ts TEXT)")
+                 " ts TEXT, rules_rev TEXT)")
     return conn
 
 

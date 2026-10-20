@@ -1120,21 +1120,26 @@ BLOB_REVIEW_MAX_CONSECUTIVE_FAILURES = 2
 
 def _record_blob_review(blob_sha: str, verdict: str, findings_json: str = "[]",
                         summary: str = "", reviewer_id: str = "", model: str = "",
-                        conn: sqlite3.Connection | None = None) -> None:
+                        conn: sqlite3.Connection | None = None,
+                        *, rules_rev: str = "") -> None:
     """Store ONE blob's verdict, keyed by CONTENT (the blob sha, never the path).
 
     Content keying is what makes the cache honest: an edited file is a new blob
     and is judged again, while byte-identical content reviewed once is never
     re-bought — including across a rebase, which rewrites the tip and nothing else.
+
+    ``rules_rev`` (2026-10-20) records WHICH RULES produced the verdict. The write is
+    INSERT OR REPLACE keyed by the blob sha, so a re-review REPLACES the row and the stored
+    revision always describes the judgement that actually stands.
     """
     own = conn if conn is not None else _db()
     try:
         own.execute(
             "INSERT OR REPLACE INTO blob_reviews"
             " (blob_sha, verdict, findings_json, summary, reviewer_id,"
-            "  reviewer_model, ts) VALUES (?,?,?,?,?,?,?)",
+            "  reviewer_model, ts, rules_rev) VALUES (?,?,?,?,?,?,?,?)",
             (blob_sha, str(verdict).upper(), findings_json or "[]",
-             (summary or "")[:2000], reviewer_id, model, _now_iso()),
+             (summary or "")[:2000], reviewer_id, model, _now_iso(), rules_rev or ""),
         )
         own.commit()
     finally:
@@ -1161,12 +1166,91 @@ def _record_blob_reviews(blobs: dict, verdict: str, findings_json: str = "[]",
             own.close()
 
 
+def _rules_rev(prompt_text: str) -> str:
+    """A short fingerprint of the RULES a verdict was produced under (2026-10-20).
+
+    The reviewer's rules ARE its prompt text, so that text is what a stored verdict is
+    evidence about. `blob_reviews` recorded only the blob's CONTENT, which made the
+    cache's premise — "identical content cannot produce a different verdict" — false the
+    moment the rules changed: a blob judged before a rule landed was never re-sent, so it
+    kept refusing a close the CURRENT rules say is clean. The only exits were editing the
+    file (dodging a finding the rules call bogus) or an override. Measured 2026-10-20: a
+    host holding ~28 docs judged before the 2026-10-19 pointer rule could not close its
+    range at all.
+
+    Empty text yields "" — no fingerprint — and "" admits NO stored verdict, so an
+    unreadable template re-reviews instead of crediting anything.
+    """
+    if not prompt_text:
+        return ""
+    return hashlib.sha256(prompt_text.encode("utf-8", "replace")).hexdigest()[:16]
+
+
+def _blob_verdict_rows(blobs: dict,
+                       conn: sqlite3.Connection | None = None) -> dict[str, dict]:
+    """{sha: {verdict, findings_json, rules_rev}} for every blob that has a stored row.
+
+    ONE query implementation behind the three readers that follow (the skip list, the
+    coverage set, the invalidation count), so they cannot disagree about what the store
+    holds. An unreadable store returns {} — a re-review is waste, never a pass.
+    """
+    if not blobs:
+        return {}
+    own = conn if conn is not None else _db()
+    try:
+        out: dict[str, dict] = {}
+        for sha in blobs.values():
+            row = own.execute(
+                "SELECT verdict, findings_json, rules_rev FROM blob_reviews"
+                " WHERE blob_sha=?", (sha,)).fetchone()
+            if row is not None:
+                out[sha] = {"verdict": str(row[0]).upper(),
+                            "findings_json": row[1] or "",
+                            "rules_rev": str(row[2] or "")}
+        return out
+    except sqlite3.Error:
+        return {}
+    finally:
+        if conn is None:
+            own.close()
+
+
+def _admissible(row: dict, rules_rev: str) -> bool:
+    """Is this stored verdict evidence about the CURRENT rules? (2026-10-20)
+
+    Admissible only when the row names the revision it was produced under AND that
+    revision is the current one. An empty current revision, a NULL stored one, or a
+    different one all mean NOT admissible, and the blob is judged again: unknown
+    provenance costs a review, it never buys coverage.
+    """
+    if not rules_rev:
+        return False
+    return row.get("rules_rev") == rules_rev
+
+
+def _count_stale_verdicts(blobs: dict, conn: sqlite3.Connection | None = None,
+                          *, rules_rev: str = "") -> int:
+    """How many blobs hold a verdict the CURRENT rules invalidate (2026-10-20).
+
+    Reported by the pass so a rules change shows up as one bounded re-review instead of a
+    silent cost — and so the count is visible rather than inferred from a rising bill.
+    """
+    rows = _blob_verdict_rows(blobs, conn=conn)
+    return sum(1 for sha, row in rows.items()
+               if row["verdict"] != "UNJUDGED" and not _admissible(row, rules_rev))
+
+
 def _blobs_with_clean_verdict(blobs: dict,
                               conn: sqlite3.Connection | None = None) -> set[str]:
     """The blob SHAs in ``{path: sha}`` that already carry a stored CLEAN verdict.
 
     Fail CLOSED: an unreadable cache covers nothing, so the caller reviews rather
     than crediting a verdict it could not read.
+
+    NB (2026-10-20): this one does NOT filter by rules revision — it answers "is there a
+    CLEAN row", not "is there a CLEAN row under the CURRENT rules". It has no caller in
+    the close path (the close reads `_blobs_with_covered_verdict`), so it is left as the
+    historical probe; do not use it to authorise anything.
     """
     if not blobs:
         return set()
@@ -1187,7 +1271,8 @@ def _blobs_with_clean_verdict(blobs: dict,
 
 
 def _blobs_with_recorded_verdict(blobs: dict,
-                                 conn: sqlite3.Connection | None = None) -> dict[str, str]:
+                                 conn: sqlite3.Connection | None = None,
+                                 *, rules_rev: str = "") -> dict[str, str]:
     """{sha: verdict} for every blob in ``{path: sha}`` that has ANY stored verdict.
 
     Why this exists (2026-10-18): the per-blob pass skipped only CLEAN blobs, so the
@@ -1208,32 +1293,28 @@ def _blobs_with_recorded_verdict(blobs: dict,
     Fail OPEN here in the narrow sense only: an unreadable store returns {} so the
     caller reviews (a re-review is waste, never a pass) — the opposite of the CLEAN
     cache, which must fail closed because it CREDITS coverage.
+
+    RULES REVISION (2026-10-20): a stored verdict is admissible only when it names the
+    rules revision it was produced under AND that IS the current one (see `_admissible`).
+    The skip is justified only while the reviewer's RULES are constant — that is the
+    premise this docstring rests on — so a rules change re-sends exactly the blobs it
+    invalidates instead of leaving them blocking a close forever.
     """
-    if not blobs:
-        return {}
-    own = conn if conn is not None else _db()
-    try:
-        out: dict[str, str] = {}
-        for sha in blobs.values():
-            row = own.execute("SELECT verdict FROM blob_reviews WHERE blob_sha=?",
-                              (sha,)).fetchone()
-            if row is not None:
-                _v = str(row[0]).upper()
-                # UNJUDGED is not a verdict: an unparseable or verdict-less reply must not put its
-                # content on the skip list, or the same bytes would never be sent again and the
-                # blob would sit in `remaining` forever.
-                if _v != "UNJUDGED":
-                    out[sha] = _v
-        return out
-    except sqlite3.Error:
-        return {}
-    finally:
-        if conn is None:
-            own.close()
+    out: dict[str, str] = {}
+    for sha, row in _blob_verdict_rows(blobs, conn=conn).items():
+        if not _admissible(row, rules_rev):
+            continue
+        # UNJUDGED is not a verdict: an unparseable or verdict-less reply must not put its
+        # content on the skip list, or the same bytes would never be sent again and the blob
+        # would sit in `remaining` forever.
+        if row["verdict"] != "UNJUDGED":
+            out[sha] = row["verdict"]
+    return out
 
 
 def _blobs_with_covered_verdict(blobs: dict,
-                                conn: sqlite3.Connection | None = None) -> set[str]:
+                                conn: sqlite3.Connection | None = None,
+                                *, rules_rev: str = "") -> set[str]:
     """Blobs that were JUDGED and need no fix: CLEAN, or findings that all landed below blocking.
 
     Why this exists (2026-10-18, found by draining the unpushed range): coverage demanded a CLEAN
@@ -1265,12 +1346,14 @@ def _blobs_with_covered_verdict(blobs: dict,
     own = conn if conn is not None else _db()
     try:
         out: set[str] = set()
-        for sha in blobs.values():
-            row = own.execute("SELECT verdict, findings_json FROM blob_reviews WHERE blob_sha=?",
-                              (sha,)).fetchone()
-            if row is None:
+        for sha, row in _blob_verdict_rows(blobs, conn=own).items():
+            # RULES REVISION (2026-10-20): coverage may only be claimed for a verdict
+            # produced under the CURRENT rules. An older or unnamed revision means the
+            # blob is judged again — the direction that costs a review rather than
+            # widening what a receipt can authorise.
+            if not _admissible(row, rules_rev):
                 continue
-            verdict = str(row[0]).upper()
+            verdict = row["verdict"]
             if verdict == "UNJUDGED":
                 # Nothing was judged: never coverage, never a skip-list hit. (Asserted by
                 # tests/test_blob_coverage_semantics.py::test_a_stored_unjudged_row_neither_covers_nor_skips)
@@ -1278,7 +1361,7 @@ def _blobs_with_covered_verdict(blobs: dict,
             if verdict == "CLEAN":
                 out.add(sha)
                 continue
-            raw = row[1] or ""
+            raw = row["findings_json"]
             try:
                 findings = json.loads(raw)
             except (ValueError, TypeError):
@@ -1300,7 +1383,8 @@ def _review_uncovered_blobs(blobs: dict, *, reviewer, material_for,
                             budget_s: float = BLOB_REVIEW_BUDGET_S,
                             reviewer_label: str = "",
                             workers: int = BLOB_REVIEW_CONCURRENCY,
-                            conn: sqlite3.Connection | None = None) -> dict:
+                            conn: sqlite3.Connection | None = None,
+                            rules_rev: str = "") -> dict:
     """Judge every blob in ``{path: sha}`` that has no CLEAN verdict yet.
 
     The close-time reviewer judges one range in one call, and a reasoning model
@@ -1325,12 +1409,21 @@ def _review_uncovered_blobs(blobs: dict, *, reviewer, material_for,
     # A blob that was JUDGED and needs no fix is covered: CLEAN, or findings that all landed below
     # blocking (see _blobs_with_covered_verdict — demanding a bare CLEAN here was the contradiction
     # that made a six-INFO-finding blob uncovrable forever).
-    covered = _blobs_with_covered_verdict(blobs, conn=conn)
+    covered = _blobs_with_covered_verdict(blobs, conn=conn, rules_rev=rules_rev)
     # A blob with a recorded NON-clean verdict has already been read. Identical content
     # cannot produce a different verdict, so spend the cap on blobs nobody has judged
     # (see _blobs_with_recorded_verdict for the measured starvation this fixes). It stays
     # in `remaining`, so the close still refuses and the receipt still names it uncovered.
-    recorded = _blobs_with_recorded_verdict(blobs, conn=conn)
+    recorded = _blobs_with_recorded_verdict(blobs, conn=conn, rules_rev=rules_rev)
+    # RULES REVISION (2026-10-20): a verdict recorded under an OLDER revision of the
+    # reviewer's rules is not admissible (see _admissible), so it neither skips a blob nor
+    # covers one. Count them, so a rule change reads as one bounded re-review wave instead
+    # of a silent cost.
+    invalidated = _count_stale_verdicts(blobs, conn=conn, rules_rev=rules_rev)
+    if invalidated:
+        log.info("per-blob review: %d stored verdict(s) were produced under an older rules "
+                 "revision and are re-judged (current rev %s)",
+                 invalidated, rules_rev or "<none>")
     # ── ONE WINDOW, A WAVE OF BLOBS (2026-10-18) ─────────────────────────────────
     # A blob call measures 180-220s and the close's window is 240s, so a SEQUENTIAL pass judges
     # exactly one blob and a 15-file range costs 15 round trips (measured: cycle 13287, the
@@ -1475,7 +1568,7 @@ def _review_uncovered_blobs(blobs: dict, *, reviewer, material_for,
         # unrecorded cannot be audited, and a default cannot be verified from the record.
         _record_blob_review(sha, verdict, findings_json, (text or "")[:2000],
                             reviewer_id=reviewer_label, model=reviewer_label,
-                            conn=conn)
+                            conn=conn, rules_rev=rules_rev)
         if verdict != "CLEAN":
             _block, _annot = _blocking_findings(findings_json or "[]")
             blocking.extend(_block or [])
@@ -1485,7 +1578,8 @@ def _review_uncovered_blobs(blobs: dict, *, reviewer, material_for,
         remaining.extend(s for _, s in sorted((blobs or {}).items())
                          if s not in verdicts and s not in covered and s not in remaining)
     return {"verdicts": verdicts, "remaining": remaining, "calls": calls,
-            "blocking": blocking, "failed": failed, "already_judged": already_judged}
+            "blocking": blocking, "failed": failed, "already_judged": already_judged,
+            "invalidated_verdicts": invalidated}
 
 
 def _push_base_candidates(repo: Path) -> list[str]:
@@ -1980,11 +2074,15 @@ def _complete_blob_reviews(repo: Path, template: str, ctx: dict, run_reviewer,
         return {"verdicts": {}, "remaining": [], "calls": 0, "blocking": [],
                 "peer_session_paths": sorted(peers), "deleted_paths": deleted}
     ctx = dict(ctx, base=base)
+    # The RULES the reviewer is given ARE the template text, so that text is fingerprinted
+    # and stored with every verdict: a rule change then invalidates the verdicts it
+    # supersedes, instead of leaving them to refuse a close the new rules call clean.
     result = _review_uncovered_blobs(
         blobs,
         reviewer=lambda sha, path, material: run_reviewer(f"{template}\n{material}\n"),
         material_for=lambda sha, path: _blob_material(repo, base, path, ctx),
-        cap=cap, budget_s=budget_s, reviewer_label=reviewer_label)
+        cap=cap, budget_s=budget_s, reviewer_label=reviewer_label,
+        rules_rev=_rules_rev(template))
     result["peer_session_paths"] = sorted(peers)
     result["deleted_paths"] = deleted
     return result
@@ -3132,9 +3230,22 @@ def _ensure_schema(conn: sqlite3.Connection) -> None:
             summary        TEXT,
             reviewer_id    TEXT,
             reviewer_model TEXT,
-            ts             TEXT NOT NULL
+            ts             TEXT NOT NULL,
+            rules_rev      TEXT
         )"""
     )
+    # rules_rev (2026-10-20): WHICH RULES produced a verdict. Added for stores that predate
+    # it, guarded by a membership test on the REAL columns rather than by swallowing the
+    # duplicate-column error, so a failure to migrate is visible. Existing rows keep NULL,
+    # which _admissible reads as "not evidence about the current rules" — such a blob is
+    # judged again rather than trusted.
+    try:
+        _br_cols = {r[1] for r in conn.execute("PRAGMA table_info(blob_reviews)").fetchall()}
+        if "rules_rev" not in _br_cols:
+            conn.execute("ALTER TABLE blob_reviews ADD COLUMN rules_rev TEXT")
+    except sqlite3.Error as e:  # noqa: BLE001 — a store hiccup must not stop the server
+        log.warning("loop-gov: could not add blob_reviews.rules_rev (%s) — stored verdicts "
+                    "will be treated as unverifiable and re-judged", e)
     # Task events table (harness v3)
     conn.execute(
         """CREATE TABLE IF NOT EXISTS task_events (

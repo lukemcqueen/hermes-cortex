@@ -96,7 +96,7 @@ def test_budget_left_helper() -> None:
 def test_per_blob_pass_accounts_for_every_blob() -> None:
     print("C. the per-blob pass stops at its budget and accounts for every blob")
     material_for = lambda sha, path: f"material for {path}"  # noqa: E731
-    mcp._blobs_with_clean_verdict = lambda blobs, conn=None: set()
+    mcp._blobs_with_clean_verdict = lambda blobs, conn=None, **kw: set()
     mcp._record_blob_review = lambda sha, *a, **k: None
 
     def _ok(sha, path, material):
@@ -182,7 +182,7 @@ def test_real_wrapper_enforces_the_cap() -> None:
     exactly one and reports the other remaining; cap=2 judges both.
     """
     print("E. the real wrapper enforces the cap it is handed")
-    mcp._blobs_with_clean_verdict = lambda blobs, conn=None: set()
+    mcp._blobs_with_clean_verdict = lambda blobs, conn=None, **kw: set()
     mcp._record_blob_review = lambda sha, *a, **k: None
     mcp._push_base = lambda repo: "base-sha"
     mcp._push_range_blobs = lambda repo: {"a.txt": "sha-a", "b.txt": "sha-b"}

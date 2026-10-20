@@ -62,17 +62,29 @@ GATE_LOGGER_NAME = "loop-governance"
 _gate_log = _logging.getLogger(GATE_LOGGER_NAME)
 _gate_log.setLevel(_logging.CRITICAL + 1)
 
+# The stored verdict is admissible only under the rules revision that produced it (2026-10-20),
+# so the fixtures stamp one fixed revision and inject it: this file is about the SKIP-vs-retry
+# semantics at one revision (revision matching itself is tests/test_blob_rules_rev.py).
+REV = mcp._rules_rev("fixed rules for the skip fixtures")
+
+
+def _pass(blobs, **kw):
+    kw.setdefault("rules_rev", REV)
+    return mcp._review_uncovered_blobs(blobs, **kw)
+
+
 DDL = """CREATE TABLE IF NOT EXISTS blob_reviews (
     blob_sha TEXT PRIMARY KEY, verdict TEXT, findings_json TEXT, summary TEXT,
-    reviewer_id TEXT, reviewer_model TEXT, ts TEXT)"""
+    reviewer_id TEXT, reviewer_model TEXT, ts TEXT, rules_rev TEXT)"""
 
 
 def _store(rows):
     conn = sqlite3.connect(":memory:")
     conn.execute(DDL)
     for sha, verdict in rows:
-        conn.execute("INSERT OR REPLACE INTO blob_reviews (blob_sha, verdict, ts) VALUES (?,?,?)",
-                     (sha, verdict, "2026-10-18T00:00:00Z"))
+        conn.execute("INSERT OR REPLACE INTO blob_reviews"
+                     " (blob_sha, verdict, ts, rules_rev) VALUES (?,?,?,?)",
+                     (sha, verdict, "2026-10-18T00:00:00Z", REV))
     conn.commit()
     return conn
 
@@ -84,7 +96,7 @@ def _run(blobs, conn):
         seen.append((path, sha))
         return '{"verdict": "CLEAN", "findings": []}'
 
-    out = mcp._review_uncovered_blobs(
+    out = _pass(
         blobs, reviewer=reviewer,
         material_for=lambda sha, path: f"material for {path}",
         cap=1, budget_s=240.0, conn=conn)

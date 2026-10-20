@@ -44,7 +44,7 @@ _gate_log.setLevel(_logging.CRITICAL + 1)
 
 DDL = """CREATE TABLE IF NOT EXISTS blob_reviews (
     blob_sha TEXT PRIMARY KEY, verdict TEXT, findings_json TEXT, summary TEXT,
-    reviewer_id TEXT, reviewer_model TEXT, ts TEXT)"""
+    reviewer_id TEXT, reviewer_model TEXT, ts TEXT, rules_rev TEXT)"""
 
 FINDING = {
     "finding_id": "ADV-1-1", "technique": "unverified-claim", "target": "f:1",
@@ -56,14 +56,35 @@ def _store(rows):
     conn = sqlite3.connect(":memory:")
     conn.execute(DDL)
     for sha, verdict, findings in rows:
-        conn.execute("INSERT OR REPLACE INTO blob_reviews (blob_sha, verdict, findings_json, ts) "
-                     "VALUES (?,?,?,?)", (sha, verdict, findings, "2026-10-18T00:00:00Z"))
+        conn.execute("INSERT OR REPLACE INTO blob_reviews"
+                     " (blob_sha, verdict, findings_json, ts, rules_rev) VALUES (?,?,?,?,?)",
+                     (sha, verdict, findings, "2026-10-18T00:00:00Z", REV))
     conn.commit()
     return conn
 
 
 def _sha(ch):
     return ch * 40
+
+# The close reads these two helpers with the rules revision CURRENTLY in force, and a stored
+# verdict is admissible only under the revision that produced it (2026-10-20). These fixtures
+# exercise the COVERAGE rule, so they stamp the rows with one fixed revision and inject it into
+# every call: the assertions below are about coverage, and revision matching is owned by
+# tests/test_blob_rules_rev.py.
+REV = mcp._rules_rev("fixed rules for the coverage fixtures")
+
+
+def _covered(blobs, conn=None, **kw):
+    return mcp._blobs_with_covered_verdict(blobs, conn=conn, rules_rev=REV, **kw)
+
+
+def _recorded(blobs, conn=None, **kw):
+    return mcp._blobs_with_recorded_verdict(blobs, conn=conn, rules_rev=REV, **kw)
+
+
+def _pass(blobs, **kw):
+    kw.setdefault("rules_rev", REV)
+    return mcp._review_uncovered_blobs(blobs, **kw)
 
 
 def test_00_preconditions():
@@ -80,14 +101,14 @@ def test_00_preconditions():
 
 def test_clean_is_covered():
     blobs = {"a.py": _sha("a")}
-    assert mcp._blobs_with_covered_verdict(blobs, conn=_store([(_sha("a"), "CLEAN", "[]")])) \
+    assert _covered(blobs, conn=_store([(_sha("a"), "CLEAN", "[]")])) \
         == {_sha("a")}
 
 
 def test_non_blocking_findings_are_covered():
     blobs = {"b.py": _sha("b")}
     conn = _store([(_sha("b"), "FINDINGS", json.dumps([dict(FINDING, severity="info")]))])
-    assert mcp._blobs_with_covered_verdict(blobs, conn=conn) == {_sha("b")}, (
+    assert _covered(blobs, conn=conn) == {_sha("b")}, (
         "a blob judged with only non-blocking findings must be COVERED, or it can never be "
         "covered at all (the close reports 0 blocking findings for it)")
 
@@ -95,13 +116,13 @@ def test_non_blocking_findings_are_covered():
 def test_blocking_findings_are_not_covered():
     blobs = {"c.py": _sha("c")}
     conn = _store([(_sha("c"), "FINDINGS", json.dumps([dict(FINDING, severity="high")]))])
-    assert mcp._blobs_with_covered_verdict(blobs, conn=conn) == set(), (
+    assert _covered(blobs, conn=conn) == set(), (
         "a blocking finding must NOT be covered — this is the protection that must not move")
 
 
 def test_unjudged_is_not_covered():
     blobs = {"d.py": _sha("d")}
-    assert mcp._blobs_with_covered_verdict(blobs, conn=_store([])) == set(), (
+    assert _covered(blobs, conn=_store([])) == set(), (
         "an unjudged blob must never be covered: a receipt may not name a file nobody read")
 
 
@@ -110,7 +131,7 @@ def test_ambiguity_fails_closed():
             (_sha("f"), "FINDINGS", "not json"),               # unparseable
             (_sha("g"), "FINDINGS", "[]")]                     # empty list = silence
     blobs = {"e.py": _sha("e"), "f.py": _sha("f"), "g.py": _sha("g")}
-    got = mcp._blobs_with_covered_verdict(blobs, conn=_store(rows))
+    got = _covered(blobs, conn=_store(rows))
     assert got == set(), f"ambiguity must fail CLOSED (covered nothing), got {got}"
 
 
@@ -124,7 +145,7 @@ def test_covered_blob_is_not_re_reviewed_and_not_outstanding():
 
     blobs = {"a/covered.py": _sha("a"), "z/pending.py": _sha("z")}
     conn = _store([(_sha("a"), "FINDINGS", json.dumps([dict(FINDING, severity="info")]))])
-    out = mcp._review_uncovered_blobs(blobs, reviewer=reviewer,
+    out = _pass(blobs, reviewer=reviewer,
                                       material_for=lambda sha, path: "m",
                                       cap=1, budget_s=240.0, conn=conn)
     assert "a/covered.py" not in seen, f"a covered blob must not be re-reviewed: {seen}"
@@ -137,7 +158,7 @@ def test_receipt_names_only_covered_blobs():
     """ADV-0-6: a receipt may name only blobs that were JUDGED and need no fix."""
     saved = (mcp._range_blobs, mcp._blobs_with_covered_verdict, mcp._push_base_is_root_fallback)
     mcp._range_blobs = lambda repo, base, head: {"a.py": _sha("a"), "b.py": _sha("b")}
-    mcp._blobs_with_covered_verdict = lambda blobs, conn=None: {_sha("a")}
+    mcp._blobs_with_covered_verdict = lambda blobs, conn=None, **kw: {_sha("a")}
     # A resolvable range is what this test is about; the unresolvable case has its own test.
     mcp._push_base_is_root_fallback = lambda repo: False
     try:
@@ -198,12 +219,13 @@ def test_coverage_is_recomputed_per_call_not_cached():
     """A peer's newly recorded verdict must be picked up on the NEXT call, not after a restart."""
     conn = _store([])
     blobs = {"a.py": _sha("a")}
-    assert mcp._blobs_with_covered_verdict(blobs, conn=conn) == set(), (
+    assert _covered(blobs, conn=conn) == set(), (
         "an unjudged blob must start uncovered")
-    conn.execute("INSERT OR REPLACE INTO blob_reviews (blob_sha, verdict, findings_json, ts) "
-                 "VALUES (?,?,?,?)", (_sha("a"), "CLEAN", "[]", "2026-10-18T00:00:00Z"))
+    conn.execute("INSERT OR REPLACE INTO blob_reviews"
+                 " (blob_sha, verdict, findings_json, ts, rules_rev) VALUES (?,?,?,?,?)",
+                 (_sha("a"), "CLEAN", "[]", "2026-10-18T00:00:00Z", REV))
     conn.commit()
-    assert mcp._blobs_with_covered_verdict(blobs, conn=conn) == {_sha("a")}, (
+    assert _covered(blobs, conn=conn) == {_sha("a")}, (
         "a verdict recorded by another session between two calls must be seen by the second call — "
         "the coverage path must not cache")
 
@@ -266,8 +288,8 @@ def test_a_stored_unjudged_row_neither_covers_nor_skips():
     sha = _sha("unjudged")
     conn.execute("INSERT INTO blob_reviews VALUES (?,?,?)", (sha, "UNJUDGED", "[]"))
     blobs = {"x.py": sha}
-    assert mcp._blobs_with_covered_verdict(blobs, conn=conn) == set(), "UNJUDGED is not coverage"
-    assert mcp._blobs_with_recorded_verdict(blobs, conn=conn) == {}, (
+    assert _covered(blobs, conn=conn) == set(), "UNJUDGED is not coverage"
+    assert _recorded(blobs, conn=conn) == {}, (
         "UNJUDGED must not put content on the already-judged skip list, or it is never retried")
 
 
@@ -278,7 +300,7 @@ def test_silent_reply_leaves_no_verdict_and_keeps_the_blob_retryable():
     conn = sqlite3.connect(":memory:")
     conn.execute("CREATE TABLE blob_reviews (blob_sha TEXT PRIMARY KEY, verdict TEXT, findings_json TEXT)")
     sha = _sha("retry")
-    out = mcp._review_uncovered_blobs(
+    out = _pass(
         {"y.py": sha},
         reviewer=lambda s, p, m: "no json here at all",
         material_for=lambda s, p: "material",
@@ -304,15 +326,18 @@ def test_the_old_findings_with_no_findings_row_is_what_wedged_the_range():
     """
     import sqlite3
     conn = sqlite3.connect(":memory:")
-    conn.execute("CREATE TABLE blob_reviews (blob_sha TEXT PRIMARY KEY, verdict TEXT, findings_json TEXT)")
+    conn.execute("CREATE TABLE blob_reviews (blob_sha TEXT PRIMARY KEY, verdict TEXT,"
+                 " findings_json TEXT, rules_rev TEXT)")
     old, new = _sha("old-wedge"), _sha("new-unjudged")
-    conn.execute("INSERT INTO blob_reviews VALUES (?,?,?)", (old, "FINDINGS", "[]"))
-    conn.execute("INSERT INTO blob_reviews VALUES (?,?,?)", (new, "UNJUDGED", "[]"))
+    # Both rows carry the revision in force: a real writer always stamps it (2026-10-20), and
+    # this test is about the UNJUDGED filter, not about revision matching.
+    conn.execute("INSERT INTO blob_reviews VALUES (?,?,?,?)", (old, "FINDINGS", "[]", REV))
+    conn.execute("INSERT INTO blob_reviews VALUES (?,?,?,?)", (new, "UNJUDGED", "[]", REV))
     blobs = {"old.py": old, "new.py": new}
-    assert mcp._blobs_with_recorded_verdict(blobs, conn=conn) == {old: "FINDINGS"}, (
+    assert _recorded(blobs, conn=conn) == {old: "FINDINGS"}, (
         "the record the OLD parse wrote IS skipped — that is precisely the wedge removed here")
-    assert new not in mcp._blobs_with_recorded_verdict(blobs, conn=conn), "UNJUDGED stays retryable"
-    assert mcp._blobs_with_covered_verdict(blobs, conn=conn) == set(), (
+    assert new not in _recorded(blobs, conn=conn), "UNJUDGED stays retryable"
+    assert _covered(blobs, conn=conn) == set(), (
         "neither row is coverage: an empty findings list and an unjudged row both credit nothing")
 
 
@@ -375,12 +400,12 @@ def test_unparseable_reply_is_retried_on_the_next_pass_and_never_skipped():
         seen.append(s)
         return "I reviewed it and it looks fine"          # non-empty, but judges NOTHING
 
-    out1 = mcp._review_uncovered_blobs(blobs, reviewer=reviewer,
+    out1 = _pass(blobs, reviewer=reviewer,
                                        material_for=lambda s, p: "material", conn=conn)
     assert sha in out1["failed"] and sha in out1["remaining"], f"unjudged, not credited: {out1}"
-    assert mcp._blobs_with_recorded_verdict(blobs, conn=conn) == {}, (
+    assert _recorded(blobs, conn=conn) == {}, (
         "nothing may be recorded, or the skip list would hide the content from every later pass")
-    out2 = mcp._review_uncovered_blobs(blobs, reviewer=reviewer,
+    out2 = _pass(blobs, reviewer=reviewer,
                                        material_for=lambda s, p: "material", conn=conn)
     assert len(seen) == 2, "the SAME content must be sent again on the next pass (the retry property)"
     assert seen[0] == seen[1] == sha, (
@@ -401,8 +426,8 @@ def test_blob_material_shows_sibling_added_lines_so_evidence_is_visible():
 
     mcp._git_capture = fake_git
     mcp._push_range_blobs = lambda repo: {"a.py": "shaA", "tests/t.py": "shaT"}
-    mcp._blobs_with_covered_verdict = lambda blobs, conn=None: set()
-    mcp._blobs_with_recorded_verdict = lambda blobs, conn=None: {}
+    mcp._blobs_with_covered_verdict = lambda blobs, conn=None, **kw: set()
+    mcp._blobs_with_recorded_verdict = lambda blobs, conn=None, **kw: {}
     try:
         md = mcp._blob_material(pathlib.Path("/tmp"), "base", "a.py", {"head_sha": "head"})
     finally:

@@ -77,7 +77,7 @@ def test_every_deleted_path_is_recorded_separately_in_the_receipt():
         "generator_v4/two.py": DELETED,
         "generator/live.py": "c" * 40,
     }
-    mcp._blobs_with_covered_verdict = lambda blobs, conn=None: set()
+    mcp._blobs_with_covered_verdict = lambda blobs, conn=None, **kw: set()
     try:
         receipt = mcp._receipt_blobs(Path("/tmp"), "base", "head")
     finally:
@@ -92,7 +92,7 @@ def test_a_deleted_entry_is_not_a_verdict_for_content():
     saved = (mcp._push_base_is_root_fallback, mcp._range_blobs, mcp._blobs_with_covered_verdict)
     mcp._push_base_is_root_fallback = lambda repo: False
     mcp._range_blobs = lambda repo, base, head: {"gone.py": DELETED}
-    mcp._blobs_with_covered_verdict = lambda blobs, conn=None: set()
+    mcp._blobs_with_covered_verdict = lambda blobs, conn=None, **kw: set()
     try:
         receipt = mcp._receipt_blobs(Path("/tmp"), "base", "head")
     finally:

@@ -1,0 +1,39 @@
+blob-verdict rules revision — capture
+generated: 2026-10-20T07:46:04Z
+repo:      ~/hermes-cortex
+pre-fix:   fab9388b
+
+=== 1. the new pin, at the working tree ===
+ALL PASS (0 failed)
+rc=0   checks passed=36  failed=0
+
+=== 2. the same pin against the PRE-FIX module (extracted with git show) ===
+decisive check (the reported deadlock):
+  FAIL  the revision changes with the rules text   vs 
+  FAIL  the stored verdict is invisible to the current revision  a verdict from an older revision must not be treated as already judged
+  FAIL  the blob IS re-sent to the reviewer  calls=[]
+rc=1   checks passed=12  failed=14
+  (section G reports NOT RUN here: this temp tree has no git history to read)
+
+=== 3. the suites this change touches, at the working tree ===
+  test_blob_coverage_semantics.py              rc=0 fails=0
+  test_blob_judged_not_retried.py              rc=0 fails=0
+  test_review_guidance.py                      rc=0 fails=0
+  test_blob_deleted_scope.py                   rc=0 fails=0
+  test_reviewer_model_default.py               rc=0 fails=0
+  test_blob_review_concurrency.py              rc=0 fails=0
+
+=== 4. the two files that are red on BOTH sides (pre-existing, not this change) ===
+  --- test_close_budget_bounds.py: rc now=1  rc at fab9388b=1
+      now : 2 named FAIL line(s); 0 SKIP (NOT RUN is its own outcome, never a pass)
+      base: 2 named FAIL line(s); 0 SKIP
+      the named failures are IDENTICAL on both sides
+  --- test_review_per_blob.py: rc now=1  rc at fab9388b=1
+      now : 0 named FAIL line(s); 1 SKIP (NOT RUN is its own outcome, never a pass)
+      base: 0 named FAIL line(s); 1 SKIP
+      the named failures are IDENTICAL on both sides
+
+NOTES
+  - Section 2 is the RED half: at fab9388b the blob is NOT re-sent (calls=[]), which is
+    the deadlock a peer host reported. Section 1 is the GREEN half at the same assertions.
+  - Nothing here writes to the repo, the deploy tree or any governance store.
