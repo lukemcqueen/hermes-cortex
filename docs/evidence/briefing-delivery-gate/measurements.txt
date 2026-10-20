@@ -102,3 +102,30 @@ $ python3 adversarial-verify.py --file tests/test_check_latest_briefing.py --lev
 
 ✅ GATE_PASSED — no critical/high findings
 rc=0
+## K. DEPLOYED path (after bash cortex-dogfood.sh --force: 'DOGFOOD PASSED - deployed state verified clean')
+$ ls -l ~/.hermes-cortex/scripts/manage/check-latest-briefing.py
+-rwxr-xr-x 1 <user> <user> 8457 Oct 21 08:32 ~/.hermes-cortex/scripts/manage/check-latest-briefing.py
+rc=0
+$ python3 ~/.hermes-cortex/scripts/manage/check-latest-briefing.py            # deployed default: pass -> silent
+rc=0
+$ python3 ~/.hermes-cortex/scripts/manage/check-latest-briefing.py --date 2026-10-20 | head -3   # deployed: fires on the drifted delivery
+❌ Delivered briefing FAILED the canonical checker — sustainability-briefing-2026-10-20.md
+   checker: ~/.hermes-cortex/scripts/manage/verify_briefing.py
+   [files] sustainability-briefing-2026-10-20.md      size=9540     PASS
+rc=1
+$ bash ~/.hermes-cortex/scripts/orch-daily-regression-gate.sh   # whole gate, deployed, incl. the new step
+rc=0   # 0 with empty stdout = suite PASS + briefing PASS (watchdog silent)
+## L. Doctor after deploy — exit code and the counts, not just ticks
+$ python3 ops/scripts/manage/cortex-doctor.py --quiet > /tmp/doc.txt; echo "rc=$?"
+rc=1
+$ grep -e "Overall" -e "UNDISPOSED" -e "Repo clean" -e "briefing" /tmp/doc13484.txt
+  ⚠️  Repo clean
+  ✅ Checksum: verify_briefing.py
+  ✅ Checksum: check-latest-briefing.py
+  ✅ Checksum: gen_briefing.py
+  ⚠️  Overall: WARNING  (475 pass · 3 warn · 0 fail · 3 info)  · 6 undisposed
+  🧹 UNDISPOSED — 6 warning/info check(s) nobody has decided about
+       · Repo clean
+         or:  cortex-doctor.py --disposition "Repo clean" --as deferred --owner <you> --reason "<why>"
+rc=0   # rc 0 = grep matched the summary lines; doctor's own rc is the line above
+# the doctor names no briefing-gate check: this change adds no new doctor surface.
