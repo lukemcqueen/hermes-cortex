@@ -1,5 +1,5 @@
 # Task-queue evidence — interpreter capability, before/after (cycle 13457, task a6bb2da4)
-# host: esther · range base: 4799f61e · tip: 4799f61e
+# host: esther · range base: 4799f61e · tip: 60bf5386
 # Every block is the actual output of the command above it; rc is measured unpiped.
 
 ## BEFORE — the report committed at the range base carries a NOT-RUN as its evidence
@@ -47,7 +47,7 @@ collected 11 items
 
 tests/test_task_queue_evidence.py ...........                            [100%]
 
-============================== 11 passed in 6.31s ==============================
+============================== 11 passed in 6.25s ==============================
 ---
 run-tests.sh: interpreter=$HOME/.hermes-cortex/venv/bin/python3 rc=0  (PYTHONPATH/PYTHONHOME unset for the run)
 [rc=0]
@@ -60,7 +60,7 @@ evidence PASSED
 [rc=0]
 
 $ grep -n -e "test_hc_harness passes" -e "Verdict" docs/evidence/task-queue-remediation.md
-23:| test_hc_harness passes on the current tree | PASS | now (4799f61e): ============================== 9 passed in 1.76s =============================== · pinned baseline fbfc22b34db2 (fbfc22b3): ============================== 9 passed in 1.68s =============================== [outcome pass] — reproduced as recorded under the generating interpreter, not gated (interpreter drift makes the old tree pass under today's python); the verdict is the measured pass, never the absence of the word "failed" |
+23:| test_hc_harness passes on the current tree | PASS | now (60bf5386): ============================== 9 passed in 1.71s =============================== · pinned baseline fbfc22b34db2 (fbfc22b3): ============================== 9 passed in 1.68s =============================== [outcome pass] — reproduced as recorded under the generating interpreter, not gated (interpreter drift makes the old tree pass under today's python); the verdict is the measured pass, never the absence of the word "failed" |
 25:**Verdict: PASS**
 [rc=0]
 

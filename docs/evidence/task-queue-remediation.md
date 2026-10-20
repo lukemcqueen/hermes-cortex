@@ -20,7 +20,7 @@ the committed file, so a hand-written table cannot pass for script output.
 | Every task migration is registered for deploy | PASS | 13 migrations; unregistered: none |
 | Every task migration is on the deployed tree | PASS | 13 of 13 deployed |
 | DB schema version matches the newest repo migration | PASS | DB=13 repo=13 |
-| test_hc_harness passes on the current tree | PASS | now (4799f61e): ============================== 9 passed in 1.76s =============================== · pinned baseline fbfc22b34db2 (fbfc22b3): ============================== 9 passed in 1.68s =============================== [outcome pass] — reproduced as recorded under the generating interpreter, not gated (interpreter drift makes the old tree pass under today's python); the verdict is the measured pass, never the absence of the word "failed" |
+| test_hc_harness passes on the current tree | PASS | now (60bf5386): ============================== 9 passed in 1.71s =============================== · pinned baseline fbfc22b34db2 (fbfc22b3): ============================== 9 passed in 1.68s =============================== [outcome pass] — reproduced as recorded under the generating interpreter, not gated (interpreter drift makes the old tree pass under today's python); the verdict is the measured pass, never the absence of the word "failed" |
 
 **Verdict: PASS**
 
@@ -42,7 +42,7 @@ collected 9 items
 
 tests/test_hc_harness.py .........                                       [100%]
 
-============================== 9 passed in 1.76s ===============================
+============================== 9 passed in 1.71s ===============================
 ```
 
 ### On a HEAD~1 worktree (this change absent)
