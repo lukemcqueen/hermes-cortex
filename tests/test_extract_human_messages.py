@@ -15,6 +15,7 @@ and the repo is shared across hosts.
 import os
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
@@ -51,8 +52,20 @@ def main():
     check("user_rows=" in proc.stdout, "script must print a user_rows= summary")
     check("human_rows=" in proc.stdout, "script must print a human_rows= summary")
     check("sessions_with_human=" in proc.stdout, "script must print a sessions summary")
-    out = Path(SCRIPT).parent / "user_msgs.json"
-    check(out.exists(), "script must write user_msgs.json beside itself")
+    # Output lands OUTSIDE the repo (the dump carries the operator's own message
+    # text plus session ids; the repo is public). Drive it into a throwaway dir
+    # so the assertion is hermetic and cannot mint a real dump.
+    with tempfile.TemporaryDirectory() as tmp_out:
+        env = dict(os.environ, USER_MSGS_OUT_DIR=tmp_out)
+        proc = subprocess.run(
+            [sys.executable, str(SCRIPT), "2026-10-07"],
+            capture_output=True, text=True, timeout=120, env=env,
+        )
+        check(proc.returncode == 0, f"script exited {proc.returncode}: {proc.stderr[:400]}")
+        out = Path(tmp_out) / "user_msgs.json"
+        check(out.exists(), "script must write user_msgs.json into USER_MSGS_OUT_DIR")
+    check(not (Path(SCRIPT).parent / "user_msgs.json").exists(),
+          "the repo copy must never be written beside the script again")
     return report()
 
 

@@ -142,3 +142,6 @@ laptop/
 # External adapter/harness directories (not part of hc)
 adapters/
 tests/artifacts/
+
+# Operator message dumps — personal content, never public (extract-human-messages.py)
+user_msgs.json

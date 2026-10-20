@@ -5,7 +5,10 @@ Committed with the 2026-10-07 soul-refinement report so its claims are
 verifiable by a later reviewer, not merely asserted.
 
 Usage:  python3 extract-human-messages.py [YYYY-MM-DD]
-Prints the user rows for the day and writes user_msgs.json beside itself.
+Prints the user rows for the day and writes user_msgs.json into
+$USER_MSGS_OUT_DIR (default ~/.hermes-cortex/state) — OUTSIDE the repo: the
+dump is the operator's own message text plus session ids, and the repo is
+public (the filename is gitignored as a second line of defence).
 
 Read-only: opens state.db with mode=ro + PRAGMA query_only=1. Never writes
 the sessions store.
@@ -49,7 +52,14 @@ def main() -> int:
         preview = (r[3] or "").replace("\n", " ")[:120]
         print(f"  [{ts}] {r[1][:8]} {preview}")
 
-    out = os.path.join(os.path.dirname(os.path.abspath(__file__)), "user_msgs.json")
+    # Write OUTSIDE the repo: this dump is the operator's own message text plus
+    # session ids, and the repo is public. Writing it beside the script put it
+    # under version control (it was committed), so the default is now the host's
+    # state dir, and the filename is gitignored as a second line of defence.
+    out_dir = os.environ.get("USER_MSGS_OUT_DIR") or os.path.join(
+        os.path.expanduser("~"), ".hermes-cortex", "state")
+    os.makedirs(out_dir, exist_ok=True)
+    out = os.path.join(out_dir, "user_msgs.json")
     json.dump(
         [{"id": r[0], "sid": r[1], "content": r[3], "ts": r[4]} for r in rows],
         open(out, "w"),

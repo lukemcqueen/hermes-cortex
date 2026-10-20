@@ -55,7 +55,7 @@ the three zones:
 geo $limit_bypass {
     default          $binary_remote_addr;
     192.168.1.0/24   "";     # LAN fleet (router NAT aggregate)
-    115.21.71.146    "";     # external WAN worker
+    203.0.113.9    "";     # external WAN worker (documentation range — use your worker's WAN IP)
     127.0.0.0/8      "";     # localhost
 }
 limit_req_zone  $limit_bypass zone=general:10m rate=20r/s;
