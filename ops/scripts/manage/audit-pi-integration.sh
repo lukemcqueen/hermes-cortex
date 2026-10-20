@@ -104,7 +104,7 @@ elif [[ "$MCP_CAPABLE" == "1" ]]; then
         # PLAIN REDIRECT, never `$( ... <<PY )`: a heredoc inside a command
         # substitution is a bash 3.2 parser trap (macOS).
         _ENTRY_ISSUES_RAW_TMP="$(mktemp "${TMPDIR:-/tmp}/cortex-audit.XXXXXX" 2>/dev/null || echo "${TMPDIR:-/tmp}/cortex-audit.$$")"
-        MCP_JSON="$MCP_JSON" AGENT_ENV="$AGENT_ENV" REQUIRED="$REQUIRED" python3 - <<'PY' >"$_ENTRY_ISSUES_RAW_TMP" 2>/dev/null
+        MCP_JSON="$MCP_JSON" AGENT_ENV="$AGENT_ENV" REQUIRED="$REQUIRED" python3 - <<'PY' >"$_ENTRY_ISSUES_RAW_TMP"
 import json, os, shutil
 from pathlib import Path
 d = json.loads(Path(os.environ["MCP_JSON"]).read_text())
@@ -140,7 +140,7 @@ for name, cfg in srv.items():
 print("; ".join(issues))
 print(",".join(sorted(foreign)))
 PY
-        entry_issues_raw="$(cat "$_ENTRY_ISSUES_RAW_TMP" 2>/dev/null)"
+        entry_issues_raw="$(cat "$_ENTRY_ISSUES_RAW_TMP")"
         rm -f "$_ENTRY_ISSUES_RAW_TMP"
         # Line 1 is the issues, line 2 the foreign servers — two facts, one subprocess.
         entry_issues="${entry_issues_raw%%$'\n'*}"
@@ -271,7 +271,7 @@ else
     # PLAIN REDIRECT, never `$( ... <<PY )`: a heredoc inside a command
     # substitution is a bash 3.2 parser trap (macOS).
     _WS_VERDICT_TMP="$(mktemp "${TMPDIR:-/tmp}/cortex-audit.XXXXXX" 2>/dev/null || echo "${TMPDIR:-/tmp}/cortex-audit.$$")"
-    WS_JSON="$WS_JSON" python3 - <<'PY' >"$_WS_VERDICT_TMP" 2>/dev/null
+    WS_JSON="$WS_JSON" python3 - <<'PY' >"$_WS_VERDICT_TMP"
 import json, os
 p = os.environ["WS_JSON"]
 if not os.path.exists(p):
@@ -286,7 +286,7 @@ chosen = [x for x in route if isinstance(x, str)] or [cfg.get("provider")]
 keyless = [x for x in chosen if x in ("exa", "duckduckgo")]
 print("keyless:" + ",".join(keyless) if keyless else "keyed-only")
 PY
-    ws_verdict="$(cat "$_WS_VERDICT_TMP" 2>/dev/null)"
+    ws_verdict="$(cat "$_WS_VERDICT_TMP")"
     rm -f "$_WS_VERDICT_TMP"
     case "$ws_verdict" in
       keyless:*)

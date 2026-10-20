@@ -121,7 +121,10 @@ with open('$NO_VERIFY_LOG', 'w') as f:
 # anywhere in the body breaks the whole hook on macOS, where this runs in every repo).
 # tests/test_shell_portability.py enforces the rule.
 _DEBT_TMP="$(mktemp "${TMPDIR:-/tmp}/cortex-debt.XXXXXX" 2>/dev/null || echo "${TMPDIR:-/tmp}/cortex-debt.$$")"
-python3 - "$DEBT_FILE" <<'PYEOF' >"$_DEBT_TMP" 2>/dev/null || true
+# NO `2>/dev/null` on the python: if the debt logic ever crashes, this hook must say so
+# rather than look like a clean run. `|| true` keeps the COMMIT unblocked (a post-commit
+# hook cannot un-land a commit) — the failure is reported, not swallowed.
+python3 - "$DEBT_FILE" <<'PYEOF' >"$_DEBT_TMP" || true
 import json, os, sys, datetime
 debt_file = sys.argv[1]
 now = datetime.datetime.now(datetime.timezone.utc).isoformat()
@@ -139,9 +142,19 @@ with open(debt_file, "w") as f:
     json.dump(debt, f, indent=2)
 print(debt["consecutive_no_verify"])
 PYEOF
-DEBT_OUT="$(cat "$_DEBT_TMP" 2>/dev/null)"
+DEBT_OUT="$(cat "$_DEBT_TMP")"
 rm -f "$_DEBT_TMP"
-DEBT="${DEBT_OUT:-1}"
+# A FAILED write must not read as a fresh counter. If the temp file is empty or not a
+# positive integer, keep the count already on disk and SAY so — silently falling back to
+# 1 would reset a security counter and make the escape hatch look unused.
+case "$DEBT_OUT" in
+  ''|*[!0-9]*)
+    _DEBT_PREV="$(sed -n 's/.*"consecutive_no_verify": *\([0-9][0-9]*\).*/\1/p' "$DEBT_FILE" 2>/dev/null | head -n 1)"
+    echo "⚠️  post-commit-audit: could not record the bypass debt (empty/invalid result) — keeping the previous count ${_DEBT_PREV:-1} instead of resetting it" >&2
+    DEBT="${_DEBT_PREV:-1}"
+    ;;
+  *) DEBT="$DEBT_OUT" ;;
+esac
 
 echo "⚠️  WARNING: Commit bypassed governance (--no-verify was used)"
 echo "   Commit: $COMMIT_HASH"

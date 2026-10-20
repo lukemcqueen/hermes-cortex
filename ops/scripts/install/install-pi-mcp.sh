@@ -113,7 +113,7 @@ if [[ -f "$PI_MCP" ]]; then
   # PLAIN REDIRECT, never `$( ... <<PY )`: a heredoc inside a command substitution is
   # a bash 3.2 parser trap (macOS) that breaks this whole installer.
   _PI_TMP="$(mktemp "${TMPDIR:-/tmp}/cortex-pimcp.XXXXXX" 2>/dev/null || echo "${TMPDIR:-/tmp}/cortex-pimcp.$$")"
-  if ! "$PYTHON" - "$PI_MCP" <<'PY' >"$_PI_TMP" 2>/dev/null
+  if ! "$PYTHON" - "$PI_MCP" <<'PY' >"$_PI_TMP"
 import json, os, subprocess, sys
 try:
     data = json.load(open(sys.argv[1]))
@@ -130,7 +130,7 @@ PY
     _PY_EXISTING=""
     echo "Warning: could not read $PI_MCP to reuse its interpreter — continuing." >&2
   else
-    _PY_EXISTING="$(cat "$_PI_TMP" 2>/dev/null)"
+    _PY_EXISTING="$(cat "$_PI_TMP")"
   fi
   rm -f "$_PI_TMP"
 fi
