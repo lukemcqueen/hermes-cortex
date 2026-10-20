@@ -513,6 +513,7 @@ register "ops/scripts/manage/cortex_doctor/bus_alert.py" "${CORTEX_DEPLOY_HOME}/
 register "ops/scripts/manage/cortex_doctor/checks.py"   "${CORTEX_DEPLOY_HOME}/scripts/cortex_doctor/checks.py"
 register "ops/scripts/manage/cortex_doctor/cli.py"     "${CORTEX_DEPLOY_HOME}/scripts/cortex_doctor/cli.py"
 register "ops/scripts/manage/cortex_doctor/config.py"  "${CORTEX_DEPLOY_HOME}/scripts/cortex_doctor/config.py"
+register "ops/scripts/manage/cortex_doctor/dispositions.py" "${CORTEX_DEPLOY_HOME}/scripts/cortex_doctor/dispositions.py"
 register "ops/scripts/manage/cortex_doctor/fix.py"     "${CORTEX_DEPLOY_HOME}/scripts/cortex_doctor/fix.py"
 register "ops/scripts/manage/cortex_doctor/immutability.py" "${CORTEX_DEPLOY_HOME}/scripts/cortex_doctor/immutability.py"
 register "ops/scripts/manage/cortex_doctor/helpers.py" "${CORTEX_DEPLOY_HOME}/scripts/cortex_doctor/helpers.py"

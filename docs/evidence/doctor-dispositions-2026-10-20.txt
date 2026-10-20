@@ -1,0 +1,47 @@
+doctor dispositions — capture
+generated: 2026-10-20T09:11:44Z
+repo:      ~/hermes-cortex
+
+=== 1. the behaviour suite (temp stores only) ===
+rc=0   checks passed=35  failed=0
+
+=== 2. the summary shape, and the consumer regex that must keep matching ===
+summary line:
+  ⚠️  Overall: WARNING  (3 pass · 1 warn · 0 fail · 1 info)  · 2 undisposed
+consumer regex (tests/test_dogfood_pipeline.py) still matches: True  groups=('WARNING', '3', '1', '0', '1')
+the undisposed count sits OUTSIDE the parenthetical on purpose: a fifth entry inside it
+would silently stop that match.
+
+the block it prints (compact mode, so the update path sees it):
+    🧹 UNDISPOSED — 2 warning/info check(s) nobody has decided about
+       Fix it, or record the decision (one command each):
+         · Skill drift: devops/example
+           fix: Run: cortex-update.sh
+           or:  cortex-doctor.py --disposition "Skill drift: devops/example" --as deferred --owner <you> --reason "<why>"
+         · Pinned hooks
+           or:  cortex-doctor.py --disposition "Pinned hooks" --as deferred --owner <you> --reason "<why>"
+       A disposition EXPIRES and is reported as STALE until it is renewed — deferring is fine, forgetting is not.
+  
+rc=0
+
+=== 3. the CLI end to end (own HERMES_CORTEX_HOME, so no live store is touched) ===
+  refused record (a check that cannot exist): rc=1   stderr: no check named 'No Such Check' in this run — refusing to record a disposition for a check that does not exist
+  store written despite the refusal: no
+  listing an empty store:            rc=0   No doctor dispositions recorded — every warning/info check is UNDISPOSED.
+
+=== 4. a REAL record, and the count moving (temp store, live checks) ===
+  the run has 11 warn/info check(s)
+  record 'Repo clean' -> rc=0
+         10 warning/info check(s) still undisposed
+    stored: disposition=deferred owner=capture recorded_at=2026-10-20
+
+=== 5. the DEPLOYED doctor carries the change (read-only grep) ===
+  COULD NOT VERIFY: no deployed dispositions.py named by the deploy manifest
+  NB: a deployed file is not a live process, and this one is imported by the doctor at start.
+
+NOTES
+  - Section 3 runs the REAL CLI in a subprocess with its own HERMES_CORTEX_HOME: the refusal
+    path is exercised end to end, and no live store is written.
+  - Section 4 records one disposition against a temp store, with real check names.
+  - Nothing here records a disposition for the LIVE host: a decision belongs to the agent or
+    operator who made it, and this capture did not make one.

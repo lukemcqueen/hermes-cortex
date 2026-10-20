@@ -22,6 +22,9 @@ class Results:
         self.info_count = 0
         self.json_mode = False
         self.show_fixes = True
+        # name -> disposition record. Set by the CLI from the store; empty means "nothing is
+        # disposed", which is the visible direction (see cortex_doctor.dispositions).
+        self.dispositions = {}
 
     def add(self, name, status, detail="", fix=""):
         self.checks.append({"name": name, "status": status, "detail": detail, "fix": fix})
@@ -33,6 +36,19 @@ class Results:
             self.fail_count += 1
         elif status == "INFO":
             self.info_count += 1
+
+    def undisposed(self):
+        """WARN/INFO checks with no live disposition — what still needs a decision.
+
+        Imported lazily so a broken dispositions module can never stop the doctor: a run that
+        cannot work out what is disposed reports everything as undisposed, which is the visible
+        direction, and never a silent pass.
+        """
+        try:
+            from .dispositions import undisposed as _undisposed
+        except Exception:  # noqa: BLE001 — the doctor must run whatever the state of this module
+            return [c for c in self.checks if c["status"] in ("WARN", "INFO")]
+        return _undisposed(self.checks, self.dispositions)
 
     def status_icon(self, s):
         if self.json_mode:
@@ -88,6 +104,14 @@ class Results:
         for c in self.checks:
             icon = self.status_icon(c["status"])
             label = f"{icon} {c['name']}"
+            # A warning somebody has DECIDED about says so, printed by the tool rather than
+            # asserted by the agent: that is the difference this mechanism exists to make.
+            if c["status"] in ("WARN", "INFO") and c["name"] in self.dispositions:
+                try:
+                    from .dispositions import describe
+                    label += f"  [{describe(c['name'], self.dispositions)}]"
+                except Exception:  # noqa: BLE001
+                    pass
             if compact:
                 print(f"  {label}")
             else:
@@ -103,8 +127,32 @@ class Results:
         elif self.warn_count > 0:
             overall = "WARNING"
         icon_map = {"HEALTHY": "✅", "WARNING": "⚠️ ", "FAILING": "❌"}
+        und = self.undisposed()
+        # The undisposed count goes OUTSIDE the parenthetical on purpose: the four counts inside it
+        # are parsed by a consumer regex (tests/test_dogfood_pipeline.py), and a fifth entry inside
+        # the parens silently stops that match. Additions go beside, never inside.
+        und_note = f"  · {len(und)} undisposed" if und else ""
         print(
             f"\n  {icon_map[overall]} Overall: {overall}  "
             f"({self.pass_count} pass · {self.warn_count} warn · "
-            f"{self.fail_count} fail · {self.info_count} info)\n"
+            f"{self.fail_count} fail · {self.info_count} info){und_note}\n"
         )
+
+        # UNDISPOSED (2026-10-20). Deferring a warning stays legitimate — it is not a FAIL and no
+        # gate reads it — but it has to be a decision with a name on it. Printed in COMPACT mode
+        # too: --quiet is what the update path runs, and that is exactly where the gloss-over
+        # happened.
+        if und:
+            print(f"  🧹 UNDISPOSED — {len(und)} warning/info check(s) nobody has decided about")
+            print("     Fix it, or record the decision (one command each):")
+            for c in und[:12]:
+                print(f"       · {c['name']}")
+                if c.get("fix"):
+                    print(f"         fix: {c['fix']}")
+                print(f"         or:  cortex-doctor.py --disposition \"{c['name']}\" --as deferred "
+                      f"--owner <you> --reason \"<why>\"")
+            if len(und) > 12:
+                print(f"       … and {len(und) - 12} more")
+            print("     A disposition EXPIRES and is reported as STALE until it is renewed — "
+                  "deferring is fine, forgetting is not.")
+            print()

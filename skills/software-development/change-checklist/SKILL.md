@@ -498,6 +498,14 @@ Enforced at 3 layers: pre-commit hook (static gate), enforcer (blocks commit unt
       (✅ Crons registered / Orch crons / Crons total). Record its EXIT CODE and warning count,
       not just the ✅ lines: a non-zero rc with warnings is NOT a clean doctor, and reporting it
       as one is the failure the close review catches.
+      **Warnings and info are not a licence to move on.** The doctor prints `N undisposed` and
+      names each warning/info check nobody has decided about. For each: fix it, or record the
+      decision (`cortex-doctor.py --disposition "<check>" --as deferred|deliberate --owner <you>
+      --reason "<why>"`) — and put the counts in the delivery, never a bare "pre-existing".
+      "Pre-existing" is not a disposition: the tool decides what counts as known, a disposition
+      expires (30 days) and returns as STALE, and `--as fixed` is refused while the check still
+      warns. Nothing gates on this — it exists so that deferring is a visible decision instead of
+      a silent wave-through.
 - [ ] Governance scored — feedback_accept() before end_change(). **When the close is driven by a
       retry loop (a wide range closes over several rounds), SCORE BEFORE STARTING THAT LOOP.**
       Launching it in the same turn as `feedback_accept` races: the rounds execute first and each

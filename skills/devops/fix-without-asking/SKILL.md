@@ -431,6 +431,25 @@ If yes to all three: fix it. The user will see the doctor output. Telling
 them "261 pass · 1 warn — pre-existing" implies you chose not to act when you
 could have. This erodes trust faster than the warning itself.
 
+**And when it is NOT all three, the deferral must still be a decision — not a silence.**
+"Pre-existing" is not a disposition: it is an assertion, and until 2026-10-20 nothing
+contradicted it. The doctor now prints `N undisposed` and names every warning/info check nobody
+has decided about (`🧹 UNDISPOSED`), so the tool — not the agent — says what counts as known:
+
+```bash
+# fix it, or record WHY it is being left (one command; owner and reason are required)
+cortex-doctor.py --disposition "Skill drift" --as deferred --owner <you> --reason "<why>"
+cortex-doctor.py --as deliberate ...        # expected state is not the desired state
+cortex-doctor.py --dispositions             # what is currently decided, and by whom
+```
+
+A disposition EXPIRES (30 days) and then the check is reported STALE and undisposed again, so
+deferring is fine and forgetting is not. Nothing FAILs and no gate reads it — the point is that
+"not part of the update cycle" becomes sayable only about a check that is ALREADY recorded, and an
+undecided warning is visible in the output the operator reads. `--as fixed` is refused while the
+check still warns: "fixed" is a claim that the state changed, and it must not become a way to hide
+a live warning.
+
 **Counterexamples (do NOT fix):**
 - Warnings about missing optional infrastructure (no GPU, no external API key)
 - Warnings where the expected state is not the desired state (e.g., a config you intentionally left different)

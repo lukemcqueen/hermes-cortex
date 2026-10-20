@@ -57,7 +57,23 @@ date) — investigate those warnings; do not assume the enforcer is current.
 2. **`bash ~/hermes-cortex/ops/scripts/cortex-update.sh`** — the sanctioned lock-free invocation (see ⚡ above)
 3. Doctor output is embedded in the update; fix every ❌ (score PENDING cycles, verify governance deployed)
 4. Re-run step 2 if the doctor reported failures, until it's clean (0 fail)
-5. Verify clean state
+5. **Triage the warnings — `0 fail` is the bar for the UPDATE, not a licence to ignore the rest.**
+   The doctor prints `N undisposed` and names each warning/info nobody has decided about
+   (`🧹 UNDISPOSED`). For each one: fix it, or record the decision in one command —
+   `cortex-doctor.py --disposition "<check name>" --as deferred|deliberate --owner <you> --reason "<why>"`.
+   Then say the counts in your report (`454 pass · 12 warn · 7 info · 3 undisposed`), not just
+   "warnings are pre-existing".
+   - **"Pre-existing" is not a disposition.** The tool decides what counts as known: a check with a
+     live disposition prints its owner and date, and a disposition EXPIRES (30 days) after which
+     the check is STALE and undisposed again. Deferring is fine; forgetting is not.
+   - This is deliberately NOT a gate — nothing blocks on it, and no warning becomes a FAIL. What it
+     removes is the free, silent wave-through: an undisposed warning is now visible to the operator
+     in the tool's own output, and "not part of the update cycle" is only sayable about a check
+     that is already recorded.
+   - Counterexamples that stay untouched: warnings about missing OPTIONAL infrastructure (no GPU,
+     no external key), and warnings whose expected state is not the desired state. Those are
+     `--as deliberate` with the reason, not a fix.
+6. Verify clean state
 
 **Do NOT push** during pull-latest. Local pipeline auto-commits stay local (see Pitfall 3).
 

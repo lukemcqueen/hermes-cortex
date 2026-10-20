@@ -5073,7 +5073,10 @@ def check_skill_drift(res):
         res.add("Skill drift", "WARN",
             f"{len(drifted)} drifted, {in_sync} in sync, {skipped} Hermes defaults skipped",
             "Resolve each drift entry above — recovery is its OWN governed change "
-            "(see reconcile-stranded-skills.py), not part of the update cycle")
+            "(see reconcile-stranded-skills.py), not part of the update cycle. If you are NOT "
+            "fixing it now, record the decision, or the check is reported as UNDISPOSED: "
+            "cortex-doctor.py --disposition \"Skill drift\" --as deferred --owner <you> "
+            "--reason \"<why>\"")
 
 
 def check_mem_plugins(res):
