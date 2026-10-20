@@ -365,6 +365,7 @@ _write_deploy_manifest() {
 register "ops/scripts/health/agent-system-alert-watchdog.py"   "${CORTEX_DEPLOY_HOME}/scripts/agent-system-alert-watchdog.py"
 register "ops/scripts/health/heartbeat.py"               "${CORTEX_DEPLOY_HOME}/scripts/heartbeat.py"
 register "ops/scripts/sustainability/verify_briefing.py"  "${CORTEX_DEPLOY_HOME}/scripts/manage/verify_briefing.py"
+register "ops/scripts/sustainability/check-latest-briefing.py" "${CORTEX_DEPLOY_HOME}/scripts/manage/check-latest-briefing.py"
 register "ops/scripts/sustainability/gen_briefing.py"      "${CORTEX_DEPLOY_HOME}/scripts/manage/gen_briefing.py"
 register "ops/scripts/sustainability/capture_evidence.py"  "${CORTEX_DEPLOY_HOME}/scripts/manage/capture_evidence.py"
 register "ops/scripts/sustainability/write_cycle_evidence.py" "${CORTEX_DEPLOY_HOME}/scripts/manage/write_cycle_evidence.py"

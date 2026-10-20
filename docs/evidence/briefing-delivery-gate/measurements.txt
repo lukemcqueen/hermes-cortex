@@ -1,0 +1,104 @@
+# briefing-delivery-gate — measured evidence (2026-10-21, cycle 13484)
+# Host paths normalised to ~ ; nothing here is hand-transcribed.
+
+## A. CRON under test is live and enabled
+$ python3 -c "read ~/.hermes/cron/jobs.json: name/enabled/schedule of the briefing job"
+  local-daily-sustainability-briefing  enabled=True  schedule=7 6 * * *  last_run=2026-10-21T06:11:00.325134+09:00  last_status=ok
+rc=0
+
+## B. Canonical checker on the NEWEST delivered briefing (the gate's default target)
+$ python3 ops/scripts/sustainability/verify_briefing.py 2026-10-21 --dir ~/.hermes/cron/output
+[files] sustainability-briefing-2026-10-21.md      size=9369     PASS
+[files] sustainability-briefing-2026-10-21.docx    size=41416    PASS
+[files] sustainability-briefing-2026-10-21.pdf     size=10621    PASS
+[sections] required headings PASS
+[sources] source lines=18 (>= 13) PASS
+[words] count=1200 (600-1200) PASS
+[binary] docx+pdf carry briefing text PASS
+
+RESULT: ALL PASS
+rc=0
+
+## C. Canonical checker on the PREVIOUS delivery — the drift nobody reported
+$ python3 ops/scripts/sustainability/verify_briefing.py 2026-10-20 --dir ~/.hermes/cron/output
+[files] sustainability-briefing-2026-10-20.md      size=9540     PASS
+[files] sustainability-briefing-2026-10-20.docx    size=41485    PASS
+[files] sustainability-briefing-2026-10-20.pdf     size=10670    PASS
+[sections] required headings PASS
+[sources] source lines=13 (>= 13) PASS
+[words] count=1279 (600-1200) FAIL
+[binary] docx+pdf carry briefing text PASS
+
+RESULT: FAILURES PRESENT
+rc=1
+
+## D. NEW gate, LIVE default run (newest = 2026-10-21): watchdog silence on PASS
+$ python3 ops/scripts/sustainability/check-latest-briefing.py
+rc=0   # 0 with empty stdout = pass, nothing delivered
+
+## E. NEW gate, LIVE re-check of the 2026-10-20 delivery: it FIRES
+$ python3 ops/scripts/sustainability/check-latest-briefing.py --date 2026-10-20
+❌ Delivered briefing FAILED the canonical checker — sustainability-briefing-2026-10-20.md
+   checker: ~/hermes-cortex/ops/scripts/sustainability/verify_briefing.py
+   [files] sustainability-briefing-2026-10-20.md      size=9540     PASS
+   [files] sustainability-briefing-2026-10-20.docx    size=41485    PASS
+   [files] sustainability-briefing-2026-10-20.pdf     size=10670    PASS
+   [sections] required headings PASS
+   [sources] source lines=13 (>= 13) PASS
+   [words] count=1279 (600-1200) FAIL
+   [binary] docx+pdf carry briefing text PASS
+   RESULT: FAILURES PRESENT
+rc=1
+
+## F. Boundary inputs — cannot-check has its own outcome, never a traceback
+$ python3 ops/scripts/sustainability/check-latest-briefing.py --today bogus
+⚠️ COULD NOT VERIFY briefing delivery — --today 'bogus' is not a YYYY-MM-DD date
+rc=3
+$ python3 ops/scripts/sustainability/check-latest-briefing.py --dir /nonexistent --jobs /nonexistent
+⚠️ COULD NOT VERIFY briefing delivery — cannot read /nonexistent: FileNotFoundError: [Errno 2] No such file or directory: '/nonexistent'
+rc=3
+
+## G. Test suite (hermetic fixtures; no live state in an assertion)
+$ python3 tests/test_check_latest_briefing.py
+PASS test_checker_that_raises_is_could_not_verify_not_a_traceback
+PASS test_explicit_date_ignores_applicability
+PASS test_explicit_date_with_no_artifact_is_could_not_verify
+PASS test_fail_is_reported_with_the_checkers_own_output
+PASS test_malformed_today_is_could_not_verify
+PASS test_missing_checker_is_could_not_verify
+PASS test_no_artifacts_with_enabled_cron_is_could_not_verify
+PASS test_not_applicable_is_silent_when_no_briefing_cron
+PASS test_pass_is_silent
+PASS test_real_canonical_checker_reports_a_contract_violation
+PASS test_stale_delivery_is_reported
+11/11 passed
+rc=0
+
+## H. The fleet's own runner collects the new file (existence on disk is not coverage)
+$ bash tests/run-tests.sh tests/test_check_latest_briefing.py tests/test_verify_briefing.py -q
+tests/test_verify_briefing.py ...............                            [100%]
+
+============================== 26 passed in 0.85s ==============================
+---
+run-tests.sh: interpreter=~/.hermes-cortex/venv/bin/python3 rc=0  (PYTHONPATH/PYTHONHOME unset for the run)
+rc=0
+
+## I. Syntax
+$ bash -n ops/scripts/orch-daily-regression-gate.sh
+rc=0
+$ python3 -m py_compile ops/scripts/sustainability/check-latest-briefing.py
+rc=0
+
+## J. Adversarial static gate (no critical/high)
+$ python3 adversarial-verify.py --file ops/scripts/sustainability/check-latest-briefing.py --level A2 --gate
+
+✅ GATE_PASSED — no critical/high findings
+rc=0
+$ python3 adversarial-verify.py --file ops/scripts/orch-daily-regression-gate.sh --level A2 --gate
+
+✅ GATE_PASSED — no critical/high findings
+rc=0
+$ python3 adversarial-verify.py --file tests/test_check_latest_briefing.py --level A4 --gate
+
+✅ GATE_PASSED — no critical/high findings
+rc=0
