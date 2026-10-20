@@ -170,7 +170,7 @@ repo; this public repo carries only framework docs (PRDs, design, reference).
 
 | Doc | Description |
 |-----|-------------|
-| `ops/offline/code-corpus/` | Offline code corpus + search index (`ops/offline/offline_code.py`, `ops/offline/prep-code.sh`) |
+| `ops/offline/code-corpus/` | Offline code corpus + search index (`ops/offline/offline_code.py`, `ops/offline/prep-code.sh`). The corpus is 543 tracked files — `git ls-files ops/offline/code-corpus | wc -l`; the row replaced `/dev/null`-style `docs/offline-code/`, a directory that does not exist in this repo. Proof run: `docs/evidence/docs-consolidation-2026-10-20-doc-claims.txt` |
 
 ## Skills
 
@@ -214,7 +214,7 @@ repo; this public repo carries only framework docs (PRDs, design, reference).
 
 | Doc | Description |
 |-----|-------------|
-| `docs/git-enforcement.md` | **The git enforcement chain** — the model, the pre-commit scoring hook and the pinned-hooks carve-out. Absorbed `pre-commit-scoring.md` + `pinned-repo-hooks.md` (merged in 2026-10-20; both sources removed and recorded in `docs/older/README.md`) |
+| `docs/git-enforcement.md` | **The git enforcement chain** — the model, the pre-commit scoring hook and the pinned-hooks carve-out. Absorbed `pre-commit-scoring.md` + `pinned-repo-hooks.md` (merged in 2026-10-20; both sources removed and recorded in `docs/older/README.md`). Verified both ways: `grep -n '^## ' docs/git-enforcement.md` lists the **Pinned Repo Hooks** (line 141) and **Pre-Commit Scoring Hook** (line 210) sections, and `git ls-files <the two sources>` prints nothing — both runs are captured in `docs/evidence/docs-consolidation-2026-10-20-doc-claims.txt` |
 | `docs/enforcer-known-issues.md` | **Known issues** in the governance enforcer / loop-gov lock machinery (check_lock false-clear — **FIXED 2026-10-13**, now reports every live lock; silent wrong-repo tag when the CLI cwd is not a git repo — **FIXED 2026-10-13**; orphan TTL window, PID-marker buildup, close-out gap, no-session-id fail-closed, post-deploy skill-credit loss, mtime-fingerprint false invalidation) + how to self-check any host with `probe-gate-logic.py` — verified on moses 2026-09-17 / 2026-09-23 |
 
 ## Development
