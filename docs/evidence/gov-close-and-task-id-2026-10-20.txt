@@ -17,10 +17,10 @@ receipt` returns None on every successful close); and the guard proves the
 PRE_COMMIT_SCORE_DB override is honoured by checking the prod ledger does not
 move, instead of trusting it.
 
---------------------------------------------------------------------------------
+---------------------------------
 
 # governance close-path + pre-commit task-id — verification (cycle 13412)
-# host: esther  date: 2026-10-20 13:45:49 KST
+# host: esther  date: 2026-10-20 13:48:18 KST
 
 === 1. root cause: $(cmd || echo fallback) concatenates both outputs ===
 # in a repo with no commits, git prints "HEAD" AND exits non-zero, so the
@@ -30,12 +30,12 @@ unknown$
 
 === 2. ledger damage from that shape (read-only) ===
 $ python3 - /home/esther/.hermes-cortex/data/loop-governance.db
-  total cycles            : 12930
-  precommit-* hook cycles : 9250
+  total cycles            : 12932
+  precommit-* hook cycles : 9252
   task_id with a NEWLINE  : 6395
   distinct malformed ids  : 62
-  no feedback (all)       : 1847
-  no feedback (precommit) : 1825
+  no feedback (all)       : 1849
+  no feedback (precommit) : 1827
 # the malformed counts are HISTORICAL: they predate this change, which stops
 # new ones being minted. Normalising the existing rows is a data decision
 # recorded as loop-governance issue event #188.
@@ -51,7 +51,7 @@ PASS: no-op closes are informational; task ids carry no continuation line
   deployed hook: old concatenating line count = 0 (want 0)
 
 === 5. suites around the change ===
-============================= 254 passed in 6.08s ==============================
+============================= 255 passed in 6.07s ==============================
 ---
 run-tests.sh: interpreter=/home/esther/.hermes-cortex/venv/bin/python3 rc=0  (PYTHONPATH/PYTHONHOME unset for the run)
 

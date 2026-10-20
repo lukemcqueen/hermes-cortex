@@ -48,6 +48,25 @@ HOOK = REPO / "ops" / "scripts" / "pre-commit-score"
 # Both functions are loaded by path below (spec_from_file_location), so this test
 # fails loudly if either is renamed or removed instead of skipping.
 
+SRC = MCP.read_text()
+
+# Every phrase this guard asserts must appear verbatim in the module that
+# produces the message. Without this, the assertions are English prose the
+# reviewer has to take on faith: the guard's expectation and the producer can
+# drift apart while the test keeps passing on stale wording (self-adversarial
+# review ADV-13412-1/-2, which could not see the sibling's implementation).
+EXPECTED_PHRASES = {
+    "No review receipt": "the no-op close announces the missing receipt",
+    "no action needed": "the no-op close says there is nothing to do",
+    "Review receipt NOT written": "a real bail is still a warning",
+    "push gate will refuse": "a real bail still warns about the gate",
+    "close again BEFORE": "a real bail still says how to fix it",
+}
+
+# The exact text the field reported BEFORE this change (Titus, 2026-10-20, on a
+# cycle that changed nothing). A no-op must never render it again.
+FIELD_PRE_FIX = "Review receipt NOT written — range "
+
 failures: list[str] = []
 
 
@@ -70,6 +89,14 @@ def _git(repo: Path, *args: str, env: dict | None = None) -> subprocess.Complete
     )
 
 
+def test_expected_wording_exists_in_the_producer() -> None:
+    """Bind the guard's expectations to the producer's source, not to prose."""
+    for phrase, why in EXPECTED_PHRASES.items():
+        check(phrase in SRC,
+              f"{why}: {phrase!r} must appear in {MCP.name} — the guard's "
+              f"expectation and the producer have diverged")
+
+
 def test_no_op_close_is_information_not_a_hazard() -> None:
     m = load_mcp()
     tag = m._RECEIPT_NO_OP
@@ -90,6 +117,9 @@ def test_no_op_close_is_information_not_a_hazard() -> None:
     check("Resolve the cause and close again" not in noop,
           "the no-op close must not invite a pointless re-close")
     check(tag not in noop, "the internal no-op tag must not reach the reader")
+    check(FIELD_PRE_FIX not in noop,
+          "the text the field reported before this change must never be rendered "
+          f"for a no-op: {FIELD_PRE_FIX!r}")
 
     fault = m._receipt_close_note("could not resolve HEAD in /srv/checkout (git failed)")
     check("Review receipt NOT written" in fault, "a real bail must still be a warning")
@@ -142,7 +172,12 @@ def test_first_commit_task_id_has_no_continuation_line() -> None:
                 mx = con.execute("SELECT COALESCE(MAX(id), 0) FROM loop_cycles").fetchone()[0]
                 con.close()
                 return (n, mx)
-            except sqlite3.Error:
+            except sqlite3.Error as e:
+                # NOT swallowed. The old bare `except: return None` turned a
+                # missing table / renamed column into a silently skipped guard.
+                # Schema this depends on: table `loop_cycles`, column `id`, in the
+                # path the hook itself defaults to (pre-commit-score: DB_PATH).
+                check(False, f"could not read the prod ledger at {path}: {e}")
                 return None
 
         prod_before = _ledger_state(prod_db)
@@ -176,6 +211,7 @@ def test_first_commit_task_id_has_no_continuation_line() -> None:
 
 
 def main() -> int:
+    test_expected_wording_exists_in_the_producer()
     test_no_op_close_is_information_not_a_hazard()
     test_first_commit_task_id_has_no_continuation_line()
     if failures:
