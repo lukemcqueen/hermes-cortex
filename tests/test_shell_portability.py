@@ -19,8 +19,9 @@ Two checks, because a lesson in prose does not stop the next agent:
    SKIPS loudly with the enabling command when either is missing, because a check
    that silently reports nothing is worse than no check.
 
-Scope: shell scripts that can EXECUTE on a host — every shell script in the deploy
-map (`register "..."` in cortex-update.sh) plus the git hooks themselves. Repo-only
+Scope: shell scripts that can EXECUTE on a host — every shell script in the deploy map
+(`register "..."` in cortex-update.sh), the git hook symlinks in `hooks/`, and the hook
+IMPLEMENTATIONS those symlinks point at in `ops/scripts/`. Repo-only
 tooling (ops/evidence one-off record scripts, cutover artefacts) is deliberately out
 of scope: it never leaves this repo, so a macOS parser never sees it. Widening the
 scan to "everything with a shebang" would report armed-but-unreachable sites and
@@ -39,8 +40,11 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
 UPDATE_SH = REPO / "ops" / "scripts" / "cortex-update.sh"
-HOOK_SCRIPTS = ("pre-commit-score", "pre-push-pull", "post-commit-audit",
-                "post-push-audit", "prepare-commit-msg-session")
+# Hook IMPLEMENTATIONS — the files the git hooks symlink to (hooks/pre-commit →
+# scripts/pre-commit-score, etc.). They are not hook NAMES; the hooks/ directory scan
+# covers the symlinks themselves, and these names cover their targets in ops/scripts/.
+HOOK_IMPL_NAMES = ("pre-commit-score", "pre-push-pull", "post-commit-audit",
+                   "post-push-audit", "prepare-commit-msg-session")
 BASH32_IMAGE = "bash:3.2"
 
 failures: list[str] = []
@@ -75,7 +79,7 @@ def shell_scripts() -> list[Path]:
         for p in hooks_dir.rglob("*"):
             if p.is_file() and _is_shell(p):
                 out.add(p)
-    for name in HOOK_SCRIPTS:
+    for name in HOOK_IMPL_NAMES:
         for cand in (REPO / "ops" / "scripts" / name,):
             if cand.is_file() and _is_shell(cand):
                 out.add(cand)

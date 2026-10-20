@@ -146,10 +146,20 @@ PY
         entry_issues_raw="$(cat "$_ENTRY_ISSUES_RAW_TMP" 2>/dev/null)"
         rm -f "$_ENTRY_ISSUES_RAW_TMP"
         if [[ $_ei_rc -ne 0 ]]; then
+            # rc is the ONLY failure signal here: the parser always prints two join lines
+            # (issues, foreign), so a HEALTHY host legitimately yields an EMPTY string —
+            # command substitution strips the two empty lines' newlines. Gating on `-z`
+            # inverted that and failed a healthy host (caught by running the audit).
+            # A non-zero rc means the parser itself died: no verdict is not a pass, and
+            # parsing its output would invent a clean result — record it and stop here.
             _failed 6 "the mcp.json entry audit could not run (parser exited $_ei_rc) — this check produced NO verdict, which is not the same as 'no issues'"
             entry_issues_raw=""
+            _entry_audit_failed=1
         fi
         # Line 1 is the issues, line 2 the foreign servers — two facts, one subprocess.
+        if [[ "${_entry_audit_failed:-0}" -eq 1 ]]; then
+            :   # nothing to parse — the failure above is the verdict
+        else
         entry_issues="${entry_issues_raw%%$'\n'*}"
         foreign_servers="$(printf '%s\n' "$entry_issues_raw" | sed -n '2p')"
         if [[ -n "$entry_issues" ]]; then
@@ -171,6 +181,7 @@ PY
             _line 1 NA "host-local server(s) present, NOT audited here (no cortex identity expected): ${foreign_servers//,/ }"
           fi
         fi
+        fi   # end: skip parsing entirely when the entry audit itself failed
       fi
     fi
   fi
@@ -296,7 +307,9 @@ PY
     _wv_rc=$?
     ws_verdict="$(cat "$_WS_VERDICT_TMP" 2>/dev/null)"
     rm -f "$_WS_VERDICT_TMP"
-    if [[ $_wv_rc -ne 0 ]]; then
+    # An empty verdict is never a verdict: the parser can exit 0 having printed nothing,
+    # and an empty string would fall through the case and read as a silent pass.
+    if [[ $_wv_rc -ne 0 || -z "$ws_verdict" ]]; then
         ws_verdict="check-failed"
     fi
     case "$ws_verdict" in

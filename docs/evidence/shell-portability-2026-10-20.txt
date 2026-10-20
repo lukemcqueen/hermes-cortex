@@ -1,0 +1,41 @@
+# shell portability — recorded scan (cycle 13428, macOS bash 3.2 regression)
+
+Regenerate with:
+    python3 tests/test_shell_portability.py
+    docker run --rm -v "$PWD:/repo:ro" bash:3.2 bash -c '<bash -n loop over hooks>'
+
+## The defect this proves
+
+`X="$(python3 - "$a" <<'PY' ... PY )"` — a heredoc inside a command substitution — is a
+bash 3.2 parser trap. The apostrophe only TRIGGERS it; the construct is the defect, so the
+fix takes the heredoc out of the substitution rather than editing prose.
+
+    $ docker run --rm -v /tmp:/w bash:3.2 bash -n /w/old.sh    # before the fix
+    /w/old.sh: line 86: unexpected EOF while looking for matching `''
+    /w/old.sh: line 107: syntax error: unexpected end of file            → rc=2
+    $ bash -n /tmp/old.sh                                      # bash 5.2, this host
+                                                                        → rc=0
+
+Every commit on a macOS host was blocked; Linux parsed it happily, which is why it shipped.
+
+## Recorded run on this revision
+
+$ python3 tests/test_shell_portability.py
+PASS: no heredoc inside $( ) in 106 shell scripts; bash 3.2 parse gate clean or skipped
+exit=0
+
+$ docker run --rm -v "$PWD:/repo:ro" bash:3.2 ... bash -n <the five hooks>
+failures=0
+exit=0
+
+## What the guard covers
+
+- static rule: no heredoc inside `$( )` in any shell script the deploy map ships, plus the
+  git hook symlinks in `hooks/` and the hook implementations they point at;
+- a self-check that the detector SEES the known-bad shape (a blind detector passes forever)
+  and does NOT flag a comment describing it;
+- the `bash -n` gate under real bash 3.2, which also catches unbalanced quotes and
+  bash-4-only syntax the static rule cannot see (it found an unbalanced quote in
+  ops/offline/auto-update.sh that bash 5 tolerates).
+
+Comments are exempt by design: a comment cannot change how a script parses.
