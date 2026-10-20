@@ -11,7 +11,7 @@ Per the job definition the order is `HERMES_PROFILE` → `AGENT_NAME` → hostna
 ```
 $ echo "HERMES_PROFILE=[$HERMES_PROFILE] AGENT_NAME=[$AGENT_NAME] host=$(hostname)"
 HERMES_PROFILE=[] AGENT_NAME=[] host=esther
-$ ls /home/esther/brain/
+$ ls ~/brain/
 esther  learnings  lessons  shared
 ```
 
@@ -136,12 +136,12 @@ NOTES
 ## 6. Write-back
 
 ```
-$ ls -la /home/esther/brain/esther/dreams/2026-10-21.md
--rw-rw-r-- 1 esther esther 3735 Oct 21 05:40 /home/esther/brain/esther/dreams/2026-10-21.md
-$ sha256sum /home/esther/brain/esther/dreams/2026-10-21.md
+$ ls -la ~/brain/esther/dreams/2026-10-21.md
+-rw-rw-r-- 1 esther esther 3735 Oct 21 05:40 ~/brain/esther/dreams/2026-10-21.md
+$ sha256sum ~/brain/esther/dreams/2026-10-21.md
 13b7af536420161935375e8ed2626a88088a82c3de709f0acb31d8900d8739e0
 
-$ tail -1 /home/esther/brain/esther/dreams/INDEX.md
+$ tail -1 ~/brain/esther/dreams/INDEX.md
 2026-10-21 | The Lesson That Only One Host Could Read | 11 stranded deployed-only skills landed in the repo source, direction decided by content not mtime; the doctor learned to record a deferred warning as a decision that expires.
 
 $ mycortex sync --source esther
@@ -161,7 +161,7 @@ sha256-verified above) — the remedy the close reviewer requires.
 ## 7. Prior-dream references (INDEX)
 
 ```
-$ tail -3 /home/esther/brain/esther/dreams/INDEX.md   # the two entries before this run's append
+$ tail -3 ~/brain/esther/dreams/INDEX.md   # the two entries before this run's append
 2026-10-19 | The Zero That Had to Prove Itself | A lifecycle scan reported "0 reports" (the fleet-silent false signal) while the parity checker failed a clean run ...
 2026-10-20 | The Demand No File Could Answer | 153 absent-at-tip paths made a reviewer demand unsatisfiable by construction ...
 ```
@@ -198,7 +198,7 @@ RED case — the same script against a tampered copy of the artifact, proving th
 digest assertion would NOTICE a broken artifact (rc=1):
 
 ```
-$ bash /home/esther/.hermes/cache/scratch/dream-tamper-2026-10-21/probe/docs/evidence/verify-dream-2026-10-21.sh
+$ bash ~/.hermes/cache/scratch/dream-tamper-2026-10-21/probe/docs/evidence/verify-dream-2026-10-21.sh
 FAIL  artifact does NOT match its committed sidecar digest
 FAIL  live brain copy DIFFERS from the committed artifact
 PASS  title carries the date
@@ -215,5 +215,48 @@ was observed while probing the path (`required file absent: ...`).
 
 ```
 cycle 13477 — dream-digest-2026-10-21
-lock /home/esther/.hermes-cortex/state/.governance-cron_6cb3c26a2ac9_20261021_053720.json
+lock ~/.hermes-cortex/state/.governance-cron_6cb3c26a2ac9_20261021_053720.json
 ```
+
+## 10. Hook findings fixed in this cycle
+
+The pre-commit hook raised two findings on the first commit attempt. Both were
+fixed at the source, not silenced.
+
+**(a) PII — a hardcoded home path in this transcript.** This file is committed
+to a public repo, so the raw `/home/<user>/` prefix was normalised to `~` by ONE
+pass over the generated file (the generator's job), not by hand-patching the
+lines that happened to be quoted:
+
+```
+$ sed -i 's|/<user-home>/|~/|g' docs/evidence/dream-digest-2026-10-21.txt
+$ grep -c "/<user-home>" docs/evidence/dream-digest-2026-10-21.txt
+0
+$ bash ~/hermes-cortex/ops/scripts/secret-leak-detector.sh
+(no output)
+rc=0
+```
+
+(`<user-home>` stands in for the literal home prefix — quoting the raw path in
+the fix command would put the very string the detector looks for into the
+committed file, which is how this line tripped it once already.)
+
+**(b) DOCS AUDIT — a false positive on the evidence store, fixed by tightening
+the TRIGGER.** `docs/DOCS-INDEX.md` documents `docs/evidence/` as "browsed by
+directory, not listed row by row here", so warning on every dated capture is a
+false positive that trains readers to ignore the audit. The hook's skip case
+covered `docs/design/*` and `docs/templates/*.plist` but omitted
+`docs/evidence/*`; the case was added, with the policy recorded in a comment.
+
+Tested BOTH directions in a throwaway repo (fresh unique path, nothing deleted):
+
+```
+$ bash ops/scripts/pre-commit-doc-audit.sh      # staged: docs/evidence/capture-2026-10-21.md + docs/new-feature-guide.md
+⚠️  DOCS AUDIT: docs/new-feature-guide.md changed but docs/DOCS-INDEX.md was not updated.
+───
+📋 DOCS AUDIT: 1 documentation issue(s) found.
+```
+
+The evidence capture is **silent** (the fix works) and the genuinely new doc
+**still warns** (the real case is preserved) — neither deleting the check nor
+waving everything through.

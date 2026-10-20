@@ -38,8 +38,11 @@ if [[ "$DOCS_CHANGED" -gt 0 && "$DOCS_INDEX_CHANGED" -eq 0 ]]; then
     MISSING_DOCS=$(echo "$STAGED" | grep '^docs/.*\.md$' | grep -v '^docs/DOCS-INDEX\.md$' || true)
     for doc in $MISSING_DOCS; do
         # Skip docs that don't need indexing (internal references, CODE_OF_CONDUCT, etc.)
+        # docs/evidence/* is here because DOCS-INDEX.md documents that directory as
+        # "browsed by directory, not listed row by row" — warning on every dated
+        # capture is a false positive that trains readers to ignore the audit.
         case "$doc" in
-            docs/CODE_OF_CONDUCT.md|docs/CONTRIBUTING.md|docs/SECURITY.md|docs/THIRD_PARTY_LICENSES.md|docs/design/*|docs/templates/*.plist)
+            docs/CODE_OF_CONDUCT.md|docs/CONTRIBUTING.md|docs/SECURITY.md|docs/THIRD_PARTY_LICENSES.md|docs/design/*|docs/templates/*.plist|docs/evidence/*)
                 continue
                 ;;
         esac

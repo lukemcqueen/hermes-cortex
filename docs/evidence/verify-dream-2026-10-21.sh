@@ -92,5 +92,5 @@ if [ "$FAILED" -eq 0 ]; then
   printf 'RESULT: ALL PASS\n'
   exit 0
 fi
-printf 'RESULT: FAILED\n' >&2
+printf 'RESULT: FAILED\n' 1>&2
 exit 1
