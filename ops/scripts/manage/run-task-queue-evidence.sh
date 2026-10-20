@@ -11,7 +11,18 @@ set -uo pipefail
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 OUT="${REPO}/docs/evidence/task-queue-remediation.md"
-PY="${EVIDENCE_PY:-$(command -v python3)}"
+
+# Resolve the interpreter by CAPABILITY, not by PATH existence: `command -v python3`
+# says a file exists and nothing at all about the module it must import. On the cron
+# PATH it resolved to the agent runtime interpreter, which has no pytest — measured
+# 2026-10-20, where the run printed "No module named pytest" in place of the suite
+# output and still reported "evidence PASSED".
+PY="${EVIDENCE_PY:-$(bash "${REPO}/ops/scripts/lib/python-with-module.sh" --print pytest)}"
+if [ -z "${PY}" ] || [ ! -x "${PY}" ]; then
+  echo "COULD NOT VERIFY — no interpreter on this host can import pytest" >&2
+  echo "  refusing to emit a report whose load-bearing section would be an error" >&2
+  exit 3
+fi
 
 echo "interpreter: ${PY}"
 mkdir -p "$(dirname "${OUT}")"

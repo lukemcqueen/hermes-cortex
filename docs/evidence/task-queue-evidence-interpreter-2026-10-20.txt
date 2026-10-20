@@ -1,0 +1,83 @@
+# Task-queue evidence — interpreter capability, before/after (cycle 13457, task a6bb2da4)
+# host: esther · range base: 4799f61e · tip: 4799f61e
+# Every block is the actual output of the command above it; rc is measured unpiped.
+
+## BEFORE — the report committed at the range base carries a NOT-RUN as its evidence
+$ git show 4799f61e35f4b465a4ce15fcf0787b3b51f6e0f7:docs/evidence/task-queue-remediation.md | grep -e "test_hc_harness passes" -e "No module named"
+| test_hc_harness passes on the current tree | PASS | now (2a2acf9a): ============================== 9 passed in 5.90s =============================== · pinned baseline fbfc22b34db2 (fbfc22b3): ============================== 9 passed in 5.73s =============================== — reproduced as recorded under the generating interpreter, not gated (interpreter drift makes the old tree pass under today's python) |
+[rc=0]
+
+## BEFORE — the provenance test at the range base (worktree), run by the repo runner
+$ git worktree add --detach /tmp/tq-evidence-base-wt 4799f61e35f4b465a4ce15fcf0787b3b51f6e0f7 && cd /tmp/tq-evidence-base-wt && bash tests/run-tests.sh tests/test_task_queue_evidence.py -q
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
+rootdir: /tmp/tq-evidence-base-wt
+configfile: pytest.ini
+plugins: anyio-4.15.1
+collected 9 items
+
+tests/test_task_queue_evidence.py ......F..                              [100%]
+
+=================================== FAILURES ===================================
+_____________ test_the_committed_evidence_is_actual_script_output ______________
+tests/test_task_queue_evidence.py:129: in test_the_committed_evidence_is_actual_script_output
+    assert norm(regenerated) == norm(fresh.stdout), (
+E   AssertionError: the committed report does not match a fresh run of the script — it has drifted from the code, or was edited by hand
+E   assert '# Task-queue...========= ```' == '# Task-queue...ed pytest ```'
+E     
+E     Skipping 636 identical leading characters in diff, use -v to show
+E     - claimable 17 + assigned 0 = 17 | | The pool is accounted for (work is reachable when present) | PASS | claimable 17 (baseline 9 + 6 released; no floor asserted — a drained pool is healthy) | | No row is left parked in `waiting` | PASS | 0 still waiting (baseline 6) | | A cancelled slice is recoverable in the archive (cancels move, not delete) | PASS | 16 cancelled rows archived since 2026-10-03 UTC (fixed cutoff) — a cancel MOVES the row to tasks.task_archive, so it stays recoverable | | Parked rows can ...
+E     
+E     ...Full output truncated (2 lines hidden), use '-vv' to show
+=========================== short test summary info ============================
+FAILED tests/test_task_queue_evidence.py::test_the_committed_evidence_is_actual_script_output
+========================= 1 failed, 8 passed in 1.70s ==========================
+---
+run-tests.sh: interpreter=$HOME/.hermes-cortex/venv/bin/python3 rc=1  (PYTHONPATH/PYTHONHOME unset for the run)
+[rc=1]
+
+## AFTER — same test at the tip, run by the repo runner
+$ bash tests/run-tests.sh tests/test_task_queue_evidence.py -q
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
+rootdir: $HOME/hermes-cortex
+configfile: pytest.ini
+plugins: anyio-4.15.1
+collected 11 items
+
+tests/test_task_queue_evidence.py ...........                            [100%]
+
+============================== 11 passed in 6.31s ==============================
+---
+run-tests.sh: interpreter=$HOME/.hermes-cortex/venv/bin/python3 rc=0  (PYTHONPATH/PYTHONHOME unset for the run)
+[rc=0]
+
+## AFTER — regenerating the report, and the report's own load-bearing rows
+$ bash ops/scripts/manage/run-task-queue-evidence.sh
+interpreter: $HOME/.hermes-cortex/venv/bin/python3
+wrote $HOME/hermes-cortex/docs/evidence/task-queue-remediation.md (61 lines)
+evidence PASSED
+[rc=0]
+
+$ grep -n -e "test_hc_harness passes" -e "Verdict" docs/evidence/task-queue-remediation.md
+23:| test_hc_harness passes on the current tree | PASS | now (4799f61e): ============================== 9 passed in 1.76s =============================== · pinned baseline fbfc22b34db2 (fbfc22b3): ============================== 9 passed in 1.68s =============================== [outcome pass] — reproduced as recorded under the generating interpreter, not gated (interpreter drift makes the old tree pass under today's python); the verdict is the measured pass, never the absence of the word "failed" |
+25:**Verdict: PASS**
+[rc=0]
+
+## COULD NOT VERIFY — constructed: no candidate interpreter can import pytest
+# the stub below is created here so the block is re-runnable: a python3 that
+# fails every import probe, on a PATH that has no venv, under a HOME with none.
+$ PATH=/tmp/fakebin:/usr/bin:/bin HOME=/tmp/nohome bash ops/scripts/manage/run-task-queue-evidence.sh
+python-with-module: COULD NOT VERIFY — no interpreter can import 'pytest'.
+  Checked: /tmp/fakebin/python3 /usr/bin/python3.12
+  Fix one of:
+    - install pytest for one of them        (e.g. python3 -m pip install pytest)
+    - point this wrapper at a capable one:
+        PYTHON=/path/to/python3 bash $HOME/hermes-cortex/ops/scripts/lib/python-with-module.sh pytest ...
+COULD NOT VERIFY — no interpreter on this host can import pytest
+  refusing to emit a report whose load-bearing section would be an error
+[rc=3 — 3 = refused to emit a report]
+
+$ wc -l docs/evidence/task-queue-remediation.md   # unchanged by the refusal
+61
+[rc=0]

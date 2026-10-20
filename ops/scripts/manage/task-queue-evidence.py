@@ -64,6 +64,51 @@ def _rev(rev: str = "HEAD") -> str:
     return r.stdout.strip() or rev
 
 
+PY_HELPER = REPO / "ops" / "scripts" / "lib" / "python-with-module.sh"
+
+
+def pytest_python():
+    """An interpreter that can IMPORT pytest, or None when none on this host can.
+
+    Resolved by CAPABILITY through the fleet helper, never by PATH existence:
+    `command -v python3` says a file exists and nothing about the module, and on
+    the cron PATH it resolves to the agent runtime interpreter, which has no
+    pytest. Measured 2026-10-20 — the hc_harness run printed "No module named
+    pytest", executed not one test, and the report shipped that line as the
+    evidence for a green claim. The helper exits 3 when no candidate can import
+    the module (could not verify), which is reported as an outcome, never as a
+    passing run.
+    """
+    try:
+        r = subprocess.run(["bash", str(PY_HELPER), "--print", "pytest"],
+                           capture_output=True, text=True, timeout=120)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    path = r.stdout.strip().splitlines()[-1] if r.stdout.strip() else ""
+    return path if r.returncode == 0 and path else None
+
+
+def suite_outcome(summary: str):
+    """Classify a pytest summary as ('pass'|'fail'|'not-run', detail).
+
+    A substring test cannot make this call: "No module named pytest" contains no
+    "failed", so `"failed" not in output` scored a run that executed NOTHING as a
+    pass. Only an explicit "N passed" with N > 0 and no failure or error line is a
+    pass; "no tests ran" is a failure of the measurement itself; everything else —
+    a crash, a missing module, an empty capture — is NOT RUN, which the caller
+    must score as a failure rather than read as silence.
+    """
+    text = summary.strip()
+    if re.search(r"\bno tests ran\b", text):
+        return "fail", "the suite collected nothing (no tests ran)"
+    if re.search(r"\b\d+ (?:failed|error)", text) or re.search(r"\berrors?\b", text, re.I):
+        return "fail", text
+    m = re.search(r"\b(\d+) passed\b", text)
+    if m and int(m.group(1)) > 0:
+        return "pass", text
+    return "not-run", text
+
+
 def parse_db_version(blob: str):
     """Extract the schema version from a `tasks.schema_version` query result.
 
@@ -192,17 +237,26 @@ def main() -> int:
     #     A git WORKTREE, not `git stash`: the stash would also stash this script's
     #     own untracked output file mid-run and delete it from under the redirect.
     def hc_run(cwd):
-        """Return (full_output, summary_line) for the hc_harness suite.
+        """Return (full_output, summary_line, outcome) for the hc_harness suite.
 
         PYTHONHASHSEED=0 is set deliberately: the assertion diff prints a Python SET
         of tool names ("Extra items in the left set: ..."), and set iteration order
         varies with the hash seed. Without this the captured output differs run to
         run and the report becomes unreproducible — which is exactly what the
         provenance test caught.
+
+        The interpreter is resolved by CAPABILITY, never by PATH: a bare "python3"
+        here is whatever the caller's PATH holds — on the cron PATH that is the
+        agent runtime interpreter, which cannot import pytest, so the child died
+        before collecting a test and the old substring gate scored the corpse PASS.
         """
+        py = pytest_python()
+        if py is None:
+            return ("", "COULD NOT VERIFY - no interpreter on this host can import "
+                        "pytest (python-with-module.sh exit 3)", "not-run")
         env = {**os.environ, "PYTHONHASHSEED": "0",
                "PYTEST_ADDOPTS": "-p no:cacheprovider"}
-        r = subprocess.run(["python3", "-m", "pytest", "tests/test_hc_harness.py",
+        r = subprocess.run([py, "-m", "pytest", "tests/test_hc_harness.py",
                             "-q"], cwd=cwd, capture_output=True, text=True,
                            timeout=300, env=env)
         full = (r.stdout or "") + (r.stderr or "")
@@ -210,9 +264,9 @@ def main() -> int:
         import re as _re2
         full = _re2.sub(r"/home/[A-Za-z0-9._-]+", "$HOME", full)
         summary = full.strip().splitlines()[-1] if full.strip() else "no output"
-        return full, summary
+        return full, summary, suite_outcome(summary)[0]
 
-    with_changes_full, with_changes = hc_run(REPO)
+    with_changes_full, with_changes, with_changes_outcome = hc_run(REPO)
 
     # The regression pin, pinned to an IMMUTABLE revision. The old `fix_sha^`
     # (parent of the last commit that touched the test file) was a MOVING
@@ -221,7 +275,7 @@ def main() -> int:
     # from the committed report forever. Pinning the actual failing baseline
     # (git history is immutable) keeps the before/after reproducible.
     baseline = REGRESSION_BASELINE
-    clean_tree_full, clean_tree = "", "not attempted"
+    clean_tree_full, clean_tree, clean_outcome = "", "not attempted", "not-run"
     wt = Path("/tmp/tq-evidence-clean-tree")
     subprocess.run(["git", "worktree", "remove", "--force", str(wt)], cwd=REPO,
                    capture_output=True, text=True, timeout=120)
@@ -229,7 +283,7 @@ def main() -> int:
                          cwd=REPO, capture_output=True, text=True, timeout=180)
     if add.returncode == 0:
         try:
-            clean_tree_full, clean_tree = hc_run(wt)
+            clean_tree_full, clean_tree, clean_outcome = hc_run(wt)
         finally:
             subprocess.run(["git", "worktree", "remove", "--force", str(wt)],
                            cwd=REPO, capture_output=True, text=True, timeout=120)
@@ -246,11 +300,13 @@ def main() -> int:
     # with the interpreter and could never be reproduced, exactly the
     # live-ambient-state trap. Both revisions are named so a reader can re-run.
     check("test_hc_harness passes on the current tree",
-          "failed" not in with_changes,
+          with_changes_outcome == "pass",
           f"now ({_rev()}): {with_changes} · pinned baseline {baseline[:12]} "
-          f"({_rev(baseline)}): {clean_tree} — reproduced as recorded under the "
-          f"generating interpreter, not gated (interpreter drift makes the old "
-          f"tree pass under today's python)")
+          f"({_rev(baseline)}): {clean_tree} [outcome {clean_outcome}] — reproduced "
+          f"as recorded under the generating interpreter, not gated (interpreter "
+          f"drift makes the old tree pass under today's python); the verdict is "
+          f"the measured {with_changes_outcome}, never the absence of the word "
+          f"\"failed\"")
 
     print("# Task-queue remediation — acceptance evidence\n")
     print("Regenerate with: `bash ops/scripts/manage/run-task-queue-evidence.sh`\n")
