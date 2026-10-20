@@ -41,47 +41,60 @@ run_case() {
   fi
 }
 
+# Narrow, determined input set: the discovered-set path is exercised separately in
+# probe 5, so every other probe measures exactly ONE induced failure.
+NARROW="devops/x/SKILL.md"
+
 # --- probe 1: stranded count non-zero must FAIL by name
 mk_fixture 3
 run_case "stranded>0 fails" 1 "stranded=3" \
-  env REPO="$TMP/fx/repo" DEPLOYED_ROOT="$TMP/fx/deployed" \
-      SKILLS="devops/x/SKILL.md" bash "$CHECK"
+  env REPO="$TMP/fx/repo" DEPLOYED_ROOT="$TMP/fx/deployed" SKILLS="$NARROW" bash "$CHECK"
+
+# --- probe 1b: a REVIEW row the reconciler refused must FAIL by name (it is not
+#     counted as "stranded", so the count alone would have missed it)
+mk_fixture 0
+cat > "$TMP/fx/repo/ops/scripts/manage/reconcile-stranded-skills.py" <<'PY'
+print("Detector verdict: FAIL · stranded: 0")
+print("REVIEW   devops/x/SKILL.md: would drop 2 line(s), add 53 -> not applied")
+PY
+run_case "REVIEW row fails" 1 "awaiting review" \
+  env REPO="$TMP/fx/repo" DEPLOYED_ROOT="$TMP/fx/deployed" SKILLS="$NARROW" bash "$CHECK"
 
 # --- probe 2: deployed copy diverged must FAIL by name
 mk_fixture 0
 printf '# x\n\nCHANGED\n' > "$TMP/fx/deployed/devops/x/SKILL.md"
 run_case "deployed drift fails" 1 "FAIL: devops/x/SKILL.md differs" \
-  env REPO="$TMP/fx/repo" DEPLOYED_ROOT="$TMP/fx/deployed" \
-      SKILLS="devops/x/SKILL.md" bash "$CHECK"
+  env REPO="$TMP/fx/repo" DEPLOYED_ROOT="$TMP/fx/deployed" SKILLS="$NARROW" bash "$CHECK"
 
 # --- probe 3: reconciler CRASH (rc=3) must be COULD NOT VERIFY, not a pass
 mk_fixture 0
 printf 'import sys\nsys.exit(3)\n' > "$TMP/fx/repo/ops/scripts/manage/reconcile-stranded-skills.py"
 run_case "reconciler crash" 2 "COULD NOT VERIFY" \
-  env REPO="$TMP/fx/repo" DEPLOYED_ROOT="$TMP/fx/deployed" \
-      SKILLS="devops/x/SKILL.md" bash "$CHECK"
+  env REPO="$TMP/fx/repo" DEPLOYED_ROOT="$TMP/fx/deployed" SKILLS="$NARROW" bash "$CHECK"
 
 # --- probe 4: malformed reconciler output (no stranded line) -> unverifiable
 mk_fixture 0
 printf 'print("something else entirely")\n' > "$TMP/fx/repo/ops/scripts/manage/reconcile-stranded-skills.py"
 run_case "malformed output" 2 "COULD NOT VERIFY" \
-  env REPO="$TMP/fx/repo" DEPLOYED_ROOT="$TMP/fx/deployed" \
-      SKILLS="devops/x/SKILL.md" bash "$CHECK"
+  env REPO="$TMP/fx/repo" DEPLOYED_ROOT="$TMP/fx/deployed" SKILLS="$NARROW" bash "$CHECK"
 
-# --- probe 5: missing deployed file must FAIL by name
+# --- probe 5: DISCOVERY finds a drift the caller never named. Regression guard
+#     for the hardcoded-pair blind spot: add a second skill, drift it, and let the
+#     sweep find it with NO SKILLS given (proving the check does not measure only
+#     the paths it was told about).
 mk_fixture 0
-rm -f "$TMP/fx/deployed/devops/x/SKILL.md"
-run_case "missing deployed file" 1 "deployed file missing" \
-  env REPO="$TMP/fx/repo" DEPLOYED_ROOT="$TMP/fx/deployed" \
-      SKILLS="devops/x/SKILL.md" bash "$CHECK"
+mkdir -p "$TMP/fx/repo/skills/devops/y" "$TMP/fx/deployed/devops/y"
+printf '# y\n\n```sh\necho y\n```\n' > "$TMP/fx/repo/skills/devops/y/SKILL.md"
+printf '# y\n\nDRIFTED\n' > "$TMP/fx/deployed/devops/y/SKILL.md"
+run_case "discovery finds unnamed drift" 1 "FAIL: devops/y/SKILL.md differs" \
+  bash -c "cd '$TMP/fx/repo' && SKILLS='' REPO='$TMP/fx/repo' DEPLOYED_ROOT='$TMP/fx/deployed' bash '$CHECK'"
 
 # --- probe 6: odd fence count must FAIL by name
 mk_fixture 0
 printf '# x\n\n```sh\necho hi\n' > "$TMP/fx/repo/skills/devops/x/SKILL.md"
 cp "$TMP/fx/repo/skills/devops/x/SKILL.md" "$TMP/fx/deployed/devops/x/SKILL.md"
 run_case "odd fences fails" 1 "ODD fence count" \
-  env REPO="$TMP/fx/repo" DEPLOYED_ROOT="$TMP/fx/deployed" \
-      SKILLS="devops/x/SKILL.md" bash "$CHECK"
+  env REPO="$TMP/fx/repo" DEPLOYED_ROOT="$TMP/fx/deployed" SKILLS="$NARROW" bash "$CHECK"
 
 echo
 echo "probing the probe: $probes probes, $misses blind spots"
