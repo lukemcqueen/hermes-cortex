@@ -305,8 +305,19 @@ keyless = [x for x in chosen if x in ("exa", "duckduckgo")]
 print("keyless:" + ",".join(keyless) if keyless else "keyed-only")
 PY
     _wv_rc=$?
-    ws_verdict="$(cat "$_WS_VERDICT_TMP" 2>/dev/null)"
+    # Capture the READ's status separately: a vanished/!readable tempfile is not the
+    # parser failing, and reporting it as "check-failed" would misdiagnose the cause.
+    if ws_verdict="$(cat "$_WS_VERDICT_TMP")"; then
+        _wv_read_ok=1
+    else
+        _wv_read_ok=0
+        ws_verdict=""
+    fi
     rm -f "$_WS_VERDICT_TMP"
+    if [[ $_wv_read_ok -eq 0 ]]; then
+        _failed 6 "could not read the search-routing probe output (tempfile unreadable) — the check produced NO verdict"
+        ws_verdict="check-failed"
+    fi
     # An empty verdict is never a verdict: the parser can exit 0 having printed nothing,
     # and an empty string would fall through the case and read as a silent pass.
     if [[ $_wv_rc -ne 0 || -z "$ws_verdict" ]]; then

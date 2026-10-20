@@ -137,29 +137,72 @@ def test_detector_sees_the_known_bad_shape() -> None:
           "the detector flagged a COMMENT that merely describes the trap — prose is not code")
 
 
+def _registered_shell_scripts() -> list[Path]:
+    """The shell scripts the deploy map ships — read from cortex-update.sh itself."""
+    try:
+        registered = re.findall(r'^(?:register|register_orch)\s+"([^"]+)"',
+                                UPDATE_SH.read_text(), re.M)
+    except OSError:
+        return []
+    out = []
+    for rel in registered:
+        cand = REPO / rel
+        if cand.is_file() and _is_shell(cand):
+            out.append(cand)
+    return out
+
+
 def _have_docker_image() -> bool:
+    """True when the bash 3.2 image is usable — and SAY WHY when it is not.
+
+    A non-zero `docker image inspect` covers two very different situations: the image is
+    absent (pull it) and the daemon is unreachable (something else is wrong). Reporting
+    both as a silent skip would hide a broken docker behind a missing image.
+    """
     if not shutil.which("docker"):
+        print("SKIP  bash 3.2 parse gate: no docker on PATH "
+              f"(install docker, or enable the gate elsewhere: docker pull {BASH32_IMAGE})")
         return False
     try:
-        return subprocess.run(["docker", "image", "inspect", BASH32_IMAGE],
-                              capture_output=True, timeout=60).returncode == 0
-    except (OSError, subprocess.SubprocessError):
+        proc = subprocess.run(["docker", "image", "inspect", BASH32_IMAGE],
+                              capture_output=True, text=True, timeout=60)
+    except (OSError, subprocess.SubprocessError) as e:
+        print(f"SKIP  bash 3.2 parse gate: could not run docker ({type(e).__name__}: {e})")
         return False
+    if proc.returncode == 0:
+        return True
+    err = (proc.stderr or "").strip().splitlines()
+    detail = err[0] if err else f"rc={proc.returncode}"
+    if "no such image" in detail.lower() or "no such object" in detail.lower():
+        print(f"SKIP  bash 3.2 parse gate: image absent — enable with: docker pull {BASH32_IMAGE}")
+    else:
+        print(f"SKIP  bash 3.2 parse gate: docker could not inspect the image "
+              f"({detail}) — this is NOT the same as the image being missing")
+    return False
 
 
 def test_scripts_parse_under_real_bash_3_2() -> None:
     scripts = shell_scripts()
+    # No magic count: assert the resolver found each thing it CLAIMS to cover, and
+    # derive the deploy-map side from the map itself. A hardcoded ">= 20" would fail a
+    # healthy repo that legitimately ships fewer scripts, which teaches readers to
+    # ignore the guard.
     names = {p.name for p in scripts}
-    check({"pre-commit-score", "post-commit-audit"} <= names,
-          f"the scope resolver missed the hooks themselves (resolved {len(scripts)}: "
-          f"{sorted(names)[:8]}…) — fix the resolver before trusting this check")
-    check(len(scripts) >= 20,
-          f"only {len(scripts)} shell script(s) resolved from the deploy map + hooks — "
-          "the scope resolver is broken, not the code")
+    missing_impls = [n for n in HOOK_IMPL_NAMES if n not in names]
+    check(not missing_impls,
+          f"the scope resolver missed hook implementation(s) {missing_impls} "
+          f"(resolved {len(scripts)}: {sorted(names)[:8]}…) — fix the resolver")
+    registered_shells = _registered_shell_scripts()
+    check(bool(registered_shells),
+          "no shell script from the deploy map resolved — the map parser or the paths "
+          "changed, so this guard would silently scan almost nothing")
+    missing_mapped = [str(p.relative_to(REPO)) for p in registered_shells if p not in scripts]
+    check(not missing_mapped,
+          f"deploy-map script(s) not in the scan set: {missing_mapped}")
+    print(f"  scanning {len(scripts)} script(s): {len(registered_shells)} from the deploy "
+          f"map + {len(HOOK_IMPL_NAMES)} hook implementations + hooks/")
     if not _have_docker_image():
-        print(f"SKIP  bash 3.2 parse gate: {BASH32_IMAGE} not available "
-              f"(enable with: docker pull {BASH32_IMAGE})")
-        return
+        return   # the probe already printed WHY (absent image vs unreachable daemon)
     # One container, one pass: bash -n every script under the real macOS shell.
     script = ("fail=0\n"
               "while IFS= read -r f; do\n"
