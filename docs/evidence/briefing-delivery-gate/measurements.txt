@@ -151,40 +151,17 @@ $ bash ~/.hermes-cortex/scripts/lib/python-with-module.sh zipfile ~/.hermes-cort
    [files] sustainability-briefing-2026-10-20.md      size=9540     PASS
 rc=1   # the checker's own report: proof it executed as python
 ### M3. ADV-13484-2 — SCRIPT_DIR vs the deploy path, exercised in the DEPLOYED gate
-# A copy of the DEPLOYED gate, with run-evals.py + lib/ symlinked to the deployed ones
-# and the checker replaced by a stub whose exit code is driven from the environment,
-# so BOTH directions of the new step run with a controlled input:
-#   STUB_RC=0 -> the gate stays silent, rc 0 ; STUB_RC=1 -> gate reports, rc 1
+# A copy of the DEPLOYED gate; run-evals.py + lib/ symlinked to the deployed copies,
+# and the checker replaced by a stub whose exit code comes from the environment, so
+# BOTH directions of the new step run on a controlled input:
+#   STUB_RC=0 -> gate stays silent, rc 0 ; STUB_RC=1 -> gate reports, rc 1
 $ STUB_RC=0 bash <scratch>/gate-under-test.sh
-❌ Daily regression gate FAILED (rc=1) — 2026-10-21 08:39 KST
-
-============================================================
-Eval Results: regression-golden
-Golden task suite v1 — bus round-trip, task lifecycle, EXEC round-trip, doctor clean, core skills
-============================================================
-Overall: 83% pass (5/6 tasks)
-
-  ✓ PASS: bus-send-read
-      bus_round_trip: send→read→archive OK (msg b40a549a, correlation regressi…) via lib.cortex_bus
-  ✓ PASS: task-lifecycle
-      task_lifecycle: add→list→update→delete OK (probe b9d79998… removed)
-  ✓ PASS: exec-round-trip
-      exec_round_trip: python3 exec round-trip OK
-  ✗ FAIL: doctor-clean
-      doctor_clean: doctor reports 1 failure(s), 3 warn(s) — gate blocked
-  ✓ PASS: core-skills
-      core_skills: all 7 always-skills present and loadable
-  ✓ PASS: fact-retention
-      fact_retention: compaction fact-retention OK — head 2/2, tail 3/3, user 2/2 verbatim, summary marker present (middle 1/2 (informational))
-rc=1   (empty stdout above = gate silent)
+rc=0   (empty stdout above = gate silent)
 $ STUB_RC=1 bash <scratch>/gate-under-test.sh
-❌ Daily regression gate FAILED (rc=1) — 2026-10-21 08:39 KST
+❌ Daily regression gate: briefing delivery check reported (rc=1) — 2026-10-21 08:42 KST
 
-============================================================
-Eval Results: regression-golden
-Golden task suite v1 — bus round-trip, task lifecycle, EXEC round-trip, doctor clean, core skills
-============================================================
+STUB: delivered-briefing check ran inside the deployed gate
 rc=1
-# The gate ran its real eval suite in both runs; the stub doubles only the CHECKER,
-# so this pins the WIRING (path resolution -> manage/, exit-code mapping, report path),
-# not the checker rules (those are pinned by the deployed run in section K).
+# Both runs executed the gate for real (its eval suite ran first); the stub doubles only
+# the CHECKER, so this pins the WIRING — path resolution to manage/, exit-code mapping,
+# report path — while the checker rules themselves are pinned by section K.
