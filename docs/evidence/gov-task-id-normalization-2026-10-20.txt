@@ -1,155 +1,208 @@
-# task-id normalization — issue #188, applied on the live ledger
+# task-id normalization — recorded verification (issue #188, cycle 13418)
 
-Repair of the malformed pre-commit task ids (6,395 rows across 62 distinct ids)
-minted before ops/scripts/pre-commit-score was fixed. Applied 2026-10-20 to
-/home/esther/.hermes-cortex/data/loop-governance.db
+Regenerate with:
+    bash docs/evidence/gov-task-id-normalization-2026-10-20-verify.sh
 
-Tool    : ops/scripts/manage/normalize-precommit-task-ids.py
-Backup  : loop-governance.db.backup-20261020T045638Z (same dir, taken before the first write)
-Manifest: ~/.hermes-cortex/state/task-id-normalization-manifest.txt (per-row old -> new)
+This file is that script's OUTPUT, not a hand-written claim. Every assertion the
+repair makes is re-derived by running it, and the script exits non-zero when any
+invariant stops holding (§2 asserts that no id carries a newline; §3 that the
+mapping can be read back out of the rows' own audit field; §4 that the backup
+predates the repair and still holds the malformed ids; §5 that the two refused ids
+really are in the ledger). Counts that grow with the fleet are printed, not
+asserted, and the at-repair-time totals come from the manifest the tool wrote.
 
-Provenance survives the repair: each repaired row's own `outcome_note` appends
-`task_id normalized (issue #188): was '<original>'`, with the newline escaped so the
-note stays a single line. The mapping below is read back OUT of the ledger, not
-recomputed, so it is what the rows actually say.
+Addresses the self-adversarial findings on the first close (ADV-13418-1..5), all of
+one class: claims about live state need a committed, re-runnable artifact rather
+than prose in an evidence file.
 
-Verification (read-only, after the repair):
-  rows repaired                     : 6395
-  distinct malformed ids            : 62
-  ids still carrying a newline      : 0
-  hook cycles (task_id precommit-%) : 9253
-  skipped, deliberately left alone  : 2
-      - 'task-workflow rollout: L1 hermetic test + fleet coordination'
-      - 'orch-backlog-driver run'
-    Agent-authored ids containing spaces. They are not the concatenation bug, so
-    the script refuses to rewrite them rather than guessing at intent.
+What was repaired: the pre-commit hook minted its task id with
+`$(cmd || echo fallback)`, which captures the command's stdout AND the fallback when
+the command prints and then exits non-zero. A repo with no commits makes
+`git rev-parse --abbrev-ref HEAD` do exactly that (prints "HEAD", fails), so ids
+like `precommit-repo-HEAD\nunknown/update` entered the ledger. The hook is fixed at
+the source; this repair cleans the historical rows. Provenance is kept: each row's
+own `outcome_note` appends the original, escaped, and the mapping in §3 is read back
+OUT of those fields rather than recomputed.
 
-Reproduce:
-  python3 ops/scripts/manage/normalize-precommit-task-ids.py   # dry run -> 0 repairable
+--------------------------------------------------------------------------------
 
-## The 62 repaired ids (rows | original -> current)
+# task-id normalization — verification (issue #188, cycle 13418)
+# host: esther  date: 2026-10-20 14:05:49 KST
+# ledger: /home/esther/.hermes-cortex/data/loop-governance.db
 
-  5054  'precommit-repo-HEAD\\nunknown/update'
-        -> 'precommit-repo-HEAD/update'
-   362  'precommit-hermes-cortex-HEAD\\nunknown/update'
-        -> 'precommit-hermes-cortex-HEAD/update'
-   243  'precommit-checkout-HEAD\\nunknown/update'
-        -> 'precommit-checkout-HEAD/update'
-   148  'precommit-work-HEAD\\nunknown/update'
-        -> 'precommit-work-HEAD/update'
-    68  'precommit-commitme-HEAD\\nunknown/update'
-        -> 'precommit-commitme-HEAD/update'
-    68  'precommit-dry-HEAD\\nunknown/update'
-        -> 'precommit-dry-HEAD/update'
-    68  'precommit-existing-HEAD\\nunknown/update'
-        -> 'precommit-existing-HEAD/update'
-    68  'precommit-idem-HEAD\\nunknown/update'
-        -> 'precommit-idem-HEAD/update'
-    68  'precommit-noagents-HEAD\\nunknown/update'
-        -> 'precommit-noagents-HEAD/update'
-    65  'precommit-client-repo-HEAD\\nunknown/update'
-        -> 'precommit-client-repo-HEAD/update'
-    15  'precommit-test_enrich_adds_context_when_0-HEAD\\nunknown/update'
-        -> 'precommit-test_enrich_adds_context_when_0-HEAD/update'
-    15  'precommit-test_missing_plan_is_ok0-HEAD\\nunknown/update'
-        -> 'precommit-test_missing_plan_is_ok0-HEAD/update'
-    14  'precommit-test_builds_plan_and_task0-HEAD\\nunknown/update'
-        -> 'precommit-test_builds_plan_and_task0-HEAD/update'
-    14  'precommit-test_builds_rules_context0-HEAD\\nunknown/update'
-        -> 'precommit-test_builds_rules_context0-HEAD/update'
-    14  'precommit-test_context_is_budgeted0-HEAD\\nunknown/update'
-        -> 'precommit-test_context_is_budgeted0-HEAD/update'
-    14  'precommit-test_enrich_budgets_context0-HEAD\\nunknown/update'
-        -> 'precommit-test_enrich_budgets_context0-HEAD/update'
-    14  'precommit-test_includes_recent_git_histo0-HEAD\\nunknown/update'
-        -> 'precommit-test_includes_recent_git_histo0-HEAD/update'
-    14  'precommit-test_no_repo_returns_error0-HEAD\\nunknown/update'
-        -> 'precommit-test_no_repo_returns_error0-HEAD/update'
-     8  'precommit-proj-HEAD\\nunknown/update'
-        -> 'precommit-proj-HEAD/update'
-     8  'precommit-r-HEAD\\nunknown/update'
-        -> 'precommit-r-HEAD/update'
-     8  'precommit-steadfaste-HEAD\\nunknown/update'
-        -> 'precommit-steadfaste-HEAD/update'
-     5  'precommit-single-HEAD\\nunknown/update'
-        -> 'precommit-single-HEAD/update'
-     1  'precommit-advrepro-05dcpnjx-HEAD\\nunknown/update'
-        -> 'precommit-advrepro-05dcpnjx-HEAD/update'
-     1  'precommit-advrepro-3zr0zlwq-HEAD\\nunknown/update'
-        -> 'precommit-advrepro-3zr0zlwq-HEAD/update'
-     1  'precommit-co-HEAD\\nunknown/update'
-        -> 'precommit-co-HEAD/update'
-     1  'precommit-enforcer-test-proj-HEAD\\nunknown/update'
-        -> 'precommit-enforcer-test-proj-HEAD/update'
-     1  'precommit-ext-repo-test-HEAD\\nunknown/update'
-        -> 'precommit-ext-repo-test-HEAD/update'
-     1  'precommit-fc-wzd0hbkh-HEAD\\nunknown/update'
-        -> 'precommit-fc-wzd0hbkh-HEAD/update'
-     1  'precommit-foreignrepo-10lcy0al-HEAD\\nunknown/update'
-        -> 'precommit-foreignrepo-10lcy0al-HEAD/update'
-     1  'precommit-foreignrepo-99k_ocxg-HEAD\\nunknown/update'
-        -> 'precommit-foreignrepo-99k_ocxg-HEAD/update'
-     1  'precommit-hc-scope-test-HEAD\\nunknown/update'
-        -> 'precommit-hc-scope-test-HEAD/update'
-     1  'precommit-hermes-cortex-6ggjahcf-HEAD\\nunknown/update'
-        -> 'precommit-hermes-cortex-6ggjahcf-HEAD/update'
-     1  'precommit-hermes-cortex-ck5nezep-HEAD\\nunknown/update'
-        -> 'precommit-hermes-cortex-ck5nezep-HEAD/update'
-     1  'precommit-hermes-cortex-n0jncyz1-HEAD\\nunknown/update'
-        -> 'precommit-hermes-cortex-n0jncyz1-HEAD/update'
-     1  'precommit-hermes-cortex-private-HEAD\\nunknown/update'
-        -> 'precommit-hermes-cortex-private-HEAD/update'
-     1  'precommit-hook-image-test-HEAD\\nunknown/update'
-        -> 'precommit-hook-image-test-HEAD/update'
-     1  'precommit-hooktest-HEAD\\nunknown/update'
-        -> 'precommit-hooktest-HEAD/update'
-     1  'precommit-nonhc-test-HEAD\\nunknown/update'
-        -> 'precommit-nonhc-test-HEAD/update'
-     1  'precommit-omz-sim-test-HEAD\\nunknown/update'
-        -> 'precommit-omz-sim-test-HEAD/update'
-     1  'precommit-pi-context-test-HEAD\\nunknown/update'
-        -> 'precommit-pi-context-test-HEAD/update'
-     1  'precommit-probe-repo-HEAD\\nunknown/update'
-        -> 'precommit-probe-repo-HEAD/update'
-     1  'precommit-project-repo-test-HEAD\\nunknown/update'
-        -> 'precommit-project-repo-test-HEAD/update'
-     1  'precommit-rebasesmoke-1792251179-HEAD\\nunknown/update'
-        -> 'precommit-rebasesmoke-1792251179-HEAD/update'
-     1  'precommit-repo-21kmzn3s-HEAD\\nunknown/update'
-        -> 'precommit-repo-21kmzn3s-HEAD/update'
-     1  'precommit-repo-2drvibf6-HEAD\\nunknown/update'
-        -> 'precommit-repo-2drvibf6-HEAD/update'
-     1  'precommit-repo-3_aaujip-HEAD\\nunknown/update'
-        -> 'precommit-repo-3_aaujip-HEAD/update'
-     1  'precommit-repo-3kzf1t6r-HEAD\\nunknown/update'
-        -> 'precommit-repo-3kzf1t6r-HEAD/update'
-     1  'precommit-repo-446ccdo_-HEAD\\nunknown/update'
-        -> 'precommit-repo-446ccdo_-HEAD/update'
-     1  'precommit-repo-4oehsiey-HEAD\\nunknown/update'
-        -> 'precommit-repo-4oehsiey-HEAD/update'
-     1  'precommit-repo-5shs6un2-HEAD\\nunknown/update'
-        -> 'precommit-repo-5shs6un2-HEAD/update'
-     1  'precommit-repo-_n2dhwcx-HEAD\\nunknown/update'
-        -> 'precommit-repo-_n2dhwcx-HEAD/update'
-     1  'precommit-repo-g74bo1kt-HEAD\\nunknown/update'
-        -> 'precommit-repo-g74bo1kt-HEAD/update'
-     1  'precommit-repo-kjxh7vac-HEAD\\nunknown/update'
-        -> 'precommit-repo-kjxh7vac-HEAD/update'
-     1  'precommit-repo-m3yiihne-HEAD\\nunknown/update'
-        -> 'precommit-repo-m3yiihne-HEAD/update'
-     1  'precommit-repo-zhaqmxus-HEAD\\nunknown/update'
-        -> 'precommit-repo-zhaqmxus-HEAD/update'
-     1  'precommit-single-a234t942-HEAD\\nunknown/update'
-        -> 'precommit-single-a234t942-HEAD/update'
-     1  'precommit-single-h1gx2vqp-HEAD\\nunknown/update'
-        -> 'precommit-single-h1gx2vqp-HEAD/update'
-     1  'precommit-single-oxn95xcx-HEAD\\nunknown/update'
-        -> 'precommit-single-oxn95xcx-HEAD/update'
-     1  'precommit-sleak-test-HEAD\\nunknown/update'
-        -> 'precommit-sleak-test-HEAD/update'
-     1  'precommit-tdd-final-HEAD\\nunknown/update'
-        -> 'precommit-tdd-final-HEAD/update'
-     1  'precommit-tdd-gate-test-HEAD\\nunknown/update'
-        -> 'precommit-tdd-gate-test-HEAD/update'
-     1  'precommit-tdd-no-infra-HEAD\\nunknown/update'
-        -> 'precommit-tdd-no-infra-HEAD/update'
+=== 1. the tool, re-run against the live ledger ===
+# a second --apply is a no-op and the dry run reports nothing repairable;
+# the two ids it refuses are named rather than silently passed over
+$ python3 /home/esther/hermes-cortex/ops/scripts/manage/normalize-precommit-task-ids.py --db /home/esther/.hermes-cortex/data/loop-governance.db
+ledger                : /home/esther/.hermes-cortex/data/loop-governance.db
+malformed rows        : 2
+  repairable          : 0 (across 0 distinct ids)
+  skipped (no guess)  : 2
+      row 1911: 'task-workflow rollout: L1 hermetic test + fleet coordination' does not reduce to ^precommit-[^/]+/[A-Za-z0-9._-]+$
+      row 4838: 'orch-backlog-driver run' does not reduce to ^precommit-[^/]+/[A-Za-z0-9._-]+$
+RESULT: nothing to do
+  → nothing repairable remains
+  → 2 ids reported as skipped (not guessed at)
+
+=== 2. ledger invariants after the repair ===
+$ python3 - /home/esther/.hermes-cortex/data/loop-governance.db task_id normalized (issue #188)
+  total rows                        : 12936
+  ids carrying a newline            : 0   <- invariant: must be 0
+  rows carrying the repair note     : 6396
+  hook cycles (task_id precommit-%) : 9255
+# hook-cycle and total counts GROW with the fleet, so they are printed above
+# rather than asserted; the at-repair-time totals live in the manifest:
+# rows     : 6395 across 62 distinct malformed ids
+
+=== 3. provenance: the mapping read OUT of the rows' audit field ===
+# nothing here is recomputed — the originals come from each row's own
+# outcome_note, so the table below is what the rows actually say
+$ python3 - /home/esther/.hermes-cortex/data/loop-governance.db task_id normalized (issue #188)
+  distinct (old -> new) pairs       : 62
+  rows covered by those pairs       : 6395
+  pairs where new != old, new clean : yes
+
+  rows | original (escaped, as stored) -> current id
+   5054  'precommit-repo-HEAD\\nunknown/update'
+         -> 'precommit-repo-HEAD/update'
+    362  'precommit-hermes-cortex-HEAD\\nunknown/update'
+         -> 'precommit-hermes-cortex-HEAD/update'
+    243  'precommit-checkout-HEAD\\nunknown/update'
+         -> 'precommit-checkout-HEAD/update'
+    148  'precommit-work-HEAD\\nunknown/update'
+         -> 'precommit-work-HEAD/update'
+     68  'precommit-commitme-HEAD\\nunknown/update'
+         -> 'precommit-commitme-HEAD/update'
+     68  'precommit-dry-HEAD\\nunknown/update'
+         -> 'precommit-dry-HEAD/update'
+     68  'precommit-existing-HEAD\\nunknown/update'
+         -> 'precommit-existing-HEAD/update'
+     68  'precommit-idem-HEAD\\nunknown/update'
+         -> 'precommit-idem-HEAD/update'
+     68  'precommit-noagents-HEAD\\nunknown/update'
+         -> 'precommit-noagents-HEAD/update'
+     65  'precommit-client-repo-HEAD\\nunknown/update'
+         -> 'precommit-client-repo-HEAD/update'
+     15  'precommit-test_enrich_adds_context_when_0-HEAD\\nunknown/update'
+         -> 'precommit-test_enrich_adds_context_when_0-HEAD/update'
+     15  'precommit-test_missing_plan_is_ok0-HEAD\\nunknown/update'
+         -> 'precommit-test_missing_plan_is_ok0-HEAD/update'
+     14  'precommit-test_builds_plan_and_task0-HEAD\\nunknown/update'
+         -> 'precommit-test_builds_plan_and_task0-HEAD/update'
+     14  'precommit-test_builds_rules_context0-HEAD\\nunknown/update'
+         -> 'precommit-test_builds_rules_context0-HEAD/update'
+     14  'precommit-test_context_is_budgeted0-HEAD\\nunknown/update'
+         -> 'precommit-test_context_is_budgeted0-HEAD/update'
+     14  'precommit-test_enrich_budgets_context0-HEAD\\nunknown/update'
+         -> 'precommit-test_enrich_budgets_context0-HEAD/update'
+     14  'precommit-test_includes_recent_git_histo0-HEAD\\nunknown/update'
+         -> 'precommit-test_includes_recent_git_histo0-HEAD/update'
+     14  'precommit-test_no_repo_returns_error0-HEAD\\nunknown/update'
+         -> 'precommit-test_no_repo_returns_error0-HEAD/update'
+      8  'precommit-proj-HEAD\\nunknown/update'
+         -> 'precommit-proj-HEAD/update'
+      8  'precommit-r-HEAD\\nunknown/update'
+         -> 'precommit-r-HEAD/update'
+      8  'precommit-steadfaste-HEAD\\nunknown/update'
+         -> 'precommit-steadfaste-HEAD/update'
+      5  'precommit-single-HEAD\\nunknown/update'
+         -> 'precommit-single-HEAD/update'
+      1  'precommit-advrepro-05dcpnjx-HEAD\\nunknown/update'
+         -> 'precommit-advrepro-05dcpnjx-HEAD/update'
+      1  'precommit-advrepro-3zr0zlwq-HEAD\\nunknown/update'
+         -> 'precommit-advrepro-3zr0zlwq-HEAD/update'
+      1  'precommit-co-HEAD\\nunknown/update'
+         -> 'precommit-co-HEAD/update'
+      1  'precommit-enforcer-test-proj-HEAD\\nunknown/update'
+         -> 'precommit-enforcer-test-proj-HEAD/update'
+      1  'precommit-ext-repo-test-HEAD\\nunknown/update'
+         -> 'precommit-ext-repo-test-HEAD/update'
+      1  'precommit-fc-wzd0hbkh-HEAD\\nunknown/update'
+         -> 'precommit-fc-wzd0hbkh-HEAD/update'
+      1  'precommit-foreignrepo-10lcy0al-HEAD\\nunknown/update'
+         -> 'precommit-foreignrepo-10lcy0al-HEAD/update'
+      1  'precommit-foreignrepo-99k_ocxg-HEAD\\nunknown/update'
+         -> 'precommit-foreignrepo-99k_ocxg-HEAD/update'
+      1  'precommit-hc-scope-test-HEAD\\nunknown/update'
+         -> 'precommit-hc-scope-test-HEAD/update'
+      1  'precommit-hermes-cortex-6ggjahcf-HEAD\\nunknown/update'
+         -> 'precommit-hermes-cortex-6ggjahcf-HEAD/update'
+      1  'precommit-hermes-cortex-ck5nezep-HEAD\\nunknown/update'
+         -> 'precommit-hermes-cortex-ck5nezep-HEAD/update'
+      1  'precommit-hermes-cortex-n0jncyz1-HEAD\\nunknown/update'
+         -> 'precommit-hermes-cortex-n0jncyz1-HEAD/update'
+      1  'precommit-hermes-cortex-private-HEAD\\nunknown/update'
+         -> 'precommit-hermes-cortex-private-HEAD/update'
+      1  'precommit-hook-image-test-HEAD\\nunknown/update'
+         -> 'precommit-hook-image-test-HEAD/update'
+      1  'precommit-hooktest-HEAD\\nunknown/update'
+         -> 'precommit-hooktest-HEAD/update'
+      1  'precommit-nonhc-test-HEAD\\nunknown/update'
+         -> 'precommit-nonhc-test-HEAD/update'
+      1  'precommit-omz-sim-test-HEAD\\nunknown/update'
+         -> 'precommit-omz-sim-test-HEAD/update'
+      1  'precommit-pi-context-test-HEAD\\nunknown/update'
+         -> 'precommit-pi-context-test-HEAD/update'
+      1  'precommit-probe-repo-HEAD\\nunknown/update'
+         -> 'precommit-probe-repo-HEAD/update'
+      1  'precommit-project-repo-test-HEAD\\nunknown/update'
+         -> 'precommit-project-repo-test-HEAD/update'
+      1  'precommit-rebasesmoke-1792251179-HEAD\\nunknown/update'
+         -> 'precommit-rebasesmoke-1792251179-HEAD/update'
+      1  'precommit-repo-21kmzn3s-HEAD\\nunknown/update'
+         -> 'precommit-repo-21kmzn3s-HEAD/update'
+      1  'precommit-repo-2drvibf6-HEAD\\nunknown/update'
+         -> 'precommit-repo-2drvibf6-HEAD/update'
+      1  'precommit-repo-3_aaujip-HEAD\\nunknown/update'
+         -> 'precommit-repo-3_aaujip-HEAD/update'
+      1  'precommit-repo-3kzf1t6r-HEAD\\nunknown/update'
+         -> 'precommit-repo-3kzf1t6r-HEAD/update'
+      1  'precommit-repo-446ccdo_-HEAD\\nunknown/update'
+         -> 'precommit-repo-446ccdo_-HEAD/update'
+      1  'precommit-repo-4oehsiey-HEAD\\nunknown/update'
+         -> 'precommit-repo-4oehsiey-HEAD/update'
+      1  'precommit-repo-5shs6un2-HEAD\\nunknown/update'
+         -> 'precommit-repo-5shs6un2-HEAD/update'
+      1  'precommit-repo-_n2dhwcx-HEAD\\nunknown/update'
+         -> 'precommit-repo-_n2dhwcx-HEAD/update'
+      1  'precommit-repo-g74bo1kt-HEAD\\nunknown/update'
+         -> 'precommit-repo-g74bo1kt-HEAD/update'
+      1  'precommit-repo-kjxh7vac-HEAD\\nunknown/update'
+         -> 'precommit-repo-kjxh7vac-HEAD/update'
+      1  'precommit-repo-m3yiihne-HEAD\\nunknown/update'
+         -> 'precommit-repo-m3yiihne-HEAD/update'
+      1  'precommit-repo-zhaqmxus-HEAD\\nunknown/update'
+         -> 'precommit-repo-zhaqmxus-HEAD/update'
+      1  'precommit-single-a234t942-HEAD\\nunknown/update'
+         -> 'precommit-single-a234t942-HEAD/update'
+      1  'precommit-single-h1gx2vqp-HEAD\\nunknown/update'
+         -> 'precommit-single-h1gx2vqp-HEAD/update'
+      1  'precommit-single-oxn95xcx-HEAD\\nunknown/update'
+         -> 'precommit-single-oxn95xcx-HEAD/update'
+      1  'precommit-sleak-test-HEAD\\nunknown/update'
+         -> 'precommit-sleak-test-HEAD/update'
+      1  'precommit-tdd-final-HEAD\\nunknown/update'
+         -> 'precommit-tdd-final-HEAD/update'
+      1  'precommit-tdd-gate-test-HEAD\\nunknown/update'
+         -> 'precommit-tdd-gate-test-HEAD/update'
+      1  'precommit-tdd-no-infra-HEAD\\nunknown/update'
+         -> 'precommit-tdd-no-infra-HEAD/update'
+
+=== 4. the backup exists and predates the repair ===
+# the strongest proof it predates the repair: the BACKUP still holds the
+# malformed ids while the live ledger holds none
+  backup: /home/esther/.hermes-cortex/data/loop-governance.db.backup-20261020T045638Z
+  size=156131328 bytes  mtime=2026-10-20 13:34:51.629808970 +0900
+  sha256: fdb6331a50af8fda2b114908b49df933c572c539b1fac9d02bef4c48c36b0fc8
+  ids with a newline — backup: 6395   live: 0
+  → the backup predates the repair
+
+=== 5. the two skipped ids really are in the ledger ===
+$ python3 - /home/esther/.hermes-cortex/data/loop-governance.db
+  ids containing a space: 2
+    row 4838: 'orch-backlog-driver run'
+    row 1911: 'task-workflow rollout: L1 hermetic test + fleet coordination'
+# these are agent-authored ids, not the concatenation bug: the tool refuses to
+# rewrite them rather than guessing at intent (see §1)
+
+RESULT: PASS — every claim about the repair is reproduced above
