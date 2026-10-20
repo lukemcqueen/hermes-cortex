@@ -380,6 +380,11 @@ register "ops/scripts/manage/consolidate-env.sh"         "${CORTEX_DEPLOY_HOME}/
 register "ops/scripts/manage/gen-skills-manifest.py"      "${CORTEX_DEPLOY_HOME}/scripts/gen-skills-manifest.py"
 register "ops/scripts/manage/gen-skills-manifest.sh"      "${CORTEX_DEPLOY_HOME}/scripts/gen-skills-manifest.sh"
 register "ops/scripts/manage/task-db.py"                "${CORTEX_DEPLOY_HOME}/scripts/task-db.py"
+# Ledger repair tool (issue #188). Each host owns its own loop-governance ledger and
+# each host's pre-commit hook minted the malformed ids, so every host needs the repair
+# path, not just the orchestrator. Registering it also keeps it out of the doctor's
+# "not in any register() mapping" finding.
+register "ops/scripts/manage/normalize-precommit-task-ids.py" "${CORTEX_DEPLOY_HOME}/scripts/normalize-precommit-task-ids.py"
 register "ops/scripts/manage/agent-review-queue-sweep.py" "${CORTEX_DEPLOY_HOME}/scripts/agent-review-queue-sweep.py"
 register "ops/scripts/manage/git-main-sync.sh"          "${CORTEX_DEPLOY_HOME}/scripts/git-main-sync.sh"
 # The no-LLM monitor probe for a "land when clean" cron: it reports whether a

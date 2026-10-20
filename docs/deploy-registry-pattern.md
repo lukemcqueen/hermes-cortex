@@ -31,13 +31,13 @@ no `brain-*` branches, no `legacy-brain/` directory, and no `private-data/`.
 ## The register() map
 
 `ops/scripts/cortex-update.sh` holds the deployment as data: a list of
-`register "<repo path>" "<deployed path>"` calls — **360** of them (count
+`register "<repo path>" "<deployed path>"` calls — **361** of them (count
 re-measured 2026-10-20;
 `tests/test_repo_resource_paths.py` computes all three numbers below, so change
 the doc in the same commit as any `register()` edit).
 
-**The deployed path cannot be derived from the repo path.** Only 122 of the 360
-follow the obvious "strip the leading `ops/`" rule. **238 follow no rule at all**,
+**The deployed path cannot be derived from the repo path.** Only 122 of the 361
+follow the obvious "strip the leading `ops/`" rule. **239 follow no rule at all**,
 and every one of those also drops a subdirectory:
 
 | repo | deployed |
@@ -167,7 +167,7 @@ to `${CORTEX_DEPLOY_HOME}` (normally `~/.hermes-cortex`) and the mapping is
 | `ops/scripts/judgment.py` | `scripts/judgment.py` |
 | `ops/offline/hermes_paths.py` | `offline/hermes_paths.py` |
 
-Of the same 360 `register()` calls, **238 follow no derivable rule** — the first two rows
+Of the same 361 `register()` calls, **239 follow no derivable rule** — the first two rows
 above both live under `ops/scripts/manage/` and deploy to different depths.
 
 So a component that *guesses* — strip `ops/`, strip a subdir, try a short list of
