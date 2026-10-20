@@ -140,8 +140,15 @@ for name, cfg in srv.items():
 print("; ".join(issues))
 print(",".join(sorted(foreign)))
 PY
-        entry_issues_raw="$(cat "$_ENTRY_ISSUES_RAW_TMP")"
+        # An AUDIT must not read a crashed parser as "no issues": capture the status and
+        # report the failure explicitly. (`_failed` is this script's own failure channel.)
+        _ei_rc=$?
+        entry_issues_raw="$(cat "$_ENTRY_ISSUES_RAW_TMP" 2>/dev/null)"
         rm -f "$_ENTRY_ISSUES_RAW_TMP"
+        if [[ $_ei_rc -ne 0 ]]; then
+            _failed 6 "the mcp.json entry audit could not run (parser exited $_ei_rc) — this check produced NO verdict, which is not the same as 'no issues'"
+            entry_issues_raw=""
+        fi
         # Line 1 is the issues, line 2 the foreign servers — two facts, one subprocess.
         entry_issues="${entry_issues_raw%%$'\n'*}"
         foreign_servers="$(printf '%s\n' "$entry_issues_raw" | sed -n '2p')"
@@ -286,9 +293,16 @@ chosen = [x for x in route if isinstance(x, str)] or [cfg.get("provider")]
 keyless = [x for x in chosen if x in ("exa", "duckduckgo")]
 print("keyless:" + ",".join(keyless) if keyless else "keyed-only")
 PY
-    ws_verdict="$(cat "$_WS_VERDICT_TMP")"
+    _wv_rc=$?
+    ws_verdict="$(cat "$_WS_VERDICT_TMP" 2>/dev/null)"
     rm -f "$_WS_VERDICT_TMP"
+    if [[ $_wv_rc -ne 0 ]]; then
+        ws_verdict="check-failed"
+    fi
     case "$ws_verdict" in
+      check-failed)
+        _failed 6 "the search-routing verdict could not be computed (parser failed) — NO verdict is not a pass"
+        ;;
       keyless:*)
         _line 6 PASS "pi-web-access installed; keyless search path ${ws_verdict#keyless:} (no API key needed)"
         ;;
