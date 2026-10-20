@@ -59,6 +59,11 @@ def test_no_op_close_is_information_not_a_hazard() -> None:
     m = load_mcp()
     tag = m._RECEIPT_NO_OP
 
+    # The production call site is `receipt_note = _receipt_close_note(receipt_fail)`
+    # and _write_review_receipt() returns None whenever it SUCCEEDS — so None and
+    # "" are the values this helper actually receives on every clean close, not a
+    # hypothetical input. Both must add nothing to the close message.
+    check(m._receipt_close_note(None) == "", "a None receipt failure must add no note")
     check(m._receipt_close_note("") == "", "an empty receipt failure must add no note")
 
     noop = m._receipt_close_note(tag + "HEAD (abc123) is already origin/main — nothing changed")
@@ -107,11 +112,36 @@ def test_first_commit_task_id_has_no_continuation_line() -> None:
         _git(repo, "add", "file.txt")
 
         db = tmp / "scratch-loop-governance.db"
+        # The prod ledger must not move: PRE_COMMIT_SCORE_DB is the hook's
+        # documented override, and this test proves it is honoured rather than
+        # trusting it. Without this, a broken override would let a fixture commit
+        # write into the real ledger and the test would still pass.
+        prod_db = Path(os.environ.get(
+            "PROD_LOOP_GOV_DB", Path.home() / ".hermes-cortex" / "data" / "loop-governance.db"))
+        def _ledger_state(path: Path):
+            if not path.exists():
+                return None
+            try:
+                con = sqlite3.connect(f"file:{path}?mode=ro", uri=True)
+                n = con.execute("SELECT COUNT(*) FROM loop_cycles").fetchone()[0]
+                mx = con.execute("SELECT COALESCE(MAX(id), 0) FROM loop_cycles").fetchone()[0]
+                con.close()
+                return (n, mx)
+            except sqlite3.Error:
+                return None
+
+        prod_before = _ledger_state(prod_db)
+
         proc = _git(repo, "commit", "-m", "first commit no parent", "-q",
                     env={"PRE_COMMIT_SCORE_DB": str(db)})
         check(proc.returncode == 0,
               f"the fixture commit must succeed (rc={proc.returncode}): "
               f"{(proc.stderr or proc.stdout)[-300:]}")
+
+        if prod_before is not None:
+            check(_ledger_state(prod_db) == prod_before,
+                  f"the prod ledger must be untouched by a fixture commit "
+                  f"(PRE_COMMIT_SCORE_DB override not honoured?): {prod_db}")
 
         check(db.exists(), "the hook must score the commit into the scratch DB")
         if not db.exists():

@@ -1,40 +1,69 @@
-# governance close-path + pre-commit task-id — evidence (2026-10-20, cycle 13412)
-# every command is bare; each rc is that command's own
+# governance close-path + pre-commit task-id — recorded verification (cycle 13412)
 
-=== 1. root cause: the fallback is CONCATENATED onto the command's stdout ===
-$ git init -q .; git rev-parse --abbrev-ref HEAD 2>/dev/null || echo 'unknown'   # repo with no commits
+Regenerate with:
+    bash docs/evidence/gov-close-and-task-id-2026-10-20-verify.sh
+
+This file is that script's output, not a hand-pasted transcript: every claim the
+change makes is a live measurement the script re-runs, and it exits non-zero if
+any of them stops holding. Related records: loop-governance cycle 13412; issue
+event #188 (ledger hygiene — the 6,395 pre-existing malformed rows and the hook
+share of cycle_stats); issue #186 (learning-report staging, a separate defect).
+
+Findings addressed since the first close attempt (self-adversarial review,
+ADV-13412-*): the evidence is now a committed re-runnable script; the historical
+ledger counts point at their record (issue #188); the guard asserts None as well
+as "" (the values the production call site actually passes — `_write_review_
+receipt` returns None on every successful close); and the guard proves the
+PRE_COMMIT_SCORE_DB override is honoured by checking the prod ledger does not
+move, instead of trusting it.
+
+--------------------------------------------------------------------------------
+
+# governance close-path + pre-commit task-id — verification (cycle 13412)
+# host: esther  date: 2026-10-20 13:45:49 KST
+
+=== 1. root cause: $(cmd || echo fallback) concatenates both outputs ===
+# in a repo with no commits, git prints "HEAD" AND exits non-zero, so the
+# substitution yields "HEAD" + newline + "unknown"
   OLD: HEAD$
 unknown$
 
-=== 2. ledger damage that produced (read-only counts) ===
-  total cycles            : 12928
-  precommit-* hook cycles : 9248
+=== 2. ledger damage from that shape (read-only) ===
+$ python3 - /home/esther/.hermes-cortex/data/loop-governance.db
+  total cycles            : 12930
+  precommit-* hook cycles : 9250
   task_id with a NEWLINE  : 6395
   distinct malformed ids  : 62
-  no feedback (all)       : 1846
-  no feedback (precommit) : 1823
+  no feedback (all)       : 1847
+  no feedback (precommit) : 1825
+# the malformed counts are HISTORICAL: they predate this change, which stops
+# new ones being minted. Normalising the existing rows is a data decision
+# recorded as loop-governance issue event #188.
 
-=== 3. the guard, grading the REPO copy (GREEN after the fix) ===
-$ python3 tests/test_gov_close_and_task_id.py
+=== 3. the regression guard ===
+$ python3 /home/esther/hermes-cortex/tests/test_gov_close_and_task_id.py
+[mcp-server] DEBUG: Initializing server 'loop-governance'
   task ids recorded: ['precommit-repo-HEAD/update']
 PASS: no-op closes are informational; task ids carry no continuation line
-rc=0
 
-=== 4. the DEPLOYED hook still has the old line (hence the deploy step) ===
-$ grep -n 'abbrev-ref HEAD' ~/.hermes-cortex/scripts/pre-commit-score
-823:BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo 'unknown')
+=== 4. the deployed hook is the fixed one ===
+  deployed hook: normalised field helper present
+  deployed hook: old concatenating line count = 0 (want 0)
 
-=== 5. suites ===
-$ bash tests/run-tests.sh -q tests/test_gov_close_and_task_id.py tests/test_doctor_score_cycle_check.py tests/test_precommit_test_discovery.py tests/test_runtime/test_governance_bypass.py
+=== 5. suites around the change ===
+============================= 254 passed in 6.08s ==============================
 ---
 run-tests.sh: interpreter=/home/esther/.hermes-cortex/venv/bin/python3 rc=0  (PYTHONPATH/PYTHONHOME unset for the run)
 
-=== 6. AFTER the deploy: a real first commit through the DEPLOYED hook ===
-# fixture repo, no prior commits, hook copy = ~/.hermes-cortex/scripts/pre-commit-score
-# recorded task id:
-  ids: ['precommit-repo-HEAD/update']
-  newline present: False
-# (before the deploy the same path recorded 'precommit-repo-HEAD\nunknown/update')
+=== 6. end-to-end: a FIRST commit through the DEPLOYED hook ===
+  \033[0;32m✅ change-validate: all checks passed\033[0m
 
-=== 7. doctor after the deploy ===
-  ⚠️  Overall: WARNING  (471 pass · 8 warn · 0 fail · 3 info)
+🧪  Self-test: orchestrator guard...
+✅  Self-test passed: host detected as orchestrator (hostname+home-dir)
+    Env spoof check: ok-still-orch (env ignored)
+✅  Adversarial verify: passed on 1 file(s)
+📊  score-cycle: LOOP 🔄 — keep iterating (task=precommit-repo-HEAD/update, pass-pct=100)
+  ids recorded: ['precommit-repo-HEAD/update']
+  ids with newline/whitespace: 0 (want 0)
+
+RESULT: PASS — every claim in this cycle is reproduced above
