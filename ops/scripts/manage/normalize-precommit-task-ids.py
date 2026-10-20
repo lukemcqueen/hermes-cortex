@@ -9,8 +9,13 @@ and fails), so 6,395 rows across 62 ids entered the ledger as e.g.
 
     precommit-repo-HEAD\\nunknown/update
 
-The hook is fixed at the source (ops/scripts/pre-commit-score), so no NEW ids are
-minted that way. This script repairs the historical rows.
+PRECONDITION, not something this script can verify: the hook is fixed at the source
+(ops/scripts/pre-commit-score) so no NEW ids are minted that way. This script only
+repairs history. Two committed artifacts cover the precondition — the guard
+tests/test_gov_close_and_task_id.py drives a real first commit through the hook and
+asserts the recorded id carries no whitespace, and
+docs/evidence/gov-close-and-task-id-2026-10-20-verify.sh §6 does the same against the
+DEPLOYED hook (its recorded output shows `precommit-repo-HEAD/update`).
 
 DECISION (issue #188, Luke delegated): normalize AND keep the evidence. The id is
 rewritten to the form the fixed hook now mints, and the original malformed value is
@@ -83,10 +88,15 @@ def _normalized(task_id: str) -> str | None:
         precommit-{repo}-{branch}<newline>{fallback}/{slug}
 
     so the repair drops the newline and the fallback token that followed it —
-    which reproduces exactly what the fixed hook mints for the same input (a repo
-    with no commits yields `precommit-repo-HEAD/update`, verified against the
-    deployed hook). Dropping only the newline, or only the tail, does not work:
-    the first loses the slug, the second leaves the fallback behind.
+    which reproduces exactly what the fixed hook mints for the same input. Dropping
+    only the newline, or only the tail, does not work: the first loses the slug, the
+    second leaves the fallback behind.
+
+    That the two agree is not taken on faith: tests/test_gov_ledger_hygiene_188.py
+    drives a real first commit through the FIXED hook in a no-commit fixture repo
+    and asserts the id it records equals this function's output for the malformed
+    value. The deployed-hook half is recorded in
+    docs/evidence/gov-close-and-task-id-2026-10-20-verify.sh §6.
     """
     candidate = re.sub(r"\n[^\n/]*/", "/", task_id)
     candidate = "".join(ch for ch in candidate if not ch.isspace())

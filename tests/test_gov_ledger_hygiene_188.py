@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
 import shutil
 import sqlite3
 import subprocess
@@ -53,6 +54,14 @@ def load_mcp():
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     return mod
+
+
+def _git(repo: Path, *args: str, env: dict | None = None) -> subprocess.CompletedProcess:
+    """Same helper as the sibling guard: run git in the fixture with a given env."""
+    return subprocess.run(
+        ["git", *args], cwd=repo, capture_output=True, text=True,
+        env={**os.environ, **(env or {})},
+    )
 
 
 def _fixture_conn(path: Path) -> sqlite3.Connection:
@@ -193,9 +202,64 @@ def test_normalizer_repairs_ids_and_records_the_original() -> None:
         shutil.rmtree(tmp, ignore_errors=True)
 
 
+def test_repair_target_matches_what_the_fixed_hook_mints() -> None:
+    """The repair is only correct if it lands on the id the FIXED hook produces.
+
+    Without this, `_normalized()` is one person's reconstruction of what the hook
+    "should" have written. Here the fixed hook is actually run: a no-commit fixture
+    repo (the exact case that used to mint the malformed id) does its first commit,
+    and the id it records must equal what `_normalized()` derives from the malformed
+    value. That is the claim the normalizer's docstring makes, asserted rather than
+    asserted-about.
+    """
+    norm_spec = importlib.util.spec_from_file_location("normalizer_under_test", NORMALIZER)
+    norm = importlib.util.module_from_spec(norm_spec)
+    norm_spec.loader.exec_module(norm)
+
+    derived = norm._normalized(MALFORMED_A)
+    check(derived == "precommit-repo-HEAD/update",
+          f"_normalized must reduce the malformed id to the hook's shape, got {derived!r}")
+
+    hook_src = REPO / "ops" / "scripts" / "pre-commit-score"
+    if not hook_src.exists():
+        check(False, f"{hook_src} is missing — cannot cross-check the repair target")
+        return
+    tmp = Path(tempfile.mkdtemp(prefix="hookmint-"))
+    try:
+        repo = tmp / "repo"                     # the fixture name IS part of the id
+        repo.mkdir()
+        check(_git(repo, "init", "-q").returncode == 0, "git init failed in the fixture")
+        _git(repo, "config", "user.email", "fixture@example.com")
+        _git(repo, "config", "user.name", "fixture")
+        hooks = tmp / "hooks"
+        hooks.mkdir()
+        shutil.copy2(hook_src, hooks / "pre-commit")
+        os.chmod(hooks / "pre-commit", 0o755)
+        _git(repo, "config", "core.hooksPath", str(hooks))
+        (repo / "f.txt").write_text("x\n")
+        _git(repo, "add", "f.txt")
+        db = tmp / "scratch.db"
+        proc = _git(repo, "commit", "-m", "first commit no parent", "-q",
+                    env={"PRE_COMMIT_SCORE_DB": str(db)})
+        check(proc.returncode == 0, f"the fixture commit must succeed: {(proc.stderr or '')[-200:]}")
+        if not db.exists():
+            check(False, "the fixed hook recorded no cycle — cannot cross-check")
+            return
+        minted = [r[0] for r in sqlite3.connect(db).execute(
+            "SELECT DISTINCT task_id FROM loop_cycles")]
+        check(bool(minted), "the fixed hook must record a cycle")
+        for tid in minted:
+            check(tid == derived,
+                  f"the fixed hook mints {tid!r} but the repair derives {derived!r} — "
+                  "repaired rows and new rows would not group together")
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
 def main() -> int:
     test_stats_separate_hook_cycles_and_judge_coverage_on_the_rest()
     test_normalizer_repairs_ids_and_records_the_original()
+    test_repair_target_matches_what_the_fixed_hook_mints()
     if failures:
         print("FAIL:")
         for f in failures:
