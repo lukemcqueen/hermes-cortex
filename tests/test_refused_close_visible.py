@@ -144,6 +144,15 @@ def test_refused_close_visible() -> None:
         _check("names the refused cycle", "10445" in out.stdout)
         _check("names the blocking findings", "ADV-10445-1" in out.stdout)
         _check("offers rereview_change as the exit", "rereview_change" in out.stdout)
+        # The message must name an exit that EXISTS. "Ask an orchestrator to clear
+        # the cycle" named one that does not: no MCP tool and no script clears a
+        # LIVE owner's cycle — the only reapers are the TTL purge and the 24h
+        # auto-resolve, neither of which is an agent action. The real self-service
+        # exit is the terminal transition, which releases the lock file (and, the
+        # cycle being already scored, leaves no lockless PENDING leak behind).
+        _check("names no orchestrator as the exit", "orchestrator" not in out.stdout, out.stdout[:400])
+        _check("names the self-service release", "advance_task_state" in out.stdout, out.stdout[:400])
+        _check("names the terminal state to use", "cancelled" in out.stdout, out.stdout[:400])
         _check("never blocks (exit 0)", out.returncode == 0, f"rc={out.returncode}")
 
     # ── A. the gate records and clears the marker (real gate code path) ──

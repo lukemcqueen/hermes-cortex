@@ -900,7 +900,10 @@ as `.txt` mean the ignored `.log` was the wrong filename, not a missing ignore r
   The reviewer diffs the window from the lock's `started_at`, so stacking a second
   unrelated change under one lock leaves the description not matching the diff: the
   reviewer flags it, `rereview_change` cannot resolve it, and the cycle is unclosable.
-  Only the orchestrator can clear such a cycle.
+  Nothing clears such a cycle FOR you — there is no cycle-clearing capability anywhere,
+  for an orchestrator or anyone else (`reclaim_dead_locks` refuses a LIVE owner: its
+  predicate is the staleness rule the TTL purge uses). The owner releases the lock with
+  a terminal transition, or the TTL reaps it.
 
   The way this happens in practice is a NEW concern arriving mid-cycle — a peer
   reporting a bug in the code you just shipped, a fleet breakage, a follow-up you
@@ -914,7 +917,11 @@ as `.txt` mean the ignored `.log` was the wrong filename, not a missing ignore r
     `begin_change` hard-REFUSES while any lock is held — *"A governance session is
     already active … Call end_change first, or use force=True"* — and a refused close
     keeps that lock for its full TTL. That leaves exactly three exits: fix and
-    re-review, ask an orchestrator to clear the cycle, or let the TTL reap it.
+    re-review, release the lock yourself with a terminal transition
+    (`advance_task_state(task_id=…, new_state="cancelled", reason=…)` — a terminal task
+    holds nothing, and the cycle being already scored leaves no lockless PENDING leak),
+    or let the TTL reap it. No orchestrator can do it for you: nothing in the system
+    clears a live owner's cycle.
     `force=True` releases the held cycle to make room, so it is an override, not a
     convenience — never take it to get past your own refusal.
 

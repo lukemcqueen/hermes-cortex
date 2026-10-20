@@ -12,6 +12,13 @@
 # is legitimately stuck, which is worse than the fault it prevents. The review that
 # refused the close is unchanged; this only makes the state visible in time.
 #
+# 2026-10-20 — exit 2 used to read "ask an orchestrator to clear the cycle". No such
+# capability exists: no MCP tool and no script clears a LIVE owner's cycle
+# (reclaim_dead_locks explicitly refuses one — its predicate is the same staleness rule
+# the TTL purge uses), and the only reapers that exist are the TTL purge and the 24h
+# auto-resolve, neither of which is an agent action. The message now names the exit that
+# really works — the owner's own terminal transition, which releases the lock file.
+#
 # Usage:  governance-refused-close-advisory.sh [repo_slug]
 #         (repo_slug defaults to the current git repo's directory name)
 # Env:    GOVERNANCE_STATE_DIR overrides ~/.hermes-cortex/state (tests use this).
@@ -43,20 +50,23 @@ if not r:
     raise SystemExit(0)
 ids = ",".join(str(x) for x in (r.get("finding_ids") or [])[:4])
 print("|".join([str(r.get("cycle_id", "?")), str(r.get("verdict", "?")),
-                str(r.get("blocking", "?")), ids, str(r.get("at", "?"))]))
+                str(r.get("blocking", "?")), ids, str(r.get("at", "?")),
+                str(d.get("task_id") or "<task>")]))
 PY
   REFUSED="$(cat "$_ADV_TMP" 2>/dev/null)"
   rm -f "$_ADV_TMP"
   [[ -n "$REFUSED" ]] || continue
-  IFS='|' read -r _cid _verdict _blocking _ids _at <<< "$REFUSED"
+  IFS='|' read -r _cid _verdict _blocking _ids _at _tid <<< "$REFUSED"
   echo ""
   echo "⚠️  ADVISORY — your close for cycle ${_cid} was REFUSED by the review"
   echo "    (${_verdict}, ${_blocking} blocking finding(s): ${_ids}; refused at ${_at})."
   echo "    The lock is still held, so what you commit now is STACKED under it: the"
-  echo "    reviewer will later read a description that no longer matches the diff,"
-  echo "    which is unclosable by a worker. Legitimate exits:"
+  echo "    reviewer will later read a description that no longer matches the diff."
+  echo "    Legitimate exits:"
   echo "      1. fix the findings, then rereview_change with a NEW note (not end_change)"
-  echo "      2. or ask an orchestrator to clear the cycle (it is already scored)"
+  echo "      2. or release the lock yourself — a terminal task holds nothing:"
+  echo "         advance_task_state(task_id='${_tid}', new_state='cancelled', reason='<why>')"
+  echo "         (the cycle is already scored, so this leaves no PENDING-cycle leak)"
   echo "    Nothing is blocked by this message."
   echo ""
   break

@@ -1,0 +1,26 @@
+refused-close advisory — rendered message, after the exit-2 fix
+generated: 2026-10-20T07:12:17Z  host: esther
+
+generator (read-only: a FIXTURE state dir, no real lock touched):
+  GOVERNANCE_STATE_DIR=<fixture> bash ops/scripts/governance-refused-close-advisory.sh hermes-cortex
+  fixture lock: repo_slug=hermes-cortex task_id=fix-refused-close-exit-advice close_refused{cycle_id=10445,verdict=FINDINGS,blocking=4}
+
+--- command output ---
+
+⚠️  ADVISORY — your close for cycle 10445 was REFUSED by the review
+    (FINDINGS, 4 blocking finding(s): ADV-10445-1,ADV-10445-2; refused at 2026-10-20T16:00:00Z).
+    The lock is still held, so what you commit now is STACKED under it: the
+    reviewer will later read a description that no longer matches the diff.
+    Legitimate exits:
+      1. fix the findings, then rereview_change with a NEW note (not end_change)
+      2. or release the lock yourself — a terminal task holds nothing:
+         advance_task_state(task_id='fix-refused-close-exit-advice', new_state='cancelled', reason='<why>')
+         (the cycle is already scored, so this leaves no PENDING-cycle leak)
+    Nothing is blocked by this message.
+
+--- end output ---
+rc=0   (advisory contract: ALWAYS 0)
+
+check: no 'orchestrator' in the message -> 0 occurrence(s)
+check: names advance_task_state        -> 1 occurrence(s)
+check: names the terminal state        -> 1 occurrence(s)

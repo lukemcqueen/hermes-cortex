@@ -155,7 +155,7 @@ that moved after a review is judged again.
 | A commit-message phrase vanished | **backticks in a shell-quoted message** — bash ran them as command substitution | single-quote the message, or avoid backticks |
 | A command is blocked, mentioning a `.db` that was never opened | the lifecycle guard scans the scripts a command references, and a binary database cannot be scanned as a script | don't name the Hermes conversation DB in a command; edit with file tools instead |
 | An adversarial reviewer calls evidence "unverifiable self-report" | the reviewer sees only the closing note and the diff — it cannot re-run a terminal, so output pasted into a note is not checkable by it | commit the proof as a runnable test; keep the note descriptive |
-| A complex cycle will not close however much you fix | the lock's **description** no longer matches the diff window — work was stacked under one lock | one lock per logical change; if it already happened, the orchestrator must clear the cycle |
+| A complex cycle will not close however much you fix | the lock's **description** no longer matches the diff window — work was stacked under one lock | one lock per logical change; if it already happened, the OWNER releases the lock with a terminal transition (`advance_task_state(new_state="cancelled", reason=…)`) — no orchestrator can clear a live owner's cycle — or the TTL reaps it |
 
 The last one is the most expensive: a cycle whose locked description no longer
 matches its diff cannot converge, and a lock description must never be hand-edited.
