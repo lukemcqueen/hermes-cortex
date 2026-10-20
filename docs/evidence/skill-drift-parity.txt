@@ -19,14 +19,27 @@ A file under no repo-owned skill dir is a Hermes default and stays skipped.
 
 | Measure | Value |
 |---|---|
-| Stranded in place (path in repo, content only deployed) | 0 |
-| Absent from the repo (deployed under a repo-owned skill) | 136 |
-|   ↳ path dropped from repo history | 6 |
-|   ↳ path never committed | 130 |
-| Files in sync | 843 |
-| Skipped (Hermes defaults, or repo ahead) | 502 |
+| Stranded in place (path in repo, content only deployed) | 11 |
+| Absent from the repo (deployed under a repo-owned skill) | 132 |
+|   ↳ path dropped from repo history | 3 |
+|   ↳ path never committed | 129 |
+| Files in sync | 832 |
+| Skipped (Hermes defaults, or repo ahead) | 508 |
 
 **Verdict: FAIL**
+
+Stranded in place:
+- devops/agent-collector-troubleshoot/SKILL.md
+- devops/approval-gate-debugging/SKILL.md
+- devops/enforcement-change-safety/SKILL.md
+- devops/orch-skill-lifecycle/SKILL.md
+- devops/shared-repo-push-gates/SKILL.md
+- devops/shell-scripting/SKILL.md
+- software-development/adversarial-finding-fix-patterns/SKILL.md
+- software-development/change-checklist/SKILL.md
+- software-development/documentation-auditing/SKILL.md
+- software-development/mcp-server-building/SKILL.md
+- software-development/test-driven-development/SKILL.md
 
 Absent from the repo (deployed under a repo-owned skill):
 - ads/references/abm-playbook.md (never-committed)
@@ -101,11 +114,7 @@ Absent from the repo (deployed under a repo-owned skill):
 - devops/governance-lock-lifecycle/references/publishing-a-reviewed-range.md (never-committed)
 - devops/hermes-gateway-operations/references/inline-menus.md (never-committed)
 - devops/inbox-remediation/references/bus-api-address-patterns.md (never-committed)
-- devops/llm-cost-optimization/references/fleet-cost-data-sources.md (dropped-from-repo)
-- devops/llm-cost-optimization/references/interactive-session-cost-state-db.md (dropped-from-repo)
-- devops/llm-cost-optimization/references/openrouter-model-catalogue.md (never-committed)
 - devops/llm-cost-optimization/references/redactor-tokens-label-masking.md (never-committed)
-- devops/llm-cost-optimization/references/session-telemetry-reporting.md (dropped-from-repo)
 - devops/loop-governance/references/agents-md-pruning.md (never-committed)
 - devops/loop-governance/references/close-cost-and-recovery.md (never-committed)
 - devops/loop-governance/references/db-maintenance.md (never-committed)

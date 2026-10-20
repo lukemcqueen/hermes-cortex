@@ -3,7 +3,7 @@
 Regenerate with: `bash ops/scripts/manage/run-skill-parity-verify.sh`
 
 Verifier: $HOME/.hermes-cortex/scripts/adversarial-verify.py
-Revision: 4ff105343c79a0d6c3a9d600aeb96d70a4c78c5e
+Revision: ecde9b6cee7f28d6b6a0bc2d7760a07bd001de6c
 
 ## ops/scripts/manage/check-skill-drift-parity.py
 ```
