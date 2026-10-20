@@ -11,11 +11,15 @@ and fails), so 6,395 rows across 62 ids entered the ledger as e.g.
 
 PRECONDITION, not something this script can verify: the hook is fixed at the source
 (ops/scripts/pre-commit-score) so no NEW ids are minted that way. This script only
-repairs history. Two committed artifacts cover the precondition — the guard
-tests/test_gov_close_and_task_id.py drives a real first commit through the hook and
-asserts the recorded id carries no whitespace, and
-docs/evidence/gov-close-and-task-id-2026-10-20-verify.sh §6 does the same against the
-DEPLOYED hook (its recorded output shows `precommit-repo-HEAD/update`).
+repairs history.
+
+The precondition is asserted, not assumed, in the same change as this file:
+tests/test_gov_ledger_hygiene_188.py::test_repair_target_matches_what_the_fixed_hook_mints
+runs the fixed hook in a no-commit fixture repo and requires the id it records to
+equal what this module's _normalized() derives. See also, elsewhere in the repo:
+tests/test_gov_close_and_task_id.py and
+docs/evidence/gov-close-and-task-id-2026-10-20-verify.sh (section 6 records a first
+commit through the DEPLOYED hook yielding precommit-repo-HEAD/update).
 
 DECISION (issue #188, Luke delegated): normalize AND keep the evidence. The id is
 rewritten to the form the fixed hook now mints, and the original malformed value is

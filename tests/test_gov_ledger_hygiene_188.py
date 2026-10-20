@@ -116,8 +116,13 @@ def test_stats_separate_hook_cycles_and_judge_coverage_on_the_rest() -> None:
         # the judged view is what a reader should quote
         check(out["judged_feedback_count"] == 1,
               f"judged feedback must count only judged rows: {out.get('judged_feedback_count')}")
-        check(out["feedback_coverage_pct_judged"] == 33.3,
-              f"coverage must be judged-only (1/3): {out.get('feedback_coverage_pct_judged')}")
+        # Assert the INPUTS (integers) as the load-bearing claim, and only bound the
+        # float: an exact == on a percentage is fragile against a different rounding.
+        check(out["judged_cycles"] == 3 and out["judged_feedback_count"] == 1,
+              "coverage must be computed over judged cycles only (1 of 3)")
+        pct = out["feedback_coverage_pct_judged"]
+        check(isinstance(pct, (int, float)) and abs(pct - 100.0 / 3) < 0.1,
+              f"coverage must be judged-only (100*1/3): {pct}")
         check(all(not str(t["task_id"]).startswith("precommit-")
                   for t in out["top_judged_tasks"]),
               "top_judged_tasks must not contain hook cycles")
