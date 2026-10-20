@@ -1,0 +1,30 @@
+# governance close-path + pre-commit task-id — evidence (2026-10-20, cycle 13412)
+# every command is bare; each rc is that command's own
+
+=== 1. root cause: the fallback is CONCATENATED onto the command's stdout ===
+$ git init -q .; git rev-parse --abbrev-ref HEAD 2>/dev/null || echo 'unknown'   # repo with no commits
+  OLD: HEAD$
+unknown$
+
+=== 2. ledger damage that produced (read-only counts) ===
+  total cycles            : 12928
+  precommit-* hook cycles : 9248
+  task_id with a NEWLINE  : 6395
+  distinct malformed ids  : 62
+  no feedback (all)       : 1846
+  no feedback (precommit) : 1823
+
+=== 3. the guard, grading the REPO copy (GREEN after the fix) ===
+$ python3 tests/test_gov_close_and_task_id.py
+  task ids recorded: ['precommit-repo-HEAD/update']
+PASS: no-op closes are informational; task ids carry no continuation line
+rc=0
+
+=== 4. the DEPLOYED hook still has the old line (hence the deploy step) ===
+$ grep -n 'abbrev-ref HEAD' ~/.hermes-cortex/scripts/pre-commit-score
+823:BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo 'unknown')
+
+=== 5. suites ===
+$ bash tests/run-tests.sh -q tests/test_gov_close_and_task_id.py tests/test_doctor_score_cycle_check.py tests/test_precommit_test_discovery.py tests/test_runtime/test_governance_bypass.py
+---
+run-tests.sh: interpreter=/home/esther/.hermes-cortex/venv/bin/python3 rc=0  (PYTHONPATH/PYTHONHOME unset for the run)

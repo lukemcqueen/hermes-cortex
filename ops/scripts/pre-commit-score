@@ -819,10 +819,22 @@ done
 # ────────────────────────────────────────────────────────────────
 
 # Build task id from repo + branch + commit message (descriptive, unique)
-REPO_NAME=$(basename "$(git rev-parse --show-toplevel 2>/dev/null || echo 'unknown')")
-BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo 'unknown')
-COMMIT_MSG=$(head -1 "$(git rev-parse --git-dir 2>/dev/null)/COMMIT_EDITMSG" 2>/dev/null || echo "update")
-MSG_SLUG=$(echo "$COMMIT_MSG" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g; s/--*/-/g; s/^-//; s/-$//' | head -c 48)
+#
+# Each field is normalized, and NO field is built with `$(cmd || echo fallback)`.
+# That shape captures the command's stdout AND the fallback's when the command
+# prints and then exits non-zero — `git rev-parse --abbrev-ref HEAD` in a repo
+# with no commits prints "HEAD" and fails, so the id became
+# "precommit-repo-HEAD\nunknown/update": a literal newline inside a task id
+# (6,395 ledger rows across 62 ids, verified 2026-10-20). `tr -d` strips every
+# whitespace and control character, so no field can carry a newline into an id.
+_field() { printf '%s' "$1" | tr -d '[:space:]'; }
+REPO_NAME=$(_field "$(basename "$(git rev-parse --show-toplevel 2>/dev/null || true)")")
+BRANCH=$(_field "$(git rev-parse --abbrev-ref HEAD 2>/dev/null || true)")
+COMMIT_MSG=$(_field "$(head -1 "$(git rev-parse --git-dir 2>/dev/null)/COMMIT_EDITMSG" 2>/dev/null || true)")
+[ -n "$REPO_NAME" ] || REPO_NAME="unknown"
+[ -n "$BRANCH" ] || BRANCH="unknown"
+MSG_SLUG=$(printf '%s' "${COMMIT_MSG:-update}" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g; s/--*/-/g; s/^-//; s/-$//' | head -c 48)
+[ -n "$MSG_SLUG" ] || MSG_SLUG="update"
 TASK_ID="precommit-${REPO_NAME}-${BRANCH}/${MSG_SLUG}"
 
 # Auto-increment cycle number per task (so repeated commits with same message get cycles 1,2,3...)

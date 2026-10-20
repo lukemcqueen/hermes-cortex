@@ -2213,7 +2213,10 @@ def _range_blobs(repo: Path, base: str, head: str):
         return None
 
 
-def _receipt_bail(reason: str) -> str:
+_RECEIPT_NO_OP = "[no-op] "
+
+
+def _receipt_bail(reason: str, no_op: bool = False) -> str:
     """Log a receipt-writer bail and return the reason to the caller.
 
     EVERY bail path logs AND returns. These returns used to be silent, which cost a
@@ -2222,7 +2225,18 @@ def _receipt_bail(reason: str) -> str:
     fix: the close path now reports it to the agent, which otherwise only discovers
     the problem when the push gate refuses — after the lock that could re-mint the
     receipt has already been released.
+
+    ``no_op=True`` marks the one bail that is NOT a failure: a cycle that changed
+    no files (HEAD is already origin/main) legitimately gets no receipt, because an
+    empty range has nothing to review and nothing can be pushed from it. It is
+    tagged so the close path can say that plainly instead of warning about a push
+    gate that cannot fire, and logged at info level so a warning line keeps meaning
+    "something is wrong" (2026-10-20: every read-only cycle ended on a ⚠️ that read
+    like a stale-base fault).
     """
+    if no_op:
+        log.info("review receipt not needed: %s", reason)
+        return _RECEIPT_NO_OP + reason
     log.warning("review receipt NOT written: %s", reason)
     return reason
 
@@ -2284,6 +2298,16 @@ def _write_review_receipt(cycle_id=None, args: dict | None = None,
                 "empty base would be a hollow authorisation")
         files = [f for f in _git_capture(Path(repo), "diff", "--name-only", base + ".." + head).splitlines() if f.strip()]
         if not files:
+            # base == head means HEAD *is* the merge-base with origin/main: the
+            # cycle committed nothing (or the branch is behind). Nothing can be
+            # pushed from this range, so there is nothing to review — this is the
+            # normal end of a read-only cycle, not a fault to chase.
+            if base == head:
+                return _receipt_bail(
+                    f"HEAD ({head[:12]}) is already origin/main — this cycle changed "
+                    "no files, so there is nothing to review and nothing to push "
+                    "(an empty range cannot be authorised, so no receipt is written)",
+                    no_op=True)
             return _receipt_bail(f"range {base[:12]}..{head[:12]} lists no files")
         receipt = {
             "verdict": "CLEAN",
@@ -6826,14 +6850,7 @@ def _end_change(args: dict) -> CallToolResult:
     # 2026-10-14 failure cost a second cycle: the close succeeded, the lock was
     # released, and the agent only learned the receipt was missing when `git push`
     # refused — by which point the lock that could re-mint it was gone.
-    receipt_note = ""
-    if receipt_fail:
-        receipt_note = (
-            "\n⚠️  Review receipt NOT written — " + receipt_fail + "\n"
-            "    If the range you are about to push touches an always-review path, the\n"
-            "    push gate will refuse it. Resolve the cause and close again BEFORE\n"
-            "    pushing (begin_change() re-reads the session's repo).\n"
-        )
+    receipt_note = _receipt_close_note(receipt_fail)
 
     return CallToolResult(content=[TextContent(
         type="text",
@@ -6844,6 +6861,36 @@ def _end_change(args: dict) -> CallToolResult:
             f"{receipt_note}"
         )
     )])
+
+
+def _receipt_close_note(receipt_fail: str | None) -> str:
+    """The line the close path appends when a review receipt was not written.
+
+    Two very different situations used to share one alarming paragraph:
+
+      * the cycle changed NOTHING (tagged ``_RECEIPT_NO_OP``) — the normal end of a
+        read-only cycle. There is no range to push, so the push gate cannot refuse
+        anything and there is no action to take; saying otherwise sent the reader
+        chasing a stale base that does not exist (Titus, 2026-10-20) and invited a
+        pointless re-close.
+      * a real bail — no repo identity, unresolvable HEAD/base, or a non-empty base
+        whose range lists no files. Here the push gate CAN refuse, so the warning
+        and the remedy stay exactly as they were.
+    """
+    if not receipt_fail:
+        return ""
+    if receipt_fail.startswith(_RECEIPT_NO_OP):
+        return (
+            "\nℹ️  No review receipt — " + receipt_fail[len(_RECEIPT_NO_OP):] + "\n"
+            "    Nothing to push from this cycle, so the push gate has nothing to\n"
+            "    check: no action needed.\n"
+        )
+    return (
+        "\n⚠️  Review receipt NOT written — " + receipt_fail + "\n"
+        "    If the range you are about to push touches an always-review path, the\n"
+        "    push gate will refuse it. Resolve the cause and close again BEFORE\n"
+        "    pushing (begin_change() re-reads the session's repo).\n"
+    )
 
 
 def _live_locks() -> list[dict]:
