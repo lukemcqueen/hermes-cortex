@@ -61,6 +61,60 @@ if [[ -n "$ORCH_CONFIG" ]]; then ... fi   # empty = "no config", gate on -n
 
 **Real bug (2026-07-31):** `pre-commit-score`'s orchestrator-only-paths guard read `docs/orchestrator-only-paths.txt` this way. Repos without the file (e.g. client project repos) had EVERY non-orch commit fail with exit 1 and zero output. One `|| true` fixed it fleet-wide.
 
+### `$(cmd || echo fallback)` CONCATENATES when the command prints AND then fails
+
+A different trap from the silent-exit above: here the assignment SUCCEEDS and the VALUE is
+wrong. `$( ... )` captures stdout from every command in the list, so a command that prints and
+then returns non-zero contributes its own output **followed by** the fallback:
+
+```bash
+# in a repo with no commits, git PRINTS "HEAD" and exits 1:
+VAR=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo 'unknown')
+#   → VAR contains:  HEAD
+#                    unknown          ← ONE value, with a newline in it
+```
+
+`2>/dev/null` does not save you — it hides the error text, never the exit status.
+
+**The rule:** never build an IDENTITY or a field from `$(cmd || echo fallback)`. Capture bare,
+normalise, default — three separate statements:
+
+```bash
+_field() { printf '%s' "$1" | tr -d '[:space:]'; }   # printf, not echo: adds no newline of its own
+
+BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || true)   # no fallback INSIDE $( )
+BRANCH=$(_field "$BRANCH")                                      # strip whitespace/control chars
+[ -n "$BRANCH" ] || BRANCH="unknown"                            # default as its own statement
+```
+
+Same treatment for a path component: `basename` first, then normalise the basename — running
+`tr -d '[:space:]'` over a whole path would silently rewrite directories that contain a space.
+
+**Symptom to recognise:** an identifier carrying a literal newline or a doubled token (e.g.
+`<repo>-HEAD\nunknown/<slug>`). It presents as a DATA problem — counts that will not reconcile,
+a fixture/prefix classification list that stops matching, one logical key fragmenting into
+dozens of near-duplicates — but the value was never valid, and every row already written keeps
+the corruption. Fix the source and report the existing rows as a data decision; do not silently
+rewrite a ledger or audit trail to hide them.
+
+**Detection:** `grep -rn '\$(.*|| echo' <tree>`, then ask the one question that matters for each
+hit: *can this command PRINT and then fail?* `git rev-parse --abbrev-ref HEAD` and
+`git symbolic-ref` can (any repo with no commits yet); `git rev-parse --show-toplevel` and plain
+`hostname` normally cannot. Fix the print-then-fail ones and leave the rest — the pattern is not
+the flaw; printing-then-failing is.
+
+**Repairing rows already written (issue #188):** a PER-HOST data decision — each host owns its own
+`loop-governance.db`, and the mass came from throwaway test repos that only one host ran (measured
+2026-10-20: 6,395 malformed rows on one host, 2 on another). The repair tool ships to every host
+(`ops/scripts/manage/normalize-precommit-task-ids.py`, registered in the deploy map, so it arrives
+with a normal update): **dry-run by default**, `--apply` backs the ledger up first, rewrites each id
+to the shape the fixed hook now mints, appends the escaped original to that row's own
+`outcome_note`, and SKIPS any id it cannot reduce to the documented shape rather than guessing at
+intent. Repair AND record — rewriting the id alone erases the bug's footprint; recording alone
+leaves rows no classifier can group. The doctor reports any residue as `Task-id hygiene` and names
+this tool, so no host has to notice by itself. The normaliser is deliberately NOT run by the
+deploy: a doctor is not authorised to migrate an audit trail, and neither is a deploy.
+
 ### `| head -N` under `set -euo pipefail` = silent SIGPIPE abort
 
 **A silent-kill trap that only fires on LARGE outputs:** truncating a pipeline with `head -N` makes `head` exit after N lines; the producer then gets SIGPIPE (exit 141). With `pipefail`, the pipeline status becomes 141, and with `set -e` the whole script aborts — **silently, mid-deploy, exit 141** (or exit 0 if the caller pipes the script's output without checking `PIPESTATUS`).
@@ -1102,6 +1156,7 @@ Before shipping changes to installer scripts (`install-crons.sh`, `setup.sh`, et
 | `declare -A` (associative arrays) on macOS | `declare: -A: invalid option` on macOS (ships bash 3.2, needs 4+) | Use parallel indexed arrays: `ARR_KEYS=() ARR_VALS=()` + numeric-index loop. Or use a Python script for complex maps. |
 | `set -e` + `((var++))` | Script exits silently mid-function when counter is 0 | Use `var=$((var + 1))` or `: $((var++))` |
 | `\$` in double-quoted strings | Literal string `$HOME` passed instead of expanded path | Remove `\` before `$`: `"$HOME"` not `"\$HOME"` |
+| **`$(cmd \|\| echo fallback)` where the command PRINTS and then fails** | The value carries the command's stdout PLUS the fallback token, newline included (`HEAD\nunknown`) — silently corrupting every identifier built from it (ledger counts that will not reconcile, one key fragmenting into dozens of near-duplicates) | Capture bare with `\|\| true`, strip whitespace (`tr -d '[:space:]'`), apply the literal default as a SEPARATE statement. `2>/dev/null` hides the text, never the status |
 | Bare `if` in mawk | `awk: line 2: syntax error at or near if` on Ubuntu | Wrap awk body in `{ }` |
 | Missing `timeout` on macOS | `command not found: timeout` | Fall back to `gtimeout`, then no timeout |
 | **`A && B \|\| C` — the `$?` seen by `C` is the FAILED command's status, not the assignment's** | A review or an agent reads the one-liner as "always 0, so the guard is dead" and rewrites working code | `f() { return 3; }; out=$(f 2>&1) && r=0 \|\| r=$?; echo $r` prints `3`. TEST the idiom before editing code a claim contradicts; an explicit `if/else` rewrite is fine as a clarity change, but call it that instead of a bug fix |

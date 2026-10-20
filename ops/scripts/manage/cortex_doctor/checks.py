@@ -548,6 +548,56 @@ def check_stale_loop_gov_daemon(res: "Results") -> None:
                 f"running module is current ({len(daemons)} daemon(s) verified by content hash)")
 
 
+def check_task_id_hygiene(res: "Results") -> None:
+  """Task ids must not carry control characters (a continuation line).
+
+  Until 2026-10-20 the pre-commit hook built its id with
+  `$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo 'unknown')`, which captures
+  the command's stdout AND the fallback when the command prints and then exits
+  non-zero — a repo with no commits does exactly that (prints "HEAD", fails), so ids
+  arrived as `precommit-repo-HEAD\\nunknown/update`. Rows like that cannot be grouped
+  by anything reading task_id, which is how 1,823 hook cycles came to look like an
+  un-reviewed backlog (issue #188).
+
+  The hook is FIXED, so no new ids arrive this way; rows already written are a
+  PER-HOST data decision. So this reports and names the repair path — it never
+  rewrites a ledger, because a doctor is not authorised to migrate an audit trail.
+
+  Spaces are reported separately and do NOT warn: an agent-authored id like
+  'orch-backlog-driver run' is untidy, but it is not this defect and no tool can
+  safely rewrite it.
+  """
+  db = Path.home() / ".hermes-cortex" / "data" / "loop-governance.db"
+  if not db.exists():
+    res.add("Task-id hygiene", "SKIP", f"no loop-governance ledger at {db}")
+    return
+  import sqlite3
+  try:
+    con = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
+    rows = [str(r[0]) for r in con.execute("SELECT task_id FROM loop_cycles").fetchall()]
+    con.close()
+  except sqlite3.Error as e:
+    # A ledger that exists but cannot be read is NOT a clean one.
+    res.add("Task-id hygiene", "WARN", f"COULD NOT VERIFY — could not read {db}: {e}",
+            "An unreadable ledger is not a clean one; fix the read, then re-run.")
+    return
+  control = [t for t in rows if any(ord(c) < 32 for c in t)]
+  spaced = [t for t in rows if t not in control and any(c.isspace() for c in t)]
+  if control:
+    res.add("Task-id hygiene", "WARN",
+            f"{len(control)} task id(s) carry a control character or newline "
+            f"(e.g. {control[0][:60]!r}) — rows that no task_id classifier can group",
+            "Repair the history with: python3 ops/scripts/manage/normalize-precommit-task-ids.py "
+            "(dry run first, then --apply). It is idempotent, backs the ledger up first, keeps each "
+            "original in the row's own outcome_note, and skips any id it cannot reduce without "
+            "guessing. The hook that minted them is fixed, so this is history only.")
+    return
+  note = (f" ({len(spaced)} id(s) contain spaces — agent-authored, not this defect)"
+          if spaced else "")
+  res.add("Task-id hygiene", "PASS",
+          f"no task id carries a control character ({len(rows)} rows){note}")
+
+
 def _invokes_score_cycle(text):
   """True when a line puts `score-cycle` in COMMAND position.
 
