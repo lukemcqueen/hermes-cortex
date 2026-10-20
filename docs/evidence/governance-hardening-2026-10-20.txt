@@ -1,0 +1,181 @@
+# governance-hardening — evidence (2026-10-20, cycle 13406)
+# every command below is bare; each rc is that command's own
+
+=== 1. the host self-check, run against the DEPLOYED enforcer BEFORE this change ===
+$ python3 ops/scripts/quality/probe-gate-logic.py
+Enforcer under test: /home/esther/.hermes/plugins/governance-enforcer/__init__.py
+Copy: DEPLOYED (active)
+State dir (throwaway): /home/esther/.hermes/cache/scratch/gate-probe-u5cryd1m
+
+Gate 1 — 7 always-skills marker
+  PASS  marker absent before any skill_view
+  PASS  marker still absent after 1/7 (task-start)
+  PASS  marker still absent after 2/7 (agent-flow)
+  PASS  marker still absent after 3/7 (reflexion-check)
+  PASS  marker still absent after 4/7 (change-checklist)
+  PASS  marker still absent after 5/7 (survey-before-action)
+  PASS  marker still absent after 6/7 (agent-contract)
+  PASS  marker created exactly on the 7th skill (serial calls work)
+  PASS  repeat skill_view keeps the marker valid
+  PASS  a different session is not credited by another session's loads
+  PASS  hand-written empty marker rejected
+  PASS  fingerprint-mismatched marker rejected
+  PASS  correct session+fingerprint marker accepted
+  PASS  no session id fails closed (does not inherit another session's proof)
+
+Gate 1 — block message
+  PASS  write blocked with no skills
+  PASS  message names the exact double-underscore tool name
+  PASS  message states it is gate 1 of 2
+  PASS  message says one batched turn is fine
+  PASS  message tells the agent NOT to read the enforcer source
+
+Gate 2 — governance lock
+  PASS  write blocked with skills but no lock
+  PASS  lock message states gate 2 of 2
+  PASS  lock message gives the exact begin_change call
+  PASS  lock message explains the missing-MCP case
+  PASS  lock message forbids hand-written locks
+
+Refusal shape (no governed repo resolvable)
+  PASS  no-repo refusal blocks
+  PASS  no-repo refusal carries a message
+
+Read-only terminal classifier
+  PASS  lock-free: 'ls -la'
+  FAIL  lock-free: 'cd /tmp && ls'
+  PASS  lock-free: 'git status --short'
+  PASS  lock-free: 'ls | grep foo'
+  PASS  lock-free: 'git status && git log --oneline -5'
+  PASS  lock-free: 'journalctl -u hermes-gateway | tail -20'
+  PASS  lock-free: 'ps aux | grep -v grep | wc -l'
+  PASS  write-class: 'ls > /tmp/out'
+  PASS  write-class: 'cat $(ls)'
+  PASS  write-class: 'echo `ls`'
+  PASS  write-class: 'sleep 5 &'
+  PASS  write-class: 'ls || ls /tmp'
+  PASS  write-class: 'ls | sh'
+  PASS  write-class: 'git status; mv /tmp/a /tmp/b'
+  PASS  write-class: "python3 -c 'print(1)'"
+  PASS  write-class: 'find . -exec rm {} +'
+  PASS  write-class: 'sort -o out.txt in.txt'
+  PASS  write-class: 'date -s tomorrow'
+  PASS  write-class: 'curl -s https://example.com -d a=b'
+  PASS  write-class: 'git branch newbranch'
+  PASS  write-class: "env bash -c 'true'"
+
+Per-session skill credit
+  PASS  credit rehydrates after a plugin reload
+  PASS  legacy journal pinned to another fingerprint fails closed
+  PASS  corrupt credit journal fails closed
+
+Skill content fingerprint (no-op deploy must not wipe credit)
+  PASS  fingerprint unchanged by an identical-bytes redeploy
+  PASS  credit survives an identical-bytes redeploy
+  PASS  fingerprint changes when skill CONTENT changes
+  PASS  only the changed skill loses credit
+  PASS  stale_skills names exactly the changed skill
+
+
+=== RESULT: FAIL (1 failure(s)) ===
+  - lock-free: 'cd /tmp && ls'
+rc=1
+
+=== 2. the same probe against the REPO copy AFTER this change ===
+$ HERMES_ENFORCER=$PWD/plugins/governance-enforcer/__init__.py python3 ops/scripts/quality/probe-gate-logic.py
+Enforcer under test: /home/esther/hermes-cortex/plugins/governance-enforcer/__init__.py
+Copy: repo/other: /home/esther/hermes-cortex/plugins/governance-enforcer/__init__.py
+State dir (throwaway): /home/esther/.hermes/cache/scratch/gate-probe-d7p4fzm5
+
+Gate 1 — 7 always-skills marker
+  PASS  marker absent before any skill_view
+  PASS  marker still absent after 1/7 (task-start)
+  PASS  marker still absent after 2/7 (agent-flow)
+  PASS  marker still absent after 3/7 (reflexion-check)
+  PASS  marker still absent after 4/7 (change-checklist)
+  PASS  marker still absent after 5/7 (survey-before-action)
+  PASS  marker still absent after 6/7 (agent-contract)
+  PASS  marker created exactly on the 7th skill (serial calls work)
+  PASS  repeat skill_view keeps the marker valid
+  PASS  a different session is not credited by another session's loads
+  PASS  hand-written empty marker rejected
+  PASS  fingerprint-mismatched marker rejected
+  PASS  correct session+fingerprint marker accepted
+  PASS  no session id fails closed (does not inherit another session's proof)
+
+Gate 1 — block message
+  PASS  write blocked with no skills
+  PASS  message names the exact double-underscore tool name
+  PASS  message states it is gate 1 of 2
+  PASS  message says one batched turn is fine
+  PASS  message tells the agent NOT to read the enforcer source
+
+Gate 2 — governance lock
+  PASS  write blocked with skills but no lock
+  PASS  lock message states gate 2 of 2
+  PASS  lock message gives the exact begin_change call
+  PASS  lock message explains the missing-MCP case
+  PASS  lock message forbids hand-written locks
+
+Refusal shape (no governed repo resolvable)
+  PASS  no-repo refusal blocks
+  PASS  no-repo refusal carries a message
+
+Read-only terminal classifier
+  PASS  lock-free: 'ls -la'
+  PASS  lock-free: 'cd /tmp && ls'
+  PASS  lock-free: 'git status --short'
+  PASS  lock-free: 'ls | grep foo'
+  PASS  lock-free: 'git status && git log --oneline -5'
+  PASS  lock-free: 'journalctl -u hermes-gateway | tail -20'
+  PASS  lock-free: 'ps aux | grep -v grep | wc -l'
+  PASS  write-class: 'ls > /tmp/out'
+  PASS  write-class: 'cat $(ls)'
+  PASS  write-class: 'echo `ls`'
+  PASS  write-class: 'sleep 5 &'
+  PASS  write-class: 'ls || ls /tmp'
+  PASS  write-class: 'ls | sh'
+  PASS  write-class: 'git status; mv /tmp/a /tmp/b'
+  PASS  write-class: "python3 -c 'print(1)'"
+  PASS  write-class: 'find . -exec rm {} +'
+  PASS  write-class: 'sort -o out.txt in.txt'
+  PASS  write-class: 'date -s tomorrow'
+  PASS  write-class: 'curl -s https://example.com -d a=b'
+  PASS  write-class: 'git branch newbranch'
+  PASS  write-class: "env bash -c 'true'"
+
+Per-session skill credit
+  PASS  credit rehydrates after a plugin reload
+  PASS  legacy journal pinned to another fingerprint fails closed
+  PASS  corrupt credit journal fails closed
+
+Skill content fingerprint (no-op deploy must not wipe credit)
+  PASS  fingerprint unchanged by an identical-bytes redeploy
+  PASS  credit survives an identical-bytes redeploy
+  PASS  fingerprint changes when skill CONTENT changes
+  PASS  only the changed skill loses credit
+  PASS  stale_skills names exactly the changed skill
+
+
+=== RESULT: PASS (0 failure(s)) ===
+rc=0
+
+=== 3. the governance suite (the three pre-existing reds are now green) ===
+$ bash tests/run-tests.sh -q tests/test_runtime/test_governance_bypass.py tests/test_enforcer_pii_gate.py
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
+rootdir: /home/esther/hermes-cortex
+configfile: pytest.ini
+plugins: anyio-4.15.1
+collected 265 items
+
+tests/test_runtime/test_governance_bypass.py ........................... [ 10%]
+........................................................................ [ 37%]
+........................................................................ [ 64%]
+..............................................................           [ 87%]
+tests/test_enforcer_pii_gate.py ................................         [100%]
+
+============================= 265 passed in 1.55s ==============================
+---
+run-tests.sh: interpreter=/home/esther/.hermes-cortex/venv/bin/python3 rc=0  (PYTHONPATH/PYTHONHOME unset for the run)
+rc=0

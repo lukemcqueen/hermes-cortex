@@ -1709,7 +1709,20 @@ def _is_terminal_write(args: Dict[str, Any]) -> bool:
 READONLY_COMMAND_PATTERNS = [
     r"^\s*(ls|cat|head|tail|less|more|grep|find|which|whoami|id|pwd|date|stat|file|du|wc|sort|uniq|diff|comm|env|printenv|getent|nproc|lscpu|lsblk|pgrep)(?:\s|$)",
     r"^\s*(ps|top|htop|df|free|uptime|uname|hostname|dmesg|journalctl|ss|netstat)(?:\s|$)",
-    r"^\s*(git)\s+(status|log|diff|show|branch|stash\s+list|rev-parse|rev-list|for-each-ref|ls-files|ls-tree|cat-file|show-ref|merge-base|describe)",
+    # Inspection shapes that wrap a read without writing anything: `cd` moves the
+    # shell's own cwd; `echo`/`printf` write to stdout only (a redirect is a
+    # forbidden metacharacter, so `echo x > f` never reaches here); `test`/`[`
+    # are pure predicates; `command -v`/`-V` only LOOK UP a tool (bare `command
+    # <cmd>` EXECUTES its argument and stays write-class by not matching).
+    # Without these, the ordinary shape of an inspection — a `cd` into the repo
+    # plus a progress banner — was write-class and required a lock.
+    r"^\s*(cd|echo|printf|true|false)(?:\s|$)",
+    r"^\s*(?:test|\[)(?:\s|$)",
+    r"^\s*command\s+-[vV](?:\s|$)",
+    # git's own read-only modifiers may precede the subcommand (`-C <dir>`,
+    # `--no-pager`). The subcommand itself must still be one of the read-only
+    # ones below, so `git -C x push` stays write-class.
+    r"^\s*(git)\s+(?:-C\s+\S+\s+|--no-pager\s+|--no-optional-locks\s+)*(status|log|diff|show|branch|stash\s+list|rev-parse|rev-list|for-each-ref|ls-files|ls-tree|cat-file|show-ref|merge-base|describe)",
     r"^\s*(docker)\s+(ps|images|logs|inspect|stats)",
     r"^\s*(pip|npm)\s+(list|show|search)",
     r"^\s*(hermes)\s+(--version|doctor|config\s+get|config\s+show|config\s+path|config\s+check|env-path)",
@@ -2085,9 +2098,15 @@ _PII_SENSITIVE_DIGESTS = frozenset(
         "39FK/mZ2ftxwx3jPIwib6pGRDJGtG7qyGfqdtWUYY+s=",  # length 17
         "t7hTWY/MlZWpd+JLj6Ej4WTVL0ZjQwfG/m/HuIGT03k=",  # length 10
         "28twIUXEvu0Zy+fIr8K3WuPHafp2tosxuo9V1t7/9Hk=",  # length 11
+        # The operator's WAN address, seen inside the deployed nginx allow-list.
+        # Unlike a bare first name (a functional bus-routing username here) this
+        # value is uniquely personal, so it is the one that belongs under hashed
+        # control: adding it here makes any future write carrying it REFUSED,
+        # rather than merely warned about by the pre-commit detector.
+        "h+71hTGfB1rKnFei8vZJo7SWiNWtgdWR6CKwKupPw6o=",  # length 13
     )
 )
-_PII_SENSITIVE_LENGTHS = (7, 10, 11, 17)
+_PII_SENSITIVE_LENGTHS = (7, 10, 11, 13, 17)
 
 # The surname entry. It is allowed ONLY as the owner segment of the repo's own
 # public URL — the README and docs must be able to link that URL even though
@@ -2955,9 +2974,15 @@ def register(ctx):
             # needed to FIND the repo, and the refusal told it to acquire a lock it could not mint.
             # Name the escapes that actually work instead of restating the lock rule.
             if not _repo_for_gate:
-                return {
-                    "decision": "block",
-                    "reason": (
+                # Shape matters as much as the text: the harness (and every
+                # other refusal path here, plus the gate's own tests, the
+                # probe-gate-logic self-check and every block-message assertion)
+                # reads {"action": "block", "message": ...}. A refusal shaped
+                # {"decision","reason"} is not a refusal the caller recognises —
+                # it fails OPEN at the harness while reading like a block in the
+                # logs. Both key sets are emitted so an older consumer of either
+                # contract still sees a refusal.
+                _no_repo_msg = (
                         "🛑 No governed repo could be resolved for this call — and governance is\n"
                         "   scoped to a git repo, so no lock could authorise it.\n\n"
                         "  This is NOT the 'acquire a lock' case. Fix it in one step:\n"
@@ -2968,7 +2993,12 @@ def register(ctx):
                         "  a lock, so use them to locate the checkout — `ls` and `grep` reach any\n"
                         "  directory. Only write-class commands are refused here.\n\n"
                         "  This enforcement comes from ~/.hermes/plugins/governance-enforcer/."
-                    ),
+                )
+                return {
+                    "action": "block",
+                    "message": _no_repo_msg,
+                    "decision": "block",
+                    "reason": _no_repo_msg,
                 }
 
             # BLOCKED

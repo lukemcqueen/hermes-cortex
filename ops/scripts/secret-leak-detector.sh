@@ -308,7 +308,13 @@ if [[ -s "$DETECTION_FILE" ]]; then
         echo ""
         ;;
       pii_home_path)
-        error "PII — hardcoded /home/<user>/ path in ${FILE}:"
+        # WARN, not error: this class never increments BLOCKING_ISSUES, so it
+        # exits 0 and the commit lands. Printing it in error colour contradicted
+        # both this script's own header (which lists it under WARNS) and its
+        # behaviour — a refusal-shaped message that permits the commit is worse
+        # than an honest warning. The enforceable control for a personal
+        # identifier is the enforcer's digest deny-list, which REFUSES the write.
+        warn "PII — hardcoded /home/<user>/ path in ${FILE}:"
         echo "   ${MATCH_LINE}"
         echo "   → Use: \$HOME or ~/ instead of /home/username/"
         echo ""

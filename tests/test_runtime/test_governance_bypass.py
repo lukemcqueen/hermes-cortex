@@ -32,6 +32,8 @@ enforcer = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(enforcer)
 
 
+REPO_ROOT = _ENFORCER_PATH.resolve().parents[2]   # <repo>/plugins/governance-enforcer/__init__.py
+
 WRITE_TOOLS = enforcer.WRITE_TOOLS
 WRITE_COMMAND_PATTERNS = enforcer.WRITE_COMMAND_PATTERNS
 WRITE_CRON_ACTIONS = enforcer.WRITE_CRON_ACTIONS
@@ -234,6 +236,47 @@ class TestReadonlyTerminalCommand:
     def test_readonly_git_plumbing_is_lock_free(self, cmd):
         assert _is_readonly_terminal_command(cmd) is True, \
             f"Should be lock-free (read-only): {cmd}"
+
+    @pytest.mark.parametrize("cmd", [
+        # Navigate-then-read is the normal shape of an inspection, and nothing
+        # here writes: `cd` mutates only the shell's own cwd.
+        "cd /srv/hermes-cortex && git log --oneline -3",
+        "cd /srv/hermes-cortex; ls -1 docs | head",
+        "cd /tmp && ls",
+        # Progress banners around a read: `echo`/`printf` write to stdout only —
+        # a redirect is a forbidden metacharacter and stays write-class.
+        'echo "== sizes ==" && wc -l file',
+        "printf '%s\\n' '== head =='; head -3 file",
+        # git's own read-only modifiers.
+        "git -C /srv/hermes-cortex status --short",
+        "git --no-pager log --oneline -1 origin/main",
+        # Pure predicates and tool lookup.
+        "test -f /etc/hosts && echo yes",
+        "command -v git",
+        "[ -d docs ] && ls docs",
+    ])
+    def test_inspection_shapes_are_lock_free(self, cmd):
+        assert _is_readonly_terminal_command(cmd) is True, \
+            f"Should be lock-free (read-only inspection): {cmd}"
+
+    @pytest.mark.parametrize("cmd", [
+        # The new primitives must not carry a write with them.
+        "echo hi > /tmp/f",
+        "cd /tmp && rm -rf x",
+        "cd /tmp && cp a b",
+        # `command` with anything but -v/-V EXECUTES its argument.
+        "command git commit -m x",
+        "command rm -f x",
+        # git modifiers only preserve read-only subcommands.
+        "git -C /srv/hermes-cortex push origin main",
+        "git --no-pager commit -m x",
+        "test -f /etc/hosts && cp a b",
+        # A write appended after a read-only segment stays write-class.
+        "echo hi; rm -rf /tmp/x",
+    ])
+    def test_new_allowlist_entries_still_block_writes(self, cmd):
+        assert _is_readonly_terminal_command(cmd) is False, \
+            f"Must still require a lock (write-class): {cmd}"
 
     @pytest.mark.parametrize("cmd", [
         # Interpreter -c forms stay write-class (G1).
@@ -1222,7 +1265,12 @@ class TestGateCrossReferenceMessages:
     def test_lock_gate_message_names_gate_2_of_2(self, temp_state_dir, monkeypatch):
         hook = self._hook(monkeypatch)
         monkeypatch.setattr(enforcer, "_check_skills_loaded_marker", lambda sid: True)
-        result = hook("write_file", {"path": "/tmp/x"}, session_id="sess_gate2")
+        # Bind the call to a real repo, or the first refusal is the
+        # *no-governed-repo* one (a different message, and the right answer when
+        # no repo can be resolved). No extension on the target: a `.md` path
+        # trips the domain-skill gate first, another different message.
+        repo_target = str(REPO_ROOT / "VERSION")
+        result = hook("write_file", {"path": repo_target}, session_id="sess_gate2")
         assert result is not None and result["action"] == "block"
         msg = result["message"]
         assert "GATE 2 of 2" in msg, "lock-gate block must label itself gate 2 of 2"
@@ -1231,8 +1279,11 @@ class TestGateCrossReferenceMessages:
     def test_lock_gate_explains_compound_terminal_read(self, temp_state_dir, monkeypatch):
         hook = self._hook(monkeypatch)
         monkeypatch.setattr(enforcer, "_check_skills_loaded_marker", lambda sid: True)
-        cmd = "echo hi; ls ~/.hermes-cortex/state/"
-        result = hook("terminal", {"command": cmd}, session_id="sess_gate3")
+        # A compound that CARRIES a write: `echo hi; ls <dir>` is itself
+        # read-only now (both segments are stdout-only reads), so the
+        # block-message contract is asserted with a write in the chain.
+        cmd = "echo hi; mv /tmp/a /tmp/b"
+        result = hook("terminal", {"command": cmd, "workdir": str(REPO_ROOT)}, session_id="sess_gate3")
         assert result is not None and result["action"] == "block"
         msg = result["message"]
         assert "compound" in msg.lower(), "must explain why the compound command was gated"

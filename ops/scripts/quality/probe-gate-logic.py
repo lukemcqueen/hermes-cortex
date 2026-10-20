@@ -35,6 +35,7 @@ import importlib.util
 import json
 import os
 import sys
+import subprocess
 import tempfile
 from pathlib import Path
 
@@ -50,6 +51,9 @@ REQUIRED_SKILLS = [
 
 READ_ONLY_LOCKFREE = [
     "ls -la",
+    # Navigate-then-read is an inspection, not a mutation: `cd` moves the shell's
+    # own cwd and every other segment is a read primitive.
+    "cd /tmp && ls",
     "git status --short",
     "ls | grep foo",
     "git status && git log --oneline -5",
@@ -65,7 +69,6 @@ READ_ONLY_WRITECLASS = [
     "ls || ls /tmp",
     "ls | sh",
     "git status; mv /tmp/a /tmp/b",
-    "cd /tmp && ls",
     "python3 -c 'print(1)'",
     "find . -exec rm {} +",
     "sort -o out.txt in.txt",
@@ -116,6 +119,15 @@ def main() -> int:
     lines: list[str] = []
 
     tmp = tempfile.mkdtemp(prefix="gate-probe-")
+    # A throwaway git REPO for the write-class cases. Without one the call
+    # resolves no governed repo, so the refusal the assertions read is the
+    # *no-governed-repo* message rather than the lock/skills message each case
+    # is about (the probe then reports the real message as missing).
+    probe_repo = Path(tmp) / "repo"
+    probe_repo.mkdir()
+    subprocess.run(["git", "init", "-q", str(probe_repo)], check=False)
+    probe_target = probe_repo / "target.txt"
+    probe_target.write_text("x")
     enforcer = load_enforcer(enforcer_path)
     # Redirect all state so we never touch the live governance directory.
     enforcer.GOVERNANCE_STATE_DIR = Path(tmp)
@@ -176,7 +188,7 @@ def main() -> int:
     lines.append("")
     lines.append("Gate 1 — block message")
     fresh = "probe_session_gamma"
-    block = hook(tool_name="write_file", args={"path": os.path.join(tmp, "x.md"), "content": "x"}, session_id=fresh)
+    block = hook(tool_name="write_file", args={"path": str(probe_repo / "x.txt"), "content": "x"}, session_id=fresh)
     msg = (block or {}).get("message", "")
     check("write blocked with no skills", bool(block) and block.get("action") == "block")
     check("message names the exact double-underscore tool name", "mcp__loop_governance__begin_change" in msg)
@@ -188,13 +200,20 @@ def main() -> int:
     lines.append("")
     lines.append("Gate 2 — governance lock")
     hook(tool_name="skill_view", args={"name": "x"}, session_id=sid)  # no-op, marker already valid
-    lock_block = hook(tool_name="write_file", args={"path": os.path.join(tmp, "y"), "content": "y"}, session_id=sid)
+    lock_block = hook(tool_name="write_file", args={"path": str(probe_target), "content": "y"}, session_id=sid)
     lmsg = (lock_block or {}).get("message", "")
     check("write blocked with skills but no lock", bool(lock_block) and lock_block.get("action") == "block")
     check("lock message states gate 2 of 2", "GATE 2 of 2" in lmsg)
     check("lock message gives the exact begin_change call", "mcp__loop_governance__begin_change" in lmsg)
     check("lock message explains the missing-MCP case", "hermes mcp list" in lmsg)
     check("lock message forbids hand-written locks", "hand-write" in lmsg.lower())
+
+    # ── A refusal must carry the shape the CALLER reads ───────────────────
+    lines.append("")
+    lines.append("Refusal shape (no governed repo resolvable)")
+    outside = hook(tool_name="write_file", args={"path": "/tmp/not-a-repo/x"}, session_id=sid + "_norepo")
+    check("no-repo refusal blocks", bool(outside) and outside.get("action") == "block")
+    check("no-repo refusal carries a message", bool((outside or {}).get("message")))
 
     # ── Read-only terminal classifier ─────────────────────────────────────
     lines.append("")

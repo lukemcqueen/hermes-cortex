@@ -126,6 +126,26 @@ def test_the_real_denylist_holds_digests_of_consistent_width():
     assert min(enf._PII_SENSITIVE_LENGTHS) > 0
 
 
+def test_every_configured_length_is_actually_scanned(monkeypatch):
+    """A digest whose LENGTH is missing from the bound is silently dead.
+
+    The gate only slides windows of the lengths listed in
+    `_PII_SENSITIVE_LENGTHS`, so an entry added without its length would be
+    configured and never match anything. Drive one synthetic term per configured
+    length and require every one of them to be found.
+    """
+    terms = []                       # assembled at runtime, never literals
+    for length in enf._PII_SENSITIVE_LENGTHS:
+        term = ("zz" + "term").ljust(length, "z")
+        terms.append((term, hashlib.sha256(term.encode()).digest()))
+    monkeypatch.setattr(enf, "_PII_SENSITIVE_DIGESTS", frozenset(d for _, d in terms))
+    monkeypatch.setattr(enf, "_PII_SENSITIVE_URL_ALLOWED", frozenset())
+    for (term, _digest), length in zip(terms, enf._PII_SENSITIVE_LENGTHS):
+        assert gate(f"Built by {term} in Seoul"), (
+            f"a term of length {length} was not scanned — its length is missing "
+            f"from _PII_SENSITIVE_LENGTHS")
+
+
 def test_the_real_denylist_url_allowance_is_a_subset_of_the_denylist():
     assert enf._PII_SENSITIVE_URL_ALLOWED <= enf._PII_SENSITIVE_DIGESTS
 
