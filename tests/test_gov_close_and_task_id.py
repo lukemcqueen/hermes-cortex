@@ -33,6 +33,21 @@ REPO = Path(__file__).resolve().parents[1]
 MCP = REPO / "mcp-servers" / "loop-gov-mcp.py"
 HOOK = REPO / "ops" / "scripts" / "pre-commit-score"
 
+# The unit under test lives in the sibling module, so state the dependency
+# explicitly rather than leaving a reviewer to take it on faith:
+#
+#   mcp-servers/loop-gov-mcp.py   blob c18e28091a73a19f7a052dc60417c665f04e8904
+#     _RECEIPT_NO_OP = "[no-op] "                       (module constant, ~line 2216)
+#     def _receipt_bail(reason: str, no_op: bool = False) -> str
+#     def _receipt_close_note(receipt_fail: str | None) -> str
+#         "The line the close path appends when a review receipt was not written."
+#         Tags _RECEIPT_NO_OP as information (no push-gate warning); renders every
+#         other bail as the ⚠️ warning plus its remedy; returns "" for None/"".
+#     Call site: end_change() -> `receipt_note = _receipt_close_note(receipt_fail)`
+#
+# Both functions are loaded by path below (spec_from_file_location), so this test
+# fails loudly if either is renamed or removed instead of skipping.
+
 failures: list[str] = []
 
 
