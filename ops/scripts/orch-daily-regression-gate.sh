@@ -73,6 +73,13 @@ fi
 # script reads applicable jobs, picks the newest delivered artifact and runs
 # the canonical verify_briefing; it is SILENT when this host does not run the
 # briefing cron, so worker hosts without it are unaffected.
+#
+# PATHS: this gate is deployed by cortex-update.sh to
+#   ${CORTEX_DEPLOY_HOME}/scripts/orch-daily-regression-gate.sh  ->  SCRIPT_DIR = <deploy>/scripts
+# and the checker it calls is registered two lines below verify_briefing.py, i.e.
+#   ${CORTEX_DEPLOY_HOME}/scripts/manage/check-latest-briefing.py  ->  ${SCRIPT_DIR}/manage/...
+# which is why the sibling under manage/ is tried FIRST below; the beside-this-
+# script fallback covers a non-deployed (repo) run of this file.
 BRIEF_CHECK="${SCRIPT_DIR}/manage/check-latest-briefing.py"
 if [[ ! -f "${BRIEF_CHECK}" ]]; then
   BRIEF_CHECK="${SCRIPT_DIR}/check-latest-briefing.py"
@@ -81,6 +88,11 @@ if [[ ! -f "${BRIEF_CHECK}" ]]; then
   echo "⚠️ Briefing delivery gate COULD NOT VERIFY — check-latest-briefing.py not found beside this script (${SCRIPT_DIR}) nor in its manage/ dir; the check did NOT run."
   exit 3
 fi
+# PY_HELPER is resolved and capability-checked above (near RUN_EVALS): it is
+# python-with-module.sh, whose contract is
+#     python-with-module.sh <module> <script> [args...]   # exec the first interpreter that can import <module>
+# so the line below runs the CHECKER as a PYTHON script under an interpreter that
+# can import the stdlib module 'zipfile' (exit 3 = none can, i.e. cannot check).
 BRIEF_OUT="$(timeout 120 bash "${PY_HELPER}" zipfile "${BRIEF_CHECK}" 2>&1)"
 BRIEF_RC=$?
 if [[ ${BRIEF_RC} -ne 0 ]]; then
