@@ -305,16 +305,14 @@ keyless = [x for x in chosen if x in ("exa", "duckduckgo")]
 print("keyless:" + ",".join(keyless) if keyless else "keyed-only")
 PY
     _wv_rc=$?
-    # Capture the READ's status separately: a vanished/!readable tempfile is not the
+    # Capture the READ's status on its own line: a vanished/unreadable tempfile is not the
     # parser failing, and reporting it as "check-failed" would misdiagnose the cause.
-    if ws_verdict="$(cat "$_WS_VERDICT_TMP")"; then
-        _wv_read_ok=1
-    else
-        _wv_read_ok=0
-        ws_verdict=""
-    fi
+    # (An explicit capture beats testing `if VAR=$(cat ...)`, whose status is the
+    # substitution's — correct, but easy for a reader to get backwards.)
+    ws_verdict="$(cat "$_WS_VERDICT_TMP")"
+    _wv_read_ok=$?
     rm -f "$_WS_VERDICT_TMP"
-    if [[ $_wv_read_ok -eq 0 ]]; then
+    if [[ $_wv_read_ok -ne 0 ]]; then   # $? is 0 on SUCCESS — -ne, not -eq
         _failed 6 "could not read the search-routing probe output (tempfile unreadable) — the check produced NO verdict"
         ws_verdict="check-failed"
     fi
@@ -323,6 +321,9 @@ PY
     if [[ $_wv_rc -ne 0 || -z "$ws_verdict" ]]; then
         ws_verdict="check-failed"
     fi
+    # The parser above prints EXACTLY one of these, so every one needs an arm:
+    #   missing | invalid | keyless:<providers> | keyed-only     (plus check-failed below,
+    # set when the parser itself died or its output could not be read).
     case "$ws_verdict" in
       check-failed)
         _failed 6 "the search-routing verdict could not be computed (parser failed) — NO verdict is not a pass"

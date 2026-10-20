@@ -48,6 +48,7 @@ HOOK_IMPL_NAMES = ("pre-commit-score", "pre-push-pull", "post-commit-audit",
 BASH32_IMAGE = "bash:3.2"
 
 failures: list[str] = []
+skips: list[str] = []       # disclosed in the summary: a skip is not a silent pass
 
 
 def check(cond: bool, msg: str) -> None:
@@ -91,6 +92,14 @@ def heredocs_inside_substitution(text: str) -> list[tuple[int, str]]:
     hits: list[tuple[int, str]] = []
     depth = 0
     for n, line in enumerate(text.splitlines(), 1):
+        # `)` is not always a substitution close: `$(( … ))` consumes two, and a case arm
+        # terminator sits alone at the start of a line. Counting those as closes drives
+        # depth to zero early and lets a real offender SLIP THROUGH — the one direction
+        # this guard must never fail in.
+        arithmetic = line.count("$((")
+        closes = line.count(")") - 2 * arithmetic
+        if line.lstrip().startswith(")"):
+            closes -= 1
         # A COMMENT cannot change how the script parses, so prose describing the trap
         # (including this file's own guidance elsewhere) must not be flagged. The trap
         # lives in CODE — which is also why the apostrophe that broke the hook was in
@@ -100,7 +109,8 @@ def heredocs_inside_substitution(text: str) -> list[tuple[int, str]]:
         opens = line.count("$(")
         if re.search(r"<<-?\s*['\"]?[A-Za-z_]", line) and (depth > 0 or opens > 0):
             hits.append((n, line.strip()[:100]))
-        depth += opens - line.count(")")
+        opens = opens - arithmetic
+        depth += opens - closes
         if depth < 0:
             depth = 0
     return hits
@@ -175,9 +185,11 @@ def _have_docker_image() -> bool:
     detail = err[0] if err else f"rc={proc.returncode}"
     if "no such image" in detail.lower() or "no such object" in detail.lower():
         print(f"SKIP  bash 3.2 parse gate: image absent — enable with: docker pull {BASH32_IMAGE}")
+        skips.append(f"bash 3.2 parse gate — image absent (docker pull {BASH32_IMAGE})")
     else:
         print(f"SKIP  bash 3.2 parse gate: docker could not inspect the image "
               f"({detail}) — this is NOT the same as the image being missing")
+        skips.append(f"bash 3.2 parse gate — docker inspect failed ({detail})")
     return False
 
 
@@ -242,8 +254,8 @@ def main() -> int:
         for f in failures:
             print(f"  - {f}")
         return 1
-    print(f"PASS: no heredoc inside $( ) in {len(shell_scripts())} shell scripts; "
-          f"bash 3.2 parse gate clean or skipped")
+    detail = f"; SKIPPED: {'; '.join(skips)}" if skips else "; bash 3.2 parse gate clean"
+    print(f"PASS: no heredoc inside $( ) in {len(shell_scripts())} shell scripts{detail}")
     return 0
 
 
