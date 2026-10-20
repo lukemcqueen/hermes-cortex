@@ -28,3 +28,13 @@ $ grep -n 'abbrev-ref HEAD' ~/.hermes-cortex/scripts/pre-commit-score
 $ bash tests/run-tests.sh -q tests/test_gov_close_and_task_id.py tests/test_doctor_score_cycle_check.py tests/test_precommit_test_discovery.py tests/test_runtime/test_governance_bypass.py
 ---
 run-tests.sh: interpreter=/home/esther/.hermes-cortex/venv/bin/python3 rc=0  (PYTHONPATH/PYTHONHOME unset for the run)
+
+=== 6. AFTER the deploy: a real first commit through the DEPLOYED hook ===
+# fixture repo, no prior commits, hook copy = ~/.hermes-cortex/scripts/pre-commit-score
+# recorded task id:
+  ids: ['precommit-repo-HEAD/update']
+  newline present: False
+# (before the deploy the same path recorded 'precommit-repo-HEAD\nunknown/update')
+
+=== 7. doctor after the deploy ===
+  ⚠️  Overall: WARNING  (471 pass · 8 warn · 0 fail · 3 info)
