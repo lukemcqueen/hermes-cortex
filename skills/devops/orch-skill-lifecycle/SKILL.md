@@ -12,9 +12,11 @@ platforms: [linux, macos]
 
 ## Overview
 
-Single daily cron (04:00 KST) that replaces 5 separate processes. Runs the full skill lifecycle end-to-end: **collect → evaluate → upgrade**.
+Recurring cron that replaces 5 separate processes. Runs the full skill lifecycle end-to-end: **collect → evaluate → upgrade**.
 
-The cron has `terminal` + `file` + `web` tool access. It reads agent data from the PGMQ bus (inbox_orchestrator queue — the shared orchestrator inbox) where each fleet agent's `agent-learning-collector` pushes structured reports every 6h.
+**Read the live schedule; do not assume it.** It is Mon/Wed/Fri with a per-host minute offset (`34 4 * * 1,3,5` on moses, `39 4 * * 1,3,5` on esther) — check `hermes cron list` rather than trusting a "daily 04:00" written anywhere, and treat a cadence claim that a run did not happen as unfalsified until you read the entry.
+
+The cron has `terminal` + `file` + `web` tool access. Agents push structured reports every 6h to `inbox_orchestrator`, but the pipeline does **not** read that queue: `agent-message-handler` early-archives each report within ~5 minutes (5-minute tick) and stages the body to `~/.hermes-cortex/state/learning-reports/`. **The staged files are the authoritative input** — read the newest file per agent there.
 
 ## Replacements
 
@@ -42,7 +44,7 @@ This pipeline collects from ALL agents in the fleet. Each agent runs `agent-lear
 
 ### Bus Message Format
 
-The pipeline reads `inbox_orchestrator` PGMQ queue (the shared orchestrator inbox). Each agent sends a `Learning Report` every 6h via `agent-learning-collector`:
+Each agent sends a `Learning Report` every 6h via `agent-learning-collector` to `inbox_orchestrator`, from where `agent-message-handler` stages the body to `~/.hermes-cortex/state/learning-reports/<agent>-<ts>.md`:
 
 ```
 Subject: LEARNING_REPORT (bus protocol name — UPPER_CASE A-Z0-9_ per
@@ -280,7 +282,7 @@ Result: 3 skills updated, 1 upstreamed, 1 SOUL.md entry.
 
 ## Schedule
 
-- **Daily (04:00 KST)** — Full pipeline with light evaluation
+- **Mon/Wed/Fri** — Full pipeline with light evaluation (per-host minute offset; read the live cron entry, never a hardcoded time)
 - **Monday deep eval** — Additional consolidation + pruning + staleness pass
 
 ## Pitfalls
@@ -315,6 +317,11 @@ Result: 3 skills updated, 1 upstreamed, 1 SOUL.md entry.
   nginx Basic auth — a bare `curl` returns 401, not JSON. The reliable
   read-side path is psql on the shared-bus mirror (archives replicate there):
   `docker exec mycortex-postgres psql -U mycortex -d mycortex -c "SELECT ... FROM bus.archives WHERE jsonb_typeof(body::jsonb)='object' AND (body::jsonb #>> '{}')::jsonb->>'subject' LIKE 'Learning Report%' ..."` (user is `mycortex`, not `postgres`).
+  **The HTTP archive path works too — with the token (verified):** from the orchestrator's own
+  host, source its env and send the Bearer header — no psql needed:
+  `set -a; . ~/.hermes-cortex/.env; set +a; curl -s -H "Authorization: Bearer $CORTEX_BUS_TOKEN" "http://127.0.0.1:8903/api/pgmq/archives/inbox_orchestrator?limit=2000&since_minutes=300000"`.
+  A 401 means no token was sent (a bare `curl` always 401s); read the value in a subshell and
+  never echo it. `/api/pgmq/peek/{queue}` and `/api/pgmq/depth/{queue}` are the same shape.
 - **Fleet skill content is NOT in Learning Reports (2026-08-28)** →
   `agent-learning-collector` sends only name/category/description per changed
   skill (top 10), never the SKILL.md body. A `[NEW]` skill whose content lives

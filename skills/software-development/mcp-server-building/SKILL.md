@@ -12,13 +12,19 @@ metadata:
 
 # MCP Server Building — Hermes Cortex Standard
 
-> **mcp SDK 2.0 (2026-08-18): the decorator API (`@server.list_tools()` /
+> **mcp SDK 2.0: the decorator API (`@server.list_tools()` /
 > `@server.call_tool()`) was REMOVED.** Register handlers via the
-> constructor: `Server(name, on_list_tools=..., on_call_tool=...)`.
-> The old decorators crash with `AttributeError: 'Server' object has no
-> attribute 'list_tools'` on mcp ≥1.0 (see
-> `docs/older/reference/mcp-sdk-v2-migration.md`). All examples below use the
-> 2.0 API. Version pinned in the hermes-agent venv: `mcp==2.0.0`.
+> constructor: `Server(name, on_list_tools=..., on_call_tool=...)`. All
+> examples below use the 2.0 API. Version pinned in the hermes-agent venv:
+> `mcp==2.0.0`.
+>
+> **Read the skew off the error, in the right direction — both are real and they
+> mean opposite things.** `AttributeError: 'Server' object has no attribute
+> 'list_tools'` = the SDK is NEWER than the code (decorators gone); `TypeError:
+> Server.__init__() got an unexpected keyword argument 'on_list_tools'` = the SDK is
+> OLDER than the code, because `on_list_tools` IS the new kwarg and an older SDK's
+> `Server.__init__` does not take it. Migration history and both signals:
+> `docs/older/reference/mcp-sdk-v2-migration.md`.
 
 This skill covers everything needed to build, debug, and deploy MCP servers that agents install via `hermes mcp add`.
 
@@ -77,6 +83,14 @@ Report the WARNING rather than degrading in silence: a gate that quietly disable
 how the wrong interpreter stays invisible. `ops/scripts/manage/fix-cortex-venv.py` carries
 the same idea for the fleet venv (an `mcp` that imports but cannot construct the handlers is
 reported **incompatible**, not healthy).
+
+**And the DECLARED FLOOR must exclude the version that breaks.** A pin like `mcp>=1.0`
+admits the very SDK whose constructor rejects the 2.0 handlers, so every automated repair path
+that installs "the declared dependency set" resolves straight back into the break — the
+version constraint and the API you call are one decision, not two. State the floor at the API
+generation you construct against, and make the venv/health check probe the CAPABILITY rather
+than the import: a check that only imports answers `ok` on the host that is broken, and
+because a deploy gates its repair on that answer it repairs nothing.
 
 ---
 

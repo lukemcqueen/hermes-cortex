@@ -149,6 +149,15 @@ command was dangerous. Ask for the go-ahead — an explicit user "go" is what re
 the same benign shape keeps tripping the classifier, report it as a classifier defect instead of
 pre-emptively rewriting every future call around a label you know is wrong.
 
+- **A metacharacter INSIDE QUOTES still splits segments.** The classifier tokenizes on shell
+  metacharacters without regard to quoting, so an alternation bar inside a pattern
+  (`grep -E "learning|lesson"`, any `|`-joined regex) reads as a pipe and tips the whole compound
+  write-class — even when every segment is a plain read. Rewrite the pattern as repeated flags
+  (`grep -E -e learning -e lesson`) rather than taking a lock to inspect something; the same trap
+  hides inside quoted `>`/`<`, `$( )` and `&&`-free strings you thought were literal text. A
+  primitive the classifier does not yet recognise (a read builtin it lacks) is a classifier gap to
+  report, not a command to rephrase.
+
 A timeout is **not** a failed attempt to try harder. The gate's own words — do not retry the
 command, do not rephrase it, do not reach the same outcome by another route — are the
 instruction, and re-issuing it with different quoting to slip past classification is exactly the
