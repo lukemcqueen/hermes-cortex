@@ -489,7 +489,7 @@ their domain.
 |-------|---------|---------|-----------|
 | `godmode` | 1.0.0 | Jailbreak LLMs: Parseltongue, GODMODE, ULTRAPLINIAN. | `skill_view(name='godmode')` |
 
-## Research (16 skills)
+## Research (15 skills)
 
 | Skill | Version | Purpose | Load With |
 |-------|---------|---------|-----------|
@@ -501,7 +501,6 @@ their domain.
 | `drug-discovery` | 1.0.0 | Pharmaceutical research assistant for drug discovery workflows. Search bioactive compounds on ChEMBL, calcu... | `skill_view(name='drug-discovery')` |
 | `duckduckgo-search` | 1.3.0 | Free keyless web, news, and image search via ddgs. | `skill_view(name='duckduckgo-search')` |
 | `gitnexus-explorer` | 1.0.0 | Serve an interactive codebase knowledge graph web UI. | `skill_view(name='gitnexus-explorer')` |
-| `job-board-research` | 1.1.0 | Use when compiling vetted job listings from job boards. Aggregates, verifies each posting against its real... | `skill_view(name='job-board-research')` |
 | `osint-investigation` | 0.1.0 | Follow the money via public records and sanctions data. | `skill_view(name='osint-investigation')` |
 | `parallel-cli` | 1.1.0 | Agent-native web search, deep research, and enrichment. | `skill_view(name='parallel-cli')` |
 | `polymarket` | 1.0.0 | Query Polymarket: markets, prices, orderbooks, history. | `skill_view(name='polymarket')` |
