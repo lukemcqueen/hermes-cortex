@@ -135,7 +135,7 @@ their domain.
 | Skill | Version | Purpose | Load With |
 |-------|---------|---------|-----------|
 | `admin-cli-tools` | 1.0.0 | Patterns and architecture for admin-level CLI tools that use direct DB access, not agent-level API auth. | `skill_view(name='admin-cli-tools')` |
-| `agent-collector-troubleshoot` | 1.0.0 | Use when collectors can't send. Diagnoses bus, paths, crons. | `skill_view(name='agent-collector-troubleshoot')` |
+| `agent-collector-troubleshoot` | 1.0.0 | Use when a report is missing or a collector can't send. | `skill_view(name='agent-collector-troubleshoot')` |
 | `agent-ergonomic-cli` | 1.0.0 | Use when writing or auditing agent-facing CLI output. | `skill_view(name='agent-ergonomic-cli')` |
 | `agent-fundamentals` | 1.0.0 | Universal 'basic things every agent should know' — distilled from real frustration patterns across 10+ sess... | `skill_view(name='agent-fundamentals')` |
 | `agent-harness-design` | 1.0.0 | Use when designing a coding-agent harness or runtime. | `skill_view(name='agent-harness-design')` |

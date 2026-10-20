@@ -23,8 +23,8 @@ A file under no repo-owned skill dir is a Hermes default and stays skipped.
 | Absent from the repo (deployed under a repo-owned skill) | 132 |
 |   ↳ path dropped from repo history | 3 |
 |   ↳ path never committed | 129 |
-| Files in sync | 832 |
-| Skipped (Hermes defaults, or repo ahead) | 508 |
+| Files in sync | 835 |
+| Skipped (Hermes defaults, or repo ahead) | 505 |
 
 **Verdict: FAIL**
 
