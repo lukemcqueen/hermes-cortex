@@ -1,5 +1,5 @@
 doctor dispositions — capture
-generated: 2026-10-20T09:11:44Z
+generated: 2026-10-20T09:15:45Z
 repo:      ~/hermes-cortex
 
 === 1. the behaviour suite (temp stores only) ===
@@ -36,7 +36,8 @@ rc=0
     stored: disposition=deferred owner=capture recorded_at=2026-10-20
 
 === 5. the DEPLOYED doctor carries the change (read-only grep) ===
-  COULD NOT VERIFY: no deployed dispositions.py named by the deploy manifest
+  path: ~/.hermes-cortex/scripts/cortex_doctor/dispositions.py
+  def record / def undisposed / TTL_DAYS: 6
   NB: a deployed file is not a live process, and this one is imported by the doctor at start.
 
 NOTES
