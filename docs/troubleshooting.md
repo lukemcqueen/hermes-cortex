@@ -1102,7 +1102,7 @@ scoring-activity-watchdog: DB not found at ~/.hermes-cortex/state/loop-governanc
 - `core/governance/score_cycle.py`, `loop_evaluator.py`, `loop_db.py`, `loop_feedback.py`, `loop_config.py`, `auto_apply.py`, `verify.sh`
 - `ops/scripts/health/scoring-activity-watchdog.py`, `ops/scripts/manage/governance-auditor.py`
 - `~/.hermes-cortex/hooks/pre-commit`
-- `docs/pre-commit-scoring.md`, `docs/loop-governance-reference.md`, `docs/troubleshooting.md`
+- `docs/git-enforcement.md`, `docs/loop-governance-reference.md`
 - `skills/devops/loop-governance/SKILL.md`
 
 The MCP server (`loop-gov-mcp.py`) was also fixed to sync both slug-specific + generic lock files on `_write_lock` / `_release_lock`, preventing governance enforcer lock gaps when running from non-git cwds.

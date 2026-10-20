@@ -1,8 +1,10 @@
+> **Archived 2026-10-20 — historical record, not current instruction.** Current docs: [`docs/DOCS-INDEX.md`](../DOCS-INDEX.md) · what belongs in this archive and the running list: [`docs/older/README.md`](README.md).
+
 ### Cron Jobs Reference
 
 > **Note:** `local-*` prefixed crons are server-specific and maintained outside the repo installer. They are created directly via `cronjob action='create'`. See the `cron-job-management` skill for full naming conventions and when to use the installer vs local-only creation.
 >
-> **Canonical reference:** See [`cron-schedules.md`](cron-schedules.md) for the complete table including schedules, scripts, and delivery targets.
+> **Canonical reference:** See [`cron-schedules.md`](../cron-schedules.md) for the complete table including schedules, scripts, and delivery targets.
 
 | Name | Type | Schedule | Purpose |
 |------|------|----------|---------|

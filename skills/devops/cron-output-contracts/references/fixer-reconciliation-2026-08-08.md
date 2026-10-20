@@ -50,7 +50,7 @@ output dir was fresh) so nothing flagged it.
 4. `agent-stale-ref-watchdog.sh`: removed from `CRON_SCRIPTS` array
 5. Deployed copies removed (`~/.hermes/scripts/`, `~/.hermes-cortex/scripts/`)
    + `git rm ops/scripts/agent/agent-apply-fixes.py`
-6. Docs: `docs/cron-schedules.md`, `docs/cron-jobs-reference.md`,
+6. Docs: `docs/cron-schedules.md` (canonical), `docs/older/cron-jobs-reference.md` (the historical table this pass read),
    `README.md` (pipeline diagram + Recovery table), `docs/setup-reference.md`
    (key-scripts list) — all updated. Historical migration note in
    `docs/fleet-reference.md` left intact (intentional record).

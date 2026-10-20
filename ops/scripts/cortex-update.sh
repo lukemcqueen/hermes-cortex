@@ -291,7 +291,7 @@ done
 # clobbered live MEMORY.md on every deploy (7× in a day) because the live
 # file is personalized and always differs from the template. Fail CLOSED on
 # such targets so a re-add breaks the deploy loudly instead of overwriting
-# user data. See docs/troubleshooting.md entry 18.
+# user data. See docs/troubleshooting.md -> "Memory got wiped after a cortex update".
 _assert_register_dest_safe() {
   local dest="$1"
   case "$dest" in
@@ -305,7 +305,7 @@ _assert_register_dest_safe() {
     *"/memories/"*|"${HOME}/.hermes/"*)
       echo "❌ REFUSED: register target '${dest/$HOME/~}' is Hermes-owned user data." >&2
       echo "   Memory and config files under ~/.hermes/ belong to Hermes — never deploy them." >&2
-      echo "   See docs/troubleshooting.md entry 18." >&2
+      echo "   See docs/troubleshooting.md -> \"Memory got wiped after a cortex update\"." >&2
       exit 1
       ;;
   esac

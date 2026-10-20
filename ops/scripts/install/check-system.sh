@@ -519,7 +519,7 @@ print_recommendations() {
     fi
     
     divider "Quick Reference"
-    info "$MODE" "System specs saved to: docs/computer-specs.md"
+    info "$MODE" "This summary is printed to stdout — no specs file is written."
 }
 
 # ── Summary ─────────────────────────────────────────────────

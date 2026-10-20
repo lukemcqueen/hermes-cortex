@@ -1,3 +1,5 @@
+> **Archived 2026-10-20 — historical record, not current instruction.** Current docs: [`docs/DOCS-INDEX.md`](../DOCS-INDEX.md) · what belongs in this archive and the running list: [`docs/older/README.md`](README.md).
+
 # Fleet Cost Baseline — 2026-10-06..2026-10-19
 
 **Story:** c579ef95 *Fleet cost under $10/day avg + halve review queue*

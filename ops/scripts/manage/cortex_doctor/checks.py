@@ -1206,7 +1206,7 @@ def check_skills(res):
 # to inbox_orchestrator).
 STALE_CRON_PROMPT_PATTERNS = [
   (r"contact-moses", "renamed to contact-orchestrator.sh"),
-  (r"inbox_moses", "agents send to inbox_orchestrator — see docs/bus-architecture.md"),
+  (r"inbox_moses", "agents send to inbox_orchestrator (role matrix: private repo hermes-cortex-private/docs/bus-architecture.md)"),
   (r"send to Moses", "agents send to the orchestrator inbox"),
   (r"message Moses", "agents message the orchestrator"),
   (r"reach Moses", "agents reach the orchestrator"),

@@ -43,7 +43,7 @@
       "source": "hermes-cortex",
       "scope": "federated",
       "expected_top3": [
-        "docs/pre-commit-scoring.md",
+        "docs/git-enforcement.md",
         "docs/loop-governance-reference.md",
         "skills/devops/loop-governance/SKILL.md"
       ]
@@ -55,7 +55,7 @@
       "scope": "federated",
       "expected_top3": [
         "docs/cron-schedules.md",
-        "docs/cron-jobs-reference.md",
+        "docs/older/cron-jobs-reference.md",
         "docs/cron-job-recipes.md"
       ]
     },
@@ -134,7 +134,7 @@
       "expected_top3": [
         "skills/devops/cron-job-management/SKILL.md",
         "docs/cron-job-recipes.md",
-        "docs/cron-jobs-reference.md"
+        "docs/older/cron-jobs-reference.md"
       ]
     },
     {
@@ -156,7 +156,7 @@
       "expected_top3": [
         "skills/devops/two-hard-rules/SKILL.md",
         "docs/loop-governance-reference.md",
-        "docs/pre-commit-scoring.md"
+        "docs/git-enforcement.md"
       ]
     },
     {

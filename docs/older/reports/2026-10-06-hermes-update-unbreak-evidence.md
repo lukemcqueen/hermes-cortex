@@ -1,3 +1,5 @@
+> **Archived 2026-10-20 — historical record, not current instruction.** Current docs: [`docs/DOCS-INDEX.md`](../../DOCS-INDEX.md) · what belongs in this archive and the running list: [`docs/older/README.md`](../README.md).
+
 # Evidence — un-break `hermes update` (upstream tree + pm dependency build)
 
 Date: 2026-10-06 · Host: esther · Repo commit: `dc51b3a0` (on `origin/main`)

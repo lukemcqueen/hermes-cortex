@@ -1,7 +1,7 @@
 # Langfuse Cost Tracking — Pricing Tiers, Backfill, Verification (3.206+/3.207+)
 
 Discovered 2026-08-11 while adding cost tracking to a self-hosted Langfuse
-stack upgraded 3.206.0 → 3.207.0. **The repo's `docs/troubleshooting.md` §23
+stack upgraded 3.206.0 → 3.207.0. **The repo's `docs/troubleshooting.md` entry *"Langfuse costs show $0.00"*
 SQL is stale for 3.206+** — it inserts into `public.models` with legacy
 `input_price`/`output_price` columns, which the worker no longer reads.
 

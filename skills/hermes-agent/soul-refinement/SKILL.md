@@ -51,7 +51,7 @@ hermes cron create --name "local-daily-soul-refinement" \
   --prompt "Load the soul-refinement skill. Mine the last 24 hours of sessions (run-time window, not the calendar date) for user corrections and lessons. Distill into principle or skill patches. Report the window and its row counts; stay silent only if the window is non-empty and nothing changed."
 ```
 
-The fleet's live per-host job runs `14 23 * * *` (`docs/cron-jobs-reference.md`); any evening
+The fleet's live per-host job runs `14 23 * * *` (`docs/cron-schedules.md`); any evening
 slot works, but a late dispatch can land after midnight — so the window must never be derived
 from the date.
 

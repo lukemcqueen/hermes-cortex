@@ -1,3 +1,5 @@
+> **Archived 2026-10-20 — historical record, not current instruction.** Current docs: [`docs/DOCS-INDEX.md`](../DOCS-INDEX.md) · what belongs in this archive and the running list: [`docs/older/README.md`](README.md).
+
 # Review-Queue Diagnosis — 2026-10
 
 **Task:** `[review/1]` (task `90b30c9c`), second half of story `c579ef95`

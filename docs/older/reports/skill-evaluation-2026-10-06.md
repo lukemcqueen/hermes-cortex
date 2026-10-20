@@ -1,3 +1,5 @@
+> **Archived 2026-10-20 — historical record, not current instruction.** Current docs: [`docs/DOCS-INDEX.md`](../../DOCS-INDEX.md) · what belongs in this archive and the running list: [`docs/older/README.md`](../README.md).
+
 # Skill Evaluation Report — orch-skill-evaluate
 
 **Run:** 2026-10-06 (Tue) KST · cron `orch-skill-evaluate` (job `2da7ae15e810`)

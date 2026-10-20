@@ -101,7 +101,7 @@ mycortex search "test query" | head
 > **User directive (2026-08-11):** consult the repo guidance FIRST for any
 > Langfuse/ClickHouse work — `~/hermes-cortex/ops/install/deploy/README-langfuse-clickhouse.md`,
 > `docs/troubleshooting.md`, `deploy/patches/` — before reverse-engineering
-> the running containers. Caveat: `docs/troubleshooting.md` §23's
+> the running containers. Caveat: the `docs/troubleshooting.md` entry *"Langfuse costs show $0.00"*'s
 > `INSERT INTO models (..., input_price, output_price, ...)` is stale for
 > 3.206+ — it produces no cost. Use the pricing-tier recipe below.
 

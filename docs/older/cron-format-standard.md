@@ -1,3 +1,5 @@
+> **Archived 2026-10-20 — historical record, not current instruction.** Current docs: [`docs/DOCS-INDEX.md`](../DOCS-INDEX.md) · what belongs in this archive and the running list: [`docs/older/README.md`](README.md).
+
 # Cron Output Format Standard
 
 > **Canonical reference for all LLM-driven cron job output formatting.**

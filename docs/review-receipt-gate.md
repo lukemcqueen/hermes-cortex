@@ -145,7 +145,7 @@ refused fleet-wide, fail-closed and silent. If you change one, check the other.
 - `ops/scripts/pre-push-pull` — the gate
 - `ops/scripts/lib/always-review-paths.txt` — scope
 - `ops/scripts/lib/review-receipt-check.py` — one validator, shared by hook and test
-- `docs/pre-commit-scoring.md`, `docs/git-enforcement.md` — the wider hook chain
+- `docs/git-enforcement.md` — the wider hook chain (carries pre-commit scoring + pinned hooks, merged 2026-10-20)
 
 ---
 

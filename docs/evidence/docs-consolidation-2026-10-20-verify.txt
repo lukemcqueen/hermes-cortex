@@ -1,0 +1,67 @@
+
+=== 1. every docs path cited by docs/DOCS-INDEX.md resolves
+cited=131 missing=0
+PASS  index paths resolve
+
+=== 2. the moved docs are where the index/archive says, and the sources are gone
+PASS  archived: docs/older/external/pi-skill-bridge.md
+PASS  archived: docs/older/cost-baseline-2026-10.md
+PASS  archived: docs/older/review-queue-diagnosis-2026-10.md
+PASS  archived: docs/older/continuous-skill-suggestion.md
+PASS  archived: docs/older/cron-jobs-reference.md
+PASS  archived: docs/older/cron-format-standard.md
+PASS  archived: docs/older/pre-task-sequence-mandatory-before-every-task.md
+PASS  archived: docs/older/reference/session-todo-protocol.md
+PASS  archived: docs/older/design/client-av-alembic-hook-handoff.md
+PASS  source gone: docs/external/pi-skill-bridge.md
+PASS  source gone: docs/cost-baseline-2026-10.md
+PASS  source gone: docs/review-queue-diagnosis-2026-10.md
+PASS  source gone: docs/continuous-skill-suggestion.md
+PASS  source gone: docs/cron-jobs-reference.md
+PASS  source gone: docs/cron-format-standard.md
+PASS  source gone: docs/pre-task-sequence-mandatory-before-every-task.md
+PASS  source gone: docs/reference/session-todo-protocol.md
+PASS  source gone: docs/reports
+PASS  source gone: docs/repo-vs-deployed-paths.md
+PASS  source gone: docs/agent-learning-submissions.md
+PASS  source gone: docs/pinned-repo-hooks.md
+PASS  source gone: docs/pre-commit-scoring.md
+PASS  source gone: docs/design/client-av-alembic-hook-handoff.md
+
+=== 3. no live reference to a moved/merged path (dated records + the merge notes exempt)
+PASS  zero live references to moved paths
+
+=== 4. relative links inside the newly archived docs resolve
+broken=0
+PASS  archived-doc links resolve
+
+=== 5. the merged content is present in each target doc
+PASS  docs/deploy-registry-pattern.md carries section: Repo-vs-Deployed Path Resolution
+PASS  docs/pipeline-reference.md carries section: Agent Learning Submissions
+PASS  docs/git-enforcement.md carries section: Pinned Repo Hooks
+PASS  docs/git-enforcement.md carries section: Pre-Commit Scoring Hook
+
+=== 6. syntax of every script this cycle changed
+PASS  bash -n ops/scripts/cortex-update.sh
+PASS  bash -n ops/scripts/install/check-system.sh
+PASS  py_compile checks.py
+PASS  golden-queries.json parses
+
+=== 7. the printed-instruction fixes (install / update / doctor)
+PASS  check-system.sh no longer prints a non-existent artifact path
+PASS  cortex-update.sh names the troubleshooting entry by title
+PASS  operations-reference.md qualifies the private-repo bus doc
+PASS  doctor's stale-cron remedy qualifies the private-repo bus doc
+
+=== 8. the pre-commit doc audit accepts the change set
+PASS  doc audit rc=0 (warns only, and it warned zero)
+
+=== 9. duplicate-content count in docs/
+duplicate hashes: 2 (the 2 known ones are dated MEMORY/USER snapshots — see docs/evidence/README.md rule 5)
+PASS  duplicate count unchanged at the 2 documented snapshot pairs
+
+=== 10. current vs archived doc counts
+current=114 archived=62 evidence_store=85
+
+=== SUMMARY: 0 failure(s), 0 warning(s)
+VERIFY_RC=0

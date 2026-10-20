@@ -1,3 +1,5 @@
+> **Archived 2026-10-20 — historical record, not current instruction.** Current docs: [`docs/DOCS-INDEX.md`](../../DOCS-INDEX.md) · what belongs in this archive and the running list: [`docs/older/README.md`](../README.md).
+
 # Task 2 handoff — client-av dead alembic hook migration
 
 **For titusclaude (on Titus, client-av checkout).** Verified by Esther

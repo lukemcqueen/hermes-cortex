@@ -1,3 +1,5 @@
+> **Archived 2026-10-20 — historical record, not current instruction.** Current docs: [`docs/DOCS-INDEX.md`](../DOCS-INDEX.md) · what belongs in this archive and the running list: [`docs/older/README.md`](README.md).
+
 # Continuous Skill Suggestion — Design for "During-Edits" Skill Loading
 
 **Status:** Design document (not implemented)

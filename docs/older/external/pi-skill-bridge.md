@@ -1,3 +1,5 @@
+> **Archived 2026-10-20 — historical record, not current instruction.** Current docs: [`docs/DOCS-INDEX.md`](../../DOCS-INDEX.md) · what belongs in this archive and the running list: [`docs/older/README.md`](../README.md).
+
 # Pi Skill Bridge — External Agent Skill Loading
 
 > **SUPERSEDED 2026-10-13 — do not rebuild this.** The hand-built bridge below (a

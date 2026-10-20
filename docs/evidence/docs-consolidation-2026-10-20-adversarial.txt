@@ -1,0 +1,248 @@
+# adversarial-verify A4 gate — docs-consolidation-cleanup (2026-10-20)
+# each gate runs with its real rc captured bare (no pipe)
+
+$ python3 ops/scripts/quality/adversarial-verify.py --file ops/scripts/cortex-update.sh --level A4 --gate
+
+── ops/scripts/cortex-update.sh ──
+   Level: A4
+   Attack Surface:
+     ⚠️ Inputs: 25 item(s)
+     ⚠️ State: 17 item(s)
+     ⚠️ Dependencies: 16 item(s)
+     ⚠️ Concurrency: 13 item(s)
+   Fuzz inputs generated: 0
+
+📊 Summary: 1 file(s), 0 finding(s)
+   ✅ No findings — but standard tests should still pass!
+
+✅ GATE_PASSED — no critical/high findings
+rc=0
+
+$ python3 ops/scripts/quality/adversarial-verify.py --file ops/scripts/install/check-system.sh --level A4 --gate
+
+── ops/scripts/install/check-system.sh ──
+   Level: A4
+   Attack Surface:
+     ✅ Inputs: 0 item(s)
+     ✅ State: 0 item(s)
+     ⚠️ Dependencies: 1 item(s)
+     ✅ Concurrency: 0 item(s)
+   Fuzz inputs generated: 0
+
+📊 Summary: 1 file(s), 0 finding(s)
+   ✅ No findings — but standard tests should still pass!
+
+✅ GATE_PASSED — no critical/high findings
+rc=0
+
+$ python3 ops/scripts/quality/adversarial-verify.py --file ops/scripts/manage/cortex_doctor/checks.py --level A4 --gate
+
+── ops/scripts/manage/cortex_doctor/checks.py ──
+   Level: A4
+   Attack Surface:
+     ⚠️ Inputs: 155 item(s)
+     ⚠️ State: 49 item(s)
+     ⚠️ Dependencies: 113 item(s)
+     ⚠️ Concurrency: 24 item(s)
+   Functions: 60
+     - _invokes_score_cycle(text)
+     - _score_cycle_consumers(search_roots)
+     - _is_git_repo(repo_dir)
+     - _is_cortex_worktree(repo_dir)
+     - check_soul_sync(res)
+     ... and 55 more
+   Fuzz inputs generated: 625
+
+📊 Summary: 1 file(s), 70 finding(s)
+   🟡 Medium: 4
+   🔵 Low: 17
+   ⚪ Info: 49
+
+🟡 Medium findings — fix before shipping.
+
+✅ GATE_PASSED — no critical/high findings
+rc=0
+
+$ python3 ops/scripts/quality/adversarial-verify.py --file ops/scripts/agent/agents-doc-audit.py --level A4 --gate
+
+── ops/scripts/agent/agents-doc-audit.py ──
+   Level: A4
+   Attack Surface:
+     ⚠️ Inputs: 32 item(s)
+     ⚠️ State: 3 item(s)
+     ⚠️ Dependencies: 10 item(s)
+     ✅ Concurrency: 0 item(s)
+   Functions: 30
+     - _heading_text(line)
+     - _count_lines(section_lines)
+     - _has_ip_address(text)
+     - _has_url(text)
+     - _has_curl_command(text)
+     ... and 25 more
+   Fuzz inputs generated: 396
+
+📊 Summary: 1 file(s), 54 finding(s)
+   🟡 Medium: 3
+   🔵 Low: 11
+   ⚪ Info: 40
+
+🟡 Medium findings — fix before shipping.
+
+✅ GATE_PASSED — no critical/high findings
+rc=0
+
+# ── attribution: the same gate at the RANGE BASE (HEAD, pre-change) ──
+# a medium count identical on both sides is PRE-EXISTING, not caused by this cycle
+
+$ adversarial-verify --file <HEAD:checks.py> --level A4 --gate
+
+── /home/esther/.hermes/cache/scratch/base-1657652/checks.py ──
+   Level: A4
+   Attack Surface:
+     ⚠️ Inputs: 155 item(s)
+     ⚠️ State: 49 item(s)
+     ⚠️ Dependencies: 113 item(s)
+     ⚠️ Concurrency: 24 item(s)
+   Functions: 60
+     - _invokes_score_cycle(text)
+     - _score_cycle_consumers(search_roots)
+     - _is_git_repo(repo_dir)
+     - _is_cortex_worktree(repo_dir)
+     - check_soul_sync(res)
+     ... and 55 more
+   Fuzz inputs generated: 625
+
+📊 Summary: 1 file(s), 70 finding(s)
+   🟡 Medium: 4
+   🔵 Low: 17
+   ⚪ Info: 49
+
+🟡 Medium findings — fix before shipping.
+
+✅ GATE_PASSED — no critical/high findings
+rc=0
+
+$ adversarial-verify --file <HEAD:agents-doc-audit.py> --level A4 --gate
+
+── /home/esther/.hermes/cache/scratch/base-1657652/agents-doc-audit.py ──
+   Level: A4
+   Attack Surface:
+     ⚠️ Inputs: 32 item(s)
+     ⚠️ State: 3 item(s)
+     ⚠️ Dependencies: 10 item(s)
+     ✅ Concurrency: 0 item(s)
+   Functions: 30
+     - _heading_text(line)
+     - _count_lines(section_lines)
+     - _has_ip_address(text)
+     - _has_url(text)
+     - _has_curl_command(text)
+     ... and 25 more
+   Fuzz inputs generated: 396
+
+📊 Summary: 1 file(s), 54 finding(s)
+   🟡 Medium: 3
+   🔵 Low: 11
+   ⚪ Info: 40
+
+🟡 Medium findings — fix before shipping.
+
+✅ GATE_PASSED — no critical/high findings
+rc=0
+
+# ── the sibling suite this cycle touches, run bare (rc is the runner's own) ──
+$ bash tests/run-tests.sh -q tests/test_repo_resource_paths.py tests/test_review_provenance_check.py
+tests/test_review_provenance_check.py ............                       [100%]
+
+============================== 26 passed in 1.96s ==============================
+---
+run-tests.sh: interpreter=/home/esther/.hermes-cortex/venv/bin/python3 rc=0  (PYTHONPATH/PYTHONHOME unset for the run)
+# attribution: test_deploy_registry_doc_counts_match_the_register_map ALSO fails at the range base
+# (HEAD carries the same stale counts), so the stale doc counts PRE-DATE this cycle and are corrected here.
+
+# ── A2 gate on every changed skill file + the test fixture (skills/ and tests/ are gate paths) ──
+
+$ python3 ~/.hermes-cortex/scripts/adversarial-verify.py --file skills/devops/cron-output-contracts/references/fixer-reconciliation-2026-08-08.md --level A2 --gate
+
+── skills/devops/cron-output-contracts/references/fixer-reconciliation-2026-08-08.md ──
+   Level: A2
+   Attack Surface:
+     ✅ Inputs: 0 item(s)
+     ✅ State: 0 item(s)
+     ✅ Dependencies: 0 item(s)
+     ✅ Concurrency: 0 item(s)
+   Fuzz inputs generated: 0
+
+📊 Summary: 1 file(s), 0 finding(s)
+   ✅ No findings — but standard tests should still pass!
+
+✅ GATE_PASSED — no critical/high findings
+rc=0
+
+$ python3 ~/.hermes-cortex/scripts/adversarial-verify.py --file skills/devops/hermes-cortex-maintenance/SKILL.md --level A2 --gate
+
+── skills/devops/hermes-cortex-maintenance/SKILL.md ──
+   Level: A2
+   Attack Surface:
+     ✅ Inputs: 0 item(s)
+     ⚠️ State: 1 item(s)
+     ✅ Dependencies: 0 item(s)
+     ⚠️ Concurrency: 1 item(s)
+   Fuzz inputs generated: 0
+
+📊 Summary: 1 file(s), 0 finding(s)
+   ✅ No findings — but standard tests should still pass!
+
+✅ GATE_PASSED — no critical/high findings
+rc=0
+
+$ python3 ~/.hermes-cortex/scripts/adversarial-verify.py --file skills/devops/hermes-cortex-maintenance/references/langfuse-cost-tracking-pricing-tiers.md --level A2 --gate
+
+── skills/devops/hermes-cortex-maintenance/references/langfuse-cost-tracking-pricing-tiers.md ──
+   Level: A2
+   Attack Surface:
+     ⚠️ Inputs: 1 item(s)
+     ⚠️ State: 6 item(s)
+     ✅ Dependencies: 0 item(s)
+     ⚠️ Concurrency: 1 item(s)
+   Fuzz inputs generated: 0
+
+📊 Summary: 1 file(s), 0 finding(s)
+   ✅ No findings — but standard tests should still pass!
+
+✅ GATE_PASSED — no critical/high findings
+rc=0
+
+$ python3 ~/.hermes-cortex/scripts/adversarial-verify.py --file skills/hermes-agent/soul-refinement/SKILL.md --level A2 --gate
+
+── skills/hermes-agent/soul-refinement/SKILL.md ──
+   Level: A2
+   Attack Surface:
+     ✅ Inputs: 0 item(s)
+     ⚠️ State: 1 item(s)
+     ⚠️ Dependencies: 3 item(s)
+     ✅ Concurrency: 0 item(s)
+   Fuzz inputs generated: 0
+
+📊 Summary: 1 file(s), 0 finding(s)
+   ✅ No findings — but standard tests should still pass!
+
+✅ GATE_PASSED — no critical/high findings
+rc=0
+
+$ python3 ~/.hermes-cortex/scripts/adversarial-verify.py --file tests/fixtures/golden-queries.json --level A2 --gate
+
+── tests/fixtures/golden-queries.json ──
+   Level: A2
+   Attack Surface:
+     ✅ Inputs: 0 item(s)
+     ✅ State: 0 item(s)
+     ✅ Dependencies: 0 item(s)
+     ✅ Concurrency: 0 item(s)
+   Fuzz inputs generated: 0
+
+📊 Summary: 1 file(s), 0 finding(s)
+   ✅ No findings — but standard tests should still pass!
+
+✅ GATE_PASSED — no critical/high findings
+rc=0
