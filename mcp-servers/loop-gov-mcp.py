@@ -7238,15 +7238,49 @@ def _cycle_query(args: dict) -> CallToolResult:
 def _cycle_stats(args: dict) -> CallToolResult:
     try:
         conn = _db()
+        # ── Hook cycles are bookkeeping, judged cycles are work ──────────────
+        # The pre-commit hook scores EVERY commit, including the throwaway repos
+        # the test harnesses create, so hook cycles dominate the ledger (9,248 of
+        # 12,930 on 2026-10-20 = 71%). Mixed into one figure they made a headline
+        # like "1,871 scored without user feedback" read like an un-reviewed
+        # backlog when 98.7% of it was hook bookkeeping nobody owes feedback on
+        # (issue #188, reported by Titus). The existing keys keep their
+        # all-rows meaning so no consumer changes behaviour; the judged_* keys
+        # exist so a reader can quote a number that means something.
+        HOOK = "precommit-%"
         total = conn.execute("SELECT COUNT(*) FROM loop_cycles").fetchone()[0]
+        hook_cycles = conn.execute(
+            "SELECT COUNT(*) FROM loop_cycles WHERE task_id LIKE ?", (HOOK,)).fetchone()[0]
+        judged = total - hook_cycles
         avg = conn.execute("SELECT ROUND(AVG(composite),1) FROM loop_cycles").fetchone()[0] or 0
         count_7 = conn.execute("SELECT COUNT(*) FROM loop_cycles WHERE composite >= 7.0").fetchone()[0]
         feedback = conn.execute("SELECT COUNT(*) FROM loop_cycles WHERE user_overrode IS NOT NULL").fetchone()[0]
         accepted = conn.execute("SELECT COUNT(*) FROM loop_cycles WHERE user_overrode = 0").fetchone()[0]
         overridden = conn.execute("SELECT COUNT(*) FROM loop_cycles WHERE user_overrode = 1").fetchone()[0]
+        judged_avg = conn.execute(
+            "SELECT ROUND(AVG(composite),1) FROM loop_cycles WHERE task_id NOT LIKE ?",
+            (HOOK,)).fetchone()[0] or 0
+        judged_over_7 = conn.execute(
+            "SELECT COUNT(*) FROM loop_cycles WHERE composite >= 7.0 AND task_id NOT LIKE ?",
+            (HOOK,)).fetchone()[0]
+        judged_feedback = conn.execute(
+            "SELECT COUNT(*) FROM loop_cycles WHERE user_overrode IS NOT NULL AND task_id NOT LIKE ?",
+            (HOOK,)).fetchone()[0]
+        judged_accepted = conn.execute(
+            "SELECT COUNT(*) FROM loop_cycles WHERE user_overrode = 0 AND task_id NOT LIKE ?",
+            (HOOK,)).fetchone()[0]
+        judged_overridden = conn.execute(
+            "SELECT COUNT(*) FROM loop_cycles WHERE user_overrode = 1 AND task_id NOT LIKE ?",
+            (HOOK,)).fetchone()[0]
+        # Coverage is judged-only: hook cycles are never owed feedback, so
+        # counting them in the denominator makes the rate meaningless.
+        coverage = round(100.0 * judged_feedback / judged, 1) if judged else 0.0
         top_tasks = conn.execute(
             "SELECT task_id, COUNT(*) as n FROM loop_cycles GROUP BY task_id ORDER BY n DESC LIMIT 5"
         ).fetchall()
+        top_judged = conn.execute(
+            "SELECT task_id, COUNT(*) as n FROM loop_cycles WHERE task_id NOT LIKE ? "
+            "GROUP BY task_id ORDER BY n DESC LIMIT 5", (HOOK,)).fetchall()
         conn.close()
         return CallToolResult(content=[TextContent(type="text", text=json.dumps({
             "total_cycles": total,
@@ -7256,6 +7290,20 @@ def _cycle_stats(args: dict) -> CallToolResult:
             "accepted": accepted,
             "overridden": overridden,
             "top_tasks": [dict(t) for t in top_tasks],
+            # ── judged (non-hook) view ──
+            "hook_cycles": hook_cycles,
+            "judged_cycles": judged,
+            "judged_avg_composite": judged_avg,
+            "judged_cycles_over_7": judged_over_7,
+            "judged_feedback_count": judged_feedback,
+            "judged_accepted": judged_accepted,
+            "judged_overridden": judged_overridden,
+            "feedback_coverage_pct_judged": coverage,
+            "top_judged_tasks": [dict(t) for t in top_judged],
+            "note": ("hook_cycles are pre-commit hook auto-scores (task_id LIKE "
+                     "'precommit-%'), replayed per commit including test fixtures; "
+                     "they are never owed feedback, so the judged_* figures and "
+                     "feedback_coverage_pct_judged exclude them."),
         }, indent=2))])
     except Exception as e:
         return CallToolResult(content=[TextContent(type="text", text=f"No loop DB yet, or error reading it: {e}")])
