@@ -1,6 +1,6 @@
 generated-by: docs/evidence/test-pollution-fix-2026-10-21.sh   (this file IS that script's stdout)
-host-date:    2026-10-21T18:44:42+09:00
-captured-at:  3b03c92cf7d31143d7c69aa35e10a3e5c1d7c86c
+host-date:    2026-10-21T18:50:29+09:00
+captured-at:  1449f3580f1cceaa8a50afe1ab333134e954cb56
               ^ the revision the working tree sat on WHEN THIS WAS CAPTURED; the change under
                 test was UNCOMMITTED at that moment.
 committed-in: the commit that ADDS this file — always one commit ahead of captured-at. A
@@ -17,7 +17,7 @@ ASSERTED: 'OUT_EVID' is absent from the baseline copy of test_write_cycle_eviden
           (so the baseline really is the pre-change revision)
 
 live state dir before: .governance-20261021_163612_93ffbc29.json
-  baseline run rc=1   ======================== 5 failed, 30 passed in 14.17s =========================
+  baseline run rc=1   ======================== 5 failed, 30 passed in 13.90s =========================
 
 --- SIDE EFFECT 1: the TRACKED evidence tree, in the baseline worktree
     command: git -C <worktree> status --porcelain docs/evidence/
@@ -34,15 +34,15 @@ live state dir after : .governance-20261021_163612_93ffbc29.json .governance-ses
     -> after cleanup       : .governance-20261021_163612_93ffbc29.json 
 
 ===== 2. THE FIX — the same files run at the working tree =====
-tracked evidence tree before: 0 modified tracked path(s)
+tracked evidence tree before: 1 modified tracked path(s)
 live state dir before      : .governance-20261021_163612_93ffbc29.json
 
-  working-tree run rc=1   ======================== 5 failed, 33 passed in 32.85s =========================
+  working-tree run rc=1   ======================== 5 failed, 37 passed in 32.34s =========================
   (the 5 failures in test_runtime/test_adversarial_review_gate.py are the PRE-EXISTING set
    already attributed at this range's base — see
    docs/evidence/sweep-json-rows-and-engine-error-2026-10-21.txt section 9, REPRODUCED.)
 
-tracked evidence tree after : 0 modified tracked path(s)
+tracked evidence tree after : 1 modified tracked path(s)
 live state dir after       : .governance-20261021_163612_93ffbc29.json
   -> CLEAN BOTH WAYS: running these suites no longer writes the tracked evidence tree or
      the live shared state dir.

@@ -42,19 +42,14 @@ class _IsolatedMain(unittest.TestCase):
     artifact was not touched."""
 
     def setUp(self):
-        self._orig_out = w.OUT_EVID
         self._tmp = tempfile.TemporaryDirectory(prefix="write-closure-note-")
         self.evid = Path(self._tmp.name)
-        # Redirect the OUTPUT only: EVID stays pointed at the real briefings dir, because the
-        # script READS its input artifacts (the briefing PDF) from there.
-        w.OUT_EVID = self.evid
         self._live = COMMITTED_DIR / "closure-note-2026-10-10.md"
         self._live_before = (self._live.exists(),
                              self._live.stat().st_mtime_ns if self._live.exists() else None)
         self._live_dir_before = sorted(p.name for p in COMMITTED_DIR.glob("closure-note-*"))
 
     def tearDown(self):
-        w.OUT_EVID = self._orig_out
         self._tmp.cleanup()
         after = (self._live.exists(),
                  self._live.stat().st_mtime_ns if self._live.exists() else None)
@@ -69,7 +64,7 @@ class _IsolatedMain(unittest.TestCase):
 
 class TestMain(_IsolatedMain):
     def test_writes_note_with_provenance_and_checker_output(self):
-        code = w.main("2026-10-10")
+        code = w.main("2026-10-10", out_dir=self.evid)
         self.assertEqual(code, 0)
         dest = self.evid / "closure-note-2026-10-10.md"
         self.assertTrue(dest.exists())
@@ -85,10 +80,24 @@ class TestMain(_IsolatedMain):
     def test_does_not_raise_when_artifacts_absent(self):
         # A date with no artifacts must still produce a note (empty sections),
         # never crash.
-        code = w.main("1999-12-31")
+        code = w.main("1999-12-31", out_dir=self.evid)
         dest = self.evid / "closure-note-1999-12-31.md"
         self.assertEqual(code, 0)
         self.assertTrue(dest.exists())
+
+
+class TestDefaultDestinationUnchanged(unittest.TestCase):
+    """Production behaviour must not move: with no out_dir argument the note still goes to the
+    real briefings dir."""
+
+    def test_out_evid_defaults_to_evid(self):
+        self.assertEqual(w.OUT_EVID, w.EVID)
+
+    def test_main_accepts_an_out_dir_parameter(self):
+        import inspect
+        params = inspect.signature(w.main).parameters
+        self.assertIn("out_dir", params, "main() must expose the redirect parameter")
+        self.assertIsNone(params["out_dir"].default)
 
 
 if __name__ == "__main__":

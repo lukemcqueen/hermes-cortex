@@ -57,14 +57,11 @@ class _IsolatedMain(unittest.TestCase):
     briefing artifacts from there."""
 
     def setUp(self):
-        self._orig_out = w.OUT_EVID
         self._tmp = tempfile.TemporaryDirectory(prefix="write-cycle-evidence-")
         self.evid = Path(self._tmp.name)
-        w.OUT_EVID = self.evid
         self._live_dir_before = sorted(p.name for p in COMMITTED_DIR.glob("cycle-evidence-*"))
 
     def tearDown(self):
-        w.OUT_EVID = self._orig_out
         self._tmp.cleanup()
         self.assertEqual(
             sorted(p.name for p in COMMITTED_DIR.glob("cycle-evidence-*")), self._live_dir_before,
@@ -79,7 +76,7 @@ class TestMain(_IsolatedMain):
         if not art.exists():
             self.skipTest(f"no committed artifact for {date}")
 
-        code = w.main(date)
+        code = w.main(date, out_dir=self.evid)
         self.assertEqual(code, 0)
 
         dest = self.evid / f"cycle-evidence-{date}.md"
@@ -100,7 +97,7 @@ class TestMain(_IsolatedMain):
 
     def test_reports_missing_artifact_as_missing(self):
         date = "1999-12-31"
-        w.main(date)
+        w.main(date, out_dir=self.evid)
         dest = self.evid / f"cycle-evidence-{date}.md"
         text = dest.read_text(encoding="utf-8")
         self.assertIn("MISSING", text)
@@ -130,7 +127,7 @@ class TestRedaction(_IsolatedMain):
         art = COMMITTED_DIR / f"sustainability-briefing-{date}.md"
         if not art.exists():
             self.skipTest(f"no committed artifact for {date}")
-        self.assertEqual(w.main(date), 0)
+        self.assertEqual(w.main(date, out_dir=self.evid), 0)
         text = (self.evid / f"cycle-evidence-{date}.md").read_text(encoding="utf-8")
         self.assertNotIn(str(Path.home()), text,
                          "the committed pack carries this host's absolute home path")
@@ -142,9 +139,23 @@ class TestRedaction(_IsolatedMain):
         art = COMMITTED_DIR / f"sustainability-briefing-{date}.md"
         if not art.exists():
             self.skipTest(f"no committed artifact for {date}")
-        self.assertEqual(w.main(date), 0)
+        self.assertEqual(w.main(date, out_dir=self.evid), 0)
         text = (self.evid / f"cycle-evidence-{date}.md").read_text(encoding="utf-8")
         self.assertRegex(text, r"Command: (~/?[^\s]*python[^\s]*) -W error::ResourceWarning")
+
+
+class TestDefaultDestinationUnchanged(unittest.TestCase):
+    """Production behaviour must not move: with no out_dir argument the pack still goes to the
+    real briefings dir, so the redirect is an opt-in and not a silent relocation of the output."""
+
+    def test_out_evid_defaults_to_evid(self):
+        self.assertEqual(w.OUT_EVID, w.EVID)
+
+    def test_main_accepts_an_out_dir_parameter(self):
+        import inspect
+        params = inspect.signature(w.main).parameters
+        self.assertIn("out_dir", params, "main() must expose the redirect parameter")
+        self.assertIsNone(params["out_dir"].default)
 
 
 if __name__ == "__main__":
