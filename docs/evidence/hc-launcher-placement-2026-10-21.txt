@@ -1,0 +1,33 @@
+Running: bash -c { echo "=== the launcher, both locations ==="; ls -l "$HOME/hermes-cortex/ops/scripts/hc/bin/hc" "$HOME/.hermes-cortex/scripts/hc"; echo "=== deploy map: repo source -> deploy target ==="; grep -n "hc/bin/hc" "$HOME/hermes-cortex/ops/scripts/cortex-update.sh"; echo "=== live: DEPLOYED hc (flat layout) ==="; bash "$HOME/.hermes-cortex/scripts/hc" harness verify pi | tail -3; echo "deployed_rc=${PIPESTATUS[0]}"; echo "=== live: REPO launcher (bin/ layout) ==="; bash ops/scripts/hc/bin/hc harness list --json | head -4; echo "repo_rc=${PIPESTATUS[0]}"; echo "=== the move is proved by a test, not a claim ==="; bash tests/test_hc_launcher_resolution.sh; echo "launcher_test_rc=$?"; echo "=== no live file still names the old path (committed captures excluded: they are records) ==="; n=$(grep -rnE "ops/scripts/hc/hc([^.]|$)" --include=*.sh --include=*.py --include=*.md . 2>/dev/null | grep -v "^./.git/" | grep -v "^./docs/evidence/" | wc -l); echo "old_path_refs_in_live_files=$n"; echo "=== suites for the files this cycle touched ==="; bash tests/run-tests.sh tests/test_doctor_harness_loop.py tests/test_hc_harness.py tests/test_hc_pi.py -q | tail -2; echo "pytest_rc=${PIPESTATUS[0]}"; } 2>&1 | sed -e "s#$HOME#~#g"
+rc: 0
+when: 2026-10-21T06:33:25Z
+
+=== the launcher, both locations ===
+-rwxrwxr-x 1 esther esther 1880 Oct 21 15:28 ~/hermes-cortex/ops/scripts/hc/bin/hc
+-rwxr-xr-x 1 esther esther 1880 Oct 21 15:29 ~/.hermes-cortex/scripts/hc
+=== deploy map: repo source -> deploy target ===
+536:register "ops/scripts/hc/bin/hc"                     "${CORTEX_DEPLOY_HOME}/scripts/hc"
+=== live: DEPLOYED hc (flat layout) ===
+next: hc harness install pi --dir <your-project>
+
+result: PASS
+deployed_rc=0
+=== live: REPO launcher (bin/ layout) ===
+{
+  "count": 5,
+  "layers": [
+    "mcp",
+repo_rc=0
+=== the move is proved by a test, not a claim ===
+  ✓ module beside the launcher resolves (rc=0)
+  ✓ module one level up resolves, and argv passes through (ARGS=harness verify pi)
+  ✓ no module anywhere exits 3 and names what it looked for
+ALL PASS
+launcher_test_rc=0
+=== no live file still names the old path (committed captures excluded: they are records) ===
+old_path_refs_in_live_files=0
+=== suites for the files this cycle touched ===
+---
+run-tests.sh: interpreter=~/.hermes-cortex/venv/bin/python3 rc=0  (PYTHONPATH/PYTHONHOME unset for the run)
+pytest_rc=0
+sha256: f75a4833e6552c9060a6a2f1bbf395ce96659707b9874b120683712aa25801c1
