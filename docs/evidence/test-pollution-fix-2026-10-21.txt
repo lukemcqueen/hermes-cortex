@@ -1,0 +1,50 @@
+generated-by: docs/evidence/test-pollution-fix-2026-10-21.sh   (this file IS that script's stdout)
+host-date:    2026-10-21T18:44:42+09:00
+captured-at:  3b03c92cf7d31143d7c69aa35e10a3e5c1d7c86c
+              ^ the revision the working tree sat on WHEN THIS WAS CAPTURED; the change under
+                test was UNCOMMITTED at that moment.
+committed-in: the commit that ADDS this file — always one commit ahead of captured-at. A
+              transcript cannot name its own commit: writing this file changes the revision.
+baseline:     3b03c92cf7d31143d7c69aa35e10a3e5c1d7c86c   (PINNED — the last pre-change revision)
+
+===== 1. THE BASELINE — the two offending files run at the pinned revision =====
+The baseline is a git worktree at 3b03c92cf7d31143d7c69aa35e10a3e5c1d7c86c. Its test files still write their output into
+the tracked evidence tree and a real lock into the LIVE shared state dir.
+
+worktree resolves to: 3b03c92c
+ASSERTED: the checkout is exactly 3b03c92cf7d31143d7c69aa35e10a3e5c1d7c86c
+ASSERTED: 'OUT_EVID' is absent from the baseline copy of test_write_cycle_evidence.py
+          (so the baseline really is the pre-change revision)
+
+live state dir before: .governance-20261021_163612_93ffbc29.json
+  baseline run rc=1   ======================== 5 failed, 30 passed in 14.17s =========================
+
+--- SIDE EFFECT 1: the TRACKED evidence tree, in the baseline worktree
+    command: git -C <worktree> status --porcelain docs/evidence/
+     M docs/evidence/briefings/closure-note-2026-10-10.md
+     M docs/evidence/briefings/cycle-evidence-2026-10-10.md
+     M docs/evidence/briefings/test-results-2026-10-10.txt
+    -> 3 tracked file(s) left DIRTY by running tests
+
+--- SIDE EFFECT 2: the LIVE shared governance state dir
+live state dir after : .governance-20261021_163612_93ffbc29.json .governance-sess_51739fa82ecb.json
+    -> CREATED BY THE TEST: .governance-sess_51739fa82ecb.json
+    -> this is the probe's own side effect; removing it so the next test run is not
+       poisoned by it (issue #214). The fix under test removes the CAUSE.
+    -> after cleanup       : .governance-20261021_163612_93ffbc29.json 
+
+===== 2. THE FIX — the same files run at the working tree =====
+tracked evidence tree before: 0 modified tracked path(s)
+live state dir before      : .governance-20261021_163612_93ffbc29.json
+
+  working-tree run rc=1   ======================== 5 failed, 33 passed in 32.85s =========================
+  (the 5 failures in test_runtime/test_adversarial_review_gate.py are the PRE-EXISTING set
+   already attributed at this range's base — see
+   docs/evidence/sweep-json-rows-and-engine-error-2026-10-21.txt section 9, REPRODUCED.)
+
+tracked evidence tree after : 0 modified tracked path(s)
+live state dir after       : .governance-20261021_163612_93ffbc29.json
+  -> CLEAN BOTH WAYS: running these suites no longer writes the tracked evidence tree or
+     the live shared state dir.
+
+===== end of transcript =====

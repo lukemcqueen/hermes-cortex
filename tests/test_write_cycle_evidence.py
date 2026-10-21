@@ -5,6 +5,15 @@ and git rather than typed by hand. So the test asserts (a) it writes the file,
 (b) the file CONTAINS the real values, and (c) it does not invent content when
 an input is missing.
 
+ISOLATED FROM THE LIVE ARTIFACT (fixed 2026-10-21, issue #213 / event #213): these tests used to
+call `w.main(date)` with the script's real output directory in effect, so every run OVERWROTE the
+committed docs/evidence/briefings/cycle-evidence-2026-10-10.md (and created a stray
+cycle-evidence-1999-12-31.md in the same tracked directory). The script now exposes OUT_EVID for
+the destination — separate from EVID, which is where it READS its input artifacts — so the tests
+repoint the output to a temp directory, the assertions moved with it, and each test asserts the
+COMMITTED file's mtime is unchanged. Coverage is unchanged: the pack is still produced, still read
+back, and still asserted on, just not in the live tree.
+
 stdlib-only (unittest), matching the sibling suites.
 
 Run: python3 tests/test_write_cycle_evidence.py
@@ -18,6 +27,7 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
 SCRIPT = REPO / "ops" / "scripts" / "sustainability" / "write_cycle_evidence.py"
+COMMITTED_DIR = REPO / "docs" / "evidence" / "briefings"
 
 _spec = importlib.util.spec_from_file_location("write_cycle_evidence", SCRIPT)
 w = importlib.util.module_from_spec(_spec)
@@ -41,20 +51,38 @@ class TestHelpers(unittest.TestCase):
         self.assertIsInstance(out, str)  # captured, surfaced, never raised
 
 
-class TestMain(unittest.TestCase):
+class _IsolatedMain(unittest.TestCase):
+    """Base: run main() with the PACK's destination pointed at a temp dir, and prove the live
+    artifact was not touched. EVID is deliberately NOT redirected — the script reads its input
+    briefing artifacts from there."""
+
+    def setUp(self):
+        self._orig_out = w.OUT_EVID
+        self._tmp = tempfile.TemporaryDirectory(prefix="write-cycle-evidence-")
+        self.evid = Path(self._tmp.name)
+        w.OUT_EVID = self.evid
+        self._live_dir_before = sorted(p.name for p in COMMITTED_DIR.glob("cycle-evidence-*"))
+
+    def tearDown(self):
+        w.OUT_EVID = self._orig_out
+        self._tmp.cleanup()
+        self.assertEqual(
+            sorted(p.name for p in COMMITTED_DIR.glob("cycle-evidence-*")), self._live_dir_before,
+            "the run created or removed a file in the tracked evidence directory (issue #213)")
+
+
+class TestMain(_IsolatedMain):
     def test_writes_pack_for_real_artifacts(self):
         # Use a date whose artifacts really exist (this cycle's).
         date = "2026-10-10"
-        art = REPO / "docs" / "evidence" / "briefings" / (
-            f"sustainability-briefing-{date}.md")
+        art = COMMITTED_DIR / f"sustainability-briefing-{date}.md"
         if not art.exists():
             self.skipTest(f"no committed artifact for {date}")
 
         code = w.main(date)
         self.assertEqual(code, 0)
 
-        dest = REPO / "docs" / "evidence" / "briefings" / (
-            f"cycle-evidence-{date}.md")
+        dest = self.evid / f"cycle-evidence-{date}.md"
         self.assertTrue(dest.exists())
         text = dest.read_text(encoding="utf-8")
 
@@ -73,16 +101,12 @@ class TestMain(unittest.TestCase):
     def test_reports_missing_artifact_as_missing(self):
         date = "1999-12-31"
         w.main(date)
-        dest = REPO / "docs" / "evidence" / "briefings" / (
-            f"cycle-evidence-{date}.md")
-        try:
-            text = dest.read_text(encoding="utf-8")
-            self.assertIn("MISSING", text)
-        finally:
-            dest.unlink(missing_ok=True)  # never leave junk for a fake date
+        dest = self.evid / f"cycle-evidence-{date}.md"
+        text = dest.read_text(encoding="utf-8")
+        self.assertIn("MISSING", text)
 
 
-class TestRedaction(unittest.TestCase):
+class TestRedaction(_IsolatedMain):
     """The pack is COMMITTED to a public repo: an absolute home path in it is both noise the
     secret-leak detector flags on every refresh and a command the next reader cannot re-run.
     Redaction happens at the GENERATOR, so the committed copy always agrees with the command
@@ -103,12 +127,11 @@ class TestRedaction(unittest.TestCase):
 
     def test_the_written_pack_carries_no_absolute_home_path(self):
         date = "2026-10-10"
-        art = REPO / "docs" / "evidence" / "briefings" / f"sustainability-briefing-{date}.md"
+        art = COMMITTED_DIR / f"sustainability-briefing-{date}.md"
         if not art.exists():
             self.skipTest(f"no committed artifact for {date}")
         self.assertEqual(w.main(date), 0)
-        text = (REPO / "docs" / "evidence" / "briefings" /
-                f"cycle-evidence-{date}.md").read_text(encoding="utf-8")
+        text = (self.evid / f"cycle-evidence-{date}.md").read_text(encoding="utf-8")
         self.assertNotIn(str(Path.home()), text,
                          "the committed pack carries this host's absolute home path")
 
@@ -116,12 +139,11 @@ class TestRedaction(unittest.TestCase):
         # Redaction must not delete the fact: the reader still learns WHICH interpreter ran
         # the tests, just not which host's home it lived under.
         date = "2026-10-10"
-        art = REPO / "docs" / "evidence" / "briefings" / f"sustainability-briefing-{date}.md"
+        art = COMMITTED_DIR / f"sustainability-briefing-{date}.md"
         if not art.exists():
             self.skipTest(f"no committed artifact for {date}")
         self.assertEqual(w.main(date), 0)
-        text = (REPO / "docs" / "evidence" / "briefings" /
-                f"cycle-evidence-{date}.md").read_text(encoding="utf-8")
+        text = (self.evid / f"cycle-evidence-{date}.md").read_text(encoding="utf-8")
         self.assertRegex(text, r"Command: (~/?[^\s]*python[^\s]*) -W error::ResourceWarning")
 
 

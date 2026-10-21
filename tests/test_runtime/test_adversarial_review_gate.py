@@ -194,6 +194,25 @@ def test_unparseable_prose_still_refuses():
 
 # ── gate: simple skip, no reviewer call ─────────────────────────────────────
 
+def _isolate_state_dir(monkeypatch, tmp_path):
+    """Point the module's GOVERNANCE STATE DIR at a temp dir and hand back the REAL one.
+
+    Patching `mod.HOME` does NOT redirect the lock files: GOVERNANCE_STATE_DIR is computed from
+    HOME at IMPORT time, so a later monkeypatch leaves the real ~/.hermes-cortex/state in effect.
+    That is exactly how this file wrote a REAL lock into the live shared state dir — measured
+    2026-10-21: running it left `.governance-sess_51739fa82ecb.json` behind, and the NEXT run of
+    tests/test_repo_less_lock_handling.py then failed ("the handler must still write a lock"),
+    because that file's first test refuses when a lock for the resolved session exists. It also
+    produced a spurious DIFFERS verdict in a range attribution. Issue #214 / event #214.
+
+    Redirect the constant the lock path is actually derived from (`_session_lock_path` reads it at
+    call time), and assert the real dir is left alone — the isolation is verified, not assumed.
+    """
+    real = mod.GOVERNANCE_STATE_DIR
+    monkeypatch.setattr(mod, "GOVERNANCE_STATE_DIR", tmp_path)
+    return real
+
+
 def test_gate_skips_simple_change_without_reviewer(tmp_path, monkeypatch):
     r = tmp_path / "repo"
     r.mkdir()
@@ -215,14 +234,22 @@ def test_gate_skips_simple_change_without_reviewer(tmp_path, monkeypatch):
             "started_at": "1970-01-01T00:00:00Z"}
     cycle = {"id": 1, "outcome_note": "note"}
     monkeypatch.setattr(mod, "HOME", tmp_path)
+    real_state = _isolate_state_dir(monkeypatch, tmp_path)
+    before = sorted(p.name for p in real_state.glob(".governance-*.json"))
     result = mod._adversarial_review_gate(lock, cycle)
     assert result is None  # proceeds
+    assert sorted(p.name for p in real_state.glob(".governance-*.json")) == before, \
+        "the test wrote a lock into the LIVE state dir (issue #214)"
 
 
-def test_gate_fails_closed_when_repo_missing(monkeypatch):
-    monkeypatch.setattr(mod, "HOME", Path(tempfile.mkdtemp()))
+def test_gate_fails_closed_when_repo_missing(monkeypatch, tmp_path):
+    monkeypatch.setattr(mod, "HOME", tmp_path)
+    real_state = _isolate_state_dir(monkeypatch, tmp_path)
+    before = sorted(p.name for p in real_state.glob(".governance-*.json"))
     lock = {"repo_slug": "no-such-repo", "started_at": "1970-01-01T00:00:00Z"}
     result = mod._adversarial_review_gate(lock, {"id": 1})
     assert result is not None
     text = result.content[0].text
     assert "Cannot close" in text
+    assert sorted(p.name for p in real_state.glob(".governance-*.json")) == before, \
+        "the test wrote a lock into the LIVE state dir (issue #214)"
