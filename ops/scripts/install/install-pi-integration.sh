@@ -165,8 +165,9 @@ import json, os, sys
  governance_extension, package_spec, web_search_file) = sys.argv[1:10]
 
 
-def pi_sees(root):
-    """Count SKILL.md files the way PI ITSELF would, in its own loader's order.
+def _walk_pi_skills(root, apply_ignore_rules):
+    """The ONE traversal both counters use, so the only thing that can separate
+    them is ignore-rule handling.
 
     Mirrors dist/core/skills.js (Pi 1.3.0), which is the only authority on what Pi
     sees: readdirSync, FOLLOW symlinked dirs (statSync), skip dot-dirs and
@@ -185,7 +186,7 @@ def pi_sees(root):
             if e.name == "SKILL.md" and os.path.isfile(e.path):
                 seen.append(e.path)
                 return
-        ignores = _ignore_rules(d)
+        ignores = _ignore_rules(d) if apply_ignore_rules else []
         for e in entries:
             if e.name.startswith(".") or e.name == "node_modules":
                 continue
@@ -221,13 +222,26 @@ def pi_sees(root):
     return seen
 
 
+def pi_sees(root):
+    """Count the SKILL.md files PI ITSELF would see, in its own loader's order."""
+    return _walk_pi_skills(root, apply_ignore_rules=True)
+
+
 def tree_count(root):
-    """Every SKILL.md in the tree, INCLUDING ones a plain walk would miss."""
-    n = 0
-    for _dirpath, dirnames, filenames in os.walk(root):
-        dirnames[:] = [d for d in dirnames if d != "node_modules"]
-        n += sum(1 for f in filenames if f == "SKILL.md")
-    return n
+    """The same traversal with the ignore rules NOT applied.
+
+    Identical to pi_sees in every other respect — same stop-at-SKILL.md, same
+    dot-dir/node_modules skip, same symlink follow — so the ONLY thing that can
+    make the two counts differ is an ignore file (.gitignore/.ignore/.fdignore at
+    a skills root) or a directory that cannot be read. That is what makes
+    `visible != total` evidence of hiding.
+
+    It was a bare os.walk before: it kept descending past a directory that already
+    holds SKILL.md and into dot-dirs, counting skills Pi can never load, so the
+    comparison was unsound and reported a false alarm on a healthy host —
+    measured on this fleet 2026-10-21: "Pi sees 440 of 520 skills".
+    """
+    return len(_walk_pi_skills(root, apply_ignore_rules=False))
 
 # Every cortex-owned extension, by basename. ONE list: registration, the
 # strip/replace path and the check all read it, so a new extension cannot be
@@ -363,7 +377,7 @@ if mode == "check":
         print("install-pi-integration: NOT registered")
         sys.exit(1)
     print(f"  ✓ extensions registered ({', '.join(OURS)}), "
-          f"{len(names)} curated skills present")
+          f"{visible} skills visible under {published_dir}")
     print(f"  ✓ web search: {package_spec} declared, "
           f"keyless chain {KEYLESS_PROVIDERS} configured")
     print("install-pi-integration: registered")
@@ -425,7 +439,11 @@ for ext in (extension, governance_extension):
     exts = [e for e in exts if e != ext]
     if ext:
         exts.append(ext)
-skills = [e for e in strip_ours(skills) if e != curated_dir]
+# Idempotent, like the extensions block above: the published tree is filtered
+# out before it is appended, so a second run REGISTERS it once. Dropping only
+# `curated_dir` left an existing published entry in place and appended a second
+# copy — a duplicate registration that survives every later run.
+skills = [e for e in strip_ours(skills) if e not in (curated_dir, published_dir)]
 skills.append(published_dir)
 data["extensions"] = exts
 data["skills"] = skills

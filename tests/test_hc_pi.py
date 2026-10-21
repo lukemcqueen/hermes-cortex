@@ -161,6 +161,32 @@ def test_check_runs_installer_then_audit_and_takes_the_worst_rc(hc, tmp_path, mo
     assert len(calls) == 2, f"the audit must still run (calls={calls})"
 
 
+def test_a_later_worse_rc_is_not_masked(hc, tmp_path, monkeypatch):
+    """`rc or r` keeps the FIRST nonzero rc, so a later failure carrying a HIGHER
+    one is reported as the earlier, milder value — the command answers "rc=1"
+    while the run that actually broke returned 3. Worst must win."""
+    _pi_agent(tmp_path)
+    monkeypatch.setattr(hc, "_resolve_script", lambda name: Path("/bin/" + name))
+    monkeypatch.setattr(hc, "_run_script", lambda p, a: 1 if "install" in str(p) else 3)
+    assert _exit_code(lambda: hc.cmd_pi(_cfg(), ["check"])) == 3
+
+
+def test_install_reports_the_worst_rc_not_the_first(hc, tmp_path, monkeypatch):
+    _pi_agent(tmp_path)
+    monkeypatch.setattr(hc, "_resolve_script", lambda name: Path("/bin/" + name))
+    monkeypatch.setattr(hc, "_run_script", lambda p, a: 1 if "mcp" in str(p) else 3)
+    assert _exit_code(lambda: hc.cmd_pi(_cfg(), ["install"])) == 3
+
+
+def test_a_missing_script_does_not_mask_a_later_worse_rc(hc, tmp_path, monkeypatch):
+    """A missing half is rc 1; a later real failure at rc 2 must still surface."""
+    _pi_agent(tmp_path)
+    monkeypatch.setattr(hc, "_resolve_script",
+                        lambda name: None if "mcp" in name else Path("/bin/" + name))
+    monkeypatch.setattr(hc, "_run_script", lambda p, a: 2)
+    assert _exit_code(lambda: hc.cmd_pi(_cfg(), ["install"])) == 2
+
+
 def test_check_missing_audit_is_a_failure(hc, tmp_path, monkeypatch, capsys):
     _pi_agent(tmp_path)
     monkeypatch.setattr(hc, "_resolve_script",

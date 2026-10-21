@@ -1364,13 +1364,13 @@ def cmd_pi(cfg: dict, args: list):
             path = _resolve_script(name)
             if path is None:
                 print(f"hc pi: {name} not found — run cortex-update.sh", file=sys.stderr)
-                rc = rc or 1
-                continue
+                rc = max(rc, 1)   # the WORST rc wins, not the first: `rc or r`
+                continue          # would report an earlier, milder failure
             print(f"── {name} ──")
             r = _run_script(path, rest)
             if r != 0:
                 print(f"hc pi: {name} failed (rc={r})", file=sys.stderr)
-                rc = rc or r
+                rc = max(rc, r)
         print("hc pi: " + ("wired" if rc == 0 else f"NOT wired (rc={rc})"))
         sys.exit(rc)
 
@@ -1385,12 +1385,12 @@ def cmd_pi(cfg: dict, args: list):
             path = _resolve_script(name)
             if path is None:
                 print(f"hc pi: {name} not found — run cortex-update.sh", file=sys.stderr)
-                rc = rc or 1
-                continue
+                rc = max(rc, 1)   # the WORST rc wins, not the first: `rc or r`
+                continue          # would report an earlier, milder failure
             print(f"── {label} ──")
             r = _run_script(path, extra)
             if r != 0:
-                rc = rc or r
+                rc = max(rc, r)
         print("hc pi: " + ("OK" if rc == 0 else f"NOT OK (rc={rc})"))
         sys.exit(rc)
 
