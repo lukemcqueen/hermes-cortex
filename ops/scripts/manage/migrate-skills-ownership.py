@@ -28,6 +28,16 @@ EXIT CODES
   3 COULD NOT VERIFY (missing / dangling / unexpected target)
   4 BOTH REAL (an explicit decision is required; nothing was modified)
 
+VERIFIED BY (so the claims above are checkable rather than asserted)
+- tests/test_skills_ownership.py — classification (OLD / NEW / BOTH_REAL / UNVERIFIABLE,
+  including both paths pointing at the same target, and a borrower resolving outside the
+  owner), content+count preservation across migration, idempotency, the write-through-pointer
+  path, and the backup-by-rename behaviour for the both-real resolution.
+- Committed run transcript: docs/evidence/skills-ownership-tests-<date>.txt
+  regenerate with ops/scripts/manage/emit-skills-ownership-tests.sh
+- Committed live result: docs/evidence/skills-ownership-<date>.txt
+  regenerate with ops/scripts/manage/emit-skills-ownership-evidence.sh
+
 SAFETY
 - --check never mutates anything.
 - Migration MOVES (rename), never copy-then-delete; no tree is ever removed.
