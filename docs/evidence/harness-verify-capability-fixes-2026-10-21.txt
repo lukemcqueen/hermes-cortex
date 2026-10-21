@@ -1,6 +1,6 @@
-Running: bash -c { S="${TMPDIR:-/tmp}/prefix-harness.py"; git show fe088e70:ops/scripts/hc/harness.py > "$S"; echo "=== the resolver SELECTS this interpreter for yaml (not the bare python3) ==="; bash ops/scripts/lib/python-with-module.sh --print yaml; echo "resolver_print_rc=$?"; echo "=== PRE-FIX verify pi (copy of fe088e70:ops/scripts/hc/harness.py) ==="; bash ops/scripts/lib/python-with-module.sh yaml "$S" verify pi; echo "pre_fix_pi_rc=$?"; echo "=== FIXED verify pi (real launcher under bare python3) ==="; bash ops/scripts/hc/hc harness verify pi; echo "fixed_pi_rc=$?"; echo "=== FIXED verify with no name ==="; bash ops/scripts/hc/hc harness verify; echo "fixed_all_rc=$?"; echo "=== this cycle s suites ==="; bash tests/run-tests.sh tests/test_hc_harness.py tests/test_hc_pi.py -q | tail -3; echo "pytest_mine_rc=${PIPESTATUS[0]}"; echo "=== the 2 failures in tests/test_context_harnesses.py are PRE-CHANGE: same runner, same names, at fe088e70 ==="; WT="${TMPDIR:-/tmp}/attrib-wt"; git worktree add --detach "$WT" fe088e70 >/dev/null 2>&1 || true; bash "$WT/tests/run-tests.sh" tests/test_context_harnesses.py -q 2>&1 | tail -3; echo "pre_change_ctx_rc=${PIPESTATUS[0]}"; } 2>&1 | sed -e "s#$HOME#~#g"
+Running: bash -c { S="${TMPDIR:-/tmp}/prefix-harness.py"; git show fe088e70:ops/scripts/hc/harness.py > "$S"; echo "=== the resolver SELECTS this interpreter for yaml (not the bare python3) ==="; bash ops/scripts/lib/python-with-module.sh --print yaml; echo "resolver_print_rc=$?"; echo "=== PRE-FIX verify pi (copy of fe088e70:ops/scripts/hc/harness.py) ==="; bash ops/scripts/lib/python-with-module.sh yaml "$S" verify pi; echo "pre_fix_pi_rc=$?"; echo "=== FIXED verify pi (real launcher under bare python3) ==="; bash ops/scripts/hc/hc harness verify pi; echo "fixed_pi_rc=$?"; echo "=== FIXED verify with no name ==="; bash ops/scripts/hc/hc harness verify; echo "fixed_all_rc=$?"; echo "=== this cycles suites ==="; bash tests/run-tests.sh tests/test_hc_harness.py tests/test_hc_pi.py -q | tail -3; echo "pytest_mine_rc=${PIPESTATUS[0]}"; echo "=== the 2 failures in tests/test_context_harnesses.py are PRE-CHANGE ==="; WT="${TMPDIR:-/tmp}/attrib-wt"; if [ ! -e "$WT/.git" ]; then git worktree add --detach "$WT" fe088e70 >/dev/null 2>&1 || echo "worktree add FAILED (rc=$?)"; fi; WTSHA=""; [ -e "$WT/.git" ] && WTSHA="$(git -C "$WT" rev-parse --short=8 HEAD 2>/dev/null)"; if [ "$WTSHA" = "fe088e70" ]; then echo "pre-change worktree HEAD asserted: $WTSHA (== the tip this range is built on)"; bash "$WT/tests/run-tests.sh" tests/test_context_harnesses.py -q 2>&1 | tail -3; echo "pre_change_ctx_rc=${PIPESTATUS[0]}"; else echo "pre-change worktree HEAD is ${WTSHA:-<none>}, NOT fe088e70 — comparison NOT RUN, nothing claimed"; fi; } 2>&1 | sed -e "s#$HOME#~#g"
 rc: 0
-when: 2026-10-21T04:53:42Z
+when: 2026-10-21T05:03:01Z
 
 === the resolver SELECTS this interpreter for yaml (not the bare python3) ===
 ~/.hermes-cortex/venv/bin/python3
@@ -38,14 +38,15 @@ artifacts: 2/2 present
 
 result: PASS
 fixed_all_rc=0
-=== this cycle s suites ===
-============================== 43 passed in 5.03s ==============================
+=== this cycles suites ===
+============================== 43 passed in 4.93s ==============================
 ---
 run-tests.sh: interpreter=~/.hermes-cortex/venv/bin/python3 rc=0  (PYTHONPATH/PYTHONHOME unset for the run)
 pytest_mine_rc=0
-=== the 2 failures in tests/test_context_harnesses.py are PRE-CHANGE: same runner, same names, at fe088e70 ===
-========================= 2 failed, 27 passed in 3.25s =========================
+=== the 2 failures in tests/test_context_harnesses.py are PRE-CHANGE ===
+pre-change worktree HEAD asserted: fe088e70 (== the tip this range is built on)
+========================= 2 failed, 27 passed in 3.24s =========================
 ---
 run-tests.sh: interpreter=~/.hermes-cortex/venv/bin/python3 rc=1  (PYTHONPATH/PYTHONHOME unset for the run)
 pre_change_ctx_rc=1
-sha256: bbc9b8085933dfe21d0149187f7baa8092bc103e2cad7ce33bd0c8317a71187a
+sha256: f2c44509cf29080c0df996852a8140d1e2e3e77c6694d05ef88ee3353bb8edf6
