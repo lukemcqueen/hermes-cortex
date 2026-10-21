@@ -1,0 +1,31 @@
+Running: bash -c { bash tests/run-tests.sh tests/test_hc_pi.py -q; echo "rc=$?"; bash tests/run-tests.sh tests/test_pi_integration_audit.py -q; echo "rc=$?"; } 2>&1 | sed -e "s#$HOME#~#g"
+rc: 0
+when: 2026-10-21T04:23:01Z
+
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
+rootdir: ~/hermes-cortex
+configfile: pytest.ini
+plugins: anyio-4.15.1
+collected 27 items
+
+tests/test_hc_pi.py ...........................                          [100%]
+
+============================== 27 passed in 0.39s ==============================
+---
+run-tests.sh: interpreter=~/.hermes-cortex/venv/bin/python3 rc=0  (PYTHONPATH/PYTHONHOME unset for the run)
+rc=0
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
+rootdir: ~/hermes-cortex
+configfile: pytest.ini
+plugins: anyio-4.15.1
+collected 2 items
+
+tests/test_pi_integration_audit.py ..                                    [100%]
+
+============================== 2 passed in 0.71s ===============================
+---
+run-tests.sh: interpreter=~/.hermes-cortex/venv/bin/python3 rc=0  (PYTHONPATH/PYTHONHOME unset for the run)
+rc=0
+sha256: 6691487c61456e1d5f932115fccbf5aa12b3a9d826dd7b69a1724fad1b10c293
