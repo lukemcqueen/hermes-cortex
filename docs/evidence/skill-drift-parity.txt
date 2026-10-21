@@ -20,9 +20,9 @@ A file under no repo-owned skill dir is a Hermes default and stays skipped.
 | Measure | Value |
 |---|---|
 | Stranded in place (path in repo, content only deployed) | 0 |
-| Absent from the repo (deployed under a repo-owned skill) | 133 |
+| Absent from the repo (deployed under a repo-owned skill) | 134 |
 |   ↳ path dropped from repo history | 4 |
-|   ↳ path never committed | 129 |
+|   ↳ path never committed | 130 |
 | Files in sync | 844 |
 | Skipped (Hermes defaults, or repo ahead) | 760 |
 
@@ -86,6 +86,7 @@ Absent from the repo (deployed under a repo-owned skill):
 - devops/auto-remediation/references/stale-deployed-script-vs-nopasswd.md (never-committed)
 - devops/auto-remediation/references/systemd-service-failure-209.md (never-committed)
 - devops/codebase-portability/references/gbrain-wrapper-crossplatform.md (dropped-from-repo)
+- devops/cortex-deployment-sync/references/doctor-warning-remedies.md (never-committed)
 - devops/cron-format-standard/references/cron-format-retrospective.md (never-committed)
 - devops/cron-job-management/references/2026-07-28-orch-skill-evaluate-creation.md (never-committed)
 - devops/cron-job-management/references/bus-to-orch-bus-rename.md (never-committed)
