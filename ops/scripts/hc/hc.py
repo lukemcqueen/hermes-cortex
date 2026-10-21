@@ -1256,6 +1256,24 @@ def _match_result_msg(queue: str, corr_id: str, agent: str, command: str,
     return False
 
 
+def _harness_resolver():
+    """The fleet's capability resolver (`python-with-module.sh`), repo layout first.
+
+    ONE rule for "which interpreter can import a module" — the resolver picks by
+    capability (a candidate that cannot import the module is not chosen) and defines
+    exit 3 = COULD NOT VERIFY, so a host with no capable interpreter is reported as
+    "cannot check" rather than as a broken harness. Re-deriving that selection here
+    would be a second copy of the rule.
+    """
+    here = Path(__file__).resolve().parent          # repo: ops/scripts/hc
+    candidates = [
+        here.parent / "lib" / "python-with-module.sh",                    # repo: ops/scripts/lib
+        Path.home() / "hermes-cortex" / "ops" / "scripts" / "lib" / "python-with-module.sh",
+        Path.home() / ".hermes-cortex" / "scripts" / "lib" / "python-with-module.sh",
+    ]
+    return next((p for p in candidates if p.is_file()), None)
+
+
 def cmd_harness(cfg: dict, args: list):
     """`hc harness` — wire any coding agent to the cortex context store.
 
@@ -1263,7 +1281,6 @@ def cmd_harness(cfg: dict, args: list):
     harness knowledge) — it never re-encodes a harness's layer or tool list, so
     adding harness #37 is a registry entry, not another bespoke script.
     """
-    import importlib.util
     from pathlib import Path
     here = Path(__file__).resolve().parent
     candidates = [
@@ -1277,13 +1294,25 @@ def cmd_harness(cfg: dict, args: list):
     if mod_path is None:
         print("hc harness: harness.py not found — run cortex-update.sh", file=sys.stderr)
         sys.exit(1)
-    spec = importlib.util.spec_from_file_location("hc_harness", mod_path)
-    if spec is None or spec.loader is None:
-        print(f"hc harness: cannot load {mod_path}", file=sys.stderr)
-        sys.exit(1)
-    mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mod)
-    sys.exit(mod.main(args))
+    # Run the module as a CHILD, under an interpreter that can import PyYAML. The
+    # module needs yaml and the interpreter running THIS CLI is the one `hc`'s
+    # launcher picked (a bare `python3`), which on a real host need not have it —
+    # loading it in-process made one missing library kill `hc harness` outright with
+    # "PyYAML required" instead of selecting the capable interpreter the fleet already
+    # ships a resolver for. Measured on this host: the bare python3 cannot import yaml
+    # while the cortex venv (which the resolver selects) can.
+    sys.stdout.flush()
+    resolver = _harness_resolver()
+    if resolver is not None:
+        r = subprocess.run(["bash", str(resolver), "yaml", str(mod_path), *args])
+        if r.returncode == 3:
+            print("hc harness: COULD NOT VERIFY — no interpreter on this host can import "
+                  "PyYAML, so the harness registry cannot be read.", file=sys.stderr)
+        sys.exit(r.returncode)
+    # An older deploy with no resolver: run under our own interpreter. The module's
+    # own guard reports COULD NOT VERIFY (3) if it cannot import yaml, so the failure
+    # stays distinguishable from a broken harness.
+    sys.exit(subprocess.run([sys.executable, str(mod_path), *args]).returncode)
 
 
 def _resolve_script(name: str):
