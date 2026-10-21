@@ -2,11 +2,15 @@
 """
 tasks-verify-sweep.py — drain task slices stuck in the `review` state.
 
-HOW IT GETS SCHEDULED: a per-host cron runs this periodically. Only hosts whose
-agent identity maps to 'esther' or 'moses' carry a CRUD role with EXECUTE on
-tasks.verify_slice (the schema grants it to mycortex_reader_esther and
-mycortex_reader_moses only — v009 lines 165-205), so on any other host the
-capability gate exits 3 and the cron is a no-op.
+SCHEDULING — NOTHING RUNS THIS YET. It is in the deploy map
+(cortex-update.sh) and ships to every host, but install-crons.sh has NO create_cron
+entry for it, so no host sweeps automatically; today it is invoked by hand. Measured
+2026-10-21: `grep -rn tasks-verify-sweep ops/` names only cortex-update.sh, this file
+and tests/test_tasks_verify_sweep.py. Each host would sweep its OWN tasks DB, and only
+a host whose agent identity maps to 'esther' or 'moses' carries a CRUD role with
+EXECUTE on tasks.verify_slice (the schema grants it to mycortex_reader_esther and
+mycortex_reader_moses only — v009 lines 165-205), so on any other host the capability
+gate exits 3 and a run is a no-op.
 
 THE CAPABILITY GATE CHECKS THE PRIVILEGE, NOT THE IDENTITY (corrected after review ADV-13540-2,
 which caught this file's docstring claiming more than the code does): `_can_verify` asks the
@@ -27,6 +31,11 @@ COVERED BY, each named because a reviewer reads ONE file at a time and cannot se
     tests/test_tasks_verify_sweep.py::test_no_grant_exit_code_is_3_not_1                   (3, never 1)
     tests/test_tasks_verify_sweep.py::test_touches_only_review_slices                      (scope)
     tests/test_tasks_verify_sweep.py::test_no_review_slices_reports_cleanly                (idle queue)
+    tests/test_tasks_verify_sweep.py::test_row_with_column_separator_in_content_still_parses  ('||' in content -> intact, ADV-0-3)
+    tests/test_tasks_verify_sweep.py::test_review_query_emits_json_rows_and_never_splits_on_separator  (row format pinned)
+    tests/test_tasks_verify_sweep.py::test_engine_unreachable_is_not_reported_as_no_grant      (engine down -> exit 4, ADV-0-2)
+    tests/test_tasks_verify_sweep.py::test_engine_unreachable_exit_differs_from_no_grant       (the two stay distinct)
+    tests/test_tasks_verify_sweep.py::test_unreadable_rows_stop_the_sweep_instead_of_looking_empty (unread -> exit 4)
 
 WIDENING WHO MAY VERIFY is a SCHEMA change
 (ops/services/tasks/schema/v009__task-model-v3.sql, the EXECUTE grants and the
@@ -46,12 +55,16 @@ Usage:
 Exit codes:
     0 — sweep complete (all slices handled or none in review)
     2 — usage error
-    3 — this host cannot verify (no EXECUTE on tasks.verify_slice)
+    3 — this host cannot verify: the database ANSWERED that this role has no
+        EXECUTE on tasks.verify_slice
+    4 — could not verify: the engine could not be reached, or its answer could not be
+        read (ADV-0-2 — this used to be reported as the exit-3 'no grant' case)
 """
 
 from __future__ import annotations
 
 import importlib.util
+import json
 import re
 import sys
 from pathlib import Path
@@ -156,15 +169,36 @@ def evidence_shows_check(evidence: str) -> tuple[bool, str]:
 
 # ---- capability gate ----
 
+class EngineUnreachable(Exception):
+    """The task DB engine never answered the privilege question.
+
+    Raised instead of returning False (pro finding ADV-0-2 / issue #206). A privilege
+    answer ARRIVES AS DATA — psql prints 't' or 'f' and returns normally — so any exit
+    or exception means the question was never put to the database. The real seam is
+    task-db.psql(), which prints its error and calls sys.exit(1) for a missing
+    docker/psql, a container that is down, or any SQL error; that is the shape this
+    catches. 'We could not ask' is a different fact from 'the answer was no', so it is
+    reported as exit 4 and never as the exit-3 no-grant case.
+    """
+
+
 def _can_verify(psql_fn) -> bool:
-    """True when this identity holds EXECUTE on tasks.verify_slice."""
+    """True when this identity holds EXECUTE on tasks.verify_slice.
+
+    Returns True/False ONLY for an answer that came back from the database. Raises
+    EngineUnreachable when the question could not be asked at all.
+    """
     try:
         raw = psql_fn(
             "SELECT has_function_privilege("
             "'tasks.verify_slice(uuid, boolean, text)', 'execute');")
-        return raw.strip().lower() == "t"
-    except SystemExit:
-        return False
+    except SystemExit as exc:
+        raise EngineUnreachable(
+            f"the query exited {exc.code!r} instead of returning a privilege result"
+        ) from exc
+    except Exception as exc:  # re-raised below, never swallowed
+        raise EngineUnreachable(f"{type(exc).__name__}: {exc}") from exc
+    return raw.strip().lower() == "t"
 
 
 _CANT_VERIFY_MSG = (
@@ -174,13 +208,24 @@ _CANT_VERIFY_MSG = (
 )
 
 
+_ENGINE_UNREACHABLE_MSG = (
+    "Could not reach the task DB engine — the privilege question was never answered, so\n"
+    "this is NOT the 'no grant' case and NOTHING was changed.\n"
+    "{detail}\n"
+    "Check that docker and psql are installed and the postgres container is running."
+)
+
+
 # ---- review-slice query ----
 
+# JSON, not a delimiter-joined row (pro finding ADV-13540-3 / issue #208). psql separates COLUMNS
+# with -F '||' (task-db.py), and a task's content or plan is ARBITRARY worker-written text that may
+# contain '||' itself — which shifted every later field, so a row was judged on the wrong text and
+# could be dropped outright. json_build_object::text escapes newlines, so each row stays ONE line and
+# its own content cannot be mistaken for a field boundary.
 _REVIEW_SLICE_SQL = (
-    "SELECT t.id, "
-    "regexp_replace(t.content, E'[\\\\n\\\\r]', ' ', 'g') AS content, "
-    "regexp_replace(t.plan, E'[\\\\n\\\\r]', ' ', 'g') AS plan, "
-    "t.created_by "
+    "SELECT json_build_object("
+    "'id', t.id, 'content', t.content, 'plan', t.plan, 'created_by', t.created_by)::text "
     "FROM tasks.tasks t "
     "WHERE t.status = 'review' AND t.kind = 'slice' "
     "ORDER BY t.status_changed_at ASC"
@@ -188,15 +233,31 @@ _REVIEW_SLICE_SQL = (
 
 
 def _parse_row(line: str) -> dict | None:
-    """Parse a ||-delimited row from psql (id, content, plan, created_by)."""
-    parts = [p.strip() for p in line.split("||")]
-    if len(parts) < 4:
+    """Parse ONE JSON row from psql (id, content, plan, created_by).
+
+    Deliberately NOT delimiter-joined: worker-written content may contain the delimiter
+    itself, so splitting on it is unsound (pro finding ADV-0-3, fixed under ADV-13540-3).
+    A line that does not parse returns None, and sweep() COUNTS those and refuses to
+    sweep rather than letting them pass as an empty queue.
+
+    plan is None when SQL NULL or empty: json_build_object emits a JSON `null` for SQL
+    NULL, so there is no 'NULL' sentinel token to strip any more.
+    """
+    line = line.strip()
+    if not line:
         return None
+    try:
+        row = json.loads(line)
+    except ValueError:
+        return None
+    if not isinstance(row, dict) or not row.get("id"):
+        return None
+    plan = row.get("plan")
     return {
-        "id": parts[0],
-        "content": parts[1],
-        "plan": parts[2] if parts[2] and parts[2] != "NULL" else None,
-        "created_by": parts[3],
+        "id": str(row["id"]),
+        "content": str(row.get("content") or ""),
+        "plan": str(plan) if plan else None,
+        "created_by": str(row.get("created_by") or ""),
     }
 
 
@@ -219,8 +280,14 @@ def sweep(apply: bool = False, psql_fn=None) -> dict:
     else:
         pfn = _real_psql()
 
-    # 1. Capability gate
-    if not _can_verify(pfn):
+    # 1. Capability gate. The engine failing is a different outcome from the role
+    #    lacking the grant, and the two must not share a message or a code (ADV-0-2).
+    try:
+        can_verify = _can_verify(pfn)
+    except EngineUnreachable as exc:
+        print(_ENGINE_UNREACHABLE_MSG.format(detail=exc))
+        sys.exit(4)
+    if not can_verify:
         print(_CANT_VERIFY_MSG)
         sys.exit(3)
 
@@ -229,18 +296,33 @@ def sweep(apply: bool = False, psql_fn=None) -> dict:
     if not raw:
         print("No slices in review.")
         return {"applied": 0, "bounced": 0, "failed": 0, "total": 0,
-                "details": []}
+                "details": [], "unread": 0}
 
     slices = []
+    unread = 0
     for line in raw.split("\n"):
+        if not line.strip():
+            continue
         row = _parse_row(line)
         if row:
             slices.append(row)
+        else:
+            unread += 1
 
     if not slices:
+        if unread:
+            # The query ANSWERED and we could not read the answer. That is a
+            # could-not-verify, NOT an empty queue — and it is not a missing grant
+            # either, so it must not share the exit-3 message.
+            print(f"Could not read any of the {unread} row(s) the review query "
+                  "returned — nothing was swept and nothing was changed.")
+            sys.exit(4)
         print("No slices in review.")
         return {"applied": 0, "bounced": 0, "failed": 0, "total": 0,
-                "details": []}
+                "details": [], "unread": 0}
+
+    if unread:
+        print(f"\u26a0 {unread} returned row(s) could not be read and are NOT swept.")
 
     print(f"Review slices found: {len(slices)}")
     if not apply:
@@ -301,7 +383,7 @@ def sweep(apply: bool = False, psql_fn=None) -> dict:
               + f" (out of {len(slices)} review slices)")
 
     return {"applied": applied, "bounced": bounced, "failed": failed,
-            "total": len(slices), "details": details}
+            "total": len(slices), "details": details, "unread": unread}
 
 
 def _apply_verdict(psql_fn, task_id: str, approve: bool,
