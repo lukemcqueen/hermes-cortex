@@ -20,14 +20,34 @@ mkdir -p "$TMP" || exit 2
 # Pinned, the comparison keeps testing what it claims.
 BASE_PIN="7af34e798fd9137470bad40fab7bcf8baa986917"
 
+# The transcript IS this script's stdout, written to the committed path: run it bare and the
+# file below is regenerated in place. `generated-by` is therefore a fact about the file, not a
+# claim about who typed it.
+OUT="${1:-docs/evidence/suite-collection-fix-2026-10-21.txt}"
+exec >"$OUT" 2>&1
+
 say() { printf '%s\n' "$@"; }
 rule() { printf '\n===== %s =====\n' "$1"; }
 norm() { sed -e "s#${HOME}#~#g"; }
 
-say "generated-by: docs/evidence/suite-collection-fix-2026-10-21.sh"
+say "generated-by: docs/evidence/suite-collection-fix-2026-10-21.sh   (this file IS that script's stdout)"
 say "host-date:    $(date -Is)"
-say "tip:          $(git rev-parse HEAD)  (working tree $(git status --porcelain | grep -c . ) path(s) dirty)"
-say "baseline:     $BASE_PIN   (PINNED — the last pre-change revision, see the comment in the script)"
+say "captured-at:  $(git rev-parse HEAD)"
+say "              ^ the revision the working tree sat on WHEN THIS WAS CAPTURED. The change under"
+say "                test was UNCOMMITTED at that moment, which is why the assertions below are"
+say "                about a worktree baseline rather than about a commit of this change."
+say "committed-in: the commit that ADDS this file — one commit AHEAD of captured-at, always. A"
+say "              transcript cannot name its own commit: writing this file changes the revision,"
+say "              so any 'tip' line here would be false the instant it was committed. Read"
+say "              captured-at as provenance, never as a claim about the range tip."
+say "range-base:   $BASE_PIN   (== the baseline measured below: see the note)"
+say "baseline:     $BASE_PIN"
+say "              This equals the range base ON PURPOSE. The range base IS the pre-change"
+say "              revision here: the fix lives in the working tree on top of it, so the base is"
+say "              the last revision whose tests/test_task_mcp_descriptions.py still exits at"
+say "              import. The baseline is asserted to carry that defect below, which is what"
+say "              stops this being a comparison of the fix against itself."
+say "working-tree: $(git status --porcelain | grep -c . ) path(s) modified at capture"
 
 rule "1. the fixed file, run BOTH ways (the script behaviour must survive the restructure)"
 python3 tests/test_task_mcp_descriptions.py > "$TMP/direct.txt" 2>&1
@@ -40,7 +60,7 @@ rc=$?
 grep -aE "[0-9]+ (passed|failed)" "$TMP/one.txt" | tail -1
 say "rc=$rc   (command: bash tests/run-tests.sh tests/test_task_mcp_descriptions.py -q --color=no)"
 
-rule "2. THE SYMPTOM — whole-suite collection, at the PINNED baseline and at the tip"
+rule "2. THE SYMPTOM — whole-suite collection, at the PINNED baseline and at the WORKING TREE"
 say "Same command on both sides. The baseline is a git worktree at $BASE_PIN, an immutable"
 say "revision, and the script ASSERTS that checkout really is the pre-change revision before"
 say "claiming anything from it."
@@ -76,13 +96,13 @@ else
       grep -a -e "INTERNALERROR>" -e "no tests ran" -e "tests collected" "$TMP/base.txt" | tail -3 | norm
       say "  rc=$brc"
       say ""
-      say "--- TIP (working tree): bash tests/run-tests.sh tests/ -q --collect-only --color=no"
+      say "--- WORKING TREE (the change under test): bash tests/run-tests.sh tests/ -q --collect-only --color=no"
       bash tests/run-tests.sh tests/ -q --collect-only --color=no > "$TMP/tip.txt" 2>&1
       trc=$?
       grep -a -e "INTERNALERROR>" -e "no tests ran" -e "tests collected" "$TMP/tip.txt" | tail -3 | norm
       say "  rc=$trc"
       say ""
-      say "INTERNALERROR lines: baseline=$(grep -ac INTERNALERROR "$TMP/base.txt")  tip=$(grep -ac INTERNALERROR "$TMP/tip.txt")"
+      say "INTERNALERROR lines: baseline=$(grep -ac INTERNALERROR "$TMP/base.txt")  working-tree=$(grep -ac INTERNALERROR "$TMP/tip.txt")"
     fi
   fi
   git worktree remove --force "$BASE_WT" >/dev/null 2>&1 || rm -rf "$BASE_WT"

@@ -1,7 +1,21 @@
-generated-by: docs/evidence/suite-collection-fix-2026-10-21.sh
-host-date:    2026-10-21T18:31:53+09:00
-tip:          7af34e798fd9137470bad40fab7bcf8baa986917  (working tree 2 path(s) dirty)
-baseline:     7af34e798fd9137470bad40fab7bcf8baa986917   (PINNED — the last pre-change revision, see the comment in the script)
+generated-by: docs/evidence/suite-collection-fix-2026-10-21.sh   (this file IS that script's stdout)
+host-date:    2026-10-21T18:33:23+09:00
+captured-at:  c1333161dd2d2ea65ed285d73936aadba38a0b6a
+              ^ the revision the working tree sat on WHEN THIS WAS CAPTURED. The change under
+                test was UNCOMMITTED at that moment, which is why the assertions below are
+                about a worktree baseline rather than about a commit of this change.
+committed-in: the commit that ADDS this file — one commit AHEAD of captured-at, always. A
+              transcript cannot name its own commit: writing this file changes the revision,
+              so any 'tip' line here would be false the instant it was committed. Read
+              captured-at as provenance, never as a claim about the range tip.
+range-base:   7af34e798fd9137470bad40fab7bcf8baa986917   (== the baseline measured below: see the note)
+baseline:     7af34e798fd9137470bad40fab7bcf8baa986917
+              This equals the range base ON PURPOSE. The range base IS the pre-change
+              revision here: the fix lives in the working tree on top of it, so the base is
+              the last revision whose tests/test_task_mcp_descriptions.py still exits at
+              import. The baseline is asserted to carry that defect below, which is what
+              stops this being a comparison of the fix against itself.
+working-tree: 2 path(s) modified at capture
 
 ===== 1. the fixed file, run BOTH ways (the script behaviour must survive the restructure) =====
   ✓ task_report tells the agent to follow up, not wait
@@ -12,7 +26,7 @@ rc=0   (command: python3 tests/test_task_mcp_descriptions.py)
 ============================== 2 passed in 0.10s ===============================
 rc=0   (command: bash tests/run-tests.sh tests/test_task_mcp_descriptions.py -q --color=no)
 
-===== 2. THE SYMPTOM — whole-suite collection, at the PINNED baseline and at the tip =====
+===== 2. THE SYMPTOM — whole-suite collection, at the PINNED baseline and at the WORKING TREE =====
 Same command on both sides. The baseline is a git worktree at 7af34e798fd9137470bad40fab7bcf8baa986917, an immutable
 revision, and the script ASSERTS that checkout really is the pre-change revision before
 claiming anything from it.
@@ -24,14 +38,14 @@ ASSERTED: module-level 'raise SystemExit' lines in the baseline copy = 1 (must b
 --- BASELINE (7af34e79): bash tests/run-tests.sh <worktree>/tests -q --collect-only --color=no
 INTERNALERROR>     raise SystemExit(1 if fails else 0)
 INTERNALERROR> SystemExit: 0
-======================== 2232 tests collected in 7.16s =========================
+======================== 2232 tests collected in 7.00s =========================
   rc=3
 
---- TIP (working tree): bash tests/run-tests.sh tests/ -q --collect-only --color=no
-======================== 2463 tests collected in 3.11s =========================
+--- WORKING TREE (the change under test): bash tests/run-tests.sh tests/ -q --collect-only --color=no
+======================== 2463 tests collected in 2.93s =========================
   rc=0
 
-INTERNALERROR lines: baseline=105  tip=0
+INTERNALERROR lines: baseline=105  working-tree=0
 
 ===== 3. the guard proven BOTH ways, not just green on the healthy file =====
   ✓ task_verify names the DB enforcement
