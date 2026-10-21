@@ -1,0 +1,79 @@
+generated-by: docs/evidence/suite-collection-fix-2026-10-21.sh   (this file IS that script's stdout)
+host-date:    2026-10-21T18:33:23+09:00
+captured-at:  c1333161dd2d2ea65ed285d73936aadba38a0b6a
+              ^ the revision the working tree sat on WHEN THIS WAS CAPTURED. The change under
+                test was UNCOMMITTED at that moment, which is why the assertions below are
+                about a worktree baseline rather than about a commit of this change.
+committed-in: the commit that ADDS this file — one commit AHEAD of captured-at, always. A
+              transcript cannot name its own commit: writing this file changes the revision,
+              so any 'tip' line here would be false the instant it was committed. Read
+              captured-at as provenance, never as a claim about the range tip.
+range-base:   7af34e798fd9137470bad40fab7bcf8baa986917   (== the baseline measured below: see the note)
+baseline:     7af34e798fd9137470bad40fab7bcf8baa986917
+              This equals the range base ON PURPOSE. The range base IS the pre-change
+              revision here: the fix lives in the working tree on top of it, so the base is
+              the last revision whose tests/test_task_mcp_descriptions.py still exits at
+              import. The baseline is asserted to carry that defect below, which is what
+              stops this being a comparison of the fix against itself.
+working-tree: 2 path(s) modified at capture
+
+===== 1. the fixed file, run BOTH ways (the script behaviour must survive the restructure) =====
+  ✓ task_report tells the agent to follow up, not wait
+  ✓ the passive claim that an orchestrator will verify — gone
+  ✓ the bare label with no enforcement and no next step — gone
+RESULT: ALL PASS
+rc=0   (command: python3 tests/test_task_mcp_descriptions.py)
+============================== 2 passed in 0.10s ===============================
+rc=0   (command: bash tests/run-tests.sh tests/test_task_mcp_descriptions.py -q --color=no)
+
+===== 2. THE SYMPTOM — whole-suite collection, at the PINNED baseline and at the WORKING TREE =====
+Same command on both sides. The baseline is a git worktree at 7af34e798fd9137470bad40fab7bcf8baa986917, an immutable
+revision, and the script ASSERTS that checkout really is the pre-change revision before
+claiming anything from it.
+
+worktree resolves to: 7af34e79
+ASSERTED: the checkout is exactly 7af34e798fd9137470bad40fab7bcf8baa986917
+ASSERTED: module-level 'raise SystemExit' lines in the baseline copy = 1 (must be >= 1)
+
+--- BASELINE (7af34e79): bash tests/run-tests.sh <worktree>/tests -q --collect-only --color=no
+INTERNALERROR>     raise SystemExit(1 if fails else 0)
+INTERNALERROR> SystemExit: 0
+======================== 2232 tests collected in 7.00s =========================
+  rc=3
+
+--- WORKING TREE (the change under test): bash tests/run-tests.sh tests/ -q --collect-only --color=no
+======================== 2463 tests collected in 2.93s =========================
+  rc=0
+
+INTERNALERROR lines: baseline=105  working-tree=0
+
+===== 3. the guard proven BOTH ways, not just green on the healthy file =====
+  ✓ task_verify names the DB enforcement
+  ✓ task_verify names the refusal a worker actually sees
+  ✓ task_verify states nothing runs it automatically
+  ✓ task_verify tells the agent what to DO instead
+  ✓ task_report says review is not completion
+  ✓ task_report tells the agent to follow up, not wait
+  ✓ the passive claim that an orchestrator will verify — gone
+  ✓ the bare label with no enforcement and no next step — gone
+  healthy text        -> []   (empty list = passes)
+  ✓ task_verify names the DB enforcement
+  ✓ task_verify names the refusal a worker actually sees
+  ✓ task_verify states nothing runs it automatically
+  ✓ task_verify tells the agent what to DO instead
+  ✓ task_report says review is not completion
+  ✓ task_report tells the agent to follow up, not wait
+  ✗ the passive claim that an orchestrator will verify — still present: 'awaiting orchestrator verify'
+  ✓ the bare label with no enforcement and no next step — gone
+  healthy + forbidden -> ['the passive claim that an orchestrator will verify']
+  ✗ task_verify names the DB enforcement — missing 'SECURITY DEFINER'
+  ✗ task_verify names the refusal a worker actually sees — missing 'permission denied for function verify_slice'
+  ✗ task_verify states nothing runs it automatically — missing 'NOTHING RUNS THIS AUTOMATICALLY'
+  ✗ task_verify tells the agent what to DO instead — missing 'hand the slice id'
+  ✗ task_report says review is not completion — missing 'does NOT reach completed'
+  ✗ task_report tells the agent to follow up, not wait — missing 'rather than wait'
+  ✓ the passive claim that an orchestrator will verify — gone
+  ✓ the bare label with no enforcement and no next step — gone
+  empty text          -> 6 failure(s)
+
+===== end of transcript =====
