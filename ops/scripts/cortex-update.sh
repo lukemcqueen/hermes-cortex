@@ -3105,7 +3105,7 @@ main() {
   fi
 
   # Sync skills.yaml from template — actual content sync, not timestamp suppression
-  local template_yaml="${REPO_DIR}/docs/templates/skills.yaml"
+  local template_yaml="${REPO_DIR}/skills.yaml"
   local skills_yaml="${CORTEX_DEPLOY_HOME}/skills.yaml"
   if [[ -f "$template_yaml" && -f "$skills_yaml" ]]; then
     if ! diff -q "$template_yaml" "$skills_yaml" >/dev/null 2>&1; then

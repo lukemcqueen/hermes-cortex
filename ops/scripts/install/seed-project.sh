@@ -33,7 +33,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(cd "$SCRIPT_DIR/../../.." && pwd)"  # hermes-cortex repo root
 TEMPLATES_DIR="${REPO_DIR}/docs/templates"
 AGENTS_TEMPLATE="${TEMPLATES_DIR}/AGENTS.seed.md"
-MANIFEST_TEMPLATE="${TEMPLATES_DIR}/skills.yaml"
+MANIFEST_TEMPLATE="${REPO_DIR}/skills.yaml"   # cortex owns the manifest at the repo root
 CORTEX_COMMIT="$(cd "$REPO_DIR" && git rev-parse --short HEAD 2>/dev/null || echo 'unknown')"
 HERMES_CORTEX_SKILLS="${HOME}/.hermes/skills"  # resolved via symlink
 

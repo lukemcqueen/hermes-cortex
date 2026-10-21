@@ -1130,11 +1130,11 @@ def check_soul_sync(res):
 def check_skills(res):
   """2. Skills manifest: skills.yaml exists, valid YAML, has required always skills."""
   skills_yaml = CORTEX_HOME / "skills.yaml"
-  template_yaml = CORTEX_REPO / "docs" / "templates" / "skills.yaml"
+  template_yaml = CORTEX_REPO / "skills.yaml"
 
   if not skills_yaml.exists():
     res.add("Skills manifest", "FAIL", f"Not found at {skills_yaml}",
-        "Run: cp docs/templates/skills.yaml ~/.hermes-cortex/skills.yaml")
+        "Run: cp skills.yaml ~/.hermes-cortex/skills.yaml")
     return
 
   try:
@@ -1163,7 +1163,7 @@ def check_skills(res):
   on_task = data.get("on_task", {})
 
   # Canonical 7 (consolidated 2026-08-20) — MUST stay in sync with
-  # docs/templates/skills.yaml `always:` and enforcer _REQUIRED_SKILLS.
+  # skills.yaml `always:` and enforcer _REQUIRED_SKILLS.
   # session-start-discipline → task-start, reasoning-patterns → agent-flow,
   # cortex-preflight → survey-before-action, TDD promoted to base gate.
   required = [

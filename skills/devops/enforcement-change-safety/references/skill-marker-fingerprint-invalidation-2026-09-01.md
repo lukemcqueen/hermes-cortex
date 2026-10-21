@@ -63,7 +63,7 @@ push's dogfood. Expect it whenever your change touches skills/ or AGENTS.md.
 ## The docs-drift variant (what Luke actually hit)
 
 The enforcer's `_REQUIRED_SKILLS` comment says it "MUST stay in sync with
-docs/templates/skills.yaml `always:` and doctor checks.py" — but it missed a
+skills.yaml `always:` and doctor checks.py" — but it missed a
 fourth sync point: **AGENTS.md Rule 1**, which enumerated the always-set with
 pre-2026-08-20 names (`reasoning-patterns`, `cortex-preflight`) and omitted
 `test-driven-development`. Sessions loading per Rule 1 loaded the wrong set and

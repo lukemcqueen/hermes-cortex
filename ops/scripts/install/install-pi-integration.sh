@@ -116,7 +116,7 @@ MANIFEST=""
 for candidate in \
     "${CORTEX_SKILLS_MANIFEST:-}" \
     "${HOME}/.hermes-cortex/skills.yaml" \
-    "${HOME}/hermes-cortex/docs/templates/skills.yaml"; do
+    "${HOME}/hermes-cortex/skills.yaml"; do
   if [[ -n "$candidate" && -f "$candidate" ]]; then MANIFEST="$candidate"; break; fi
 done
 
