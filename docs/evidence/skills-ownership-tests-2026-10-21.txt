@@ -1,8 +1,15 @@
+# skills-ownership + publish test transcript (cycle 13491)
+# regenerate with:  bash ops/scripts/manage/emit-skills-ownership-tests.sh
+# generated:        2026-10-21T00:55:15Z
+# subject:          ops/scripts/manage/migrate-skills-ownership.py
+#                   ops/scripts/manage/publish-agent-skills.py
+#
 ============================= test session starts ==============================
 collected 31 items
 
 tests/test_skills_ownership.py ..................                        [ 58%]
 tests/test_agent_skills_publish.py .............                         [100%]
 
-============================== 31 passed in 2.25s ==============================
+============================== 31 passed in 2.07s ==============================
+interpreter: /home/esther/.hermes-cortex/venv/bin/python3
 PYTEST rc=0 (0 = all passed)

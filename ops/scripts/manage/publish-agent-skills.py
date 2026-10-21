@@ -12,8 +12,11 @@ TWO ROLES, ONE OWNER EACH (cycle 13491)
 That is how a dynamically updated skill reaches every agent: it lands in the
 defaults, and the published view is refreshed from there.
 
-MODES — chosen from MEASURED behaviour (probe 2026-10-21: plain `rglob` / `os.walk`
-over a tree holding SKILL.md files):
+MODES — chosen from MEASURED behaviour. The measurement is RECORDED and re-runnable:
+  docs/evidence/skills-ownership-enumeration-probe-2026-10-21.txt holds the probe source,
+  the result table (rglob / os.walk / os.walk(followlinks=True) / plain find for a symlinked
+  root, a per-skill symlink farm, and a real copy), and the reader-sensitivity finding from
+  the live host. Re-run it before trusting the table.
 
   root (default)  <published> is a SYMLINK to the defaults tree.
                   visible to a plain scan: yes (rglob 1/1, os.walk 1/1).

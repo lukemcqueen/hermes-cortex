@@ -1,0 +1,53 @@
+# Skills-visibility probe — how a reader enumerates decides which publish mode works
+#
+# Cycle 13491. This file is the RECORD for the claim in
+# ops/scripts/manage/publish-agent-skills.py ("MODES — chosen from MEASURED behaviour")
+# and in docs/evidence/skills-ownership-2026-10-21.txt section 6.
+#
+# RE-RUN: the probe source is embedded below — copy the indented block out to a .py file
+# and run it, or paste it into a python3 session. (No separate .py is committed on purpose:
+# the probe is a throwaway measurement, and the record that matters is the table below.)
+#
+# PROBE SOURCE (also runnable standalone):
+#
+#   import os, shutil, tempfile
+#   from pathlib import Path
+#   base = Path(tempfile.mkdtemp(prefix="symlink-probe-"))
+#   real = base / "real"; (real / "workflow" / "task-start").mkdir(parents=True)
+#   (real / "workflow" / "task-start" / "SKILL.md").write_text("---\nname: task-start\ndescription: d\n---\n")
+#   def count_rglob(root): return len(list(root.rglob("SKILL.md")))
+#   def count_walk(root, follow=False):
+#       n = 0
+#       for _d, _dn, fn in os.walk(root, followlinks=follow):
+#           n += sum(1 for f in fn if f == "SKILL.md")
+#       return n
+#   rootA = base / "agents-as-link"; os.symlink(real, rootA)          # A: the ROOT is a symlink
+#   rootB = base / "agents-farm";  os.symlink(real / "workflow", rootB / "workflow")  # B: per-skill links
+#   rootC = base / "agents-copy";  shutil.copytree(real, rootC, symlinks=True)        # C: real copy
+#
+# RESULT (measured on esther, 2026-10-21, python3.12):
+#
+#   mechanism                              rglob  os.walk  os.walk(followlinks=True)  plain find
+#   A  root is a symlink -> real tree        1       1              1                     0
+#   B  real root + per-skill symlinks        0       0              1                     0
+#   C  real copy (copy mode)                 1       1              1                     1
+#
+# CONCLUSIONS THAT DRIVE THE DESIGN
+#
+# 1. A per-skill symlink FARM (mechanism B) is INVISIBLE to a plain tree scan: rglob and
+#    os.walk both report 0 of 1 skills. That is exactly what Pi uses today inside its own
+#    settings-registered directory (~/.pi/agent/cortex-skills holds per-skill symlinks), so
+#    it works for Pi only because Pi reads that directory through its own mechanism. It is
+#    NOT safe to expose to every harness, so publish-agent-skills.py does not use it.
+# 2. A symlinked ROOT (mechanism A) IS visible to pathlib rglob and os.walk — the walk
+#    resolves the starting directory — which is why root mode is the default: one copy of
+#    the content (no drift possible) and still visible to ordinary scanners.
+# 3. READER SENSITIVITY, measured in docs/evidence/skills-ownership-2026-10-21.txt
+#    section 6 on the live host: plain `find` does NOT traverse a symlinked root
+#    (0 of 520) while `find -L` and python rglob both see 520. So a harness that enumerates
+#    with find-default sees NOTHING through a pointer, while one that opens the directory
+#    (Hermes — verified live via skill_view returning a body from ~/.hermes/skills/) sees
+#    everything. copy mode exists for the first class.
+#
+# ACTIONABLE RULE: probe each harness's OWN enumeration before declaring its skills
+# capability in the registry. Never assume "it follows symlinks".
