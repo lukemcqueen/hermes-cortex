@@ -118,17 +118,53 @@ done
 
 rule "5. the one item this cycle could NOT land, re-checked read-only"
 say "skills/ is an orchestrator-only path (docs/orchestrator-only-paths.txt), so a"
-say "non-orchestrator cannot commit the recovery. The detector's own --check mode is read-only;"
-say "it may legitimately report the committed capture STALE, which is the normal state between"
-say "deploys and is NOT a failure of this cycle:"
+say "non-orchestrator cannot commit the recovery. Two probes follow. Both are READ-ONLY, and the"
+say "block asserts that by checksumming the generated capture before and after."
 say ""
+ART="$PWD/docs/evidence/skill-drift-parity.txt"
+sum_before="$(cksum "$ART" 2>/dev/null)"
 say "\$ $PY ops/scripts/manage/check-skill-drift-parity.py --check"
 "$PY" ops/scripts/manage/check-skill-drift-parity.py --check >"$TMP/parity.txt" 2>&1
 prc2=$?
 say "rc=$prc2"
-grep -E "Verdict|stranded|STALE|parity claim|artifact matches" "$TMP/parity.txt" | norm | head -12
+norm <"$TMP/parity.txt"
 say ""
-say "The reconciler reports the same single stranded file as a pure superset (+1, -0), and the"
+say "The counts the generated capture records, re-derived from the LIVE tree by the detector's"
+say "own build(). The module writes only inside main() (its tail is guarded by"
+say "if __name__ == __main__), so importing it derives the report without touching any file:"
+say ""
+say "\$ $PY - <<PY   # import the detector, call build(), print the report it would write"
+"$PY" - <<'PY' >"$TMP/derived.txt" 2>&1
+import importlib.util
+spec = importlib.util.spec_from_file_location(
+    "parity", "ops/scripts/manage/check-skill-drift-parity.py")
+mod = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(mod)
+text, ok = mod.build()
+print(text)
+print("build() ok flag: %s   (the detector exits 0 when ok is true, 1 otherwise)" % ok)
+PY
+brc=$?
+say "rc=$brc"
+norm <"$TMP/derived.txt"
+sum_after="$(cksum "$ART" 2>/dev/null)"
+say ""
+say "capture checksum before this block: $sum_before"
+say "capture checksum after  this block: $sum_after"
+if [ "$sum_before" = "$sum_after" ]; then
+  say "ASSERTED: the block did not write the generated capture (checksums equal)."
+else
+  say "ASSERT FAILED: the capture changed — this block is not read-only."
+  WORST=1
+fi
+[ "$brc" -eq 0 ] || WORST=1
+say ""
+say "The generated capture itself is LEFT AT ITS COMMITTED REVISION in this cycle: its regenerated"
+say "form was a disputed blob (a generated summary can carry no re-runnable proof of itself), so"
+say "the live derivation above is the evidence and the next orchestrator-side reconcile regenerates"
+say "the capture when the stranded skill lands."
+say ""
+say "The reconciler reports that single stranded file as a pure superset (+1, -0), and the"
 say "recovery was filed to inbox_orchestrator as a PROPOSAL (bus message"
 say "da8d20a1-ee4a-4a8e-ad2c-03e033649287) because the target path is orchestrator-only."
 say "The two dispositions recorded for 'Skill drift' and 'Skill drift: devops/docker-management'"
