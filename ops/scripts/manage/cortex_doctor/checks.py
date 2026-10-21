@@ -5880,3 +5880,149 @@ def check_review_provenance(res) -> None:
     res.add(name, "WARN",
             f"COULD NOT VERIFY ({proc.returncode}) — {tail}",
             "Resolve the reported cause; an unverified provenance check is not a pass")
+
+
+def _harness_cli():
+  """The `hc` CLI: the DEPLOYED copy first (judge what RUNS), then the repo checkout.
+
+  Every harness read goes through this command rather than through a local parse, so the
+  doctor needs no PyYAML of its own — cortex-update.sh runs the doctor as a bare `python3`,
+  and the CLI already resolves an interpreter that can read the registry.
+  """
+  # deployed: <deploy>/scripts/hc is the launcher FILE; repo: the launcher is
+  # ops/scripts/hc/hc (ops/scripts/hc itself is the package directory).
+  return next((c for c in (CORTEX_HOME / "scripts" / "hc",
+                           CORTEX_REPO / "ops" / "scripts" / "hc" / "hc")
+               if c.is_file()), None)
+
+
+def _run_hc(*args):
+  """Run `hc <args...>`, returning (rc, combined output). No interpreter is chosen here:
+  the CLI resolves its own, and its exit 3 = could not verify is passed through untouched.
+  """
+  cli = _harness_cli()
+  if cli is None:
+    return 1, "hc CLI not found (checked the deployed and repo copies)"
+  try:
+    p = subprocess.run(["bash", str(cli), *args], capture_output=True, text=True,
+                       timeout=120)
+  except (OSError, subprocess.TimeoutExpired) as e:
+    return 1, f"could not run {cli}: {e}"
+  return p.returncode, ((p.stdout or "") + (p.stderr or "")).strip()
+
+
+def _run_harness_list():
+  """The registry in machine-readable form, from `hc harness list --json`."""
+  return _run_hc("harness", "list", "--json")
+
+
+def _run_harness_verify(name):
+  """`hc harness verify <name>` — the command an operator runs, nothing bespoke."""
+  return _run_hc("harness", "verify", name)
+
+
+def _harness_presence(h: dict):
+  """(kind, detail) for one registry entry: present / absent / unsupported / undeclared.
+
+  Presence comes from the registry's own `presence:` list — paths (a leading ~ is
+  expanded) and `cmd:<name>` entries resolved on PATH. The doctor holds NO per-harness
+  knowledge of its own: it drives the registry, which is the single source of what a
+  harness needs and where it shows up on a host.
+  """
+  import shutil
+  entries = h.get("presence") or []
+  if not isinstance(entries, list):
+    entries = [entries]
+  for entry in entries:
+    if not isinstance(entry, str):
+      continue
+    if entry.startswith("cmd:"):
+      if shutil.which(entry[4:].strip()):
+        return "present", f"{entry} resolves on PATH"
+      continue
+    if Path(os.path.expanduser(entry)).exists():
+      return "present", f"{entry} exists"
+  if entries:
+    return "absent", ""
+  # Nothing declared — TWO situations that must not look alike: a harness the registry
+  # declares UNSUPPORTED (its own reason IS the answer), and one whose presence nobody
+  # declared, where the check cannot do its job and that has to be visible.
+  if h.get("layer") == "none" or h.get("status") == "blocked":
+    reason = " ".join((h.get("why") or "").split())
+    return "unsupported", reason[:200] or "declared unsupported in the registry"
+  return "undeclared", ""
+
+
+def check_harness_registry(res) -> None:
+  """One line per DECLARED harness, judged by driving `hc harness verify <name>`.
+
+  The registry (ops/install/harnesses/registry.yaml) is the single source of harness
+  knowledge and declares every coding agent the fleet supports. Judging them here, one
+  line each, means a harness whose wiring rotted is visible instead of assumed: the
+  alternative was hand-written logic for one harness, which says nothing about the rest.
+
+  Three outcomes, kept distinct because each means something different:
+    present + rc 0   -> PASS
+    present + rc != 0 -> WARN, carrying the command that decides it
+    present + rc 3   -> WARN "COULD NOT VERIFY" (no interpreter could import PyYAML —
+                        its own outcome, NOT a broken harness)
+    absent           -> SKIP ("not installed on this host"); a host without a harness is
+                        not a fault, and SKIP is the un-counted status that keeps that
+                        fact out of the undisposed list
+    declared none    -> SKIP naming the registry's own reason, never "not installed"
+    presence undeclared -> WARN "COULD NOT VERIFY": the check cannot do its job
+  """
+  name = "Harness registry"
+  rc, out = _run_harness_list()
+  if rc != 0:
+    tail = out.splitlines()[-1] if out else f"exit {rc}"
+    why = "no interpreter on this host could read the registry" if rc == 3 else tail
+    res.add(name, "WARN", f"COULD NOT VERIFY — {why}",
+            "Run: bash $HOME/.hermes-cortex/scripts/hc harness list --json   "
+            "(then fix what it reports)")
+    return
+  try:
+    data = json.loads(out[out.index("{"):])
+  except Exception as exc:                        # never let an unreadable view crash the run
+    res.add(name, "WARN", f"COULD NOT VERIFY — the registry view was not parseable ({exc})",
+            "Run: bash $HOME/.hermes-cortex/scripts/hc harness list --json")
+    return
+  harnesses = data.get("harnesses") if isinstance(data, dict) else None
+  if not isinstance(harnesses, list) or not harnesses:
+    res.add(name, "WARN", "COULD NOT VERIFY — the registry declares no harnesses",
+            "Restore the missing entries in ops/install/harnesses/registry.yaml")
+    return
+  for h in harnesses:
+    if not isinstance(h, dict):
+      continue
+    hname = str(h.get("name") or "<unnamed>")
+    label = f"Harness ({hname})"
+    kind, detail = _harness_presence(h)
+    if kind == "unsupported":
+      res.add(label, "SKIP", f"declared unsupported — {detail}")
+      continue
+    if kind == "absent":
+      res.add(label, "SKIP",
+              "not installed on this host (a host without a harness is not a fault)")
+      continue
+    if kind == "undeclared":
+      res.add(label, "WARN",
+              f"COULD NOT VERIFY — the registry declares no `presence:` for {hname}, so "
+              "the doctor cannot tell whether it is installed",
+              f"Add `presence:` for {hname} to ops/install/harnesses/registry.yaml")
+      continue
+    rc, out = _run_harness_verify(hname)
+    lines = out.splitlines() if out else []
+    artifacts = [l for l in lines if l.startswith("artifact:")]
+    verdict = lines[-1] if lines else f"exit {rc}"
+    tail = f"{artifacts[-1]}; {verdict}" if artifacts else verdict
+    fix = (f"Run: bash $HOME/.hermes-cortex/scripts/hc harness verify {hname}   "
+           "(then apply the install step the registry declares for it)")
+    if rc == 0:
+      res.add(label, "PASS", f"{detail}; {tail}")
+    elif rc == 3:
+      res.add(label, "WARN",
+              f"COULD NOT VERIFY — {hname} is installed but nothing on this host could "
+              f"verify it: {tail}", fix)
+    else:
+      res.add(label, "WARN", tail, fix)

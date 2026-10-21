@@ -46,6 +46,11 @@ harnesses:
   - name: pi
     layer: mcp
     status: shipped
+    # PRESENCE (what the doctor gates on): the harness's own artifact on THIS host.
+    # Declared here because the registry is the ONE source of harness knowledge — a
+    # second copy in the doctor would go stale the moment a harness is added.
+    presence:
+      - ~/.pi/agent
     surface: 'MCP (cortex-context) + pi.on("tool_call" write gate | "turn_end" | "before_agent_start" | "session_before_compact")'
     why: |
       Pi 1.0.0 HAS an MCP client (verified on the host with `pi mcp list`, which
@@ -223,6 +228,8 @@ harnesses:
   - name: hermes
     layer: mcp
     status: shipped
+    presence:
+      - ~/.hermes/config.yaml
     surface: 'hermes mcp add'
     why: Hermes reads MCP servers from config, so it needs no shim at all.
     install: |
@@ -238,6 +245,10 @@ harnesses:
   - name: claude-code
     layer: mcp
     status: documented
+    presence:
+      - ~/.claude.json
+      - ~/.claude/settings.json
+      - cmd:claude
     surface: '.mcp.json'
     why: MCP-native; registration is a config entry, no shim.
     install: |
@@ -251,6 +262,9 @@ harnesses:
   - name: codex
     layer: mcp
     status: documented
+    presence:
+      - ~/.codex/config.toml
+      - cmd:codex
     surface: '~/.codex/config.toml [mcp_servers]'
     why: MCP-native; registration is a config entry, no shim.
     install: |
@@ -265,6 +279,10 @@ harnesses:
   - name: steadfaste-tui
     layer: none
     status: blocked
+    # No presence to declare: this harness is declared UNSUPPORTED, so the doctor
+    # reports it as skipped with this entry's own reason — never as "not installed",
+    # which would read as "it would work if you installed it".
+    presence: []
     surface: unknown
     why: |
       Steadfaste's own gateway is not complete, so its harness surface cannot be

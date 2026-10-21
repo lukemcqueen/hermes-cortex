@@ -56,6 +56,7 @@ from .checks import (
     check_review_provenance,
     check_stale_loop_gov_daemon,
     check_task_id_hygiene,
+    check_harness_registry,
 )
 from .fix import apply_fixes
 from .bus_alert import dispatch_bus_alerts
@@ -111,6 +112,7 @@ def main():
         check_nginx,
         check_nginx_dir_purity,
         check_governance,
+        check_harness_registry,
         check_local_hooksPath_overrides,
         check_install,
         check_install_sh_refs,
@@ -155,6 +157,7 @@ def main():
             check_system,
             check_config,
             check_governance,
+            check_harness_registry,
             check_hook_drift,
             check_local_hooksPath_overrides,
             check_pinned_hooks_fresh,

@@ -208,10 +208,32 @@ def derived_run_line(h: dict) -> tuple[str, list[str]] | None:
 
 # ── commands ────────────────────────────────────────────────────
 
-def cmd_list(reg: dict) -> int:
+def cmd_list(reg: dict, as_json: bool = False) -> int:
     order = {"shipped": 0, "documented": 1, "blocked": 2, "planned": 3}
     hs = sorted(reg["harnesses"], key=lambda h: (order.get(h.get("status", "planned"), 9),
                                                  h["name"]))
+    if as_json:
+        # Machine-readable view, so a CONSUMER never has to parse the registry itself.
+        # The doctor reads the harness list through this command because it may run under
+        # an interpreter without PyYAML (cortex-update.sh invokes it as a bare `python3`),
+        # and `hc` already resolves a capable interpreter for the registry. One source,
+        # one capability resolution: a consumer that imported yaml here would be a second
+        # copy of both.
+        import json as _json
+        print(_json.dumps({
+            "count": len(hs),
+            "layers": list(LAYERS),
+            "harnesses": [{
+                "name": h.get("name"),
+                "layer": h.get("layer"),
+                "status": h.get("status", "planned"),
+                "surface": h.get("surface", ""),
+                "presence": h.get("presence") or [],
+                "why": " ".join((h.get("why") or "").split())[:200],
+                "install": (h.get("install") or "").strip(),
+            } for h in hs],
+        }, indent=2))
+        return 0
     print(f"Declared harnesses: {len(hs)}\n")
     print(f"  {'HARNESS':<16} {'LAYER':<14} {'STATUS':<11} SURFACE")
     for h in hs:
@@ -448,6 +470,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--dir", default=".", help="target project dir (install)")
     ap.add_argument("--layer", default="mcp")
     ap.add_argument("--surface", default="")
+    ap.add_argument("--json", action="store_true",
+                    help="machine-readable output (list): name/layer/status/presence")
     a = ap.parse_args(argv)
 
     if a.cmd == "help":
@@ -456,7 +480,7 @@ def main(argv: list[str] | None = None) -> int:
 
     reg = load_registry()
     if a.cmd == "list":
-        return cmd_list(reg)
+        return cmd_list(reg, as_json=a.json)
     if a.cmd == "show":
         return cmd_show(reg, a.name) if a.name else _unknown("<none>")
     if a.cmd == "install":
