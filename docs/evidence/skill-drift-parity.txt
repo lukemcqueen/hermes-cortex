@@ -19,26 +19,27 @@ A file under no repo-owned skill dir is a Hermes default and stays skipped.
 
 | Measure | Value |
 |---|---|
-| Stranded in place (path in repo, content only deployed) | 16 |
+| Stranded in place (path in repo, content only deployed) | 17 |
 | Absent from the repo (deployed under a repo-owned skill) | 133 |
 |   ↳ path dropped from repo history | 3 |
 |   ↳ path never committed | 130 |
-| Files in sync | 830 |
+| Files in sync | 829 |
 | Skipped (Hermes defaults, or repo ahead) | 509 |
 
 **Verdict: FAIL**
 
 Stranded in place:
 - autonomous-ai-agents/pi-coding-agent/SKILL.md
-- communication/agent-interaction-signals/SKILL.md
 - devops/agent-harness-design/SKILL.md
 - devops/agent-health-monitoring/SKILL.md
 - devops/governance-closeout/SKILL.md
 - devops/hermes-cortex-repo-deploy/SKILL.md
+- devops/psql-automation/SKILL.md
 - devops/rename-sweep/SKILL.md
 - devops/shared-repo-push-gates/SKILL.md
 - devops/shell-scripting/SKILL.md
 - devops/task-queue-workflow/SKILL.md
+- software-development/adversarial-finding-fix-patterns/SKILL.md
 - software-development/adversarial-verifier/SKILL.md
 - software-development/agent-contract/SKILL.md
 - software-development/hermetic-python-testing/SKILL.md

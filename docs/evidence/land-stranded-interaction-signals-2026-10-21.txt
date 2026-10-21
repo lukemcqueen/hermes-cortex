@@ -1,0 +1,78 @@
+===== capture =====
+date            : 2026-10-21T23:22:15+09:00
+host            : Linux 7.0.0-38-generic x86_64
+repo            : $HOME/hermes-cortex @ 9955ad6f
+repo copy       : 10580 bytes  sha256=71a7562898f2795a
+deployed copy   : 10580 bytes  sha256=71a7562898f2795a
+cmp repo deployed: rc=0  (0 = byte-identical, so the tree is in sync in BOTH directions)
+
+===== the stranded entry BEFORE this change (from check-skill-drift-parity.py) =====
+| Stranded in place (path in repo, content only deployed) | 18 |
+- communication/agent-interaction-signals/SKILL.md
+# ^ the lesson the operator gave at 10:54 ("please less prose and just say things plainly")
+#   was written into the deployed copy only, so the deploy's drift guardrail refused to
+#   overwrite it and the fleet never received it.
+
+===== the repo change (only additions) =====
+diff --git a/skills/communication/agent-interaction-signals/SKILL.md b/skills/communication/agent-interaction-signals/SKILL.md
+index 2379b39c..932875e0 100644
+--- a/skills/communication/agent-interaction-signals/SKILL.md
++++ b/skills/communication/agent-interaction-signals/SKILL.md
+@@ -149,2 +149,41 @@ question is pending.
+ 
++## The Verbosity Signal: "less prose", "just say things plainly"
++
++A complaint about how you REPORT is a standing correction to every future reply, not an edit to
++one message. Treat it as a permanent change of register, and apply it from the next reply on.
++
++### Correct pattern
++
++- **Plain statements, one fact per line.** No framing paragraph before the answer, no
++  reflective preamble about what you did, no closing flourish.
++- **Lead with the result** — the state, the number, the blocker — then only the detail needed
++  to act on it.
++- **List the issues, then the decision you need.** When you are blocked or escalating, the
++  reply exists to unblock the operator's next move: give the issues as short numbered lines and
++  name each decision required, one line each. Never make them dig the ask out of a narrative.
++- **Name the observable fact, not internal shorthand.** "I'm at my budget wall" is unreadable;
++  say what it means observably — "my context is nearly full, so I estimate I cannot do the next
++  step safely". Internal terms get their plain translation in the same sentence.
++- **Label only what needs a label.** A short bullet or a `field: value` line beats a bold
++  heading, a titled subsection, and a summary of the summary.
++- **Cut meta-commentary about your own process.** What you tried, in what order, and how it
++  felt is not information the user asked for; a lesson is worth one clause, not a paragraph.
++- **State the unfinished part in the same register** — "not done: X, Y" beats a paragraph
++  explaining why the work is incomplete.
++
++### Why this happens
++
++Detail is how the agent proves to ITSELF that the work was careful, so thoroughness comes out as
++prose the user must wade through. The user is reading for STATE, not narration — and length also
++buries the one actionable line.
++
++### Failure shapes to watch
++
++- A bolded heading per point, with a paragraph under each, for three facts that fit in three lines.
++- Opening with context the user already has, then burying the answer at the end.
++- Re-narrating the session's history before the current state.
++- Straightening up for one reply and reverting to long-form next turn.
++- Escalating a blocker with no decision named, so the operator has to ask "so how would I resolve this?"
++- Naming an internal state instead of the observable fact ("at my budget wall" for "context nearly full").
++
+ ## Pitfalls
+
+===== AFTER: re-run the fleet's own detector =====
+detector rc=1  (1 = other stranded skills remain, owned by the daily skill-lifecycle pass)
+22:| Stranded in place (path in repo, content only deployed) | 17 |
+is the landed skill still listed as stranded?
+  no — it is out of the stranded list (18 -> 17)
+
+===== the operator corrections this artifact lands =====
+10-21 10:54  please less prose and just say things plainly
+10-21 15:47  so much text... sigh. please just give me your issues simply and the decisions needed
+10-21 16:06  so you have bumped up the issue to the operator (me). so how would i resolve this?
+10-21 16:35  what do you mean by: I'm at my budget wall
+# the first is the stranded section; the other three are its two new rules (name the ask,
+# name the observable fact) — read from the sessions store, window 10-20 17:18 -> 10-21 23:18.
+
+===== end of transcript =====
