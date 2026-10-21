@@ -218,6 +218,38 @@ def test_both_real_keep_refuses_without_an_explicit_decision(paths):
 
 # ── ownership constant has ONE definition (no per-check literals) ────────
 
+def test_both_paths_symlinked_to_the_same_target_is_could_not_verify(tmp_path):
+    """Neither path OWNS the tree when both are pointers (ADV-13491-2): classify must
+    report COULD NOT VERIFY rather than picking a winner, and modify nothing."""
+    real = tmp_path / "third" / "skills"
+    _make_tree(real, ["alpha"])
+    cortex = tmp_path / "cortex" / "skills"
+    borrower = tmp_path / "borrower" / "skills"
+    cortex.parent.mkdir(parents=True, exist_ok=True)
+    borrower.parent.mkdir(parents=True, exist_ok=True)
+    os.symlink(real, cortex)
+    os.symlink(real, borrower)
+
+    r = _run(cortex, borrower, "--check")
+    assert r.returncode == UNVERIFIABLE, r.stdout + r.stderr
+    assert cortex.is_symlink() and borrower.is_symlink(), "nothing may be modified"
+
+
+def test_borrower_symlink_to_a_different_owner_is_could_not_verify(paths):
+    """A borrower pointing at something that is not the owner is a broken portable
+    state, not a green: report it instead of accepting the link."""
+    cortex, borrower = paths
+    _make_tree(cortex, ["alpha"])
+    elsewhere = cortex.parent / "someone-elses"
+    _make_tree(elsewhere, ["other"])
+    borrower.parent.mkdir(parents=True, exist_ok=True)
+    os.symlink(elsewhere, borrower)
+
+    r = _run(cortex, borrower, "--check")
+    assert r.returncode == UNVERIFIABLE, r.stdout + r.stderr
+    assert os.path.realpath(borrower) == os.path.realpath(elsewhere)
+
+
 def test_owner_root_resolves_from_one_place():
     """Roots come from the tool's arguments/env — no hardcoded home path, no
     per-host literal, and exactly one definition of each default."""
