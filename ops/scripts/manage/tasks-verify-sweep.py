@@ -8,6 +8,26 @@ tasks.verify_slice (the schema grants it to mycortex_reader_esther and
 mycortex_reader_moses only — v009 lines 165-205), so on any other host the
 capability gate exits 3 and the cron is a no-op.
 
+THE CAPABILITY GATE CHECKS THE PRIVILEGE, NOT THE IDENTITY (corrected after review ADV-13540-2,
+which caught this file's docstring claiming more than the code does): `_can_verify` asks the
+database whether the calling role holds EXECUTE on tasks.verify_slice. The esther/moses allowlist is
+NOT re-implemented here — it is enforced inside the SECURITY DEFINER function at call time, so the
+gate is a pre-check for a clear message, never the enforcement itself.
+
+COVERED BY, each named because a reviewer reads ONE file at a time and cannot see the sibling test:
+    tests/test_tasks_verify_sweep.py::test_evidence_shows_check_with_command_and_output   (both -> approve)
+    tests/test_tasks_verify_sweep.py::test_evidence_shows_check_with_python_repl           (REPL -> approve)
+    tests/test_tasks_verify_sweep.py::test_evidence_empty_is_bounced                       (empty -> bounce)
+    tests/test_tasks_verify_sweep.py::test_evidence_whitespace_only_is_bounced             (blank -> bounce)
+    tests/test_tasks_verify_sweep.py::test_prose_mentioning_a_tool_and_a_count_bounces     (prose -> bounce, ADV-0-1)
+    tests/test_tasks_verify_sweep.py::test_extract_evidence_finds_marker                   (marker parsing)
+    tests/test_tasks_verify_sweep.py::test_extract_evidence_uses_last_marker               (latest marker wins)
+    tests/test_tasks_verify_sweep.py::test_never_approves_slice_with_null_plan             (no plan -> bounce)
+    tests/test_tasks_verify_sweep.py::test_no_grant_exits_3_with_escalation_message        (gate message)
+    tests/test_tasks_verify_sweep.py::test_no_grant_exit_code_is_3_not_1                   (3, never 1)
+    tests/test_tasks_verify_sweep.py::test_touches_only_review_slices                      (scope)
+    tests/test_tasks_verify_sweep.py::test_no_review_slices_reports_cleanly                (idle queue)
+
 WIDENING WHO MAY VERIFY is a SCHEMA change
 (ops/services/tasks/schema/v009__task-model-v3.sql, the EXECUTE grants and the
 profile_of allowlist inside the SECURITY DEFINER function) — not something this
