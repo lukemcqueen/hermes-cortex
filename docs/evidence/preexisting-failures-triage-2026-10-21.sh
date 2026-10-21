@@ -36,6 +36,18 @@ say "              bare list says nothing about whether they share a cause."
 
 rule "1. each failing file, run once at this tip, with its first failure reason"
 FILES="$(sed -n '/failing files at the tip/,/^  $/p' "$SOURCE" | grep -a '^  tests/' | sed -e 's/^  //' | sort -u)"
+# Guard: the list comes from a committed artifact via a section range. If the source's shape ever
+# changes, the extraction above yields nothing — and "zero files to run" reads like a clean result.
+# Refuse to produce that silence: name the source and the section we expected, and exit non-zero so
+# the run is visibly broken rather than quietly empty.
+if [ -z "$(printf '%s\n' "$FILES" | grep -c .)" ] || [ "$(printf '%s\n' "$FILES" | grep -c .)" -eq 0 ]; then
+  say "FATAL: extracted ZERO files from $SOURCE."
+  say "  expected a section beginning 'failing files at the tip' and ending at a blank line,"
+  say "  with entries indented two spaces under 'tests/'. The source's shape has changed, or"
+  say "  the file is missing. Refusing to emit a transcript that looks like a clean run."
+  say "GENERATOR_rc=2"
+  exit 2
+fi
 say "files to run: $(printf '%s\n' "$FILES" | grep -c .)"
 say ""
 : > "$TMP/reasons.tsv"
@@ -44,9 +56,19 @@ for f in $FILES; do
                    printf '%s\t%s\n' "$f" "FILE MISSING AT THIS TIP" >> "$TMP/reasons.tsv"; continue; }
   timeout 300 bash tests/run-tests.sh "$f" -q --color=no > "$TMP/one.txt" 2>&1
   rc=$?
-  # The FIRST reason, not the last: a file can fail many tests, and the first is the one to fix.
-  reason="$(grep -aE '^(E |FAILED )' "$TMP/one.txt" | head -1 | sed -e 's/^E *//' -e 's/^FAILED [^ ]* *//' | cut -c1-220)"
+  # rc=124 is the timeout's OWN exit code, not a test failure. Treat it as its own cause: a killed
+  # run's output may be truncated mid-line, so grepping it for a reason would report whatever
+  # fragment happened to survive — or nothing — and call that the failure. Name the kill instead.
+  if [ "$rc" -eq 124 ]; then
+    reason="TIMEOUT — file did not finish within 300s (rc=124); no failure reason is meaningful"
+  else
+    # The FIRST reason, not the last: a file can fail many tests, and the first is the one to fix.
+    reason="$(grep -aE '^(E |FAILED )' "$TMP/one.txt" | head -1 | sed -e 's/^E *//' -e 's/^FAILED [^ ]* *//' | cut -c1-220)"
+  fi
   summary="$(grep -aE '[0-9]+ (passed|failed)' "$TMP/one.txt" | tail -1)"
+  # An empty summary means the runner never printed its counts — a crash, or a changed output format.
+  # Printing "rc=$rc   " with nothing after it reads as "ran fine, nothing to say". Say what is true.
+  [ -z "$summary" ] && summary="(no summary line captured — runner produced no pass/fail counts)"
   # A file in the attributed list that PASSES at this tip is its own finding, not a silence:
   # it is either flaky or was fixed inside the range. Name it as a cause, do not leave it blank.
   if [ "$rc" -eq 0 ] && [ -z "$reason" ]; then reason="PASSES AT THIS TIP — not reproducible now (was failing at the range base)"; fi
