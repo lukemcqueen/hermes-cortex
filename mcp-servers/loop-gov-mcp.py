@@ -1529,10 +1529,23 @@ def _review_uncovered_blobs(blobs: dict, *, reviewer, material_for,
                 deadline = time.monotonic() + max(1.0, budget_s - (time.monotonic() - started))
                 for fut in futures:
                     left = deadline - time.monotonic()
+                    # ASK A COMPLETED FUTURE, do not assume it timed out (2026-10-21). This loop
+                    # awaits in submission order, so a SLOW blob awaited first can spend the whole
+                    # window — and the old `left > 0.0` test then stamped every LATER future as
+                    # "window exhausted" WITHOUT reading it, including calls that had already
+                    # ANSWERED. Those verdicts were discarded and re-bought on the next pass while
+                    # a genuinely slow sibling produced the same outcome either way: the answered
+                    # blob was reported as unanswered, which is the mirror of the defect this
+                    # change fixes above. `fut.done()` costs nothing, so consult it first.
+                    if not fut.done() and left <= 0.0:
+                        outcomes[futures[fut]] = ("", TimeoutError(
+                            "the close window was exhausted"))
+                        continue
                     try:
-                        outcomes[futures[fut]] = (fut.result(timeout=left) if left > 0.0
-                                                  else ("", TimeoutError(
-                                                      "the close window was exhausted")))
+                        # `_judge` RETURNS the `(text, exc)` pair, so assign it whole: wrapping it
+                        # in another tuple made the text a tuple, which `_extract_verdict` read as
+                        # "answered and judged nothing" — a verdict lost to a shape mistake.
+                        outcomes[futures[fut]] = fut.result(timeout=max(0.0, left))
                     except BaseException as exc:  # noqa: BLE001 — result() must never abort the pass
                         outcomes[futures[fut]] = ("", exc)
             finally:
@@ -1560,6 +1573,22 @@ def _review_uncovered_blobs(blobs: dict, *, reviewer, material_for,
     for path, sha in wave:
         text, exc = outcomes.get(sha, ("", RuntimeError("the wave produced no outcome")))
         if exc is not None:
+            # A WINDOW-EXHAUSTED CALL IS AN ABSENT ANSWER, NOT A DOWN REVIEWER (2026-10-21). It
+            # used to land here with a genuine error and increment the outage counter; at 2 that
+            # sets `reviewer_down`, which ALSO defers every blob the pass had not reached — so two
+            # slow calls in one wave could abandon blobs the reviewer would have answered for.
+            # Evidence that slowness is not an outage: the reviewer answered rc=0 in 191s on a
+            # direct call for the same blob this was measured with (cycle 13522, issue #203 / task
+            # dbb14f91) while the close window it runs inside is 240s and is never raised.
+            # Still NEVER credited: `failed` AND `remaining`, so the close refuses and the next
+            # pass retries it exactly as before. Covered by
+            # tests/test_blob_review_concurrency.py::test_two_slow_calls_do_not_declare_the_reviewer_down_and_abandon_the_rest
+            if isinstance(exc, TimeoutError):
+                failed.append(sha)
+                remaining.append(sha)
+                log.warning("per-blob review: %s did not answer inside the window — deferred "
+                            "unjudged, not counted toward the reviewer-outage cap", path)
+                continue
             # A failure NEVER credits the blob: it is reported unjudged, so the close refuses and
             # the push gate still names it uncovered. What it does not do is end the pass on the
             # first one — the old stop-on-first made ZERO progress on every attempt.
