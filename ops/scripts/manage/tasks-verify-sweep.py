@@ -80,27 +80,9 @@ def extract_evidence(plan: str | None) -> str:
 # Patterns that signal a command line in evidence.
 # A line starting with $, #, >>>, or containing a recognizable CLI tool.
 _COMMAND_PATTERNS = [
-    re.compile(r"^\s*[\$#]\s+"),                # shell prompt
-    re.compile(r"^\s*>>>\s"),                   # Python REPL
-    re.compile(r"\bpython[23]?[\s\-]"),         # python, python3 -m
-    re.compile(r"\bpytest\b"),                  # pytest
-    re.compile(r"\bgo\s+test\b"),               # go test
-    re.compile(r"\bcargo\s+(test|run|build)\b"),
-    re.compile(r"\bmake\b"),
-    re.compile(r"\bnpm\s+(test|run)\b"),
-    re.compile(r"\bnode\s"),
-    re.compile(r"\bbash\s"),
-    re.compile(r"\bsh\s"),
-    re.compile(r"\bcurl\b"),
-    re.compile(r"\bgit\s+(diff|log|status)\b"),
-    re.compile(r"\bdocker\s"),
-    re.compile(r"\bpoetry\s+run\b"),
-    re.compile(r"\bpip\s+(install|list|show)\b"),
-    re.compile(r"\bcat\s"),
-    re.compile(r"\bgrep\b"),
-    re.compile(r"\bfind\s"),
-    re.compile(r"\bls\s"),
-    re.compile(r"\bw3m\b"),
+    re.compile(r"^(>>>|[>#$%])\s+\S"),          # a prompt: '$ cmd', '# cmd', '>>> cmd'
+    re.compile(r"^(python[23]?|pytest|bash|sh|make|node|npm|cargo|go|docker"
+               r"|curl|git|pip|poetry|cat|grep|find|ls|w3m)\b"),
 ]
 
 # Patterns that signal output/results (not another command).

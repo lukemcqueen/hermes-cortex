@@ -283,6 +283,28 @@ def test_never_approves_slice_with_null_plan():
     assert params[1] is False
 
 
+def test_prose_mentioning_a_tool_and_a_count_bounces():
+    """PRO REVIEW FINDING ADV-0-1 (cycle 13536 / issue #206): the check was SUBSTRING-based, so
+    prose such as "I ran bash and got 3 passed" satisfied both the command and the output patterns
+    and would have been APPROVED — the rubber-stamp this module's docstring promises not to be.
+
+    The command pattern is now ANCHORED at the line start, so a sentence that merely MENTIONS a tool
+    cannot satisfy it, while a real transcript (a prompt line, or a bare tool invocation at the start
+    of a line) still does.
+    """
+    ok, why = mod.evidence_shows_check("I ran bash and it worked, 3 passed")
+    assert not ok, f"prose must bounce, got {ok}"
+    assert "command" in why, why
+
+    ok_prompt, why_prompt = mod.evidence_shows_check("$ pytest -q tests/\n3 passed in 1.23s")
+    assert ok_prompt, f"a real transcript with a prompt must still be approved: {why_prompt}"
+
+    ok_bare, why_bare = mod.evidence_shows_check("pytest -q tests/\n3 passed in 1.23s")
+    assert ok_bare, f"a bare tool invocation at line start must still count: {why_bare}"
+
+    print("  prose mentioning a tool bounces; real transcripts still approve ✓")
+
+
 def test_touches_only_review_slices():
     """The SQL only fetches status='review' + kind='slice'. Prove it structurally."""
     sql = mod._REVIEW_SLICE_SQL
