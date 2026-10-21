@@ -1,0 +1,32 @@
+Running: bash -c { echo "=== deployed CLI: the machine-readable registry view (excerpt) ==="; bash "$HOME/.hermes-cortex/scripts/hc" harness list --json | head -12; echo "cli_rc=${PIPESTATUS[0]}"; echo "=== DEPLOYED doctor: one line per declared harness ==="; python3 "$HOME/.hermes-cortex/scripts/cortex-doctor.py" --json 2>/dev/null > "${TMPDIR:-/tmp}/dd.json"; echo "doctor_rc=$?"; python3 -c "import json,sys;raw=open(sys.argv[1]).read();d=json.loads(raw[raw.index(chr(123)):]);print(\"summary:\",d[\"summary\"]);[print(\"  \",c[\"status\"],\"|\",c[\"name\"],\"|\",c[\"detail\"][:90]) for c in d[\"checks\"] if c[\"name\"].startswith(\"Harness\")]" "${TMPDIR:-/tmp}/dd.json"; echo "=== this cycles suite ==="; bash tests/run-tests.sh tests/test_doctor_harness_loop.py -q | tail -3; echo "pytest_rc=${PIPESTATUS[0]}"; } 2>&1 | sed -e "s#$HOME#~#g"
+rc: 0
+when: 2026-10-21T06:15:50Z
+
+=== deployed CLI: the machine-readable registry view (excerpt) ===
+{
+  "count": 5,
+  "layers": [
+    "mcp",
+    "cli-extension",
+    "cli-hook",
+    "none"
+  ],
+  "harnesses": [
+    {
+      "name": "hermes",
+      "layer": "mcp",
+cli_rc=0
+=== DEPLOYED doctor: one line per declared harness ===
+doctor_rc=1
+summary: {'pass': 480, 'warn': 13, 'fail': 0, 'info': 3}
+   PASS | Harness (hermes) | ~/.hermes/config.yaml exists; artifact: hermes declares none — nothing to check; result: P
+   PASS | Harness (pi) | ~/.pi/agent exists; artifact: pi/extensions/cortex-governance.ts present; result: PASS
+   PASS | Harness (claude-code) | ~/.claude.json exists; artifact: claude-code declares none — nothing to check; result: PAS
+   SKIP | Harness (codex) | not installed on this host (a host without a harness is not a fault)
+   SKIP | Harness (steadfaste-tui) | declared unsupported — Steadfaste's own gateway is not complete, so its harness surface ca
+=== this cycles suite ===
+============================== 9 passed in 13.81s ==============================
+---
+run-tests.sh: interpreter=~/.hermes-cortex/venv/bin/python3 rc=0  (PYTHONPATH/PYTHONHOME unset for the run)
+pytest_rc=0
+sha256: cb9d803a9b0f6f4510d966b494bdfb63b6e9d2420293997fe7ce25aab51443bd
