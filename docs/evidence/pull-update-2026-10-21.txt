@@ -1,0 +1,118 @@
+generated-by: docs/evidence/pull-update-2026-10-21.sh   (this file IS that script's stdout)
+host-date:    2026-10-21T09:50:11Z
+cycle:        7077 · task cortex-pull-deploy-20261021 · agent titus
+scope:        git pull (merge) -> post-merge auto-deploy -> doctor -> triage to 0 fail
+revisions:    resolved below, never restated here
+
+===== 1. revision state after the merge, and the two commits it brought in =====
+$ git rev-parse HEAD / origin/main / merge-base
+HEAD        645886b31094c0a4c9d5ef6f287708d05ee24245
+origin/main 3b03c92cf7d31143d7c69aa35e10a3e5c1d7c86c
+merge-base  3b03c92cf7d31143d7c69aa35e10a3e5c1d7c86c
+ahead:  3   behind: 0
+
+The merge brought in exactly these two origin commits; the check ASSERTS they are ancestors
+of HEAD, so a transcript that no longer describes this merge reports a non-zero rc instead:
+  ancestor? c1333161 -> rc=0   (fix(tests): unbreak suite collection — the description guard no longer exits at import)
+  ancestor? 3b03c92c -> rc=0   (docs(evidence): make the collection-fix transcript's provenance unambiguous)
+
+===== 2. the deploy the merge triggered (post-merge hook ran the sanctioned cortex-update) =====
+The merge IS the deploy in this repo: post-merge fires cortex-update.sh. Its verdict is
+re-read here through the doctor's own checks, not from the hook transcript.
+
+$ /Users/luke/.hermes-cortex/venv/bin/python3 ops/scripts/manage/cortex-doctor.py --quiet
+rc=1   (0 = clean, 1 = warnings only, 2 = failures)
+  ✅ Repo sync
+  ✅ Deploy sync
+  ✅ Crons total
+  ✅ Cron manifest drift
+  ✅ Governance plugin
+  ✅ Plugin content
+  ✅ Immutable: __init__.py
+  ✅ Immutable: pre-commit
+  ✅ Immutable: pre-push
+  ✅ Immutable: post-commit
+  ✅ Immutable: post-push
+  ✅ Immutable: post-merge
+  ✅ Immutable: loop-gov-mcp.py
+  ✅ Immutable: hermes-plugin-lock
+  ✅ Immutable: hooks
+  ℹ️  PENDING cycles  [deliberate (titus, since 2026-10-21)]
+  ✅ Checksum: cortex-update.sh
+  ✅ Checksum: Governance plugin __init__.py
+  ✅ Checksum: Governance plugin plugin.yaml
+  ✅ Checksum: Governance plugin README.md
+  ⚠️  Overall: WARNING  (463 pass · 11 warn · 0 fail · 7 info)  · 1 undisposed
+
+The verdict line above is the doctor's own; the counts are read from it, not restated here.
+
+===== 3. the triage decisions (one record per check nobody had decided about) =====
+Written with cortex_doctor.dispositions.record — the same implementation the doctor CLI
+calls — and RE-READ here from the store the doctor reads:
+
+$ /Users/luke/.hermes-cortex/venv/bin/python3 ops/scripts/manage/cortex-doctor.py --dispositions
+rc=0
+  CLAUDE.md (dev repos): deferred (titus, since 2026-10-21)  reason: the missing contract is in another repo (steadfaste); adding a governance file outside hermes-cortex is the operator call
+  Cron bridge: deliberate (titus, since 2026-10-21)  reason: not applicable on Darwin; the HC cron bridge is systemd-based
+  Cron status (agent-llm-judge-scorer-weekend): deferred (titus, since 2026-10-21)  reason: stale last_status from the host-wide Errno 35 EAGAIN event on 2026-10-18; job is enabled and its next tick is 2026-10-24 22:00
+  Cron status (agent-offline-code-index): deferred (titus, since 2026-10-21)  reason: same 2026-10-18 EAGAIN event; job is enabled and its next tick is 2026-10-25 05:00
+  Cron status (agent-session-correction-scan): deferred (titus, since 2026-10-21)  reason: same 2026-10-18 EAGAIN event; job is enabled and its next tick is 2026-10-25 22:00
+  Extra cron (agent-dreamus-addsc-monitor): deliberate (titus, since 2026-10-21)  reason: not a Hermes Cortex cron; owned by another project on this host
+  Extra cron (orch-autonomy-digest): deliberate (titus, since 2026-10-21)  reason: orchestrator-scoped job; not part of the worker host expected list
+  Legacy lock (.governance-sess_6459cc640a9c.json): deferred (titus, since 2026-10-21)  reason: LIVE peer session lock (agent titus, repo steadfaste-s1-model, re-acquired 2026-10-21T09:46:44Z with a fresh task); it must not be removed, and the check fires only because a non-Hermes harness mints the slug form
+  Legacy lock (.governance-sess_cb06267f73e5.json): deferred (titus, since 2026-10-21)  reason: LIVE peer session lock (agent titus, repo koscap-mwi, heartbeat inside its TTL) written by a non-Hermes harness in the slug form; removing another session lock is that session call, and the doctor prescribes deleting it only because the slug form is unrecognised
+  Orphan crons: 2: deliberate (titus, since 2026-10-21)  reason: orch-autonomy-digest is orchestrator-scoped and not expected on a worker host; agent-dreamus-addsc-monitor belongs to another project
+  Orphan-cycle resolution: deliberate (titus, since 2026-10-21)  reason: informational tally of reaper-closed unscored rows; no action
+  PENDING cycles: deliberate (titus, since 2026-10-21)  reason: this session own active cycle cortex-pull-deploy-20261021#1, scored at end_change
+  Private repo: deliberate (titus, since 2026-10-21)  reason: informational: hermes-cortex-private already migrated to the no-git layout, no action required
+  Script run evidence: deferred (titus, since 2026-10-21)  reason: agent-hermes-cortex-sync.sh runs on its own schedule at 22:33 tonight; invoking it out of band would start a pull+deploy inside this cycle
+  Skill drift: deferred (titus, since 2026-10-21)  reason: same as the per-skill entry: recovering skills/ is orchestrator-only; proposal filed with the reconciler output
+  Skill drift: devops/docker-management: deferred (titus, since 2026-10-21)  reason: skills/ is orchestrator-only for non-orchestrators; recovery is a +1 line pure superset and a proposal has been filed
+  loop-gov daemon: deferred (titus, since 2026-10-21)  reason: the running daemon predates the deploy; the deploy banner already requests the gateway restart that replaces it, which agents cannot perform
+
+===== 4. the fixes this cycle applied, each re-checked in its non-mutating mode =====
+4a. Pi integration was NOT registered; install-pi-integration.sh registered it (idempotent,
+    backs up settings.json). Re-checked with its own read-only flag:
+  ✓ Pi sees all 479 skills under ~/.agents/skills
+  ✓ extensions registered (cortex-context.ts, cortex-governance.ts), 479 skills visible under ~/.agents/skills
+  ✓ web search: npm:pi-web-access@0.35.0 declared, keyless chain ['exa', 'duckduckgo'] configured
+install-pi-integration: registered
+rc=0   (0 = all registered)
+
+4b. Skills manifest: template warned although the two files were already identical — the
+    check compares mtime. The prescribed cp refreshed it; identity is asserted here:
+  repo template == deployed manifest (byte-identical, 0 differing lines)
+
+4c. Task-id hygiene: normalize-precommit-task-ids.py repaired 99 of 100 malformed rows
+    (1 refused, no guess). Durable record = its own manifest, listed here:
+  manifest: ~/.hermes-cortex/state/task-id-normalization-manifest.txt
+  repaired rows recorded there: 99
+  ledger + backup + timestamp, from the manifest's own header:
+    # ledger   : ~/.hermes-cortex/data/loop-governance.db
+    # backup   : ~/.hermes-cortex/data/loop-governance.db.backup-20261021T094512Z
+    # when     : 20261021T094512Z
+
+4d. Stale skills: orphaned — the deployed-only skill was renamed to the local- name that
+    the deploy and docs/cortex-doctor-reconciliation.md both prescribe (content preserved;
+    the doctor's orphan scan skips local-*):
+  present: .hermes/skills/research/local-job-board-research
+  absent:  .hermes/skills/research/job-board-research
+
+===== 5. the one item this cycle could NOT land, re-checked read-only =====
+skills/ is an orchestrator-only path (docs/orchestrator-only-paths.txt), so a
+non-orchestrator cannot commit the recovery. The detector's own --check mode is read-only;
+it may legitimately report the committed capture STALE, which is the normal state between
+deploys and is NOT a failure of this cycle:
+
+$ /Users/luke/.hermes-cortex/venv/bin/python3 ops/scripts/manage/check-skill-drift-parity.py --check
+rc=1
+artifact matches, but the parity claim it records does NOT hold
+
+The reconciler reports the same single stranded file as a pure superset (+1, -0), and the
+recovery was filed to inbox_orchestrator as a PROPOSAL (bus message
+da8d20a1-ee4a-4a8e-ad2c-03e033649287) because the target path is orchestrator-only.
+The two dispositions recorded for 'Skill drift' and 'Skill drift: devops/docker-management'
+name that blocker, so the deferral is a decision with a reason rather than silence.
+
+===== end of transcript =====
+worst rc across the asserted blocks: 0   (0 = every assertion held)
