@@ -105,7 +105,11 @@ def _read_bus_conf(key: str) -> str:
                 if k == key:
                     return v
         except Exception:
-            pass
+            # An unreadable env file means the value is ABSENT, which is the same answer
+            # the search below gives for a key it cannot find — and callers fail closed on
+            # "absent". Returning "" here is the honest outcome; swallowing the exception
+            # with `pass` would leave the caller's earlier state in place instead.
+            return ""
     return ""
 
 
@@ -322,7 +326,8 @@ def _msg_preview(msg: dict) -> str:
             elif task.get("type") == "task_cancel":
                 body_text = f"[Cancel: {task.get('task_id','')[:12]}...]"
         except json.JSONDecodeError:
-            pass  # expected — silently handled
+            # Not JSON — render the raw body (bounded) rather than dropping the message.
+            body_text = str(body_text)[:400]
 
     if len(str(body_text)) > 150:
         body_text = str(body_text)[:150] + "..."
@@ -493,7 +498,10 @@ def cmd_send(cfg: dict, args: list):
             if isinstance(parsed, dict):
                 corr_id = parsed.get("correlation_id") or None
         except json.JSONDecodeError:
-            pass
+            # Not JSON: there is no correlation id to read, and the caller already
+            # treats None as "none recorded". Say so explicitly instead of relying on
+            # the variable's earlier value.
+            corr_id = None
     if not corr_id:
         corr_id = f"send-{uuid.uuid4().hex[:12]}"
 
@@ -781,8 +789,14 @@ def cmd_bus(cfg: dict, args: list):
             for m in procs:
                 body = m.get("body", {})
                 if isinstance(body, str):
-                    try: body = json.loads(body)
-                    except: body = {}
+                    try:
+                        body = json.loads(body)
+                    except (json.JSONDecodeError, TypeError):
+                        # Not a JSON envelope: show the message with an empty one rather
+                        # than dropping it. TYPED on purpose — a bare `except:` here also
+                        # swallowed KeyboardInterrupt and SystemExit, so Ctrl-C during a
+                        # dashboard read was silently ignored (fixed 2026-10-21).
+                        body = {}
                 frm = body.get("from", "?")
                 subj = body.get("subject", "(no subject)")[:40]
                 enq = m.get("enqueued_at", "")
@@ -803,7 +817,10 @@ def cmd_bus(cfg: dict, args: list):
                     try:
                         enq_dt = datetime.fromisoformat(enq.replace("Z", "+00:00"))
                         age = (now_ts - enq_dt).total_seconds()
-                    except: age = 0
+                    except (ValueError, TypeError):
+                        # Unparseable timestamp: report "age unknown" (0) instead of
+                        # guessing, and type the except so Ctrl-C still works.
+                        age = 0
                 agent = m["queue_name"].replace("inbox_", "")
                 retry_info = f" (retry {m.get('retry_count',0)}/{m.get('max_retries',3)})" if m.get("retry_count", 0) > 0 else ""
                 print(f"   {agent:10s} ← {frm:10s} \"{subj}\"  {elapsed}{retry_info}{overdue}")
@@ -839,8 +856,11 @@ def cmd_bus(cfg: dict, args: list):
             for m in stuck:
                 body = m.get("body", {})
                 if isinstance(body, str):
-                    try: body = json.loads(body)
-                    except: body = {}
+                    try:
+                        body = json.loads(body)
+                    except (json.JSONDecodeError, TypeError):
+                        # Non-JSON body: keep the row visible with an empty envelope.
+                        body = {}
                 subj = body.get("subject", "(no subject)")[:40]
                 tout = m.get("timeout_at", "")
                 overdue = "?"
@@ -906,8 +926,11 @@ def cmd_bus(cfg: dict, args: list):
                 for a in archs:
                     body = a.get("body", {})
                     if isinstance(body, str):
-                        try: body = json.loads(body)
-                        except: body = {}
+                        try:
+                            body = json.loads(body)
+                        except (json.JSONDecodeError, TypeError):
+                            # Non-JSON body: keep the archived row visible.
+                            body = {}
                     frm = body.get("from", "?")
                     to = body.get("to", "?")
                     subj = body.get("subject", "(no subject)")[:35]
@@ -1263,6 +1286,143 @@ def cmd_harness(cfg: dict, args: list):
     sys.exit(mod.main(args))
 
 
+def _resolve_script(name: str):
+    """Find a cortex script: repo checkout first, then the deployed tree.
+
+    Same resolution shape as cmd_harness, in ONE function — so every script `hc pi`
+    names is found the same way, and a missing one names the fix instead of silently
+    doing nothing (`bash <missing>` would exit 127 and read as a failed install).
+    """
+    here = Path(__file__).resolve().parent          # repo: ops/scripts/hc — deployed: scripts
+    repo = Path.home() / "hermes-cortex"
+    deployed = Path.home() / ".hermes-cortex"
+    candidates = [
+        repo / "ops" / "scripts" / "install" / name,
+        repo / "ops" / "scripts" / "manage" / name,
+        here.parent / "install" / name,
+        here.parent / "manage" / name,
+        deployed / "scripts" / name,
+        deployed / "scripts" / "install" / name,
+        deployed / "scripts" / "manage" / name,
+    ]
+    return next((p for p in candidates if p.is_file()), None)
+
+
+def _run_script(path, args):
+    """Run a cortex script through bash; its output passes straight through.
+
+    Returns the script's own rc — `hc pi` reports what the owner reported, it does not
+    re-judge it (a second opinion here would be a second definition).
+
+    Flushes OUR stdout first: the child writes unbuffered, so without this its output
+    appears ABOVE the lines that introduce it and the report reads out of order.
+    """
+    import subprocess
+    sys.stdout.flush()
+    return subprocess.run(["bash", str(path)] + list(args)).returncode
+
+
+def cmd_pi(cfg: dict, args: list):
+    """`hc pi` — the HOST-level entry point for Pi's cortex wiring on this machine.
+
+    A THIN DRIVER, like `hc harness`. Each half of Pi's wiring already has exactly one
+    owner, and this command NAMES them rather than re-encoding them:
+      install-pi-mcp.sh          the MCP servers (tools, governance, memory/session)
+      install-pi-integration.sh  the extensions AND the published skills tree
+      audit-pi-integration.sh    the per-layer verdict
+    so nobody has to remember two script names, and a second definition of "what Pi
+    needs" cannot grow here. Differences from `hc harness install pi`: that one is
+    PROJECT scope (copies files into a project and prints a derived run line); this one
+    is USER scope — every Pi project on the host.
+
+    A host with no Pi is NOT a fault: a missing ~/.pi/agent is reported as such.
+    """
+    sub = (args[0] if args else "check").lower()
+    rest = list(args[1:])
+
+    if sub in ("help", "-h", "--help"):
+        print("hc pi — Pi's cortex wiring on THIS host\n")
+        print("  hc pi install   wire user-scope Pi (MCP servers + extensions + skills tree)")
+        print("  hc pi check     verdict: installer --check + the per-layer audit")
+        print("  hc pi skills    what Pi is pointed at, and how much of the tree it sees")
+        print("\n  project-scope install is a different command: hc harness install pi --dir <project>")
+        sys.exit(0)
+
+    if sub not in ("install", "check", "skills"):
+        print(f"hc pi: unknown subcommand '{sub}' (try: install | check | skills)",
+              file=sys.stderr)
+        sys.exit(2)
+
+    if not (Path.home() / ".pi" / "agent").is_dir() and sub != "skills":
+        print("hc pi: no Pi on this host (~/.pi/agent absent) — nothing to wire.")
+        print("  A host without Pi is not a fault; install Pi, then re-run.")
+        sys.exit(0)
+
+    if sub == "install":
+        rc = 0
+        for name in ("install-pi-mcp.sh", "install-pi-integration.sh"):
+            path = _resolve_script(name)
+            if path is None:
+                print(f"hc pi: {name} not found — run cortex-update.sh", file=sys.stderr)
+                rc = rc or 1
+                continue
+            print(f"── {name} ──")
+            r = _run_script(path, rest)
+            if r != 0:
+                print(f"hc pi: {name} failed (rc={r})", file=sys.stderr)
+                rc = rc or r
+        print("hc pi: " + ("wired" if rc == 0 else f"NOT wired (rc={rc})"))
+        sys.exit(rc)
+
+    if sub == "check":
+        rc = 0
+        for label, name, extra in (
+            ("installer --check (registration + VISIBLE skill count)",
+             "install-pi-integration.sh", ["--check"]),
+            ("audit (per layer: MCP, skills, extension, gate)",
+             "audit-pi-integration.sh", []),
+        ):
+            path = _resolve_script(name)
+            if path is None:
+                print(f"hc pi: {name} not found — run cortex-update.sh", file=sys.stderr)
+                rc = rc or 1
+                continue
+            print(f"── {label} ──")
+            r = _run_script(path, extra)
+            if r != 0:
+                rc = rc or r
+        print("hc pi: " + ("OK" if rc == 0 else f"NOT OK (rc={rc})"))
+        sys.exit(rc)
+
+    # skills
+    import json
+    settings = Path.home() / ".pi" / "agent" / "settings.json"
+    if not settings.is_file():
+        print(f"hc pi skills: {settings} missing — run: hc pi install", file=sys.stderr)
+        sys.exit(1)
+    try:
+        data = json.loads(settings.read_text())
+    except (OSError, ValueError) as exc:
+        print(f"hc pi skills: cannot read {settings} ({exc})", file=sys.stderr)
+        sys.exit(1)
+    entries = [e for e in data.get("skills", []) if isinstance(e, str)]
+    print(f"Pi's registered skills entries ({settings}):")
+    for e in entries:
+        print(f"  {e}")
+    if not entries:
+        print("  (none — Pi sees no skills)")
+    # The VISIBILITY verdict belongs to the installer, which mirrors Pi's own traversal
+    # (dist/core/skills.js). This command reports the registration and delegates the
+    # count, so how Pi sees a tree stays defined in exactly one place.
+    path = _resolve_script("install-pi-integration.sh")
+    if path is None:
+        print("hc pi: install-pi-integration.sh not found — run cortex-update.sh",
+              file=sys.stderr)
+        sys.exit(1)
+    print("\n── visibility (delegated to the installer's own check) ──")
+    sys.exit(_run_script(path, ["--check"]))
+
+
 def cmd_help(cfg: dict, args: list):
     """Show this help."""
     print(__doc__.strip())
@@ -1282,6 +1442,8 @@ def cmd_help(cfg: dict, args: list):
     print("  hc doctor             — run cortex-doctor")
     print("  hc harness <cmd>      — wire a coding agent to the cortex context store")
     print("                          (list | show | install | verify | add)")
+    print("  hc pi <cmd>           — Pi's cortex wiring on THIS host, user scope")
+    print("                          (install | check | skills)")
     print("  hc dashboard          — open bus dashboard")
     print("  hc env                — show config")
     print("  hc help               — this message")
@@ -1300,6 +1462,7 @@ COMMANDS = {
     "watch": cmd_watch,
     "doctor": cmd_doctor,
     "harness": cmd_harness,
+    "pi": cmd_pi,
     "dashboard": cmd_dashboard,
     "kill": cmd_kill,
     "env": cmd_env,
