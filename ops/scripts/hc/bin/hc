@@ -3,7 +3,9 @@
 # Source of truth: ops/scripts/hc/bin/hc — the repo keeps the module one level up, so this
 # launcher lives in bin/ where nothing is named like the command (a DIRECTORY at
 # ops/scripts/hc meant `bash ops/scripts/hc` answered "Is a directory").
-# Deployed FLAT to ~/.hermes-cortex/scripts/hc, module beside it, linked to ~/.local/bin/hc
+# Deployed FLAT to ~/.hermes-cortex/scripts/hc with the module beside it. Invoke it by that
+# path: nothing in this repo creates a PATH link, so `command -v hc` finds nothing until a
+# host adds the deploy's scripts dir to PATH itself.
 
 SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
 HC_PY=""
