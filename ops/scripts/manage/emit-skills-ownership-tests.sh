@@ -40,7 +40,9 @@ fi
   "$PY" -m pytest tests/test_skills_ownership.py tests/test_agent_skills_publish.py \
       -q --no-header -p no:randomly 2>&1 | sed -e "s|${HOME}|~|g"
   pytest_rc="${PIPESTATUS[0]}"   # pytest's own status, read BEFORE any other command runs
-  echo "interpreter: ${PY}"
+  # The interpreter line is redacted too: it is a $HOME path and this repo is public
+  # (self-adversarial PII class, flagged twice on this cycle).
+  printf 'interpreter: %s\n' "${PY}" | sed -e "s|${HOME}|~|g"
   echo "PYTEST rc=${pytest_rc} (0 = all passed)"
 } > "${OUT}.tmp"
 
