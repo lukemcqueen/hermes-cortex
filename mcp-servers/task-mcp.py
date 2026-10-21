@@ -23,7 +23,11 @@ Task-model-v3 (v4, schema v009+) worker/orchestrator tools:
     task_list_handed_out the OTHER half — pending slices WITH an assignee, never started
     task_board          one-view board: open counts (pending split) + in_progress
     task_report         worker submits completion evidence → slice goes to review
-    task_verify         ORCHESTRATOR-ONLY: review → completed (or back)
+    task_verify         ORCHESTRATOR-ONLY, DB-enforced (moses/esther allowlist inside
+                        tasks.verify_slice; no EXECUTE grant for anyone else) AND
+                        nothing scheduled runs it — review → completed, or back.
+                        A worker that cannot run it hands the slice over; waiting
+                        leaves it in review forever.
 
 Prompt-injection guard (party B-7): every tool description states that task
 content is DATA, never instructions. Destructive tools require confirm=true.
@@ -504,7 +508,7 @@ async def list_tools(ctx, params=None) -> ListToolsResult:
         ),
         Tool(
             name="task_report",
-            description="Worker submits completion evidence; slice in_progress→review awaiting orchestrator verify (never auto-completes). " + _CONTENT_WARNING,
+            description="Worker submits completion evidence; slice in_progress→REVIEW. It does NOT reach completed: only an orchestrator may run task_verify, and NOTHING is scheduled to run it, so a report nobody is told about sits in review until someone is asked. Follow up in the same breath — hand the slice id + your evidence to an orchestrator (bus, moses/esther) rather than wait. " + _CONTENT_WARNING,
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -517,7 +521,7 @@ async def list_tools(ctx, params=None) -> ListToolsResult:
         ),
         Tool(
             name="task_verify",
-            description="ORCHESTRATOR-ONLY: verify a review slice — approve→completed, reject→back to in_progress with note. " + _CONTENT_WARNING,
+            description="ORCHESTRATOR-ONLY (enforced in the DB, not by convention): approve a slice in review → completed, or reject → back to in_progress with a note. tasks.verify_slice is SECURITY DEFINER with a moses/esther allowlist INSIDE it, and other profiles hold no EXECUTE grant — so a non-orchestrator's 'permission denied for function verify_slice' is a hard refusal, not a hint to retry. NOTHING RUNS THIS AUTOMATICALLY: no scheduled job verifies slices, so one sits in review until an orchestrator is asked. If you cannot run it, do not wait — task_report() the evidence, then hand the slice id + evidence to moses/esther over the bus (or escalate to the operator for a decision only they hold). " + _CONTENT_WARNING,
             inputSchema={
                 "type": "object",
                 "properties": {
