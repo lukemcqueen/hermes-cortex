@@ -461,6 +461,24 @@ Rules for anything a deploy adds beyond copying files:
   one it was. The same applies to any check the deploy shells out to: an exit code read as
   decoration is a check nobody has.
 
+## Pitfall 20: A deploy-migration FAIL is not a doctor FAIL, and never auto-adopt a host-owned path
+
+A deploy can print `✗ these DB schema migrations FAILED: • agent-visible skills not published`
+and exit **1** while the doctor independently reads `Overall: WARNING (N pass · 0 fail)` with
+Deploy sync ✅. These are two different verdicts: the enforcement/critical sync completed and
+was re-secured (fail-safe), so the HOST is healthy; the failed migration is a separate item, not
+a reason to loop re-deploys. Read the doctor's OWN `Overall:` line for whether the host is
+actually failing before diagnosing a broken deploy.
+
+When a migration wants a path another installed system already owns — a peer
+`publish-agent-skills.py` making `~/.agents/skills` a symlink to the cortex defaults while the
+host's omarchy desktop agent reads its own skills there — the tool REFUSES by design (a foreign
+tree at the target) and needs `--adopt-published`, which RENAMES the existing tree away. That
+flag displaces a live subsystem: it is an OPERATOR decision, never run it yourself. Report the
+conflict with the two owners named and leave the choice to the operator; the deploy keeps
+reporting the migration as not-published until then, which is the correct fail-closed state, not
+an error to clear.
+
 ## Verifying that a deploy LANDED — compare the BODY, not the raw file
 
 A plain `diff`/`md5sum` between repo source and the deployed copy is ALWAYS non-empty for the

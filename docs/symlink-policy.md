@@ -61,6 +61,20 @@ or files at `~/.hermes/`. **Never replace these with symlinks to
   `ops/scripts/manage/migrate-skills-ownership.py` — it moves the real tree, links back, and
   verifies; it never deletes a tree.
 
+**Omarchy desktop coexistence (moses, 2026-10-21).** On a host running the Omarchy desktop,
+omarchy links its own agent skills (`omarchy`, `diagnose-crash`) into `~/.agents/skills` as a
+**real directory** — the same path the cortex publisher wants as its pointer. The two coexist
+cleanly because omarchy's skills are **already symlinked inside the cortex defaults tree**
+(`~/.hermes-cortex/skills/omarchy` → `/usr/share/omarchy/default/agents/skills/omarchy`), so
+publishing the pointer exposes both omarchy's skills AND the full cortex library through one
+path. The publish tool (`publish-agent-skills.py`) refuses to clobber a foreign real dir by
+design (exit 4, "DECISION REQUIRED") — the operator runs `--adopt-published`, which **preserves
+the occupied tree by rename** to `~/.agents/skills.pre-publish-<stamp>` (nothing deleted) and
+replaces it with the pointer. Omarchy's own migration scripts that created the real dir are
+marked applied (`~/.local/state/omarchy/migrations/`), so they do not re-run and re-occupy the
+path on update; the omarchy crash-watch consumer reads its skill via the absolute
+`/usr/share/omarchy/...` path, unaffected by the pointer change.
+
 ---
 
 ## ✅ Symlinked — Cortex Runtime
@@ -232,3 +246,4 @@ ls -ld ~/.hermes-cortex/skills ~/.hermes/skills ~/.agents/skills
 | 2026-07-07 | Identified skills/ as Hermes Agent canonical dir — reverted symlink direction | Titus |
 | 2026-07-08 | Stripped aspirational symlinks from doc — only scripts/ is actually symlinked. .env split into 3 independent files. | Moses |
 | 2026-10-21 | **INVERTED**: Cortex now owns the canonical skills tree — `~/.hermes-cortex/skills/` is a REAL directory, and `~/.hermes/skills` + `~/.agents/skills` are pointers to it. Reason: the fleet is moving off the Hermes agent, so the 2026-07-07 direction (Hermes canonical) had to be reversed. Tools: `ops/scripts/manage/migrate-skills-ownership.py` (invert, per host, verified, never deletes) and `ops/scripts/manage/publish-agent-skills.py` (publish the agent-visible view). | Esther |
+| 2026-10-21 | **Omarchy coexistence**: on hosts running the Omarchy desktop, `~/.agents/skills` was omarchy's real dir (partial view). Published the cortex pointer with `--adopt-published` (preserves omarchy's tree by rename to `~/.agents/skills.pre-publish-<stamp>`, never deletes) — omarchy's skills were already symlinked inside the cortex defaults, so agents now see omarchy + all cortex skills via one pointer. | Moses |
