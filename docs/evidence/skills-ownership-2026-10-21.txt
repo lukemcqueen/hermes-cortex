@@ -1,0 +1,43 @@
+== skills ownership evidence (cycle 13491) ==
+generated: 2026-10-21T00:48:29Z
+repo rev : 12956227
+
+-- 1. the three paths --
+expected: cortex REAL, the other two POINTERS to it
+lrwxrwxrwx  1 esther esther   34 Oct 21 09:47 ~/.agents/skills -> ~/.hermes-cortex/skills
+drwx------ 72 esther esther 4096 Oct 21 09:48 ~/.hermes-cortex/skills
+lrwxrwxrwx  1 esther esther   34 Oct 21 09:47 ~/.hermes/skills -> ~/.hermes-cortex/skills
+
+-- 2. ownership classifier (cortex owns the tree = NEW, exit 0) --
+cortex-root   : ~/.hermes-cortex/skills (real=True)
+borrower-root : ~/.hermes/skills (symlink=True)
+state         : NEW
+OK: cortex owns the tree; 520 skills
+ownership rc=0
+
+-- 3. published view (in sync = exit 0, and a plain scan sees every skill) --
+publish mode=root defaults=~/.hermes-cortex/skills published=~/.agents/skills
+  skills in defaults : 520
+  published root     : symlink -> defaults (in sync)
+  visible to a plain scan: 520 (expected 520)
+publish rc=0
+
+-- 4. a reader through the Hermes pointer (content must resolve) --
+---
+name: task-start
+version: 1.3.0
+read through the Hermes path rc=0
+
+-- 5. a WRITE through the Hermes pointer lands in the cortex tree --
+PASS: the write is visible in the cortex tree (same inode via the pointer)
+
+-- 6. skill count per path, and READER SENSITIVITY (why the mode matters) --
+   plain 'find' does NOT traverse a symlinked root; python rglob/os.walk DOES.
+   520 find |    520 find -L |    520 rglob   ~/.hermes-cortex/skills
+     0 find |    520 find -L |    520 rglob   ~/.hermes/skills
+     0 find |    520 find -L |    520 rglob   ~/.agents/skills
+   a harness that enumerates with find-default sees NOTHING through a symlinked root:
+   probe each harness's own enumeration before declaring its capability.
+
+note: the Hermes pointer is the transition accommodation; the requirement is that no
+      HARNESS path other than Hermes's own names a Hermes directory (see the plan).

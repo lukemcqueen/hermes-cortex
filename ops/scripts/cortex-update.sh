@@ -404,6 +404,12 @@ register "ops/scripts/manage/gateway-model-list.py"      "${CORTEX_DEPLOY_HOME}/
 # The venv repairer + the declared dependency set it reads: a host must be able to fix its
 # own ~/.hermes-cortex/venv without anyone reading the source to work out what belongs there.
 register "ops/scripts/manage/fix-cortex-venv.py"          "${CORTEX_DEPLOY_HOME}/scripts/fix-cortex-venv.py"
+# Skills ownership + publication (cycle 13491). Cortex OWNS the skill library and the fleet
+# is moving off the Hermes agent, so the deploy tree must be the REAL one and the harness
+# path a pointer to it; the agent-visible view is then published at the cross-client standard
+# path (~/.agents/skills). Per-host operations that must be runnable without reading source.
+register "ops/scripts/manage/migrate-skills-ownership.py" "${CORTEX_DEPLOY_HOME}/scripts/migrate-skills-ownership.py"
+register "ops/scripts/manage/publish-agent-skills.py"     "${CORTEX_DEPLOY_HOME}/scripts/publish-agent-skills.py"
 # The MCP wiring audit: presence is not wiring — a registration pointing at a missing
 # venv/wrapper/script loads nothing and used to read as "configured".
 register "ops/scripts/manage/mcp_wiring.py"               "${CORTEX_DEPLOY_HOME}/scripts/mcp_wiring.py"
@@ -1535,8 +1541,11 @@ is_skill_stub() {
 }
 
 # Copies SKILL.md files and references/ from repo skills/ directories
-# to ~/.hermes/skills/. Uses the delta engine — only copies
-# files whose checksums differ from installed versions.
+# to ${CORTEX_DEPLOY_HOME}/skills — the tree CORTEX OWNS. Cycle 13491 inverted the
+# direction: the Hermes path (~/.hermes/skills) is a POINTER to this tree, not the
+# canonical store, so the deploy writes the real tree and every harness reads it
+# through a link (see ops/scripts/manage/migrate-skills-ownership.py). Uses the delta
+# engine — only copies files whose checksums differ from installed versions.
 # Syncs from TWO locations:
 #   1. $REPO_DIR/skills/              — canonical global skills (categorized)
 #   2. $REPO_DIR/.hermes-cortex/skills/ — project-level overrides (flat)
@@ -3119,6 +3128,32 @@ main() {
   # A schema step must NEVER brick the enforcement sync. Record it, continue,
   # and fail loudly at the END of the update — never a silent green.
   local -a _DEFERRED_FAILURES=()
+
+  # ── Skills OWNERSHIP + PUBLICATION (cycle 13491) ──────────────────────
+  # Runs after the skills deploy above (sync_skills → ${CORTEX_DEPLOY_HOME}/skills).
+  # Cortex OWNS the library: the deploy tree must be the REAL one and each harness path a
+  # pointer to it, then the agent-visible view is published at the cross-client standard
+  # path. Both steps are idempotent AND verified — the inverter refuses to guess when both
+  # paths are real directories, and the publisher preserves a foreign tree by rename rather
+  # than deleting it. A failure DEFERS the update: a host whose agents read a different
+  # tree must not report a clean update.
+  _skills_owner="${CORTEX_DEPLOY_HOME}/scripts/migrate-skills-ownership.py"
+  _skills_pub="${CORTEX_DEPLOY_HOME}/scripts/publish-agent-skills.py"
+  if [[ -f "$_skills_owner" && -f "$_skills_pub" ]]; then
+    if ! python3 "$_skills_owner" >/dev/null 2>&1; then
+      error "the skills tree is not cortex-owned (inverter refused or could not verify)"
+      info  "  report:   python3 \"$_skills_owner\" --check"
+      info  "  decision: --adopt-borrower | --keep-borrower (when BOTH paths are real dirs)"
+      _DEFERRED_FAILURES+=("skills tree ownership not inverted")
+    fi
+    if ! python3 "$_skills_pub" >/dev/null 2>&1; then
+      error "the agent-visible skills view is not published (agents read the standard path)"
+      info  "  report:   python3 \"$_skills_pub\" --check"
+      _DEFERRED_FAILURES+=("agent-visible skills not published")
+    fi
+  else
+    warn "skills ownership/publish scripts are not deployed — run cortex-update.sh again"
+  fi
 
   # ── Apply mycortex schema migrations (DDL path) ──────────────
   # cortex-update.sh is a file-copier with NO DDL path (party-2 SS1). The
