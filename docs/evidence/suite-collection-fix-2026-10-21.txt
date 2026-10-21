@@ -1,0 +1,65 @@
+generated-by: docs/evidence/suite-collection-fix-2026-10-21.sh
+host-date:    2026-10-21T18:31:53+09:00
+tip:          7af34e798fd9137470bad40fab7bcf8baa986917  (working tree 2 path(s) dirty)
+baseline:     7af34e798fd9137470bad40fab7bcf8baa986917   (PINNED — the last pre-change revision, see the comment in the script)
+
+===== 1. the fixed file, run BOTH ways (the script behaviour must survive the restructure) =====
+  ✓ task_report tells the agent to follow up, not wait
+  ✓ the passive claim that an orchestrator will verify — gone
+  ✓ the bare label with no enforcement and no next step — gone
+RESULT: ALL PASS
+rc=0   (command: python3 tests/test_task_mcp_descriptions.py)
+============================== 2 passed in 0.10s ===============================
+rc=0   (command: bash tests/run-tests.sh tests/test_task_mcp_descriptions.py -q --color=no)
+
+===== 2. THE SYMPTOM — whole-suite collection, at the PINNED baseline and at the tip =====
+Same command on both sides. The baseline is a git worktree at 7af34e798fd9137470bad40fab7bcf8baa986917, an immutable
+revision, and the script ASSERTS that checkout really is the pre-change revision before
+claiming anything from it.
+
+worktree resolves to: 7af34e79
+ASSERTED: the checkout is exactly 7af34e798fd9137470bad40fab7bcf8baa986917
+ASSERTED: module-level 'raise SystemExit' lines in the baseline copy = 1 (must be >= 1)
+
+--- BASELINE (7af34e79): bash tests/run-tests.sh <worktree>/tests -q --collect-only --color=no
+INTERNALERROR>     raise SystemExit(1 if fails else 0)
+INTERNALERROR> SystemExit: 0
+======================== 2232 tests collected in 7.16s =========================
+  rc=3
+
+--- TIP (working tree): bash tests/run-tests.sh tests/ -q --collect-only --color=no
+======================== 2463 tests collected in 3.11s =========================
+  rc=0
+
+INTERNALERROR lines: baseline=105  tip=0
+
+===== 3. the guard proven BOTH ways, not just green on the healthy file =====
+  ✓ task_verify names the DB enforcement
+  ✓ task_verify names the refusal a worker actually sees
+  ✓ task_verify states nothing runs it automatically
+  ✓ task_verify tells the agent what to DO instead
+  ✓ task_report says review is not completion
+  ✓ task_report tells the agent to follow up, not wait
+  ✓ the passive claim that an orchestrator will verify — gone
+  ✓ the bare label with no enforcement and no next step — gone
+  healthy text        -> []   (empty list = passes)
+  ✓ task_verify names the DB enforcement
+  ✓ task_verify names the refusal a worker actually sees
+  ✓ task_verify states nothing runs it automatically
+  ✓ task_verify tells the agent what to DO instead
+  ✓ task_report says review is not completion
+  ✓ task_report tells the agent to follow up, not wait
+  ✗ the passive claim that an orchestrator will verify — still present: 'awaiting orchestrator verify'
+  ✓ the bare label with no enforcement and no next step — gone
+  healthy + forbidden -> ['the passive claim that an orchestrator will verify']
+  ✗ task_verify names the DB enforcement — missing 'SECURITY DEFINER'
+  ✗ task_verify names the refusal a worker actually sees — missing 'permission denied for function verify_slice'
+  ✗ task_verify states nothing runs it automatically — missing 'NOTHING RUNS THIS AUTOMATICALLY'
+  ✗ task_verify tells the agent what to DO instead — missing 'hand the slice id'
+  ✗ task_report says review is not completion — missing 'does NOT reach completed'
+  ✗ task_report tells the agent to follow up, not wait — missing 'rather than wait'
+  ✓ the passive claim that an orchestrator will verify — gone
+  ✓ the bare label with no enforcement and no next step — gone
+  empty text          -> 6 failure(s)
+
+===== end of transcript =====
