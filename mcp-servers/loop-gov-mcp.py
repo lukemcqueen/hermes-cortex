@@ -1754,11 +1754,14 @@ REVIEW_EXPECTATIONS = (
     "rc!=0 is a result, a timeout (124) is NOT: run the check to completion and record the number",
     "preconditions (the module loads, the collaborator exists) belong in a test, not at import",
     "the task description must cover every path in the range, or that file reads as scope drift",
-    # AUTOMATED 2026-10-21 (operator directive, restated until it became a gate): the fleet EXECUTES
-    # this work on three surfaces a Linux-only run cannot see, and shipped code failed on two of them
-    # inside one week — a substring evidence check and an engine-error reported as "no grant" (issue
-    # #206), both with every Linux test green. Stating them here is what makes the close-time reviewer
-    # ask; the rules revision is derived from this text, so stored verdicts re-review once, by design.
+    # Three surfaces a Linux-only run cannot see, stated here so the close-time reviewer ASKS them.
+    # The record for why: operator directive (restated until it became a gate), carried out in cycle
+    # 13540 task 'automate-portability-axes-as-a-gate'; the failure that motivated it is independent
+    # pro review of cycle 13536 — adversarial_reviews review_id
+    # 73203484-2ded-4a79-a78c-cf805403e417, findings ADV-0-1 (a substring evidence check) and ADV-0-2
+    # (an engine error reported as "no grant") — recorded as repo issue #206, both shipping with every
+    # Linux test green. Stating them here is what makes the reviewer ask; the rules revision is derived
+    # from this text, so stored verdicts re-review once, by design.
     "a script another host EXECUTES must work on macOS (no GNU-only flags, no bash-4 syntax, no "
     "unconditional `timeout`) or STATE its fallback — green on Linux is not evidence for the fleet",
     "anything reading or writing SHARED state must state what happens when two sessions or two runs "
