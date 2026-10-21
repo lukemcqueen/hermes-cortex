@@ -386,6 +386,10 @@ register "ops/scripts/manage/consolidate-env.sh"         "${CORTEX_DEPLOY_HOME}/
 register "ops/scripts/manage/gen-skills-manifest.py"      "${CORTEX_DEPLOY_HOME}/scripts/gen-skills-manifest.py"
 register "ops/scripts/manage/gen-skills-manifest.sh"      "${CORTEX_DEPLOY_HOME}/scripts/gen-skills-manifest.sh"
 register "ops/scripts/manage/task-db.py"                "${CORTEX_DEPLOY_HOME}/scripts/task-db.py"
+# Drains task slices stuck in `review` (per-host: each host's own tasks DB). Safe to ship to every
+# host — it self-gates on holding EXECUTE for tasks.verify_slice and exits 3 without it, so a host
+# with no esther/moses identity reports "cannot verify" instead of silently doing nothing.
+register "ops/scripts/manage/tasks-verify-sweep.py"     "${CORTEX_DEPLOY_HOME}/scripts/tasks-verify-sweep.py"
 # Ledger repair tool (issue #188). Each host owns its own loop-governance ledger and
 # each host's pre-commit hook minted the malformed ids, so every host needs the repair
 # path, not just the orchestrator. Registering it also keeps it out of the doctor's
