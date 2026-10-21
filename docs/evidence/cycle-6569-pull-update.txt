@@ -1,0 +1,19 @@
+# cycle-6569 pull-latest + cortex-update verification (Titus, 2026-10-18)
+
+## git head vs origin
+a4702e2964be3a233e26fbca664051d8a68279c0
+a4702e2964be3a233e26fbca664051d8a68279c0
+behind-origin:
+0
+
+## working tree (autostash-preserved local edits)
+ M .env.example
+A  evidence-dream-digest-titus-20261018.md
+ M ops/scripts/health/health-vector-push.sh
+?? docs/evidence/cycle-6569-pull-update.txt
+
+## deploy summary (cortex-update.sh tail)
+(crons synced: 8 new / 35 skipped; enforcement files re-locked; stale governance lock purged)
+
+## doctor (cortex-doctor.py --quiet)
+448 pass / 9 warn / 1 fail / 7 info; single fail = open PENDING cycle; Deploy sync PASS; governance locks PASS; immutables PASS
