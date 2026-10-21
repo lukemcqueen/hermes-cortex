@@ -63,7 +63,13 @@ PYTHON="${PYTHON:-$(command -v python3)}"
 AGENT_DIR="${PI_AGENT_DIR:-${HOME}/.pi/agent}"
 SETTINGS="${PI_SETTINGS_FILE:-${AGENT_DIR}/settings.json}"
 CURATED_DIR="${PI_CORTEX_SKILLS_DIR:-${AGENT_DIR}/cortex-skills}"
-HERMES_SKILLS="${HERMES_SKILLS_DIR:-${HOME}/.hermes/skills}"
+# The RETIRED per-skill farm dir. Kept only so a host that has one can be migrated;
+# nothing is registered here any more.
+# The agent-visible skills tree, published by ops/scripts/manage/publish-agent-skills.py.
+# Cortex OWNS the library and ~/.hermes/skills is a POINTER to it, so no Pi path names a
+# Hermes directory. Pi 1.3's loader follows a symlinked root (measured in its own
+# dist/core/skills.js, not assumed), so the pointer is enough.
+PUBLISHED_SKILLS="${PI_PUBLISHED_SKILLS_DIR:-${HOME}/.agents/skills}"
 
 # ── WEB SEARCH — the pi agent must be able to look things up online ────────
 # Measured 2026-10-15: pi ships read/bash/edit/write/grep/find/ls and the five
@@ -116,7 +122,7 @@ MANIFEST=""
 for candidate in \
     "${CORTEX_SKILLS_MANIFEST:-}" \
     "${HOME}/.hermes-cortex/skills.yaml" \
-    "${HOME}/hermes-cortex/docs/templates/skills.yaml"; do
+    "${HOME}/hermes-cortex/skills.yaml"; do
   if [[ -n "$candidate" && -f "$candidate" ]]; then MANIFEST="$candidate"; break; fi
 done
 
@@ -129,12 +135,11 @@ case "${1:-}" in
   *) echo "install-pi-integration: unknown argument '$1' (try --check / --remove)" >&2; exit 2 ;;
 esac
 
-if [[ -z "$MANIFEST" ]]; then
-  echo "install-pi-integration: skills manifest not found." >&2
-  echo "  Looked for ~/.hermes-cortex/skills.yaml and the repo copy." >&2
-  echo "  The manifest is the ONE source of the always-set — without it this" >&2
-  echo "  would have to hand-type the list, which is the drift this avoids." >&2
-  echo "  Fix: run cortex-update.sh (it deploys skills.yaml)." >&2
+if [[ ! -d "$PUBLISHED_SKILLS" ]]; then
+  echo "install-pi-integration: the published skills tree is missing." >&2
+  echo "  Looked for: ${PUBLISHED_SKILLS/${HOME}/~}" >&2
+  echo "  Cortex OWNS the library; the published tree is what every harness reads." >&2
+  echo "  Fix: python3 ops/scripts/manage/publish-agent-skills.py   (or run cortex-update.sh)" >&2
   exit 1
 fi
 
@@ -153,11 +158,90 @@ if [[ "$MODE" != "check" ]]; then
   [[ -f "$SETTINGS" ]] && cp -p "$SETTINGS" "${SETTINGS}.bak.cortex"
 fi
 
-"$PYTHON" - "$MODE" "$SETTINGS" "$CURATED_DIR" "$MANIFEST" "$HERMES_SKILLS" "${EXTENSION:-}" "${GOVERNANCE_EXTENSION:-}" "$PI_WEB_SEARCH_PACKAGE" "$WEB_SEARCH_FILE" <<'PYEOF'
+"$PYTHON" - "$MODE" "$SETTINGS" "$CURATED_DIR" "$MANIFEST" "$PUBLISHED_SKILLS" "${EXTENSION:-}" "${GOVERNANCE_EXTENSION:-}" "$PI_WEB_SEARCH_PACKAGE" "$WEB_SEARCH_FILE" <<'PYEOF'
 import json, os, sys
 
-(mode, settings_path, curated_dir, manifest_path, skills_root, extension,
+(mode, settings_path, curated_dir, manifest_path, published_dir, extension,
  governance_extension, package_spec, web_search_file) = sys.argv[1:10]
+
+
+def _walk_pi_skills(root, apply_ignore_rules):
+    """The ONE traversal both counters use, so the only thing that can separate
+    them is ignore-rule handling.
+
+    Mirrors dist/core/skills.js (Pi 1.3.0), which is the only authority on what Pi
+    sees: readdirSync, FOLLOW symlinked dirs (statSync), skip dot-dirs and
+    node_modules, stop at a directory that holds SKILL.md, and honour
+    .gitignore/.ignore/.fdignore written AT THE SKILLS ROOT — a stray ignore file
+    there silently hides skills, which is why the count is asserted and not
+    assumed.
+    """
+    seen = []
+    def walk(d):
+        try:
+            entries = sorted(os.scandir(d), key=lambda e: e.name)
+        except OSError:
+            return
+        for e in entries:
+            if e.name == "SKILL.md" and os.path.isfile(e.path):
+                seen.append(e.path)
+                return
+        ignores = _ignore_rules(d) if apply_ignore_rules else []
+        for e in entries:
+            if e.name.startswith(".") or e.name == "node_modules":
+                continue
+            try:
+                isdir = os.path.isdir(e.path)      # follows symlinks, like statSync
+            except OSError:
+                continue
+            if not isdir:
+                continue
+            rel = os.path.relpath(e.path, root)
+            if any(_ignored(rel, pat) for pat in ignores):
+                continue
+            walk(e.path)
+    def _ignore_rules(d):
+        pats = []
+        for name in (".gitignore", ".ignore", ".fdignore"):
+            p = os.path.join(d, name)
+            if os.path.isfile(p):
+                try:
+                    with open(p) as fh:
+                        pats += [l.strip() for l in fh
+                                 if l.strip() and not l.startswith("#")]
+                except OSError:
+                    pass
+        return pats
+    def _ignored(rel, pat):
+        pat = pat.lstrip("/").rstrip("/")
+        if not pat:
+            return False
+        import fnmatch
+        return fnmatch.fnmatch(rel, pat) or fnmatch.fnmatch(rel + "/", pat + "/")
+    walk(root)
+    return seen
+
+
+def pi_sees(root):
+    """Count the SKILL.md files PI ITSELF would see, in its own loader's order."""
+    return _walk_pi_skills(root, apply_ignore_rules=True)
+
+
+def tree_count(root):
+    """The same traversal with the ignore rules NOT applied.
+
+    Identical to pi_sees in every other respect — same stop-at-SKILL.md, same
+    dot-dir/node_modules skip, same symlink follow — so the ONLY thing that can
+    make the two counts differ is an ignore file (.gitignore/.ignore/.fdignore at
+    a skills root) or a directory that cannot be read. That is what makes
+    `visible != total` evidence of hiding.
+
+    It was a bare os.walk before: it kept descending past a directory that already
+    holds SKILL.md and into dot-dirs, counting skills Pi can never load, so the
+    comparison was unsound and reported a false alarm on a healthy host —
+    measured on this fleet 2026-10-21: "Pi sees 440 of 520 skills".
+    """
+    return len(_walk_pi_skills(root, apply_ignore_rules=False))
 
 # Every cortex-owned extension, by basename. ONE list: registration, the
 # strip/replace path and the check all read it, so a new extension cannot be
@@ -187,26 +271,11 @@ def fail(msg, code=1):
     sys.exit(code)
 
 
-def load_manifest():
-    with open(manifest_path) as fh:
-        data = yaml.safe_load(fh) or {}
-    always = data.get("always") or []
-    names = [s.get("name") for s in always if isinstance(s, dict) and s.get("name")]
-    if not names:
-        fail(f"manifest {manifest_path} declares no 'always:' skills — refusing to "
-             "register an empty skill set (it would look wired and do nothing)")
-    return names
-
-
-def resolve_skill(name):
-    """Find <skills_root>/*/<name>/SKILL.md — the dir Pi registers."""
-    for entry in sorted(os.scandir(skills_root), key=lambda e: e.name):
-        if not entry.is_dir():
-            continue
-        candidate = os.path.join(entry.path, name)
-        if os.path.isfile(os.path.join(candidate, "SKILL.md")):
-            return candidate
-    return None
+# RETIRED (2026-10-21): load_manifest() and resolve_skill() built the curated always-set as
+# a farm of symlinks into the skills tree. Pi is now pointed at the whole PUBLISHED tree, so
+# the manifest no longer decides what a coding agent can read — it stays the record of the
+# ritual set Hermes loads. Nothing below reads it; the shell guard above proves the published
+# tree exists, and pi_sees() proves Pi can actually see what is in it.
 
 
 def read_settings():
@@ -233,7 +302,8 @@ def strip_ours(entries):
                                             or e.endswith(OURS)))]
 
 
-names = load_manifest()
+# The manifest is no longer read here (see the retirement note above): Pi reads the whole
+# published tree, and pi_sees() is what establishes it can.
 data = read_settings()
 exts = [e for e in data.get("extensions", []) if isinstance(e, str)]
 skills = [e for e in data.get("skills", []) if isinstance(e, str)]
@@ -272,15 +342,22 @@ if mode == "check":
     for wanted in OURS:
         if not any(e.endswith(wanted) for e in exts):
             problems.append(f"extension not registered in settings.json: {wanted}")
-    if not any(e.startswith(curated_dir) for e in skills):
-        problems.append("curated skills dir not registered in settings.json")
-    if not os.path.isdir(curated_dir):
-        problems.append(f"curated skills dir missing: {curated_dir}")
+    if not any(e.startswith(published_dir) for e in skills):
+        problems.append(f"the published skills tree is not registered in settings.json "
+                        f"(expected {published_dir})")
+    if not os.path.isdir(published_dir):
+        problems.append(f"published skills tree missing: {published_dir}")
     else:
-        present = {e.name for e in os.scandir(curated_dir) if e.is_dir()}
-        missing = [n for n in names if n not in present]
-        if missing:
-            problems.append(f"skills not registered: {', '.join(missing)}")
+        visible, total = len(pi_sees(published_dir)), tree_count(published_dir)
+        if not visible:
+            problems.append(f"Pi would see NO skills under {published_dir} — look for a "
+                            f".gitignore/.ignore/.fdignore there: Pi honours them at the "
+                            f"skills root and they hide skills silently")
+        elif visible != total:
+            problems.append(f"Pi sees {visible} of {total} skills under {published_dir} — an "
+                            f"ignore file or an unreadable directory is hiding the rest")
+        else:
+            print(f"  ✓ Pi sees all {visible} skills under {published_dir}")
     if not any(p.startswith(OUR_PACKAGE_PREFIX) for p in packages):
         problems.append(f"web search package not declared in settings.json "
                         f"(expected {package_spec}) — the agent has no web tool")
@@ -300,7 +377,7 @@ if mode == "check":
         print("install-pi-integration: NOT registered")
         sys.exit(1)
     print(f"  ✓ extensions registered ({', '.join(OURS)}), "
-          f"{len(names)} curated skills present")
+          f"{visible} skills visible under {published_dir}")
     print(f"  ✓ web search: {package_spec} declared, "
           f"keyless chain {KEYLESS_PROVIDERS} configured")
     print("install-pi-integration: registered")
@@ -327,34 +404,33 @@ if mode == "remove":
     sys.exit(0)
 
 # ── add/update ───────────────────────────────────────────────────
-missing = []
-os.makedirs(curated_dir, exist_ok=True)
-for name in names:
-    target = resolve_skill(name)
-    if target is None:
-        missing.append(name)
-        continue
-    link = os.path.join(curated_dir, name)
-    if os.path.islink(link):
-        if os.path.realpath(link) == os.path.realpath(target):
-            continue
-        os.unlink(link)
-    elif os.path.exists(link):
-        import shutil
-        shutil.rmtree(link)
-    os.symlink(target, link)
+# Register the PUBLISHED tree itself. No farm is built: Pi's loader follows a symlinked
+# root (dist/core/skills.js), so pointing at the published pointer exposes every skill, and
+# one registration cannot drift from the tree it names.
+visible = pi_sees(published_dir)
+if not visible:
+    fail(f"Pi would see no skills under {published_dir}. Check for a .gitignore/.ignore/"
+         ".fdignore at the skills root (Pi honours them and they hide skills silently), "
+         "then re-run: python3 ops/scripts/manage/publish-agent-skills.py")
 
-if missing:
-    fail("skills in the manifest's always-set were not found under "
-         f"{skills_root}: {', '.join(missing)}\n"
-         "  A partial set would silently under-load Pi. Fix the skill library "
-         "(or cortex-update.sh) and re-run.")
-
-# Prune links for skills that left the manifest — otherwise a stale link keeps
-# a skill Pi loads but the manifest no longer sanctions.
-for entry in os.scandir(curated_dir):
-    if entry.is_symlink() and entry.name not in names:
-        os.unlink(entry.path)
+# RETIRE an existing farm: a stale link set would keep Pi loading a curated subset
+# alongside the whole tree.
+retired = 0
+if os.path.isdir(curated_dir):
+    for entry in os.scandir(curated_dir):
+        try:
+            if entry.is_symlink() or entry.is_file():
+                os.unlink(entry.path)
+            else:
+                import shutil
+                shutil.rmtree(entry.path)
+            retired += 1
+        except OSError as exc:
+            fail(f"could not retire the old curated farm entry {entry.path} ({exc})")
+    try:
+        os.rmdir(curated_dir)
+    except OSError as exc:
+        fail(f"retired the farm's entries but could not remove {curated_dir} ({exc})")
 
 exts = strip_ours(exts)
 for ext in (extension, governance_extension):
@@ -363,8 +439,12 @@ for ext in (extension, governance_extension):
     exts = [e for e in exts if e != ext]
     if ext:
         exts.append(ext)
-skills = [e for e in strip_ours(skills) if e != curated_dir]
-skills.append(curated_dir)
+# Idempotent, like the extensions block above: the published tree is filtered
+# out before it is appended, so a second run REGISTERS it once. Dropping only
+# `curated_dir` left an existing published entry in place and appended a second
+# copy — a duplicate registration that survives every later run.
+skills = [e for e in strip_ours(skills) if e not in (curated_dir, published_dir)]
+skills.append(published_dir)
 data["extensions"] = exts
 data["skills"] = skills
 # Replace any earlier declaration of the SAME package (a pinned spec bumps by
@@ -400,7 +480,8 @@ print(f"Registered in {settings_path} (user scope — applies to EVERY Pi projec
 for ext in (extension, governance_extension):
     if ext:
         print(f"  extension: {ext}")
-print(f"  skills:    {curated_dir}  ({len(names)} skills from {manifest_path})")
+print(f"  skills:    {published_dir}  ({len(visible)} skills — the whole published tree)"
+      + (f"; retired the old curated farm ({retired} entries)" if retired else ""))
 print(f"  package:   {package_spec}")
 print(f"  web search config: {web_search_file} — {web_search_state}")
 print("Restart any running Pi session (or /reload) to pick this up.")

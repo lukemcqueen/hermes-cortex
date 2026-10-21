@@ -458,6 +458,152 @@ def test_cli_begin_change_fails_closed_when_repo_unresolvable(monkeypatch, capsy
 
 
 
+
+# ── A PRESENT SDK IS NOT A USABLE ONE (gisu, 2026-10-20) ─────────
+#
+# THE REPORTED FAILURE: on a host whose interpreter has an mcp SDK that predates the
+# 2.0 constructor API, importing this module raised, at module level,
+#     TypeError: Server.__init__() got an unexpected keyword argument 'on_list_tools'
+# so the CLI adapter exited 3 ("governance is unavailable") and the Pi write gate
+# blocked every edit/write. The guard handled a MISSING SDK (ImportError) and not an
+# INCOMPATIBLE one, so a version skew in a dependency the CLI does not even need to
+# SERVE took the whole gate down.
+#
+# These tests drive BOTH directions against a FABRICATED mcp package, so the guard is
+# proven here without depending on any host's installed version — and the fabricated
+# package is asserted to have been the one imported, so a passing run cannot be the
+# real SDK answering on the fake's behalf.
+#
+# The API in question (mcp/server/lowlevel/server.py:15-20, 2.0.0) is:
+#     server = Server("your_server_name", on_list_tools=..., on_call_tool=...)
+# The decorator API it replaced was the OLDER one — an "unexpected keyword argument
+# 'on_list_tools'" therefore means the SDK is TOO OLD, not too new.
+
+def _fake_sdk(tmp: Path, accepts_constructor_handlers: bool) -> Path:
+    """A minimal `mcp` package on PYTHONPATH, shadowing the real one (PYTHONPATH
+    precedes site-packages). `accepts_constructor_handlers` picks the API generation:
+    False = the decorator-era Server(name); True = the 2.0 constructor handlers."""
+    root = tmp / "fake-sdk"
+    (root / "mcp" / "server").mkdir(parents=True)
+    (root / "mcp" / "types").mkdir(parents=True)
+    generation = '"new"' if accepts_constructor_handlers else '"old"'
+    (root / "mcp" / "__init__.py").write_text(f'FAKE_SDK_GENERATION = {generation}\n')
+    (root / "mcp" / "types" / "__init__.py").write_text(
+        "class Tool:\n"
+        "    def __init__(self, name='', description='', inputSchema=None, **kw):\n"
+        "        self.name, self.description = name, description\n"
+        "        self.input_schema = inputSchema or {}\n"
+        "    def model_dump(self):\n"
+        "        return {'name': self.name, 'description': self.description,\n"
+        "                'inputSchema': self.input_schema}\n"
+        "class TextContent:\n"
+        "    def __init__(self, type='text', text=''):\n"
+        "        self.type, self.text = type, text\n"
+        "    def model_dump(self):\n"
+        "        return {'type': self.type, 'text': self.text}\n"
+        "class CallToolResult:\n"
+        "    def __init__(self, content=None, is_error=False):\n"
+        "        self.content, self.is_error = content or [], is_error\n"
+        "    def model_dump(self):\n"
+        "        return {'content': [c.model_dump() for c in self.content],\n"
+        "                'isError': self.is_error}\n"
+        "class ListToolsResult:\n"
+        "    def __init__(self, tools=None):\n"
+        "        self.tools = tools or []\n"
+    )
+    if accepts_constructor_handlers:
+        (root / "mcp" / "server" / "__init__.py").write_text(
+            "class Server:\n"
+            "    def __init__(self, name, *, on_list_tools=None, on_call_tool=None, **kw):\n"
+            "        self.name = name\n")
+    else:
+        (root / "mcp" / "server" / "__init__.py").write_text(
+            "class Server:\n"
+            "    def __init__(self, name):\n"
+            "        self.name = name\n")
+    (root / "mcp" / "server" / "stdio.py").write_text(
+        "class _Ctx:\n"
+        "    async def __aenter__(self):\n"
+        "        return (None, None)\n"
+        "    async def __aexit__(self, *a):\n"
+        "        return False\n"
+        "def stdio_server():\n"
+        "    return _Ctx()\n")
+    return root
+
+
+def _load_server_under_fake_sdk(tmp: Path, accepts: bool):
+    """Import the server module with the fabricated SDK and report what happened."""
+    sdk = _fake_sdk(tmp, accepts)
+    script = (
+        "import importlib.util, sys\n"
+        "spec = importlib.util.spec_from_file_location('gov_fakesdk', sys.argv[1])\n"
+        "m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)\n"
+        "print('SDK_FILE=', getattr(sys.modules['mcp'], '__file__', '?'))\n"
+        "print('FAKE_GEN=', getattr(sys.modules['mcp'], 'FAKE_SDK_GENERATION', '?'))\n"
+        "print('MCP_AVAILABLE=', m.MCP_AVAILABLE)\n"
+        "r = m._check_lock({})\n"
+        "print('HANDLER_OK=', 'active' in r.model_dump()['content'][0]['text'])\n"
+    )
+    return subprocess.run([sys.executable, "-c", script, str(SERVER)],
+                          capture_output=True, text=True, timeout=180,
+                          env={**_os.environ, "PYTHONPATH": str(sdk)})
+
+
+def test_server_still_drives_governance_under_an_incompatible_sdk(tmp_path):
+    """THE gisu FAILURE, reproduced and fixed: an SDK that cannot take the constructor
+    handlers must NOT crash the import. The module goes SDK-independent (its stated
+    design) so the CLI adapter keeps working, and the warning names the real cause."""
+    r = _load_server_under_fake_sdk(tmp_path, accepts=False)
+    out = r.stdout
+    assert str(tmp_path) in out, f"the fabricated SDK was not the one imported:\n{out}"
+    assert "FAKE_GEN= old" in out, f"wrong SDK generation loaded:\n{out}"
+    assert "MCP_AVAILABLE= False" in out, (
+        "an incompatible SDK must leave the module importable with MCP_AVAILABLE "
+        f"False, not raise at import:\n{out}\n{r.stderr[-800:]}")
+    assert "HANDLER_OK= True" in out, (
+        f"the handlers must still work without a usable SDK:\n{out}\n{r.stderr[-800:]}")
+    assert "on_list_tools" in r.stderr, (
+        f"the warning must name the incompatibility, not just fail quietly:\n{r.stderr[-800:]}")
+
+
+def test_server_uses_the_sdk_when_it_accepts_the_constructor_handlers(tmp_path):
+    """Control (the other direction): a compatible SDK must still be USED. Without
+    this, a guard that always degrades would pass the test above."""
+    r = _load_server_under_fake_sdk(tmp_path, accepts=True)
+    out = r.stdout
+    assert "FAKE_GEN= new" in out, f"wrong SDK generation loaded:\n{out}"
+    assert "MCP_AVAILABLE= True" in out, (
+        f"a compatible SDK must be used, not degraded away:\n{out}\n{r.stderr[-800:]}")
+
+
+def test_the_real_sdk_on_this_host_is_used_not_degraded(gov):
+    """The guard must not fire on a host whose SDK IS usable — asserted against
+    whatever this host actually has, so a blanket off-switch cannot pass."""
+    import importlib.util as _ilu
+    import inspect as _inspect
+    if _ilu.find_spec("mcp") is None:
+        pytest.skip("this interpreter has no mcp SDK — nothing to assert about using it")
+    from mcp.server import Server as _Server
+    params = _inspect.signature(_Server.__init__).parameters
+    if "on_list_tools" not in params:
+        pytest.skip("this host's SDK predates the 2.0 API — the guard SHOULD engage here")
+    assert gov.MCP_AVAILABLE is True, \
+        "a usable SDK was degraded away — the capability probe is wrong"
+
+
+def test_requirements_floor_excludes_the_sdk_the_servers_cannot_use():
+    """The declared floor is load-bearing: `mcp>=1.0` ADMITS the pre-2.0 SDK whose
+    Server rejects the constructor handlers, so a host repaired from the declared set
+    could resolve straight back to the broken combination."""
+    import re as _re
+    body = (REPO / "ops" / "install" / "requirements.txt").read_text()
+    assert _re.search(r"(?m)^mcp\s*>=\s*2", body), \
+        "the mcp floor must require the 2.0 constructor API"
+    assert not _re.search(r"(?m)^mcp\s*>=\s*1", body), \
+        "a floor of >=1.0 admits the SDK the MCP servers cannot construct against"
+
+
 def test_cli_begin_change_locks_the_cwd_repo_end_to_end():
     """End-to-end (maximally hermetic): a begin_change issued through the CLI
     from inside a non-canonical repo must resolve to that repo — the exact

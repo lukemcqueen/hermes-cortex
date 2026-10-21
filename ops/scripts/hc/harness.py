@@ -45,8 +45,19 @@ from pathlib import Path
 try:
     import yaml
 except ImportError:  # pragma: no cover
-    print("hc harness: PyYAML required (pip install pyyaml)", file=sys.stderr)
-    sys.exit(1)
+    # COULD NOT VERIFY (3), never a bare failure (1): the fleet ships a resolver whose
+    # whole job is to pick an interpreter that CAN import a module, and it defines 3 so
+    # callers never read "cannot check" as a negative result. Exiting 1 here reported
+    # every harness as broken on a host that simply could not run the check — measured
+    # on this host under the Hermes tools python3, while the same host has a capable
+    # interpreter the resolver selects.
+    print("hc harness: COULD NOT VERIFY — no interpreter could import PyYAML, so the "
+          "harness registry cannot be read.", file=sys.stderr)
+    print("  Run it through the fleet resolver, which selects an interpreter that can:",
+          file=sys.stderr)
+    print("    bash ops/scripts/lib/python-with-module.sh yaml "
+          "ops/scripts/hc/harness.py <args>", file=sys.stderr)
+    sys.exit(3)
 
 HERE = Path(__file__).resolve().parent          # repo: <repo>/ops/scripts/hc
 
@@ -197,10 +208,32 @@ def derived_run_line(h: dict) -> tuple[str, list[str]] | None:
 
 # ── commands ────────────────────────────────────────────────────
 
-def cmd_list(reg: dict) -> int:
+def cmd_list(reg: dict, as_json: bool = False) -> int:
     order = {"shipped": 0, "documented": 1, "blocked": 2, "planned": 3}
     hs = sorted(reg["harnesses"], key=lambda h: (order.get(h.get("status", "planned"), 9),
                                                  h["name"]))
+    if as_json:
+        # Machine-readable view, so a CONSUMER never has to parse the registry itself.
+        # The doctor reads the harness list through this command because it may run under
+        # an interpreter without PyYAML (cortex-update.sh invokes it as a bare `python3`),
+        # and `hc` already resolves a capable interpreter for the registry. One source,
+        # one capability resolution: a consumer that imported yaml here would be a second
+        # copy of both.
+        import json as _json
+        print(_json.dumps({
+            "count": len(hs),
+            "layers": list(LAYERS),
+            "harnesses": [{
+                "name": h.get("name"),
+                "layer": h.get("layer"),
+                "status": h.get("status", "planned"),
+                "surface": h.get("surface", ""),
+                "presence": h.get("presence") or [],
+                "why": " ".join((h.get("why") or "").split())[:200],
+                "install": (h.get("install") or "").strip(),
+            } for h in hs],
+        }, indent=2))
+        return 0
     print(f"Declared harnesses: {len(hs)}\n")
     print(f"  {'HARNESS':<16} {'LAYER':<14} {'STATUS':<11} SURFACE")
     for h in hs:
@@ -302,6 +335,37 @@ def cmd_install(reg: dict, name: str, target: Path) -> int:
     return 0
 
 
+def declared_artifacts(h: dict) -> list:
+    """A harness declares its artifact(s) as ONE string OR a LIST of strings.
+
+    `registry.yaml` uses both shapes — pi declares two extension files — so every
+    consumer normalises instead of assuming. Assuming a string produced
+    `TypeError: unsupported operand type(s) for /: 'PosixPath' and 'list'` in
+    `verify pi`, AFTER the registry and store lines had printed, which made a
+    crashed check look like a healthy one.
+    """
+    a = h.get("artifact")
+    if not a:
+        return []
+    return [a] if isinstance(a, str) else [str(x) for x in a]
+
+
+def judge_artifacts(h: dict) -> tuple[bool, int, int]:
+    """Print one line per declared artifact. Returns (all present, present, total)."""
+    files = declared_artifacts(h)
+    ok = True
+    present = 0
+    for rel in files:
+        p = registry_dir() / h["name"] / rel
+        if p.is_file():
+            print(f"artifact: {h['name']}/{rel} present")
+            present += 1
+        else:
+            print(f"artifact: MISSING — {p}")
+            ok = False
+    return ok, present, len(files)
+
+
 def cmd_verify(reg: dict, name: str | None) -> int:
     ok = True
 
@@ -337,23 +401,35 @@ def cmd_verify(reg: dict, name: str | None) -> int:
         print(f"store: CLI not found at {cli} — cannot check")
         ok = False
 
-    # 3. Artifact present for the named harness
+    # 3. Artifacts. With a name: that harness's. Without one: EVERY harness that
+    #    declares artifacts — the bare "result: PASS" this form used to print judged
+    #    no artifact at all, so a host whose harness files had been deleted was told
+    #    PASS. A partial check that reports a bare PASS is the false green this whole
+    #    command exists to prevent.
     if name:
         h = find(reg, name)
         if h is None:
             return _unknown(name)
-        if h.get("artifact"):
-            p = registry_dir() / name / h["artifact"]
-            if p.is_file():
-                print(f"artifact: {name}/{h['artifact']} present")
-            else:
-                print(f"artifact: MISSING — {p}")
-                ok = False
+        _aok, _present, _total = judge_artifacts(h)
+        ok = ok and _aok
+        if _total == 0:
+            print(f"artifact: {name} declares none — nothing to check")
         run = derived_run_line(h) if h.get("layer") == "cli-extension" else None
         if run and not contract_tool_names():
             print("contract: tool surface not loadable — run line cannot be derived")
             ok = False
         print(f"next: hc harness install {name} --dir <your-project>")
+    else:
+        present = judged = 0
+        for h in reg["harnesses"]:
+            _aok, _present, _total = judge_artifacts(h)
+            ok = ok and _aok
+            present += _present
+            judged += _total
+        if judged == 0:
+            print("artifacts: no harness declares one — nothing to check")
+        else:
+            print(f"artifacts: {present}/{judged} present")
 
     print("\nresult: " + ("PASS" if ok else "FAIL"))
     return 0 if ok else 1
@@ -394,6 +470,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--dir", default=".", help="target project dir (install)")
     ap.add_argument("--layer", default="mcp")
     ap.add_argument("--surface", default="")
+    ap.add_argument("--json", action="store_true",
+                    help="machine-readable output (list): name/layer/status/presence")
     a = ap.parse_args(argv)
 
     if a.cmd == "help":
@@ -402,7 +480,7 @@ def main(argv: list[str] | None = None) -> int:
 
     reg = load_registry()
     if a.cmd == "list":
-        return cmd_list(reg)
+        return cmd_list(reg, as_json=a.json)
     if a.cmd == "show":
         return cmd_show(reg, a.name) if a.name else _unknown("<none>")
     if a.cmd == "install":

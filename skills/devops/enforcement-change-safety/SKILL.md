@@ -1003,6 +1003,16 @@ for case in FIXTURES:
   defect is PRESENT in it (the new helper absent, the old release call shape in place).
   Both halves then stay re-runnable from git history, and the second half is what makes
   "the fix is a real change" checkable rather than asserted.
+- **Make the PIN itself run at BOTH revisions, or the RED half is a crash.** A new test that
+  imports the added symbol at module scope dies with `AttributeError` at import on the pre-fix
+  revision — a weaker artifact than a named failure, and an unreproducible one. Derive the new
+  symbols defensively in the test (`getattr(mod, "_new", None)`, and pass the new keyword only when
+  `inspect.signature(fn).parameters` lists it) so the SAME file runs on both sides: the pre-fix run
+  then reports NAMED failures, including the decisive one ("the subject was never re-sent"), which is
+  what turns the comparison into evidence a reviewer can re-run instead of a claim.
+  Give the added-symbol checks their own section that asserts the defect's shape against a PINNED
+  revision (a literal sha named in the test), and report NOT RUN — never a pass — when that revision
+  is unavailable in a shallow clone.
 - **Keep the probe in the scratch dir.** It has to hold the plaintext and fixtures
   the scanner blocks, so it can never be committed; commit only the derived test.
   (A read-only probe that only repoints a THROWAWAY store is the exception — it can
@@ -1276,6 +1286,82 @@ believes governance covers the filesystem.
 
 Worked example, including the block-capable `tool_call` hook shape: the `pi-coding-agent`
 skill's write-gate section.
+
+## Rule 30: Key a Verdict Cache by the RULES That Produced It, Not Only by What It Judged
+
+A review/gate cache whose key is the judged CONTENT alone cannot be invalidated by a change to the
+RULES that produced the entries. So a rule fix leaves the entries it supersedes in force, and the
+gate keeps refusing work the new rules call clean. Measured: a per-blob reviewer cache keyed on the
+blob sha recorded which MODEL judged and nothing about which PROMPT was in force, while the skip
+branch's own comment stated the premise out loud — "identical content cannot produce a different
+verdict". When the prompt gained a rule forbidding a class of finding, every blob judged before it
+went on refusing closes (~28 docs on one host), and the only exits were editing the files (dodging a
+finding the rules call bogus) or an override. Both are wrong, and the second leaves the defect armed
+for the next rule change.
+
+- **Store the revision WITH the entry and require it to match.** Fingerprint the rules text the
+decision was made under (a hash of the reviewer prompt is enough) and record it beside the verdict;
+a row whose revision is absent or older is NOT admissible, so the subject is judged again.
+- **Fail CLOSED on unknown provenance.** An empty or absent CURRENT revision admits NOTHING. The
+effect is extra review, never extra coverage — admitting a stale verdict is how a rule change becomes
+unenforceable while every log line looks healthy.
+- **Invalidate CLEAN entries too, not just findings.** A clean verdict produced under superseded rules
+is a statement about those rules; keeping it lets a receipt authorise content no current rule has
+looked at. The cost is one re-review wave of in-flight subjects after a rules change, which is the
+price of the rules actually taking effect.
+- **Report the invalidation count.** A rule change then reads as one bounded re-review instead of a
+silent fleet-wide cost, and the number is visible rather than inferred from a rising bill.
+- **Migrate with an idempotent, GUARDED ALTER** — a `PRAGMA table_info` membership test, never a
+swallowed duplicate-column error — so pre-existing rows read NULL (re-reviewable) and a store that
+cannot migrate says so in a warning instead of failing quietly forever.
+- **ONE query behind every reader.** The skip list, the coverage set and the invalidation count must
+read the same rows through the same helper, or they disagree about what the store holds and the
+disagreement surfaces as an unclosable cycle.
+- **Widening the helper signature breaks its test doubles and fixtures — sweep both.** A new keyword
+parameter makes every hand-rolled double die with `TypeError`, and a new column makes every fixture
+with its own DDL die with `no column named …`; both fail in files you never opened. Update each
+double (a trailing `**kw`) and each fixture's schema in the same change.
+- **The unblock for a host stuck on frozen verdicts is pull → deploy → FRESH session**, never a doc
+edit and never an override: a long-lived server keeps the revision it loaded at startup, so a
+deployed file alone changes nothing for the session that is stuck. Say that explicitly when handing
+the fix to the host that reported it.
+
+## Rule 31: A Deferral That Costs Nothing Is Taken Every Time — Record It, Expire It, Never Gate It
+
+When agents keep waving past the same finding, the missing piece is rarely more prose. Read the
+TOOL they actually run FIRST: if its own output authorises the deferral — a footer ending every
+remedy with "its OWN governed change, not part of this cycle" — that one sentence beats any skill
+nobody loads, and a count alone cannot distinguish an item somebody decided about from one nobody
+has ever read, so "pre-existing" stays unfalsifiable from the output.
+
+The standing requirement is BOTH halves at once (operator: "I don't want mandatory, however, I
+don't want them to just ignore it every time"):
+
+- **Do not add a gate.** No new FAIL, no changed exit codes, nothing blocking. For this class of
+  request a gate is the wrong answer and will be rejected — the goal is that ignoring becomes
+  VISIBLE, not that deferring becomes impossible.
+- **Make the deferral cost a RECORD.** One command writes owner + reason + date, keyed by the
+  check's NAME — never its detail text, whose counts move on every run and would orphan the record.
+- **Make the record EXPIRE** (a fixed TTL, then STALE and counted as undisposed again). Deferring is
+  legitimate, forgetting is not, and an expiring record is the only thing that separates the two.
+- **Print the undisposed COUNT in the output the agent already reads**, with the exact one-line
+  record command per item. Visibility in the tool's own output — not a doc, not a reminder — is the
+  mechanism.
+- **Refuse the record that would hide a live problem.** A status meaning "fixed" claimed while the
+  check still warns is a hiding place; the status is a claim about STATE, so verify it against the
+  run before storing it.
+- **Fail SOFT on read, HARD on write.** An unreadable store reports everything undisposed (the
+  visible direction) and must never abort the run; a failed WRITE errors loudly, because a silently
+  dropped record tells the caller a decision was made that was not.
+- **A new field inside a machine-parsed line breaks its consumers silently.** The summary line had a
+  regex consumer in another test; the new count went OUTSIDE the parsed parenthetical and that
+  consumer was re-run as evidence. Grep for whoever parses a line before you change it.
+- **When the mechanism ships, do not record a decision on the user's behalf.** A disposition is a
+  statement by whoever made it; a capture or a deploy that seeds one for the host is inventing
+  consent. Report the undisposed count and let the owner decide.
+
+Same family as Rules 17 and 19 — guidance nothing measures is not guidance — with the inverse
+emphasis: the fix here removes the free-ness of ignoring without adding a single refusal.
 
 ## References
 

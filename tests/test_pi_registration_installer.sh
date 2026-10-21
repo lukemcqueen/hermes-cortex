@@ -3,21 +3,32 @@
 #  test_pi_registration_installer.sh — regression test for
 #  ops/scripts/install/install-pi-integration.sh
 #
-#  The installer registers the cortex SKILLS and the ENFORCEMENT
-#  HOOKS for Pi at USER scope, the same way install-pi-mcp.sh
-#  registers the MCP servers: one file (~/.pi/agent/settings.json),
-#  idempotent, preserving every key the user owns.
+#  The installer registers the cortex SKILLS POINTER and the
+#  ENFORCEMENT HOOKS for Pi at USER scope, the same way
+#  install-pi-mcp.sh registers the MCP servers: one file
+#  (~/.pi/agent/settings.json), idempotent, preserving every key
+#  the user owns.
 #
 #  Proves:
 #    1. `extensions` gets the cortex-context.ts path (the lifecycle
 #       hook that records gate evidence for the pre-commit reflexion
 #       gate — without it a Pi commit is refused).
-#    2. `skills` gets a curated dir containing ONE entry per skill in
-#       the manifest's `always:` section — derived, never hand-typed.
+#    2. `skills` gets the PUBLISHED tree the fleet publishes, and a
+#       second run does not register it twice.
 #    3. Every pre-existing key and every user-owned path survives.
 #    4. Idempotent; --check exits 0; --remove strips only ours.
-#    5. A missing manifest / extension FAILS LOUDLY (no silent partial
-#       registration that looks complete).
+#    5. A missing published tree / extension FAILS LOUDLY (no silent
+#       partial registration that looks complete).
+#
+#  Model changed 2026-10-21 (commit d9cbb754): the per-skill FARM is
+#  retired and Pi is pointed at the whole published tree
+#  (~/.agents/skills, published by
+#  ops/scripts/manage/publish-agent-skills.py). This fixture used to
+#  build its skills under ~/.hermes/skills and assert the farm's
+#  registration, so after that change every install path aborted at
+#  the published-tree guard and the suite went red — 10 checks — while
+#  nothing ran it. The manifest is likewise no longer a prerequisite:
+#  cortex owns the library, so the tree IS the registration.
 #
 #  Runs against a temp HOME — never touches the real ~/.pi.
 #  Run:  bash tests/test_pi_registration_installer.sh
@@ -40,9 +51,11 @@ fi
 TD="$(mktemp -d)"
 trap 'rm -rf "$TD"' EXIT
 export HOME="$TD/home"
-mkdir -p "$HOME/.pi/agent" "$HOME/.hermes-cortex/harnesses/pi/extensions" "$HOME/.hermes/skills/workflow" "$HOME/.hermes/skills/software-development"
+# The published tree is what Pi is pointed at; the installer refuses to run
+# without it, so a fixture that omits it exercises nothing but the guard.
+mkdir -p "$HOME/.pi/agent" "$HOME/.hermes-cortex/harnesses/pi/extensions" "$HOME/.agents/skills/workflow" "$HOME/.agents/skills/software-development"
 
-# A real deployed extension + a fake skills library (only names matter here).
+# A real deployed extension + a skills tree (only names matter here).
 # BOTH extensions: the installer requires cortex-context.ts AND
 # cortex-governance.ts (registering only one looks wired while leaving writes
 # open, so it refuses) — a fixture with one is a broken fixture, and it made
@@ -50,11 +63,15 @@ mkdir -p "$HOME/.pi/agent" "$HOME/.hermes-cortex/harnesses/pi/extensions" "$HOME
 touch "$HOME/.hermes-cortex/harnesses/pi/extensions/cortex-context.ts" \
       "$HOME/.hermes-cortex/harnesses/pi/extensions/cortex-governance.ts"
 for s in task-start agent-flow reflexion-check change-checklist survey-before-action agent-contract test-driven-development; do
-  if [[ "$s" == "task-start" ]]; then d="$HOME/.hermes/skills/workflow/$s"; else d="$HOME/.hermes/skills/software-development/$s"; fi
+  if [[ "$s" == "task-start" ]]; then d="$HOME/.agents/skills/workflow/$s"; else d="$HOME/.agents/skills/software-development/$s"; fi
   mkdir -p "$d"; printf -- '---\nname: %s\ndescription: test\n---\n' "$s" > "$d/SKILL.md"
 done
 
-# The manifest is the ONE source of the always-set.
+# The manifest is still resolved (a host may point one at cortex), but it is no
+# longer the source of the registration: cortex owns the library and the
+# published tree IS the registration. It is written here so a future change
+# that starts requiring it again is caught by the "no longer a prerequisite"
+# check at the end rather than silently.
 mkdir -p "$HOME/.hermes-cortex"
 cat > "$HOME/.hermes-cortex/skills.yaml" <<'EOF'
 always:
@@ -98,22 +115,39 @@ assert any(e.endswith("harnesses/pi/extensions/cortex-context.ts") for e in exts
     f"cortex extension not registered: {exts}"
 skills = d["skills"]
 assert "~/my-own-skill" in skills, f"user skill lost: {skills}"
-curated = next((s for s in skills if s.endswith("cortex-skills")), None)
-assert curated, f"no curated skills dir registered: {skills}"
-d2 = os.path.expanduser(curated)
+published = next((s for s in skills if s.rstrip("/").endswith(".agents/skills")), None)
+assert published, f"the published skills tree is not registered: {skills}"
+d2 = os.path.expanduser(published)
 names = sorted(os.path.basename(x) for x in os.listdir(d2)) if os.path.isdir(d2) else []
-want = ["agent-contract", "agent-flow", "change-checklist", "reflexion-check",
-        "survey-before-action", "task-start", "test-driven-development"]
-assert names == want, f"curated skills must be EXACTLY the manifest always-set: {names}"
-for n in names:
-    assert os.path.isfile(os.path.join(d2, n, "SKILL.md")), f"{n} not a skill dir"
+want = ["software-development", "workflow"]
+assert names == want, f"published tree layout unexpected: {names}"
+flat = []
+for cat in names:
+    flat += sorted(os.listdir(os.path.join(d2, cat)))
+assert sorted(flat) == ["agent-contract", "agent-flow", "change-checklist", "reflexion-check",
+                        "survey-before-action", "task-start", "test-driven-development"], \
+    f"published tree must hold the whole library: {flat}"
+for cat in names:
+    for n in os.listdir(os.path.join(d2, cat)):
+        assert os.path.isfile(os.path.join(d2, cat, n, "SKILL.md")), f"{n} not a skill dir"
 EOF
-check "run1: user keys/paths preserved + extension + curated always-set" "$([ $? -eq 0 ] && echo 1 || echo 0)"
+check "run1: user keys/paths preserved + extension + published tree registered" "$([ $? -eq 0 ] && echo 1 || echo 0)"
 
+# Idempotency is asserted on the SKILLS entry count, not only on the printed
+# pair: `strip_ours` drops the retired farm and our extensions but NOT the
+# published tree, so a second run appends a second copy of that path, and a
+# set-shaped comparison that ignores duplicates would call it idempotent.
 BEFORE="$(python3 -c "import json;d=json.load(open('$HOME/.pi/agent/settings.json'));print(sorted(d['extensions']),sorted(d['skills']))")"
 bash "$SCRIPT" >/dev/null 2>&1
 AFTER="$(python3 -c "import json;d=json.load(open('$HOME/.pi/agent/settings.json'));print(sorted(d['extensions']),sorted(d['skills']))")"
 check "run2: idempotent (no duplicate entries)" "$([ "$BEFORE" = "$AFTER" ] && echo 1 || echo 0)"
+python3 - "$HOME/.pi/agent/settings.json" <<'EOF'
+import json, sys
+skills = json.load(open(sys.argv[1])).get("skills", [])
+pub = [s for s in skills if s.rstrip("/").endswith(".agents/skills")]
+assert len(pub) == 1, f"a second run registered the published tree {len(pub)} time(s): {skills}"
+EOF
+check "run2: the published tree appears exactly once" "$([ $? -eq 0 ] && echo 1 || echo 0)"
 
 bash "$SCRIPT" --check >/dev/null 2>&1
 check "--check exits 0 when registered" "$([ $? -eq 0 ] && echo 1 || echo 0)"
@@ -124,8 +158,10 @@ import json, sys
 d = json.load(open(sys.argv[1]))
 assert "~/my-own-ext.ts" in d.get("extensions", []), "user extension removed by --remove"
 assert "~/my-own-skill" in d.get("skills", []), "user skill removed by --remove"
-assert not any("cortex" in x for x in d.get("extensions", [])), f"cortex extension left: {d['extensions']}"
-assert not any("cortex" in x for x in d.get("skills", [])), f"cortex skill left: {d['skills']}"
+assert not any(e.endswith("cortex-context.ts") or e.endswith("cortex-governance.ts")
+               for e in d.get("extensions", [])), f"cortex extension left: {d['extensions']}"
+assert not any(x.endswith("cortex-skills") for x in d.get("skills", [])), \
+    f"retired farm left registered: {d['skills']}"
 EOF
 check "--remove strips only ours, keeps user entries" "$([ $? -eq 0 ] && echo 1 || echo 0)"
 
@@ -142,6 +178,7 @@ pkgs = settings.get("packages", [])
 mine = [p for p in pkgs if p.startswith("npm:pi-web-access@")]
 assert mine, f"pi-web-access not declared in settings.json packages: {pkgs}"
 assert all(p.split("@")[-1] for p in mine), f"declaration must pin a version: {mine}"
+assert len(mine) == 1, f"the same package declared {len(mine)} times: {mine}"
 ws = json.load(open(sys.argv[2]))
 route = ws.get("searchRouting", {}).get("providers", [])
 assert route == ["exa", "duckduckgo"], f"keyless provider chain is not as declared: {route}"
@@ -193,6 +230,7 @@ echo "invoked \$*" >> "$MARKER"
 exit 0
 EOF
 chmod +x "$TD/fake-pi"
+rm -rf "$HOME/.pi/agent/npm"
 PI_LAUNCHER="$TD/fake-pi" bash "$SCRIPT" >/dev/null 2>&1
 RC_NOPI=$?
 if [[ -e "$MARKER" ]]; then
@@ -268,14 +306,32 @@ check "launcher installs the package → rc 0" "$([ "$RC_GOOD" -eq 0 ] && echo 1
 check "…and reports the launcher's own last line" \
     "$(grep -q 'Installed npm:pi-web-access' "$TD/good.out" && echo 1 || echo 0)"
 
-# Fail loudly, never silently-half-register: break the manifest.
-mv "$HOME/.hermes-cortex/skills.yaml" "$HOME/.hermes-cortex/skills.yaml.bak"
+# Fail loudly, never silently-half-register. The loud failure this installer
+# owns is a MISSING PUBLISHED TREE: cortex owns the library, so a host with no
+# tree has nothing to register and must say which path it looked for instead of
+# writing a settings.json that points at nothing.
+mv "$HOME/.agents/skills" "$HOME/.agents/skills.bak"
 set +e
 OUT="$(bash "$SCRIPT" 2>&1)"; RC=$?
 set -e
-check "missing manifest → non-zero exit" "$([ "$RC" -ne 0 ] && echo 1 || echo 0)"
-check "missing manifest → says why" "$(echo "$OUT" | grep -qi 'skills.yaml\|manifest' && echo 1 || echo 0)"
+check "missing published tree → non-zero exit" "$([ "$RC" -ne 0 ] && echo 1 || echo 0)"
+check "missing published tree → names the path it looked for" \
+    "$(echo "$OUT" | grep -q '\.agents/skills' && echo 1 || echo 0)"
+check "missing published tree → names the fix" \
+    "$(echo "$OUT" | grep -q 'publish-agent-skills.py' && echo 1 || echo 0)"
+mv "$HOME/.agents/skills.bak" "$HOME/.agents/skills"
+
+# The manifest was retired as a prerequisite by d9cbb754 (cortex owns the
+# library; the published tree is the registration). Assert the installer works
+# with no manifest at all, so a change that quietly reintroduces the dependency
+# is caught here instead of on a host that has none.
+mv "$HOME/.hermes-cortex/skills.yaml" "$HOME/.hermes-cortex/skills.yaml.bak"
+set +e
+OUT_NOMAN="$(bash "$SCRIPT" 2>&1)"; RC_NOMAN=$?
+set -e
 mv "$HOME/.hermes-cortex/skills.yaml.bak" "$HOME/.hermes-cortex/skills.yaml"
+check "no manifest → still installs (manifest is no longer a prerequisite)" \
+    "$([ "$RC_NOMAN" -eq 0 ] && echo 1 || echo 0)"
 
 echo
 if [[ "$FAILS" -eq 0 ]]; then echo "ALL PASS"; exit 0; else echo "$FAILS FAILURE(S)"; exit 1; fi

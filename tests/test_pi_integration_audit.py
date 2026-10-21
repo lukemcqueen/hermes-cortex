@@ -70,7 +70,17 @@ def _host(home: Path, *, mcp_json: bool = True, agent_name: str = "testagent",
 
     (agent / "settings.json").write_text('{"extensions": ["' + str(dep / "harnesses" / "pi"
                                        / "extensions" / "cortex-context.ts") + '"], "skills": ["'
-                                       + str(agent / "cortex-skills") + '"]}\n')
+                                       + str(agent / "cortex-skills") + '"], "packages": ["'
+                                       + "npm:pi-web-access@0.35.0" + '"]}\n')
+    # Layer 6 needs THREE things to pass, and this fixture provided none of them: the
+    # package declared in settings, the package ON DISK (else "pi loads no extension"),
+    # and a web-search.json naming a keyless provider (a keyed-only chain fails on a host
+    # with no keys). The audit stops at the first failing branch, so a fixture missing all
+    # three only ever reported the first — which is why this test went red when the check
+    # landed (25f1b5b4) and stayed red.
+    (agent / "npm" / "node_modules" / "pi-web-access").mkdir(parents=True, exist_ok=True)
+    (agent / "web-search.json").write_text(
+        '{"searchRouting": {"providers": ["exa", "duckduckgo"]}}\n')
     (agent / "cortex-skills").mkdir(exist_ok=True)
     for s in CURATED:
         if s == drop_link:

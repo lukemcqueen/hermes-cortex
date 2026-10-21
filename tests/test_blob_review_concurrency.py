@@ -122,9 +122,11 @@ def test_a_wave_cannot_outrun_its_window():
     elapsed = time.monotonic() - started
     assert out["calls"] == 0, f"nothing may be credited past the window: {out['calls']}"
     assert len(out["remaining"]) == 4, out["remaining"]
-    # NOT all four are in `failed`: BLOB_REVIEW_MAX_CONSECUTIVE_FAILURES (2) is the outage signal,
-    # so the wave stops early and the rest are deferred by name. That is the designed behaviour —
-    # the assertion is that SOMETHING was recorded as failed and NOTHING was credited as read.
+    # Since 2026-10-21 ALL FOUR are in `failed` — a window-exhausted call is an absent ANSWER, not
+    # the reviewer being down, so it no longer trips the outage cap (see
+    # test_two_slow_calls_do_not_declare_the_reviewer_down_and_abandon_the_rest). The assertion
+    # here is unchanged and is the part that matters: SOMETHING is recorded as failed and NOTHING
+    # was credited as read.
     assert out["failed"], f"an unread blob is a failure, never a pass: {out}"
     assert not out["verdicts"] or all(v != "CLEAN" for v in out["verdicts"].values()), \
         "a blob that did not answer must never be recorded CLEAN"
@@ -151,6 +153,34 @@ def test_a_straggler_that_outlives_the_pass_leaves_no_trace():
         conn.close()
     assert rows == 0, f"a straggler must not record a verdict: {rows} row(s)"
     print("  a straggler that outlives the pass leaves no verdict ✓")
+
+
+def test_two_slow_calls_do_not_declare_the_reviewer_down_and_abandon_the_rest():
+    """A window-exhausted call is an ABSENT ANSWER, not a DOWN reviewer (2026-10-21).
+
+    Counting it toward the outage cap set `reviewer_down`, which does two things beyond logging:
+    it ends the pass AND defers everything the pass had not reached — so two slow calls in one wave
+    could abandon blobs the reviewer would have answered for. Evidence that a slow call is not an
+    outage: on the blob this was measured with, a direct call to the same reviewer answered rc=0 in
+    191s (cycle 13522, issue #203 / task dbb14f91). The slow blob is still never credited: it stays
+    in `failed` AND `remaining`, so the close refuses and the next pass retries it.
+    """
+    mod = _mod()
+    _sandbox(mod)
+
+    def responder(sha, path):
+        if path in ("f0.py", "f1.py"):
+            time.sleep(3.0)          # outlasts the pass's own deadline
+        return '{"verdict": "CLEAN", "findings": []}'
+
+    out = _run(mod, 4, workers=4, cap=4, responder=responder, budget=1.5)
+    # f0 and f1 are processed first (sorted path order) and neither answers; the two that follow
+    # must STILL be judged — that is the whole assertion.
+    assert out["calls"] == 2, f"blobs after two slow calls must still be judged: {out}"
+    assert set(out["verdicts"]) == {"sha2", "sha3"}, out["verdicts"]
+    assert set(out["failed"]) == {"sha0", "sha1"}, f"an unread blob is reported, never a pass: {out}"
+    assert set(out["remaining"]) == {"sha0", "sha1"}, out["remaining"]
+    print("  two slow calls do not abandon the rest of the wave ✓")
 
 
 def test_the_cap_still_bounds_a_pass_and_reports_the_rest():

@@ -12,13 +12,19 @@ metadata:
 
 # MCP Server Building — Hermes Cortex Standard
 
-> **mcp SDK 2.0 (2026-08-18): the decorator API (`@server.list_tools()` /
+> **mcp SDK 2.0: the decorator API (`@server.list_tools()` /
 > `@server.call_tool()`) was REMOVED.** Register handlers via the
-> constructor: `Server(name, on_list_tools=..., on_call_tool=...)`.
-> The old decorators crash with `AttributeError: 'Server' object has no
-> attribute 'list_tools'` on mcp ≥1.0 (see
-> `docs/older/reference/mcp-sdk-v2-migration.md`). All examples below use the
-> 2.0 API. Version pinned in the hermes-agent venv: `mcp==2.0.0`.
+> constructor: `Server(name, on_list_tools=..., on_call_tool=...)`. All
+> examples below use the 2.0 API. Version pinned in the hermes-agent venv:
+> `mcp==2.0.0`.
+>
+> **Read the skew off the error, in the right direction — both are real and they
+> mean opposite things.** `AttributeError: 'Server' object has no attribute
+> 'list_tools'` = the SDK is NEWER than the code (decorators gone); `TypeError:
+> Server.__init__() got an unexpected keyword argument 'on_list_tools'` = the SDK is
+> OLDER than the code, because `on_list_tools` IS the new kwarg and an older SDK's
+> `Server.__init__` does not take it. Migration history and both signals:
+> `docs/older/reference/mcp-sdk-v2-migration.md`.
 
 This skill covers everything needed to build, debug, and deploy MCP servers that agents install via `hermes mcp add`.
 
@@ -46,6 +52,45 @@ if _MCP_SPEC is None:
     print(f"[mcp-server]   {sys.executable} -m pip install mcp", file=sys.stderr)
     sys.exit(1)
 ```
+
+**Availability is not capability (2026-10-20).** `find_spec("mcp")` above catches an ABSENT
+SDK and nothing else. A PRESENT SDK can still be too old for the constructor API you register
+handlers with, and then it fails at IMPORT time — which kills a module that a CLI adapter
+loads by `exec_module`, so a version skew takes down a gate the CLI never needed MCP to
+serve. Probe the capability, not the package (a `find_spec` here would pass on the very
+version that breaks):
+
+```python
+try:
+    from mcp.server import Server
+    from mcp.server.stdio import stdio_server
+    from mcp.types import Tool, TextContent, CallToolResult, ListToolsResult
+    # A throwaway server proves the SDK accepts the 2.0 handlers. Do this INSIDE the
+    # import guard so an incompatible SDK takes the SAME fail-soft path as a missing one.
+    Server("my-server/api-probe", on_list_tools=None, on_call_tool=None)
+    MCP_AVAILABLE = True
+except (ImportError, TypeError) as _sdk_err:
+    MCP_AVAILABLE = False
+    if not isinstance(_sdk_err, ImportError):
+        print(f"[mcp-server] WARNING: the installed MCP SDK cannot serve this module "
+              f"({_sdk_err}) — stdio serving is DISABLED; interpreter: {sys.executable}",
+              file=sys.stderr)
+    # ... minimal stand-ins for Tool/TextContent/CallToolResult/Server, so the
+    # SDK-independent handlers still run and a CLI adapter still works.
+```
+
+Report the WARNING rather than degrading in silence: a gate that quietly disables itself is
+how the wrong interpreter stays invisible. `ops/scripts/manage/fix-cortex-venv.py` carries
+the same idea for the fleet venv (an `mcp` that imports but cannot construct the handlers is
+reported **incompatible**, not healthy).
+
+**And the DECLARED FLOOR must exclude the version that breaks.** A pin like `mcp>=1.0`
+admits the very SDK whose constructor rejects the 2.0 handlers, so every automated repair path
+that installs "the declared dependency set" resolves straight back into the break — the
+version constraint and the API you call are one decision, not two. State the floor at the API
+generation you construct against, and make the venv/health check probe the CAPABILITY rather
+than the import: a check that only imports answers `ok` on the host that is broken, and
+because a deploy gates its repair on that answer it repairs nothing.
 
 ---
 
@@ -262,7 +307,8 @@ yes | hermes mcp add server-name --command python3 --args /path/to/server.py
 | `Connection closed` | Stale config | `hermes mcp remove` then re-add |
 | `Connection closed` | Import error in server | Run `python3 server.py` directly, check stderr |
 | `Connection closed` | Wrong Python interpreter | Use `--command /path/to/python3` instead of just `python3` |
-| `AttributeError: 'Server' object has no attribute 'list_tools'` | mcp SDK ≥1.0 removed the `@server.list_tools()` / `@server.call_tool()` decorators | Use the 2.0 constructor API: `Server(name, on_list_tools=..., on_call_tool=...)`. See `docs/older/reference/mcp-sdk-v2-migration.md` |
+| `AttributeError: 'Server' object has no attribute 'list_tools'` | mcp 2.0 removed the `@server.list_tools()` / `@server.call_tool()` decorators this server still uses, so the SDK is NEWER than the code | Use the 2.0 constructor API: `Server(name, on_list_tools=..., on_call_tool=...)`. See `docs/older/reference/mcp-sdk-v2-migration.md` |
+| `TypeError: Server.__init__() got an unexpected keyword argument 'on_list_tools'` | The installed mcp is OLDER than the 2.0 constructor API this code uses. It reads backwards — `on_list_tools` is the NEW kwarg, so "unexpected keyword argument" means the SDK is too old (measured: gisu, 2026-10-20) | Run it with an interpreter that has mcp>=2.0 (`~/.hermes-cortex/venv/bin/python3`), or repair that venv with `ops/scripts/manage/fix-cortex-venv.py`. The import guard should probe this API, not just the package's presence |
 | `ModuleNotFoundError` | Missing dependency | Install the missing package |
 | `Permission denied` | File not executable | `chmod +x server.py` |
 | `Tool not found` | Wrong tool name in call | Check `hermes mcp test` output for exact names |

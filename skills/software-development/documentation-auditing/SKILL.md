@@ -191,6 +191,28 @@ showed) — otherwise the next reader reintroduces it as "obviously true".
 - **Code blocks are actionable.** Even in a migration doc, a ````bash` code block with `bash src/scripts/cortex-update.sh` will **fail** if run. These are High severity.
 - **Line numbers shift between audits.** Files get edited. Search by pattern, not by line number from the previous report. A previous report that says "line 586" may now refer to completely different content.
 - **DOCS-INDEX.md lags behind file deletions.** When a doc file is deleted, the index often keeps its entry.
+- **A reference by NUMBER is only as stable as the numbering.** A long doc that
+  restarts numbering per section (`### 1.` under each topic heading) makes
+  "see entry 18" resolve to two or three different places, and an inserted or
+  reordered section silently repoints every numbered cross-reference. When you
+  touch either side, repoint the REFERRER to the entry's TITLE (`docs/x.md ->
+  "<entry title>"`) instead of renumbering the doc: renumbering is a large diff
+  that the next append undoes, while a title survives insertion. Sweep every
+  numbered referrer in the same pass — code comments, echoed remedy text in
+  checks, and prose alike.
+- **A printed path is an instruction, and a printed path that cannot resolve is a
+  bug in the check that prints it.** When an audit finds a stale path inside a
+  script's user-facing output (a remedy line, a "saved to:" message, a `Fix: …`
+  hint), fix the message AND confirm the artifact it names actually gets written
+  — a message advertising a file nothing creates is worse than silence, because
+  the operator goes looking for it.
+- **Prove the probe before believing a stale-path finding.** A path-existence
+  check that also tests non-paths reports its own error as a broken reference: a
+  `file.py::test_name` node id, a command with flags, a `<placeholder>`, a glob,
+  or a doc path that is explicitly qualified as living in another repo. Exclude
+  those shapes, re-run, and only then report. The mirror case: a hit on the same
+  line as an unrelated note is still a hit — printing the hit list in full and
+  classifying each line is what keeps the sweep honest.
 - **Your OWN edit can invalidate a claim about the file you just edited — audit the describers
   in the same pass.** Adding a pointer or section to `X` makes every doc that DESCRIBES `X`
   stale, and the fragile kind is a NEGATIVE claim (`not documented in X`, `kept out of X`,

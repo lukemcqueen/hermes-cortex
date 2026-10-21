@@ -16,12 +16,15 @@ The drift this test suite exists to prevent:
 from __future__ import annotations
 
 import importlib.util
+import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
 HARNESS_CMD = REPO / "ops/scripts/hc/harness.py"
+HC_PY = REPO / "ops/scripts/hc/hc.py"
 TOOLS_PY = REPO / "ops/services/mycortex-mem/context_tools.py"
 
 
@@ -42,10 +45,11 @@ def _contract_tool_names() -> set[str]:
     return {t["name"] for t in mod.TOOLS}
 
 
-def run(*args: str, cwd: Path | None = None):
+def run(*args: str, cwd: Path | None = None, env: dict | None = None):
     return subprocess.run([sys.executable, str(HARNESS_CMD), *args],
                           capture_output=True, text=True, timeout=90,
-                          cwd=str(cwd) if cwd else None)
+                          cwd=str(cwd) if cwd else None,
+                          env={**os.environ, **env} if env else None)
 
 
 def test_lists_registry_harnesses():
@@ -173,6 +177,132 @@ def test_verify_reports_the_registry_and_the_store():
     r = run("verify", "pi")
     assert "registry" in r.stdout.lower()
     assert "store" in r.stdout.lower()
+    # …and a return code, which this test did not assert while `verify pi` was
+    # crashing with a TypeError on the one harness that declares TWO artifacts:
+    # the two printed lines arrive BEFORE the crash, so a content-only assertion
+    # stayed green over it.
+    assert r.returncode == 0, (r.stdout + r.stderr)[-600:]
+
+
+def test_verify_named_harness_reports_each_declared_artifact():
+    """pi declares a LIST of artifacts; `verify pi` must judge every one of them.
+
+    `registry_dir() / name / h["artifact"]` works only while every harness declares
+    a single string, so the one that declares two raised
+    `TypeError: unsupported operand type(s) for /: 'PosixPath' and 'list'` and
+    exited 1 — after printing the registry and store lines that made it look fine.
+    """
+    r = run("verify", "pi")
+    assert r.returncode == 0, (r.stdout + r.stderr)[-600:]
+    assert "cortex-context.ts" in r.stdout, r.stdout
+    assert "cortex-governance.ts" in r.stdout, r.stdout
+
+
+def _registry_fixture(tmp_path: Path, *, drop: str | None = None) -> Path:
+    """A registry dir with the REAL registry, a generator stub and pi's artifacts.
+
+    CORTEX_HARNESS_DIR is honoured by harness.py's registry_dir(), so the subject is
+    pointed at this fixture instead of the checkout — the store/registry halves still
+    take their real path, which is what makes the run meaningful.
+    """
+    regdir = tmp_path / "harnesses"
+    (regdir / "pi" / "extensions").mkdir(parents=True)
+    shutil.copy2(REPO / "ops/install/harnesses/registry.yaml", regdir / "registry.yaml")
+    gen = regdir / "generate-harnesses.py"
+    gen.write_text("import sys\nprint('generate-harnesses: OK — fixture')\n")
+    for name in ("cortex-context.ts", "cortex-governance.ts"):
+        if name == drop:
+            continue
+        (regdir / "pi" / "extensions" / name).write_text("// ext\n")
+    return regdir
+
+
+def test_verify_without_a_name_does_not_pass_without_checking_artifacts(tmp_path):
+    """A bare PASS that judged no artifact is a false green.
+
+    `verify` with no name checked the registry and the store and then printed
+    "result: PASS" — it never looked at a single declared artifact, so a host whose
+    harness files were gone reported PASS. Both directions are pinned here: with
+    every declared artifact present it passes AND names them, and with one missing
+    it fails.
+    """
+    regdir = _registry_fixture(tmp_path)
+    r = run("verify", env={"CORTEX_HARNESS_DIR": str(regdir)})
+    assert r.returncode == 0, (r.stdout + r.stderr)[-600:]
+    assert "artifact" in r.stdout.lower(), f"no artifact was judged:\n{r.stdout}"
+
+    regdir2 = _registry_fixture(tmp_path / "second", drop="cortex-governance.ts")
+    r2 = run("verify", env={"CORTEX_HARNESS_DIR": str(regdir2)})
+    assert r2.returncode != 0, f"a missing declared artifact reported PASS:\n{r2.stdout}"
+    assert "cortex-governance.ts" in r2.stdout, r2.stdout
+
+
+def _yaml_less_runner(tmp_path: Path) -> Path:
+    """Drive a target script in a process where `import yaml` FAILS.
+
+    Reproduces the live host exactly: the tool runs under an interpreter that cannot
+    import PyYAML while a capable one exists elsewhere on the same host. A poisoned
+    sys.modules entry raises ImportError deterministically — no dependence on which
+    python3 happens to be on PATH.
+    """
+    p = tmp_path / "yaml_less_runner.py"
+    p.write_text("import sys, runpy\n"
+                 "sys.modules['yaml'] = None\n"
+                 "target, *rest = sys.argv[1:]\n"
+                 "sys.argv = [target, *rest]\n"
+                 "runpy.run_path(target, run_name='__main__')\n")
+    return p
+
+
+def test_the_cli_does_not_need_the_invoking_interpreter_to_have_yaml(tmp_path):
+    """`hc harness` must resolve a CAPABLE interpreter itself.
+
+    Measured on this host: `python3 ops/scripts/hc/harness.py list` printed
+    "hc harness: PyYAML required (pip install pyyaml)" and exited 1, because
+    hc.py loaded harness.py IN-PROCESS and harness.py exits at import without yaml
+    — while the fleet resolver on the same host selects an interpreter that HAS it.
+    """
+    assert (REPO / "ops/scripts/lib/python-with-module.sh").is_file(), \
+        "the fleet capability resolver is the seam this test drives"
+    runner = _yaml_less_runner(tmp_path)
+    r = subprocess.run([sys.executable, str(runner), str(HC_PY), "harness", "list"],
+                       capture_output=True, text=True, timeout=120)
+    assert r.returncode == 0, (r.stdout + r.stderr)[-600:]
+    assert "pi" in r.stdout, r.stdout
+
+
+def test_the_cli_reports_could_not_verify_when_no_interpreter_can_import_yaml(tmp_path):
+    """No capable interpreter anywhere is a THIRD outcome: exit 3, not a failure.
+
+    The resolver defines 3 = COULD NOT VERIFY so callers never read "cannot check"
+    as a negative result. A bare ImportError exit 1 (or a traceback) would report
+    the harnesses as broken on a host that simply cannot run the check.
+    """
+    # The resolver's candidates include ABSOLUTE paths under HOME, so a host that HAS a
+    # capable interpreter cannot be simulated by PATH alone: HOME is redirected too, and
+    # PATH keeps only a `bash` link so the CLI can still shell out while `command -v
+    # python3` finds nothing.
+    binonly = tmp_path / "bin"
+    binonly.mkdir(parents=True, exist_ok=True)
+    os.symlink(shutil.which("bash") or "/bin/bash", binonly / "bash")
+    (tmp_path / "home").mkdir(exist_ok=True)
+    runner = _yaml_less_runner(tmp_path)
+    env = {"CORTEX_HARNESS_DIR": str(_registry_fixture(tmp_path)),
+           "PYTHON": "/nonexistent/python3",
+           "HERMES_VENV": "/nonexistent/hermes",
+           "HOME": str(tmp_path / "home"),
+           # The CLI resolves agent identity from the host's env files, which the
+           # redirected HOME no longer provides: without this the CLI exits 2 for a
+           # missing identity and the assertion below would measure THAT, not the
+           # capability path (a probe that never reached its subject).
+           "HC_AGENT": "the-agent",
+           "AGENT_NAME": "the-agent",
+           "PATH": str(binonly)}
+    r = subprocess.run([sys.executable, str(runner), str(HC_PY), "harness", "list"],
+                       capture_output=True, text=True, timeout=120, env={**os.environ, **env})
+    combined = (r.stdout + r.stderr).lower()
+    assert r.returncode == 3, f"expected 3 (could not verify), got {r.returncode}:\n{combined[-600:]}"
+    assert "could not verify" in combined or "no interpreter" in combined, combined[-600:]
 
 
 def test_hc_entrypoint_dispatches_harness():

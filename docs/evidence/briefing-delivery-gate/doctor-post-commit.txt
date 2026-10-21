@@ -1,0 +1,12 @@
+# Doctor after the change was committed and deployed (cycle 13484)
+# Captured with a clean working tree: the transcript was written to /tmp first,
+# then copied in and committed, so it does not itself dirty the tree it measured.
+$ git status --short   # empty = clean tree at capture time
+(no output)
+$ python3 ~/hermes-cortex/ops/scripts/manage/cortex-doctor.py --quiet
+  ✅ Repo clean
+  ⚠️  Overall: WARNING  (476 pass · 2 warn · 0 fail · 3 info)  · 5 undisposed
+  🧹 UNDISPOSED — 5 warning/info check(s) nobody has decided about
+rc=1   # doctor rc: 1 = warnings present (pre-existing; 0 fail)
+$ grep -c "briefing" /tmp/doc-after.txt   # the new script is checksum-verified by the doctor
+3

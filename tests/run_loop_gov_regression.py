@@ -94,6 +94,17 @@ def _scrub(text: str) -> str:
 # Every test asserted in the change's evidence note. Scope of the artifact must
 # equal the scope of the claim.
 TESTS = [
+    # NOT listed: tests/test_loop_gov_cli.py. It IS run by the supported suite
+    # (tests/run-tests.sh collects tests/), and it belongs here — it is the test file for
+    # ops/scripts/loop-gov.py. It cannot be added YET: its `test_cli_stdout_is_machine_readable`
+    # asserts `check_lock` exits 0, and `loop-gov.py`'s `is_refusal()` substring-matches the
+    # bare word "refused" over the whole serialized payload, so any lock carrying a
+    # `close_refused` field (an advisory record of a previously refused close — normal
+    # operation) makes a read-only status query report as a REFUSAL, exit 1. Adding the file
+    # here therefore ships a PERMANENTLY red artifact on every host that has ever had a close
+    # refused, which is the "a red test nobody can fix reads as noise" failure. Fix
+    # is_refusal() (match refusal PHRASES, not data keys) and then add this entry.
+    # Recorded on the loop-governance ledger as an issue from cycle 13454.
     "tests/test_loop_gov_mcp_nonblocking.py",
     "tests/test_loop_gov_review_repo.py",
     # A non-Hermes caller's repo identity (titus/pi, 2026-10-09). IN SCOPE: this

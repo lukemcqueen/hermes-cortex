@@ -170,6 +170,7 @@ check's 24h rule or the >TTL purge finally classifies it.
 | 7 | Domain/adversarial skill credit vanished after every deploy | 2026-09-23 | Loaded-skill set lived only in process memory; plugin reload wiped it | Yes (re-blocked mid-task) — fixed via the credit journal |
 | 8 | "7/7 loaded ✅ but still blocked" after a deploy that changed no skill text | 2026-09-23 | `_skills_fingerprint()` hashed skill-file MTIMES, so a byte-identical redeploy moved the fingerprint, discarded the credit journal and invalidated the 7/7 marker | Yes — fixed: content-hash fingerprint + per-skill credit; the block message names the skills to reload |
 | 9 | A lock opened from a non-git-repo cwd is tagged with the host-canonical repo, silently | 2026-10-13 (kustos) | `loop-gov.py`'s `"no-repo"` stamp returned without a word | No — **FIXED 2026-10-13**: names the cwd, the repo it will claim, and both ways out (detail below the table) |
+| 10 | Every write gate blocked although governance is healthy: the CLI adapter exits 3 because the interpreter's `mcp` is too old for the 2.0 constructor API | 2026-10-20 (gisu) | `loop-gov-mcp.py` constructed `Server(...)` unguarded, so a version skew in a dependency the CLI never SERVES raised at module import | Yes (every write/edit in a Pi session) — **FIXED 2026-10-20**: the SDK guard probes the constructor API and an incompatible SDK degrades to the SDK-independent handlers, warning and naming the interpreter (detail below) |
 
 ---
 
@@ -203,6 +204,44 @@ still fails closed for `begin_change` (exit 1) and is now reported for every oth
 Evidence: `docs/evidence/lock-truth-2026-10-13.txt` (a real non-repo cwd, git's own "fatal: not a
 git repository", and the note naming both the cwd and `'hermes-cortex'`). Tests:
 `tests/test_lock_truth.py`.
+
+---
+
+## 10. A version skew in `mcp` killed the WRITE GATE, on a host whose governance was healthy
+
+> **FIXED 2026-10-20.** Reported by the pi agent on gisu: every write/edit/non-readonly bash
+> blocked — `cortex-governance.ts` → `loop-gov.py check_repo_lock` → rc=3 — with stderr
+> `Server.__init__() got an unexpected keyword argument 'on_list_tools'`.
+
+**Symptom.** `loop-gov.py: governance is unavailable: …` and exit 3 on every call, while the
+loop-governance MCP tools keep working from that same agent. The gate looks dead; the store
+looks fine.
+
+**What happens.** `mcp-servers/loop-gov-mcp.py` guarded its SDK import with `except ImportError`
+ONLY, and then constructed `Server("loop-governance", on_list_tools=…, on_call_tool=…)` at module
+level. Those kwargs are the 2.0 constructor API, so an older SDK raises `TypeError` THERE — at
+import. `ops/scripts/loop-gov.py` loads the module with `exec_module`, so the CLI adapter, which
+never needs to SERVE MCP, died with it. The registered MCP server runs on a different interpreter
+(`~/.hermes-cortex/venv/bin/python3`, mcp 2.0.0) and stayed healthy — which is why the same
+agent's MCP calls succeeded while its write gate refused everything.
+
+**Why the first diagnosis went the wrong way.** The message reads as "the SDK is NEWER than the
+code" and means the opposite: `on_list_tools` IS the 2.0 API, and the decorator style it replaced
+is the older one (`docs/older/reference/mcp-sdk-v2-migration.md`).
+
+**Fix (FIXED 2026-10-20).** The guard now PROBES the API it needs — a throwaway
+`Server("loop-governance/sdk-capability-probe", on_list_tools=None, on_call_tool=None)` inside the
+same `try` — so an incompatible SDK takes the same fail-soft path as a missing one: the module
+stays importable, the handlers stay drivable, and stderr carries a warning naming the interpreter
+and the API required. It declines to serve rather than degrading in silence, because a gate that
+quietly disables itself hides the wrong interpreter. The declared floor is `mcp>=2.0` (it was
+`>=1.0`, which admitted exactly the version that breaks), and `fix-cortex-venv.py --check` probes
+that capability rather than only importing — the check `cortex-update.sh` gates its repair on, so
+without it a broken host was told `ok: … imports all 6 declared requirements` and repaired
+nothing. Evidence: `docs/evidence/verify-mcp-sdk-guard.sh` beside its captured run (the pinned
+baseline reproduces the reported `TypeError`; this tree imports, warns, and keeps the CLI
+working). Tests: `tests/test_loop_gov_cli.py` (both SDK generations fabricated in-test),
+`tests/test_fix_cortex_venv.py`.
 
 ---
 

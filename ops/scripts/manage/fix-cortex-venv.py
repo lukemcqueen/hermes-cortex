@@ -12,6 +12,12 @@ WHAT IT DOES
   * reads the DECLARED set from ops/install/requirements.txt (this repo, or --requirements);
   * decides what is missing by IMPORTING it in the target interpreter — never by metadata or
     exit codes ("PyYAML" is a distribution name; `yaml` is the module);
+  * ALSO probes each declared CAPABILITY the import cannot prove (CAPABILITY_PROBES below).
+    An importable module can still be too old for the call sites that use it — measured on
+    gisu 2026-10-20, where mcp imported fine and rejected the 2.0 constructor handlers the
+    fleet's MCP servers are built on, so "ok: imports all 6 requirements" was printed on a
+    host whose governance gate was dead. Such a requirement is reported INCOMPATIBLE, and
+    counted as a gap, so --check (and cortex-update.sh, which gates its install on it) sees it;
   * installs only the missing ones, preferring `uv` and falling back to the venv's own pip
     (a uv venv has NO pip until `ensurepip` runs — handled);
   * re-checks by import afterwards and fails loudly if the venv still cannot import them.
@@ -83,6 +89,51 @@ def module_for(req):
     if alias:
         return alias
     return name.replace("-", "_")
+
+
+#: Capabilities IMPORTABILITY CANNOT PROVE, keyed by DISTRIBUTION name (lowercase).
+#:
+#: A module can import perfectly and still be unusable by the call sites that use it. The
+#: fleet's MCP servers register their handlers through the mcp 2.0 constructor API, which
+#: the 1.x SDK rejects at runtime — so `--check` said "ok" on a host whose governance CLI
+#: exited 3 on every write gate, and cortex-update.sh, which gates its repair on that same
+#: check, therefore never installed anything (measured: gisu, 2026-10-20). A failed probe
+#: is reported as INCOMPATIBLE, never as "missing", so the message names the real fault.
+#:
+#: Each probe runs in the TARGET interpreter, as argv-free source, with the same clean
+#: environment as the import probe. Code, not a version string: version metadata is a
+#: second source of truth that drifts from what the interpreter can actually do.
+CAPABILITY_PROBES = {
+    "mcp": {
+        "requires": ("the 2.0 constructor API "
+                     "(Server(name, on_list_tools=..., on_call_tool=...))"),
+        "probe": ("from mcp.server import Server\n"
+                  "Server('_cortex_capability_probe',\n"
+                  "       on_list_tools=None, on_call_tool=None)\n"),
+    },
+}
+
+
+def capability_gap(python, req):
+    """Why `req` is unusable even though it imports, or None when it is fine.
+
+    Returns None for a requirement that declares no probe — an absent declaration is not a
+    failure, and inventing a check for a module that needs none is how a checker becomes
+    noise. A probe that cannot RUN (no interpreter, timeout) is reported as a gap too: a
+    check that could not be performed is not a pass.
+    """
+    declared = CAPABILITY_PROBES.get(dist_name(req).lower())
+    if not declared:
+        return None
+    try:
+        proc = subprocess.run([str(python), "-c", declared["probe"]], capture_output=True,
+                              text=True, timeout=120, env=target_env())
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return f"could not run the capability probe: {exc}"
+    if proc.returncode == 0:
+        return None
+    detail = [ln.strip() for ln in (proc.stderr or proc.stdout or "").splitlines() if ln.strip()]
+    return f"needs {declared['requires']} — {detail[-1] if detail else 'probe failed'}"
 
 
 #: Names removed from the target's environment by :func:`target_env`, for reporting.
@@ -216,7 +267,8 @@ def main(argv=None):
                  else find_requirements(__file__) or Path("ops/install/requirements.txt"))
     python = venv / "bin" / "python3"
     report = {"venv": str(venv), "python": str(python), "venv_ok": venv.is_dir(),
-              "requirements": str(reqs_path), "missing": [], "present": [], "repaired": False}
+              "requirements": str(reqs_path), "missing": [], "present": [],
+              "incompatible": {}, "repaired": False}
 
     def emit(code, human_lines):
         lines = list(human_lines)
@@ -250,21 +302,39 @@ def main(argv=None):
     state = venv_state(python, requirements)
     report["present"] = [r for r, ok in state.items() if ok]
     report["missing"] = [r for r, ok in state.items() if not ok]
+    # An importable requirement can still be UNUSABLE by the code that calls it, so the
+    # capabilities the import cannot prove are probed. Only the importable ones: a module
+    # that is absent has no capability to check.
+    report["incompatible"] = {}
+    for req in report["present"]:
+        why = capability_gap(python, req)
+        if why:
+            report["incompatible"][req] = why
+    gaps = report["missing"] + list(report["incompatible"])
     cmd = " ".join(fix_argv(venv, reqs_path))
 
-    if not report["missing"]:
-        return emit(0, [f"ok: {python} imports all {len(requirements)} declared requirements"])
+    def gap_lines():
+        """One line per gap, naming WHY it is unusable — 'missing' and 'incompatible' are
+        different faults with the same remedy, and conflating them sends the reader looking
+        for a package that is already installed."""
+        return [*[f"  missing:      {r}" for r in report["missing"]],
+                *[f"  incompatible: {req} — {why}"
+                  for req, why in report["incompatible"].items()]]
+
+    if not gaps:
+        return emit(0, [f"ok: {python} imports all {len(requirements)} declared requirements "
+                        f"and satisfies their capability probes"])
 
     if args.check:
-        return emit(3, [f"{len(report['missing'])} of {len(requirements)} declared requirements are "
-                        f"missing from {venv}:",
-                        *[f"  missing: {r}" for r in report["missing"]],
+        return emit(3, [f"{len(gaps)} of {len(requirements)} declared requirements are not usable "
+                        f"from {venv}:",
+                        *gap_lines(),
                         f"  fix it:  {cmd}"])
 
-    print(f"installing {len(report['missing'])} missing requirement(s) into {venv}:")
-    for r in report["missing"]:
+    print(f"installing {len(gaps)} requirement(s) into {venv} (missing or incompatible):")
+    for r in gaps:
         print(f"  + {r}")
-    install = subprocess.run(_installer(python, report["missing"]), capture_output=True,
+    install = subprocess.run(_installer(python, gaps), capture_output=True,
                              text=True, env=target_env())
     if install.returncode != 0:
         tail = (install.stderr or install.stdout or "").strip().splitlines()[-3:]
@@ -276,11 +346,20 @@ def main(argv=None):
     state = venv_state(python, requirements)
     report["missing"] = [r for r, ok in state.items() if not ok]
     report["present"] = [r for r, ok in state.items() if ok]
-    if report["missing"]:
-        return emit(1, [f"still cannot import after installing: {', '.join(report['missing'])}",
-                        *_import_diagnosis(python, report["missing"]),
+    report["incompatible"] = {}
+    for req in report["present"]:
+        why = capability_gap(python, req)
+        if why:
+            report["incompatible"][req] = why
+    if report["missing"] or report["incompatible"]:
+        still = report["missing"] + list(report["incompatible"])
+        return emit(1, [f"still cannot use after installing: {', '.join(still)}",
+                        *gap_lines(),
+                        *(_import_diagnosis(python, report["missing"])
+                          if report["missing"] else []),
                         f"  retry:   {cmd}"])
-    return emit(0, [f"repaired: {python} now imports all {len(requirements)} declared requirements"])
+    return emit(0, [f"repaired: {python} imports all {len(requirements)} declared requirements "
+                    f"and satisfies their capability probes"])
 
 
 if __name__ == "__main__":

@@ -56,10 +56,27 @@ from .checks import (
     check_review_provenance,
     check_stale_loop_gov_daemon,
     check_task_id_hygiene,
+    check_harness_registry,
 )
 from .fix import apply_fixes
 from .bus_alert import dispatch_bus_alerts
 from .task_integrity import check_task_model_integrity
+from . import dispositions
+
+
+def _flag_value(flag: str) -> str:
+    """Value of ``--flag <value>`` (or ``--flag=<value>``) from argv, else "".
+
+    The CLI parses its flags as a set, which cannot carry values; this reads the value forms
+    without disturbing that.
+    """
+    argv = sys.argv[1:]
+    for i, tok in enumerate(argv):
+        if tok == flag and i + 1 < len(argv):
+            return argv[i + 1]
+        if tok.startswith(flag + "="):
+            return tok.split("=", 1)[1]
+    return ""
 
 
 def main():
@@ -72,6 +89,11 @@ def main():
     do_bus_alert = "--bus-alert" in args
     do_quick = "--quick" in args
     compact = "--quiet" in args
+    list_dispositions = "--dispositions" in args
+    want_disposition = _flag_value("--disposition")
+    # FAIL-SOFT read (see cortex_doctor.dispositions): an unreadable store reports everything as
+    # undisposed, which is the visible direction, and must never stop a doctor run.
+    res.dispositions = dispositions.load()
 
     all_checks = [
         check_repo,
@@ -90,6 +112,7 @@ def main():
         check_nginx,
         check_nginx_dir_purity,
         check_governance,
+        check_harness_registry,
         check_local_hooksPath_overrides,
         check_install,
         check_install_sh_refs,
@@ -134,6 +157,7 @@ def main():
             check_system,
             check_config,
             check_governance,
+            check_harness_registry,
             check_hook_drift,
             check_local_hooksPath_overrides,
             check_pinned_hooks_fresh,
@@ -143,11 +167,43 @@ def main():
         if not res.json_mode:
             print("Hermes Cortex Doctor — Quick Check")
 
+    if list_dispositions:
+        store = dispositions.load()
+        if not store:
+            print("No doctor dispositions recorded — every warning/info check is UNDISPOSED.")
+            sys.exit(0)
+        for name in sorted(store):
+            entry = store[name]
+            print(f"  {name}: {dispositions.describe(name, store)}"
+                  f"  reason: {entry.get('reason', '')}")
+        sys.exit(0)
+
+    if want_disposition:
+        # Run the checks FIRST, so the record is validated against the CURRENT state: a name that
+        # does not exist must not create a phantom disposition, and 'fixed' must not be claimed
+        # while the check still warns (review findings ADV-0-1/ADV-0-3).
+        for fn in all_checks:
+            fn(res)
+        try:
+            rec = dispositions.record(want_disposition, _flag_value("--as"),
+                                      _flag_value("--owner"), _flag_value("--reason"),
+                                      checks=res.checks)
+        except dispositions.DispositionError as e:
+            # NOT soft, deliberately (review finding ADV-0-2): an explicit record that failed must
+            # be visible and non-zero, or the caller believes a decision was recorded that was not.
+            print(f"  ❌ disposition NOT recorded: {e}", file=sys.stderr)
+            sys.exit(1)
+        print(f"  ✅ recorded: {want_disposition} → {rec['disposition']} (owner {rec['owner']})")
+        res.dispositions = dispositions.load()
+        print(f"     {len(res.undisposed())} warning/info check(s) still undisposed")
+        sys.exit(0)
+
     if do_watch:
         while True:
             res = Results()
             res.json_mode = False
             res.show_fixes = not compact
+            res.dispositions = dispositions.load()
             for fn in all_checks:
                 fn(res)
             res.print_summary(compact=compact)

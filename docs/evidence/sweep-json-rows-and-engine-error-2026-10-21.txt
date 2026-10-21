@@ -1,0 +1,259 @@
+generated-by: docs/evidence/sweep-json-rows-and-engine-error-2026-10-21.sh
+host-date:    2026-10-21T17:41:46+09:00
+tip:          f3a335a634c4002e0fae9c4328aa842010644503
+range-base:   6221fc9cb9b0ed4de9b1adae9322f6d8a64a8096  (from git merge-base origin/main HEAD)
+unpushed:     6 commit(s) on main that origin/main lacks
+
+===== 1. the sweep's own suite, run the way the file is written to run =====
+PASS  test_unreadable_rows_stop_the_sweep_instead_of_looking_empty
+
+RESULT: ALL PASS (24 tests)
+rc=0   (command: python3 tests/test_tasks_verify_sweep.py)
+
+===== 2. the same file under pytest, with every sibling that shares a changed seam =====
+
+tests/test_tasks_verify_sweep.py ........................                [ 37%]
+tests/test_review_guidance.py ..........                                 [ 53%]
+tests/test_blob_coverage_semantics.py ......................             [ 87%]
+tests/test_blob_rules_rev.py ........                                    [100%]
+
+============================== 64 passed in 1.58s ==============================
+---
+run-tests.sh: interpreter=~/.hermes-cortex/venv/bin/python3 rc=0  (PYTHONPATH/PYTHONHOME unset for the run)
+rc=0
+
+===== 3. the row FORMAT proved against the LIVE database (fixtures alone prove nothing) =====
+runs the probe embedded below: it prints the raw psql output
+for a row containing '||', a real newline, SQL NULL and non-ASCII, feeds each to
+_parse_row, runs the sweep's own _REVIEW_SLICE_SQL against the live DB, then drives 13
+boundary inputs through _parse_row.
+== live engine: json_build_object::text through the real psql seam ==
+raw output (122 chars, 1 non-blank line(s)):
+{"id" : "slice-1", "content" : "sep || inside content", "plan" : "evidence\nsecond line || tail", "created_by" : "worker"}
+PASS  one line per row (a newline inside a value cannot split the row): got=1 want=1
+PASS  id survives: got='slice-1' want='slice-1'
+PASS  content survives with '||' intact: got='sep || inside content' want='sep || inside content'
+PASS  plan survives with a REAL newline restored: got='evidence\nsecond line || tail' want='evidence\nsecond line || tail'
+PASS  created_by survives: got='worker' want='worker'
+{"id" : "slice-2", "content" : "c", "plan" : null, "created_by" : "w"}
+PASS  SQL NULL plan -> None: got=None want=None
+{"id" : "slice-3", "content" : "quote ' and 測試 ✅ || x", "plan" : "p", "created_by" : "w"}
+PASS  non-ASCII + quote survive: got="quote ' and 測試 ✅ || x" want="quote ' and 測試 ✅ || x"
+
+== the sweep's own _REVIEW_SLICE_SQL against the live DB ==
+rows in review: 0 (raw len 0)
+
+== _parse_row boundary inputs ==
+PASS  _parse_row(empty string): got=None want=None
+PASS  _parse_row(whitespace only): got=None want=None
+PASS  _parse_row(JSON literal null): got=None want=None
+PASS  _parse_row(JSON array): got=None want=None
+PASS  _parse_row(JSON number): got=None want=None
+PASS  _parse_row(JSON string): got=None want=None
+PASS  _parse_row(truncated object): got=None want=None
+PASS  _parse_row(trailing garbage): got=None want=None
+PASS  _parse_row(not json at all): got=None want=None
+PASS  _parse_row(missing id): got=None want=None
+PASS  _parse_row(null id): got=None want=None
+PASS  _parse_row(empty id): got=None want=None
+PASS  all-null fields -> empty strings, plan None: got={'id': 'x', 'content': '', 'plan': None, 'created_by': ''} want={'id': 'x', 'content': '', 'plan': None, 'created_by': ''}
+
+PROBE RESULT: ALL PASS
+rc=0   (command: the probe embedded in this script, written to a temp file and run)
+
+===== 4. the sweep against the REAL seam, dry run (writes nothing) =====
+No slices in review.
+rc=0   (command: python3 ops/scripts/manage/tasks-verify-sweep.py)
+
+===== 5. adversarial static gate, A4 (ops/scripts/manage/, mcp-servers/, tests/) =====
+--- ops/scripts/manage/tasks-verify-sweep.py
+📊 Summary: 1 file(s), 9 finding(s)
+   🟡 Medium: 1
+   ⚪ Info: 8
+✅ GATE_PASSED — no critical/high findings
+rc=0
+--- tests/test_tasks_verify_sweep.py
+📊 Summary: 1 file(s), 23 finding(s)
+   🟡 Medium: 2
+   ⚪ Info: 21
+✅ GATE_PASSED — no critical/high findings
+rc=0
+--- ops/scripts/cortex-update.sh
+📊 Summary: 1 file(s), 0 finding(s)
+✅ GATE_PASSED — no critical/high findings
+rc=0
+--- mcp-servers/loop-gov-mcp.py
+📊 Summary: 1 file(s), 39 finding(s)
+   🟡 Medium: 5
+   🔵 Low: 4
+   ⚪ Info: 30
+✅ GATE_PASSED — no critical/high findings
+rc=0
+
+===== 6. syntax of every file this range changes =====
+bash -n ops/scripts/cortex-update.sh -> rc=0
+python3 -m py_compile ops/scripts/manage/tasks-verify-sweep.py -> rc=0
+python3 -m py_compile tests/test_tasks_verify_sweep.py -> rc=0
+python3 -m py_compile mcp-servers/loop-gov-mcp.py -> rc=0
+
+===== 7. PRE-EXISTING isolation break (NOT this range): the full suite cannot collect =====
+A test file raises SystemExit at MODULE level, which pytest hits while IMPORTING it, so
+collection aborts and NO test in the suite runs — for every agent on this host, and for
+any range. It is not this range's, and it is byte-identical at the range base:
+  command: git diff --name-only 6221fc9cb9b0ed4de9b1adae9322f6d8a64a8096 -- tests/test_task_mcp_descriptions.py
+  output:  (empty — the file is identical at the range base)
+  last commit touching it: 6221fc9c fix(tasks): task_verify's description now says what gates it — and what to DO instead
+  in this range?  the file carries no change in this range; its commit is 6221fc9c, already on origin/main
+  offending line: 57:raise SystemExit(1 if fails else 0)
+
+Demonstrated to completion, not asserted — the SAME command WITHOUT the exclusion:
+mainloop: caught unexpected SystemExit!
+
+============================ no tests ran in 3.08s =============================
+---
+run-tests.sh: interpreter=~/.hermes-cortex/venv/bin/python3 rc=3  (PYTHONPATH/PYTHONHOME unset for the run)
+rc=3   (command: bash tests/run-tests.sh tests/ -q)
+
+===== 8. full suite at this tip, excluding ONLY that pre-existing offender =====
+Note: this takes ~20 minutes; the suite is large and includes a test that runs the
+classifier over two revisions.
+E     CORTEX_GOV_SESSION unavailable (Error: Command failed: python3 ~/.hermes/cache/scratch/cortex-verify-Nqtaw8/stub-gov.py session_identity {})
+E   assert not ['CORTEX_GOV_SESSION unavailable (Error: Command failed: python3 ~/.hermes/cache/scratch/cortex-verify-Nqta...vernance session id (see the CORTEX_GOV_SESSION line above); the reflexion gate will report this skill as NOT-LOADED.']
+E    +  where ['CORTEX_GOV_SESSION unavailable (Error: Command failed: python3 ~/.hermes/cache/scratch/cortex-verify-Nqta...vernance session id (see the CORTEX_GOV_SESSION line above); the reflexion gate will report this skill as NOT-LOADED.'] = _routine_stderr_lines('CORTEX_GOV_SESSION unavailable (Error: Command failed: python3 ~/.hermes/cache/scratch/cortex-verify-Nqtaw...ernance session id (see the CORTEX_GOV_SESSION line above); the reflexion gate will report this skill as NOT-LOADED.\n')
+E    +    where 'CORTEX_GOV_SESSION unavailable (Error: Command failed: python3 ~/.hermes/cache/scratch/cortex-verify-Nqtaw...ernance session id (see the CORTEX_GOV_SESSION line above); the reflexion gate will report this skill as NOT-LOADED.\n' = CompletedProcess(args=['~/.local/bin/node', '~/hermes-cortex/ops/install/harnesses/pi/verify-ext...rnance session id (see the CORTEX_GOV_SESSION line above); the reflexion gate will report this skill as NOT-LOADED.\n').stderr
+E     CORTEX_GOV_SESSION unavailable (Error: Command failed: python3 ~/.hermes/cache/scratch/cortex-verify-bQItfA/stub-gov.py session_identity {})
+E   assert not ['CORTEX_GOV_SESSION unavailable (Error: Command failed: python3 ~/.hermes/cache/scratch/cortex-verify-bQIt...vernance session id (see the CORTEX_GOV_SESSION line above); the reflexion gate will report this skill as NOT-LOADED.']
+E    +  where ['CORTEX_GOV_SESSION unavailable (Error: Command failed: python3 ~/.hermes/cache/scratch/cortex-verify-bQIt...vernance session id (see the CORTEX_GOV_SESSION line above); the reflexion gate will report this skill as NOT-LOADED.'] = _routine_stderr_lines('CORTEX_GOV_SESSION unavailable (Error: Command failed: python3 ~/.hermes/cache/scratch/cortex-verify-bQItf...ernance session id (see the CORTEX_GOV_SESSION line above); the reflexion gate will report this skill as NOT-LOADED.\n')
+E    +    where 'CORTEX_GOV_SESSION unavailable (Error: Command failed: python3 ~/.hermes/cache/scratch/cortex-verify-bQItf...ernance session id (see the CORTEX_GOV_SESSION line above); the reflexion gate will report this skill as NOT-LOADED.\n' = CompletedProcess(args=['~/.local/bin/node', '~/hermes-cortex/ops/install/harnesses/pi/verify-ext...rnance session id (see the CORTEX_GOV_SESSION line above); the reflexion gate will report this skill as NOT-LOADED.\n').stderr
+E       committed: | tests/test_enforcer_pii_gate.py passes on the redacted revision | PASS | ============================== 31 passed ============================== |
+E       derived:   | tests/test_enforcer_pii_gate.py passes on the redacted revision | PASS | ============================== 32 passed ============================== |
+E    +  where 1 = CompletedProcess(args=['~/.hermes-cortex/venv/bin/python3', '~/hermes-cortex/ops/scripts/manage/...the redacted revision | PASS | ============================== 32 passed ============================== |\n', stderr='').returncode
+E   AssertionError: cron_manifest.py --check failed with HOME=~ HERMES_HOME=~/.hermes:
+E   AssertionError: a blob whose content already has a CLEAN verdict must not be re-reviewed — the cache is what makes a re-close affordable: {'verdicts': {'sha-a': 'CLEAN', 'sha-b': 'CLEAN'}, 'remaining': [], 'calls': 2, 'blocking': [], 'failed': [], 'already_judged': [], 'invalidated_verdicts': 2}
+E   AssertionError: a re-close must re-ask ONLY the blob that failed, not re-review the range: ['sha-a', 'sha-b', 'sha-c'] / {'verdicts': {'sha-a': 'CLEAN', 'sha-b': 'FINDINGS', 'sha-c': 'CLEAN'}, 'remaining': [], 'calls': 3, 'blocking': [{'finding_id': 'ADV-T-1', 'severity': 'medium', 'technique': 'unverified-claim', 'target': 'the edited blob', 'evidence': 'this blob claims a behaviour with no test beside it', 'recommendation': 'add the test'}], 'failed': [], 'already_judged': [], 'invalidated_verdicts': 3}
+E     - ========= 13 passed in <t> ============================== · pinned baseline fbfc22b34db2 (fbfc22b3): ============================== 9 passed in <t> =============================== [outcome pass] — reproduced as recorded under the generating interpreter, not gated (interpreter drift makes the old tree pass under today's python); the verdict is the measured pass, never the absence of the word "failed" | **Verdict: PASS** ## Raw test output — `tests/test_hc_harness.py` `hc harness` and its registry were fa...
+FAILED tests/test_context_harnesses.py::test_pi_extension_keeps_routine_output_off_the_prompt_area
+FAILED tests/test_context_harnesses.py::test_pi_extension_traces_routine_output_to_a_bounded_cortex_log
+FAILED tests/test_cron_prompt_matches_installer.py::test_the_live_prompt_matches_the_installer
+FAILED tests/test_direct_run_interpreter.py::test_every_direct_run_of_a_third_party_importing_file_uses_the_arbiter
+FAILED tests/test_doctor_stale_loop_gov.py::test_reports_warn_when_module_is_newer_than_daemon
+FAILED tests/test_gen_briefing.py::TestBuilders::test_pdf_written_non_trivial
+FAILED tests/test_lock_liveness_activity.py::test_an_idle_lock_still_ages_out
+FAILED tests/test_lock_review_split.py::test_the_light_tier_spends_less_and_the_env_still_wins
+FAILED tests/test_lock_truth.py::test_stale_and_unparseable_files_are_not_reported_as_truth
+FAILED tests/test_loop_gov_mcp_nonblocking.py::test_reviewer_timeout_clamped_below_client_ceiling
+FAILED tests/test_pii_gate_evidence.py::test_the_committed_evidence_is_actual_script_output
+FAILED tests/test_repo_resource_paths.py::test_deploy_registry_doc_counts_match_the_register_map
+FAILED tests/test_repo_structure.py::test_no_gbrain_legacy_refs_in_tracked_source
+FAILED tests/test_retired_orch_crons.py::test_the_manifest_check_accepts_the_retirement
+FAILED tests/test_review_per_blob.py::test_a_clean_blob_is_reviewed_once_then_cached
+FAILED tests/test_review_per_blob.py::test_one_non_clean_blob_makes_the_range_not_clean
+FAILED tests/test_review_per_blob.py::test_the_cap_reports_progress_instead_of_deadlocking
+FAILED tests/test_reviewer_silence_refuses_close.py::test_extract_verdict_still_fails_closed_on_a_null_reply
+FAILED tests/test_reviewer_silence_refuses_close.py::test_the_gate_refuses_a_null_reply_at_runtime
+FAILED tests/test_reviewer_tier_wiring.py::test_the_default_backend_reaches_the_cheap_model
+FAILED tests/test_reviewer_tier_wiring.py::test_an_agent_backend_host_still_avoids_the_agent_for_a_light_change
+FAILED tests/test_reviewer_tier_wiring.py::test_the_cheap_and_deep_models_are_actually_different
+FAILED tests/test_runtime/test_adversarial_review_gate.py::test_extract_unparseable_is_findings_not_clean
+FAILED tests/test_runtime/test_adversarial_review_gate.py::test_a_none_reply_refuses_instead_of_crashing
+FAILED tests/test_runtime/test_adversarial_review_gate.py::test_empty_and_whitespace_replies_also_refuse
+FAILED tests/test_runtime/test_adversarial_review_gate.py::test_a_non_string_reply_refuses
+FAILED tests/test_runtime/test_adversarial_review_gate.py::test_unparseable_prose_still_refuses
+FAILED tests/test_runtime/test_doctor_pending_cycles.py::test_planning_lock_is_active_not_leak
+FAILED tests/test_runtime/test_doctor_pending_cycles.py::test_terminal_lock_is_leak
+FAILED tests/test_runtime/test_doctor_pending_cycles.py::test_completed_lock_is_leak
+FAILED tests/test_task_queue_evidence.py::test_the_committed_evidence_is_actual_script_output
+FAILED tests/test_task_queue_visibility.py::test_a_parked_row_can_return_to_the_pull_pool
+FAILED tests/test_task_queue_visibility.py::test_the_parked_arc_guard_would_notice_a_missing_arc
+FAILED tests/test_updater_robustness.py::test_a_venv_that_cannot_import_the_modules_is_reported
+FAILED tests/test_updater_robustness.py::test_a_capable_venv_is_silent - Asse...
+FAILED tests/test_updater_robustness.py::test_a_missing_venv_is_not_this_check_s_business
+FAILED tests/test_venv_env_contamination.py::test_no_capability_probe_inherits_the_callers_environment
+===== 37 failed, 2421 passed, 3 skipped, 5 warnings in 1156.37s (0:19:16) ======
+rc=1   (command: bash tests/run-tests.sh tests/ -q --color=no --ignore=tests/test_task_mcp_descriptions.py)
+
+===== 9. ATTRIBUTION — every failing file re-run at the RANGE BASE with the same runner =====
+A committed artifact that reports failing items must say whether the range caused
+them. Each failing FILE is re-run in a worktree at the range base; the TIP side is the
+run above, measured with the same runner. Verdicts: REPRODUCED (failed there too, so
+it predates this range), DIFFERS (passed at the base - a candidate regression),
+COULD NOT VERIFY (could not execute there; NOT a pass and NOT a failure).
+
+worktree at the range base: 6221fc9cb9b0ed4de9b1adae9322f6d8a64a8096  (git -C /home/esther/.hermes/cache/scratch/sweep-evidence.3446039/base-wt rev-parse --short=8 HEAD -> 6221fc9c)
+caveat: a worktree materialises TRACKED files only, so an untracked tree present in
+the main checkout (a venv, build output) is absent on the base side.
+
+failing files at the tip (22):
+  tests/test_context_harnesses.py
+  tests/test_cron_prompt_matches_installer.py
+  tests/test_direct_run_interpreter.py
+  tests/test_doctor_stale_loop_gov.py
+  tests/test_gen_briefing.py
+  tests/test_lock_liveness_activity.py
+  tests/test_lock_review_split.py
+  tests/test_lock_truth.py
+  tests/test_loop_gov_mcp_nonblocking.py
+  tests/test_pii_gate_evidence.py
+  tests/test_repo_resource_paths.py
+  tests/test_repo_structure.py
+  tests/test_retired_orch_crons.py
+  tests/test_reviewer_silence_refuses_close.py
+  tests/test_reviewer_tier_wiring.py
+  tests/test_review_per_blob.py
+  tests/test_runtime/test_adversarial_review_gate.py
+  tests/test_runtime/test_doctor_pending_cycles.py
+  tests/test_task_queue_evidence.py
+  tests/test_task_queue_visibility.py
+  tests/test_updater_robustness.py
+  tests/test_venv_env_contamination.py
+
+  tests/test_context_harnesses.py
+    base rc=1  -> REPRODUCED (fails at the base too — pre-existing)
+  tests/test_cron_prompt_matches_installer.py
+    base rc=1  -> REPRODUCED (fails at the base too — pre-existing)
+  tests/test_direct_run_interpreter.py
+    base rc=1  -> REPRODUCED (fails at the base too — pre-existing)
+  tests/test_doctor_stale_loop_gov.py
+    base rc=1  -> REPRODUCED (fails at the base too — pre-existing)
+  tests/test_gen_briefing.py
+    base rc=0  -> DIFFERS (passes at the base — candidate regression)
+  tests/test_lock_liveness_activity.py
+    base rc=1  -> REPRODUCED (fails at the base too — pre-existing)
+  tests/test_lock_review_split.py
+    base rc=1  -> REPRODUCED (fails at the base too — pre-existing)
+  tests/test_lock_truth.py
+    base rc=1  -> REPRODUCED (fails at the base too — pre-existing)
+  tests/test_loop_gov_mcp_nonblocking.py
+    base rc=0  -> DIFFERS (passes at the base — candidate regression)
+  tests/test_pii_gate_evidence.py
+    base rc=1  -> REPRODUCED (fails at the base too — pre-existing)
+  tests/test_repo_resource_paths.py
+    base rc=1  -> REPRODUCED (fails at the base too — pre-existing)
+  tests/test_repo_structure.py
+    base rc=1  -> REPRODUCED (fails at the base too — pre-existing)
+  tests/test_retired_orch_crons.py
+    base rc=1  -> REPRODUCED (fails at the base too — pre-existing)
+  tests/test_reviewer_silence_refuses_close.py
+    base rc=1  -> REPRODUCED (fails at the base too — pre-existing)
+  tests/test_reviewer_tier_wiring.py
+    base rc=1  -> REPRODUCED (fails at the base too — pre-existing)
+  tests/test_review_per_blob.py
+    base rc=1  -> REPRODUCED (fails at the base too — pre-existing)
+  tests/test_runtime/test_adversarial_review_gate.py
+    base rc=1  -> REPRODUCED (fails at the base too — pre-existing)
+  tests/test_runtime/test_doctor_pending_cycles.py
+    base rc=0  -> DIFFERS (passes at the base — candidate regression)
+  tests/test_task_queue_evidence.py
+    base rc=1  -> REPRODUCED (fails at the base too — pre-existing)
+  tests/test_task_queue_visibility.py
+    base rc=1  -> REPRODUCED (fails at the base too — pre-existing)
+  tests/test_updater_robustness.py
+    base rc=1  -> REPRODUCED (fails at the base too — pre-existing)
+  tests/test_venv_env_contamination.py
+    base rc=1  -> REPRODUCED (fails at the base too — pre-existing)
+
+TOTALS: REPRODUCED=19  DIFFERS=3  COULD NOT VERIFY=0
+
+===== end of transcript =====
+Every rc printed above is the rc of the command named beside it, captured WITHOUT a pipe.
+GENERATOR_rc=0

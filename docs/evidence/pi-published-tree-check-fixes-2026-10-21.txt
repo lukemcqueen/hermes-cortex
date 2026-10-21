@@ -1,0 +1,24 @@
+Running: bash -c { S="${TMPDIR:-/tmp}/prefix-ippi.sh"; git show d3b5f1a2:ops/scripts/install/install-pi-integration.sh > "$S"; echo "=== PRE-FIX (copy of d3b5f1a2:ops/scripts/install/install-pi-integration.sh) ==="; bash "$S" --check; echo "pre_fix_rc=$?"; echo "=== FIXED (working tree) ==="; bash ops/scripts/install/install-pi-integration.sh --check; echo "fixed_rc=$?"; echo "=== installer regression suite ==="; bash tests/test_pi_registration_installer.sh | tail -2; echo "shell_rc=${PIPESTATUS[0]}"; echo "=== pytest: hc pi + pi audit ==="; bash tests/run-tests.sh tests/test_hc_pi.py tests/test_pi_integration_audit.py -q | tail -3; echo "pytest_rc=${PIPESTATUS[0]}"; } 2>&1 | sed -e "s#$HOME#~#g"
+rc: 0
+when: 2026-10-21T04:36:06Z
+
+=== PRE-FIX (copy of d3b5f1a2:ops/scripts/install/install-pi-integration.sh) ===
+  ✗ Pi sees 440 of 520 skills under ~/.agents/skills — an ignore file or an unreadable directory is hiding the rest
+install-pi-integration: NOT registered
+pre_fix_rc=1
+=== FIXED (working tree) ===
+  ✓ Pi sees all 440 skills under ~/.agents/skills
+  ✓ extensions registered (cortex-context.ts, cortex-governance.ts), 440 skills visible under ~/.agents/skills
+  ✓ web search: npm:pi-web-access@0.35.0 declared, keyless chain ['exa', 'duckduckgo'] configured
+install-pi-integration: registered
+fixed_rc=0
+=== installer regression suite ===
+
+ALL PASS
+shell_rc=0
+=== pytest: hc pi + pi audit ===
+============================== 32 passed in 1.67s ==============================
+---
+run-tests.sh: interpreter=~/.hermes-cortex/venv/bin/python3 rc=0  (PYTHONPATH/PYTHONHOME unset for the run)
+pytest_rc=0
+sha256: e512411d6e9d05a8f3ff0fe62be80d6a95c92a270525e69b77021840dab9c9a8

@@ -157,6 +157,16 @@ and invalidates the receipt, so push immediately after closing. Full detail:
   matching), never enforcement. A review that reads the WRITER and reports its degraded output as a
   push bypass is a claim about a consumer it never opened; check the acceptance path before
   believing it, and never "fix" a fail-closed gate into a weaker one to answer it.
+- **A "refusal" whose text is a payload FIELD NAME is a false refusal — grep the payload for which
+  marker matched before touching any code.** `loop-gov.py`'s `is_refusal()` enumerates phrasings
+  across the whole serialized result, so a lock record carrying a `close_refused` field makes a
+  SUCCESSFUL read-only `check_lock` exit 1 — and a caller gating on that code (the Pi write gate)
+  reads an availability check that succeeded as a governance refusal. Print the matching marker and
+  its neighbourhood before writing anything up; the fix belongs in `is_refusal()` (match refusal
+  PHRASES in content strings, never across data keys). The trigger is usually a SYNTHETIC lock left
+  in the LIVE state dir by a test run: a lock file whose name carries an EMPTY session id, with
+  `repo_slug: no-such-repo` and an epoch `started_at`, is test junk the doctor reports as a legacy
+  lock — remove it via the `rm -f` line the doctor prints, and fix the test to redirect its state dir.
 
 **The review material is BOUNDED, and that is what makes a big cycle unshippable.** The
 self-adversarial review sees at most 12,000 characters of the range's diff — 60,000 only
@@ -177,6 +187,14 @@ does not apply.
   binding a receipt to base AND tip exists to prevent. The documented answer to an
   unreviewable range is to SPLIT it; if it can no longer be split, report the blocker (and
   the local SHAs) to the operator instead of manufacturing the receipt.
+- **A range too wide for the whole-range review still closes — by RE-CALLING `end_change`, not by
+  re-opening a cycle.** The refusal reads `⏳ Cannot close yet: N blob(s) of the push range still
+  carry no review verdict`, and it names the unreviewed paths plus the per-close budget (15 blobs /
+  240s). Each call judges another handful — measured 11 → 7 → 3 → closed in four calls — verdicts are
+  keyed by blob CONTENT, so a retry CONTINUES rather than redoing, and `Cannot close yet` does NOT
+  release the lock. Keep calling the same `end_change(task_id=…)` until it prints `🔓 … closed`; the
+  receipt is written by THAT call. Never escape the loop by opening a fresh cycle — its window is
+  empty and its receipt hollow (the rule directly above).
 - **A claim the reviewer cannot check from the window is a HIGH `unverified-claim` finding
   that refuses the close — commit the ARTIFACT, never cite it in prose.** The reviewer sees
   the range's diff plus your note, and nothing else: "ran the suite (N passed)", "dogfood
@@ -367,6 +385,13 @@ does not apply.
      (`<task>#<cycle_num>`) or from `cycle_query`, then pass `cycle_id=<id>` plus an
      `unscored_reason` that says where the row came from and why it holds no work. Without that
      you loop on the same FAIL, and the push stays blocked for every agent on the host.
+     **This task's OWN earlier cycle is the other orphan source, and it looks unreachable.** A lock
+     that EXPIRES at its TTL mid-session leaves its cycle PENDING with no lock file; the next
+     `begin_change()` for that task SUCCEEDS (unlike the deploy-purge case above) and mints a SECOND
+     pending cycle — so one piece of work owns two ids. Score the EARLIER one by `cycle_id` with a
+     note saying the work continued under the later cycle, or the doctor's `❌ Orphan-cycle
+     resolution` FAILs and blocks every push on the host. Confirm in the DB rather than by task id:
+     `SELECT id, task_id, decision FROM loop_cycles WHERE task_id='<task>' ORDER BY id`.
    - **Per-task `cycle_query(task_id=...)` does NOT show other tasks' leaked
      cycles** — if the doctor still reports PENDING after scoring your own,
      find the leak directly:
@@ -374,6 +399,12 @@ does not apply.
      (DB table is `loop_cycles`, not `cycles`.) 2026-09-02: the blocker was
      `bus-poison-filter` from bg session `bg_090100_065b51` — an async
      delegation's cycle never scored.
+   - **When the MCP bridge mangles a long governance write, use the CLI — not raw SQL.** Build the
+     payload with `json.dumps` in a script and invoke the SAME implementation the MCP calls:
+     `loop-gov.py feedback_accept '<json>'`, `record_issue '<json>'`, `end_change '<json>'` — the CLI
+     exec_modules loop-governance's own handlers, so the ledger entry is identical and no SQL is
+     hand-written. LONG PROSE ARGUMENTS are what break the bridge; a short one-key call is reliable.
+     The raw `UPDATE` below is the LAST resort, only after the CLI refuses too.
    - **Scoring fallback when the loop-governance MCP bridge drops its
      arguments** (repeated "cycle_id or task_id is required"): write the
      score the MCP would have —
@@ -392,6 +423,10 @@ does not apply.
    Order is always commit → cortex-update → push. For the full dogfood
    (pull → deploy → doctor → verify):
    `bash ~/.hermes-cortex/scripts/cortex-dogfood.sh --force`.
+   (Its own pull step SKIPS itself when unpushed local commits exist — it prints
+   `(unpushed local commits present — skipping pull; local work is what we verify)` — so the
+   deploy+doctor run against YOUR tree with no peer merge; read that line rather than reporting a
+   pull that did not happen.)
    - **Deploy yourself — a push that LANDED is not evidence the deploy ran.** A push
      made with an active lock went through with no deploy at all: the output was only
      the ref update, and the deployed copy of a changed skill was still the previous

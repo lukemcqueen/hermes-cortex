@@ -79,7 +79,7 @@ log = logging.getLogger("governance-enforcer")
 # into task-start, reasoning-patterns into agent-flow, cortex-preflight
 # into survey-before-action, test-driven-development promoted into the
 # base gate (TDD co-gate already required it for code writes). MUST stay
-# in sync with docs/templates/skills.yaml `always:` and doctor checks.py.
+# in sync with skills.yaml `always:` and doctor checks.py.
 _REQUIRED_SKILLS: set = {
     "task-start", "agent-flow",
     "reflexion-check", "change-checklist", "survey-before-action",

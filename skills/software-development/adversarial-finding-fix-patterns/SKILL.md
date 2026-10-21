@@ -257,6 +257,56 @@ f() { return 3; }; out=$(f 2>&1) && rc=0 || rc=$?; echo "$rc"   # prints 3, not 
   commit body, naming the false claim and the measurement. The next reader must not
   be left concluding the old code was broken.
 
+### Your FIX is new code too — run it in BOTH directions before re-closing
+
+Every rule above is about the finding being wrong. The opposite happens more often: the finding is
+right, and **the fix you write is broken**, in a way that reads correctly. Two shapes account for
+most of it, and both are inversions:
+
+- **Gating on emptiness when the producer's normal result IS empty.** A parser that prints two join
+  lines (`"; ".join(issues)` and a second list) emits only newlines on a healthy host, and `$( )`
+  strips trailing newlines — so the healthy value IS the empty string. A `-z` test then reports a
+  crash for a clean run, and the check goes from PASS to a false FAIL on the very host it just
+  passed. Gate on **rc** for failure, and use `-z` only when EVERY branch of the producer prints a
+  word (a verdict parser is such a case; a report parser is not). Read the producer before writing
+  the gate.
+- **Testing `$?` with `-eq 0` inside a FAILURE branch.** `0` means success; the branch then fires on
+  every healthy run, so a passing check reports a finding and the real one never surfaces. The
+  mirror of this is `if VAR=$(cmd); then` — correct (the assignment takes the substitution's
+  status) but easy to read backwards, so prefer capturing `rc=$?` on its own line and testing it
+  explicitly.
+
+**Neither shape fails a committed test or shows up in a diff read.** Both were introduced while
+fixing review findings and both were caught only by executing the changed artifact. So after every
+round: run the healthy path, then force the failing value and confirm the new branch fires.
+
+```bash
+# mutant: prove the failure branch exists and is reachable
+T=$(mktemp -d); sed 's/_rc=\$?/_rc=3/' ops/scripts/x.sh > "$T/a.sh"; bash -n "$T/a.sh" \
+  && bash "$T/a.sh" 2>&1 | grep -c 'the finding text'      # expect >= 1, never 0
+```
+
+Report both directions in the note (healthy output + mutant output). A healthy run alone proves the
+branch did not misfire; it does not prove the branch works — and that second half is what a
+reviewer asking "is this check real?" is actually testing.
+
+### A finding that names a branch you already have is a VISIBILITY gap — close the set, don't duplicate
+
+When a reviewer reports a value as unhandled ("`keyed-only` falls through"), first check whether the
+arm exists. If it does, adding a second arm is cargo-cult and makes the code worse. The finding's
+MECHANISM was wrong, but the gap it stumbled into is real: from a partial read of a diff, a closed
+set is indistinguishable from an open one. Make the set explicit at the decision point —
+
+```bash
+# The parser above prints EXACTLY one of these, so every one needs an arm:
+#   missing | invalid | keyless:<providers> | keyed-only   (+ check-failed, set below)
+case "$verdict" in
+```
+
+— and say in the close note that the arm already existed, quoting it. Same discipline as the per-blob
+coverage pointer: satisfy the visibility, not the letter of a misread. Do not add a duplicate branch
+to look responsive; a redundant arm is a second place for the set to drift.
+
 ### A FINDINGS verdict is per cycle — re-review, do not override
 
 The verdict is stored under a UNIQUE cycle id, so FINDINGS is otherwise

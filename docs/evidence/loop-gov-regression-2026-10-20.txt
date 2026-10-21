@@ -1,0 +1,11 @@
+# Capture: the loop-governance regression suite, re-run against this change.
+# re-run  : python3 tests/run_loop_gov_regression.py
+# writes  : tests/artifacts/loop-gov-regression.txt (gitignored) with every per-file outcome,
+#           the A4 static gate at BOTH revisions, and failure attribution vs the range base.
+# tip     : 1c92f36e (the change is uncommitted when this ran; the tree is the reviewed one)
+# captured: 2026-10-20T10:40Z
+
+artifact: ~/hermes-cortex/tests/artifacts/loop-gov-regression.txt
+revision: 1c92f36e   tests: 28
+RESULT: ALL PASS
+REGRESSION2 rc=0

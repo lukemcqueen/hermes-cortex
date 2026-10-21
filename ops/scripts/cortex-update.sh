@@ -365,6 +365,7 @@ _write_deploy_manifest() {
 register "ops/scripts/health/agent-system-alert-watchdog.py"   "${CORTEX_DEPLOY_HOME}/scripts/agent-system-alert-watchdog.py"
 register "ops/scripts/health/heartbeat.py"               "${CORTEX_DEPLOY_HOME}/scripts/heartbeat.py"
 register "ops/scripts/sustainability/verify_briefing.py"  "${CORTEX_DEPLOY_HOME}/scripts/manage/verify_briefing.py"
+register "ops/scripts/sustainability/check-latest-briefing.py" "${CORTEX_DEPLOY_HOME}/scripts/manage/check-latest-briefing.py"
 register "ops/scripts/sustainability/gen_briefing.py"      "${CORTEX_DEPLOY_HOME}/scripts/manage/gen_briefing.py"
 register "ops/scripts/sustainability/capture_evidence.py"  "${CORTEX_DEPLOY_HOME}/scripts/manage/capture_evidence.py"
 register "ops/scripts/sustainability/write_cycle_evidence.py" "${CORTEX_DEPLOY_HOME}/scripts/manage/write_cycle_evidence.py"
@@ -385,6 +386,14 @@ register "ops/scripts/manage/consolidate-env.sh"         "${CORTEX_DEPLOY_HOME}/
 register "ops/scripts/manage/gen-skills-manifest.py"      "${CORTEX_DEPLOY_HOME}/scripts/gen-skills-manifest.py"
 register "ops/scripts/manage/gen-skills-manifest.sh"      "${CORTEX_DEPLOY_HOME}/scripts/gen-skills-manifest.sh"
 register "ops/scripts/manage/task-db.py"                "${CORTEX_DEPLOY_HOME}/scripts/task-db.py"
+# Drains task slices stuck in `review`. Deploys to scripts/tasks-verify-sweep.py and is safe to
+# ship to every host because it CONFIGURES NOTHING and SELF-GATES at run time: it asks the database
+# whether the calling role holds EXECUTE on tasks.verify_slice, sweeps that host's own tasks DB when
+# it does, and otherwise exits non-zero with the reason — 3 = the database answered that the role has
+# no grant (a host with no esther/moses identity; a reported no-op, never a silent one), 4 = the engine
+# could not be reached at all, which is a DIFFERENT fact and carries a different message (ADV-0-2).
+# A host that never runs it is unaffected: registration copies a file and creates nothing.
+register "ops/scripts/manage/tasks-verify-sweep.py"     "${CORTEX_DEPLOY_HOME}/scripts/tasks-verify-sweep.py"
 # Ledger repair tool (issue #188). Each host owns its own loop-governance ledger and
 # each host's pre-commit hook minted the malformed ids, so every host needs the repair
 # path, not just the orchestrator. Registering it also keeps it out of the doctor's
@@ -403,6 +412,12 @@ register "ops/scripts/manage/gateway-model-list.py"      "${CORTEX_DEPLOY_HOME}/
 # The venv repairer + the declared dependency set it reads: a host must be able to fix its
 # own ~/.hermes-cortex/venv without anyone reading the source to work out what belongs there.
 register "ops/scripts/manage/fix-cortex-venv.py"          "${CORTEX_DEPLOY_HOME}/scripts/fix-cortex-venv.py"
+# Skills ownership + publication (cycle 13491). Cortex OWNS the skill library and the fleet
+# is moving off the Hermes agent, so the deploy tree must be the REAL one and the harness
+# path a pointer to it; the agent-visible view is then published at the cross-client standard
+# path (~/.agents/skills). Per-host operations that must be runnable without reading source.
+register "ops/scripts/manage/migrate-skills-ownership.py" "${CORTEX_DEPLOY_HOME}/scripts/migrate-skills-ownership.py"
+register "ops/scripts/manage/publish-agent-skills.py"     "${CORTEX_DEPLOY_HOME}/scripts/publish-agent-skills.py"
 # The MCP wiring audit: presence is not wiring — a registration pointing at a missing
 # venv/wrapper/script loads nothing and used to read as "configured".
 register "ops/scripts/manage/mcp_wiring.py"               "${CORTEX_DEPLOY_HOME}/scripts/mcp_wiring.py"
@@ -513,6 +528,7 @@ register "ops/scripts/manage/cortex_doctor/bus_alert.py" "${CORTEX_DEPLOY_HOME}/
 register "ops/scripts/manage/cortex_doctor/checks.py"   "${CORTEX_DEPLOY_HOME}/scripts/cortex_doctor/checks.py"
 register "ops/scripts/manage/cortex_doctor/cli.py"     "${CORTEX_DEPLOY_HOME}/scripts/cortex_doctor/cli.py"
 register "ops/scripts/manage/cortex_doctor/config.py"  "${CORTEX_DEPLOY_HOME}/scripts/cortex_doctor/config.py"
+register "ops/scripts/manage/cortex_doctor/dispositions.py" "${CORTEX_DEPLOY_HOME}/scripts/cortex_doctor/dispositions.py"
 register "ops/scripts/manage/cortex_doctor/fix.py"     "${CORTEX_DEPLOY_HOME}/scripts/cortex_doctor/fix.py"
 register "ops/scripts/manage/cortex_doctor/immutability.py" "${CORTEX_DEPLOY_HOME}/scripts/cortex_doctor/immutability.py"
 register "ops/scripts/manage/cortex_doctor/helpers.py" "${CORTEX_DEPLOY_HOME}/scripts/cortex_doctor/helpers.py"
@@ -525,7 +541,7 @@ register "ops/scripts/manage/cortex-agent-manager.py"  "${CORTEX_DEPLOY_HOME}/sc
 
 register "ops/scripts/hc/hc.py"                      "${CORTEX_DEPLOY_HOME}/scripts/hc.py"
 register "ops/scripts/hc/harness.py"                 "${CORTEX_DEPLOY_HOME}/scripts/hc-harness.py"
-register "ops/scripts/hc/hc"                         "${CORTEX_DEPLOY_HOME}/scripts/hc"
+register "ops/scripts/hc/bin/hc"                     "${CORTEX_DEPLOY_HOME}/scripts/hc"
 register "ops/scripts/health/agent-stale-ref-watchdog.sh"            "${CORTEX_DEPLOY_HOME}/scripts/manage/agent-stale-ref-watchdog.sh"
 register "ops/scripts/manage/autonomy-classifier.py"                  "${CORTEX_DEPLOY_HOME}/scripts/manage/autonomy-classifier.py"
 register "ops/scripts/manage/orch-autonomy-digest.sh"                 "${CORTEX_DEPLOY_HOME}/scripts/manage/orch-autonomy-digest.sh"
@@ -1533,8 +1549,11 @@ is_skill_stub() {
 }
 
 # Copies SKILL.md files and references/ from repo skills/ directories
-# to ~/.hermes/skills/. Uses the delta engine — only copies
-# files whose checksums differ from installed versions.
+# to ${CORTEX_DEPLOY_HOME}/skills — the tree CORTEX OWNS. Cycle 13491 inverted the
+# direction: the Hermes path (~/.hermes/skills) is a POINTER to this tree, not the
+# canonical store, so the deploy writes the real tree and every harness reads it
+# through a link (see ops/scripts/manage/migrate-skills-ownership.py). Uses the delta
+# engine — only copies files whose checksums differ from installed versions.
 # Syncs from TWO locations:
 #   1. $REPO_DIR/skills/              — canonical global skills (categorized)
 #   2. $REPO_DIR/.hermes-cortex/skills/ — project-level overrides (flat)
@@ -3094,7 +3113,7 @@ main() {
   fi
 
   # Sync skills.yaml from template — actual content sync, not timestamp suppression
-  local template_yaml="${REPO_DIR}/docs/templates/skills.yaml"
+  local template_yaml="${REPO_DIR}/skills.yaml"
   local skills_yaml="${CORTEX_DEPLOY_HOME}/skills.yaml"
   if [[ -f "$template_yaml" && -f "$skills_yaml" ]]; then
     if ! diff -q "$template_yaml" "$skills_yaml" >/dev/null 2>&1; then
@@ -3117,6 +3136,32 @@ main() {
   # A schema step must NEVER brick the enforcement sync. Record it, continue,
   # and fail loudly at the END of the update — never a silent green.
   local -a _DEFERRED_FAILURES=()
+
+  # ── Skills OWNERSHIP + PUBLICATION (cycle 13491) ──────────────────────
+  # Runs after the skills deploy above (sync_skills → ${CORTEX_DEPLOY_HOME}/skills).
+  # Cortex OWNS the library: the deploy tree must be the REAL one and each harness path a
+  # pointer to it, then the agent-visible view is published at the cross-client standard
+  # path. Both steps are idempotent AND verified — the inverter refuses to guess when both
+  # paths are real directories, and the publisher preserves a foreign tree by rename rather
+  # than deleting it. A failure DEFERS the update: a host whose agents read a different
+  # tree must not report a clean update.
+  _skills_owner="${CORTEX_DEPLOY_HOME}/scripts/migrate-skills-ownership.py"
+  _skills_pub="${CORTEX_DEPLOY_HOME}/scripts/publish-agent-skills.py"
+  if [[ -f "$_skills_owner" && -f "$_skills_pub" ]]; then
+    if ! python3 "$_skills_owner" >/dev/null 2>&1; then
+      error "the skills tree is not cortex-owned (inverter refused or could not verify)"
+      info  "  report:   python3 \"$_skills_owner\" --check"
+      info  "  decision: --adopt-borrower | --keep-borrower (when BOTH paths are real dirs)"
+      _DEFERRED_FAILURES+=("skills tree ownership not inverted")
+    fi
+    if ! python3 "$_skills_pub" >/dev/null 2>&1; then
+      error "the agent-visible skills view is not published (agents read the standard path)"
+      info  "  report:   python3 \"$_skills_pub\" --check"
+      _DEFERRED_FAILURES+=("agent-visible skills not published")
+    fi
+  else
+    warn "skills ownership/publish scripts are not deployed — run cortex-update.sh again"
+  fi
 
   # ── Apply mycortex schema migrations (DDL path) ──────────────
   # cortex-update.sh is a file-copier with NO DDL path (party-2 SS1). The
@@ -3229,8 +3274,11 @@ main() {
     info  "  fill:   \"${_fleet_venv}\" \"${_venv_fixer}\"   # installs the declared set"
     _DEFERRED_FAILURES+=("fleet venv missing")
   elif [[ -f "$_venv_fixer" ]]; then
-    # FILL it: install the declared set when anything is missing. The fixer installs only
-    # what is absent and decides by IMPORT, so re-running it on a healthy host does nothing.
+    # FILL it: install the declared set when anything is missing. The fixer installs only what
+    # is absent and decides by IMPORT *and* by CAPABILITY, so re-running it on a healthy host
+    # does nothing — and an mcp that imports but is too old for the 2.0 constructor API (gisu,
+    # 2026-10-20) is a gap HERE rather than an "ok" that repaired nothing while that host's
+    # governance CLI exited 3 on every write gate.
     if ! "$_fleet_venv" "$_venv_fixer" --check >/dev/null 2>&1; then
       info "Installing the declared requirements into the fleet venv…"
       if ! "$_fleet_venv" "$_venv_fixer" >/dev/null 2>&1; then
@@ -3271,7 +3319,7 @@ main() {
         if hermes mcp add tasks --command "$mcp_venv" --args "$mcp_server" 2>/dev/null; then
           info "  ✓ tasks MCP registered (restart the gateway to load tools)"
         else
-          warn "hermes mcp add tasks failed — run: python3 ${CORTEX_DEPLOY_HOME}/scripts/manage/cortex-doctor.py --fix"
+          warn "hermes mcp add tasks failed — run: python3 ${CORTEX_DEPLOY_HOME}/scripts/cortex-doctor.py --fix"
         fi
       fi
     fi

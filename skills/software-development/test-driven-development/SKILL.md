@@ -151,6 +151,17 @@ sections, which creates three failure modes a pytest suite never shows you:
   asserts against its own double: the symptom is the code under test returning the fake's empty
   result, which reads as a defect in the shipped function. Save the real attribute and put it back
   at the end of the section that swapped it.
+- **Widening a collaborator's interface breaks its DOUBLES and its FIXTURES — grep for both in the
+  same change.** A new keyword parameter on a faked function makes every hand-rolled double
+  (`lambda blobs, conn=None: …`) die with `TypeError: unexpected keyword argument` at the CALL site,
+  and a new COLUMN makes every fixture that builds its own DDL die with `no column named …`. Both
+  surface as failures in files you never opened, so a green run of the file you edited proves
+  nothing about the suite. Sweep the test tree for the old call shape and the table name
+  (`grep -rn "lambda .*conn=None" tests/`, `grep -rln "<table>" tests/`), give each double a
+  trailing `**kw` rather than restating the parameter list, and make each fixture's schema mirror
+  the real one — then run every file that names the collaborator. Do it as a scripted edit that
+  ASSERTS its match count per file, so a silent 0 (nothing updated) or a silent 2 (pattern too
+  broad) fails loudly instead of leaving a file unfixed behind a green suite.
 - **Run the FILE before every commit — a green commit hook is not a green test.** Pre-commit hooks
   check syntax, secrets and static scans; they do not execute your tests. A failing suite can
   therefore be committed behind a passing hook and only surfaces when someone runs the file.

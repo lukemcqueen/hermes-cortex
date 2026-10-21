@@ -46,6 +46,11 @@ harnesses:
   - name: pi
     layer: mcp
     status: shipped
+    # PRESENCE (what the doctor gates on): the harness's own artifact on THIS host.
+    # Declared here because the registry is the ONE source of harness knowledge — a
+    # second copy in the doctor would go stale the moment a harness is added.
+    presence:
+      - ~/.pi/agent
     surface: 'MCP (cortex-context) + pi.on("tool_call" write gate | "turn_end" | "before_agent_start" | "session_before_compact")'
     why: |
       Pi 1.0.0 HAS an MCP client (verified on the host with `pi mcp list`, which
@@ -151,6 +156,7 @@ harnesses:
           verify:
           - git config --get core.hooksPath prints ~/.hermes-cortex/hooks — so a commit made from a Pi session is gated.
           - python3 ~/.hermes-cortex/scripts/loop-gov.py --list lists begin_change and end_change.
+          - "The CLI works under EVERY interpreter shape, and the skew that broke gisu (2026-10-20) is now a WARNING, not a failure — with no `mcp` at all the handlers run through their own stand-ins, with mcp>=2.0 the SDK is used, and an mcp in between (importable but too old for the 2.0 constructor API this server registers handlers with) used to kill the module at import and make the CLI exit 3 on every write gate, which read as governance being unavailable. It now prints on stderr `[mcp-server] WARNING: the installed MCP SDK cannot serve this module (<error>) — stdio serving is DISABLED; the CLI adapter still works` and the CLI exits 0/1 as usual. Seeing that warning means THE INTERPRETER's mcp is behind — the extension spawns CORTEX_GOVERNANCE_PYTHON, defaulting to `python3` from pi's PATH — not that governance is down. Fix it by running the CLI with ~/.hermes-cortex/venv/bin/python3, or repair that venv with `python3 ops/scripts/manage/fix-cortex-venv.py` (its --check probes this capability, not just the import)."
           - python3 ~/.hermes-cortex/scripts/loop-gov.py check_lock returns a JSON status object (the CLI reaches the governance store). Note: its 'active' field is NOT the test the push gate uses — a lock FILE can exist (and permit a push) while check_lock reports inactive, so an inactive reading must not be taken as permission to push.
           - python3 ~/.hermes-cortex/scripts/loop-gov.py begin_change '{"task_id":"pi-smoke","description":"probe"}' returns a cycle id and end_change releases it — run this only when you hold no other lock.
         why: |
@@ -222,6 +228,8 @@ harnesses:
   - name: hermes
     layer: mcp
     status: shipped
+    presence:
+      - ~/.hermes/config.yaml
     surface: 'hermes mcp add'
     why: Hermes reads MCP servers from config, so it needs no shim at all.
     install: |
@@ -237,6 +245,10 @@ harnesses:
   - name: claude-code
     layer: mcp
     status: documented
+    presence:
+      - ~/.claude.json
+      - ~/.claude/settings.json
+      - cmd:claude
     surface: '.mcp.json'
     why: MCP-native; registration is a config entry, no shim.
     install: |
@@ -250,6 +262,9 @@ harnesses:
   - name: codex
     layer: mcp
     status: documented
+    presence:
+      - ~/.codex/config.toml
+      - cmd:codex
     surface: '~/.codex/config.toml [mcp_servers]'
     why: MCP-native; registration is a config entry, no shim.
     install: |
@@ -264,6 +279,10 @@ harnesses:
   - name: steadfaste-tui
     layer: none
     status: blocked
+    # No presence to declare: this harness is declared UNSUPPORTED, so the doctor
+    # reports it as skipped with this entry's own reason — never as "not installed",
+    # which would read as "it would work if you installed it".
+    presence: []
     surface: unknown
     why: |
       Steadfaste's own gateway is not complete, so its harness surface cannot be

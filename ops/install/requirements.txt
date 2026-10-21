@@ -15,7 +15,16 @@
 #   python3 ops/scripts/manage/fix-cortex-venv.py
 # Report without changing anything (the shape a doctor check runs):
 #   python3 ops/scripts/manage/fix-cortex-venv.py --check
-mcp>=1.0
+#
+# ⚠️ mcp>=2.0, NOT >=1.0 (2026-10-20). The floor is load-bearing: the fleet's MCP
+# servers register their handlers through the 2.0 CONSTRUCTOR API
+# (Server(name, on_list_tools=..., on_call_tool=...)), which the 1.x SDK rejects with
+# "unexpected keyword argument 'on_list_tools'". A floor of >=1.0 admitted exactly the
+# version the servers cannot construct against, so a host repaired from this declared
+# set could resolve straight back into a broken governance gate (measured on gisu).
+# fix-cortex-venv.py also PROBES this capability, not just the import — a version that
+# imports but cannot construct the handlers is reported as a gap.
+mcp>=2.0
 PyYAML>=6.0
 fastapi>=0.100
 uvicorn>=0.23

@@ -161,7 +161,7 @@ DEPLOY_OUTPUT=$("$TIMEOUT_CMD" 600 bash "$CORTEX_REPO/ops/scripts/cortex-update.
 }
 
 # Deploy skills manifest from template
-SKILLS_TEMPLATE="$CORTEX_REPO/docs/templates/skills.yaml"
+SKILLS_TEMPLATE="$CORTEX_REPO/skills.yaml"
 SKILLS_DEST="$HOME/.hermes-cortex/skills.yaml"
 if [ -f "$SKILLS_TEMPLATE" ]; then
     if [ ! -f "$SKILLS_DEST" ] || ! diff -q "$SKILLS_TEMPLATE" "$SKILLS_DEST" >/dev/null 2>&1; then

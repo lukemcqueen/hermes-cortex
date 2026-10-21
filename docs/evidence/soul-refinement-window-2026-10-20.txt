@@ -1,0 +1,133 @@
+# Soul-refinement mining pass - window and row counts
+
+Cycle: soul-refine-window-20261020 (run-time window ending 2026-10-20 23:17 KST)
+Revision at run time: 8bfff1b7
+
+This is the revision the generator ran against, which is the parent of the
+commit that carries this capture - an artifact committed WITH its change cannot
+name its own commit hash. A re-run prints the then-current revision instead.
+
+## What produced this
+
+`python3 docs/evidence/soul-refinement-window-2026-10-20.py`
+
+Read-only: the sessions store is opened with `mode=ro` and `PRAGMA query_only=1`,
+and nothing is written to it. The generator is committed beside this capture so
+the counts can be re-derived rather than taken on trust.
+
+## Reproduce
+
+```
+cd ~/hermes-cortex
+python3 docs/evidence/soul-refinement-window-2026-10-20.py
+```
+
+The counts are VOLATILE (the store is append-only and keeps growing), so a
+re-run at a later time reports MORE rows, never fewer. The window itself is
+re-derived from `time.time()` on every run - never from the calendar date.
+
+## Provenance
+
+Everything between the BEGIN/END markers below is the generator's own stdout,
+copied programmatically (not retyped). The `rc` and `warnings` figures are the
+generator's own, printed by the generator itself at the end of its output.
+
+The `warnings` count is not decorative: it is the number of rows the classifier
+called PROSE that still look machine-generated. The six literal prefixes are not
+provably exhaustive, so the prose tally - the number this whole artifact rests
+on - carries its own falsifier rather than an assertion of exclusivity.
+
+## A separate check run in the same cycle, recorded because it FAILED
+
+`python3 ops/scripts/manage/check-skill-drift-parity.py --check`
+exit code: 1
+
+```
+artifact matches, but the parity claim it records does NOT hold
+```
+
+Recorded here rather than fixed: repairing skills drift is a different
+deliverable from mining a session window, so it does not belong in this cycle's
+range. It is reported as its own finding.
+
+----- BEGIN VERBATIM GENERATOR OUTPUT -----
+==========================================================================
+SOUL-REFINEMENT MINING PASS — window + row counts (read-only)
+==========================================================================
+generator : ops-independent scratch measurement; re-run the same
+            script to reproduce every count below
+revisions : working tree 8bfff1b7
+volatile  : row COUNTS (the store is append-only and grows)
+
+WINDOW resolved from RUN TIME, not the calendar date
+  now    : 2026-10-20 23:27:26 KST   epoch=1792506446.094
+  start  : 2026-10-19 23:27:26 KST   epoch=1792420046.094
+  hours  : 24
+  store  : ~/.hermes/state.db
+
+--- row counts by role, inside the window ---
+  user           52
+  assistant    2073
+  tool         2625
+  system          0
+
+--- the active=1 filter matters ---
+  user rows in window, unfiltered :     52
+  user rows in window, active=1   :     46
+  dropped by the filter           :      6
+
+--- session classes ---
+  total active user rows        :     46
+  ... in cron_ sessions         :     25
+  ... in human/named sessions   :     21
+  distinct cron sessions        :     25
+  distinct human sessions       :      4
+
+--- MECHANICAL classification of the human-session rows ---
+    (a machine-generated shape is identified by its own literal
+     marker; anything else is prose that must be READ)
+  gateway_origin_wrapper                2
+  internal_notification                 5
+  pasted_cron_delivery                  1
+  unclassified_human_session_prose     13
+  --- machine-generated subtotal        8
+  --- prose that must be READ          13
+
+--- the same classification for the cron-session rows ---
+  cron_self_prompt                     25
+
+--- per-session row counts (sessions referenced by index, not id) ---
+  human session #1   2026-10-20 01:48           rows=2
+  human session #2   2026-10-20 09:19           rows=9
+  human session #3   2026-10-20 16:06           rows=7
+  human session #4   2026-10-20 18:32           rows=3
+
+--- prose rows, redacted preview (the material to READ) ---
+  [10-20 01:48] Titus Pi is still having issues. Please see if you can fix this. Get D
+  [10-20 09:19] Clean up the HC docs. Organize, merge, prune. Be thorough. Update inst
+  [10-20 10:55] esther, why is there no learning report from titus? he would be extrem
+  [10-20 13:34] This is on Titus. Is there something that can be fixed in governance? 
+  [10-20 13:53] first commit and push. then fix Two calls that are yours, not mine (is
+  [10-20 14:10] /resetart
+  [10-20 14:23] gateway restarted. ready for other agents to implement?
+  [10-20 14:47] esther, your last changes... did you take into account macos? if not, 
+  [10-20 16:06] In governance, please fix the 'ask an orchestrator to clear the cycle'
+  [10-20 16:27] Titus Pi still seeing issues with end_change governance/adversarial re
+  [10-20 17:59] I'm getting tired of seeing agents just gloss over the warnings after 
+  [10-20 18:32] Issue with pi agent on gisu: The exact issue Chain: cortex-governance.
+  [10-20 19:48] mcp-servers/ is an orchestrator-only domain, so this goes as a 📝 PROPO
+
+--- SUSPECT rows: classified prose but machine-shaped ---
+  (none - every machine-shaped row was caught by a literal prefix)
+  count : 0
+
+--- verbatim window provenance ---
+  sha256 of the session-id list (stable across re-runs of the
+  SAME window; lets a reader confirm the same set was read):
+    9e41efad0f3f91a3394fa390f859d07feb297f972296716a0e07a09bb6bf41ea
+
+WINDOW IS NON-EMPTY: 46 active user rows across 29 sessions.
+command : python3 <this script>   (read-only; no writes to the store)
+rc      : 0
+warnings: 0
+----- END VERBATIM GENERATOR OUTPUT -----

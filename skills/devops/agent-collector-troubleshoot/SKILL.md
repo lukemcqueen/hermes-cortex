@@ -2,7 +2,7 @@
 name: agent-collector-troubleshoot
 version: 1.0.0
 category: devops
-description: "Use when collectors can't send. Diagnoses bus, paths, crons."
+description: "Use when a report is missing or a collector can't send."
 platforms: [linux, macos]
 ---
 
@@ -10,6 +10,51 @@ platforms: [linux, macos]
 
 Run this checklist when `agent-learning-collector --force` produces no output,
 no report appears in `inbox_orchestrator`, or the agent can't reach the orchestrator.
+
+## Step 0 — Prove it is MISSING before touching the collector
+
+A report can be absent from what YOU read while the agent sent it perfectly. Rule these
+out first — every one of them costs an hour if skipped, and none of them is a collector bug:
+
+- **Two staging dirs, two report kinds.** `agent-learning-collector` reports stage to
+  `~/.hermes-cortex/state/learning-reports/<agent>-<ts>.md`; the older chunked
+  `Skill Report:` messages stage to `state/skill-reports/`. Look at the dir named for the
+  SUBJECT you are chasing, and read the newest file per agent instead of counting files.
+- **Which host staged it is a race, not a property.** BOTH orchestrators poll the shared
+  `inbox_orchestrator`, so whichever ticks first consumes the report and stages it on ITS OWN
+  host — a report consumed by the peer is invisible locally with no error anywhere. Before
+  concluding an agent stopped reporting, compare BOTH hosts' staged dirs
+  (`ssh <peer> "ls -1t ~/.hermes-cortex/state/learning-reports | grep '^<agent>-' | head"`).
+- **"Received" and "digested" are different facts — check the CONSUMER's scope.** The pipeline
+  that turns reports into a digest reads the staged dir on the host IT runs on, while staging
+  happens on whichever host won the race. So an agent can be reporting every 6h, its files sitting
+  on the peer, and the digest never mentioning it — a scope mismatch, not a send failure. Read the
+  consumer's own record before blaming the agent: where its input path points, and its REAL
+  schedule from the cron entry/timer rather than the schedule its documentation claims (a skill
+  saying "daily 04:00" against a live `1,3,5 04:34` job sends the next reader down the wrong path).
+- **Size the window to the queue's churn.** `?limit=N` caps the archive page, and a queue
+  carrying health-probe traffic burns through N fast: the newest N messages can span only a
+  couple of hours, so "no reports from <agent>" often just means "older than the page I
+  fetched". Widen `since_minutes` AND `limit`, then aggregate per sender.
+- **Never call a consumer dead from one peek.** The handler is a periodic tick (minutes).
+  A message enqueued after the last tick is PENDING by design — compare its `enqueued_at`
+  against the consumer's last and next run (`systemctl --user list-timers`) BEFORE reporting
+  a stalled consumer. To separate "consumer is dead" from "the API cannot remove messages",
+  hand-archive ONE test message and watch the depth drop (`{"success":true}`, depth N→N-1).
+
+Who last reported, from the archive (the authoritative record of what was consumed — the
+live peek sees only what is still pending):
+
+```bash
+set -a; . ~/.hermes-cortex/.env; set +a   # never echo the token value
+curl -s -H "Authorization: Bearer $CORTEX_BUS_TOKEN" \
+  "http://127.0.0.1:8903/api/pgmq/archives/inbox_orchestrator?limit=2000&since_minutes=300000" \
+| python3 -c "import json,sys,collections; d=json.load(sys.stdin); m=d if isinstance(d,list) else d.get('messages',[]); c=collections.Counter(((x.get('body') or {}).get('subject'),(x.get('body') or {}).get('from')) for x in m); [print(n,s,f) for (s,f),n in c.most_common(20)]"
+```
+
+Also weigh the agent KIND: a laptop agent is offline much of the day, and the collector is
+silent when its delta is empty, so an irregular cadence from an offline-capable host is
+expected — not evidence of breakage. Compare against a server agent before calling it a fault.
 
 ## Step 1 — Script Deployment
 

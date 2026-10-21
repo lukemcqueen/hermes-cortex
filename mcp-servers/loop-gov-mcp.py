@@ -177,14 +177,51 @@ try:
     from mcp.server import Server
     from mcp.server.stdio import stdio_server
     from mcp.types import Tool, TextContent, CallToolResult, ListToolsResult
+
+    # A PRESENT SDK IS NOT A USABLE ONE (measured on gisu, 2026-10-20).
+    #
+    # The guard below already survives a MISSING SDK. It did not survive an
+    # INCOMPATIBLE one: an mcp old enough to lack the 2.0 constructor API imports
+    # perfectly and then rejects the handlers this module is built on, so the
+    # construction at the bottom of this file raised
+    #   TypeError: Server.__init__() got an unexpected keyword argument 'on_list_tools'
+    # AT MODULE IMPORT. That killed the whole module, and with it the CLI adapter
+    # (ops/scripts/loop-gov.py), which loads this file by exec_module — so a version
+    # skew in a dependency the CLI never needs to SERVE took down the write gate on
+    # every edit ("governance is unavailable", exit 3), while the running MCP daemon,
+    # on a different interpreter, stayed healthy. The failure was also read BACKWARDS
+    # (as an SDK "too new"); the constructor kwargs ARE the 2.0 API and the decorator
+    # style they replaced is older — see docs/older/reference/mcp-sdk-v2-migration.md.
+    #
+    # So the capability is PROBED rather than assumed: constructing a throwaway server
+    # with no handlers proves the API accepts them. A failure is treated exactly like a
+    # missing SDK — the module stays importable and drivable (its stated design) and
+    # says WHY, naming the interpreter, instead of crashing.
+    Server("loop-governance/sdk-capability-probe", on_list_tools=None, on_call_tool=None)
     MCP_AVAILABLE = True
-except ImportError:  # pragma: no cover — governance without the MCP SDK
+except (ImportError, TypeError) as _sdk_err:  # pragma: no cover — no SDK, or an unusable one
     # Governance must be usable by a host with no MCP client (Pi). Rather than
     # fork the implementation, this module stays importable without the SDK: the
     # handlers below build CallToolResult/TextContent objects, so minimal
     # stand-ins keep the SAME code path working. The CLI is then an adapter over
     # this file, not a second implementation of it.
     MCP_AVAILABLE = False
+    if not isinstance(_sdk_err, ImportError):
+        # Silent for the documented case (no SDK). An INCOMPATIBLE SDK is a
+        # misconfiguration someone must fix, so it is reported: a gate that silently
+        # degrades is how the wrong interpreter stays invisible.
+        print(
+            f"[mcp-server] WARNING: the installed MCP SDK cannot serve this module "
+            f"({type(_sdk_err).__name__}: {_sdk_err}) — stdio serving is DISABLED; the CLI "
+            f"adapter (ops/scripts/loop-gov.py) still works.\n"
+            f"[mcp-server] This server needs the mcp 2.0 constructor API "
+            f"(Server(name, on_list_tools=..., on_call_tool=...)).\n"
+            f"[mcp-server] Interpreter: {sys.executable}\n"
+            f"[mcp-server] Fix: run this with an interpreter that has mcp>=2.0 "
+            f"(ops/install/requirements.txt), e.g. ~/.hermes-cortex/venv/bin/python3 — or "
+            f"repair that venv with ops/scripts/manage/fix-cortex-venv.py",
+            file=sys.stderr,
+        )
 
     class TextContent:  # type: ignore[no-redef]
         def __init__(self, type: str = "text", text: str = ""):
@@ -1492,10 +1529,23 @@ def _review_uncovered_blobs(blobs: dict, *, reviewer, material_for,
                 deadline = time.monotonic() + max(1.0, budget_s - (time.monotonic() - started))
                 for fut in futures:
                     left = deadline - time.monotonic()
+                    # ASK A COMPLETED FUTURE, do not assume it timed out (2026-10-21). This loop
+                    # awaits in submission order, so a SLOW blob awaited first can spend the whole
+                    # window — and the old `left > 0.0` test then stamped every LATER future as
+                    # "window exhausted" WITHOUT reading it, including calls that had already
+                    # ANSWERED. Those verdicts were discarded and re-bought on the next pass while
+                    # a genuinely slow sibling produced the same outcome either way: the answered
+                    # blob was reported as unanswered, which is the mirror of the defect this
+                    # change fixes above. `fut.done()` costs nothing, so consult it first.
+                    if not fut.done() and left <= 0.0:
+                        outcomes[futures[fut]] = ("", TimeoutError(
+                            "the close window was exhausted"))
+                        continue
                     try:
-                        outcomes[futures[fut]] = (fut.result(timeout=left) if left > 0.0
-                                                  else ("", TimeoutError(
-                                                      "the close window was exhausted")))
+                        # `_judge` RETURNS the `(text, exc)` pair, so assign it whole: wrapping it
+                        # in another tuple made the text a tuple, which `_extract_verdict` read as
+                        # "answered and judged nothing" — a verdict lost to a shape mistake.
+                        outcomes[futures[fut]] = fut.result(timeout=max(0.0, left))
                     except BaseException as exc:  # noqa: BLE001 — result() must never abort the pass
                         outcomes[futures[fut]] = ("", exc)
             finally:
@@ -1523,6 +1573,22 @@ def _review_uncovered_blobs(blobs: dict, *, reviewer, material_for,
     for path, sha in wave:
         text, exc = outcomes.get(sha, ("", RuntimeError("the wave produced no outcome")))
         if exc is not None:
+            # A WINDOW-EXHAUSTED CALL IS AN ABSENT ANSWER, NOT A DOWN REVIEWER (2026-10-21). It
+            # used to land here with a genuine error and increment the outage counter; at 2 that
+            # sets `reviewer_down`, which ALSO defers every blob the pass had not reached — so two
+            # slow calls in one wave could abandon blobs the reviewer would have answered for.
+            # Evidence that slowness is not an outage: the reviewer answered rc=0 in 191s on a
+            # direct call for the same blob this was measured with (cycle 13522, issue #203 / task
+            # dbb14f91) while the close window it runs inside is 240s and is never raised.
+            # Still NEVER credited: `failed` AND `remaining`, so the close refuses and the next
+            # pass retries it exactly as before. Covered by
+            # tests/test_blob_review_concurrency.py::test_two_slow_calls_do_not_declare_the_reviewer_down_and_abandon_the_rest
+            if isinstance(exc, TimeoutError):
+                failed.append(sha)
+                remaining.append(sha)
+                log.warning("per-blob review: %s did not answer inside the window — deferred "
+                            "unjudged, not counted toward the reviewer-outage cap", path)
+                continue
             # A failure NEVER credits the blob: it is reported unjudged, so the close refuses and
             # the push gate still names it uncovered. What it does not do is end the pass on the
             # first one — the old stop-on-first made ZERO progress on every attempt.
@@ -1688,6 +1754,20 @@ REVIEW_EXPECTATIONS = (
     "rc!=0 is a result, a timeout (124) is NOT: run the check to completion and record the number",
     "preconditions (the module loads, the collaborator exists) belong in a test, not at import",
     "the task description must cover every path in the range, or that file reads as scope drift",
+    # Three surfaces a Linux-only run cannot see, stated here so the close-time reviewer ASKS them.
+    # The record for why: operator directive (restated until it became a gate), carried out in cycle
+    # 13540 task 'automate-portability-axes-as-a-gate'; the failure that motivated it is independent
+    # pro review of cycle 13536 — adversarial_reviews review_id
+    # 73203484-2ded-4a79-a78c-cf805403e417, findings ADV-0-1 (a substring evidence check) and ADV-0-2
+    # (an engine error reported as "no grant") — recorded as repo issue #206, both shipping with every
+    # Linux test green. Stating them here is what makes the reviewer ask; the rules revision is derived
+    # from this text, so stored verdicts re-review once, by design.
+    "a script another host EXECUTES must work on macOS (no GNU-only flags, no bash-4 syntax, no "
+    "unconditional `timeout`) or STATE its fallback — green on Linux is not evidence for the fleet",
+    "anything reading or writing SHARED state must state what happens when two sessions or two runs "
+    "act at once — name the guard (an atomic `WHERE`, a lock) or state the gap",
+    "a tool that assumes the cortex deploy (a sibling script, a container, a path) must STATE what it "
+    "does when that is absent — another repo or a bare host gets a clear refusal, never a traceback",
 )
 
 # How many paths a message will name before summarising. A single review window judges ONE blob, so
@@ -8340,8 +8420,11 @@ def _write_daemon_stamp() -> None:
 
 async def main():
     if not MCP_AVAILABLE:
-        print("loop-governance: the MCP SDK is not installed. Use the CLI adapter "
-              "(ops/scripts/loop-gov.py) or run this with a python that has 'mcp'.",
+        print("loop-governance: this interpreter has no USABLE MCP SDK — it is absent, or too "
+              "old for the 2.0 constructor API (the warning above says which, and names the "
+              "interpreter). Stdio serving is unavailable. Drive governance through the CLI "
+              "adapter instead (ops/scripts/loop-gov.py — SDK-independent by design), or run "
+              "this with a python that has mcp>=2.0.",
               file=sys.stderr)
         sys.exit(1)
     _write_daemon_stamp()

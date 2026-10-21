@@ -140,6 +140,39 @@ def test_the_report_carries_raw_output_for_its_load_bearing_claim():
         "both sides of the comparison must be shown")
 
 
+def test_the_suite_runner_is_chosen_by_capability_not_by_path():
+    """`command -v python3` proves a FILE exists, not that it can import pytest.
+
+    Measured 2026-10-20: on the cron PATH that resolves to the agent runtime
+    interpreter, which has no pytest — so the hc_harness run printed "No module
+    named pytest", executed not one test, and the report shipped that line as the
+    evidence for a green claim.
+    """
+    assert ev.pytest_python() is not None, (
+        "no interpreter on this host can import pytest: the evidence cannot be "
+        "regenerated here, and the script must report COULD NOT VERIFY rather "
+        "than emit a report")
+    src = SCRIPT.read_text()
+    assert "python-with-module.sh" in src, (
+        "the interpreter must be resolved by CAPABILITY through the fleet "
+        "helper, not by PATH existence")
+    assert '"python3", "-m", "pytest"' not in src, (
+        "a bare python3 child is the defect — pytest is not on the cron PATH")
+
+
+def test_a_suite_that_did_not_run_cannot_be_scored_as_a_pass():
+    """The verdict must be EARNED from a result line, never inferred from silence.
+
+    "No module named pytest" contains no "failed", so the old substring gate
+    ("failed" not in output) scored a run that executed NOTHING as PASS.
+    """
+    assert ev.suite_outcome("python3: No module named pytest")[0] == "not-run"
+    assert ev.suite_outcome("========== no tests ran in 0.01s ==========")[0] == "fail"
+    assert ev.suite_outcome("1 failed, 8 passed in 1.71s")[0] == "fail"
+    assert ev.suite_outcome("9 passed in 5.90s")[0] == "pass"
+    assert ev.suite_outcome("9 passed in 5.90s")[1], "a pass must name its count"
+
+
 def test_the_checks_cover_the_invariants_this_remediation_established():
     """Presence check — if a check is deleted the report silently gets weaker."""
     src = SCRIPT.read_text()

@@ -99,6 +99,17 @@ Load this before end_change() on any script, deploy-config, cron, shared-doc, or
       — a named failing test on both sides — not the bare exit code, which two runs that measured
       nothing share (`references/close-review-evidence.md`). An identical failure predates you, and a red test nobody runs is a finding to RECORD, not a
       regression to absorb or quietly fix inside someone else's cycle.
+      **A DIFFERS verdict is not automatically yours, and the worktree is why.** A `git worktree`
+      materialises TRACKED files only, so any UNTRACKED directory in the main checkout — a leftover
+      venv (`.venv-brief/`, `site-packages/`), a build output, a scratch tree — exists on one side of
+      the comparison and not the other. A runner that walks the repo with a glob (`REPO.glob(...)`,
+      `rglob`) then reports a DIFFERENT verdict for reasons that have nothing to do with the range:
+      expansion wanders into vendored site-packages, and the set it accumulates (that library's
+      dependencies, not your code's) is junk. Before attributing a differing failure to yourself,
+      check which side owns the extra directory (`git ls-files <dir>` empty = untracked; `git
+      status --short` for `??`), and treat a repo-wide GLOB sweep as a probe whose verdict depends on
+      local untracked state — pin it with a fixture, and exclude dot-dirs and `site-packages` rather
+      than trusting the run.
 
 ## Phase 1.5: Adversarial Verification (MANDATORY — no bypass)
 
@@ -498,6 +509,14 @@ Enforced at 3 layers: pre-commit hook (static gate), enforcer (blocks commit unt
       (✅ Crons registered / Orch crons / Crons total). Record its EXIT CODE and warning count,
       not just the ✅ lines: a non-zero rc with warnings is NOT a clean doctor, and reporting it
       as one is the failure the close review catches.
+      **Warnings and info are not a licence to move on.** The doctor prints `N undisposed` and
+      names each warning/info check nobody has decided about. For each: fix it, or record the
+      decision (`cortex-doctor.py --disposition "<check>" --as deferred|deliberate --owner <you>
+      --reason "<why>"`) — and put the counts in the delivery, never a bare "pre-existing".
+      "Pre-existing" is not a disposition: the tool decides what counts as known, a disposition
+      expires (30 days) and returns as STALE, and `--as fixed` is refused while the check still
+      warns. Nothing gates on this — it exists so that deferring is a visible decision instead of
+      a silent wave-through.
 - [ ] Governance scored — feedback_accept() before end_change(). **When the close is driven by a
       retry loop (a wide range closes over several rounds), SCORE BEFORE STARTING THAT LOOP.**
       Launching it in the same turn as `feedback_accept` races: the rounds execute first and each
@@ -524,6 +543,13 @@ Enforced at 3 layers: pre-commit hook (static gate), enforcer (blocks commit unt
       cannot block the push; the same does NOT hold for a probe you had to add under `ops/scripts/`.
       Never cite a number from an earlier live run you did not save: that claim is unverifiable
       however real the run was — re-run the generator, or withdraw the figure.
+      **A transcript written to a GITIGNORED path is not evidence either.** Check the destination
+      before committing it: a runner that emits under `tests/artifacts/` (ignored) writes a file no
+      reviewer can read in the repo, so the run happened and the claim stays unverifiable. Copy the
+      capture into `docs/evidence/` with a header naming the command, the tip revision and how to
+      re-run it, then cite that path — and leave the ignore rule alone rather than force-adding a
+      generated tree. Print the same generator's verdict line into the capture (the last line of its
+      own output plus its `rc`), so the thin file still carries the outcome a reader needs.
 - [ ] Cron-governance compat — if hooks/plugins/enforcer changed, verify the cycle works in a test cron session, then delete it.
 - [ ] Deploy, THEN push — that order, with nothing committed in between. The pre-push path
       itself runs pull → deploy → doctor → verify, and the gate reads `Deploy sync`, so a
