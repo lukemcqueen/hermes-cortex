@@ -93,7 +93,7 @@ def _registry_view(regdir: Path) -> str:
     actually prints, and a hand-written fixture would test my guess at that shape rather
     than the CLI's output.
     """
-    r = subprocess.run(["bash", str(_REPO / "ops" / "scripts" / "hc" / "hc"),
+    r = subprocess.run(["bash", str(_REPO / "ops" / "scripts" / "hc" / "bin" / "hc"),
                         "harness", "list", "--json"],
                        capture_output=True, text=True, timeout=120,
                        env={**os.environ, "CORTEX_HARNESS_DIR": str(regdir)})

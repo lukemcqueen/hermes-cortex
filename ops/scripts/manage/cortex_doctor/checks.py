@@ -5890,9 +5890,9 @@ def _harness_cli():
   and the CLI already resolves an interpreter that can read the registry.
   """
   # deployed: <deploy>/scripts/hc is the launcher FILE; repo: the launcher is
-  # ops/scripts/hc/hc (ops/scripts/hc itself is the package directory).
+  # ops/scripts/hc/bin/hc (ops/scripts/hc itself is the package directory).
   return next((c for c in (CORTEX_HOME / "scripts" / "hc",
-                           CORTEX_REPO / "ops" / "scripts" / "hc" / "hc")
+                           CORTEX_REPO / "ops" / "scripts" / "hc" / "bin" / "hc")
                if c.is_file()), None)
 
 

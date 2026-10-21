@@ -533,7 +533,7 @@ register "ops/scripts/manage/cortex-agent-manager.py"  "${CORTEX_DEPLOY_HOME}/sc
 
 register "ops/scripts/hc/hc.py"                      "${CORTEX_DEPLOY_HOME}/scripts/hc.py"
 register "ops/scripts/hc/harness.py"                 "${CORTEX_DEPLOY_HOME}/scripts/hc-harness.py"
-register "ops/scripts/hc/hc"                         "${CORTEX_DEPLOY_HOME}/scripts/hc"
+register "ops/scripts/hc/bin/hc"                     "${CORTEX_DEPLOY_HOME}/scripts/hc"
 register "ops/scripts/health/agent-stale-ref-watchdog.sh"            "${CORTEX_DEPLOY_HOME}/scripts/manage/agent-stale-ref-watchdog.sh"
 register "ops/scripts/manage/autonomy-classifier.py"                  "${CORTEX_DEPLOY_HOME}/scripts/manage/autonomy-classifier.py"
 register "ops/scripts/manage/orch-autonomy-digest.sh"                 "${CORTEX_DEPLOY_HOME}/scripts/manage/orch-autonomy-digest.sh"
@@ -3311,7 +3311,7 @@ main() {
         if hermes mcp add tasks --command "$mcp_venv" --args "$mcp_server" 2>/dev/null; then
           info "  ✓ tasks MCP registered (restart the gateway to load tools)"
         else
-          warn "hermes mcp add tasks failed — run: python3 ${CORTEX_DEPLOY_HOME}/scripts/manage/cortex-doctor.py --fix"
+          warn "hermes mcp add tasks failed — run: python3 ${CORTEX_DEPLOY_HOME}/scripts/cortex-doctor.py --fix"
         fi
       fi
     fi
