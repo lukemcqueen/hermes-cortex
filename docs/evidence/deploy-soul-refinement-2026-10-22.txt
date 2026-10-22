@@ -1,8 +1,20 @@
 === deploy verification: skill payload ===
 generated-by : docs/evidence/deploy-soul-refinement-2026-10-22.sh (writes this file itself)
-captured-at  : 035a6768
+captured-at  : 19529e41
 origin/main  : 17a6e855
 pushed range : 17a6e855 docs(soul-refine): quote the codification evidence instead of characterising it ac28bc7c docs(soul-refinement): land the window recipe the 2026-10-22 pass measured 
+
+provenance   : this file is the RECORD OF ONE RUN, not a specification, and its
+               numbers are volatile by design. Everything it reports is produced by
+               re-runnable committed code: regenerate it with
+                 bash docs/evidence/deploy-soul-refinement-2026-10-22.sh
+               and assert its structured lines (deployed == repo, the probe rc, the
+               skip marker, the size floor) with
+                 bash docs/evidence/deploy-soul-refinement-2026-10-22.sh --self-test
+               Each rc below is that command's OWN exit code, captured at the call
+               site; byte counts, the doctor's item list and HEAD's commit list are
+               bounded by captured-at plus the run clock in the first section.
+recorded-in  : loop-governance cycle 13674, task deploy-soul-refinement-skill-2026-10-22
 
 [1] THE TWO COPIES
     repo     : ~/hermes-cortex/skills/hermes-agent/soul-refinement/SKILL.md   23961 bytes
@@ -41,10 +53,14 @@ pushed range : 17a6e855 docs(soul-refine): quote the codification evidence inste
     pushed earlier under its own receipt; anything listed as unpushed is carried by
     the next push, which needs its own receipt for the range.
     commits HEAD carries over origin/main (what the next push will carry):
+      19529e41 docs(evidence): make the deploy generator prove itself; stop masking its own rc
       035a6768 fix(skills): reconcile the two skills the deploy reported stranded
       f7624f1e docs(evidence): verify the soul-refinement deploy, deployed vs repo
     A commit landed AFTER the deploy above that touches no deploy-map file leaves the
     deployed tree current, so it does not need another deploy.
+
+    The two rc lines that follow are this generator's own: the python verification
+    pass above (sections [1]-[4]) and the bash -n syntax check at the end of the file.
 [probe rc=0]
 python verification pass rc=0
 

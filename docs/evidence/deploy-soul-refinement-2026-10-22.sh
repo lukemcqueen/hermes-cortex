@@ -67,6 +67,18 @@ echo "captured-at  : $(git -C "$REPO_ROOT" rev-parse --short=8 HEAD)"
 echo "origin/main  : $(git -C "$REPO_ROOT" rev-parse --short=8 origin/main)"
 echo "pushed range : $(git -C "$REPO_ROOT" log --oneline origin/main~2..origin/main | tr '\n' ' ')"
 echo
+echo "provenance   : this file is the RECORD OF ONE RUN, not a specification, and its"
+echo "               numbers are volatile by design. Everything it reports is produced by"
+echo "               re-runnable committed code: regenerate it with"
+echo "                 bash docs/evidence/deploy-soul-refinement-2026-10-22.sh"
+echo "               and assert its structured lines (deployed == repo, the probe rc, the"
+echo "               skip marker, the size floor) with"
+echo "                 bash docs/evidence/deploy-soul-refinement-2026-10-22.sh --self-test"
+echo "               Each rc below is that command's OWN exit code, captured at the call"
+echo "               site; byte counts, the doctor's item list and HEAD's commit list are"
+echo "               bounded by captured-at plus the run clock in the first section."
+echo "recorded-in  : loop-governance cycle 13674, task deploy-soul-refinement-skill-2026-10-22"
+echo
 
 python3 - <<'PY'
 import re, subprocess, sys, os
@@ -164,6 +176,9 @@ else:
     say("      (none — HEAD equals origin/main)")
 say("    A commit landed AFTER the deploy above that touches no deploy-map file leaves the")
 say("    deployed tree current, so it does not need another deploy.")
+say()
+say("    The two rc lines that follow are this generator's own: the python verification")
+say("    pass above (sections [1]-[4]) and the bash -n syntax check at the end of the file.")
 print(f"[probe rc={RC}]")
 sys.exit(RC)
 PY
