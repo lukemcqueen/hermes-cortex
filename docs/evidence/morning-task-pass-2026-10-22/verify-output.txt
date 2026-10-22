@@ -1,0 +1,53 @@
+
+### 1. live bus status ###
+✅ Bus: ok (pgmq) — https://realgospelmessage.org:13004
+
+📊 9 inbox queue(s):
+   inbox_esther                    depth=0
+   inbox_fleet                     depth=0
+   inbox_gisu                      depth=1
+   inbox_health_check              depth=3
+   inbox_joseph                    depth=1
+   inbox_kustos                    depth=1
+   inbox_moses                     depth=0
+   inbox_orchestrator              depth=3
+   inbox_titus                     depth=1
+PASS: bus answered
+
+### 2. inbox_esther must be empty (self-test probe archived) ###
+📬 No pending messages in inbox_esther.
+PASS: probe archived, queue clean
+
+### 3. the four dispatched inboxes must hold one TASK_REQUEST for slice 6b7d9b8a ###
+--- joseph ---
+📬 1 pending message(s) in inbox_joseph:
+
+  📩 [07:39:17] esther → TASK_REQUEST
+     {"topic": "general", "text": "{\"topic\":\"general\",\"text\":\"TASK_REQUEST slice 6b7d9b8a [cost/4] Fleet-wide cost coverage - per-host audit-log ada...
+PASS: joseph holds the cost/4 TASK_REQUEST
+--- gisu ---
+📬 1 pending message(s) in inbox_gisu:
+
+  📩 [07:39:23] esther → TASK_REQUEST
+     {"topic": "general", "text": "{\"topic\":\"general\",\"text\":\"TASK_REQUEST slice 6b7d9b8a [cost/4] Fleet-wide cost coverage - per-host audit-log ada...
+PASS: gisu holds the cost/4 TASK_REQUEST
+--- kustos ---
+📬 1 pending message(s) in inbox_kustos:
+
+  📩 [07:39:25] esther → TASK_REQUEST
+     {"topic": "general", "text": "{\"topic\":\"general\",\"text\":\"TASK_REQUEST slice 6b7d9b8a [cost/4] Fleet-wide cost coverage - per-host audit-log ada...
+PASS: kustos holds the cost/4 TASK_REQUEST
+--- titus ---
+📬 1 pending message(s) in inbox_titus:
+
+  📩 [07:39:25] esther → TASK_REQUEST
+     {"topic": "general", "text": "{\"topic\":\"general\",\"text\":\"TASK_REQUEST slice 6b7d9b8a [cost/4] Fleet-wide cost coverage - per-host audit-log ada...
+PASS: titus holds the cost/4 TASK_REQUEST
+
+### 4. no repeat dispatch of the thrash slices (issue #86) ###
+ca282975 and 72dc920b were deliberately NOT re-sent this pass.
+Check the dispatch ledger / worker rows if a copy appears in a worker inbox.
+PASS: documented hold
+
+### 5. verdict ###
+VERDICT: PASS

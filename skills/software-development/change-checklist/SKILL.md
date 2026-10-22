@@ -94,6 +94,17 @@ Load this before end_change() on any script, deploy-config, cron, shared-doc, or
       returned diff. Splicing a parenthetical INTO a line that already delimits inline code is the
       reliable way to break the delimiters: rewrite the whole sentence, or check the rendered line,
       before committing. A file of prose has no compiler to catch this; the scan IS its syntax check.
+      **A NAME REDIRECT leaves artefacts that a match count cannot see, because they are the
+      CONSEQUENCE of a correct replacement rather than a failed match.** Redirecting `old` to
+      `new` through a collection that ALREADY named `new` produces a duplicate
+      (`[cortex-bus, cortex-bus-automation, …]` becomes `[cortex-bus, cortex-bus, …]`); the same
+      redirect beside an existing bullet for the target produces two entries for one skill; and
+      the trailing gloss clause (“— what it does”) belongs to the OLD name, so it now describes
+      the wrong thing. Asserting `count(old) == N` per file passes on all three. So after a
+      redirect sweep: DEDUPE every collection you substituted into, RE-READ the parenthetical or
+      gloss on every replaced reference, and drop a bullet that duplicates one already present.
+      Then pin it — a test asserting no `related_skills` list repeats an entry catches the
+      duplicate class on every future sweep instead of only the day you noticed.
 - [ ] nginx — sudo nginx -t.
 - [ ] **Run the sibling tests that exercise the seams you CHANGED — a green regression harness does
       not cover them.** A curated harness runs its own file list, so an older test that drives a
@@ -615,7 +626,15 @@ Enforced at 3 layers: pre-commit hook (static gate), enforcer (blocks commit unt
       in another form, and a stale claim the newer copy deliberately removed must not be
       merged back. Hand-merge only where the deployed copy genuinely lacks the content. A
       mechanical ratio over whole lines is not enough to decide (a reflowed paragraph scores
-      low while losing nothing); grep the deployed copy for the distinctive phrase instead.
+      low while losing nothing); grep the deployed copy for the distinctive phrase instead. **Make
+      the decision an ASSERTION rather than a judgement:** collect the non-`equal` opcodes and
+      require at most ONE line-dropping block (an in-place rewrite ⇒ take the deployed side);
+      two or more means the newer copy genuinely REMOVED content you must read first. Assert
+      that count in the script, so a later reconcile cannot quietly take a side it should have
+      read. **And assert what the copy is not allowed to LOSE:** a skill whose deployed copy has
+      dropped its `description` (or `name`) becomes UNLOADABLE — every loader refuses it — which
+      is the exact defect a reconciliation can reintroduce, so parse the copied frontmatter and
+      require a non-empty description BEFORE overwriting the repo copy.
       **Collapse whitespace before you search, or the probe invents the loss it reports.** A
       paragraph that was REWRAPPED keeps every word while every line differs, so a
       line-by-line "is this repo line present in the deployed copy?" check flags all of it as
@@ -792,7 +811,15 @@ Enforced at 3 layers: pre-commit hook (static gate), enforcer (blocks commit unt
 - [ ] A close-review window is `base..HEAD`, so a **peer's commit landing mid-cycle shows up
       as scope drift in YOUR range**. Name the peer's SHA in the cycle note and leave their
       work untouched; reverting another session's commit to green your gate is the same
-      violation as the amend above.
+      violation as the amend above. **When their blob carries a FINDING you cannot clear, the
+      close stays refused indefinitely — and holding your lock while their fix lands DEADLOCKS
+      both sessions, because there is ONE lock per repo.** Do not edit their file to clear it,
+      and do not hold on: score the cycle first (so a cancel leaves no PENDING-cycle leak), then
+      release deliberately — `advance_task_state(task_id=…, new_state='cancelled', reason=…)`
+      — a terminal task holds nothing. State in the reason whose blob blocks the close and that
+      their in-flight fix is already the remedy, so the finding stays visibly with its owner.
+      Your own commit stays LANDED and local; being unable to close is not a reason to reach
+      for a bypass, and an unpushed commit is the honest resting state.
 - [ ] Verify the landing rather than assuming it: `python3 ops/scripts/manage/verify-landed.py
       --repo . --base <previous tip>` asserts a CLEAN receipt for the tip, that every changed
       deploy-map file matches its deployed copy, and that `origin/<branch>` equals the tip.

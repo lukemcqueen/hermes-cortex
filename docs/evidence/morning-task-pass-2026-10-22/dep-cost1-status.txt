@@ -1,0 +1,5 @@
+                  id                  |  status   | priority |                                  left                                  
+--------------------------------------+-----------+----------+------------------------------------------------------------------------
+ 5e875477-efb5-4188-9e16-7e0ffeb7f963 | completed |        2 | [cost/1] Baseline fleet cost: query provider spend + token usage for l
+(1 row)
+

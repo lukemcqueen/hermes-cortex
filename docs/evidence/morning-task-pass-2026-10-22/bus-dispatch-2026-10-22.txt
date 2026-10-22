@@ -1,0 +1,44 @@
+### 1. live bus status (post-dispatch) ###
+✅ Bus: ok (pgmq) — https://realgospelmessage.org:13004
+
+📊 9 inbox queue(s):
+   inbox_esther                    depth=0
+   inbox_fleet                     depth=0
+   inbox_gisu                      depth=1
+   inbox_health_check              depth=3
+   inbox_joseph                    depth=1
+   inbox_kustos                    depth=1
+   inbox_moses                     depth=0
+   inbox_orchestrator              depth=3
+   inbox_titus                     depth=1
+
+### inbox_joseph ###
+📬 1 pending message(s) in inbox_joseph:
+
+  📩 [07:39:17] esther → TASK_REQUEST
+     {"topic": "general", "text": "{\"topic\":\"general\",\"text\":\"TASK_REQUEST slice 6b7d9b8a [cost/4] Fleet-wide cost coverage - per-host audit-log ada...
+
+
+### inbox_gisu ###
+📬 1 pending message(s) in inbox_gisu:
+
+  📩 [07:39:23] esther → TASK_REQUEST
+     {"topic": "general", "text": "{\"topic\":\"general\",\"text\":\"TASK_REQUEST slice 6b7d9b8a [cost/4] Fleet-wide cost coverage - per-host audit-log ada...
+
+
+### inbox_kustos ###
+📬 1 pending message(s) in inbox_kustos:
+
+  📩 [07:39:25] esther → TASK_REQUEST
+     {"topic": "general", "text": "{\"topic\":\"general\",\"text\":\"TASK_REQUEST slice 6b7d9b8a [cost/4] Fleet-wide cost coverage - per-host audit-log ada...
+
+
+### inbox_titus ###
+📬 1 pending message(s) in inbox_titus:
+
+  📩 [07:39:25] esther → TASK_REQUEST
+     {"topic": "general", "text": "{\"topic\":\"general\",\"text\":\"TASK_REQUEST slice 6b7d9b8a [cost/4] Fleet-wide cost coverage - per-host audit-log ada...
+
+
+### self-test probe archived ###
+probe msg_id=ba2dcb93-7a5b-49fb-acf0-5e01f748bc7f -> Archived (inbox_delete)
