@@ -48,6 +48,14 @@ def _sessions_db(tmp: Path, rows) -> Path:
     — there is no `session_id` column. A fixture that invents one keeps a wrong
     query green, which is exactly how the first version of this generator
     shipped a read that never matched a single row.
+
+    Only the FOUR columns the scripts actually read are declared: both scripts
+    issue an explicit column list (`SELECT id, estimated_cost_usd ... WHERE
+    source = 'cron'` in the generator; `SELECT started_at, estimated_cost_usd
+    ... WHERE source = 'cron' AND started_at >= ?` in the report) — neither does
+    `SELECT *`, so the other ~58 live columns cannot be reached by a query here.
+    `input_tokens`/`output_tokens` are carried only so the shipped
+    estimated_cost_usd semantics stay visible; no script reads them.
     """
     p = tmp / "state.db"
     con = sqlite3.connect(p)
@@ -153,6 +161,10 @@ def test_no_source_at_all_is_its_own_outcome(tmp_path):
         "--state-db",
         str(tmp_path / "absent.db"),
     )
+    # rc=2 is this tool's OWN documented code for "nothing readable at all"
+    # (see its module docstring: 0 = series emitted, 2 = no data). It is
+    # deliberately distinct from 0 so an absent source can never be mistaken for
+    # a successful empty push, and the client treats it as "omit the series".
     assert r.returncode == 2, "nothing readable must not look like a successful empty push"
     assert r.stdout.strip() == ""
     assert "no readable source" in r.stderr, "and it must say what it could not read"
@@ -170,7 +182,10 @@ def test_missing_agent_name_is_refused(tmp_path):
 def test_weekly_report_alerts_above_the_daily_target(tmp_path):
     audit = _audit(tmp_path, [{"job_id": "jobA", "total_tokens": 1000}])
     now = time.time()
-    # two measured days, 12.00 and 14.00 -> average 13.00 > 10
+    # THE FORMULA UNDER TEST: spend is summed per UTC day, and the average is
+    # total / number of MEASURED days (days carrying cron spend) — NOT total/7.
+    # Two measured days at 12.00 and 14.00 therefore give exactly 13.00; a
+    # total-divide-by-window implementation would give ~3.71 and fail here.
     db = _sessions_db(
         tmp_path,
         [

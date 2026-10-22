@@ -53,7 +53,8 @@ gen_rc=$?
 say "\$ cron-cost-metrics.py --prometheus --agent esther"
 say "rc=$gen_rc   stderr: $(norm <"$WORK/series.err")"
 say "series lines emitted: $(grep -c . "$WORK/series.txt")"
-say "job lines: $(grep -c 'hermes_cron_tokens_total' "$WORK/series.txt")"
+say "  = $(grep -c '^hermes_cron_' "$WORK/series.txt") data lines + $(grep -c '^#' "$WORK/series.txt") HELP/TYPE comment lines"
+say "job lines (tokens per job_id): $(grep -c 'hermes_cron_tokens_total' "$WORK/series.txt")"
 say "cost_available line: $(grep 'hermes_cron_cost_available' "$WORK/series.txt")"
 say "first 8 lines:"
 sed -n '1,8p' "$WORK/series.txt" | norm >>"$OUT"
@@ -93,6 +94,9 @@ say "push client exit code: $rc (0 = pushed)"
 say "payload bytes recorded: $(wc -c <"$WORK/payload.txt")"
 say "node series in the payload: $(grep -c '^node_' "$WORK/payload.txt")"
 say "cron cost series in the payload: $(grep -c '^hermes_cron_' "$WORK/payload.txt")"
+say "  ^ the payload is a SUPERSET: node series + the cron cost series (data lines only)."
+say "    Section 1's larger number counts the generator's HELP/TYPE comment lines too;"
+say "    both counts come from the same generator run, so 119 <= 129 by exactly those comments."
 say "sample of the cost series as received:"
 grep '^hermes_cron_' "$WORK/payload.txt" | head -4 | norm >>"$OUT"
 grep '^hermes_cron_' "$WORK/payload.txt" | head -4 | norm
@@ -123,10 +127,15 @@ printf '%s\n' '{"job_id": "fixtureA", "total_tokens": 1000}' >"$FX/usage_audit.j
 run python3 "$REPO/ops/scripts/manage/orch-weekly-cost-report.py" \
   --audit "$FX/usage_audit.jsonl" --state-db "$FX/state.db" --days 7
 say ""
-say "## 4. test suite (both new files)"
+say "## 4. test suite (both new files — every test name and result)"
 run bash "$REPO/tests/run-tests.sh" \
   tests/test_runtime/test_cron_cost_reporting.py \
-  tests/test_runtime/test_push_metrics_cost_series.py -q
+  tests/test_runtime/test_push_metrics_cost_series.py -v
+say ""
+say "## 5. the watchdog threshold the report's docstring cites (outside this range, quoted here)"
+say "\$ grep -n 'CONSECUTIVE_FAILURE_LIMIT' ops/scripts/health/agent-cron-failure-watchdog.py"
+grep -n 'CONSECUTIVE_FAILURE_LIMIT' "$REPO/ops/scripts/health/agent-cron-failure-watchdog.py" 2>&1 | norm >>"$OUT"
+grep -n 'CONSECUTIVE_FAILURE_LIMIT' "$REPO/ops/scripts/health/agent-cron-failure-watchdog.py" 2>&1 | norm
 say ""
 say "# generated-by: this script (stdout is written here by the script itself)"
 rm -rf "$WORK"
