@@ -1,0 +1,78 @@
+command : bash docs/evidence/skills-frontmatter-fix-2026-10-22.sh
+when    : 2026-10-22T09:37:26Z
+base    : d4cf306e15bafef23a02d56da149717c483f5a2e  (pinned literal; git merge-base origin/main HEAD at capture time)
+captured-at: 5bdf7b300c04ce9231a55882f6d463a41b96a133
+tool    : Pi's own loader and Pi's own validators, dist/core/skills.js
+note    : a transcript cannot name its own commit — this file is written AFTER the
+          revision it prints, so the line above is captured-at, not 'the commit that
+          contains this file'. Volatile by design: host paths normalised to ~, the
+          scratch dir normalised to $WORK, ANSI stripped.
+
+=== 1. materialise the BASE revision (git archive at the pinned sha) ===
+  extracted to        : $WORK/base/skills
+  base SKILL.md count : 385
+
+=== 2. ASSERT the baseline really is pre-change ===
+  the fix INTRODUCED this exact literal, which the pre-change tree does not carry:
+    description: "DEPRECATED alias — merged into cortex-bus. Load cortex-bus instead."
+  files carrying it in BASE     : 0   (must be 0 — else the baseline is not pre-change)
+  files carrying it in DEPLOYED : 10   (must be > 0 — else the deploy did not land)
+
+=== 3. Pi's loader against BASE (d4cf306e15bafef23a02d56da149717c483f5a2e) ===
+  loader: Pi 1.4.0 (~/.pi/agent/install/releases/1.4.0/node_modules/@earendil-works/pi-coding-agent/dist/core/skills.js)
+  skills loaded       : 351
+  diagnostics by type : {"warning":33}
+  30 x description is required
+        $WORK/base/skills/devops/auto-remediation-ecosystem/SKILL.md
+        $WORK/base/skills/devops/auto-remediation-setup/SKILL.md
+        $WORK/base/skills/devops/bus-archive-diagnostics/SKILL.md
+        $WORK/base/skills/devops/bus-client-resilience/SKILL.md
+        $WORK/base/skills/devops/bus-connectivity-diagnostics/SKILL.md
+        $WORK/base/skills/devops/bus-inbox-check/SKILL.md
+        ... and 24 more
+  1 x Nested mappings are not allowed in compact mappings at line 4, column 14:
+        $WORK/base/skills/devops/task-persistence/SKILL.md
+  1 x name contains invalid characters (must be lowercase a-z, 0-9, hyphens only)
+        $WORK/base/skills/productivity/here-now/SKILL.md
+  1 x Map keys must be unique at line 24, column 1:
+        $WORK/base/skills/productivity/korean-language-learning/SKILL.md
+  rc=1   (1 = diagnostics present, as expected for the base)
+
+=== 4. Pi's loader against DEPLOYED (~/.agents/skills) ===
+  loader: Pi 1.4.0 (~/.pi/agent/install/releases/1.4.0/node_modules/@earendil-works/pi-coding-agent/dist/core/skills.js)
+  skills loaded       : 441
+  diagnostics by type : {"warning":1}
+  1 x description is required
+        ~/.agents/skills/brand-intelligence/SKILL.md
+  rc=1   (0 = no diagnostics)
+
+=== 5. Pi's validators over the REPO tree (owner of the source) ===
+SKILL.md scanned      : 385
+defects               : 0
+  rc=0   (0 = clean)
+
+=== 6. Pi's validators over the DEPLOYED tree (what agents actually read) ===
+SKILL.md scanned      : 520
+defects               : 4
+  frontmatter brand-intelligence/SKILL.md                                no frontmatter (does not start with ---)
+  frontmatter brand-intelligence/skills/brand-brief/SKILL.md             no frontmatter (does not start with ---)
+  frontmatter brand-intelligence/skills/compare-brands/SKILL.md          no frontmatter (does not start with ---)
+  frontmatter brand-intelligence/skills/watchlist-digest/SKILL.md        no frontmatter (does not start with ---)
+  rc=1
+
+=== verdict ===
+  base loader rc           : 1       (diagnostics present: 33)
+  deployed loader rc       : 1       (diagnostics remaining: 1)
+  repo validator rc        : 0       (clean over all 385 repo SKILL.md)
+  deployed validator rc    : 1
+
+  What this shows: every defect this cycle fixed is gone from the deployed tree,
+  and the repo tree — the owner of the source — validates clean.
+  What it does NOT show: the deployed tree is not fully clean. All remaining
+  findings sit in ONE path this repo does not own — ~/.agents/skills/brand-intelligence/
+  (an 'openclaw plugins install' dump: a SKILL.md with no frontmatter, plus three
+  nested skills/ entries the loader never reaches because recursion stops at that
+  directory's SKILL.md — hence 1 loader diagnostic but 4 validator defects).
+  Patching them here would be overwritten by the plugin; they are reported, not
+  fixed, and lie outside this cycle's range.
+  Collisions on this host: 0 (none reported in either tree).
