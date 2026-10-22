@@ -213,6 +213,25 @@ a change, so it reports the material as absent (correctly). The order is:
 begin_change → work → COMMIT → end_change
 ```
 
+### If the fix cannot land green, PARK it — do not half-land it
+
+"Commit BEFORE you close" assumes the suite is green. When the fix is written but the
+suite would go RED (fixtures still feed the old shape, a helper's callers not yet
+updated), you have three bad-looking options and one correct one:
+
+- Committing a red suite into a shared repo is not allowed — every other session
+  inherits the failure and the next diagnosis starts from your mess.
+- Closing the cycle with the work uncommitted is not allowed — the review range
+  (`lock.started_at..HEAD`) sees an empty diff and files `unverified-claim`.
+- **Correct: `git stash` the WIP, release the lock, leave the tree clean and green,
+  and NAME THE STASH in the handoff** — the parked work is recoverable and the
+  rest of the fleet is unblocked. A named stash is the honest form of "not done";
+  an unnamed one is a landmine for the next session.
+
+Before re-reporting parked work as outstanding, check `git stash list`: a stash
+named in an earlier handoff is often already resolved (popped and committed), and
+re-listing it as "remaining" is a false status. Say which of the two it is.
+
 ### The note is EVIDENCE, not a summary
 
 - **Evidence must live IN THE REPO as a runnable test, not in the note.** A quoted

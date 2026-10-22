@@ -61,6 +61,12 @@ Load this before end_change() on any script, deploy-config, cron, shared-doc, or
       review channel, and do not keep re-phrasing the same ask at the governed gate.
 - [ ] **Name the cycle for the diff it will CONTAIN, not the instruction that started it.** A task id that under-describes the work fails the close on scope drift no matter how good the evidence is: the reviewer sees the real range and refuses a cycle whose name does not cover it. An instructed next step ("pull latest and update", then a follow-on reconciliation the update itself demanded) belongs in its OWN correctly-named cycle — do not fold a derived deliverable into the parent's cycle.      Check before begin_change: does `<task_id>` describe every path the range will touch? If not, split it. (Cost of getting this wrong: cycle 12012 was refused four times and held a 60-minute TTL wait; the identical work closed CLEAN on the first attempt under a correctly-named cycle.) Recovery for an already mis-framed cycle: retire it through the state machine (`advance_task_state` → `cancelled`, reason logged, no override) and open a correctly-named one — never `force`/override.
 - [ ] **Size the range so the CLOSE review can read it, and decide that before the last commit.** A wide range (measured: 8 files / 381 lines) exhausts a reasoning reviewer's output budget — it returns no usable content at `max_tokens=48000` and again at `96000` — and raising the cap does not help, because that budget pays for thinking and answer together. Narrow ranges close normally, so plan the work as reviewable slices up front; once every commit exists, no new cycle can cover them and re-slicing means rewriting your own history. **A wide range is no longer a dead end**: an unfinished whole-range review RE-ROUTES to a per-blob pass (verdicts cached by blob CONTENT, bounded per close by a blob cap and a wall-clock budget), so the range closes over SEVERAL attempts with each attempt continuing from the cache. Drive that with a loop whose stop condition is a receipt for the CURRENT tip instead of treating the first partial pass as a blocker — and expect the partial pass to REPORT the coverage it did not reach rather than judge nothing. Sizing remains the cheap lever: the fallback costs several close rounds on a slow reviewer.
+      **Size by BLOB COUNT, not by line count — the reviewer's per-close budget is a blob cap.**
+      Measured throughput is ~4 blobs per close pass, so 34 one-line files cost about NINE close
+      rounds while a single 400-line file costs one. A change that is "the same tiny edit in N
+      files" (a frontmatter repair, a rename, a swept string) is therefore N/4 rounds of closing:
+      either accept that up front or fold the edits into fewer files. This is invisible in a
+      line-count estimate and is the dimension that actually decides how long the close takes.
 - [ ] Foreign working-tree check — `git status --short` says WHAT is staged (column 1) vs unstaged (column 2), **never WHO staged it**. Do not infer a concurrent peer from that shape: establish authorship first (`git log --oneline -3 -- <path>`, `git log -1 --format='%an %ae'`, `git reflog`). When you are the only writer on the host — the normal single-agent case — staged-but-uncommitted work is YOUR stranded work from an earlier session: land it in its own correctly-named cycle, or discard it deliberately, but never route around it and never write "another session" into a commit message on that assumption. For genuinely concurrent writers: coordinate, and never stash/clean/commit a peer's files (SOUL P9).
 - [ ] search_files() for the old name/term across the whole repo.
 - [ ] Live cron prompts — grep ~/.hermes/cron/jobs.json for the old term; source edits don't rewrite existing jobs — update each hit via cronjob action='update'.
@@ -190,7 +196,12 @@ Enforced at 3 layers: pre-commit hook (static gate), enforcer (blocks commit unt
       and detail that asserted state in the artifact so a future reader can see the baseline was
       exercised, not merely named. An artifact that EXTRACTS its baseline from git needs the same
       proof one level down: grep the extracted copy for a symbol the fix INTRODUCED (absent ⇒ the
-      extraction really is the pre-change revision). That assertion is what catches the drift this
+      extraction really is the pre-change revision). **Pick a marker unique to THIS change, not a
+      house-style phrase** — asserting on a string the pre-change tree already carries fires on a
+      healthy baseline and reads as a broken comparison (measured: a redirect-stub prefix matched two
+      pre-existing files, so the guard reported "2 occurrences in BASE, must be 0" about a baseline
+      that was in fact correct). Take a literal the fix introduced WHOLESALE, and use `grep -F` so the
+      pattern's own metacharacters cannot widen the match. That assertion is what catches the drift this
       bullet warns about — without it, a baseline that silently starts resolving to the fixed code
       keeps printing success, and the reader has no way to tell.
       **And never swallow the SETUP that materialises the baseline.** `git worktree add <dir> <sha> ||
@@ -274,7 +285,14 @@ Enforced at 3 layers: pre-commit hook (static gate), enforcer (blocks commit unt
 - [ ] **Redact at the GENERATOR, and keep the redaction narrow.** A transcript committed to a
       PUBLIC repo must not carry `/home/<user>` paths, the host name, or `ls -l` ownership. Apply
       ONE normaliser to every emitted line — never hand-patch the committed copy, which soon
-      disagrees with the command printed above it. Redact the host only in host CONTEXTS (`Host:`,
+      disagrees with the command printed above it. **The lines that escape are the generator's
+      OWN**, not the command output it pipes: a helper interpolating a path into a printed line
+      (`say "repo: $DIR"`) bypasses a normaliser applied only to piped output, so the transcript
+      carries a raw `/home/<user>` path while the very check beside it reads as redacted — route
+      every path-bearing line through the normalising helper (`sayn`), not the plain printer,
+      and let the leak-detector's own report be the test. Strip ANSI colour in that same
+      normaliser: a hook colours its own output, and the escape codes land in the committed
+      artifact as unreadable noise. Redact the host only in host CONTEXTS (`Host:`,
       `@host`): a bare replace of the host's name also mangles legitimate identifiers that share
       it (a DB role, an agent's own name).
 - [ ] **An artifact must not tell the reviewer what to conclude.** A `READ THIS FIRST` block
@@ -326,7 +344,11 @@ Enforced at 3 layers: pre-commit hook (static gate), enforcer (blocks commit unt
       hand-patching it.** `cmd | tail -1; echo rc=$?` prints the tail's 0, which can put
       `rc=0` directly beneath a failure and read as a contradiction: run the command bare, or
       state in the artifact that the rc shown is the command's own, measured with the pipe
-      removed. Piecemeal edits to a generated transcript (a path fix, a number) soon leave
+      removed. **When the pipe is unavoidable** — an evidence generator normalising every emitted
+      line through a filter (`bash "$SCRIPT" | norm`) — capture `${PIPESTATUS[0]}` IMMEDIATELY after
+      the pipeline (`... | norm; rc=${PIPESTATUS[0]}`) and never `$?`; that is the only way to keep
+      both the redaction and the command's real status, and it is the difference between a
+      transcript that carries a verdict and one that carries the filter's 0. Piecemeal edits to a generated transcript (a path fix, a number) soon leave
       values that no longer match the command above them — re-run the generator and re-read
       its output; normalize host paths to `~` there, not in the committed copy.
       **The same swallow has two more shapes, and a reviewer files both as swallowed errors.**
@@ -357,6 +379,14 @@ Enforced at 3 layers: pre-commit hook (static gate), enforcer (blocks commit unt
       tables before writing the query (`SELECT name FROM sqlite_master WHERE type='table'`):
       store table names are not guessable, and a task store may not be a file DB on the host at
       all — capture what the tool itself returns instead.
+      **When the finding IS an absence, label it and pair it with a count that MOVES.** A probe
+      whose success condition is "the problem is gone" prints NOTHING, and an empty section reads
+      to the reviewer as a broken probe rather than a resolved one — the artifact's most important
+      result looks like the part that did not run. Say so in the artifact ("no output — nothing
+      matched: this cycle's result") AND print a companion count that was non-zero before and zero
+      after (the tree's stranded total, `18 → 17`). The moving count is what separates resolution
+      from a probe that never ran; a lone empty section cannot, and a re-run that also prints
+      "this is expected" proves nothing by itself.
 - [ ] A test whose verdict depends on WHO invoked it is not a test. A test that
       SPAWNS a process to exercise a component (a server, a CLI, a hook) must
       resolve an interpreter that can actually RUN that component — read it from the
@@ -519,6 +549,17 @@ Enforced at 3 layers: pre-commit hook (static gate), enforcer (blocks commit unt
 
 - [ ] Process name — pgrep -f cortex-bus misses cortex_bus; check ps aux for the real argv.
 - [ ] Hook/enforcer changes — test in a throwaway project repo (git init /tmp/hook-test, set core.hooksPath), since hooks fire in every repo on the host. Confirm fail-closed still blocks.
+      **Decide a gate's SCOPE by what its remedy demands of the caller, not by caution.** The rule
+      that a host-wide gate breaks ordinary work came from gates requiring a HERMES SESSION
+      (reflexion proof, governance lock, AGENTS audit), which a human committing by hand cannot
+      satisfy — so those stay repo-scoped, and citing that history to keep an unscoped gate narrow
+      is a misapplication. A gate whose remedy is available to anyone (name your paths, set a flag)
+      is safe host-wide, and its scope IS the hook's own presence: a hook-gate runs only because a
+      repo's `core.hooksPath` points at it, so a path comparison is not needed at all. When
+      widening one, put the trade-off in the refusal MESSAGE (a hand-made bare commit is refused
+      too; the escape is that repo's own `core.hooksPath`) and prove the scope BOTH ways —
+      restoring the old comparison in a COPY must make the new scope assertions FAIL, or they are
+      tautologies that pass either way.
 - [ ] Role matrix — Titus (macOS, no systemd/nginx, many project repos) / Joseph (Linux full stack) / Esther (Linux + orch crons) / Kustos (stricter perms, handle PermissionError). Verify none are broken.
 - [ ] Non-orchestrators — no cronjob tool (request via inbox); new crons registered in the install scripts. Message audit: would a non-orchestrator read an output line and try to install an orchestrator-only service? Gate or rephrase.
 
@@ -667,6 +708,15 @@ Enforced at 3 layers: pre-commit hook (static gate), enforcer (blocks commit unt
       peer's unpushed commits and their authorship, and it refuses outright when another
       session holds unstaged files — which you must never stash. A merge needs neither and
       keeps every commit identity on the shared branch.
+      **A DIRTY INDEX blocks the merge, and git blames the wrong thing.** `git merge` refuses while
+      any staged change exists, printing `error: Your local changes to the following files would be
+      overwritten by merge:` and listing those paths — even when the incoming commit does not touch
+      them at all, because the merge must rewrite the index. Do not read that as "the other side has
+      these files": check `git ls-tree origin/main -- <path>` and `git log origin/main -- <path>`,
+      and when they are absent from the incoming side the blocker is your own staging. Unstage with
+      `git reset -q -- <paths>` (index only — never `git checkout --`, which can truncate), then
+      merge. Deciding this by inference instead of by those two queries cost several rounds of
+      wrong diagnosis: the message reads like a content conflict and is not one.
 - [ ] **Scope every gate that runs on a shared checkout to CONTENT, not to the tip.** Two
       gates were tip-coupled and each blocked a push whose content was in fact fine: the
       review receipt (bound to tip+base) and the Deploy-sync check (keyed on the revision
@@ -730,6 +780,15 @@ Enforced at 3 layers: pre-commit hook (static gate), enforcer (blocks commit unt
       `git reset --soft HEAD~1` (keeps every file and the message), then re-commit with the
       pathspec. Never `reset --hard`, and never unstage or discard a peer's paths to tidy up:
       their staged work is theirs to land.
+      **This is ENFORCED by the pre-commit hook, so a bare commit is REFUSED, not merely
+      discouraged** — the refusal names the remedy and there is no bypass flag. Three mechanics
+      follow, and each costs a round trip when discovered live: (1) the partial commit is the only
+      accepted shape (`git commit -m '…' -- <paths>`), and git gives it a TEMPORARY index, so it
+      cannot include anything you did not name; (2) `git commit --amend` is refused EVEN WITH a
+      pathspec, because git uses the shared index for an amend and rewrites whatever HEAD is now —
+      land a NEW commit instead; (3) an UNTRACKED file cannot be named by a pathspec until git
+      knows it (`error: pathspec '<p>' did not match any file(s) known to git`), so `git add` the
+      new paths FIRST and then commit by pathspec — staging and the pathspec are one operation.
 - [ ] A close-review window is `base..HEAD`, so a **peer's commit landing mid-cycle shows up
       as scope drift in YOUR range**. Name the peer's SHA in the cycle note and leave their
       work untouched; reverting another session's commit to green your gate is the same

@@ -120,6 +120,29 @@ returned `1` or `-1` since it aggregated checks per-machine where all services
 should be present. Only `health-vector.py` is deployed — see the retired-server
 note in the diagnostics section below.
 
+### A capability check reports on the capability's OWN tool — never on a copy of its knowledge
+
+When adding a check for something the fleet ships per-object — harnesses, skills, provider
+integrations, MCP servers — hold the check to the same split the `0` semantics above already
+encode:
+
+- **Knowledge of what each object needs lives in that tool's own registry, not in the check.**
+  A second copy inside the check goes stale the moment an object is added, and the check then
+  reports on an old world. Iterate the registry and report ONE line per declared object.
+- **Drive the tool's own CLI to decide the verdict**, rather than re-implementing the decision
+  in the check. One implementation of "is this capability wired correctly" is the only way the
+  check and the CLI cannot disagree.
+- **Read the registry THROUGH that CLI, not by importing a parser.** The check may run under a
+  bare `python3` (a deploy path often does), and an `import yaml`-shaped read then downgrades
+  every object to could-not-verify on a healthy host. Two extra rules: a registry the CLI cannot
+  read is reported as could-not-verify with the CLI's own rc, and a missing interpreter is exit
+  `3` — never `1`, which reads as "the capability is broken". Resolver recipe: `shell-scripting`
+  → "Resolving an Interpreter by CAPABILITY".
+- **Keep the four outcomes distinct: PASS / WARN / SKIP / could-not-verify.** Not-installed is a
+  SKIP (the `0` rule above) and must not be counted as a fault; "declared unsupported" is a SKIP
+  carrying the registry's OWN reason, not the generic not-installed wording — the two read
+  differently to whoever has to act on them.
+
 ### Legacy Health Vector Format (NOT DEPLOYED) — 8-element `v` array
 
 From the old `health-vector.py` template. Not actively deployed but may be

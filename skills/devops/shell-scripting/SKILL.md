@@ -447,6 +447,31 @@ prerequisites) and run it there: a root resolved one level short immediately
 builds paths like `<tmp>/ops/ops/install/requirements.txt` and fails, instead
 of surviving to a peer host where the doubled segment is the only symptom.
 
+### Moving an executable: its self-relative resolution IS part of the move
+
+A launcher that finds its own module with `SCRIPT_DIR="$(dirname "$0")"; PY="$SCRIPT_DIR/<module>.py"`
+is coupled to its LOCATION. Move that file into a subdirectory — the right home for an executable is
+`<pkg>/bin/<cmd>`, because a DIRECTORY named like the command makes `bash <pkg>/<cmd>` answer "Is a
+directory" — and it silently falls through to whatever known-path fallback comes next, so the
+relocated script runs a DIFFERENT tree's module while looking perfectly healthy. Two halves, same commit:
+
+1. **Resolve in BOTH layouts, not just the new one.** Deploys usually flatten (launcher beside its
+   module) while the repo nests (`bin/<cmd>` with the module one level up), so try
+   `${SCRIPT_DIR}/<module>` then `${SCRIPT_DIR}/../<module>` BEFORE any known-path fallback.
+2. **Say which one answered.** Announce the fallback branch on stderr ("no module beside …; using
+   <path>") — a resolver that silently picks an unrelated tree makes the run look identical while a
+   different program decides, and it is the branch a test meant to stub.
+
+Refuse with the **could-not-verify** code (`3`), naming what was looked for; never `1`, which a
+caller reads as "the CLI is broken" rather than "the install is incomplete".
+
+**Prove it with fixture-local stubs, not by running the installed copy.** Copy the launcher into a
+temp tree in EACH layout with a stub module that prints its own path, assert both resolve the right
+one, and drive the not-found case with `HOME` redirected to a fixture so the host's real fallbacks
+cannot answer for a module the test never planted. All three branches then run on any host. The
+file-move mechanics (`git mv` needs the destination's parent to exist; the old path then cannot
+appear in a pathspec) are in `rename-sweep`.
+
 ## `: "${VAR:-$HOME}"` Validates but Does NOT Assign
 
 A bare `:` with parameter expansion is a validate-only idiom — it expands
@@ -804,6 +829,60 @@ exit 3
   silently, or a wrong declaration hides exactly as the old PATH-pick hid a missing dependency.
   Report the declaration as a HOST FACT in the doctor (path + a clean-env import check), so "which
   python does this host use?" is one line instead of a re-derived path.
+
+**The ENTRY POINT must re-exec itself, and the degradation must be ANNOUNCED.** A resolver every
+CALLER has to remember is a rule that decays: the documented invocation is `python3 <script>`, and on
+a fleet host `python3` is whatever the agent's session has on PATH — measured 2026-10-22 on esther,
+that is a Hermes runtime venv with no `yaml`, while the fleet venv has it and the repair tool reports
+every declared requirement satisfied. Every yaml-dependent check in that tool therefore ran WEAKER
+than it reported and said nothing, for every agent on every run, which is why the operator kept
+seeing it. Put the fix at the top of the entry point, BEFORE the heavy imports:
+
+```python
+DECLARED = ("yaml", "mcp")
+FLAG = "MYTOOL_REEXEC"
+
+def _child_imports_all(py, mods=DECLARED):
+    return subprocess.run(
+        ["env", "-u", "PYTHONPATH", "-u", "PYTHONHOME", py, "-c", "import " + ", ".join(mods)],
+        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=60).returncode == 0
+
+def reexec_if_degraded():
+    if os.environ.get(FLAG) == "1":          # loop guard: re-exec AT MOST once
+        return
+    if all(_can_import_here(m) for m in DECLARED):
+        return
+    for cand in candidates():                # CORTEX_PYTHON first, then the fleet venv
+        if _child_imports_all(cand):
+            os.environ[FLAG] = "1"           # set BEFORE execv — the env is inherited
+            os.execv(cand, [cand, os.path.abspath(__file__)] + sys.argv[1:])
+    sys.stderr.write("running under %s, which cannot import %s — checks that depend on them "
+                     "are WEAKER than reported; repair: <the venv repairer>\n"
+                     % (sys.executable, ", ".join(DECLARED)))
+
+if __name__ == "__main__":
+    reexec_if_degraded()
+    from mypkg.cli import main               # heavy import INSIDE the guard
+    main()
+```
+
+- **Keep the heavy import inside the `__main__` guard.** A module-level `from pkg.cli import main`
+pulls the whole package in under whatever interpreter did the importing — the thing being fixed — and
+makes the wrapper un-importable by a test. Pin it: assert that importing the wrapper does not put the
+package in `sys.modules`.
+- **When NO candidate is capable, RUN ANYWAY and say so.** Exiting on degradation locks the operator
+out of the very tool that repairs the host; a broken venv must stay diagnosable. Print the repair
+command in the notice.
+- **A degraded check must never report PASS.** The first cut of one such check fell back to a text
+scan, counted `unchecked=N`, and then still emitted `PASS — all N items passed`: a green tick over
+files it never read, which is worse than the silent degradation it replaced. Gate the success line on
+`unchecked == 0`, and pin it with a test that asserts the PASS line is ABSENT when the parser is
+missing. A check has THREE outcomes — pass, fail, could-not-check — and the third must never be
+rendered as the first.
+- **Prove the re-exec on the LIVE path.** Same command, same launching interpreter, same host: run it
+with the loop guard forced (`FLAG=1`) for the "before" and without it for the "after", and diff the
+SIGNAL the tool prints (a degraded substring scan vs the real parser; `WARN` vs `PASS`). Two runs
+differing only in the guard make the delta the change and not the environment.
 
 **Resolving an interpreter is half the job — commit the CREATE step too.** A capability resolver
 finds a dependency that ALREADY exists somewhere; if nothing in the repo provisions it, the resolver
@@ -1225,9 +1304,12 @@ Before shipping changes to installer scripts (`install-crons.sh`, `setup.sh`, et
 | **Appending to a per-host env/state file with `>>` onto a file with no trailing newline** | Two vars join onto ONE line (`AGENT_NAME=mosesCORTEX_PYTHON=...`) — a parser that reads `^NAME=` lines returns the WHOLE garbage string as one value, so identity/role resolution fails (a task-db CRUD role resolves to a nonsense name) and every DB/RLS/connectivity probe FAILs for a reason that looks environmental | Before `>>`-appending any line, ensure a trailing newline: `[[ -s "$f" ]] && tail -c1 "$f" | grep -q '\n' || printf '\n' >> "$f"`, or rewrite the file with newline-terminated lines. The durable fix is the APPENDER guaranteeing a final newline; if you repair a corrupted file, end it with `\n` so the next append is clean |
 | **Interpreter chosen by path existence** | `No module named X` although X is installed — under a DIFFERENT interpreter; an `[[ -x $VENV/bin/python3 ]]` guard never fires because the file is there | Test the CAPABILITY (`"$py" -c 'import X'`), try candidates in order, `exit 3` = could not verify; never silently fall back to a `python3` known to lack it |
 | **An inherited `PYTHONPATH`/`PYTHONHOME` around a capability probe** | A HEALTHY venv reads as broken — or a bare python as capable — because a foreign site-packages shadows the target's own. Measured: the fleet venv (which imports `mcp` fine) reported as missing it, and the resolver claimed no interpreter on the host could import `mcp` at all | Probe and run with `env -u PYTHONPATH -u PYTHONHOME`; print what you ignored. A venv's correctness must not depend on the caller's environment |
-| **A checker that cannot read its input reports the FILE as broken** | A valid YAML manifest reported as "parse issue" because the validating script used a bare `python3` with no `yaml` — the checker blamed the artifact for its own missing dependency, and a task got filed against a file that was never wrong | A checker with no parser has NO VERDICT. Resolve an interpreter that can import the dependency (the arbiter above), and when none can print `COULD NOT VERIFY … not checked` — never a negative verdict about the artifact. Applies to every lint/validate step that shells out for its parser |
+| **A checker that cannot read its input reports the FILE as broken** | A valid YAML manifest reported as "parse issue" because the validating script used a bare `python3` with no `yaml` — the checker blamed the artifact for its own missing dependency, and a task got filed against a file that was never wrong | A checker with no parser has NO VERDICT. Resolve an interpreter that can import the dependency (the arbiter above), and when none can print `COULD NOT VERIFY … not checked` — never a negative verdict about the artifact. Applies to every lint/validate step that shells out for its parser. **Nor may it print a PASS**: the same three-outcome rule read from the other end (see "The ENTRY POINT must re-exec itself" above). Confusing either end of could-not-check with a verdict is one defect pointing in two directions, and both halves belong in the same fix. |
 | **`[[ -n "$x" ]] && cmd` as a bare statement under `set -e`** | The script exits 1 at that line whenever the test is false — e.g. right after a successful install whose last output line is empty, so the failure reads as "the install broke" | Use `if [[ -n "$x" ]]; then cmd; fi`. The `&&` form is only safe inside a condition (`if [[ … ]] && cmd; then`) or with `|| true` |
 | **Subprocess output discarded in the failure path** | `cmd >/dev/null 2>&1` under an `if` reports "FAILED" with the reason (npm 404, auth, yanked version) thrown away; the operator must re-run it by hand to learn what the script already knew | Capture to `mktemp` and print `tail -n 20` plus the rc on failure; on success print the tool's own last line and assert the ARTIFACT exists (see installer audit item 7) |
 | **Backticks or `$` inside `git commit -m "…"`** | The shell EXECUTES them before git sees the message: command substitutions run (`line: foo: command not found`), their output is spliced in or dropped, and the commit lands with a mangled body that reads as the real rationale — the mistake is invisible unless you read the stored message back | Write the message to a file and pass `-F <file>`, or use single quotes when there is genuinely nothing to expand. Verify with `git log -1 --format=%B`, and `git commit --amend -F <file>` while it is still unpushed. Same rule for any long text argument to a CLI: heredoc/file for prose, never a double-quoted `-m` |
 | **A field added to a pipe-delimited line that is read back with `IFS='|' read -r a b c …`** | A value containing the delimiter shifts every LATER field, so the parse silently reports the wrong value under the wrong name and nothing errors. It only bites on the inputs nobody tests (a missing value, a value carrying a `|`) | **Append the new field LAST** — `read` assigns the remainder to its final variable, so a delimiter inside the last value cannot corrupt the earlier ones. Then exercise both boundaries before shipping: value absent → a placeholder (`<task>`, not empty), and value containing the delimiter → intact. Prefer JSON over delimiter-joined lines when the values are not yours to constrain |
 | **"Redacting" a home path with a parameter substitution that silently does nothing** | `${P/#$HOME/~}` and `${P/$HOME/~}` returned the value UNCHANGED when probed on this host (bash 5.2), while `${P#$HOME}` removed the prefix correctly — so a generator that looked like it redacted still emitted `/home/<user>`, and only grepping the generated file revealed it (the artifact had to be regenerated) | Use the form that works — `REPO_SHOWN="~${REPO#$HOME}"` (plain prefix removal) — and never trust a substitution by inspection: assert the OUTPUT (`grep -c '/home/' <artifact>` must be 0) before committing. A transcript bound for a public repo must not carry an absolute home path, and a redaction you did not verify is a claim, not a redaction. Put the normaliser in the GENERATOR, not in the committed copy — hand-patching leaves the command printed above it disagreeing with the output below |
+| **`exec > >(filter)` sends output through the filter but NOT to the file** | A generator that looks like it writes `$OUT` prints to the terminal and leaves NO file — and the run still reports success, so the missing artifact is found only by going to look for it (measured: an evidence generator ran clean twice while `$OUT` never existed, because a process substitution's stdout is still the INHERITED stdout) | Redirect the FILTER too: `exec > >(norm > "$OUT") 2>&1`. Then assert the artifact exists and is non-empty (`wc -c < "$OUT"`) in the same run. Having the generator write the committed file itself is what makes `generated-by` a fact about the file rather than a claim about who typed it |
+| **A normaliser whose stages run in the wrong order cannot match** | Replacing `$HOME` with `~` BEFORE rewriting a scratch path that lives under `$HOME` leaves the later stage nothing to match, so the transcript keeps the very path it existed to remove — the leftover sits in the artifact and reads as a redaction that failed | Apply the LONGEST / most specific rewrite FIRST, then the general one. For the path rewrite itself, the `sed` form with an escaped `$` in the replacement did not produce the literal; `awk -v w="$VAR" '{gsub(w, "REPL"); print}'` did (a `$` in awk's replacement string is not expanded). Verify against the OUTPUT, not the code: `grep -c '/home/' <artifact>` must be 0 AND `grep -c '<scratch-prefix>' <artifact>` must be 0 before committing |
+| **A command inside a `while read` loop that reads stdin eats the loop's remaining input** | A loop over a file (`while IFS= read -r name; do tool.py --disposition "$name"; done < list.txt`) applies only the FIRST item: the inner program inherits the loop's stdin and consumes the rest of the file, so the loop ends after one iteration and the run reports a smaller number as if it had succeeded — twelve intended actions become one, with no error | Redirect the inner command's stdin (`… </dev/null`), or read the list into an array first (`mapfile -t items < list.txt`). Then COUNT what was applied and assert the total against the input count, so a loop that stopped early cannot pass as a batch. The same swallow hits `ssh` and any tool that prompts or reads a stream |

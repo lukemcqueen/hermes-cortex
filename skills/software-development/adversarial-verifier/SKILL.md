@@ -441,3 +441,71 @@ old rule, comment-only / pass-only / bare-except cases must still fire, and a
 re-raising bare handler must stay silent. That is the same evidence shape the static
 scan needs for any tightened pattern: a green run proves nothing; only a
 demonstrated failure proves the check would notice.
+
+**The gate scans the whole FILE, so touching long-lived code makes its pre-existing
+debt YOURS to clear.** Findings are computed over every line of each staged file, not
+over the hunks you changed — so editing one function in a large legacy script surfaces
+its standing bare `except:`s and its fuzzer noise (a `cfg=None` / `args=None` hit on a
+command you never opened) as blocking items, and "no bypass flags" leaves cleanup as
+the only way through. Run the scan on the file BEFORE you start editing it
+(`--file <path> --level A2`) and either budget the cleanup into the change or choose a
+smaller file to touch; discovering this at commit time turns a ten-line change into an
+unplanned refactor.
+
+**Severity decides whether it blocks, and the split is bare-vs-typed.** A BARE
+`except:` is HIGH (gate blocker) and is a real bug worth fixing regardless: it swallows
+`KeyboardInterrupt` and `SystemExit`, so Ctrl-C during the guarded work is silently
+ignored. A *typed* handler whose body is only `pass` or comments is MEDIUM — reported,
+not blocking. So type the except and put a statement behind it: fixing the four bare
+handlers in a 1,300-line CLI cleared the blocker, and each became a stated fallback
+rather than a silent one. The detector reads the whole handler body (comment-only or
+exactly `pass` counts as empty), so a comment alone does not clear it — the body needs
+a statement.
+
+**A refusal is a per-blob verdict keyed by CONTENT, so re-running the close without
+changing anything cannot clear it.** Fixing the file produces a new blob that is judged
+fresh; a file whose bytes are unchanged keeps its old refusal forever, and the close
+reports it as unchanged rather than re-deriving. Two consequences: edit the named file
+(the fix IS the new blob), and when a refusal is answered for one file, the next close
+judges the NEXT unreviewed blob of the range — expect one round per file rather than one
+round for the change. A file whose only problem was an unverifiable CLAIM (a measurement
+with no record, a behaviour with no runnable proof) is cleared by pointing it at its
+record or its committed test, not by rewording the claim.
+
+**A probe can PASS for a branch it never reached — a false green is worse than a false
+red.** The sibling pitfall above is a probe that fails while the code is right; this is
+its inverse, and it survives review because every line reads as success. The mechanism
+is the COPY's location: when a probe drives the real artifact by copying it somewhere
+else and editing one literal per case, the copy's relative paths — `cd "$(dirname
+"$BASH_SOURCE")"/../..`, a repo-relative fixture path — resolve against the COPY, not
+your repo. The case then exits early (a guard fires on a missing source, the runner is
+not found) and the assertions that only check for the ABSENCE of a bad string all pass.
+Two rules make it impossible: **pin the working directory explicitly in every case**
+instead of deriving it from the copy's path, and **give every case a non-vacuity
+assertion beside its behavioural one** — the transcript/output file exists and is
+non-empty (`[ -s "$OUT" ]`) — so a case that produced nothing cannot report a pass.
+Assert the guard's own exit code too (`rc=2`, not `rc=0`), because an early exit is
+exactly what the vacuous path looks like. Measured: a three-case guard probe reported
+branches PASS while its copies ran in the wrong tree; the guards were correct the whole
+time and the probe was lying, and the FAILs it did report were partly its own fault.
+
+**A differential probe scored against the LIVE artifact becomes a tautology the moment you
+ship.** Writing "the before" as the deployed copy, the running daemon, or `HEAD` stops being the
+before as soon as the change lands: the deployed copy then IS the fix, so the probe compares the
+change with itself and prints success — and re-running it later cannot recover the original
+comparison. Pin the baseline to an IMMUTABLE revision and materialise it inside the probe
+(`git show <rev>:<path>` into a temp file, or a worktree at the named sha), so the comparison
+re-runs correctly forever; then ASSERT the extraction really is the pre-change copy by grepping
+it for a symbol the fix INTRODUCED (absent ⇒ the baseline is genuine), because a baseline that
+silently starts resolving to the fixed code keeps printing success with nothing to reveal it.
+Spend the same probe on a third column: run the pinned baseline, the deployed copy and the
+working tree in ONE process against the same fixtures, and require `deployed == working tree`
+on every row. That turns before/after into before/after/LIVE, which PROVES the deploy landed
+instead of asserting it — the claim a reviewer otherwise files as unverified — and it is the
+cheap half of the check, because the expensive half (the fixtures) is already written. Drive all
+of it against a THROWAWAY store: repoint the component's state directory at a temp path and
+never let the probe read or write live state, or the measurement mutates the thing it measures.
+Add boundary cases to the same table while the harness exists — the inputs the existing tests
+never drive (a field present but its companion absent, a path that no longer resolves) — because
+executing the changed path is the only thing a static scan cannot do for you, and it is where
+the second and third faces of one defect surface.

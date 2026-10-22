@@ -92,6 +92,23 @@ Code before test | test after implementation | test passes on first run | can't 
 
 All of these mean: delete the code, restart test-first.
 
+## A test's NAME and DOCSTRING are claims, not evidence
+
+A test named `test_…_takes_the_worst_rc` that feeds one nonzero value and one zero exercises NOTHING
+about ordering: a first-wins implementation (`rc = rc or r`) and a worst-wins one (`max(rc, r)`)
+return the same answer for that input, so the name overclaims and the real defect ships green — and
+the overclaiming name is what stops the next reader looking. For every name asserting a COMPARATIVE
+property — worst / best / both / all / first / last / every — the fixture MUST hold the
+discriminating pair: inputs that differ in the direction the name claims. See the assertion FAIL on
+the wrong implementation, not merely pass on the right one, by running the test against the PRE-FIX
+code — extract the old file into a scratch tree (`git show <sha>:<path>` into
+`<scratch>/<tree>/<path>`, beside a copy of the test file) and run the file THERE. A guard that has
+only ever met the fixed revision is a happy path with a name.
+
+The same rule binds prose. A summary, test docstring or commit message asserting behaviour the code
+does not have ("worst rc wins") is a CLAIM ABOUT THE CODE, and one `grep` of the aggregation settles
+it — a description of the intent is not a description of what is implemented.
+
 ## Verification Checklist
 
 - [ ] Every new function/method has a test
@@ -123,6 +140,13 @@ assert_eq!(out.status.code(), Some(0));
 
 Rules that each save a round trip:
 
+- **Assert the RETURN CODE, not only the output — a content-only assertion stays green across a
+  crash.** A test that ran `verify <name>`, asserted stdout contained the two lines the command
+  prints FIRST, and never checked the exit status passed for as long as the command crashed on the
+  next step: those lines were real, the traceback came after them, and the suite reported green over
+  a subcommand that was unusable. For every subject the test drives as a PROCESS, assert `returncode`
+  beside the output — 0 for a pass, and the subject's own distinct code for "could not run" (never
+  the generic failure code) — with one case per outcome.
 - **A test filter needs the FULL path.** `<mod>::tests::<name> -- --exact` matches; the bare
   `<name> --exact` matches NOTHING and prints `0 passed; N filtered out`, which reads exactly like a
   missing test. Quote a run that actually executed the test you are claiming.
@@ -204,6 +228,20 @@ sections, which creates three failure modes a pytest suite never shows you:
   temp path inside the test with `tempfile` (and clean it up) so the file runs correctly under BOTH
   the standalone runner and pytest. Check this on any test whose failure reason you have not read:
   a probe that never reached its subject reports a verdict in both directions.
+- **A test file must be INERT ON IMPORT — a module-level `raise SystemExit` (or any module-level
+  work) aborts collection for the WHOLE suite.** pytest executes a module in order to collect it, so
+  a file that runs its checks at module level and ends in `raise SystemExit(1 if fails else 0)` fires
+  that exit during collection: pytest reports `INTERNALERROR`, `no tests ran`, rc=3, and the ENTIRE
+  suite executes ZERO tests — on every range, for every agent, with nothing in the run naming that
+  file as the cause. The only way to get a regression signal is then to exclude the file, which is
+  how the break survives for weeks while every "suite is green" claim rests on nothing. Put the
+  checks in `def test_…()`, the script behaviour behind `if __name__ == "__main__":`, and read the
+  subject INSIDE the test rather than at module level — `SUBJECT.read_text()` at import turns a
+  missing file into a collection error too. Prove it with the collection command itself
+  (`pytest tests/ --collect-only -q`, which must print a collected COUNT and no INTERNALERROR): a
+  green run of the file ALONE cannot show this, because the damage is to the collection of the other
+  files. Keep the script behaviour working in the same edit, and drive the extracted check both ways
+  (a healthy input passes, a regressed one is reported) so it cannot pass vacuously.
 - **Proving "these failures predate my change" must classify the OUTCOME, never compare bare exit
   codes.** A file that cannot execute at all (no interpreter, a timeout, a crash before the first
   assertion) returns the SAME code on both revisions, so a code-only comparison reports agreement —

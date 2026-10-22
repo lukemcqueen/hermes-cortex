@@ -312,10 +312,56 @@ through `head` when checking rc (head's rc masks psql's).
   dies with `operator does not exist: uuid = text` when the param builder renders
   text literals; write `id = ANY(ARRAY[?]::uuid[])` — the array literal is the
   builder's job, the cast is yours.
+- **Any `||`-delimited row format breaks the moment a FIELD'S CONTENT can contain `||`.**
+  The separator is only safe when every field is drawn from a constrained alphabet. When
+  one of them is *free text a worker wrote* (a review note, a task description), that text
+  can contain the delimiter, and the row shifts: field 3's tail lands in field 4, counts
+  and judgements come out wrong, and the parser cannot tell a shifted row from a good one.
+  The same class bites `text[]` columns read with `array_to_string(tags, ',')` — a comma in
+  a tag corrupts the list.
+
+  **Do not fix it by picking a rarer separator** (chr(31), `\x1f`, a UUID-ish token) — that
+  is a race against the content, and it leaves the parser unable to PROVE a row was intact.
+  Fix it at the source: emit each row as a single JSON value and parse it as JSON.
+  ```sql
+  -- BROKEN: content containing '||' shifts every field after it
+  SELECT id, content, plan, created_by FROM tasks.slices;
+
+  -- FIXED: one JSON value per row — the separator can no longer collide with content,
+  -- and json_build_object escapes whatever the content contains
+  SELECT json_build_object(
+           'id', id, 'content', content,
+           'plan', plan, 'created_by', created_by)::text
+    FROM tasks.slices;
+  ```
+  ```python
+  # The parser then rejects a malformed row instead of silently mis-splitting it
+  def _parse_row(line: str) -> dict | None:
+      try:
+          return json.loads(line)
+      except json.JSONDecodeError:
+          return None          # caller must STOP, not treat the row as empty
+  ```
+  `::text` matters: without it psql renders the object with its own spacing, and a caller
+  comparing raw lines against a fixture sees a difference that is not a bug.
+
+  **This changes the FIXTURES, so the suite goes red in the same commit.** Every test row
+  fixture still feeding the old `||` text must be rewritten to JSON before the change can
+  land — and the case worth writing is the one that used to break: a row whose content
+  ITSELF contains `||`, asserted to still parse with every field intact. If the fixtures
+  are not updated yet, park the whole change (see `adversarial-finding-fix-patterns`:
+  never commit a red suite into a shared repo) rather than landing production alone.
+
+  **Make an unreadable row STOP the sweep, not vanish.** A parser that returns `None` and
+  a caller that skips `None` silently reports "no slices to review" for a query that
+  returned rows — the same read-a-failure-as-absence trap as the rc=0 lie above. Exit with
+  a distinct code and a message naming the row format.
 - **Round-trip a `text[]` column through a non-comma separator.** `||`-delimited row
   output splits fields on the delimiter, so read tags as
   `array_to_string(tags, chr(31))` and split on `"\x1f"` — a comma corrupts any tag
-  that contains one.
+  that contains one. (Narrower case of the JSON-row rule above: prefer JSON when the
+  field's content is unconstrained; a non-comma separator is only safe for constrained
+  values.)
 - **`--source`-style filters never grant access** — RLS is the enforcement; a filter is just a filter.
 - **Idempotent schema files are your friend** — `IF NOT EXISTS` + `CREATE OR REPLACE` means you can apply on every deploy/update; wire it into the update script so Linux (docker exec) and macOS (direct psql via config URL) both converge.
 - **When a path-hardcoding bug is fixed in ONE of two sibling files, grep for the sibling.** 2026-08-06: `session_mine.py` was fixed to write `~/brain/lessons/`, but `lessons.py` (the module the index/search imports) still hardcoded `~/brain/kustos/lessons/` — offline search read a stale 241-file dir while 631 live lessons sat elsewhere. `git log -S '<bad-string>'` finds every file that ever contained it.

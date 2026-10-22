@@ -174,9 +174,18 @@ compared by CLASS, so a `LOOP` result still closes.
 The per-blob pass judges up to `CLOSE_BLOBS_PER_WINDOW` blobs per close, CONCURRENTLY, inside one
 bounded window (the window stays below the MCP client ceiling and is never raised). Verdicts are keyed
 by blob CONTENT, so each further `end_change` continues from the cache instead of redoing work: a
-15-file range is a handful of passes, not 15 sequential reviews. Design for that budget — a range
+a 15-file range is a handful of passes, not 15 sequential reviews. Design for that budget — a range
 whose every file needs its own verdict costs passes in proportion to its file count, so prefer ONE
 commit per close and fold unpushed docs commits rather than growing the range.
+
+**Measure the RATE before planning around it — it is far below the window cap.** Measured: **4 blobs
+per pass**, not `CLOSE_BLOBS_PER_WINDOW`, because each blob is a real reviewer call and the window
+bounds how many fit; a 34-file range cost 9 sequential `end_change` calls. So a wide mechanical edit
+spread across N tiny files costs roughly N/4 closes — price that in BEFORE deciding to land it as one
+range (fewer, larger files is the lever when the edit allows it), and read the repeated `N blob(s)
+still carry no review verdict` as PROGRESS rather than a malfunction: verdicts are cached by blob
+content, so every call re-sends only what is left and the count strictly falls. Do not re-derive the
+mechanism or reach for another cycle when a close returns that line — call `end_change` again.
 
 When a pass hits its window, the blobs it could not read are FAILED and reported in `remaining` —
 never credited — so re-calling `end_change` is the correct move, not a re-roll. Concurrency does not
@@ -185,6 +194,30 @@ sequential ones would not. And the window must be ENFORCED, not merely checked b
 call is awaited only until the deadline the pass was given, the pool is not waited on, and a worker
 only CALLS the reviewer (every write happens in the pass, for outcomes it collected), so a straggler
 leaves no trace.
+
+**A blob the reviewer never ANSWERED is not a blob it refused — but the pass counts it as a failure.**
+When a pass reports `reviewer timed out on: N blob(s) — not judged, so not credited` and the SAME path
+is named on every retry, nothing is being cached: the reviewer answered for every other blob and
+produced nothing for that one, so re-calling `end_change` re-sends the same call. Count the passes before concluding anything: the
+cap that stops a pass (`BLOB_REVIEW_MAX_CONSECUTIVE_FAILURES`) counts consecutive failures inside
+ONE pass and resets on the next close, so a lone straggler IS retried on every pass — the cap is not
+what blocks it, the call simply never fits the window. Diagnose with a TIMED direct call to the same
+reviewer on the same material: 191 s on a 5 KB diff is an ANSWER, not a refusal, which makes the pass
+WINDOW the binding constraint. **Do not then infer the material's SIZE — measure it.** The per-blob
+material is the blob's own bounded diff plus at most 6 sibling files / 12 lines each / 60 lines
+total, so the blob that never answers can be the SMALLEST file in the range (measured: 2.7 KB of
+diff, the least of eleven files) while its neighbours answer inside the same window: the binding
+constraint is the reviewer's per-call LATENCY against a window the operator's rule never raises, not
+the bytes. Then check the budget it must fit inside: a `ADVERSARIAL_REVIEW_TIMEOUT` ABOVE the pass
+window can never return a verdict. What the gate DOES with that outcome is part of the diagnosis: a
+window-exhausted call (`TimeoutError`) is an ABSENT ANSWER, not the reviewer being down — it is
+reported unjudged (`failed` + `remaining`, never credited) without tripping the outage cap, so a slow
+sibling no longer abandons the blobs the pass had not reached, and the wave consults `fut.done()`
+before stamping a later future as expired, so a call that already ANSWERED is credited instead of
+being reported unanswered and re-bought on the next pass. The reading is that a timeout is neither a
+finding nor a re-roll: record an ISSUE carrying the measurement, file the investigation as its own
+task, and release the lock terminally — `force` is never the answer, and an instructed next step
+belongs in a NEW cycle, not this one.
 
 ## The adversarial review gate
 
@@ -472,7 +505,13 @@ repo state, audited range, the task's description, the diff stat, and the diff:
   **The RUNNER behind a test claim needs the same treatment**: a generator that reports a
   passing suite must be shown exiting NON-ZERO when the suite fails (point it at a target that
   cannot exist, or at a deliberately broken copy) — otherwise the artifact proves the tests pass
-  today, not that the runner would notice tomorrow. Run that probe from the same directory as
+  today, not that the runner would notice tomorrow. Two ways that runner lies anyway: it exits with
+  the status of its LAST command (an `echo` printed after the probe returns 0 even when the probe
+  failed — capture the probe's own status immediately, before any other command, and `exit` that
+  value), and it never RAN at all because the interpreter it picked cannot import the test
+  framework. Select the interpreter that can run the probe, and refuse loudly (`COULD NOT VERIFY`,
+  non-zero) when it cannot — an artifact whose header names an interpreter that produced "no module
+  named …" is a transcript of nothing. Run that probe from the same directory as
   the real invocation: a probe that fails because the project is missing proves nothing about the
   suite. **An UNEXERCISED branch is the same finding in another shape** — a fallback the change
   claims to handle with no execution behind it — and the fix is a committed test that drives the
@@ -792,6 +831,26 @@ answers any unprovable shape (compound, pipe, redirection, background job, separ
 its own command, with nothing after it (no `&& git rev-parse`, no `| tail`)"* — even when a valid
 CLEAN receipt is sitting there. Read that as a SHAPE rule: re-taking a lock to "fix" it is wrong.
 Run `git push` as the entire command and inspect the result in a separate call.
+**A pipe or a trailing `; echo` is the same refusal, and the wrong repair is a carrier cycle.** The
+habit to break: `git push origin main 2>&1 | tail -3; echo "rc=$?"` reads as write-class, so it is
+refused for want of a lock — and taking a fresh cycle to "get the lock for the push" costs a whole
+cycle when the refusal was about SHAPE. A range already covered by a CLEAN receipt pushes with NO
+lock at all (it answers `No active governance lock, but a CLEAN review receipt covers this range`).
+So try the BARE push first: if it refuses, read WHICH thing it named — a shape/subprocess complaint
+means re-issue it alone, a missing receipt means close again, and only then is a carrier cycle the
+answer.
+
+**Without a lock, READ intent is blocked too when the command is COMPOUND.** The same gate judges
+SHAPE: `echo hi; ls` is write-class, a `python3 -c` one-liner carrying `$()` or a newline is
+write-class, and `ls | grep foo` is not. **A metacharacter inside a QUOTED pattern counts too:**
+`grep -rln "verify_slice\|task_verify" --include=*.py .` is refused as a compound however safe the
+quoting looks, because the classifier reads the shape, not the quoting. So when a search spans several
+alternatives or file types, use `search_files` (lock-free, and it groups matches by file) instead of
+re-quoting the pattern — and take `read_file` for one file. Never take a lock merely to inspect. So right after a close releases the lock, the tree looks
+unreadable as well as unwritable — use ONE pipeline of read primitives (`git log --oneline -3`,
+`git diff --numstat <base>..HEAD | sort -k1 -n -r`), or the file tools (`read_file`,
+`search_files`), which stay lock-free. Never take a lock merely to inspect: the lock's lifetime is
+the change's, and a carrier cycle exists to PUBLISH, not to read.
 
 ### Verify an artifact is TRACKED before claiming it is committed
 

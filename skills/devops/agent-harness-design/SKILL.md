@@ -251,6 +251,27 @@ the bug arrives as "the TUI is polluted", not "a log line".
   source (an extension that echoes the captured child stderr) that must trip the
   check.
 
+## Always-on rule: exposing a skills tree to many harnesses — enumerate the READER first
+
+Every harness pre-loads each installed skill's name + description at session start (tier-1
+progressive disclosure), so "give every harness all the skills" has a standing cost of about one
+skill-description per skill per session — decide that cost deliberately.
+
+- **One real tree, everything else a pointer or a DERIVED mirror.** Two real trees is two owners of
+  one library, and they drift. A mirror must be verified against the owner by a check, never
+  hand-edited.
+- **The mechanism is the READER's property, not yours.** Measured: a symlinked ROOT is visible to
+  pathlib `rglob`/`os.walk`, a per-skill symlink FARM is invisible to both, and plain `find` (no
+  `-L`) does not traverse a symlinked root at all. Probe the harness's own enumeration before
+  declaring its capability; a green test on a mechanism the harness never traverses is a false
+  green. Table, probe recipe and ownership rules: `references/skills-distribution-and-enumeration.md`.
+- **Prefer the cross-client standard path** (`.agents/skills/`, `~/.agents/skills/`), which several
+  harnesses read natively at once, and keep pointers for the private-only readers.
+- **Declare the capability from the harness's own output** — a harness that can only read an
+  instruction file is `instructions`, never `discovery`.
+- **Prove a pointer survives its writers**: write through the pointer path, assert the file landed
+  in the owner tree, and have the updater enforce the direction so a host cannot silently revert.
+
 ## Pitfalls
 
 - **Don't adopt the framework to get its loop.** If upstream permits breaking
@@ -338,4 +359,5 @@ the bug arrives as "the TUI is polluted", not "a log line".
 - `references/governance-trust-principles.md` — the trust-layer principles (trust stack, willful breach, trust tiers/latitude, model library, levers, Operator) — read before authoring any governance/covenant doc
 - `references/adversarial-consolidation.md` — consolidating a grown design: consolidator + adversarial-reviewer party, gap ledger, "settled in intent, open in mechanism" acceptance
 - `references/adversarial-loop-and-interface.md` — the leveled in-loop adversarial reviewer (L0–L3), its budget-aware loop (bounded decaying retries, failure-classed stop, honest `UNENDORSED`/`UNDECIDABLE` exits), loop-budget-as-reputation, and the Core Interface surface contract (ACP + granular data + drive verbs + authority model; the interface is the moat, not the TUI)
+- `references/skills-distribution-and-enumeration.md` — where each harness looks for skills, the tier-1 catalog cost, the MEASURED visibility of a symlinked root vs a per-skill symlink farm vs a real copy (pathlib, os.walk, find), the probe recipe, and the one-owner/derived-mirror rules. Read before wiring skills into a harness or moving where they live.
 - `references/adapter-layer.md` — grounded (2026-09-11): how foreign coding agents/harnesses hook in — every agent is a delegated CLI with `-p`/`exec`/`run` + MCP seam, collapsing to TWO reusable seams (sandboxed delegated-CLI + MCP); per-family provider-adapter pattern; market-reality notes (Windsurf→Devin, Roo Code down, Continue frozen). Read before designing any adapter/hook layer.

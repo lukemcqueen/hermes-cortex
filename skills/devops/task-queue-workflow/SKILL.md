@@ -38,9 +38,37 @@ pending → (claim) → in_progress → (report) → review → (verify) → com
               └── (unclaim) ──┘                    └── (verify --reject) → in_progress
 ```
 
-- `review` = worker-done-AWAITING-VERIFICATION. **Not done.** The orchestrator's
-  evening pass (19:00) clears it; a slice stuck >24h in review gets
+- `review` = worker-done-AWAITING-VERIFICATION. **Not done, and nothing completes it for you.**
+  Verification is enforced in the DB rather than by convention: `tasks.verify_slice` is SECURITY
+  DEFINER with a moses/esther allowlist INSIDE the function, and no other profile holds EXECUTE on
+  it — so a worker's `permission denied for function verify_slice` is permanent. It is not a retry
+  hint, and it is not a signal that someone else is about to act. The scheduled orchestrator pass
+  is what drains the queue, so **confirm that pass exists on the host** (`hermes cron list`) rather
+  than assuming the documented schedule is installed: where it is absent, paused, or never fires,
+  the slice sits in `review` indefinitely. So follow up in the SAME breath as the report — name the
+  slice id and its evidence to moses/esther (bus, or escalate for a decision only the operator
+  holds) — instead of stopping at `report` and waiting. A slice stuck >24h in review gets
   auto-re-queued by the handler's stale sweep (Arm 3) — never auto-completed.
+- **A description that names WHO may run a tool, without naming WHAT refused the caller or what to
+  do next, invites the reader to assume a passive actor will do it.** Agent-facing text (tool
+  descriptions, check messages, warnings) must state the enforcement and the next ACTION: "only the
+  orchestrator may run this, and no job does it automatically — report, then hand the slice over",
+  never a bare label like "ORCHESTRATOR-ONLY". An agent that reads the label as "someone will pick
+  this up" stops working on a slice nobody is coming for.
+- **The tasks store is HOST-LOCAL, so a peer's stuck slice is NOT yours to verify.** The grants are
+  per-profile roles inside EACH host's own store, so `--board --repo ALL` lists only YOUR host's rows:
+  measured, an agent elsewhere reported a slice stuck in `review` while this host's fleet-wide board
+  read `In review: none`. "An orchestrator will clear it" is therefore true only where a verifier
+  identity EXISTS on that host, and the drain has to be installed PER HOST — a sweep running here
+  cannot reach a peer's store, and routing their slice to a remote orchestrator is not a mechanism
+  that exists. Do not promise a peer host will act, and do not offer to verify it yourself: say which
+  host must clear it, and for a host with no verifier identity escalate to the operator.
+- **Widening WHO may verify is a SCHEMA decision, never a config tweak.** The EXECUTE grant AND the
+  `profile_of` allowlist inside the SECURITY DEFINER function both have to change — `transition_allowed`
+  is role-agnostic, so it does not gate this at all and reading it will not tell you who may verify.
+  And the tempting shortcut is the wrong shape: letting a worker complete its OWN slice deletes the
+  reason `review` exists, because self-graded work then becomes indistinguishable from verified work.
+  Prefer provisioning a verifier identity per host over relaxing the rule.
 
 ## Worker commands (any agent)
 

@@ -163,9 +163,9 @@ pi mcp list                                                 # expect 5 servers, 
 
 **Verify a host VERSION-AWARE — never by assuming the route.**
 `bash ~/hermes-cortex/ops/scripts/manage/audit-pi-integration.sh` reports PASS/FAIL
-per layer (MCP servers, curated skills, extension, governance gate, `agent.env`),
-reads the installed version from the Pi install itself, and takes the curated skill
-list from the `skills.yaml` `always:` manifest instead of a hardcoded list. Auditing
+per layer (MCP servers, skills, extension, governance gate, `agent.env`),
+reads the installed version from the Pi install itself, and checks the REGISTERED
+skills path and its count instead of a hardcoded list. Auditing
 with the MCP checklist on a Pi that has no MCP client reports FAIL for something
 that route cannot deliver — the failure is in the checklist, not the host. A server
 missing from `mcp.json` on a non-orchestrator host is usually a DEPLOY-SCOPE bug
@@ -174,20 +174,98 @@ installer: `install-pi-mcp.sh` warns and registers the rest, so 3-of-4 looks nor
 
 ### The SKILLS half — the adapter must be RUN, not merely deployed
 
-Pi advertises each skill's NAME + DESCRIPTION at startup and loads the body on demand, so it
-must be pointed at a CURATED set, at USER scope so every project gets it, with the set taken
-from the shared manifest rather than typed by hand:
+Pi advertises each skill's NAME + DESCRIPTION at startup and loads the body on demand.
+
+**Exposure is ALL skills, from the cortex-owned published tree — NOT a curated subset.**
+The manifest no longer governs what a coding agent can read; it stays the record of the
+ritual skills Hermes must load before a write. Do not "restore" a curated set from
+`skills.yaml#always` — a subset here is exactly what was removed, and the operator asked for
+every harness to see every skill.
+
+**How Pi enumerates — read from its own loader (`dist/core/skills.js`), never assumed.
+Re-read it when the version moves:**
+
+**Resolve the loader from the INSTALLED release, never a hardcoded version path.** Pi
+updates itself — a `current-version` observed moving 1.3.0 → 1.4.0 mid-session — so a
+probe that imports `releases/<old>/…/dist/core/skills.js` silently measures the OLD
+loader and reports rules that no longer apply. Read
+`~/.pi/agent/install/current-version` and import
+`releases/$V/node_modules/@earendil-works/pi-coding-agent/dist/core/skills.js`. Before
+blaming a version move for changed behaviour, `diff` the two releases' `skills.js`:
+byte-identical files mean the enumeration rules did not move and the difference is
+somewhere else.
+
+**Reading the loader tells you the RULES; running it tells you what an agent actually
+gets.** `scripts/pi-skills-diagnostics.mjs` imports `loadSkills` from the installed
+release and prints, for a tree you name: the skill count, every diagnostic grouped by
+message, and each name collision with its winner and loser. Point it at
+`~/.agents/skills` to reproduce a host's report verbatim (`node <skill>/scripts/pi-skills-diagnostics.mjs`),
+or at an extracted older revision to prove a fix changed the outcome — same tool, two
+trees. It exits 1 when diagnostics exist, so it is usable as a gate.
+
+Diagnostics are WARNINGS, not refusals: a refused skill shows up as `description is
+required` (or a YAML parse message) and is simply absent from the loaded set, so count
+the loaded skills too — a tree whose file count dropped is how a silent refusal
+becomes visible.
+
+- **It FOLLOWS symlinks.** A symlinked ROOT is read, and a symlinked skill directory is
+  recursed into (`entry.isSymbolicLink()` → `statSync()` → recurse into it). Pointing `skills`
+  at a symlinked published tree works; a per-skill link farm is unnecessary.
+- **A directory containing `SKILL.md` IS one skill and recursion STOPS there.** Never put a
+  `SKILL.md` at the root of a tree you want enumerated — the rest of the tree becomes invisible.
+- **It honours `.gitignore` / `.ignore` / `.fdignore` AT THE SKILLS ROOT**
+  (`ig.ignores(relPath)`). A stray ignore file silently hides skills while the registration
+  looks perfect, which is why a `--check` must assert the COUNT the agent can see, never merely
+  that the path is written into `settings.json`.
+- **Direct `*.md` children load ONLY at the ROOT.** `includeRootFiles` is true only for the
+  top-level call, so a `DESCRIPTION.md` sitting beside a category's skill directories is NOT a
+  skill — a false lead when chasing a name collision. Only a `*.md` directly in the registered
+  tree is read as a skill.
+- **Dot-entries are SKIPPED** (`entry.name.startsWith(".")`), so a `.archive/` of retired
+  skills inside the tree is never enumerated and a `SKILL.md` sitting there is NOT the
+  collision it looks like. Before "cleaning up" a dot-directory to silence a loader
+  diagnostic, check whether the loader can see it at all — for Pi it cannot.
+- **A `description` is REQUIRED, or the file is not a skill at all.** `loadSkillFromFile`
+  returns `skill: null` when the description is absent or blank, so the name never enters the
+  index and the body is unreachable — the file is REFUSED, not merely unindexed. This is why
+  a deprecated redirect stub with no description is dead weight: its "load X instead" text
+  reaches nobody. And `name` falls back to the PARENT DIRECTORY name when frontmatter omits
+  it, which is how a directory-derived name silently collides with a declared one.
+- **Symlink visibility is PER-READER — never generalise it from one probe.** Measured on a single
+  tree: a symlinked ROOT is visible to `pathlib.rglob`/`os.walk` but INVISIBLE to plain `find`
+  (no `-L`), which reports zero; a per-skill symlink FARM is invisible to plain `rglob`/`os.walk`
+  (only `followlinks=True` sees it). Pi happens to follow both, so its loader is the authority for
+  Pi — read it, and assert the COUNT the agent can see rather than trusting a mode that worked
+  for a different reader.
+- The cross-client standard path is `~/.agents/skills`, read natively by Codex, Cursor,
+  Copilot CLI, OpenCode and Antigravity. A harness that reads only a private path
+  (`~/.pi/agent/settings.json`, `~/.claude/skills`) needs a pointer to it.
 
 ```bash
 bash ~/hermes-cortex/ops/scripts/install/install-pi-integration.sh           # wire it
-bash ~/hermes-cortex/ops/scripts/install/install-pi-integration.sh --check   # prove it (rc 0)
+bash ~/hermes-cortex/ops/scripts/install/install-pi-integration.sh --check   # rc 0 ONLY if Pi can see EVERY skill
 bash ~/hermes-cortex/ops/scripts/manage/audit-pi-integration.sh             # per-layer audit
 ```
 
-It writes `~/.pi/agent/settings.json` — `"extensions": [<cortex-context.ts>, <cortex-governance.ts>]` and
-`"skills": ["~/.pi/agent/cortex-skills"]` — and the curated set is the manifest's `always:`
-section (`from: skills.yaml#always` in `ops/install/harnesses/registry.yaml`), i.e. the SAME
-definition Hermes loads. Idempotent, and it preserves the user's other keys.
+It writes `~/.pi/agent/settings.json` — `"extensions": [<cortex-context.ts>, <cortex-governance.ts>]`
+and `"skills": ["~/.agents/skills"]` — and RETIRES a pre-existing `~/.pi/agent/cortex-skills`
+link farm when one is found: a stale farm keeps Pi loading a curated subset beside the whole
+tree. Idempotent, and it preserves the user's other keys. It no longer reads `skills.yaml` at
+all — the manifest is cortex-owned at the REPO ROOT (`skills.yaml`, synced to
+`~/.hermes-cortex/skills.yaml` by `cortex-update.sh`) and is the record of Hermes's ritual set,
+not the source of a coding agent's exposure.
+
+**Drive it with `hc pi` instead of remembering script names** (a thin driver over the same
+scripts — repo-then-deployed resolution, the owner's rc passed through unchanged):
+
+```bash
+hc pi install   # user scope: MCP servers + both extensions + the published skills tree
+hc pi check     # installer --check (registration AND visible count) + the per-layer audit
+hc pi skills    # what Pi is pointed at, then the delegated visibility verdict
+```
+
+`hc harness install pi --dir <project>` is the PROJECT-scope command; `hc pi` is the
+HOST-scope one (every Pi project on the machine).
 
 - **Registering is not executing.** A deploy that COPIES an installer into
   `~/.hermes-cortex/scripts/` has wired nothing, so a host with Pi installed can sit unwired with
@@ -195,10 +273,13 @@ definition Hermes loads. Idempotent, and it preserves the user's other keys.
   BOTH halves (`install-pi-mcp.sh`, `install-pi-integration.sh`), and report the outcome: a host
   without Pi is not a fault; a host with Pi that comes out of a deploy unwired is. The doctor's
   `Pi integration` line is the drift guard that keeps it from going quiet again.
-- **Never wire the whole library, and never hand-build an index.** Hundreds of skills in the
-  prompt is a self-inflicted context wound, and a bespoke bridge (a `/tmp` builder script, a JSON
-  index, a shell loader) has no owner: not deployed, not verified, gone with the machine. The
-  registry entry plus the shared manifest is the supported route; treat any other as superseded.
+- **Point it at the PUBLISHED tree; never hand-build a bridge.** A bespoke loader (a `/tmp`
+  builder script, a JSON index, a shell script that fixes up links) has no owner: not deployed,
+  not verified, gone with the machine. The supported route is the published tree
+  (`~/.agents/skills`, produced by `ops/scripts/manage/publish-agent-skills.py` from the
+  cortex-owned defaults) registered once at user scope. Wire the WHOLE library deliberately,
+  and expect its cost at startup: every installed skill's name + description is preloaded, so
+  the size of that tree IS the session's context cost.
 - **The skills half needs PyYAML and must not pick its interpreter by PATH.** `command -v python3`
   is the interpreter most likely to LACK it, so the installer reports `PyYAML required` and skips
   the skills half on a host that has everything — resolve through

@@ -62,6 +62,14 @@ Risks, follow-ups
 
 - **Fix first, report second; never let ceremony lead.** A status report that lists process items — notify the fleet, clean up scratch, update the docs — while the change's own defects are still open reads as avoidance, not diligence, and has drawn a direct rebuke. Lead with what is BROKEN or unproven. Process items go last, and only once nothing is broken.
 - **"Fixed" is a claim that requires a test failing without it.** A commit message or note describing a fix that was never written is worse than an open bug: the record says otherwise, so nobody looks again. If the code changed but nothing pins it, write "code changed, unverified" under `## Unverified` — do not write "fixed". Likewise never commit a red suite: gate the commit on the runner's own rc (`if [ "$rc" -eq 0 ]; then git commit …; else echo "REFUSING: tests are red"; fi`), because a `;` chain commits the failure while looking disciplined.
+- **A fix you were DIRECTED to make is still a claim to test — and if it cannot move the case, say so
+  before shipping it.** Write the case that must change and watch it fail: a change that passes only
+  because nothing exercises it is inert, and reporting it as the fix records work that changed nothing.
+  Measured shape: a rule exempting one failure type looked obviously right, and the test written to
+  prove it exposed that the exempted outcome could only ever occur LAST in the sequence, so the rule
+  changed nothing — while the same test surfaced a second, real defect (a result that had already
+  SUCCEEDED was being discarded and re-bought). The inert half is worth keeping only once you can say
+  which half is inert, and the discovery belongs in the report, not hidden behind a green suite.
 - **When asked what is left, answer with the inventory, not the wins.** Blocking state first, then known-and-unfixed defects, then unverified assumptions, then owed work. Completed work is context, never the answer.
   - **"Shortly and simply" means PLAIN WORDS AND NO HISTORY.** When the request is for the problems, give the numbered list of what is wrong, one line each, in the operator's vocabulary — no chronology, no mechanism, no "here is what I tried first". Save the depth for when it is asked for. A summary that walks the reader through the session is not a summary.
   - **Plain English, not prose.** Write the thing and stop. "The gate cannot find your repo", not "a gate that discards the reason it refused is unfixable from the outside". Short sentences, ordinary words, no metaphor, no rhetorical flourish, and no coined phrase where a plain one exists ("the smell", "what should own it", "the durable fix"). If a sentence would sound odd said out loud to a busy engineer, rewrite it. This applies to explanations too, not only to summaries — being asked to repeat yourself in simple English costs a whole round trip, so write it that way the first time. **A direct question gets the direct answer in the FIRST word** — "Yes, and one caveat", or "No — here is where it differs" — then a few lines at most. Build up to the verdict and the operator interrupts to ask again; "are you saying X or not?" is what that costs. The same applies to your own diagnosis: if a problem you hit is NOT the one they reported, say "no, that is a different thing" before explaining it.
@@ -73,7 +81,28 @@ Risks, follow-ups
   whether a way out exists. "The same rule in miniature" reads as a claim to be suffering the
   reported bug, and the operator will stop you to ask yes or no. An intended refusal that one
   parameter clears is not the same thing as a dead end, and conflating them misdirects the fix.
-- **A "why" question is answered with what the evidence SHOWS, not with a confident backstory.** Split the answer three ways: what tool output proves, what you infer from it (label the inference), and what you could NOT verify. Rotated logs and pruned session history mean the decision record is often simply gone — say that plainly. A plausible origin narrated as established history is the same failure as a fabricated test result, and it is worse here because the reader cannot distinguish it from fact.
+- **A "why" question is answered with what the evidence SHOWS, not with a confident backstory.** Split the answer three ways: what tool output proves, what you infer from it (label the inference), and what you could NOT verify. Rotated logs and pruned session history mean the decision record is often simply gone — say that plainly. A plausible origin narrated as established history is the same failure as a fabricated test result,  and it is worse here because the reader cannot distinguish it from fact.
+- **When you need a DECISION, deliver it as issues then decisions — nothing else.** Two labelled
+  lists: what is wrong (one line each, no mechanism), then the choices you need, each as a pick-able
+  item carrying YOUR recommendation in a clause. Ask for every independent choice in ONE message so a
+  single reply settles all of them. Long prose around a needed choice costs the round trip twice —
+  once for the length, once for the re-ask after the operator says "too much text, just the issues and
+  the decisions". If the work needs one yes/no, put the question in the first line and stop.
+  **This shape is the default for PROGRESS messages too, not only for a formal decision point.** A
+  mid-task update that walks through the mechanism, the falsified hypothesis and the fix is the
+  same wall of text one turn earlier; give what is broken or unproven and what you need, in that
+  order, and keep the diagnosis for when it is asked for. A status report is not a licence to
+  narrate — the same operator fatigue applies whether or not a choice is on the table.
+- **A requirement the operator has had to REPEAT becomes a gate, not a reminder.** The second time
+  you are told the same standing constraint — it must work on the other platform, survive concurrent
+  sessions, work in repos you do not own, always get the independent review — the deliverable is not
+  compliance with it once more: it is a control that fires without the operator's cooperation or
+  yours. Three shapes, pick by what the constraint is: an entry in the reviewer's expectation list
+  (every close is then asked it), a line in an always-loaded checklist, or a test that fails when the
+  constraint is violated. Then name which one you landed, because "I'll remember next time" is the
+  answer that produced the repetition. Repeating the constraint back is not progress; retiring the
+  reminder is. When the operator asks "how can we automate this?", they have already told you the
+  manual path is the defect — answer with the mechanism, not with a plan to comply more carefully.
 
 ## Stop When
 

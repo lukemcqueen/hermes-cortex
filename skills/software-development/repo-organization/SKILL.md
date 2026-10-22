@@ -152,6 +152,33 @@ When you find data in the wrong place:
 3. **Update** all references to point to the new canonical path
 4. **Document** the change in AGENTS.md and the relevant SKILL.md
 
+### Moving a script or launcher
+
+A move changes what a path MEANS, so the risky parts are resolution and references — not the copy.
+
+- **`git mv` needs the DESTINATION's parent directory to exist, and it reports the failure against
+  the SOURCE:** `fatal: renaming '<src>' failed: No such file or directory` when `<newdir>/` is
+  absent. `mkdir -p` the parent, then `git mv`. Do not go hunting for a missing source file — it is
+  there, and the message names the source while meaning the destination.
+- **A script that resolves a collaborator from its OWN directory breaks silently on a move.** A
+  launcher doing `MODULE="${SCRIPT_DIR}/thing.py"` keeps working one level down only by falling
+  through to its hardcoded "known paths" list — which can hand the run to a DIFFERENT tree's
+  module, and the run looks identical. Resolve both layouts explicitly (beside it, and one level
+  up), say which one was used when it was not the primary, and exit with the could-not-verify code
+  naming what it looked for. The generic failure code is wrong here: it reads as "this tool is
+  broken" rather than "this host cannot resolve a collaborator".
+- **Never give an executable a path that is a DIRECTORY named after the command.** A directory at
+  `ops/scripts/<cmd>` makes `bash ops/scripts/<cmd>` answer `Is a directory` for every caller who
+  guesses the obvious path. Keep launchers in a `bin/` beside the module.
+- **Sweeping references includes strings that are PRINTED as fix commands.** A check that tells the
+  operator to run `python3 <deploy>/scripts/manage/<tool>.py` is a reference like any other, and a
+  printed path that does not resolve is worse than silence — the operator follows it and lands on
+  a dead command. Verify each printed path resolves. Do not "tidy" its neighbours that are already
+  correct: a deployed layout is often genuinely mixed (some tools flat, some under `manage/`).
+- **Committed evidence that quotes the old path is a RECORD, not a reference.** Leave it alone:
+  rewriting it falsifies what was run at that revision and breaks the artifact's checksum. Say so
+  in the commit message, so a reviewer does not read the survivors as references you missed.
+
 ---
 
 ## 5. Symlink Strategy

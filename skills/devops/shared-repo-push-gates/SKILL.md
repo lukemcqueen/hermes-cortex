@@ -26,6 +26,15 @@ lines means the deployed tree is behind the repo — typical after a rebase pull
 The gate prints its own remedy (`bash ~/.hermes-cortex/scripts/cortex-dogfood.sh --force`); run it,
 never hand-copy files into the deploy tree.
 
+**ORDER: close, then push BARE — do not open a cycle to "hold the lock" while you push.**
+`end_change` releases the lock and a CLEAN receipt bound to the tip authorises the push on its own,
+so the bare `git push` right after the close is the normal order and usually succeeds with no lock
+at all. Open a publish cycle only if that bare push actually REFUSES, and then diagnose the RANGE
+before assuming the missing lock is the cause — a cycle opened on the assumption costs a cycle plus
+a close, and its own close answers `No review receipt — HEAD is already origin/main … nothing to
+push`, which is the tell that the push had already gone through on the receipt alone. Full rule and
+the carve-out's own output line are under *A lock is required to `git push`* below.
+
 **A stale MCP daemon answers closes with OLD rules.** Compare its start time against the deployed
 module's mtime:
 
@@ -101,6 +110,36 @@ and invalidates the receipt, so push immediately after closing. Full detail:
   after the work is done" trick, which manufactures coverage for a range no cycle ever
   reviewed — say which of the two you are doing in the cycle note, and name the plumbing bug
   in an issue record instead of pushing around it.
+- **A `CLEAN` receipt can be HOLLOW — prove the review RAN before trusting it.** When the range's
+  commits predate your lock (an earlier session authored them and ended, or the work was already
+  committed), the close measures the WINDOW rather than the range as a few lines, SKIPS the review,
+  and still writes `verdict: CLEAN` bound to `base..tip`. The gate then accepts a whole unpushed
+  range nobody judged — and on an always-review path that is the entire point of the binding thrown
+  away. Two cheap reads separate a real receipt from a hollow one: the gate log
+  (`grep -e '<cycle id>' -e 'simple' ~/.hermes-cortex/logs/loop-governance.log`; a line reading
+  `self-adversarial review: cycle N simple (L lines, F files) — skip` means NOTHING was judged, and
+  `L`/`F` are the WINDOW's numbers, never the range's) and the receipt's own `reviewed_blobs` — an
+  empty map beside a `reviewed_files` list naming every file of the range is the tell, because the
+  writer records the file list whether or not anything was reviewed. Remedy, in this order: submit
+  the range's real material to the RECORDED reviewer — `python3
+  ops/scripts/orch-bus/adversarial-review.py --cycle-id <cycle> --review --material "$(cat
+  <material-file>)"` — with the material file carrying a factual provenance block (range, commit
+  subjects, diffstat, the per-commit static gate, the committed evidence path) plus the FULL
+  `git diff <base>..HEAD`; it judges the merged range the window never saw. Act on its findings,
+  then close AGAIN over the commits carrying the fixes — the window is finally non-empty, so the
+  per-blob pass runs and the receipt it writes is backed by a real review. Never push merely because
+  the gate accepted the hollow one: a gate that accepts is exactly the thing the receipt exists to
+  make meaningful.
+  **A SECOND hollow shape, and it is the one a WIDE RANGE hits.** When the range is too wide for one
+  whole-range call the gate logs `splitting to REQUIRED per-blob coverage instead of one range call`
+  and then `close refused for cycle N (REVIEW_INCOMPLETE) — marker written to the lock`, and on THAT
+  path the lock is RELEASED and a receipt is still minted for the tip with an empty `reviewed_blobs`.
+  So the documented wide-range retry loop (the one that prints `Cannot close yet: N blob(s) of the
+  push range still carry no review verdict`) is NOT available to you here: there is no live session
+  left to re-call. Same remedy, same order as above — submit the range's material to the recorded
+  reviewer, act on its findings, commit the fixes, then close a NEW cycle so the receipt binds the
+  new tip — and say in that cycle's note which review covers which commits. Grep the gate log for the
+  cycle id and read WHICH refusal you got before deciding which receipt shape you are holding.
 - **Prefer MERGE over rebase when a peer's commits land under your unpushed work
   and the checkout carries a foreign WIP you may not stash.** `git pull --rebase`
   refuses outright on a dirty tree (*"cannot pull with rebase: You have unstaged
@@ -139,6 +178,13 @@ and invalidates the receipt, so push immediately after closing. Full detail:
   Read your own command's shape first — that check takes seconds, while trusting the message
   sends you to edit the enforcer for a bug it never had (and every attempted fix is measured
   against a push that keeps failing for the unchanged reason).
+  **The classifier reads SHAPE, not intent, so READ-ONLY probes get refused the same way.** Any
+  interpreter one-liner (`python3 -c "…"`, `bash -c …`), a redirect or `$( )`, a bare newline, and
+  — easily missed — an alternation metacharacter inside a QUOTED pattern (`grep -rln "a\|b" …`)
+  all classify as write-capable, with the same generic gate-2 text and no mention of why. When a
+  read probe is refused with no lock held, switch TOOL rather than rewording it: `read_file` and
+  `search_files` are lock-free and cover the same ground (a grep over file contents, a listing that
+  includes dotfiles). Rewording the same probe burns the call twice and teaches nothing.
 - **A refusal naming `reviewed_blobs` means the receipt carries no blob list.** The receipt
   writer loads a range-blob helper by a repo-relative path resolved against the DEPLOYED root; if
   that file was never registered for deploy it is absent there, the receipt is written without
@@ -225,6 +271,21 @@ does not apply.
     `Repo clean` warn that is the uncommitted artifact itself), say so in the artifact's
     header instead of re-capturing to hide it — a re-capture only moves the same warn to the
     next run, and the disclosure is what makes the rest of the transcript credible.
+    - **An evidence emitter that cannot FAIL is a false-green generator — prove it can fail.**
+      Two ways one lies silently: every line is piped through the redactor and the status is read
+      AFTER the pipe, so `ownership rc=0` reports the redactor's rc for a check that failed; and
+      the script ends on an `echo` (always rc 0), so the transcript exists and the exit code looks
+      clean whatever the checks said. Capture output into a variable, read `$?` /
+      `${PIPESTATUS[0]}` BEFORE running anything else, and end on an explicit verdict block that
+      exits non-zero when any check failed. Then DISCRIMINATE it: run the emitter once against a
+      deliberately broken input (a bogus `$HOME`, an absent path) and show the non-zero rc. A
+      generator that has never failed on bad input has not been tested, and it is the artifact the
+      reviewer is asked to trust.
+    - **The emitter's interpreter must be able to RUN what it invokes.** A PATH `python3` may be a
+      venv without pytest, and the transcript then records `No module named pytest` while the
+      script exits 0 — an artifact proving nothing about the suite. Resolve it explicitly (the
+      fleet venv, or an env override) and refuse with the could-not-verify code when the runner
+      is not importable, rather than emitting a confident empty transcript.
 - **A peer's commits landing inside your cycle's window are attributed to YOU.** A
   push/verify cycle whose window picked up a peer's new file is refused as `scope-drift`
   ("a push-only cycle should not add new test code"), and its diff stat will describe THEIR
@@ -298,6 +359,13 @@ does not apply.
       order for a cycle that closed once.** After `end_change` the push succeeds with NO
       active lock — it prints `✅ No active governance lock, but a CLEAN review receipt
       covers this range: .reviewed-<slug>-<tip>.json`. Do not re-take a lock just to push.
+      **Test that first: issue the BARE `git push` immediately after the close.** The enforcer
+      blocks write-class commands without a lock, and a bare push carrying a covering receipt is
+      the carve-out — so a publish cycle opened "to hold the lock while I push" is usually wasted
+      work: it costs a cycle and a close, and that close answers `No review receipt — HEAD is
+      already origin/main … nothing to push`, which is the tell that the push had already
+      succeeded on the receipt alone. Only take a lock when the bare push actually refuses, and
+      then check the push range rather than assuming the missing lock is the cause.
     - **Pushing from outside the repo: use the terminal tool's `workdir`, never `cd … &&`.**
       `cd /path/to/repo && git push` is refused as a compound (write-class) command, and the
       refusal is the generic gate-2 text, so it reads like a missing lock. Set the tool's
@@ -352,6 +420,17 @@ does not apply.
    Load the skill, run
    `python3 ~/.hermes-cortex/scripts/adversarial-verify.py --file <your-staged-files> --level A2 --gate`,
    then commit.
+   - **The scan judges the whole FILE, so an OLD file's pre-existing findings block a one-line
+     change to it — attribute before you edit.** Measured on a 1,300-line CLI: adding a single
+     subcommand was refused by 1 High (`cheat-detection` pattern count — empty `except` blocks
+     anywhere in the file) plus 4 Medium fuzz findings against two functions the change never
+     touched. Check attribution FIRST: re-run with `--json` and look at each finding's shape — a
+     fuzz finding carries `target` as `path:function()` and names someone else's symbol, while a
+     pattern finding carries only `pattern`/`detail` and is FILE-WIDE, so it cannot be fixed at
+     your call site at all. If no finding names your symbol, the choice is to clear the file's
+     existing debt in the same change (fix the swallowed exceptions, add the input guards) or to
+     expect the block and report it with that attribution — never to bypass it, and never to
+     report it as a problem your change introduced.
    - **A TEST file is scanned at A4 too, and dynamic code in it BLOCKS the commit.** A test that
      loads the module under test by building its source (`exec(compile(...))`, a string-eval seam)
      comes back as Medium findings and the commit is refused with a bare `❌ Adversarial scan
@@ -613,7 +692,13 @@ May need several rounds on active days; each round's dogfood re-runs clean.
   race a peer's in-flight update). Stand down, state the block in your
   delivery, push after the tree clears.
 - Stage only YOUR files (`git add <yours>`) — never `git add -A` in a
-  shared tree.
+  shared tree. A generated file that a cron or peer writes into the tree is swept in by `-A`,
+  lands in your commit and in the reviewed range, and then conflicts when the peer's own version
+  arrives: the resolution is to take the UPSTREAM side for a file that is not yours — in a REBASE
+  `--ours` means the branch being rebased ONTO, so `git checkout --ours -- <path>` keeps theirs and
+  drops your unintended edit — then `git add` it and `GIT_EDITOR=true git rebase --continue`. Read
+  what `-A` staged BEFORE committing (`git diff --cached --name-only`): an evidence directory full
+  of generated files is exactly where a foreign file hides.
 - **Verify the file set that actually LANDED, not the one you staged.** Even
   with an explicit `git add <yours>`, a gated commit can sweep a file a peer
   session had modified into your commit. Run `git show --stat HEAD` and confirm
@@ -740,7 +825,12 @@ written while every code path looked correct.
   pre-commit hook scores it under a misleading task name. Use a UNIQUE temp
   message file per commit, and after any gated commit verify
   `git log -1 --format=%s` matches what you meant — `git commit --amend -F
-  <correct-file>` if it does not.
+  <correct-file>` if it does not. **A blocked compound ran NONE of its stages**, so the retry fails
+  for a reason that looks unrelated: `git add <path> && git commit …` refused for a missing skill
+  (or any gate) leaves the path UNSTAGED, and the next `git commit -- <path>` answers
+  `error: pathspec '<path>' did not match any file(s) known to git` — which reads like a missing
+  file rather than a stage that never ran. After clearing a block, re-issue the stages one at a time
+  and confirm with `git diff --cached --name-only` before committing.
 
 ## Verification
 

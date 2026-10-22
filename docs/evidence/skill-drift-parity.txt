@@ -19,33 +19,14 @@ A file under no repo-owned skill dir is a Hermes default and stays skipped.
 
 | Measure | Value |
 |---|---|
-| Stranded in place (path in repo, content only deployed) | 17 |
-| Absent from the repo (deployed under a repo-owned skill) | 133 |
+| Stranded in place (path in repo, content only deployed) | 0 |
+| Absent from the repo (deployed under a repo-owned skill) | 122 |
 |   ↳ path dropped from repo history | 3 |
-|   ↳ path never committed | 130 |
-| Files in sync | 829 |
-| Skipped (Hermes defaults, or repo ahead) | 509 |
+|   ↳ path never committed | 119 |
+| Files in sync | 858 |
+| Skipped (Hermes defaults, or repo ahead) | 497 |
 
 **Verdict: FAIL**
-
-Stranded in place:
-- autonomous-ai-agents/pi-coding-agent/SKILL.md
-- devops/agent-harness-design/SKILL.md
-- devops/agent-health-monitoring/SKILL.md
-- devops/governance-closeout/SKILL.md
-- devops/hermes-cortex-repo-deploy/SKILL.md
-- devops/psql-automation/SKILL.md
-- devops/rename-sweep/SKILL.md
-- devops/shared-repo-push-gates/SKILL.md
-- devops/shell-scripting/SKILL.md
-- devops/task-queue-workflow/SKILL.md
-- software-development/adversarial-finding-fix-patterns/SKILL.md
-- software-development/adversarial-verifier/SKILL.md
-- software-development/agent-contract/SKILL.md
-- software-development/change-checklist/SKILL.md
-- software-development/hermetic-python-testing/SKILL.md
-- software-development/repo-organization/SKILL.md
-- software-development/test-driven-development/SKILL.md
 
 Absent from the repo (deployed under a repo-owned skill):
 - ads/references/abm-playbook.md (never-committed)
@@ -113,10 +94,6 @@ Absent from the repo (deployed under a repo-owned skill):
 - devops/enforcement-change-safety/references/pii-repo-url-exception-2026-08-25.md (never-committed)
 - devops/enforcement-change-safety/references/tdd-iron-law-gate-2026-08-20.md (never-committed)
 - devops/enforcer-modification-considerations/references/friction-reduction-candidates.md (never-committed)
-- devops/governance-closeout/references/reviewer-policy-scoping.md (never-committed)
-- devops/governance-closeout/references/verdict-store-diagnostics.md (never-committed)
-- devops/governance-closeout/scripts/measure-review-material.py (never-committed)
-- devops/governance-closeout/templates/reviewer-policy-guard.py (never-committed)
 - devops/governance-lock-lifecycle/references/gate-command-classification.md (never-committed)
 - devops/governance-lock-lifecycle/references/publishing-a-reviewed-range.md (never-committed)
 - devops/hermes-gateway-operations/references/inline-menus.md (never-committed)
@@ -134,11 +111,6 @@ Absent from the repo (deployed under a repo-owned skill):
 - devops/mcp-health-monitoring/references/client-side-otel-skew.md (never-committed)
 - devops/mcp-health-monitoring/references/mcp-registration-runbook.md (never-committed)
 - devops/sensor-false-positive-remediation/references/gbrain-health-false-positive.md (dropped-from-repo)
-- devops/shared-repo-push-gates/references/close-review-bounds.md (never-committed)
-- devops/shell-scripting/references/service-templates-launchd-systemd.md (never-committed)
-- devops/skill-curation/references/always-section-consolidation.md (never-committed)
-- devops/skill-curation/references/discovery-sources.md (never-committed)
-- devops/skill-curation/references/skill-evaluation-pipeline.md (never-committed)
 - email-sequence/_meta.json (never-committed)
 - email-sequence/skill-card.md (never-committed)
 - launch-strategy/references/launch-frameworks-and-checklists.md (never-committed)
@@ -170,8 +142,6 @@ Absent from the repo (deployed under a repo-owned skill):
 - social-media-analyzer/references/platform-benchmarks.md (never-committed)
 - social-media-analyzer/scripts/analyze_performance.py (never-committed)
 - social-media-analyzer/scripts/calculate_metrics.py (never-committed)
-- software-development/change-checklist/references/close-review-evidence.md (never-committed)
-- software-development/change-checklist/references/detection-gate-design.md (never-committed)
 - software-development/hermetic-python-testing/references/order-dependent-failure-bisect.md (never-committed)
 - software-development/hermetic-python-testing/templates/run-tests.sh (never-committed)
 - software-development/reflexion-check/references/evidence-recipes.md (never-committed)

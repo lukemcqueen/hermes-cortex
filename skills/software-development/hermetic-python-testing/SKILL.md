@@ -276,6 +276,32 @@ caused while measuring something else.
   statement is an import, an assignment, a def, or the `__main__` guard, so a future edit cannot
   quietly reintroduce the side effect.
 
+### 11. An end-to-end test drives the REAL path — and must not depend on the DEPLOYED tree
+
+This user's standard for a non-trivial change is comprehensive unit tests PLUS one end-to-end run
+of the real system path (real argv in, real exit status out), which is the seam that catches what
+unit seams cannot. Two rules keep that test honest and durable:
+
+- **Redirect the deploy/install ROOT at a fixture; never let the test read the host's deployed
+  state.** A command that resolves a collaborator from a deploy root (a CLI whose module is copied
+  under the deploy home, a doctor that drives it) passes locally and goes RED on every fresh
+  checkout, because the deployed copy is only current after a deploy — and the first failure a
+  reader meets is the suite, not the change, which is how a suite becomes something people ignore.
+  Point the root variable at `tmp_path` (env/monkeypatch: `CORTEX_DEPLOY_HOME=<tmp>`), so the test
+  exercises the repo's own copy and measures the CHECK and the CLI it drives. Then verify the
+  DEPLOYED wiring by RUNNING it in the cycle that changes it (a real invocation against the deployed
+  path, recorded in the committed evidence) — deployment state is verified live, not asserted in a
+  test. Note the consequence for assertions about the run: the exit code then reflects EVERY check
+  the command performs (a pre-deploy tree fails unrelated deploy-sync checks), so assert the
+  property you own (`rc` is a usage-clean code, the JSON parses) and say in a comment why an exact
+  0 would turn the test into a probe of the host.
+- **Build the fixture from the collaborator's REAL output, not from your reading of it.** When the
+  fixture stands in for another tool's machine-readable input (a `--json` inventory, a manifest, a
+  config the code parses), generate it by RUNNING that tool against a fixture directory with its own
+  input path redirected — a hand-written fixture pins your guess at the shape, so it keeps passing
+  after the real output changes and fails only when the guess was wrong. That is the difference from
+  rule 5: the collaborator runs for real, on fixture inputs.
+
 ## Verification
 
 - `pytest tests/test_<module>_unit.py -q` → all pass

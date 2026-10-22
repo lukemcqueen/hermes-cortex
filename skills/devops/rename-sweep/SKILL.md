@@ -105,6 +105,27 @@ basename still sitting in the OLD directory
 (`grep -rnE '"\.dir" */ *"\.env"'`) — that grep, not the old-name grep, is
 what finds these mangles. Dry-run the table and read the plan before writing.
 
+**A file RENAME has the same trap with no path form in it at all.** When the swept token is a
+whole path (`docs/templates/skills.yaml` → `skills.yaml`), every site that BUILDS that path
+from segments or a variable never contains the token, so a flawless token sweep leaves them
+pointing at a file that no longer exists:
+
+```python
+template_yaml = REPO / "docs" / "templates" / "skills.yaml"   # survives a token sweep
+template_yaml = REPO / "skills.yaml"                          # what it must become
+```
+```bash
+MANIFEST_TEMPLATE="${TEMPLATES_DIR}/skills.yaml"              # survives a token sweep
+MANIFEST_TEMPLATE="${REPO_DIR}/skills.yaml"                   # what it must become
+```
+
+So the RESIDUE grep must hunt the CONSTRUCTION, not the old token — and it will read clean if
+you only grep the old name, because it was clean BEFORE the sweep too. Grep for the last
+unchanged segment followed by the basename (`templates.{0,12}skills\.yaml`), for the directory
+variable (`TEMPLATES_DIR.*skills\.yaml`), and for the joined-segment form
+(`"templates" */ *"skills\.yaml"`). Two consumers were dangling in a nine-reference sweep that
+otherwise verified clean; that grep is what found them.
+
 ### 4. Deleted-artifact cross-reference sweep
 
 Deleting files breaks things that assert their existence:
@@ -119,6 +140,21 @@ Deleting files breaks things that assert their existence:
   legacy-system-maintenance) — reword or drop the pointer.
 - **Deployed copies**: after deploy, `rm` stale deployed artifacts the
   doctor flags ("Remove: …" in REQUIRED ACTIONS).
+
+**Not every occurrence is a LIVE reference — committed RECORDS must survive the sweep.**
+Evidence captures, transcripts and dated reports quote the old path as the thing that WAS run at
+that revision. Rewriting one falsifies a record and breaks the checksum it carries, so exclude those
+directories from both the replacement pass AND the residue grep — and PRINT the exclusions beside
+the count. A bare "0 residuals" that silently skipped a directory reads as coverage of everything,
+which is the same class of over-claim as a stale token left in place.
+
+**A PRINTED remedy is a live reference.** A check or warning that tells the operator to run a command
+is held to the same standard as code: if the string names a path that does not exist, the operator
+lands on a dead command. Resolve every printed fix/warn path against the DEPLOY MAP's target rather
+than the repo layout — deploys flatten and nest differently, so `<deploy>/scripts/manage/<x>.py` can
+be wrong while `<deploy>/scripts/<x>.py` is right, in the same file. Sibling printed paths may be
+correct exactly as they stand: check each one instead of "tidying" the directory component off all
+of them.
 
 ### 5. Verification battery
 
@@ -229,6 +265,17 @@ treat that as part of the deliverable, not a follow-up.
   after the fixed 5-failure run). Compare against the current HEAD and re-run
   the pair/suite if in doubt; never report a stale FAIL list as the state, and
   never "fix" what a superseded run complained about.
+
+- **`git mv` needs the destination's PARENT directory to exist, and the error names the SOURCE.**
+  `git mv a/b/c a/b/bin/c` answers `fatal: renaming 'a/b/c' failed: No such file or directory` —
+  pointing at a file that is right there. `mkdir -p` the new directory first. Once the rename is
+  staged, the OLD path can no longer appear in a pathspec (`git add <old>` / `git commit -- <old>`
+  → `pathspec '…' did not match any files`): stage/commit the live paths, or omit the pathspec and
+  let the staged rename carry the deletion.
+- **A launcher or executable moved into a subdirectory needs its self-relative module resolution
+  changed in the SAME commit.** See `shell-scripting` → "Moving an executable": without it the
+  script silently runs a different tree's module through its known-path fallback, and every test
+  that runs the installed copy still passes.
 
 ## Verification
 

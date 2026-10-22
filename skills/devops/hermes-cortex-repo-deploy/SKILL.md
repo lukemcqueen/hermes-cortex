@@ -289,6 +289,25 @@ recomputes all three from `cortex-update.sh`. Adding one line fails that test un
 doc is updated — do it in the SAME change, and derive the numbers from the script rather
 than adjusting the old ones by hand.
 
+## Editing `cortex-update.sh` itself
+
+- **Insert failure-recording code AFTER `local -a _DEFERRED_FAILURES=()`.** The array is
+declared mid-function (after the skills sync, not at the top), and the script runs under
+`set -u`: an `_DEFERRED_FAILURES+=(...)` on an earlier line aborts the whole update with an
+unbound-variable error instead of deferring the failure it was meant to report. Place the new
+per-host steps in that same region and DEFER on their failure — a host whose state is wrong
+must not print a clean update.
+- **A per-host state change belongs in the update path, and must be safe to re-run.** Make the
+mechanism a registered script with `--check`, have the update call it every run, and design it
+to refuse to guess (exit a distinct code for "an operator decision is required") and to
+preserve anything it displaces by rename. A one-off manual fix is not a fix: the next update
+recreates the old state.
+- **A `NEW file … is not registered` warning is a decision, not noise.** Either add the
+  `register "<source>" "<destination>"` line the audit prints, or state in the script's own
+  header WHY it is checkout-only (a run-scoped evidence emitter that reads the DEPLOYED tree
+  needs no entry). The warning does not block the commit, so an unaddressed one ships a tool
+  that exists on no other host while every test stays green.
+
 ## Register at the RIGHT SCOPE — universal vs orchestrator-only
 
 `register()` deploys to every host; `register_orch()` deploys only to orchestrator
