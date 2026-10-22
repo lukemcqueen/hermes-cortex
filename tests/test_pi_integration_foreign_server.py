@@ -237,6 +237,28 @@ def test_the_installer_renames_a_stale_foreign_tool() -> None:
         _check("ABSENCE is a pass (rc=0, not a fault)", r.returncode == 0,
                (r.stdout + r.stderr)[-300:])
 
+    # A DeepSeek entry we CANNOT resolve must not read as clean. The rename cannot be
+    # confirmed, so this is an UNKNOWN (rc=2), never a pass — a silent pass here is how a
+    # host still answering to the old tool name would be reported as fine.
+    with tempfile.TemporaryDirectory() as td:
+        cfg = Path(td) / "mcp.json"
+        cfg.write_text(json.dumps({"mcpServers": {
+            "deepseek": {"command": "python3", "args": ["-m", "mcp_deepseek_server"]}}}))
+        r = subprocess.run(["bash", str(installer), "--check-tools"], capture_output=True,
+                           text=True, env={**os.environ, "PI_MCP_FILE": str(cfg)})
+        _check("an unresolvable DeepSeek entry is COULD NOT VERIFY (rc=2), not a pass",
+               r.returncode == 2, f"rc={r.returncode} {(r.stdout + r.stderr)[-200:]}")
+
+    # Same for a registration pointing at a server file that does not exist.
+    with tempfile.TemporaryDirectory() as td:
+        cfg = Path(td) / "mcp.json"
+        cfg.write_text(json.dumps({"mcpServers": {
+            "deepseek": {"command": "python3", "args": [str(Path(td) / "gone.py")]}}}))
+        r = subprocess.run(["bash", str(installer), "--check-tools"], capture_output=True,
+                           text=True, env={**os.environ, "PI_MCP_FILE": str(cfg)})
+        _check("a missing registered server is COULD NOT VERIFY (rc=2), not a pass",
+               r.returncode == 2, f"rc={r.returncode} {(r.stdout + r.stderr)[-200:]}")
+
 
 if __name__ == "__main__":
     test_a_foreign_server_is_reported_not_judged()

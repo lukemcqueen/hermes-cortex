@@ -109,7 +109,7 @@ notes, so the behaviour is not surprising:
 | `429 rate limited` | Upstream provider throttling | Retry with a different model slug (e.g. `deepseek/deepseek-v4-flash`) |
 | Server not in `/mcp` list | Project not trusted | Start `pi` from project root and accept trust prompt |
 | Timeout after 60s | Default Pi MCP timeout | Add `"timeout": 300` in `~/.pi/agent/mcp.json` server entry |
-| Tool called by its old name | Host has not run the rename yet | `python3 ~/.hermes-cortex/scripts/manage/rename-deepseek-review-tool.py --apply` |
+| Tool called by its old name | Host has not run the rename yet | `bash ~/hermes-cortex/ops/scripts/install/install-pi-mcp.sh --fix-tools` |
 
 ## Model slugs
 

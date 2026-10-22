@@ -120,26 +120,46 @@ mode = os.environ["DS_MODE"]
 
 
 def resolve(cfg_path):
-    """The server file a registered `deepseek` entry names, or (None, why)."""
+    """The server file a registered DeepSeek entry names, or (None, why, unverifiable).
+
+    The third value marks a state we could NOT VERIFY — a DeepSeek entry is registered but
+    its server file cannot be found. That must never read as "nothing to do". An earlier
+    draft matched only the exact key `deepseek` and only a `.py` argument, so a module
+    launch (`args: ["-m", "mcp_deepseek_server"]`), a renamed entry, or a path carried in
+    `command` all fell through to a silent PASS — a host still answering to the old tool
+    name reported as clean. Unresolvable is an UNKNOWN, and an unknown is not a pass.
+    """
     try:
         data = json.load(open(cfg_path))
     except Exception:
-        return None, "no readable Pi MCP config — nothing to do (host-optional)"
-    entry = ((data.get("mcpServers") or {}).get("deepseek") or {})
-    script = next((a for a in (entry.get("args") or [])
-                   if isinstance(a, str) and a.endswith(".py")), None)
+        return None, "no readable Pi MCP config — nothing to do (host-optional)", False
+    servers = data.get("mcpServers") or {}
+    # Match on the KEY, not the exact string `deepseek`: whoever registered the entry chose
+    # its name, and `deepseek-review` is the same server.
+    entry = next((v for k, v in servers.items()
+                  if isinstance(k, str) and "deepseek" in k.lower()
+                  and isinstance(v, dict)), None)
+    if entry is None:
+        return None, "no DeepSeek review MCP server registered (host-optional)", False
+    # The server file may be the `command` itself, or one of its arguments.
+    parts = [entry.get("command")] + list(entry.get("args") or [])
+    script = next((p for p in parts if isinstance(p, str) and p.endswith(".py")), None)
     if not script:
-        return None, "no DeepSeek review MCP server registered (host-optional)"
+        return None, ("COULD NOT VERIFY: a DeepSeek entry is registered but its server file "
+                      "is not resolvable from its command/args (module launch, or a renamed "
+                      "command) — the tool name cannot be confirmed"), True
     script = os.path.expanduser(script)
     if not os.path.isfile(script):
-        return None, f"registered server not found: {script} — nothing to do"
-    return script, None
+        return None, (f"COULD NOT VERIFY: the registered DeepSeek server is missing: {script} "
+                      f"— a broken registration, not a clean host"), True
+    return script, None, False
 
 
-script, why = resolve(sys.argv[1])
+script, why, unverifiable = resolve(sys.argv[1])
 if script is None:
     print(why)
-    sys.exit(0)
+    # 2 = COULD NOT VERIFY (the doctor surfaces it loudly); 0 = genuinely nothing to do.
+    sys.exit(2 if unverifiable else 0)
 
 try:
     text = open(script).read()
