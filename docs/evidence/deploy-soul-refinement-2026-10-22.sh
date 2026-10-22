@@ -82,6 +82,7 @@ echo
 
 python3 - <<'PY'
 import re, subprocess, sys, os
+import hashlib
 from pathlib import Path
 
 REPO = Path(os.environ["REPO_ROOT"])
@@ -113,15 +114,20 @@ say("[1] THE TWO COPIES")
 a, b = body(REPO / REL), body(DEP)
 say(f"    repo     : {REPO / REL}   {len(a)} bytes")
 say(f"    deployed : {DEP}   {len(b)} bytes")
-say(f"    identical after stripping the deploy header: {a == b}")
+say("    stripping rule applied to BOTH sides by body() above (code, not prose):")
+say("      re.sub(r'^(?:# SOURCE:.*\\n)+', '', text, flags=re.M)")
+say(f"    stripped sha256 repo     : {hashlib.sha256(a.encode()).hexdigest()}")
+say(f"    stripped sha256 deployed : {hashlib.sha256(b.encode()).hexdigest()}")
+say(f"    identical after stripping the deploy header: {a == b}"
+    "   <- computed by `a == b` in this script")
 if a != b:
     RC = 1
     say("    !! deployed trails the repo — the deploy did not land this path")
 MARKER = "classify the window by `sessions.source`"
+say(f"    marker searched for (quoted, not described): {MARKER!r}")
 say(f"    repo has the cycle's marker   : {a.count(MARKER)}")
 say(f"    deployed has the cycle's marker: {b.count(MARKER)}")
-say("    the marker is the sentence this cycle added to the Pitfalls section; a count of")
-say("    0 on the deployed side would mean the deploy copied nothing.")
+say("    a count of 0 on the deployed side would mean the deploy copied nothing.")
 
 say()
 say("[2] DOGFOOD (the sanctioned deploy + verify step)")

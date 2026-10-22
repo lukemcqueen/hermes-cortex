@@ -1,6 +1,6 @@
 === deploy verification: skill payload ===
 generated-by : docs/evidence/deploy-soul-refinement-2026-10-22.sh (writes this file itself)
-captured-at  : 19529e41
+captured-at  : d13c3622
 origin/main  : 17a6e855
 pushed range : 17a6e855 docs(soul-refine): quote the codification evidence instead of characterising it ac28bc7c docs(soul-refinement): land the window recipe the 2026-10-22 pass measured 
 
@@ -19,11 +19,15 @@ recorded-in  : loop-governance cycle 13674, task deploy-soul-refinement-skill-20
 [1] THE TWO COPIES
     repo     : ~/hermes-cortex/skills/hermes-agent/soul-refinement/SKILL.md   23961 bytes
     deployed : ~/.hermes/skills/hermes-agent/soul-refinement/SKILL.md   23961 bytes
-    identical after stripping the deploy header: True
+    stripping rule applied to BOTH sides by body() above (code, not prose):
+      re.sub(r'^(?:# SOURCE:.*\n)+', '', text, flags=re.M)
+    stripped sha256 repo     : ce6921d02b408e588aa02d695eeff49429c31b1ce5ff17f0fb943ae2d317a38c
+    stripped sha256 deployed : ce6921d02b408e588aa02d695eeff49429c31b1ce5ff17f0fb943ae2d317a38c
+    identical after stripping the deploy header: True   <- computed by `a == b` in this script
+    marker searched for (quoted, not described): 'classify the window by `sessions.source`'
     repo has the cycle's marker   : 1
     deployed has the cycle's marker: 1
-    the marker is the sentence this cycle added to the Pitfalls section; a count of
-    0 on the deployed side would mean the deploy copied nothing.
+    a count of 0 on the deployed side would mean the deploy copied nothing.
 
 [2] DOGFOOD (the sanctioned deploy + verify step)
     $ bash ~/.hermes-cortex/scripts/cortex-dogfood.sh --force   -> rc=0
@@ -53,6 +57,7 @@ recorded-in  : loop-governance cycle 13674, task deploy-soul-refinement-skill-20
     pushed earlier under its own receipt; anything listed as unpushed is carried by
     the next push, which needs its own receipt for the range.
     commits HEAD carries over origin/main (what the next push will carry):
+      d13c3622 docs(evidence): declare the deploy transcript's provenance and re-run path
       19529e41 docs(evidence): make the deploy generator prove itself; stop masking its own rc
       035a6768 fix(skills): reconcile the two skills the deploy reported stranded
       f7624f1e docs(evidence): verify the soul-refinement deploy, deployed vs repo
