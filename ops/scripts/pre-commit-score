@@ -69,6 +69,55 @@ _commit_scope_verdict() {
   if [[ "$used" == "$gd/index" ]]; then echo "bare"; else echo "partial"; fi
 }
 
+# ── Commit-scope guard: WHO is committing, decided by process ANCESTRY ──────
+# This guard must not interrupt a HUMAN, and on a same-uid host no human-vs-agent test can be
+# forgery-proof: every signal the agent can read it can also write (there is exactly ONE
+# human-capable account here — verified in /etc/passwd — and a TTY is beaten by `script -qc`).
+# Process PARENTAGE is different: it is INHERITED, not asserted. Measured on this host
+# 2026-10-22 by walking /proc/<pid>/stat parents:
+#
+#   agent     python3 -> bash -> hermes -> systemd -> systemd(1)
+#   a child     sleep -> python3 -> bash -> hermes -> systemd -> systemd(1)
+#   setsid      setsid -> python3 -> bash -> hermes -> systemd -> systemd(1)   (does NOT detach)
+#   human        zsh -> sshd -> sshd -> sshd -> systemd                        (no `hermes`)
+#
+# The rule is therefore an ALLOWLIST that fails CLOSED: a commit is treated as a HUMAN's only
+# when the walk finds a login program AND no agent runtime. Everything else — the runtime, cron,
+# an at-job, `systemd-run --user`, an unresolvable chain — is treated as an AGENT and refused.
+# That is why handing the commit to a scheduled service is NOT an escape from this check; the
+# escapes that remain are named in the evidence (ssh-localhost ancestry laundering, a scripted
+# `--no-verify` that skips this hook entirely, and editing this file — all same-uid, all
+# attributable, none preventable without privilege separation).
+_ANCESTRY_LOGIN_RE='sshd|login|agetty|gdm|lightdm|sddm'
+_ANCESTRY_AGENT_RE='hermes'
+
+_commit_scope_classify() {
+  # PURE decision, so --self-test can drive every branch with synthetic chains. Takes the walk's
+  # space-separated process names; echoes "human" or "agent".
+  local chain=" $1 "
+  [[ "$chain" == *"$_ANCESTRY_AGENT_RE"* ]] && { echo "agent"; return 0; }
+  if [[ "$chain" =~ $_ANCESTRY_LOGIN_RE ]]; then echo "human"; return 0; fi
+  # Neither the runtime nor a login program (cron, an at-job, systemd-run, a bare service):
+  # fail CLOSED. A scheduled service that legitimately commits names its paths like anyone else.
+  echo "agent"
+}
+
+_commit_scope_actor() {
+  # Walk the parent chain (portable: `ps -o ppid=`, so macOS/Titus works too) and classify it.
+  # A chain that cannot be read is an AGENT — never a human: an unreadable chain must not read
+  # as permission.
+  local pid="$$" hops=0 comm ppid chain=""
+  while [[ -n "$pid" && "$pid" != "0" && "$pid" != "1" && "$hops" -lt 64 ]]; do
+    comm=$(ps -o comm= -p "$pid" 2>/dev/null | tr -d ' ')
+    if [[ -z "$comm" ]]; then echo "agent"; return 0; fi
+    chain="$chain $comm"
+    ppid=$(ps -o ppid= -p "$pid" 2>/dev/null | tr -d ' ')
+    pid="$ppid"
+    hops=$((hops + 1))
+  done
+  _commit_scope_classify "$chain"
+}
+
 _commit_scope_guard() {
   # Returns 0 to REFUSE, 1 to ALLOW. The repo root and the sanctioned-pipeline flag are
   # ARGUMENTS rather than globals so that --self-test can reach every branch.
@@ -91,6 +140,10 @@ _commit_scope_guard() {
   # above already proved every staged path falls inside the blocklist allowlist, so it cannot be
   # sweeping a peer's work, and its commit is exempt.
   [[ "$sanctioned" == "1" ]] && return 1
+  # A HUMAN's commit is SPARED the refusal; an AGENT's is not. The caller warns the human with
+  # the exact paths the commit would include, so the guard steps aside without going silent.
+  # Ancestry, not a TTY or an env marker — see _commit_scope_actor.
+  [[ "$(_commit_scope_actor)" == "human" ]] && return 1
   [[ "$(_commit_scope_verdict)" == "partial" ]] && return 1
   return 0
 }
@@ -190,6 +243,34 @@ PROBE
     && _st_ok "ANOTHER repo ALLOWS a partial commit too (the same remedy works there)" \
     || _st_bad "a partial commit in another repo was refused — its remedy would be blocked"
 
+  # 3b. WHO IS COMMITTING — the ancestry decision, driven with synthetic chains (the walk itself
+  #     is exercised live below, and by every real commit). An ALLOWLIST that fails closed.
+  _st_actor() { _commit_scope_classify "$1"; }
+  [[ "$(_st_actor "sleep python3 bash hermes systemd systemd")" == "agent" ]] \
+    && _st_ok "an ancestry containing the agent runtime is an AGENT" \
+    || _st_bad "the agent runtime was not recognised in its own ancestry"
+  [[ "$(_st_actor "zsh sshd sshd sshd systemd")" == "human" ]] \
+    && _st_ok "an ancestry reaching a login program (and no runtime) is a HUMAN" \
+    || _st_bad "a login-shell ancestry was not recognised as human"
+  [[ "$(_st_actor "sh cron systemd systemd")" == "agent" ]] \
+    && _st_ok "a SCHEDULER ancestry (cron) fails CLOSED as an agent, not as a human" \
+    || _st_bad "a cron ancestry was treated as human — a scheduled commit would be exempt"
+  [[ "$(_st_actor "setsid python3 bash hermes systemd")" == "agent" ]] \
+    && _st_ok "setsid does NOT escape the ancestry check (measured on this host)" \
+    || _st_bad "setsid detached the ancestry — the measured premise is wrong"
+  [[ "$(_st_actor "zsh sshd hermes systemd")" == "agent" ]] \
+    && _st_ok "the runtime OUTRANKS a login program when both appear" \
+    || _st_bad "a chain with both the runtime and sshd was treated as human"
+  [[ "$(_st_actor "")" == "agent" ]] \
+    && _st_ok "an EMPTY/unreadable chain fails closed as an agent" \
+    || _st_bad "an empty ancestry was treated as human — unreadable must never mean allowed"
+  #     The LIVE walk, from inside this very process: the self-test runs under the agent's own
+  #     process tree, so it must classify itself as an agent. If that is ever "human", the
+  #     discriminator has stopped discriminating on this host.
+  [[ "$(_commit_scope_actor)" == "agent" ]] \
+    && _st_ok "the LIVE ancestry walk classifies this process as an AGENT" \
+    || _st_bad "the live ancestry walk called the agent's own tree HUMAN — check the premise"
+
   # 4. WIRING. Every assertion above tests the DECISION; none of them can see how the hook acts
   #    on it. An inverted call site (`if ! _commit_scope_guard`) silently ALLOWS exactly what the
   #    guard just decided to refuse, and the decision tests stay green — measured on this host,
@@ -215,6 +296,16 @@ PROBE
   grep -qE '^  \[\[ "\$repo_root" == ' "$_st_self" \
     && _st_bad "the guard still compares \$repo_root — the widening did not take" \
     || _st_ok "no repo-root comparison remains: the guard fires in every repo the hooks cover"
+  #    And the HUMAN-EXEMPTION wiring: the ancestry decision must actually be consulted by the
+  #    guard, not merely defined. A correct classifier nobody calls is the same disarm as an
+  #    inverted call site, and it would look exactly like a working test suite. Anchored, for the
+  #    reason above: an unanchored pattern also matches this assertion's own source.
+  grep -qE '^  \[\[ "\$\(_commit_scope_actor\)" == "human" \]\] && return 1$' "$_st_self" \
+    && _st_ok "the ancestry decision is WIRED into the guard (human -> allow)" \
+    || _st_bad "the guard never consults the ancestry — humans would still be refused"
+  grep -qE '^_commit_scope_actor\(\) \{' "$_st_self" \
+    && _st_ok "the ancestry walker is defined once, at the top level" \
+    || _st_bad "the ancestry walker is missing"
 
   rm -rf "$_st_dir"
   if [[ "$_st_fail" -ne 0 ]]; then
@@ -672,6 +763,24 @@ if [[ "$REPO_ROOT" == "${HOME}/hermes-cortex" ]]; then
   IS_CORTEX_REPO=1
 else
   IS_CORTEX_REPO=0
+fi
+
+# ── Commit-scope guard: a HUMAN is spared, and told what they are committing ──────────
+# Placed just before the refusal so the two cannot disagree: if this branch runs, the guard
+# allows, and the human gets the information a refusal would have carried. Agents never reach
+# it (ancestry classifies them as agents), and a SANCTIONED pipeline is silent by design.
+if [[ "$SANCTIONED_PIPELINE" != "1" ]] \
+   && [[ "$(_commit_scope_verdict)" == "bare" ]] \
+   && [[ "$(_commit_scope_actor)" == "human" ]]; then
+  _spared_paths=$(git diff --cached --name-only 2>/dev/null || true)
+  _spared_count=$(printf '%s\n' "$_spared_paths" | grep -c . || true)
+  echo ""
+  echo "ℹ️  Bare commit allowed — human session, so the commit-scope guard steps aside."
+  echo "    It takes EVERYTHING staged (${_spared_count} path(s)); included right now:"
+  printf '%s\n' "$_spared_paths" | grep . | head -20 | sed 's/^/        /'
+  echo "    Next time, to commit only what you mean:"
+  echo "        git commit -m 'your message' -- path/one path/two"
+  echo ""
 fi
 
 # ── Commit-scope guard: refuse a BARE commit, in EVERY repo these hooks cover ──────────

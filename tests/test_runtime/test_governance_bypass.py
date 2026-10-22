@@ -762,6 +762,76 @@ class TestSkillsStatePerSession:
 # ═════════════════════════════════════════════════════════════════════════════
 
 
+class TestCommitScopeGate:
+    """Layer 1 of 'spare humans, refuse agents' (2026-10-22).
+
+    A human committing in a shell is NOT a tool call, so a human never reaches this function:
+    the exemption IS the placement, and there is nothing in it to forge. That matters because
+    this host has ONE human-capable unix account, so any human-vs-agent signal an agent could
+    read it could also write. Layer 2 (the pre-commit hook) decides by process ancestry for the
+    commits this layer cannot see, and cannot see `--no-verify` at all — which is why the bypass
+    flag is refused HERE, while the command is still text.
+    """
+
+    def _gate(self, command: str, tool_name: str = "terminal"):
+        return enforcer._check_commit_scope_gate(tool_name, {"command": command})
+
+    def test_a_bare_commit_is_refused(self):
+        result = self._gate("git commit -m 'fix the thing'")
+        assert result is not None, "a bare commit was allowed — it can sweep a peer's staging"
+        assert "BARE COMMIT REFUSED" in result["message"]
+
+    def test_a_pathspec_commit_is_allowed(self):
+        assert self._gate("git commit -m 'fix' -- ops/scripts/a.sh tests/b.py") is None, (
+            "the documented remedy was refused — the guard would be a dead end"
+        )
+
+    def test_only_flag_is_allowed(self):
+        assert self._gate("git commit --only -m 'fix' ops/scripts/a.sh") is None
+
+    def test_no_verify_is_refused(self):
+        result = self._gate("git commit --no-verify -m 'fix' -- a b")
+        assert result is not None, (
+            "--no-verify was allowed — it skips the pre-commit hook entirely, so this layer is "
+            "the only one that can ever refuse it"
+        )
+        assert "no-verify" in result["message"]
+
+    def test_the_short_bypass_flag_is_refused(self):
+        result = self._gate("git commit -n -m 'fix'")
+        assert result is not None, "git's -n shorthand for --no-verify was allowed"
+
+    def test_a_compound_command_is_judged_segment_by_segment(self):
+        assert self._gate("cd /tmp/x && git commit -m 'bare'") is not None
+        assert self._gate("cd /tmp/x && git commit -m 'scoped' -- a b") is None
+
+    def test_a_heredoc_body_is_not_read_as_a_command(self):
+        """Every evidence generator in this repo quotes `git commit ...` inside a commit message.
+
+        Reading the heredoc body as a command would refuse the very commits that document the
+        guard, so only the command line itself is judged.
+        """
+        command = (
+            "git commit -q -F - -- a b <<'EOF'\n"
+            "documenting: git commit -m 'bare example'\n"
+            "and: git commit --no-verify -m 'bypass example'\n"
+            "EOF\n"
+        )
+        assert self._gate(command) is None, (
+            "a heredoc BODY was read as a command — the guard would block its own documentation"
+        )
+
+    def test_a_non_terminal_tool_call_never_reaches_this_gate(self):
+        assert self._gate("git commit -m 'bare'", tool_name="write_file") is None, (
+            "this layer must stay agent-command-only; widening it would touch human paths"
+        )
+
+    def test_push_and_unrelated_commands_pass_through(self):
+        assert self._gate("git push origin main") is None
+        assert self._gate("git status --short") is None
+        assert self._gate("ls -la") is None
+
+
 class TestAdversarialCommitGate:
     """Tests for _check_adversarial_commit_gate — the mandatory adversarial
     verification gate on git commit/push of critical-path changes.

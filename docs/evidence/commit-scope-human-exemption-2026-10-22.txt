@@ -1,0 +1,99 @@
+commit-scope guard: humans spared, agents refused — evidence
+captured-at : d8fc68ef  (the working tree's revision)
+generated-by: docs/evidence/commit-scope-human-exemption-2026-10-22.sh (this file wrote itself)
+────────────────────────────────────────────────────────────
+
+1. WHY A HUMAN-VS-AGENT TEST CANNOT BE READ OFF THE ENVIRONMENT
+   Humans and agents share ONE unix account here, so every signal the agent can read it can
+   also write. Human-capable accounts with a home directory:
+     root:0:/root
+     esther:1000:~
+
+   A TTY test is beaten by `script -qc`; an env marker can be unset; a name match on the
+   command can be routed through a script file. That is WHY the design does not try to
+   detect humans: layer 1 sits where only agents appear, and layer 2 reads PARENTAGE.
+────────────────────────────────────────────────────────────
+
+2. THE PREMISE, MEASURED — process ancestry separates the two cases
+   `ps -o ppid=` walking this process's parents (portable, so macOS/Titus works too):
+      3159144  python3
+      3159135  bash
+      3159133  bash
+      2959933  hermes
+         1161  systemd
+────────────────────────────────────────────────────────────
+
+3. LAYER 2 — the hook's own ancestry decision, BOTH directions, plus its wiring
+   $ bash ops/scripts/pre-commit-score --self-test
+     PASS  an ancestry containing the agent runtime is an AGENT
+     PASS  an ancestry reaching a login program (and no runtime) is a HUMAN
+     PASS  a SCHEDULER ancestry (cron) fails CLOSED as an agent, not as a human
+     PASS  setsid does NOT escape the ancestry check (measured on this host)
+     PASS  the runtime OUTRANKS a login program when both appear
+     PASS  the LIVE ancestry walk classifies this process as an AGENT
+     PASS  the ancestry decision is WIRED into the guard (human -> allow)
+     PASS  the ancestry walker is defined once, at the top level
+   self-test rc=0   (0 = every ancestry branch and its wiring behaves as described)
+
+   HONEST LIMIT: no LIVE human chain could be captured here — this session has no
+   interactive login on the host, and `ssh localhost` is refused (Permission denied
+   (publickey)), so the sshd-rooted path could not be produced. The human branch is
+   therefore proven by the classifier cases above and by the guard's wiring assertion,
+   NOT by a live human commit. That escape (an agent adding its own key and committing
+   over loopback) is named in section 6.
+────────────────────────────────────────────────────────────
+
+4. LAYER 2 LIVE — a throwaway repo under the cortex hooks, committed from the AGENT tree
+   repo: ~/.hermes/cache/scratch/humanspare.cKMIDI (NOT hermes-cortex; core.hooksPath = ~/.hermes-cortex/hooks)
+   → BARE commit from the agent's process tree (must be REFUSED):
+       
+       ❌  BARE COMMIT REFUSED — it would commit whatever is staged, not just your files.
+           A bare commit commits EVERYTHING in the index — including work another agent or
+           session staged there. This repo is covered by the cortex hooks, so the same sweep
+     rc=1   (1 = refused: the agent path still refuses)
+   → PATHSPEC commit from the same tree (must be ALLOWED):
+         ✅ change-validate: all checks passed
+       
+       🧪  Self-test: orchestrator guard...
+     rc=0   (0 = allowed; the remedy works)
+     committed    : a.txt 
+     still staged : b.txt 
+────────────────────────────────────────────────────────────
+
+5. LAYER 1 LIVE — the enforcer gate, driven with real fixtures
+   OK   bare commit                      want=block got=block
+   OK   pathspec commit (the remedy)     want=pass  got=pass
+   OK   --only                           want=pass  got=pass
+   OK   --no-verify (skips the hook)     want=block got=block
+   OK   -n (git shorthand)               want=block got=block
+   OK   compound: bare after &&          want=block got=block
+   OK   heredoc body quoting a commit    want=pass  got=pass
+   OK   git push (not this gate)         want=pass  got=pass
+   
+   non-terminal tool call (must never reach this gate): True
+   rc=0   (0 = every fixture behaved; nonzero = cases wrong)
+────────────────────────────────────────────────────────────
+
+6. THE CEILING — stated, not hidden
+   Same uid means this is prevention-for-the-careless plus attribution-for-the-deliberate.
+   Escapes that REMAIN after both layers, and why each is still better than silence:
+     1. A scripted `--no-verify` (inside a .sh) skips the hook entirely. Layer 1 only sees
+        commands the agent TYPES, so a bypass hidden in a script reaches neither layer. It is
+        already logged: the hook writes a sentinel and post-commit-audit records the miss.
+     2. ssh-localhost ancestry laundering: a commit over loopback is rooted at sshd and reads
+        as human. Needs the agent to add its own key (measured: refused right now, no key).
+     3. Editing this hook, or setting the repo's core.hooksPath — same-uid, always available.
+   Scheduling the commit (cron / at / systemd-run) is NOT on this list any more: the
+   classifier fails CLOSED for any ancestry that is neither the runtime nor a login program.
+   Only privilege separation — a second unix account, where sudo needs a password — makes
+   any of these impossible rather than attributable.
+────────────────────────────────────────────────────────────
+
+7. What this capture covers
+   UNCOMMITTED at capture time — the committed copy lands one commit after this run.
+   HEAD at capture: d8fc68ef
+      M docs/evidence/commit-scope-human-exemption-2026-10-22.sh
+     ?? docs/evidence/commit-scope-human-exemption-2026-10-22.txt
+────────────────────────────────────────────────────────────
+
+end of evidence
