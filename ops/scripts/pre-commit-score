@@ -71,13 +71,22 @@ _commit_scope_verdict() {
 
 _commit_scope_guard() {
   # Returns 0 to REFUSE, 1 to ALLOW. The repo root and the sanctioned-pipeline flag are
-  # ARGUMENTS rather than globals so that --self-test can reach every branch — the guard is
-  # cortex-scoped, so a throwaway repo cannot exercise it end to end.
+  # ARGUMENTS rather than globals so that --self-test can reach every branch.
   local repo_root="$1" sanctioned="${2:-0}"
-  # Scoped to this repo, like the other session-gated checks in this hook. An unscoped hook gate
-  # hard-blocked ordinary commits in EVERY repo on the host once (the Titus incident, and the
-  # reason the DOGFOOD check is scoped) — so widening this is deliberately one comparison.
-  [[ "$repo_root" == "${HOME}/hermes-cortex" ]] || return 1
+  # EVERY repo these hooks cover, not just this one (operator directive 2026-10-22): a client
+  # repo or steadfaste has the identical sweep risk — several agents, ONE index — so the same
+  # refusal belongs there. The guard's scope IS the hook's own presence: this script only runs
+  # because a repo's core.hooksPath points at the cortex hooks. There is deliberately no path
+  # comparison left; `$repo_root` is kept for the self-test and for the refusal message, which
+  # tells the reader which tree they are in.
+  #
+  # This is NOT the Titus mistake, which is why the comparison can go. That gate (reflexion
+  # proof, governance lock, AGENTS.md audit) requires a HERMES SESSION, which a human committing
+  # by hand does not have — so it blocked ordinary manual work in EVERY repo on the host. This
+  # guard requires no session: it asks only whether the commit uses the shared index, a git fact
+  # in any repository, and its remedy is one flag (`git commit -m msg -- <paths>`) that a human
+  # and an agent can both use. A repo that should not have this check sets its own
+  # core.hooksPath — a config decision, not a code one.
   # The nginx threat pipeline commits bare by design and has no session at all. Its own block
   # above already proved every staged path falls inside the blocklist allowlist, so it cannot be
   # sweeping a peer's work, and its commit is exempt.
@@ -157,21 +166,29 @@ PROBE
     && _st_ok "an unresolvable git dir is UNKNOWN even with GIT_INDEX_FILE set (ADV-0-1)" \
     || _st_bad "unresolvable git dir + GIT_INDEX_FILE read as '$_st_v' (must be unknown)"
 
-  # 3. The decision, with scope and exemption INJECTED so every branch is reachable — the guard
-  #    is cortex-scoped, so a throwaway repo cannot exercise it end to end.
+  # 3. The decision. Scope is no longer INJECTED, because there is no repo-root scoping left to
+  #    inject: the guard fires in every repo these hooks cover, so a THROWAWAY repo exercises the
+  #    real path end to end — it could not while the guard was cortex-scoped. GIT_INDEX_FILE is
+  #    set (empty) on every case so the verdict never depends on the CWD this test runs in.
   _st_decide() { if _commit_scope_guard "$1" "$2"; then echo refuse; else echo allow; fi; }
   [[ "$(GIT_INDEX_FILE= _st_decide "${HOME}/hermes-cortex" 0)" == "refuse" ]] \
     && _st_ok "the cortex repo REFUSES a bare commit" \
     || _st_bad "the cortex repo did not refuse a bare commit"
-  [[ "$(_st_decide "$_st_repo" 0)" == "allow" ]] \
-    && _st_ok "another repo is OUT OF SCOPE (allowed) — the Titus incident stays fixed" \
-    || _st_bad "an unrelated repo was refused"
-  [[ "$(_st_decide "${HOME}/hermes-cortex" 1)" == "allow" ]] \
+  [[ "$(GIT_INDEX_FILE= _st_decide "$_st_repo" 0)" == "refuse" ]] \
+    && _st_ok "ANOTHER repo is now IN SCOPE — a bare commit there is refused too" \
+    || _st_bad "an unrelated repo was ALLOWED a bare commit — the widening did not take"
+  [[ "$(GIT_INDEX_FILE= _st_decide "$_st_dir/a/repo/this/host/does/not/own" 0)" == "refuse" ]] \
+    && _st_ok "an arbitrary repo path is in scope too (no path comparison is left)" \
+    || _st_bad "an arbitrary repo path was allowed a bare commit"
+  [[ "$(GIT_INDEX_FILE= _st_decide "${HOME}/hermes-cortex" 1)" == "allow" ]] \
     && _st_ok "a SANCTIONED pipeline commit is exempt" \
     || _st_bad "the sanctioned pipeline commit was refused"
   [[ "$(GIT_INDEX_FILE="$_st_dir/other-index" _st_decide "${HOME}/hermes-cortex" 0)" == "allow" ]] \
     && _st_ok "the cortex repo ALLOWS a partial commit (the remedy actually works)" \
     || _st_bad "a partial commit in the cortex repo was refused — the remedy would be blocked"
+  [[ "$(GIT_INDEX_FILE="$_st_dir/other-index" _st_decide "$_st_repo" 0)" == "allow" ]] \
+    && _st_ok "ANOTHER repo ALLOWS a partial commit too (the same remedy works there)" \
+    || _st_bad "a partial commit in another repo was refused — its remedy would be blocked"
 
   # 4. WIRING. Every assertion above tests the DECISION; none of them can see how the hook acts
   #    on it. An inverted call site (`if ! _commit_scope_guard`) silently ALLOWS exactly what the
@@ -190,6 +207,14 @@ PROBE
   grep -qE '^if ! _commit_scope_guard' "$_st_self" \
     && _st_bad "an INVERTED call site is present — a refuse decision would be ignored" \
     || _st_ok "no inverted call site present"
+  #    And the SCOPE half of the wiring: the widening must have actually taken. Every behavioural
+  #    assertion above would still pass if a repo-root comparison remained and the tests were
+  #    re-injected around it, so the construct's ABSENCE is asserted directly. Anchored to the
+  #    start of a line for the same reason as above: an unanchored pattern also matches THIS
+  #    assertion's own source, which would fail the check in a file that is correct.
+  grep -qE '^  \[\[ "\$repo_root" == ' "$_st_self" \
+    && _st_bad "the guard still compares \$repo_root — the widening did not take" \
+    || _st_ok "no repo-root comparison remains: the guard fires in every repo the hooks cover"
 
   rm -rf "$_st_dir"
   if [[ "$_st_fail" -ne 0 ]]; then
@@ -649,9 +674,9 @@ else
   IS_CORTEX_REPO=0
 fi
 
-# ── Commit-scope guard: refuse a BARE commit in this repo ───────────────────
-# Placed here because it needs IS_CORTEX_REPO (scope) and SANCTIONED_PIPELINE (exemption), both
-# computed above. The reasoning, the alternatives rejected and the measured index signal are in
+# ── Commit-scope guard: refuse a BARE commit, in EVERY repo these hooks cover ──────────
+# Placed here because it needs IS_CORTEX_REPO (which message to print) and SANCTIONED_PIPELINE
+# (the exemption), both computed above. The reasoning, the alternatives rejected and the measured index signal are in
 # `_commit_scope_guard` and `_commit_scope_verdict` at the top of this file, and the behaviour
 # is proven by `bash pre-commit-score --self-test`.
 # NOTE the direction: `_commit_scope_guard` returns 0 to REFUSE, so the call site must be
@@ -667,9 +692,16 @@ if _commit_scope_guard "$REPO_ROOT" "$SANCTIONED_PIPELINE"; then
     echo "    Check this is a real checkout: git rev-parse --absolute-git-dir"
   else
     echo "❌  BARE COMMIT REFUSED — it would commit whatever is staged, not just your files."
-    echo "    Several agents share this working tree and its ONE git index, and a staged entry"
-    echo "    records nothing about which session staged it. A bare commit has swept another"
-    echo "    session's work before (a commit captured 17 files where 8 were intended)."
+    if [[ "$IS_CORTEX_REPO" == "1" ]]; then
+      echo "    Several agents share this working tree and its ONE git index, and a staged entry"
+      echo "    records nothing about which session staged it. A bare commit has swept another"
+      echo "    session's work before (a commit captured 17 files where 8 were intended)."
+    else
+      echo "    A bare commit commits EVERYTHING in the index — including work another agent or"
+      echo "    session staged there. This repo is covered by the cortex hooks, so the same sweep"
+      echo "    is possible here as in any shared tree. (Scope is the hook's own presence: only a"
+      echo "    repo whose core.hooksPath points at the cortex hooks runs this at all.)"
+    fi
     echo ""
     echo "    Commit ONLY the paths you changed:"
     echo "        git commit -m 'your message' -- path/one path/two"
@@ -684,6 +716,7 @@ if _commit_scope_guard "$REPO_ROOT" "$SANCTIONED_PIPELINE"; then
   fi
   echo ""
   echo "    No bypass flag — this is structural, not advisory."
+  echo "    A repo that should NOT have this check sets its own core.hooksPath."
   echo ""
   exit 1
 fi

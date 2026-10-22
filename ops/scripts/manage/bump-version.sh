@@ -59,8 +59,9 @@ if [[ -d "$PRIVATE_DIR" ]]; then
   echo "  + README.md badge -> $VERSION"
 
   git add VERSION README.md
-  # Pathspec for the same reason as the public repo above (this repo is out of the guard's
-  # scope, but a bare commit here has the identical sweep risk).
+  # Pathspec for the same reason as the public repo above: a bare commit here has the identical
+  # sweep risk. (The guard used to be cortex-scoped; since 2026-10-22 it fires in every repo the
+  # cortex hooks cover, so this line is also what keeps the commit legal where it is in scope.)
   git commit -m "v${VERSION}: bump version (align with public)" -- VERSION README.md
   git tag -a "v${VERSION}" -m "Hermes Cortex Private v${VERSION}"
   git push origin main --tags
