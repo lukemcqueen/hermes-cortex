@@ -1,29 +1,49 @@
 commit-scope guard — evidence
-captured-at : e088fc40  (the working tree's revision)
+captured-at : a5538341  (the working tree's revision)
 generated-by: docs/evidence/commit-scope-guard-2026-10-22.sh (this file wrote itself)
 deployed    : ~/.hermes-cortex/scripts/pre-commit-score  (the copy that actually runs)
+hooks path  : ~/.hermes-cortex/hooks  (core.hooksPath — set GLOBALLY on this host, so
+              every repo here is 'covered by the cortex hooks')
+────────────────────────────────────────────────────────────
+
+0. WHAT CHANGED: the guard was scoped to hermes-cortex by ONE comparison
+   It is now unscoped, per the operator's instruction that the fix must work on non-hc
+   repos properly. The guard's scope IS the hook's own presence: this script only runs
+   because a repo's core.hooksPath points at the cortex hooks. A client repo or steadfaste
+   has the identical sweep risk — several agents, ONE index.
+
+   This is NOT the Titus incident, which is why the comparison could go. That gate
+   (reflexion proof, governance lock, AGENTS.md audit) requires a HERMES SESSION, which a
+   human committing by hand does not have, so it blocked ordinary manual work in every repo
+   on the host. This guard requires no session — it asks only whether the commit uses the
+   shared index, a git fact in any repository — and its remedy is one flag, which a human
+   and an agent can both use. A repo that should not have this check sets its own
+   core.hooksPath: a config decision, not a code one.
 ────────────────────────────────────────────────────────────
 
 1. The hook's OWN self-test — the proof that travels with the blob it proves
    $ bash ops/scripts/pre-commit-score --self-test
   PASS  git hands the hook a DIFFERENT index for a bare vs a partial commit
         bare=.git/index
-        partial=~/.hermes/cache/scratch/precommit-scope-selftest.E3pb8M/probe/.git/next-index-2553741.lock
+        partial=~/.hermes/cache/scratch/precommit-scope-selftest.gUnpyH/probe/.git/next-index-2881205.lock
   PASS  a partial commit leaves the UNNAMED file staged (it cannot sweep it)
   PASS  the repo's own index reads as BARE
   PASS  any other index reads as PARTIAL
   PASS  an unresolvable git dir is UNKNOWN even with GIT_INDEX_FILE set (ADV-0-1)
   PASS  the cortex repo REFUSES a bare commit
-  PASS  another repo is OUT OF SCOPE (allowed) — the Titus incident stays fixed
+  PASS  ANOTHER repo is now IN SCOPE — a bare commit there is refused too
+  PASS  an arbitrary repo path is in scope too (no path comparison is left)
   PASS  a SANCTIONED pipeline commit is exempt
   PASS  the cortex repo ALLOWS a partial commit (the remedy actually works)
+  PASS  ANOTHER repo ALLOWS a partial commit too (the same remedy works there)
   PASS  the call site acts on the verdict in the RIGHT direction
   PASS  no inverted call site present
+  PASS  no repo-root comparison remains: the guard fires in every repo the hooks cover
 ✅  self-test passed: the commit-scope guard behaves as documented
    rc=0
 ────────────────────────────────────────────────────────────
 
-2. LIVE refusal — the DEPLOYED hook, run for real in this repo with no pathspec
+2. LIVE refusal — the DEPLOYED hook, run for real in THIS repo with no pathspec
    $ bash ~/.hermes-cortex/scripts/pre-commit-score
 
 ❌  BARE COMMIT REFUSED — it would commit whatever is staged, not just your files.
@@ -43,50 +63,88 @@ deployed    : ~/.hermes-cortex/scripts/pre-commit-score  (the copy that actually
     in a shared tree may not be your commit. Land a NEW commit instead.
 
     No bypass flag — this is structural, not advisory.
+    A repo that should NOT have this check sets its own core.hooksPath.
 
    rc=1   (1 = refused; the hook never commits, so this is safe to run)
 ────────────────────────────────────────────────────────────
 
-3. DISCRIMINATION — the wiring assertion must FAIL on an inverted call site.
-   A COPY is inverted, so the real file is untouched; the point is that the check is not
-   a tautology: it reports the defect when the defect is present.
-   $ sed -i 's/^if _commit_scope_guard/if ! _commit_scope_guard/' <copy> && bash <copy> --self-test
+3. LIVE proof in a NON-CORTEX repo — the operator's actual requirement
+   A throwaway repo in the scratch dir with core.hooksPath pointed at the cortex hooks:
+   covered by the hooks, but NOT hermes-cortex. Both directions are exercised for real.
+   repo under test : /home/esther/.hermes/cache/scratch/nonhc-guard.U0Rh7X (NOT hermes-cortex)
+   core.hooksPath  : /home/esther/.hermes-cortex/hooks
+
+   → BARE commit (must be refused):
+     
+     ❌  BARE COMMIT REFUSED — it would commit whatever is staged, not just your files.
+         A bare commit commits EVERYTHING in the index — including work another agent or
+         session staged there. This repo is covered by the cortex hooks, so the same sweep
+         is possible here as in any shared tree. (Scope is the hook's own presence: only a
+         repo whose core.hooksPath points at the cortex hooks runs this at all.)
+     rc=1   (1 = REFUSED — note the non-cortex wording of the message)
+
+   → PATHSPEC commit in the same repo (must be allowed):
+       \033[0;32m✅ change-validate: all checks passed\033[0m
+     
+     🧪  Self-test: orchestrator guard...
+     ✅  Self-test passed: host detected as orchestrator (hostname+home-dir)
+     rc=0   (0 = ALLOWED — the same remedy works in a non-cortex repo)
+     committed     : a.txt 
+     still staged  : b.txt   (not swept)
+────────────────────────────────────────────────────────────
+
+4. DISCRIMINATION — an assertion that cannot fail is not evidence
+   (a) the SCOPE check: put the repo-root comparison BACK in a copy. The real file is
+       untouched; the point is that the new checks report the defect when it IS present.
+  scoping re-inserted into the copy
+  FAIL  an unrelated repo was ALLOWED a bare commit — the widening did not take
+  FAIL  an arbitrary repo path was allowed a bare commit
+  FAIL  the guard still compares $repo_root — the widening did not take
+❌  self-test FAILED (3 check(s))
+   rc=1   (1 = the copy correctly FAILS the scope checks: they are not tautologies)
+
+   (b) the WIRING check: invert the call site in a copy.
    inverted lines in the copy: 1
-  PASS  git hands the hook a DIFFERENT index for a bare vs a partial commit
-  PASS  a partial commit leaves the UNNAMED file staged (it cannot sweep it)
-  PASS  the repo's own index reads as BARE
-  PASS  any other index reads as PARTIAL
-  PASS  an unresolvable git dir is UNKNOWN even with GIT_INDEX_FILE set (ADV-0-1)
-  PASS  the cortex repo REFUSES a bare commit
-  PASS  another repo is OUT OF SCOPE (allowed) — the Titus incident stays fixed
-  PASS  a SANCTIONED pipeline commit is exempt
-  PASS  the cortex repo ALLOWS a partial commit (the remedy actually works)
   FAIL  the guard's call site is missing or not found in this file
   FAIL  an INVERTED call site is present — a refuse decision would be ignored
 ❌  self-test FAILED (2 check(s))
-   (rc captured unpiped below)
    rc=1   (1 = the copy correctly FAILS the wiring checks)
 ────────────────────────────────────────────────────────────
 
-4. Syntax + the A4 adversarial gate on every file this range changed
+5. Syntax + the A4 adversarial gate on every file this range changed
    ops/scripts/pre-commit-score  syntax_rc=0  A4_rc=0
    ops/scripts/manage/bump-version.sh  syntax_rc=0  A4_rc=0
    ops/scripts/manage/migrate-orch-bus-names.sh  syntax_rc=0  A4_rc=0
 ────────────────────────────────────────────────────────────
 
-5. What the guard keys on, MEASURED here rather than assumed
-   (section 1 prints the two GIT_INDEX_FILE values git actually passes the hook:
-    the repo's own index for a bare commit, a throwaway next-index-*.lock for a partial
-    one — and the unnamed file is still staged afterwards, so a partial commit cannot
-    have swept it.)
+6. What the guard keys on, MEASURED rather than assumed
+   (section 1 prints the two GIT_INDEX_FILE values git actually passes the hook: the repo's
+    own index for a bare commit, a throwaway next-index-*.lock for a partial one — and the
+    unnamed file is still staged afterwards, so a partial commit cannot have swept it.)
+────────────────────────────────────────────────────────────
 
-6. The range this evidence belongs to
-e088fc40 fix(precommit): act on the guard's verdict in the right direction, and name the amend case
-bc9a8e96 feat(precommit): refuse a bare commit so no session can sweep another's staged work
-   files changed by those commits:
-     ops/scripts/manage/bump-version.sh
-     ops/scripts/manage/migrate-orch-bus-names.sh
-     ops/scripts/pre-commit-score
+7. REPORTED, NOT EDITED — foreign call sites the widened guard will now refuse
+   The cross-repo handoff rule: repos the fleet does not own are reported, not edited.
+   ~/.hermes/hermes-agent carries bare-commit call sites. Live check:
+     ~/.hermes/hermes-agent/optional-skills/research/research-paper-writing/SKILL.md:495:5. If all done, commit: git add -A && git commit -m "<descriptive message>" && git push
+     ~/.hermes/hermes-agent/optional-skills/research/research-paper-writing/SKILL.md:1411:→ terminal("git add -A && git commit -m '<descriptive message>' && git push")
+     ~/.hermes/hermes-agent/optional-skills/research/research-paper-writing/SKILL.md:1491:       git add -A && git commit -m 'Add Haiku results' && git push
+     ~/.hermes/hermes-agent/optional-skills/research/research-paper-writing/references/experiment-patterns.md:435:   - git add -A && git commit -m "[COMMIT_MESSAGE]" && git push
+     ~/.hermes/hermes-agent/optional-skills/software-development/subagent-driven-development/SKILL.md:80:    6. Commit: git add -A && git commit -m "feat: add User model with password hashing"
+     ~/.hermes/hermes-agent/optional-skills/software-development/subagent-driven-development/SKILL.md:187:git add -A && git commit -m "feat: complete [feature name] implementation"
+     ~/.hermes/hermes-agent/optional-skills/web-development/publish-site/SKILL.md:55:| Version a deploy | `git add -A && git commit -m "deploy: <what>" && git tag deploy-YYYYMMDD-HHMM` |
+     ~/.hermes/hermes-agent/website/docs/user-guide/skills/bundled/software-development/software-development-requesting-code-review.md:256:git add -A && git commit -m "[verified] <description>"
+
+   Those commits will now be REFUSED in that repo, because the global core.hooksPath puts
+   the cortex hook in front of every commit made on this host. The operator owns that fix.
+────────────────────────────────────────────────────────────
+
+8. The range this evidence belongs to
+   UNCOMMITTED at capture time — the committed copy lands one commit after this run, so
+   naming a commit here would be a claim the file cannot make about itself.
+   HEAD at capture: a5538341
+      M docs/evidence/commit-scope-guard-2026-10-22.sh
+      M docs/evidence/commit-scope-guard-2026-10-22.txt
 ────────────────────────────────────────────────────────────
 
 end of evidence

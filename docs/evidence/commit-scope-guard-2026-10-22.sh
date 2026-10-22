@@ -23,7 +23,10 @@ HOOKS_PATH="${HOOKS_PATH:-$HOME/.hermes-cortex/hooks}"
 OUT="${OUT:-$REPO/docs/evidence/commit-scope-guard-2026-10-22.txt}"
 exec >"$OUT" 2>&1
 
-norm() { sed -e "s|$HOME|~|g"; }
+# ANSI colour is stripped because the hook colours its own output; the codes are terminal
+# decoration, not content, and they make a committed transcript harder to read. Nothing else
+# is rewritten — host paths are normalised, and no line is added or removed.
+norm() { sed -e "s|$HOME|~|g" -e $'s/\033\\[[0-9;]*m//g'; }
 say()  { printf '%s\n' "$*"; }
 rule() { printf '%s\n' "────────────────────────────────────────────────────────────"; }
 
