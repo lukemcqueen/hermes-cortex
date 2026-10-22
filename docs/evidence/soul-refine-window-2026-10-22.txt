@@ -1,0 +1,74 @@
+=== soul-refinement window transcript ===
+generated-by : docs/evidence/soul-refine-window-2026-10-22.sh (writes this file itself)
+captured-at  : 01426680
+store        : ~/.hermes/state.db (read-only, mode=ro)
+
+[1] WINDOW
+    now (run time) : 2026-10-22 23:22:03  (<digits>.348)
+    prior soul-refinement sessions (newest first):
+      cron_8449be867645_<digits>_231420  started=2026-10-21 23:14:26  last_activity=2026-10-21 23:25:02  ended=2026-10-21 23:25:53
+      cron_8449be867645_<digits>_231420  started=2026-10-20 23:14:25  last_activity=2026-10-20 23:32:29  ended=2026-10-20 23:32:36
+      cron_8449be867645_<digits>_231454  started=2026-10-19 23:14:59  last_activity=2026-10-19 23:34:33  ended=2026-10-19 23:35:07
+    start bound = previous pass's last_activity_at = 2026-10-21 23:25:02  (23.95 h)
+
+[2] SESSION CLASSIFICATION (sessions.source, one column — not an id prefix)
+    sessions in window: 31   cron=24  subagent=5  telegram=2
+
+[3] role='user' ROWS
+    raw user rows (all sources): 73
+    by source: cron=23  subagent=5  telegram=45
+    dropped active!=1 (compaction artifacts): 36
+    rows on human transports before marker filter: 9
+    machine-marker rows dropped (compaction / delegation / gateway wrappers): 5
+    OPERATOR PROSE ROWS TO READ: 4
+      - 2026-10-22 15:24:40  sess=<digits>_163612_93ffbc29  chars=110  :: i would like humans to be spared all of this, but i don't want agents to exploit. how can we make this happen?
+      - 2026-10-22 16:02:33  sess=<digits>_163612_93ffbc29  chars=90  :: gateway restarted. are all your previous changes pushed and ready for agents to implement?
+      - 2026-10-22 18:20:11  sess=<digits>_181827_563b91f1  chars=3894  :: On Titus pi, after updating pi, I get these error regarding skills. Please investigate and fix so it works with ALL coding agents 
+      - 2026-10-22 20:21:06  sess=<digits>_181827_563b91f1  chars=56  :: There’s no alternative at the moment. Just grind it out.
+
+[4] SAME-DAY CODIFICATION CHECKS (the decision rule: verify before writing)
+    each check: the commit that landed it (git log --grep, since the start bound),
+    or the doc/skill that carries the rule where no commit was owed (grep -rl).
+    [rc=0] operator 15:24  spare humans / refuse agents
+          74b242c4 feat(guard): spare humans, refuse agents — two layers, because one cannot do both
+    [rc=0] operator 16:02  is everything pushed and ready
+          skills/devops/deploy-load-verification/SKILL.md,skills/devops/enforcement-change-safety/SKILL.md
+    [rc=0] operator 18:20  skills must load for ALL coding agents
+          5bdf7b30 fix(skills): make 30 deprecated redirect stubs loadable, repair 4 invalid frontmatters
+    [rc=0] operator 18:20  a loader that would drop a skill is a FAIL
+          aeeb2d9f feat(doctor): FAIL when a loader would drop one of our skills
+    [rc=0] operator 18:20  the checker must resolve its own interpreter
+          73d64be8 fix(doctor): resolve its own interpreter — it was running degraded, silently
+    [rc=0] operator 20:21  'just grind it out' (override, no new rule owed)
+          skills/software-development/change-checklist/SKILL.md,docs/templates/SOUL.md
+
+[5] VERDICT
+    window non-empty: YES   operator rows: 4   landed-or-carried: 6/6
+    Not-silent: the window carried operator rows and the pass refined this skill's own mining recipe (repo-sourced), so this run reports rather than suppressing.
+
+[6] STATIC GATE ON THIS GENERATOR (mandated by change-checklist Phase 1.5)
+    $ python3 ~/.hermes-cortex/scripts/adversarial-verify.py \
+        --file docs/evidence/soul-refine-window-2026-10-22.sh --level A2 --gate
+    ── docs/evidence/soul-refine-window-2026-10-22.sh ──
+       Level: A2
+       Attack Surface:
+         ⚠️ Inputs: 3 item(s)
+         ⚠️ State: 2 item(s)
+         ⚠️ Dependencies: 3 item(s)
+         ✅ Concurrency: 0 item(s)
+       Functions: 1
+         - run(args, cwd)
+       Fuzz inputs generated: 18
+    📊 Summary: 1 file(s), 18 finding(s)
+       🟡 Medium: 2
+       ⚪ Info: 16
+    🟡 Medium findings — fix before shipping.
+    ✅ GATE_PASSED — no critical/high findings
+    rc=0   (0 = GATE_PASSED, i.e. no critical/high finding. The medium items are the fuzzer's generic input/state surface notes on a read-only script and do not gate.)
+[probe rc=0]
+python mining pass rc=0
+
+=== syntax check of the file this transcript documents ===
+bash -n docs/evidence/soul-refine-window-2026-10-22.sh rc=0
+
+=== END OF TRANSCRIPT ===

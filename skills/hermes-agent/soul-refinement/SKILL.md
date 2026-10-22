@@ -60,7 +60,7 @@ from the date.
 | Situation | Action |
 |-----------|--------|
 | User corrected a specific behavior | Check existing principle. If covered: strengthen. If gap: add principle. |
-| Correction already landed by a same-day cycle | Verify before writing. The window's corrections are often codified within hours — grep the repo for the correction's own artifact (and read the day's commits) before proposing a principle. Measured 2026-10-20: 3 of the window's 4 corrections already had committed same-day fixes, so a fresh principle for them would have duplicated landed work. |
+| Correction already landed by a same-day cycle | Verify before writing. The window's corrections are often codified within hours — grep the repo for the correction's own artifact (and read the day's commits) before proposing a principle. Measured 2026-10-20: 3 of the window's 4 corrections already had committed same-day fixes, so a fresh principle for them would have duplicated landed work. Measured again 2026-10-22: **4 of the 4 operator rows in the window already had same-day landed fixes** (the human-exemption guard + its evidence; the skills-loader repair + a doctor FAIL gate + the `skill-curation` loader rules), so the pass's entire deliverable was a refinement of this skill's own mining recipe — not a principle. Expect that outcome on a busy day and report it as a result, not as "nothing to refine". |
 | User taught a workflow discovery | Save as a skill, not in SOUL.md. |
 | I made a mistake | Trace root cause. Only principle failures go in SOUL.md. |
 | Deeper understanding discovered | Add nuance to relevant section. |
@@ -211,6 +211,19 @@ body are invisible to it. So:
   corrections that were already codified and the overlap looks like fresh work. Measured
   2026-10-21: the 10-20 pass ended at `23:17` while a 30 h window began at `17:18`, so one of
   that day's corrections (doctor-warning dispositions) sat inside both windows.
+- **Resolve the previous pass's END mechanically, and classify the window by `sessions.source`**
+  (measured 2026-10-22). Query it, don't recall it:
+  `SELECT id,title,started_at,last_activity_at,ended_at FROM sessions WHERE title LIKE
+  '%soul-refinement%' ORDER BY COALESCE(last_activity_at,started_at) DESC LIMIT 3` — the newest row
+  that is not THIS run is the previous pass, and its `last_activity_at` is the start bound
+  (`last_activity_at` 23:25:02 vs `ended_at` 23:25:53, 51 s apart; a `now - 24 h` start at 23:15:45
+  reached 9 minutes BACK into the previous window). Classify with `sessions.source` in one column
+  rather than by an id prefix — that day's 31 sessions split `cron` 24 / `subagent` 5 / `telegram` 2 —
+  because **a `subagent` session stores its dispatching prompt as `role='user'` exactly like cron
+  does**, and the note below names only cron: those 5 fan-out rows would otherwise read as operator
+  prose and inflate the "corrections" count before you read a single sentence. Read only the human
+  transports, keep `active=1`, and note `time.strptime` rejects GNU `date`'s `'%F %T'`
+  (`ValueError: 'F' is a bad directive`) — the format is `'%Y-%m-%d %H:%M:%S'`.
 - **Verify the skill file you patched is REPO-SOURCED, not stranded in the deployed tree.**
   Content written only to `~/.hermes-cortex/skills/...` is invisible to the fleet: the deploy's
   drift guardrail refuses to overwrite it, so it never reaches the repo or any peer. Run
