@@ -18,6 +18,7 @@ set -uo pipefail
 
 REPO="${REPO:-$HOME/hermes-cortex}"
 DEPLOYED="${DEPLOYED:-$HOME/.hermes/plugins/governance-enforcer/__init__.py}"
+PREFIX_REV="${PREFIX_REV:-eb9a5edf~1}"   # the revision immediately BEFORE the fix
 OUT="${OUT:-$REPO/docs/evidence/lock-repo-scope-2026-10-22.txt}"
 exec >"$OUT" 2>&1
 
@@ -28,10 +29,13 @@ rule() { printf '%s\n' "──────────────────�
 say "governance lock repo scope — evidence"
 say "captured-at : $(cd "$REPO" && git rev-parse --short HEAD)  (the working tree's revision)"
 say "generated-by: docs/evidence/lock-repo-scope-2026-10-22.sh (this file wrote itself)"
-say "deployed    : ~/.hermes/plugins/governance-enforcer/__init__.py — the copy in force AT"
-say "              CAPTURE TIME, i.e. the PRE-DEPLOY (pre-fix) copy. That is what makes the"
-say "              differential probe below discriminating; re-running this script AFTER the"
-say "              deploy compares the fix with itself and correctly reports no change."
+say "pre-fix base: $PREFIX_REV  (PINNED, immutable — the revision immediately before the fix)"
+say "              The differential probe extracts this revision with 'git show' rather than"
+say "              reading the live deployed copy, so the comparison stays discriminating and"
+say "              reproducible at ANY time, including after the deploy (post-deploy the"
+say "              deployed copy IS the fix, and comparing against it would compare the fix"
+say "              with itself)."
+say "deployed    : ~/.hermes/plugins/governance-enforcer/__init__.py (the copy in force now)"
 rule
 
 say ""
@@ -54,17 +58,24 @@ rule
 
 say ""
 say "3. DIFFERENTIAL PROBE (enforcement-change-safety Rule 23)"
-say "   The DEPLOYED copy is the oracle: it is the behaviour currently in force. Both copies"
-say "   are loaded in ONE process and driven with the same fixtures against a throwaway"
-say "   state dir. A verdict that CHANGES is a real behaviour change; the valid cases must"
-say "   NOT change."
+say "   Three copies are loaded in ONE process and driven with the SAME fixtures against a"
+say "   throwaway state dir (never live governance state):"
+say "     pre-fix  = the pinned revision via 'git show'  — the behaviour being replaced"
+say "     deployed = the copy in force right now         — proves the deploy landed"
+say "     repo     = the working tree                    — the fix under test"
+say "   A verdict that CHANGES between pre-fix and repo is a real behaviour change; every"
+say "   case must be IDENTICAL between deployed and repo, or the deploy did not land."
 say ""
-~/.hermes-cortex/venv/bin/python3 - "$DEPLOYED" "$REPO/plugins/governance-enforcer/__init__.py" <<'PROBE' 2>&1 | norm
+say "   The 'governance lock … covers …, NOT …' lines below are the NEW refusal warnings"
+say "   firing, on stderr as each case runs — they name BOTH repos, so a mis-scope is"
+say "   diagnosable from the block message itself rather than from the review scope."
+say ""
+~/.hermes-cortex/venv/bin/python3 - "$REPO" "$PREFIX_REV" "$DEPLOYED" "$REPO/plugins/governance-enforcer/__init__.py" <<'PROBE' 2>&1 | norm
 import importlib.util, json, subprocess, sys, tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 
-DEPLOYED, REPOCOPY = sys.argv[1], sys.argv[2]
+REPO, PREFIX_REV, DEPLOYED, REPOCOPY = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
 
 
 def load(name, path):
@@ -84,42 +95,70 @@ def git_repo(parent, name):
 tmp = Path(tempfile.mkdtemp(prefix="lock-scope-probe."))
 target = git_repo(tmp, "the-repo-being-written")
 other = git_repo(tmp, "a-different-repo")
+link = tmp / "a-symlink-to-the-target"
+link.symlink_to(target)
 state = tmp / "state"
 state.mkdir()
 hb = datetime.now(timezone.utc).replace(tzinfo=None).isoformat()
 
 # (label, lock's repo_path/slug, target_repo passed to the gate, expect_the_verdict_to_change)
+# adversarial-verifier: "0 findings from a static scan is NOT a pass" — the changed path is
+# EXECUTED against boundary inputs here, not merely read. The slug-only and deleted-repo cases
+# are boundaries the other lock tests never drive; the symlink case is the both-ways CONTROL
+# that the match is made on the RESOLVED path (identity) rather than on how the path is
+# SPELLED — a symlinked path is the same repository and must keep authorising.
 CASES = [
     ("lock names THIS repo",            {"repo_path": str(target), "repo_slug": target.name}, str(target), False),
     ("lock names NO repo",              {},                                                    str(target), False),
     ("lock names a DIFFERENT repo",     {"repo_path": str(other), "repo_slug": other.name},    str(target), True),
+    ("boundary: SLUG only, no path",    {"repo_slug": "a-different-repo"},                     str(target), True),
+    ("boundary: path is a DELETED repo", {"repo_path": str(tmp / "gone"), "repo_slug": "gone"}, str(target), True),
+    ("boundary: SYMLINK to THIS repo",  {"repo_path": str(link), "repo_slug": link.name},      str(target), False),
 ]
 
-print(f"  {'fixture':34} {'deployed':>9} {'repo copy':>10}   verdict")
-print(f"  {'-'*34} {'-'*9} {'-'*10}   -------")
-changed_ok = True
+# The PRE-FIX baseline is extracted from a PINNED immutable revision, not read from the live
+# deployed copy: after the deploy the deployed copy IS the fix, so comparing against it would
+# compare the fix with itself. A pinned revision makes this table reproducible forever.
+prefix = tmp / "enforcer-before-the-fix.py"
+prefix.write_bytes(subprocess.run(
+    ["git", "-C", REPO, "show", f"{PREFIX_REV}:plugins/governance-enforcer/__init__.py"],
+    check=True, capture_output=True).stdout)
+
+COPIES = [("pre-fix", prefix), ("deployed", Path(DEPLOYED)), ("repo", Path(REPOCOPY))]
+print(f"  {'fixture':34} {'pre-fix':>8} {'deployed':>9} {'repo':>6}   verdict")
+print(f"  {'-'*34} {'-'*8} {'-'*9} {'-'*6}   -------")
+ok = True
 for label, repo_fields, target_arg, expect_change in CASES:
     lock = state / ".governance-sess-probe.json"
     lock.write_text(json.dumps({"task_id": "real-work", "session_id": "sess-probe",
                                 "heartbeat_at": hb, "ttl_seconds": 3600, **repo_fields}))
     got = {}
-    for name, path in (("deployed", DEPLOYED), ("repo", REPOCOPY)):
+    for name, path in COPIES:
         mod = load(f"probe_{name}", path)
         mod.GOVERNANCE_STATE_DIR = state
         got[name] = mod._has_governance_lock("sess-probe", target_arg)
-    did_change = got["deployed"] != got["repo"]
-    verdict = "CHANGED (the fix)" if did_change else "identical"
-    print(f"  {label:34} {str(got['deployed']):>9} {str(got['repo']):>10}   {verdict}")
+    did_change = got["pre-fix"] != got["repo"]
+    notes = []
+    if did_change:
+        notes.append("CHANGED (the fix)")
+    else:
+        notes.append("identical")
+    if got["deployed"] != got["repo"]:
+        notes.append("DEPLOY MISMATCH")
+        ok = False
+    print(f"  {label:34} {str(got['pre-fix']):>8} {str(got['deployed']):>9} "
+          f"{str(got['repo']):>6}   {' · '.join(notes)}")
     if did_change != expect_change:
-        changed_ok = False
+        ok = False
 
 print()
-if changed_ok:
-    print("  OK: the verdict changed ONLY where the defect was, and the valid cases are")
-    print("      byte-for-byte identical in behaviour — the fix is scoped to the hole.")
+if ok:
+    print("  OK: the verdict changed ONLY where the defect was; the valid cases and the")
+    print("      boundary cases are behaviourally identical; and the deployed copy agrees")
+    print("      with the repo copy on every row — the fix is scoped to the hole AND live.")
 else:
-    print("  FAIL: the changed/unchanged pattern does not match the defect — inspect above.")
-sys.exit(0 if changed_ok else 1)
+    print("  FAIL: the pattern does not match the defect — inspect the rows above.")
+sys.exit(0 if ok else 1)
 PROBE
 probe_rc=${PIPESTATUS[0]}
 say "   rc=$probe_rc   (0 = the verdict changed exactly where the defect was)"

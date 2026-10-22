@@ -1,10 +1,13 @@
 governance lock repo scope — evidence
-captured-at : f508a61e  (the working tree's revision)
+captured-at : eb9a5edf  (the working tree's revision)
 generated-by: docs/evidence/lock-repo-scope-2026-10-22.sh (this file wrote itself)
-deployed    : ~/.hermes/plugins/governance-enforcer/__init__.py — the copy in force AT
-              CAPTURE TIME, i.e. the PRE-DEPLOY (pre-fix) copy. That is what makes the
-              differential probe below discriminating; re-running this script AFTER the
-              deploy compares the fix with itself and correctly reports no change.
+pre-fix base: eb9a5edf~1  (PINNED, immutable — the revision immediately before the fix)
+              The differential probe extracts this revision with 'git show' rather than
+              reading the live deployed copy, so the comparison stays discriminating and
+              reproducible at ANY time, including after the deploy (post-deploy the
+              deployed copy IS the fix, and comparing against it would compare the fix
+              with itself).
+deployed    : ~/.hermes/plugins/governance-enforcer/__init__.py (the copy in force now)
 ────────────────────────────────────────────────────────────
 
 1. The defect, measured on this host
@@ -20,27 +23,43 @@ deployed    : ~/.hermes/plugins/governance-enforcer/__init__.py — the copy in 
 
 tests/test_repo_less_lock_handling.py ........                           [100%]
 
-============================== 8 passed in 1.13s ===============================
+============================== 8 passed in 1.14s ===============================
    rc captured unpiped below
    rc=0   (0 = all pass, including the foreign-repo case that failed before the fix)
 ────────────────────────────────────────────────────────────
 
 3. DIFFERENTIAL PROBE (enforcement-change-safety Rule 23)
-   The DEPLOYED copy is the oracle: it is the behaviour currently in force. Both copies
-   are loaded in ONE process and driven with the same fixtures against a throwaway
-   state dir. A verdict that CHANGES is a real behaviour change; the valid cases must
-   NOT change.
+   Three copies are loaded in ONE process and driven with the SAME fixtures against a
+   throwaway state dir (never live governance state):
+     pre-fix  = the pinned revision via 'git show'  — the behaviour being replaced
+     deployed = the copy in force right now         — proves the deploy landed
+     repo     = the working tree                    — the fix under test
+   A verdict that CHANGES between pre-fix and repo is a real behaviour change; every
+   case must be IDENTICAL between deployed and repo, or the deploy did not land.
 
-governance lock .governance-sess-probe.json names NO repo — refusing to authorise writes in '~/.hermes/cache/scratch/lock-scope-probe.tgss2eph/the-repo-being-written'; re-run begin_change with the repo declared
-governance lock .governance-sess-probe.json covers '~/.hermes/cache/scratch/lock-scope-probe.tgss2eph/a-different-repo', NOT '~/.hermes/cache/scratch/lock-scope-probe.tgss2eph/the-repo-being-written' — refusing to authorise writes here (the lock stays live: it is valid for its own repo). Re-run begin_change from the repo you are working in.
-  fixture                             deployed  repo copy   verdict
-  ---------------------------------- --------- ----------   -------
-  lock names THIS repo                    True       True   identical
-  lock names NO repo                     False      False   identical
-  lock names a DIFFERENT repo             True      False   CHANGED (the fix)
+   The 'governance lock … covers …, NOT …' lines below are the NEW refusal warnings
+   firing, on stderr as each case runs — they name BOTH repos, so a mis-scope is
+   diagnosable from the block message itself rather than from the review scope.
 
-  OK: the verdict changed ONLY where the defect was, and the valid cases are
-      byte-for-byte identical in behaviour — the fix is scoped to the hole.
+governance lock .governance-sess-probe.json names NO repo — refusing to authorise writes in '~/.hermes/cache/scratch/lock-scope-probe.m2ye00nk/the-repo-being-written'; re-run begin_change with the repo declared
+governance lock .governance-sess-probe.json covers '~/.hermes/cache/scratch/lock-scope-probe.m2ye00nk/a-different-repo', NOT '~/.hermes/cache/scratch/lock-scope-probe.m2ye00nk/the-repo-being-written' — refusing to authorise writes here (the lock stays live: it is valid for its own repo). Re-run begin_change from the repo you are working in.
+governance lock .governance-sess-probe.json covers '~/.hermes/cache/scratch/lock-scope-probe.m2ye00nk/a-different-repo', NOT '~/.hermes/cache/scratch/lock-scope-probe.m2ye00nk/the-repo-being-written' — refusing to authorise writes here (the lock stays live: it is valid for its own repo). Re-run begin_change from the repo you are working in.
+governance lock .governance-sess-probe.json covers 'a-different-repo', NOT '~/.hermes/cache/scratch/lock-scope-probe.m2ye00nk/the-repo-being-written' — refusing to authorise writes here (the lock stays live: it is valid for its own repo). Re-run begin_change from the repo you are working in.
+governance lock .governance-sess-probe.json covers 'a-different-repo', NOT '~/.hermes/cache/scratch/lock-scope-probe.m2ye00nk/the-repo-being-written' — refusing to authorise writes here (the lock stays live: it is valid for its own repo). Re-run begin_change from the repo you are working in.
+governance lock .governance-sess-probe.json covers '~/.hermes/cache/scratch/lock-scope-probe.m2ye00nk/gone', NOT '~/.hermes/cache/scratch/lock-scope-probe.m2ye00nk/the-repo-being-written' — refusing to authorise writes here (the lock stays live: it is valid for its own repo). Re-run begin_change from the repo you are working in.
+governance lock .governance-sess-probe.json covers '~/.hermes/cache/scratch/lock-scope-probe.m2ye00nk/gone', NOT '~/.hermes/cache/scratch/lock-scope-probe.m2ye00nk/the-repo-being-written' — refusing to authorise writes here (the lock stays live: it is valid for its own repo). Re-run begin_change from the repo you are working in.
+  fixture                             pre-fix  deployed   repo   verdict
+  ---------------------------------- -------- --------- ------   -------
+  lock names THIS repo                   True      True   True   identical
+  lock names NO repo                    False     False  False   identical
+  lock names a DIFFERENT repo            True     False  False   CHANGED (the fix)
+  boundary: SLUG only, no path           True     False  False   CHANGED (the fix)
+  boundary: path is a DELETED repo       True     False  False   CHANGED (the fix)
+  boundary: SYMLINK to THIS repo         True      True   True   identical
+
+  OK: the verdict changed ONLY where the defect was; the valid cases and the
+      boundary cases are behaviourally identical; and the deployed copy agrees
+      with the repo copy on every row — the fix is scoped to the hole AND live.
    rc=0   (0 = the verdict changed exactly where the defect was)
 ────────────────────────────────────────────────────────────
 
@@ -66,11 +85,9 @@ governance lock .governance-sess-probe.json covers '~/.hermes/cache/scratch/lock
 6. What this capture covers
    These files are UNCOMMITTED at capture time — the committed copy of this transcript
    lands one commit AFTER the run, so naming a commit here would be a claim the file
-   cannot make about itself. HEAD at capture: f508a61e
-      M plugins/governance-enforcer/__init__.py
-      M tests/test_repo_less_lock_handling.py
-     ?? docs/evidence/lock-repo-scope-2026-10-22.sh
-     ?? docs/evidence/lock-repo-scope-2026-10-22.txt
+   cannot make about itself. HEAD at capture: eb9a5edf
+      M docs/evidence/lock-repo-scope-2026-10-22.sh
+      M docs/evidence/lock-repo-scope-2026-10-22.txt
 ────────────────────────────────────────────────────────────
 
 end of evidence
