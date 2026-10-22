@@ -1,0 +1,84 @@
+command : bash docs/evidence/brand-intelligence-removal-2026-10-22.sh
+when    : 2026-10-22T10:07:41Z
+captured-at: 73d64be896d23dfd6263396beeed230ded6e675f
+note    : the removal is a DEPLOYED-TREE change — ~/.agents/skills/brand-intelligence
+          has no repo source, so the repo diff for this cycle is EMPTY and this
+          transcript IS the deliverable. Volatile by design: host paths normalised
+          to ~, scratch to $WORK, ANSI stripped.
+
+=== 1. what it was ===
+  path      : ~/.agents/skills/brand-intelligence   (12 files)
+  identity  : openclaw.plugin.json id=sigai-brand-intelligence, a THIRD-PARTY
+              (geo.sig.ai) openclaw plugin installed by 'openclaw plugins install'
+  files     : SKILL.md, skill-card.md, README.md, package.json, _meta.json,
+              openclaw.plugin.json, src/{index,client,config}.ts, and
+              skills/{brand-brief,compare-brands,watchlist-digest}/SKILL.md
+
+  WHY IT WAS DEAD WEIGHT — each checked, not assumed:
+    - its SKILL.md carried NO frontmatter, so every Agent-Skills loader DROPPED it
+    - its skills/ entries instruct an agent to call the plugin's sigai_* tools, and
+      those tools only exist when the openclaw runtime loads the plugin —
+      'command -v openclaw' → not installed; ~/.openclaw → absent
+    - nothing consumes it: no entry in ~/.hermes/plugins, no reference in the cron
+      store, and the only hits in ~/.hermes are caches, logs and DB snapshots
+    - it COLLIDED by name with the repo-owned skills/research/brand-intelligence,
+      because the loader derives a skill's name from its directory when the
+      frontmatter carries none — which is why skill_view('brand-intelligence')
+      could not resolve on this host
+
+=== 2. what was done — PRESERVED, not deleted ===
+  moved : ~/.agents/skills/brand-intelligence
+       -> ~/.hermes-cortex/skills/.archive/brand-intelligence-openclaw-plugin-2026-10-22
+  the destination is a dot-dir inside the cortex skills tree: a loader skips
+  dot-dirs, so the copy is out of every agent's view while remaining on disk.
+  ASSERT nothing was lost:
+    preserved files : 12   (must be 12)
+  ASSERT it is gone from the agent-visible tree:
+    ~/.agents/skills/brand-intelligence : absent
+
+=== 3. PROOF it was the sole cause — Pi's own loader, the dump re-materialised ===
+  a scratch root holding ONLY a copy of the preserved directory:
+  loader      : Pi 1.4.0
+  skills      : 0
+  diagnostics : {"warning":1}
+    warning: description is required  <- $WORK/withdump/brand-intelligence/SKILL.md
+  rc=1   (1 = diagnostics present, which is the point)
+
+=== 4. the same loader over the LIVE published tree ===
+  loader      : Pi 1.4.0
+  skills      : 441
+  diagnostics : {}
+  rc=0   (0 = no diagnostics at all)
+
+=== 5. the doctor's own view of the published tree ===
+  ✅ Skills manifest: always
+  ✅ Skills manifest: on_task
+  ✅ Skills manifest: disk check
+  ✅ Skills loadable
+  ⚠️  Overall: WARNING  (487 pass · 21 warn · 0 fail · 3 info)  · 9 undisposed
+  (the 'Skills loadable (published)' WARN that used to name brand-intelligence is
+   ABSENT above; it is present in the previous capture,
+   docs/evidence/doctor-interpreter-2026-10-22.txt, section 3.)
+
+=== verdict ===
+  The dump is preserved on disk and invisible to every agent. Pi's loader over the
+  published tree now reports ZERO diagnostics of any type — the whole defect class
+  this session started from is gone: no refused SKILL.md, no name collision.
+  The skill COUNT is the second half of the proof: section 4 loads 441, and the
+  PRE-removal capture of this same tree reports 441 too
+  (docs/evidence/skills-frontmatter-fix-2026-10-22.txt, section 4) — the dump
+  contributed nothing loadable, so nothing was lost by removing it.
+
+  Honest limits:
+    - This is a HOST-LOCAL fix. The deploy's stale pass deliberately skips
+      root-level skill dirs (it treats them as Hermes defaults), so this removal
+      will not be undone by a deploy — but it also does not propagate. Another
+      host carrying the same openclaw dump still gets the doctor WARN, which is
+      the correct behaviour: report it, do not silently delete it.
+    - plugins/hc-lean-index and install-lean-index.py still list 'brand-intelligence'
+      as a demoted CATEGORY. That entry is fleet-wide and may still match on hosts
+      with the Hermes catalogue, so it was deliberately left alone; here it now
+      matches nothing, which is harmless.
+    - No replacement was written. The capability is already covered by the
+      repo-owned skills/research/brand-intelligence, and the removed plugin's own
+      tools required the absent openclaw runtime plus a sig.ai account.
