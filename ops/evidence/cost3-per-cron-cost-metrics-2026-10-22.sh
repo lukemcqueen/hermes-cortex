@@ -143,8 +143,8 @@ say "## 4. test suite (every test file for this work — names and results)"
 # Select the suite by PATTERN rather than by asserting a fixed list: a hardcoded
 # path reads as a claim about what exists elsewhere, while the glob simply reports
 # what is on disk here.
-mapfile -t TESTS < <(cd "$REPO" && ls tests/test_runtime/test_cron_cost_*.py 2>/dev/null)
-say "selected ${#TESTS[@]} test file(s) matching tests/test_runtime/test_cron_cost_*.py"
+mapfile -t TESTS < <(cd "$REPO" && ls tests/test_runtime/test_*cost*.py 2>/dev/null)
+say "selected ${#TESTS[@]} test file(s) matching tests/test_runtime/test_*cost*.py"
 if [ "${#TESTS[@]}" -eq 0 ]; then
   say "NOTHING SELECTED — refusing to report a suite that could not be found"
   exit 3
