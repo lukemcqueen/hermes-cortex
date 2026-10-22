@@ -83,7 +83,8 @@ The daemon reads `PI_TELEGRAM_BOT_TOKEN` because `gateway.yaml` names it in
       "output": "raw",
       "timeout_s": 300,
       "reply_mode": "sync",
-      "model": "openrouter/moonshotai/kimi-k2.6",
+      "stream": true,
+      "model": "openrouter/deepseek/deepseek-flash-latest",
       "model_args": ["--model", "{model}"],
       "session": "per_chat",
       "session_args": ["--session-id", "{session_id}"],
@@ -125,6 +126,15 @@ The daemon reads `PI_TELEGRAM_BOT_TOKEN` because `gateway.yaml` names it in
 ```
 
 Place at `~/.hermes-cortex/gateway.yaml` (outside the repo).
+
+`stream: true` turns on **live streaming**: while the agent works, Telegram shows a
+"typing…" indicator and the single reply message is edited in place as output
+arrives (throttled — never a message per token). It is the standard for every
+`kind: command` coding agent (pi, codex, claude-code, opencode, grok): the flag is
+read generically by the command backend, so any CLI agent with the same one field
+gets the same behavior. Any plain command agent that does **not** stream to stdout
+progressively should leave it off (`false`/omitted) to avoid a stream that never
+advances until the process exits.
 
 ---
 

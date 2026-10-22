@@ -1,0 +1,46 @@
+Gateway streaming/typing/daemon suite results — regenerated run (2026-10-22).
+
+Command (run in the repo, interpreter: the fleet venv python3):
+    python3 -m pytest tests/test_gateway_streaming.py tests/test_gateway_typing.py \
+      tests/test_cortex_gateway_daemon.py tests/test_cortex_gateway_daemon_slice.py -q
+    rc=0
+
+This verifies the claims of the gateway streaming configuration change: the
+generic streaming machinery (_run_streaming line-buffered sink, daemon _Streamer
+single-message edits, _TypingKeeper indicator, transport edit/send/typing) is
+exercised end-to-end by committed tests, so setting stream: true on a command
+backend is the only wiring the config change supplies.
+
+SCOPE — four committed gateway test files:
+  tests/test_gateway_streaming.py           7 tests  (parity slice 6, one edited message)
+  tests/test_gateway_typing.py              7 tests  (live typing indicator)
+  tests/test_cortex_gateway_daemon.py      12 tests  (daemon turn lifecycle)
+  tests/test_cortex_gateway_daemon_slice.py 11 tests  (daemon slice behaviors)
+
+Captured output (host paths scrubbed to $HOME):
+
+============================= test session starts ==============================
+platform linux -- Python 3.14.8, pytest-9.1.1, pluggy-1.6.0
+rootdir: $HOME/hermes-cortex
+configfile: pytest.ini
+plugins: anyio-4.15.1
+collected 37 items
+
+tests/test_gateway_streaming.py .......                                  [ 18%]
+tests/test_gateway_typing.py .......                                     [ 37%]
+tests/test_cortex_gateway_daemon.py ............                         [ 70%]
+tests/test_cortex_gateway_daemon_slice.py ...........                    [100%]
+
+============================== 37 passed in 3.56s ==============================
+
+Live-config check (the change this range documents):
+  $HOME/.hermes-cortex/gateway.yaml  →  "stream": true on the pi backend,
+  "model": "openrouter/deepseek/deepseek-flash-latest".
+  gateway.yaml is live config outside the repo; the repo ships the examples.
+
+Note on pi streaming limits (recorded, not a defect of this range): pi itself
+buffers its whole turn — it emits zero stderr and one stdout chunk only at
+exit even with --thinking high + stdbuf -oL — so live "visible thinking" for pi
+is a pi-internal limitation. stream: true still gives real progressive output
+for agents that do stream (codex, claude-code, opencode), and the typing
+indicator covers pi.

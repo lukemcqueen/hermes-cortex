@@ -19,12 +19,12 @@ human → Telegram → transport → envelope → [ BACKEND ] → reply envelope
   {"name": "esther", "kind": "hermes"},
 
   {"name": "pi", "kind": "command",
-   "command": ["pi", "--model", "openrouter/moonshotai/kimi-k2.6"],
+   "command": ["pi", "--model", "openrouter/deepseek/deepseek-flash-latest"],
    "prompt_template": "{body}",
    "timeout_s": 300,
    "reply_mode": "sync",
    "capabilities": ["code", "review"],
-   "model": "openrouter/moonshotai/kimi-k2.6"}
+   "model": "openrouter/deepseek/deepseek-flash-latest"}
 ]
 ```
 
@@ -50,12 +50,12 @@ Spec fields (`AgentSpec`, `ops/scripts/cortex_gateway/agents.py`):
 ```json
 "backends": [
   {"name": "pi", "kind": "command",
-   "command": ["/home/esther/.pi/agent/bin/pi", "--model", "openrouter/moonshotai/kimi-k2.6"],
+   "command": ["/home/esther/.pi/agent/bin/pi", "--model", "openrouter/deepseek/deepseek-flash-latest"],
    "output": "last_line",
    "timeout_s": 300,
    "reply_mode": "sync",
    "capabilities": ["code", "review"],
-   "model": "openrouter/moonshotai/kimi-k2.6"}
+   "model": "openrouter/deepseek/deepseek-flash-latest"}
 ],
 "bots": [{"token_ref": "TELEGRAM_BOT_TOKEN", "channel": "telegram",
           "routing": {"default": "pi", "overrides": {}}}],
