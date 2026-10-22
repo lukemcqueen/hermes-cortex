@@ -217,7 +217,7 @@ Execute all approved actions:
      stubs fleet-wide (auto-upstream 8587b511, Jul 17).
    - Create `hermes-cortex/skills/<category>/<name>/SKILL.md`
    - **Version field required** — verify `version: x.y.z` is present in the
-     frontmatter BEFORE committing (fleet skill `cron-filesystem-fallback`
+     frontmatter BEFORE committing (fleet skill `cron-job-management`
      was upstreamed without it in f7a11579 and tripped the doctor's
      `Skill version` warning on every host until fixed 2026-08-19).
    3. `git add`, commit, push

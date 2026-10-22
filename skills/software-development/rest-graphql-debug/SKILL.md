@@ -8,7 +8,7 @@ metadata:
   hermes:
     tags: [api, rest, graphql, http, debugging, testing, curl, integration]
     category: software-development
-    related_skills: [systematic-debugging, test-driven-development]
+    related_skills: [root-cause-debugging, test-driven-development]
 ---
 
 # API Testing & Debugging
@@ -510,5 +510,5 @@ Missing required field `email`. Server validation rejects before processing.
 
 ## Related
 
-- `systematic-debugging` — once the failing API layer is isolated, root-cause your code
+- `root-cause-debugging` — once the failing API layer is isolated, root-cause your code
 - `test-driven-development` — write the regression test before shipping the fix

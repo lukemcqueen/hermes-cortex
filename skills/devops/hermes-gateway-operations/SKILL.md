@@ -441,6 +441,6 @@ session (`sshd → shell → hermes`) survives it, a session hosted BY the gatew
 ## Related
 - `hermes-agent` — general Hermes configuration
 - `telegram-delivery-diagnostics` — Telegram-specific delivery debugging
-- `cortex-bus-messaging` — inter-agent messaging (separate from the user gateway)
+- `cortex-bus` — inter-agent messaging (separate from the user gateway)
 - `psql-automation` — the `sg`/`NoNewPrivileges` store-access mechanism behind a
   "store unreachable" report from a hardened service

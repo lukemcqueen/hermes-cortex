@@ -205,7 +205,7 @@ It self-cleans via the silent `*_RESULT` handling.
 
 ## Related
 
-- `deployed-component-verification` — deployed-vs-repo matching (complementary)
+- `deploy-load-verification` — deployed-vs-repo matching (complementary)
 - `fleet-commands` — full bus dispatch protocol
 - `cortex-deployment-sync` — cortex update mechanics
 - `references/update-channel-resolution-timeout.md` — `hermes update` dies at

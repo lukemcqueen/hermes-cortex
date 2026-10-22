@@ -29,8 +29,8 @@ The 7 always-skills teach HOW to work; domain skills teach WHAT the craft requir
 |---|---|
 | Cron | `cron-job-management`, `cron-format-standard` |
 | Shell script | `shell-scripting` |
-| Deploy/install script | `shell-scripting`, `server-administration` |
-| nginx | `nginx-web-app-deployment` (security → `nginx-security-pipeline`) |
+| Deploy/install script | `shell-scripting`, `linux-server-hardening` |
+| nginx | `nginx-web-app-deployment` (covers the security pipeline too) |
 | Docker/compose | `docker-management`, `env-aware-compose-wrapper` |
 | Web app service | `nginx-web-app-deployment`, `prevent-crash-looping` |
 | Tests | `test-driven-development` |

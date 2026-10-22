@@ -20,7 +20,7 @@ author: Titus (ported from AgentKore)
 4. **Verify with real commands** — never claim success without evidence.
 5. **Test FIRST (TDD Iron Law)** — no production code without a failing test first. See `test-driven-development`. A test written after the code passes immediately and proves nothing.
 6. **Never ask "do you want tests?"** — testing is mandatory. Use the Test Decision Matrix in `change-test-loop`; never punt to the user (ask about zero-infra projects once, not per-task).
-7. **Never push to main** — branch per change; the review workflow merges it. Follow the repo's branch/PR convention.
+7. **Push only through a governed cycle** — `begin_change` → work → `feedback_accept` → `end_change` → deploy (`cortex-dogfood.sh --force`) → `git push origin main`. "The review workflow" is the adversarial close-review gate on the PUSH RANGE, not a branch/PR merge, so a governed push to `main` is the normal path. Integrate a peer's concurrent push with `git merge`, never a rebase — the range's receipt is tied to those commits and rewriting them invalidates it. Where a repo genuinely uses branch+PR, follow that repo's convention instead.
 8. **Follow repo conventions** — over generic advice.
 9. **Keep context lean** — load only needed skills.
 10. **Stop before destruction** — get approval for data loss, security risk, privilege escalation. A destructive command in a mid-flight or unattended path stalls on the approval gate and costs the turn, so when scratch state only needs to be FRESH, do not delete it: use a new unique path (`$WORK/probe-2/`) and build captures append-only. Once something is blocked, never rephrase or retry it toward the same outcome — switch to a non-destructive equivalent and carry on.

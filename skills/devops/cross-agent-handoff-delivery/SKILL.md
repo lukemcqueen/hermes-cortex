@@ -8,7 +8,7 @@ platforms: [linux, macos]
 metadata:
   hermes:
     tags: [cross-agent, handoff, bus, delivery, verification, messaging]
-    related_skills: [cross-agent-design, bus-inbox-check, agent-fundamentals]
+    related_skills: [cross-agent-design, cortex-bus, agent-fundamentals]
 ---
 
 # Cross-Agent Handoff Delivery

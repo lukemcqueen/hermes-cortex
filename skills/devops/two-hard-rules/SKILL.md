@@ -83,7 +83,7 @@ say 'are you bypassing governance?'" If yes, you're about to make a mistake.
 |-------|-----------------|--------------|-------------|
 | Skills gate | Load 7 skills | Which 7 skills | skill_view() (list bundled in task-start) |
 | Lock required | begin_change() | task_id + description | MCP tool |
-| Reflexion check | Load reflexion-check | Answer 7 questions | skill_view() |
+| Reflexion check | Load reflexion-check | Answer 8 questions | skill_view() |
 | Adversarial verify | Fix issues | What failed | Fix them |
 | Dogfood | Deploy + test | cortex-update.sh | Run it |
 

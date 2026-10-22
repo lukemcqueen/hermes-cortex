@@ -8,7 +8,7 @@ platforms: [linux, macos]
 metadata:
   hermes:
     tags: [installer, validation, stale-reference, decommission, deploy, sweep, orchestrator-gate]
-    related_skills: [shell-scripting, repo-gotchas, deployed-component-verification, enforcement-change-safety]
+    related_skills: [shell-scripting, repo-gotchas, deploy-load-verification, enforcement-change-safety]
 ---
 
 # Installer Validation

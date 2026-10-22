@@ -1,6 +1,6 @@
 # Silent-JSON-Wrapper Case — agent-inbox-workday (2026-08-19)
 
-Case notes for the false positive documented in `cron-output-diagnostics`.
+Case notes for the false positive documented in `cron-job-management`.
 Facts below are as recorded in the SKILL.md body (upstreamed from the fleet
 skill report); this file makes the referenced evidence trail concrete.
 

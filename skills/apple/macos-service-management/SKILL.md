@@ -136,4 +136,4 @@ demand-only launching.
 
 ## Related
 - `macos-computer-use` — macOS desktop automation
-- `server-administration` — the Linux-side equivalent (systemd)
+- `linux-server-hardening` — the Linux-side equivalent (systemd)

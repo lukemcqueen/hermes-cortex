@@ -817,7 +817,7 @@ Enforced at 3 layers: pre-commit hook (static gate), enforcer (blocks commit unt
 
 ## Phase 6: Reflexion
 
-Run reflexion-check (7 questions). Score HIGH/MEDIUM/LOW/ZERO. MEDIUM → disclose; LOW/ZERO → fix before delivering. Ask: "What is the most likely thing I got wrong?" (Mandatory for multi-file/service/config changes; 10s mental pass for trivial ones.)
+Run reflexion-check (8 questions). Score HIGH/MEDIUM/LOW/ZERO. MEDIUM → disclose; LOW/ZERO → fix before delivering. Ask: "What is the most likely thing I got wrong?" (Mandatory for multi-file/service/config changes; 10s mental pass for trivial ones.)
 
 ## Anti-Patterns
 "I tested it manually" · "agents won't see that message" · "the rest is trivial" · "other OS can wait" · "docs later" · "the hook didn't catch it" · "I'll write a migration script" (the commit IS the migration) · "long sleep" (poll short intervals) · "worked from my repo terminal" (test from the deployed path — Path("") from an unset env var is the classic cron crash).

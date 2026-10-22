@@ -104,7 +104,7 @@ Phases run: 1-10 (audit) + 11 (remediation) + 14 (cleanup)
 ```
 
 ## Related
-- `server-hardening` — five-layer hardening methodology (complementary)
+- `linux-server-hardening` — five-layer hardening methodology (complementary)
 - `linux-server-hardening` — tiered hardening with priorities
-- `nginx-security-pipeline` — nginx-specific defense
+- `nginx-web-app-deployment` — nginx-specific defense
 - `threat-defense-pipeline` — fail2ban + nginx blocking layer

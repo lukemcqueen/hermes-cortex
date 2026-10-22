@@ -12,7 +12,7 @@ platforms: [linux, macos]
 metadata:
   hermes:
     tags: [orchestrator, tasks, fleet, backlog, dispatch]
-    related_skills: [task-persistence, fleet-commands, cortex-bus-automation, change-test-loop]
+    related_skills: [task-persistence, fleet-commands, cortex-bus, change-test-loop]
 ---
 
 # Orchestrator Backlog Driver (F-023)

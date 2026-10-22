@@ -281,8 +281,8 @@ of input tokens per run.
 
 | Cron type | Best skill(s) | Best toolsets |
 |-----------|---------------|---------------|
-| `cortex-bus-*` | `cortex-bus-automation` | `terminal` |
-| `agent-inbox-*` | `cortex-bus-automation` | `terminal` |
+| `cortex-bus-*` | `cortex-bus` | `terminal` |
+| `agent-inbox-*` | `cortex-bus` | `terminal` |
 | `agent-fixer-*` | `auto-remediation` | `terminal, file, web` |
 | `orch-skill-lifecycle` | `orch-skill-lifecycle` | `terminal, file, web` |
 | `orch-skill-evaluate` | `skill-vetting` | `terminal, file` |

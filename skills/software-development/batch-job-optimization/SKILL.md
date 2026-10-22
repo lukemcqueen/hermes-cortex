@@ -8,7 +8,7 @@ platforms: [linux]
 metadata:
   hermes:
     tags: [performance, optimization, batch, database, profiling, queries]
-    related_skills: [root-cause-debugging, project-map, server-hardening]
+    related_skills: [root-cause-debugging, project-map, linux-server-hardening]
 ---
 
 # Batch Job Optimization
@@ -201,4 +201,4 @@ time rails runner 'ImportJob.new.perform'
 - `root-cause-debugging` — 6-phase debugging framework
 - `project-map` — understand the codebase structure first
 - `rails-data-pipeline-debugging` — data transformation debugging in Rails
-- `server-hardening` — system-level tuning (complementary)
+- `linux-server-hardening` — system-level tuning (complementary)

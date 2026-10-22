@@ -5,7 +5,7 @@ version: 1.0.0
 category: software-development
 platforms: [linux, macos]
 aliases: [axi, axi-conventions, toon-output, agent-facing-output]
-related_skills: [cron-format-standard, architecture-review, requirements-elicitation, change-checklist, adversarial-verifier, cron-output-contracts]
+related_skills: [cron-format-standard, architecture-review, requirements-elicitation, change-checklist, adversarial-verifier, cron-job-management]
 ---
 
 # Agent-Ergonomic Output (AXI)

@@ -26,10 +26,20 @@ Nothing comes before this skill. Execute the sequence in order; do not skip or d
 ## START HERE — the first 90 seconds
 
 The governance chain is a fixed, known list of calls. Do them in ONE turn each and
-do not improvise:
+do not improvise. **The order here is the same as `The Sequence` below and the Quick
+Reference table — all three agree, so there is nothing to reconcile.**
 
 ```text
-# 1. All 7 always-skills in ONE turn (7 skill_view calls, batched — read-only, always allowed):
+# 1. Learn from past cycles (MCP, allowed before any lock):
+mcp__loop_governance__cache_search(query="<what you are about to do>")
+
+# 2. Open the governance lock — exact tool name, double underscores:
+mcp__loop_governance__begin_change(task_id="<short-name>", description="<what this does>")
+
+# 3. All 7 always-skills in ONE turn (7 skill_view calls, batched — read-only, always
+#    allowed). Do this BEFORE your first write tool: Gate 1 blocks a write until all 7
+#    are loaded, and a write outside a cycle also trips Gate 2. Loading them first is
+#    equally fine — the gates only care that both are satisfied before you write.
 skill_view(name='task-start')            # this file — bundles the whole sequence
 skill_view(name='agent-flow')            # workflow router + reasoning patterns
 skill_view(name='reflexion-check')       # self-critique before delivering
@@ -37,12 +47,6 @@ skill_view(name='change-checklist')      # pre-ship verification
 skill_view(name='survey-before-action')  # pre-flight resource search
 skill_view(name='agent-contract')        # execution rules
 skill_view(name='test-driven-development')  # TDD Iron Law
-
-# 2. Learn from past cycles (MCP, allowed before any lock):
-mcp__loop_governance__cache_search(query="<what you are about to do>")
-
-# 3. Open the governance lock — exact tool name, double underscores:
-mcp__loop_governance__begin_change(task_id="<short-name>", description="<what this does>")
 
 # 4. ... work ... then score and release — scores in the SAME call (a bare
 #    note is refused, 2026-09-23; there is no retry-and-add-scores step):
@@ -82,7 +86,7 @@ to your orchestrator (Moses/Esther). Never hand-write a lock file.
 8. Restore todos — ~/.hermes-cortex/scripts/task-db.py pending → todo(todos=<items>, merge=true)
 9. Survey — run `survey-before-action`'s checklist before creating/writing anything.
 10. Work — execute using the loaded skills.
-11. Reflexion — reflexion-check seven-question audit; if LOW/ZERO, fix before delivering.
+11. Reflexion — reflexion-check EIGHT-question audit; if LOW/ZERO, fix before delivering.
 12. Change checklist — change-checklist all phases before end_change() (Phase 6 Reflexion mandatory).
 13. Score and close — feedback_accept → end_change.
 

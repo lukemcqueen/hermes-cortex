@@ -9,7 +9,7 @@ aliases: [todo-persistence]
 metadata:
   hermes:
     tags: [task, persistence, session, postgres, tasks, protocol, todo]
-    related_skills: [session-manager, agent-fundamentals, task-start, session-start-discipline, cortex-bus-automation]
+    related_skills: [session-manager, agent-fundamentals, task-start, session-start-discipline, cortex-bus]
 ---
 
 # Task Persistence — Cross-Session Task Tracking (tasks schema)
@@ -175,7 +175,7 @@ The fleet handler (`agent-message-handler.py`) creates a `tasks.tasks` row
   `TASKS_NOTIFY_MUTE=in_progress,paused`; quiet hours via
   `TASKS_NOTIFY_QUIET=22:00-07:00`.
 - **Never silently drop:** a handled ISSUES/PROPOSAL must be transitioned to
-  completed (or paused if deferred). See `cortex-bus-automation` skill.
+  completed (or paused if deferred). See `cortex-bus` skill.
 
 ## Honest Fleet Semantics (party B-3)
 
