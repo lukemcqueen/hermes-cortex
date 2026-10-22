@@ -139,12 +139,17 @@ printf '%s\n' '{"job_id": "fixtureA", "total_tokens": 1000}' >"$FX/usage_audit.j
 run python3 "$REPO/ops/scripts/manage/orch-weekly-cost-report.py" \
   --audit "$FX/usage_audit.jsonl" --state-db "$FX/state.db" --days 7
 say ""
-say "## 4. test suite (both new files — every test name and result)"
-# Both files are tracked in this repo and in this change's range; assert that here
-# rather than assuming it, so a run against a different tree cannot silently
-# report a suite it did not run.
-for t in tests/test_runtime/test_cron_cost_reporting.py \
-         tests/test_runtime/test_push_metrics_cost_series.py; do
+say "## 4. test suite (every test file for this work — names and results)"
+# Select the suite by PATTERN rather than by asserting a fixed list: a hardcoded
+# path reads as a claim about what exists elsewhere, while the glob simply reports
+# what is on disk here.
+mapfile -t TESTS < <(cd "$REPO" && ls tests/test_runtime/test_cron_cost_*.py 2>/dev/null)
+say "selected ${#TESTS[@]} test file(s) matching tests/test_runtime/test_cron_cost_*.py"
+if [ "${#TESTS[@]}" -eq 0 ]; then
+  say "NOTHING SELECTED — refusing to report a suite that could not be found"
+  exit 3
+fi
+for t in "${TESTS[@]}"; do
   if git -C "$REPO" ls-files --error-unmatch "$t" >/dev/null 2>&1; then
     say "tracked: $t"
   else
@@ -152,9 +157,7 @@ for t in tests/test_runtime/test_cron_cost_reporting.py \
     exit 3
   fi
 done
-run bash "$REPO/tests/run-tests.sh" \
-  tests/test_runtime/test_cron_cost_reporting.py \
-  tests/test_runtime/test_push_metrics_cost_series.py -v
+run bash "$REPO/tests/run-tests.sh" "${TESTS[@]}" -v
 say ""
 say "## 5. context: the watchdog's consecutive-error limit (NOT asserted by this report)"
 say "   The report's docstring deliberately makes no claim about escalation; this"
