@@ -1,15 +1,15 @@
 === soul-refinement window transcript ===
 generated-by : docs/evidence/soul-refine-window-2026-10-22.sh (writes this file itself)
-captured-at  : 01426680
+captured-at  : ac28bc7c
 store        : ~/.hermes/state.db (read-only, mode=ro)
 
 [1] WINDOW
-    now (run time) : 2026-10-22 23:22:03  (<digits>.348)
+    now (run time) : 2026-10-22 23:24:40  (<digits>.588)
     prior soul-refinement sessions (newest first):
       cron_8449be867645_<digits>_231420  started=2026-10-21 23:14:26  last_activity=2026-10-21 23:25:02  ended=2026-10-21 23:25:53
       cron_8449be867645_<digits>_231420  started=2026-10-20 23:14:25  last_activity=2026-10-20 23:32:29  ended=2026-10-20 23:32:36
       cron_8449be867645_<digits>_231454  started=2026-10-19 23:14:59  last_activity=2026-10-19 23:34:33  ended=2026-10-19 23:35:07
-    start bound = previous pass's last_activity_at = 2026-10-21 23:25:02  (23.95 h)
+    start bound = previous pass's last_activity_at = 2026-10-21 23:25:02  (23.99 h)
 
 [2] SESSION CLASSIFICATION (sessions.source, one column — not an id prefix)
     sessions in window: 31   cron=24  subagent=5  telegram=2
@@ -27,20 +27,73 @@ store        : ~/.hermes/state.db (read-only, mode=ro)
       - 2026-10-22 20:21:06  sess=<digits>_181827_563b91f1  chars=56  :: There’s no alternative at the moment. Just grind it out.
 
 [4] SAME-DAY CODIFICATION CHECKS (the decision rule: verify before writing)
-    each check: the commit that landed it (git log --grep, since the start bound),
-    or the doc/skill that carries the rule where no commit was owed (grep -rl).
-    [rc=0] operator 15:24  spare humans / refuse agents
-          74b242c4 feat(guard): spare humans, refuse agents — two layers, because one cannot do both
-    [rc=0] operator 16:02  is everything pushed and ready
-          skills/devops/deploy-load-verification/SKILL.md,skills/devops/enforcement-change-safety/SKILL.md
-    [rc=0] operator 18:20  skills must load for ALL coding agents
-          5bdf7b30 fix(skills): make 30 deprecated redirect stubs loadable, repair 4 invalid frontmatters
-    [rc=0] operator 18:20  a loader that would drop a skill is a FAIL
-          aeeb2d9f feat(doctor): FAIL when a loader would drop one of our skills
-    [rc=0] operator 18:20  the checker must resolve its own interpreter
-          73d64be8 fix(doctor): resolve its own interpreter — it was running degraded, silently
-    [rc=0] operator 20:21  'just grind it out' (override, no new rule owed)
-          skills/software-development/change-checklist/SKILL.md,docs/templates/SOUL.md
+    each check prints the evidence itself: for a commit, the commit's own %h/%ad/%s plus
+    its message body; where no commit was owed, the matched rule LINES (grep -rn) from the
+    file that carries the rule. A finding-count summary is not a quote — see [6].
+    [operator 15:24  spare humans / refuse agents]
+        $ git log --oneline --fixed-strings --grep='feat(guard): spare humans, refuse agents' --since='2026-10-21 23:25:02'   -> rc=0
+        $ git log -1 --format='%h %ad %s / BODY' 74b242c4   -> rc=0
+            74b242c4 2026-10-22 feat(guard): spare humans, refuse agents — two layers, because one cannot do both
+            BODY:
+            The commit-scope guard refuses a bare `git commit` so a commit cannot sweep a peer's staged
+            work. Cycle 13611 widened it to every repo the cortex hooks cover, and the host that matters
+            most is TITUS, where humans make manual commits in client repos — the very history the
+            repo-scope comment records (manual commits blocked at the reflexion gate, pushes at the
+            pre-push lock gate). So the widening now interrupts the humans the original scoping protected.
+            
+            WHY THE OBVIOUS DISCRIMINATORS FAIL: humans and agents share ONE unix account here (verified:
+            `esther`, uid 1000, is the only human-capable account in /etc/passwd), so any signal the agent
+            ... (44 more body lines in the commit)
+    [operator 16:02  is everything pushed and ready]
+        $ grep -rn -F --include=*.md 'Deploy ≠ load' skills docs/templates   -> rc=0
+            skills/devops/deploy-load-verification/SKILL.md:28:**Deploy ≠ load.** Verification = compare when the process started vs when the
+            skills/devops/enforcement-change-safety/SKILL.md:726:- **Deploy ≠ loaded — and do not assume WHICH way.** `cortex-update.sh` puts the new
+    [operator 18:20  skills must load for ALL coding agents]
+        $ git log --oneline --fixed-strings --grep='make 30 deprecated redirect stubs loadable' --since='2026-10-21 23:25:02'   -> rc=0
+        $ git log -1 --format='%h %ad %s / BODY' 5bdf7b30   -> rc=0
+            5bdf7b30 2026-10-22 fix(skills): make 30 deprecated redirect stubs loadable, repair 4 invalid frontmatters
+            BODY:
+            An Agent-Skills loader refuses a SKILL.md with no `description`, so every
+            deprecated redirect stub was invisible to coding agents — the "load X instead"
+            body never reached one, which defeats the point of keeping the stub at all.
+            Reproduced with Pi's own loader (dist/core/skills.js, Pi 1.3.0) against the
+            published tree: 31x "description is required".
+            
+            - 30 stubs: add `description: "DEPRECATED alias — merged into <target>. Load
+              <target> instead."` Targets: cortex-bus (10), cron-job-management (7),
+            ... (13 more body lines in the commit)
+    [operator 18:20  a loader that would drop a skill is a FAIL]
+        $ git log --oneline --fixed-strings --grep='FAIL when a loader would drop one of our skills' --since='2026-10-21 23:25:02'   -> rc=0
+        $ git log -1 --format='%h %ad %s / BODY' aeeb2d9f   -> rc=0
+            aeeb2d9f 2026-10-22 feat(doctor): FAIL when a loader would drop one of our skills
+            BODY:
+            Adds `check_skills_loadable` to the cortex doctor. A SKILL.md that fails the
+            Agent-Skills rules is dropped from EVERY coding agent's skill index without an
+            error anyone reads — measured 2026-10-22: 30 deprecated redirect stubs carried no
+            `description`, so the "merged into X, load that instead" body they exist to
+            deliver reached no agent on any host, and nothing in the repo noticed.
+            
+            The rules are Pi's own validators (dist/core/skills.js): frontmatter must parse
+            as YAML, `description` is REQUIRED and non-empty, `name` must be lowercase
+            ... (27 more body lines in the commit)
+    [operator 18:20  the checker must resolve its own interpreter]
+        $ git log --oneline --fixed-strings --grep='resolve its own interpreter' --since='2026-10-21 23:25:02'   -> rc=0
+        $ git log -1 --format='%h %ad %s / BODY' 73d64be8   -> rc=0
+            73d64be8 2026-10-22 fix(doctor): resolve its own interpreter — it was running degraded, silently
+            BODY:
+            The doctor is documented as `python3 cortex-doctor.py`, and on a fleet host
+            `python3` is whatever the agent's session has on PATH. Measured 2026-10-22 on
+            esther that is the Hermes runtime venv
+            (~/.hermes/installs/<id>/environments/<id>/venv/bin/python3), which cannot import
+            yaml. So EVERY yaml-dependent check ran weaker than it reported and nothing said
+            so: the skills manifest fell back to a substring scan ('Skills manifest (basic)')
+            and check_skills_loadable dropped to text mode. An operator reads a clean report
+            and believes it — which is why this kept coming back.
+            ... (30 more body lines in the commit)
+    [operator 20:21  'just grind it out' (override, no new rule owed)]
+        $ grep -rn -F --include=*.md 'override is final' skills docs/templates   -> rc=0
+            skills/software-development/change-checklist/SKILL.md:28:- [ ] Pushback Check (3 questions, BEFORE begin_change) — Is this idea wrong (harm, data loss, wrong scope, bette
+            docs/templates/SOUL.md:103:Pushback is a gate, not a veto — an override is final, execute faithfully.
 
 [5] VERDICT
     window non-empty: YES   operator rows: 4   landed-or-carried: 6/6
@@ -54,7 +107,7 @@ store        : ~/.hermes/state.db (read-only, mode=ro)
        Attack Surface:
          ⚠️ Inputs: 3 item(s)
          ⚠️ State: 2 item(s)
-         ⚠️ Dependencies: 3 item(s)
+         ⚠️ Dependencies: 4 item(s)
          ✅ Concurrency: 0 item(s)
        Functions: 1
          - run(args, cwd)
@@ -64,7 +117,29 @@ store        : ~/.hermes/state.db (read-only, mode=ro)
        ⚪ Info: 16
     🟡 Medium findings — fix before shipping.
     ✅ GATE_PASSED — no critical/high findings
-    rc=0   (0 = GATE_PASSED, i.e. no critical/high finding. The medium items are the fuzzer's generic input/state surface notes on a read-only script and do not gate.)
+    rc=0   (0 = GATE_PASSED, i.e. no critical/high finding)
+
+    the SAME run with --json, so every finding is quoted rather than characterised:
+    total_findings=18  severity_counts={'critical': 0, 'high': 0, 'medium': 2, 'low': 0, 'info': 16}
+      - ADV-2026-10-22-001 [medium] input-fuzzing @ docs/evidence/soul-refine-window-2026-10-22.sh:run() | parameter=args expected_type=any value_repr=None
+      - ADV-2026-10-22-002 [info] input-fuzzing @ docs/evidence/soul-refine-window-2026-10-22.sh:run() | parameter=args expected_type=any value_repr=''
+      - ADV-2026-10-22-003 [info] input-fuzzing @ docs/evidence/soul-refine-window-2026-10-22.sh:run() | parameter=args expected_type=any value_repr=-1
+      - ADV-2026-10-22-004 [info] input-fuzzing @ docs/evidence/soul-refine-window-2026-10-22.sh:run() | parameter=args expected_type=any value_repr=0
+      - ADV-2026-10-22-005 [info] input-fuzzing @ docs/evidence/soul-refine-window-2026-10-22.sh:run() | parameter=args expected_type=any value_repr='aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+      - ADV-2026-10-22-006 [info] input-fuzzing @ docs/evidence/soul-refine-window-2026-10-22.sh:run() | parameter=args expected_type=any value_repr=[]
+      - ADV-2026-10-22-007 [info] input-fuzzing @ docs/evidence/soul-refine-window-2026-10-22.sh:run() | parameter=args expected_type=any value_repr={}
+      - ADV-2026-10-22-008 [info] input-fuzzing @ docs/evidence/soul-refine-window-2026-10-22.sh:run() | parameter=args expected_type=any value_repr=True
+      - ADV-2026-10-22-009 [info] input-fuzzing @ docs/evidence/soul-refine-window-2026-10-22.sh:run() | parameter=args expected_type=any value_repr=False
+      - ADV-2026-10-22-010 [medium] input-fuzzing @ docs/evidence/soul-refine-window-2026-10-22.sh:run() | parameter=cwd expected_type=any value_repr=None
+      - ADV-2026-10-22-011 [info] input-fuzzing @ docs/evidence/soul-refine-window-2026-10-22.sh:run() | parameter=cwd expected_type=any value_repr=''
+      - ADV-2026-10-22-012 [info] input-fuzzing @ docs/evidence/soul-refine-window-2026-10-22.sh:run() | parameter=cwd expected_type=any value_repr=-1
+      - ADV-2026-10-22-013 [info] input-fuzzing @ docs/evidence/soul-refine-window-2026-10-22.sh:run() | parameter=cwd expected_type=any value_repr=0
+      - ADV-2026-10-22-014 [info] input-fuzzing @ docs/evidence/soul-refine-window-2026-10-22.sh:run() | parameter=cwd expected_type=any value_repr='aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+      - ADV-2026-10-22-015 [info] input-fuzzing @ docs/evidence/soul-refine-window-2026-10-22.sh:run() | parameter=cwd expected_type=any value_repr=[]
+      - ADV-2026-10-22-016 [info] input-fuzzing @ docs/evidence/soul-refine-window-2026-10-22.sh:run() | parameter=cwd expected_type=any value_repr={}
+      - ADV-2026-10-22-017 [info] input-fuzzing @ docs/evidence/soul-refine-window-2026-10-22.sh:run() | parameter=cwd expected_type=any value_repr=True
+      - ADV-2026-10-22-018 [info] input-fuzzing @ docs/evidence/soul-refine-window-2026-10-22.sh:run() | parameter=cwd expected_type=any value_repr=False
+    --json rc=0
 [probe rc=0]
 python mining pass rc=0
 

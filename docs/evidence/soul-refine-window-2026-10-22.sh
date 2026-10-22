@@ -33,6 +33,7 @@ echo
 
 python3 - <<'PY'
 import re, subprocess, sqlite3, sys, time
+import json
 from pathlib import Path
 
 RC = 0
@@ -144,8 +145,9 @@ if not sess:
 
 say()
 say("[4] SAME-DAY CODIFICATION CHECKS (the decision rule: verify before writing)")
-say("    each check: the commit that landed it (git log --grep, since the start bound),")
-say("    or the doc/skill that carries the rule where no commit was owed (grep -rl).")
+say("    each check prints the evidence itself: for a commit, the commit's own %h/%ad/%s plus")
+say("    its message body; where no commit was owed, the matched rule LINES (grep -rn) from the")
+say("    file that carries the rule. A finding-count summary is not a quote — see [6].")
 since = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(prev))
 checks = [
     ("operator 15:24  spare humans / refuse agents", "commit",
@@ -163,20 +165,36 @@ checks = [
 ]
 landed = 0
 for label, kind, pat in checks:
+    say(f"    [{label}]")
     if kind == "commit":
         rc, out = run(["git", "log", "--oneline", "--fixed-strings", f"--grep={pat}",
-                       f"--since={since}", "--max-count=3"])
-        first = out.splitlines()[0] if out.strip() else "(NO MATCHING COMMIT)"
-        hit = bool(out.strip())
+                       f"--since={since}", "--max-count=1"])
+        sha = out.split()[0] if out.strip() else None
+        hit = bool(sha)
+        say(f"        $ git log --oneline --fixed-strings --grep={pat!r} --since={since!r}"
+            f"   -> rc={rc}")
+        if hit:
+            rc2, det = run(["git", "log", "-1", "--format=%h %ad %s%nBODY:%n%b",
+                            "--date=short", sha])
+            lines = det.splitlines()
+            say(f"        $ git log -1 --format='%h %ad %s / BODY' {sha}   -> rc={rc2}")
+            for ln in lines[:10]:
+                say(f"            {ln[:170]}")
+            if len(lines) > 10:
+                say(f"            ... ({len(lines) - 10} more body lines in the commit)")
+        else:
+            say("            (NO MATCHING COMMIT)")
     else:
-        rc, out = run(["grep", "-rl", "--include=*.md", "--include=*.py", "--include=*.sh",
-                       "-F", pat, "skills", "docs/templates", "ops", "AGENTS.md"])
-        files = out.splitlines()
-        first = ",".join(files[:2]) if files else "(NO CARRYING FILE)"
-        hit = bool(files)
+        rc, out = run(["grep", "-rn", "-F", "--include=*.md", pat,
+                       "skills", "docs/templates"])
+        lines = [l for l in out.splitlines() if l.strip()]
+        hit = bool(lines)
+        say(f"        $ grep -rn -F --include=*.md {pat!r} skills docs/templates   -> rc={rc}")
+        for ln in lines[:2]:
+            say(f"            {ln[:170]}")
+        if not lines:
+            say("            (NO CARRYING FILE)")
     landed += 1 if hit else 0
-    say(f"    [rc={rc}] {label}")
-    say(f"          {first[:120]}")
 
 say()
 say("[5] VERDICT")
@@ -196,8 +214,33 @@ gr, gout = run(["python3", str(Path.home() / ".hermes-cortex/scripts/adversarial
 for line in gout.splitlines():
     if line.strip():
         say(f"    {line}")
-say(f"    rc={gr}   (0 = GATE_PASSED, i.e. no critical/high finding. The medium items are the"
-    " fuzzer's generic input/state surface notes on a read-only script and do not gate.)")
+say(f"    rc={gr}   (0 = GATE_PASSED, i.e. no critical/high finding)")
+say()
+say("    the SAME run with --json, so every finding is quoted rather than characterised:")
+jrc, jout = run(["python3", str(Path.home() / ".hermes-cortex/scripts/adversarial-verify.py"),
+                 "--file", "docs/evidence/soul-refine-window-2026-10-22.sh",
+                 "--level", "A2", "--json"])
+try:
+    blob = json.loads(jout)
+except Exception as exc:  # noqa: BLE001 — a parse failure must be visible, not silent
+    say(f"    !! --json output did not parse ({exc}); raw output follows unchanged")
+    for ln in jout.splitlines()[:20]:
+        say(f"    {ln}")
+else:
+    findings = blob.get("findings", blob if isinstance(blob, list) else [])
+    say(f"    total_findings={blob.get('total_findings')}"
+        f"  severity_counts={blob.get('severity_counts')}")
+    for f in findings:
+        if not isinstance(f, dict):
+            say(f"      - {str(f)[:150]}")
+            continue
+        say(f"      - {f.get('finding_id')} [{f.get('severity')}] {f.get('technique')}"
+            f" @ {str(f.get('target'))[:70]} | parameter={f.get('parameter')}"
+            f" expected_type={f.get('expected_type')}"
+            f" value_repr={str(f.get('value_repr'))[:40]}")
+    if not findings:
+        say("      (no finding objects in the JSON — the summary above is the whole result)")
+say(f"    --json rc={jrc}")
 con.close()
 print(f"[probe rc={RC}]")
 sys.exit(RC)
