@@ -294,13 +294,18 @@ COST_METRICS_BIN="${PUSH_METRICS_COST_BIN:-${HOME}/.hermes-cortex/scripts/cron-c
 
 collect_cost_metrics() {
   [ -f "$COST_METRICS_BIN" ] || return 0
-  local out rc=0
+  local out err rc=0
+  err="$(mktemp)"
   out="$("${PUSH_METRICS_PYTHON:-python3}" "$COST_METRICS_BIN" --prometheus \
-        --agent "$AGENT_NAME" 2>/dev/null)" || rc=$?
+        --agent "$AGENT_NAME" 2>"$err")" || rc=$?
   if [ "$rc" -ne 0 ]; then
-    echo "[push-metrics] cost metrics generator exited ${rc} — cost series omitted from this push (spend is NOT zero)" >&2
+    # Never swallow the generator's own diagnostic — an exit code alone sends the
+    # reader hunting for the reason (finding ADV-13655-1 on cycle 13655).
+    echo "[push-metrics] cost metrics generator exited ${rc} — cost series omitted from this push (spend is NOT zero); generator said: $(tr '\n' ' ' <"$err")" >&2
+    rm -f "$err"
     return 0
   fi
+  rm -f "$err"
   printf '%s\n' "$out"
 }
 

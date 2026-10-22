@@ -32,11 +32,13 @@ def _stub_curl(tmp: Path, capture: Path, code: str = "204") -> Path:
     return p
 
 
-def _generator(tmp: Path, *, lines=(), rc=0, name="cost-gen") -> Path:
+def _generator(tmp: Path, *, lines=(), rc=0, name="cost-gen", stderr="") -> Path:
     p = tmp / name
     body = "#!/usr/bin/env python3\n"
     if lines:
         body += "print(" + repr("\n".join(lines)) + ")\n"
+    if stderr:
+        body += "import sys; print(" + repr(stderr) + ", file=sys.stderr)\n"
     body += f"raise SystemExit({rc})\n"
     p.write_text(body)
     p.chmod(p.stat().st_mode | stat.S_IEXEC | stat.S_IXGRP | stat.S_IXOTH)
@@ -91,9 +93,13 @@ def test_working_generator_lands_in_the_same_push(tmp_path):
 
 def test_failing_generator_does_not_fail_the_push_and_says_so(tmp_path):
     capture = tmp_path / "payload.txt"
-    gen = _generator(tmp_path, rc=3)
+    gen = _generator(tmp_path, rc=3, lines=[
+        'hermes_cron_tokens_total{agent="test-agent",job_id="jobA"} 1'], stderr="why: state.db locked")
     r = _run(tmp_path, capture, gen)
     assert r.returncode == 0, "a broken optional generator must not error the cron: " + r.stderr
     assert r.returncode == 0 and "hermes_cron_" not in capture.read_text()
     assert "cost metrics" in r.stderr and "3" in r.stderr, "the gap must be visible, not silent"
     assert "zero" in r.stderr.lower(), "the line must say a missing series is not $0 spend"
+    assert "why: state.db locked" in r.stderr, (
+        "the generator's own diagnostic must be forwarded, not swallowed (exit code alone "
+        "sends the reader hunting for the reason)")

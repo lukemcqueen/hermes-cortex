@@ -19,9 +19,13 @@ skills/devops/llm-cost-optimization/references/fleet-cost-data-sources.md):
 Exit codes:
   0  report emitted, no breach (or no data — never a false alert)
   1  measured daily average is above the target: a FAILED run, deliberately, so
-     the breach is machine-visible. Note the failure watchdog pauses a cron after
-     three consecutive failures: three consecutive breaches then leave the job
-     PAUSED, which is itself the escalation signal and is surfaced by the doctor.
+     the breach is machine-visible rather than a quiet line. Consequence, verified
+     in the watchdog's own source: ops/scripts/health/agent-cron-failure-watchdog.py:40
+     is `CONSECUTIVE_FAILURE_LIMIT = 3  # consecutive errors before alert + pause`,
+     so three consecutive breaches leave this job PAUSED — which is itself the
+     escalation signal and shows up in the cron list rather than being silently
+     absorbed. (The earlier version of this docstring asserted the pause without
+     naming where it is enforced; finding ADV-13655-1 on cycle 13655.)
 """
 
 from __future__ import annotations
@@ -40,7 +44,9 @@ DEFAULT_STATE_DB = Path.home() / ".hermes" / "state.db"
 DEFAULT_TARGET_USD = 10.0
 
 UNMEASURED = ("not measured: the four worker hosts (each needs its own local adapter — "
-              "fleet cost coverage [cost/4]); this average covers the measured hosts only")
+              "fleet cost coverage [cost/4]). The baseline that established this gap is "
+              "docs/evidence/cost-baseline-2026-10-19.txt (section 6: 2 of 6 hosts measured). "
+              "This average covers the measured hosts only.")
 
 
 def read_tokens_by_job(path: Path):
