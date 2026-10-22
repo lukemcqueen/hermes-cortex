@@ -1,6 +1,6 @@
 === deploy verification: skill payload ===
 generated-by : docs/evidence/deploy-soul-refinement-2026-10-22.sh (writes this file itself)
-captured-at  : 17a6e855
+captured-at  : 035a6768
 origin/main  : 17a6e855
 pushed range : 17a6e855 docs(soul-refine): quote the codification evidence instead of characterising it ac28bc7c docs(soul-refinement): land the window recipe the 2026-10-22 pass measured 
 
@@ -21,23 +21,30 @@ pushed range : 17a6e855 docs(soul-refine): quote the codification evidence inste
 
 [3] DOCTOR (rc + warning count, not just the tick lines)
     $ python3 ~/.hermes-cortex/scripts/cortex-doctor.py --quiet   -> rc=1
-    warning/info items listed: 7
+    warning/info items listed: 5
       · Repo clean
       · CLAUDE.md (dev repos)
-      · Skill drift: devops/doc-size-budget
-      · Skill drift: devops/skill-curation
-      · Multi-session repo
+      · Skill drift: software-development/change-checklist
       · Cron bridge migration (1)
       · loop-gov daemon
-    rc=1 is the doctor's WARN exit, not a failure of this deploy. The two UNDISPOSED
-    items are skill-drift entries (devops/doc-size-budget, devops/skill-curation); the
-    doctor's own instruction is that recovering them is its OWN governed change, so they
-    are reported here and left for that cycle rather than folded into this one.
+    rc=1 is the doctor's WARN exit, not a failure of this deploy. The skill-drift items are
+    reported by NAME by the list above and left alone: the doctor's own text says recovering
+    one is its OWN governed change, and the set MOVES between runs because the lesson pipeline
+    writes DEPLOYED skill copies continuously (measured this session: the previous run named
+    devops/doc-size-budget + devops/skill-curation, a peer session recovered both as 035a6768,
+    and this run reports a different entry). Read the list above, never a list in prose.
 
 [4] VERDICT
     deployed == repo: True   dogfood rc=0   doctor rc=1
-    The range this deploy verifies is origin/main~2..origin/main (the skill source + the
-    window transcript), pushed with the cycle-13671 receipt.
+    The deploy above ran against the working tree at the captured-at revision; HEAD's
+    commits over origin/main are listed below. Anything already on origin/main was
+    pushed earlier under its own receipt; anything listed as unpushed is carried by
+    the next push, which needs its own receipt for the range.
+    commits HEAD carries over origin/main (what the next push will carry):
+      035a6768 fix(skills): reconcile the two skills the deploy reported stranded
+      f7624f1e docs(evidence): verify the soul-refinement deploy, deployed vs repo
+    A commit landed AFTER the deploy above that touches no deploy-map file leaves the
+    deployed tree current, so it does not need another deploy.
 [probe rc=0]
 python verification pass rc=0
 
