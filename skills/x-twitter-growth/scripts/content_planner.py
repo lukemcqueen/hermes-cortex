@@ -9,6 +9,9 @@ Usage:
     python3 content_planner.py --niche "AI engineering" --frequency 5 --weeks 2
     python3 content_planner.py --niche "SaaS growth" --frequency 3 --weeks 1 --json
 """
+# Provenance: recovered 2026-10-22 from the deployed-only tree — it existed under a
+# repo-owned skill dir but not in the repo — and INCORPORATED rather than removed
+# because this skill routes its scripts/ family (see "## Scripts" in SKILL.md).
 
 import argparse
 import json

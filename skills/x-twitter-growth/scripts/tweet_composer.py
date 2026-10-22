@@ -11,6 +11,9 @@ Usage:
     python3 tweet_composer.py --type hooks --topic "startup mistakes" --count 10
     python3 tweet_composer.py --validate "your tweet text here"
 """
+# Provenance: recovered 2026-10-22 from the deployed-only tree — it existed under a
+# repo-owned skill dir but not in the repo — and INCORPORATED rather than removed
+# because this skill routes its scripts/ family (see "## Scripts" in SKILL.md).
 
 import argparse
 import json

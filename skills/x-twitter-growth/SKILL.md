@@ -49,6 +49,19 @@ Use when growing an audience on X/Twitter: writing tweets and threads, optimizin
 - Replying only to big accounts; niche conversations are where an audience actually forms.
 - Copying what worked for others without the context that made it work (authority, timing, audience).
 
+## Scripts
+
+Five no-API helpers under `scripts/` — pure content scaffolding, they emit text
+and never post on your behalf:
+
+- `scripts/profile_auditor.py` — audit a profile for growth readiness (bio, pinned post, posting pattern)
+- `scripts/tweet_composer.py` — compose tweets/threads with hook patterns, character counting and thread formatting
+- `scripts/content_planner.py` — build a weekly posting calendar with topic and format mix
+- `scripts/competitor_analyzer.py` — analyse competitor profiles for content strategy and gaps
+- `scripts/growth_tracker.py` — store metric snapshots and calculate growth trends
+
+Each is runnable directly: `python3 scripts/tweet_composer.py --validate "<text>"`.
+
 ## Verification
 
 - Can a stranger tell what you do, who you help, and why to follow — from bio and pinned post alone?

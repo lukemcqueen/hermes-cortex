@@ -11,6 +11,9 @@ Usage:
     python3 profile_auditor.py --handle @username --json
     python3 profile_auditor.py --bio "current bio text" --followers 5000 --posts-per-week 10
 """
+# Provenance: recovered 2026-10-22 from the deployed-only tree — it existed under a
+# repo-owned skill dir but not in the repo — and INCORPORATED rather than removed
+# because this skill routes its scripts/ family (see "## Scripts" in SKILL.md).
 
 import argparse
 import json
