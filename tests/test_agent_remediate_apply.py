@@ -116,9 +116,17 @@ def main() -> int:
             failures.append(f"3a first run reports once: rc={rc1} out={out1!r}")
         if rc2 != 0 or out2 != "":
             failures.append(f"3b second run silent: rc={rc2} out={out2!r}")
-        if len(calls) != 1:
+        # 3c. The ISSUE HANDLER ran exactly once. `run_cmd` is shared with the
+        #     unconditional self-heal steps (the enforcement relock, added
+        #     2026-10-02), which are not the subject here — counting every
+        #     run_cmd call made this guard fail on healthy code (measured
+        #     2026-10-23) and hide the regression it exists to catch. Count the
+        #     handler's own command: a re-invocation for an identical issue is
+        #     the repeated-work bug being guarded against.
+        handler_calls = [c for c in calls if "systemctl restart" in c]
+        if len(handler_calls) != 1:
             failures.append(
-                f"3c handler invoked {len(calls)}x (expected exactly 1): {calls!r}"
+                f"3c handler invoked {len(handler_calls)}x (expected exactly 1): {calls!r}"
             )
 
     if failures:
