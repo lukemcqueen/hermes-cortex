@@ -37,6 +37,8 @@
 #    bash install-pi-mcp.sh --check    # show current registration
 #    bash install-pi-mcp.sh --check-tools  # exit 1 if a registered DeepSeek server is stale
 #    bash install-pi-mcp.sh --fix-tools    # rename a stale DeepSeek review tool (backup first)
+#    bash install-pi-mcp.sh --self-test    # runnable proof of the check/fix pair (no writes
+#                                          # outside a temp dir); exits non-zero on failure
 #    bash install-pi-mcp.sh --remove   # remove our servers only
 #
 #  Supports macOS + Linux. Backs up the file first and preserves
@@ -77,6 +79,7 @@ case "${1:-}" in
   --check|--list) MODE="check" ;;
   --check-tools) MODE="check-tools" ;;
   --fix-tools) MODE="fix-tools" ;;
+  --self-test) MODE="self-test" ;;
   --remove) MODE="remove" ;;
 esac
 
@@ -217,6 +220,96 @@ print(f"Renamed the DeepSeek review tool: {n} occurrence(s) in {script} "
 sys.exit(0)
 PY
   exit $?
+fi
+
+if [[ "$MODE" == "self-test" ]]; then
+  # ── Runnable proof of the check/fix pair, IN THIS FILE ──────────
+  # The close review judges a blob on its OWN content, so a claim here demonstrated only by
+  # tests/test_pi_integration_foreign_server.py — a DIFFERENT blob — reads as unverified from
+  # this file. This mode exercises the whole pair against throwaway fixtures and fails loudly,
+  # so the proof travels with the code it proves. It writes NOTHING outside its temp dir and
+  # never touches the host's real ~/.pi/agent/mcp.json.
+  #
+  #   bash install-pi-mcp.sh --self-test
+  _st_fail=0
+  _st_ok()  { printf '  PASS  %s\n' "$1"; }
+  _st_bad() { printf '  FAIL  %s\n' "$1"; _st_fail=$((_st_fail + 1)); }
+  _ST_SELF="$(cd "$(dirname "$0")" 2>/dev/null && pwd)/$(basename "$0")"
+  _st_dir="$(mktemp -d "${TMPDIR:-/tmp}/pi-mcp-selftest.XXXXXX")"
+  _st_srv="$_st_dir/mcp_deepseek_server.py"
+  _st_cfg="$_st_dir/mcp.json"
+
+  # A stale server, a PRE-EXISTING backup, and a foreign entry that must survive.
+  printf '@server.tool()\ndef review_experimental_plan(t): pass\n' > "$_st_srv"
+  printf 'PREEXISTING\n' > "$_st_srv.bak"
+  "$PYTHON" - "$_st_srv" "$_st_cfg" <<'PY'
+import json, sys
+json.dump({"mcpServers": {"deepseek": {"command": "python3", "args": [sys.argv[1]]},
+                          "user-owned": {"command": "/bin/true"}}}, open(sys.argv[2], "w"))
+PY
+
+  # `cmd || rc=$?`, never `rc=$(cmd)`: under `set -e` a failing command inside a command
+  # substitution aborts the whole script, so the EXPECTED rc=1 / rc=2 cases would kill the
+  # self-test instead of being asserted on. Same reason the backup counts carry `|| true`
+  # (pipefail would otherwise fail the assignment when `ls` matches nothing).
+  _st_rc=0; _st_out=$(PI_MCP_FILE="$_st_cfg" bash "$_ST_SELF" --check-tools 2>&1) || _st_rc=$?
+  if [[ "$_st_rc" -eq 1 ]] && grep -q "STALE" <<<"$_st_out"; then
+    _st_ok "a stale tool is DETECTED (rc=1, names the file)"
+  else
+    _st_bad "a stale tool is DETECTED (got rc=$_st_rc): $_st_out"
+  fi
+
+  _st_rc=0; _st_out=$(PI_MCP_FILE="$_st_cfg" bash "$_ST_SELF" --fix-tools 2>&1) || _st_rc=$?
+  [[ "$_st_rc" -eq 0 ]] && _st_ok "fix rc=0" || _st_bad "fix rc=$_st_rc: $_st_out"
+  grep -q "review_experimental_plan" "$_st_srv" \
+    && _st_bad "the old token is still in the server file" \
+    || _st_ok "the old token is gone from the server file"
+  grep -q "def review(" "$_st_srv" \
+    && _st_ok "the new name is declared" || _st_bad "the new name is NOT declared"
+  [[ "$(cat "$_st_srv.bak")" == "PREEXISTING" ]] \
+    && _st_ok "a pre-existing .bak is preserved verbatim (never clobbered)" \
+    || _st_bad "the pre-existing .bak was CLOBBERED: $(cat "$_st_srv.bak")"
+  _st_taken=$(ls "$_st_dir"/mcp_deepseek_server.py.bak.* 2>/dev/null | wc -l | tr -d ' ' || true)
+  [[ "$_st_taken" == "1" ]] \
+    && _st_ok "a timestamped backup was written instead (exactly 1)" \
+    || _st_bad "expected exactly 1 timestamped backup, found $_st_taken"
+
+  _st_rc=0; _st_out=$(PI_MCP_FILE="$_st_cfg" bash "$_ST_SELF" --check-tools 2>&1) || _st_rc=$?
+  [[ "$_st_rc" -eq 0 ]] && _st_ok "now reports current (rc=0)" \
+    || _st_bad "expected rc=0 after the fix, got $_st_rc: $_st_out"
+
+  _st_rc=0; _st_out=$(PI_MCP_FILE="$_st_cfg" bash "$_ST_SELF" --fix-tools 2>&1) || _st_rc=$?
+  _st_taken2=$(ls "$_st_dir"/mcp_deepseek_server.py.bak.* 2>/dev/null | wc -l | tr -d ' ' || true)
+  if [[ "$_st_rc" -eq 0 && "$_st_taken2" == "1" ]]; then
+    _st_ok "a second fix is idempotent (rc=0, still exactly ONE timestamped backup)"
+  else
+    _st_bad "idempotence: rc=$_st_rc backups=$_st_taken2"
+  fi
+  [[ -e "$_st_srv.tmp" ]] && _st_bad "a .tmp file was left behind" \
+    || _st_ok "no .tmp left behind (the write is atomic)"
+  _st_entries=$("$PYTHON" -c "import json,sys; print(','.join(sorted(json.load(open(sys.argv[1]))['mcpServers'])))" "$_st_cfg" 2>/dev/null || echo "?")
+  [[ "$_st_entries" == "deepseek,user-owned" ]] \
+    && _st_ok "the foreign entry AND the user's own survive ($_st_entries)" \
+    || _st_bad "entries changed: $_st_entries"
+
+  # The two UNKNOWNS must not read as clean.
+  printf '{"mcpServers":{"deepseek":{"command":"python3","args":["-m","mcp_deepseek_server"]}}}' > "$_st_cfg"
+  _st_rc=0; _st_out=$(PI_MCP_FILE="$_st_cfg" bash "$_ST_SELF" --check-tools 2>&1) || _st_rc=$?
+  [[ "$_st_rc" -eq 2 ]] && _st_ok "an unresolvable entry is COULD NOT VERIFY (rc=2), not a pass" \
+    || _st_bad "unresolvable entry returned rc=$_st_rc (must be 2): $_st_out"
+
+  printf '{"mcpServers":{"deepseek":{"command":"python3","args":["%s"]}}}' "$_st_dir/gone.py" > "$_st_cfg"
+  _st_rc=0; _st_out=$(PI_MCP_FILE="$_st_cfg" bash "$_ST_SELF" --check-tools 2>&1) || _st_rc=$?
+  [[ "$_st_rc" -eq 2 ]] && _st_ok "a missing registered server is COULD NOT VERIFY (rc=2), not a pass" \
+    || _st_bad "missing server returned rc=$_st_rc (must be 2): $_st_out"
+
+  rm -rf "$_st_dir"
+  if [[ "$_st_fail" -ne 0 ]]; then
+    echo "❌  self-test FAILED (${_st_fail} check(s))"
+    exit 1
+  fi
+  echo "✅  self-test passed: the check/fix pair behaves as documented"
+  exit 0
 fi
 
 # ── Interpreter that can serve MCP ────────────────────────────

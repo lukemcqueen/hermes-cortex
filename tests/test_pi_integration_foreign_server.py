@@ -259,6 +259,14 @@ def test_the_installer_renames_a_stale_foreign_tool() -> None:
         _check("a missing registered server is COULD NOT VERIFY (rc=2), not a pass",
                r.returncode == 2, f"rc={r.returncode} {(r.stdout + r.stderr)[-200:]}")
 
+    # The installer carries its OWN --self-test, because the close review judges one blob at a
+    # time and cannot see this file: a claim in install-pi-mcp.sh demonstrated only here reads
+    # as unverified from there. Assert the self-test passes, so the two proofs cannot drift.
+    st = subprocess.run(["bash", str(installer), "--self-test"],
+                        capture_output=True, text=True)
+    _check("the installer's own --self-test passes (proof travels with its blob)",
+           st.returncode == 0, (st.stdout + st.stderr)[-300:])
+
 
 if __name__ == "__main__":
     test_a_foreign_server_is_reported_not_judged()
