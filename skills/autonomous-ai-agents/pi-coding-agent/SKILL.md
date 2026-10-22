@@ -487,8 +487,15 @@ Verified against the installed package docs — `docs/providers.md`,
 Set the model defaults (preserve existing keys — `extensions`, `skills`):
 
 ```json
-{"defaultProvider": "openrouter", "defaultModel": "moonshotai/kimi-k2.6"}
+{"defaultProvider": "openrouter", "defaultModel": "deepseek/deepseek-flash-latest"}
 ```
+
+**Mode-specific models (fleet policy):** the coding default is the fast
+`deepseek-flash-latest`; the **adversarial reviewer** uses the strongest tier,
+`deepseek-v4-pro` (`ops/scripts/manage/reviewer-agent-pi.sh`, overridable with
+`REVIEWER_PI_MODEL`). Every coding agent can override per agent in its own
+`gateway.yaml` backend `model:` field, and per chat via `/model`. A reviewer
+should never silently drop to the cheap/fast default.
 
 **Do NOT source an env file to supply the key.** Pi's docs support a `!command`
 precisely so the resolved key is never written to disk, but the obvious command —

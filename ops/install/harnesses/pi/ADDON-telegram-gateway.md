@@ -84,7 +84,7 @@ The daemon reads `PI_TELEGRAM_BOT_TOKEN` because `gateway.yaml` names it in
       "timeout_s": 300,
       "reply_mode": "sync",
       "stream": true,
-      "model": "openrouter/moonshotai/kimi-k2.6",
+      "model": "openrouter/deepseek/deepseek-flash-latest",
       "model_args": ["--model", "{model}"],
       "session": "per_chat",
       "session_args": ["--session-id", "{session_id}"],

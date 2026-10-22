@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # reviewer-agent-pi.sh — Read-only adversarial-review backend using the pi coding
-# agent (moonshotai/kimi-k2.6 via OpenRouter by default; override with
-# REVIEWER_PI_MODEL).
+# agent (deepseek/deepseek-v4-pro via OpenRouter by default; override with
+# REVIEWER_PI_MODEL — a reviewer should use the strongest available model, not
+# the cheap/fast default).
 #
 # Pluggable adversarial reviewer "agent" backend: the close-gate shells out to
 # this command with the review prompt on STDIN and reads findings JSON from
@@ -17,7 +18,7 @@
 #   ADVERSARIAL_REVIEW_AGENT_NAME=pi
 set -euo pipefail
 
-MODEL="${REVIEWER_PI_MODEL:-openrouter/moonshotai/kimi-k2.6}"
+MODEL="${REVIEWER_PI_MODEL:-openrouter/deepseek/deepseek-v4-pro}"
 
 # pi needs the OpenRouter credential to reach the model.
 if [[ -z "${OPENROUTER_API_KEY:-}" && -f "${HOME}/.hermes/.env" ]]; then

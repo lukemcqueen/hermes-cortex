@@ -237,7 +237,7 @@ class AgentSpec:
         if self.kind == "command" and not self.command:
             raise ValueError(
                 f"backend '{self.name}': kind 'command' needs a 'command' "
-                f"(e.g. command: [pi, --model, openrouter/moonshotai/kimi-k2.6])")
+                f"(e.g. command: [pi, --model, openrouter/deepseek/deepseek-flash-latest])")
         if self.reply_mode not in REPLY_MODES:
             raise ValueError(
                 f"backend '{self.name}': reply_mode must be one of {REPLY_MODES}, "

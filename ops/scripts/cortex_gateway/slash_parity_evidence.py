@@ -13,7 +13,7 @@ Run it ON the host, from anywhere:
 
     python3 ~/.hermes-cortex/scripts/cortex_gateway/slash_parity_evidence.py \
         [--config ~/.hermes-cortex/gateway-esther0001.yaml] [--chat 999001] \
-        [--model openrouter/moonshotai/kimi-k2.6] [--no-llm]
+        [--model openrouter/deepseek/deepseek-flash-latest] [--no-llm]
 
 `--no-llm` skips the turns that call a model (the /model, /new and /restart legs
 need no model at all); the full run costs a few cents.
