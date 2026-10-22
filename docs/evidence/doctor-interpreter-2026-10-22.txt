@@ -1,0 +1,71 @@
+command : bash docs/evidence/doctor-interpreter-2026-10-22.sh
+when    : 2026-10-22T09:57:18Z
+captured-at: aeeb2d9fe7b7f5e8b987fea2762af67f53bc4555
+note    : volatile by design — host paths normalised to ~, scratch to $WORK, ANSI
+          stripped. 'captured-at' is the revision the tree sat on when this ran; the
+          file is written afterwards, so it cannot name its own commit.
+
+=== 1. the two interpreters ===
+  the doctor is documented as: python3 <script>
+  python3 resolves to       : ~/.hermes/installs/483c6efb1d92c950/environments/b5932aae9bbb4617a29160b66fbed402/venv/bin/python3
+  probe 'import yaml, mcp'  :
+ModuleNotFoundError: No module named 'yaml'
+  fleet venv                : ~/.hermes-cortex/venv/bin/python3
+  (no output above the 'fleet venv' line = the import SUCCEEDED)
+  declared dependency set   :
+ok: ~/.hermes-cortex/venv/bin/python3 imports all 6 declared requirements and satisfies their capability probes
+
+=== 2. BEFORE — re-exec disabled (the pre-change behaviour), under that python3 ===
+  CORTEX_DOCTOR_REEXEC=1 python3 <doctor> --quiet
+  rc=2
+  ✅ Skills manifest (basic)
+  ⚠️  Skills loadable
+  ⚠️  Skills loadable (published)
+       · Skills loadable
+         or:  cortex-doctor.py --disposition "Skills loadable" --as deferred --owner <you> --reason "<why>"
+       · Skills loadable (published)
+  the WARN's own remedy text:
+         fix: Run the doctor with an interpreter that can import the declared set: ~/.hermes-cortex/venv/bin/python3 ~/.hermes-cortex/scripts/cortex-doctor.py — or repair the fleet venv with python3 ops/scripts/manage/fix-cortex-venv.py
+    Run the doctor with an interpreter that can import the declared set: ~/.hermes-cortex/venv/bin/python3 ~/.hermes-cortex/scripts/cortex-doctor.py — or repair the fleet venv with python3 ops/scripts/manage/fix-cortex-venv.py
+
+=== 3. AFTER — same python3, re-exec enabled (the default) ===
+  rc=2
+  degradation notice (must be ABSENT — the re-exec happened):
+    (none)
+  ✅ Skills manifest: always
+  ✅ Skills manifest: on_task
+  ✅ Skills manifest: disk check
+  ✅ Skills loadable
+  ⚠️  Skills loadable (published)
+       · Skills loadable (published)
+
+=== 4. the tests ===
+============================== 9 passed in 0.11s ===============================
+---
+run-tests.sh: interpreter=~/.hermes-cortex/venv/bin/python3 rc=0  (PYTHONPATH/PYTHONHOME unset for the run)
+  rc=0
+
+=== verdict ===
+  BEFORE rc=2 — 'Skills manifest (basic)': the yaml-based manifest check
+    DEGRADED to a substring scan, and 'Skills loadable' came back WARN instead of
+    PASS. The WARN's remedy line (printed above) names the interpreter to use.
+    (The full WARN detail — 'checked 383 repo skill(s) in TEXT mode ... the
+    name-charset, YAML-parse and length rules were NOT applied' — is captured
+    verbatim in docs/evidence/skills-loadability-gate-2026-10-22.txt; --quiet
+    truncates it here.)
+  AFTER  rc=2 — the degradation notice is absent and the FULL yaml-based
+    checks ran ('Skills manifest: always / on_task / disk check', 'Skills loadable'
+    PASS). Same command, same launching interpreter, same machine.
+
+  So the difference between the two runs is the change and nothing else: the only
+  variable is CORTEX_DOCTOR_REEXEC, which the wrapper reads to decide whether to
+  re-exec. Every agent that runs the documented command now gets the strong report.
+
+  Honest limits: this proves the resolution on THIS host, where CORTEX_PYTHON and the
+  fleet venv both exist. A host with no capable interpreter still runs the doctor —
+  degraded, with the notice printed — because a host whose venv is broken must remain
+  diagnosable by the tool that repairs it (fix-cortex-venv.py). That branch is pinned
+  by tests (tests/test_doctor_interpreter.py), not by this transcript.
+  Both rc=2 because this range's own checks.py / cli.py / cortex-doctor.py are not
+  deployed yet at capture time — the checksum FAILs are the pending deploy, not a
+  regression; the deploy runs immediately after this capture.
