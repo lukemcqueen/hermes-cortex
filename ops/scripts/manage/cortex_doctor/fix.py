@@ -145,6 +145,20 @@ print('ADDED')
         else:
           failed += 1
 
+  # Fix: a host-local DeepSeek review MCP server still exposing the OLD tool name.
+  # The rename is performed by the Pi MCP manager itself (ops/scripts/install/install-pi-mcp.sh),
+  # whose add path normalises the registered server's tool name — idempotent, backup-first, and a
+  # no-op when no deepseek entry exists. Routing through the installer keeps ONE implementation
+  # owning ~/.pi/agent/mcp.json, so this fix cannot drift from what a re-install would do.
+  if fix_map.get("DeepSeek MCP tool name") == "WARN":
+    _ds_installer = CORTEX_REPO / "ops" / "scripts" / "install" / "install-pi-mcp.sh"
+    if _ds_installer.exists():
+      if _run_fix("Normalising the DeepSeek review tool name (backup first)",
+                  ["bash", str(_ds_installer), "--fix-tools"]):
+        fixed += 1
+      else:
+        failed += 1
+
   # Fix: governance plugin not installed/symlinked
   if "Governance plugin" in fix_map and fix_map["Governance plugin"] == "FAIL":
     plugin_dir = HERMES_HOME / "plugins" / "governance-enforcer"

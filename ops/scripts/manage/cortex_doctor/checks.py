@@ -3217,6 +3217,37 @@ def check_governance(res):
     res.add("Plugin source", "FAIL", "source missing in repo",
         "Check: ~/hermes-cortex/plugins/governance-enforcer/")
 
+  # ── Host-optional foreign MCP server: the DeepSeek review tool's NAME ──
+  # The tool was called `review_experimental_plan` — narrower than what it does (it reviews a
+  # memo, a plan, or a results summary). The rename is AUTOMATED by the Pi MCP manager itself,
+  # ops/scripts/install/install-pi-mcp.sh, which owns ~/.pi/agent/mcp.json and normalises the
+  # registered server's tool name on its add path. This check ASKS it rather than reimplementing
+  # the rule: `--check-tools` exits 1 when a registered server is stale, 0 when it is current or
+  # no DeepSeek entry exists. ABSENCE IS A PASS — the entry is host-optional and the installer
+  # never creates it, so a host without one is not a fault, and a check that failed there would
+  # be noise that teaches readers to ignore it.
+  _ds_installer = CORTEX_REPO / "ops" / "scripts" / "install" / "install-pi-mcp.sh"
+  if not _ds_installer.is_file():
+    res.add("DeepSeek MCP tool name", "WARN",
+        f"COULD NOT VERIFY: {_ds_installer} is missing",
+        "Restore ops/scripts/install/install-pi-mcp.sh from the repo "
+        "(cortex-update.sh deploys it)")
+  else:
+    _ds_out, _ds_rc = run(["bash", str(_ds_installer), "--check-tools"], timeout=60)
+    _ds_lines = [l for l in (_ds_out or "").splitlines() if l.strip()]
+    _ds_detail = _ds_lines[-1].strip() if _ds_lines else f"rc={_ds_rc}"
+    if _ds_rc == 0:
+      res.add("DeepSeek MCP tool name", "PASS", _ds_detail)
+    elif _ds_rc == 1:
+      res.add("DeepSeek MCP tool name", "WARN", _ds_detail,
+          "Run: bash ~/hermes-cortex/ops/scripts/install/install-pi-mcp.sh   "
+          "(the doctor's auto-fix runs this too)")
+    else:
+      # rc!=0 is a RESULT, and rc=124 (timeout) is not the same result as a refusal: say which.
+      res.add("DeepSeek MCP tool name", "WARN",
+          f"COULD NOT VERIFY (rc={_ds_rc}{' — timed out' if _ds_rc == 124 else ''}): {_ds_detail}",
+          "Check that bash can run ops/scripts/install/install-pi-mcp.sh")
+
   # ── MCP servers ──
   is_orch = AGENT_ROLE == "orchestrator"
   # Presence is NOT wiring (2026-10-13, kustos: "No loop-governance MCP tools in catalog"

@@ -35,6 +35,8 @@
 #  Usage:
 #    bash install-pi-mcp.sh            # add/update (idempotent)
 #    bash install-pi-mcp.sh --check    # show current registration
+#    bash install-pi-mcp.sh --check-tools  # exit 1 if a registered DeepSeek server is stale
+#    bash install-pi-mcp.sh --fix-tools    # rename a stale DeepSeek review tool (backup first)
 #    bash install-pi-mcp.sh --remove   # remove our servers only
 #
 #  Supports macOS + Linux. Backs up the file first and preserves
@@ -73,6 +75,8 @@ done
 MODE="add"
 case "${1:-}" in
   --check|--list) MODE="check" ;;
+  --check-tools) MODE="check-tools" ;;
+  --fix-tools) MODE="fix-tools" ;;
   --remove) MODE="remove" ;;
 esac
 
@@ -91,6 +95,79 @@ if not d.get('mcpServers'):
     echo "  (no $PI_MCP)"
   fi
   exit 0
+fi
+
+if [[ "$MODE" == "check-tools" || "$MODE" == "fix-tools" ]]; then
+  # ONE resolver, two verdicts. A check and a fix that each re-derived "which file is the
+  # DeepSeek server" would be two places to update — the same drift this change exists to
+  # remove, so the resolution happens once and the MODE decides what to do with it.
+  #
+  # Handled HERE, before the interpreter resolution further down, because the edit is a TEXT
+  # edit to a file we do not own: placed after that gate it would be UNREACHABLE on exactly the
+  # hosts that need it — a host whose python cannot `import mcp` exits 1 earlier (measured on
+  # this host 2026-10-22). That coupling is a wart, not a feature; it is called out here
+  # because the fix silently stops working if this block is ever moved down.
+  #
+  # ABSENCE IS A PASS: the entry is host-optional and this installer never creates it, so a
+  # host without one is not a fault, and a check that failed there would be noise that teaches
+  # readers to ignore it.
+  DS_MODE="$MODE" "$PYTHON" - "$PI_MCP" <<'PY'
+import json, os, re, shutil, sys
+
+# A TOOL NAME, not a credential — the leak detector's NAME="literal" heuristic flags this line.
+OLD, NEW = "review_experimental_plan", "review"
+mode = os.environ["DS_MODE"]
+
+
+def resolve(cfg_path):
+    """The server file a registered `deepseek` entry names, or (None, why)."""
+    try:
+        data = json.load(open(cfg_path))
+    except Exception:
+        return None, "no readable Pi MCP config — nothing to do (host-optional)"
+    entry = ((data.get("mcpServers") or {}).get("deepseek") or {})
+    script = next((a for a in (entry.get("args") or [])
+                   if isinstance(a, str) and a.endswith(".py")), None)
+    if not script:
+        return None, "no DeepSeek review MCP server registered (host-optional)"
+    script = os.path.expanduser(script)
+    if not os.path.isfile(script):
+        return None, f"registered server not found: {script} — nothing to do"
+    return script, None
+
+
+script, why = resolve(sys.argv[1])
+if script is None:
+    print(why)
+    sys.exit(0)
+
+try:
+    text = open(script).read()
+except OSError as exc:
+    print(f"could not read {script}: {exc}")
+    sys.exit(1)          # we were told about a file and could not read it: NOT a pass
+
+stale = re.search(r"\b" + re.escape(OLD) + r"\b", text) is not None
+
+if mode == "check-tools":
+    if stale:
+        print(f"STALE: {script} still exposes `{OLD}` — fix: bash install-pi-mcp.sh --fix-tools")
+        sys.exit(1)
+    print(f"ok: {script} does not carry the old name")
+    sys.exit(0)
+
+# fix-tools
+if not stale:
+    print(f"already current: {script} does not carry `{OLD}`")
+    sys.exit(0)          # idempotent: no write, so no backup
+new, n = re.subn(r"\b" + re.escape(OLD) + r"\b", NEW, text)
+shutil.copy2(script, script + ".bak")
+open(script, "w").write(new)
+print(f"Renamed the DeepSeek review tool: {n} occurrence(s) in {script} "
+      f"(backup: {os.path.basename(script)}.bak)")
+sys.exit(0)
+PY
+  exit $?
 fi
 
 # ── Interpreter that can serve MCP ────────────────────────────

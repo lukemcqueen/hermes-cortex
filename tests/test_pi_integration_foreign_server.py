@@ -73,7 +73,16 @@ def _host(home: Path, *, foreign_script_missing: bool = False) -> Path:
     launcher.chmod(0o755)
     (agent / "settings.json").write_text(json.dumps({
         "extensions": [str(dep / "harnesses" / "pi" / "extensions" / "cortex-context.ts")],
-        "skills": [str(agent / "cortex-skills")]}))
+        "skills": [str(agent / "cortex-skills")],
+        # Web search: audit-pi-integration.sh check 6 requires the pi-web-access DECLARATION,
+        # the INSTALLED package, and a KEYLESS route (pi-web-access landed 2026-10-15). This
+        # fixture predated that rule, so case G was RED for a reason with nothing to do with
+        # foreign servers. Fixed here rather than left as a pre-existing failure: a red file
+        # makes every other case's PASS in it unreadable.
+        "packages": ["npm:pi-web-access@0.35.0"]}))
+    (agent / "npm" / "node_modules" / "pi-web-access").mkdir(parents=True, exist_ok=True)
+    (agent / "web-search.json").write_text(json.dumps(
+        {"searchRouting": {"providers": ["exa", "duckduckgo"]}}))
     (agent / "cortex-skills").mkdir(exist_ok=True)
     for s in CURATED:
         (agent / "cortex-skills" / s).write_text("# skill\n")
@@ -167,10 +176,73 @@ def test_the_installer_leaves_a_foreign_entry_alone() -> None:
                remaining == ["deepseek", "user-owned"], str(remaining))
 
 
+def test_the_installer_renames_a_stale_foreign_tool() -> None:
+    """I. A stale DeepSeek tool name is DETECTED and RENAMED by the installer itself.
+
+    Two directions, because either alone is a happy path with a name. A stale host must be
+    renamed AND keep its foreign entry; a host with NO deepseek entry must PASS, because the
+    entry is host-optional and this installer never creates it.
+
+    Same reason as case H for keeping HOME real and pointing PI_MCP_FILE at a scratch config:
+    the installer resolves its interpreter from the deployed layout under $HOME.
+    """
+    print("I. install-pi-mcp.sh --check-tools / --fix-tools normalise a stale DeepSeek tool")
+    installer = REPO / "ops" / "scripts" / "install" / "install-pi-mcp.sh"
+    with tempfile.TemporaryDirectory() as td:
+        srv = Path(td) / "mcp_deepseek_server.py"
+        srv.write_text("@server.tool()\ndef review_experimental_plan(t): pass\n")
+        cfg = Path(td) / "mcp.json"
+        cfg.write_text(json.dumps({"mcpServers": {
+            "deepseek": {"command": sys.executable, "args": [str(srv)]},
+            "user-owned": {"command": "/bin/true"}}}))
+        env = {**os.environ, "PI_MCP_FILE": str(cfg)}
+
+        def run(*args):
+            return subprocess.run(["bash", str(installer), *args],
+                                  capture_output=True, text=True, env=env)
+
+        def backups():
+            return sorted(p.name for p in Path(td).glob("*.bak"))
+
+        stale = run("--check-tools")
+        _check("a stale tool is DETECTED (rc=1)", stale.returncode == 1,
+               (stale.stdout + stale.stderr)[-300:])
+
+        fixed = run("--fix-tools")
+        _check("fix rc=0", fixed.returncode == 0, (fixed.stdout + fixed.stderr)[-300:])
+        _check("the old token is gone from the server",
+               "review_experimental_plan" not in srv.read_text(), srv.read_text()[-200:])
+        _check("the new name is present", "def review(" in srv.read_text(),
+               srv.read_text()[-200:])
+        _check("a backup was written", len(backups()) == 1, str(backups()))
+
+        current = run("--check-tools")
+        _check("now reports current (rc=0)", current.returncode == 0,
+               (current.stdout + current.stderr)[-300:])
+
+        again = run("--fix-tools")
+        _check("a second fix is idempotent (rc=0)", again.returncode == 0,
+               (again.stdout + again.stderr)[-300:])
+        _check("idempotent: still exactly ONE backup", len(backups()) == 1, str(backups()))
+        _check("the foreign entry AND the user's own survive the rename",
+               sorted(json.loads(cfg.read_text())["mcpServers"]) == ["deepseek", "user-owned"],
+               cfg.read_text()[-300:])
+
+    # The other direction: no deepseek entry at all must PASS — absence is not a fault.
+    with tempfile.TemporaryDirectory() as td:
+        cfg = Path(td) / "mcp.json"
+        cfg.write_text(json.dumps({"mcpServers": {"user-owned": {"command": "/bin/true"}}}))
+        r = subprocess.run(["bash", str(installer), "--check-tools"], capture_output=True,
+                           text=True, env={**os.environ, "PI_MCP_FILE": str(cfg)})
+        _check("ABSENCE is a pass (rc=0, not a fault)", r.returncode == 0,
+               (r.stdout + r.stderr)[-300:])
+
+
 if __name__ == "__main__":
     test_a_foreign_server_is_reported_not_judged()
     test_a_broken_foreign_entry_still_fails()
     test_the_installer_leaves_a_foreign_entry_alone()
+    test_the_installer_renames_a_stale_foreign_tool()
     assert not _F, f"{len(_F)} check(s) failed: {', '.join(_F)}"
     print("\n✅ foreign-server scoping checks passed")
     sys.exit(0)
