@@ -4859,6 +4859,232 @@ def check_script_naming(res):
                 f"Rename script to match cron name: {name}.sh (or .py)")
 
 
+# ── Skill loadability ─────────────────────────────────────────────────────────
+# Pi's own validators, from dist/core/skills.js: MAX_NAME_LENGTH 64,
+# MAX_DESCRIPTION_LENGTH 1024, name must match ^[a-z0-9-]+$ with no leading,
+# trailing or doubled hyphen. Every cross-client harness applies the same rules
+# (it is the Agent Skills spec), so the repo pass and the published pass must
+# apply ONE copy of the rule — a second, looser implementation is how binding
+# stops binding.
+_SKILL_NAME_RE = re.compile(r"[a-z0-9-]+")
+
+
+def _loader_skill_files(root):
+    """The SKILL.md files a coding agent's loader actually reaches under `root`.
+
+    Mirrors Pi's traversal (dist/core/skills.js): a directory holding SKILL.md IS
+    one skill and recursion STOPS there; dot-dirs and node_modules are skipped;
+    symlinked directories are followed. ONE traversal serves both the repo and the
+    published pass, so a difference between the two counts is evidence about the
+    tree rather than about two implementations.
+    """
+    seen = []
+
+    def walk(d):
+        try:
+            entries = sorted(os.scandir(d), key=lambda e: e.name)
+        except OSError:
+            return
+        for e in entries:
+            try:
+                if e.name == "SKILL.md" and e.is_file():
+                    seen.append(Path(e.path))
+                    return
+            except OSError:
+                return
+        for e in entries:
+            if e.name.startswith(".") or e.name == "node_modules":
+                continue
+            try:
+                if e.is_dir():
+                    walk(e.path)
+            except OSError:
+                continue
+
+    walk(root)
+    return seen
+
+
+_TEXT_KEY_RE = re.compile(r"^([A-Za-z0-9_.-]+):")
+
+
+def _text_frontmatter_defects(text):
+    """The loader's rules a plain text scan can apply WITHOUT risking a false alarm.
+
+    A file that does not start with `---`, an unterminated frontmatter, a
+    duplicated TOP-LEVEL key, and a missing top-level `description`. Name charset,
+    YAML parse errors and length limits are NOT covered — the caller reports that
+    they were skipped rather than implying they passed.
+    """
+    if not text.startswith("---"):
+        return ["no frontmatter (file does not start with ---)"]
+    end = text.find("\n---", 3)
+    if end < 0:
+        return ["unterminated frontmatter"]
+    keys, dupes, has_desc = set(), [], False
+    for line in text[3:end].splitlines():
+        m = _TEXT_KEY_RE.match(line)          # column 0 only = top-level key
+        if not m:
+            continue
+        if m.group(1) == "description":
+            has_desc = True
+        if m.group(1) in keys:
+            dupes.append(m.group(1))
+        keys.add(m.group(1))
+    out = []
+    if dupes:
+        out.append("duplicate mapping key(s): " + ", ".join(sorted(set(dupes))))
+    if not has_desc:
+        out.append("description is required")
+    return out
+
+
+def _skill_defects(path, yaml_mod):
+    """Reasons a loader would REFUSE this SKILL.md; [] when the file is fine.
+
+    `yaml_mod` is the yaml module, or None when the doctor's interpreter cannot
+    import it. The doctor runs under whatever `python3` is on PATH, and that
+    interpreter often lacks PyYAML (measured on esther 2026-10-22) — a gate that
+    only works on a host which happens to have a library is not a gate, so the
+    check degrades to the text scan above and REPORTS the degradation instead of
+    staying silent about it. A checker that reports a PASS over files it never
+    read is the worst outcome of the three.
+    """
+    try:
+        text = path.read_text(encoding="utf-8", errors="replace")
+    except OSError as e:
+        return [f"unreadable ({type(e).__name__})"]
+    if yaml_mod is None:
+        return _text_frontmatter_defects(text)
+    if not text.startswith("---"):
+        return ["no frontmatter (file does not start with ---)"]
+    end = text.find("\n---", 3)
+    if end < 0:
+        return ["unterminated frontmatter"]
+    try:
+        fm = yaml_mod.safe_load(text[3:end])
+    except yaml_mod.YAMLError as e:
+        return [f"frontmatter does not parse: {str(e).splitlines()[0]}"]
+    if not isinstance(fm, dict):
+        return [f"frontmatter is {type(fm).__name__}, not a mapping"]
+
+    # PyYAML silently keeps the LAST of two identical keys; the loader REJECTS the
+    # file. Walk the node tree so the check sees what the loader sees.
+    dupes = []
+
+    def walk_nodes(node):
+        if isinstance(node, yaml_mod.MappingNode):
+            seen = set()
+            for k, v in node.value:
+                key = str(getattr(k, "value", k))
+                if key in seen:
+                    dupes.append(key)
+                seen.add(key)
+                walk_nodes(v)
+        elif isinstance(node, yaml_mod.SequenceNode):
+            for i in node.value:
+                walk_nodes(i)
+
+    walk_nodes(yaml_mod.compose(text[3:end]))
+
+    out = []
+    if dupes:
+        out.append("duplicate mapping key(s): " + ", ".join(sorted(set(dupes))))
+    desc = fm.get("description")
+    if not isinstance(desc, str) or not desc.strip():
+        out.append("description is required")
+    elif len(desc) > 1024:
+        out.append(f"description exceeds 1024 characters ({len(desc)})")
+    name = str(fm.get("name") or "")
+    if not name:
+        out.append("name is required")
+    elif not _SKILL_NAME_RE.fullmatch(name):
+        out.append(f"name {name!r} has invalid characters (lowercase a-z, 0-9, hyphens only)")
+    elif len(name) > 64:
+        out.append(f"name exceeds 64 characters ({len(name)})")
+    elif "--" in name or name.startswith("-") or name.endswith("-"):
+        out.append(f"name {name!r} must not start or end with, or double, a hyphen")
+    return out
+
+
+def check_skills_loadable(res):
+    """Would an Agent-Skills loader silently DROP one of our skills?
+
+    Every harness reads the same cross-client tree and applies the same spec: the
+    frontmatter must parse as YAML, `description` is REQUIRED and non-empty, and
+    `name` must be lowercase a-z/0-9/hyphens. A file failing any of those is
+    dropped from the agent's skill index without an error anyone reads.
+
+    Measured 2026-10-22: 30 deprecated redirect stubs carried no description, so
+    the "merged into X, load that instead" body they exist to deliver reached NO
+    coding agent on ANY host — the stub was invisible dead weight, and nothing in
+    the repo noticed. This check is what notices.
+
+    Repo-owned defects FAIL (we own the source and can fix them). Defects in the
+    published tree that the repo does not own WARN: a per-item rule belongs only
+    to the items the checker owns, and a plugin dump is fixed at its plugin, not
+    here.
+    """
+    skills_dir = CORTEX_REPO / "skills"
+    try:
+        import yaml as yaml_mod
+    except ImportError:
+        yaml_mod = None
+    repo_rel = set()
+    bad = []
+    if skills_dir.is_dir():
+        for p in _loader_skill_files(skills_dir):
+            rel = p.parent.relative_to(skills_dir)
+            repo_rel.add(str(rel))
+            defects = _skill_defects(p, yaml_mod)
+            if defects:
+                bad.append((str(rel), defects))
+    if yaml_mod is None:
+        res.add("Skills loadable", "WARN",
+            f"checked {len(repo_rel)} repo skill(s) in TEXT mode — the doctor's "
+            f"interpreter ({sys.executable}) cannot import yaml, so the name-charset, "
+            f"YAML-parse and length rules were NOT applied",
+            "Run the doctor with an interpreter that can import the declared set: "
+            "~/.hermes-cortex/venv/bin/python3 "
+            "~/.hermes-cortex/scripts/cortex-doctor.py — or repair the fleet venv with "
+            "python3 ops/scripts/manage/fix-cortex-venv.py")
+    for rel, defects in bad[:10]:
+        res.add("Skills loadable", "FAIL", f"{rel} — " + "; ".join(defects),
+            "Fix the frontmatter so every Agent-Skills loader accepts the file. "
+            "`description` is REQUIRED; `name` must be lowercase a-z/0-9/hyphens. "
+            "Quote any description containing ': ' — unquoted it is invalid YAML.")
+    if len(bad) > 10:
+        res.add(f"Skills loadable ({len(bad)} total)", "FAIL",
+            f"{len(bad) - 10} more repo SKILL.md files a loader would refuse",
+            "Re-run this check after fixing: python3 ops/scripts/manage/cortex-doctor.py")
+    if not bad and repo_rel and yaml_mod is not None:
+        res.add("Skills loadable", "PASS",
+            f"all {len(repo_rel)} repo skills pass the Agent-Skills loader rules")
+
+    published = Path.home() / ".agents" / "skills"
+    if not published.is_dir():
+        return
+    foreign = []
+    for p in _loader_skill_files(published):
+        try:
+            rel = str(p.parent.relative_to(published))
+        except ValueError:
+            continue
+        if rel in repo_rel:
+            continue
+        defects = _skill_defects(p, yaml_mod)
+        if defects:
+            foreign.append((rel, defects))
+    if foreign:
+        shown = "; ".join(rel for rel, _ in foreign[:3])
+        res.add("Skills loadable (published)", "WARN",
+            f"{len(foreign)} skill(s) in ~/.agents/skills that this repo does not own "
+            f"would be dropped by a loader: {shown}",
+            "Not repo-owned (a Hermes default, or a plugin install such as "
+            "openclaw). Fix it at its owner — patching the published copy here is "
+            "overwritten by the next deploy or plugin install.")
+
+
 def check_skills_version(res):
     """Check that all repo skills have a version field in frontmatter."""
     SKILLS_DIR = CORTEX_REPO / "skills"

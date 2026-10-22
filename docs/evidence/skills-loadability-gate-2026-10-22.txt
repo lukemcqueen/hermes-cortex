@@ -1,0 +1,61 @@
+command : bash docs/evidence/skills-loadability-gate-2026-10-22.sh
+when    : 2026-10-22T09:52:23Z
+base    : d4cf306e15bafef23a02d56da149717c483f5a2e  (pinned literal; the pre-change revision)
+captured-at: acfd1417aa8b1a29cff9e93daf6f66a00f3d52d0
+check   : cortex_doctor.checks.check_skills_loadable (registered in cli.py)
+note    : volatile by design — host paths normalised to ~, scratch dir to $WORK,
+          ANSI stripped. 'captured-at' is the revision the tree sat on when this
+          ran; the file is written afterwards, so it cannot name its own commit.
+
+=== 1. materialise the BASE (pre-change) skills tree ===
+  base SKILL.md count: 385
+
+  ASSERT the extraction really is pre-change: the fixed stubs carry
+    description: "DEPRECATED alias — merged into cortex-bus. Load cortex-bus instead."
+  files carrying it at BASE: 0  (must be 0)
+
+=== 2. the check against the PRE-CHANGE tree (must FAIL) ===
+  FAIL=11  WARN=1  PASS=0  INFO=0
+    FAIL: devops/auto-remediation-ecosystem — description is required
+    FAIL: devops/auto-remediation-setup — description is required
+    FAIL: devops/bus-archive-diagnostics — description is required
+    FAIL: devops/bus-client-resilience — description is required
+    ... and 7 more FAIL line(s)
+    WARN: 1 skill(s) in ~/.agents/skills that this repo does not own would be dropped by a loader: brand-intelligence
+  rc=1   (1 = FAIL lines present, which is the point)
+
+=== 3. the check against the CURRENT repo tree (must PASS) ===
+  FAIL=0  WARN=1  PASS=1  INFO=0
+    WARN: 1 skill(s) in ~/.agents/skills that this repo does not own would be dropped by a loader: brand-intelligence
+    PASS: all 383 repo skills pass the Agent-Skills loader rules
+  rc=0   (0 = no FAIL lines)
+
+=== 4. the check's own tests ===
+============================== 15 passed in 0.18s ==============================
+---
+run-tests.sh: interpreter=~/.hermes-cortex/venv/bin/python3 rc=0  (PYTHONPATH/PYTHONHOME unset for the run)
+  rc=0
+
+=== 5. the same check under an interpreter with NO PyYAML (the real default) ===
+  the doctor is documented as 'python3 <script>', and on this host python3 is
+  ~/.hermes/installs/483c6efb1d92c950/environments/b5932aae9bbb4617a29160b66fbed402/venv/bin/python3
+  which cannot import yaml — so the check must REPORT the degradation, never
+  report a PASS over files it could not read.
+~/.hermes/installs/483c6efb1d92c950/environments/b5932aae9bbb4617a29160b66fbed402/venv/bin/python3
+ModuleNotFoundError: No module named 'yaml'
+  FAIL=0  WARN=2  PASS=0  INFO=0
+    WARN: checked 383 repo skill(s) in TEXT mode — the doctor's interpreter (~/.hermes/installs/483c6efb1d92c
+    WARN: 1 skill(s) in ~/.agents/skills that this repo does not own would be dropped by a loader: brand-intelligence
+  rc=0   (0 = no FAIL lines; the WARN is the degradation notice)
+
+=== verdict ===
+  pre-change tree : rc=1   (FAILs — the check NOTICES the defect class)
+  current tree    : rc=0   (clean — no false alarm on a healthy tree)
+  yaml-less python: rc=0   (no FAIL, but a WARN naming the skipped rules)
+
+  The directions together are the evidence: a green run alone would prove only
+  that the check is quiet, and quiet is also what a deleted check does. And a
+  run under an interpreter missing PyYAML proves the degradation is ANNOUNCED:
+  the first cut of this check reported 'unchecked=383' alongside a PASS line
+  claiming all 383 skills passed — a green tick over files it never read.
+  Read-only: none of these runs writes to the tree it measures.
