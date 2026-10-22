@@ -1,7 +1,7 @@
-# [cost/3] verification transcript — 2026-10-22T13:50:28Z
+# [cost/3] verification transcript — 2026-10-22T13:53:55Z
 # captured-at: revision the working tree sat on when this ran (the committed
 # copy is necessarily one commit ahead — this file cannot name its own commit).
-captured-at: f7b9457e
+captured-at: 1e38f6cb
 
 ## 1. per-cron series from the live audit log + live state.db
 $ cron-cost-metrics.py --prometheus --agent esther
@@ -15,7 +15,7 @@ hermes_cron_cost_available{agent="esther"} 1
 first 8 lines:
 # HELP hermes_cron_tokens_total Cron tokens consumed per job (lifetime, audit log)
 # TYPE hermes_cron_tokens_total counter
-hermes_cron_tokens_total{agent="esther",job_id="0677224663a3"} 1.46556e+08
+hermes_cron_tokens_total{agent="esther",job_id="0677224663a3"} 1.48583e+08
 hermes_cron_tokens_total{agent="esther",job_id="169ac3b60e36"} 1.33315e+07
 hermes_cron_tokens_total{agent="esther",job_id="176a4f5d90ce"} 8.85666e+06
 hermes_cron_tokens_total{agent="esther",job_id="1954deb5ad76"} 1.81332e+08
@@ -24,18 +24,19 @@ hermes_cron_tokens_total{agent="esther",job_id="1f31ee6587e3"} 1.1608e+07
 
 ## 2. the real push client against a local recording sink
 push client exit code: 0 (0 = pushed)
-payload bytes recorded: 10990
+payload bytes recorded: 10989
 node series in the payload: 17
 cron cost series in the payload: 119
   ^ the payload is a SUPERSET: node series + the cron cost series (data lines only).
     Section 1's larger number counts the generator's HELP/TYPE comment lines too;
     both counts come from the same generator run, so 119 <= 129 by exactly those comments.
 sample of the cost series as received:
-hermes_cron_tokens_total{agent="esther",job_id="0677224663a3"} 1.46556e+08
+hermes_cron_tokens_total{agent="esther",job_id="0677224663a3"} 1.48583e+08
 hermes_cron_tokens_total{agent="esther",job_id="169ac3b60e36"} 1.33315e+07
 hermes_cron_tokens_total{agent="esther",job_id="176a4f5d90ce"} 8.85666e+06
 hermes_cron_tokens_total{agent="esther",job_id="1954deb5ad76"} 1.81332e+08
 client stderr/stdout: ''
+recorder shutdown: kill rc=0, wait rc=143 (non-zero here means the process was already gone — reported, not swallowed)
 
 ## 3. weekly report on live data
 $ python3 ~/hermes-cortex/ops/scripts/manage/orch-weekly-cost-report.py --days 7
@@ -48,10 +49,10 @@ Spend by day (state.db sessions, source=cron):
   2026-10-19  $0.22
   2026-10-20  $0.31
   2026-10-21  $0.23
-  2026-10-22  $0.49
+  2026-10-22  $0.55
 Measured days: 8 (2026-10-15/2026-10-16/2026-10-17/2026-10-18/2026-10-19/2026-10-20/2026-10-21/2026-10-22)
-Measured daily average: $0.44  (target $10.00)
-Window total: $3.54
+Measured daily average: $0.45  (target $10.00)
+Window total: $3.59
 Top jobs by tokens (audit log, lifetime):
   dbcdec6bb40d  829603169 tokens, 262 fires
   8a46f1b96b7d  333728479 tokens, 43 fires
@@ -64,7 +65,7 @@ COVERAGE
 rc=0
 
 ## 3b. the alert path, driven by a fixture that breaches the target
-$ python3 ~/hermes-cortex/ops/scripts/manage/orch-weekly-cost-report.py --audit ~/.hermes/cache/scratch/tmp.oLufoUQCok/fx/usage_audit.jsonl --state-db ~/.hermes/cache/scratch/tmp.oLufoUQCok/fx/state.db --days 7
+$ python3 ~/hermes-cortex/ops/scripts/manage/orch-weekly-cost-report.py --audit ~/.hermes/cache/scratch/tmp.HWMc48bYww/fx/usage_audit.jsonl --state-db ~/.hermes/cache/scratch/tmp.HWMc48bYww/fx/state.db --days 7
 💰 Weekly fleet cost report — this host, window 7d
 ⚠️ FLEET COST ABOVE TARGET — measured daily average $13.00 > $10.00
 Spend by day (state.db sessions, source=cron):
@@ -81,6 +82,8 @@ COVERAGE
 rc=1
 
 ## 4. test suite (both new files — every test name and result)
+tracked: tests/test_runtime/test_cron_cost_reporting.py
+tracked: tests/test_runtime/test_push_metrics_cost_series.py
 $ bash ~/hermes-cortex/tests/run-tests.sh tests/test_runtime/test_cron_cost_reporting.py tests/test_runtime/test_push_metrics_cost_series.py -v
 ============================= test session starts ==============================
 platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0 -- ~/.hermes-cortex/venv/bin/python3
@@ -105,7 +108,7 @@ tests/test_runtime/test_push_metrics_cost_series.py::test_absent_generator_pushe
 tests/test_runtime/test_push_metrics_cost_series.py::test_working_generator_lands_in_the_same_push PASSED [ 93%]
 tests/test_runtime/test_push_metrics_cost_series.py::test_failing_generator_does_not_fail_the_push_and_says_so PASSED [100%]
 
-============================== 15 passed in 3.02s ==============================
+============================== 15 passed in 2.99s ==============================
 ---
 run-tests.sh: interpreter=~/.hermes-cortex/venv/bin/python3 rc=0  (PYTHONPATH/PYTHONHOME unset for the run)
 rc=0

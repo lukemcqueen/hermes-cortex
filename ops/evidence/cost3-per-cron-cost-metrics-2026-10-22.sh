@@ -42,7 +42,13 @@ run() {
 say "# [cost/3] verification transcript — $(date -u '+%Y-%m-%dT%H:%M:%SZ')"
 say "# captured-at: revision the working tree sat on when this ran (the committed"
 say "# copy is necessarily one commit ahead — this file cannot name its own commit)."
-say "captured-at: $(git -C "$REPO" rev-parse --short HEAD 2>/dev/null)"
+rev="$(git -C "$REPO" rev-parse --short HEAD 2>&1)"
+if [ -z "$rev" ] || printf '%s' "$rev" | grep -q -i -e fatal -e 'not a git repository'; then
+  # Never let an unresolvable revision look like a blank-but-fine field.
+  say "captured-at: UNRESOLVED — git rev-parse said: ${rev:-<empty>}"
+else
+  say "captured-at: $rev"
+fi
 say ""
 
 # ── 1. the generator, on live data ───────────────────────────────────────────
@@ -101,8 +107,14 @@ say "sample of the cost series as received:"
 grep '^hermes_cron_' "$WORK/payload.txt" | head -4 | norm >>"$OUT"
 grep '^hermes_cron_' "$WORK/payload.txt" | head -4 | norm
 say "client stderr/stdout: '$(norm <"$WORK/client.log")'"
-kill "$rec_pid" 2>/dev/null || true
-wait "$rec_pid" 2>/dev/null || true
+kill "$rec_pid" 2>/dev/null
+krc=$?
+wait "$rec_pid" 2>/dev/null
+wrc=$?
+say "recorder shutdown: kill rc=$krc, wait rc=$wrc (non-zero here means the process was already gone — reported, not swallowed)"
+if kill -0 "$rec_pid" 2>/dev/null; then
+  say "WARNING: recorder $rec_pid is STILL ALIVE — the port may still be held"
+fi
 say ""
 
 # ── 3. the real weekly report, on live data, and its alert path ─────────────
@@ -128,6 +140,18 @@ run python3 "$REPO/ops/scripts/manage/orch-weekly-cost-report.py" \
   --audit "$FX/usage_audit.jsonl" --state-db "$FX/state.db" --days 7
 say ""
 say "## 4. test suite (both new files — every test name and result)"
+# Both files are tracked in this repo and in this change's range; assert that here
+# rather than assuming it, so a run against a different tree cannot silently
+# report a suite it did not run.
+for t in tests/test_runtime/test_cron_cost_reporting.py \
+         tests/test_runtime/test_push_metrics_cost_series.py; do
+  if git -C "$REPO" ls-files --error-unmatch "$t" >/dev/null 2>&1; then
+    say "tracked: $t"
+  else
+    say "NOT TRACKED IN THIS REPO: $t — stopping rather than reporting a suite that cannot exist"
+    exit 3
+  fi
+done
 run bash "$REPO/tests/run-tests.sh" \
   tests/test_runtime/test_cron_cost_reporting.py \
   tests/test_runtime/test_push_metrics_cost_series.py -v
