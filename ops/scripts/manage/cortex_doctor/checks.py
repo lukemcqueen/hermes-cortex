@@ -865,6 +865,9 @@ def check_dev_repo_claude(res: "Results") -> None:
 
   checked = 0
   missing = []
+  drifted = []  # has CLAUDE.md but missing the fleet's universal Excellence section
+  # The Excellence core-value section is universal (added to CLAUDE.md 2026-10-22);
+  # a repo copy that predates it is stale and should be reconciled.
   for path in raw.split("\n"):
     path = path.strip()
     if not path:
@@ -878,8 +881,11 @@ def check_dev_repo_claude(res: "Results") -> None:
     if not git_log:
       continue
     checked += 1
-    if not (repo_dir / "CLAUDE.md").exists():
+    repo_claude = repo_dir / "CLAUDE.md"
+    if not repo_claude.exists():
       missing.append(repo_dir.name)
+    elif "Excellence" not in repo_claude.read_text(errors="replace"):
+      drifted.append(repo_dir.name)
 
   if checked == 0:
     return
@@ -891,6 +897,13 @@ def check_dev_repo_claude(res: "Results") -> None:
         "REQUIRED: copy ~/hermes-cortex/CLAUDE.md to each repo and adapt the "
         "project-specific parts. CLAUDE.md is Claude Code's governance "
         "contract — without it titusclaude is ungoverned in that repo.")
+  elif drifted:
+    res.add("CLAUDE.md (dev repos)", "WARN",
+        f"{len(drifted)} dev repo(s) have a stale CLAUDE.md missing the fleet's "
+        "Excellence core-value section: " + ", ".join(drifted[:6]),
+        "REQUIRED: reconcile ~/hermes-cortex/CLAUDE.md into each repo (merge the "
+        "Excellence — Core Value, Every Action section). This is a WARN — repo "
+        "CLAUDE.md is project-adapted, never auto-overwritten.")
   else:
     res.add("CLAUDE.md (dev repos)", "PASS",
         f"all {checked} active dev repo(s) have CLAUDE.md")
@@ -1125,6 +1138,41 @@ def check_soul_sync(res):
       res.add("SOUL.md reverse drift (~/.hermes)", "PASS")
   else:
     res.add("SOUL.md reverse drift (~/.hermes)", "PASS")
+
+
+def check_user_template(res):
+  """Check live USER.md aligns with the fleet template's purpose.
+
+  USER.md (~/.hermes/memories/USER.md) is Hermes-owned and personalizes by
+  design — it is NEVER auto-overwritten and NEVER content-compared to the
+  seed (that would FAIL on every healthy personalized copy). What an agent
+  CAN act on is a template change: when docs/templates/USER.seed.md is newer
+  than the live file, the template changed and the agent should review theirs.
+  Warn-only; the fix is a manual review of the new template, not a copy.
+  """
+  template = CORTEX_REPO / "docs" / "templates" / "USER.seed.md"
+  live = Path.home() / ".hermes" / "memories" / "USER.md"
+  if not template.exists():
+    res.add("USER.md template", "INFO", "template not found at docs/templates/USER.seed.md",
+        "REQUIRED: verify repo is up to date")
+    return
+  if not live.exists():
+    # No live USER.md yet — nothing to reconcile; Hermes creates it on first
+    # memory write from the user profile, not from this template.
+    return
+  try:
+    template_newer = template.stat().st_mtime > live.stat().st_mtime
+  except OSError:
+    res.add("USER.md template", "INFO", "could not stat live USER.md or template")
+    return
+  if template_newer:
+    res.add("USER.md template (~/.hermes)", "WARN",
+        "USER.md template changed — review your live copy",
+        "REQUIRED: diff ~/hermes-cortex/docs/templates/USER.seed.md ~/.hermes/memories/USER.md "
+        "and merge relevant guidance. USER.md is Hermes-owned and never auto-overwritten; "
+        "engineering standards (excellence, testing) now live in AGENTS.md.")
+  else:
+    res.add("USER.md template (~/.hermes)", "PASS")
 
 
 def check_skills(res):
