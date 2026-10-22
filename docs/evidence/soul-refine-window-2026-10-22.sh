@@ -23,6 +23,38 @@ case "$OUT" in /*) OUTABS="$OUT" ;; *) OUTABS="$(pwd)/$OUT" ;; esac
 
 REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 export REPO_ROOT
+SELF="$REPO_ROOT/docs/evidence/soul-refine-window-2026-10-22.sh"
+
+# --self-test proves the property this script previously lacked: that a FAILING
+# run says so through its exit code. Direction 1 runs the generator normally
+# (must exit 0); direction 2 runs a COPY from a foreign directory, where it
+# cannot resolve the file its own `bash -n` checks, and requires a NON-ZERO exit
+# — the previous revision ended in an `echo`, so it always exited 0 and a broken
+# run reported success.
+if [ "${1:-}" = "--self-test" ]; then
+  TMPD="$(mktemp -d)"
+  trap 'rm -rf -- "${TMPD:?}"' EXIT
+  echo "=== self-test: a failing run must report failure through its exit code ==="
+  fails=0
+  echo "-- direction 1: normal run, expect rc=0 (output to scratch, never the committed path)"
+  bash "$SELF" "$TMPD/ok.txt"
+  A=$?
+  echo "   normal run rc=$A"
+  if [ "$A" -eq 0 ]; then echo "   PASS  a healthy run exits 0"; else echo "   FAIL  healthy run exited $A"; fails=$((fails + 1)); fi
+  echo "-- direction 2: same script from a FOREIGN dir cannot resolve its bash -n target,"
+  echo "   so it must exit non-zero (this is exactly what the old tail swallowed)"
+  mkdir -p "$TMPD/foreign"
+  cp "$SELF" "$TMPD/foreign/g.sh"
+  (cd "$TMPD/foreign" && bash g.sh "$TMPD/foreign/out.txt")
+  B=$?
+  echo "   foreign-dir run rc=$B"
+  if [ "$B" -ne 0 ]; then echo "   PASS  a failing run exits non-zero"; else echo "   FAIL  a failing run still exited 0"; fails=$((fails + 1)); fi
+  echo "-- the failing transcript's tail:"
+  if [ -f "$TMPD/foreign/out.txt" ]; then tail -4 "$TMPD/foreign/out.txt" | sed 's/^/   /'; else echo "   (no transcript written)"; fi
+  echo "self-test failures: $fails"
+  if [ "$fails" -ne 0 ]; then exit 1; fi
+  exit 0
+fi
 exec >"$OUTABS" 2>&1
 
 echo "=== soul-refinement window transcript ==="
@@ -250,6 +282,14 @@ echo "python mining pass rc=$PYRC"
 echo
 echo "=== syntax check of the file this transcript documents ==="
 bash -n "$REPO_ROOT/docs/evidence/soul-refine-window-2026-10-22.sh"
-echo "bash -n docs/evidence/soul-refine-window-2026-10-22.sh rc=$?"
+SYNRC=$?
+echo "bash -n docs/evidence/soul-refine-window-2026-10-22.sh rc=$SYNRC"
 echo
 echo "=== END OF TRANSCRIPT ==="
+# The transcript must not mask its own failure. Before this, the last statement
+# was an `echo`, so the script ALWAYS exited 0 and a broken run reported success.
+if [ "$PYRC" -ne 0 ] || [ "$SYNRC" -ne 0 ]; then
+  echo "!!! generator FAILED: python pass rc=$PYRC, syntax check rc=$SYNRC" >&2
+  exit 1
+fi
+exit 0
