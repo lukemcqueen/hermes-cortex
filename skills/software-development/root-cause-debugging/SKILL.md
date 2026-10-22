@@ -51,6 +51,22 @@ Use for ANY technical issue:
 - You're in a hurry (rushing guarantees rework)
 - Someone wants it fixed NOW (systematic is faster than thrashing)
 
+## When There Is More Than One Failure — Triage First
+
+Phases 0-5 fix ONE bug. Before picking *which* bug, triage the whole failing set:
+run each failing file once, capture the FIRST failure reason each produces, and
+group by **signature** — the named cause, not the file path. **Count each group**
+— a count is evidence; "roughly N" is a guess that hides where the leverage is.
+
+Pick the next fix as the largest group whose members share ONE cause: N files
+under a single named cause is leverage (one fix, N greens). A group whose members
+are independent artifacts — same symptom, different causes — is a checklist, not
+one fix; name it as such rather than claiming a shared root.
+
+Record files that already PASS at the tip as their own explicit group. A file
+that fails in a report but passes at the tip is flaky or fixed-in-range — a live
+risk to own, not silence.
+
 ## The Six Phases
 
 You MUST complete each phase before proceeding to the next.
@@ -150,6 +166,18 @@ underlying data — the rows, the query, the log — never a premise to act on. 
 confident report can be confidently wrong; in practice a triage report can name
 the wrong cause for every symptom and send the fix the wrong way. Read the
 artifact the diagnosis rests on and confirm it yourself before writing any fix.
+
+**An absent CALLER is not an absent WRITER.** When you cannot find what produces a value,
+grepping for the file's name — or for the helper that constructs its path — finds only the
+READERS. A writer that builds the same path inline, or writes from another module entirely,
+is invisible to that search, and the empty result reads as "nothing writes this". Measured:
+a per-session state file whose only references were its constructor's `def` and two read
+sites, so the hunt ended in a confident and WRONG claim, committed, that no writer existed —
+the writer had been building that path inline all along, inside the very function being
+investigated. Search for what WRITES the artifact (`write_text` / `write` / `>` over the same
+expression, or the state directory itself), not for callers of the path's constructor; and
+never let a negative grep become a stated fact without a second, differently-shaped method
+that could have found the positive.
 
 **Action:** Use `read_file` on relevant source files. Use `search_files` to trace references:
 

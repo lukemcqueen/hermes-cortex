@@ -1,0 +1,60 @@
+land the root-cause-debugging rule — evidence
+captured-at : 326be2d6  (the working tree's revision)
+generated-by: docs/evidence/land-root-cause-debugging-skill-2026-10-22.sh (this file wrote itself)
+────────────────────────────────────────────────────────────
+
+1. WHY this cycle exists
+   The rule was added to the DEPLOYED skill during cycle 13608. The REPO tree is
+   canonical, so a deployed-only edit is fragile: the next sync can revert it and the
+   lesson is lost to the whole fleet. A lesson that exists on one host only is not a
+   lesson, it is local state.
+────────────────────────────────────────────────────────────
+
+2. The rule is present in BOTH copies — same content, proven by hash not by eye
+   $ grep -c 'absent CALLER is not an absent WRITER'  <each copy>
+     repo     : 1
+     deployed : 1
+   sha256:
+     repo     : 75bdb3dbdee63c383bc60b595184f4badb27ca6edc4dce6fe63364cd2e4fdf2b
+     deployed : 75bdb3dbdee63c383bc60b595184f4badb27ca6edc4dce6fe63364cd2e4fdf2b
+   cmp -s: IDENTICAL — the repo copy is now what the deployed copy carries.
+────────────────────────────────────────────────────────────
+
+3. The sanctioned reconcile path (not a hand-copy by judgement)
+   The verdict for THIS file, MEASURED BEFORE the copy was applied in this cycle:
+     SUPERSET software-development/root-cause-debugging/SKILL.md:
+       pure superset (+28, -0) -> safe to apply
+   A PURE SUPERSET means the deployed copy only ADDS lines — it drops nothing, so landing
+   it cannot lose repo content. --apply was deliberately NOT used: it would land every
+   other safe superset on the host too (8+ files), and this cycle's declared range is this
+   file alone. The other stranded skills keep their own disposition.
+
+   Re-running the detector NOW is the same fact from the other side. The file is GONE from
+   the stranded list, so an EMPTY grep below is the EXPECTED result, not a broken probe:
+   $ ... | grep 'Detector verdict'
+     Detector verdict: FAIL · stranded: 17
+   $ ... | grep -i root-cause
+     (no output — not stranded: this cycle's result)
+────────────────────────────────────────────────────────────
+
+4. The drift record no longer lists this file — the point of the cycle
+   $ grep -c 'root-cause-debugging' docs/evidence/skill-drift-parity.txt
+     before this cycle : 1   (listed at line 48, as a stranded/divergent skill)
+     after  regenerating the record : 0
+
+   The record is regenerated with its own documented command:
+   $ python3 ops/scripts/manage/check-skill-drift-parity.py
+     exit rc=1 still — 17 OTHER skills remain stranded, which is pre-existing and NOT
+     this cycle's scope. THIS file is resolved.
+────────────────────────────────────────────────────────────
+
+5. What this capture covers
+   UNCOMMITTED at capture time — the committed copy lands one commit after this run.
+   HEAD at capture: 326be2d6
+      M docs/evidence/skill-drift-parity.txt
+      M skills/software-development/root-cause-debugging/SKILL.md
+     ?? docs/evidence/land-root-cause-debugging-skill-2026-10-22.sh
+     ?? docs/evidence/land-root-cause-debugging-skill-2026-10-22.txt
+────────────────────────────────────────────────────────────
+
+end of evidence
