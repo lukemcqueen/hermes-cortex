@@ -1,0 +1,32 @@
+captured-at: 854422f3
+date: 2026-10-23 05:06 KST
+
+== devops/cortex-deployment-sync ==
+fences repo=28 deployed=28 even=1
+md5 repo=5dab8b35ef5db0444c943303ad11ed37 deployed=5dab8b35ef5db0444c943303ad11ed37 match=YES
+== devops/doc-freshness ==
+fences repo=18 deployed=18 even=1
+md5 repo=f9e7cb78097966a282b3e24d896d0152 deployed=f9e7cb78097966a282b3e24d896d0152 match=YES
+== devops/git-push-gate-failures ==
+fences repo=14 deployed=14 even=1
+md5 repo=d6354e211c75621c498a52b0a52d1063 deployed=d6354e211c75621c498a52b0a52d1063 match=YES
+== devops/hermes-gateway-operations ==
+fences repo=24 deployed=24 even=1
+md5 repo=cfac539a3745112678cb883b40265964 deployed=cfac539a3745112678cb883b40265964 match=YES
+
+== reconcile-stranded-skills.py (report) ==
+Detector verdict: FAIL · stranded: 0
+Nothing stranded: repo and deployed trees agree on content.
+reconciler_rc=0
+
+== doctor skill-drift/deploy-sync lines ==
+  ✅ Deploy sync
+  ✅ Stale skills: orphans
+  ✅ Stale skills: missing
+  ✅ Stale skills: ambiguous names (deployed)
+  ✅ Stale skills: ambiguous names (repo)
+  ✅ Skill drift
+  ⚠️  Overall: WARNING  (484 pass · 7 warn · 0 fail · 4 info)  · 8 undisposed
+doctor_rc=1 (doctor's own exit, measured unpiped)
+
+verdict: 854422f3 Merge remote-tracking branch 'origin/main'
