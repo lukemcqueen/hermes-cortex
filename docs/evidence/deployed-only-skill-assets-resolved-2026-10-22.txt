@@ -1,0 +1,95 @@
+command : bash docs/evidence/deployed-only-skill-assets-resolved-2026-10-22.sh
+when    : 2026-10-22T10:50:23Z
+captured-at: 7f48b158b239d27a55f6cf7f2dfe8dfadcb93590
+note    : volatile by design — host paths normalised to ~, ANSI stripped. The
+          revision above is captured-at: this file is written afterwards, so it
+          cannot name its own commit.
+
+=== 1. the question ===
+  The parity checker reported 122 files under repo-owned skill dirs that the
+  repo does not carry (3 dropped-from-repo, 119 never-committed). Every one had
+  to be either INCORPORATED into the repo or REMOVED from the deployed tree.
+
+=== 2. the rule (per file, no third state) ===
+  INCORPORATE — copy deployed -> repo with sha256 assertion:
+    the file is a real asset for a skill the repo already owns (case studies,
+    reference guides, working scripts). The repo is the fleet's durable store;
+    deleting knowledge to save effort is the wrong trade.
+  REMOVE — move out of the deployed tree into a preserved archive:
+    residue that is never a skill asset (plugin install metadata _meta.json /
+    skill-card.md, catalogue evals/, build+editor caches), or a path the repo
+    DELETED on purpose (it is in repo history — restoring it would undo a
+    decision and the deployed copy is only stale).
+
+  The classifier was corrected once during this work: the first rule demanded
+  that a SKILL.md name each file, which reported whole routed families as
+  orphaned — a probe inventing a loss. It now accepts a skill that routes the
+  references/ scripts/ templates/ assets/ family.
+
+=== 3. what was removed (PRESERVED, not deleted) ===
+  moved to : ~/.hermes-cortex/skills/.archive/deployed-only-residue-2026-10-22/
+  a dot-dir, so a loader skips it: out of every agent's view, still on disk.
+  files preserved: 15   (expected 15)
+~/.hermes-cortex/skills/.archive/deployed-only-residue-2026-10-22/devops/codebase-portability/references/gbrain-wrapper-crossplatform.md
+~/.hermes-cortex/skills/.archive/deployed-only-residue-2026-10-22/devops/sensor-false-positive-remediation/references/gbrain-health-false-positive.md
+~/.hermes-cortex/skills/.archive/deployed-only-residue-2026-10-22/email-sequence/_meta.json
+~/.hermes-cortex/skills/.archive/deployed-only-residue-2026-10-22/email-sequence/skill-card.md
+~/.hermes-cortex/skills/.archive/deployed-only-residue-2026-10-22/marketing-psychology/evals/evals.json
+~/.hermes-cortex/skills/.archive/deployed-only-residue-2026-10-22/marketing-psychology/_meta.json
+~/.hermes-cortex/skills/.archive/deployed-only-residue-2026-10-22/marketing-psychology/skill-card.md
+~/.hermes-cortex/skills/.archive/deployed-only-residue-2026-10-22/programmatic-seo/evals/evals.json
+~/.hermes-cortex/skills/.archive/deployed-only-residue-2026-10-22/programmatic-seo/_meta.json
+~/.hermes-cortex/skills/.archive/deployed-only-residue-2026-10-22/programmatic-seo/skill-card.md
+~/.hermes-cortex/skills/.archive/deployed-only-residue-2026-10-22/schema-markup/_meta.json
+~/.hermes-cortex/skills/.archive/deployed-only-residue-2026-10-22/schema-markup/skill-card.md
+~/.hermes-cortex/skills/.archive/deployed-only-residue-2026-10-22/social-content/_meta.json
+~/.hermes-cortex/skills/.archive/deployed-only-residue-2026-10-22/social-content/skill-card.md
+~/.hermes-cortex/skills/.archive/deployed-only-residue-2026-10-22/software-development/role-gating-and-public-moderation/references/rgm-fastapi-example.md
+
+  ASSERT the residue is out of the agent-visible tree:
+    absent: email-sequence/_meta.json
+    absent: marketing-psychology/evals/evals.json
+    absent: social-content/skill-card.md
+
+=== 4. the parity checker's own verdict (the tool this is measured against) ===
+artifact matches the live derivation
+  rc=0   (0 = the recorded claim holds)
+| Stranded in place (path in repo, content only deployed) | 0 |
+| Absent from the repo (deployed under a repo-owned skill) | 0 |
+**Verdict: PASS**
+
+  Before this work the same table read: stranded 17, absent 133, Verdict FAIL.
+  The 133 -> 122 step was the previous cycle (19 skills' content recovered);
+  122 -> 0 is this one.
+
+=== 5. the incorporated code assets are now CHECKED, not just stored ===
+  tests/test_skill_code_assets_parse.py traverses skills/** by discovery, so
+  the scripts that arrived with the incorporation are compiled/parsed by it:
+============================== 57 passed in 0.80s ==============================
+---
+run-tests.sh: interpreter=~/.hermes-cortex/venv/bin/python3 rc=0  (PYTHONPATH/PYTHONHOME unset for the run)
+  rc=0
+
+=== 6. no skill content regressed ===
+============================== 1 passed in 11.89s ==============================
+---
+run-tests.sh: interpreter=~/.hermes-cortex/venv/bin/python3 rc=0  (PYTHONPATH/PYTHONHOME unset for the run)
+  rc=0
+
+=== verdict ===
+  Every file in the class is now in exactly one state: incorporated into the
+  repo (and therefore shipped to the fleet), or removed from the agent-visible
+  tree and preserved on disk. The parity checker — the tool that defined the
+  class — reports 0 and 0 with Verdict PASS, and --check confirms the recorded
+  claim holds rather than being stale.
+
+  Honest limits:
+    - The concordance is measured on THIS host. The parity checker compares the
+      deployed tree here against the repo; a host with different deployed-only
+      files would report its own list, which is the correct behaviour.
+    - A rejected guard is recorded rather than hidden: a test asserting that
+      every path named in a SKILL.md resolves was written, measured at 886
+      failures against live prose (it matched mentions like `scripts/task-db.py`
+      that name FLEET scripts, not skill assets), and DELETED. The parity
+      checker already covers the real property; a second, noisier copy of a rule
+      is how binding stops binding.

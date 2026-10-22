@@ -44,6 +44,27 @@ def test_the_traversal_finds_assets():
     assert total > 0, f"found no code assets under {SKILLS} — the traversal is wrong"
 
 
+def test_no_family_is_silently_unchecked():
+    """A family WITH assets but no way to check them must SAY so.
+
+    A check that cannot run is a third outcome, not a pass: silently skipping the
+    node family would make this guard look like it covered everything while the
+    JS assets went unverified — the same "green over nothing" shape that let 30
+    refused SKILL.md files sit unnoticed.
+    """
+    families = (("python", PY_EXTS, sys.executable),
+                ("shell", SH_EXTS, "bash"),
+                ("node", NODE_EXTS, "node"))
+    for label, exts, tool in families:
+        found = _assets(exts)
+        if not found:
+            continue
+        if tool == sys.executable or shutil.which(tool):
+            continue
+        pytest.skip(f"{label}: {len(found)} asset(s) present and NO {tool} on PATH "
+                    f"— those assets are NOT checked on this host")
+
+
 @pytest.mark.parametrize("asset", _assets(PY_EXTS), ids=lambda p: str(p.relative_to(SKILLS)))
 def test_python_assets_compile(asset):
     try:

@@ -46,7 +46,17 @@ and a merged skill serves better than two overlapping ones.
    doctor's `Skills loadable` check FAILs on exactly this class — a missing or
    blank description, a name outside `[a-z0-9-]`, frontmatter that does not parse,
    a duplicate mapping key PyYAML accepts but a loader rejects — so run it after
-   any consolidation pass instead of eyeballing the tombstones.
+   any consolidation pass instead of eyeballing the tombstones. **Check WHICH MODE that check ran
+   in — a degradation it does not announce is a PASS over files it never read.** The rules above
+   need a YAML parser, and the doctor runs under whatever `python3` is on PATH, which on a fleet
+   host is often a runtime venv without PyYAML; it then falls back to a TEXT scan and reports a
+   WARN naming the rules it skipped (name charset, YAML parse, duplicate keys). Read that warning
+   before trusting a bare `Skills loadable ✅`: it is a weaker result, not a clean one. Repair the
+   interpreter (`fix-cortex-venv.py`) and re-run, or invoke the doctor under `CORTEX_PYTHON`/
+   `~/.hermes-cortex/venv/bin/python3`, so the full rule set is actually applied.
+   The general rule for any check that depends on a library: a checker that CANNOT read its input
+   has no verdict — it must say so loudly, and it must never emit a success line for the inputs it
+   never examined, because a green tick over unread files is worse than a visible failure.
 4. **Check consumers before pruning.** A deployed-only skill may
    be referenced by crons, manifests, or other skills. Grep jobs.json,
    install-crons.sh, and skills before `delete`. Deploy warnings are not
@@ -108,6 +118,41 @@ and a merged skill serves better than two overlapping ones.
    by a blank line, so a fixed `tail -n +4` misaligns the comparison — strip the header
    LINES and diff what remains. Copy the canonical content in, re-run the parity check to
    `PASS`, then deploy to clear the doctor's warnings.
+
+   **Recover with the repo's own tooling — and judge its output by CONTENT, not by its
+   own line counts.** Run `python3 ops/scripts/manage/reconcile-stranded-skills.py`
+   (report by default) and land the pure-superset class with `--apply`. Its REVIEW class
+   is not a refusal to act: the tool compares whole LINES, so a paragraph that was
+   REWRAPPED or condensed reports every one of its lines as a "drop". Collapse
+   whitespace on both sides and word-diff instead — most REVIEW entries then show ZERO
+   repo-only word runs and are pure supersets in substance. Only a phrase genuinely
+   absent from the deployed copy needs a decision, and the answer is often "superseded in
+   place": a newer copy that CORRECTS a wrong claim (an obsolete design description, a
+   rule reworded to include the mechanism the fleet now uses) must be landed AS-IS,
+   because merging the old wording back restores the error it removed. Land by copying
+   the file and ASSERTING sha256 equality on both sides, so byte-identical is verified
+   rather than claimed. Re-run the report afterwards: it must say `stranded: 0`.
+
+   **Two classes, and the doctor only reports one of them.** "Stranded in place" (the
+   path IS in the repo, its content only deployed) is what the doctor's `Skill drift`
+   line counts, and the line flips to PASS when that reaches 0. The parity checker ALSO
+   reports "absent from the repo" — files under a repo-owned skill dir the repo has never
+   carried at all, marked `dropped-from-repo` or `never-committed`. Driving the first to
+   0 leaves the checker's VERDICT at FAIL, so read both numbers before reporting the
+   class as fixed, and keep the tracked `docs/evidence/skill-drift-parity.txt`
+   regenerated and committed (it records the verdict; leaving it stale is the same defect
+   one level up).
+
+   **Recovering a skill's SCRIPT is the step that stalls: the pre-commit TDD gate refuses
+   an ADDED code file with no test in the same commit.** The gate scans
+   `--diff-filter=A` for `py|ts|tsx|js|jsx|mjs|cjs|go|rs|…` and has no bypass flag, and a
+   `skills/<name>/scripts/<file>.py` is exactly that — so the asset sits uncommitted
+   indefinitely, which is a large part of why this class accumulates. Do NOT stage an
+   unrelated test to satisfy it; add the guard the gate is actually asking for.
+   `tests/test_skill_code_assets_parse.py` is that guard: one discovery traversal over
+   `skills/**` that compiles `.py` and parse-checks `.mjs`/`.js`/`.sh`, so a newly
+   recovered asset is covered the moment it lands. Extend it rather than writing a second
+   one, and keep its non-vacuity assertion (it FAILs when it finds no assets at all).
 
 7. **A same-name collision from a `local-*` skill is the OVERRIDE WORKING — do not
    "fix" it.** A host-local `local-<x>` skill deliberately keeps the fleet skill's

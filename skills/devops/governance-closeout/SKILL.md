@@ -159,6 +159,15 @@ end_change(task_id=…)                          # refuses while the cycle is un
 ```
 
 A bare note is refused: pass scores, or an explicit `unscored_reason`.
+**Pass ALL THREE scores in the one call — a partial call is ACCEPTED and silently records zeros.**
+`feedback_accept` takes `completeness`, `quality` and `progress`; supplying one raises no error, so
+finished, verified work is recorded as e.g. `completeness=10, quality=0, progress=0 → composite 4.0`.
+Nothing downstream complains — the cycle closes and the bad number sits in the record for any later
+reader, and any metric over composites reads it as a poor cycle. So check the returned line names all
+three values before moving on. It is CORRECTABLE while the session is live: re-issue
+`feedback_accept` for the SAME cycle id with all three (`MOVE_ON → MOVE_ON`, composite updated and
+reported). Do that rather than explaining the number afterwards — the reflection note cannot fix a
+wrong score, and re-scoring is cheaper than the confusion it prevents.
 
 **Score a deliberately PARTIAL change honestly, and NAME the gap.** A cycle whose scope was cut
 short — the first of two items landed, a follow-up sweep deferred because it depends on the
