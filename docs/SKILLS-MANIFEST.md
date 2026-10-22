@@ -187,7 +187,7 @@ their domain.
 | `detached-worker-pattern` | 1.0.0 | Cron tick budget kill: detached worker + result sweep. | `skill_view(name='detached-worker-pattern')` |
 | `dev-port-conflict` | 1.0.0 | Diagnose and clear an orphaned server holding a dev port. | `skill_view(name='dev-port-conflict')` |
 | `doc-freshness` | 1.1.0 | Ensure AGENTS.md and SOUL.md stay current across all agents and projects. Weekly audit, post-update broadca... | `skill_view(name='doc-freshness')` |
-| `doc-size-budget` | 1.0.0 | Slim docs to byte targets (SOUL 10K, AGENTS gates) safely. | `skill_view(name='doc-size-budget')` |
+| `doc-size-budget` | 1.0.0 | Slim docs and always-loaded skills to byte targets. | `skill_view(name='doc-size-budget')` |
 | `doc-vs-implementation-audit` | 0.1.0 | Refresh public docs against the live codebase and scrub PII. | `skill_view(name='doc-vs-implementation-audit')` |
 | `docker-compose-bringup` | 1.0.0 | DEPRECATED alias — merged into docker-management. Load docker-management instead. | `skill_view(name='docker-compose-bringup')` |
 | `docker-management` | 1.0.0 | Manage Docker containers, images, volumes, and Compose. | `skill_view(name='docker-management')` |
