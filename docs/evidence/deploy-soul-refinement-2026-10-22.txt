@@ -1,0 +1,47 @@
+=== deploy verification: skill payload ===
+generated-by : docs/evidence/deploy-soul-refinement-2026-10-22.sh (writes this file itself)
+captured-at  : 17a6e855
+origin/main  : 17a6e855
+pushed range : 17a6e855 docs(soul-refine): quote the codification evidence instead of characterising it ac28bc7c docs(soul-refinement): land the window recipe the 2026-10-22 pass measured 
+
+[1] THE TWO COPIES
+    repo     : ~/hermes-cortex/skills/hermes-agent/soul-refinement/SKILL.md   23961 bytes
+    deployed : ~/.hermes/skills/hermes-agent/soul-refinement/SKILL.md   23961 bytes
+    identical after stripping the deploy header: True
+    repo has the cycle's marker   : 1
+    deployed has the cycle's marker: 1
+    the marker is the sentence this cycle added to the Pitfalls section; a count of
+    0 on the deployed side would mean the deploy copied nothing.
+
+[2] DOGFOOD (the sanctioned deploy + verify step)
+    $ bash ~/.hermes-cortex/scripts/cortex-dogfood.sh --force   -> rc=0
+         After resolving, run doctor again to confirm.
+         ═══════════════════════════════════════════════════
+    ✅  DOGFOOD PASSED — deployed state verified clean.
+
+[3] DOCTOR (rc + warning count, not just the tick lines)
+    $ python3 ~/.hermes-cortex/scripts/cortex-doctor.py --quiet   -> rc=1
+    warning/info items listed: 7
+      · Repo clean
+      · CLAUDE.md (dev repos)
+      · Skill drift: devops/doc-size-budget
+      · Skill drift: devops/skill-curation
+      · Multi-session repo
+      · Cron bridge migration (1)
+      · loop-gov daemon
+    rc=1 is the doctor's WARN exit, not a failure of this deploy. The two UNDISPOSED
+    items are skill-drift entries (devops/doc-size-budget, devops/skill-curation); the
+    doctor's own instruction is that recovering them is its OWN governed change, so they
+    are reported here and left for that cycle rather than folded into this one.
+
+[4] VERDICT
+    deployed == repo: True   dogfood rc=0   doctor rc=1
+    The range this deploy verifies is origin/main~2..origin/main (the skill source + the
+    window transcript), pushed with the cycle-13671 receipt.
+[probe rc=0]
+python verification pass rc=0
+
+=== syntax check of this generator ===
+bash -n docs/evidence/deploy-soul-refinement-2026-10-22.sh rc=0
+
+=== END OF TRANSCRIPT ===
