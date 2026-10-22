@@ -316,6 +316,63 @@ def test_enforcer_records_and_injects_an_absolute_repo_path():
     )
 
 
+# ── Part 2c: the hint learns from WORK, not from incidental READS ──
+#
+# `_note_session_repo` is documented as recording "the repo this session was last seen
+# USING", but it learned from the path arguments of EVERY tool call, first key present
+# winning. Measured live 2026-10-22: a single search_files(path=<another repo>) — a pure
+# READ — re-homed the session, so begin_change recorded a lock against that repo, its
+# review scope judged that repo's blobs, and (before eb9a5edf) the lock authorised writes
+# in every repo. Reading a file is not evidence of WORKING in a repo.
+
+def test_a_READ_of_another_repo_does_not_re_home_the_session():
+    home = Path(tempfile.mkdtemp(prefix="enf-read-hint-"))
+    proj = _mkrepo(home / "repos" / "proj", with_commit=True)
+    other = _mkrepo(home / "repos" / "other", with_commit=True)
+    enf.GOVERNANCE_STATE_DIR = home / "state"
+    enf.GOVERNANCE_STATE_DIR.mkdir(parents=True, exist_ok=True)
+
+    enf._note_session_repo("S-read", {"workdir": str(proj)}, tool_name="terminal")
+    assert enf._session_repo_slug("S-read") == "proj", "the session never learned its own repo"
+
+    enf._note_session_repo("S-read", {"path": str(other / "work.txt")},
+                           tool_name="search_files")
+    assert enf._session_repo_slug("S-read") == "proj", (
+        "a READ of another repo re-homed the session — this is the mis-scoped-lock root cause")
+
+    enf._note_session_repo("S-read", {"file_path": str(other / "work.txt")},
+                           tool_name="write_file")
+    assert enf._session_repo_slug("S-read") == "other", (
+        "a WRITE in another repo must still re-home the session — that is genuine work")
+
+
+def test_an_empty_hint_still_learns_from_a_read():
+    """First-touch learning is untouched: a session that knows nothing learns from any path."""
+    home = Path(tempfile.mkdtemp(prefix="enf-first-touch-"))
+    seed = _mkrepo(home / "repos" / "seed", with_commit=True)
+    enf.GOVERNANCE_STATE_DIR = home / "state"
+    enf.GOVERNANCE_STATE_DIR.mkdir(parents=True, exist_ok=True)
+
+    enf._note_session_repo("S-empty", {"path": str(seed / "work.txt")},
+                           tool_name="search_files")
+    assert enf._session_repo_slug("S-empty") == "seed", (
+        "a session with no hint must still learn its repo from a read")
+
+
+def test_an_explicit_workdir_outranks_a_bare_file_path():
+    """The ordering half: `path` was consulted FIRST, so the weakest signal always won."""
+    home = Path(tempfile.mkdtemp(prefix="enf-order-"))
+    here = _mkrepo(home / "repos" / "here", with_commit=True)
+    elsewhere = _mkrepo(home / "repos" / "elsewhere", with_commit=True)
+    enf.GOVERNANCE_STATE_DIR = home / "state"
+    enf.GOVERNANCE_STATE_DIR.mkdir(parents=True, exist_ok=True)
+
+    enf._note_session_repo("S-order", {"path": str(elsewhere / "f.txt"), "workdir": str(here)},
+                           tool_name="terminal")
+    assert enf._session_repo_slug("S-order") == "here", (
+        "an explicit workdir must outrank a bare file path — it states where the session IS")
+
+
 if __name__ == "__main__":
     tests = [v for k, v in sorted(globals().items())
              if k.startswith("test_") and callable(v)]

@@ -1038,36 +1038,70 @@ def _git_root_for(path: Path) -> Optional[Path]:
     return Path(proc.stdout.strip())
 
 
-def _note_session_repo(session_id: str, args: Dict[str, Any]) -> None:
+#: Args that state where the session IS WORKING — an explicit working directory.
+#: Strongest evidence available: they say where the work happens, not what was glanced at.
+_CWD_ARG_KEYS = ("workdir", "cwd")
+
+#: Args that merely NAME a file or directory the call touched. Weaker than a working
+#: directory, and — when the call only READS — no evidence of working in that repo at all.
+_FILE_ARG_KEYS = ("path", "file_path", "directory")
+
+
+def _learn_repo_from_arg(session_id: str, raw: Any) -> bool:
+    """Record `raw` as this session's repo when it resolves to one. True when it did."""
+    if not isinstance(raw, str) or not raw.strip():
+        return False
+    repo = _git_root_for(Path(raw).expanduser())
+    if repo is None:
+        return False
+    if _session_repo_hint(session_id) == str(repo):
+        return True  # already known — still a signal, but nothing to write
+    try:
+        hint = _session_repo_hint_path(session_id)
+        hint.parent.mkdir(parents=True, exist_ok=True)
+        tmp = hint.with_suffix(".tmp")
+        tmp.write_text(str(repo))
+        tmp.rename(hint)
+    except OSError:
+        log.warning("Could not write the session repo hint")
+    return True
+
+
+def _note_session_repo(session_id: str, args: Dict[str, Any], tool_name: str = "") -> None:
     """Learn this session's repo from the paths its own tool calls touch.
 
-    The gateway does not hand a pre_tool_call hook the session's cwd, but it
-    does hand it the args of every tool call — so the repo is derived from a
-    write/read target or a terminal workdir (nearest ancestor git repo).
-    Best-effort: a call with no usable path yields no signal and the previous
-    hint stands. Written only when the answer CHANGES, so this costs one stat
-    on the common path.
+    The gateway does not hand a pre_tool_call hook the session's cwd, but it does
+    hand it the args of every tool call — so the repo is derived from a terminal
+    workdir or a file the call touched (nearest ancestor git repo). Best-effort: a
+    call with no usable path yields no signal and the previous hint stands. Written
+    only when the answer CHANGES, so this costs one stat on the common path.
+
+    Two rules keep this about WORK rather than about anything the session happened to
+    READ (2026-10-22). A single ``search_files(path=<another repo>)`` — a pure read,
+    done while surveying that repo — re-homed a whole session: ``begin_change`` then
+    recorded its lock against a repo the agent had never worked in, the review scope
+    judged that repo's blobs, and the lock authorised writes there. The hint is
+    documented as the repo the session was last seen USING; reading a file is not
+    evidence of using a repo.
+
+    1. An EXPLICIT working directory (``workdir``/``cwd``) is consulted FIRST. It states
+       where the session IS, where a bare file ``path`` only says what it looked at.
+       ``path`` used to be consulted first, so the weakest signal always won.
+    2. A bare file/dir path counts only as evidence of WORK: the call must be
+       write-class (``_is_write_tool``, this module's canonical fail-closed classifier),
+       or the session must not know its repo yet — which leaves first-touch learning
+       from any path exactly as it was.
     """
     if not session_id or not isinstance(args, dict):
         return
-    for key in _PATH_ARG_KEYS:
-        raw = args.get(key)
-        if not isinstance(raw, str) or not raw.strip():
-            continue
-        repo = _git_root_for(Path(raw).expanduser())
-        if repo is None:
-            continue
-        if _session_repo_hint(session_id) == str(repo):
+    for key in _CWD_ARG_KEYS:
+        if _learn_repo_from_arg(session_id, args.get(key)):
             return
-        try:
-            hint = _session_repo_hint_path(session_id)
-            hint.parent.mkdir(parents=True, exist_ok=True)
-            tmp = hint.with_suffix(".tmp")
-            tmp.write_text(str(repo))
-            tmp.rename(hint)
-        except OSError:
-            log.warning("Could not write the session repo hint")
+    if _session_repo_hint(session_id) and not _is_write_tool(tool_name, args):
         return
+    for key in _FILE_ARG_KEYS:
+        if _learn_repo_from_arg(session_id, args.get(key)):
+            return
 
 
 def _inject_session_context(session_id: str, tool_name: str, args: Dict[str, Any]) -> None:
@@ -2680,7 +2714,9 @@ def register(ctx):
                 # tags the lock with the repo the session is ACTUALLY in rather
                 # than the host's canonical repo (the wrong-repo review bug:
                 # a steadfaste session reviewed against hermes-cortex).
-                _note_session_repo(hermes_session_id, args)
+                # tool_name is passed so the hint can tell a call that WORKS in a repo
+                # (a write, or an explicit workdir) from one that merely reads it.
+                _note_session_repo(hermes_session_id, args, tool_name)
                 if tool_name.startswith("mcp__loop_governance__"):
                     _inject_session_context(hermes_session_id, tool_name, args)
 
