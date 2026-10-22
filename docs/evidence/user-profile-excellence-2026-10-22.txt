@@ -1,0 +1,67 @@
+Excellence core value across the three canonical agent docs — evidence
+captured-at : 90415116  (the working tree's revision)
+generated-by: docs/evidence/user-profile-excellence-2026-10-22.sh (this file wrote itself)
+PII NOTICE  : this transcript prints COUNTS ONLY. The USER profile's content is personal
+              and this repository is public, so no line of it appears here.
+────────────────────────────────────────────────────────────
+
+1. WHY THE THIRD FILE IS NOT WHERE ITS NAME SUGGESTS
+   The operator asked for agents.md, claude.md and user.md. 'agents/claude/user.md' as a
+   literal path does not exist on this host — searched: the cortex repo, ~/.hermes (incl.
+   agent-profiles/ and profiles/), ~/.agents, ~/.claude, ~/hc-session2, ~/steadfaste,
+   ~/proj, ~/.hermes/hermes-agent, ops/install/harnesses/*, and a home-wide find for
+   user.md. The live profile is elsewhere and is HERMES-OWNED:
+
+     $ grep -n 'USER.md are Hermes-owned' ops/scripts/cortex-update.sh
+       1003:# ⚠️ MEMORY.md / USER.md are Hermes-owned — NEVER register them here.
+
+   ...so it is never deployed, and a repo edit cannot fix it. The sanctioned route is the
+   memory tool — which is itself behind the governance lock (measured: the call was refused
+   with GOVERNANCE LOCK REQUIRED until this cycle opened).
+────────────────────────────────────────────────────────────
+
+2. THE VALUE IS PRESENT IN ALL THREE — by grep COUNT, not by quoting content
+   Each line is:  <file>  <count of the word 'Excellence'>  <count of 'core value'>
+     ~/hermes-cortex/AGENTS.md           2   1
+     ~/hermes-cortex/CLAUDE.md           2   1
+     ~/.hermes/memories/USER.md          1   1
+
+   The section headings, which are not personal content:
+       ~/hermes-cortex/AGENTS.md:13:## Excellence — Core Value, Every Action
+       ~/hermes-cortex/CLAUDE.md:9:## Excellence — Core Value, Every Action
+────────────────────────────────────────────────────────────
+
+3. THE PROFILE FIT ITS BUDGET BY CONSOLIDATING, NOT BY TRUNCATING MEANING
+   USER.md has a hard 1,375-character budget and sat at 1,373 — 2 characters of headroom —
+   so the addition had to be PAID FOR. Three stale details were consolidated: two dated
+   parentheticals and one worked example. Counts only, before -> after:
+
+   MEASURED BEFORE THE UPDATE was applied in this cycle (it cannot be re-measured now —
+   the file has already changed), against the LIVE after-value below:
+
+     ~/.hermes/memories/USER.md (before, this cycle) 1373 chars — 2 chars of headroom
+     ~/.hermes/memories/USER.md (after, bytes on disk) 1364 bytes
+     budget                                              1375 chars
+
+   NOTE the two counts differ BY DESIGN and neither is wrong: the memory tool measures the
+   ENTRY TEXT it stores (1,350), while wc -c measures the FILE, which also carries the '§'
+   separators between entries. Read the tool's number as the budget figure.
+
+   The memory tool reported: 98% — 1,350/1,375 chars, 7 entries, 4 operations applied.
+   Nothing was dropped that the profile cannot re-derive: the removed text was example
+   detail, not a standing preference.
+────────────────────────────────────────────────────────────
+
+4. What this capture covers
+   UNCOMMITTED at capture time — the committed copy lands one commit after this run.
+   HEAD at capture: 90415116
+     ?? docs/evidence/user-profile-excellence-2026-10-22.sh
+     ?? docs/evidence/user-profile-excellence-2026-10-22.txt
+
+   NOTE: the changed FILE (~/.hermes/memories/USER.md) is deliberately absent from the
+   range above — it is not in this repository and is never deployed. Its state is evidenced
+   by the counts in section 3, which is the strongest claim that can be committed without
+   leaking it.
+────────────────────────────────────────────────────────────
+
+end of evidence
