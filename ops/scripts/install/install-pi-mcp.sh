@@ -35,7 +35,18 @@
 #  Usage:
 #    bash install-pi-mcp.sh            # add/update (idempotent)
 #    bash install-pi-mcp.sh --check    # show current registration
-#    bash install-pi-mcp.sh --check-tools  # exit 1 if a registered DeepSeek server is stale
+#
+#  Exit-code CONTRACT for --check-tools / --fix-tools. The cortex doctor consumes these codes,
+#  so they are a published interface, not an implementation detail:
+#     0  nothing to do, or done — no DeepSeek entry on this host (host-optional), the name is
+#        already current, or (--fix-tools) the rename succeeded
+#     1  --check-tools: STALE, the registered server still exposes the old name
+#        --fix-tools:   the rename did NOT take (the write was verified and failed)
+#     2  COULD NOT VERIFY — a DeepSeek entry IS registered but its server file cannot be
+#        resolved from its command/args (a module launch, a renamed command) or the file is
+#        missing. A rename cannot fix this, and it must NOT be read as clean.
+#    `bash install-pi-mcp.sh --self-test` proves this contract against throwaway fixtures.
+#    bash install-pi-mcp.sh --check-tools  # verdict on a registered DeepSeek server (see above)
 #    bash install-pi-mcp.sh --fix-tools    # rename a stale DeepSeek review tool (backup first)
 #    bash install-pi-mcp.sh --self-test    # runnable proof of the check/fix pair (no writes
 #                                          # outside a temp dir); exits non-zero on failure

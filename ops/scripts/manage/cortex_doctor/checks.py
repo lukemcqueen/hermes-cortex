@@ -3233,22 +3233,48 @@ def check_governance(res):
         "Restore ops/scripts/install/install-pi-mcp.sh from the repo "
         "(cortex-update.sh deploys it)")
   else:
-    _ds_out, _ds_rc = run(["bash", str(_ds_installer), "--check-tools"], timeout=60)
-    _ds_lines = [l for l in (_ds_out or "").splitlines() if l.strip()]
-    _ds_detail = _ds_lines[-1].strip() if _ds_lines else f"rc={_ds_rc}"
-    if _ds_rc == 0:
-      res.add("DeepSeek MCP tool name", "PASS", _ds_detail)
-    elif _ds_rc == 1:
-      res.add("DeepSeek MCP tool name", "WARN", _ds_detail,
-          "Run: bash ~/hermes-cortex/ops/scripts/install/install-pi-mcp.sh   "
-          "(the doctor's auto-fix runs this too)")
-    else:
-      # rc!=0 is a RESULT, and rc=124 (timeout) is not the same result as a refusal: say which.
+    # Verify the VERIFIER before believing it. An exit code is only evidence if the pair that
+    # produces it behaves, so the installer's own --self-test runs FIRST (cheap: a temp dir,
+    # no live config, nothing written outside it). Trusting a checker that cannot pass its own
+    # proof is exactly how a broken check reports a clean host — the failure this whole block
+    # exists to avoid.
+    #
+    # The codes consumed below are the installer's PUBLISHED contract (its Usage block):
+    #   0 = current (or no DeepSeek entry: host-optional), 1 = STALE, 2 = COULD NOT VERIFY.
+    # That contract is unchanged by this block; the self-test is what makes relying on it
+    # legitimate rather than an assumption about a sibling file.
+    _ds_st_out, _ds_st_rc = run(["bash", str(_ds_installer), "--self-test"], timeout=120)
+    if _ds_st_rc != 0:
+      _ds_tail = [l for l in (_ds_st_out or "").splitlines() if l.strip()][-3:]
       res.add("DeepSeek MCP tool name", "WARN",
-          f"COULD NOT VERIFY (rc={_ds_rc}{' — timed out' if _ds_rc == 124 else ''}): {_ds_detail}",
-          "Check that bash can run ops/scripts/install/install-pi-mcp.sh")
+          "COULD NOT VERIFY: the installer's own --self-test FAILED "
+          f"(rc={_ds_st_rc}), so its verdict cannot be trusted — {' | '.join(_ds_tail)[:220]}",
+          f"Run: bash {_ds_installer} --self-test and fix the failing assertion")
+    else:
+      _ds_out, _ds_rc = run(["bash", str(_ds_installer), "--check-tools"], timeout=60)
+      _ds_lines = [l for l in (_ds_out or "").splitlines() if l.strip()]
+      _ds_detail = _ds_lines[-1].strip() if _ds_lines else f"rc={_ds_rc}"
+      if _ds_rc == 0:
+        res.add("DeepSeek MCP tool name", "PASS", _ds_detail)
+      elif _ds_rc == 1:
+        res.add("DeepSeek MCP tool name", "WARN", _ds_detail,
+            "Run: bash ~/hermes-cortex/ops/scripts/install/install-pi-mcp.sh --fix-tools   "
+            "(the doctor's auto-fix runs this too)")
+      else:
+        # rc!=0 is a RESULT, and rc=124 (timeout) is not the same result as a refusal: say which.
+        res.add("DeepSeek MCP tool name", "WARN",
+            f"COULD NOT VERIFY (rc={_ds_rc}{' — timed out' if _ds_rc == 124 else ''}): {_ds_detail}",
+            "Check that bash can run ops/scripts/install/install-pi-mcp.sh")
 
-  # ── The adversarial REVIEWER's model ───────────────────────────
+  # ── The adversarial REVIEWER's model (CONFIGURATION, not reachability) ──
+  # Scope, stated so the name cannot overclaim: this verifies WHICH MODEL the reviewer is
+  # CONFIGURED to use, not that the model answers. Reachability is deliberately OUT of scope —
+  # a doctor check must not spend an LLM call to learn it, and an unreachable reviewer already
+  # fails loudly where it matters: no verdict comes back, so the close review refuses and the
+  # lock stays held. The gap this closes is the silent opposite — a reviewer that IS reachable
+  # but was quietly downgraded by an env override, which returns verdicts and reports nothing.
+  # That failure mode leaves no other trace, which is why configuration is the thing worth
+  # reading here.
   # "The default reviewer is deepseek/deepseek-v4-pro for all agents" is true in the CODE BY
   # CONSTRUCTION: loop-gov-mcp.py's `_reviewer_model()` and `_light_reviewer_model()` both
   # fall back to REVIEWER_MODEL_DEFAULT, and there is deliberately no lighter default
@@ -3273,7 +3299,7 @@ def check_governance(res):
     _rv_canonical = _rv_m.group(1)
   except Exception as _rv_err:
     _rv_canonical = None
-    res.add("Adversarial reviewer model", "WARN",
+    res.add("Adversarial reviewer model config", "WARN",
         f"COULD NOT VERIFY: cannot read REVIEWER_MODEL_DEFAULT from {_rv_source.name} "
         f"({type(_rv_err).__name__})",
         "Restore mcp-servers/loop-gov-mcp.py from the repo")
@@ -3320,7 +3346,7 @@ def check_governance(res):
     if _rv_eff_deep == _rv_canonical and _rv_eff_light == _rv_canonical:
       _rv_where = "code default" if not (_rv_deep or _rv_light) else \
           f"explicitly set in {_rv_deep_src or _rv_light_src}"
-      res.add("Adversarial reviewer model", "PASS",
+      res.add("Adversarial reviewer model config", "PASS",
           f"{_rv_canonical} ({_rv_where})")
     else:
       _rv_bad = []
@@ -3330,7 +3356,7 @@ def check_governance(res):
         _rv_bad.append(f"ADVERSARIAL_REVIEW_LIGHT_MODEL={_rv_eff_light} in {_rv_light_src}")
       # Deliberately NOT auto-fixed: this is an OPERATOR override in a file that also holds
       # credentials, and quietly rewriting someone's model choice is worse than reporting it.
-      res.add("Adversarial reviewer model", "WARN",
+      res.add("Adversarial reviewer model config", "WARN",
           f"the reviewer is NOT the canonical {_rv_canonical}: " + "; ".join(_rv_bad),
           "Remove the override from that .env (or set it to the canonical model) and "
           "restart the loop-governance MCP server so it re-reads the value")
