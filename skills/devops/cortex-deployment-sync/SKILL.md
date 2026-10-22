@@ -479,6 +479,23 @@ conflict with the two owners named and leave the choice to the operator; the dep
 reporting the migration as not-published until then, which is the correct fail-closed state, not
 an error to clear.
 
+**When the operator DOES approve adoption, prove it is lossless BEFORE running it.** The
+foreign system's content is often already reachable through the target tree — on a host where
+omarchy's skills were already symlinked inside the cortex defaults (`~/.hermes-cortex/skills/omarchy`
+→ `/usr/share/omarchy/...`), adopting the publish pointer loses nothing because the pointer
+covers the foreign skills too. Verify in this order, then run `publish-agent-skills.py --adopt-published`:
+1. Confirm the foreign skills are ALREADY inside the target tree (symlink or copy) — then the
+   renamed-away tree is a pure duplicate.
+2. Confirm the foreign system's consumers read ABSOLUTE source paths, not the published path
+   (omarchy's crash-watch reads `/usr/share/omarchy/...` directly) — so the pointer change
+   cannot break them.
+3. Confirm the foreign system's migrations that created the real dir are already marked APPLIED
+   (`~/.local/state/omarchy/migrations/`), so they will not re-run and re-occupy the path.
+4. After publishing, verify the foreign skills resolve THROUGH the pointer
+   (`ls <published>/<foreign-skill>/SKILL.md`) and that the old tree exists as
+   `<path>.pre-publish-<stamp>` (preserved by rename, never deleted). The tool's `--check` then
+   reads `in sync` and the deploy's migration step stops failing.
+
 ## Verifying that a deploy LANDED — compare the BODY, not the raw file
 
 A plain `diff`/`md5sum` between repo source and the deployed copy is ALWAYS non-empty for the

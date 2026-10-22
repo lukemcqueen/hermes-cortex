@@ -361,6 +361,63 @@ Pitfalls that cost a cycle here:
   NAME drift (the fleet-canonical name is what the doctor expects, e.g. `agent-bus` and not a
   legacy alias) — add the canonical key and remove the legacy one, one server for the script.
 
+## Diagnosing a CLI-agent gateway that answers NOTHING ("bot stopped working")
+
+When a `kind: command` gateway (pi/Codex/etc.) goes silent, the probe sequence is
+config → env → backend-direct → backend-through-gateway-code → inbound peek. Each
+step either finds the break or rules it out; stop at the first red.
+
+1. **Config** — the live `~/.hermes-cortex/gateway.yaml` (OUTSIDE the repo): backend
+   argv (ABSOLUTE paths), `stream`, `model`, `reply_mode`. Compare against the repo
+   examples; verify the model pi can resolve.
+2. **Daemon env** — the unit's `EnvironmentFile` is `~/hermes-cortex/.env`; confirm the
+   daemon PROCESS actually has the provider key it passes to the child
+   (`tr '\0' '\n' < /proc/<pid>/environ | grep -E 'OPENROUTER|TELEGRAM'`).
+3. **Backend direct** — run the exact argv the gateway builds (`<pi> --session-id
+   <id> --model <model> "<prompt>"`) with stdout/stderr separated; a green here proves
+   the agent + model + key.
+4. **Backend through the gateway's code** — `build_gateway(cfg)` then
+   `backend.dispatch(envelope, sink=...)` with a VALID envelope. This is where the probe
+   pitfalls below bite.
+5. **Inbound peek** — raw `getUpdates?offset=<persisted>` returns only NEWER updates
+   WITHOUT consuming them (the offset advances only when you pass a higher one):
+   0 pending = nothing stuck in Telegram's queue for the bot.
+6. **Journal + unit** — `journalctl --user -u cortex-gateway.service`, `systemctl
+   --user show <unit> -p Restart -p NRestarts`, and kernel/dmesg OOM for the death cause.
+
+Probe pitfalls (each reads as a REAL defect and is a false lead):
+
+- **The probe's getUpdates 409 is YOUR OWN probe, and the daemon logs it as "poll
+  conflict".** Calling `get_updates` against the live bot's token collides with the
+  daemon's long-poll; the COLLISION appears in the daemon's journal as `poll conflict
+  1/3: another consumer owns this bot` — which reads exactly like a rival poller. A
+  single conflict whose timestamp matches your probe time is self-inflicted; the daemon
+  backs off 4s and recovers. Count the conflicts and check WHEN they landed before
+  hunting a second poller.
+- **A synthetic envelope needs a VALID UUID `msg_id`.** `env.validate` rejects a
+  non-UUID silently and dispatch returns `None` — which reads as "the agent produced
+  nothing" (0 sink calls, clean None). The test files warn about exactly this
+  ("a synthetic `m` is rejected silently"). Use a real `uuid4()`.
+- **The probe process env ≠ the daemon's env.** `_child_env` = the CALLER's `os.environ`
+  + spec overrides; if the probe lacks `OPENROUTER_API_KEY` (it lives in the unit's
+  `~/hermes-cortex/.env`, not the shell's), pi runs without the key, prints nothing to
+  stdout, exits 0, and dispatch returns a clean "nothing to say". Load the unit's env
+  file into the probe (`os.environ.setdefault` per line) OR source it, and confirm the
+  key is present before believing a negative.
+- **The pairing banner "0 approved chat(s)" is cosmetic when the user is in
+  `TELEGRAM_ALLOWED_USERS`.** `_sender_allowed` = env allowlist ∪ pairing store; pairing
+  only gates UNKNOWN senders. An empty `paired_chats.json` next to a configured
+  allowlist is not the bug — the owner passes on the env half.
+
+Silent death forensics — a unit that auto-restarted without a `Stopping` line:
+
+- `Restart=always` + no Stopping + no restart in `journalctl -u` = the process was
+  KILLED from outside (SIGKILL/SIGTERM), not stopped by systemd. Correlate the death
+  time with nearby SSH/`logind` sessions — an operator's own kill is the common case.
+- `systemctl --user show <unit> -p MemoryMax` reading `infinity` rules out cgroup OOM;
+  the memory PEAK includes the child agent (pi) in the same cgroup, so a big peak is
+  not a daemon leak on its own.
+
 ## A gateway that serves the default profile ONLY — duplicate credential across profiles
 
 `gateway.multiplex_profiles` unset means ON, but not unconditionally: at every boot

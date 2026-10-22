@@ -144,6 +144,14 @@ changed the same script in the repo; your deployed copy still carries YOUR
 pre-rebase version → checksum mismatch → gate blocks. The gate compares
 deploy state, not your diff — your commit is not the problem.
 
+**The checksum line may name files you did NOT touch.** `❌ Checksum:
+checks.py` / `cli.py` on a push whose diff touches neither usually means a
+PEER's merged commit changed them and your host's deploy is stale — not that
+your diff is wrong. Do not chase the named file; it is correct, just not
+deployed. Verify with `git log --oneline origin/main -1` vs
+`cat ~/.hermes-cortex/state/update-commit`: tip-ahead-of-deploy confirms the
+stale-deploy reading, and the fix is the same re-deploy + push below.
+
 **Fix:** re-run `bash ops/scripts/cortex-update.sh` (deploys the rebased repo
 state, including the peer's version), verify the deployed file matches repo
 (`diff <(grep -v '^# SOURCE:' ops/scripts/X.sh) <(grep -v '^# SOURCE:'

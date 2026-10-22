@@ -239,9 +239,49 @@ The broadcast script outputs an inbox message template. The orchestrator (Moses)
 
 **Target agents:** gisu, joseph, kustos, titus, esther (always CC luke)
 
-### 3. Adding a New Mandatory Section
+### 3. Adding a New Mandatory Section / Fleet-Wide Core Value
 
-When the framework evolves:
+A new principle that must govern EVERY agent (excellence, a safety rule, a
+quality bar) is not done when it lands in one file. Non-Hermes coding agents
+(Claude/Codex/pi) read **only AGENTS.md** (they have no user.md), the herd
+reads AGENTS.md + SOUL.md, and project agents read the seed. A fleet-wide value
+propagates through FOUR surfaces in one change, or it reaches a subset:
+
+1. **`AGENTS.md`** — the universal file; the vector to non-Hermes agents.
+2. **`docs/templates/AGENTS.seed.md`** — every new project repo gets it.
+3. **`docs/templates/SOUL.md`** — Core Traits/Behavioral Principles, so the
+   herd's identity carries it alongside the ethics.
+4. **`CLAUDE.md`** — titusclaude's governance contract (doctor requires it in
+   dev repos where a Claude agent is configured).
+
+**`USER.md` is NOT one of the four.** USER.md holds personal context about the
+human; engineering standards, quality bars, and review posture belong in
+AGENTS.md. Keep a _user-owns-personal-only_ note in `docs/templates/USER.seed.md`
+so the boundary is explicit, and drop engineering-preference stubs (e.g. a
+`Testing:` line in Preferences) out of the seed when the value moves to AGENTS.
+
+**Propagation is NOT uniform — pair each non-auto-syncing surface with a doctor
+WARN so agents are told to reconcile.** `cortex-update` auto-syncs AGENTS.md
+(`~/.hermes/AGENTS.md`), SOUL.md (soul-merge/soul-sync), and skills; it does
+NOT touch CLAUDE.md copies already installed in dev repos, and it NEVER touches
+USER.md (`~/.hermes/memories/`, Hermes-owned, deliberately unregistered so a
+deploy cannot clobber a personalized copy). So "agents pull + cortex-update get
+the new value" is only true for three surfaces — the other two silently keep
+the old content unless a check flags them. For each non-auto-syncing surface add
+a doctor check that WARNs (never auto-overwrites — both are user/project-owned),
+and size the PROBE to how the file personalizes:
+- **User-owned file (USER.md) → mtime-newer nudge, never a content compare.** A
+  content hash against the seed FAILs on every healthy personalized copy, so the
+  check WARNs when `templates/USER.seed.md` is NEWER than the live file ("template
+  changed — diff and merge relevant guidance"). mtime-only; the nudge clears when
+the human edits theirs.
+- **Project-adapted file (per-repo CLAUDE.md) → match the exact stable heading,
+  not a bare token.** A project copy legitimately adapts the body, so probing for
+the bare word "Excellence" false-flags a repo that reworded the text but kept the
+contract. Probe for the full fleet heading ("## Excellence — Core Value, Every
+Action"); presence = current even when the body is adapted, absence = stale.
+
+Then:
 
 1. Add the section to `docs/templates/SOUL.md` (the reference template)
 2. Add the section to `DEFAULT_CONFIG` in `agents-doc-audit.py`:
@@ -299,6 +339,20 @@ This means even if broadcast is missed, the gap is closed within 24 hours.
 - **Don't skip the broadcast** — other agents have no way to know AGENTS.md changed unless you tell them
 - **Don't edit protected files** — `.hermes/hermes-agent/docker/SOUL.md` is a Hermes-bundled system prompt, not an agent SOUL
 - **Don't add one-off session artifacts as mandatory sections** — a section must apply to every agent, not just today's task
+- **A fleet-wide value landing in only ONE of its four surfaces is a partial
+  propagation** — AGENTS.md, AGENTS.seed.md, SOUL.md, and CLAUDE.md each reach a
+different audience (non-Hermes agents read only AGENTS.md). Adding a section
+solely to the main AGENTS.md skips every fresh project and the non-Hermes
+dev agent. Land all four in one change and reconcile the wording across them;
+seeding an outdated copy (e.g. the older "prefer over-engineering" bullet)
+means the deployed agents and the fresh-project agents disagree on the rule.
+- **Seed/template content must be SELF-CONTAINED** — AGENTS.seed.md and
+  CLAUDE.md are read by non-Hermes coding agents (Claude/Codex/pi) that load
+  NO SOUL.md and often no memory. A cross-reference to another file's principle
+  ("per SOUL P11") is a dangling pointer there. When a new section is added to
+  the fleet AGENTS.md AND must reach non-Hermes agents, restate it in the seed
+  without the SOUL/other-file reference, or drop the reference — do not let
+  the seeded copy cite a document the reader will never load.
 - **The stale flag is normal mid-session** — only worry if it persists through a commit cycle
 - **Don't build a second AGENTS.md checker** — `agents-doc-audit.py` is the canonical tool. Before creating any new script, search existing tools that already handle the domain. The `check-agents-dot-md.py` → `agents-doc-audit.py` merge (July 2026) was caused by not searching first.
 - **`template-diff-check.py` is a structural/language check, not a content audit** — it detects missing sections and stale markers, but doesn't verify the quality or completeness of the content within those sections. The weekly `agents-doc-audit.py` and daily `orch-skill-lifecycle` cron handle content-level gap filling.
