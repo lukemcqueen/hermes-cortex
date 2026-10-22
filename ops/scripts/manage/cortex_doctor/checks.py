@@ -3248,6 +3248,93 @@ def check_governance(res):
           f"COULD NOT VERIFY (rc={_ds_rc}{' — timed out' if _ds_rc == 124 else ''}): {_ds_detail}",
           "Check that bash can run ops/scripts/install/install-pi-mcp.sh")
 
+  # ── The adversarial REVIEWER's model ───────────────────────────
+  # "The default reviewer is deepseek/deepseek-v4-pro for all agents" is true in the CODE BY
+  # CONSTRUCTION: loop-gov-mcp.py's `_reviewer_model()` and `_light_reviewer_model()` both
+  # fall back to REVIEWER_MODEL_DEFAULT, and there is deliberately no lighter default
+  # constant. What the code cannot guarantee is a host's ENV — setting
+  # ADVERSARIAL_REVIEWER_MODEL (or ADVERSARIAL_REVIEW_LIGHT_MODEL) to something cheaper
+  # silently downgrades every review on that host, and NOTHING reported it. That is the gap
+  # this check closes: the operator's "for all agents" is only true once it is verified per
+  # host, not assumed from the constant.
+  #
+  # The canonical value is READ FROM THE REVIEWER'S OWN SOURCE rather than restated here —
+  # a second hardcoded copy is where a check and the code it checks drift apart.
+  _rv_source = CORTEX_REPO / "mcp-servers" / "loop-gov-mcp.py"
+  try:
+    # Explicit None check: relying on AttributeError from `.group()` to mean "pattern absent"
+    # is the same failure shape as the gates this session has been fixing — it works, but the
+    # reason is invisible, and a later refactor that "tidies" the try/except silently turns a
+    # missing constant into a crash.
+    _rv_m = re.search(r'^REVIEWER_MODEL_DEFAULT\s*=\s*"([^"]+)"',
+                      _rv_source.read_text(), re.M)
+    if _rv_m is None:
+      raise ValueError("REVIEWER_MODEL_DEFAULT is not declared in the source")
+    _rv_canonical = _rv_m.group(1)
+  except Exception as _rv_err:
+    _rv_canonical = None
+    res.add("Adversarial reviewer model", "WARN",
+        f"COULD NOT VERIFY: cannot read REVIEWER_MODEL_DEFAULT from {_rv_source.name} "
+        f"({type(_rv_err).__name__})",
+        "Restore mcp-servers/loop-gov-mcp.py from the repo")
+  if _rv_canonical:
+    def _reviewer_env(_name):
+      """The value the REVIEWER resolves for `_name`, and its source.
+
+      Mirrors loop-gov-mcp.py's `_env_value` order — process env, then CORTEX_ENV_FILE, then
+      ~/hermes-cortex/.env, then the deploy root, then the legacy ~/.hermes/.env. Kept in ONE
+      small function on purpose: the order is duplicated from the server, so it must be
+      readable at a glance and cheap to re-check.
+      """
+      _v = (os.environ.get(_name) or "").strip()
+      if _v:
+        return _v, "process env"
+      _cands = []
+      _explicit = (os.environ.get("CORTEX_ENV_FILE") or "").strip()
+      if _explicit:
+        _cands.append(Path(_explicit))
+      _repo = (os.environ.get("CORTEX_REPO") or "").strip()
+      _cands.append((Path(_repo) if _repo else Path.home() / "hermes-cortex") / ".env")
+      _cands.append(Path(os.environ.get("CORTEX_DEPLOY_HOME",
+                                        str(Path.home() / ".hermes-cortex"))) / ".env")
+      _cands.append(Path.home() / ".hermes" / ".env")
+      for _p in _cands:
+        try:
+          for _line in _p.read_text().splitlines():
+            _line = _line.strip()
+            if not _line or _line.startswith("#") or "=" not in _line:
+              continue
+            _k, _, _val = _line.partition("=")
+            if _k.strip() == _name:
+              return _val.strip().strip('"').strip("'"), str(_p)
+        except OSError:
+          continue
+      return "", ""
+
+    _rv_deep, _rv_deep_src = _reviewer_env("ADVERSARIAL_REVIEWER_MODEL")
+    _rv_light, _rv_light_src = _reviewer_env("ADVERSARIAL_REVIEW_LIGHT_MODEL")
+    # An unset name falls through to the canonical constant — that is the DEFAULT, not an
+    # absence of configuration, so it counts as canonical.
+    _rv_eff_deep = _rv_deep or _rv_canonical
+    _rv_eff_light = _rv_light or _rv_canonical
+    if _rv_eff_deep == _rv_canonical and _rv_eff_light == _rv_canonical:
+      _rv_where = "code default" if not (_rv_deep or _rv_light) else \
+          f"explicitly set in {_rv_deep_src or _rv_light_src}"
+      res.add("Adversarial reviewer model", "PASS",
+          f"{_rv_canonical} ({_rv_where})")
+    else:
+      _rv_bad = []
+      if _rv_eff_deep != _rv_canonical:
+        _rv_bad.append(f"ADVERSARIAL_REVIEWER_MODEL={_rv_eff_deep} in {_rv_deep_src}")
+      if _rv_eff_light != _rv_canonical:
+        _rv_bad.append(f"ADVERSARIAL_REVIEW_LIGHT_MODEL={_rv_eff_light} in {_rv_light_src}")
+      # Deliberately NOT auto-fixed: this is an OPERATOR override in a file that also holds
+      # credentials, and quietly rewriting someone's model choice is worse than reporting it.
+      res.add("Adversarial reviewer model", "WARN",
+          f"the reviewer is NOT the canonical {_rv_canonical}: " + "; ".join(_rv_bad),
+          "Remove the override from that .env (or set it to the canonical model) and "
+          "restart the loop-governance MCP server so it re-reads the value")
+
   # ── MCP servers ──
   is_orch = AGENT_ROLE == "orchestrator"
   # Presence is NOT wiring (2026-10-13, kustos: "No loop-governance MCP tools in catalog"

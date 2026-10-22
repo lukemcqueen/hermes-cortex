@@ -112,7 +112,7 @@ if [[ "$MODE" == "check-tools" || "$MODE" == "fix-tools" ]]; then
   # host without one is not a fault, and a check that failed there would be noise that teaches
   # readers to ignore it.
   DS_MODE="$MODE" "$PYTHON" - "$PI_MCP" <<'PY'
-import json, os, re, shutil, sys
+import json, os, re, shutil, sys, time
 
 # A TOOL NAME, not a credential — the leak detector's NAME="literal" heuristic flags this line.
 OLD, NEW = "review_experimental_plan", "review"
@@ -180,11 +180,40 @@ if mode == "check-tools":
 if not stale:
     print(f"already current: {script} does not carry `{OLD}`")
     sys.exit(0)          # idempotent: no write, so no backup
+
 new, n = re.subn(r"\b" + re.escape(OLD) + r"\b", NEW, text)
-shutil.copy2(script, script + ".bak")
-open(script, "w").write(new)
+# NOTE: `\bOLD\b` is a TEXTUAL rename, not a semantic one. It rewrites every occurrence in
+# this file, including a comment or docstring that mentions the old name. That is bounded —
+# one file, one exact token, and a longer identifier (`review_experimental_planning`) is
+# correctly left alone because `_` is a word character — but it is regex surgery on a file
+# the fleet does not own, which is why the write is verified below rather than trusted.
+
+# Back up WITHOUT clobbering an existing backup: `<file>.bak` may hold the operator's own
+# copy from an earlier run, and overwriting it destroys the only record of a previous state.
+# A taken name gets a timestamp instead, and which one was used is reported.
+backup = script + ".bak"
+if os.path.exists(backup):
+    backup = f"{script}.bak.{time.strftime('%Y%m%d-%H%M%S')}"
+shutil.copy2(script, backup)
+
+# Write via a temp file + rename so a partial write can never be left in place.
+tmp = script + ".tmp"
+with open(tmp, "w") as fh:
+    fh.write(new)
+os.replace(tmp, script)
+
+# VERIFY the write instead of trusting it. A fix that reports success without re-reading is
+# a claim, not a result — and this edit is regex surgery on a foreign file, so the only
+# honest evidence is the file's own bytes AFTER the write.
+after = open(script).read()
+if re.search(r"\b" + re.escape(OLD) + r"\b", after):
+    print(f"FAILED: {script} still carries `{OLD}` after the rename")
+    sys.exit(1)
+if after == text:
+    print(f"FAILED: {script} is unchanged after the rename")
+    sys.exit(1)
 print(f"Renamed the DeepSeek review tool: {n} occurrence(s) in {script} "
-      f"(backup: {os.path.basename(script)}.bak)")
+      f"(backup: {os.path.basename(backup)}) — verified by re-reading the file")
 sys.exit(0)
 PY
   exit $?

@@ -150,14 +150,30 @@ print('ADDED')
   # whose add path normalises the registered server's tool name — idempotent, backup-first, and a
   # no-op when no deepseek entry exists. Routing through the installer keeps ONE implementation
   # owning ~/.pi/agent/mcp.json, so this fix cannot drift from what a re-install would do.
+  # The check can WARN for two DIFFERENT reasons and they must not be treated alike:
+  #   • "STALE: … still exposes `review_experimental_plan`" → the rename applies. Fix it.
+  #   • "COULD NOT VERIFY: …" → a DeepSeek entry is registered but its server cannot be
+  #     resolved (module launch, renamed command) or the file is missing. A rename CANNOT
+  #     fix that, and a silent skip would report a broken host as merely unfixed. It is
+  #     reported as a failure with the reason, so it stays visible.
   if fix_map.get("DeepSeek MCP tool name") == "WARN":
     _ds_installer = CORTEX_REPO / "ops" / "scripts" / "install" / "install-pi-mcp.sh"
-    if _ds_installer.exists():
-      if _run_fix("Normalising the DeepSeek review tool name (backup first)",
-                  ["bash", str(_ds_installer), "--fix-tools"]):
-        fixed += 1
-      else:
+    if not _ds_installer.exists():
+      print("   ⏭   DeepSeek MCP tool name: installer missing — nothing to run "
+            "(see the check's reason above)")
+    else:
+      # Ask WHY it warned rather than assuming: only a stale name is fixable here.
+      _ds_out, _ds_rc = run(["bash", str(_ds_installer), "--check-tools"], timeout=60)
+      if _ds_rc == 2:
         failed += 1
+        print("   ❌  DeepSeek MCP tool name: COULD NOT VERIFY — a rename cannot fix an "
+              "unresolvable or missing registration (reason above)")
+      elif _ds_rc == 1:
+        if _run_fix("Normalising the DeepSeek review tool name (backup first)",
+                    ["bash", str(_ds_installer), "--fix-tools"]):
+          fixed += 1
+        else:
+          failed += 1
 
   # Fix: governance plugin not installed/symlinked
   if "Governance plugin" in fix_map and fix_map["Governance plugin"] == "FAIL":
