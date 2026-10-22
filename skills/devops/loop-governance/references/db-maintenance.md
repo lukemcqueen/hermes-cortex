@@ -3,6 +3,7 @@
 > Applies to: `~/.hermes-cortex/data/loop-governance.db`
 > Table: `loop_cycles`
 > Author: Hermes Cortex — extracted from weekly evaluation pipeline (Jul 2026)
+> Schema last MEASURED: 2026-10-22 (`PRAGMA table_info(loop_cycles)`)
 
 ## Retention Policy
 
@@ -14,140 +15,71 @@
 
 **Recommended schedule:** Weekly, as part of the evaluation pipeline.
 
-## Full Retention Script
+## The Retention Script
 
-This is the complete, deployable script. Save to `~/.hermes-cortex/scripts/retention.py` for reuse.
+Lives at **`skills/devops/loop-governance/scripts/loop-retention.py`** and is
+exercised by `tests/test_loop_retention.py`. It used to exist only as a listing on
+this page, which meant it could not be run, tested, or deployed — and two defects
+survived in it because nothing ever executed it (both fixed on 2026-10-22):
 
-```python
-#!/usr/bin/env python3
-"""
-Loop Governance DB Retention — archive cycles older than 90 days and VACUUM.
+- it read the timestamp as **`row[1]`**, a positional index. `timestamp` lands at
+  index 1 in today's table *by accident of history* — the table has been widened
+  repeatedly and now has 19 columns — so any reorder silently makes the date-range
+  report describe a different field. It now locates the column **by name** via
+  `PRAGMA table_info`, and refuses with `COULD NOT VERIFY` if there is no
+  `timestamp` column at all.
+- it wrote the archive **before** checking that the archive directory exists.
+  A host whose `data/` dir was never created would abort on the write — and an
+  abort placed after the `DELETE` loses rows with no archive. It now creates the
+  parent directory first.
 
-Usage:
-    python3 retention.py                    # dry-run (default)
-    python3 retention.py --apply            # actually archive + vacuum
-    python3 retention.py --days 180         # custom retention window
-"""
-import sqlite3, os, json, argparse
-from datetime import datetime
-
-def main():
-    parser = argparse.ArgumentParser(description="Archive old loop governance cycles")
-    parser.add_argument("--apply", action="store_true", help="Actually archive and delete")
-    parser.add_argument("--days", type=int, default=90, help="Retention window in days")
-    parser.add_argument("--db", default=os.path.expanduser("~/.hermes-cortex/data/loop-governance.db"),
-                        help="Path to loop-governance DB")
-    args = parser.parse_args()
-
-    if not os.path.exists(args.db):
-        print(f"DB not found: {args.db}")
-        return
-
-    conn = sqlite3.connect(args.db)
-    cur = conn.cursor()
-
-    # Verify table exists
-    cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='loop_cycles'")
-    if not cur.fetchone():
-        print("Table 'loop_cycles' not found in DB — nothing to do.")
-        conn.close()
-        return
-
-    # Count old cycles
-    cur.execute(f"SELECT COUNT(*) FROM loop_cycles WHERE timestamp < datetime('now', '-{args.days} days')")
-    old_count = cur.fetchone()[0]
-
-    if old_count == 0:
-        print(f"No cycles older than {args.days} days. DB is clean.")
-        before = os.path.getsize(args.db)
-        cur.execute("VACUUM")
-        conn.commit()
-        after = os.path.getsize(args.db)
-        freed = before - after
-        print(f"Vacuumed: {before} → {after} bytes ({freed} freed)")
-        conn.close()
-        return
-
-    # Read old cycles
-    cur.execute(f"SELECT * FROM loop_cycles WHERE timestamp < datetime('now', '-{args.days} days')")
-    old_rows = cur.fetchall()
-    cur.execute("PRAGMA table_info(loop_cycles)")
-    cols = [c[1] for c in cur.fetchall()]
-    archive = [dict(zip(cols, row)) for row in old_rows]
-
-    # Compute stats for reporting
-    total_before = cur.execute("SELECT COUNT(*) FROM loop_cycles").fetchone()[0]
-    db_before = os.path.getsize(args.db)
-
-    if args.apply:
-        # Archive to JSON
-        archive_path = os.path.expanduser(
-            f'~/.hermes-cortex/data/loop-cycles-archive-{datetime.now().strftime("%Y%m%d")}.json'
-        )
-        with open(archive_path, 'w') as f:
-            json.dump(archive, f, indent=2, default=str)
-
-        # Delete
-        cur.execute(f"DELETE FROM loop_cycles WHERE timestamp < datetime('now', '-{args.days} days')")
-
-        # Verify count
-        total_after = cur.execute("SELECT COUNT(*) FROM loop_cycles").fetchone()[0]
-        expected = total_before - old_count
-        assert total_after == expected, f"Count mismatch: deleted {total_before - total_after}, expected {old_count}"
-
-        conn.commit()
-
-        # Vacuum
-        cur.execute("VACUUM")
-        conn.commit()
-
-        db_after = os.path.getsize(args.db)
-
-        print(f"Archived {old_count} cycles → {archive_path}")
-        print(f"Deleted {old_count} rows from loop_cycles")
-        print(f"DB: {db_before} → {db_after} bytes (freed {db_before - db_after} bytes)")
-        print("Retention complete.")
-    else:
-        # Dry-run
-        print(f"[DRY RUN] Would archive {old_count} cycles older than {args.days} days:")
-        # Show date range of old cycles
-        min_ts = min(r[1] for r in old_rows)  # timestamp is index 1
-        max_ts = max(r[1] for r in old_rows)
-        print(f"  Date range: {min_ts} → {max_ts}")
-        print(f"  DB size: {db_before} bytes")
-        print(f"  Remaining after cleanup: ~{total_before - old_count} cycles")
-        print("Pass --apply to execute.")
-
-    conn.close()
-
-if __name__ == "__main__":
-    main()
+```bash
+python3 skills/devops/loop-governance/scripts/loop-retention.py            # dry-run (default)
+python3 skills/devops/loop-governance/scripts/loop-retention.py --apply    # archive + delete + vacuum
+python3 skills/devops/loop-governance/scripts/loop-retention.py --days 180 # custom window
 ```
+
+Dry-run is the default; the row-count change is asserted before commit and rolls
+back on mismatch; the archive is written before anything is deleted.
+
+## Schema (measured, not assumed)
+
+`loop_cycles`, 19 columns as of 2026-10-22, in this order:
+
+```
+id, timestamp, task_id, cycle_num, spec_hash, code_hash, test_output_hash,
+completeness, quality, progress, composite, no_progress, decision,
+user_overrode, outcome_note, schema_version, model_name, session_id,
+unscored_reason
+```
+
+Sibling tables in the same DB: `adversarial_reviews`, `blob_reviews`,
+`config_history`, `content_assets`, `task_events`. Only `loop_cycles` carries
+time-based data today; if `config_history` or `content_assets` grow large they
+need separate handling — nothing here cascades to them.
 
 ## Safety Checks
 
-The script above includes:
-
-1. **Table existence check** — exits gracefully if `loop_cycles` doesn't exist
-2. **DB existence check** — exits if DB file is missing
-3. **Count assertion** — verifies the deleted row count matches expected
+1. **DB existence check** — exits with `COULD NOT VERIFY` and rc=3 if missing
+2. **Table existence check** — exits gracefully if `loop_cycles` doesn't exist
+3. **Count assertion** — verifies the deleted row count matches expected, else rolls back
 4. **Dry-run mode** — default, requires explicit `--apply` to make changes
-5. **No cascading deletes** — `loop_cycles` is the only table with time-based data;
-   if `config_history` or `content_assets` grow large, they need separate handling
+5. **No cascading deletes** — see above
 
-## Pitfall — sqlite3 CLI binary may not be installed
+## Pitfalls
 
-The `sqlite3` command-line tool is not always present (e.g. minimal Linux images).
-Always use Python's built-in `sqlite3` module instead:
+**The `sqlite3` CLI binary may not be installed** (e.g. minimal Linux images).
+Use Python's built-in `sqlite3` module instead — `sqlite3.connect(path)` works
+without the system binary.
 
-```python
-import sqlite3
-conn = sqlite3.connect(path)  # works without the system sqlite3 binary
-```
+**A 0-byte `state/loop-governance.db` exists alongside the real one.** The live DB
+is the ~170 MB file under `data/`; `state/loop-governance.db` is empty, so a script
+pointed at it reports "table not found" and looks like data loss. Check the path and
+the file size before concluding anything. `sqlite3.connect` will happily *create* a
+missing DB, so a typo'd path yields a silent empty database rather than an error —
+the existence check above exists for that reason.
 
 ## Verification After Retention
-
-After running retention, verify with:
 
 ```python
 import sqlite3, os
