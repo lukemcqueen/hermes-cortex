@@ -42,9 +42,9 @@ Stranded in place:
 - software-development/adversarial-finding-fix-patterns/SKILL.md
 - software-development/adversarial-verifier/SKILL.md
 - software-development/agent-contract/SKILL.md
+- software-development/change-checklist/SKILL.md
 - software-development/hermetic-python-testing/SKILL.md
 - software-development/repo-organization/SKILL.md
-- software-development/root-cause-debugging/SKILL.md
 - software-development/test-driven-development/SKILL.md
 
 Absent from the repo (deployed under a repo-owned skill):
