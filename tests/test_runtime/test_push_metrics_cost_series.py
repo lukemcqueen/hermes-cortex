@@ -97,7 +97,7 @@ def test_failing_generator_does_not_fail_the_push_and_says_so(tmp_path):
         'hermes_cron_tokens_total{agent="test-agent",job_id="jobA"} 1'], stderr="why: state.db locked")
     r = _run(tmp_path, capture, gen)
     assert r.returncode == 0, "a broken optional generator must not error the cron: " + r.stderr
-    assert r.returncode == 0 and "hermes_cron_" not in capture.read_text()
+    assert "hermes_cron_" not in capture.read_text(), "a failed generator's series must not be sent"
     assert "cost metrics" in r.stderr and "3" in r.stderr, "the gap must be visible, not silent"
     assert "zero" in r.stderr.lower(), "the line must say a missing series is not $0 spend"
     assert "why: state.db locked" in r.stderr, (
