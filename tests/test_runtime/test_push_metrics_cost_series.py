@@ -99,6 +99,15 @@ def test_failing_generator_does_not_fail_the_push_and_says_so(tmp_path):
     assert r.returncode == 0, "a broken optional generator must not error the cron: " + r.stderr
     assert "hermes_cron_" not in capture.read_text(), "a failed generator's series must not be sent"
     assert "cost metrics" in r.stderr and "3" in r.stderr, "the gap must be visible, not silent"
+    # The two assertions above are claims about the SIBLING client
+    # (ops/scripts/manage/agent-push-metrics.sh, whose collect_cost_metrics this
+    # test drives as a subprocess). Pin the message here as well, so the
+    # expectation cannot silently go stale if the client's wording is edited —
+    # the runtime assertions above are the behaviour check; this is the guard on
+    # the text they quote.
+    client_src = (REPO / "ops" / "scripts" / "manage" / "agent-push-metrics.sh").read_text()
+    assert "cost series omitted from this push (spend is NOT zero)" in client_src, (
+        "the client no longer emits the message these assertions expect")
     assert "zero" in r.stderr.lower(), "the line must say a missing series is not $0 spend"
     assert "why: state.db locked" in r.stderr, (
         "the generator's own diagnostic must be forwarded, not swallowed (exit code alone "
