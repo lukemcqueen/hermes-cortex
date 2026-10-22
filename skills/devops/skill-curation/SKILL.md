@@ -54,6 +54,12 @@ and a merged skill serves better than two overlapping ones.
    before trusting a bare `Skills loadable ✅`: it is a weaker result, not a clean one. Repair the
    interpreter (`fix-cortex-venv.py`) and re-run, or invoke the doctor under `CORTEX_PYTHON`/
    `~/.hermes-cortex/venv/bin/python3`, so the full rule set is actually applied.
+   **But the durable fix lives in the CHECKER, not in the invocation.** Advice that says "invoke this
+   under the right interpreter" depends on every caller remembering, and the caller that forgets is
+   the one that gets a false green. A check should resolve its OWN interpreter — an explicit override
+   env var first, then the fleet venv, each probed by actually RUNNING it in a clean environment —
+   and re-exec itself once, guarded by an env flag so it cannot loop. A check that resolves for
+   itself cannot be run wrong.
    The general rule for any check that depends on a library: a checker that CANNOT read its input
    has no verdict — it must say so loudly, and it must never emit a success line for the inputs it
    never examined, because a green tick over unread files is worse than a visible failure.
@@ -154,6 +160,26 @@ and a merged skill serves better than two overlapping ones.
    recovered asset is covered the moment it lands. Extend it rather than writing a second
    one, and keep its non-vacuity assertion (it FAILs when it finds no assets at all).
 
+   **Read a recovered DOCUMENT before landing it — the recovery leaves defects of its own.** A
+   recovered reference is not good because it came from a host where it worked: a redaction pass can
+   destroy the very distinction the document teaches (a fix example whose "before" and "after" lines
+   are byte-identical because both were rewritten to the placeholder), and a recovered script can
+   carry the bug it warns about (reading a column by hardcoded INDEX while `PRAGMA table_info` was
+   already fetched). These are cheap to fix while landing and expensive later: the close judges each
+   recovered file as its own blob, so a self-contradicting document is found one blob and one review
+   round at a time, and every fix commit grows a range that was already too wide. Read for the
+   artifact of the RECOVERY, not only for the lesson.
+
+   **Price a bulk recovery by CLAIM, not by file count.** The close reviewer judges what each
+   recovered blob CLAIMS. A document that presents an incident note as a live statement about code
+   is judged as BEHAVIOUR, so a committed re-runnable test is demanded — which cannot exist for a
+   past measurement, and the file's real claim is a POINTER to a record instead. Land recovered
+   history declaring itself as history (what it is a record OF, and as-of when) rather than as
+   specification, and land recovered prose in WAVES: a range whose files each need a verdict costs
+   passes in proportion to its FILE count, so a one-hundred-file recovery commit is the most
+   expensive shape available. Expect the class and diagnose it as a claim-type mismatch, not as a
+   fault in the recovered text.
+
 7. **A same-name collision from a `local-*` skill is the OVERRIDE WORKING — do not
    "fix" it.** A host-local `local-<x>` skill deliberately keeps the fleet skill's
    `name: <x>`, so it wins the name collision and the fleet copy is skipped: that IS
@@ -177,6 +203,13 @@ and a merged skill serves better than two overlapping ones.
    the diagnostic and the index cost. Read the loader's own DIAGNOSTICS LIST before
    calling something a collision — the two failures look identical in a directory
    listing and are different findings.
+
+   **A stray non-skill `.md` in the tree is a PHANTOM candidate.** A `DESCRIPTION.md`, `README.md`
+   or similar sitting inside a category directory is enumerated as a skill whose name falls back to
+   the DIRECTORY, so `skills/<cat>/DESCRIPTION.md` presents as a second skill named after its
+   category and collides with the real one — and since the winner is readdir order, the phantom can
+   win. Keep non-skill markdown out of the skill tree, and read a collision whose loser is a
+   frontmatter-less `.md` as this shape rather than as a deliberate override.
 
 ## Manifest Discipline
 

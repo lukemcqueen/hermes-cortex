@@ -75,7 +75,19 @@ code is context, not a claim. A repo-internal REFERENCE (`see CURRENT_STATE.md`,
 between docs) is a POINTER: its evidence is that the target exists at the reviewed tip, which the
 reviewer cannot see from the diff alone — so it is a PROMPT gap (flag only a target that does not
 exist), not a defect in the docs and never a case for an override. Answering it by editing every
-referenced file is a loop: those files reference yet more files.
+Answering it by editing every referenced file is a loop: those files reference yet more files.
+
+**Bulk-recovered HISTORY is the case that breaks the claim classes: a record gets judged as a live
+claim.** Landing many recovered documents in one range puts N prose files under the reviewer, each
+judged on its OWN blob — and a document that merely asserts something about code is `behaviour`, so
+the demand is a committed, re-runnable test. Nobody can write that test for a past measurement, so
+one such finding arrives per recovered file, at one pass per four files, and each fix commit widens
+the range further. Diagnose it as a claim-class mismatch, not as a defect in the recovered text:
+the policy above already makes a historical measurement a POINTER to its record, so the move is to
+have the material declare what it is a record OF (as-of date, provenance line) instead of reading as
+specification for the code today — and to land recovered prose in waves rather than as one
+hundred-file range. Do NOT answer the class by adding a test artifact per file: the range grows,
+every file's share of the material shrinks, and the new files are judged too.
 
 ## A blob's material now SHOWS the range siblings' added lines
 
