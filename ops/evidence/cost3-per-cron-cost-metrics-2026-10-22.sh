@@ -122,6 +122,12 @@ say "## 3. weekly report on live data"
 run python3 "$REPO/ops/scripts/manage/orch-weekly-cost-report.py" --days 7
 say ""
 say "## 3b. the alert path, driven by a fixture that breaches the target"
+say "   RE-RUN THIS YOURSELF: the fixture is created by this generator, which is"
+say "   committed at ops/evidence/cost3-per-cron-cost-metrics-2026-10-22.sh —"
+say "   'bash ops/evidence/cost3-per-cron-cost-metrics-2026-10-22.sh' rebuilds it."
+say "   The mktemp path below therefore DIFFERS on every run by design; the fixture"
+say "   contents (two cron sessions of 12.00 and 14.00 on adjacent days) are the"
+say "   input, and the report's own output is the verdict."
 FX="$WORK/fx"
 mkdir -p "$FX"
 python3 - "$FX/state.db" <<'PY'
