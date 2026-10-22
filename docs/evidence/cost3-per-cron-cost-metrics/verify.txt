@@ -1,7 +1,7 @@
-# [cost/3] verification transcript — 2026-10-22T13:42:16Z
+# [cost/3] verification transcript — 2026-10-22T13:50:28Z
 # captured-at: revision the working tree sat on when this ran (the committed
 # copy is necessarily one commit ahead — this file cannot name its own commit).
-captured-at: f0d4545c
+captured-at: f7b9457e
 
 ## 1. per-cron series from the live audit log + live state.db
 $ cron-cost-metrics.py --prometheus --agent esther
@@ -24,7 +24,7 @@ hermes_cron_tokens_total{agent="esther",job_id="1f31ee6587e3"} 1.1608e+07
 
 ## 2. the real push client against a local recording sink
 push client exit code: 0 (0 = pushed)
-payload bytes recorded: 10991
+payload bytes recorded: 10990
 node series in the payload: 17
 cron cost series in the payload: 119
   ^ the payload is a SUPERSET: node series + the cron cost series (data lines only).
@@ -48,10 +48,10 @@ Spend by day (state.db sessions, source=cron):
   2026-10-19  $0.22
   2026-10-20  $0.31
   2026-10-21  $0.23
-  2026-10-22  $0.46
+  2026-10-22  $0.49
 Measured days: 8 (2026-10-15/2026-10-16/2026-10-17/2026-10-18/2026-10-19/2026-10-20/2026-10-21/2026-10-22)
 Measured daily average: $0.44  (target $10.00)
-Window total: $3.50
+Window total: $3.54
 Top jobs by tokens (audit log, lifetime):
   dbcdec6bb40d  829603169 tokens, 262 fires
   8a46f1b96b7d  333728479 tokens, 43 fires
@@ -64,7 +64,7 @@ COVERAGE
 rc=0
 
 ## 3b. the alert path, driven by a fixture that breaches the target
-$ python3 ~/hermes-cortex/ops/scripts/manage/orch-weekly-cost-report.py --audit ~/.hermes/cache/scratch/tmp.KcnREPIN20/fx/usage_audit.jsonl --state-db ~/.hermes/cache/scratch/tmp.KcnREPIN20/fx/state.db --days 7
+$ python3 ~/hermes-cortex/ops/scripts/manage/orch-weekly-cost-report.py --audit ~/.hermes/cache/scratch/tmp.oLufoUQCok/fx/usage_audit.jsonl --state-db ~/.hermes/cache/scratch/tmp.oLufoUQCok/fx/state.db --days 7
 💰 Weekly fleet cost report — this host, window 7d
 ⚠️ FLEET COST ABOVE TARGET — measured daily average $13.00 > $10.00
 Spend by day (state.db sessions, source=cron):
@@ -105,12 +105,14 @@ tests/test_runtime/test_push_metrics_cost_series.py::test_absent_generator_pushe
 tests/test_runtime/test_push_metrics_cost_series.py::test_working_generator_lands_in_the_same_push PASSED [ 93%]
 tests/test_runtime/test_push_metrics_cost_series.py::test_failing_generator_does_not_fail_the_push_and_says_so PASSED [100%]
 
-============================== 15 passed in 2.90s ==============================
+============================== 15 passed in 3.02s ==============================
 ---
 run-tests.sh: interpreter=~/.hermes-cortex/venv/bin/python3 rc=0  (PYTHONPATH/PYTHONHOME unset for the run)
 rc=0
 
-## 5. the watchdog threshold the report's docstring cites (outside this range, quoted here)
+## 5. context: the watchdog's consecutive-error limit (NOT asserted by this report)
+   The report's docstring deliberately makes no claim about escalation; this
+   line is background for a reader asking what a non-zero exit leads to.
 $ grep -n 'CONSECUTIVE_FAILURE_LIMIT' ops/scripts/health/agent-cron-failure-watchdog.py
 6:CONSECUTIVE_FAILURE_LIMIT (default 3) consecutive failures:
 40:CONSECUTIVE_FAILURE_LIMIT = 3  # consecutive errors before alert + pause

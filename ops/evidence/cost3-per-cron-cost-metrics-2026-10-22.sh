@@ -132,7 +132,9 @@ run bash "$REPO/tests/run-tests.sh" \
   tests/test_runtime/test_cron_cost_reporting.py \
   tests/test_runtime/test_push_metrics_cost_series.py -v
 say ""
-say "## 5. the watchdog threshold the report's docstring cites (outside this range, quoted here)"
+say "## 5. context: the watchdog's consecutive-error limit (NOT asserted by this report)"
+say "   The report's docstring deliberately makes no claim about escalation; this"
+say "   line is background for a reader asking what a non-zero exit leads to."
 say "\$ grep -n 'CONSECUTIVE_FAILURE_LIMIT' ops/scripts/health/agent-cron-failure-watchdog.py"
 grep -n 'CONSECUTIVE_FAILURE_LIMIT' "$REPO/ops/scripts/health/agent-cron-failure-watchdog.py" 2>&1 | norm >>"$OUT"
 grep -n 'CONSECUTIVE_FAILURE_LIMIT' "$REPO/ops/scripts/health/agent-cron-failure-watchdog.py" 2>&1 | norm

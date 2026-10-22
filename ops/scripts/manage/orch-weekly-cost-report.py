@@ -19,17 +19,13 @@ skills/devops/llm-cost-optimization/references/fleet-cost-data-sources.md):
 Exit codes:
   0  report emitted, no breach (or no data — never a false alert)
   1  measured daily average is above the target: a FAILED run, deliberately, so
-     the breach is machine-visible rather than a quiet line. Consequence: the
-     failure watchdog pauses a job after three consecutive errors —
-     ops/scripts/health/agent-cron-failure-watchdog.py:40 is
-     `CONSECUTIVE_FAILURE_LIMIT = 3  # consecutive errors before alert + pause`.
-     Three consecutive breaches therefore leave this job PAUSED, which is itself
-     the escalation signal and shows up in the cron list rather than being
-     silently absorbed. The proof of that threshold travels with the claim:
-     docs/evidence/cost3-per-cron-cost-metrics/verify.txt section 5 prints the
-     `grep -n CONSECUTIVE_FAILURE_LIMIT` output with the line numbers, because the
-     watchdog file itself is outside this change's range. (Finding ADV-13655-1 on
-     cycle 13655: the first version asserted the pause without any pointer.)
+     the breach is machine-visible rather than a quiet line.
+     NOT ASSERTED HERE: what a non-zero exit then causes is a property of the
+     cron failure watchdog (ops/scripts/health/agent-cron-failure-watchdog.py,
+     which sets a consecutive-error limit and pauses a job that keeps failing).
+     That file is outside this change's range and nothing in this range exercises
+     the escalation path, so this docstring claims only the exit code the script
+     itself produces — read the watchdog there for the rest.
 """
 
 from __future__ import annotations
@@ -56,7 +52,10 @@ UNMEASURED = ("not measured: the four worker hosts (each needs its own local ada
 def read_tokens_by_job(path: Path):
     try:
         text = Path(path).read_text(errors="replace")
-    except OSError:
+    except OSError as exc:
+        # Say WHY on stderr: a bare "NO DATA" line cannot tell an operator a
+        # missing file from a permissions or disk problem (finding ADV-13655-4).
+        print(f"[orch-weekly-cost-report] audit log unreadable: {path}: {exc}", file=sys.stderr)
         return None, None
     tokens: dict[str, float] = defaultdict(float)
     fires: dict[str, int] = defaultdict(int)
@@ -87,6 +86,8 @@ def read_cost_by_day(db_path: Path, days: int):
     try:
         con = sqlite3.connect(f"file:{Path(db_path)}?mode=ro", uri=True, timeout=5)
     except sqlite3.Error as exc:
+        print(f"[orch-weekly-cost-report] spend source unreadable: {db_path}: {exc}",
+              file=sys.stderr)
         return None, f"state.db unreadable ({exc})"
     try:
         rows = con.execute(
@@ -95,6 +96,8 @@ def read_cost_by_day(db_path: Path, days: int):
             (cutoff,),
         ).fetchall()
     except sqlite3.Error as exc:
+        print(f"[orch-weekly-cost-report] sessions query failed: {db_path}: {exc}",
+              file=sys.stderr)
         return None, f"sessions table unreadable ({exc})"
     finally:
         con.close()
