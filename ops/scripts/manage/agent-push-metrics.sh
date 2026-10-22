@@ -281,6 +281,27 @@ if [ -n "$io_wait" ]; then
 node_iowait_percent{${tag}} ${io_wait}"
 fi
 echo "$disk_metrics"
+collect_cost_metrics
+}
+
+# ── Cost metrics — per-cron tokens/spend (story c579ef95 [cost/3]) ──
+# Optional and FAIL-SOFT. The generator's series ride in the SAME push, so the
+# sink (:14005) carries cost beside node metrics. A missing or broken generator
+# must never change this push's outcome — and must never be read as $0 spend: an
+# absent series is visible, a false zero is not. Override in tests with
+# PUSH_METRICS_COST_BIN.
+COST_METRICS_BIN="${PUSH_METRICS_COST_BIN:-${HOME}/.hermes-cortex/scripts/cron-cost-metrics.py}"
+
+collect_cost_metrics() {
+  [ -f "$COST_METRICS_BIN" ] || return 0
+  local out rc=0
+  out="$("${PUSH_METRICS_PYTHON:-python3}" "$COST_METRICS_BIN" --prometheus \
+        --agent "$AGENT_NAME" 2>/dev/null)" || rc=$?
+  if [ "$rc" -ne 0 ]; then
+    echo "[push-metrics] cost metrics generator exited ${rc} — cost series omitted from this push (spend is NOT zero)" >&2
+    return 0
+  fi
+  printf '%s\n' "$out"
 }
 
 # ── Push ─────────────────────────────────────────────────────

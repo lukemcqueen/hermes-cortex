@@ -1227,3 +1227,14 @@ crons:
   no_agent: false
   model: ''
   provider: ''
+- name: orch-weekly-cost-report
+  scope: orchestrator
+  schedule: 0 9 * * 1
+  script: orch-weekly-cost-report.py
+  prompt: ''
+  skill: ''
+  deliver: telegram:{{HOME_CHANNEL}}
+  workdir: ''
+  no_agent: true
+  model: ''
+  provider: ''

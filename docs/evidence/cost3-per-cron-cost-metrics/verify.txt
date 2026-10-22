@@ -1,0 +1,96 @@
+# [cost/3] verification transcript — 2026-10-22T13:30:51Z
+# captured-at: revision the working tree sat on when this ran (the committed
+# copy is necessarily one commit ahead — this file cannot name its own commit).
+captured-at: 304c30c6
+
+## 1. per-cron series from the live audit log + live state.db
+$ cron-cost-metrics.py --prometheus --agent esther
+rc=0   stderr: 
+series lines emitted: 129
+job lines: 37
+cost_available line: # HELP hermes_cron_cost_available 1 = spend read from state.db, 0 = unavailable
+# TYPE hermes_cron_cost_available gauge
+hermes_cron_cost_available{agent="esther"} 1
+first 8 lines:
+# HELP hermes_cron_tokens_total Cron tokens consumed per job (lifetime, audit log)
+# TYPE hermes_cron_tokens_total counter
+hermes_cron_tokens_total{agent="esther",job_id="0677224663a3"} 1.46556e+08
+hermes_cron_tokens_total{agent="esther",job_id="169ac3b60e36"} 1.33315e+07
+hermes_cron_tokens_total{agent="esther",job_id="176a4f5d90ce"} 8.85666e+06
+hermes_cron_tokens_total{agent="esther",job_id="1954deb5ad76"} 1.81332e+08
+hermes_cron_tokens_total{agent="esther",job_id="1b7aa103681d"} 4.39897e+07
+hermes_cron_tokens_total{agent="esther",job_id="1f31ee6587e3"} 1.1608e+07
+
+## 2. the real push client against a local recording sink
+push client exit code: 0 (0 = pushed)
+payload bytes recorded: 10991
+node series in the payload: 17
+cron cost series in the payload: 119
+sample of the cost series as received:
+hermes_cron_tokens_total{agent="esther",job_id="0677224663a3"} 1.46556e+08
+hermes_cron_tokens_total{agent="esther",job_id="169ac3b60e36"} 1.33315e+07
+hermes_cron_tokens_total{agent="esther",job_id="176a4f5d90ce"} 8.85666e+06
+hermes_cron_tokens_total{agent="esther",job_id="1954deb5ad76"} 1.81332e+08
+client stderr/stdout: ''
+
+## 3. weekly report on live data
+$ python3 ~/hermes-cortex/ops/scripts/manage/orch-weekly-cost-report.py --days 7
+💰 Weekly fleet cost report — this host, window 7d
+Spend by day (state.db sessions, source=cron):
+  2026-10-15  $0.70
+  2026-10-16  $0.84
+  2026-10-17  $0.61
+  2026-10-18  $0.16
+  2026-10-19  $0.22
+  2026-10-20  $0.31
+  2026-10-21  $0.23
+  2026-10-22  $0.37
+Measured days: 8 (2026-10-15/2026-10-16/2026-10-17/2026-10-18/2026-10-19/2026-10-20/2026-10-21/2026-10-22)
+Measured daily average: $0.43  (target $10.00)
+Window total: $3.43
+Top jobs by tokens (audit log, lifetime):
+  dbcdec6bb40d  829603169 tokens, 262 fires
+  8a46f1b96b7d  333728479 tokens, 43 fires
+  8449be867645  255717380 tokens, 68 fires
+  418bbf45277d  235000372 tokens, 221 fires
+  f41b7171b9e1  193104466 tokens, 201 fires
+COVERAGE
+  measured: this host (this host's own state.db / audit log)
+  not measured: the four worker hosts (each needs its own local adapter — fleet cost coverage [cost/4]); this average covers the measured hosts only
+rc=0
+
+## 3b. the alert path, driven by a fixture that breaches the target
+$ python3 ~/hermes-cortex/ops/scripts/manage/orch-weekly-cost-report.py --audit ~/.hermes/cache/scratch/tmp.4O0ZQiDYuV/fx/usage_audit.jsonl --state-db ~/.hermes/cache/scratch/tmp.4O0ZQiDYuV/fx/state.db --days 7
+💰 Weekly fleet cost report — this host, window 7d
+⚠️ FLEET COST ABOVE TARGET — measured daily average $13.00 > $10.00
+Spend by day (state.db sessions, source=cron):
+  2026-10-21  $14.00
+  2026-10-22  $12.00
+Measured days: 2 (2026-10-21/2026-10-22)
+Measured daily average: $13.00  (target $10.00)
+Window total: $26.00
+Top jobs by tokens (audit log, lifetime):
+  fixtureA  1000 tokens, 1 fires
+COVERAGE
+  measured: this host (this host's own state.db / audit log)
+  not measured: the four worker hosts (each needs its own local adapter — fleet cost coverage [cost/4]); this average covers the measured hosts only
+rc=1
+
+## 4. test suite (both new files)
+$ bash ~/hermes-cortex/tests/run-tests.sh tests/test_runtime/test_cron_cost_reporting.py tests/test_runtime/test_push_metrics_cost_series.py -q
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
+rootdir: ~/hermes-cortex
+configfile: pytest.ini
+plugins: anyio-4.15.1
+collected 15 items
+
+tests/test_runtime/test_cron_cost_reporting.py ............              [ 80%]
+tests/test_runtime/test_push_metrics_cost_series.py ...                  [100%]
+
+============================== 15 passed in 2.99s ==============================
+---
+run-tests.sh: interpreter=~/.hermes-cortex/venv/bin/python3 rc=0  (PYTHONPATH/PYTHONHOME unset for the run)
+rc=0
+
+# generated-by: this script (stdout is written here by the script itself)

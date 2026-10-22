@@ -144,6 +144,7 @@ if $UNINSTALL; then
     "orch-fleet-watchdog" \
     "orch-health-report-saturday" \
     "orch-health-report-weekday" \
+    "orch-weekly-cost-report" \
     "orch-skill-lifecycle" \
     "orch-skill-evaluate" \
     "orch-skill-report-request" \
@@ -429,6 +430,19 @@ create_cron "orch-health-report-saturday" "0 11,17 * * 6" \
   "" \
   "" \
   "origin" \
+  "" \
+  "true"
+
+# Weekly fleet cost report (story c579ef95 [cost/3]) — per-cron spend from the
+# host's own state.db/audit log, delivered to Telegram. Exits 1 when the measured
+# daily average exceeds CORTEX_COST_DAILY_TARGET_USD (default $10) so the breach
+# is machine-visible; see the script docstring for why that is deliberate.
+create_cron "orch-weekly-cost-report" "0 9 * * 1" \
+  "orch-weekly-cost-report.py" \
+  "" \
+  "" \
+  "" \
+  "telegram:${TELEGRAM_HOME_CHANNEL}" \
   "" \
   "true"
 

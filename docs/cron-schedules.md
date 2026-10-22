@@ -47,6 +47,7 @@
 | `orch-daily-regression-gate` | `15 3 * * *` | no_agent | `orch-daily-regression-gate.sh` | Telegram |
 | `orch-health-report-weekday` | `0 9-18 * * 1-5` | no_agent | `orch-health-report.py` | origin |
 | `orch-health-report-saturday` | `0 11,17 * * 6` | no_agent | `orch-health-report.py` | origin |
+| `orch-weekly-cost-report` | `0 9 * * 1` | no_agent | `orch-weekly-cost-report.py` | Telegram |
 | `orch-skill-lifecycle` | `0 4 * * 1,3,5` | LLM | (orch-skill-lifecycle skill) | origin |
 | `orch-skill-report-request` | `0 2 * * 1` | no_agent | `orch-skill-report-request.sh` | origin |
 | `orch-skill-evaluate` | `0 9 * * 2` | LLM | (prompt) | origin |

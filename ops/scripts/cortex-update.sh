@@ -980,6 +980,8 @@ register "ops/scripts/manage/lesson-hit.sh"              "${CORTEX_DEPLOY_HOME}/
 register "ops/scripts/manage/fix-cron-duplicates.py"  "${CORTEX_DEPLOY_HOME}/scripts/manage/fix-cron-duplicates.py"
 register "ops/scripts/manage/remove-cron-jobs.py"      "${CORTEX_DEPLOY_HOME}/scripts/manage/remove-cron-jobs.py"
 register "ops/scripts/manage/agent-push-metrics.sh"     "${CORTEX_DEPLOY_HOME}/scripts/agent-push-metrics.sh"
+register "ops/scripts/manage/cron-cost-metrics.py"      "${CORTEX_DEPLOY_HOME}/scripts/cron-cost-metrics.py"
+register "ops/scripts/manage/orch-weekly-cost-report.py" "${CORTEX_DEPLOY_HOME}/scripts/orch-weekly-cost-report.py"
 register "ops/scripts/manage/setup-push-metrics-cron.sh" "${CORTEX_DEPLOY_HOME}/scripts/setup-push-metrics-cron.sh"
 register "ops/scripts/manage/agent-setup-metrics.sh" "${CORTEX_DEPLOY_HOME}/scripts/agent-setup-metrics.sh"
 

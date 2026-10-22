@@ -46,6 +46,7 @@ bash ~/.hermes-cortex/scripts/consolidate-env.sh
 | `CORTEX_VM_HEALTH_URL` | `http://127.0.0.1:8428/-/healthy` | `hermes-services-apply.py`, `install-nginx-full.sh` | Backend health probe behind the push-metrics auto-detect gate. Repoint it if VictoriaMetrics runs on a non-default address. |
 | `CORTEX_VM_QUERY_URL` | _(derived)_ | `cortex-doctor` (Metrics arrival age) | Pin the sink the arrival check queries. Unset, it derives from this host's `VICTORIA_METRICS_URL`/`_FALLBACK_URL` in push order (local backend last), so it asks the sink that actually receives. |
 | `CORTEX_METRICS_STALE_MINUTES` | `30` | `cortex-doctor` (Metrics arrival age) | Warn when an agent that has pushed before has not been seen at the sink for this long (6 missed 5m ticks). |
+| `CORTEX_COST_DAILY_TARGET_USD` | `10` | `orch-weekly-cost-report.py` | Weekly fleet cost report: alert (non-zero exit + `⚠️ FLEET COST ABOVE TARGET`) when the measured daily average exceeds this. The average covers MEASURED hosts only — the report prints a COVERAGE block naming what it does not cover, and a missing spend source prints `NO DATA` and never alerts. |
 | `CORTEX_VM_FRESHNESS_METRIC` | `node_uptime_seconds` | `cortex-doctor` (Metrics arrival age) | Series used to measure arrival age per agent. Pick a metric every pushing agent reports. |
 
 ### Agent-side metrics push (read by `agent-push-metrics.sh`, set in `~/hermes-cortex/.env`)
