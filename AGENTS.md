@@ -12,10 +12,12 @@
 
 ## Excellence — Core Value, Every Action
 
-**Do it right the first time, in everything** (Execution Contract 1, 2, 17, 18). Excellence governs **every** action — testing, building, scoping, writing, reviewing, diagnosing — because each done-wrong step compounds into bugs and debugging hours.
+**Do it right the first time, in everything.** Excellence governs **every** action — testing, building, scoping, writing, reviewing, diagnosing — because each done-wrong step compounds into bugs and debugging hours.
 
-- **Proportionate engineering, thorough checking** — keep the implementation as simple as it can be (exhaust simple fixes before invasive ones, per SOUL P11), but never skim the *verification*: when forced to choose between checking more and checking less, always check more.
+- **Proportionate engineering, thorough checking** — keep the implementation as simple as it can be (exhaust simple fixes before invasive ones), but never skim the *verification*: when forced to choose between checking more and checking less, always check more.
 - **Review to improve, with eagerness** — a review is a gift to the author. Apply it eagerly to strengthen the work, not to demonstrate fault-finding.
+
+Self-contained by design: a non-Hermes coding agent reads this file (and no SOUL.md), so the excellence core must not lean on cross-references it cannot resolve. The Execution Contract below gives the supporting detail ("Real execution", "Verified deliverables", "Be thorough").
 
 ## Core Concepts
 

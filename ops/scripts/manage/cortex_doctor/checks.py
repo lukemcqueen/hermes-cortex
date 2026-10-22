@@ -884,7 +884,10 @@ def check_dev_repo_claude(res: "Results") -> None:
     repo_claude = repo_dir / "CLAUDE.md"
     if not repo_claude.exists():
       missing.append(repo_dir.name)
-    elif "Excellence" not in repo_claude.read_text(errors="replace"):
+    # Exact fleet section heading, not the bare word: a project that adapts the
+    # message but keeps the heading is current; a copy that pre-dates the
+    # section (or renames it) is stale. (tightened per deepseek-v4-pro ADV-0-1)
+    elif "## Excellence — Core Value, Every Action" not in repo_claude.read_text(errors="replace"):
       drifted.append(repo_dir.name)
 
   if checked == 0:
