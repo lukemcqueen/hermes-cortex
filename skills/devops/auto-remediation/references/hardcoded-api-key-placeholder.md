@@ -8,7 +8,15 @@ A no_agent cron script that calls an external API returns:
 ❌ API returned HTTP 401: {"error":{"message":"Authentication Fails, Your api key: *** is invalid",...}}
 ```
 
-or similar 401/403 with `***` in the error message body. The API key IS present and valid in `~/.hermes/.env` — the script reads it but never passes it to the actual HTTP call.
+or similar 401/403 with a redacted key in the error message body. The distinguishing
+feature is that the key IS present and valid in `~/.hermes/.env`, yet the request is
+still rejected.
+
+> **Scope.** This reference documents the failure PATTERN — the shape to look for and
+> how to rule out its lookalikes. It does not name the script it was first observed in
+> and makes no claim about any script now in this repo; treat the code below as an
+> illustration of the shape, and confirm it against the script you are actually
+> diagnosing before acting on it.
 
 ## Root Cause
 
@@ -29,7 +37,11 @@ def _call_deepseek(prompt: str) -> str | None:
     )
 ```
 
-The `api_key` variable is **read but never referenced** — a classic dead-variable bug.
+The tell is a variable that is **read but never referenced** — a dead-variable bug:
+`api_key` is assigned and then absent from every later expression. Confirm it by
+reading the script, not by assuming it: grep the function body for the variable name
+after its assignment (`grep -n 'api_key' <script>.py`) and check that every hit after
+the assignment is inside the request construction.
 
 This is different from the "missing API key" pattern (where the key isn't in `.env` at all) and from the "expired/invalid key" pattern (where the key exists but is wrong). Here the key is **correct and present in the env file**, but the variable carrying it is never wired into the request.
 
@@ -44,8 +56,8 @@ grep -n 'Authorization.*Bearer' ~/.hermes/scripts/<script>.py
 
 # 3. Check if the variable is actually interpolated
 #    Look for f-strings or string concatenation on that line.
-#    `f"Authorization: Bearer ***"` → BUG (literal asterisks)
-#    `f"Authorization: Bearer ***"` → FIXED (variable interpolated)
+#    "Authorization: Bearer <something>"        → BUG if <something> is a literal
+#    f"Authorization: Bearer {api_key}"          → FIXED (the variable is interpolated)
 python3 -c "
 code = open('~/.hermes/scripts/<script>.py').read()
 import re
@@ -71,15 +83,19 @@ print(f'HTTP {code}', '✅' if code == '200' else '❌')
 
 ## Fix
 
-Replace the hardcoded `***` with the variable:
+Replace the literal with the variable the function already read:
 
 ```python
-# Before (broken):
-"-H", f"Authorization: Bearer ***",
+# Before (broken) — a literal string, so the real key never reaches the request:
+"-H", "Authorization: Bearer <placeholder>",
 
-# After (fixed):
+# After (fixed) — interpolate the variable:
 "-H", f"Authorization: Bearer {api_key}",
 ```
+
+(An earlier redaction pass left both lines spelled the same way, which made this
+example show no difference at all. If you are copying from an older copy of this
+reference, the distinction is the `f` prefix and `{api_key}` on the fixed line.)
 
 Check **all instances** in the script — a script may have multiple HTTP call functions (e.g. separate functions for soul-entry vs brain-page generation) that share the same bug.
 
