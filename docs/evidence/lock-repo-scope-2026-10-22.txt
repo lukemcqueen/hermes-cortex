@@ -1,0 +1,76 @@
+governance lock repo scope — evidence
+captured-at : f508a61e  (the working tree's revision)
+generated-by: docs/evidence/lock-repo-scope-2026-10-22.sh (this file wrote itself)
+deployed    : ~/.hermes/plugins/governance-enforcer/__init__.py — the copy in force AT
+              CAPTURE TIME, i.e. the PRE-DEPLOY (pre-fix) copy. That is what makes the
+              differential probe below discriminating; re-running this script AFTER the
+              deploy compares the fix with itself and correctly reports no change.
+────────────────────────────────────────────────────────────
+
+1. The defect, measured on this host
+   begin_change recorded a lock with repo_slug=hermes-agent while the session was
+   working in hermes-cortex. The write was AUTHORISED anyway, because Phase 1 asked
+   only 'does the lock name ANY repo' (_lock_names_a_repo) instead of 'does it name
+   THIS one'. The 2026-10-14 fix closed only the names-NO-repo case. Phase 2 in the
+   SAME function already applied the correct rule; Phase 1 never called it.
+────────────────────────────────────────────────────────────
+
+2. The both-ways tests (tests/test_repo_less_lock_handling.py)
+   $ ~/.hermes-cortex/venv/bin/python3 -m pytest tests/test_repo_less_lock_handling.py -q
+
+tests/test_repo_less_lock_handling.py ........                           [100%]
+
+============================== 8 passed in 1.13s ===============================
+   rc captured unpiped below
+   rc=0   (0 = all pass, including the foreign-repo case that failed before the fix)
+────────────────────────────────────────────────────────────
+
+3. DIFFERENTIAL PROBE (enforcement-change-safety Rule 23)
+   The DEPLOYED copy is the oracle: it is the behaviour currently in force. Both copies
+   are loaded in ONE process and driven with the same fixtures against a throwaway
+   state dir. A verdict that CHANGES is a real behaviour change; the valid cases must
+   NOT change.
+
+governance lock .governance-sess-probe.json names NO repo — refusing to authorise writes in '~/.hermes/cache/scratch/lock-scope-probe.tgss2eph/the-repo-being-written'; re-run begin_change with the repo declared
+governance lock .governance-sess-probe.json covers '~/.hermes/cache/scratch/lock-scope-probe.tgss2eph/a-different-repo', NOT '~/.hermes/cache/scratch/lock-scope-probe.tgss2eph/the-repo-being-written' — refusing to authorise writes here (the lock stays live: it is valid for its own repo). Re-run begin_change from the repo you are working in.
+  fixture                             deployed  repo copy   verdict
+  ---------------------------------- --------- ----------   -------
+  lock names THIS repo                    True       True   identical
+  lock names NO repo                     False      False   identical
+  lock names a DIFFERENT repo             True      False   CHANGED (the fix)
+
+  OK: the verdict changed ONLY where the defect was, and the valid cases are
+      byte-for-byte identical in behaviour — the fix is scoped to the hole.
+   rc=0   (0 = the verdict changed exactly where the defect was)
+────────────────────────────────────────────────────────────
+
+4. Syntax + the A4 adversarial gate on the changed file
+   ops/scripts/pre-commit-score syntax_rc=0  (unchanged by this range; checked for context)
+   plugins/governance-enforcer/__init__.py py_compile_rc=0
+   plugins/governance-enforcer/__init__.py A4_rc=0
+────────────────────────────────────────────────────────────
+
+5. What the fix does, and what it deliberately does NOT do
+   • Phase 1 now applies the SAME rule as Phase 2, through ONE shared helper
+     (_lock_covers_target), so the two cannot disagree again.
+   • A lock naming a DIFFERENT repo is REFUSED here, and left LIVE — it is a valid
+     lock for its own repo, and deleting it would wreck that session's scope.
+   • A lock naming NO repo is still released (unchanged 2026-10-14): it can never be
+     closed by end_change, so leaving it is a dead end.
+   • NOT fixed here, and reported: the lock's repo is resolved from an ambient
+     per-session hint file (state/session-repo/<session_id>), whose drift produced the
+     mis-scope in the first place. With this change that drift is REFUSED loudly
+     instead of silently authorising a write in the wrong repository.
+────────────────────────────────────────────────────────────
+
+6. What this capture covers
+   These files are UNCOMMITTED at capture time — the committed copy of this transcript
+   lands one commit AFTER the run, so naming a commit here would be a claim the file
+   cannot make about itself. HEAD at capture: f508a61e
+      M plugins/governance-enforcer/__init__.py
+      M tests/test_repo_less_lock_handling.py
+     ?? docs/evidence/lock-repo-scope-2026-10-22.sh
+     ?? docs/evidence/lock-repo-scope-2026-10-22.txt
+────────────────────────────────────────────────────────────
+
+end of evidence

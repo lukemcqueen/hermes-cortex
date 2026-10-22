@@ -1260,6 +1260,24 @@ def _lock_is_target_repo(state: dict, target_repo: str) -> bool:
         return False
 
 
+def _lock_covers_target(state: dict, target_repo: str, current_slug: str = "") -> bool:
+    """True when this lock's RECORDED repo resolves to the repo being written.
+
+    The ONE rule both lock phases apply, extracted so they cannot drift apart — the
+    defect this replaced was Phase 1 asking only "does the lock name ANY repo"
+    (`_lock_names_a_repo`) while Phase 2 correctly asked "does it name THIS one".
+
+    Identity, never a name (enforcement-change-safety Rule 29): a directory NAME is not
+    an identity, so a slug alone would let a lock opened in one project authorise a write
+    in a different project that happens to share the name. The absolute path is the
+    discriminating half (`_lock_is_target_repo`); slug agreement is the cheap pre-check
+    that keeps a lock usable on a host where `repo_path` predates the field.
+    """
+    if current_slug and str(state.get("repo_slug") or "").strip() == current_slug:
+        return True
+    return _lock_is_target_repo(state, target_repo)
+
+
 def _target_repo_root(args: Dict[str, Any]) -> str:
     """Absolute git root of the repo this tool call WRITES to, or "".
 
@@ -1489,16 +1507,42 @@ def _has_governance_lock(hermes_session_id: str = "", target_repo: str = "") -> 
             try:
                 state = json.loads(lock_path.read_text())
                 if state.get("task_id", "") and not _is_lock_stale(state):
-                    # The exact filename proves the SESSION, not the SCOPE: a lock that
-                    # names NO repo authorises nothing beyond a caller with no repo
-                    # context at all (2026-10-14 — this path returned before any repo
-                    # check, so a repo-less lock granted writes in every repo).
-                    if _lock_names_a_repo(state) or not (target_repo or current_slug):
+                    # The exact filename proves the SESSION, not the SCOPE. Only a lock
+                    # that names THIS repo authorises a write here:
+                    #   names THIS repo      -> authorise
+                    #   names NO repo        -> authorises nothing (2026-10-14)
+                    #   names ANOTHER repo   -> authorises nothing HERE (2026-10-22)
+                    # The third case was missing: this path returned True for ANY repo name,
+                    # so a lock recorded against a different repository authorised writes in
+                    # this one — measured live, a lock scoped to another repo allowed a write
+                    # in this repo. It now applies the SAME rule as Phase 2 below, through the
+                    # one shared helper, so the phases cannot disagree again.
+                    if not (target_repo or current_slug):
+                        # No repo context at all: there is nothing to scope the lock against,
+                        # so the session match is all the evidence there is (unchanged).
                         return True
-                    log.warning("governance lock %s names NO repo — refusing to authorise "
-                                "writes in %r; re-run begin_change with the repo declared",
-                                lock_path.name, target_repo or current_slug)
-                if state.get("task_id", ""):
+                    if _lock_covers_target(state, target_repo, current_slug):
+                        return True
+                    if not _lock_names_a_repo(state):
+                        log.warning("governance lock %s names NO repo — refusing to authorise "
+                                    "writes in %r; re-run begin_change with the repo declared",
+                                    lock_path.name, target_repo or current_slug)
+                        # A repo-less lock can never be closed by end_change, so it is
+                        # released here rather than left as a dead end (unchanged 2026-10-14).
+                        lock_path.unlink(missing_ok=True)
+                    else:
+                        # A lock for ANOTHER repo. Refuse HERE, and leave the lock ALONE: it
+                        # is a valid live lock for its own repo and deleting it would wreck a
+                        # legitimate session's scope. Fall through so a SECOND lock of this
+                        # session, one that does cover this repo, still matches in Phase 2/3.
+                        log.warning("governance lock %s covers %r, NOT %r — refusing to "
+                                    "authorise writes here (the lock stays live: it is valid "
+                                    "for its own repo). Re-run begin_change from the repo you "
+                                    "are working in.",
+                                    lock_path.name,
+                                    state.get("repo_path") or state.get("repo_slug"),
+                                    target_repo or current_slug)
+                elif state.get("task_id", ""):
                     lock_path.unlink(missing_ok=True)
             except (json.JSONDecodeError, OSError):
                 lock_path.unlink(missing_ok=True)
@@ -1557,8 +1601,10 @@ def _has_governance_lock(hermes_session_id: str = "", target_repo: str = "") -> 
                     # session touched next (latent fail-open, found 2026-10-14). Session
                     # match alone is not repo scope.
                     continue
-                if (state.get("repo_slug") != current_slug
-                        and not _lock_is_target_repo(state, target_repo)):
+                # ONE shared rule with Phase 1 (_lock_covers_target): a lock for a DIFFERENT
+                # repo is not evidence of a lock on this one either. Two copies of this
+                # predicate is how Phase 1 came to disagree with Phase 2 in the first place.
+                if not _lock_covers_target(state, target_repo, current_slug):
                     continue
             else:
                 if (not _lock_names_a_repo(state)
