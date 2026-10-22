@@ -40,15 +40,30 @@ def _frontmatter(path):
     return fm if isinstance(fm, dict) else {}
 
 
+def _related_lists(fm):
+    """Every `related_skills` LIST in the frontmatter, kept separate.
+
+    Separate because the two locations have different meanings: the top level is
+    the Hermes skill convention and `metadata.hermes` is the packaged form, and a
+    file may carry both. Merging them makes a legitimate pair of identical lists
+    look like one list with duplicates — measured: bible-corpus-datasets declares
+    the same three entries in both places and is fine.
+    """
+    out = []
+    for holder in (fm, (fm.get("metadata") or {}).get("hermes") if isinstance(fm.get("metadata"), dict) else None):
+        if isinstance(holder, dict):
+            items = holder.get("related_skills")
+            if isinstance(items, list):
+                out.append([r for r in items if isinstance(r, str)])
+    return out
+
+
 def _related(fm):
-    """`related_skills` wherever it lives: top level or metadata.hermes."""
-    out = list(fm.get("related_skills") or [])
-    meta = fm.get("metadata")
-    if isinstance(meta, dict):
-        hermes = meta.get("hermes")
-        if isinstance(hermes, dict):
-            out += list(hermes.get("related_skills") or [])
-    return [r for r in out if isinstance(r, str)]
+    """Every `related_skills` ENTRY, both locations merged (order-preserving)."""
+    out = []
+    for items in _related_lists(fm):
+        out += items
+    return out
 
 
 def _skill_files():
@@ -137,6 +152,47 @@ def test_no_related_skills_entry_points_at_a_stub():
         "related_skills entries naming a deprecated stub "
         f"(rewrite to the absorbed_into target): {hits}"
     )
+
+
+def find_duplicate_related(root):
+    """[(file, [dup, ...])] for a related_skills list naming the same skill twice.
+
+    A sweep that redirects `old` -> `new` creates this whenever the list ALREADY
+    named `new`: measured on 2026-10-22, a substitution turned
+    `[cortex-bus, cortex-bus-automation, …]` into `[cortex-bus, cortex-bus, …]`
+    and a related-bullet pair into two identical entries. The match count was
+    asserted and still produced it, because the artefact is a CONSEQUENCE of the
+    replacement rather than a failed match — so the sweep needs a scan for what it
+    LEAVES BEHIND, which is this.
+    """
+    hits = []
+    for p in sorted(root.rglob("SKILL.md")):
+        if ".archive" in p.parts:
+            continue
+        # PER LIST, not across the merged set: a file may legitimately declare the
+        # same entries at the top level AND under metadata.hermes (the loader reads
+        # one). The defect is a repeat WITHIN a single list, which is what a
+        # substitution leaves behind.
+        for items in _related_lists(_frontmatter(p)):
+            dupes = sorted({e for e in items if items.count(e) > 1})
+            if dupes:
+                hits.append((str(p), dupes))
+    return hits
+
+
+def test_no_related_skills_list_repeats_itself():
+    hits = find_duplicate_related(SKILLS)
+    assert not hits, f"related_skills lists naming the same skill twice: {hits}"
+
+
+def test_the_duplicate_scanner_discriminates(tmp_path):
+    planted = tmp_path / "skills" / "some-skill"
+    planted.mkdir(parents=True)
+    (planted / "SKILL.md").write_text(
+        "---\nname: some-skill\nrelated_skills: [alpha, alpha, beta]\n---\n\nx\n"
+    )
+    assert find_duplicate_related(tmp_path / "skills"), \
+        "the duplicate scanner did not flag a planted repeated entry"
 
 
 def test_the_scanners_actually_discriminate(tmp_path):

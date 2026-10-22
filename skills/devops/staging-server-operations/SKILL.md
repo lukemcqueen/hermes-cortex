@@ -89,6 +89,6 @@ curl -sf <health-endpoint> && echo OK
 - ❌ **Unverified claims** — "should be fine" is not a verification. Show output.
 
 ## Related
-- `linux-server-hardening` — daily health checks and admin mindset
+- `linux-server-hardening` — server hardening and the admin/health-check mindset
 - `postgres-docker` — Postgres-in-Docker specifics
 - `docker-management` — general Docker operations

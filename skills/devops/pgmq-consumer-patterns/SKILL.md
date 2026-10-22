@@ -6,7 +6,7 @@ author: Hermes Cortex
 metadata:
   hermes:
     tags: [bus, pgmq, consumers, migration, health]
-    related_skills: [cortex-bus, cortex-bus, agent-health-monitoring]
+    related_skills: [cortex-bus, agent-health-monitoring]
 ---
 
 # PGMQ Consumer Patterns
