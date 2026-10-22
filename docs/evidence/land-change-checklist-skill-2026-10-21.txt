@@ -1,0 +1,216 @@
+
+===== 0. provenance =====
+generated-by: this script writes this transcript itself (exec > OUT), so 'generated-by' is a fact about the file
+captured-at:  the working tree this ran on — a committed transcript is always one commit AHEAD of the revision it prints
+before pin:   234cb2fc  (the tip this change sat on before the landing)
+
+===== 1. BEFORE — repo copy at 234cb2fc vs the deployed copy =====
+sha256 repo@234cb2fc: e435831c962b8cf3e39e36ce50cd5773073afa54709bb9bc92fc1346a8d1c65d
+sha256 deployed:      406e693106de8fb7d32214e41de30483961929e77c970351353a0faf1db88024
+line counts: repo@234cb2fc=657   deployed=775
+unified diff lines: 179   (diff's own rc is expected non-zero here: they differ)
+--- the stranded content, verbatim ---
+--- repo@234cb2fc:software-development/change-checklist/SKILL.md
++++ deployed:software-development/change-checklist/SKILL.md
+@@ -110,6 +110,37 @@
+       status --short` for `??`), and treat a repo-wide GLOB sweep as a probe whose verdict depends on
+       local untracked state — pin it with a fixture, and exclude dot-dirs and `site-packages` rather
+       than trusting the run.
++      **And the two sides must be run the SAME WAY, or the comparison measures the invocation shape.**
++      A base side that ran each failing file ALONE against a tip side taken from a FULL-SUITE run
++      reports DIFFERS for every file that passes in isolation and fails inside the suite — an artifact
++      of how it was invoked, not a regression. Re-run the flagged files ALONE on the tip side too (the
++      same command, the same selection) before attributing anything, and expect most DIFFERS to
++      evaporate: on one 19-file failing set, all three DIFFERS passed alone.
++      **Pass ABSOLUTE paths into the worktree.** `bash <wt>/tests/run-tests.sh tests/ -q` runs the
++      worktree's RUNNER but resolves `tests/` against your CWD — the MAIN checkout — so the "baseline"
++      collects the FIXED files and prints identical counts on both sides. That reads as "the change
++      made no difference" and is the most convincing possible way to prove nothing: name the
++      worktree's own path (`"$WT/tests"`) and say in the transcript which side each command measured.
++      **And `git merge-base origin/main HEAD` IS the tip while your change is uncommitted** — resolved
++      at that moment it equals HEAD, so the comparison runs the fix against itself and prints the same
++      numbers twice; after a push the ref is the fix as well. That is WHY the baseline belongs as a
++      literal, and why the "the checkout really is the pre-change revision" assertion is not optional:
++      it is the only thing that catches a baseline which quietly started resolving to the fixed code.
++
++- [ ] **Non-pytest suites are not collected by the pytest runner — drive them by hand.** A repo's
++      `tests/*.sh` (and any suite whose path the runner never names) is invisible to
++      `tests/run-tests.sh`: grep the repo for a REFERENCE to the suite before trusting it, and for a
++      range that touches its subject run it directly (`bash tests/<name>.sh`) and read its own exit
++      code. A suite in no list rots silently — one sat RED for ten checks at a range's tip and GREEN
++      at the range base, because a single commit had changed the paths it asserts on, with nothing
++      in the hook, the doctor or CI to notice. Repairing it belongs to the range that broke it — and
++      repairing the file is not the whole fix: record that nothing executes the suite, or the repair
++      rots the same way.
++- [ ] **The success path is the least-tested branch of a checker.** Failure-path tests pass while
++      the line that reports a HEALTHY result references a name that was never defined, so a wired
++      host crashes on its own success and every reader sees "NOT registered" from a check that
++      cannot reach its last print. Run the check against a healthy input — the live host, or a
++      complete fixture — and read its exit code AND its final line, not only the failing cases.
+ 
+ ## Phase 1.5: Adversarial Verification (MANDATORY — no bypass)
+ 
+@@ -162,6 +193,13 @@
+       extraction really is the pre-change revision). That assertion is what catches the drift this
+       bullet warns about — without it, a baseline that silently starts resolving to the fixed code
+       keeps printing success, and the reader has no way to tell.
++      **And never swallow the SETUP that materialises the baseline.** `git worktree add <dir> <sha> ||
++      true` reports a stale or failed checkout as the pre-change tip, and the comparison it then runs
++      measures the WRONG revision while looking authoritative. Assert the checkout resolves —
++      `git -C <dir> rev-parse --short=8 HEAD` equals the named revision — and PRINT the asserted sha,
++      so the artifact carries the baseline it actually used. When it does not match, print
++      `comparison NOT RUN, nothing claimed` and skip the run: "cannot compare" is its own outcome,
++      never a result, and a swallowed `|| true` is how the wrong one gets published as evidence.
+ - [ ] "0 findings" is NOT a pass — execute the changed path with boundary inputs (-1, 0, None, empty, inf/nan, non-ASCII); attack the premise (list implicit assumptions, violate each with a 30s test); verify deployed == loaded (restart/daemon check for guards/hooks/enforcers).
+ - [ ] A green check is not evidence until you have seen the assertion RUN. A test
+       file with no executable entry point (a pytest-style file with no
+@@ -244,6 +282,18 @@
+       fabrication the moment the output beside it contradicts it — the same artifact it described
+       exited 1 in that very block. State PROVENANCE instead: what produced the file, which
+       revisions it compares, which fields are volatile by design.
++      **A transcript cannot name its own commit.** A `tip: <sha>` line in a generated transcript
++      reads as a claim about the RANGE, and the close reviewer refuses it as fabrication — correctly:
++      writing the file changes the revision, so the committed copy is always one commit AHEAD of
++      whatever it printed. Print `captured-at:` (the revision the working tree sat on when the run
++      happened) and state that rule IN the artifact. Have the generator WRITE the committed file
++      itself (`exec >"$OUT"`, defaulting to the committed path) so `generated-by` is a fact about the
++      file rather than a claim about who typed it — a hand-copied transcript was refused on exactly
++      that inference even though the copy was byte-identical.
++      **An evidence PROBE cannot be committed as a bare `.py`.** The pre-commit TDD gate refuses an
++      ADDED code file with no test in the same commit, and it is right to — so fold the probe into the
++      generator as a heredoc (`cat > "$TMP/probe.py" <<'EOF' … EOF`, then run it) and keep ONE
++      re-runnable artifact instead of weakening the gate or staging an unrelated test to satisfy it.
+       **The same binds a SECTION HEADING, and that is the sharper case.** Rewriting a section's
+       body to report a measured branch while its title keeps asserting the old conclusion is
+       filed as fabrication: the heading is the reader's first impression and the output that
+@@ -318,6 +368,12 @@
+       `bash ops/scripts/lib/python-with-module.sh <module> <script> [args]` (exit 3 = no
+       interpreter can import the module), and the same capability test applies to any
+       script that picks its own interpreter (`shell-scripting`).
++      **And a DISPATCHER must not load such a module IN-PROCESS.** A CLI whose subcommand handler
++      imports a submodule at call time inherits that submodule's third-party requirement AND its own
++      `sys.exit()` on a missing dependency — so one absent library kills the whole subcommand with a
++      message about the library, while the same host has an interpreter that imports it fine. Run the
++      submodule as a CHILD under the resolver and pass its exit code straight through (3 stays "could
++      not verify", never a failure); keep the launcher itself dependency-free and unchanged.
+ - [ ] **Ambient environment is the same trap one level up: a test that reads HOME, CWD, or an
+       env var another module sets is a test whose verdict depends on who invoked it.** The
+       symptom is a test that passes alone and FAILS inside the full suite, where a sibling
+@@ -352,6 +408,17 @@
+       second copy of the rule — a second, looser implementation is how binding stops
+       binding. Before citing the check, run it on a case each way: one the gate allows and
+       one it refuses, and assert the distinct outcome AND message for each.
++      **A COUNT COMPARATOR must share ONE traversal with the thing it mirrors.** When a check
++      reconstructs a subject and compares it against the component's own view — how many skills a
++      tool can see, how many rows a query returns — a SECOND, independent walk measures its own
++      definition and reports a false alarm on a healthy system: the loader skipped dot-dirs and
++      stopped at a directory holding the marker, while the counter walked everything and descended
++      past that directory, so a fully wired host read `sees 440 of 520 — NOT registered` and the
++      failure text blamed a hidden ignore file that did not exist. Extract ONE traversal used by
++      both sides and vary only the axis under test (here: whether ignore rules apply), so a
++      difference is evidence about that axis and nothing else. Prove it against the live host — the
++      one input that cannot be curated — where the same command must go from calling a wired host
++      broken to calling it clean.
+       **Canonicalise what you compare before comparing it**: a short revision never equals
+       a full one, so normalise both sides the way the gate does (`git rev-parse`). And when
+       an input CANNOT be resolved, return the could-not-verify code rather than an empty
+@@ -380,8 +447,29 @@
+       (`begin_change` / `feedback_accept`) against the live store from a test.** Each call
+       leaves a real row — an unscored PENDING cycle, which the doctor counts as a FAILURE and
+       which therefore blocks the push for every agent on the host until someone finds and
+-      scores it. Redirect the store to a temp dir and assert what the tool wrote THERE, or test
++      scores it.      Redirect the store to a temp dir and assert what the tool wrote THERE, or test
+       the helper the tool delegates to; the leak is invisible because the test still passes.
++      **A test that regenerates a COMMITTED artifact is the same defect aimed at the repo instead of
++      the store.** A suite that calls the real generator with its default output directory rewrites
++      the tracked evidence file it exists to prove, so every full-suite run leaves the tree dirty and
++      a commit can carry a "capture" that disagrees with the run it records. Redirect the destination
++      to a temp dir, keep the assertions on the artifact it produces THERE (coverage preserved, not
++      traded away), and assert the committed file's mtime AND the directory's file SET are unchanged —
++      the isolation is verified, not assumed.
++      **Patching `HOME` does not redirect a path derived from it at IMPORT time.** A module-level
++      `STATE_DIR = HOME / "…"` is bound once, so a later `monkeypatch.setattr(mod, "HOME", tmp)` leaves
++      the real directory in effect and the test writes LIVE state while looking isolated. The symptom
++      is an artifact appearing in the live tree and breaking a DIFFERENT test on its next run — which
++      then reads as a regression in the change you were making. Redirect the constant the code
++      actually reads at call time, and prefer making the destination an explicit parameter of the
++      function: a patchable global is a weak contract, and a reviewer will rightly call a
++      default-valued alias (`OUT = DIR`) a no-op that exposes no hook. Pin BOTH directions — the
++      parameter is honoured, and the default did not move — because a signature can be dropped in a
++      refactor with nothing noticing.
++      **`git status --porcelain` counts UNTRACKED files**, so a "did the run dirty the tree?" probe
++      reports the probe's own new files as the finding. Add `--untracked-files=no` when the claim is
++      about MODIFIED tracked files, and compare the SET before vs after rather than a count —
++      pre-existing dirt the run neither caused nor cleared is not a finding.
+ - [ ] When a heuristic warning is noisy, tighten its TRIGGER — do not add an exemption list.
+       A check that cannot tell the case it exists for from a deliberate long-standing state
+       fires on every instance of the latter, and the reader learns to scroll past it. Scope
+@@ -517,6 +605,12 @@
+       expires (30 days) and returns as STALE, and `--as fixed` is refused while the check still
+       warns. Nothing gates on this — it exists so that deferring is a visible decision instead of
+       a silent wave-through.
++      **Because nothing gates on it, BATCH it and put it LAST.** Working the disposition list one
++      command at a time while a deliverable is still unpushed is the wrong order: an operator
++      watching the session reads a long run of `--disposition` calls as the system never reaching
++      its goal, and a peer waiting on the push stays blocked for bookkeeping that authorises
++      nothing. Land the change and push first, then dispose the list in one pass — and never let a
++      second undisposed item push the close later than the thing everyone is waiting for.
+ - [ ] Governance scored — feedback_accept() before end_change(). **When the close is driven by a
+       retry loop (a wide range closes over several rounds), SCORE BEFORE STARTING THAT LOOP.**
+       Launching it in the same turn as `feedback_accept` races: the rounds execute first and each
+@@ -583,6 +677,30 @@
+       with no blob list is only ever accepted by exact tip+base. A peer commit landing inside
+       the pushed range is genuinely unreviewed and still refuses — correct, not a bug to widen
+       away.
++      **A rejected non-fast-forward push is cleared by a MERGE, and the merge needs its own short
++      cycle.** When `git push` is refused because a peer pushed first, merging `origin/main` into
++      your branch moves the RANGE BASE forward, so the peer's already-pushed commits leave your
++      range and your own reviewed blobs still cover what remains — which is why merging (never
++      rebasing) is both the safe integration AND the way past the refusal. The order that works:
++      `begin_change` a cycle named for the integration, `git fetch` + `git merge origin/main
++      --no-edit`, confirm the merge touched none of your paths (`git diff --name-only HEAD...origin/main`),
++      score, `end_change`, then the LONE `git push`. A rebase would rewrite the peer's commits and
++      their authorship and invalidates the receipt for no gain.
++- [ ] **`git add -N` (intent-to-add) + `git checkout -- <path>` TRUNCATES the file to ZERO bytes.**
++      An intent-to-add entry carries no blob in the index, so "restore from the index" writes an
++      EMPTY file over your working copy — and `git checkout -- <dir>/` does it to every
++      intent-to-add file under that directory in one command. Measured 2026-10-21: four freshly
++      generated evidence artifacts (~40 KB of transcript plus two generators) were destroyed this
++      way mid-cycle, AFTER they had been generated and verified, by a command whose only intent was
++      to revert four unrelated test-dirtied files. Two rules: to unstage, use `git reset -- <path>`
++      (index only, working tree untouched), never `git checkout --`; and before any `git checkout --
++      <path>` confirm the path is not merely intent-to-add (`git status --short` shows ` A`, not
++      `M `). Recovery when it has already happened: the generator's stdout file in the scratch dir
++      usually survives (copy it back byte-identical and print both sha256), and a destroyed
++      generator is reconstructible — verify the reconstruction STRUCTURALLY against the committed
++      transcript (extract every literal `say`/`rule` string from the script and assert each appears
++      in the transcript; 47/47 is a pass) rather than by eye, and state in the commit message that
++      the transcript is the original run while the script is a reconstruction.
+ - [ ] **Never `git commit --amend` while a peer may be working in the tree.** `--amend`
+       rewrites whatever HEAD is *now*, not "your" commit: a sibling commit that landed since
+       you started becomes the target, folding THEIR files into YOUR message and stripping
+--- end of diff ---
+
+===== 2. AFTER — repo copy NOW vs the deployed copy =====
+sha256 repo now: 406e693106de8fb7d32214e41de30483961929e77c970351353a0faf1db88024
+sha256 deployed: 406e693106de8fb7d32214e41de30483961929e77c970351353a0faf1db88024
+cmp verdict: IDENTICAL — the landing is a true sync, byte for byte
+diff -q output follows (empty = identical):
+--- end of diff -q ---
+
+===== 3. the repo-only sentence, named and located =====
+the sentence is: 'Redirect the store to a temp dir and assert what the tool wrote THERE'
+in the repo copy:
+450:      scores it.      Redirect the store to a temp dir and assert what the tool wrote THERE, or test
+in the deployed copy:
+450:      scores it.      Redirect the store to a temp dir and assert what the tool wrote THERE, or test
+
+===== 4. the parity artifact no longer lists change-checklist/SKILL.md as stranded =====
+occurrences in the refreshed artifact: 0
+  (0 = resolved; the artifact itself is regenerated by ops/scripts/manage/check-skill-drift-parity.py)
+
+===== 5. the reconcile report's view of this skill =====
+  (change-checklist no longer appears in the reconcile report — nothing left to land for it)
+
+===== 6. end of transcript =====
+GENERATOR_rc=0

@@ -17,6 +17,13 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[3]
 EVID = REPO / "docs" / "evidence" / "briefings"
+# Where the NOTE is written. Separate from EVID on purpose: EVID is ALSO where the input artifacts
+# are read from (the briefing PDF below), so repointing EVID to redirect the output would silently
+# take the inputs with it. Two ways to redirect, both explicit:
+#   * main(date_str, out_dir=<path>)  — the parameter, preferred by callers;
+#   * OUT_EVID = <path>               — the module-level default the parameter falls back to.
+# Production behaviour is unchanged: OUT_EVID == EVID, and main() is called without out_dir.
+OUT_EVID = EVID
 FILE = "docs/evidence/briefings/verification-2026-10-10.txt"
 
 
@@ -25,7 +32,7 @@ def sh(*a: str) -> str:
     return (r.stdout + r.stderr).rstrip()
 
 
-def main(date_str: str) -> int:
+def main(date_str: str, out_dir: Path | None = None) -> int:
     L: list[str] = []
     add = L.append
     add(f"# Closure note — sustainability briefing {date_str}")
@@ -98,7 +105,7 @@ def main(date_str: str) -> int:
     add("```")
     add("")
 
-    dest = EVID / f"closure-note-{date_str}.md"
+    dest = (out_dir or OUT_EVID) / f"closure-note-{date_str}.md"
     dest.write_text("\n".join(L) + "\n", encoding="utf-8")
     print(f"wrote {dest} ({dest.stat().st_size} bytes)")
     return 0

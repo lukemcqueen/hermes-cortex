@@ -145,6 +145,38 @@ print('ADDED')
         else:
           failed += 1
 
+  # Fix: a host-local DeepSeek review MCP server still exposing the OLD tool name.
+  # The rename is performed by the Pi MCP manager itself (ops/scripts/install/install-pi-mcp.sh),
+  # whose add path normalises the registered server's tool name — idempotent, backup-first, and a
+  # no-op when no deepseek entry exists. Routing through the installer keeps ONE implementation
+  # owning ~/.pi/agent/mcp.json, so this fix cannot drift from what a re-install would do.
+  # The check can WARN for two DIFFERENT reasons and they must not be treated alike:
+  #   • "STALE: … still exposes `review_experimental_plan`" → the rename applies. Fix it.
+  #   • "COULD NOT VERIFY: …" → a DeepSeek entry is registered but its server cannot be
+  #     resolved (module launch, renamed command) or the file is missing. A rename CANNOT
+  #     fix that, and a silent skip would report a broken host as merely unfixed. It is
+  #     reported as a failure with the reason, so it stays visible.
+  if fix_map.get("DeepSeek MCP tool name") == "WARN":
+    _ds_installer = CORTEX_REPO / "ops" / "scripts" / "install" / "install-pi-mcp.sh"
+    if not _ds_installer.exists():
+      print("   ⏭   DeepSeek MCP tool name: installer missing — nothing to run "
+            "(see the check's reason above)")
+    else:
+      # NO re-check. An earlier revision re-ran --check-tools here to decide whether the rename
+      # applied; that re-executed a decision the check had already made, and raced it (the state
+      # can change between the two calls). It is also unnecessary: --fix-tools is IDEMPOTENT and
+      # carries the installer's PUBLISHED 0/1/2 contract — 0 when there is nothing to do or the
+      # rename succeeded, 1 when the rename was attempted and did not take, 2 when it CANNOT be
+      # fixed (an unresolvable or missing registration). The installer's own verdict decides,
+      # and there is exactly ONE implementation of both the decision and the fix.
+      if _run_fix("Normalising the DeepSeek review tool name (backup first)",
+                  ["bash", str(_ds_installer), "--fix-tools"]):
+        fixed += 1
+      else:
+        # rc=1 (the rename did not take) and rc=2 (a rename cannot fix this) both land here,
+        # with the installer's explanation on stdout — neither is silent.
+        failed += 1
+
   # Fix: governance plugin not installed/symlinked
   if "Governance plugin" in fix_map and fix_map["Governance plugin"] == "FAIL":
     plugin_dir = HERMES_HOME / "plugins" / "governance-enforcer"

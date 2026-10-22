@@ -205,6 +205,20 @@ body are invisible to it. So:
 
 ## Pitfalls
 
+- **A long lookback OVERLAPS the previous run's window, so the same correction is re-reviewed.**
+  Read the previous pass's own reported window (the previous soul-refine cron session's final
+  report) and start from its END, not from `now - 30 h`; otherwise the overlap re-derives
+  corrections that were already codified and the overlap looks like fresh work. Measured
+  2026-10-21: the 10-20 pass ended at `23:17` while a 30 h window began at `17:18`, so one of
+  that day's corrections (doctor-warning dispositions) sat inside both windows.
+- **Verify the skill file you patched is REPO-SOURCED, not stranded in the deployed tree.**
+  Content written only to `~/.hermes-cortex/skills/...` is invisible to the fleet: the deploy's
+  drift guardrail refuses to overwrite it, so it never reaches the repo or any peer. Run
+  `python3 ops/scripts/manage/check-skill-drift-parity.py` after every skill patch, and if your
+  path is under `Stranded in place:` land it into the repo source in the same cycle (measured
+  2026-10-21: the day's verbosity lesson lived deployed-only; landing it moved the detector
+  18 → 17 stranded and took the path out of the list).
+
 - **Cron sessions writing SOUL.md — verify the gate for the EXACT path; do not
   assume it.** Hermes core has a protected-instruction gate
   (`_check_protected_instruction_write`,

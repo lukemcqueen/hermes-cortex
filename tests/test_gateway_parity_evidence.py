@@ -14,6 +14,7 @@ Run (this is the evidence):
 import re
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 _REPO = Path(__file__).resolve().parent.parent
@@ -68,8 +69,9 @@ _SURFACE = [
 def test_gateway_suites_pass_and_the_count_is_reproducible():
     """The committed proof for 'N gateway tests pass': run them, assert the number.
 
-    Also WRITES the run output to docs/evidence/gateway-suite-results.txt. An
-    adversarial review asked for exactly this (ADV-10488-2/-3: "commit the regression
+    Also WRITES the run output — to a scratch path, NOT the committed artifact (issue #213;
+    regenerating docs/evidence/gateway-suite-results.txt is the explicit command its own header
+    names). An adversarial review asked for exactly this (ADV-10488-2/-3: "commit the regression
     run output as a file ... so a later reviewer can re-execute and verify") — a claim
     whose only support is a terminal transcript is unverifiable the moment the
     transcript is gone, and a truncated review material cannot carry it either.
@@ -106,9 +108,16 @@ def test_gateway_suites_pass_and_the_count_is_reproducible():
     print(f"  VERIFIED: whole gateway surface {surface_passed} passed "
           f"(parity suites {passed}) ✓")
 
-    # Commit the evidence, so the claim survives the transcript and the material bound.
-    evidence = _REPO / "docs" / "evidence"
-    evidence.mkdir(parents=True, exist_ok=True)
+    # The evidence goes to a SCRATCH path, never to the committed artifact (issue #213 /
+    # event #213). A test that rewrites the tracked file it measures leaves the working tree
+    # dirty after EVERY full-suite run, and can commit a "capture" that disagrees with the run it
+    # claims to record — measured 2026-10-21: one suite run rewrote this file plus three
+    # briefings artifacts with timings-only changes. Regenerating the committed copy is the
+    # explicit command named in its own header; this test asserts the file is left alone.
+    committed = _REPO / "docs" / "evidence" / "gateway-suite-results.txt"
+    _committed_before = (committed.exists(),
+                         committed.stat().st_mtime_ns if committed.exists() else None)
+    evidence = Path(tempfile.mkdtemp(prefix="gateway-parity-evidence-"))
     out = evidence / "gateway-suite-results.txt"
     # Host paths are scrubbed: this file is committed to a PUBLIC repo, and a captured
     # pytest `rootdir: /home/<user>/...` line is a PII finding in the pre-commit scan.
@@ -134,7 +143,11 @@ def test_gateway_suites_pass_and_the_count_is_reproducible():
     body = out.read_text()
     assert f"{passed} passed" in body and f"{surface_passed} passed" in body, \
         "both measured numbers must appear in the evidence file"
-    print(f"  evidence committed to {out.relative_to(_REPO)} ✓")
+    print(f"  evidence written to the scratch path {out} ✓")
+    assert (committed.exists(),
+            committed.stat().st_mtime_ns if committed.exists() else None) == _committed_before, \
+        ("this test rewrote the COMMITTED evidence artifact "
+         "docs/evidence/gateway-suite-results.txt (issue #213)")
 
     # Also record the TEST NAMES cited in review findings. ADV-10488-1 called a
     # "5 tests" claim fabrication because the material (truncated mid-file) showed

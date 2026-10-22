@@ -37,7 +37,11 @@ sed -i '' "s/Version \`v[0-9.]*\`/Version \`v$VERSION\`/" README.md
 echo "  + README.md badges -> $VERSION"
 
 git add VERSION install.sh README.md
-git commit -m "v${VERSION}: bump version"
+# Commit by PATHSPEC, not bare. The global pre-commit hook refuses a bare commit in this repo:
+# several agents share this working tree and its ONE git index, and a bare commit commits
+# whatever happens to be staged — including another session's half-finished work. Naming the
+# paths makes the commit set exactly this script's output.
+git commit -m "v${VERSION}: bump version" -- VERSION install.sh README.md
 git tag -a "v${VERSION}" -m "Hermes Cortex v${VERSION}"
 git push origin main --tags
 echo "  + Pushed to origin/main (tag: v${VERSION})"
@@ -55,7 +59,9 @@ if [[ -d "$PRIVATE_DIR" ]]; then
   echo "  + README.md badge -> $VERSION"
 
   git add VERSION README.md
-  git commit -m "v${VERSION}: bump version (align with public)"
+  # Pathspec for the same reason as the public repo above (this repo is out of the guard's
+  # scope, but a bare commit here has the identical sweep risk).
+  git commit -m "v${VERSION}: bump version (align with public)" -- VERSION README.md
   git tag -a "v${VERSION}" -m "Hermes Cortex Private v${VERSION}"
   git push origin main --tags
   echo "  + Pushed to origin/main (tag: v${VERSION})"

@@ -386,6 +386,14 @@ register "ops/scripts/manage/consolidate-env.sh"         "${CORTEX_DEPLOY_HOME}/
 register "ops/scripts/manage/gen-skills-manifest.py"      "${CORTEX_DEPLOY_HOME}/scripts/gen-skills-manifest.py"
 register "ops/scripts/manage/gen-skills-manifest.sh"      "${CORTEX_DEPLOY_HOME}/scripts/gen-skills-manifest.sh"
 register "ops/scripts/manage/task-db.py"                "${CORTEX_DEPLOY_HOME}/scripts/task-db.py"
+# Drains task slices stuck in `review`. Deploys to scripts/tasks-verify-sweep.py and is safe to
+# ship to every host because it CONFIGURES NOTHING and SELF-GATES at run time: it asks the database
+# whether the calling role holds EXECUTE on tasks.verify_slice, sweeps that host's own tasks DB when
+# it does, and otherwise exits non-zero with the reason — 3 = the database answered that the role has
+# no grant (a host with no esther/moses identity; a reported no-op, never a silent one), 4 = the engine
+# could not be reached at all, which is a DIFFERENT fact and carries a different message (ADV-0-2).
+# A host that never runs it is unaffected: registration copies a file and creates nothing.
+register "ops/scripts/manage/tasks-verify-sweep.py"     "${CORTEX_DEPLOY_HOME}/scripts/tasks-verify-sweep.py"
 # Ledger repair tool (issue #188). Each host owns its own loop-governance ledger and
 # each host's pre-commit hook minted the malformed ids, so every host needs the repair
 # path, not just the orchestrator. Registering it also keeps it out of the doctor's

@@ -1038,36 +1038,70 @@ def _git_root_for(path: Path) -> Optional[Path]:
     return Path(proc.stdout.strip())
 
 
-def _note_session_repo(session_id: str, args: Dict[str, Any]) -> None:
+#: Args that state where the session IS WORKING — an explicit working directory.
+#: Strongest evidence available: they say where the work happens, not what was glanced at.
+_CWD_ARG_KEYS = ("workdir", "cwd")
+
+#: Args that merely NAME a file or directory the call touched. Weaker than a working
+#: directory, and — when the call only READS — no evidence of working in that repo at all.
+_FILE_ARG_KEYS = ("path", "file_path", "directory")
+
+
+def _learn_repo_from_arg(session_id: str, raw: Any) -> bool:
+    """Record `raw` as this session's repo when it resolves to one. True when it did."""
+    if not isinstance(raw, str) or not raw.strip():
+        return False
+    repo = _git_root_for(Path(raw).expanduser())
+    if repo is None:
+        return False
+    if _session_repo_hint(session_id) == str(repo):
+        return True  # already known — still a signal, but nothing to write
+    try:
+        hint = _session_repo_hint_path(session_id)
+        hint.parent.mkdir(parents=True, exist_ok=True)
+        tmp = hint.with_suffix(".tmp")
+        tmp.write_text(str(repo))
+        tmp.rename(hint)
+    except OSError:
+        log.warning("Could not write the session repo hint")
+    return True
+
+
+def _note_session_repo(session_id: str, args: Dict[str, Any], tool_name: str = "") -> None:
     """Learn this session's repo from the paths its own tool calls touch.
 
-    The gateway does not hand a pre_tool_call hook the session's cwd, but it
-    does hand it the args of every tool call — so the repo is derived from a
-    write/read target or a terminal workdir (nearest ancestor git repo).
-    Best-effort: a call with no usable path yields no signal and the previous
-    hint stands. Written only when the answer CHANGES, so this costs one stat
-    on the common path.
+    The gateway does not hand a pre_tool_call hook the session's cwd, but it does
+    hand it the args of every tool call — so the repo is derived from a terminal
+    workdir or a file the call touched (nearest ancestor git repo). Best-effort: a
+    call with no usable path yields no signal and the previous hint stands. Written
+    only when the answer CHANGES, so this costs one stat on the common path.
+
+    Two rules keep this about WORK rather than about anything the session happened to
+    READ (2026-10-22). A single ``search_files(path=<another repo>)`` — a pure read,
+    done while surveying that repo — re-homed a whole session: ``begin_change`` then
+    recorded its lock against a repo the agent had never worked in, the review scope
+    judged that repo's blobs, and the lock authorised writes there. The hint is
+    documented as the repo the session was last seen USING; reading a file is not
+    evidence of using a repo.
+
+    1. An EXPLICIT working directory (``workdir``/``cwd``) is consulted FIRST. It states
+       where the session IS, where a bare file ``path`` only says what it looked at.
+       ``path`` used to be consulted first, so the weakest signal always won.
+    2. A bare file/dir path counts only as evidence of WORK: the call must be
+       write-class (``_is_write_tool``, this module's canonical fail-closed classifier),
+       or the session must not know its repo yet — which leaves first-touch learning
+       from any path exactly as it was.
     """
     if not session_id or not isinstance(args, dict):
         return
-    for key in _PATH_ARG_KEYS:
-        raw = args.get(key)
-        if not isinstance(raw, str) or not raw.strip():
-            continue
-        repo = _git_root_for(Path(raw).expanduser())
-        if repo is None:
-            continue
-        if _session_repo_hint(session_id) == str(repo):
+    for key in _CWD_ARG_KEYS:
+        if _learn_repo_from_arg(session_id, args.get(key)):
             return
-        try:
-            hint = _session_repo_hint_path(session_id)
-            hint.parent.mkdir(parents=True, exist_ok=True)
-            tmp = hint.with_suffix(".tmp")
-            tmp.write_text(str(repo))
-            tmp.rename(hint)
-        except OSError:
-            log.warning("Could not write the session repo hint")
+    if _session_repo_hint(session_id) and not _is_write_tool(tool_name, args):
         return
+    for key in _FILE_ARG_KEYS:
+        if _learn_repo_from_arg(session_id, args.get(key)):
+            return
 
 
 def _inject_session_context(session_id: str, tool_name: str, args: Dict[str, Any]) -> None:
@@ -1258,6 +1292,24 @@ def _lock_is_target_repo(state: dict, target_repo: str) -> bool:
         return Path(recorded).resolve() == Path(target_repo).resolve()
     except OSError:
         return False
+
+
+def _lock_covers_target(state: dict, target_repo: str, current_slug: str = "") -> bool:
+    """True when this lock's RECORDED repo resolves to the repo being written.
+
+    The ONE rule both lock phases apply, extracted so they cannot drift apart — the
+    defect this replaced was Phase 1 asking only "does the lock name ANY repo"
+    (`_lock_names_a_repo`) while Phase 2 correctly asked "does it name THIS one".
+
+    Identity, never a name (enforcement-change-safety Rule 29): a directory NAME is not
+    an identity, so a slug alone would let a lock opened in one project authorise a write
+    in a different project that happens to share the name. The absolute path is the
+    discriminating half (`_lock_is_target_repo`); slug agreement is the cheap pre-check
+    that keeps a lock usable on a host where `repo_path` predates the field.
+    """
+    if current_slug and str(state.get("repo_slug") or "").strip() == current_slug:
+        return True
+    return _lock_is_target_repo(state, target_repo)
 
 
 def _target_repo_root(args: Dict[str, Any]) -> str:
@@ -1489,16 +1541,42 @@ def _has_governance_lock(hermes_session_id: str = "", target_repo: str = "") -> 
             try:
                 state = json.loads(lock_path.read_text())
                 if state.get("task_id", "") and not _is_lock_stale(state):
-                    # The exact filename proves the SESSION, not the SCOPE: a lock that
-                    # names NO repo authorises nothing beyond a caller with no repo
-                    # context at all (2026-10-14 — this path returned before any repo
-                    # check, so a repo-less lock granted writes in every repo).
-                    if _lock_names_a_repo(state) or not (target_repo or current_slug):
+                    # The exact filename proves the SESSION, not the SCOPE. Only a lock
+                    # that names THIS repo authorises a write here:
+                    #   names THIS repo      -> authorise
+                    #   names NO repo        -> authorises nothing (2026-10-14)
+                    #   names ANOTHER repo   -> authorises nothing HERE (2026-10-22)
+                    # The third case was missing: this path returned True for ANY repo name,
+                    # so a lock recorded against a different repository authorised writes in
+                    # this one — measured live, a lock scoped to another repo allowed a write
+                    # in this repo. It now applies the SAME rule as Phase 2 below, through the
+                    # one shared helper, so the phases cannot disagree again.
+                    if not (target_repo or current_slug):
+                        # No repo context at all: there is nothing to scope the lock against,
+                        # so the session match is all the evidence there is (unchanged).
                         return True
-                    log.warning("governance lock %s names NO repo — refusing to authorise "
-                                "writes in %r; re-run begin_change with the repo declared",
-                                lock_path.name, target_repo or current_slug)
-                if state.get("task_id", ""):
+                    if _lock_covers_target(state, target_repo, current_slug):
+                        return True
+                    if not _lock_names_a_repo(state):
+                        log.warning("governance lock %s names NO repo — refusing to authorise "
+                                    "writes in %r; re-run begin_change with the repo declared",
+                                    lock_path.name, target_repo or current_slug)
+                        # A repo-less lock can never be closed by end_change, so it is
+                        # released here rather than left as a dead end (unchanged 2026-10-14).
+                        lock_path.unlink(missing_ok=True)
+                    else:
+                        # A lock for ANOTHER repo. Refuse HERE, and leave the lock ALONE: it
+                        # is a valid live lock for its own repo and deleting it would wreck a
+                        # legitimate session's scope. Fall through so a SECOND lock of this
+                        # session, one that does cover this repo, still matches in Phase 2/3.
+                        log.warning("governance lock %s covers %r, NOT %r — refusing to "
+                                    "authorise writes here (the lock stays live: it is valid "
+                                    "for its own repo). Re-run begin_change from the repo you "
+                                    "are working in.",
+                                    lock_path.name,
+                                    state.get("repo_path") or state.get("repo_slug"),
+                                    target_repo or current_slug)
+                elif state.get("task_id", ""):
                     lock_path.unlink(missing_ok=True)
             except (json.JSONDecodeError, OSError):
                 lock_path.unlink(missing_ok=True)
@@ -1557,8 +1635,10 @@ def _has_governance_lock(hermes_session_id: str = "", target_repo: str = "") -> 
                     # session touched next (latent fail-open, found 2026-10-14). Session
                     # match alone is not repo scope.
                     continue
-                if (state.get("repo_slug") != current_slug
-                        and not _lock_is_target_repo(state, target_repo)):
+                # ONE shared rule with Phase 1 (_lock_covers_target): a lock for a DIFFERENT
+                # repo is not evidence of a lock on this one either. Two copies of this
+                # predicate is how Phase 1 came to disagree with Phase 2 in the first place.
+                if not _lock_covers_target(state, target_repo, current_slug):
                     continue
             else:
                 if (not _lock_names_a_repo(state)
@@ -2634,7 +2714,9 @@ def register(ctx):
                 # tags the lock with the repo the session is ACTUALLY in rather
                 # than the host's canonical repo (the wrong-repo review bug:
                 # a steadfaste session reviewed against hermes-cortex).
-                _note_session_repo(hermes_session_id, args)
+                # tool_name is passed so the hint can tell a call that WORKS in a repo
+                # (a write, or an explicit workdir) from one that merely reads it.
+                _note_session_repo(hermes_session_id, args, tool_name)
                 if tool_name.startswith("mcp__loop_governance__"):
                     _inject_session_context(hermes_session_id, tool_name, args)
 

@@ -146,6 +146,59 @@ def test_a_repo_less_lock_does_not_authorise_a_repo(tmp_path):
     print("  a repo-less lock does not authorise a repo it does not name OK")
 
 
+def _git_repo_named(parent: Path, name: str) -> Path:
+    repo = parent / name
+    repo.mkdir()
+    subprocess.run(["git", "init", "-q", str(repo)], check=True, capture_output=True)
+    return repo
+
+
+def _lock_naming(state_dir: Path, session: str, repo: Path) -> None:
+    """A live lock at the exact Phase-1 filename, naming `repo`."""
+    hb = datetime.now(timezone.utc).replace(tzinfo=None).isoformat()
+    (state_dir / f".governance-{session}.json").write_text(json.dumps({
+        "task_id": "real-work", "session_id": session,
+        "repo_path": str(repo), "repo_slug": repo.name,
+        "heartbeat_at": hb, "ttl_seconds": 3600,
+    }))
+
+
+def test_a_lock_for_a_DIFFERENT_repo_does_not_authorise_this_one(tmp_path):
+    """The same defect one step over from the repo-less case, and the one measured live.
+
+    Phase 1 (exact filename) asked only whether the lock named ANY repo —
+    `_lock_names_a_repo(state)` — and returned True on that alone. So a lock that named a
+    DIFFERENT repository authorised writes here. Measured on this host 2026-10-22: a lock
+    recorded repo_slug=hermes-agent while the session was working in hermes-cortex, and the
+    write was allowed. Phase 2 in the same function already refuses this; Phase 1 must too —
+    enforcement-change-safety Rule 29: match on IDENTITY (the resolved path), never a name.
+    """
+    e = _load(_ENF, "enforcer_phase1_foreign")
+    target = _git_repo_named(tmp_path, "target")
+    other = _git_repo_named(tmp_path, "other")
+    state_dir = tmp_path / "state"
+    state_dir.mkdir()
+    _lock_naming(state_dir, "sess-foreign", other)
+    e.GOVERNANCE_STATE_DIR = state_dir
+    assert e._has_governance_lock("sess-foreign", str(target)) is False, (
+        "a lock recorded against a DIFFERENT repo must never authorise writes in this one: "
+        "the session match proves WHO is working, not WHAT they may write to")
+    print("  a lock for a DIFFERENT repo does not authorise this one OK")
+
+
+def test_a_lock_for_THIS_repo_still_authorises_it_through_phase_1(tmp_path):
+    """The both-ways half: scoping Phase 1 must not disarm a legitimate lock."""
+    e = _load(_ENF, "enforcer_phase1_own")
+    target = _git_repo_named(tmp_path, "single")
+    state_dir = tmp_path / "state"
+    state_dir.mkdir()
+    _lock_naming(state_dir, "sess-own", target)
+    e.GOVERNANCE_STATE_DIR = state_dir
+    assert e._has_governance_lock("sess-own", str(target)) is True, (
+        "a lock naming THIS repo must still authorise writes in it")
+    print("  a lock naming THIS repo still authorises it OK")
+
+
 def test_a_repo_naming_lock_still_authorises_its_own_repo(tmp_path):
     """The both-ways half: the guard must not disarm a legitimate lock."""
     e = _load(_ENF, "enforcer_phase2_ok")

@@ -21,6 +21,186 @@
 # ─────────────────────────────────────────────────────────────
 set -euo pipefail
 
+# ── Commit-scope guard: the decision ────────────────────────────────────────
+# Several agents commit into ONE working tree (~/hermes-cortex) and therefore share ONE git
+# index. A staged entry records nothing about which session staged it, so `git commit` with no
+# pathspec commits WHATEVER happens to be staged — measured for real: a commit captured 17 files
+# where 8 were intended, the extra 9 being another session's staged evidence files.
+#
+# The structural fix needs no provenance, because a PARTIAL commit cannot sweep anything:
+# `git commit -- <paths>` (or -o) builds a temporary index holding only the named paths, so the
+# shared index is never the commit set. Git tells the hook which index is in use through
+# GIT_INDEX_FILE — the real index for a bare commit, a throwaway next-index-*.lock for a partial
+# one. `--self-test` MEASURES that on this host rather than assuming it.
+_commit_scope_verdict() {
+  # "bare"    -> the commit uses the repo's REAL index, so it commits everything staged
+  # "partial" -> it uses some OTHER index, so it cannot include anything the caller did not name
+  # "unknown" -> the git dir could not be resolved, so nothing can be concluded
+  #
+  # The git dir is resolved FIRST and "unknown" returned IMMEDIATELY, before GIT_INDEX_FILE is
+  # ever compared. The ORDER is load-bearing: "partial" is the PERMISSIVE answer, so a
+  # comparison reached before the git dir is known silently fails OPEN — the guard would allow
+  # the very commit it exists to refuse. (Caught by the independent plan review as ADV-0-1
+  # before any code was written; the self-test now pins it.)
+  local gd used
+  gd=$(git rev-parse --absolute-git-dir 2>/dev/null || true)
+  if [[ -z "$gd" ]]; then
+    gd=$(git rev-parse --git-dir 2>/dev/null || true)
+    case "$gd" in
+      "")  echo "unknown"; return 0 ;;
+      /*)  ;;
+      *)   gd=$(cd "$gd" 2>/dev/null && pwd) || true ;;
+    esac
+  fi
+  [[ -n "$gd" ]] || { echo "unknown"; return 0; }
+  if [[ -z "${GIT_INDEX_FILE:-}" ]]; then
+    echo "bare"; return 0
+  fi
+  case "$GIT_INDEX_FILE" in
+    /*) used="$GIT_INDEX_FILE" ;;
+    *)  # A relative GIT_INDEX_FILE is relative to the CWD, not to the git dir. If it cannot be
+        # resolved, answer "unknown" rather than letting a bogus path read as "partial".
+        if used=$(cd "$(dirname "$GIT_INDEX_FILE")" 2>/dev/null && pwd); then
+          used="$used/$(basename "$GIT_INDEX_FILE")"
+        else
+          echo "unknown"; return 0
+        fi ;;
+  esac
+  if [[ "$used" == "$gd/index" ]]; then echo "bare"; else echo "partial"; fi
+}
+
+_commit_scope_guard() {
+  # Returns 0 to REFUSE, 1 to ALLOW. The repo root and the sanctioned-pipeline flag are
+  # ARGUMENTS rather than globals so that --self-test can reach every branch — the guard is
+  # cortex-scoped, so a throwaway repo cannot exercise it end to end.
+  local repo_root="$1" sanctioned="${2:-0}"
+  # Scoped to this repo, like the other session-gated checks in this hook. An unscoped hook gate
+  # hard-blocked ordinary commits in EVERY repo on the host once (the Titus incident, and the
+  # reason the DOGFOOD check is scoped) — so widening this is deliberately one comparison.
+  [[ "$repo_root" == "${HOME}/hermes-cortex" ]] || return 1
+  # The nginx threat pipeline commits bare by design and has no session at all. Its own block
+  # above already proved every staged path falls inside the blocklist allowlist, so it cannot be
+  # sweeping a peer's work, and its commit is exempt.
+  [[ "$sanctioned" == "1" ]] && return 1
+  [[ "$(_commit_scope_verdict)" == "partial" ]] && return 1
+  return 0
+}
+
+# ── Commit-scope guard: runnable self-test ──────────────────────────────────
+# Close verdicts are stored per blob CONTENT, so a claim made in THIS file and demonstrated
+# only by a test in another file is invisible to the reviewer (measured three times on
+# 2026-10-22). The proof therefore travels with the code it proves:
+#
+#   bash pre-commit-score --self-test
+if [[ "${1:-}" == "--self-test" ]]; then
+  _st_fail=0
+  _st_ok()  { printf '  PASS  %s\n' "$1"; }
+  _st_bad() { printf '  FAIL  %s\n' "$1"; _st_fail=$((_st_fail + 1)); }
+  _st_dir="$(mktemp -d "${TMPDIR:-/tmp}/precommit-scope-selftest.XXXXXX")"
+
+  # 1. MEASURE what git actually hands the hook, instead of assuming it. The probe hook uses a
+  #    LOCAL core.hooksPath so the cortex hook does not run here and the measurement is clean.
+  _st_repo="$_st_dir/probe"
+  mkdir -p "$_st_repo/hooks"
+  cat > "$_st_repo/hooks/pre-commit" <<'PROBE'
+#!/bin/sh
+printf '%s\n' "${GIT_INDEX_FILE:-UNSET}" >> "$PROBE_LOG"
+exit 0
+PROBE
+  chmod +x "$_st_repo/hooks/pre-commit"
+  export PROBE_LOG="$_st_dir/idx.log"
+  (
+    cd "$_st_repo" || exit 1
+    git init -q .
+    git config user.email probe@example.com
+    git config user.name probe
+    git config core.hooksPath "$_st_repo/hooks"
+    echo one > a.txt
+    echo two > b.txt
+    git add a.txt b.txt
+    git commit -q -m bare
+    echo one2 > a.txt
+    echo two2 > b.txt
+    git add a.txt b.txt
+    git commit -q -m partial -- a.txt
+  ) >/dev/null 2>&1 || true
+  _st_bare_idx="$(sed -n 1p "$_st_dir/idx.log" 2>/dev/null || true)"
+  _st_part_idx="$(sed -n 2p "$_st_dir/idx.log" 2>/dev/null || true)"
+  if [[ -n "$_st_bare_idx" && -n "$_st_part_idx" && "$_st_bare_idx" != "$_st_part_idx" ]]; then
+    _st_ok "git hands the hook a DIFFERENT index for a bare vs a partial commit"
+    printf '        bare=%s\n        partial=%s\n' "$_st_bare_idx" "$_st_part_idx"
+  else
+    _st_bad "could not measure the index signal (bare=[$_st_bare_idx] partial=[$_st_part_idx])"
+  fi
+  # The property that makes the whole guard unnecessary for partial commits: the file NOT named
+  # is still staged afterwards, so a partial commit cannot have swept it.
+  _st_left="$(cd "$_st_repo" && git diff --cached --name-only 2>/dev/null || true)"
+  [[ "$_st_left" == "b.txt" ]] \
+    && _st_ok "a partial commit leaves the UNNAMED file staged (it cannot sweep it)" \
+    || _st_bad "expected only b.txt left staged, got [$_st_left]"
+
+  # 2. The verdict function, in real git states.
+  _st_v="$(cd "$_st_repo" && GIT_INDEX_FILE=.git/index _commit_scope_verdict || true)"
+  [[ "$_st_v" == "bare" ]] \
+    && _st_ok "the repo's own index reads as BARE" \
+    || _st_bad "the real index read as '$_st_v' (must be bare)"
+  _st_v="$(cd "$_st_repo" && GIT_INDEX_FILE="$_st_dir/other-index" _commit_scope_verdict || true)"
+  [[ "$_st_v" == "partial" ]] \
+    && _st_ok "any other index reads as PARTIAL" \
+    || _st_bad "a foreign index read as '$_st_v' (must be partial)"
+  # ADV-0-1: an UNRESOLVABLE git dir with GIT_INDEX_FILE SET must answer "unknown", never
+  # "partial". The ORDER is the whole point — "partial" is the permissive answer, so a
+  # comparison reached before the git dir is known silently fails OPEN.
+  mkdir -p "$_st_dir/not-a-repo"
+  _st_v="$(cd "$_st_dir/not-a-repo" && GIT_INDEX_FILE="$_st_dir/other-index" _commit_scope_verdict || true)"
+  [[ "$_st_v" == "unknown" ]] \
+    && _st_ok "an unresolvable git dir is UNKNOWN even with GIT_INDEX_FILE set (ADV-0-1)" \
+    || _st_bad "unresolvable git dir + GIT_INDEX_FILE read as '$_st_v' (must be unknown)"
+
+  # 3. The decision, with scope and exemption INJECTED so every branch is reachable — the guard
+  #    is cortex-scoped, so a throwaway repo cannot exercise it end to end.
+  _st_decide() { if _commit_scope_guard "$1" "$2"; then echo refuse; else echo allow; fi; }
+  [[ "$(GIT_INDEX_FILE= _st_decide "${HOME}/hermes-cortex" 0)" == "refuse" ]] \
+    && _st_ok "the cortex repo REFUSES a bare commit" \
+    || _st_bad "the cortex repo did not refuse a bare commit"
+  [[ "$(_st_decide "$_st_repo" 0)" == "allow" ]] \
+    && _st_ok "another repo is OUT OF SCOPE (allowed) — the Titus incident stays fixed" \
+    || _st_bad "an unrelated repo was refused"
+  [[ "$(_st_decide "${HOME}/hermes-cortex" 1)" == "allow" ]] \
+    && _st_ok "a SANCTIONED pipeline commit is exempt" \
+    || _st_bad "the sanctioned pipeline commit was refused"
+  [[ "$(GIT_INDEX_FILE="$_st_dir/other-index" _st_decide "${HOME}/hermes-cortex" 0)" == "allow" ]] \
+    && _st_ok "the cortex repo ALLOWS a partial commit (the remedy actually works)" \
+    || _st_bad "a partial commit in the cortex repo was refused — the remedy would be blocked"
+
+  # 4. WIRING. Every assertion above tests the DECISION; none of them can see how the hook acts
+  #    on it. An inverted call site (`if ! _commit_scope_guard`) silently ALLOWS exactly what the
+  #    guard just decided to refuse, and the decision tests stay green — measured on this host,
+  #    where the guard correctly returned 0 ("refuse") and the hook carried on to the next gate.
+  #    So the call site's shape is asserted too: this supplements the behavioural tests above,
+  #    it does not replace them.
+  _st_self="$(cd "$(dirname "$0")" 2>/dev/null && pwd)/$(basename "$0")"
+  grep -q 'if _commit_scope_guard "\$REPO_ROOT" "\$SANCTIONED_PIPELINE"; then' "$_st_self" \
+    && _st_ok "the call site acts on the verdict in the RIGHT direction" \
+    || _st_bad "the guard's call site is missing or not found in this file"
+  # Anchored to the START of a line, and matched as a CONSTRUCT rather than a bare literal: an
+  # unanchored pattern for this same string also matches THIS ASSERTION's own source, so the
+  # check reported an inverted call site in a file that had none (measured on this host). The
+  # call site is the only line that BEGINS with the inverted form.
+  grep -qE '^if ! _commit_scope_guard' "$_st_self" \
+    && _st_bad "an INVERTED call site is present — a refuse decision would be ignored" \
+    || _st_ok "no inverted call site present"
+
+  rm -rf "$_st_dir"
+  if [[ "$_st_fail" -ne 0 ]]; then
+    echo "❌  self-test FAILED (${_st_fail} check(s))"
+    exit 1
+  fi
+  echo "✅  self-test passed: the commit-scope guard behaves as documented"
+  exit 0
+fi
+
+
 # ── Orchestrator detection (hostname + home-dir, never env) ──
 # Orchestrator hosts are identified by TWO independent signals:
 #   1. hostname -s is moses or esther
@@ -467,6 +647,45 @@ if [[ "$REPO_ROOT" == "${HOME}/hermes-cortex" ]]; then
   IS_CORTEX_REPO=1
 else
   IS_CORTEX_REPO=0
+fi
+
+# ── Commit-scope guard: refuse a BARE commit in this repo ───────────────────
+# Placed here because it needs IS_CORTEX_REPO (scope) and SANCTIONED_PIPELINE (exemption), both
+# computed above. The reasoning, the alternatives rejected and the measured index signal are in
+# `_commit_scope_guard` and `_commit_scope_verdict` at the top of this file, and the behaviour
+# is proven by `bash pre-commit-score --self-test`.
+# NOTE the direction: `_commit_scope_guard` returns 0 to REFUSE, so the call site must be
+# `if <guard>; then <refuse>` — NOT `if ! <guard>`. The inverted form silently ALLOWS what the
+# guard just decided to refuse: measured on this host, where the guard correctly returned 0 and
+# the hook carried straight on to the next gate. The self-test pins the shape, because the
+# function's own tests cannot see how it is invoked.
+if _commit_scope_guard "$REPO_ROOT" "$SANCTIONED_PIPELINE"; then
+  echo ""
+  if [[ "$(_commit_scope_verdict)" == "unknown" ]]; then
+    echo "❌  COMMIT REFUSED — the git dir could not be resolved, so this commit's scope cannot"
+    echo "    be established. Failing closed rather than committing blind."
+    echo "    Check this is a real checkout: git rev-parse --absolute-git-dir"
+  else
+    echo "❌  BARE COMMIT REFUSED — it would commit whatever is staged, not just your files."
+    echo "    Several agents share this working tree and its ONE git index, and a staged entry"
+    echo "    records nothing about which session staged it. A bare commit has swept another"
+    echo "    session's work before (a commit captured 17 files where 8 were intended)."
+    echo ""
+    echo "    Commit ONLY the paths you changed:"
+    echo "        git commit -m 'your message' -- path/one path/two"
+    echo ""
+    echo "    A partial commit builds its own temporary index, so it CANNOT include anything"
+    echo "    you did not name. See what is staged first:"
+    echo "        git diff --cached --name-only"
+    echo ""
+    echo "    NOTE: \`git commit --amend\` is refused as well, EVEN WITH a pathspec — measured: git"
+    echo "    still uses the shared index for an amend, and it rewrites whatever HEAD is now, which"
+    echo "    in a shared tree may not be your commit. Land a NEW commit instead."
+  fi
+  echo ""
+  echo "    No bypass flag — this is structural, not advisory."
+  echo ""
+  exit 1
 fi
 
 # ── TDD Iron-Law gate (Titus proposal 2026-08-20) ─────────────

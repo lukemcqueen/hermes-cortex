@@ -1,0 +1,49 @@
+generated-by: docs/evidence/sweep-range-differs-resolution-2026-10-21.sh
+host-date:    2026-10-21T18:08:04+09:00
+tip:          f3a335a634c4002e0fae9c4328aa842010644503
+range-base:   6221fc9cb9b0ed4de9b1adae9322f6d8a64a8096
+
+Section 9 of the committed transcript reports 19 REPRODUCED, 3 DIFFERS, 0 COULD NOT
+VERIFY. This script re-measures the three DIFFERS it names — tests/test_gen_briefing.py,
+tests/test_loop_gov_mcp_nonblocking.py, tests/test_runtime/test_doctor_pending_cycles.py
+— plus tests/test_repo_less_lock_handling.py, which the SAME comparison flagged in an
+earlier run of it (that run is not the committed one; the file is here because a
+comparison that moves between runs has to be explained, not just re-run).
+
+===== 1. each DIFFERS file run ALONE at the tip (the shape the base side used) =====
+  tests/test_gen_briefing.py
+    tip-alone rc=0 -> PASS   ======================== 10 passed, 2 skipped in 0.12s =========================
+  tests/test_loop_gov_mcp_nonblocking.py
+    tip-alone rc=0 -> PASS   ============================== 6 passed in 7.23s ===============================
+  tests/test_repo_less_lock_handling.py
+    tip-alone rc=0 -> PASS   ============================== 6 passed in 1.14s ===============================
+  tests/test_runtime/test_doctor_pending_cycles.py
+    tip-alone rc=0 -> PASS   ============================== 3 passed in 4.18s ===============================
+
+===== 2. what moved tests/test_repo_less_lock_handling.py between runs — ambient state =====
+Why that file's verdict moved between runs: _promote_issue_to_task refuses when
+_read_lock() finds a lock for the RESOLVED session, and _read_lock() reads
+GOVERNANCE_STATE_DIR — shared by every session on the host, not scoped to this repo or
+this run. So its verdict is a function of which lock FILES happen to sit in that dir.
+
+[mcp-server] DEBUG: Initializing server 'loop-governance/sdk-capability-probe'
+[mcp-server] DEBUG: Initializing server 'loop-governance'
+  session id resolved with NO args : sess_51739fa82ecb
+  lock file it therefore reads     : /home/esther/.hermes-cortex/state/.governance-sess_51739fa82ecb.json
+  does that file exist right now?  : False
+
+It also passes when that directory holds no lock at all — an independent confirmation
+that the deciding input is ambient state:
+  rc=0 -> PASS   ============================== 6 passed in 1.17s ===============================
+  (command: env -u PYTHONPATH -u PYTHONHOME HOME=<empty dir> /home/esther/.hermes-cortex/venv/bin/python3 -m pytest \
+            tests/test_repo_less_lock_handling.py -q -p no:cacheprovider)
+
+===== 3. lock files present in the shared state dir (this script removes NONE of them) =====
+-rw-rw-r--  1 esther esther   2373 Oct 21 17:39 .governance-20261021_163612_93ffbc29.json
+-rw-rw-r--  1 esther esther    106 Oct 21 18:06 governance-auditor.state
+-rw-rw-r--  1 esther esther     76 Oct 21 15:55 governance-enforcer-deployed
+-rw-r--r--  1 esther esther      0 Sep  4 20:13 loop-governance.db
+
+===== end of resolution transcript =====
+A DIFFERS here is only ever a CANDIDATE: the two sides must be run the same way, and
+for this file the deciding input is ambient lock files rather than any code in the range.

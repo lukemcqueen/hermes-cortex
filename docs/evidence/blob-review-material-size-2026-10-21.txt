@@ -1,0 +1,124 @@
+# Per-blob reviewer material size vs reviewer throughput
+# Provenance: generated-by generate-blob-review-material-size.sh on the host's own checkout.
+# captured-at: 6fda205f (the revision the tree sat on when this ran;
+#   a transcript cannot name its own commit, so this is a capture point, not a claim about the tip).
+# Measures the range base=e886aecf tip=d5c2009b, blob=ops/scripts/hc/harness.py — the blob the task row records as
+#   'reviewer timed out on: 1 blob(s) — not judged, so not credited'.
+# All numbers below are the output of the command shown directly above them.
+
+## A. The call path that assembles one blob's material
+$ grep -n -e 'def _blob_material' -e 'material_for=lambda' -e 'def _bound_diff' ~/hermes-cortex/mcp-servers/loop-gov-mcp.py
+2003:def _blob_material(repo: Path, base: str, path: str, ctx: dict) -> str:
+2163:        material_for=lambda sha, path: _blob_material(repo, base, path, ctx),
+6362:def _bound_diff(diff_text: str, budget: int | None = None) -> str:
+
+$ grep -n -e '^DIFF_CHAR_BUDGET' -e '^REVIEW_SCOPE_MAX_PATHS' ~/hermes-cortex/mcp-servers/loop-gov-mcp.py
+1775:REVIEW_SCOPE_MAX_PATHS = 12
+4276:DIFF_CHAR_BUDGET = 20000
+4310:DIFF_CHAR_BUDGET_DOCS = 60000
+
+# the material's diff component is built by this call (extracted from the source):
+$ grep -n -A1 'diff_text = _bound_diff' ~/hermes-cortex/mcp-servers/loop-gov-mcp.py
+2009:    diff_text = _bound_diff(_git_capture(repo, "diff", "--no-ext-diff", "-U3",
+2010-                                         base + "..HEAD", "--", path))
+--
+6609:    diff_text = _bound_diff(diff_text)
+6610-
+
+# the scope block prepended to it (extracted from the source):
+$ grep -n -A6 'scope_lines = (' ~/hermes-cortex/mcp-servers/loop-gov-mcp.py
+2020:    scope_lines = ("scope: ONE file of this range; the other files are judged on their own blobs,\n"
+2021-                   "so answer for THIS file only.\n")
+2022-    if others:
+2023-        scope_lines += (
+2024-            f"range files ({len(range_paths)}) — the others are judged as their own blobs:\n"
+2025-            f"  {', '.join(others)}\n"
+2026-            "a claim this file makes about one of those is a SIBLING claim: report it at most as\n"
+
+## B. Measured size of the material for ops/scripts/hc/harness.py in e886aecf..d5c2009b
+$ git diff --no-ext-diff -U3 e886aecf..d5c2009b -- ops/scripts/hc/harness.py | wc -c
+diff bytes (this IS the material's diff component): 2731
+
+$ git show d5c2009b:ops/scripts/hc/harness.py | wc -c
+the file's own size at the tip (NOT what the reviewer receives): 21524
+
+$ git diff --name-only e886aecf..d5c2009b | wc -l
+files in the range (drives the scope block): 6
+$ git diff --name-only e886aecf..d5c2009b | grep -v -x ops/scripts/hc/harness.py | paste -sd, -
+sibling paths named in the scope block: docs/evidence/doctor-harness-loop-2026-10-21.txt,ops/install/harnesses/registry.yaml,ops/scripts/manage/cortex_doctor/checks.py,ops/scripts/manage/cortex_doctor/cli.py,tests/test_doctor_harness_loop.py
+sibling path-list bytes: 201
+
+# the bound is taken from the source, not assumed:
+diff bound (chars, extracted): 20000   unused by this blob: 17269 chars
+# so nothing is truncated here, and the reviewer is NOT being handed the whole file.
+
+## C. The window arithmetic the per-blob pass runs inside (extracted from the source)
+$ grep -n -e '^CLOSE_TOTAL_BUDGET_S' -e '^BLOB_REVIEW_BUDGET_S' -e '^BLOB_REVIEW_CONCURRENCY' -e '^CLOSE_BLOBS_PER_WINDOW' -e '^BLOB_REVIEW_CAP_PER_CLOSE' -e '^BLOB_REVIEW_MAX_CONSECUTIVE_FAILURES' ~/hermes-cortex/mcp-servers/loop-gov-mcp.py
+1105:BLOB_REVIEW_CAP_PER_CLOSE = 15
+1122:CLOSE_TOTAL_BUDGET_S = 240.0                  # must stay < the 300s MCP client window
+1123:BLOB_REVIEW_BUDGET_S = CLOSE_TOTAL_BUDGET_S   # a pass may use the whole window ...
+1130:BLOB_REVIEW_CONCURRENCY = 4                   # reviewer calls issued together in one window
+1131:CLOSE_BLOBS_PER_WINDOW = BLOB_REVIEW_CONCURRENCY   # one wave per close pass
+1155:BLOB_REVIEW_MAX_CONSECUTIVE_FAILURES = 2
+
+# the recorded per-call latency this file already carries (extracted, not restated):
+$ grep -n '180-220s' ~/hermes-cortex/mcp-servers/loop-gov-mcp.py
+1115:# is 300s (the Hermes MCP client ceiling) and ONE blob call measures 180-220s — the record of
+1148:# 2026-10-16: blob calls ran 180-220s against a 240s wall-clock ceiling, so the
+1465:    # A blob call measures 180-220s and the close's window is 240s, so a SEQUENTIAL pass judges
+6996:    # blob call measures 180-220s and one window fits exactly one. Without this, a close
+
+## D. The landed fix and the test that pins it
+$ git log -1 --format='%h %cd %s' 6a410c51
+6a410c51 Wed Oct 21 15:54:55 2026 +0900 fix(loop-gov): never confuse an UNANSWERED blob with a DOWN reviewer — in either direction
+$ git show --stat --oneline 6a410c51
+6a410c51 fix(loop-gov): never confuse an UNANSWERED blob with a DOWN reviewer — in either direction
+ mcp-servers/loop-gov-mcp.py           | 35 +++++++++++++++++++++++++++++++---
+ tests/test_blob_review_concurrency.py | 36 ++++++++++++++++++++++++++++++++---
+ 2 files changed, 65 insertions(+), 6 deletions(-)
+$ git branch -r --contains 6a410c51
+  origin/HEAD -> origin/main
+  origin/main
+
+$ cd ~/hermes-cortex && bash tests/run-tests.sh tests/test_blob_review_concurrency.py -q
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
+rootdir: ~/hermes-cortex
+configfile: pytest.ini
+plugins: anyio-4.15.1
+collected 9 items
+
+tests/test_blob_review_concurrency.py .........                          [100%]
+
+============================== 9 passed in 15.06s ==============================
+---
+run-tests.sh: interpreter=~/.hermes-cortex/venv/bin/python3 rc=0  (PYTHONPATH/PYTHONHOME unset for the run)
+runner rc=0
+
+# the fix's own named assertions (extracted from the source):
+$ grep -n 'test_two_slow_calls_do_not_declare_the_reviewer_down_and_abandon_the_rest' ~/hermes-cortex/mcp-servers/loop-gov-mcp.py ~/hermes-cortex/tests/test_blob_review_concurrency.py
+~/hermes-cortex/mcp-servers/loop-gov-mcp.py:1585:            # tests/test_blob_review_concurrency.py::test_two_slow_calls_do_not_declare_the_reviewer_down_and_abandon_the_rest
+~/hermes-cortex/tests/test_blob_review_concurrency.py:127:    # test_two_slow_calls_do_not_declare_the_reviewer_down_and_abandon_the_rest). The assertion
+~/hermes-cortex/tests/test_blob_review_concurrency.py:158:def test_two_slow_calls_do_not_declare_the_reviewer_down_and_abandon_the_rest():
+
+## E. Measured result
+material sent for the timed-out blob : 2731 B diff + a scope block naming 6 range files
+file size the reviewer does NOT see : 21524 B
+diff bound                          : 20000 chars (not reached — no truncation)
+measured per-call latency (recorded): 180-220 s, against a 240 s close window
+runner rc for the fix's test        : 0
+generator rc                        : 0
+
+## F. Reconciling the figures the task row quotes
+# The row quotes '5116 bytes' for the blob's DIFF and '17.7 KB' for the file. Both were measured
+# here with the construct named on each line, because a figure is only meaningful with its construct.
+$ git show --no-ext-diff -U3 4c7ad339 -- ops/scripts/hc/harness.py | wc -c   # the COMMIT that changed the blob
+  5231
+$ git show --no-ext-diff -U3 d5c2009b -- ops/scripts/hc/harness.py | wc -c      # the range TIP does not touch this blob
+0
+$ git show e886aecf:ops/scripts/hc/harness.py | wc -c                          # file bytes at the range BASE
+20277
+$ git show d5c2009b:ops/scripts/hc/harness.py | wc -c                           # file bytes at the range TIP
+21524
+# The material the reviewer receives is the RANGE diff (line 2010: base + '..HEAD'), which is
+# 2731 B here — not the 5231 B single-commit diff and not the file.

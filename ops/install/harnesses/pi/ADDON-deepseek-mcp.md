@@ -14,12 +14,28 @@ agent must be able to recognise as *not ours* rather than try to "repair" with
 
 | | |
 |---|---|
-| **Tools** | `review_experimental_plan`, `ask_deepseek`, `list_available_models` |
+| **Tools** | `review`, `ask_deepseek`, `list_available_models` |
 | **What it does** | asks DeepSeek to attack a plan before it is built (adversarial review), over OpenRouter |
 | **Where its source lives** | a PRODUCT repo, not this one: `~/Developer/AI/steadfaste-s1-model/scripts/util/mcp_deepseek_server.py` |
 | **Credential** | `OPENROUTER_API_KEY` — from the env, or a `./.env` beside the server |
 | **Registered in** | `~/.pi/agent/mcp.json`, one entry named `deepseek`, next to the five cortex entries |
-| **Default model** | `deepseek/deepseek-chat-v3` (OpenRouter) |
+| **Default model** | `deepseek/deepseek-v4-pro` (OpenRouter) |
+
+The review tool is named **`review`**. It was `review_experimental_plan` — narrower than what
+it does, since it reviews a memo, a plan, or a results summary. The rename is **automated**, not
+a hand procedure: `cortex-doctor.py` reports `DeepSeek MCP tool name`, its auto-fix runs the
+manager below, and an agent can run the same two commands directly:
+
+```bash
+bash ~/hermes-cortex/ops/scripts/install/install-pi-mcp.sh --check-tools   # exit 1 if stale
+bash ~/hermes-cortex/ops/scripts/install/install-pi-mcp.sh --fix-tools     # rename it
+```
+
+That is `install-pi-mcp.sh` — the one file that owns `~/.pi/agent/mcp.json`. It resolves the
+server from that config, backs the file up first, and treats an ABSENT server as a PASS: the
+entry is host-optional, so a host without it is not a fault. Only the tool NAME is changed —
+the foreign entry itself is preserved, exactly as `--remove` preserves it.
+See [`../../../docs/external/mcp-deepseek-review.md`](../../../docs/external/mcp-deepseek-review.md).
 
 **NOT part of the cortex suite, and NOT installed by `install-pi-mcp.sh`.** Some hosts
 register it by hand; others do not. Neither state is a fault.
@@ -55,7 +71,7 @@ bash ~/hermes-cortex/ops/scripts/lib/python-with-module.sh --print mcp
 ## Verify, then leave it alone
 
 ```bash
-pi mcp list | grep deepseek      # expected: connected, with its 3 tools
+pi mcp list | grep deepseek      # expected: connected, with its 3 tools, named `review`
 ```
 
 - `install-pi-mcp.sh --remove` strips the **cortex** servers only: run against a
@@ -67,6 +83,9 @@ pi mcp list | grep deepseek      # expected: connected, with its 3 tools
   reported as *present, NOT audited here*; its command and script are still checked
   (a broken path is a real defect). So a host WITHOUT it is a PASS, and a host WITH it
   is a PASS too.
+- **Renaming its tools is the one thing the fleet does touch**, and only through the
+  automated script above — a stale tool name is detected by the doctor rather than
+  re-derived by each agent.
 - **Do not "fix" it by copying its source into `hermes-cortex/`.** Moving it here is an
   owner decision (it lives in a product repo and calls a paid API), and a second copy of
   a server is exactly the phantom this tree exists to prevent.

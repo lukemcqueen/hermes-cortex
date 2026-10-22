@@ -1,0 +1,143 @@
+generated-by: docs/evidence/preexisting-failures-triage-2026-10-21.sh   (this file IS that script's stdout)
+host-date:    2026-10-21T19:33:31+09:00
+captured-at:  ea94a19feb2a2a161d0f1a3b1d442188d021d405
+committed-in: the commit that ADDS this file — always one commit ahead of captured-at. A
+              transcript cannot name its own commit: writing this file changes the revision.
+input:        docs/evidence/sweep-json-rows-and-engine-error-2026-10-21.txt  (the committed attribution; section 9 re-ran every failing file at
+              the range base with the same runner, so this list is already attributed)
+why-triage:   the collection fix (commit c1333161, issue #212) made these visible again. A
+              bare list says nothing about whether they share a cause.
+
+===== 1. each failing file, run once at this tip, with its first failure reason =====
+files to run: 22
+
+  tests/test_context_harnesses.py
+    rc=1   ========================= 2 failed, 27 passed in 3.32s =========================
+    reason: AssertionError: routine output reached the Pi prompt area:
+  tests/test_cron_prompt_matches_installer.py
+    rc=1   ========================= 1 failed, 4 passed in 0.14s ==========================
+    reason: AssertionError: the live cron prompt differs from the installer's — update the live job with cronjob action='update' (live 2385 chars, installer 2265 chars)
+  tests/test_direct_run_interpreter.py
+    rc=1   ======================== 1 failed, 5 warnings in 59.46s ========================
+    reason: AssertionError: direct runs whose interpreter choice decides whether they work:
+  tests/test_doctor_stale_loop_gov.py
+    rc=1   ========================= 1 failed, 2 passed in 0.15s ==========================
+    reason: AssertionError: assert 'changed after the daemon started' in 'COULD NOT VERIFY by content — pid 2222 (loop-gov-mcp.py is newer than the daemon start, and this daemon wrote no startup stamp)'
+  tests/test_gen_briefing.py
+    rc=0   ======================== 10 passed, 2 skipped in 0.11s =========================
+    reason: PASSES AT THIS TIP — not reproducible now (was failing at the range base)
+  tests/test_lock_liveness_activity.py
+    rc=1   ========================= 1 failed, 11 passed in 1.59s =========================
+    reason: AssertionError: no repo, no commits, no rescue: it expires
+  tests/test_lock_review_split.py
+    rc=1   ========================= 1 failed, 6 passed in 1.39s ==========================
+    reason: AttributeError: module 'gov_split' has no attribute 'REVIEWER_LIGHT_MODEL_DEFAULT'. Did you mean: 'REVIEWER_MODEL_DEFAULT'?
+  tests/test_lock_truth.py
+    rc=1   ========================= 1 failed, 12 passed in 4.93s =========================
+    reason: AssertionError: assert [{'task_id': ...cuting', ...}] == []
+  tests/test_loop_gov_mcp_nonblocking.py
+    rc=0   ============================== 6 passed in 7.21s ===============================
+    reason: PASSES AT THIS TIP — not reproducible now (was failing at the range base)
+  tests/test_pii_gate_evidence.py
+    rc=1   ========================= 1 failed, 2 passed in 1.45s ==========================
+    reason: AssertionError: STALE artifact - regenerate: bash ops/scripts/manage/run-pii-gate-evidence.sh
+  tests/test_repo_resource_paths.py
+    rc=1   ========================= 1 failed, 13 passed in 1.31s =========================
+    reason: AssertionError: docs/deploy-registry-pattern.md must state the real register count (366); update the doc in the same change
+  tests/test_repo_structure.py
+    rc=1   ========================= 1 failed, 9 passed in 0.19s ==========================
+    reason: AssertionError: Legacy gbrain refs found in: docs/evidence/backlog-run-2026-10-17-selection.md
+  tests/test_retired_orch_crons.py
+    rc=1   ========================= 1 failed, 5 passed in 0.40s ==========================
+    reason: AssertionError: cron_manifest.py --check failed with HOME=~ HERMES_HOME=~/.hermes:
+  tests/test_reviewer_silence_refuses_close.py
+    rc=1   ========================= 2 failed, 5 passed in 8.60s ==========================
+    reason: AssertionError: ('UNJUDGED', '[]')
+  tests/test_reviewer_tier_wiring.py
+    rc=1   ========================= 3 failed, 5 passed in 1.30s ==========================
+    reason: AttributeError: module 'gov_wiring' has no attribute 'REVIEWER_LIGHT_MODEL_DEFAULT'. Did you mean: 'REVIEWER_MODEL_DEFAULT'?
+  tests/test_review_per_blob.py
+    rc=1   ========================= 3 failed, 10 passed in 5.62s =========================
+    reason: AssertionError: a blob whose content already has a CLEAN verdict must not be re-reviewed — the cache is what makes a re-close affordable: {'verdicts': {'sha-a': 'CLEAN', 'sha-b': 'CLEAN'}, 'remaining': [], 'calls': 2, 
+  tests/test_runtime/test_adversarial_review_gate.py
+    rc=1   ========================= 5 failed, 14 passed in 1.53s =========================
+    reason: AssertionError: assert 'UNJUDGED' == 'FINDINGS'
+  tests/test_runtime/test_doctor_pending_cycles.py
+    rc=0   ============================== 3 passed in 4.34s ===============================
+    reason: PASSES AT THIS TIP — not reproducible now (was failing at the range base)
+  tests/test_task_queue_evidence.py
+    rc=1   ========================= 1 failed, 10 passed in 9.18s =========================
+    reason: AssertionError: the committed report does not match a fresh run of the script — it has drifted from the code, or was edited by hand
+  tests/test_task_queue_visibility.py
+    rc=1   ========================= 2 failed, 10 passed in 0.14s =========================
+    reason: AssertionError: v013__fleet-slice-orch-parent.sql does not touch transition_allowed — parked rows still cannot return to pending, so they can never be claimed
+  tests/test_updater_robustness.py
+    rc=1   ========================= 3 failed, 3 passed in 9.65s ==========================
+    reason: AssertionError: could not extract '── The fleet venv must be able to RUN what we point at it' from cortex-update.sh
+  tests/test_venv_env_contamination.py
+    rc=1   ========================= 1 failed, 4 passed in 3.11s ==========================
+    reason: AssertionError: these probes decide from a contaminated environment (a foreign site-packages can shadow the target's own — probe with `env -u PYTHONPATH -u PYTHONHOME`):
+
+===== 2. GROUPED BY SIGNATURE — what each reason looks like, counted =====
+  7 file(s)  Z. unclassified — one-off
+        tests/test_context_harnesses.py
+        tests/test_doctor_stale_loop_gov.py
+        tests/test_lock_liveness_activity.py
+        tests/test_lock_truth.py
+        tests/test_review_per_blob.py
+        tests/test_task_queue_visibility.py
+        tests/test_updater_robustness.py
+  4 file(s)  D. committed evidence / doc drifted from the code
+        tests/test_pii_gate_evidence.py
+        tests/test_repo_resource_paths.py
+        tests/test_repo_structure.py
+        tests/test_task_queue_evidence.py
+  3 file(s)  P. rc=0 at this tip — not reproducible now
+        tests/test_gen_briefing.py
+        tests/test_loop_gov_mcp_nonblocking.py
+        tests/test_runtime/test_doctor_pending_cycles.py
+  2 file(s)  E. cron manifest vs the live job
+        tests/test_cron_prompt_matches_installer.py
+        tests/test_retired_orch_crons.py
+  2 file(s)  B. the reviewer returns UNJUDGED where a verdict is required
+        tests/test_reviewer_silence_refuses_close.py
+        tests/test_runtime/test_adversarial_review_gate.py
+  2 file(s)  A. a reviewer-tier constant was renamed and not propagated
+        tests/test_lock_review_split.py
+        tests/test_reviewer_tier_wiring.py
+  1 file(s)  F. interpreter selection decides the run
+        tests/test_direct_run_interpreter.py
+  1 file(s)  C. probes decide from a contaminated interpreter env
+        tests/test_venv_env_contamination.py
+
+  LEVERAGE — the largest group that is NOT the rc=0 group and NOT the one-off group:
+          4 D. committed evidence / doc drifted from the code
+  A group of several files under one named cause is the next fix: one change closes them all.
+
+===== 3. the raw table (file -> first reason), for re-grouping by hand =====
+  tests/test_context_harnesses.py                                AssertionError: routine output reached the Pi prompt area:
+  tests/test_cron_prompt_matches_installer.py                    AssertionError: the live cron prompt differs from the installer's — update the live job with cronjob action='update' (live 2385 chars, installer 2265 chars)
+  tests/test_direct_run_interpreter.py                           AssertionError: direct runs whose interpreter choice decides whether they work:
+  tests/test_doctor_stale_loop_gov.py                            AssertionError: assert 'changed after the daemon started' in 'COULD NOT VERIFY by content — pid 2222 (loop-gov-mcp.py is newer than the daemon start, and this daemon wrote no startup stamp)'
+  tests/test_gen_briefing.py                                     PASSES AT THIS TIP — not reproducible now (was failing at the range base)
+  tests/test_lock_liveness_activity.py                           AssertionError: no repo, no commits, no rescue: it expires
+  tests/test_lock_review_split.py                                AttributeError: module 'gov_split' has no attribute 'REVIEWER_LIGHT_MODEL_DEFAULT'. Did you mean: 'REVIEWER_MODEL_DEFAULT'?
+  tests/test_lock_truth.py                                       AssertionError: assert [{'task_id': ...cuting', ...}] == []
+  tests/test_loop_gov_mcp_nonblocking.py                         PASSES AT THIS TIP — not reproducible now (was failing at the range base)
+  tests/test_pii_gate_evidence.py                                AssertionError: STALE artifact - regenerate: bash ops/scripts/manage/run-pii-gate-evidence.sh
+  tests/test_repo_resource_paths.py                              AssertionError: docs/deploy-registry-pattern.md must state the real register count (366); update the doc in the same change
+  tests/test_repo_structure.py                                   AssertionError: Legacy gbrain refs found in: docs/evidence/backlog-run-2026-10-17-selection.md
+  tests/test_retired_orch_crons.py                               AssertionError: cron_manifest.py --check failed with HOME=~ HERMES_HOME=~/.hermes:
+  tests/test_reviewer_silence_refuses_close.py                   AssertionError: ('UNJUDGED', '[]')
+  tests/test_reviewer_tier_wiring.py                             AttributeError: module 'gov_wiring' has no attribute 'REVIEWER_LIGHT_MODEL_DEFAULT'. Did you mean: 'REVIEWER_MODEL_DEFAULT'?
+  tests/test_review_per_blob.py                                  AssertionError: a blob whose content already has a CLEAN verdict must not be re-reviewed — the cache is what makes a re-close affordable: {'verdicts': {'sha-a': 'CLEAN', 'sha-b': 'CLEAN'}, 'remaining': [], 'calls': 2, 
+  tests/test_runtime/test_adversarial_review_gate.py             AssertionError: assert 'UNJUDGED' == 'FINDINGS'
+  tests/test_runtime/test_doctor_pending_cycles.py               PASSES AT THIS TIP — not reproducible now (was failing at the range base)
+  tests/test_task_queue_evidence.py                              AssertionError: the committed report does not match a fresh run of the script — it has drifted from the code, or was edited by hand
+  tests/test_task_queue_visibility.py                            AssertionError: v013__fleet-slice-orch-parent.sql does not touch transition_allowed — parked rows still cannot return to pending, so they can never be claimed
+  tests/test_updater_robustness.py                               AssertionError: could not extract '── The fleet venv must be able to RUN what we point at it' from cortex-update.sh
+  tests/test_venv_env_contamination.py                           AssertionError: these probes decide from a contaminated environment (a foreign site-packages can shadow the target's own — probe with `env -u PYTHONPATH -u PYTHONHOME`):
+
+===== end of transcript =====
+Grouping is by SIGNATURE over the first captured reason, first match wins; the counts above are
+this run's own tally. A group with several files is the leverage: one cause, several red files.

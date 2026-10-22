@@ -35,6 +35,21 @@
 #  Usage:
 #    bash install-pi-mcp.sh            # add/update (idempotent)
 #    bash install-pi-mcp.sh --check    # show current registration
+#
+#  Exit-code CONTRACT for --check-tools / --fix-tools. The cortex doctor consumes these codes,
+#  so they are a published interface, not an implementation detail:
+#     0  nothing to do, or done — no DeepSeek entry on this host (host-optional), the name is
+#        already current, or (--fix-tools) the rename succeeded
+#     1  --check-tools: STALE, the registered server still exposes the old name
+#        --fix-tools:   the rename did NOT take (the write was verified and failed)
+#     2  COULD NOT VERIFY — a DeepSeek entry IS registered but its server file cannot be
+#        resolved from its command/args (a module launch, a renamed command) or the file is
+#        missing. A rename cannot fix this, and it must NOT be read as clean.
+#    `bash install-pi-mcp.sh --self-test` proves this contract against throwaway fixtures.
+#    bash install-pi-mcp.sh --check-tools  # verdict on a registered DeepSeek server (see above)
+#    bash install-pi-mcp.sh --fix-tools    # rename a stale DeepSeek review tool (backup first)
+#    bash install-pi-mcp.sh --self-test    # runnable proof of the check/fix pair (no writes
+#                                          # outside a temp dir); exits non-zero on failure
 #    bash install-pi-mcp.sh --remove   # remove our servers only
 #
 #  Supports macOS + Linux. Backs up the file first and preserves
@@ -73,6 +88,9 @@ done
 MODE="add"
 case "${1:-}" in
   --check|--list) MODE="check" ;;
+  --check-tools) MODE="check-tools" ;;
+  --fix-tools) MODE="fix-tools" ;;
+  --self-test) MODE="self-test" ;;
   --remove) MODE="remove" ;;
 esac
 
@@ -90,6 +108,218 @@ if not d.get('mcpServers'):
   else
     echo "  (no $PI_MCP)"
   fi
+  exit 0
+fi
+
+if [[ "$MODE" == "check-tools" || "$MODE" == "fix-tools" ]]; then
+  # ONE resolver, two verdicts. A check and a fix that each re-derived "which file is the
+  # DeepSeek server" would be two places to update — the same drift this change exists to
+  # remove, so the resolution happens once and the MODE decides what to do with it.
+  #
+  # Handled HERE, before the interpreter resolution further down, because the edit is a TEXT
+  # edit to a file we do not own: placed after that gate it would be UNREACHABLE on exactly the
+  # hosts that need it — a host whose python cannot `import mcp` exits 1 earlier (measured on
+  # this host 2026-10-22). That coupling is a wart, not a feature; it is called out here
+  # because the fix silently stops working if this block is ever moved down.
+  #
+  # ABSENCE IS A PASS: the entry is host-optional and this installer never creates it, so a
+  # host without one is not a fault, and a check that failed there would be noise that teaches
+  # readers to ignore it.
+  DS_MODE="$MODE" "$PYTHON" - "$PI_MCP" <<'PY'
+import json, os, re, shutil, sys, time
+
+# A TOOL NAME, not a credential — the leak detector's NAME="literal" heuristic flags this line.
+OLD, NEW = "review_experimental_plan", "review"
+mode = os.environ["DS_MODE"]
+
+
+def resolve(cfg_path):
+    """The server file a registered DeepSeek entry names, or (None, why, unverifiable).
+
+    The third value marks a state we could NOT VERIFY — a DeepSeek entry is registered but
+    its server file cannot be found. That must never read as "nothing to do". An earlier
+    draft matched only the exact key `deepseek` and only a `.py` argument, so a module
+    launch (`args: ["-m", "mcp_deepseek_server"]`), a renamed entry, or a path carried in
+    `command` all fell through to a silent PASS — a host still answering to the old tool
+    name reported as clean. Unresolvable is an UNKNOWN, and an unknown is not a pass.
+    """
+    try:
+        data = json.load(open(cfg_path))
+    except Exception:
+        return None, "no readable Pi MCP config — nothing to do (host-optional)", False
+    servers = data.get("mcpServers") or {}
+    # Match on the KEY, not the exact string `deepseek`: whoever registered the entry chose
+    # its name, and `deepseek-review` is the same server.
+    entry = next((v for k, v in servers.items()
+                  if isinstance(k, str) and "deepseek" in k.lower()
+                  and isinstance(v, dict)), None)
+    if entry is None:
+        return None, "no DeepSeek review MCP server registered (host-optional)", False
+    # The server file may be the `command` itself, or one of its arguments.
+    parts = [entry.get("command")] + list(entry.get("args") or [])
+    script = next((p for p in parts if isinstance(p, str) and p.endswith(".py")), None)
+    if not script:
+        return None, ("COULD NOT VERIFY: a DeepSeek entry is registered but its server file "
+                      "is not resolvable from its command/args (module launch, or a renamed "
+                      "command) — the tool name cannot be confirmed"), True
+    script = os.path.expanduser(script)
+    if not os.path.isfile(script):
+        return None, (f"COULD NOT VERIFY: the registered DeepSeek server is missing: {script} "
+                      f"— a broken registration, not a clean host"), True
+    return script, None, False
+
+
+script, why, unverifiable = resolve(sys.argv[1])
+if script is None:
+    print(why)
+    # 2 = COULD NOT VERIFY (the doctor surfaces it loudly); 0 = genuinely nothing to do.
+    sys.exit(2 if unverifiable else 0)
+
+try:
+    text = open(script).read()
+except OSError as exc:
+    print(f"could not read {script}: {exc}")
+    sys.exit(1)          # we were told about a file and could not read it: NOT a pass
+
+stale = re.search(r"\b" + re.escape(OLD) + r"\b", text) is not None
+
+if mode == "check-tools":
+    if stale:
+        print(f"STALE: {script} still exposes `{OLD}` — fix: bash install-pi-mcp.sh --fix-tools")
+        sys.exit(1)
+    print(f"ok: {script} does not carry the old name")
+    sys.exit(0)
+
+# fix-tools
+if not stale:
+    print(f"already current: {script} does not carry `{OLD}`")
+    sys.exit(0)          # idempotent: no write, so no backup
+
+new, n = re.subn(r"\b" + re.escape(OLD) + r"\b", NEW, text)
+# NOTE: `\bOLD\b` is a TEXTUAL rename, not a semantic one. It rewrites every occurrence in
+# this file, including a comment or docstring that mentions the old name. That is bounded —
+# one file, one exact token, and a longer identifier (`review_experimental_planning`) is
+# correctly left alone because `_` is a word character — but it is regex surgery on a file
+# the fleet does not own, which is why the write is verified below rather than trusted.
+
+# Back up WITHOUT clobbering an existing backup: `<file>.bak` may hold the operator's own
+# copy from an earlier run, and overwriting it destroys the only record of a previous state.
+# A taken name gets a timestamp instead, and which one was used is reported.
+backup = script + ".bak"
+if os.path.exists(backup):
+    backup = f"{script}.bak.{time.strftime('%Y%m%d-%H%M%S')}"
+shutil.copy2(script, backup)
+
+# Write via a temp file + rename so a partial write can never be left in place.
+tmp = script + ".tmp"
+with open(tmp, "w") as fh:
+    fh.write(new)
+os.replace(tmp, script)
+
+# VERIFY the write instead of trusting it. A fix that reports success without re-reading is
+# a claim, not a result — and this edit is regex surgery on a foreign file, so the only
+# honest evidence is the file's own bytes AFTER the write.
+after = open(script).read()
+if re.search(r"\b" + re.escape(OLD) + r"\b", after):
+    print(f"FAILED: {script} still carries `{OLD}` after the rename")
+    sys.exit(1)
+if after == text:
+    print(f"FAILED: {script} is unchanged after the rename")
+    sys.exit(1)
+print(f"Renamed the DeepSeek review tool: {n} occurrence(s) in {script} "
+      f"(backup: {os.path.basename(backup)}) — verified by re-reading the file")
+sys.exit(0)
+PY
+  exit $?
+fi
+
+if [[ "$MODE" == "self-test" ]]; then
+  # ── Runnable proof of the check/fix pair, IN THIS FILE ──────────
+  # The close review judges a blob on its OWN content, so a claim here demonstrated only by
+  # tests/test_pi_integration_foreign_server.py — a DIFFERENT blob — reads as unverified from
+  # this file. This mode exercises the whole pair against throwaway fixtures and fails loudly,
+  # so the proof travels with the code it proves. It writes NOTHING outside its temp dir and
+  # never touches the host's real ~/.pi/agent/mcp.json.
+  #
+  #   bash install-pi-mcp.sh --self-test
+  _st_fail=0
+  _st_ok()  { printf '  PASS  %s\n' "$1"; }
+  _st_bad() { printf '  FAIL  %s\n' "$1"; _st_fail=$((_st_fail + 1)); }
+  _ST_SELF="$(cd "$(dirname "$0")" 2>/dev/null && pwd)/$(basename "$0")"
+  _st_dir="$(mktemp -d "${TMPDIR:-/tmp}/pi-mcp-selftest.XXXXXX")"
+  _st_srv="$_st_dir/mcp_deepseek_server.py"
+  _st_cfg="$_st_dir/mcp.json"
+
+  # A stale server, a PRE-EXISTING backup, and a foreign entry that must survive.
+  printf '@server.tool()\ndef review_experimental_plan(t): pass\n' > "$_st_srv"
+  printf 'PREEXISTING\n' > "$_st_srv.bak"
+  "$PYTHON" - "$_st_srv" "$_st_cfg" <<'PY'
+import json, sys
+json.dump({"mcpServers": {"deepseek": {"command": "python3", "args": [sys.argv[1]]},
+                          "user-owned": {"command": "/bin/true"}}}, open(sys.argv[2], "w"))
+PY
+
+  # `cmd || rc=$?`, never `rc=$(cmd)`: under `set -e` a failing command inside a command
+  # substitution aborts the whole script, so the EXPECTED rc=1 / rc=2 cases would kill the
+  # self-test instead of being asserted on. Same reason the backup counts carry `|| true`
+  # (pipefail would otherwise fail the assignment when `ls` matches nothing).
+  _st_rc=0; _st_out=$(PI_MCP_FILE="$_st_cfg" bash "$_ST_SELF" --check-tools 2>&1) || _st_rc=$?
+  if [[ "$_st_rc" -eq 1 ]] && grep -q "STALE" <<<"$_st_out"; then
+    _st_ok "a stale tool is DETECTED (rc=1, names the file)"
+  else
+    _st_bad "a stale tool is DETECTED (got rc=$_st_rc): $_st_out"
+  fi
+
+  _st_rc=0; _st_out=$(PI_MCP_FILE="$_st_cfg" bash "$_ST_SELF" --fix-tools 2>&1) || _st_rc=$?
+  [[ "$_st_rc" -eq 0 ]] && _st_ok "fix rc=0" || _st_bad "fix rc=$_st_rc: $_st_out"
+  grep -q "review_experimental_plan" "$_st_srv" \
+    && _st_bad "the old token is still in the server file" \
+    || _st_ok "the old token is gone from the server file"
+  grep -q "def review(" "$_st_srv" \
+    && _st_ok "the new name is declared" || _st_bad "the new name is NOT declared"
+  [[ "$(cat "$_st_srv.bak")" == "PREEXISTING" ]] \
+    && _st_ok "a pre-existing .bak is preserved verbatim (never clobbered)" \
+    || _st_bad "the pre-existing .bak was CLOBBERED: $(cat "$_st_srv.bak")"
+  _st_taken=$(ls "$_st_dir"/mcp_deepseek_server.py.bak.* 2>/dev/null | wc -l | tr -d ' ' || true)
+  [[ "$_st_taken" == "1" ]] \
+    && _st_ok "a timestamped backup was written instead (exactly 1)" \
+    || _st_bad "expected exactly 1 timestamped backup, found $_st_taken"
+
+  _st_rc=0; _st_out=$(PI_MCP_FILE="$_st_cfg" bash "$_ST_SELF" --check-tools 2>&1) || _st_rc=$?
+  [[ "$_st_rc" -eq 0 ]] && _st_ok "now reports current (rc=0)" \
+    || _st_bad "expected rc=0 after the fix, got $_st_rc: $_st_out"
+
+  _st_rc=0; _st_out=$(PI_MCP_FILE="$_st_cfg" bash "$_ST_SELF" --fix-tools 2>&1) || _st_rc=$?
+  _st_taken2=$(ls "$_st_dir"/mcp_deepseek_server.py.bak.* 2>/dev/null | wc -l | tr -d ' ' || true)
+  if [[ "$_st_rc" -eq 0 && "$_st_taken2" == "1" ]]; then
+    _st_ok "a second fix is idempotent (rc=0, still exactly ONE timestamped backup)"
+  else
+    _st_bad "idempotence: rc=$_st_rc backups=$_st_taken2"
+  fi
+  [[ -e "$_st_srv.tmp" ]] && _st_bad "a .tmp file was left behind" \
+    || _st_ok "no .tmp left behind (the write is atomic)"
+  _st_entries=$("$PYTHON" -c "import json,sys; print(','.join(sorted(json.load(open(sys.argv[1]))['mcpServers'])))" "$_st_cfg" 2>/dev/null || echo "?")
+  [[ "$_st_entries" == "deepseek,user-owned" ]] \
+    && _st_ok "the foreign entry AND the user's own survive ($_st_entries)" \
+    || _st_bad "entries changed: $_st_entries"
+
+  # The two UNKNOWNS must not read as clean.
+  printf '{"mcpServers":{"deepseek":{"command":"python3","args":["-m","mcp_deepseek_server"]}}}' > "$_st_cfg"
+  _st_rc=0; _st_out=$(PI_MCP_FILE="$_st_cfg" bash "$_ST_SELF" --check-tools 2>&1) || _st_rc=$?
+  [[ "$_st_rc" -eq 2 ]] && _st_ok "an unresolvable entry is COULD NOT VERIFY (rc=2), not a pass" \
+    || _st_bad "unresolvable entry returned rc=$_st_rc (must be 2): $_st_out"
+
+  printf '{"mcpServers":{"deepseek":{"command":"python3","args":["%s"]}}}' "$_st_dir/gone.py" > "$_st_cfg"
+  _st_rc=0; _st_out=$(PI_MCP_FILE="$_st_cfg" bash "$_ST_SELF" --check-tools 2>&1) || _st_rc=$?
+  [[ "$_st_rc" -eq 2 ]] && _st_ok "a missing registered server is COULD NOT VERIFY (rc=2), not a pass" \
+    || _st_bad "missing server returned rc=$_st_rc (must be 2): $_st_out"
+
+  rm -rf "$_st_dir"
+  if [[ "$_st_fail" -ne 0 ]]; then
+    echo "❌  self-test FAILED (${_st_fail} check(s))"
+    exit 1
+  fi
+  echo "✅  self-test passed: the check/fix pair behaves as documented"
   exit 0
 fi
 

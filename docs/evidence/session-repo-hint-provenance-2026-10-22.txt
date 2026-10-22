@@ -1,0 +1,96 @@
+session-repo hint provenance — evidence
+captured-at : 1b343cf0  (the working tree's revision)
+generated-by: docs/evidence/session-repo-hint-provenance-2026-10-22.sh (this file wrote itself)
+pre-fix base: 17f4fb8e  (PINNED, immutable — the revision immediately before the fix)
+              extracted with 'git show', NOT read from the live deployed copy, so the
+              comparison stays discriminating and reproducible at ANY time.
+deployed    : ~/.hermes/plugins/governance-enforcer/__init__.py (the copy in force now)
+────────────────────────────────────────────────────────────
+
+1. The defect — the ROOT CAUSE of a lock scoped to the wrong repository
+   _note_session_repo (governance-enforcer) is documented as recording 'the repo this
+   session was last seen USING'. It learned it from the PATH ARGUMENTS of every tool
+   call, consulting
+
+       _PATH_ARG_KEYS = ("path", "file_path", "workdir", "cwd", "directory")
+
+   and RETURNING ON THE FIRST KEY PRESENT. So a bare file 'path' outranked an explicit
+   'workdir', and ANY call whose path argument landed in another repo re-homed the
+   session — including a pure READ. Measured on this host 2026-10-22: a single
+   search_files(path=<another repo>), made while surveying that repo, re-homed this
+   session. begin_change's _derive_repo_path then resolved source 0 to that repo, the
+   lock was recorded against it, the review scope judged ITS blobs, and (before
+   eb9a5edf) that lock authorised writes in ANY repo.
+
+   Reading a file is not evidence of WORKING in a repository.
+────────────────────────────────────────────────────────────
+
+2. The both-ways tests (tests/test_loop_gov_review_repo.py)
+   $ ~/.hermes-cortex/venv/bin/python3 -m pytest tests/test_loop_gov_review_repo.py -q
+tests/test_loop_gov_review_repo.py ................                      [100%]
+
+============================== 16 passed in 7.36s ==============================
+   rc=0   (0 = all pass, including the three new provenance tests and the 13 existing
+          ones — the new tool_name argument is optional, so every existing caller works)
+────────────────────────────────────────────────────────────
+
+3. DIFFERENTIAL PROBE (enforcement-change-safety Rule 23)
+   Three copies loaded in ONE process, driven with the SAME inputs against a throwaway
+   state dir (never live governance state):
+     pre-fix  = the pinned revision via 'git show' — the behaviour being replaced
+     deployed = the copy in force right now        — proves the deploy landed
+     repo     = the working tree                   — the fix under test
+   Each case starts with the session's hint ALREADY SET to 'proj' (except the
+   first-touch case), which is the situation that matters: the session knows its repo.
+   The pre-fix copy has no tool_name argument, so the probe calls it with its own
+   2-argument signature — that IS the pre-fix behaviour, not a probe artefact.
+
+  case                                      pre-fix  deployed     repo   verdict
+  -------------------------------------- ---------- --------- --------   -------
+  read of another repo (the bug)              other      proj     proj   CHANGED (the fix)
+  write in another repo (real work)           other     other    other   identical
+  explicit workdir in another repo            other     other    other   identical
+  workdir outranks a file path (ORDER)        other      proj     proj   CHANGED (the fix)
+  first touch, hint empty, read               other     other    other   identical
+
+  OK: the verdict changed ONLY where the defect was — a READ of another repo no
+      longer re-homes a session, while a WRITE there, an explicit workdir, and
+      first-touch learning are all unchanged. Deployed agrees with repo on every
+      row, so the fix is live.
+   rc=0   (0 = changed exactly where the defect was, and live)
+────────────────────────────────────────────────────────────
+
+4. Syntax + the A4 adversarial gate
+   plugins/governance-enforcer/__init__.py py_compile_rc=0
+   plugins/governance-enforcer/__init__.py A4_rc=0
+────────────────────────────────────────────────────────────
+
+5. What the fix does
+   • An EXPLICIT working directory (workdir/cwd) is consulted FIRST. It states where the
+     session IS; a bare file 'path' only says what it looked at. 'path' used to be
+     consulted first, so the weakest signal always won.
+   • A bare file/dir path counts only as evidence of WORK: the call must be write-class
+     (_is_write_tool — this module's canonical fail-closed classifier, whose READ_TOOLS
+     set already lists read_file and search_files), or the session must not know its repo
+     yet, which leaves first-touch learning from any path exactly as it was.
+   • The new tool_name argument is optional, so all three existing callers in
+     tests/test_loop_gov_review_repo.py keep working unchanged.
+────────────────────────────────────────────────────────────
+
+6. CORRECTION of a claim I made in the PREVIOUS cycle, carried here so the record is right
+   commit eb9a5edf's message, and the matching governed note, state that 'no writer for
+   [the hint] exists in either repo'. That is FALSE. The writer is _note_session_repo in
+   plugins/governance-enforcer/__init__.py. I had grepped for the hint FILENAME
+   (_session_repo_hint_path), which appears only at its def and two read sites, and
+   wrongly concluded from that absence that nothing wrote it. The correct method — find
+   the thing that WRITES the path, not the callers of the path's constructor — is what
+   located the actual writer, and it is what this cycle fixes.
+────────────────────────────────────────────────────────────
+
+7. What this capture covers
+   UNCOMMITTED at capture time only for the .txt itself; the code and test are committed.
+   HEAD at capture: 1b343cf0
+     ?? docs/evidence/session-repo-hint-provenance-2026-10-22.txt
+────────────────────────────────────────────────────────────
+
+end of evidence
