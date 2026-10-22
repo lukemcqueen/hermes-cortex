@@ -1,0 +1,19 @@
+# [cost/3] deployed-path proof — 2026-10-22 (cycle cost3-per-cron-cost-metrics)
+# commit under test: fee765c9  (captured-at: the revision the tree sat on when this ran)
+
+$ hermes cron run b3a26b57791a
+Triggered job: orch-weekly-cost-report (b3a26b57791a)
+  Next run: 2026-10-26T09:00:00+09:00
+  Ran now: succeeded.
+rc=0
+
+$ python3 -c 'read the live job entry'
+{'id': 'b3a26b57791a', 'name': 'orch-weekly-cost-report', 'script': 'orch-weekly-cost-report.py', 'no_agent': True, 'deliver': 'telegram:1270130526', 'enabled': True, 'last_status': 'ok'}
+
+$ grep -n collect_cost_metrics ~/.hermes-cortex/scripts/agent-push-metrics.sh   # deployed copy
+287:collect_cost_metrics
+298:collect_cost_metrics() {
+
+$ ls -l ~/.hermes-cortex/scripts/{cron-cost-metrics,orch-weekly-cost-report}.py
+-rwxr-xr-x 1 esther esther 6522 Oct 22 22:32 /home/esther/.hermes-cortex/scripts/cron-cost-metrics.py
+-rwxr-xr-x 1 esther esther 6500 Oct 22 22:32 /home/esther/.hermes-cortex/scripts/orch-weekly-cost-report.py
