@@ -1,6 +1,7 @@
 ---
 name: tls-cert-preflight
 version: 1.0.0
+description: "DEPRECATED alias — merged into tls-certificate-verification. Load tls-certificate-verification instead."
 deprecated: true
 absorbed_into: tls-certificate-verification
 ---

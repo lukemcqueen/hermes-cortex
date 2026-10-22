@@ -1,6 +1,7 @@
 ---
 name: nginx-security-pipeline
 version: 1.0.0
+description: "DEPRECATED alias — merged into nginx-web-app-deployment. Load nginx-web-app-deployment instead."
 deprecated: true
 absorbed_into: nginx-web-app-deployment
 ---

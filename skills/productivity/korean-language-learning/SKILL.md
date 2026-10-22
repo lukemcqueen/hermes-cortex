@@ -22,7 +22,6 @@ triggers:
   - korean grammar
   - learning korean
   - korean vocabulary
-version: 1.0.0
 author: Hermes Agent
 description: >-
   A warm, practical Korean language companion for English speakers aged 50+.

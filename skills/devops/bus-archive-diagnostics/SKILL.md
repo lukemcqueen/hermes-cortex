@@ -1,6 +1,7 @@
 ---
 name: bus-archive-diagnostics
 version: 1.0.0
+description: "DEPRECATED alias — merged into cortex-bus. Load cortex-bus instead."
 deprecated: true
 absorbed_into: cortex-bus
 ---

@@ -1,6 +1,7 @@
 ---
 name: messaging-gateway
 version: 1.0.0
+description: "DEPRECATED alias — merged into hermes-gateway-operations. Load hermes-gateway-operations instead."
 deprecated: true
 absorbed_into: hermes-gateway-operations
 ---

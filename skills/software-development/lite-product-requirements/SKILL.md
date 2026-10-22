@@ -1,5 +1,5 @@
 ---
-title: lite-product-requirements
+name: lite-product-requirements
 version: 1.0.0
 type: skill
 description: Concise 1-page PRD template for lightweight product requirements documentation

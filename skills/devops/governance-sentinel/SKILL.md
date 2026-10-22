@@ -1,6 +1,7 @@
 ---
 name: governance-sentinel
 version: 1.0.0
+description: "DEPRECATED alias — merged into loop-governance. Load loop-governance instead."
 deprecated: true
 absorbed_into: loop-governance
 ---

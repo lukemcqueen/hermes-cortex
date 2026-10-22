@@ -1,6 +1,7 @@
 ---
 name: auto-remediation-ecosystem
 version: 1.0.0
+description: "DEPRECATED alias — merged into auto-remediation. Load auto-remediation instead."
 deprecated: true
 absorbed_into: auto-remediation
 ---

@@ -2,7 +2,7 @@
 name: task-persistence
 version: 2.1.0
 category: devops
-description: Cross-session tasks via task-db.py or task_* MCP tools. v2: story/slices, paused, switch, bus-as-tasks, Telegram events.
+description: "Cross-session tasks via task-db.py or task_* MCP tools. v2: story/slices, paused, switch, bus-as-tasks, Telegram events."
 author: Hermes Cortex
 platforms: [linux, macos]
 aliases: [todo-persistence]

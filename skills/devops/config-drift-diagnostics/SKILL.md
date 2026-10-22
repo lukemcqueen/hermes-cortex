@@ -1,6 +1,7 @@
 ---
 name: config-drift-diagnostics
 version: 1.0.0
+description: "DEPRECATED alias — merged into deploy-load-verification. Load deploy-load-verification instead."
 deprecated: true
 absorbed_into: deploy-load-verification
 ---

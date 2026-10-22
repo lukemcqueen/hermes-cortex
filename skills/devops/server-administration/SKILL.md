@@ -1,6 +1,7 @@
 ---
 name: server-administration
 version: 1.0.0
+description: "DEPRECATED alias — merged into linux-server-hardening. Load linux-server-hardening instead."
 deprecated: true
 absorbed_into: linux-server-hardening
 ---

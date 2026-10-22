@@ -1,6 +1,7 @@
 ---
 name: proactive-system-scan
 version: 1.0.0
+description: "DEPRECATED alias — merged into maintenance-scan. Load maintenance-scan instead."
 deprecated: true
 absorbed_into: maintenance-scan
 ---
