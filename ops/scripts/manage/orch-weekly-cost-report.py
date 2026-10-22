@@ -19,13 +19,17 @@ skills/devops/llm-cost-optimization/references/fleet-cost-data-sources.md):
 Exit codes:
   0  report emitted, no breach (or no data — never a false alert)
   1  measured daily average is above the target: a FAILED run, deliberately, so
-     the breach is machine-visible rather than a quiet line. Consequence, verified
-     in the watchdog's own source: ops/scripts/health/agent-cron-failure-watchdog.py:40
-     is `CONSECUTIVE_FAILURE_LIMIT = 3  # consecutive errors before alert + pause`,
-     so three consecutive breaches leave this job PAUSED — which is itself the
-     escalation signal and shows up in the cron list rather than being silently
-     absorbed. (The earlier version of this docstring asserted the pause without
-     naming where it is enforced; finding ADV-13655-1 on cycle 13655.)
+     the breach is machine-visible rather than a quiet line. Consequence: the
+     failure watchdog pauses a job after three consecutive errors —
+     ops/scripts/health/agent-cron-failure-watchdog.py:40 is
+     `CONSECUTIVE_FAILURE_LIMIT = 3  # consecutive errors before alert + pause`.
+     Three consecutive breaches therefore leave this job PAUSED, which is itself
+     the escalation signal and shows up in the cron list rather than being
+     silently absorbed. The proof of that threshold travels with the claim:
+     docs/evidence/cost3-per-cron-cost-metrics/verify.txt section 5 prints the
+     `grep -n CONSECUTIVE_FAILURE_LIMIT` output with the line numbers, because the
+     watchdog file itself is outside this change's range. (Finding ADV-13655-1 on
+     cycle 13655: the first version asserted the pause without any pointer.)
 """
 
 from __future__ import annotations
