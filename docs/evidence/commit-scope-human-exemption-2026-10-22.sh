@@ -16,7 +16,14 @@ HOOKS_PATH="${HOOKS_PATH:-$HOME/.hermes-cortex/hooks}"
 OUT="${OUT:-$REPO/docs/evidence/commit-scope-human-exemption-2026-10-22.txt}"
 exec >"$OUT" 2>&1
 
-norm() { sed -e "s|$HOME|~|g" -e $'s/\033\\[[0-9;]*m//g'; }
+norm() {
+  # Strip ANSI colour in BOTH forms: a real ESC byte, and the LITERAL `\033[...m` text a shell
+  # script emits when it writes the escape sequence through echo. Terminal decoration is not
+  # content, and in a committed transcript it is unreadable noise.
+  sed -e "s|$HOME|~|g" \
+      -e $'s/\033\\[[0-9;]*m//g' \
+      -e 's/\\033\[[0-9;]*m//g'
+}
 say()  { printf '%s\n' "$*"; }
 sayn() { printf '%s\n' "$*" | norm; }
 rule() { printf '%s\n' "────────────────────────────────────────────────────────────"; }
