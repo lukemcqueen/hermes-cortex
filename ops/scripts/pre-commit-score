@@ -173,6 +173,24 @@ PROBE
     && _st_ok "the cortex repo ALLOWS a partial commit (the remedy actually works)" \
     || _st_bad "a partial commit in the cortex repo was refused — the remedy would be blocked"
 
+  # 4. WIRING. Every assertion above tests the DECISION; none of them can see how the hook acts
+  #    on it. An inverted call site (`if ! _commit_scope_guard`) silently ALLOWS exactly what the
+  #    guard just decided to refuse, and the decision tests stay green — measured on this host,
+  #    where the guard correctly returned 0 ("refuse") and the hook carried on to the next gate.
+  #    So the call site's shape is asserted too: this supplements the behavioural tests above,
+  #    it does not replace them.
+  _st_self="$(cd "$(dirname "$0")" 2>/dev/null && pwd)/$(basename "$0")"
+  grep -q 'if _commit_scope_guard "\$REPO_ROOT" "\$SANCTIONED_PIPELINE"; then' "$_st_self" \
+    && _st_ok "the call site acts on the verdict in the RIGHT direction" \
+    || _st_bad "the guard's call site is missing or not found in this file"
+  # Anchored to the START of a line, and matched as a CONSTRUCT rather than a bare literal: an
+  # unanchored pattern for this same string also matches THIS ASSERTION's own source, so the
+  # check reported an inverted call site in a file that had none (measured on this host). The
+  # call site is the only line that BEGINS with the inverted form.
+  grep -qE '^if ! _commit_scope_guard' "$_st_self" \
+    && _st_bad "an INVERTED call site is present — a refuse decision would be ignored" \
+    || _st_ok "no inverted call site present"
+
   rm -rf "$_st_dir"
   if [[ "$_st_fail" -ne 0 ]]; then
     echo "❌  self-test FAILED (${_st_fail} check(s))"
@@ -636,7 +654,12 @@ fi
 # computed above. The reasoning, the alternatives rejected and the measured index signal are in
 # `_commit_scope_guard` and `_commit_scope_verdict` at the top of this file, and the behaviour
 # is proven by `bash pre-commit-score --self-test`.
-if ! _commit_scope_guard "$REPO_ROOT" "$SANCTIONED_PIPELINE"; then
+# NOTE the direction: `_commit_scope_guard` returns 0 to REFUSE, so the call site must be
+# `if <guard>; then <refuse>` — NOT `if ! <guard>`. The inverted form silently ALLOWS what the
+# guard just decided to refuse: measured on this host, where the guard correctly returned 0 and
+# the hook carried straight on to the next gate. The self-test pins the shape, because the
+# function's own tests cannot see how it is invoked.
+if _commit_scope_guard "$REPO_ROOT" "$SANCTIONED_PIPELINE"; then
   echo ""
   if [[ "$(_commit_scope_verdict)" == "unknown" ]]; then
     echo "❌  COMMIT REFUSED — the git dir could not be resolved, so this commit's scope cannot"
@@ -654,6 +677,10 @@ if ! _commit_scope_guard "$REPO_ROOT" "$SANCTIONED_PIPELINE"; then
     echo "    A partial commit builds its own temporary index, so it CANNOT include anything"
     echo "    you did not name. See what is staged first:"
     echo "        git diff --cached --name-only"
+    echo ""
+    echo "    NOTE: \`git commit --amend\` is refused as well, EVEN WITH a pathspec — measured: git"
+    echo "    still uses the shared index for an amend, and it rewrites whatever HEAD is now, which"
+    echo "    in a shared tree may not be your commit. Land a NEW commit instead."
   fi
   echo ""
   echo "    No bypass flag — this is structural, not advisory."
