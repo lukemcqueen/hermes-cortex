@@ -131,7 +131,13 @@ and a merged skill serves better than two overlapping ones.
    is not a refusal to act: the tool compares whole LINES, so a paragraph that was
    REWRAPPED or condensed reports every one of its lines as a "drop". Collapse
    whitespace on both sides and word-diff instead — most REVIEW entries then show ZERO
-   repo-only word runs and are pure supersets in substance. Only a phrase genuinely
+   repo-only word runs and are pure supersets in substance. Make the copy DECIDABLE before making
+   it: run both sides through `difflib.SequenceMatcher` and collect the non-`equal` opcodes — at
+   most ONE line-dropping block (an in-place rewrite) plus insertions means the deployed side is
+   that content, so copy it; two or more dropping blocks means the newer copy genuinely REMOVED
+   content you must read first. Assert the count rather than eyeballing a diffstat, and keep the
+   assertion in the script so a later reconcile cannot quietly take a side it should have read.
+   Only a phrase genuinely
    absent from the deployed copy needs a decision, and the answer is often "superseded in
    place": a newer copy that CORRECTS a wrong claim (an obsolete design description, a
    rule reworded to include the mechanism the fleet now uses) must be landed AS-IS,
@@ -210,6 +216,36 @@ and a merged skill serves better than two overlapping ones.
    category and collides with the real one — and since the winner is readdir order, the phantom can
    win. Keep non-skill markdown out of the skill tree, and read a collision whose loser is a
    frontmatter-less `.md` as this shape rather than as a deliberate override.
+
+8. **A retired skill name is not done at the stub — sweep every REFERENCE to it, then guard it.**
+   A stub only helps a caller who already holds the old name; a reference in another skill's
+   prose or `related_skills` costs a wasted load BEFORE the redirect fires. A consolidation
+   pass therefore ends with a sweep and a check, not with the tombstone.
+   - **Sweep the two places a `SKILL.md`-only scan cannot see:** backticked names in
+     `references/` and `templates/`, and `related_skills` read as PARSED YAML — the list may
+     be nested under `metadata.hermes` or span several lines, so a single inline
+     `related_skills: [...]` grep pattern finds barely half the hits. Parse the frontmatter
+     and collect from BOTH locations.
+   - **Rewrite each hit to the stub's `absorbed_into`/`replaced_by` target, and require that
+     field on every stub.** With it the sweep is mechanical and assertable; without it every
+     hit is a judgement call about where the content actually went. Assert the replacement
+     COUNT per file, then re-scan for zero remaining.
+   - **Scope the guard to a CLOSED set.** Match only names that actually carry
+     `deprecated: true`, so the check cannot fire on prose that merely looks name-like. The
+     tempting version — "every `related_skills` entry must resolve inside this tree" — is
+     noisy: a skill can be provided from a tree you are not scanning, and some entries name a
+     TOOL rather than a skill. Precision is the feature; a guard that cries wolf teaches its
+     reader to scroll past it.
+   - **Check repeats PER LIST, not across merged lists.** A file may legitimately declare the
+     same entries at the top level AND under `metadata.hermes`; merging them reports a phantom
+     duplicate. The defect worth checking is a repeat WITHIN one list.
+   - **Scan for what the sweep LEFT BEHIND, not only for what it matched.** Redirecting
+     `old` -> `new` creates a duplicate list entry whenever the list already named `new`, and
+     collapses two related bullets onto one skill when both pointed at names redirecting to
+     the same target; a gloss describing the OLD skill then sits under the new name and must
+     be rewritten to match — the redirect moves the annotation too. An asserted match count
+     catches none of these, because they are consequences of a CORRECT replacement, so the
+     sweep needs its own second pass looking for them.
 
 ## Manifest Discipline
 

@@ -1,6 +1,6 @@
 ---
 name: doc-size-budget
-description: "Slim docs to byte targets (SOUL 10K, AGENTS gates) safely."
+description: "Slim docs and always-loaded skills to byte targets."
 version: 1.0.0
 author: Hermes Cortex
 license: MIT
@@ -78,6 +78,36 @@ the same file from memory while claiming to compress; byte count never changed.
    `cortex-update.sh` BEFORE `git push` (doc changes: the enforcement chain is
    commit → deploy → push).
 
+## Always-Loaded Skill Budget (the budget nothing enforces)
+
+SOUL/AGENTS have a ceiling the doctor enforces; the `always:` list in `skills.yaml` has none,
+and its bytes are paid by EVERY session of EVERY agent — so the set grows one well-justified
+paragraph at a time and nothing ever fails. Measure the set before touching it:
+
+```bash
+python3 - <<'EOF'
+import yaml
+from pathlib import Path
+repo = Path("<repo>")
+total = 0
+for name in yaml.safe_load(open(repo / "skills.yaml"))["always"]:
+    p = next((repo / "skills").rglob(f"{name}/SKILL.md"))
+    total += p.stat().st_size
+    print(f"{p.stat().st_size:7d}  {name}")
+print(f"{total:7d}  TOTAL  (~{total // 4} tokens per session)")
+EOF
+```
+
+- **Set a per-skill byte target explicitly, because nothing enforces one.** The outlier is the
+  budget problem, not a uniform trim: when one always-loaded skill holds more than half the
+  set's bytes, that skill is the fix. An always-loaded body carries the RULES; depth a session
+  needs only sometimes belongs in `references/`, which the loader does not read until asked.
+- **Land a reduction as MOVE-ONLY edits first, then reword in a separate pass.** A reviewer can
+  verify "the body shrank and the content is byte-identical at its new path"; moving and
+  rewriting in one commit makes neither checkable, which is how a trim gets deferred forever.
+- **Never reach a byte target by deleting a rule that changes behaviour.** That trades a
+  measurable cost for an unmeasurable one. Move it, cut redundant restatements, or cut prose.
+
 ## Pitfalls
 
 - **Consolidating trait bullets** seems like easy wins but permanently WARNs
@@ -99,4 +129,5 @@ the same file from memory while claiming to compress; byte count never changed.
   reverse drift`, no FAILs
 - `soul-merge.py --check` → exit 0 ("up to date")
 - `agents-doc-audit.py --repo . --json` → `missing_sections: []`
+- Always-set measured per skill AND in total, with no single skill dominating the total
 - `git log --oneline -1 origin/main` shows the pushed commit
