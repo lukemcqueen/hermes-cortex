@@ -236,7 +236,12 @@ does not apply.
 - **A range too wide for the whole-range review still closes — by RE-CALLING `end_change`, not by
   re-opening a cycle.** The refusal reads `⏳ Cannot close yet: N blob(s) of the push range still
   carry no review verdict`, and it names the unreviewed paths plus the per-close budget (15 blobs /
-  240s). Each call judges another handful — measured 11 → 7 → 3 → closed in four calls — verdicts are
+  240s). Each call judges another handful — measured 11 → 7 → 3 → closed in four calls on a SMALL range.
+  The per-call credit is small and roughly FIXED, about 4 blobs, so the cost scales with the
+  RANGE'S FILE COUNT rather than with the size of the change: a 115-file range took ~29 calls of
+  four apiece, and the stated 15/240s budget is not what one call achieves. That is the arithmetic
+  behind "close per slice" — a wide range costs an MCP round-trip per four files, so land a bulk
+  recovery in WAVES sized to that budget. Verdicts are
   keyed by blob CONTENT, so a retry CONTINUES rather than redoing, and `Cannot close yet` does NOT
   release the lock. Keep calling the same `end_change(task_id=…)` until it prints `🔓 … closed`; the
   receipt is written by THAT call. Never escape the loop by opening a fresh cycle — its window is
@@ -548,6 +553,18 @@ does not apply.
      explain" wastes the cycle — it is always the skill you just edited, OR a
      peer's in-flight skill work (never `cp` over a skill another session is
      mid-edit on — it is theirs to land, and its diff is the tell).
+     **A THIRD source writes skills NOBODY touched: a background lesson/curation pipeline writes
+     the DEPLOYED copies while you work.** Drift then appears on skills outside your change and
+     REAPPEARS after you reconcile them — the same two skills drifted three times in one session,
+     the last time mid-deploy. Treat it as routine maintenance, not as a failure of your change:
+     recover with `python3 ops/scripts/manage/reconcile-stranded-skills.py --apply`, which applies
+     the pure-superset class only and NAMES any file needing a real merge — a file whose deployed
+     side REPLACES lines must be merged by hand, after reading the removals to confirm each is a
+     stale lesson being rewritten rather than information being dropped. Then re-run
+     `check-skill-drift-parity.py` to regenerate the committed table and `--check` to confirm:
+     `STALE artifact - regenerate` means the recorded table no longer matches the live derivation,
+     and the checker refuses a stale artifact — so regenerate it in the SAME cycle as the deploy
+     that invalidated it.
      Quantify it before diagnosing: `python3 ops/scripts/manage/check-skill-drift-parity.py`
      prints a verdict plus the DEPLOYED-ONLY ("stranded") file list — content that exists
      only on the deployed copy because a lesson was written there and never copied back —

@@ -196,6 +196,33 @@ level the hook reports (grep the hook for `ADV_LEVEL` if unsure) — and check
 EVERY staged file, not just the one you changed most recently. `--gate` is the
 flag that decides blocking; a bare run reports findings without gating.
 
+### 9. `sql-injection` on dynamically-built SQL — write the LITERALS, and an f-string "fix" makes it worse
+
+The scanner flags SQL assembled at runtime and checks BOTH shapes independently: an
+f-string is **high**, and replacing it with concatenation returns the same line as
+**critical** ("built by string concatenation"). Escalating the finding is the normal
+outcome of a string-level fix, so `+` is not the remedy — check the gate again after
+fixing, because the escalation is invisible in a diff read.
+
+`sqlite3` cannot parameterise an identifier (a table or column name), so when the SQL
+must vary, stop varying it:
+
+- **Closed set → write the variants as literals.** A fixture needing a table in three
+  column orders gets three literal `CREATE TABLE` statements plus one literal
+  placeholder list, selected by key. Twenty lines of SQL beats an argument about who
+  calls it, and the guard holds by construction rather than by review.
+- **Identifiers that must stay dynamic → validate against the closed set and quote
+  explicitly** (`if name not in COLS: raise ValueError(...)`, then `'"' + name + '"'`),
+  so the interpolation is bounded by construction.
+- **A module CONSTANT interpolated into a statement is usually NOT flagged** — the
+  scanner cannot see a table-name constant as tainted — so one file passes while the
+  test fixture beside it blocks. Do not "fix" the passing file to match; read the
+  flagged line's actual input first.
+
+`--gate` turns on critical/high only, so medium `input-fuzzing` findings on test helpers
+do NOT block the commit: verify they are safe empirically (pattern 2) and stop, rather
+than restructuring a fixture to chase the static enumeration to zero.
+
 ## The LLM review gate — a DIFFERENT mechanism from the static scan
 
 The rules above fix the **static** `adversarial-verify.py` scan. The close of a
@@ -414,6 +441,16 @@ false.
    from the material that will be judged next time. Adding a comment is not satisfying a wrong
    finding by editing code: the finding's MECHANISM was wrong, but the visibility gap it stumbled
    into is real, and the pointer closes it.
+
+   **CHECK THE POINTER IS TRUE BEFORE YOU WRITE IT.** A demand like "state which route
+   references this script" is satisfiable by a route that does not exist — `grep '<dirname>/'
+   <the sibling file>` returning NOTHING means the file is unreachable from its own skill, so
+   the fix is to CREATE the route (list the family in the skill body) and then name it, not to
+   assert a route you never checked. The same test applies to a document that reads as an
+   observation: if no record of the incident exists, say in the file that it documents the
+   PATTERN, and give the reader the check that confirms it on their own case. The finding's
+   mechanism can be wrong while the gap it stumbled into is real, and this is the shape where
+   that gap is a genuine defect rather than a visibility problem.
 
 State the gap in the delivery too: a per-blob review is structurally unable to confirm anything
 about files it was not given, so a demand for coverage located in another file is not evidence that
