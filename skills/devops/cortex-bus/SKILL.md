@@ -60,6 +60,19 @@ Every `/api/pgmq/send` is validated at ingestion (2026-09-02, anti-poisoning/ant
 
 Implementation: `core/cortex_bus/validate.py` + `core/cortex_bus/ratelimit.py`, tests in `tests/test_bus_validate.py`. Sending messages: use `bus_send()` / the MCP inbox tools — they build conforming envelopes.
 
+## Inbox Message Decision Framework
+
+Classify each inbox message on two axes, then act per the matrix. **Priority** (error=None priority): `critical` | `urgent` | `normal` | `notification`. **Scope**: `Simple (<3 items)` | `Moderate (3–10)` | `Complex (>10)` | `Multi-agent`.
+
+| Prio → | Simple | Moderate | Complex | Multi-agent |
+|--------|--------|----------|---------|-------------|
+| critical | AUTO-ACT | AUTO-ACT | AUTO-ACT + notify | Delegate + notify |
+| urgent | AUTO-ACT | AUTO-ACT | AUTO-ACT + report | Delegate + report |
+| normal | AUTO-ACT | AUTO-ACT | Escalate | Escalate |
+| notification | Acknowledge | Acknowledge | Acknowledge | Forward |
+
+**After-action:** deliver what was done, how it was verified, the evidence, and the cycle ID.
+
 ## Diagnosing Bus State
 
 ### 1. Queue Overview

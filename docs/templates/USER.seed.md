@@ -1,7 +1,10 @@
 <!-- Part of Hermes Cortex. See docs/SECURITY.md for privacy. -->
 # User Profile — USER.md
 
-Your agent reads this on every turn. Keep it accurate and under **1,400 characters**.
+Your agent reads this on every turn. USER.md holds **personal context about the
+human** — who they are, how they prefer to work. Engineering standards and
+quality expectations (excellence, testing, review posture) live in
+**AGENTS.md**, not here. Keep this under **1,400 characters** and accurate.
 
 ---
 
@@ -28,7 +31,6 @@ Your agent reads this on every turn. Keep it accurate and under **1,400 characte
 ## Preferences
 
 - **Open-source stance**: prefer MIT/BSD, avoid AGPL
-- **Testing**: pytest, prefer testcontainers over mocks
 - **Deployment**: Docker Compose on single host
 
 ## Notes
