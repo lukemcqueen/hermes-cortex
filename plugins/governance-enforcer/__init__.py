@@ -2419,6 +2419,73 @@ def _check_pii_content_gate(tool_name: str, args: dict) -> Optional[dict]:
     }
 
 
+# ── Commit-scope gate: a BARE commit, refused in the agent's OWN commands ──────────
+# This is layer 1 of "spare humans, refuse agents", and its whole trick is PLACEMENT: a human
+# committing in a shell is not a tool call, so a human never reaches this function. Nothing is
+# inspected to decide who they are, because there is nothing to inspect — which matters because
+# this host has ONE human-capable unix account (verified in /etc/passwd), so any human-vs-agent
+# signal the agent could read it could also write.
+#
+# Layer 2 (the pre-commit hook) covers what this layer cannot see: a commit hidden inside a
+# script (`bash deploy.sh`), which no command-string match catches. That layer decides by
+# PROCESS ANCESTRY — the agent's git descends from `hermes`, a human's from `sshd`.
+#
+# WHY THIS LAYER EARNS ITS PLACE: `git commit --no-verify` skips the hook entirely, so the hook
+# can never refuse a bypassed commit. Here the command TEXT is visible before it runs, so a
+# typed bypass is refused while it is still just text.
+_COMMIT_BYPASS_TOKENS = ("--no-verify", "-n")
+_COMMIT_SCOPE_BARE_MSG = (
+    "❌  BARE COMMIT REFUSED — it would commit whatever is staged, not just your files.\n"
+    "    Several agents share one working tree and ONE git index, and a staged entry records\n"
+    "    nothing about which session staged it. Name the paths you changed:\n"
+    "        git commit -m 'your message' -- path/one path/two\n"
+    "    A partial commit builds its own temporary index, so it cannot include anything else."
+)
+_COMMIT_SCOPE_BYPASS_MSG = (
+    "❌  `git commit --no-verify` REFUSED — no bypass flags.\n"
+    "    It skips every pre-commit gate: the commit-scope guard, the secret-leak detector, the\n"
+    "    adversarial scan and the governance checks. Fix the underlying finding instead, or\n"
+    "    name your paths so the commit cannot sweep anyone's work:\n"
+    "        git commit -m 'your message' -- path/one path/two"
+)
+
+
+def _commit_segment_is_scoped(segment: str) -> bool:
+    """True when a `git commit` command NAMES paths, so it cannot sweep.
+
+    The accepted shape is git's own pathspec separator (`-- <paths>`) or `--only`. A token that
+    merely follows the message (`git commit -m x file.txt`) is deliberately NOT accepted: the
+    fleet's documented remedy is the `--` form, and failing closed on the ambiguous shape costs
+    one round trip that the refusal message spells out.
+    """
+    if re.search(r"(^|\s)--(\s|$)", segment):
+        return True
+    return bool(re.search(r"(^|\s)(-o|--only)(\s|$)", segment))
+
+
+def _check_commit_scope_gate(tool_name: str, args: dict) -> Optional[dict]:
+    """Refuse a bare commit, or a bypass-flagged commit, in the agent's terminal commands.
+
+    Returns None (pass through) or {"action": "block", "message": str}.
+    """
+    if tool_name != "terminal":
+        return None
+    command = str(args.get("command", "") or "")
+    # Judge the COMMAND only, never a heredoc BODY: a commit message legitimately quotes
+    # `git commit ...` — every evidence generator in this repo does — and reading those as
+    # commands would refuse the very commits that document the guard.
+    head = command.split("<<", 1)[0]
+    for segment in re.split(r"&&|\|\||;|\n|\|", head):
+        if not re.match(r"\s*git\s+commit\b", segment):
+            continue
+        tokens = segment.split()
+        if any(tok in _COMMIT_BYPASS_TOKENS for tok in tokens):
+            return {"action": "block", "message": _COMMIT_SCOPE_BYPASS_MSG}
+        if not _commit_segment_is_scoped(segment):
+            return {"action": "block", "message": _COMMIT_SCOPE_BARE_MSG}
+    return None
+
+
 def _check_adversarial_commit_gate(
     tool_name: str, args: dict, session_id: str,
 ) -> Optional[dict]:
@@ -2918,6 +2985,16 @@ def register(ctx):
             pii_result = _check_pii_content_gate(tool_name, args)
             if pii_result is not None:
                 return pii_result
+
+            # ── Commit-scope gate (layer 1) ──
+            # A BARE commit is refused here, in the agent's own command text, BEFORE it runs.
+            # Humans never reach this: a human committing in a shell is not a tool call, and that
+            # placement is the entire exemption — there is no human-vs-agent test to forge. It
+            # also refuses `--no-verify`, which the pre-commit hook can never see because that
+            # flag skips the hook entirely.
+            commit_scope_result = _check_commit_scope_gate(tool_name, args)
+            if commit_scope_result is not None:
+                return commit_scope_result
 
             # ── Adversarial commit gate ──
             # Before git commit/push of critical-system changes: require
