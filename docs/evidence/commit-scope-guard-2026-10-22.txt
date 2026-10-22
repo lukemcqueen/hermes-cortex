@@ -1,5 +1,5 @@
 commit-scope guard — evidence
-captured-at : a5538341  (the working tree's revision)
+captured-at : f4c3b6ed  (the working tree's revision)
 generated-by: docs/evidence/commit-scope-guard-2026-10-22.sh (this file wrote itself)
 deployed    : ~/.hermes-cortex/scripts/pre-commit-score  (the copy that actually runs)
 hooks path  : ~/.hermes-cortex/hooks  (core.hooksPath — set GLOBALLY on this host, so
@@ -25,7 +25,7 @@ hooks path  : ~/.hermes-cortex/hooks  (core.hooksPath — set GLOBALLY on this h
    $ bash ops/scripts/pre-commit-score --self-test
   PASS  git hands the hook a DIFFERENT index for a bare vs a partial commit
         bare=.git/index
-        partial=~/.hermes/cache/scratch/precommit-scope-selftest.gUnpyH/probe/.git/next-index-2881205.lock
+        partial=~/.hermes/cache/scratch/precommit-scope-selftest.ZQzGek/probe/.git/next-index-2884207.lock
   PASS  a partial commit leaves the UNNAMED file staged (it cannot sweep it)
   PASS  the repo's own index reads as BARE
   PASS  any other index reads as PARTIAL
@@ -71,8 +71,8 @@ hooks path  : ~/.hermes-cortex/hooks  (core.hooksPath — set GLOBALLY on this h
 3. LIVE proof in a NON-CORTEX repo — the operator's actual requirement
    A throwaway repo in the scratch dir with core.hooksPath pointed at the cortex hooks:
    covered by the hooks, but NOT hermes-cortex. Both directions are exercised for real.
-   repo under test : /home/esther/.hermes/cache/scratch/nonhc-guard.U0Rh7X (NOT hermes-cortex)
-   core.hooksPath  : /home/esther/.hermes-cortex/hooks
+   repo under test : ~/.hermes/cache/scratch/nonhc-guard.oXmGnJ (NOT hermes-cortex)
+   core.hooksPath  : ~/.hermes-cortex/hooks
 
    → BARE commit (must be refused):
      
@@ -142,7 +142,7 @@ hooks path  : ~/.hermes-cortex/hooks  (core.hooksPath — set GLOBALLY on this h
 8. The range this evidence belongs to
    UNCOMMITTED at capture time — the committed copy lands one commit after this run, so
    naming a commit here would be a claim the file cannot make about itself.
-   HEAD at capture: a5538341
+   HEAD at capture: f4c3b6ed
       M docs/evidence/commit-scope-guard-2026-10-22.sh
       M docs/evidence/commit-scope-guard-2026-10-22.txt
 ────────────────────────────────────────────────────────────

@@ -28,6 +28,10 @@ exec >"$OUT" 2>&1
 # is rewritten — host paths are normalised, and no line is added or removed.
 norm() { sed -e "s|$HOME|~|g" -e $'s/\033\\[[0-9;]*m//g'; }
 say()  { printf '%s\n' "$*"; }
+# sayn is for lines that EMBED a host path: `say` alone would emit the raw path, which the
+# secret-leak detector flags and which every sibling transcript normalises. Anything printing
+# a path goes through here.
+sayn() { printf '%s\n' "$*" | norm; }
 rule() { printf '%s\n' "────────────────────────────────────────────────────────────"; }
 
 say "commit-scope guard — evidence"
@@ -70,7 +74,7 @@ rule
 
 say ""
 say "3. LIVE proof in a NON-CORTEX repo — the operator's actual requirement"
-say "   A throwaway repo in the scratch dir with core.hooksPath pointed at the cortex hooks:"
+sayn "   A throwaway repo in the scratch dir with core.hooksPath pointed at the cortex hooks:"
 say "   covered by the hooks, but NOT hermes-cortex. Both directions are exercised for real."
 _live="$(mktemp -d "${TMPDIR:-/tmp}/nonhc-guard.XXXXXX")"
 (
@@ -82,8 +86,8 @@ _live="$(mktemp -d "${TMPDIR:-/tmp}/nonhc-guard.XXXXXX")"
   echo one > a.txt
   echo two > b.txt
   git add a.txt b.txt
-  say "   repo under test : $_live (NOT hermes-cortex)"
-  say "   core.hooksPath  : $HOOKS_PATH"
+  sayn "   repo under test : $_live (NOT hermes-cortex)"
+  sayn "   core.hooksPath  : $HOOKS_PATH"
   say ""
   say "   → BARE commit (must be refused):"
   git commit -m probe 2>&1 | norm | head -6 | sed 's/^/     /'
