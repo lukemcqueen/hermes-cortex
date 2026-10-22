@@ -65,6 +65,7 @@ On first install, `install.sh` Step 9 copies `docs/templates/SOUL.md` to `~/.her
 - Scripture Insights
 
 ### AGENTS.md (per project)
+- Excellence (core value — every action)
 - Agent Execution Contract
 - Loop Governance
 - Inbox Message Decision Framework

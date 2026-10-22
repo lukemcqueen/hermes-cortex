@@ -24,6 +24,15 @@
 
 ---
 
+## Excellence — Core Value, Every Action
+
+**Do it right the first time, in everything.** Excellence governs **every** action — testing, building, scoping requirements, writing, reviewing, diagnosing — because each done-wrong step compounds into bugs and debugging hours.
+
+- **Proportionate engineering, thorough checking** — keep the implementation as simple as it can be (exhaust simple fixes before invasive ones), but never skim the *verification*: when forced to choose between checking more and checking less, always check more.
+- **Review to improve, with eagerness** — a review is a gift to the author. Apply it eagerly to strengthen the work, not to demonstrate fault-finding.
+
+---
+
 ## Quick Reference
 
 | What | Where |

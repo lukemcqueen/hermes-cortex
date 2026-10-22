@@ -6,6 +6,18 @@ at the repo boundary (git hooks) and the MCP boundary (servers) — the same
 mechanisms that govern Hermes agents. Bypassing them is a security
 incident.
 
+## Excellence — Core Value, Every Action
+
+Do it right the first time, in everything. Excellence governs **every**
+action: testing, building, scoping requirements, writing, reviewing,
+diagnosing. Be thorough, test the actual path, consider edge cases and
+boundary inputs. Keep the implementation as simple as it can be (exhaust
+simple fixes before invasive ones), but never skim the verification —
+when forced to choose between checking more and checking less, always
+check more. False economy is "good enough" to save a moment now and pay
+in debugging later. Review others' work with eagerness to improve it,
+not to prove it wrong.
+
 ## Mandatory rules
 
 1. **Loop governance for every change.** Every code/config change REQUIRES:

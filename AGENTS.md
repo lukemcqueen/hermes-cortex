@@ -10,6 +10,13 @@
 
 ---
 
+## Excellence — Core Value, Every Action
+
+**Do it right the first time, in everything** (Execution Contract 1, 2, 17, 18). Excellence governs **every** action — testing, building, scoping, writing, reviewing, diagnosing — because each done-wrong step compounds into bugs and debugging hours.
+
+- **Proportionate engineering, thorough checking** — keep the implementation as simple as it can be (exhaust simple fixes before invasive ones, per SOUL P11), but never skim the *verification*: when forced to choose between checking more and checking less, always check more.
+- **Review to improve, with eagerness** — a review is a gift to the author. Apply it eagerly to strengthen the work, not to demonstrate fault-finding.
+
 ## Core Concepts
 
 Public installer + skill set for [Hermes Agent](https://hermes-agent.nousresearch.com) — Ollama, mycortex, Langfuse, Dashboard, brain dirs, sync daemon. Key dirs: `docs/`, `ops/install/`, `ops/scripts/`, `~/.hermes/skills/`. Principles: two-repo (public + private), PII-scrubbed, pointer memory (MEMORY.md ~2.2K → mycortex), state routing; per-profile `mycortex_reader_<profile>` roles. See `docs/design/mycortex-multi-tenancy.md`.
@@ -34,7 +41,7 @@ Every session: read the skills manifest — `$HOME/.hermes-cortex/skills.yaml` (
 10. **Use tools, not descriptions** — tool calls or final result in every response.
 11. **Score every change** — logged to loop-governance DB; pre-commit hook auto-cycles + adversarial gate (A2/A4) on staged scripts. `--no-verify` is a logged bypass — never ship a hook-rejected change with it.
 12. **Tests/TDD/scoring are the default** — opt-outs only: `"skip tests"`, `"read-only"`, `"throwaway prototype"`, `"just check/look at"`.
-13. **DOGFOOD EVERY CHANGE (enforced by doctor)** — a script change isn't complete until the DEPLOYED copy ran its REAL invocation: `cortex-update.sh` then `cronjob action='run'` (manual runs don't update `last_status`); prompt changes go to LIVE jobs.
+13. **DOGFOOD EVERY CHANGE (enforced by doctor)** — a script change isn't complete until the DEPLOYED copy ran its REAL invocation: `cortex-update.sh` then `cronjob action='run'` (manual runs don't update `last_status`); prompt changes → LIVE jobs.
 14. **Tag follow-ups** — `pending` todo, finish current work, return.
 15. **Pull before push** — `git pull --rebase origin <branch>`.
 16. **Never print secrets** — `$(cat <file>)` subshell only; no inline `printf`/`echo`/`-u "user:pass"`.
@@ -49,8 +56,8 @@ Every session: read the skills manifest — `$HOME/.hermes-cortex/skills.yaml` (
 25. **Self-test gate** — `hc send` refuses without `--self-tested`; no bare `pass`.
 26. **Skill stub guard** — cortex-update refuses to overwrite a full skill with a repo stub; doctor FAILs on stubs. Recovery: `agent-skill-stub-audit.py --send` → bus `skill-stub-recovery` → orchestrator → cortex-update. Never hand-fix from memory.
 27. **Gateway restart for enforcer changes** — running gateway may hold the old in-memory enforcer; verify `Plugin content`; restart from a separate shell (NOT inside the gateway — blocked).
-28. **State it once, then move** — after a finding/plan is established, never re-derive or re-announce it on later turns; reference it in one short clause and take the next action. Restating the same conclusion before every tool call burns tokens without progress.
-29. **Claim/verify protocol (task model v3)** — workers `claim` a pending slice before working it (`task-db.py claim <id>`); never improvise strategy on a slice with a plan — follow the plan, and `unclaim` with the tool gap named if blocked. `report <id>` with evidence moves the slice to review; ONLY the orchestrator `verify`s (approve → completed, reject → back to in_progress with the gap). Never mark a slice completed without verified evidence — a self-reported done is a claim, not a fact.
+28. **State it once, then move** — once a finding/plan is established, never re-derive it: reference it in one short clause and take the next action.
+29. **Claim/verify protocol (task model v3)** — workers `claim` a pending slice before working it (`task-db.py claim <id>`); never improvise on a slice with a plan — follow it; `unclaim` with the tool gap if blocked. `report <id>` with evidence → review; ONLY the orchestrator `verify`s (approve → completed, reject → in_progress). Never mark a slice completed without verified evidence.
 
 ---
 
@@ -62,22 +69,9 @@ Before: `survey-before-action` (search_files → map scope → skill_view). Afte
 
 Your change runs in more places than your session. Name all three before calling it done:
 
-1. **macOS** — fleet hosts run **bash 3.2** and BSD userland. Run `python3 tests/test_shell_portability.py`
-   (static rule + `bash -n` under a real bash 3.2). **Never put a heredoc inside `$( )`**: one
-   apostrophe in the body makes 3.2 refuse to parse the WHOLE script while bash 5 parses it happily,
-   so it ships green on Linux and blocks every commit on a Mac (measured 2026-10-20: the
-   prepare-commit-msg hook — rc=2 under 3.2, rc=0 under 5.2). Also avoid `grep -P`, `declare -A`,
-   `mapfile`, `${var,,}`, `sed -i` with no suffix, `date -d`, `readlink -f`, bare `sha256sum`, bare
-   `timeout`. Never "fix" this by deleting the apostrophe — take the heredoc out of the substitution.
-2. **Two sessions in ONE repo** — a host has ONE git identity, so `git log --author` cannot tell
-   sessions apart. Never blanket-stage (`git add -A`), revert, reset, or deploy beside a peer's
-   uncommitted work; when a peer holds an open cycle, stand down rather than race it. Attribute
-   commits with the `Cortex-Session:` trailer the prepare-commit-msg hook writes, and treat a commit
-   with NO trailer as in-scope (fail closed), never as someone else's.
-3. **Repos that are not hermes-cortex** — `core.hooksPath` is global, so your hook runs in every repo
-   on the host, client projects included. Scope cortex-only gates to the cortex repo, resolve tools
-   repo-local FIRST then `$HOME/.hermes-cortex/scripts/`, and keep a shared hook's every degradation
-   path ending in `exit 0` unless it is a genuine universal gate.
+1. **macOS** — fleet hosts run **bash 3.2** + BSD userland. Run `python3 tests/test_shell_portability.py`. Hard bans: heredoc inside `$( )` (breaks 3.2 parsing outright — take it out of the substitution, never delete the apostrophe), `grep -P`, `declare -A`, `mapfile`, `${var,,}`, `sed -i` (no suffix), `date -d`, `readlink -f`, bare `sha256sum`, bare `timeout`. Never "fix" a 3.2 refusal by deleting the offending character.
+2. **Two sessions in ONE repo** — one host = one git identity, so `git log --author` cannot tell sessions apart. Never blanket-stage (`git add -A`), revert, reset, or deploy beside a peer's uncommitted work; stand down rather than race a peer's open cycle. Attribute commits with the `Cortex-Session:` trailer; a commit with NO trailer is in-scope (fail closed).
+3. **Repos that are not hermes-cortex** — `core.hooksPath` is global, so your hook runs in every repo, client projects included. Scope cortex-only gates to the cortex repo, resolve tools repo-local FIRST then `$HOME/.hermes-cortex/scripts/`, and keep a shared hook's degradation paths ending in `exit 0` unless it is a genuine universal gate.
 
 ## Loop Governance
 
@@ -87,42 +81,22 @@ Your change runs in more places than your session. Name all three before calling
 
 ## Bus Message Contract
 
-Every `/api/pgmq/send` is validated at ingestion — violations get **400 + reason** (or **429** over quota):
-
-- **Envelope keys (allowlist):** `from` `to` `subject` `body` `correlation_id` `timestamp` `priority` `type` — anything else is rejected (no smuggling)
-- **`from` MUST be your authenticated agent name** — spoofed senders are rejected
-- **`subject`:** UPPER_CASE protocol name (`EXEC`, `PING`, `DOCTOR_TEST`, …)
-- **Limits:** 64 KiB max/message · 600 sends/hr/agent (`CORTEX_BUS_RATE_LIMIT_PER_HOUR` tunable)
-- **`workflow_step_result`** queue uses the workflow schema (`workflow_id` `step_id` `status` `result` `error`) — no envelope needed
-
-Full schema: `skills/devops/cortex-bus/SKILL.md`.
+Every `/api/pgmq/send` is validated at ingestion — **400 + reason** on violation, **429** over quota. Envelope keys are allowlisted (`from` `to` `subject` `body` `correlation_id` `timestamp` `priority` `type`); `from` must be your authenticated agent name; `subject` is an UPPER_CASE protocol name; 64 KiB max/message · 600 sends/hr/agent. Full schema + rules: `skills/devops/cortex-bus/SKILL.md`.
 
 ---
 
 ## Inbox Message Decision Framework
 
-| Axis | Values |
-|------|--------|
-| **Priority** | critical | urgent | normal | notification |
-| **Scope** | Simple (<3) | Moderate (3-10) | Complex (>10) | Multi-agent |
+Classify each message on **Priority** (critical | urgent | normal | notification) × **Scope** (Simple <3 | Moderate 3–10 | Complex >10 | Multi-agent), then AUTO-ACT / DELEGATE / ESCALATE per the matrix in `skills/devops/cortex-bus/SKILL.md`.
 
-| Prio → | Simple | Moderate | Complex | Multi-agent |
-|--------|--------|----------|---------|-------------|
-| critical | AUTO-ACT | AUTO-ACT | AUTO-ACT + notify | Delegate + notify |
-| urgent | AUTO-ACT | AUTO-ACT | AUTO-ACT + report | Delegate + report |
-| normal | AUTO-ACT | AUTO-ACT | Escalate | Escalate |
-| notification | Acknowledge | Acknowledge | Acknowledge | Forward |
-
-**After-action:** Deliver what, how verified, evidence, cycle ID. See [`docs/setup-reference.md`](docs/setup-reference.md).
+**After-action:** deliver what, how verified, evidence, cycle ID. See [`docs/setup-reference.md`](docs/setup-reference.md).
 
 ## Doc Freshness
 
-| Layer | What | Who | When |
-|-------|------|-----|------|
-| Weekly audit | Check mandatory sections | Moses | Mon 7am KST |
-| Fleet broadcast | FLEET_NOTICE after any fleet-wide change — see `skills/devops/fleet-commands/SKILL.md` "Fleet Broadcast After Fleet-Wide Changes" | Orchestrator (Moses/Esther) | On change |
-| Soul refinement | Fill gaps | Each agent | Daily 23:00 |
-| Session start | Read AGENTS.md + SOUL.md | Each agent | Every session |
+- **Weekly audit** (Mon 7am KST, Moses): check mandatory sections.
+- **Fleet broadcast**: FLEET_NOTICE after any fleet-wide change — see `skills/devops/fleet-commands/SKILL.md`.
+- **Soul refinement** (daily 23:00): fill gaps.
+- **Session start**: read AGENTS.md + SOUL.md.
 
 ---
 
