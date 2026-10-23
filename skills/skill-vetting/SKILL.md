@@ -89,6 +89,15 @@ but upstreaming priority is LOW. Fleet evaluation (orch-skill-evaluate):
 2. `bash -n` / `py_compile` on any scripts
 3. `secret-leak-detector.sh` clean before committing to the repo
 4. Doctor `Skills manifest` checks pass after deploy
+5. **After deploying, count the files in the DEPLOYED skill dir and compare with
+   the repo's.** A multi-file skill can deploy PARTIAL and nothing reports it: the
+   loader is happy (SKILL.md parses), the doctor is green, and only the skill's own
+   relative links are broken. Measured 2026-10-23: a 20-file skill deployed exactly
+   ONE file, so all six of its phases pointed at companions no host had. The deploy
+   copies `SKILL.md`, `*/references/*` and `*/scripts|templates/*` — a companion
+   sitting BESIDE SKILL.md is the shape that gets dropped. Compare
+   `find <deployed>/<cat>/<name> -type f | wc -l` against the same count in the repo
+   and `diff -rq` the two trees; a skill is not installed until the counts match.
 
 ## Installing a third-party skill (approved)
 
