@@ -1,0 +1,31 @@
+# [cost/4] deployed-path check
+captured-at: 89776737
+re-run: bash ops/evidence/cost4-host-cost-adapter-deploy-2026-10-24.sh
+
+── 1. the DEPLOYED copy is the repo copy, modulo the deploy banner ──
+$ cmp after stripping leading comment/blank lines on BOTH sides
+repo      : ~/hermes-cortex/ops/scripts/manage/cron-cost-metrics.py 3ad5338e3ec005f4
+deployed  : ~/.hermes-cortex/scripts/cron-cost-metrics.py 3ad5338e3ec005f4
+identical modulo the banner: True
+carries the change (--json-summary present): True
+rc=0 (0 = the running copy IS this change)
+
+── 2. the DEPLOYED copy, --json-summary, on this host's live log ──
+$ python3 ~/.hermes-cortex/scripts/cron-cost-metrics.py --json-summary --since 2026-10-06
+rc=0
+stderr bytes: 0   stdout bytes: 4141
+agent     : esther
+rows      : 1777 skipped: 0
+per_day   : 18 days, last: {'date': '2026-10-23', 'fires': 22, 'tokens': 62262577.0}
+per_job   : 15 rows (omitted 6 ), top: 1954deb5ad76 38 fires
+spend     : available True
+langfuse  : {'checked': True, 'present': True, 'status': 200}
+
+── 3. the UNIVERSAL producer path is unchanged — --prometheus still emits ──
+$ python3 <deployed> --prometheus --agent <agent>   (what agent-push-metrics.sh calls)
+rc=0
+series bytes: 8682   stderr bytes: 0
+tokens_total lines: 37
+cost_available line: hermes_cron_cost_available{agent="esther"} 1
+
+# generated-by: this script (it wrote this file itself; stdout is not retyped)
