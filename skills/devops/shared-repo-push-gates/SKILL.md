@@ -907,6 +907,15 @@ written while every code path looked correct.
   sweeps in whatever else is staged, which is exactly what the bare-commit gate exists to prevent.
   An empty `git diff --cached --name-only` right after a refused commit means the index is clean —
   re-stage rather than re-diagnosing, since a peer session sharing the tree can reset it too.
+  **A SEMICOLON (or `|`, `&&`, or newline) IN THE COMMIT MESSAGE makes a correctly-scoped commit read
+  as BARE, and the refusal then looks like a staging problem.** The gate judges the raw command TEXT
+  and splits it on `;`, `|`, `||`, `&&` and newlines BEFORE looking for the `-- <paths>` separator, so
+  a message containing any of those cuts the command at the punctuation and the scan of the tail
+  segment — the one carrying `-- path` — never runs the pathspec match
+  (measured 2026-10-23: `git commit -m '…parity can regress same-day; cortex-update.sh lives at
+  ops/scripts' -- <path>` was refused twice, identically, while the same command with a `+` instead of
+  the `;` committed on the first try). Removing the punctuation from the message is the fix; do NOT
+  re-stage or re-diagnose the index, and do not reach for `-o/--only` — the message is what is wrong.
 
 ## Verification
 
