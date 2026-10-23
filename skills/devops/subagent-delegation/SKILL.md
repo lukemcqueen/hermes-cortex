@@ -54,12 +54,14 @@ parallel `delegate_task` subagents — not sequential self-prompting:
 1. **Write one design brief first** — the single source of truth every role
    reads (plus existing research docs).
 2. **Two waves, not one.** Design roles first (Elicit, Architect,
-   Domain/DevEx) writing to `docs/party/<role>.md`; then critique roles
-   (Security, SRE, Product, QA) pointed at those files. Critics must critique
-   the actual design, not a strawman re-derivation of it.
-3. **File-per-role, summary-only return.** Each child writes its full section
-   to its file and returns a one-paragraph summary; the parent synthesizes the
-   weighted matrix / recommendation itself — never delegate the synthesis.
+   Domain/DevEx); then critique roles (Security, SRE, Product, QA) pointed at those sections.
+   Critics must critique the actual design, not a strawman re-derivation of it. In a governed repo
+   the children cannot WRITE those files themselves unless the brief carries the load-and-lock
+   sequence (see the reviewer section below) — otherwise have each return its section as text and
+   write the files yourself.
+3. **Section-per-role, summary-only return.** Each child returns its full section plus a
+   one-paragraph summary; the parent synthesizes the weighted matrix / recommendation itself —
+   never delegate the synthesis.
 4. **Pass exact read paths + output path** in each child's context; children
    know nothing of the parent conversation.
 
@@ -91,11 +93,18 @@ three extra rules apply:
 A review child sees a bounded window — its own context, a truncated diff, no terminal — so its
 findings are claims to verify, not conclusions to act on:
 
-- **One concern per child, exact read paths in, one scratch output file out.** Two focused roles
+- **One concern per child, exact read paths in, one output out.** Two focused roles
   beat one general reviewer (e.g. the process/evidence side and the technical-correctness side),
-  and each must be told explicitly not to duplicate the other's mandate. Write review output under
-  the scratch dir, never into the repo: a child that writes repo files needs a governance lock it
-  cannot see, and a child that edits can also fix its own objections.
+  and each must be told explicitly not to duplicate the other's mandate.
+- **A child cannot write ANY file — not even to the scratch dir — without a governance lock.** The
+  write gate is keyed on the TOOL CLASS, not on the path, so "write it outside the repo" does not
+  exempt it: measured, two children dispatched for a design pass were both refused, one after the
+  other, and returned their artifacts as TEXT instead. Two workable shapes, pick one in the brief:
+  (a) put the full governance sequence in the child's context (load the 7 always-skills in one turn →
+  `cache_search` → `begin_change` → work → `feedback_accept` → `end_change`) when it must persist an
+  artifact; or (b) tell it plainly to RETURN THE FULL TEXT as its final answer and not to fight the
+  gate, which costs nothing for a design note, a review or a slice list. Do not write a brief that
+  assumes the scratch write will land.
 - **Classify every finding before acting: confirmed / refuted-by-measurement / environment.** Fix
   only the confirmed ones; for a refutation state the measurement and change no code, because
   "fixing" a non-defect to appease a finding is a defect in itself. A finding about the

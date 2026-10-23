@@ -12,6 +12,16 @@ metadata:
     related_skills: [loop-governance, governance-lock-lifecycle, two-hard-rules]
 ---
 
+## A window cannot demand another window's content
+
+A per-blob window shows ONE file, so "commit the sibling's test bodies here" and "commit the
+implementation here" are unsatisfiable by construction — and the refusal count RISES as the worker
+answers it. Fix the reviewer's CONSTITUTION (prompt template) and pair the rule with a structural fact
+the window can show; never keep editing the judged files. A template edit also changes the rules
+revision, which RE-SENDS the blobs the old rules refused — that is the unblock for a stuck range.
+Terminal exit, the pinning test, and the measure-before-you-build recipe:
+`references/reviewer-policy-two-windows.md`.
+
 ## No resolvable push range means GENERIC feedback, never a whole-history demand
 
 When the push base cannot be resolved — no repo, no remote, or a base that fell back to the root
@@ -112,6 +122,22 @@ that works is a comment in the judged file naming the covering tests beside the 
 (`COVERED BY tests/test_x.py::test_a, ::test_b`), which makes the demand answerable from the material
 alone. Prefer that to touching the sibling: touching it changes a blob sha and nothing else.
 
+**…and the pointer BACKFIRES when the complaint is that the window cannot see the other file at
+all.** Measured: adding `COVERED BY tests/…::test_name` pointers to a judged file RAISED the blocking
+count from 4 to 9, all of one class — the pointer handed the reviewer a test id to demand the BODY of,
+and the test file's own window demanded the implementation in return. When two files prove each other
+(an implementation and its test file), no single-blob window can hold both, so the demand is
+unsatisfiable BY CONSTRUCTION and no edit to either file can clear it. Read the CLASS as the defect,
+not the pointer: the pointer works when the window can RESOLVE it (the sibling list names that test),
+and is useless when the complaint is that the other file is not visible at all.
+
+**Two rounds of the SAME class = stop editing the judged files.** Record the class with its
+measurement (`record_issue`), release the cycle terminally — `advance_task_state(new_state=
+"cancelled", reason=…)`; a terminal task holds nothing and an already-scored cycle leaves no PENDING
+leak — and fix the reviewer's constitution or the verdict schema in its OWN governed change. Every
+edit also buys a fresh review of a NEW blob, so the rounds are not free: a count that RISES while the
+class stays the same is the signal, not a reason to try one more wording.
+
 ## A blocking verdict is keyed to blob CONTENT — a file whose fix landed in a SIBLING must change
 
 `_blobs_with_recorded_verdict` skips content that already has a verdict, and the reasoning is sound
@@ -176,7 +202,11 @@ A bare note is refused: pass scores, or an explicit `unscored_reason`.
 finished, verified work is recorded as e.g. `completeness=10, quality=0, progress=0 → composite 4.0`.
 Nothing downstream complains — the cycle closes and the bad number sits in the record for any later
 reader, and any metric over composites reads it as a poor cycle. So check the returned line names all
-three values before moving on. It is CORRECTABLE while the session is live: re-issue
+three values before moving on — **the RECORD is the evidence, not the call.** Measured: a call that
+passed all three was stored as `completeness=8, quality=0, progress=0 → composite 3.2`, and
+re-issuing the SAME cycle with the same values then reported `8.0/8.0/8.0 → composite 8.0`. So read
+the returned line every time and re-issue when it disagrees with what you passed, rather than
+explaining the number afterwards. It is CORRECTABLE while the session is live: re-issue
 `feedback_accept` for the SAME cycle id with all three (`MOVE_ON → MOVE_ON`, composite updated and
 reported). Do that rather than explaining the number afterwards — the reflection note cannot fix a
 wrong score, and re-scoring is cheaper than the confusion it prevents.
@@ -561,6 +591,11 @@ repo state, audited range, the task's description, the diff stat, and the diff:
   evidence is fixed by committing the evidence, and only a finding that is right about the code is
   fixed by editing it. Editing working code purely to unblock a refuted finding is the habit this
   avoids — the diff then carries a change nobody asked for and the note has to explain it.
+  **A CLEAN re-review does NOT mean the close will pass.** `rereview_change` re-judges at CYCLE level
+  (the `adversarial_reviews` row) while `end_change` then runs the PER-BLOB pass, whose verdicts are
+  keyed to blob content. Measured: a CLEAN `rereview_change` was followed immediately by an
+  `end_change` refusal on per-blob findings — expected, not a malfunction. Do not re-run the
+  re-review: change the blob (a new blob is judged fresh) or take the terminal exit.
   **If `rereview_change` is not in the running daemon** (it answers `Unknown tool:`
   because the MCP server predates the deploy — see Pitfalls), the recovery is the
   same end state by the ordinary path: re-issue `feedback_accept` with the evidence
