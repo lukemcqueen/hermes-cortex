@@ -343,6 +343,32 @@ real commit:
    awk '/^REPO_ROOT=/{p=1} p{print} /Reflexion gate/{exit}' \
      ops/scripts/pre-commit-score > /tmp/guard-block.sh
    ```
+   **Extracting a whole FUNCTION needs brace-matching, not a section marker.** A
+   later pass frequently lives INSIDE the function you are testing, so stopping at
+   that pass's comment returns an unterminated function: bash answers
+   `syntax error: unexpected end of file`, every assertion then fails for the wrong
+   reason, and the transcript reads exactly like the defect under test. Match to the
+   first line that is a bare `}` at column 0 — function bodies are indented and
+   nested blocks close with `fi`/`esac`, so a column-0 brace is the function's own:
+   ```python
+   for line in src.splitlines(keepends=True):
+       if not inside and line.startswith("sync_skills() {"): inside = True
+       if not inside: continue
+       out.append(line)
+       if line.rstrip("\n") == "}": break          # the function's own close
+   else:
+       raise AssertionError("could not brace-match the function")
+   ```
+   **The extracted text DEFINES the function — you must also INVOKE it.** A probe
+   that prepends a stub preamble plus the definition runs nothing, finds an empty
+   result, and reports that emptiness as the defect. Append the call to the block
+   you execute.
+   **Assert against the real line, including its quoting.** An assertion written
+   from memory (`assert "-name SKILL.md" in block`) fails on CORRECT code when the
+   source quotes the argument (`-not -name "SKILL.md"`); use a regex tolerant of the
+   quotes (`-not\s+-name\s+"?SKILL\.md"?`) or assert on a flag alone. A source
+   guard that fails on correct code is worse than none — it teaches the next reader
+   to distrust the suite.
 2. **Prepend a stub preamble** forcing the branch you can't reach:
    ```bash
    set -euo pipefail

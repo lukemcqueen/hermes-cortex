@@ -154,6 +154,18 @@ and invalidates the receipt, so push immediately after closing. Full detail:
   blocks paths a plain `git diff HEAD...origin/main` shows no collision in. The only
   sanctioned moves are to wait for that session to land its own work, or to report the
   blocking paths and ask; never unstage, stash or commit theirs to clear it.
+  **Prove the diagnosis before you touch anything: the paths it names need not exist in
+  `origin/main` AT ALL.** `git ls-tree --name-only origin/main -- <those paths>` printing
+  nothing (while `git status --short` shows them ` A`) is the proof the INDEX is the cause and
+  there is no real collision — do not go looking for an incoming edit that does not exist, and
+  do not read it as a worktree problem.
+  **With the operator's EXPLICIT authorisation to take the peer's work over, the clear is
+  `git reset -q -- <paths>` — index only.** It leaves the worktree content byte-identical (so
+  nothing is lost, unlike a stash) and the paths become untracked, which no longer blocks a
+  merge that does not touch them; verify with `git status --short` that they read `??` and the
+  files are still on disk before merging. Keep the unattended default above (wait or ask): this
+  carve-out needs a human saying the work is theirs to land, and it does not license a stash,
+  a `checkout`, or committing someone else's content.
   **Publishing meanwhile is a LANDING BRANCH, which never touches the blocked checkout:**
   `git worktree add --detach /tmp/land origin/main`, cherry-pick your own SHAs onto it in
   order, run the suites THERE, then `git push origin HEAD:main` from that clean tree. Give
@@ -246,6 +258,18 @@ does not apply.
   release the lock. Keep calling the same `end_change(task_id=…)` until it prints `🔓 … closed`; the
   receipt is written by THAT call. Never escape the loop by opening a fresh cycle — its window is
   empty and its receipt hollow (the rule directly above).
+- **The close review's own SCOPE NOTE is a pre-close checklist — satisfy it BEFORE calling
+  `end_change`, because it tells you what the per-blob pass will ask for.** Read it as a to-do
+  list, not as commentary: a blob that CITES a measurement must point at its record (the cycle
+  id, the evidence path) instead of asserting the number; a blob that NAMES another file must
+  state that sibling's CONTRACT in place, because the sibling is judged in its own window and the
+  reviewer cannot follow a reference; a blob that CARRIES A DATE must say where the fact is
+  recorded. Answering these first costs one edit; answering them after a refusal costs a
+  round-trip per blob and re-runs the whole pass.
+  **Add the CONTRACT line by REGENERATING the transcript, never by hand-editing it** — re-run the
+  battery/emitter with the added header so the file is still the run's own output; a hand-edited
+  transcript is a transcription, and byte-identity with the run is the whole of its evidential
+  value. Regeneration is cheap and the numbers come out the same.
 - **A claim the reviewer cannot check from the window is a HIGH `unverified-claim` finding
   that refuses the close — commit the ARTIFACT, never cite it in prose.** The reviewer sees
   the range's diff plus your note, and nothing else: "ran the suite (N passed)", "dogfood
@@ -561,6 +585,22 @@ does not apply.
      the pure-superset class only and NAMES any file needing a real merge — a file whose deployed
      side REPLACES lines must be merged by hand, after reading the removals to confirm each is a
      stale lesson being rewritten rather than information being dropped. Then re-run
+     **The NAMED `DROP` is usually a FALSE POSITIVE — check it by PHRASE before you hand-merge.**
+     A deployed copy that REWROTE a paragraph reports as a line REMOVAL, so grep the deployed file
+     for a distinctive phrase from the dropped line rather than comparing lines:
+     `grep -n '<distinctive phrase>' <deployed copy>`. Phrase present — reflowed, and typically
+     EXTENDED with the newer rule — means the deployed side is the superset and you take it; only
+     a phrase that is genuinely ABSENT is information being dropped, and only that file needs a
+     real merge. Copy the accepted side and assert the result (`sha256sum` equality) in the same
+     pass — a copy you did not verify is a claim, not a fix.
+     **Two classes the `--apply` summary does NOT cover, so read the parity report for them.** A
+     path that exists ONLY deployed while a repo SKILL.md ROUTES to it (the report lists these as
+     `never-committed`) is a dangling route the fleet can never follow — recover it too, even
+     though the tool's own counters may read `missing=0`. And the end-to-end proof that the
+     guardrail is clear is the DEPLOY's own line: `Skills: 0 updated, N unchanged, 0 stale
+     removed, 0 preserved (deployed-only, not auto-deleted)` — that last number is exactly where
+     the stranded files sat, so it going to 0, plus `check-skill-drift-parity.py` exiting 0 with
+     the report's stranded/absent rows at 0, is the verification. The tool's own claim is not.
      `check-skill-drift-parity.py` to regenerate the committed table and `--check` to confirm:
      `STALE artifact - regenerate` means the recorded table no longer matches the live derivation,
      and the checker refuses a stale artifact — so regenerate it in the SAME cycle as the deploy
@@ -666,6 +706,17 @@ May need several rounds on active days; each round's dogfood re-runs clean.
   now to unblock the push gate") rather than looping on the race — then
   the tree is clean and the gate passes. Only for finished work, never
   a mid-edit file.
+  - **An uncommitted edit is UNVERIFIED work, so RUN ITS TESTS before landing it — "coherent
+    diff" is not "finished".** A change can be half-applied in the way a line-based diff never
+    shows: the edit changed a function's RETURN SHAPE while the test file still asserts the old
+    one, so committing it as it stood turns a clean tree into a RED suite and attributes the
+    failures to your commit. Find the consumers and the test file for the changed symbol
+    (`grep -rln <symbol>`), run them, and FINISH the edit in the same commit when the gap is
+    mechanical — update the stale assertions, add the case for the capability the edit actually
+    added — saying in the message that you completed a taken-over edit and which contract the
+    assertions now pin. Run the tests in the interpreter that can run them (the fleet venv, not
+    a bare PATH `python3`), and re-run a LONE failure once before attributing it: a test that
+    passes on the retry was a race with the previous run, not a consequence of your change.
 - **`❌ Deploy sync` after a successful dogfood race-recovery**: if you
   commit AGAIN after a deploy ran (the raced push deployed your first
   commit; the second commit is now undeployed), the gate flips to
@@ -848,6 +899,14 @@ written while every code path looked correct.
   `error: pathspec '<path>' did not match any file(s) known to git` — which reads like a missing
   file rather than a stage that never ran. After clearing a block, re-issue the stages one at a time
   and confirm with `git diff --cached --name-only` before committing.
+  **The SAME pathspec error has a second cause: the path is UNTRACKED.** A bare `git commit` in a
+  shared tree is refused outright (`❌ BARE COMMIT REFUSED — it would commit whatever is staged …
+  name the paths you changed`), so every commit carries an explicit path list — and a NEW path
+  cannot appear in that list until it is staged: `git add <new path>` first, then commit naming the
+  full list. Name the files INDIVIDUALLY rather than passing a directory: a directory pathspec
+  sweeps in whatever else is staged, which is exactly what the bare-commit gate exists to prevent.
+  An empty `git diff --cached --name-only` right after a refused commit means the index is clean —
+  re-stage rather than re-diagnosing, since a peer session sharing the tree can reset it too.
 
 ## Verification
 

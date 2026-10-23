@@ -711,7 +711,11 @@ Enforced at 3 layers: pre-commit hook (static gate), enforcer (blocks commit unt
       however real the run was — re-run the generator, or withdraw the figure.
       **A transcript written to a GITIGNORED path is not evidence either.** Check the destination
       before committing it: a runner that emits under `tests/artifacts/` (ignored) writes a file no
-      reviewer can read in the repo, so the run happened and the claim stays unverifiable. Copy the
+      reviewer can read in the repo, so the run happened and the claim stays unverifiable. **Verify
+      with `git check-ignore -v <path>` (rc 0 = IGNORED, so it will never be committed) rather than by
+      eye** — and expect a capture NAMED for what it is (`something.log`) to be swallowed by the
+      common `*.log` rule while an identically-placed `.txt` commits fine. Confirm the file actually
+      appears in `git status --short` before citing it. Copy the
       capture into `docs/evidence/` with a header naming the command, the tip revision and how to
       re-run it, then cite that path — and leave the ignore rule alone rather than force-adding a
       generated tree. Print the same generator's verdict line into the capture (the last line of its

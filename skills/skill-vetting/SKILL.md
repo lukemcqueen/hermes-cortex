@@ -55,6 +55,14 @@ loads it.
 ### 4. Fleet/repo fit
 
 - Name follows convention (lowercase, hyphens, max 64 chars).
+- **Check the `name:` is not already taken in the tree before installing.** The
+  installer deploys by DIRECTORY, so a vendored skill whose `name:` duplicates an
+  existing one lands as a second SKILL.md answering the same name — ambiguous to
+  load, with arbitrary resolution and no error anywhere. Grep the tree for the
+  name (`grep -rn "^name: <name>" skills/`), and on a collision rename the vendored
+  copy to describe its PROPERTY rather than its vendor, recording the upstream
+  name in a provenance block. Two skills with near-identical triggers are a
+  separate problem: make each description name what distinguishes it.
 - Frontmatter has `name` + `description` with the trigger self-contained
   in the first ~57 chars.
 - **No PII**: real domains, emails, or client names → placeholders
