@@ -60,7 +60,8 @@ from the date.
 | Situation | Action |
 |-----------|--------|
 | User corrected a specific behavior | Check existing principle. If covered: strengthen. If gap: add principle. |
-| Correction already landed by a same-day cycle | Verify before writing. The window's corrections are often codified within hours — grep the repo for the correction's own artifact (and read the day's commits) before proposing a principle. Measured 2026-10-20: 3 of the window's 4 corrections already had committed same-day fixes, so a fresh principle for them would have duplicated landed work. Measured again 2026-10-22: **4 of the 4 operator rows in the window already had same-day landed fixes** (the human-exemption guard + its evidence; the skills-loader repair + a doctor FAIL gate + the `skill-curation` loader rules), so the pass's entire deliverable was a refinement of this skill's own mining recipe — not a principle. Expect that outcome on a busy day and report it as a result, not as "nothing to refine". |
+| Correction already landed by a same-day cycle | Verify before writing. The window's corrections are often codified within hours — grep the repo for the correction's own artifact (and read the day's commits) before proposing a principle. Measured 2026-10-20: 3 of the window's 4 corrections already had committed same-day fixes, so a fresh principle for them would have duplicated landed work. Measured again 2026-10-22: **4 of the 4 operator rows in the window already had same-day landed fixes** (the human-exemption guard + its evidence; the skills-loader repair + a doctor FAIL gate + the `skill-curation` loader rules), so the pass's entire deliverable was a refinement of this skill's own mining recipe — not a principle. Measured a third time 2026-10-23: **all 4 prose corrections already had same-day committed fixes** (reviewer sibling-target `c9169092`; orchestrator-only review→completed `5ae8645d`; repo cleanup `ca9de57f`; Cloudflare vendored `36460672`). Expect that outcome on a busy day and report it as a result, not as "nothing to refine". |
+| Corrections all already landed | **Then land the fleet-hygiene work the day's own activity re-broke.** A busy day closes many cycles and each one can re-strand a deployed skill. Run `check-skill-drift-parity.py`; if it FAILs, that is the pass's deliverable — reconcile, deploy, push (measured 2026-10-23: 5 re-stranded, parity FAIL → PASS). |
 | User taught a workflow discovery | Save as a skill, not in SOUL.md. |
 | I made a mistake | Trace root cause. Only principle failures go in SOUL.md. |
 | Deeper understanding discovered | Add nuance to relevant section. |
@@ -231,6 +232,20 @@ body are invisible to it. So:
   path is under `Stranded in place:` land it into the repo source in the same cycle (measured
   2026-10-21: the day's verbosity lesson lived deployed-only; landing it moved the detector
   18 → 17 stranded and took the path out of the list).
+- **Parity can regress WITHIN the same day it was fixed — a recovery commit is not a permanent
+  state** (measured 2026-10-23). `ca9de57f` landed a full recovery at 18:18 (`0 stranded, 0 absent`),
+  yet the 23:15 pass measured **5 stranded** again: `devops/cortex-bus`, `devops/shared-repo-push-gates`,
+  `devops/shell-scripting`, `skill-vetting`, `software-development/change-checklist`. Each was a lesson
+  written to the deployed tree by a later cycle that same day — the drift guardrail then refused to
+  overwrite it, so the fleet never received it. Never inherit yesterday's PASS: re-measure every pass.
+  Reconcile with the tool's own modes — `reconcile-stranded-skills.py` (report first, then `--apply`
+  for the pure-superset class) — and treat a `REVIEW`/`DROP` line as a CLAIM to check, not a fact:
+  all three of `ca9de57f`'s drop lines were false positives (deployed side reflowed and extended), and
+  the 10-23 `change-checklist` DROP was the same shape, so merge that one addition by hand instead of
+  believing the tool. Then regenerate the parity evidence artifact, commit by PATHSpec, deploy, and push.
+- **`cortex-update.sh` is NOT at the repo root — it lives at `ops/scripts/cortex-update.sh`**
+  (`bash cortex-update.sh` gives `rc=127, No such file or directory`, which reads like a broken
+  deploy). Run `bash ops/scripts/cortex-update.sh` from the repo root; `rc=0` is the pass signal.
 
 - **Cron sessions writing SOUL.md — verify the gate for the EXACT path; do not
   assume it.** Hermes core has a protected-instruction gate
