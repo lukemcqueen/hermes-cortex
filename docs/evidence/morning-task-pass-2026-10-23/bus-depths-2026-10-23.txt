@@ -1,0 +1,15 @@
+📊 Queue depths:
+   inbox_esther                    0
+   inbox_fleet                     0
+   inbox_gisu                      0
+   inbox_health_check              2
+   inbox_joseph                    0
+   inbox_kustos                    0
+   inbox_moses                     0
+   inbox_orchestrator              2
+   inbox_titus                     0
+📬 No pending messages in inbox_joseph.
+📬 No pending messages in inbox_esther.
+📬 No pending messages in inbox_gisu.
+📬 No pending messages in inbox_kustos.
+📬 No pending messages in inbox_titus.
