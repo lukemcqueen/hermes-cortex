@@ -98,6 +98,96 @@ REAL_DIR = REPO / "docs" / "evidence" / "sustainability-briefing-2026-10-08"
 REAL_DATE = "2026-10-08"
 
 
+def _write_docx(path: Path, text: str) -> None:
+    """Minimal .docx the checker's extractor can read (zip + document.xml)."""
+    import zipfile
+    with zipfile.ZipFile(path, "w") as z:
+        z.writestr("word/document.xml",
+                   f"<w:p><w:r><w:t>{text}</w:t></w:r></w:p>")
+
+
+# A briefing about a DIFFERENT subject than the EU green-claims directive: it
+# must still pass a check whose job is "do the binaries carry the briefing
+# text". The topic word ('EmpCo') appears nowhere in it.
+TOPICAL_MD = """# Sustainable Materials & Market Intelligence Briefing
+
+**Thursday, 22 October 2026** — prepared for Amy, KAESA
+
+## 1. The headline: Korea's greenwashing rulebook got teeth
+
+Seoul moved from warnings to structure, with a substantiation regime.
+Source: https://example.com/korea
+
+## 2. Materials & Innovation
+
+Mushroom leather cleared a durability bar in Fashion and Textiles.
+Source: https://example.com/mushroom
+
+## 3. Policy & Regulation
+
+The destruction ban is live for large enterprises.
+Source: https://example.com/espr
+
+## 4. Market Intelligence
+
+The luxury handbag market grows on leather.
+Source: https://example.com/handbag
+
+## For Your Radar
+
+Watch the textile delegated act timing.
+Source: https://example.com/radar
+"""
+
+
+class TestBinaryCarryText(unittest.TestCase):
+    """check_binary_carry_text must bind to THIS briefing's text.
+
+    Measured 2026-10-23: the check demanded the literal topic word 'EmpCo',
+    so a healthy briefing on any other subject failed a check whose contract
+    is about the .docx/.pdf carrying the briefing — a false positive that
+    fires on correct work.
+    """
+
+    def setUp(self):
+        self._real_docx = v._docx_text
+        self._real_pdf = v._pdf_text
+        self._td = tempfile.TemporaryDirectory()
+        self.dir = self._td.name
+        self.date = "2026-10-22"
+        self.base = Path(self.dir) / f"sustainability-briefing-{self.date}"
+        self.base.with_suffix(".md").write_text(TOPICAL_MD)
+
+    def tearDown(self):
+        v._docx_text = self._real_docx
+        v._pdf_text = self._real_pdf
+        self._td.cleanup()
+
+    def _stub_binaries(self, docx_text: str, pdf_text: str) -> None:
+        _write_docx(self.base.with_suffix(".docx"), docx_text)
+        v._pdf_text = lambda p: pdf_text
+
+    def test_topical_briefing_carrying_its_text_passes(self):
+        # The regression pin: no fixed topic token exists in this briefing.
+        plain = re.sub(r"[*#]", "", TOPICAL_MD)
+        self._stub_binaries(plain, plain)
+        self.assertTrue(v.check_binary_carry_text(self.dir, self.date))
+
+    def test_docx_with_unrelated_text_fails(self):
+        self._stub_binaries("Annual Report 2019 — total revenue", TOPICAL_MD)
+        self.assertFalse(v.check_binary_carry_text(self.dir, self.date))
+
+    def test_empty_pdf_fails(self):
+        # pdftotext absent or a scanned/garbled pdf yields no text.
+        self._stub_binaries(TOPICAL_MD, "")
+        self.assertFalse(v.check_binary_carry_text(self.dir, self.date))
+
+    def test_docx_carrying_only_the_title_fails(self):
+        self._stub_binaries(
+            "Sustainable Materials & Market Intelligence Briefing", TOPICAL_MD)
+        self.assertFalse(v.check_binary_carry_text(self.dir, self.date))
+
+
 class TestRealArtifacts(unittest.TestCase):
     """Run the checker against the ACTUAL delivered artifacts, not fakes.
 

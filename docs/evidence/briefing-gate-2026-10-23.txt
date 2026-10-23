@@ -1,0 +1,116 @@
+# sustainability-briefing gate — the measured state and the fix
+# generated-by: ~/.hermes/cache/scratch/gen-gate-evidence.sh (this script writes the file, so
+#   'generated-by' is a fact about the file rather than a claim about who typed it)
+# captured-at: 128308973fd6cd6effd20b8e646171f5dd9dcb4b (the revision the tree sat on when this ran; a transcript cannot name its own commit)
+# re-run: bash ~/.hermes/cache/scratch/gen-gate-evidence.sh   (from the repo root)
+# every command below ran on this host from the repo root, against the repo copies;
+# exit codes are each command's own, measured unpiped.
+
+## 1. The two rule sets
+$ git show 128308973fd6cd6effd20b8e646171f5dd9dcb4b:ops/scripts/sustainability/verify_briefing.py | grep -n EmpCo
+79:    return all(m in dx for m in ("EmpCo", "Amy", "2026")) and "KAESA" in px
+rc=0
+  -> the PRE-FIX binary rule demanded the literal topic word 'EmpCo'.
+
+$ grep -n 'MIN_URLS|WORD_MIN|MIN_BINARY_COVERAGE' ops/scripts/sustainability/verify_briefing.py
+27:MIN_URLS = 13          # >= one per factual item in the briefing
+28:WORD_MIN, WORD_MAX = 600, 1200
+30:MIN_BINARY_COVERAGE = 0.80   # share of the .md's content words the binary must carry
+41:    """At least MIN_URLS 'Source:' lines, each a well-formed URL."""
+44:    return len(good) >= MIN_URLS and not malformed
+48:    """Body word count inside [WORD_MIN, WORD_MAX]."""
+49:    return WORD_MIN <= len(text.split()) <= WORD_MAX
+101:        return len(expected & _content_words(sample)) / len(expected) >= MIN_BINARY_COVERAGE
+124:    print(f"[sources] source lines={n} (>= {MIN_URLS}) "
+128:          f"({WORD_MIN}-{WORD_MAX}) {'PASS' if w_ok else 'FAIL'}")
+
+$ git diff --stat -- ops/scripts/sustainability/verify_briefing.py tests/test_verify_briefing.py
+ ops/scripts/sustainability/verify_briefing.py | 36 +++++++++--
+ tests/test_verify_briefing.py                 | 90 +++++++++++++++++++++++++++
+ 2 files changed, 120 insertions(+), 6 deletions(-)
+
+## 2. The false positive, evaluated on the REAL delivered artifacts
+# the pre-fix rule is extracted from 128308973fd6cd6effd20b8e646171f5dd9dcb4b (not re-implemented); the fixed rule is the
+# repo copy. Same artifacts, same day, two rules.
+baseline copy carries 'EmpCo' (i.e. it really is the pre-fix revision): True
+date        pre-fix rule  fixed rule  
+2026-10-05  FAIL          PASS        
+2026-10-07  FAIL          PASS        
+2026-10-13  FAIL          PASS        
+2026-10-14  FAIL          PASS        
+2026-10-17  FAIL          PASS        
+2026-10-22  FAIL          PASS        
+2026-10-23  PASS          PASS        
+
+## 3. Per-day census under the FIXED checker (18 delivered days)
+2026-10-05 rc=1 failing_checks=1 :: RESULT: FAILURES PRESENT
+2026-10-06 rc=1 failing_checks=1 :: RESULT: FAILURES PRESENT
+2026-10-07 rc=1 failing_checks=2 :: RESULT: FAILURES PRESENT
+2026-10-08 rc=0 failing_checks=0 :: RESULT: ALL PASS
+2026-10-09 rc=1 failing_checks=2 :: RESULT: FAILURES PRESENT
+2026-10-10 rc=0 failing_checks=0 :: RESULT: ALL PASS
+2026-10-11 rc=1 failing_checks=2 :: RESULT: FAILURES PRESENT
+2026-10-12 rc=1 failing_checks=2 :: RESULT: FAILURES PRESENT
+2026-10-13 rc=1 failing_checks=2 :: RESULT: FAILURES PRESENT
+2026-10-14 rc=1 failing_checks=2 :: RESULT: FAILURES PRESENT
+2026-10-16 rc=0 failing_checks=0 :: RESULT: ALL PASS
+2026-10-17 rc=1 failing_checks=2 :: RESULT: FAILURES PRESENT
+2026-10-18 rc=0 failing_checks=0 :: RESULT: ALL PASS
+2026-10-19 rc=0 failing_checks=0 :: RESULT: ALL PASS
+2026-10-20 rc=1 failing_checks=1 :: RESULT: FAILURES PRESENT
+2026-10-21 rc=0 failing_checks=0 :: RESULT: ALL PASS
+2026-10-22 rc=1 failing_checks=2 :: RESULT: FAILURES PRESENT
+2026-10-23 rc=0 failing_checks=0 :: RESULT: ALL PASS
+
+## 4. The prescribed repair is reachable: a repaired COPY of 2026-10-22
+# a temp COPY, not the delivered artifact. The repair is exactly what the producer
+# prompt now instructs: hoist inline URLs onto their own 'Source:' lines, trim prose
+# to <=1200 words; then the real renderer rebuilds .docx/.pdf (HOME redirected so the
+# renderer writes into the temp tree, never over the delivered files).
+before recovery: words=1364 source_lines=0
+hoisted 15 inline URL(s) onto their own 'Source:' lines
+trimmed a 32-word paragraph
+trimmed a 68-word paragraph
+trimmed a 62-word paragraph
+trimmed a 55-word paragraph
+after repair:   words=1162 source_lines=15
+renderer rc=0: ['wrote /home/esther/.hermes/cache/scratch/tmpdd4mi8hk/.hermes/cron/output/sustainability-briefing-2026-10-22.docx (41240 bytes)', 'wrote /home/esther/.hermes/cache/scratch/tmpdd4mi8hk/.hermes/cron/output/sustainability-briefing-2026-10-22.pdf (9974 bytes)']
+[files] sustainability-briefing-2026-10-22.md      size=8937     PASS
+[files] sustainability-briefing-2026-10-22.docx    size=41240    PASS
+[files] sustainability-briefing-2026-10-22.pdf     size=9974     PASS
+[sections] required headings PASS
+[sources] source lines=15 (>= 13) PASS
+[words] count=1162 (600-1200) PASS
+[binary] docx+pdf carry briefing text PASS
+
+RESULT: ALL PASS
+repaired-copy checker rc=0
+(repaired copy left at ~/.hermes/cache/scratch/tmpdd4mi8hk/.hermes/cron/output — optional cleanup)
+
+## 5. The guard
+$ python3 tests/test_verify_briefing.py
+----------------------------------------------------------------------
+Ran 19 tests in 0.037s
+
+OK
+rc=0
+
+$ python3 tests/run_briefing_tests.py
+PASS  test_url_evidence_keeps_both_md_and_pdf_inventory
+
+ran=31 passed=31 failed=0 skipped=0
+RESULT: ALL TESTS PASSED
+
+RESULT: ALL TESTS PASSED
+
+## 6. The producer wiring (live cron config, read back from jobs.json)
+  prompt_now_has_a_verify_step: True (want True) -> ok
+  prompt_names_the_checker: True (want True) -> ok
+  prompt_states_the_source_line_rule: True (want True) -> ok
+  stale_hardcoded_date_removed: False (want False) -> ok
+  enabled=True schedule=7 6 * * * deliver=origin
+
+# HONEST SCOPE: the checker fix is proven on the real artifacts above. The producer
+# prompt change is verified as CONFIGURED (read back from jobs.json); its effect on the
+# 06:07 delivery is observable only at the next run, which was NOT forced here because
+# that job posts the briefing into Amy's chat and a second delivery is user-visible.

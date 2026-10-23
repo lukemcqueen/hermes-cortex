@@ -27,6 +27,7 @@ REQUIRED_SECTIONS = ("1. ", "2. ", "3. ", "4. ", "For Your Radar")
 MIN_URLS = 13          # >= one per factual item in the briefing
 WORD_MIN, WORD_MAX = 600, 1200
 MIN_FILE_BYTES = 1000
+MIN_BINARY_COVERAGE = 0.80   # share of the .md's content words the binary must carry
 
 
 def check_sections(text: str) -> bool:
@@ -71,12 +72,35 @@ def _pdf_text(path: str) -> str:
         return ""
 
 
-def check_binary_carry_text(directory: str, date_str: str) -> bool:
-    """The .docx/.pdf artifacts actually carry the briefing text."""
+def _content_words(text: str) -> set:
+    """Distinct >=5-letter words, lowercased — tolerant of PDF line wrapping."""
+    return {w.lower() for w in re.findall(r"[A-Za-z][A-Za-z'-]{4,}", text or "")}
+
+
+def check_binary_carry_text(directory: str, date_str: str,
+                            text: str | None = None) -> bool:
+    """The .docx/.pdf artifacts actually carry THIS briefing's text.
+
+    The expected tokens are derived from the delivered .md — never a fixed
+    topic word. A hardcoded token ('EmpCo') made the check demand that every
+    briefing discuss the EU green-claims directive, so a healthy briefing on
+    any other subject failed a check whose whole contract is binary fidelity
+    (measured 2026-10-23: sustainability-briefing-2026-10-22, a briefing about
+    Korea's greenwashing rules, failed on the missing topic word while its
+    docx/pdf carried the text). Measured coverage on the real delivered
+    artifacts: docx 0.87-0.98, pdf 0.97-1.00; unrelated/empty artifacts ~0.00.
+    """
     base = os.path.join(directory, f"sustainability-briefing-{date_str}")
-    dx = _docx_text(base + ".docx")
-    px = _pdf_text(base + ".pdf")
-    return all(m in dx for m in ("EmpCo", "Amy", "2026")) and "KAESA" in px
+    if text is None:
+        text = open(base + ".md", encoding="utf-8").read()
+    expected = _content_words(text)
+    if not expected:
+        return False
+
+    def carries(sample: str) -> bool:
+        return len(expected & _content_words(sample)) / len(expected) >= MIN_BINARY_COVERAGE
+
+    return carries(_docx_text(base + ".docx")) and carries(_pdf_text(base + ".pdf"))
 
 
 def main(date_str: str, directory: str) -> int:
@@ -102,7 +126,7 @@ def main(date_str: str, directory: str) -> int:
     w_ok = check_word_count(text); ok &= w_ok
     print(f"[words] count={len(text.split())} "
           f"({WORD_MIN}-{WORD_MAX}) {'PASS' if w_ok else 'FAIL'}")
-    b_ok = check_binary_carry_text(directory, date_str); ok &= b_ok
+    b_ok = check_binary_carry_text(directory, date_str, text); ok &= b_ok
     print(f"[binary] docx+pdf carry briefing text {'PASS' if b_ok else 'FAIL'}")
 
     print("\nRESULT:", "ALL PASS" if ok else "FAILURES PRESENT")
