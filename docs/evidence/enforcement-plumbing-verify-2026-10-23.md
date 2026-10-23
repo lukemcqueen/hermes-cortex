@@ -3,11 +3,16 @@
 ## Provenance
 
 - Produced by Titus session `verify-enforcement-plumbing` + follow-ups, governance cycles
-  7442 / 7445 / 7447 (lock `20261023_172042_b4605c`), host macOS LAM2.local.
+  7442 / 7445 / 7447 / 7453 / 7454 (lock `20261023_172042_b4605c`), host macOS LAM2.local.
 - User action under test: `hermes gateway restart` after the 2026-10-23 pull+deploy
   (tip `2a1517c6`; deploy wrote loop-gov-mcp + enforcer at 17:23:03; gateway restarted
   17:29:58).
 - Host paths normalised (`/Users/luke` → `~`) in this committed copy.
+- CORRECTION (second pass, cycle 7454): the first version of this doc attributed the
+  7442 refusal in part to the pulled guard's author-identity filter. Re-verification
+  proved the simpler cause — the refusal was served by the STALE pre-restart MCP child
+  running the PRE-PULL guard. See section 2. The author-identity observation remains a
+  latent design note, not the operative cause.
 
 ## 1. What works (verified with live tool output)
 
@@ -37,7 +42,7 @@
   tag-agreement escape fired. This is the live proof that a normal governed cycle
   round-trips after the restart.
 
-## 2. The residual bug found (WRONG_REPO near-miss on a correctly-tagged lock)
+## 2. The finding, corrected: the 7442 refusal was served by the STALE pre-restart MCP child
 
 Cycle 7442 (read-only verification, opened 17:36:58, lock correctly tagged
 `repo_slug=hermes-cortex` / `repo_path=~/hermes-cortex` with the session repo hint file
@@ -50,47 +55,55 @@ Cannot close: the lock's repo cannot contain this session's work.
   Work found in  : /Users/luke/Developer/AI/steadfaste-s1-model
 ```
 
-Two things are wrong, both measured:
+**Proven cause — stale MCP child, not the pulled guard.** Two loop-gov-mcp.py children
+were alive at the time:
 
-1. **session_repo reached the guard as None** — the refusal message omits the
-   `Session repo : ...` line (printed only when session_repo is not None), so the
-   guard's tag-agreement escape could NOT fire even though the lock's own repo_path
-   was correct and the enforcer's hint file for the session existed. This is the
-   deploy-not-load trap in MCP-child form: the refusal likely came from the
-   pre-deploy MCP child (10417, PID alive since 17:20:43, parented to gateway 10393
-   from 17:20:40) running the pre-pull guard code and pre-pull session-repo injection.
-   The identical close retried as cycle 7445 closed CLEANLY — the new child (43193)
-   had taken over and the tag-agreement escape worked.
+- 10417 — cortex venv, started 17:20:43 (BEFORE the pull finished at 17:23:03), parent
+  10393 (gateway-ish, 17:20:40) → it imported the PRE-PULL `loop-gov-mcp.py` into
+  memory and never re-imported. The pre-pull guard (base 7230c79c) has NO
+  `_session_repo_agrees` escape and NO `Session repo :` output line — it refuses
+  whenever the lock's repo shows no window commits AND any OTHER candidate repo gained
+  commits (`_repos_with_window_work`, unattributed). The 7442 refusal text has no
+  `Session repo :` line, matching the base guard exactly.
+- 43193 — cortex venv, started 17:30:04 (AFTER the restart, under new gateway 43169)
+  → holds the DEPLOYED (post-pull) guard with the 2026-10-23 narrowing and the
+  tag-agreement escape.
 
-2. **The elsewhere-attribution filter uses the candidate repo's OWN git identity, not
-   the agent's.** `_agent_author(repo)` (loop-gov-mcp.py `_agent_author`, line ~4591)
-   reads `git config user.email/name` of the repo it is asked about. The refusal named
-   `~/Developer/AI/steadfaste-s1-model` — a repo whose git identity differs from the
-   agent's own (the repo's configured identity is the repository OWNER's, while the
-   hermes-cortex repo is configured with the AGENT's identity). ANOTHER session
-   (cycles 7443/7444, sess_6459cc640a9c) is ACTIVELY committing there (18 commits in
-   the window authored under that repo's configured identity). Because that repo's own
-   git config IS that identity, the guard treats those peer commits as "commits THIS
-   AGENT authored" — but they are not the current agent's. On a multi-identity dev
-   host the "attributed candidates only" narrowing can therefore still accuse the
-   session of working in a repo it never touched. The lock-side test applies the same
-   bar only when the candidate repo's identity happens to equal the agent's.
+Decisive re-test: cycles 7445, 7447 and 7453 — opened under the SAME conditions (the
+peer session in steadfaste-s1-model was STILL committing) — all closed CLEANLY once the
+session's calls were served by the new child 43193. The same close that refused under
+the old child passed under the new child. The refusal was the known deploy-not-load
+trap in MCP-child form: **the restart created a NEW gateway but the OLD gateway (10393)
+and its MCP child (10417) were never terminated** — both were still alive at
+verification time (~17:50), and a session still routed through them ran the pre-pull
+guard rules.
 
-Fix direction for the orchestrator: resolve "this agent" from the agent.env identity
-(per AGENTS.md rule 21 — the hooks' own source of git authorship) or exclude commits
-carrying a different `Cortex-Session:` trailer (`_excluded_session_commits` already
-exists for exactly this), instead of trusting each candidate repo's own git config.
+**Latent design note (not the operative cause):** in the CURRENT guard,
+`_agent_author(repo)` (loop-gov-mcp.py, line ~4591) reads the candidate repo's OWN
+`git config` identity, not the agent's identity from agent.env. On a multi-identity dev
+host the candidate filter can match a peer's commits authored under that repo's
+configured identity, as steadfaste-s1-model's commits are (repo configured with the
+owner's identity, not the agent's). This only bites when session_repo is also unknown
+(the tag-agreement escape covers the common case where it resolves). Worth an
+orchestrator look — resolve "this agent" from agent.env or exclude other sessions via
+the `Cortex-Session:` trailer — but it did NOT cause the 7442 refusal, which came from
+pre-pull code.
+
+**Operator action:** confirm the old gateway 10393 (and its loop-gov child 10417) is
+terminated, so no session is served by pre-pull guard code while the new gateway runs.
 
 ## 3. Environment facts
 
-- Two loop-gov-mcp.py children observed alive at verification time:
+- Two loop-gov-mcp.py children observed alive at verification time AND at re-verification
+  (~17:50):
   - 10417 — cortex venv, started 17:20:43 (BEFORE the pull/deploy finished at 17:23:03)
-    → holds PRE-PULL guard code in memory; parent 10393 (gateway-ish, 17:20:40).
+    → holds PRE-PULL guard code in memory; parent 10393 (gateway-ish, 17:20:40), itself
+    still alive.
   - 43193 — cortex venv, started 17:30:04 (AFTER the restart) under new gateway 43169
-    → holds the deployed code.
-- The lingering pre-restart child 10417 is the likeliest reason cycle 7442 was served by
-  old rules; it should not remain after a clean restart (operator check: whether the old
-  gateway 10393 was actually terminated).
+    → holds the deployed code. Sessions served by it closed cleanly (7445/7447/7453).
+- The lingering pre-restart gateway 10393 + child 10417 are the reason cycle 7442 was
+  served by old rules. This is a clean-up item for the operator, not a code defect in
+  the deployed guard.
 - The peer session committing in steadfaste-s1-model is real and active (PENDING cycles
   7443/7444 in sess_6459cc640a9c); its commits are NOT Titus's work.
 
@@ -111,10 +124,12 @@ fix belongs to the orchestrator (compare `str(deep.resolve())` / `str(proj.resol
 
 ## Result
 
-Enforcement plumbing after the gateway restart is FUNCTIONAL for the current session:
-control flow (MCP server initialised), plugin loaded from the deployed file, doctor
-clean, lock tagged with repo identity, and an end-to-end close works. Residual risk
-recorded: (a) a stale pre-restart MCP child/gateway may still serve some sessions with
-pre-pull guard code (WRONG_REPO false refusal), and (b) the new guard's
-elsewhere-attribution still trusts candidate-repo git identity rather than the agent's
-own — both need an orchestrator decision; this doc is the evidence for it.
+Enforcement plumbing after the gateway restart is FUNCTIONAL: control flow (MCP server
+initialised), plugin loaded from the deployed file, doctor clean, lock tagged with repo
+identity, and end-to-end closes work (7445/7447/7453). The one refusal (7442) was
+served by a STALE pre-restart MCP child (old gateway 10393 + child 10417, both still
+alive) running PRE-PULL guard code — the known deploy-not-load trap, resolvable by
+terminating the old gateway. A latent design note for the orchestrator: the CURRENT
+guard's elsewhere-attribution reads the candidate repo's own git identity rather than
+agent.env, which can mis-attribute a peer's commits on multi-identity hosts — worth a
+look, but not the cause of the refusal.
