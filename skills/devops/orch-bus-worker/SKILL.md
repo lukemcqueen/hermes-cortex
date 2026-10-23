@@ -98,6 +98,35 @@ metadata:
 
 ## Pitfalls
 
+- **`adversarial-review.py --material` must receive CONTENT, never a file
+  PATH.** A path makes the reviewer see one string, so it returns a hollow
+  `CLEAN` covering nothing — a review row that records no review. Pass the
+  plan/work text inline. And a cycle holds ONE review row
+  (`adversarial_reviews.cycle_id` is UNIQUE): a hollow submission CANNOT be
+  redone on that cycle. Recover by closing that cycle honestly (say the
+  review was hollow in the accept note) and submitting the real material
+  inline under the NEXT cycle. Do not delete or overwrite the row.
+- **`git commit` with a MULTI-LINE `-m` message is refused as a BARE commit**
+  by the governance-enforcer plugin: its command parser cannot see the
+  pathspec through the embedded newlines. Use a single-line `-m`, and name
+  the paths (`git commit -m 'one line' -- path/a path/b`). Staging first with
+  `git add` also makes git commit from the real index, which reads as bare —
+  leave the index clean and name the paths instead.
+- **`terminal` is refused in a governed repo even for read-only work**
+  (`python3 …`, `ls; echo`, compound chains). You cannot check a deployed
+  path from the scratch dir — the lock is repo-scoped. Take a
+  `begin_change()` before running verification, and use read primitives joined
+  by `|`/`&&` plus `read_file`/`search_files` for inspection you want lock-free.
+- **`cortex-update.sh --delta` does NOT deploy an unpushed commit.** Use the
+  full `cortex-update.sh` (or push first), then diff the DEPLOYED copy against
+  the repo source — the deploy adds a `# SOURCE:` header, so compare ignoring
+  that header rather than trusting the file mtime.
+- **A gate that keys on the NEWEST artifact masks a bad day permanently.**
+  Checking only `dates[-1]` means a defective delivery is reported only if the
+  next day did not already land a clean one. Check every artifact inside the
+  freshness window, and bound the alerting by that window instead of adding a
+  state file.
+
 - **Task-status writes are REFUSED by the enforcer without a governance
   lock**, and the `terminal` tool classifies most CLI invocations
   (`python3 … | head`, compound `;` chains) as write-capable even for a plain
