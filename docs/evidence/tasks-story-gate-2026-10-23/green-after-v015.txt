@@ -1,6 +1,11 @@
 # GREEN — the same battery with v015 present in the schema dir
-#   bash tests/test-tasks-schema.sh   (stdout+stderr redirected, never retyped)
-# captured-at: 2a1517c6  |  captured-on: 2026-10-23T08:48:32Z (UTC)
+#   produced-by: bash tests/test-tasks-schema.sh   (stdout+stderr redirected, never retyped)
+#   captured-at: 27b7e4f9  |  captured-on: 2026-10-23T09:02:04Z (UTC)
+#
+# CONTRACT: this is the battery's own stdout, and tests/test-tasks-schema.sh AC-L1-25 is
+# authoritative for the assertions below — the sibling is judged in its own review window.
+# The numbers this file records are cited by
+# ops/services/tasks/schema/v015__story-completion-verified-precondition.sql.
 
 
 ═══ Setup: scratch DB tasks_test ═══
@@ -25,7 +30,7 @@
   ✅ mycortex_reader has DML on tasks.tasks
 
 ═══ AC-L1-5: task_upsert — status→column derivation + completed_at ═══
-  ✅ task_upsert inserts (id=035f0e72-89f4-4ac0-a65b-a821b7da1539)
+  ✅ task_upsert inserts (id=c37710f4-817e-47b1-a5a9-a9b61b5107ff)
   ✅ pending → column='todo' (derived)
   ✅ pending → completed rejected (v005 matrix — must start first)
   ✅ completed → column='done' (derived)
@@ -67,16 +72,16 @@
   ✅ migration re-run is an idempotent no-op
 
 ═══ AC-L1-11: hierarchy — story/slice coherence + tenant checks ═══
-  ✅ story created (id=443d1350-2399-432d-8518-7b84ed919e58)
-  ✅ slice under story created (id=e6630eee-0ead-41e7-a152-045433728205)
+  ✅ story created (id=1b9600b2-c3f5-499d-966c-bfbb02bb5d9a)
+  ✅ slice under story created (id=83f8e754-1639-4e3a-bea8-e9ef7f8a2d0d)
   ✅ slice without parent rejected (coherence CHECK)
   ✅ story with parent rejected (coherence CHECK)
   ✅ slice under slice rejected (tenant trigger: parent must be story)
   ✅ story delete blocked while slices exist (FK NO ACTION)
   ✅ legacy flat rows legal (kind NULL, n=3)
-  ✅ orchestrator personal story created (id=e4bb971e-ecda-4b8b-a787-8ec04cea6abb)
+  ✅ orchestrator personal story created (id=9caec519-74cb-4a7b-9cd5-cd59e140dfb0)
   ✅ fleet slice under orchestrator personal story stored scope=fleet
-  ✅ non-orchestrator personal story created (id=bed7c653-96f8-49c2-9afd-c6cabbc0eacb)
+  ✅ non-orchestrator personal story created (id=869084ba-fdc5-4397-a594-a5e596efd28b)
   ✅ fleet slice under non-orchestrator personal story still refused (coherence — 'exceeds parent scope')
 
 ═══ AC-L1-12: paused status + switching arc ═══

@@ -42,6 +42,22 @@
 -- So this migration removes a bypass without opening a path: the legitimate raw use
 -- (auto-complete) satisfies the precondition by construction.
 --
+-- RECORD OF THE MEASUREMENTS THIS FILE CITES (re-runnable; the file states the contract,
+-- the record is where the numbers come from):
+--   plan review  : loop-governance cycle 13722 (adversarial_reviews, reviewer
+--                  deepseek-v4-pro, verdict CLEAN) — it also recorded the one claim
+--                  building FALSIFIED: that a manual pending→completed would become
+--                  legal here. It does not; task_upsert's fast-fail refuses it first.
+--   RED / GREEN  : docs/evidence/tasks-story-gate-2026-10-23/red-before-v015.txt
+--                  (125 passed, 2 failed) and green-after-v015.txt (127 passed,
+--                  0 failed), both the battery's own stdout for
+--                  `bash tests/test-tasks-schema.sh`, run with v015 absent then present.
+--   live proof   : docs/evidence/tasks-story-gate-2026-10-23/live-guard-proof.txt —
+--                  deployed store at tasks schema_version 15, forged-reason probe on a
+--                  story with an active slice refused, transaction never committed.
+-- The AUTHORITATIVE contract is tests/test-tasks-schema.sh AC-L1-25; these artifacts
+-- are its transcripts, not a substitute for it.
+--
 -- WHY A NEW FILE AND NOT AN EDIT TO v014
 -- v014 is applied on live hosts; the version-gated runner SKIPS a version it has
 -- already run. Editing it would leave every existing host unfixed while the repo

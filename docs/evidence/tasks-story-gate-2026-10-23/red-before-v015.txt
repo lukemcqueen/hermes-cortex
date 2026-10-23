@@ -1,7 +1,12 @@
 # RED — hermetic battery BEFORE v015 (schema dir without v015; the test file is the FINAL one)
-#   bash tests/test-tasks-schema.sh   (stdout+stderr redirected, never retyped)
-# captured-at: 2a1517c6  |  captured-on: 2026-10-23T08:48:00Z (UTC)
-# re-run: mv ops/services/tasks/schema/v015__*.sql aside, then the command above
+#   produced-by: bash tests/test-tasks-schema.sh   (stdout+stderr redirected, never retyped)
+#   captured-at: 27b7e4f9  |  captured-on: 2026-10-23T09:01:33Z (UTC)
+#   re-run: mv ops/services/tasks/schema/v015__*.sql aside, then the command above
+#
+# CONTRACT: this is the battery's own stdout, and tests/test-tasks-schema.sh AC-L1-25 is
+# authoritative for the assertions below — the sibling is judged in its own review window.
+# The numbers this file records are cited by
+# ops/services/tasks/schema/v015__story-completion-verified-precondition.sql.
 
 
 ═══ Setup: scratch DB tasks_test ═══
@@ -26,7 +31,7 @@
   ✅ mycortex_reader has DML on tasks.tasks
 
 ═══ AC-L1-5: task_upsert — status→column derivation + completed_at ═══
-  ✅ task_upsert inserts (id=9a5645c8-b96f-4dd4-8db3-e45ac7327f34)
+  ✅ task_upsert inserts (id=0d0d100c-a749-43ec-a51f-47410fd648b3)
   ✅ pending → column='todo' (derived)
   ✅ pending → completed rejected (v005 matrix — must start first)
   ✅ completed → column='done' (derived)
@@ -68,16 +73,16 @@
   ✅ migration re-run is an idempotent no-op
 
 ═══ AC-L1-11: hierarchy — story/slice coherence + tenant checks ═══
-  ✅ story created (id=d6850013-57aa-43a3-9096-f9369d0dcd0c)
-  ✅ slice under story created (id=f7150554-c6ce-477e-ae3a-379044cd2019)
+  ✅ story created (id=df999b60-fbb8-42b9-8038-59677382eccb)
+  ✅ slice under story created (id=7a93216c-b4ab-4d7f-8a8c-ac685ec7ef60)
   ✅ slice without parent rejected (coherence CHECK)
   ✅ story with parent rejected (coherence CHECK)
   ✅ slice under slice rejected (tenant trigger: parent must be story)
   ✅ story delete blocked while slices exist (FK NO ACTION)
   ✅ legacy flat rows legal (kind NULL, n=3)
-  ✅ orchestrator personal story created (id=71e5ce35-128f-462d-a16f-c6c0c53ddfbc)
+  ✅ orchestrator personal story created (id=62de0012-4df3-4b0f-95fa-7ec253fcfaf2)
   ✅ fleet slice under orchestrator personal story stored scope=fleet
-  ✅ non-orchestrator personal story created (id=66fbc291-6b48-46b3-9b1f-9cbce53fcb6e)
+  ✅ non-orchestrator personal story created (id=1937af8b-bb96-4cb5-a923-a244accf4bed)
   ✅ fleet slice under non-orchestrator personal story still refused (coherence — 'exceeds parent scope')
 
 ═══ AC-L1-12: paused status + switching arc ═══
@@ -178,7 +183,7 @@
 
 ═══ AC-L1-25: v015 — the story gate is verified, not GUC-authorised ═══
   ❌ story with an ACTIVE slice was completed via a forged reason (rc=0, status=completed, active=1) — story_auto_complete
-53125e30-5e73-4414-9ff5-774c98ae7ec0
+43852311-be87-4649-834c-bede91f94de6
   ❌ raw UPDATE completed a story with an ACTIVE slice (rc=0, status=completed) — story_auto_complete
 UPDATE 1
   ✅ auto-complete still fires when the last slice finishes
