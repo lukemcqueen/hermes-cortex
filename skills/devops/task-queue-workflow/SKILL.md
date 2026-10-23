@@ -207,8 +207,20 @@ derivation CHECK and RLS path, and every orchestrator plan restates the rule.
 
 ## Pitfalls
 
-- **verify is orchestrator-only** — the function checks
-  `profile_of(session_user) IN ('moses','esther')`; workers get `false`.
+- **verify is orchestrator-only — and so is the ARC it performs.** Two layers, both
+  in the DB: `tasks.verify_slice` checks `profile_of(session_user) IN ('moses','esther')`
+  (workers get `false`, and no other profile holds EXECUTE on it at all), AND the
+  BEFORE UPDATE trigger `tasks.check_transition()` refuses `review → completed` for any
+  non-orchestrator caller. The second layer exists because the FIRST one was bypassable:
+  the arc itself is legal in `transition_allowed` (which is role-agnostic), so a worker
+  that could write the row — its own personal slice, whose `created_by` it is — could
+  complete it through `task_update`, `task-db.py update --status completed`, or raw SQL,
+  with no verification ever happening. Self-graded work then wore the same status as
+  verified work. Measured before the fix, on a scratch DB as a non-orchestrator role:
+  `task_upsert(p_id, p_status=>'completed')` returned a UUID (rc=0) on a row the caller
+  had just reported into `review`. Fixed in schema v014; `review → in_progress` (the
+  reject/stale arc) stays open on purpose — it asserts nothing about verification and
+  the 24h stale sweep re-queues through it.
 - **Claim is self-only** — `p_assignee` must equal `profile_of(session_user)`;
   you can claim only FOR YOURSELF, never assign work to others.
 - **A claimed slice can't be re-claimed** — the single claimer holds it until

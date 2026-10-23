@@ -17,6 +17,9 @@ MIGRATE_PY="${REPO_DIR}/ops/services/tasks/migrate.py"
 MIGRATE_BUS_PY="${REPO_DIR}/ops/scripts/manage/migrate-bus-todos.py"
 TEST_DB="${TASKS_TEST_DB:-tasks_test}"
 CONTAINER="${TASKS_TEST_CONTAINER:-mycortex-postgres}"
+# A non-orchestrator profile role, so the tests can drive the WORKER side of the
+# review gate (profile_of() → 'probe', and NOT a todos_fleet_writer member).
+PROBE_ROLE="${TASKS_TEST_PROBE_ROLE:-mycortex_reader_probe}"
 
 if [[ "$TEST_DB" == "mycortex" ]]; then
   echo "❌ REFUSING to run against the $TEST_DB database — hermeticity guard. Set TASKS_TEST_DB." >&2
@@ -26,6 +29,7 @@ fi
 PSQL="docker exec ${CONTAINER} psql -U mycortex -d ${TEST_DB} -t -A"
 PSQL_SUPER="docker exec ${CONTAINER} psql -U mycortex -d mycortex -t -A"
 PSQL_READER="docker exec ${CONTAINER} psql -U mycortex_reader_esther -d ${TEST_DB} -t -A"
+PSQL_PROBE="docker exec ${CONTAINER} psql -U ${PROBE_ROLE} -d ${TEST_DB} -t -A"
 
 P=0; F=0
 pass() { P=$((P+1)); echo "  ✅ $1"; }
@@ -41,7 +45,14 @@ echo ""
 echo "═══ Setup: scratch DB ${TEST_DB} ═══"
 $PSQL_SUPER -c "DROP DATABASE IF EXISTS ${TEST_DB};" >/dev/null 2>&1 || true
 $PSQL_SUPER -c "CREATE DATABASE ${TEST_DB};" >/dev/null 2>&1
-echo "  created ${TEST_DB}"
+# Temp worker profile role — cluster-level, mimics a fleet worker's DB role
+# (LOGIN so psql can connect as it; trust auth inside the container). It is a
+# member of mycortex_reader for the table/function GRANTs, which does NOT make
+# it a todos_fleet_writer member — so it is exactly the non-orchestrator case
+# the v014 review gate must refuse.
+$PSQL_SUPER -c "DO \$\$ BEGIN IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname='${PROBE_ROLE}') THEN CREATE ROLE ${PROBE_ROLE} LOGIN; END IF; END \$\$;" >/dev/null 2>&1
+$PSQL_SUPER -c "GRANT mycortex_reader TO ${PROBE_ROLE};" >/dev/null 2>&1
+echo "  created ${TEST_DB} + temp worker role ${PROBE_ROLE}"
 
 echo ""
 echo "═══ AC-L1-1: Fresh DB → migrate.py applies v001–v004; schema exists ═══"
@@ -516,19 +527,22 @@ WAI_ID=$($PSQL -c "SELECT tasks.task_upsert(p_content=>'L1 waiting', p_created_b
 WAI_COL=$($PSQL -c "SELECT \"column\" IS NULL FROM tasks.tasks WHERE id='${WAI_ID}';" 2>/dev/null)
 [ "$WAI_COL" = "t" ] && pass "waiting derives column=NULL" || fail "waiting column not NULL (got: $WAI_COL)"
 # transition matrix: pending→blocked, blocked→in_progress, waiting→in_progress,
-# blocked→waiting, in_progress→blocked; blocked→pending ILLEGAL (v009 keeps it)
+# blocked→waiting, in_progress→blocked; blocked→pending is LEGAL since v012
+# (a parked row must be able to rejoin the pull pool — the whole point of that
+# migration; v009 had left every parked state with no arc back to `pending`).
+# This assertion asserted the v009 rule and had been RED since v012 landed.
 $PSQL -c "SELECT tasks.task_upsert(p_id=>'${BLK_ID}', p_status=>'in_progress');" >/dev/null 2>&1
 BLK_RES=$($PSQL -c "SELECT status FROM tasks.tasks WHERE id='${BLK_ID}';" 2>/dev/null)
 [ "$BLK_RES" = "in_progress" ] && pass "blocked → in_progress resume ✓" || fail "blocked resume failed (status=$BLK_RES)"
 # re-establish blocked (in_progress → blocked is legal) so the next check
 # genuinely tests blocked → pending (not in_progress → pending, which v009
-# now admits via the unclaim arc)
+# admits via the unclaim arc)
 $PSQL -c "SELECT tasks.task_upsert(p_id=>'${BLK_ID}', p_status=>'blocked');" >/dev/null 2>&1
-if $PSQL -c "SELECT tasks.task_upsert(p_id=>'${BLK_ID}', p_status=>'pending');" >/dev/null 2>&1; then
-  fail "blocked → pending accepted"
-else
-  pass "blocked → pending rejected (matrix)"
-fi
+BLK_PEND=$($PSQL -c "SELECT tasks.task_upsert(p_id=>'${BLK_ID}', p_status=>'pending');" 2>/dev/null)
+BLK_PEND_ST=$($PSQL -c "SELECT status FROM tasks.tasks WHERE id='${BLK_ID}';" 2>/dev/null)
+[ -n "$BLK_PEND" ] && [ "$BLK_PEND_ST" = "pending" ] \
+  && pass "blocked → pending accepted and lands (v012: parked rows rejoin the pool)" \
+  || fail "blocked → pending failed (ret=$BLK_PEND status=$BLK_PEND_ST)"
 $PSQL -c "SELECT tasks.task_upsert(p_id=>'${WAI_ID}', p_status=>'blocked');" >/dev/null 2>&1
 WAI_RES=$($PSQL -c "SELECT status FROM tasks.tasks WHERE id='${WAI_ID}';" 2>/dev/null)
 [ "$WAI_RES" = "blocked" ] && pass "waiting → blocked ✓" || fail "waiting→blocked failed (status=$WAI_RES)"
@@ -657,6 +671,96 @@ VERIFY_NO=$($PSQL_READER -c "SELECT tasks.verify_slice('${V3_S1}', false, 'evide
 [ "$VERIFY_NO" = "t" ] && pass "verify_slice(false) returns true (rejected path)" || fail "verify(false) failed ($VERIFY_NO)"
 VERIFY_NO_ST=$($PSQL_READER -c "SELECT status FROM tasks.tasks WHERE id='${V3_S1}';" 2>/dev/null)
 [ "$VERIFY_NO_ST" = "in_progress" ] && pass "failed verify returns slice to in_progress" || fail "verify-fail state wrong ($VERIFY_NO_ST)"
+
+echo ""
+echo "═══ AC-L1-24: v014 — review→completed is orchestrator-only on EVERY write path ═══"
+# Titus Pi finding (verified against the live store): verify_slice is
+# orchestrator-only, but the ARC it performs was legal on the generic write
+# path, so the gate was advisory. These checks drive the WORKER side as
+# ${PROBE_ROLE} (profile_of() → 'probe', not a todos_fleet_writer member).
+#
+# Mimic the worker-host GRANTS: v009 grants claim/unclaim/report BY NAME to
+# every profile role, and verify_slice to moses/esther ONLY — so a real worker
+# cannot call verify_slice at all, which is precisely why the generic update
+# path was the only route it had to a self-completed slice.
+$PSQL -c "GRANT EXECUTE ON FUNCTION tasks.claim_slice(uuid,text), tasks.unclaim_slice(uuid,text), tasks.report_done(uuid,text) TO ${PROBE_ROLE};" >/dev/null 2>&1
+W_SLICE=$($PSQL_PROBE -c "SELECT tasks.task_upsert(p_content=>'L1 v14 self-graded slice', p_created_by=>'probe', p_scope=>'personal');" 2>/dev/null | head -1)
+W_CLAIM=$($PSQL_PROBE -c "SELECT tasks.claim_slice('${W_SLICE}', 'probe');" 2>/dev/null)
+W_REPORT=$($PSQL_PROBE -c "SELECT tasks.report_done('${W_SLICE}', 'probe self-reported evidence');" 2>/dev/null)
+W_ST=$($PSQL_PROBE -c "SELECT status FROM tasks.tasks WHERE id='${W_SLICE}';" 2>/dev/null)
+[ "$W_CLAIM" = "t" ] && [ "$W_REPORT" = "t" ] && [ "$W_ST" = "review" ] \
+  && pass "worker reached review on its own slice (claim+report)" \
+  || fail "worker could not reach review (claim=$W_CLAIM report=$W_REPORT status=$W_ST)"
+
+# 1. THE DEFECT: the generic update path (task_update / task-db.py update) must
+#    NOT let the slice's own creator complete it from review.
+W_RC=0
+W_OUT=$($PSQL_PROBE -v ON_ERROR_STOP=1 -c "SELECT tasks.task_upsert(p_id=>'${W_SLICE}', p_status=>'completed');" 2>&1) || W_RC=$?
+if [ "$W_RC" -ne 0 ] && echo "$W_OUT" | grep -q orchestrator; then
+  pass "worker refused review→completed via task_upsert (rc=$W_RC)"
+else
+  fail "worker COMPLETED its own review slice via task_upsert (rc=$W_RC)" "$W_OUT"
+fi
+
+# 2. A raw UPDATE (bypassing task_upsert entirely) is refused by the same trigger.
+W_RC2=0
+W_OUT2=$($PSQL_PROBE -v ON_ERROR_STOP=1 -c "UPDATE tasks.tasks SET status='completed', \"column\"='done' WHERE id='${W_SLICE}';" 2>&1) || W_RC2=$?
+if [ "$W_RC2" -ne 0 ] && echo "$W_OUT2" | grep -q orchestrator; then
+  pass "worker refused review→completed via raw UPDATE (rc=$W_RC2)"
+else
+  fail "worker COMPLETED its own review slice via raw UPDATE (rc=$W_RC2)" "$W_OUT2"
+fi
+
+W_ST2=$($PSQL_PROBE -c "SELECT status FROM tasks.tasks WHERE id='${W_SLICE}';" 2>/dev/null)
+[ "$W_ST2" = "review" ] && pass "slice still in review after both refused attempts" \
+  || fail "slice left review (status=$W_ST2) — a refused write changed the row"
+
+# 3. Both layers of the function-level gate hold for a worker: (a) no EXECUTE
+#    grant at all, and (b) even WITH the grant, the in-function allowlist refuses.
+W_RC3=0
+W_OUT3=$($PSQL_PROBE -v ON_ERROR_STOP=1 -c "SELECT tasks.verify_slice('${W_SLICE}', true, 'self-approve');" 2>&1) || W_RC3=$?
+if [ "$W_RC3" -ne 0 ] && echo "$W_OUT3" | grep -q "permission denied"; then
+  pass "worker holds no EXECUTE on verify_slice (permission denied)"
+else
+  fail "worker could call verify_slice (rc=$W_RC3)" "$W_OUT3"
+fi
+$PSQL -c "GRANT EXECUTE ON FUNCTION tasks.verify_slice(uuid,boolean,text) TO ${PROBE_ROLE};" >/dev/null 2>&1
+W_VERIFY=$($PSQL_PROBE -c "SELECT tasks.verify_slice('${W_SLICE}', true, 'self-approve');" 2>/dev/null)
+$PSQL -c "REVOKE EXECUTE ON FUNCTION tasks.verify_slice(uuid,boolean,text) FROM ${PROBE_ROLE};" >/dev/null 2>&1
+[ "$W_VERIFY" = "f" ] && pass "worker verify_slice still returns false (in-function allowlist)" \
+  || fail "worker verify_slice returned $W_VERIFY (expected f)"
+
+# 4. The ARC stays legal in the matrix — only the identity is gated. A later
+#    reader must not "fix" this by editing transition_allowed.
+ARC_OK=$($PSQL -c "SELECT tasks.transition_allowed('review','completed',NULL);" 2>/dev/null)
+[ "$ARC_OK" = "t" ] && pass "transition_allowed('review','completed') still true (identity-gated, not arc-gated)" \
+  || fail "review→completed removed from the matrix (got $ARC_OK)"
+
+# 5. The REAL verification path still works, end-to-end. The status is read back
+#    AS THE PROBE: the row is personal to the probe, so RLS hides it from the
+#    esther reader (USING: scope='fleet' OR created_by = me) — a reader-side
+#    read returns empty and would read as a failure that is not one.
+W_APPROVE=$($PSQL_READER -c "SELECT tasks.verify_slice('${W_SLICE}', true, 'verified by esther');" 2>/dev/null)
+W_ST3=$($PSQL_PROBE -c "SELECT status FROM tasks.tasks WHERE id='${W_SLICE}';" 2>/dev/null)
+[ "$W_APPROVE" = "t" ] && [ "$W_ST3" = "completed" ] \
+  && pass "orchestrator verify_slice still approves review→completed" \
+  || fail "orchestrator verify broken (returned $W_APPROVE, status=$W_ST3)"
+
+# 6. Scoping: a worker's own in_progress→completed (no verification claim) and
+#    the story auto-complete path (which completes a story from the slice's
+#    trigger, possibly under a worker's session_user) must still work.
+S_STORY=$($PSQL_PROBE -c "SELECT tasks.task_upsert(p_content=>'L1 v14 probe story', p_created_by=>'probe', p_kind=>'story');" 2>/dev/null | head -1)
+S_SLICE=$($PSQL_PROBE -c "SELECT tasks.task_upsert(p_content=>'L1 v14 probe story slice', p_created_by=>'probe', p_kind=>'slice', p_parent_id=>'${S_STORY}');" 2>/dev/null | head -1)
+$PSQL_PROBE -c "SELECT tasks.claim_slice('${S_SLICE}', 'probe');" >/dev/null 2>&1
+S_RC=0
+$PSQL_PROBE -v ON_ERROR_STOP=1 -c "SELECT tasks.task_upsert(p_id=>'${S_SLICE}', p_status=>'completed');" >/dev/null 2>&1 || S_RC=$?
+S_SLICE_ST=$($PSQL_PROBE -c "SELECT status FROM tasks.tasks WHERE id='${S_SLICE}';" 2>/dev/null)
+S_STORY_ST=$($PSQL_PROBE -c "SELECT status FROM tasks.tasks WHERE id='${S_STORY}';" 2>/dev/null)
+[ "$S_RC" -eq 0 ] && [ "$S_SLICE_ST" = "completed" ] \
+  && pass "worker in_progress→completed still allowed (not a verification claim)" \
+  || fail "guard over-reached: worker slice completion refused (rc=$S_RC, status=$S_SLICE_ST)"
+[ "$S_STORY_ST" = "completed" ] && pass "story auto-complete still fires under a worker session" \
+  || fail "story auto-complete broken (story status=$S_STORY_ST)"
 
 echo ""
 echo "═══ Summary ═══"

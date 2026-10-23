@@ -443,6 +443,10 @@ register "ops/services/tasks/schema/v011__release-stale-assignment.sql" "${CORTE
 register "ops/services/tasks/schema/v012__parked-rows-return-to-pool.sql" "${CORTEX_DEPLOY_HOME}/services/tasks/schema/v012__parked-rows-return-to-pool.sql"
 # v013: fleet slice under orchestrator-owned personal story (check_tenant relax) — backlog f0c6afbf 2026-10-18
 register "ops/services/tasks/schema/v013__fleet-slice-orch-parent.sql" "${CORTEX_DEPLOY_HOME}/services/tasks/schema/v013__fleet-slice-orch-parent.sql"
+# v014: the verification arc (review→completed) is orchestrator-only IN the
+# transition trigger — verify_slice's allowlist was bypassable through the
+# generic update path (Titus Pi finding, 2026-10-23).
+register "ops/services/tasks/schema/v014__orchestrator-only-verify-arc.sql" "${CORTEX_DEPLOY_HOME}/services/tasks/schema/v014__orchestrator-only-verify-arc.sql"
 # learnings ledger (F-001) — schema + version-gated runner, orchestrator-only
 # (the bus Postgres that hosts learnings exists only on Moses/Esther; workers
 # write via the HTTP collector path and never need this schema locally).

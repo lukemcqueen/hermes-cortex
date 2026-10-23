@@ -398,7 +398,7 @@ async def list_tools(ctx, params=None) -> ListToolsResult:
         ),
         Tool(
             name="task_update",
-            description=f"Update a task's status (canonical lifecycle; reopen requires reason='reopen'). {_CONTENT_WARNING}",
+            description=f"Update a task's status (canonical lifecycle; reopen requires reason='reopen'). Completing a slice that is IN REVIEW is ORCHESTRATOR-ONLY and enforced in the DB trigger, not by convention: a non-orchestrator's review→completed is REFUSED on every write path (this tool, task-db.py update, raw SQL), so a reported slice stays in review until moses/esther run task_verify. {_CONTENT_WARNING}",
             inputSchema={
                 "type": "object",
                 "properties": {

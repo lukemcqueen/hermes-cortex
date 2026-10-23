@@ -1,0 +1,153 @@
+# Pre-change state of the tasks verification gate (LIVE mycortex DB, host esther)
+#
+# captured-at: bebe5a3f (main)
+# captured-on: 2026-10-23T07:45:58Z (UTC)
+#
+# produced-by (this file IS that command's stdout, redirected, never retyped):
+#   docker exec -i mycortex-postgres psql -U mycortex_reader_esther -d mycortex -At -c \
+#     "SELECT p.proname || E'\\n---\\n' || pg_get_functiondef(p.oid) FROM pg_proc p
+#      JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='tasks'
+#      AND p.proname IN ('check_transition','verify_slice','transition_allowed',
+#      'is_fleet_writer','profile_of') ORDER BY p.proname;"
+#
+# re-run it on any host whose tasks schema predates v014 to reproduce this state.
+#
+# What this shows: check_transition consults ONLY transition_allowed (no identity
+# clause), and transition_allowed('review','completed') is TRUE for every caller —
+# so the arc verify_slice performs was reachable through the generic write path.
+
+check_transition
+---
+CREATE OR REPLACE FUNCTION tasks.check_transition()
+ RETURNS trigger
+ LANGUAGE plpgsql
+AS $function$
+DECLARE
+    v_reason TEXT;
+BEGIN
+    IF OLD.status IS NOT DISTINCT FROM NEW.status THEN
+        RETURN NEW;
+    END IF;
+    v_reason := NULLIF(current_setting('tasks.transition_reason', true), '');
+    -- Auto-complete path: story → completed ONLY via the AFTER trigger's GUC.
+    -- The trigger fires only when no active slices remain, so the R-3 story
+    -- gate is satisfied by construction.
+    IF NEW.kind = 'story' AND NEW.status = 'completed'
+       AND v_reason = 'story_auto_complete' THEN
+        RETURN NEW;
+    END IF;
+    -- COALESCE(..., false): transition_allowed must never leak NULL into
+    -- the gate (three-valued logic would silently permit the transition).
+    IF NOT COALESCE(tasks.transition_allowed(OLD.status, NEW.status, v_reason), false) THEN
+        RAISE EXCEPTION 'illegal task transition: % -> % (reason: %)',
+            OLD.status, NEW.status, COALESCE(v_reason, 'none');
+    END IF;
+    IF NEW.kind = 'story' AND NEW.status = 'completed' AND EXISTS (
+        SELECT 1 FROM tasks.tasks s
+        WHERE s.parent_id = NEW.id
+          AND s.status NOT IN ('completed', 'cancelled')
+    ) THEN
+        RAISE EXCEPTION 'story % has active slices; cannot complete', NEW.id;
+    END IF;
+    RETURN NEW;
+END;
+$function$
+
+is_fleet_writer
+---
+CREATE OR REPLACE FUNCTION tasks.is_fleet_writer(p_role name DEFAULT CURRENT_USER)
+ RETURNS boolean
+ LANGUAGE sql
+ STABLE
+AS $function$
+    SELECT EXISTS (
+        SELECT 1 FROM pg_roles
+        WHERE rolname = 'todos_fleet_writer'
+          AND pg_has_role(p_role, 'todos_fleet_writer', 'member')
+    );
+$function$
+
+profile_of
+---
+CREATE OR REPLACE FUNCTION tasks.profile_of(p_role name DEFAULT CURRENT_USER)
+ RETURNS text
+ LANGUAGE sql
+ STABLE
+AS $function$
+    SELECT CASE
+        WHEN p_role::text LIKE 'mycortex_reader\_%' THEN
+            substring(p_role::text FROM 17)  -- strip 'mycortex_reader_'
+        ELSE p_role::text
+    END;
+$function$
+
+transition_allowed
+---
+CREATE OR REPLACE FUNCTION tasks.transition_allowed(p_from text, p_to text, p_reason text DEFAULT NULL::text)
+ RETURNS boolean
+ LANGUAGE plpgsql
+ IMMUTABLE
+AS $function$
+BEGIN
+    IF p_from = p_to THEN
+        RETURN true;                       -- no-op gate (no transition)
+    END IF;
+    IF p_from = 'cancelled' THEN
+        RETURN false;                      -- terminal
+    END IF;
+    CASE p_from
+        WHEN 'pending' THEN
+            RETURN p_to IN ('in_progress', 'cancelled', 'blocked', 'waiting');
+        WHEN 'in_progress' THEN
+            RETURN p_to IN ('paused', 'completed', 'cancelled',
+                            'blocked', 'waiting', 'review', 'pending');
+        WHEN 'review' THEN
+            RETURN p_to IN ('completed', 'in_progress');
+        WHEN 'paused' THEN
+            -- v012: 'pending' added — a parked slice must be able to rejoin the pool.
+            RETURN p_to IN ('in_progress', 'completed', 'cancelled',
+                            'blocked', 'waiting', 'pending');
+        WHEN 'blocked' THEN
+            -- v012: 'pending' added — see above.
+            RETURN p_to IN ('in_progress', 'paused', 'completed',
+                            'cancelled', 'waiting', 'pending');
+        WHEN 'waiting' THEN
+            -- v012: 'pending' added — see above.
+            RETURN p_to IN ('in_progress', 'paused', 'blocked',
+                            'completed', 'cancelled', 'pending');
+        WHEN 'completed' THEN
+            RETURN p_to = 'in_progress' AND COALESCE(p_reason, '') = 'reopen';
+        ELSE
+            RETURN false;
+    END CASE;
+END;
+$function$
+
+verify_slice
+---
+CREATE OR REPLACE FUNCTION tasks.verify_slice(p_id uuid, p_approved boolean, p_note text DEFAULT NULL::text)
+ RETURNS boolean
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'tasks', 'pg_temp'
+AS $function$
+DECLARE
+  v_updated int;
+BEGIN
+  -- Orchestrator-only: moses/esther may verify. Never trust a self-report.
+  IF tasks.profile_of(session_user) NOT IN ('moses','esther') THEN
+    RETURN false;
+  END IF;
+  UPDATE tasks.tasks
+     SET status = CASE WHEN p_approved THEN 'completed' ELSE 'in_progress' END,
+         "column" = CASE WHEN p_approved THEN 'done' ELSE 'in_progress' END,
+         status_changed_at = now(),
+         plan = CASE WHEN p_approved THEN plan
+                     ELSE plan || E'\n-- VERIFY FAILED --\n' || COALESCE(p_note, 'no reason')
+                END
+   WHERE id = p_id
+     AND status = 'review'
+  RETURNING 1 INTO v_updated;
+  RETURN COALESCE(v_updated, 0) = 1;
+END $function$
+
