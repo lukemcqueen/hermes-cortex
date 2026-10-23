@@ -1,7 +1,7 @@
 weekly dream verifier — 2026-10-24
-generated-by : ops/evidence/verify-weekly-dream-2026-10-24.sh
-captured-at  : 00c71393 (working tree at run time)
-date         : 2026-10-24T05:41:12+0900
+generated-by : ops/evidence/generate-weekly-dream-verify-2026-10-24.sh
+captured-at  : 5a500b56 (working tree at run time)
+date         : 2026-10-24T05:41:41+0900
 host         : Linux x86_64
 note         : captured-at is the revision the tree sat on when the run happened;
                the committed copy is one commit ahead of this line by construction.
@@ -11,11 +11,11 @@ bash -n -> rc=0
 ------------------------------------------------------------
 ## 2. PASS direction (unmodified artifact) — command run bare, rc is its own
 verify-weekly-dream-2026-10-24
-artifact: /home/esther/hermes-cortex/docs/evidence/weekly-dream-content-2026-10-24.md
-brain   : /home/esther/brain/esther/dreams/2026-10-24-weekly.md
+artifact: ~/hermes-cortex/docs/evidence/weekly-dream-content-2026-10-24.md
+brain   : ~/brain/esther/dreams/2026-10-24-weekly.md
 ------------------------------------------------------------
 OK    artifact matches sidecar sha256 (6074adb986946b1783988ae01abd669c0ceaea5e8d8ac1eafd3091970f055aff)
-OK    artifact byte-identical to live brain copy (/home/esther/brain/esther/dreams/2026-10-24-weekly.md)
+OK    artifact byte-identical to live brain copy (~/brain/esther/dreams/2026-10-24-weekly.md)
 OK    phase present: Phase 1 — Fresh pages
 OK    phase present: Phase 2 — Connections mapped
 OK    phase present: Phase 3 — Lessons synthesized
@@ -44,8 +44,8 @@ RESULT: FAIL
 ------------------------------------------------------------
 ## 4. could-not-verify branch (artifact absent) — distinct outcome, rc=3
 verify-weekly-dream-2026-10-24
-artifact: /home/esther/.hermes/cache/scratch/dream-verify-capture/docs/evidence/weekly-dream-content-2026-10-24.md
-brain   : /home/esther/.hermes/cache/scratch/dream-verify-capture/brain/nonexistent.md
+artifact: ~/.hermes/cache/scratch/dream-verify-capture/docs/evidence/weekly-dream-content-2026-10-24.md
+brain   : ~/.hermes/cache/scratch/dream-verify-capture/brain/nonexistent.md
 ------------------------------------------------------------
-COULD NOT VERIFY  artifact not present: /home/esther/.hermes/cache/scratch/dream-verify-capture/docs/evidence/weekly-dream-content-2026-10-24.md
+COULD NOT VERIFY  artifact not present: ~/.hermes/cache/scratch/dream-verify-capture/docs/evidence/weekly-dream-content-2026-10-24.md
 rc=3
