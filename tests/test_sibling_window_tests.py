@@ -79,6 +79,25 @@ def test_no_definitions_yields_nothing():
     assert mcp._collect_added_tests(["+import os", "+x = 1"]) == []
 
 
+def test_exception_expectation_is_an_assertion():
+    tests = mcp._collect_added_tests(["+def test_boom():", "+    with pytest.raises(ValueError):"])
+    assert len(tests) == 1
+    assert "pytest.raises" in tests[0][1]
+
+
+def test_bare_raise_is_not_an_assertion():
+    # `raise` on its own is control flow, not a check: a body that only raises has asserted nothing.
+    tests = mcp._collect_added_tests(["+def test_boom():", '+    raise ValueError("boom")'])
+    assert len(tests) == 1
+    assert tests[0][1] == ""
+
+
+def test_assert_raises_form_is_an_assertion():
+    tests = mcp._collect_added_tests(["+def test_boom(self):", "+    self.assertRaises(ValueError, f)"])
+    assert len(tests) == 1
+    assert "assertRaises" in tests[0][1]
+
+
 def test_plain_comparison_is_not_an_assertion():
     # A bare `==` is not an assertion. A comparison inside a body must not be reported as one, or
     # the window shows a line that proves nothing while looking like proof.

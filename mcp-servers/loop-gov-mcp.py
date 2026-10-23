@@ -1992,12 +1992,14 @@ _TEST_DEF = re.compile(
     r"|describe\s*[\(\"']([^\"')]+))",
     re.I)
 _TEST_PATH = re.compile(r"(^|/)(tests?|spec)/|(^|/)test_|_test\.|_spec\.|\.test\.|\.spec\.", re.I)
-# An assertion KEYWORD, never a bare comparison: `==` on its own matches a plain assignment
-# (`flag = a == b`) and would show a line that proves nothing while looking like proof. The `.to eq`
-# family covers the Ruby and JS shapes; a body that asserts nothing reports an empty string, and the
-# rendered block says so in words.
+# An assertion KEYWORD, never a bare comparison or a bare `raise`: `==` on its own matches a plain
+# assignment (`flag = a == b`), and `raise` on its own is control flow — a body that only raises has
+# checked nothing. The exception-EXPECTATION forms (`pytest.raises`, `with raises`, `assertRaises`,
+# `to raise`) are checks and stay in, as does the `.to eq` family for the Ruby and JS shapes. A body
+# that asserts nothing reports an empty string, and the rendered block says so in words.
 _ASSERTION = re.compile(
-    r"\b(assert|expect|should|refute|must_)\w*|\.to eq|\.to_be|\.to_eq|\bis (?:not )?None\b|\braise\b",
+    r"\b(assert|expect|should|refute|must_)\w*|\.to eq|\.to_be|\.to_eq|\bis (?:not )?None\b"
+    r"|pytest\.raises|with\s+raises|assertRaises|to raise|\.to raise",
     re.I)
 SIBLING_TESTS_PER_FILE = 6
 
@@ -5706,18 +5708,27 @@ SIBLING_TECHNIQUES = ("unverified-claim",)
 
 
 def _is_sibling_target_finding(finding, siblings=None, reviewed_path="") -> bool:
-    """True when the finding's complaint is aimed at another file of the same range."""
+    """True when the finding's complaint is aimed at another file of the same range.
+
+    The sibling path must be the target's SUBJECT — it is matched ANCHORED at the start, optionally
+    followed by a line suffix (`path:12`) or a separator. A substring match anywhere in the target
+    would downgrade a real defect on the judged file whose sentence merely cited a sibling path, and
+    that is the direction this predicate must never take.
+    """
     if not siblings or not isinstance(finding, dict):
         return False
     tech = str(finding.get("technique", "")).strip().lower()
     if tech in _MATERIAL_LIMIT_NEVER or tech not in SIBLING_TECHNIQUES:
         return False
-    target = str(finding.get("target", ""))
+    target = str(finding.get("target", "")).strip()
     if not target:
         return False
     if reviewed_path and reviewed_path in target:
         return False
-    return any(sib and str(sib) in target for sib in siblings)
+    for sib in siblings:
+        if sib and re.match(rf"^{re.escape(str(sib))}(?=$|[\s:,])", target):
+            return True
+    return False
 
 
 # ── Material-window findings do not block (2026-10-12) ────────────────────────

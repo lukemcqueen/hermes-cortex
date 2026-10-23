@@ -68,6 +68,27 @@ def test_sibling_target_unverified_claim_does_not_block():
     assert annotating[0].get("severity_downgraded"), "the downgrade is recorded, not inferred"
 
 
+def test_prose_target_mentioning_a_sibling_is_not_downgraded():
+    # The sibling path must be the finding's SUBJECT, not something its prose happens to mention:
+    # a substring match anywhere in the target would let a real defect on the judged file be
+    # downgraded because the sentence cited a sibling path.
+    f = _finding(target="Worker's note: cites " + SIBLING + " without showing its assertion")
+    blocking, _ = _split(f, siblings={SIBLING}, reviewed_path=REVIEWED)
+    assert len(blocking) == 1
+
+
+def test_sibling_target_with_a_line_suffix_is_downgraded():
+    f = _finding(target=SIBLING + ":20")
+    blocking, annotating = _split(f, siblings={SIBLING}, reviewed_path=REVIEWED)
+    assert blocking == [] and len(annotating) == 1
+
+
+def test_bare_sibling_path_is_downgraded():
+    f = _finding(target=SIBLING)
+    blocking, _ = _split(f, siblings={SIBLING}, reviewed_path=REVIEWED)
+    assert blocking == []
+
+
 def test_downgrade_is_tagged_with_the_original_severity():
     f = _finding(severity="high", target=SIBLING + ":20")
     _, annotating = _split(f, siblings={SIBLING}, reviewed_path=REVIEWED)
