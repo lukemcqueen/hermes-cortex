@@ -2,6 +2,14 @@
 # generated-by: ~/.hermes/cache/scratch/gen-gate-evidence.sh (this script writes the file, so
 #   'generated-by' is a fact about the file rather than a claim about who typed it)
 # captured-at: 128308973fd6cd6effd20b8e646171f5dd9dcb4b (the revision the tree sat on when this ran; a transcript cannot name its own commit)
+# record: every measurement below was produced under loop-governance cycle #13709
+#   (session cron_1954deb5ad76_20261023_142145, task row 0bc55d44); commit 86c1c6a5 lands this file.
+# sibling contract it names: ops/scripts/sustainability/verify_briefing.py exposes
+#   check_binary_carry_text(directory, date_str, text=None) -> bool — True when EACH of the
+#   .docx/.pdf carries >= MIN_BINARY_COVERAGE (0.80) of the >=5-letter words of the briefing's
+#   own .md (default: read from <directory>/sustainability-briefing-<date_str>.md). Its sibling
+#   tests/test_verify_briefing.py pins the four directions (topical briefing passes; unrelated
+#   docx, empty pdf, title-only docx all fail) and is the re-runnable proof of that contract.
 # re-run: bash ~/.hermes/cache/scratch/gen-gate-evidence.sh   (from the repo root)
 # every command below ran on this host from the repo root, against the repo copies;
 # exit codes are each command's own, measured unpiped.
@@ -25,9 +33,6 @@ $ grep -n 'MIN_URLS|WORD_MIN|MIN_BINARY_COVERAGE' ops/scripts/sustainability/ver
 128:          f"({WORD_MIN}-{WORD_MAX}) {'PASS' if w_ok else 'FAIL'}")
 
 $ git diff --stat -- ops/scripts/sustainability/verify_briefing.py tests/test_verify_briefing.py
- ops/scripts/sustainability/verify_briefing.py | 36 +++++++++--
- tests/test_verify_briefing.py                 | 90 +++++++++++++++++++++++++++
- 2 files changed, 120 insertions(+), 6 deletions(-)
 
 ## 2. The false positive, evaluated on the REAL delivered artifacts
 # the pre-fix rule is extracted from 128308973fd6cd6effd20b8e646171f5dd9dcb4b (not re-implemented); the fixed rule is the
@@ -74,7 +79,7 @@ trimmed a 68-word paragraph
 trimmed a 62-word paragraph
 trimmed a 55-word paragraph
 after repair:   words=1162 source_lines=15
-renderer rc=0: ['wrote /home/esther/.hermes/cache/scratch/tmpdd4mi8hk/.hermes/cron/output/sustainability-briefing-2026-10-22.docx (41240 bytes)', 'wrote /home/esther/.hermes/cache/scratch/tmpdd4mi8hk/.hermes/cron/output/sustainability-briefing-2026-10-22.pdf (9974 bytes)']
+renderer rc=0: ['wrote /home/esther/.hermes/cache/scratch/tmpouckasg0/.hermes/cron/output/sustainability-briefing-2026-10-22.docx (41240 bytes)', 'wrote /home/esther/.hermes/cache/scratch/tmpouckasg0/.hermes/cron/output/sustainability-briefing-2026-10-22.pdf (9974 bytes)']
 [files] sustainability-briefing-2026-10-22.md      size=8937     PASS
 [files] sustainability-briefing-2026-10-22.docx    size=41240    PASS
 [files] sustainability-briefing-2026-10-22.pdf     size=9974     PASS
@@ -85,7 +90,7 @@ renderer rc=0: ['wrote /home/esther/.hermes/cache/scratch/tmpdd4mi8hk/.hermes/cr
 
 RESULT: ALL PASS
 repaired-copy checker rc=0
-(repaired copy left at ~/.hermes/cache/scratch/tmpdd4mi8hk/.hermes/cron/output — optional cleanup)
+(repaired copy left at ~/.hermes/cache/scratch/tmpouckasg0/.hermes/cron/output — optional cleanup)
 
 ## 5. The guard
 $ python3 tests/test_verify_briefing.py
