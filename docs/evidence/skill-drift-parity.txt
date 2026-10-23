@@ -19,25 +19,11 @@ A file under no repo-owned skill dir is a Hermes default and stays skipped.
 
 | Measure | Value |
 |---|---|
-| Stranded in place (path in repo, content only deployed) | 8 |
-| Absent from the repo (deployed under a repo-owned skill) | 2 |
+| Stranded in place (path in repo, content only deployed) | 0 |
+| Absent from the repo (deployed under a repo-owned skill) | 0 |
 |   ↳ path dropped from repo history | 0 |
-|   ↳ path never committed | 2 |
-| Files in sync | 958 |
+|   ↳ path never committed | 0 |
+| Files in sync | 968 |
 | Skipped (Hermes defaults, or repo ahead) | 500 |
 
-**Verdict: FAIL**
-
-Stranded in place:
-- devops/enforcement-change-safety/SKILL.md
-- devops/fleet-commands/SKILL.md
-- devops/hermes-cortex-maintenance/SKILL.md
-- devops/maintenance-scan/SKILL.md
-- devops/postgres-schema-design/SKILL.md
-- devops/shell-scripting/SKILL.md
-- devops/task-queue-workflow/SKILL.md
-- software-development/change-checklist/SKILL.md
-
-Absent from the repo (deployed under a repo-owned skill):
-- devops/governance-closeout/references/reviewer-policy-two-windows.md (never-committed)
-- devops/postgres-schema-design/references/verifying-a-schema-guard-live.md (never-committed)
+**Verdict: PASS**

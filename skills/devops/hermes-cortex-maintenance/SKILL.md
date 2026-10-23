@@ -124,7 +124,32 @@ API field names in 3.206+: `costDetails`, `calculatedTotalCost` — NOT legacy `
 | Skills not deploying | Stub guard blocked repo stub → deployed full | Restore full skill content first |
 | Ollama cold-start slow | Model unloaded after idle | `OLLAMA_KEEP_ALIVE >= 5m` in the systemd unit |
 | Doctor checksum mismatch | SOURCE header adds 3 lines to deployed files | Use `_content_md5()` (strips header) |
-| Gateway restart needed after plugin change | File-on-disk ≠ change-live | Restart session/gateway, verify the change is loaded |
+| Gateway restart needed after plugin change | File-on-disk ≠ change-live | Restart session/gateway, verify the change is loaded. The deploy cannot always read the gateway's start time and then FAILS CLOSED as restart-required even when nothing changed — treat it as pending, hand the restart to the host operator (it must run from a shell OUTSIDE the gateway process), and do not loop retrying or edit the deployed copy |
+
+## Stranded skills — the DEPLOYED copy can be NEWER than the repo
+
+`cortex-update.sh` refuses to overwrite a deployed skill whose copy is newer than the repo source,
+and the doctor reports `⚠️ Skill drift: <path>`. This is usually not drift but a LESSON: the lesson
+pipeline writes into the DEPLOYED copy, so the deployed side often carries knowledge the repo does
+not have. Never resolve it by copying repo → deployed, and never by deleting the deployed copy.
+
+```bash
+python3 ~/hermes-cortex/ops/scripts/manage/reconcile-stranded-skills.py          # report first
+python3 ~/hermes-cortex/ops/scripts/manage/reconcile-stranded-skills.py --apply  # pure supersets only
+```
+
+- The report classifies each file. A PURE SUPERSET can be applied mechanically; **REVIEW** means the
+deployed copy also DROPS lines, and those must be read before you take the deployed side:
+`diff -u <repo-path> <deployed-path>`. A paragraph that was rewritten or condensed reports a drop
+whose content is still present in another form — that is the expected answer. A drop of content
+that exists NOWHERE on the deployed side is a real regression to hand-merge, not to accept.
+- Land the deployed content as its OWN commit, byte-identical, BEFORE adding any edit of your own —
+mixing them makes the reconciliation unreviewable.
+- **Assert, don't eyeball.** After copying, verify `sha256` equality on BOTH sides, and parse the
+copied frontmatter for a non-empty `description` FIRST: a skill whose deployed copy lost its
+description becomes UNLOADABLE, and every session silently stops seeing it. Refuse the copy rather
+than land that.
+- Then deploy (`cortex-dogfood.sh --force`) and confirm the doctor's skill-drift line is ✅.
 
 ## Recovery Techniques
 

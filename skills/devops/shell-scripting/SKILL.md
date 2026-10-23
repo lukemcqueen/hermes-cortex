@@ -61,6 +61,33 @@ if [[ -n "$ORCH_CONFIG" ]]; then ... fi   # empty = "no config", gate on -n
 
 **Real bug (2026-07-31):** `pre-commit-score`'s orchestrator-only-paths guard read `docs/orchestrator-only-paths.txt` this way. Repos without the file (e.g. client project repos) had EVERY non-orch commit fail with exit 1 and zero output. One `|| true` fixed it fleet-wide.
 
+### Asserting a FAILURE inside a `set -e` battery
+
+A test battery that must prove a command is REFUSED cannot run it bare: under `set -e`
+the expected non-zero status kills the script, and the block ends with the last header
+printed and no failure line — the battery looks TRUNCATED rather than failing, and the
+assertion that never ran is silently absent. Capture the status, then assert on it:
+
+```bash
+RC=0
+OUT=$($PSQL -v ON_ERROR_STOP=1 -c "SELECT tasks.task_upsert(p_id=>'…', p_status=>'completed');" 2>&1) || RC=$?
+if [ "$RC" -ne 0 ] && echo "$OUT" | grep -q orchestrator; then
+  pass "worker refused (rc=$RC)"
+else
+  fail "worker ACCEPTED the write (rc=$RC)" "$OUT"
+fi
+```
+
+- **`psql` needs `-v ON_ERROR_STOP=1` for a SQL error to move the exit status at all** —
+  without it psql continues and exits 0, so "it was refused" and "it succeeded" are
+  indistinguishable in the rc.
+- **`OUT=$(…) || RC=$?` — the `||` IS the guard.** `OUT=$(…)` alone, with `RC=$?` on the
+  next line, exits at the first line under `set -e`.
+- **When a battery dies with no message, run it as `bash -x <battery> 2> trace` and read
+  the LAST lines of the trace** — the trace names the exact statement that returned
+  non-zero, which a silent `set -e` exit never reports. Add the trace capture as a
+  second file so the battery's own stdout stays a clean transcript.
+
 ### `$(cmd || echo fallback)` CONCATENATES when the command prints AND then fails
 
 A different trap from the silent-exit above: here the assignment SUCCEEDS and the VALUE is

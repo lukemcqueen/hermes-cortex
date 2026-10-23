@@ -1363,6 +1363,29 @@ don't want them to just ignore it every time"):
 Same family as Rules 17 and 19 — guidance nothing measures is not guidance — with the inverse
 emphasis: the fix here removes the free-ness of ignoring without adding a single refusal.
 
+## Rule 32: A Refusal Must Rest on Positive Evidence About THIS Session — Never on a Speculative Candidate List
+
+A guard that REFUSES is making a factual claim ("this lock's repo cannot contain this
+session's work"). Build it so the claim is ESTABLISHED before the refusal fires, or it
+blocks correct work and the operator's own diagnosis gets sent down the wrong path.
+
+- **Attribute every candidate to the session.** A guard that scanned "any repo with ANY commit
+  in the window" refused a correctly-tagged lock whenever a SIBLING repo happened to change —
+  the agent had committed nothing anywhere, and the message named an unrelated project. Require
+  the candidate to carry commits THIS agent authored (author + session identity), not merely to
+  have moved. "Something changed nearby" is not evidence about the caller.
+- **Keep the bar SYMMETRIC.** If the guard needs commits to prove a repo is the session's, it
+  cannot refuse on the ABSENCE of commits in the tagged repo while inferring presence from
+  unattributed activity elsewhere — that asymmetry is what makes the refusal unfalsifiable.
+- **Check the premise the refusal assumes before refusing.** When the lock's repo IS the
+  session's repo (enforcer-injected path or an explicit `CORTEX_SESSION_REPO`), the tag is
+  right and there is nothing to refuse: pass, and log loudly so the case stays visible.
+- **Narrow by REMOVING refusals only.** The fix's own test must show the guard still refuses a
+  genuinely mis-tagged session — a narrowing that also stops catching the real case has
+  deleted the gate, not fixed it (Rule 20).
+- **Print the identity the guard decided on** (`Session repo : …`) beside the candidate list, so
+  the next reader can tell a bad guard from a bad tag without re-deriving it.
+
 ## References
 
 - `references/memory-seed-clobber-2026-08-05.md` — the memory-clobber root

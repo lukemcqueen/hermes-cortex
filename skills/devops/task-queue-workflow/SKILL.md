@@ -221,6 +221,30 @@ derivation CHECK and RLS path, and every orchestrator plan restates the rule.
   had just reported into `review`. Fixed in schema v014; `review → in_progress` (the
   reject/stale arc) stays open on purpose — it asserts nothing about verification and
   the 24h stale sweep re-queues through it.
+- **A gate whose permission is a VALUE THE CALLER WRITES is convention, not enforcement.**
+  The story gate was admitted by `tasks.transition_reason = 'story_auto_complete'` — a session GUC
+  any caller can `set_config` — so whoever could write the row could skip the gate. The fix shape:
+  the trigger VERIFIES the precondition the legitimate path satisfies by construction (a story has
+  no active slice) and ignores the reason entirely; the value keeps only its non-authorising use
+  (event labelling). Auditing a gate, ask what a caller must WRITE to pass it — if the answer is a
+  string it supplies, the gate is advisory. Note the identity check belongs in the TRIGGER, not in
+  `transition_allowed`: that function is IMMUTABLE and role-agnostic, so it cannot see a caller,
+  and removing the arc there would make the sanctioned function itself raise.
+- **`task_upsert()` PRE-CHECKS `transition_allowed()`, so a trigger rule tested through it can pass
+  VACUOUSLY — and the arcs the matrix forbids are reachable only by RAW UPDATE.** A RED test written
+  as `task_upsert(p_status=>'completed')` on a `pending` story never reaches the trigger: the
+  fast-fail raises first, "the guard refused" passes, and the guard under test was never consulted.
+  Put the row in the state the arc requires (e.g. `in_progress` first), and test BOTH the function
+  path and a raw `UPDATE tasks.tasks SET status='completed', "column"='done'` — the raw path is the
+  one the trigger actually gates. Assert the ROW STATE afterwards as well as the rc: a refusal that
+  still changed the row is not a refusal.
+- **A non-orchestrator probe role needs its own grants, and an honest worker cannot call
+  `verify_slice` at all.** v009 grants `claim_slice`/`unclaim_slice`/`report_done` BY NAME to each
+  profile role and `verify_slice` to moses/esther only, so a scratch `mycortex_reader_<probe>` that
+  is merely a member of `mycortex_reader` gets `permission denied for function claim_slice` until you
+  grant those three explicitly, while its `verify_slice` refusal is `permission denied` rather than
+  `false`. Assert BOTH layers — grant it temporarily to observe the in-function allowlist return
+  `false`, then revoke — or the test reports the wrong mechanism.
 - **Claim is self-only** — `p_assignee` must equal `profile_of(session_user)`;
   you can claim only FOR YOURSELF, never assign work to others.
 - **A claimed slice can't be re-claimed** — the single claimer holds it until

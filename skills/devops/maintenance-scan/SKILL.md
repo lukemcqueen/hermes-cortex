@@ -83,6 +83,23 @@ cronjob(action='list')
 ```
 Check every job for `last_status: failed`. Flag any paused without reason (`state: paused` with no `paused_reason`).
 
+**A `last_status: error` describes the LAST RUN, not current reality.** The job's `last_error` field
+carries that run's full stdout — read it first, and identify the ARTIFACT it judged (almost always a
+dated file: yesterday's briefing, last night's report). Then re-run the canonical checker against
+the CURRENT artifact before changing anything. If today's artifact passes, the error is STALE and
+the fix is to refresh the status, not to repair a pipeline that already works — and the difference
+matters, because "repairing" a working generator is how a real regression gets introduced chasing a
+report about yesterday.
+
+Refresh the status through the scheduler:
+
+```
+cronjob(action='run', job_id='<id>')
+```
+
+A manual `python3`/`bash` run of the job's script does NOT update `last_status` — a hand-run "pass"
+leaves the doctor warning standing and reads to the next session as an unfixed failure.
+
 ### Step 5: Git
 ```
 cd ~/hermes-cortex && git status --short
@@ -109,6 +126,11 @@ Cross-reference findings. Common patterns from the doctor:
   session involved. For anything else, `git log -1 --format='%an %ae' -- <path>` gives authorship,
   and another session's files are never committed, reverted or stashed on the strength of a dirty
   listing alone.
+  A SECOND, distinct cause is a PEER SESSION mid-flight: staged `docs/evidence/` from their own task
+  pass plus a MODIFIED shared script. `git diff --stat -- <path>` and then `git diff -- <path>` tell
+  you whether it is a coherent in-progress change or abandoned work — if it is in-flight, defer it
+  with the owner named and leave it strictly alone. Racing a sibling's edit on a shared file costs
+  far more than the dirty line does, and their edit is not yours to land.
 - `ℹ️ Extra crons` → informational, ignore
 - `➖ Bus E2E test` → optional test, ignore
 
@@ -180,6 +202,24 @@ Fix each issue without asking (Principle 2 — Be Proactive). Only escalate:
 - Data loss (rm -rf, DROP TABLE)
 - Privilege escalation
 - Service restart affecting production traffic
+
+**Disposition, don't silently absorb.** Every ⚠️/ℹ️ you are not fixing THIS cycle gets recorded
+with an owner and a reason — an undisposed warning reads as an unnoticed failure on the next run:
+
+```bash
+python3 ~/.hermes-cortex/scripts/cortex-doctor.py --disposition "<exact check name>" \
+  --as deferred --owner <agent> --reason "<why this is not yours / not now>"
+```
+
+The name must match the printed line exactly (it prints the remaining undisposed count back, so you
+can see the list shrink). A deferral needs a reason that names the OWNER of the work — a different
+repo with its own lock, a peer's in-flight edit, a migration that is its own ops change. "Later" is
+not a reason. Two rules that keep this honest:
+
+- **Never dispose a check your own work just fixed.** Re-run the doctor and let it clear itself; a
+  deferral there hides a green result behind a warning label.
+- Dispositions are state outside the repo, so recording one does not widen a governed range — but
+  the deferral does not make the underlying work go away, so name it in the delivery.
 
 Known doctor-fix patterns:
 - **`⚠️ MCP wiring (<server>) — registered against the HERMES venv`** → re-register against the

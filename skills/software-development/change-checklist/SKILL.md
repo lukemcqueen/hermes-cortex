@@ -47,7 +47,19 @@ Load this before end_change() on any script, deploy-config, cron, shared-doc, or
       and asks for a design without that context gets told its own claims are unsupported.
       Include the material it must judge — the source, the tests, the measured output — because a
       plan submitted as prose comes back as nothing but `unverified-claim` findings; that is the
-      reviewer working correctly, not a reason to re-run it. Expect it to CUT scope: obey the cut
+      reviewer working correctly, not a reason to re-run it.
+      **A CLEAN verdict validates the plan's CLAIMS, never its PREDICTED CONSEQUENCES — the RED run
+      is what falsifies those.** Write every predicted outcome (which paths a change admits, which
+      stay refused, what becomes legal) as a HYPOTHESIS the first failing test must confirm; when
+      the run contradicts one, correct the ARTIFACT (the migration comment, the doc) from the
+      measurement and say so in the commit message. A plan can be internally consistent, pass the
+      reviewer CLEAN, and still be wrong about the mechanism — measured: a stated consequence
+      ("manual pending→completed becomes legal") was refuted by a pre-check inside a function the
+      plan never named, and the reviewer had no reason to catch it. **And the reviewer's own
+      summary is not the record — it can echo the WRONG cycle id** while the stored row is keyed by
+      the `--cycle-id` argument, so read the row back from the store instead of trusting the text
+      it returned.
+      Expect it to CUT scope: obey the cut
       instead of defending the step (a planned documentation edit was refused as "notes instead of
       controls" — the operator's own standing objection).
       **Never phrase the material as a REQUEST — an imperative addressed to the reviewer is filed
@@ -736,6 +748,16 @@ Enforced at 3 layers: pre-commit hook (static gate), enforcer (blocks commit unt
       `git reset -q -- <paths>` (index only — never `git checkout --`, which can truncate), then
       merge. Deciding this by inference instead of by those two queries cost several rounds of
       wrong diagnosis: the message reads like a content conflict and is not one.
+      **The WORKTREE variant is a different failure with no safe local fix: `Merge with strategy ort
+      failed` when uncommitted MODIFICATIONS exist on paths the incoming commits also change.**
+      `git ls-tree origin/main -- <path>` names which of your dirty paths the other side touches;
+      the peer's edit survives the attempt (assert it: `git diff --stat HEAD -- <paths>` unchanged
+      plus a content spot-check, because a failed ort writes nothing), but the merge cannot proceed.
+      Do NOT stash, commit, discard or `git checkout --` another session's work to unblock yourself —
+      stand down instead: leave your own commits landed and reviewed locally, retire the integration
+      cycle through the state machine with the blocker named, and report the paths to their owner.
+      The unblock is one commit or one deliberate discard by whoever made those edits; an unpushed
+      commit is the honest resting state until then.
 - [ ] **Scope every gate that runs on a shared checkout to CONTENT, not to the tip.** Two
       gates were tip-coupled and each blocked a push whose content was in fact fine: the
       review receipt (bound to tip+base) and the Deploy-sync check (keyed on the revision

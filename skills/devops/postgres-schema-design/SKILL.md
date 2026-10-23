@@ -86,6 +86,43 @@ CREATE POLICY mycortex_chunks_ingest ON mycortex.content_chunks
 The role-split boundary lives in the GRANTs (REVOKE ALL on sources from ingest),
 not in page-level RLS.
 
+## Identity-gating a TRANSITION — the choke point, not the matrix
+
+A role-gated STATE CHANGE has to be enforced where every write path converges. The
+transition matrix is the wrong place: `transition_allowed(from, to, reason)` is
+deliberately role-agnostic (IMMUTABLE, takes no identity argument), so an arc only one
+role may take stays legal for everyone — and the SECURITY DEFINER function that
+"owns" it (allowlist inside, no EXECUTE grant for other roles) is bypassed by any
+other writer: the generic upsert function, a CLI `update --status …`, or raw SQL.
+The gate then reads as enforced and is ADVISORY.
+
+- **Put the identity check in the BEFORE UPDATE TRIGGER** — the single choke point
+every path fires — not in the matrix, and not only in the gated function.
+- **Key it on `session_user`, never `current_user`.** A SECURITY DEFINER function runs
+  as its OWNER, so `current_user` there is the superuser and `profile_of(current_user)`
+  never matches the real caller. `session_user` is the authenticated role and survives
+  SECURITY DEFINER, so ONE predicate holds for a direct write AND for the gated
+  function's own UPDATE.
+- **One allowlist, one function, no default:** `tasks.is_orchestrator(p_role name)`.
+  A `DEFAULT CURRENT_USER` silently resolves to the DEFINER in exactly the case that
+  matters; make every caller name the identity it means. Grant EXECUTE to the writer
+  roles — an INVOKER trigger calls it with the WRITER's privileges, so a missing grant
+  turns every status change into a permission error.
+- **Gate only the arc that ASSERTS something, and say which arcs stay open.** An
+  approval is a claim ("this was verified"); a reject or a stale re-queue is not, and
+  an automated sweep may legitimately drive it. Leave those open and document why.
+- **Exempt the paths that are exempted for a reason, in the same guard.** A story
+  auto-complete that runs inside an AFTER trigger under whatever caller finished the
+  last child must keep its early return, or the guard breaks a path no human drives.
+- **Assert the arc is STILL legal in the matrix** (`transition_allowed('review',
+  'completed')` returns true) so a later reader does not "fix" the hole by editing the
+  matrix and silently re-opening it. Identity-gated, not arc-gated.
+- **Before shipping, grep for the OTHER writers of that state** (`SET status`,
+  `status='completed'`, the DML grants). A role-gated function is not the gate; the
+  trigger is. Re-deriving the reachable set is also the honest scope: an RLS
+  `WITH CHECK` that only lets a caller write its OWN rows means the reachable case is
+  "a worker self-completing its own row", not "any agent completing any slice".
+
 ## NOT NULL DEFAULT gotcha
 
 `DEFAULT current_setting('hostname', true)` returns **NULL** (no such GUC exists),
@@ -106,6 +143,17 @@ the CLI resolves `--source` filters by id, but `local_path` stays protected.
 
 ## Migration runner pattern
 
+- **Capture the LIVE pre-change definitions BEFORE the deploy that applies the migration.**
+  `pg_get_functiondef()` of the functions you are about to replace is the only "before"
+  you will ever get — the deploy applies the migration and the old body is gone, so a
+  before/after written afterwards compares the change with itself. Redirect the capture
+  straight into the committed evidence file (never retype it), and assert the new symbol
+  is ABSENT from it (`grep -c is_orchestrator` = 0) to prove it really is the pre-change
+  revision.
+- **Build the RED/GREEN pair with the FINAL test file.** Move the new migration file
+  aside, run the battery (RED), restore it, run again (GREEN) — both sides then measure
+  the same probe, and the RED transcript shows the defect rather than an older revision
+  of your own test.
 - `schema_version(version INT PK, applied_at)` table; runner reads `MAX(version)`, applies pending, records — re-run is a **no-op**.
 - Role creation: `DO $$ BEGIN IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname='x') THEN CREATE ROLE x LOGIN; END IF; END $$;` — PG has no `CREATE ROLE IF NOT EXISTS`. Roles are cluster-level; guard idempotently.
 - `--db-name` override so tests target a scratch DB, never prod.
@@ -119,6 +167,26 @@ Mirror `tests/test-bus-schema.sh` style:
 - **Scratch DB lifecycle:** `DROP DATABASE IF EXISTS <test>` + `CREATE DATABASE <test>` + `trap cleanup EXIT`.
 - **Test as the actual role:** `docker exec mycortex-postgres psql -U mycortex_reader -d <test>` — the isolation-leak test MUST run as the reader, never superuser.
 - ⚠️ **psql `-t -A` prints command tags:** `$ID=$(psql ... -c "INSERT ... RETURNING id")` captures BOTH the id AND the `INSERT 0 1` tag (two lines). Pipe through `head -1` or the multi-line value breaks the next query.
+- **A probe role needs BOTH membership and per-name EXECUTE grants — and the grants
+  belong in the SCRATCH DB.** To drive the WORKER side of a role gate: create a temp
+  profile role with LOGIN, `GRANT <base_reader_role> TO <probe>` for the table/function
+  privileges, then mirror the host's real per-name grants explicitly — schemas often
+  grant some functions BY NAME to every profile role and the gated one to approvers
+  only, so the probe legitimately holds NO EXECUTE on the gate (that is a layer worth
+  asserting on its own, and it is why the generic write path was the only route open to
+  a worker). ⚠️ **Check which database the harness's superuser variable points at:** a
+  `PSQL_SUPER` defined with `-d <prod_db>` issues its GRANT against the LIVE store while
+  every other statement targets the scratch DB — it succeeds silently and leaves a
+  standing grant in production. Use the scratch-DB handle for schema grants.
+- **Read a row back as its OWNER.** A personal-scope row is invisible to another
+  profile's role under RLS (`USING: scope='fleet' OR created_by = me`), so a status
+  read-back from the approver's role returns EMPTY — which reads as "the write failed"
+  when the write is fine. Read back as the role that owns the row.
+- **A migration that changes a RULE must update the battery assertions that assert the
+  OLD rule.** Grep the battery for the arc/status you changed: a permanently-red
+  assertion is worse than no assertion, because every genuine RED afterwards is
+  indistinguishable from it and the battery's signal is gone. Fix it in the same cycle
+  and name the migration that changed the rule in the comment.
 - Idempotency check: run migrate.py twice, assert second run reports no-op.
 - Bus-untouched: assert `bus` schema table count unchanged after schema apply.
 
@@ -130,10 +198,14 @@ Mirror `tests/test-bus-schema.sh` style:
 - [ ] PII CHECK rejects federated-without-scan
 - [ ] Migrate re-run is a no-op
 - [ ] query_log: reader can EXECUTE the log function but not SELECT/INSERT the table
+- [ ] The gated arc is refused for a non-privileged caller on EVERY write path (upsert function AND raw UPDATE)
+- [ ] The gated arc is still legal in `transition_allowed` (identity-gated, not arc-gated)
+- [ ] The privileged path still works end-to-end, and the deliberately-open arcs still pass
 - [ ] Bus schema untouched after apply
 
 ## Related
 
 - `references/mycortex-v001-case.md` — concrete failure transcripts + fixes from the first fail-closed schema (mycortex v001)
+- `references/verifying-a-schema-guard-live.md` — the rolled-back live proof (`SET LOCAL SESSION AUTHORIZATION` + `ROLLBACK`), the deployed-body probe, and the residue assertion that separate "the migration is right" from "the host is running it"
 - `postgres-docker` — tuning/config the shared container
 - `todo-persistence` — the `sg docker` psql wrapper pattern (reuse it)
