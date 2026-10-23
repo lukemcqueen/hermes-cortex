@@ -138,6 +138,15 @@ def test_absent_sibling_context_still_blocks():
     assert len(blocking) == 1, "no sibling list means no downgrade — fail closed"
 
 
+def test_helper_returns_false_without_sibling_context():
+    # The predicate called DIRECTLY: absent or empty context is the fail-closed branch, asserted on
+    # the helper rather than only through the classifier that consumes it.
+    f = _finding(target=SIBLING + ":20")
+    assert mcp._is_sibling_target_finding(f, None, REVIEWED) is False
+    assert mcp._is_sibling_target_finding(f, set(), REVIEWED) is False
+    assert mcp._is_sibling_target_finding(f, {SIBLING}, REVIEWED) is True
+
+
 def test_empty_sibling_set_still_blocks():
     f = _finding(target=SIBLING + ":20")
     blocking, _ = _split(f, siblings=set(), reviewed_path=REVIEWED)

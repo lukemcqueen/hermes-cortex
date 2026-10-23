@@ -2010,6 +2010,10 @@ def _rank_siblings(paths: list[str]) -> list[str]:
     The block that shows sibling content takes the first few paths of an otherwise alphabetical
     list, so a `spec/…` or `tests/…` file can be pushed out by the code files it proves. The file
     carrying the evidence is the one worth the room.
+
+    COVERED BY tests/test_sibling_window_tests.py::test_test_shaped_siblings_come_first,
+    ::test_rank_preserves_order_within_each_group, ::test_rank_is_stable_for_a_single_group,
+    ::test_rank_of_empty_is_empty
     """
     tests = [p for p in paths if _TEST_PATH.search(p)]
     rest = [p for p in paths if not _TEST_PATH.search(p)]
@@ -2022,6 +2026,14 @@ def _collect_added_tests(added: list[str]) -> list[tuple[str, str]]:
     The assertion is the first line after the definition that looks like one, and it is never
     borrowed across a later definition: a body that asserts nothing reports an EMPTY string, so a
     name alone is not proof of anything.
+
+    COVERED BY tests/test_sibling_window_tests.py::test_python_definition_with_assertion,
+    ::test_ruby_example_with_expectation, ::test_two_definitions_are_reported_separately,
+    ::test_no_definitions_yields_nothing, ::test_empty_input_yields_nothing,
+    ::test_definition_without_assertion_reports_empty_assertion,
+    ::test_assertion_must_belong_to_its_own_definition,
+    ::test_plain_comparison_is_not_an_assertion, ::test_exception_expectation_is_an_assertion,
+    ::test_bare_raise_is_not_an_assertion, ::test_assert_raises_form_is_an_assertion
     """
     marks = [(i, m) for i, m in ((i, _TEST_DEF.match(ln)) for i, ln in enumerate(added)) if m]
     out: list[tuple[str, str]] = []
@@ -2038,7 +2050,11 @@ def _collect_added_tests(added: list[str]) -> list[tuple[str, str]]:
 
 
 def _format_sibling_tests(path: str, tests: list[tuple[str, str]]) -> str:
-    """The sibling's test ids, each with its assertion line, or a plain statement that it has none."""
+    """The sibling's test ids, each with its assertion line, or a plain statement that it has none.
+
+    COVERED BY tests/test_sibling_window_tests.py::test_block_names_the_id_and_the_assertion,
+    ::test_block_says_when_there_is_no_assertion_line
+    """
     lines = [f"  {path} — tests ADDED by this range (id, then its first assertion line):"]
     for name, assertion in tests[:SIBLING_TESTS_PER_FILE]:
         lines.append(f"    {path}::{name}")
@@ -5714,6 +5730,14 @@ def _is_sibling_target_finding(finding, siblings=None, reviewed_path="") -> bool
     followed by a line suffix (`path:12`) or a separator. A substring match anywhere in the target
     would downgrade a real defect on the judged file whose sentence merely cited a sibling path, and
     that is the direction this predicate must never take.
+
+    COVERED BY tests/test_findings_sibling_class.py::test_helper_returns_false_without_sibling_context,
+    ::test_sibling_target_unverified_claim_does_not_block, ::test_sibling_target_with_a_line_suffix_is_downgraded,
+    ::test_bare_sibling_path_is_downgraded, ::test_prose_target_mentioning_a_sibling_is_not_downgraded,
+    ::test_target_naming_the_reviewed_path_still_blocks,
+    ::test_target_naming_both_reviewed_and_sibling_still_blocks,
+    ::test_other_techniques_are_never_downgraded, ::test_prose_target_still_blocks,
+    ::test_absent_sibling_context_still_blocks, ::test_empty_sibling_set_still_blocks
     """
     if not siblings or not isinstance(finding, dict):
         return False
