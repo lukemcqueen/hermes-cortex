@@ -516,11 +516,12 @@ their domain.
 |-------|---------|---------|-----------|
 | `schema-markup` | 1.0.0 | Add, fix, or optimize schema markup and structured data. Use when the user mentions schema markup, structur... | `skill_view(name='schema-markup')` |
 
-## Security (8 skills)
+## Security (9 skills)
 
 | Skill | Version | Purpose | Load With |
 |-------|---------|---------|-----------|
 | `1password` | 1.0.0 | Set up op CLI, sign in, and read or inject secrets. | `skill_view(name='1password')` |
+| `codebase-security-audit` | 1.0.0 | Source-code vulnerability audit — find exploitable issues that cross a real | `skill_view(name='codebase-security-audit')` |
 | `credential-leak-response` | 1.0.0 | Use when a credential leaks — verify live, scrub, rotate. | `skill_view(name='credential-leak-response')` |
 | `oss-forensics` | 1.0.0 | Supply chain investigation, evidence recovery, and forensic analysis for GitHub repositories. | `skill_view(name='oss-forensics')` |
 | `pii-scrubbing` | 1.0.0 | Systematically scrub Personally Identifiable Information (PII) from a codebase — inventory real domains, ho... | `skill_view(name='pii-scrubbing')` |

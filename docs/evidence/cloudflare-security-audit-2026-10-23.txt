@@ -1,0 +1,70 @@
+Cloudflare security-audit skill — vendored-skill evidence
+generated-by : docs/evidence/cloudflare-security-audit-2026-10-23.sh
+captured-at  : ca9de57f (working tree at run time)
+date         : 2026-10-23T19:56:52+09:00
+host         : Linux x86_64
+upstream     : github.com/cloudflare/security-audit-skill @ c1c8a8c1471069fb0e188eeaff69b8e8db6564a8 (MIT)
+────────────────────────────────────────────────────────────
+## 1. The vendored file set (20 files, upstream set pinned)
+OK    20 files landed
+      AI-AND-LLM.md                              10617 B
+      ATTACK-CLASSES.md                          15695 B
+      CLIENT-SIDE.md                             8594 B
+      CLOUD-AND-DEPLOYMENT.md                    8291 B
+      DATA-ISOLATION-AND-LIFECYCLE.md            7798 B
+      DESKTOP-MOBILE-AND-LOCAL-IPC.md            8739 B
+      HUNTING.md                                 22446 B
+      MEMORY-SAFETY-AND-BINARY.md                10513 B
+      PROTOCOLS-RPC-AND-MESSAGING.md             7483 B
+      RECONNAISSANCE.md                          15902 B
+      report-schema.json                         14494 B
+      RESOURCE-EXHAUSTION-AND-AVAILABILITY.md    7476 B
+      SKILL.md                                   22701 B
+      SUPPLY-CHAIN-AND-RELEASE.md                7258 B
+      validate-coverage-ledger.cjs               33522 B
+      validate-coverage-ledger.test.cjs          28483 B
+      validate-findings.cjs                      28806 B
+      validate-findings.test.cjs                 26384 B
+      VALIDATION-AND-REPORTING.md                17843 B
+      WEB-PROTOCOL-AND-AUTH.md                   12300 B
+────────────────────────────────────────────────────────────
+## 2. Frontmatter parses and declares the renamed skill
+OK    name=codebase-security-audit  description=483 chars  version=1.0.0
+OK    upstream_commit=c1c8a8c1471069fb0e188eeaff69b8e8db6564a8  license=MIT
+## 2b. The name does not collide with the server-hardening skill
+OK    'codebase-security-audit' appears exactly once
+OK    pre-existing devops 'security-audit' still present (no collision introduced)
+────────────────────────────────────────────────────────────
+## 3. Shipped Node validators parse (node --check)
+      node v22.23.1
+OK    node --check validate-coverage-ledger.cjs
+OK    node --check validate-coverage-ledger.test.cjs
+OK    node --check validate-findings.cjs
+OK    node --check validate-findings.test.cjs
+## 4. Shipped validator suites pass (upstream suites, own verdict)
+OK    validate-coverage-ledger.test.cjs rc=0  '# fail 0' present
+OK    validate-findings.test.cjs rc=0  '# fail 0' present
+────────────────────────────────────────────────────────────
+## 5. Repo gates
+OK    run-tests.sh tests/test_cloudflare_security_audit_skill.py -> rc=0  [============================== 9 passed in 2.70s ===============================]
+OK    run-tests.sh tests/test_skill_code_assets_parse.py tests/test_skills_loadable_check.py tests/test_skill_references_current.py -> rc=0  [============================== 85 passed in 3.07s ==============================]
+OK    gen-skills-manifest.sh --check -> rc=0 (manifest fresh)
+────────────────────────────────────────────────────────────
+## 6. Secret-leak detector over the vendored skill
+OK    secret-leak-detector.sh -> rc=0
+────────────────────────────────────────────────────────────
+## 7. Captured runs — the guard was watched to FAIL, then to PASS
+      RED (the skill was not yet vendored)
+        path : docs/evidence/cloudflare-security-audit-2026-10-23.RED.txt
+        md5  : 3f9c58bfc88dd581a30f385576792f29
+        lines: 160
+        produced by: bash tests/run-tests.sh tests/test_cloudflare_security_audit_skill.py -q
+        verdict    : ============================== 9 failed in 0.54s ===============================
+      GREEN (the skill was vendored)
+        path : docs/evidence/cloudflare-security-audit-2026-10-23.GREEN.txt
+        md5  : c061a3ac892e3bea7e878df8d64f496e
+        lines: 12
+        produced by: bash tests/run-tests.sh tests/test_cloudflare_security_audit_skill.py -q
+        verdict    : ============================== 9 passed in 2.78s ===============================
+────────────────────────────────────────────────────────────
+RESULT: ALL PASS

@@ -1,0 +1,160 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
+rootdir: /home/esther/hermes-cortex
+configfile: pytest.ini
+plugins: anyio-4.15.1
+collected 9 items
+
+tests/test_cloudflare_security_audit_skill.py FFFFFFFFF                  [100%]
+
+=================================== FAILURES ===================================
+________________ test_skill_directory_and_full_file_set_landed _________________
+tests/test_cloudflare_security_audit_skill.py:90: in test_skill_directory_and_full_file_set_landed
+    assert SKILL_DIR.is_dir(), f"missing skill directory: {SKILL_DIR}"
+E   AssertionError: missing skill directory: /home/esther/hermes-cortex/skills/security/codebase-security-audit
+E   assert False
+E    +  where False = is_dir()
+E    +    where is_dir = PosixPath('/home/esther/hermes-cortex/skills/security/codebase-security-audit').is_dir
+____________ test_frontmatter_parses_and_declares_the_renamed_skill ____________
+tests/test_cloudflare_security_audit_skill.py:98: in test_frontmatter_parses_and_declares_the_renamed_skill
+    fm, _ = _frontmatter(SKILL_DIR / "SKILL.md")
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_cloudflare_security_audit_skill.py:71: in _frontmatter
+    text = path.read_text(encoding="utf-8")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/lib/python3.12/pathlib.py:1029: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/lib/python3.12/pathlib.py:1015: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/esther/hermes-cortex/skills/security/codebase-security-audit/SKILL.md'
+________ test_the_name_does_not_collide_with_the_server_hardening_skill ________
+tests/test_cloudflare_security_audit_skill.py:108: in test_the_name_does_not_collide_with_the_server_hardening_skill
+    assert names.count(SKILL_NAME) == 1, (
+E   AssertionError: 'codebase-security-audit' appears 0x — a duplicate name is ambiguous to load
+E   assert 0 == 1
+E    +  where 0 = <built-in method count of list object at 0x7d5f2e49fc40>('codebase-security-audit')
+E    +    where <built-in method count of list object at 0x7d5f2e49fc40> = ['email-sequence', 'cold-email', 'content-strategy', 'launch', 'typesafe-ai', 'skill-vetting', ...].count
+________________ test_body_is_the_upstream_workflow_not_a_stub _________________
+tests/test_cloudflare_security_audit_skill.py:115: in test_body_is_the_upstream_workflow_not_a_stub
+    _, text = _frontmatter(SKILL_DIR / "SKILL.md")
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_cloudflare_security_audit_skill.py:71: in _frontmatter
+    text = path.read_text(encoding="utf-8")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/lib/python3.12/pathlib.py:1029: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/lib/python3.12/pathlib.py:1015: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/esther/hermes-cortex/skills/security/codebase-security-audit/SKILL.md'
+_______________________ test_report_schema_is_valid_json _______________________
+tests/test_cloudflare_security_audit_skill.py:123: in test_report_schema_is_valid_json
+    schema = json.loads((SKILL_DIR / "report-schema.json").read_text(encoding="utf-8"))
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/lib/python3.12/pathlib.py:1029: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/lib/python3.12/pathlib.py:1015: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/esther/hermes-cortex/skills/security/codebase-security-audit/report-schema.json'
+_____________ test_shipped_validators_parse[validate-findings.cjs] _____________
+tests/test_cloudflare_security_audit_skill.py:133: in test_shipped_validators_parse
+    assert r.returncode == 0, f"{asset}: {r.stderr.strip()}"
+E   AssertionError: validate-findings.cjs: node:internal/modules/cjs/loader:1433
+E       throw err;
+E       ^
+E     
+E     Error: Cannot find module '/home/esther/hermes-cortex/skills/security/codebase-security-audit/validate-findings.cjs'
+E         at node:internal/modules/cjs/loader:1430:15
+E         at node:internal/main/check_syntax:33:20 {
+E       code: 'MODULE_NOT_FOUND',
+E       requireStack: []
+E     }
+E     
+E     Node.js v22.23.1
+E   assert 1 == 0
+E    +  where 1 = CompletedProcess(args=['/home/esther/.local/bin/node', '--check', '/home/esther/hermes-cortex/skills/security/codebase... at node:internal/main/check_syntax:33:20 {\n  code: 'MODULE_NOT_FOUND',\n  requireStack: []\n}\n\nNode.js v22.23.1\n").returncode
+_________ test_shipped_validators_parse[validate-coverage-ledger.cjs] __________
+tests/test_cloudflare_security_audit_skill.py:133: in test_shipped_validators_parse
+    assert r.returncode == 0, f"{asset}: {r.stderr.strip()}"
+E   AssertionError: validate-coverage-ledger.cjs: node:internal/modules/cjs/loader:1433
+E       throw err;
+E       ^
+E     
+E     Error: Cannot find module '/home/esther/hermes-cortex/skills/security/codebase-security-audit/validate-coverage-ledger.cjs'
+E         at node:internal/modules/cjs/loader:1430:15
+E         at node:internal/main/check_syntax:33:20 {
+E       code: 'MODULE_NOT_FOUND',
+E       requireStack: []
+E     }
+E     
+E     Node.js v22.23.1
+E   assert 1 == 0
+E    +  where 1 = CompletedProcess(args=['/home/esther/.local/bin/node', '--check', '/home/esther/hermes-cortex/skills/security/codebase... at node:internal/main/check_syntax:33:20 {\n  code: 'MODULE_NOT_FOUND',\n  requireStack: []\n}\n\nNode.js v22.23.1\n").returncode
+________ test_shipped_validator_suites_pass[validate-findings.test.cjs] ________
+tests/test_cloudflare_security_audit_skill.py:143: in test_shipped_validator_suites_pass
+    assert r.returncode == 0, f"{suite} exited {r.returncode}:\n{r.stdout[-2000:]}\n{r.stderr[-2000:]}"
+E   AssertionError: validate-findings.test.cjs exited 1:
+E     
+E     node:internal/modules/cjs/loader:1433
+E       throw err;
+E       ^
+E     
+E     Error: Cannot find module '/home/esther/hermes-cortex/skills/security/codebase-security-audit/validate-findings.test.cjs'
+E         at Function._resolveFilename (node:internal/modules/cjs/loader:1430:15)
+E         at defaultResolveImpl (node:internal/modules/cjs/loader:1040:19)
+E         at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1045:22)
+E         at Function._load (node:internal/modules/cjs/loader:1216:25)
+E         at wrapModuleLoad (node:internal/modules/cjs/loader:254:19)
+E         at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:171:5)
+E         at node:internal/main/run_main_module:36:49 {
+E       code: 'MODULE_NOT_FOUND',
+E       requireStack: []
+E     }
+E     
+E     Node.js v22.23.1
+E     
+E   assert 1 == 0
+E    +  where 1 = CompletedProcess(args=['/home/esther/.local/bin/node', '/home/esther/hermes-cortex/skills/security/codebase-security-a... node:internal/main/run_main_module:36:49 {\n  code: 'MODULE_NOT_FOUND',\n  requireStack: []\n}\n\nNode.js v22.23.1\n").returncode
+____ test_shipped_validator_suites_pass[validate-coverage-ledger.test.cjs] _____
+tests/test_cloudflare_security_audit_skill.py:143: in test_shipped_validator_suites_pass
+    assert r.returncode == 0, f"{suite} exited {r.returncode}:\n{r.stdout[-2000:]}\n{r.stderr[-2000:]}"
+E   AssertionError: validate-coverage-ledger.test.cjs exited 1:
+E     
+E     node:internal/modules/cjs/loader:1433
+E       throw err;
+E       ^
+E     
+E     Error: Cannot find module '/home/esther/hermes-cortex/skills/security/codebase-security-audit/validate-coverage-ledger.test.cjs'
+E         at Function._resolveFilename (node:internal/modules/cjs/loader:1430:15)
+E         at defaultResolveImpl (node:internal/modules/cjs/loader:1040:19)
+E         at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1045:22)
+E         at Function._load (node:internal/modules/cjs/loader:1216:25)
+E         at wrapModuleLoad (node:internal/modules/cjs/loader:254:19)
+E         at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:171:5)
+E         at node:internal/main/run_main_module:36:49 {
+E       code: 'MODULE_NOT_FOUND',
+E       requireStack: []
+E     }
+E     
+E     Node.js v22.23.1
+E     
+E   assert 1 == 0
+E    +  where 1 = CompletedProcess(args=['/home/esther/.local/bin/node', '/home/esther/hermes-cortex/skills/security/codebase-security-a... node:internal/main/run_main_module:36:49 {\n  code: 'MODULE_NOT_FOUND',\n  requireStack: []\n}\n\nNode.js v22.23.1\n").returncode
+=========================== short test summary info ============================
+FAILED tests/test_cloudflare_security_audit_skill.py::test_skill_directory_and_full_file_set_landed
+FAILED tests/test_cloudflare_security_audit_skill.py::test_frontmatter_parses_and_declares_the_renamed_skill
+FAILED tests/test_cloudflare_security_audit_skill.py::test_the_name_does_not_collide_with_the_server_hardening_skill
+FAILED tests/test_cloudflare_security_audit_skill.py::test_body_is_the_upstream_workflow_not_a_stub
+FAILED tests/test_cloudflare_security_audit_skill.py::test_report_schema_is_valid_json
+FAILED tests/test_cloudflare_security_audit_skill.py::test_shipped_validators_parse[validate-findings.cjs]
+FAILED tests/test_cloudflare_security_audit_skill.py::test_shipped_validators_parse[validate-coverage-ledger.cjs]
+FAILED tests/test_cloudflare_security_audit_skill.py::test_shipped_validator_suites_pass[validate-findings.test.cjs]
+FAILED tests/test_cloudflare_security_audit_skill.py::test_shipped_validator_suites_pass[validate-coverage-ledger.test.cjs]
+============================== 9 failed in 0.54s ===============================
+---
+run-tests.sh: interpreter=/home/esther/.hermes-cortex/venv/bin/python3 rc=1  (PYTHONPATH/PYTHONHOME unset for the run)
