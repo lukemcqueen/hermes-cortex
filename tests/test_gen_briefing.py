@@ -43,17 +43,45 @@ class TestParseMd(unittest.TestCase):
     def test_blank_lines_ignored(self):
         self.assertEqual(list(g.parse_md("\n\n\n")), [])
 
+    def test_h3_is_its_own_kind_not_an_h1(self):
+        """'### x' must not be read as '# ' with a leading '## ' payload: the
+        order of the startswith checks decides, and an h3 routed to h1 loses a
+        heading level in the .docx."""
+        self.assertEqual(list(g.parse_md("### Sub-heading\n")), [("h3", "Sub-heading")])
+        self.assertEqual([k for k, _ in g.parse_md("# A\n## B\n### C\n")],
+                         ["h1", "h2", "h3"])
+
 
 class TestInlineRuns(unittest.TestCase):
+    """The contract is a 3-tuple (chunk, is_bold, is_italic) — build_docx unpacks it.
+
+    WHITESPACE IS PRESERVED, not stripped: the .docx builder concatenates the runs
+    into one paragraph, so the separators BETWEEN emphasised words must survive
+    ('plain **bold** tail' -> 'plain ', 'bold', ' tail'). Stripping them (the older
+    behaviour) silently ran the words together in the rendered document.
+    """
+
     def test_bold_detected(self):
         runs = g.inline_runs("plain **bold** tail")
-        self.assertEqual(runs, [("plain", False), ("bold", True), ("tail", False)])
+        self.assertEqual(runs, [("plain ", False, False), ("bold", True, False),
+                                (" tail", False, False)])
+
+    def test_italic_detected(self):
+        runs = g.inline_runs("plain *italic* tail")
+        self.assertEqual(runs, [("plain ", False, False), ("italic", False, True),
+                                (" tail", False, False)])
+
+    def test_bold_wins_over_italic_markers(self):
+        """'**x**' must not be read as italic-wrapping-'*x*': the bold branch is
+        tested first, and getting this backwards silently drops the emphasis."""
+        runs = g.inline_runs("**both**")
+        self.assertEqual(runs, [("both", True, False)])
 
     def test_no_bold_is_single_run(self):
-        self.assertEqual(g.inline_runs("all plain"), [("all plain", False)])
+        self.assertEqual(g.inline_runs("all plain"), [("all plain", False, False)])
 
     def test_empty_input_yields_placeholder(self):
-        self.assertEqual(g.inline_runs(""), [("", False)])
+        self.assertEqual(g.inline_runs(""), [("", False, False)])
 
 
 class TestLinkify(unittest.TestCase):

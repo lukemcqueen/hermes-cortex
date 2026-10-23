@@ -22,10 +22,12 @@ def parse_md(text: str):
             continue
         if line.strip() == "---":
             yield ("rule", "")
-        elif line.startswith("# "):
-            yield ("h1", line[2:].strip())
+        elif line.startswith("### "):
+            yield ("h3", line[4:].strip())
         elif line.startswith("## "):
             yield ("h2", line[3:].strip())
+        elif line.startswith("# "):
+            yield ("h1", line[2:].strip())
         elif line.lstrip().startswith("- "):
             yield ("bullet", line.lstrip()[2:].strip())
         else:
@@ -33,14 +35,19 @@ def parse_md(text: str):
 
 
 def inline_runs(text: str):
-    """Split on **bold** markers -> [(chunk, is_bold)]."""
-    parts = re.split(r"\*\*(.+?)\*\*", text)
-    runs, bold = [], False
-    for p in parts:
-        if p:
-            runs.append((p.strip(), bold))
-        bold = not bold
-    return runs or [("", False)]
+    """Split on **bold** / *italic* markers -> [(chunk, is_bold, is_italic)]."""
+    tokens = re.split(r"(\*\*[^*]+\*\*|\*[^*]+\*)", text)
+    out = []
+    for tok in tokens:
+        if not tok:
+            continue
+        if tok.startswith("**") and tok.endswith("**") and len(tok) > 4:
+            out.append((tok[2:-2], True, False))
+        elif tok.startswith("*") and tok.endswith("*") and len(tok) > 2:
+            out.append((tok[1:-1], False, True))
+        else:
+            out.append((tok, False, False))
+    return out or [("", False, False)]
 
 
 def linkify(text: str) -> str:
@@ -63,18 +70,22 @@ def build_docx(blocks, path):
             doc.add_heading(payload, level=0)
         elif kind == "h2":
             doc.add_heading(payload, level=1)
+        elif kind == "h3":
+            doc.add_heading(payload, level=2)
         elif kind == "rule":
             doc.add_paragraph("—" * 30)
         elif kind == "bullet":
             p = doc.add_paragraph(style="List Bullet")
-            for chunk, is_bold in inline_runs(payload):
+            for chunk, is_bold, is_italic in inline_runs(payload):
                 r = p.add_run(chunk)
                 r.bold = is_bold
+                r.italic = is_italic
         else:
             p = doc.add_paragraph()
-            for chunk, is_bold in inline_runs(payload):
+            for chunk, is_bold, is_italic in inline_runs(payload):
                 r = p.add_run(chunk)
                 r.bold = is_bold
+                r.italic = is_italic
     doc.save(path)
 
 
@@ -92,6 +103,9 @@ def build_pdf(blocks, path):
     h2 = ParagraphStyle("B2", parent=base["Heading2"], fontSize=13, leading=17,
                         spaceBefore=12, spaceAfter=5,
                         textColor=colors.HexColor("#1a4d3a"))
+    h3 = ParagraphStyle("B3", parent=base["Heading3"], fontSize=10.4,
+                        leading=14, spaceBefore=9, spaceAfter=4,
+                        textColor=colors.HexColor("#3c6e58"))
     body = ParagraphStyle("BB", parent=base["BodyText"], fontSize=9.6,
                           leading=13.4, spaceAfter=6)
     bull = ParagraphStyle("BL", parent=body, leftIndent=11, bulletIndent=2,
@@ -108,10 +122,13 @@ def build_pdf(blocks, path):
         safe = (txt.replace("&", "&amp;").replace("<", "&lt;")
                    .replace(">", "&gt;"))
         safe = re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", safe)
+        safe = re.sub(r"\*([^*]+?)\*", r"<i>\1</i>", safe)
         if kind == "h1":
             flow.append(Paragraph(safe, h1))
         elif kind == "h2":
             flow.append(Paragraph(safe, h2))
+        elif kind == "h3":
+            flow.append(Paragraph(safe, h3))
         elif kind == "rule":
             flow.append(Spacer(1, 4))
             flow.append(HRFlowable(width="100%", thickness=0.6,
