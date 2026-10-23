@@ -1,0 +1,35 @@
+# RED — the NEW regression test against the PRE-CHANGE module (worktree at dd6acb46)
+#
+# produced-by: (in the dd6acb46 worktree, with this range's test file copied in)
+#   python3 tests/test_loop_gov_review_repo.py    (stdout+stderr redirected, never retyped)
+# captured-on: 2026-10-23T08:09:20Z (UTC)
+
+Use '--' to separate paths from revisions, like this:
+'git <command> [<revision>...] -- [<file>...]'
+Use '--' to separate paths from revisions, like this:
+'git <command> [<revision>...] -- [<file>...]'
+Use '--' to separate paths from revisions, like this:
+'git <command> [<revision>...] -- [<file>...]'
+Use '--' to separate paths from revisions, like this:
+'git <command> [<revision>...] -- [<file>...]'
+Use '--' to separate paths from revisions, like this:
+'git <command> [<revision>...] -- [<file>...]'
+Use '--' to separate paths from revisions, like this:
+'git <command> [<revision>...] -- [<file>...]'
+Use '--' to separate paths from revisions, like this:
+'git <command> [<revision>...] -- [<file>...]'
+Use '--' to separate paths from revisions, like this:
+'git <command> [<revision>...] -- [<file>...]'
+Use '--' to separate paths from revisions, like this:
+'git <command> [<revision>...] -- [<file>...]'
+Use '--' to separate paths from revisions, like this:
+'git <command> [<revision>...] -- [<file>...]'
+Use '--' to separate paths from revisions, like this:
+'git <command> [<revision>...] -- [<file>...]'
+Use '--' to separate paths from revisions, like this:
+'git <command> [<revision>...] -- [<file>...]'
+FAIL (3/18):
+  - test_a_lock_tagged_with_the_session_repo_is_not_refused_by_a_commit_elsewhere: a lock tagged with the session's OWN repo was refused because an unrelated repo had a commit in the window: "❌ Cannot close: the lock's repo cannot contain this session's work.\n\n  Lock repo_slug : 'koscap-mwi'  ->  /home/esther/.hermes/cache/scratch/loop-gov-tag-agrees-637kpte8/projects/KOSCAP/koscap-mwi\n  In that repo   : no commits in the window.\n  Work found in  : /home/esther/.hermes/cache/scratch/loop-gov-tag-agrees-637kpte8/steadfaste-s1-model\n\nThe lock was tagged with a repo this session is not working in (a host-\ncanonical default, or a session repo-hint that drifted), so self-\nadversarial review would judge a tree that cannot contain the change.\nRefusing rather than returning permanent findings for work the reviewer\ncannot see.\n\n  The lock has been RELEASED and this cycle closed UNSCORED — nothing\n  was reviewed, so no receipt exists and nothing is authorised by it.\n  Fix the tag, then open a FRESH cycle in the repo that holds the work.\n\n  Do NOT retry end_change in a loop\n  (each retry re-runs a full review) and do NOT force the close.\n  Remedy: the governance-enforcer injects the session's real repo\n  into mcp__loop_governance__* calls, and begin_change derives BOTH the\n  lock's repo_slug and repo_path from that one path (never a canonical\n  slug beside an observed path); once that is deployed AND the gateway\n  has reloaded it, begin_change tags the lock correctly — open a fresh\n  cycle there and land the change with a commit in that repo."
+  - test_derive_slug_ignores_an_injected_slug_that_is_not_a_repo: expected the canonical fallback, got 'wt-head'
+  - test_the_mis_tag_refusal_names_the_session_repo_when_it_is_known: the refusal did not name the session's OWN repo as a field: "❌ Cannot close: the lock's repo cannot contain this session's work.\n\n  Lock repo_slug : 'hermes-cortex'  ->  /home/esther/.hermes/cache/scratch/loop-gov-tag-names-oup2we6t/hermes-cortex\n  In that repo   : no commits in the window.\n  Work found in  : /home/esther/.hermes/cache/scratch/loop-gov-tag-names-oup2we6t/steadfaste-s1-model\n\nThe lock was tagged with a repo this session is not working in (a host-\ncanonical default, or a session repo-hint that drifted), so self-\nadversarial review would judge a tree that cannot contain the change.\nRefusing rather than returning permanent findings for work the reviewer\ncannot see.\n\n  The lock has been RELEASED and this cycle closed UNSCORED — nothing\n  was reviewed, so no receipt exists and nothing is authorised by it.\n  Fix the tag, then open a FRESH cycle in the repo that holds the work.\n\n  Do NOT retry end_change in a loop\n  (each retry re-runs a full review) and do NOT force the close.\n  Remedy: the governance-enforcer injects the session's real repo\n  into mcp__loop_governance__* calls, and begin_change derives BOTH the\n  lock's repo_slug and repo_path from that one path (never a canonical\n  slug beside an observed path); once that is deployed AND the gateway\n  has reloaded it, begin_change tags the lock correctly — open a fresh\n  cycle there and land the change with a commit in that repo."
+rc=1

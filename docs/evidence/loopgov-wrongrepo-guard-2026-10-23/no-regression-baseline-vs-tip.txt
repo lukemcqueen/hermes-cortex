@@ -1,0 +1,28 @@
+# NO-REGRESSION COMPARISON — the 15 governance test files that import mcp-servers/loop-gov-mcp.py
+#
+# BASELINE is an IMMUTABLE revision, not a branch ref: dd6acb46, materialised with
+#   git worktree add --detach <dir> dd6acb46
+#   (asserted: git -C <dir> rev-parse --short=8 HEAD -> dd6acb46)
+# and driven with ABSOLUTE paths inside that worktree, so each side collects ITS OWN tests
+# rather than the working tree's. Both sides:
+#   env -u PYTHONPATH -u PYTHONHOME ~/.hermes-cortex/venv/bin/python3 -m pytest <15 files> -q
+# captured-on: 2026-10-23T08:10:07Z (UTC)
+#
+BASELINE (dd6acb46) : ======================= 16 failed, 111 passed in 26.99s ========================
+TIP   (this range)  : ======================= 15 failed, 114 passed in 29.32s ========================
+
+FAILED only at the TIP (regressions introduced by this range):
+  (none — no regression)
+
+FAILED only at the BASELINE (a pre-existing failure this range does not have):
+  FAILED tests/test_loop_gov_review_repo.py::test_derive_slug_ignores_an_injected_slug_that_is_not_a_repo
+
+The remaining failures are IDENTICAL on both sides. They are pre-existing and are
+RECORDED as an issue rather than absorbed into this cycle. They are test-ISOLATION
+defects, not product defects: test_liveness_anywhere.py drives `git commit` in a sandbox
+that inherits this host's global core.hooksPath (the pre-commit hook refuses, so the
+fixture never commits), and test_lock_liveness_activity.py asserts "no rescue" while the
+host really does hold repos under HOME carrying this agent's commits (captured stderr:
+"agent ... committed in ~/hc-session2 since ... — activity seen").
+
+base failures: 16   tip failures: 15

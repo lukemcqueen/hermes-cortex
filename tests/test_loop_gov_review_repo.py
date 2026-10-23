@@ -373,6 +373,95 @@ def test_an_explicit_workdir_outranks_a_bare_file_path():
         "an explicit workdir must outrank a bare file path — it states where the session IS")
 
 
+# ── Part 4: the guard must not refuse on evidence that is not THIS session's ──
+#
+# Measured on a dev host (macOS, many project repos), 2026-10-23: a lock opened in
+# ~/Developer/KOSCAP/koscap-mwi — CORRECTLY tagged, absolute path recorded — was refused
+# because that repo had no COMMITS in the window (the work was uncommitted) while an
+# unrelated repo elsewhere under HOME had gained a commit. The refusal released the lock
+# and closed the cycle UNSCORED, and it named a repo this session had never worked in
+# ("work found in …/steadfaste-s1-model"). The candidate list is "any candidate repo with
+# ANY commit in the window", which on a multi-repo host is not evidence about this session
+# at all — the same asymmetry the lock-side test already refuses to accept (there, the
+# session's own authorship is required before concluding anything).
+
+def _sandbox(tmp_prefix: str):
+    home = Path(tempfile.mkdtemp(prefix=tmp_prefix))
+    mcp.HOME = home
+    mcp.SESSION_FILE = home / ".hermes" / "session.id"
+    mcp.GOVERNANCE_STATE_DIR = home / ".hermes-cortex" / "state"
+    mcp.GOVERNANCE_STATE_DIR.mkdir(parents=True, exist_ok=True)
+    mcp._PROCESS_SESSION_ID = ""
+    return home
+
+
+class _EnvVar:
+    """Set an env var for the duration of a block, restoring it afterwards."""
+
+    def __init__(self, name, value):
+        self.name, self.value, self.saved = name, value, None
+
+    def __enter__(self):
+        self.saved = os.environ.get(self.name)
+        os.environ[self.name] = self.value
+
+    def __exit__(self, *exc):
+        if self.saved is None:
+            os.environ.pop(self.name, None)
+        else:
+            os.environ[self.name] = self.saved
+        return False
+
+
+def test_a_lock_tagged_with_the_session_repo_is_not_refused_by_a_commit_elsewhere():
+    """The reported false positive: correctly-tagged lock, work UNCOMMITTED, an unrelated
+    repo gained a commit in the window. The session's own identity agrees with the tag, so
+    the guard must not refuse (and must not release the lock)."""
+    home = _sandbox("loop-gov-tag-agrees-")
+    mine = _mkrepo(home / "projects" / "KOSCAP" / "koscap-mwi", with_commit=False)
+    started_at = _iso(time.time())
+    time.sleep(1.1)
+    _mkrepo(home / "steadfaste-s1-model", with_commit=True)      # unrelated, INSIDE the window
+    lock = {"task_id": "t", "description": "d", "repo_slug": "koscap-mwi",
+            "repo_path": str(mine), "started_at": started_at, "session_id": "S1",
+            "ttl_seconds": 3600}
+
+    with _EnvVar("CORTEX_SESSION_REPO", str(mine)):    # the session's identity AGREES with the tag
+        block = mcp._adversarial_review_gate(lock, {"id": 5001})
+
+    text = block.content[0].text if block is not None else ""
+    assert block is None, (
+        "a lock tagged with the session's OWN repo was refused because an unrelated repo "
+        f"had a commit in the window: {text!r}"
+    )
+
+
+def test_the_mis_tag_refusal_names_the_session_repo_when_it_is_known():
+    """The refusal's job is to say WHICH repo the session is actually in — the enforcer
+    injects that path, so the message must use it rather than leaving the reader to guess."""
+    home = _sandbox("loop-gov-tag-names-")
+    _mkrepo(home / "hermes-cortex", with_commit=False)           # the (wrongly tagged) lock repo
+    started_at = _iso(time.time())
+    time.sleep(1.1)
+    real = _mkrepo(home / "steadfaste-s1-model", with_commit=True)
+    lock = {"task_id": "t", "description": "d", "repo_slug": "hermes-cortex",
+            "repo_path": str(home / "hermes-cortex"), "started_at": started_at,
+            "session_id": "S1", "ttl_seconds": 3600}
+
+    with _EnvVar("CORTEX_SESSION_REPO", str(real)):
+        block = mcp._adversarial_review_gate(lock, {"id": 5002})
+
+    assert block is not None, "a lock tagged with a repo the session is NOT in must be refused"
+    text = block.content[0].text
+    assert FAILURE_TEXT in text, f"refusal did not explain the mismatch: {text!r}"
+    assert "Session repo" in text, (
+        f"the refusal did not name the session's OWN repo as a field: {text!r}"
+    )
+    assert str(real) in text.split("Session repo", 1)[1], (
+        f"the 'Session repo' line does not carry the session's repo: {text!r}"
+    )
+
+
 if __name__ == "__main__":
     tests = [v for k, v in sorted(globals().items())
              if k.startswith("test_") and callable(v)]

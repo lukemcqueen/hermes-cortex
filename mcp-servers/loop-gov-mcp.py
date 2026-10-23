@@ -4838,11 +4838,58 @@ def _window_commit_count(repo: Path, started_at: str) -> int:
     return len([s for s in stamps if s >= start_ts])
 
 
-def _repos_with_window_work(lock: dict, exclude: Path) -> list:
-    """Candidate repos OTHER than `exclude` that gained commits in the window."""
+def _own_window_commits(repo: Path, started_at: str) -> list:
+    """SHAs of commits in `repo` authored by THIS AGENT's identity inside the window.
+
+    Epoch-filtered on `%ct` (never `git log --since=`, which mis-parses a Z-suffixed UTC
+    instant against a local-offset commit date — see `_window_commit_count`). Needs no base
+    revision, so a repo whose ONLY commit landed inside the window still attributes.
+    """
+    author = _agent_author(repo)
+    if not author:
+        return []
+    out = _git_capture(repo, "log", "--format=%ct %H", "--author=" + author)
+    rows = [ln.split() for ln in out.splitlines() if len(ln.split()) == 2]
+    if not started_at:
+        return [sha for _ct, sha in rows]
+    try:
+        start_ts = datetime.fromisoformat(started_at.replace("Z", "+00:00")).timestamp()
+    except (ValueError, TypeError):
+        return [sha for _ct, sha in rows]
+    return [sha for ct, sha in rows if ct.isdigit() and int(ct) >= start_ts]
+
+
+def _repos_with_own_window_work(lock: dict, exclude: Path) -> list:
+    """Candidate repos OTHER than `exclude` holding commits THIS AGENT authored in the window.
+
+    The attributed form of the elsewhere test — and the only form the wrong-repo guard may
+    act on. Measured 2026-10-23 (dev host, many project repos): an unattributed list ("any
+    candidate repo with ANY commit in the window") named a repo the session had never worked
+    in — a peer's, a pipeline's or a prior session's commit was offered as "work found in …",
+    and the close was refused and the lock released on that alone. On a host with more than
+    one repo that is not evidence about this session at all; the lock-side test in the same
+    guard already refuses to conclude anything without positive authorship
+    (`_authored_commits`), so the elsewhere side has to meet the same bar.
+    """
     started_at = lock.get("started_at", "")
     return [r for r in _candidate_repos()
-            if r != exclude and _window_commit_count(r, started_at) > 0]
+            if r != exclude and _own_window_commits(r, started_at)]
+
+
+def _session_repo_agrees(repo: Path, session_repo: Optional[Path]) -> bool:
+    """True when the session's OWN repo identity points at the lock's repo.
+
+    The discriminator the wrong-repo guard was missing. A lock whose repo IS the session's
+    repo is correctly tagged whatever the commit window looks like — uncommitted work is the
+    normal state at close, and refusing there releases the lock and closes the cycle
+    UNSCORED while reviewing nothing (cx is empty, so no review would have run anyway).
+    """
+    if session_repo is None:
+        return False
+    try:
+        return Path(session_repo).resolve() == Path(repo).resolve()
+    except (OSError, ValueError):
+        return False
 
 
 # ── Working-tree scope: whose uncommitted edits are these? ──────────────────
@@ -6622,7 +6669,8 @@ def _bound_diff(diff_text: str, budget: int | None = None) -> str:
 
 
 def _adversarial_review_gate(lock: dict, cycle: dict,
-                            force: bool = False) -> Optional[CallToolResult]:
+                            force: bool = False,
+                            session_repo: Optional[Path] = None) -> Optional[CallToolResult]:
     """The complexity-gated hard gate. Returns None (proceed) or a block result.
 
     Simple changes pass through. Complex changes must earn a CLEAN review;
@@ -6664,6 +6712,12 @@ def _adversarial_review_gate(lock: dict, cycle: dict,
     cx = _complexity(repo, lock.get("started_at", ""), lock.get("dirty_at_start"),
                      lock.get("session_id", ""))
 
+    # The session's OWN repo identity, used by the wrong-repo guard below to decide whether
+    # the lock's tag is actually wrong. Resolved here when the caller did not pass it, so
+    # every call site (end_change, rereview_change) gets the same answer.
+    if session_repo is None:
+        session_repo = _session_repo_path(None)
+
     # ── Wrong-repo guard (part 1 of the right-repo fix) ──
     # The lock's repo_slug comes from _derive_slug(), whose canonical-repo
     # preference is a property of the HOST rather than the session — so on a
@@ -6672,9 +6726,22 @@ def _adversarial_review_gate(lock: dict, cycle: dict,
     # contain: the verdict is permanent FINDINGS, the close is refused forever,
     # and each retry spawns another full review (observed: a subagent working
     # in steadfaste reviewed against hermes-cortex, retrying end_change into a
-    # dozen 420s timeouts). When the lock's repo shows NOTHING in the window
-    # while another candidate repo gained commits, refuse and name both instead
-    # of silently auditing the wrong tree. Fail loud, never silently skip.
+    # dozen 420s timeouts). When the lock's repo shows NOTHING in the window while another
+    # candidate repo gained commits, refuse and name both instead of silently auditing the
+    # wrong tree. Fail loud, never silently skip.
+    #
+    # NARROWED 2026-10-23 (dev-host false positive, reported by the operator): the refusal
+    # must rest on evidence about THIS SESSION, not on any repo that happens to have a
+    # commit. Two changes, both of which only ever remove a refusal:
+    #   * the elsewhere candidate must hold commits THIS AGENT authored (the same bar the
+    #     lock-side test already applies) — a peer's, a pipeline's or a prior session's
+    #     commit in some other repo under HOME is not evidence about this session;
+    #   * when the lock's repo IS the session's own repo (`_session_repo_path`, i.e. the
+    #     path the enforcer injected or CORTEX_SESSION_REPO), the tag is RIGHT and there is
+    #     nothing to refuse: the work was simply uncommitted, and cx is empty so no review
+    #     would have run against any tree. Measured cost of the old behaviour: a correctly
+    #     tagged lock released and its cycle closed UNSCORED, with a message naming a repo
+    #     the session had never worked in.
     _started = lock.get("started_at", "")
     # Authoritative signal: does the lock's repo hold ANY commit THAT THIS
     # SESSION authored in the window? A "shows nothing" test is not enough —
@@ -6694,7 +6761,20 @@ def _adversarial_review_gate(lock: dict, cycle: dict,
         _authored_commits(repo, _lock_base, _lock_author)
     )
     if (not cx["lines"] and not cx["files"]) or (_lock_author and not _lock_holds_own_work):
-        _elsewhere = _repos_with_window_work(lock, exclude=repo)
+        # ATTRIBUTED candidates only (2026-10-23): the list must hold commits THIS AGENT
+        # authored, not merely any commit in the window — see _repos_with_own_window_work.
+        _elsewhere = _repos_with_own_window_work(lock, exclude=repo)
+        _tag_agrees = _session_repo_agrees(repo, session_repo)
+        if _elsewhere and _tag_agrees:
+            # The lock's repo IS the session's repo, so the tag is right however the commit
+            # window looks (uncommitted work is the normal state at close). Say so, and do
+            # NOT refuse: cx is empty here, so no review would have run against the wrong
+            # tree anyway — refusing only released the lock and closed the cycle UNSCORED.
+            log.warning(
+                "wrong-repo guard: %s also gained this agent's commits in the window, but "
+                "the lock's repo IS the session's repo (%s) — not refusing",
+                _elsewhere[0], session_repo)
+            _elsewhere = []
         if _elsewhere:
             _other = _elsewhere[0]
             try:
@@ -6718,7 +6798,9 @@ def _adversarial_review_gate(lock: dict, cycle: dict,
                 "❌ Cannot close: the lock's repo cannot contain this session's work.\n\n"
                 f"  Lock repo_slug : {lock.get('repo_slug', '')!r}  ->  {repo}\n"
                 f"  In that repo   : {_why}.\n"
-                f"  Work found in  : {_other}\n\n"
+                f"  Work found in  : {_other}\n"
+                + (f"  Session repo   : {session_repo}\n" if session_repo is not None else "")
+                + "\n"
                 "The lock was tagged with a repo this session is not working in (a host-\n"
                 "canonical default, or a session repo-hint that drifted), so self-\n"
                 "adversarial review would judge a tree that cannot contain the change.\n"
@@ -7177,7 +7259,8 @@ def _end_change(args: dict) -> CallToolResult:
     # could spend its whole range budget AND a full blob budget, which is what produced six
     # 300s stalls with no verdict (cycles 12777/12779/12782/12792/12795/12797).
     close_started = time.monotonic()
-    review_block = _adversarial_review_gate(lock, cycle_data or {})
+    review_block = _adversarial_review_gate(lock, cycle_data or {},
+                                            session_repo=_session_repo_path(args))
     if review_block is not None:
         return review_block
 
