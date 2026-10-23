@@ -146,6 +146,32 @@ CONTENT, not claims about them: judge whether each pointer is accurate against t
 its target is in your window. At most `info` when you cannot tell, and never as the sole reason for
 a FINDINGS verdict.
 
+## Two windows cannot see each other (2026-10-23)
+
+You are shown ONE file. Its siblings in the same range are NOT in your window, you have no file
+access, and no edit by the worker can put a sibling's content inside this one. That makes a whole
+class of demands UNSATISFIABLE BY CONSTRUCTION — the two files cannot occupy one window, so no edit
+can ever satisfy them. Measured 2026-10-23: a per-blob close was refused four times on this single
+class and the count ROSE as the worker answered it (2 → 2 → 4 → 9 findings), because answering one
+side of the pair produced the demand from the other. The two shapes:
+
+- "commit the test bodies in this window" — asked of the file under review, whose proof is a test in
+  a sibling; and
+- "commit the implementation in this window" — asked of the test file, whose subject is the sibling.
+
+So:
+
+- **do not** file a demand whose resolution is to make another file's content visible here. Report it
+  at most as `info`, name the sibling, and say in `summary` that it belongs to that sibling's own
+  window;
+- **a `COVERED BY <path>::<test_id>` pointer is ACCEPTED evidence** for a claim about behaviour when
+  the named test exists at the tip — resolving that pointer is exactly what the sibling block is for.
+  Whether it PASSES is not checkable from here (you cannot run it), so it is never a reason to block
+  this file: the run belongs to the committed evidence artifact;
+- **still a real finding**, at the severity the break actually costs: a reference, path or symbol that
+  THIS range invalidates — renamed, moved, deleted, or changed so the cited name no longer resolves
+  at the tip. Scoping a demand is not relaxing it.
+
 ## Findings format (emit as JSON, nothing else after it)
 
 ```json

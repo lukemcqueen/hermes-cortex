@@ -89,6 +89,30 @@ def test_reference_rule_is_stated_and_forbids_a_findings_verdict():
         "an un-seeable reference must not carry a FINDINGS verdict on its own")
 
 
+def test_two_window_rule_is_stated_and_forbids_the_unsatisfiable_demand():
+    """G. A window shows ONE file; the demand to commit another file's content into it is
+    unsatisfiable by construction.
+
+    Measured 2026-10-23: a per-blob close was refused four times on this single class, and the count
+    ROSE as the worker answered it (2 -> 2 -> 4 -> 9 findings) — the implementation's window asked
+    for the sibling test bodies, the test file's window asked for the implementation. The rule must
+    be stated, must name WHY the demand cannot be met, must name the demand it forbids, must accept
+    the pointer that IS resolvable in this window, and must leave the CHECKABLE case a real finding.
+    """
+    assert "Two windows cannot see each other" in TEXT, "the two-window rule is absent"
+    assert "UNSATISFIABLE BY CONSTRUCTION" in TEXT, (
+        "the rule must name WHY the demand cannot be met, or it reads as a mere preference")
+    assert "commit the test bodies in this window" in TEXT, (
+        "the rule must name the demand it forbids, verbatim")
+    assert "cannot occupy one window" in TEXT, "the rule must state the structural reason"
+    assert "COVERED BY" in TEXT and "ACCEPTED evidence" in TEXT, (
+        "the resolvable pointer must be named as the accepted evidence for a claim about behaviour")
+    assert "Whether it PASSES is not checkable from here" in TEXT, (
+        "the rule must say what this window cannot check, so it is not demanded again")
+    assert "still a real finding" in TEXT and "invalidates" in TEXT, (
+        "the rule must keep the checkable case (a reference THIS range breaks) as a finding")
+
+
 class _FakeRange:
     def __init__(self, blobs):
         self.blobs = dict(blobs)
