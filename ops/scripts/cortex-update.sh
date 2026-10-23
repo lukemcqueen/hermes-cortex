@@ -1651,6 +1651,32 @@ sync_skills() {
         copy_file "$asset_file" "$dest"
       fi
     done < <(find "$root_skills" \( -path "*/scripts/*" -o -path "*/templates/*" \) -type f -print0)
+
+    # Sync skill-ROOT assets — files sitting BESIDE SKILL.md. Without this a
+    # multi-file skill deploys PARTIAL: only SKILL.md reaches the deployed tree
+    # and every companion link in its body 404s. Measured 2026-10-23 on
+    # skills/security/codebase-security-audit: 1 of its 20 files landed, so its
+    # six phases pointed at files no host had. Same defect class as the
+    # scripts/templates pass above, which was added for exactly this reason.
+    # Bounded to -maxdepth 1 so the references/ and scripts/ traversals above
+    # stay the only owners of their subtrees.
+    while IFS= read -r -d '' skill_md; do
+      while IFS= read -r -d '' asset_file; do
+        case "$asset_file" in
+          *__pycache__*|*.pyc|*.pyo|*.DS_Store) continue ;;
+        esac
+        local rel_path="${asset_file#$root_skills/}"
+        local dest="${skill_dest}/${rel_path}"
+        mkdir -p "$(dirname "$dest")"
+
+        if needs_update "$asset_file" "$dest"; then
+          copy_file "$asset_file" "$dest"
+        fi
+      # dirname(): the outer find yields the SKILL.md FILE, and `find <file>
+      # -maxdepth 1` matches nothing — the root pass silently did nothing until
+      # the guard test for this pass caught it.
+      done < <(find "$(dirname "$skill_md")" -maxdepth 1 -type f -not -name "SKILL.md" -print0)
+    done < <(find "$root_skills" -name "SKILL.md" -type f -print0)
   fi
 
   # ── Pass 2: Project-level overrides (.hermes-cortex/skills/) ──
@@ -1705,6 +1731,23 @@ sync_skills() {
         copy_file "$ref_file" "$dest"
       fi
     done < <(find "$override_skills" -path "*/references/*" -type f -print0)
+
+    # Same skill-root asset pass as Pass 1 — the overlay carries the identical
+    # gap, and fixing only Pass 1 would leave overrides deploying partial.
+    while IFS= read -r -d '' skill_md; do
+      while IFS= read -r -d '' asset_file; do
+        case "$asset_file" in
+          *__pycache__*|*.pyc|*.pyo|*.DS_Store) continue ;;
+        esac
+        local rel_path="${asset_file#$override_skills/}"
+        local dest="${skill_dest}/${rel_path}"
+        mkdir -p "$(dirname "$dest")"
+
+        if needs_update "$asset_file" "$dest"; then
+          copy_file "$asset_file" "$dest"
+        fi
+      done < <(find "$(dirname "$skill_md")" -maxdepth 1 -type f -not -name "SKILL.md" -print0)
+    done < <(find "$override_skills" -name "SKILL.md" -type f -print0)
   else
     info "  Skills: ${synced} updated, ${skipped} unchanged"
   fi
