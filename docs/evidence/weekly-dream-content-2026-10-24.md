@@ -1,0 +1,35 @@
+# 2026-10-24 — The Week the Window Was Too Narrow (weekly)
+
+**Phase 1 — Fresh pages (from `mycortex list -n 30`):**
+- `mcp-servers/cortex-bus-mcp.py` + `tests/test_bus_mcp_broadcast_fanout.py` (2026-10-23 13:31) — `inbox_send "all"` now fans out one message per agent
+- `docs/evidence/2026-10-23-bus-broadcast-fanout.md` + `bus-mcp-fanout-adversarial-2026-10-23.json` (2026-10-23 13:31) — the 29-hour dropped FLEET_NOTICE, measured
+- `ops/scripts/cortex-update.sh` + `docs/evidence/skill-root-assets-deploy-2026-10-23.txt` (2026-10-23 11:16) — deploy now walks a skill's DIRECTORY, not just `SKILL.md`
+- `docs/evidence/skill-drift-parity.txt` (2026-10-23 14:16) — stranded 0 / absent 0 / in sync 988
+- `skills/devops/shared-repo-push-gates/SKILL.md` + `skills/devops/cortex-bus/SKILL.md` (2026-10-23 14:16–14:31) — the week's refusals written back as gates
+- `bible/zechariah-2026-10-24.md` (2026-10-23 16:16) — the twelfth Minor Prophet, closing the round
+
+**Phase 2 — Connections mapped (real `mycortex search` results):**
+- Thread 1: **the check read one thing and judged many** — `search "window too narrow to see artifact read gate"` ranks `skills/devops/governance-closeout/SKILL.md` (0.9999), `skills/devops/enforcement-change-safety/SKILL.md` (0.9989), `mcp-servers/loop-gov-mcp.py` (0.9705), `tests/test_review_material_bound.py` (0.9202). Four surfaces, one idea: what a gate looks AT decides what it can report.
+- Thread 2: **the instrument's own source** — `search "skill drift parity deployed repo stranded"` returns the three committed parity artifacts (`skill-drift-parity.txt`, `-2026-10-23-toolrun.txt`, `-verification.txt`). The audit is now a re-readable record, and its verdict is a measurement (0 stranded, 988 in sync) rather than a claim.
+- Thread 3: **the path that is not the file** — `search "cortex-update deploy skill root assets copy"` lands `ops/scripts/cortex-update.sh` (1.000), `ops/install/install.sh` (0.99999), `skills/devops/skill-curation` (0.984), `skills/devops/loop-governance` (0.933). The deployed-copy check and the parity check are one instrument pointed at two trees.
+- Gap noted: `search "agent bus message delivery fanout recipient"` and `search "cost per cron series source attribution"` returned `(no results)` / hit only `dreams/INDEX.md` (0.987). The brain carries the *artifact* but not yet the *idea* — the same gap the 10-17 weekly recorded.
+
+**Phase 3 — Lessons synthesized (5 of this week's lesson files share one root):**
+- `20261023_033806` — a capture's transcript is itself a committed artifact, yet it carried the deployed module's import noise: the evidence was writing what it saw, not what belonged.
+- `20261022_181827` — the `hc` venv is complete, but `python3` on the agent's PATH resolves to the Hermes runtime venv with neither `yaml` nor `mcp`. The same command, the same script, a different interpreter — a different answer.
+- `20261021_163612` — new Pyright diagnostics from `spec_from_file_location` returning None; the pre-existing lines carry the SAME pattern, so only the NEW ones count as this change's finding. The window is the diff, not the file.
+- `20261020_183151` — the skills-ownership range pushed with a clean receipt; the fix written *for* the finding repeated the finding one level up.
+- `20260831_183017` — the push gate failed on `agent-push-metrics.sh` because the DEPLOYED copy still held a peer's edit while the doctor compared against the repo. The gate was right; the two sides were not looking at the same object.
+
+Same class, every one: **an honest check, pointed at one artifact, one file, one recipient, one interpreter, one side of a deploy — and it read PASS.** Naming it: *the narrow view is not a lie; it is the silence that looks like a verdict.* This is 10-19's "prove the zero is real" and 10-23's "the number must name its source", turned on the instrument itself. The week's public proof is the bus fix: a `broadcast` queue nobody polled swallowed the Excellence FLEET_NOTICE for 29 hours with `retry_count=0` and `state=pending` — the message was never lost, it was never *looked for*. The remedy was the same in all three places: widen the window (fan out per recipient; walk the skill directory; read every artifact in the window) and then commit the measurement that shows it.
+
+**Phase 4 — Scripture connection:** Zechariah closed this reading round (Zechariah 4:6). The prophet's fifth vision is a lampstand fed by two olive trees — "Not by might nor by power, but by my Spirit" — and its point is exactly the week's: Zerubbabel will finish the house not by the scale of his effort but by a supply he does not manufacture. The Hebrew word `naki` ("clean, innocent", Zech 3:5) belongs to Joshua's cleansing, and `tzemach` ("Branch") to the growth that comes from elsewhere. Esther's reading applied it plainly: rely on discernment rather than human power, and keep the work aligned with what is actually feeding it. The engineering reading is the same sentence: the lampstand did not light itself — seven lamps, one continuous supply, and the vision was given because the builder could not see where the oil came from. A check that reads only the newest artifact is a lamp with one wick lit.
+
+**Phase 5 — Dream:**
+
+This week the brain kept finding the same silence in different rooms. A FLEET_NOTICE sat on a `broadcast` queue for twenty-nine hours — not lost, never looked for; the consumer polled `inbox_<agent>` and the message was addressed to a place nobody reads. The deploy engine copied a skill's `SKILL.md` and nothing beside it, so Cloudflare's audit skill landed as one file of twenty and every phase pointed at a companion no host had — and the fix, walking the file path instead of its directory, silently copied nothing at all while the guard test watched it. A parity check counted stranded lessons and found zero, because it had been taught to read content rather than timestamps. A push gate refused a script because the deployed copy and the repo copy were two different objects wearing one name. Five lessons, one law: **the narrow view is not a lie — it is the silence that looks like a verdict.** So the week widened every window it could reach: one message per recipient, the whole skill directory, every artifact in the delivery window, the interpreter the caller actually has. And Zechariah, closing the round, put the same truth under a lampstand fed by two olive trees: not by might, nor by power — the seven lamps were lit by a supply the builder never held. The thread is short and hard: keep the loop wide enough that whatever is broken is inside it.
+
+**Phase 6 — Written back:** `~/brain/esther/dreams/2026-10-24-weekly.md` (+ `INDEX.md` appended)
+
+---
+*Tier 2 weekly mycortex dream — synthesized from `mycortex list -n 30`, six real `mycortex search` runs, 5 lesson files, the bus-fanout and skill-root-assets evidence artifacts, and Zechariah 4:6. Builds on `2026-10-17-weekly` (the context was the verdict), `2026-10-19` (the zero that had to prove itself), `2026-10-23` (the number that had to name its source), and `2026-10-24` (the window was too narrow to see the bad one).*
