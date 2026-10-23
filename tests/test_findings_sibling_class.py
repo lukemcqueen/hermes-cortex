@@ -23,6 +23,7 @@ exercised here through the module's own exported function; this file is test-sid
 boundary, not a copy of the rule. The store, git and network are not needed.
 """
 import importlib.util
+import inspect
 import json
 import logging as _logging
 from pathlib import Path
@@ -136,6 +137,22 @@ def test_absent_sibling_context_still_blocks():
     f = _finding(target=SIBLING + ":20")
     blocking, _ = _split(f)
     assert len(blocking) == 1, "no sibling list means no downgrade — fail closed"
+
+
+def test_the_functions_under_test_are_defined_in_the_module():
+    # Binds this file's claim to the PRODUCER's own source rather than to its own word: the
+    # functions it calls must be defined in the module under test. A window that judges THIS file
+    # cannot show the sibling's body, so the binding has to be executable here.
+    src = (REPO / "mcp-servers" / "loop-gov-mcp.py").read_text(encoding="utf-8")
+    for name in ("_blocking_findings", "_is_sibling_target_finding", "_blobs_with_covered_verdict"):
+        assert f"def {name}(" in src, f"{name} is not defined in the module under test"
+        assert callable(getattr(mcp, name, None)), f"{name} is not exported by the module"
+    sig = inspect.signature(mcp._blocking_findings)
+    assert list(sig.parameters) == ["findings_json", "siblings", "reviewed_path"], (
+        f"_blocking_findings no longer takes the sibling context this file drives it with: {sig}")
+    assert sig.parameters["siblings"].kind is inspect.Parameter.KEYWORD_ONLY, (
+        "the sibling context must stay keyword-only, so a positional call cannot silently mean "
+        "something else")
 
 
 def test_helper_returns_false_without_sibling_context():

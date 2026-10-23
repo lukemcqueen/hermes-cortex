@@ -171,6 +171,12 @@ So:
 - **still a real finding**, at the severity the break actually costs: a reference, path or symbol that
   THIS range invalidates — renamed, moved, deleted, or changed so the cited name no longer resolves
   at the tip. Scoping a demand is not relaxing it.
+- **the sibling block is BOUNDED** — a few files, a dozen added lines each. Absence from it is NEVER
+  evidence that a file or symbol does not exist, and it is never a contradiction: a `fabrication`
+  finding must quote what the material DISPROVES, and a bound shows LESS, not the opposite. The
+  range's file list names every file in play, so check there before reporting that a sibling lacks a
+  definition. Reporting a bounded window as a contradiction is the failure this section exists to
+  stop, and it cannot be answered by any edit to the file under review.
 
 ## Findings format (emit as JSON, nothing else after it)
 
