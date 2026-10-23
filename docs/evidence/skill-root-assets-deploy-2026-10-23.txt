@@ -1,0 +1,43 @@
+sync_skills() skill-root assets — deploy fix evidence
+generated-by : docs/evidence/skill-root-assets-deploy-2026-10-23.sh
+captured-at  : e9821c12 (working tree at run time)
+date         : 2026-10-23T20:10:36+09:00
+host         : Linux x86_64
+────────────────────────────────────────────────────────────
+## 1. The guard test (drives the REAL sync_skills() with a stub preamble)
+OK    run-tests.sh tests/test_skill_root_assets_deploy.py -> rc=0  [============================== 4 passed in 0.32s ===============================]
+────────────────────────────────────────────────────────────
+## 2. The fix is present in BOTH copies — repo source and the DEPLOYED runtime
+OK    repo: 2 root-asset walks, 2 dirname() guards (both passes)
+OK    deployed: 2 root-asset walks, 2 dirname() guards (both passes)
+      (the deployed copy is the one that RUNS; a repo-only fix changes nothing)
+────────────────────────────────────────────────────────────
+## 3. The deployed skill tree is COMPLETE — the defect this fix closes
+OK    deployed tree carries 20 files (was 1 before the fix)
+OK    root-level HUNTING.md present
+OK    root-level ATTACK-CLASSES.md present
+OK    root-level RECONNAISSANCE.md present
+OK    root-level report-schema.json present
+OK    root-level validate-findings.cjs present
+────────────────────────────────────────────────────────────
+## 4. Deployed content is byte-identical to the repo source
+OK    diff -rq repo vs deployed -> rc=0 (identical)
+────────────────────────────────────────────────────────────
+## 5. Captured runs — the guard was watched to FAIL, then to PASS
+      RED (before the fix)
+        path : docs/evidence/skill-root-assets-deploy-2026-10-23.RED.txt
+        md5  : b189046db83642caace9db07c84be31c
+        produced by: bash tests/run-tests.sh tests/test_skill_root_assets_deploy.py -q
+        verdict    : ========================= 2 failed, 2 passed in 0.33s ==========================
+      GREEN (after the fix)
+        path : docs/evidence/skill-root-assets-deploy-2026-10-23.GREEN.txt
+        md5  : 35a115a422d2d0a231e8b5432edaf593
+        produced by: bash tests/run-tests.sh tests/test_skill_root_assets_deploy.py -q
+        verdict    : ============================== 4 passed in 0.35s ===============================
+────────────────────────────────────────────────────────────
+## 6. Pre-existing failures are NOT attributed to this change
+      tests/test_updater_robustness.py: 4 failures, proven pre-existing by
+      running the file at the range base ca9de57f in a worktree — identical
+      4 failures, same names. Recorded as issue #244.
+────────────────────────────────────────────────────────────
+RESULT: ALL PASS

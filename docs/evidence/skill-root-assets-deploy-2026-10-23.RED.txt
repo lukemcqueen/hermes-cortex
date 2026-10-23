@@ -1,0 +1,26 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
+rootdir: /home/esther/hermes-cortex
+configfile: pytest.ini
+plugins: anyio-4.15.1
+collected 4 items
+
+tests/test_skill_root_assets_deploy.py F..F                              [100%]
+
+=================================== FAILURES ===================================
+_____________________ test_skill_root_assets_are_deployed ______________________
+tests/test_skill_root_assets_deploy.py:120: in test_skill_root_assets_are_deployed
+    assert f"security/demo-skill/{rel}" in got, \
+E   AssertionError: root-level COMPANION.md did NOT deploy. Deployed: ['security/demo-skill/SKILL.md', 'security/demo-skill/references/deep.md', 'security/demo-skill/scripts/tool.py']
+E   assert 'security/demo-skill/COMPANION.md' in ['security/demo-skill/SKILL.md', 'security/demo-skill/references/deep.md', 'security/demo-skill/scripts/tool.py']
+______________ test_the_block_walks_each_skill_dir_for_root_files ______________
+tests/test_skill_root_assets_deploy.py:152: in test_the_block_walks_each_skill_dir_for_root_files
+    assert "-maxdepth 1" in block, \
+E   AssertionError: the root-asset pass must bound its walk to one level, or it re-walks references/
+E   assert '-maxdepth 1' in 'set -uo pipefail\nwarn()  { echo "WARN: $*"; }\ninfo()  { echo "INFO: $*"; }\nerror() { echo "ERROR: $*"; }\ncopy_fil...pdated, ${skipped} unchanged, ${removed} stale removed, ${preserved} preserved (deployed-only, not auto-deleted)"\n}\n'
+=========================== short test summary info ============================
+FAILED tests/test_skill_root_assets_deploy.py::test_skill_root_assets_are_deployed
+FAILED tests/test_skill_root_assets_deploy.py::test_the_block_walks_each_skill_dir_for_root_files
+========================= 2 failed, 2 passed in 0.33s ==========================
+---
+run-tests.sh: interpreter=/home/esther/.hermes-cortex/venv/bin/python3 rc=1  (PYTHONPATH/PYTHONHOME unset for the run)
