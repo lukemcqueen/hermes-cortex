@@ -27,4 +27,3 @@ A file under no repo-owned skill dir is a Hermes default and stays skipped.
 | Skipped (Hermes defaults, or repo ahead) | 500 |
 
 **Verdict: PASS**
-
