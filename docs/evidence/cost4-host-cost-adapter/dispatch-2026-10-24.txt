@@ -1,0 +1,49 @@
+# [cost/4] EXEC dispatch — self-test, then the four worker hosts
+captured-at: 5376f7a5
+re-run: bash ops/evidence/cost4-host-cost-adapter-dispatch-2026-10-24.sh
+
+One EXEC payload went to every host (self-test first, per cross-agent-design):
+  command: cron-cost-metrics.py   params: --json-summary --since 2026-10-06
+Results are read from inbox_moses — handle_exec returns its result to the
+SENDER-AGNOSTIC send_bus_result, which posts to inbox_moses regardless of who
+asked (ops/scripts/agent/commands.py:113-134).
+
+── self-test: this host, to itself ──
+  subject=EXEC_RESULT from=esther success=True rc=0
+  stdout bytes=4143  stderr bytes=0
+  parsed: agent=esther rows=1777 skipped=0
+          per_day=18 days, last={'date': '2026-10-23', 'fires': 22, 'tokens': 62262577.0}
+          per_job=15 shown (omitted 6), top={'job_id': '1954deb5ad76', 'fires': 38, 'tokens': 230805081.0}
+          spend.available=True  langfuse={'checked': True, 'present': True, 'status': 200}
+  6-checkpoint: send msg_id=539bb3cb-9187-45cf-9613-ac71853fdf65 -> consumed
+  (inbox_esther depth 0; handler log 'Executing: .../cron-cost-metrics.py
+  --json-summary --since 2026-10-06') -> processed (rc=0) -> responded
+  (EXEC_RESULT mid=d9f57040-fb15-4949-8e8c-40d8799e1092, read above).
+  Handler log quoted from the run's scratch capture,
+  ~/.hermes/cache/scratch/cost4-handler.log (24h retention — not committed).
+
+── the four worker hosts ──
+  joseph  subject=EXEC_RESULT success=False rc=2 stdout=0B
+          stderr: cron-cost-metrics.py: error: the following arguments are required: --prometheus
+  gisu    subject=EXEC_RESULT success=False rc=-1 stdout=0B
+          stderr: Script not found: cron-cost-metrics.py
+  kustos  subject=EXEC_RESULT success=False rc=2 stdout=0B
+          stderr: cron-cost-metrics.py: error: the following arguments are required: --prometheus
+  titus   subject=EXEC_RESULT success=False rc=2 stdout=0B
+          stderr: cron-cost-metrics.py: error: the following arguments are required: --prometheus
+
+  hosts returning an aggregate: 0 of 4  (the slice's acceptance needs 4)
+
+── inbox depths after the dispatch (all four worker queues drained) ──
+  inbox_esther               depth=0 processing=0 dlq=False
+  inbox_fleet                depth=0 processing=0 dlq=False
+  inbox_gisu                 depth=0 processing=0 dlq=False
+  inbox_health_check         depth=8 processing=0 dlq=False
+  inbox_joseph               depth=0 processing=0 dlq=False
+  inbox_kustos               depth=0 processing=0 dlq=False
+  inbox_moses                depth=1 processing=0 dlq=False
+  inbox_orchestrator         depth=17 processing=0 dlq=False
+  inbox_orchestrator_dlq     depth=0 processing=0 dlq=True
+  inbox_titus                depth=0 processing=0 dlq=False
+
+# generated-by: this script (it wrote this file itself; stdout is not retyped)
