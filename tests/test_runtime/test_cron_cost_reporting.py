@@ -20,11 +20,13 @@ no live audit log, no live state.db, no real governance store. Fixture times are
 relative to now, because the report windows on the clock.
 """
 
+import http.server
 import json
 import os
 import sqlite3
 import subprocess
 import sys
+import threading
 import time
 from pathlib import Path
 
@@ -69,11 +71,16 @@ def _sessions_db(tmp: Path, rows) -> Path:
     return p
 
 
-def _run(script: Path, *args, env_extra=None):
+def _run(script: Path, *args, env_extra=None, home=None):
     env = {
         "PATH": os.environ.get("PATH", "/usr/bin:/bin"),
         "LANG": os.environ.get("LANG", "C.UTF-8"),
     }
+    if home is not None:
+        # A test of the host-derived identity fallback must control HOME —
+        # otherwise it reads the real host's agent.env and the "no identity"
+        # branch is unreachable (a fixture that omits the field it tests).
+        env["HOME"] = str(home)
     if env_extra:
         env.update(env_extra)
     return subprocess.run(
@@ -253,3 +260,315 @@ def test_weekly_report_states_what_is_not_measured(tmp_path):
     r = _run(REPORT, "--audit", str(audit), "--state-db", str(db), "--days", "7")
     assert "COVERAGE" in r.stdout
     assert "cost/4" in r.stdout, "the unmeasured worker hosts must be named, not extrapolated"
+
+
+# ── [cost/4] host cost summary — the mode a worker host is asked to run ──────
+#
+# Slice 6b7d9b8a goes to a worker host as an `EXEC` of this same deployed
+# script, so the mode that matters is the one the bus handler actually runs:
+# ONE JSON object on stdout, sized for an EXEC_RESULT body, carrying a window
+# filter, per-day and per-job token totals, the host's OWN identity, and a
+# Langfuse probe that reports absence rather than guessing.
+
+LANGFUSE_DAILY_OK = {
+    "data": [
+        {
+            "date": "2026-10-23",
+            "countTraces": 63,
+            "countObservations": 3521,
+            "totalCost": 5.13393171382,
+            "usage": [
+                {
+                    "model": "deepseek/deepseek-v4.1-flash",
+                    "inputUsage": 248233407,
+                    "outputUsage": 910020,
+                    "totalUsage": 249643409,
+                    "totalCost": 4.02889618,
+                    "countObservations": 1392,
+                    "countTraces": 59,
+                }
+            ],
+        }
+    ],
+    "meta": {"page": 1, "limit": 2, "totalItems": 1, "totalPages": 1},
+}
+
+
+class _LangfuseStub:
+    """Stand-in for the live /api/public/metrics/daily endpoint.
+
+    The body used by the test below is the LIVE response shape, read from
+    http://127.0.0.1:3000/api/public/metrics/daily?limit=2 on 2026-10-24
+    (keys `date`, `countTraces`, `countObservations`, `totalCost`, and a
+    `usage` list). It records the request path and Authorization header so
+    the test can assert the probe is authenticated and aimed at the right
+    endpoint — a stub that accepts anything would not catch a wrong path.
+    """
+
+    def __init__(self, payload):
+        self.payload = payload
+        self.requests = []
+
+    def __enter__(self):
+        payload, requests = self.payload, self.requests
+
+        class Handler(http.server.BaseHTTPRequestHandler):
+            def do_GET(self):
+                requests.append(
+                    {"path": self.path, "auth": self.headers.get("Authorization")}
+                )
+                body = json.dumps(payload).encode()
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+
+            def log_message(self, format, *args):  # noqa: A002 — signature matches the base class
+                pass
+
+        self.server = http.server.HTTPServer(("127.0.0.1", 0), Handler)
+        self.url = f"http://127.0.0.1:{self.server.server_port}"
+        self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
+        self.thread.start()
+        return self
+
+    def __exit__(self, *exc):
+        self.server.shutdown()
+        self.server.server_close()
+
+
+def _summary(r):
+    """The tool must print the JSON object and nothing else — an EXEC body is
+    the whole stdout, so a stray log line makes the result unparseable."""
+    assert r.returncode == 0, r.stderr
+    return json.loads(r.stdout)
+
+
+def test_json_summary_windows_by_since(tmp_path):
+    audit = _audit(
+        tmp_path,
+        [
+            {"job_id": "jobA", "total_tokens": 9999, "ts": "2026-10-05T10:00:00Z"},
+            {"job_id": "jobA", "total_tokens": 100, "ts": "2026-10-06T10:00:00Z"},
+            {"job_id": "jobA", "total_tokens": 20, "ts": "2026-10-24T09:00:00Z"},
+        ],
+    )
+    d = _summary(
+        _run(
+            METRICS,
+            "--json-summary",
+            "--agent",
+            AGENT,
+            "--audit",
+            str(audit),
+            "--since",
+            "2026-10-06",
+            "--langfuse-url",
+            "http://127.0.0.1:1",
+        )
+    )
+    assert [row["date"] for row in d["per_day"]] == ["2026-10-06", "2026-10-24"]
+    assert [row["tokens"] for row in d["per_day"]] == [100, 20]
+    assert all(row["fires"] == 1 for row in d["per_day"])
+    assert d["window"]["since"] == "2026-10-06"
+    assert d["per_job"] == [{"job_id": "jobA", "fires": 2, "tokens": 120}], (
+        "the row before --since must not reach the totals: the filter is what "
+        "makes the number"
+    )
+
+
+def test_json_summary_counts_rows_without_a_usable_timestamp(tmp_path):
+    audit = _audit(
+        tmp_path,
+        [
+            {"job_id": "jobA", "total_tokens": 5},
+            {"job_id": "jobA", "total_tokens": 7, "ts": "not-a-date"},
+            {"job_id": "jobA", "total_tokens": 11, "ts": "2026-10-20T00:00:00Z"},
+        ],
+    )
+    d = _summary(
+        _run(
+            METRICS,
+            "--json-summary",
+            "--agent",
+            AGENT,
+            "--audit",
+            str(audit),
+            "--since",
+            "2026-10-06",
+            "--langfuse-url",
+            "http://127.0.0.1:1",
+        )
+    )
+    assert d["audit"]["skipped_rows"] == 2
+    assert d["per_job"][0]["tokens"] == 11, (
+        "an unplaceable row must be declared, never silently counted into a day"
+    )
+    assert sum(row["tokens"] for row in d["per_day"]) == 11
+
+
+def test_json_summary_per_job_is_capped_and_declares_the_remainder(tmp_path):
+    rows = [
+        {"job_id": f"job{i:02d}", "total_tokens": (100 - i), "ts": "2026-10-20T00:00:00Z"}
+        for i in range(20)
+    ]
+    audit = _audit(tmp_path, rows)
+    d = _summary(
+        _run(
+            METRICS,
+            "--json-summary",
+            "--agent",
+            AGENT,
+            "--audit",
+            str(audit),
+            "--langfuse-url",
+            "http://127.0.0.1:1",
+        )
+    )
+    assert len(d["per_job"]) == 15, "the cap is what keeps the body inside an EXEC_RESULT"
+    assert d["per_job_omitted"] == 5, "a capped list must say how much it hid"
+    tokens = [row["tokens"] for row in d["per_job"]]
+    assert tokens == sorted(tokens, reverse=True)
+    assert d["per_job"][0]["job_id"] == "job00"
+
+
+def test_json_summary_reports_unreadable_spend_as_unavailable_never_zero(tmp_path):
+    audit = _audit(tmp_path, [{"job_id": "jobA", "total_tokens": 10, "ts": "2026-10-20T00:00:00Z"}])
+    r = _run(
+        METRICS,
+        "--json-summary",
+        "--agent",
+        AGENT,
+        "--audit",
+        str(audit),
+        "--state-db",
+        str(tmp_path / "missing.db"),
+        "--langfuse-url",
+        "http://127.0.0.1:1",
+    )
+    d = _summary(r)
+    assert d["spend"]["available"] is False
+    assert "lifetime_usd" not in d["spend"], "an unreadable source must not be reported as $0"
+    assert d["spend"]["reason"]
+
+
+def test_agent_identity_falls_back_to_the_host_env_file(tmp_path):
+    home = tmp_path / "home"
+    (home / ".hermes-cortex").mkdir(parents=True)
+    (home / ".hermes-cortex" / "agent.env").write_text("AGENT_NAME=worker-nine\n")
+    audit = _audit(tmp_path, [{"job_id": "jobA", "total_tokens": 10, "ts": "2026-10-20T00:00:00Z"}])
+    d = _summary(
+        _run(
+            METRICS,
+            "--json-summary",
+            "--audit",
+            str(audit),
+            "--langfuse-url",
+            "http://127.0.0.1:1",
+            home=home,
+        )
+    )
+    assert d["agent"] == "worker-nine", (
+        "an EXEC passes no --agent, so the label must come from the host's own "
+        "agent.env or the aggregate cannot be attributed to a host"
+    )
+
+
+def test_agent_identity_is_refused_rather_than_guessed(tmp_path):
+    home = tmp_path / "empty-home"
+    home.mkdir()
+    audit = _audit(tmp_path, [{"job_id": "jobA", "total_tokens": 10, "ts": "2026-10-20T00:00:00Z"}])
+    r = _run(
+        METRICS,
+        "--json-summary",
+        "--audit",
+        str(audit),
+        "--langfuse-url",
+        "http://127.0.0.1:1",
+        home=home,
+    )
+    assert r.returncode == 2, "a host that cannot name itself must not report metrics"
+    assert "AGENT_NAME" in r.stderr
+    assert r.stdout.strip() == ""
+
+
+def test_exactly_one_output_mode_is_required(tmp_path):
+    audit = _audit(tmp_path, [{"job_id": "jobA", "total_tokens": 10, "ts": "2026-10-20T00:00:00Z"}])
+    neither = _run(METRICS, "--agent", AGENT, "--audit", str(audit))
+    assert neither.returncode != 0, "no mode is a usage error, not an empty success"
+    both = _run(
+        METRICS, "--prometheus", "--json-summary", "--agent", AGENT, "--audit", str(audit)
+    )
+    assert both.returncode != 0
+
+
+def test_prometheus_mode_ignores_the_window(tmp_path):
+    """The universal producer's payload must not change shape because a window
+    option exists: `agent-push-metrics.sh` runs this every 5 minutes on every
+    host and never passes --since."""
+    audit = _audit(
+        tmp_path,
+        [
+            {"job_id": "jobA", "total_tokens": 100, "ts": "2026-01-01T00:00:00Z"},
+            {"job_id": "jobB", "total_tokens": 20, "ts": "2026-10-24T00:00:00Z"},
+        ],
+    )
+    r = _run(
+        METRICS, "--prometheus", "--agent", AGENT, "--audit", str(audit), "--since", "2026-10-06"
+    )
+    assert r.returncode == 0, r.stderr
+    assert _value(r.stdout, 'hermes_cron_tokens_total{agent="test-agent",job_id="jobA"}') == 100
+    assert _value(r.stdout, 'hermes_cron_fires_total{agent="test-agent",job_id="jobA"}') == 1
+
+
+def test_langfuse_absence_is_recorded_not_guessed(tmp_path):
+    audit = _audit(tmp_path, [{"job_id": "jobA", "total_tokens": 10, "ts": "2026-10-20T00:00:00Z"}])
+    d = _summary(
+        _run(
+            METRICS,
+            "--json-summary",
+            "--agent",
+            AGENT,
+            "--audit",
+            str(audit),
+            "--langfuse-url",
+            "http://127.0.0.1:1",
+        )
+    )
+    assert d["langfuse"]["checked"] is True
+    assert d["langfuse"]["present"] is False, (
+        "a host with no Langfuse must say so; the slice records 'the host has "
+        "none' as an answer, not as a missing number"
+    )
+    assert "days" not in d["langfuse"]
+
+
+def test_langfuse_probe_reports_the_daily_metrics_it_read(tmp_path):
+    audit = _audit(tmp_path, [{"job_id": "jobA", "total_tokens": 10, "ts": "2026-10-20T00:00:00Z"}])
+    with _LangfuseStub(LANGFUSE_DAILY_OK) as stub:
+        r = _run(
+            METRICS,
+            "--json-summary",
+            "--agent",
+            AGENT,
+            "--audit",
+            str(audit),
+            "--langfuse-url",
+            stub.url,
+            env_extra={
+                "HERMES_LANGFUSE_PUBLIC_KEY": "pk-test-placeholder",
+                "HERMES_LANGFUSE_SECRET_KEY": "sk-test-placeholder",
+            },
+        )
+    d = _summary(r)
+    assert d["langfuse"]["present"] is True
+    assert d["langfuse"]["days"] == [
+        {"date": "2026-10-23", "traces": 63, "cost_usd": 5.13393171382}
+    ]
+    assert stub.requests and "/api/public/metrics/daily" in stub.requests[0]["path"]
+    assert stub.requests[0]["auth"].startswith("Basic "), "the metrics API is authenticated"
+    for stream in (r.stdout, r.stderr):
+        assert "sk-test-placeholder" not in stream, (
+            "a credential must never reach the transcript that gets committed"
+        )

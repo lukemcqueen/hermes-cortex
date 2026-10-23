@@ -1,0 +1,83 @@
+# [cost/4] host cost summary — verification transcript
+captured-at: e6f49875  (the revision the working
+  tree sat on when this ran; the committed copy is necessarily one commit ahead,
+  so a transcript cannot name its own commit)
+pinned pre-change baseline: e6f49875fca17e126b1a06277d982667f3d68bd9
+re-run: bash ops/evidence/cost4-host-cost-adapter-2026-10-24.sh
+
+── 1. materialise the pinned baseline and ASSERT it is pre-change ──
+$ git worktree add --detach <scratch> e6f49875fca17e126b1a06277d982667f3d68bd9
+rc=0
+Preparing worktree (detached HEAD e6f49875)
+HEAD is now at e6f49875 Merge remote-tracking branch 'origin/main'
+asserted worktree HEAD: e6f49875fca17e126b1a06277d982667f3d68bd9
+grep -F -c -- '--json-summary' <baseline>/ops/scripts/manage/cron-cost-metrics.py  -> 0
+  (must be 0: the option is what this change adds)
+
+── 2. RED — the new tests against the PRE-CHANGE revision ──
+$ ~/.hermes-cortex/venv/bin/python3 -m pytest -q tests/test_runtime/test_cron_cost_reporting.py   (cwd = the baseline worktree)
+rc=1
+E                                 [--state-db STATE_DB]
+E     cron-cost-metrics.py: error: the following arguments are required: --prometheus
+E     
+E   assert 2 == 0
+E    +  where 2 = CompletedProcess(args=['~/.hermes-cortex/venv/bin/python3', '~/.hermes/cache/scratch/cost4-wt-Rv...             [--state-db STATE_DB]\ncron-cost-metrics.py: error: the following arguments are required: --prometheus\n').returncode
+=========================== short test summary info ============================
+FAILED tests/test_runtime/test_cron_cost_reporting.py::test_json_summary_windows_by_since
+FAILED tests/test_runtime/test_cron_cost_reporting.py::test_json_summary_counts_rows_without_a_usable_timestamp
+FAILED tests/test_runtime/test_cron_cost_reporting.py::test_json_summary_per_job_is_capped_and_declares_the_remainder
+FAILED tests/test_runtime/test_cron_cost_reporting.py::test_json_summary_reports_unreadable_spend_as_unavailable_never_zero
+FAILED tests/test_runtime/test_cron_cost_reporting.py::test_agent_identity_falls_back_to_the_host_env_file
+FAILED tests/test_runtime/test_cron_cost_reporting.py::test_agent_identity_is_refused_rather_than_guessed
+FAILED tests/test_runtime/test_cron_cost_reporting.py::test_prometheus_mode_ignores_the_window
+FAILED tests/test_runtime/test_cron_cost_reporting.py::test_langfuse_absence_is_recorded_not_guessed
+FAILED tests/test_runtime/test_cron_cost_reporting.py::test_langfuse_probe_reports_the_daily_metrics_it_read
+========================= 9 failed, 13 passed in 2.41s =========================
+  ^ the failures above ARE the report: each is this change's option missing
+    from the pre-change script, which is the property the tests exist to pin.
+
+── 3. GREEN — the same tests at the tip (this working tree) ──
+$ ~/.hermes-cortex/venv/bin/python3 -m pytest -q tests/test_runtime/test_cron_cost_reporting.py tests/test_runtime/test_push_metrics_cost_series.py   (cwd = repo)
+rc=0
+collected 25 items
+
+tests/test_runtime/test_cron_cost_reporting.py ......................    [ 88%]
+tests/test_runtime/test_push_metrics_cost_series.py ...                  [100%]
+
+============================== 25 passed in 4.82s ==============================
+
+── 4. --json-summary against the LIVE audit log and LIVE state.db ──
+$ python3 ops/scripts/manage/cron-cost-metrics.py --json-summary --since 2026-10-06   > <scratch>/summary-esther.json
+rc=0
+stderr bytes: 0
+stdout bytes: 4143  (an EXEC body is this whole stream)
+json.loads() OK — one object, no log lines beside it
+agent        : esther
+audit        : {'rows': 1777, 'skipped_rows': 0, 'first_ts': '2026-08-09T14:27:52.349Z', 'last_ts': '2026-10-23T22:40:29.584Z'}
+window       : {'since': '2026-10-06'}
+per_day      : 18 days {'date': '2026-10-06', 'fires': 21, 'tokens': 62619045.0} ... {'date': '2026-10-23', 'fires': 22, 'tokens': 62262577.0}
+per_job      : 15 rows, omitted 6
+per_job[0]   : {'job_id': '1954deb5ad76', 'fires': 38, 'tokens': 230805081.0}
+spend        : available True lifetime $ 54.910313
+langfuse     : {'checked': True, 'present': True, 'status': 200} days 7
+
+── 5. static gates ──
+$ python3 ~/.hermes-cortex/scripts/adversarial-verify.py --file ops/scripts/manage/cron-cost-metrics.py --level A4 --gate
+rc=0
+
+📊 Summary: 1 file(s), 11 finding(s)
+   🟡 Medium: 2
+   ⚪ Info: 9
+
+🟡 Medium findings — fix before shipping.
+
+✅ GATE_PASSED — no critical/high findings
+$ python3 -m py_compile ops/scripts/manage/cron-cost-metrics.py tests/test_runtime/test_cron_cost_reporting.py
+rc=0
+$ bash ops/scripts/secret-leak-detector.sh
+rc=0
+
+── 6. cleanup ──
+worktree removed: rc=0  (scratch dir under ~/.hermes/cache/scratch, never pruned by this script)
+
+# generated-by: this script (it wrote this file itself; stdout is not retyped)
