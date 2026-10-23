@@ -361,9 +361,11 @@ repo state, audited range, the task's description, the diff stat, and the diff:
   unreviewable: the reviewer reports the claims as unevidenced while the output proving
   them sits on disk. Emit `RESULT: <n>/<n> assertions PASS, exit <code>` first, then the
   assertion lines verbatim, then the load-state evidence, and only then the verbose
-  transcript. Same discipline for the note — it shares the character budget with the diff,
-  so a long note crowds out the very material it points at: name the artifact, the
-  revision and the assertion count, and stop. **Split the evidence when it is longer than a
+  transcript. Same discipline for the note — it does NOT share the diff's character budget: the
+  gate appends it verbatim AFTER the bounded diff (`_build_review_material`), so a long note never
+  crowds the evidence out. What it adds is UNBOUNDED claim surface, graded sentence by sentence —
+  so name the artifact, the revision and the assertion count, and stop. Terse because each extra
+  sentence is a fresh claim, not because of a budget. **Split the evidence when it is longer than a
   screen**: one SMALL answers file — the grep line numbers that show the code, the PASS
   lines, each `rc=` — beside the long transcript it points to, named so it sorts BEFORE that
   transcript in the diff, because the material keeps the head and tail of a range and proof

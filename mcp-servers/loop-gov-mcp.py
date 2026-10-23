@@ -1383,6 +1383,7 @@ def _blobs_with_covered_verdict(blobs: dict,
     own = conn if conn is not None else _db()
     try:
         out: set[str] = set()
+        _path_of = {s: p for p, s in (blobs or {}).items()}
         for sha, row in _blob_verdict_rows(blobs, conn=own).items():
             # RULES REVISION (2026-10-20): coverage may only be claimed for a verdict
             # produced under the CURRENT rules. An older or unnamed revision means the
@@ -1405,7 +1406,17 @@ def _blobs_with_covered_verdict(blobs: dict,
                 continue                      # unparseable: not evidence of a clean judgement
             if not isinstance(findings, list) or not findings:
                 continue                      # silence is never CLEAN (same rule as the gate)
-            if not _blocking_findings(raw)[0]:
+            # Coverage asks the SAME classifier the close asks, with the same sibling context: a
+            # blob whose only findings are aimed at another file of the range is judged and needs no
+            # fix, so it must be covered. Without the context it would read as "0 blocking findings"
+            # to the close and "carries no review verdict" to the receipt at once — uncoverable, and
+            # the range could never close. An unresolvable path for this sha means NO context, which
+            # downgrades nothing (fail closed).
+            _rp = _path_of.get(sha, "")
+            if not _blocking_findings(
+                    raw,
+                    siblings=(set(blobs or {}) - {_rp}) if _rp else None,
+                    reviewed_path=_rp)[0]:
                 out.add(sha)
         return out
     except sqlite3.Error:
@@ -1636,7 +1647,14 @@ def _review_uncovered_blobs(blobs: dict, *, reviewer, material_for,
                             reviewer_id=reviewer_label, model=reviewer_label,
                             conn=conn, rules_rev=rules_rev)
         if verdict != "CLEAN":
-            _block, _annot = _blocking_findings(findings_json or "[]")
+            # The sibling set is this blob's own range: every other path this close is judging. A
+            # finding aimed at one of those annotates instead of blocking (see
+            # _is_sibling_target_finding) — the judged file is not the one it names, so no edit here
+            # could ever clear it. The context is passed EXPLICITLY because the predicate cannot
+            # derive it; absent context downgrades nothing.
+            _block, _annot = _blocking_findings(
+                findings_json or "[]",
+                siblings=set(blobs or {}) - {path}, reviewed_path=path)
             blocking.extend(_block or [])
     if reviewer_down:
         # The reviewer is DOWN: everything this pass did not reach is deferred BY NAME, so the
@@ -1958,6 +1976,72 @@ RANGE_CONTEXT_LINES_PER_FILE = 12         # added lines shown per sibling
 RANGE_CONTEXT_TOTAL_LINES = 60            # hard cap on the whole sibling block
 
 
+# ── Sibling TEST IDS, not only added lines (2026-10-23) ───────────────────────
+# A test file's first added lines are imports and describe-block boilerplate, so a claim proved by a
+# test in ANOTHER file of the range could not be verified from the window that judged it — the test
+# id was never shown, and the judged file was asked for evidence it cannot contain.
+#
+# These helpers surface what the range ADDED as tests, each with its FIRST ASSERTION LINE, so a name
+# that asserts nothing is visible as such instead of being accepted on its name. Ranking exists
+# because the block takes the first few paths from an alphabetical list, which puts `app/…` ahead of
+# `spec/…` and can push the file holding the evidence out of the window entirely.
+_TEST_DEF = re.compile(
+    r"^\+\s*(?:def\s+(test_[\w]+)"
+    r"|it\s*[\(\"']([^\"')]+)"
+    r"|test\s*[\(\"']([^\"')]+)"
+    r"|describe\s*[\(\"']([^\"')]+))",
+    re.I)
+_TEST_PATH = re.compile(r"(^|/)(tests?|spec)/|(^|/)test_|_test\.|_spec\.|\.test\.|\.spec\.", re.I)
+_ASSERTION = re.compile(
+    r"(assert|expect|should|refute|must_|raise|is None|is not None|==|!=|\.to eq|\.to_be)", re.I)
+SIBLING_TESTS_PER_FILE = 6
+
+
+def _rank_siblings(paths: list[str]) -> list[str]:
+    """Test-shaped siblings first; order is STABLE within each group.
+
+    The block that shows sibling content takes the first few paths of an otherwise alphabetical
+    list, so a `spec/…` or `tests/…` file can be pushed out by the code files it proves. The file
+    carrying the evidence is the one worth the room.
+    """
+    tests = [p for p in paths if _TEST_PATH.search(p)]
+    rest = [p for p in paths if not _TEST_PATH.search(p)]
+    return tests + rest
+
+
+def _collect_added_tests(added: list[str]) -> list[tuple[str, str]]:
+    """``(test name, first assertion line)`` for each definition the range ADDED, in file order.
+
+    The assertion is the first line after the definition that looks like one, and it is never
+    borrowed across a later definition: a body that asserts nothing reports an EMPTY string, so a
+    name alone is not proof of anything.
+    """
+    marks = [(i, m) for i, m in ((i, _TEST_DEF.match(ln)) for i, ln in enumerate(added)) if m]
+    out: list[tuple[str, str]] = []
+    for pos, (idx, m) in enumerate(marks):
+        name = next((g for g in m.groups() if g), "").strip()
+        end = marks[pos + 1][0] if pos + 1 < len(marks) else len(added)
+        assertion = ""
+        for ln in added[idx + 1:end]:
+            if _ASSERTION.search(ln):
+                assertion = ln.lstrip("+").strip()
+                break
+        out.append((name, assertion))
+    return out
+
+
+def _format_sibling_tests(path: str, tests: list[tuple[str, str]]) -> str:
+    """The sibling's test ids, each with its assertion line, or a plain statement that it has none."""
+    lines = [f"  {path} — tests ADDED by this range (id, then its first assertion line):"]
+    for name, assertion in tests[:SIBLING_TESTS_PER_FILE]:
+        lines.append(f"    {path}::{name}")
+        lines.append(f"        {assertion}" if assertion
+                     else "        (no assertion line in the added lines — the name proves nothing)")
+    if len(tests) > SIBLING_TESTS_PER_FILE:
+        lines.append(f"    (+{len(tests) - SIBLING_TESTS_PER_FILE} more definition(s) not shown)")
+    return "\n".join(lines)
+
+
 def _sibling_added_lines(repo: Path, base: str, others: list[str]) -> str:
     """The ADDED lines of the range's OTHER files, bounded — so a claim proved in a sibling is
     verifiable in THIS window.
@@ -1972,6 +2056,10 @@ def _sibling_added_lines(repo: Path, base: str, others: list[str]) -> str:
     Added lines are what a fix WRITES (a test, a pointer, a guard), so showing them answers the
     question without duplicating anything. Nothing is weakened by this: the sibling is still judged on
     its own blob, on its own merits, and this list shows only what the range itself added.
+
+    A test definition is ALSO emitted as an ID with its first assertion line, because a test file's
+    first added lines are imports and boilerplate — the id is what a claim about another file needs
+    to cite, and it does not fit in the line budget.
     """
     if not others:
         return ""
@@ -1993,11 +2081,16 @@ def _sibling_added_lines(repo: Path, base: str, others: list[str]) -> str:
         total += len(show)
         out.append(f"  {p} (+{len(added)} added line(s); first {len(show)} shown):")
         out += [f"    {ln}" for ln in show]
+        _tests = _collect_added_tests(added)
+        if _tests:
+            out.append(_format_sibling_tests(p, _tests))
     if not out:
         return ""
     return ("sibling ADDED lines — evidence for a claim about another file may live HERE. Verify it in\n"
             "this list; do NOT ask for it to be duplicated into the file under review, and do NOT ask\n"
-            "for it as separate committed output:\n" + "\n".join(out) + "\n")
+            "for it as separate committed output. A test id listed here exists at the tip; whether it\n"
+            "PASSES is a claim for the committed evidence artifact, not for this window:\n"
+            + "\n".join(out) + "\n")
 
 
 def _blob_material(repo: Path, base: str, path: str, ctx: dict) -> str:
@@ -2016,7 +2109,10 @@ def _blob_material(repo: Path, base: str, path: str, ctx: dict) -> str:
         range_paths = sorted((_push_range_blobs(repo) or {}).keys())
     except Exception:  # noqa: BLE001 — material must never fail on a git hiccup
         range_paths = []
-    others = [p for p in range_paths if p != path][:REVIEW_SCOPE_MAX_PATHS]
+    # Ranked, not merely sorted: the added-lines block below takes the FIRST few paths, so an
+    # alphabetical list can push the `spec/…` or `tests/…` file that proves a claim out of the
+    # window. Test-shaped siblings come first; order inside each group is unchanged.
+    others = _rank_siblings([p for p in range_paths if p != path])[:REVIEW_SCOPE_MAX_PATHS]
     scope_lines = ("scope: ONE file of this range; the other files are judged on their own blobs,\n"
                    "so answer for THIS file only.\n")
     if others:
@@ -5536,12 +5632,16 @@ def _extract_verdict(text: str):
 BLOCKING_SEVERITIES = ("critical", "high", "medium")
 
 
-def _blocking_findings(findings_json):
+def _blocking_findings(findings_json, *, siblings=None, reviewed_path=""):
     """``(blocking, annotating)`` — findings split by severity. Never returns None.
 
     Fail-closed: an unparseable payload, a non-list, or a finding with no
     recognised severity is returned as BLOCKING. This policy narrows WHICH
     findings block; it must never make an unknown finding stop blocking.
+
+    ``siblings`` is the range's other paths for the file under review and ``reviewed_path`` is that
+    file. Supplied together they add ONE downgrade class: a complaint aimed at another file of the
+    same range (see ``_is_sibling_target_finding``). Absent context downgrades nothing.
     """
     try:
         items = json.loads(findings_json or "[]")
@@ -5566,6 +5666,12 @@ def _blocking_findings(findings_json):
                 it["technique"] = it.get("technique") or "material-limit"
                 it["severity_downgraded"] = f"{sev} -> low (material-window finding, 2026-10-12)"
                 annotating.append(it)
+            elif _is_sibling_target_finding(it, siblings, reviewed_path):
+                # Complaint aimed at another file of the range: recorded, not blocking.
+                it = dict(it)
+                it["severity_downgraded"] = (
+                    f"{sev} -> low (sibling-target finding: the judged file is not the one named)")
+                annotating.append(it)
             else:
                 blocking.append(it)
         elif sev:
@@ -5573,6 +5679,37 @@ def _blocking_findings(findings_json):
         else:
             blocking.append(it)          # unknown/absent severity -> fail closed
     return blocking, annotating
+
+
+# ── A finding aimed at a SIBLING of the same range does not block this file ────
+# The per-blob window shows ONE file and names the range's other paths. A complaint about content
+# that lives in one of those others cannot be cleared by editing the judged file, so blocking on it
+# refuses a close that no edit can fix.
+#
+# STRUCTURAL by construction: the decision reads the finding's TECHNIQUE and the PATHS its ``target``
+# names — never the wording of its recommendation. A recommendation saying "no change is required
+# here" describes both a window complaint and a real defect whose fix lives in a caller, and prose
+# cannot separate the two; the paths can.
+#   * only unverified-claim is in scope; a fabrication, injection or swallowed-error finding aimed
+#     at a sibling still blocks, and so does every other technique;
+#   * a target naming the JUDGED path is never downgraded, even when it also names a sibling;
+#   * no sibling list supplied means no downgrade at all (fail closed).
+SIBLING_TECHNIQUES = ("unverified-claim",)
+
+
+def _is_sibling_target_finding(finding, siblings=None, reviewed_path="") -> bool:
+    """True when the finding's complaint is aimed at another file of the same range."""
+    if not siblings or not isinstance(finding, dict):
+        return False
+    tech = str(finding.get("technique", "")).strip().lower()
+    if tech in _MATERIAL_LIMIT_NEVER or tech not in SIBLING_TECHNIQUES:
+        return False
+    target = str(finding.get("target", ""))
+    if not target:
+        return False
+    if reviewed_path and reviewed_path in target:
+        return False
+    return any(sib and str(sib) in target for sib in siblings)
 
 
 # ── Material-window findings do not block (2026-10-12) ────────────────────────
