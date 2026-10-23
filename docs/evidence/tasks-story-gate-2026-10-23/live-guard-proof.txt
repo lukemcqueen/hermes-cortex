@@ -1,0 +1,86 @@
+# LIVE proof — the story gate refuses a FORGED auto-complete reason on the deployed store
+#
+# produced-by: the psql invocation below; its stdout+stderr IS this file (redirected, never retyped)
+# captured-on: 2026-10-23T08:52:37Z (UTC)
+#
+# One transaction, never committed — the store is untouched whether the gate fires or not.
+# re-run:
+#   docker exec -i mycortex-postgres psql -U mycortex -d mycortex -v ON_ERROR_STOP=1 <<'SQL'
+#   BEGIN;
+#   SELECT tasks.task_upsert(p_content=>'live v015 story', p_created_by=>'esther', p_kind=>'story', p_status=>'in_progress') AS id \gset
+#   SELECT tasks.task_upsert(p_content=>'live v015 slice', p_created_by=>'esther', p_kind=>'slice', p_parent_id=>:'id');
+#   SELECT set_config('tasks.transition_reason','story_auto_complete',false);
+#   SELECT tasks.task_upsert(p_id=>:'id', p_status=>'completed');
+#   ROLLBACK;
+#   SQL
+
+tasks schema_version = 15
+reason consulted for permission in deployed check_transition: f
+--- forged-reason probe on a story with an ACTIVE slice (rolled back):
+BEGIN
+             task_upsert              
+--------------------------------------
+ ce92eb4d-3195-459a-8903-057278ccfc8c
+(1 row)
+
+     set_config      
+---------------------
+ story_auto_complete
+(1 row)
+
+ERROR:  story a67ba1c2-2b67-49c0-812f-0b44b05df3a4 has active slices; cannot complete
+CONTEXT:  PL/pgSQL function tasks.check_transition() line 46 at RAISE
+SQL statement "INSERT INTO tasks.tasks (
+        id, content, created_by, assignee, project, repo, target, scope,
+        status, "column", "position", priority, due, tags, source, depends_on,
+        session_id, parent_id, kind, correlation_id,
+        created_at, updated_at, status_changed_at, completed_at
+    ) VALUES (
+        v_target_id,
+        -- On status-only updates the caller passes NULL content — fetch the
+        -- existing row's content so the proposed INSERT row satisfies NOT
+        -- NULL before ON CONFLICT resolution kicks in.
+        COALESCE(p_content, (SELECT t.content FROM tasks.tasks t
+                             WHERE t.id = v_target_id)),
+        v_created_by, p_assignee,
+        v_project, p_repo, p_target, v_scope, v_status, v_column, p_position,
+        v_priority, p_due, p_tags, v_source, p_depends_on, p_session_id,
+        p_parent_id, p_kind, p_correlation_id,
+        now(), now(), now(),
+        CASE WHEN v_status = 'completed' THEN now() ELSE NULL END
+    )
+    ON CONFLICT (id) DO UPDATE SET
+        -- v007: preserve unset columns via the FUNCTION PARAMETER (NULL when
+        -- unset → preserve existing). v008: the signature defaults are now
+        -- NULL so "unset" really is NULL — the named-arg omission no longer
+        -- fills the default and clobbers. "column" is the deliberate
+        -- exception (v004): always reflects the NEW status's derived value.
+        content          = COALESCE(p_content, tasks.tasks.content),
+        created_by       = COALESCE(p_created_by, tasks.tasks.created_by),
+        assignee         = COALESCE(p_assignee, tasks.tasks.assignee),
+        project          = COALESCE(p_project, tasks.tasks.project),
+        repo             = COALESCE(p_repo, tasks.tasks.repo),
+        target           = COALESCE(p_target, tasks.tasks.target),
+        scope            = COALESCE(p_scope, tasks.tasks.scope),
+        status           = COALESCE(p_status, tasks.tasks.status),
+        "column"         = EXCLUDED."column",
+        "position"       = COALESCE(p_position, tasks.tasks."position"),
+        priority         = COALESCE(p_priority, tasks.tasks.priority),
+        due              = COALESCE(p_due, tasks.tasks.due),
+        tags             = COALESCE(p_tags, tasks.tasks.tags),
+        source           = COALESCE(p_source, tasks.tasks.source),
+        depends_on       = COALESCE(p_depends_on, tasks.tasks.depends_on),
+        session_id       = COALESCE(p_session_id, tasks.tasks.session_id),
+        parent_id        = COALESCE(p_parent_id, tasks.tasks.parent_id),
+        kind             = COALESCE(p_kind, tasks.tasks.kind),
+        correlation_id   = COALESCE(p_correlation_id, tasks.tasks.correlation_id),
+        updated_at       = now(),
+        status_changed_at = CASE WHEN tasks.tasks.status IS DISTINCT FROM EXCLUDED.status
+                                 THEN now() ELSE tasks.tasks.status_changed_at END,
+        completed_at      = CASE WHEN COALESCE(EXCLUDED.status, tasks.tasks.status) = 'completed'
+                                 THEN COALESCE(tasks.tasks.completed_at, now())
+                                 ELSE NULL END
+    RETURNING id"
+PL/pgSQL function tasks.task_upsert(uuid,text,text,text,text,text,text,text,text,text,integer,integer,timestamp with time zone,text[],text,uuid[],text,uuid,text,text) line 42 at SQL statement
+probe rc=3
+residue rows: 0
