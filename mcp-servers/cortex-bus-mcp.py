@@ -448,7 +448,47 @@ def _inbox_send(args: dict) -> CallToolResult:
             body_text += f"\n\n---\n**Attachment: {fpath.name}** (read error: {e})"
 
     # 🟢 Try: Bus /api/pgmq/send
-    queue_name = f"inbox_{recipient}" if recipient != "all" else "broadcast"
+    # recipient "all" = FLEET broadcast. The `broadcast` queue has NO consumer
+    # (2026-10-22 defect, escalated by esther 2026-10-23: every send-to-"all"
+    # was silently dropped). Documented delivery (fleet-update-protocol.md
+    # line 58): one message per agent to inbox_<agent>. Fan out here so the
+    # orchestrator's 5-min agent-message-handler consumes each copy.
+    if recipient == "all":
+        registry = _load_agent_registry()
+        agents = _normalize_agents(registry)
+        fleet = [a["name"] for a in agents]
+        if not fleet:
+            return CallToolResult(content=[TextContent(type="text",
+                text="Broadcast failed: agent registry is empty — cannot resolve fleet targets.")])
+        sent = 0
+        errors = []
+        for name in fleet:
+            status, body = _request("POST", "api/pgmq/send", {
+                "queue": f"inbox_{name}",
+                "message": json.dumps({
+                    "from": DEFAULT_AGENT,
+                    "to": name,
+                    "subject": args["subject"],
+                    "body": json.dumps({
+                        "topic": topic,
+                        "text": body_text,
+                    }),
+                    "priority": {"normal": 0, "urgent": 10, "critical": 20}.get(priority, 0),
+                }),
+                "priority": {"normal": 0, "urgent": 10, "critical": 20}.get(priority, 0),
+            })
+            if status == 200:
+                sent += 1
+            else:
+                errors.append(f"{name}:{str(body)[:80]}")
+        if sent == len(fleet):
+            return CallToolResult(content=[TextContent(type="text",
+                text=f"Broadcast sent to all {sent} agents.")])
+        return CallToolResult(content=[TextContent(type="text",
+            text=f"Broadcast partial: sent {sent}/{len(fleet)} agents"
+                 + (f" — failed: {', '.join(errors[:5])}" if errors else "") + ".")])
+
+    queue_name = f"inbox_{recipient}"
     status, body = _request("POST", "api/pgmq/send", {
         "queue": queue_name,
         "message": json.dumps({

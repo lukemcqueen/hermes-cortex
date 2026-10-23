@@ -1,0 +1,423 @@
+{
+  "files_analyzed": 1,
+  "level": "A4",
+  "total_findings": 2,
+  "severity_counts": {
+    "critical": 0,
+    "high": 0,
+    "medium": 1,
+    "low": 1,
+    "info": 0
+  },
+  "findings": [
+    {
+      "finding_id": "ADV-2026-10-23-001",
+      "technique": "cheat-detection",
+      "pattern": "error-swallow",
+      "detail": "Empty except block(s) detected: 6 occurrence(s)",
+      "severity": "medium"
+    },
+    {
+      "finding_id": "ADV-2026-10-23-002",
+      "technique": "dependency-sabotage",
+      "pattern": "subprocess-no-timeout",
+      "severity": "low",
+      "detail": "r = subprocess.run( \u2014 no timeout; child process can hang forever",
+      "file": "cortex-bus-mcp.py",
+      "line": 204,
+      "code": "r = subprocess.run("
+    }
+  ],
+  "surfaces": {
+    "/home/moses/hermes-cortex/mcp-servers/cortex-bus-mcp.py": {
+      "file": "cortex-bus-mcp.py",
+      "path": "/home/moses/hermes-cortex/mcp-servers/cortex-bus-mcp.py",
+      "inputs": [
+        {
+          "line": 23,
+          "code": "Or via ~/hermes-cortex/.env (key=value format)",
+          "category": "input"
+        },
+        {
+          "line": 78,
+          "code": "CONFIG_FILE = HOME / \"hermes-cortex\" / \".env\"",
+          "category": "input"
+        },
+        {
+          "line": 83,
+          "code": "bus_url = os.environ.get(\"CORTEX_BUS_URL\", \"\")",
+          "category": "input"
+        },
+        {
+          "line": 84,
+          "code": "bus_token = os.environ.get(\"CORTEX_BUS_TOKEN\", \"\")",
+          "category": "input"
+        },
+        {
+          "line": 87,
+          "code": "bus_auth = os.environ.get(\"CORTEX_BUS_AUTH\", \"\") or os.environ.get(\"CORTEX_BASIC_AUTH\", \"\")",
+          "category": "input"
+        },
+        {
+          "line": 90,
+          "code": "fallback_url = os.environ.get(\"CORTEX_BUS_FALLBACK_URL\", \"\") or os.environ.get(\"CORTEX_INBOX_URL\", \"\")",
+          "category": "input"
+        },
+        {
+          "line": 91,
+          "code": "fallback_auth = os.environ.get(\"CORTEX_BUS_AUTH\", \"\") or os.environ.get(\"CORTEX_INBOX_AUTH\", \"\") or os.environ.get(\"CORT",
+          "category": "input"
+        },
+        {
+          "line": 92,
+          "code": "agent_name = os.environ.get(\"AGENT_NAME\", \"\")",
+          "category": "input"
+        },
+        {
+          "line": 100,
+          "code": "val = os.environ.get(old_key, \"\")",
+          "category": "input"
+        },
+        {
+          "line": 144,
+          "code": "agent_name = os.environ.get(\"USER\", \"agent\")",
+          "category": "input"
+        },
+        {
+          "line": 267,
+          "code": "async def list_tools(ctx, params=None) -> ListToolsResult:",
+          "category": "input"
+        },
+        {
+          "line": 390,
+          "code": "async def call_tool(ctx, params=None) -> CallToolResult:",
+          "category": "input"
+        },
+        {
+          "line": 418,
+          "code": "def _inbox_send(args: dict) -> CallToolResult:",
+          "category": "input"
+        },
+        {
+          "line": 540,
+          "code": "def _inbox_read(args: dict) -> CallToolResult:",
+          "category": "input"
+        },
+        {
+          "line": 592,
+          "code": "msg = \"Read failed (HTTP 401). Configure CORTEX_BUS_TOKEN in ~/hermes-cortex/.env\"",
+          "category": "input"
+        },
+        {
+          "line": 596,
+          "code": "def _inbox_watch(args: dict) -> CallToolResult:",
+          "category": "input"
+        },
+        {
+          "line": 630,
+          "code": "def _inbox_delete(args: dict) -> CallToolResult:",
+          "category": "input"
+        },
+        {
+          "line": 666,
+          "code": "def _load_agent_registry() -> dict:",
+          "category": "input"
+        },
+        {
+          "line": 677,
+          "code": "def _normalize_agents(registry: dict) -> list[dict]:",
+          "category": "input"
+        },
+        {
+          "line": 697,
+          "code": "def _resolve_agent_url(agent_name: str) -> str | None:",
+          "category": "input"
+        },
+        {
+          "line": 708,
+          "code": "def _inbox_list_agents(args: dict) -> CallToolResult:",
+          "category": "input"
+        },
+        {
+          "line": 725,
+          "code": "def _inbox_get_agent(args: dict) -> CallToolResult:",
+          "category": "input"
+        },
+        {
+          "line": 738,
+          "code": "def _inbox_discover(args: dict) -> CallToolResult:",
+          "category": "input"
+        },
+        {
+          "line": 797,
+          "code": "def _inbox_send_task(args: dict) -> CallToolResult:",
+          "category": "input"
+        },
+        {
+          "line": 859,
+          "code": "def _inbox_get_task(args: dict) -> CallToolResult:",
+          "category": "input"
+        },
+        {
+          "line": 902,
+          "code": "def _inbox_cancel_task(args: dict) -> CallToolResult:",
+          "category": "input"
+        },
+        {
+          "line": 939,
+          "code": "async def main():",
+          "category": "input"
+        }
+      ],
+      "state": [
+        {
+          "line": 6,
+          "code": "Backend switched to the Agent Bus (Postgres-native PGMQ on port 8903).",
+          "category": "state"
+        },
+        {
+          "line": 217,
+          "code": "with urllib.request.urlopen(req, timeout=timeout) as resp:",
+          "category": "state"
+        },
+        {
+          "line": 218,
+          "code": "return resp.status, resp.read().decode(), dict(resp.headers)",
+          "category": "state"
+        },
+        {
+          "line": 220,
+          "code": "body = e.read().decode(errors=\"replace\")[:1000]",
+          "category": "state"
+        },
+        {
+          "line": 528,
+          "code": "with urllib.request.urlopen(req, timeout=10) as resp:",
+          "category": "state"
+        },
+        {
+          "line": 753,
+          "code": "with urllib.request.urlopen(req, timeout=10) as resp:",
+          "category": "state"
+        },
+        {
+          "line": 754,
+          "code": "body = resp.read().decode()",
+          "category": "state"
+        },
+        {
+          "line": 763,
+          "code": "text=f\"Could not fetch Agent Card for '{agent}' (HTTP {e.code}): {e.read().decode(errors='replace')[:200]}\")])",
+          "category": "state"
+        }
+      ],
+      "dependencies": [
+        {
+          "line": 40,
+          "code": "import asyncio",
+          "category": "dependency"
+        },
+        {
+          "line": 41,
+          "code": "import base64",
+          "category": "dependency"
+        },
+        {
+          "line": 42,
+          "code": "import importlib.util",
+          "category": "dependency"
+        },
+        {
+          "line": 43,
+          "code": "import json",
+          "category": "dependency"
+        },
+        {
+          "line": 44,
+          "code": "import logging",
+          "category": "dependency"
+        },
+        {
+          "line": 45,
+          "code": "import os",
+          "category": "dependency"
+        },
+        {
+          "line": 46,
+          "code": "import re",
+          "category": "dependency"
+        },
+        {
+          "line": 47,
+          "code": "import subprocess",
+          "category": "dependency"
+        },
+        {
+          "line": 48,
+          "code": "import sys",
+          "category": "dependency"
+        },
+        {
+          "line": 49,
+          "code": "import traceback",
+          "category": "dependency"
+        },
+        {
+          "line": 50,
+          "code": "import urllib.error",
+          "category": "dependency"
+        },
+        {
+          "line": 51,
+          "code": "import urllib.parse",
+          "category": "dependency"
+        },
+        {
+          "line": 52,
+          "code": "import urllib.request",
+          "category": "dependency"
+        },
+        {
+          "line": 53,
+          "code": "from pathlib import Path",
+          "category": "dependency"
+        },
+        {
+          "line": 54,
+          "code": "from typing import Any",
+          "category": "dependency"
+        },
+        {
+          "line": 68,
+          "code": "from mcp.server import Server",
+          "category": "dependency"
+        },
+        {
+          "line": 69,
+          "code": "from mcp.server.stdio import stdio_server",
+          "category": "dependency"
+        },
+        {
+          "line": 70,
+          "code": "from mcp.types import Tool, TextContent, CallToolResult, ListToolsResult",
+          "category": "dependency"
+        },
+        {
+          "line": 204,
+          "code": "r = subprocess.run(",
+          "category": "dependency"
+        },
+        {
+          "line": 211,
+          "code": "except (FileNotFoundError, json.JSONDecodeError, subprocess.TimeoutExpired):",
+          "category": "dependency"
+        },
+        {
+          "line": 216,
+          "code": "req = urllib.request.Request(url, data=data, headers=req_headers, method=method)",
+          "category": "dependency"
+        },
+        {
+          "line": 217,
+          "code": "with urllib.request.urlopen(req, timeout=timeout) as resp:",
+          "category": "dependency"
+        },
+        {
+          "line": 219,
+          "code": "except urllib.error.HTTPError as e:",
+          "category": "dependency"
+        },
+        {
+          "line": 512,
+          "code": "data = urllib.parse.urlencode({",
+          "category": "dependency"
+        },
+        {
+          "line": 526,
+          "code": "req = urllib.request.Request(url, data=data,",
+          "category": "dependency"
+        },
+        {
+          "line": 528,
+          "code": "with urllib.request.urlopen(req, timeout=10) as resp:",
+          "category": "dependency"
+        },
+        {
+          "line": 532,
+          "code": "except urllib.error.URLError:",
+          "category": "dependency"
+        },
+        {
+          "line": 579,
+          "code": "path = \"api/inbox?\" + urllib.parse.urlencode(params)",
+          "category": "dependency"
+        },
+        {
+          "line": 613,
+          "code": "path += f\"&for={urllib.parse.quote(DEFAULT_AGENT)}\"",
+          "category": "dependency"
+        },
+        {
+          "line": 751,
+          "code": "req = urllib.request.Request(card_url, method=\"GET\",",
+          "category": "dependency"
+        },
+        {
+          "line": 753,
+          "code": "with urllib.request.urlopen(req, timeout=10) as resp:",
+          "category": "dependency"
+        },
+        {
+          "line": 761,
+          "code": "except urllib.error.HTTPError as e:",
+          "category": "dependency"
+        },
+        {
+          "line": 783,
+          "code": "from executor_context_builder import build_context as _build_context",
+          "category": "dependency"
+        },
+        {
+          "line": 807,
+          "code": "import uuid",
+          "category": "dependency"
+        }
+      ],
+      "concurrency": [
+        {
+          "line": 267,
+          "code": "async def list_tools(ctx, params=None) -> ListToolsResult:",
+          "category": "concurrency"
+        },
+        {
+          "line": 309,
+          "code": "description=\"Delete/archive a message from the queue. On the bus, this archives it (moves to archive table). On old inbo",
+          "category": "concurrency"
+        },
+        {
+          "line": 390,
+          "code": "async def call_tool(ctx, params=None) -> CallToolResult:",
+          "category": "concurrency"
+        },
+        {
+          "line": 939,
+          "code": "async def main():",
+          "category": "concurrency"
+        },
+        {
+          "line": 941,
+          "code": "await server.run(read_stream, write_stream, server.create_initialization_options())",
+          "category": "concurrency"
+        },
+        {
+          "line": 945,
+          "code": "asyncio.run(main())",
+          "category": "concurrency"
+        }
+      ]
+    }
+  },
+  "timestamp": "2026-10-23T20:41:44.631336"
+}
+
+✅ GATE_PASSED — no critical/high findings
