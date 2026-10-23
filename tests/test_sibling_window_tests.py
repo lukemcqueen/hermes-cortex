@@ -79,6 +79,14 @@ def test_no_definitions_yields_nothing():
     assert mcp._collect_added_tests(["+import os", "+x = 1"]) == []
 
 
+def test_plain_comparison_is_not_an_assertion():
+    # A bare `==` is not an assertion. A comparison inside a body must not be reported as one, or
+    # the window shows a line that proves nothing while looking like proof.
+    tests = mcp._collect_added_tests(["+def test_flag():", "+    flag = a == b"])
+    assert len(tests) == 1
+    assert tests[0][1] == ""
+
+
 def test_empty_input_yields_nothing():
     assert mcp._collect_added_tests([]) == []
 

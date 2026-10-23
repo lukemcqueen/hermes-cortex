@@ -1992,8 +1992,13 @@ _TEST_DEF = re.compile(
     r"|describe\s*[\(\"']([^\"')]+))",
     re.I)
 _TEST_PATH = re.compile(r"(^|/)(tests?|spec)/|(^|/)test_|_test\.|_spec\.|\.test\.|\.spec\.", re.I)
+# An assertion KEYWORD, never a bare comparison: `==` on its own matches a plain assignment
+# (`flag = a == b`) and would show a line that proves nothing while looking like proof. The `.to eq`
+# family covers the Ruby and JS shapes; a body that asserts nothing reports an empty string, and the
+# rendered block says so in words.
 _ASSERTION = re.compile(
-    r"(assert|expect|should|refute|must_|raise|is None|is not None|==|!=|\.to eq|\.to_be)", re.I)
+    r"\b(assert|expect|should|refute|must_)\w*|\.to eq|\.to_be|\.to_eq|\bis (?:not )?None\b|\braise\b",
+    re.I)
 SIBLING_TESTS_PER_FILE = 6
 
 
@@ -5691,7 +5696,10 @@ def _blocking_findings(findings_json, *, siblings=None, reviewed_path=""):
 # here" describes both a window complaint and a real defect whose fix lives in a caller, and prose
 # cannot separate the two; the paths can.
 #   * only unverified-claim is in scope; a fabrication, injection or swallowed-error finding aimed
-#     at a sibling still blocks, and so does every other technique;
+#     at a sibling still blocks, and so does every other technique. The never-downgrade set
+#     `_MATERIAL_LIMIT_NEVER` and the window helper `_is_material_limit_finding` are PRE-EXISTING
+#     module-scope definitions in THIS file, above this block and not introduced by this change; the
+#     check here is defence in depth, and the technique tuple is what restricts the class today;
 #   * a target naming the JUDGED path is never downgraded, even when it also names a sibling;
 #   * no sibling list supplied means no downgrade at all (fail closed).
 SIBLING_TECHNIQUES = ("unverified-claim",)
