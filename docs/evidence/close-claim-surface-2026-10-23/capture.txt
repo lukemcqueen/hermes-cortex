@@ -1,17 +1,17 @@
 close-claim-surface — measurement capture
 generated-by: docs/evidence/close-claim-surface-2026-10-23/capture.sh
-captured-at:   1f127f7f  (the revision the tree sat on when this ran; a transcript cannot name its own commit, so this is a capture point, not a claim about the tip)
+captured-at:   7230c79c  (the revision the tree sat on when this ran; a transcript cannot name its own commit, so this is a capture point, not a claim about the tip)
 re-run:        bash docs/evidence/close-claim-surface-2026-10-23/capture.sh
 host paths are normalised to ~ by the generator; the store is opened read-only.
 
 === A. close-note cap: what it would refuse, and the false positives ===
-cycles=13214 notes_nonempty=11275
-note_len p50=215 p90=398 p99=2234 max=6137
-cycles_with_stored_verdict=348 distribution={'CLEAN': 113, 'FINDINGS': 235}
-refused_by_candidate_predicate=442
-token_hit_counts={'the_gate': 87, 'unverified': 43, 'reviewer_word': 128, 'finding_id_adv': 124, 'could_not_verify': 30, 'previous_round': 1, 'honest_limits': 3}
-refused_verdict_breakdown={'(no-verdict-row)': 188, 'FINDINGS': 170, 'CLEAN': 84}
-FALSE_POSITIVES (predicate refuses, reviewer said CLEAN) = 84 of 113 CLEAN cycles
+cycles=13222 notes_nonempty=11277
+note_len p50=215 p90=399 p99=2234 max=6137
+cycles_with_stored_verdict=349 distribution={'CLEAN': 112, 'FINDINGS': 237}
+refused_by_candidate_predicate=444
+token_hit_counts={'the_gate': 88, 'unverified': 43, 'reviewer_word': 129, 'finding_id_adv': 124, 'could_not_verify': 30, 'previous_round': 1, 'honest_limits': 3}
+refused_verdict_breakdown={'(no-verdict-row)': 188, 'FINDINGS': 172, 'CLEAN': 84}
+FALSE_POSITIVES (predicate refuses, reviewer said CLEAN) = 84 of 112 CLEAN cycles
   cycle=10430 reasons=len>1200,reviewer_word,the_gate len=2347
     Cycle 10430 — two verification gaps documented in the skills that own them. |  | Change (2 files, 52 insertions): | - skills/devops/governance-closeout: new
   cycle=10436 reasons=len>1200,the_gate len=2256
@@ -24,11 +24,11 @@ FALSE_POSITIVES (predicate refuses, reviewer said CLEAN) = 84 of 113 CLEAN cycle
     Tests no longer write fabricated cycles into the governance audit log. Commit 4cabe985, deployed, pushed. |  | FOUND BY READING THE LOG BACK, not by looki
 
 === B. stored findings census ===
-findings_rows=1212
-by_technique={'unverified-claim': 960, 'fabrication': 62, 'swallowed-error': 76, 'evaluation-awareness': 45, 'scope-drift': 63, 'injection': 5, 'misattribution': 1}
-by_severity={'high': 298, 'medium': 246, 'low': 204, 'info': 447, 'critical': 16, 'unverified-claim': 1}
-no_change_or_sibling_resolution_findings=105
-  of those, BLOCKING severity=7 (these refused a close)
+findings_rows=1243
+by_technique={'unverified-claim': 987, 'fabrication': 66, 'swallowed-error': 76, 'evaluation-awareness': 45, 'scope-drift': 63, 'injection': 5, 'misattribution': 1}
+by_severity={'high': 311, 'medium': 254, 'low': 205, 'info': 456, 'critical': 16, 'unverified-claim': 1}
+no_change_or_sibling_resolution_findings=110
+  of those, BLOCKING severity=9 (these refused a close)
   [adversarial_reviews 12443] sev=medium tech=unverified-claim target=Worker's note: 'the README and design doc said 99 MB / 82 MB from star
   [adversarial_reviews 12586] sev=high tech=unverified-claim target=commit f3f5c99a message: 'fix(governance): close the provenance gate's
   [blob_reviews df46af2cf1288edd0d057aff51e7f1dda859adcc] sev=high tech=unverified-claim target=docs/evidence/gov-close-and-task-id-2026-10-20.txt: lines 26-28 (secti

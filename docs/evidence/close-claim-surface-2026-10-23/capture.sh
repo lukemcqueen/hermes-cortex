@@ -14,7 +14,7 @@ set -u
 HERE="$(cd "$(dirname "$0")" && pwd)"
 REPO="${REPO:-$HOME/hermes-cortex}"
 OUT="$HERE/capture.txt"
-TMP="$(mktemp -d)"
+TMP="$(mktemp -d "${TMPDIR:-/tmp}/close-claim-surface.XXXXXX")"
 trap 'rm -rf "$TMP"' EXIT
 
 cat > "$TMP/probe.py" <<'PYEOF'
