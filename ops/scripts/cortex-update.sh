@@ -447,6 +447,9 @@ register "ops/services/tasks/schema/v013__fleet-slice-orch-parent.sql" "${CORTEX
 # transition trigger — verify_slice's allowlist was bypassable through the
 # generic update path (Titus Pi finding, 2026-10-23).
 register "ops/services/tasks/schema/v014__orchestrator-only-verify-arc.sql" "${CORTEX_DEPLOY_HOME}/services/tasks/schema/v014__orchestrator-only-verify-arc.sql"
+# v015: the story gate is VERIFIED (no active slice), not authorised by the
+# caller-settable tasks.transition_reason GUC.
+register "ops/services/tasks/schema/v015__story-completion-verified-precondition.sql" "${CORTEX_DEPLOY_HOME}/services/tasks/schema/v015__story-completion-verified-precondition.sql"
 # learnings ledger (F-001) — schema + version-gated runner, orchestrator-only
 # (the bus Postgres that hosts learnings exists only on Moses/Esther; workers
 # write via the HTTP collector path and never need this schema locally).

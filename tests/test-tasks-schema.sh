@@ -763,6 +763,65 @@ S_STORY_ST=$($PSQL_PROBE -c "SELECT status FROM tasks.tasks WHERE id='${S_STORY}
   || fail "story auto-complete broken (story status=$S_STORY_ST)"
 
 echo ""
+echo "═══ AC-L1-25: v015 — the story gate is verified, not GUC-authorised ═══"
+# v008 admitted story→completed by consulting tasks.transition_reason, and put that
+# early return ABOVE the R-3 gate. The reason is written by the CALLER, so the gate
+# was skippable by anyone who could write the row.
+#
+# The reachable form matters: task_upsert() PRE-CHECKS transition_allowed() and the
+# matrix (v012) forbids pending→completed, so a caller must first move the story to
+# in_progress (legal) — then the reason is the only thing standing between it and the
+# gate. task-db.py --reason and MCP task_update(reason=...) both set that GUC.
+V15_STORY=$($PSQL -c "SELECT tasks.task_upsert(p_content=>'L1 v15 story', p_created_by=>'esther', p_kind=>'story', p_status=>'in_progress');" 2>/dev/null | head -1)
+V15_SLICE=$($PSQL -c "SELECT tasks.task_upsert(p_content=>'L1 v15 active slice', p_created_by=>'esther', p_kind=>'slice', p_parent_id=>'${V15_STORY}');" 2>/dev/null | head -1)
+V15_ACTIVE=$($PSQL -c "SELECT count(*) FROM tasks.tasks WHERE parent_id='${V15_STORY}' AND status NOT IN ('completed','cancelled');" 2>/dev/null)
+# 1. THE DEFECT, via the CLI/MCP path: forge the auto-complete reason on a story that
+#    STILL has an active slice and complete it.
+V15_RC=0
+V15_OUT=$($PSQL -v ON_ERROR_STOP=1 -c "SELECT set_config('tasks.transition_reason','story_auto_complete',false); SELECT tasks.task_upsert(p_id=>'${V15_STORY}', p_status=>'completed');" 2>&1) || V15_RC=$?
+V15_ST=$($PSQL -c "SELECT status FROM tasks.tasks WHERE id='${V15_STORY}';" 2>/dev/null)
+if [ "$V15_ACTIVE" = "1" ] && [ "$V15_RC" -ne 0 ] && [ "$V15_ST" != "completed" ]; then
+  pass "forged auto-complete reason refused while a slice is active (task_upsert, rc=$V15_RC, status=$V15_ST)"
+else
+  fail "story with an ACTIVE slice was completed via a forged reason (rc=$V15_RC, status=$V15_ST, active=$V15_ACTIVE)" "$V15_OUT"
+fi
+# 2. The RAW path: the early return is what admits a raw UPDATE, so a caller forging
+#    the reason there must be refused too (RLS lets a profile role write its own row).
+V15_RAW_RC=0
+V15_RAW_OUT=$($PSQL -v ON_ERROR_STOP=1 -c "SELECT set_config('tasks.transition_reason','story_auto_complete',false); UPDATE tasks.tasks SET status='completed', \"column\"='done' WHERE id='${V15_STORY}';" 2>&1) || V15_RAW_RC=$?
+V15_RAW_ST=$($PSQL -c "SELECT status FROM tasks.tasks WHERE id='${V15_STORY}';" 2>/dev/null)
+if [ "$V15_RAW_RC" -ne 0 ] && [ "$V15_RAW_ST" != "completed" ]; then
+  pass "forged auto-complete reason refused on a raw UPDATE (rc=$V15_RAW_RC, status=$V15_RAW_ST)"
+else
+  fail "raw UPDATE completed a story with an ACTIVE slice (rc=$V15_RAW_RC, status=$V15_RAW_ST)" "$V15_RAW_OUT"
+fi
+# 3. The genuine auto-complete path must still work: the last slice finishing
+#    completes the story with no reason set by anyone.
+$PSQL -c "SELECT tasks.task_upsert(p_id=>'${V15_SLICE}', p_status=>'in_progress');" >/dev/null 2>&1
+$PSQL -c "SELECT tasks.task_upsert(p_id=>'${V15_SLICE}', p_status=>'completed');" >/dev/null 2>&1
+V15_AUTO=$($PSQL -c "SELECT status FROM tasks.tasks WHERE id='${V15_STORY}';" 2>/dev/null)
+[ "$V15_AUTO" = "completed" ] && pass "auto-complete still fires when the last slice finishes" \
+  || fail "auto-complete broken (story status=$V15_AUTO)"
+# 4. A story with NO active slice still completes on the raw path (the auto-complete
+#    precondition), so the verified condition is not narrower than the legitimate use.
+V15_FREE=$($PSQL -c "SELECT tasks.task_upsert(p_content=>'L1 v15 slice-free story', p_created_by=>'esther', p_kind=>'story', p_status=>'in_progress');" 2>/dev/null | head -1)
+V15_FREE_RC=0
+$PSQL -v ON_ERROR_STOP=1 -c "SELECT set_config('tasks.transition_reason','story_auto_complete',false); UPDATE tasks.tasks SET status='completed', \"column\"='done' WHERE id='${V15_FREE}';" >/dev/null 2>&1 || V15_FREE_RC=$?
+V15_FREE_ST=$($PSQL -c "SELECT status FROM tasks.tasks WHERE id='${V15_FREE}';" 2>/dev/null)
+[ "$V15_FREE_RC" -eq 0 ] && [ "$V15_FREE_ST" = "completed" ] \
+  && pass "slice-free story still completes (verified precondition satisfied)" \
+  || fail "slice-free story completion refused (rc=$V15_FREE_RC, status=$V15_FREE_ST)"
+# 5. The gate itself is unchanged for the ordinary path: no reason set, active slice → refused.
+V15_G=$($PSQL -c "SELECT tasks.task_upsert(p_content=>'L1 v15 gate story', p_created_by=>'esther', p_kind=>'story', p_status=>'in_progress');" 2>/dev/null | head -1)
+$PSQL -c "SELECT tasks.task_upsert(p_content=>'L1 v15 gate slice', p_created_by=>'esther', p_kind=>'slice', p_parent_id=>'${V15_G}');" >/dev/null 2>&1
+V15_G_RC=0
+$PSQL -v ON_ERROR_STOP=1 -c "SELECT tasks.task_upsert(p_id=>'${V15_G}', p_status=>'completed');" >/dev/null 2>&1 || V15_G_RC=$?
+V15_G_ST=$($PSQL -c "SELECT status FROM tasks.tasks WHERE id='${V15_G}';" 2>/dev/null)
+[ "$V15_G_RC" -ne 0 ] && [ "$V15_G_ST" != "completed" ] \
+  && pass "story with an active slice still refused with no reason set (gate intact)" \
+  || fail "gate regressed: story completed with an active slice (rc=$V15_G_RC, status=$V15_G_ST)"
+
+echo ""
 echo "═══ Summary ═══"
 echo "  ${P} passed, ${F} failed"
 [ "$F" -eq 0 ] || echo "  ❌ SOME TESTS FAILED — investigate before shipping"
