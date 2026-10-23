@@ -11,12 +11,23 @@ of re-implementing its rules, so the gate and the evidence pipeline cannot
 drift apart.
 
 Watchdog contract (one shot, no daemon):
-  exit 0, empty stdout  → the newest delivered briefing PASSES, or this host
-                          does not run an enabled briefing cron (not applicable)
-  exit 1, report        → it FAILS the canonical checker, or is STALE
+  exit 0, empty stdout  → EVERY delivered briefing inside the freshness window
+                          PASSES, or this host does not run an enabled briefing
+                          cron (not applicable)
+  exit 1, report        → at least one of them FAILS the canonical checker, or
+                          the newest is STALE
   exit 3, report        → COULD NOT VERIFY (cron enabled but no artifact for a
                           day it should have produced one, or the canonical
                           checker could not be loaded/run)
+
+WHY EVERY IN-WINDOW ARTIFACT, NOT JUST THE NEWEST (2026-10-23): keying on
+`dates[-1]` meant a defective delivery was reported at the next run only if the
+NEXT day had not already produced a clean artifact. 2026-10-20's failure (1279
+words) was masked by 2026-10-21, and 2026-10-22's (0 line-start `Source:` lines,
+1364 words) by 2026-10-23 — a client-facing briefing went out broken and was
+reported at no later run while this gate reported green. Alerting stays bounded
+by construction: the window is `--max-age-days`, so a bad artifact reports on at
+most that many runs and then ages out (no state file, no unbounded repeat).
 
 Usage:
     python3 check-latest-briefing.py                       # defaults
@@ -154,6 +165,7 @@ def main(argv: list[str] | None = None) -> int:
             _report([f"⚠️ COULD NOT VERIFY briefing delivery — no delivered "
                      f"artifacts for {target} in {out_dir}"])
             return EXIT_UNVERIFIABLE
+        targets = [target]            # explicit request: this one artifact
     else:
         try:
             job_name = _enabled_briefing_job(jobs_path)
@@ -181,23 +193,51 @@ def main(argv: list[str] | None = None) -> int:
                      f"{target} ({age} days old, today {today}); cron "
                      f"'{job_name}' is enabled"])
             return EXIT_FAIL
+        # Check EVERY artifact in the window, not only the newest: the newest-
+        # only rule let a defective delivery be masked by the next clean day
+        # (see the module docstring). Bounded by the window itself, so a bad
+        # artifact reports on at most --max-age-days runs.
+        targets = [d for d in dates
+                   if (today - (_parse_date(d) or today)).days <= args.max_age_days]
+        if not targets:
+            _report([f"⚠️ COULD NOT VERIFY briefing delivery — no artifact "
+                     f"within {args.max_age_days} days of {today} for enabled "
+                     f"cron '{job_name}'"])
+            return EXIT_UNVERIFIABLE
 
-    rc, output = _run_checker_guarded(checker, target, out_dir)
-    if rc is None:
-        return EXIT_UNVERIFIABLE
-    output = output or ""
-    if rc == 0:
-        return EXIT_PASS                            # silent on pass
-    if rc == 1:
-        _report([f"❌ Delivered briefing FAILED the canonical checker — "
-                 f"sustainability-briefing-{target}.md",
-                 f"   checker: {checker}",
-                 *_indent(output)])
+    failures: list[tuple[str, str]] = []
+    unverifiable: list[tuple[str, int, str]] = []
+    for one in targets:
+        rc, output = _run_checker_guarded(checker, one, out_dir)
+        if rc is None:
+            return EXIT_UNVERIFIABLE
+        output = output or ""
+        if rc == 0:
+            continue
+        if rc == 1:
+            failures.append((one, output))
+        else:
+            unverifiable.append((one, rc, output))
+
+    if failures:
+        names = ", ".join(f"sustainability-briefing-{d}.md" for d, _ in failures)
+        lines = [f"❌ Delivered briefing FAILED the canonical checker — {names}",
+                 f"   checker: {checker}"]
+        for one, output in failures:
+            if len(failures) > 1:
+                lines.append(f"   --- sustainability-briefing-{one}.md ---")
+            lines += _indent(output)
+        _report(lines)
         return EXIT_FAIL
-    _report([f"⚠️ COULD NOT VERIFY briefing delivery for {target} — the "
-             f"canonical checker returned {rc}, which is neither pass nor fail",
-             *_indent(output)])
-    return EXIT_UNVERIFIABLE
+
+    if unverifiable:
+        one, rc, output = unverifiable[0]
+        _report([f"⚠️ COULD NOT VERIFY briefing delivery for {one} — the "
+                 f"canonical checker returned {rc}, which is neither pass nor fail",
+                 *_indent(output)])
+        return EXIT_UNVERIFIABLE
+
+    return EXIT_PASS                            # silent on pass
 
 
 if __name__ == "__main__":

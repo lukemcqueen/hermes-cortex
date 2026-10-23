@@ -53,6 +53,18 @@ def _stub_checker(path: Path, rc: int, line: str) -> Path:
     return path
 
 
+def _stub_checker_by_date(path: Path, fail_dates: set, line: str) -> Path:
+    """A checker whose verdict depends on the date it is asked about.
+
+    Needed to demonstrate the MASK: one day's artifact fails while a later
+    day's passes, which is the live 2026-10-22/2026-10-23 shape.
+    """
+    path.write_text("def main(date, directory):\n"
+                    f"    print({line!r})\n"
+                    f"    return 1 if date in {sorted(fail_dates)!r} else 0\n")
+    return path
+
+
 def _minimal_docx(path: Path, text: str = "EmpCo Amy 2026") -> None:
     """A real .docx: a zip carrying word/document.xml (canonical checker reads it)."""
     import zipfile
@@ -104,6 +116,75 @@ def test_fail_is_reported_with_the_checkers_own_output():
         assert r.returncode == 1, (r.returncode, r.stdout, r.stderr)
         assert "2026-10-21" in r.stdout, r.stdout
         assert "[words]" in r.stdout, f"checker output not carried: {r.stdout!r}"
+
+
+def test_older_in_window_failure_is_not_masked_by_a_newer_pass():
+    """A bad delivery must not be hidden by the NEXT day's clean artifact.
+
+    Live shape (2026-10-22): the delivered briefing violated the contract
+    ([sources] 0 line-start Source lines, [words] 1364) while the following
+    day's artifact passed. Because the gate keyed on the NEWEST artifact
+    only, the defective delivery was reported at no later run — a client-
+    facing artifact aged out unreported while the gate reported green.
+    Bounded by construction: the window is max_age_days, so a bad artifact
+    alerts on at most that many runs and then ages out.
+    """
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp = Path(tmp)
+        out = tmp / "out"
+        out.mkdir()
+        _briefing(out, "2026-10-22")
+        _briefing(out, "2026-10-23")
+        jobs = _jobs_json(tmp / "jobs.json")
+        checker = _stub_checker_by_date(
+            tmp / "stub.py", {"2026-10-22"},
+            "[sources] source lines=0 (>= 13) FAIL")
+        r = _run(["--dir", str(out), "--jobs", str(jobs),
+                  "--checker", str(checker), "--today", "2026-10-23"])
+        assert r.returncode == 1, (
+            f"a masked failure must be reported, got rc={r.returncode}: "
+            f"{r.stdout!r}")
+        assert "2026-10-22" in r.stdout, f"failing date not named: {r.stdout!r}"
+        assert "[sources]" in r.stdout, f"checker output not carried: {r.stdout!r}"
+
+
+def test_failure_outside_the_window_ages_out_no_permanent_noise():
+    """Bounded alerting: an artifact older than max_age_days is not re-reported.
+
+    Without this bound the mask-proof change would alert forever about an
+    old artifact nobody can un-deliver (watchdog-alert-design: bounded,
+    then quiet).
+    """
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp = Path(tmp)
+        out = tmp / "out"
+        out.mkdir()
+        _briefing(out, "2026-10-10")     # long out of window
+        _briefing(out, "2026-10-23")
+        jobs = _jobs_json(tmp / "jobs.json")
+        checker = _stub_checker_by_date(
+            tmp / "stub.py", {"2026-10-10"}, "[words] count=1364 FAIL")
+        r = _run(["--dir", str(out), "--jobs", str(jobs),
+                  "--checker", str(checker), "--today", "2026-10-23"])
+        assert r.returncode == 0, (r.returncode, r.stdout, r.stderr)
+        assert r.stdout == "", f"aged-out artifact must be silent: {r.stdout!r}"
+
+
+def test_all_in_window_failing_artifacts_are_each_named():
+    """Two bad days in the window: both are named, not just the newest."""
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp = Path(tmp)
+        out = tmp / "out"
+        out.mkdir()
+        _briefing(out, "2026-10-22")
+        _briefing(out, "2026-10-23")
+        jobs = _jobs_json(tmp / "jobs.json")
+        checker = _stub_checker_by_date(
+            tmp / "stub.py", {"2026-10-22", "2026-10-23"}, "[words] count=1364 FAIL")
+        r = _run(["--dir", str(out), "--jobs", str(jobs),
+                  "--checker", str(checker), "--today", "2026-10-23"])
+        assert r.returncode == 1, (r.returncode, r.stdout, r.stderr)
+        assert "2026-10-22" in r.stdout and "2026-10-23" in r.stdout, r.stdout
 
 
 def test_stale_delivery_is_reported():
