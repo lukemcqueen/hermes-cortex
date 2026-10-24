@@ -1,0 +1,79 @@
+soul-refinement pass — 2026-10-24 (cycle 13776)
+generated-by : ops/evidence/soul-refinement-2026-10-24.sh
+captured-at  : 079ab644 (working tree at run time)
+date         : 2026-10-24T23:27:22+0900
+host         : Linux x86_64
+note         : captured-at is the revision the tree sat on when the run
+               happened; the committed copy is one commit ahead of that
+               line by construction, so this file never names its own tip.
+------------------------------------------------------------
+## 1. Mining window — resolved from RUN TIME, never the calendar date
+read-only: sqlite3 file:...state.db?mode=ro, PRAGMA query_only=1
+now                        : 2026-10-24 23:27:23   epoch=<digits>
+previous pass last_activity: 2026-10-23 23:26:13
+24h bound                  : 2026-10-23 23:27:23
+WINDOW (never overlaps)    : 2026-10-23 23:27:23 .. 2026-10-24 23:27:23  (24.00 h)
+sessions in window         : 15   by source: {'cron': 15}
+user rows (active=1)       : 16
+  machine-authored         : 16  (cron task prompts + [Cron delivery:] rows)
+  OPERATOR PROSE           : 0
+assertion: window row count > 0 (a zero-row window is indistinguishable
+from a quiet day, so it is printed above and never assumed)
+------------------------------------------------------------
+## 2. Skill source parity — read-only --check (never regenerates)
+cmd: python3 ops/scripts/manage/check-skill-drift-parity.py --check
+artifact matches the live derivation
+rc=0
+verdict: PASS — deployed tree and repo source agree, nothing stranded.
+------------------------------------------------------------
+## 3. The drift this pass landed — was a same-day lesson deployed?
+The 22:38 commit 079ab644 added the bus-envelope ALLOWLIST lesson to
+skills/devops/fleet-commands/SKILL.md; the deployed copy still carried the
+old text, so the fleet had not received it. Measured now:
+
+a) the deployed copy carries the lesson (content assertion, not a claim):
+   grep -cF 'ALLOWLIST' <deployed> -> 1
+   grep -cF 'unknown envelope field' <deployed> -> 1
+   grep -cF 'PERMANENT rejection' <deployed> -> 1
+   grep -c '^  "topic":' <deployed> -> 0 (must be 0: the wrong
+     field is exactly what the lesson removes)
+
+b) the pre-deploy deployed copy, as backed up by the deploy itself:
+   backup : ~/.hermes-cortex/state/deploy-backups/SKILL.md.<digits>_232131.bak
+   bytes  : 50638   sha256: e9b0f9f3b07c49b6…
+   grep -c '^  "topic":' -> 1  ;  grep -cF ALLOWLIST -> 0
+   => the backup is the OLD text (topic present, allowlist absent) and the
+      repo copy is the NEW text, so this was a stale deploy, NOT a stranded
+      lesson: nothing authored on the deployed tree was discarded.
+------------------------------------------------------------
+## 4. The gate's own verdict, re-run after the deploy
+cmd: python3 ops/scripts/manage/cortex-doctor.py (default verbose) | grep 'Skill drift'
+  ✅ Skill drift — 386 skills in sync, 135 Hermes defaults skipped
+  ⚠️  Overall: WARNING  (489 pass · 6 warn · 0 fail · 3 info)  · 2 undisposed
+   no per-skill drift line remains for devops/fleet-commands
+doctor rc=1 (rc is not 0 while unrelated warnings stand — the
+  per-check lines above are the verdicts, captured with the counts)
+undisposed warnings in the same run:
+       · Cron status (orch-daily-regression-gate)
+       · loop-gov daemon
+------------------------------------------------------------
+## 5. Leftover in the repo tree — DECIDED, not deferred
+   path   : docs/evidence/weekly-dream-content-2026-10-24.md.tmp
+   bytes  : 15   sha256: 55a62dc2518c3233…
+   content: TAMPERED LINE
+   origin : an ad-hoc tamper probe wrote a copy beside the real artifact
+            instead of in $TMPDIR; NOT produced by the tracked generator
+            (ops/evidence/generate-weekly-dream-verify-2026-10-24.sh tampers
+            only inside "$W", asserted by reading the script).
+   decision: reported by path, NOT deleted (another session's file;
+            destructive action needs approval). Untracked, so it cannot
+            reach the public repo unless someone stages it wholesale.
+------------------------------------------------------------
+## 6. Tree state at run time
+?? docs/evidence/soul-refinement-2026-10-24.txt
+?? docs/evidence/weekly-dream-content-2026-10-24.md.tmp
+?? ops/evidence/soul-refinement-2026-10-24.sh
+(the two untracked entries are this cycle's own generator + transcript;
+ the .md.tmp above is the reported leftover)
+------------------------------------------------------------
+done
