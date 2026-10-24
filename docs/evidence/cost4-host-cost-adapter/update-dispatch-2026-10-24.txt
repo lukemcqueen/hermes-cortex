@@ -1,0 +1,27 @@
+# [cost/4] UPDATE_REQUEST dispatch — self-test, then the four worker hosts
+captured-at: a1328aea
+re-run: bash ops/evidence/cost4-update-dispatch-2026-10-24.sh
+
+payload validated against UPDATE_REQUEST schema: valid=True []
+target sha: a1328aea   sender: esther
+
+  SELF-TEST (this host)  esther   -> True  msg_id=5103c81f-5a3e-407f-a8dc-8343a2212120  corr=cost4-selftest-esther-aab864ac57
+  worker                 joseph   -> True  msg_id=f47a30be-45ce-48bb-88f0-bfcac53adae5  corr=cost4-worker-joseph-45546a2bed
+  worker                 gisu     -> True  msg_id=57b36c74-6329-4d93-9018-b3b4d8dc5a80  corr=cost4-worker-gisu-bfc7aa3288
+  worker                 kustos   -> True  msg_id=db637214-82a5-4b6a-a5b5-d01b52811139  corr=cost4-worker-kustos-81520dae2e
+  worker                 titus    -> True  msg_id=86f30a89-f75d-436d-859b-b2da663a8008  corr=cost4-worker-titus-3a1de006e0
+
+correlation ids persisted for the verify step: /home/esther/.hermes/cache/scratch/cost4-update-corrs.json
+
+── the four worker queues, right after the dispatch ──
+  inbox_esther               depth=1 processing=0
+  inbox_fleet                depth=0 processing=0
+  inbox_gisu                 depth=1 processing=0
+  inbox_joseph               depth=1 processing=0
+  inbox_kustos               depth=1 processing=0
+  inbox_moses                depth=0 processing=0
+  inbox_orchestrator         depth=3 processing=0
+  inbox_orchestrator_dlq     depth=0 processing=0
+  inbox_titus                depth=1 processing=0
+
+# generated-by: this script (it wrote this file itself; stdout is not retyped)

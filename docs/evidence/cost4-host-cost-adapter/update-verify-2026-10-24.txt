@@ -1,0 +1,32 @@
+# [cost/4] UPDATE_REQUEST verify — what the bus recorded
+captured-at: a1328aea
+re-run: bash ops/evidence/cost4-update-verify-2026-10-24.sh
+
+── per-correlation result ──
+  esther (selftest)      subject=UPDATE_RESULT from=esther success=False sha=None -> unknown
+        error: UPDATE_RESULT timeout: worker died or was killed (no result within 1800s)
+  joseph (worker)        subject=UPDATE_RESULT from=joseph success=False sha=None -> unknown
+        error: UPDATE_RESULT timeout: worker died or was killed (no result within 1800s)
+  gisu (worker)          subject=UPDATE_RESULT from=gisu success=False sha=None -> unknown
+        error: UPDATE_RESULT timeout: worker died or was killed (no result within 1800s)
+  kustos (worker)        subject=UPDATE_RESULT from=kustos success=False sha=None -> unknown
+        error: UPDATE_RESULT timeout: worker died or was killed (no result within 1800s)
+  titus (worker)         NOT FOUND on the bus yet (msg_id=86f30a89…)
+  esther-retest (retest) NOT FOUND on the bus yet (msg_id=2971d1a1…)
+  esther-retest2 (retest) NOT FOUND on the bus yet (msg_id=aeb78fbf…)
+
+  answered: 4 of 7
+
+── inbox depths ──
+  inbox_esther               depth=0 processing=0 dlq=False
+  inbox_fleet                depth=0 processing=0 dlq=False
+  inbox_gisu                 depth=0 processing=0 dlq=False
+  inbox_health_check         depth=0 processing=0 dlq=False
+  inbox_joseph               depth=0 processing=0 dlq=False
+  inbox_kustos               depth=0 processing=0 dlq=False
+  inbox_moses                depth=1 processing=0 dlq=False
+  inbox_orchestrator         depth=3 processing=0 dlq=False
+  inbox_orchestrator_dlq     depth=0 processing=0 dlq=True
+  inbox_titus                depth=0 processing=0 dlq=False
+
+# generated-by: this script (it wrote this file itself; stdout is not retyped)

@@ -551,25 +551,44 @@ def _update_worker_code() -> str:
   Runs via `python3 -c` in a new session so the cron tick budget cannot kill
   it mid-update (the 2026-08-18 silent UPDATE_RESULT loss)."""
   return r'''
-import importlib.util, json, sys
+import importlib.util, json, os, sys, traceback
 from pathlib import Path
-handler_path = sys.argv[1]
+
+handler_path = Path(sys.argv[1]).resolve()
 msg_body = json.loads(sys.argv[2])
 corr = sys.argv[3]
-sys.path.insert(0, str(Path(handler_path).parent))
-spec = importlib.util.spec_from_file_location("handler", handler_path)
-h = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(h)
+
+# The handler is loaded BY FILE PATH, so this child must reproduce the sys.path
+# entries that module itself imports from — its own directory is not enough.
+# agent-message-handler.py imports `hermes_paths` (-> cortex_lib) from its
+# PARENT directory, so inserting only the handler's dir killed every detached
+# UPDATE worker at import. Measured 2026-10-24: the worker died BEFORE its
+# try/except, wrote no result and left its .running marker behind, so the
+# requesting orchestrator waited the full UPDATE_RESULT_TIMEOUT_S for an update
+# that never ran (this is why every UPDATE_REQUEST looked like a fleet-wide
+# timeout while the messages were being consumed normally).
+for _p in (handler_path.parent, handler_path.parent.parent):
+    if str(_p) not in sys.path:
+        sys.path.insert(0, str(_p))
+
 try:
+    # The load lives INSIDE the try: a handler that cannot be imported is as
+    # reportable as a failed deploy, and silence here is indistinguishable from
+    # a hung deploy — it costs the requester the whole timeout.
+    spec = importlib.util.spec_from_file_location("handler", str(handler_path))
+    h = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(h)
+    out_dir = h.UPDATE_PENDING_DIR
     result = h.process_update_request(msg_body, corr)
 except Exception:
-    import traceback
     result = {
         "success": False,
         "error": "Update worker crashed: %s" % (traceback.format_exc()[-300:],),
     }
+    # Fall back to the default pending dir so the sweep can still send this
+    # correlation id instead of leaving a stale .running marker.
+    out_dir = Path(os.environ.get("CORTEX_DEPLOY_HOME", Path.home() / ".hermes-cortex")) / "state" / "pending-update-results"
 result.setdefault("success", False)
-out_dir = h.UPDATE_PENDING_DIR
 out_dir.mkdir(parents=True, exist_ok=True)
 (out_dir / (corr + ".json")).write_text(json.dumps(result))
 (out_dir / (corr + ".running")).unlink(missing_ok=True)
