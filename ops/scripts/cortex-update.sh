@@ -480,6 +480,7 @@ register "ops/scripts/install/install-orch-crons.sh"  "${CORTEX_DEPLOY_HOME}/scr
 register "ops/scripts/install/install-dream-crons.sh" "${CORTEX_DEPLOY_HOME}/scripts/install-dream-crons.sh"
 register "ops/scripts/install/install-provider-timeouts.sh" "${CORTEX_DEPLOY_HOME}/scripts/install-provider-timeouts.sh"
 register "ops/scripts/install/install-soft-session-cap.sh" "${CORTEX_DEPLOY_HOME}/scripts/install-soft-session-cap.sh"
+register "ops/scripts/install/install-bridge-killmode.sh" "${CORTEX_DEPLOY_HOME}/scripts/install-bridge-killmode.sh"
 register "ops/scripts/install/install-profile-reader-role.sh" "${CORTEX_DEPLOY_HOME}/scripts/install-profile-reader-role.sh"
 register "ops/scripts/install/install-score-hook.sh"       "${CORTEX_DEPLOY_HOME}/scripts/install-score-hook.sh"
 register "ops/scripts/install/install-claude-governance.sh" "${CORTEX_DEPLOY_HOME}/scripts/install-claude-governance.sh"
@@ -3721,6 +3722,27 @@ main() {
   if [[ -f "${CORTEX_DEPLOY_HOME}/scripts/install-soft-session-cap.sh" ]]; then
     bash "${CORTEX_DEPLOY_HOME}/scripts/install-soft-session-cap.sh" 2>&1 | sed 's/^/    /' || \
       warn "  install-soft-session-cap.sh failed (non-fatal)"
+  fi
+
+  # ── Bridge KillMode auto-repair (fleet update path) ────────
+  # Every cortex-bridge-*.service is Type=oneshot, whose systemd default
+  # KillMode (control-group) tears down the unit cgroup when the tick's
+  # ExecStart exits — SIGTERMing any child the job detached (the
+  # UPDATE_REQUEST worker agent-message-handler.py spawns with
+  # start_new_session=True). A host left in that state cannot be updated
+  # by the fleet's own protocol. New units get KillMode=process from the
+  # generator template, but a MIGRATED host is no longer in jobs.json, so
+  # the generator never re-emits its unit and only an in-place repair
+  # reaches it. This pass makes that repair self-healing on every update:
+  # --repair writes the units and systemctl --user daemon-reload makes the
+  # manager load them (both halves are required — the file fix alone
+  # leaves the OLD KillMode active), then the LOADED KillMode is read
+  # back. Idempotent (a correct host does no reload) and non-fatal for
+  # the deploy, but it warns rather than staying quiet when a unit is
+  # still wrong.
+  if [[ -f "${CORTEX_DEPLOY_HOME}/scripts/install-bridge-killmode.sh" ]]; then
+    bash "${CORTEX_DEPLOY_HOME}/scripts/install-bridge-killmode.sh" 2>&1 | sed 's/^/    /' || \
+      warn "  install-bridge-killmode.sh failed (non-fatal)"
   fi
 
   # ── Clean stale governance locks ─────────────────────────

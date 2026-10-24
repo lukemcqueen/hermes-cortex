@@ -1,0 +1,142 @@
+# /home/<user> paths in this transcript are normalised to $HOME (18 substitutions) — the runs themselves printed the absolute path.
+== host: esther  date: 2026-10-25T08:27:39+09:00
+
+== 1. baseline: bridge units / units carrying KillMode ==
+$ ls $HOME/.config/systemd/user | grep -c 'cortex-bridge-.*[.]service'
+59
+$ grep -l 'KillMode=process' $HOME/.config/systemd/user/cortex-bridge-*[.]service | wc -l
+59
+
+== 2. mutate ONE unit: strip its KillMode line (pre-state) ==
+$ cp $HOME/.config/systemd/user/cortex-bridge-agent-mycortex-retention.service $HOME/.hermes/cache/scratch/mycortex-retention.service.bak
+$ sed -i '/^KillMode=/d' $HOME/.config/systemd/user/cortex-bridge-agent-mycortex-retention.service
+$ grep -c KillMode $HOME/.config/systemd/user/cortex-bridge-agent-mycortex-retention.service   # expect 0
+0
+$ systemctl --user daemon-reload   # make the mutated file the LOADED state
+$ systemctl --user show -p KillMode --value cortex-bridge-agent-mycortex-retention.service   # loaded state, expect control-group
+control-group
+
+== 3. run the installer (the repair path) ==
+$ bash $HOME/hermes-cortex/ops/scripts/install/install-bridge-killmode.sh
+install-bridge-killmode: 1 of 59 bridge unit(s) lack KillMode — repairing
+[bridge] repair: 1 unit(s) given KillMode=process; 58 already correct; 59 scanned
+[bridge] next: systemctl --user daemon-reload
+install-bridge-killmode: verified — 1 repaired unit(s) now load KillMode=process
+installer exit=0
+
+== 4. post-state: file, loaded state, idempotent re-run ==
+$ grep -c 'KillMode=process' $HOME/.config/systemd/user/cortex-bridge-agent-mycortex-retention.service   # expect 1
+1
+$ systemctl --user show -p KillMode --value cortex-bridge-agent-mycortex-retention.service   # expect process
+process
+
+$ bash $HOME/hermes-cortex/ops/scripts/install/install-bridge-killmode.sh   # second run: already correct, no reload
+install-bridge-killmode: all 59 bridge unit(s) already load KillMode=process — no reload needed
+second-run exit=0
+
+== 5. fleet-of-one census after the proof ==
+$ ls $HOME/.config/systemd/user | grep -c 'cortex-bridge-.*[.]service'
+59
+$ grep -h 'KillMode' $HOME/.config/systemd/user/cortex-bridge-*[.]service | sort | uniq -c
+     59 KillMode=process
+$ grep -L KillMode $HOME/.config/systemd/user/cortex-bridge-*[.]service | wc -l   # expect 0
+0
+
+== 6. sandbox self-test of the installer ==
+$ bash $HOME/hermes-cortex/ops/scripts/install/install-bridge-killmode.sh --self-test
+PASS no-units: exit 0
+PASS no-units: no reload
+PASS repair: exit 0
+PASS repair: file fixed
+PASS repair: reloaded once
+PASS repair: reports the verified read-back
+PASS idempotent: exit 0
+PASS idempotent: no reload
+PASS idempotent: exactly one KillMode line
+PASS override: exit 0
+PASS override: file untouched
+PASS override: no reload
+PASS unrepairable: exit 1
+PASS unrepairable: names the unit
+PASS reload-fails: exit 1
+PASS reload-fails: reports the failed reload
+self-test: all cases PASS
+self-test exit=0
+
+== 7. non-vacuity: the self-test must FAIL on a mutant that skips the reload ==
+$ sed -i 's|^if ! "$SYSTEMCTL" --user daemon-reload; then|if false; then|' $HOME/.hermes/cache/scratch/kmE.s19Uhk/install/install-bridge-killmode.sh
+$ grep -n 'if false; then' $HOME/.hermes/cache/scratch/kmE.s19Uhk/install/install-bridge-killmode.sh
+274:if false; then
+$ bash $HOME/.hermes/cache/scratch/kmE.s19Uhk/install/install-bridge-killmode.sh --self-test   # expect non-zero
+PASS no-units: exit 0
+PASS no-units: no reload
+PASS repair: exit 0
+PASS repair: file fixed
+FAIL repair: reloaded once: expected [1] got [0]
+PASS repair: reports the verified read-back
+PASS idempotent: exit 0
+PASS idempotent: no reload
+PASS idempotent: exactly one KillMode line
+PASS override: exit 0
+PASS override: file untouched
+PASS override: no reload
+PASS unrepairable: exit 1
+PASS unrepairable: names the unit
+FAIL reload-fails: exit 1: expected [1] got [0]
+FAIL reload-fails: reports the failed reload: expected [yes] got [no]
+mutant self-test exit=1
+
+== 8. pytest + syntax + doctor, run at this revision ==
+$ bash -n ops/scripts/install/install-bridge-killmode.sh; bash -n ops/scripts/cortex-update.sh
+no syntax errors
+$ $HOME/.hermes-cortex/venv/bin/pytest tests/test_install_bridge_killmode.py -q
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
+rootdir: $HOME/hermes-cortex
+configfile: pytest.ini
+plugins: anyio-4.15.1
+collected 3 items
+
+tests/test_install_bridge_killmode.py ...                                [100%]
+
+============================== 3 passed in 1.21s ===============================
+$ cortex-doctor.py | grep -i 'bridge unit kill mode'
+  ✅ Bridge unit kill mode — every enabled bridge unit sets an explicit KillMode
+
+== 9. reviewer finding on the cortex-update.sh wiring, and its closure ==
+Finding (ADV-0-1, high, unverified-claim) on the invocation block: the pipeline
+'bash install-bridge-killmode.sh 2>&1 | sed ... || warn ...' takes its exit status
+from sed, so a non-zero installer exit might never reach warn, and nothing proved
+the warning is emitted.
+
+$ grep -n -m1 'pipefail' ops/scripts/cortex-update.sh
+14:set -euo pipefail
+
+With pipefail set, the pipeline's status is the rightmost non-zero status, so the
+'|| warn' branch does fire. The test below drives the SHIPPED invocation block
+(extracted from cortex-update.sh, not retyped) under the same shell options against
+a stand-in deploy home whose installer exits 1, and asserts both directions: the
+warning is printed and the deploy continues; a succeeding installer prints no warning.
+
+$ $HOME/.hermes-cortex/venv/bin/pytest tests/test_install_bridge_killmode.py -q
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
+rootdir: $HOME/hermes-cortex
+configfile: pytest.ini
+plugins: anyio-4.15.1
+collected 4 items
+
+tests/test_install_bridge_killmode.py ....                               [100%]
+
+============================== 4 passed in 1.21s ===============================
+
+== 10. the update path itself runs the installer (deploy, exit 0) ==
+$ bash ops/scripts/cortex-update.sh   # exit 0
+cortex-update.sh exit=0
+$ grep -n 'install-bridge-killmode' <deploy output>
+307:    install-bridge-killmode: all 59 bridge unit(s) already load KillMode=process — no reload needed
+521:    ✅ Checksum: install-bridge-killmode.sh
+$ grep -n 'Checksum: install-bridge-killmode.sh' <deploy output>
+521:    ✅ Checksum: install-bridge-killmode.sh
+$ sed '2,4d' $HOME/.hermes-cortex/scripts/install-bridge-killmode.sh | diff - ops/scripts/install/install-bridge-killmode.sh   # lines 2-4 are the deploy's SOURCE header
+deployed copy matches repo source (deploy SOURCE header ignored)
