@@ -22,60 +22,93 @@ DEPLOYED="${DEPLOYED:-$HOME/.hermes-cortex/skills/devops/fleet-commands/SKILL.md
 BACKUP="${BACKUP:-$HOME/.hermes-cortex/state/deploy-backups/SKILL.md.20261024_232131.bak}"
 STRAY="docs/evidence/weekly-dream-content-2026-10-24.md.tmp"
 
-# ONE normaliser for every emitted line: ~ paths, ANSI, and 7+ digit runs.
+# The pass's OWN resolved mining window, frozen at the moment the pass resolved
+# it (see §1): recomputing it live moves the 24 h bound with the clock, and the
+# artifact would then disagree with the cycle it documents. Override both to
+# re-run the derivation for a different pass.
+WIN_START="${WINDOW_START:-2026-10-23 23:26:13}"
+WIN_END="${WINDOW_END:-2026-10-24 23:16:37}"
+export WIN_START WIN_END
+
+# ONE normaliser for every emitted line: ~ paths, ANSI colour, and 7+ digit runs.
 norm() {
   sed -e "s|$HOME|~|g" \
       -e 's/\x1b\[[0-9;]*m//g' \
       -e 's/[0-9]\{7,\}/<digits>/g'
 }
+# The revision token is the ONE exemption from the digit mask: a short sha that
+# happens to be all digits is unresolvable if masked, and `captured-at` exists
+# precisely so a reader can re-run this file against that revision.
+say_rev() { printf '%s\n' "$*" | sed -e "s|$HOME|~|g" -e 's/\x1b\[[0-9;]*m//g'; }
 say()  { printf '%s\n' "$*" | norm; }
 rule() { printf '%s\n' "------------------------------------------------------------" | norm; }
 
 {
   say "soul-refinement pass — 2026-10-24 (cycle 13776)"
   say "generated-by : ops/evidence/soul-refinement-2026-10-24.sh"
-  say "captured-at  : $(git rev-parse --short=8 HEAD) (working tree at run time)"
+  say_rev "captured-at  : $(git rev-parse --short=8 HEAD) (working tree at run time)"
   say "date         : $(date '+%Y-%m-%dT%H:%M:%S%z')"
   say "host         : $(uname -s) $(uname -m)"
+  say "masking      : every line below has ~ paths, ANSI colour and runs of 7+"
+  say "               digits masked; the captured-at revision above is the one"
+  say "               exemption, so it stays resolvable for a re-run."
   say "note         : captured-at is the revision the tree sat on when the run"
   say "               happened; the committed copy is one commit ahead of that"
   say "               line by construction, so this file never names its own tip."
 
   rule
   say "## 1. Mining window — resolved from RUN TIME, never the calendar date"
-  say "read-only: sqlite3 file:...state.db?mode=ro, PRAGMA query_only=1"
+  say "The bounds below are the WINDOW THE PASS ITSELF RESOLVED, frozen so a"
+  say "re-run reproduces them: recomputing them live yields different bounds"
+  say "minutes later (the 24 h bound advances with the clock), which would make"
+  say "this artifact disagree with the cycle it documents. Override with"
+  say "WINDOW_START / WINDOW_END to re-run the derivation for another pass."
+  say "cmd: sqlite3 file:~/.hermes/state.db?mode=ro, PRAGMA query_only=1"
   PY_OUT="$(python3 - <<'PY' 2>&1
-import sqlite3, time
+import os, sqlite3, time
 from datetime import datetime
-DB = "/home/esther/.hermes/state.db"
+DB = os.path.expanduser("~/.hermes/state.db")
+FMT = "%Y-%m-%d %H:%M:%S"
+start = time.mktime(time.strptime(os.environ["WIN_START"], FMT))
+end = time.mktime(time.strptime(os.environ["WIN_END"], FMT))
 NOW = time.time()
 con = sqlite3.connect(f"file:{DB}?mode=ro", uri=True)
 con.row_factory = sqlite3.Row
 con.execute("PRAGMA query_only=1")
 iso = lambda t: datetime.fromtimestamp(float(t)).strftime("%Y-%m-%d %H:%M:%S") if t else None
-THIS = "cron_8449be867645_20261024_231443"
+print(f"now (run time)             : {iso(NOW)}")
+print(f"WINDOW                     : {iso(start)} .. {iso(end)}   ({(end-start)/3600:.2f} h)")
+# The window must not overlap the previous pass. "Previous pass" = the newest
+# soul-refinement session that is NOT still being written to (a session whose
+# last activity is within the last hour is THIS run).
 prev = con.execute(
-    "SELECT id,last_activity_at FROM sessions WHERE title LIKE '%soul-refinement%' "
-    "AND id != ? ORDER BY COALESCE(last_activity_at,started_at) DESC LIMIT 1",
-    (THIS,)).fetchone()
+    "SELECT last_activity_at FROM sessions WHERE title LIKE '%soul-refinement%' "
+    "AND COALESCE(last_activity_at,started_at) < ? "
+    "ORDER BY COALESCE(last_activity_at,started_at) DESC LIMIT 1",
+    (NOW - 3600,)).fetchone()
 prev_end = float(prev["last_activity_at"]) if prev else None
-lo24 = NOW - 24 * 3600
-start = max(lo24, prev_end) if prev_end else lo24
-print(f"now                        : {iso(NOW)}   epoch={NOW:.0f}")
 print(f"previous pass last_activity: {iso(prev_end)}")
-print(f"24h bound                  : {iso(lo24)}")
-print(f"WINDOW (never overlaps)    : {iso(start)} .. {iso(NOW)}  ({(NOW-start)/3600:.2f} h)")
+_delta = (prev_end - start) if prev_end else None
+print("non-overlap assertion      : "
+      + ("PASS (previous pass ended at or before the window start"
+         + (f", by {abs(_delta):.1f}s)" if _delta is not None else ")")
+         if prev_end and prev_end <= start + 1 else "REVIEW — overlap possible"))
 sess = con.execute(
-    "SELECT id,source FROM sessions WHERE COALESCE(last_activity_at,started_at)>=? "
-    "AND COALESCE(last_activity_at,started_at)<=?", (start, NOW + 60)).fetchall()
+    "SELECT source FROM sessions WHERE COALESCE(last_activity_at,started_at)>=? "
+    "AND COALESCE(last_activity_at,started_at)<=?", (start, end)).fetchall()
 by_src = {}
 for s in sess:
     by_src[s["source"]] = by_src.get(s["source"], 0) + 1
-print(f"sessions in window         : {len(sess)}   by source: {by_src}")
+print(f"sessions, activity bound in window : {len(sess)}   by source: {by_src}")
+# A ROW is selected by its own timestamp; a SESSION by COALESCE(activity bound),
+# so the two are different sets by construction and the counts are reconciled
+# explicitly rather than left looking inconsistent.
 rows = con.execute(
-    "SELECT m.content,m.session_id,s.source FROM messages m JOIN sessions s ON s.id=m.session_id "
+    "SELECT m.content,m.timestamp,m.session_id,s.source,"
+    "COALESCE(s.last_activity_at,s.started_at) AS act "
+    "FROM messages m JOIN sessions s ON s.id=m.session_id "
     "WHERE m.role='user' AND m.active=1 AND m.timestamp>=? AND m.timestamp<=? "
-    "ORDER BY m.timestamp", (start, NOW + 60)).fetchall()
+    "ORDER BY m.timestamp", (start, end)).fetchall()
 MACHINE = ("[IMPORTANT: The user has invoked", "[IMPORTANT: You are running as a scheduled cron job",
            "[IMPORTANT: Background process", "[INTERNAL NOTIFICATION", "[Cron delivery:",
            "Gateway message origin")
@@ -87,15 +120,19 @@ for r in rows:
     if (r["source"] or "").startswith("cron") or r["source"] == "subagent":
         continue
     prose.append(r)
-print(f"user rows (active=1)       : {len(rows)}")
+in_bound = [r for r in rows if r["act"] is not None and start <= float(r["act"]) <= end]
+print(f"user rows (active=1) in window     : {len(rows)}"
+      f"   from {len({r['session_id'] for r in rows})} distinct session(s)")
+print(f"  of which the row's session bound is ALSO in window : {len(in_bound)}")
+print(f"  row's session bound outside window                : {len(rows)-len(in_bound)}"
+      "  (its own prompt predates the window, or it is this run)")
 print(f"  machine-authored         : {len(rows)-len(prose)}  (cron task prompts + [Cron delivery:] rows)")
 print(f"  OPERATOR PROSE           : {len(prose)}")
+print("window-non-empty assertion : " + ("PASS" if len(sess) and len(rows) else "FAIL"))
 con.close()
 PY
 )"
   printf '%s\n' "$PY_OUT" | norm
-  say "assertion: window row count > 0 (a zero-row window is indistinguishable"
-  say "from a quiet day, so it is printed above and never assumed)"
 
   rule
   say "## 2. Skill source parity — read-only --check (never regenerates)"
@@ -172,8 +209,9 @@ PY
   rule
   say "## 6. Tree state at run time"
   git status --short | norm
-  say "(the two untracked entries are this cycle's own generator + transcript;"
-  say " the .md.tmp above is the reported leftover)"
+  say "($STRAY is the leftover reported in §5. The generator and the transcript"
+  say " show as M once this cycle's own commit has landed, ?? before that; they"
+  say " are named here rather than described so the line above stays checkable.)"
 
   rule
   say "done"

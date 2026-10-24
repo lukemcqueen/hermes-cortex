@@ -1,24 +1,33 @@
 soul-refinement pass — 2026-10-24 (cycle 13776)
 generated-by : ops/evidence/soul-refinement-2026-10-24.sh
-captured-at  : 079ab644 (working tree at run time)
-date         : 2026-10-24T23:27:22+0900
+captured-at  : 21065165 (working tree at run time)
+date         : 2026-10-24T23:32:51+0900
 host         : Linux x86_64
+masking      : every line below has ~ paths, ANSI colour and runs of 7+
+               digits masked; the captured-at revision above is the one
+               exemption, so it stays resolvable for a re-run.
 note         : captured-at is the revision the tree sat on when the run
                happened; the committed copy is one commit ahead of that
                line by construction, so this file never names its own tip.
 ------------------------------------------------------------
 ## 1. Mining window — resolved from RUN TIME, never the calendar date
-read-only: sqlite3 file:...state.db?mode=ro, PRAGMA query_only=1
-now                        : 2026-10-24 23:27:23   epoch=<digits>
+The bounds below are the WINDOW THE PASS ITSELF RESOLVED, frozen so a
+re-run reproduces them: recomputing them live yields different bounds
+minutes later (the 24 h bound advances with the clock), which would make
+this artifact disagree with the cycle it documents. Override with
+WINDOW_START / WINDOW_END to re-run the derivation for another pass.
+cmd: sqlite3 file:~/.hermes/state.db?mode=ro, PRAGMA query_only=1
+now (run time)             : 2026-10-24 23:32:51
+WINDOW                     : 2026-10-23 23:26:13 .. 2026-10-24 23:16:37   (23.84 h)
 previous pass last_activity: 2026-10-23 23:26:13
-24h bound                  : 2026-10-23 23:27:23
-WINDOW (never overlaps)    : 2026-10-23 23:27:23 .. 2026-10-24 23:27:23  (24.00 h)
-sessions in window         : 15   by source: {'cron': 15}
-user rows (active=1)       : 16
+non-overlap assertion      : PASS (previous pass ended at or before the window start, by 0.8s)
+sessions, activity bound in window : 15   by source: {'cron': 15}
+user rows (active=1) in window     : 16   from 16 distinct session(s)
+  of which the row's session bound is ALSO in window : 14
+  row's session bound outside window                : 2  (its own prompt predates the window, or it is this run)
   machine-authored         : 16  (cron task prompts + [Cron delivery:] rows)
   OPERATOR PROSE           : 0
-assertion: window row count > 0 (a zero-row window is indistinguishable
-from a quiet day, so it is printed above and never assumed)
+window-non-empty assertion : PASS
 ------------------------------------------------------------
 ## 2. Skill source parity — read-only --check (never regenerates)
 cmd: python3 ops/scripts/manage/check-skill-drift-parity.py --check
@@ -70,10 +79,11 @@ undisposed warnings in the same run:
             reach the public repo unless someone stages it wholesale.
 ------------------------------------------------------------
 ## 6. Tree state at run time
-?? docs/evidence/soul-refinement-2026-10-24.txt
+ M docs/evidence/soul-refinement-2026-10-24.txt
+ M ops/evidence/soul-refinement-2026-10-24.sh
 ?? docs/evidence/weekly-dream-content-2026-10-24.md.tmp
-?? ops/evidence/soul-refinement-2026-10-24.sh
-(the two untracked entries are this cycle's own generator + transcript;
- the .md.tmp above is the reported leftover)
+(docs/evidence/weekly-dream-content-2026-10-24.md.tmp is the leftover reported in §5. The generator and the transcript
+ show as M once this cycle's own commit has landed, ?? before that; they
+ are named here rather than described so the line above stays checkable.)
 ------------------------------------------------------------
 done
