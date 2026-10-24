@@ -46,8 +46,18 @@ subprocess.Popen(
     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
 )
 ```
-- `start_new_session=True` detaches from the parent's process group so the
-  cron's kill (which targets the tick's group) cannot take the worker down.
+- `start_new_session=True` detaches from the parent's process group so a kill
+  aimed at the tick's process GROUP cannot take the worker down. It does NOT
+  survive a **systemd oneshot unit's cgroup teardown**: with `KillMode` left at
+  its default (`control-group`), systemd kills every remaining process in the
+  unit's cgroup the moment the tick's `ExecStart` exits, so the worker dies
+  seconds after being spawned. Measured 2026-10-24 on the bridge-timer hosts:
+  four UPDATE_REQUESTs were consumed, none updated, and all four answered only
+  at the 30-minute sweep timeout (`docs/evidence/cost4-host-cost-adapter/
+  update-worker-2026-10-24.txt`) — while the identical worker run by hand
+  (outside the unit) completed. A detached-worker consumer that is a systemd
+  unit needs `KillMode=process` on that unit; verifying the pattern means
+  checking the UNIT, not just the Popen flags.
 - The worker does the LONG work and writes its result to a state file:
   `state/pending-results/<corr>.json` — never sends over the bus itself.
 
@@ -85,9 +95,14 @@ Skip the health check while any `.running` marker exists.
 
 ## Key implementation notes
 
-- The worker must insert its own `sys.path` before importing the parent module
-  (`sys.path.insert(0, str(Path(handler_path).parent))`) — cron children don't
-  inherit PYTHONPATH.
+- The worker must insert its own `sys.path` before importing the parent module —
+  cron children don't inherit PYTHONPATH. Insert **every directory the parent
+  imports from, not just the parent's own**: `agent-message-handler.py` imports
+  `hermes_paths` from its parent directory, so a worker that inserted only the
+  handler's dir died at `exec_module` (2026-10-24). And put the LOAD inside the
+  try, not just the work: a loader that raises outside it writes no result and
+  leaves a stale `.running` marker, which is indistinguishable from a hung
+  deploy and costs the requester the whole timeout.
 - Load the parent module by file path (`importlib.util.spec_from_file_location`)
   and call its existing process function — don't duplicate the logic.
 - Spawn-failure fallback: if `Popen` raises, fall through to the legacy
