@@ -92,8 +92,38 @@ bash ~/hermes-cortex/ops/scripts/cortex-update.sh          # deploys the bridge 
   the extra-cron scan. Without it, every migrated job reports as `missing`
   (FAIL) the moment its Hermes row is removed.
 
+## KillMode — a bridge tick must not kill its own detached workers
+
+Every generated bridge service unit sets **`KillMode=process`**. Do not remove it.
+
+A bridge unit is `Type=oneshot`, whose systemd default is
+`KillMode=control-group`: the moment the tick's `ExecStart` exits, systemd tears
+down the whole unit cgroup and SIGTERMs every remaining process — including a
+worker the job deliberately detached (`start_new_session=True`). Measured
+2026-10-24: that killed the `UPDATE_REQUEST` worker seconds after it was
+spawned, so **no host could be updated by the fleet's own update protocol** and
+all four requests answered only at the 30-minute sweep timeout
+(`docs/evidence/cost4-host-cost-adapter/update-worker-2026-10-24.txt`).
+`KillMode=process` kills only the tick itself.
+
+- **New units** — the generator emits `KillMode=process` automatically.
+- **Already-migrated hosts** — the template cannot reach them, because migration
+  REMOVES the Hermes entry, so the job is gone from `jobs.json` and the
+  generator will never emit that unit again. Repair in place:
+  ```bash
+  python3 ~/hermes-cortex/ops/scripts/cortex-bus-bridge-generate.py --repair
+  systemctl --user daemon-reload
+  ```
+  Idempotent: a second run reports `0 unit(s) given`.
+- **Guard** — the doctor FAILs on any enabled `cortex-bridge-*.service` with no
+  explicit `KillMode` (check: *Bridge unit kill mode*), so this cannot regress
+  silently.
+
 ## Pitfalls
 
+- **Removing `KillMode=process` from a bridge unit.** It reintroduces the
+  cgroup-teardown kill above and takes the whole fleet update path down with it;
+  the doctor FAIL is the signal that it happened.
 - **`enable --now` on a deliberately paused job.** It un-pauses it. Use
   `enable` alone (or leave it disabled) for jobs paused for a reason.
 - **Testing a bridge unit can deliver for real.** The runner takes

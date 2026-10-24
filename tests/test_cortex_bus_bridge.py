@@ -184,3 +184,115 @@ def test_runner_hermes_free():
     # The wrapper must not import the Hermes runtime.
     for bad in ("import hermes", "from hermes", "hermes_bus", "hermes_models"):
         assert bad not in src, f"runner must not reference {bad}"
+
+
+# ── KillMode=process: a oneshot tick must not kill detached children ─────────
+# A bridge unit is Type=oneshot; with KillMode left at its default
+# (control-group) systemd tears down the unit cgroup when the tick exits, which
+# SIGTERMs any worker the job deliberately detached (the fleet UPDATE_REQUEST
+# worker, spawned with start_new_session=True). Measured 2026-10-24: four
+# UPDATE_REQUESTs consumed, none updated, all four answered only at the 30-min
+# sweep timeout.
+def _service_body() -> str:
+    """The [Service] section of the unit the generator would write."""
+    g = _load("cortex-bus-bridge-generate")
+    service, _ = g.unit_text("j-daily", "x.py", "/repo/ops/scripts/cortex-bus-bridge-run.py")
+    return service
+
+
+def test_generated_service_sets_killmode_process():
+    body = _service_body()
+    assert "Type=oneshot" in body
+    assert "KillMode=process" in body, (
+        "a oneshot bridge unit without KillMode=process lets systemd's cgroup "
+        "teardown kill the detached worker the job spawned"
+    )
+    # It must land in the [Service] section, not [Unit].
+    before_exec = body.split("ExecStart=")[0]
+    assert "KillMode=process" in before_exec, "KillMode must precede ExecStart"
+    assert body.index("KillMode=process") > body.index("[Service]")
+
+
+def test_with_killmode_inserts_after_type_and_is_idempotent():
+    g = _load("cortex-bus-bridge-generate")
+    # Shape of a real already-deployed unit (esther, 2026-10-24) — no KillMode.
+    deployed = (
+        "[Unit]\n"
+        "Description=Cortex bridge — agent-message-handler (no_agent cron, standalone runner)\n"
+        "\n"
+        "[Service]\n"
+        "Type=oneshot\n"
+        "ExecStart=/usr/bin/env python3 /home/e/hermes-cortex/ops/scripts/"
+        "cortex-bus-bridge-run.py --name agent-message-handler --script "
+        "agent-message-handler.py --deliver local\n"
+    )
+    assert g.unit_needs_killmode(deployed) is True
+    fixed = g.with_killmode(deployed)
+    lines = fixed.splitlines()
+    assert lines[lines.index("Type=oneshot") + 1] == "KillMode=process"
+    assert fixed.count("KillMode=process") == 1
+    # The rest of the unit is untouched, byte for byte.
+    assert fixed.replace("KillMode=process\n", "") == deployed
+    # Idempotent: a repaired unit is returned byte-identical.
+    assert g.with_killmode(fixed) == fixed
+    assert g.unit_needs_killmode(fixed) is False
+
+
+def test_with_killmode_respects_an_explicit_operator_override():
+    g = _load("cortex-bus-bridge-generate")
+    # An operator who deliberately chose another mode must not be overwritten.
+    unit = "[Service]\nType=oneshot\nKillMode=control-group\nExecStart=/bin/true\n"
+    assert g.unit_needs_killmode(unit) is False
+    assert g.with_killmode(unit) == unit
+
+
+def test_repair_units_fixes_deployed_units_and_is_idempotent(tmp_path, capsys, monkeypatch):
+    g = _load("cortex-bus-bridge-generate")
+    units = tmp_path / "user"
+    units.mkdir()
+    old = units / "cortex-bridge-agent-message-handler.service"
+    old.write_text("[Service]\nType=oneshot\nExecStart=/bin/true\n")
+    good = units / "cortex-bridge-already-fine.service"
+    good.write_text("[Service]\nType=oneshot\nKillMode=process\nExecStart=/bin/true\n")
+    other = units / "some-other.service"
+    other.write_text("[Service]\nType=oneshot\nExecStart=/bin/true\n")
+    monkeypatch.setattr(g, "_UNITS", units)
+
+    assert g.repair_units() == 0
+    assert "KillMode=process" in old.read_text()
+    # A unit that already had it is untouched, and an unrelated unit is never
+    # touched (the repair scans only cortex-bridge-*.service).
+    assert good.read_text() == "[Service]\nType=oneshot\nKillMode=process\nExecStart=/bin/true\n"
+    assert "KillMode" not in other.read_text()
+    assert "1 unit(s) given" in capsys.readouterr().out
+
+    # Second run is a no-op.
+    capsys.readouterr()
+    assert g.repair_units() == 0
+    assert "0 unit(s) given" in capsys.readouterr().out
+
+
+def test_repair_units_reports_unreadable_units_nonzero(tmp_path, capsys, monkeypatch):
+    """ADV-0-1: a unit that cannot be read must be reported, not silently skipped."""
+    g = _load("cortex-bus-bridge-generate")
+    units = tmp_path / "user"
+    units.mkdir()
+    (units / "cortex-bridge-ok.service").write_text(
+        "[Service]\nType=oneshot\nExecStart=/bin/true\n")
+    (units / "cortex-bridge-unreadable.service").write_text("x")
+    monkeypatch.setattr(g, "_UNITS", units)
+    # Make only the second file unreadable at read time.
+    target = units / "cortex-bridge-unreadable.service"
+    real_read = Path.read_text
+
+    def fake_read(self, *a, **k):
+        if self == target:
+            raise PermissionError(13, "Permission denied")
+        return real_read(self, *a, **k)
+
+    monkeypatch.setattr(Path, "read_text", fake_read)
+    rc = g.repair_units()
+    err = capsys.readouterr().err
+    assert rc == 1, "an unreadable unit must make the repair exit non-zero"
+    assert "cortex-bridge-unreadable.service" in err
+    assert "repair FAILED" in err

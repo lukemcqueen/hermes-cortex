@@ -1749,6 +1749,57 @@ def check_cron_bridge_migration(res) -> None:
             "every eligible no_agent job is either bridged or deliberately left on Hermes")
 
 
+def check_bridge_unit_killmode(res) -> None:
+    """A bridge unit is Type=oneshot — it must set an explicit KillMode.
+
+    `KillMode` unset means systemd's default (`control-group`): the unit's cgroup
+    is torn down the moment the tick's ExecStart exits, SIGTERMing every child
+    the job deliberately detached. That is exactly how the fleet's
+    UPDATE_REQUEST worker (spawned with `start_new_session=True`) died seconds
+    after spawn, so NO host could be updated by the fleet's own update protocol
+    and every request burned 30 minutes to a sweep timeout (measured
+    2026-10-24). `KillMode=process` kills only the tick itself.
+
+    Enabled units only: the ownership marker is
+    `timers.target.wants/cortex-bridge-*.timer` (the same filesystem-only
+    convention as `_bridge_owned_jobs()`, so it works from a cron context with
+    no DBus session). A DISABLED unit runs nothing and cannot lose a worker.
+
+    This is a FAIL, not a WARN: the fleet update path is broken while any
+    enabled unit is in this state, and a WARN would let it regress silently.
+    """
+    if platform.system() != "Linux":
+        res.add("Bridge unit kill mode", "INFO",
+            f"not applicable on {platform.system()} — the HC cron bridge is systemd-based")
+        return
+    units_dir = Path.home() / ".config" / "systemd" / "user"
+    wants = units_dir / "timers.target.wants"
+    if not wants.is_dir():
+        return
+    missing = []
+    for timer in sorted(wants.glob("cortex-bridge-*.timer")):
+        svc = units_dir / (timer.name[: -len(".timer")] + ".service")
+        try:
+            text = svc.read_text()
+        except OSError:
+            # Never silent: an unreadable unit is treated as unverifiable, the
+            # visible direction (a "COULD NOT VERIFY" is not a PASS).
+            missing.append(f"{svc.name} (unreadable)")
+            continue
+        if not re.search(r"(?m)^\s*KillMode\s*=", text):
+            missing.append(svc.name)
+    if missing:
+        res.add(f"Bridge unit kill mode ({len(missing)})", "FAIL",
+            f"{len(missing)} enabled bridge unit(s) leave KillMode at the default "
+            f"control-group, so a tick's cgroup teardown kills any worker it "
+            f"detached: {', '.join(missing[:5])}" + (" …" if len(missing) > 5 else ""),
+            "Repair: python3 ~/hermes-cortex/ops/scripts/cortex-bus-bridge-generate.py "
+            "--repair && systemctl --user daemon-reload")
+    else:
+        res.add("Bridge unit kill mode", "PASS",
+            "every enabled bridge unit sets an explicit KillMode")
+
+
 def check_scripts(res):
   """3. Script integrity: all scripts referenced by crons exist and match repo source."""
   if not JOBS_FILE.exists():

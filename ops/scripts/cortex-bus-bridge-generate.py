@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""
+r"""
 cortex-bus-bridge-generate.py — generate systemd user timer units for simple
 no_agent cron jobs (component-hermes-separation S2a).
 
@@ -18,6 +18,22 @@ delivered (non-empty) to the messenger; empty = silent. This removes the
 load-bearing coupling "gateway process down → 61 no_agent jobs don't run",
 proving S2a on one job at a time.
 
+KillMode=process (2026-10-24)
+-----------------------------
+Every generated service unit sets `KillMode=process`. A bridge unit is
+`Type=oneshot`, whose default `KillMode=control-group` makes systemd tear down
+the whole unit cgroup when the tick's ExecStart exits — SIGTERMing any child the
+job deliberately detached (e.g. the UPDATE_REQUEST worker spawned with
+`start_new_session=True` in agent-message-handler.py). With `control-group`,
+that worker died seconds after being spawned and the fleet's UPDATE_REQUEST
+protocol could not update ANY host. `KillMode=process` kills only the tick
+itself and lets detached children finish. See
+skills/devops/detached-worker-pattern and docs/runbooks/cron-bridge-migration.md.
+
+--repair exists because the template alone cannot fix a migrated host: after
+migration the Hermes jobs.json entry is REMOVED, so the generator never emits
+that unit again and the on-disk file can only be corrected in place.
+
 LIMITS (deliberate):
 - ONLY simple no_agent script jobs. LLM jobs, chained jobs (context_from/
   continuity), and job with model pins stay on the Hermes cronjob scheduler.
@@ -31,6 +47,9 @@ Usage:
     python3 cortex-bus-bridge-generate.py                # write all simple units
     python3 cortex-bus-bridge-generate.py --dry-run      # print, don't write
     python3 cortex-bus-bridge-generate.py --only <name>  # one job
+    python3 cortex-bus-bridge-generate.py --repair       # add KillMode=process
+                                                         # to already-deployed
+                                                         # bridge units
 
 Cron→OnCalendar translation: cron has 5 fields (min hour dom mon dow); systemd
 OnCalendar uses the same meaning but each field is optional-separated. We map
@@ -52,6 +71,9 @@ _JOBS = Path(os.environ.get("CRON_JOBS_FILE", str(_HOME / ".hermes" / "cron" / "
 _UNITS = Path.home() / ".config" / "systemd" / "user"
 _RUNNER = "ops/scripts/cortex-bus-bridge-run.py"  # repo-relative; resolved at install
 _PREFIX = "cortex-bridge-"
+# A bridge unit is Type=oneshot; the default KillMode (control-group) would kill
+# any child the job detached when the tick exits. See the module docstring.
+_KILLMODE_LINE = "KillMode=process"
 
 
 def parse_cron(expr: str):
@@ -182,6 +204,49 @@ def job_is_simple(job: dict) -> bool:
             and not job.get("model"))
 
 
+def unit_needs_killmode(text: str) -> bool:
+    """True when a bridge service unit has no explicit KillMode setting.
+
+    An ABSENT directive means systemd's default (control-group for oneshot),
+    which kills detached children — the defect this module guards against. A
+    unit that explicitly sets any KillMode is honoured as-is (operator override).
+    """
+    return not re.search(r"(?m)^\s*KillMode\s*=", text)
+
+
+def with_killmode(text: str) -> str:
+    """Return `text` with KillMode=process added when it lacks a KillMode.
+
+    Inserted directly after the `Type=` line so it lands inside the [Service]
+    section; if there is no Type= line, before the first ExecStart=. Idempotent:
+    a unit that already sets KillMode is returned byte-identical.
+    """
+    if not unit_needs_killmode(text):
+        return text
+    lines = text.splitlines(keepends=True)
+    out: list[str] = []
+    done = False
+    for line in lines:
+        out.append(line)
+        if not done and re.match(r"\s*Type\s*=", line):
+            out.append(_KILLMODE_LINE + "\n")
+            done = True
+    if done:
+        return "".join(out)
+    # No Type= line (unexpected for a bridge unit): anchor before ExecStart.
+    out2: list[str] = []
+    for line in out:
+        if re.match(r"\s*ExecStart\s*=", line):
+            out2.append(_KILLMODE_LINE + "\n")
+            break
+        out2.append(line)
+    else:
+        # Neither anchor present — refuse rather than write a malformed unit.
+        return text
+    out2.extend(out[len(out2):])
+    return "".join(out2)
+
+
 def unit_text(name: str, script: str, runner: str) -> tuple[str, str] | None:
     """Return (service_text, timer_text). Schedule derived from job; returns
     None if we can't translate the schedule (caller skips that job)."""
@@ -192,16 +257,72 @@ Description=Cortex bridge — {name} (no_agent cron, standalone runner)
 
 [Service]
 Type=oneshot
+{_KILLMODE_LINE}
 ExecStart=/usr/bin/env python3 {runner} --name {name} --script {script}
 """
     return service, ""
+
+
+def repair_units() -> int:
+    """Add KillMode=process to already-deployed bridge service units.
+
+    Needed because a migrated job is REMOVED from jobs.json, so the generator
+    can never emit its unit again — only an in-place fix reaches it.
+
+    Never silent about a unit it could not read or write: unreadable/unwritable
+    units are counted and named, and the run exits non-zero, so a partial repair
+    cannot be mistaken for a complete one (adversarial finding ADV-0-1).
+    """
+    units = sorted(_UNITS.glob(f"{_PREFIX}*.service")) if _UNITS.is_dir() else []
+    repaired, ok, failed = 0, 0, []
+    for p in units:
+        try:
+            text = p.read_text()
+        except OSError as e:
+            failed.append(f"{p.name} (read: {e.strerror or e})")
+            continue
+        new = with_killmode(text)
+        if new == text:
+            ok += 1
+            continue
+        try:
+            p.write_text(new)
+        except OSError as e:
+            failed.append(f"{p.name} (write: {e.strerror or e})")
+            continue
+        repaired += 1
+    print(f"[bridge] repair: {repaired} unit(s) given {_KILLMODE_LINE}; "
+          f"{ok} already correct; {len(units)} scanned")
+    if failed:
+        print(f"[bridge] repair FAILED for {len(failed)} unit(s): "
+              + "; ".join(failed[:5]) + (" …" if len(failed) > 5 else ""),
+              file=sys.stderr)
+        return 1
+    if repaired:
+        print("[bridge] next: systemctl --user daemon-reload")
+    return 0
 
 
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--only", default=None)
+    ap.add_argument("--repair", action="store_true",
+                    help="add KillMode=process to already-deployed bridge units")
     args = ap.parse_args()
+
+    if args.repair:
+        if args.dry_run:
+            planned = 0
+            for p in sorted(_UNITS.glob(f"{_PREFIX}*.service")) if _UNITS.is_dir() else []:
+                try:
+                    if unit_needs_killmode(p.read_text()):
+                        planned += 1
+                except OSError as e:
+                    print(f"[bridge] repair: cannot read {p.name}: {e}", file=sys.stderr)
+            print(f"[bridge] repair --dry-run: {planned} unit(s) would be updated")
+            return 0
+        return repair_units()
 
     if not _JOBS.exists():
         print(f"[bridge] no jobs file at {_JOBS}", file=sys.stderr)
@@ -239,6 +360,7 @@ Description=Cortex bridge — {name} (no_agent cron, standalone runner)
 
 [Service]
 Type=oneshot
+{_KILLMODE_LINE}
 ExecStart=/usr/bin/env python3 {runner_path} --name {name} --script {job.get('script')} --deliver {job.get('deliver') or 'origin'}
 """
         timer_text = f"""[Unit]
