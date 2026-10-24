@@ -42,12 +42,22 @@ Fleet agents run `agent-message-handler.py` as a cron (`*/5 * * * *`). Source: `
 {
   "from": "moses",
   "to": "<agent>",
-  "topic": "fleet-update",
   "subject": "EXEC",
   "correlation_id": "<unique-uuid>",
   "body": "{\"command\": \"script-name.py\", \"params\": [\"--flag\"], \"timeout\": 60}"
 }
 ```
+
+**Envelope fields are an ALLOWLIST (`core/cortex_bus/validate.py`).** The only
+keys a message may carry are `from`, `to`, `subject`, `body`,
+`correlation_id`, `timestamp`, `priority`, `type`, `forwarded_from`. Anything
+else — **including `topic`** — is rejected at ingestion with HTTP 400
+(`unknown envelope field(s): topic. Allowed fields: …`), and `bus_send`
+reports it as a PERMANENT rejection with no outbox retry, so the message is
+never queued. `from` must also equal the authenticated agent (no spoofing).
+Measured 2026-10-24: a `bus_send` carrying `"topic": "fleet-update"` returned
+`{"queued": false, "permanent": true, …}`; the same message without `topic`
+was accepted (`msg_id 9c1366ec`).
 
 **correlation_id is required** for idempotency. Messages without one may be silently skipped if `""` is in the handler's processed set.
 

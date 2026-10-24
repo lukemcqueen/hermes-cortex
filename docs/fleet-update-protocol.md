@@ -74,8 +74,7 @@ When an agent receives `UPDATE_REQUEST`, it:
 ```json
 {
  "from": "moses",
- "to": "inbox_gisu",
- "topic": "fleet-update",
+ "to": "gisu",
  "subject": "UPDATE_REQUEST",
  "correlation_id": "uuid-v4",
  "priority": "normal",
@@ -90,6 +89,18 @@ When an agent receives `UPDATE_REQUEST`, it:
  }
 }
 ```
+
+> **The message ENVELOPE is an allowlist** (`core/cortex_bus/validate.py`,
+> enforced at `/api/pgmq/send`). The only keys a message may carry are
+> `from`, `to`, `subject`, `body`, `correlation_id`, `timestamp`, `priority`,
+> `type`, `forwarded_from`. **`topic` is NOT one of them** — an envelope
+> carrying it is rejected with HTTP 400 (`unknown envelope field(s): topic`),
+> and `bus_send` reports a PERMANENT rejection with no outbox retry, so the
+> message is never queued. `topic` is only valid *inside* `body` (where the
+> handler ignores it). `from` must equal the authenticated agent, and
+> `priority` must be an int 0-100 at the API (`bus_send` normalizes legacy
+> strings such as `"normal"`, but a raw client is rejected). Measured
+> 2026-10-24 — decision recorded in `skills/devops/fleet-commands`.
 
 ### Fields
 
@@ -119,7 +130,6 @@ Sent by each agent after processing UPDATE_REQUEST.
 {
  "from": "gisu",
  "to": "inbox_moses",
- "topic": "fleet-update",
  "subject": "UPDATE_RESULT",
  "correlation_id": "<same uuid from request>",
  "priority": "normal",
@@ -165,7 +175,6 @@ Sent when UPDATE_RESULT contains issues Moses can identify and fix.
 {
  "from": "moses",
  "to": "inbox_kustos",
- "topic": "fleet-update",
  "subject": "FIX_REQUEST",
  "correlation_id": "uuid-v4",
  "priority": "high",
@@ -197,7 +206,6 @@ Sent after agent executes a fix.
 {
  "from": "kustos",
  "to": "inbox_moses",
- "topic": "fleet-update",
  "subject": "FIX_RESULT",
  "correlation_id": "<same uuid from request>",
  "priority": "normal",
@@ -275,7 +283,6 @@ Sent to revert an agent to a previous known-good SHA when an update fails.
 {
  "from": "moses",
  "to": "inbox_gisu",
- "topic": "fleet-update",
  "subject": "ROLLBACK_REQUEST",
  "correlation_id": "uuid-v4",
  "priority": "high",
@@ -307,7 +314,6 @@ Sent after agent reverts and verifies.
 {
  "from": "gisu",
  "to": "inbox_moses",
- "topic": "fleet-update",
  "subject": "ROLLBACK_RESULT",
  "correlation_id": "<same uuid from request>",
  "priority": "normal",
@@ -343,7 +349,6 @@ Sent as a lightweight bus message (no update, just verification):
 {
  "from": "moses",
  "to": "inbox_gisu",
- "topic": "fleet-update",
  "subject": "GIT_AUTH_CHECK",
  "correlation_id": "uuid-v4",
  "priority": "normal",
