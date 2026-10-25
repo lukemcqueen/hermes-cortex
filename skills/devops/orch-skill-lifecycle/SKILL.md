@@ -2,7 +2,7 @@
 name: orch-skill-lifecycle
 category: devops
 description: "Unified daily skill lifecycle pipeline — collects lessons, evaluates quality, and upgrades skills/SOUL.md. Replaces skill-miner, harvest-lessons, skill-triage, soul-refinement, and agent-weekly-loop-eval."
-version: 1.2.0
+version: 1.3.0
 author: Hermes Cortex
 license: MIT
 platforms: [linux, macos]
@@ -490,6 +490,28 @@ Result: 3 skills updated, 1 upstreamed, 1 SOUL.md entry.
   whether its reports are RECURRENCES of one commit (`git log -- <path>`) rather than independent
   proposals — and if the content is already committed, there is nothing to merge.
 - **Don't patch the same skill twice in one run** — deduplicate before acting
+- **A no-op run needs the same committed proof as a change (2026-10-26)** →
+  when the collection window yields only recurrences of already-committed,
+  already-deployed drift-syncs (the common case), the correct output is a
+  reported NO-OP — but "nothing to do" is a CLAIM, and an unproven claim is the
+  same failure as a fabricated one. Commit the pair rather than narrating it:
+  `ops/scripts/manage/verify-orch-skill-lifecycle.sh` (rc=1 when doctor
+  `Skill drift` is dirty, `stranded` > 0, or any reported skill's deployed copy
+  differs from its repo source; rc=2 `COULD NOT VERIFY` when a dependency can't
+  be judged) plus `test-verify-orch-skill-lifecycle.sh` (6 probes, 0 blind
+  spots). Measured: the first draft of that checker looked green on the healthy
+  tree and was WRONG on four other inputs — a silently-unbound `rec_rc`
+  (`unbound variable`, rc=1 on every input), a doctor that prints no per-check
+  verdict line clearing the line-count bar, and dependencies resolved relative
+  to a copied path. WRITE THE NEGATIVE HARNESS BEFORE TRUSTING A GREEN CHECK.
+- **Fleet stubs for the checker's python3-run dependencies must BE python (2026-10-26)** →
+  `cortex-doctor.py` / `reconcile-stranded-skills.py` are invoked as
+  `python3 <abs-path>`, so a probe stub written as `#!/bin/sh` is fed to the
+  Python interpreter and dies with a SyntaxError on line 2 — which the checker
+  then reports as a missing-script COULD NOT VERIFY, masking the real cause.
+  Emit `print(...)` / `sys.exit(N)` bodies for those stubs. Corollary: a
+  `COULD NOT VERIFY` is only meaningful once every dependency path is known to
+  exist; guard each with `[ -f ]` and name the missing path in the message.
 - **Don't upstream fleet skills that already exist** — check repo + Hermes bundle
 - **Don't modify SOUL.md for workflow lessons** — skills are for workflow, SOUL.md is for principles
 - **Don't skip verification** — a bad skill patch breaks every agent that loads it
