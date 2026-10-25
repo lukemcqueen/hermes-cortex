@@ -132,7 +132,11 @@ load-bearing threshold and an output-format dependency asserted with no committe
 test. Both were valid; an invariant borrowed from another component is not
 verified by the fact that it happens to be true today.
 
-All three were run on the live tree this cycle:
+All three were run on the live tree this cycle. The **committed transcript** of
+that run — regenerable, every command printed above its own output, "not covered"
+section included — is `docs/evidence/orch-skill-lifecycle-2026-10-26.txt`,
+produced by `docs/evidence/orch-skill-lifecycle-2026-10-26/capture.sh`. The
+summary below is a convenience copy; the .txt is the artifact.
 
 ```
 $ bash ops/scripts/manage/verify-orch-skill-lifecycle.sh

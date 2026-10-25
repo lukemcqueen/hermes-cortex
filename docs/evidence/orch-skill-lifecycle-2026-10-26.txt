@@ -1,0 +1,87 @@
+ORCH-SKILL-LIFECYCLE — 2026-10-26 no-op run, live evidence
+Generated at: 2026-10-25T20:05:18Z
+
+═══════ 1. Collection: what the fleet reported in the 48h window ═══════
+$ python3 hermes-cortex/ops/scripts/manage/verify-orch-skill-lifecycle.sh
+    (its own scan of ~/.hermes-cortex/state/learning-reports/)
+OK   doctor:
+OK   stranded: 0
+checking 10 reported skill(s): window=48h
+  OK   change-checklist (repo==deployed)
+  OK   cortex-bus (repo==deployed)
+  OK   detached-worker-pattern (repo==deployed)
+  OK   fleet-commands (repo==deployed)
+  OK   orch-bus-worker (repo==deployed)
+  OK   orch-skill-lifecycle (repo==deployed)
+  OK   shared-repo-push-gates (repo==deployed)
+  OK   shell-scripting (repo==deployed)
+  OK   skill-vetting (repo==deployed)
+  OK   soul-refinement (repo==deployed)
+PASS: no unapplied skill content in the window
+rc=0
+
+═══════ 2. The negative harness: does the checker NOTICE a break? ═══════
+$ bash ~/.hermes-cortex/scripts/test-verify-orch-skill-lifecycle.sh
+  OK   stub doctor emits >=100 lines
+probe 1: green tree
+  OK   green -> rc=0
+probe 2: deployed copy diverges (a deploy is outstanding)
+  OK   divergence -> rc=1 (FAIL, a deploy is outstanding)
+probe 3: reconciler crashes (rc=3, no stranded line) -> COULD NOT VERIFY, never green
+  OK   reconciler crash -> COULD NOT VERIFY
+probe 4: doctor runs but never prints a per-check verdict -> COULD NOT VERIFY
+  OK   doctor without a verdict line -> COULD NOT VERIFY
+probe 5: stranded: 6 (content only on the deployed tree) while the verdict line still says PASS
+  OK   stranded:6 with PASS verdict -> rc=1 (count judged, not the verdict word)
+probe 6: deployed file missing entirely -> FAIL, not skipped
+  OK   missing deployed -> rc=1 (a real failure, not 'unverifiable')
+
+probes run: 6 · noticed: 6 · blind spots: 0
+HARNESS PASS: 6 probes, 0 blind spots
+rc=0
+
+═══════ 3. Contract test for the checker's BORROWED invariants ═══════
+    (the doctor's run-evidence bar and the reconciler's output format are
+     other components' contracts; asserted against the LIVE ones, not copies)
+$ python3 hermes-cortex/tests/test_orch_skill_lifecycle_contracts.py
+doctor: rc=1 nonempty_lines=518 verdict_lines=503
+reconciler: rc=0 stranded=0 (format present)
+PASS: both contracts hold on the live tree
+rc=0
+
+═══════ 4. The underlying facts those checks read ═══════
+$ python3 hermes-cortex/ops/scripts/manage/cortex-doctor.py --quiet | grep -i 'skill drift'
+  ✅ Skill drift
+   (grep's own rc above; doctor exits 1 on ANY warning, so its rc is not
+    a pass/fail signal here — the named line is.)
+
+$ python3 hermes-cortex/ops/scripts/manage/reconcile-stranded-skills.py
+Detector verdict: PASS · stranded: 0
+Nothing stranded: repo and deployed trees agree on content.
+rc=0
+
+$ python3 hermes-cortex/ops/scripts/manage/learning-ledger.py list --status pending
+No learnings found.
+rc=0
+
+═══════ 5. Repo == deployed for every reported skill ═══════
+    (md5 of each skill's repo SKILL.md vs its deployed copy; the skill set
+     comes from the run's 48h window, not a frozen list)
+  change-checklist           MATCH
+  cortex-bus                 MATCH
+  detached-worker-pattern    MATCH
+  fleet-commands             MATCH
+  orch-bus-worker            MATCH
+  orch-skill-lifecycle       MATCH
+  shared-repo-push-gates     MATCH
+  shell-scripting            MATCH
+  skill-vetting              MATCH
+  soul-refinement            MATCH
+
+═══════ 6. What this proof does NOT cover ═══════
+- Permission to skip the work: the checker proves there is no unapplied
+  content in the window. It cannot prove a lesson was never REPORTED.
+- Other hosts. Everything here is measured on esther's tree; a peer's
+  deployed copies are not inspected by this artifact.
+- The 48h window boundary. A report staged just outside it is excluded by
+  design; WINDOW_HOURS= widens the scan if a gap is suspected.
