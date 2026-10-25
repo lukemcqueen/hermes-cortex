@@ -278,6 +278,7 @@ async def list_tools(ctx, params=None) -> ListToolsResult:
                     "topic": {"type": "string", "description": "Topic channel (default: general)"},
                     "priority": {"type": "string", "enum": ["normal", "urgent", "critical"], "description": "Priority"},
                     "file_path": {"type": "string", "description": "Optional file to attach (text embedded inline, binary referenced). Max 5 MB."},
+                    "correlation_id": {"type": "string", "description": "Optional correlation id carried in the bus envelope. The 6-checkpoint verification rule matches a dispatch RESULT by this value, so set it when you intend to verify the reply. Omitted from the envelope when blank."},
                 },
                 "required": ["subject", "body"],
             },
@@ -356,6 +357,8 @@ async def list_tools(ctx, params=None) -> ListToolsResult:
                                  "description": "Optional repo/worktree path — pre-fetches a context envelope (F13) into the task body"},
                     "plan": {"type": "string",
                              "description": "Optional orchestrator slice plan — included in the pre-fetched context envelope"},
+                    "correlation_id": {"type": "string",
+                                       "description": "Optional correlation id carried in the bus envelope for result matching. Omitted when blank."},
                 },
                 "required": ["agent", "description"],
             },
@@ -384,6 +387,18 @@ async def list_tools(ctx, params=None) -> ListToolsResult:
                 "required": ["agent", "task_id"],
             },
         ),
+        Tool(
+            name="bus_inbox_peek",
+            description="Non-destructive read of a bus queue. Uses GET /api/pgmq/peek (pending) or /api/pgmq/archives (already-processed) and NEVER consumes messages, so it is safe for checking whether a dispatch result has arrived. Each returned entry carries subject and correlation_id when the envelope has one.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "queue": {"type": "string", "description": "Queue name (default: inbox_orchestrator)"},
+                    "limit": {"type": "integer", "description": "Max messages (default 20, max 200)"},
+                    "archived": {"type": "boolean", "description": "Read recently archived messages instead of pending ones (default false)"},
+                },
+            },
+        ),
     ])
 
 
@@ -400,6 +415,7 @@ async def call_tool(ctx, params=None) -> CallToolResult:
             "inbox_send_task": _inbox_send_task,
             "inbox_get_task": _inbox_get_task,
             "inbox_cancel_task": _inbox_cancel_task,
+            "bus_inbox_peek": _bus_inbox_peek,
         }
         handler = handlers.get(name)
         if handler:
@@ -453,6 +469,29 @@ def _inbox_send(args: dict) -> CallToolResult:
     # was silently dropped). Documented delivery (fleet-update-protocol.md
     # line 58): one message per agent to inbox_<agent>. Fan out here so the
     # orchestrator's 5-min agent-message-handler consumes each copy.
+    # correlation_id is an allowlisted envelope key (AGENTS.md §Bus Message
+    # Contract) and it is what the 6-checkpoint verification rule matches a
+    # dispatch RESULT by. The MCP previously never set it, so a delivered
+    # EXEC_RESULT was unmatchable even when visible (task row 5c200dd0). The
+    # key is OMITTED ENTIRELY when the caller supplies none, so the legacy
+    # envelope shape is byte-identical for every existing caller.
+    corr_id = str(args.get("correlation_id", "") or "").strip()
+
+    def _envelope(to_name: str) -> str:
+        env = {
+            "from": DEFAULT_AGENT,
+            "to": to_name,
+            "subject": args["subject"],
+            "body": json.dumps({
+                "topic": topic,
+                "text": body_text,
+            }),
+            "priority": {"normal": 0, "urgent": 10, "critical": 20}.get(priority, 0),
+        }
+        if corr_id:
+            env["correlation_id"] = corr_id
+        return json.dumps(env)
+
     if recipient == "all":
         registry = _load_agent_registry()
         agents = _normalize_agents(registry)
@@ -465,16 +504,7 @@ def _inbox_send(args: dict) -> CallToolResult:
         for name in fleet:
             status, body = _request("POST", "api/pgmq/send", {
                 "queue": f"inbox_{name}",
-                "message": json.dumps({
-                    "from": DEFAULT_AGENT,
-                    "to": name,
-                    "subject": args["subject"],
-                    "body": json.dumps({
-                        "topic": topic,
-                        "text": body_text,
-                    }),
-                    "priority": {"normal": 0, "urgent": 10, "critical": 20}.get(priority, 0),
-                }),
+                "message": _envelope(name),
                 "priority": {"normal": 0, "urgent": 10, "critical": 20}.get(priority, 0),
             })
             if status == 200:
@@ -491,16 +521,7 @@ def _inbox_send(args: dict) -> CallToolResult:
     queue_name = f"inbox_{recipient}"
     status, body = _request("POST", "api/pgmq/send", {
         "queue": queue_name,
-        "message": json.dumps({
-            "from": DEFAULT_AGENT,
-            "to": recipient,
-            "subject": args["subject"],
-            "body": json.dumps({
-                "topic": topic,
-                "text": body_text,
-            }),
-            "priority": {"normal": 0, "urgent": 10, "critical": 20}.get(priority, 0),
-        }),
+        "message": _envelope(recipient),
         "priority": {"normal": 0, "urgent": 10, "critical": 20}.get(priority, 0),
     })
 
@@ -841,6 +862,11 @@ def _inbox_send_task(args: dict) -> CallToolResult:
         "body": json.dumps(body, indent=2),
         "priority": priority,
     }
+    # Carry the caller's correlation id through so a delegated task's result
+    # can be matched (6-checkpoint rule). Blank stays blank: _inbox_send omits
+    # the envelope key entirely in that case.
+    if str(args.get("correlation_id", "") or "").strip():
+        send_args["correlation_id"] = str(args["correlation_id"]).strip()
     result = _inbox_send(send_args)
     detail = result.content[0].text if hasattr(result, 'content') and result.content else "sent"
 
@@ -854,6 +880,64 @@ def _inbox_send_task(args: dict) -> CallToolResult:
 
     return CallToolResult(content=[TextContent(type="text",
         text=json.dumps({"task_id": task_id, "status": status, "detail": detail}, indent=2))])
+
+
+def _bus_inbox_peek(args: dict) -> CallToolResult:
+    """Non-destructive read of one bus queue.
+
+    Only GET /api/pgmq/peek/{queue} (pending, no visibility timeout) or
+    GET /api/pgmq/archives/{queue} (already processed) is ever issued. It
+    deliberately NEVER calls POST /api/pgmq/read: a verification read must not
+    consume the result it is trying to observe — that would destroy the
+    evidence and could starve the queue's real consumer.
+    """
+    queue = str(args.get("queue", "") or "inbox_orchestrator").strip()
+    try:
+        limit = int(args.get("limit", 20) or 20)
+    except (TypeError, ValueError):
+        limit = 20
+    limit = max(1, min(limit, 200))
+    archived = bool(args.get("archived", False))
+
+    path = (f"api/pgmq/archives/{queue}?limit={limit}" if archived
+            else f"api/pgmq/peek/{queue}?limit={limit}")
+    status, body = _request("GET", path)
+    if status != 200:
+        return CallToolResult(content=[TextContent(type="text", text=(
+            f"peek failed for {queue} (HTTP {status}): {str(body)[:300]}"))])
+    try:
+        data = json.loads(body)
+    except json.JSONDecodeError:
+        return CallToolResult(content=[TextContent(type="text", text=(
+            f"peek returned non-JSON for {queue}: {str(body)[:300]}"))])
+
+    raw_msgs = data.get("messages", []) if isinstance(data, dict) else data
+    entries = []
+    for m in raw_msgs if isinstance(raw_msgs, list) else []:
+        if not isinstance(m, dict):
+            continue
+        env = m.get("body")
+        if isinstance(env, str):
+            try:
+                env = json.loads(env)
+            except json.JSONDecodeError:
+                env = None
+        if isinstance(env, dict) and isinstance(env.get("raw"), str):
+            try:
+                env = json.loads(env["raw"])
+            except json.JSONDecodeError:
+                pass
+        entry = {"msg_id": m.get("msg_id"), "enqueued_at": m.get("enqueued_at"),
+                 "read_ct": m.get("read_ct")}
+        if isinstance(env, dict):
+            for k in ("from", "to", "subject", "correlation_id", "priority"):
+                if k in env:
+                    entry[k] = env[k]
+        entries.append(entry)
+
+    return CallToolResult(content=[TextContent(type="text", text=json.dumps(
+        {"queue": queue, "archived": archived, "count": len(entries),
+         "messages": entries}, indent=2, default=str))])
 
 
 def _inbox_get_task(args: dict) -> CallToolResult:

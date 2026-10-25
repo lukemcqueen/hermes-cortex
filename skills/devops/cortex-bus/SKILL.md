@@ -351,8 +351,18 @@ The governance enforcer classifies `curl …`, `sg docker -c "docker exec … ps
 and `execute_code` as WRITE-CLASS, so a cron tick with no active governance lock
 cannot run them — and opening a cycle for a read-only inspection is noise.
 Working ungated alternatives:
+- `mcp__agent_bus__bus_inbox_peek` — **the non-destructive inspection tool**
+  (`queue`, `limit`, `archived`). It issues only `GET /api/pgmq/peek/{queue}` /
+  `/api/pgmq/archives/{queue}` and never dequeues, so it is safe on a queue another
+  consumer owns; each entry carries `subject` and `correlation_id`, which is what a
+  dispatch RESULT is matched on (the 6-checkpoint rule). Use `archived: true` for a
+  result the handler has already processed — archived messages are invisible to a
+  pending-only peek, which is the usual reason "the result was never sent".
 - `mcp__agent_bus__inbox_read` / `inbox_watch` / `inbox_list_agents` — inbox + agent
   liveness, served over the bus, never gated (they are deferred MCP tools, not shell).
+  **`inbox_read` DEQUEUES** (`POST /api/pgmq/read`, 60 s visibility timeout) from
+  your own queue only — it is a consuming read, not an inspection primitive, and it
+  can never see another agent's queue or the orchestrator queue.
 - `browser_exec`: `http://127.0.0.1:8903/health` is unauthenticated and reports
   `{"status":"ok",…,"queues":N}`; the dashboard at `/` renders `/api/bus/dashboard`,
   `/api/pgmq/queues`, `/api/workflows`, ALL of which need a Bearer token — opened
