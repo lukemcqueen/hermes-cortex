@@ -1,0 +1,72 @@
+memory-pruning run — 2026-10-26 (host: esther, profile: default)
+================================================================
+
+Target files are the live memory (NOT git-tracked by design — per-instance):
+  ~/.hermes/memories/MEMORY.md   2,126 chars / 11 entries / 2,160 bytes
+  ~/.hermes/memories/USER.md     1,350 chars /  7 entries / 1,364 bytes
+Budgets: MEMORY.md <= 2,200 chars, USER.md <= 1,375 chars.
+Both files keep their pre-run mtime (2026-10-14 / 2026-10-22) — no entry dated
+2026-06-15 or earlier exists, so the "3 stale entries dated <= 2026-06-15" line in
+this job's report template does not apply to this host.
+
+FINDING 1 — AGENTS.md.local is NOT a live file (stale reference in a skill table)
+--------------------------------------------------------------------------------
+~/.hermes/AGENTS.md.local (14,478 bytes, mtime 2026-10-22 18:41) hashes
+a215a0a6d044 — NOT the hash of the ~/.hermes/AGENTS.md it was said to back up.
+Its content is a superseded copy of an older, smaller repo AGENTS.md:
+  4 fewer lines than the current repo file; 2 lines lean on SOUL cross-references
+  that the current repo file explicitly rejects
+  (repo AGENTS.md:19 — "a non-Hermes coding agent reads this file (and no SOUL.md),
+  so the excellence core must not lean on cross-references it cannot resolve").
+It is untracked in the repo (git ls-files --error-unmatch: no match) and un-ignored
+(git check-ignore -v: rc=1) — a stray file inside the public repo checkout.
+
+Evidence the DEPLOYED files are correct despite the .local existing:
+  cortex-update.sh:3157 writes AGENTS.md.local only when the OLD deployed file had
+  lines absent from the repo source. ~/.hermes/AGENTS.md and ~/hermes-cortex/AGENTS.md
+  are currently byte-identical (sha256 eff153c0572b, 14,710 bytes) and the doctor
+  passes "AGENTS.md sync". So .local is a leftover of an EARLIER deploy, not of the
+  current one — no live content is at risk inside it.
+
+Why it is not pruned here: skills/devops/hermes-home-cleanup/SKILL.md:61 documents
+"~/.hermes/AGENTS.md.local, any local-* | Preserved by rule (cortex-update never
+deletes)" as LIVE. That row and the measurement disagree. Correcting a skill table is
+an orchestrator-only change (AGENTS.md "Orchestrator-Only Domains": skills/), and this
+job's mandate is the memory files — so it is REPORTED with evidence, not silently
+applied. Operator decision: delete the file AND fix that row, or keep the file and fix
+the row.
+
+FINDING 2 — no memory-side "agents-md-prune-apply" artifact exists
+----------------------------------------------------------------
+The cron `agent-agents-md-prune-apply` (550d7c044315) scans AGENTS.md for sections to
+move into docs/; it does not touch MEMORY.md/USER.md. There is no stale memory mirror
+of AGENTS.md to reconcile.
+
+LIVE RE-VERIFICATION of every load-bearing stored claim (see the .out transcript):
+  moses reachable (stored ssh host) .............. ping rc=0
+  metrics port .................................. /dev/tcp/127.0.0.1/14005 LISTENING
+  ~/.hermes-cortex/deploy-manifest.tsv .......... present
+  ~/hermes-cortex/docs/design/agent-interop.md ... present
+  ~/hermes-cortex/ops/scripts/cortex_lib/paths.py  present
+  ~/.asus ........................................ present
+  ~/.spotify_user ................................ present
+  laptop display layer ~/.xprofile ............... present
+  laptop display layer ~/.config/autostart ........ present
+  laptop display layer lightdm.conf.d/50-hdmi-1080p.conf present
+  sudo -n true -> "a password is required" ....... CONFIRMS the stored
+                                                   NOPASSWD-BROKEN entry; corroborated
+                                                   by /etc/sudoers.d/ carrying no
+                                                   nft/iptables rule for this user
+  ops/scripts/orch-bus/adversarial-review.py ..... present (13,194 bytes)
+  ~/.hermes-cortex/scripts/probe-gate-logic.py ... present
+
+Result: 0 stale memory entries (nothing pruned, no facts dropped); 1 stale reference
+found in a SKILL table, outside this job's write scope, reported above.
+MEMORY.md and USER.md are byte-identical before/after this run
+(md5 6d1b7b5b56bb94a99a0d33bd6160b731 / 90bef2152103beb9fba783c22e2685fd).
+
+Template-format note (honest reporting): this job's prompt fixes the report shape
+line-for-line, and that shape asserts counts ("3 stale entries dated 2026-06-15 or
+earlier") the live files do not contain. The template lines are reproduced for format,
+but every figure under them is the measured one — manufacturing pruning to match the
+example is performative and the reflexion check forbids it.

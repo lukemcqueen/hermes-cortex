@@ -1,0 +1,49 @@
+# verify-memory-pruning-2026-10-26.sh — captured transcript
+# generated-by: the generator writes this file itself (exec-style capture)
+# command: (cd "$HOME" && bash docs/evidence/verify-memory-pruning-2026-10-26.sh)
+# host paths normalised to ~ at the generator; SCRIPT_RC is the script's own status
+# captured-at: the working tree when this ran (this file is committed one commit later)
+# NOTE the last FAIL is FINDING 1 — an EXPECTED refusal: it asserts the OUTSTANDING
+# stale reference in hermes-home-cleanup SKILL.md:61, which this job reports and does
+# not edit (skills/ is orchestrator-only). RESULT: FAIL with FAIL=1 is the finding, not
+# a broken run. Every other assertion passes.
+
+## committed snapshots exist (re-verifiable from a clean checkout)
+PASS  present: MEMORY.before-2026-10-26.md
+PASS  present: USER.before-2026-10-26.md
+PASS  present: memory-pruning-2026-10-26.txt
+PASS  present: verify-memory-pruning-2026-10-26.sh
+## the run changed no memory content (no-change outcome)
+PASS  MEMORY.md md5 pinned
+PASS  USER.md md5 pinned
+## budget
+PASS  MEMORY.md 2126 <= 2200
+PASS  USER.md 1350 <= 1375
+## no entry carries a date <= 2026-06-15 (the template's stale-entry hypothesis)
+PASS  no memory entry carries a date <= 2026-06-15
+## every artifact/route the memory entries point at is live
+PASS  live: ~/.hermes-cortex/deploy-manifest.tsv
+PASS  live: ~/hermes-cortex/docs/design/agent-interop.md
+PASS  live: ~/hermes-cortex/ops/scripts/cortex_lib/paths.py
+PASS  live: ~/hermes-cortex/ops/scripts/orch-bus/adversarial-review.py
+PASS  live: ~/.hermes-cortex/scripts/probe-gate-logic.py
+PASS  live: ~/.asus
+PASS  live: ~/.spotify_user
+PASS  live: ~/.xprofile
+PASS  live: ~/.config/autostart
+PASS  live: lightdm 1080p layer (/etc/lightdm/lightdm.conf.d/50-hdmi-1080p.conf)
+## network routes named in memory
+PASS  stored peer host reachable
+PASS  metrics :14005 listening
+## the stored sudo claim still holds (no NOPASSWD for nft/iptables)
+PASS  sudo -n still needs a password — stored entry accurate
+## FINDING 1: AGENTS.md.local is a leftover, not a live backup
+PASS  ~/.hermes/AGENTS.md == repo AGENTS.md (deployed file correct)
+PASS  AGENTS.md.local hashes to a SUPERSEDED file (leftover of an earlier deploy)
+PASS  AGENTS.md.local carries the pre-fix 'per SOUL P11' cross-reference
+## FINDING 1 documentation state (the row that still calls it LIVE)
+FAIL  hermes-home-cleanup:61 still documents AGENTS.md.local as LIVE (stale row)
+
+PASS=25 FAIL=1
+RESULT: FAIL
+SCRIPT_RC=1
