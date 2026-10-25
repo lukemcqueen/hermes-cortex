@@ -1,0 +1,25 @@
+# claimable pool delta — 2026-10-23 → 2026-10-25 (the ONE change)
+# left  = docs/evidence/morning-task-pass-2026-10-23/survey-claimable.txt (claimable: 16)
+# right = docs/evidence/morning-task-pass-2026-10-25/survey-claimable-2026-10-25.txt (claimable: 15)
+
+only in 2026-10-23 (1 row):
+  6b7d9b8a   2   hermes-cortex      [cost/4] Fleet-wide cost coverage - per-host audit-log adapt
+  -> TODAY status=blocked (measured: task_list repo=ALL status=blocked)
+
+only in 2026-10-25: (none)
+
+blocked set today (3), measured via task_list repo=ALL status=blocked:
+  66914fe1  [queue/1] Return the 18 session-TTL parked rows to a decided state
+  6b7d9b8a  [cost/4] Fleet-wide cost coverage — per-host audit-log adapter
+  2fc4d871  [queue/3] Populate depends_on for the cost-slice chain
+
+# Why [cost/4] blocked — the 2026-10-24 evidence, not a guess:
+#   docs/evidence/cost4-host-cost-adapter/dispatch-2026-10-24.txt
+#     joseph/kustos/titus: "error: the following arguments are required: --prometheus"
+#     gisu: "Script not found: cron-cost-metrics.py"   -> 0 of 4 hosts returned an aggregate
+#   docs/evidence/cost4-host-cost-adapter/update-verify-2026-10-24.txt
+#     all four UPDATE_REQUESTs: "UPDATE_RESULT timeout: worker died or was killed (no result
+#     within 1800s)"  -> the bridge-KillMode defect (tracked pending row 3c94beac)
+#   esther itself: rc=0, rows=1777, 18 days, spend.available=True (verify.txt)
+
+# Note: two identical EXEC rounds would reproduce 0-of-4, so this pass re-dispatched nothing.

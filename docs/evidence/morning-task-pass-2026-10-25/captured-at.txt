@@ -1,0 +1,10 @@
+captured-at: 2026-10-25 07:37-07:50 KST (Asia/Seoul)
+cron job: f6694d02d29c orch-task-morning-pass (scheduled 07:37, dispatched 07:37:39, fire claim 07:38:42)
+governance cycle: #13782
+session id: cron_f6694d02d29c_20261025_073742
+agent: esther (orchestrator, host-derived)
+repo: /home/esther/hermes-cortex @ HEAD 00b9b46a (deployed via cortex-update 2026-10-24 23:38)
+
+NOTE: the documented read command was refused by the enforcer (gate 1, no skills
+toolset on this job) — the survey was taken from the equivalent MCP task surface.
+No bus sends, no probes, no task-db writes this pass.
