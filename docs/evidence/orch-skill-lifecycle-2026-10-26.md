@@ -117,8 +117,22 @@ Per the skill's 2026-10-16 rule, the evidence is not prose — it is a PAIR:
   6 probes, **0 blind spots**, including the case that matters most here —
   a reconciler printing `verdict: PASS` alongside `stranded: 6` must still FAIL
   (the pass condition is the **count**, never the verdict word).
+- `tests/test_orch_skill_lifecycle_contracts.py` — the CONTRACT test for the two
+  invariants the checker borrows from OTHER components: (a) the doctor's
+  run-evidence bar — >=100 non-empty lines AND at least one per-check verdict
+  line, measured 518/503 on the live tree; (b) the reconciler's
+  `stranded: <int>` output format. Both are asserted against the LIVE components,
+  never a copy: a contract test against a stand-in proves nothing about the thing
+  that actually runs. Without this file the checker would silently degrade to
+  `COULD NOT VERIFY` on every run if either upstream format moved.
 
-Both were run on the live tree this cycle:
+The last item exists because the push-time adversarial review refused an earlier
+close: ADV-13796-1 (high) and ADV-13796-2 (medium), both `unverified-claim` — a
+load-bearing threshold and an output-format dependency asserted with no committed
+test. Both were valid; an invariant borrowed from another component is not
+verified by the fact that it happens to be true today.
+
+All three were run on the live tree this cycle:
 
 ```
 $ bash ops/scripts/manage/verify-orch-skill-lifecycle.sh
@@ -131,6 +145,11 @@ PASS: no unapplied skill content in the window          (rc=0)
 $ bash ops/scripts/manage/test-verify-orch-skill-lifecycle.sh
 probes run: 6 · noticed: 6 · blind spots: 0
 HARNESS PASS: 6 probes, 0 blind spots                   (rc=0)
+
+$ python3 tests/test_orch_skill_lifecycle_contracts.py
+doctor: rc=1 nonempty_lines=518 verdict_lines=503
+reconciler: rc=0 stranded=0 (format present)
+PASS: both contracts hold on the live tree              (rc=0)
 ```
 
 Writing the harness caught **three real defects in the checker itself**, each of
