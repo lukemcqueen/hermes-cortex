@@ -2,7 +2,7 @@
 name: orch-skill-lifecycle
 category: devops
 description: "Unified daily skill lifecycle pipeline — collects lessons, evaluates quality, and upgrades skills/SOUL.md. Replaces skill-miner, harvest-lessons, skill-triage, soul-refinement, and agent-weekly-loop-eval."
-version: 1.3.0
+version: 1.4.0
 author: Hermes Cortex
 license: MIT
 platforms: [linux, macos]
