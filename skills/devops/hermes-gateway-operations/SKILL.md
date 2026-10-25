@@ -384,6 +384,21 @@ step either finds the break or rules it out; stop at the first red.
    0 pending = nothing stuck in Telegram's queue for the bot.
 6. **Journal + unit** — `journalctl --user -u cortex-gateway.service`, `systemctl
    --user show <unit> -p Restart -p NRestarts`, and kernel/dmesg OOM for the death cause.
+7. **Backend session transcripts — the record of whether a turn RAN.** The CLI
+   agent's own session files (pi: `~/.pi/agent/sessions/--home-moses--/*hc-pi-<chat>.jsonl` —
+   timestamp-prefixed) are appended only when dispatch actually invoked the agent;
+   their mtimes distinguish "message consumed, agent answered" from "message never
+   arrived". Pair with the offset peek: 0 pending updates + no session-file advance
+   since the restart = no real inbound reached the bot — the pipeline is healthy,
+   nothing was lost. Your own dispatch probes create/advance these files, so
+   discount sessions named for your probe's `--session-id` when dating real turns.
+
+Reading the evidence you get: **a healthy poller's journal is nearly SILENT**
+(errors and restart announces only — no per-turn logging), so silence proves
+nothing is broken, and the negative evidence carries the diagnosis. What each
+probe positively proves: the restart announce reaching the chat = outbound path;
+dispatch-through-gateway-code returning a reply envelope = backend + model + key;
+update-offset peek = inbound queue state.
 
 Probe pitfalls (each reads as a REAL defect and is a false lead):
 
