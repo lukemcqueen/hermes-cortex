@@ -409,6 +409,13 @@ register "ops/scripts/manage/dream-task-bridge.py"       "${CORTEX_DEPLOY_HOME}/
 # The /model picker's per-host enabler: it must reach EVERY agent host (Titus's macOS pi
 # included), so it is registered rather than checkout-only like the evidence tooling.
 register "ops/scripts/manage/gateway-model-list.py"      "${CORTEX_DEPLOY_HOME}/scripts/gateway-model-list.py"
+# The orch-skill-lifecycle verifier pair. Registered (not checkout-only) because the
+# pair is the EVIDENCE for a no-op run: the next run must be able to re-run both from
+# the deployed tree to confirm the previous run's claim still holds, and a checkout-only
+# tool leaves only the orchestrator host able to do that. Deployed as a pair — the
+# negative harness is what makes the checker trustworthy (6 probes, 0 blind spots).
+register "ops/scripts/manage/verify-orch-skill-lifecycle.sh"      "${CORTEX_DEPLOY_HOME}/scripts/verify-orch-skill-lifecycle.sh"
+register "ops/scripts/manage/test-verify-orch-skill-lifecycle.sh" "${CORTEX_DEPLOY_HOME}/scripts/test-verify-orch-skill-lifecycle.sh"
 # The venv repairer + the declared dependency set it reads: a host must be able to fix its
 # own ~/.hermes-cortex/venv without anyone reading the source to work out what belongs there.
 register "ops/scripts/manage/fix-cortex-venv.py"          "${CORTEX_DEPLOY_HOME}/scripts/fix-cortex-venv.py"
