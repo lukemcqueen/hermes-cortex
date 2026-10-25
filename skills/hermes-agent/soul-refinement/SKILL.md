@@ -264,6 +264,16 @@ body are invisible to it. So:
   needs operator approval by policy — the cron's job is DETECTION: report the
   corrections found so the operator codifies them in an interactive session.
   Never bypass a gate that DOES fire via terminal/execute_code.
+- **The pass's FIRST call dies on the enforcer's third block shape, and it is not a lock problem**
+  (measured 2026-10-25). With no governed repo yet resolved, every write-class-classified call is
+  refused — including a bare `date` and this pass's own `python3 <mining-script>` — with *"No
+  governed repo could be resolved for this call"*. That is its OWN message, not the gate-2 lock
+  rule, and acquiring a lock is not the remedy: resolving a **repo** is. It cost this pass two
+  calls retrying the same shape from `~` before `workdir=` was passed, and the deployed-copy
+  location never helps (`~/.hermes-cortex` has no `.git`). The remedy is ORDER: run `begin_change`
+  first (step 2 of the sequence this pass runs anyway) and the identical shape then returns rc=0
+  from any cwd. So when a mining call is refused, do not reword it and do not go hunting for a
+  lock — open the cycle, then re-issue it unchanged.
 - **Don't append the same lesson twice.** If a principle already covers the gap, strengthen it rather than adding another.
 - **Don't treat skills as identity.** Workflow discoveries go in SKILL.md, not SOUL.md.
 - **Bible insights must be genuine.** Don't force-fit a lesson. If the day's book has nothing obvious for the agent's role, say so honestly.

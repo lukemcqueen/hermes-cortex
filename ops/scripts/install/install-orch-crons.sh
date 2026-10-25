@@ -456,7 +456,7 @@ create_cron "orch-task-morning-pass" "0 7 * * *" \
   "" \
   "Morning task pass (orchestrator, task model v3). You are the orchestrator on this host (host-derived identity, never self-claimed).
 
-task-db.py lives at ~/hermes-cortex/ops/scripts/manage/task-db.py (NOT tools/). For reads, run the DEPLOYED copy from ~ to stay lock-free: python3 ~/.hermes-cortex/scripts/task-db.py ... (if absent, use the repo path under a governance lock).
+task-db.py lives at ~/hermes-cortex/ops/scripts/manage/task-db.py (NOT tools/). For reads, the DEPLOYED copy is NOT lock-free by virtue of its location: python3 <script> is write-class wherever it lives and needs a RESOLVED GOVERNED REPO (a path-like arg on the call, or the repo your session already resolved). With neither you get its own refusal, No governed repo could be resolved for this call — which is NOT the lock rule. So either open the cycle first (begin_change) and then read via the deployed copy from anywhere, or use an ungated surface: read_file / search_files / the MCP task tools.
 
 READ-ONLY SQL, if you need it (schema VERIFIED 2026-10-14 — do NOT guess column names):
   docker exec -i mycortex-postgres psql -U mycortex_reader_<profile> -d mycortex -c '<sql>'

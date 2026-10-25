@@ -138,9 +138,11 @@ run fine one at a time. A redirection, a `$( )`, a pipe into a write, or an inte
 (`python3 <repo>/script.py` — the allowlist never covers interpreter reads) tips a read into
 write-class. Remedies, in order: **run a single plain command per call** (a lone `git push` is
 the canonical case — the push carve-out authorises exactly that shape and nothing compound);
-point scheduled or repeated passes at the DEPLOYED copy from OUTSIDE the repo
-(`~/.hermes-cortex` is not a git repo, so the repo gate never engages); or, when the work
-really is a change, take the lock deliberately and close the cycle.
+give the session a RESOLVED GOVERNED REPO before any interpreter read — take the lock
+deliberately (`begin_change`) and close the cycle — because the deployed copy's LOCATION does not
+help: `python3 <script>` is write-class wherever the script lives, and a non-governed cwd such as
+`~` is refused with `No governed repo could be resolved for this call` (`~/.hermes-cortex` has no
+`.git`, checked 2026-10-25), which is not the lock rule;
 
 The label is the **classifier's** claim, not a fact about your command: a read-only capture can
 come back labelled as a destructive one (an evidence run flagged `SQL TRUNCATE`). Do not reshape a
