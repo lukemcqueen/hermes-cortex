@@ -1,0 +1,180 @@
+soul-refinement pass — 2026-10-25 (cycle 13791)
+generated-by : ops/evidence/soul-refinement-2026-10-25.sh
+captured-at  : ff361fd3 (working tree at run time)
+date         : 2026-10-25T23:39:33+0900
+host         : Linux x86_64
+masking      : every line below has ~ paths, ANSI colour and runs of 7+
+               digits masked; the captured-at revision above is the one
+               exemption, so it stays resolvable for a re-run.
+note         : captured-at is the revision the tree sat on when the run
+               happened; the committed copy is one commit ahead of that
+               line by construction, so this file never names its own tip.
+------------------------------------------------------------
+## 1. Mining window — resolved from RUN TIME, never the calendar date
+Bounds are the window THIS PASS resolved, frozen so a re-run reproduces
+them. A ROW is selected by its own timestamp and a SESSION by
+COALESCE(last_activity_at,started_at), so the two are different sets by
+construction; the counts are reconciled explicitly rather than left
+looking inconsistent.
+cmd: sqlite3 file:~/.hermes/state.db?mode=ro, PRAGMA query_only=1
+WINDOW (frozen)             : 2026-10-24 23:42:30 .. 2026-10-25 23:16:42   (23.57 h)
+previous pass last_activity : 2026-10-24 23:42:30
+non-overlap assertion       : PASS (window starts at the previous pass's own end, by 23.57 h of coverage)
+sessions, activity bound in window : 11   by source: {'cron': 11}
+user rows (active=1) in window     : 13   from 12 distinct session(s)
+  row's session bound ALSO in window : 11
+  row's session bound outside window : 2  (a gateway carrier session whose bound is stale, or this run)
+  machine-authored         : 13  (cron task prompts + [Cron delivery:] rows)
+  OPERATOR PROSE           : 0
+window-non-empty assertion : PASS
+all rows in window (any role)      : 1369   (the window is non-empty; the 13 user rows above are the only human-transport candidates)
+------------------------------------------------------------
+## 2. Skill source parity — read-only --check (never regenerates)
+cmd: python3 ops/scripts/manage/check-skill-drift-parity.py --check
+artifact matches the live derivation
+rc=0
+verdict: PASS — this is the STRANDED direction only. §6 reads the
+         doctor's own Skill drift line, which measures the opposite
+         (repo-ahead) direction; a PASS here is not a deploy being
+         current, so both are captured.
+------------------------------------------------------------
+## 3. What this pass landed — the stale instruction, all 4 instances
+The claim removed (byte-exact, extracted from the baseline revision, not
+retyped from memory):
+   cmd: git show 3d6d20c4:skills/devops/loop-governance/SKILL.md | grep -F '<marker>'
+**Interpreter reads of repo scripts are write-class — point scheduled passes at the deployed copy (2026-09-26):** the read-only allowlist never covers interpreter forms, so `python3 ~/hermes-cortex/ops/scripts/manage/task-db.py list --board` — a pure listing — demands a lock because the path sits inside the governed repo; the Sep 26 evening pass burned 8+ calls retrying it. Lock-free pattern: run the deployed c
+
+Why it is wrong: it says the deployed copy's LOCATION makes the call
+lock-free. The classifier does not look at the script's path — a
+write-class call needs a RESOLVED GOVERNED REPO (a path-like argument on
+the call, else the repo the SESSION already resolved). Measured below.
+
+Instances corrected (grep -cF of the removed marker, must be 0 in each):
+   skills/devops/loop-governance/SKILL.md :: 'repo gate never engages'=0  'stay lock-free'=0
+   skills/devops/approval-gate-debugging/SKILL.md :: 'repo gate never engages'=0  'stay lock-free'=0
+   ops/scripts/install/install-orch-crons.sh :: 'repo gate never engages'=0  'stay lock-free'=0
+   ops/install/cron-manifest.yaml :: 'repo gate never engages'=0  'stay lock-free'=0
+
+Tree-wide sweep — the marker this pass REMOVED must be gone everywhere
+(the count below is of the removed marker only, so a different phrase
+that is still true cannot inflate it):
+   lines still carrying 'repo gate never engages' : 0
+
+For completeness, the broader phrase sweep (both phrasings) — every
+remaining line is listed so a completed sweep is distinguishable from one
+that stopped early. A different phrase with a true meaning is not the flaw
+this pass removed:
+     skills/devops/governance-closeout/SKILL.md:910:`search_files`), which stay lock-free. Never take a lock merely to inspect: the lock's lifetime is
+
+The rule the four files now carry (from the loop-governance copy):
+**Interpreter reads of repo scripts are write-class — point scheduled passes at the deployed copy (2026-09-26):** the read-only allowlist never covers interpreter forms, so `python3 ~/hermes-cortex/ops/scripts/manage/task-db.py list --board` — a pure listing — demands a lock because the path sits inside the governed repo; the Sep 26 evening pass burned 8+ calls retrying it. Lock-free pattern: keep read compound
+
+The pass's OWN recipe gap, added to the skill this pass runs:
+- **The pass's FIRST call dies on the enforcer's third block shape, and it is not a lock problem**
+------------------------------------------------------------
+## 4. The mechanism, measured — the old reason refuted
+a) '~/.hermes-cortex is not a git repo' is TRUE, and irrelevant:
+   cmd: git -C ~/.hermes-cortex rev-parse --show-toplevel
+fatal: not a git repository (or any of the parent directories): .git
+   rc=128  (128 = not a repository, so the deployed path resolves no repo
+   and cannot be the reason any call ever passed)
+
+b) the deployed-copy read DOES pass from a non-governed cwd — with a cycle
+   open, which is what gives the SESSION its repo:
+   cmd: python3 ~/.hermes-cortex/scripts/task-db.py list --repo ALL --claimable --limit 3
+   (from cwd=~, run while this cycle holds its lock)
+ID         PR  PROJECT            CONTENT
+72dc920b   2   kaesa-90day        ↳ Phase 1 Foundation (wk 1-2) — build audience: IG grid stra
+c711e28d   2   kaesa-90day        Phase 2 BTS Depth (wk 3-4) — build trust: behind-the-scenes 
+4f099ae2   2   kaesa-90day        Phase 3 Pre-Launch (wk 5-6) — build anticipation: teasers, p
+claimable: 15 (showing 3)
+... 12 more — raise --limit
+   rc=0
+   => the 'DEPLOYED copy' is not what made it work; the session's resolved
+      repo is. Order (begin_change first) is the fix, not the path.
+
+c) provenance of the REFUSAL side, labelled because it is NOT re-runnable
+   from here: the refusal quoted in the cycle note — 'No governed repo
+   could be resolved for this call' — was captured from this pass's FIRST
+   tool call, before any repo was resolved. It cannot be re-produced in
+   this artifact because the session now holds a lock; an independent
+   measurement of the same shape was made by the orch-task-morning-pass job
+   earlier the same day. Stated as provenance, not as a count measured here.
+------------------------------------------------------------
+## 5. Checks on the changed files
+cmd: bash -n ops/scripts/install/install-orch-crons.sh
+rc=0
+
+cmd: python-with-module.sh yaml <validator> ops/install/cron-manifest.yaml
+     (bare python3 here has no PyYAML, so the repo's own resolver picks one)
+yaml ok: keys=['crons', 'version'] jobs=73
+orch-task-morning-pass present: True
+rc=0  (3 would mean no interpreter could import yaml)
+
+cmd: adversarial-verify.py --file ops/scripts/install/install-orch-crons.sh --level A4 --gate
+📊 Summary: 1 file(s), 0 finding(s)
+   ✅ No findings — but standard tests should still pass!
+✅ GATE_PASSED — no critical/high findings
+rc=0
+
+cron_manifest.py --check — the orphan count is PRE-EXISTING, not this
+range's. The baseline revision is extracted into a worktree and the same
+check is run on BOTH sides; the baseline is ASSERTED to be the pre-change
+revision by the marker the fix removed.
+   baseline worktree HEAD : 3d6d20c4   (asserted == 3d6d20c4)
+   baseline carries the removed marker : 1 (must be >=1, else
+     the extraction is not the pre-change revision and nothing is claimed)
+   BOTH sides run under the repo's yaml-capable resolver: the bare python3
+   here has no PyYAML, so load_manifest() returns an EMPTY list and every
+   live cron reads as an orphan on BOTH sides — identical numbers from a
+   check that measured nothing. The declared-entry counts are printed to
+   make that vacuity detectable rather than invisible.
+   manifest entries parsed at 3d6d20c4 : 73
+   manifest entries parsed in working tree    : 73
+   ORPHAN lines at 3d6d20c4 : 1
+   ORPHAN lines in working tree     : 1
+   => identical WITH a parsed manifest on both sides, so this count
+      predates the range and is NOT evidence about it in either direction.
+------------------------------------------------------------
+## 6. Post-deploy state — the deploy is a MANUAL step, this asserts its result
+Manual step, run OUTSIDE this generator before the capture (so the checks
+below describe a state this script did not create):
+   bash ~/.hermes-cortex/scripts/cortex-dogfood.sh --force
+Its own verdict was DOGFOOD PASSED with 0 fail; that line is not quoted
+here as a measurement, because a reader can re-run the command — what is
+asserted instead is the CONTENT the deploy was supposed to deliver.
+
+Deployed == repo, asserted by the marker this pass added (must be >=1 in
+each, or the fleet did not receive the lesson):
+   skills/devops/loop-governance/SKILL.md :: repo=1  deployed=1   (marker: A DEPLOYED copy is NOT lock-free)
+   skills/devops/approval-gate-debugging/SKILL.md :: repo=1  deployed=1   (marker: RESOLVED GOVERNED REPO)
+   skills/hermes-agent/soul-refinement/SKILL.md :: repo=1  deployed=1   (marker: dies on the enforcer's third block shape)
+
+cmd: python3 ops/scripts/manage/cortex-doctor.py --quiet
+  ✅ Skill drift
+  ⚠️  Overall: WARNING  (490 pass · 6 warn · 0 fail · 3 info)  · 1 undisposed
+  🧹 UNDISPOSED — 1 warning/info check(s) nobody has decided about
+doctor rc=1 (rc=1 while warnings stand; the per-check lines above
+  are the verdicts and are captured with their counts)
+------------------------------------------------------------
+## 7. Leftovers — DECIDED, not deferred
+   docs/evidence/morning-task-pass-2026-10-25
+      untracked, NOT this pass's: another session's in-flight work.
+      decision: reported by path, left untouched — landing or deleting
+      a peer's file needs their action or operator approval (SOUL P9/P7).
+   docs/evidence/weekly-dream-content-2026-10-24.md.tmp
+      untracked, NOT this pass's: another session's in-flight work.
+      decision: reported by path, left untouched — landing or deleting
+      a peer's file needs their action or operator approval (SOUL P9/P7).
+------------------------------------------------------------
+## 8. Tree state at run time
+ M ops/evidence/soul-refinement-2026-10-25.sh
+?? docs/evidence/morning-task-pass-2026-10-25/
+?? docs/evidence/soul-refinement-2026-10-25.txt
+?? docs/evidence/weekly-dream-content-2026-10-24.md.tmp
+(untracked entries are §7's peers' work, named rather than described so
+ the lines above stay checkable)
+------------------------------------------------------------
+## 9. Verdict
+ALL DECISIVE CHECKS PASSED (0 failed) — the sections above may be read
+as the pass's evidence.
