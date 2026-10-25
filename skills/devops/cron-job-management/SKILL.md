@@ -328,6 +328,20 @@ Note: The `create_cron` function in install scripts collects the toolsets
 parameter ($6) but does NOT pass it via the CLI (the CLI doesn't support
 `--enabled-toolsets`). Always set toolsets via `cronjob action='update'`.
 
+**⚠️ GATE-1 deadlock: an LLM cron whose `enabled_toolsets` lacks the
+`skills` toolset can never pass the governance skills-gate (2026-10-26).**
+The enforcer's Gate 1 requires the 7 always-skills to be loaded via
+`skill_view`, which is only present when the toolset includes `skills`
+(`tool_search`/`tool_describe` alone won't do it — the gate checks the
+loaded-skill marker, not the search tools). A cron restricted to
+`["terminal","file"]` hits the gate on its first write and every write after,
+deadlocking the run indefinitely — the scheduler records the failure as
+`exit 127` with the gate message, and no manual run can clear it either
+(same restricted toolset). Dream-tier installers were fixed 2026-09-30 to
+use `["terminal","file","skills","session_search"]`; do the same for ANY
+LLM cron you constrain. A `no_agent` script cron needs no toolsets — keep
+them unset there.
+
 ### Cost Impact
 
 For 9 LLM-driven crons updated July 2026:
