@@ -71,7 +71,16 @@ metadata:
    - Send → Consume (pending→processing→archived) → Process (handler log)
      → Respond (EXEC_RESULT in your inbox) → Read (you query it) →
      Inbox-verify (you confirm the result yourself, not via a secondhand
-     Telegram). Check BOTH `bus.messages` and `bus.archives`.
+     Telegram).
+   - Read the result back with **`mcp__agent_bus__bus_inbox_peek`**:
+     `queue="inbox_orchestrator"` for a result still pending, `archived=true`
+     for one the handler has already processed — a pending-only peek is the
+     usual reason "the result was never sent" turns out to be wrong. Match the
+     entry on the `correlation_id` you sent (`inbox_send`/`inbox_send_task`
+     carry it). Peek is GET-only and never consumes, so the check cannot
+     destroy the evidence it is observing. Do NOT verify with `inbox_read` (it
+     dequeues `inbox_<self>` — it consumes) or with the `bus.archives` SQL
+     route from a cron session (enforcer-gated).
 
 5. **Close the task with evidence**:
    ```bash
