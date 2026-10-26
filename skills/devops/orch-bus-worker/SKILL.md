@@ -158,5 +158,15 @@ metadata:
   say so with the reason. Never archive/complete without real verification.
 - **Bus sends REFUSE without `--self-tested` when using `hc`** — the flag is
   a gate, not a formality. Prove the flow on yourself first.
+- **A sibling cron's evidence may be sitting UNTRACKED on disk.** When a pass
+  reports a commit but its job lacks the `skills` toolset, the reflexion gate
+  refuses it and the artifacts stay uncommitted — the pass's own words say
+  "commit refused" while its evidence directory is still `??` in `git status`.
+  Run `git status --porcelain` at the START of the loop; landing such an orphan
+  (load the gate's skill with `skill_view`, then `git commit -m '<one line>' --
+  <dir>`) is a real, verified completion, and it is the only way the fleet's
+  morning/test evidence becomes durable. Untracked paths need `git add -N <dir>`
+  first: `git commit -- <untracked-path>` fails with "did not match any file(s)".
+  Never assume a pass that reported a commit actually landed one.
 - **No fabricating results.** If the agent didn't respond or the EXEC failed,
   report that. A completed task without EXEC_RESULT evidence is a lie.
