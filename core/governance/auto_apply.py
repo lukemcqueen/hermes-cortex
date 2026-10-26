@@ -15,6 +15,7 @@ Usage:
     python3 auto_apply.py --dry-run           # preview without applying
     python3 auto_apply.py --force             # bypass min_confidence check
     python3 auto_apply.py --json              # JSON output (for crons)
+    python3 auto_apply.py --days 30           # widen the evaluation window
 """
 
 import argparse
@@ -184,11 +185,13 @@ def main():
                         help="Output JSON (for cron consumption)")
     parser.add_argument("--db", default=DEFAULT_DB_PATH,
                         help=f"Database path (default: {DEFAULT_DB_PATH})")
+    parser.add_argument("--days", type=int, default=7,
+                        help="Evaluation window in days (default: 7)")
     args = parser.parse_args()
 
     # 1. Run the evaluator to generate a patch
     ev = LoopEvaluator(args.db)
-    patch = ev.generate_config_patch()
+    patch = ev.generate_config_patch(args.days)
     ev.close()
 
     patch_changes = patch.get("changes", {})

@@ -122,7 +122,16 @@ TOOLS["score_cycle.py"]="score-cycle"
 TOOLS["loop_feedback.py"]="loop-feedback"
 TOOLS["auto_apply.py"]="auto-apply"
 TOOLS["loop_config.py"]="loop-config"
-TOOLS["session_cache.py"]="session-cache-build"
+
+# session-cache-build points at the CANONICAL session cache builder, which is
+# deployed by cortex-update.sh to ~/.hermes-cortex/scripts/ and is the same
+# script the agent-session-cache-build cron invokes. It used to point at a stale
+# tools/loop-governance/session_cache.py duplicate that was never in the deploy
+# register: its module-level `from hermes_models import get_model` raised
+# ModuleNotFoundError from that directory, so the CLI died before doing any work.
+# INSTALL_DIR is <home>/.hermes-cortex/tools/loop-governance, so the canonical
+# script sits two levels up in scripts/.
+TOOLS["../../scripts/agent-session_cache.py"]="session-cache-build"
 
 CREATED=0
 for src in "${!TOOLS[@]}"; do

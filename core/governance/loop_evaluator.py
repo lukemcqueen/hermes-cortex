@@ -490,7 +490,7 @@ class LoopEvaluator:
 
         # ── Config Patch ──
         lines.append("## Config Patch Preview")
-        patch = self.generate_config_patch()
+        patch = self.generate_config_patch(days)
         if patch["changes"]:
             lines.append(f"```json")
             lines.append(json.dumps(patch, indent=2))
@@ -501,8 +501,12 @@ class LoopEvaluator:
 
         return "\n".join(lines)
 
-    def generate_config_patch(self) -> Dict[str, Any]:
+    def generate_config_patch(self, days: int = 7) -> Dict[str, Any]:
         """Generate a config patch JSON with recommended changes.
+
+        `days` scopes every recommendation query to the same window the report
+        claims (default 7). Omitting it here while the recommendation methods
+        require it raised NameError, so auto-apply and `--config-patch` crashed.
 
         Output is structured for auto-apply:
         {
@@ -597,12 +601,12 @@ if __name__ == "__main__":
             "accuracy": ev.get_decision_accuracy(days),
             "threshold_recs": ev.get_threshold_recommendations(days),
             "weight_recs": ev.get_weight_recommendations(days),
-            "config_patch": ev.generate_config_patch(),
+            "config_patch": ev.generate_config_patch(days),
         }
         print(json.dumps(result, indent=2))
 
     elif output_format == "config_patch":
-        print(json.dumps(ev.generate_config_patch(), indent=2))
+        print(json.dumps(ev.generate_config_patch(days), indent=2))
 
     else:
         print(ev.generate_report(days=days))

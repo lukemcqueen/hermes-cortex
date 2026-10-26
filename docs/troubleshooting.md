@@ -1082,12 +1082,15 @@ ls -la ~/.hermes/plugins/governance-enforcer/  # should show plugin.yaml, __init
 
 **Fix — rebuild the session cache:**
 ```bash
-PYTHONPATH=~/.hermes/scripts python3 ~/.hermes-cortex/tools/loop-governance/session_cache.py build
+session-cache-build build
+# or, explicitly against the canonical builder:
+python3 ~/.hermes-cortex/scripts/agent-session_cache.py build
 ```
 
 Requires:
 - Ollama running with `nomic-embed-text:v1.5` pulled
-- `~/.hermes/scripts/hermes_models.py` on PYTHONPATH
+- `hermes_models.py` importable — the canonical builder resolves it itself via a
+  sys.path fallback, so no `PYTHONPATH` is needed
 
 ### 23. scoring-activity-watchdog fails: "DB not found"
 

@@ -33,7 +33,7 @@ ls -la ~/.hermes-cortex/data/loop-governance.db
 
 ### Session Cache Path Mismatch
 
-The `session_cache.py` script may look for data in wrong locations.
+The `agent-session_cache.py` script may look for data in wrong locations.
 
 **Symptom:** `session-cache-build build` reports 0 new embeddings even though sessions/cycles/skills exist.
 
@@ -44,8 +44,8 @@ The `session_cache.py` script may look for data in wrong locations.
 
 **Check:**
 ```bash
-grep -E 'SESSION_DIR|SKILLS_DIR|SESSION_JSON' ~/.hermes-cortex/tools/loop-governance/session_cache.py
-grep -E 'SELECT.*FROM' ~/.hermes-cortex/tools/loop-governance/session_cache.py
+grep -E 'SESSION_DIR|SKILLS_DIR|SESSION_JSON' ~/.hermes-cortex/scripts/agent-session_cache.py
+grep -E 'SELECT.*FROM' ~/.hermes-cortex/scripts/agent-session_cache.py
 ```
 
 **Fix:** Patch the paths and column names to match your actual deployment.
@@ -59,11 +59,17 @@ ls -la ~/.hermes-cortex/data/session-embeddings.db
 
 If missing, build it:
 ```bash
-PYTHONPATH=~/hermes-cortex/ops/scripts:~/.hermes/scripts \
-  python3 ~/.hermes-cortex/tools/loop-governance/session_cache.py build
+session-cache-build build
+# or, explicitly against the canonical builder:
+python3 ~/.hermes-cortex/scripts/agent-session_cache.py build
 ```
 
-Expected output: some number of session, cycle, and skill embeddings.
+Expected output: some number of session, cycle, and skill embeddings
+
+The builder resolves `hermes_models.py` itself (sys.path fallback), so no
+`PYTHONPATH` is required. `session-cache-build` symlinks to that same canonical
+script — it used to point at a stale tools/loop-governance/ duplicate that could
+not import `hermes_models` from that directory and died on every invocation.
 
 ### CLI Symlinks
 

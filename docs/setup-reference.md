@@ -262,7 +262,7 @@ This replaces the previous three-model stack with a single **`qwen2.5:3b`** mode
 | `model-health-watchdog.py` | `JUDGE_MODEL` |
 | `system-alert-watchdog.py` | `EMBEDDING_MODEL` |
 | `loop_scorer.py` | `EMBEDDING_MODEL` |
-| `session_cache.py` | `EMBEDDING_MODEL` |
+| `agent-session_cache.py` | `EMBEDDING_MODEL` |
 | `loop-gov-mcp.py` | `EMBEDDING_MODEL` |
 | `offline_code.py` | `EMBEDDING_MODEL`, `CODING_MODEL` |
 | `lessons.py` | `EMBEDDING_MODEL` |
