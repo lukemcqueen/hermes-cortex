@@ -1,0 +1,32 @@
+    id    | kind  | status  | priority | asg | plan_null | corr | dep 
+----------+-------+---------+----------+-----+-----------+------+-----
+ 66914fe1 | slice | blocked |        2 | -   | t         | -    | -
+ 6b7d9b8a | slice | blocked |        2 | -   | t         | -    | -
+ 2fc4d871 | slice | blocked |        1 | -   | t         | -    | -
+ c579ef95 | story | pending |        3 | -   | t         | -    | -
+ 72dc920b | slice | pending |        2 | -   | f         | -    | -
+ 82310c5e | story | pending |        2 | -   | t         | -    | -
+ caed9076 |       | pending |        2 | -   | t         | -    | -
+ a6fc254a |       | pending |        2 | -   | t         | -    | -
+ a512e32a | slice | pending |        2 | -   | f         | -    | -
+ 7de776dd |       | pending |        2 | -   | t         | -    | -
+ ca282975 | slice | pending |        2 | -   | f         | -    | -
+ 1e8737fc | slice | pending |        2 | -   | t         | -    | -
+ 40cb307d | slice | pending |        2 | -   | t         | -    | -
+ 4beea4e1 |       | pending |        2 | -   | t         | -    | -
+ 482de205 |       | pending |        2 | -   | t         | -    | -
+ 1e4198ae |       | pending |        2 | -   | t         | -    | -
+ 0008c2ce | slice | pending |        2 | -   | f         | -    | -
+ c711e28d | slice | pending |        2 | -   | f         | -    | -
+ 4f099ae2 | slice | pending |        2 | -   | f         | -    | -
+ 9fb2ddb6 |       | pending |        2 | -   | t         | -    | -
+ a40e0282 | slice | pending |        2 | -   | f         | -    | -
+ 1d09760f | slice | pending |        1 | -   | t         | -    | -
+ 5c2f135b | slice | pending |        1 | -   | t         | -    | -
+ 17471ede | slice | pending |        1 | -   | t         | -    | -
+ ac53a833 | slice | pending |        1 | -   | t         | -    | -
+ cbba59f8 | slice | pending |        1 | -   | t         | -    | -
+ 02c20c1a | slice | pending |        1 | -   | t         | -    | -
+ 00562f6c | story | pending |        1 | -   | t         | -    | -
+(28 rows)
+

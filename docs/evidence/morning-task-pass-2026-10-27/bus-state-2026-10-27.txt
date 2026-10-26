@@ -1,0 +1,36 @@
+# live bus, read-only (hc inbox = HTTP bus CORTEX_BUS_URL)
+# captured-at: 2026-10-27T07:55:35+09:00
+
+== hc depth ==
+📊 Queue depths:
+   inbox_esther                    0
+   inbox_fleet                     0
+   inbox_gisu                      0
+   inbox_health_check              3
+   inbox_joseph                    0
+   inbox_kustos                    0
+   inbox_moses                     1
+   inbox_orchestrator              2
+   inbox_titus                     0
+
+== hc inbox joseph ==
+📬 No pending messages in inbox_joseph.
+
+== hc inbox gisu ==
+📬 No pending messages in inbox_gisu.
+
+== hc inbox kustos ==
+📬 No pending messages in inbox_kustos.
+
+== hc inbox titus ==
+📬 No pending messages in inbox_titus.
+
+== hc inbox orchestrator ==
+📬 2 pending message(s) in inbox_orchestrator:
+
+  📩 [07:55:14] moses → DOCTOR_TEST
+     {'original_body': '{"test": true}', 'primary_msg_id': '3ede9eb3-ff99-43bc-9971-c97f360fc135', 'mirrored_from_queue': 'inbox_moses'}
+
+  📩 [07:55:22] titus → EXEC_RESULT
+     {'original_body': '{"success": true, "stdout": "{\\"agent\\": \\"titus\\", \\"generated_at\\": \\"2026-10-26T22:55:22+00:00\\", \\"audit\\": {\\"path\...
+
