@@ -78,7 +78,8 @@ esther  exit 0   install-bridge-killmode: all 59 bridge unit(s) already load Kil
 joseph  exit 0   install-bridge-killmode: all 45 bridge unit(s) already load KillMode=process — no reload needed
 titus   exit 0   install-bridge-killmode: not Linux — no user-systemd bridge — skipped
 gisu    exit -1  Script not found: install-bridge-killmode.sh
-kustos  (no EXEC_RESULT: message still pending in inbox_kustos at 14:53 KST)
+kustos  (no EXEC_RESULT read in this run — the answer exists; see the
+         "Follow-up pass" section below: 46/46 already correct at 14:45 KST)
 ```
 
 `joseph` is the material result: its units had NO `KillMode` before this run and
@@ -119,15 +120,45 @@ host and rewrote them.
 
 - esther — repaired, proven (59/59), unchanged.
 - joseph — **repaired this run** (45/45, deploy at `ff4db13c`).
-- kustos — fast-forward repair dispatched; EXEC consumed and the deploy ran; the
-  verification EXEC was still pending in `inbox_kustos` when this run ended →
-  **unverified, re-probe next pass** (do not report kustos as fixed).
+- kustos — **REPAIRED and VERIFIED** the same day (see the follow-up pass below).
+  The "still pending" reading above is superseded: kustos consumed the EXEC at
+  14:45:08 KST and answered `all 46 bridge unit(s) already load KillMode=process`.
 - titus — not applicable (macOS).
 - gisu — out of bus reach (stale deployed tree + divergent branch) → operator.
 
-`3c94beac` therefore stays **in_progress**: the row's own acceptance rule is
-"do NOT report the fleet as fixed until each host's check passes", and kustos is
-unverified and gisu is not repairable from the bus.
+The row's own acceptance rule ("do NOT report the fleet as fixed until each host's
+check passes") is still honoured: gisu's check does not pass and titus has no check
+to pass, so neither is reported fixed.
+
+## Follow-up pass — 2026-10-26 20:2x KST: kustos verified
+
+Read back from the bus archives in this pass (`bus_archives`, `since_minutes=1440`,
+`limit=2000`, matched on the exact `correlation_id`):
+
+```
+inbox_kustos  EXEC        corr=exec-510ff2b55ab6  from=esther
+  body={"command": "install-bridge-killmode.sh", "params": [], "timeout": 120, "output_schema": "RAW"}
+  enqueued 2026-10-26 05:39:14.092818+00  archived 2026-10-26 05:45:08.850551+00  state=processing
+inbox_moses   EXEC_RESULT corr=exec-510ff2b55ab6  from=kustos
+  body={"success": true, "stdout": "install-bridge-killmode: all 46 bridge unit(s) already load KillMode=process — no reload needed\n", "stderr": "", "exit_code": 0, "command": "install-bridge-killmode.sh", "duration_seconds": 0.4, "topic": "fleet-update"}
+  enqueued 2026-10-26 05:45:09.503539+00  archived 2026-10-26 05:50:25.858296+00
+```
+
+(UTC; +09:00 = KST → send 14:39:14, consume 14:45:08, reply 14:45:09.)
+
+6-checkpoint: send (request in `inbox_kustos`) → consume (`archived_at` 05:45:08)
+→ process (handler ran, 0.4 s) → respond (`EXEC_RESULT`, same `correlation_id`)
+→ read (archives) → inbox-verify (this pass's own read, matched on the id — no
+secondhand report).
+
+Verified host state for the KillMode rollout, each by that host's own output:
+esther 59/59, joseph 45/45, kustos 46/46; titus N/A (macOS); gisu unrepaired and
+not bus-reachable (`Script not found`; repo 235 behind / 62 ahead → operator).
+
+Lesson for the read-back: widen `since_minutes` past the run's own look. This
+result was archived six minutes after the request and was older than the 60-minute
+default window once five-minute `DOCTOR_TEST` heartbeats had flooded the queue;
+a 2000-message / 1440-minute archive read is what found it.
 
 ## Re-run
 
