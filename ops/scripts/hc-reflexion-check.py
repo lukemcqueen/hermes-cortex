@@ -46,6 +46,14 @@ from pathlib import Path
 GOV_DIR = Path.home() / ".hermes-cortex" / "state"
 DEFAULT_SKILL = "reflexion-check"
 
+# The cron store this host runs its jobs from. Read ONLY to diagnose a refusal
+# (never to answer the gate's question): see automated_session_job_hint.
+DEFAULT_JOBS_FILE = Path.home() / ".hermes" / "cron" / "jobs.json"
+# Hermes builds an automated session id as cron_<job_id>_<YYYYmmdd>_<HHMMSS> / bg_<...>.
+AUTOMATED_SESSION_PREFIXES = ("cron_", "bg_")
+# The Hermes toolset that carries skill_view/skills_list (hermes_cli/tools_config.py).
+SKILLS_TOOLSET = "skills"
+
 EXIT_LOADED = 0
 EXIT_NOT_LOADED = 1
 EXIT_USAGE = 2
@@ -152,6 +160,75 @@ def skill_loaded(skill: str, session_id: str) -> tuple[int, str]:
     return EXIT_NOT_LOADED, f"NOT-LOADED {skill} (session {session_id})"
 
 
+def _cron_job_id_from_session(session_id: str) -> str:
+    """Job id embedded in an automated session id (`cron_<job_id>_<timestamp>`), else "".
+
+    A background session uses the `bg_` prefix. An id whose first token after the prefix
+    is empty yields "" so the caller says nothing rather than naming a job it guessed.
+    """
+    for prefix in AUTOMATED_SESSION_PREFIXES:
+        if session_id.startswith(prefix):
+            return session_id[len(prefix):].split("_", 1)[0].strip()
+    return ""
+
+
+def _job_allowlist_without_skills(job: dict) -> list[str] | None:
+    """The job's explicit `enabled_toolsets` allowlist when it OMITS the skills toolset.
+
+    `None`/absent means "no per-job allowlist": the job then follows
+    `platform_toolsets.cron`, so this checker cannot claim a gap and claims nothing. An
+    explicit allowlist that DOES carry the skills toolset is equally not a gap.
+    """
+    toolsets = job.get("enabled_toolsets")
+    if not isinstance(toolsets, list) or not toolsets:
+        return None
+    if SKILLS_TOOLSET in toolsets:
+        return None
+    return [str(t) for t in toolsets]
+
+
+def automated_session_job_hint(session_id: str, jobs_file: "Path | None" = None) -> list[str]:
+    """Lines naming the FIX when an automated session's job cannot present skill_view.
+
+    POSITIVE EVIDENCE ONLY: the session id is automated, its job id resolves in the cron
+    store, and that job carries an explicit `enabled_toolsets` allowlist WITHOUT the skills
+    toolset — so Hermes registers no skill tool in that session and the enforcer hook can
+    never record a load: the gate's evidence is structurally impossible FOR THAT JOB, and
+    telling the agent to "load the skill" is advice it cannot act on.
+
+    Every other case returns [] — interactive session, unknown job, absent/unreadable
+    store, no per-job allowlist: the gate never speculates about a cause it cannot see.
+    This only DIAGNOSES; it never changes the answer or the exit code.
+    """
+    job_id = _cron_job_id_from_session(session_id)
+    if not job_id:
+        return []
+    path = Path(jobs_file) if jobs_file is not None else DEFAULT_JOBS_FILE
+    try:
+        data = json.loads(path.read_text())
+    except (OSError, ValueError):
+        return []
+    jobs = data.get("jobs", data) if isinstance(data, dict) else data
+    if not isinstance(jobs, list):
+        return []
+    for job in jobs:
+        if not isinstance(job, dict) or str(job.get("id") or "") != job_id:
+            continue
+        toolsets = _job_allowlist_without_skills(job)
+        if toolsets is None:
+            return []
+        name = str(job.get("name") or job_id)
+        return [
+            f"  This session's cron job '{name}' ({job_id}) carries an explicit",
+            f"  enabled_toolsets allowlist without '{SKILLS_TOOLSET}' ({', '.join(toolsets)}),",
+            "  so no skill tool is registered and a load can never be recorded.",
+            "  Fix the JOB, not the gate: give it the 'skills' toolset — set it for that job",
+            "  via the cron API, or add 'skills' to platform_toolsets.cron in config.yaml",
+            "  ('hermes cron edit' has no --enabled-toolsets flag).",
+        ]
+    return []
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(
         prog="hc-reflexion-check",
@@ -176,6 +253,12 @@ def main() -> int:
     code, message = skill_loaded(a.skill.strip(), session_id)
     stream = sys.stdout if code == EXIT_LOADED else sys.stderr
     print(message, file=stream)
+    if code == EXIT_NOT_LOADED:
+        # Diagnosis only, and only where it can be POSITIVE: an automated session whose job
+        # provably cannot register a skill tool (see automated_session_job_hint). The store-
+        # unreachable branch is left exactly as it was — one line, rc 3, fail-closed.
+        for line in automated_session_job_hint(session_id):
+            print(line, file=stream)
     return code
 
 

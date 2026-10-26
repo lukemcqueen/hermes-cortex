@@ -1,0 +1,11 @@
+# raw reading of /home/esther/.hermes/cron/jobs.json  (mtime 1793021202547593315, size 91255 B)
+# Command: a read-only `json.load` of that path (deleted payload) that printed ONLY the
+# two orchestrator jobs' identity + toolset fields. This file IS the committed record:
+# the source is a DEPLOYED live file and cannot itself be committed from the repo.
+# jobs in store: 29
+name=orch-task-morning-pass id=f6694d02d29c
+  enabled_toolsets=['terminal', 'web', 'file']
+  skills=[] skill=None
+name=orch-bus-worker id=1954deb5ad76
+  enabled_toolsets=None
+  skills=['orch-bus-worker'] skill='orch-bus-worker'
