@@ -1,0 +1,51 @@
+# SOUL refinement — 2026-10-26 mining window (FROZEN bounds)
+
+Frozen ON PURPOSE: the window is resolved from RUN TIME, so a generator re-run
+later derives different bounds and would print different counts for the same
+pass. Both bounds below are frozen as generator defaults (env-overridable via
+SOUL_NOW / SOUL_START) so this artifact never contradicts the cycle note it
+documents. See the skill's Pitfalls on count drift.
+
+  SOUL_NOW   = 2026-10-26 23:15:14   (epoch 1793024114.000)
+  SOUL_START = 2026-10-25 23:15:14   (epoch 1792937714.000)
+  WINDOW     = 24.00 h ending at SOUL_NOW
+
+## Resolved counts (frozen bounds)
+
+| Measure | Value |
+|---|---|
+| Sessions active in window (source: 100% cron) | 26 |
+| `role='user'` rows in window (active=1: 26) | 26 |
+| Rows in a NON-cron session | 0 |
+| Operator (human-transport) prose rows | 0 |
+
+A ROW is selected by its own `timestamp`; a SESSION by
+`COALESCE(last_activity_at, started_at)` — different sets by construction, so
+a row can belong to a session whose bound sits outside the window.
+
+## Classification (per skill: classify BEFORE reading)
+
+The window's 26 user rows are every one of them a scheduled job's own task
+prompt (`[IMPORTANT: You are running as a scheduled cron job` /
+`[IMPORTANT: The user has invoked the "<skill>" skill`), i.e. the machine-marker
+class. Re-checked with the bound loosened to 2026-10-25 00:00: 39 user rows,
+still 0 in a non-cron session.
+
+Non-cron transport activity is genuinely absent: the newest non-cron session of
+ANY source on this host is 2026-10-23 (a telegram session); since 2026-10-25
+00:00 the only non-cron row is a `[Cron delivery: local-agent-daily-ai-brief]`
+carrier. So this is a real zero-operator window, not an empty/bound bug — the
+zero is shown to be a zero rather than reported as one.
+
+## Deliverable
+
+No principle change: with zero operator corrections there is nothing to
+strengthen, add, or promote to a gate. Fleet-hygiene re-measurement instead
+(per skill: a parity PASS is not the deploy being current — read BOTH
+directions):
+
+  check-skill-drift-parity.py  -> PASS  0 stranded / 0 absent / 988 in sync
+  doctor `Skill drift` line    -> 386 skills in sync, 135 Hermes defaults skipped
+
+Both directions clean, so nothing to reconcile or deploy. No change.
+
