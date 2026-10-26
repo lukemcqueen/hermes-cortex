@@ -74,7 +74,7 @@ unreachable, and the rc-3 branch stays a single line (pinned by
 ### 1. RED — the new test against the pre-change verifier (named failures)
 
 ```
-$ /home/esther/.hermes-cortex/venv/bin/python -m pytest tests/test_reflexion_check_cron_diagnostic.py -q
+$ $HOME/.hermes-cortex/venv/bin/python -m pytest tests/test_reflexion_check_cron_diagnostic.py -q
 collected 10 items
 tests/test_reflexion_check_cron_diagnostic.py F........F                 [100%]
 FAILED test_cron_session_without_skills_toolset_names_the_job_and_the_fix
@@ -93,7 +93,7 @@ revisions, which is why they are separated from the two decisive failures.
 ### 2. GREEN — after the change (hermetic: stub store + temp jobs.json)
 
 ```
-$ /home/esther/.hermes-cortex/venv/bin/python -m pytest tests/test_reflexion_check_cron_diagnostic.py -q
+$ $HOME/.hermes-cortex/venv/bin/python -m pytest tests/test_reflexion_check_cron_diagnostic.py -q
 tests/test_reflexion_check_cron_diagnostic.py ..........                 [100%]
 10 passed in 0.68s
 ```
@@ -163,7 +163,7 @@ disposition is recorded here rather than by re-review.
 
 ```bash
 cd ~/hermes-cortex
-/home/esther/.hermes-cortex/venv/bin/python -m pytest tests/test_reflexion_check_cron_diagnostic.py -q   # expect 10 passed
+$HOME/.hermes-cortex/venv/bin/python -m pytest tests/test_reflexion_check_cron_diagnostic.py -q   # expect 10 passed
 bash tests/test-reflexion-gate-repoint.sh                                                                # expect 17 passed, 0 failed
 python3 ops/scripts/hc-reflexion-check.py --session cron_f6694d02d29c_20261026_073743                     # expect rc 1 + the job's config named
 ```
