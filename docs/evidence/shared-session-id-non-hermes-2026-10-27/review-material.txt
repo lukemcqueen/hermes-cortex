@@ -1,0 +1,301 @@
+PROVENANCE (facts, not conclusions):
+range: afdb3bd6411bd0d91aa829e075093c3e577d017c..7c2066e2038069902ae3ae0efc64205373e785d5
+commits: 6c8904dd docs(evidence): reproduce shared governance session id / lock for non-Hermes agents; 7c2066e2 docs(evidence): pointer to the record, portable ANSI strip, regenerate transcript
+files: docs/evidence/shared-session-id-non-hermes-2026-10-27/run.sh (generator, bash), transcript.txt (its own output, 103 lines, 8838 bytes at capture)
+why this review exists: the close gate refused both closes for this range REVIEW_INCOMPLETE (own diff 262 then 108 lines > 50, split to per-blob coverage) and still minted a receipt with an empty reviewed_blobs; this recorded review is the review of record for the range.
+static gate: adversarial-verify.py passed on both files (A2) at commit time, per the pre-commit hook output.
+
+FULL DIFF BELOW
+
+diff --git a/docs/evidence/shared-session-id-non-hermes-2026-10-27/run.sh b/docs/evidence/shared-session-id-non-hermes-2026-10-27/run.sh
+new file mode 100644
+index 00000000..5f6c2bdc
+--- /dev/null
++++ b/docs/evidence/shared-session-id-non-hermes-2026-10-27/run.sh
+@@ -0,0 +1,175 @@
++#!/usr/bin/env bash
++# Evidence generator — does a non-Hermes harness give two agents in ONE repo
++# the same governance session id (and therefore the same lock file)?
++#
++# PROVENANCE (read this, not a conclusion): this script writes its own output
++# file. It drives the DEPLOYED loop-gov-mcp.py with every path redirected to a
++# sandbox (state dir, loop DB, HOME, cwd) — nothing in the live governance
++# store is read or written. Re-run it to reproduce the transcript:
++#
++#   bash docs/evidence/shared-session-id-non-hermes-2026-10-27/run.sh [outfile]
++#
++# Fields that are volatile by design: the module sha256 (changes on every
++# deploy), the mktemp sandbox paths, and the generated sess_* ids. The
++# transcript is normalised by ONE filter: $HOME -> ~ , ANSI colour stripped.
++#
++# Two processes are used per case (`python3 driver.py <mode>`) so each case
++# exercises the real per-process code path a Pi / Claude Code / CLI session
++# takes, not an in-process simulation.
++#
++# WHERE THE FINDING IS RECORDED (pointer, not an assertion): governance task
++# 'verify-session-id-scoping-across-agents', cycle 13849, task_events event 254
++# on the host that produced this transcript.
++#
++# DEPENDENCY POINTER: this file WRITES the file it is run against —
++# docs/evidence/shared-session-id-non-hermes-2026-10-27/transcript.txt is this
++# script's own output, committed in the same range. It reads nothing else of
++# this range; the module it probes is the deployed loop-gov-mcp.py named below.
++#
++# PORTABILITY: POSIX sh constructs only, no bash-4 syntax, no `declare -A`, no
++# unconditional `timeout`, no GNU-only flag; the hash helper falls back to
++# `shasum -a 256` when `sha256sum` is absent (macOS). Requires git, python3,
++# sed, awk, grep. Absent python3 the script fails loudly rather than emitting a
++# partial transcript.
++set -u
++
++HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
++OUT="${1:-$HERE/transcript.txt}"
++MCP="${PROBE_MCP:-$HOME/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py}"
++WORK="$(mktemp -d "${TMPDIR:-/tmp}/sessid-probe.XXXXXX")"
++
++_sha() {  # GNU and BSD
++  if command -v sha256sum >/dev/null 2>&1; then sha256sum "$1" | awk '{print $1}'
++  else shasum -a 256 "$1" | awk '{print $1}'; fi
++}
++
++_norm() {
++  # `\x1b` is a GNU sed extension; build the escape portably so BSD sed works too.
++  sed -e "s|${HOME}|~|g" -e "s/$(printf '\033')\[[0-9;]*[a-zA-Z]//g"
++}
++# Redirect the FILTER too: `exec > >(norm)` alone leaves no file (the process
++# substitution's stdout is the inherited one).
++exec > >( _norm > "$OUT" ) 2>&1
++
++cat <<EOF
++# Evidence: governance session id / lock scoping for NON-Hermes harnesses
++# generated-by: docs/evidence/shared-session-id-non-hermes-2026-10-27/run.sh
++# captured-at:  $(git -C "$HERE" rev-parse --short=12 HEAD 2>/dev/null || echo unknown)
++# module-probed: $MCP
++# module-sha256: $(_sha "$MCP")
++# volatile: module sha256, sandbox paths, generated sess_* ids
++# normalised: \$HOME -> ~, ANSI colour stripped (one filter, applied to every line)
++# record: governance task 'verify-session-id-scoping-across-agents', cycle 13849,
++#         task_events event 254 — the finding itself is recorded there, not here
++EOF
++
++# ── driver: imports the DEPLOYED module with every path redirected ──────────
++cat > "$WORK/driver.py" <<'PYEOF'
++import importlib.util, json, os, sqlite3, sys
++from pathlib import Path
++
++MCP = Path(os.environ["PROBE_MCP"]); STATE = Path(os.environ["PROBE_STATE"])
++LOOPDB = Path(os.environ["PROBE_LOOPDB"]); HOME = Path(os.environ["PROBE_HOME"])
++REPO = Path(os.environ["PROBE_REPO"])
++spec = importlib.util.spec_from_file_location("lgm_probe", MCP)
++m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
++m.GOVERNANCE_STATE_DIR = STATE; m.LOOP_DB = LOOPDB; m.HOME = HOME
++m.GOVERNANCE_REPO_PATH = MCP; m.GOVERNANCE_DEPLOY_PATH = MCP  # hermetic dogfood check
++os.chdir(REPO)
++
++mode = sys.argv[1]; task = sys.argv[2] if len(sys.argv) > 2 else ""
++def _p(label, text, n=300): print(f"{label}={text.replace(chr(10), ' | ')[:n]}")
++
++if mode == "id":
++    print("SESSION_ID=" + m.get_session_id(None))
++elif mode == "idarg":
++    print("SESSION_ID=" + m.get_session_id({"session_id": task}))
++elif mode == "begin":
++    print("SESSION_ID=" + m.get_session_id(None))
++    _p("BEGIN_RESULT", m._begin_change({"task_id": task, "description": "probe " + task}).content[0].text, 400)
++elif mode == "beginarg":
++    _p("BEGIN_RESULT", m._begin_change({"task_id": task, "description": "probe " + task,
++        "session_id": os.environ["PROBE_SID"]}).content[0].text, 300)
++elif mode == "beginarg2":
++    _p("BEGIN_RESULT", m._begin_change({"task_id": task, "description": "probe " + task,
++        "session_id": os.environ["PROBE_SID"], "repo_path": str(REPO)}).content[0].text, 300)
++elif mode == "score":
++    _p("SCORE_RESULT", m._feedback_accept({"task_id": task, "note": "probe score",
++        "completeness": 8, "quality": 8, "progress": 8}).content[0].text, 200)
++elif mode == "end":
++    _p("END_RESULT", m._end_change({"task_id": task}).content[0].text, 250)
++elif mode == "age":
++    f = next(iter(STATE.glob(".governance-*.json"))); d = json.loads(f.read_text())
++    d["heartbeat_at"] = "2026-01-01T00:00:00Z"; d["started_at"] = "2026-01-01T00:00:00Z"
++    f.write_text(json.dumps(d, indent=2))
++    print(f"AGED {f.name} heartbeat={d['heartbeat_at']} ttl={d.get('ttl_seconds')}")
++elif mode == "cycles":
++    c = sqlite3.connect(LOOPDB)
++    for r in c.execute("SELECT id, task_id, session_id, decision, user_overrode, "
++                       "substr(coalesce(unscored_reason,''),1,70) FROM loop_cycles ORDER BY id"):
++        print("CYCLE " + " | ".join(str(x) for x in r))
++elif mode == "locks":
++    for f in sorted(STATE.glob(".governance-*.json")):
++        d = json.loads(f.read_text())
++        print(f"LOCK {f.name} session_id={d.get('session_id')} task={d.get('task_id')} repo={d.get('repo_path')}")
++    print("PERSISTED=" + ", ".join(f"{f.name}={f.read_text().strip()}"
++          for f in sorted(STATE.glob(".session-*.id"))))
++PYEOF
++
++newcase() {
++  CASE="$WORK/$1"; mkdir -p "$CASE/state" "$CASE/home"; REPO="$CASE/repo"; mkdir -p "$REPO"
++  git init -q "$REPO"
++  git -C "$REPO" -c core.hooksPath=/nonexistent -c user.email=t@t.t -c user.name=t \
++      commit -q --allow-empty -m init
++  export PROBE_MCP="$MCP" PROBE_STATE="$CASE/state" PROBE_LOOPDB="$CASE/loop.db" \
++         PROBE_HOME="$CASE/home" PROBE_REPO="$REPO"
++  echo; echo "### $1   repo=$REPO"
++}
++run() { python3 "$WORK/driver.py" "$@" 2>&1 | grep -v 'mcp-server\]' | sed 's/^/    /'; }
++
++echo; echo "## A. two separate processes, ONE repo, no injected session id"
++newcase A-two-processes-same-repo
++echo "  [p1 id]";  run id
++echo "  [p2 id]";  run id
++echo "  [p1 begin task-a]"; run begin task-a
++echo "  [locks after p1]";  run locks
++echo "  [p2 begin task-b]"; run begin task-b
++echo "  [locks after p2]";  run locks
++
++echo; echo "## B. A scores its cycle, then B begins (lock still held)"
++newcase B-scored-then-peer
++echo "  [p1 begin task-a]"; run begin task-a
++echo "  [p1 score task-a]"; run score task-a
++echo "  [p2 begin task-b]"; run begin task-b
++
++echo; echo "## C. cross-session close: can B score and end A's cycle?"
++newcase C-cross-session-close
++echo "  [p1 begin task-a]"; run begin task-a
++echo "  [p2 score task-a]"; run score task-a
++echo "  [p2 end task-a]";   run end task-a
++echo "  [locks]";           run locks
++
++echo; echo "## D. explicit per-call session_id -> a separate lock"
++newcase D-explicit-sid
++echo "  [default id]";                 run id
++echo "  [explicit sid]";               run idarg sess_pi_probe123
++echo "  [p1 begin task-a (default)]";  run begin task-a
++echo "  [p2 begin task-b (explicit)]"; PROBE_SID=sess_pi_probe123 run beginarg task-b
++echo "  [locks]";                      run locks
++
++echo; echo "## E. explicit session_id without repo_path: what the lock records"
++newcase E-explicit-sid-repo-identity
++echo "  [explicit sid, no repo_path]";  PROBE_SID=sess_pi_probe_aaa run beginarg task-a
++echo "  [explicit sid + repo_path]";    PROBE_SID=sess_pi_probe_bbb run beginarg2 task-b
++echo "  [locks]";                       run locks
++
++echo; echo "## F. holder goes quiet past its TTL, peer begins -> same lock path"
++newcase F-aged-out-holder
++echo "  [p1 begin task-c]";     run begin task-c
++echo "  [age p1 lock]";         run age
++echo "  [p2 begin task-d]";     run begin task-d
++echo "  [locks after p2]";      run locks
++echo "  [cycles]";              run cycles
++echo "  [p1 end task-c]";       run end task-c
++
++echo; echo "## sandbox (deleted on reboot): $WORK"
+diff --git a/docs/evidence/shared-session-id-non-hermes-2026-10-27/transcript.txt b/docs/evidence/shared-session-id-non-hermes-2026-10-27/transcript.txt
+new file mode 100644
+index 00000000..202966a7
+--- /dev/null
++++ b/docs/evidence/shared-session-id-non-hermes-2026-10-27/transcript.txt
+@@ -0,0 +1,105 @@
++# Evidence: governance session id / lock scoping for NON-Hermes harnesses
++# generated-by: docs/evidence/shared-session-id-non-hermes-2026-10-27/run.sh
++# captured-at:  6c8904dde363
++# module-probed: ~/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py
++# module-sha256: c1a17cd979a16e14c3d5c84ce06e99aadcf38f2fee77e5c5aafc1c774066066f
++# volatile: module sha256, sandbox paths, generated sess_* ids
++# normalised: $HOME -> ~, ANSI colour stripped (one filter, applied to every line)
++# record: governance task 'verify-session-id-scoping-across-agents', cycle 13849,
++#         task_events event 254 — the finding itself is recorded there, not here
++
++## A. two separate processes, ONE repo, no injected session id
++
++### A-two-processes-same-repo   repo=~/.hermes/cache/scratch/sessid-probe.6VxeOB/A-two-processes-same-repo/repo
++  [p1 id]
++    SESSION_ID=sess_91c53e06bdad
++  [p2 id]
++    SESSION_ID=sess_91c53e06bdad
++  [p1 begin task-a]
++    SESSION_ID=sess_91c53e06bdad
++    BEGIN_RESULT=🔒 Governance session started: task-a — probe task-a | Lock file: ~/.hermes/cache/scratch/sessid-probe.6VxeOB/A-two-processes-same-repo/state/.governance-sess_91c53e06bdad.json | Session ID: sess_91c53e06bdad | TTL: 3600s | Use end_change('task-a') when done. | 📝 Pending cycle #1 created in loop-governance DB. |    After your change, call: |      1. mcp__loop_governance__feedback_accept(
++  [locks after p1]
++    LOCK .governance-sess_91c53e06bdad.json session_id=sess_91c53e06bdad task=task-a repo=~/.hermes/cache/scratch/sessid-probe.6VxeOB/A-two-processes-same-repo/repo
++    PERSISTED=.session-repo.id=sess_91c53e06bdad
++  [p2 begin task-b]
++    SESSION_ID=sess_91c53e06bdad
++    BEGIN_RESULT=❌ Close out your previous task before starting a new one. |  | This session still has unscored PENDING cycles: |   #1 (task-a) |  | Score them first (AGENTS.md RULE 2 — score before moving on): |   mcp__loop_governance__feedback_accept(task_id='<task>', note='...') |   or mcp__loop_governance__feedback_override(task_id='<task>', correct_decision='...', note='...') |   then mcp__loop_governance__en
++  [locks after p2]
++    LOCK .governance-sess_91c53e06bdad.json session_id=sess_91c53e06bdad task=task-a repo=~/.hermes/cache/scratch/sessid-probe.6VxeOB/A-two-processes-same-repo/repo
++    PERSISTED=.session-repo.id=sess_91c53e06bdad
++
++## B. A scores its cycle, then B begins (lock still held)
++
++### B-scored-then-peer   repo=~/.hermes/cache/scratch/sessid-probe.6VxeOB/B-scored-then-peer/repo
++  [p1 begin task-a]
++    SESSION_ID=sess_9f438e6b5e5e
++    BEGIN_RESULT=🔒 Governance session started: task-a — probe task-a | Lock file: ~/.hermes/cache/scratch/sessid-probe.6VxeOB/B-scored-then-peer/state/.governance-sess_9f438e6b5e5e.json | Session ID: sess_9f438e6b5e5e | TTL: 3600s | Use end_change('task-a') when done. | 📝 Pending cycle #1 created in loop-governance DB. |    After your change, call: |      1. mcp__loop_governance__feedback_accept(cycle_i
++  [p1 score task-a]
++    SCORE_RESULT=✅ Cycle #1 marked as accepted (decision: PENDING → MOVE_ON). Scored: completeness=8.0, quality=8.0, progress=8.0 → composite=8.0.
++  [p2 begin task-b]
++    SESSION_ID=sess_9f438e6b5e5e
++    BEGIN_RESULT=Error: A governance session is already active: |   task_id:     task-a |   description: probe task-a |   session_id:  sess_9f438e6b5e5e |   started_at:  2026-10-27T06:48:39Z |   heartbeat:   2026-10-27T06:48:39Z |   agent:       unknown |  | Call end_change('task-a') first, or use force=True to override.
++
++## C. cross-session close: can B score and end A's cycle?
++
++### C-cross-session-close   repo=~/.hermes/cache/scratch/sessid-probe.6VxeOB/C-cross-session-close/repo
++  [p1 begin task-a]
++    SESSION_ID=sess_6e3d26716f84
++    BEGIN_RESULT=🔒 Governance session started: task-a — probe task-a | Lock file: ~/.hermes/cache/scratch/sessid-probe.6VxeOB/C-cross-session-close/state/.governance-sess_6e3d26716f84.json | Session ID: sess_6e3d26716f84 | TTL: 3600s | Use end_change('task-a') when done. | 📝 Pending cycle #1 created in loop-governance DB. |    After your change, call: |      1. mcp__loop_governance__feedback_accept(cycl
++  [p2 score task-a]
++    SCORE_RESULT=✅ Cycle #1 marked as accepted (decision: PENDING → MOVE_ON). Scored: completeness=8.0, quality=8.0, progress=8.0 → composite=8.0.
++  [p2 end task-a]
++    END_RESULT=🔓 Governance session 'task-a' closed. | Cycle #1 (MOVE_ON) ⬜ | Lock released. You can start a new change with begin_change(). | ℹ️  No review receipt — HEAD (48ad624b84ec) is already origin/main — this cycle changed no files, so there is nothing to r
++  [locks]
++    PERSISTED=.session-repo.id=sess_6e3d26716f84
++
++## D. explicit per-call session_id -> a separate lock
++
++### D-explicit-sid   repo=~/.hermes/cache/scratch/sessid-probe.6VxeOB/D-explicit-sid/repo
++  [default id]
++    SESSION_ID=sess_41b7e1c09ff4
++  [explicit sid]
++    SESSION_ID=sess_pi_probe123
++  [p1 begin task-a (default)]
++    SESSION_ID=sess_41b7e1c09ff4
++    BEGIN_RESULT=🔒 Governance session started: task-a — probe task-a | Lock file: ~/.hermes/cache/scratch/sessid-probe.6VxeOB/D-explicit-sid/state/.governance-sess_41b7e1c09ff4.json | Session ID: sess_41b7e1c09ff4 | TTL: 3600s | Use end_change('task-a') when done. | 📝 Pending cycle #1 created in loop-governance DB. |    After your change, call: |      1. mcp__loop_governance__feedback_accept(cycle_id=1,
++  [p2 begin task-b (explicit)]
++    BEGIN_RESULT=🔒 Governance session started: task-b — probe task-b | Lock file: ~/.hermes/cache/scratch/sessid-probe.6VxeOB/D-explicit-sid/state/.governance-sess_pi_probe123.json | Session ID: sess_pi_probe123 | TTL: 3600s | Use end_change('task-b') when done. | 📝 Pending cycle #2 created in loop-govern
++  [locks]
++    LOCK .governance-sess_41b7e1c09ff4.json session_id=sess_41b7e1c09ff4 task=task-a repo=~/.hermes/cache/scratch/sessid-probe.6VxeOB/D-explicit-sid/repo
++    LOCK .governance-sess_pi_probe123.json session_id=sess_pi_probe123 task=task-b repo=
++    PERSISTED=.session-repo.id=sess_41b7e1c09ff4
++
++## E. explicit session_id without repo_path: what the lock records
++
++### E-explicit-sid-repo-identity   repo=~/.hermes/cache/scratch/sessid-probe.6VxeOB/E-explicit-sid-repo-identity/repo
++  [explicit sid, no repo_path]
++    BEGIN_RESULT=🔒 Governance session started: task-a — probe task-a | Lock file: ~/.hermes/cache/scratch/sessid-probe.6VxeOB/E-explicit-sid-repo-identity/state/.governance-sess_pi_probe_aaa.json | Session ID: sess_pi_probe_aaa | TTL: 3600s | Use end_change('task-a') when done. | 📝 Pending cycle #1 create
++  [explicit sid + repo_path]
++    BEGIN_RESULT=🔒 Governance session started: task-b — probe task-b | Lock file: ~/.hermes/cache/scratch/sessid-probe.6VxeOB/E-explicit-sid-repo-identity/state/.governance-sess_pi_probe_bbb.json | Session ID: sess_pi_probe_bbb | TTL: 3600s | Use end_change('task-b') when done. | 📝 Pending cycle #2 create
++  [locks]
++    LOCK .governance-sess_pi_probe_aaa.json session_id=sess_pi_probe_aaa task=task-a repo=
++    LOCK .governance-sess_pi_probe_bbb.json session_id=sess_pi_probe_bbb task=task-b repo=~/.hermes/cache/scratch/sessid-probe.6VxeOB/E-explicit-sid-repo-identity/repo
++    PERSISTED=
++
++## F. holder goes quiet past its TTL, peer begins -> same lock path
++
++### F-aged-out-holder   repo=~/.hermes/cache/scratch/sessid-probe.6VxeOB/F-aged-out-holder/repo
++  [p1 begin task-c]
++    SESSION_ID=sess_21a417f094e2
++    BEGIN_RESULT=🔒 Governance session started: task-c — probe task-c | Lock file: ~/.hermes/cache/scratch/sessid-probe.6VxeOB/F-aged-out-holder/state/.governance-sess_21a417f094e2.json | Session ID: sess_21a417f094e2 | TTL: 3600s | Use end_change('task-c') when done. | 📝 Pending cycle #1 created in loop-governance DB. |    After your change, call: |      1. mcp__loop_governance__feedback_accept(cycle_id
++  [age p1 lock]
++    AGED .governance-sess_21a417f094e2.json heartbeat=2026-01-01T00:00:00Z ttl=3600
++  [p2 begin task-d]
++    SESSION_ID=sess_21a417f094e2
++    BEGIN_RESULT=🔒 Governance session started: task-d — probe task-d | Lock file: ~/.hermes/cache/scratch/sessid-probe.6VxeOB/F-aged-out-holder/state/.governance-sess_21a417f094e2.json | Session ID: sess_21a417f094e2 | TTL: 3600s | Use end_change('task-d') when done. | 📝 Pending cycle #2 created in loop-governance DB. |    After your change, call: |      1. mcp__loop_governance__feedback_accept(cycle_id
++  [locks after p2]
++    LOCK .governance-sess_21a417f094e2.json session_id=sess_21a417f094e2 task=task-d repo=~/.hermes/cache/scratch/sessid-probe.6VxeOB/F-aged-out-holder/repo
++    PERSISTED=.session-repo.id=sess_21a417f094e2
++  [cycles]
++    CYCLE 1 | task-c | sess_21a417f094e2 | MOVE_ON | None | [orphan-reaper] abandoned: no live lock for task 'task-c' — the sessio
++    CYCLE 2 | task-d | sess_21a417f094e2 | PENDING | None | 
++  [p1 end task-c]
++    END_RESULT=Error: Lock belongs to task 'task-d', not 'task-c'. Use end_change('task-d').
++
++## sandbox (deleted on reboot): ~/.hermes/cache/scratch/sessid-probe.6VxeOB

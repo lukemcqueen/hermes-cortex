@@ -1,0 +1,14 @@
+# Discrimination run: the generator must FAIL on a broken input, not emit a confident transcript.
+# command: PROBE_MCP=/nonexistent/module.py bash docs/evidence/shared-session-id-non-hermes-2026-10-27/run.sh /tmp/discriminate-out.txt
+
+rc=1
+
+# the transcript it emitted (tail):
+DRIVER FAILED rc=1 args=id
+DRIVER FAILED rc=1 args=id
+DRIVER FAILED rc=1 args=begin task-a
+DRIVER FAILED rc=1 args=locks
+DRIVER FAILED rc=1 args=begin task-b
+DRIVER FAILED rc=1 args=locks
+DRIVER FAILED rc=1 args=begin task-a
+DRIVER FAILED rc=1 args=score task-a

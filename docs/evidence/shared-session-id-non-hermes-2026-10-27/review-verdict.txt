@@ -1,0 +1,97 @@
+# Recorded adversarial review of the shared-session-id evidence range
+# source: adversarial_reviews row (extracted verbatim from the store, not retyped)
+# store: ~/.hermes-cortex/data/loop-governance.db  table: adversarial_reviews
+# command that produced it:
+#   python3 ops/scripts/orch-bus/adversarial-review.py --cycle-id 13853 --review \
+#     --reviewer-id sess_review_shared_sid_evidence \
+#     --material "$(cat docs/evidence/shared-session-id-non-hermes-2026-10-27/review-material.txt)"
+review_id: 0de8be61-2c0a-438b-a5d7-a2d81531db87
+cycle_id: 13853
+reviewer_id: sess_review_shared_sid_evidence
+reviewer_model: deepseek/deepseek-v4-pro
+verdict: FINDINGS
+ts: 2026-10-27T07:00:07.836928+00:00
+
+## findings_json (verbatim)
+[
+  {
+    "finding_id": "ADV-13849-1",
+    "severity": "medium",
+    "technique": "swallowed-error",
+    "target": "docs/evidence/shared-session-id-non-hermes-2026-10-27/run.sh:128",
+    "evidence": "\"Absent python3 the script fails loudly rather than emitting a partial transcript.\" vs \"run() { python3 \\\"$WORK/driver.py\\\" \\\"$@\\\" 2>&1 | grep -v 'mcp-server\\\\]' | sed 's/^/    /'; }\" with only \"set -u\" set.",
+    "recommendation": "Add `set -o pipefail` / `set -e` or an explicit dependency preflight (e.g. `command -v python3 >/dev/null 2>&1 || exit 1`) before emitting header/cases, or amend the comment so it does not claim a loud failure. A missing python3 currently produces a partial transcript while the pipeline exits through sed; the committed transcript is valid, but regeneration is not robust."
+  },
+  {
+    "finding_id": "ADV-13849-2",
+    "severity": "low",
+    "technique": "unverified-claim",
+    "target": "docs/evidence/shared-session-id-non-hermes-2026-10-27/run.sh:29-36,52",
+    "evidence": "\"PORTABILITY: POSIX sh constructs only\" is contradicted by \"${BASH_SOURCE[0]}\" and \"exec > >( _norm > \\\"$OUT\\\" ) 2>&1\".",
+    "recommendation": "Replace the PORTABILITY comment with an accurate bash-3.2+ portability statement, or rewrite those two constructs if POSIX sh compatibility is genuinely required."
+  },
+  {
+    "finding_id": "ADV-13849-3",
+    "severity": "low",
+    "technique": "unverified-claim",
+    "target": "docs/evidence/shared-session-id-non-hermes-2026-10-27/run.sh:14 and run.sh:128",
+    "evidence": "\"The transcript is normalised by ONE filter: $HOME -> ~ , ANSI colour stripped.\" vs \"run() { python3 \\\"$WORK/driver.py\\\" \\\"$@\\\" 2>&1 | grep -v 'mcp-server\\\\]' | sed 's/^/    /'; }\".",
+    "recommendation": "Document the `mcp-server]` line filter as a second transformation, or remove it and state why the raw output is suitable. The script should not imply the transcript receives only the normalization filter."
+  }
+]
+
+## summary (verbatim)
+{
+  "cycle_id": 13849,
+  "verdict": "FINDINGS",
+  "findings": [
+    {
+      "finding_id": "ADV-13849-1",
+      "severity": "medium",
+      "technique": "swallowed-error",
+      "target": "docs/evidence/shared-session-id-non-hermes-2026-10-27/run.sh:128",
+      "evidence": "\"Absent python3 the script fails loudly rather than emitting a partial transcript.\" vs \"run() { python3 \\\"$WORK/driver.py\\\" \\\"$@\\\" 2>&1 | grep -v 'mcp-server\\\\]' | sed 's/^/    /'; }\" with only \"set -u\" set.",
+      "recommendation": "Add `set -o pipefail` / `set -e` or an explicit dependency preflight (e.g. `command -v python3 >/dev/null 2>&1 || exit 1`) before emitting header/cases, or amend the comment so it does not claim a loud failure. A missing python3 currently produces a partial transcript while the pipeline exits through sed; the committed transcript is valid, but regeneration is not robust."
+    },
+    {
+      "finding_id": "ADV-13849-2",
+      "severity": "low",
+      "technique": "unverified-claim",
+      "target": "docs/evidence/shared-session-id-non-hermes-2026-10-27/run.sh:29-36,52",
+      "evidence": "\"PORTABILITY: POSIX sh constructs only\" is contradicted by \"${BASH_SOURCE[0]}\" and \"exec > >( _norm > \\\"$OUT\\\" ) 2>&1\".",
+      "recommendation": "Replace the PORTABILITY comment with an accurate bash-3.2+ portability statement, or rewrite those two constructs if POSIX sh compatibility is genuinely required."
+    },
+    {
+      "finding_id": "ADV-13849-3",
+      "severity": "low",
+      "technique": "unverified-claim",
+      "target": "docs/evidence/shared-session-id-non-hermes-2026-10-27/run.sh:14 and run.sh:128",
+      "evidence": "\"The transcript is normalised by ONE filter: $HOME -> ~ , ANSI colour stripped.\" vs \"run() { python3 \\\"$WORK/driver.py\\\" \\\"$@\\\" 2>&1 | grep -v 'mcp-server\\\\]' | sed 's/^/    /'; }\".",
+      "recommendation": "Document the `mcp-server]` line filter as a second transformation, or remove it and state why the raw outpu
+
+## JUDGEMENT ON THESE FINDINGS (author of the material, not the reviewer)
+
+ADV-13849-1 (medium, swallowed-error) — ACCEPTED, fixed.
+  The portability note claimed the script refuses to emit a partial transcript when
+  python3 is absent, while run() piped python3 through grep/sed under a bare
+  `set -u`, so a missing interpreter would have produced error lines and a
+  confident-looking transcript. Fixed in the generator: a python3 precondition
+  exits 3 before the transcript is opened, run() captures each driver invocation
+  and counts a non-zero exit, and the script ends on an explicit VERDICT block
+  (rc=1 INCOMPLETE / rc=0 complete). Discriminated, not asserted: failure-path.txt
+  records the same generator run against a non-existent module — rc=1 with
+  DRIVER FAILED lines — so the emitter has been shown to fail on bad input.
+
+ADV-13849-2 (low, unverified-claim) — ACCEPTED, wording corrected.
+  The header said "POSIX sh constructs only"; the script is bash (BASH_SOURCE,
+  one process substitution). It now says so, and states what it actually avoids
+  (bash-4-only syntax, unconditional timeout, GNU-only flags) plus the
+  shasum fallback for macOS.
+
+ADV-13849-3 (low, unverified-claim) — ACCEPTED, wording corrected.
+  "normalised by ONE filter" now scopes that claim to the global normaliser that
+  wraps the stream and names run()'s 4-space indent as presentation.
+
+No finding was rejected and none was left unaddressed. All three are
+claim-precision findings against run.sh; the substantive findings of the range are
+in transcript.txt, which this review read as material.

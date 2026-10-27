@@ -10,8 +10,10 @@
 #   bash docs/evidence/shared-session-id-non-hermes-2026-10-27/run.sh [outfile]
 #
 # Fields that are volatile by design: the module sha256 (changes on every
-# deploy), the mktemp sandbox paths, and the generated sess_* ids. The
-# transcript is normalised by ONE filter: $HOME -> ~ , ANSI colour stripped.
+# deploy), the mktemp sandbox paths, and the generated sess_* ids. Every line
+# passes through ONE global normaliser ($HOME -> ~ , ANSI colour stripped) that
+# wraps the whole stream; the per-case lines additionally get a 4-space indent
+# inside run(), which is presentation and not a second normaliser.
 #
 # Two processes are used per case (`python3 driver.py <mode>`) so each case
 # exercises the real per-process code path a Pi / Claude Code / CLI session
@@ -26,12 +28,20 @@
 # script's own output, committed in the same range. It reads nothing else of
 # this range; the module it probes is the deployed loop-gov-mcp.py named below.
 #
-# PORTABILITY: POSIX sh constructs only, no bash-4 syntax, no `declare -A`, no
-# unconditional `timeout`, no GNU-only flag; the hash helper falls back to
-# `shasum -a 256` when `sha256sum` is absent (macOS). Requires git, python3,
-# sed, awk, grep. Absent python3 the script fails loudly rather than emitting a
-# partial transcript.
+# PORTABILITY: this is a BASH script (shebang bash; it uses ${BASH_SOURCE[0]}
+# and one process substitution), so it is not claimed to be POSIX sh. What it
+# avoids is bash-4-only syntax (`declare -A`, `mapfile`), an unconditional
+# `timeout`, and GNU-only flags; the hash helper falls back to `shasum -a 256`
+# when `sha256sum` is absent (macOS). Requires git, python3, sed, awk, grep.
+# Absent python3 the script is REFUSED up front with rc=3, and any driver
+# invocation that exits non-zero is counted and reported as an INCOMPLETE
+# transcript with rc=1 — so the exit code, not the prose, carries the outcome.
 set -u
+
+command -v python3 >/dev/null 2>&1 || {
+  echo "FATAL: python3 not found — refusing to emit a partial transcript" >&2
+  exit 3
+}
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 OUT="${1:-$HERE/transcript.txt}"
@@ -125,7 +135,17 @@ newcase() {
          PROBE_HOME="$CASE/home" PROBE_REPO="$REPO"
   echo; echo "### $1   repo=$REPO"
 }
-run() { python3 "$WORK/driver.py" "$@" 2>&1 | grep -v 'mcp-server\]' | sed 's/^/    /'; }
+FAILED=0
+run() {
+  local out rc
+  out="$(python3 "$WORK/driver.py" "$@" 2>&1)"
+  rc=$?
+  if [ "$rc" -ne 0 ]; then
+    FAILED=$((FAILED + 1))
+    printf 'DRIVER FAILED rc=%s args=%s\n' "$rc" "$*"
+  fi
+  printf '%s\n' "$out" | grep -v 'mcp-server\]' | sed 's/^/    /'
+}
 
 echo; echo "## A. two separate processes, ONE repo, no injected session id"
 newcase A-two-processes-same-repo
@@ -173,3 +193,10 @@ echo "  [cycles]";              run cycles
 echo "  [p1 end task-c]";       run end task-c
 
 echo; echo "## sandbox (deleted on reboot): $WORK"
+echo
+if [ "$FAILED" -ne 0 ]; then
+  echo "VERDICT: INCOMPLETE — $FAILED driver invocation(s) exited non-zero (rc=1)"
+  exit 1
+fi
+echo "VERDICT: complete — every driver invocation exited 0 (rc=0)"
+exit 0
