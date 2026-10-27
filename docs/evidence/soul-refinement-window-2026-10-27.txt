@@ -1,0 +1,155 @@
+# SOUL refinement — 2026-10-27 mining window (FROZEN bounds)
+
+Frozen ON PURPOSE: the window is resolved from RUN TIME, so a generator
+re-run later derives different bounds and would print different counts for
+the same pass. Both bounds are generator defaults (env-overridable via
+SOUL_NOW / SOUL_START) so this artifact never contradicts the cycle note it
+documents. See the skill's Pitfalls on count drift.
+
+  SOUL_NOW   = 2026-10-27 23:15:21 KST   (epoch 1793110521.600)
+  SOUL_START = 2026-10-26 23:17:54 KST   (epoch 1793024274.985)
+  WINDOW     = 23.96 h ending at SOUL_NOW
+
+The start is the PREVIOUS pass's `last_activity_at`, not `now - 24 h`: a full
+24 h lookback at this run time would reach back into the previous window and
+re-count corrections that pass already codified.
+
+## Resolved counts (frozen bounds)
+
+| Measure | Value |
+|---|---|
+| Sessions active in window (source: cron 24, telegram 3) | 27 |
+| `role='user'` rows in window (active=1) | 38 |
+| Rows in a NON-human transport (cron/subagent) | 26 |
+| Human-transport rows | 12 |
+|   ↳ of those, machine-marker rows dropped | 6 |
+|   ↳ operator prose rows actually read | 6 |
+
+A ROW is selected by its own `timestamp`; a SESSION by
+`COALESCE(last_activity_at, started_at)` — different sets by construction,
+so a row can belong to a session whose bound sits outside the window.
+
+## Classification (per skill: classify BEFORE reading)
+
+The window's 38 user rows split 26 machine
+(cron/subagent sessions, which store their own task prompt as `role='user'`)
+and 12 in a human transport. Of the human rows 6
+still carried a machine marker, leaving 6 prose rows — the actual
+correction candidate set. Raw `role='user'` counting would over-report by
+6.3x here.
+
+Operator prose rows (scrubbed):
+
+  - [2026-10-27 09:01:05 KST] src=telegram Time to fix the mycortex nightly dream for all agents. Ex: Cronjob Response: cortex-bus-wo
+  - [2026-10-27 11:20:29 KST] src=telegram fix this please. Titus Pi: The tooling deadlock — you should know about it end_change refu
+  - [2026-10-27 15:41:06 KST] src=telegram Please check if this is true. We have multiple agents in the same repo (non-hc). They shou
+  - [2026-10-27 17:18:06 KST] src=telegram of course fix it. tdd with edge cases and review with deepseek pro. Also, consider this to
+  - [2026-10-27 18:47:38 KST] src=telegram Continue
+  - [2026-10-27 19:03:31 KST] src=telegram Sure fix the handler defect
+
+## Reconciliation against the pass's OWN count (never silently overwrite)
+
+The pass resolved, at its own instant: 28 sessions / 38 user rows / 5 prose
+rows. This regeneration prints 27 / 38 / 6. Both deltas are explained, and
+neither is drift:
+
+  - sessions 28 -> 27: the pass's extra session is THIS RUN'S OWN session.
+    A SESSION is bound by `COALESCE(last_activity_at, started_at)`, and at
+    the mining instant this run's own `last_activity_at` was still <= the
+    frozen end bound; it has since advanced past it. (Rows in a session are
+    unaffected: a ROW is selected by its own `timestamp`.)
+  - prose 5 -> 6: a DEFECT in the pass's own classifier, corrected here. The
+    pass tested whether a machine marker appeared ANYWHERE in the first 200
+    chars; the skill's rule is to drop only rows that OPEN with one (after
+    lstrip). The stricter test dropped a real operator request that quotes a
+    peer's report. The skill patch lands with this artifact.
+
+## The window's own commits (so 'already landed' is checkable, not narrated)
+
+Per the skill, each operator correction is checked against a same-day
+committed artifact before a principle is proposed. Read from the repo:
+
+  73d86995|10-27 22:46|v016 adds p_plan to task_upsert (21-arg) + task-db.py --plan/--assignee/--depends-on/--correlation-id write surface + register v016 for deploy (row 9fb2ddb6)
+  b63b9fa3|10-27 20:33|[cost/4] normalize the moses aggregate HOME path for PII hygiene (numbers unchanged)
+  a8af80d3|10-27 20:33|[cost/4] land moses aggregate: 5 of 6 hosts now measured on cron-cost-metrics.py --json-summary
+  354b5138|10-27 19:12|fix(agent-handler): report subjects are no longer archived before the orchestrator can read them
+  e930e1cd|10-27 18:51|test(non-hermes): unbreak the sibling suite and make it measure the fallback
+  ecd9a4f7|10-27 17:23|fix(loop-gov): a non-Hermes session takes its id from its own environment
+  391abff5|10-27 16:01|docs(evidence): act on the recorded review, add material/verdict/failure-path
+  7c2066e2|10-27 15:49|docs(evidence): pointer to the record, portable ANSI strip, regenerate transcript
+  6c8904dd|10-27 15:47|docs(evidence): reproduce shared governance session id / lock for non-Hermes agents
+  afdb3bd6|10-27 14:38|docs(task-model-v3): plan + governed review for the orchestrator write surface (row 9fb2ddb6)
+  42b79528|10-27 12:21|fix(loop-gov): report a starved per-blob pass as an ENGINE condition, not as blob work
+  b2c2d25a|10-27 09:26|fix(orch-skill-evaluate): enumerate symlinked skills root (0 -> 521)
+  221ba314|10-27 09:10|evidence: capture for the mycortex read-classification fix
+  725c5297|10-27 09:06|enforcer: classify mycortex QUERY subcommands as read-only
+  035a2c4d|10-27 08:26|skills(orch-bus-worker): land a sibling cron evidence dir the reflexion gate left untracked
+  404c1dc7|10-27 08:24|docs(evidence): normalize the audit-log home path to $HOME in the cost4 re-EXEC transcript (PII hygiene, numbers unmodified)
+  e5e23d64|10-27 08:23|evidence(backlog): land the 2026-10-27 morning-pass artifacts refused by the reflexion gate in cycle 13832
+  5a1a089c|10-27 05:00|auto: block 70 suspect IPs [pipeline]
+
+## Deliverable — fleet hygiene (all corrections already landed same-day)
+
+Each correction in this window already had a same-day committed fix, so a
+new principle would have duplicated landed work. Per the skill, the pass's
+deliverable is instead the hygiene the day's own cycles re-broke. Recorded
+BOTH measurements, because the live capture below can only show the
+POST-fix state and would otherwise hide that anything was re-broken:
+
+  BEFORE (frozen, measured at pass start — not reproducible by re-running
+  this generator, since the fix has since landed and the tree changed):
+    check-skill-drift-parity.py -> **Verdict: FAIL**  stranded: 7
+      - devops/approval-gate-debugging/SKILL.md
+      - devops/cron-job-management/SKILL.md
+      - devops/enforcement-change-safety/SKILL.md
+      - devops/orch-bus-worker/SKILL.md
+      - devops/shell-scripting/SKILL.md
+      - skill-vetting/SKILL.md
+      - software-development/change-checklist/SKILL.md
+
+  The reconciler's own modes: `--apply` landed the 4 pure-superset files;
+  the remaining 3 printed REVIEW (it would drop N repo lines). Each REVIEW
+  line is a CLAIM, not a fact — measured again here as the same false-
+  positive shape: in all 3 the deployed side reflowed AND extended the repo
+  text, so the 'dropped' lines are superseded in place, not lost. Verified
+  by reading the full `diff -u` of each BEFORE copying anything (the whole
+  drop set was 14/1/4 lines and every one was present, rewritten, in the
+  deployed text).
+
+  HAZARD this pass had to check before landing them: a naive `cp` of a
+  deployed skill into the repo would inject the deploy's own SOURCE banner
+  if the file carried one (the parity tool ignores banners by design).
+  Checked first: these 3 deployed copies carry no banner, headers match the
+  repo byte-for-byte, so the copy is content-only.
+
+  check-skill-drift-parity.py  -> **Verdict: PASS**   (rc=0)
+    | Measure | Value |
+    | Stranded in place (path in repo, content only deployed) | 0 |
+    | Absent from the repo (deployed under a repo-owned skill) | 0 |
+    |   ↳ path dropped from repo history | 0 |
+    |   ↳ path never committed | 0 |
+    | Skipped (Hermes defaults, or repo ahead) | 499 |
+
+  Parity measures ONE direction (content that exists only deployed). The
+  doctor's `Skill drift` line measures the OTHER (repo ahead of deploy).
+  Both are captured below because a parity PASS is not the deploy being
+  current — reading only one direction is how a stale deploy stays invisible.
+
+  This capture is taken AFTER this pass's own skill patch and BEFORE its
+  deploy, so a repo-ahead line for the skill this pass patched is EXPECTED
+  here and is what the deploy following the commit clears. The line is kept
+  rather than filtered: a capture that hid its own pre-deploy state would be
+  the same one-direction reading this section exists to prevent.
+
+  ✅ SOUL.md canonical 12 (~/.hermes) — all 12 canonical principles present
+  ✅ SOUL.md local principles (~/.hermes) — 4 local principle(s) — allowed (≤12, generic, non-duplicating)
+  ✅ SOUL.md template sync (~/.hermes)
+  ✅ SOUL.md reverse drift (~/.hermes)
+  ✅ Checksum: SOUL.md (profile: esther) — content matches repo source
+  ⚠️  Skill drift: hermes-agent/soul-refinement — Repo source has changed but deployed copy is stale (/home/esther/hermes-cortex/skills/hermes-agent/soul-refinement/SKILL.md). Run cortex-update.sh.
+  ⚠️  Skill drift  [deferred (esther, since 2026-10-22)] — 1 drifted, 385 in sync, 135 Hermes defaults skipped
+  🔶 Suggestion: Resolve each drift entry above — recovery is its OWN governed change (see reconcile-stranded-skills.py), not part of the update cycle. If you are NOT fixing it now, record the decision, or the check is reported as UNDISPOSED: cortex-doctor.py --disposition "Skill drift" --as deferred --owner <you> --reason "<why>"
+  · Skill drift: hermes-agent/soul-refinement
+  or:  cortex-doctor.py --disposition "Skill drift: hermes-agent/soul-refinement" --as deferred --owner <you> --reason "<why>"
+  Resolve each drift entry above — recovery is its OWN governed change (see reconcile-stranded-skills.py), not part of the update cycle. If you are NOT fixing it now, record the decision, or the check is reported as UNDISPOSED: cortex-doctor.py --disposition "Skill drift" --as deferred --owner <you> --reason "<why>"
+

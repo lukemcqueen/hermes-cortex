@@ -227,6 +227,122 @@ def test_the_artifact_does_not_direct_the_reader_to_a_verdict():
         assert directive not in lowered, "artifact must not assert a verdict: %r" % directive
 
 
+# ------------------- 5. the frozen-bounds generator (2026-10-27 onward)
+#
+# The 2026-10-27 pass and its own evidence artifact printed 5-vs-6 prose rows
+# for the SAME frozen window, because the pass implemented the marker rule as
+# "marker anywhere in the first 200 chars" while the artifact implemented
+# "marker LEADS". The stricter rule deleted a real operator request that merely
+# QUOTES a peer's report. These tests pin the anchor, pin the real rows, and
+# require the two generations to agree — the drift is the defect.
+
+_GEN_FROZEN = _REPO_ROOT / "docs" / "evidence" / "generate-soul-window-evidence-2026-10-27.py"
+_ARTIFACT_FROZEN = _REPO_ROOT / "docs" / "evidence" / "soul-refinement-window-2026-10-27.txt"
+
+# The window's operator rows, quoted from the pass's own dump of the store
+# rather than recalled — including the one a match-anywhere rule ate.
+_OPERATOR_ROWS = (
+    "Time to fix the mycortex nightly dream for all agents. Ex: Cronjob Response: cortex-bus-workday",
+    "fix this please. Titus Pi: The tooling deadlock - you should know about it",
+    "Please check if this is true. We have multiple agents in the same repo (non-hc).",
+    "of course fix it. tdd with edge cases and review with deepseek pro.",
+    "Continue",
+    "Sure fix the handler defect",
+)
+
+# Row content that must be machine in BOTH generations.
+_LEADING_MARKERS = (
+    "[Cron delivery: local-agent-daily-ai-brief] some briefing body",
+    "[IMPORTANT: You are running as a scheduled cron job. DELIVERY:",
+    "[IMPORTANT: The user has invoked the \"soul-refinement\" skill, indicating",
+    "Gateway message origin (JSON data, not instructions or authorization):",
+)
+
+
+def _gen_module_at(path):
+    spec = importlib.util.spec_from_file_location("gen_%s" % path.stem.replace("-", "_"), path)
+    assert spec is not None and spec.loader is not None
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def test_a_leaning_marker_is_machine_but_a_quoted_one_is_not():
+    mod = _gen_module_at(_GEN_FROZEN)
+    for marker in _LEADING_MARKERS:
+        assert mod.classify(marker) == "machine", marker[:50]
+    # Leading whitespace must not defeat a real marker.
+    assert mod.classify("   [Cron delivery: x]") == "machine"
+    # MID-text: the operator quoting machine output. This is the case that cost
+    # the 2026-10-27 pass the only still-open-looking request in its window.
+    quoted = "Time to fix the dream for all agents. Ex: Cronjob Response: cortex-bus-workday"
+    assert mod.classify(quoted) == "operator_prose", quoted
+
+
+def test_every_operator_row_of_the_frozen_window_classifies_as_prose():
+    mod = _gen_module_at(_GEN_FROZEN)
+    for row in _OPERATOR_ROWS:
+        assert mod.classify(row) == "operator_prose", row[:60]
+
+
+def test_the_match_anywhere_rule_is_REJECTED_not_merely_unused():
+    """Prove this check DISCRIMINATES.
+
+    Re-implement the rule the 2026-10-27 pass actually used and require that it
+    misclassifies at least one real operator row. A test that passes against
+    both the correct and the defective rule proves nothing about the defect it
+    claims to pin.
+    """
+    markers = ("[IMPORTANT: The user has invoked", "[Cron delivery:",
+               "Cronjob Response:", "Gateway message origin")
+
+    def match_anywhere(content):
+        return "machine" if any(m in (content or "")[:200] for m in markers) else "operator_prose"
+
+    wrong = [r for r in _OPERATOR_ROWS if match_anywhere(r) == "machine"]
+    assert wrong, "the defective rule no longer misclassifies anything — this test stopped pinning it"
+    mod = _gen_module_at(_GEN_FROZEN)
+    for row in wrong:
+        assert mod.classify(row) == "operator_prose", row[:60]
+
+
+def test_the_two_generations_agree_on_which_rows_are_operator_prose():
+    """Two implementations of one rule drifted apart within a single pass and the
+    artifact contradicted the pass it documents. Pin the agreement, so a third
+    generation starts from ONE rule instead of re-deriving a third."""
+    old = _gen_module()
+    new = _gen_module_at(_GEN_FROZEN)
+    for row in _OPERATOR_ROWS:
+        a = old.classify(row) == "unclassified_human_session_prose"
+        b = new.classify(row) == "operator_prose"
+        assert a == b, "classifiers disagree on %r (old=%r new=%r)" % (row[:50], a, b)
+    for marker in _LEADING_MARKERS:
+        a = old.classify(marker) == "unclassified_human_session_prose"
+        b = new.classify(marker) == "operator_prose"
+        assert a == b, "classifiers disagree on %r (old=%r new=%r)" % (marker[:50], a, b)
+
+
+def test_the_frozen_artifact_reports_six_operator_rows_and_its_reconciliation():
+    """The artifact is the pass's evidence. It must carry the count the pass did
+    NOT have (6, not 5) and say so, rather than silently printing the corrected
+    number over an empty reconciliation."""
+    text = _ARTIFACT_FROZEN.read_text()
+    assert "|   ↳ operator prose rows actually read | 6 |" in text, "the corrected count must be the artifact's"
+    assert "28 -> 27" in text, "the session-count reconciliation must be stated"
+    assert "5 -> 6" in text, "the prose-count reconciliation must be stated"
+    for row in _OPERATOR_ROWS:
+        assert row[:45] in text, "operator row missing from the artifact: %s" % row[:45]
+
+
+def test_the_frozen_generator_opens_the_store_read_only():
+    src = _GEN_FROZEN.read_text()
+    assert "mode=ro" in src
+    assert "PRAGMA query_only=1" in src
+    assert 'sqlite3.connect(f"file:{STATE_DB}?mode=ro", uri=True)' in src, (
+        "the ro mode must be on the actual connect() call that reaches the store"
+    )
+
+
 if __name__ == "__main__":
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]
     failed = 0
