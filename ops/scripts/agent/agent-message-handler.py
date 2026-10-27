@@ -178,6 +178,57 @@ def _should_skip_pickup_notify(subject) -> bool:
         return True
     return subject.endswith("_RESULT")
 
+
+# Report subjects — agents pushing findings TO the orchestrator. The report
+# branch below deliberately LEAVES these pending so the orchestrator's inbox_read
+# can pick them up, which means the early archive must not remove them.
+# ONE definition for both decisions: a second copy of the predicate is a second
+# rule, and the two copies drifted once already (measured 2026-10-27: an ISSUES
+# report logged "left in queue for orchestrator" and the queue peek then showed
+# nothing — the early archive had already archived it, so the report survived
+# only in bus.archives and the orchestrator's live-queue read never saw it).
+_issue_prefixes = ("ISSUES:", "🚨 ISSUES:", "IMPROVEMENTS:", "PROPOSAL:", "📝 PROPOSAL:", "RE: ")
+# Bare tracked report subjects (2026-10-01). PROPOSAL / ISSUES / IMPROVEMENTS are
+# in TASK_CREATING_SUBJECTS so the task lifecycle records them, and
+# normalize_tracked_subject() maps the documented "PROPOSAL: <what>" form to
+# exactly "PROPOSAL" — which has NO handler in the command registry, so the
+# prefix-only check matched nothing and they fell through to the "Unknown
+# subject" error path. Treat the bare form exactly like the prefixed one.
+_bare_report_subjects = ("PROPOSAL", "ISSUES", "IMPROVEMENTS", "STRANDED_SKILL_LAND")
+
+
+def _is_report_subject(subject) -> bool:
+    """True for a subject whose branch leaves the message PENDING for the orchestrator."""
+    if not isinstance(subject, str):
+        return False
+    return subject.startswith(_issue_prefixes) or subject in _bare_report_subjects
+
+
+def _early_archive(source_queue: str, msg_id: str, subject) -> bool:
+    """Archive a just-read message — EXCEPT a report subject. Returns True if archived.
+
+    The early archive exists so a crash mid-processing cannot leave the message
+    to be re-read forever (PGMQ visibility timeout). That argument does not apply
+    to a report: its branch only notifies, marks the correlation processed and
+    saves state, and it is inside the try whose except handler archives on a
+    crash — so skipping the archive here cannot open a re-read loop.
+
+    The report is archived LATER, by the idempotency path on a subsequent tick
+    (its correlation is in processed_ids). Measured 2026-10-27 against the
+    authoritative bus: a report read by this code stayed in bus.messages
+    (`processing`, 2.5 min after the read) while the same probe read by the
+    previous build was already in bus.archives.
+
+    HONEST LIMIT: the message returns to `pending` only when the bus recovers its
+    visibility timeout, and the tick that recovers it also archives it — so a
+    consumer that must not miss a report cannot rely on the live queue alone.
+    Read bus.archives too, or stage the payload the way Learning Reports and
+    Skill Reports already do (see the branches below).
+    """
+    if _is_report_subject(subject):
+        return False
+    return archive_message(source_queue, msg_id)
+
 # Prefix forms of the report subjects (AGENTS.md convention:
 # "📝 PROPOSAL: <what>"). The TASK_CREATING_SUBJECTS exact-match check
 # would otherwise skip task-row creation for the documented prefix form
@@ -225,6 +276,17 @@ def _taskdb(args: list[str], timeout: int = 20) -> tuple[int, str]:
         return -1, str(e)
 
 
+def _is_duplicate_row(out: str) -> bool:
+    """True when task-db's add lost to the inbox-correlation unique index.
+
+    Deliberately narrow: it names the ONE constraint this path may collide on, so
+    a duplicate key on some other table is still reported as the failure it is.
+    """
+    text = out or ""
+    return ("duplicate key value violates unique constraint" in text
+            and "idx_tasks_inbox_correlation" in text)
+
+
 def task_create_from_message(subject: str, correlation_id: str,
                              content: str) -> str | None:
     """Create a source='inbox' task row for a tracked subject (S4).
@@ -254,6 +316,16 @@ def task_create_from_message(subject: str, correlation_id: str,
         # Entry notify fires from task-db.py (R-14: replaces the handler's
         # pickup notify for tracked subjects — one EXEC = 1 entry message).
         log(f"🗂  task row created for {subject} (corr={correlation_id[:12]}…)")
+        return correlation_id
+    if _is_duplicate_row(out):
+        # The row already exists for this correlation_id, so the invariant this
+        # function exists for ("a row exists for this message") HOLDS. Expected
+        # on a re-read, which report subjects now do by design: they are left
+        # pending for a tick so the orchestrator can see them, and the next tick
+        # runs create-before-archive again. Reporting that as "task-create
+        # failed" was an expected state wearing an error's clothes (measured
+        # 2026-10-27).
+        log(f"🗂  task row already exists for {subject} (corr={correlation_id[:12]}…)")
         return correlation_id
     log(f"task-create failed for {subject}: rc={rc} {out[:120]}")
     return None
@@ -1225,7 +1297,9 @@ def main():
     # subject handler and the exception handler) are fallbacks that
     # silently succeed on already-archived messages.
     # (Task creation above happens FIRST — create-before-archive.)
-    archive_message(source_queue, msg_id)
+    # REPORT subjects are the one exception: their branch leaves them pending
+    # for the orchestrator's live-queue read, and archiving here defeated that.
+    _early_archive(source_queue, msg_id, subject)
     # --- END EARLY ARCHIVE ---
 
     # Silent subjects — known noise: the doctor's own bus round-trip probe
@@ -1483,22 +1557,10 @@ def main():
       # processed so the next handler tick skips it (idempotency path below
       # archives it only after it has been surfaced). Fixes the "Unknown
       # subject" drop of kustos's doctor-fails report (2026-08-03).
-      _issue_prefixes = ("ISSUES:", "🚨 ISSUES:", "IMPROVEMENTS:", "PROPOSAL:", "📝 PROPOSAL:", "RE: ")
-      # Bare tracked report subjects (2026-10-01).
-      # PROPOSAL / ISSUES / IMPROVEMENTS are in TASK_CREATING_SUBJECTS so the
-      # task lifecycle records them, and normalize_tracked_subject() maps the
-      # documented "PROPOSAL: <what>" form to exactly "PROPOSAL". But they have
-      # NO handler in the command registry (commands.py), so once normalized —
-      # or sent bare via `hc send --subject PROPOSAL` — the prefix-only check
-      # below matched nothing and they fell through to the "Unknown subject"
-      # error path, which archives the message and replies with an error.
-      # Observed: esther→moses PROPOSAL answered with error on moses
-      # ("Unknown subject 'PROPOSAL' from esther"), silently dropping a
-      # legitimate fleet report. Treat the bare form exactly like the prefixed
-      # one — leave it queued for the orchestrator, notify, never error.
-      _bare_report_subjects = ("PROPOSAL", "ISSUES", "IMPROVEMENTS",
-                               "STRANDED_SKILL_LAND")
-      if subject.startswith(_issue_prefixes) or subject in _bare_report_subjects:
+      # The list and the prefix tuple live at module level so the early archive
+      # (which must NOT remove these) uses the SAME predicate — see
+      # _is_report_subject / _early_archive above.
+      if _is_report_subject(subject):
         log(f"📋 Issue report '{subject}' from {body.get('from', '?')} — left in queue for orchestrator")
         notify_telegram(
           f"📋 [{AGENT_NAME}] Issue report from {body.get('from', '?')}: {subject}",

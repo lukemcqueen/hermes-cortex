@@ -78,11 +78,17 @@ def test_bare_proposal_is_accepted_as_a_report():
         "a bare 'PROPOSAL' subject must be accepted by the report branch")
 
 
-def test_report_branch_checks_both_prefix_and_bare_forms():
-    """The condition must test membership, not only startswith()."""
-    assert re.search(r"subject\.startswith\(_issue_prefixes\)\s+or\s+subject\s+in\s+_bare_report_subjects",
-                     _HANDLER_SRC), (
-        "the report branch must accept the bare tracked forms as well as prefixes")
+def test_report_branch_checks_both_prefix_and_bare_forms(handler_module):
+    """Both forms must be recognised — now through ONE named predicate.
+
+    This used to assert the literal `subject.startswith(_issue_prefixes) or
+    subject in _bare_report_subjects` text. The early-archive guard needs the
+    same decision (2026-10-27), and a second copy of a predicate is a second
+    rule, so the condition moved into `_is_report_subject()` and this pins the
+    PREDICATE's behaviour instead of the sentence it is written in.
+    """
+    assert handler_module._is_report_subject("PROPOSAL") is True, "bare form"
+    assert handler_module._is_report_subject("PROPOSAL: add a doc") is True, "prefix form"
 
 
 def test_issues_and_improvements_are_also_accepted():
@@ -132,3 +138,82 @@ def test_registry_actually_matched_commands():
     commands = _registered_commands()
     assert "UPDATE_REQUEST" in commands and "EXEC" in commands, (
         f"command registry parse looks wrong: {sorted(commands)}")
+
+
+# ── The 2026-10-27 defect: the early archive removed reports before their
+#    own branch could leave them queued for the orchestrator ────────────────
+
+_REPORT_SHAPES = ("ISSUES", "ISSUES: disk pressure on gisu", "🚨 ISSUES: x",
+                  "IMPROVEMENTS", "IMPROVEMENTS: cache the venv",
+                  "PROPOSAL", "PROPOSAL: add a doc",
+                  "RE: your lock report", "STRANDED_SKILL_LAND")
+
+
+def test_report_subject_is_not_early_archived(handler_module, monkeypatch):
+    """Behaviour, not source text: the archive collaborator must NOT be called.
+
+    Measured 2026-10-27: an ISSUES report logged "left in queue for
+    orchestrator" and the queue peek then showed nothing — the early archive had
+    already removed it, so the report survived only in bus.archives and the
+    orchestrator's live-queue read could never see it.
+    """
+    calls = []
+    monkeypatch.setattr(handler_module, "archive_message",
+                        lambda q, m: calls.append((q, m)) or True)
+    archived = handler_module._early_archive("inbox_agent", "msg-1", "ISSUES")
+    assert archived is False, "a report subject must be LEFT pending"
+    assert calls == [], f"the report was archived anyway: {calls}"
+
+
+def test_normal_subject_is_still_early_archived(handler_module, monkeypatch):
+    """The crash-safety archive must still happen for everything else."""
+    calls = []
+    monkeypatch.setattr(handler_module, "archive_message",
+                        lambda q, m: calls.append((q, m)) or True)
+    archived = handler_module._early_archive("inbox_agent", "msg-2", "UPDATE_REQUEST")
+    assert archived is True
+    assert calls == [("inbox_agent", "msg-2")], calls
+
+
+@pytest.mark.parametrize("subject", _REPORT_SHAPES)
+def test_every_report_shape_is_guarded(handler_module, monkeypatch, subject):
+    calls = []
+    monkeypatch.setattr(handler_module, "archive_message",
+                        lambda q, m: calls.append((q, m)) or True)
+    assert handler_module._early_archive("inbox_agent", "msg-3", subject) is False
+    assert calls == [], f"{subject!r} was archived: {calls}"
+
+
+def test_early_archive_call_site_uses_the_guard():
+    """Supplement to the behaviour test: the poll path must call the guard.
+
+    The predicate and the guard can both be right while the call site still
+    archives directly — this is the only check that catches that.
+    """
+    assert "_early_archive(source_queue, msg_id, subject)" in _HANDLER_SRC, (
+        "the early-archive call site no longer routes through the guard")
+
+
+def test_duplicate_row_is_not_reported_as_a_failure(handler_module, monkeypatch):
+    """A re-read of a report must not log a failure for the row it already has.
+
+    With reports now left pending for a tick, task_create_from_message runs again
+    on the re-read; the unique index (source='inbox', correlation_id) makes that
+    a duplicate, and the old code logged it as "task-create failed" — an expected
+    state wearing an error's clothes.
+    """
+    monkeypatch.setattr(handler_module, "_taskdb", lambda *a, **k: (
+        1, 'ERROR: duplicate key value violates unique constraint '
+           '"idx_tasks_inbox_correlation"'))
+    assert handler_module.task_create_from_message("ISSUES", "corr-dup", "ISSUES: x") == "corr-dup"
+
+
+def test_created_row_still_reports_its_correlation_id(handler_module, monkeypatch):
+    monkeypatch.setattr(handler_module, "_taskdb", lambda *a, **k: (0, "✅ Task added: abcd1234..."))
+    assert handler_module.task_create_from_message("ISSUES", "corr-new", "ISSUES: x") == "corr-new"
+
+
+def test_other_taskdb_failure_is_still_none(handler_module, monkeypatch):
+    """Do not widen the tolerance: a REAL failure must keep returning None."""
+    monkeypatch.setattr(handler_module, "_taskdb", lambda *a, **k: (1, "could not connect to server"))
+    assert handler_module.task_create_from_message("ISSUES", "corr-bad", "ISSUES: x") is None
