@@ -146,7 +146,7 @@ POST-fix state and would otherwise hide that anything was re-broken:
   ✅ SOUL.md template sync (~/.hermes)
   ✅ SOUL.md reverse drift (~/.hermes)
   ✅ Checksum: SOUL.md (profile: esther) — content matches repo source
-  ⚠️  Skill drift: hermes-agent/soul-refinement — Repo source has changed but deployed copy is stale (/home/esther/hermes-cortex/skills/hermes-agent/soul-refinement/SKILL.md). Run cortex-update.sh.
+  ⚠️  Skill drift: hermes-agent/soul-refinement — Repo source has changed but deployed copy is stale ($HOME/hermes-cortex/skills/hermes-agent/soul-refinement/SKILL.md). Run cortex-update.sh.
   ⚠️  Skill drift  [deferred (esther, since 2026-10-22)] — 1 drifted, 385 in sync, 135 Hermes defaults skipped
   🔶 Suggestion: Resolve each drift entry above — recovery is its OWN governed change (see reconcile-stranded-skills.py), not part of the update cycle. If you are NOT fixing it now, record the decision, or the check is reported as UNDISPOSED: cortex-doctor.py --disposition "Skill drift" --as deferred --owner <you> --reason "<why>"
   · Skill drift: hermes-agent/soul-refinement

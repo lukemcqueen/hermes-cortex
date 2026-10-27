@@ -111,6 +111,18 @@ def scrub(text: str, limit: int = 90) -> str:
     return text[:limit]
 
 
+def scrub_paths(text: str) -> str:
+    """Collapse the operator's home dir to `$HOME` before anything is committed.
+
+    Redaction belongs in the GENERATOR, never in the committed copy: a
+    hand-patched artifact would disagree with the command line printed above it,
+    and the next regeneration would re-introduce the path. Tool output is the
+    live case — the doctor prints absolute paths inside its own messages, so
+    every captured line goes through here.
+    """
+    return (text or "").replace(str(Path.home()), "$HOME")
+
+
 def main() -> int:
     print("# SOUL refinement — 2026-10-27 mining window (FROZEN bounds)")
     print()
@@ -275,7 +287,7 @@ def main() -> int:
         l for l in pout.splitlines()
         if l.startswith("| ") and "in sync" not in l
     ]
-    print(f"  check-skill-drift-parity.py  -> {verdict}   (rc={parity.returncode})")
+    print(f"  check-skill-drift-parity.py  -> {scrub_paths(verdict)}   (rc={parity.returncode})")
     for line in counts:
         print(f"    {line}")
     print()
@@ -296,7 +308,7 @@ def main() -> int:
     )
     for line in doc.stdout.splitlines():
         if "kill drift" in line.lower() or "SOUL.md" in line:
-            print(f"  {line.strip()}")
+            print(f"  {scrub_paths(line.strip())}")
     print()
     return 0
 

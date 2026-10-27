@@ -343,6 +343,22 @@ def test_the_frozen_generator_opens_the_store_read_only():
     )
 
 
+def test_no_captured_line_commits_the_operators_home_path():
+    """The artifact is committed to a PUBLIC repo, and the tools it captures print
+    absolute paths inside their own messages — the doctor's drift line did exactly
+    that. Redaction must live in the GENERATOR (a hand-patched committed copy
+    would disagree with the command line printed above it, and the next
+    regeneration would re-introduce the path), so assert BOTH: the artifact is
+    clean, and the generator is what cleans it.
+    """
+    text = _ARTIFACT_FROZEN.read_text()
+    assert "/home/" not in text, "absolute home path leaked into a public artifact"
+    assert "/Users/" not in text, "absolute home path leaked into a public artifact"
+    src = _GEN_FROZEN.read_text()
+    assert "def scrub_paths(" in src, "the generator must own the redaction"
+    assert "scrub_paths(line.strip())" in src, "captured tool output must pass through the scrubber"
+
+
 if __name__ == "__main__":
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]
     failed = 0
