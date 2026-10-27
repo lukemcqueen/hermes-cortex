@@ -1,0 +1,39 @@
+mycortex read-classification — nightly dream unblock evidence
+generated-by : docs/evidence/mycortex-readonly-2026-10-27.sh
+captured-at  : 725c5297 (working tree at run time)
+date         : 2026-10-27T09:10:00+09:00
+────────────────────────────────────────────────────────────
+## 1. The guard test — both directions, against the shipped predicate
+OK    run-tests.sh tests/test_enforcer_mycortex_readonly.py -> rc=0  [============================== 21 passed in 0.18s ==============================]
+────────────────────────────────────────────────────────────
+## 2. The shipped classifier's own verdicts (imported, not re-implemented)
+      readonly=True   mycortex list -n 20
+      readonly=True   mycortex search "x" --limit 3
+      readonly=True   mycortex stats
+      readonly=True   mycortex doctor
+      readonly=True   mycortex sources list
+      readonly=True   mycortex answer search "q"
+      readonly=False  mycortex sync
+      readonly=False  mycortex sources add foo /tmp/f
+      readonly=False  mycortex sources remove foo
+      readonly=False  mycortex answer store "q" "a"
+      readonly=False  mycortex answer prune
+      readonly=False  mycortex sync && mycortex list
+      (first three: reads -> True. The six mutations MUST stay False.)
+────────────────────────────────────────────────────────────
+## 3. Deployed copies carry the patterned entries
+OK    repo: 3 subcommand-scoped mycortex allowlist entries
+OK    deployed: 3 subcommand-scoped mycortex allowlist entries
+────────────────────────────────────────────────────────────
+## 4. Is the RUNNING gateway serving the new classifier? (deploy != loaded)
+PENDING gateway (pid 9216) started 316018s BEFORE the enforcer was written — running process has the OLD classifier; a gateway restart is REQUIRED
+      NOTE: the decisive read is the deploy's own reload line — it names only
+      'hooks', so the enforcer module itself is loaded at gateway start.
+────────────────────────────────────────────────────────────
+## 5. The captured RED run of the guard (before the fix)
+      path : docs/evidence/mycortex-readonly-2026-10-27.RED.txt
+      md5  : eb7d817baa7d67c7d4794b6ba7021ac7
+      produced by: bash tests/run-tests.sh tests/test_enforcer_mycortex_readonly.py -q
+      verdict    : ========================= 12 failed, 9 passed in 0.24s =========================
+────────────────────────────────────────────────────────────
+RESULT: CHANGE VERIFIED — 1 PENDING action(s) on this host (see PENDING lines; not a defect in the change)

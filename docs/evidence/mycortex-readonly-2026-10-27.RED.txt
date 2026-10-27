@@ -1,0 +1,97 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
+rootdir: /home/esther/hermes-cortex
+configfile: pytest.ini
+plugins: anyio-4.15.1
+collected 21 items
+
+tests/test_enforcer_mycortex_readonly.py .FFFFFFFFFFF........F           [100%]
+
+=================================== FAILURES ===================================
+_______ test_brain_query_subcommands_are_read_only[mycortex list -n 20] ________
+tests/test_enforcer_mycortex_readonly.py:86: in test_brain_query_subcommands_are_read_only
+    assert fn(cmd) is True, (
+E   AssertionError: 'mycortex list -n 20' is classified WRITE-class, so an unattended session cannot run it without holding a governance lock — this is the nightly dream's first step
+E   assert False is True
+E    +  where False = <function _is_readonly_terminal_command at 0x7614df2f2340>('mycortex list -n 20')
+_ test_brain_query_subcommands_are_read_only[mycortex search "dream layer" --limit 3] _
+tests/test_enforcer_mycortex_readonly.py:86: in test_brain_query_subcommands_are_read_only
+    assert fn(cmd) is True, (
+E   AssertionError: 'mycortex search "dream layer" --limit 3' is classified WRITE-class, so an unattended session cannot run it without holding a governance lock — this is the nightly dream's first step
+E   assert False is True
+E    +  where False = <function _is_readonly_terminal_command at 0x7614df1d5c60>('mycortex search "dream layer" --limit 3')
+_ test_brain_query_subcommands_are_read_only[mycortex search connection --source hermes-cortex] _
+tests/test_enforcer_mycortex_readonly.py:86: in test_brain_query_subcommands_are_read_only
+    assert fn(cmd) is True, (
+E   AssertionError: 'mycortex search connection --source hermes-cortex' is classified WRITE-class, so an unattended session cannot run it without holding a governance lock — this is the nightly dream's first step
+E   assert False is True
+E    +  where False = <function _is_readonly_terminal_command at 0x7614df1bd4e0>('mycortex search connection --source hermes-cortex')
+__________ test_brain_query_subcommands_are_read_only[mycortex stats] __________
+tests/test_enforcer_mycortex_readonly.py:86: in test_brain_query_subcommands_are_read_only
+    assert fn(cmd) is True, (
+E   AssertionError: 'mycortex stats' is classified WRITE-class, so an unattended session cannot run it without holding a governance lock — this is the nightly dream's first step
+E   assert False is True
+E    +  where False = <function _is_readonly_terminal_command at 0x7614df1b0ea0>('mycortex stats')
+______ test_brain_query_subcommands_are_read_only[mycortex stats --json] _______
+tests/test_enforcer_mycortex_readonly.py:86: in test_brain_query_subcommands_are_read_only
+    assert fn(cmd) is True, (
+E   AssertionError: 'mycortex stats --json' is classified WRITE-class, so an unattended session cannot run it without holding a governance lock — this is the nightly dream's first step
+E   assert False is True
+E    +  where False = <function _is_readonly_terminal_command at 0x7614df1949a0>('mycortex stats --json')
+_________ test_brain_query_subcommands_are_read_only[mycortex doctor] __________
+tests/test_enforcer_mycortex_readonly.py:86: in test_brain_query_subcommands_are_read_only
+    assert fn(cmd) is True, (
+E   AssertionError: 'mycortex doctor' is classified WRITE-class, so an unattended session cannot run it without holding a governance lock — this is the nightly dream's first step
+E   assert False is True
+E    +  where False = <function _is_readonly_terminal_command at 0x7614df14c220>('mycortex doctor')
+______ test_brain_query_subcommands_are_read_only[mycortex doctor --json] ______
+tests/test_enforcer_mycortex_readonly.py:86: in test_brain_query_subcommands_are_read_only
+    assert fn(cmd) is True, (
+E   AssertionError: 'mycortex doctor --json' is classified WRITE-class, so an unattended session cannot run it without holding a governance lock — this is the nightly dream's first step
+E   assert False is True
+E    +  where False = <function _is_readonly_terminal_command at 0x7614df14fba0>('mycortex doctor --json')
+______ test_brain_query_subcommands_are_read_only[mycortex sources list] _______
+tests/test_enforcer_mycortex_readonly.py:86: in test_brain_query_subcommands_are_read_only
+    assert fn(cmd) is True, (
+E   AssertionError: 'mycortex sources list' is classified WRITE-class, so an unattended session cannot run it without holding a governance lock — this is the nightly dream's first step
+E   assert False is True
+E    +  where False = <function _is_readonly_terminal_command at 0x7614df1376a0>('mycortex sources list')
+___ test_brain_query_subcommands_are_read_only[mycortex sources list --json] ___
+tests/test_enforcer_mycortex_readonly.py:86: in test_brain_query_subcommands_are_read_only
+    assert fn(cmd) is True, (
+E   AssertionError: 'mycortex sources list --json' is classified WRITE-class, so an unattended session cannot run it without holding a governance lock — this is the nightly dream's first step
+E   assert False is True
+E    +  where False = <function _is_readonly_terminal_command at 0x7614df127060>('mycortex sources list --json')
+_ test_brain_query_subcommands_are_read_only[mycortex answer search "how do we deploy"] _
+tests/test_enforcer_mycortex_readonly.py:86: in test_brain_query_subcommands_are_read_only
+    assert fn(cmd) is True, (
+E   AssertionError: 'mycortex answer search "how do we deploy"' is classified WRITE-class, so an unattended session cannot run it without holding a governance lock — this is the nightly dream's first step
+E   assert False is True
+E    +  where False = <function _is_readonly_terminal_command at 0x7614df032980>('mycortex answer search "how do we deploy"')
+______ test_brain_query_subcommands_are_read_only[mycortex answer stats] _______
+tests/test_enforcer_mycortex_readonly.py:86: in test_brain_query_subcommands_are_read_only
+    assert fn(cmd) is True, (
+E   AssertionError: 'mycortex answer stats' is classified WRITE-class, so an unattended session cannot run it without holding a governance lock — this is the nightly dream's first step
+E   assert False is True
+E    +  where False = <function _is_readonly_terminal_command at 0x7614df066340>('mycortex answer stats')
+________ test_the_allowlist_is_scoped_to_subcommands_not_the_whole_cli _________
+tests/test_enforcer_mycortex_readonly.py:107: in test_the_allowlist_is_scoped_to_subcommands_not_the_whole_cli
+    assert "mycortex" in block, "no mycortex entry in the read-only allowlist"
+E   AssertionError: no mycortex entry in the read-only allowlist
+E   assert 'mycortex' in 'READONLY_COMMAND_PATTERNS = [\n    r"^\\s*(ls|cat|head|tail|less|more|grep|find|which|whoami|id|pwd|date|stat|file|du...ck.\n    r"^\\s*(cd|echo|printf|true|false)(?:\\s|$)",\n    r"^\\s*(?:test|\\[)(?:\\s|$)",\n    r"^\\s*command\\s+-[vV'
+=========================== short test summary info ============================
+FAILED tests/test_enforcer_mycortex_readonly.py::test_brain_query_subcommands_are_read_only[mycortex list -n 20]
+FAILED tests/test_enforcer_mycortex_readonly.py::test_brain_query_subcommands_are_read_only[mycortex search "dream layer" --limit 3]
+FAILED tests/test_enforcer_mycortex_readonly.py::test_brain_query_subcommands_are_read_only[mycortex search connection --source hermes-cortex]
+FAILED tests/test_enforcer_mycortex_readonly.py::test_brain_query_subcommands_are_read_only[mycortex stats]
+FAILED tests/test_enforcer_mycortex_readonly.py::test_brain_query_subcommands_are_read_only[mycortex stats --json]
+FAILED tests/test_enforcer_mycortex_readonly.py::test_brain_query_subcommands_are_read_only[mycortex doctor]
+FAILED tests/test_enforcer_mycortex_readonly.py::test_brain_query_subcommands_are_read_only[mycortex doctor --json]
+FAILED tests/test_enforcer_mycortex_readonly.py::test_brain_query_subcommands_are_read_only[mycortex sources list]
+FAILED tests/test_enforcer_mycortex_readonly.py::test_brain_query_subcommands_are_read_only[mycortex sources list --json]
+FAILED tests/test_enforcer_mycortex_readonly.py::test_brain_query_subcommands_are_read_only[mycortex answer search "how do we deploy"]
+FAILED tests/test_enforcer_mycortex_readonly.py::test_brain_query_subcommands_are_read_only[mycortex answer stats]
+FAILED tests/test_enforcer_mycortex_readonly.py::test_the_allowlist_is_scoped_to_subcommands_not_the_whole_cli
+========================= 12 failed, 9 passed in 0.24s =========================
+---
+run-tests.sh: interpreter=/home/esther/.hermes-cortex/venv/bin/python3 rc=1  (PYTHONPATH/PYTHONHOME unset for the run)
