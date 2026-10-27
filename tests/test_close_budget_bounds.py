@@ -74,10 +74,20 @@ def test_budgets_nest_under_the_client_window() -> None:
     cap = getattr(mcp, "CLOSE_BLOBS_PER_WINDOW", None)
     _check("a per-window blob cap is stated", cap is not None, "CLOSE_BLOBS_PER_WINDOW missing")
     if cap is not None:
-        _check("the cap follows from the measured call duration (one 200 s call fits 240 s)",
-               cap * MEASURED_BLOB_CALL_S <= total < (cap + 1) * MEASURED_BLOB_CALL_S,
-               f"cap={cap} total={total}: {cap * MEASURED_BLOB_CALL_S} <= {total} < "
-               f"{(cap + 1) * MEASURED_BLOB_CALL_S}")
+        # ONE call's duration bounds the WAVE, not the cap times a duration (2026-10-27). The cap
+        # is BLOB_REVIEW_CONCURRENCY: those calls are issued TOGETHER, so elapsed time is the
+        # slowest of them, not their sum. The old assertion multiplied the cap by the measured
+        # call duration, which was right only while the cap was 1 and has been failing since the
+        # wave change — a stale check, red on a healthy module.
+        _check("the cap is the concurrency the wave is issued at",
+               cap == mcp.BLOB_REVIEW_CONCURRENCY,
+               f"cap={cap} concurrency={mcp.BLOB_REVIEW_CONCURRENCY}")
+        _check("ONE measured call fits one window (a wave's cost is its slowest call)",
+               MEASURED_BLOB_CALL_S <= total < CLIENT_WINDOW_S,
+               f"measured={MEASURED_BLOB_CALL_S} total={total} window={CLIENT_WINDOW_S}")
+        _check("the floor refuses a remainder no call could finish in",
+               getattr(mcp, "BLOB_REVIEW_MIN_CALL_S", None) == MEASURED_BLOB_CALL_S - 20.0,
+               "BLOB_REVIEW_MIN_CALL_S is not the low end of the measured band — re-derive it")
 
 
 def test_budget_left_helper() -> None:
@@ -115,11 +125,16 @@ def test_per_blob_pass_accounts_for_every_blob() -> None:
 
     blobs2 = {f"g{i}.txt": f"s{i}" for i in range(6)}
     started = time.monotonic()
+    # BOUNDED BY THE CAP, not by a tiny budget (2026-10-27). A sub-second budget proves nothing
+    # about reporting: the wave's deadline has a 1.0s floor, so fast calls all answer and nothing
+    # is left to report — the old fixture failed on a healthy module. A cap smaller than the range
+    # is the case that actually leaves blobs unreached, and it is the case the refusal text is for.
     got2 = mcp._review_uncovered_blobs(blobs2, reviewer=_slow, material_for=material_for,
-                                       cap=99, budget_s=0.12, conn=None)
+                                       cap=2, budget_s=240.0, conn=None)
     elapsed = time.monotonic() - started
     _check("a bounded pass returns early", elapsed < 1.0, f"elapsed={elapsed:.2f}s")
-    _check("unreached blobs are REPORTED", len(got2["remaining"]) > 0, "nothing reported")
+    _check("unreached blobs are REPORTED", len(got2["remaining"]) == 4,
+           f"expected the 4 blobs beyond the cap, got {got2['remaining']}")
     _check("judged + remaining accounts for every blob",
            len(got2["verdicts"]) + len(got2["remaining"]) == len(blobs2),
            f"{len(got2['verdicts'])}+{len(got2['remaining'])} != {len(blobs2)}")
@@ -161,10 +176,13 @@ def test_close_hands_its_remaining_window_to_the_blob_pass() -> None:
     mcp._complete_blob_reviews = _fake_complete_blob_reviews
 
     lock = {"session_id": "test-session", "task_id": "t", "description": "d"}
-    mcp._complete_push_range_blobs(lock, {"id": 1}, require_full=True, cap=1, budget_s=123.5)
+    # A remainder ABOVE the minimum-call floor: below it the close deliberately starts no wave, so
+    # it would forward nothing and this FORWARDING assertion would be measuring the floor instead
+    # of the hand-off it exists to prove (see BLOB_REVIEW_MIN_CALL_S).
+    mcp._complete_push_range_blobs(lock, {"id": 1}, require_full=True, cap=1, budget_s=200.0)
     _check("the close's cap reaches the pass", bool(seen) and seen[-1].get("cap") == 1, str(seen[-1:]))
     _check("the close's REMAINING budget reaches the pass",
-           bool(seen) and seen[-1].get("budget_s") == 123.5, str(seen[-1:]))
+           bool(seen) and seen[-1].get("budget_s") == 200.0, str(seen[-1:]))
     mcp._complete_push_range_blobs(lock, {"id": 1}, require_full=True)
     _check("a caller with no knobs forwards NOTHING (defaults preserved)",
            bool(seen) and "cap" not in seen[-1] and "budget_s" not in seen[-1], str(seen[-1:]))

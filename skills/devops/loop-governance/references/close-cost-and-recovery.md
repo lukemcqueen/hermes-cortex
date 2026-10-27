@@ -80,9 +80,18 @@ CONTINUES from there rather than redoing it. So the loop is:
 
 Expect up to `CLOSE_BLOBS_PER_WINDOW` blobs per pass, budget ~1–3 minutes each; do not treat a
 partial pass as a dead end and do not re-run a "failed" close — it succeeded at judging a wave.
-A blob marked `already judged, not clean` will NOT be re-reviewed: identical content
-cannot produce a different verdict, so the fix is to change the FILE and commit it
-(the new content is a new blob).
+A blob under `judged and NOT clean` will NOT be re-reviewed: identical content cannot produce a
+different verdict, so the fix is to change the FILE and commit it (the new content is a new blob).
+`CLEAN in the range` counts blobs covered under the CURRENT rules revision, and the
+never-judged paths are listed under their own heading — the two lists are disjoint, so a path
+appearing under both is a defect worth reporting, not a reason to edit more files.
+
+**`reviewed this pass : 0` is NOT a partial pass — read the state, do not re-run blind.** Two very
+different things print a zero: the close's window was spent by the whole-range review (the refusal
+names it `REVIEW_WINDOW_SPENT`, states that ZERO calls were attempted, and the remedy is to RETRY
+the close immediately — editing files changes nothing), or every outstanding blob already carries a
+not-clean verdict for its exact content (the refusal lists them under `judged and NOT clean`, and
+only a CONTENT change moves them). Confusing the two is what turns a refusal into a four-round loop.
 
 **That rule creates a deadlock when the finding is about a SIBLING file.** A per-blob reviewer reads
 ONE file, so it can demand something that already exists elsewhere in the same range — a test, a

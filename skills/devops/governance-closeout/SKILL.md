@@ -65,7 +65,37 @@ that predates a rename. Confirm with `git log --oneline <base>..HEAD` (find the 
 but the base is computed by `begin_change`, so it is not something the worker picks mid-cycle.
 Note the residual that this does NOT fix: a path that STILL EXISTS and whose recorded verdict is
 non-clean keeps its verdict and stays pending — that is a JUDGEMENT problem, and its exits are a new
-blob (edit and re-commit), `rereview_change`, or a fresh base, never a silent override.
+blob (edit and re-commit) or a fresh base. `rereview_change` is now one of its exits too: a CLEAN
+re-review DELETES the per-blob verdicts for the range it just judged, so those blobs are re-judged
+live on the next close instead of blocking on a row the range-level review has already overruled.
+Never a silent override.
+
+## `reviewed this pass: 0` with blobs pending is an ENGINE condition, not work to finish
+
+The per-blob pass runs inside the SAME 240s client window as the whole-range review, and a range
+call measures 180-220s — so the pass can be handed a remainder that no single blob call can fit
+inside. It then issued the wave anyway, every call was cut at the deadline, `calls` stayed 0, and
+each blob was reported as "still carries no review verdict": a statement about blob WORK that was
+really a statement about the clock. Four closes in a row said the same thing, each ending "fix the
+file and commit it" for a file already fixed.
+
+Read the two states apart before doing anything to your tree:
+
+- **the window was already spent** — the refusal now names it (`REVIEW_WINDOW_SPENT`), states that
+  ZERO blob calls were attempted, and says the remedy is to RETRY the close, not to edit: the range
+  verdict is stored, so the retry skips the range call and hands the pass the whole window. Editing
+  files cannot change this outcome.
+- **nothing was eligible** — every outstanding blob already carries a not-clean verdict for its
+  EXACT content. Then, and only then, the remedy is a CONTENT change (a new blob), because
+  re-sending identical bytes cannot produce a different verdict.
+
+A close refuses as `REVIEW_WINDOW_SPENT` only below `BLOB_REVIEW_MIN_CALL_S` (180s, the low end of
+the measured band), so it never starts a call it knows will be abandoned. The refusal text and the
+replay-safe distinction are pinned by
+`tests/test_perblob_zero_work_is_engine_condition.py`; the floor's arithmetic by
+`tests/test_close_budget_bounds.py`. When a close reports zero work, first ask WHICH of the two you
+are looking at — one is fixed by another close, the other by a commit, and confusing them is what
+turns a refusal into a loop.
 
 ## An empty reviewer reply is the FIRST thing to check when a close hangs or refuses
 

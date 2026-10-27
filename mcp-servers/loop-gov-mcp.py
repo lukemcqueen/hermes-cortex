@@ -1129,6 +1129,20 @@ BLOB_REVIEW_BUDGET_S = CLOSE_TOTAL_BUDGET_S   # a pass may use the whole window 
 # closing a 15-file range (cycle 13287) took 15 end_change round trips, one blob judged each.
 BLOB_REVIEW_CONCURRENCY = 4                   # reviewer calls issued together in one window
 CLOSE_BLOBS_PER_WINDOW = BLOB_REVIEW_CONCURRENCY   # one wave per close pass
+# THE FLOOR FOR STARTING A CALL AT ALL (2026-10-27). The close hands this pass what is LEFT of one
+# window after the whole-range review has run, and a range call measures 180-220s — so the pass can
+# receive a remainder that NO single blob call can fit inside. Issuing the wave anyway is worse than
+# useless: every call is cut at the deadline, `calls` stays 0, and each blob is appended to
+# `remaining`, which the refusal then prints as "N blob(s) still carry no review verdict" — a
+# statement about blob WORK that is really a statement about the engine. Measured cost: four
+# identical refusals on one change, each telling the agent to fix a file it had already fixed.
+#
+# The floor is the LOW end of the measured band: below it a call cannot finish inside the window
+# that remains, so the close refuses as an ENGINE condition (`REVIEW_WINDOW_SPENT`) instead of
+# starting work it knows will be abandoned. The retry is cheap and immediate, because the range
+# verdict is already stored: the next close skips the range call and reaches this pass with the
+# whole window.
+BLOB_REVIEW_MIN_CALL_S = 180.0
 # Above this own-diff size the range call is NOT attempted: it cannot answer inside the
 # window, and attempting it starves the per-blob pass that would have progressed. Below
 # it the light reviewer answers in seconds, leaving room for blob work behind it.
@@ -1794,14 +1808,21 @@ REVIEW_SCOPE_MAX_PATHS = 12
 
 
 def _unreviewed_paths(repo: Optional[Path]) -> list[str]:
-    """Paths in the push range with no CLEAN verdict — the review's real scope, sorted."""
+    """Paths in the push range with no CLEAN verdict — the review's real scope, sorted.
+
+    The coverage question goes through the CURRENT rules revision (2026-10-27). It used to be
+    asked without one, and `_admissible` answers False for an empty revision — so EVERY path read
+    as unreviewed, including the ones a verdict under the current rules had already covered. The
+    scope note then nagged a session about work it had finished.
+    """
     if repo is None:
         return []
     try:
         blobs = _push_range_blobs(repo)
         if not blobs:
             return []
-        covered = _blobs_with_covered_verdict(blobs)
+        covered = _blobs_with_covered_verdict(
+            blobs, rules_rev=_rules_rev(_review_template_text(repo)))
         return sorted(p for p, sha in blobs.items() if sha not in covered)
     except Exception:  # noqa: BLE001 — a scope note must never be able to break a session opening
         log.warning("review scope note: could not resolve the unreviewed blobs", exc_info=True)
@@ -2151,8 +2172,13 @@ def _blob_material(repo: Path, base: str, path: str, ctx: dict) -> str:
         # verdict — so state it here rather than leaving it to be re-litigated file after file.
         try:
             _blobs = _push_range_blobs(repo) or {}
-            _covered = _blobs_with_covered_verdict(_blobs)
-            _verdicts = _blobs_with_recorded_verdict(_blobs)
+            # Under the CURRENT rules revision (2026-10-27). Asked without one, every sibling was
+            # reported to the reviewer as "NOT covered (blocking findings outstanding)" — including
+            # siblings that were covered — so the judge was fed a false statement about the range
+            # it was told to leave alone.
+            _rev = ctx.get("rules_rev") or _rules_rev(_review_template_text(repo))
+            _covered = _blobs_with_covered_verdict(_blobs, rules_rev=_rev)
+            _verdicts = _blobs_with_recorded_verdict(_blobs, rules_rev=_rev)
             scope_lines += "sibling review status (each sibling is judged in its own window):\n"
             for _p in others:
                 _sha = _blobs.get(_p)
@@ -2272,16 +2298,19 @@ def _complete_blob_reviews(repo: Path, template: str, ctx: dict, run_reviewer,
     if not blobs:
         return {"verdicts": {}, "remaining": [], "calls": 0, "blocking": [],
                 "peer_session_paths": sorted(peers), "deleted_paths": deleted}
-    ctx = dict(ctx, base=base)
     # The RULES the reviewer is given ARE the template text, so that text is fingerprinted
     # and stored with every verdict: a rule change then invalidates the verdicts it
     # supersedes, instead of leaving them to refuse a close the new rules call clean.
+    # `rules_rev` also rides in the ctx so the material builder asks the coverage question under
+    # the SAME revision (it would otherwise re-read the template once per blob).
+    _rev = _rules_rev(template)
+    ctx = dict(ctx, base=base, rules_rev=_rev)
     result = _review_uncovered_blobs(
         blobs,
         reviewer=lambda sha, path, material: run_reviewer(f"{template}\n{material}\n"),
         material_for=lambda sha, path: _blob_material(repo, base, path, ctx),
         cap=cap, budget_s=budget_s, reviewer_label=reviewer_label,
-        rules_rev=_rules_rev(template))
+        rules_rev=_rev)
     result["peer_session_paths"] = sorted(peers)
     result["deleted_paths"] = deleted
     return result
@@ -2338,6 +2367,33 @@ def _complete_push_range_blobs(lock: dict, cycle: dict, cx: Optional[dict] = Non
         "task_id": lock.get("task_id", ""),
         "description": lock.get("description", ""),
     }
+    # THE FLOOR: do not start a call this window cannot finish (2026-10-27). A remainder smaller
+    # than one measured blob call cannot produce a verdict — the wave would be issued, cut at the
+    # deadline, credit nothing, and report every blob as unreviewed work it never attempted. That
+    # is an ENGINE condition, and it is named as one instead of borrowing the vocabulary of a
+    # finding: nothing here is fixed by editing a file.
+    if budget_s is not None and budget_s < BLOB_REVIEW_MIN_CALL_S:
+        pending = _unreviewed_paths(repo)
+        log.warning("per-blob close pass: %.1fs left of the close window, below the %.0fs floor "
+                    "for one reviewer call — starting NO wave (%d blob(s) awaiting a verdict)",
+                    budget_s, BLOB_REVIEW_MIN_CALL_S, len(pending))
+        _mark_close_refused(cycle.get("id", 0), "REVIEW_WINDOW_SPENT", "[]", lock)
+        return CallToolResult(content=[TextContent(type="text", text=(
+            "⏳ Cannot close: the per-blob review pass was given NO usable window — "
+            "an ENGINE condition, not a finding about your code.\n\n"
+            f"  left of this close's window : {budget_s:.0f}s\n"
+            f"  one reviewer call measures  : 180-220s (floor {BLOB_REVIEW_MIN_CALL_S:.0f}s)\n"
+            "  blob calls attempted        : 0\n"
+            f"  blobs awaiting a verdict    : {len(pending)}\n"
+            + (("  " + "".join(f"- {p}\n" for p in pending[:REVIEW_SCOPE_MAX_PATHS]))
+               if pending else "")
+            + "\nThe whole-range review spent the window this close shares with it, so the blob "
+            "pass never ran. NOTHING was attempted, so the count above is the engine's limit and "
+            "says nothing about whether those blobs would pass.\n\n"
+            "Retry end_change NOW: the range verdict is already stored, so the next close skips "
+            "the range call and hands the blob pass the whole window. Editing files will not "
+            "change this outcome; only another close will."
+        ))])
     # The CLOSE hands this pass the REMAINDER of its one window and a per-window cap; a
     # sweep/CLI caller passes neither and keeps the module defaults exactly (no behaviour
     # change off the close path). See the ONE CLOCK note at the close's call site.
@@ -2379,6 +2435,8 @@ def _complete_push_range_blobs(lock: dict, cycle: dict, cx: Optional[dict] = Non
             "authorised; no receipt is written for a range with blocking findings."
         ))])
     if remaining:
+        judged_shas = list(pb.get("already_judged") or [])
+        never_judged = [sha for sha in remaining if sha not in set(judged_shas)]
         _mark_close_refused(cycle.get("id", 0), "REVIEW_PENDING", "[]", lock)
         # Name a reviewer FAILURE separately from a blob nobody has got to yet: the
         # first is a call that ran out of wall clock (latency, retryable), the second
@@ -2394,29 +2452,54 @@ def _complete_push_range_blobs(lock: dict, cycle: dict, cx: Optional[dict] = Non
         # the file (which produces a NEW blob) — and the counter that said "verdicts cached"
         # under-reported while the pass stopped early, so name this set explicitly.
         judged_line = ""
-        if pb.get("already_judged"):
+        if judged_shas:
             judged_line = (
-                f"  already judged, not clean: {len(pb['already_judged'])} blob(s) — re-reviewing "
-                "identical content cannot change the verdict; fix the file and commit it "
-                "(the fix is a new blob) instead of closing again\n"
+                f"  judged and NOT clean  : {len(judged_shas)} blob(s) — their content must "
+                "CHANGE; re-reviewing identical bytes cannot produce a different verdict, and "
+                "committing different content is a new blob judged on its own\n"
+            )
+        # WHY ZERO WORK HAPPENED, said in its own words (2026-10-27). `calls == 0` has two very
+        # different causes and they used to read identically: the window was already spent (an
+        # ENGINE condition, refused above) or there was nothing eligible to send (every
+        # outstanding blob already carries a not-clean verdict for its exact content). The second
+        # is a statement about the CONTENT, and the agent has to be told which one it is looking
+        # at — the same sentence for both is what made this a one-way gate.
+        no_work_line = ""
+        if not pb.get("calls"):
+            no_work_line = (
+                "  no blob was SENT this pass: every blob still outstanding already carries a "
+                "not-clean verdict for its exact content (nothing was left to attempt)\n"
             )
         # NAME THE PATHS, not just a count: the agent's next action is to fix a file, and one
         # review window judges ONE blob, so a count forces a database query per round trip
         # (operator directive, 2026-10-18). Also report the CLEAN count honestly — the previous
         # "verdicts cached" printed len(pb["verdicts"]), which only counts blobs the pass VISITED
         # and therefore under-reported whenever the pass stopped early (found while draining).
-        remaining_paths = _blob_paths_for(repo, remaining)
-        judged_paths = _blob_paths_for(repo, pb.get("already_judged") or [])
-        clean_count = len(_blobs_with_covered_verdict(_push_range_blobs(repo) or {}))
-        paths_line = ("  unreviewed paths:\n" + _path_list(remaining_paths)) if remaining_paths else ""
+        #
+        # THE TWO SETS ARE DISJOINT IN THE MESSAGE (2026-10-27). `already_judged` is a SUBSET of
+        # `remaining` by construction (a skipped blob is not covered, so the receipt must not name
+        # it), and printing `remaining` as "unreviewed paths" put the same path under two
+        # contradictory headings: "unreviewed" and "already judged". The data contract is right;
+        # the presentation was not.
+        remaining_paths = _blob_paths_for(repo, never_judged)
+        judged_paths = _blob_paths_for(repo, judged_shas)
+        # The coverage question is asked under the CURRENT rules revision, exactly as the pass and
+        # the receipt ask it. Without it `_admissible` answers False for every row and this line
+        # printed a structural 0 on every close — a diagnostic that could not state the truth,
+        # directly above the counts that justify the refusal.
+        clean_count = len(_blobs_with_covered_verdict(
+            _push_range_blobs(repo) or {}, rules_rev=_rules_rev(template)))
+        paths_line = ("  never judged — still need a verdict:\n" + _path_list(remaining_paths)
+                      ) if remaining_paths else ""
         judged_paths_line = (
             "  judged and NOT clean — fix these, the fix is a NEW blob:\n" + _path_list(judged_paths)
         ) if judged_paths else ""
         return CallToolResult(content=[TextContent(type="text", text=(
-            f"⏳ Cannot close yet: {len(remaining)} blob(s) of the push range still carry no "
+            f"⏳ Cannot close yet: {len(remaining)} blob(s) of the push range are not covered by a "
             "review verdict.\n\n"
             f"  reviewed this pass : {pb.get('calls')} blob(s)\n"
             f"  CLEAN in the range : {clean_count} blob(s)\n"
+            f"{no_work_line}"
             f"{failed_line}"
             f"{judged_line}"
             f"{paths_line}"
@@ -2428,7 +2511,7 @@ def _complete_push_range_blobs(lock: dict, cycle: dict, cx: Optional[dict] = Non
     return None
 
 
-def _receipt_blobs(repo: Path, base: str, head: str):
+def _receipt_blobs(repo: Path, base: str, head: str, *, rules_rev: str = ""):
     """The range's blobs that are COVERED; everything else OMITTED.
 
     The receipt IS the authorisation, so it may name only content that was JUDGED — CLEAN, or
@@ -2448,7 +2531,11 @@ def _receipt_blobs(repo: Path, base: str, head: str):
     blobs = _range_blobs(repo, base, head)
     if not blobs:
         return blobs          # None/{} → the gate falls back to exact tip+base
-    covered = _blobs_with_covered_verdict(blobs)
+    # UNDER THE CURRENT RULES REVISION (2026-10-27). Without it `_admissible` answers False for
+    # every row, so `covered` was ALWAYS empty and every receipt this module wrote named NOTHING
+    # but deletions — the push gate then fell back to exact tip+base and lost the content coverage
+    # the comment below describes. An empty/unknown revision still covers nothing (fail closed).
+    covered = _blobs_with_covered_verdict(blobs, rules_rev=rules_rev)
     out = {p: s for p, s in blobs.items() if s in covered}
     # A path that does NOT EXIST at this tip has no content to judge, so it can never be covered by a
     # verdict — and leaving it out would make the push gate (which queries the same range, sentinel
@@ -2618,7 +2705,9 @@ def _write_review_receipt(cycle_id=None, args: dict | None = None,
             # range changes, so a rebase that rewrites the tip (another session
             # rebasing the shared branch) no longer invalidates a review of the
             # same content. Absent/None = the receipt only ever matches tip+base.
-            "reviewed_blobs": _receipt_blobs(Path(repo), base, head),
+            "reviewed_blobs": _receipt_blobs(
+                Path(repo), base, head,
+                rules_rev=_rules_rev(_review_template_text(Path(repo)))),
             "cycle_id": cycle_id,
             "reviewed_at": _now_iso(),
         }
@@ -6248,6 +6337,86 @@ def _build_review_material(p: dict) -> tuple[str, str]:
     return material, artifact
 
 
+def _review_window_base(repo: Path, lock: dict) -> str:
+    """The base revision the review gate judges: HEAD as it stood when the lock was taken.
+
+    ONE implementation, because two consumers must agree about WHICH RANGE was judged: the gate
+    builds its material from it, and `_invalidate_range_blob_verdicts` clears the per-blob verdicts
+    inside it after a CLEAN re-review. A second copy of this expression would let the invalidation
+    cover a different range from the one the reviewer actually read — the two would drift silently,
+    and the drift would look like a store problem.
+    """
+    return (
+        _git_capture(repo, "rev-list", "-1", "--before=" + lock.get("started_at", ""), "HEAD").strip()
+        or "HEAD"
+    )
+
+
+def _invalidate_range_blob_verdicts(repo: Optional[Path], base: str, *,
+                                    rules_rev: str = "") -> int:
+    """Delete the per-blob verdicts inside ``base..HEAD`` that are NOT covered. Returns the count.
+
+    WHY (2026-10-27). `rereview_change` re-runs the reviewer LIVE over the cycle's range and
+    replaces the row in `adversarial_reviews`, but the per-blob verdicts live in `blob_reviews` — a
+    different store — and were left alone. A row that is recorded but not covered keeps its blob on
+    the skip list AND in `remaining`, so the close stayed refused on a verdict the range-level
+    review had already superseded: two stores describing one range and disagreeing about whether a
+    problem exists. The module already treats that disagreement as a defect class on the other store
+    (see `_complete_push_range_blobs`, cycle 13253).
+
+    THE DIRECTION IS ONE-WAY. Rows are DELETED, so those blobs are judged again from scratch on the
+    next close; they are never marked covered, because that would be the range verdict authorising
+    per-blob content nobody read. A rereview may therefore COST a review and can never BUY coverage.
+
+    SCOPE is exactly the range the re-review judged, resolved through the gate's own base
+    (`_review_window_base`) — never the whole push range, whose extra blobs may belong to a peer
+    session and would then be re-bought for nothing. Covered rows SURVIVE: they are evidence about
+    this content and deleting them would spend a review to learn what is already known.
+
+    Fail SAFE: an unresolvable range, an unreadable store, or a store error clears nothing and
+    reports 0 — the caller then behaves exactly as before this fix.
+    """
+    if repo is None or not base:
+        log.warning("rereview: no repo/base to invalidate per-blob verdicts against — cleared 0")
+        return 0
+    try:
+        blobs = _range_blobs(repo, base, "HEAD")
+    except Exception as exc:  # noqa: BLE001 — an invalidation must never break the rereview
+        log.warning("rereview: could not resolve the re-reviewed range (%s) — cleared 0", exc)
+        return 0
+    if not blobs:
+        log.warning("rereview: range %s..HEAD resolves to no blobs — cleared 0", base[:12])
+        return 0
+    try:
+        covered = _blobs_with_covered_verdict(blobs, rules_rev=rules_rev)
+    except Exception as exc:  # noqa: BLE001
+        log.warning("rereview: could not read coverage (%s) — cleared 0", exc)
+        return 0
+    stale = sorted({sha for sha in blobs.values() if sha and sha not in covered})
+    if not stale:
+        return 0
+    conn = _db()
+    cleared = 0
+    try:
+        for sha in stale:
+            cur = conn.execute("DELETE FROM blob_reviews WHERE blob_sha=?", (sha,))
+            cleared += cur.rowcount or 0
+        conn.commit()
+    except sqlite3.Error as exc:
+        # A store error must not make the caller believe a deletion happened.
+        log.warning("rereview: could not clear stale per-blob verdicts (%s) — cleared 0", exc)
+        try:
+            conn.rollback()
+        except sqlite3.Error:
+            pass
+        return 0
+    finally:
+        conn.close()
+    log.info("rereview: cleared %d stale per-blob verdict(s) from range %s..HEAD — they are "
+             "re-judged on the next close, never marked covered", cleared, base[:12])
+    return cleared
+
+
 def _rereview_change(args: dict) -> CallToolResult:
     """Re-judge an OPEN cycle after its findings were fixed.
 
@@ -6332,9 +6501,32 @@ def _rereview_change(args: dict) -> CallToolResult:
             "again with the new evidence.\n\n"
             + "\n".join(c.text for c in block.content if getattr(c, "text", None))))])
 
+    # A CLEAN re-review SUPERSEDES the per-blob verdicts it just judged (2026-10-27). Without this
+    # the close stayed refused on a per-blob row the range-level review had already overruled: two
+    # stores describing one range and disagreeing about whether a problem exists. The rows are
+    # DELETED, so those blobs are judged again from scratch on the next close — never marked
+    # covered, because that would be this verdict authorising content nobody read.
+    cleared = 0
+    try:
+        _repo = _lock_repo(lock)
+        cleared = _invalidate_range_blob_verdicts(
+            _repo, _review_window_base(_repo, lock),
+            rules_rev=_rules_rev(_review_template_text(_repo))) if _repo is not None else 0
+    except Exception as e:  # noqa: BLE001 — a cache clear must never break the rereview itself
+        log.warning("rereview: could not clear stale per-blob verdicts: %s", e)
+
+    cleared_note = (
+        f"\nPer-blob verdicts cleared for the range just re-reviewed: {cleared} blob(s). "
+        "They are\nre-judged live on the next close (a cleared verdict is NOT coverage), so if "
+        "the per-blob\npass had blocked the close, that block is gone — retry end_change.\n"
+        if cleared else
+        "\nNo stale per-blob verdict stood in the way of this range (nothing to clear).\n"
+    )
     return CallToolResult(content=[TextContent(type="text", text=(
         f"✅ Cycle #{cycle_id} re-reviewed and CLEAN — the findings are resolved. "
-        "Call end_change('" + task_id + "') to release the lock."))])
+        "Call end_change('" + task_id + "') to release the lock."
+        + cleared_note
+    ))])
 
 
 def _diff_paths(diff_text: str) -> list:
@@ -6828,10 +7020,7 @@ def _adversarial_review_gate(lock: dict, cycle: dict,
     task_id = lock.get("task_id", "")
     description = lock.get("description", "")
     outcome_note = cycle.get("outcome_note") or "(no note)"
-    _base = (
-        _git_capture(repo, "rev-list", "-1", "--before=" + lock.get("started_at", ""), "HEAD").strip()
-        or "HEAD"
-    )
+    _base = _review_window_base(repo, lock)
     _author = _agent_author(repo)
     # SESSION scope (2026-10-19). The author filter cannot separate two sessions on one host —
     # they share a git identity — so a peer session's commit entered this cycle's material, its
@@ -7274,8 +7463,13 @@ def _end_change(args: dict) -> CallToolResult:
     # skipped it entirely (measured — a receipt with an EMPTY reviewed_blobs).
     blob_block = _complete_push_range_blobs(
         lock, cycle_data or {},
+        # REVIEW_WINDOW_SPENT is INCLUDED: a starved pass judged nothing, so there is still no
+        # evidence standing behind any blob and the next close must keep demanding full coverage.
+        # Dropping it here would let the early "not an always-review range" exit skip the pass
+        # entirely on the retry — the close would then succeed with no per-blob coverage at all,
+        # which is the opposite of what the engine-condition refusal is for.
         require_full=str(((_read_lock(args) or {}).get("close_refused") or {})
-                         .get("verdict", "")) == "REVIEW_INCOMPLETE",
+                         .get("verdict", "")) in ("REVIEW_INCOMPLETE", "REVIEW_WINDOW_SPENT"),
         # What is LEFT of this close's window, and at most one blob call within it.
         cap=CLOSE_BLOBS_PER_WINDOW,
         budget_s=_close_budget_left(close_started))

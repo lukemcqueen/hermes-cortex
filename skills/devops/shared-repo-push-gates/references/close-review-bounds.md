@@ -172,8 +172,18 @@ row for that blob from the previous round.
   a scheduling decision, never a verdict: the blob stays in the refusal's count and stays out of
   the receipt, so nothing gains coverage and the close still refuses honestly. The only move that
   can turn it clean is fixing the FILE, which produces a NEW blob judged on its own.
-- **Say so in the refusal.** A message naming "already judged, not clean" tells the operator the
-  action (fix the file and commit) instead of inviting another identical round.
+- **Say so in the refusal.** The refusal names these under `judged and NOT clean` and tells the
+  operator the action (change the file, which produces a new blob) instead of inviting another
+  identical round. It is listed SEPARATELY from the never-judged paths on purpose: `already_judged`
+  is a subset of `remaining`, and printing `remaining` as "unreviewed" put the same path under two
+  contradictory headings. If one path ever appears under both again, that is a defect to report,
+  not a reason to edit more files.
+- **`reviewed this pass : 0` with blobs pending has TWO causes — identify yours before editing.**
+  Either the close's window was spent by the whole-range review (the refusal says
+  `REVIEW_WINDOW_SPENT` and the remedy is to RETRY the close — nothing was attempted, and the range
+  verdict is stored so the retry skips the range call) or nothing was eligible (every outstanding
+  blob already carries a not-clean verdict for its exact content). Only the second is fixed by a
+  commit; confusing them is what turns a refusal into a four-round loop.
 - **Test it with injected collaborators**, asserting three things together: the judged blob is not
   handed to the reviewer, it is still reported uncovered, and the pass spends its cap on a blob
   nobody has judged. A test that only asserts "reviewer not called" would also pass against a pass

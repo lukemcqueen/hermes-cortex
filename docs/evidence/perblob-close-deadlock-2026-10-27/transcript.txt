@@ -1,0 +1,407 @@
+=== per-blob close deadlock — verification transcript ===
+captured-by: verify.sh (writes this file itself; the committed copy is the run)
+captured-at: HEAD=b2c2d25a (the WORKING TREE was the fix)
+baseline   : b2c2d25a — the tip this fix was written against (a literal, never a ref:
+             once the fix is pushed, origin/main IS the fix and the baseline becomes a
+             tautology wearing a PASS)
+note       : 'captured-at' is the revision the tree sat on when the run happened.
+             Writing this file changes the revision, so the committed copy is always one
+             commit ahead of this line — that is expected, not a drift.
+
+--- 1. the fix compiles ---
+### syntax
+$ python3 -m py_compile ~/hermes-cortex/mcp-servers/loop-gov-mcp.py
+
+rc=0
+
+--- 2. the three new pins (each must PASS on the fix) ---
+### test_perblob_zero_work_is_engine_condition
+$ python3 ~/hermes-cortex/tests/test_perblob_zero_work_is_engine_condition.py
+[mcp-server] DEBUG: Initializing server 'loop-governance/sdk-capability-probe'
+[mcp-server] DEBUG: Initializing server 'loop-governance'
+[mcp-server] DEBUG: Initializing server 'loop-governance/sdk-capability-probe'
+[mcp-server] DEBUG: Initializing server 'loop-governance'
+[mcp-server] DEBUG: Initializing server 'loop-governance/sdk-capability-probe'
+[mcp-server] DEBUG: Initializing server 'loop-governance'
+[mcp-server] DEBUG: Initializing server 'loop-governance/sdk-capability-probe'
+[mcp-server] DEBUG: Initializing server 'loop-governance'
+[mcp-server] DEBUG: Initializing server 'loop-governance/sdk-capability-probe'
+[mcp-server] DEBUG: Initializing server 'loop-governance'
+[mcp-server] DEBUG: Initializing server 'loop-governance/sdk-capability-probe'
+[mcp-server] DEBUG: Initializing server 'loop-governance'
+  PASS test_00_preconditions
+  PASS test_a_pass_that_judged_something_still_reports_progress
+  PASS test_a_starved_close_is_an_engine_condition
+  PASS test_all_already_judged_names_the_content_change
+  PASS test_clean_count_asks_with_the_current_rules_revision
+  PASS test_one_path_is_never_printed_in_both_lists
+
+OK — 0 failure(s)
+rc=0
+
+### test_coverage_readers_pass_rules_rev
+$ python3 ~/hermes-cortex/tests/test_coverage_readers_pass_rules_rev.py
+[mcp-server] DEBUG: Initializing server 'loop-governance/sdk-capability-probe'
+[mcp-server] DEBUG: Initializing server 'loop-governance'
+[mcp-server] DEBUG: Initializing server 'loop-governance/sdk-capability-probe'
+[mcp-server] DEBUG: Initializing server 'loop-governance'
+[mcp-server] DEBUG: Initializing server 'loop-governance/sdk-capability-probe'
+[mcp-server] DEBUG: Initializing server 'loop-governance'
+[mcp-server] DEBUG: Initializing server 'loop-governance/sdk-capability-probe'
+[mcp-server] DEBUG: Initializing server 'loop-governance'
+[mcp-server] DEBUG: Initializing server 'loop-governance/sdk-capability-probe'
+[mcp-server] DEBUG: Initializing server 'loop-governance'
+  PASS test_00_preconditions
+  PASS test_receipt_names_the_blobs_a_verdict_covers
+  PASS test_sibling_status_shown_to_the_reviewer_is_truthful
+  PASS test_unreviewed_paths_counts_a_covered_blob_as_covered
+
+OK — 0 failure(s)
+rc=0
+
+### test_rereview_clears_stale_blob_verdicts
+$ python3 ~/hermes-cortex/tests/test_rereview_clears_stale_blob_verdicts.py
+[mcp-server] DEBUG: Initializing server 'loop-governance/sdk-capability-probe'
+[mcp-server] DEBUG: Initializing server 'loop-governance'
+[mcp-server] DEBUG: Initializing server 'loop-governance/sdk-capability-probe'
+[mcp-server] DEBUG: Initializing server 'loop-governance'
+[mcp-server] DEBUG: Initializing server 'loop-governance/sdk-capability-probe'
+[mcp-server] DEBUG: Initializing server 'loop-governance'
+[mcp-server] DEBUG: Initializing server 'loop-governance/sdk-capability-probe'
+[mcp-server] DEBUG: Initializing server 'loop-governance'
+[mcp-server] DEBUG: Initializing server 'loop-governance/sdk-capability-probe'
+[mcp-server] DEBUG: Initializing server 'loop-governance'
+[mcp-server] DEBUG: Initializing server 'loop-governance/sdk-capability-probe'
+[mcp-server] DEBUG: Initializing server 'loop-governance'
+  PASS test_00_preconditions
+  PASS test_an_unresolvable_range_clears_nothing
+  PASS test_clears_only_uncovered_rows_inside_the_range
+  PASS test_rereview_calls_the_invalidator_and_reports_the_count
+  PASS test_the_cleared_blob_is_re_judged_not_covered
+
+OK — 0 failure(s)
+rc=0
+
+--- 3. neighbouring suites that exercise the same seams ---
+### test_blob_coverage_semantics
+$ python3 ~/hermes-cortex/tests/test_blob_coverage_semantics.py
+[mcp-server] DEBUG: Initializing server 'loop-governance/sdk-capability-probe'
+[mcp-server] DEBUG: Initializing server 'loop-governance'
+  PASS test_00_preconditions
+  PASS test_a_stored_unjudged_row_neither_covers_nor_skips
+  PASS test_ambiguity_fails_closed
+  PASS test_blob_material_shows_sibling_added_lines_so_evidence_is_visible
+  PASS test_blocking_findings_are_not_covered
+  PASS test_clean_is_covered
+  PASS test_coverage_is_recomputed_per_call_not_cached
+  PASS test_covered_blob_is_not_re_reviewed_and_not_outstanding
+  PASS test_db_connection_is_wal_with_a_busy_timeout
+  PASS test_json_without_a_verdict_is_unjudged_not_clean
+  PASS test_layout_hints_are_configurable
+  PASS test_leaf_raises_on_empty_content_so_silence_is_a_failure
+  PASS test_non_blocking_findings_are_covered
+  PASS test_push_base_candidates_handle_a_master_default_and_another_remote
+  PASS test_receipt_names_only_covered_blobs
+  PASS test_reply_that_judged_nothing_is_unjudged_not_findings
+  PASS test_sibling_added_lines_are_bounded_per_file_and_in_total
+  PASS test_silent_reply_leaves_no_verdict_and_keeps_the_blob_retryable
+  PASS test_the_old_findings_with_no_findings_row_is_what_wedged_the_range
+  PASS test_unjudged_is_not_covered
+  PASS test_unparseable_reply_is_retried_on_the_next_pass_and_never_skipped
+  PASS test_unresolvable_range_yields_no_blobs_and_generic_guidance
+
+OK — 0 failure(s)
+rc=0
+
+### test_blob_deleted_scope
+$ python3 ~/hermes-cortex/tests/test_blob_deleted_scope.py
+[mcp-server] DEBUG: Initializing server 'loop-governance/sdk-capability-probe'
+[mcp-server] DEBUG: Initializing server 'loop-governance'
+  PASS test_a_deleted_entry_is_not_a_verdict_for_content
+  PASS test_deleted_path_is_not_demanded_but_is_reported
+  PASS test_every_deleted_path_is_recorded_separately_in_the_receipt
+  PASS test_split_separates_absent_from_reviewable
+
+OK — 0 failure(s)
+rc=0
+
+### test_blob_judged_not_retried
+$ python3 ~/hermes-cortex/tests/test_blob_judged_not_retried.py
+[mcp-server] DEBUG: Initializing server 'loop-governance/sdk-capability-probe'
+[mcp-server] DEBUG: Initializing server 'loop-governance'
+  PASS test_00_preconditions
+  PASS test_clean_blob_is_still_skipped
+  PASS test_judged_blob_is_not_reviewed_again_and_still_blocks
+
+OK — 0 failure(s)
+rc=0
+
+### test_blob_review_concurrency
+$ python3 ~/hermes-cortex/tests/test_blob_review_concurrency.py
+[mcp-server] DEBUG: Initializing server 'loop-governance/sdk-capability-probe'
+[mcp-server] DEBUG: Initializing server 'loop-governance'
+[mcp-server] ERROR: per-blob review: reviewer failed on f1.py (RuntimeError: reviewer timed out) — 1 consecutive failure(s)
+[mcp-server] DEBUG: Initializing server 'loop-governance/sdk-capability-probe'
+[mcp-server] DEBUG: Initializing server 'loop-governance'
+[mcp-server] WARNING: per-blob review: f0.py did not answer inside the window — deferred unjudged, not counted toward the reviewer-outage cap
+[mcp-server] WARNING: per-blob review: f1.py did not answer inside the window — deferred unjudged, not counted toward the reviewer-outage cap
+[mcp-server] DEBUG: Initializing server 'loop-governance/sdk-capability-probe'
+[mcp-server] DEBUG: Initializing server 'loop-governance'
+[mcp-server] WARNING: per-blob review: f0.py did not answer inside the window — deferred unjudged, not counted toward the reviewer-outage cap
+[mcp-server] WARNING: per-blob review: f1.py did not answer inside the window — deferred unjudged, not counted toward the reviewer-outage cap
+[mcp-server] WARNING: per-blob review: f2.py did not answer inside the window — deferred unjudged, not counted toward the reviewer-outage cap
+[mcp-server] WARNING: per-blob review: f3.py did not answer inside the window — deferred unjudged, not counted toward the reviewer-outage cap
+[mcp-server] DEBUG: Initializing server 'loop-governance/sdk-capability-probe'
+[mcp-server] DEBUG: Initializing server 'loop-governance'
+[mcp-server] DEBUG: Initializing server 'loop-governance/sdk-capability-probe'
+[mcp-server] DEBUG: Initializing server 'loop-governance'
+[mcp-server] ERROR: per-blob review: reviewer failed on f0.py (RuntimeError: reviewer unreachable) — 1 consecutive failure(s)
+[mcp-server] ERROR: per-blob review: reviewer failed on f1.py (RuntimeError: reviewer unreachable) — 2 consecutive failure(s)
+[mcp-server] ERROR: per-blob review: 2 consecutive failures — treating the reviewer as DOWN and stopping the pass
+[mcp-server] DEBUG: Initializing server 'loop-governance/sdk-capability-probe'
+[mcp-server] DEBUG: Initializing server 'loop-governance'
+[mcp-server] DEBUG: Initializing server 'loop-governance/sdk-capability-probe'
+[mcp-server] DEBUG: Initializing server 'loop-governance'
+[mcp-server] DEBUG: Initializing server 'loop-governance/sdk-capability-probe'
+[mcp-server] DEBUG: Initializing server 'loop-governance'
+[mcp-server] WARNING: per-blob review: f0.py did not answer inside the window — deferred unjudged, not counted toward the reviewer-outage cap
+[mcp-server] WARNING: per-blob review: f1.py did not answer inside the window — deferred unjudged, not counted toward the reviewer-outage cap
+[mcp-server] DEBUG: Initializing server 'loop-governance/sdk-capability-probe'
+[mcp-server] DEBUG: Initializing server 'loop-governance'
+server: ~/hermes-cortex/mcp-servers/loop-gov-mcp.py
+  a failure never credits its blob and never stops its siblings ✓
+  a straggler that outlives the pass leaves no verdict ✓
+  a wave cannot outrun the window (1.50s, 0 credited) ✓
+  4 blobs judged in 0.90s (one sleep is 0.8s) ✓
+  a down reviewer credits nothing and defers everything ✓
+  cap bounds the pass; the remainder is reported ✓
+  live store untouched ✓
+  two slow calls do not abandon the rest of the wave ✓
+  workers=1 stays sequential (2.46s) ✓
+RESULT: ALL PASS (9 tests)
+rc=0
+
+### test_blob_rules_rev
+$ python3 ~/hermes-cortex/tests/test_blob_rules_rev.py
+[mcp-server] DEBUG: Initializing server 'loop-governance/sdk-capability-probe'
+[mcp-server] DEBUG: Initializing server 'loop-governance'
+0. the symbols this file exercises exist, and the revision is derived, not constant
+  PASS  _rules_rev exists
+  PASS  _admissible exists
+  PASS  _blob_verdict_rows exists
+  PASS  _count_stale_verdicts exists
+  PASS  _blobs_with_recorded_verdict exists
+  PASS  _blobs_with_covered_verdict exists
+  PASS  _review_uncovered_blobs exists
+  PASS  the revision changes with the rules text
+  PASS  the revision is stable for identical text
+  PASS  no rules text means no revision
+A. a verdict from an OLDER rules revision is not admissible (the reported deadlock)
+  PASS  the stored verdict is invisible to the current revision
+  PASS  the blob IS re-sent to the reviewer
+  PASS  and the pass counts what it invalidated
+  PASS  the re-judgement replaces the row under the CURRENT revision
+B. at an UNCHANGED revision the stored verdict still skips the blob
+  PASS  the verdict is admissible at its own revision
+  PASS  the reviewer is NOT called again
+  PASS  nothing is reported as invalidated
+  PASS  the blob is still reported as not covered (the close still refuses it)
+C. coverage follows the same rule — stale verdict covers nothing, current one does
+  PASS  a CLEAN verdict from an older revision does NOT cover the blob
+  PASS  a CLEAN verdict at the CURRENT revision covers it
+  PASS  before the re-review the blob is UNCOVERED
+  PASS  the reviewer ran
+  PASS  after a CLEAN re-review the blob IS covered
+  PASS  and it is no longer outstanding
+D. UNJUDGED neither covers nor skips
+  PASS  not covered
+  PASS  not on the skip list
+  PASS  not counted as invalidated (it was never a verdict)
+E. no revision in force => no stored verdict is admissible
+  PASS  an empty current revision admits nothing
+  PASS  and covers nothing
+F. schema migration: pre-existing store gains rules_rev, idempotently
+  PASS  the column was added to a pre-existing store
+  PASS  the pre-existing row keeps NULL (it names no rules)
+  PASS  so it is inadmissible and the blob is judged again
+  PASS  a second init is a no-op
+G. at fab9388b the revision does not exist (the defect's shape)
+  PASS  no rules revision in the store schema
+  PASS  no revision helper
+  PASS  the skip branch is still keyed on content alone
+
+ALL PASS (0 failed)
+rc=0
+
+### test_close_budget_bounds
+$ python3 ~/hermes-cortex/tests/test_close_budget_bounds.py
+[mcp-server] DEBUG: Initializing server 'loop-governance/sdk-capability-probe'
+[mcp-server] DEBUG: Initializing server 'loop-governance'
+A. the budgets nest under the client window
+  PASS  a single constant states the close's total budget
+  PASS  total < client window
+  PASS  per-blob budget <= total
+  PASS  the two passes' MAXIMA together exceed one window (which is WHY the split rule exists)
+  PASS  a per-window blob cap is stated
+  PASS  the cap is the concurrency the wave is issued at
+  PASS  ONE measured call fits one window (a wave's cost is its slowest call)
+  PASS  the floor refuses a remainder no call could finish in
+B. the remaining-budget helper is arithmetic, never negative
+  PASS  helper exists
+  PASS  a fresh close has ~the whole budget
+  PASS  ten seconds spent leaves ~230
+  PASS  an overrun is 0, never negative
+C. the per-blob pass stops at its budget and accounts for every blob
+  PASS  with room, every blob is judged
+  PASS  nothing left over
+  PASS  a bounded pass returns early
+  PASS  unreached blobs are REPORTED
+  PASS  judged + remaining accounts for every blob
+D. the close hands its remaining window to the blob pass
+  PASS  the close's cap reaches the pass
+  PASS  the close's REMAINING budget reaches the pass
+  PASS  a caller with no knobs forwards NOTHING (defaults preserved)
+E. the real wrapper enforces the cap it is handed
+  PASS  cap=1 judges exactly one blob
+  PASS  cap=1 reports the other as remaining
+  PASS  cap=2 judges both blobs
+F. the real close reads its own clock, before it hands over the remainder
+  PASS  the close captures a monotonic clock
+  PASS  the close hands that remainder to the completion call
+  PASS  the capture PRECEDES the hand-off
+
+✅ close-budget checks passed
+rc=0
+
+### test_per_blob_findings_recorded
+$ python3 ~/hermes-cortex/tests/test_per_blob_findings_recorded.py
+[mcp-server] DEBUG: Initializing server 'loop-governance/sdk-capability-probe'
+[mcp-server] DEBUG: Initializing server 'loop-governance'
+[mcp-server] DEBUG: Initializing server 'loop-governance/sdk-capability-probe'
+[mcp-server] DEBUG: Initializing server 'loop-governance'
+[mcp-server] DEBUG: Initializing server 'loop-governance/sdk-capability-probe'
+[mcp-server] DEBUG: Initializing server 'loop-governance'
+[mcp-server] DEBUG: Initializing server 'loop-governance/sdk-capability-probe'
+[mcp-server] DEBUG: Initializing server 'loop-governance'
+server: ~/hermes-cortex/mcp-servers/loop-gov-mcp.py
+  re-judge replaces: still exactly one row ✓
+  rereview_change finds the recorded cycle verdict ✓
+  the cycle verdict names its judge ✓
+  live store untouched ✓
+  per-blob refusal records the cycle verdict before refusing ✓
+RESULT: ALL PASS (5 tests)
+rc=0
+
+--- 4. the SAME pins driven against the BASELINE SERVER (the RED half) ---
+Each new pin runs UNCHANGED, pointed at the baseline module through SERVER_UNDER_TEST, so the
+comparison is the same test against old and new code — not two different tests agreeing. The
+baseline then reports NAMED failures (the defect), never a crash and never a pass.
+baseline worktree asserts: b2c2d25a == b2c2d25a
+
+### BASE-SERVER test_perblob_zero_work_is_engine_condition
+$ SERVER_UNDER_TEST=<baseline module> python3 tests/test_perblob_zero_work_is_engine_condition.py
+[mcp-server] DEBUG: Initializing server 'loop-governance/sdk-capability-probe'
+[mcp-server] DEBUG: Initializing server 'loop-governance'
+[mcp-server] DEBUG: Initializing server 'loop-governance/sdk-capability-probe'
+[mcp-server] DEBUG: Initializing server 'loop-governance'
+[mcp-server] DEBUG: Initializing server 'loop-governance/sdk-capability-probe'
+[mcp-server] DEBUG: Initializing server 'loop-governance'
+[mcp-server] DEBUG: Initializing server 'loop-governance/sdk-capability-probe'
+[mcp-server] DEBUG: Initializing server 'loop-governance'
+[mcp-server] DEBUG: Initializing server 'loop-governance/sdk-capability-probe'
+[mcp-server] DEBUG: Initializing server 'loop-governance'
+[mcp-server] DEBUG: Initializing server 'loop-governance/sdk-capability-probe'
+[mcp-server] DEBUG: Initializing server 'loop-governance'
+  FAIL test_00_preconditions: BLOB_REVIEW_MIN_CALL_S is missing: the close has no floor for starting a blob call
+  PASS test_a_pass_that_judged_something_still_reports_progress
+  FAIL test_a_starved_close_is_an_engine_condition: a close with 30s left must NOT start a blob wave (a call measures 180-220s): the pass was called with [{'reviewer_label': 'test/judge', 'cap': 4, 'budget_s': 30.0}]
+  PASS test_all_already_judged_names_the_content_change
+  FAIL test_clean_count_asks_with_the_current_rules_revision: the coverage question was asked with an EMPTY rules revision, which `_admissible` answers False for — the count is a structural 0: ['']
+  FAIL test_one_path_is_never_printed_in_both_lists: cap.rs is judged-and-not-clean, so it must appear under ONE heading only (it is in both `remaining` and `already_judged`):
+⏳ Cannot close yet: 2 blob(s) of the push range still carry no review verdict.
+
+  reviewed this pass : 0 blob(s)
+  CLEAN in the range : 0 blob(s)
+  already judged, not clean: 1 blob(s) — re-reviewing identical content cannot change the verdict; fix the file and commit it (the fix is a new blob) instead of closing again
+  unreviewed paths:
+     - cap.rs
+     - lib.rs
+  judged and NOT clean — fix these, the fix is a NEW blob:
+     - cap.rs
+
+Verdicts are keyed by blob CONTENT, so closing again continues from here instead of redoing what is already judged (the per-close budget is 15 blobs / 240s).
+
+FAILED — 4 failure(s)
+rc=1
+
+### BASE-SERVER test_coverage_readers_pass_rules_rev
+$ SERVER_UNDER_TEST=<baseline module> python3 tests/test_coverage_readers_pass_rules_rev.py
+[mcp-server] DEBUG: Initializing server 'loop-governance/sdk-capability-probe'
+[mcp-server] DEBUG: Initializing server 'loop-governance'
+[mcp-server] DEBUG: Initializing server 'loop-governance/sdk-capability-probe'
+[mcp-server] DEBUG: Initializing server 'loop-governance'
+[mcp-server] DEBUG: Initializing server 'loop-governance/sdk-capability-probe'
+[mcp-server] DEBUG: Initializing server 'loop-governance'
+[mcp-server] DEBUG: Initializing server 'loop-governance/sdk-capability-probe'
+[mcp-server] DEBUG: Initializing server 'loop-governance'
+[mcp-server] DEBUG: Initializing server 'loop-governance/sdk-capability-probe'
+[mcp-server] DEBUG: Initializing server 'loop-governance'
+  PASS test_00_preconditions
+  FAIL test_receipt_names_the_blobs_a_verdict_covers: a COVERED blob must be named in the receipt — otherwise the receipt carries no content coverage at all: {}
+  FAIL test_sibling_status_shown_to_the_reviewer_is_truthful: the reviewer is told each sibling's status; a COVERED sibling must read as covered, not as 'blocking findings outstanding':
+=== BLOB REVIEW — ONE FILE OF A RANGE ===
+session: s
+author: the-agent
+repo: /tmp/repo
+branch: main
+range: base-sha..abc1234
+cycle: 1
+task: t
+description: d
+file: c.rs
+scope: ONE file of this range; the other files are judged on their own blobs,
+so answer for THIS file only.
+range files (3) — the others are judged as their own blobs:
+  a.rs, b.rs
+a claim this file makes about one of those is a SIBLING claim: report it at most as
+info, and leave the resolution to that file's own review.
+sibling review status (each sibling is judged in its own window):
+  a.rs: no verdict recorded yet
+  b.rs: no verdict recorded yet
+
+
+
+  FAIL test_unreviewed_paths_counts_a_covered_blob_as_covered: a.rs carries a CLEAN verdict under the current rules: ['a.rs', 'b.rs', 'c.rs']
+
+FAILED — 3 failure(s)
+rc=1
+
+### BASE-SERVER test_rereview_clears_stale_blob_verdicts
+$ SERVER_UNDER_TEST=<baseline module> python3 tests/test_rereview_clears_stale_blob_verdicts.py
+[mcp-server] DEBUG: Initializing server 'loop-governance/sdk-capability-probe'
+[mcp-server] DEBUG: Initializing server 'loop-governance'
+[mcp-server] DEBUG: Initializing server 'loop-governance/sdk-capability-probe'
+[mcp-server] DEBUG: Initializing server 'loop-governance'
+[mcp-server] DEBUG: Initializing server 'loop-governance/sdk-capability-probe'
+[mcp-server] DEBUG: Initializing server 'loop-governance'
+[mcp-server] DEBUG: Initializing server 'loop-governance/sdk-capability-probe'
+[mcp-server] DEBUG: Initializing server 'loop-governance'
+[mcp-server] DEBUG: Initializing server 'loop-governance/sdk-capability-probe'
+[mcp-server] DEBUG: Initializing server 'loop-governance'
+[mcp-server] DEBUG: Initializing server 'loop-governance/sdk-capability-probe'
+[mcp-server] DEBUG: Initializing server 'loop-governance'
+  FAIL test_00_preconditions: _invalidate_range_blob_verdicts is missing — the rereview path has no way to clear a stale per-blob verdict
+  FAIL test_an_unresolvable_range_clears_nothing: _invalidate_range_blob_verdicts is missing — the rereview path has no way to clear a stale per-blob verdict
+  FAIL test_clears_only_uncovered_rows_inside_the_range: _invalidate_range_blob_verdicts is missing — the rereview path has no way to clear a stale per-blob verdict
+  FAIL test_rereview_calls_the_invalidator_and_reports_the_count: _invalidate_range_blob_verdicts is missing — the rereview path has no way to clear a stale per-blob verdict
+  FAIL test_the_cleared_blob_is_re_judged_not_covered: _invalidate_range_blob_verdicts is missing — the rereview path has no way to clear a stale per-blob verdict
+
+FAILED — 5 failure(s)
+rc=1
+
+--- 5. the live symptom, quoted from the pre-change refusal ---
+At the baseline the refusal prints ONE path under both 'unreviewed paths' and 'judged and NOT
+clean', reports 'reviewed this pass : 0' as though blobs were queued work, and computes its
+'CLEAN in the range' count with no rules revision (so it is a structural 0). The BASE-SERVER
+sections above carry that output verbatim; this section adds nothing that is not printed there.
+=== end of transcript ===
