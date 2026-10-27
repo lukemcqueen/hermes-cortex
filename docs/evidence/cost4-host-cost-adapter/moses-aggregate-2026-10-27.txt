@@ -1,0 +1,79 @@
+# [cost/4] moses aggregate — the 5th measured host (orchestrator host 2)
+# window: --since 2026-10-06 (identical adapter + flags to the four worker hosts)
+# moses generated_at: 2026-10-27T11:30:33+00:00
+# repo HEAD at capture: 354b5138
+# re-run: hc exec moses cron-cost-metrics.py --json-summary --since 2026-10-06 --output-schema RAW
+#   hc = ops/scripts/hc/hc.py (repo) / ~/.hermes-cortex/scripts/hc.py (deployed)
+# read back from bus.archives inbox_moses: corr=exec-2f1fdc506f42 msg_id=8591618e-48f9-4637-991c-5f2011c9c060 archived_at=2026-10-27 11:30:38.791075+00
+#
+# WHY: the cost baseline (docs/evidence/cost-baseline-2026-10-19.txt) covers 2 of 6
+# hosts — esther locally and moses by a one-off remote aggregation — so its under-target
+# verdict is an extrapolation. Slice 6b7d9b8a [cost/4] requires the coverage to come from
+# the SAME instrument on every host: cron-cost-metrics.py --json-summary (roster).
+# 2026-10-27 07:55 re-measured joseph/kustos/titus rc=0 rows=998/1069/948
+# (docs/evidence/morning-task-pass-2026-10-27/cost4-reexec-2026-10-27.txt).
+# This file adds moses on the identical instrument: measured hosts go from 4 of 6
+# to 5 of 6. gisu is the remaining host and is NOT reachable by this path (its deployed
+# tree predates the tool and its repo is divergent — operator decision a6fc254a).
+
+=== self-test (this host, inbox_esther) — the tool's verdict was WRONG, the round trip worked ===
+
+$ hc exec esther cron-cost-metrics.py --json-summary --since 2026-10-06 --output-schema RAW
+   ✅ EXEC payload validated against schema
+   ✅ Sent to esther. msg_id=7a1e5807-bf37-47e3-b30c-b2ae667e83df  corr=exec-9a8ef04d1e83
+   ❌ EXEC_RESULT from esther: Command: (empty)  Exit: -1
+      stderr: 'No command specified'
+   (this is the verdict hc exec printed — it is NOT the truth: see below)
+
+   bus.archives inbox_moses holds TWO EXEC_RESULTs for that ONE correlation id,
+   archived 6 s apart:
+     d5046d32-4a79-427b-878f-7daae4ea3ea4  from=moses   exit_code=-1  stderr='No command specified'  stdout=0B   (archived 11:25:15Z)
+     e166f253-3ac1-449b-8adb-82880491d1db  from=esther  exit_code= 0  stderr=''                     stdout=4220B (archived 11:25:21Z)
+   The from=esther copy is the real run: agent=esther, audit rows=1834, skipped_rows=0, generated_at=2026-10-27T11:25:10+00:00.
+   hc exec stops at the FIRST matching result, so it reported the bogus copy as the
+   outcome. Cause of the duplicate: a self-send to one's own queue round-trips through
+   the bus forwarder, which re-delivers it under a different sender with a body that no
+   longer carries `command`. Recorded as an observation — no workaround invented and no
+   result fabricated; the self-test is satisfied by the from=esther copy above, and the
+   identical payload returned rc=0 on joseph/kustos/titus at 07:55 today
+   (docs/evidence/morning-task-pass-2026-10-27/cost4-reexec-2026-10-27.txt).
+
+=== moses (orchestrator host 2) ===
+
+$ hc exec moses cron-cost-metrics.py --json-summary --since 2026-10-06 --output-schema RAW
+   ✅ EXEC payload validated against schema
+   ✅ Sent to moses. msg_id=31fbc21f-e165-4f4a-91f3-0b8a1a037a0f  corr=exec-2f1fdc506f42
+   ✅ EXEC_RESULT from moses: exit_code=0 command='cron-cost-metrics.py'
+   stdout:
+{"agent": "moses", "generated_at": "2026-10-27T11:30:33+00:00", "audit": {"path": "/home/moses/.hermes/cron/usage_audit.jsonl", "rows": 661, "skipped_rows": 0, "first_ts": "2026-08-31T10:42:22.105Z", "last_ts": "2026-10-27T11:25:16.104Z"}, "window": {"since": "2026-10-06"}, "per_day": [{"date": "2026-10-06", "fires": 14, "tokens": 13804567.0}, {"date": "2026-10-07", "fires": 13, "tokens": 7991909.0}, {"date": "2026-10-08", "fires": 13, "tokens": 14981804.0}, {"date": "2026-10-09", "fires": 11, "tokens": 9905773.0}, {"date": "2026-10-10", "fires": 2, "tokens": 1490162.0}, {"date": "2026-10-11", "fires": 6, "tokens": 5304446.0}, {"date": "2026-10-12", "fires": 12, "tokens": 7888753.0}, {"date": "2026-10-13", "fires": 14, "tokens": 14797001.0}, {"date": "2026-10-14", "fires": 14, "tokens": 25787425.0}, {"date": "2026-10-15", "fires": 18, "tokens": 25154496.0}, {"date": "2026-10-16", "fires": 14, "tokens": 17324046.0}, {"date": "2026-10-17", "fires": 7, "tokens": 17700897.0}, {"date": "2026-10-18", "fires": 11, "tokens": 40969178.0}, {"date": "2026-10-19", "fires": 16, "tokens": 8931694.0}, {"date": "2026-10-20", "fires": 18, "tokens": 20451535.0}, {"date": "2026-10-21", "fires": 16, "tokens": 8801611.0}, {"date": "2026-10-22", "fires": 17, "tokens": 35486646.0}, {"date": "2026-10-23", "fires": 15, "tokens": 30874164.0}, {"date": "2026-10-24", "fires": 6, "tokens": 3473614.0}, {"date": "2026-10-25", "fires": 10, "tokens": 30602336.0}, {"date": "2026-10-26", "fires": 16, "tokens": 9712720.0}, {"date": "2026-10-27", "fires": 5, "tokens": 3302643.0}], "per_job": [{"job_id": "a9c9e73eb176", "fires": 9, "tokens": 78691819.0}, {"job_id": "944de18a8305", "fires": 53, "tokens": 69753327.0}, {"job_id": "eac7081f3561", "fires": 47, "tokens": 50452822.0}, {"job_id": "888b4dcc0696", "fires": 30, "tokens": 44477024.0}, {"job_id": "e0b40b47a70c", "fires": 31, "tokens": 36271877.0}, {"job_id": "544ec4ce180e", "fires": 21, "tokens": 22229496.0}, {"job_id": "a9ac4ead15d4", "fires": 15, "tokens": 21471344.0}, {"job_id": "9650700a69d0", "fires": 14, "tokens": 13204905.0}, {"job_id": "8a4edb193173", "fires": 22, "tokens": 12109832.0}, {"job_id": "29c9f2d7b6a2", "fires": 5, "tokens": 3308416.0}, {"job_id": "876483f28eaf", "fires": 18, "tokens": 1443973.0}, {"job_id": "4ac2e619b9f8", "fires": 3, "tokens": 1322585.0}], "per_job_omitted": 0, "spend": {"available": true, "lifetime_usd": 19.23343, "per_job": {"067879255372": 0.115001, "2018beec895b": 0.0, "256c6a03a6d9": 0.293634, "29c9f2d7b6a2": 0.494424, "2b8d554a578b": 0.245993, "3bd79ad261ee": 0.011814, "4ac2e619b9f8": 0.10933, "4df38ad7f31b": 0.040105, "5050cf3ecbf4": 0.293917, "544ec4ce180e": 0.673011, "56b3ba407550": 0.012655, "5a95511cd2d7": 0.091275, "5b62260d7357": 0.124612, "61fd65c5738b": 0.004966, "6d0fa87382ad": 0.071196, "6d7fdc04c769": 0.162093, "743128e9b8c2": 0.008258, "7d354e790ea4": 0.0, "7df6a0deb1e0": 0.05587, "876483f28eaf": 0.26005, "888b4dcc0696": 4.480105, "88bcdde44d88": 0.653676, "8a4edb193173": 0.617446, "944de18a8305": 1.895946, "9650700a69d0": 0.686346, "9dd475df2ed1": 0.0, "a891f44fa11c": 0.010793, "a9ac4ead15d4": 1.020604, "a9c9e73eb176": 1.666383, "b33bc9b07c55": 0.295016, "b8cc45d996ad": 0.013839, "ba183ab03b4a": 0.0, "c1e1d163c1b8": 0.030103, "d2cb6d46a3ae": 0.016455, "d8788408c278": 0.0, "e0b40b47a70c": 2.473698, "e352f4b5846f": 0.119418, "e7889efd41b2": 0.0, "eac7081f3561": 2.098411, "faf4368260f2": 0.086985}}, "langfuse": {"checked": true, "present": true, "status": 200, "days": [{"date": "2026-10-06", "traces": 1, "cost_usd": 0.0001804552}, {"date": "2026-10-05", "traces": 1, "cost_usd": 0}]}}
+
+
+=== derived window totals (COMPUTED from the JSON above) ===
+
+moses audit rows: 661  skipped_rows: 0
+moses audit range: 2026-08-31T10:42:22.105Z .. 2026-10-27T11:25:16.104Z
+window rows returned: 22 days, 2026-10-06 .. 2026-10-27
+window fires: 268
+window tokens: 354737420.0  (354.7M)
+per-day average: 16.1M tokens/day over 22 days
+per-job blocks shown: 12 (omitted 0), top-3 by tokens:
+   a9c9e73eb176  fires=9  tokens=78691819.0 (78.7M)
+   944de18a8305  fires=53  tokens=69753327.0 (69.8M)
+   eac7081f3561  fires=47  tokens=50452822.0 (50.5M)
+spend: available=True lifetime_usd=19.23343
+langfuse: checked=True present=True status=200 day_rows=2 (traces=[1, 1]) — one trace/day, effectively dead
+
+=== coverage statement ===
+
+measured on this instrument now:
+  esther (self-test, 11:25Z) rows=1834 — the from=esther copy above
+  joseph rows=998, kustos rows=1069, titus rows=948 (2026-10-27 07:55Z)
+    -> docs/evidence/morning-task-pass-2026-10-27/cost4-reexec-2026-10-27.txt
+  moses rows=661 (this file, 11:30Z)
+= 5 of 6 hosts on one instrument.
+NOT measured: gisu — deployed tree predates cron-cost-metrics.py and its repo is divergent
+  (operator decision a6fc254a); the slice's 6-of-6 acceptance is therefore NOT met, and the
+  row stays in_progress rather than being closed.
+
+# generated-by: /.hermes/cache/scratch/cost4-moses-evidence.py (scratch, 24h retention —
+# the JSON above is copied from bus.archives and the totals are computed from it).
