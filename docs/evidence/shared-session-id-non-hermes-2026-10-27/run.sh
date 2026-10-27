@@ -16,6 +16,21 @@
 # Two processes are used per case (`python3 driver.py <mode>`) so each case
 # exercises the real per-process code path a Pi / Claude Code / CLI session
 # takes, not an in-process simulation.
+#
+# WHERE THE FINDING IS RECORDED (pointer, not an assertion): governance task
+# 'verify-session-id-scoping-across-agents', cycle 13849, task_events event 254
+# on the host that produced this transcript.
+#
+# DEPENDENCY POINTER: this file WRITES the file it is run against —
+# docs/evidence/shared-session-id-non-hermes-2026-10-27/transcript.txt is this
+# script's own output, committed in the same range. It reads nothing else of
+# this range; the module it probes is the deployed loop-gov-mcp.py named below.
+#
+# PORTABILITY: POSIX sh constructs only, no bash-4 syntax, no `declare -A`, no
+# unconditional `timeout`, no GNU-only flag; the hash helper falls back to
+# `shasum -a 256` when `sha256sum` is absent (macOS). Requires git, python3,
+# sed, awk, grep. Absent python3 the script fails loudly rather than emitting a
+# partial transcript.
 set -u
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -29,7 +44,8 @@ _sha() {  # GNU and BSD
 }
 
 _norm() {
-  sed -e "s|${HOME}|~|g" -e 's/\x1b\[[0-9;]*[a-zA-Z]//g'
+  # `\x1b` is a GNU sed extension; build the escape portably so BSD sed works too.
+  sed -e "s|${HOME}|~|g" -e "s/$(printf '\033')\[[0-9;]*[a-zA-Z]//g"
 }
 # Redirect the FILTER too: `exec > >(norm)` alone leaves no file (the process
 # substitution's stdout is the inherited one).
@@ -43,6 +59,8 @@ cat <<EOF
 # module-sha256: $(_sha "$MCP")
 # volatile: module sha256, sandbox paths, generated sess_* ids
 # normalised: \$HOME -> ~, ANSI colour stripped (one filter, applied to every line)
+# record: governance task 'verify-session-id-scoping-across-agents', cycle 13849,
+#         task_events event 254 — the finding itself is recorded there, not here
 EOF
 
 # ── driver: imports the DEPLOYED module with every path redirected ──────────
