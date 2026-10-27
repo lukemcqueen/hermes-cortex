@@ -161,7 +161,20 @@ else
   echo "  BLIND archived/missing mix rc=$rc: $out"; blind=$((blind+1))
 fi
 
+echo "probe 8: reported name is a CATEGORY dir in the repo (exists, no SKILL.md of its own) -> tolerated WARN, not FAIL"
+# A repo category dir (e.g. skills/github/ holding commit-message/pr-review, no
+# SKILL.md at its own level) is not a tracked skill; demanding a repo file for it
+# is a false FAIL (the .archive parse filter above only catches the .archive
+# suffix, not an unsuffixed category collision). Doctor Skill-drift + reconciler
+# own real drift; FAIL on them, never on this shape.
+r8="$TMP/catdir"; mkdir -p "$r8/repo/ops/scripts/manage" "$r8/deployed"; mk_repo "$r8"
+mkdir -p "$r8/repo/skills/cat/probe-cat" "$r8/deployed/cat/probe-cat"   # dirs, no SKILL.md
+mk_stub_doctor "$r8/repo/ops/scripts/manage/cortex-doctor.py" "✅ Skill drift — stub"
+mk_stub_recon "$r8/repo/ops/scripts/manage/reconcile-stranded-skills.py" "stranded: 0"
+out="$(SKILLS=probe-cat run_check "$r8")"; rc=$?
+if [ "$rc" -eq 0 ]; then echo "  OK   category dir -> rc=0 (tolerated, not a repo skill)"; pass=$((pass+1)); else echo "  BLIND category dir rc=$rc (expected 0): $out"; blind=$((blind+1)); fi
+
 echo
-echo "probes run: 7 · noticed: $pass · blind spots: $blind"
+echo "probes run: 8 · noticed: $pass · blind spots: $blind"
 [ "$blind" -eq 0 ] || { echo "HARNESS FAIL: $blind blind spot(s) — the check is not trustworthy"; exit 1; }
-echo "HARNESS PASS: 7 probes, 0 blind spots"
+echo "HARNESS PASS: 8 probes, 0 blind spots"

@@ -112,6 +112,7 @@ say "checking $(printf '%s\n' $SKILLS | wc -w) reported skill(s): window=${WINDO
 for n in $SKILLS; do
   rel="$(cd "$REPO" && find skills -maxdepth 2 -type d -name "$n" | head -1)"
   repo_f="$REPO/${rel:+$rel/}SKILL.md"; dep_f="$DEPLOYED/${rel#skills/}/SKILL.md"
+<<<<<<< HEAD
   [ -n "$rel" ] || {
     # No repo source. Two very different cases — do NOT collapse them:
     #   (a) the skill IS deployed on this host but the repo lacks it -> a real
@@ -127,7 +128,7 @@ for n in $SKILLS; do
     fi
     continue
   }
-  if [ ! -f "$repo_f" ]; then say "  FAIL $n: repo file missing ($repo_f)"; fail=1; continue; fi
+  if [ ! -f "$repo_f" ]; then say "  WARN $n: repo has the dir but no SKILL.md of its own (category dir, e.g. skills/github/) — not a tracked skill, treated as fleet-only"; continue; fi
   if [ ! -f "$dep_f" ];  then say "  FAIL $n: deployed file missing ($dep_f)"; fail=1; continue; fi
   a=$(md5sum "$repo_f" | cut -d' ' -f1); b=$(md5sum "$dep_f" | cut -d' ' -f1)
   if [ "$a" = "$b" ]; then say "  OK   $n (repo==deployed)"; else say "  FAIL $n: deployed != repo -> a deploy is outstanding"; fail=1; fi
