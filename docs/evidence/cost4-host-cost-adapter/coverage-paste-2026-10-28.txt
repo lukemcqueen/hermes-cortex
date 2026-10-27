@@ -1,0 +1,51 @@
+# [cost/4] coverage paste — orch-weekly-cost-report.py COVERAGE block updated
+# captured-at: 2026-10-27T23:25:02Z
+# cycle: 13881   session: cron_1954deb5ad76_20261028_082139   host: esther
+# change: ops/scripts/manage/orch-weekly-cost-report.py — the UNMEASURED constant claimed
+# 'the four worker hosts' were unmeasured; 5 of 6 hosts are now measured on one instrument.
+# Every line below is the command's own output; nothing is retyped.
+
+## 1. the test file that pins the COVERAGE contract (green after the change)
+configfile: pytest.ini
+collected 22 items
+
+tests/test_runtime/test_cron_cost_reporting.py ......................    [100%]
+
+============================== 22 passed in 3.11s ==============================
+
+## 2. test_weekly_report_states_what_is_not_measured — the assertion that pins this block
+configfile: pytest.ini
+collecting ... collected 1 item
+
+tests/test_runtime/test_cron_cost_reporting.py::test_weekly_report_states_what_is_not_measured PASSED [100%]
+
+============================== 1 passed in 0.21s ===============================
+
+## 3. the real report run (repo copy) — the COVERAGE block as it now prints
+💰 Weekly fleet cost report — esther, window 7d
+Spend by day (state.db sessions, source=cron):
+  2026-10-20  $0.02
+  2026-10-21  $0.23
+  2026-10-22  $1.92
+  2026-10-23  $1.66
+  2026-10-24  $1.56
+  2026-10-25  $1.73
+  2026-10-26  $1.43
+  2026-10-27  $0.90
+Measured days: 8 (2026-10-20/2026-10-21/2026-10-22/2026-10-23/2026-10-24/2026-10-25/2026-10-26/2026-10-27)
+Measured daily average: $1.18  (target $10.00)
+Window total: $9.44
+Top jobs by tokens (audit log, lifetime):
+  dbcdec6bb40d  829603169 tokens, 262 fires
+  1954deb5ad76  368461712 tokens, 54 fires
+  8a46f1b96b7d  364547425 tokens, 46 fires
+  8449be867645  330378848 tokens, 74 fires
+  418bbf45277d  255158398 tokens, 230 fires
+COVERAGE
+  measured: esther (this host's own state.db / audit log)
+  fleet coverage: 5 of 6 hosts measured on the same instrument — esther, joseph, kustos, titus, moses — via cron-cost-metrics.py --json-summary over EXEC on 2026-10-26/27 (evidence: docs/evidence/cost4-host-cost-adapter/moses-aggregate-2026-10-27.txt and docs/evidence/morning-task-pass-2026-10-27/cost4-reexec-2026-10-27.txt). Those aggregates are NOT ingested here, so the average above covers this host only. not measured: gisu — its deployed tree predates the tool and its repo is divergent (operator decision a6fc254a); fleet cost coverage [cost/4] stays open on that host alone.
+REPORT_RC=0
+
+## 4. aggregate gisu check — why the 6th host is not closed here
+19:# to 5 of 6. gisu is the remaining host and is NOT reachable by this path (its deployed
+77:NOT measured: gisu — deployed tree predates cron-cost-metrics.py and its repo is divergent

@@ -43,10 +43,23 @@ DEFAULT_AUDIT = Path.home() / ".hermes" / "cron" / "usage_audit.jsonl"
 DEFAULT_STATE_DB = Path.home() / ".hermes" / "state.db"
 DEFAULT_TARGET_USD = 10.0
 
-UNMEASURED = ("not measured: the four worker hosts (each needs its own local adapter — "
-              "fleet cost coverage [cost/4]). The baseline that established this gap is "
-              "docs/evidence/cost-baseline-2026-10-19.txt (section 6: 2 of 6 hosts measured). "
-              "This average covers the measured hosts only.")
+# Fleet coverage as measured, not assumed. The four worker hosts are NO LONGER
+# unmeasured: on 2026-10-26/27 joseph/kustos/titus answered `cron-cost-metrics.py
+# --json-summary` with rc=0 and moses followed on the identical instrument, taking
+# the baseline's 2 of 6 to 5 of 6 (fleet cost coverage [cost/4]). Those aggregates
+# live in committed evidence files and are NOT ingested by this report — it reads
+# only THIS host's audit log and state.db — so the average below still covers one
+# host and must say so rather than implying fleet scope. gisu is the one host that
+# remains unmeasured, and that is an operator decision (a6fc254a), not a gap this
+# script can close.
+UNMEASURED = ("fleet coverage: 5 of 6 hosts measured on the same instrument — esther, joseph, "
+              "kustos, titus, moses — via cron-cost-metrics.py --json-summary over EXEC on "
+              "2026-10-26/27 (evidence: docs/evidence/cost4-host-cost-adapter/"
+              "moses-aggregate-2026-10-27.txt and docs/evidence/morning-task-pass-2026-10-27/"
+              "cost4-reexec-2026-10-27.txt). Those aggregates are NOT ingested here, so the "
+              "average above covers this host only. not measured: gisu — its deployed tree "
+              "predates the tool and its repo is divergent (operator decision a6fc254a); fleet "
+              "cost coverage [cost/4] stays open on that host alone.")
 
 
 def read_tokens_by_job(path: Path):
