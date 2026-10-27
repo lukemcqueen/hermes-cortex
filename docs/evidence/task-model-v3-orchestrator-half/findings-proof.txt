@@ -1,0 +1,54 @@
+host=esther  captured-at=2026-10-27T14:36:05+09:00  tree=42b79528
+every block below ends in ROLLBACK — no schema or row survives it
+==============================================================
+[A] ADV-13847-1: CREATE OR REPLACE alone, with a wider arg list, on the
+    REAL function name (A STUB IS ADDED, NOTHING IS DROPPED)
+BEGIN
+CREATE FUNCTION
+task_upsert overloads now: 2
+the planned verification command would say:
+ERROR:  more than one function named "tasks.task_upsert"
+LINE 1: SELECT pg_get_function_arguments('tasks.task_upsert'::regpro...
+                                         ^
+rc=3
+==============================================================
+[B] the v005 house pattern (v005__lifecycle.sql:336 does exactly this):
+    DROP the old signature, then CREATE the wider one — on a PROBE name
+BEGIN
+CREATE FUNCTION
+CREATE FUNCTION
+after bare CREATE OR REPLACE: 2
+DROP FUNCTION
+DROP FUNCTION
+CREATE FUNCTION
+DROP FUNCTION
+CREATE FUNCTION
+after DROP + CREATE:        1
+a integer, b integer DEFAULT 0
+ROLLBACK
+rc=0
+==============================================================
+[C] ADV-13847-2: p_status NULL (exactly what task-db.py passes at :849)
+    against an in_progress row
+BEGIN
+NOTICE:  scratch row = 223747ff-077c-45d8-8daf-9f431594ac76 (status=in_progress)
+DO
+NOTICE:  RAISED 23514 : new row for relation "tasks" violates check constraint "tasks_column_check"
+ROLLBACK
+rc=0
+==============================================================
+[D] the EXECUTE grants that a DROP+CREATE must restore (v016 requirement)
+mycortex||t
+mycortex_admin||t
+mycortex_ingest||t
+mycortex_mem_admin||t
+mycortex_mem_reader||t
+mycortex_mem_writer||t
+mycortex_reader||t
+mycortex_reader_esther||t
+mycortex_reader_probe||t
+rc=0
+==============================================================
+[E] live arity of the single write path after every block above
+1
+rc=0

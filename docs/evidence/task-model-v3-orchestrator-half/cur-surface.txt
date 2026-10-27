@@ -1,0 +1,60 @@
+host=esther  captured-at=2026-10-27T14:29:07+09:00  tree=42b79528
+==============================================================
+$ docker exec -i mycortex-postgres psql -U mycortex_reader_esther -d mycortex -v ON_ERROR_STOP=1 -t -A -F || -c SELECT pg_get_function_arguments('tasks.task_upsert'::regproc);
+p_id uuid DEFAULT NULL::uuid, p_content text DEFAULT NULL::text, p_created_by text DEFAULT NULL::text, p_assignee text DEFAULT NULL::text, p_project text DEFAULT NULL::text, p_repo text DEFAULT NULL::text, p_target text DEFAULT NULL::text, p_scope text DEFAULT NULL::text, p_status text DEFAULT NULL::text, p_column text DEFAULT NULL::text, p_position integer DEFAULT NULL::integer, p_priority integer DEFAULT NULL::integer, p_due timestamp with time zone DEFAULT NULL::timestamp with time zone, p_tags text[] DEFAULT NULL::text[], p_source text DEFAULT NULL::text, p_depends_on uuid[] DEFAULT NULL::uuid[], p_session_id text DEFAULT NULL::text, p_parent_id uuid DEFAULT NULL::uuid, p_kind text DEFAULT NULL::text, p_correlation_id text DEFAULT NULL::text
+rc=0
+==============================================================
+$ grep -rn p_plan ops/services/tasks/schema ops/scripts/manage/task-db.py mcp-servers
+rc=1
+==============================================================
+$ grep -n task-db.py add\|task-db.py update ops/scripts/manage/task-db.py
+32:    task-db.py add     <content> [--agent <name>] [--priority 0-3]
+38:    task-db.py update  <id> --status <new-status> [--reason <r>]
+40:    task-db.py update  --by-correlation <corr> --status <new-status>
+1490:            print("ERROR: content required. Usage: task-db.py add <content> [flags]",
+1509:            print("ERROR: Usage: task-db.py update <id> --status <new-status> "
+rc=0
+==============================================================
+$ sed -n 796,816p ops/scripts/manage/task-db.py
+    # ── No-op honesty gate (2026-10-15) ──────────────────────────────
+    # tasks.event_after_update() returns early when OLD.status IS NOT
+    # DISTINCT FROM NEW.status (v005__lifecycle.sql), so a same-status
+    # update records NO task_events row and the --reason text is DISCARDED.
+    # The checkmark used to print regardless — a false success that lost
+    # two orchestrator dispatch notes on 2026-10-14. Resolve the current
+    # status first and report what the database will actually do.
+    current = psql(
+        "SELECT status FROM tasks.tasks WHERE id = ?::uuid;", [task_id],
+    ).split("\n")[0].strip()
+    if current and current == new_status:
+        if reason:
+            print(
+                f"❌ Task {task_id[:8]}... is already {new_status} — refusing "
+                f"the no-op: --reason would NOT be recorded as an event (the "
+                f"trigger skips same-status updates). Record the note as a "
+                f"governance issue event instead.", file=sys.stderr)
+            sys.exit(1)
+        print(f"• Task {task_id[:8]}... already {new_status} — no change")
+        return
+
+rc=0
+==============================================================
+$ docker exec -i mycortex-postgres psql -U mycortex_reader_esther -d mycortex -v ON_ERROR_STOP=1 -t -A -F || -c SELECT count(*) AS open_rows,   count(*) FILTER (WHERE plan IS NULL) AS plan_null,   count(*) FILTER (WHERE assignee IS NULL) AS unassigned,   count(*) FILTER (WHERE correlation_id IS NULL) AS no_correlation,   count(*) FILTER (WHERE depends_on IS NULL) AS no_depends_on   FROM tasks.tasks WHERE status NOT IN ('completed','cancelled');
+38||31||38||28||38
+rc=0
+==============================================================
+$ grep -n p_correlation_id\|p_plan\|CREATE OR REPLACE FUNCTION tasks.task_upsert ops/services/tasks/schema/v008__v006-deferred.sql
+42:CREATE OR REPLACE FUNCTION tasks.task_upsert(
+62:    p_correlation_id TEXT DEFAULT NULL    -- NEW
+121:        p_parent_id, p_kind, p_correlation_id,
+149:        correlation_id   = COALESCE(p_correlation_id, tasks.tasks.correlation_id),
+rc=0
+==============================================================
+$ grep -n task_upsert(?::uuid ops/scripts/manage/task-db.py
+560:UPSERT_SQL = ("SELECT tasks.task_upsert(?::uuid, ?, ?, ?, ?, ?, ?, ?, ?, "
+823:            "SELECT tasks.task_upsert(?::uuid, NULL, NULL, NULL, NULL, NULL, "
+849:            "SELECT tasks.task_upsert(?::uuid, NULL, NULL, NULL, NULL, NULL, "
+1180:            "SELECT tasks.task_upsert(?::uuid, NULL, NULL, NULL, NULL, NULL, "
+1183:            "SELECT tasks.task_upsert(?::uuid, NULL, NULL, NULL, NULL, NULL, "
+1197:            "SELECT tasks.task_upsert(?::uuid, NULL, NULL, NULL, NULL, NULL, "
+rc=0

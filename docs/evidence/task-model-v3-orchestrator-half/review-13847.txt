@@ -1,0 +1,71 @@
+material bytes = 15666
+reviewer rc = 0
+review_id       = 4e0fa3b6-44fa-4d5a-9ac2-06d9dc1c6f45
+reviewer_model  = deepseek/deepseek-v4-pro
+verdict         = FINDINGS
+ts              = 2026-10-27T05:33:33.832319+00:00
+findings        = [
+  {
+    "finding_id": "ADV-13847-1",
+    "severity": "high",
+    "technique": "unverified-claim",
+    "target": "\u00a74.1 / \u00a72 consequence 2",
+    "evidence": "The plan says the v016 migration will \"CREATE OR REPLACE FUNCTION tasks.task_upsert(...)\" = the v008 body plus exactly three edits, adding \"p_plan TEXT DEFAULT NULL\", and claims \"Appending a 21st parameter is backward-compatible, because every existing call is positional and the new parameter defaults to NULL.\" PostgreSQL cannot change a function's input argument list with CREATE OR REPLACE; a different signature creates a second overloaded function, leaving the 20-argument task_upsert in place. The planned verification `pg_get_function_arguments('tasks.task_upsert'::regproc)` would then be ambiguous rather than showing the 21st parameter.",
+    "recommendation": "Change the migration to drop the existing 20-argument function and create the 21-argument function transactionally, then re-grant the existing privileges. Add a regression assertion that exactly one tasks.task_upsert exists and resolves to the 21-parameter signature."
+  },
+  {
+    "finding_id": "ADV-13847-2",
+    "severity": "info",
+    "technique": "unverified-claim",
+    "target": "\u00a73 trap",
+    "evidence": "The plan asserts `v_status := COALESCE(p_status, 'pending')` and the ON CONFLICT branch assigns `\"column\" = EXCLUDED.\"column\"` unconditionally, so a metadata-only NULL-status write would violate `tasks_column_check`. The capture does not include the v007/v008 function body or the check constraint, so this cannot be verified from the material.",
+    "recommendation": "Include the v007/v008 body lines or a committed SQL-level regression test demonstrating the p_status=NULL \u2192 column='todo' failure before relying on \u00a74.2 rule 2."
+  }
+]
+summary         = {
+  "cycle_id": 13847,
+  "verdict": "FINDINGS",
+  "findings": [
+    {
+      "finding_id": "ADV-13847-1",
+      "severity": "high",
+      "technique": "unverified-claim",
+      "target": "§4.1 / §2 consequence 2",
+      "evidence": "The plan says the v016 migration will \"CREATE OR REPLACE FUNCTION tasks.task_upsert(...)\" = the v008 body plus exactly three edits, adding \"p_plan TEXT DEFAULT NULL\", and claims \"Appending a 21st parameter is backward-compatible, because every existing call is positional and the new parameter defaults to NULL.\" PostgreSQL cannot change a function's input argument list with CREATE OR REPLACE; a different signature creates a second overloaded function, leaving the 20-argument task_upsert in place. The planned verification `pg_get_function_arguments('tasks.task_upsert'::regproc)` would then be ambiguous rather than showing the 21st parameter.",
+      "recommendation": "Change the migration to drop the existing 20-argument function and create the 21-argument function transactionally, then re-grant the existing privileges. Add a regression assertion that exactly one tasks.task_upsert exists and resolves to the 21-parameter signature."
+    },
+    {
+      "finding_id": "ADV-13847-2",
+      "severity": "info",
+      "technique": "unverified-claim",
+      "target": "§3 trap",
+      "evidence": "The plan asserts `v_status := COALESCE(p_status, 'pending')` and the ON CONFLICT branch assigns `\"column\" = EXCLUDED.\"column\"` unconditionally, so a metadata-only NULL-status write would violate `tasks_column_check`. The capture does not include the v007/v008 function body or the check constraint, so this cannot be verified from the material.",
+      "recommendation": "Include the v007/v008 body lines or a committed SQL-level regression test demonstrating the p_status=NULL → column='todo' failure before relying on §4.2 rule 2."
+    }
+  ],
+  "summary": "I checked the raw capture: pg_get_function_arguments shows 20 parameters with no p_plan, grep sh
+
+=== POST-REREVIEW READ-BACK (cycle 13847) ===
+review_id      = 4e0fa3b6-44fa-4d5a-9ac2-06d9dc1c6f45
+reviewer_model = deepseek/deepseek-v4-pro
+verdict        = FINDINGS
+ts             = 2026-10-27T05:33:33.832319+00:00
+findings_json  = [{"finding_id": "ADV-13847-1", "severity": "high", "technique": "unverified-claim", "target": "\u00a74.1 / \u00a72 consequence 2", "evidence": "The plan says the v016 migration will \"CREATE OR REPLACE FUNCTION tasks.task_upsert(...)\" = the v008 body plus exactly three edits, adding \"p_plan TEXT DEFAULT NULL\", and claims \"Appending a 21st parameter is backward-compatible, because every existing call is positional and the new parameter defaults to NULL.\" PostgreSQL cannot change a function's input argument list with CREATE OR REPLACE; a different signature creates a second overloaded function, leaving the 20-argument task_upsert in place. The planned verification `pg_get_function_arguments('tasks.task_upsert'::regproc)` would then be ambiguous rather than showing the 21st parameter.", "recommendation": "Change the migration to drop the existing 20-argument function and create the 21-argument function transactionally, then re-grant the existing privileges. Add a regression assertion that exactly one tasks.task_upsert exists and resolves to the 21-parameter signature."}, {"finding_id": "ADV-13847-2", "severity": "info", "technique": "unverified-claim", "target": "\u00a73 trap", "evidence": "The plan asserts `v_status := COALESCE(p_status, 'pending')` and the ON CONFLICT branch assigns `\"column\" = EXCLUDED.\"column\"` unconditionally, so a metadata-only NULL-status write would violate `tasks_column_check`. The capture does not include the v007/v008 function body or the check constraint, so this cannot be verified from the material.", "recommendation": "Include the v007/v008 body lines or a committed SQL-level regression test demonstrating the p_status=NULL \u2192 column='todo' failure before relying on \u00a74.2 rule 2."}]
+summary        = {
+  "cycle_id": 13847,
+  "verdict": "FINDINGS",
+  "findings": [
+    {
+      "finding_id": "ADV-13847-1",
+      "severity": "high",
+      "technique": "unverified-claim",
+      "target": "§4.1 / §2 consequence 2",
+      "evidence": "The plan says the v016 migration will \"CREATE OR REPLACE FUNCTION tasks.task_upsert(...)\" = the v008 body plus exactly three edits, adding \"p_plan TEXT DEFAULT NULL\", and claims \"Appending a 21st parameter is backward-compatible, because every existing call is positional and the new parameter defaults to NULL.\" PostgreSQL cannot change a function's input argument list with CREATE OR REPLACE; a different signature creates a second overloaded function, leaving the 20-argument task_upsert in place. The planned verification `pg_get_function_arguments('tasks.task_upsert'::regproc)` would then be ambiguous rather than showing the 21st parameter.",
+      "recommendation": "Change the migration to drop the existing 20-argument function and create the 21-argument function transactionally, then re-grant the existing privileges. Add a regression assertion that exactly one tasks.task_upsert exists and resolves to the 21-parameter signature."
+    },
+    {
+      "finding_id": "ADV-13847-2",
+      "severity": "info",
+      "technique": "unverified-claim",
+      "target": "§3 trap",
+      "evidence": "The plan asserts `v_status := COALESCE(p_status, 'pending')` and the ON CONFLICT branch assigns `\"column\" = EXCLUDED.\"column\"` unconditionally, so a metada
