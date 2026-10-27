@@ -1,0 +1,48 @@
+# Orch-skill-lifecycle 2026-10-28 run — verifier-fix evidence
+
+Regenerate: bash docs/evidence/orch-skill-lifecycle-2026-10-28/capture.sh
+Captured-at: working tree at commit de1cb362 (before its own landing; the
+verifier pair and parity artifact commits are de1cb362..67934553, rebased
+on top of the peer's 20d468a4).
+
+## 1. Negative harness — probe 7 was RED pre-fix (category dir false-FAIL)
+
+Pre-fix run (6/7 noticed, 1 BLIND) proved the defect; post-fix run:
+
+$ bash ops/scripts/manage/test-verify-orch-skill-lifecycle.sh
+probes run: 8 · noticed: 8 · blind spots: 0
+HARNESS PASS: 8 probes, 0 blind spots
+rc=0
+
+Probe 7 = peer's .archive parse-filter probe (narrow: live+missing still
+judged -> rc=1). Probe 8 = category dir -> rc=0 (tolerated).
+
+## 2. Real tree — deployed verifier now judges the 48h window clean
+
+$ bash ~/.hermes-cortex/scripts/verify-orch-skill-lifecycle.sh
+OK   doctor:
+OK   stranded: 0
+checking 18 reported skill(s): window=48h
+  OK   approval-gate-debugging (repo==deployed)
+  WARN blocked-page-recovery: no repo source found (fleet-only skill)
+  WARN box: no repo source found (fleet-only skill)
+  ... (all 18 OK/WARN, github tolerated as category dir)
+PASS: no unapplied skill content in the window
+rc=0
+
+## 3. A4 adversarial gate — both changed files
+
+$ python3 ~/.hermes-cortex/scripts/adversarial-verify.py --file ops/scripts/manage/verify-orch-skill-lifecycle.sh --level A4 --gate
+✅ GATE_PASSED — no critical/high findings (rc=0)
+
+$ python3 ~/.hermes-cortex/scripts/adversarial-verify.py --file ops/scripts/manage/test-verify-orch-skill-lifecycle.sh --level A4 --gate
+✅ GATE_PASSED — no critical/high findings (rc=0)
+
+## 4. Doctor / reconciler — drift authorities agree clean
+
+$ python3 ops/scripts/manage/cortex-doctor.py --quiet | grep 'Skill drift'
+✅ Skill drift
+
+$ python3 ops/scripts/manage/reconcile-stranded-skills.py
+Detector verdict: FAIL · stranded: 0
+Nothing stranded: repo and deployed trees agree on content.
