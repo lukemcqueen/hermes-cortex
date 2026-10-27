@@ -1818,6 +1818,18 @@ READONLY_COMMAND_PATTERNS = [
     # read-only check itself blocked) was unreachable. Add/remove of servers
     # (`hermes mcp add|remove`) stays write-class.
     r"^\s*(hermes)\s+mcp\s+(list|test)\b",
+    # mycortex QUERY subcommands — the knowledge brain's read surface. Only
+    # `list`, `search`, `stats` and `doctor` (plus `sources list` and
+    # `answer search|stats`) match, and they only SELECT. The mutating siblings
+    # stay write-class by NOT matching: `sync` writes the index, `sources
+    # add|remove` changes registration, `answer store|prune` writes the cache.
+    # Without this exemption an unattended session cannot read the brain at all
+    # — measured 2026-10-27, the nightly dream died on its FIRST step
+    # (`mycortex list -n 20` → write-class → governance lock required) and
+    # wrote no dream for a week on every host.
+    r"^\s*(mycortex)\s+(list|search|stats|doctor)\b",
+    r"^\s*(mycortex)\s+sources\s+list\b",
+    r"^\s*(mycortex)\s+answer\s+(search|stats)\b",
 ]
 
 # Metacharacters that can never appear in a lock-free read-only command:
