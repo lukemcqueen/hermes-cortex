@@ -2,7 +2,7 @@
 name: orch-skill-lifecycle
 category: devops
 description: "Unified daily skill lifecycle pipeline — collects lessons, evaluates quality, and upgrades skills/SOUL.md. Replaces skill-miner, harvest-lessons, skill-triage, soul-refinement, and agent-weekly-loop-eval."
-version: 1.4.0
+version: 1.5.0
 author: Hermes Cortex
 license: MIT
 platforms: [linux, macos]
@@ -490,6 +490,27 @@ Result: 3 skills updated, 1 upstreamed, 1 SOUL.md entry.
   whether its reports are RECURRENCES of one commit (`git log -- <path>`) rather than independent
   proposals — and if the content is already committed, there is nothing to merge.
 - **Don't patch the same skill twice in one run** — deduplicate before acting
+- **The collector walks INTO `skills/.archive/` — retired skills arrive as live deltas (2026-10-28)** →
+  `agent-learning-collector._get_skill_delta()` enumerates with
+  `SKILLS_DIR.rglob("SKILL.md")`, which descends into `~/.hermes/skills/.archive/`;
+  `gen-skills-manifest.py` ("Hidden dirs (.archive) are skipped") and
+  `cortex-update.sh` (staging + stale-prune both `continue` on `.archive/`) both
+  exclude it, so the collector is the odd one out. Archived skills therefore
+  report as `[NEW] <name> (.archive)` — off-host, so they have NO repo source by
+  design. Do not read them as unapplied work and never upstream a retired skill.
+  **The verifier's naive resolver turned one into a hard false FAIL:** `github`
+  matched the CATEGORY dir `skills/github/` (which holds `commit-message` and
+  `pr-review` and has no `SKILL.md`), so `find skills -maxdepth 2 -type d -name`
+  + a `SKILL.md` existence test reported "repo file missing" on a fully clean
+  tree (doctor `✅ Skill drift`, `stranded: 0`). Filter on the report line's
+  category: `s.split('(',1)[-1].startswith('.')` → skip.
+  **And fixing that exposed a second, worse defect:** the no-repo-source branch
+  did `WARN … continue`, so a skill DEPLOYED on this host but absent from the
+  repo — the exact unapplied-work gap this check exists to catch — passed
+  silently. Split the branch: deployed-locally-but-no-repo → FAIL;
+  nowhere-locally → WARN (genuinely fleet-only / archived). Probe 7 in
+  `test-verify-orch-skill-lifecycle.sh` (7 probes, 0 blind spots) pins BOTH
+  directions, because an exclusion with no negative harness is a bypass.
 - **A no-op run needs the same committed proof as a change (2026-10-26)** →
   when the collection window yields only recurrences of already-committed,
   already-deployed drift-syncs (the common case), the correct output is a

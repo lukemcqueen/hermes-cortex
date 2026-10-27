@@ -95,7 +95,15 @@ for f in glob.glob(os.path.expanduser("~/.hermes-cortex/state/learning-reports/*
     if (now-dt).total_seconds()/3600>hours: continue
     for line in text.splitlines():
         s=line.strip()
-        if s.startswith('[MOD]') or s.startswith('[NEW]'): names.add(s.split()[1].split('(')[0])
+        if not (s.startswith('[MOD]') or s.startswith('[NEW]')): continue
+        # The collector's SKILLS_DIR.rglob('SKILL.md') walks INTO ~/.hermes/skills/.archive/
+        # (the manifest generator and cortex-update.sh both skip hidden dirs; it does not),
+        # so retired skills arrive as "[NEW] <name> (.archive)". They are archived on the
+        # reporting host and by DESIGN have no repo source — demanding one is a false FAIL.
+        # (2026-10-28: 'github' also collided with the CATEGORY dir skills/github, which
+        # holds commit-message/pr-review and no SKILL.md, turning this into a hard FAIL.)
+        if s.split('(',1)[-1].startswith('.'): continue
+        names.add(s.split()[1].split('(')[0])
 print(" ".join(sorted(names)))
 PY
 )"
@@ -104,7 +112,21 @@ say "checking $(printf '%s\n' $SKILLS | wc -w) reported skill(s): window=${WINDO
 for n in $SKILLS; do
   rel="$(cd "$REPO" && find skills -maxdepth 2 -type d -name "$n" | head -1)"
   repo_f="$REPO/${rel:+$rel/}SKILL.md"; dep_f="$DEPLOYED/${rel#skills/}/SKILL.md"
-  [ -n "$rel" ] || { say "  WARN $n: no repo source found (fleet-only skill)"; continue; }
+  [ -n "$rel" ] || {
+    # No repo source. Two very different cases — do NOT collapse them:
+    #   (a) the skill IS deployed on this host but the repo lacks it -> a real
+    #       unapplied-work gap; WARN-and-continue silently passed it (a bypass
+    #       that probe 7 caught on 2026-10-28).
+    #   (b) it is nowhere locally either -> genuinely fleet-only (another host's
+    #       skill, or a retired/.archive name) -> correctly out of scope.
+    drel="$(find "$DEPLOYED" -maxdepth 3 -type d -name "$n" -not -path '*/.archive/*' 2>/dev/null | head -1)"
+    if [ -n "$drel" ]; then
+      say "  FAIL $n: deployed at $drel but no repo source (unapplied work)"; fail=1
+    else
+      say "  WARN $n: no repo source and not deployed locally (fleet-only skill)"
+    fi
+    continue
+  }
   if [ ! -f "$repo_f" ]; then say "  FAIL $n: repo file missing ($repo_f)"; fail=1; continue; fi
   if [ ! -f "$dep_f" ];  then say "  FAIL $n: deployed file missing ($dep_f)"; fail=1; continue; fi
   a=$(md5sum "$repo_f" | cut -d' ' -f1); b=$(md5sum "$dep_f" | cut -d' ' -f1)

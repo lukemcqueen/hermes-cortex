@@ -128,7 +128,40 @@ mk_stub_recon "$r6/repo/ops/scripts/manage/reconcile-stranded-skills.py" "strand
 out="$(run_check "$r6")"; rc=$?
 if [ "$rc" -eq 1 ]; then echo "  OK   missing deployed -> rc=1 (a real failure, not 'unverifiable')"; pass=$((pass+1)); else echo "  BLIND missing deployed rc=$rc (expected 1): $out"; blind=$((blind+1)); fi
 
+echo "probe 7: archived-category reports are skipped, live ones are still judged"
+# The collector walks INTO ~/.hermes/skills/.archive/ and reports retired skills as
+# "[NEW] <name> (.archive)". Those have no repo source by design and must NOT
+# redden the check. The filter must be NARROW: a genuinely repo-missing live skill
+# reported in the SAME batch must STILL fail — otherwise the exclusion is a bypass.
+# Drives the derivation path (no SKILLS= override) by pointing HOME at the overlay,
+# since the enumerator reads $HOME/.hermes-cortex/state/learning-reports/*.md.
+r7="$TMP/archived"; mkdir -p "$r7/repo/ops/scripts/manage" "$r7/deployed" "$r7/home/.hermes-cortex/state/learning-reports"
+mk_repo "$r7"
+# live skill present on BOTH sides
+mkdir -p "$r7/repo/skills/devops/live-skill" "$r7/deployed/devops/live-skill"
+echo h > "$r7/repo/skills/devops/live-skill/SKILL.md"
+echo h > "$r7/deployed/devops/live-skill/SKILL.md"
+# a skill deployed HERE but absent from the repo = the unapplied-work gap (case (a))
+mkdir -p "$r7/deployed/devops/ghost-missing"
+echo h > "$r7/deployed/devops/ghost-missing/SKILL.md"
+mk_stub_doctor "$r7/repo/ops/scripts/manage/cortex-doctor.py" "✅ Skill drift — stub"
+mk_stub_recon "$r7/repo/ops/scripts/manage/reconcile-stranded-skills.py" "stranded: 0"
+now_iso="$(date -u '+%Y-%m-%dT%H:%M:%S+00:00')"
+printf '{"text": "Learning Report — probehost\\nGenerated: %s\\nType: full\\n== Skills (3 changed) ==\\n  [NEW] live-skill (devops)\\n  [NEW] ghost-archived (.archive)\\n  [NEW] ghost-missing (devops)\\n"}' "$now_iso" \
+  > "$r7/home/.hermes-cortex/state/learning-reports/probe-1.md"
+out="$(env HOME="$r7/home" REPO="$r7/repo" DEPLOYED="$r7/deployed" \
+        bash "$r7/repo/ops/scripts/manage/verify-orch-skill-lifecycle.sh" 2>&1)"; rc=$?
+# (a) the .archive item must not appear in the checked set at all
+if printf '%s' "$out" | grep -q 'ghost-archived'; then
+  echo "  BLIND .archive item was judged: $out"; blind=$((blind+1))
+# (b) the missing LIVE skill must still be checked and still FAIL
+elif [ "$rc" -eq 1 ] && printf '%s' "$out" | grep -q 'ghost-missing' && printf '%s' "$out" | grep -q 'live-skill'; then
+  echo "  OK   .archive skipped, live+missing still judged -> rc=1 (narrow filter)"; pass=$((pass+1))
+else
+  echo "  BLIND archived/missing mix rc=$rc: $out"; blind=$((blind+1))
+fi
+
 echo
-echo "probes run: 6 · noticed: $pass · blind spots: $blind"
+echo "probes run: 7 · noticed: $pass · blind spots: $blind"
 [ "$blind" -eq 0 ] || { echo "HARNESS FAIL: $blind blind spot(s) — the check is not trustworthy"; exit 1; }
-echo "HARNESS PASS: 6 probes, 0 blind spots"
+echo "HARNESS PASS: 7 probes, 0 blind spots"
