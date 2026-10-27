@@ -361,13 +361,23 @@ def get_session_id(args: dict | None = None) -> str:
        for Hermes: the MCP server is one shared process for all Hermes
        sessions, and the shared marker files below are clobbered by concurrent
        sessions.
-    1. Non-Hermes caller (no per-call id): a PROCESS-scoped id, generated once
-       per MCP server process. Claude Code spawns one stdio child per
-       session/project, so this is a correct session discriminator. We do NOT
-       fall back to the host-global ~/.hermes/session.id cache or the Hermes
-       marker files — those are shared by every session and caused
-       begin/end to collide across concurrent Claude+Hermes sessions
-       (2026-09-29).
+    0e. The CALLER'S OWN ENVIRONMENT (2026-10-27) — ``CORTEX_SESSION_KEY`` then
+       ``PI_SESSION_ID``, namespaced into ``sess_<source>_<value>``. One MCP
+       child serves one session, so an env-provided value is a correct
+       discriminator AND is stable across a child restart. This is the step
+       that gives two Pi/Claude/CLI sessions in ONE repo two ids instead of
+       one; without it every such session shared the per-repo id below and
+       therefore one lock file (measured: docs/evidence/
+       shared-session-id-non-hermes-2026-10-27/transcript.txt, cases A and F).
+    1. Non-Hermes caller with NO env value: a PROCESS-scoped id, generated once
+       per MCP server process and PERSISTED PER REPO (``state/.session-<slug>.id``)
+       so it survives an MCP-child restart (ADV-2872-2). Claude Code spawns one
+       stdio child per session/project, so this is a correct discriminator when
+       the harness supplies nothing; it is NOT a session discriminator when two
+       sessions share a repo, which is why step 0e exists. We do NOT fall back
+       to the host-global ~/.hermes/session.id cache or the Hermes marker files
+       — those are shared by every session and caused begin/end to collide
+       across concurrent Claude+Hermes sessions (2026-09-29).
 
     The old Priority 1-3 marker-file fallbacks were REPLACED by the
     process-scoped id. Rationale: the markers only ever hold the last Hermes
@@ -381,16 +391,34 @@ def get_session_id(args: dict | None = None) -> str:
         SESSION_FILE.write_text(sid)
         return sid
 
-    # Priority 1: process-scoped id for non-Hermes callers — stable per MCP
-    # child (per Claude session), disjoint across concurrent sessions, and
-    # never adopts another session's Hermes id. PERSISTED per project
-    # (repo slug of cwd, same resolution the git hooks use) so the id
-    # survives an MCP-child restart mid-session (adversarial finding
-    # ADV-2872-2: an in-memory-only id orphans the lock when Claude Code
-    # restarts the server between begin_change and end_change). Same-project
-    # sharing is correct governance semantics — begin_change already
-    # serializes a repo to one active change; cross-PROJECT ids stay disjoint,
-    # which is the collision class this fix removes.
+    # Priority 0e: the caller's OWN environment. One MCP child serves one
+    # session, so a harness-provided value is a correct session discriminator
+    # and is already stable across a child restart (nothing to persist).
+    # Without this step two sessions in ONE repo resolve to the SAME id and
+    # therefore the same lock file — measured, cases A and F of
+    # docs/evidence/shared-session-id-non-hermes-2026-10-27/transcript.txt,
+    # where the second session was refused and, once the holder's lock aged
+    # out, its cycle was resolved as an orphan and the lock path rewritten.
+    _env_var, _env_raw = _env_session_id()
+    if _env_var:
+        _safe = _sanitise_session_component(_env_raw)
+        if _safe:
+            sid = f"sess_{_ENV_SESSION_ID_LABELS[_env_var]}_{_safe}"
+            log.info("session id from the environment: %s -> %s", _env_var, sid)
+            return sid
+        log.warning("%s carries no usable characters — falling back to the "
+                    "per-repo session id (two sessions in one repo will share it)",
+                    _env_var)
+
+    # Priority 1: process-scoped id for non-Hermes callers that supplied no
+    # env value — stable per MCP child, and PERSISTED per project (repo slug of
+    # cwd, same resolution the git hooks use) so the id survives an MCP-child
+    # restart mid-session (adversarial finding ADV-2872-2: an in-memory-only id
+    # orphans the lock when Claude Code restarts the server between
+    # begin_change and end_change). It is ONE id per repo by construction, so it
+    # does NOT separate two sessions that share a repo — that is what step 0e
+    # is for, and a caller with no env value keeps this fallback rather than
+    # losing restart stability.
     global _PROCESS_SESSION_ID
     if not _PROCESS_SESSION_ID:
         slug = _derive_slug()
@@ -532,6 +560,43 @@ def _injected_session_id(args: dict | None) -> str:
         return ""
     sid = args.get("session_id", "")
     return sid.strip() if isinstance(sid, str) else ""
+
+
+# ── Session identity a NON-Hermes harness supplies through the ENVIRONMENT ──
+# Order matters: the first non-empty value wins. Both names are SURVEYED from the
+# fleet, never invented — CORTEX_SESSION_KEY is the documented per-session key
+# (docs/runbooks/context-integration.md; the cortex-gateway `command` backend
+# pins it per chat in ops/scripts/cortex_gateway/agents.py), and PI_SESSION_ID is
+# Pi's own "Current session ID" (its packaged docs/environment-variables.md).
+# One MCP child serves ONE session, which is why an env value is a correct
+# discriminator — the same premise the process-scoped fallback below relies on.
+_ENV_SESSION_ID_SOURCES = (
+    ("CORTEX_SESSION_KEY", "session_key"),
+    ("PI_SESSION_ID", "pi_session_id"),
+)
+_ENV_SESSION_ID_LABELS = dict(_ENV_SESSION_ID_SOURCES)
+
+
+def _sanitise_session_component(raw: str, limit: int = 80) -> str:
+    """Reduce an arbitrary value to ONE safe filename/id component.
+
+    The result carries no ``/``, ``\\``, whitespace or NUL (so it cannot become a
+    path or a directory traversal), no run of dots (so it cannot be ``..``), and
+    never starts or ends with ``.``, ``_`` or ``-``. Empty means "no usable
+    characters" and the caller falls through to the next resolution step.
+    """
+    cleaned = re.sub(r"[^A-Za-z0-9._-]+", "_", (raw or "").strip())
+    cleaned = re.sub(r"\.{2,}", ".", cleaned)
+    return cleaned.strip("._-")[:limit]
+
+
+def _env_session_id() -> tuple[str, str]:
+    """(source variable, value) from this process's environment, else ("", "")."""
+    for var, _label in _ENV_SESSION_ID_SOURCES:
+        raw = (os.environ.get(var) or "").strip()
+        if raw:
+            return var, raw
+    return "", ""
 
 
 def _session_repo_env_path() -> Optional[Path]:

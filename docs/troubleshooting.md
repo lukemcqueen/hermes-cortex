@@ -810,6 +810,50 @@ mid-cycle repo switch, or a lock written before this fix), the refusal still has
 no self-service release — re-open the cycle in the correct repo, or remove the
 lock.
 
+### Two agents in one repo share ONE governance lock (non-Hermes harnesses)
+
+**Symptom** (titus, pi, 2026-10-27; measured transcript at
+`docs/evidence/shared-session-id-non-hermes-2026-10-27/transcript.txt`): two
+sessions working in the SAME project repo resolve the same session id, so they
+write the same lock file `.governance-<session_id>.json` and each other's cycles
+collide:
+
+- the second `begin_change` is refused — first by the close-out gate, which names
+  the OTHER session's PENDING cycle and tells this agent to score it, then by the
+  lock check;
+- either session can score and `end_change` the other's cycle (a lock carries no
+  owner check);
+- once the holder's lock heartbeat passes its TTL, the peer's `begin_change`
+  purges that lock, resolves the holder's PENDING cycle to `MOVE_ON` as
+  `[orphan-reaper] abandoned`, rewrites the SAME lock path for its own task, and
+  the holder's own `end_change` then answers
+  `Error: Lock belongs to task '<peer>', not '<mine>'`.
+
+**Root cause.** `get_session_id()` in `mcp-servers/loop-gov-mcp.py` had no
+per-session input from a non-Hermes caller, so it fell back to ONE id persisted
+per REPO (`~/.hermes-cortex/state/.session-<slug>.id`). A Hermes caller is
+unaffected: the enforcer injects its session id on every call.
+
+**Fix (deployed 2026-10-27).** Resolution step 0e reads a session id the caller's
+own environment already provides — `CORTEX_SESSION_KEY` first, then Pi's
+`PI_SESSION_ID` — and namespaces it as `sess_<source>_<value>`. One MCP child
+serves one session, so that value is both a correct discriminator and stable
+across a child restart. A caller with no such variable keeps the per-repo
+fallback (restart stability for the CLI), so the sharing can still occur there.
+
+```bash
+# Which id did this session get? One clean read, no lock needed:
+ls ~/.hermes-cortex/state/.governance-*.json
+```
+
+- Still shared? Pass a session id explicitly per call
+  (`loop-gov.py begin_change '{"task_id":"...","description":"...","session_id":"sess_pi_<your id>","repo_path":"<abs repo path>"}'`)
+  — but include `repo_path`: a lock minted with an explicit id and no repo_path
+  records an empty repo, which is the unclosable-lock class.
+- Or set `CORTEX_SESSION_KEY` in the harness/MCP `env` block (the
+  cortex-gateway `command` backend already pins it per chat).
+- Verify without an LLM turn: `python3 tests/test_harness_session_id_env.py`.
+
 ### Task queries show me nothing (`task_pending` returned `[]`)
 
 Task QUERIES are repo-scoped (2026-10-14, reported by Titus): `task_pending`,
