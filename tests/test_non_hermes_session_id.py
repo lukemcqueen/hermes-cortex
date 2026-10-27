@@ -16,6 +16,12 @@ properly". Two root causes, both covered here:
      (.mcp.json stays as the per-repo override). Tested by
      test_claude_governance_installer.sh.
 
+  C. (2026-10-27) get_session_id() gained resolution step 0e: a caller's own
+     environment (CORTEX_SESSION_KEY, then PI_SESSION_ID) is used before the
+     per-repo fallback, because one MCP child serves one session. That path is
+     covered by tests/test_harness_session_id_env.py; THIS file measures the
+     no-env fallback, so it removes those variables for the run.
+
 Run:  python3 tests/test_non_hermes_session_id.py
 """
 import importlib.util
@@ -31,6 +37,24 @@ mcp = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(mcp)
 
 _FAIL = []
+
+# Ambient-environment guard. Resolution step 0e reads a session id from the
+# caller's own environment (CORTEX_SESSION_KEY, then PI_SESSION_ID), so a runner
+# that happens to have one set makes these tests measure the RUNNER instead of
+# the fallback rule they name — measured 2026-10-27: with CORTEX_SESSION_KEY set,
+# the per-repo file is never written and three checks fail. Save and remove them
+# for the duration of the run, restore in main()'s finally. The env-provided path
+# is covered on purpose by tests/test_harness_session_id_env.py.
+_ENV_SESSION_KEYS = ("CORTEX_SESSION_KEY", "PI_SESSION_ID")
+_SAVED_ENV = {k: os.environ.pop(k, None) for k in _ENV_SESSION_KEYS}
+
+
+def _restore_env():
+    for _k, _v in _SAVED_ENV.items():
+        if _v is None:
+            os.environ.pop(_k, None)
+        else:
+            os.environ[_k] = _v
 
 
 def _check(name, cond, detail=""):
@@ -112,16 +136,29 @@ def test_two_processes_get_disjoint_ids():
 
 
 def test_same_repo_concurrent_sessions_serialize():
-    """Two concurrent non-Hermes sessions in ONE repo share the project id —
-    and the SECOND begin_change is REFUSED while the first's cycle is PENDING
-    (serialization via the close-out gate, not silent lock theft)."""
+    """Two concurrent non-Hermes sessions in ONE repo that supply NO session id
+    (neither CORTEX_SESSION_KEY nor PI_SESSION_ID) share the per-repo project id
+    — and the SECOND begin_change is REFUSED while the first's cycle is PENDING
+    (serialization via the close-out gate, not silent lock theft).
+
+    That sharing is the documented FALLBACK, not the whole behaviour: a session
+    whose environment carries an id gets its own (tests/test_harness_session_id_env.py,
+    added 2026-10-27 with resolution step 0e). This test pins the fallback so it
+    cannot silently change, and the ambient-environment guard above keeps it
+    measuring the fallback rather than whatever the runner exported.
+    """
     with tempfile.TemporaryDirectory() as td:
         # Hermetic cwd: a tiny git repo so end_change's complexity measurement
         # sees an empty diff (trivial → no live adversarial review in a test)
         # instead of measuring THIS repo's untracked files.
         repo = Path(td) / "sandbox-repo"; repo.mkdir()
         subprocess.run(["git", "init", "-q"], cwd=repo, check=True, capture_output=True)
-        subprocess.run(["git", "-C", str(repo), "-c", "user.email=t@t.t",
+        # core.hooksPath is GLOBAL on a fleet host, so the sandbox commit runs the
+        # cortex pre-commit hook — which refuses a bare commit ("BARE COMMIT
+        # REFUSED — it would commit whatever is staged") and made this test RED on
+        # every host with the hooks installed. Point the sandbox at no hooks.
+        subprocess.run(["git", "-C", str(repo), "-c", "core.hooksPath=/nonexistent",
+                        "-c", "user.email=t@t.t",
                         "-c", "user.name=t", "commit", "--allow-empty", "-m", "init"],
                        check=True, capture_output=True)
         prev_cwd = os.getcwd()
@@ -171,14 +208,19 @@ def test_same_repo_concurrent_sessions_serialize():
 
 
 def main():
-    print("A. Hermes per-call injection (unchanged)")
-    test_hermes_injection_unchanged()
-    print("B. Non-Hermes caller isolation")
-    test_non_hermes_gets_process_scoped_id()
-    print("C. Process disjointness + restart stability")
-    test_two_processes_get_disjoint_ids()
-    print("D. Same-repo concurrent sessions serialize")
-    test_same_repo_concurrent_sessions_serialize()
+    try:
+        print("A. Hermes per-call injection (unchanged)")
+        test_hermes_injection_unchanged()
+        print("B. Non-Hermes caller isolation")
+        test_non_hermes_gets_process_scoped_id()
+        print("C. Process disjointness + restart stability")
+        test_two_processes_get_disjoint_ids()
+        print("D. Same-repo concurrent sessions serialize")
+        test_same_repo_concurrent_sessions_serialize()
+    finally:
+        # Put back whatever the runner had, even when a check raises — a test that
+        # leaks a mutated environment poisons every later section of the process.
+        _restore_env()
     print()
     if _FAIL:
         print(f"{len(_FAIL)} FAILED: {', '.join(_FAIL)}")
