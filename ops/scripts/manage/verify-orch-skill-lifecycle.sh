@@ -112,7 +112,6 @@ say "checking $(printf '%s\n' $SKILLS | wc -w) reported skill(s): window=${WINDO
 for n in $SKILLS; do
   rel="$(cd "$REPO" && find skills -maxdepth 2 -type d -name "$n" | head -1)"
   repo_f="$REPO/${rel:+$rel/}SKILL.md"; dep_f="$DEPLOYED/${rel#skills/}/SKILL.md"
-<<<<<<< HEAD
   [ -n "$rel" ] || {
     # No repo source. Two very different cases — do NOT collapse them:
     #   (a) the skill IS deployed on this host but the repo lacks it -> a real
