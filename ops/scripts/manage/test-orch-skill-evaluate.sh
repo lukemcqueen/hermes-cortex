@@ -28,6 +28,25 @@ OUT="$(bash "$TARGET" 2>&1)"
 CNT="$(printf '%s\n' "$OUT" | sed -n 's/^Total skills: *//p' | head -1)"
 if [[ "${CNT:-0}" -gt 0 ]]; then ok "Total skills: $CNT"; else bad "Total skills not > 0 (got '${CNT:-<none>}')"; fi
 
+echo "== 2b. SYMLINKED skills root still enumerates (deployed shape) =="
+# Production deploys ~/.hermes/skills as a SYMLINK to ~/.hermes-cortex/skills.
+# A bare `find "$ROOT" -type f` does NOT traverse a symlinked root, so this
+# case must be exercised explicitly — test 2 above builds a REAL dir and was
+# green while production reported 0 skills.
+TLINK="$(mktemp -d)"
+mkdir -p "$TLINK/real/.hermes" "$TLINK/real/skills-cat/nested"
+: > "$TLINK/real/skills-cat/SKILL.md"
+: > "$TLINK/real/skills-cat/nested/SKILL.md"
+ln -s "$TLINK/real/skills-cat" "$TLINK/real/.hermes/skills"
+OUT="$(HOME="$TLINK/real" bash "$TARGET" 2>&1)"
+LCNT="$(printf '%s\n' "$OUT" | sed -n 's/^Total skills: *//p' | head -1)"
+if [[ "${LCNT:-0}" -eq 2 ]]; then
+  ok "symlinked root enumerated: Total skills: $LCNT"
+else
+  bad "symlinked skills root under-counted (got '${LCNT:-<none>}', want 2)"
+fi
+rm -rf "$TLINK"
+
 echo "== 3. missing skills root fails closed =="
 TBAD="$(mktemp -d)"
 RC=0

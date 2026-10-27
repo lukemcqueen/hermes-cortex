@@ -50,6 +50,13 @@ SKILL_COUNT=0
 CUSTOM_COUNT=0
 CUSTOM_SKILLS=()
 SKILLS_ROOT="$HOME/.hermes/skills"
+# Resolve symlinks: on a deployed host ~/.hermes/skills is a SYMLINK to
+# ~/.hermes-cortex/skills. A bare `find "$SKILLS_ROOT" -type f` does NOT
+# traverse a symlinked root, so the inventory silently reported 0 (the
+# SKILL_COUNT==0 warn below fired, but the LLM prompt saw a zero inventory).
+# Resolving to the real path makes the count correct whichever shape the
+# host has (real dir or symlink).
+SKILLS_ROOT="$(readlink -f "$SKILLS_ROOT" 2>/dev/null || echo "$SKILLS_ROOT")"
 # Fail loudly, not silently: an unreadable/missing skills root must not be
 # reported as "0 skills" (that is indistinguishable from a genuinely empty
 # inventory and hides permission/dir errors — SOUL Principle 12).
