@@ -100,12 +100,17 @@ but upstreaming priority is LOW. Fleet evaluation (orch-skill-evaluate):
 5. **After deploying, count the files in the DEPLOYED skill dir and compare with
    the repo's.** A multi-file skill can deploy PARTIAL and nothing reports it: the
    loader is happy (SKILL.md parses), the doctor is green, and only the skill's own
-   relative links are broken. Measured 2026-10-23: a 20-file skill deployed exactly
-   ONE file, so all six of its phases pointed at companions no host had. The deploy
-   copies `SKILL.md`, `*/references/*` and `*/scripts|templates/*` — a companion
-   sitting BESIDE SKILL.md is the shape that gets dropped. Compare
+   relative links are broken — so the failure is invisible until someone follows a
+   link the skill depends on. The deploy's traversal is an ALLOWLIST OF SHAPES, not
+   a tree copy: any file whose shape it does not name is silently skipped, and which
+   shapes are named changes as the deploy evolves. So verify by COUNT, never by
+   assumption — compare
    `find <deployed>/<cat>/<name> -type f | wc -l` against the same count in the repo
    and `diff -rq` the two trees; a skill is not installed until the counts match.
+   When they disagree, read the deploy's own traversal (`sync_skills()` in
+   `ops/scripts/cortex-update.sh`) before choosing a remedy — the fix may belong in
+   the deploy rather than in how you lay the vendored skill out, and restructuring a
+   skill to fit a traversal gap forks its upstream content.
 
 ## Installing a third-party skill (approved)
 

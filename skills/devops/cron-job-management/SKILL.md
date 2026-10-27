@@ -328,19 +328,31 @@ Note: The `create_cron` function in install scripts collects the toolsets
 parameter ($6) but does NOT pass it via the CLI (the CLI doesn't support
 `--enabled-toolsets`). Always set toolsets via `cronjob action='update'`.
 
-**⚠️ GATE-1 deadlock: an LLM cron whose `enabled_toolsets` lacks the
-`skills` toolset can never pass the governance skills-gate (2026-10-26).**
-The enforcer's Gate 1 requires the 7 always-skills to be loaded via
-`skill_view`, which is only present when the toolset includes `skills`
-(`tool_search`/`tool_describe` alone won't do it — the gate checks the
-loaded-skill marker, not the search tools). A cron restricted to
-`["terminal","file"]` hits the gate on its first write and every write after,
-deadlocking the run indefinitely — the scheduler records the failure as
-`exit 127` with the gate message, and no manual run can clear it either
-(same restricted toolset). Dream-tier installers were fixed 2026-09-30 to
-use `["terminal","file","skills","session_search"]`; do the same for ANY
-LLM cron you constrain. A `no_agent` script cron needs no toolsets — keep
-them unset there.
+**⚠️ Constraining an LLM cron's `enabled_toolsets` is a WRITE-HAZARD — keep the
+governance MCP tools in the set.** The enforcer EXEMPTS cron/bg sessions from the
+skills gate (only the skill-loading *education* requirement is lifted — its own
+source comment says so), so a missing `skills` toolset does NOT deadlock a cron.
+What it does not lift is the **governance lock**: a cron write still needs
+`begin_change`, so a toolset that omits the loop-governance MCP tools leaves every
+write refused with no way to acquire the lock — the scheduler then records
+`exit 127` / a `[CRON_FAILURE]` body naming "GOVERNANCE LOCK REQUIRED", and no
+manual run clears it. Leaving `enabled_toolsets` UNSET (the full toolset) is
+therefore the safe default for any LLM cron that writes. Measured working: a
+scheduled cron takes a governance lock, commits and pushes unattended.
+Constrain only after confirming the cron's work needs none of the removed tools,
+and never copy a `terminal,file,skills,session_search`-style list from a sibling
+cron — it reads as tidy and silently removes the lock capability. A `no_agent`
+script cron needs no toolsets at all; keep them unset there.
+
+**A toolset argument the installer documents but never passes is a dead
+parameter, not a promise.** `create_cron` in the installers accepts a toolsets
+argument and the hermes CLI has no `--enabled-toolsets` flag, so the value is
+dropped on the floor and every installed job lands with
+`enabled_toolsets = null`. Read the function body rather than its comment: a
+documented-but-unused parameter with a comment telling the next agent to "apply
+this after create" is exactly how a harmless default gets narrowed into a real
+breakage. When you find the gap, fix the COMMENT as well as the code — the
+comment is the part a future session trusts.
 
 ### Cost Impact
 
@@ -450,7 +462,17 @@ as a workaround — pinning bypasses future env-driven changes.
 - **LLM crons with `workdir` are exclusive TERMINAL_CWD writers (#79768).** A cron with `workdir=HOME` holds the TERMINAL_CWD write lock for its whole LLM run; a neighboring cron without a workdir (a reader) blocked behind it times out after 660s. `agent-fixer-workday` (:49, writer) starved `cortex-bus-workday` (:50, reader) hourly until the workdirs were dropped from all LLM crons. **Rule: LLM crons (`no_agent != true`) get NO workdir** — a reader's terminal cwd defaults to HOME anyway, so the workdir is behavior-neutral while eliminating lock contention (zero writers = zero blocking). Fixed fleet-wide in `install-crons.sh` / `install-orch-crons.sh` / `cron-manifest.yaml` (commits 1fb1e9f9, e92118ee) — do not re-add `--workdir` when creating or editing an LLM cron. `no_agent` scripts with real file requirements may still set an absolute workdir.
 
 - **Cron/scheduled environments may lack the `cronjob` MCP tool — use the CLI fallback (2026-08-05).** In a cron-driven session (e.g. `agent-auto-remediate`), `tool_search('cronjob')` can return nothing while `hermes cron list` works fine. Fallback pattern: `hermes cron list > /tmp/cronlist.txt` then `grep 'Last run' /tmp/cronlist.txt | grep -v 'ok$'` to find errored jobs, and `grep -B8 'agent-fixer' /tmp/cronlist.txt` to inspect one job. **Interpretation:** `Execution: running` on an LLM cron (agent-fixer-*) just means its current run is live (that's the very job you may be executing as) — NOT a failure; check `Last run: ... ok` for status. Also note `grep -A6` truncates at 100 lines — dump to a file and grep the file for full coverage of 60+ job lists.
+- **A scan root that is a SYMLINK reports 0, and the fixture that hides it is a false green (2026-10-27).** `orch-skill-evaluate.sh` Phase 2 reported `Total skills: 0` on every deployed host: `~/.hermes/skills` is a SYMLINK to `~/.hermes-cortex/skills`, and `find "$ROOT" -name SKILL.md -type f` does NOT traverse a symlinked root — only a stderr WARN hinted at it, so the evaluator LLM prompt received a silently-empty fleet inventory while the script itself looked healthy. Resolve the root first (`SKILLS_ROOT="$(readlink -f "$SKILLS_ROOT" 2>/dev/null || echo "$SKILLS_ROOT")"`). **The re-runnable test stayed green because its fixture built a REAL directory** — a fixture whose SHAPE differs from production proves nothing about production; when a deploy makes a path a symlink, a real-dir fixture silently stops exercising the deployed shape. Add a case that creates the symlink and asserts the exact expected count, and prove the guard both ways (fails non-zero against the unfixed script, passes after) — a green run alone never shows the check would NOTICE a broken scan.
 - **Source prompt edits do NOT propagate to existing cron jobs (2026-08-04).** `create_cron` skips jobs that already exist, so changing a prompt in `install-crons.sh` / `install-orch-crons.sh` never touches the running job — its prompt stays stale until updated via `cronjob action='update' job_id=<id> prompt=...` (CLI on older builds: `hermes cron edit <id> --prompt ...`). The fleet-wide `inbox_moses` → `inbox_orchestrator` rename shipped with live `orch-skill-lifecycle` + `agent-learning-collector` prompts still naming the old queue; the doctor now WARNs on stale bus-target tokens in live prompts (`Cron prompt stale refs` check), but the rule is: **after any rename/policy change, grep the LIVE prompts in `~/.hermes/cron/jobs.json` (and peer hosts via ssh) for the old term — not just the repo install scripts — and update each hit via the cronjob tool.**
+- **Read the FAILING JOB'S OWN OUTPUT before theorising from the alert.** A cron run
+  leaves its full response at `~/.hermes/cron/output/<job_id>/<timestamp>.md` (the `##
+  Response` section). That text usually names the exact blocker, in the run's own words,
+  while a second-hand report — a peer's summary, a watchdog alert, "what failed" field —
+  can name the WRONG gate and send you fixing the wrong layer. Grep the newest captures
+  for the failure marker (`[CRON_FAILURE]`) to find how long the streak really is, then
+  fix the mechanism named by the run. Confirm the claim against the gate's own logic
+  before acting: the enforcer EXEMPTS cron/bg sessions from the skills gate, so an alert
+  blaming "the skills gate" is a hypothesis to verify, not a cause to code against.
 - **Manual `cronjob action='run'` sessions are tool-restricted BY DESIGN — not a regression (2026-08-18).** A manually-triggered run (`cronjob action='run' job_id=<id>`) executes as a delegation-style session with only the 17 core tools — **no governance MCP tools** (`begin_change`/`end_change` unreachable), so the enforcer fail-closes every write path and the run can't make changes. Scheduled ticks, by contrast, get the full toolset (proven: scheduled ticks scored governance cycles #5108/#5109 the same morning). Diagnosis rule: if a manual run reports "governance tools unavailable / write blocked", that is the design working, NOT a toolset regression — verify with the next scheduled tick before declaring an MCP outage. (Real case 2026-08-18: manual `orch-backlog-driver` run deadlocked on governance while scheduled ticks were healthy; the cron agent correctly rejected all bypasses and left the repo untouched.)
 - **Live schedule edits via the cronjob MCP tool get reverted by the next cortex-update reinstall — patch the installer `create_cron` block (repo) for durable changes (2026-08-18).** The installer's drift-edit path rewrites schedules from the `create_cron` blocks, so a `cronjob action='update'` schedule change survives only until the next `cortex-update.sh` reinstall. Real case (2026-08-18): off-peak schedule moves (agent-fixer-evening, cortex-bus-evening, judge-scorer-weekday) applied live via the MCP tool were reverted by a reinstall; the repo change was the durable fix and live values had to be re-applied afterward. **Rule: for schedule changes, patch the `create_cron` block in `install-crons.sh` / `install-orch-crons.sh` first (durable), then re-apply live if the next install isn't imminent.**
 - **Build `cron-manifest.yaml` schedules installer-first, live-second (2026-08-17).** When the source (installer `create_cron` block) changes but the live job never converged (cortex-update/installer not re-run), the live job's schedule is STALE — so building the manifest from live (`jobs.json`) bakes in the drift. Real case (2026-08-10): installer had `0 3` base → `37 3` live on moses, but a peer's manifest entry was written from the still-stale live `0 23`, re-encoding the drift into the source of truth. **Rule: the manifest's schedule column always comes from the installer base, never from the live job.** The per-host minute rewrite (`cksum(hostname:cron-name) % 60`, Luke directive 2026-08-07) means live minutes legitimately differ from base — that is NOT drift; a manifest entry that copies a live minute will fight the per-host rewrite on every host. Verify with `python3 ops/scripts/manage/cron_manifest.py --check`.

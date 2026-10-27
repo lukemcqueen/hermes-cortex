@@ -160,6 +160,46 @@ pre-emptively rewriting every future call around a label you know is wrong.
   primitive the classifier does not yet recognise (a read builtin it lacks) is a classifier gap to
   report, not a command to rephrase.
 
+### When the fix belongs in the CLASSIFIER, not the command
+
+The triggers above are caller-side workarounds. There is a second case where rephrasing is the
+wrong answer: a **read-only subcommand of a CLI the agent is required to run** is classified
+write-class, and the caller *cannot* take a lock — an unattended/cron session, or a cwd with no
+governed repo. Then the work is impossible rather than merely awkward, and that impossibility is
+the signal the rule is wrong.
+
+**Remedy: add the read subcommands to the enforcer's read-only allowlist**
+(`READONLY_COMMAND_PATTERNS` in `plugins/governance-enforcer/__init__.py`). The precedent is in the
+list itself — `hermes mcp list|test` was added because the diagnostic path for a broken
+loop-governance server was unreachable without it. Match the existing entries' shape:
+
+- **Subcommand-SCOPED, never the whole CLI.** `r"^\s*(tool)\s+(list|search|stats|doctor)\b"`.
+  An entry like `^\s*(tool)\b` admits that CLI's `sync`, `add`, `remove` and `store` as well — a
+  read widening is defensible, a write widening is not.
+- **Let the mutations stay refused BY CONSTRUCTION** (they simply do not match), and say so in the
+  comment so the next reader knows it was deliberate.
+- **Pin BOTH directions in a test that imports the SHIPPED predicate** — never a re-implementation.
+  Assert the read shapes are read-only AND the mutating siblings plus any compound mixing a read
+  with a write stay write-class. A test that only proves the reads became read-only passes just as
+  happily against an allowlist widened to the entire CLI, so it is not a check.
+- **Probe the classification directly instead of guessing** —
+  `importlib.util.spec_from_file_location` the enforcer source and call
+  `_is_readonly_terminal_command("<cmd>")`. That answers "is this the classifier's doing?" in one
+  step, rather than inferring it from a refusal message.
+
+Two mechanics this class of change always hits, because the enforcer is enforcement code:
+
+- **Edit the REPO source, then deploy.** The enforcer files are immutable and the deployed copy is
+  overwritten by the next update; `cortex-update.sh` owns unlock → copy → relock. Hand-editing
+  `~/.hermes/plugins/...` looks like it worked and is erased later.
+- **Deploy ≠ loaded for a plugin.** The enforcer module is imported at GATEWAY START, so a
+  classifier change is inert until the gateway restarts — and the deploy's own reload line names
+  only `hooks`. Compare the gateway's start time against the enforcer file's mtime to state which
+  of the two you are holding, label a not-yet-loaded fix as PENDING rather than PASS in any
+  evidence artifact, and give the operator the one command
+  (`systemctl --user restart hermes-gateway.service`) — agents cannot restart the gateway
+themselves.
+
 A timeout is **not** a failed attempt to try harder. The gate's own words — do not retry the
 command, do not rephrase it, do not reach the same outcome by another route — are the
 instruction, and re-issuing it with different quoting to slip past classification is exactly the

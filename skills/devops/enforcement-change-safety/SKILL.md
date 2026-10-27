@@ -993,6 +993,20 @@ for case in FIXTURES:
   the helper, read the row back. Source-text assertions cannot see any of this: this
   probe caught a closer that reported SUCCESS on a zero-row match, and proved the
   refusal branch releases what it must and refuses what it must.
+- **Seed fixtures through the component's own WRITER, never hand-rolled SQL.** A fixture that
+  `INSERT`s into a table it did not author fails on a NOT NULL column it never saw (`NOT NULL
+  constraint failed: <table>.<col>`), and that reads as a defect in the code under test. Call the
+  module's own recorder (`mod._record_review(...)`, `mod._record_blob_review(...)`) — it creates the
+  table, applies whatever migrations the real path applies, and keeps the fixture honest by
+  construction.
+- **Give the pin file an ENV SEAM to the pre-change module, so the SAME test runs on both sides.**
+  `SERVER_UNDER_TEST=<path>` (defaulting to the repo copy) lets one committed test file be executed
+  against the baseline module and report NAMED failures describing the defect, instead of needing the
+  test copied into a worktree. That is stronger evidence than two different tests agreeing: the
+  assertions, the fixtures and the messages are identical, and only the code differs. Design the new
+  pins for it from the start (a module-level `SERVER = Path(os.environ.get("SERVER_UNDER_TEST") or …)`)
+  and drive it in the evidence generator; a pin that can only ever meet the fixed revision is a happy
+  path with a name.
 - **Construct the failure path — never wait for a broken store.** Swap the module's DB
   accessor for a fake whose `execute` raises and whose `close` records that it was
   called; that asserts "reports failure AND still closes the connection" in one run,
@@ -1119,6 +1133,16 @@ enforcement working as intended.
   explaining the failure was the only one with no voice, and three wrong hypotheses got
   chased before the real cause appeared. Returning early is usually the RIGHT action;
   being silent is the defect. Log the values the check actually saw.
+- **A refusal must be ACTIONABLE, and "the gate could not do its work" is a DIFFERENT state from
+  "the work is outstanding" — give each its own marker.** A gate that runs out of its own budget and
+  then reports the subject as "not yet judged" hands the caller an instruction that cannot change the
+  outcome: measured, four consecutive refusals each ending "fix the file and commit it" for a file
+  already fixed, because the pass never attempted anything. Split them explicitly — a distinct marker
+  and message for the engine condition (state what was NOT attempted, and the action that clears it:
+  usually "retry", because the expensive step's result is now cached) and a separate one for genuine
+  unpromising work ("the content must change") — and make the caller's refusal text never present
+  unattempted subjects as queued work. Two states sharing one name is how a one-way gate is born, and
+  the caller cannot tell it from its own failure to comply.
 - **Resolve session/identity from the CALL's arguments, never `None`.** A helper that
   derives a session id from tool-call args returns `None` when handed `None` — silently,
   so every caller reads it as "no data" rather than "you called this wrong". Pass the
@@ -1317,6 +1341,22 @@ cannot migrate says so in a warning instead of failing quietly forever.
 - **ONE query behind every reader.** The skip list, the coverage set and the invalidation count must
 read the same rows through the same helper, or they disagree about what the store holds and the
 disagreement surfaces as an unclosable cycle.
+- **When the key becomes mandatory, SWEEP EVERY READER — a defaulted key turns its callers into
+  constants.** Adding the rules revision as an OPTIONAL keyword (`rules_rev: str = ""`) kept every
+  existing call site compiling and silently answering False, so four readers in one module each
+  returned a fixed answer on every host: a "CLEAN in the range" counter that always printed 0, a
+  session scope note that listed finished work as outstanding, a status block that told the REVIEWER
+  every sibling was "NOT covered (blocking findings outstanding)", and the receipt writer, so every
+  receipt named nothing but deletions and the push gate quietly lost content coverage. Each one is a
+  plausible-looking call (`_covered(blobs)`) in a different function, and no test failed. Grep every
+  call site of the helper in the same change (`grep -n '_helper(' <module>`), fix those that omit the
+  key, and prefer making omission IMPOSSIBLE — a required parameter, or a sentinel that RAISES rather
+  than answering False — because "fail closed" through a silent default is indistinguishable from a
+  working call at the call site.
+- **A wrong answer to a reviewer is worse than a missing one.** One of those readers built the
+  material the per-file judge reads, so the gate was feeding its own reviewer a false statement about
+  the range and then filing the resulting findings. When a diagnostic is computed with a stale or
+  absent key, check whether it reaches REVIEWED MATERIAL, not only whether it reaches a human.
 - **Widening the helper signature breaks its test doubles and fixtures — sweep both.** A new keyword
 parameter makes every hand-rolled double die with `TypeError`, and a new column makes every fixture
 with its own DDL die with `no column named …`; both fail in files you never opened. Update each

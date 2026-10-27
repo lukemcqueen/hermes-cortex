@@ -366,9 +366,18 @@ real commit:
    **Assert against the real line, including its quoting.** An assertion written
    from memory (`assert "-name SKILL.md" in block`) fails on CORRECT code when the
    source quotes the argument (`-not -name "SKILL.md"`); use a regex tolerant of the
-   quotes (`-not\s+-name\s+"?SKILL\.md"?`) or assert on a flag alone. A source
+   quotes (`-not\s+-name\s+"?SKILL\.md"?`) or assert on a flag alone. The same trap
+   fires in the other direction: the FILE holds the literal characters `\s`, not
+   whitespace, so a runtime-style regex (`re.search(r"tool\)\s+")`) flags every
+   correct line — match the construct AS WRITTEN (`r"(tool)\s+" in line`). A source
    guard that fails on correct code is worse than none — it teaches the next reader
    to distrust the suite.
+   **Slice the source by LINE, never between the first pair of delimiters you assume
+   encloses a block.** Bounding a list literal with
+   `src[src.index("[", i):src.index("]", i)]` stops inside the first nested character
+   class (`[vV]`, `[0-9]`, `[[:space:]]`), so the "block" is a truncated fragment and
+   the guard reports a missing entry that is plainly present a few lines below.
+   Filter `src.splitlines()` by the shape you actually want instead.
 2. **Prepend a stub preamble** forcing the branch you can't reach:
    ```bash
    set -euo pipefail

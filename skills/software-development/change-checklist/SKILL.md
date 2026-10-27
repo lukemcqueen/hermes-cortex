@@ -155,6 +155,18 @@ Load this before end_change() on any script, deploy-config, cron, shared-doc, or
       numbers twice; after a push the ref is the fix as well. That is WHY the baseline belongs as a
       literal, and why the "the checkout really is the pre-change revision" assertion is not optional:
       it is the only thing that catches a baseline which quietly started resolving to the fixed code.
+- [ ] **A new FLOOR, THRESHOLD or LIMIT on a shared path re-bases every caller that passes a value
+      below it — grep the callers AND the tests before you ship it.** The floor itself is fine; what
+      bites is that an existing test keeps passing a value that now crosses it, so the assertion
+      silently starts measuring the threshold instead of the behaviour it names: a FORWARDING test
+      that hands the helper `123.5` stops exercising the hand-off the moment the floor is `180`, and
+      the failure looks like your change broke forwarding. Two moves in the same change: grep for the
+      parameter name and every literal near the old value (`rg -n 'budget_s=|timeout=|limit=' tests/`),
+      move each such fixture deliberately ABOVE the new floor with a comment naming it, and keep one
+      case BELOW it that asserts the new refusal — otherwise the floor has no failing-side test at all
+      and a future edit can delete it silently. Then say in the commit message that the fixture values
+      moved and why, since a reviewer seeing `123.5 → 200.0` will otherwise read it as a weakened
+      assertion.
 
 - [ ] **Non-pytest suites are not collected by the pytest runner — drive them by hand.** A repo's
       `tests/*.sh` (and any suite whose path the runner never names) is invisible to
@@ -318,6 +330,15 @@ Enforced at 3 layers: pre-commit hook (static gate), enforcer (blocks commit unt
       artifact as unreadable noise. Redact the host only in host CONTEXTS (`Host:`,
       `@host`): a bare replace of the host's name also mangles legitimate identifiers that share
       it (a DB role, an agent's own name).
+      **A transcript of TEST NODE IDS is not automatically safe — parametrized ids embed the very
+      fixtures a scanner blocks.** A committed full-suite capture carries lines like
+      `test_pii_blocked[<fixture value>]`, and a suite that tests the PII gate necessarily names
+      email-shaped fixtures in its own ids, so the capture is refused at commit time as "real email
+      address in <artifact>" even though you never typed one and the repo already carries it. Redact
+      by PATTERN in the same normaliser that strips home paths (`sed -e 's/[A-Za-z0-9._%+-]\+@[A-Za-z0-9.-]\+\.[A-Za-z]\{2,\}/<email-redacted>/g'`),
+      regenerate the artifact rather than hand-editing the committed copy, and re-run the leak scanner
+      AFTER the artifacts exist — it runs before the commit, so a file you generate later has not been
+      through it yet.
 - [ ] **An artifact must not tell the reviewer what to conclude.** A `READ THIS FIRST` block
       asserting the verdict ("note 0 fail ... both green") is injection, and it reads as
       fabrication the moment the output beside it contradicts it — the same artifact it described
