@@ -35,9 +35,15 @@ Usage:
                        [--due <iso>] [--tag <t> ...] [--source <s>]
                        [--parent <uuid>] [--kind story|slice]
                        [--correlation-id <bus-corr>] [--no-notify]
-    task-db.py update  <id> --status <new-status> [--reason <r>]
-                       [--no-notify]
-    task-db.py update  --by-correlation <corr> --status <new-status>
+                       [--plan <text>]              # v016, needs schema v16+
+    task-db.py update  <id> [--status <new-status>] [--reason <r>]
+                       [--plan <text>] [--assignee <a>]
+                       [--depends-on <uuid>[,<uuid>…]]
+                       [--correlation-id <c>] [--no-notify]
+                       # --status is optional when a metadata flag is given;
+                       # a metadata-only write carries the row's CURRENT status
+                       # (v016, row 9fb2ddb6)
+    task-db.py update  --by-correlation <corr> [--status <new-status>]
     task-db.py switch  <target-id>        # pause current + resume target
     task-db.py pending [--repo <r>] # print pending as JSON (session restore)
     task-db.py restore <json> [--include-inbox]
@@ -178,6 +184,9 @@ V2_MIN_SCHEMA = 5
 V3_MIN_SCHEMA = 8
 # v4 (task model v3) features require schema v009
 V4_MIN_SCHEMA = 9
+# v5 (orchestrator write surface) features require schema v016 — the 21-arg
+# tasks.task_upsert that carries `p_plan`. Nothing else in this CLI needs it.
+V5_MIN_SCHEMA = 16
 
 
 def _valid_name(value: str | None) -> bool:
@@ -392,6 +401,20 @@ def _require_v4(feature: str) -> None:
         sys.exit(2)
 
 
+def _require_v5(feature: str) -> None:
+    """Refuse a v5 (orchestrator write surface) feature below schema v016.
+
+    A host still at v015 has the 20-arg task_upsert, so a 21-arg call fails
+    with a raw `function tasks.task_upsert(...) does not exist`. Refuse up
+    front with the same actionable message the other gates use (R-11).
+    """
+    if schema_version() < V5_MIN_SCHEMA:
+        print(f"ERROR: {feature} requires tasks schema v{V5_MIN_SCHEMA}+ "
+              f"(found v{schema_version()}). Run: bash cortex-update.sh",
+              file=sys.stderr)
+        sys.exit(2)
+
+
 # ── Telegram notify (TL-v2 S2/S3 — non-fatal, never on stdout) ──
 
 def _notify_import():
@@ -548,7 +571,7 @@ SELECT_SQL = select_sql(_REPO_CLAUSE_UNFILTERED)  # unfiltered form (reference)
 #:   p_id uuid, p_content, p_created_by, p_assignee, p_project, p_repo, p_target,
 #:   p_scope, p_status, p_column, p_position, p_priority, p_due timestamptz,
 #:   p_tags text[], p_source, p_depends_on uuid[], p_session_id TEXT,
-#:   p_parent_id UUID, p_kind, p_correlation_id
+#:   p_parent_id UUID, p_kind, p_correlation_id, p_plan (v016 — appended LAST)
 #: The two casts are load-bearing: p_id and p_PARENT_ID are uuid, while
 #: p_session_id is TEXT (fleet session ids look like
 #: `cron_1954deb5ad76_20261015_142148`, so a uuid cast there fails the whole write
@@ -558,7 +581,21 @@ SELECT_SQL = select_sql(_REPO_CLAUSE_UNFILTERED)  # unfiltered form (reference)
 #: Sharing the constant is what stops the two writers drifting again.
 #: `p_depends_on` is a literal NULL: no writer sets it yet (tracked on 2fc4d871).
 UPSERT_SQL = ("SELECT tasks.task_upsert(?::uuid, ?, ?, ?, ?, ?, ?, ?, ?, "
-              "NULL, NULL, ?, ?::timestamptz, ?, ?, NULL, ?, ?::uuid, ?, ?);")
+              "NULL, NULL, ?, ?::timestamptz, ?, ?, NULL, ?, ?::uuid, ?, ?, ?);")
+
+#: Metadata-only update path (v016, `update --plan/--assignee/--depends-on/
+#: --correlation-id` without a status change). A metadata write CANNOT ride on
+#: UPSERT_SQL: that SQL passes every column positionally, so it would propose
+#: p_content/project/scope/... as NULL and the ON CONFLICT COALESCEs are fine
+#: but p_status would be NULL too — and v_status := COALESCE(p_status,'pending')
+#: makes "column" derive 'todo' unconditionally (v007 keeps column =
+#: EXCLUDED."column"), which raises 23514 tasks_column_check on any row that is
+#: not pending. Measured: findings-proof.txt block C. So the CALLER resolves the
+#: row's CURRENT status and passes it here as p_status; NULL means "leave alone"
+#: everywhere else.
+UPSERT_META_SQL = ("SELECT tasks.task_upsert(?::uuid, NULL, NULL, ?, NULL, NULL, "
+                   "NULL, NULL, ?, NULL, NULL, NULL, NULL, NULL, NULL, "
+                   "?::uuid[], NULL, NULL, NULL, ?, ?);")
 
 def cmd_list(agent: str | None, status: str | None, project: str | None,
              scope: str | None, repo: str | None, assignee: str | None,
@@ -677,8 +714,12 @@ def cmd_add(content: str, agent: str | None, priority: int, project: str | None,
             source: str | None, parent: str | None = None,
             kind: str | None = None, no_notify: bool = False,
             correlation_id: str | None = None,
-            repo_path: str | None = None, repo_slug: str | None = None):
+            repo_path: str | None = None, repo_slug: str | None = None,
+            plan: str | None = None):
     """Add a new task (v2: story/slice hierarchy + notify + bus correlation).
+
+    v016: `--plan <text>` writes the row's `plan` in the same write (needs
+    tasks schema v16+). Free text — quote-doubled by build_query (B-1).
 
     REPO TAG (2026-10-19, operator): when `--repo` is omitted, the new row
     inherits the caller's RESOLVED session repo (same ladder as the queries).
@@ -715,6 +756,8 @@ def cmd_add(content: str, agent: str | None, priority: int, project: str | None,
         _require_v2("--parent")
     if correlation_id:
         _require_v2("--correlation-id")
+    if plan:
+        _require_v5("--plan")
     _check_priority(priority)
     if due:
         # basic ISO sanity — full validation happens in Postgres
@@ -753,7 +796,7 @@ def cmd_add(content: str, agent: str | None, priority: int, project: str | None,
         [new_id, content, agent, assignee, project or "hermes-cortex",
          repo, target, effective_scope, "pending", priority, due or None,
          tags or None, source or "manual", session_id or None,
-         parent, kind, correlation_id],
+         parent, kind, correlation_id, plan],
     )
     print(f"✅ Task added: {new_id[:8]}... — {content}")
     if effective_scope == "fleet":
@@ -764,18 +807,70 @@ def cmd_add(content: str, agent: str | None, priority: int, project: str | None,
                      parent_title=None, overdue=_is_due_overdue(due, "pending"))
 
 
-def cmd_update(task_id: str, new_status: str, reason: str | None = None,
-               by_correlation: str | None = None, no_notify: bool = False):
-    """Update a task's status (canonical lifecycle, B-4).
+def cmd_update(task_id: str, new_status: str | None = None,
+               reason: str | None = None, by_correlation: str | None = None,
+               no_notify: bool = False, plan: str | None = None,
+               assignee: str | None = None,
+               depends_on: list[str] | None = None,
+               correlation_id: str | None = None):
+    """Update a task — status and/or the orchestrator metadata surface (B-4).
 
     v2: --reason 'reopen' (completed→in_progress gate), --by-correlation
     (bus-command idempotency — 1 task per correlation_id), --no-notify.
+
+    v016 (row 9fb2ddb6): `--status` is now OPTIONAL when at least one metadata
+    flag is given. `--plan <text>` is the plan write surface; `--assignee`,
+    `--depends-on` and `--correlation-id` are the orchestrator hand-out surface
+    that makes a slice machine-visible to a worker (before this, 0 of the open
+    fleet slices carried an assignee or a correlate). Design:
+    docs/design/task-model-v3-orchestrator-half.md §4.2–4.3.
+
+    Three traps this shape exists to get past, all MEASURED, not inferred
+    (docs/evidence/task-model-v3-orchestrator-half/findings-proof.txt):
+
+    * a metadata write cannot ride on `--status <current>` — the no-op honesty
+      gate below returns before writing, so the plan text would be silently
+      discarded (exactly the false-success class that gate was added for);
+    * it cannot pass `p_status = NULL` either — v_status becomes 'pending', the
+      derived "column" becomes 'todo', and on any row that is not pending the
+      UPDATE dies with `23514 tasks_column_check` (block C);
+    * and it must not go around the write path with a hand-written UPDATE —
+      task_upsert owns status/column coherence (B-4), as the row's own text
+      ("Do NOT write plans by raw SQL") requires.
+
+    So when `--status` is omitted the row's CURRENT status is passed through.
     """
-    _check_enum("--status", new_status, STATUSES)
-    if new_status == "paused":
-        _require_v2("--status paused")
-    if new_status in ("blocked", "waiting"):
-        _require_v3(f"--status {new_status}")
+    meta_requested = any(x is not None for x in
+                         (plan, assignee, depends_on, correlation_id))
+    if new_status is None and not meta_requested:
+        print("ERROR: nothing to update. Usage: task-db.py update <id> "
+              "[--status <new-status>] [--plan <text>] [--assignee <a>] "
+              "[--depends-on <uuid>[,<uuid>…]] [--correlation-id <c>] "
+              "[--reason <r>] [--no-notify]", file=sys.stderr)
+        sys.exit(2)
+
+    if new_status is not None:
+        _check_enum("--status", new_status, STATUSES)
+        if new_status == "paused":
+            _require_v2("--status paused")
+        if new_status in ("blocked", "waiting"):
+            _require_v3(f"--status {new_status}")
+    if meta_requested:
+        # The metadata path calls the 21-arg task_upsert (UPSERT_META_SQL), so
+        # it needs v016 — refuse up front rather than letting a v015 host fail
+        # with a raw `function does not exist`.
+        _require_v5("update --plan/--assignee/--depends-on/--correlation-id")
+    if plan is not None and not plan.strip():
+        print("ERROR: --plan is empty — refusing to write a blank plan "
+              "(omit the flag to leave the stored plan alone)", file=sys.stderr)
+        sys.exit(2)
+    if assignee is not None:
+        _check_name("--assignee", assignee)
+    if correlation_id is not None:
+        _check_name("--correlation-id", correlation_id)
+    if depends_on:
+        for dep in depends_on:
+            _check_uuid(dep)
     if by_correlation:
         _require_v2("--by-correlation")
         # Partial unique index (source='inbox' AND correlation_id NOT NULL)
@@ -800,10 +895,24 @@ def cmd_update(task_id: str, new_status: str, reason: str | None = None,
     # The checkmark used to print regardless — a false success that lost
     # two orchestrator dispatch notes on 2026-10-14. Resolve the current
     # status first and report what the database will actually do.
+    #
+    # v016: the gate now fires ONLY when the command has nothing else to write.
+    # With a metadata flag present a same-status call is a real write (the
+    # metadata), so it proceeds — carrying the current status as p_status.
     current = psql(
         "SELECT status FROM tasks.tasks WHERE id = ?::uuid;", [task_id],
     ).split("\n")[0].strip()
-    if current and current == new_status:
+    if not current and meta_requested:
+        # A metadata-only call MUST carry the row's current status as p_status
+        # (§4.2 rule 2), so an unresolvable status is fatal here. The
+        # status-only path keeps its historical behaviour: the probe is
+        # best-effort and the write proceeds (pinned by
+        # test_update_by_correlation_resolves_id).
+        print(f"ERROR: no task with id {task_id[:8]}... (RLS-visible) — cannot "
+              f"resolve its current status for a metadata-only write",
+              file=sys.stderr)
+        sys.exit(1)
+    if current and current == new_status and not meta_requested:
         if reason:
             print(
                 f"❌ Task {task_id[:8]}... is already {new_status} — refusing "
@@ -814,7 +923,25 @@ def cmd_update(task_id: str, new_status: str, reason: str | None = None,
         print(f"• Task {task_id[:8]}... already {new_status} — no change")
         return
 
-    if reason:
+    # The status the write will carry: the requested one, or the row's current
+    # one for a metadata-only call (never NULL — the §3 trap).
+    target_status = new_status if new_status is not None else current
+
+    if meta_requested:
+        if reason:
+            _require_v2("--reason")
+        # Multi-statement via stdin: GUC (when a reason was given) + the write,
+        # in ONE session, so the transition/event triggers see the reason.
+        stmts = []
+        params: list = []
+        if reason:
+            stmts.append("SELECT set_config('tasks.transition_reason', ?, false);")
+            params.append(reason)
+        stmts.append(UPSERT_META_SQL)
+        params.extend([task_id, assignee, target_status, depends_on,
+                       correlation_id, plan])
+        psql("\n".join(stmts), params)
+    elif reason:
         _require_v2("--reason")
         # Set the session GUC that the transition/event triggers read.
         # Multi-statement via stdin: GUC + upsert in one session.
@@ -823,7 +950,7 @@ def cmd_update(task_id: str, new_status: str, reason: str | None = None,
             "SELECT tasks.task_upsert(?::uuid, NULL, NULL, NULL, NULL, NULL, "
             "NULL, NULL, ?, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, "
             "NULL, NULL, NULL);",
-            [reason, task_id, new_status],
+            [reason, task_id, target_status],
         )
         # Recheck after the write (adversarial finding ADV-12676-1): the probe
         # above and this upsert are two round trips, so a concurrent status
@@ -834,12 +961,12 @@ def cmd_update(task_id: str, new_status: str, reason: str | None = None,
             "SELECT reason FROM tasks.task_events WHERE task_id = ?::uuid "
             "AND event_type = 'status_changed' AND to_status = ? "
             "ORDER BY id DESC LIMIT 1;",
-            [task_id, new_status],
+            [task_id, target_status],
         ).split("\n")[0].strip()
         if recorded != reason:
             print(
-                f"❌ Task {task_id[:8]}... → {new_status} was written, but the "
-                f"event trail shows no matching status_changed event "
+                f"❌ Task {task_id[:8]}... → {target_status} was written, but "
+                f"the event trail shows no matching status_changed event "
                 f"(recorded={recorded or 'none'}) — the reason was NOT "
                 f"recorded. This is the concurrent-update path; re-run the "
                 f"command.", file=sys.stderr)
@@ -849,10 +976,41 @@ def cmd_update(task_id: str, new_status: str, reason: str | None = None,
             "SELECT tasks.task_upsert(?::uuid, NULL, NULL, NULL, NULL, NULL, "
             "NULL, NULL, ?, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, "
             "NULL, NULL, NULL);",
-            [task_id, new_status],
+            [task_id, target_status],
         )
-    print(f"✅ Task {task_id[:8]}... → {new_status}"
+
+    # ── Post-write recheck for the metadata fields (v016) ─────────────
+    # Same discipline as the reason recheck above (ADV-12676-1): a write that
+    # silently did nothing must not print a checkmark. ON CONFLICT COALESCEs
+    # preserve on NULL, so a mismatch here is a real failure, not a race.
+    if meta_requested:
+        stored = psql(
+            "SELECT COALESCE(plan, ''), COALESCE(assignee, ''), "
+            "COALESCE(correlation_id, '') FROM tasks.tasks "
+            "WHERE id = ?::uuid;", [task_id],
+        ).split("\n")[0].strip()
+        s_plan, s_assignee, s_corr = (stored.split("||") + ["", "", ""])[:3] \
+            if stored else ("", "", "")
+        mismatches = []
+        if plan is not None and s_plan != plan:
+            mismatches.append("plan")
+        if assignee is not None and s_assignee != assignee:
+            mismatches.append("assignee")
+        if correlation_id is not None and s_corr != correlation_id:
+            mismatches.append("correlation_id")
+        if mismatches:
+            print(f"❌ Task {task_id[:8]}... write reported success but the "
+                  f"row does not carry: {', '.join(mismatches)} — the write "
+                  f"did NOT land as requested.", file=sys.stderr)
+            sys.exit(1)
+
+    written = [f for f, v in (("plan", plan), ("assignee", assignee),
+                              ("depends-on", depends_on),
+                              ("correlation-id", correlation_id))
+               if v is not None]
+    print(f"✅ Task {task_id[:8]}... → {target_status}"
           + (f" (reason={reason})" if reason else "")
+          + (f" (metadata: {', '.join(written)})" if written else "")
           + (f" [corr={by_correlation[:12]}…]" if by_correlation else ""))
 
 
@@ -874,8 +1032,8 @@ def cmd_update(task_id: str, new_status: str, reason: str | None = None,
                         [row["parent_id"]]))
                     parent_title = p_raw.split("\n")[0] if p_raw else None
                 _notify_task(row["created_by"], row["kind"], row["content"],
-                             new_status, task_id, parent_title,
-                             overdue=_is_due_overdue(row["due"], new_status))
+                             target_status, task_id, parent_title,
+                             overdue=_is_due_overdue(row["due"], target_status))
         except SystemExit:
             pass  # read-only notify failure never blocks the update
 
@@ -1360,7 +1518,8 @@ def cmd_restore(json_file: str, include_inbox: bool = False):
              vals["repo"], vals["target"], item.get("scope", "personal"), status,
              item.get("priority", 0), vals["due"], vals["tags"],
              item.get("source", "session"), item.get("session_id"),
-             item.get("parent_id"), item.get("kind"), vals["correlation_id"]],
+             item.get("parent_id"), item.get("kind"), vals["correlation_id"],
+             item.get("plan")],   # v016: preserved by ON CONFLICT COALESCE when absent
         )
         count += 1
     msg = (f"✅ Restored {count} task(s) from {json_file} "
@@ -1497,22 +1656,42 @@ def main():
             _flag("--assignee"), _flag("--due"), _flags("--tag"),
             _flag("--source"), _flag("--parent"), _flag("--kind"),
             _has("--no-notify"), _flag("--correlation-id"),
+            plan=_flag("--plan"),
         )
 
     elif command == "update":
         by_corr = _flag("--by-correlation")
         new_status = _flag("--status")
-        if not new_status:
+        # v016: --status is optional when a metadata flag is present, so the
+        # "requires a value" check moves to an explicit "--status with no value"
+        # case (a bare `--status` at the end of argv) and the "nothing to
+        # update" case is decided inside cmd_update.
+        if _has("--status") and not new_status:
             print("ERROR: --status requires a value", file=sys.stderr)
             sys.exit(1)
-        if not by_corr and (len(sys.argv) < 3 or sys.argv[2].startswith("--")):
-            print("ERROR: Usage: task-db.py update <id> --status <new-status> "
-                  "(or --by-correlation <corr> --status <new-status>)",
+        if not new_status and not any(
+                _flag(f) is not None for f in
+                ("--plan", "--assignee", "--depends-on", "--correlation-id")):
+            print("ERROR: Usage: task-db.py update <id> [--status <new-status>] "
+                  "[--plan <text>] [--assignee <a>] "
+                  "[--depends-on <uuid>[,<uuid>…]] [--correlation-id <c>] "
+                  "[--reason <r>] [--no-notify]",
                   file=sys.stderr)
             sys.exit(1)
+        if not by_corr and (len(sys.argv) < 3 or sys.argv[2].startswith("--")):
+            print("ERROR: Usage: task-db.py update <id> [--status <new-status>] "
+                  "[--plan <text>] [--assignee <a>] "
+                  "[--depends-on <uuid>[,<uuid>…]] [--correlation-id <c>] "
+                  "(or --by-correlation <corr> …)", file=sys.stderr)
+            sys.exit(1)
+        deps_flag = _flag("--depends-on")
+        deps = [d.strip() for d in deps_flag.split(",") if d.strip()] \
+            if deps_flag else None
         cmd_update(sys.argv[2] if not by_corr else "",
                    new_status, _flag("--reason"), by_corr,
-                   _has("--no-notify"))
+                   _has("--no-notify"), plan=_flag("--plan"),
+                   assignee=_flag("--assignee"), depends_on=deps,
+                   correlation_id=_flag("--correlation-id"))
 
     elif command == "switch":
         if len(sys.argv) < 3:

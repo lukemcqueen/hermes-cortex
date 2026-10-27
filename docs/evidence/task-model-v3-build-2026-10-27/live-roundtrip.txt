@@ -1,0 +1,69 @@
+### 0. schema under test
+tasks schema_version=16
+task_upsert params=1
+
+### 1. add --plan  (the plan write surface, item (a))
+✅ Task added: 9d5df6a5... — RT-v016 scratch story
+STORY=9d5df6a5-34a2-4679-a034-be84b4cd516d
+✅ Task added: c333b676... — RT-v016 dependency slice
+✅ Task added: 3bece00e... — RT-v016 scratch slice
+A=c333b676-f9f3-4905-bb13-6e0ab94fd886
+SID=3bece00e-6180-4ee7-9df6-35a581aaf592
+read back: pending | col=todo | plan=step one; step two | assignee=<null> | corr=<null> | deps=0
+
+### 2. --status in_progress (ordinary lifecycle, unchanged)
+✅ Task 3bece00e... → in_progress
+read back: in_progress | col=in_progress | plan=step one; step two | assignee=<null> | corr=<null> | deps=0
+
+### 3. METADATA-ONLY update on an in_progress row (no --status) — the §3 trap
+✅ Task 3bece00e... → in_progress (metadata: plan, assignee, depends-on, correlation-id)
+read back: in_progress | col=in_progress | plan=revised plan; more detail | assignee=joseph | corr=corr-rt-v016 | deps=1
+  ^ status MUST still be in_progress and col MUST be in_progress (NULL status would derive col=todo and raise 23514)
+  ^ plan reassigned via read-back: revised plan; more detail
+  ^ worker-visible (list --assigned):
+     (row not in this view)
+
+### 4. same-status + metadata must NOT be swallowed by the no-op gate
+✅ Task 3bece00e... → in_progress (metadata: plan)
+read back: in_progress | col=in_progress | plan=third revision | assignee=joseph | corr=corr-rt-v016 | deps=1
+
+### 5. honesty gates
+ERROR: Usage: task-db.py update <id> [--status <new-status>] [--plan <text>] [--assignee <a>] [--depends-on <uuid>[,<uuid>…]] [--correlation-id <c>] [--reason <r>] [--no-notify]
+ERROR: --plan is empty — refusing to write a blank plan (omit the flag to leave the stored plan alone)
+ERROR: 'not-a-uuid' is not a valid task UUID
+ERROR: --assignee '../../etc/passwd' invalid — use letters/digits/._- only (max 64 chars), no paths.
+
+### 6. the VACUOUS-STATUS trap is still real on the live store (p_status omitted)
+    RETURNING id"
+PL/pgSQL function tasks.task_upsert(uuid,text,text,text,text,text,text,text,text,text,integer,integer,timestamp with time zone,text[],text,uuid[],text,uuid,text,text,text) line 42 at SQL statement
+read back (plan must NOT be 'from a null status'): in_progress | col=in_progress | plan=third revision | assignee=joseph | corr=corr-rt-v016 | deps=1
+
+### 7. cleanup — cancel both scratch rows (cancelled, not deleted)
+✅ Task 3bece00e... → cancelled
+✅ Task c333b676... → cancelled
+final slice: cancelled | col=<null> | plan=third revision | assignee=joseph | corr=corr-rt-v016 | deps=1
+final slice: cancelled | col=<null> | plan=<null> | assignee=<null> | corr=<null> | deps=0
+final story: completed (auto-completes when the last slice is cancelled)
+
+### 8. ADJUNCT — the hand-out claim (plan §4.3): a PENDING slice with an assignee is worker-visible
+✅ Task added: bcf68851... — RT-v016 handout slice
+H=bcf68851-0e71-4103-ae54-070038d0d55f
+✅ Task bcf68851... → pending (metadata: assignee, correlation-id)
+read back: pending | col=todo | assignee=joseph | corr=corr-rt-v016-h
+-- list --assigned (repo ALL) --
+  NOT VISIBLE
+-- cleanup --
+✅ Task bcf68851... → cancelled
+
+### 8b. ADJUNCT (corrected) — the same view prints id[:8], so match on that
+✅ Task added: d28b9ccc... — RT-v016 handout slice 2
+H2=d28b9ccc-c667-491c-838e-9d8cf2410f8c  (id[:8]=d28b9ccc)
+✅ Task d28b9ccc... → pending (metadata: assignee, correlation-id)
+read back: pending | col=todo | assignee=joseph | corr=corr-rt-v016-h2
+-- list --assigned (repo ALL) --
+d28b9ccc   0   joseph     hermes-cortex      RT-v016 handout slice 2
+  ^ VISIBLE as a hand-out
+-- and it is correctly NOT in the claimable pool (someone owns it) --
+  correctly absent from the claimable pool
+-- cleanup --
+✅ Task d28b9ccc... → cancelled

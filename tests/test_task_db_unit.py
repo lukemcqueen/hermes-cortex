@@ -977,7 +977,7 @@ def test_shared_upsert_sql_casts_parent_not_session():
     sql = task_db.build_query(task_db.UPSERT_SQL, [
         "ID", "CONTENT", "AGENT", "ASSIGNEE", "PROJECT", "REPO", "TARGET",
         "SCOPE", "STATUS", "PRIORITY", "DUE", "TAGS", "SOURCE", "SESSION",
-        "PARENT", "KIND", "CORR"])
+        "PARENT", "KIND", "CORR", "PLAN"])
     assert "'ID'::uuid" in sql
     assert "'PARENT'::uuid" in sql, "the parent id is uuid-typed"
     assert "'SESSION'::uuid" not in sql, "p_session_id is TEXT"
@@ -1177,4 +1177,178 @@ def test_board_puts_only_the_pool_predicate_in_the_claimable_bucket():
                     f"kind is neither slice nor story falls out of the board: {body!r}")
     assert m_else.group(1) != "pending (claimable)", (
         f"the ELSE arm labels every other kind claimable: {m_else.group(1)!r}")
+
+
+# ── v016 — the orchestrator write surface (row 9fb2ddb6) ────────────
+# `plan` joined tasks.task_upsert as the 21st (appended-last) parameter, and
+# `update` gained --plan/--assignee/--depends-on/--correlation-id with an
+# OPTIONAL --status. Design: docs/design/task-model-v3-orchestrator-half.md
+# rev 2. Two measured traps these tests pin:
+#   * a metadata write must carry the row's CURRENT status (never NULL), or
+#     "column" derives 'todo' and the UPDATE dies with 23514;
+#   * it must not ride on --status <current>, because the no-op gate returns
+#     before writing and would silently discard the plan.
+
+V5_SCHEMA = 16
+
+
+def _meta_sql_args(params):
+    """The rendered UPSERT_META_SQL split into its 21 argument slots."""
+    sql = task_db.build_query(task_db.UPSERT_META_SQL, params)
+    body = sql[sql.index("task_upsert(") + len("task_upsert("):sql.rindex(")")]
+    return [a.strip() for a in body.split(",")]
+
+
+def test_meta_sql_pins_every_argument_slot():
+    """The whole positional mapping, asserted slot by slot.
+
+    This is the ADV-13847-1 failure class: a shift in a positional signature is
+    invisible to a mocked psql and only shows up against the real function.
+    """
+    args = _meta_sql_args(["ID", "ASSIGNEE", "STATUS", ["DEP"], "CORR", "PLAN"])
+    assert len(args) == 21, f"expected 21 positional args, got {len(args)}: {args}"
+    assert args[0] == "'ID'::uuid"
+    assert args[3] == "'ASSIGNEE'", f"p_assignee slot moved: {args[3]!r}"
+    assert args[8] == "'STATUS'", f"p_status slot moved: {args[8]!r}"
+    assert args[15] == "ARRAY['DEP']::uuid[]", f"p_depends_on slot moved: {args[15]!r}"
+    assert args[19] == "'CORR'", f"p_correlation_id slot moved: {args[19]!r}"
+    assert args[20] == "'PLAN'", f"p_plan is not last: {args[20]!r}"
+    # NULL means "leave alone" everywhere except the two we set explicitly.
+    for i in (1, 2, 4, 5, 6, 7, 9, 10, 11, 12, 13, 14, 16, 17, 18):
+        assert args[i] == "NULL", f"slot {i} must stay NULL, got {args[i]!r}"
+
+
+def test_update_metadata_only_carries_the_current_status():
+    """§4.2 rule 2, the §3 trap: p_status is the row's CURRENT status, not NULL."""
+    with patch.object(task_db, "psql",
+                      side_effect=["in_progress", "",
+                                   "the plan||worker-a||corr-1"]) as mock_psql, \
+         patch.object(task_db, "schema_version", return_value=V5_SCHEMA):
+        out, err, exc = _run_stdin_capture(
+            task_db.cmd_update, NOOP_ID, None, None, None, True,
+            plan="the plan", assignee="worker-a", correlation_id="corr-1")
+    assert exc is None, err
+    upsert = [c for c in mock_psql.call_args_list if "?::uuid[]" in c[0][0]]
+    assert len(upsert) == 1, "the metadata path must use UPSERT_META_SQL"
+    params = upsert[0][0][1]
+    assert params[2] == "in_progress", (
+        "a metadata-only write must pass the ROW'S CURRENT status — NULL here "
+        f"derives column='todo' and dies with 23514 (got {params[2]!r})")
+    assert params[5] == "the plan"
+    assert "✅" in out and "already" not in out
+
+
+def test_update_same_status_with_metadata_still_writes():
+    """The no-op gate must not swallow a metadata write (trap 1).
+
+    Measured before the fix: `update <id> --status <current> --plan …` printed
+    "already <status> — no change" and returned without writing anything.
+    """
+    with patch.object(task_db, "psql",
+                      side_effect=["pending", "", "p||a||c"]) as mock_psql, \
+         patch.object(task_db, "schema_version", return_value=V5_SCHEMA):
+        out, err, exc = _run_stdin_capture(
+            task_db.cmd_update, NOOP_ID, "pending", None, None, True, plan="p")
+    assert exc is None, err
+    assert "no change" not in out, "the metadata write was swallowed by the no-op gate"
+    upsert = [c for c in mock_psql.call_args_list if "?::uuid[]" in c[0][0]]
+    assert len(upsert) == 1 and upsert[0][0][1][2] == "pending"
+
+
+def test_update_metadata_only_refuses_when_status_is_unresolvable():
+    """No resolvable current status → refuse; we cannot honestly build p_status."""
+    with patch.object(task_db, "psql", return_value=""), \
+         patch.object(task_db, "schema_version", return_value=V5_SCHEMA):
+        _out, err, exc = _run_stdin_capture(
+            task_db.cmd_update, NOOP_ID, None, None, None, True, plan="p")
+    assert exc is not None and exc.code == 1
+    assert "cannot resolve" in err.lower()
+
+
+def test_update_plan_recheck_flags_a_silent_failure():
+    """A write that reported success without storing the plan must not print ✅."""
+    with patch.object(task_db, "psql",
+                      side_effect=["in_progress", "", "OTHER||a||c"]) as _m, \
+         patch.object(task_db, "schema_version", return_value=V5_SCHEMA):
+        out, err, exc = _run_stdin_capture(
+            task_db.cmd_update, NOOP_ID, None, None, None, True, plan="the plan")
+    assert exc is not None and exc.code == 1
+    assert "did not land" in err.lower()
+    assert "✅" not in out
+
+
+def test_update_with_nothing_to_change_is_a_usage_error():
+    """An empty update must never be a silent no-op."""
+    with patch.object(task_db, "psql", return_value="pending"), \
+         patch.object(task_db, "schema_version", return_value=V5_SCHEMA):
+        _out, err, exc = _run_stdin_capture(task_db.cmd_update, NOOP_ID)
+    assert exc is not None and exc.code == 2
+    assert "nothing to update" in err.lower()
+
+
+def test_update_refuses_a_blank_plan():
+    with patch.object(task_db, "psql", return_value="pending"), \
+         patch.object(task_db, "schema_version", return_value=V5_SCHEMA):
+        _out, err, exc = _run_stdin_capture(
+            task_db.cmd_update, NOOP_ID, None, None, None, True, plan="   ")
+    assert exc is not None and exc.code == 2
+    assert "empty" in err.lower()
+
+
+def test_update_rejects_a_bad_depends_on_uuid():
+    with patch.object(task_db, "psql", return_value="pending"), \
+         patch.object(task_db, "schema_version", return_value=V5_SCHEMA):
+        _out, err, exc = _run_stdin_capture(
+            task_db.cmd_update, NOOP_ID, None, None, None, True,
+            depends_on=["not-a-uuid"])
+    assert exc is not None and exc.code == 2
+    assert "not a valid task UUID" in err
+
+
+def test_update_rejects_a_path_smelling_assignee():
+    with patch.object(task_db, "psql", return_value="pending"), \
+         patch.object(task_db, "schema_version", return_value=V5_SCHEMA):
+        _out, err, exc = _run_stdin_capture(
+            task_db.cmd_update, NOOP_ID, None, None, None, True,
+            assignee="../../etc/passwd")
+    assert exc is not None and exc.code == 2
+    assert "invalid" in err.lower()
+
+
+def test_plan_requires_schema_v16():
+    """Graceful degradation (R-11): a v015 host must get a clear refusal, not a
+    raw `function tasks.task_upsert(...) does not exist`."""
+    with patch.object(task_db, "psql", return_value="pending"), \
+         patch.object(task_db, "schema_version", return_value=15):
+        _out, err, exc = _run_stdin_capture(
+            task_db.cmd_update, NOOP_ID, None, None, None, True, plan="p")
+    assert exc is not None and exc.code == 2
+    assert "requires tasks schema v16+" in err
+
+
+def test_add_passes_the_plan_as_the_last_argument():
+    with patch.object(task_db, "psql", return_value="") as mock_psql, \
+         patch.object(task_db, "schema_version", return_value=V5_SCHEMA):
+        out, err, exc = _run_stdin_capture(
+            task_db.cmd_add, "a slice", "esther", 2, "hermes-cortex",
+            "testrepo", None, "personal", None, None, [], "manual", None,
+            "slice", True, None, None, None, plan="do the thing")
+    assert exc is None, err
+    params = mock_psql.call_args_list[0][0][1]
+    assert len(params) == 18, f"UPSERT_SQL takes 18 params, got {len(params)}"
+    assert params[17] == "do the thing"
+    assert "✅ Task added" in out
+
+
+def test_restore_preserves_the_stored_plan_when_the_key_is_absent(tmp_path):
+    """Like every other preserved column: absent means leave it alone.
+
+    The ON CONFLICT branch COALESCEs on p_plan, so passing NULL here preserves
+    — but only if the writer actually passes NULL rather than dropping the slot.
+    """
+    out, _err, exc, mock_psql = _restore(tmp_path, _restore_row(), _meta_line())
+    assert exc is None, out
+    params = _upsert_params(mock_psql)
+    assert len(params) == 18, f"UPSERT_SQL takes 18 params, got {len(params)}"
+    assert params[17] is None, "an absent `plan` key must not be invented"
 

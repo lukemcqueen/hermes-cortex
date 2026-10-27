@@ -457,6 +457,12 @@ register "ops/services/tasks/schema/v014__orchestrator-only-verify-arc.sql" "${C
 # v015: the story gate is VERIFIED (no active slice), not authorised by the
 # caller-settable tasks.transition_reason GUC.
 register "ops/services/tasks/schema/v015__story-completion-verified-precondition.sql" "${CORTEX_DEPLOY_HOME}/services/tasks/schema/v015__story-completion-verified-precondition.sql"
+# v016: task_upsert gains p_plan (21-arg, DROP+CREATE+re-grant) — the
+# orchestrator write surface for a slice's plan/assignee/depends_on
+# (backlog 9fb2ddb6). Registering it is not cosmetic: the register map IS the
+# deploy, and a host whose DEPLOYED schema dir stops at v015 cannot reach v016
+# through cortex-update at all.
+register "ops/services/tasks/schema/v016__task-upsert-plan.sql" "${CORTEX_DEPLOY_HOME}/services/tasks/schema/v016__task-upsert-plan.sql"
 # learnings ledger (F-001) — schema + version-gated runner, orchestrator-only
 # (the bus Postgres that hosts learnings exists only on Moses/Esther; workers
 # write via the HTTP collector path and never need this schema locally).

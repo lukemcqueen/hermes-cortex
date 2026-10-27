@@ -1,0 +1,107 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
+rootdir: /home/esther/hermes-cortex
+configfile: pytest.ini
+plugins: anyio-4.15.1
+collected 93 items
+
+tests/test_task_db_unit.py ............................................. [ 48%]
+.......................F............FFFFFFFFFFFF                         [100%]
+
+=================================== FAILURES ===================================
+_______________ test_shared_upsert_sql_casts_parent_not_session ________________
+tests/test_task_db_unit.py:977: in test_shared_upsert_sql_casts_parent_not_session
+    sql = task_db.build_query(task_db.UPSERT_SQL, [
+ops/scripts/manage/task-db.py:317: in build_query
+    raise ValueError(f"too many params for query: {sql[:80]}...")
+E   ValueError: too many params for query: SELECT tasks.task_upsert(?::uuid, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, ?, ?::time...
+____________________ test_meta_sql_pins_every_argument_slot ____________________
+tests/test_task_db_unit.py:1208: in test_meta_sql_pins_every_argument_slot
+    args = _meta_sql_args(["ID", "ASSIGNEE", "STATUS", ["DEP"], "CORR", "PLAN"])
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_task_db_unit.py:1197: in _meta_sql_args
+    sql = task_db.build_query(task_db.UPSERT_META_SQL, params)
+                              ^^^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: module 'task_db' has no attribute 'UPSERT_META_SQL'
+_____________ test_update_metadata_only_carries_the_current_status _____________
+tests/test_task_db_unit.py:1227: in test_update_metadata_only_carries_the_current_status
+    out, err, exc = _run_stdin_capture(
+tests/test_task_db_unit.py:61: in _run_stdin_capture
+    fn(*args, **kwargs)
+E   TypeError: cmd_update() got an unexpected keyword argument 'plan'
+______________ test_update_same_status_with_metadata_still_writes ______________
+tests/test_task_db_unit.py:1250: in test_update_same_status_with_metadata_still_writes
+    out, err, exc = _run_stdin_capture(
+tests/test_task_db_unit.py:61: in _run_stdin_capture
+    fn(*args, **kwargs)
+E   TypeError: cmd_update() got an unexpected keyword argument 'plan'
+________ test_update_metadata_only_refuses_when_status_is_unresolvable _________
+tests/test_task_db_unit.py:1262: in test_update_metadata_only_refuses_when_status_is_unresolvable
+    _out, err, exc = _run_stdin_capture(
+tests/test_task_db_unit.py:61: in _run_stdin_capture
+    fn(*args, **kwargs)
+E   TypeError: cmd_update() got an unexpected keyword argument 'plan'
+_______________ test_update_plan_recheck_flags_a_silent_failure ________________
+tests/test_task_db_unit.py:1273: in test_update_plan_recheck_flags_a_silent_failure
+    out, err, exc = _run_stdin_capture(
+tests/test_task_db_unit.py:61: in _run_stdin_capture
+    fn(*args, **kwargs)
+E   TypeError: cmd_update() got an unexpected keyword argument 'plan'
+_____________ test_update_with_nothing_to_change_is_a_usage_error ______________
+tests/test_task_db_unit.py:1284: in test_update_with_nothing_to_change_is_a_usage_error
+    _out, err, exc = _run_stdin_capture(task_db.cmd_update, NOOP_ID)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_task_db_unit.py:61: in _run_stdin_capture
+    fn(*args, **kwargs)
+E   TypeError: cmd_update() missing 1 required positional argument: 'new_status'
+_______________________ test_update_refuses_a_blank_plan _______________________
+tests/test_task_db_unit.py:1292: in test_update_refuses_a_blank_plan
+    _out, err, exc = _run_stdin_capture(
+tests/test_task_db_unit.py:61: in _run_stdin_capture
+    fn(*args, **kwargs)
+E   TypeError: cmd_update() got an unexpected keyword argument 'plan'
+__________________ test_update_rejects_a_bad_depends_on_uuid ___________________
+tests/test_task_db_unit.py:1301: in test_update_rejects_a_bad_depends_on_uuid
+    _out, err, exc = _run_stdin_capture(
+tests/test_task_db_unit.py:61: in _run_stdin_capture
+    fn(*args, **kwargs)
+E   TypeError: cmd_update() got an unexpected keyword argument 'depends_on'
+_________________ test_update_rejects_a_path_smelling_assignee _________________
+tests/test_task_db_unit.py:1311: in test_update_rejects_a_path_smelling_assignee
+    _out, err, exc = _run_stdin_capture(
+tests/test_task_db_unit.py:61: in _run_stdin_capture
+    fn(*args, **kwargs)
+E   TypeError: cmd_update() got an unexpected keyword argument 'assignee'
+________________________ test_plan_requires_schema_v16 _________________________
+tests/test_task_db_unit.py:1323: in test_plan_requires_schema_v16
+    _out, err, exc = _run_stdin_capture(
+tests/test_task_db_unit.py:61: in _run_stdin_capture
+    fn(*args, **kwargs)
+E   TypeError: cmd_update() got an unexpected keyword argument 'plan'
+________________ test_add_passes_the_plan_as_the_last_argument _________________
+tests/test_task_db_unit.py:1332: in test_add_passes_the_plan_as_the_last_argument
+    out, err, exc = _run_stdin_capture(
+tests/test_task_db_unit.py:61: in _run_stdin_capture
+    fn(*args, **kwargs)
+E   TypeError: cmd_add() got an unexpected keyword argument 'plan'
+________ test_restore_preserves_the_stored_plan_when_the_key_is_absent _________
+tests/test_task_db_unit.py:1352: in test_restore_preserves_the_stored_plan_when_the_key_is_absent
+    assert len(params) == 18, f"UPSERT_SQL takes 18 params, got {len(params)}"
+E   AssertionError: UPSERT_SQL takes 18 params, got 17
+E   assert 17 == 18
+E    +  where 17 = len(['11111111-1111-1111-1111-111111111111', 'c', 'the-agent', None, 'hermes-cortex', None, ...])
+=========================== short test summary info ============================
+FAILED tests/test_task_db_unit.py::test_shared_upsert_sql_casts_parent_not_session
+FAILED tests/test_task_db_unit.py::test_meta_sql_pins_every_argument_slot - A...
+FAILED tests/test_task_db_unit.py::test_update_metadata_only_carries_the_current_status
+FAILED tests/test_task_db_unit.py::test_update_same_status_with_metadata_still_writes
+FAILED tests/test_task_db_unit.py::test_update_metadata_only_refuses_when_status_is_unresolvable
+FAILED tests/test_task_db_unit.py::test_update_plan_recheck_flags_a_silent_failure
+FAILED tests/test_task_db_unit.py::test_update_with_nothing_to_change_is_a_usage_error
+FAILED tests/test_task_db_unit.py::test_update_refuses_a_blank_plan - TypeErr...
+FAILED tests/test_task_db_unit.py::test_update_rejects_a_bad_depends_on_uuid
+FAILED tests/test_task_db_unit.py::test_update_rejects_a_path_smelling_assignee
+FAILED tests/test_task_db_unit.py::test_plan_requires_schema_v16 - TypeError:...
+FAILED tests/test_task_db_unit.py::test_add_passes_the_plan_as_the_last_argument
+FAILED tests/test_task_db_unit.py::test_restore_preserves_the_stored_plan_when_the_key_is_absent
+======================== 13 failed, 80 passed in 2.14s =========================

@@ -822,6 +822,69 @@ V15_G_ST=$($PSQL -c "SELECT status FROM tasks.tasks WHERE id='${V15_G}';" 2>/dev
   || fail "gate regressed: story completed with an active slice (rc=$V15_G_RC, status=$V15_G_ST)"
 
 echo ""
+echo "═══ AC-L1-26: v016 — task_upsert carries p_plan (21-arg, ONE overload) ═══"
+# The ADV-13847-1 regression guard. `CREATE OR REPLACE` cannot change a
+# function's argument list: given one more parameter it ADDS a second overload
+# and leaves the 20-arg function live, after which every name-based lookup below
+# fails with `ERROR: more than one function named "tasks.task_upsert"`.
+# Every probe below is `|| true`-guarded: a battery that ABORTS on the first
+# failing read reports one failure and hides the rest (measured on this block's
+# RED run — the empty id made the next lookup die and the script exited before
+# the Summary). A check that cannot run is its own outcome, never an abort.
+V16_OVERLOADS=$($PSQL -c "SELECT count(*) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='tasks' AND p.proname='task_upsert';" 2>/dev/null || true)
+[ "$V16_OVERLOADS" = "1" ] \
+  && pass "exactly one tasks.task_upsert exists (no overload left behind)" \
+  || fail "tasks.task_upsert has $V16_OVERLOADS overloads — the 20-arg one was not dropped"
+
+V16_ARGS=$($PSQL -c "SELECT pg_get_function_arguments('tasks.task_upsert'::regproc);" 2>&1 || true)
+V16_N=$(printf '%s' "$V16_ARGS" | awk -F', ' '{print NF}')
+[ "$V16_N" = "21" ] && printf '%s' "$V16_ARGS" | grep -q "p_plan text DEFAULT NULL::text$" \
+  && pass "resolves by name to 21 parameters, p_plan appended last" \
+  || fail "task_upsert resolves to $V16_N parameters / p_plan not last" "$V16_ARGS"
+
+# Round trip through the write path itself.
+V16_ID=$($PSQL -c "SELECT tasks.task_upsert(p_content=>'L1 v16 plan row', p_created_by=>'esther', p_plan=>'step one; step two');" 2>/dev/null | head -1 || true)
+V16_PLAN=$($PSQL -c "SELECT plan FROM tasks.tasks WHERE id='${V16_ID}';" 2>/dev/null || true)
+[ "$V16_PLAN" = "step one; step two" ] \
+  && pass "p_plan is written on insert and reads back verbatim" \
+  || fail "p_plan did not round-trip (got '${V16_PLAN}')"
+
+# Metadata-only write on an in_progress row — the §3 trap. p_status must carry
+# the row's CURRENT status (what task-db.py update does when --status is
+# omitted); the write must succeed AND leave status/column coherent. Passing
+# NULL instead derives column='todo' and dies with 23514, which is asserted
+# separately below so this guard can never pass vacuously.
+$PSQL -c "SELECT tasks.task_upsert(p_id=>'${V16_ID}', p_status=>'in_progress');" >/dev/null 2>&1 || true
+V16_META_RC=0
+$PSQL -v ON_ERROR_STOP=1 -c "SELECT tasks.task_upsert(p_id=>'${V16_ID}', p_status=>'in_progress', p_plan=>'revised plan');" >/dev/null 2>&1 || V16_META_RC=$?
+V16_ST=$($PSQL -c "SELECT status || '/' || COALESCE(\"column\",'NULL') FROM tasks.tasks WHERE id='${V16_ID}';" 2>/dev/null || true)
+V16_PLAN2=$($PSQL -c "SELECT plan FROM tasks.tasks WHERE id='${V16_ID}';" 2>/dev/null || true)
+[ "$V16_META_RC" -eq 0 ] && [ "$V16_ST" = "in_progress/in_progress" ] && [ "$V16_PLAN2" = "revised plan" ] \
+  && pass "metadata-only write keeps status/column coherent on an in_progress row (rc=0, ${V16_ST})" \
+  || fail "metadata-only write broke coherence (rc=$V16_META_RC, ${V16_ST}, plan='${V16_PLAN2}')"
+
+# ...and the trap it avoids is REAL (a check that cannot fail proves nothing).
+V16_TRAP_RC=0
+$PSQL -v ON_ERROR_STOP=1 -c "SELECT tasks.task_upsert(p_id=>'${V16_ID}', p_plan=>'from a null status');" >/dev/null 2>&1 || V16_TRAP_RC=$?
+V16_TRAP_ST=$($PSQL -c "SELECT status FROM tasks.tasks WHERE id='${V16_ID}';" 2>/dev/null || true)
+[ "$V16_TRAP_RC" -ne 0 ] && [ "$V16_TRAP_ST" = "in_progress" ] \
+  && pass "p_status=NULL on a non-pending row is still refused (23514) — carrying the current status is load-bearing" \
+  || fail "the §3 trap did not fire (rc=$V16_TRAP_RC, status=$V16_TRAP_ST)"
+
+# Grant read-back on the NEW 21-arg signature (a DROP discards the ACL).
+V16_GRANT=$($PSQL -c "SELECT has_function_privilege('mycortex_reader_esther', (SELECT p.oid FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='tasks' AND p.proname='task_upsert'), 'EXECUTE');" 2>/dev/null || true)
+[ "$V16_GRANT" = "t" ] \
+  && pass "mycortex_reader_esther still holds EXECUTE on the 21-arg task_upsert" \
+  || fail "the reader role lost EXECUTE after the DROP+CREATE (got '$V16_GRANT')"
+
+# The CRUD role can actually CALL it (the grant assertion above is not enough:
+# a privilege that is never exercised is not proven usable).
+V16_CALL=$($PSQL_READER -c "SELECT tasks.task_upsert(p_content=>'L1 v16 reader call', p_created_by=>'esther');" 2>/dev/null | head -1)
+[ -n "$V16_CALL" ] \
+  && pass "the reader role can call the 21-arg task_upsert" \
+  || fail "the reader role cannot call task_upsert after v016"
+
+echo ""
 echo "═══ Summary ═══"
 echo "  ${P} passed, ${F} failed"
 [ "$F" -eq 0 ] || echo "  ❌ SOME TESTS FAILED — investigate before shipping"

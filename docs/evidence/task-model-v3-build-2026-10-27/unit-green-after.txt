@@ -1,0 +1,12 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
+rootdir: /home/esther/hermes-cortex
+configfile: pytest.ini
+plugins: anyio-4.15.1
+collected 100 items
+
+tests/test_task_db_unit.py ............................................. [ 45%]
+................................................                         [ 93%]
+tests/test_task_db_v4.py .......                                         [100%]
+
+============================= 100 passed in 1.57s ==============================
