@@ -552,6 +552,10 @@ register "ops/scripts/manage/cortex_doctor/config.py"  "${CORTEX_DEPLOY_HOME}/sc
 register "ops/scripts/manage/cortex_doctor/dispositions.py" "${CORTEX_DEPLOY_HOME}/scripts/cortex_doctor/dispositions.py"
 register "ops/scripts/manage/cortex_doctor/fix.py"     "${CORTEX_DEPLOY_HOME}/scripts/cortex_doctor/fix.py"
 register "ops/scripts/manage/cortex_doctor/immutability.py" "${CORTEX_DEPLOY_HOME}/scripts/cortex_doctor/immutability.py"
+# Every file in the package is registered INDIVIDUALLY: a new module added here
+# but not registered simply never reaches a host, and the check it holds reads
+# as absent everywhere except the machine that wrote it.
+register "ops/scripts/manage/cortex_doctor/jev.py"   "${CORTEX_DEPLOY_HOME}/scripts/cortex_doctor/jev.py"
 register "ops/scripts/manage/cortex_doctor/helpers.py" "${CORTEX_DEPLOY_HOME}/scripts/cortex_doctor/helpers.py"
 register "ops/scripts/manage/cortex_doctor/results.py" "${CORTEX_DEPLOY_HOME}/scripts/cortex_doctor/results.py"
 # Task-model integrity: migrations must actually deploy, and no slice may be
