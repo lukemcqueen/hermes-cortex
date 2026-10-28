@@ -77,8 +77,16 @@ def _price_helper():
     Imported by path from the doctor package; if it is not deployed here, the
     report still runs and says prices are unavailable rather than guessing.
     """
-    path = Path(__file__).resolve().parent / "cortex_doctor" / "jev.py"
-    if not path.is_file():
+    # The doctor package deploys to <deploy root>/scripts/cortex_doctor/, NOT beside
+    # this script — looking only next to it made the DEPLOYED report print
+    # "price unknown" on a host with a full catalog.
+    here = Path(__file__).resolve().parent
+    for candidate in (here / "cortex_doctor" / "jev.py",
+                      here.parent / "cortex_doctor" / "jev.py"):
+        if candidate.is_file():
+            path = candidate
+            break
+    else:
         return None, None
     spec = importlib.util.spec_from_file_location("jev_shadow_price_helper", path)
     if spec is None or spec.loader is None:
