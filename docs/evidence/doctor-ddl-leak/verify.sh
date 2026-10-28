@@ -78,6 +78,28 @@ echo "    so it is demonstrated by the absent call site + the RED test instead"
 echo "    (a defensive no-op on destructive steps without explicit instruction)."
 echo
 
+echo "── 4c. the NEW divergence WARN actually FIRES (probe the gate itself) ──"
+# Point the resolver at a DEPLOYED tree that is one migration ahead of the live
+# DB. A check that never fires is not a check, so the negative direction is
+# demonstrated too — and because the doctor only reads now, this probe cannot
+# touch production. (A unique dir per run: no rm -rf in an unattended job.)
+FAKE="$(mktemp -d "$HOME/.hermes/cache/scratch/ddl-fake-deploy-XXXXXX")"
+mkdir -p "$FAKE/services/tasks/schema"
+printf -- '-- probe only; never applied\n' > "$FAKE/services/tasks/schema/v017__probe-noop.sql"
+echo "  fake deployed tree: $FAKE (declares v017; live DB is at 16)"
+CORTEX_DEPLOY_HOME="$FAKE" "$DEPLOY/scripts/cortex-doctor.py" \
+  > "$HOME/.hermes/cache/scratch/ddl-doctor-ahead.txt" 2>&1
+echo "  doctor rc=$?"
+grep -a -E "Task Lifecycle v2 schema" "$HOME/.hermes/cache/scratch/ddl-doctor-ahead.txt" | sed 's/^/    /'
+echo "  and the fake migration was NOT applied (live version must still be 16):"
+"$PY" - <<PY
+import importlib.util, pathlib
+spec = importlib.util.spec_from_file_location("tdb", pathlib.Path("$TASK_DB"))
+m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+print("    live schema_version:", m.psql("SELECT COALESCE(MAX(version),0) FROM tasks.schema_version;").strip())
+PY
+echo
+
 echo "── 5. live schema AFTER the doctor run (must be IDENTICAL — no mutation) ──"
 "$PY" - <<PY
 import importlib.util, pathlib

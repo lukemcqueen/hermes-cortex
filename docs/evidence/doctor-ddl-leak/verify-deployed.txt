@@ -1,7 +1,8 @@
 # [72b2c69b] the doctor REPORTS the tasks schema; it does not apply it.
-# captured-at: 2026-10-28T20:38:21+09:00
-# repo HEAD: 82b9c0cd
-# doctor under test (DEPLOYED): /home/esther/.hermes-cortex/scripts/cortex-doctor.py
+# NOTE (2026-10-28): the home-directory prefix is normalized to $HOME for PII hygiene (precedent: commit 93029175). Counts, exit codes and verdicts are unmodified.
+# captured-at: 2026-10-28T20:42:18+09:00
+# repo HEAD: e7c2a945
+# doctor under test (DEPLOYED): $HOME/.hermes-cortex/scripts/cortex-doctor.py
 
 ── 1. the DEPLOYED call site carries no --apply-schema CALL ──
 rc=1 (1 = no quoted --apply-schema argument in the deployed doctor)
@@ -9,10 +10,10 @@ rc=1 (1 = no quoted --apply-schema argument in the deployed doctor)
     5378:            "SELECT COALESCE(MAX(version), 0) FROM tasks.schema_version;")
 
 ── 2. the DEPLOYED resolver prefers the deployed tree ──
-  1. exists=True  /home/esther/.hermes-cortex/services/tasks/migrate.py
-  2. exists=False  /home/esther/.hermes-cortex/scripts/ops/services/tasks/migrate.py
-  3. exists=True  /home/esther/hermes-cortex/ops/services/tasks/migrate.py
-  PICKED: /home/esther/.hermes-cortex/services/tasks/migrate.py
+  1. exists=True  $HOME/.hermes-cortex/services/tasks/migrate.py
+  2. exists=False  $HOME/.hermes-cortex/scripts/ops/services/tasks/migrate.py
+  3. exists=True  $HOME/hermes-cortex/ops/services/tasks/migrate.py
+  PICKED: $HOME/.hermes-cortex/services/tasks/migrate.py
   is the DEPLOYED tree: True
   deployed_schema_version(): 16
 
@@ -33,6 +34,16 @@ rc=1 (1 = no quoted --apply-schema argument in the deployed doctor)
     Reproducing it would attempt a PRODUCTION write if the fix ever regressed,
     so it is demonstrated by the absent call site + the RED test instead
     (a defensive no-op on destructive steps without explicit instruction).
+
+── 4c. the NEW divergence WARN actually FIRES (probe the gate itself) ──
+  fake deployed tree: $HOME/.hermes/cache/scratch/ddl-fake-deploy-FG6wsg (declares v017; live DB is at 16)
+  doctor rc=1
+      ✅ Task Lifecycle v2 schema — tasks schema_version = 16 (v2 lifecycle available)
+      ⚠️  Task Lifecycle v2 schema sources — live tasks.schema_version 16 < deployed schema dir 17 — this host is behind its deployed migrations
+           · Task Lifecycle v2 schema sources
+             or:  cortex-doctor.py --disposition "Task Lifecycle v2 schema sources" --as deferred --owner <you> --reason "<why>"
+  and the fake migration was NOT applied (live version must still be 16):
+    live schema_version: 16
 
 ── 5. live schema AFTER the doctor run (must be IDENTICAL — no mutation) ──
   schema_version    : 16
