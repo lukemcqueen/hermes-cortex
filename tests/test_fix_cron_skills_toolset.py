@@ -166,3 +166,53 @@ def test_module_import_is_inert(tmp_path):
     """Importing the module must not read or write the live store."""
     mod = _load_module()
     assert hasattr(mod, "plan_fixes")
+
+
+# ── the STORE's own shape: jobs.json keys the job as `id`, not `job_id` ─────
+# Measured 2026-10-28 against the live store: reading only `job_id` rendered every
+# job as "?" AND keyed every planned fix on None — an --apply would have rewritten
+# the first job in the file instead of the named one. The unit tests missed it
+# because their fixtures used the MCP tool's field name; the live report caught it.
+
+def _store_with_disk_shape(tmp_path, jobs):
+    p = tmp_path / "jobs.json"
+    p.write_text(json.dumps({"jobs": jobs}, indent=2))
+    return p
+
+
+def test_disk_shaped_jobs_report_their_real_id(tmp_path):
+    f = _store_with_disk_shape(tmp_path, [
+        {"id": "aaaaaaaaaaaa", "name": "first", "enabled_toolsets": ["terminal", "skills"]},
+        {"id": "bbbbbbbbbbbb", "name": "second", "enabled_toolsets": ["terminal"]},
+    ])
+    r = _run(f)
+    assert r.returncode == 1, r.stdout
+    assert "bbbbbbbbbbbb" in r.stdout
+    assert "?" not in r.stdout.split("Jobs needing")[1].split("NOTE:")[0]
+
+
+def test_apply_with_disk_shaped_ids_rewrites_only_the_named_job(tmp_path):
+    f = _store_with_disk_shape(tmp_path, [
+        {"id": "aaaaaaaaaaaa", "name": "first", "enabled_toolsets": ["terminal", "skills"]},
+        {"id": "bbbbbbbbbbbb", "name": "second", "enabled_toolsets": ["terminal"]},
+    ])
+    assert _run(f, "--apply").returncode == 0
+    jobs = {j["name"]: j for j in json.loads(f.read_text())["jobs"]}
+    assert jobs["first"]["enabled_toolsets"] == ["terminal", "skills"], \
+        "a job that already has skills must never be rewritten"
+    assert "skills" in jobs["second"]["enabled_toolsets"]
+
+
+def test_a_job_with_no_identity_is_never_a_target(tmp_path):
+    """Two id-less jobs must not collapse into one dict key (None) — that is how
+    an --apply rewrites the wrong job."""
+    f = _store_with_disk_shape(tmp_path, [
+        {"name": "no-id-a", "enabled_toolsets": ["terminal"]},
+        {"name": "no-id-b", "enabled_toolsets": ["terminal"]},
+    ])
+    before = f.read_text()
+    r = _run(f, "--apply")
+    assert r.returncode == 0, f"{r.stdout}{r.stderr}"
+    assert f.read_text() == before, "an unidentifiable job must be left untouched"
+    # …and they are REPORTED, not silently dropped
+    assert "no-id-a" in r.stdout and "no id/job_id" in r.stdout

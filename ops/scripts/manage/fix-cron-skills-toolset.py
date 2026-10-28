@@ -68,24 +68,54 @@ def _jobs(payload) -> list:
     return jobs if isinstance(jobs, list) else []
 
 
+def _job_key(job) -> str:
+    """The job's identity AS THE STORE WRITES IT.
+
+    On disk the key is ``id`` (``~/.hermes/cron/jobs.json``), while the cronjob
+    MCP tool reports it as ``job_id``. Reading only one of the two made every job
+    render as "?" and — worse — keyed every planned fix on ``None``, so an
+    ``--apply`` would have rewritten the FIRST job instead of the named one.
+    Caught by running the report against the live store, not by the unit tests,
+    which is why the store's own shape is pinned below.
+    """
+    if not isinstance(job, dict):
+        return ""
+    return str(job.get("job_id") or job.get("id") or "")
+
+
+def _needs_skills(job) -> bool:
+    """An LLM job whose EXPLICIT allowlist omits `skills` (see plan_fixes)."""
+    if not isinstance(job, dict) or job.get("no_agent"):
+        return False
+    current = job.get("enabled_toolsets")
+    if not isinstance(current, list) or not current:
+        return False  # no allowlist: inherits platform_toolsets.cron
+    return REQUIRED_TOOLSET not in current
+
+
+def unrepairable_jobs(payload) -> list:
+    """Jobs that need the fix but carry no identity — this script cannot name them
+    as a target, and must SAY so rather than quietly omit them."""
+    return [j.get("name") or "?" for j in _jobs(payload)
+            if _needs_skills(j) and not _job_key(j)]
+
+
 def plan_fixes(payload) -> list:
     """Jobs that need `skills` added to an explicit allowlist.
 
     Returns a list of dicts: name, job_id, current, proposed. Pure: reads the
-    parsed payload only, so it is safe to call before deciding to write.
+    parsed payload only, so it is safe to call before deciding to write. A job
+    with no identity is excluded here (it can never be a write target) and is
+    reported by `unrepairable_jobs` instead.
     """
     out = []
     for job in _jobs(payload):
-        if not isinstance(job, dict) or job.get("no_agent"):
+        if not _needs_skills(job) or not _job_key(job):
             continue
         current = job.get("enabled_toolsets")
-        if not isinstance(current, list) or not current:
-            continue  # no allowlist: inherits platform_toolsets.cron
-        if REQUIRED_TOOLSET in current:
-            continue
         out.append({
             "name": job.get("name") or "?",
-            "job_id": job.get("job_id") or "?",
+            "job_id": _job_key(job) or "?",
             "current": list(current),
             "proposed": list(current) + [REQUIRED_TOOLSET],
         })
@@ -94,7 +124,8 @@ def plan_fixes(payload) -> list:
 
 def apply_fixes(payload, plan) -> int:
     """Add the missing toolset to each planned job in the parsed payload."""
-    by_id = {j.get("job_id"): j for j in _jobs(payload) if isinstance(j, dict)}
+    by_id = {_job_key(j): j for j in _jobs(payload) if isinstance(j, dict)}
+    by_id.pop("", None)  # an unidentifiable job must never be a target
     changed = 0
     for item in plan:
         job = by_id.get(item["job_id"])
@@ -198,13 +229,19 @@ def main(argv=None) -> int:
         return RC_COULD_NOT_VERIFY
 
     plan = plan_fixes(payload)
+    unrepairable = unrepairable_jobs(payload)
     if args.json:
-        print(json.dumps({"store": str(store), "findings": plan}, indent=2))
+        print(json.dumps({"store": str(store), "findings": plan,
+                          "unrepairable": unrepairable}, indent=2))
     elif plan:
         _print_plan(plan)
     else:
         print(f"nothing to fix in {store} — no LLM cron carries an allowlist without "
               f"'{REQUIRED_TOOLSET}'")
+    if unrepairable:
+        print(f"\n{len(unrepairable)} job(s) need '{REQUIRED_TOOLSET}' but carry no id/job_id, "
+              f"so this script cannot name them as a target (repair them via the cronjob "
+              f"MCP tool): {', '.join(unrepairable)}")
 
     if not plan:
         return RC_OK
