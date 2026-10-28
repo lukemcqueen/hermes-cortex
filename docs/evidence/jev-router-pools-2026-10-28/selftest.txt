@@ -1,0 +1,1 @@
+SELFTEST PASSED — 3 tiers, 11 routed model(s), baseline $0.560/M, every non-hard head cheaper, every simple pool within its ceiling

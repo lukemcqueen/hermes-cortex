@@ -42,52 +42,23 @@
     "medium": {
       "general": [
         "openrouter:qwen/qwen3.7-flash",
-        "openrouter:deepseek/deepseek-v4.1-flash",
-        "openrouter:elorian/glimpse",
-        "openrouter:reflection/beam-1.0-501b-a23b",
-        "openrouter:unbiased/pareto-26.10",
-        "openrouter:meta/muse-spark-open",
-        "openrouter:mistralai/mistral-large-4-0",
-        "openrouter:google/gemini-nano-banana-2.1"
+        "openrouter:deepseek/deepseek-v4.1-flash"
       ],
       "vision": [
         "openrouter:qwen/qwen3.7-flash",
-        "openrouter:deepseek/deepseek-v4.1-flash",
-        "openrouter:elorian/glimpse",
-        "openrouter:unbiased/pareto-26.10",
-        "openrouter:meta/muse-spark-open",
-        "openrouter:mistralai/mistral-large-4-0",
-        "openrouter:google/gemini-nano-banana-2.1",
-        "openrouter:x-ai/grok-4.7"
+        "openrouter:deepseek/deepseek-v4.1-flash"
       ],
       "coding": [
         "openrouter:qwen/qwen3-coder-30b-a3b-instruct",
-        "openrouter:deepseek/deepseek-v4.1-flash",
-        "openrouter:bytedance-seed/seed-2.0-code",
-        "openrouter:mistralai/devstral-2512",
-        "openrouter:openai/gpt-5.1-codex-mini",
-        "openrouter:openai/gpt-5.1-codex",
-        "openrouter:openai/gpt-5.1-codex-max"
+        "openrouter:deepseek/deepseek-v4.1-flash"
       ],
       "writing": [
         "openrouter:qwen/qwen3.7-flash",
-        "openrouter:deepseek/deepseek-v4.1-flash",
-        "openrouter:elorian/glimpse",
-        "openrouter:reflection/beam-1.0-501b-a23b",
-        "openrouter:unbiased/pareto-26.10",
-        "openrouter:meta/muse-spark-open",
-        "openrouter:mistralai/mistral-large-4-0",
-        "openrouter:google/gemini-nano-banana-2.1"
+        "openrouter:deepseek/deepseek-v4.1-flash"
       ],
       "research": [
         "openrouter:qwen/qwen3.7-flash",
-        "openrouter:deepseek/deepseek-v4.1-flash",
-        "openrouter:x-ai/grok-4.7",
-        "openrouter:x-ai/grok-4.6",
-        "openrouter:x-ai/grok-4.5",
-        "openrouter:x-ai/grok-4.3",
-        "openrouter:x-ai/grok-build-0.1",
-        "openrouter:x-ai/grok-4.20"
+        "openrouter:deepseek/deepseek-v4.1-flash"
       ]
     },
     "hard": {
@@ -389,23 +360,40 @@
     }
   },
   "candidates": {
-    "deepseek:deepseek-flash": "priced only, NOT routed: a price change here changes nothing until a tier names it. Kept priced so promoting a cheaper model is a one-file edit",
-    "openrouter:anthropic/claude-haiku-5.5": "priced only, NOT routed: a price change here changes nothing until a tier names it. Kept priced so promoting a cheaper model is a one-file edit",
-    "openrouter:deepseek/deepseek-v4.1-flash-1017": "priced only, NOT routed: a price change here changes nothing until a tier names it. Kept priced so promoting a cheaper model is a one-file edit",
-    "openrouter:inclusionai/ling-3.0-flash": "priced only, NOT routed: a price change here changes nothing until a tier names it. Kept priced so promoting a cheaper model is a one-file edit",
-    "openrouter:inclusionai/ling-3.1-flash": "priced only, NOT routed",
-    "openrouter:liquid/lfm-2.5-24b-a2b": "priced only, NOT routed: a price change here changes nothing until a tier names it. Kept priced so promoting a cheaper model is a one-file edit",
-    "openrouter:meta-llama/llama-3.1-8b-instruct": "priced only, NOT routed: a price change here changes nothing until a tier names it. Kept priced so promoting a cheaper model is a one-file edit",
-    "openrouter:mistralai/codestral-2508": "priced only, NOT routed: a price change here changes nothing until a tier names it. Kept priced so promoting a cheaper model is a one-file edit",
-    "openrouter:mistralai/mistral-nemo": "priced only, NOT routed: a price change here changes nothing until a tier names it. Kept priced so promoting a cheaper model is a one-file edit",
-    "openrouter:nvidia/nemotron-3.5-super-vl": "priced only, NOT routed: a price change here changes nothing until a tier names it. Kept priced so promoting a cheaper model is a one-file edit",
-    "openrouter:openai/gpt-oss-20b": "priced only, NOT routed: a price change here changes nothing until a tier names it. Kept priced so promoting a cheaper model is a one-file edit",
-    "openrouter:perceptron/perceptron-mk1.5": "priced only, NOT routed: a price change here changes nothing until a tier names it. Kept priced so promoting a cheaper model is a one-file edit",
-    "openrouter:qwen/qwen3-coder": "priced only, NOT routed: a price change here changes nothing until a tier names it. Kept priced so promoting a cheaper model is a one-file edit",
-    "openrouter:qwen/qwen3-coder-flash": "priced only, NOT routed: a price change here changes nothing until a tier names it. Kept priced so promoting a cheaper model is a one-file edit",
-    "openrouter:qwen/qwen3-coder-next": "priced only, NOT routed: a price change here changes nothing until a tier names it. Kept priced so promoting a cheaper model is a one-file edit",
-    "openrouter:xiaomi/mimo-v2.6-flash": "priced only, NOT routed",
-    "openrouter:z-ai/glm-5.3-flash": "priced only, NOT routed: a price change here changes nothing until a tier names it. Kept priced so promoting a cheaper model is a one-file edit"
+    "deepseek:deepseek-flash": "priced only, NOT routed: a price change here changes nothing until a tier names it",
+    "openrouter:anthropic/claude-haiku-5.5": "priced only, NOT routed: a price change here changes nothing until a tier names it",
+    "openrouter:bytedance-seed/seed-2.0-code": "priced only, NOT routed: a price change here changes nothing until a tier names it",
+    "openrouter:deepseek/deepseek-v4.1-flash-1017": "priced only, NOT routed: a price change here changes nothing until a tier names it",
+    "openrouter:elorian/glimpse": "priced only, NOT routed: a price change here changes nothing until a tier names it",
+    "openrouter:google/gemini-nano-banana-2.1": "priced only, NOT routed: a price change here changes nothing until a tier names it",
+    "openrouter:inclusionai/ling-3.0-flash": "priced only, NOT routed: a price change here changes nothing until a tier names it",
+    "openrouter:inclusionai/ling-3.1-flash": "priced only, NOT routed: a price change here changes nothing until a tier names it",
+    "openrouter:liquid/lfm-2.5-24b-a2b": "priced only, NOT routed: a price change here changes nothing until a tier names it",
+    "openrouter:meta-llama/llama-3.1-8b-instruct": "priced only, NOT routed: a price change here changes nothing until a tier names it",
+    "openrouter:meta/muse-spark-open": "priced only, NOT routed: a price change here changes nothing until a tier names it",
+    "openrouter:mistralai/codestral-2508": "priced only, NOT routed: a price change here changes nothing until a tier names it",
+    "openrouter:mistralai/devstral-2512": "priced only, NOT routed: a price change here changes nothing until a tier names it",
+    "openrouter:mistralai/mistral-large-4-0": "priced only, NOT routed: a price change here changes nothing until a tier names it",
+    "openrouter:mistralai/mistral-nemo": "priced only, NOT routed: a price change here changes nothing until a tier names it",
+    "openrouter:nvidia/nemotron-3.5-super-vl": "priced only, NOT routed: a price change here changes nothing until a tier names it",
+    "openrouter:openai/gpt-5.1-codex": "priced only, NOT routed: a price change here changes nothing until a tier names it",
+    "openrouter:openai/gpt-5.1-codex-max": "priced only, NOT routed: a price change here changes nothing until a tier names it",
+    "openrouter:openai/gpt-5.1-codex-mini": "priced only, NOT routed: a price change here changes nothing until a tier names it",
+    "openrouter:openai/gpt-oss-20b": "priced only, NOT routed: a price change here changes nothing until a tier names it",
+    "openrouter:perceptron/perceptron-mk1.5": "priced only, NOT routed: a price change here changes nothing until a tier names it",
+    "openrouter:qwen/qwen3-coder": "priced only, NOT routed: a price change here changes nothing until a tier names it",
+    "openrouter:qwen/qwen3-coder-flash": "priced only, NOT routed: a price change here changes nothing until a tier names it",
+    "openrouter:qwen/qwen3-coder-next": "priced only, NOT routed: a price change here changes nothing until a tier names it",
+    "openrouter:reflection/beam-1.0-501b-a23b": "priced only, NOT routed: a price change here changes nothing until a tier names it",
+    "openrouter:unbiased/pareto-26.10": "priced only, NOT routed: a price change here changes nothing until a tier names it",
+    "openrouter:x-ai/grok-4.20": "priced only, NOT routed: a price change here changes nothing until a tier names it",
+    "openrouter:x-ai/grok-4.3": "priced only, NOT routed: a price change here changes nothing until a tier names it",
+    "openrouter:x-ai/grok-4.5": "priced only, NOT routed: a price change here changes nothing until a tier names it",
+    "openrouter:x-ai/grok-4.6": "priced only, NOT routed: a price change here changes nothing until a tier names it",
+    "openrouter:x-ai/grok-4.7": "priced only, NOT routed: a price change here changes nothing until a tier names it",
+    "openrouter:x-ai/grok-build-0.1": "priced only, NOT routed: a price change here changes nothing until a tier names it",
+    "openrouter:xiaomi/mimo-v2.6-flash": "priced only, NOT routed: a price change here changes nothing until a tier names it",
+    "openrouter:z-ai/glm-5.3-flash": "priced only, NOT routed: a price change here changes nothing until a tier names it"
   },
   "rejected": {
     "openrouter:moonshotai/kimi-k2.7-code": {

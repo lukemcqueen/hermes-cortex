@@ -146,6 +146,8 @@ def main(argv=None) -> int:
     ap.add_argument("--routing", default=None, help="live routing.json (default $HERMES_HOME/jev/routing.json)")
     ap.add_argument("--write", action="store_true", help="rewrite the live pools from the list")
     ap.add_argument("--refresh", action="store_true", help="re-price the list from the catalog cache")
+    ap.add_argument("--selftest", action="store_true",
+                    help="assert this list's own invariants and exit (no live state read)")
     ap.add_argument("--json", action="store_true")
     args = ap.parse_args(argv)
 
@@ -154,6 +156,9 @@ def main(argv=None) -> int:
     if doc is None:
         print(f"COULD NOT VERIFY: {reason}", file=sys.stderr)
         return RC_COULD_NOT_VERIFY
+
+    if args.selftest:
+        return _selftest(doc)
 
     if args.refresh:
         return _refresh(list_path, doc, args)
@@ -189,6 +194,67 @@ def main(argv=None) -> int:
                 delta = f" (${f['delta_usd_per_m']:+.3f}/M)" if "delta_usd_per_m" in f else ""
                 print(f"  [{f['kind']}] {f['tier']}/{f['specialty']}: {f['detail']}{delta}")
     return RC_FINDINGS if findings else RC_OK
+
+
+def _selftest(doc: dict) -> int:
+    """Assert the list's own invariants. Re-runnable on a host with no test suite.
+
+    Committed because the script is load-bearing for what may be routed: a reviewer is
+    right to refuse "the tests pass" as a claim with no run behind it. This runs the
+    same invariants the repo's tests pin, straight from the artifact.
+    """
+    prices = doc.get("prices") or {}
+    base = doc.get("baseline")
+    base_price = blended(prices.get(base, {}))
+    tiers = doc.get("tiers") or {}
+    policy = doc.get("policy") or {}
+    failures = []
+
+    if not base_price:
+        failures.append(f"baseline {base!r} has no price in the list")
+    for tier, specs in tiers.items():
+        if tier == "hard":
+            continue
+        ceiling = (policy.get(tier) or {}).get("max_multiple_of_baseline")
+        for spec, models in specs.items():
+            if not models:
+                failures.append(f"{tier}/{spec} is empty")
+                continue
+            head = blended(prices.get(models[0], {}))
+            if base_price and head >= base_price:
+                failures.append(f"{tier}/{spec} head {models[0]} is not cheaper than the baseline")
+            if ceiling is not None and base_price:
+                for model in models:
+                    price = blended(prices.get(model, {}))
+                    if price > base_price * float(ceiling):
+                        failures.append(f"{tier}/{spec} model {model} is ${price:.3f}/M, above the "
+                                        f"{float(ceiling):g}x ceiling")
+    simple_ceiling = (policy.get("simple") or {}).get("max_multiple_of_baseline")
+    if simple_ceiling is not None and base_price:
+        for spec, models in (tiers.get("simple") or {}).items():
+            for model in models:
+                if blended(prices.get(model, {})) > base_price * float(simple_ceiling):
+                    failures.append(f"simple/{spec} {model} breaks the simple ceiling")
+    routed = {m for specs in tiers.values() for models in specs.values() for m in models}
+    named = set(doc.get("candidates") or {}) | set(doc.get("rejected") or {})
+    for model in sorted(set(prices) - routed - named):
+        failures.append(f"{model} is priced but neither routed nor named")
+    if set(doc.get("candidates") or {}) & set(doc.get("rejected") or {}):
+        failures.append("a model is both a candidate and rejected")
+    expected_heads = {f"{t}/{s}" for t, specs in tiers.items() for s in specs}
+    missing = expected_heads - set((doc.get("derivation") or {}).get("heads") or {})
+    if missing:
+        failures.append(f"heads with no derivation: {sorted(missing)}")
+
+    if failures:
+        print(f"SELFTEST FAILED ({len(failures)}):")
+        for f in failures:
+            print("  -", f)
+        return RC_FINDINGS
+    print(f"SELFTEST PASSED — {len(tiers)} tiers, {len(routed)} routed model(s), "
+          f"baseline ${base_price:.3f}/M, every non-hard head cheaper, every simple pool "
+          f"within its ceiling")
+    return RC_OK
 
 
 def _refresh(list_path: Path, doc: dict, args) -> int:
